@@ -33,11 +33,22 @@ async function csrfToken(): Promise<string> {
 
 export async function apiRequest<T>(
   url: string,
-  options: { method?: string; body?: unknown; csrf?: boolean } = {},
+  options: {
+    method?: string;
+    body?: unknown;
+    csrf?: boolean;
+    idempotency?: boolean | string;
+  } = {},
 ): Promise<T> {
   const headers = new Headers({ Accept: "application/json" });
   if (options.body !== undefined) headers.set("Content-Type", "application/json");
   if (options.csrf) headers.set("X-CSRF-Token", await csrfToken());
+  if (options.idempotency) {
+    headers.set(
+      "Idempotency-Key",
+      typeof options.idempotency === "string" ? options.idempotency : crypto.randomUUID(),
+    );
+  }
   const response = await fetch(url, {
     method: options.method ?? "GET",
     headers,

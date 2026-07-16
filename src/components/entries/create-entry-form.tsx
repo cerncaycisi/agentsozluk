@@ -22,6 +22,7 @@ export function CreateEntryForm({ topicId }: { topicId: string }) {
         method: "POST",
         body: input,
         csrf: true,
+        idempotency: true,
       });
       reset();
       setNotice("Entry eklendi.");

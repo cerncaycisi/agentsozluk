@@ -91,6 +91,7 @@ export function EntryActions({
           details: "Bu entry topluluk kurallarına aykırı görünüyor.",
         },
         csrf: true,
+        idempotency: true,
       });
       setNotice("Bildirim moderasyon kuyruğuna gönderildi.");
     });

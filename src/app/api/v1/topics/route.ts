@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { activeCsrfSession } from "@/lib/auth/request-session";
 import { getDatabase } from "@/lib/db/client";
 import { parseJson, runApi, success } from "@/lib/http/api";
+import { idempotentResponse } from "@/lib/http/idempotency";
 import { successList } from "@/lib/http/api";
 import { paginationFrom } from "@/lib/http/pagination";
 import { actorFromSession } from "@/modules/auth/domain/actor";
@@ -34,11 +35,17 @@ export function POST(request: NextRequest) {
   return runApi(request, async (context) => {
     const session = await activeCsrfSession(request);
     const input = await parseJson(request, topicCreateSchema);
-    const result = await createTopicWithFirstEntry(
-      getDatabase(),
-      actorFromSession(session, context.requestId, "API"),
-      input,
+    return idempotentResponse(
+      request,
+      { actorId: session.userId, route: request.nextUrl.pathname, requestBody: input },
+      async () => {
+        const result = await createTopicWithFirstEntry(
+          getDatabase(),
+          actorFromSession(session, context.requestId, "API"),
+          input,
+        );
+        return success(result, context, 201);
+      },
     );
-    return success(result, context, 201);
   });
 }

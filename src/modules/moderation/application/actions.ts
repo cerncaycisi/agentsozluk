@@ -12,14 +12,14 @@ import type {
   TopicMergeInput,
   TopicRenameInput,
 } from "@/modules/moderation/validation/schemas";
-import { appendOutboxEvent } from "@/modules/outbox/repository/outbox";
+import { appendOutboxEvent, type OutboxEventType } from "@/modules/outbox/repository/outbox";
 
 async function recordAction(
   transaction: Prisma.TransactionClient,
   actor: ActorContext,
   input: {
     actionType: string;
-    eventType: string;
+    eventType: OutboxEventType;
     targetType: string;
     targetId: string;
     reason: string;

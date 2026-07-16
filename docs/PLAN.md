@@ -12,7 +12,7 @@ verification exist.
 | 4     | Topics, entries, renderer, interactions                            | Domain integration suite | COMPLETE    |
 | 5     | Search, feeds, DEBE, profiles                                      | Search/feed suite        | COMPLETE    |
 | 6     | Reports, moderation, audit and roles                               | Moderation suite         | COMPLETE    |
-| 7     | Public/account/moderation UI, responsive, theme, a11y, SEO         | Playwright + axe         | PENDING     |
-| 8     | REST API, OpenAPI, idempotency and outbox                          | API + schema validation  | PENDING     |
+| 7     | Public/account/moderation UI, responsive, theme, a11y, SEO         | Playwright + axe         | COMPLETE    |
+| 8     | REST API, OpenAPI, idempotency and outbox                          | API + schema validation  | COMPLETE    |
 | 9     | Unit, integration, E2E and coverage completion                     | All test commands        | PENDING     |
 | 10    | Docker, CI, security review, final verification, push and draft PR | `pnpm verify:m1`         | PENDING     |

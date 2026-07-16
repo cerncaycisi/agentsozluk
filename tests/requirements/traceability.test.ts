@@ -15,7 +15,7 @@ const requirementsDocument = readFileSync(path.join(root, "docs/M1_REQUIREMENTS.
 const traceabilityDocument = readFileSync(path.join(root, "docs/TRACEABILITY.md"), "utf8");
 
 const extractTableIds = (input: string): string[] =>
-  Array.from(input.matchAll(/^\|\s*([A-Z][A-Z0-9-]*-\d{3})\s*\|/gmu), (match) => match[1]);
+  Array.from(input.matchAll(/^\|\s*([A-Z][A-Z0-9-]*-\d{3})\s*\|/gmu), (match) => match[1]!);
 
 describe("Milestone 1 requirement traceability", () => {
   it("contains exactly 811 unique manifest IDs", () => {

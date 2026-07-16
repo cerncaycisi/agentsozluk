@@ -27,6 +27,7 @@ export function CreateTopicForm() {
         method: "POST",
         body: values,
         csrf: true,
+        idempotency: true,
       });
       router.push(result.topic.url);
       router.refresh();

@@ -17,10 +17,11 @@
 ## Current phase
 
 Foundation, database, authentication, topic/entry/interactions, search, feeds, profiles, reports,
-moderation services and the public/account/moderation UI are implemented. PostgreSQL 16 migration,
-double seed, counter consistency, the Phase 6 integration suite and the Phase 7 browser suite run
-locally. REST/OpenAPI, idempotency and transactional outbox work are the next active phase.
-Validation results are recorded only after commands actually run.
+moderation services, the public/account/moderation UI, REST/OpenAPI, create-command idempotency and
+the transactional outbox are implemented. PostgreSQL 16 migration, double seed, counter
+consistency, the Phase 8 integration suite and the Phase 7 browser suite run locally. Phase 8 is
+complete; coverage completion and production packaging are the next active phase. Validation
+results are recorded only after commands actually run.
 
 ## Validation ledger
 
@@ -34,8 +35,9 @@ Validation results are recorded only after commands actually run.
 | Formatting                          | PASS        | Prettier check completed                    |
 | ESLint                              | PASS        | 0 errors, 0 warnings                        |
 | TypeScript                          | PASS        | strict `tsc --noEmit`                       |
-| Unit tests                          | PASS        | 21 files, 55 tests                          |
-| PostgreSQL integration tests        | PASS        | 1 file, 16 tests                            |
+| Unit tests                          | PASS        | 23 files, 73 tests                          |
+| PostgreSQL integration tests        | PASS        | 1 file, 19 tests                            |
+| OpenAPI runtime alignment           | PASS        | OpenAPI 3.1; 57/57 operations aligned       |
 | Next production build               | PASS        | 40 static generation steps; 76 app routes   |
 | Playwright E2E                      | PASS        | 21 passed; 3 project-specific skips         |
 | Public axe gate                     | PASS        | serious and critical violations: 0          |
@@ -50,7 +52,7 @@ Validation results are recorded only after commands actually run.
 | Docker Compose runtime              | PASS        | Compose 5.3.1                               |
 | Docker container smoke              | PASS        | `alpine:3.22` returned `docker-runtime-ok`  |
 | Project Docker build/Compose config | PENDING     | Phase 10 artifacts not implemented yet      |
-| Requirement coverage                | IN PROGRESS | 286 PASS, 525 FAIL, 0 BLOCKED               |
+| Requirement coverage                | IN PROGRESS | 355 PASS, 456 FAIL, 0 BLOCKED               |
 
 ## Push and draft PR
 

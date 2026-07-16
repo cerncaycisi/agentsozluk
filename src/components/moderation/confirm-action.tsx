@@ -30,7 +30,12 @@ export function ConfirmAction({
     setPending(true);
     setError(undefined);
     try {
-      await apiRequest(endpoint, { method: "POST", body: { [fieldName]: reason }, csrf: true });
+      await apiRequest(endpoint, {
+        method: "POST",
+        body: { [fieldName]: reason },
+        csrf: true,
+        idempotency: true,
+      });
       setOpen(false);
       setReason("");
       router.refresh();

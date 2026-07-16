@@ -4,53 +4,53 @@ A row can become PASS only after both implementation and the required verificati
 
 | Requirement  | Implementation                                    | Test or validation                                           | Status |
 | ------------ | ------------------------------------------------- | ------------------------------------------------------------ | ------ |
-| AI-READY-001 | Not implemented                                   | Not verified                                                 | FAIL   |
-| AI-READY-002 | Not implemented                                   | Not verified                                                 | FAIL   |
-| AI-READY-003 | Not implemented                                   | Not verified                                                 | FAIL   |
-| AI-READY-004 | Not implemented                                   | Not verified                                                 | FAIL   |
-| AI-READY-005 | Not implemented                                   | Not verified                                                 | FAIL   |
-| AI-READY-006 | Not implemented                                   | Not verified                                                 | FAIL   |
-| AI-READY-007 | Not implemented                                   | Not verified                                                 | FAIL   |
-| AI-READY-008 | Not implemented                                   | Not verified                                                 | FAIL   |
-| AI-READY-009 | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-001      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-002      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-003      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-004      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-005      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-006      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-007      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-008      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-009      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-010      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-011      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-012      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-013      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-014      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-015      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-016      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-017      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-018      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-019      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-020      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-021      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-022      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-023      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-024      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-025      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-026      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-027      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-028      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-029      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-030      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-031      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-032      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-033      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-034      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-035      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-036      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-037      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-038      | Not implemented                                   | Not verified                                                 | FAIL   |
+| AI-READY-001 | UserKind HUMAN/AGENT enum                         | Prisma schema validation and PostgreSQL migration            | PASS   |
+| AI-READY-002 | human-only registration and no agent creation API | API route and source audit                                   | PASS   |
+| AI-READY-003 | complete ActorContext propagated to services      | TypeScript and PostgreSQL integration suites                 | PASS   |
+| AI-READY-004 | versioned `/api/v1` route tree                    | OpenAPI runtime alignment validator                          | PASS   |
+| AI-READY-005 | centralized module Zod schemas                    | validation unit suites and strict TypeScript                 | PASS   |
+| AI-READY-006 | OpenAPI 3.1 runtime contract                      | Swagger Parser; 57/57 runtime operations aligned             | PASS   |
+| AI-READY-007 | create-command idempotency                        | canonical hash unit and PostgreSQL concurrency suites        | PASS   |
+| AI-READY-008 | domain mutations append transactional outbox      | PostgreSQL event assertions and typed event registry         | PASS   |
+| AI-READY-009 | no worker, API token, LLM or autonomous posting   | source and dependency audit                                  | PASS   |
+| API-001      | register route                                    | auth browser suite and OpenAPI runtime alignment             | PASS   |
+| API-002      | login route                                       | auth browser suite and OpenAPI runtime alignment             | PASS   |
+| API-003      | logout route                                      | auth browser suite and OpenAPI runtime alignment             | PASS   |
+| API-004      | session route                                     | auth browser suite and OpenAPI runtime alignment             | PASS   |
+| API-005      | CSRF route                                        | CSRF unit suite and OpenAPI runtime alignment                | PASS   |
+| API-006      | current-user route                                | account browser suite and OpenAPI runtime alignment          | PASS   |
+| API-007      | profile update route                              | account browser suite and OpenAPI runtime alignment          | PASS   |
+| API-008      | email change route                                | account browser suite and OpenAPI runtime alignment          | PASS   |
+| API-009      | password change route                             | account browser suite and OpenAPI runtime alignment          | PASS   |
+| API-010      | account deactivation route                        | PostgreSQL integration and OpenAPI runtime alignment         | PASS   |
+| API-011      | session list route                                | account browser suite and OpenAPI runtime alignment          | PASS   |
+| API-012      | single session revoke route                       | account browser suite and OpenAPI runtime alignment          | PASS   |
+| API-013      | other sessions revoke route                       | account browser suite and OpenAPI runtime alignment          | PASS   |
+| API-014      | bookmark list route                               | PostgreSQL integration and OpenAPI runtime alignment         | PASS   |
+| API-015      | follow list route                                 | PostgreSQL integration and OpenAPI runtime alignment         | PASS   |
+| API-016      | vote list route                                   | PostgreSQL integration and OpenAPI runtime alignment         | PASS   |
+| API-017      | block list route                                  | PostgreSQL integration and OpenAPI runtime alignment         | PASS   |
+| API-018      | block upsert route                                | PostgreSQL integration and OpenAPI runtime alignment         | PASS   |
+| API-019      | block delete route                                | PostgreSQL integration and OpenAPI runtime alignment         | PASS   |
+| API-020      | public user route                                 | profile integration and OpenAPI runtime alignment            | PASS   |
+| API-021      | topic feed route                                  | feed integration and OpenAPI runtime alignment               | PASS   |
+| API-022      | topic create route                                | PostgreSQL and idempotency integration; OpenAPI alignment    | PASS   |
+| API-023      | topic detail route                                | topic integration and OpenAPI runtime alignment              | PASS   |
+| API-024      | topic entries route                               | entry integration and OpenAPI runtime alignment              | PASS   |
+| API-025      | entry create route                                | PostgreSQL and idempotency integration; OpenAPI alignment    | PASS   |
+| API-026      | topic follow upsert route                         | PostgreSQL integration and OpenAPI runtime alignment         | PASS   |
+| API-027      | topic follow delete route                         | PostgreSQL integration and OpenAPI runtime alignment         | PASS   |
+| API-028      | entry detail route                                | entry integration and OpenAPI runtime alignment              | PASS   |
+| API-029      | entry update route                                | entry integration and OpenAPI runtime alignment              | PASS   |
+| API-030      | entry delete route                                | entry integration and OpenAPI runtime alignment              | PASS   |
+| API-031      | entry revisions route                             | entry integration and OpenAPI runtime alignment              | PASS   |
+| API-032      | vote upsert route                                 | vote integration and OpenAPI runtime alignment               | PASS   |
+| API-033      | vote delete route                                 | vote integration and OpenAPI runtime alignment               | PASS   |
+| API-034      | bookmark upsert route                             | interaction integration and OpenAPI runtime alignment        | PASS   |
+| API-035      | bookmark delete route                             | interaction integration and OpenAPI runtime alignment        | PASS   |
+| API-036      | search route                                      | search integration and OpenAPI runtime alignment             | PASS   |
+| API-037      | DEBE route                                        | feed integration and OpenAPI runtime alignment               | PASS   |
+| API-038      | random topic route                                | feed integration and OpenAPI runtime alignment               | PASS   |
 | API-039      | report creation route                             | moderation integration suite and production build            | PASS   |
 | API-040      | moderation dashboard route                        | moderation integration suite and production build            | PASS   |
 | API-041      | filtered report list route                        | moderation integration suite and production build            | PASS   |
@@ -70,18 +70,18 @@ A row can become PASS only after both implementation and the required verificati
 | API-055      | moderator grant route                             | moderation integration suite and production build            | PASS   |
 | API-056      | moderator revoke route                            | moderation integration suite and production build            | PASS   |
 | API-057      | filtered audit route                              | moderation integration suite and production build            | PASS   |
-| API-058      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-059      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-060      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-061      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-062      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-063      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-064      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-065      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-066      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-067      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-068      | Not implemented                                   | Not verified                                                 | FAIL   |
-| API-069      | Not implemented                                   | Not verified                                                 | FAIL   |
+| API-058      | JSON date serialization                           | API contract unit suite                                      | PASS   |
+| API-059      | page default and minimum                          | pagination unit suite and OpenAPI schema                     | PASS   |
+| API-060      | pageSize default and maximum                      | pagination unit suite and OpenAPI schema                     | PASS   |
+| API-061      | validation error mapping                          | API error unit suite                                         | PASS   |
+| API-062      | authentication error mapping                      | API error unit suite and auth browser suite                  | PASS   |
+| API-063      | authorization error mapping                       | API error unit suite and moderation integration              | PASS   |
+| API-064      | not-found error mapping                           | API error unit suite and domain integration                  | PASS   |
+| API-065      | conflict error mapping                            | API error unit suite and domain integration                  | PASS   |
+| API-066      | rate-limit mapping and Retry-After                | API and fixed-window unit suites                             | PASS   |
+| API-067      | sanitized unexpected error mapping                | API error unit suite                                         | PASS   |
+| API-068      | X-Request-Id on success and error                 | API contract unit suite                                      | PASS   |
+| API-069      | valid request ID preservation and UUID fallback   | pagination and request-ID unit suite                         | PASS   |
 | ARCH-001     | Not implemented                                   | Not verified                                                 | FAIL   |
 | ARCH-002     | Not implemented                                   | Not verified                                                 | FAIL   |
 | ARCH-003     | Not implemented                                   | Not verified                                                 | FAIL   |
@@ -160,8 +160,8 @@ A row can become PASS only after both implementation and the required verificati
 | DATA-019     | Not implemented                                   | Not verified                                                 | FAIL   |
 | DATA-020     | Not implemented                                   | Not verified                                                 | FAIL   |
 | DATA-021     | Not implemented                                   | Not verified                                                 | FAIL   |
-| DATA-022     | Not implemented                                   | Not verified                                                 | FAIL   |
-| DATA-023     | Not implemented                                   | Not verified                                                 | FAIL   |
+| DATA-022     | outbox append inside domain transactions          | PostgreSQL event and rollback integration assertions         | PASS   |
+| DATA-023     | recursive sensitive-key payload guard             | outbox payload safety unit suite                             | PASS   |
 | DB-001       | `prisma/schema.prisma`                            | PostgreSQL 16 migration and schema contract test             | PASS   |
 | DB-002       | `prisma/schema.prisma`                            | PostgreSQL 16 migration and schema contract test             | PASS   |
 | DB-003       | `prisma/schema.prisma`                            | duplicate-race PostgreSQL integration test                   | PASS   |
@@ -406,14 +406,14 @@ A row can become PASS only after both implementation and the required verificati
 | FOLLOW-002   | follow service                                    | PostgreSQL content-state integration test                    | PASS   |
 | FOLLOW-003   | follow service                                    | PostgreSQL merged-target integration test                    | PASS   |
 | ID-001       | Not implemented                                   | Not verified                                                 | FAIL   |
-| IDEMP-001    | Not implemented                                   | Not verified                                                 | FAIL   |
-| IDEMP-002    | Not implemented                                   | Not verified                                                 | FAIL   |
-| IDEMP-003    | Not implemented                                   | Not verified                                                 | FAIL   |
-| IDEMP-004    | Not implemented                                   | Not verified                                                 | FAIL   |
-| IDEMP-005    | Not implemented                                   | Not verified                                                 | FAIL   |
-| IDEMP-006    | Not implemented                                   | Not verified                                                 | FAIL   |
-| IDEMP-007    | Not implemented                                   | Not verified                                                 | FAIL   |
-| IDEMP-008    | Not implemented                                   | Not verified                                                 | FAIL   |
+| IDEMP-001    | create and moderation command wrappers            | route audit and PostgreSQL idempotency suite                 | PASS   |
+| IDEMP-002    | browser crypto.randomUUID request keys            | strict TypeScript and browser client audit                   | PASS   |
+| IDEMP-003    | actor, route and key lock/storage scope           | PostgreSQL concurrency suite                                 | PASS   |
+| IDEMP-004    | recursively canonicalized JSON SHA-256            | canonical hash unit suite                                    | PASS   |
+| IDEMP-005    | stored status/body replay                         | PostgreSQL replay integration test                           | PASS   |
+| IDEMP-006    | Idempotent-Replay response header                 | HTTP wrapper and OpenAPI response contract                   | PASS   |
+| IDEMP-007    | request-hash conflict                             | PostgreSQL conflict integration test                         | PASS   |
+| IDEMP-008    | 24-hour expiry and replacement                    | PostgreSQL TTL integration test                              | PASS   |
 | IT-001       | Not implemented                                   | Not verified                                                 | FAIL   |
 | IT-002       | Not implemented                                   | Not verified                                                 | FAIL   |
 | IT-003       | Not implemented                                   | Not verified                                                 | FAIL   |

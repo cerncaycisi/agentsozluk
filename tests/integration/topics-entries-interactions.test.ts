@@ -21,6 +21,7 @@ import {
   removeVote,
   setVote,
 } from "@/modules/interactions/application/interactions";
+import { executeIdempotently } from "@/modules/idempotency/application/idempotency";
 import { createTopicWithFirstEntry } from "@/modules/topics/application/topics";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { searchAll } from "@/modules/search/application/search";
@@ -918,6 +919,90 @@ describe("reports and moderation with PostgreSQL", () => {
     expect(
       await integrationDatabase.outboxEvent.count({ where: { eventType: "user.unsuspended" } }),
     ).toBe(2);
+  });
+
+  it("stores and replays the first idempotent response without executing twice", async () => {
+    const writer = await createUser("idempotent_writer");
+    const input = {
+      actorId: writer.id,
+      route: "/api/v1/topics",
+      key: randomUUID(),
+      requestBody: { title: "Tekrarsız Başlık", entryBody: "Yeterince uzun bir ilk entry." },
+    };
+    let executions = 0;
+    const execute = async () => {
+      executions += 1;
+      return { status: 201, body: { topicId: randomUUID() } } as const;
+    };
+
+    const first = await executeIdempotently(integrationDatabase, input, execute);
+    const replay = await executeIdempotently(integrationDatabase, input, execute);
+
+    expect(first).toMatchObject({ status: 201, replayed: false });
+    expect(replay).toEqual({ ...first, replayed: true });
+    expect(executions).toBe(1);
+    expect(await integrationDatabase.idempotencyRecord.count()).toBe(1);
+  });
+
+  it("serializes concurrent idempotent requests and rejects key reuse with another body", async () => {
+    const writer = await createUser("idempotent_race_writer");
+    const key = randomUUID();
+    const input = {
+      actorId: writer.id,
+      route: "/api/v1/reports",
+      key,
+      requestBody: { targetType: "ENTRY", targetId: randomUUID(), reason: "OTHER" },
+    };
+    let executions = 0;
+    const execute = async () => {
+      executions += 1;
+      return { status: 201, body: { reportId: randomUUID() } } as const;
+    };
+
+    const results = await Promise.all([
+      executeIdempotently(integrationDatabase, input, execute),
+      executeIdempotently(integrationDatabase, input, execute),
+    ]);
+
+    expect(executions).toBe(1);
+    expect(results.filter((result) => result.replayed)).toHaveLength(1);
+    expect(results[0]?.body).toEqual(results[1]?.body);
+    await expect(
+      executeIdempotently(
+        integrationDatabase,
+        { ...input, requestBody: { ...input.requestBody, reason: "SPAM" } },
+        execute,
+      ),
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT", status: 409 });
+    expect(executions).toBe(1);
+  });
+
+  it("expires an idempotency record after 24 hours", async () => {
+    const writer = await createUser("idempotent_expiry_writer");
+    const now = new Date("2026-07-17T09:00:00.000Z");
+    const input = {
+      actorId: writer.id,
+      route: "/api/v1/topics",
+      key: randomUUID(),
+      requestBody: { title: "Süreli kayıt" },
+      now,
+    };
+    let executions = 0;
+    const execute = async () => {
+      executions += 1;
+      return { status: 201, body: { execution: executions } } as const;
+    };
+
+    await executeIdempotently(integrationDatabase, input, execute);
+    const afterExpiry = await executeIdempotently(
+      integrationDatabase,
+      { ...input, now: new Date(now.getTime() + 24 * 60 * 60 * 1000 + 1) },
+      execute,
+    );
+
+    expect(afterExpiry).toEqual({ status: 201, body: { execution: 2 }, replayed: false });
+    expect(executions).toBe(2);
+    expect(await integrationDatabase.idempotencyRecord.count()).toBe(1);
   });
 
   it("serializes concurrent last-admin deactivation attempts", async () => {
