@@ -7,6 +7,10 @@ export function normalizeEntryBody(input: string): string {
     .trim();
 }
 
+export function normalizeEntrySearchText(input: string): string {
+  return normalizeEntryBody(input).toLocaleLowerCase("tr-TR");
+}
+
 export const entryBodySchema = z
   .string()
   .transform(normalizeEntryBody)

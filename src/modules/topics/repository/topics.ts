@@ -1,4 +1,5 @@
 import type { ContentOrigin, Prisma } from "@prisma/client";
+import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
 
 export const topicSummarySelect = {
   id: true,
@@ -57,7 +58,7 @@ export function createTopicWithFirstEntryRecord(
         create: {
           authorId: input.createdById,
           body: input.entryBody,
-          normalizedBody: input.entryBody,
+          normalizedBody: normalizeEntrySearchText(input.entryBody),
           origin: input.origin,
           createdAt: input.now,
         },

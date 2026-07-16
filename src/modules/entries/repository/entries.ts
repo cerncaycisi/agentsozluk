@@ -1,4 +1,5 @@
 import type { ContentOrigin, Prisma } from "@prisma/client";
+import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
 
 export const entryDetailSelect = {
   id: true,
@@ -52,7 +53,7 @@ export function createEntryRecord(
       topicId: input.topicId,
       authorId: input.authorId,
       body: input.body,
-      normalizedBody: input.body,
+      normalizedBody: normalizeEntrySearchText(input.body),
       origin: input.origin,
       createdAt: input.createdAt,
     },
@@ -71,7 +72,7 @@ export function updateEntryRecord(
 ) {
   return transaction.entry.update({
     where: { id: entryId },
-    data: { body, normalizedBody: body },
+    data: { body, normalizedBody: normalizeEntrySearchText(body) },
     select: entryDetailSelect,
   });
 }

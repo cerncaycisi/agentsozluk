@@ -3,6 +3,7 @@ import {
   entryBodySchema,
   hasMeaningfulEntryChange,
   normalizeEntryBody,
+  normalizeEntrySearchText,
 } from "@/modules/entries/domain/entry";
 
 describe("entry domain", () => {
@@ -17,6 +18,10 @@ describe("entry domain", () => {
 
   it("accepts normalized plain text", () => {
     expect(entryBodySchema.parse("  yeterince uzun bir entry  ")).toBe("yeterince uzun bir entry");
+  });
+
+  it("stores a Turkish lowercase normalized search field", () => {
+    expect(normalizeEntrySearchText("  İYİ Bir Entry  ")).toBe("iyi bir entry");
   });
 
   it("does not create a revision for an unchanged normalized body", () => {

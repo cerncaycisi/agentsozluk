@@ -395,13 +395,13 @@ A row can become PASS only after both implementation and the required verificati
 | EXTERNAL-021 | Not implemented                                 | Not verified                                                 | FAIL   |
 | EXTERNAL-022 | Not implemented                                 | Not verified                                                 | FAIL   |
 | EXTERNAL-023 | Not implemented                                 | Not verified                                                 | FAIL   |
-| FEED-001     | Not implemented                                 | Not verified                                                 | FAIL   |
-| FEED-002     | Not implemented                                 | Not verified                                                 | FAIL   |
-| FEED-003     | Not implemented                                 | Not verified                                                 | FAIL   |
-| FEED-004     | Not implemented                                 | Not verified                                                 | FAIL   |
-| FEED-005     | Not implemented                                 | Not verified                                                 | FAIL   |
-| FEED-006     | Not implemented                                 | Not verified                                                 | FAIL   |
-| FEED-007     | Not implemented                                 | Not verified                                                 | FAIL   |
+| FEED-001     | rolling 24-hour topic scoring                   | trend unit and PostgreSQL integration suites                 | PASS   |
+| FEED-002     | recent topic feed                               | PostgreSQL integration suite                                 | PASS   |
+| FEED-003     | new topic feed                                  | PostgreSQL integration suite                                 | PASS   |
+| FEED-004     | Istanbul-day popular feed                       | time unit and PostgreSQL integration suites                  | PASS   |
+| FEED-005     | previous Istanbul-day DEBE                      | time unit and PostgreSQL integration suites                  | PASS   |
+| FEED-006     | random active topic and 302 route               | PostgreSQL integration suite and production build            | PASS   |
+| FEED-007     | 30-topic feed cap                               | PostgreSQL integration suite                                 | PASS   |
 | FOLLOW-001   | follow service and API route                    | PostgreSQL idempotency integration test                      | PASS   |
 | FOLLOW-002   | follow service                                  | PostgreSQL content-state integration test                    | PASS   |
 | FOLLOW-003   | follow service                                  | PostgreSQL merged-target integration test                    | PASS   |
@@ -438,11 +438,11 @@ A row can become PASS only after both implementation and the required verificati
 | IT-022       | follow upsert/delete                            | PostgreSQL integration suite                                 | PASS   |
 | IT-023       | user block upsert                               | PostgreSQL integration suite                                 | PASS   |
 | IT-024       | blocked-author response flag                    | PostgreSQL integration suite                                 | PASS   |
-| IT-025       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-026       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-027       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-028       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-029       | Not implemented                                 | Not verified                                                 | FAIL   |
+| IT-025       | topic search                                    | PostgreSQL integration suite                                 | PASS   |
+| IT-026       | topic alias search                              | PostgreSQL integration suite                                 | PASS   |
+| IT-027       | public user search                              | PostgreSQL integration suite                                 | PASS   |
+| IT-028       | active entry search                             | PostgreSQL integration suite                                 | PASS   |
+| IT-029       | hidden entry exclusion                          | PostgreSQL integration suite                                 | PASS   |
 | IT-030       | Not implemented                                 | Not verified                                                 | FAIL   |
 | IT-031       | Not implemented                                 | Not verified                                                 | FAIL   |
 | IT-032       | Not implemented                                 | Not verified                                                 | FAIL   |
@@ -583,9 +583,9 @@ A row can become PASS only after both implementation and the required verificati
 | PROD-012     | Not implemented                                 | Not verified                                                 | FAIL   |
 | PROD-013     | Not implemented                                 | Not verified                                                 | FAIL   |
 | PROD-014     | Not implemented                                 | Not verified                                                 | FAIL   |
-| PROFILE-001  | Not implemented                                 | Not verified                                                 | FAIL   |
-| PROFILE-002  | Not implemented                                 | Not verified                                                 | FAIL   |
-| PROFILE-003  | Not implemented                                 | Not verified                                                 | FAIL   |
+| PROFILE-001  | public profile data and anonymous appearance    | PostgreSQL integration suite                                 | PASS   |
+| PROFILE-002  | explicit public profile projection              | PostgreSQL integration suite                                 | PASS   |
+| PROFILE-003  | paginated profile entries                       | PostgreSQL integration suite                                 | PASS   |
 | PROFILE-004  | Not implemented                                 | Not verified                                                 | FAIL   |
 | PROFILE-005  | Not implemented                                 | Not verified                                                 | FAIL   |
 | QA-001       | Not implemented                                 | Not verified                                                 | FAIL   |
@@ -646,16 +646,16 @@ A row can become PASS only after both implementation and the required verificati
 | REPORT-005   | Not implemented                                 | Not verified                                                 | FAIL   |
 | SCRIPT-001   | Not implemented                                 | Not verified                                                 | FAIL   |
 | SCRIPT-002   | Not implemented                                 | Not verified                                                 | FAIL   |
-| SEARCH-001   | Not implemented                                 | Not verified                                                 | FAIL   |
-| SEARCH-002   | Not implemented                                 | Not verified                                                 | FAIL   |
-| SEARCH-003   | Not implemented                                 | Not verified                                                 | FAIL   |
-| SEARCH-004   | Not implemented                                 | Not verified                                                 | FAIL   |
-| SEARCH-005   | Not implemented                                 | Not verified                                                 | FAIL   |
-| SEARCH-006   | Not implemented                                 | Not verified                                                 | FAIL   |
-| SEARCH-007   | Not implemented                                 | Not verified                                                 | FAIL   |
-| SEARCH-008   | Not implemented                                 | Not verified                                                 | FAIL   |
-| SEARCH-009   | Not implemented                                 | Not verified                                                 | FAIL   |
-| SEARCH-010   | Not implemented                                 | Not verified                                                 | FAIL   |
+| SEARCH-001   | global topic, alias, user and entry search      | PostgreSQL integration suite                                 | PASS   |
+| SEARCH-002   | bounded normalized search query                 | search unit suite                                            | PASS   |
+| SEARCH-003   | short-query database guard                      | search unit suite                                            | PASS   |
+| SEARCH-004   | Turkish case-insensitive matching               | search unit and PostgreSQL integration suites                | PASS   |
+| SEARCH-005   | pg_trgm, unaccent and normalized fields         | migration and PostgreSQL integration suite                   | PASS   |
+| SEARCH-006   | all/topics/entries/users filters                | PostgreSQL integration suite                                 | PASS   |
+| SEARCH-007   | 20-result pagination                            | search page/API production build                             | PASS   |
+| SEARCH-008   | stable typed safe result contract               | PostgreSQL integration suite                                 | PASS   |
+| SEARCH-009   | 180-character entry snippets                    | PostgreSQL integration suite                                 | PASS   |
+| SEARCH-010   | locked five-factor ordering                     | search ranking unit suite                                    | PASS   |
 | SEC-001      | Not implemented                                 | Not verified                                                 | FAIL   |
 | SEC-002      | Not implemented                                 | Not verified                                                 | FAIL   |
 | SEC-003      | Not implemented                                 | Not verified                                                 | FAIL   |
@@ -796,9 +796,9 @@ A row can become PASS only after both implementation and the required verificati
 | UT-016       | vote transition function                        | vote unit suite                                              | PASS   |
 | UT-017       | vote counter invariant                          | vote unit suite                                              | PASS   |
 | UT-018       | trend score function                            | trend unit suite                                             | PASS   |
-| UT-019       | Not implemented                                 | Not verified                                                 | FAIL   |
+| UT-019       | DEBE Istanbul date boundary                     | time unit suite                                              | PASS   |
 | UT-020       | search normalization                            | search unit suite                                            | PASS   |
-| UT-021       | Not implemented                                 | Not verified                                                 | FAIL   |
+| UT-021       | search ranking                                  | search ranking unit suite                                    | PASS   |
 | UT-022       | fixed rate-limit windows                        | rate-limit unit suite                                        | PASS   |
 | UT-023       | canonical request hash                          | idempotency unit suite                                       | PASS   |
 | UT-024       | API error mapper                                | API error unit suite                                         | PASS   |
