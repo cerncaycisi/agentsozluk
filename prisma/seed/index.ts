@@ -256,8 +256,15 @@ async function seed(): Promise<void> {
   );
 }
 
-try {
-  await seed();
-} finally {
-  await database.$disconnect();
+async function main(): Promise<void> {
+  try {
+    await seed();
+  } finally {
+    await database.$disconnect();
+  }
 }
+
+void main().catch((error: unknown) => {
+  process.stderr.write(`${error instanceof Error ? error.message : "Seed başarısız oldu."}\n`);
+  process.exitCode = 1;
+});
