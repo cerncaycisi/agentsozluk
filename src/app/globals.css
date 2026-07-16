@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --page: 247 247 242;
+  --surface: 255 255 255;
+  --ink: 24 33 47;
+  --muted: 102 112 133;
+  --primary: 91 91 214;
+  --accent: 217 108 74;
+  --border: 217 221 229;
+  --destructive: 180 35 24;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: 16 19 24;
+    --surface: 25 30 39;
+    --ink: 243 244 246;
+    --muted: 169 177 190;
+    --primary: 139 139 245;
+    --accent: 242 139 103;
+    --border: 48 55 68;
+    --destructive: 249 112 102;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: 16 19 24;
+  --surface: 25 30 39;
+  --ink: 243 244 246;
+  --muted: 169 177 190;
+  --primary: 139 139 245;
+  --accent: 242 139 103;
+  --border: 48 55 68;
+  --destructive: 249 112 102;
+}
+
+* {
+  border-color: rgb(var(--border));
+}
+
+html {
+  min-width: 320px;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background: rgb(var(--page));
+  color: rgb(var(--ink));
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+:focus-visible {
+  outline: 3px solid rgb(var(--primary));
+  outline-offset: 3px;
+}
+
+::selection {
+  background: rgb(var(--primary) / 0.25);
+}
+
+@layer components {
+  .surface-card {
+    @apply rounded-2xl border bg-surface shadow-sm;
+  }
+
+  .button-primary {
+    @apply inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-2.5 font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .button-secondary {
+    @apply inline-flex min-h-11 items-center justify-center rounded-xl border bg-surface px-5 py-2.5 font-semibold text-ink transition hover:border-primary hover:text-primary;
+  }
+}

@@ -1,0 +1,4062 @@
+{
+  "source": "Milestone 1 goal supplied by the repository owner",
+  "generatedAt": "2026-07-16",
+  "count": 811,
+  "requirements": [
+    {
+      "id": "AI-READY-001",
+      "sourceLine": 2501,
+      "summary": "UserKind AGENT enum değeri vardır."
+    },
+    {
+      "id": "AI-READY-002",
+      "sourceLine": 2503,
+      "summary": "Milestone 1 public UI/API AGENT oluşturmaz."
+    },
+    {
+      "id": "AI-READY-003",
+      "sourceLine": 2505,
+      "summary": "Domain service actor context:"
+    },
+    {
+      "id": "AI-READY-004",
+      "sourceLine": 2513,
+      "summary": "API versioned `/api/v1`."
+    },
+    {
+      "id": "AI-READY-005",
+      "sourceLine": 2515,
+      "summary": "Merkezi Zod schemas."
+    },
+    {
+      "id": "AI-READY-006",
+      "sourceLine": 2517,
+      "summary": "OpenAPI eşleşmesi."
+    },
+    {
+      "id": "AI-READY-007",
+      "sourceLine": 2519,
+      "summary": "Create commands idempotency."
+    },
+    {
+      "id": "AI-READY-008",
+      "sourceLine": 2521,
+      "summary": "Transactional outbox."
+    },
+    {
+      "id": "AI-READY-009",
+      "sourceLine": 2523,
+      "summary": "Agent worker, API token, LLM call ve autonomous posting yoktur."
+    },
+    {
+      "id": "API-001",
+      "sourceLine": 2119,
+      "summary": "POST `/api/v1/auth/register`"
+    },
+    {
+      "id": "API-002",
+      "sourceLine": 2120,
+      "summary": "POST `/api/v1/auth/login`"
+    },
+    {
+      "id": "API-003",
+      "sourceLine": 2121,
+      "summary": "POST `/api/v1/auth/logout`"
+    },
+    {
+      "id": "API-004",
+      "sourceLine": 2122,
+      "summary": "GET `/api/v1/auth/session`"
+    },
+    {
+      "id": "API-005",
+      "sourceLine": 2123,
+      "summary": "GET `/api/v1/auth/csrf`"
+    },
+    {
+      "id": "API-006",
+      "sourceLine": 2127,
+      "summary": "GET `/api/v1/me`"
+    },
+    {
+      "id": "API-007",
+      "sourceLine": 2128,
+      "summary": "PATCH `/api/v1/me`"
+    },
+    {
+      "id": "API-008",
+      "sourceLine": 2129,
+      "summary": "POST `/api/v1/me/email`"
+    },
+    {
+      "id": "API-009",
+      "sourceLine": 2130,
+      "summary": "POST `/api/v1/me/password`"
+    },
+    {
+      "id": "API-010",
+      "sourceLine": 2131,
+      "summary": "POST `/api/v1/me/deactivate`"
+    },
+    {
+      "id": "API-011",
+      "sourceLine": 2132,
+      "summary": "GET `/api/v1/me/sessions`"
+    },
+    {
+      "id": "API-012",
+      "sourceLine": 2133,
+      "summary": "DELETE `/api/v1/me/sessions/{sessionId}`"
+    },
+    {
+      "id": "API-013",
+      "sourceLine": 2134,
+      "summary": "DELETE `/api/v1/me/sessions`"
+    },
+    {
+      "id": "API-014",
+      "sourceLine": 2135,
+      "summary": "GET `/api/v1/me/bookmarks`"
+    },
+    {
+      "id": "API-015",
+      "sourceLine": 2136,
+      "summary": "GET `/api/v1/me/follows`"
+    },
+    {
+      "id": "API-016",
+      "sourceLine": 2137,
+      "summary": "GET `/api/v1/me/votes`"
+    },
+    {
+      "id": "API-017",
+      "sourceLine": 2138,
+      "summary": "GET `/api/v1/me/blocks`"
+    },
+    {
+      "id": "API-018",
+      "sourceLine": 2139,
+      "summary": "PUT `/api/v1/me/blocks/{userId}`"
+    },
+    {
+      "id": "API-019",
+      "sourceLine": 2140,
+      "summary": "DELETE `/api/v1/me/blocks/{userId}`"
+    },
+    {
+      "id": "API-020",
+      "sourceLine": 2144,
+      "summary": "GET `/api/v1/users/{username}`"
+    },
+    {
+      "id": "API-021",
+      "sourceLine": 2148,
+      "summary": "GET `/api/v1/topics`"
+    },
+    {
+      "id": "API-022",
+      "sourceLine": 2155,
+      "summary": "POST `/api/v1/topics`"
+    },
+    {
+      "id": "API-023",
+      "sourceLine": 2161,
+      "summary": "GET `/api/v1/topics/{topicId}`"
+    },
+    {
+      "id": "API-024",
+      "sourceLine": 2163,
+      "summary": "GET `/api/v1/topics/{topicId}/entries`"
+    },
+    {
+      "id": "API-025",
+      "sourceLine": 2171,
+      "summary": "POST `/api/v1/topics/{topicId}/entries`"
+    },
+    {
+      "id": "API-026",
+      "sourceLine": 2172,
+      "summary": "PUT `/api/v1/topics/{topicId}/follow`"
+    },
+    {
+      "id": "API-027",
+      "sourceLine": 2173,
+      "summary": "DELETE `/api/v1/topics/{topicId}/follow`"
+    },
+    {
+      "id": "API-028",
+      "sourceLine": 2177,
+      "summary": "GET `/api/v1/entries/{entryId}`"
+    },
+    {
+      "id": "API-029",
+      "sourceLine": 2178,
+      "summary": "PATCH `/api/v1/entries/{entryId}`"
+    },
+    {
+      "id": "API-030",
+      "sourceLine": 2179,
+      "summary": "DELETE `/api/v1/entries/{entryId}`"
+    },
+    {
+      "id": "API-031",
+      "sourceLine": 2180,
+      "summary": "GET `/api/v1/entries/{entryId}/revisions`"
+    },
+    {
+      "id": "API-032",
+      "sourceLine": 2181,
+      "summary": "PUT `/api/v1/entries/{entryId}/vote`"
+    },
+    {
+      "id": "API-033",
+      "sourceLine": 2185,
+      "summary": "DELETE `/api/v1/entries/{entryId}/vote`"
+    },
+    {
+      "id": "API-034",
+      "sourceLine": 2186,
+      "summary": "PUT `/api/v1/entries/{entryId}/bookmark`"
+    },
+    {
+      "id": "API-035",
+      "sourceLine": 2187,
+      "summary": "DELETE `/api/v1/entries/{entryId}/bookmark`"
+    },
+    {
+      "id": "API-036",
+      "sourceLine": 2191,
+      "summary": "GET `/api/v1/search`"
+    },
+    {
+      "id": "API-037",
+      "sourceLine": 2192,
+      "summary": "GET `/api/v1/feeds/debe`"
+    },
+    {
+      "id": "API-038",
+      "sourceLine": 2193,
+      "summary": "GET `/api/v1/feeds/random`"
+    },
+    {
+      "id": "API-039",
+      "sourceLine": 2197,
+      "summary": "POST `/api/v1/reports`"
+    },
+    {
+      "id": "API-040",
+      "sourceLine": 2201,
+      "summary": "GET `/api/v1/moderation/dashboard`"
+    },
+    {
+      "id": "API-041",
+      "sourceLine": 2202,
+      "summary": "GET `/api/v1/moderation/reports`"
+    },
+    {
+      "id": "API-042",
+      "sourceLine": 2203,
+      "summary": "GET `/api/v1/moderation/reports/{reportId}`"
+    },
+    {
+      "id": "API-043",
+      "sourceLine": 2204,
+      "summary": "POST `/api/v1/moderation/reports/{reportId}/resolve`"
+    },
+    {
+      "id": "API-044",
+      "sourceLine": 2205,
+      "summary": "POST `/api/v1/moderation/reports/{reportId}/reject`"
+    },
+    {
+      "id": "API-045",
+      "sourceLine": 2206,
+      "summary": "POST `/api/v1/moderation/entries/{entryId}/hide`"
+    },
+    {
+      "id": "API-046",
+      "sourceLine": 2207,
+      "summary": "POST `/api/v1/moderation/entries/{entryId}/restore`"
+    },
+    {
+      "id": "API-047",
+      "sourceLine": 2208,
+      "summary": "POST `/api/v1/moderation/entries/{entryId}/move`"
+    },
+    {
+      "id": "API-048",
+      "sourceLine": 2209,
+      "summary": "POST `/api/v1/moderation/topics/{topicId}/hide`"
+    },
+    {
+      "id": "API-049",
+      "sourceLine": 2210,
+      "summary": "POST `/api/v1/moderation/topics/{topicId}/restore`"
+    },
+    {
+      "id": "API-050",
+      "sourceLine": 2211,
+      "summary": "POST `/api/v1/moderation/topics/{topicId}/rename`"
+    },
+    {
+      "id": "API-051",
+      "sourceLine": 2212,
+      "summary": "POST `/api/v1/moderation/topics/{topicId}/merge`"
+    },
+    {
+      "id": "API-052",
+      "sourceLine": 2213,
+      "summary": "GET `/api/v1/moderation/users`"
+    },
+    {
+      "id": "API-053",
+      "sourceLine": 2214,
+      "summary": "POST `/api/v1/moderation/users/{userId}/suspend`"
+    },
+    {
+      "id": "API-054",
+      "sourceLine": 2215,
+      "summary": "POST `/api/v1/moderation/users/{userId}/unsuspend`"
+    },
+    {
+      "id": "API-055",
+      "sourceLine": 2216,
+      "summary": "POST `/api/v1/admin/users/{userId}/grant-moderator`"
+    },
+    {
+      "id": "API-056",
+      "sourceLine": 2217,
+      "summary": "POST `/api/v1/admin/users/{userId}/revoke-moderator`"
+    },
+    {
+      "id": "API-057",
+      "sourceLine": 2218,
+      "summary": "GET `/api/v1/moderation/audit`"
+    },
+    {
+      "id": "API-058",
+      "sourceLine": 2253,
+      "summary": "Tarihler ISO 8601 UTC."
+    },
+    {
+      "id": "API-059",
+      "sourceLine": 2255,
+      "summary": "page default 1, minimum 1."
+    },
+    {
+      "id": "API-060",
+      "sourceLine": 2257,
+      "summary": "pageSize default 20, maximum 100."
+    },
+    {
+      "id": "API-061",
+      "sourceLine": 2259,
+      "summary": "Validation 422."
+    },
+    {
+      "id": "API-062",
+      "sourceLine": 2261,
+      "summary": "Authentication 401."
+    },
+    {
+      "id": "API-063",
+      "sourceLine": 2263,
+      "summary": "Authorization 403."
+    },
+    {
+      "id": "API-064",
+      "sourceLine": 2265,
+      "summary": "Not found 404."
+    },
+    {
+      "id": "API-065",
+      "sourceLine": 2267,
+      "summary": "Conflict 409."
+    },
+    {
+      "id": "API-066",
+      "sourceLine": 2269,
+      "summary": "Rate limit 429 ve Retry-After."
+    },
+    {
+      "id": "API-067",
+      "sourceLine": 2271,
+      "summary": "Unexpected 500 ve production'da stack trace yok."
+    },
+    {
+      "id": "API-068",
+      "sourceLine": 2273,
+      "summary": "Her response X-Request-Id."
+    },
+    {
+      "id": "API-069",
+      "sourceLine": 2275,
+      "summary": "Gelen geçerli UUID X-Request-Id korunur; yoksa üret."
+    },
+    {
+      "id": "ARCH-001",
+      "sourceLine": 712,
+      "summary": "Modular monolith kullan."
+    },
+    {
+      "id": "ARCH-002",
+      "sourceLine": 714,
+      "summary": "Her domain modülü şu katmanlara ayrılmalıdır:"
+    },
+    {
+      "id": "ARCH-003",
+      "sourceLine": 722,
+      "summary": "Business logic'i React component, route handler veya server action içine"
+    },
+    {
+      "id": "ARCH-004",
+      "sourceLine": 725,
+      "summary": "UI server action'ları ve `/api/v1` route handler'ları aynı application"
+    },
+    {
+      "id": "ARCH-005",
+      "sourceLine": 728,
+      "summary": "Route handler yalnızca:"
+    },
+    {
+      "id": "ARCH-006",
+      "sourceLine": 743,
+      "summary": "Prisma yalnızca repository/data-access katmanından kullanılmalıdır."
+    },
+    {
+      "id": "ARCH-007",
+      "sourceLine": 745,
+      "summary": "Client component içinde Prisma veya database import edilmemelidir."
+    },
+    {
+      "id": "ARCH-008",
+      "sourceLine": 747,
+      "summary": "Bütün write işlemlerinde server-side authorization yeniden kontrol"
+    },
+    {
+      "id": "ARCH-009",
+      "sourceLine": 750,
+      "summary": "UI'da buton gizlemek authorization kabul edilmemelidir."
+    },
+    {
+      "id": "ARCH-010",
+      "sourceLine": 752,
+      "summary": "Bütün sınırsız listeler paginate edilmelidir."
+    },
+    {
+      "id": "ARCH-011",
+      "sourceLine": 754,
+      "summary": "Kritik domain işlemleri database transaction içinde yapılmalıdır."
+    },
+    {
+      "id": "ARCH-012",
+      "sourceLine": 756,
+      "summary": "N+1 sorgulardan kaçın."
+    },
+    {
+      "id": "AUTH-001",
+      "sourceLine": 1199,
+      "summary": "Registration alanları:"
+    },
+    {
+      "id": "AUTH-002",
+      "sourceLine": 1208,
+      "summary": "Password:"
+    },
+    {
+      "id": "AUTH-003",
+      "sourceLine": 1216,
+      "summary": "Argon2id parametreleri:"
+    },
+    {
+      "id": "AUTH-004",
+      "sourceLine": 1223,
+      "summary": "Eski düşük parametreli hash ile başarılı login sonrası hash'i güncelle."
+    },
+    {
+      "id": "AUTH-005",
+      "sourceLine": 1225,
+      "summary": "Session token 32 cryptographically secure random byte olmalıdır."
+    },
+    {
+      "id": "AUTH-006",
+      "sourceLine": 1227,
+      "summary": "Raw token database'e yazılmamalıdır."
+    },
+    {
+      "id": "AUTH-007",
+      "sourceLine": 1229,
+      "summary": "Session.tokenHash SHA-256 olmalıdır."
+    },
+    {
+      "id": "AUTH-008",
+      "sourceLine": 1231,
+      "summary": "Session cookie:"
+    },
+    {
+      "id": "AUTH-009",
+      "sourceLine": 1244,
+      "summary": "Session sliding expiration:"
+    },
+    {
+      "id": "AUTH-010",
+      "sourceLine": 1250,
+      "summary": "Her session için ayrı CSRF token oluştur."
+    },
+    {
+      "id": "AUTH-011",
+      "sourceLine": 1252,
+      "summary": "CSRF token hash'ini database'de tut."
+    },
+    {
+      "id": "AUTH-012",
+      "sourceLine": 1254,
+      "summary": "Raw CSRF token'ı non-HttpOnly `ajan_csrf` cookie içinde tut."
+    },
+    {
+      "id": "AUTH-013",
+      "sourceLine": 1256,
+      "summary": "Cookie-authenticated POST, PUT, PATCH ve DELETE request'lerinde:"
+    },
+    {
+      "id": "AUTH-014",
+      "sourceLine": 1265,
+      "summary": "Login ve registration için Origin/Host doğrulaması yap."
+    },
+    {
+      "id": "AUTH-015",
+      "sourceLine": 1267,
+      "summary": "Login hatası yalnızca:"
+    },
+    {
+      "id": "AUTH-016",
+      "sourceLine": 1273,
+      "summary": "Var olmayan user login denemesinde dummy Argon2 doğrulaması yap."
+    },
+    {
+      "id": "AUTH-017",
+      "sourceLine": 1275,
+      "summary": "Logout session'ı revoke eder ve cookie'leri temizler."
+    },
+    {
+      "id": "AUTH-018",
+      "sourceLine": 1277,
+      "summary": "Password change:"
+    },
+    {
+      "id": "AUTH-019",
+      "sourceLine": 1283,
+      "summary": "Email change:"
+    },
+    {
+      "id": "AUTH-020",
+      "sourceLine": 1290,
+      "summary": "Username değiştirilemez."
+    },
+    {
+      "id": "AUTH-021",
+      "sourceLine": 1292,
+      "summary": "Session management ekranı:"
+    },
+    {
+      "id": "AUTH-022",
+      "sourceLine": 1301,
+      "summary": "Suspended kullanıcı:"
+    },
+    {
+      "id": "AUTH-023",
+      "sourceLine": 1325,
+      "summary": "Deactivated kullanıcı login olamaz."
+    },
+    {
+      "id": "AUTH-024",
+      "sourceLine": 1327,
+      "summary": "Account deactivation:"
+    },
+    {
+      "id": "AUTH-025",
+      "sourceLine": 1348,
+      "summary": "Production APP_SECRET en az 32 byte değilse uygulama başlamamalıdır."
+    },
+    {
+      "id": "BLOCK-001",
+      "sourceLine": 1667,
+      "summary": "Kullanıcı kendisini block edemez."
+    },
+    {
+      "id": "BLOCK-002",
+      "sourceLine": 1669,
+      "summary": "Moderator/admin block edilebilir; moderasyon yetkisi etkilenmez."
+    },
+    {
+      "id": "BLOCK-003",
+      "sourceLine": 1671,
+      "summary": "Block edilen yazarın entry'leri collapsed placeholder olur."
+    },
+    {
+      "id": "BLOCK-004",
+      "sourceLine": 1673,
+      "summary": "Placeholder üzerinde tek seferlik gösterme aksiyonu vardır."
+    },
+    {
+      "id": "BLOCK-005",
+      "sourceLine": 1675,
+      "summary": "Block yalnızca viewer içerik görünürlüğünü etkiler."
+    },
+    {
+      "id": "BLOCK-006",
+      "sourceLine": 1677,
+      "summary": "Block listesi settings içinde yönetilir."
+    },
+    {
+      "id": "BOOKMARK-001",
+      "sourceLine": 1655,
+      "summary": "PUT ve DELETE idempotent."
+    },
+    {
+      "id": "BOOKMARK-002",
+      "sourceLine": 1657,
+      "summary": "HIDDEN veya DELETED entry yeni bookmark alamaz."
+    },
+    {
+      "id": "BOOKMARK-003",
+      "sourceLine": 1659,
+      "summary": "Bookmark listesi yalnızca erişilebilir entry gösterir."
+    },
+    {
+      "id": "CI-001",
+      "sourceLine": 2963,
+      "summary": "pull_request ve main push."
+    },
+    {
+      "id": "CI-002",
+      "sourceLine": 2965,
+      "summary": "Concurrency ve stale run cancel."
+    },
+    {
+      "id": "CI-003",
+      "sourceLine": 2967,
+      "summary": "PostgreSQL 16 service."
+    },
+    {
+      "id": "CI-004",
+      "sourceLine": 2969,
+      "summary": "Frozen lockfile."
+    },
+    {
+      "id": "CI-005",
+      "sourceLine": 2971,
+      "summary": "pnpm store cache."
+    },
+    {
+      "id": "CI-006",
+      "sourceLine": 2973,
+      "summary": "CI sırası:"
+    },
+    {
+      "id": "CI-007",
+      "sourceLine": 2992,
+      "summary": "Failure başarılı gösterilemez."
+    },
+    {
+      "id": "CI-008",
+      "sourceLine": 2994,
+      "summary": "Playwright failure artifact upload."
+    },
+    {
+      "id": "CI-009",
+      "sourceLine": 2996,
+      "summary": "Coverage artifact upload."
+    },
+    {
+      "id": "CI-010",
+      "sourceLine": 2998,
+      "summary": "CI hiçbir deployment, release, package publish, e-posta veya harici"
+    },
+    {
+      "id": "CI-011",
+      "sourceLine": 3001,
+      "summary": "CI yalnızca repository validation yapar."
+    },
+    {
+      "id": "DATA-001",
+      "sourceLine": 847,
+      "summary": "Public registration yalnızca:"
+    },
+    {
+      "id": "DATA-002",
+      "sourceLine": 855,
+      "summary": "Client request'inden kind, role veya status kabul edilmez."
+    },
+    {
+      "id": "DATA-003",
+      "sourceLine": 857,
+      "summary": "Username:"
+    },
+    {
+      "id": "DATA-004",
+      "sourceLine": 865,
+      "summary": "Display name:"
+    },
+    {
+      "id": "DATA-005",
+      "sourceLine": 872,
+      "summary": "Bio maksimum 500 karakterdir."
+    },
+    {
+      "id": "DATA-006",
+      "sourceLine": 915,
+      "summary": "Topic title normalization sırası:"
+    },
+    {
+      "id": "DATA-007",
+      "sourceLine": 924,
+      "summary": "Normalize edilmiş title 2–100 karakter olmalıdır."
+    },
+    {
+      "id": "DATA-008",
+      "sourceLine": 926,
+      "summary": "Duplicate kontrolü hem Topic.normalizedTitle hem"
+    },
+    {
+      "id": "DATA-009",
+      "sourceLine": 929,
+      "summary": "Topic create ve rename yarış durumunu engellemek için transaction"
+    },
+    {
+      "id": "DATA-010",
+      "sourceLine": 933,
+      "summary": "Slug oluşturma:"
+    },
+    {
+      "id": "DATA-011",
+      "sourceLine": 945,
+      "summary": "Canonical topic URL:"
+    },
+    {
+      "id": "DATA-012",
+      "sourceLine": 949,
+      "summary": "URL'deki slug güncel değilse 308 canonical redirect yap."
+    },
+    {
+      "id": "DATA-013",
+      "sourceLine": 978,
+      "summary": "Entry body:"
+    },
+    {
+      "id": "DATA-014",
+      "sourceLine": 989,
+      "summary": "Body değişmemişse revision oluşturma."
+    },
+    {
+      "id": "DATA-015",
+      "sourceLine": 991,
+      "summary": "Entry update öncesindeki body EntryRevision'a yazılmalıdır."
+    },
+    {
+      "id": "DATA-016",
+      "sourceLine": 993,
+      "summary": "Revision geçmişini yalnızca:"
+    },
+    {
+      "id": "DATA-017",
+      "sourceLine": 1052,
+      "summary": "OTHER reason için details 10–1000 karakter zorunlu."
+    },
+    {
+      "id": "DATA-018",
+      "sourceLine": 1054,
+      "summary": "Aynı kullanıcı aynı hedef için aynı anda yalnızca bir OPEN report"
+    },
+    {
+      "id": "DATA-019",
+      "sourceLine": 1057,
+      "summary": "Report target gerçekten var olmalıdır."
+    },
+    {
+      "id": "DATA-020",
+      "sourceLine": 1083,
+      "summary": "AuditLog uygulama üzerinden update veya delete edilemez."
+    },
+    {
+      "id": "DATA-021",
+      "sourceLine": 1085,
+      "summary": "Audit metadata şunları içeremez:"
+    },
+    {
+      "id": "DATA-022",
+      "sourceLine": 1111,
+      "summary": "Outbox event domain değişikliğiyle aynı transaction içinde yazılmalıdır."
+    },
+    {
+      "id": "DATA-023",
+      "sourceLine": 1113,
+      "summary": "Outbox payload hassas veri içeremez."
+    },
+    {
+      "id": "DB-001",
+      "sourceLine": 1148,
+      "summary": "Email uniqueness emailNormalized üzerinden."
+    },
+    {
+      "id": "DB-002",
+      "sourceLine": 1150,
+      "summary": "Username uniqueness usernameNormalized üzerinden."
+    },
+    {
+      "id": "DB-003",
+      "sourceLine": 1152,
+      "summary": "Topic uniqueness normalizedTitle üzerinden."
+    },
+    {
+      "id": "DB-004",
+      "sourceLine": 1154,
+      "summary": "PostgreSQL migration içinde şunları etkinleştir:"
+    },
+    {
+      "id": "DB-005",
+      "sourceLine": 1159,
+      "summary": "Şu index'leri oluştur:"
+    },
+    {
+      "id": "DB-006",
+      "sourceLine": 1181,
+      "summary": "Topic.entryCount yalnızca ACTIVE entry sayısıdır."
+    },
+    {
+      "id": "DB-007",
+      "sourceLine": 1183,
+      "summary": "Entry.score = upvoteCount - downvoteCount."
+    },
+    {
+      "id": "DB-008",
+      "sourceLine": 1185,
+      "summary": "HIDDEN ve DELETED entry'ler entryCount'a dahil edilmez."
+    },
+    {
+      "id": "DB-009",
+      "sourceLine": 1187,
+      "summary": "Topic.lastEntryAt en yeni ACTIVE entry'nin createdAt değeridir."
+    },
+    {
+      "id": "DB-010",
+      "sourceLine": 1189,
+      "summary": "Sayaçları transaction içinde atomik güncelle."
+    },
+    {
+      "id": "DB-011",
+      "sourceLine": 1191,
+      "summary": "Sayaçları yeniden hesaplayan idempotent script oluştur:"
+    },
+    {
+      "id": "DEC-001",
+      "sourceLine": 321,
+      "summary": "Kullanıcıya clarification sorma."
+    },
+    {
+      "id": "DEC-002",
+      "sourceLine": 323,
+      "summary": "Kullanıcıdan onay bekleme."
+    },
+    {
+      "id": "DEC-003",
+      "sourceLine": 325,
+      "summary": "Aşağıda kilitlenmiş teknoloji, route, veri modeli, güvenlik, UI davranışı"
+    },
+    {
+      "id": "DEC-004",
+      "sourceLine": 328,
+      "summary": "Belirtilen teknolojiyi başka bir ürünle değiştirme."
+    },
+    {
+      "id": "DEC-005",
+      "sourceLine": 341,
+      "summary": "Beta, alpha, canary, nightly veya release candidate dependency kullanma."
+    },
+    {
+      "id": "DEC-006",
+      "sourceLine": 343,
+      "summary": "Node.js 22 ile uyumlu kararlı paket sürümleri kullan."
+    },
+    {
+      "id": "DEC-007",
+      "sourceLine": 345,
+      "summary": "package.json dependency sürümlerini exact version olarak sabitle."
+    },
+    {
+      "id": "DEC-008",
+      "sourceLine": 355,
+      "summary": "Bir gereksinim zor görünüyorsa kapsamdan çıkarma."
+    },
+    {
+      "id": "DEC-009",
+      "sourceLine": 357,
+      "summary": "Zorunlu bir özellik için mock, placeholder veya sahte başarı üretme."
+    },
+    {
+      "id": "DEC-010",
+      "sourceLine": 359,
+      "summary": "Required özelliklerde şunları bırakma:"
+    },
+    {
+      "id": "DEC-011",
+      "sourceLine": 372,
+      "summary": "Testi geçirmek için:"
+    },
+    {
+      "id": "DEC-012",
+      "sourceLine": 382,
+      "summary": "Requirement çakışması görülürse şu öncelik sırasını kullan:"
+    },
+    {
+      "id": "DEC-013",
+      "sourceLine": 393,
+      "summary": "Çakışmayı `docs/DECISIONS.md` içine kaydet ve en güvenli yaklaşımı uygula."
+    },
+    {
+      "id": "DEC-014",
+      "sourceLine": 395,
+      "summary": "Her faz sonunda ilgili testleri, lint ve typecheck'i çalıştır."
+    },
+    {
+      "id": "DEC-015",
+      "sourceLine": 397,
+      "summary": "Başarısız doğrulamayı düzeltmeden sonraki faza geçme."
+    },
+    {
+      "id": "DEC-016",
+      "sourceLine": 399,
+      "summary": "Son durumda bütün git diff'i güvenlik, veri bütünlüğü, performans ve"
+    },
+    {
+      "id": "DOC-001",
+      "sourceLine": 3009,
+      "summary": "`README.md`"
+    },
+    {
+      "id": "DOC-002",
+      "sourceLine": 3031,
+      "summary": "`AGENTS.md`"
+    },
+    {
+      "id": "DOC-003",
+      "sourceLine": 3042,
+      "summary": "`docs/PLAN.md`"
+    },
+    {
+      "id": "DOC-004",
+      "sourceLine": 3050,
+      "summary": "`docs/ARCHITECTURE.md`"
+    },
+    {
+      "id": "DOC-005",
+      "sourceLine": 3067,
+      "summary": "`docs/DECISIONS.md`"
+    },
+    {
+      "id": "DOC-006",
+      "sourceLine": 3074,
+      "summary": "`docs/API.md`"
+    },
+    {
+      "id": "DOC-007",
+      "sourceLine": 3084,
+      "summary": "`docs/openapi.yaml`"
+    },
+    {
+      "id": "DOC-008",
+      "sourceLine": 3095,
+      "summary": "`docs/SECURITY.md`"
+    },
+    {
+      "id": "DOC-009",
+      "sourceLine": 3108,
+      "summary": "`docs/STATUS.md`"
+    },
+    {
+      "id": "DOC-010",
+      "sourceLine": 3124,
+      "summary": "`docs/M1_REQUIREMENTS.md`"
+    },
+    {
+      "id": "DOC-011",
+      "sourceLine": 3128,
+      "summary": "`docs/TRACEABILITY.md`"
+    },
+    {
+      "id": "DOC-012",
+      "sourceLine": 3139,
+      "summary": "`docs/THREAT_MODEL.md`"
+    },
+    {
+      "id": "DOCKER-001",
+      "sourceLine": 2632,
+      "summary": "Multi-stage Dockerfile."
+    },
+    {
+      "id": "DOCKER-002",
+      "sourceLine": 2634,
+      "summary": "Node 22 Alpine."
+    },
+    {
+      "id": "DOCKER-003",
+      "sourceLine": 2636,
+      "summary": "Corepack pnpm."
+    },
+    {
+      "id": "DOCKER-004",
+      "sourceLine": 2638,
+      "summary": "Frozen lockfile."
+    },
+    {
+      "id": "DOCKER-005",
+      "sourceLine": 2640,
+      "summary": "Minimal runtime image."
+    },
+    {
+      "id": "DOCKER-006",
+      "sourceLine": 2642,
+      "summary": "Non-root user."
+    },
+    {
+      "id": "DOCKER-007",
+      "sourceLine": 2644,
+      "summary": "Next standalone."
+    },
+    {
+      "id": "DOCKER-008",
+      "sourceLine": 2646,
+      "summary": "`.dockerignore`."
+    },
+    {
+      "id": "DOCKER-009",
+      "sourceLine": 2648,
+      "summary": "docker-compose services:"
+    },
+    {
+      "id": "DOCKER-010",
+      "sourceLine": 2653,
+      "summary": "postgres:16-alpine."
+    },
+    {
+      "id": "DOCKER-011",
+      "sourceLine": 2655,
+      "summary": "Named persistent volume."
+    },
+    {
+      "id": "DOCKER-012",
+      "sourceLine": 2657,
+      "summary": "db healthcheck pg_isready."
+    },
+    {
+      "id": "DOCKER-013",
+      "sourceLine": 2659,
+      "summary": "app db healthy dependency."
+    },
+    {
+      "id": "DOCKER-014",
+      "sourceLine": 2661,
+      "summary": "app healthcheck `/api/health`."
+    },
+    {
+      "id": "DOCKER-015",
+      "sourceLine": 2663,
+      "summary": "Development startup:"
+    },
+    {
+      "id": "DOCKER-016",
+      "sourceLine": 2670,
+      "summary": "Tek komut:"
+    },
+    {
+      "id": "DOCKER-017",
+      "sourceLine": 2675,
+      "summary": "Production demo seed çalıştırmaz."
+    },
+    {
+      "id": "DOCKER-018",
+      "sourceLine": 2677,
+      "summary": "Migration fail ise app başlamaz."
+    },
+    {
+      "id": "DOCKER-019",
+      "sourceLine": 2679,
+      "summary": "Docker image hiçbir external service credential içermez."
+    },
+    {
+      "id": "DONE-001",
+      "sourceLine": 3285,
+      "summary": "Doğru repository."
+    },
+    {
+      "id": "DONE-002",
+      "sourceLine": 3286,
+      "summary": "Origin URL doğru."
+    },
+    {
+      "id": "DONE-003",
+      "sourceLine": 3287,
+      "summary": "Working branch doğru."
+    },
+    {
+      "id": "DONE-004",
+      "sourceLine": 3288,
+      "summary": "Main doğrudan değiştirilmemiş."
+    },
+    {
+      "id": "DONE-005",
+      "sourceLine": 3289,
+      "summary": "Clean dependency install."
+    },
+    {
+      "id": "DONE-006",
+      "sourceLine": 3290,
+      "summary": "Frozen lockfile."
+    },
+    {
+      "id": "DONE-007",
+      "sourceLine": 3291,
+      "summary": "Prisma generate."
+    },
+    {
+      "id": "DONE-008",
+      "sourceLine": 3292,
+      "summary": "Clean DB migration."
+    },
+    {
+      "id": "DONE-009",
+      "sourceLine": 3293,
+      "summary": "Seed first run."
+    },
+    {
+      "id": "DONE-010",
+      "sourceLine": 3294,
+      "summary": "Seed second run duplicate olmadan."
+    },
+    {
+      "id": "DONE-011",
+      "sourceLine": 3295,
+      "summary": "Registration."
+    },
+    {
+      "id": "DONE-012",
+      "sourceLine": 3296,
+      "summary": "Login."
+    },
+    {
+      "id": "DONE-013",
+      "sourceLine": 3297,
+      "summary": "Logout."
+    },
+    {
+      "id": "DONE-014",
+      "sourceLine": 3298,
+      "summary": "Session revoke."
+    },
+    {
+      "id": "DONE-015",
+      "sourceLine": 3299,
+      "summary": "Password change."
+    },
+    {
+      "id": "DONE-016",
+      "sourceLine": 3300,
+      "summary": "Account deactivation."
+    },
+    {
+      "id": "DONE-017",
+      "sourceLine": 3301,
+      "summary": "Topic + first entry transaction."
+    },
+    {
+      "id": "DONE-018",
+      "sourceLine": 3302,
+      "summary": "Duplicate topic prevention."
+    },
+    {
+      "id": "DONE-019",
+      "sourceLine": 3303,
+      "summary": "Entry create."
+    },
+    {
+      "id": "DONE-020",
+      "sourceLine": 3304,
+      "summary": "Entry edit/revision."
+    },
+    {
+      "id": "DONE-021",
+      "sourceLine": 3305,
+      "summary": "Entry soft-delete."
+    },
+    {
+      "id": "DONE-022",
+      "sourceLine": 3306,
+      "summary": "Vote create/change/delete."
+    },
+    {
+      "id": "DONE-023",
+      "sourceLine": 3307,
+      "summary": "Bookmark."
+    },
+    {
+      "id": "DONE-024",
+      "sourceLine": 3308,
+      "summary": "Follow."
+    },
+    {
+      "id": "DONE-025",
+      "sourceLine": 3309,
+      "summary": "Block."
+    },
+    {
+      "id": "DONE-026",
+      "sourceLine": 3310,
+      "summary": "Search all types."
+    },
+    {
+      "id": "DONE-027",
+      "sourceLine": 3311,
+      "summary": "Trending formula."
+    },
+    {
+      "id": "DONE-028",
+      "sourceLine": 3312,
+      "summary": "DEBE timezone."
+    },
+    {
+      "id": "DONE-029",
+      "sourceLine": 3313,
+      "summary": "Random topic."
+    },
+    {
+      "id": "DONE-030",
+      "sourceLine": 3314,
+      "summary": "Report."
+    },
+    {
+      "id": "DONE-031",
+      "sourceLine": 3315,
+      "summary": "Resolve/reject."
+    },
+    {
+      "id": "DONE-032",
+      "sourceLine": 3316,
+      "summary": "Entry hide/restore."
+    },
+    {
+      "id": "DONE-033",
+      "sourceLine": 3317,
+      "summary": "Topic hide/restore."
+    },
+    {
+      "id": "DONE-034",
+      "sourceLine": 3318,
+      "summary": "Topic rename/alias."
+    },
+    {
+      "id": "DONE-035",
+      "sourceLine": 3319,
+      "summary": "Topic merge/redirect."
+    },
+    {
+      "id": "DONE-036",
+      "sourceLine": 3320,
+      "summary": "Entry move."
+    },
+    {
+      "id": "DONE-037",
+      "sourceLine": 3321,
+      "summary": "Suspend/unsuspend."
+    },
+    {
+      "id": "DONE-038",
+      "sourceLine": 3322,
+      "summary": "Role grant/revoke."
+    },
+    {
+      "id": "DONE-039",
+      "sourceLine": 3323,
+      "summary": "Last admin guard."
+    },
+    {
+      "id": "DONE-040",
+      "sourceLine": 3324,
+      "summary": "Transactional outbox."
+    },
+    {
+      "id": "DONE-041",
+      "sourceLine": 3325,
+      "summary": "Audit logs."
+    },
+    {
+      "id": "DONE-042",
+      "sourceLine": 3326,
+      "summary": "PostgreSQL rate limit."
+    },
+    {
+      "id": "DONE-043",
+      "sourceLine": 3327,
+      "summary": "CSRF."
+    },
+    {
+      "id": "DONE-044",
+      "sourceLine": 3328,
+      "summary": "Object-level authorization."
+    },
+    {
+      "id": "DONE-045",
+      "sourceLine": 3329,
+      "summary": "All API endpoints."
+    },
+    {
+      "id": "DONE-046",
+      "sourceLine": 3330,
+      "summary": "OpenAPI alignment."
+    },
+    {
+      "id": "DONE-047",
+      "sourceLine": 3331,
+      "summary": "Desktop UI."
+    },
+    {
+      "id": "DONE-048",
+      "sourceLine": 3332,
+      "summary": "Mobile UI."
+    },
+    {
+      "id": "DONE-049",
+      "sourceLine": 3333,
+      "summary": "Light/dark."
+    },
+    {
+      "id": "DONE-050",
+      "sourceLine": 3334,
+      "summary": "Loading/empty/error/forbidden states."
+    },
+    {
+      "id": "DONE-051",
+      "sourceLine": 3335,
+      "summary": "Accessibility."
+    },
+    {
+      "id": "DONE-052",
+      "sourceLine": 3336,
+      "summary": "SEO."
+    },
+    {
+      "id": "DONE-053",
+      "sourceLine": 3337,
+      "summary": "Health."
+    },
+    {
+      "id": "DONE-054",
+      "sourceLine": 3338,
+      "summary": "Ready."
+    },
+    {
+      "id": "DONE-055",
+      "sourceLine": 3339,
+      "summary": "Format success."
+    },
+    {
+      "id": "DONE-056",
+      "sourceLine": 3340,
+      "summary": "Lint zero errors and warnings."
+    },
+    {
+      "id": "DONE-057",
+      "sourceLine": 3341,
+      "summary": "Typecheck."
+    },
+    {
+      "id": "DONE-058",
+      "sourceLine": 3342,
+      "summary": "Unit."
+    },
+    {
+      "id": "DONE-059",
+      "sourceLine": 3343,
+      "summary": "Integration."
+    },
+    {
+      "id": "DONE-060",
+      "sourceLine": 3344,
+      "summary": "Coverage."
+    },
+    {
+      "id": "DONE-061",
+      "sourceLine": 3345,
+      "summary": "E2E."
+    },
+    {
+      "id": "DONE-062",
+      "sourceLine": 3346,
+      "summary": "Production build."
+    },
+    {
+      "id": "DONE-063",
+      "sourceLine": 3347,
+      "summary": "Docker build."
+    },
+    {
+      "id": "DONE-064",
+      "sourceLine": 3348,
+      "summary": "Compose config."
+    },
+    {
+      "id": "DONE-065",
+      "sourceLine": 3349,
+      "summary": "Compose app/db startup."
+    },
+    {
+      "id": "DONE-066",
+      "sourceLine": 3350,
+      "summary": "CI valid."
+    },
+    {
+      "id": "DONE-067",
+      "sourceLine": 3351,
+      "summary": "No secrets."
+    },
+    {
+      "id": "DONE-068",
+      "sourceLine": 3352,
+      "summary": "No TODO/FIXME/placeholders."
+    },
+    {
+      "id": "DONE-069",
+      "sourceLine": 3353,
+      "summary": "No critical production vulnerabilities."
+    },
+    {
+      "id": "DONE-070",
+      "sourceLine": 3354,
+      "summary": "All requirements PASS."
+    },
+    {
+      "id": "DONE-071",
+      "sourceLine": 3355,
+      "summary": "README usable."
+    },
+    {
+      "id": "DONE-072",
+      "sourceLine": 3356,
+      "summary": "STATUS contains real results."
+    },
+    {
+      "id": "DONE-073",
+      "sourceLine": 3357,
+      "summary": "Logical commits."
+    },
+    {
+      "id": "DONE-074",
+      "sourceLine": 3358,
+      "summary": "Working tree clean."
+    },
+    {
+      "id": "DONE-075",
+      "sourceLine": 3359,
+      "summary": "Git diff self-review."
+    },
+    {
+      "id": "DONE-076",
+      "sourceLine": 3360,
+      "summary": "Security self-review."
+    },
+    {
+      "id": "DONE-077",
+      "sourceLine": 3361,
+      "summary": "No side-effecting write outside permitted GitHub repository."
+    },
+    {
+      "id": "DONE-078",
+      "sourceLine": 3362,
+      "summary": "No external messages, e-mails, tasks, uploads or deployments."
+    },
+    {
+      "id": "DONE-079",
+      "sourceLine": 3363,
+      "summary": "GitHub access exists ise branch pushed."
+    },
+    {
+      "id": "DONE-080",
+      "sourceLine": 3364,
+      "summary": "GitHub access exists ise draft PR created."
+    },
+    {
+      "id": "DONE-081",
+      "sourceLine": 3365,
+      "summary": "Main branch not merged."
+    },
+    {
+      "id": "E2E-001",
+      "sourceLine": 2885,
+      "summary": "Visitor homepage."
+    },
+    {
+      "id": "E2E-002",
+      "sourceLine": 2886,
+      "summary": "Open topic from trending."
+    },
+    {
+      "id": "E2E-003",
+      "sourceLine": 2887,
+      "summary": "Search topic."
+    },
+    {
+      "id": "E2E-004",
+      "sourceLine": 2888,
+      "summary": "Search entry."
+    },
+    {
+      "id": "E2E-005",
+      "sourceLine": 2889,
+      "summary": "Register."
+    },
+    {
+      "id": "E2E-006",
+      "sourceLine": 2890,
+      "summary": "Login/logout."
+    },
+    {
+      "id": "E2E-007",
+      "sourceLine": 2891,
+      "summary": "Create topic + first entry."
+    },
+    {
+      "id": "E2E-008",
+      "sourceLine": 2892,
+      "summary": "Add entry."
+    },
+    {
+      "id": "E2E-009",
+      "sourceLine": 2893,
+      "summary": "Edit entry."
+    },
+    {
+      "id": "E2E-010",
+      "sourceLine": 2894,
+      "summary": "View revisions."
+    },
+    {
+      "id": "E2E-011",
+      "sourceLine": 2895,
+      "summary": "Upvote/change/downvote/remove."
+    },
+    {
+      "id": "E2E-012",
+      "sourceLine": 2896,
+      "summary": "Bookmark and favorites."
+    },
+    {
+      "id": "E2E-013",
+      "sourceLine": 2897,
+      "summary": "Follow and following list."
+    },
+    {
+      "id": "E2E-014",
+      "sourceLine": 2898,
+      "summary": "Block author and collapsed entry."
+    },
+    {
+      "id": "E2E-015",
+      "sourceLine": 2899,
+      "summary": "Report entry."
+    },
+    {
+      "id": "E2E-016",
+      "sourceLine": 2900,
+      "summary": "Moderator hide and resolve."
+    },
+    {
+      "id": "E2E-017",
+      "sourceLine": 2901,
+      "summary": "Hidden entry invisible."
+    },
+    {
+      "id": "E2E-018",
+      "sourceLine": 2902,
+      "summary": "Restore entry."
+    },
+    {
+      "id": "E2E-019",
+      "sourceLine": 2903,
+      "summary": "Admin suspend."
+    },
+    {
+      "id": "E2E-020",
+      "sourceLine": 2904,
+      "summary": "Suspended write blocked."
+    },
+    {
+      "id": "E2E-021",
+      "sourceLine": 2905,
+      "summary": "Admin unsuspend."
+    },
+    {
+      "id": "E2E-022",
+      "sourceLine": 2906,
+      "summary": "Grant/revoke moderator."
+    },
+    {
+      "id": "E2E-023",
+      "sourceLine": 2907,
+      "summary": "Topic rename redirect."
+    },
+    {
+      "id": "E2E-024",
+      "sourceLine": 2908,
+      "summary": "Topic merge redirect."
+    },
+    {
+      "id": "E2E-025",
+      "sourceLine": 2909,
+      "summary": "Profile update."
+    },
+    {
+      "id": "E2E-026",
+      "sourceLine": 2910,
+      "summary": "Password change."
+    },
+    {
+      "id": "E2E-027",
+      "sourceLine": 2911,
+      "summary": "Session revoke."
+    },
+    {
+      "id": "E2E-028",
+      "sourceLine": 2912,
+      "summary": "Mobile drawer."
+    },
+    {
+      "id": "E2E-029",
+      "sourceLine": 2913,
+      "summary": "Mobile content creation."
+    },
+    {
+      "id": "E2E-030",
+      "sourceLine": 2914,
+      "summary": "Light/dark mode."
+    },
+    {
+      "id": "E2E-031",
+      "sourceLine": 2915,
+      "summary": "Public axe serious/critical zero."
+    },
+    {
+      "id": "E2E-032",
+      "sourceLine": 2916,
+      "summary": "Auth/moderation axe serious/critical zero."
+    },
+    {
+      "id": "E2E-033",
+      "sourceLine": 2917,
+      "summary": "Keyboard navigation."
+    },
+    {
+      "id": "E2E-034",
+      "sourceLine": 2918,
+      "summary": "404/error state."
+    },
+    {
+      "id": "E2E-035",
+      "sourceLine": 2919,
+      "summary": "DEBE data."
+    },
+    {
+      "id": "ENTRY-001",
+      "sourceLine": 1539,
+      "summary": "ACTIVE kullanıcı ACTIVE topic'e entry ekleyebilir."
+    },
+    {
+      "id": "ENTRY-002",
+      "sourceLine": 1541,
+      "summary": "HIDDEN topic'e entry eklenemez."
+    },
+    {
+      "id": "ENTRY-003",
+      "sourceLine": 1543,
+      "summary": "MERGED topic'e entry create denemesi 409 ve canonical target döndürür."
+    },
+    {
+      "id": "ENTRY-004",
+      "sourceLine": 1545,
+      "summary": "Entry body 10–10.000 karakter."
+    },
+    {
+      "id": "ENTRY-005",
+      "sourceLine": 1547,
+      "summary": "Entry düz metin saklanır."
+    },
+    {
+      "id": "ENTRY-006",
+      "sourceLine": 1549,
+      "summary": "Renderer:"
+    },
+    {
+      "id": "ENTRY-007",
+      "sourceLine": 1563,
+      "summary": "HTML tag'ları çalıştırılmaz; metin olarak görünür."
+    },
+    {
+      "id": "ENTRY-008",
+      "sourceLine": 1565,
+      "summary": "Server ve client renderer aynı güvenlik davranışına sahip olmalıdır."
+    },
+    {
+      "id": "ENTRY-009",
+      "sourceLine": 1567,
+      "summary": "Entry card:"
+    },
+    {
+      "id": "ENTRY-010",
+      "sourceLine": 1582,
+      "summary": "Permalink:"
+    },
+    {
+      "id": "ENTRY-011",
+      "sourceLine": 1586,
+      "summary": "Permalink sayfası canonical topic ve entry anchor bağlantısı gösterir."
+    },
+    {
+      "id": "ENTRY-012",
+      "sourceLine": 1588,
+      "summary": "Entry edit:"
+    },
+    {
+      "id": "ENTRY-013",
+      "sourceLine": 1598,
+      "summary": "Entry delete:"
+    },
+    {
+      "id": "ENTRY-014",
+      "sourceLine": 1610,
+      "summary": "DELETED entry body yalnızca yazar, moderator ve admin'e görünür."
+    },
+    {
+      "id": "ENTRY-015",
+      "sourceLine": 1612,
+      "summary": "HIDDEN entry:"
+    },
+    {
+      "id": "ENTRY-016",
+      "sourceLine": 1620,
+      "summary": "Entry move:"
+    },
+    {
+      "id": "ENV-001",
+      "sourceLine": 2618,
+      "summary": "Zod env validation."
+    },
+    {
+      "id": "ENV-002",
+      "sourceLine": 2620,
+      "summary": "Production:"
+    },
+    {
+      "id": "EVENT-001",
+      "sourceLine": 2482,
+      "summary": "topic.created"
+    },
+    {
+      "id": "EVENT-002",
+      "sourceLine": 2483,
+      "summary": "topic.renamed"
+    },
+    {
+      "id": "EVENT-003",
+      "sourceLine": 2484,
+      "summary": "topic.hidden"
+    },
+    {
+      "id": "EVENT-004",
+      "sourceLine": 2485,
+      "summary": "topic.restored"
+    },
+    {
+      "id": "EVENT-005",
+      "sourceLine": 2486,
+      "summary": "topic.merged"
+    },
+    {
+      "id": "EVENT-006",
+      "sourceLine": 2487,
+      "summary": "entry.created"
+    },
+    {
+      "id": "EVENT-007",
+      "sourceLine": 2488,
+      "summary": "entry.updated"
+    },
+    {
+      "id": "EVENT-008",
+      "sourceLine": 2489,
+      "summary": "entry.deleted"
+    },
+    {
+      "id": "EVENT-009",
+      "sourceLine": 2490,
+      "summary": "entry.hidden"
+    },
+    {
+      "id": "EVENT-010",
+      "sourceLine": 2491,
+      "summary": "entry.restored"
+    },
+    {
+      "id": "EVENT-011",
+      "sourceLine": 2492,
+      "summary": "entry.moved"
+    },
+    {
+      "id": "EVENT-012",
+      "sourceLine": 2493,
+      "summary": "entry.voted"
+    },
+    {
+      "id": "EVENT-013",
+      "sourceLine": 2494,
+      "summary": "report.created"
+    },
+    {
+      "id": "EVENT-014",
+      "sourceLine": 2495,
+      "summary": "moderation.completed"
+    },
+    {
+      "id": "EVENT-015",
+      "sourceLine": 2496,
+      "summary": "user.suspended"
+    },
+    {
+      "id": "EVENT-016",
+      "sourceLine": 2497,
+      "summary": "user.unsuspended"
+    },
+    {
+      "id": "EVENT-017",
+      "sourceLine": 2498,
+      "summary": "user.role_changed"
+    },
+    {
+      "id": "EVENT-018",
+      "sourceLine": 2499,
+      "summary": "user.deactivated"
+    },
+    {
+      "id": "EXTERNAL-001",
+      "sourceLine": 214,
+      "summary": "GitHub dışındaki hiçbir sisteme mesaj, e-posta, yorum, bildirim,"
+    },
+    {
+      "id": "EXTERNAL-002",
+      "sourceLine": 217,
+      "summary": "Aşağıdaki sistemlerde hiçbir create, send, post, publish, upload,"
+    },
+    {
+      "id": "EXTERNAL-003",
+      "sourceLine": 256,
+      "summary": "E-posta gönderme veya Gmail draft oluşturma."
+    },
+    {
+      "id": "EXTERNAL-004",
+      "sourceLine": 258,
+      "summary": "Slack mesajı veya Slack draft'ı oluşturma."
+    },
+    {
+      "id": "EXTERNAL-005",
+      "sourceLine": 260,
+      "summary": "Takvim etkinliği oluşturma, değiştirme veya silme."
+    },
+    {
+      "id": "EXTERNAL-006",
+      "sourceLine": 262,
+      "summary": "Jira ticket veya Confluence sayfası oluşturma ya da güncelleme."
+    },
+    {
+      "id": "EXTERNAL-007",
+      "sourceLine": 264,
+      "summary": "Google Drive, Docs, Sheets veya Slides üzerinde dosya oluşturma,"
+    },
+    {
+      "id": "EXTERNAL-008",
+      "sourceLine": 267,
+      "summary": "Figma dosyası veya diagram oluşturma ya da değiştirme."
+    },
+    {
+      "id": "EXTERNAL-009",
+      "sourceLine": 269,
+      "summary": "Hosting ortamına deploy etme."
+    },
+    {
+      "id": "EXTERNAL-010",
+      "sourceLine": 271,
+      "summary": "Vercel, Netlify, Render, Railway, Fly.io, AWS, GCP, Azure,"
+    },
+    {
+      "id": "EXTERNAL-011",
+      "sourceLine": 274,
+      "summary": "DNS kaydı, domain ayarı, SSL sertifikası veya CDN ayarı değiştirme."
+    },
+    {
+      "id": "EXTERNAL-012",
+      "sourceLine": 276,
+      "summary": "NPM, GitHub Packages, Docker Hub veya başka registry'ye package,"
+    },
+    {
+      "id": "EXTERNAL-013",
+      "sourceLine": 279,
+      "summary": "Herhangi bir webhook çağırma."
+    },
+    {
+      "id": "EXTERNAL-014",
+      "sourceLine": 281,
+      "summary": "Uygulamaya harici webhook, telemetry, analytics veya tracking"
+    },
+    {
+      "id": "EXTERNAL-015",
+      "sourceLine": 284,
+      "summary": "Test amacıyla bile gerçek üçüncü taraf endpoint'e veri gönderme."
+    },
+    {
+      "id": "EXTERNAL-016",
+      "sourceLine": 286,
+      "summary": "Harici serviste kullanıcı, token, API key, integration veya app"
+    },
+    {
+      "id": "EXTERNAL-017",
+      "sourceLine": 289,
+      "summary": "Bu yasağı aşmak için browser automation, curl, CLI, MCP connector,"
+    },
+    {
+      "id": "EXTERNAL-018",
+      "sourceLine": 292,
+      "summary": "GitHub üzerindeki izin verilen write kapsamı yalnızca şunlardır:"
+    },
+    {
+      "id": "EXTERNAL-019",
+      "sourceLine": 298,
+      "summary": "Başka bir GitHub repository, organization, gist veya kullanıcının"
+    },
+    {
+      "id": "EXTERNAL-020",
+      "sourceLine": 301,
+      "summary": "Public teknik dokümantasyon, package metadata ve güvenlik"
+    },
+    {
+      "id": "EXTERNAL-021",
+      "sourceLine": 304,
+      "summary": "Dependency indirme ve read-only package registry erişimi serbesttir."
+    },
+    {
+      "id": "EXTERNAL-022",
+      "sourceLine": 306,
+      "summary": "Kullanılan framework ve dependency telemetry'lerini kapat."
+    },
+    {
+      "id": "EXTERNAL-023",
+      "sourceLine": 314,
+      "summary": "Uygulama runtime'ı varsayılan olarak hiçbir üçüncü taraf servise"
+    },
+    {
+      "id": "FEED-001",
+      "sourceLine": 1732,
+      "summary": "Gündem rolling 24 saat üzerinden hesaplanır."
+    },
+    {
+      "id": "FEED-002",
+      "sourceLine": 1760,
+      "summary": "`/son`: lastEntryAt DESC."
+    },
+    {
+      "id": "FEED-003",
+      "sourceLine": 1762,
+      "summary": "`/yeni`: createdAt DESC."
+    },
+    {
+      "id": "FEED-004",
+      "sourceLine": 1764,
+      "summary": "Bugünün popülerleri Europe/Istanbul gün başlangıcından itibaren aynı"
+    },
+    {
+      "id": "FEED-005",
+      "sourceLine": 1767,
+      "summary": "`/debe` bir önceki Europe/Istanbul takvim gününde oluşturulmuş ACTIVE"
+    },
+    {
+      "id": "FEED-006",
+      "sourceLine": 1779,
+      "summary": "`/rastgele` ACTIVE topic seçer ve 302 redirect yapar."
+    },
+    {
+      "id": "FEED-007",
+      "sourceLine": 1781,
+      "summary": "Topic feed listeleri maksimum 30 sonuç."
+    },
+    {
+      "id": "FOLLOW-001",
+      "sourceLine": 1661,
+      "summary": "PUT ve DELETE idempotent."
+    },
+    {
+      "id": "FOLLOW-002",
+      "sourceLine": 1663,
+      "summary": "Yalnızca ACTIVE topic follow edilir."
+    },
+    {
+      "id": "FOLLOW-003",
+      "sourceLine": 1665,
+      "summary": "MERGED topic follow target bilgisi döndürür."
+    },
+    {
+      "id": "ID-001",
+      "sourceLine": 3152,
+      "summary": "` biçimindeki requirement ID'lerini"
+    },
+    {
+      "id": "IDEMP-001",
+      "sourceLine": 2310,
+      "summary": "Idempotency-Key destekleyen endpoint'ler:"
+    },
+    {
+      "id": "IDEMP-002",
+      "sourceLine": 2317,
+      "summary": "UI UUID tabanlı key üretir."
+    },
+    {
+      "id": "IDEMP-003",
+      "sourceLine": 2319,
+      "summary": "Scope actorId + route + key."
+    },
+    {
+      "id": "IDEMP-004",
+      "sourceLine": 2321,
+      "summary": "Canonical JSON request hash."
+    },
+    {
+      "id": "IDEMP-005",
+      "sourceLine": 2323,
+      "summary": "Aynı key ve aynı body replay response döndürür."
+    },
+    {
+      "id": "IDEMP-006",
+      "sourceLine": 2325,
+      "summary": "Replay header:"
+    },
+    {
+      "id": "IDEMP-007",
+      "sourceLine": 2329,
+      "summary": "Aynı key farklı body: 409 IDEMPOTENCY_CONFLICT."
+    },
+    {
+      "id": "IDEMP-008",
+      "sourceLine": 2331,
+      "summary": "TTL 24 saat."
+    },
+    {
+      "id": "IT-001",
+      "sourceLine": 2827,
+      "summary": "Registration success."
+    },
+    {
+      "id": "IT-002",
+      "sourceLine": 2828,
+      "summary": "Duplicate email case-insensitive."
+    },
+    {
+      "id": "IT-003",
+      "sourceLine": 2829,
+      "summary": "Duplicate username."
+    },
+    {
+      "id": "IT-004",
+      "sourceLine": 2830,
+      "summary": "Role escalation prevention."
+    },
+    {
+      "id": "IT-005",
+      "sourceLine": 2831,
+      "summary": "Login."
+    },
+    {
+      "id": "IT-006",
+      "sourceLine": 2832,
+      "summary": "Generic invalid login."
+    },
+    {
+      "id": "IT-007",
+      "sourceLine": 2833,
+      "summary": "Session create/revoke."
+    },
+    {
+      "id": "IT-008",
+      "sourceLine": 2834,
+      "summary": "Password change revokes others."
+    },
+    {
+      "id": "IT-009",
+      "sourceLine": 2835,
+      "summary": "Topic + first entry transaction."
+    },
+    {
+      "id": "IT-010",
+      "sourceLine": 2836,
+      "summary": "Duplicate topic race."
+    },
+    {
+      "id": "IT-011",
+      "sourceLine": 2837,
+      "summary": "Alias duplicate."
+    },
+    {
+      "id": "IT-012",
+      "sourceLine": 2838,
+      "summary": "Entry create."
+    },
+    {
+      "id": "IT-013",
+      "sourceLine": 2839,
+      "summary": "Entry edit revision."
+    },
+    {
+      "id": "IT-014",
+      "sourceLine": 2840,
+      "summary": "Unchanged edit no revision."
+    },
+    {
+      "id": "IT-015",
+      "sourceLine": 2841,
+      "summary": "Soft-delete counter."
+    },
+    {
+      "id": "IT-016",
+      "sourceLine": 2842,
+      "summary": "Vote create."
+    },
+    {
+      "id": "IT-017",
+      "sourceLine": 2843,
+      "summary": "Same vote idempotency."
+    },
+    {
+      "id": "IT-018",
+      "sourceLine": 2844,
+      "summary": "Vote change."
+    },
+    {
+      "id": "IT-019",
+      "sourceLine": 2845,
+      "summary": "Vote delete."
+    },
+    {
+      "id": "IT-020",
+      "sourceLine": 2846,
+      "summary": "Own entry vote blocked."
+    },
+    {
+      "id": "IT-021",
+      "sourceLine": 2847,
+      "summary": "Bookmark idempotency."
+    },
+    {
+      "id": "IT-022",
+      "sourceLine": 2848,
+      "summary": "Follow idempotency."
+    },
+    {
+      "id": "IT-023",
+      "sourceLine": 2849,
+      "summary": "User block."
+    },
+    {
+      "id": "IT-024",
+      "sourceLine": 2850,
+      "summary": "Block collapse data."
+    },
+    {
+      "id": "IT-025",
+      "sourceLine": 2851,
+      "summary": "Search topic."
+    },
+    {
+      "id": "IT-026",
+      "sourceLine": 2852,
+      "summary": "Search alias."
+    },
+    {
+      "id": "IT-027",
+      "sourceLine": 2853,
+      "summary": "Search user."
+    },
+    {
+      "id": "IT-028",
+      "sourceLine": 2854,
+      "summary": "Search entry."
+    },
+    {
+      "id": "IT-029",
+      "sourceLine": 2855,
+      "summary": "Hidden/deleted exclusion."
+    },
+    {
+      "id": "IT-030",
+      "sourceLine": 2856,
+      "summary": "Report create."
+    },
+    {
+      "id": "IT-031",
+      "sourceLine": 2857,
+      "summary": "Duplicate open report."
+    },
+    {
+      "id": "IT-032",
+      "sourceLine": 2858,
+      "summary": "Suspended write restrictions."
+    },
+    {
+      "id": "IT-033",
+      "sourceLine": 2859,
+      "summary": "Entry hide/restore."
+    },
+    {
+      "id": "IT-034",
+      "sourceLine": 2860,
+      "summary": "Topic hide/restore."
+    },
+    {
+      "id": "IT-035",
+      "sourceLine": 2861,
+      "summary": "Topic rename alias."
+    },
+    {
+      "id": "IT-036",
+      "sourceLine": 2862,
+      "summary": "Topic merge."
+    },
+    {
+      "id": "IT-037",
+      "sourceLine": 2863,
+      "summary": "Entry move."
+    },
+    {
+      "id": "IT-038",
+      "sourceLine": 2864,
+      "summary": "Moderator suspend user."
+    },
+    {
+      "id": "IT-039",
+      "sourceLine": 2865,
+      "summary": "Moderator cannot act on admin."
+    },
+    {
+      "id": "IT-040",
+      "sourceLine": 2866,
+      "summary": "Admin moderator grant/revoke."
+    },
+    {
+      "id": "IT-041",
+      "sourceLine": 2867,
+      "summary": "Last admin race."
+    },
+    {
+      "id": "IT-042",
+      "sourceLine": 2868,
+      "summary": "ModerationAction and AuditLog."
+    },
+    {
+      "id": "IT-043",
+      "sourceLine": 2869,
+      "summary": "Correct OutboxEvents."
+    },
+    {
+      "id": "IT-044",
+      "sourceLine": 2870,
+      "summary": "Idempotency replay."
+    },
+    {
+      "id": "IT-045",
+      "sourceLine": 2871,
+      "summary": "Idempotency conflict."
+    },
+    {
+      "id": "IT-046",
+      "sourceLine": 2872,
+      "summary": "Missing CSRF rejected."
+    },
+    {
+      "id": "IT-047",
+      "sourceLine": 2873,
+      "summary": "Invalid Origin rejected."
+    },
+    {
+      "id": "IT-048",
+      "sourceLine": 2874,
+      "summary": "Rate limit 429."
+    },
+    {
+      "id": "IT-049",
+      "sourceLine": 2875,
+      "summary": "Account anonymization."
+    },
+    {
+      "id": "IT-050",
+      "sourceLine": 2876,
+      "summary": "Vote score recalculation."
+    },
+    {
+      "id": "IT-051",
+      "sourceLine": 2877,
+      "summary": "Health."
+    },
+    {
+      "id": "IT-052",
+      "sourceLine": 2878,
+      "summary": "Ready."
+    },
+    {
+      "id": "IT-053",
+      "sourceLine": 2879,
+      "summary": "No passwordHash in API."
+    },
+    {
+      "id": "MOD-001",
+      "sourceLine": 1801,
+      "summary": "Moderation dashboard sayaçları:"
+    },
+    {
+      "id": "MOD-002",
+      "sourceLine": 1810,
+      "summary": "Report filters:"
+    },
+    {
+      "id": "MOD-003",
+      "sourceLine": 1818,
+      "summary": "Report detail:"
+    },
+    {
+      "id": "MOD-004",
+      "sourceLine": 1830,
+      "summary": "Resolve/reject için 10–1000 karakter resolutionNote."
+    },
+    {
+      "id": "MOD-005",
+      "sourceLine": 1832,
+      "summary": "Resolve/reject transaction:"
+    },
+    {
+      "id": "MOD-006",
+      "sourceLine": 1839,
+      "summary": "Entry hide/restore reason zorunlu."
+    },
+    {
+      "id": "MOD-007",
+      "sourceLine": 1841,
+      "summary": "Topic hide/restore reason zorunlu."
+    },
+    {
+      "id": "MOD-008",
+      "sourceLine": 1843,
+      "summary": "User suspend:"
+    },
+    {
+      "id": "MOD-009",
+      "sourceLine": 1851,
+      "summary": "Unsuspend reason zorunlu."
+    },
+    {
+      "id": "MOD-010",
+      "sourceLine": 1853,
+      "summary": "Role grant/revoke:"
+    },
+    {
+      "id": "MOD-011",
+      "sourceLine": 1863,
+      "summary": "Bütün moderation endpoint'leri object-level authorization uygular."
+    },
+    {
+      "id": "MOD-012",
+      "sourceLine": 1865,
+      "summary": "Moderation sayfaları noindex."
+    },
+    {
+      "id": "MOD-013",
+      "sourceLine": 1867,
+      "summary": "Moderation listeleri paginate edilir."
+    },
+    {
+      "id": "MOD-014",
+      "sourceLine": 1869,
+      "summary": "ModerationAction immutable."
+    },
+    {
+      "id": "MOD-015",
+      "sourceLine": 1871,
+      "summary": "Audit filters:"
+    },
+    {
+      "id": "OPS-001",
+      "sourceLine": 2554,
+      "summary": "GET `/api/health`:"
+    },
+    {
+      "id": "OPS-002",
+      "sourceLine": 2564,
+      "summary": "GET `/api/ready`:"
+    },
+    {
+      "id": "OPS-003",
+      "sourceLine": 2571,
+      "summary": "Log fields:"
+    },
+    {
+      "id": "OPS-004",
+      "sourceLine": 2583,
+      "summary": "Startup env validation:"
+    },
+    {
+      "id": "OPS-005",
+      "sourceLine": 2589,
+      "summary": "App `0.0.0.0:3000`."
+    },
+    {
+      "id": "OPS-006",
+      "sourceLine": 2591,
+      "summary": "Graceful shutdown."
+    },
+    {
+      "id": "OPS-007",
+      "sourceLine": 2593,
+      "summary": "Sensitive query parameter redaction."
+    },
+    {
+      "id": "OUT-001",
+      "sourceLine": 529,
+      "summary": "LLM bağlantısı."
+    },
+    {
+      "id": "OUT-002",
+      "sourceLine": 530,
+      "summary": "AI agent çalıştırma."
+    },
+    {
+      "id": "OUT-003",
+      "sourceLine": 531,
+      "summary": "Autonomous posting."
+    },
+    {
+      "id": "OUT-004",
+      "sourceLine": 532,
+      "summary": "Agent API key ekranı."
+    },
+    {
+      "id": "OUT-005",
+      "sourceLine": 533,
+      "summary": "Agent worker."
+    },
+    {
+      "id": "OUT-006",
+      "sourceLine": 534,
+      "summary": "Outbox consumer."
+    },
+    {
+      "id": "OUT-007",
+      "sourceLine": 535,
+      "summary": "Chat."
+    },
+    {
+      "id": "OUT-008",
+      "sourceLine": 536,
+      "summary": "Özel mesaj."
+    },
+    {
+      "id": "OUT-009",
+      "sourceLine": 537,
+      "summary": "Gerçek zamanlı notification."
+    },
+    {
+      "id": "OUT-010",
+      "sourceLine": 538,
+      "summary": "WebSocket."
+    },
+    {
+      "id": "OUT-011",
+      "sourceLine": 539,
+      "summary": "E-posta gönderimi."
+    },
+    {
+      "id": "OUT-012",
+      "sourceLine": 540,
+      "summary": "Email verification."
+    },
+    {
+      "id": "OUT-013",
+      "sourceLine": 541,
+      "summary": "Forgot-password email."
+    },
+    {
+      "id": "OUT-014",
+      "sourceLine": 542,
+      "summary": "Sosyal OAuth."
+    },
+    {
+      "id": "OUT-015",
+      "sourceLine": 543,
+      "summary": "Mobil native uygulama."
+    },
+    {
+      "id": "OUT-016",
+      "sourceLine": 544,
+      "summary": "PWA."
+    },
+    {
+      "id": "OUT-017",
+      "sourceLine": 545,
+      "summary": "Offline mode."
+    },
+    {
+      "id": "OUT-018",
+      "sourceLine": 546,
+      "summary": "Ödeme."
+    },
+    {
+      "id": "OUT-019",
+      "sourceLine": 547,
+      "summary": "Abonelik."
+    },
+    {
+      "id": "OUT-020",
+      "sourceLine": 548,
+      "summary": "Reklam."
+    },
+    {
+      "id": "OUT-021",
+      "sourceLine": 549,
+      "summary": "Medya upload."
+    },
+    {
+      "id": "OUT-022",
+      "sourceLine": 550,
+      "summary": "Avatar upload."
+    },
+    {
+      "id": "OUT-023",
+      "sourceLine": 551,
+      "summary": "Entry yorumları."
+    },
+    {
+      "id": "OUT-024",
+      "sourceLine": 552,
+      "summary": "Emoji reaction."
+    },
+    {
+      "id": "OUT-025",
+      "sourceLine": 553,
+      "summary": "Entry draft."
+    },
+    {
+      "id": "OUT-026",
+      "sourceLine": 554,
+      "summary": "Hashtag."
+    },
+    {
+      "id": "OUT-027",
+      "sourceLine": 555,
+      "summary": "Topic kategorisi."
+    },
+    {
+      "id": "OUT-028",
+      "sourceLine": 556,
+      "summary": "Çok dilli UI."
+    },
+    {
+      "id": "OUT-029",
+      "sourceLine": 557,
+      "summary": "Harici analytics."
+    },
+    {
+      "id": "OUT-030",
+      "sourceLine": 558,
+      "summary": "Harici search service."
+    },
+    {
+      "id": "OUT-031",
+      "sourceLine": 559,
+      "summary": "Redis zorunluluğu."
+    },
+    {
+      "id": "OUT-032",
+      "sourceLine": 560,
+      "summary": "Vendor-specific deployment."
+    },
+    {
+      "id": "OUT-033",
+      "sourceLine": 561,
+      "summary": "Kullanıcı username değiştirme."
+    },
+    {
+      "id": "OUT-034",
+      "sourceLine": 562,
+      "summary": "Normal kullanıcı topic rename."
+    },
+    {
+      "id": "OUT-035",
+      "sourceLine": 563,
+      "summary": "Moderatörün entry metnini değiştirmesi."
+    },
+    {
+      "id": "OUT-036",
+      "sourceLine": 564,
+      "summary": "Ekşi Sözlük'ün bütün tarihsel özellikleriyle tam parity."
+    },
+    {
+      "id": "PAGE-001",
+      "sourceLine": 1883,
+      "summary": "`/`"
+    },
+    {
+      "id": "PAGE-002",
+      "sourceLine": 1886,
+      "summary": "`/gundem`"
+    },
+    {
+      "id": "PAGE-003",
+      "sourceLine": 1889,
+      "summary": "`/son`"
+    },
+    {
+      "id": "PAGE-004",
+      "sourceLine": 1892,
+      "summary": "`/yeni`"
+    },
+    {
+      "id": "PAGE-005",
+      "sourceLine": 1895,
+      "summary": "`/debe`"
+    },
+    {
+      "id": "PAGE-006",
+      "sourceLine": 1898,
+      "summary": "`/rastgele`"
+    },
+    {
+      "id": "PAGE-007",
+      "sourceLine": 1901,
+      "summary": "`/baslik/ac`"
+    },
+    {
+      "id": "PAGE-008",
+      "sourceLine": 1904,
+      "summary": "`/baslik/[topicId]-[slug]`"
+    },
+    {
+      "id": "PAGE-009",
+      "sourceLine": 1907,
+      "summary": "`/entry/[id]`"
+    },
+    {
+      "id": "PAGE-010",
+      "sourceLine": 1910,
+      "summary": "`/ara?q=&type=&page=`"
+    },
+    {
+      "id": "PAGE-011",
+      "sourceLine": 1913,
+      "summary": "`/yazar/[username]`"
+    },
+    {
+      "id": "PAGE-012",
+      "sourceLine": 1916,
+      "summary": "`/giris`"
+    },
+    {
+      "id": "PAGE-013",
+      "sourceLine": 1919,
+      "summary": "`/kayit`"
+    },
+    {
+      "id": "PAGE-014",
+      "sourceLine": 1922,
+      "summary": "`/favoriler`"
+    },
+    {
+      "id": "PAGE-015",
+      "sourceLine": 1925,
+      "summary": "`/takip`"
+    },
+    {
+      "id": "PAGE-016",
+      "sourceLine": 1928,
+      "summary": "`/oylarim`"
+    },
+    {
+      "id": "PAGE-017",
+      "sourceLine": 1931,
+      "summary": "`/ayarlar`"
+    },
+    {
+      "id": "PAGE-018",
+      "sourceLine": 1934,
+      "summary": "`/ayarlar/guvenlik`"
+    },
+    {
+      "id": "PAGE-019",
+      "sourceLine": 1937,
+      "summary": "`/ayarlar/oturumlar`"
+    },
+    {
+      "id": "PAGE-020",
+      "sourceLine": 1940,
+      "summary": "`/ayarlar/engellenenler`"
+    },
+    {
+      "id": "PAGE-021",
+      "sourceLine": 1943,
+      "summary": "`/moderasyon`"
+    },
+    {
+      "id": "PAGE-022",
+      "sourceLine": 1946,
+      "summary": "`/moderasyon/raporlar`"
+    },
+    {
+      "id": "PAGE-023",
+      "sourceLine": 1949,
+      "summary": "`/moderasyon/raporlar/[id]`"
+    },
+    {
+      "id": "PAGE-024",
+      "sourceLine": 1952,
+      "summary": "`/moderasyon/basliklar`"
+    },
+    {
+      "id": "PAGE-025",
+      "sourceLine": 1955,
+      "summary": "`/moderasyon/kullanicilar`"
+    },
+    {
+      "id": "PAGE-026",
+      "sourceLine": 1958,
+      "summary": "`/moderasyon/audit`"
+    },
+    {
+      "id": "PAGE-027",
+      "sourceLine": 1961,
+      "summary": "`/hakkinda`"
+    },
+    {
+      "id": "PAGE-028",
+      "sourceLine": 1964,
+      "summary": "`/kurallar`"
+    },
+    {
+      "id": "PAGE-029",
+      "sourceLine": 1967,
+      "summary": "`/gizlilik`"
+    },
+    {
+      "id": "PAGE-030",
+      "sourceLine": 1970,
+      "summary": "`/gelistirici/api`"
+    },
+    {
+      "id": "PAGE-031",
+      "sourceLine": 1973,
+      "summary": "Custom 404."
+    },
+    {
+      "id": "PAGE-032",
+      "sourceLine": 1975,
+      "summary": "Global error page."
+    },
+    {
+      "id": "PAGE-033",
+      "sourceLine": 1977,
+      "summary": "Forbidden page."
+    },
+    {
+      "id": "PERM-001",
+      "sourceLine": 1354,
+      "summary": "VISITOR:"
+    },
+    {
+      "id": "PERM-002",
+      "sourceLine": 1364,
+      "summary": "ACTIVE USER:"
+    },
+    {
+      "id": "PERM-003",
+      "sourceLine": 1379,
+      "summary": "Kullanıcı kendi entry'sine oy veremez."
+    },
+    {
+      "id": "PERM-004",
+      "sourceLine": 1381,
+      "summary": "Kullanıcı yalnızca ACTIVE durumdaki kendi entry'sini edit/delete edebilir."
+    },
+    {
+      "id": "PERM-005",
+      "sourceLine": 1383,
+      "summary": "MODERATOR:"
+    },
+    {
+      "id": "PERM-006",
+      "sourceLine": 1397,
+      "summary": "MODERATOR:"
+    },
+    {
+      "id": "PERM-007",
+      "sourceLine": 1405,
+      "summary": "ADMIN:"
+    },
+    {
+      "id": "PERM-008",
+      "sourceLine": 1412,
+      "summary": "UI veya API üzerinden ADMIN rolü verilemez."
+    },
+    {
+      "id": "PERM-009",
+      "sourceLine": 1414,
+      "summary": "Admin kendi rolünü değiştiremez."
+    },
+    {
+      "id": "PERM-010",
+      "sourceLine": 1416,
+      "summary": "Son aktif ADMIN:"
+    },
+    {
+      "id": "PERM-011",
+      "sourceLine": 1422,
+      "summary": "Son admin guard yarış durumuna karşı SERIALIZABLE transaction veya"
+    },
+    {
+      "id": "PROD-001",
+      "sourceLine": 406,
+      "summary": "Ürünün adı `Agent Sözlük` olacaktır."
+    },
+    {
+      "id": "PROD-002",
+      "sourceLine": 408,
+      "summary": "Varsayılan application name:"
+    },
+    {
+      "id": "PROD-003",
+      "sourceLine": 412,
+      "summary": "Ürün adı merkezi config dışında hard-code edilmemelidir."
+    },
+    {
+      "id": "PROD-004",
+      "sourceLine": 414,
+      "summary": "Slug, package ve service adlarında ASCII biçim kullan:"
+    },
+    {
+      "id": "PROD-005",
+      "sourceLine": 418,
+      "summary": "Uygulamanın bütün kullanıcı arayüzü Türkçe olacaktır."
+    },
+    {
+      "id": "PROD-006",
+      "sourceLine": 420,
+      "summary": "Varsayılan locale `tr-TR` olacaktır."
+    },
+    {
+      "id": "PROD-007",
+      "sourceLine": 422,
+      "summary": "Varsayılan timezone `Europe/Istanbul` olacaktır."
+    },
+    {
+      "id": "PROD-008",
+      "sourceLine": 424,
+      "summary": "Bütün timestamp değerleri database'de UTC tutulacaktır."
+    },
+    {
+      "id": "PROD-009",
+      "sourceLine": 426,
+      "summary": "Uygulama başlık ve entry tabanlı katılımcı sözlük olacaktır."
+    },
+    {
+      "id": "PROD-010",
+      "sourceLine": 428,
+      "summary": "Ekşi Sözlük'ün:"
+    },
+    {
+      "id": "PROD-011",
+      "sourceLine": 442,
+      "summary": "Yalnızca katılımcı sözlük ürün modeli örnek alınacaktır."
+    },
+    {
+      "id": "PROD-012",
+      "sourceLine": 444,
+      "summary": "Tasarım özgün, modern, erişilebilir ve içerik odaklı olacaktır."
+    },
+    {
+      "id": "PROD-013",
+      "sourceLine": 446,
+      "summary": "package.json içinde `\"private\": true` bulunacaktır."
+    },
+    {
+      "id": "PROD-014",
+      "sourceLine": 448,
+      "summary": "Otomatik LICENSE dosyası oluşturma."
+    },
+    {
+      "id": "PROFILE-001",
+      "sourceLine": 2091,
+      "summary": "Public profile:"
+    },
+    {
+      "id": "PROFILE-002",
+      "sourceLine": 2103,
+      "summary": "Email public response içinde asla görünmez."
+    },
+    {
+      "id": "PROFILE-003",
+      "sourceLine": 2105,
+      "summary": "Profile entry listesi paginate edilir."
+    },
+    {
+      "id": "PROFILE-004",
+      "sourceLine": 2107,
+      "summary": "Block action vardır."
+    },
+    {
+      "id": "PROFILE-005",
+      "sourceLine": 2109,
+      "summary": "Moderator/admin moderation shortcut görebilir."
+    },
+    {
+      "id": "QA-001",
+      "sourceLine": 2925,
+      "summary": "Production business logic mock'lanmaz."
+    },
+    {
+      "id": "QA-002",
+      "sourceLine": 2927,
+      "summary": "Tests independent."
+    },
+    {
+      "id": "QA-003",
+      "sourceLine": 2929,
+      "summary": "Test order independent."
+    },
+    {
+      "id": "QA-004",
+      "sourceLine": 2931,
+      "summary": "Fixed sleep yok."
+    },
+    {
+      "id": "QA-005",
+      "sourceLine": 2933,
+      "summary": "PostgreSQL test version 16."
+    },
+    {
+      "id": "QA-006",
+      "sourceLine": 2935,
+      "summary": "Global coverage:"
+    },
+    {
+      "id": "QA-007",
+      "sourceLine": 2942,
+      "summary": "Domain line coverage minimum 90%:"
+    },
+    {
+      "id": "QA-008",
+      "sourceLine": 2951,
+      "summary": "Threshold düşürülemez."
+    },
+    {
+      "id": "QA-009",
+      "sourceLine": 2953,
+      "summary": "Snapshot tek başına feature testi değildir."
+    },
+    {
+      "id": "QA-010",
+      "sourceLine": 2955,
+      "summary": "E2E gerçek browser ve gerçek PostgreSQL ile çalışır."
+    },
+    {
+      "id": "RATE-001",
+      "sourceLine": 2345,
+      "summary": "Register:"
+    },
+    {
+      "id": "RATE-002",
+      "sourceLine": 2350,
+      "summary": "Login:"
+    },
+    {
+      "id": "RATE-003",
+      "sourceLine": 2354,
+      "summary": "Topic create:"
+    },
+    {
+      "id": "RATE-004",
+      "sourceLine": 2358,
+      "summary": "Entry create:"
+    },
+    {
+      "id": "RATE-005",
+      "sourceLine": 2363,
+      "summary": "Entry edit/delete:"
+    },
+    {
+      "id": "RATE-006",
+      "sourceLine": 2367,
+      "summary": "Vote:"
+    },
+    {
+      "id": "RATE-007",
+      "sourceLine": 2371,
+      "summary": "Bookmark/follow/block:"
+    },
+    {
+      "id": "RATE-008",
+      "sourceLine": 2375,
+      "summary": "Report:"
+    },
+    {
+      "id": "RATE-009",
+      "sourceLine": 2379,
+      "summary": "Search:"
+    },
+    {
+      "id": "RATE-010",
+      "sourceLine": 2384,
+      "summary": "Moderation command:"
+    },
+    {
+      "id": "RATE-011",
+      "sourceLine": 2388,
+      "summary": "Increment atomik SQL."
+    },
+    {
+      "id": "RATE-012",
+      "sourceLine": 2390,
+      "summary": "Cleanup script:"
+    },
+    {
+      "id": "RATE-013",
+      "sourceLine": 2394,
+      "summary": "TRUST_PROXY=false default."
+    },
+    {
+      "id": "RATE-014",
+      "sourceLine": 2396,
+      "summary": "TRUST_PROXY=true ise TRUST_PROXY_HOPS kullan."
+    },
+    {
+      "id": "REPO-001",
+      "sourceLine": 76,
+      "summary": "Çalışmaya başlamadan önce mevcut çalışma klasörünün bu repository'nin"
+    },
+    {
+      "id": "REPO-002",
+      "sourceLine": 79,
+      "summary": "`git remote get-url origin` çıktısı aşağıdaki repository ile"
+    },
+    {
+      "id": "REPO-003",
+      "sourceLine": 88,
+      "summary": "Origin başka bir repository'yi gösteriyorsa o repository üzerinde"
+    },
+    {
+      "id": "REPO-004",
+      "sourceLine": 91,
+      "summary": "Repository henüz clone edilmemişse, GitHub erişimi mevcut olduğu"
+    },
+    {
+      "id": "REPO-005",
+      "sourceLine": 94,
+      "summary": "Repository boşsa projeyi sıfırdan oluştur."
+    },
+    {
+      "id": "REPO-006",
+      "sourceLine": 96,
+      "summary": "Repository'de mevcut kod varsa önce tamamını incele:"
+    },
+    {
+      "id": "REPO-007",
+      "sourceLine": 109,
+      "summary": "Kullanılabilir ve bu Goal ile uyumlu kodu koru."
+    },
+    {
+      "id": "REPO-008",
+      "sourceLine": 111,
+      "summary": "Uyumsuz, eksik veya hatalı kodu refactor et ya da değiştir."
+    },
+    {
+      "id": "REPO-009",
+      "sourceLine": 113,
+      "summary": "`main` üzerinde doğrudan geliştirme yapma."
+    },
+    {
+      "id": "REPO-010",
+      "sourceLine": 115,
+      "summary": "`codex/milestone-1` branch'ini `main` üzerinden oluştur ve bütün"
+    },
+    {
+      "id": "REPO-011",
+      "sourceLine": 118,
+      "summary": "`.git` klasörünü silme veya yeniden oluşturma."
+    },
+    {
+      "id": "REPO-012",
+      "sourceLine": 120,
+      "summary": "Git history rewrite etme."
+    },
+    {
+      "id": "REPO-013",
+      "sourceLine": 122,
+      "summary": "Force push yapma."
+    },
+    {
+      "id": "REPO-014",
+      "sourceLine": 124,
+      "summary": "Kullanıcıya ait mevcut commit'leri amend, rebase, squash veya değiştirme."
+    },
+    {
+      "id": "REPO-015",
+      "sourceLine": 126,
+      "summary": "Başlangıç durumunu `docs/STATUS.md` içine kaydet:"
+    },
+    {
+      "id": "REPO-016",
+      "sourceLine": 137,
+      "summary": "Mantıksal ve geri alınabilir commit'ler oluştur."
+    },
+    {
+      "id": "REPO-017",
+      "sourceLine": 153,
+      "summary": "Commit isimleri implementasyonun gerçek kapsamını yansıtmalıdır."
+    },
+    {
+      "id": "REPO-018",
+      "sourceLine": 155,
+      "summary": "Bilinçli olarak kırık build, başarısız test veya yarım required özellik"
+    },
+    {
+      "id": "REPO-019",
+      "sourceLine": 158,
+      "summary": "Her commit öncesi ilgili format, lint, typecheck ve testleri çalıştır."
+    },
+    {
+      "id": "REPO-020",
+      "sourceLine": 160,
+      "summary": "Final durumda working tree temiz olmalıdır."
+    },
+    {
+      "id": "REPO-021",
+      "sourceLine": 162,
+      "summary": "GitHub erişimi mevcutsa working branch'i aşağıdaki remote branch'e push et:"
+    },
+    {
+      "id": "REPO-022",
+      "sourceLine": 166,
+      "summary": "GitHub erişimi mevcutsa `main` branch'ine yönelik draft pull request"
+    },
+    {
+      "id": "REPO-023",
+      "sourceLine": 189,
+      "summary": "`main` branch'ine merge yapma."
+    },
+    {
+      "id": "REPO-024",
+      "sourceLine": 191,
+      "summary": "Pull request'i draft durumundan çıkarma."
+    },
+    {
+      "id": "REPO-025",
+      "sourceLine": 193,
+      "summary": "GitHub üzerinde issue, discussion, release, package, deployment,"
+    },
+    {
+      "id": "REPO-026",
+      "sourceLine": 197,
+      "summary": "GitHub Actions workflow dosyaları repository içinde oluşturulabilir;"
+    },
+    {
+      "id": "REPO-027",
+      "sourceLine": 201,
+      "summary": "Push veya pull request yetkisi yoksa görevi durdurma. Local branch ve"
+    },
+    {
+      "id": "REPORT-001",
+      "sourceLine": 1787,
+      "summary": "ACTIVE kullanıcı TOPIC, ENTRY ve USER report edebilir."
+    },
+    {
+      "id": "REPORT-002",
+      "sourceLine": 1789,
+      "summary": "Kullanıcı kendisini report edemez."
+    },
+    {
+      "id": "REPORT-003",
+      "sourceLine": 1791,
+      "summary": "Kullanıcı kendi entry veya kendi açtığı topic'i report edemez."
+    },
+    {
+      "id": "REPORT-004",
+      "sourceLine": 1793,
+      "summary": "Duplicate OPEN report 409 REPORT_ALREADY_OPEN."
+    },
+    {
+      "id": "REPORT-005",
+      "sourceLine": 1795,
+      "summary": "Report create transaction:"
+    },
+    {
+      "id": "SCRIPT-001",
+      "sourceLine": 2758,
+      "summary": "`pnpm check`:"
+    },
+    {
+      "id": "SCRIPT-002",
+      "sourceLine": 2769,
+      "summary": "`pnpm verify:m1`:"
+    },
+    {
+      "id": "SEARCH-001",
+      "sourceLine": 1683,
+      "summary": "Global search:"
+    },
+    {
+      "id": "SEARCH-002",
+      "sourceLine": 1691,
+      "summary": "Query normalization:"
+    },
+    {
+      "id": "SEARCH-003",
+      "sourceLine": 1699,
+      "summary": "İki karakterden kısa query database sorgusu çalıştırmaz."
+    },
+    {
+      "id": "SEARCH-004",
+      "sourceLine": 1701,
+      "summary": "Türkçe karakter ve case-insensitive search."
+    },
+    {
+      "id": "SEARCH-005",
+      "sourceLine": 1703,
+      "summary": "pg_trgm, normalized fields ve unaccent kullan."
+    },
+    {
+      "id": "SEARCH-006",
+      "sourceLine": 1705,
+      "summary": "Search type:"
+    },
+    {
+      "id": "SEARCH-007",
+      "sourceLine": 1712,
+      "summary": "20'li pagination."
+    },
+    {
+      "id": "SEARCH-008",
+      "sourceLine": 1714,
+      "summary": "Result:"
+    },
+    {
+      "id": "SEARCH-009",
+      "sourceLine": 1722,
+      "summary": "Entry snippet maksimum 180 karakter."
+    },
+    {
+      "id": "SEARCH-010",
+      "sourceLine": 1724,
+      "summary": "Ranking:"
+    },
+    {
+      "id": "SEC-001",
+      "sourceLine": 2402,
+      "summary": "Parameterized Prisma/raw query."
+    },
+    {
+      "id": "SEC-002",
+      "sourceLine": 2404,
+      "summary": "`$queryRawUnsafe` ve `$executeRawUnsafe` yasak."
+    },
+    {
+      "id": "SEC-003",
+      "sourceLine": 2406,
+      "summary": "User input `dangerouslySetInnerHTML` ile render edilmez."
+    },
+    {
+      "id": "SEC-004",
+      "sourceLine": 2408,
+      "summary": "Session, CSRF, password, status ve role server-side doğrulanır."
+    },
+    {
+      "id": "SEC-005",
+      "sourceLine": 2410,
+      "summary": "Bütün write endpoint'lerinde authentication ve authorization."
+    },
+    {
+      "id": "SEC-006",
+      "sourceLine": 2412,
+      "summary": "Production security headers:"
+    },
+    {
+      "id": "SEC-007",
+      "sourceLine": 2422,
+      "summary": "CSP:"
+    },
+    {
+      "id": "SEC-008",
+      "sourceLine": 2433,
+      "summary": "Open redirect önlenir."
+    },
+    {
+      "id": "SEC-009",
+      "sourceLine": 2435,
+      "summary": "Production logs şunları içermez:"
+    },
+    {
+      "id": "SEC-010",
+      "sourceLine": 2446,
+      "summary": "Production Prisma query log kapalı."
+    },
+    {
+      "id": "SEC-011",
+      "sourceLine": 2448,
+      "summary": "Generic 500 stack trace döndürmez."
+    },
+    {
+      "id": "SEC-012",
+      "sourceLine": 2450,
+      "summary": "Account enumeration önlenir."
+    },
+    {
+      "id": "SEC-013",
+      "sourceLine": 2452,
+      "summary": "Safe user serialization explicit select kullanır."
+    },
+    {
+      "id": "SEC-014",
+      "sourceLine": 2454,
+      "summary": "Secret repository'ye yazılmaz."
+    },
+    {
+      "id": "SEC-015",
+      "sourceLine": 2456,
+      "summary": "`.env.example` gerçek secret içermez."
+    },
+    {
+      "id": "SEC-016",
+      "sourceLine": 2458,
+      "summary": "`.gitignore` şunları dışlar:"
+    },
+    {
+      "id": "SEC-017",
+      "sourceLine": 2469,
+      "summary": "Bütün moderation ve role mutation audit edilir."
+    },
+    {
+      "id": "SEC-018",
+      "sourceLine": 2471,
+      "summary": "Production dependency'lerinde kritik bilinen vulnerability bırakma."
+    },
+    {
+      "id": "SEC-019",
+      "sourceLine": 2473,
+      "summary": "Uygulama hiçbir harici analytics, telemetry veya tracking endpoint'ine"
+    },
+    {
+      "id": "SEED-001",
+      "sourceLine": 2685,
+      "summary": "Seed idempotent."
+    },
+    {
+      "id": "SEED-002",
+      "sourceLine": 2687,
+      "summary": "En az:"
+    },
+    {
+      "id": "SEED-003",
+      "sourceLine": 2701,
+      "summary": "Entry'ler son 7 güne yayılır."
+    },
+    {
+      "id": "SEED-004",
+      "sourceLine": 2703,
+      "summary": "DEBE için önceki gün pozitif entry vardır."
+    },
+    {
+      "id": "SEED-005",
+      "sourceLine": 2705,
+      "summary": "En az bir topic 20'den fazla entry içerir."
+    },
+    {
+      "id": "SEED-006",
+      "sourceLine": 2707,
+      "summary": "Demo users:"
+    },
+    {
+      "id": "SEED-007",
+      "sourceLine": 2713,
+      "summary": "Password DEMO_PASSWORD."
+    },
+    {
+      "id": "SEED-008",
+      "sourceLine": 2715,
+      "summary": "Özgün Türkçe içerik."
+    },
+    {
+      "id": "SEED-009",
+      "sourceLine": 2717,
+      "summary": "Gerçek Ekşi Sözlük içeriği yok."
+    },
+    {
+      "id": "SEED-010",
+      "sourceLine": 2719,
+      "summary": "Lorem ipsum yok."
+    },
+    {
+      "id": "SEED-011",
+      "sourceLine": 2721,
+      "summary": "Gerçek kişisel veri, hedefli hakaret veya nefret söylemi yok."
+    },
+    {
+      "id": "SEED-012",
+      "sourceLine": 2723,
+      "summary": "İkinci seed run duplicate oluşturmaz."
+    },
+    {
+      "id": "SEO-001",
+      "sourceLine": 2529,
+      "summary": "Her public sayfada title ve description."
+    },
+    {
+      "id": "SEO-002",
+      "sourceLine": 2531,
+      "summary": "Topic dynamic metadata ve canonical."
+    },
+    {
+      "id": "SEO-003",
+      "sourceLine": 2533,
+      "summary": "Entry permalink canonical."
+    },
+    {
+      "id": "SEO-004",
+      "sourceLine": 2535,
+      "summary": "Public content için Open Graph."
+    },
+    {
+      "id": "SEO-005",
+      "sourceLine": 2537,
+      "summary": "robots.txt."
+    },
+    {
+      "id": "SEO-006",
+      "sourceLine": 2539,
+      "summary": "sitemap.xml:"
+    },
+    {
+      "id": "SEO-007",
+      "sourceLine": 2544,
+      "summary": "Auth/account/moderation noindex."
+    },
+    {
+      "id": "SEO-008",
+      "sourceLine": 2546,
+      "summary": "HIDDEN, DELETED ve MERGED sitemap dışı."
+    },
+    {
+      "id": "SEO-009",
+      "sourceLine": 2548,
+      "summary": "Doğru 404 ve redirect status'ları."
+    },
+    {
+      "id": "TECH-001",
+      "sourceLine": 572,
+      "summary": "Runtime: Node.js 22."
+    },
+    {
+      "id": "TECH-002",
+      "sourceLine": 574,
+      "summary": "Package manager: pnpm 10 ve Corepack."
+    },
+    {
+      "id": "TECH-003",
+      "sourceLine": 576,
+      "summary": "Framework: Next.js App Router."
+    },
+    {
+      "id": "TECH-004",
+      "sourceLine": 578,
+      "summary": "UI: React."
+    },
+    {
+      "id": "TECH-005",
+      "sourceLine": 580,
+      "summary": "Language: TypeScript."
+    },
+    {
+      "id": "TECH-006",
+      "sourceLine": 582,
+      "summary": "TypeScript config:"
+    },
+    {
+      "id": "TECH-007",
+      "sourceLine": 590,
+      "summary": "Database: PostgreSQL 16."
+    },
+    {
+      "id": "TECH-008",
+      "sourceLine": 592,
+      "summary": "Docker database image: postgres:16-alpine."
+    },
+    {
+      "id": "TECH-009",
+      "sourceLine": 594,
+      "summary": "ORM ve migration: Prisma."
+    },
+    {
+      "id": "TECH-010",
+      "sourceLine": 596,
+      "summary": "Authentication: repository içinde geliştirilen opaque session token"
+    },
+    {
+      "id": "TECH-011",
+      "sourceLine": 599,
+      "summary": "Password hashing: `@node-rs/argon2`, Argon2id."
+    },
+    {
+      "id": "TECH-012",
+      "sourceLine": 601,
+      "summary": "Schema validation: Zod."
+    },
+    {
+      "id": "TECH-013",
+      "sourceLine": 603,
+      "summary": "Styling: Tailwind CSS."
+    },
+    {
+      "id": "TECH-014",
+      "sourceLine": 605,
+      "summary": "Accessible UI primitives: Radix UI."
+    },
+    {
+      "id": "TECH-015",
+      "sourceLine": 607,
+      "summary": "Forms: React Hook Form ve Zod resolver."
+    },
+    {
+      "id": "TECH-016",
+      "sourceLine": 609,
+      "summary": "Icons: Lucide React."
+    },
+    {
+      "id": "TECH-017",
+      "sourceLine": 611,
+      "summary": "Toast: Sonner."
+    },
+    {
+      "id": "TECH-018",
+      "sourceLine": 613,
+      "summary": "Dates: date-fns ve Türkçe locale."
+    },
+    {
+      "id": "TECH-019",
+      "sourceLine": 615,
+      "summary": "URL detection: linkify-it."
+    },
+    {
+      "id": "TECH-020",
+      "sourceLine": 617,
+      "summary": "Logging: Pino."
+    },
+    {
+      "id": "TECH-021",
+      "sourceLine": 619,
+      "summary": "Unit ve integration: Vitest."
+    },
+    {
+      "id": "TECH-022",
+      "sourceLine": 621,
+      "summary": "Component tests: React Testing Library."
+    },
+    {
+      "id": "TECH-023",
+      "sourceLine": 623,
+      "summary": "E2E: Playwright."
+    },
+    {
+      "id": "TECH-024",
+      "sourceLine": 625,
+      "summary": "Accessibility test: axe-core ve Playwright axe entegrasyonu."
+    },
+    {
+      "id": "TECH-025",
+      "sourceLine": 627,
+      "summary": "API specification: OpenAPI 3.1."
+    },
+    {
+      "id": "TECH-026",
+      "sourceLine": 629,
+      "summary": "OpenAPI validation: Swagger Parser."
+    },
+    {
+      "id": "TECH-027",
+      "sourceLine": 631,
+      "summary": "Lint: ESLint."
+    },
+    {
+      "id": "TECH-028",
+      "sourceLine": 633,
+      "summary": "Formatting: Prettier."
+    },
+    {
+      "id": "TECH-029",
+      "sourceLine": 635,
+      "summary": "Container: Docker ve Docker Compose."
+    },
+    {
+      "id": "TECH-030",
+      "sourceLine": 637,
+      "summary": "CI: GitHub Actions."
+    },
+    {
+      "id": "TECH-031",
+      "sourceLine": 639,
+      "summary": "Next.js production build `output: \"standalone\"` kullanacaktır."
+    },
+    {
+      "id": "TECH-032",
+      "sourceLine": 641,
+      "summary": "Node runtime kullanılacaktır; Edge runtime kullanma."
+    },
+    {
+      "id": "TECH-033",
+      "sourceLine": 643,
+      "summary": "Redux, Zustand veya başka global client state manager ekleme."
+    },
+    {
+      "id": "TECH-034",
+      "sourceLine": 645,
+      "summary": "Server Components, URL state, local component state ve server actions"
+    },
+    {
+      "id": "TOPIC-001",
+      "sourceLine": 1429,
+      "summary": "Yeni topic ve ilk entry aynı transaction içinde oluşturulmalıdır."
+    },
+    {
+      "id": "TOPIC-002",
+      "sourceLine": 1431,
+      "summary": "İlk entry olmadan topic oluşturulamaz."
+    },
+    {
+      "id": "TOPIC-003",
+      "sourceLine": 1433,
+      "summary": "Topic title 2–100 normalized karakter."
+    },
+    {
+      "id": "TOPIC-004",
+      "sourceLine": 1435,
+      "summary": "Duplicate normalizedTitle oluşturulamaz."
+    },
+    {
+      "id": "TOPIC-005",
+      "sourceLine": 1437,
+      "summary": "TopicAlias ile çakışan topic oluşturulamaz."
+    },
+    {
+      "id": "TOPIC-006",
+      "sourceLine": 1439,
+      "summary": "Duplicate API response:"
+    },
+    {
+      "id": "TOPIC-007",
+      "sourceLine": 1447,
+      "summary": "Duplicate topic UI:"
+    },
+    {
+      "id": "TOPIC-008",
+      "sourceLine": 1453,
+      "summary": "Topic sayfası:"
+    },
+    {
+      "id": "TOPIC-009",
+      "sourceLine": 1466,
+      "summary": "Sort:"
+    },
+    {
+      "id": "TOPIC-010",
+      "sourceLine": 1485,
+      "summary": "Default sort `oldest`."
+    },
+    {
+      "id": "TOPIC-011",
+      "sourceLine": 1487,
+      "summary": "Default page size 20, maksimum 100."
+    },
+    {
+      "id": "TOPIC-012",
+      "sourceLine": 1489,
+      "summary": "Pagination URL'de:"
+    },
+    {
+      "id": "TOPIC-013",
+      "sourceLine": 1493,
+      "summary": "Topic search `?q=` ile ACTIVE entry body içinde arama yapar."
+    },
+    {
+      "id": "TOPIC-014",
+      "sourceLine": 1495,
+      "summary": "HIDDEN topic:"
+    },
+    {
+      "id": "TOPIC-015",
+      "sourceLine": 1502,
+      "summary": "MERGED topic URL'si target'a 308 redirect olur."
+    },
+    {
+      "id": "TOPIC-016",
+      "sourceLine": 1504,
+      "summary": "Topic rename:"
+    },
+    {
+      "id": "TOPIC-017",
+      "sourceLine": 1516,
+      "summary": "Topic merge:"
+    },
+    {
+      "id": "TOPIC-018",
+      "sourceLine": 1533,
+      "summary": "Random topic `ORDER BY random()` kullanmamalıdır."
+    },
+    {
+      "id": "TRACE-001",
+      "sourceLine": 3152,
+      "summary": "Goal içindeki bütün `[ID-001]` biçimindeki requirement ID'lerini"
+    },
+    {
+      "id": "TRACE-002",
+      "sourceLine": 3155,
+      "summary": "M1_REQUIREMENTS hiçbir ID atlamaz."
+    },
+    {
+      "id": "TRACE-003",
+      "sourceLine": 3157,
+      "summary": "TRACEABILITY her ID için:"
+    },
+    {
+      "id": "TRACE-004",
+      "sourceLine": 3163,
+      "summary": "Implementasyon yoksa PASS yasak."
+    },
+    {
+      "id": "TRACE-005",
+      "sourceLine": 3165,
+      "summary": "Test gerektiren requirement test olmadan PASS yasak."
+    },
+    {
+      "id": "TRACE-006",
+      "sourceLine": 3167,
+      "summary": "`tests/requirements/traceability.test.ts` manifest, requirements ve"
+    },
+    {
+      "id": "TRACE-007",
+      "sourceLine": 3170,
+      "summary": "Eksik veya duplicate ID test fail eder."
+    },
+    {
+      "id": "TRACE-008",
+      "sourceLine": 3172,
+      "summary": "FAIL/BLOCKED varsa requirements:check fail eder."
+    },
+    {
+      "id": "TRACE-009",
+      "sourceLine": 3174,
+      "summary": "Finalde tüm requirement'lar PASS olmalıdır."
+    },
+    {
+      "id": "UI-001",
+      "sourceLine": 1983,
+      "summary": "Desktop:"
+    },
+    {
+      "id": "UI-002",
+      "sourceLine": 1990,
+      "summary": "Header:"
+    },
+    {
+      "id": "UI-003",
+      "sourceLine": 2001,
+      "summary": "Sidebar:"
+    },
+    {
+      "id": "UI-004",
+      "sourceLine": 2010,
+      "summary": "Homepage:"
+    },
+    {
+      "id": "UI-005",
+      "sourceLine": 2019,
+      "summary": "Mobile:"
+    },
+    {
+      "id": "UI-006",
+      "sourceLine": 2029,
+      "summary": "1024px altında sidebar drawer olur."
+    },
+    {
+      "id": "UI-007",
+      "sourceLine": 2031,
+      "summary": "Light palette:"
+    },
+    {
+      "id": "UI-008",
+      "sourceLine": 2042,
+      "summary": "Dark palette:"
+    },
+    {
+      "id": "UI-009",
+      "sourceLine": 2053,
+      "summary": "System font stack; remote font yok."
+    },
+    {
+      "id": "UI-010",
+      "sourceLine": 2055,
+      "summary": "Default theme system preference."
+    },
+    {
+      "id": "UI-011",
+      "sourceLine": 2057,
+      "summary": "Theme cookie ve localStorage ile saklanır; flash oluşmaz."
+    },
+    {
+      "id": "UI-012",
+      "sourceLine": 2059,
+      "summary": "Bütün form alanları:"
+    },
+    {
+      "id": "UI-013",
+      "sourceLine": 2068,
+      "summary": "Destructive action confirmation dialog."
+    },
+    {
+      "id": "UI-014",
+      "sourceLine": 2070,
+      "summary": "Optimistic UI kullanılıyorsa rollback zorunlu; mümkünse server"
+    },
+    {
+      "id": "UI-015",
+      "sourceLine": 2073,
+      "summary": "Keyboard navigation."
+    },
+    {
+      "id": "UI-016",
+      "sourceLine": 2075,
+      "summary": "Visible focus ring."
+    },
+    {
+      "id": "UI-017",
+      "sourceLine": 2077,
+      "summary": "Icon-only button accessible name."
+    },
+    {
+      "id": "UI-018",
+      "sourceLine": 2079,
+      "summary": "WCAG AA contrast."
+    },
+    {
+      "id": "UI-019",
+      "sourceLine": 2081,
+      "summary": "Semantik heading ve tek h1."
+    },
+    {
+      "id": "UI-020",
+      "sourceLine": 2083,
+      "summary": "Moderation table'ları için mobile card görünümü."
+    },
+    {
+      "id": "UI-021",
+      "sourceLine": 2085,
+      "summary": "İngilizce placeholder veya validation mesajı bırakma."
+    },
+    {
+      "id": "UT-001",
+      "sourceLine": 2792,
+      "summary": "Türkçe topic normalization."
+    },
+    {
+      "id": "UT-002",
+      "sourceLine": 2793,
+      "summary": "İ, I, ı, i davranışı."
+    },
+    {
+      "id": "UT-003",
+      "sourceLine": 2794,
+      "summary": "Unicode NFKC."
+    },
+    {
+      "id": "UT-004",
+      "sourceLine": 2795,
+      "summary": "Whitespace normalization."
+    },
+    {
+      "id": "UT-005",
+      "sourceLine": 2796,
+      "summary": "Slug generation."
+    },
+    {
+      "id": "UT-006",
+      "sourceLine": 2797,
+      "summary": "Topic duplicate."
+    },
+    {
+      "id": "UT-007",
+      "sourceLine": 2798,
+      "summary": "TopicAlias duplicate."
+    },
+    {
+      "id": "UT-008",
+      "sourceLine": 2799,
+      "summary": "Entry validation."
+    },
+    {
+      "id": "UT-009",
+      "sourceLine": 2800,
+      "summary": "HTML escaping."
+    },
+    {
+      "id": "UT-010",
+      "sourceLine": 2801,
+      "summary": "Unsafe URL scheme blocking."
+    },
+    {
+      "id": "UT-011",
+      "sourceLine": 2802,
+      "summary": "External URL rel attributes."
+    },
+    {
+      "id": "UT-012",
+      "sourceLine": 2803,
+      "summary": "`[[topic]]` parsing."
+    },
+    {
+      "id": "UT-013",
+      "sourceLine": 2804,
+      "summary": "`@username` parsing."
+    },
+    {
+      "id": "UT-014",
+      "sourceLine": 2805,
+      "summary": "Permission matrix."
+    },
+    {
+      "id": "UT-015",
+      "sourceLine": 2806,
+      "summary": "Last admin guard."
+    },
+    {
+      "id": "UT-016",
+      "sourceLine": 2807,
+      "summary": "Vote state transitions."
+    },
+    {
+      "id": "UT-017",
+      "sourceLine": 2808,
+      "summary": "Counter calculation."
+    },
+    {
+      "id": "UT-018",
+      "sourceLine": 2809,
+      "summary": "Trending formula."
+    },
+    {
+      "id": "UT-019",
+      "sourceLine": 2810,
+      "summary": "DEBE Istanbul date boundary."
+    },
+    {
+      "id": "UT-020",
+      "sourceLine": 2811,
+      "summary": "Search normalization."
+    },
+    {
+      "id": "UT-021",
+      "sourceLine": 2812,
+      "summary": "Search ranking."
+    },
+    {
+      "id": "UT-022",
+      "sourceLine": 2813,
+      "summary": "Rate limit boundaries."
+    },
+    {
+      "id": "UT-023",
+      "sourceLine": 2814,
+      "summary": "Idempotency hash/conflict."
+    },
+    {
+      "id": "UT-024",
+      "sourceLine": 2815,
+      "summary": "API error mapping."
+    },
+    {
+      "id": "UT-025",
+      "sourceLine": 2816,
+      "summary": "Session token hash."
+    },
+    {
+      "id": "UT-026",
+      "sourceLine": 2817,
+      "summary": "CSRF validation."
+    },
+    {
+      "id": "UT-027",
+      "sourceLine": 2818,
+      "summary": "Open redirect prevention."
+    },
+    {
+      "id": "UT-028",
+      "sourceLine": 2819,
+      "summary": "Safe user serialization."
+    },
+    {
+      "id": "VOTE-001",
+      "sourceLine": 1637,
+      "summary": "Kullanıcı başına entry'de bir aktif oy."
+    },
+    {
+      "id": "VOTE-002",
+      "sourceLine": 1639,
+      "summary": "Value yalnızca 1 veya -1."
+    },
+    {
+      "id": "VOTE-003",
+      "sourceLine": 1641,
+      "summary": "Aynı oy tekrar gönderilirse idempotent success."
+    },
+    {
+      "id": "VOTE-004",
+      "sourceLine": 1643,
+      "summary": "Farklı oy mevcut oyu update eder."
+    },
+    {
+      "id": "VOTE-005",
+      "sourceLine": 1645,
+      "summary": "Vote delete, oy yoksa idempotent success."
+    },
+    {
+      "id": "VOTE-006",
+      "sourceLine": 1647,
+      "summary": "Own entry vote yasak."
+    },
+    {
+      "id": "VOTE-007",
+      "sourceLine": 1649,
+      "summary": "HIDDEN veya DELETED entry vote yasak."
+    },
+    {
+      "id": "VOTE-008",
+      "sourceLine": 1651,
+      "summary": "Score ve vote counter'ları transaction içinde atomik update."
+    },
+    {
+      "id": "VOTE-009",
+      "sourceLine": 1653,
+      "summary": "Her state değişikliği entry.voted outbox üretir."
+    }
+  ]
+}
