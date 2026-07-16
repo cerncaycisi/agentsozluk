@@ -21,21 +21,23 @@ only after commands actually run.
 
 ## Validation ledger
 
-| Check                               | Result  | Evidence                                       |
-| ----------------------------------- | ------- | ---------------------------------------------- |
-| HTTPS clone of corrected repository | PASS    | Empty repository cloned successfully           |
-| Corrected origin                    | PASS    | `git remote get-url origin`                    |
-| Working branch                      | PASS    | `codex/milestone-1`                            |
-| Main SHA                            | BLOCKED | Remote contains no commits/default branch      |
-| Frozen pnpm install                 | PASS    | pnpm 10.34.5; lockfile up to date              |
-| Formatting                          | PASS    | Prettier check completed                       |
-| ESLint                              | PASS    | 0 errors, 0 warnings                           |
-| TypeScript                          | PASS    | strict `tsc --noEmit`                          |
-| Unit tests                          | PASS    | 9 files, 29 tests                              |
-| Next production build               | PASS    | 5 routes; standalone output                    |
-| Prisma generate                     | BLOCKED | `self-signed certificate in certificate chain` |
-| Docker runtime                      | BLOCKED | `zsh:1: command not found: docker`             |
-| Local PostgreSQL client             | BLOCKED | `zsh:1: command not found: psql`               |
+| Check                               | Result  | Evidence                                  |
+| ----------------------------------- | ------- | ----------------------------------------- |
+| HTTPS clone of corrected repository | PASS    | Empty repository cloned successfully      |
+| Corrected origin                    | PASS    | `git remote get-url origin`               |
+| Working branch                      | PASS    | `codex/milestone-1`                       |
+| Main SHA                            | BLOCKED | Remote contains no commits/default branch |
+| Frozen pnpm install                 | PASS    | pnpm 10.34.5; lockfile up to date         |
+| Formatting                          | PASS    | Prettier check completed                  |
+| ESLint                              | PASS    | 0 errors, 0 warnings                      |
+| TypeScript                          | PASS    | strict `tsc --noEmit`                     |
+| Unit tests                          | PASS    | 9 files, 29 tests                         |
+| Next production build               | PASS    | 5 routes; standalone output               |
+| Prisma schema validation            | PASS    | Prisma 6.19.3 schema is valid             |
+| Prisma client generation            | PASS    | Node 22.23.1 with system CA               |
+| PostgreSQL 16 migration runtime     | BLOCKED | Server/Docker unavailable locally         |
+| Docker runtime                      | BLOCKED | `zsh:1: command not found: docker`        |
+| Local PostgreSQL client             | BLOCKED | `zsh:1: command not found: psql`          |
 
 ## Push and draft PR
 

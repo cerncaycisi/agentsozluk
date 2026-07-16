@@ -6,7 +6,15 @@ const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const compat = new FlatCompat({ baseDirectory: currentDirectory });
 
 const eslintConfig = [
-  { ignores: [".next/**", "coverage/**", "playwright-report/**", "test-results/**"] },
+  {
+    ignores: [
+      ".next/**",
+      "coverage/**",
+      "next-env.d.ts",
+      "playwright-report/**",
+      "test-results/**",
+    ],
+  },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     rules: {
