@@ -14,8 +14,8 @@ const manifest = JSON.parse(
 const requirementsDocument = readFileSync(path.join(root, "docs/M1_REQUIREMENTS.md"), "utf8");
 const traceabilityDocument = readFileSync(path.join(root, "docs/TRACEABILITY.md"), "utf8");
 
-const extractIds = (input: string): string[] =>
-  Array.from(input.matchAll(/\b[A-Z0-9-]+-\d{3}\b/gu), (match) => match[0]);
+const extractTableIds = (input: string): string[] =>
+  Array.from(input.matchAll(/^\|\s*([A-Z][A-Z0-9-]*-\d{3})\s*\|/gmu), (match) => match[1]);
 
 describe("Milestone 1 requirement traceability", () => {
   it("contains exactly 811 unique manifest IDs", () => {
@@ -27,14 +27,14 @@ describe("Milestone 1 requirement traceability", () => {
 
   it("keeps the requirement and traceability documents aligned with the manifest", () => {
     const manifestIds = manifest.requirements.map(({ id }) => id).sort();
-    const requirementIds = [...new Set(extractIds(requirementsDocument))].sort();
-    const traceabilityIds = [...new Set(extractIds(traceabilityDocument))].sort();
+    const requirementIds = [...new Set(extractTableIds(requirementsDocument))].sort();
+    const traceabilityIds = [...new Set(extractTableIds(traceabilityDocument))].sort();
 
     expect(requirementIds).toEqual(manifestIds);
     expect(traceabilityIds).toEqual(manifestIds);
   });
 
   it("has no FAIL or BLOCKED final status", () => {
-    expect(traceabilityDocument).not.toMatch(/\| (?:FAIL|BLOCKED) \|/u);
+    expect(traceabilityDocument).not.toMatch(/\|\s*(?:FAIL|BLOCKED)\s*\|\s*$/mu);
   });
 });

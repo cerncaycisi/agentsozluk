@@ -5,6 +5,8 @@ import { PaginationLinks } from "@/components/ui/pagination-links";
 import { getDatabase } from "@/lib/db/client";
 import { AppError } from "@/lib/http/errors";
 import { getPublicProfile } from "@/modules/users/application/profiles";
+import { currentPageSession } from "@/lib/auth/server-session";
+import { ProfileActions } from "@/components/users/profile-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,18 @@ export default async function PublicProfilePage({
     throw error;
   }
   const totalPages = Math.max(1, Math.ceil(result.totalItems / pageSize));
+  const session = await currentPageSession();
+  const ownProfile = session?.userId === result.profile.id;
+  const blocked =
+    session && !ownProfile
+      ? Boolean(
+          await getDatabase().userBlock.findUnique({
+            where: {
+              blockerId_blockedId: { blockerId: session.userId, blockedId: result.profile.id },
+            },
+          }),
+        )
+      : false;
   return (
     <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
       <header className="surface-card p-6 sm:p-8">
@@ -73,6 +87,14 @@ export default async function PublicProfilePage({
             </dd>
           </div>
         </dl>
+        {session && !ownProfile && session.user.status === "ACTIVE" ? (
+          <ProfileActions
+            userId={result.profile.id}
+            username={result.profile.username}
+            initialBlocked={blocked}
+            canModerate={session.user.role === "MODERATOR" || session.user.role === "ADMIN"}
+          />
+        ) : null}
       </header>
       <section aria-labelledby="son-entryler" className="mt-10">
         <h2 id="son-entryler" className="text-2xl font-black">

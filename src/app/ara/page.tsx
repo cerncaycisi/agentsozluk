@@ -87,7 +87,7 @@ export default async function SearchPage({
         <div className="mt-4 space-y-3">
           {result.results.map((item) => (
             <article key={`${item.type}-${item.id}`} className="surface-card p-5">
-              <p className="text-xs font-bold uppercase tracking-wide text-accent">
+              <p className="text-accent-contrast text-xs font-bold uppercase tracking-wide">
                 {resultLabels[item.type]}
               </p>
               <h3 className="mt-1 text-lg font-bold">

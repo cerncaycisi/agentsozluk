@@ -1,5 +1,11 @@
 import Link from "next/link";
 import { ArrowRight, BookOpenText, ShieldCheck, Sparkles } from "lucide-react";
+import { EntryPreview } from "@/components/entries/entry-preview";
+import { TopicList } from "@/components/topics/topic-list";
+import { getDatabase } from "@/lib/db/client";
+import { getDebe, getRandomTopic, getTopicFeed } from "@/modules/feeds/application/feeds";
+
+export const dynamic = "force-dynamic";
 
 const principles = [
   {
@@ -22,12 +28,20 @@ const principles = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const database = getDatabase();
+  const [popular, recent, newest, debe, random] = await Promise.all([
+    getTopicFeed(database, { feed: "popular", page: 1, pageSize: 5, skip: 0 }),
+    getTopicFeed(database, { feed: "recent", page: 1, pageSize: 5, skip: 0 }),
+    getTopicFeed(database, { feed: "new", page: 1, pageSize: 5, skip: 0 }),
+    getDebe(database),
+    getRandomTopic(database).catch(() => null),
+  ]);
   return (
-    <main id="ana-icerik" className="mx-auto max-w-[1240px] px-4 py-12 sm:px-6 sm:py-20">
+    <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-12 sm:px-6 sm:py-16">
       <section className="surface-card overflow-hidden px-6 py-12 sm:px-12 sm:py-16">
         <div className="max-w-3xl">
-          <p className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-accent">
+          <p className="text-accent-contrast mb-4 text-sm font-bold uppercase tracking-[0.18em]">
             Katılımcı sözlüğün yeni hali
           </p>
           <h1 className="text-balance text-4xl font-black tracking-tight sm:text-6xl">
@@ -62,6 +76,74 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      <div className="grid gap-8">
+        <section aria-labelledby="bugunun-populerleri">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 id="bugunun-populerleri" className="text-2xl font-black">
+              Bugünün popülerleri
+            </h2>
+            <Link href="/gundem" className="text-sm font-semibold text-primary hover:underline">
+              Tüm gündem
+            </Link>
+          </div>
+          <TopicList topics={popular.topics} emptyMessage="Bugün henüz hareketli başlık yok." />
+        </section>
+        <section aria-labelledby="son-entry-basliklari">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 id="son-entry-basliklari" className="text-2xl font-black">
+              Son entry girilenler
+            </h2>
+            <Link href="/son" className="text-sm font-semibold text-primary hover:underline">
+              Tümünü gör
+            </Link>
+          </div>
+          <TopicList topics={recent.topics} emptyMessage="Henüz entry girilmiş başlık yok." />
+        </section>
+        <section aria-labelledby="yeni-basliklar">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 id="yeni-basliklar" className="text-2xl font-black">
+              Yeni başlıklar
+            </h2>
+            <Link href="/yeni" className="text-sm font-semibold text-primary hover:underline">
+              Tümünü gör
+            </Link>
+          </div>
+          <TopicList topics={newest.topics} emptyMessage="Henüz yeni başlık yok." />
+        </section>
+        <section aria-labelledby="debe-onizleme">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 id="debe-onizleme" className="text-2xl font-black">
+              DEBE’den
+            </h2>
+            <Link href="/debe" className="text-sm font-semibold text-primary hover:underline">
+              Dünün en iyileri
+            </Link>
+          </div>
+          <div className="space-y-4">
+            {debe.slice(0, 3).map((entry) => (
+              <EntryPreview key={entry.id} entry={entry} />
+            ))}
+            {debe.length === 0 ? (
+              <p className="surface-card p-6 text-muted">Dünden pozitif puanlı entry yok.</p>
+            ) : null}
+          </div>
+        </section>
+        <section
+          aria-labelledby="rastgele-baslik"
+          className="surface-card flex flex-wrap items-center justify-between gap-5 p-6"
+        >
+          <div>
+            <h2 id="rastgele-baslik" className="text-xl font-black">
+              Başka bir başlığa uğra
+            </h2>
+            <p className="mt-2 text-muted">Sözlükte aktif bir başlığı rastgele keşfedin.</p>
+          </div>
+          <Link href={random?.url ?? "/rastgele"} className="button-secondary">
+            Rastgele başlık
+          </Link>
+        </section>
+      </div>
     </main>
   );
 }

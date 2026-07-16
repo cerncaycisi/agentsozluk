@@ -16,10 +16,11 @@
 
 ## Current phase
 
-Foundation, database, authentication, topic/entry/interactions, search, feeds, profiles, reports and
-moderation services are implemented. PostgreSQL 16 migration, double seed, counter consistency and
-the Phase 6 integration suite run locally. Public/account/moderation UI and E2E work are the next
-active phase. Validation results are recorded only after commands actually run.
+Foundation, database, authentication, topic/entry/interactions, search, feeds, profiles, reports,
+moderation services and the public/account/moderation UI are implemented. PostgreSQL 16 migration,
+double seed, counter consistency, the Phase 6 integration suite and the Phase 7 browser suite run
+locally. REST/OpenAPI, idempotency and transactional outbox work are the next active phase.
+Validation results are recorded only after commands actually run.
 
 ## Validation ledger
 
@@ -35,7 +36,10 @@ active phase. Validation results are recorded only after commands actually run.
 | TypeScript                          | PASS        | strict `tsc --noEmit`                       |
 | Unit tests                          | PASS        | 21 files, 55 tests                          |
 | PostgreSQL integration tests        | PASS        | 1 file, 16 tests                            |
-| Next production build               | PASS        | 35 static generation steps; standalone      |
+| Next production build               | PASS        | 40 static generation steps; 76 app routes   |
+| Playwright E2E                      | PASS        | 21 passed; 3 project-specific skips         |
+| Public axe gate                     | PASS        | serious and critical violations: 0          |
+| Auth/account/moderation axe gate    | PASS        | serious and critical violations: 0          |
 | Prisma schema validation            | PASS        | Prisma 6.19.3 schema is valid               |
 | Prisma client generation            | PASS        | Node 22.23.1 with system CA                 |
 | PostgreSQL 16 migration runtime     | PASS        | PostgreSQL 16.14; initial migration applied |
@@ -46,7 +50,7 @@ active phase. Validation results are recorded only after commands actually run.
 | Docker Compose runtime              | PASS        | Compose 5.3.1                               |
 | Docker container smoke              | PASS        | `alpine:3.22` returned `docker-runtime-ok`  |
 | Project Docker build/Compose config | PENDING     | Phase 10 artifacts not implemented yet      |
-| Requirement coverage                | IN PROGRESS | 200 PASS, 611 FAIL, 0 BLOCKED               |
+| Requirement coverage                | IN PROGRESS | 286 PASS, 525 FAIL, 0 BLOCKED               |
 
 ## Push and draft PR
 

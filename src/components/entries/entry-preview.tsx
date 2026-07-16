@@ -2,6 +2,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { EntryBody } from "@/components/entries/entry-body";
+import { EntryActions } from "@/components/entries/entry-actions";
 
 export interface EntryPreviewItem {
   id: string;
@@ -12,7 +13,13 @@ export interface EntryPreviewItem {
   author: { username: string; displayName: string };
 }
 
-export function EntryPreview({ entry }: { entry: EntryPreviewItem }) {
+export function EntryPreview({
+  entry,
+  actions,
+}: {
+  entry: EntryPreviewItem;
+  actions?: { vote: -1 | 1 | null; bookmarked: boolean; canEdit: boolean };
+}) {
   return (
     <article className="surface-card p-5">
       <h2 className="text-lg font-bold">
@@ -38,6 +45,16 @@ export function EntryPreview({ entry }: { entry: EntryPreviewItem }) {
           kalıcı bağlantı
         </Link>
       </footer>
+      {actions ? (
+        <EntryActions
+          entryId={entry.id}
+          body={entry.body}
+          initialScore={entry.score}
+          initialVote={actions.vote}
+          initialBookmarked={actions.bookmarked}
+          canEdit={actions.canEdit}
+        />
+      ) : null}
     </article>
   );
 }

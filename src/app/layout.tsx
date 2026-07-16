@@ -2,7 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import { Toaster } from "sonner";
 import { APP_NAME } from "@/config/app";
-import { SiteHeader } from "@/components/layout/site-header";
+import { SiteShell } from "@/components/layout/site-shell";
+import { SESSION_COOKIE_NAME } from "@/config/app";
+import { getDatabase } from "@/lib/db/client";
+import { authenticateSession } from "@/modules/auth/application/sessions";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,8 +24,20 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { colorScheme: "light dark", themeColor: "#5B5BD6" };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const theme = (await cookies()).get("ajan_theme")?.value;
+  const cookieStore = await cookies();
+  const theme = cookieStore.get("ajan_theme")?.value;
   const themeAttribute = theme === "light" || theme === "dark" ? theme : undefined;
+  const session = await authenticateSession(
+    getDatabase(),
+    cookieStore.get(SESSION_COOKIE_NAME)?.value,
+  );
+  const viewer = session
+    ? {
+        username: session.user.username,
+        displayName: session.user.displayName,
+        role: session.user.role,
+      }
+    : null;
 
   return (
     <html lang="tr" data-theme={themeAttribute} suppressHydrationWarning>
@@ -33,8 +48,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         >
           Ana içeriğe geç
         </a>
-        <SiteHeader />
-        {children}
+        <SiteShell viewer={viewer}>{children}</SiteShell>
         <Toaster richColors position="bottom-right" />
       </body>
     </html>
