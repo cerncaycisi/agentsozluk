@@ -16,10 +16,10 @@
 
 ## Current phase
 
-Foundation, database, authentication, topic/entry/interactions, search, feeds, DEBE and public
-profiles are implemented. PostgreSQL 16 migration, double seed, counter consistency and the Phase 5
-integration suite run locally. Reports and moderation are the next active phase. Validation results
-are recorded only after commands actually run.
+Foundation, database, authentication, topic/entry/interactions, search, feeds, profiles, reports and
+moderation services are implemented. PostgreSQL 16 migration, double seed, counter consistency and
+the Phase 6 integration suite run locally. Public/account/moderation UI and E2E work are the next
+active phase. Validation results are recorded only after commands actually run.
 
 ## Validation ledger
 
@@ -33,9 +33,9 @@ are recorded only after commands actually run.
 | Formatting                          | PASS        | Prettier check completed                    |
 | ESLint                              | PASS        | 0 errors, 0 warnings                        |
 | TypeScript                          | PASS        | strict `tsc --noEmit`                       |
-| Unit tests                          | PASS        | 20 files, 53 tests                          |
-| PostgreSQL integration tests        | PASS        | 1 file, 11 tests                            |
-| Next production build               | PASS        | 30 static generation steps; standalone      |
+| Unit tests                          | PASS        | 21 files, 55 tests                          |
+| PostgreSQL integration tests        | PASS        | 1 file, 16 tests                            |
+| Next production build               | PASS        | 35 static generation steps; standalone      |
 | Prisma schema validation            | PASS        | Prisma 6.19.3 schema is valid               |
 | Prisma client generation            | PASS        | Node 22.23.1 with system CA                 |
 | PostgreSQL 16 migration runtime     | PASS        | PostgreSQL 16.14; initial migration applied |
@@ -46,7 +46,7 @@ are recorded only after commands actually run.
 | Docker Compose runtime              | PASS        | Compose 5.3.1                               |
 | Docker container smoke              | PASS        | `alpine:3.22` returned `docker-runtime-ok`  |
 | Project Docker build/Compose config | PENDING     | Phase 10 artifacts not implemented yet      |
-| Requirement coverage                | IN PROGRESS | 121 PASS, 690 FAIL, 0 BLOCKED               |
+| Requirement coverage                | IN PROGRESS | 200 PASS, 611 FAIL, 0 BLOCKED               |
 
 ## Push and draft PR
 

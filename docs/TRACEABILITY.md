@@ -51,25 +51,25 @@ A row can become PASS only after both implementation and the required verificati
 | API-036      | Not implemented                                 | Not verified                                                 | FAIL   |
 | API-037      | Not implemented                                 | Not verified                                                 | FAIL   |
 | API-038      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-039      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-040      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-041      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-042      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-043      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-044      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-045      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-046      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-047      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-048      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-049      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-050      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-051      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-052      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-053      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-054      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-055      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-056      | Not implemented                                 | Not verified                                                 | FAIL   |
-| API-057      | Not implemented                                 | Not verified                                                 | FAIL   |
+| API-039      | report creation route                           | moderation integration suite and production build            | PASS   |
+| API-040      | moderation dashboard route                      | moderation integration suite and production build            | PASS   |
+| API-041      | filtered report list route                      | moderation integration suite and production build            | PASS   |
+| API-042      | report detail route                             | moderation integration suite and production build            | PASS   |
+| API-043      | report resolve route                            | moderation integration suite and production build            | PASS   |
+| API-044      | report reject route                             | moderation integration suite and production build            | PASS   |
+| API-045      | entry hide route                                | moderation integration suite and production build            | PASS   |
+| API-046      | entry restore route                             | moderation integration suite and production build            | PASS   |
+| API-047      | entry move route                                | moderation integration suite and production build            | PASS   |
+| API-048      | topic hide route                                | moderation integration suite and production build            | PASS   |
+| API-049      | topic restore route                             | moderation integration suite and production build            | PASS   |
+| API-050      | topic rename route                              | moderation integration suite and production build            | PASS   |
+| API-051      | topic merge route                               | moderation integration suite and production build            | PASS   |
+| API-052      | moderation user list route                      | moderation integration suite and production build            | PASS   |
+| API-053      | user suspend route                              | moderation integration suite and production build            | PASS   |
+| API-054      | user unsuspend route                            | moderation integration suite and production build            | PASS   |
+| API-055      | moderator grant route                           | moderation integration suite and production build            | PASS   |
+| API-056      | moderator revoke route                          | moderation integration suite and production build            | PASS   |
+| API-057      | filtered audit route                            | moderation integration suite and production build            | PASS   |
 | API-058      | Not implemented                                 | Not verified                                                 | FAIL   |
 | API-059      | Not implemented                                 | Not verified                                                 | FAIL   |
 | API-060      | Not implemented                                 | Not verified                                                 | FAIL   |
@@ -354,24 +354,24 @@ A row can become PASS only after both implementation and the required verificati
 | ENTRY-016    | Not implemented                                 | Not verified                                                 | FAIL   |
 | ENV-001      | Not implemented                                 | Not verified                                                 | FAIL   |
 | ENV-002      | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-001    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-002    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-003    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-004    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-005    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-006    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-007    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-008    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-009    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-010    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-011    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-012    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-013    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-014    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-015    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-016    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-017    | Not implemented                                 | Not verified                                                 | FAIL   |
-| EVENT-018    | Not implemented                                 | Not verified                                                 | FAIL   |
+| EVENT-001    | topic.created outbox                            | PostgreSQL integration suite                                 | PASS   |
+| EVENT-002    | topic.renamed outbox                            | PostgreSQL integration suite                                 | PASS   |
+| EVENT-003    | topic.hidden outbox                             | PostgreSQL integration suite                                 | PASS   |
+| EVENT-004    | topic.restored outbox                           | PostgreSQL integration suite                                 | PASS   |
+| EVENT-005    | topic.merged outbox                             | PostgreSQL integration suite                                 | PASS   |
+| EVENT-006    | entry.created outbox                            | PostgreSQL integration suite                                 | PASS   |
+| EVENT-007    | entry.updated outbox                            | PostgreSQL integration suite                                 | PASS   |
+| EVENT-008    | entry.deleted outbox                            | PostgreSQL integration suite                                 | PASS   |
+| EVENT-009    | entry.hidden outbox                             | PostgreSQL integration suite                                 | PASS   |
+| EVENT-010    | entry.restored outbox                           | PostgreSQL integration suite                                 | PASS   |
+| EVENT-011    | entry.moved outbox                              | PostgreSQL integration suite                                 | PASS   |
+| EVENT-012    | entry.voted outbox                              | PostgreSQL integration suite                                 | PASS   |
+| EVENT-013    | report.created outbox                           | PostgreSQL integration suite                                 | PASS   |
+| EVENT-014    | moderation.completed outbox                     | PostgreSQL integration suite                                 | PASS   |
+| EVENT-015    | user.suspended outbox                           | PostgreSQL integration suite                                 | PASS   |
+| EVENT-016    | user.unsuspended outbox                         | PostgreSQL integration suite                                 | PASS   |
+| EVENT-017    | user.role_changed outbox                        | PostgreSQL integration suite                                 | PASS   |
+| EVENT-018    | user.deactivated outbox                         | PostgreSQL integration suite                                 | PASS   |
 | EXTERNAL-001 | Not implemented                                 | Not verified                                                 | FAIL   |
 | EXTERNAL-002 | Not implemented                                 | Not verified                                                 | FAIL   |
 | EXTERNAL-003 | Not implemented                                 | Not verified                                                 | FAIL   |
@@ -443,20 +443,20 @@ A row can become PASS only after both implementation and the required verificati
 | IT-027       | public user search                              | PostgreSQL integration suite                                 | PASS   |
 | IT-028       | active entry search                             | PostgreSQL integration suite                                 | PASS   |
 | IT-029       | hidden entry exclusion                          | PostgreSQL integration suite                                 | PASS   |
-| IT-030       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-031       | Not implemented                                 | Not verified                                                 | FAIL   |
+| IT-030       | transactional report creation                   | PostgreSQL integration suite                                 | PASS   |
+| IT-031       | duplicate open report guard                     | PostgreSQL integration suite                                 | PASS   |
 | IT-032       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-033       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-034       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-035       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-036       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-037       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-038       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-039       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-040       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-041       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-042       | Not implemented                                 | Not verified                                                 | FAIL   |
-| IT-043       | Not implemented                                 | Not verified                                                 | FAIL   |
+| IT-033       | entry hide and restore                          | PostgreSQL integration suite                                 | PASS   |
+| IT-034       | topic hide and restore                          | PostgreSQL integration suite                                 | PASS   |
+| IT-035       | topic rename and old-title alias                | PostgreSQL integration suite                                 | PASS   |
+| IT-036       | topic merge                                     | PostgreSQL integration suite                                 | PASS   |
+| IT-037       | entry move and counter repair                   | PostgreSQL integration suite                                 | PASS   |
+| IT-038       | moderator user suspension                       | PostgreSQL integration suite                                 | PASS   |
+| IT-039       | moderator object authorization                  | PostgreSQL integration suite                                 | PASS   |
+| IT-040       | admin moderator grant and revoke                | PostgreSQL integration suite                                 | PASS   |
+| IT-041       | serialized last-admin race                      | PostgreSQL integration suite                                 | PASS   |
+| IT-042       | immutable moderation and audit history          | PostgreSQL integration suite                                 | PASS   |
+| IT-043       | transactional outbox event coverage             | PostgreSQL integration suite                                 | PASS   |
 | IT-044       | Not implemented                                 | Not verified                                                 | FAIL   |
 | IT-045       | Not implemented                                 | Not verified                                                 | FAIL   |
 | IT-046       | Not implemented                                 | Not verified                                                 | FAIL   |
@@ -467,21 +467,21 @@ A row can become PASS only after both implementation and the required verificati
 | IT-051       | Not implemented                                 | Not verified                                                 | FAIL   |
 | IT-052       | Not implemented                                 | Not verified                                                 | FAIL   |
 | IT-053       | Not implemented                                 | Not verified                                                 | FAIL   |
-| MOD-001      | Not implemented                                 | Not verified                                                 | FAIL   |
-| MOD-002      | Not implemented                                 | Not verified                                                 | FAIL   |
-| MOD-003      | Not implemented                                 | Not verified                                                 | FAIL   |
-| MOD-004      | Not implemented                                 | Not verified                                                 | FAIL   |
-| MOD-005      | Not implemented                                 | Not verified                                                 | FAIL   |
-| MOD-006      | Not implemented                                 | Not verified                                                 | FAIL   |
-| MOD-007      | Not implemented                                 | Not verified                                                 | FAIL   |
-| MOD-008      | Not implemented                                 | Not verified                                                 | FAIL   |
-| MOD-009      | Not implemented                                 | Not verified                                                 | FAIL   |
-| MOD-010      | Not implemented                                 | Not verified                                                 | FAIL   |
-| MOD-011      | Not implemented                                 | Not verified                                                 | FAIL   |
+| MOD-001      | six-count moderation dashboard                  | PostgreSQL integration suite                                 | PASS   |
+| MOD-002      | report repository filters                       | PostgreSQL integration suite                                 | PASS   |
+| MOD-003      | report detail aggregate                         | PostgreSQL integration suite                                 | PASS   |
+| MOD-004      | bounded decision validation                     | moderation validation unit suite                             | PASS   |
+| MOD-005      | transactional resolve and reject                | PostgreSQL integration suite                                 | PASS   |
+| MOD-006      | reason-gated entry hide and restore             | moderation validation and integration suites                 | PASS   |
+| MOD-007      | reason-gated topic hide and restore             | moderation validation and integration suites                 | PASS   |
+| MOD-008      | role-aware suspension and session revocation    | PostgreSQL integration suite                                 | PASS   |
+| MOD-009      | reason-gated unsuspension                       | moderation validation and integration suites                 | PASS   |
+| MOD-010      | admin-only USER/MODERATOR role transition       | PostgreSQL integration suite                                 | PASS   |
+| MOD-011      | service-level object authorization              | PostgreSQL integration suite                                 | PASS   |
 | MOD-012      | Not implemented                                 | Not verified                                                 | FAIL   |
-| MOD-013      | Not implemented                                 | Not verified                                                 | FAIL   |
-| MOD-014      | Not implemented                                 | Not verified                                                 | FAIL   |
-| MOD-015      | Not implemented                                 | Not verified                                                 | FAIL   |
+| MOD-013      | paginated report, user and audit lists          | API production build and repository validation               | PASS   |
+| MOD-014      | immutable moderation action DB trigger          | migration and PostgreSQL integration suite                   | PASS   |
+| MOD-015      | actor/action/entity/date/request audit filters  | filtered audit service and production build                  | PASS   |
 | OPS-001      | Not implemented                                 | Not verified                                                 | FAIL   |
 | OPS-002      | Not implemented                                 | Not verified                                                 | FAIL   |
 | OPS-003      | Not implemented                                 | Not verified                                                 | FAIL   |
@@ -560,15 +560,15 @@ A row can become PASS only after both implementation and the required verificati
 | PAGE-033     | Not implemented                                 | Not verified                                                 | FAIL   |
 | PERM-001     | Not implemented                                 | Not verified                                                 | FAIL   |
 | PERM-002     | Not implemented                                 | Not verified                                                 | FAIL   |
-| PERM-003     | Not implemented                                 | Not verified                                                 | FAIL   |
-| PERM-004     | Not implemented                                 | Not verified                                                 | FAIL   |
-| PERM-005     | Not implemented                                 | Not verified                                                 | FAIL   |
-| PERM-006     | Not implemented                                 | Not verified                                                 | FAIL   |
-| PERM-007     | Not implemented                                 | Not verified                                                 | FAIL   |
-| PERM-008     | Not implemented                                 | Not verified                                                 | FAIL   |
-| PERM-009     | Not implemented                                 | Not verified                                                 | FAIL   |
-| PERM-010     | Not implemented                                 | Not verified                                                 | FAIL   |
-| PERM-011     | Not implemented                                 | Not verified                                                 | FAIL   |
+| PERM-003     | own-entry vote guard                            | PostgreSQL integration suite                                 | PASS   |
+| PERM-004     | author and active-status edit/delete guard      | PostgreSQL integration suite                                 | PASS   |
+| PERM-005     | moderator capability services                   | PostgreSQL integration suite                                 | PASS   |
+| PERM-006     | moderator target and role restrictions          | PostgreSQL integration suite                                 | PASS   |
+| PERM-007     | admin moderation and role capabilities          | PostgreSQL integration suite                                 | PASS   |
+| PERM-008     | no ADMIN role transition path                   | role service and production route inspection                 | PASS   |
+| PERM-009     | admin self-role guard                           | PostgreSQL integration suite                                 | PASS   |
+| PERM-010     | active-admin action guards                      | PostgreSQL integration suite                                 | PASS   |
+| PERM-011     | serializable advisory last-admin lock           | concurrent PostgreSQL integration suite                      | PASS   |
 | PROD-001     | Not implemented                                 | Not verified                                                 | FAIL   |
 | PROD-002     | Not implemented                                 | Not verified                                                 | FAIL   |
 | PROD-003     | Not implemented                                 | Not verified                                                 | FAIL   |
@@ -639,11 +639,11 @@ A row can become PASS only after both implementation and the required verificati
 | REPO-025     | Not implemented                                 | Not verified                                                 | FAIL   |
 | REPO-026     | Not implemented                                 | Not verified                                                 | FAIL   |
 | REPO-027     | Not implemented                                 | Not verified                                                 | FAIL   |
-| REPORT-001   | Not implemented                                 | Not verified                                                 | FAIL   |
-| REPORT-002   | Not implemented                                 | Not verified                                                 | FAIL   |
-| REPORT-003   | Not implemented                                 | Not verified                                                 | FAIL   |
-| REPORT-004   | Not implemented                                 | Not verified                                                 | FAIL   |
-| REPORT-005   | Not implemented                                 | Not verified                                                 | FAIL   |
+| REPORT-001   | TOPIC, ENTRY and USER reports                   | PostgreSQL integration suite                                 | PASS   |
+| REPORT-002   | self-report guard                               | PostgreSQL integration suite                                 | PASS   |
+| REPORT-003   | own-content report guard                        | PostgreSQL integration suite                                 | PASS   |
+| REPORT-004   | partial unique open-report guard                | PostgreSQL integration suite                                 | PASS   |
+| REPORT-005   | report, outbox and audit transaction            | PostgreSQL integration suite                                 | PASS   |
 | SCRIPT-001   | Not implemented                                 | Not verified                                                 | FAIL   |
 | SCRIPT-002   | Not implemented                                 | Not verified                                                 | FAIL   |
 | SEARCH-001   | global topic, alias, user and entry search      | PostgreSQL integration suite                                 | PASS   |
@@ -672,7 +672,7 @@ A row can become PASS only after both implementation and the required verificati
 | SEC-014      | Not implemented                                 | Not verified                                                 | FAIL   |
 | SEC-015      | Not implemented                                 | Not verified                                                 | FAIL   |
 | SEC-016      | Not implemented                                 | Not verified                                                 | FAIL   |
-| SEC-017      | Not implemented                                 | Not verified                                                 | FAIL   |
+| SEC-017      | audited moderation and role mutations           | PostgreSQL integration suite                                 | PASS   |
 | SEC-018      | Not implemented                                 | Not verified                                                 | FAIL   |
 | SEC-019      | Not implemented                                 | Not verified                                                 | FAIL   |
 | SEED-001     | Not implemented                                 | Not verified                                                 | FAIL   |

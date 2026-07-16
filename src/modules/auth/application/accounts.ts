@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit/repository/audit";
 import { hashPassword, verifyPassword } from "@/modules/auth/domain/password";
@@ -124,40 +124,49 @@ export async function deactivateAccount(
 
   const anonymousSuffix = user.id.replaceAll("-", "").slice(0, 12);
   const passwordHash = await hashPassword(randomBytes(48).toString("base64url"));
-  await client.$transaction(
-    async (transaction) => {
-      if (user.role === "ADMIN") {
-        await lockAdminGuard(transaction);
-        if ((await countActiveAdmins(transaction)) <= 1) {
-          throw new AppError("LAST_ADMIN_GUARD", 409, "Son aktif yönetici hesabı kapatılamaz.");
-        }
-      }
-      await revokeAllUserSessions(transaction, userId);
-      await deletePrivateUserInteractions(transaction, userId);
-      await recalculateCounters(transaction);
-      await anonymizeUserRecord(transaction, userId, {
-        email: `deleted+${user.id}@invalid.local`,
-        username: `deleted_${anonymousSuffix}`,
-        passwordHash,
-        deactivatedAt: new Date(),
-      });
-      await appendOutboxEvent(transaction, {
-        eventType: "user.deactivated",
-        aggregateType: "User",
-        aggregateId: userId,
-        actorId: userId,
-        actorKind: user.kind,
-        requestId,
-        payload: { status: "DEACTIVATED" },
-      });
-      await appendAuditLog(transaction, {
-        actorId: userId,
-        action: "user.deactivated",
-        entityType: "User",
-        entityId: userId,
-        requestId,
-      });
-    },
-    { isolationLevel: "Serializable" },
-  );
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await client.$transaction(
+        async (transaction) => {
+          if (user.role === "ADMIN") {
+            await lockAdminGuard(transaction);
+            if ((await countActiveAdmins(transaction)) <= 1) {
+              throw new AppError("LAST_ADMIN_GUARD", 409, "Son aktif yönetici hesabı kapatılamaz.");
+            }
+          }
+          await revokeAllUserSessions(transaction, userId);
+          await deletePrivateUserInteractions(transaction, userId);
+          await recalculateCounters(transaction);
+          await anonymizeUserRecord(transaction, userId, {
+            email: `deleted+${user.id}@invalid.local`,
+            username: `deleted_${anonymousSuffix}`,
+            passwordHash,
+            deactivatedAt: new Date(),
+          });
+          await appendOutboxEvent(transaction, {
+            eventType: "user.deactivated",
+            aggregateType: "User",
+            aggregateId: userId,
+            actorId: userId,
+            actorKind: user.kind,
+            requestId,
+            payload: { status: "DEACTIVATED" },
+          });
+          await appendAuditLog(transaction, {
+            actorId: userId,
+            action: "user.deactivated",
+            entityType: "User",
+            entityId: userId,
+            requestId,
+          });
+        },
+        { isolationLevel: "Serializable" },
+      );
+      return;
+    } catch (error) {
+      const retryable =
+        error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";
+      if (!retryable || attempt === 3) throw error;
+    }
+  }
 }

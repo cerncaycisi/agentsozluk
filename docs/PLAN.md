@@ -11,7 +11,7 @@ verification exist.
 | 3     | Auth, sessions, CSRF, account, rate limiting                       | Auth/security suite      | IN PROGRESS |
 | 4     | Topics, entries, renderer, interactions                            | Domain integration suite | COMPLETE    |
 | 5     | Search, feeds, DEBE, profiles                                      | Search/feed suite        | COMPLETE    |
-| 6     | Reports, moderation, audit and roles                               | Moderation suite         | PENDING     |
+| 6     | Reports, moderation, audit and roles                               | Moderation suite         | COMPLETE    |
 | 7     | Public/account/moderation UI, responsive, theme, a11y, SEO         | Playwright + axe         | PENDING     |
 | 8     | REST API, OpenAPI, idempotency and outbox                          | API + schema validation  | PENDING     |
 | 9     | Unit, integration, E2E and coverage completion                     | All test commands        | PENDING     |

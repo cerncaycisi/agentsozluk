@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { ActorContext } from "@/modules/auth/domain/actor";
+import { deactivateAccount } from "@/modules/auth/application/accounts";
+import { hashPassword } from "@/modules/auth/domain/password";
 import { getDebe, getRandomTopic, getTopicFeed } from "@/modules/feeds/application/feeds";
 import { calculateTrendScore } from "@/modules/feeds/domain/trending";
 import {
@@ -23,6 +25,22 @@ import { createTopicWithFirstEntry } from "@/modules/topics/application/topics";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { searchAll } from "@/modules/search/application/search";
 import { getPublicProfile } from "@/modules/users/application/profiles";
+import {
+  mergeTopic,
+  moveEntry,
+  renameTopic,
+  setEntryVisibility,
+  setModeratorRole,
+  setTopicVisibility,
+  setUserSuspension,
+} from "@/modules/moderation/application/actions";
+import {
+  createReport,
+  decideReport,
+  getModerationReport,
+  getModerationReports,
+} from "@/modules/moderation/application/reports";
+import { getAuditLogs, getModerationDashboard } from "@/modules/moderation/application/queries";
 import {
   closeIntegrationDatabase,
   integrationDatabase,
@@ -616,5 +634,326 @@ describe("search, feeds and profiles with PostgreSQL", () => {
       status: "DEACTIVATED",
     });
     expect(anonymous.entries).toHaveLength(2);
+  });
+});
+
+describe("reports and moderation with PostgreSQL", () => {
+  it("creates a report atomically and rejects own, duplicate and suspended reports", async () => {
+    const reporter = await createUser("reporter_one");
+    const author = await createUser("reported_author");
+    const created = await createTopic(author.id, "Bildirilecek Başlık");
+    const report = await createReport(integrationDatabase, actor(reporter.id), {
+      targetType: "ENTRY",
+      targetId: created.entry.id,
+      reason: "SPAM",
+      details: "Tekrarlanan tanıtım içeriği bulunuyor.",
+    });
+    expect(report).toMatchObject({ reporterId: reporter.id, status: "OPEN" });
+    await createReport(integrationDatabase, actor(reporter.id), {
+      targetType: "TOPIC",
+      targetId: created.topic.id,
+      reason: "OFF_TOPIC",
+    });
+    await createReport(integrationDatabase, actor(reporter.id), {
+      targetType: "USER",
+      targetId: author.id,
+      reason: "HARASSMENT",
+    });
+    expect(
+      await integrationDatabase.outboxEvent.count({ where: { eventType: "report.created" } }),
+    ).toBe(3);
+    expect(await integrationDatabase.auditLog.count({ where: { action: "report.created" } })).toBe(
+      3,
+    );
+    await expect(
+      createReport(integrationDatabase, actor(reporter.id), {
+        targetType: "ENTRY",
+        targetId: created.entry.id,
+        reason: "OFF_TOPIC",
+      }),
+    ).rejects.toMatchObject({ code: "REPORT_ALREADY_OPEN", status: 409 });
+    await expect(
+      createReport(integrationDatabase, actor(author.id), {
+        targetType: "TOPIC",
+        targetId: created.topic.id,
+        reason: "OTHER",
+        details: "Kendi başlığını bildirmeyi deniyor.",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    await expect(
+      createReport(integrationDatabase, actor(reporter.id), {
+        targetType: "USER",
+        targetId: reporter.id,
+        reason: "HARASSMENT",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    await integrationDatabase.user.update({
+      where: { id: reporter.id },
+      data: { status: "SUSPENDED" },
+    });
+    await expect(
+      createReport(integrationDatabase, actor(reporter.id), {
+        targetType: "USER",
+        targetId: author.id,
+        reason: "HARASSMENT",
+      }),
+    ).rejects.toMatchObject({ code: "ACCOUNT_SUSPENDED", status: 403 });
+  });
+
+  it("lists, inspects and resolves reports with immutable history and dashboard counts", async () => {
+    const reporter = await createUser("reporter_two");
+    const author = await createUser("report_target");
+    const moderator = await createUser("moderator_one");
+    await integrationDatabase.user.update({
+      where: { id: moderator.id },
+      data: { role: "MODERATOR" },
+    });
+    const created = await createTopic(author.id, "Moderasyon Bildirimi");
+    const report = await createReport(integrationDatabase, actor(reporter.id), {
+      targetType: "TOPIC",
+      targetId: created.topic.id,
+      reason: "OFF_TOPIC",
+      details: "Başlık kategori dışında değerlendiriliyor.",
+    });
+    const moderatorActor = actor(moderator.id);
+    const [reports, total] = await getModerationReports(integrationDatabase, moderatorActor, {
+      status: "OPEN",
+      targetType: "TOPIC",
+      reporterUsername: reporter.usernameNormalized,
+      skip: 0,
+      take: 20,
+    });
+    expect(total).toBe(1);
+    expect(reports[0]?.id).toBe(report.id);
+    await expect(
+      getModerationReport(integrationDatabase, moderatorActor, report.id),
+    ).resolves.toMatchObject({ report: { id: report.id }, target: { id: created.topic.id } });
+    await expect(
+      decideReport(integrationDatabase, moderatorActor, report.id, "RESOLVED", {
+        resolutionNote: "İçerik incelendi ve gerekli işlem tamamlandı.",
+      }),
+    ).resolves.toMatchObject({ status: "RESOLVED", handledById: moderator.id });
+    const rejectedReport = await createReport(integrationDatabase, actor(reporter.id), {
+      targetType: "TOPIC",
+      targetId: created.topic.id,
+      reason: "SPAM",
+    });
+    await expect(
+      decideReport(integrationDatabase, moderatorActor, rejectedReport.id, "REJECTED", {
+        resolutionNote: "İnceleme sonucunda bildirim gerekçesi doğrulanamadı.",
+      }),
+    ).resolves.toMatchObject({ status: "REJECTED", handledById: moderator.id });
+    expect(
+      await integrationDatabase.moderationAction.count({ where: { targetId: created.topic.id } }),
+    ).toBe(2);
+    expect(
+      await integrationDatabase.outboxEvent.count({ where: { eventType: "moderation.completed" } }),
+    ).toBe(2);
+    const dashboard = await getModerationDashboard(integrationDatabase, moderatorActor);
+    expect(dashboard).toMatchObject({ openReports: 0, reports24h: 2, actions24h: 2 });
+    const [auditLogs, auditTotal] = await getAuditLogs(integrationDatabase, moderatorActor, {
+      action: "moderation.completed",
+      skip: 0,
+      take: 20,
+    });
+    expect(auditTotal).toBe(2);
+    expect(auditLogs.map((log) => log.entityId)).toEqual(
+      expect.arrayContaining([report.id, rejectedReport.id]),
+    );
+    const action = await integrationDatabase.moderationAction.findFirstOrThrow();
+    await expect(
+      integrationDatabase.moderationAction.update({
+        where: { id: action.id },
+        data: { reason: "Bu kayıt değiştirilemez olmalıdır." },
+      }),
+    ).rejects.toThrow(/append-only/);
+  });
+
+  it("hides, restores, renames, moves and merges content with exact counters and events", async () => {
+    const author = await createUser("moderated_writer");
+    const reporter = await createUser("content_reporter");
+    const moderator = await createUser("moderator_two");
+    await integrationDatabase.user.update({
+      where: { id: moderator.id },
+      data: { role: "MODERATOR" },
+    });
+    const moderatorActor = actor(moderator.id);
+    const source = await createTopic(author.id, "Kaynak Moderasyon Başlığı");
+    const target = await createTopic(author.id, "Hedef Moderasyon Başlığı");
+    const reason = { reason: "Moderasyon politikası gereği yapılan işlem." };
+    const report = await createReport(integrationDatabase, actor(reporter.id), {
+      targetType: "TOPIC",
+      targetId: source.topic.id,
+      reason: "OFF_TOPIC",
+    });
+
+    await setEntryVisibility(integrationDatabase, moderatorActor, source.entry.id, true, reason);
+    expect(
+      await integrationDatabase.topic.findUniqueOrThrow({ where: { id: source.topic.id } }),
+    ).toMatchObject({ entryCount: 0, lastEntryAt: null });
+    await setEntryVisibility(integrationDatabase, moderatorActor, source.entry.id, false, reason);
+    expect(
+      await integrationDatabase.topic.findUniqueOrThrow({ where: { id: source.topic.id } }),
+    ).toMatchObject({ entryCount: 1 });
+
+    await setTopicVisibility(integrationDatabase, moderatorActor, source.topic.id, true, reason);
+    await setTopicVisibility(integrationDatabase, moderatorActor, source.topic.id, false, reason);
+    await renameTopic(integrationDatabase, moderatorActor, source.topic.id, {
+      title: "Yeniden Adlandırılan Başlık",
+      ...reason,
+    });
+    expect(
+      await integrationDatabase.topicAlias.findUnique({
+        where: { normalizedTitle: "kaynak moderasyon başlığı" },
+      }),
+    ).toMatchObject({ topicId: source.topic.id });
+
+    await moveEntry(integrationDatabase, moderatorActor, source.entry.id, {
+      targetTopicId: target.topic.id,
+      ...reason,
+    });
+    expect(
+      await integrationDatabase.topic.findUniqueOrThrow({ where: { id: source.topic.id } }),
+    ).toMatchObject({ entryCount: 0 });
+    expect(
+      await integrationDatabase.topic.findUniqueOrThrow({ where: { id: target.topic.id } }),
+    ).toMatchObject({ entryCount: 2 });
+
+    await mergeTopic(integrationDatabase, moderatorActor, source.topic.id, {
+      targetTopicId: target.topic.id,
+      ...reason,
+    });
+    expect(
+      await integrationDatabase.topic.findUniqueOrThrow({ where: { id: source.topic.id } }),
+    ).toMatchObject({ status: "MERGED", mergedIntoId: target.topic.id, entryCount: 0 });
+    expect(
+      await integrationDatabase.outboxEvent.findMany({
+        where: {
+          eventType: {
+            in: [
+              "entry.hidden",
+              "entry.restored",
+              "topic.hidden",
+              "topic.restored",
+              "topic.renamed",
+              "entry.moved",
+              "topic.merged",
+            ],
+          },
+        },
+      }),
+    ).toHaveLength(7);
+    expect(
+      (await getModerationReport(integrationDatabase, moderatorActor, report.id)).moderationActions
+        .length,
+    ).toBeGreaterThanOrEqual(4);
+  });
+
+  it("enforces moderator/admin object authorization, revokes sessions and changes roles", async () => {
+    const moderator = await createUser("moderator_three");
+    const admin = await createUser("admin_one");
+    const user = await createUser("moderated_user");
+    const secondModerator = await createUser("moderator_target");
+    await integrationDatabase.user.update({
+      where: { id: moderator.id },
+      data: { role: "MODERATOR" },
+    });
+    await integrationDatabase.user.update({
+      where: { id: secondModerator.id },
+      data: { role: "MODERATOR" },
+    });
+    await integrationDatabase.user.update({ where: { id: admin.id }, data: { role: "ADMIN" } });
+    await integrationDatabase.session.create({
+      data: {
+        userId: user.id,
+        tokenHash: "moderation-session-token-hash",
+        csrfTokenHash: "moderation-session-csrf-hash",
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+    const reason = { reason: "Kullanıcı davranışı moderasyon politikasını ihlal ediyor." };
+    await setUserSuspension(integrationDatabase, actor(moderator.id), user.id, true, reason);
+    expect(
+      await integrationDatabase.session.findFirstOrThrow({ where: { userId: user.id } }),
+    ).toMatchObject({ revokedAt: expect.any(Date) });
+    await setUserSuspension(integrationDatabase, actor(moderator.id), user.id, false, reason);
+    await expect(
+      setUserSuspension(integrationDatabase, actor(moderator.id), admin.id, true, reason),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    await expect(
+      setUserSuspension(integrationDatabase, actor(moderator.id), secondModerator.id, true, reason),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    await setUserSuspension(integrationDatabase, actor(admin.id), secondModerator.id, true, reason);
+    await setUserSuspension(
+      integrationDatabase,
+      actor(admin.id),
+      secondModerator.id,
+      false,
+      reason,
+    );
+
+    await setModeratorRole(integrationDatabase, actor(admin.id), user.id, true, reason);
+    expect(
+      await integrationDatabase.user.findUniqueOrThrow({ where: { id: user.id } }),
+    ).toMatchObject({ role: "MODERATOR" });
+    await setModeratorRole(integrationDatabase, actor(admin.id), user.id, false, reason);
+    expect(
+      await integrationDatabase.user.findUniqueOrThrow({ where: { id: user.id } }),
+    ).toMatchObject({ role: "USER" });
+    await expect(
+      setModeratorRole(integrationDatabase, actor(moderator.id), user.id, true, reason),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    await expect(
+      setModeratorRole(integrationDatabase, actor(admin.id), admin.id, true, reason),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    await expect(getModerationDashboard(integrationDatabase, actor(user.id))).rejects.toMatchObject(
+      { code: "FORBIDDEN", status: 403 },
+    );
+    expect(
+      await integrationDatabase.outboxEvent.count({ where: { eventType: "user.role_changed" } }),
+    ).toBe(2);
+    expect(
+      await integrationDatabase.outboxEvent.count({ where: { eventType: "user.suspended" } }),
+    ).toBe(2);
+    expect(
+      await integrationDatabase.outboxEvent.count({ where: { eventType: "user.unsuspended" } }),
+    ).toBe(2);
+  });
+
+  it("serializes concurrent last-admin deactivation attempts", async () => {
+    const password = "AdminRacePassword123!";
+    const passwordHash = await hashPassword(password);
+    const firstAdmin = await createUser("race_admin_one");
+    const secondAdmin = await createUser("race_admin_two");
+    await integrationDatabase.user.updateMany({
+      where: { id: { in: [firstAdmin.id, secondAdmin.id] } },
+      data: { role: "ADMIN", passwordHash },
+    });
+
+    const results = await Promise.allSettled([
+      deactivateAccount(
+        integrationDatabase,
+        firstAdmin.id,
+        { currentPassword: password, usernameConfirmation: firstAdmin.username },
+        randomUUID(),
+      ),
+      deactivateAccount(
+        integrationDatabase,
+        secondAdmin.id,
+        { currentPassword: password, usernameConfirmation: secondAdmin.username },
+        randomUUID(),
+      ),
+    ]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.find((result) => result.status === "rejected")).toMatchObject({
+      status: "rejected",
+      reason: { code: "LAST_ADMIN_GUARD", status: 409 },
+    });
+    expect(
+      await integrationDatabase.user.count({ where: { role: "ADMIN", status: "ACTIVE" } }),
+    ).toBe(1);
+    expect(
+      await integrationDatabase.outboxEvent.count({ where: { eventType: "user.deactivated" } }),
+    ).toBe(1);
   });
 });
