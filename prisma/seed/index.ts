@@ -1,13 +1,14 @@
 import "dotenv/config";
 import { hash } from "@node-rs/argon2";
 import type { Prisma } from "@prisma/client";
-import { database } from "@/lib/db/client";
+import { getDatabase } from "@/lib/db/client";
 import { normalizeEntryBody } from "@/modules/entries/domain/entry";
 import { recalculateCounters } from "@/modules/entries/repository/recalculate";
 import { createTopicSlug, normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 
 const uuid = (value: number): string =>
   `00000000-0000-4000-8000-${value.toString().padStart(12, "0")}`;
+const database = getDatabase();
 
 const userDefinitions = [
   ["admin", "Sistem Yöneticisi", "ADMIN"],

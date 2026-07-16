@@ -10,8 +10,10 @@ function createClient(): PrismaClient {
   });
 }
 
-export const database = globalDatabase.prisma ?? createClient();
-
-if (process.env.NODE_ENV !== "production") globalDatabase.prisma = database;
+export function getDatabase(): PrismaClient {
+  const client = globalDatabase.prisma ?? createClient();
+  if (process.env.NODE_ENV !== "production") globalDatabase.prisma = client;
+  return client;
+}
 
 export type DatabaseClient = PrismaClient;

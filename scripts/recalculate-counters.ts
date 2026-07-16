@@ -1,6 +1,8 @@
 import "dotenv/config";
-import { database } from "@/lib/db/client";
+import { getDatabase } from "@/lib/db/client";
 import { recalculateCounters } from "@/modules/entries/repository/recalculate";
+
+const database = getDatabase();
 
 try {
   const result = await database.$transaction((transaction) => recalculateCounters(transaction));

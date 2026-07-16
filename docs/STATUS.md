@@ -16,8 +16,8 @@
 
 ## Current phase
 
-Foundation is complete. Database implementation is in progress. Validation results are recorded
-only after commands actually run.
+Foundation and authentication implementation are complete. PostgreSQL integration verification is
+pending a PostgreSQL 16 runtime. Validation results are recorded only after commands actually run.
 
 ## Validation ledger
 
@@ -31,8 +31,8 @@ only after commands actually run.
 | Formatting                          | PASS    | Prettier check completed                  |
 | ESLint                              | PASS    | 0 errors, 0 warnings                      |
 | TypeScript                          | PASS    | strict `tsc --noEmit`                     |
-| Unit tests                          | PASS    | 9 files, 29 tests                         |
-| Next production build               | PASS    | 5 routes; standalone output               |
+| Unit tests                          | PASS    | 16 files, 43 tests                        |
+| Next production build               | PASS    | 21 routes; standalone output              |
 | Prisma schema validation            | PASS    | Prisma 6.19.3 schema is valid             |
 | Prisma client generation            | PASS    | Node 22.23.1 with system CA               |
 | PostgreSQL 16 migration runtime     | BLOCKED | Server/Docker unavailable locally         |
