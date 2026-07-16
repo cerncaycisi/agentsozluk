@@ -48,6 +48,7 @@ export async function runApi(
           code: known.code,
           message: known.message,
           ...(known.fieldErrors ? { fieldErrors: known.fieldErrors } : {}),
+          ...(known.details ?? {}),
           requestId,
         },
       },
@@ -57,4 +58,27 @@ export async function runApi(
       response.headers.set(key, value);
     return response;
   }
+}
+
+export function successList<T>(
+  data: T[],
+  context: ApiContext,
+  input: { page: number; pageSize: number; totalItems: number },
+): NextResponse {
+  const totalPages = Math.max(1, Math.ceil(input.totalItems / input.pageSize));
+  return NextResponse.json(
+    {
+      data,
+      meta: {
+        page: input.page,
+        pageSize: input.pageSize,
+        totalItems: input.totalItems,
+        totalPages,
+        hasNextPage: input.page < totalPages,
+        hasPreviousPage: input.page > 1,
+      },
+      requestId: context.requestId,
+    },
+    { headers: { "X-Request-Id": context.requestId } },
+  );
 }

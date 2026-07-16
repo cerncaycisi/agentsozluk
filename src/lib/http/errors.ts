@@ -35,6 +35,7 @@ export class AppError extends Error {
     message: string,
     public readonly fieldErrors?: Record<string, string[]>,
     public readonly headers?: Record<string, string>,
+    public readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = "AppError";
