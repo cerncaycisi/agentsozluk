@@ -94,31 +94,31 @@ A row can become PASS only after both implementation and the required verificati
 | ARCH-010     | Not implemented                                   | Not verified                                                 | FAIL   |
 | ARCH-011     | Not implemented                                   | Not verified                                                 | FAIL   |
 | ARCH-012     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-001     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-002     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-003     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-004     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-005     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-006     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-007     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-008     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-009     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-010     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-011     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-012     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-013     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-014     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-015     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-016     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-017     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-018     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-019     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-020     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-021     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-022     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-023     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-024     | Not implemented                                   | Not verified                                                 | FAIL   |
-| AUTH-025     | Not implemented                                   | Not verified                                                 | FAIL   |
+| AUTH-001     | registration schema and route                     | registration unit, PostgreSQL and browser suites             | PASS   |
+| AUTH-002     | password policy schema                            | password unit suite                                          | PASS   |
+| AUTH-003     | exact Argon2id options                            | password unit and PostgreSQL login suites                    | PASS   |
+| AUTH-004     | successful-login password rehash                  | low-cost hash PostgreSQL integration test                    | PASS   |
+| AUTH-005     | cryptographic 32-byte session token               | session and security unit suites                             | PASS   |
+| AUTH-006     | hash-only session persistence                     | session unit and PostgreSQL integration suites               | PASS   |
+| AUTH-007     | SHA-256 session token hash                        | session unit suite                                           | PASS   |
+| AUTH-008     | configurable secure session cookie                | production cookie unit suite                                 | PASS   |
+| AUTH-009     | sliding session expiry and throttled touch        | session unit and PostgreSQL integration suites               | PASS   |
+| AUTH-010     | independent per-session CSRF secret               | session unit and PostgreSQL integration suites               | PASS   |
+| AUTH-011     | hash-only CSRF persistence                        | session unit and PostgreSQL integration suites               | PASS   |
+| AUTH-012     | non-HttpOnly raw CSRF cookie                      | production cookie unit suite                                 | PASS   |
+| AUTH-013     | cookie mutation CSRF and origin gate              | CSRF unit and authenticated browser suites                   | PASS   |
+| AUTH-014     | login and registration origin validation          | origin unit and authentication browser suites                | PASS   |
+| AUTH-015     | generic invalid-login response                    | PostgreSQL existing/missing-user integration test            | PASS   |
+| AUTH-016     | dummy Argon2 verification                         | missing-user login integration and source audit              | PASS   |
+| AUTH-017     | session revoke and cookie clear logout            | authentication browser and cookie unit suites                | PASS   |
+| AUTH-018     | password change and other-session revoke          | PostgreSQL account integration test                          | PASS   |
+| AUTH-019     | normalized authenticated email change             | PostgreSQL account integration test                          | PASS   |
+| AUTH-020     | immutable username account contract               | profile schema and account route audit                       | PASS   |
+| AUTH-021     | session management UI and services                | PostgreSQL session and account browser suites                | PASS   |
+| AUTH-022     | suspended-account permission matrix               | permission, PostgreSQL and moderation suites                 | PASS   |
+| AUTH-023     | deactivated login rejection                       | PostgreSQL deactivation/login integration test               | PASS   |
+| AUTH-024     | transactional account anonymization               | PostgreSQL anonymization and last-admin race tests           | PASS   |
+| AUTH-025     | production APP_SECRET byte validation             | environment unit suite and production build                  | PASS   |
 | BLOCK-001    | block service self-target guard                   | PostgreSQL integration test                                  | PASS   |
 | BLOCK-002    | Not implemented                                   | Not verified                                                 | FAIL   |
 | BLOCK-003    | Not implemented                                   | Not verified                                                 | FAIL   |
@@ -414,14 +414,14 @@ A row can become PASS only after both implementation and the required verificati
 | IDEMP-006    | Idempotent-Replay response header                 | HTTP wrapper and OpenAPI response contract                   | PASS   |
 | IDEMP-007    | request-hash conflict                             | PostgreSQL conflict integration test                         | PASS   |
 | IDEMP-008    | 24-hour expiry and replacement                    | PostgreSQL TTL integration test                              | PASS   |
-| IT-001       | Not implemented                                   | Not verified                                                 | FAIL   |
-| IT-002       | Not implemented                                   | Not verified                                                 | FAIL   |
-| IT-003       | Not implemented                                   | Not verified                                                 | FAIL   |
-| IT-004       | Not implemented                                   | Not verified                                                 | FAIL   |
-| IT-005       | Not implemented                                   | Not verified                                                 | FAIL   |
-| IT-006       | Not implemented                                   | Not verified                                                 | FAIL   |
-| IT-007       | Not implemented                                   | Not verified                                                 | FAIL   |
-| IT-008       | Not implemented                                   | Not verified                                                 | FAIL   |
+| IT-001       | registration success                              | PostgreSQL authentication integration test                   | PASS   |
+| IT-002       | case-insensitive duplicate email                  | PostgreSQL authentication integration test                   | PASS   |
+| IT-003       | duplicate username                                | PostgreSQL authentication integration test                   | PASS   |
+| IT-004       | role and kind escalation prevention               | PostgreSQL authentication integration test                   | PASS   |
+| IT-005       | login and password rehash                         | PostgreSQL authentication integration test                   | PASS   |
+| IT-006       | generic invalid login                             | PostgreSQL authentication integration test                   | PASS   |
+| IT-007       | session issue, rotate, list and revoke            | PostgreSQL authentication integration test                   | PASS   |
+| IT-008       | password change revokes other sessions            | PostgreSQL account integration test                          | PASS   |
 | IT-009       | topic transaction service                         | PostgreSQL integration suite                                 | PASS   |
 | IT-010       | advisory-lock duplicate prevention                | concurrent PostgreSQL integration test                       | PASS   |
 | IT-011       | topic alias conflict query                        | PostgreSQL integration suite                                 | PASS   |
@@ -457,12 +457,12 @@ A row can become PASS only after both implementation and the required verificati
 | IT-041       | serialized last-admin race                        | PostgreSQL integration suite                                 | PASS   |
 | IT-042       | immutable moderation and audit history            | PostgreSQL integration suite                                 | PASS   |
 | IT-043       | transactional outbox event coverage               | PostgreSQL integration suite                                 | PASS   |
-| IT-044       | Not implemented                                   | Not verified                                                 | FAIL   |
-| IT-045       | Not implemented                                   | Not verified                                                 | FAIL   |
+| IT-044       | serialized same-key response replay               | PostgreSQL idempotency integration test                      | PASS   |
+| IT-045       | same-key different-body conflict                  | PostgreSQL idempotency integration test                      | PASS   |
 | IT-046       | Not implemented                                   | Not verified                                                 | FAIL   |
 | IT-047       | Not implemented                                   | Not verified                                                 | FAIL   |
-| IT-048       | Not implemented                                   | Not verified                                                 | FAIL   |
-| IT-049       | Not implemented                                   | Not verified                                                 | FAIL   |
+| IT-048       | atomic rate-limit rejection                       | PostgreSQL fixed-window integration test                     | PASS   |
+| IT-049       | transactional account anonymization               | PostgreSQL account integration test                          | PASS   |
 | IT-050       | Not implemented                                   | Not verified                                                 | FAIL   |
 | IT-051       | Not implemented                                   | Not verified                                                 | FAIL   |
 | IT-052       | Not implemented                                   | Not verified                                                 | FAIL   |
@@ -588,16 +588,16 @@ A row can become PASS only after both implementation and the required verificati
 | PROFILE-003  | paginated profile entries                         | PostgreSQL integration suite                                 | PASS   |
 | PROFILE-004  | viewer-aware block profile action                 | authenticated axe suite and production build                 | PASS   |
 | PROFILE-005  | role-aware moderation shortcut                    | authenticated axe suite and production build                 | PASS   |
-| QA-001       | Not implemented                                   | Not verified                                                 | FAIL   |
-| QA-002       | Not implemented                                   | Not verified                                                 | FAIL   |
-| QA-003       | Not implemented                                   | Not verified                                                 | FAIL   |
-| QA-004       | Not implemented                                   | Not verified                                                 | FAIL   |
-| QA-005       | Not implemented                                   | Not verified                                                 | FAIL   |
-| QA-006       | Not implemented                                   | Not verified                                                 | FAIL   |
-| QA-007       | Not implemented                                   | Not verified                                                 | FAIL   |
-| QA-008       | Not implemented                                   | Not verified                                                 | FAIL   |
-| QA-009       | Not implemented                                   | Not verified                                                 | FAIL   |
-| QA-010       | Not implemented                                   | Not verified                                                 | FAIL   |
+| QA-001       | real production services in tests                 | test-source mock audit                                       | PASS   |
+| QA-002       | database reset and isolated unit files            | shuffled 100-test run                                        | PASS   |
+| QA-003       | order-independent test design                     | shuffled run seed 20260717                                   | PASS   |
+| QA-004       | no fixed test sleeps                              | test-source timing audit                                     | PASS   |
+| QA-005       | PostgreSQL 16 integration runtime                 | PostgreSQL 16.14 live suite                                  | PASS   |
+| QA-006       | enforced global coverage thresholds               | 84.95/84.95/87.08/82.72 coverage run                         | PASS   |
+| QA-007       | domain coverage gate                              | domain coverage report and focused unit suites               | PASS   |
+| QA-008       | specification-level thresholds                    | Vitest configuration audit                                   | PASS   |
+| QA-009       | assertion-based tests without snapshots           | test-source snapshot audit                                   | PASS   |
+| QA-010       | real Chrome and PostgreSQL E2E                    | 21-pass Playwright suite                                     | PASS   |
 | RATE-001     | Not implemented                                   | Not verified                                                 | FAIL   |
 | RATE-002     | Not implemented                                   | Not verified                                                 | FAIL   |
 | RATE-003     | Not implemented                                   | Not verified                                                 | FAIL   |

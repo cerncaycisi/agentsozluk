@@ -19,40 +19,41 @@
 Foundation, database, authentication, topic/entry/interactions, search, feeds, profiles, reports,
 moderation services, the public/account/moderation UI, REST/OpenAPI, create-command idempotency and
 the transactional outbox are implemented. PostgreSQL 16 migration, double seed, counter
-consistency, the Phase 8 integration suite and the Phase 7 browser suite run locally. Phase 8 is
-complete; coverage completion and production packaging are the next active phase. Validation
-results are recorded only after commands actually run.
+consistency, expanded authentication coverage and the browser suite run locally. Phase 8 is
+complete; Phase 9 coverage now passes and its remaining browser scenarios are active. Production
+packaging follows. Validation results are recorded only after commands actually run.
 
 ## Validation ledger
 
-| Check                               | Result      | Evidence                                    |
-| ----------------------------------- | ----------- | ------------------------------------------- |
-| HTTPS clone of corrected repository | PASS        | Empty repository cloned successfully        |
-| Corrected origin                    | PASS        | `git remote get-url origin`                 |
-| Working branch                      | PASS        | `codex/milestone-1`                         |
-| Main SHA                            | PASS        | `6296e1f2886483f749af15f27d2add18df6b2e9c`  |
-| Frozen pnpm install                 | PASS        | pnpm 10.34.5; lockfile up to date           |
-| Formatting                          | PASS        | Prettier check completed                    |
-| ESLint                              | PASS        | 0 errors, 0 warnings                        |
-| TypeScript                          | PASS        | strict `tsc --noEmit`                       |
-| Unit tests                          | PASS        | 23 files, 73 tests                          |
-| PostgreSQL integration tests        | PASS        | 1 file, 19 tests                            |
-| OpenAPI runtime alignment           | PASS        | OpenAPI 3.1; 57/57 operations aligned       |
-| Next production build               | PASS        | 40 static generation steps; 76 app routes   |
-| Playwright E2E                      | PASS        | 21 passed; 3 project-specific skips         |
-| Public axe gate                     | PASS        | serious and critical violations: 0          |
-| Auth/account/moderation axe gate    | PASS        | serious and critical violations: 0          |
-| Prisma schema validation            | PASS        | Prisma 6.19.3 schema is valid               |
-| Prisma client generation            | PASS        | Node 22.23.1 with system CA                 |
-| PostgreSQL 16 migration runtime     | PASS        | PostgreSQL 16.14; initial migration applied |
-| Seed first run                      | PASS        | 12 users, 30 topics, 180 entries            |
-| Seed second run                     | PASS        | Identical counts; no duplicates             |
-| Counter consistency                 | PASS        | Entry mismatches 0; topic mismatches 0      |
-| Docker runtime                      | PASS        | Colima; Docker client 29.6.2/server 29.5.2  |
-| Docker Compose runtime              | PASS        | Compose 5.3.1                               |
-| Docker container smoke              | PASS        | `alpine:3.22` returned `docker-runtime-ok`  |
-| Project Docker build/Compose config | PENDING     | Phase 10 artifacts not implemented yet      |
-| Requirement coverage                | IN PROGRESS | 355 PASS, 456 FAIL, 0 BLOCKED               |
+| Check                               | Result      | Evidence                                          |
+| ----------------------------------- | ----------- | ------------------------------------------------- |
+| HTTPS clone of corrected repository | PASS        | Empty repository cloned successfully              |
+| Corrected origin                    | PASS        | `git remote get-url origin`                       |
+| Working branch                      | PASS        | `codex/milestone-1`                               |
+| Main SHA                            | PASS        | `6296e1f2886483f749af15f27d2add18df6b2e9c`        |
+| Frozen pnpm install                 | PASS        | pnpm 10.34.5; lockfile up to date                 |
+| Formatting                          | PASS        | Prettier check completed                          |
+| ESLint                              | PASS        | 0 errors, 0 warnings                              |
+| TypeScript                          | PASS        | strict `tsc --noEmit`                             |
+| Unit tests                          | PASS        | 25 files, 78 tests                                |
+| PostgreSQL integration tests        | PASS        | 1 file, 25 tests                                  |
+| Global coverage                     | PASS        | stmts/lines 86.53%; funcs 87.20%; branches 82.93% |
+| OpenAPI runtime alignment           | PASS        | OpenAPI 3.1; 57/57 operations aligned             |
+| Next production build               | PASS        | 40 static generation steps; 76 app routes         |
+| Playwright E2E                      | PASS        | 21 passed; 3 project-specific skips               |
+| Public axe gate                     | PASS        | serious and critical violations: 0                |
+| Auth/account/moderation axe gate    | PASS        | serious and critical violations: 0                |
+| Prisma schema validation            | PASS        | Prisma 6.19.3 schema is valid                     |
+| Prisma client generation            | PASS        | Node 22.23.1 with system CA                       |
+| PostgreSQL 16 migration runtime     | PASS        | PostgreSQL 16.14; initial migration applied       |
+| Seed first run                      | PASS        | 12 users, 30 topics, 180 entries                  |
+| Seed second run                     | PASS        | Identical counts; no duplicates                   |
+| Counter consistency                 | PASS        | Entry mismatches 0; topic mismatches 0            |
+| Docker runtime                      | PASS        | Colima; Docker client 29.6.2/server 29.5.2        |
+| Docker Compose runtime              | PASS        | Compose 5.3.1                                     |
+| Docker container smoke              | PASS        | `alpine:3.22` returned `docker-runtime-ok`        |
+| Project Docker build/Compose config | PENDING     | Phase 10 artifacts not implemented yet            |
+| Requirement coverage                | IN PROGRESS | 402 PASS, 409 FAIL, 0 BLOCKED                     |
 
 ## Push and draft PR
 

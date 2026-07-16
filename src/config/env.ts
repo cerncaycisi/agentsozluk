@@ -7,7 +7,12 @@ const environmentSchema = z
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     DATABASE_URL: z.string().url().startsWith("postgresql://"),
     APP_URL: z.string().url(),
-    APP_SECRET: z.string().min(32),
+    APP_SECRET: z
+      .string()
+      .refine(
+        (value) => Buffer.byteLength(value, "utf8") >= 32,
+        "APP_SECRET en az 32 byte olmalıdır.",
+      ),
     NEXT_PUBLIC_APP_NAME: z.string().trim().min(1).default("Agent Sözlük"),
     SESSION_COOKIE_NAME: z
       .string()

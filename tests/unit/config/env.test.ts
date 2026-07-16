@@ -20,6 +20,15 @@ describe("environment validation", () => {
     );
   });
 
+  it("measures APP_SECRET in bytes", () => {
+    expect(
+      environmentSchema.safeParse({ ...validEnvironment, APP_SECRET: "ş".repeat(16) }).success,
+    ).toBe(true);
+    expect(
+      environmentSchema.safeParse({ ...validEnvironment, APP_SECRET: "a".repeat(31) }).success,
+    ).toBe(false);
+  });
+
   it("rejects the placeholder and demo seed in production", () => {
     expect(
       environmentSchema.safeParse({

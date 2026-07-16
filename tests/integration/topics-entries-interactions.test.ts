@@ -1,8 +1,25 @@
 import { randomUUID } from "node:crypto";
+import { hash } from "@node-rs/argon2";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { ActorContext } from "@/modules/auth/domain/actor";
-import { deactivateAccount } from "@/modules/auth/application/accounts";
+import {
+  changeEmail,
+  changePassword,
+  deactivateAccount,
+  updateProfile,
+} from "@/modules/auth/application/accounts";
+import { loginHuman, registerHuman } from "@/modules/auth/application/authenticate";
+import {
+  activeSessions,
+  authenticateSession,
+  endOwnedSession,
+  endOtherSessions,
+  endSession,
+  requireSession,
+  rotateCsrfToken,
+} from "@/modules/auth/application/sessions";
 import { hashPassword } from "@/modules/auth/domain/password";
+import { registrationSchema } from "@/modules/auth/validation/schemas";
 import { getDebe, getRandomTopic, getTopicFeed } from "@/modules/feeds/application/feeds";
 import { calculateTrendScore } from "@/modules/feeds/domain/trending";
 import {
@@ -42,6 +59,7 @@ import {
   getModerationReports,
 } from "@/modules/moderation/application/reports";
 import { getAuditLogs, getModerationDashboard } from "@/modules/moderation/application/queries";
+import { enforceRateLimit } from "@/modules/rate-limit/application/rate-limit";
 import {
   closeIntegrationDatabase,
   integrationDatabase,
@@ -91,6 +109,265 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await closeIntegrationDatabase();
+});
+
+describe("authentication and accounts with PostgreSQL", () => {
+  const registration = (suffix: string) =>
+    registrationSchema.parse({
+      email: `${suffix}@Integration.Test`,
+      username: suffix,
+      displayName: `Test ${suffix}`,
+      password: "IntegrationPassword123!",
+      passwordConfirmation: "IntegrationPassword123!",
+      termsAccepted: true,
+    });
+
+  it("registers a human and rejects case-insensitive email and username conflicts", async () => {
+    const input = registration("register_writer");
+    const registered = await registerHuman(
+      integrationDatabase,
+      { ...input, role: "ADMIN", kind: "AGENT" } as typeof input,
+      { userAgent: "integration-browser", ip: "203.0.113.10" },
+      randomUUID(),
+    );
+
+    expect(registered.user).toMatchObject({
+      email: "register_writer@integration.test",
+      username: "register_writer",
+      role: "USER",
+      kind: "HUMAN",
+    });
+    expect(registered.user).not.toHaveProperty("passwordHash");
+    expect(await authenticateSession(integrationDatabase, registered.session.token)).toMatchObject({
+      userId: registered.user.id,
+    });
+    await expect(
+      registerHuman(
+        integrationDatabase,
+        registrationSchema.parse({
+          ...registration("different_writer"),
+          email: input.email.toUpperCase(),
+        }),
+        { userAgent: null, ip: null },
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: "EMAIL_TAKEN", status: 409 });
+    await expect(
+      registerHuman(
+        integrationDatabase,
+        registrationSchema.parse({
+          ...registration("register_writer"),
+          email: "unique@integration.test",
+        }),
+        { userAgent: null, ip: null },
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: "USERNAME_TAKEN", status: 409 });
+    expect(await integrationDatabase.user.count()).toBe(1);
+  });
+
+  it("logs in with a generic invalid-credential response and creates a new session", async () => {
+    const input = registration("login_writer");
+    const registered = await registerHuman(
+      integrationDatabase,
+      input,
+      { userAgent: null, ip: null },
+      randomUUID(),
+    );
+    await integrationDatabase.user.update({
+      where: { id: registered.user.id },
+      data: {
+        passwordHash: await hash(input.password, {
+          algorithm: 2,
+          memoryCost: 8192,
+          timeCost: 1,
+          parallelism: 1,
+          outputLen: 32,
+        }),
+      },
+    });
+    const loggedIn = await loginHuman(
+      integrationDatabase,
+      { email: input.email, password: input.password },
+      { userAgent: "login-agent", ip: "198.51.100.5" },
+      randomUUID(),
+    );
+    expect(loggedIn.user.id).toBe(registered.user.id);
+    expect(loggedIn.session.id).not.toBe(registered.session.id);
+    expect(
+      (await integrationDatabase.user.findUniqueOrThrow({ where: { id: registered.user.id } }))
+        .passwordHash,
+    ).toContain("m=65536,t=3,p=1");
+
+    for (const invalid of [
+      { email: input.email, password: "WrongPassword123!" },
+      { email: "missing@integration.test", password: "WrongPassword123!" },
+    ]) {
+      await expect(
+        loginHuman(integrationDatabase, invalid, { userAgent: null, ip: null }, randomUUID()),
+      ).rejects.toMatchObject({
+        code: "INVALID_CREDENTIALS",
+        status: 401,
+        message: "E-posta veya şifre hatalı.",
+      });
+    }
+  });
+
+  it("lists, rotates and revokes owned sessions", async () => {
+    const input = registration("session_writer");
+    const registered = await registerHuman(
+      integrationDatabase,
+      input,
+      { userAgent: "first-agent", ip: null },
+      randomUUID(),
+    );
+    const second = await loginHuman(
+      integrationDatabase,
+      { email: input.email, password: input.password },
+      { userAgent: "second-agent", ip: null },
+      randomUUID(),
+    );
+    expect(
+      await activeSessions(integrationDatabase, registered.user.id, registered.session.id),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: registered.session.id, current: true }),
+        expect.objectContaining({ id: second.session.id, current: false }),
+      ]),
+    );
+    const csrfToken = await rotateCsrfToken(integrationDatabase, registered.session.id);
+    expect(csrfToken.length).toBeGreaterThan(40);
+    await expect(
+      endOwnedSession(integrationDatabase, randomUUID(), second.session.id),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    await endOwnedSession(integrationDatabase, registered.user.id, second.session.id);
+    expect(await authenticateSession(integrationDatabase, second.session.token)).toBeNull();
+    await endSession(integrationDatabase, registered.session.id);
+    await expect(
+      requireSession(integrationDatabase, registered.session.token),
+    ).rejects.toMatchObject({
+      code: "AUTH_REQUIRED",
+      status: 401,
+    });
+  });
+
+  it("changes profile, email and password while revoking only other sessions", async () => {
+    const input = registration("account_writer");
+    const registered = await registerHuman(
+      integrationDatabase,
+      input,
+      { userAgent: "first-agent", ip: null },
+      randomUUID(),
+    );
+    const second = await loginHuman(
+      integrationDatabase,
+      { email: input.email, password: input.password },
+      { userAgent: "second-agent", ip: null },
+      randomUUID(),
+    );
+    expect(
+      await updateProfile(
+        integrationDatabase,
+        registered.user.id,
+        { displayName: "Yeni Görünen Ad", bio: "PostgreSQL profil testi" },
+        randomUUID(),
+      ),
+    ).toMatchObject({ displayName: "Yeni Görünen Ad", bio: "PostgreSQL profil testi" });
+    const changedEmail = "changed_account@integration.test";
+    expect(
+      await changeEmail(
+        integrationDatabase,
+        registered.user.id,
+        { email: changedEmail, currentPassword: input.password },
+        randomUUID(),
+      ),
+    ).toMatchObject({ email: changedEmail });
+    const newPassword = "ChangedIntegrationPassword456!";
+    await changePassword(
+      integrationDatabase,
+      registered.user.id,
+      registered.session.id,
+      {
+        currentPassword: input.password,
+        newPassword,
+        newPasswordConfirmation: newPassword,
+      },
+      randomUUID(),
+    );
+    expect(await authenticateSession(integrationDatabase, registered.session.token)).not.toBeNull();
+    expect(await authenticateSession(integrationDatabase, second.session.token)).toBeNull();
+    await endOtherSessions(integrationDatabase, registered.user.id, registered.session.id);
+    expect(
+      await loginHuman(
+        integrationDatabase,
+        { email: changedEmail, password: newPassword },
+        { userAgent: null, ip: null },
+        randomUUID(),
+      ),
+    ).toMatchObject({ user: { id: registered.user.id } });
+  });
+
+  it("anonymizes a normal account and deletes private interactions", async () => {
+    const input = registration("deactivate_writer");
+    const registered = await registerHuman(
+      integrationDatabase,
+      input,
+      { userAgent: null, ip: null },
+      randomUUID(),
+    );
+    const other = await createUser("deactivate_other");
+    const topic = await createTopic(other.id, "Anonimleştirme başlığı");
+    await putBookmark(integrationDatabase, actor(registered.user.id), topic.entry.id);
+    await putFollow(integrationDatabase, actor(registered.user.id), topic.topic.id);
+    await putBlock(integrationDatabase, actor(registered.user.id), other.id);
+
+    await deactivateAccount(
+      integrationDatabase,
+      registered.user.id,
+      { currentPassword: input.password, usernameConfirmation: input.username },
+      randomUUID(),
+    );
+
+    expect(
+      await integrationDatabase.user.findUniqueOrThrow({ where: { id: registered.user.id } }),
+    ).toMatchObject({
+      status: "DEACTIVATED",
+      displayName: "silinmiş hesap",
+      bio: null,
+    });
+    expect(
+      await integrationDatabase.entryBookmark.count({ where: { userId: registered.user.id } }),
+    ).toBe(0);
+    expect(
+      await integrationDatabase.topicFollow.count({ where: { userId: registered.user.id } }),
+    ).toBe(0);
+    expect(
+      await integrationDatabase.userBlock.count({ where: { blockerId: registered.user.id } }),
+    ).toBe(0);
+    await expect(
+      loginHuman(
+        integrationDatabase,
+        { email: input.email, password: input.password },
+        { userAgent: null, ip: null },
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_CREDENTIALS", status: 401 });
+  });
+
+  it("enforces an atomic PostgreSQL fixed-window rate limit", async () => {
+    const rule = { action: "integration:limit", limit: 2, windowMs: 60_000 };
+    const now = new Date("2026-07-17T09:00:30.000Z");
+    await enforceRateLimit(integrationDatabase, "203.0.113.77", rule, now);
+    await enforceRateLimit(integrationDatabase, "203.0.113.77", rule, now);
+    await expect(
+      enforceRateLimit(integrationDatabase, "203.0.113.77", rule, now),
+    ).rejects.toMatchObject({
+      code: "RATE_LIMITED",
+      status: 429,
+      headers: { "Retry-After": "30" },
+    });
+    expect(await integrationDatabase.rateLimitBucket.count()).toBe(1);
+  });
 });
 
 describe("topics and entries with PostgreSQL", () => {
