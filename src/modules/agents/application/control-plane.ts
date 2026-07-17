@@ -6,13 +6,11 @@ import { createOpaqueToken, sha256 } from "@/lib/security/crypto";
 import { appendAuditLog } from "@/modules/audit";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { hashPassword } from "@/modules/auth/domain/password";
-import { lockUserStateForMutation } from "@/modules/auth/repository/users";
-import {
-  assertLifecycleTransition,
-  requireHumanAdmin,
-} from "@/modules/agents/domain/authorization";
+import { requireAgentAdminInTransaction } from "@/modules/agents/application/authorization";
+import { assertLifecycleTransition } from "@/modules/agents/domain/authorization";
 import { validatePersonaCandidate } from "@/modules/agents/domain/persona-validation";
 import { assertQuotaConsistency } from "@/modules/agents/domain/quota";
+import { assertDualConcurrencySupported } from "@/modules/agents/domain/capacity";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import { seedPersonaSchema, type SeedPersona } from "@/modules/agents/personas/schema";
 import {
@@ -20,7 +18,6 @@ import {
   appendRuntimeEvent,
   countQueuedRuns,
   createAgentRecords,
-  findAgentAdminPrincipal,
   findAgentDetailRecord,
   findAgentForMutation,
   findAgentIdentityConflict,
@@ -36,6 +33,7 @@ import {
   updateAgentProfileRecords,
   updateGlobalSettingsRecord,
 } from "@/modules/agents/repository/control-plane";
+import { getLatestRuntimeCapability } from "@/modules/agents/repository/capacity";
 import type {
   CreateAgentInput,
   GlobalSettingsUpdateInput,
@@ -47,14 +45,6 @@ import type { RuntimeCredentialRotationInput } from "@/modules/agents/validation
 import { appendOutboxEvent } from "@/modules/outbox";
 
 const GLOBAL_SETTINGS_AGGREGATE_ID = "00000000-0000-4000-8000-000000000001";
-
-async function requireAdminInTransaction(
-  transaction: TransactionClient,
-  actor: ActorContext,
-): Promise<void> {
-  await lockUserStateForMutation(transaction, actor.actorId);
-  requireHumanAdmin(await findAgentAdminPrincipal(transaction, actor.actorId), actor);
-}
 
 async function recordControlPlaneChange(
   transaction: TransactionClient,
@@ -151,7 +141,7 @@ export async function createAgent(
   const passwordHash = await hashPassword(createOpaqueToken());
   const rawCredential = `agt_${createOpaqueToken()}`;
   return inTransaction(client, async (transaction) => {
-    await requireAdminInTransaction(transaction, actor);
+    await requireAgentAdminInTransaction(transaction, actor);
     if (await findAgentIdentityConflict(transaction, input.persona.username)) {
       throw new AppError("USERNAME_TAKEN", 409, "Bu kullanıcı adı kullanılıyor.");
     }
@@ -238,7 +228,7 @@ function jsonNumber(value: unknown, key: string): number {
 
 export async function listAgentDashboard(client: DatabaseExecutor, actor: ActorContext) {
   return inTransaction(client, async (transaction) => {
-    await requireAdminInTransaction(transaction, actor);
+    await requireAgentAdminInTransaction(transaction, actor);
     const [records, queued] = await Promise.all([
       listAgentDashboardRecords(transaction),
       countQueuedRuns(transaction),
@@ -299,7 +289,7 @@ export async function getAgentDetail(
   agentProfileId: string,
 ) {
   return inTransaction(client, async (transaction) => {
-    await requireAdminInTransaction(transaction, actor);
+    await requireAgentAdminInTransaction(transaction, actor);
     const agent = await findAgentDetailRecord(transaction, agentProfileId);
     if (!agent) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
     return agent;
@@ -313,7 +303,7 @@ export async function updateAgent(
   input: UpdateAgentInput,
 ) {
   return inTransaction(client, async (transaction) => {
-    await requireAdminInTransaction(transaction, actor);
+    await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentProfile(transaction, agentProfileId);
     const current = await findAgentForMutation(transaction, agentProfileId);
     if (!current) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
@@ -462,7 +452,7 @@ export async function rollbackPersona(
   input: PersonaRollbackInput,
 ) {
   return inTransaction(client, async (transaction) => {
-    await requireAdminInTransaction(transaction, actor);
+    await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentProfile(transaction, agentProfileId);
     const current = await findAgentForMutation(transaction, agentProfileId);
     if (!current) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
@@ -511,7 +501,7 @@ export async function changeAgentLifecycle(
   input: LifecycleChangeInput,
 ) {
   return inTransaction(client, async (transaction) => {
-    await requireAdminInTransaction(transaction, actor);
+    await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentProfile(transaction, agentProfileId);
     const current = await findAgentForMutation(transaction, agentProfileId);
     if (!current) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
@@ -548,7 +538,7 @@ export async function changeAgentLifecycle(
 
 export async function getGlobalSettings(client: DatabaseExecutor, actor: ActorContext) {
   return inTransaction(client, async (transaction) => {
-    await requireAdminInTransaction(transaction, actor);
+    await requireAgentAdminInTransaction(transaction, actor);
     return getGlobalSettingsRecord(transaction);
   });
 }
@@ -559,9 +549,12 @@ export async function updateGlobalSettings(
   input: GlobalSettingsUpdateInput,
 ) {
   return inTransaction(client, async (transaction) => {
-    await requireAdminInTransaction(transaction, actor);
+    await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentSettings(transaction);
     const current = await getGlobalSettingsRecord(transaction);
+    if (input.codexConcurrency === 2) {
+      assertDualConcurrencySupported(await getLatestRuntimeCapability(transaction));
+    }
     const candidate = {
       defaultDailyEntryMin: input.defaultDailyEntryMin ?? current.defaultDailyEntryMin,
       defaultDailyEntryMax: input.defaultDailyEntryMax ?? current.defaultDailyEntryMax,
@@ -601,7 +594,7 @@ export async function rotateAgentCredential(
 ) {
   const rawCredential = `agt_${createOpaqueToken()}`;
   return inTransaction(client, async (transaction) => {
-    await requireAdminInTransaction(transaction, actor);
+    await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentProfile(transaction, agentProfileId);
     const agent = await findAgentForMutation(transaction, agentProfileId);
     if (!agent) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");

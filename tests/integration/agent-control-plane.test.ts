@@ -7,9 +7,12 @@ import {
   changeAgentLifecycle,
   createAgent,
   createAgentSchema,
+  getRuntimeCapacity,
   lifecycleChangeSchema,
   personaRollbackSchema,
+  recordRuntimeCapability,
   rollbackPersona,
+  runtimeCapabilityMeasurementSchema,
   updateAgent,
   updateAgentSchema,
   updateGlobalSettings,
@@ -395,5 +398,123 @@ describe("agent control plane with PostgreSQL", () => {
       dailyEntryMin: 15,
       dailyEntryMax: 20,
     });
+  });
+
+  it("allows concurrency 2 only with the latest fresh successful capability measurement", async () => {
+    const admin = await createPrincipal();
+    await expect(
+      updateGlobalSettings(integrationDatabase, actor(admin.id), { codexConcurrency: 2 }),
+    ).rejects.toMatchObject({ code: "AGENT_CAPABILITY_REQUIRED" });
+
+    const measuredAt = new Date();
+    const capability = runtimeCapabilityMeasurementSchema.parse({
+      codexVersion: "codex-cli 2.4.0",
+      promptProfileHash: "a".repeat(64),
+      benchmarkRunCount: 10,
+      p50DurationMs: 120_000,
+      p75DurationMs: 180_000,
+      p95DurationMs: 240_000,
+      maxDurationMs: 300_000,
+      successfulActionCount: 20,
+      publishedEntries: 18,
+      failureRate: 0,
+      duplicateRetryRate: 0.05,
+      singleProcessPeakRssMb: 400,
+      dualProcessPeakRssMb: 700,
+      systemPeakMemoryMb: 3000,
+      availableMemoryMb: 900,
+      swapInMb: 0,
+      swapOutMb: 0,
+      loadAverage1m: 1.2,
+      dualRunSuccessCount: 2,
+      oomDetected: false,
+      swapThrashingDetected: false,
+      healthStable: true,
+      readinessStable: true,
+      appLatencyImpact: { baselineP95Ms: 50, measuredP95Ms: 55, stable: true },
+      databaseLatencyImpact: { baselineP95Ms: 10, measuredP95Ms: 12, stable: true },
+      capacityStatus: "HEALTHY",
+    });
+    await expect(
+      recordRuntimeCapability(integrationDatabase, actor(admin.id), capability, measuredAt),
+    ).resolves.toMatchObject({
+      capability: { dualConcurrencySupported: true },
+      concurrencyDowngraded: false,
+    });
+    await expect(
+      updateGlobalSettings(integrationDatabase, actor(admin.id), { codexConcurrency: 2 }),
+    ).resolves.toMatchObject({ codexConcurrency: 2 });
+
+    const created = await createFirstAgent(admin.id);
+    const initialCapacity = await getRuntimeCapacity(integrationDatabase, actor(admin.id));
+    const dailyPlan = await integrationDatabase.agentDailyPlan.create({
+      data: {
+        agentProfileId: created.agent.profile.id,
+        localDate: initialCapacity.localDate,
+        entryTarget: 7,
+        topicTarget: 0,
+        voteTarget: 0,
+        generatedFromSettingsVersion: 2,
+        randomSeed: "capacity-integration-seed",
+      },
+    });
+    await integrationDatabase.agentScheduleSlot.createMany({
+      data: [
+        {
+          dailyPlanId: dailyPlan.id,
+          agentProfileId: created.agent.profile.id,
+          scheduledAt: measuredAt,
+          runType: "SCHEDULED_WAKE",
+          queuePriority: "SCHEDULED_CONTENT",
+          desiredEntryMin: 2,
+          desiredEntryMax: 3,
+          status: "COMPLETED",
+        },
+        {
+          dailyPlanId: dailyPlan.id,
+          agentProfileId: created.agent.profile.id,
+          scheduledAt: new Date(measuredAt.getTime() + 60_000),
+          runType: "SCHEDULED_WAKE",
+          queuePriority: "SCHEDULED_CONTENT",
+          desiredEntryMin: 3,
+          desiredEntryMax: 4,
+        },
+      ],
+    });
+    await expect(getRuntimeCapacity(integrationDatabase, actor(admin.id))).resolves.toMatchObject({
+      capacityStatus: "HEALTHY",
+      configuredConcurrency: 2,
+      effectiveConcurrency: 2,
+      plannedRuns: 2,
+      completedRuns: 1,
+      estimatedPublishedMin: 5,
+      estimatedPublishedMax: 7,
+      requiredContentMinutes: 6,
+    });
+
+    await expect(
+      recordRuntimeCapability(
+        integrationDatabase,
+        actor(admin.id),
+        runtimeCapabilityMeasurementSchema.parse({
+          ...capability,
+          benchmarkRunCount: 2,
+          dualProcessPeakRssMb: 1500,
+          availableMemoryMb: 700,
+          dualRunSuccessCount: 1,
+          capacityStatus: "AT_RISK",
+        }),
+        new Date(measuredAt.getTime() + 1000),
+      ),
+    ).resolves.toMatchObject({
+      capability: { dualConcurrencySupported: false },
+      concurrencyDowngraded: true,
+    });
+    expect(
+      await integrationDatabase.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } }),
+    ).toMatchObject({ codexConcurrency: 1 });
+    await expect(
+      updateGlobalSettings(integrationDatabase, actor(admin.id), { codexConcurrency: 2 }),
+    ).rejects.toMatchObject({ code: "AGENT_CAPABILITY_REQUIRED" });
   });
 });

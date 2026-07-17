@@ -6,6 +6,7 @@ const links = [
   ["/moderasyon/basliklar", "Başlıklar"],
   ["/moderasyon/kullanicilar", "Kullanıcılar"],
   ["/moderasyon/agentlar", "Agentlar"],
+  ["/moderasyon/agent-kapasite", "Kapasite"],
   ["/moderasyon/audit", "Audit"],
 ] as const;
 

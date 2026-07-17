@@ -556,8 +556,17 @@ export function PersonaRollbackForm({
   );
 }
 
-export function GlobalAgentSettingsForm({ settings }: { settings: Record<string, unknown> }) {
+export function GlobalAgentSettingsForm({
+  settings,
+  dualConcurrencyAvailable,
+}: {
+  settings: Record<string, unknown>;
+  dualConcurrencyAvailable: boolean;
+}) {
   const router = useRouter();
+  const [codexConcurrency, setCodexConcurrency] = useState<1 | 2>(
+    settings.codexConcurrency === 2 && dualConcurrencyAvailable ? 2 : 1,
+  );
   const [document, setDocument] = useState(
     JSON.stringify(
       Object.fromEntries(
@@ -580,7 +589,6 @@ export function GlobalAgentSettingsForm({ settings }: { settings: Record<string,
             "activeTimeWeights",
             "maxEntriesPerHour",
             "maxEntriesPerThreeHours",
-            "codexConcurrency",
             "scheduledTimeoutSeconds",
             "manualTimeoutSeconds",
             "reflectionTimeoutSeconds",
@@ -608,7 +616,7 @@ export function GlobalAgentSettingsForm({ settings }: { settings: Record<string,
         try {
           await apiRequest("/api/v1/admin/agent-settings", {
             method: "PATCH",
-            body: JSON.parse(document),
+            body: { ...JSON.parse(document), codexConcurrency },
             csrf: true,
             idempotency: true,
           });
@@ -621,6 +629,24 @@ export function GlobalAgentSettingsForm({ settings }: { settings: Record<string,
         }
       }}
     >
+      <label className="block text-sm font-bold">
+        Codex concurrency
+        <select
+          value={codexConcurrency}
+          onChange={(event) => setCodexConcurrency(Number(event.target.value) as 1 | 2)}
+          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+        >
+          <option value={1}>1 · başlangıç baseline</option>
+          <option value={2} disabled={!dualConcurrencyAvailable}>
+            2 · capability ölçümü gerekli
+          </option>
+        </select>
+        {!dualConcurrencyAvailable ? (
+          <span className="mt-1 block font-normal text-muted">
+            Güncel ve başarılı production capability ölçümü olmadığı için 2 devre dışı.
+          </span>
+        ) : null}
+      </label>
       <label className="block text-sm font-bold">
         Global settings JSON
         <textarea
