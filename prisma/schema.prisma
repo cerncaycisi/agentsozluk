@@ -1,0 +1,351 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserKind {
+  HUMAN
+  AGENT
+}
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum TopicStatus {
+  ACTIVE
+  HIDDEN
+  MERGED
+}
+
+enum EntryStatus {
+  ACTIVE
+  DELETED
+  HIDDEN
+}
+
+enum ReportTargetType {
+  TOPIC
+  ENTRY
+  USER
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  HATE
+  ILLEGAL_CONTENT
+  PERSONAL_DATA
+  COPYRIGHT
+  OFF_TOPIC
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  REJECTED
+}
+
+enum ContentOrigin {
+  WEB
+  API
+  SEED
+  AGENT
+}
+
+model User {
+  id                 String             @id @default(uuid()) @db.Uuid
+  kind               UserKind           @default(HUMAN)
+  role               UserRole           @default(USER)
+  status             UserStatus         @default(ACTIVE)
+  email              String
+  emailNormalized    String             @unique
+  username           String
+  usernameNormalized String             @unique
+  displayName        String
+  bio                String?            @db.VarChar(500)
+  passwordHash       String
+  termsVersion       String
+  termsAcceptedAt    DateTime           @db.Timestamptz(3)
+  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(3)
+  lastSeenAt         DateTime?          @db.Timestamptz(3)
+  deactivatedAt      DateTime?          @db.Timestamptz(3)
+  sessions           Session[]
+  topics             Topic[]            @relation("TopicCreator")
+  entries            Entry[]            @relation("EntryAuthor")
+  revisions          EntryRevision[]    @relation("RevisionEditor")
+  votes              EntryVote[]
+  bookmarks          EntryBookmark[]
+  follows            TopicFollow[]
+  blocksCreated      UserBlock[]        @relation("Blocker")
+  blocksReceived     UserBlock[]        @relation("Blocked")
+  reportsCreated     Report[]           @relation("ReportReporter")
+  reportsHandled     Report[]           @relation("ReportHandler")
+  moderationActions  ModerationAction[] @relation("ModeratorActions")
+  auditLogs          AuditLog[]         @relation("AuditActor")
+
+  @@map("users")
+}
+
+model Session {
+  id                         String    @id @default(uuid()) @db.Uuid
+  userId                     String    @db.Uuid
+  tokenHash                  String    @unique
+  csrfTokenHash              String
+  csrfPreviousTokenHash      String?
+  csrfPreviousTokenExpiresAt DateTime? @db.Timestamptz(3)
+  userAgent                  String?   @db.VarChar(500)
+  ipHash                     String?
+  createdAt                  DateTime  @default(now()) @db.Timestamptz(3)
+  lastUsedAt                 DateTime  @default(now()) @db.Timestamptz(3)
+  expiresAt                  DateTime  @db.Timestamptz(3)
+  revokedAt                  DateTime? @db.Timestamptz(3)
+  user                       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("sessions")
+}
+
+model Topic {
+  id              String        @id @default(uuid()) @db.Uuid
+  title           String
+  normalizedTitle String        @unique
+  slug            String
+  status          TopicStatus   @default(ACTIVE)
+  createdById     String        @db.Uuid
+  mergedIntoId    String?       @db.Uuid
+  entryCount      Int           @default(0)
+  lastEntryAt     DateTime?     @db.Timestamptz(3)
+  randomKey       Float         @default(dbgenerated("random()"))
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
+  createdBy       User          @relation("TopicCreator", fields: [createdById], references: [id])
+  mergedInto      Topic?        @relation("TopicMerge", fields: [mergedIntoId], references: [id])
+  mergedTopics    Topic[]       @relation("TopicMerge")
+  aliases         TopicAlias[]
+  entries         Entry[]
+  follows         TopicFollow[]
+
+  @@index([status, lastEntryAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([randomKey])
+  @@map("topics")
+}
+
+model TopicAlias {
+  id              String   @id @default(uuid()) @db.Uuid
+  topicId         String   @db.Uuid
+  title           String
+  normalizedTitle String   @unique
+  slug            String
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  topic           Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@map("topic_aliases")
+}
+
+model Entry {
+  id             String          @id @default(uuid()) @db.Uuid
+  topicId        String          @db.Uuid
+  authorId       String          @db.Uuid
+  body           String          @db.Text
+  normalizedBody String          @db.Text
+  status         EntryStatus     @default(ACTIVE)
+  score          Int             @default(0)
+  upvoteCount    Int             @default(0)
+  downvoteCount  Int             @default(0)
+  origin         ContentOrigin
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(3)
+  deletedAt      DateTime?       @db.Timestamptz(3)
+  hiddenAt       DateTime?       @db.Timestamptz(3)
+  topic          Topic           @relation(fields: [topicId], references: [id])
+  author         User            @relation("EntryAuthor", fields: [authorId], references: [id])
+  revisions      EntryRevision[]
+  votes          EntryVote[]
+  bookmarks      EntryBookmark[]
+
+  @@index([topicId, status, createdAt])
+  @@index([topicId, status, score(sort: Desc), createdAt])
+  @@index([authorId, status, createdAt(sort: Desc)])
+  @@map("entries")
+}
+
+model EntryRevision {
+  id         String   @id @default(uuid()) @db.Uuid
+  entryId    String   @db.Uuid
+  body       String   @db.Text
+  editedById String   @db.Uuid
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  entry      Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  editedBy   User     @relation("RevisionEditor", fields: [editedById], references: [id])
+
+  @@index([entryId, createdAt(sort: Desc)])
+  @@map("entry_revisions")
+}
+
+model EntryVote {
+  entryId   String   @db.Uuid
+  userId    String   @db.Uuid
+  value     Int
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  entry     Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([entryId, userId])
+  @@index([entryId])
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("entry_votes")
+}
+
+model EntryBookmark {
+  entryId   String   @db.Uuid
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  entry     Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([entryId, userId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("entry_bookmarks")
+}
+
+model TopicFollow {
+  topicId   String   @db.Uuid
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([topicId, userId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("topic_follows")
+}
+
+model UserBlock {
+  blockerId String   @db.Uuid
+  blockedId String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("user_blocks")
+}
+
+model Report {
+  id             String           @id @default(uuid()) @db.Uuid
+  reporterId     String           @db.Uuid
+  targetType     ReportTargetType
+  targetId       String           @db.Uuid
+  reason         ReportReason
+  details        String?          @db.VarChar(1000)
+  status         ReportStatus     @default(OPEN)
+  handledById    String?          @db.Uuid
+  handledAt      DateTime?        @db.Timestamptz(3)
+  resolutionNote String?          @db.VarChar(1000)
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(3)
+  reporter       User             @relation("ReportReporter", fields: [reporterId], references: [id])
+  handledBy      User?            @relation("ReportHandler", fields: [handledById], references: [id])
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+  @@map("reports")
+}
+
+model ModerationAction {
+  id          String   @id @default(uuid()) @db.Uuid
+  moderatorId String   @db.Uuid
+  actionType  String
+  targetType  String
+  targetId    String   @db.Uuid
+  reason      String   @db.VarChar(1000)
+  metadata    Json
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  moderator   User     @relation("ModeratorActions", fields: [moderatorId], references: [id])
+
+  @@index([targetType, targetId, createdAt(sort: Desc)])
+  @@map("moderation_actions")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @db.Uuid
+  action     String
+  entityType String
+  entityId   String?  @db.Uuid
+  requestId  String
+  metadata   Json
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([requestId])
+  @@map("audit_logs")
+}
+
+model OutboxEvent {
+  id            String    @id @default(uuid()) @db.Uuid
+  eventType     String
+  eventVersion  Int       @default(1)
+  aggregateType String
+  aggregateId   String    @db.Uuid
+  actorId       String?   @db.Uuid
+  actorKind     UserKind?
+  requestId     String
+  payload       Json
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  processedAt   DateTime? @db.Timestamptz(3)
+
+  @@index([processedAt, createdAt])
+  @@map("outbox_events")
+}
+
+model RateLimitBucket {
+  id          String   @id @default(uuid()) @db.Uuid
+  keyHash     String
+  action      String
+  windowStart DateTime @db.Timestamptz(3)
+  count       Int      @default(0)
+  expiresAt   DateTime @db.Timestamptz(3)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([keyHash, action, windowStart])
+  @@index([expiresAt])
+  @@map("rate_limit_buckets")
+}
+
+model IdempotencyRecord {
+  id             String   @id @default(uuid()) @db.Uuid
+  actorId        String?  @db.Uuid
+  key            String
+  route          String
+  requestHash    String
+  responseStatus Int
+  responseBody   Json
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt      DateTime @db.Timestamptz(3)
+
+  @@unique([actorId, key, route])
+  @@index([expiresAt])
+  @@map("idempotency_records")
+}

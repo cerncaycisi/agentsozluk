@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0",
     "build": "next build",
-    "start": "next start --hostname 0.0.0.0",
+    "start": "\"$npm_node_execpath\" scripts/start-standalone.mjs",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix --max-warnings=0",
     "format": "prettier --write .",
@@ -19,9 +19,9 @@
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration --passWithNoTests=false",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:coverage": "vitest run --coverage",
+    "test:e2e": "\"$npm_node_execpath\" node_modules/@playwright/test/cli.js test",
+    "test:e2e:ui": "\"$npm_node_execpath\" node_modules/@playwright/test/cli.js test --ui",
+    "test:coverage": "vitest run tests/unit tests/integration --coverage",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
@@ -30,10 +30,11 @@
     "db:recalculate": "tsx scripts/recalculate-counters.ts",
     "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
     "maintenance:rate-limits": "tsx scripts/cleanup-rate-limits.ts",
+    "env:validate": "tsx scripts/validate-environment.ts",
     "openapi:validate": "tsx scripts/validate-openapi.ts",
     "requirements:check": "vitest run tests/requirements/traceability.test.ts",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:integration && pnpm openapi:validate && pnpm requirements:check && pnpm build",
-    "verify:m1": "tsx scripts/verify-m1.ts"
+    "verify:m1": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/verify-m1.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "5.4.0",
@@ -49,12 +50,14 @@
     "lucide-react": "1.24.0",
     "next": "15.5.20",
     "pino": "10.3.1",
+    "prisma": "6.19.3",
     "react": "19.1.8",
     "react-dom": "19.1.8",
     "react-hook-form": "7.81.0",
     "server-only": "0.0.1",
     "sonner": "2.0.7",
     "tailwind-merge": "3.6.0",
+    "tsx": "4.23.1",
     "zod": "4.4.3"
   },
   "devDependencies": {
@@ -86,24 +89,11 @@
     "jsdom": "26.1.0",
     "postcss": "8.5.8",
     "prettier": "3.8.1",
-    "prisma": "6.19.3",
     "tailwindcss": "3.4.19",
-    "tsx": "4.21.0",
     "typescript": "5.9.3",
     "vitest": "3.2.7"
   },
   "prisma": {
     "seed": "tsx prisma/seed/index.ts"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@node-rs/argon2",
-      "@prisma/client",
-      "@prisma/engines",
-      "esbuild",
-      "prisma",
-      "sharp",
-      "unrs-resolver"
-    ]
   }
 }

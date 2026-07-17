@@ -13,8 +13,12 @@ function currentTheme(): Theme {
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>("light");
+  const [ready, setReady] = useState(false);
 
-  useEffect(() => setTheme(currentTheme()), []);
+  useEffect(() => {
+    setTheme(currentTheme());
+    setReady(true);
+  }, []);
 
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -27,6 +31,7 @@ export function ThemeToggle() {
   return (
     <button
       type="button"
+      disabled={!ready}
       onClick={toggleTheme}
       className="grid size-10 shrink-0 place-items-center rounded-xl border bg-page text-ink transition hover:border-primary hover:text-primary"
       aria-label={theme === "dark" ? "Açık temaya geç" : "Koyu temaya geç"}

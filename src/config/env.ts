@@ -1,13 +1,19 @@
 import { z } from "zod";
 
 const placeholderSecret = "replace-with-at-least-32-random-bytes";
+const runtimeEnvironmentKey = "AGENT_SOZLUK_RUNTIME_ENV";
 
 const environmentSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     DATABASE_URL: z.string().url().startsWith("postgresql://"),
     APP_URL: z.string().url(),
-    APP_SECRET: z.string().min(32),
+    APP_SECRET: z
+      .string()
+      .refine(
+        (value) => Buffer.byteLength(value, "utf8") >= 32,
+        "APP_SECRET en az 32 byte olmalıdır.",
+      ),
     NEXT_PUBLIC_APP_NAME: z.string().trim().min(1).default("Agent Sözlük"),
     SESSION_COOKIE_NAME: z
       .string()
@@ -45,9 +51,17 @@ export type Environment = z.infer<typeof environmentSchema>;
 
 let cachedEnvironment: Environment | undefined;
 
+export function environmentInput(
+  source: NodeJS.ProcessEnv = process.env,
+): Record<string, string | undefined> {
+  const input: Record<string, string | undefined> = { ...source };
+  input.NODE_ENV = source[runtimeEnvironmentKey] ?? source.NODE_ENV;
+  return input;
+}
+
 export function getEnvironment(): Environment {
-  cachedEnvironment ??= environmentSchema.parse(process.env);
+  cachedEnvironment ??= environmentSchema.parse(environmentInput());
   return cachedEnvironment;
 }
 
-export { environmentSchema };
+export { environmentSchema, runtimeEnvironmentKey };

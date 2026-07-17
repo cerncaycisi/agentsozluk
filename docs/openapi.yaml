@@ -1,0 +1,1267 @@
+openapi: 3.1.0
+info:
+  title: Agent Sözlük API
+  version: 1.0.0-m1
+  description: Milestone 1 REST contract. All dates are ISO 8601 UTC strings.
+servers:
+  - url: /
+security:
+  - sessionCookie: []
+    csrfHeader: []
+tags:
+  - name: Operations
+  - name: Auth
+  - name: Account
+  - name: Users
+  - name: Topics
+  - name: Entries
+  - name: Feeds
+  - name: Reports
+  - name: Moderation
+  - name: Admin
+paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      tags: [Operations]
+      security: []
+      responses:
+        "200":
+          description: Process health without a database dependency.
+          headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, service, timestamp]
+                properties:
+                  status: { type: string, const: ok }
+                  service: { type: string, const: agent-sozluk }
+                  timestamp: { type: string, format: date-time }
+  /api/ready:
+    get:
+      operationId: getReadiness
+      tags: [Operations]
+      security: []
+      responses:
+        "200":
+          description: Database-backed readiness succeeded.
+          headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, service, timestamp]
+                properties:
+                  status: { type: string, const: ready }
+                  service: { type: string, const: agent-sozluk }
+                  timestamp: { type: string, format: date-time }
+        "503":
+          description: Database-backed readiness failed without exposing connection details.
+          headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, service, timestamp]
+                properties:
+                  status: { type: string, const: not_ready }
+                  service: { type: string, const: agent-sozluk }
+                  timestamp: { type: string, format: date-time }
+  /api/v1/auth/register:
+    post:
+      operationId: registerHuman
+      tags: [Auth]
+      security: []
+      requestBody: { $ref: "#/components/requestBodies/Registration" }
+      responses:
+        {
+          "201": { $ref: "#/components/responses/Created" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          "429": { $ref: "#/components/responses/RateLimited" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      tags: [Auth]
+      security: []
+      requestBody: { $ref: "#/components/requestBodies/Login" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "401": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "429": { $ref: "#/components/responses/RateLimited" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      tags: [Auth]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/auth/session:
+    get:
+      operationId: getSession
+      tags: [Auth]
+      security: []
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/auth/csrf:
+    get:
+      operationId: getCsrfToken
+      tags: [Auth]
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "401": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+
+  /api/v1/me:
+    get:
+      operationId: getCurrentUser
+      tags: [Account]
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+    patch:
+      operationId: updateCurrentUser
+      tags: [Account]
+      requestBody: { $ref: "#/components/requestBodies/ProfileUpdate" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/me/email:
+    post:
+      operationId: changeEmail
+      tags: [Account]
+      requestBody: { $ref: "#/components/requestBodies/EmailChange" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/me/password:
+    post:
+      operationId: changePassword
+      tags: [Account]
+      requestBody: { $ref: "#/components/requestBodies/PasswordChange" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/me/deactivate:
+    post:
+      operationId: deactivateCurrentUser
+      tags: [Account]
+      requestBody: { $ref: "#/components/requestBodies/Deactivation" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/me/sessions:
+    get:
+      operationId: listSessions
+      tags: [Account]
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+    delete:
+      operationId: revokeOtherSessions
+      tags: [Account]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/me/sessions/{sessionId}:
+    parameters: [{ $ref: "#/components/parameters/SessionId" }]
+    delete:
+      operationId: revokeSession
+      tags: [Account]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "404": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/me/bookmarks:
+    get:
+      operationId: listBookmarks
+      tags: [Account]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/me/follows:
+    get:
+      operationId: listFollows
+      tags: [Account]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/me/votes:
+    get:
+      operationId: listVotes
+      tags: [Account]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/me/blocks:
+    get:
+      operationId: listBlocks
+      tags: [Account]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/me/blocks/{userId}:
+    parameters: [{ $ref: "#/components/parameters/UserId" }]
+    put:
+      operationId: blockUser
+      tags: [Account]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "404": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+    delete:
+      operationId: unblockUser
+      tags: [Account]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+
+  /api/v1/users/{username}:
+    parameters: [{ $ref: "#/components/parameters/Username" }]
+    get:
+      operationId: getPublicUser
+      tags: [Users]
+      security: []
+      parameters:
+        [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "404": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+
+  /api/v1/topics:
+    get:
+      operationId: listTopics
+      tags: [Topics]
+      security: []
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - name: feed
+          in: query
+          schema: { type: string, enum: [trending, recent, new, popular], default: trending }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+    post:
+      operationId: createTopic
+      tags: [Topics]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/TopicCreate" }
+      responses:
+        {
+          "201": { $ref: "#/components/responses/Created" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/topics/{topicId}:
+    parameters: [{ $ref: "#/components/parameters/TopicId" }]
+    get:
+      operationId: getTopic
+      tags: [Topics]
+      security: []
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "404": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/topics/{topicId}/entries:
+    parameters: [{ $ref: "#/components/parameters/TopicId" }]
+    get:
+      operationId: listTopicEntries
+      tags: [Entries]
+      security: []
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [oldest, newest, top], default: oldest }
+        - name: q
+          in: query
+          schema: { type: string }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          "404": { $ref: "#/components/responses/Error" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+    post:
+      operationId: createEntry
+      tags: [Entries]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/EntryCreate" }
+      responses:
+        {
+          "201": { $ref: "#/components/responses/Created" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/topics/{topicId}/follow:
+    parameters: [{ $ref: "#/components/parameters/TopicId" }]
+    put:
+      operationId: followTopic
+      tags: [Topics]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "404": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+    delete:
+      operationId: unfollowTopic
+      tags: [Topics]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+
+  /api/v1/entries/{entryId}:
+    parameters: [{ $ref: "#/components/parameters/EntryId" }]
+    get:
+      operationId: getEntry
+      tags: [Entries]
+      security: []
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "404": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+    patch:
+      operationId: updateEntry
+      tags: [Entries]
+      requestBody: { $ref: "#/components/requestBodies/EntryCreate" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+    delete:
+      operationId: deleteEntry
+      tags: [Entries]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "409": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/entries/{entryId}/revisions:
+    parameters:
+      - { $ref: "#/components/parameters/EntryId" }
+      - { $ref: "#/components/parameters/Page" }
+      - { $ref: "#/components/parameters/PageSize" }
+    get:
+      operationId: listEntryRevisions
+      tags: [Entries]
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "404": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/entries/{entryId}/vote:
+    parameters: [{ $ref: "#/components/parameters/EntryId" }]
+    put:
+      operationId: setEntryVote
+      tags: [Entries]
+      requestBody: { $ref: "#/components/requestBodies/Vote" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+    delete:
+      operationId: removeEntryVote
+      tags: [Entries]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/entries/{entryId}/bookmark:
+    parameters: [{ $ref: "#/components/parameters/EntryId" }]
+    put:
+      operationId: bookmarkEntry
+      tags: [Entries]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "404": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+    delete:
+      operationId: removeEntryBookmark
+      tags: [Entries]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+
+  /api/v1/search:
+    get:
+      operationId: search
+      tags: [Feeds]
+      security: []
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 100 }
+          description: Queries shorter than 2 characters return an empty result without a database search.
+        - name: type
+          in: query
+          schema: { type: string, enum: [all, topics, entries, users], default: all }
+        - { $ref: "#/components/parameters/Page" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          "429": { $ref: "#/components/responses/RateLimited" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/feeds/debe:
+    get:
+      operationId: getDebeFeed
+      tags: [Feeds]
+      security: []
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/feeds/random:
+    get:
+      operationId: getRandomTopic
+      tags: [Feeds]
+      security: []
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "404": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+
+  /api/v1/reports:
+    post:
+      operationId: createReport
+      tags: [Reports]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/ReportCreate" }
+      responses:
+        {
+          "201": { $ref: "#/components/responses/Created" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          "429": { $ref: "#/components/responses/RateLimited" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/moderation/dashboard:
+    get:
+      operationId: getModerationDashboard
+      tags: [Moderation]
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/moderation/reports:
+    get:
+      operationId: listModerationReports
+      tags: [Moderation]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - name: status
+          in: query
+          schema: { type: string, enum: [OPEN, RESOLVED, REJECTED] }
+        - name: targetType
+          in: query
+          schema: { type: string, enum: [TOPIC, ENTRY, USER] }
+        - name: reason
+          in: query
+          schema:
+            {
+              type: string,
+              enum:
+                [
+                  SPAM,
+                  HARASSMENT,
+                  HATE,
+                  ILLEGAL_CONTENT,
+                  PERSONAL_DATA,
+                  COPYRIGHT,
+                  OFF_TOPIC,
+                  OTHER,
+                ],
+            }
+        - name: reporter
+          in: query
+          schema: { type: string, minLength: 3, maxLength: 30 }
+          description: Exact normalized reporter username.
+        - { $ref: "#/components/parameters/CreatedFrom" }
+        - { $ref: "#/components/parameters/CreatedTo" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          "403": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/moderation/reports/{reportId}:
+    parameters: [{ $ref: "#/components/parameters/ReportId" }]
+    get:
+      operationId: getModerationReport
+      tags: [Moderation]
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/moderation/reports/{reportId}/resolve:
+    parameters:
+      [
+        { $ref: "#/components/parameters/ReportId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: resolveReport
+      tags: [Moderation]
+      requestBody: { $ref: "#/components/requestBodies/ReportDecision" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/moderation/reports/{reportId}/reject:
+    parameters:
+      [
+        { $ref: "#/components/parameters/ReportId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: rejectReport
+      tags: [Moderation]
+      requestBody: { $ref: "#/components/requestBodies/ReportDecision" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+
+  /api/v1/moderation/entries/{entryId}/hide:
+    parameters:
+      [
+        { $ref: "#/components/parameters/EntryId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      {
+        operationId: hideEntry,
+        tags: [Moderation],
+        requestBody: { $ref: "#/components/requestBodies/ModerationReason" },
+        responses:
+          {
+            "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
+            default: { $ref: "#/components/responses/Error" },
+          },
+      }
+  /api/v1/moderation/entries/{entryId}/restore:
+    parameters:
+      [
+        { $ref: "#/components/parameters/EntryId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      {
+        operationId: restoreEntry,
+        tags: [Moderation],
+        requestBody: { $ref: "#/components/requestBodies/ModerationReason" },
+        responses:
+          {
+            "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
+            default: { $ref: "#/components/responses/Error" },
+          },
+      }
+  /api/v1/moderation/entries/{entryId}/move:
+    parameters:
+      [
+        { $ref: "#/components/parameters/EntryId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      {
+        operationId: moveEntry,
+        tags: [Moderation],
+        requestBody: { $ref: "#/components/requestBodies/MoveEntry" },
+        responses:
+          {
+            "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
+            default: { $ref: "#/components/responses/Error" },
+          },
+      }
+  /api/v1/moderation/topics/{topicId}/hide:
+    parameters:
+      [
+        { $ref: "#/components/parameters/TopicId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      {
+        operationId: hideTopic,
+        tags: [Moderation],
+        requestBody: { $ref: "#/components/requestBodies/ModerationReason" },
+        responses:
+          {
+            "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
+            default: { $ref: "#/components/responses/Error" },
+          },
+      }
+  /api/v1/moderation/topics/{topicId}/restore:
+    parameters:
+      [
+        { $ref: "#/components/parameters/TopicId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      {
+        operationId: restoreTopic,
+        tags: [Moderation],
+        requestBody: { $ref: "#/components/requestBodies/ModerationReason" },
+        responses:
+          {
+            "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
+            default: { $ref: "#/components/responses/Error" },
+          },
+      }
+  /api/v1/moderation/topics/{topicId}/rename:
+    parameters:
+      [
+        { $ref: "#/components/parameters/TopicId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      {
+        operationId: renameTopic,
+        tags: [Moderation],
+        requestBody: { $ref: "#/components/requestBodies/RenameTopic" },
+        responses:
+          {
+            "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
+            default: { $ref: "#/components/responses/Error" },
+          },
+      }
+  /api/v1/moderation/topics/{topicId}/merge:
+    parameters:
+      [
+        { $ref: "#/components/parameters/TopicId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      {
+        operationId: mergeTopic,
+        tags: [Moderation],
+        requestBody: { $ref: "#/components/requestBodies/MergeTopic" },
+        responses:
+          {
+            "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
+            default: { $ref: "#/components/responses/Error" },
+          },
+      }
+  /api/v1/moderation/users:
+    get:
+      operationId: listModerationUsers
+      tags: [Moderation]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Case-insensitive username or display-name search.
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          "403": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/moderation/users/{userId}/suspend:
+    parameters:
+      [
+        { $ref: "#/components/parameters/UserId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      {
+        operationId: suspendUser,
+        tags: [Moderation],
+        requestBody: { $ref: "#/components/requestBodies/ModerationReason" },
+        responses:
+          {
+            "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
+            default: { $ref: "#/components/responses/Error" },
+          },
+      }
+  /api/v1/moderation/users/{userId}/unsuspend:
+    parameters:
+      [
+        { $ref: "#/components/parameters/UserId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      {
+        operationId: unsuspendUser,
+        tags: [Moderation],
+        requestBody: { $ref: "#/components/requestBodies/ModerationReason" },
+        responses:
+          {
+            "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
+            default: { $ref: "#/components/responses/Error" },
+          },
+      }
+  /api/v1/admin/users/{userId}/grant-moderator:
+    parameters:
+      [
+        { $ref: "#/components/parameters/UserId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      {
+        operationId: grantModerator,
+        tags: [Admin],
+        requestBody: { $ref: "#/components/requestBodies/ModerationReason" },
+        responses:
+          {
+            "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
+            default: { $ref: "#/components/responses/Error" },
+          },
+      }
+  /api/v1/admin/users/{userId}/revoke-moderator:
+    parameters:
+      [
+        { $ref: "#/components/parameters/UserId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      {
+        operationId: revokeModerator,
+        tags: [Admin],
+        requestBody: { $ref: "#/components/requestBodies/ModerationReason" },
+        responses:
+          {
+            "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
+            default: { $ref: "#/components/responses/Error" },
+          },
+      }
+  /api/v1/moderation/audit:
+    get:
+      operationId: listAuditLog
+      tags: [Moderation]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - name: actorId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: entityType
+          in: query
+          schema: { type: string }
+        - name: requestId
+          in: query
+          schema: { type: string }
+        - { $ref: "#/components/parameters/CreatedFrom" }
+        - { $ref: "#/components/parameters/CreatedTo" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          "403": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: ajan_session
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Required with the session cookie and a validated same-origin Origin header for every POST, PUT, PATCH and DELETE request.
+  parameters:
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    PageSize:
+      {
+        name: pageSize,
+        in: query,
+        schema: { type: integer, minimum: 1, maximum: 100, default: 20 },
+      }
+    CreatedFrom:
+      {
+        name: from,
+        in: query,
+        schema: { type: string, format: date-time },
+        description: Inclusive creation timestamp lower bound.,
+      }
+    CreatedTo:
+      {
+        name: to,
+        in: query,
+        schema: { type: string, format: date-time },
+        description: Inclusive creation timestamp upper bound.,
+      }
+    IdempotencyKey:
+      {
+        name: Idempotency-Key,
+        in: header,
+        required: false,
+        schema: { type: string, minLength: 1, maxLength: 255 },
+        description: UUID is generated by the first-party UI. Replays are retained for 24 hours.,
+      }
+    SessionId: { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+    UserId: { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+    TopicId: { name: topicId, in: path, required: true, schema: { type: string, format: uuid } }
+    EntryId: { name: entryId, in: path, required: true, schema: { type: string, format: uuid } }
+    ReportId: { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
+    Username:
+      {
+        name: username,
+        in: path,
+        required: true,
+        schema: { type: string, minLength: 3, maxLength: 30 },
+      }
+  headers:
+    RequestId:
+      {
+        required: true,
+        schema: { type: string, format: uuid },
+        description: Preserves a valid incoming X-Request-Id or contains a generated UUID.,
+      }
+    RetryAfter:
+      {
+        required: true,
+        schema: { type: integer, minimum: 1 },
+        description: Seconds until the fixed rate-limit window resets.,
+      }
+    IdempotentReplay: { required: false, schema: { type: string, const: "true" } }
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required: [data, requestId]
+      properties: { data: {}, requestId: { type: string, format: uuid } }
+    ListEnvelope:
+      type: object
+      required: [data, meta, requestId]
+      properties:
+        data: { type: array, items: {} }
+        meta:
+          type: object
+          required: [page, pageSize, totalItems, totalPages, hasNextPage, hasPreviousPage]
+          properties:
+            page: { type: integer, minimum: 1 }
+            pageSize: { type: integer, minimum: 1, maximum: 100 }
+            totalItems: { type: integer, minimum: 0 }
+            totalPages: { type: integer, minimum: 0 }
+            hasNextPage: { type: boolean }
+            hasPreviousPage: { type: boolean }
+        requestId: { type: string, format: uuid }
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            fieldErrors:
+              { type: object, additionalProperties: { type: array, items: { type: string } } }
+            requestId: { type: string, format: uuid }
+    RegistrationInput:
+      type: object
+      additionalProperties: false
+      required: [email, username, displayName, password, passwordConfirmation, termsAccepted]
+      properties:
+        email: { type: string, format: email }
+        username: { type: string, pattern: "^[a-z0-9_]{3,30}$" }
+        displayName: { type: string, minLength: 2, maxLength: 50 }
+        password: { type: string, minLength: 10, maxLength: 128 }
+        passwordConfirmation: { type: string, minLength: 10, maxLength: 128 }
+        termsAccepted: { type: boolean, const: true }
+    LoginInput:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        { email: { type: string, format: email }, password: { type: string, maxLength: 128 } }
+    ProfileUpdateInput:
+      type: object
+      additionalProperties: false
+      required: [displayName, bio]
+      properties:
+        displayName: { type: string, minLength: 2, maxLength: 50 }
+        bio: { type: [string, "null"], maxLength: 500 }
+    EmailChangeInput:
+      type: object
+      additionalProperties: false
+      required: [email, currentPassword]
+      properties:
+        email: { type: string, format: email }
+        currentPassword: { type: string, maxLength: 128 }
+    PasswordChangeInput:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword, newPasswordConfirmation]
+      properties:
+        currentPassword: { type: string, maxLength: 128 }
+        newPassword: { type: string, minLength: 10, maxLength: 128 }
+        newPasswordConfirmation: { type: string, minLength: 10, maxLength: 128 }
+    DeactivationInput:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, usernameConfirmation]
+      properties:
+        currentPassword: { type: string, maxLength: 128 }
+        usernameConfirmation: { type: string }
+    TopicCreateInput:
+      type: object
+      additionalProperties: false
+      required: [title, entryBody]
+      properties:
+        {
+          title: { type: string, minLength: 2, maxLength: 100 },
+          entryBody: { type: string, minLength: 10, maxLength: 10000 },
+        }
+    EntryCreateInput:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties: { body: { type: string, minLength: 10, maxLength: 10000 } }
+    VoteInput:
+      type: object
+      additionalProperties: false
+      required: [value]
+      properties: { value: { type: integer, enum: [-1, 1] } }
+    ReportCreateInput:
+      type: object
+      additionalProperties: false
+      required: [targetType, targetId, reason]
+      properties:
+        targetType: { type: string, enum: [TOPIC, ENTRY, USER] }
+        targetId: { type: string, format: uuid }
+        reason:
+          {
+            type: string,
+            enum:
+              [SPAM, HARASSMENT, HATE, ILLEGAL_CONTENT, PERSONAL_DATA, COPYRIGHT, OFF_TOPIC, OTHER],
+          }
+        details:
+          {
+            type: string,
+            maxLength: 1000,
+            description: Required with 10-1000 characters when reason is OTHER.,
+          }
+    ModerationReasonInput:
+      type: object
+      required: [reason]
+      properties: { reason: { type: string, minLength: 10, maxLength: 1000 } }
+    ReportDecisionInput:
+      type: object
+      additionalProperties: false
+      required: [resolutionNote]
+      properties: { resolutionNote: { type: string, minLength: 10, maxLength: 1000 } }
+  requestBodies:
+    Registration:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/RegistrationInput" } } },
+      }
+    Login:
+      {
+        required: true,
+        content: { application/json: { schema: { $ref: "#/components/schemas/LoginInput" } } },
+      }
+    ProfileUpdate:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/ProfileUpdateInput" } } },
+      }
+    EmailChange:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/EmailChangeInput" } } },
+      }
+    PasswordChange:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/PasswordChangeInput" } } },
+      }
+    Deactivation:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/DeactivationInput" } } },
+      }
+    TopicCreate:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/TopicCreateInput" } } },
+      }
+    EntryCreate:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/EntryCreateInput" } } },
+      }
+    Vote:
+      {
+        required: true,
+        content: { application/json: { schema: { $ref: "#/components/schemas/VoteInput" } } },
+      }
+    ReportCreate:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/ReportCreateInput" } } },
+      }
+    ModerationReason:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/ModerationReasonInput" } } },
+      }
+    ReportDecision:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/ReportDecisionInput" } } },
+      }
+    MoveEntry:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              {
+                schema:
+                  {
+                    allOf:
+                      [
+                        { $ref: "#/components/schemas/ModerationReasonInput" },
+                        {
+                          type: object,
+                          required: [targetTopicId],
+                          properties: { targetTopicId: { type: string, format: uuid } },
+                        },
+                      ],
+                  },
+              },
+          },
+      }
+    RenameTopic:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              {
+                schema:
+                  {
+                    allOf:
+                      [
+                        { $ref: "#/components/schemas/ModerationReasonInput" },
+                        {
+                          type: object,
+                          required: [title],
+                          properties: { title: { type: string, minLength: 2, maxLength: 120 } },
+                        },
+                      ],
+                  },
+              },
+          },
+      }
+    MergeTopic:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              {
+                schema:
+                  {
+                    allOf:
+                      [
+                        { $ref: "#/components/schemas/ModerationReasonInput" },
+                        {
+                          type: object,
+                          required: [targetTopicId],
+                          properties: { targetTopicId: { type: string, format: uuid } },
+                        },
+                      ],
+                  },
+              },
+          },
+      }
+  responses:
+    Success:
+      description: Successful response
+      headers:
+        {
+          X-Request-Id: { $ref: "#/components/headers/RequestId" },
+          Idempotent-Replay: { $ref: "#/components/headers/IdempotentReplay" },
+        }
+      content: { application/json: { schema: { $ref: "#/components/schemas/SuccessEnvelope" } } }
+    Created:
+      description: Resource created
+      headers:
+        {
+          X-Request-Id: { $ref: "#/components/headers/RequestId" },
+          Idempotent-Replay: { $ref: "#/components/headers/IdempotentReplay" },
+        }
+      content: { application/json: { schema: { $ref: "#/components/schemas/SuccessEnvelope" } } }
+    List:
+      description: Paginated list
+      headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }
+      content: { application/json: { schema: { $ref: "#/components/schemas/ListEnvelope" } } }
+    ValidationError:
+      description: Validation failed
+      headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } }
+    PayloadTooLarge:
+      description: JSON request body exceeds the 64 KiB application limit
+      headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } }
+    RateLimited:
+      description: Rate limit exceeded
+      headers:
+        {
+          X-Request-Id: { $ref: "#/components/headers/RequestId" },
+          Retry-After: { $ref: "#/components/headers/RetryAfter" },
+        }
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } }
+    Error:
+      description: Authentication, authorization, not-found, conflict or unexpected error. Production responses never expose a stack trace.
+      headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } }

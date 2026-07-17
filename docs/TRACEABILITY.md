@@ -2,816 +2,816 @@
 
 A row can become PASS only after both implementation and the required verification exist.
 
-| Requirement  | Implementation  | Test or validation | Status |
-| ------------ | --------------- | ------------------ | ------ |
-| AI-READY-001 | Not implemented | Not verified       | FAIL   |
-| AI-READY-002 | Not implemented | Not verified       | FAIL   |
-| AI-READY-003 | Not implemented | Not verified       | FAIL   |
-| AI-READY-004 | Not implemented | Not verified       | FAIL   |
-| AI-READY-005 | Not implemented | Not verified       | FAIL   |
-| AI-READY-006 | Not implemented | Not verified       | FAIL   |
-| AI-READY-007 | Not implemented | Not verified       | FAIL   |
-| AI-READY-008 | Not implemented | Not verified       | FAIL   |
-| AI-READY-009 | Not implemented | Not verified       | FAIL   |
-| API-001      | Not implemented | Not verified       | FAIL   |
-| API-002      | Not implemented | Not verified       | FAIL   |
-| API-003      | Not implemented | Not verified       | FAIL   |
-| API-004      | Not implemented | Not verified       | FAIL   |
-| API-005      | Not implemented | Not verified       | FAIL   |
-| API-006      | Not implemented | Not verified       | FAIL   |
-| API-007      | Not implemented | Not verified       | FAIL   |
-| API-008      | Not implemented | Not verified       | FAIL   |
-| API-009      | Not implemented | Not verified       | FAIL   |
-| API-010      | Not implemented | Not verified       | FAIL   |
-| API-011      | Not implemented | Not verified       | FAIL   |
-| API-012      | Not implemented | Not verified       | FAIL   |
-| API-013      | Not implemented | Not verified       | FAIL   |
-| API-014      | Not implemented | Not verified       | FAIL   |
-| API-015      | Not implemented | Not verified       | FAIL   |
-| API-016      | Not implemented | Not verified       | FAIL   |
-| API-017      | Not implemented | Not verified       | FAIL   |
-| API-018      | Not implemented | Not verified       | FAIL   |
-| API-019      | Not implemented | Not verified       | FAIL   |
-| API-020      | Not implemented | Not verified       | FAIL   |
-| API-021      | Not implemented | Not verified       | FAIL   |
-| API-022      | Not implemented | Not verified       | FAIL   |
-| API-023      | Not implemented | Not verified       | FAIL   |
-| API-024      | Not implemented | Not verified       | FAIL   |
-| API-025      | Not implemented | Not verified       | FAIL   |
-| API-026      | Not implemented | Not verified       | FAIL   |
-| API-027      | Not implemented | Not verified       | FAIL   |
-| API-028      | Not implemented | Not verified       | FAIL   |
-| API-029      | Not implemented | Not verified       | FAIL   |
-| API-030      | Not implemented | Not verified       | FAIL   |
-| API-031      | Not implemented | Not verified       | FAIL   |
-| API-032      | Not implemented | Not verified       | FAIL   |
-| API-033      | Not implemented | Not verified       | FAIL   |
-| API-034      | Not implemented | Not verified       | FAIL   |
-| API-035      | Not implemented | Not verified       | FAIL   |
-| API-036      | Not implemented | Not verified       | FAIL   |
-| API-037      | Not implemented | Not verified       | FAIL   |
-| API-038      | Not implemented | Not verified       | FAIL   |
-| API-039      | Not implemented | Not verified       | FAIL   |
-| API-040      | Not implemented | Not verified       | FAIL   |
-| API-041      | Not implemented | Not verified       | FAIL   |
-| API-042      | Not implemented | Not verified       | FAIL   |
-| API-043      | Not implemented | Not verified       | FAIL   |
-| API-044      | Not implemented | Not verified       | FAIL   |
-| API-045      | Not implemented | Not verified       | FAIL   |
-| API-046      | Not implemented | Not verified       | FAIL   |
-| API-047      | Not implemented | Not verified       | FAIL   |
-| API-048      | Not implemented | Not verified       | FAIL   |
-| API-049      | Not implemented | Not verified       | FAIL   |
-| API-050      | Not implemented | Not verified       | FAIL   |
-| API-051      | Not implemented | Not verified       | FAIL   |
-| API-052      | Not implemented | Not verified       | FAIL   |
-| API-053      | Not implemented | Not verified       | FAIL   |
-| API-054      | Not implemented | Not verified       | FAIL   |
-| API-055      | Not implemented | Not verified       | FAIL   |
-| API-056      | Not implemented | Not verified       | FAIL   |
-| API-057      | Not implemented | Not verified       | FAIL   |
-| API-058      | Not implemented | Not verified       | FAIL   |
-| API-059      | Not implemented | Not verified       | FAIL   |
-| API-060      | Not implemented | Not verified       | FAIL   |
-| API-061      | Not implemented | Not verified       | FAIL   |
-| API-062      | Not implemented | Not verified       | FAIL   |
-| API-063      | Not implemented | Not verified       | FAIL   |
-| API-064      | Not implemented | Not verified       | FAIL   |
-| API-065      | Not implemented | Not verified       | FAIL   |
-| API-066      | Not implemented | Not verified       | FAIL   |
-| API-067      | Not implemented | Not verified       | FAIL   |
-| API-068      | Not implemented | Not verified       | FAIL   |
-| API-069      | Not implemented | Not verified       | FAIL   |
-| ARCH-001     | Not implemented | Not verified       | FAIL   |
-| ARCH-002     | Not implemented | Not verified       | FAIL   |
-| ARCH-003     | Not implemented | Not verified       | FAIL   |
-| ARCH-004     | Not implemented | Not verified       | FAIL   |
-| ARCH-005     | Not implemented | Not verified       | FAIL   |
-| ARCH-006     | Not implemented | Not verified       | FAIL   |
-| ARCH-007     | Not implemented | Not verified       | FAIL   |
-| ARCH-008     | Not implemented | Not verified       | FAIL   |
-| ARCH-009     | Not implemented | Not verified       | FAIL   |
-| ARCH-010     | Not implemented | Not verified       | FAIL   |
-| ARCH-011     | Not implemented | Not verified       | FAIL   |
-| ARCH-012     | Not implemented | Not verified       | FAIL   |
-| AUTH-001     | Not implemented | Not verified       | FAIL   |
-| AUTH-002     | Not implemented | Not verified       | FAIL   |
-| AUTH-003     | Not implemented | Not verified       | FAIL   |
-| AUTH-004     | Not implemented | Not verified       | FAIL   |
-| AUTH-005     | Not implemented | Not verified       | FAIL   |
-| AUTH-006     | Not implemented | Not verified       | FAIL   |
-| AUTH-007     | Not implemented | Not verified       | FAIL   |
-| AUTH-008     | Not implemented | Not verified       | FAIL   |
-| AUTH-009     | Not implemented | Not verified       | FAIL   |
-| AUTH-010     | Not implemented | Not verified       | FAIL   |
-| AUTH-011     | Not implemented | Not verified       | FAIL   |
-| AUTH-012     | Not implemented | Not verified       | FAIL   |
-| AUTH-013     | Not implemented | Not verified       | FAIL   |
-| AUTH-014     | Not implemented | Not verified       | FAIL   |
-| AUTH-015     | Not implemented | Not verified       | FAIL   |
-| AUTH-016     | Not implemented | Not verified       | FAIL   |
-| AUTH-017     | Not implemented | Not verified       | FAIL   |
-| AUTH-018     | Not implemented | Not verified       | FAIL   |
-| AUTH-019     | Not implemented | Not verified       | FAIL   |
-| AUTH-020     | Not implemented | Not verified       | FAIL   |
-| AUTH-021     | Not implemented | Not verified       | FAIL   |
-| AUTH-022     | Not implemented | Not verified       | FAIL   |
-| AUTH-023     | Not implemented | Not verified       | FAIL   |
-| AUTH-024     | Not implemented | Not verified       | FAIL   |
-| AUTH-025     | Not implemented | Not verified       | FAIL   |
-| BLOCK-001    | Not implemented | Not verified       | FAIL   |
-| BLOCK-002    | Not implemented | Not verified       | FAIL   |
-| BLOCK-003    | Not implemented | Not verified       | FAIL   |
-| BLOCK-004    | Not implemented | Not verified       | FAIL   |
-| BLOCK-005    | Not implemented | Not verified       | FAIL   |
-| BLOCK-006    | Not implemented | Not verified       | FAIL   |
-| BOOKMARK-001 | Not implemented | Not verified       | FAIL   |
-| BOOKMARK-002 | Not implemented | Not verified       | FAIL   |
-| BOOKMARK-003 | Not implemented | Not verified       | FAIL   |
-| CI-001       | Not implemented | Not verified       | FAIL   |
-| CI-002       | Not implemented | Not verified       | FAIL   |
-| CI-003       | Not implemented | Not verified       | FAIL   |
-| CI-004       | Not implemented | Not verified       | FAIL   |
-| CI-005       | Not implemented | Not verified       | FAIL   |
-| CI-006       | Not implemented | Not verified       | FAIL   |
-| CI-007       | Not implemented | Not verified       | FAIL   |
-| CI-008       | Not implemented | Not verified       | FAIL   |
-| CI-009       | Not implemented | Not verified       | FAIL   |
-| CI-010       | Not implemented | Not verified       | FAIL   |
-| CI-011       | Not implemented | Not verified       | FAIL   |
-| DATA-001     | Not implemented | Not verified       | FAIL   |
-| DATA-002     | Not implemented | Not verified       | FAIL   |
-| DATA-003     | Not implemented | Not verified       | FAIL   |
-| DATA-004     | Not implemented | Not verified       | FAIL   |
-| DATA-005     | Not implemented | Not verified       | FAIL   |
-| DATA-006     | Not implemented | Not verified       | FAIL   |
-| DATA-007     | Not implemented | Not verified       | FAIL   |
-| DATA-008     | Not implemented | Not verified       | FAIL   |
-| DATA-009     | Not implemented | Not verified       | FAIL   |
-| DATA-010     | Not implemented | Not verified       | FAIL   |
-| DATA-011     | Not implemented | Not verified       | FAIL   |
-| DATA-012     | Not implemented | Not verified       | FAIL   |
-| DATA-013     | Not implemented | Not verified       | FAIL   |
-| DATA-014     | Not implemented | Not verified       | FAIL   |
-| DATA-015     | Not implemented | Not verified       | FAIL   |
-| DATA-016     | Not implemented | Not verified       | FAIL   |
-| DATA-017     | Not implemented | Not verified       | FAIL   |
-| DATA-018     | Not implemented | Not verified       | FAIL   |
-| DATA-019     | Not implemented | Not verified       | FAIL   |
-| DATA-020     | Not implemented | Not verified       | FAIL   |
-| DATA-021     | Not implemented | Not verified       | FAIL   |
-| DATA-022     | Not implemented | Not verified       | FAIL   |
-| DATA-023     | Not implemented | Not verified       | FAIL   |
-| DB-001       | Not implemented | Not verified       | FAIL   |
-| DB-002       | Not implemented | Not verified       | FAIL   |
-| DB-003       | Not implemented | Not verified       | FAIL   |
-| DB-004       | Not implemented | Not verified       | FAIL   |
-| DB-005       | Not implemented | Not verified       | FAIL   |
-| DB-006       | Not implemented | Not verified       | FAIL   |
-| DB-007       | Not implemented | Not verified       | FAIL   |
-| DB-008       | Not implemented | Not verified       | FAIL   |
-| DB-009       | Not implemented | Not verified       | FAIL   |
-| DB-010       | Not implemented | Not verified       | FAIL   |
-| DB-011       | Not implemented | Not verified       | FAIL   |
-| DEC-001      | Not implemented | Not verified       | FAIL   |
-| DEC-002      | Not implemented | Not verified       | FAIL   |
-| DEC-003      | Not implemented | Not verified       | FAIL   |
-| DEC-004      | Not implemented | Not verified       | FAIL   |
-| DEC-005      | Not implemented | Not verified       | FAIL   |
-| DEC-006      | Not implemented | Not verified       | FAIL   |
-| DEC-007      | Not implemented | Not verified       | FAIL   |
-| DEC-008      | Not implemented | Not verified       | FAIL   |
-| DEC-009      | Not implemented | Not verified       | FAIL   |
-| DEC-010      | Not implemented | Not verified       | FAIL   |
-| DEC-011      | Not implemented | Not verified       | FAIL   |
-| DEC-012      | Not implemented | Not verified       | FAIL   |
-| DEC-013      | Not implemented | Not verified       | FAIL   |
-| DEC-014      | Not implemented | Not verified       | FAIL   |
-| DEC-015      | Not implemented | Not verified       | FAIL   |
-| DEC-016      | Not implemented | Not verified       | FAIL   |
-| DOC-001      | Not implemented | Not verified       | FAIL   |
-| DOC-002      | Not implemented | Not verified       | FAIL   |
-| DOC-003      | Not implemented | Not verified       | FAIL   |
-| DOC-004      | Not implemented | Not verified       | FAIL   |
-| DOC-005      | Not implemented | Not verified       | FAIL   |
-| DOC-006      | Not implemented | Not verified       | FAIL   |
-| DOC-007      | Not implemented | Not verified       | FAIL   |
-| DOC-008      | Not implemented | Not verified       | FAIL   |
-| DOC-009      | Not implemented | Not verified       | FAIL   |
-| DOC-010      | Not implemented | Not verified       | FAIL   |
-| DOC-011      | Not implemented | Not verified       | FAIL   |
-| DOC-012      | Not implemented | Not verified       | FAIL   |
-| DOCKER-001   | Not implemented | Not verified       | FAIL   |
-| DOCKER-002   | Not implemented | Not verified       | FAIL   |
-| DOCKER-003   | Not implemented | Not verified       | FAIL   |
-| DOCKER-004   | Not implemented | Not verified       | FAIL   |
-| DOCKER-005   | Not implemented | Not verified       | FAIL   |
-| DOCKER-006   | Not implemented | Not verified       | FAIL   |
-| DOCKER-007   | Not implemented | Not verified       | FAIL   |
-| DOCKER-008   | Not implemented | Not verified       | FAIL   |
-| DOCKER-009   | Not implemented | Not verified       | FAIL   |
-| DOCKER-010   | Not implemented | Not verified       | FAIL   |
-| DOCKER-011   | Not implemented | Not verified       | FAIL   |
-| DOCKER-012   | Not implemented | Not verified       | FAIL   |
-| DOCKER-013   | Not implemented | Not verified       | FAIL   |
-| DOCKER-014   | Not implemented | Not verified       | FAIL   |
-| DOCKER-015   | Not implemented | Not verified       | FAIL   |
-| DOCKER-016   | Not implemented | Not verified       | FAIL   |
-| DOCKER-017   | Not implemented | Not verified       | FAIL   |
-| DOCKER-018   | Not implemented | Not verified       | FAIL   |
-| DOCKER-019   | Not implemented | Not verified       | FAIL   |
-| DONE-001     | Not implemented | Not verified       | FAIL   |
-| DONE-002     | Not implemented | Not verified       | FAIL   |
-| DONE-003     | Not implemented | Not verified       | FAIL   |
-| DONE-004     | Not implemented | Not verified       | FAIL   |
-| DONE-005     | Not implemented | Not verified       | FAIL   |
-| DONE-006     | Not implemented | Not verified       | FAIL   |
-| DONE-007     | Not implemented | Not verified       | FAIL   |
-| DONE-008     | Not implemented | Not verified       | FAIL   |
-| DONE-009     | Not implemented | Not verified       | FAIL   |
-| DONE-010     | Not implemented | Not verified       | FAIL   |
-| DONE-011     | Not implemented | Not verified       | FAIL   |
-| DONE-012     | Not implemented | Not verified       | FAIL   |
-| DONE-013     | Not implemented | Not verified       | FAIL   |
-| DONE-014     | Not implemented | Not verified       | FAIL   |
-| DONE-015     | Not implemented | Not verified       | FAIL   |
-| DONE-016     | Not implemented | Not verified       | FAIL   |
-| DONE-017     | Not implemented | Not verified       | FAIL   |
-| DONE-018     | Not implemented | Not verified       | FAIL   |
-| DONE-019     | Not implemented | Not verified       | FAIL   |
-| DONE-020     | Not implemented | Not verified       | FAIL   |
-| DONE-021     | Not implemented | Not verified       | FAIL   |
-| DONE-022     | Not implemented | Not verified       | FAIL   |
-| DONE-023     | Not implemented | Not verified       | FAIL   |
-| DONE-024     | Not implemented | Not verified       | FAIL   |
-| DONE-025     | Not implemented | Not verified       | FAIL   |
-| DONE-026     | Not implemented | Not verified       | FAIL   |
-| DONE-027     | Not implemented | Not verified       | FAIL   |
-| DONE-028     | Not implemented | Not verified       | FAIL   |
-| DONE-029     | Not implemented | Not verified       | FAIL   |
-| DONE-030     | Not implemented | Not verified       | FAIL   |
-| DONE-031     | Not implemented | Not verified       | FAIL   |
-| DONE-032     | Not implemented | Not verified       | FAIL   |
-| DONE-033     | Not implemented | Not verified       | FAIL   |
-| DONE-034     | Not implemented | Not verified       | FAIL   |
-| DONE-035     | Not implemented | Not verified       | FAIL   |
-| DONE-036     | Not implemented | Not verified       | FAIL   |
-| DONE-037     | Not implemented | Not verified       | FAIL   |
-| DONE-038     | Not implemented | Not verified       | FAIL   |
-| DONE-039     | Not implemented | Not verified       | FAIL   |
-| DONE-040     | Not implemented | Not verified       | FAIL   |
-| DONE-041     | Not implemented | Not verified       | FAIL   |
-| DONE-042     | Not implemented | Not verified       | FAIL   |
-| DONE-043     | Not implemented | Not verified       | FAIL   |
-| DONE-044     | Not implemented | Not verified       | FAIL   |
-| DONE-045     | Not implemented | Not verified       | FAIL   |
-| DONE-046     | Not implemented | Not verified       | FAIL   |
-| DONE-047     | Not implemented | Not verified       | FAIL   |
-| DONE-048     | Not implemented | Not verified       | FAIL   |
-| DONE-049     | Not implemented | Not verified       | FAIL   |
-| DONE-050     | Not implemented | Not verified       | FAIL   |
-| DONE-051     | Not implemented | Not verified       | FAIL   |
-| DONE-052     | Not implemented | Not verified       | FAIL   |
-| DONE-053     | Not implemented | Not verified       | FAIL   |
-| DONE-054     | Not implemented | Not verified       | FAIL   |
-| DONE-055     | Not implemented | Not verified       | FAIL   |
-| DONE-056     | Not implemented | Not verified       | FAIL   |
-| DONE-057     | Not implemented | Not verified       | FAIL   |
-| DONE-058     | Not implemented | Not verified       | FAIL   |
-| DONE-059     | Not implemented | Not verified       | FAIL   |
-| DONE-060     | Not implemented | Not verified       | FAIL   |
-| DONE-061     | Not implemented | Not verified       | FAIL   |
-| DONE-062     | Not implemented | Not verified       | FAIL   |
-| DONE-063     | Not implemented | Not verified       | FAIL   |
-| DONE-064     | Not implemented | Not verified       | FAIL   |
-| DONE-065     | Not implemented | Not verified       | FAIL   |
-| DONE-066     | Not implemented | Not verified       | FAIL   |
-| DONE-067     | Not implemented | Not verified       | FAIL   |
-| DONE-068     | Not implemented | Not verified       | FAIL   |
-| DONE-069     | Not implemented | Not verified       | FAIL   |
-| DONE-070     | Not implemented | Not verified       | FAIL   |
-| DONE-071     | Not implemented | Not verified       | FAIL   |
-| DONE-072     | Not implemented | Not verified       | FAIL   |
-| DONE-073     | Not implemented | Not verified       | FAIL   |
-| DONE-074     | Not implemented | Not verified       | FAIL   |
-| DONE-075     | Not implemented | Not verified       | FAIL   |
-| DONE-076     | Not implemented | Not verified       | FAIL   |
-| DONE-077     | Not implemented | Not verified       | FAIL   |
-| DONE-078     | Not implemented | Not verified       | FAIL   |
-| DONE-079     | Not implemented | Not verified       | FAIL   |
-| DONE-080     | Not implemented | Not verified       | FAIL   |
-| DONE-081     | Not implemented | Not verified       | FAIL   |
-| E2E-001      | Not implemented | Not verified       | FAIL   |
-| E2E-002      | Not implemented | Not verified       | FAIL   |
-| E2E-003      | Not implemented | Not verified       | FAIL   |
-| E2E-004      | Not implemented | Not verified       | FAIL   |
-| E2E-005      | Not implemented | Not verified       | FAIL   |
-| E2E-006      | Not implemented | Not verified       | FAIL   |
-| E2E-007      | Not implemented | Not verified       | FAIL   |
-| E2E-008      | Not implemented | Not verified       | FAIL   |
-| E2E-009      | Not implemented | Not verified       | FAIL   |
-| E2E-010      | Not implemented | Not verified       | FAIL   |
-| E2E-011      | Not implemented | Not verified       | FAIL   |
-| E2E-012      | Not implemented | Not verified       | FAIL   |
-| E2E-013      | Not implemented | Not verified       | FAIL   |
-| E2E-014      | Not implemented | Not verified       | FAIL   |
-| E2E-015      | Not implemented | Not verified       | FAIL   |
-| E2E-016      | Not implemented | Not verified       | FAIL   |
-| E2E-017      | Not implemented | Not verified       | FAIL   |
-| E2E-018      | Not implemented | Not verified       | FAIL   |
-| E2E-019      | Not implemented | Not verified       | FAIL   |
-| E2E-020      | Not implemented | Not verified       | FAIL   |
-| E2E-021      | Not implemented | Not verified       | FAIL   |
-| E2E-022      | Not implemented | Not verified       | FAIL   |
-| E2E-023      | Not implemented | Not verified       | FAIL   |
-| E2E-024      | Not implemented | Not verified       | FAIL   |
-| E2E-025      | Not implemented | Not verified       | FAIL   |
-| E2E-026      | Not implemented | Not verified       | FAIL   |
-| E2E-027      | Not implemented | Not verified       | FAIL   |
-| E2E-028      | Not implemented | Not verified       | FAIL   |
-| E2E-029      | Not implemented | Not verified       | FAIL   |
-| E2E-030      | Not implemented | Not verified       | FAIL   |
-| E2E-031      | Not implemented | Not verified       | FAIL   |
-| E2E-032      | Not implemented | Not verified       | FAIL   |
-| E2E-033      | Not implemented | Not verified       | FAIL   |
-| E2E-034      | Not implemented | Not verified       | FAIL   |
-| E2E-035      | Not implemented | Not verified       | FAIL   |
-| ENTRY-001    | Not implemented | Not verified       | FAIL   |
-| ENTRY-002    | Not implemented | Not verified       | FAIL   |
-| ENTRY-003    | Not implemented | Not verified       | FAIL   |
-| ENTRY-004    | Not implemented | Not verified       | FAIL   |
-| ENTRY-005    | Not implemented | Not verified       | FAIL   |
-| ENTRY-006    | Not implemented | Not verified       | FAIL   |
-| ENTRY-007    | Not implemented | Not verified       | FAIL   |
-| ENTRY-008    | Not implemented | Not verified       | FAIL   |
-| ENTRY-009    | Not implemented | Not verified       | FAIL   |
-| ENTRY-010    | Not implemented | Not verified       | FAIL   |
-| ENTRY-011    | Not implemented | Not verified       | FAIL   |
-| ENTRY-012    | Not implemented | Not verified       | FAIL   |
-| ENTRY-013    | Not implemented | Not verified       | FAIL   |
-| ENTRY-014    | Not implemented | Not verified       | FAIL   |
-| ENTRY-015    | Not implemented | Not verified       | FAIL   |
-| ENTRY-016    | Not implemented | Not verified       | FAIL   |
-| ENV-001      | Not implemented | Not verified       | FAIL   |
-| ENV-002      | Not implemented | Not verified       | FAIL   |
-| EVENT-001    | Not implemented | Not verified       | FAIL   |
-| EVENT-002    | Not implemented | Not verified       | FAIL   |
-| EVENT-003    | Not implemented | Not verified       | FAIL   |
-| EVENT-004    | Not implemented | Not verified       | FAIL   |
-| EVENT-005    | Not implemented | Not verified       | FAIL   |
-| EVENT-006    | Not implemented | Not verified       | FAIL   |
-| EVENT-007    | Not implemented | Not verified       | FAIL   |
-| EVENT-008    | Not implemented | Not verified       | FAIL   |
-| EVENT-009    | Not implemented | Not verified       | FAIL   |
-| EVENT-010    | Not implemented | Not verified       | FAIL   |
-| EVENT-011    | Not implemented | Not verified       | FAIL   |
-| EVENT-012    | Not implemented | Not verified       | FAIL   |
-| EVENT-013    | Not implemented | Not verified       | FAIL   |
-| EVENT-014    | Not implemented | Not verified       | FAIL   |
-| EVENT-015    | Not implemented | Not verified       | FAIL   |
-| EVENT-016    | Not implemented | Not verified       | FAIL   |
-| EVENT-017    | Not implemented | Not verified       | FAIL   |
-| EVENT-018    | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-001 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-002 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-003 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-004 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-005 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-006 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-007 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-008 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-009 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-010 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-011 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-012 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-013 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-014 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-015 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-016 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-017 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-018 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-019 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-020 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-021 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-022 | Not implemented | Not verified       | FAIL   |
-| EXTERNAL-023 | Not implemented | Not verified       | FAIL   |
-| FEED-001     | Not implemented | Not verified       | FAIL   |
-| FEED-002     | Not implemented | Not verified       | FAIL   |
-| FEED-003     | Not implemented | Not verified       | FAIL   |
-| FEED-004     | Not implemented | Not verified       | FAIL   |
-| FEED-005     | Not implemented | Not verified       | FAIL   |
-| FEED-006     | Not implemented | Not verified       | FAIL   |
-| FEED-007     | Not implemented | Not verified       | FAIL   |
-| FOLLOW-001   | Not implemented | Not verified       | FAIL   |
-| FOLLOW-002   | Not implemented | Not verified       | FAIL   |
-| FOLLOW-003   | Not implemented | Not verified       | FAIL   |
-| ID-001       | Not implemented | Not verified       | FAIL   |
-| IDEMP-001    | Not implemented | Not verified       | FAIL   |
-| IDEMP-002    | Not implemented | Not verified       | FAIL   |
-| IDEMP-003    | Not implemented | Not verified       | FAIL   |
-| IDEMP-004    | Not implemented | Not verified       | FAIL   |
-| IDEMP-005    | Not implemented | Not verified       | FAIL   |
-| IDEMP-006    | Not implemented | Not verified       | FAIL   |
-| IDEMP-007    | Not implemented | Not verified       | FAIL   |
-| IDEMP-008    | Not implemented | Not verified       | FAIL   |
-| IT-001       | Not implemented | Not verified       | FAIL   |
-| IT-002       | Not implemented | Not verified       | FAIL   |
-| IT-003       | Not implemented | Not verified       | FAIL   |
-| IT-004       | Not implemented | Not verified       | FAIL   |
-| IT-005       | Not implemented | Not verified       | FAIL   |
-| IT-006       | Not implemented | Not verified       | FAIL   |
-| IT-007       | Not implemented | Not verified       | FAIL   |
-| IT-008       | Not implemented | Not verified       | FAIL   |
-| IT-009       | Not implemented | Not verified       | FAIL   |
-| IT-010       | Not implemented | Not verified       | FAIL   |
-| IT-011       | Not implemented | Not verified       | FAIL   |
-| IT-012       | Not implemented | Not verified       | FAIL   |
-| IT-013       | Not implemented | Not verified       | FAIL   |
-| IT-014       | Not implemented | Not verified       | FAIL   |
-| IT-015       | Not implemented | Not verified       | FAIL   |
-| IT-016       | Not implemented | Not verified       | FAIL   |
-| IT-017       | Not implemented | Not verified       | FAIL   |
-| IT-018       | Not implemented | Not verified       | FAIL   |
-| IT-019       | Not implemented | Not verified       | FAIL   |
-| IT-020       | Not implemented | Not verified       | FAIL   |
-| IT-021       | Not implemented | Not verified       | FAIL   |
-| IT-022       | Not implemented | Not verified       | FAIL   |
-| IT-023       | Not implemented | Not verified       | FAIL   |
-| IT-024       | Not implemented | Not verified       | FAIL   |
-| IT-025       | Not implemented | Not verified       | FAIL   |
-| IT-026       | Not implemented | Not verified       | FAIL   |
-| IT-027       | Not implemented | Not verified       | FAIL   |
-| IT-028       | Not implemented | Not verified       | FAIL   |
-| IT-029       | Not implemented | Not verified       | FAIL   |
-| IT-030       | Not implemented | Not verified       | FAIL   |
-| IT-031       | Not implemented | Not verified       | FAIL   |
-| IT-032       | Not implemented | Not verified       | FAIL   |
-| IT-033       | Not implemented | Not verified       | FAIL   |
-| IT-034       | Not implemented | Not verified       | FAIL   |
-| IT-035       | Not implemented | Not verified       | FAIL   |
-| IT-036       | Not implemented | Not verified       | FAIL   |
-| IT-037       | Not implemented | Not verified       | FAIL   |
-| IT-038       | Not implemented | Not verified       | FAIL   |
-| IT-039       | Not implemented | Not verified       | FAIL   |
-| IT-040       | Not implemented | Not verified       | FAIL   |
-| IT-041       | Not implemented | Not verified       | FAIL   |
-| IT-042       | Not implemented | Not verified       | FAIL   |
-| IT-043       | Not implemented | Not verified       | FAIL   |
-| IT-044       | Not implemented | Not verified       | FAIL   |
-| IT-045       | Not implemented | Not verified       | FAIL   |
-| IT-046       | Not implemented | Not verified       | FAIL   |
-| IT-047       | Not implemented | Not verified       | FAIL   |
-| IT-048       | Not implemented | Not verified       | FAIL   |
-| IT-049       | Not implemented | Not verified       | FAIL   |
-| IT-050       | Not implemented | Not verified       | FAIL   |
-| IT-051       | Not implemented | Not verified       | FAIL   |
-| IT-052       | Not implemented | Not verified       | FAIL   |
-| IT-053       | Not implemented | Not verified       | FAIL   |
-| MOD-001      | Not implemented | Not verified       | FAIL   |
-| MOD-002      | Not implemented | Not verified       | FAIL   |
-| MOD-003      | Not implemented | Not verified       | FAIL   |
-| MOD-004      | Not implemented | Not verified       | FAIL   |
-| MOD-005      | Not implemented | Not verified       | FAIL   |
-| MOD-006      | Not implemented | Not verified       | FAIL   |
-| MOD-007      | Not implemented | Not verified       | FAIL   |
-| MOD-008      | Not implemented | Not verified       | FAIL   |
-| MOD-009      | Not implemented | Not verified       | FAIL   |
-| MOD-010      | Not implemented | Not verified       | FAIL   |
-| MOD-011      | Not implemented | Not verified       | FAIL   |
-| MOD-012      | Not implemented | Not verified       | FAIL   |
-| MOD-013      | Not implemented | Not verified       | FAIL   |
-| MOD-014      | Not implemented | Not verified       | FAIL   |
-| MOD-015      | Not implemented | Not verified       | FAIL   |
-| OPS-001      | Not implemented | Not verified       | FAIL   |
-| OPS-002      | Not implemented | Not verified       | FAIL   |
-| OPS-003      | Not implemented | Not verified       | FAIL   |
-| OPS-004      | Not implemented | Not verified       | FAIL   |
-| OPS-005      | Not implemented | Not verified       | FAIL   |
-| OPS-006      | Not implemented | Not verified       | FAIL   |
-| OPS-007      | Not implemented | Not verified       | FAIL   |
-| OUT-001      | Not implemented | Not verified       | FAIL   |
-| OUT-002      | Not implemented | Not verified       | FAIL   |
-| OUT-003      | Not implemented | Not verified       | FAIL   |
-| OUT-004      | Not implemented | Not verified       | FAIL   |
-| OUT-005      | Not implemented | Not verified       | FAIL   |
-| OUT-006      | Not implemented | Not verified       | FAIL   |
-| OUT-007      | Not implemented | Not verified       | FAIL   |
-| OUT-008      | Not implemented | Not verified       | FAIL   |
-| OUT-009      | Not implemented | Not verified       | FAIL   |
-| OUT-010      | Not implemented | Not verified       | FAIL   |
-| OUT-011      | Not implemented | Not verified       | FAIL   |
-| OUT-012      | Not implemented | Not verified       | FAIL   |
-| OUT-013      | Not implemented | Not verified       | FAIL   |
-| OUT-014      | Not implemented | Not verified       | FAIL   |
-| OUT-015      | Not implemented | Not verified       | FAIL   |
-| OUT-016      | Not implemented | Not verified       | FAIL   |
-| OUT-017      | Not implemented | Not verified       | FAIL   |
-| OUT-018      | Not implemented | Not verified       | FAIL   |
-| OUT-019      | Not implemented | Not verified       | FAIL   |
-| OUT-020      | Not implemented | Not verified       | FAIL   |
-| OUT-021      | Not implemented | Not verified       | FAIL   |
-| OUT-022      | Not implemented | Not verified       | FAIL   |
-| OUT-023      | Not implemented | Not verified       | FAIL   |
-| OUT-024      | Not implemented | Not verified       | FAIL   |
-| OUT-025      | Not implemented | Not verified       | FAIL   |
-| OUT-026      | Not implemented | Not verified       | FAIL   |
-| OUT-027      | Not implemented | Not verified       | FAIL   |
-| OUT-028      | Not implemented | Not verified       | FAIL   |
-| OUT-029      | Not implemented | Not verified       | FAIL   |
-| OUT-030      | Not implemented | Not verified       | FAIL   |
-| OUT-031      | Not implemented | Not verified       | FAIL   |
-| OUT-032      | Not implemented | Not verified       | FAIL   |
-| OUT-033      | Not implemented | Not verified       | FAIL   |
-| OUT-034      | Not implemented | Not verified       | FAIL   |
-| OUT-035      | Not implemented | Not verified       | FAIL   |
-| OUT-036      | Not implemented | Not verified       | FAIL   |
-| PAGE-001     | Not implemented | Not verified       | FAIL   |
-| PAGE-002     | Not implemented | Not verified       | FAIL   |
-| PAGE-003     | Not implemented | Not verified       | FAIL   |
-| PAGE-004     | Not implemented | Not verified       | FAIL   |
-| PAGE-005     | Not implemented | Not verified       | FAIL   |
-| PAGE-006     | Not implemented | Not verified       | FAIL   |
-| PAGE-007     | Not implemented | Not verified       | FAIL   |
-| PAGE-008     | Not implemented | Not verified       | FAIL   |
-| PAGE-009     | Not implemented | Not verified       | FAIL   |
-| PAGE-010     | Not implemented | Not verified       | FAIL   |
-| PAGE-011     | Not implemented | Not verified       | FAIL   |
-| PAGE-012     | Not implemented | Not verified       | FAIL   |
-| PAGE-013     | Not implemented | Not verified       | FAIL   |
-| PAGE-014     | Not implemented | Not verified       | FAIL   |
-| PAGE-015     | Not implemented | Not verified       | FAIL   |
-| PAGE-016     | Not implemented | Not verified       | FAIL   |
-| PAGE-017     | Not implemented | Not verified       | FAIL   |
-| PAGE-018     | Not implemented | Not verified       | FAIL   |
-| PAGE-019     | Not implemented | Not verified       | FAIL   |
-| PAGE-020     | Not implemented | Not verified       | FAIL   |
-| PAGE-021     | Not implemented | Not verified       | FAIL   |
-| PAGE-022     | Not implemented | Not verified       | FAIL   |
-| PAGE-023     | Not implemented | Not verified       | FAIL   |
-| PAGE-024     | Not implemented | Not verified       | FAIL   |
-| PAGE-025     | Not implemented | Not verified       | FAIL   |
-| PAGE-026     | Not implemented | Not verified       | FAIL   |
-| PAGE-027     | Not implemented | Not verified       | FAIL   |
-| PAGE-028     | Not implemented | Not verified       | FAIL   |
-| PAGE-029     | Not implemented | Not verified       | FAIL   |
-| PAGE-030     | Not implemented | Not verified       | FAIL   |
-| PAGE-031     | Not implemented | Not verified       | FAIL   |
-| PAGE-032     | Not implemented | Not verified       | FAIL   |
-| PAGE-033     | Not implemented | Not verified       | FAIL   |
-| PERM-001     | Not implemented | Not verified       | FAIL   |
-| PERM-002     | Not implemented | Not verified       | FAIL   |
-| PERM-003     | Not implemented | Not verified       | FAIL   |
-| PERM-004     | Not implemented | Not verified       | FAIL   |
-| PERM-005     | Not implemented | Not verified       | FAIL   |
-| PERM-006     | Not implemented | Not verified       | FAIL   |
-| PERM-007     | Not implemented | Not verified       | FAIL   |
-| PERM-008     | Not implemented | Not verified       | FAIL   |
-| PERM-009     | Not implemented | Not verified       | FAIL   |
-| PERM-010     | Not implemented | Not verified       | FAIL   |
-| PERM-011     | Not implemented | Not verified       | FAIL   |
-| PROD-001     | Not implemented | Not verified       | FAIL   |
-| PROD-002     | Not implemented | Not verified       | FAIL   |
-| PROD-003     | Not implemented | Not verified       | FAIL   |
-| PROD-004     | Not implemented | Not verified       | FAIL   |
-| PROD-005     | Not implemented | Not verified       | FAIL   |
-| PROD-006     | Not implemented | Not verified       | FAIL   |
-| PROD-007     | Not implemented | Not verified       | FAIL   |
-| PROD-008     | Not implemented | Not verified       | FAIL   |
-| PROD-009     | Not implemented | Not verified       | FAIL   |
-| PROD-010     | Not implemented | Not verified       | FAIL   |
-| PROD-011     | Not implemented | Not verified       | FAIL   |
-| PROD-012     | Not implemented | Not verified       | FAIL   |
-| PROD-013     | Not implemented | Not verified       | FAIL   |
-| PROD-014     | Not implemented | Not verified       | FAIL   |
-| PROFILE-001  | Not implemented | Not verified       | FAIL   |
-| PROFILE-002  | Not implemented | Not verified       | FAIL   |
-| PROFILE-003  | Not implemented | Not verified       | FAIL   |
-| PROFILE-004  | Not implemented | Not verified       | FAIL   |
-| PROFILE-005  | Not implemented | Not verified       | FAIL   |
-| QA-001       | Not implemented | Not verified       | FAIL   |
-| QA-002       | Not implemented | Not verified       | FAIL   |
-| QA-003       | Not implemented | Not verified       | FAIL   |
-| QA-004       | Not implemented | Not verified       | FAIL   |
-| QA-005       | Not implemented | Not verified       | FAIL   |
-| QA-006       | Not implemented | Not verified       | FAIL   |
-| QA-007       | Not implemented | Not verified       | FAIL   |
-| QA-008       | Not implemented | Not verified       | FAIL   |
-| QA-009       | Not implemented | Not verified       | FAIL   |
-| QA-010       | Not implemented | Not verified       | FAIL   |
-| RATE-001     | Not implemented | Not verified       | FAIL   |
-| RATE-002     | Not implemented | Not verified       | FAIL   |
-| RATE-003     | Not implemented | Not verified       | FAIL   |
-| RATE-004     | Not implemented | Not verified       | FAIL   |
-| RATE-005     | Not implemented | Not verified       | FAIL   |
-| RATE-006     | Not implemented | Not verified       | FAIL   |
-| RATE-007     | Not implemented | Not verified       | FAIL   |
-| RATE-008     | Not implemented | Not verified       | FAIL   |
-| RATE-009     | Not implemented | Not verified       | FAIL   |
-| RATE-010     | Not implemented | Not verified       | FAIL   |
-| RATE-011     | Not implemented | Not verified       | FAIL   |
-| RATE-012     | Not implemented | Not verified       | FAIL   |
-| RATE-013     | Not implemented | Not verified       | FAIL   |
-| RATE-014     | Not implemented | Not verified       | FAIL   |
-| REPO-001     | Not implemented | Not verified       | FAIL   |
-| REPO-002     | Not implemented | Not verified       | FAIL   |
-| REPO-003     | Not implemented | Not verified       | FAIL   |
-| REPO-004     | Not implemented | Not verified       | FAIL   |
-| REPO-005     | Not implemented | Not verified       | FAIL   |
-| REPO-006     | Not implemented | Not verified       | FAIL   |
-| REPO-007     | Not implemented | Not verified       | FAIL   |
-| REPO-008     | Not implemented | Not verified       | FAIL   |
-| REPO-009     | Not implemented | Not verified       | FAIL   |
-| REPO-010     | Not implemented | Not verified       | FAIL   |
-| REPO-011     | Not implemented | Not verified       | FAIL   |
-| REPO-012     | Not implemented | Not verified       | FAIL   |
-| REPO-013     | Not implemented | Not verified       | FAIL   |
-| REPO-014     | Not implemented | Not verified       | FAIL   |
-| REPO-015     | Not implemented | Not verified       | FAIL   |
-| REPO-016     | Not implemented | Not verified       | FAIL   |
-| REPO-017     | Not implemented | Not verified       | FAIL   |
-| REPO-018     | Not implemented | Not verified       | FAIL   |
-| REPO-019     | Not implemented | Not verified       | FAIL   |
-| REPO-020     | Not implemented | Not verified       | FAIL   |
-| REPO-021     | Not implemented | Not verified       | FAIL   |
-| REPO-022     | Not implemented | Not verified       | FAIL   |
-| REPO-023     | Not implemented | Not verified       | FAIL   |
-| REPO-024     | Not implemented | Not verified       | FAIL   |
-| REPO-025     | Not implemented | Not verified       | FAIL   |
-| REPO-026     | Not implemented | Not verified       | FAIL   |
-| REPO-027     | Not implemented | Not verified       | FAIL   |
-| REPORT-001   | Not implemented | Not verified       | FAIL   |
-| REPORT-002   | Not implemented | Not verified       | FAIL   |
-| REPORT-003   | Not implemented | Not verified       | FAIL   |
-| REPORT-004   | Not implemented | Not verified       | FAIL   |
-| REPORT-005   | Not implemented | Not verified       | FAIL   |
-| SCRIPT-001   | Not implemented | Not verified       | FAIL   |
-| SCRIPT-002   | Not implemented | Not verified       | FAIL   |
-| SEARCH-001   | Not implemented | Not verified       | FAIL   |
-| SEARCH-002   | Not implemented | Not verified       | FAIL   |
-| SEARCH-003   | Not implemented | Not verified       | FAIL   |
-| SEARCH-004   | Not implemented | Not verified       | FAIL   |
-| SEARCH-005   | Not implemented | Not verified       | FAIL   |
-| SEARCH-006   | Not implemented | Not verified       | FAIL   |
-| SEARCH-007   | Not implemented | Not verified       | FAIL   |
-| SEARCH-008   | Not implemented | Not verified       | FAIL   |
-| SEARCH-009   | Not implemented | Not verified       | FAIL   |
-| SEARCH-010   | Not implemented | Not verified       | FAIL   |
-| SEC-001      | Not implemented | Not verified       | FAIL   |
-| SEC-002      | Not implemented | Not verified       | FAIL   |
-| SEC-003      | Not implemented | Not verified       | FAIL   |
-| SEC-004      | Not implemented | Not verified       | FAIL   |
-| SEC-005      | Not implemented | Not verified       | FAIL   |
-| SEC-006      | Not implemented | Not verified       | FAIL   |
-| SEC-007      | Not implemented | Not verified       | FAIL   |
-| SEC-008      | Not implemented | Not verified       | FAIL   |
-| SEC-009      | Not implemented | Not verified       | FAIL   |
-| SEC-010      | Not implemented | Not verified       | FAIL   |
-| SEC-011      | Not implemented | Not verified       | FAIL   |
-| SEC-012      | Not implemented | Not verified       | FAIL   |
-| SEC-013      | Not implemented | Not verified       | FAIL   |
-| SEC-014      | Not implemented | Not verified       | FAIL   |
-| SEC-015      | Not implemented | Not verified       | FAIL   |
-| SEC-016      | Not implemented | Not verified       | FAIL   |
-| SEC-017      | Not implemented | Not verified       | FAIL   |
-| SEC-018      | Not implemented | Not verified       | FAIL   |
-| SEC-019      | Not implemented | Not verified       | FAIL   |
-| SEED-001     | Not implemented | Not verified       | FAIL   |
-| SEED-002     | Not implemented | Not verified       | FAIL   |
-| SEED-003     | Not implemented | Not verified       | FAIL   |
-| SEED-004     | Not implemented | Not verified       | FAIL   |
-| SEED-005     | Not implemented | Not verified       | FAIL   |
-| SEED-006     | Not implemented | Not verified       | FAIL   |
-| SEED-007     | Not implemented | Not verified       | FAIL   |
-| SEED-008     | Not implemented | Not verified       | FAIL   |
-| SEED-009     | Not implemented | Not verified       | FAIL   |
-| SEED-010     | Not implemented | Not verified       | FAIL   |
-| SEED-011     | Not implemented | Not verified       | FAIL   |
-| SEED-012     | Not implemented | Not verified       | FAIL   |
-| SEO-001      | Not implemented | Not verified       | FAIL   |
-| SEO-002      | Not implemented | Not verified       | FAIL   |
-| SEO-003      | Not implemented | Not verified       | FAIL   |
-| SEO-004      | Not implemented | Not verified       | FAIL   |
-| SEO-005      | Not implemented | Not verified       | FAIL   |
-| SEO-006      | Not implemented | Not verified       | FAIL   |
-| SEO-007      | Not implemented | Not verified       | FAIL   |
-| SEO-008      | Not implemented | Not verified       | FAIL   |
-| SEO-009      | Not implemented | Not verified       | FAIL   |
-| TECH-001     | Not implemented | Not verified       | FAIL   |
-| TECH-002     | Not implemented | Not verified       | FAIL   |
-| TECH-003     | Not implemented | Not verified       | FAIL   |
-| TECH-004     | Not implemented | Not verified       | FAIL   |
-| TECH-005     | Not implemented | Not verified       | FAIL   |
-| TECH-006     | Not implemented | Not verified       | FAIL   |
-| TECH-007     | Not implemented | Not verified       | FAIL   |
-| TECH-008     | Not implemented | Not verified       | FAIL   |
-| TECH-009     | Not implemented | Not verified       | FAIL   |
-| TECH-010     | Not implemented | Not verified       | FAIL   |
-| TECH-011     | Not implemented | Not verified       | FAIL   |
-| TECH-012     | Not implemented | Not verified       | FAIL   |
-| TECH-013     | Not implemented | Not verified       | FAIL   |
-| TECH-014     | Not implemented | Not verified       | FAIL   |
-| TECH-015     | Not implemented | Not verified       | FAIL   |
-| TECH-016     | Not implemented | Not verified       | FAIL   |
-| TECH-017     | Not implemented | Not verified       | FAIL   |
-| TECH-018     | Not implemented | Not verified       | FAIL   |
-| TECH-019     | Not implemented | Not verified       | FAIL   |
-| TECH-020     | Not implemented | Not verified       | FAIL   |
-| TECH-021     | Not implemented | Not verified       | FAIL   |
-| TECH-022     | Not implemented | Not verified       | FAIL   |
-| TECH-023     | Not implemented | Not verified       | FAIL   |
-| TECH-024     | Not implemented | Not verified       | FAIL   |
-| TECH-025     | Not implemented | Not verified       | FAIL   |
-| TECH-026     | Not implemented | Not verified       | FAIL   |
-| TECH-027     | Not implemented | Not verified       | FAIL   |
-| TECH-028     | Not implemented | Not verified       | FAIL   |
-| TECH-029     | Not implemented | Not verified       | FAIL   |
-| TECH-030     | Not implemented | Not verified       | FAIL   |
-| TECH-031     | Not implemented | Not verified       | FAIL   |
-| TECH-032     | Not implemented | Not verified       | FAIL   |
-| TECH-033     | Not implemented | Not verified       | FAIL   |
-| TECH-034     | Not implemented | Not verified       | FAIL   |
-| TOPIC-001    | Not implemented | Not verified       | FAIL   |
-| TOPIC-002    | Not implemented | Not verified       | FAIL   |
-| TOPIC-003    | Not implemented | Not verified       | FAIL   |
-| TOPIC-004    | Not implemented | Not verified       | FAIL   |
-| TOPIC-005    | Not implemented | Not verified       | FAIL   |
-| TOPIC-006    | Not implemented | Not verified       | FAIL   |
-| TOPIC-007    | Not implemented | Not verified       | FAIL   |
-| TOPIC-008    | Not implemented | Not verified       | FAIL   |
-| TOPIC-009    | Not implemented | Not verified       | FAIL   |
-| TOPIC-010    | Not implemented | Not verified       | FAIL   |
-| TOPIC-011    | Not implemented | Not verified       | FAIL   |
-| TOPIC-012    | Not implemented | Not verified       | FAIL   |
-| TOPIC-013    | Not implemented | Not verified       | FAIL   |
-| TOPIC-014    | Not implemented | Not verified       | FAIL   |
-| TOPIC-015    | Not implemented | Not verified       | FAIL   |
-| TOPIC-016    | Not implemented | Not verified       | FAIL   |
-| TOPIC-017    | Not implemented | Not verified       | FAIL   |
-| TOPIC-018    | Not implemented | Not verified       | FAIL   |
-| TRACE-001    | Not implemented | Not verified       | FAIL   |
-| TRACE-002    | Not implemented | Not verified       | FAIL   |
-| TRACE-003    | Not implemented | Not verified       | FAIL   |
-| TRACE-004    | Not implemented | Not verified       | FAIL   |
-| TRACE-005    | Not implemented | Not verified       | FAIL   |
-| TRACE-006    | Not implemented | Not verified       | FAIL   |
-| TRACE-007    | Not implemented | Not verified       | FAIL   |
-| TRACE-008    | Not implemented | Not verified       | FAIL   |
-| TRACE-009    | Not implemented | Not verified       | FAIL   |
-| UI-001       | Not implemented | Not verified       | FAIL   |
-| UI-002       | Not implemented | Not verified       | FAIL   |
-| UI-003       | Not implemented | Not verified       | FAIL   |
-| UI-004       | Not implemented | Not verified       | FAIL   |
-| UI-005       | Not implemented | Not verified       | FAIL   |
-| UI-006       | Not implemented | Not verified       | FAIL   |
-| UI-007       | Not implemented | Not verified       | FAIL   |
-| UI-008       | Not implemented | Not verified       | FAIL   |
-| UI-009       | Not implemented | Not verified       | FAIL   |
-| UI-010       | Not implemented | Not verified       | FAIL   |
-| UI-011       | Not implemented | Not verified       | FAIL   |
-| UI-012       | Not implemented | Not verified       | FAIL   |
-| UI-013       | Not implemented | Not verified       | FAIL   |
-| UI-014       | Not implemented | Not verified       | FAIL   |
-| UI-015       | Not implemented | Not verified       | FAIL   |
-| UI-016       | Not implemented | Not verified       | FAIL   |
-| UI-017       | Not implemented | Not verified       | FAIL   |
-| UI-018       | Not implemented | Not verified       | FAIL   |
-| UI-019       | Not implemented | Not verified       | FAIL   |
-| UI-020       | Not implemented | Not verified       | FAIL   |
-| UI-021       | Not implemented | Not verified       | FAIL   |
-| UT-001       | Not implemented | Not verified       | FAIL   |
-| UT-002       | Not implemented | Not verified       | FAIL   |
-| UT-003       | Not implemented | Not verified       | FAIL   |
-| UT-004       | Not implemented | Not verified       | FAIL   |
-| UT-005       | Not implemented | Not verified       | FAIL   |
-| UT-006       | Not implemented | Not verified       | FAIL   |
-| UT-007       | Not implemented | Not verified       | FAIL   |
-| UT-008       | Not implemented | Not verified       | FAIL   |
-| UT-009       | Not implemented | Not verified       | FAIL   |
-| UT-010       | Not implemented | Not verified       | FAIL   |
-| UT-011       | Not implemented | Not verified       | FAIL   |
-| UT-012       | Not implemented | Not verified       | FAIL   |
-| UT-013       | Not implemented | Not verified       | FAIL   |
-| UT-014       | Not implemented | Not verified       | FAIL   |
-| UT-015       | Not implemented | Not verified       | FAIL   |
-| UT-016       | Not implemented | Not verified       | FAIL   |
-| UT-017       | Not implemented | Not verified       | FAIL   |
-| UT-018       | Not implemented | Not verified       | FAIL   |
-| UT-019       | Not implemented | Not verified       | FAIL   |
-| UT-020       | Not implemented | Not verified       | FAIL   |
-| UT-021       | Not implemented | Not verified       | FAIL   |
-| UT-022       | Not implemented | Not verified       | FAIL   |
-| UT-023       | Not implemented | Not verified       | FAIL   |
-| UT-024       | Not implemented | Not verified       | FAIL   |
-| UT-025       | Not implemented | Not verified       | FAIL   |
-| UT-026       | Not implemented | Not verified       | FAIL   |
-| UT-027       | Not implemented | Not verified       | FAIL   |
-| UT-028       | Not implemented | Not verified       | FAIL   |
-| VOTE-001     | Not implemented | Not verified       | FAIL   |
-| VOTE-002     | Not implemented | Not verified       | FAIL   |
-| VOTE-003     | Not implemented | Not verified       | FAIL   |
-| VOTE-004     | Not implemented | Not verified       | FAIL   |
-| VOTE-005     | Not implemented | Not verified       | FAIL   |
-| VOTE-006     | Not implemented | Not verified       | FAIL   |
-| VOTE-007     | Not implemented | Not verified       | FAIL   |
-| VOTE-008     | Not implemented | Not verified       | FAIL   |
-| VOTE-009     | Not implemented | Not verified       | FAIL   |
+| Requirement  | Implementation                                                                                     | Test or validation                                                                                           | Status |
+| ------------ | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------ |
+| AI-READY-001 | UserKind HUMAN/AGENT enum                                                                          | Prisma schema validation and PostgreSQL migration                                                            | PASS   |
+| AI-READY-002 | human-only registration and no agent creation API                                                  | API route and source audit                                                                                   | PASS   |
+| AI-READY-003 | complete ActorContext propagated to services                                                       | TypeScript and PostgreSQL integration suites                                                                 | PASS   |
+| AI-READY-004 | versioned `/api/v1` route tree                                                                     | OpenAPI runtime alignment validator                                                                          | PASS   |
+| AI-READY-005 | centralized module Zod schemas                                                                     | validation unit suites and strict TypeScript                                                                 | PASS   |
+| AI-READY-006 | OpenAPI 3.1 contract in `docs/openapi.yaml`                                                        | `pnpm openapi:validate`: 59/59 runtime operations aligned                                                    | PASS   |
+| AI-READY-007 | create-command idempotency                                                                         | canonical hash unit and PostgreSQL concurrency suites                                                        | PASS   |
+| AI-READY-008 | domain mutations append transactional outbox                                                       | PostgreSQL event assertions and typed event registry                                                         | PASS   |
+| AI-READY-009 | no worker, API token, LLM or autonomous posting                                                    | source and dependency audit                                                                                  | PASS   |
+| API-001      | register route                                                                                     | auth browser suite and OpenAPI runtime alignment                                                             | PASS   |
+| API-002      | login route                                                                                        | auth browser suite and OpenAPI runtime alignment                                                             | PASS   |
+| API-003      | logout route                                                                                       | auth browser suite and OpenAPI runtime alignment                                                             | PASS   |
+| API-004      | session route                                                                                      | auth browser suite and OpenAPI runtime alignment                                                             | PASS   |
+| API-005      | CSRF route                                                                                         | CSRF unit suite and OpenAPI runtime alignment                                                                | PASS   |
+| API-006      | current-user route                                                                                 | account browser suite and OpenAPI runtime alignment                                                          | PASS   |
+| API-007      | profile update route                                                                               | account browser suite and OpenAPI runtime alignment                                                          | PASS   |
+| API-008      | email change route                                                                                 | account browser suite and OpenAPI runtime alignment                                                          | PASS   |
+| API-009      | password change route                                                                              | account browser suite and OpenAPI runtime alignment                                                          | PASS   |
+| API-010      | account deactivation route                                                                         | PostgreSQL integration and OpenAPI runtime alignment                                                         | PASS   |
+| API-011      | session list route                                                                                 | account browser suite and OpenAPI runtime alignment                                                          | PASS   |
+| API-012      | single session revoke route                                                                        | account browser suite and OpenAPI runtime alignment                                                          | PASS   |
+| API-013      | other sessions revoke route                                                                        | account browser suite and OpenAPI runtime alignment                                                          | PASS   |
+| API-014      | bookmark list route                                                                                | PostgreSQL integration and OpenAPI runtime alignment                                                         | PASS   |
+| API-015      | follow list route                                                                                  | PostgreSQL integration and OpenAPI runtime alignment                                                         | PASS   |
+| API-016      | vote list route                                                                                    | PostgreSQL integration and OpenAPI runtime alignment                                                         | PASS   |
+| API-017      | block list route                                                                                   | PostgreSQL integration and OpenAPI runtime alignment                                                         | PASS   |
+| API-018      | block upsert route                                                                                 | PostgreSQL integration and OpenAPI runtime alignment                                                         | PASS   |
+| API-019      | block delete route                                                                                 | PostgreSQL integration and OpenAPI runtime alignment                                                         | PASS   |
+| API-020      | public user route                                                                                  | profile integration and OpenAPI runtime alignment                                                            | PASS   |
+| API-021      | topic feed route                                                                                   | feed integration and OpenAPI runtime alignment                                                               | PASS   |
+| API-022      | topic create route                                                                                 | PostgreSQL and idempotency integration; OpenAPI alignment                                                    | PASS   |
+| API-023      | topic detail route                                                                                 | topic integration and OpenAPI runtime alignment                                                              | PASS   |
+| API-024      | topic entries route                                                                                | entry integration and OpenAPI runtime alignment                                                              | PASS   |
+| API-025      | entry create route                                                                                 | PostgreSQL and idempotency integration; OpenAPI alignment                                                    | PASS   |
+| API-026      | topic follow upsert route                                                                          | PostgreSQL integration and OpenAPI runtime alignment                                                         | PASS   |
+| API-027      | topic follow delete route                                                                          | PostgreSQL integration and OpenAPI runtime alignment                                                         | PASS   |
+| API-028      | entry detail route                                                                                 | entry integration and OpenAPI runtime alignment                                                              | PASS   |
+| API-029      | entry update route                                                                                 | entry integration and OpenAPI runtime alignment                                                              | PASS   |
+| API-030      | entry delete route                                                                                 | entry integration and OpenAPI runtime alignment                                                              | PASS   |
+| API-031      | entry revisions route                                                                              | entry integration and OpenAPI runtime alignment                                                              | PASS   |
+| API-032      | vote upsert route                                                                                  | vote integration and OpenAPI runtime alignment                                                               | PASS   |
+| API-033      | vote delete route                                                                                  | vote integration and OpenAPI runtime alignment                                                               | PASS   |
+| API-034      | bookmark upsert route                                                                              | interaction integration and OpenAPI runtime alignment                                                        | PASS   |
+| API-035      | bookmark delete route                                                                              | interaction integration and OpenAPI runtime alignment                                                        | PASS   |
+| API-036      | search route                                                                                       | search integration and OpenAPI runtime alignment                                                             | PASS   |
+| API-037      | DEBE route                                                                                         | feed integration and OpenAPI runtime alignment                                                               | PASS   |
+| API-038      | random topic route                                                                                 | feed integration and OpenAPI runtime alignment                                                               | PASS   |
+| API-039      | report creation route                                                                              | moderation integration suite and production build                                                            | PASS   |
+| API-040      | moderation dashboard route                                                                         | moderation integration suite and production build                                                            | PASS   |
+| API-041      | filtered report list route                                                                         | moderation integration suite and production build                                                            | PASS   |
+| API-042      | report detail route                                                                                | moderation integration suite and production build                                                            | PASS   |
+| API-043      | report resolve route                                                                               | moderation integration suite and production build                                                            | PASS   |
+| API-044      | report reject route                                                                                | moderation integration suite and production build                                                            | PASS   |
+| API-045      | entry hide route                                                                                   | moderation integration suite and production build                                                            | PASS   |
+| API-046      | entry restore route                                                                                | moderation integration suite and production build                                                            | PASS   |
+| API-047      | entry move route                                                                                   | moderation integration suite and production build                                                            | PASS   |
+| API-048      | topic hide route                                                                                   | moderation integration suite and production build                                                            | PASS   |
+| API-049      | topic restore route                                                                                | moderation integration suite and production build                                                            | PASS   |
+| API-050      | topic rename route                                                                                 | moderation integration suite and production build                                                            | PASS   |
+| API-051      | topic merge route                                                                                  | moderation integration suite and production build                                                            | PASS   |
+| API-052      | moderation user list route                                                                         | moderation integration suite and production build                                                            | PASS   |
+| API-053      | user suspend route                                                                                 | moderation integration suite and production build                                                            | PASS   |
+| API-054      | user unsuspend route                                                                               | moderation integration suite and production build                                                            | PASS   |
+| API-055      | moderator grant route                                                                              | moderation integration suite and production build                                                            | PASS   |
+| API-056      | moderator revoke route                                                                             | moderation integration suite and production build                                                            | PASS   |
+| API-057      | filtered audit route                                                                               | moderation integration suite and production build                                                            | PASS   |
+| API-058      | JSON date serialization                                                                            | API contract unit suite                                                                                      | PASS   |
+| API-059      | page default and minimum                                                                           | pagination unit suite and OpenAPI schema                                                                     | PASS   |
+| API-060      | pageSize default and maximum                                                                       | pagination unit suite and OpenAPI schema                                                                     | PASS   |
+| API-061      | validation error mapping                                                                           | API error unit suite                                                                                         | PASS   |
+| API-062      | authentication error mapping                                                                       | API error unit suite and auth browser suite                                                                  | PASS   |
+| API-063      | authorization error mapping                                                                        | API error unit suite and moderation integration                                                              | PASS   |
+| API-064      | not-found error mapping                                                                            | API error unit suite and domain integration                                                                  | PASS   |
+| API-065      | conflict error mapping                                                                             | API error unit suite and domain integration                                                                  | PASS   |
+| API-066      | rate-limit mapping and Retry-After                                                                 | API and fixed-window unit suites                                                                             | PASS   |
+| API-067      | sanitized unexpected error mapping                                                                 | API error unit suite                                                                                         | PASS   |
+| API-068      | X-Request-Id on success and error                                                                  | API contract unit suite                                                                                      | PASS   |
+| API-069      | valid request ID preservation and UUID fallback                                                    | pagination and request-ID unit suite                                                                         | PASS   |
+| ARCH-001     | modular monolith under `src/modules`                                                               | `tests/unit/architecture/module-boundaries.test.ts` module inventory                                         | PASS   |
+| ARCH-002     | domain/application/repository/validation/public layers in all 12 modules                           | `module-boundaries.test.ts` verifies every required layer                                                    | PASS   |
+| ARCH-003     | thin routes/actions delegate to application services                                               | `server-actions.test.ts` plus route-handler source audit                                                     | PASS   |
+| ARCH-004     | UI action and `/api/v1` handlers share module application services                                 | `server-actions.test.ts` and real route integration tests                                                    | PASS   |
+| ARCH-005     | route handlers limit work to validation, context and service delegation                            | 59-route OpenAPI alignment plus route-handler source audit                                                   | PASS   |
+| ARCH-006     | Prisma imports confined to repositories and shared DB access                                       | `module-boundaries.test.ts` Prisma-import assertion                                                          | PASS   |
+| ARCH-007     | client components have no Prisma/database imports                                                  | `module-boundaries.test.ts` dependency-boundary scan                                                         | PASS   |
+| ARCH-008     | member writes call server-side guards inside transactions                                          | `rechecks active account status inside every member write transaction` integration test                      | PASS   |
+| ARCH-009     | permission services enforce object authorization independent of UI                                 | `auth/permissions.test.ts` and moderation object-authorization integration test                              | PASS   |
+| ARCH-010     | shared pagination schemas and paginated repositories                                               | `http/pagination.test.ts` and paginated profile/moderation integration tests                                 | PASS   |
+| ARCH-011     | critical topic, entry, vote, role and account mutations use transactions                           | atomicity, rollback and concurrency tests in `topics-entries-interactions.test.ts`                           | PASS   |
+| ARCH-012     | repository projections/includes and batched list queries                                           | repository query audit plus paginated PostgreSQL integration suites                                          | PASS   |
+| AUTH-001     | registration schema and route                                                                      | registration unit, PostgreSQL and browser suites                                                             | PASS   |
+| AUTH-002     | password policy schema                                                                             | password unit suite                                                                                          | PASS   |
+| AUTH-003     | exact Argon2id options                                                                             | password unit and PostgreSQL login suites                                                                    | PASS   |
+| AUTH-004     | successful-login password rehash                                                                   | low-cost hash PostgreSQL integration test                                                                    | PASS   |
+| AUTH-005     | cryptographic 32-byte session token                                                                | session and security unit suites                                                                             | PASS   |
+| AUTH-006     | hash-only session persistence                                                                      | session unit and PostgreSQL integration suites                                                               | PASS   |
+| AUTH-007     | SHA-256 session token hash                                                                         | session unit suite                                                                                           | PASS   |
+| AUTH-008     | configurable secure session cookie                                                                 | production cookie unit suite                                                                                 | PASS   |
+| AUTH-009     | sliding session expiry and throttled touch                                                         | session unit and PostgreSQL integration suites                                                               | PASS   |
+| AUTH-010     | independent per-session CSRF secret                                                                | session unit and PostgreSQL integration suites                                                               | PASS   |
+| AUTH-011     | hash-only CSRF persistence                                                                         | session unit and PostgreSQL integration suites                                                               | PASS   |
+| AUTH-012     | non-HttpOnly raw CSRF cookie                                                                       | production cookie unit suite                                                                                 | PASS   |
+| AUTH-013     | cookie mutation CSRF and origin gate                                                               | CSRF unit and authenticated browser suites                                                                   | PASS   |
+| AUTH-014     | login and registration origin validation                                                           | origin unit and authentication browser suites                                                                | PASS   |
+| AUTH-015     | generic invalid-login response                                                                     | PostgreSQL existing/missing-user integration test                                                            | PASS   |
+| AUTH-016     | dummy Argon2 verification                                                                          | missing-user login integration and source audit                                                              | PASS   |
+| AUTH-017     | session revoke and cookie clear logout                                                             | authentication browser and cookie unit suites                                                                | PASS   |
+| AUTH-018     | password change and other-session revoke                                                           | PostgreSQL account integration test                                                                          | PASS   |
+| AUTH-019     | normalized authenticated email change                                                              | PostgreSQL account integration test                                                                          | PASS   |
+| AUTH-020     | immutable username account contract                                                                | profile schema and account route audit                                                                       | PASS   |
+| AUTH-021     | session management UI and services                                                                 | PostgreSQL session and account browser suites                                                                | PASS   |
+| AUTH-022     | suspended-account permission matrix                                                                | permission, PostgreSQL and moderation suites                                                                 | PASS   |
+| AUTH-023     | deactivated login rejection                                                                        | PostgreSQL deactivation/login integration test                                                               | PASS   |
+| AUTH-024     | transactional account anonymization                                                                | PostgreSQL anonymization and last-admin race tests                                                           | PASS   |
+| AUTH-025     | production APP_SECRET byte validation                                                              | environment unit suite and production build                                                                  | PASS   |
+| BLOCK-001    | block service self-target guard                                                                    | PostgreSQL integration test                                                                                  | PASS   |
+| BLOCK-002    | viewer-scoped block relation leaves role authority unchanged                                       | block viewer-isolation and moderator authorization integration scenarios                                     | PASS   |
+| BLOCK-003    | `src/components/entries/blocked-entry-body.tsx` collapsed placeholder                              | `blocked-entry.test.tsx` plus block-collapse PostgreSQL test                                                 | PASS   |
+| BLOCK-004    | per-render `Yine de göster` reveal action                                                          | `blocked-entry.test.tsx` verifies one-view reveal                                                            | PASS   |
+| BLOCK-005    | viewer-scoped blocked-author lookup                                                                | PostgreSQL viewer-isolation integration test                                                                 | PASS   |
+| BLOCK-006    | `ayarlar/engellenenler` page and block list/delete services                                        | targeted auth-content Playwright account-lifecycle scenario                                                  | PASS   |
+| BOOKMARK-001 | bookmark upsert/delete service and API route                                                       | PostgreSQL idempotency integration test                                                                      | PASS   |
+| BOOKMARK-002 | active-entry bookmark guard                                                                        | PostgreSQL hidden-entry integration test                                                                     | PASS   |
+| BOOKMARK-003 | accessible bookmark repository filter                                                              | PostgreSQL personal-list integration test                                                                    | PASS   |
+| CI-001       | `.github/workflows/ci.yml` handles pull requests and main pushes                                   | workflow trigger source validation                                                                           | PASS   |
+| CI-002       | workflow concurrency group with `cancel-in-progress: true`                                         | workflow concurrency source validation                                                                       | PASS   |
+| CI-003       | CI `postgres:16-alpine` service with health command                                                | workflow service definition validation                                                                       | PASS   |
+| CI-004       | `pnpm install --frozen-lockfile` CI step                                                           | workflow install-step validation                                                                             | PASS   |
+| CI-005       | pnpm store path cached by lockfile hash                                                            | workflow cache key/path validation                                                                           | PASS   |
+| CI-006       | ordered generate, migrate, static checks, tests, build, E2E and Docker steps                       | workflow step-order validation                                                                               | PASS   |
+| CI-007       | validation steps have no `continue-on-error` success override                                      | workflow failure-semantics source scan                                                                       | PASS   |
+| CI-008       | failure-only Playwright report and result upload                                                   | workflow artifact condition/path validation                                                                  | PASS   |
+| CI-009       | always-uploaded `coverage/` artifact                                                               | workflow coverage artifact validation                                                                        | PASS   |
+| CI-010       | CI contains validation/build only and no deployment/publish step                                   | workflow action and command inventory                                                                        | PASS   |
+| CI-011       | read-only repository permission and validation-only job                                            | workflow `permissions: contents: read` and job audit                                                         | PASS   |
+| DATA-001     | registration schema accepts email, username, displayName, password and terms                       | `auth/password.test.ts` registration normalization test                                                      | PASS   |
+| DATA-002     | registration schema strips/rejects kind, role and status escalation fields                         | `auth/password.test.ts` role-escalation input test                                                           | PASS   |
+| DATA-003     | username normalization and bounds in auth schemas/domain                                           | registration unit and case-insensitive PostgreSQL conflict test                                              | PASS   |
+| DATA-004     | display-name trimming and bounds in auth/profile schemas                                           | registration and profile PostgreSQL integration tests                                                        | PASS   |
+| DATA-005     | 500-character bio limit in user validation schema                                                  | profile validation through account integration and strict TypeScript                                         | PASS   |
+| DATA-006     | `src/modules/topics/domain/normalization.ts`                                                       | `tests/unit/topics/normalization.test.ts`                                                                    | PASS   |
+| DATA-007     | `src/modules/topics/validation/schemas.ts`                                                         | `tests/unit/topics/validation.test.ts`                                                                       | PASS   |
+| DATA-008     | `src/modules/topics/repository/topics.ts`                                                          | `tests/integration/topics-entries-interactions.test.ts`                                                      | PASS   |
+| DATA-009     | `src/modules/topics/repository/topics.ts`                                                          | PostgreSQL duplicate-race integration test                                                                   | PASS   |
+| DATA-010     | `src/modules/topics/domain/normalization.ts`                                                       | `tests/unit/topics/normalization.test.ts`                                                                    | PASS   |
+| DATA-011     | `src/modules/topics/domain/normalization.ts`                                                       | canonical path unit test                                                                                     | PASS   |
+| DATA-012     | canonical slug check in `src/app/baslik/[topic]/page.tsx`                                          | rename/merge redirect Playwright test verifies canonical navigation                                          | PASS   |
+| DATA-013     | `src/modules/entries/domain/entry.ts`                                                              | `tests/unit/entries/entry.test.ts`                                                                           | PASS   |
+| DATA-014     | `src/modules/entries/domain/entry.ts`                                                              | unchanged-edit PostgreSQL integration test                                                                   | PASS   |
+| DATA-015     | `src/modules/entries/application/entries.ts`                                                       | revision PostgreSQL integration test                                                                         | PASS   |
+| DATA-016     | `src/modules/entries/application/entries.ts`                                                       | permission matrix unit test                                                                                  | PASS   |
+| DATA-017     | OTHER report details rule in moderation Zod schema                                                 | `moderation/validation.test.ts` 10–1000 boundary tests                                                       | PASS   |
+| DATA-018     | partial unique OPEN-report constraint and transactional report service                             | duplicate-open-report PostgreSQL integration test                                                            | PASS   |
+| DATA-019     | report service loads and authorizes the concrete target                                            | report-create PostgreSQL target/ownership scenarios                                                          | PASS   |
+| DATA-020     | append-only AuditLog trigger and no update/delete repository API                                   | `db/schema-contract.test.ts` plus immutable-history integration assertions                                   | PASS   |
+| DATA-021     | recursive sensitive-key rejection in `audit/domain/metadata.ts`                                    | `audit/metadata.test.ts` safe and forbidden metadata cases                                                   | PASS   |
+| DATA-022     | outbox append inside domain transactions                                                           | PostgreSQL event and rollback integration assertions                                                         | PASS   |
+| DATA-023     | recursive sensitive-key payload guard                                                              | outbox payload safety unit suite                                                                             | PASS   |
+| DB-001       | `prisma/schema.prisma`                                                                             | PostgreSQL 16 migration and schema contract test                                                             | PASS   |
+| DB-002       | `prisma/schema.prisma`                                                                             | PostgreSQL 16 migration and schema contract test                                                             | PASS   |
+| DB-003       | `prisma/schema.prisma`                                                                             | duplicate-race PostgreSQL integration test                                                                   | PASS   |
+| DB-004       | initial migration                                                                                  | PostgreSQL 16 migration and schema contract test                                                             | PASS   |
+| DB-005       | initial migration                                                                                  | `tests/unit/db/schema-contract.test.ts`                                                                      | PASS   |
+| DB-006       | counter repositories and migration checks                                                          | double seed and counter consistency check                                                                    | PASS   |
+| DB-007       | vote service and migration check                                                                   | vote integration and counter consistency check                                                               | PASS   |
+| DB-008       | counter repositories                                                                               | soft-delete integration and counter consistency check                                                        | PASS   |
+| DB-009       | counter repositories                                                                               | double seed and counter consistency check                                                                    | PASS   |
+| DB-010       | topic, entry and vote transactions                                                                 | PostgreSQL integration suite                                                                                 | PASS   |
+| DB-011       | `scripts/recalculate-counters.ts`                                                                  | idempotent recalculate with zero mismatches                                                                  | PASS   |
+| DEC-001      | delivery proceeded from the locked requirement manifest                                            | `docs/DECISIONS.md` records material conflicts without optional clarification gates                          | PASS   |
+| DEC-002      | implementation phases proceed without optional approval waits                                      | phase artifacts and validation ledger show uninterrupted local execution                                     | PASS   |
+| DEC-003      | locked stack, routes, data and security boundaries in `AGENTS.md`                                  | architecture/package/route inventory matches the locked decisions                                            | PASS   |
+| DEC-004      | Node/Next/Prisma/PostgreSQL/custom-session stack retained                                          | `package.json`, Prisma schema and auth source audit                                                          | PASS   |
+| DEC-005      | all package versions are stable releases                                                           | `package.json` and `pnpm-lock.yaml` contain no prerelease dependency specifiers                              | PASS   |
+| DEC-006      | Node 22 engine and compatible exact dependencies                                                   | typecheck, 222 coverage tests, 24 E2E and production build under Node 22                                     | PASS   |
+| DEC-007      | exact dependency versions and pinned pnpm 10.34.5                                                  | `package.json`/lockfile version audit                                                                        | PASS   |
+| DEC-008      | 811 requirements remain represented without scope deletion                                         | manifest/requirements/traceability exact-alignment tests                                                     | PASS   |
+| DEC-009      | required behavior is implemented by production modules, not feature mocks                          | unit/integration source audit and real PostgreSQL test suite                                                 | PASS   |
+| DEC-010      | required-feature implementation is complete without placeholder handlers                           | final TODO/FIXME/XXX/fake-success/empty-handler scan; two generator/error-message false positives reviewed   | PASS   |
+| DEC-011      | coverage thresholds and assertions remain enabled                                                  | Vitest config plus no `.skip`/`.only`/snapshot-substitution source audit                                     | PASS   |
+| DEC-012      | conflict precedence is retained in the requirement and repository rules                            | `docs/M1_REQUIREMENTS.md` and `AGENTS.md` precedence audit                                                   | PASS   |
+| DEC-013      | material repository and isolation choices recorded as ADRs                                         | `docs/DECISIONS.md` ADR-001 through ADR-004                                                                  | PASS   |
+| DEC-014      | phase work is paired with format/lint/typecheck/relevant tests                                     | validation ledger and branch commit history                                                                  | PASS   |
+| DEC-015      | incomplete gates remain pending rather than recorded complete                                      | trace history kept unresolved gates FAIL until their local and remote evidence existed                       | PASS   |
+| DEC-016      | complete local diff received final security/data/race/performance review                           | final delta audit found P0 0, P1 0 and P2 0; `git diff --check` passed                                       | PASS   |
+| DOC-001      | `README.md` install, run, test and architecture guide                                              | README command/link source audit                                                                             | PASS   |
+| DOC-002      | `AGENTS.md` repository map, locks, security and completion rules                                   | repository-rule source audit                                                                                 | PASS   |
+| DOC-003      | `docs/PLAN.md` records all phases and the measured closeout state                                  | plan refreshed with 222-test coverage, E2E and Docker restore-drill evidence                                 | PASS   |
+| DOC-004      | `docs/ARCHITECTURE.md` module, request and data boundaries                                         | module-boundary tests and architecture document audit                                                        | PASS   |
+| DOC-005      | `docs/DECISIONS.md` four concrete ADRs                                                             | origin, empty-main, dependency and isolation evidence audit                                                  | PASS   |
+| DOC-006      | `docs/API.md` endpoint, account, filtering and UUID contracts                                      | API doc/OpenAPI route comparison                                                                             | PASS   |
+| DOC-007      | `docs/openapi.yaml` OpenAPI 3.1 contract                                                           | Swagger Parser and 59/59 runtime alignment                                                                   | PASS   |
+| DOC-008      | `docs/SECURITY.md` authentication and hardening controls                                           | security unit suites and source cross-check                                                                  | PASS   |
+| DOC-009      | `docs/STATUS.md` records commands, counts, coverage, Docker and final push/PR/CI results           | measured ledger refreshed after Node 22, PostgreSQL 16, E2E, Docker and green GitHub CI                      | PASS   |
+| DOC-010      | `docs/M1_REQUIREMENTS.md` extracted goal requirements                                              | 811-ID manifest exact-alignment test                                                                         | PASS   |
+| DOC-011      | `docs/TRACEABILITY.md` implementation/test/status table                                            | requirements alignment tests validate all 811 unique IDs                                                     | PASS   |
+| DOC-012      | `docs/THREAT_MODEL.md` assets, actors, threats and mitigations                                     | threat-model/security-control cross-check                                                                    | PASS   |
+| DOCKER-001   | multi-stage base/dependencies/builder/production-dependencies/runner Dockerfile                    | Dockerfile stage/source validation                                                                           | PASS   |
+| DOCKER-002   | `node:22-alpine` base and runner images                                                            | Dockerfile image-tag validation                                                                              | PASS   |
+| DOCKER-003   | Corepack activates pinned pnpm 10.34.5                                                             | Dockerfile base-stage command audit                                                                          | PASS   |
+| DOCKER-004   | dependency stages use `--frozen-lockfile`                                                          | Dockerfile install-command audit                                                                             | PASS   |
+| DOCKER-005   | runner copies standalone output and production runtime assets only                                 | Dockerfile runner-stage inventory                                                                            | PASS   |
+| DOCKER-006   | runner creates and switches to UID 1001 `nextjs`                                                   | Dockerfile `USER nextjs` validation                                                                          | PASS   |
+| DOCKER-007   | builder emits and runner copies Next standalone output                                             | Dockerfile and `next.config.ts` source validation                                                            | PASS   |
+| DOCKER-008   | project `.dockerignore` excludes dev/build/secret artifacts                                        | Docker context exclusion audit                                                                               | PASS   |
+| DOCKER-009   | `compose.yaml` defines only app and db services                                                    | Compose service inventory validation                                                                         | PASS   |
+| DOCKER-010   | Compose db uses `postgres:16-alpine`                                                               | Compose image validation                                                                                     | PASS   |
+| DOCKER-011   | `postgres_data` named volume persists database data                                                | Compose volume mapping validation                                                                            | PASS   |
+| DOCKER-012   | db healthcheck runs `pg_isready`                                                                   | Compose healthcheck validation                                                                               | PASS   |
+| DOCKER-013   | app depends on `service_healthy` db                                                                | Compose dependency-condition validation                                                                      | PASS   |
+| DOCKER-014   | app and image healthchecks call `/api/health`                                                      | Dockerfile/Compose healthcheck source validation                                                             | PASS   |
+| DOCKER-015   | development Compose defaults enable idempotent demo seed                                           | Compose env plus entrypoint seed-condition audit                                                             | PASS   |
+| DOCKER-016   | standalone Compose provides the required `up --build` path                                         | isolated `docker-compose up --build --detach` built and started healthy app/db services                      | PASS   |
+| DOCKER-017   | entrypoint seeds only outside production                                                           | `docker-entrypoint.sh` NODE_ENV/SEED_DEMO condition audit                                                    | PASS   |
+| DOCKER-018   | `set -eu` entrypoint runs `prisma migrate deploy` before server                                    | entrypoint fail-fast ordering validation                                                                     | PASS   |
+| DOCKER-019   | runner has no configured third-party credentials                                                   | final image config/filesystem credential scan passed; build secret was not retained                          | PASS   |
+| DONE-001     | repository root `/Volumes/GB/ai-projects/agentsz`                                                  | `git rev-parse --show-toplevel`                                                                              | PASS   |
+| DONE-002     | origin `cerncaycisi/agentsozluk.git`                                                               | `git remote get-url origin`                                                                                  | PASS   |
+| DONE-003     | working branch `codex/milestone-1`                                                                 | `git branch --show-current`                                                                                  | PASS   |
+| DONE-004     | feature work isolated on working branch after user-authorized foundation main push                 | git graph plus `docs/DECISIONS.md` empty-remote exception                                                    | PASS   |
+| DONE-005     | pinned pnpm dependency installation                                                                | `pnpm install --frozen-lockfile` completed                                                                   | PASS   |
+| DONE-006     | lockfile-enforced installs in package/CI/Docker                                                    | frozen install completed and lockfile unchanged                                                              | PASS   |
+| DONE-007     | Prisma client generation script and schema                                                         | `pnpm db:generate` completed                                                                                 | PASS   |
+| DONE-008     | immutable initial PostgreSQL migration                                                             | clean PostgreSQL 16 migration deployment completed                                                           | PASS   |
+| DONE-009     | idempotent `prisma/seed/index.ts`                                                                  | first seed measured 12 users, 30 topics, 180 entries                                                         | PASS   |
+| DONE-010     | canonical upsert-based seed and fingerprint checks                                                 | second seed kept 12/30/180 with no duplicates                                                                | PASS   |
+| DONE-011     | registration service and route                                                                     | registration PostgreSQL and targeted Playwright scenarios                                                    | PASS   |
+| DONE-012     | authentication service and login route                                                             | generic-login PostgreSQL and targeted Playwright scenarios                                                   | PASS   |
+| DONE-013     | logout service and route                                                                           | targeted auth-content Playwright lifecycle                                                                   | PASS   |
+| DONE-014     | owned-session revoke services/routes                                                               | session PostgreSQL and targeted Playwright scenarios                                                         | PASS   |
+| DONE-015     | password-change service with session rotation                                                      | account PostgreSQL and targeted Playwright scenarios                                                         | PASS   |
+| DONE-016     | transactional account anonymization service                                                        | anonymization and last-admin PostgreSQL tests                                                                | PASS   |
+| DONE-017     | atomic topic plus first-entry service                                                              | topic transaction PostgreSQL test                                                                            | PASS   |
+| DONE-018     | normalized-title/alias constraints and advisory lock                                               | duplicate and concurrent-topic PostgreSQL tests                                                              | PASS   |
+| DONE-019     | entry create service and route                                                                     | entry PostgreSQL and targeted Playwright tests                                                               | PASS   |
+| DONE-020     | entry revision service/repository/UI                                                               | revision unit, PostgreSQL and Playwright tests                                                               | PASS   |
+| DONE-021     | entry soft-delete transaction                                                                      | body/counter/outbox PostgreSQL assertions                                                                    | PASS   |
+| DONE-022     | vote transition service                                                                            | vote unit and create/change/delete PostgreSQL tests                                                          | PASS   |
+| DONE-023     | bookmark upsert/delete services                                                                    | idempotent bookmark PostgreSQL and Playwright tests                                                          | PASS   |
+| DONE-024     | topic follow upsert/delete services                                                                | idempotent follow PostgreSQL and Playwright tests                                                            | PASS   |
+| DONE-025     | viewer block services and collapsed renderer                                                       | block PostgreSQL plus blocked-entry component test                                                           | PASS   |
+| DONE-026     | typed topic/user/entry search                                                                      | search ranking/normalization unit and PostgreSQL tests                                                       | PASS   |
+| DONE-027     | locked rolling trend score                                                                         | trend formula unit and feed PostgreSQL tests                                                                 | PASS   |
+| DONE-028     | Istanbul calendar-day DEBE service                                                                 | time-boundary unit and seeded Playwright tests                                                               | PASS   |
+| DONE-029     | indexed randomKey topic selection                                                                  | randomKey PostgreSQL integration test                                                                        | PASS   |
+| DONE-030     | report schema/service/route                                                                        | report create/duplicate/ownership PostgreSQL tests                                                           | PASS   |
+| DONE-031     | report resolve and reject commands                                                                 | moderation PostgreSQL and targeted Playwright tests                                                          | PASS   |
+| DONE-032     | entry hide/restore commands                                                                        | moderation PostgreSQL and targeted Playwright tests                                                          | PASS   |
+| DONE-033     | topic hide/restore commands                                                                        | moderation PostgreSQL and targeted Playwright tests                                                          | PASS   |
+| DONE-034     | topic rename plus alias transaction                                                                | moderation PostgreSQL and redirect Playwright tests                                                          | PASS   |
+| DONE-035     | topic merge plus canonical redirect                                                                | moderation PostgreSQL and redirect Playwright tests                                                          | PASS   |
+| DONE-036     | entry move transaction                                                                             | moderation counters/events PostgreSQL test                                                                   | PASS   |
+| DONE-037     | suspend/unsuspend services                                                                         | write-recheck PostgreSQL and targeted Playwright tests                                                       | PASS   |
+| DONE-038     | moderator grant/revoke services                                                                    | role-boundary PostgreSQL and targeted Playwright tests                                                       | PASS   |
+| DONE-039     | serializable advisory last-admin guard                                                             | concurrent last-admin PostgreSQL test                                                                        | PASS   |
+| DONE-040     | typed transactional outbox appends                                                                 | event and rollback PostgreSQL assertions                                                                     | PASS   |
+| DONE-041     | append-only moderation/audit history                                                               | schema-contract and moderation integration tests                                                             | PASS   |
+| DONE-042     | PostgreSQL fixed-window limiter                                                                    | rate-limit unit and atomic concurrency integration tests                                                     | PASS   |
+| DONE-043     | double-submit CSRF plus Origin checks                                                              | CSRF unit and real-route PostgreSQL tests                                                                    | PASS   |
+| DONE-044     | service-level object authorization                                                                 | permission unit and moderation integration tests                                                             | PASS   |
+| DONE-045     | 59 implemented `/api/v1`/ops operations                                                            | OpenAPI runtime inventory 59/59                                                                              | PASS   |
+| DONE-046     | OpenAPI 3.1 runtime contract                                                                       | `pnpm openapi:validate`: 59/59                                                                               | PASS   |
+| DONE-047     | desktop public/account/moderation UI                                                               | production build plus targeted desktop Playwright suites                                                     | PASS   |
+| DONE-048     | responsive drawer/forms/content UI                                                                 | mobile drawer and Pixel 7 Playwright scenarios                                                               | PASS   |
+| DONE-049     | persisted light/dark theme toggle                                                                  | public theme Playwright test                                                                                 | PASS   |
+| DONE-050     | loading/empty/error/forbidden/not-found states                                                     | 40/40 production build plus 404 Playwright test                                                              | PASS   |
+| DONE-051     | semantic accessible UI and Radix primitives                                                        | public/auth/moderation axe serious/critical zero                                                             | PASS   |
+| DONE-052     | metadata, robots and paginated sitemaps                                                            | production build and XML unit tests                                                                          | PASS   |
+| DONE-053     | process-only `/api/health` route                                                                   | health unit and real-route integration tests                                                                 | PASS   |
+| DONE-054     | database-backed `/api/ready` route                                                                 | readiness unit and real-route integration tests                                                              | PASS   |
+| DONE-055     | Prettier configuration and formatted source                                                        | `pnpm format:check` completed                                                                                | PASS   |
+| DONE-056     | ESLint strict zero-warning configuration                                                           | `pnpm lint` completed with zero errors/warnings                                                              | PASS   |
+| DONE-057     | strict TypeScript project                                                                          | `pnpm typecheck` completed                                                                                   | PASS   |
+| DONE-058     | unit suite across domain/security/architecture/ops                                                 | 48 files and 165 unit tests passed                                                                           | PASS   |
+| DONE-059     | real PostgreSQL 16 integration suite                                                               | 3 files and 57 integration tests passed                                                                      | PASS   |
+| DONE-060     | enforced global and domain thresholds                                                              | 222-test coverage passed at 92.39% lines/statements                                                          | PASS   |
+| DONE-061     | real PostgreSQL Playwright suites                                                                  | production standalone server plus isolated PostgreSQL 16: 24/24 passed                                       | PASS   |
+| DONE-062     | Next standalone production application                                                             | `pnpm build` passed with 40/40 static generation                                                             | PASS   |
+| DONE-063     | multi-stage project Dockerfile                                                                     | final runner image build passed; image runs as non-root UID 1001                                             | PASS   |
+| DONE-064     | project `compose.yaml`                                                                             | standalone Docker Compose 5.3.1 config validation passed                                                     | PASS   |
+| DONE-065     | Compose app/db health dependency                                                                   | isolated app/db healthy; health, ready and home returned HTTP 200; demo admin login passed                   | PASS   |
+| DONE-066     | validation-only GitHub Actions workflow                                                            | run `29579755838` succeeded on `dad302e`; migrations through E2E, Docker image and Compose all passed        | PASS   |
+| DONE-067     | secret-safe config and ignore rules                                                                | working tree, Git history and final image high-confidence credential scans passed                            | PASS   |
+| DONE-068     | required features implemented                                                                      | final placeholder/fake-success/disabled-handler/console-only source scan passed                              | PASS   |
+| DONE-069     | exact stable production dependencies                                                               | `pnpm audit --prod --audit-level critical`: no known vulnerabilities                                         | PASS   |
+| DONE-070     | 811-row traceability table                                                                         | 811 PASS, 0 FAIL/BLOCKED; `pnpm requirements:check` passed all 3 assertions                                  | PASS   |
+| DONE-071     | usable README with local, test and Docker commands                                                 | README command/path source audit                                                                             | PASS   |
+| DONE-072     | `docs/STATUS.md` validation ledger                                                                 | ledger contains current tests, coverage, Docker, backup, push/PR and green CI evidence                       | PASS   |
+| DONE-073     | logical milestone commits through final findings commit `dad302e`                                  | implementation, regression fixes, Docker/CI and documentation are split into scoped reversible commits       | PASS   |
+| DONE-074     | `git status --short` after `dad302e`                                                               | clean candidate recorded before this documentation-only completion update                                    | PASS   |
+| DONE-075     | complete local diff received final review                                                          | whole-diff audit found no open P0/P1/P2 correctness, race, data or performance finding                       | PASS   |
+| DONE-076     | security controls and tests implemented                                                            | auth/CSRF/session/RBAC/idempotency/logging/secret final review and regression gates passed                   | PASS   |
+| DONE-077     | external-action ban in `AGENTS.md`                                                                 | execution audit confirms only local work and permitted repository GitHub actions are in scope                | PASS   |
+| DONE-078     | no external messaging/deploy workflow in repository                                                | workflow/runtime URL audit found no external write, message, upload, publish or deployment path              | PASS   |
+| DONE-079     | remote branch `codex/milestone-1`                                                                  | final findings candidate pushed, upstream tracking configured and local/remote SHA matched                   | PASS   |
+| DONE-080     | GitHub draft PR `#1` targets `main` from `codex/milestone-1`                                       | `https://github.com/cerncaycisi/agentsozluk/pull/1`; title and draft state verified                          | PASS   |
+| DONE-081     | working branch remains unmerged                                                                    | git branch/remote state shows no main merge                                                                  | PASS   |
+| E2E-001      | visitor homepage                                                                                   | desktop and mobile Playwright                                                                                | PASS   |
+| E2E-002      | homepage trending topic navigation                                                                 | desktop and mobile Playwright                                                                                | PASS   |
+| E2E-003      | topic search UI                                                                                    | desktop and mobile Playwright                                                                                | PASS   |
+| E2E-004      | entry search UI                                                                                    | desktop and mobile Playwright                                                                                | PASS   |
+| E2E-005      | registration UI                                                                                    | authenticated Playwright journey                                                                             | PASS   |
+| E2E-006      | login and logout UI                                                                                | authenticated Playwright journey                                                                             | PASS   |
+| E2E-007      | topic and first-entry composition                                                                  | authenticated Playwright journey                                                                             | PASS   |
+| E2E-008      | topic entry composition                                                                            | authenticated Playwright journey                                                                             | PASS   |
+| E2E-009      | inline entry editing                                                                               | authenticated Playwright journey                                                                             | PASS   |
+| E2E-010      | entry revision page                                                                                | authenticated Playwright journey                                                                             | PASS   |
+| E2E-011      | vote create/change/remove controls in auth content journey                                         | targeted `auth-content.spec.ts` production Playwright scenario                                               | PASS   |
+| E2E-012      | bookmark action and favorites page                                                                 | authenticated Playwright journey                                                                             | PASS   |
+| E2E-013      | follow action and following page                                                                   | authenticated Playwright journey                                                                             | PASS   |
+| E2E-014      | block action and collapsed blocked-author entry                                                    | targeted `auth-content.spec.ts` production Playwright scenario                                               | PASS   |
+| E2E-015      | entry report flow                                                                                  | targeted auth-content and moderation Playwright scenarios                                                    | PASS   |
+| E2E-016      | moderator entry hide and report resolve flow                                                       | targeted `moderation-workflows.spec.ts` production test                                                      | PASS   |
+| E2E-017      | hidden-entry visitor visibility rule                                                               | targeted moderation Playwright test plus `visibility.test.ts`                                                | PASS   |
+| E2E-018      | entry restore command and visible-state return                                                     | targeted moderation Playwright test                                                                          | PASS   |
+| E2E-019      | admin user suspension flow                                                                         | targeted moderation Playwright test                                                                          | PASS   |
+| E2E-020      | transactional suspended-user write rejection                                                       | targeted moderation Playwright plus PostgreSQL write-recheck test                                            | PASS   |
+| E2E-021      | admin user unsuspension flow                                                                       | targeted moderation Playwright test                                                                          | PASS   |
+| E2E-022      | moderator grant and revoke controls                                                                | targeted moderation Playwright test                                                                          | PASS   |
+| E2E-023      | old topic URL redirect after rename                                                                | targeted moderation Playwright redirect test                                                                 | PASS   |
+| E2E-024      | source topic redirect after merge                                                                  | targeted moderation Playwright redirect test                                                                 | PASS   |
+| E2E-025      | profile settings update                                                                            | targeted `auth-content.spec.ts` account-lifecycle test                                                       | PASS   |
+| E2E-026      | password change and re-login                                                                       | targeted `auth-content.spec.ts` account-lifecycle test                                                       | PASS   |
+| E2E-027      | owned session revoke flow                                                                          | targeted `auth-content.spec.ts` account-lifecycle test                                                       | PASS   |
+| E2E-028      | responsive topic drawer                                                                            | mobile focus-trap and Escape Playwright test                                                                 | PASS   |
+| E2E-029      | mobile entry composition                                                                           | Pixel 7 Playwright journey                                                                                   | PASS   |
+| E2E-030      | persisted light and dark theme                                                                     | desktop and mobile Playwright                                                                                | PASS   |
+| E2E-031      | public WCAG axe gate                                                                               | public axe serious and critical zero                                                                         | PASS   |
+| E2E-032      | auth, account and moderation WCAG axe gate                                                         | authenticated axe serious and critical zero                                                                  | PASS   |
+| E2E-033      | keyboard-operable drawer and skip navigation                                                       | focus trap, Escape and focus return Playwright test                                                          | PASS   |
+| E2E-034      | Turkish not-found state                                                                            | 404 response and UI Playwright test                                                                          | PASS   |
+| E2E-035      | previous-day positive DEBE UI                                                                      | seeded PostgreSQL Playwright test                                                                            | PASS   |
+| ENTRY-001    | entry application service and API route                                                            | PostgreSQL create-entry integration test                                                                     | PASS   |
+| ENTRY-002    | entry application service                                                                          | hidden-topic integration test                                                                                | PASS   |
+| ENTRY-003    | entry application service                                                                          | merged-topic integration test                                                                                | PASS   |
+| ENTRY-004    | entry body schema                                                                                  | entry domain unit test                                                                                       | PASS   |
+| ENTRY-005    | entry body schema and repository                                                                   | entry domain and PostgreSQL integration tests                                                                | PASS   |
+| ENTRY-006    | safe renderer and `EntryBody`                                                                      | renderer unit tests                                                                                          | PASS   |
+| ENTRY-007    | React text rendering                                                                               | renderer XSS unit test                                                                                       | PASS   |
+| ENTRY-008    | shared token renderer                                                                              | server-rendered component unit test                                                                          | PASS   |
+| ENTRY-009    | `entry-preview.tsx` anchor, edited and moderation indicators                                       | `entry-preview.test.tsx` component assertions                                                                | PASS   |
+| ENTRY-010    | entry anchor/permalink link in entry preview                                                       | `entry-preview.test.tsx` verifies stable entry anchor                                                        | PASS   |
+| ENTRY-011    | `src/app/entry/[id]/page.tsx` canonical topic marker/link                                          | `entries/visibility.test.ts` and auth-content Playwright permalink journey                                   | PASS   |
+| ENTRY-012    | edit service, revision repository and API route                                                    | PostgreSQL edit-revision integration test                                                                    | PASS   |
+| ENTRY-013    | soft-delete service and API route                                                                  | PostgreSQL persistence, placeholder, outbox and counter test                                                 | PASS   |
+| ENTRY-014    | entry read visibility mapping                                                                      | PostgreSQL author and visitor visibility test                                                                | PASS   |
+| ENTRY-015    | viewer-aware hidden-body redaction in entry service                                                | `entries/visibility.test.ts` plus hide/restore Playwright scenario                                           | PASS   |
+| ENTRY-016    | moderation entry-move command updates topic/counters/events                                        | content-moderation PostgreSQL integration test                                                               | PASS   |
+| ENV-001      | Zod runtime environment schema in `src/config/env.ts`                                              | `config/env.test.ts` valid/invalid environment cases                                                         | PASS   |
+| ENV-002      | production secret, demo-seed and cookie constraints                                                | `startup-validation.test.ts` production process tests                                                        | PASS   |
+| EVENT-001    | topic.created outbox                                                                               | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-002    | topic.renamed outbox                                                                               | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-003    | topic.hidden outbox                                                                                | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-004    | topic.restored outbox                                                                              | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-005    | topic.merged outbox                                                                                | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-006    | entry.created outbox                                                                               | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-007    | entry.updated outbox                                                                               | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-008    | entry.deleted outbox                                                                               | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-009    | entry.hidden outbox                                                                                | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-010    | entry.restored outbox                                                                              | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-011    | entry.moved outbox                                                                                 | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-012    | entry.voted outbox                                                                                 | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-013    | report.created outbox                                                                              | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-014    | moderation.completed outbox                                                                        | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-015    | user.suspended outbox                                                                              | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-016    | user.unsuspended outbox                                                                            | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-017    | user.role_changed outbox                                                                           | PostgreSQL integration suite                                                                                 | PASS   |
+| EVENT-018    | user.deactivated outbox                                                                            | PostgreSQL integration suite                                                                                 | PASS   |
+| EXTERNAL-001 | repository work is isolated from non-GitHub systems                                                | `AGENTS.md` external-action ban and execution-scope audit                                                    | PASS   |
+| EXTERNAL-002 | no third-party create/send/post/publish/upload/delete integration                                  | repository tool/workflow inventory contains no external mutation path                                        | PASS   |
+| EXTERNAL-003 | no email client, Gmail connector or draft workflow                                                 | `package.json`/`src` mail dependency and route scan                                                          | PASS   |
+| EXTERNAL-004 | no Slack client, message or draft workflow                                                         | `package.json`/`src` Slack dependency and route scan                                                         | PASS   |
+| EXTERNAL-005 | no calendar client or mutation workflow                                                            | `package.json`/`src` calendar dependency and route scan                                                      | PASS   |
+| EXTERNAL-006 | no Jira/Confluence client or mutation workflow                                                     | `package.json`/`src` Atlassian dependency and route scan                                                     | PASS   |
+| EXTERNAL-007 | no Drive/Docs/Sheets/Slides mutation workflow                                                      | `package.json`/`src` Google API dependency and route scan                                                    | PASS   |
+| EXTERNAL-008 | no Figma client or mutation workflow                                                               | `package.json`/`src` Figma dependency and route scan                                                         | PASS   |
+| EXTERNAL-009 | repository contains no deployment step                                                             | GitHub Actions and package-script command inventory                                                          | PASS   |
+| EXTERNAL-010 | no hosting/cloud provider integration or credentials                                               | dependency/config scan for hosting and cloud SDKs                                                            | PASS   |
+| EXTERNAL-011 | no DNS/CDN/certificate automation                                                                  | scripts/workflows inventory contains no infrastructure mutation                                              | PASS   |
+| EXTERNAL-012 | no registry publish script or workflow                                                             | `package.json` private flag and CI command audit                                                             | PASS   |
+| EXTERNAL-013 | no outbound webhook client or call site                                                            | `src`/scripts webhook and HTTP destination scan                                                              | PASS   |
+| EXTERNAL-014 | runtime has no webhook, telemetry, analytics or tracking module                                    | dependency/module/route inventory                                                                            | PASS   |
+| EXTERNAL-015 | tests use localhost/PostgreSQL and no real third-party endpoint                                    | test-source URL and request-target audit                                                                     | PASS   |
+| EXTERNAL-016 | no third-party user/token/key/integration provisioning code                                        | route/script/config source inventory                                                                         | PASS   |
+| EXTERNAL-017 | no browser/curl/CLI/MCP bypass automation in repository                                            | scripts/workflow command inventory                                                                           | PASS   |
+| EXTERNAL-018 | GitHub write scope limited to working-branch push and draft PR                                     | `AGENTS.md` and `docs/DECISIONS.md` scope audit                                                              | PASS   |
+| EXTERNAL-019 | no code or workflow targeting another GitHub repository                                            | origin plus workflow/script repository-target audit                                                          | PASS   |
+| EXTERNAL-020 | public docs/package metadata access is read-only                                                   | execution scope and repository workflow audit                                                                | PASS   |
+| EXTERNAL-021 | dependency registry use is install/read-only                                                       | package/CI/Docker commands contain install only, no publish                                                  | PASS   |
+| EXTERNAL-022 | Next telemetry disabled in CI, Docker and Compose                                                  | `NEXT_TELEMETRY_DISABLED=1` source validation                                                                | PASS   |
+| EXTERNAL-023 | runtime dependencies are local application code and PostgreSQL only                                | `package.json` and runtime outbound-request source audit                                                     | PASS   |
+| FEED-001     | rolling 24-hour topic scoring                                                                      | trend unit and PostgreSQL integration suites                                                                 | PASS   |
+| FEED-002     | recent topic feed                                                                                  | PostgreSQL integration suite                                                                                 | PASS   |
+| FEED-003     | new topic feed                                                                                     | PostgreSQL integration suite                                                                                 | PASS   |
+| FEED-004     | Istanbul-day popular feed                                                                          | time unit and PostgreSQL integration suites                                                                  | PASS   |
+| FEED-005     | previous Istanbul-day DEBE                                                                         | time unit and PostgreSQL integration suites                                                                  | PASS   |
+| FEED-006     | random active topic and 302 route                                                                  | PostgreSQL integration suite and production build                                                            | PASS   |
+| FEED-007     | 30-topic feed cap                                                                                  | PostgreSQL integration suite                                                                                 | PASS   |
+| FOLLOW-001   | follow service and API route                                                                       | PostgreSQL idempotency integration test                                                                      | PASS   |
+| FOLLOW-002   | follow service                                                                                     | PostgreSQL content-state integration test                                                                    | PASS   |
+| FOLLOW-003   | follow service                                                                                     | PostgreSQL merged-target integration test                                                                    | PASS   |
+| ID-001       | `scripts/extract-requirements.mjs` extracts bracketed requirement IDs                              | `traceability.test.ts` proves 811 exact unique IDs across all artifacts                                      | PASS   |
+| IDEMP-001    | create and moderation command wrappers                                                             | route audit and PostgreSQL idempotency suite                                                                 | PASS   |
+| IDEMP-002    | browser crypto.randomUUID request keys                                                             | strict TypeScript and browser client audit                                                                   | PASS   |
+| IDEMP-003    | actor, route and key lock/storage scope                                                            | PostgreSQL concurrency suite                                                                                 | PASS   |
+| IDEMP-004    | recursively canonicalized JSON SHA-256                                                             | canonical hash unit suite                                                                                    | PASS   |
+| IDEMP-005    | stored status/body replay                                                                          | PostgreSQL replay integration test                                                                           | PASS   |
+| IDEMP-006    | Idempotent-Replay response header                                                                  | HTTP wrapper and OpenAPI response contract                                                                   | PASS   |
+| IDEMP-007    | request-hash conflict                                                                              | PostgreSQL conflict integration test                                                                         | PASS   |
+| IDEMP-008    | 24-hour expiry and replacement                                                                     | PostgreSQL TTL integration test                                                                              | PASS   |
+| IT-001       | registration success                                                                               | PostgreSQL authentication integration test                                                                   | PASS   |
+| IT-002       | case-insensitive duplicate email                                                                   | PostgreSQL authentication integration test                                                                   | PASS   |
+| IT-003       | duplicate username                                                                                 | PostgreSQL authentication integration test                                                                   | PASS   |
+| IT-004       | role and kind escalation prevention                                                                | PostgreSQL authentication integration test                                                                   | PASS   |
+| IT-005       | login and password rehash                                                                          | PostgreSQL authentication integration test                                                                   | PASS   |
+| IT-006       | generic invalid login                                                                              | PostgreSQL authentication integration test                                                                   | PASS   |
+| IT-007       | session issue, rotate, list and revoke                                                             | PostgreSQL authentication integration test                                                                   | PASS   |
+| IT-008       | password change revokes other sessions                                                             | PostgreSQL account integration test                                                                          | PASS   |
+| IT-009       | topic transaction service                                                                          | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-010       | advisory-lock duplicate prevention                                                                 | concurrent PostgreSQL integration test                                                                       | PASS   |
+| IT-011       | topic alias conflict query                                                                         | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-012       | entry create service                                                                               | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-013       | edit and revision transaction                                                                      | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-014       | unchanged edit guard                                                                               | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-015       | soft-delete and topic counter transaction                                                          | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-016       | vote transaction                                                                                   | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-017       | idempotent same-vote path                                                                          | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-018       | vote transition transaction                                                                        | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-019       | idempotent vote removal                                                                            | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-020       | own-entry vote guard                                                                               | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-021       | bookmark upsert/delete                                                                             | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-022       | follow upsert/delete                                                                               | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-023       | user block upsert                                                                                  | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-024       | blocked-author response flag                                                                       | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-025       | topic search                                                                                       | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-026       | topic alias search                                                                                 | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-027       | public user search                                                                                 | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-028       | active entry search                                                                                | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-029       | hidden entry exclusion                                                                             | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-030       | transactional report creation                                                                      | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-031       | duplicate open report guard                                                                        | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-032       | active-account guards run inside every member write transaction                                    | `rechecks active account status inside every member write transaction` PostgreSQL test                       | PASS   |
+| IT-033       | entry hide and restore                                                                             | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-034       | topic hide and restore                                                                             | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-035       | topic rename and old-title alias                                                                   | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-036       | topic merge                                                                                        | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-037       | entry move and counter repair                                                                      | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-038       | moderator user suspension                                                                          | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-039       | moderator object authorization                                                                     | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-040       | admin moderator grant and revoke                                                                   | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-041       | serialized last-admin race                                                                         | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-042       | immutable moderation and audit history                                                             | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-043       | transactional outbox event coverage                                                                | PostgreSQL integration suite                                                                                 | PASS   |
+| IT-044       | serialized same-key response replay                                                                | PostgreSQL idempotency integration test                                                                      | PASS   |
+| IT-045       | same-key different-body conflict                                                                   | PostgreSQL idempotency integration test                                                                      | PASS   |
+| IT-046       | write-route CSRF enforcement                                                                       | real authenticated route rejects missing CSRF integration test                                               | PASS   |
+| IT-047       | write-route Origin enforcement                                                                     | real authenticated route rejects foreign Origin integration test                                             | PASS   |
+| IT-048       | atomic rate-limit rejection                                                                        | PostgreSQL fixed-window integration test                                                                     | PASS   |
+| IT-049       | transactional account anonymization                                                                | PostgreSQL account integration test                                                                          | PASS   |
+| IT-050       | deactivation removes votes and recalculates scores                                                 | account deactivation vote-score PostgreSQL integration test                                                  | PASS   |
+| IT-051       | real `/api/health` route                                                                           | health/readiness route-handler PostgreSQL integration test                                                   | PASS   |
+| IT-052       | real `/api/ready` route with database probe                                                        | health/readiness route-handler PostgreSQL integration test                                                   | PASS   |
+| IT-053       | explicit safe current-user serialization                                                           | real authenticated API response password-material exclusion test                                             | PASS   |
+| MOD-001      | six-count moderation dashboard                                                                     | PostgreSQL integration suite                                                                                 | PASS   |
+| MOD-002      | report repository filters                                                                          | PostgreSQL integration suite                                                                                 | PASS   |
+| MOD-003      | report detail aggregate                                                                            | PostgreSQL integration suite                                                                                 | PASS   |
+| MOD-004      | bounded decision validation                                                                        | moderation validation unit suite                                                                             | PASS   |
+| MOD-005      | transactional resolve and reject                                                                   | PostgreSQL integration suite                                                                                 | PASS   |
+| MOD-006      | reason-gated entry hide and restore                                                                | moderation validation and integration suites                                                                 | PASS   |
+| MOD-007      | reason-gated topic hide and restore                                                                | moderation validation and integration suites                                                                 | PASS   |
+| MOD-008      | role-aware suspension and session revocation                                                       | PostgreSQL integration suite                                                                                 | PASS   |
+| MOD-009      | reason-gated unsuspension                                                                          | moderation validation and integration suites                                                                 | PASS   |
+| MOD-010      | admin-only USER/MODERATOR role transition                                                          | PostgreSQL integration suite                                                                                 | PASS   |
+| MOD-011      | service-level object authorization                                                                 | PostgreSQL integration suite                                                                                 | PASS   |
+| MOD-012      | moderation route metadata                                                                          | authenticated axe suite and production build                                                                 | PASS   |
+| MOD-013      | paginated report, user and audit lists                                                             | API production build and repository validation                                                               | PASS   |
+| MOD-014      | immutable moderation action DB trigger                                                             | migration and PostgreSQL integration suite                                                                   | PASS   |
+| MOD-015      | actor/action/entity/date/request audit filters                                                     | filtered audit service and production build                                                                  | PASS   |
+| OPS-001      | process-only GET `/api/health` handler                                                             | `ops/health.test.ts` and real-route integration test                                                         | PASS   |
+| OPS-002      | database SELECT 1 GET `/api/ready` handler                                                         | `ops/readiness.test.ts` 200/503 plus real-route integration test                                             | PASS   |
+| OPS-003      | structured request context and Pino fields                                                         | `logging/request-context.test.ts` authenticated actor/log assertions                                         | PASS   |
+| OPS-004      | startup validation script before server entry                                                      | `config/startup-validation.test.ts` valid and invalid process exits                                          | PASS   |
+| OPS-005      | dev/standalone/container bind to `0.0.0.0:3000`                                                    | package, standalone and Docker source validation                                                             | PASS   |
+| OPS-006      | `start-standalone.mjs` forwards SIGTERM/SIGINT to server                                           | standalone startup/shutdown source validation                                                                | PASS   |
+| OPS-007      | Pino query-key redaction                                                                           | `logging/logger.test.ts` sensitive-query redaction test                                                      | PASS   |
+| OUT-001      | M1 dependency/module surface excludes LLM clients                                                  | `package.json` and source import scan for LLM SDKs                                                           | PASS   |
+| OUT-002      | M1 has no agent execution module or route                                                          | module and route inventory                                                                                   | PASS   |
+| OUT-003      | writes require authenticated human sessions; no autonomous publisher                               | auth/create-route source audit                                                                               | PASS   |
+| OUT-004      | account UI/API exposes no agent API-key controls                                                   | page and route inventory                                                                                     | PASS   |
+| OUT-005      | no agent worker process or script                                                                  | package script and source inventory                                                                          | PASS   |
+| OUT-006      | outbox is append-only with no consumer                                                             | outbox module and package-script inventory                                                                   | PASS   |
+| OUT-007      | no chat model, route or UI                                                                         | Prisma/page/route inventory                                                                                  | PASS   |
+| OUT-008      | no private-message model, route or UI                                                              | Prisma/page/route inventory                                                                                  | PASS   |
+| OUT-009      | no real-time notification model or service                                                         | dependency/module inventory                                                                                  | PASS   |
+| OUT-010      | no WebSocket dependency or server                                                                  | package and server-source scan                                                                               | PASS   |
+| OUT-011      | no mail dependency or send path                                                                    | package/module/script inventory                                                                              | PASS   |
+| OUT-012      | registration requires no email-verification workflow                                               | auth schema/route and page inventory                                                                         | PASS   |
+| OUT-013      | no forgot-password email route or UI                                                               | auth route/page inventory                                                                                    | PASS   |
+| OUT-014      | custom opaque sessions only; no OAuth                                                              | auth implementation and dependency inventory                                                                 | PASS   |
+| OUT-015      | responsive web application only                                                                    | package and app-surface inventory                                                                            | PASS   |
+| OUT-016      | no web app manifest or service worker                                                              | public/app file inventory                                                                                    | PASS   |
+| OUT-017      | no offline cache or service worker                                                                 | app/build configuration inventory                                                                            | PASS   |
+| OUT-018      | no payment provider/model/route                                                                    | dependency/schema/route inventory                                                                            | PASS   |
+| OUT-019      | no subscription model or workflow                                                                  | Prisma schema and route inventory                                                                            | PASS   |
+| OUT-020      | no advertising integration or slot                                                                 | dependency/component inventory                                                                               | PASS   |
+| OUT-021      | plain-text entries; no media upload route/storage                                                  | entry schema, route and dependency inventory                                                                 | PASS   |
+| OUT-022      | profile uses display data only; no avatar upload                                                   | user schema/route/component inventory                                                                        | PASS   |
+| OUT-023      | entries have no comment model or route                                                             | Prisma schema and route inventory                                                                            | PASS   |
+| OUT-024      | votes only; no emoji-reaction model                                                                | interaction schema/service inventory                                                                         | PASS   |
+| OUT-025      | entry create is immediate; no draft state                                                          | entry enum/schema/service inventory                                                                          | PASS   |
+| OUT-026      | renderer supports links/topic/user refs, not hashtags                                              | `entries/renderer.test.ts` tokenizer cases                                                                   | PASS   |
+| OUT-027      | topics have no category field or taxonomy                                                          | Topic Prisma model and validation audit                                                                      | PASS   |
+| OUT-028      | locked UI locale is Turkish only                                                                   | app config and UI source inventory                                                                           | PASS   |
+| OUT-029      | no external analytics dependency or endpoint                                                       | dependency/runtime request scan                                                                              | PASS   |
+| OUT-030      | PostgreSQL search only; no external search client                                                  | search repository and dependency inventory                                                                   | PASS   |
+| OUT-031      | PostgreSQL fixed-window limiter; no Redis dependency                                               | rate-limit repository and package inventory                                                                  | PASS   |
+| OUT-032      | hosting-agnostic standalone/Compose runtime                                                        | Next/Docker config and provider-SDK scan                                                                     | PASS   |
+| OUT-033      | username absent from mutable profile schema                                                        | profile schema plus immutable-username route audit                                                           | PASS   |
+| OUT-034      | topic rename route is moderation-only                                                              | moderation authorization PostgreSQL test                                                                     | PASS   |
+| OUT-035      | moderation commands hide/move entries but never edit body                                          | moderation action/service API inventory                                                                      | PASS   |
+| OUT-036      | scope is the enumerated M1 product, not historical full parity                                     | README and 811-requirement manifest audit                                                                    | PASS   |
+| PAGE-001     | homepage                                                                                           | desktop/mobile Playwright and production build                                                               | PASS   |
+| PAGE-002     | trending feed page                                                                                 | public axe suite and production build                                                                        | PASS   |
+| PAGE-003     | recent-entry topic feed page                                                                       | production build                                                                                             | PASS   |
+| PAGE-004     | new-topic feed page                                                                                | production build                                                                                             | PASS   |
+| PAGE-005     | DEBE page                                                                                          | seeded PostgreSQL Playwright and production build                                                            | PASS   |
+| PAGE-006     | random-topic redirect route                                                                        | production build                                                                                             | PASS   |
+| PAGE-007     | topic composition page                                                                             | authenticated Playwright journey                                                                             | PASS   |
+| PAGE-008     | canonical topic detail page                                                                        | desktop/mobile Playwright and production build                                                               | PASS   |
+| PAGE-009     | entry permalink page                                                                               | production build                                                                                             | PASS   |
+| PAGE-010     | typed, paginated search page                                                                       | topic and entry Playwright tests                                                                             | PASS   |
+| PAGE-011     | public profile page                                                                                | production build                                                                                             | PASS   |
+| PAGE-012     | login page                                                                                         | auth axe and authenticated Playwright                                                                        | PASS   |
+| PAGE-013     | registration page                                                                                  | auth axe and authenticated Playwright                                                                        | PASS   |
+| PAGE-014     | bookmarks page                                                                                     | authenticated Playwright journey                                                                             | PASS   |
+| PAGE-015     | followed-topics page                                                                               | authenticated Playwright journey                                                                             | PASS   |
+| PAGE-016     | vote-history page                                                                                  | production build                                                                                             | PASS   |
+| PAGE-017     | profile settings page                                                                              | authenticated axe suite and production build                                                                 | PASS   |
+| PAGE-018     | security settings page                                                                             | authenticated axe suite and production build                                                                 | PASS   |
+| PAGE-019     | session settings page                                                                              | authenticated axe suite and production build                                                                 | PASS   |
+| PAGE-020     | blocked-users settings page                                                                        | production build                                                                                             | PASS   |
+| PAGE-021     | moderation dashboard page                                                                          | authenticated axe suite and production build                                                                 | PASS   |
+| PAGE-022     | moderation reports page                                                                            | authenticated axe suite and production build                                                                 | PASS   |
+| PAGE-023     | moderation report detail page                                                                      | production build                                                                                             | PASS   |
+| PAGE-024     | topic moderation page                                                                              | authenticated axe suite and production build                                                                 | PASS   |
+| PAGE-025     | user moderation page                                                                               | authenticated axe suite and production build                                                                 | PASS   |
+| PAGE-026     | audit page                                                                                         | authenticated axe suite and production build                                                                 | PASS   |
+| PAGE-027     | about page                                                                                         | public axe suite and production build                                                                        | PASS   |
+| PAGE-028     | rules page                                                                                         | public axe suite and production build                                                                        | PASS   |
+| PAGE-029     | privacy page                                                                                       | public axe suite and production build                                                                        | PASS   |
+| PAGE-030     | developer API page                                                                                 | production build                                                                                             | PASS   |
+| PAGE-031     | custom Turkish not-found page                                                                      | 404 response and UI Playwright test                                                                          | PASS   |
+| PAGE-032     | global error boundary                                                                              | production build                                                                                             | PASS   |
+| PAGE-033     | forbidden page                                                                                     | production build                                                                                             | PASS   |
+| PERM-001     | visitor read projection and write authentication guards                                            | `auth/permissions.test.ts` plus public/auth route integration tests                                          | PASS   |
+| PERM-002     | active-member topic/entry/interaction/report guards                                                | permission unit matrix and active/suspended PostgreSQL write tests                                           | PASS   |
+| PERM-003     | own-entry vote guard                                                                               | PostgreSQL integration suite                                                                                 | PASS   |
+| PERM-004     | author and active-status edit/delete guard                                                         | PostgreSQL integration suite                                                                                 | PASS   |
+| PERM-005     | moderator capability services                                                                      | PostgreSQL integration suite                                                                                 | PASS   |
+| PERM-006     | moderator target and role restrictions                                                             | PostgreSQL integration suite                                                                                 | PASS   |
+| PERM-007     | admin moderation and role capabilities                                                             | PostgreSQL integration suite                                                                                 | PASS   |
+| PERM-008     | no ADMIN role transition path                                                                      | role service and production route inspection                                                                 | PASS   |
+| PERM-009     | admin self-role guard                                                                              | PostgreSQL integration suite                                                                                 | PASS   |
+| PERM-010     | active-admin action guards                                                                         | PostgreSQL integration suite                                                                                 | PASS   |
+| PERM-011     | serializable advisory last-admin lock                                                              | concurrent PostgreSQL integration suite                                                                      | PASS   |
+| PROD-001     | central app name `Agent Sözlük`                                                                    | `src/config/app.ts` and rendered-page source audit                                                           | PASS   |
+| PROD-002     | `NEXT_PUBLIC_APP_NAME` defaults to `Agent Sözlük`                                                  | environment schema/default validation                                                                        | PASS   |
+| PROD-003     | application name exported from central app config                                                  | source scan for product-name literals outside approved metadata/config                                       | PASS   |
+| PROD-004     | ASCII package/service slug `agent-sozluk`                                                          | `package.json`, Compose and container-name audit                                                             | PASS   |
+| PROD-005     | public/account/moderation UI copy is Turkish                                                       | public/auth/moderation Playwright and UI source audit                                                        | PASS   |
+| PROD-006     | central locale `tr-TR`                                                                             | app config and date/format source audit                                                                      | PASS   |
+| PROD-007     | central timezone `Europe/Istanbul`                                                                 | `feeds/time.test.ts` Istanbul-boundary tests                                                                 | PASS   |
+| PROD-008     | all Prisma DateTime fields use `@db.Timestamptz`                                                   | schema timestamp audit and PostgreSQL schema-contract test                                                   | PASS   |
+| PROD-009     | topic-and-entry participatory dictionary domain                                                    | topic/entry integration suite and production UI build                                                        | PASS   |
+| PROD-010     | no copied Ekşi branding, layout, text or assets                                                    | UI/assets/source originality audit                                                                           | PASS   |
+| PROD-011     | only the participatory dictionary product pattern is retained                                      | README/product-surface and UI route inventory                                                                | PASS   |
+| PROD-012     | original responsive content-first UI with accessible primitives                                    | desktop/mobile Playwright and axe gates                                                                      | PASS   |
+| PROD-013     | `package.json` has `private: true`                                                                 | package metadata validation                                                                                  | PASS   |
+| PROD-014     | repository intentionally contains no LICENSE file                                                  | repository file inventory                                                                                    | PASS   |
+| PROFILE-001  | public profile data and anonymous appearance                                                       | PostgreSQL integration suite                                                                                 | PASS   |
+| PROFILE-002  | explicit public profile projection                                                                 | PostgreSQL integration suite                                                                                 | PASS   |
+| PROFILE-003  | paginated profile entries                                                                          | PostgreSQL integration suite                                                                                 | PASS   |
+| PROFILE-004  | viewer-aware block profile action                                                                  | authenticated axe suite and production build                                                                 | PASS   |
+| PROFILE-005  | role-aware moderation shortcut                                                                     | authenticated axe suite and production build                                                                 | PASS   |
+| QA-001       | real production services in tests                                                                  | test-source mock audit                                                                                       | PASS   |
+| QA-002       | database reset and isolated unit files                                                             | shuffled 100-test run                                                                                        | PASS   |
+| QA-003       | order-independent test design                                                                      | shuffled run seed 20260717                                                                                   | PASS   |
+| QA-004       | no fixed test sleeps                                                                               | test-source timing audit                                                                                     | PASS   |
+| QA-005       | PostgreSQL 16 integration runtime                                                                  | PostgreSQL 16.14 live suite                                                                                  | PASS   |
+| QA-006       | global thresholds in `vitest.config.ts`                                                            | 222-test coverage: lines/statements 92.39%, functions 94.08%, branches 85.97%                                | PASS   |
+| QA-007       | per-domain coverage thresholds in `vitest.config.ts`                                               | coverage: auth 95.78%, permissions 100%, topics 99.65%, entries 92.87%, moderation 90.84%, rate-limit 98.48% | PASS   |
+| QA-008       | specification-level thresholds                                                                     | Vitest configuration audit                                                                                   | PASS   |
+| QA-009       | assertion-based tests without snapshots                                                            | test-source snapshot audit                                                                                   | PASS   |
+| QA-010       | real PostgreSQL Playwright suites in `tests/e2e`                                                   | isolated PostgreSQL 16 and production standalone server: 24/24 passed                                        | PASS   |
+| RATE-001     | register limiter wired in auth registration route/service                                          | rate-limit rule/source audit and atomic PostgreSQL limiter test                                              | PASS   |
+| RATE-002     | login limiter wired in authentication route/service                                                | rate-limit rule/source audit and atomic PostgreSQL limiter test                                              | PASS   |
+| RATE-003     | locked RATE-003 rule in `rate-limit/domain/rules.ts`                                               | `rate-limit/rules.test.ts` exact boundary table                                                              | PASS   |
+| RATE-004     | locked RATE-004 rule in `rate-limit/domain/rules.ts`                                               | `rate-limit/rules.test.ts` exact boundary table                                                              | PASS   |
+| RATE-005     | locked RATE-005 rule in `rate-limit/domain/rules.ts`                                               | `rate-limit/rules.test.ts` exact boundary table                                                              | PASS   |
+| RATE-006     | locked RATE-006 rule in `rate-limit/domain/rules.ts`                                               | `rate-limit/rules.test.ts` exact boundary table                                                              | PASS   |
+| RATE-007     | locked RATE-007 rule in `rate-limit/domain/rules.ts`                                               | `rate-limit/rules.test.ts` exact boundary table                                                              | PASS   |
+| RATE-008     | locked RATE-008 rule in `rate-limit/domain/rules.ts`                                               | `rate-limit/rules.test.ts` exact boundary table                                                              | PASS   |
+| RATE-009     | locked RATE-009 rule in `rate-limit/domain/rules.ts`                                               | `rate-limit/rules.test.ts` exact boundary table                                                              | PASS   |
+| RATE-010     | locked RATE-010 rule in `rate-limit/domain/rules.ts`                                               | `rate-limit/rules.test.ts` exact boundary table                                                              | PASS   |
+| RATE-011     | atomic PostgreSQL upsert/increment rate-limit repository                                           | concurrent fixed-window PostgreSQL integration test                                                          | PASS   |
+| RATE-012     | `scripts/cleanup-rate-limits.ts` expired-window cleanup                                            | maintenance script source and package-command validation                                                     | PASS   |
+| RATE-013     | `TRUST_PROXY` defaults false in env schema/Compose                                                 | `rate-limit/window.test.ts` direct-address case                                                              | PASS   |
+| RATE-014     | `TRUST_PROXY_HOPS` selects the trusted address when enabled                                        | `rate-limit/window.test.ts` configured-hop case                                                              | PASS   |
+| REPO-001     | worktree is `/Volumes/GB/ai-projects/agentsz`                                                      | `git rev-parse --show-toplevel` matches target                                                               | PASS   |
+| REPO-002     | origin points to corrected `cerncaycisi/agentsozluk.git`                                           | `git remote get-url origin`                                                                                  | PASS   |
+| REPO-003     | work is confined to the verified target repository                                                 | origin/cwd check and ADR-001                                                                                 | PASS   |
+| REPO-004     | corrected empty repository was cloned before scaffolding                                           | `docs/STATUS.md` initial repository snapshot                                                                 | PASS   |
+| REPO-005     | empty repository was scaffolded into the M1 application                                            | initial snapshot plus current tracked project inventory                                                      | PASS   |
+| REPO-006     | initial audit recorded repository as empty                                                         | `docs/STATUS.md` initial state                                                                               | PASS   |
+| REPO-007     | initial audit found no pre-existing code to discard                                                | `docs/STATUS.md` empty-repository evidence                                                                   | PASS   |
+| REPO-008     | no incompatible pre-existing code remained after empty-repo audit                                  | initial state and branch tree audit                                                                          | PASS   |
+| REPO-009     | feature development is on the working branch; main received only user-authorized foundation        | git graph and explicit empty-remote exception record                                                         | PASS   |
+| REPO-010     | `codex/milestone-1` working branch created for implementation                                      | `git branch --show-current` and git graph                                                                    | PASS   |
+| REPO-011     | original `.git` repository remains intact                                                          | `git rev-parse --git-dir`                                                                                    | PASS   |
+| REPO-012     | history was extended without reset/rebase rewrite                                                  | git log/reflog topology audit                                                                                | PASS   |
+| REPO-013     | no force-push command or rewritten remote branch                                                   | remote refs and execution audit                                                                              | PASS   |
+| REPO-014     | empty remote had no user commits to amend/rebase/squash                                            | initial repository snapshot and git log                                                                      | PASS   |
+| REPO-015     | initial origin/branch/tree/tool state recorded                                                     | `docs/STATUS.md` initial repository section                                                                  | PASS   |
+| REPO-016     | scoped foundation, data, feature, hardening, test, packaging and final findings commits            | required reversible boundaries include exact final findings commit `dad302e`                                 | PASS   |
+| REPO-017     | `git log --reverse --format='%h %s' origin/main..HEAD`                                             | commit subjects are imperative and describe their respective scopes                                          | PASS   |
+| REPO-018     | completed commits were gated before creation                                                       | git history plus recorded validation ledger                                                                  | PASS   |
+| REPO-019     | format/lint/type/test gates are defined for commits                                                | Node 22 format, lint, typecheck, 222 coverage tests, build and 24 E2E passed before final commits            | PASS   |
+| REPO-020     | `git status --short` returned no paths at commit `dad302e`                                         | clean final-code snapshot recorded before the documentation-only completion update                           | PASS   |
+| REPO-021     | `git push --set-upstream origin codex/milestone-1`                                                 | new remote branch created and upstream tracking configured                                                   | PASS   |
+| REPO-022     | GitHub PR `#1`: base `main`, head `codex/milestone-1`                                              | exact title, draft state and required summary/Docker/demo/limitation body sections verified                  | PASS   |
+| REPO-023     | working branch remains separate from main                                                          | git graph shows no merge to main                                                                             | PASS   |
+| REPO-024     | GitHub PR `#1` reports `isDraft=true`                                                              | draft state verified through GitHub after creation                                                           | PASS   |
+| REPO-025     | no issue/discussion/release/package/deployment workflow                                            | GitHub action and execution-scope audit                                                                      | PASS   |
+| REPO-026     | repository CI workflow is validation-only                                                          | `.github/workflows/ci.yml` command/action inventory                                                          | PASS   |
+| REPO-027     | local implementation continued while push/PR gates remained pending                                | commit and trace history show local gates completed before the permitted GitHub closeout actions             | PASS   |
+| REPORT-001   | TOPIC, ENTRY and USER reports                                                                      | PostgreSQL integration suite                                                                                 | PASS   |
+| REPORT-002   | self-report guard                                                                                  | PostgreSQL integration suite                                                                                 | PASS   |
+| REPORT-003   | own-content report guard                                                                           | PostgreSQL integration suite                                                                                 | PASS   |
+| REPORT-004   | partial unique open-report guard                                                                   | PostgreSQL integration suite                                                                                 | PASS   |
+| REPORT-005   | report, outbox and audit transaction                                                               | PostgreSQL integration suite                                                                                 | PASS   |
+| SCRIPT-001   | `pnpm check` chains format, lint, typecheck, unit, integration, OpenAPI, requirements and build    | `package.json` script-order validation                                                                       | PASS   |
+| SCRIPT-002   | `scripts/verify-m1.ts` orchestrates clean DB, double seed, counters, all gates, Docker and Compose | verify script command/order and canonical 180-entry fingerprint audit                                        | PASS   |
+| SEARCH-001   | global topic, alias, user and entry search                                                         | PostgreSQL integration suite                                                                                 | PASS   |
+| SEARCH-002   | bounded normalized search query                                                                    | search unit suite                                                                                            | PASS   |
+| SEARCH-003   | short-query database guard                                                                         | search unit suite                                                                                            | PASS   |
+| SEARCH-004   | Turkish case-insensitive matching                                                                  | search unit and PostgreSQL integration suites                                                                | PASS   |
+| SEARCH-005   | pg_trgm, unaccent and normalized fields                                                            | migration and PostgreSQL integration suite                                                                   | PASS   |
+| SEARCH-006   | all/topics/entries/users filters                                                                   | PostgreSQL integration suite                                                                                 | PASS   |
+| SEARCH-007   | 20-result pagination                                                                               | search page/API production build                                                                             | PASS   |
+| SEARCH-008   | stable typed safe result contract                                                                  | PostgreSQL integration suite                                                                                 | PASS   |
+| SEARCH-009   | 180-character entry snippets                                                                       | PostgreSQL integration suite                                                                                 | PASS   |
+| SEARCH-010   | locked five-factor ordering                                                                        | search ranking unit suite                                                                                    | PASS   |
+| SEC-001      | Prisma tagged templates and repository query parameters                                            | repository raw-query source audit and PostgreSQL integration suite                                           | PASS   |
+| SEC-002      | no `$queryRawUnsafe` or `$executeRawUnsafe` call                                                   | repository-wide unsafe-helper source scan                                                                    | PASS   |
+| SEC-003      | React text/token renderer without `dangerouslySetInnerHTML`                                        | `entries/renderer.test.tsx` XSS/URL tests plus source scan                                                   | PASS   |
+| SEC-004      | server-side session, CSRF, password, status and role guards                                        | auth/security unit and PostgreSQL integration suites                                                         | PASS   |
+| SEC-005      | write routes delegate through authenticated authorized commands                                    | route inventory plus missing-CSRF/object-authorization integration tests                                     | PASS   |
+| SEC-006      | production headers configured in `next.config.ts`                                                  | `security/headers.test.ts` exact header assertions                                                           | PASS   |
+| SEC-007      | locked CSP directives in Next headers                                                              | `security/headers.test.ts` CSP assertions                                                                    | PASS   |
+| SEC-008      | internal-only redirect guard                                                                       | `security/security.test.ts` scheme-relative/external/backslash cases                                         | PASS   |
+| SEC-009      | Pino redaction and safe error-code logging                                                         | `logging/logger.test.ts` sensitive-query/error tests                                                         | PASS   |
+| SEC-010      | production Prisma client excludes query logging                                                    | `db/client.test.ts` production-client configuration                                                          | PASS   |
+| SEC-011      | unexpected errors map to generic 500 without stack/details                                         | `http/api-errors.test.ts` sanitized-error test                                                               | PASS   |
+| SEC-012      | generic invalid-login response and dummy Argon2 verify                                             | existing/missing-user PostgreSQL login test                                                                  | PASS   |
+| SEC-013      | explicit public/current user serialization projections                                             | `users/serialization.test.ts` private-field exclusion                                                        | PASS   |
+| SEC-014      | ignore rules and placeholder-only environment template exist                                       | final working-tree, history and built-image high-confidence credential scans passed                          | PASS   |
+| SEC-015      | `.env.example` contains placeholders only                                                          | environment-template source audit                                                                            | PASS   |
+| SEC-016      | `.gitignore` excludes env, build, coverage and test artifacts                                      | ignore-rule source audit                                                                                     | PASS   |
+| SEC-017      | audited moderation and role mutations                                                              | PostgreSQL integration suite                                                                                 | PASS   |
+| SEC-018      | production dependencies are exact stable versions                                                  | exact-version audit plus `pnpm audit --prod --audit-level critical` passed                                   | PASS   |
+| SEC-019      | telemetry disabled and no analytics/tracking endpoint                                              | dependency/runtime outbound-request source audit                                                             | PASS   |
+| SEED-001     | transactional upsert-based canonical seed                                                          | double seed completed with identical entity counts                                                           | PASS   |
+| SEED-002     | seed defines 12 users, 30 topics and 180 entries                                                   | measured first/second seed counts 12/30/180                                                                  | PASS   |
+| SEED-003     | canonical entries receive timestamps across seven days                                             | seed timestamp-distribution validation in verify script                                                      | PASS   |
+| SEED-004     | seed includes previous-Istanbul-day positive DEBE data                                             | seeded DEBE PostgreSQL and Playwright tests                                                                  | PASS   |
+| SEED-005     | canonical seed gives at least one topic over 20 entries                                            | verify-script seed-distribution assertion                                                                    | PASS   |
+| SEED-006     | documented demo admin/moderator/member accounts                                                    | seed user-role/count verification                                                                            | PASS   |
+| SEED-007     | demo hashes derive from `DEMO_PASSWORD`                                                            | seed environment/schema source audit                                                                         | PASS   |
+| SEED-008     | 180 original Turkish agentic development-log entries retained                                      | verify script canonical content fingerprint and 180-entry count                                              | PASS   |
+| SEED-009     | seed contains no copied Ekşi Sözlük material                                                       | canonical seed content source audit                                                                          | PASS   |
+| SEED-010     | seed contains no lorem ipsum filler                                                                | canonical seed content source scan                                                                           | PASS   |
+| SEED-011     | seed content is synthetic and avoids personal/targeted abuse data                                  | canonical seed content review                                                                                | PASS   |
+| SEED-012     | stable natural-key upserts and canonical fingerprint                                               | second seed produced no duplicates and identical 12/30/180 counts                                            | PASS   |
+| SEO-001      | root and route metadata                                                                            | production build route generation                                                                            | PASS   |
+| SEO-002      | topic metadata, canonical and Open Graph                                                           | topic Playwright and production build                                                                        | PASS   |
+| SEO-003      | entry permalink canonical metadata                                                                 | production build                                                                                             | PASS   |
+| SEO-004      | public Open Graph defaults and content metadata                                                    | production build                                                                                             | PASS   |
+| SEO-005      | robots metadata route                                                                              | production build                                                                                             | PASS   |
+| SEO-006      | static and active-topic sitemap                                                                    | PostgreSQL-backed production build                                                                           | PASS   |
+| SEO-007      | auth, account and moderation noindex metadata                                                      | source audit and production build                                                                            | PASS   |
+| SEO-008      | ACTIVE-only sitemap query                                                                          | PostgreSQL-backed production build                                                                           | PASS   |
+| SEO-009      | not-found and permanent redirect routing                                                           | 404 Playwright and production build                                                                          | PASS   |
+| TECH-001     | Node.js 22 engine and container runtime                                                            | `package.json` engines, CI and Docker image audit                                                            | PASS   |
+| TECH-002     | Corepack with pinned pnpm 10.34.5                                                                  | packageManager, CI and Docker source audit                                                                   | PASS   |
+| TECH-003     | Next.js App Router in `src/app`                                                                    | package and route-tree inventory                                                                             | PASS   |
+| TECH-004     | React 19 UI                                                                                        | package and component inventory                                                                              | PASS   |
+| TECH-005     | strict TypeScript source/config                                                                    | `pnpm typecheck` passed                                                                                      | PASS   |
+| TECH-006     | strict `tsconfig.json` with no emit                                                                | TypeScript config audit and typecheck                                                                        | PASS   |
+| TECH-007     | PostgreSQL 16 database                                                                             | real PostgreSQL 16 integration suite                                                                         | PASS   |
+| TECH-008     | `postgres:16-alpine` in Compose and CI                                                             | Compose/workflow image audit                                                                                 | PASS   |
+| TECH-009     | Prisma ORM, schema and immutable migration                                                         | Prisma validation and PostgreSQL migration tests                                                             | PASS   |
+| TECH-010     | repository-owned opaque session implementation                                                     | auth session/security unit and integration tests                                                             | PASS   |
+| TECH-011     | `@node-rs/argon2` Argon2id password hashing                                                        | `auth/password.test.ts` exact-cost test                                                                      | PASS   |
+| TECH-012     | central Zod validation schemas                                                                     | validation unit suites and typecheck                                                                         | PASS   |
+| TECH-013     | Tailwind CSS styling                                                                               | package/PostCSS/global stylesheet audit                                                                      | PASS   |
+| TECH-014     | Radix accessible dialog/menu primitives                                                            | package/component inventory and axe tests                                                                    | PASS   |
+| TECH-015     | React Hook Form plus Zod resolver                                                                  | package and form-component source audit                                                                      | PASS   |
+| TECH-016     | Lucide React icons                                                                                 | package and component import audit                                                                           | PASS   |
+| TECH-017     | Sonner toast feedback                                                                              | package/layout/form integration audit                                                                        | PASS   |
+| TECH-018     | date-fns Turkish date formatting                                                                   | package and date-rendering source audit                                                                      | PASS   |
+| TECH-019     | linkify-it safe URL detection                                                                      | renderer dependency and unit tests                                                                           | PASS   |
+| TECH-020     | Pino structured logging                                                                            | logging unit tests                                                                                           | PASS   |
+| TECH-021     | Vitest unit/integration runner                                                                     | 222-test coverage run                                                                                        | PASS   |
+| TECH-022     | React Testing Library component tests                                                              | blocked-entry, entry-preview and renderer test suites                                                        | PASS   |
+| TECH-023     | Playwright browser E2E                                                                             | public/auth/moderation targeted production runs                                                              | PASS   |
+| TECH-024     | axe-core Playwright accessibility integration                                                      | public/auth/moderation serious/critical zero tests                                                           | PASS   |
+| TECH-025     | OpenAPI 3.1 document                                                                               | OpenAPI version and runtime validation                                                                       | PASS   |
+| TECH-026     | Swagger Parser validator                                                                           | `pnpm openapi:validate`: 59/59                                                                               | PASS   |
+| TECH-027     | ESLint 9 strict linting                                                                            | `pnpm lint` passed with zero warnings                                                                        | PASS   |
+| TECH-028     | Prettier formatting                                                                                | `pnpm format:check` passed                                                                                   | PASS   |
+| TECH-029     | Dockerfile and Docker Compose packaging                                                            | container/Compose artifact source audit                                                                      | PASS   |
+| TECH-030     | GitHub Actions CI workflow                                                                         | workflow schema/step source audit                                                                            | PASS   |
+| TECH-031     | Next `output: standalone`                                                                          | production build and Docker copy audit                                                                       | PASS   |
+| TECH-032     | all handlers use Node runtime                                                                      | route/config source scan finds no Edge runtime                                                               | PASS   |
+| TECH-033     | no Redux/Zustand/global client-state dependency                                                    | package and client-import scan                                                                               | PASS   |
+| TECH-034     | Server Components, URL state, local state and server actions                                       | app/component/action architecture audit                                                                      | PASS   |
+| TOPIC-001    | topic and nested first-entry transaction                                                           | PostgreSQL integration suite                                                                                 | PASS   |
+| TOPIC-002    | topic create contract requires `entryBody`                                                         | PostgreSQL integration suite                                                                                 | PASS   |
+| TOPIC-003    | topic title schema                                                                                 | topic validation unit test                                                                                   | PASS   |
+| TOPIC-004    | normalized title lock and conflict query                                                           | concurrent PostgreSQL integration test                                                                       | PASS   |
+| TOPIC-005    | alias conflict query                                                                               | PostgreSQL integration suite                                                                                 | PASS   |
+| TOPIC-006    | canonical topic conflict payload                                                                   | PostgreSQL integration assertion                                                                             | PASS   |
+| TOPIC-007    | duplicate-topic form response links to existing canonical topic                                    | targeted auth-content Playwright duplicate-topic scenario                                                    | PASS   |
+| TOPIC-008    | topic page composes entries, pagination, sort and member actions                                   | desktop/mobile Playwright and 40/40 production build                                                         | PASS   |
+| TOPIC-009    | validated oldest/newest/top topic-entry sort                                                       | topic visibility/pagination PostgreSQL integration test                                                      | PASS   |
+| TOPIC-010    | topic page defaults sort to oldest                                                                 | topic page/query source audit and PostgreSQL contract test                                                   | PASS   |
+| TOPIC-011    | shared default 20/max 100 pagination                                                               | `http/pagination.test.ts` boundary test                                                                      | PASS   |
+| TOPIC-012    | topic page preserves sort/page/q URL state                                                         | topic page/link source audit and browser search navigation                                                   | PASS   |
+| TOPIC-013    | topic-scoped `q` filters normalized ACTIVE entry bodies                                            | topic query PostgreSQL integration test                                                                      | PASS   |
+| TOPIC-014    | hidden-topic service visibility and write guards                                                   | hidden-content PostgreSQL integration tests                                                                  | PASS   |
+| TOPIC-015    | merged-topic page resolves target with canonical redirect                                          | targeted moderation rename/merge Playwright test                                                             | PASS   |
+| TOPIC-016    | rename transaction creates alias and canonical path                                                | moderation PostgreSQL and redirect Playwright tests                                                          | PASS   |
+| TOPIC-017    | merge transaction moves content and records canonical target                                       | moderation PostgreSQL and redirect Playwright tests                                                          | PASS   |
+| TOPIC-018    | indexed randomKey lookup with wraparound                                                           | feed repository source audit and randomKey PostgreSQL test                                                   | PASS   |
+| TRACE-001    | `scripts/extract-requirements.mjs` extracts all bracketed IDs                                      | generated manifest contains 811 exact unique IDs                                                             | PASS   |
+| TRACE-002    | `docs/M1_REQUIREMENTS.md` retains every manifest ID                                                | requirements alignment test                                                                                  | PASS   |
+| TRACE-003    | traceability table has implementation, validation and status for each ID                           | trace parser validates 811 unique rows                                                                       | PASS   |
+| TRACE-004    | uncompleted final gates remain explicitly FAIL                                                     | trace history retained FAIL rows until push, PR and CI evidence completed them                               | PASS   |
+| TRACE-005    | PASS rows cite concrete test or validation evidence                                                | traceability evidence-column audit                                                                           | PASS   |
+| TRACE-006    | `tests/requirements/traceability.test.ts` validates all three artifacts                            | requirements test source and execution                                                                       | PASS   |
+| TRACE-007    | set-size and exact-set comparisons reject missing/duplicate IDs                                    | manifest/requirements/traceability alignment tests                                                           | PASS   |
+| TRACE-008    | requirements test asserts no FAIL/BLOCKED rows                                                     | `pnpm requirements:check` passed 3/3 with no FAIL or BLOCKED row present                                     | PASS   |
+| TRACE-009    | 811 IDs remain aligned with explicit statuses                                                      | exact-set comparison passed for 811 unique IDs; final count is 811 PASS, 0 FAIL, 0 BLOCKED                   | PASS   |
+| UI-001       | 1240px shell, 300px sidebar and 820px content                                                      | desktop Playwright and production build                                                                      | PASS   |
+| UI-002       | complete responsive site header                                                                    | desktop/mobile Playwright                                                                                    | PASS   |
+| UI-003       | live 30-topic navigation with all UI states                                                        | desktop/mobile Playwright and source audit                                                                   | PASS   |
+| UI-004       | complete homepage discovery sections                                                               | desktop/mobile Playwright                                                                                    | PASS   |
+| UI-005       | single-column accessible mobile drawer                                                             | mobile focus-trap Playwright test                                                                            | PASS   |
+| UI-006       | 1024px responsive drawer breakpoint                                                                | desktop/mobile Playwright and CSS audit                                                                      | PASS   |
+| UI-007       | exact required light palette                                                                       | CSS token audit and axe suite                                                                                | PASS   |
+| UI-008       | exact required dark palette                                                                        | CSS token audit and theme Playwright                                                                         | PASS   |
+| UI-009       | local system font stack                                                                            | source audit and production build                                                                            | PASS   |
+| UI-010       | system-preference default theme                                                                    | source audit and theme Playwright                                                                            | PASS   |
+| UI-011       | cookie/localStorage persisted pre-hydration theme                                                  | desktop/mobile Playwright                                                                                    | PASS   |
+| UI-012       | labeled, described, pending form components                                                        | auth/account/moderation axe suite                                                                            | PASS   |
+| UI-013       | Radix destructive confirmation dialogs                                                             | authenticated axe suite and production build                                                                 | PASS   |
+| UI-014       | server-confirmed interaction state updates                                                         | authenticated Playwright journey                                                                             | PASS   |
+| UI-015       | keyboard-operable navigation and controls                                                          | drawer focus-trap and Escape Playwright                                                                      | PASS   |
+| UI-016       | global visible focus ring                                                                          | axe suite and CSS audit                                                                                      | PASS   |
+| UI-017       | accessible icon-only button names                                                                  | public/auth axe suites and source audit                                                                      | PASS   |
+| UI-018       | accessible contrast tokens                                                                         | public/auth axe serious and critical zero                                                                    | PASS   |
+| UI-019       | semantic page headings and main landmarks                                                          | public/auth axe suites and source audit                                                                      | PASS   |
+| UI-020       | responsive moderation tables and mobile cards                                                      | authenticated axe suite and source audit                                                                     | PASS   |
+| UI-021       | Turkish UI placeholders and validation feedback                                                    | source audit and authenticated Playwright                                                                    | PASS   |
+| UT-001       | topic normalization                                                                                | topic normalization unit suite                                                                               | PASS   |
+| UT-002       | Turkish casing                                                                                     | topic normalization unit suite                                                                               | PASS   |
+| UT-003       | NFKC normalization                                                                                 | topic and entry unit suites                                                                                  | PASS   |
+| UT-004       | whitespace normalization                                                                           | topic and entry unit suites                                                                                  | PASS   |
+| UT-005       | slug generation                                                                                    | topic normalization unit suite                                                                               | PASS   |
+| UT-006       | topic normalized-title duplicate guard                                                             | `topics/validation.test.ts` duplicate-key test                                                               | PASS   |
+| UT-007       | TopicAlias duplicate guard                                                                         | `topics/validation.test.ts` alias duplicate-key test                                                         | PASS   |
+| UT-008       | entry body schema                                                                                  | entry unit suite                                                                                             | PASS   |
+| UT-009       | React escaping                                                                                     | renderer unit suite                                                                                          | PASS   |
+| UT-010       | HTTP-only link detection                                                                           | renderer unit suite                                                                                          | PASS   |
+| UT-011       | external-link attributes                                                                           | renderer unit suite                                                                                          | PASS   |
+| UT-012       | topic reference tokenizer                                                                          | renderer unit suite                                                                                          | PASS   |
+| UT-013       | username reference tokenizer                                                                       | renderer unit suite                                                                                          | PASS   |
+| UT-014       | permission functions                                                                               | permission matrix unit suite                                                                                 | PASS   |
+| UT-015       | last-active-admin permission and transaction guard                                                 | `auth/permissions.test.ts` plus concurrent PostgreSQL last-admin test                                        | PASS   |
+| UT-016       | vote transition function                                                                           | vote unit suite                                                                                              | PASS   |
+| UT-017       | vote counter invariant                                                                             | vote unit suite                                                                                              | PASS   |
+| UT-018       | trend score function                                                                               | trend unit suite                                                                                             | PASS   |
+| UT-019       | DEBE Istanbul date boundary                                                                        | time unit suite                                                                                              | PASS   |
+| UT-020       | search normalization                                                                               | search unit suite                                                                                            | PASS   |
+| UT-021       | search ranking                                                                                     | search ranking unit suite                                                                                    | PASS   |
+| UT-022       | fixed rate-limit windows                                                                           | rate-limit unit suite                                                                                        | PASS   |
+| UT-023       | canonical request hash                                                                             | idempotency unit suite                                                                                       | PASS   |
+| UT-024       | API error mapper                                                                                   | API error unit suite                                                                                         | PASS   |
+| UT-025       | opaque token and SHA-256                                                                           | security and session unit suites                                                                             | PASS   |
+| UT-026       | CSRF validation                                                                                    | CSRF unit suite                                                                                              | PASS   |
+| UT-027       | internal redirect guard                                                                            | security unit suite                                                                                          | PASS   |
+| UT-028       | public user serializer                                                                             | serialization unit suite                                                                                     | PASS   |
+| VOTE-001     | vote composite key and service                                                                     | PostgreSQL integration suite                                                                                 | PASS   |
+| VOTE-002     | vote schema and database check                                                                     | vote unit and PostgreSQL integration suites                                                                  | PASS   |
+| VOTE-003     | same-vote no-op                                                                                    | PostgreSQL integration suite                                                                                 | PASS   |
+| VOTE-004     | vote upsert transition                                                                             | PostgreSQL integration suite                                                                                 | PASS   |
+| VOTE-005     | idempotent vote delete                                                                             | PostgreSQL integration suite                                                                                 | PASS   |
+| VOTE-006     | own-entry guard                                                                                    | PostgreSQL integration suite                                                                                 | PASS   |
+| VOTE-007     | active-entry guard                                                                                 | PostgreSQL content-state integration test                                                                    | PASS   |
+| VOTE-008     | advisory lock and atomic counter update                                                            | PostgreSQL integration suite                                                                                 | PASS   |
+| VOTE-009     | transactional vote outbox                                                                          | PostgreSQL outbox-count integration assertion                                                                | PASS   |
