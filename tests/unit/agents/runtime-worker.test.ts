@@ -49,6 +49,7 @@ function controlPlane(runId: string): RuntimeControlPlane {
         },
       ],
     }),
+    recordMemories: vi.fn().mockResolvedValue(undefined),
     complete: vi.fn().mockResolvedValue(undefined),
     fail: vi.fn().mockResolvedValue(undefined),
   };
@@ -67,7 +68,13 @@ describe("long-lived agent runtime worker", () => {
         version: "codex-cli test",
         durationMs: 25,
         output: {
+          state: { curiosity: 0.4, confidence: 0.6, topicFatigue: {} },
+          observations: [],
           actions: [],
+          beliefDeltas: [],
+          relationshipDeltas: [],
+          sourceProposals: [],
+          memoryCandidates: [],
           safeRunSummary: {
             operationSummary: "Akış güvenli biçimde değerlendirildi.",
             observedItemIds: [],
@@ -117,6 +124,7 @@ describe("long-lived agent runtime worker", () => {
       provider,
     });
     await worker.runOnce();
+    expect(provider.invoke).toHaveBeenCalledTimes(2);
     expect(plane.recordActions).not.toHaveBeenCalled();
     expect(plane.fail).toHaveBeenCalledWith(
       expect.any(String),

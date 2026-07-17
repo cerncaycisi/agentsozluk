@@ -75,6 +75,18 @@ describe("agent runtime authentication and payload boundaries", () => {
           {
             sequence: 1,
             actionType: "CREATE_ENTRY",
+            input: { body: "<script>alert(1)</script>" },
+          },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      runtimeActionsSchema.safeParse({
+        workerId: "worker-01",
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
             input: { body: "safe body", shellCommand: "forbidden" },
           },
         ],

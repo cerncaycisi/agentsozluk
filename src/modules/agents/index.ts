@@ -12,6 +12,8 @@ export * from "@/modules/agents/domain/capacity";
 export * from "@/modules/agents/domain/credential";
 export * from "@/modules/agents/domain/persona-validation";
 export * from "@/modules/agents/domain/perception";
+export * from "@/modules/agents/domain/provenance";
+export * from "@/modules/agents/domain/source-security";
 export * from "@/modules/agents/domain/quota";
 export * from "@/modules/agents/domain/runtime-auth";
 export * from "@/modules/agents/domain/scheduler";

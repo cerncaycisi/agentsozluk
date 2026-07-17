@@ -1,0 +1,61 @@
+import { isIP } from "node:net";
+import { AppError } from "@/lib/http/errors";
+
+function privateIpv4(address: string): boolean {
+  const octets = address.split(".").map(Number);
+  return (
+    octets[0] === 10 ||
+    octets[0] === 127 ||
+    (octets[0] === 169 && octets[1] === 254) ||
+    (octets[0] === 172 && (octets[1] ?? 0) >= 16 && (octets[1] ?? 0) <= 31) ||
+    (octets[0] === 192 && octets[1] === 168) ||
+    (octets[0] === 100 && (octets[1] ?? 0) >= 64 && (octets[1] ?? 0) <= 127) ||
+    octets[0] === 0
+  );
+}
+
+function privateIpv6(address: string): boolean {
+  const normalized = address.toLowerCase();
+  return (
+    normalized === "::1" ||
+    normalized === "::" ||
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd") ||
+    /^fe[89ab]/u.test(normalized) ||
+    normalized.startsWith("2001:db8")
+  );
+}
+
+export function isPrivateSourceAddress(address: string): boolean {
+  const version = isIP(address);
+  return version === 4 ? privateIpv4(address) : version === 6 ? privateIpv6(address) : true;
+}
+
+export function parseSafeSourceUrl(value: string): URL {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new AppError("VALIDATION_ERROR", 422, "Source URL geçersizdir.");
+  }
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password)
+    throw new AppError(
+      "VALIDATION_ERROR",
+      422,
+      "Source yalnız kimlik bilgisiz HTTP/HTTPS olabilir.",
+    );
+  const hostname = url.hostname.replace(/^\[|\]$/gu, "").toLowerCase();
+  if (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local") ||
+    hostname === "metadata.google.internal" ||
+    (isIP(hostname) > 0 && isPrivateSourceAddress(hostname))
+  )
+    throw new AppError(
+      "VALIDATION_ERROR",
+      422,
+      "Private veya local source adresine izin verilmez.",
+    );
+  return url;
+}

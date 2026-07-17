@@ -18,6 +18,9 @@ import {
   lockRuntimeAgent,
   lockRuntimeRun,
   setRuntimeCurrentRun,
+  storeRuntimePerceptionSummary,
+  validateRuntimeProvenanceEvidence,
+  createRuntimeMemoryEpisode,
 } from "@/modules/agents/repository/runtime";
 import { seedPersonaSchema } from "@/modules/agents/personas/schema";
 import { selectPerceptionEntries, truncateUntrustedText } from "@/modules/agents/domain/perception";
@@ -28,6 +31,7 @@ import type {
   RuntimeFailInput,
   RuntimeHeartbeatInput,
   RuntimeLeaseInput,
+  RuntimeMemoriesInput,
 } from "@/modules/agents/validation/runtime-schemas";
 
 type OwnedRun = NonNullable<Awaited<ReturnType<typeof findRuntimeOwnedRun>>>;
@@ -75,7 +79,10 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
   const snapshot = {
     observedAt: now.toISOString(),
     limits: { maximumBytes: 65_536, recentEntries: 24, ownEntries: 8, sourceItems: 10 },
-    targetProgress: records.state,
+    targetProgress: {
+      ...records.state,
+      nextScheduledAt: records.state.nextScheduledAt?.toISOString() ?? null,
+    },
     recentEntries: selectedEntries,
     ownRecentEntries: records.ownEntries.slice(0, 8).map((entry) => ({
       ...entry,
@@ -112,6 +119,14 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
 
 function runNotFound(): AppError {
   return new AppError("AGENT_RUN_NOT_FOUND", 404, "Runtime run bulunamadı.");
+}
+
+function collectSnapshotIds(value: unknown, target = new Set<string>()): Set<string> {
+  if (typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/iu.test(value)) target.add(value);
+  else if (Array.isArray(value)) for (const item of value) collectSnapshotIds(item, target);
+  else if (value && typeof value === "object")
+    for (const item of Object.values(value)) collectSnapshotIds(item, target);
+  return target;
 }
 
 function assertLeaseOwner(
@@ -239,12 +254,24 @@ export function getRuntimeRunContext(
     assertLeaseOwner(run, workerId, new Date());
     const settings = await getRuntimeGlobalSettings(transaction);
     const now = new Date();
-    const perceptionRecords = await getRuntimePerceptionRecords(transaction, {
-      agentProfileId: principal.agentProfileId,
-      agentUserId: run.agentProfile.user.id,
-      now,
-      includeSources: run.allowSourceReading && settings.sourceReadingEnabled,
-    });
+    let perception: Record<string, unknown>;
+    if (
+      run.perceptionSummary &&
+      typeof run.perceptionSummary === "object" &&
+      !Array.isArray(run.perceptionSummary)
+    ) {
+      perception = run.perceptionSummary as Record<string, unknown>;
+    } else {
+      const perceptionRecords = await getRuntimePerceptionRecords(transaction, {
+        agentProfileId: principal.agentProfileId,
+        agentUserId: run.agentProfile.user.id,
+        now,
+        includeSources: run.allowSourceReading && settings.sourceReadingEnabled,
+      });
+      const builtPerception = boundedPerceptionSnapshot(run, perceptionRecords, now);
+      await storeRuntimePerceptionSummary(transaction, runId, builtPerception);
+      perception = builtPerception;
+    }
     return {
       run: {
         id: run.id,
@@ -274,7 +301,7 @@ export function getRuntimeRunContext(
         document: run.personaVersion.persona,
         renderedPrompt: run.personaVersion.renderedPrompt,
       },
-      perception: boundedPerceptionSnapshot(run, perceptionRecords, now),
+      perception,
     };
   });
 }
@@ -324,6 +351,55 @@ export function recordRuntimeActions(
       actionTypes: input.actions.map(({ actionType }) => actionType),
     });
     return result;
+  });
+}
+
+export function recordRuntimeMemories(
+  client: DatabaseExecutor,
+  principal: RuntimePrincipal,
+  runId: string,
+  input: RuntimeMemoriesInput,
+) {
+  return inTransaction(client, async (transaction) => {
+    await lockRuntimeRun(transaction, runId);
+    const run = await findRuntimeOwnedRun(transaction, principal.agentProfileId, runId);
+    assertLeaseOwner(run, input.workerId, new Date(), false);
+    const observedIds = collectSnapshotIds(run.perceptionSummary);
+    let count = 0;
+    for (const memory of input.memories) {
+      if (
+        !observedIds.has(memory.subjectId) ||
+        memory.provenance.evidenceIds.some((id) => !observedIds.has(id))
+      )
+        throw new AppError(
+          "VALIDATION_ERROR",
+          422,
+          "Memory yalnız bu run perception snapshot'ında gerçekten gözlenen kanıttan oluşabilir.",
+        );
+      const evidence = await validateRuntimeProvenanceEvidence(transaction, {
+        agentProfileId: principal.agentProfileId,
+        runId,
+        evidenceType: memory.provenance.evidenceType,
+        evidenceIds: memory.provenance.evidenceIds,
+      });
+      if (!evidence.valid)
+        throw new AppError("VALIDATION_ERROR", 422, "Memory provenance doğrulanamadı.");
+      await createRuntimeMemoryEpisode(transaction, {
+        agentProfileId: principal.agentProfileId,
+        runId,
+        eventType: "OBSERVATION_READ",
+        subjectType: memory.subjectType,
+        subjectId: memory.subjectId,
+        summary: memory.summary,
+        salience: memory.salience,
+        provenance: memory.provenance.evidenceType,
+        evidence: memory.provenance,
+        occurredAt: new Date(),
+      });
+      count += 1;
+    }
+    await auditRuntimeRun(transaction, principal, runId, "agent.run.memories_recorded", { count });
+    return { count };
   });
 }
 

@@ -73,6 +73,22 @@ export const runtimeActionInputSchema = z
     url: z.string().url().max(2048).optional(),
     statement: z.string().trim().min(1).max(2000).optional(),
     summary: z.string().trim().min(1).max(2000).optional(),
+    topicKey: z.string().trim().min(1).max(200).optional(),
+    confidence: z.number().min(0).max(1).optional(),
+    familiarity: z.number().min(0).max(1).optional(),
+    trust: z.number().min(0).max(1).optional(),
+    interest: z.number().min(0).max(1).optional(),
+    disagreement: z.number().min(0).max(1).optional(),
+    sourceType: z.enum(["RSS", "ATOM", "HTML"]).optional(),
+    topics: z.array(z.string().trim().min(2).max(100)).min(1).max(8).optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.body && /<\/?[a-z][^>]*>/iu.test(value.body))
+      context.addIssue({
+        code: "custom",
+        path: ["body"],
+        message: "Runtime entry body HTML içeremez.",
+      });
   })
   .strict();
 
@@ -147,6 +163,23 @@ export const runtimeExecuteActionsSchema = z
   })
   .strict();
 
+export const runtimeMemoryCandidateSchema = z
+  .object({
+    subjectType: z.enum(["TOPIC", "ENTRY", "USER", "SOURCE"]),
+    subjectId: z.string().uuid(),
+    summary: z.string().trim().min(1).max(1000),
+    salience: z.number().min(0).max(1),
+    provenance: runtimeProvenanceSchema,
+  })
+  .strict();
+
+export const runtimeMemoriesSchema = z
+  .object({
+    workerId: runtimeWorkerIdSchema,
+    memories: z.array(runtimeMemoryCandidateSchema).min(1).max(50),
+  })
+  .strict();
+
 const safeRunSummarySchema = z
   .object({
     operationSummary: z.string().trim().min(1).max(2000),
@@ -209,6 +242,7 @@ export type RuntimeHeartbeatInput = z.infer<typeof runtimeHeartbeatSchema>;
 export type RuntimeEventsInput = z.infer<typeof runtimeEventsSchema>;
 export type RuntimeActionsInput = z.infer<typeof runtimeActionsSchema>;
 export type RuntimeExecuteActionsInput = z.infer<typeof runtimeExecuteActionsSchema>;
+export type RuntimeMemoriesInput = z.infer<typeof runtimeMemoriesSchema>;
 export type RuntimeCompleteInput = z.infer<typeof runtimeCompleteSchema>;
 export type RuntimeFailInput = z.infer<typeof runtimeFailSchema>;
 export type RuntimeCredentialRotationInput = z.infer<typeof runtimeCredentialRotationSchema>;

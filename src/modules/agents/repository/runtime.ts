@@ -46,6 +46,7 @@ export function getRuntimeGlobalSettings(transaction: Prisma.TransactionClient) 
       votingEnabled: true,
       topicCreationEnabled: true,
       userFollowingEnabled: true,
+      sourceEvolutionEnabled: true,
       quotaMode: true,
       defaultDailyEntryMax: true,
       globalDailyEntryMax: true,
@@ -251,6 +252,17 @@ export function findRuntimeOwnedRun(
   });
 }
 
+export function storeRuntimePerceptionSummary(
+  transaction: Prisma.TransactionClient,
+  runId: string,
+  perceptionSummary: Prisma.InputJsonValue,
+) {
+  return transaction.agentRun.update({
+    where: { id: runId },
+    data: { perceptionSummary },
+  });
+}
+
 export function heartbeatRuntimeRunRecord(
   transaction: Prisma.TransactionClient,
   input: {
@@ -397,6 +409,7 @@ export function findRuntimeActionForExecution(
           dailyEntryMax: true,
           dailyTopicMax: true,
           dailyVoteMax: true,
+          sourceEvolutionEnabled: true,
           user: { select: { id: true } },
         },
       },
@@ -553,24 +566,294 @@ export function findActiveRuntimeTopicWriteLock(
   });
 }
 
-export function listRecentRuntimeEntryBodies(
+export async function getRuntimeDuplicateSimilarity(
   transaction: Prisma.TransactionClient,
   input: {
     agentProfileId: string;
     topicId?: string;
     excludeEntryId?: string;
-    take?: number;
+    normalizedCandidate: string;
+  },
+): Promise<number> {
+  const rows = await transaction.$queryRaw<Array<{ maximum: number }>>`
+    WITH agent_recent AS (
+      SELECT entry."id", entry."normalizedBody"
+      FROM "agent_content_records" AS content
+      JOIN "entries" AS entry ON entry."id" = content."entryId"
+      WHERE content."agentProfileId" = ${input.agentProfileId}::uuid
+        AND (${input.excludeEntryId ?? null}::uuid IS NULL OR entry."id" <> ${input.excludeEntryId ?? null}::uuid)
+      ORDER BY content."createdAt" DESC
+      LIMIT 100
+    ), topic_recent AS (
+      SELECT entry."id", entry."normalizedBody"
+      FROM "entries" AS entry
+      WHERE ${input.topicId ?? null}::uuid IS NOT NULL
+        AND entry."topicId" = ${input.topicId ?? null}::uuid
+        AND entry."status" = 'ACTIVE'
+        AND (${input.excludeEntryId ?? null}::uuid IS NULL OR entry."id" <> ${input.excludeEntryId ?? null}::uuid)
+      ORDER BY entry."createdAt" DESC
+      LIMIT 100
+    ), candidates AS (
+      SELECT * FROM agent_recent
+      UNION
+      SELECT * FROM topic_recent
+    )
+    SELECT COALESCE(
+      MAX(similarity(immutable_unaccent("normalizedBody"), immutable_unaccent(${input.normalizedCandidate}))),
+      0
+    )::float AS maximum
+    FROM candidates
+  `;
+  return rows[0]?.maximum ?? 0;
+}
+
+export async function validateRuntimeProvenanceEvidence(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId: string;
+    runId: string;
+    evidenceType:
+      | "PLATFORM_EVENT"
+      | "USER_ENTRY"
+      | "TRUSTED_SOURCE"
+      | "PROBATION_SOURCE"
+      | "MULTIPLE_SOURCES"
+      | "AGENT_MEMORY";
+    evidenceIds: string[];
   },
 ) {
-  return transaction.agentContentRecord.findMany({
+  const uniqueIds = [...new Set(input.evidenceIds)];
+  if (input.evidenceType === "PLATFORM_EVENT") {
+    const [runs, events, topics, entries] = await Promise.all([
+      transaction.agentRun.count({
+        where: { id: { in: uniqueIds }, agentProfileId: input.agentProfileId },
+      }),
+      transaction.agentRunEvent.count({
+        where: { id: { in: uniqueIds }, agentProfileId: input.agentProfileId },
+      }),
+      transaction.topic.count({ where: { id: { in: uniqueIds }, status: "ACTIVE" } }),
+      transaction.entry.count({
+        where: { id: { in: uniqueIds }, status: "ACTIVE", topic: { status: "ACTIVE" } },
+      }),
+    ]);
+    return { valid: runs + events + topics + entries === uniqueIds.length, independentSources: 0 };
+  }
+  if (input.evidenceType === "USER_ENTRY") {
+    const entries = await transaction.entry.count({
+      where: { id: { in: uniqueIds }, status: "ACTIVE", topic: { status: "ACTIVE" } },
+    });
+    return { valid: entries === uniqueIds.length, independentSources: 0 };
+  }
+  if (input.evidenceType === "AGENT_MEMORY") {
+    const memories = await transaction.agentMemoryEpisode.count({
+      where: {
+        id: { in: uniqueIds },
+        agentProfileId: input.agentProfileId,
+        invalidatedAt: null,
+      },
+    });
+    return { valid: memories === uniqueIds.length, independentSources: 0 };
+  }
+  const expectedStatuses =
+    input.evidenceType === "TRUSTED_SOURCE"
+      ? ["TRUSTED" as const]
+      : input.evidenceType === "PROBATION_SOURCE"
+        ? ["PROBATION" as const]
+        : (["TRUSTED", "PROBATION"] as const);
+  const items = await transaction.agentSourceItem.findMany({
     where: {
-      agentProfileId: input.agentProfileId,
-      ...(input.topicId ? { entry: { topicId: input.topicId } } : {}),
-      ...(input.excludeEntryId ? { entryId: { not: input.excludeEntryId } } : {}),
+      id: { in: uniqueIds },
+      source: {
+        agentProfileId: input.agentProfileId,
+        status: { in: [...expectedStatuses] },
+        adminBlocked: false,
+      },
     },
-    select: { entry: { select: { body: true } } },
-    orderBy: { createdAt: "desc" },
-    take: input.take ?? 50,
+    select: { source: { select: { normalizedDomain: true } } },
+  });
+  const independentSources = new Set(items.map(({ source }) => source.normalizedDomain)).size;
+  return {
+    valid:
+      items.length === uniqueIds.length &&
+      (input.evidenceType !== "MULTIPLE_SOURCES" || independentSources >= 2),
+    independentSources,
+  };
+}
+
+export function proposeRuntimeSource(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId: string;
+    url: string;
+    normalizedDomain: string;
+    sourceType: "RSS" | "ATOM" | "HTML";
+    topics: string[];
+    discoveredFrom: string;
+  },
+) {
+  return transaction.agentSource.upsert({
+    where: { agentProfileId_url: { agentProfileId: input.agentProfileId, url: input.url } },
+    create: {
+      agentProfileId: input.agentProfileId,
+      url: input.url,
+      normalizedDomain: input.normalizedDomain,
+      sourceType: input.sourceType,
+      status: "PROBATION",
+      topics: input.topics,
+      trustScore: 0.25,
+      interestScore: 0.5,
+      noveltyScore: 0.5,
+      usefulnessScore: 0.5,
+      discoveredFrom: input.discoveredFrom,
+      addedByOrigin: "AGENT",
+    },
+    update: {
+      topics: input.topics,
+      sourceType: input.sourceType,
+      discoveredFrom: input.discoveredFrom,
+    },
+    select: { id: true, url: true, status: true, normalizedDomain: true },
+  });
+}
+
+export async function createRuntimeBeliefVersion(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId: string;
+    topicKey: string;
+    statement: string;
+    confidence: number;
+    evidenceSummary: string;
+    evidenceProvenance: Prisma.InputJsonValue;
+    now: Date;
+  },
+) {
+  const lockKey = `agent-belief:${input.agentProfileId}:${input.topicKey}`;
+  await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`;
+  const previous = await transaction.agentBelief.findFirst({
+    where: { agentProfileId: input.agentProfileId, topicKey: input.topicKey },
+    orderBy: { version: "desc" },
+  });
+  const boundedConfidence = previous
+    ? Math.max(previous.confidence - 0.15, Math.min(previous.confidence + 0.15, input.confidence))
+    : input.confidence;
+  return transaction.agentBelief.create({
+    data: {
+      agentProfileId: input.agentProfileId,
+      topicKey: input.topicKey,
+      statement: input.statement,
+      confidence: boundedConfidence,
+      evidenceSummary: input.evidenceSummary,
+      evidenceProvenance: input.evidenceProvenance,
+      firstFormedAt: previous?.firstFormedAt ?? input.now,
+      lastUpdatedAt: input.now,
+      version: (previous?.version ?? 0) + 1,
+      status: "ACTIVE",
+    },
+    select: { id: true, topicKey: true, confidence: true, version: true },
+  });
+}
+
+export async function updateRuntimeRelationship(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId: string;
+    targetUserId: string;
+    familiarity: number;
+    trust: number;
+    interest: number;
+    disagreement: number;
+    summary: string;
+    now: Date;
+  },
+) {
+  const lockKey = `agent-relationship:${input.agentProfileId}:${input.targetUserId}`;
+  await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`;
+  const previous = await transaction.agentRelationship.findUnique({
+    where: {
+      agentProfileId_targetUserId: {
+        agentProfileId: input.agentProfileId,
+        targetUserId: input.targetUserId,
+      },
+    },
+  });
+  const boundedTrust = previous
+    ? Math.max(previous.trust - 0.1, Math.min(previous.trust + 0.1, input.trust))
+    : input.trust;
+  return transaction.agentRelationship.upsert({
+    where: {
+      agentProfileId_targetUserId: {
+        agentProfileId: input.agentProfileId,
+        targetUserId: input.targetUserId,
+      },
+    },
+    create: {
+      agentProfileId: input.agentProfileId,
+      targetUserId: input.targetUserId,
+      familiarity: input.familiarity,
+      trust: boundedTrust,
+      interest: input.interest,
+      disagreement: input.disagreement,
+      summary: input.summary,
+      lastInteractionAt: input.now,
+    },
+    update: {
+      familiarity: input.familiarity,
+      trust: boundedTrust,
+      interest: input.interest,
+      disagreement: input.disagreement,
+      summary: input.summary,
+      lastInteractionAt: input.now,
+    },
+    select: { id: true, targetUserId: true, trust: true, familiarity: true },
+  });
+}
+
+export function findRuntimeRelationshipTarget(
+  transaction: Prisma.TransactionClient,
+  targetUserId: string,
+) {
+  return transaction.user.findFirst({
+    where: { id: targetUserId, status: "ACTIVE" },
+    select: { id: true },
+  });
+}
+
+export function createRuntimeMemoryEpisode(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId: string;
+    runId: string;
+    eventType: string;
+    subjectType?: string;
+    subjectId?: string;
+    summary: string;
+    salience: number;
+    provenance:
+      | "PLATFORM_EVENT"
+      | "USER_ENTRY"
+      | "TRUSTED_SOURCE"
+      | "PROBATION_SOURCE"
+      | "MULTIPLE_SOURCES"
+      | "AGENT_MEMORY";
+    evidence: Prisma.InputJsonValue;
+    occurredAt: Date;
+  },
+) {
+  return transaction.agentMemoryEpisode.create({
+    data: {
+      agentProfileId: input.agentProfileId,
+      runId: input.runId,
+      eventType: input.eventType,
+      subjectType: input.subjectType ?? null,
+      subjectId: input.subjectId ?? null,
+      summary: input.summary,
+      salience: input.salience,
+      provenance: input.provenance,
+      evidence: input.evidence,
+      occurredAt: input.occurredAt,
+    },
+    select: { id: true },
   });
 }
 

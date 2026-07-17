@@ -51,7 +51,47 @@ function buildRuntimePrompt(context: RuntimeContext): string {
 }
 
 function normalizedDecision(decision: RuntimeDecision): RuntimeDecision {
-  if (decision.actions.length > 0) return decision;
+  let sequence = Math.max(0, ...decision.actions.map((action) => action.sequence));
+  const derived = [
+    ...decision.beliefDeltas.map((delta) => ({
+      sequence: (sequence += 1),
+      actionType: "UPDATE_BELIEF" as const,
+      input: {
+        topicKey: delta.topicKey,
+        statement: delta.statement,
+        confidence: delta.confidence,
+        summary: delta.evidenceSummary,
+      },
+      provenance: delta.provenance,
+    })),
+    ...decision.relationshipDeltas.map((delta) => ({
+      sequence: (sequence += 1),
+      actionType: "UPDATE_RELATIONSHIP_NOTE" as const,
+      targetType: "USER",
+      targetId: delta.userId,
+      input: {
+        userId: delta.userId,
+        familiarity: delta.familiarity,
+        trust: delta.trust,
+        interest: delta.interest,
+        disagreement: delta.disagreement,
+        summary: delta.summary,
+      },
+      provenance: delta.provenance,
+    })),
+    ...decision.sourceProposals.map((proposal) => ({
+      sequence: (sequence += 1),
+      actionType: "PROPOSE_SOURCE" as const,
+      input: {
+        url: proposal.url,
+        sourceType: proposal.sourceType,
+        topics: proposal.topics,
+      },
+      provenance: proposal.provenance,
+    })),
+  ];
+  const actions = [...decision.actions, ...derived].slice(0, 50);
+  if (actions.length > 0) return { ...decision, actions };
   return {
     ...decision,
     actions: [{ sequence: 1, actionType: "NO_ACTION", input: {} }],
@@ -120,16 +160,36 @@ export class AgentRuntimeWorker {
       );
       if (context.run.cancelRequested) throw new RuntimeProviderCancelledError();
       heartbeat();
-      const providerResult = await this.#options.provider.invoke({
+      const prompt = buildRuntimePrompt(context);
+      const timeoutMs = context.run.timeoutSeconds * 1000;
+      let providerResult = await this.#options.provider.invoke({
         runId,
-        prompt: buildRuntimePrompt(context),
+        prompt,
         outputSchema: runtimeDecisionJsonSchema,
-        timeoutMs: context.run.timeoutSeconds * 1000,
+        timeoutMs,
         signal: controller.signal,
       });
       if (heartbeatInFlight) await heartbeatInFlight;
       if (heartbeatFailure) throw heartbeatFailure;
-      const decision = normalizedDecision(runtimeDecisionSchema.parse(providerResult.output));
+      let parsedDecision = runtimeDecisionSchema.safeParse(providerResult.output);
+      if (!parsedDecision.success) {
+        const remainingMs = timeoutMs - providerResult.durationMs;
+        if (remainingMs < 1000) throw new RuntimeProviderTimeoutError();
+        const repairResult = await this.#options.provider.invoke({
+          runId,
+          prompt: `${prompt}\n\nÖnceki çıktı JSON schema doğrulamasını geçmedi. Tek repair hakkını kullanarak yalnız geçerli structured JSON üret.`,
+          outputSchema: runtimeDecisionJsonSchema,
+          timeoutMs: remainingMs,
+          signal: controller.signal,
+        });
+        providerResult = {
+          ...repairResult,
+          durationMs: providerResult.durationMs + repairResult.durationMs,
+        };
+        parsedDecision = runtimeDecisionSchema.safeParse(providerResult.output);
+      }
+      if (!parsedDecision.success) throw parsedDecision.error;
+      const decision = normalizedDecision(parsedDecision.data);
       await this.#options.controlPlane.recordActions(
         credential,
         this.#options.workerId,
@@ -143,6 +203,13 @@ export class AgentRuntimeWorker {
         decision.actions.map(({ sequence }) => sequence),
       );
       const measured = measuredExecution(execution);
+      if (decision.memoryCandidates.length > 0)
+        await this.#options.controlPlane.recordMemories(
+          credential,
+          this.#options.workerId,
+          runId,
+          decision.memoryCandidates,
+        );
       await this.#options.controlPlane.complete(credential, this.#options.workerId, runId, {
         outcome: measured.rejected.length > 0 ? "PARTIAL" : "SUCCEEDED",
         safeRunSummary: {

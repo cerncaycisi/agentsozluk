@@ -6,18 +6,28 @@ import { appendAuditLog } from "@/modules/audit";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
 import {
   createRuntimeContentRecord,
+  createRuntimeBeliefVersion,
+  createRuntimeMemoryEpisode,
   findActiveRuntimeTopicWriteLock,
   findRuntimeActionForExecution,
+  findRuntimeRelationshipTarget,
   getRuntimeActionPolicyMetrics,
   getRuntimeGlobalSettings,
-  listRecentRuntimeEntryBodies,
+  getRuntimeDuplicateSimilarity,
   lockRuntimeAction,
   lockRuntimeRun,
+  proposeRuntimeSource,
+  updateRuntimeRelationship,
   updateRuntimeActionStatus,
+  validateRuntimeProvenanceEvidence,
 } from "@/modules/agents/repository/runtime";
-import { maximumEntrySimilarity } from "@/modules/agents/domain/action-policy";
+import {
+  provenanceIsRequired,
+  userEntryClaimIsSafelyFramed,
+} from "@/modules/agents/domain/provenance";
+import { parseSafeSourceUrl } from "@/modules/agents/domain/source-security";
 import { runtimeActionSchema } from "@/modules/agents/validation/runtime-schemas";
-import { createEntry, editEntry } from "@/modules/entries";
+import { createEntry, editEntry, normalizeEntrySearchText } from "@/modules/entries";
 import {
   deleteBookmark,
   deleteFollow,
@@ -122,7 +132,7 @@ function staticPolicyRejection(input: {
     !input.followingAllowed
   )
     return { code: "FOLLOWING_DISABLED", reason: "Bu run için takip işlemleri kapalıdır." };
-  if (contentActions.has(input.actionType) && !input.hasProvenance)
+  if (provenanceIsRequired(input.actionType) && !input.hasProvenance)
     return {
       code: "PROVENANCE_REQUIRED",
       reason: "İçerik action'ı denetlenebilir provenance taşımak zorundadır.",
@@ -293,6 +303,65 @@ async function performAction(
       await deleteBookmark(transaction, principal.actor, entryId);
       return { result: { entryId, bookmarked: false } };
     }
+    case "PROPOSE_SOURCE": {
+      const sourceUrl = parseSafeSourceUrl(requiredString(input.url, "url"));
+      const source = await proposeRuntimeSource(transaction, {
+        agentProfileId: principal.agentProfileId,
+        url: sourceUrl.toString(),
+        normalizedDomain: sourceUrl.hostname.toLowerCase(),
+        sourceType: input.sourceType ?? "HTML",
+        topics: input.topics ?? ["genel"],
+        discoveredFrom: requiredString(
+          action.provenance?.shortRationale,
+          "provenance.shortRationale",
+        ),
+      });
+      return { result: { sourceId: source.id, status: source.status } };
+    }
+    case "UPDATE_BELIEF": {
+      const belief = await createRuntimeBeliefVersion(transaction, {
+        agentProfileId: principal.agentProfileId,
+        topicKey: requiredString(input.topicKey, "topicKey"),
+        statement: requiredString(input.statement, "statement"),
+        confidence: input.confidence ?? 0.5,
+        evidenceSummary: requiredString(input.summary, "summary"),
+        evidenceProvenance: action.provenance!,
+        now: new Date(),
+      });
+      return {
+        result: {
+          beliefId: belief.id,
+          topicKey: belief.topicKey,
+          confidence: belief.confidence,
+          version: belief.version,
+        },
+      };
+    }
+    case "UPDATE_RELATIONSHIP_NOTE": {
+      const targetUserId = requiredString(input.userId ?? targetId, "userId");
+      if (targetUserId === principal.actor.actorId)
+        throw new AppError("VALIDATION_ERROR", 422, "Agent kendisiyle relationship oluşturamaz.");
+      if (!(await findRuntimeRelationshipTarget(transaction, targetUserId)))
+        throw new AppError("USER_NOT_FOUND", 404, "Kullanıcı bulunamadı.");
+      const relationship = await updateRuntimeRelationship(transaction, {
+        agentProfileId: principal.agentProfileId,
+        targetUserId,
+        familiarity: input.familiarity ?? 0.1,
+        trust: input.trust ?? 0.5,
+        interest: input.interest ?? 0.5,
+        disagreement: input.disagreement ?? 0,
+        summary: requiredString(input.summary, "summary"),
+        now: new Date(),
+      });
+      return {
+        result: {
+          relationshipId: relationship.id,
+          targetUserId,
+          trust: relationship.trust,
+          familiarity: relationship.familiarity,
+        },
+      };
+    }
     default:
       throw new AppError(
         "VALIDATION_ERROR",
@@ -369,6 +438,45 @@ export async function executeRuntimeAction(
       });
       if (staticRejection)
         return rejectAction(transaction, principal, actionRecord, staticRejection);
+      if (
+        parsed.data.actionType === "PROPOSE_SOURCE" &&
+        (!settings.sourceEvolutionEnabled || !actionRecord.agentProfile.sourceEvolutionEnabled)
+      )
+        return rejectAction(transaction, principal, actionRecord, {
+          code: "SOURCE_EVOLUTION_DISABLED",
+          reason: "Source evolution bu agent veya global ayarlarda kapalıdır.",
+        });
+      if (parsed.data.provenance) {
+        const evidence = await validateRuntimeProvenanceEvidence(transaction, {
+          agentProfileId: principal.agentProfileId,
+          runId,
+          evidenceType: parsed.data.provenance.evidenceType,
+          evidenceIds: parsed.data.provenance.evidenceIds,
+        });
+        if (!evidence.valid)
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "PROVENANCE_INVALID",
+            reason: "Action provenance kanıtları görünür ve doğrulanabilir değildir.",
+          });
+        if (
+          parsed.data.provenance.evidenceType === "USER_ENTRY" &&
+          contentActions.has(parsed.data.actionType) &&
+          parsed.data.input.body &&
+          !userEntryClaimIsSafelyFramed(parsed.data.input.body)
+        )
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "USER_ENTRY_FACT_UNFRAMED",
+            reason: "USER_ENTRY kanıtı doğrulanmış gerçek gibi yeniden üretilemez.",
+          });
+        if (
+          parsed.data.actionType === "UPDATE_RELATIONSHIP_NOTE" &&
+          !["USER_ENTRY", "PLATFORM_EVENT"].includes(parsed.data.provenance.evidenceType)
+        )
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "RELATIONSHIP_VISIBLE_EVIDENCE_REQUIRED",
+            reason: "Relationship yalnız görünür platform interaction kanıtıyla güncellenebilir.",
+          });
+      }
 
       const topicId =
         parsed.data.input.topicId ??
@@ -392,17 +500,14 @@ export async function executeRuntimeAction(
       if (contentActions.has(parsed.data.actionType)) {
         const candidateBody = parsed.data.input.body;
         if (candidateBody) {
-          const recent = await listRecentRuntimeEntryBodies(transaction, {
+          const similarity = await getRuntimeDuplicateSimilarity(transaction, {
             agentProfileId: principal.agentProfileId,
             ...(topicId ? { topicId } : {}),
             ...(parsed.data.actionType === "EDIT_OWN_ENTRY" && parsed.data.input.entryId
               ? { excludeEntryId: parsed.data.input.entryId }
               : {}),
+            normalizedCandidate: normalizeEntrySearchText(candidateBody),
           });
-          const similarity = maximumEntrySimilarity(
-            candidateBody,
-            recent.map(({ entry }) => entry.body),
-          );
           if (similarity >= settings.duplicateSimilarityThreshold)
             return rejectAction(transaction, principal, actionRecord, {
               code: "DUPLICATE_SIMILARITY",
@@ -450,6 +555,27 @@ export async function executeRuntimeAction(
           runId,
           actionId: actionRecord.id,
         });
+      const actionProvenance = parsed.data.provenance ?? {
+        evidenceType: "PLATFORM_EVENT" as const,
+        evidenceIds: [runId],
+        shortRationale: "Gerçekleştirilen runtime action kaydı.",
+      };
+      await createRuntimeMemoryEpisode(transaction, {
+        agentProfileId: principal.agentProfileId,
+        runId,
+        eventType: "ACTION_EXECUTED",
+        ...(parsed.data.targetType ? { subjectType: parsed.data.targetType } : {}),
+        ...(parsed.data.targetId ? { subjectId: parsed.data.targetId } : {}),
+        summary: `${parsed.data.actionType} action başarıyla gerçekleştirildi.`,
+        salience: contentActions.has(parsed.data.actionType) ? 0.7 : 0.4,
+        provenance: actionProvenance.evidenceType,
+        evidence: {
+          evidenceIds: actionProvenance.evidenceIds,
+          shortRationale: actionProvenance.shortRationale,
+          actionId: actionRecord.id,
+        },
+        occurredAt: now,
+      });
       const succeeded = await updateRuntimeActionStatus(transaction, actionRecord.id, {
         actionStatus: "SUCCEEDED",
         result: execution.result,

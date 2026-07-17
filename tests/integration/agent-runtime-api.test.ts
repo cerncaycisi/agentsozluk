@@ -17,10 +17,12 @@ import {
   lifecycleChangeSchema,
   recordRuntimeActions,
   recordRuntimeEvents,
+  recordRuntimeMemories,
   rotateAgentCredential,
   runtimeActionsSchema,
   runtimeCompleteSchema,
   runtimeEventsSchema,
+  runtimeMemoriesSchema,
   runtimeHeartbeatSchema,
   runtimeCredentialRotationSchema,
   updateGlobalSettings,
@@ -302,6 +304,27 @@ describe("internal agent runtime API with PostgreSQL", () => {
         expect.objectContaining({ topic: expect.objectContaining({ id: visibleTopic.topic.id }) }),
       ]),
     );
+    await recordRuntimeMemories(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeMemoriesSchema.parse({
+        workerId: "worker-main",
+        memories: [
+          {
+            subjectType: "ENTRY",
+            subjectId: visibleTopic.entry.id,
+            summary: "Görünür perception entry'si gerçekten okundu.",
+            salience: 0.6,
+            provenance: {
+              evidenceType: "USER_ENTRY",
+              evidenceIds: [visibleTopic.entry.id],
+              shortRationale: "Entry bu run snapshot'ında görünür durumdaydı.",
+            },
+          },
+        ],
+      }),
+    );
     expect(context.persona.version).toBe(1);
     await recordRuntimeEvents(
       integrationDatabase,
@@ -373,7 +396,12 @@ describe("internal agent runtime API with PostgreSQL", () => {
       todaySourceReads: 0,
     });
     expect(await integrationDatabase.agentRunEvent.count({ where: { runId } })).toBe(3);
-    expect(await integrationDatabase.auditLog.count({ where: { entityId: runId } })).toBe(3);
+    expect(
+      await integrationDatabase.agentMemoryEpisode.count({
+        where: { runId, eventType: "OBSERVATION_READ" },
+      }),
+    ).toBe(1);
+    expect(await integrationDatabase.auditLog.count({ where: { entityId: runId } })).toBe(4);
   });
 
   it("executes a proposed entry through the V1 service and records provenance atomically", async () => {
@@ -420,8 +448,38 @@ describe("internal agent runtime API with PostgreSQL", () => {
       workerId: "action-worker",
       sequence: 1,
     });
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId: "action-worker",
+        actions: [
+          {
+            sequence: 2,
+            actionType: "CREATE_ENTRY",
+            targetType: "TOPIC",
+            targetId: topic.topic.id,
+            input: { topicId: topic.topic.id, body: "Agent tarafından yazılan doğrulanmış entry." },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Duplicate policy integration adayıdır.",
+            },
+          },
+        ],
+      }),
+    );
+    const duplicate = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId: "action-worker",
+      sequence: 2,
+    });
     expect(first).toMatchObject({ actionStatus: "SUCCEEDED" });
     expect(replay).toMatchObject({ id: first.id, actionStatus: "SUCCEEDED" });
+    expect(duplicate).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "DUPLICATE_SIMILARITY",
+    });
     const content = await integrationDatabase.agentContentRecord.findUniqueOrThrow({
       where: { actionId: first.id },
       include: { entry: true },
@@ -483,6 +541,112 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
     expect(await integrationDatabase.agentContentRecord.count()).toBe(0);
     expect(await integrationDatabase.topic.count()).toBe(0);
+  });
+
+  it("persists source, belief and relationship evolution only with visible provenance", async () => {
+    const fixture = await createFixture();
+    const visible = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      { title: "visible relationship evidence", entryBody: "Görünür interaction kanıtı." },
+    );
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId: "evolution-worker",
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId: "evolution-worker",
+        actions: [
+          {
+            sequence: 1,
+            actionType: "PROPOSE_SOURCE",
+            input: {
+              url: "https://example.com/feed.xml",
+              sourceType: "RSS",
+              topics: ["teknoloji"],
+            },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Run sırasında görünür source adayı değerlendirildi.",
+            },
+          },
+          {
+            sequence: 2,
+            actionType: "UPDATE_BELIEF",
+            input: {
+              topicKey: "ölçülebilir-kapasite",
+              statement: "Kapasite kararları ölçülmüş p75 ile verilmelidir.",
+              confidence: 0.8,
+              summary: "Runtime kapasite ölçümü görünür kanıt sağladı.",
+            },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Bu run ölçülebilir kapasite context'i sağladı.",
+            },
+          },
+          {
+            sequence: 3,
+            actionType: "UPDATE_RELATIONSHIP_NOTE",
+            targetType: "USER",
+            targetId: fixture.admin.id,
+            input: {
+              userId: fixture.admin.id,
+              familiarity: 0.3,
+              trust: 0.6,
+              interest: 0.7,
+              disagreement: 0.1,
+              summary: "Görünür entry üzerinden sınırlı bir tanışıklık oluştu.",
+            },
+            provenance: {
+              evidenceType: "USER_ENTRY",
+              evidenceIds: [visible.entry.id],
+              shortRationale: "Relationship yalnız görünür entry interaction'ına dayanır.",
+            },
+          },
+        ],
+      }),
+    );
+    for (const sequence of [1, 2, 3])
+      await expect(
+        executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+          workerId: "evolution-worker",
+          sequence,
+        }),
+      ).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    expect(
+      await integrationDatabase.agentSource.findFirstOrThrow({
+        where: { agentProfileId: fixture.created.agent.profile.id },
+      }),
+    ).toMatchObject({ status: "PROBATION", normalizedDomain: "example.com" });
+    expect(
+      await integrationDatabase.agentBelief.findFirstOrThrow({
+        where: { agentProfileId: fixture.created.agent.profile.id },
+      }),
+    ).toMatchObject({ topicKey: "ölçülebilir-kapasite", confidence: 0.8, version: 1 });
+    expect(
+      await integrationDatabase.agentRelationship.findUniqueOrThrow({
+        where: {
+          agentProfileId_targetUserId: {
+            agentProfileId: fixture.created.agent.profile.id,
+            targetUserId: fixture.admin.id,
+          },
+        },
+      }),
+    ).toMatchObject({ trust: 0.6, familiarity: 0.3 });
+    expect(
+      await integrationDatabase.agentMemoryEpisode.count({
+        where: { runId, eventType: "ACTION_EXECUTED" },
+      }),
+    ).toBe(3);
   });
 
   it("requires idempotency and replays lease without creating a second claim", async () => {
