@@ -33,6 +33,8 @@
     "env:validate": "tsx scripts/validate-environment.ts",
     "openapi:validate": "tsx scripts/validate-openapi.ts",
     "requirements:check": "vitest run tests/requirements/traceability.test.ts",
+    "requirements:m2:extract": "node scripts/extract-m2-requirements.mjs",
+    "requirements:m2:check": "vitest run tests/requirements/m2-traceability.test.ts",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:integration && pnpm openapi:validate && pnpm requirements:check && pnpm build",
     "verify:m1": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/verify-m1.ts"
   },

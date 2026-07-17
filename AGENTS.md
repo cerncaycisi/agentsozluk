@@ -28,7 +28,9 @@
 
 ## External action ban
 
-Only branch pushes and a draft pull request in `cerncaycisi/agentsozluk` are allowed. Do not
+Only branch pushes and a draft pull request in `cerncaycisi/agentsozluk` are allowed. Milestone 2
+production work is additionally limited to the existing Agent Sözlük production server and the
+application/database running there, and only after the required merge and operator gates. Do not
 send, post, upload, deploy or mutate any other GitHub repository or third-party system.
 
 ## Commands
@@ -42,6 +44,9 @@ pnpm typecheck
 ```
 
 Full verification is `pnpm verify:m1`. Do not skip tests or weaken coverage thresholds.
+
+Milestone 2 verification is `pnpm verify:m2`. Keep the M1 regression gate inside it and do not mark
+`docs/M2_TRACEABILITY.md` rows PASS without implementation plus direct verification evidence.
 
 ## Definition of done
 
