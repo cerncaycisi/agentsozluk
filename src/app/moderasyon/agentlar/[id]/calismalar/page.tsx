@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
-import { ManualAgentRunForm } from "@/components/agents/agent-admin-forms";
+import { AgentRunCommands, ManualAgentRunForm } from "@/components/agents/agent-admin-forms";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
@@ -34,7 +34,7 @@ export default async function AgentRunsPage({ params }: { params: Promise<{ id: 
               {run.runType} · {run.runStatus}
             </h2>
             <p className="mt-1 text-muted">
-              {run.createdAt.toISOString()} · attempts {run.attempts}
+              {run.createdAt.toISOString()} · attempts {run.attempts} · {run.id}
             </p>
             {run.errorSummary ? <p className="mt-2 text-destructive">{run.errorSummary}</p> : null}
             {run.safeRunSummary ? (
@@ -42,6 +42,7 @@ export default async function AgentRunsPage({ params }: { params: Promise<{ id: 
                 {JSON.stringify(run.safeRunSummary, null, 2)}
               </pre>
             ) : null}
+            <AgentRunCommands runId={run.id} status={run.runStatus} />
           </article>
         ))}
       </div>

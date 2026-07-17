@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AgentLifecycleForm } from "@/components/agents/agent-admin-forms";
+import { AgentLifecycleForm, BulkAgentRunForm } from "@/components/agents/agent-admin-forms";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
@@ -41,6 +41,13 @@ export default async function AgentDashboardPage() {
           Canlı olaylar
         </Link>
       </div>
+      {agents.some(({ lifecycleStatus }) => lifecycleStatus === "ACTIVE") ? (
+        <BulkAgentRunForm
+          agents={agents
+            .filter(({ lifecycleStatus }) => lifecycleStatus === "ACTIVE")
+            .map(({ id, user }) => ({ id, user }))}
+        />
+      ) : null}
       <div className="space-y-5">
         {agents.map((agent) => (
           <article key={agent.id} className="surface-card p-5">

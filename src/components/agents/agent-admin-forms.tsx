@@ -157,51 +157,87 @@ export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
   );
 }
 
-export function ManualAgentRunForm({ agentId }: { agentId: string }) {
-  const router = useRouter();
-  const [runType, setRunType] = useState("NORMAL_WAKE");
-  const [entryTarget, setEntryTarget] = useState(3);
-  const [instruction, setInstruction] = useState("");
-  const [priority, setPriority] = useState("NORMAL");
-  const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState<string>();
-  const nonPublishing = ["READ_ONLY", "REFLECTION", "SOURCE_REFRESH"].includes(runType);
+type RunType =
+  | "NORMAL_WAKE"
+  | "ENTRY_BURST"
+  | "DAILY_CATCH_UP"
+  | "READ_ONLY"
+  | "DRY_RUN"
+  | "REFLECTION"
+  | "SOURCE_REFRESH";
+
+interface RunConfig {
+  runType: RunType;
+  entryTarget: number;
+  allowTopicCreation: boolean;
+  allowVoting: boolean;
+  allowFollowing: boolean;
+  allowSourceReading: boolean;
+  saturationOverride: boolean;
+  dailyMaximumOverride: boolean;
+  adminInstruction: string;
+  availableAt: string;
+  priority: "NORMAL" | "EMERGENCY";
+}
+
+interface RunPreview {
+  runCount: number;
+  existingQueueLength: number;
+  measuredP75DurationMs: number | null;
+  estimateStatus: "ESTIMATED" | "UNKNOWN";
+  estimatedStartAt: string | null;
+  estimatedCompleteAt: string | null;
+  estimatedScheduledDelayMs: number | null;
+  targetMissRiskChange: string;
+  workerUtilization: number | null;
+  concurrency: number;
+  saturationOverride: boolean;
+  dailyMaximumOverride: boolean;
+}
+
+const initialRunConfig: RunConfig = {
+  runType: "NORMAL_WAKE",
+  entryTarget: 3,
+  allowTopicCreation: true,
+  allowVoting: true,
+  allowFollowing: true,
+  allowSourceReading: true,
+  saturationOverride: false,
+  dailyMaximumOverride: false,
+  adminInstruction: "",
+  availableAt: "",
+  priority: "NORMAL",
+};
+
+function isNonPublishingRun(runType: RunType): boolean {
+  return ["READ_ONLY", "DRY_RUN", "REFLECTION", "SOURCE_REFRESH"].includes(runType);
+}
+
+function runRequest(config: RunConfig) {
+  return {
+    ...config,
+    entryTarget: isNonPublishingRun(config.runType) ? 0 : config.entryTarget,
+    adminInstruction: config.adminInstruction || undefined,
+    availableAt: config.availableAt ? new Date(config.availableAt).toISOString() : undefined,
+  };
+}
+
+function RunConfigFields({
+  config,
+  update,
+}: {
+  config: RunConfig;
+  update: (patch: Partial<RunConfig>) => void;
+}) {
+  const nonPublishing = isNonPublishingRun(config.runType);
   return (
-    <form
-      className="surface-card mb-5 space-y-4 p-5"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        setPending(true);
-        setMessage(undefined);
-        try {
-          await apiRequest(`/api/v1/admin/agents/${agentId}/runs`, {
-            method: "POST",
-            body: {
-              runType,
-              entryTarget: nonPublishing ? 0 : entryTarget,
-              adminInstruction: instruction || undefined,
-              priority,
-            },
-            csrf: true,
-            idempotency: true,
-          });
-          setInstruction("");
-          setMessage("Run kuyruğa alındı.");
-          router.refresh();
-        } catch (submitError) {
-          setMessage(errorMessage(submitError));
-        } finally {
-          setPending(false);
-        }
-      }}
-    >
-      <h2 className="text-lg font-black">Şimdi çalıştır</h2>
-      <div className="grid gap-4 sm:grid-cols-3">
+    <>
+      <div className="grid gap-4 sm:grid-cols-4">
         <label className="text-sm font-bold">
           Run türü
           <select
-            value={runType}
-            onChange={(event) => setRunType(event.target.value)}
+            value={config.runType}
+            onChange={(event) => update({ runType: event.target.value as RunType })}
             className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
           >
             {[
@@ -219,37 +255,344 @@ export function ManualAgentRunForm({ agentId }: { agentId: string }) {
         </label>
         <NumberField
           label="Entry hedefi"
-          value={nonPublishing ? 0 : entryTarget}
-          onChange={setEntryTarget}
-          min={runType === "ENTRY_BURST" ? 1 : 0}
+          value={nonPublishing ? 0 : config.entryTarget}
+          onChange={(entryTarget) => update({ entryTarget })}
+          min={config.runType === "ENTRY_BURST" ? 1 : 0}
           max={10}
         />
         <label className="text-sm font-bold">
           Priority
           <select
-            value={priority}
-            onChange={(event) => setPriority(event.target.value)}
+            value={config.priority}
+            onChange={(event) => update({ priority: event.target.value as RunConfig["priority"] })}
             className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
           >
             <option value="NORMAL">Normal</option>
             <option value="EMERGENCY">Emergency</option>
           </select>
         </label>
+        <label className="text-sm font-bold">
+          Başlangıç zamanı
+          <input
+            type="datetime-local"
+            value={config.availableAt}
+            onChange={(event) => update({ availableAt: event.target.value })}
+            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          />
+        </label>
+      </div>
+      <div className="grid gap-2 text-sm sm:grid-cols-3">
+        {(
+          [
+            ["allowTopicCreation", "Topic oluşturabilir"],
+            ["allowVoting", "Vote verebilir"],
+            ["allowFollowing", "Takip edebilir"],
+            ["allowSourceReading", "Source okuyabilir"],
+            ["saturationOverride", "Saturation override"],
+            ["dailyMaximumOverride", "Günlük maksimum override"],
+          ] as const
+        ).map(([key, label]) => (
+          <label key={key} className="flex items-center gap-2 rounded-lg border p-3 font-bold">
+            <input
+              type="checkbox"
+              checked={nonPublishing && key !== "allowSourceReading" ? false : config[key]}
+              disabled={nonPublishing && key !== "allowSourceReading"}
+              onChange={(event) => update({ [key]: event.target.checked })}
+            />
+            {label}
+          </label>
+        ))}
       </div>
       <label className="block text-sm font-bold">
         Kısa admin instruction
         <textarea
-          value={instruction}
-          onChange={(event) => setInstruction(event.target.value)}
+          value={config.adminInstruction}
+          onChange={(event) => update({ adminInstruction: event.target.value })}
           maxLength={1000}
           className="mt-1 min-h-20 w-full rounded-xl border bg-page p-3"
         />
       </label>
+      {config.priority === "EMERGENCY" ? (
+        <p className="rounded-lg border border-accent/40 bg-accent/10 p-3 text-sm">
+          Emergency run kapasite uyarısını aşabilir; çalışan atomic action kesilmez.
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+function PreviewCard({ preview }: { preview: RunPreview }) {
+  const time = (value: string | null) =>
+    value
+      ? new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "short" }).format(
+          new Date(value),
+        )
+      : "UNKNOWN";
+  return (
+    <div className="rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm">
+      <p className="font-black">
+        {preview.runCount} run eklenecek · mevcut queue {preview.existingQueueLength} · concurrency{" "}
+        {preview.concurrency}
+      </p>
+      <p className="mt-2">
+        P75:{" "}
+        {preview.measuredP75DurationMs === null ? "UNKNOWN" : `${preview.measuredP75DurationMs} ms`}{" "}
+        · başlangıç: {time(preview.estimatedStartAt)} · tamamlanma:{" "}
+        {time(preview.estimatedCompleteAt)}
+      </p>
+      <p className="mt-1">
+        Scheduled gecikme:{" "}
+        {preview.estimatedScheduledDelayMs === null
+          ? "UNKNOWN"
+          : `${Math.ceil(preview.estimatedScheduledDelayMs / 60_000)} dk`}{" "}
+        · utilization:{" "}
+        {preview.workerUtilization === null
+          ? "UNKNOWN"
+          : `${Math.round(preview.workerUtilization * 100)}%`}{" "}
+        · target miss etkisi: {preview.targetMissRiskChange}
+      </p>
+      <p className="mt-1 font-bold">
+        Bu değerler ölçüme dayalı tahmindir; kesin tamamlanma sözü değildir.
+      </p>
+    </div>
+  );
+}
+
+export function ManualAgentRunForm({ agentId }: { agentId: string }) {
+  const router = useRouter();
+  const [config, setConfig] = useState<RunConfig>(initialRunConfig);
+  const [preview, setPreview] = useState<RunPreview>();
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string>();
+  const update = (patch: Partial<RunConfig>) => {
+    setConfig((current) => ({ ...current, ...patch }));
+    setPreview(undefined);
+    setMessage(undefined);
+  };
+  return (
+    <form
+      className="surface-card mb-5 space-y-4 p-5"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setPending(true);
+        setMessage(undefined);
+        try {
+          if (!preview) {
+            setPreview(
+              await apiRequest<RunPreview>("/api/v1/admin/agent-runs/bulk/preview", {
+                method: "POST",
+                body: { agentIds: [agentId], run: runRequest(config) },
+                csrf: true,
+                idempotency: true,
+              }),
+            );
+          } else {
+            await apiRequest(`/api/v1/admin/agents/${agentId}/runs`, {
+              method: "POST",
+              body: runRequest(config),
+              csrf: true,
+              idempotency: true,
+            });
+            setConfig((current) => ({ ...current, adminInstruction: "", availableAt: "" }));
+            setPreview(undefined);
+            setMessage("Run kuyruğa alındı.");
+            router.refresh();
+          }
+        } catch (submitError) {
+          setMessage(errorMessage(submitError));
+        } finally {
+          setPending(false);
+        }
+      }}
+    >
+      <h2 className="text-lg font-black">Şimdi çalıştır</h2>
+      <RunConfigFields config={config} update={update} />
+      {preview ? <PreviewCard preview={preview} /> : null}
       {message ? <p className="text-sm">{message}</p> : null}
       <button disabled={pending} className="button-primary">
-        {pending ? "Kuyruğa alınıyor…" : "Şimdi çalıştır"}
+        {pending ? "İşleniyor…" : preview ? "Onayla ve kuyruğa al" : "Kapasite önizle"}
       </button>
     </form>
+  );
+}
+
+export function BulkAgentRunForm({
+  agents,
+}: {
+  agents: Array<{ id: string; user: { username: string; displayName: string } }>;
+}) {
+  const router = useRouter();
+  const [allActive, setAllActive] = useState(true);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [config, setConfig] = useState<RunConfig>(initialRunConfig);
+  const [preview, setPreview] = useState<RunPreview>();
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string>();
+  const invalidate = () => {
+    setPreview(undefined);
+    setMessage(undefined);
+  };
+  const selection = allActive ? { allActive: true } : { agentIds: selected };
+  return (
+    <form
+      className="surface-card mb-5 space-y-4 p-5"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setPending(true);
+        setMessage(undefined);
+        try {
+          if (!preview) {
+            setPreview(
+              await apiRequest<RunPreview>("/api/v1/admin/agent-runs/bulk/preview", {
+                method: "POST",
+                body: { ...selection, run: runRequest(config) },
+                csrf: true,
+                idempotency: true,
+              }),
+            );
+          } else {
+            const result = await apiRequest<{ count: number }>("/api/v1/admin/agent-runs/bulk", {
+              method: "POST",
+              body: {
+                ...selection,
+                run: runRequest(config),
+                confirmation: allActive ? "RUN_ALL_ACTIVE_AGENTS" : "RUN_SELECTED_AGENTS",
+              },
+              csrf: true,
+              idempotency: true,
+            });
+            setPreview(undefined);
+            setMessage(`${result.count} run kuyruğa alındı.`);
+            router.refresh();
+          }
+        } catch (submitError) {
+          setMessage(errorMessage(submitError));
+        } finally {
+          setPending(false);
+        }
+      }}
+    >
+      <div>
+        <h2 className="text-lg font-black">Bulk şimdi çalıştır</h2>
+        <p className="mt-1 text-sm text-muted">
+          Önizleme ve ikinci açık onay olmadan queue değişmez.
+        </p>
+      </div>
+      <label className="flex items-center gap-2 text-sm font-bold">
+        <input
+          type="checkbox"
+          checked={allActive}
+          onChange={(event) => {
+            setAllActive(event.target.checked);
+            invalidate();
+          }}
+        />
+        Tüm aktif agent’lar
+      </label>
+      {!allActive ? (
+        <fieldset className="grid max-h-52 gap-2 overflow-auto rounded-xl border p-3 sm:grid-cols-2">
+          <legend className="px-2 text-sm font-bold">Agent seçimi</legend>
+          {agents.map((agent) => (
+            <label key={agent.id} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={selected.includes(agent.id)}
+                onChange={(event) => {
+                  setSelected((current) =>
+                    event.target.checked
+                      ? [...current, agent.id]
+                      : current.filter((id) => id !== agent.id),
+                  );
+                  invalidate();
+                }}
+              />
+              {agent.user.displayName} · @{agent.user.username}
+            </label>
+          ))}
+        </fieldset>
+      ) : null}
+      <RunConfigFields
+        config={config}
+        update={(patch) => {
+          setConfig((current) => ({ ...current, ...patch }));
+          invalidate();
+        }}
+      />
+      {preview ? <PreviewCard preview={preview} /> : null}
+      {message ? <p className="text-sm">{message}</p> : null}
+      <button
+        disabled={pending || (!allActive && selected.length === 0)}
+        className="button-primary"
+      >
+        {pending ? "İşleniyor…" : preview ? "Açık onayla ve kuyruğa al" : "Kapasite önizle"}
+      </button>
+    </form>
+  );
+}
+
+export function AgentRunCommands({ runId, status }: { runId: string; status: string }) {
+  const router = useRouter();
+  const [reason, setReason] = useState("");
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string>();
+  const canCancel = ["QUEUED", "RUNNING"].includes(status);
+  const canRetry = ["FAILED", "TIMED_OUT", "CANCELLED", "PARTIAL"].includes(status);
+  if (!canCancel && !canRetry) return null;
+  const command = async (action: "cancel" | "retry") => {
+    setPending(true);
+    setMessage(undefined);
+    try {
+      await apiRequest(`/api/v1/admin/agent-runs/${runId}/${action}`, {
+        method: "POST",
+        body: { reason },
+        csrf: true,
+        idempotency: true,
+      });
+      setReason("");
+      setMessage(action === "cancel" ? "İptal işlendi." : "Retry kuyruğa alındı.");
+      router.refresh();
+    } catch (submitError) {
+      setMessage(errorMessage(submitError));
+    } finally {
+      setPending(false);
+    }
+  };
+  return (
+    <div className="mt-3 border-t pt-3">
+      <label className="block text-sm font-bold">
+        İşlem gerekçesi
+        <input
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          minLength={10}
+          maxLength={1000}
+          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+        />
+      </label>
+      <div className="mt-2 flex gap-2">
+        {canCancel ? (
+          <button
+            type="button"
+            disabled={pending || reason.trim().length < 10}
+            onClick={() => void command("cancel")}
+            className="button-secondary"
+          >
+            Graceful iptal
+          </button>
+        ) : null}
+        {canRetry ? (
+          <button
+            type="button"
+            disabled={pending || reason.trim().length < 10}
+            onClick={() => void command("retry")}
+            className="button-secondary"
+          >
+            Yeni run olarak retry
+          </button>
+        ) : null}
+      </div>
+      {message ? <p className="mt-2 text-sm">{message}</p> : null}
+    </div>
   );
 }
 
