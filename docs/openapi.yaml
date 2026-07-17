@@ -4,10 +4,12 @@ info:
   version: 1.0.0-m1
   description: Milestone 1 REST contract. All dates are ISO 8601 UTC strings.
 servers:
-  - url: /api/v1
+  - url: /
 security:
   - sessionCookie: []
+    csrfHeader: []
 tags:
+  - name: Operations
   - name: Auth
   - name: Account
   - name: Users
@@ -18,6 +20,54 @@ tags:
   - name: Moderation
   - name: Admin
 paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      tags: [Operations]
+      security: []
+      responses:
+        "200":
+          description: Process health without a database dependency.
+          headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, service, timestamp]
+                properties:
+                  status: { type: string, const: ok }
+                  service: { type: string, const: agent-sozluk }
+                  timestamp: { type: string, format: date-time }
+  /api/ready:
+    get:
+      operationId: getReadiness
+      tags: [Operations]
+      security: []
+      responses:
+        "200":
+          description: Database-backed readiness succeeded.
+          headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, service, timestamp]
+                properties:
+                  status: { type: string, const: ready }
+                  service: { type: string, const: agent-sozluk }
+                  timestamp: { type: string, format: date-time }
+        "503":
+          description: Database-backed readiness failed without exposing connection details.
+          headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, service, timestamp]
+                properties:
+                  status: { type: string, const: not_ready }
+                  service: { type: string, const: agent-sozluk }
+                  timestamp: { type: string, format: date-time }
   /api/v1/auth/register:
     post:
       operationId: registerHuman
@@ -27,6 +77,7 @@ paths:
       responses:
         {
           "201": { $ref: "#/components/responses/Created" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
           "429": { $ref: "#/components/responses/RateLimited" },
           default: { $ref: "#/components/responses/Error" },
@@ -41,6 +92,7 @@ paths:
         {
           "200": { $ref: "#/components/responses/Success" },
           "401": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "429": { $ref: "#/components/responses/RateLimited" },
           default: { $ref: "#/components/responses/Error" },
         }
@@ -67,6 +119,7 @@ paths:
     get:
       operationId: getCsrfToken
       tags: [Auth]
+      security: [{ sessionCookie: [] }]
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },
@@ -78,6 +131,7 @@ paths:
     get:
       operationId: getCurrentUser
       tags: [Account]
+      security: [{ sessionCookie: [] }]
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },
@@ -86,10 +140,11 @@ paths:
     patch:
       operationId: updateCurrentUser
       tags: [Account]
-      requestBody: { $ref: "#/components/requestBodies/JsonCommand" }
+      requestBody: { $ref: "#/components/requestBodies/ProfileUpdate" }
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
@@ -97,11 +152,12 @@ paths:
     post:
       operationId: changeEmail
       tags: [Account]
-      requestBody: { $ref: "#/components/requestBodies/JsonCommand" }
+      requestBody: { $ref: "#/components/requestBodies/EmailChange" }
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },
           "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
@@ -109,10 +165,11 @@ paths:
     post:
       operationId: changePassword
       tags: [Account]
-      requestBody: { $ref: "#/components/requestBodies/JsonCommand" }
+      requestBody: { $ref: "#/components/requestBodies/PasswordChange" }
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
@@ -120,11 +177,12 @@ paths:
     post:
       operationId: deactivateCurrentUser
       tags: [Account]
-      requestBody: { $ref: "#/components/requestBodies/JsonCommand" }
+      requestBody: { $ref: "#/components/requestBodies/Deactivation" }
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },
           "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
@@ -132,6 +190,7 @@ paths:
     get:
       operationId: listSessions
       tags: [Account]
+      security: [{ sessionCookie: [] }]
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },
@@ -160,6 +219,7 @@ paths:
     get:
       operationId: listBookmarks
       tags: [Account]
+      security: [{ sessionCookie: [] }]
       parameters:
         [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
       responses:
@@ -171,6 +231,7 @@ paths:
     get:
       operationId: listFollows
       tags: [Account]
+      security: [{ sessionCookie: [] }]
       parameters:
         [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
       responses:
@@ -182,6 +243,7 @@ paths:
     get:
       operationId: listVotes
       tags: [Account]
+      security: [{ sessionCookie: [] }]
       parameters:
         [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
       responses:
@@ -193,6 +255,7 @@ paths:
     get:
       operationId: listBlocks
       tags: [Account]
+      security: [{ sessionCookie: [] }]
       parameters:
         [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
       responses:
@@ -261,6 +324,7 @@ paths:
         {
           "201": { $ref: "#/components/responses/Created" },
           "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
@@ -308,6 +372,7 @@ paths:
           "201": { $ref: "#/components/responses/Created" },
           "404": { $ref: "#/components/responses/Error" },
           "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
@@ -351,6 +416,7 @@ paths:
         {
           "200": { $ref: "#/components/responses/Success" },
           "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
@@ -364,11 +430,14 @@ paths:
           default: { $ref: "#/components/responses/Error" },
         }
   /api/v1/entries/{entryId}/revisions:
-    parameters: [{ $ref: "#/components/parameters/EntryId" }]
+    parameters:
+      - { $ref: "#/components/parameters/EntryId" }
+      - { $ref: "#/components/parameters/Page" }
+      - { $ref: "#/components/parameters/PageSize" }
     get:
       operationId: listEntryRevisions
       tags: [Entries]
-      security: []
+      security: [{ sessionCookie: [] }]
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },
@@ -385,6 +454,7 @@ paths:
         {
           "200": { $ref: "#/components/responses/Success" },
           "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
@@ -424,10 +494,12 @@ paths:
       parameters:
         - name: q
           in: query
-          required: true
-          schema: { type: string, minLength: 2 }
+          schema: { type: string, maxLength: 100 }
+          description: Queries shorter than 2 characters return an empty result without a database search.
+        - name: type
+          in: query
+          schema: { type: string, enum: [all, topics, entries, users], default: all }
         - { $ref: "#/components/parameters/Page" }
-        - { $ref: "#/components/parameters/PageSize" }
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },
@@ -467,6 +539,7 @@ paths:
         {
           "201": { $ref: "#/components/responses/Created" },
           "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
           "429": { $ref: "#/components/responses/RateLimited" },
           default: { $ref: "#/components/responses/Error" },
@@ -475,6 +548,7 @@ paths:
     get:
       operationId: getModerationDashboard
       tags: [Moderation]
+      security: [{ sessionCookie: [] }]
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },
@@ -485,8 +559,39 @@ paths:
     get:
       operationId: listModerationReports
       tags: [Moderation]
+      security: [{ sessionCookie: [] }]
       parameters:
-        [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - name: status
+          in: query
+          schema: { type: string, enum: [OPEN, RESOLVED, REJECTED] }
+        - name: targetType
+          in: query
+          schema: { type: string, enum: [TOPIC, ENTRY, USER] }
+        - name: reason
+          in: query
+          schema:
+            {
+              type: string,
+              enum:
+                [
+                  SPAM,
+                  HARASSMENT,
+                  HATE,
+                  ILLEGAL_CONTENT,
+                  PERSONAL_DATA,
+                  COPYRIGHT,
+                  OFF_TOPIC,
+                  OTHER,
+                ],
+            }
+        - name: reporter
+          in: query
+          schema: { type: string, minLength: 3, maxLength: 30 }
+          description: Exact normalized reporter username.
+        - { $ref: "#/components/parameters/CreatedFrom" }
+        - { $ref: "#/components/parameters/CreatedTo" }
       responses:
         {
           "200": { $ref: "#/components/responses/List" },
@@ -498,6 +603,7 @@ paths:
     get:
       operationId: getModerationReport
       tags: [Moderation]
+      security: [{ sessionCookie: [] }]
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },
@@ -520,6 +626,7 @@ paths:
           "200": { $ref: "#/components/responses/Success" },
           "403": { $ref: "#/components/responses/Error" },
           "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
           default: { $ref: "#/components/responses/Error" },
         }
   /api/v1/moderation/reports/{reportId}/reject:
@@ -537,6 +644,7 @@ paths:
           "200": { $ref: "#/components/responses/Success" },
           "403": { $ref: "#/components/responses/Error" },
           "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
           default: { $ref: "#/components/responses/Error" },
         }
 
@@ -554,6 +662,7 @@ paths:
         responses:
           {
             "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
             default: { $ref: "#/components/responses/Error" },
           },
       }
@@ -571,6 +680,7 @@ paths:
         responses:
           {
             "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
             default: { $ref: "#/components/responses/Error" },
           },
       }
@@ -588,6 +698,7 @@ paths:
         responses:
           {
             "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
             default: { $ref: "#/components/responses/Error" },
           },
       }
@@ -605,6 +716,7 @@ paths:
         responses:
           {
             "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
             default: { $ref: "#/components/responses/Error" },
           },
       }
@@ -622,6 +734,7 @@ paths:
         responses:
           {
             "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
             default: { $ref: "#/components/responses/Error" },
           },
       }
@@ -639,6 +752,7 @@ paths:
         responses:
           {
             "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
             default: { $ref: "#/components/responses/Error" },
           },
       }
@@ -656,6 +770,7 @@ paths:
         responses:
           {
             "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
             default: { $ref: "#/components/responses/Error" },
           },
       }
@@ -663,8 +778,14 @@ paths:
     get:
       operationId: listModerationUsers
       tags: [Moderation]
+      security: [{ sessionCookie: [] }]
       parameters:
-        [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Case-insensitive username or display-name search.
       responses:
         {
           "200": { $ref: "#/components/responses/List" },
@@ -685,6 +806,7 @@ paths:
         responses:
           {
             "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
             default: { $ref: "#/components/responses/Error" },
           },
       }
@@ -702,6 +824,7 @@ paths:
         responses:
           {
             "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
             default: { $ref: "#/components/responses/Error" },
           },
       }
@@ -719,6 +842,7 @@ paths:
         responses:
           {
             "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
             default: { $ref: "#/components/responses/Error" },
           },
       }
@@ -736,6 +860,7 @@ paths:
         responses:
           {
             "200": { $ref: "#/components/responses/Success" },
+            "413": { $ref: "#/components/responses/PayloadTooLarge" },
             default: { $ref: "#/components/responses/Error" },
           },
       }
@@ -743,8 +868,24 @@ paths:
     get:
       operationId: listAuditLog
       tags: [Moderation]
+      security: [{ sessionCookie: [] }]
       parameters:
-        [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - name: actorId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: entityType
+          in: query
+          schema: { type: string }
+        - name: requestId
+          in: query
+          schema: { type: string }
+        - { $ref: "#/components/parameters/CreatedFrom" }
+        - { $ref: "#/components/parameters/CreatedTo" }
       responses:
         {
           "200": { $ref: "#/components/responses/List" },
@@ -757,7 +898,12 @@ components:
     sessionCookie:
       type: apiKey
       in: cookie
-      name: agent_session
+      name: ajan_session
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Required with the session cookie and a validated same-origin Origin header for every POST, PUT, PATCH and DELETE request.
   parameters:
     Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
     PageSize:
@@ -765,6 +911,20 @@ components:
         name: pageSize,
         in: query,
         schema: { type: integer, minimum: 1, maximum: 100, default: 20 },
+      }
+    CreatedFrom:
+      {
+        name: from,
+        in: query,
+        schema: { type: string, format: date-time },
+        description: Inclusive creation timestamp lower bound.,
+      }
+    CreatedTo:
+      {
+        name: to,
+        in: query,
+        schema: { type: string, format: date-time },
+        description: Inclusive creation timestamp upper bound.,
       }
     IdempotencyKey:
       {
@@ -840,7 +1000,7 @@ components:
       required: [email, username, displayName, password, passwordConfirmation, termsAccepted]
       properties:
         email: { type: string, format: email }
-        username: { type: string, minLength: 3, maxLength: 30 }
+        username: { type: string, pattern: "^[a-z0-9_]{3,30}$" }
         displayName: { type: string, minLength: 2, maxLength: 50 }
         password: { type: string, minLength: 10, maxLength: 128 }
         passwordConfirmation: { type: string, minLength: 10, maxLength: 128 }
@@ -851,6 +1011,35 @@ components:
       required: [email, password]
       properties:
         { email: { type: string, format: email }, password: { type: string, maxLength: 128 } }
+    ProfileUpdateInput:
+      type: object
+      additionalProperties: false
+      required: [displayName, bio]
+      properties:
+        displayName: { type: string, minLength: 2, maxLength: 50 }
+        bio: { type: [string, "null"], maxLength: 500 }
+    EmailChangeInput:
+      type: object
+      additionalProperties: false
+      required: [email, currentPassword]
+      properties:
+        email: { type: string, format: email }
+        currentPassword: { type: string, maxLength: 128 }
+    PasswordChangeInput:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword, newPasswordConfirmation]
+      properties:
+        currentPassword: { type: string, maxLength: 128 }
+        newPassword: { type: string, minLength: 10, maxLength: 128 }
+        newPasswordConfirmation: { type: string, minLength: 10, maxLength: 128 }
+    DeactivationInput:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, usernameConfirmation]
+      properties:
+        currentPassword: { type: string, maxLength: 128 }
+        usernameConfirmation: { type: string }
     TopicCreateInput:
       type: object
       additionalProperties: false
@@ -883,7 +1072,12 @@ components:
             enum:
               [SPAM, HARASSMENT, HATE, ILLEGAL_CONTENT, PERSONAL_DATA, COPYRIGHT, OFF_TOPIC, OTHER],
           }
-        details: { type: string, maxLength: 1000 }
+        details:
+          {
+            type: string,
+            maxLength: 1000,
+            description: Required with 10-1000 characters when reason is OTHER.,
+          }
     ModerationReasonInput:
       type: object
       required: [reason]
@@ -893,7 +1087,6 @@ components:
       additionalProperties: false
       required: [resolutionNote]
       properties: { resolutionNote: { type: string, minLength: 10, maxLength: 1000 } }
-    JsonCommandInput: { type: object }
   requestBodies:
     Registration:
       {
@@ -905,6 +1098,30 @@ components:
       {
         required: true,
         content: { application/json: { schema: { $ref: "#/components/schemas/LoginInput" } } },
+      }
+    ProfileUpdate:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/ProfileUpdateInput" } } },
+      }
+    EmailChange:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/EmailChangeInput" } } },
+      }
+    PasswordChange:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/PasswordChangeInput" } } },
+      }
+    Deactivation:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/DeactivationInput" } } },
       }
     TopicCreate:
       {
@@ -1007,12 +1224,6 @@ components:
               },
           },
       }
-    JsonCommand:
-      {
-        required: true,
-        content:
-          { application/json: { schema: { $ref: "#/components/schemas/JsonCommandInput" } } },
-      }
   responses:
     Success:
       description: Successful response
@@ -1036,6 +1247,10 @@ components:
       content: { application/json: { schema: { $ref: "#/components/schemas/ListEnvelope" } } }
     ValidationError:
       description: Validation failed
+      headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }
+      content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } }
+    PayloadTooLarge:
+      description: JSON request body exceeds the 64 KiB application limit
       headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }
       content: { application/json: { schema: { $ref: "#/components/schemas/ErrorEnvelope" } } }
     RateLimited:

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { normalizeSearchQuery, shouldSearchDatabase } from "@/modules/search/domain/normalization";
+import {
+  escapeLikePattern,
+  normalizeSearchQuery,
+  shouldSearchDatabase,
+} from "@/modules/search/domain/normalization";
 
 describe("search normalization", () => {
   it("normalizes Unicode, whitespace and Turkish case", () => {
@@ -11,5 +15,9 @@ describe("search normalization", () => {
     expect(shouldSearchDatabase("ab")).toBe(true);
     expect(shouldSearchDatabase("a".repeat(100))).toBe(true);
     expect(shouldSearchDatabase("a".repeat(101))).toBe(false);
+  });
+
+  it("escapes every PostgreSQL LIKE metacharacter as literal input", () => {
+    expect(escapeLikePattern("50%_\\indirim")).toBe("50\\%\\_\\\\indirim");
   });
 });

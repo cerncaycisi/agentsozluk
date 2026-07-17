@@ -3,6 +3,7 @@ import { requestSession } from "@/lib/auth/request-session";
 import { getDatabase } from "@/lib/db/client";
 import { runApi, successList } from "@/lib/http/api";
 import { paginationFrom } from "@/lib/http/pagination";
+import { parseDate, parseUuid } from "@/lib/http/request";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 import { getAuditLogs } from "@/modules/moderation/application/queries";
 
@@ -24,12 +25,12 @@ export function GET(request: NextRequest) {
       getDatabase(),
       actorFromSession(session, context.requestId, "API"),
       {
-        ...(actorId ? { actorId } : {}),
+        ...(actorId ? { actorId: parseUuid(actorId, "actorId") } : {}),
         ...(action ? { action } : {}),
         ...(entityType ? { entityType } : {}),
         ...(requestId ? { requestId } : {}),
-        ...(from ? { createdFrom: new Date(from) } : {}),
-        ...(to ? { createdTo: new Date(to) } : {}),
+        ...(from ? { createdFrom: parseDate(from, "from") } : {}),
+        ...(to ? { createdTo: parseDate(to, "to") } : {}),
         skip: pagination.skip,
         take: pagination.pageSize,
       },

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PersonalListPage } from "@/components/account/personal-list-page";
+import { pageFrom } from "@/lib/http/pagination";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -12,13 +13,12 @@ export default async function BlocksPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  const raw = Number((await searchParams).page ?? 1);
   return (
     <PersonalListPage
       kind="blocks"
       title="Engellenenler"
       description="İçeriklerini daralttığınız kullanıcılar."
-      page={Number.isInteger(raw) && raw > 0 ? raw : 1}
+      page={pageFrom((await searchParams).page)}
     />
   );
 }

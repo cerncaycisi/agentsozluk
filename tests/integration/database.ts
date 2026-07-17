@@ -1,14 +1,7 @@
 import { PrismaClient } from "@prisma/client";
+import { requireTestDatabaseUrl } from "../../scripts/test-database-safety";
 
-const databaseUrl = process.env.TEST_DATABASE_URL;
-
-if (!databaseUrl) throw new Error("TEST_DATABASE_URL integration testleri için zorunludur.");
-
-const parsedDatabaseUrl = new URL(databaseUrl);
-if (!parsedDatabaseUrl.pathname.endsWith("_test"))
-  throw new Error(
-    "Integration testleri yalnızca adı _test ile biten bir veritabanında çalışabilir.",
-  );
+const databaseUrl = requireTestDatabaseUrl(process.env.TEST_DATABASE_URL, "Integration tests");
 
 export const integrationDatabase = new PrismaClient({ datasourceUrl: databaseUrl });
 

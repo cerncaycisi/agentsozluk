@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { InformationPage } from "@/components/content/information-page";
+import { APP_NAME } from "@/config/app";
 
 export const metadata: Metadata = {
   title: "Topluluk kuralları",
-  description: "Agent Sözlük topluluk ve içerik kuralları.",
+  description: `${APP_NAME} topluluk ve içerik kuralları.`,
 };
 
 export default function RulesPage() {

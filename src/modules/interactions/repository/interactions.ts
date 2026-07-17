@@ -4,9 +4,64 @@ export async function lockEntryVoteCounter(
   transaction: Prisma.TransactionClient,
   entryId: string,
 ): Promise<void> {
-  await transaction.$executeRaw`
-    SELECT pg_advisory_xact_lock(hashtextextended(${`entry-vote:${entryId}`}, 0))
-  `;
+  await lockEntryVoteCounters(transaction, [entryId]);
+}
+
+export async function lockEntryVoteCounters(
+  transaction: Prisma.TransactionClient,
+  entryIds: readonly string[],
+): Promise<void> {
+  const orderedEntryIds = [...new Set(entryIds)].sort((left, right) => left.localeCompare(right));
+  for (const entryId of orderedEntryIds) {
+    await transaction.$executeRaw`
+      SELECT pg_advisory_xact_lock(hashtextextended(${`entry-vote:${entryId}`}, 0))
+    `;
+  }
+}
+
+export async function findUserVoteEntryIds(
+  transaction: Prisma.TransactionClient,
+  userId: string,
+): Promise<string[]> {
+  const votes = await transaction.entryVote.findMany({
+    where: { userId },
+    select: { entryId: true },
+    orderBy: { entryId: "asc" },
+  });
+  return votes.map((vote) => vote.entryId);
+}
+
+export function removeUserVoteRecords(transaction: Prisma.TransactionClient, userId: string) {
+  return transaction.entryVote.deleteMany({ where: { userId } });
+}
+
+export async function recalculateEntryVoteCounters(
+  transaction: Prisma.TransactionClient,
+  entryIds: readonly string[],
+): Promise<void> {
+  const orderedEntryIds = [...new Set(entryIds)].sort((left, right) => left.localeCompare(right));
+  if (orderedEntryIds.length === 0) return;
+
+  const groupedVotes = await transaction.entryVote.groupBy({
+    by: ["entryId", "value"],
+    where: { entryId: { in: orderedEntryIds } },
+    _count: { _all: true },
+  });
+  const counters = new Map(
+    orderedEntryIds.map((entryId) => [entryId, { upvoteCount: 0, downvoteCount: 0, score: 0 }]),
+  );
+  for (const group of groupedVotes) {
+    const entryCounters = counters.get(group.entryId);
+    if (!entryCounters) continue;
+    const count = group._count._all;
+    if (group.value === 1) entryCounters.upvoteCount = count;
+    if (group.value === -1) entryCounters.downvoteCount = count;
+    entryCounters.score += group.value * count;
+  }
+
+  for (const [entryId, entryCounters] of counters) {
+    await updateEntryVoteCounters(transaction, entryId, entryCounters);
+  }
 }
 
 export function findVote(transaction: Prisma.TransactionClient, entryId: string, userId: string) {
@@ -113,6 +168,34 @@ export function findBlockTarget(transaction: Prisma.TransactionClient, userId: s
   });
 }
 
+export function findUserBlock(
+  transaction: Prisma.TransactionClient,
+  blockerId: string,
+  blockedId: string,
+) {
+  return transaction.userBlock.findUnique({
+    where: { blockerId_blockedId: { blockerId, blockedId } },
+    select: { blockerId: true },
+  });
+}
+
+export function listViewerEntryStates(
+  transaction: Prisma.TransactionClient,
+  userId: string,
+  entryIds: string[],
+) {
+  return Promise.all([
+    transaction.entryVote.findMany({
+      where: { userId, entryId: { in: entryIds } },
+      select: { entryId: true, value: true },
+    }),
+    transaction.entryBookmark.findMany({
+      where: { userId, entryId: { in: entryIds } },
+      select: { entryId: true },
+    }),
+  ]);
+}
+
 export function listBookmarks(
   transaction: Prisma.TransactionClient,
   userId: string,
@@ -136,6 +219,7 @@ export function listBookmarks(
             createdAt: true,
             topic: { select: { id: true, title: true, slug: true } },
             author: { select: { id: true, username: true, displayName: true } },
+            _count: { select: { revisions: true } },
           },
         },
       },
@@ -201,6 +285,7 @@ export function listVotes(
             createdAt: true,
             topic: { select: { id: true, title: true, slug: true } },
             author: { select: { id: true, username: true, displayName: true } },
+            _count: { select: { revisions: true } },
           },
         },
       },

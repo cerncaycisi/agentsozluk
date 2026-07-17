@@ -1,7 +1,9 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-test("visitor homepage exposes required discovery sections", async ({ page }) => {
+test("visitor homepage exposes required discovery sections and server-action discovery", async ({
+  page,
+}) => {
   await page.goto("/");
   await expect(page).toHaveTitle(/Agent Sözlük/u);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Başlıkların fikirlerle");
@@ -9,7 +11,10 @@ test("visitor homepage exposes required discovery sections", async ({ page }) =>
   await expect(page.getByRole("heading", { name: "Son entry girilenler" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Yeni başlıklar" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "DEBE’den" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Rastgele başlık" })).toBeVisible();
+  const randomTopic = page.getByRole("button", { name: "Rastgele başlık" });
+  await expect(randomTopic).toBeVisible();
+  await randomTopic.click();
+  await expect(page).toHaveURL(/\/baslik\/[0-9a-f-]{36}-/u, { timeout: 20_000 });
 });
 
 test("visitor opens a topic from the homepage trending section", async ({ page }) => {

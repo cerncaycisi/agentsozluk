@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
-import { getDatabase, runModerationAction } from "@/lib/http/moderation-action";
+import { runModerationAction } from "@/lib/http/moderation-action";
+import { parseUuid } from "@/lib/http/request";
 import { moveEntry } from "@/modules/moderation/application/actions";
 import { entryMoveSchema } from "@/modules/moderation/validation/schemas";
 
@@ -10,7 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ entryId: string }> },
 ) {
   const { entryId } = await params;
-  return runModerationAction(request, entryMoveSchema, (actor, input) =>
-    moveEntry(getDatabase(), actor, entryId, input),
+  return runModerationAction(request, entryMoveSchema, (client, actor, input) =>
+    moveEntry(client, actor, parseUuid(entryId, "entryId"), input),
   );
 }

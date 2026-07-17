@@ -2,6 +2,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { EntryBody } from "@/components/entries/entry-body";
+import { BlockedEntryBody } from "@/components/entries/blocked-entry-body";
 import { EntryActions } from "@/components/entries/entry-actions";
 
 export interface EntryPreviewItem {
@@ -9,8 +10,12 @@ export interface EntryPreviewItem {
   body: string;
   score: number;
   createdAt: Date;
+  status?: "ACTIVE" | "DELETED" | "HIDDEN";
+  edited?: boolean;
+  _count?: { revisions: number };
   topic: { id: string; title: string; slug: string };
-  author: { username: string; displayName: string };
+  author: { id: string; username: string; displayName: string };
+  blockedByViewer?: boolean;
 }
 
 export function EntryPreview({
@@ -18,17 +23,38 @@ export function EntryPreview({
   actions,
 }: {
   entry: EntryPreviewItem;
-  actions?: { vote: -1 | 1 | null; bookmarked: boolean; canEdit: boolean };
+  actions?: {
+    vote: -1 | 1 | null;
+    bookmarked: boolean;
+    canEdit: boolean;
+    canReport: boolean;
+    canBlockAuthor: boolean;
+  };
 }) {
+  const edited = entry.edited ?? (entry._count?.revisions ?? 0) > 0;
   return (
-    <article className="surface-card p-5">
-      <h2 className="text-lg font-bold">
-        <Link href={`/baslik/${entry.topic.id}-${entry.topic.slug}`} className="hover:text-primary">
-          {entry.topic.title}
-        </Link>
-      </h2>
+    <article id={`entry-${entry.id}`} className="surface-card scroll-mt-24 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <h2 className="text-lg font-bold">
+          <Link
+            href={`/baslik/${entry.topic.id}-${entry.topic.slug}`}
+            className="hover:text-primary"
+          >
+            {entry.topic.title}
+          </Link>
+        </h2>
+        {entry.status === "HIDDEN" ? (
+          <span className="rounded-full bg-destructive/10 px-3 py-1 text-xs font-bold text-destructive">
+            gizlenmiş entry
+          </span>
+        ) : null}
+      </div>
       <div className="mt-4">
-        <EntryBody body={entry.body} />
+        {entry.blockedByViewer ? (
+          <BlockedEntryBody body={entry.body} />
+        ) : (
+          <EntryBody body={entry.body} />
+        )}
       </div>
       <footer className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-sm text-muted">
         <span>{entry.score} puan</span>
@@ -40,6 +66,11 @@ export function EntryPreview({
             {entry.author.displayName} · @{entry.author.username}
           </Link>{" "}
           · {format(entry.createdAt, "d MMM yyyy HH:mm", { locale: tr })}
+          {edited ? (
+            <span className="ml-2 font-semibold" aria-label="Entry düzenlendi">
+              · düzenlendi
+            </span>
+          ) : null}
         </span>
         <Link href={`/entry/${entry.id}`} className="font-semibold text-primary hover:underline">
           kalıcı bağlantı
@@ -53,6 +84,10 @@ export function EntryPreview({
           initialVote={actions.vote}
           initialBookmarked={actions.bookmarked}
           canEdit={actions.canEdit}
+          authorId={entry.author.id}
+          canReport={actions.canReport}
+          canBlockAuthor={actions.canBlockAuthor}
+          initialAuthorBlocked={Boolean(entry.blockedByViewer)}
         />
       ) : null}
     </article>

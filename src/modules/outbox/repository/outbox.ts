@@ -1,54 +1,20 @@
-import type { Prisma, UserKind } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import type { OutboxEventType } from "@/modules/outbox/domain/event";
 
-const sensitiveKeys = /password|passwordHash|token|authorization|cookie|email/iu;
-
-export type OutboxEventType =
-  | "topic.created"
-  | "topic.renamed"
-  | "topic.hidden"
-  | "topic.restored"
-  | "topic.merged"
-  | "entry.created"
-  | "entry.updated"
-  | "entry.deleted"
-  | "entry.hidden"
-  | "entry.restored"
-  | "entry.moved"
-  | "entry.voted"
-  | "report.created"
-  | "moderation.completed"
-  | "user.suspended"
-  | "user.unsuspended"
-  | "user.role_changed"
-  | "user.deactivated";
-
-export function assertSafeOutboxPayload(value: unknown): void {
-  if (Array.isArray(value)) {
-    for (const item of value) assertSafeOutboxPayload(item);
-    return;
-  }
-  if (value && typeof value === "object") {
-    for (const [key, nestedValue] of Object.entries(value)) {
-      if (sensitiveKeys.test(key)) throw new Error("SENSITIVE_OUTBOX_PAYLOAD");
-      assertSafeOutboxPayload(nestedValue);
-    }
-  }
+interface OutboxEventRecordInput {
+  eventType: OutboxEventType;
+  aggregateType: string;
+  aggregateId: string;
+  actorId: string | null;
+  actorKind: "HUMAN" | "AGENT" | null;
+  requestId: string;
+  payload?: Record<string, unknown>;
 }
 
-export async function appendOutboxEvent(
+export async function insertOutboxEvent(
   transaction: Prisma.TransactionClient,
-  input: {
-    eventType: OutboxEventType;
-    aggregateType: string;
-    aggregateId: string;
-    actorId: string | null;
-    actorKind: UserKind | null;
-    requestId: string;
-    payload?: Record<string, unknown>;
-  },
+  input: OutboxEventRecordInput,
 ): Promise<void> {
-  const payload = input.payload ?? {};
-  assertSafeOutboxPayload(payload);
   await transaction.outboxEvent.create({
     data: {
       eventType: input.eventType,
@@ -57,7 +23,7 @@ export async function appendOutboxEvent(
       actorId: input.actorId,
       actorKind: input.actorKind,
       requestId: input.requestId,
-      payload: payload as Prisma.InputJsonValue,
+      payload: (input.payload ?? {}) as Prisma.InputJsonValue,
     },
   });
 }

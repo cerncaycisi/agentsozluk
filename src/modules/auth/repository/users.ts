@@ -29,8 +29,88 @@ export function findAuthUserByEmail(
   return transaction.user.findUnique({ where: { emailNormalized }, select: authUserSelect });
 }
 
+export function findAuthUserCandidateByEmail(
+  transaction: Prisma.TransactionClient,
+  emailNormalized: string,
+) {
+  return transaction.user.findUnique({
+    where: { emailNormalized },
+    select: { id: true },
+  });
+}
+
 export function findAuthUserById(transaction: Prisma.TransactionClient, id: string) {
   return transaction.user.findUnique({ where: { id }, select: authUserSelect });
+}
+
+type UserStateLockMode = "shared" | "exclusive";
+
+/**
+ * Serializes account-state transitions against authenticated work for the
+ * lifetime of the surrounding transaction. Sorting makes multi-user
+ * moderation transitions deadlock-safe; an exclusive request wins when the
+ * same user appears more than once.
+ */
+export async function lockUserStates(
+  transaction: Prisma.TransactionClient,
+  locks: ReadonlyArray<{ userId: string; mode: UserStateLockMode }>,
+): Promise<void> {
+  const strongestModeByUser = new Map<string, UserStateLockMode>();
+  for (const lock of locks) {
+    const current = strongestModeByUser.get(lock.userId);
+    if (!current || lock.mode === "exclusive") {
+      strongestModeByUser.set(lock.userId, lock.mode);
+    }
+  }
+
+  const orderedLocks = [...strongestModeByUser.entries()].sort(([left], [right]) =>
+    left.localeCompare(right),
+  );
+  for (const [userId, mode] of orderedLocks) {
+    const key = `user-state:${userId}`;
+    if (mode === "exclusive") {
+      await transaction.$executeRaw`
+        SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))
+      `;
+    } else {
+      await transaction.$executeRaw`
+        SELECT pg_advisory_xact_lock_shared(hashtextextended(${key}, 0))
+      `;
+    }
+  }
+}
+
+export function lockUserStateForMutation(
+  transaction: Prisma.TransactionClient,
+  userId: string,
+): Promise<void> {
+  return lockUserStates(transaction, [{ userId, mode: "shared" }]);
+}
+
+export function lockUserStateForTransition(
+  transaction: Prisma.TransactionClient,
+  userId: string,
+): Promise<void> {
+  return lockUserStates(transaction, [{ userId, mode: "exclusive" }]);
+}
+
+export function lockUserActorAndTargetTransition(
+  transaction: Prisma.TransactionClient,
+  actorId: string,
+  targetId: string,
+): Promise<void> {
+  return lockUserStates(transaction, [
+    { userId: actorId, mode: "shared" },
+    { userId: targetId, mode: "exclusive" },
+  ]);
+}
+
+export async function findActiveUserForWrite(transaction: Prisma.TransactionClient, id: string) {
+  await lockUserStateForMutation(transaction, id);
+  return transaction.user.findUnique({
+    where: { id },
+    select: { id: true, status: true },
+  });
 }
 
 export function findUserConflicts(
@@ -118,11 +198,10 @@ export function anonymizeUserRecord(
   });
 }
 
-export async function deletePrivateUserInteractions(
+export async function deletePrivateUserInteractionsExceptVotes(
   transaction: Prisma.TransactionClient,
   userId: string,
 ): Promise<void> {
-  await transaction.entryVote.deleteMany({ where: { userId } });
   await transaction.entryBookmark.deleteMany({ where: { userId } });
   await transaction.topicFollow.deleteMany({ where: { userId } });
   await transaction.userBlock.deleteMany({

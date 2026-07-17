@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { hash } from "@node-rs/argon2";
+import { APP_NAME } from "@/config/app";
 import type { Prisma } from "@prisma/client";
 import { getDatabase } from "@/lib/db/client";
 import { normalizeEntryBody } from "@/modules/entries/domain/entry";
@@ -109,7 +110,7 @@ async function seed(): Promise<void> {
       username,
       usernameNormalized: username,
       displayName,
-      bio: `${displayName}, farklı fikirleri merak eden bir Agent Sözlük katılımcısı.`,
+      bio: `${displayName}, farklı fikirleri merak eden bir ${APP_NAME} katılımcısı.`,
       passwordHash,
       termsVersion: process.env.TERMS_VERSION ?? "1.0",
       termsAcceptedAt: now,
@@ -160,7 +161,7 @@ async function seed(): Promise<void> {
     await database.entry.upsert({
       where: { id: uuid(index + 1001) },
       create: { id: uuid(index + 1001), ...data },
-      update: data,
+      update: {},
     });
   }
 

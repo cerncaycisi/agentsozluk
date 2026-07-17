@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { assertVoteValue, transitionVote } from "@/modules/interactions/domain/vote";
+import { voteSchema } from "@/modules/interactions/validation/schemas";
 
 describe("vote state transitions", () => {
   it("creates, changes and removes a vote while preserving the score invariant", () => {
@@ -23,5 +24,11 @@ describe("vote state transitions", () => {
     expect(() => transitionVote({ upvoteCount: 0, downvoteCount: 0, score: 0 }, 1, null)).toThrow(
       "NEGATIVE_VOTE_COUNTER",
     );
+  });
+
+  it("accepts only the two API vote values", () => {
+    expect(voteSchema.parse({ value: 1 })).toEqual({ value: 1 });
+    expect(voteSchema.parse({ value: -1 })).toEqual({ value: -1 });
+    expect(voteSchema.safeParse({ value: 0 }).success).toBe(false);
   });
 });

@@ -8,7 +8,9 @@ import { authenticateSession } from "@/modules/auth/application/sessions";
 
 export async function currentPageSession() {
   const cookieStore = await cookies();
-  return authenticateSession(getDatabase(), cookieStore.get(SESSION_COOKIE_NAME)?.value);
+  return authenticateSession(getDatabase(), cookieStore.get(SESSION_COOKIE_NAME)?.value, {
+    extendExpiration: false,
+  });
 }
 
 export async function requirePageSession() {

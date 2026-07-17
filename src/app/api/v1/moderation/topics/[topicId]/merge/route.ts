@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
-import { getDatabase, runModerationAction } from "@/lib/http/moderation-action";
+import { runModerationAction } from "@/lib/http/moderation-action";
+import { parseUuid } from "@/lib/http/request";
 import { mergeTopic } from "@/modules/moderation/application/actions";
 import { topicMergeSchema } from "@/modules/moderation/validation/schemas";
 
@@ -10,7 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ topicId: string }> },
 ) {
   const { topicId } = await params;
-  return runModerationAction(request, topicMergeSchema, (actor, input) =>
-    mergeTopic(getDatabase(), actor, topicId, input),
+  return runModerationAction(request, topicMergeSchema, (client, actor, input) =>
+    mergeTopic(client, actor, parseUuid(topicId, "topicId"), input),
   );
 }

@@ -1,14 +1,21 @@
-import type { PrismaClient } from "@prisma/client";
+import type { DatabaseClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { currentIstanbulDayWindow, previousIstanbulDayWindow } from "@/modules/feeds/domain/time";
+import {
+  boundedFeedWindow,
+  TOPIC_FEED_MAX_ITEMS,
+  topicFeedWindowStart,
+  type TopicFeed,
+} from "@/modules/feeds/domain/feed";
 import {
   findRandomActiveTopic,
   listChronologicalTopics,
   listDebeEntries,
   listScoredTopics,
 } from "@/modules/feeds/repository/feeds";
+import { withEditedIndicator } from "@/modules/entries/domain/entry";
 
-export type TopicFeed = "trending" | "recent" | "new" | "popular";
+export type { TopicFeed } from "@/modules/feeds/domain/feed";
 
 export interface TopicFeedItem {
   id: string;
@@ -25,40 +32,43 @@ export interface TopicFeedItem {
 }
 
 export async function getTopicFeed(
-  client: PrismaClient,
+  client: DatabaseClient,
   input: { feed: TopicFeed; page: number; pageSize: number; skip: number; now?: Date },
 ): Promise<{ topics: TopicFeedItem[]; totalItems: number }> {
   const now = input.now ?? new Date();
-  const pageSize = Math.min(input.pageSize, 30);
-  const skip = Math.min(input.skip, 30);
-  const remaining = Math.max(0, 30 - skip);
-  const take = Math.min(pageSize, remaining);
-  if (take === 0) return { topics: [], totalItems: 30 };
+  const { skip, take } = boundedFeedWindow(input.skip, input.pageSize);
 
   if (input.feed === "recent" || input.feed === "new") {
     const mode = input.feed;
-    const [topics, total] = await client.$transaction((transaction) =>
+    const result = await client.$transaction((transaction) =>
       listChronologicalTopics(transaction, { mode, skip, take }),
     );
-    return { topics, totalItems: Math.min(total, 30) };
+    return {
+      topics: result.topics,
+      totalItems: Math.min(result.totalItems, TOPIC_FEED_MAX_ITEMS),
+    };
   }
 
   const windowStart =
     input.feed === "popular"
       ? currentIstanbulDayWindow(now).start
-      : new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const topics = await client.$transaction((transaction) =>
+      : topicFeedWindowStart(input.feed, now);
+  const result = await client.$transaction((transaction) =>
     listScoredTopics(transaction, { windowStart, now, skip, take }),
   );
-  return { topics, totalItems: Math.min(topics[0]?.totalItems ?? 0, 30) };
+  return {
+    topics: result.topics,
+    totalItems: Math.min(result.totalItems, TOPIC_FEED_MAX_ITEMS),
+  };
 }
 
-export function getDebe(client: PrismaClient, now = new Date()) {
+export async function getDebe(client: DatabaseClient, now = new Date()) {
   const window = previousIstanbulDayWindow(now);
-  return client.$transaction((transaction) => listDebeEntries(transaction, window));
+  const entries = await client.$transaction((transaction) => listDebeEntries(transaction, window));
+  return entries.map(withEditedIndicator);
 }
 
-export async function getRandomTopic(client: PrismaClient, randomKey = Math.random()) {
+export async function getRandomTopic(client: DatabaseClient, randomKey = Math.random()) {
   const topic = await client.$transaction((transaction) =>
     findRandomActiveTopic(transaction, randomKey),
   );

@@ -1,17 +1,13 @@
-import type { Prisma } from "@prisma/client";
 import { AppError } from "@/lib/http/errors";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 
-export async function requireModerator(
-  transaction: Prisma.TransactionClient,
+export function requireModerator(
+  user: { id: string; role: "USER" | "MODERATOR" | "ADMIN"; status: string } | null,
   actor: ActorContext,
   options: { adminOnly?: boolean } = {},
 ) {
-  const user = await transaction.user.findUnique({
-    where: { id: actor.actorId },
-    select: { id: true, role: true, status: true },
-  });
   const permitted =
+    user?.id === actor.actorId &&
     user?.status === "ACTIVE" &&
     (options.adminOnly
       ? user.role === "ADMIN"

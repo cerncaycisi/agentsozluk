@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
-import { getDatabase, runModerationAction } from "@/lib/http/moderation-action";
+import { runModerationAction } from "@/lib/http/moderation-action";
+import { parseUuid } from "@/lib/http/request";
 import { decideReport } from "@/modules/moderation/application/reports";
 import { reportDecisionSchema } from "@/modules/moderation/validation/schemas";
 
@@ -10,7 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ reportId: string }> },
 ) {
   const { reportId } = await params;
-  return runModerationAction(request, reportDecisionSchema, (actor, input) =>
-    decideReport(getDatabase(), actor, reportId, "REJECTED", input),
+  return runModerationAction(request, reportDecisionSchema, (client, actor, input) =>
+    decideReport(client, actor, parseUuid(reportId, "reportId"), "REJECTED", input),
   );
 }

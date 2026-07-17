@@ -1,9 +1,15 @@
-import type { PrismaClient } from "@prisma/client";
+import { inTransaction } from "@/lib/db/transaction";
+import type { DatabaseClient, DatabaseExecutor } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
-import { appendAuditLog } from "@/modules/audit/repository/audit";
+import { appendAuditLog } from "@/modules/audit";
+import { requireActiveActor } from "@/modules/auth/application/guards";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { canEditEntry, canViewRevision } from "@/modules/auth/domain/permissions";
-import { hasMeaningfulEntryChange } from "@/modules/entries/domain/entry";
+import {
+  hasMeaningfulEntryChange,
+  isCanonicalSeedEntry,
+  withEditedIndicator,
+} from "@/modules/entries/domain/entry";
 import {
   createEntryRecord,
   createEntryRevision,
@@ -11,16 +17,18 @@ import {
   listBlockedAuthorIds,
   listEntryRevisions,
   listTopicEntries,
+  lockEntryState,
   softDeleteEntryRecord,
   updateEntryRecord,
 } from "@/modules/entries/repository/entries";
-import { appendOutboxEvent } from "@/modules/outbox/repository/outbox";
+import { appendOutboxEvent } from "@/modules/outbox";
 import {
   findTopicById,
+  lockTopicState,
   recalculateTopicCounter,
   updateTopicAfterEntryCreate,
 } from "@/modules/topics/repository/topics";
-import type { EntryCreateInput, EntryUpdateInput } from "@/modules/topics/validation/schemas";
+import type { EntryCreateInput, EntryUpdateInput } from "@/modules/entries/validation/schemas";
 
 export interface EntryViewer {
   userId: string;
@@ -50,12 +58,14 @@ function mergedTopicError(topic: {
 }
 
 export async function createEntry(
-  client: PrismaClient,
+  client: DatabaseExecutor,
   actor: ActorContext,
   topicId: string,
   input: EntryCreateInput,
 ) {
-  return client.$transaction(async (transaction) => {
+  return inTransaction(client, async (transaction) => {
+    await requireActiveActor(transaction, actor.actorId);
+    await lockTopicState(transaction, topicId);
     const topic = await findTopicById(transaction, topicId);
     if (!topic) throw new AppError("TOPIC_NOT_FOUND", 404, "Başlık bulunamadı.");
     if (topic.status === "MERGED") throw mergedTopicError(topic);
@@ -88,19 +98,32 @@ export async function createEntry(
       requestId: actor.requestId,
       metadata: { topicId, origin: actor.origin },
     });
-    return entry;
+    return withEditedIndicator(entry);
   });
 }
 
 export async function editEntry(
-  client: PrismaClient,
+  client: DatabaseClient,
   actor: ActorContext,
   input: EntryUpdateInput,
   entryId: string,
 ) {
   return client.$transaction(async (transaction) => {
+    await requireActiveActor(transaction, actor.actorId);
+    const initialEntry = await findEntryById(transaction, entryId);
+    if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
+    await lockTopicState(transaction, initialEntry.topicId);
+    await lockEntryState(transaction, entryId);
     const entry = await findEntryById(transaction, entryId);
     if (!entry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
+    if (entry.topicId !== initialEntry.topicId)
+      throw new AppError(
+        "ENTRY_NOT_EDITABLE",
+        409,
+        "Entry durumu eşzamanlı olarak değişti; işlemi yeniden deneyin.",
+      );
+    if (isCanonicalSeedEntry(entry))
+      throw new AppError("ENTRY_NOT_EDITABLE", 409, "Korunan seed entry düzenlenemez.");
     if (
       !canEditEntry(
         { id: actor.actorId, role: actor.actorRole, status: "ACTIVE" },
@@ -109,7 +132,7 @@ export async function editEntry(
       )
     )
       throw new AppError("ENTRY_NOT_EDITABLE", 403, "Bu entry düzenlenemez.");
-    if (!hasMeaningfulEntryChange(entry.body, input.body)) return entry;
+    if (!hasMeaningfulEntryChange(entry.body, input.body)) return withEditedIndicator(entry);
 
     await createEntryRevision(transaction, {
       entryId,
@@ -117,6 +140,12 @@ export async function editEntry(
       editedById: actor.actorId,
     });
     const updated = await updateEntryRecord(transaction, entryId, input.body);
+    if (!updated)
+      throw new AppError(
+        "ENTRY_NOT_EDITABLE",
+        409,
+        "Entry durumu eşzamanlı olarak değişti; işlemi yeniden deneyin.",
+      );
     await appendOutboxEvent(transaction, {
       eventType: "entry.updated",
       aggregateType: "Entry",
@@ -134,14 +163,27 @@ export async function editEntry(
       requestId: actor.requestId,
       metadata: { topicId: entry.topicId },
     });
-    return updated;
+    return withEditedIndicator(updated);
   });
 }
 
-export async function deleteEntry(client: PrismaClient, actor: ActorContext, entryId: string) {
+export async function deleteEntry(client: DatabaseClient, actor: ActorContext, entryId: string) {
   return client.$transaction(async (transaction) => {
+    await requireActiveActor(transaction, actor.actorId);
+    const initialEntry = await findEntryById(transaction, entryId);
+    if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
+    await lockTopicState(transaction, initialEntry.topicId);
+    await lockEntryState(transaction, entryId);
     const entry = await findEntryById(transaction, entryId);
     if (!entry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
+    if (entry.topicId !== initialEntry.topicId)
+      throw new AppError(
+        "ENTRY_NOT_EDITABLE",
+        409,
+        "Entry durumu eşzamanlı olarak değişti; işlemi yeniden deneyin.",
+      );
+    if (isCanonicalSeedEntry(entry))
+      throw new AppError("ENTRY_NOT_EDITABLE", 409, "Korunan seed entry silinemez.");
     if (
       !canEditEntry(
         { id: actor.actorId, role: actor.actorRole, status: "ACTIVE" },
@@ -151,6 +193,12 @@ export async function deleteEntry(client: PrismaClient, actor: ActorContext, ent
     )
       throw new AppError("ENTRY_NOT_EDITABLE", 403, "Bu entry silinemez.");
     const deleted = await softDeleteEntryRecord(transaction, entryId, new Date());
+    if (!deleted)
+      throw new AppError(
+        "ENTRY_NOT_EDITABLE",
+        409,
+        "Entry durumu eşzamanlı olarak değişti; işlemi yeniden deneyin.",
+      );
     await recalculateTopicCounter(transaction, entry.topicId);
     await appendOutboxEvent(transaction, {
       eventType: "entry.deleted",
@@ -169,7 +217,7 @@ export async function deleteEntry(client: PrismaClient, actor: ActorContext, ent
       requestId: actor.requestId,
       metadata: { topicId: entry.topicId },
     });
-    return deleted;
+    return withEditedIndicator(deleted);
   });
 }
 
@@ -181,7 +229,11 @@ function canInspectEntry(viewer: EntryViewer | null, entry: { authorId: string }
   );
 }
 
-export async function getEntry(client: PrismaClient, entryId: string, viewer: EntryViewer | null) {
+export async function getEntry(
+  client: DatabaseClient,
+  entryId: string,
+  viewer: EntryViewer | null,
+) {
   return client.$transaction(async (transaction) => {
     const entry = await findEntryById(transaction, entryId);
     if (!entry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
@@ -193,20 +245,24 @@ export async function getEntry(client: PrismaClient, entryId: string, viewer: En
     );
     if (entry.topic.status === "HIDDEN" && !canInspectTopic)
       throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
-    if (entry.topic.status === "MERGED" && entry.topic.mergedIntoId)
-      return { ...entry, canonicalTopicId: entry.topic.mergedIntoId };
+    const visibleEntry = withEditedIndicator(entry);
     if (entry.status === "HIDDEN" && !canInspectEntry(viewer, entry))
       throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
-    if (entry.status === "DELETED" && !canInspectEntry(viewer, entry))
-      return { ...entry, body: "bu entry yazar tarafından silindi", normalizedBody: "" };
-    return entry;
+    const presentedEntry =
+      entry.status === "DELETED" && !canInspectEntry(viewer, entry)
+        ? { ...visibleEntry, body: "bu entry yazar tarafından silindi", normalizedBody: "" }
+        : visibleEntry;
+    return entry.topic.status === "MERGED" && entry.topic.mergedIntoId
+      ? { ...presentedEntry, canonicalTopicId: entry.topic.mergedIntoId }
+      : presentedEntry;
   });
 }
 
 export async function getEntryRevisions(
-  client: PrismaClient,
+  client: DatabaseClient,
   entryId: string,
   viewer: EntryViewer,
+  pagination: { skip: number; take: number },
 ) {
   return client.$transaction(async (transaction) => {
     const entry = await findEntryById(transaction, entryId);
@@ -218,12 +274,18 @@ export async function getEntryRevisions(
       )
     )
       throw new AppError("FORBIDDEN", 403, "Revision geçmişini görüntüleme yetkiniz yok.");
-    return listEntryRevisions(transaction, entryId);
+    const [revisions, totalItems] = await listEntryRevisions(
+      transaction,
+      entryId,
+      pagination.skip,
+      pagination.take,
+    );
+    return { revisions, totalItems };
   });
 }
 
 export async function getTopicEntries(
-  client: PrismaClient,
+  client: DatabaseClient,
   input: {
     topicId: string;
     viewer: EntryViewer | null;
@@ -260,19 +322,24 @@ export async function getTopicEntries(
     };
     const [entries, totalItems] = await listTopicEntries(transaction, listInput);
     const blockedAuthorIds = input.viewer
-      ? await listBlockedAuthorIds(transaction, input.viewer.userId)
+      ? await listBlockedAuthorIds(
+          transaction,
+          input.viewer.userId,
+          entries.map((entry) => entry.authorId),
+        )
       : new Set<string>();
     return {
-      entries: entries.map((entry) =>
-        entry.status === "DELETED" && !canInspectEntry(input.viewer, entry)
+      entries: entries.map((entry) => {
+        const visibleEntry = withEditedIndicator(entry);
+        return entry.status === "DELETED" && !canInspectEntry(input.viewer, entry)
           ? {
-              ...entry,
+              ...visibleEntry,
               body: "bu entry yazar tarafından silindi",
               normalizedBody: "",
               blockedByViewer: blockedAuthorIds.has(entry.authorId),
             }
-          : { ...entry, blockedByViewer: blockedAuthorIds.has(entry.authorId) },
-      ),
+          : { ...visibleEntry, blockedByViewer: blockedAuthorIds.has(entry.authorId) };
+      }),
       totalItems,
     };
   });

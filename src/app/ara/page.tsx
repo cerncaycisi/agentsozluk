@@ -1,8 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
+import { currentPageSession } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
+import { AppError } from "@/lib/http/errors";
+import { pageFrom } from "@/lib/http/pagination";
 import { PaginationLinks } from "@/components/ui/pagination-links";
+import {
+  enforceRateLimit,
+  ipRateLimitIdentifier,
+  RATE_LIMIT_RULES,
+  requestIp,
+  userRateLimitIdentifier,
+} from "@/modules/rate-limit/application/rate-limit";
 import { searchAll } from "@/modules/search/application/search";
+import { normalizeSearchQuery } from "@/modules/search/domain/normalization";
 import { searchTypeSchema, type SearchType } from "@/modules/search/validation/schemas";
 
 export const dynamic = "force-dynamic";
@@ -27,18 +39,37 @@ export default async function SearchPage({
   searchParams: Promise<{ q?: string; type?: string; page?: string }>;
 }) {
   const params = await searchParams;
-  const rawPage = Number(params.page ?? 1);
-  const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+  const page = pageFrom(params.page);
   const parsedType = searchTypeSchema.safeParse(params.type ?? "all");
   const type = parsedType.success ? parsedType.data : "all";
   const pageSize = 20;
-  const result = await searchAll(getDatabase(), {
-    query: params.q ?? "",
-    type,
-    page,
-    pageSize,
-    skip: (page - 1) * pageSize,
-  });
+  const database = getDatabase();
+  const query = normalizeSearchQuery(params.q ?? "").slice(0, 100);
+  let rateLimited = false;
+  let result: Awaited<ReturnType<typeof searchAll>>;
+  try {
+    if (query.length >= 2) {
+      const [session, requestHeaders] = await Promise.all([currentPageSession(), headers()]);
+      await enforceRateLimit(
+        database,
+        session
+          ? userRateLimitIdentifier(session.userId)
+          : ipRateLimitIdentifier(requestIp({ headers: requestHeaders })),
+        session ? RATE_LIMIT_RULES.searchAuthenticated : RATE_LIMIT_RULES.searchVisitor,
+      );
+    }
+    result = await searchAll(database, {
+      query,
+      type,
+      page,
+      pageSize,
+      skip: (page - 1) * pageSize,
+    });
+  } catch (error) {
+    if (!(error instanceof AppError) || error.code !== "RATE_LIMITED") throw error;
+    rateLimited = true;
+    result = { query, results: [], totalItems: 0 };
+  }
   const totalPages = Math.max(1, Math.ceil(result.totalItems / pageSize));
   return (
     <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
@@ -80,9 +111,11 @@ export default async function SearchPage({
 
       <section aria-labelledby="arama-sonuclari" className="mt-8">
         <h2 id="arama-sonuclari" className="text-xl font-bold">
-          {result.query.length < 2
-            ? "Aramak için en az iki karakter yazın"
-            : `${result.totalItems} sonuç`}
+          {rateLimited
+            ? "Arama sınırına ulaştınız; lütfen kısa süre sonra yeniden deneyin"
+            : result.query.length < 2
+              ? "Aramak için en az iki karakter yazın"
+              : `${result.totalItems} sonuç`}
         </h2>
         <div className="mt-4 space-y-3">
           {result.results.map((item) => (
@@ -98,7 +131,7 @@ export default async function SearchPage({
               <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-muted">{item.snippet}</p>
             </article>
           ))}
-          {result.query.length >= 2 && result.results.length === 0 ? (
+          {!rateLimited && result.query.length >= 2 && result.results.length === 0 ? (
             <p className="surface-card p-6 text-muted">Aramanızla eşleşen sonuç bulunamadı.</p>
           ) : null}
         </div>

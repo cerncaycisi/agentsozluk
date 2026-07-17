@@ -1,7 +1,7 @@
 "use client";
 
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { Bookmark, Flag, Pencil, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
+import { Bookmark, Flag, Pencil, ThumbsDown, ThumbsUp, Trash2, UserX } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
@@ -14,6 +14,10 @@ export function EntryActions({
   initialVote,
   initialBookmarked,
   canEdit,
+  authorId,
+  canReport,
+  canBlockAuthor,
+  initialAuthorBlocked,
 }: {
   entryId: string;
   body: string;
@@ -21,11 +25,16 @@ export function EntryActions({
   initialVote: -1 | 1 | null;
   initialBookmarked: boolean;
   canEdit: boolean;
+  authorId: string;
+  canReport: boolean;
+  canBlockAuthor: boolean;
+  initialAuthorBlocked: boolean;
 }) {
   const router = useRouter();
   const [score, setScore] = useState(initialScore);
   const [vote, setVote] = useState(initialVote);
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
+  const [authorBlocked, setAuthorBlocked] = useState(initialAuthorBlocked);
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(body);
   const [pending, setPending] = useState(false);
@@ -95,6 +104,16 @@ export function EntryActions({
       });
       setNotice("Bildirim moderasyon kuyruğuna gönderildi.");
     });
+  const toggleAuthorBlock = () =>
+    run(async () => {
+      const result = await apiRequest<{ blocked: boolean }>(`/api/v1/me/blocks/${authorId}`, {
+        method: authorBlocked ? "DELETE" : "PUT",
+        csrf: true,
+      });
+      setAuthorBlocked(result.blocked);
+      setNotice(result.blocked ? "Yazar engellendi." : "Yazarın engeli kaldırıldı.");
+      router.refresh();
+    });
   return (
     <div className="mt-4 border-t pt-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -131,15 +150,29 @@ export function EntryActions({
         >
           <Bookmark aria-hidden="true" size={17} />
         </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => void report()}
-          className="grid size-10 place-items-center rounded-lg border bg-page"
-          aria-label="Entry’yi bildir"
-        >
-          <Flag aria-hidden="true" size={17} />
-        </button>
+        {canReport ? (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void report()}
+            className="grid size-10 place-items-center rounded-lg border bg-page"
+            aria-label="Entry’yi bildir"
+          >
+            <Flag aria-hidden="true" size={17} />
+          </button>
+        ) : null}
+        {canBlockAuthor ? (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void toggleAuthorBlock()}
+            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${authorBlocked ? "border-destructive text-destructive" : "bg-page"}`}
+            aria-pressed={authorBlocked}
+          >
+            <UserX aria-hidden="true" size={17} />
+            {authorBlocked ? "Yazarın engelini kaldır" : "Yazarı engelle"}
+          </button>
+        ) : null}
         {canEdit ? (
           <button
             type="button"

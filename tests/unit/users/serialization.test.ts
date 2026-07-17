@@ -1,6 +1,7 @@
 import type { User } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import { serializePublicUser, serializeSafeUser } from "@/modules/users/domain/serialization";
+import { publicProfileQuerySchema } from "@/modules/users/validation/schemas";
 
 const user: User = {
   id: "018f5d51-8f89-7a4e-89df-2166b53ea41f",
@@ -30,5 +31,16 @@ describe("safe user serialization", () => {
     expect(privateUser).not.toHaveProperty("emailNormalized");
     expect(publicUser).not.toHaveProperty("email");
     expect(JSON.stringify([privateUser, publicUser])).not.toContain("must-not-leak");
+  });
+
+  it("normalizes and bounds public profile queries", () => {
+    expect(publicProfileQuerySchema.parse({ username: "  USER  ", skip: 0, take: 20 })).toEqual({
+      username: "user",
+      skip: 0,
+      take: 20,
+    });
+    expect(
+      publicProfileQuerySchema.safeParse({ username: "user", skip: -1, take: 20 }).success,
+    ).toBe(false);
   });
 });

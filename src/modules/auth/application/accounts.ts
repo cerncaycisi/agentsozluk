@@ -1,16 +1,21 @@
 import { randomBytes } from "node:crypto";
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { getDatabaseErrorTargets, isDatabaseError } from "@/lib/db/errors";
+import type { DatabaseClient, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
-import { appendAuditLog } from "@/modules/audit/repository/audit";
+import { appendAuditLog } from "@/modules/audit";
+import { isLastActiveAdmin } from "@/modules/auth/domain/permissions";
 import { hashPassword, verifyPassword } from "@/modules/auth/domain/password";
 import { revokeAllUserSessions } from "@/modules/auth/repository/sessions";
 import {
   anonymizeUserRecord,
   countActiveAdmins,
-  deletePrivateUserInteractions,
+  deletePrivateUserInteractionsExceptVotes,
+  findAuthUserByEmail,
   findAuthUserById,
   findUserConflicts,
   lockAdminGuard,
+  lockUserStateForMutation,
+  lockUserStateForTransition,
   updateEmailRecord,
   updateProfileRecord,
   updateUserPassword,
@@ -21,25 +26,55 @@ import type {
   PasswordChangeInput,
   ProfileUpdateInput,
 } from "@/modules/auth/validation/schemas";
-import { recalculateCounters } from "@/modules/entries/repository/recalculate";
-import { appendOutboxEvent } from "@/modules/outbox/repository/outbox";
+import {
+  findUserVoteEntryIds,
+  lockEntryVoteCounters,
+  recalculateEntryVoteCounters,
+  removeUserVoteRecords,
+} from "@/modules/interactions/repository/interactions";
+import { appendOutboxEvent } from "@/modules/outbox";
 import { serializeSafeUser, type SafeUser } from "@/modules/users/domain/serialization";
 
-async function requireAuthUser(client: PrismaClient, userId: string) {
-  const user = await client.$transaction((transaction) => findAuthUserById(transaction, userId));
-  if (!user || user.status === "DEACTIVATED") {
+function isEmailUniqueTarget(error: unknown): boolean {
+  const targets = new Set(getDatabaseErrorTargets(error, "P2002"));
+  return targets.has("emailNormalized") || targets.has("users_emailNormalized_key");
+}
+
+function emailTaken(): AppError {
+  return new AppError("EMAIL_TAKEN", 409, "Bu e-posta adresi kullanılıyor.");
+}
+
+async function requireSensitiveOperationUser(
+  transaction: TransactionClient,
+  userId: string,
+  currentPassword: string,
+) {
+  await lockUserStateForTransition(transaction, userId);
+  const user = await findAuthUserById(transaction, userId);
+  if (!user) {
     throw new AppError("AUTH_REQUIRED", 401, "Bu işlem için giriş yapmalısınız.");
+  }
+  if (user.status === "DEACTIVATED") {
+    throw new AppError("AUTH_REQUIRED", 401, "Bu işlem için giriş yapmalısınız.");
+  }
+  if (!(await verifyPassword(user.passwordHash, currentPassword))) {
+    throw new AppError("INVALID_CREDENTIALS", 401, "Mevcut şifre hatalı.");
   }
   return user;
 }
 
 export async function updateProfile(
-  client: PrismaClient,
+  client: DatabaseClient,
   userId: string,
   input: ProfileUpdateInput,
   requestId: string,
 ): Promise<SafeUser> {
   return client.$transaction(async (transaction) => {
+    await lockUserStateForMutation(transaction, userId);
+    const current = await findAuthUserById(transaction, userId);
+    if (!current || current.status === "DEACTIVATED") {
+      throw new AppError("AUTH_REQUIRED", 401, "Bu işlem için giriş yapmalısınız.");
+    }
     const user = await updateProfileRecord(transaction, userId, input);
     await appendAuditLog(transaction, {
       actorId: userId,
@@ -53,46 +88,55 @@ export async function updateProfile(
 }
 
 export async function changeEmail(
-  client: PrismaClient,
+  client: DatabaseClient,
   userId: string,
   input: EmailChangeInput,
   requestId: string,
 ): Promise<SafeUser> {
-  const user = await requireAuthUser(client, userId);
-  if (!(await verifyPassword(user.passwordHash, input.currentPassword))) {
-    throw new AppError("INVALID_CREDENTIALS", 401, "Mevcut şifre hatalı.");
-  }
-  return client.$transaction(async (transaction) => {
-    const conflicts = await findUserConflicts(transaction, input.email, user.usernameNormalized);
-    if (conflicts.some((item) => item.emailNormalized === input.email)) {
-      throw new AppError("EMAIL_TAKEN", 409, "Bu e-posta adresi kullanılıyor.");
-    }
-    const updated = await updateEmailRecord(transaction, userId, input.email);
-    await appendAuditLog(transaction, {
-      actorId: userId,
-      action: "user.email_changed",
-      entityType: "User",
-      entityId: userId,
-      requestId,
-      metadata: { changed: true },
+  try {
+    return await client.$transaction(async (transaction) => {
+      const user = await requireSensitiveOperationUser(transaction, userId, input.currentPassword);
+      const conflicts = await findUserConflicts(transaction, input.email, user.usernameNormalized);
+      if (conflicts.some((item) => item.emailNormalized === input.email)) {
+        throw emailTaken();
+      }
+      const updated = await updateEmailRecord(transaction, userId, input.email);
+      await appendAuditLog(transaction, {
+        actorId: userId,
+        action: "user.email_changed",
+        entityType: "User",
+        entityId: userId,
+        requestId,
+        metadata: { changed: true },
+      });
+      return serializeSafeUser(updated);
     });
-    return serializeSafeUser(updated);
-  });
+  } catch (error) {
+    if (!isDatabaseError(error, "P2002")) throw error;
+    if (isEmailUniqueTarget(error)) throw emailTaken();
+
+    // Query only after the failed transaction has rolled back. Do not expose
+    // raw constraint metadata or a database error through the account API.
+    const conflict = await client.$transaction((transaction) =>
+      findAuthUserByEmail(transaction, input.email),
+    );
+    if (conflict && conflict.id !== userId) {
+      throw emailTaken();
+    }
+    throw error;
+  }
 }
 
 export async function changePassword(
-  client: PrismaClient,
+  client: DatabaseClient,
   userId: string,
   currentSessionId: string,
   input: PasswordChangeInput,
   requestId: string,
 ): Promise<void> {
-  const user = await requireAuthUser(client, userId);
-  if (!(await verifyPassword(user.passwordHash, input.currentPassword))) {
-    throw new AppError("INVALID_CREDENTIALS", 401, "Mevcut şifre hatalı.");
-  }
   const passwordHash = await hashPassword(input.newPassword);
   await client.$transaction(async (transaction) => {
+    await requireSensitiveOperationUser(transaction, userId, input.currentPassword);
     await updateUserPassword(transaction, userId, passwordHash);
     await revokeAllUserSessions(transaction, userId, currentSessionId);
     await appendAuditLog(transaction, {
@@ -107,36 +151,39 @@ export async function changePassword(
 }
 
 export async function deactivateAccount(
-  client: PrismaClient,
+  client: DatabaseClient,
   userId: string,
   input: DeactivationInput,
   requestId: string,
 ): Promise<void> {
-  const user = await requireAuthUser(client, userId);
-  if (!(await verifyPassword(user.passwordHash, input.currentPassword))) {
-    throw new AppError("INVALID_CREDENTIALS", 401, "Mevcut şifre hatalı.");
-  }
-  if (input.usernameConfirmation.trim().toLowerCase() !== user.username) {
-    throw new AppError("VALIDATION_ERROR", 422, "Kullanıcı adı doğrulaması eşleşmiyor.", {
-      usernameConfirmation: ["Kullanıcı adınızı eksiksiz yazın."],
-    });
-  }
-
-  const anonymousSuffix = user.id.replaceAll("-", "").slice(0, 12);
-  const passwordHash = await hashPassword(randomBytes(48).toString("base64url"));
+  const anonymousSuffix = userId.replaceAll("-", "").slice(0, 12);
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
       await client.$transaction(
         async (transaction) => {
+          const user = await requireSensitiveOperationUser(
+            transaction,
+            userId,
+            input.currentPassword,
+          );
+          if (input.usernameConfirmation.trim().toLowerCase() !== user.username) {
+            throw new AppError("VALIDATION_ERROR", 422, "Kullanıcı adı doğrulaması eşleşmiyor.", {
+              usernameConfirmation: ["Kullanıcı adınızı eksiksiz yazın."],
+            });
+          }
+          const passwordHash = await hashPassword(randomBytes(48).toString("base64url"));
           if (user.role === "ADMIN") {
             await lockAdminGuard(transaction);
-            if ((await countActiveAdmins(transaction)) <= 1) {
+            if (isLastActiveAdmin(user.role, await countActiveAdmins(transaction))) {
               throw new AppError("LAST_ADMIN_GUARD", 409, "Son aktif yönetici hesabı kapatılamaz.");
             }
           }
           await revokeAllUserSessions(transaction, userId);
-          await deletePrivateUserInteractions(transaction, userId);
-          await recalculateCounters(transaction);
+          const affectedEntryIds = await findUserVoteEntryIds(transaction, userId);
+          await lockEntryVoteCounters(transaction, affectedEntryIds);
+          await removeUserVoteRecords(transaction, userId);
+          await recalculateEntryVoteCounters(transaction, affectedEntryIds);
+          await deletePrivateUserInteractionsExceptVotes(transaction, userId);
           await anonymizeUserRecord(transaction, userId, {
             email: `deleted+${user.id}@invalid.local`,
             username: `deleted_${anonymousSuffix}`,
@@ -164,8 +211,7 @@ export async function deactivateAccount(
       );
       return;
     } catch (error) {
-      const retryable =
-        error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";
+      const retryable = isDatabaseError(error, "P2034");
       if (!retryable || attempt === 3) throw error;
     }
   }

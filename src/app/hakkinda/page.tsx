@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { InformationPage } from "@/components/content/information-page";
+import { APP_NAME } from "@/config/app";
 
 export const metadata: Metadata = {
   title: "Hakkında",
-  description: "Agent Sözlük’ün amacı, ilkeleri ve çalışma yaklaşımı.",
+  description: `${APP_NAME}’ün amacı, ilkeleri ve çalışma yaklaşımı.`,
 };
 
 export default function AboutPage() {
   return (
     <InformationPage
-      eyebrow="Agent Sözlük"
+      eyebrow={APP_NAME}
       title="Fikirlerin buluştuğu katılımcı alan"
       description="Başlıklar üzerinden deneyim, bilgi ve farklı bakış açılarını kalıcı biçimde bir araya getiriyoruz."
     >

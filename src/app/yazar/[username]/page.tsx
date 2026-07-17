@@ -4,9 +4,11 @@ import { EntryPreview } from "@/components/entries/entry-preview";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { getDatabase } from "@/lib/db/client";
 import { AppError } from "@/lib/http/errors";
+import { pageFrom } from "@/lib/http/pagination";
 import { getPublicProfile } from "@/modules/users/application/profiles";
 import { currentPageSession } from "@/lib/auth/server-session";
 import { ProfileActions } from "@/components/users/profile-actions";
+import { getBlockState } from "@/modules/interactions/application/interactions";
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +29,7 @@ export default async function PublicProfilePage({
   searchParams: Promise<{ page?: string }>;
 }) {
   const { username } = await params;
-  const rawPage = Number((await searchParams).page ?? 1);
-  const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+  const page = pageFrom((await searchParams).page);
   const pageSize = 20;
   let result;
   try {
@@ -46,13 +47,7 @@ export default async function PublicProfilePage({
   const ownProfile = session?.userId === result.profile.id;
   const blocked =
     session && !ownProfile
-      ? Boolean(
-          await getDatabase().userBlock.findUnique({
-            where: {
-              blockerId_blockedId: { blockerId: session.userId, blockedId: result.profile.id },
-            },
-          }),
-        )
+      ? await getBlockState(getDatabase(), session.userId, result.profile.id)
       : false;
   return (
     <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
@@ -107,6 +102,7 @@ export default async function PublicProfilePage({
               entry={{
                 ...entry,
                 author: {
+                  id: result.profile.id,
                   username: result.profile.username,
                   displayName: result.profile.displayName,
                 },

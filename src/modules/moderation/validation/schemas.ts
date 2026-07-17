@@ -50,6 +50,8 @@ export const entryMoveSchema = moderationReasonSchema.extend({
 });
 
 export type ReportCreateInput = z.infer<typeof reportCreateSchema>;
+export type ReportTargetType = z.infer<typeof reportTargetTypeSchema>;
+export type ReportReason = z.infer<typeof reportReasonSchema>;
 export type ReportDecisionInput = z.infer<typeof reportDecisionSchema>;
 export type ModerationReasonInput = z.infer<typeof moderationReasonSchema>;
 export type TopicRenameInput = z.infer<typeof topicRenameSchema>;

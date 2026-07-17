@@ -11,9 +11,8 @@ function createClient(): PrismaClient {
 }
 
 export function getDatabase(): PrismaClient {
-  const client = globalDatabase.prisma ?? createClient();
-  if (process.env.NODE_ENV !== "production") globalDatabase.prisma = client;
-  return client;
+  globalDatabase.prisma ??= createClient();
+  return globalDatabase.prisma;
 }
 
 export type DatabaseClient = PrismaClient;

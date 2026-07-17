@@ -1,22 +1,27 @@
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { isDatabaseError } from "@/lib/db/errors";
+import { inTransaction } from "@/lib/db/transaction";
+import type { DatabaseClient, DatabaseExecutor } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
-import { appendAuditLog } from "@/modules/audit/repository/audit";
+import { appendAuditLog } from "@/modules/audit";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { requireModerator } from "@/modules/moderation/domain/authorization";
 import { appendModerationAction } from "@/modules/moderation/repository/history";
 import {
   createReportRecord,
+  decideReportRecord,
   findReportDetail,
+  findReporterStatus,
   findReportTarget,
   listRelatedReports,
   listReports,
   listTargetModerationHistory,
 } from "@/modules/moderation/repository/reports";
+import { findModerationActor } from "@/modules/moderation/repository/actions";
 import type {
   ReportCreateInput,
   ReportDecisionInput,
 } from "@/modules/moderation/validation/schemas";
-import { appendOutboxEvent } from "@/modules/outbox/repository/outbox";
+import { appendOutboxEvent } from "@/modules/outbox";
 
 function targetOwnerId(target: unknown): string | undefined {
   if (!target || typeof target !== "object") return undefined;
@@ -26,16 +31,13 @@ function targetOwnerId(target: unknown): string | undefined {
 }
 
 export async function createReport(
-  client: PrismaClient,
+  client: DatabaseExecutor,
   actor: ActorContext,
   input: ReportCreateInput,
 ) {
   try {
-    return await client.$transaction(async (transaction) => {
-      const reporter = await transaction.user.findUnique({
-        where: { id: actor.actorId },
-        select: { status: true },
-      });
+    return await inTransaction(client, async (transaction) => {
+      const reporter = await findReporterStatus(transaction, actor.actorId);
       if (reporter?.status !== "ACTIVE")
         throw new AppError(
           "ACCOUNT_SUSPENDED",
@@ -85,7 +87,7 @@ export async function createReport(
       return report;
     });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    if (isDatabaseError(error, "P2002")) {
       throw new AppError("REPORT_ALREADY_OPEN", 409, "Bu hedef için açık bildiriminiz zaten var.");
     }
     throw error;
@@ -93,23 +95,23 @@ export async function createReport(
 }
 
 export async function getModerationReports(
-  client: PrismaClient,
+  client: DatabaseClient,
   actor: ActorContext,
   input: Parameters<typeof listReports>[1],
 ) {
   return client.$transaction(async (transaction) => {
-    await requireModerator(transaction, actor);
+    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
     return listReports(transaction, input);
   });
 }
 
 export async function getModerationReport(
-  client: PrismaClient,
+  client: DatabaseClient,
   actor: ActorContext,
   reportId: string,
 ) {
   return client.$transaction(async (transaction) => {
-    await requireModerator(transaction, actor);
+    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
     const report = await findReportDetail(transaction, reportId);
     if (!report) throw new AppError("REPORT_NOT_FOUND", 404, "Bildirim bulunamadı.");
     const [target, relatedReports, moderationActions] = await Promise.all([
@@ -122,27 +124,26 @@ export async function getModerationReport(
 }
 
 export async function decideReport(
-  client: PrismaClient,
+  client: DatabaseExecutor,
   actor: ActorContext,
   reportId: string,
   decision: "RESOLVED" | "REJECTED",
   input: ReportDecisionInput,
 ) {
-  return client.$transaction(async (transaction) => {
-    await requireModerator(transaction, actor);
+  return inTransaction(client, async (transaction) => {
+    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
     const report = await findReportDetail(transaction, reportId);
     if (!report) throw new AppError("REPORT_NOT_FOUND", 404, "Bildirim bulunamadı.");
     if (report.status !== "OPEN")
       throw new AppError("REPORT_ALREADY_OPEN", 409, "Bu bildirim daha önce sonuçlandırılmış.");
-    const updated = await transaction.report.update({
-      where: { id: reportId },
-      data: {
-        status: decision,
-        handledById: actor.actorId,
-        handledAt: new Date(),
-        resolutionNote: input.resolutionNote,
-      },
+    const updated = await decideReportRecord(transaction, reportId, {
+      status: decision,
+      handledById: actor.actorId,
+      handledAt: new Date(),
+      resolutionNote: input.resolutionNote,
     });
+    if (!updated)
+      throw new AppError("REPORT_ALREADY_OPEN", 409, "Bu bildirim daha önce sonuçlandırılmış.");
     await appendModerationAction(transaction, {
       moderatorId: actor.actorId,
       actionType: decision === "RESOLVED" ? "REPORT_RESOLVED" : "REPORT_REJECTED",

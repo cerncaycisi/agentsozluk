@@ -1,28 +1,26 @@
 import { addMilliseconds } from "date-fns";
-import type { Prisma, PrismaClient } from "@prisma/client";
+import type { DatabaseExecutor } from "@/lib/db/types";
 import { getEnvironment } from "@/config/env";
 import { AppError } from "@/lib/http/errors";
 import { hmacIdentifier } from "@/lib/security/crypto";
-import { incrementRateLimitBucket } from "@/modules/rate-limit/repository/rate-limit";
+import {
+  claimRateLimitInterval,
+  incrementRateLimitBucket,
+} from "@/modules/rate-limit/repository/rate-limit";
+import { fixedWindow, type RateLimitRule } from "@/modules/rate-limit/domain/rules";
+import { rateLimitIdentifierSchema } from "@/modules/rate-limit/validation/schemas";
 
-type Client = PrismaClient | Prisma.TransactionClient;
+export {
+  fixedWindow,
+  ipRateLimitIdentifier,
+  RATE_LIMIT_RULES,
+  userRateLimitIdentifier,
+  type FixedWindowRateLimitRule,
+  type MinimumIntervalRateLimitRule,
+  type RateLimitRule,
+} from "@/modules/rate-limit/domain/rules";
 
-export interface RateLimitRule {
-  action: string;
-  limit: number;
-  windowMs: number;
-}
-
-export function fixedWindow(
-  now: Date,
-  windowMs: number,
-): { windowStart: Date; retryAfter: number } {
-  const windowStartMs = Math.floor(now.getTime() / windowMs) * windowMs;
-  return {
-    windowStart: new Date(windowStartMs),
-    retryAfter: Math.max(1, Math.ceil((windowStartMs + windowMs - now.getTime()) / 1000)),
-  };
-}
+type Client = DatabaseExecutor;
 
 export async function enforceRateLimit(
   client: Client,
@@ -31,10 +29,34 @@ export async function enforceRateLimit(
   now = new Date(),
 ): Promise<void> {
   const environment = getEnvironment();
+  const keyHash = hmacIdentifier(
+    environment.APP_SECRET,
+    rateLimitIdentifierSchema.parse(identifier),
+  );
+  if (rule.strategy === "minimum-interval") {
+    const allowed = await claimRateLimitInterval(client, {
+      keyHash,
+      action: rule.action,
+      now,
+      minimumIntervalMs: rule.minimumIntervalMs,
+    });
+    if (!allowed) {
+      throw new AppError(
+        "RATE_LIMITED",
+        429,
+        "Çok fazla istek gönderdiniz. Lütfen daha sonra deneyin.",
+        undefined,
+        {
+          "Retry-After": String(Math.max(1, Math.ceil(rule.minimumIntervalMs / 1000))),
+        },
+      );
+    }
+    return;
+  }
   const { windowStart, retryAfter } = fixedWindow(now, rule.windowMs);
   const expiresAt = addMilliseconds(windowStart, rule.windowMs * 2);
   const count = await incrementRateLimitBucket(client, {
-    keyHash: hmacIdentifier(environment.APP_SECRET, identifier),
+    keyHash,
     action: rule.action,
     windowStart,
     expiresAt,
@@ -52,7 +74,7 @@ export async function enforceRateLimit(
   }
 }
 
-export function requestIp(request: Request): string {
+export function requestIp(request: { headers: { get(name: string): string | null } }): string {
   const environment = getEnvironment();
   if (environment.TRUST_PROXY === "true") {
     const forwarded = request.headers

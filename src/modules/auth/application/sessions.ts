@@ -1,12 +1,15 @@
-import type { PrismaClient } from "@prisma/client";
+import type { DatabaseClient, TransactionClient } from "@/lib/db/types";
 import { getEnvironment } from "@/config/env";
 import { AppError } from "@/lib/http/errors";
-import { createOpaqueToken, hmacIdentifier, sha256 } from "@/lib/security/crypto";
+import { createOpaqueToken, hmacIdentifier, hmacToken, sha256 } from "@/lib/security/crypto";
+import { isValidCsrfToken } from "@/lib/security/csrf";
 import { createSessionSecrets, sessionUpdate } from "@/modules/auth/domain/session";
 import {
   createSessionRecord,
+  findSessionCsrfState,
   findSessionByTokenHash,
   listUserSessions,
+  recoverSessionCsrf,
   revokeAllUserSessions,
   revokeOwnedSession,
   revokeSession,
@@ -14,6 +17,8 @@ import {
   updateSessionCsrf,
   type SessionWithUser,
 } from "@/modules/auth/repository/sessions";
+
+const csrfPreviousTokenGraceMs = 5 * 60 * 1000;
 
 export interface SessionMetadata {
   userAgent: string | null;
@@ -27,8 +32,10 @@ export interface IssuedSession {
   expiresAt: Date;
 }
 
+export type AuthenticatedSession = SessionWithUser & { expiryExtended: boolean };
+
 export async function issueSession(
-  transaction: Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0],
+  transaction: TransactionClient,
   userId: string,
   metadata: SessionMetadata,
 ): Promise<IssuedSession> {
@@ -51,9 +58,10 @@ export async function issueSession(
 }
 
 export async function authenticateSession(
-  client: PrismaClient,
+  client: DatabaseClient,
   rawToken: string | undefined,
-): Promise<SessionWithUser | null> {
+  options: { extendExpiration?: boolean } = {},
+): Promise<AuthenticatedSession | null> {
   if (!rawToken) return null;
   return client.$transaction(async (transaction) => {
     const session = await findSessionByTokenHash(transaction, sha256(rawToken));
@@ -65,31 +73,99 @@ export async function authenticateSession(
       session.user.status === "DEACTIVATED"
     )
       return null;
-    const update = sessionUpdate(
+    const proposedUpdate = sessionUpdate(
       session.lastUsedAt,
       session.expiresAt,
       now,
       getEnvironment().SESSION_TTL_DAYS,
     );
+    const update =
+      options.extendExpiration === false
+        ? { ...(proposedUpdate.lastUsedAt ? { lastUsedAt: proposedUpdate.lastUsedAt } : {}) }
+        : proposedUpdate;
     if (Object.keys(update).length > 0) await touchSession(transaction, session.id, update);
-    return { ...session, ...update };
+    return { ...session, ...update, expiryExtended: Boolean(update.expiresAt) };
   });
 }
 
 export async function requireSession(
-  client: PrismaClient,
+  client: DatabaseClient,
   rawToken: string | undefined,
-): Promise<SessionWithUser> {
-  const session = await authenticateSession(client, rawToken);
+  options: { extendExpiration?: boolean } = {},
+): Promise<AuthenticatedSession> {
+  const session = await authenticateSession(client, rawToken, options);
   if (!session) throw new AppError("AUTH_REQUIRED", 401, "Bu işlem için giriş yapmalısınız.");
   return session;
 }
 
-export function endSession(client: PrismaClient, sessionId: string): Promise<unknown> {
+export async function getOrRecoverCsrfToken(
+  client: DatabaseClient,
+  input: {
+    session: SessionWithUser;
+    rawSessionToken: string;
+    presentedCsrfToken: string | undefined;
+    now?: Date;
+  },
+): Promise<string> {
+  const now = input.now ?? new Date();
+  const hashes = {
+    currentTokenHash: input.session.csrfTokenHash,
+    previousTokenHash: input.session.csrfPreviousTokenHash,
+    previousTokenExpiresAt: input.session.csrfPreviousTokenExpiresAt,
+  };
+  if (isValidCsrfToken(input.presentedCsrfToken, hashes, now)) {
+    return input.presentedCsrfToken;
+  }
+
+  const recoveredToken = hmacToken(
+    getEnvironment().APP_SECRET,
+    `agent-sozluk:csrf:v1:${input.rawSessionToken}`,
+  );
+  const recoveredTokenHash = sha256(recoveredToken);
+  if (recoveredTokenHash === input.session.csrfTokenHash) return recoveredToken;
+
+  const previousTokenExpiresAt = new Date(
+    Math.min(input.session.expiresAt.getTime(), now.getTime() + csrfPreviousTokenGraceMs),
+  );
+  return client.$transaction(async (transaction) => {
+    const recovered = await recoverSessionCsrf(transaction, {
+      sessionId: input.session.id,
+      expectedTokenHash: input.session.csrfTokenHash,
+      recoveredTokenHash,
+      previousTokenExpiresAt,
+      now,
+    });
+    if (recovered.count === 1) return recoveredToken;
+
+    const current = await findSessionCsrfState(transaction, input.session.id, now);
+    if (current?.csrfTokenHash === recoveredTokenHash) return recoveredToken;
+    if (
+      current &&
+      isValidCsrfToken(
+        input.presentedCsrfToken,
+        {
+          currentTokenHash: current.csrfTokenHash,
+          previousTokenHash: current.csrfPreviousTokenHash,
+          previousTokenExpiresAt: current.csrfPreviousTokenExpiresAt,
+        },
+        now,
+      )
+    ) {
+      return input.presentedCsrfToken;
+    }
+    throw new AppError(
+      "CSRF_INVALID",
+      409,
+      "Güvenlik anahtarı eşzamanlı olarak yenilendi. Lütfen tekrar deneyin.",
+    );
+  });
+}
+
+export function endSession(client: DatabaseClient, sessionId: string): Promise<unknown> {
   return client.$transaction((transaction) => revokeSession(transaction, sessionId));
 }
 
-export function activeSessions(client: PrismaClient, userId: string, currentSessionId: string) {
+export function activeSessions(client: DatabaseClient, userId: string, currentSessionId: string) {
   return client.$transaction(async (transaction) => {
     const sessions = await listUserSessions(transaction, userId);
     return sessions.map((session) => ({ ...session, current: session.id === currentSessionId }));
@@ -97,7 +173,7 @@ export function activeSessions(client: PrismaClient, userId: string, currentSess
 }
 
 export async function endOwnedSession(
-  client: PrismaClient,
+  client: DatabaseClient,
   userId: string,
   sessionId: string,
 ): Promise<void> {
@@ -108,7 +184,7 @@ export async function endOwnedSession(
 }
 
 export function endOtherSessions(
-  client: PrismaClient,
+  client: DatabaseClient,
   userId: string,
   currentSessionId: string,
 ): Promise<unknown> {
@@ -117,7 +193,7 @@ export function endOtherSessions(
   );
 }
 
-export async function rotateCsrfToken(client: PrismaClient, sessionId: string): Promise<string> {
+export async function rotateCsrfToken(client: DatabaseClient, sessionId: string): Promise<string> {
   const token = createOpaqueToken();
   await client.$transaction((transaction) =>
     updateSessionCsrf(transaction, sessionId, sha256(token)),

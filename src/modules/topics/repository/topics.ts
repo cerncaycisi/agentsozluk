@@ -16,6 +16,18 @@ export const topicSummarySelect = {
 
 export type TopicSummaryRecord = Prisma.TopicGetPayload<{ select: typeof topicSummarySelect }>;
 
+export async function lockTopicState(
+  transaction: Prisma.TransactionClient,
+  topicIds: string | string[],
+): Promise<void> {
+  const orderedTopicIds = [...new Set(Array.isArray(topicIds) ? topicIds : [topicIds])].sort();
+  for (const topicId of orderedTopicIds) {
+    await transaction.$executeRaw`
+      SELECT pg_advisory_xact_lock(hashtextextended(${`topic-state:${topicId}`}, 0))
+    `;
+  }
+}
+
 export async function lockTopicTitle(
   transaction: Prisma.TransactionClient,
   normalizedTitle: string,
@@ -123,4 +135,22 @@ export async function recalculateTopicCounter(
       )
     WHERE topic."id" = ${topicId}::uuid
   `;
+}
+
+export function listActiveTopicsForSitemap(
+  transaction: Prisma.TransactionClient,
+  skip: number,
+  take: number,
+) {
+  return transaction.topic.findMany({
+    where: { status: "ACTIVE" },
+    select: { id: true, slug: true, updatedAt: true },
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    skip,
+    take,
+  });
+}
+
+export function countActiveTopics(transaction: Prisma.TransactionClient) {
+  return transaction.topic.count({ where: { status: "ACTIVE" } });
 }

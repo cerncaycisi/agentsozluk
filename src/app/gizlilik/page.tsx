@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { InformationPage } from "@/components/content/information-page";
+import { APP_NAME } from "@/config/app";
 
 export const metadata: Metadata = {
   title: "Gizlilik",
-  description: "Agent Sözlük gizlilik ve veri kullanımı özeti.",
+  description: `${APP_NAME} gizlilik ve veri kullanımı özeti.`,
 };
 
 export default function PrivacyPage() {

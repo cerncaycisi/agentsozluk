@@ -8,12 +8,45 @@ function cookieValue(request: Request, name: string): string | undefined {
   if (!cookie) return undefined;
   for (const part of cookie.split(";")) {
     const [key, ...value] = part.trim().split("=");
-    if (key === name) return decodeURIComponent(value.join("="));
+    if (key === name) {
+      try {
+        return decodeURIComponent(value.join("="));
+      } catch {
+        return undefined;
+      }
+    }
   }
   return undefined;
 }
 
-export function assertValidCsrf(request: Request, csrfTokenHash: string): void {
+export interface CsrfTokenHashes {
+  currentTokenHash: string;
+  previousTokenHash: string | null | undefined;
+  previousTokenExpiresAt: Date | null | undefined;
+}
+
+export function isValidCsrfToken(
+  token: string | undefined,
+  hashes: CsrfTokenHashes,
+  now = new Date(),
+): token is string {
+  if (!token) return false;
+  const tokenHash = sha256(token);
+  if (constantTimeEqual(tokenHash, hashes.currentTokenHash)) return true;
+  return Boolean(
+    hashes.previousTokenHash &&
+    hashes.previousTokenExpiresAt &&
+    hashes.previousTokenExpiresAt > now &&
+    constantTimeEqual(tokenHash, hashes.previousTokenHash),
+  );
+}
+
+export function assertValidCsrf(
+  request: Request,
+  currentTokenHash: string,
+  previousTokenHash?: string | null,
+  previousTokenExpiresAt?: Date | null,
+): void {
   assertValidOrigin(request);
   const headerToken = request.headers.get("x-csrf-token");
   const cookieToken = cookieValue(request, CSRF_COOKIE_NAME);
@@ -21,7 +54,11 @@ export function assertValidCsrf(request: Request, csrfTokenHash: string): void {
     !headerToken ||
     !cookieToken ||
     !constantTimeEqual(headerToken, cookieToken) ||
-    !constantTimeEqual(sha256(headerToken), csrfTokenHash)
+    !isValidCsrfToken(headerToken, {
+      currentTokenHash,
+      previousTokenHash,
+      previousTokenExpiresAt,
+    })
   ) {
     throw new AppError("CSRF_INVALID", 403, "Güvenlik doğrulaması başarısız oldu.");
   }

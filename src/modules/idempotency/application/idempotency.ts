@@ -1,15 +1,17 @@
-import type { PrismaClient } from "@prisma/client";
+import type { DatabaseClient, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
-import { canonicalRequestHash, type JsonValue } from "@/modules/idempotency/domain/idempotency";
+import {
+  canonicalRequestHash,
+  idempotencyExpiry,
+  type JsonValue,
+} from "@/modules/idempotency/domain/idempotency";
 import {
   createIdempotencyRecord,
   deleteIdempotencyRecord,
   findIdempotencyRecord,
   withIdempotencyLock,
 } from "@/modules/idempotency/repository/idempotency";
-
-const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
-const validKey = /^[\x21-\x7e]{1,255}$/u;
+import { idempotencyScopeSchema } from "@/modules/idempotency/validation/schemas";
 
 export interface IdempotentResult {
   status: number;
@@ -18,7 +20,7 @@ export interface IdempotentResult {
 }
 
 export async function executeIdempotently(
-  client: PrismaClient,
+  client: DatabaseClient,
   input: {
     actorId: string;
     route: string;
@@ -26,9 +28,11 @@ export async function executeIdempotently(
     requestBody: unknown;
     now?: Date;
   },
-  execute: () => Promise<{ status: number; body: JsonValue }>,
+  execute: (transaction: TransactionClient) => Promise<{ status: number; body: JsonValue }>,
+  preflight?: (transaction: TransactionClient) => Promise<void>,
 ): Promise<IdempotentResult> {
-  if (!validKey.test(input.key)) {
+  const validatedScope = idempotencyScopeSchema.safeParse(input);
+  if (!validatedScope.success) {
     throw new AppError(
       "VALIDATION_ERROR",
       422,
@@ -40,6 +44,7 @@ export async function executeIdempotently(
   const requestHash = canonicalRequestHash(input.requestBody);
   const scope = canonicalRequestHash([input.actorId, input.route, input.key]);
   return withIdempotencyLock(client, scope, async (transaction) => {
+    await preflight?.(transaction);
     let record = await findIdempotencyRecord(transaction, input);
     if (record && record.expiresAt <= now) {
       await deleteIdempotencyRecord(transaction, record.id);
@@ -59,7 +64,7 @@ export async function executeIdempotently(
         replayed: true,
       };
     }
-    const result = await execute();
+    const result = await execute(transaction);
     await createIdempotencyRecord(transaction, {
       actorId: input.actorId,
       route: input.route,
@@ -67,7 +72,7 @@ export async function executeIdempotently(
       requestHash,
       responseStatus: result.status,
       responseBody: result.body,
-      expiresAt: new Date(now.getTime() + IDEMPOTENCY_TTL_MS),
+      expiresAt: idempotencyExpiry(now),
     });
     return { ...result, replayed: false };
   });

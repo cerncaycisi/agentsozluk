@@ -14,6 +14,10 @@ export function hmacIdentifier(secret: string, identifier: string): string {
     .digest("hex");
 }
 
+export function hmacToken(secret: string, value: string): string {
+  return createHmac("sha256", secret).update(value, "utf8").digest("base64url");
+}
+
 export function constantTimeEqual(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left);
   const rightBuffer = Buffer.from(right);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { topicCreateSchema } from "@/modules/topics/validation/schemas";
 
 describe("topic validation", () => {
@@ -24,5 +25,15 @@ describe("topic validation", () => {
         entryBody: "İlk entry için yeterince uzun ve güvenli içerik.",
       }),
     ).toThrow("Başlık en fazla 100 karakter olabilir.");
+  });
+
+  it("maps display-title variants to the same duplicate key", () => {
+    const canonical = normalizeTopicTitle("İyi Bir Başlık");
+    expect(normalizeTopicTitle("  iyi\n bir   başlık ")).toBe(canonical);
+  });
+
+  it("maps an alias variant to the canonical alias duplicate key", () => {
+    const alias = normalizeTopicTitle("Eski İstanbul Başlığı");
+    expect(normalizeTopicTitle("ESKİ istanbul başlığı")).toBe(alias);
   });
 });

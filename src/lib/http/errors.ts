@@ -10,6 +10,7 @@ export type ErrorCode =
   | "CSRF_INVALID"
   | "ORIGIN_INVALID"
   | "RATE_LIMITED"
+  | "PAYLOAD_TOO_LARGE"
   | "EMAIL_TAKEN"
   | "USERNAME_TAKEN"
   | "TOPIC_NOT_FOUND"

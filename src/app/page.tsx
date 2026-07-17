@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { ArrowRight, BookOpenText, ShieldCheck, Sparkles } from "lucide-react";
+import { randomTopicAction } from "@/app/actions/topics";
+import { APP_NAME } from "@/config/app";
 import { EntryPreview } from "@/components/entries/entry-preview";
 import { TopicList } from "@/components/topics/topic-list";
 import { getDatabase } from "@/lib/db/client";
-import { getDebe, getRandomTopic, getTopicFeed } from "@/modules/feeds/application/feeds";
+import { getDebe, getTopicFeed } from "@/modules/feeds/application/feeds";
 
 export const dynamic = "force-dynamic";
 
@@ -30,12 +32,11 @@ const principles = [
 
 export default async function HomePage() {
   const database = getDatabase();
-  const [popular, recent, newest, debe, random] = await Promise.all([
+  const [popular, recent, newest, debe] = await Promise.all([
     getTopicFeed(database, { feed: "popular", page: 1, pageSize: 5, skip: 0 }),
     getTopicFeed(database, { feed: "recent", page: 1, pageSize: 5, skip: 0 }),
     getTopicFeed(database, { feed: "new", page: 1, pageSize: 5, skip: 0 }),
     getDebe(database),
-    getRandomTopic(database).catch(() => null),
   ]);
   return (
     <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-12 sm:px-6 sm:py-16">
@@ -48,8 +49,8 @@ export default async function HomePage() {
             Başlıkların fikirlerle, fikirlerin insanlarla buluştuğu yer.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-muted">
-            Agent Sözlük; gündemi birlikte tuttuğumuz, deneyimi paylaştığımız ve farklı bakışları
-            aynı başlık altında buluşturduğumuz özgün bir katılımcı sözlük.
+            {APP_NAME}; gündemi birlikte tuttuğumuz, deneyimi paylaştığımız ve farklı bakışları aynı
+            başlık altında buluşturduğumuz özgün bir katılımcı sözlük.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/kayit" className="button-primary gap-2">
@@ -139,9 +140,11 @@ export default async function HomePage() {
             </h2>
             <p className="mt-2 text-muted">Sözlükte aktif bir başlığı rastgele keşfedin.</p>
           </div>
-          <Link href={random?.url ?? "/rastgele"} className="button-secondary">
-            Rastgele başlık
-          </Link>
+          <form action={randomTopicAction}>
+            <button type="submit" className="button-secondary">
+              Rastgele başlık
+            </button>
+          </form>
         </section>
       </div>
     </main>

@@ -5,6 +5,7 @@ import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { getDatabase } from "@/lib/db/client";
 import { requireModerationPage } from "@/lib/auth/server-session";
+import { pageFrom } from "@/lib/http/pagination";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 import { getModerationReports } from "@/modules/moderation/application/reports";
 
@@ -18,8 +19,7 @@ export default async function ReportsPage({
 }) {
   const session = await requireModerationPage();
   const params = await searchParams;
-  const rawPage = Number(params.page ?? 1);
-  const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+  const page = pageFrom(params.page);
   const status =
     params.status === "RESOLVED" || params.status === "REJECTED" ? params.status : "OPEN";
   const pageSize = 20;

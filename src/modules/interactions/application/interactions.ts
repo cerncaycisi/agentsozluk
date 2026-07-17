@@ -1,15 +1,20 @@
-import type { PrismaClient } from "@prisma/client";
+import type { DatabaseClient, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
-import { appendAuditLog } from "@/modules/audit/repository/audit";
+import { appendAuditLog } from "@/modules/audit";
+import { requireActiveActor } from "@/modules/auth/application/guards";
 import type { ActorContext } from "@/modules/auth/domain/actor";
-import { findEntryById } from "@/modules/entries/repository/entries";
+import { lockUserStates } from "@/modules/auth/repository/users";
+import { findEntryById, lockEntryState } from "@/modules/entries/repository/entries";
+import { withEditedIndicator } from "@/modules/entries/domain/entry";
 import { transitionVote, type VoteValue } from "@/modules/interactions/domain/vote";
 import {
   findBlockTarget,
+  findUserBlock,
   findVote,
   listBlocks,
   listBookmarks,
   listFollows,
+  listViewerEntryStates,
   listVotes,
   lockEntryVoteCounter,
   putBlockRecord,
@@ -22,11 +27,11 @@ import {
   updateEntryVoteCounters,
   upsertVote,
 } from "@/modules/interactions/repository/interactions";
-import { appendOutboxEvent } from "@/modules/outbox/repository/outbox";
-import { findTopicById } from "@/modules/topics/repository/topics";
+import { appendOutboxEvent } from "@/modules/outbox";
+import { findTopicById, lockTopicState } from "@/modules/topics/repository/topics";
 
 async function appendVoteOutbox(
-  transaction: Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0],
+  transaction: TransactionClient,
   actor: ActorContext,
   entryId: string,
   previous: VoteValue | null,
@@ -44,15 +49,28 @@ async function appendVoteOutbox(
 }
 
 export async function setVote(
-  client: PrismaClient,
+  client: DatabaseClient,
   actor: ActorContext,
   entryId: string,
   value: VoteValue,
 ) {
   return client.$transaction(async (transaction) => {
+    await requireActiveActor(transaction, actor.actorId);
+    const initialEntry = await findEntryById(transaction, entryId);
+    if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
+    await lockTopicState(transaction, initialEntry.topicId);
     await lockEntryVoteCounter(transaction, entryId);
+    await lockEntryState(transaction, entryId);
     const entry = await findEntryById(transaction, entryId);
     if (!entry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
+    if (entry.topicId !== initialEntry.topicId)
+      throw new AppError(
+        "ENTRY_NOT_EDITABLE",
+        409,
+        "Entry durumu eşzamanlı olarak değişti; işlemi yeniden deneyin.",
+      );
+    if (entry.topic.status !== "ACTIVE")
+      throw new AppError("TOPIC_HIDDEN", 409, "Aktif olmayan başlıktaki entry oylanamaz.");
     if (entry.status !== "ACTIVE")
       throw new AppError("ENTRY_NOT_EDITABLE", 409, "Bu entry oylanamaz.");
     if (entry.authorId === actor.actorId)
@@ -82,8 +100,9 @@ export async function setVote(
   });
 }
 
-export async function removeVote(client: PrismaClient, actor: ActorContext, entryId: string) {
+export async function removeVote(client: DatabaseClient, actor: ActorContext, entryId: string) {
   return client.$transaction(async (transaction) => {
+    await requireActiveActor(transaction, actor.actorId);
     await lockEntryVoteCounter(transaction, entryId);
     const entry = await findEntryById(transaction, entryId);
     if (!entry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
@@ -112,10 +131,27 @@ export async function removeVote(client: PrismaClient, actor: ActorContext, entr
   });
 }
 
-export async function putBookmark(client: PrismaClient, actor: ActorContext, entryId: string) {
+export async function putBookmark(client: DatabaseClient, actor: ActorContext, entryId: string) {
   return client.$transaction(async (transaction) => {
+    await requireActiveActor(transaction, actor.actorId);
+    const initialEntry = await findEntryById(transaction, entryId);
+    if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
+    await lockTopicState(transaction, initialEntry.topicId);
+    await lockEntryState(transaction, entryId);
     const entry = await findEntryById(transaction, entryId);
     if (!entry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
+    if (entry.topicId !== initialEntry.topicId)
+      throw new AppError(
+        "ENTRY_NOT_EDITABLE",
+        409,
+        "Entry durumu eşzamanlı olarak değişti; işlemi yeniden deneyin.",
+      );
+    if (entry.topic.status !== "ACTIVE")
+      throw new AppError(
+        "TOPIC_HIDDEN",
+        409,
+        "Aktif olmayan başlıktaki entry favorilere eklenemez.",
+      );
     if (entry.status !== "ACTIVE")
       throw new AppError("ENTRY_NOT_EDITABLE", 409, "Bu entry favorilere eklenemez.");
     await putBookmarkRecord(transaction, entryId, actor.actorId);
@@ -123,15 +159,18 @@ export async function putBookmark(client: PrismaClient, actor: ActorContext, ent
   });
 }
 
-export async function deleteBookmark(client: PrismaClient, actor: ActorContext, entryId: string) {
-  await client.$transaction((transaction) =>
-    removeBookmarkRecord(transaction, entryId, actor.actorId),
-  );
+export async function deleteBookmark(client: DatabaseClient, actor: ActorContext, entryId: string) {
+  await client.$transaction(async (transaction) => {
+    await requireActiveActor(transaction, actor.actorId);
+    await removeBookmarkRecord(transaction, entryId, actor.actorId);
+  });
   return { bookmarked: false };
 }
 
-export async function putFollow(client: PrismaClient, actor: ActorContext, topicId: string) {
+export async function putFollow(client: DatabaseClient, actor: ActorContext, topicId: string) {
   return client.$transaction(async (transaction) => {
+    await requireActiveActor(transaction, actor.actorId);
+    await lockTopicState(transaction, topicId);
     const topic = await findTopicById(transaction, topicId);
     if (!topic) throw new AppError("TOPIC_NOT_FOUND", 404, "Başlık bulunamadı.");
     if (topic.status === "MERGED") {
@@ -153,21 +192,29 @@ export async function putFollow(client: PrismaClient, actor: ActorContext, topic
   });
 }
 
-export async function deleteFollow(client: PrismaClient, actor: ActorContext, topicId: string) {
-  await client.$transaction((transaction) =>
-    removeFollowRecord(transaction, topicId, actor.actorId),
-  );
+export async function deleteFollow(client: DatabaseClient, actor: ActorContext, topicId: string) {
+  await client.$transaction(async (transaction) => {
+    await requireActiveActor(transaction, actor.actorId);
+    await lockTopicState(transaction, topicId);
+    await removeFollowRecord(transaction, topicId, actor.actorId);
+  });
   return { followed: false };
 }
 
-export async function putBlock(client: PrismaClient, actor: ActorContext, blockedId: string) {
+export async function putBlock(client: DatabaseClient, actor: ActorContext, blockedId: string) {
   if (actor.actorId === blockedId)
     throw new AppError("VALIDATION_ERROR", 422, "Kendinizi engelleyemezsiniz.", {
       userId: ["Kendinizi engelleyemezsiniz."],
     });
   return client.$transaction(async (transaction) => {
+    await lockUserStates(transaction, [
+      { userId: actor.actorId, mode: "shared" },
+      { userId: blockedId, mode: "shared" },
+    ]);
+    await requireActiveActor(transaction, actor.actorId);
     const target = await findBlockTarget(transaction, blockedId);
-    if (!target) throw new AppError("USER_NOT_FOUND", 404, "Kullanıcı bulunamadı.");
+    if (!target || target.status === "DEACTIVATED")
+      throw new AppError("USER_NOT_FOUND", 404, "Kullanıcı bulunamadı.");
     await putBlockRecord(transaction, actor.actorId, blockedId);
     await appendAuditLog(transaction, {
       actorId: actor.actorId,
@@ -180,8 +227,9 @@ export async function putBlock(client: PrismaClient, actor: ActorContext, blocke
   });
 }
 
-export async function deleteBlock(client: PrismaClient, actor: ActorContext, blockedId: string) {
+export async function deleteBlock(client: DatabaseClient, actor: ActorContext, blockedId: string) {
   await client.$transaction(async (transaction) => {
+    await requireActiveActor(transaction, actor.actorId);
     await removeBlockRecord(transaction, actor.actorId, blockedId);
     await appendAuditLog(transaction, {
       actorId: actor.actorId,
@@ -194,18 +242,49 @@ export async function deleteBlock(client: PrismaClient, actor: ActorContext, blo
   return { blocked: false };
 }
 
-export function getBookmarks(client: PrismaClient, userId: string, skip: number, take: number) {
-  return client.$transaction((transaction) => listBookmarks(transaction, userId, skip, take));
+export async function getBookmarks(
+  client: DatabaseClient,
+  userId: string,
+  skip: number,
+  take: number,
+) {
+  const [items, totalItems] = await client.$transaction((transaction) =>
+    listBookmarks(transaction, userId, skip, take),
+  );
+  return [
+    items.map((item) => ({ ...item, entry: withEditedIndicator(item.entry) })),
+    totalItems,
+  ] as const;
 }
 
-export function getFollows(client: PrismaClient, userId: string, skip: number, take: number) {
+export function getFollows(client: DatabaseClient, userId: string, skip: number, take: number) {
   return client.$transaction((transaction) => listFollows(transaction, userId, skip, take));
 }
 
-export function getVotes(client: PrismaClient, userId: string, skip: number, take: number) {
-  return client.$transaction((transaction) => listVotes(transaction, userId, skip, take));
+export async function getVotes(client: DatabaseClient, userId: string, skip: number, take: number) {
+  const [items, totalItems] = await client.$transaction((transaction) =>
+    listVotes(transaction, userId, skip, take),
+  );
+  return [
+    items.map((item) => ({ ...item, entry: withEditedIndicator(item.entry) })),
+    totalItems,
+  ] as const;
 }
 
-export function getBlocks(client: PrismaClient, userId: string, skip: number, take: number) {
+export function getBlocks(client: DatabaseClient, userId: string, skip: number, take: number) {
   return client.$transaction((transaction) => listBlocks(transaction, userId, skip, take));
+}
+
+export function getViewerEntryStates(client: DatabaseClient, userId: string, entryIds: string[]) {
+  return client.$transaction((transaction) => listViewerEntryStates(transaction, userId, entryIds));
+}
+
+export async function getBlockState(
+  client: DatabaseClient,
+  blockerId: string,
+  blockedId: string,
+): Promise<boolean> {
+  return Boolean(
+    await client.$transaction((transaction) => findUserBlock(transaction, blockerId, blockedId)),
+  );
 }

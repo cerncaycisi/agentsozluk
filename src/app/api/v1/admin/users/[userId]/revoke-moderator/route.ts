@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
-import { getDatabase, runModerationAction } from "@/lib/http/moderation-action";
+import { runModerationAction } from "@/lib/http/moderation-action";
+import { parseUuid } from "@/lib/http/request";
 import { setModeratorRole } from "@/modules/moderation/application/actions";
 import { moderationReasonSchema } from "@/modules/moderation/validation/schemas";
 
@@ -10,7 +11,11 @@ export async function POST(
   { params }: { params: Promise<{ userId: string }> },
 ) {
   const { userId } = await params;
-  return runModerationAction(request, moderationReasonSchema, (actor, input) =>
-    setModeratorRole(getDatabase(), actor, userId, false, input),
+  return runModerationAction(
+    request,
+    moderationReasonSchema,
+    (client, actor, input) =>
+      setModeratorRole(client, actor, parseUuid(userId, "userId"), false, input),
+    () => ({ adminOnly: true, targetUserId: parseUuid(userId, "userId") }),
   );
 }

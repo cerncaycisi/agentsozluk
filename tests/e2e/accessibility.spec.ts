@@ -1,9 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-test.describe("authenticated accessibility", () => {
-  test.skip(({ isMobile }) => isMobile, "The full authenticated audit runs once on desktop.");
-
+test.describe("@desktop authenticated accessibility", () => {
   test("auth, account and moderation pages have no serious or critical violations", async ({
     page,
   }) => {

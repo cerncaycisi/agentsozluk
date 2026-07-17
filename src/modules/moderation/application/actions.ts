@@ -1,10 +1,32 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import { inTransaction } from "@/lib/db/transaction";
+import type { DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
-import { appendAuditLog } from "@/modules/audit/repository/audit";
+import { appendAuditLog } from "@/modules/audit";
 import type { ActorContext } from "@/modules/auth/domain/actor";
-import { recalculateTopicCounter } from "@/modules/topics/repository/topics";
+import { lockUserActorAndTargetTransition } from "@/modules/auth/repository/users";
+import { isCanonicalSeedEntry } from "@/modules/entries/domain/entry";
+import { lockEntryState } from "@/modules/entries/repository/entries";
+import { lockTopicState, recalculateTopicCounter } from "@/modules/topics/repository/topics";
 import { createTopicSlug, normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { assertCanActOnUser, requireModerator } from "@/modules/moderation/domain/authorization";
+import {
+  findEntryForModeration,
+  findEntryForMove,
+  findModerationActor,
+  findModerationTargetUser,
+  findTopicForModeration,
+  findTopicIdentityConflict,
+  lockModerationKey,
+  mergeTopicRecords,
+  moveEntryRecord,
+  renameTopicRecord,
+  revokeUserSessions,
+  setEntryStatus,
+  setTopicStatus,
+  topicHasSeedEntries,
+  updateModeratorRole,
+  updateUserSuspension,
+} from "@/modules/moderation/repository/actions";
 import { appendModerationAction } from "@/modules/moderation/repository/history";
 import type {
   EntryMoveInput,
@@ -12,10 +34,10 @@ import type {
   TopicMergeInput,
   TopicRenameInput,
 } from "@/modules/moderation/validation/schemas";
-import { appendOutboxEvent, type OutboxEventType } from "@/modules/outbox/repository/outbox";
+import { appendOutboxEvent, type OutboxEventType } from "@/modules/outbox";
 
 async function recordAction(
-  transaction: Prisma.TransactionClient,
+  transaction: TransactionClient,
   actor: ActorContext,
   input: {
     actionType: string;
@@ -54,29 +76,39 @@ async function recordAction(
 }
 
 export async function setEntryVisibility(
-  client: PrismaClient,
+  client: DatabaseExecutor,
   actor: ActorContext,
   entryId: string,
   hidden: boolean,
   input: ModerationReasonInput,
 ) {
-  return client.$transaction(async (transaction) => {
-    await requireModerator(transaction, actor);
-    const entry = await transaction.entry.findUnique({
-      where: { id: entryId },
-      select: { id: true, topicId: true, status: true },
-    });
+  return inTransaction(client, async (transaction) => {
+    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
+    const initialEntry = await findEntryForModeration(transaction, entryId);
+    if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
+    await lockTopicState(transaction, initialEntry.topicId);
+    await lockEntryState(transaction, entryId);
+    const entry = await findEntryForModeration(transaction, entryId);
     if (!entry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
+    if (entry.topicId !== initialEntry.topicId)
+      throw new AppError(
+        "ENTRY_NOT_EDITABLE",
+        409,
+        "Entry durumu eşzamanlı olarak değişti; işlemi yeniden deneyin.",
+      );
+    if (hidden && isCanonicalSeedEntry(entry))
+      throw new AppError("ENTRY_NOT_EDITABLE", 409, "Korunan seed entry gizlenemez.");
     if (hidden && entry.status !== "ACTIVE")
       throw new AppError("ENTRY_NOT_EDITABLE", 409, "Yalnızca aktif entry gizlenebilir.");
     if (!hidden && entry.status !== "HIDDEN")
       throw new AppError("ENTRY_NOT_EDITABLE", 409, "Yalnızca gizli entry geri açılabilir.");
-    const updated = await transaction.entry.update({
-      where: { id: entryId },
-      data: hidden
-        ? { status: "HIDDEN", hiddenAt: new Date() }
-        : { status: "ACTIVE", hiddenAt: null },
-    });
+    const updated = await setEntryStatus(transaction, entryId, hidden);
+    if (!updated)
+      throw new AppError(
+        "ENTRY_NOT_EDITABLE",
+        409,
+        "Entry durumu eşzamanlı olarak değişti; işlemi yeniden deneyin.",
+      );
     await recalculateTopicCounter(transaction, entry.topicId);
     await recordAction(transaction, actor, {
       actionType: hidden ? "ENTRY_HIDDEN" : "ENTRY_RESTORED",
@@ -91,23 +123,23 @@ export async function setEntryVisibility(
 }
 
 export async function setTopicVisibility(
-  client: PrismaClient,
+  client: DatabaseExecutor,
   actor: ActorContext,
   topicId: string,
   hidden: boolean,
   input: ModerationReasonInput,
 ) {
-  return client.$transaction(async (transaction) => {
-    await requireModerator(transaction, actor);
-    const topic = await transaction.topic.findUnique({ where: { id: topicId } });
+  return inTransaction(client, async (transaction) => {
+    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
+    await lockTopicState(transaction, topicId);
+    const topic = await findTopicForModeration(transaction, topicId);
     if (!topic) throw new AppError("TOPIC_NOT_FOUND", 404, "Başlık bulunamadı.");
     const expected = hidden ? "ACTIVE" : "HIDDEN";
     if (topic.status !== expected)
       throw new AppError("TOPIC_HIDDEN", 409, "Başlığın durumu bu işlem için uygun değil.");
-    const updated = await transaction.topic.update({
-      where: { id: topicId },
-      data: { status: hidden ? "HIDDEN" : "ACTIVE" },
-    });
+    const updated = await setTopicStatus(transaction, topicId, hidden);
+    if (!updated)
+      throw new AppError("TOPIC_HIDDEN", 409, "Başlığın durumu eşzamanlı olarak değişti.");
     await recordAction(transaction, actor, {
       actionType: hidden ? "TOPIC_HIDDEN" : "TOPIC_RESTORED",
       eventType: hidden ? "topic.hidden" : "topic.restored",
@@ -120,45 +152,26 @@ export async function setTopicVisibility(
 }
 
 export async function renameTopic(
-  client: PrismaClient,
+  client: DatabaseExecutor,
   actor: ActorContext,
   topicId: string,
   input: TopicRenameInput,
 ) {
   const title = input.title.normalize("NFKC").trim().replaceAll(/\s+/gu, " ");
   const normalizedTitle = normalizeTopicTitle(title);
-  return client.$transaction(async (transaction) => {
-    await requireModerator(transaction, actor);
-    await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${normalizedTitle}, 0))`;
-    const topic = await transaction.topic.findUnique({ where: { id: topicId } });
+  return inTransaction(client, async (transaction) => {
+    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
+    await lockTopicState(transaction, topicId);
+    await lockModerationKey(transaction, normalizedTitle);
+    const topic = await findTopicForModeration(transaction, topicId);
     if (!topic) throw new AppError("TOPIC_NOT_FOUND", 404, "Başlık bulunamadı.");
-    const conflict = await transaction.topic.findFirst({
-      where: {
-        id: { not: topicId },
-        OR: [{ normalizedTitle }, { aliases: { some: { normalizedTitle } } }],
-      },
-      select: { id: true },
-    });
-    const aliasConflict = await transaction.topicAlias.findFirst({
-      where: { normalizedTitle, topicId: { not: topicId } },
-      select: { id: true },
-    });
-    if (conflict || aliasConflict)
+    if (await findTopicIdentityConflict(transaction, topicId, normalizedTitle))
       throw new AppError("TOPIC_EXISTS", 409, "Bu başlık veya alias zaten mevcut.");
     if (normalizedTitle === topic.normalizedTitle) return topic;
-    await transaction.topicAlias.upsert({
-      where: { normalizedTitle: topic.normalizedTitle },
-      create: {
-        topicId,
-        title: topic.title,
-        normalizedTitle: topic.normalizedTitle,
-        slug: topic.slug,
-      },
-      update: {},
-    });
-    const updated = await transaction.topic.update({
-      where: { id: topicId },
-      data: { title, normalizedTitle, slug: createTopicSlug(title) },
+    const updated = await renameTopicRecord(transaction, topic, {
+      title,
+      normalizedTitle,
+      slug: createTopicSlug(title),
     });
     await recordAction(transaction, actor, {
       actionType: "TOPIC_RENAMED",
@@ -173,47 +186,30 @@ export async function renameTopic(
 }
 
 export async function mergeTopic(
-  client: PrismaClient,
+  client: DatabaseExecutor,
   actor: ActorContext,
   sourceTopicId: string,
   input: TopicMergeInput,
 ) {
   if (sourceTopicId === input.targetTopicId)
     throw new AppError("VALIDATION_ERROR", 422, "Başlık kendisiyle birleştirilemez.");
-  return client.$transaction(async (transaction) => {
-    await requireModerator(transaction, actor);
-    const lockKey = [sourceTopicId, input.targetTopicId].sort().join(":");
-    await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`;
+  return inTransaction(client, async (transaction) => {
+    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
+    await lockTopicState(transaction, [sourceTopicId, input.targetTopicId]);
     const [source, target] = await Promise.all([
-      transaction.topic.findUnique({ where: { id: sourceTopicId } }),
-      transaction.topic.findUnique({ where: { id: input.targetTopicId } }),
+      findTopicForModeration(transaction, sourceTopicId),
+      findTopicForModeration(transaction, input.targetTopicId),
     ]);
     if (!source || !target) throw new AppError("TOPIC_NOT_FOUND", 404, "Başlık bulunamadı.");
     if (source.status !== "ACTIVE" || target.status !== "ACTIVE")
       throw new AppError("TOPIC_HIDDEN", 409, "Yalnızca aktif başlıklar birleştirilebilir.");
-    await transaction.topicAlias.upsert({
-      where: { normalizedTitle: source.normalizedTitle },
-      create: {
-        topicId: target.id,
-        title: source.title,
-        normalizedTitle: source.normalizedTitle,
-        slug: source.slug,
-      },
-      update: { topicId: target.id },
-    });
-    await transaction.topicAlias.updateMany({
-      where: { topicId: source.id },
-      data: { topicId: target.id },
-    });
-    await transaction.entry.updateMany({
-      where: { topicId: source.id },
-      data: { topicId: target.id },
-    });
-    await transaction.topicFollow.deleteMany({ where: { topicId: source.id } });
-    await transaction.topic.update({
-      where: { id: source.id },
-      data: { status: "MERGED", mergedIntoId: target.id, entryCount: 0, lastEntryAt: null },
-    });
+    if (await topicHasSeedEntries(transaction, source.id))
+      throw new AppError(
+        "ENTRY_NOT_EDITABLE",
+        409,
+        "Korunan seed entry içeren başlık birleştirilemez.",
+      );
+    await mergeTopicRecords(transaction, source, target.id);
     await recalculateTopicCounter(transaction, target.id);
     await recordAction(transaction, actor, {
       actionType: "TOPIC_MERGED",
@@ -228,26 +224,41 @@ export async function mergeTopic(
 }
 
 export async function moveEntry(
-  client: PrismaClient,
+  client: DatabaseExecutor,
   actor: ActorContext,
   entryId: string,
   input: EntryMoveInput,
 ) {
-  return client.$transaction(async (transaction) => {
-    await requireModerator(transaction, actor);
+  return inTransaction(client, async (transaction) => {
+    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
+    const initialEntry = await findEntryForMove(transaction, entryId);
+    if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
+    await lockTopicState(transaction, [initialEntry.topicId, input.targetTopicId]);
+    await lockEntryState(transaction, entryId);
     const [entry, target] = await Promise.all([
-      transaction.entry.findUnique({ where: { id: entryId } }),
-      transaction.topic.findUnique({ where: { id: input.targetTopicId } }),
+      findEntryForMove(transaction, entryId),
+      findTopicForModeration(transaction, input.targetTopicId),
     ]);
     if (!entry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
+    if (entry.topicId !== initialEntry.topicId)
+      throw new AppError(
+        "ENTRY_NOT_EDITABLE",
+        409,
+        "Entry durumu eşzamanlı olarak değişti; işlemi yeniden deneyin.",
+      );
     if (!target) throw new AppError("TOPIC_NOT_FOUND", 404, "Hedef başlık bulunamadı.");
+    if (isCanonicalSeedEntry(entry))
+      throw new AppError("ENTRY_NOT_EDITABLE", 409, "Korunan seed entry taşınamaz.");
     if (target.status !== "ACTIVE")
       throw new AppError("TOPIC_HIDDEN", 409, "Entry yalnızca aktif başlığa taşınabilir.");
     if (entry.topicId === target.id) return entry;
-    const updated = await transaction.entry.update({
-      where: { id: entryId },
-      data: { topicId: target.id },
-    });
+    const updated = await moveEntryRecord(transaction, entryId, entry.topicId, target.id);
+    if (!updated)
+      throw new AppError(
+        "ENTRY_NOT_EDITABLE",
+        409,
+        "Entry durumu eşzamanlı olarak değişti; işlemi yeniden deneyin.",
+      );
     await recalculateTopicCounter(transaction, entry.topicId);
     await recalculateTopicCounter(transaction, target.id);
     await recordAction(transaction, actor, {
@@ -263,34 +274,26 @@ export async function moveEntry(
 }
 
 export async function setUserSuspension(
-  client: PrismaClient,
+  client: DatabaseExecutor,
   actor: ActorContext,
   userId: string,
   suspended: boolean,
   input: ModerationReasonInput,
 ) {
-  return client.$transaction(async (transaction) => {
-    const moderator = await requireModerator(transaction, actor);
-    const target = await transaction.user.findUnique({
-      where: { id: userId },
-      select: { id: true, role: true, status: true },
-    });
+  return inTransaction(client, async (transaction) => {
+    await lockUserActorAndTargetTransition(transaction, actor.actorId, userId);
+    const moderator = requireModerator(
+      await findModerationActor(transaction, actor.actorId),
+      actor,
+    );
+    const target = await findModerationTargetUser(transaction, userId);
     if (!target) throw new AppError("USER_NOT_FOUND", 404, "Kullanıcı bulunamadı.");
     assertCanActOnUser(moderator, target);
     const expected = suspended ? "ACTIVE" : "SUSPENDED";
     if (target.status !== expected)
       throw new AppError("FORBIDDEN", 409, "Kullanıcının durumu bu işlem için uygun değil.");
-    const updated = await transaction.user.update({
-      where: { id: userId },
-      data: { status: suspended ? "SUSPENDED" : "ACTIVE" },
-      select: { id: true, username: true, displayName: true, role: true, status: true },
-    });
-    if (suspended) {
-      await transaction.session.updateMany({
-        where: { userId, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
-    }
+    const updated = await updateUserSuspension(transaction, userId, suspended);
+    if (suspended) await revokeUserSessions(transaction, userId);
     await recordAction(transaction, actor, {
       actionType: suspended ? "USER_SUSPENDED" : "USER_UNSUSPENDED",
       eventType: suspended ? "user.suspended" : "user.unsuspended",
@@ -304,18 +307,18 @@ export async function setUserSuspension(
 }
 
 export async function setModeratorRole(
-  client: PrismaClient,
+  client: DatabaseExecutor,
   actor: ActorContext,
   userId: string,
   moderatorRole: boolean,
   input: ModerationReasonInput,
 ) {
-  return client.$transaction(async (transaction) => {
-    const admin = await requireModerator(transaction, actor, { adminOnly: true });
-    const target = await transaction.user.findUnique({
-      where: { id: userId },
-      select: { id: true, role: true, status: true },
+  return inTransaction(client, async (transaction) => {
+    await lockUserActorAndTargetTransition(transaction, actor.actorId, userId);
+    const admin = requireModerator(await findModerationActor(transaction, actor.actorId), actor, {
+      adminOnly: true,
     });
+    const target = await findModerationTargetUser(transaction, userId);
     if (!target) throw new AppError("USER_NOT_FOUND", 404, "Kullanıcı bulunamadı.");
     if (admin.id === target.id || target.role === "ADMIN")
       throw new AppError(
@@ -326,11 +329,7 @@ export async function setModeratorRole(
     const expected = moderatorRole ? "USER" : "MODERATOR";
     if (target.role !== expected)
       throw new AppError("FORBIDDEN", 409, "Kullanıcının rolü bu işlem için uygun değil.");
-    const updated = await transaction.user.update({
-      where: { id: userId },
-      data: { role: moderatorRole ? "MODERATOR" : "USER" },
-      select: { id: true, username: true, displayName: true, role: true, status: true },
-    });
+    const updated = await updateModeratorRole(transaction, userId, moderatorRole);
     await recordAction(transaction, actor, {
       actionType: moderatorRole ? "MODERATOR_GRANTED" : "MODERATOR_REVOKED",
       eventType: "user.role_changed",

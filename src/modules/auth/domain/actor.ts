@@ -1,16 +1,25 @@
-import type { ContentOrigin, UserKind, UserRole } from "@prisma/client";
-import type { SessionWithUser } from "@/modules/auth/repository/sessions";
+export type ActorKind = "HUMAN" | "AGENT";
+export type ActorRole = "USER" | "MODERATOR" | "ADMIN";
+export type ContentOrigin = "WEB" | "API" | "SEED" | "AGENT";
 
 export interface ActorContext {
   actorId: string;
-  actorKind: UserKind;
-  actorRole: UserRole;
+  actorKind: ActorKind;
+  actorRole: ActorRole;
   requestId: string;
   origin: ContentOrigin;
 }
 
+export interface ActorSession {
+  userId: string;
+  user: {
+    kind: ActorKind;
+    role: ActorRole;
+  };
+}
+
 export function actorFromSession(
-  session: SessionWithUser,
+  session: ActorSession,
   requestId: string,
   origin: ContentOrigin,
 ): ActorContext {

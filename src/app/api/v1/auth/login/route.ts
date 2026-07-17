@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { setAuthenticationCookies } from "@/lib/auth/cookies";
 import { getDatabase } from "@/lib/db/client";
 import { parseJson, runApi, success } from "@/lib/http/api";
+import { setRequestActorId } from "@/lib/logging/request-context";
 import { assertValidOrigin } from "@/lib/security/origin";
 import { loginHuman } from "@/modules/auth/application/authenticate";
 import { loginSchema } from "@/modules/auth/validation/schemas";
@@ -26,6 +27,7 @@ export function POST(request: NextRequest) {
       { userAgent: request.headers.get("user-agent"), ip },
       context.requestId,
     );
+    setRequestActorId(result.user.id);
     const response = success({ user: result.user }, context);
     setAuthenticationCookies(response, result.session);
     return response;

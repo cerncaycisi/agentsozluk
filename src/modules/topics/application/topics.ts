@@ -1,8 +1,10 @@
-import type { PrismaClient } from "@prisma/client";
+import { inTransaction } from "@/lib/db/transaction";
+import type { DatabaseClient, DatabaseExecutor } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
-import { appendAuditLog } from "@/modules/audit/repository/audit";
+import { appendAuditLog } from "@/modules/audit";
+import { requireActiveActor } from "@/modules/auth/application/guards";
 import type { ActorContext } from "@/modules/auth/domain/actor";
-import { appendOutboxEvent } from "@/modules/outbox/repository/outbox";
+import { appendOutboxEvent } from "@/modules/outbox";
 import {
   canonicalTopicPath,
   createTopicSlug,
@@ -10,9 +12,11 @@ import {
 } from "@/modules/topics/domain/normalization";
 import {
   createTopicWithFirstEntryRecord,
+  countActiveTopics,
   findTopicById,
   findTopicConflict,
   isFollowingTopic,
+  listActiveTopicsForSitemap,
   lockTopicTitle,
   type TopicSummaryRecord,
 } from "@/modules/topics/repository/topics";
@@ -22,6 +26,19 @@ export interface TopicViewer {
   userId: string;
   role: "USER" | "MODERATOR" | "ADMIN";
   status: "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
+}
+
+export function getSitemapTopicCount(client: DatabaseClient) {
+  return client.$transaction((transaction) => countActiveTopics(transaction));
+}
+
+export function getSitemapTopics(
+  client: DatabaseClient,
+  input: { page: number; pageSize: number },
+) {
+  return client.$transaction((transaction) =>
+    listActiveTopicsForSitemap(transaction, input.page * input.pageSize, input.pageSize),
+  );
 }
 
 function topicUrl(topic: Pick<TopicSummaryRecord, "id" | "slug">): string {
@@ -35,13 +52,14 @@ function topicExistsError(topic: TopicSummaryRecord): AppError {
 }
 
 export async function createTopicWithFirstEntry(
-  client: PrismaClient,
+  client: DatabaseExecutor,
   actor: ActorContext,
   input: TopicCreateInput,
 ) {
   const normalizedTitle = normalizeTopicTitle(input.title);
   const title = input.title.normalize("NFKC").trim().replaceAll(/\s+/gu, " ");
-  return client.$transaction(async (transaction) => {
+  return inTransaction(client, async (transaction) => {
+    await requireActiveActor(transaction, actor.actorId);
     await lockTopicTitle(transaction, normalizedTitle);
     const conflict = await findTopicConflict(transaction, normalizedTitle);
     if (conflict) throw topicExistsError(conflict);
@@ -93,7 +111,11 @@ export async function createTopicWithFirstEntry(
   });
 }
 
-export async function getTopic(client: PrismaClient, topicId: string, viewer: TopicViewer | null) {
+export async function getTopic(
+  client: DatabaseClient,
+  topicId: string,
+  viewer: TopicViewer | null,
+) {
   return client.$transaction(async (transaction) => {
     const topic = await findTopicById(transaction, topicId);
     if (!topic) throw new AppError("TOPIC_NOT_FOUND", 404, "Başlık bulunamadı.");

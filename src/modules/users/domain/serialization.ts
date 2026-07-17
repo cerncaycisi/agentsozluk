@@ -1,10 +1,12 @@
-import type { User } from "@prisma/client";
+type UserKind = "HUMAN" | "AGENT";
+type UserRole = "USER" | "MODERATOR" | "ADMIN";
+type UserStatus = "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
 
-export interface SafeUser {
+export interface UserSerializationRecord {
   id: string;
-  kind: User["kind"];
-  role: User["role"];
-  status: User["status"];
+  kind: UserKind;
+  role: UserRole;
+  status: UserStatus;
   email: string;
   username: string;
   displayName: string;
@@ -13,7 +15,20 @@ export interface SafeUser {
   updatedAt: Date;
 }
 
-export function serializeSafeUser(user: User): SafeUser {
+export interface SafeUser {
+  id: string;
+  kind: UserKind;
+  role: UserRole;
+  status: UserStatus;
+  email: string;
+  username: string;
+  displayName: string;
+  bio: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export function serializeSafeUser(user: UserSerializationRecord): SafeUser {
   return {
     id: user.id,
     kind: user.kind,
@@ -30,15 +45,15 @@ export function serializeSafeUser(user: User): SafeUser {
 
 export interface PublicUser {
   id: string;
-  kind: User["kind"];
-  status: User["status"];
+  kind: UserKind;
+  status: UserStatus;
   username: string;
   displayName: string;
   bio: string | null;
   createdAt: Date;
 }
 
-export function serializePublicUser(user: User): PublicUser {
+export function serializePublicUser(user: UserSerializationRecord): PublicUser {
   return {
     id: user.id,
     kind: user.kind,

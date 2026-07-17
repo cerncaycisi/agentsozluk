@@ -34,9 +34,19 @@ export const entryDetailSelect = {
       status: true,
     },
   },
+  _count: { select: { revisions: true } },
 } satisfies Prisma.EntrySelect;
 
 export type EntryDetailRecord = Prisma.EntryGetPayload<{ select: typeof entryDetailSelect }>;
+
+export async function lockEntryState(
+  transaction: Prisma.TransactionClient,
+  entryId: string,
+): Promise<void> {
+  await transaction.$executeRaw`
+    SELECT pg_advisory_xact_lock(hashtextextended(${`entry-state:${entryId}`}, 0))
+  `;
+}
 
 export function createEntryRecord(
   transaction: Prisma.TransactionClient,
@@ -65,16 +75,16 @@ export function findEntryById(transaction: Prisma.TransactionClient, entryId: st
   return transaction.entry.findUnique({ where: { id: entryId }, select: entryDetailSelect });
 }
 
-export function updateEntryRecord(
+export async function updateEntryRecord(
   transaction: Prisma.TransactionClient,
   entryId: string,
   body: string,
 ) {
-  return transaction.entry.update({
-    where: { id: entryId },
+  const result = await transaction.entry.updateMany({
+    where: { id: entryId, status: "ACTIVE", deletedAt: null, origin: { not: "SEED" } },
     data: { body, normalizedBody: normalizeEntrySearchText(body) },
-    select: entryDetailSelect,
   });
+  return result.count === 1 ? findEntryById(transaction, entryId) : null;
 }
 
 export async function createEntryRevision(
@@ -84,29 +94,40 @@ export async function createEntryRevision(
   await transaction.entryRevision.create({ data: input });
 }
 
-export function listEntryRevisions(transaction: Prisma.TransactionClient, entryId: string) {
-  return transaction.entryRevision.findMany({
-    where: { entryId },
-    select: {
-      id: true,
-      body: true,
-      createdAt: true,
-      editedBy: { select: { id: true, username: true, displayName: true } },
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-  });
+export function listEntryRevisions(
+  transaction: Prisma.TransactionClient,
+  entryId: string,
+  skip: number,
+  take: number,
+) {
+  const where: Prisma.EntryRevisionWhereInput = { entryId };
+  return Promise.all([
+    transaction.entryRevision.findMany({
+      where,
+      select: {
+        id: true,
+        body: true,
+        createdAt: true,
+        editedBy: { select: { id: true, username: true, displayName: true } },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip,
+      take,
+    }),
+    transaction.entryRevision.count({ where }),
+  ]);
 }
 
-export function softDeleteEntryRecord(
+export async function softDeleteEntryRecord(
   transaction: Prisma.TransactionClient,
   entryId: string,
   deletedAt: Date,
 ) {
-  return transaction.entry.update({
-    where: { id: entryId },
+  const result = await transaction.entry.updateMany({
+    where: { id: entryId, status: "ACTIVE", deletedAt: null, origin: { not: "SEED" } },
     data: { status: "DELETED", deletedAt },
-    select: entryDetailSelect,
   });
+  return result.count === 1 ? findEntryById(transaction, entryId) : null;
 }
 
 export function listTopicEntries(
@@ -159,9 +180,10 @@ export function listTopicEntries(
 export async function listBlockedAuthorIds(
   transaction: Prisma.TransactionClient,
   viewerId: string,
+  authorIds: string[],
 ): Promise<Set<string>> {
   const blocks = await transaction.userBlock.findMany({
-    where: { blockerId: viewerId },
+    where: { blockerId: viewerId, blockedId: { in: authorIds } },
     select: { blockedId: true },
   });
   return new Set(blocks.map((block) => block.blockedId));

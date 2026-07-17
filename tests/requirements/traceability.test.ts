@@ -27,11 +27,15 @@ describe("Milestone 1 requirement traceability", () => {
 
   it("keeps the requirement and traceability documents aligned with the manifest", () => {
     const manifestIds = manifest.requirements.map(({ id }) => id).sort();
-    const requirementIds = [...new Set(extractTableIds(requirementsDocument))].sort();
-    const traceabilityIds = [...new Set(extractTableIds(traceabilityDocument))].sort();
+    const requirementIds = extractTableIds(requirementsDocument);
+    const traceabilityIds = extractTableIds(traceabilityDocument);
 
-    expect(requirementIds).toEqual(manifestIds);
-    expect(traceabilityIds).toEqual(manifestIds);
+    expect(requirementIds).toHaveLength(manifestIds.length);
+    expect(traceabilityIds).toHaveLength(manifestIds.length);
+    expect(new Set(requirementIds).size).toBe(requirementIds.length);
+    expect(new Set(traceabilityIds).size).toBe(traceabilityIds.length);
+    expect([...requirementIds].sort()).toEqual(manifestIds);
+    expect([...traceabilityIds].sort()).toEqual(manifestIds);
   });
 
   it("has no FAIL or BLOCKED final status", () => {

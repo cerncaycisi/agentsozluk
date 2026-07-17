@@ -16,3 +16,13 @@ export function parseUuid(value: string, field = "id"): string {
     });
   return value.toLowerCase();
 }
+
+export function parseDate(value: string, field: string): Date {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new AppError("VALIDATION_ERROR", 422, "Geçerli bir tarih gönderin.", {
+      [field]: ["Geçerli bir tarih olmalıdır."],
+    });
+  }
+  return date;
+}

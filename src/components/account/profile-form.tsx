@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { FormField, FormTextarea } from "@/components/ui/form-field";
@@ -12,7 +13,9 @@ interface ProfileValues {
 }
 
 export function ProfileForm() {
+  const router = useRouter();
   const [notice, setNotice] = useState<string>();
+  const [profileReady, setProfileReady] = useState(false);
   const [username, setUsername] = useState("");
   const {
     register,
@@ -26,6 +29,7 @@ export function ProfileForm() {
       .then(({ user }) => {
         setUsername(user.username);
         reset({ displayName: user.displayName, bio: user.bio });
+        setProfileReady(true);
       })
       .catch(() =>
         setNotice("Profil bilgileri yüklenemedi. Lütfen giriş yaptığınızdan emin olun."),
@@ -36,11 +40,22 @@ export function ProfileForm() {
     setNotice(undefined);
     try {
       await apiRequest("/api/v1/me", { method: "PATCH", body: input, csrf: true });
+      router.refresh();
       setNotice("Profiliniz güncellendi.");
     } catch (error) {
       setNotice(error instanceof ClientApiError ? error.message : "Profil güncellenemedi.");
     }
   };
+
+  if (!profileReady) {
+    return (
+      <div className="surface-card p-6">
+        <p role={notice ? "alert" : "status"} className="text-sm text-muted">
+          {notice ?? "Profil bilgileri yükleniyor…"}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit(submit)} className="surface-card space-y-5 p-6" noValidate>

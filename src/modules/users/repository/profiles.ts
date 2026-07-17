@@ -46,6 +46,7 @@ export function listPublicProfileEntries(
         createdAt: true,
         updatedAt: true,
         topic: { select: { id: true, title: true, slug: true } },
+        _count: { select: { revisions: true } },
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       skip: input.skip,

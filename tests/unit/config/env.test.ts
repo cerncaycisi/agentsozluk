@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { environmentSchema } from "@/config/env";
+import { environmentInput, environmentSchema } from "@/config/env";
 
 const validEnvironment = {
   NODE_ENV: "development",
@@ -38,5 +38,18 @@ describe("environment validation", () => {
         SEED_DEMO: "true",
       }).success,
     ).toBe(false);
+  });
+
+  it("preserves the launcher environment when Next standalone forces NODE_ENV", () => {
+    const input = environmentInput({
+      ...validEnvironment,
+      NODE_ENV: "production",
+      AGENT_SOZLUK_RUNTIME_ENV: "development",
+      APP_SECRET: "replace-with-at-least-32-random-bytes",
+      SEED_DEMO: "true",
+    });
+
+    expect(environmentSchema.safeParse(input).success).toBe(true);
+    expect(input.NODE_ENV).toBe("development");
   });
 });

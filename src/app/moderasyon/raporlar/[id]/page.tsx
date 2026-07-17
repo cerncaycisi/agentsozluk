@@ -5,6 +5,7 @@ import { ConfirmAction } from "@/components/moderation/confirm-action";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { getDatabase } from "@/lib/db/client";
 import { AppError } from "@/lib/http/errors";
+import { pageUuidFrom } from "@/lib/http/page-params";
 import { requireModerationPage } from "@/lib/auth/server-session";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 import { getModerationReport } from "@/modules/moderation/application/reports";
@@ -16,8 +17,9 @@ export const metadata: Metadata = {
 };
 
 export default async function ReportDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: rawId } = await params;
+  const id = pageUuidFrom(rawId);
   const session = await requireModerationPage();
-  const { id } = await params;
   let data;
   try {
     data = await getModerationReport(

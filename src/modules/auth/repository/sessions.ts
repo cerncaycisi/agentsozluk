@@ -25,6 +25,8 @@ const sessionWithUser = {
   userId: true,
   tokenHash: true,
   csrfTokenHash: true,
+  csrfPreviousTokenHash: true,
+  csrfPreviousTokenExpiresAt: true,
   userAgent: true,
   ipHash: true,
   createdAt: true,
@@ -67,7 +69,54 @@ export function updateSessionCsrf(
   sessionId: string,
   csrfTokenHash: string,
 ) {
-  return transaction.session.update({ where: { id: sessionId }, data: { csrfTokenHash } });
+  return transaction.session.update({
+    where: { id: sessionId },
+    data: {
+      csrfTokenHash,
+      csrfPreviousTokenHash: null,
+      csrfPreviousTokenExpiresAt: null,
+    },
+  });
+}
+
+export function recoverSessionCsrf(
+  transaction: Prisma.TransactionClient,
+  input: {
+    sessionId: string;
+    expectedTokenHash: string;
+    recoveredTokenHash: string;
+    previousTokenExpiresAt: Date;
+    now: Date;
+  },
+) {
+  return transaction.session.updateMany({
+    where: {
+      id: input.sessionId,
+      csrfTokenHash: input.expectedTokenHash,
+      revokedAt: null,
+      expiresAt: { gt: input.now },
+    },
+    data: {
+      csrfTokenHash: input.recoveredTokenHash,
+      csrfPreviousTokenHash: input.expectedTokenHash,
+      csrfPreviousTokenExpiresAt: input.previousTokenExpiresAt,
+    },
+  });
+}
+
+export function findSessionCsrfState(
+  transaction: Prisma.TransactionClient,
+  sessionId: string,
+  now: Date,
+) {
+  return transaction.session.findFirst({
+    where: { id: sessionId, revokedAt: null, expiresAt: { gt: now } },
+    select: {
+      csrfTokenHash: true,
+      csrfPreviousTokenHash: true,
+      csrfPreviousTokenExpiresAt: true,
+    },
+  });
 }
 
 export function revokeSession(
@@ -102,6 +151,7 @@ export function listUserSessions(transaction: Prisma.TransactionClient, userId: 
     where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
     select: { id: true, userAgent: true, createdAt: true, lastUsedAt: true, expiresAt: true },
     orderBy: { lastUsedAt: "desc" },
+    take: 100,
   });
 }
 

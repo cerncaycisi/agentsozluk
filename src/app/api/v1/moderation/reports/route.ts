@@ -1,13 +1,16 @@
-import type { ReportReason, ReportStatus, ReportTargetType } from "@prisma/client";
 import type { NextRequest } from "next/server";
 import { requestSession } from "@/lib/auth/request-session";
 import { getDatabase } from "@/lib/db/client";
 import { runApi, successList } from "@/lib/http/api";
 import { paginationFrom } from "@/lib/http/pagination";
+import { parseDate } from "@/lib/http/request";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 import { getModerationReports } from "@/modules/moderation/application/reports";
+import type { ReportReason, ReportTargetType } from "@/modules/moderation/validation/schemas";
 
 export const runtime = "nodejs";
+
+type ReportStatus = "OPEN" | "RESOLVED" | "REJECTED";
 
 const statuses = new Set<ReportStatus>(["OPEN", "RESOLVED", "REJECTED"]);
 const targetTypes = new Set<ReportTargetType>(["TOPIC", "ENTRY", "USER"]);
@@ -41,9 +44,11 @@ export function GET(request: NextRequest) {
           ? { reporterUsername: url.searchParams.get("reporter")!.toLocaleLowerCase("tr-TR") }
           : {}),
         ...(url.searchParams.get("from")
-          ? { createdFrom: new Date(url.searchParams.get("from")!) }
+          ? { createdFrom: parseDate(url.searchParams.get("from")!, "from") }
           : {}),
-        ...(url.searchParams.get("to") ? { createdTo: new Date(url.searchParams.get("to")!) } : {}),
+        ...(url.searchParams.get("to")
+          ? { createdTo: parseDate(url.searchParams.get("to")!, "to") }
+          : {}),
         skip: pagination.skip,
         take: pagination.pageSize,
       },

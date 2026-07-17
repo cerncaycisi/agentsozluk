@@ -6,6 +6,7 @@ import {
   canModerate,
   canViewRevision,
   canWrite,
+  isLastActiveAdmin,
   type ActorState,
 } from "@/modules/auth/domain/permissions";
 
@@ -40,5 +41,11 @@ describe("permission matrix", () => {
     expect(canActOnUser(moderator, { ...moderator, id: "other-mod" })).toBe(false);
     expect(canActOnUser(admin, moderator)).toBe(true);
     expect(canActOnUser(admin, admin)).toBe(false);
+  });
+
+  it("blocks deactivation only for the last active admin", () => {
+    expect(isLastActiveAdmin("ADMIN", 1)).toBe(true);
+    expect(isLastActiveAdmin("ADMIN", 2)).toBe(false);
+    expect(isLastActiveAdmin("MODERATOR", 1)).toBe(false);
   });
 });

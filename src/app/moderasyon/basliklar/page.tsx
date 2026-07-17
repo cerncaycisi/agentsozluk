@@ -1,9 +1,13 @@
+import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
 import { ConfirmAction } from "@/components/moderation/confirm-action";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { getDatabase } from "@/lib/db/client";
 import { requireModerationPage } from "@/lib/auth/server-session";
+import { pageFrom } from "@/lib/http/pagination";
+import { actorFromSession } from "@/modules/auth/domain/actor";
+import { getModerationTopics } from "@/modules/moderation/application/queries";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -16,22 +20,20 @@ export default async function ModerationTopicsPage({
 }: {
   searchParams: Promise<{ page?: string; q?: string }>;
 }) {
-  await requireModerationPage();
+  const session = await requireModerationPage();
   const params = await searchParams;
-  const rawPage = Number(params.page ?? 1);
-  const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+  const page = pageFrom(params.page);
   const pageSize = 20;
   const query = params.q?.normalize("NFKC").trim();
-  const where = query ? { title: { contains: query, mode: "insensitive" as const } } : {};
-  const [topics, totalItems] = await getDatabase().$transaction([
-    getDatabase().topic.findMany({
-      where,
-      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+  const [topics, totalItems] = await getModerationTopics(
+    getDatabase(),
+    actorFromSession(session, randomUUID(), "WEB"),
+    {
+      ...(query ? { query } : {}),
       skip: (page - 1) * pageSize,
       take: pageSize,
-    }),
-    getDatabase().topic.count({ where }),
-  ]);
+    },
+  );
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   return (
     <ModerationLayout

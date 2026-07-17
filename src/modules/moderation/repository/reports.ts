@@ -1,4 +1,5 @@
 import type { Prisma, ReportReason, ReportStatus, ReportTargetType } from "@prisma/client";
+import { lockUserStateForMutation } from "@/modules/auth/repository/users";
 
 export function findReportTarget(
   transaction: Prisma.TransactionClient,
@@ -34,6 +35,35 @@ export function createReportRecord(
   },
 ) {
   return transaction.report.create({ data: input });
+}
+
+export async function findReporterStatus(
+  transaction: Prisma.TransactionClient,
+  reporterId: string,
+) {
+  await lockUserStateForMutation(transaction, reporterId);
+  return transaction.user.findUnique({
+    where: { id: reporterId },
+    select: { status: true },
+  });
+}
+
+export async function decideReportRecord(
+  transaction: Prisma.TransactionClient,
+  reportId: string,
+  input: {
+    status: "RESOLVED" | "REJECTED";
+    handledById: string;
+    handledAt: Date;
+    resolutionNote: string;
+  },
+) {
+  const result = await transaction.report.updateMany({
+    where: { id: reportId, status: "OPEN" },
+    data: input,
+  });
+  if (result.count === 0) return null;
+  return transaction.report.findUniqueOrThrow({ where: { id: reportId } });
 }
 
 export function listReports(
@@ -97,6 +127,7 @@ export function listRelatedReports(
     where: { targetType, targetId, status: "OPEN" },
     include: { reporter: { select: { id: true, username: true, displayName: true } } },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    take: 20,
   });
 }
 
@@ -109,5 +140,6 @@ export function listTargetModerationHistory(
     where: { targetType, targetId },
     include: { moderator: { select: { id: true, username: true, displayName: true } } },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 20,
   });
 }

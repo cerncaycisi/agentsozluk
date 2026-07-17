@@ -30,6 +30,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const session = await authenticateSession(
     getDatabase(),
     cookieStore.get(SESSION_COOKIE_NAME)?.value,
+    { extendExpiration: false },
   );
   const viewer = session
     ? {

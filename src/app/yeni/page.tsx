@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { FeedPage } from "@/components/topics/feed-page";
+import { pageFrom } from "@/lib/http/pagination";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Yeni başlıklar" };
@@ -9,8 +10,7 @@ export default async function NewTopicsPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  const rawPage = Number((await searchParams).page ?? 1);
-  const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+  const page = pageFrom((await searchParams).page);
   return (
     <FeedPage
       feed="new"

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { InformationPage } from "@/components/content/information-page";
+import { APP_NAME } from "@/config/app";
 
 export const metadata: Metadata = {
   title: "API belgeleri",
-  description: "Agent Sözlük REST API ve OpenAPI belgeleri.",
+  description: `${APP_NAME} REST API ve OpenAPI belgeleri.`,
 };
 
 export default function ApiDocsPage() {

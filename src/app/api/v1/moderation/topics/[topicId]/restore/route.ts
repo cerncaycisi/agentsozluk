@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
-import { getDatabase, runModerationAction } from "@/lib/http/moderation-action";
+import { runModerationAction } from "@/lib/http/moderation-action";
+import { parseUuid } from "@/lib/http/request";
 import { setTopicVisibility } from "@/modules/moderation/application/actions";
 import { moderationReasonSchema } from "@/modules/moderation/validation/schemas";
 
@@ -10,7 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ topicId: string }> },
 ) {
   const { topicId } = await params;
-  return runModerationAction(request, moderationReasonSchema, (actor, input) =>
-    setTopicVisibility(getDatabase(), actor, topicId, false, input),
+  return runModerationAction(request, moderationReasonSchema, (client, actor, input) =>
+    setTopicVisibility(client, actor, parseUuid(topicId, "topicId"), false, input),
   );
 }

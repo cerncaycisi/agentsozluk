@@ -2,7 +2,7 @@ import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { getEnvironment } from "@/config/env";
 import { getDatabase } from "@/lib/db/client";
-import { appendAuditLog } from "@/modules/audit/repository/audit";
+import { appendAuditLog } from "@/modules/audit";
 import { normalizeEmail } from "@/modules/auth/domain/normalization";
 import { hashPassword } from "@/modules/auth/domain/password";
 

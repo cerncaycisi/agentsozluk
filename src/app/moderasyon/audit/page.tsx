@@ -4,6 +4,7 @@ import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { getDatabase } from "@/lib/db/client";
 import { requireModerationPage } from "@/lib/auth/server-session";
+import { pageFrom } from "@/lib/http/pagination";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 import { getAuditLogs } from "@/modules/moderation/application/queries";
 
@@ -20,8 +21,7 @@ export default async function AuditPage({
 }) {
   const session = await requireModerationPage();
   const params = await searchParams;
-  const rawPage = Number(params.page ?? 1);
-  const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+  const page = pageFrom(params.page);
   const pageSize = 20;
   const [logs, totalItems] = await getAuditLogs(
     getDatabase(),

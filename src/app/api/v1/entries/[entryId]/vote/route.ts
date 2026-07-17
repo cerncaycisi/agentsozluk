@@ -5,7 +5,12 @@ import { parseJson, runApi, success } from "@/lib/http/api";
 import { parseUuid } from "@/lib/http/request";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 import { removeVote, setVote } from "@/modules/interactions/application/interactions";
-import { voteSchema } from "@/modules/topics/validation/schemas";
+import {
+  enforceRateLimit,
+  RATE_LIMIT_RULES,
+  userRateLimitIdentifier,
+} from "@/modules/rate-limit/application/rate-limit";
+import { voteSchema } from "@/modules/interactions/validation/schemas";
 
 export const runtime = "nodejs";
 
@@ -16,8 +21,14 @@ export function PUT(request: NextRequest, { params }: Context) {
     const { entryId: rawEntryId } = await params;
     const session = await activeCsrfSession(request);
     const input = await parseJson(request, voteSchema);
+    const database = getDatabase();
+    await enforceRateLimit(
+      database,
+      userRateLimitIdentifier(session.userId),
+      RATE_LIMIT_RULES.vote,
+    );
     const result = await setVote(
-      getDatabase(),
+      database,
       actorFromSession(session, context.requestId, "API"),
       parseUuid(rawEntryId, "entryId"),
       input.value,
@@ -30,8 +41,14 @@ export function DELETE(request: NextRequest, { params }: Context) {
   return runApi(request, async (context) => {
     const { entryId: rawEntryId } = await params;
     const session = await activeCsrfSession(request);
+    const database = getDatabase();
+    await enforceRateLimit(
+      database,
+      userRateLimitIdentifier(session.userId),
+      RATE_LIMIT_RULES.vote,
+    );
     const result = await removeVote(
-      getDatabase(),
+      database,
       actorFromSession(session, context.requestId, "API"),
       parseUuid(rawEntryId, "entryId"),
     );
