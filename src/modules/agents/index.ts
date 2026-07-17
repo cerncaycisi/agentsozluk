@@ -9,6 +9,7 @@ export * from "@/modules/agents/application/manual-runs";
 export * from "@/modules/agents/domain/authorization";
 export * from "@/modules/agents/domain/action-policy";
 export * from "@/modules/agents/domain/capacity";
+export * from "@/modules/agents/domain/circuit-breaker";
 export * from "@/modules/agents/domain/credential";
 export * from "@/modules/agents/domain/persona-validation";
 export * from "@/modules/agents/domain/perception";

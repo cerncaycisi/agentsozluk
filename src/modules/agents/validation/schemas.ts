@@ -128,8 +128,13 @@ export const globalSettingsUpdateSchema = z
   })
   .refine((input) => Object.keys(input).length > 0, { message: "En az bir ayar gönderin." });
 
+export const runtimeControlSchema = z
+  .object({ reason: z.string().trim().min(10).max(1000) })
+  .strict();
+
 export type CreateAgentInput = z.infer<typeof createAgentSchema>;
 export type UpdateAgentInput = z.infer<typeof updateAgentSchema>;
 export type LifecycleChangeInput = z.infer<typeof lifecycleChangeSchema>;
 export type PersonaRollbackInput = z.infer<typeof personaRollbackSchema>;
 export type GlobalSettingsUpdateInput = z.infer<typeof globalSettingsUpdateSchema>;
+export type RuntimeControlInput = z.infer<typeof runtimeControlSchema>;

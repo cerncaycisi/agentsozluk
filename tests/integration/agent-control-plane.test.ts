@@ -517,4 +517,92 @@ describe("agent control plane with PostgreSQL", () => {
       updateGlobalSettings(integrationDatabase, actor(admin.id), { codexConcurrency: 2 }),
     ).rejects.toMatchObject({ code: "AGENT_CAPABILITY_REQUIRED" });
   });
+
+  it("measures real utilization, head-of-line blocking and runtime breaker signals", async () => {
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const profile = await integrationDatabase.agentProfile.findUniqueOrThrow({
+      where: { id: created.agent.profile.id },
+      select: { currentPersonaVersionId: true },
+    });
+    const now = new Date("2026-07-18T12:00:00.000Z");
+    const terminal = [
+      {
+        status: "SUCCEEDED" as const,
+        startedAt: new Date(now.getTime() - 111 * 60_000),
+        finishedAt: new Date(now.getTime() - 15 * 60_000 - 1),
+        errorCode: null,
+      },
+      {
+        status: "SUCCEEDED" as const,
+        startedAt: new Date(now.getTime() - 15 * 60_000),
+        finishedAt: new Date(now.getTime() - 10 * 60_000),
+        errorCode: null,
+      },
+      {
+        status: "FAILED" as const,
+        startedAt: new Date(now.getTime() - 10 * 60_000),
+        finishedAt: new Date(now.getTime() - 5 * 60_000),
+        errorCode: "CODEX_TIMEOUT",
+      },
+      {
+        status: "TIMED_OUT" as const,
+        startedAt: new Date(now.getTime() - 5 * 60_000),
+        finishedAt: now,
+        errorCode: "CODEX_TIMEOUT",
+      },
+    ];
+    for (const [index, run] of terminal.entries()) {
+      await integrationDatabase.agentRun.create({
+        data: {
+          agentProfileId: created.agent.profile.id,
+          personaVersionId: profile.currentPersonaVersionId!,
+          runType: "NORMAL_WAKE",
+          runStatus: run.status,
+          queuePriority: "SCHEDULED_CONTENT",
+          trigger: "INTEGRATION_METRIC",
+          idempotencyKey: `integration-metric-terminal:${index}`,
+          timeoutSeconds: 600,
+          desiredEntryMin: 2,
+          desiredEntryMax: 3,
+          startedAt: run.startedAt,
+          finishedAt: run.finishedAt,
+          errorCode: run.errorCode,
+        },
+      });
+    }
+    const oldestQueuedAt = new Date(now.getTime() - 20 * 60_000);
+    await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: created.agent.profile.id,
+        personaVersionId: profile.currentPersonaVersionId!,
+        runType: "NORMAL_WAKE",
+        queuePriority: "SCHEDULED_CONTENT",
+        trigger: "INTEGRATION_METRIC",
+        idempotencyKey: "integration-metric-queued",
+        timeoutSeconds: 600,
+        desiredEntryMin: 2,
+        desiredEntryMax: 3,
+        createdAt: oldestQueuedAt,
+      },
+    });
+    const capacity = await getRuntimeCapacity(integrationDatabase, actor(admin.id), now);
+    expect(capacity).toMatchObject({
+      capacityStatus: "AT_RISK",
+      operational: {
+        terminalRunsInErrorWindow: 3,
+        failedRunsInErrorWindow: 2,
+        oldestQueuedAt,
+      },
+      circuitBreakers: {
+        runtimeErrorRate: 2 / 3,
+        writeRunsPaused: true,
+        runtimePaused: false,
+        catchUpFrozen: true,
+      },
+    });
+    expect(capacity.operational.utilization15m).toBeCloseTo(1, 5);
+    expect(capacity.operational.utilization1h).toBeCloseTo(1, 5);
+    expect(capacity.operational.utilization2h).toBeCloseTo(0.925, 4);
+  });
 });

@@ -1163,6 +1163,45 @@ paths:
           "403": { $ref: "#/components/responses/Error" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/admin/agent-runtime/health:
+    get:
+      operationId: getAdminAgentRuntimeHealth
+      tags: [Admin]
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agent-runtime/pause:
+    post:
+      operationId: pauseAdminAgentRuntime
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeControl" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agent-runtime/resume:
+    post:
+      operationId: resumeAdminAgentRuntime
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeControl" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
 
   /api/v1/internal/agent-runtime/lease:
     post:
@@ -1831,6 +1870,11 @@ components:
       additionalProperties: false
       required: [reason]
       properties: { reason: { type: string, minLength: 10, maxLength: 1000 } }
+    RuntimeControlInput:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties: { reason: { type: string, minLength: 10, maxLength: 1000 } }
     RuntimeLeaseInput:
       type: object
       additionalProperties: false
@@ -2230,6 +2274,12 @@ components:
         required: true,
         content:
           { application/json: { schema: { $ref: "#/components/schemas/AgentRunCommandInput" } } },
+      }
+    RuntimeControl:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/RuntimeControlInput" } } },
       }
     RuntimeLease:
       {

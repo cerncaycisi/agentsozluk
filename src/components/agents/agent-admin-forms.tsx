@@ -596,6 +596,62 @@ export function AgentRunCommands({ runId, status }: { runId: string; status: str
   );
 }
 
+export function RuntimeControlForm({ runtimeEnabled }: { runtimeEnabled: boolean }) {
+  const router = useRouter();
+  const [reason, setReason] = useState("");
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string>();
+  const command = runtimeEnabled ? "pause" : "resume";
+  return (
+    <form
+      className="mt-4 grid gap-3 border-t pt-4 sm:grid-cols-[1fr_auto]"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setPending(true);
+        setMessage(undefined);
+        try {
+          await apiRequest(`/api/v1/admin/agent-runtime/${command}`, {
+            method: "POST",
+            body: { reason },
+            csrf: true,
+            idempotency: true,
+          });
+          setReason("");
+          setMessage(
+            runtimeEnabled
+              ? "Yeni lease alımı pause edildi."
+              : "Runtime açıldı ve circuit-breaker geçmişi resetlendi.",
+          );
+          router.refresh();
+        } catch (submitError) {
+          setMessage(errorMessage(submitError));
+        } finally {
+          setPending(false);
+        }
+      }}
+    >
+      <label className="text-sm font-bold">
+        {runtimeEnabled ? "Pause" : "Resume/reset"} gerekçesi
+        <input
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          minLength={10}
+          maxLength={1000}
+          required
+          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+        />
+      </label>
+      <button
+        disabled={pending || reason.trim().length < 10}
+        className={runtimeEnabled ? "button-secondary self-end" : "button-primary self-end"}
+      >
+        {pending ? "İşleniyor…" : runtimeEnabled ? "Global runtime pause" : "Resume ve reset"}
+      </button>
+      {message ? <p className="text-sm sm:col-span-2">{message}</p> : null}
+    </form>
+  );
+}
+
 interface TemplatePersona {
   username: string;
   displayName: string;

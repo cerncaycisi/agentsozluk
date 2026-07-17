@@ -56,6 +56,8 @@ export function getRuntimeGlobalSettings(transaction: Prisma.TransactionClient) 
       maxRetryCount: true,
       schedulerEnabled: true,
       scheduledTimeoutSeconds: true,
+      codexConcurrency: true,
+      circuitBreakerConfig: true,
     },
   });
 }
@@ -141,6 +143,9 @@ export async function claimNextRuntimeRun(
     workerId: string;
     leaseSeconds: number;
     maxRetryCount: number;
+    writeRunsPaused: boolean;
+    catchUpFrozen: boolean;
+    contentSlowdownMinutes: number;
     now: Date;
   },
 ) {
@@ -150,6 +155,24 @@ export async function claimNextRuntimeRun(
     WHERE candidate."agentProfileId" = ${input.agentProfileId}::uuid
       AND candidate."availableAt" <= ${input.now}
       AND candidate."attempts" <= ${input.maxRetryCount}
+      AND (
+        NOT ${input.writeRunsPaused}
+        OR candidate."runType" IN (
+          'READ_ONLY', 'DRY_RUN', 'REFLECTION', 'SOURCE_REFRESH',
+          'CAPACITY_BENCHMARK', 'CONCURRENCY_TEST'
+        )
+      )
+      AND (NOT ${input.catchUpFrozen} OR candidate."runType" <> 'DAILY_CATCH_UP')
+      AND (
+        ${input.contentSlowdownMinutes} = 0
+        OR candidate."runType" IN (
+          'READ_ONLY', 'DRY_RUN', 'REFLECTION', 'SOURCE_REFRESH',
+          'CAPACITY_BENCHMARK', 'CONCURRENCY_TEST'
+        )
+        OR candidate."createdAt" <= ${new Date(
+          input.now.getTime() - input.contentSlowdownMinutes * 60_000,
+        )}
+      )
       AND (
         (
           candidate."runStatus" = 'RUNNING'

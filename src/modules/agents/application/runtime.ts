@@ -26,6 +26,11 @@ import {
 } from "@/modules/agents/repository/runtime";
 import { dispatchDueScheduleSlots } from "@/modules/agents/repository/scheduler";
 import { istanbulLocalDate } from "@/modules/agents/application/scheduler";
+import { getRuntimeOperationalMetrics } from "@/modules/agents/repository/capacity";
+import {
+  circuitBreakerConfigSchema,
+  evaluateCircuitBreakers,
+} from "@/modules/agents/domain/circuit-breaker";
 import { seedPersonaSchema } from "@/modules/agents/personas/schema";
 import { selectPerceptionEntries, truncateUntrustedText } from "@/modules/agents/domain/perception";
 import type {
@@ -213,6 +218,14 @@ export function leaseRuntimeRun(
     }
     const now = new Date();
     await finalizeExpiredCancellation(transaction, principal.agentProfileId, now);
+    const breakerConfig = circuitBreakerConfigSchema.parse(settings.circuitBreakerConfig);
+    const operational = await getRuntimeOperationalMetrics(transaction, {
+      now,
+      concurrency: settings.codexConcurrency === 2 ? 2 : 1,
+      config: breakerConfig,
+    });
+    const breakers = evaluateCircuitBreakers(breakerConfig, operational);
+    if (breakers.runtimePaused) return { run: null, reason: "ERROR_PAUSED" };
     if (settings.schedulerEnabled) {
       await dispatchDueScheduleSlots(transaction, {
         now,
@@ -225,6 +238,9 @@ export function leaseRuntimeRun(
       workerId: input.workerId,
       leaseSeconds: input.leaseSeconds,
       maxRetryCount: settings.maxRetryCount,
+      writeRunsPaused: breakers.writeRunsPaused,
+      catchUpFrozen: breakers.catchUpFrozen,
+      contentSlowdownMinutes: breakers.contentSlowdown ? breakerConfig.duplicateCooldownMinutes : 0,
       now,
     });
     if (!run) return { run: null, reason: "QUEUE_EMPTY" };

@@ -472,6 +472,9 @@ describe("agent daily scheduler with PostgreSQL", () => {
         workerId: "scheduler-integration-worker",
         leaseSeconds: 60,
         maxRetryCount: 2,
+        writeRunsPaused: false,
+        catchUpFrozen: false,
+        contentSlowdownMinutes: 0,
         now,
       }),
     );

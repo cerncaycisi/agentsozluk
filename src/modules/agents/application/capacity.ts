@@ -9,9 +9,14 @@ import {
   supportsDualConcurrency,
 } from "@/modules/agents/domain/capacity";
 import {
+  circuitBreakerConfigSchema,
+  evaluateCircuitBreakers,
+} from "@/modules/agents/domain/circuit-breaker";
+import {
   createRuntimeCapabilityRecord,
   getCapacityPlanningMetrics,
   getLatestRuntimeCapability,
+  getRuntimeOperationalMetrics,
 } from "@/modules/agents/repository/capacity";
 import {
   appendRuntimeEvent,
@@ -49,16 +54,30 @@ export function getRuntimeCapacity(
       getCapacityPlanningMetrics(transaction, localDate),
     ]);
     const configuredConcurrency = settings.codexConcurrency === 2 ? 2 : 1;
+    const calculated = calculateRuntimeCapacity({
+      capability,
+      ...planning,
+      configuredConcurrency,
+      degradedMode: settings.degradedMode,
+      now,
+    });
+    const operational = await getRuntimeOperationalMetrics(transaction, {
+      now,
+      concurrency: calculated.effectiveConcurrency === 2 ? 2 : 1,
+      config: circuitBreakerConfigSchema.parse(settings.circuitBreakerConfig),
+    });
+    const circuitBreakers = evaluateCircuitBreakers(
+      circuitBreakerConfigSchema.parse(settings.circuitBreakerConfig),
+      operational,
+    );
     return {
       localDate,
+      runtimeEnabled: settings.runtimeEnabled,
       dualConcurrencyAvailable: supportsDualConcurrency(capability, { now }),
-      ...calculateRuntimeCapacity({
-        capability,
-        ...planning,
-        configuredConcurrency,
-        degradedMode: settings.degradedMode,
-        now,
-      }),
+      ...calculated,
+      capacityStatus: circuitBreakers.capacityAtRisk ? "AT_RISK" : calculated.capacityStatus,
+      operational,
+      circuitBreakers,
     };
   });
 }

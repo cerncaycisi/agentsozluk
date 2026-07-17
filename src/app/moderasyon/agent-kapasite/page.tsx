@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
+import { RuntimeControlForm } from "@/components/agents/agent-admin-forms";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
 import { getRuntimeCapacity } from "@/modules/agents";
@@ -35,6 +36,7 @@ export default async function AgentCapacityPage() {
         <h2 className="text-lg font-black">Bugünkü durum</h2>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
           <Row label="Capacity status" value={capacity.capacityStatus} />
+          <Row label="Global runtime" value={capacity.runtimeEnabled ? "ENABLED" : "PAUSED"} />
           <Row label="Local date" value={capacity.localDate.toISOString().slice(0, 10)} />
           <Row label="Planlanan run" value={String(capacity.plannedRuns)} />
           <Row label="Tamamlanan run" value={String(capacity.completedRuns)} />
@@ -43,10 +45,55 @@ export default async function AgentCapacityPage() {
             value={`${capacity.effectiveConcurrency} effective / ${capacity.configuredConcurrency} configured`}
           />
           <Row label="Worker utilization tahmini" value={ratio(capacity.estimatedUtilization)} />
+          <Row
+            label="Gerçek utilization · 15 dk"
+            value={ratio(capacity.operational.utilization15m)}
+          />
+          <Row
+            label="Gerçek utilization · 1 saat"
+            value={ratio(capacity.operational.utilization1h)}
+          />
+          <Row
+            label="Gerçek utilization · 2 saat"
+            value={ratio(capacity.operational.utilization2h)}
+          />
           <Row label="Capacity reserve" value={ratio(capacity.capacityReserve)} />
           <Row
             label="Tahmini published"
             value={`${capacity.estimatedPublishedMin}–${capacity.estimatedPublishedMax}`}
+          />
+          <Row
+            label="En eski queued"
+            value={capacity.operational.oldestQueuedAt?.toISOString() ?? "—"}
+          />
+          <Row
+            label="En uzun active başlangıcı"
+            value={capacity.operational.longestActiveStartedAt?.toISOString() ?? "—"}
+          />
+        </dl>
+        <RuntimeControlForm runtimeEnabled={capacity.runtimeEnabled} />
+      </section>
+      <section className="surface-card mt-5 p-5">
+        <h2 className="text-lg font-black">Circuit breakers</h2>
+        <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+          {capacity.circuitBreakers.breakers.map((breaker) => (
+            <Row
+              key={breaker.code}
+              label={breaker.code}
+              value={`${breaker.active ? "ACTIVE" : "OK"} · ${breaker.measured ?? "UNKNOWN"} / ${breaker.threshold}`}
+            />
+          ))}
+          <Row
+            label="Write lane"
+            value={capacity.circuitBreakers.writeRunsPaused ? "PAUSED" : "OPEN"}
+          />
+          <Row
+            label="Catch-up"
+            value={capacity.circuitBreakers.catchUpFrozen ? "FROZEN" : "OPEN"}
+          />
+          <Row
+            label="Duplicate slowdown"
+            value={capacity.circuitBreakers.contentSlowdown ? "ACTIVE" : "OFF"}
           />
         </dl>
       </section>

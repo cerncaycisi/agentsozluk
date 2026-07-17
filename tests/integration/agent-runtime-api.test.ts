@@ -27,6 +27,7 @@ import {
   runtimeSourceResultSchema,
   runtimeHeartbeatSchema,
   runtimeCredentialRotationSchema,
+  setGlobalRuntimeEnabled,
   updateGlobalSettings,
 } from "@/modules/agents";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
@@ -213,6 +214,97 @@ describe("internal agent runtime API with PostgreSQL", () => {
       (await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: running.id } }))
         .startedAt,
     ).toEqual(originalStartedAt);
+  });
+
+  it("keeps read-only work leaseable while the runtime error breaker pauses new write runs", async () => {
+    const fixture = await createFixture();
+    const now = new Date();
+    for (const [index, runStatus] of ["SUCCEEDED", "FAILED", "FAILED"].entries()) {
+      await integrationDatabase.agentRun.create({
+        data: {
+          agentProfileId: fixture.created.agent.profile.id,
+          personaVersionId: fixture.created.agent.personaVersion.id,
+          runType: "NORMAL_WAKE",
+          runStatus: runStatus as "SUCCEEDED" | "FAILED",
+          queuePriority: "SCHEDULED_CONTENT",
+          trigger: "BREAKER_INTEGRATION",
+          idempotencyKey: `breaker-terminal:${index}`,
+          timeoutSeconds: 600,
+          desiredEntryMin: 2,
+          desiredEntryMax: 3,
+          startedAt: new Date(now.getTime() - (index + 2) * 60_000),
+          finishedAt: new Date(now.getTime() - (index + 1) * 30_000),
+          errorCode: runStatus === "FAILED" ? "VALIDATION_FAILURE" : null,
+        },
+      });
+    }
+    const readOnly = await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: fixture.created.agent.profile.id,
+        personaVersionId: fixture.created.agent.personaVersion.id,
+        runType: "READ_ONLY",
+        queuePriority: "REFLECTION",
+        trigger: "BREAKER_INTEGRATION",
+        idempotencyKey: "breaker-read-only",
+        timeoutSeconds: 600,
+        desiredEntryMin: 0,
+        desiredEntryMax: 0,
+        allowTopicCreation: false,
+        allowVoting: false,
+        allowFollowing: false,
+      },
+    });
+    const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    await expect(
+      leaseRuntimeRun(integrationDatabase, principal, {
+        workerId: "breaker-read-worker",
+        leaseSeconds: 60,
+      }),
+    ).resolves.toMatchObject({ run: { id: readOnly.id, runType: "READ_ONLY" }, reason: null });
+    expect(
+      await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: fixture.runs[0]!.id } }),
+    ).toMatchObject({ runStatus: "QUEUED" });
+  });
+
+  it("returns ERROR_PAUSED after five consecutive global Codex failures", async () => {
+    const fixture = await createFixture();
+    const now = new Date();
+    for (let index = 0; index < 5; index += 1) {
+      await integrationDatabase.agentRun.create({
+        data: {
+          agentProfileId: fixture.created.agent.profile.id,
+          personaVersionId: fixture.created.agent.personaVersion.id,
+          runType: "NORMAL_WAKE",
+          runStatus: "FAILED",
+          queuePriority: "SCHEDULED_CONTENT",
+          trigger: "BREAKER_INTEGRATION",
+          idempotencyKey: `codex-breaker-terminal:${index}`,
+          timeoutSeconds: 600,
+          desiredEntryMin: 2,
+          desiredEntryMax: 3,
+          startedAt: new Date(now.getTime() - (index + 2) * 60_000),
+          finishedAt: new Date(now.getTime() - (index + 1) * 30_000),
+          errorCode: "CODEX_TIMEOUT",
+        },
+      });
+    }
+    const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    await expect(
+      leaseRuntimeRun(integrationDatabase, principal, {
+        workerId: "breaker-paused-worker",
+        leaseSeconds: 60,
+      }),
+    ).resolves.toEqual({ run: null, reason: "ERROR_PAUSED" });
+    expect(await integrationDatabase.agentRun.count({ where: { runStatus: "RUNNING" } })).toBe(0);
+    await setGlobalRuntimeEnabled(integrationDatabase, adminActor(fixture.admin.id), true, {
+      reason: "Reset verified Codex breaker after operator review.",
+    });
+    await expect(
+      leaseRuntimeRun(integrationDatabase, principal, {
+        workerId: "breaker-reset-worker",
+        leaseSeconds: 60,
+      }),
+    ).resolves.toMatchObject({ run: { id: fixture.runs[0]!.id }, reason: null });
   });
 
   it("prevents a retired agent from leasing with a stale authenticated principal", async () => {

@@ -39,6 +39,7 @@ import type {
   GlobalSettingsUpdateInput,
   LifecycleChangeInput,
   PersonaRollbackInput,
+  RuntimeControlInput,
   UpdateAgentInput,
 } from "@/modules/agents/validation/schemas";
 import type { RuntimeCredentialRotationInput } from "@/modules/agents/validation/runtime-schemas";
@@ -581,6 +582,41 @@ export async function updateGlobalSettings(
       eventType: "runtime.global.changed",
       safeMessage: "Global agent runtime ayarları güncellendi.",
       metadata: { changedFields: Object.keys(data), settingsVersion: updated.settingsVersion },
+    });
+    return updated;
+  });
+}
+
+export async function setGlobalRuntimeEnabled(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  enabled: boolean,
+  input: RuntimeControlInput,
+) {
+  return inTransaction(client, async (transaction) => {
+    await requireAgentAdminInTransaction(transaction, actor);
+    await lockAgentSettings(transaction);
+    const updated = await updateGlobalSettingsRecord(transaction, actor.actorId, {
+      runtimeEnabled: enabled,
+    });
+    await recordControlPlaneChange(transaction, actor, {
+      eventType: "agent.settings_changed",
+      entityType: "AgentGlobalSettings",
+      entityId: GLOBAL_SETTINGS_AGGREGATE_ID,
+      metadata: {
+        settingsKey: "global",
+        changedFields: ["runtimeEnabled"],
+        settingsVersion: updated.settingsVersion,
+        reason: input.reason,
+        command: enabled ? "RESUME" : "PAUSE",
+      },
+    });
+    await appendRuntimeEvent(transaction, {
+      eventType: enabled ? "breaker.reset" : "runtime.global.paused",
+      safeMessage: enabled
+        ? "Global runtime admin tarafından açıldı ve breaker geçmişi resetlendi."
+        : "Global runtime admin tarafından pause edildi.",
+      metadata: { settingsVersion: updated.settingsVersion, reason: input.reason },
     });
     return updated;
   });
