@@ -46,6 +46,12 @@ export function getRuntimeGlobalSettings(transaction: Prisma.TransactionClient) 
       votingEnabled: true,
       topicCreationEnabled: true,
       userFollowingEnabled: true,
+      quotaMode: true,
+      defaultDailyEntryMax: true,
+      globalDailyEntryMax: true,
+      maxEntriesPerHour: true,
+      maxEntriesPerThreeHours: true,
+      duplicateSimilarityThreshold: true,
       maxRetryCount: true,
     },
   });
@@ -353,6 +359,219 @@ export async function appendRuntimeActions(
     })),
   });
   return { count: input.actions.length };
+}
+
+export async function lockRuntimeAction(
+  transaction: Prisma.TransactionClient,
+  actionId: string,
+): Promise<void> {
+  await transaction.$queryRaw`
+    SELECT "id" FROM "agent_actions" WHERE "id" = ${actionId}::uuid FOR UPDATE
+  `;
+}
+
+export function findRuntimeActionForExecution(
+  transaction: Prisma.TransactionClient,
+  input: { runId: string; agentProfileId: string; sequence: number },
+) {
+  return transaction.agentAction.findFirst({
+    where: input,
+    include: {
+      run: {
+        select: {
+          id: true,
+          runType: true,
+          runStatus: true,
+          leaseOwner: true,
+          leaseExpiresAt: true,
+          allowTopicCreation: true,
+          allowVoting: true,
+          allowFollowing: true,
+          saturationOverride: true,
+          dailyMaximumOverride: true,
+        },
+      },
+      agentProfile: {
+        select: {
+          useGlobalEntryQuota: true,
+          dailyEntryMax: true,
+          dailyTopicMax: true,
+          dailyVoteMax: true,
+          user: { select: { id: true } },
+        },
+      },
+    },
+  });
+}
+
+export function updateRuntimeActionStatus(
+  transaction: Prisma.TransactionClient,
+  actionId: string,
+  data: {
+    actionStatus:
+      | "VALIDATING"
+      | "ACCEPTED"
+      | "REJECTED"
+      | "EXECUTING"
+      | "SUCCEEDED"
+      | "FAILED"
+      | "SKIPPED";
+    validationResult?: Prisma.InputJsonValue;
+    result?: Prisma.InputJsonValue;
+    rejectionCode?: string | null;
+    rejectionReason?: string | null;
+  },
+) {
+  return transaction.agentAction.update({
+    where: { id: actionId },
+    data,
+    select: {
+      id: true,
+      sequence: true,
+      actionType: true,
+      actionStatus: true,
+      result: true,
+      rejectionCode: true,
+      rejectionReason: true,
+    },
+  });
+}
+
+export function createRuntimeContentRecord(
+  transaction: Prisma.TransactionClient,
+  input: {
+    entryId: string;
+    agentProfileId: string;
+    runId: string;
+    actionId: string;
+  },
+) {
+  return transaction.agentContentRecord.create({ data: input });
+}
+
+export async function getRuntimeActionPolicyMetrics(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId: string;
+    topicId?: string;
+    now: Date;
+    dayStart: Date;
+    dayEnd: Date;
+  },
+) {
+  const hourStart = new Date(input.now.getTime() - 60 * 60 * 1000);
+  const threeHoursStart = new Date(input.now.getTime() - 3 * 60 * 60 * 1000);
+  const twoHoursStart = new Date(input.now.getTime() - 2 * 60 * 60 * 1000);
+  const thirtyMinutesStart = new Date(input.now.getTime() - 30 * 60 * 1000);
+  const base = { agentProfileId: input.agentProfileId };
+  const [
+    agentDay,
+    globalDay,
+    agentHour,
+    agentThreeHours,
+    agentTopicTwoHours,
+    agentTopicDay,
+    topicRecent,
+    agentTopicsDay,
+    agentVotesDay,
+  ] = await Promise.all([
+    transaction.agentContentRecord.count({
+      where: { ...base, createdAt: { gte: input.dayStart, lt: input.dayEnd } },
+    }),
+    transaction.agentContentRecord.count({
+      where: { createdAt: { gte: input.dayStart, lt: input.dayEnd } },
+    }),
+    transaction.agentContentRecord.count({ where: { ...base, createdAt: { gte: hourStart } } }),
+    transaction.agentContentRecord.count({
+      where: { ...base, createdAt: { gte: threeHoursStart } },
+    }),
+    input.topicId
+      ? transaction.agentContentRecord.count({
+          where: {
+            ...base,
+            createdAt: { gte: twoHoursStart },
+            entry: { topicId: input.topicId },
+          },
+        })
+      : Promise.resolve(0),
+    input.topicId
+      ? transaction.agentContentRecord.count({
+          where: {
+            ...base,
+            createdAt: { gte: input.dayStart, lt: input.dayEnd },
+            entry: { topicId: input.topicId },
+          },
+        })
+      : Promise.resolve(0),
+    input.topicId
+      ? transaction.entry.count({
+          where: {
+            topicId: input.topicId,
+            status: "ACTIVE",
+            createdAt: { gte: thirtyMinutesStart },
+          },
+        })
+      : Promise.resolve(0),
+    transaction.agentAction.count({
+      where: {
+        agentProfileId: input.agentProfileId,
+        actionType: "CREATE_TOPIC_WITH_ENTRY",
+        actionStatus: "SUCCEEDED",
+        createdAt: { gte: input.dayStart, lt: input.dayEnd },
+      },
+    }),
+    transaction.agentAction.count({
+      where: {
+        agentProfileId: input.agentProfileId,
+        actionType: { in: ["VOTE_UP", "VOTE_DOWN"] },
+        actionStatus: "SUCCEEDED",
+        createdAt: { gte: input.dayStart, lt: input.dayEnd },
+      },
+    }),
+  ]);
+  return {
+    agentDay,
+    globalDay,
+    agentHour,
+    agentThreeHours,
+    agentTopicTwoHours,
+    agentTopicDay,
+    topicRecent,
+    agentTopicsDay,
+    agentVotesDay,
+  };
+}
+
+export function findActiveRuntimeTopicWriteLock(
+  transaction: Prisma.TransactionClient,
+  topicId: string,
+  now: Date,
+) {
+  return transaction.agentTopicWriteLock.findFirst({
+    where: { topicId, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+    select: { id: true, reason: true, expiresAt: true },
+  });
+}
+
+export function listRecentRuntimeEntryBodies(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId: string;
+    topicId?: string;
+    excludeEntryId?: string;
+    take?: number;
+  },
+) {
+  return transaction.agentContentRecord.findMany({
+    where: {
+      agentProfileId: input.agentProfileId,
+      ...(input.topicId ? { entry: { topicId: input.topicId } } : {}),
+      ...(input.excludeEntryId ? { entryId: { not: input.excludeEntryId } } : {}),
+    },
+    select: { entry: { select: { body: true } } },
+    orderBy: { createdAt: "desc" },
+    take: input.take ?? 50,
+  });
 }
 
 export async function getMeasuredRuntimeRunMetrics(

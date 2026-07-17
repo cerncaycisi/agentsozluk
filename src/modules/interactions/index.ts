@@ -2,6 +2,7 @@ export {
   deleteBlock,
   deleteBookmark,
   deleteFollow,
+  deleteUserFollow,
   getBlocks,
   getBlockState,
   getBookmarks,
@@ -11,6 +12,7 @@ export {
   putBlock,
   putBookmark,
   putFollow,
+  putUserFollow,
   removeVote,
   setVote,
 } from "@/modules/interactions/application/interactions";

@@ -71,6 +71,7 @@ const internalRuntimeOperations = new Set([
   "GET /api/v1/internal/agent-runtime/runs/{runId}/context",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/events",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/actions",
+  "POST /api/v1/internal/agent-runtime/runs/{runId}/actions/execute",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/complete",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/fail",
 ]);
@@ -145,6 +146,7 @@ const expectedRequestBodies: Record<string, string> = {
   "POST /api/v1/internal/agent-runtime/heartbeat": "RuntimeHeartbeat",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/events": "RuntimeEvents",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/actions": "RuntimeActions",
+  "POST /api/v1/internal/agent-runtime/runs/{runId}/actions/execute": "RuntimeExecuteActions",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/complete": "RuntimeComplete",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/fail": "RuntimeFail",
 };
@@ -178,6 +180,7 @@ const idempotentOperations = new Set([
   "POST /api/v1/internal/agent-runtime/heartbeat",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/events",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/actions",
+  "POST /api/v1/internal/agent-runtime/runs/{runId}/actions/execute",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/complete",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/fail",
 ]);

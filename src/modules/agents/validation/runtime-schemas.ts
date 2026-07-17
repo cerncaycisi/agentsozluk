@@ -58,7 +58,7 @@ export const runtimeEventsSchema = z
   })
   .strict();
 
-const runtimeActionInputSchema = z
+export const runtimeActionInputSchema = z
   .object({
     body: z.string().trim().min(1).max(10_000).optional(),
     title: z.string().trim().min(2).max(120).optional(),
@@ -76,7 +76,7 @@ const runtimeActionInputSchema = z
   })
   .strict();
 
-const runtimeProvenanceSchema = z
+export const runtimeProvenanceSchema = z
   .object({
     evidenceType: z.enum([
       "PLATFORM_EVENT",
@@ -91,44 +91,58 @@ const runtimeProvenanceSchema = z
   })
   .strict();
 
+export const runtimeActionSchema = z
+  .object({
+    sequence: z.number().int().positive(),
+    actionType: z.enum([
+      "NO_ACTION",
+      "CREATE_ENTRY",
+      "CREATE_TOPIC_WITH_ENTRY",
+      "EDIT_OWN_ENTRY",
+      "VOTE_UP",
+      "VOTE_DOWN",
+      "REMOVE_VOTE",
+      "FOLLOW_TOPIC",
+      "UNFOLLOW_TOPIC",
+      "FOLLOW_USER",
+      "UNFOLLOW_USER",
+      "BOOKMARK_ENTRY",
+      "REMOVE_BOOKMARK",
+      "PROPOSE_SOURCE",
+      "UPDATE_BELIEF",
+      "UPDATE_RELATIONSHIP_NOTE",
+    ]),
+    targetType: z.string().trim().min(1).max(64).optional(),
+    targetId: z.string().uuid().optional(),
+    input: runtimeActionInputSchema.default({}),
+    provenance: runtimeProvenanceSchema.optional(),
+  })
+  .strict();
+
 export const runtimeActionsSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
     actions: z
-      .array(
-        z
-          .object({
-            sequence: z.number().int().positive(),
-            actionType: z.enum([
-              "NO_ACTION",
-              "CREATE_ENTRY",
-              "CREATE_TOPIC_WITH_ENTRY",
-              "EDIT_OWN_ENTRY",
-              "VOTE_UP",
-              "VOTE_DOWN",
-              "REMOVE_VOTE",
-              "FOLLOW_TOPIC",
-              "UNFOLLOW_TOPIC",
-              "FOLLOW_USER",
-              "UNFOLLOW_USER",
-              "BOOKMARK_ENTRY",
-              "REMOVE_BOOKMARK",
-              "PROPOSE_SOURCE",
-              "UPDATE_BELIEF",
-              "UPDATE_RELATIONSHIP_NOTE",
-            ]),
-            targetType: z.string().trim().min(1).max(64).optional(),
-            targetId: z.string().uuid().optional(),
-            input: runtimeActionInputSchema.default({}),
-            provenance: runtimeProvenanceSchema.optional(),
-          })
-          .strict(),
-      )
+      .array(runtimeActionSchema)
       .min(1)
       .max(50)
       .refine(
         (actions) => new Set(actions.map(({ sequence }) => sequence)).size === actions.length,
         "Action sequence değerleri benzersiz olmalıdır.",
+      ),
+  })
+  .strict();
+
+export const runtimeExecuteActionsSchema = z
+  .object({
+    workerId: runtimeWorkerIdSchema,
+    sequences: z
+      .array(z.number().int().positive())
+      .min(1)
+      .max(50)
+      .refine(
+        (values) => new Set(values).size === values.length,
+        "Sequence değerleri benzersiz olmalıdır.",
       ),
   })
   .strict();
@@ -194,6 +208,7 @@ export type RuntimeLeaseInput = z.infer<typeof runtimeLeaseSchema>;
 export type RuntimeHeartbeatInput = z.infer<typeof runtimeHeartbeatSchema>;
 export type RuntimeEventsInput = z.infer<typeof runtimeEventsSchema>;
 export type RuntimeActionsInput = z.infer<typeof runtimeActionsSchema>;
+export type RuntimeExecuteActionsInput = z.infer<typeof runtimeExecuteActionsSchema>;
 export type RuntimeCompleteInput = z.infer<typeof runtimeCompleteSchema>;
 export type RuntimeFailInput = z.infer<typeof runtimeFailSchema>;
 export type RuntimeCredentialRotationInput = z.infer<typeof runtimeCredentialRotationSchema>;

@@ -1,4 +1,5 @@
 export * from "@/modules/agents/application/authorization";
+export * from "@/modules/agents/application/action-executor";
 export * from "@/modules/agents/application/capacity";
 export * from "@/modules/agents/application/control-plane";
 export * from "@/modules/agents/application/runtime";
@@ -6,6 +7,7 @@ export * from "@/modules/agents/application/runtime-auth";
 export * from "@/modules/agents/application/scheduler";
 export * from "@/modules/agents/application/manual-runs";
 export * from "@/modules/agents/domain/authorization";
+export * from "@/modules/agents/domain/action-policy";
 export * from "@/modules/agents/domain/capacity";
 export * from "@/modules/agents/domain/credential";
 export * from "@/modules/agents/domain/persona-validation";

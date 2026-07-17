@@ -141,6 +141,33 @@ export function removeFollowRecord(
   return transaction.topicFollow.deleteMany({ where: { topicId, userId } });
 }
 
+export function findUserFollowTarget(transaction: Prisma.TransactionClient, userId: string) {
+  return transaction.user.findUnique({
+    where: { id: userId },
+    select: { id: true, username: true, displayName: true, status: true },
+  });
+}
+
+export function putUserFollowRecord(
+  transaction: Prisma.TransactionClient,
+  followerId: string,
+  followedId: string,
+) {
+  return transaction.userFollow.upsert({
+    where: { followerId_followedId: { followerId, followedId } },
+    create: { followerId, followedId },
+    update: {},
+  });
+}
+
+export function removeUserFollowRecord(
+  transaction: Prisma.TransactionClient,
+  followerId: string,
+  followedId: string,
+) {
+  return transaction.userFollow.deleteMany({ where: { followerId, followedId } });
+}
+
 export function putBlockRecord(
   transaction: Prisma.TransactionClient,
   blockerId: string,

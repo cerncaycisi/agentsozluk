@@ -9,6 +9,7 @@ import {
   completeRuntimeRun,
   createAgent,
   createAgentSchema,
+  executeRuntimeAction,
   getAgentDetail,
   getRuntimeRunContext,
   heartbeatRuntimeRun,
@@ -25,6 +26,7 @@ import {
   updateGlobalSettings,
 } from "@/modules/agents";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
+import { createTopicWithFirstEntry } from "@/modules/topics";
 import {
   closeIntegrationDatabase,
   integrationDatabase,
@@ -341,6 +343,115 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
     expect(await integrationDatabase.agentRunEvent.count({ where: { runId } })).toBe(3);
     expect(await integrationDatabase.auditLog.count({ where: { entityId: runId } })).toBe(3);
+  });
+
+  it("executes a proposed entry through the V1 service and records provenance atomically", async () => {
+    const fixture = await createFixture();
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      { title: "runtime action integration", entryBody: "İlk insan entry içeriği." },
+    );
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId: "action-worker",
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId: "action-worker",
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            targetType: "TOPIC",
+            targetId: topic.topic.id,
+            input: { topicId: topic.topic.id, body: "Agent tarafından yazılan doğrulanmış entry." },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Runtime integration olayı bu eylemin kaynağıdır.",
+            },
+          },
+        ],
+      }),
+    );
+    const first = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId: "action-worker",
+      sequence: 1,
+    });
+    const replay = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId: "action-worker",
+      sequence: 1,
+    });
+    expect(first).toMatchObject({ actionStatus: "SUCCEEDED" });
+    expect(replay).toMatchObject({ id: first.id, actionStatus: "SUCCEEDED" });
+    const content = await integrationDatabase.agentContentRecord.findUniqueOrThrow({
+      where: { actionId: first.id },
+      include: { entry: true },
+    });
+    expect(content.entry).toMatchObject({
+      topicId: topic.topic.id,
+      authorId: fixture.created.agent.user.id,
+      origin: "AGENT",
+      status: "ACTIVE",
+    });
+    expect(await integrationDatabase.agentContentRecord.count()).toBe(1);
+    expect(
+      await integrationDatabase.auditLog.count({
+        where: { action: "agent.action.succeeded", entityId: first.id },
+      }),
+    ).toBe(1);
+  });
+
+  it("rejects public writes from DRY_RUN without creating content", async () => {
+    const fixture = await createFixture();
+    await integrationDatabase.agentRun.update({
+      where: { id: fixture.runs[0]!.id },
+      data: { runType: "DRY_RUN", desiredEntryMin: 0, desiredEntryMax: 0 },
+    });
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId: "dry-worker",
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId: "dry-worker",
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            input: { title: "dry run topic", body: "Bu içerik yayınlanmamalıdır." },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Dry run policy doğrulama adayı.",
+            },
+          },
+        ],
+      }),
+    );
+    const action = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId: "dry-worker",
+      sequence: 1,
+    });
+    expect(action).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "RUN_PUBLIC_WRITE_DISABLED",
+    });
+    expect(await integrationDatabase.agentContentRecord.count()).toBe(0);
+    expect(await integrationDatabase.topic.count()).toBe(0);
   });
 
   it("requires idempotency and replays lease without creating a second claim", async () => {

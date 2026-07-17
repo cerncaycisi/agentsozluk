@@ -103,12 +103,12 @@ export async function createEntry(
 }
 
 export async function editEntry(
-  client: DatabaseClient,
+  client: DatabaseExecutor,
   actor: ActorContext,
   input: EntryUpdateInput,
   entryId: string,
 ) {
-  return client.$transaction(async (transaction) => {
+  return inTransaction(client, async (transaction) => {
     await requireActiveActor(transaction, actor.actorId);
     const initialEntry = await findEntryById(transaction, entryId);
     if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
