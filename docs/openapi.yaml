@@ -1007,6 +1007,48 @@ paths:
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/admin/agents/{agentId}/runs:
+    parameters: [{ $ref: "#/components/parameters/AgentId" }]
+    get:
+      operationId: listAdminAgentRuns
+      tags: [Admin]
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+    post:
+      operationId: createAdminAgentRun
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/ManualAgentRun" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agent-schedule/regenerate:
+    post:
+      operationId: regenerateAdminAgentSchedule
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/DailyPlanGeneration" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/admin/agent-settings:
     get:
       operationId: getAdminAgentSettings
@@ -1563,6 +1605,38 @@ components:
       additionalProperties: false
       required: [reason]
       properties: { reason: { type: string, minLength: 10, maxLength: 1000 } }
+    DailyPlanGenerationInput:
+      type: object
+      additionalProperties: false
+      properties:
+        localDate: { type: string, format: date }
+    ManualAgentRunInput:
+      type: object
+      additionalProperties: false
+      required: [runType]
+      properties:
+        runType:
+          type: string
+          enum:
+            [
+              NORMAL_WAKE,
+              ENTRY_BURST,
+              DAILY_CATCH_UP,
+              READ_ONLY,
+              DRY_RUN,
+              REFLECTION,
+              SOURCE_REFRESH,
+            ]
+        entryTarget: { type: integer, minimum: 0, maximum: 10, default: 3 }
+        allowTopicCreation: { type: boolean, default: true }
+        allowVoting: { type: boolean, default: true }
+        allowFollowing: { type: boolean, default: true }
+        allowSourceReading: { type: boolean, default: true }
+        saturationOverride: { type: boolean, default: false }
+        dailyMaximumOverride: { type: boolean, default: false }
+        adminInstruction: { type: string, minLength: 1, maxLength: 1000 }
+        availableAt: { type: string, format: date-time }
+        priority: { type: string, enum: [NORMAL, EMERGENCY], default: NORMAL }
     RuntimeLeaseInput:
       type: object
       additionalProperties: false
@@ -1863,6 +1937,20 @@ components:
             application/json:
               { schema: { $ref: "#/components/schemas/AgentCredentialRotationInput" } },
           },
+      }
+    DailyPlanGeneration:
+      {
+        required: true,
+        content:
+          {
+            application/json: { schema: { $ref: "#/components/schemas/DailyPlanGenerationInput" } },
+          },
+      }
+    ManualAgentRun:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/ManualAgentRunInput" } } },
       }
     RuntimeLease:
       {

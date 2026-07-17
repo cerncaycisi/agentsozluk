@@ -157,6 +157,102 @@ export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
   );
 }
 
+export function ManualAgentRunForm({ agentId }: { agentId: string }) {
+  const router = useRouter();
+  const [runType, setRunType] = useState("NORMAL_WAKE");
+  const [entryTarget, setEntryTarget] = useState(3);
+  const [instruction, setInstruction] = useState("");
+  const [priority, setPriority] = useState("NORMAL");
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string>();
+  const nonPublishing = ["READ_ONLY", "REFLECTION", "SOURCE_REFRESH"].includes(runType);
+  return (
+    <form
+      className="surface-card mb-5 space-y-4 p-5"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setPending(true);
+        setMessage(undefined);
+        try {
+          await apiRequest(`/api/v1/admin/agents/${agentId}/runs`, {
+            method: "POST",
+            body: {
+              runType,
+              entryTarget: nonPublishing ? 0 : entryTarget,
+              adminInstruction: instruction || undefined,
+              priority,
+            },
+            csrf: true,
+            idempotency: true,
+          });
+          setInstruction("");
+          setMessage("Run kuyruğa alındı.");
+          router.refresh();
+        } catch (submitError) {
+          setMessage(errorMessage(submitError));
+        } finally {
+          setPending(false);
+        }
+      }}
+    >
+      <h2 className="text-lg font-black">Şimdi çalıştır</h2>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <label className="text-sm font-bold">
+          Run türü
+          <select
+            value={runType}
+            onChange={(event) => setRunType(event.target.value)}
+            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          >
+            {[
+              "NORMAL_WAKE",
+              "ENTRY_BURST",
+              "DAILY_CATCH_UP",
+              "READ_ONLY",
+              "DRY_RUN",
+              "REFLECTION",
+              "SOURCE_REFRESH",
+            ].map((value) => (
+              <option key={value}>{value}</option>
+            ))}
+          </select>
+        </label>
+        <NumberField
+          label="Entry hedefi"
+          value={nonPublishing ? 0 : entryTarget}
+          onChange={setEntryTarget}
+          min={runType === "ENTRY_BURST" ? 1 : 0}
+          max={10}
+        />
+        <label className="text-sm font-bold">
+          Priority
+          <select
+            value={priority}
+            onChange={(event) => setPriority(event.target.value)}
+            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          >
+            <option value="NORMAL">Normal</option>
+            <option value="EMERGENCY">Emergency</option>
+          </select>
+        </label>
+      </div>
+      <label className="block text-sm font-bold">
+        Kısa admin instruction
+        <textarea
+          value={instruction}
+          onChange={(event) => setInstruction(event.target.value)}
+          maxLength={1000}
+          className="mt-1 min-h-20 w-full rounded-xl border bg-page p-3"
+        />
+      </label>
+      {message ? <p className="text-sm">{message}</p> : null}
+      <button disabled={pending} className="button-primary">
+        {pending ? "Kuyruğa alınıyor…" : "Şimdi çalıştır"}
+      </button>
+    </form>
+  );
+}
+
 interface TemplatePersona {
   username: string;
   displayName: string;

@@ -25,6 +25,8 @@ export const OUTBOX_EVENT_TYPES = [
   "agent.persona_version_created",
   "agent.credential_rotated",
   "agent.capacity.measured",
+  "agent.schedule.generated",
+  "agent.run.queued",
   "agent.settings_changed",
 ] as const;
 

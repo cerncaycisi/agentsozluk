@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
+import { ManualAgentRunForm } from "@/components/agents/agent-admin-forms";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
@@ -25,6 +26,7 @@ export default async function AgentRunsPage({ params }: { params: Promise<{ id: 
       title={`${agent.user.displayName} çalışmaları`}
       description="Güvenli run özeti; özel muhakeme dökümü gösterilmez."
     >
+      {agent.lifecycleStatus === "ACTIVE" ? <ManualAgentRunForm agentId={agent.id} /> : null}
       <div className="space-y-3">
         {agent.runs.map((run) => (
           <article key={run.id} className="surface-card p-4 text-sm">
