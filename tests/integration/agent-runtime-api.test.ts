@@ -31,6 +31,7 @@ import {
   updateGlobalSettings,
 } from "@/modules/agents";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
+import { bulkSetAgentContentVisibility } from "@/modules/moderation";
 import { createTopicWithFirstEntry } from "@/modules/topics";
 import {
   closeIntegrationDatabase,
@@ -118,6 +119,67 @@ async function runtimePrincipal(
     requiredScope: scope,
     requestId: randomUUID(),
   });
+}
+
+async function createRuntimeAgentEntries(
+  fixture: Awaited<ReturnType<typeof createFixture>>,
+  bodies: string[],
+) {
+  const topics = await Promise.all(
+    bodies.map((_, index) =>
+      createTopicWithFirstEntry(integrationDatabase, adminActor(fixture.admin.id), {
+        title: `bulk moderation integration ${index} ${randomUUID()}`,
+        entryBody: `İnsan tarafından yazılan kontrol entry içeriği ${index}.`,
+      }),
+    ),
+  );
+  const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+  const writePrincipal = await runtimePrincipal(fixture.credential);
+  const workerId = `bulk-worker-${randomUUID()}`;
+  const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+    workerId,
+    leaseSeconds: 60,
+  });
+  const runId = leased.run!.id;
+  await recordRuntimeActions(
+    integrationDatabase,
+    writePrincipal,
+    runId,
+    runtimeActionsSchema.parse({
+      workerId,
+      actions: bodies.map((body, index) => ({
+        sequence: index + 1,
+        actionType: "CREATE_ENTRY",
+        targetType: "TOPIC",
+        targetId: topics[index]!.topic.id,
+        input: { topicId: topics[index]!.topic.id, body },
+        provenance: {
+          evidenceType: "PLATFORM_EVENT",
+          evidenceIds: [runId],
+          shortRationale: "Bulk moderation integration kaydı için doğrulanmış eylemdir.",
+        },
+      })),
+    }),
+  );
+  const actions = [];
+  for (let sequence = 1; sequence <= bodies.length; sequence += 1) {
+    actions.push(
+      await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+        workerId,
+        sequence,
+      }),
+    );
+  }
+  const content = await integrationDatabase.agentContentRecord.findMany({
+    where: { runId },
+    orderBy: { createdAt: "asc" },
+  });
+  expect(actions).toHaveLength(bodies.length);
+  expect(
+    actions.map(({ actionStatus, rejectionCode }) => ({ actionStatus, rejectionCode })),
+  ).toEqual(bodies.map(() => ({ actionStatus: "SUCCEEDED", rejectionCode: null })));
+  expect(content).toHaveLength(bodies.length);
+  return { runId, topics, content };
 }
 
 beforeEach(resetIntegrationDatabase);
@@ -792,5 +854,94 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(replay.headers.get("Idempotent-Replay")).toBe("true");
     expect(await first.json()).toEqual(await replay.json());
     expect(await integrationDatabase.agentRun.count({ where: { runStatus: "RUNNING" } })).toBe(1);
+  });
+
+  it("bulk hides and restores only provenance-backed agent entries while preserving counters", async () => {
+    const fixture = await createFixture();
+    const generated = await createRuntimeAgentEntries(fixture, [
+      "Kent bostanlarında yağmur suyu biriktirmek yaz kuraklığında verimi koruyor.",
+      "Dağıtık sistem gözlemlerinde kuyruk gecikmesini yüzdeliklerle izlemek gerekir.",
+    ]);
+    const hidden = await bulkSetAgentContentVisibility(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      true,
+      {
+        runId: generated.runId,
+        reason: "Bu run içindeki agent içerikleri topluca incelemeye alınmalıdır.",
+        confirmation: "HIDE_AGENT_CONTENT",
+      },
+    );
+    expect(hidden).toMatchObject({ status: "SUCCEEDED", selectedCount: 2, failed: [] });
+    expect(
+      await integrationDatabase.entry.count({
+        where: { id: { in: generated.content.map(({ entryId }) => entryId) }, status: "HIDDEN" },
+      }),
+    ).toBe(2);
+    for (const { topic } of generated.topics) {
+      expect(
+        await integrationDatabase.topic.findUniqueOrThrow({ where: { id: topic.id } }),
+      ).toMatchObject({ entryCount: 1 });
+    }
+
+    const restored = await bulkSetAgentContentVisibility(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      false,
+      {
+        agentProfileId: fixture.created.agent.profile.id,
+        sinceHours: 1,
+        reason: "İncelemesi tamamlanan agent içerikleri topluca geri açılmalıdır.",
+        confirmation: "RESTORE_AGENT_CONTENT",
+      },
+    );
+    expect(restored).toMatchObject({ status: "SUCCEEDED", selectedCount: 2, failed: [] });
+    for (const { topic } of generated.topics) {
+      expect(
+        await integrationDatabase.topic.findUniqueOrThrow({ where: { id: topic.id } }),
+      ).toMatchObject({ entryCount: 2 });
+    }
+    expect(
+      await integrationDatabase.auditLog.count({
+        where: { action: { in: ["agent.content.bulk_hidden", "agent.content.bulk_restored"] } },
+      }),
+    ).toBe(2);
+  });
+
+  it("reports partial restoration when a selected entry lacks agent provenance", async () => {
+    const fixture = await createFixture();
+    const generated = await createRuntimeAgentEntries(fixture, [
+      "Kısmi bulk geri alma testi için doğrulanmış agent entry içeriği.",
+    ]);
+    const agentEntryId = generated.content[0]!.entryId;
+    const humanEntryId = generated.topics[0]!.entry.id;
+    await bulkSetAgentContentVisibility(integrationDatabase, adminActor(fixture.admin.id), true, {
+      entryIds: [agentEntryId],
+      reason: "Doğrulanmış agent entry önce gizlenerek restore senaryosu hazırlanmalıdır.",
+      confirmation: "HIDE_AGENT_CONTENT",
+    });
+    const outcome = await bulkSetAgentContentVisibility(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      false,
+      {
+        entryIds: [agentEntryId, humanEntryId],
+        reason: "Yalnız provenance kaydı bulunan agent entry geri açılmalıdır.",
+        confirmation: "RESTORE_AGENT_CONTENT",
+      },
+    );
+    expect(outcome).toMatchObject({
+      status: "PARTIAL",
+      selectedCount: 2,
+      succeeded: [{ entryId: agentEntryId }],
+      failed: [{ entryId: humanEntryId, code: "NOT_AGENT_CONTENT" }],
+    });
+    await expect(
+      bulkSetAgentContentVisibility(integrationDatabase, adminActor(fixture.admin.id), true, {
+        entryIds: [agentEntryId],
+        reason: "Yanlış confirmation değeri ile hiçbir işlem yapılamamalıdır.",
+        confirmation: "RESTORE_AGENT_CONTENT",
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR", status: 422 });
   });
 });

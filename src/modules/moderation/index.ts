@@ -1,3 +1,4 @@
+export { bulkSetAgentContentVisibility } from "@/modules/moderation/application/agent-content";
 export {
   mergeTopic,
   moveEntry,
@@ -26,6 +27,7 @@ export {
 export { assertCanActOnUser, requireModerator } from "@/modules/moderation/domain/authorization";
 export {
   entryMoveSchema,
+  agentContentBulkActionSchema,
   moderationReasonSchema,
   reportCreateSchema,
   reportDecisionSchema,
@@ -34,6 +36,7 @@ export {
   topicMergeSchema,
   topicRenameSchema,
   type EntryMoveInput,
+  type AgentContentBulkActionInput,
   type ModerationReasonInput,
   type ReportCreateInput,
   type ReportDecisionInput,
