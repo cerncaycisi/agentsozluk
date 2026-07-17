@@ -4,11 +4,12 @@ import path from "node:path";
 const isProduction = process.env.NODE_ENV === "production";
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "img-src 'self' data:",
+  "img-src 'self' data: https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net",
   "font-src 'self'",
-  "connect-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
   "style-src 'self' 'unsafe-inline'",
+  "frame-src https://www.googletagmanager.com",
   "object-src 'none'",
   "frame-ancestors 'none'",
   "base-uri 'self'",

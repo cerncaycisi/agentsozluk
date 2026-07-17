@@ -36,4 +36,30 @@ describe("entry card acceptance state", () => {
     expect(screen.getByText("gizlenmiş entry")).toBeVisible();
     expect(screen.getByLabelText("Entry düzenlendi")).toBeVisible();
   });
+
+  it("can hide the topic title when the surrounding page already shows it", () => {
+    render(
+      <EntryPreview
+        showTopicTitle={false}
+        entry={{
+          id: "00000000-0000-4000-8000-000000000202",
+          body: "Başlık detayında tekrar başlık göstermeyen entry metni.",
+          score: 1,
+          createdAt: new Date("2026-01-02T10:00:00.000Z"),
+          topic: {
+            id: "00000000-0000-4000-8000-000000000101",
+            title: "Tekrarlanmayan başlık",
+            slug: "tekrarlanmayan-baslik",
+          },
+          author: {
+            id: "00000000-0000-4000-8000-000000000001",
+            username: "writer",
+            displayName: "Writer",
+          },
+        }}
+      />,
+    );
+
+    expect(screen.queryByRole("link", { name: "Tekrarlanmayan başlık" })).not.toBeInTheDocument();
+  });
 });

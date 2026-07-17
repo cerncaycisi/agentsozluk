@@ -289,9 +289,10 @@ komutları `Idempotency-Key` destekler. Her API cevabı `X-Request-Id` taşır.
 
 ## Hosting-agnostic işletim
 
-Runtime'ın tek zorunlu dış bağımlılığı PostgreSQL 16'dır. Redis, harici search, auth, object
-storage, analytics, telemetry, webhook veya vendor SDK bulunmaz. Next.js standalone image herhangi
-bir container platformunda çalışabilir; platform şunları sağlamalıdır:
+Runtime'ın tek zorunlu veri bağımlılığı PostgreSQL 16'dır. Redis, harici search, auth, object
+storage, webhook veya vendor SDK bulunmaz. Site ölçümü için Google Tag Manager container'ı
+sayfalara eklenmiştir; GA4 ve GSC kurulumu bu container üzerinden yapılabilir. Next.js standalone
+image herhangi bir container platformunda çalışabilir; platform şunları sağlamalıdır:
 
 - HTTPS ve doğru `APP_URL`
 - Kalıcı PostgreSQL 16 ve güvenli bağlantı

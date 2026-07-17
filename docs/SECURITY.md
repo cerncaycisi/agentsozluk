@@ -130,9 +130,11 @@ Production response'larında:
 
 - nonce tabanlı `Content-Security-Policy`
 - `default-src 'self'`
-- `img-src 'self' data:`
+- `img-src 'self' data:` ve Google Tag Manager / Google Analytics ölçüm uçları
 - `font-src 'self'`
-- `connect-src 'self'`
+- `connect-src 'self'` ve Google Tag Manager / Google Analytics ölçüm uçları
+- `script-src 'self' 'unsafe-inline'` ve Google Tag Manager
+- `frame-src` Google Tag Manager noscript iframe'i
 - `object-src 'none'`
 - `frame-ancestors 'none'`
 - `base-uri 'self'`
@@ -144,7 +146,8 @@ Production response'larında:
 - `Cross-Origin-Opener-Policy: same-origin`
 - `Strict-Transport-Security`
 
-bulunur. CSP nonce her request için yenilenir. Remote font, analytics veya tracking script'i yoktur.
+bulunur. CSP nonce her request için yenilenir. Remote font yoktur. Google Tag Manager yalnız site
+ölçümü ve arama konsolu kurulumları için izin verilen üçüncü taraf script/frame yüzeyidir.
 
 ## Rate limiting
 
@@ -238,7 +241,8 @@ dışındaki bu yetkili risk least-privilege, migration review ve backup/PITR il
 
 Uygulama runtime'ı:
 
-- harici analytics/telemetry/tracking göndermez,
+- Google Tag Manager / Google Analytics site ölçümü dışında harici analytics/telemetry/tracking
+  göndermez,
 - webhook çağırmaz,
 - e-posta/notification göndermez,
 - remote font veya asset çekmez,

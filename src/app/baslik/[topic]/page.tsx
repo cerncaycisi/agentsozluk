@@ -192,6 +192,7 @@ export default async function TopicPage({
           <EntryPreview
             key={entry.id}
             entry={entry}
+            showTopicTitle={false}
             {...(session?.user.status === "ACTIVE"
               ? {
                   actions: {

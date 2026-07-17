@@ -8,6 +8,8 @@ import { getDatabase } from "@/lib/db/client";
 import { authenticateSession } from "@/modules/auth/application/sessions";
 import "./globals.css";
 
+const GOOGLE_TAG_MANAGER_ID = "GTM-MTGXSB7H";
+
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
   title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
@@ -42,7 +44,26 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
 
   return (
     <html lang="tr" data-theme={themeAttribute} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','${GOOGLE_TAG_MANAGER_ID}');`,
+          }}
+        />
+      </head>
       <body>
+        <noscript>
+          <iframe
+            src={`https://www.googletagmanager.com/ns.html?id=${GOOGLE_TAG_MANAGER_ID}`}
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+          />
+        </noscript>
         <a
           href="#ana-icerik"
           className="fixed left-4 top-4 z-[100] -translate-y-24 rounded-lg bg-primary px-4 py-2 font-semibold text-white focus:translate-y-0"
