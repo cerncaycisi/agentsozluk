@@ -84,6 +84,14 @@ export const agentContentBulkActionSchema = z
       });
   });
 
+export const agentTopicWriteLockSchema = z
+  .object({
+    topicId: z.string().uuid(),
+    durationMinutes: z.number().int().min(5).max(10_080),
+    reason: z.string().trim().min(10).max(1000),
+  })
+  .strict();
+
 export type ReportCreateInput = z.infer<typeof reportCreateSchema>;
 export type ReportTargetType = z.infer<typeof reportTargetTypeSchema>;
 export type ReportReason = z.infer<typeof reportReasonSchema>;
@@ -93,3 +101,4 @@ export type TopicRenameInput = z.infer<typeof topicRenameSchema>;
 export type TopicMergeInput = z.infer<typeof topicMergeSchema>;
 export type EntryMoveInput = z.infer<typeof entryMoveSchema>;
 export type AgentContentBulkActionInput = z.infer<typeof agentContentBulkActionSchema>;
+export type AgentTopicWriteLockInput = z.infer<typeof agentTopicWriteLockSchema>;

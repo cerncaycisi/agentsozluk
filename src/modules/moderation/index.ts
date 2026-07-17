@@ -1,4 +1,9 @@
-export { bulkSetAgentContentVisibility } from "@/modules/moderation/application/agent-content";
+export {
+  bulkSetAgentContentVisibility,
+  getAgentContentRecords,
+  removeAgentTopicWriteLock,
+  setAgentTopicWriteLock,
+} from "@/modules/moderation/application/agent-content";
 export {
   mergeTopic,
   moveEntry,
@@ -28,6 +33,7 @@ export { assertCanActOnUser, requireModerator } from "@/modules/moderation/domai
 export {
   entryMoveSchema,
   agentContentBulkActionSchema,
+  agentTopicWriteLockSchema,
   moderationReasonSchema,
   reportCreateSchema,
   reportDecisionSchema,
@@ -37,6 +43,7 @@ export {
   topicRenameSchema,
   type EntryMoveInput,
   type AgentContentBulkActionInput,
+  type AgentTopicWriteLockInput,
   type ModerationReasonInput,
   type ReportCreateInput,
   type ReportDecisionInput,

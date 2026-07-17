@@ -481,7 +481,7 @@ export async function executeRuntimeAction(
       const topicId =
         parsed.data.input.topicId ??
         (parsed.data.targetType === "TOPIC" ? parsed.data.targetId : undefined);
-      if (topicId && !actionRecord.run.saturationOverride) {
+      if (topicId) {
         const writeLock = await findActiveRuntimeTopicWriteLock(transaction, topicId, now);
         if (writeLock)
           return rejectAction(transaction, principal, actionRecord, {

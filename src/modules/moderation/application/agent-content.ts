@@ -6,9 +6,111 @@ import { requireAgentAdminInTransaction } from "@/modules/agents";
 import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { setEntryVisibility } from "@/modules/moderation/application/actions";
+import {
+  type AgentContentListInput,
+  deleteAgentTopicWriteLock,
+  listAgentContentRecords,
+  resolveAgentContentRecords,
+  upsertAgentTopicWriteLock,
+} from "@/modules/moderation/repository/agent-content";
 import { appendModerationAction } from "@/modules/moderation/repository/history";
-import { resolveAgentContentRecords } from "@/modules/moderation/repository/agent-content";
-import type { AgentContentBulkActionInput } from "@/modules/moderation/validation/schemas";
+import type {
+  AgentContentBulkActionInput,
+  AgentTopicWriteLockInput,
+  ModerationReasonInput,
+} from "@/modules/moderation/validation/schemas";
+
+export function getAgentContentRecords(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  input: AgentContentListInput,
+  now = new Date(),
+) {
+  return inTransaction(client, async (transaction) => {
+    await requireAgentAdminInTransaction(transaction, actor);
+    return listAgentContentRecords(transaction, input, now);
+  });
+}
+
+export function setAgentTopicWriteLock(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  input: AgentTopicWriteLockInput,
+  now = new Date(),
+) {
+  return inTransaction(client, async (transaction) => {
+    await requireAgentAdminInTransaction(transaction, actor);
+    const outcome = await upsertAgentTopicWriteLock(transaction, {
+      topicId: input.topicId,
+      reason: input.reason,
+      createdById: actor.actorId,
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + input.durationMinutes * 60_000),
+    });
+    if (!outcome) throw new AppError("TOPIC_NOT_FOUND", 404, "Başlık bulunamadı.");
+    const metadata = {
+      durationMinutes: input.durationMinutes,
+      expiresAt: outcome.lock.expiresAt?.toISOString() ?? null,
+    };
+    await appendModerationAction(transaction, {
+      moderatorId: actor.actorId,
+      actionType: "AGENT_TOPIC_WRITE_LOCKED",
+      targetType: "Topic",
+      targetId: input.topicId,
+      reason: input.reason,
+      metadata,
+    });
+    await appendAuditLog(transaction, {
+      actorId: actor.actorId,
+      action: "agent.topic_write_locked",
+      entityType: "Topic",
+      entityId: input.topicId,
+      requestId: actor.requestId,
+      metadata,
+    });
+    await appendRuntimeEvent(transaction, {
+      eventType: "topic.agent-write-locked",
+      safeMessage: "Topic agent yazımına geçici olarak kapatıldı.",
+      metadata: { topicId: input.topicId, ...metadata },
+    });
+    return outcome.lock;
+  });
+}
+
+export function removeAgentTopicWriteLock(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  topicId: string,
+  input: ModerationReasonInput,
+) {
+  return inTransaction(client, async (transaction) => {
+    await requireAgentAdminInTransaction(transaction, actor);
+    const removed = await deleteAgentTopicWriteLock(transaction, topicId);
+    if (!removed) return { removed: false };
+    await appendModerationAction(transaction, {
+      moderatorId: actor.actorId,
+      actionType: "AGENT_TOPIC_WRITE_UNLOCKED",
+      targetType: "Topic",
+      targetId: topicId,
+      reason: input.reason,
+      metadata: {},
+    });
+    await appendAuditLog(transaction, {
+      actorId: actor.actorId,
+      action: "agent.topic_write_unlocked",
+      entityType: "Topic",
+      entityId: topicId,
+      requestId: actor.requestId,
+      metadata: {},
+    });
+    await appendRuntimeEvent(transaction, {
+      eventType: "topic.agent-write-unlocked",
+      safeMessage: "Topic agent yazımına yeniden açıldı.",
+      metadata: { topicId },
+    });
+    return { removed: true };
+  });
+}
 
 function failure(error: unknown) {
   return error instanceof AppError

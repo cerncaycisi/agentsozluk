@@ -31,7 +31,12 @@ import {
   updateGlobalSettings,
 } from "@/modules/agents";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
-import { bulkSetAgentContentVisibility } from "@/modules/moderation";
+import {
+  bulkSetAgentContentVisibility,
+  getAgentContentRecords,
+  removeAgentTopicWriteLock,
+  setAgentTopicWriteLock,
+} from "@/modules/moderation";
 import { createTopicWithFirstEntry } from "@/modules/topics";
 import {
   closeIntegrationDatabase,
@@ -124,6 +129,7 @@ async function runtimePrincipal(
 async function createRuntimeAgentEntries(
   fixture: Awaited<ReturnType<typeof createFixture>>,
   bodies: string[],
+  sourceEvidenceIds: Array<string | undefined> = [],
 ) {
   const topics = await Promise.all(
     bodies.map((_, index) =>
@@ -153,11 +159,17 @@ async function createRuntimeAgentEntries(
         targetType: "TOPIC",
         targetId: topics[index]!.topic.id,
         input: { topicId: topics[index]!.topic.id, body },
-        provenance: {
-          evidenceType: "PLATFORM_EVENT",
-          evidenceIds: [runId],
-          shortRationale: "Bulk moderation integration kaydı için doğrulanmış eylemdir.",
-        },
+        provenance: sourceEvidenceIds[index]
+          ? {
+              evidenceType: "PROBATION_SOURCE",
+              evidenceIds: [sourceEvidenceIds[index]],
+              shortRationale: "Bulk moderation integration kaydı source verisine dayanır.",
+            }
+          : {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Bulk moderation integration kaydı için doğrulanmış eylemdir.",
+            },
       })),
     }),
   );
@@ -943,5 +955,174 @@ describe("internal agent runtime API with PostgreSQL", () => {
         confirmation: "RESTORE_AGENT_CONTENT",
       }),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR", status: 422 });
+  });
+
+  it("lists agent content with report, visibility, source and identity filters", async () => {
+    const fixture = await createFixture();
+    const source = await integrationDatabase.agentSource.create({
+      data: {
+        agentProfileId: fixture.created.agent.profile.id,
+        url: "https://moderation-source.example/feed",
+        normalizedDomain: "moderation-source.example",
+        sourceType: "RSS",
+        status: "PROBATION",
+        topics: ["integration"],
+        trustScore: 0.5,
+        interestScore: 0.7,
+        noveltyScore: 0.5,
+        usefulnessScore: 0.5,
+        addedByOrigin: "INTEGRATION_TEST",
+      },
+    });
+    const sourceItem = await integrationDatabase.agentSourceItem.create({
+      data: {
+        sourceId: source.id,
+        canonicalUrl: "https://moderation-source.example/item",
+        title: "Moderation source evidence",
+        fetchedAt: new Date(),
+        contentHash: "a".repeat(64),
+        safeText: "Kıyı bitkilerinin tuzluluk toleransı için doğrulanmış kaynak metni.",
+        topics: ["integration"],
+        expiresAt: new Date(Date.now() + 60 * 60_000),
+      },
+    });
+    const generated = await createRuntimeAgentEntries(
+      fixture,
+      [
+        "Kıyı bitkilerinin tuzluluk toleransı düzenli arazi ölçümleriyle izlenebilir.",
+        "Derleyici önbelleği tekrar eden test koşularında belirgin süre tasarrufu sağlar.",
+      ],
+      [sourceItem.id],
+    );
+    const [first, second] = generated.content;
+    await integrationDatabase.report.create({
+      data: {
+        reporterId: fixture.admin.id,
+        targetType: "ENTRY",
+        targetId: first!.entryId,
+        reason: "OFF_TOPIC",
+        details: "Agent content liste filtresi için açık report kaydıdır.",
+      },
+    });
+    await bulkSetAgentContentVisibility(integrationDatabase, adminActor(fixture.admin.id), true, {
+      entryIds: [second!.entryId],
+      reason: "Liste görünürlük filtresi için ikinci agent entry gizlenmelidir.",
+      confirmation: "HIDE_AGENT_CONTENT",
+    });
+    const query = (filters: Parameters<typeof getAgentContentRecords>[2]) =>
+      getAgentContentRecords(
+        integrationDatabase,
+        adminActor(fixture.admin.id),
+        filters,
+        new Date(),
+      );
+    const [all, total] = await query({
+      agentProfileId: fixture.created.agent.profile.id,
+      skip: 0,
+      take: 20,
+    });
+    expect(total).toBe(2);
+    expect(all).toHaveLength(2);
+    expect((await query({ reportStatus: "OPEN", skip: 0, take: 20 }))[0]).toHaveLength(1);
+    expect((await query({ reportStatus: "NONE", skip: 0, take: 20 }))[0]).toHaveLength(1);
+    expect((await query({ hiddenStatus: "HIDDEN", skip: 0, take: 20 }))[0][0]?.entry.id).toBe(
+      second!.entryId,
+    );
+    expect(
+      (await query({ sourceProvenance: "WITH_SOURCE", skip: 0, take: 20 }))[0][0]?.entry.id,
+    ).toBe(first!.entryId);
+    expect(
+      (await query({ sourceProvenance: "WITHOUT_SOURCE", skip: 0, take: 20 }))[0][0]?.entry.id,
+    ).toBe(second!.entryId);
+    const unauthorized = await createAdmin();
+    await integrationDatabase.user.update({
+      where: { id: unauthorized.id },
+      data: { role: "MODERATOR" },
+    });
+    await expect(
+      getAgentContentRecords(
+        integrationDatabase,
+        {
+          ...adminActor(unauthorized.id),
+          actorRole: "MODERATOR",
+        },
+        { skip: 0, take: 20 },
+      ),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("blocks agent topic writes even with saturation override until an admin unlocks it", async () => {
+    const fixture = await createFixture();
+    await integrationDatabase.agentRun.update({
+      where: { id: fixture.runs[0]!.id },
+      data: { saturationOverride: true },
+    });
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      { title: "agent topic write lock integration", entryBody: "İlk insan entry içeriği." },
+    );
+    await setAgentTopicWriteLock(integrationDatabase, adminActor(fixture.admin.id), {
+      topicId: topic.topic.id,
+      durationMinutes: 60,
+      reason: "İnceleme süresince bu topic agent yazımına geçici olarak kapatılmalıdır.",
+    });
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "topic-lock-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const propose = (sequence: number, body: string) =>
+      recordRuntimeActions(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        runtimeActionsSchema.parse({
+          workerId,
+          actions: [
+            {
+              sequence,
+              actionType: "CREATE_ENTRY",
+              targetType: "TOPIC",
+              targetId: topic.topic.id,
+              input: { topicId: topic.topic.id, body },
+              provenance: {
+                evidenceType: "PLATFORM_EVENT",
+                evidenceIds: [runId],
+                shortRationale: "Topic lock integration eylem önerisidir.",
+              },
+            },
+          ],
+        }),
+      );
+    await propose(1, "Topic kilitliyken bu agent entry yayınlanmamalıdır.");
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_WRITE_LOCKED",
+    });
+    await removeAgentTopicWriteLock(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      topic.topic.id,
+      { reason: "İnceleme tamamlandığı için topic agent yazımına yeniden açılmalıdır." },
+    );
+    await propose(2, "Topic kilidi kaldırıldıktan sonra agent entry güvenle yayınlanabilir.");
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 2 }),
+    ).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    expect(
+      await integrationDatabase.auditLog.count({
+        where: {
+          action: { in: ["agent.topic_write_locked", "agent.topic_write_unlocked"] },
+          entityId: topic.topic.id,
+        },
+      }),
+    ).toBe(2);
+    expect(await integrationDatabase.agentTopicWriteLock.count()).toBe(0);
   });
 });

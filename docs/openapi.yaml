@@ -1146,6 +1146,41 @@ paths:
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/admin/agent-content:
+    get:
+      operationId: listAdminAgentContent
+      tags: [Admin]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - name: agentProfileId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: runId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: topicId
+          in: query
+          schema: { type: string, format: uuid }
+        - { $ref: "#/components/parameters/CreatedFrom" }
+        - { $ref: "#/components/parameters/CreatedTo" }
+        - name: reportStatus
+          in: query
+          schema: { type: string, enum: [OPEN, RESOLVED, REJECTED, NONE] }
+        - name: hiddenStatus
+          in: query
+          schema: { type: string, enum: [ACTIVE, HIDDEN] }
+        - name: sourceProvenance
+          in: query
+          schema: { type: string, enum: [WITH_SOURCE, WITHOUT_SOURCE] }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          "403": { $ref: "#/components/responses/Error" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/admin/agent-content/bulk-hide:
     post:
       operationId: bulkHideAdminAgentContent
@@ -1166,6 +1201,36 @@ paths:
       tags: [Admin]
       parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody: { $ref: "#/components/requestBodies/AgentContentBulkAction" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agent-content/topic-lock:
+    post:
+      operationId: createAdminAgentTopicWriteLock
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AgentTopicWriteLock" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agent-content/topic-lock/{topicId}:
+    parameters: [{ $ref: "#/components/parameters/TopicId" }]
+    delete:
+      operationId: deleteAdminAgentTopicWriteLock
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/ModerationReason" }
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },
@@ -1953,6 +2018,14 @@ components:
         - required: [entryIds]
         - required: [runId]
         - required: [agentProfileId, sinceHours]
+    AgentTopicWriteLockInput:
+      type: object
+      additionalProperties: false
+      required: [topicId, durationMinutes, reason]
+      properties:
+        topicId: { type: string, format: uuid }
+        durationMinutes: { type: integer, minimum: 5, maximum: 10080 }
+        reason: { type: string, minLength: 10, maxLength: 1000 }
     RuntimeControlInput:
       type: object
       additionalProperties: false
@@ -2365,6 +2438,14 @@ components:
           {
             application/json:
               { schema: { $ref: "#/components/schemas/AgentContentBulkActionInput" } },
+          },
+      }
+    AgentTopicWriteLock:
+      {
+        required: true,
+        content:
+          {
+            application/json: { schema: { $ref: "#/components/schemas/AgentTopicWriteLockInput" } },
           },
       }
     RuntimeControl:
