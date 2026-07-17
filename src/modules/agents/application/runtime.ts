@@ -24,6 +24,8 @@ import {
   findRuntimeSourceForWrite,
   storeRuntimeSourceResult,
 } from "@/modules/agents/repository/runtime";
+import { dispatchDueScheduleSlots } from "@/modules/agents/repository/scheduler";
+import { istanbulLocalDate } from "@/modules/agents/application/scheduler";
 import { seedPersonaSchema } from "@/modules/agents/personas/schema";
 import { selectPerceptionEntries, truncateUntrustedText } from "@/modules/agents/domain/perception";
 import type {
@@ -211,6 +213,13 @@ export function leaseRuntimeRun(
     }
     const now = new Date();
     await finalizeExpiredCancellation(transaction, principal.agentProfileId, now);
+    if (settings.schedulerEnabled) {
+      await dispatchDueScheduleSlots(transaction, {
+        now,
+        localDate: istanbulLocalDate(now),
+        timeoutSeconds: settings.scheduledTimeoutSeconds,
+      });
+    }
     const run = await claimNextRuntimeRun(transaction, {
       agentProfileId: principal.agentProfileId,
       workerId: input.workerId,

@@ -54,6 +54,8 @@ export function getRuntimeGlobalSettings(transaction: Prisma.TransactionClient) 
       maxEntriesPerThreeHours: true,
       duplicateSimilarityThreshold: true,
       maxRetryCount: true,
+      schedulerEnabled: true,
+      scheduledTimeoutSeconds: true,
     },
   });
 }
@@ -97,7 +99,7 @@ export async function finalizeExpiredCancellation(
       runStatus: "CANCEL_REQUESTED",
       leaseExpiresAt: { lt: now },
     },
-    select: { id: true },
+    select: { id: true, scheduleSlotId: true },
   });
   if (cancelled.length === 0) return;
   const ids = cancelled.map(({ id }) => id);
@@ -111,6 +113,10 @@ export async function finalizeExpiredCancellation(
       errorCode: "CANCEL_LEASE_EXPIRED",
       errorSummary: "İptal istenen run lease süresi dolunca güvenli biçimde kapatıldı.",
     },
+  });
+  await transaction.agentScheduleSlot.updateMany({
+    where: { id: { in: cancelled.flatMap(({ scheduleSlotId }) => scheduleSlotId ?? []) } },
+    data: { status: "CANCELLED" },
   });
   await transaction.agentRuntimeState.updateMany({
     where: { agentProfileId, currentRunId: { in: ids } },
@@ -179,7 +185,7 @@ export async function claimNextRuntimeRun(
   const candidate = candidates[0];
   if (!candidate) return null;
   const leaseExpiresAt = new Date(input.now.getTime() + input.leaseSeconds * 1000);
-  return transaction.agentRun.update({
+  const run = await transaction.agentRun.update({
     where: { id: candidate.id },
     data: {
       runStatus: "RUNNING",
@@ -200,6 +206,7 @@ export async function claimNextRuntimeRun(
       desiredEntryMax: true,
       leaseExpiresAt: true,
       attempts: true,
+      scheduleSlotId: true,
       personaVersionId: true,
       allowTopicCreation: true,
       allowVoting: true,
@@ -209,6 +216,13 @@ export async function claimNextRuntimeRun(
       dailyMaximumOverride: true,
     },
   });
+  if (run.scheduleSlotId) {
+    await transaction.agentScheduleSlot.updateMany({
+      where: { id: run.scheduleSlotId, status: "QUEUED" },
+      data: { status: "RUNNING" },
+    });
+  }
+  return run;
 }
 
 export function setRuntimeCurrentRun(
@@ -1183,6 +1197,12 @@ export function finishRuntimeRunRecord(
     sourceReads?: number;
   },
 ) {
+  const slotStatus =
+    input.outcome === "SUCCEEDED" || input.outcome === "PARTIAL"
+      ? "COMPLETED"
+      : input.outcome === "CANCELLED"
+        ? "CANCELLED"
+        : "MISSED";
   return Promise.all([
     transaction.agentRun.update({
       where: { id: input.runId },
@@ -1217,6 +1237,10 @@ export function finishRuntimeRunRecord(
         todayVotes: { increment: input.votes ?? 0 },
         todaySourceReads: { increment: input.sourceReads ?? 0 },
       },
+    }),
+    transaction.agentScheduleSlot.updateMany({
+      where: { runId: input.runId },
+      data: { status: slotStatus },
     }),
   ]);
 }

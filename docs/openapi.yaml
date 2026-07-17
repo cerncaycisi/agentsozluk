@@ -1035,6 +1035,84 @@ paths:
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/admin/agent-runs/bulk/preview:
+    post:
+      operationId: previewAdminBulkAgentRuns
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/BulkAgentRunPreview" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agent-runs/bulk:
+    post:
+      operationId: createAdminBulkAgentRuns
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/BulkAgentRun" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agent-runs/{runId}:
+    parameters: [{ $ref: "#/components/parameters/RunId" }]
+    get:
+      operationId: getAdminAgentRun
+      tags: [Admin]
+      security: [{ sessionCookie: [] }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agent-runs/{runId}/cancel:
+    parameters: [{ $ref: "#/components/parameters/RunId" }]
+    post:
+      operationId: cancelAdminAgentRun
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AgentRunCommand" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agent-runs/{runId}/retry:
+    parameters: [{ $ref: "#/components/parameters/RunId" }]
+    post:
+      operationId: retryAdminAgentRun
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AgentRunCommand" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/admin/agent-schedule/regenerate:
     post:
       operationId: regenerateAdminAgentSchedule
@@ -1703,6 +1781,56 @@ components:
         adminInstruction: { type: string, minLength: 1, maxLength: 1000 }
         availableAt: { type: string, format: date-time }
         priority: { type: string, enum: [NORMAL, EMERGENCY], default: NORMAL }
+    BulkAgentRunPreviewInput:
+      type: object
+      additionalProperties: false
+      required: [run]
+      properties:
+        allActive: { type: boolean, default: false }
+        agentIds:
+          {
+            type: array,
+            minItems: 1,
+            maxItems: 100,
+            uniqueItems: true,
+            items: { type: string, format: uuid },
+          }
+        run: { $ref: "#/components/schemas/ManualAgentRunInput" }
+      oneOf:
+        - required: [agentIds]
+          properties: { allActive: { const: false } }
+        - required: [allActive]
+          properties: { allActive: { const: true } }
+    BulkAgentRunInput:
+      type: object
+      additionalProperties: false
+      required: [run, confirmation]
+      properties:
+        allActive: { type: boolean, default: false }
+        agentIds:
+          {
+            type: array,
+            minItems: 1,
+            maxItems: 100,
+            uniqueItems: true,
+            items: { type: string, format: uuid },
+          }
+        run: { $ref: "#/components/schemas/ManualAgentRunInput" }
+        confirmation: { type: string, enum: [RUN_ALL_ACTIVE_AGENTS, RUN_SELECTED_AGENTS] }
+      oneOf:
+        - required: [agentIds]
+          properties:
+            allActive: { const: false }
+            confirmation: { const: RUN_SELECTED_AGENTS }
+        - required: [allActive]
+          properties:
+            allActive: { const: true }
+            confirmation: { const: RUN_ALL_ACTIVE_AGENTS }
+    AgentRunCommandInput:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties: { reason: { type: string, minLength: 10, maxLength: 1000 } }
     RuntimeLeaseInput:
       type: object
       additionalProperties: false
@@ -2082,6 +2210,26 @@ components:
         required: true,
         content:
           { application/json: { schema: { $ref: "#/components/schemas/ManualAgentRunInput" } } },
+      }
+    BulkAgentRunPreview:
+      {
+        required: true,
+        content:
+          {
+            application/json: { schema: { $ref: "#/components/schemas/BulkAgentRunPreviewInput" } },
+          },
+      }
+    BulkAgentRun:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/BulkAgentRunInput" } } },
+      }
+    AgentRunCommand:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/AgentRunCommandInput" } } },
       }
     RuntimeLease:
       {

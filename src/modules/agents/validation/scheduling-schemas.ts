@@ -53,5 +53,66 @@ export const manualAgentRunSchema = z
     }
   });
 
+const bulkSelectionSchema = z
+  .object({
+    allActive: z.boolean().default(false),
+    agentIds: z.array(z.string().uuid()).min(1).max(100).optional(),
+    run: manualAgentRunSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.agentIds && new Set(input.agentIds).size !== input.agentIds.length)
+      context.addIssue({
+        code: "custom",
+        path: ["agentIds"],
+        message: "agentIds benzersiz olmalıdır.",
+      });
+    if (input.allActive === Boolean(input.agentIds))
+      context.addIssue({
+        code: "custom",
+        path: ["agentIds"],
+        message: "Ya allActive true olmalı ya da agentIds verilmelidir.",
+      });
+  });
+
+export const bulkAgentRunPreviewSchema = bulkSelectionSchema;
+
+export const bulkAgentRunSchema = z
+  .object({
+    allActive: z.boolean().default(false),
+    agentIds: z.array(z.string().uuid()).min(1).max(100).optional(),
+    run: manualAgentRunSchema,
+    confirmation: z.enum(["RUN_ALL_ACTIVE_AGENTS", "RUN_SELECTED_AGENTS"]),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.agentIds && new Set(input.agentIds).size !== input.agentIds.length)
+      context.addIssue({
+        code: "custom",
+        path: ["agentIds"],
+        message: "agentIds benzersiz olmalıdır.",
+      });
+    if (input.allActive === Boolean(input.agentIds))
+      context.addIssue({
+        code: "custom",
+        path: ["agentIds"],
+        message: "Ya allActive true olmalı ya da agentIds verilmelidir.",
+      });
+    const expected = input.allActive ? "RUN_ALL_ACTIVE_AGENTS" : "RUN_SELECTED_AGENTS";
+    if (input.confirmation !== expected)
+      context.addIssue({
+        code: "custom",
+        path: ["confirmation"],
+        message: "Bulk run için açık confirmation gereklidir.",
+      });
+  });
+
+export const agentRunCommandSchema = z
+  .object({ reason: z.string().trim().min(10).max(1000) })
+  .strict();
+
 export type DailyPlanGenerationInput = z.infer<typeof dailyPlanGenerationSchema>;
 export type ManualAgentRunInput = z.infer<typeof manualAgentRunSchema>;
+export type BulkAgentRunPreviewInput = z.infer<typeof bulkAgentRunPreviewSchema>;
+export type BulkAgentRunInput = z.infer<typeof bulkAgentRunSchema>;
+export type AgentRunCommandInput = z.infer<typeof agentRunCommandSchema>;
