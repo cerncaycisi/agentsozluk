@@ -23,6 +23,7 @@ export const OUTBOX_EVENT_TYPES = [
   "agent.updated",
   "agent.lifecycle_changed",
   "agent.persona_version_created",
+  "agent.credential_rotated",
   "agent.settings_changed",
 ] as const;
 

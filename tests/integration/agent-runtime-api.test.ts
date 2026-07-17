@@ -1,0 +1,369 @@
+import { randomUUID } from "node:crypto";
+import { NextRequest } from "next/server";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { POST as leaseRoute } from "@/app/api/v1/internal/agent-runtime/lease/route";
+import type { ActorContext } from "@/modules/auth/domain/actor";
+import {
+  authenticateRuntimeRequest,
+  changeAgentLifecycle,
+  completeRuntimeRun,
+  createAgent,
+  createAgentSchema,
+  getAgentDetail,
+  getRuntimeRunContext,
+  heartbeatRuntimeRun,
+  leaseRuntimeRun,
+  lifecycleChangeSchema,
+  recordRuntimeActions,
+  recordRuntimeEvents,
+  rotateAgentCredential,
+  runtimeActionsSchema,
+  runtimeCompleteSchema,
+  runtimeEventsSchema,
+  runtimeHeartbeatSchema,
+  runtimeCredentialRotationSchema,
+  updateGlobalSettings,
+} from "@/modules/agents";
+import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
+import {
+  closeIntegrationDatabase,
+  integrationDatabase,
+  resetIntegrationDatabase,
+} from "./database";
+
+async function createAdmin() {
+  const suffix = randomUUID().replaceAll("-", "");
+  return integrationDatabase.user.create({
+    data: {
+      kind: "HUMAN",
+      role: "ADMIN",
+      status: "ACTIVE",
+      email: `runtime-admin-${suffix}@integration.test`,
+      emailNormalized: `runtime-admin-${suffix}@integration.test`,
+      username: `runtime_admin_${suffix.slice(0, 14)}`,
+      usernameNormalized: `runtime_admin_${suffix.slice(0, 14)}`,
+      displayName: "Runtime admin",
+      passwordHash: "not-used",
+      termsVersion: "1.0",
+      termsAcceptedAt: new Date(),
+    },
+  });
+}
+
+function adminActor(adminId: string): ActorContext {
+  return {
+    actorId: adminId,
+    actorKind: "HUMAN",
+    actorRole: "ADMIN",
+    requestId: randomUUID(),
+    origin: "API",
+  };
+}
+
+async function createFixture(runCount = 1) {
+  const admin = await createAdmin();
+  const created = await createAgent(
+    integrationDatabase,
+    adminActor(admin.id),
+    createAgentSchema.parse({ persona: originalPersonaPack.personas[0] }),
+  );
+  await updateGlobalSettings(integrationDatabase, adminActor(admin.id), {
+    globalDailyEntryMin: 15,
+    globalDailyEntryMax: 20,
+  });
+  await changeAgentLifecycle(
+    integrationDatabase,
+    adminActor(admin.id),
+    created.agent.profile.id,
+    lifecycleChangeSchema.parse({
+      status: "ACTIVE",
+      reason: "Runtime integration fixture activation.",
+    }),
+  );
+  const runs = await Promise.all(
+    Array.from({ length: runCount }, (_, index) =>
+      integrationDatabase.agentRun.create({
+        data: {
+          agentProfileId: created.agent.profile.id,
+          runType: "NORMAL_WAKE",
+          queuePriority: index === 0 ? "MANUAL_SINGLE" : "SCHEDULED_CONTENT",
+          trigger: "INTEGRATION_TEST",
+          requestedById: admin.id,
+          personaVersionId: created.agent.personaVersion.id,
+          idempotencyKey: randomUUID(),
+          timeoutSeconds: 600,
+          desiredEntryMin: 2,
+          desiredEntryMax: 3,
+        },
+      }),
+    ),
+  );
+  return { admin, created, runs, credential: created.credential };
+}
+
+async function runtimePrincipal(
+  rawCredential: string,
+  scope: "runtime:lease" | "runtime:read" | "runtime:write" = "runtime:write",
+) {
+  return authenticateRuntimeRequest(integrationDatabase, {
+    authorization: `Bearer ${rawCredential}`,
+    hasBrowserSession: false,
+    requiredScope: scope,
+    requestId: randomUUID(),
+  });
+}
+
+beforeEach(resetIntegrationDatabase);
+afterAll(closeIntegrationDatabase);
+
+describe("internal agent runtime API with PostgreSQL", () => {
+  it("authenticates only the hashed scoped credential and rejects browser sessions", async () => {
+    const fixture = await createFixture();
+    const principal = await runtimePrincipal(fixture.credential);
+    expect(principal).toMatchObject({
+      agentProfileId: fixture.created.agent.profile.id,
+      actor: { actorKind: "AGENT", actorRole: "USER", origin: "AGENT" },
+    });
+    await expect(
+      getAgentDetail(integrationDatabase, principal.actor, fixture.created.agent.profile.id),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      authenticateRuntimeRequest(integrationDatabase, {
+        authorization: `Bearer ${fixture.credential}`,
+        hasBrowserSession: true,
+        requiredScope: "runtime:read",
+        requestId: randomUUID(),
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      authenticateRuntimeRequest(integrationDatabase, {
+        authorization: `Bearer agt_${"x".repeat(43)}`,
+        hasBrowserSession: false,
+        requiredScope: "runtime:read",
+        requestId: randomUUID(),
+      }),
+    ).rejects.toMatchObject({ code: "AUTH_REQUIRED" });
+    expect(await integrationDatabase.agentCredential.findFirstOrThrow()).toMatchObject({
+      tokenHash: expect.not.stringContaining(fixture.credential),
+      lastUsedAt: expect.any(Date),
+    });
+  });
+
+  it("rotates credentials atomically and invalidates the previously issued token", async () => {
+    const fixture = await createFixture();
+    const rotated = await rotateAgentCredential(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      fixture.created.agent.profile.id,
+      runtimeCredentialRotationSchema.parse({
+        reason: "Scheduled integration credential rotation.",
+      }),
+    );
+    expect(rotated.credential).toMatch(/^agt_[A-Za-z0-9_-]{43}$/u);
+    expect(rotated.credential).not.toBe(fixture.credential);
+    await expect(runtimePrincipal(fixture.credential)).rejects.toMatchObject({
+      code: "AUTH_REQUIRED",
+    });
+    await expect(runtimePrincipal(rotated.credential)).resolves.toMatchObject({
+      agentProfileId: fixture.created.agent.profile.id,
+    });
+    const credentials = await integrationDatabase.agentCredential.findMany({
+      where: { agentProfileId: fixture.created.agent.profile.id },
+      orderBy: { createdAt: "asc" },
+    });
+    expect(credentials).toHaveLength(2);
+    expect(credentials[0]!.revokedAt).toBeInstanceOf(Date);
+    expect(credentials[1]!.revokedAt).toBeNull();
+    expect(JSON.stringify(credentials)).not.toContain(rotated.credential);
+    expect(
+      await integrationDatabase.auditLog.count({ where: { action: "agent.credential_rotated" } }),
+    ).toBe(1);
+  });
+
+  it("leases only one run per agent under concurrency and reclaims an expired lease", async () => {
+    const fixture = await createFixture(2);
+    const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const [left, right] = await Promise.all([
+      leaseRuntimeRun(integrationDatabase, principal, { workerId: "worker-a", leaseSeconds: 60 }),
+      leaseRuntimeRun(integrationDatabase, principal, { workerId: "worker-b", leaseSeconds: 60 }),
+    ]);
+    const leased = [left, right].filter(({ run }) => run !== null);
+    expect(leased).toHaveLength(1);
+    expect(await integrationDatabase.agentRun.count({ where: { runStatus: "RUNNING" } })).toBe(1);
+    const running = await integrationDatabase.agentRun.findFirstOrThrow({
+      where: { runStatus: "RUNNING" },
+    });
+    const originalStartedAt = running.startedAt;
+    await integrationDatabase.agentRun.update({
+      where: { id: running.id },
+      data: { leaseExpiresAt: new Date(Date.now() - 1000) },
+    });
+    const reclaimed = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "worker-c",
+      leaseSeconds: 60,
+    });
+    expect(reclaimed.run).toMatchObject({ id: running.id, attempts: 2 });
+    expect(
+      (await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: running.id } }))
+        .startedAt,
+    ).toEqual(originalStartedAt);
+  });
+
+  it("prevents a retired agent from leasing with a stale authenticated principal", async () => {
+    const fixture = await createFixture();
+    const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    await changeAgentLifecycle(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      fixture.created.agent.profile.id,
+      lifecycleChangeSchema.parse({
+        status: "RETIRED",
+        reason: "Retire before the stale authenticated principal can claim work.",
+      }),
+    );
+    await expect(
+      leaseRuntimeRun(integrationDatabase, principal, {
+        workerId: "worker-stale-principal",
+        leaseSeconds: 60,
+      }),
+    ).resolves.toEqual({ run: null, reason: "NOT_ACTIVE" });
+    expect(await integrationDatabase.agentRun.count({ where: { runStatus: "RUNNING" } })).toBe(0);
+  });
+
+  it("keeps context credential-free, enforces lease ownership, and completes with measured counts", async () => {
+    const fixture = await createFixture();
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId: "worker-main",
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await expect(
+      heartbeatRuntimeRun(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        runtimeHeartbeatSchema.parse({
+          runId,
+          workerId: "wrong-worker",
+          runtimeStatus: "READING",
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "AGENT_RUN_LEASE_INVALID" });
+    await heartbeatRuntimeRun(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeHeartbeatSchema.parse({
+        runId,
+        workerId: "worker-main",
+        runtimeStatus: "READING",
+      }),
+    );
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      readPrincipal,
+      runId,
+      "worker-main",
+    );
+    expect(JSON.stringify(context)).not.toMatch(/credential|email|password|tokenHash/iu);
+    expect(context.persona.version).toBe(1);
+    await recordRuntimeEvents(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeEventsSchema.parse({
+        workerId: "worker-main",
+        events: [
+          {
+            eventType: "runtime.reading.completed",
+            safeMessage: "Sınırlı context okuması tamamlandı.",
+            metadata: { phase: "READING", count: 4 },
+          },
+        ],
+      }),
+    );
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId: "worker-main",
+        actions: [
+          {
+            sequence: 1,
+            actionType: "NO_ACTION",
+            input: {},
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Uygun ve doğrulanabilir public aksiyon bulunamadı.",
+            },
+          },
+        ],
+      }),
+    );
+    await completeRuntimeRun(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeCompleteSchema.parse({
+        workerId: "worker-main",
+        outcome: "SUCCEEDED",
+        safeRunSummary: {
+          operationSummary: "Context okundu ve güvenli biçimde aksiyonsuz tamamlandı.",
+          proposedActionCount: 1,
+          completedActionCount: 0,
+          rejectedActionCount: 0,
+          shortRationale: "Yayınlanabilir aday bulunmadı.",
+        },
+        usageMetadata: { durationMs: 500, provider: "codex-cli" },
+        performanceMetrics: { publishedEntries: 3, sourceReads: 4 },
+      }),
+    );
+    expect(
+      await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: runId } }),
+    ).toMatchObject({
+      runStatus: "SUCCEEDED",
+      leaseOwner: null,
+      leaseExpiresAt: null,
+    });
+    expect(
+      await integrationDatabase.agentRuntimeState.findUniqueOrThrow({
+        where: { agentProfileId: fixture.created.agent.profile.id },
+      }),
+    ).toMatchObject({
+      currentRunId: null,
+      todayPublishedEntries: 0,
+      todaySourceReads: 0,
+    });
+    expect(await integrationDatabase.agentRunEvent.count({ where: { runId } })).toBe(3);
+    expect(await integrationDatabase.auditLog.count({ where: { entityId: runId } })).toBe(3);
+  });
+
+  it("requires idempotency and replays lease without creating a second claim", async () => {
+    const fixture = await createFixture(2);
+    const url = "http://localhost/api/v1/internal/agent-runtime/lease";
+    const makeRequest = (key?: string, cookie?: string) =>
+      new NextRequest(url, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${fixture.credential}`,
+          "content-type": "application/json",
+          ...(key ? { "idempotency-key": key } : {}),
+          ...(cookie ? { cookie } : {}),
+        },
+        body: JSON.stringify({ workerId: "route-worker", leaseSeconds: 60 }),
+      });
+    expect((await leaseRoute(makeRequest())).status).toBe(422);
+    expect((await leaseRoute(makeRequest("browser-key", "ajan_session=fake"))).status).toBe(403);
+    const first = await leaseRoute(makeRequest("lease-once"));
+    const replay = await leaseRoute(makeRequest("lease-once"));
+    expect(first.status).toBe(200);
+    expect(replay.headers.get("Idempotent-Replay")).toBe("true");
+    expect(await first.json()).toEqual(await replay.json());
+    expect(await integrationDatabase.agentRun.count({ where: { runStatus: "RUNNING" } })).toBe(1);
+  });
+});

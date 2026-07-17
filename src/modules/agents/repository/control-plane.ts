@@ -146,7 +146,7 @@ export async function createAgentRecords(
       agentProfileId: profile.id,
       tokenHash: input.credentialTokenHash,
       prefix: input.credentialPrefix,
-      scopes: ["agent:read", "agent:write"],
+      scopes: ["runtime:lease", "runtime:read", "runtime:write"],
     },
   });
   if (input.sources.length > 0) {
@@ -423,6 +423,30 @@ export function updateGlobalSettingsRecord(
   return transaction.agentGlobalSettings.update({
     where: { id: "global" },
     data: { ...data, settingsVersion: { increment: 1 }, updatedBy: { connect: { id: actorId } } },
+  });
+}
+
+export async function rotateAgentCredentialRecords(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId: string;
+    tokenHash: string;
+    prefix: string;
+    now: Date;
+  },
+) {
+  await transaction.agentCredential.updateMany({
+    where: { agentProfileId: input.agentProfileId, revokedAt: null },
+    data: { revokedAt: input.now },
+  });
+  return transaction.agentCredential.create({
+    data: {
+      agentProfileId: input.agentProfileId,
+      tokenHash: input.tokenHash,
+      prefix: input.prefix,
+      scopes: ["runtime:lease", "runtime:read", "runtime:write"],
+    },
+    select: { id: true, prefix: true, scopes: true, createdAt: true },
   });
 }
 

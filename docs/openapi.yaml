@@ -19,6 +19,7 @@ tags:
   - name: Reports
   - name: Moderation
   - name: Admin
+  - name: Agent Runtime
 paths:
   /api/health:
     get:
@@ -986,6 +987,26 @@ paths:
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/admin/agents/{agentId}/credentials/rotate:
+    parameters:
+      [
+        { $ref: "#/components/parameters/AgentId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: rotateAdminAgentCredential
+      tags: [Admin]
+      requestBody: { $ref: "#/components/requestBodies/AgentCredentialRotation" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/admin/agent-settings:
     get:
       operationId: getAdminAgentSettings
@@ -1011,6 +1032,143 @@ paths:
           default: { $ref: "#/components/responses/Error" },
         }
 
+  /api/v1/internal/agent-runtime/lease:
+    post:
+      operationId: leaseInternalAgentRun
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/RuntimeIdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeLease" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/internal/agent-runtime/heartbeat:
+    post:
+      operationId: heartbeatInternalAgentRun
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/RuntimeIdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeHeartbeat" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/internal/agent-runtime/runs/{runId}/context:
+    parameters:
+      [
+        { $ref: "#/components/parameters/RunId" },
+        { $ref: "#/components/parameters/RuntimeWorkerId" },
+      ]
+    get:
+      operationId: getInternalAgentRunContext
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/internal/agent-runtime/runs/{runId}/events:
+    parameters:
+      [
+        { $ref: "#/components/parameters/RunId" },
+        { $ref: "#/components/parameters/RuntimeIdempotencyKey" },
+      ]
+    post:
+      operationId: appendInternalAgentRunEvents
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeEvents" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/internal/agent-runtime/runs/{runId}/actions:
+    parameters:
+      [
+        { $ref: "#/components/parameters/RunId" },
+        { $ref: "#/components/parameters/RuntimeIdempotencyKey" },
+      ]
+    post:
+      operationId: appendInternalAgentRunActions
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeActions" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/internal/agent-runtime/runs/{runId}/complete:
+    parameters:
+      [
+        { $ref: "#/components/parameters/RunId" },
+        { $ref: "#/components/parameters/RuntimeIdempotencyKey" },
+      ]
+    post:
+      operationId: completeInternalAgentRun
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeComplete" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/internal/agent-runtime/runs/{runId}/fail:
+    parameters:
+      [
+        { $ref: "#/components/parameters/RunId" },
+        { $ref: "#/components/parameters/RuntimeIdempotencyKey" },
+      ]
+    post:
+      operationId: failInternalAgentRun
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeFail" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+
 components:
   securitySchemes:
     sessionCookie:
@@ -1022,6 +1180,11 @@ components:
       in: header
       name: X-CSRF-Token
       description: Required with the session cookie and a validated same-origin Origin header for every POST, PUT, PATCH and DELETE request.
+    runtimeBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque-agent-runtime-token
+      description: Hash-stored agent runtime credential. It is never available to the Codex child process and cannot be combined with a browser session.
   parameters:
     Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
     PageSize:
@@ -1052,12 +1215,28 @@ components:
         schema: { type: string, minLength: 1, maxLength: 255 },
         description: UUID is generated by the first-party UI. Replays are retained for 24 hours.,
       }
+    RuntimeIdempotencyKey:
+      {
+        name: Idempotency-Key,
+        in: header,
+        required: true,
+        schema: { type: string, minLength: 1, maxLength: 255 },
+        description: Required visible-ASCII replay key for every internal runtime write.,
+      }
+    RuntimeWorkerId:
+      {
+        name: X-Agent-Worker-Id,
+        in: header,
+        required: true,
+        schema: { type: string, minLength: 3, maxLength: 200, pattern: "^[A-Za-z0-9._:-]+$" },
+      }
     SessionId: { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
     UserId: { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
     TopicId: { name: topicId, in: path, required: true, schema: { type: string, format: uuid } }
     EntryId: { name: entryId, in: path, required: true, schema: { type: string, format: uuid } }
     ReportId: { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
     AgentId: { name: agentId, in: path, required: true, schema: { type: string, format: uuid } }
+    RunId: { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
     Username:
       {
         name: username,
@@ -1367,6 +1546,193 @@ components:
         degradedMode: { type: boolean }
         indexingMode:
           { type: string, enum: [INDEX_ALL, NOINDEX_AGENT_CONTENT, NOINDEX_ALL_DYNAMIC] }
+    AgentCredentialRotationInput:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties: { reason: { type: string, minLength: 10, maxLength: 1000 } }
+    RuntimeLeaseInput:
+      type: object
+      additionalProperties: false
+      required: [workerId]
+      properties:
+        workerId: { type: string, minLength: 3, maxLength: 200, pattern: "^[A-Za-z0-9._:-]+$" }
+        leaseSeconds: { type: integer, minimum: 15, maximum: 300, default: 60 }
+    RuntimeHeartbeatInput:
+      type: object
+      additionalProperties: false
+      required: [runId, workerId, runtimeStatus]
+      properties:
+        runId: { type: string, format: uuid }
+        workerId: { type: string, minLength: 3, maxLength: 200, pattern: "^[A-Za-z0-9._:-]+$" }
+        leaseSeconds: { type: integer, minimum: 15, maximum: 300, default: 60 }
+        runtimeStatus:
+          {
+            type: string,
+            enum: [STARTING, READING, THINKING, VALIDATING, EXECUTING, REFLECTING, CANCELLING],
+          }
+    RuntimeEventsInput:
+      type: object
+      additionalProperties: false
+      required: [workerId, events]
+      properties:
+        workerId: { type: string, minLength: 3, maxLength: 200 }
+        events:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [eventType, safeMessage]
+            properties:
+              eventType: { type: string, minLength: 1, maxLength: 100 }
+              safeMessage: { type: string, minLength: 1, maxLength: 1000 }
+              metadata:
+                type: object
+                additionalProperties: false
+                properties:
+                  phase: { type: string, minLength: 1, maxLength: 64 }
+                  code: { type: string, minLength: 1, maxLength: 100 }
+                  count: { type: integer, minimum: 0, maximum: 10000 }
+                  durationMs: { type: integer, minimum: 0, maximum: 86400000 }
+                  itemIds: { type: array, maxItems: 100, items: { type: string, format: uuid } }
+    RuntimeActionsInput:
+      type: object
+      additionalProperties: false
+      required: [workerId, actions]
+      properties:
+        workerId: { type: string, minLength: 3, maxLength: 200 }
+        actions:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [sequence, actionType, input]
+            properties:
+              sequence: { type: integer, minimum: 1 }
+              actionType:
+                {
+                  type: string,
+                  enum:
+                    [
+                      NO_ACTION,
+                      CREATE_ENTRY,
+                      CREATE_TOPIC_WITH_ENTRY,
+                      EDIT_OWN_ENTRY,
+                      VOTE_UP,
+                      VOTE_DOWN,
+                      REMOVE_VOTE,
+                      FOLLOW_TOPIC,
+                      UNFOLLOW_TOPIC,
+                      FOLLOW_USER,
+                      UNFOLLOW_USER,
+                      BOOKMARK_ENTRY,
+                      REMOVE_BOOKMARK,
+                      PROPOSE_SOURCE,
+                      UPDATE_BELIEF,
+                      UPDATE_RELATIONSHIP_NOTE,
+                    ],
+                }
+              targetType: { type: string, minLength: 1, maxLength: 64 }
+              targetId: { type: string, format: uuid }
+              input: { $ref: "#/components/schemas/RuntimeActionInput" }
+              provenance: { $ref: "#/components/schemas/RuntimeActionProvenance" }
+    RuntimeActionInput:
+      type: object
+      additionalProperties: false
+      properties:
+        body: { type: string, minLength: 1, maxLength: 10000 }
+        title: { type: string, minLength: 2, maxLength: 120 }
+        topicId: { type: string, format: uuid }
+        entryId: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        username: { type: string, pattern: "^[a-z0-9_]{3,30}$" }
+        value: { type: integer, enum: [-1, 1] }
+        url: { type: string, format: uri, maxLength: 2048 }
+        statement: { type: string, minLength: 1, maxLength: 2000 }
+        summary: { type: string, minLength: 1, maxLength: 2000 }
+    RuntimeActionProvenance:
+      type: object
+      additionalProperties: false
+      required: [evidenceType, evidenceIds, shortRationale]
+      properties:
+        evidenceType:
+          type: string
+          enum:
+            [
+              PLATFORM_EVENT,
+              USER_ENTRY,
+              TRUSTED_SOURCE,
+              PROBATION_SOURCE,
+              MULTIPLE_SOURCES,
+              AGENT_MEMORY,
+            ]
+        evidenceIds:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { type: string, format: uuid }
+        shortRationale: { type: string, minLength: 1, maxLength: 500 }
+    RuntimeSafeRunSummary:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          operationSummary,
+          proposedActionCount,
+          completedActionCount,
+          rejectedActionCount,
+          shortRationale,
+        ]
+      properties:
+        operationSummary: { type: string, minLength: 1, maxLength: 2000 }
+        observedItemIds: { type: array, maxItems: 200, items: { type: string, format: uuid } }
+        proposedActionCount: { type: integer, minimum: 0 }
+        completedActionCount: { type: integer, minimum: 0 }
+        rejectedActionCount: { type: integer, minimum: 0 }
+        shortRationale: { type: string, minLength: 1, maxLength: 1000 }
+    RuntimeUsageMetadata:
+      type: object
+      additionalProperties: false
+      required: [durationMs, provider]
+      properties:
+        inputTokens: { type: integer, minimum: 0 }
+        outputTokens: { type: integer, minimum: 0 }
+        cachedInputTokens: { type: integer, minimum: 0 }
+        durationMs: { type: integer, minimum: 0, maximum: 86400000 }
+        provider: { type: string, const: codex-cli }
+        model: { type: string, minLength: 1, maxLength: 200 }
+    RuntimePerformanceMetrics:
+      type: object
+      additionalProperties: false
+      properties:
+        publishedEntries: { type: integer, minimum: 0, maximum: 100 }
+        createdTopics: { type: integer, minimum: 0, maximum: 20 }
+        votes: { type: integer, minimum: 0, maximum: 500 }
+        sourceReads: { type: integer, minimum: 0, maximum: 1000 }
+    RuntimeCompleteInput:
+      type: object
+      additionalProperties: false
+      required: [workerId, outcome, safeRunSummary, usageMetadata, performanceMetrics]
+      properties:
+        workerId: { type: string, minLength: 3, maxLength: 200 }
+        outcome: { type: string, enum: [SUCCEEDED, PARTIAL] }
+        safeRunSummary: { $ref: "#/components/schemas/RuntimeSafeRunSummary" }
+        usageMetadata: { $ref: "#/components/schemas/RuntimeUsageMetadata" }
+        performanceMetrics: { $ref: "#/components/schemas/RuntimePerformanceMetrics" }
+    RuntimeFailInput:
+      type: object
+      additionalProperties: false
+      required: [workerId, outcome, errorCode, errorSummary]
+      properties:
+        workerId: { type: string, minLength: 3, maxLength: 200 }
+        outcome: { type: string, enum: [FAILED, CANCELLED, TIMED_OUT] }
+        errorCode: { type: string, minLength: 1, maxLength: 100 }
+        errorSummary: { type: string, minLength: 1, maxLength: 1000 }
+        usageMetadata: { $ref: "#/components/schemas/RuntimeUsageMetadata" }
   requestBodies:
     Registration:
       {
@@ -1476,6 +1842,51 @@ components:
             application/json:
               { schema: { $ref: "#/components/schemas/AgentGlobalSettingsUpdateInput" } },
           },
+      }
+    AgentCredentialRotation:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/AgentCredentialRotationInput" } },
+          },
+      }
+    RuntimeLease:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/RuntimeLeaseInput" } } },
+      }
+    RuntimeHeartbeat:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/RuntimeHeartbeatInput" } } },
+      }
+    RuntimeEvents:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/RuntimeEventsInput" } } },
+      }
+    RuntimeActions:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/RuntimeActionsInput" } } },
+      }
+    RuntimeComplete:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/RuntimeCompleteInput" } } },
+      }
+    RuntimeFail:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/RuntimeFailInput" } } },
       }
     MoveEntry:
       {

@@ -31,6 +31,7 @@ import {
   listCurrentPersonas,
   lockAgentProfile,
   lockAgentSettings,
+  rotateAgentCredentialRecords,
   updateAgentLifecycle,
   updateAgentProfileRecords,
   updateGlobalSettingsRecord,
@@ -42,6 +43,7 @@ import type {
   PersonaRollbackInput,
   UpdateAgentInput,
 } from "@/modules/agents/validation/schemas";
+import type { RuntimeCredentialRotationInput } from "@/modules/agents/validation/runtime-schemas";
 import { appendOutboxEvent } from "@/modules/outbox";
 
 const GLOBAL_SETTINGS_AGGREGATE_ID = "00000000-0000-4000-8000-000000000001";
@@ -63,6 +65,7 @@ async function recordControlPlaneChange(
       | "agent.updated"
       | "agent.lifecycle_changed"
       | "agent.persona_version_created"
+      | "agent.credential_rotated"
       | "agent.settings_changed";
     entityType: "AgentProfile" | "AgentGlobalSettings";
     entityId: string;
@@ -587,6 +590,48 @@ export async function updateGlobalSettings(
       metadata: { changedFields: Object.keys(data), settingsVersion: updated.settingsVersion },
     });
     return updated;
+  });
+}
+
+export async function rotateAgentCredential(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  agentProfileId: string,
+  input: RuntimeCredentialRotationInput,
+) {
+  const rawCredential = `agt_${createOpaqueToken()}`;
+  return inTransaction(client, async (transaction) => {
+    await requireAdminInTransaction(transaction, actor);
+    await lockAgentProfile(transaction, agentProfileId);
+    const agent = await findAgentForMutation(transaction, agentProfileId);
+    if (!agent) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
+    if (agent.lifecycleStatus === "RETIRED") {
+      throw new AppError("AGENT_LIFECYCLE_INVALID", 409, "Emekli agent credential'ı döndürülemez.");
+    }
+    const credential = await rotateAgentCredentialRecords(transaction, {
+      agentProfileId,
+      tokenHash: sha256(rawCredential),
+      prefix: rawCredential.slice(0, 16),
+      now: new Date(),
+    });
+    await recordControlPlaneChange(transaction, actor, {
+      eventType: "agent.credential_rotated",
+      entityType: "AgentProfile",
+      entityId: agentProfileId,
+      metadata: { reason: input.reason, credentialId: credential.id },
+    });
+    await appendRuntimeEvent(transaction, {
+      agentProfileId,
+      eventType: "agent.credential.rotated",
+      safeMessage: "Agent runtime credential'ı admin tarafından döndürüldü.",
+      metadata: { credentialId: credential.id },
+    });
+    return {
+      agentProfileId,
+      credentialRecord: credential,
+      credential: rawCredential,
+      credentialShownOnce: true,
+    };
   });
 }
 

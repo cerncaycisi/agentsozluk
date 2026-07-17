@@ -42,7 +42,10 @@ interface OpenApiDocument {
   paths?: Record<string, OpenApiPathItem>;
   components?: {
     parameters?: Record<string, OpenApiParameter>;
-    securitySchemes?: Record<string, { type?: string; in?: string; name?: string }>;
+    securitySchemes?: Record<
+      string,
+      { type?: string; in?: string; name?: string; scheme?: string; bearerFormat?: string }
+    >;
   };
 }
 
@@ -60,6 +63,16 @@ const publicOperations = new Set([
   "GET /api/v1/search",
   "GET /api/v1/feeds/debe",
   "GET /api/v1/feeds/random",
+]);
+
+const internalRuntimeOperations = new Set([
+  "POST /api/v1/internal/agent-runtime/lease",
+  "POST /api/v1/internal/agent-runtime/heartbeat",
+  "GET /api/v1/internal/agent-runtime/runs/{runId}/context",
+  "POST /api/v1/internal/agent-runtime/runs/{runId}/events",
+  "POST /api/v1/internal/agent-runtime/runs/{runId}/actions",
+  "POST /api/v1/internal/agent-runtime/runs/{runId}/complete",
+  "POST /api/v1/internal/agent-runtime/runs/{runId}/fail",
 ]);
 
 const expectedQueryParameters: Record<string, string[]> = {
@@ -125,6 +138,13 @@ const expectedRequestBodies: Record<string, string> = {
   "POST /api/v1/admin/agents/{agentId}/lifecycle": "AgentLifecycleChange",
   "POST /api/v1/admin/agents/{agentId}/persona/rollback": "AgentPersonaRollback",
   "PATCH /api/v1/admin/agent-settings": "AgentGlobalSettingsUpdate",
+  "POST /api/v1/admin/agents/{agentId}/credentials/rotate": "AgentCredentialRotation",
+  "POST /api/v1/internal/agent-runtime/lease": "RuntimeLease",
+  "POST /api/v1/internal/agent-runtime/heartbeat": "RuntimeHeartbeat",
+  "POST /api/v1/internal/agent-runtime/runs/{runId}/events": "RuntimeEvents",
+  "POST /api/v1/internal/agent-runtime/runs/{runId}/actions": "RuntimeActions",
+  "POST /api/v1/internal/agent-runtime/runs/{runId}/complete": "RuntimeComplete",
+  "POST /api/v1/internal/agent-runtime/runs/{runId}/fail": "RuntimeFail",
 };
 
 const idempotentOperations = new Set([
@@ -149,6 +169,13 @@ const idempotentOperations = new Set([
   "POST /api/v1/admin/agents/{agentId}/lifecycle",
   "POST /api/v1/admin/agents/{agentId}/persona/rollback",
   "PATCH /api/v1/admin/agent-settings",
+  "POST /api/v1/admin/agents/{agentId}/credentials/rotate",
+  "POST /api/v1/internal/agent-runtime/lease",
+  "POST /api/v1/internal/agent-runtime/heartbeat",
+  "POST /api/v1/internal/agent-runtime/runs/{runId}/events",
+  "POST /api/v1/internal/agent-runtime/runs/{runId}/actions",
+  "POST /api/v1/internal/agent-runtime/runs/{runId}/complete",
+  "POST /api/v1/internal/agent-runtime/runs/{runId}/fail",
 ]);
 
 function hasExactSecurity(
@@ -228,6 +255,7 @@ async function main(): Promise<void> {
   if (document.openapi !== "3.1.0") throw new Error("OpenAPI version must be exactly 3.1.0");
   const sessionScheme = document.components?.securitySchemes?.sessionCookie;
   const csrfScheme = document.components?.securitySchemes?.csrfHeader;
+  const runtimeScheme = document.components?.securitySchemes?.runtimeBearer;
   if (
     sessionScheme?.type !== "apiKey" ||
     sessionScheme.in !== "cookie" ||
@@ -240,6 +268,13 @@ async function main(): Promise<void> {
     csrfScheme.name !== "X-CSRF-Token"
   )
     throw new Error("OpenAPI csrfHeader must document X-CSRF-Token");
+  if (
+    runtimeScheme?.type !== "http" ||
+    runtimeScheme.scheme !== "bearer" ||
+    runtimeScheme.bearerFormat !== "opaque-agent-runtime-token"
+  ) {
+    throw new Error("OpenAPI runtimeBearer must document the opaque runtime bearer token");
+  }
 
   const documented = new Set<string>();
   for (const [routePath, pathItem] of Object.entries(document.paths ?? {})) {
@@ -262,11 +297,13 @@ async function main(): Promise<void> {
       }
 
       const effectiveSecurity = operation.security ?? document.security;
-      const expectedSecurity = publicOperations.has(key)
-        ? []
-        : method === "get"
-          ? ["sessionCookie"]
-          : ["sessionCookie", "csrfHeader"];
+      const expectedSecurity = internalRuntimeOperations.has(key)
+        ? ["runtimeBearer"]
+        : publicOperations.has(key)
+          ? []
+          : method === "get"
+            ? ["sessionCookie"]
+            : ["sessionCookie", "csrfHeader"];
       if (!hasExactSecurity(effectiveSecurity, expectedSecurity))
         throw new Error(`${key} security must be exactly [${expectedSecurity.join(", ")}]`);
 

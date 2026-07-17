@@ -81,6 +81,82 @@ export function AgentLifecycleForm({ agentId, current }: { agentId: string; curr
   );
 }
 
+export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
+  const [reason, setReason] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string>();
+  const [result, setResult] = useState<{ credential: string | null }>();
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setPending(true);
+        setError(undefined);
+        setResult(undefined);
+        try {
+          const rotation = await apiRequest<{ credential: string | null }>(
+            `/api/v1/admin/agents/${agentId}/credentials/rotate`,
+            {
+              method: "POST",
+              body: { reason },
+              csrf: true,
+              idempotency: true,
+            },
+          );
+          setResult(rotation);
+          setReason("");
+        } catch (submitError) {
+          setError(errorMessage(submitError));
+        } finally {
+          setPending(false);
+        }
+      }}
+    >
+      <p className="text-sm text-muted">
+        Döndürme işlemi mevcut aktif credential’ları hemen iptal eder. Yeni değer yalnız bu yanıtta
+        gösterilir.
+      </p>
+      <label className="block text-sm font-bold">
+        Döndürme gerekçesi
+        <input
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          minLength={10}
+          maxLength={1000}
+          required
+          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+        />
+      </label>
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+      {result ? (
+        <div className="rounded-xl border border-success/40 bg-success/10 p-4">
+          {result.credential ? (
+            <>
+              <p className="text-sm font-bold">Yeni credential yalnız şimdi gösterilir:</p>
+              <code className="mt-2 block break-all rounded-lg bg-page p-3 text-xs">
+                {result.credential}
+              </code>
+            </>
+          ) : (
+            <p className="text-sm">
+              Bu yanıt idempotent replay olduğu için credential tekrar gösterilmedi. Yeni bir
+              gerekçeyle tekrar döndürebilirsiniz.
+            </p>
+          )}
+        </div>
+      ) : null}
+      <button disabled={pending || reason.trim().length < 10} className="button-secondary">
+        {pending ? "Döndürülüyor…" : "Credential döndür"}
+      </button>
+    </form>
+  );
+}
+
 interface TemplatePersona {
   username: string;
   displayName: string;

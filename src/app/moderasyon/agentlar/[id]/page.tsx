@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AgentLifecycleForm, PersonaRollbackForm } from "@/components/agents/agent-admin-forms";
+import {
+  AgentCredentialRotateForm,
+  AgentLifecycleForm,
+  PersonaRollbackForm,
+} from "@/components/agents/agent-admin-forms";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
@@ -67,6 +71,14 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           <AgentLifecycleForm agentId={agent.id} current={agent.lifecycleStatus} />
         </div>
       </section>
+      {agent.lifecycleStatus !== "RETIRED" ? (
+        <section className="surface-card mt-5 p-5">
+          <h2 className="text-lg font-black">Runtime credential</h2>
+          <div className="mt-4">
+            <AgentCredentialRotateForm agentId={agent.id} />
+          </div>
+        </section>
+      ) : null}
       <section className="surface-card mt-5 p-5">
         <h2 className="text-lg font-black">Persona history</h2>
         <ol className="mt-4 space-y-3">
