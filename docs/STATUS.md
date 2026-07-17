@@ -21,10 +21,10 @@ idempotency, transactional outbox, production build and container packaging are 
 All locally provable Phase 9 and Phase 10 gates pass: unit/integration coverage, production-server
 Playwright, OpenAPI, build, dependency/security hygiene, Docker build, Compose runtime and a
 production restore/migration drill. The logical commit set is on the remote working branch and
-draft PR #1 targets `main`. The final integrated verifier now passes with all 811 requirements
-closed. Phase 10 remains in progress only for the closeout commit/push and its green GitHub Actions
-run. Validation results below are recorded only after the corresponding command or runtime check
-actually ran.
+draft PR #1 targets `main`. The final integrated verifier passes with all 811 requirements closed,
+and GitHub Actions run `29579755838` completed successfully on final findings commit `dad302e`.
+Phase 10 is complete. This final status update is documentation-only and changes no runtime code.
+Validation results below are recorded only after the corresponding command or runtime check ran.
 
 ## Validation ledger
 
@@ -70,10 +70,11 @@ actually ran.
 | Fresh final database backup      | PASS          | 59,633-byte custom dump; mode 0600; catalog/restore verified                                      |
 | Requirement coverage             | PASS          | 811 aligned IDs: 811 PASS, 0 FAIL, 0 BLOCKED                                                      |
 | Integrated `pnpm verify:m1`      | PASS          | All migration, seed, quality, test, coverage, build, E2E, requirements and config gates           |
-| Branch push                      | PASS          | `codex/milestone-1` at `c397382cc9e0`; upstream tracking configured                               |
+| Branch push                      | PASS          | Final findings candidate `dad302e` pushed; local/remote SHA matched                               |
 | Draft pull request               | PASS          | PR #1; base `main`; head `codex/milestone-1`; draft state verified                                |
 | GitHub Actions bootstrap run     | EXPECTED FAIL | Run `29579247168`; all gates through OpenAPI passed, then pre-closeout trace assertion stopped it |
-| Final repository closeout        | IN PROGRESS   | Closeout commit/push and its final green GitHub Actions run remain                                |
+| Final GitHub Actions run         | PASS          | Run `29579755838` on `dad302e`; all validation, E2E, Docker and Compose gates passed              |
+| Final repository closeout        | PASS          | Clean candidate, matching remote, draft PR, 811/811 and green CI verified                         |
 
 This machine does not expose the Docker Compose CLI plugin (`docker: unknown command: docker
 compose`). Equivalent project validation used standalone `docker-compose` 5.3.1 and an isolated
@@ -96,3 +97,8 @@ Fresh pre-migration backup:
   `codex/milestone-1`, `isDraft=true`.
 - The audited PR body contains the product, architecture, security, verification, demo-account,
   Docker-run, M2-readiness and known non-blocking limitation sections required for handoff.
+- Final findings candidate `dad302e6580685d8a6e737d9b5d1d32bfc9b2194` was pushed with a clean
+  working tree and matching remote SHA.
+- GitHub Actions run `29579755838` completed successfully in 6 minutes 59 seconds; migrations,
+  format, lint, typecheck, unit, integration, coverage, OpenAPI, requirements, production build,
+  Playwright E2E, Docker image and Compose config all passed.

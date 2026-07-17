@@ -4,18 +4,18 @@ Every phase ends with formatting, linting, type checking, relevant tests, tracea
 and a logical commit. A requirement is marked PASS only after its implementation and required
 verification exist.
 
-| Phase | Scope                                                              | Acceptance command       | Status      |
-| ----- | ------------------------------------------------------------------ | ------------------------ | ----------- |
-| 1     | Audit, branch, config, foundation, requirement manifest            | `pnpm check` subset      | COMPLETE    |
-| 2     | Prisma schema, migrations, constraints, seed, counters             | DB integration suite     | COMPLETE    |
-| 3     | Auth, sessions, CSRF, account, rate limiting                       | Auth/security suite      | COMPLETE    |
-| 4     | Topics, entries, renderer, interactions                            | Domain integration suite | COMPLETE    |
-| 5     | Search, feeds, DEBE, profiles                                      | Search/feed suite        | COMPLETE    |
-| 6     | Reports, moderation, audit and roles                               | Moderation suite         | COMPLETE    |
-| 7     | Public/account/moderation UI, responsive, theme, a11y, SEO         | Playwright + axe         | COMPLETE    |
-| 8     | REST API, OpenAPI, idempotency and outbox                          | API + schema validation  | COMPLETE    |
-| 9     | Unit, integration, E2E and coverage completion                     | All test commands        | COMPLETE    |
-| 10    | Docker, CI, security review, final verification, push and draft PR | `pnpm verify:m1`         | IN PROGRESS |
+| Phase | Scope                                                              | Acceptance command       | Status   |
+| ----- | ------------------------------------------------------------------ | ------------------------ | -------- |
+| 1     | Audit, branch, config, foundation, requirement manifest            | `pnpm check` subset      | COMPLETE |
+| 2     | Prisma schema, migrations, constraints, seed, counters             | DB integration suite     | COMPLETE |
+| 3     | Auth, sessions, CSRF, account, rate limiting                       | Auth/security suite      | COMPLETE |
+| 4     | Topics, entries, renderer, interactions                            | Domain integration suite | COMPLETE |
+| 5     | Search, feeds, DEBE, profiles                                      | Search/feed suite        | COMPLETE |
+| 6     | Reports, moderation, audit and roles                               | Moderation suite         | COMPLETE |
+| 7     | Public/account/moderation UI, responsive, theme, a11y, SEO         | Playwright + axe         | COMPLETE |
+| 8     | REST API, OpenAPI, idempotency and outbox                          | API + schema validation  | COMPLETE |
+| 9     | Unit, integration, E2E and coverage completion                     | All test commands        | COMPLETE |
+| 10    | Docker, CI, security review, final verification, push and draft PR | `pnpm verify:m1`         | COMPLETE |
 
 ## Measured Phase 10 progress
 
@@ -39,7 +39,12 @@ verification exist.
 - Draft PR #1 is open against `main`; its audited body includes Docker run and known-limitation
   sections.
 
-## Remaining closeout
+## Closeout result
 
-- Commit and push this final traceability/status closeout, then leave the working tree clean.
-- Confirm the final GitHub Actions run on draft PR #1 is green and local/remote SHAs match.
+- Final findings commit `dad302e` was pushed with a clean working tree and matching local/remote
+  SHA; draft PR #1 remains open against `main`.
+- GitHub Actions run `29579755838` completed successfully in 6 minutes 59 seconds. Migrations,
+  static checks, unit/integration/coverage, OpenAPI, requirements, production build, E2E, Docker
+  image and Compose config all passed.
+- This file is the documentation-only completion record; it changes no application or runtime
+  artifact.
