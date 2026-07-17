@@ -7,6 +7,7 @@ import type {
   RuntimeProviderRequest,
   RuntimeProviderResult,
 } from "@/runtime/provider";
+import { RuntimeProviderCancelledError, RuntimeProviderTimeoutError } from "@/runtime/provider";
 
 interface CodexCliProviderOptions {
   executable: string;
@@ -43,14 +44,28 @@ function collect(
   child: ChildProcessWithoutNullStreams,
   input: string,
   timeoutMs: number,
-): Promise<{ exitCode: number; stderr: string }> {
+  signal?: AbortSignal,
+): Promise<{ exitCode: number; stderr: string; timedOut: boolean; cancelled: boolean }> {
   return new Promise((resolve, reject) => {
     let stderr = "";
     let settled = false;
+    let timedOut = false;
+    let cancelled = false;
+    const terminate = () => {
+      child.kill("SIGTERM");
+      setTimeout(() => {
+        if (!settled) child.kill("SIGKILL");
+      }, 5000).unref();
+    };
+    const onAbort = () => {
+      cancelled = true;
+      terminate();
+    };
     const finish = (callback: () => void) => {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
+      signal?.removeEventListener("abort", onAbort);
       callback();
     };
     child.stderr.on("data", (chunk: Buffer) => {
@@ -58,15 +73,17 @@ function collect(
     });
     child.stdout.resume();
     child.on("error", (error) => finish(() => reject(error)));
-    child.on("close", (code) => finish(() => resolve({ exitCode: code ?? 1, stderr })));
+    child.on("close", (code) =>
+      finish(() => resolve({ exitCode: code ?? 1, stderr, timedOut, cancelled })),
+    );
     child.stdin.end(input);
     const timeout = setTimeout(() => {
-      child.kill("SIGTERM");
-      setTimeout(() => {
-        if (!settled) child.kill("SIGKILL");
-      }, 5000).unref();
+      timedOut = true;
+      terminate();
     }, timeoutMs);
     timeout.unref();
+    if (signal?.aborted) onAbort();
+    else signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
 
@@ -110,6 +127,12 @@ export class CodexCliProvider implements RuntimeProvider {
   }
 
   async invoke(request: RuntimeProviderRequest): Promise<RuntimeProviderResult> {
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+        request.runId,
+      )
+    )
+      throw new AppError("VALIDATION_ERROR", 422, "Runtime run kimliği geçersizdir.");
     const startedAt = Date.now();
     const workDirectory = path.join(this.#options.workRoot, request.runId);
     const schemaPath = path.join(workDirectory, "output.schema.json");
@@ -119,6 +142,7 @@ export class CodexCliProvider implements RuntimeProvider {
       mkdir(this.#options.workRoot, { recursive: true, mode: 0o700 }),
     ]);
     await cleanupExpiredWork(this.#options.workRoot, this.#options.retainWorkHours ?? 0);
+    await rm(workDirectory, { recursive: true, force: true });
     await mkdir(workDirectory, { recursive: false, mode: 0o700 });
     await writeFile(schemaPath, JSON.stringify(request.outputSchema), { mode: 0o600, flag: "wx" });
     await chmod(schemaPath, 0o600);
@@ -149,7 +173,9 @@ export class CodexCliProvider implements RuntimeProvider {
         env: safeEnvironment(this.#options.runtimeHome, workDirectory),
         stdio: ["pipe", "pipe", "pipe"],
       });
-      const result = await collect(child, request.prompt, request.timeoutMs);
+      const result = await collect(child, request.prompt, request.timeoutMs, request.signal);
+      if (result.cancelled) throw new RuntimeProviderCancelledError();
+      if (result.timedOut) throw new RuntimeProviderTimeoutError();
       if (result.exitCode !== 0) {
         throw new AppError("INTERNAL_ERROR", 500, "Codex CLI run güvenli biçimde tamamlanamadı.");
       }

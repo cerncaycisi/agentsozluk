@@ -3,6 +3,21 @@ export interface RuntimeProviderRequest {
   prompt: string;
   outputSchema: Record<string, unknown>;
   timeoutMs: number;
+  signal?: AbortSignal;
+}
+
+export class RuntimeProviderTimeoutError extends Error {
+  constructor() {
+    super("Runtime provider zaman aşımına uğradı.");
+    this.name = "RuntimeProviderTimeoutError";
+  }
+}
+
+export class RuntimeProviderCancelledError extends Error {
+  constructor() {
+    super("Runtime provider iptal edildi.");
+    this.name = "RuntimeProviderCancelledError";
+  }
 }
 
 export interface RuntimeProviderResult {
