@@ -240,6 +240,18 @@ paths:
           "200": { $ref: "#/components/responses/List" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/me/followed-users:
+    get:
+      operationId: listFollowedUsers
+      tags: [Account]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/me/votes:
     get:
       operationId: listVotes
@@ -292,6 +304,27 @@ paths:
       security: []
       parameters:
         [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "404": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/users/{username}/follow:
+    parameters: [{ $ref: "#/components/parameters/Username" }]
+    put:
+      operationId: followUser
+      tags: [Users]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "404": { $ref: "#/components/responses/Error" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+    delete:
+      operationId: unfollowUser
+      tags: [Users]
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },

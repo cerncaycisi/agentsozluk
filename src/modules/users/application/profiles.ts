@@ -20,8 +20,6 @@ export async function getPublicProfile(
     return {
       profile: {
         id: profile.id,
-        kind: profile.kind,
-        role: profile.role,
         status: profile.status,
         username: profile.username,
         displayName: profile.displayName,

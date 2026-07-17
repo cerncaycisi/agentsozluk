@@ -11,11 +11,14 @@ import { transitionVote, type VoteValue } from "@/modules/interactions/domain/vo
 import {
   findBlockTarget,
   findUserFollowTarget,
+  findUserFollowTargetByUsername,
+  findUserFollow,
   findUserBlock,
   findVote,
   listBlocks,
   listBookmarks,
   listFollows,
+  listUserFollows,
   listViewerEntryStates,
   listVotes,
   lockEntryVoteCounter,
@@ -33,6 +36,7 @@ import {
 } from "@/modules/interactions/repository/interactions";
 import { appendOutboxEvent } from "@/modules/outbox";
 import { findTopicById, lockTopicState } from "@/modules/topics/repository/topics";
+import { normalizeProfileUsername } from "@/modules/users/domain/profile";
 
 async function appendVoteOutbox(
   transaction: TransactionClient,
@@ -256,6 +260,53 @@ export async function deleteUserFollow(
     });
     return { followed: false };
   });
+}
+
+export async function putUserFollowByUsername(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  username: string,
+) {
+  const normalized = normalizeProfileUsername(username);
+  const target = await inTransaction(client, (transaction) =>
+    findUserFollowTargetByUsername(transaction, normalized),
+  );
+  if (!target) throw new AppError("USER_NOT_FOUND", 404, "Kullanıcı bulunamadı.");
+  return putUserFollow(client, actor, target.id);
+}
+
+export async function deleteUserFollowByUsername(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  username: string,
+) {
+  const normalized = normalizeProfileUsername(username);
+  const target = await inTransaction(client, (transaction) =>
+    findUserFollowTargetByUsername(transaction, normalized),
+  );
+  if (!target) throw new AppError("USER_NOT_FOUND", 404, "Kullanıcı bulunamadı.");
+  return deleteUserFollow(client, actor, target.id);
+}
+
+export function getUserFollowState(
+  client: DatabaseExecutor,
+  followerId: string,
+  followedId: string,
+) {
+  return inTransaction(client, async (transaction) => ({
+    followed: Boolean(await findUserFollow(transaction, followerId, followedId)),
+  }));
+}
+
+export function getFollowedUsers(
+  client: DatabaseExecutor,
+  followerId: string,
+  skip: number,
+  take: number,
+) {
+  return inTransaction(client, (transaction) =>
+    listUserFollows(transaction, followerId, skip, take),
+  );
 }
 
 export async function putBlock(client: DatabaseClient, actor: ActorContext, blockedId: string) {

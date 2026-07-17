@@ -8,7 +8,7 @@ import { pageFrom } from "@/lib/http/pagination";
 import { getPublicProfile } from "@/modules/users/application/profiles";
 import { currentPageSession } from "@/lib/auth/server-session";
 import { ProfileActions } from "@/components/users/profile-actions";
-import { getBlockState } from "@/modules/interactions/application/interactions";
+import { getBlockState, getUserFollowState } from "@/modules/interactions/application/interactions";
 
 export const dynamic = "force-dynamic";
 
@@ -45,10 +45,15 @@ export default async function PublicProfilePage({
   const totalPages = Math.max(1, Math.ceil(result.totalItems / pageSize));
   const session = await currentPageSession();
   const ownProfile = session?.userId === result.profile.id;
-  const blocked =
+  const [blocked, followed] =
     session && !ownProfile
-      ? await getBlockState(getDatabase(), session.userId, result.profile.id)
-      : false;
+      ? await Promise.all([
+          getBlockState(getDatabase(), session.userId, result.profile.id),
+          getUserFollowState(getDatabase(), session.userId, result.profile.id).then(
+            (state) => state.followed,
+          ),
+        ])
+      : [false, false];
   return (
     <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
       <header className="surface-card p-6 sm:p-8">
@@ -87,6 +92,7 @@ export default async function PublicProfilePage({
             userId={result.profile.id}
             username={result.profile.username}
             initialBlocked={blocked}
+            initialFollowed={followed}
             canModerate={session.user.role === "MODERATOR" || session.user.role === "ADMIN"}
           />
         ) : null}

@@ -81,6 +81,7 @@ const internalRuntimeOperations = new Set([
 const expectedQueryParameters: Record<string, string[]> = {
   "GET /api/v1/me/bookmarks": ["page", "pageSize"],
   "GET /api/v1/me/follows": ["page", "pageSize"],
+  "GET /api/v1/me/followed-users": ["page", "pageSize"],
   "GET /api/v1/me/votes": ["page", "pageSize"],
   "GET /api/v1/me/blocks": ["page", "pageSize"],
   "GET /api/v1/users/{username}": ["page", "pageSize"],

@@ -8,8 +8,6 @@ export function findPublicProfile(
     where: { usernameNormalized },
     select: {
       id: true,
-      kind: true,
-      role: true,
       status: true,
       username: true,
       displayName: true,

@@ -148,6 +148,27 @@ export function findUserFollowTarget(transaction: Prisma.TransactionClient, user
   });
 }
 
+export function findUserFollowTargetByUsername(
+  transaction: Prisma.TransactionClient,
+  usernameNormalized: string,
+) {
+  return transaction.user.findUnique({
+    where: { usernameNormalized },
+    select: { id: true, username: true, displayName: true, status: true },
+  });
+}
+
+export function findUserFollow(
+  transaction: Prisma.TransactionClient,
+  followerId: string,
+  followedId: string,
+) {
+  return transaction.userFollow.findUnique({
+    where: { followerId_followedId: { followerId, followedId } },
+    select: { createdAt: true },
+  });
+}
+
 export function putUserFollowRecord(
   transaction: Prisma.TransactionClient,
   followerId: string,
@@ -166,6 +187,56 @@ export function removeUserFollowRecord(
   followedId: string,
 ) {
   return transaction.userFollow.deleteMany({ where: { followerId, followedId } });
+}
+
+export function listUserFollows(
+  transaction: Prisma.TransactionClient,
+  followerId: string,
+  skip: number,
+  take: number,
+) {
+  const where: Prisma.UserFollowWhereInput = {
+    followerId,
+    followed: { status: "ACTIVE" },
+  };
+  return Promise.all([
+    transaction.userFollow.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }, { followedId: "desc" }],
+      skip,
+      take,
+      select: {
+        createdAt: true,
+        followed: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            bio: true,
+            entries: {
+              where: { status: "ACTIVE", topic: { status: "ACTIVE" } },
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+              take: 3,
+              select: {
+                id: true,
+                body: true,
+                score: true,
+                createdAt: true,
+                topic: { select: { id: true, title: true, slug: true } },
+                _count: { select: { revisions: true } },
+              },
+            },
+            _count: {
+              select: {
+                entries: { where: { status: "ACTIVE", topic: { status: "ACTIVE" } } },
+              },
+            },
+          },
+        },
+      },
+    }),
+    transaction.userFollow.count({ where }),
+  ]);
 }
 
 export function putBlockRecord(
