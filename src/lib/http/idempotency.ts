@@ -11,6 +11,7 @@ export async function idempotentResponse(
   input: { actorId: string; route: string; requestBody: unknown },
   execute: (client: DatabaseExecutor) => Promise<NextResponse>,
   preflight?: (client: DatabaseExecutor) => Promise<void>,
+  storedBodyTransform?: (body: JsonValue) => JsonValue,
 ): Promise<NextResponse> {
   const database = getDatabase();
   const key = request.headers.get("idempotency-key");
@@ -24,7 +25,11 @@ export async function idempotentResponse(
     async (transaction) => {
       const response = await execute(transaction);
       const body = (await response.clone().json()) as JsonValue;
-      return { status: response.status, body };
+      return {
+        status: response.status,
+        body,
+        ...(storedBodyTransform ? { storedBody: storedBodyTransform(body) } : {}),
+      };
     },
     preflight,
   );

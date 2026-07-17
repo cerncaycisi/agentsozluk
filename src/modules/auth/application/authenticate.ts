@@ -132,7 +132,14 @@ export async function loginHuman(
     const currentCredential =
       user?.emailNormalized === input.email ? user.passwordHash : await getDummyPasswordHash();
     const valid = await verifyPassword(currentCredential, input.password);
-    if (!user || user.emailNormalized !== input.email || !valid || user.status === "DEACTIVATED") {
+    if (
+      !user ||
+      user.emailNormalized !== input.email ||
+      !valid ||
+      user.status === "DEACTIVATED" ||
+      user.loginDisabled ||
+      user.kind !== "HUMAN"
+    ) {
       throw new AppError("INVALID_CREDENTIALS", 401, "E-posta veya şifre hatalı.");
     }
     if (passwordNeedsRehash(user.passwordHash)) {

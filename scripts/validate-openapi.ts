@@ -120,6 +120,11 @@ const expectedRequestBodies: Record<string, string> = {
   "POST /api/v1/moderation/users/{userId}/unsuspend": "ModerationReason",
   "POST /api/v1/admin/users/{userId}/grant-moderator": "ModerationReason",
   "POST /api/v1/admin/users/{userId}/revoke-moderator": "ModerationReason",
+  "POST /api/v1/admin/agents": "AgentCreate",
+  "PATCH /api/v1/admin/agents/{agentId}": "AgentUpdate",
+  "POST /api/v1/admin/agents/{agentId}/lifecycle": "AgentLifecycleChange",
+  "POST /api/v1/admin/agents/{agentId}/persona/rollback": "AgentPersonaRollback",
+  "PATCH /api/v1/admin/agent-settings": "AgentGlobalSettingsUpdate",
 };
 
 const idempotentOperations = new Set([
@@ -139,6 +144,11 @@ const idempotentOperations = new Set([
   "POST /api/v1/moderation/users/{userId}/unsuspend",
   "POST /api/v1/admin/users/{userId}/grant-moderator",
   "POST /api/v1/admin/users/{userId}/revoke-moderator",
+  "POST /api/v1/admin/agents",
+  "PATCH /api/v1/admin/agents/{agentId}",
+  "POST /api/v1/admin/agents/{agentId}/lifecycle",
+  "POST /api/v1/admin/agents/{agentId}/persona/rollback",
+  "PATCH /api/v1/admin/agent-settings",
 ]);
 
 function hasExactSecurity(

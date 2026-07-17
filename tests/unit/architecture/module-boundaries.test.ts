@@ -21,6 +21,7 @@ describe("module boundaries", () => {
 
   it("gives every module real domain, application, repository, validation and public layers", () => {
     expect(modules).toEqual([
+      "agents",
       "audit",
       "auth",
       "entries",

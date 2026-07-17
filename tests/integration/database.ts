@@ -26,6 +26,30 @@ export async function resetIntegrationDatabase(): Promise<void> {
       "users"
     RESTART IDENTITY CASCADE
   `;
+  await integrationDatabase.agentGlobalSettings.upsert({
+    where: { id: "global" },
+    update: {},
+    create: {
+      id: "global",
+      activeTimeWeights: {
+        "07:00-10:00": 0.15,
+        "10:00-14:00": 0.3,
+        "14:00-19:00": 0.35,
+        "19:00-23:00": 0.17,
+        "23:00-07:00": 0.03,
+      },
+      circuitBreakerConfig: {
+        errorRateWindowMinutes: 15,
+        errorRateThreshold: 0.5,
+        consecutiveCodexFailures: 5,
+        duplicateWindowSize: 50,
+        duplicateThreshold: 0.4,
+        duplicateCooldownMinutes: 60,
+        utilizationWindowMinutes: 120,
+        utilizationThreshold: 0.9,
+      },
+    },
+  });
 }
 
 export function closeIntegrationDatabase(): Promise<void> {

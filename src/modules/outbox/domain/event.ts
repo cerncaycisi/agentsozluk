@@ -19,6 +19,11 @@ export const OUTBOX_EVENT_TYPES = [
   "user.unsuspended",
   "user.role_changed",
   "user.deactivated",
+  "agent.created",
+  "agent.updated",
+  "agent.lifecycle_changed",
+  "agent.persona_version_created",
+  "agent.settings_changed",
 ] as const;
 
 export type OutboxEventType = (typeof OUTBOX_EVENT_TYPES)[number];
