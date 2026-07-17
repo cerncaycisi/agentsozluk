@@ -35,11 +35,11 @@ verification exist.
 - All 180 canonical agentic development-log seed entries remain intact.
 - Canonical seed entries are protected by a locked fingerprint, application guards and a database
   trigger while normal votes/counters remain enabled.
+- The integrated `pnpm verify:m1` closeout passes end to end with 811/811 requirements in PASS.
+- Draft PR #1 is open against `main`; its audited body includes Docker run and known-limitation
+  sections.
 
 ## Remaining closeout
 
-- Refresh final traceability with the completed local-gate evidence; only commit/push/draft-PR/CI
-  self-referential rows remain after that refresh.
-- Run the final integrated verifier after the locally provable rows are closed.
-- Create the remaining logical commits and leave the working tree clean.
-- Push `codex/milestone-1` and open the draft pull request against `main`.
+- Commit and push this final traceability/status closeout, then leave the working tree clean.
+- Confirm the final GitHub Actions run on draft PR #1 is green and local/remote SHAs match.
