@@ -1300,6 +1300,28 @@ paths:
           "403": { $ref: "#/components/responses/Error" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/admin/agent-runtime/events:
+    get:
+      operationId: streamAdminAgentRuntimeEvents
+      tags: [Admin]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - name: afterId
+          in: query
+          schema: { type: string, pattern: "^[0-9]{1,20}$" }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: poll
+          in: query
+          schema: { type: integer, enum: [1] }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/RuntimeEventStream" },
+          "403": { $ref: "#/components/responses/Error" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/admin/agent-runtime/pause:
     post:
       operationId: pauseAdminAgentRuntime
@@ -2600,6 +2622,12 @@ components:
       description: Paginated list
       headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }
       content: { application/json: { schema: { $ref: "#/components/schemas/ListEnvelope" } } }
+    RuntimeEventStream:
+      description: SSE stream by default; JSON safe-event array when poll=1 is supplied
+      headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }
+      content:
+        text/event-stream: { schema: { type: string } }
+        application/json: { schema: { $ref: "#/components/schemas/SuccessEnvelope" } }
     ValidationError:
       description: Validation failed
       headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }

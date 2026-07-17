@@ -122,6 +122,7 @@ const expectedQueryParameters: Record<string, string[]> = {
     "to",
     "topicId",
   ],
+  "GET /api/v1/admin/agent-runtime/events": ["afterId", "limit", "poll"],
 };
 
 const expectedRequestBodies: Record<string, string> = {

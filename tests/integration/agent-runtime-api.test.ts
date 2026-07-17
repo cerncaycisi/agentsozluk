@@ -14,6 +14,7 @@ import {
   getRuntimeRunContext,
   heartbeatRuntimeRun,
   leaseRuntimeRun,
+  listRuntimeEvents,
   lifecycleChangeSchema,
   recordRuntimeActions,
   recordRuntimeEvents,
@@ -1124,5 +1125,77 @@ describe("internal agent runtime API with PostgreSQL", () => {
       }),
     ).toBe(2);
     expect(await integrationDatabase.agentTopicWriteLock.count()).toBe(0);
+  });
+
+  it("projects safe runtime events in ordered reconnect pages for the admin live stream", async () => {
+    const fixture = await createFixture();
+    const initial = await listRuntimeEvents(integrationDatabase, adminActor(fixture.admin.id), {
+      take: 100,
+    });
+    const cursor = initial.at(-1)?.id;
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "live-event-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await heartbeatRuntimeRun(integrationDatabase, writePrincipal, runId, {
+      runId,
+      workerId,
+      leaseSeconds: 60,
+      runtimeStatus: "READING",
+    });
+    await recordRuntimeEvents(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeEventsSchema.parse({
+        workerId,
+        events: [
+          {
+            eventType: "run.step.changed",
+            safeMessage: "Güvenli runtime adımı kaydedildi.",
+            metadata: { phase: "READING" },
+          },
+        ],
+      }),
+    );
+    const events = await listRuntimeEvents(integrationDatabase, adminActor(fixture.admin.id), {
+      ...(cursor ? { afterId: BigInt(cursor) } : {}),
+      take: 100,
+    });
+    expect(events.map(({ eventType }) => eventType)).toEqual([
+      "run.started",
+      "agent.heartbeat",
+      "run.step.changed",
+    ]);
+    expect(
+      events.every(
+        (event, index) => index === 0 || BigInt(event.id) > BigInt(events[index - 1]!.id),
+      ),
+    ).toBe(true);
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          runId,
+          agentProfileId: fixture.created.agent.profile.id,
+          safeMessage: "Güvenli runtime adımı kaydedildi.",
+        }),
+      ]),
+    );
+    const unauthorized = await createAdmin();
+    await integrationDatabase.user.update({
+      where: { id: unauthorized.id },
+      data: { role: "MODERATOR" },
+    });
+    await expect(
+      listRuntimeEvents(
+        integrationDatabase,
+        { ...adminActor(unauthorized.id), actorRole: "MODERATOR" },
+        { take: 10 },
+      ),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

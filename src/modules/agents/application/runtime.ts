@@ -2,6 +2,7 @@ import { inTransaction } from "@/lib/db/transaction";
 import type { DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
+import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
 import {
   appendRuntimeActions,
@@ -256,6 +257,13 @@ export function leaseRuntimeRun(
         },
       ],
     });
+    await appendRuntimeEvent(transaction, {
+      agentProfileId: principal.agentProfileId,
+      runId: run.id,
+      eventType: "run.started",
+      safeMessage: "Run worker tarafından lease edildi ve başlatıldı.",
+      metadata: { phase: "STARTING", attempt: run.attempts },
+    });
     await auditRuntimeRun(transaction, principal, run.id, "agent.run.leased", {
       workerId: input.workerId,
       leaseExpiresAt: run.leaseExpiresAt?.toISOString(),
@@ -286,6 +294,13 @@ export function heartbeatRuntimeRun(
       leaseExpiresAt,
       now,
       runtimeStatus,
+    });
+    await appendRuntimeEvent(transaction, {
+      agentProfileId: principal.agentProfileId,
+      runId,
+      eventType: "agent.heartbeat",
+      safeMessage: "Agent runtime heartbeat kaydetti.",
+      metadata: { runtimeStatus, cancelRequested },
     });
     return { runId, leaseExpiresAt, cancelRequested };
   });
@@ -365,11 +380,21 @@ export function recordRuntimeEvents(
     await lockRuntimeRun(transaction, runId);
     const run = await findRuntimeOwnedRun(transaction, principal.agentProfileId, runId);
     assertLeaseOwner(run, input.workerId, new Date());
-    return appendRuntimeRunEvents(transaction, {
+    const result = await appendRuntimeRunEvents(transaction, {
       runId,
       agentProfileId: principal.agentProfileId,
       events: input.events,
     });
+    for (const event of input.events) {
+      await appendRuntimeEvent(transaction, {
+        agentProfileId: principal.agentProfileId,
+        runId,
+        eventType: event.eventType,
+        safeMessage: event.safeMessage,
+        metadata: event.metadata,
+      });
+    }
+    return result;
   });
 }
 
@@ -532,6 +557,13 @@ export function completeRuntimeRun(
         },
       ],
     });
+    await appendRuntimeEvent(transaction, {
+      agentProfileId: principal.agentProfileId,
+      runId,
+      eventType: "run.completed",
+      safeMessage: `Run ${input.outcome} durumuyla tamamlandı.`,
+      metadata: { phase: input.outcome },
+    });
     await auditRuntimeRun(transaction, principal, runId, "agent.run.completed", {
       outcome: input.outcome,
     });
@@ -569,6 +601,13 @@ export function failRuntimeRun(
           metadata: { phase: input.outcome, code: input.errorCode },
         },
       ],
+    });
+    await appendRuntimeEvent(transaction, {
+      agentProfileId: principal.agentProfileId,
+      runId,
+      eventType: "run.failed",
+      safeMessage: `Run ${input.outcome} durumuyla kapatıldı.`,
+      metadata: { phase: input.outcome, code: input.errorCode },
     });
     await auditRuntimeRun(transaction, principal, runId, "agent.run.failed", {
       outcome: input.outcome,

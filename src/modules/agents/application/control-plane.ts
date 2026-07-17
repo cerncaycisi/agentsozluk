@@ -26,6 +26,7 @@ import {
   getQuotaProfiles,
   listAgentDashboardRecords,
   listCurrentPersonas,
+  listRuntimeEventsRecord,
   lockAgentProfile,
   lockAgentSettings,
   rotateAgentCredentialRecords,
@@ -46,6 +47,18 @@ import type { RuntimeCredentialRotationInput } from "@/modules/agents/validation
 import { appendOutboxEvent } from "@/modules/outbox";
 
 const GLOBAL_SETTINGS_AGGREGATE_ID = "00000000-0000-4000-8000-000000000001";
+
+export function listRuntimeEvents(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  input: { afterId?: bigint; take: number },
+) {
+  return inTransaction(client, async (transaction) => {
+    await requireAgentAdminInTransaction(transaction, actor);
+    const events = await listRuntimeEventsRecord(transaction, input);
+    return events.map((event) => ({ ...event, id: event.id.toString() }));
+  });
+}
 
 async function recordControlPlaneChange(
   transaction: TransactionClient,

@@ -454,6 +454,7 @@ export function appendRuntimeEvent(
   transaction: Prisma.TransactionClient,
   input: {
     agentProfileId?: string;
+    runId?: string;
     eventType: string;
     safeMessage: string;
     metadata?: Prisma.InputJsonValue;
@@ -462,9 +463,31 @@ export function appendRuntimeEvent(
   return transaction.agentRuntimeEvent.create({
     data: {
       ...(input.agentProfileId ? { agentProfileId: input.agentProfileId } : {}),
+      ...(input.runId ? { runId: input.runId } : {}),
       eventType: input.eventType,
       safeMessage: input.safeMessage,
       metadata: input.metadata ?? {},
     },
   });
+}
+
+export async function listRuntimeEventsRecord(
+  transaction: Prisma.TransactionClient,
+  input: { afterId?: bigint; take: number },
+) {
+  const records = await transaction.agentRuntimeEvent.findMany({
+    ...(input.afterId ? { where: { id: { gt: input.afterId } } } : {}),
+    orderBy: { id: input.afterId ? "asc" : "desc" },
+    take: input.take,
+    select: {
+      id: true,
+      agentProfileId: true,
+      runId: true,
+      eventType: true,
+      safeMessage: true,
+      metadata: true,
+      createdAt: true,
+    },
+  });
+  return input.afterId ? records : records.reverse();
 }
