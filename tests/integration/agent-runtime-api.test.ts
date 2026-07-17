@@ -18,11 +18,13 @@ import {
   recordRuntimeActions,
   recordRuntimeEvents,
   recordRuntimeMemories,
+  recordRuntimeSourceResult,
   rotateAgentCredential,
   runtimeActionsSchema,
   runtimeCompleteSchema,
   runtimeEventsSchema,
   runtimeMemoriesSchema,
+  runtimeSourceResultSchema,
   runtimeHeartbeatSchema,
   runtimeCredentialRotationSchema,
   updateGlobalSettings,
@@ -622,11 +624,33 @@ describe("internal agent runtime API with PostgreSQL", () => {
           sequence,
         }),
       ).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    const proposedSource = await integrationDatabase.agentSource.findFirstOrThrow({
+      where: { agentProfileId: fixture.created.agent.profile.id },
+    });
+    await recordRuntimeSourceResult(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeSourceResultSchema.parse({
+        workerId: "evolution-worker",
+        sourceId: proposedSource.id,
+        items: [1, 2, 3].map((index) => ({
+          canonicalUrl: `https://example.com/article-${index}`,
+          title: `Güvenli source item ${index}`,
+          publishedAt: `2026-07-1${index}T10:00:00.000Z`,
+          contentHash: index.toString().repeat(64),
+          safeText: `Source reader tarafından normalize edilen güvenli metin ${index}.`,
+        })),
+      }),
+    );
     expect(
       await integrationDatabase.agentSource.findFirstOrThrow({
         where: { agentProfileId: fixture.created.agent.profile.id },
       }),
-    ).toMatchObject({ status: "PROBATION", normalizedDomain: "example.com" });
+    ).toMatchObject({ status: "TRUSTED", normalizedDomain: "example.com" });
+    expect(
+      await integrationDatabase.agentSourceItem.count({ where: { sourceId: proposedSource.id } }),
+    ).toBe(3);
     expect(
       await integrationDatabase.agentBelief.findFirstOrThrow({
         where: { agentProfileId: fixture.created.agent.profile.id },
@@ -645,6 +669,11 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(
       await integrationDatabase.agentMemoryEpisode.count({
         where: { runId, eventType: "ACTION_EXECUTED" },
+      }),
+    ).toBe(3);
+    expect(
+      await integrationDatabase.agentMemoryEpisode.count({
+        where: { runId, eventType: "SOURCE_READ" },
       }),
     ).toBe(3);
   });

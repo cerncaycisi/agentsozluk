@@ -82,6 +82,12 @@ export interface RuntimeControlPlane {
     runId: string,
     memories: unknown[],
   ): Promise<void>;
+  recordSourceResult(
+    credential: string,
+    workerId: string,
+    runId: string,
+    result: Record<string, unknown>,
+  ): Promise<void>;
   complete(
     credential: string,
     workerId: string,
@@ -218,6 +224,20 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
       "POST",
       `/api/v1/internal/agent-runtime/runs/${runId}/memories`,
       { workerId, memories },
+    );
+  }
+
+  async recordSourceResult(
+    credential: string,
+    workerId: string,
+    runId: string,
+    result: Record<string, unknown>,
+  ): Promise<void> {
+    await this.#request(
+      credential,
+      "POST",
+      `/api/v1/internal/agent-runtime/runs/${runId}/sources`,
+      { workerId, ...result },
     );
   }
 

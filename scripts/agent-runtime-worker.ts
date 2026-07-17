@@ -3,6 +3,7 @@ import { z } from "zod";
 import { CodexCliProvider } from "../src/runtime/codex-cli-provider";
 import { RuntimeControlPlaneHttpClient } from "../src/runtime/control-plane-client";
 import { AgentRuntimeWorker } from "../src/runtime/worker";
+import { SafeSourceReader } from "../src/runtime/source-reader";
 
 const workerEnvironmentSchema = z
   .object({
@@ -53,6 +54,7 @@ async function main(): Promise<void> {
     credentials,
     controlPlane: new RuntimeControlPlaneHttpClient(environment.AGENT_RUNTIME_BASE_URL),
     provider,
+    sourceReader: new SafeSourceReader(),
     pollIntervalMs: environment.AGENT_RUNTIME_POLL_MS,
     onSafeEvent: ({ level, code, runId }) =>
       process[level === "error" ? "stderr" : "stdout"].write(

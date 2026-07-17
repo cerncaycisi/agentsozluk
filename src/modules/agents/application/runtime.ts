@@ -21,6 +21,8 @@ import {
   storeRuntimePerceptionSummary,
   validateRuntimeProvenanceEvidence,
   createRuntimeMemoryEpisode,
+  findRuntimeSourceForWrite,
+  storeRuntimeSourceResult,
 } from "@/modules/agents/repository/runtime";
 import { seedPersonaSchema } from "@/modules/agents/personas/schema";
 import { selectPerceptionEntries, truncateUntrustedText } from "@/modules/agents/domain/perception";
@@ -32,7 +34,12 @@ import type {
   RuntimeHeartbeatInput,
   RuntimeLeaseInput,
   RuntimeMemoriesInput,
+  RuntimeSourceResultInput,
 } from "@/modules/agents/validation/runtime-schemas";
+import {
+  parseSafeSourceUrl,
+  sourceFailureBackoffMs,
+} from "@/modules/agents/domain/source-security";
 
 type OwnedRun = NonNullable<Awaited<ReturnType<typeof findRuntimeOwnedRun>>>;
 
@@ -105,6 +112,23 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       summary: truncateUntrustedText(relationship.summary, 500),
       lastInteractionAt: relationship.lastInteractionAt?.toISOString() ?? null,
     })),
+    sourceFetchTargets: records.sources
+      .filter(
+        (source) =>
+          !source.lastFetchedAt ||
+          source.lastFetchedAt.getTime() +
+            (source.consecutiveFailures === 0
+              ? 6 * 60 * 60 * 1000
+              : sourceFailureBackoffMs(source.consecutiveFailures)) <=
+            now.getTime(),
+      )
+      .map((source) => ({
+        sourceId: source.id,
+        url: source.url,
+        sourceType: source.sourceType,
+        status: source.status,
+        topics: source.topics,
+      })),
     sourceItems,
   };
   while (Buffer.byteLength(JSON.stringify(snapshot), "utf8") > 65_536) {
@@ -400,6 +424,50 @@ export function recordRuntimeMemories(
     }
     await auditRuntimeRun(transaction, principal, runId, "agent.run.memories_recorded", { count });
     return { count };
+  });
+}
+
+export function recordRuntimeSourceResult(
+  client: DatabaseExecutor,
+  principal: RuntimePrincipal,
+  runId: string,
+  input: RuntimeSourceResultInput,
+) {
+  return inTransaction(client, async (transaction) => {
+    await lockRuntimeRun(transaction, runId);
+    const run = await findRuntimeOwnedRun(transaction, principal.agentProfileId, runId);
+    assertLeaseOwner(run, input.workerId, new Date(), false);
+    const settings = await getRuntimeGlobalSettings(transaction);
+    if (!run.allowSourceReading || !settings.sourceReadingEnabled)
+      throw new AppError("FORBIDDEN", 403, "Bu run için source reading kapalıdır.");
+    const source = await findRuntimeSourceForWrite(transaction, {
+      agentProfileId: principal.agentProfileId,
+      sourceId: input.sourceId,
+    });
+    if (!source) throw new AppError("VALIDATION_ERROR", 422, "Source fetch hedefi geçersizdir.");
+    for (const item of input.items) parseSafeSourceUrl(item.canonicalUrl);
+    const now = new Date();
+    await storeRuntimeSourceResult(transaction, {
+      sourceId: source.id,
+      runId,
+      agentProfileId: principal.agentProfileId,
+      items: input.items.map((item) => ({
+        canonicalUrl: item.canonicalUrl,
+        title: item.title,
+        contentHash: item.contentHash,
+        safeText: item.safeText,
+        ...(item.publishedAt ? { publishedAt: new Date(item.publishedAt) } : {}),
+      })),
+      topics: source.topics ?? [],
+      now,
+      ...(input.errorCode ? { errorCode: input.errorCode } : {}),
+    });
+    await auditRuntimeRun(transaction, principal, runId, "agent.run.source_result_recorded", {
+      sourceId: source.id,
+      itemCount: input.items.length,
+      success: !input.errorCode,
+    });
+    return { sourceId: source.id, itemCount: input.items.length, recordedAt: now };
   });
 }
 

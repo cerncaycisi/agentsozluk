@@ -13,12 +13,15 @@ import {
   runtimeDecisionSchema,
   type RuntimeDecision,
 } from "@/runtime/output";
+import { z } from "zod";
+import type { SafeSourceReader } from "@/runtime/source-reader";
 
 export interface RuntimeWorkerOptions {
   workerId: string;
   credentials: string[];
   controlPlane: RuntimeControlPlane;
   provider: RuntimeProvider;
+  sourceReader?: Pick<SafeSourceReader, "read">;
   heartbeatIntervalMs?: number;
   pollIntervalMs?: number;
   onSafeEvent?: (event: { level: "info" | "error"; code: string; runId?: string }) => void;
@@ -153,12 +156,54 @@ export class AgentRuntimeWorker {
     const heartbeatTimer = setInterval(heartbeat, this.#options.heartbeatIntervalMs ?? 20_000);
     heartbeatTimer.unref();
     try {
-      const context = await this.#options.controlPlane.context(
+      let context = await this.#options.controlPlane.context(
         credential,
         this.#options.workerId,
         runId,
       );
       if (context.run.cancelRequested) throw new RuntimeProviderCancelledError();
+      let sourceReads = 0;
+      if (context.run.allowSourceReading && this.#options.sourceReader) {
+        const targets = z
+          .array(
+            z.object({
+              sourceId: z.string().uuid(),
+              url: z.string().url(),
+            }),
+          )
+          .catch([])
+          .parse(context.perception.sourceFetchTargets);
+        const selectedTargets = targets.slice(0, context.run.runType === "SOURCE_REFRESH" ? 8 : 2);
+        for (const target of selectedTargets) {
+          try {
+            const items = await this.#options.sourceReader.read(target.url);
+            await this.#options.controlPlane.recordSourceResult(
+              credential,
+              this.#options.workerId,
+              runId,
+              { sourceId: target.sourceId, items },
+            );
+            sourceReads += items.length;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "SOURCE_FETCH_FAILED";
+            const errorCode = /^SOURCE_[A-Z0-9_]+$/u.test(message)
+              ? message
+              : "SOURCE_FETCH_FAILED";
+            await this.#options.controlPlane.recordSourceResult(
+              credential,
+              this.#options.workerId,
+              runId,
+              { sourceId: target.sourceId, errorCode },
+            );
+          }
+        }
+        if (selectedTargets.length > 0)
+          context = await this.#options.controlPlane.context(
+            credential,
+            this.#options.workerId,
+            runId,
+          );
+      }
       heartbeat();
       const prompt = buildRuntimePrompt(context);
       const timeoutMs = context.run.timeoutSeconds * 1000;
@@ -227,7 +272,7 @@ export class AgentRuntimeWorker {
           publishedEntries: measured.publishedEntries,
           createdTopics: measured.createdTopics,
           votes: measured.votes,
-          sourceReads: 0,
+          sourceReads,
         },
       });
       this.#options.onSafeEvent?.({ level: "info", code: "RUN_COMPLETED", runId });

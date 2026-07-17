@@ -180,6 +180,31 @@ export const runtimeMemoriesSchema = z
   })
   .strict();
 
+export const runtimeSourceResultSchema = z
+  .object({
+    workerId: runtimeWorkerIdSchema,
+    sourceId: z.string().uuid(),
+    items: z
+      .array(
+        z
+          .object({
+            canonicalUrl: z.string().url().max(2048),
+            title: z.string().trim().min(1).max(500),
+            publishedAt: z.iso.datetime().optional(),
+            contentHash: z.string().regex(/^[a-f0-9]{64}$/u),
+            safeText: z.string().trim().min(1).max(20_000),
+          })
+          .strict(),
+      )
+      .max(50)
+      .default([]),
+    errorCode: z.string().trim().min(1).max(100).optional(),
+  })
+  .strict()
+  .refine((value) => !(value.errorCode && value.items.length > 0), {
+    message: "Source sonucu aynı anda item ve error içeremez.",
+  });
+
 const safeRunSummarySchema = z
   .object({
     operationSummary: z.string().trim().min(1).max(2000),
@@ -243,6 +268,7 @@ export type RuntimeEventsInput = z.infer<typeof runtimeEventsSchema>;
 export type RuntimeActionsInput = z.infer<typeof runtimeActionsSchema>;
 export type RuntimeExecuteActionsInput = z.infer<typeof runtimeExecuteActionsSchema>;
 export type RuntimeMemoriesInput = z.infer<typeof runtimeMemoriesSchema>;
+export type RuntimeSourceResultInput = z.infer<typeof runtimeSourceResultSchema>;
 export type RuntimeCompleteInput = z.infer<typeof runtimeCompleteSchema>;
 export type RuntimeFailInput = z.infer<typeof runtimeFailSchema>;
 export type RuntimeCredentialRotationInput = z.infer<typeof runtimeCredentialRotationSchema>;

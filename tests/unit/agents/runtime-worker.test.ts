@@ -50,6 +50,7 @@ function controlPlane(runId: string): RuntimeControlPlane {
       ],
     }),
     recordMemories: vi.fn().mockResolvedValue(undefined),
+    recordSourceResult: vi.fn().mockResolvedValue(undefined),
     complete: vi.fn().mockResolvedValue(undefined),
     fail: vi.fn().mockResolvedValue(undefined),
   };

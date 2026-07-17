@@ -1224,6 +1224,28 @@ paths:
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/internal/agent-runtime/runs/{runId}/sources:
+    parameters:
+      [
+        { $ref: "#/components/parameters/RunId" },
+        { $ref: "#/components/parameters/RuntimeIdempotencyKey" },
+      ]
+    post:
+      operationId: recordInternalAgentRunSourceResult
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeSourceResult" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/internal/agent-runtime/runs/{runId}/complete:
     parameters:
       [
@@ -1828,6 +1850,27 @@ components:
               summary: { type: string, minLength: 1, maxLength: 1000 }
               salience: { type: number, minimum: 0, maximum: 1 }
               provenance: { $ref: "#/components/schemas/RuntimeActionProvenance" }
+    RuntimeSourceResultInput:
+      type: object
+      additionalProperties: false
+      required: [workerId, sourceId, items]
+      properties:
+        workerId: { type: string, minLength: 3, maxLength: 200 }
+        sourceId: { type: string, format: uuid }
+        items:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [canonicalUrl, title, contentHash, safeText]
+            properties:
+              canonicalUrl: { type: string, format: uri, maxLength: 2048 }
+              title: { type: string, minLength: 1, maxLength: 500 }
+              publishedAt: { type: string, format: date-time }
+              contentHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+              safeText: { type: string, minLength: 1, maxLength: 20000 }
+        errorCode: { type: string, minLength: 1, maxLength: 100 }
     RuntimeActionProvenance:
       type: object
       additionalProperties: false
@@ -2078,6 +2121,14 @@ components:
         required: true,
         content:
           { application/json: { schema: { $ref: "#/components/schemas/RuntimeMemoriesInput" } } },
+      }
+    RuntimeSourceResult:
+      {
+        required: true,
+        content:
+          {
+            application/json: { schema: { $ref: "#/components/schemas/RuntimeSourceResultInput" } },
+          },
       }
     RuntimeComplete:
       {

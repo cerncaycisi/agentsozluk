@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import type { DatabaseExecutor } from "@/lib/db/types";
 
 export function findRuntimeCredentialByHash(client: DatabaseExecutor, tokenHash: string) {
@@ -857,6 +857,105 @@ export function createRuntimeMemoryEpisode(
   });
 }
 
+export function findRuntimeSourceForWrite(
+  transaction: Prisma.TransactionClient,
+  input: { agentProfileId: string; sourceId: string },
+) {
+  return transaction.agentSource.findFirst({
+    where: {
+      id: input.sourceId,
+      agentProfileId: input.agentProfileId,
+      adminBlocked: false,
+      status: { in: ["SEED", "DISCOVERED", "PROBATION", "TRUSTED", "DORMANT"] },
+    },
+    select: { id: true, status: true, topics: true },
+  });
+}
+
+export async function storeRuntimeSourceResult(
+  transaction: Prisma.TransactionClient,
+  input: {
+    sourceId: string;
+    runId: string;
+    agentProfileId: string;
+    items: Array<{
+      canonicalUrl: string;
+      title: string;
+      publishedAt?: Date;
+      contentHash: string;
+      safeText: string;
+    }>;
+    topics: Prisma.InputJsonValue;
+    now: Date;
+    errorCode?: string;
+  },
+) {
+  if (input.errorCode) {
+    await transaction.agentSource.update({
+      where: { id: input.sourceId },
+      data: { consecutiveFailures: { increment: 1 }, lastFetchedAt: input.now },
+    });
+  } else {
+    for (const item of input.items) {
+      await transaction.agentSourceItem.upsert({
+        where: {
+          sourceId_contentHash: { sourceId: input.sourceId, contentHash: item.contentHash },
+        },
+        create: {
+          sourceId: input.sourceId,
+          canonicalUrl: item.canonicalUrl,
+          title: item.title,
+          publishedAt: item.publishedAt ?? null,
+          fetchedAt: input.now,
+          contentHash: item.contentHash,
+          safeText: item.safeText,
+          topics: input.topics,
+          expiresAt: new Date(input.now.getTime() + 7 * 24 * 60 * 60 * 1000),
+        },
+        update: {
+          canonicalUrl: item.canonicalUrl,
+          title: item.title,
+          publishedAt: item.publishedAt ?? null,
+          fetchedAt: input.now,
+          safeText: item.safeText,
+          expiresAt: new Date(input.now.getTime() + 7 * 24 * 60 * 60 * 1000),
+        },
+      });
+    }
+    const usefulItems = await transaction.agentSourceItem.count({
+      where: { sourceId: input.sourceId },
+    });
+    await transaction.agentSource.update({
+      where: { id: input.sourceId },
+      data: {
+        consecutiveFailures: 0,
+        lastFetchedAt: input.now,
+        ...(input.items.length > 0 ? { lastUsefulAt: input.now } : {}),
+        ...(usefulItems >= 3 ? { status: "TRUSTED" } : {}),
+      },
+    });
+    for (const item of input.items)
+      await transaction.agentMemoryEpisode.create({
+        data: {
+          agentProfileId: input.agentProfileId,
+          runId: input.runId,
+          eventType: "SOURCE_READ",
+          subjectType: "SOURCE",
+          subjectId: input.sourceId,
+          summary: `Source item gerçekten okundu: ${item.title}`.slice(0, 2000),
+          salience: 0.5,
+          provenance: usefulItems >= 3 ? "TRUSTED_SOURCE" : "PROBATION_SOURCE",
+          evidence: { sourceId: input.sourceId, contentHash: item.contentHash },
+          occurredAt: input.now,
+        },
+      });
+  }
+  await transaction.agentRun.update({
+    where: { id: input.runId },
+    data: { perceptionSummary: Prisma.DbNull },
+  });
+}
+
 export async function getRuntimePerceptionRecords(
   transaction: Prisma.TransactionClient,
   input: { agentProfileId: string; agentUserId: string; now: Date; includeSources: boolean },
@@ -981,9 +1080,13 @@ export async function getRuntimePerceptionRecords(
           },
           select: {
             id: true,
+            url: true,
+            sourceType: true,
             normalizedDomain: true,
             status: true,
             trustScore: true,
+            consecutiveFailures: true,
+            lastFetchedAt: true,
             topics: true,
             items: {
               where: { OR: [{ expiresAt: null }, { expiresAt: { gt: input.now } }] },
@@ -1045,7 +1148,7 @@ export async function getMeasuredRuntimeRunMetrics(
   transaction: Prisma.TransactionClient,
   runId: string,
 ) {
-  const [publishedEntries, createdTopics, votes] = await Promise.all([
+  const [publishedEntries, createdTopics, votes, sourceReads] = await Promise.all([
     transaction.agentContentRecord.count({ where: { runId } }),
     transaction.agentAction.count({
       where: { runId, actionType: "CREATE_TOPIC_WITH_ENTRY", actionStatus: "SUCCEEDED" },
@@ -1057,8 +1160,9 @@ export async function getMeasuredRuntimeRunMetrics(
         actionStatus: "SUCCEEDED",
       },
     }),
+    transaction.agentMemoryEpisode.count({ where: { runId, eventType: "SOURCE_READ" } }),
   ]);
-  return { publishedEntries, createdTopics, votes, sourceReads: 0 };
+  return { publishedEntries, createdTopics, votes, sourceReads };
 }
 
 export function finishRuntimeRunRecord(

@@ -59,3 +59,8 @@ export function parseSafeSourceUrl(value: string): URL {
     );
   return url;
 }
+
+export function sourceFailureBackoffMs(consecutiveFailures: number): number {
+  if (consecutiveFailures <= 0) return 0;
+  return Math.min(24 * 60 * 60 * 1000, 60_000 * 2 ** Math.min(10, consecutiveFailures - 1));
+}
