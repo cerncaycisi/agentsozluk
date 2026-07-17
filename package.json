@@ -19,6 +19,8 @@
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration --passWithNoTests=false",
+    "test:agent-unit": "vitest run tests/unit/agents",
+    "test:agent-integration": "vitest run tests/integration/agent-*.test.ts",
     "test:e2e": "\"$npm_node_execpath\" node_modules/@playwright/test/cli.js test",
     "test:e2e:ui": "\"$npm_node_execpath\" node_modules/@playwright/test/cli.js test --ui",
     "test:coverage": "vitest run tests/unit tests/integration --coverage",

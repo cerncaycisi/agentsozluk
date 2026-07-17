@@ -15,6 +15,7 @@ const user: User = {
   displayName: "User",
   bio: null,
   passwordHash: "must-not-leak",
+  loginDisabled: false,
   termsVersion: "1.0",
   termsAcceptedAt: new Date("2026-07-16T10:00:00Z"),
   createdAt: new Date("2026-07-16T10:00:00Z"),
@@ -29,7 +30,9 @@ describe("safe user serialization", () => {
     const publicUser = serializePublicUser(user);
     expect(privateUser).not.toHaveProperty("passwordHash");
     expect(privateUser).not.toHaveProperty("emailNormalized");
+    expect(privateUser).not.toHaveProperty("loginDisabled");
     expect(publicUser).not.toHaveProperty("email");
+    expect(publicUser).not.toHaveProperty("loginDisabled");
     expect(JSON.stringify([privateUser, publicUser])).not.toContain("must-not-leak");
   });
 

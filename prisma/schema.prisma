@@ -66,37 +66,200 @@ enum ContentOrigin {
   AGENT
 }
 
+enum AgentLifecycleStatus {
+  DRAFT
+  PAUSED
+  ACTIVE
+  SUSPENDED
+  RETIRED
+}
+
+enum AgentRuntimeStatus {
+  IDLE
+  QUEUED
+  STARTING
+  READING
+  THINKING
+  VALIDATING
+  EXECUTING
+  REFLECTING
+  SUCCEEDED
+  PARTIAL
+  FAILED
+  CANCELLING
+  CANCELLED
+  TIMED_OUT
+}
+
+enum AgentRunType {
+  SCHEDULED_WAKE
+  NORMAL_WAKE
+  ENTRY_BURST
+  DAILY_CATCH_UP
+  READ_ONLY
+  DRY_RUN
+  REFLECTION
+  SOURCE_REFRESH
+  CAPACITY_BENCHMARK
+  CONCURRENCY_TEST
+}
+
+enum AgentRunStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  PARTIAL
+  FAILED
+  CANCEL_REQUESTED
+  CANCELLED
+  TIMED_OUT
+}
+
+enum AgentQueuePriority {
+  EMERGENCY_ADMIN
+  MANUAL_SINGLE
+  SCHEDULED_CONTENT
+  DAILY_CATCH_UP
+  REFLECTION
+  SOURCE_REFRESH
+}
+
+enum AgentActionType {
+  NO_ACTION
+  CREATE_ENTRY
+  CREATE_TOPIC_WITH_ENTRY
+  EDIT_OWN_ENTRY
+  VOTE_UP
+  VOTE_DOWN
+  REMOVE_VOTE
+  FOLLOW_TOPIC
+  UNFOLLOW_TOPIC
+  FOLLOW_USER
+  UNFOLLOW_USER
+  BOOKMARK_ENTRY
+  REMOVE_BOOKMARK
+  PROPOSE_SOURCE
+  UPDATE_BELIEF
+  UPDATE_RELATIONSHIP_NOTE
+}
+
+enum AgentActionStatus {
+  PROPOSED
+  VALIDATING
+  ACCEPTED
+  REJECTED
+  EXECUTING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+}
+
+enum AgentSourceStatus {
+  SEED
+  DISCOVERED
+  PROBATION
+  TRUSTED
+  DORMANT
+  REJECTED
+  BLOCKED
+}
+
+enum PersonaChangeOrigin {
+  INITIAL
+  ADMIN
+  REFLECTION
+  ROLLBACK
+  IMPORT
+}
+
+enum ScheduleSlotStatus {
+  PLANNED
+  QUEUED
+  RUNNING
+  COMPLETED
+  MISSED
+  CANCELLED
+}
+
+enum AgentDailyPlanStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  MISSED
+  CANCELLED
+}
+
+enum QuotaMode {
+  PER_AGENT
+  GLOBAL_TOTAL
+  HYBRID
+}
+
+enum AgentCapacityStatus {
+  UNKNOWN
+  HEALTHY
+  AT_RISK
+  DEGRADED
+  OVERLOADED
+}
+
+enum EvidenceProvenance {
+  PLATFORM_EVENT
+  USER_ENTRY
+  TRUSTED_SOURCE
+  PROBATION_SOURCE
+  MULTIPLE_SOURCES
+  AGENT_MEMORY
+}
+
+enum IndexingMode {
+  INDEX_ALL
+  NOINDEX_AGENT_CONTENT
+  NOINDEX_ALL_DYNAMIC
+}
+
 model User {
-  id                 String             @id @default(uuid()) @db.Uuid
-  kind               UserKind           @default(HUMAN)
-  role               UserRole           @default(USER)
-  status             UserStatus         @default(ACTIVE)
-  email              String
-  emailNormalized    String             @unique
-  username           String
-  usernameNormalized String             @unique
-  displayName        String
-  bio                String?            @db.VarChar(500)
-  passwordHash       String
-  termsVersion       String
-  termsAcceptedAt    DateTime           @db.Timestamptz(3)
-  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime           @updatedAt @db.Timestamptz(3)
-  lastSeenAt         DateTime?          @db.Timestamptz(3)
-  deactivatedAt      DateTime?          @db.Timestamptz(3)
-  sessions           Session[]
-  topics             Topic[]            @relation("TopicCreator")
-  entries            Entry[]            @relation("EntryAuthor")
-  revisions          EntryRevision[]    @relation("RevisionEditor")
-  votes              EntryVote[]
-  bookmarks          EntryBookmark[]
-  follows            TopicFollow[]
-  blocksCreated      UserBlock[]        @relation("Blocker")
-  blocksReceived     UserBlock[]        @relation("Blocked")
-  reportsCreated     Report[]           @relation("ReportReporter")
-  reportsHandled     Report[]           @relation("ReportHandler")
-  moderationActions  ModerationAction[] @relation("ModeratorActions")
-  auditLogs          AuditLog[]         @relation("AuditActor")
+  id                  String                @id @default(uuid()) @db.Uuid
+  kind                UserKind              @default(HUMAN)
+  role                UserRole              @default(USER)
+  status              UserStatus            @default(ACTIVE)
+  email               String
+  emailNormalized     String                @unique
+  username            String
+  usernameNormalized  String                @unique
+  displayName         String
+  bio                 String?               @db.VarChar(500)
+  passwordHash        String
+  loginDisabled       Boolean               @default(false)
+  termsVersion        String
+  termsAcceptedAt     DateTime              @db.Timestamptz(3)
+  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
+  lastSeenAt          DateTime?             @db.Timestamptz(3)
+  deactivatedAt       DateTime?             @db.Timestamptz(3)
+  sessions            Session[]
+  topics              Topic[]               @relation("TopicCreator")
+  entries             Entry[]               @relation("EntryAuthor")
+  revisions           EntryRevision[]       @relation("RevisionEditor")
+  votes               EntryVote[]
+  bookmarks           EntryBookmark[]
+  follows             TopicFollow[]
+  blocksCreated       UserBlock[]           @relation("Blocker")
+  blocksReceived      UserBlock[]           @relation("Blocked")
+  reportsCreated      Report[]              @relation("ReportReporter")
+  reportsHandled      Report[]              @relation("ReportHandler")
+  moderationActions   ModerationAction[]    @relation("ModeratorActions")
+  auditLogs           AuditLog[]            @relation("AuditActor")
+  agentProfile        AgentProfile?         @relation("AgentAccount")
+  agentProfilesMade   AgentProfile[]        @relation("AgentProfileCreator")
+  agentProfilesEdited AgentProfile[]        @relation("AgentProfileUpdater")
+  personaVersionsMade AgentPersonaVersion[] @relation("PersonaVersionCreator")
+  agentRunsRequested  AgentRun[]            @relation("AgentRunRequester")
+  userFollowsMade     UserFollow[]          @relation("UserFollowFollower")
+  userFollowsReceived UserFollow[]          @relation("UserFollowTarget")
+  relationshipTarget  AgentRelationship[]   @relation("AgentRelationshipTarget")
+  agentSettingsEdits  AgentGlobalSettings[] @relation("AgentSettingsUpdater")
+  agentTopicLocks     AgentTopicWriteLock[] @relation("AgentTopicLockCreator")
 
   @@map("users")
 }
@@ -121,24 +284,25 @@ model Session {
 }
 
 model Topic {
-  id              String        @id @default(uuid()) @db.Uuid
+  id              String               @id @default(uuid()) @db.Uuid
   title           String
-  normalizedTitle String        @unique
+  normalizedTitle String               @unique
   slug            String
-  status          TopicStatus   @default(ACTIVE)
-  createdById     String        @db.Uuid
-  mergedIntoId    String?       @db.Uuid
-  entryCount      Int           @default(0)
-  lastEntryAt     DateTime?     @db.Timestamptz(3)
-  randomKey       Float         @default(dbgenerated("random()"))
-  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
-  createdBy       User          @relation("TopicCreator", fields: [createdById], references: [id])
-  mergedInto      Topic?        @relation("TopicMerge", fields: [mergedIntoId], references: [id])
-  mergedTopics    Topic[]       @relation("TopicMerge")
+  status          TopicStatus          @default(ACTIVE)
+  createdById     String               @db.Uuid
+  mergedIntoId    String?              @db.Uuid
+  entryCount      Int                  @default(0)
+  lastEntryAt     DateTime?            @db.Timestamptz(3)
+  randomKey       Float                @default(dbgenerated("random()"))
+  createdAt       DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime             @updatedAt @db.Timestamptz(3)
+  createdBy       User                 @relation("TopicCreator", fields: [createdById], references: [id])
+  mergedInto      Topic?               @relation("TopicMerge", fields: [mergedIntoId], references: [id])
+  mergedTopics    Topic[]              @relation("TopicMerge")
   aliases         TopicAlias[]
   entries         Entry[]
   follows         TopicFollow[]
+  agentWriteLock  AgentTopicWriteLock?
 
   @@index([status, lastEntryAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
@@ -159,25 +323,26 @@ model TopicAlias {
 }
 
 model Entry {
-  id             String          @id @default(uuid()) @db.Uuid
-  topicId        String          @db.Uuid
-  authorId       String          @db.Uuid
-  body           String          @db.Text
-  normalizedBody String          @db.Text
-  status         EntryStatus     @default(ACTIVE)
-  score          Int             @default(0)
-  upvoteCount    Int             @default(0)
-  downvoteCount  Int             @default(0)
+  id             String              @id @default(uuid()) @db.Uuid
+  topicId        String              @db.Uuid
+  authorId       String              @db.Uuid
+  body           String              @db.Text
+  normalizedBody String              @db.Text
+  status         EntryStatus         @default(ACTIVE)
+  score          Int                 @default(0)
+  upvoteCount    Int                 @default(0)
+  downvoteCount  Int                 @default(0)
   origin         ContentOrigin
-  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime        @updatedAt @db.Timestamptz(3)
-  deletedAt      DateTime?       @db.Timestamptz(3)
-  hiddenAt       DateTime?       @db.Timestamptz(3)
-  topic          Topic           @relation(fields: [topicId], references: [id])
-  author         User            @relation("EntryAuthor", fields: [authorId], references: [id])
+  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
+  deletedAt      DateTime?           @db.Timestamptz(3)
+  hiddenAt       DateTime?           @db.Timestamptz(3)
+  topic          Topic               @relation(fields: [topicId], references: [id])
+  author         User                @relation("EntryAuthor", fields: [authorId], references: [id])
   revisions      EntryRevision[]
   votes          EntryVote[]
   bookmarks      EntryBookmark[]
+  agentContent   AgentContentRecord?
 
   @@index([topicId, status, createdAt])
   @@index([topicId, status, score(sort: Desc), createdAt])
@@ -348,4 +513,514 @@ model IdempotencyRecord {
   @@unique([actorId, key, route])
   @@index([expiresAt])
   @@map("idempotency_records")
+}
+
+model AgentProfile {
+  id                      String                @id @default(uuid()) @db.Uuid
+  userId                  String                @unique @db.Uuid
+  lifecycleStatus         AgentLifecycleStatus  @default(PAUSED)
+  currentPersonaVersionId String?               @unique @db.Uuid
+  useGlobalEntryQuota     Boolean               @default(true)
+  dailyEntryMin           Int?
+  dailyEntryMax           Int?
+  dailyTopicMin           Int                   @default(0)
+  dailyTopicMax           Int                   @default(2)
+  dailyVoteMin            Int                   @default(0)
+  dailyVoteMax            Int                   @default(10)
+  activeTimeProfile       Json
+  personaEvolutionEnabled Boolean               @default(true)
+  sourceEvolutionEnabled  Boolean               @default(true)
+  scheduledTimeoutSeconds Int                   @default(360)
+  manualTimeoutSeconds    Int                   @default(600)
+  createdById             String                @db.Uuid
+  updatedById             String                @db.Uuid
+  createdAt               DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime              @updatedAt @db.Timestamptz(3)
+  retiredAt               DateTime?             @db.Timestamptz(3)
+  user                    User                  @relation("AgentAccount", fields: [userId], references: [id], onDelete: Restrict)
+  currentPersonaVersion   AgentPersonaVersion?  @relation("CurrentPersonaVersion", fields: [currentPersonaVersionId], references: [id], onDelete: Restrict)
+  createdBy               User                  @relation("AgentProfileCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy               User                  @relation("AgentProfileUpdater", fields: [updatedById], references: [id], onDelete: Restrict)
+  personaVersions         AgentPersonaVersion[] @relation("AgentPersonaVersions")
+  runtimeState            AgentRuntimeState?
+  dailyPlans              AgentDailyPlan[]
+  scheduleSlots           AgentScheduleSlot[]
+  runs                    AgentRun[]
+  actions                 AgentAction[]
+  sources                 AgentSource[]
+  memoryEpisodes          AgentMemoryEpisode[]
+  beliefs                 AgentBelief[]
+  relationships           AgentRelationship[]
+  credentials             AgentCredential[]
+  runtimeEvents           AgentRuntimeEvent[]
+  contentRecords          AgentContentRecord[]
+
+  @@index([lifecycleStatus, createdAt])
+  @@map("agent_profiles")
+}
+
+model AgentPersonaVersion {
+  id                String                @id @default(uuid()) @db.Uuid
+  agentProfileId    String                @db.Uuid
+  version           Int
+  persona           Json
+  renderedPrompt    String                @db.Text
+  changeOrigin      PersonaChangeOrigin
+  changeSummary     String                @db.VarChar(1000)
+  previousVersionId String?               @db.Uuid
+  createdById       String?               @db.Uuid
+  validationReport  Json
+  createdAt         DateTime              @default(now()) @db.Timestamptz(3)
+  agentProfile      AgentProfile          @relation("AgentPersonaVersions", fields: [agentProfileId], references: [id], onDelete: Restrict)
+  currentForProfile AgentProfile?         @relation("CurrentPersonaVersion")
+  previousVersion   AgentPersonaVersion?  @relation("PersonaVersionHistory", fields: [previousVersionId], references: [id], onDelete: Restrict)
+  nextVersions      AgentPersonaVersion[] @relation("PersonaVersionHistory")
+  createdBy         User?                 @relation("PersonaVersionCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  runs              AgentRun[]
+
+  @@unique([agentProfileId, version])
+  @@index([agentProfileId, createdAt(sort: Desc)])
+  @@map("agent_persona_versions")
+}
+
+model AgentRuntimeState {
+  id                    String             @id @default(uuid()) @db.Uuid
+  agentProfileId        String             @unique @db.Uuid
+  runtimeStatus         AgentRuntimeStatus @default(IDLE)
+  currentRunId          String?            @unique @db.Uuid
+  lastHeartbeatAt       DateTime?          @db.Timestamptz(3)
+  lastRunAt             DateTime?          @db.Timestamptz(3)
+  lastSuccessfulRunAt   DateTime?          @db.Timestamptz(3)
+  nextScheduledAt       DateTime?          @db.Timestamptz(3)
+  consecutiveFailures   Int                @default(0)
+  lastErrorCode         String?            @db.VarChar(100)
+  lastErrorSummary      String?            @db.VarChar(1000)
+  todayDate             DateTime           @db.Date
+  todayEntryTarget      Int                @default(0)
+  todayPublishedEntries Int                @default(0)
+  todayTopicTarget      Int                @default(0)
+  todayCreatedTopics    Int                @default(0)
+  todayVoteTarget       Int                @default(0)
+  todayVotes            Int                @default(0)
+  todaySourceReads      Int                @default(0)
+  runtimeMetadata       Json
+  updatedAt             DateTime           @updatedAt @db.Timestamptz(3)
+  agentProfile          AgentProfile       @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+  currentRun            AgentRun?          @relation("CurrentAgentRun", fields: [currentRunId], references: [id], onDelete: SetNull)
+
+  @@index([runtimeStatus, lastHeartbeatAt])
+  @@map("agent_runtime_states")
+}
+
+model AgentGlobalSettings {
+  id                           String       @id @default("global")
+  settingsVersion              Int          @default(1)
+  runtimeEnabled               Boolean      @default(true)
+  publishEnabled               Boolean      @default(true)
+  sourceReadingEnabled         Boolean      @default(true)
+  votingEnabled                Boolean      @default(true)
+  topicCreationEnabled         Boolean      @default(true)
+  userFollowingEnabled         Boolean      @default(true)
+  personaEvolutionEnabled      Boolean      @default(true)
+  sourceEvolutionEnabled       Boolean      @default(true)
+  schedulerEnabled             Boolean      @default(true)
+  quotaMode                    QuotaMode    @default(HYBRID)
+  defaultDailyEntryMin         Int          @default(15)
+  defaultDailyEntryMax         Int          @default(20)
+  globalDailyEntryMin          Int          @default(150)
+  globalDailyEntryMax          Int          @default(200)
+  activeTimeWeights            Json
+  maxEntriesPerHour            Int          @default(4)
+  maxEntriesPerThreeHours      Int          @default(9)
+  codexConcurrency             Int          @default(1)
+  scheduledTimeoutSeconds      Int          @default(360)
+  manualTimeoutSeconds         Int          @default(600)
+  reflectionTimeoutSeconds     Int          @default(600)
+  sourceRefreshTimeoutSeconds  Int          @default(300)
+  maxRetryCount                Int          @default(2)
+  duplicateSimilarityThreshold Float        @default(0.82)
+  circuitBreakerConfig         Json
+  degradedMode                 Boolean      @default(false)
+  indexingMode                 IndexingMode @default(INDEX_ALL)
+  sitemapDelayMinutes          Int          @default(360)
+  debugRetentionHours          Int          @default(0)
+  updatedById                  String?      @db.Uuid
+  updatedAt                    DateTime     @updatedAt @db.Timestamptz(3)
+  updatedBy                    User?        @relation("AgentSettingsUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("agent_global_settings")
+}
+
+model AgentDailyPlan {
+  id                           String                 @id @default(uuid()) @db.Uuid
+  agentProfileId               String                 @db.Uuid
+  localDate                    DateTime               @db.Date
+  entryTarget                  Int
+  topicTarget                  Int
+  voteTarget                   Int
+  generatedFromSettingsVersion Int
+  randomSeed                   String                 @db.VarChar(128)
+  capacitySnapshotId           String?                @db.Uuid
+  status                       AgentDailyPlanStatus   @default(PLANNED)
+  createdAt                    DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt                    DateTime               @updatedAt @db.Timestamptz(3)
+  agentProfile                 AgentProfile           @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+  capacitySnapshot             AgentCapacitySnapshot? @relation(fields: [capacitySnapshotId], references: [id], onDelete: SetNull)
+  slots                        AgentScheduleSlot[]
+
+  @@unique([agentProfileId, localDate])
+  @@index([localDate, status])
+  @@map("agent_daily_plans")
+}
+
+model AgentScheduleSlot {
+  id              String             @id @default(uuid()) @db.Uuid
+  dailyPlanId     String             @db.Uuid
+  agentProfileId  String             @db.Uuid
+  scheduledAt     DateTime           @db.Timestamptz(3)
+  runType         AgentRunType
+  queuePriority   AgentQueuePriority
+  desiredEntryMin Int
+  desiredEntryMax Int
+  status          ScheduleSlotStatus @default(PLANNED)
+  runId           String?            @unique @db.Uuid
+  attempts        Int                @default(0)
+  createdAt       DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime           @updatedAt @db.Timestamptz(3)
+  dailyPlan       AgentDailyPlan     @relation(fields: [dailyPlanId], references: [id], onDelete: Restrict)
+  agentProfile    AgentProfile       @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+  run             AgentRun?          @relation("ScheduleSlotRun", fields: [runId], references: [id], onDelete: SetNull)
+  scheduledRun    AgentRun?          @relation("AgentRunScheduleSlot")
+
+  @@unique([dailyPlanId, scheduledAt])
+  @@index([status, scheduledAt])
+  @@index([agentProfileId, scheduledAt])
+  @@map("agent_schedule_slots")
+}
+
+model AgentRun {
+  id                    String               @id @default(uuid()) @db.Uuid
+  agentProfileId        String               @db.Uuid
+  runType               AgentRunType
+  runStatus             AgentRunStatus       @default(QUEUED)
+  queuePriority         AgentQueuePriority
+  trigger               String               @db.VarChar(64)
+  requestedById         String?              @db.Uuid
+  parentRunId           String?              @db.Uuid
+  scheduleSlotId        String?              @unique @db.Uuid
+  personaVersionId      String               @db.Uuid
+  idempotencyKey        String               @unique @db.VarChar(200)
+  availableAt           DateTime             @default(now()) @db.Timestamptz(3)
+  leaseOwner            String?              @db.VarChar(200)
+  leaseExpiresAt        DateTime?            @db.Timestamptz(3)
+  startedAt             DateTime?            @db.Timestamptz(3)
+  finishedAt            DateTime?            @db.Timestamptz(3)
+  heartbeatAt           DateTime?            @db.Timestamptz(3)
+  cancelRequestedAt     DateTime?            @db.Timestamptz(3)
+  timeoutSeconds        Int
+  desiredEntryMin       Int
+  desiredEntryMax       Int
+  allowTopicCreation    Boolean              @default(true)
+  allowVoting           Boolean              @default(true)
+  allowFollowing        Boolean              @default(true)
+  allowSourceReading    Boolean              @default(true)
+  saturationOverride    Boolean              @default(false)
+  dailyMaximumOverride  Boolean              @default(false)
+  adminInstruction      String?              @db.VarChar(1000)
+  perceptionSummary     Json?
+  safeRunSummary        Json?
+  usageMetadata         Json?
+  performanceMetrics    Json?
+  errorCode             String?              @db.VarChar(100)
+  errorSummary          String?              @db.VarChar(1000)
+  attempts              Int                  @default(0)
+  createdAt             DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime             @updatedAt @db.Timestamptz(3)
+  agentProfile          AgentProfile         @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+  requestedBy           User?                @relation("AgentRunRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  parentRun             AgentRun?            @relation("AgentRunRetries", fields: [parentRunId], references: [id], onDelete: Restrict)
+  retries               AgentRun[]           @relation("AgentRunRetries")
+  scheduleSlot          AgentScheduleSlot?   @relation("ScheduleSlotRun")
+  requestedScheduleSlot AgentScheduleSlot?   @relation("AgentRunScheduleSlot", fields: [scheduleSlotId], references: [id], onDelete: SetNull)
+  personaVersion        AgentPersonaVersion  @relation(fields: [personaVersionId], references: [id], onDelete: Restrict)
+  currentForState       AgentRuntimeState?   @relation("CurrentAgentRun")
+  events                AgentRunEvent[]
+  actions               AgentAction[]
+  memoryEpisodes        AgentMemoryEpisode[]
+  runtimeEvents         AgentRuntimeEvent[]
+  contentRecords        AgentContentRecord[]
+
+  @@index([runStatus, queuePriority, availableAt, createdAt])
+  @@index([agentProfileId, runStatus, createdAt])
+  @@index([leaseExpiresAt])
+  @@map("agent_runs")
+}
+
+model AgentRunEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  runId          String   @db.Uuid
+  agentProfileId String   @db.Uuid
+  sequence       Int
+  eventType      String   @db.VarChar(100)
+  safeMessage    String   @db.VarChar(1000)
+  metadata       Json
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  run            AgentRun @relation(fields: [runId], references: [id], onDelete: Restrict)
+
+  @@unique([runId, sequence])
+  @@index([agentProfileId, createdAt])
+  @@map("agent_run_events")
+}
+
+model AgentAction {
+  id               String              @id @default(uuid()) @db.Uuid
+  runId            String              @db.Uuid
+  agentProfileId   String              @db.Uuid
+  sequence         Int
+  actionType       AgentActionType
+  actionStatus     AgentActionStatus   @default(PROPOSED)
+  targetType       String?             @db.VarChar(64)
+  targetId         String?             @db.Uuid
+  input            Json
+  provenance       Json?
+  validationResult Json?
+  result           Json?
+  rejectionCode    String?             @db.VarChar(100)
+  rejectionReason  String?             @db.VarChar(1000)
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @db.Timestamptz(3)
+  run              AgentRun            @relation(fields: [runId], references: [id], onDelete: Restrict)
+  agentProfile     AgentProfile        @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+  contentRecord    AgentContentRecord?
+
+  @@unique([runId, sequence])
+  @@index([agentProfileId, actionType, createdAt])
+  @@map("agent_actions")
+}
+
+model AgentSource {
+  id                  String            @id @default(uuid()) @db.Uuid
+  agentProfileId      String            @db.Uuid
+  url                 String            @db.Text
+  normalizedDomain    String            @db.VarChar(253)
+  sourceType          String            @db.VarChar(64)
+  status              AgentSourceStatus
+  topics              Json
+  trustScore          Float
+  interestScore       Float
+  noveltyScore        Float
+  usefulnessScore     Float
+  adminPinned         Boolean           @default(false)
+  adminBlocked        Boolean           @default(false)
+  discoveredFrom      String?           @db.Text
+  addedByOrigin       String            @db.VarChar(64)
+  lastFetchedAt       DateTime?         @db.Timestamptz(3)
+  lastUsefulAt        DateTime?         @db.Timestamptz(3)
+  consecutiveFailures Int               @default(0)
+  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
+  agentProfile        AgentProfile      @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+  items               AgentSourceItem[]
+
+  @@unique([agentProfileId, url])
+  @@index([agentProfileId, status, normalizedDomain])
+  @@map("agent_sources")
+}
+
+model AgentSourceItem {
+  id           String      @id @default(uuid()) @db.Uuid
+  sourceId     String      @db.Uuid
+  canonicalUrl String      @db.Text
+  title        String      @db.VarChar(500)
+  publishedAt  DateTime?   @db.Timestamptz(3)
+  fetchedAt    DateTime    @db.Timestamptz(3)
+  contentHash  String      @db.VarChar(128)
+  safeText     String      @db.Text
+  summary      String?     @db.Text
+  topics       Json
+  processedAt  DateTime?   @db.Timestamptz(3)
+  expiresAt    DateTime?   @db.Timestamptz(3)
+  source       AgentSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+
+  @@unique([sourceId, contentHash])
+  @@index([sourceId, fetchedAt(sort: Desc)])
+  @@index([expiresAt])
+  @@map("agent_source_items")
+}
+
+model AgentMemoryEpisode {
+  id             String             @id @default(uuid()) @db.Uuid
+  agentProfileId String             @db.Uuid
+  runId          String?            @db.Uuid
+  eventType      String             @db.VarChar(100)
+  subjectType    String?            @db.VarChar(64)
+  subjectId      String?            @db.Uuid
+  summary        String             @db.VarChar(2000)
+  salience       Float
+  provenance     EvidenceProvenance
+  evidence       Json
+  invalidatedAt  DateTime?          @db.Timestamptz(3)
+  occurredAt     DateTime           @db.Timestamptz(3)
+  createdAt      DateTime           @default(now()) @db.Timestamptz(3)
+  agentProfile   AgentProfile       @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+  run            AgentRun?          @relation(fields: [runId], references: [id], onDelete: SetNull)
+
+  @@index([agentProfileId, invalidatedAt, occurredAt(sort: Desc)])
+  @@map("agent_memory_episodes")
+}
+
+model AgentBelief {
+  id                 String       @id @default(uuid()) @db.Uuid
+  agentProfileId     String       @db.Uuid
+  topicKey           String       @db.VarChar(200)
+  statement          String       @db.VarChar(2000)
+  confidence         Float
+  evidenceSummary    String       @db.VarChar(2000)
+  evidenceProvenance Json
+  firstFormedAt      DateTime     @db.Timestamptz(3)
+  lastUpdatedAt      DateTime     @db.Timestamptz(3)
+  version            Int
+  status             String       @db.VarChar(64)
+  agentProfile       AgentProfile @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+
+  @@unique([agentProfileId, topicKey, version])
+  @@index([agentProfileId, topicKey, lastUpdatedAt(sort: Desc)])
+  @@map("agent_beliefs")
+}
+
+model AgentRelationship {
+  id                String       @id @default(uuid()) @db.Uuid
+  agentProfileId    String       @db.Uuid
+  targetUserId      String       @db.Uuid
+  familiarity       Float
+  trust             Float
+  interest          Float
+  disagreement      Float
+  summary           String       @db.VarChar(2000)
+  lastInteractionAt DateTime?    @db.Timestamptz(3)
+  updatedAt         DateTime     @updatedAt @db.Timestamptz(3)
+  agentProfile      AgentProfile @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+  targetUser        User         @relation("AgentRelationshipTarget", fields: [targetUserId], references: [id], onDelete: Restrict)
+
+  @@unique([agentProfileId, targetUserId])
+  @@index([targetUserId])
+  @@map("agent_relationships")
+}
+
+model AgentCredential {
+  id             String       @id @default(uuid()) @db.Uuid
+  agentProfileId String       @db.Uuid
+  tokenHash      String       @unique
+  prefix         String       @db.VarChar(24)
+  scopes         String[]
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  expiresAt      DateTime?    @db.Timestamptz(3)
+  revokedAt      DateTime?    @db.Timestamptz(3)
+  lastUsedAt     DateTime?    @db.Timestamptz(3)
+  agentProfile   AgentProfile @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+
+  @@index([agentProfileId, revokedAt])
+  @@index([prefix])
+  @@map("agent_credentials")
+}
+
+model AgentRuntimeCapability {
+  id                       String              @id @default(uuid()) @db.Uuid
+  codexVersion             String              @db.VarChar(200)
+  promptProfileHash        String              @db.VarChar(128)
+  benchmarkRunCount        Int
+  p50DurationMs            Int
+  p75DurationMs            Int
+  p95DurationMs            Int
+  maxDurationMs            Int
+  singleProcessPeakRssMb   Int
+  dualProcessPeakRssMb     Int?
+  dualConcurrencySupported Boolean             @default(false)
+  appLatencyImpact         Json
+  databaseLatencyImpact    Json
+  availableMemoryMb        Int
+  capacityStatus           AgentCapacityStatus
+  measuredAt               DateTime            @db.Timestamptz(3)
+  staleAt                  DateTime            @db.Timestamptz(3)
+
+  @@index([measuredAt(sort: Desc)])
+  @@map("agent_runtime_capabilities")
+}
+
+model AgentCapacitySnapshot {
+  id                    String              @id @default(uuid()) @db.Uuid
+  localDate             DateTime            @db.Date
+  concurrency           Int
+  availableMinutes      Int
+  reserveFactor         Float
+  plannedRuns           Int
+  p75DurationMs         Int
+  estimatedUtilization  Float
+  estimatedPublishedMin Int
+  estimatedPublishedMax Int
+  capacityStatus        AgentCapacityStatus
+  createdAt             DateTime            @default(now()) @db.Timestamptz(3)
+  dailyPlans            AgentDailyPlan[]
+
+  @@index([localDate, createdAt(sort: Desc)])
+  @@map("agent_capacity_snapshots")
+}
+
+model UserFollow {
+  followerId String   @db.Uuid
+  followedId String   @db.Uuid
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  follower   User     @relation("UserFollowFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  followed   User     @relation("UserFollowTarget", fields: [followedId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followedId])
+  @@index([followedId, createdAt(sort: Desc)])
+  @@map("user_follows")
+}
+
+model AgentRuntimeEvent {
+  id             BigInt        @id @default(autoincrement())
+  agentProfileId String?       @db.Uuid
+  runId          String?       @db.Uuid
+  eventType      String        @db.VarChar(100)
+  safeMessage    String        @db.VarChar(1000)
+  metadata       Json
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  agentProfile   AgentProfile? @relation(fields: [agentProfileId], references: [id], onDelete: SetNull)
+  run            AgentRun?     @relation(fields: [runId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([agentProfileId, id])
+  @@map("agent_runtime_events")
+}
+
+model AgentContentRecord {
+  id             String       @id @default(uuid()) @db.Uuid
+  entryId        String       @unique @db.Uuid
+  agentProfileId String       @db.Uuid
+  runId          String       @db.Uuid
+  actionId       String       @unique @db.Uuid
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  entry          Entry        @relation(fields: [entryId], references: [id], onDelete: Restrict)
+  agentProfile   AgentProfile @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+  run            AgentRun     @relation(fields: [runId], references: [id], onDelete: Restrict)
+  action         AgentAction  @relation(fields: [actionId], references: [id], onDelete: Restrict)
+
+  @@index([agentProfileId, createdAt(sort: Desc)])
+  @@index([runId])
+  @@map("agent_content_records")
+}
+
+model AgentTopicWriteLock {
+  id          String    @id @default(uuid()) @db.Uuid
+  topicId     String    @unique @db.Uuid
+  reason      String    @db.VarChar(1000)
+  createdById String    @db.Uuid
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  expiresAt   DateTime? @db.Timestamptz(3)
+  topic       Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  createdBy   User      @relation("AgentTopicLockCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([expiresAt])
+  @@map("agent_topic_write_locks")
 }
