@@ -11,6 +11,7 @@ import {
   findRuntimeOwnedRun,
   finishRuntimeRunRecord,
   getMeasuredRuntimeRunMetrics,
+  getRuntimePerceptionRecords,
   getRuntimeAgentLifecycle,
   getRuntimeGlobalSettings,
   heartbeatRuntimeRunRecord,
@@ -18,6 +19,8 @@ import {
   lockRuntimeRun,
   setRuntimeCurrentRun,
 } from "@/modules/agents/repository/runtime";
+import { seedPersonaSchema } from "@/modules/agents/personas/schema";
+import { selectPerceptionEntries, truncateUntrustedText } from "@/modules/agents/domain/perception";
 import type {
   RuntimeActionsInput,
   RuntimeCompleteInput,
@@ -28,6 +31,84 @@ import type {
 } from "@/modules/agents/validation/runtime-schemas";
 
 type OwnedRun = NonNullable<Awaited<ReturnType<typeof findRuntimeOwnedRun>>>;
+
+type PerceptionRecords = Awaited<ReturnType<typeof getRuntimePerceptionRecords>>;
+
+function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, now: Date) {
+  const persona = seedPersonaSchema.parse(run.personaVersion.persona);
+  const followedTopics = new Set(records.followedTopicIds);
+  const followedUsers = new Set(records.followedUserIds);
+  const recentTopicCounts = new Map(
+    records.recentTopicCounts.map(({ topicId, _count }) => [topicId, _count._all]),
+  );
+  const selectedEntries = selectPerceptionEntries(
+    records.entries.map((entry) => ({
+      ...entry,
+      followedTopic: followedTopics.has(entry.topic.id),
+      followedAuthor: followedUsers.has(entry.author.id),
+    })),
+    { seed: run.id, interests: persona.interests, limit: 24, now },
+  ).map((entry) => ({
+    ...entry,
+    body: truncateUntrustedText(entry.body, 800),
+    createdAt: entry.createdAt.toISOString(),
+    topicEntryCountLast30Minutes: recentTopicCounts.get(entry.topic.id) ?? 0,
+    saturated: (recentTopicCounts.get(entry.topic.id) ?? 0) >= 15,
+  }));
+  const sourceItems = records.sources
+    .flatMap((source) =>
+      source.items.map((item) => ({
+        sourceId: source.id,
+        sourceDomain: source.normalizedDomain,
+        sourceStatus: source.status,
+        sourceTrustScore: source.trustScore,
+        itemId: item.id,
+        canonicalUrl: item.canonicalUrl,
+        title: truncateUntrustedText(item.title, 300),
+        safeText: truncateUntrustedText(item.safeText, 800),
+        summary: item.summary ? truncateUntrustedText(item.summary, 500) : null,
+        publishedAt: item.publishedAt?.toISOString() ?? null,
+        fetchedAt: item.fetchedAt.toISOString(),
+      })),
+    )
+    .slice(0, 10);
+  const snapshot = {
+    observedAt: now.toISOString(),
+    limits: { maximumBytes: 65_536, recentEntries: 24, ownEntries: 8, sourceItems: 10 },
+    targetProgress: records.state,
+    recentEntries: selectedEntries,
+    ownRecentEntries: records.ownEntries.slice(0, 8).map((entry) => ({
+      ...entry,
+      body: truncateUntrustedText(entry.body, 600),
+      createdAt: entry.createdAt.toISOString(),
+    })),
+    memories: records.memories.slice(0, 10).map((memory) => ({
+      ...memory,
+      summary: truncateUntrustedText(memory.summary, 700),
+      occurredAt: memory.occurredAt.toISOString(),
+    })),
+    beliefs: records.beliefs.slice(0, 10).map((belief) => ({
+      ...belief,
+      statement: truncateUntrustedText(belief.statement, 700),
+      evidenceSummary: truncateUntrustedText(belief.evidenceSummary, 500),
+      lastUpdatedAt: belief.lastUpdatedAt.toISOString(),
+    })),
+    relationships: records.relationships.slice(0, 8).map((relationship) => ({
+      ...relationship,
+      summary: truncateUntrustedText(relationship.summary, 500),
+      lastInteractionAt: relationship.lastInteractionAt?.toISOString() ?? null,
+    })),
+    sourceItems,
+  };
+  while (Buffer.byteLength(JSON.stringify(snapshot), "utf8") > 65_536) {
+    if (snapshot.sourceItems.length > 0) snapshot.sourceItems.pop();
+    else if (snapshot.recentEntries.length > 8) snapshot.recentEntries.pop();
+    else if (snapshot.memories.length > 4) snapshot.memories.pop();
+    else
+      throw new AppError("INTERNAL_ERROR", 500, "Perception snapshot güvenli boyuta indirilemedi.");
+  }
+  return snapshot;
+}
 
 function runNotFound(): AppError {
   return new AppError("AGENT_RUN_NOT_FOUND", 404, "Runtime run bulunamadı.");
@@ -157,6 +238,13 @@ export function getRuntimeRunContext(
     const run = await findRuntimeOwnedRun(transaction, principal.agentProfileId, runId);
     assertLeaseOwner(run, workerId, new Date());
     const settings = await getRuntimeGlobalSettings(transaction);
+    const now = new Date();
+    const perceptionRecords = await getRuntimePerceptionRecords(transaction, {
+      agentProfileId: principal.agentProfileId,
+      agentUserId: run.agentProfile.user.id,
+      now,
+      includeSources: run.allowSourceReading && settings.sourceReadingEnabled,
+    });
     return {
       run: {
         id: run.id,
@@ -186,6 +274,7 @@ export function getRuntimeRunContext(
         document: run.personaVersion.persona,
         renderedPrompt: run.personaVersion.renderedPrompt,
       },
+      perception: boundedPerceptionSnapshot(run, perceptionRecords, now),
     };
   });
 }

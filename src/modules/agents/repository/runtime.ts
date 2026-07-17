@@ -574,6 +574,190 @@ export function listRecentRuntimeEntryBodies(
   });
 }
 
+export async function getRuntimePerceptionRecords(
+  transaction: Prisma.TransactionClient,
+  input: { agentProfileId: string; agentUserId: string; now: Date; includeSources: boolean },
+) {
+  const blocked = await transaction.userBlock.findMany({
+    where: { OR: [{ blockerId: input.agentUserId }, { blockedId: input.agentUserId }] },
+    select: { blockerId: true, blockedId: true },
+  });
+  const blockedUserIds = [
+    ...new Set(
+      blocked.map(({ blockerId, blockedId }) =>
+        blockerId === input.agentUserId ? blockedId : blockerId,
+      ),
+    ),
+  ];
+  const [
+    topicFollows,
+    userFollows,
+    entries,
+    ownEntries,
+    memories,
+    beliefs,
+    relationships,
+    sources,
+    state,
+    recentTopicCounts,
+  ] = await Promise.all([
+    transaction.topicFollow.findMany({
+      where: { userId: input.agentUserId },
+      select: { topicId: true },
+    }),
+    transaction.userFollow.findMany({
+      where: { followerId: input.agentUserId },
+      select: { followedId: true },
+    }),
+    transaction.entry.findMany({
+      where: {
+        status: "ACTIVE",
+        topic: { status: "ACTIVE" },
+        ...(blockedUserIds.length > 0 ? { authorId: { notIn: blockedUserIds } } : {}),
+      },
+      select: {
+        id: true,
+        body: true,
+        createdAt: true,
+        score: true,
+        topic: { select: { id: true, title: true } },
+        author: { select: { id: true, username: true, displayName: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+    transaction.entry.findMany({
+      where: { authorId: input.agentUserId, status: "ACTIVE", topic: { status: "ACTIVE" } },
+      select: {
+        id: true,
+        body: true,
+        createdAt: true,
+        score: true,
+        upvoteCount: true,
+        downvoteCount: true,
+        topic: { select: { id: true, title: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+    transaction.agentMemoryEpisode.findMany({
+      where: { agentProfileId: input.agentProfileId, invalidatedAt: null },
+      select: {
+        id: true,
+        eventType: true,
+        subjectType: true,
+        subjectId: true,
+        summary: true,
+        salience: true,
+        provenance: true,
+        evidence: true,
+        occurredAt: true,
+      },
+      orderBy: [{ salience: "desc" }, { occurredAt: "desc" }],
+      take: 12,
+    }),
+    transaction.agentBelief.findMany({
+      where: { agentProfileId: input.agentProfileId, status: "ACTIVE" },
+      select: {
+        id: true,
+        topicKey: true,
+        statement: true,
+        confidence: true,
+        evidenceSummary: true,
+        evidenceProvenance: true,
+        version: true,
+        lastUpdatedAt: true,
+      },
+      orderBy: { lastUpdatedAt: "desc" },
+      take: 12,
+    }),
+    transaction.agentRelationship.findMany({
+      where: {
+        agentProfileId: input.agentProfileId,
+        ...(blockedUserIds.length > 0 ? { targetUserId: { notIn: blockedUserIds } } : {}),
+      },
+      select: {
+        targetUserId: true,
+        familiarity: true,
+        trust: true,
+        interest: true,
+        disagreement: true,
+        summary: true,
+        lastInteractionAt: true,
+        targetUser: { select: { username: true, displayName: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 12,
+    }),
+    input.includeSources
+      ? transaction.agentSource.findMany({
+          where: {
+            agentProfileId: input.agentProfileId,
+            status: { in: ["SEED", "PROBATION", "TRUSTED"] },
+            adminBlocked: false,
+          },
+          select: {
+            id: true,
+            normalizedDomain: true,
+            status: true,
+            trustScore: true,
+            topics: true,
+            items: {
+              where: { OR: [{ expiresAt: null }, { expiresAt: { gt: input.now } }] },
+              select: {
+                id: true,
+                canonicalUrl: true,
+                title: true,
+                safeText: true,
+                summary: true,
+                publishedAt: true,
+                fetchedAt: true,
+              },
+              orderBy: { fetchedAt: "desc" },
+              take: 3,
+            },
+          },
+          orderBy: [{ adminPinned: "desc" }, { trustScore: "desc" }],
+          take: 8,
+        })
+      : Promise.resolve([]),
+    transaction.agentRuntimeState.findUniqueOrThrow({
+      where: { agentProfileId: input.agentProfileId },
+      select: {
+        todayEntryTarget: true,
+        todayPublishedEntries: true,
+        todayTopicTarget: true,
+        todayCreatedTopics: true,
+        todayVoteTarget: true,
+        todayVotes: true,
+        todaySourceReads: true,
+        nextScheduledAt: true,
+      },
+    }),
+    transaction.entry.groupBy({
+      by: ["topicId"],
+      where: {
+        status: "ACTIVE",
+        createdAt: { gte: new Date(input.now.getTime() - 30 * 60 * 1000) },
+        topic: { status: "ACTIVE" },
+      },
+      _count: { _all: true },
+    }),
+  ]);
+  return {
+    followedTopicIds: topicFollows.map(({ topicId }) => topicId),
+    followedUserIds: userFollows.map(({ followedId }) => followedId),
+    entries,
+    ownEntries,
+    memories,
+    beliefs,
+    relationships,
+    sources,
+    state,
+    recentTopicCounts,
+  };
+}
+
 export async function getMeasuredRuntimeRunMetrics(
   transaction: Prisma.TransactionClient,
   runId: string,

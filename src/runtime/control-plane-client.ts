@@ -36,6 +36,7 @@ const contextResponseSchema = z.object({
     version: z.number().int().positive(),
     renderedPrompt: z.string(),
   }),
+  perception: z.record(z.string(), z.unknown()),
 });
 
 const actionsResponseSchema = z.object({

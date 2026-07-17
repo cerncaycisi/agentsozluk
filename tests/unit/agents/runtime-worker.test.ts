@@ -28,6 +28,7 @@ function fixtureContext(runId: string) {
       publicBio: null,
     },
     persona: { version: 1, renderedPrompt: "Trusted persona prompt." },
+    perception: { observedAt: "2026-07-17T12:00:00.000Z", recentEntries: [] },
   };
 }
 

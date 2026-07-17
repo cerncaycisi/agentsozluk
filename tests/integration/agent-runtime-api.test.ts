@@ -264,6 +264,26 @@ describe("internal agent runtime API with PostgreSQL", () => {
         runtimeStatus: "READING",
       }),
     );
+    const visibleTopic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "runtime perception visible",
+        entryBody: "VISIBLE_PERCEPTION_BODY public akışta görülebilir.",
+      },
+    );
+    const hiddenTopic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "runtime perception hidden",
+        entryBody: "HIDDEN_PERCEPTION_BODY modele asla gitmemeli.",
+      },
+    );
+    await integrationDatabase.topic.update({
+      where: { id: hiddenTopic.topic.id },
+      data: { status: "HIDDEN" },
+    });
     const context = await getRuntimeRunContext(
       integrationDatabase,
       readPrincipal,
@@ -271,6 +291,17 @@ describe("internal agent runtime API with PostgreSQL", () => {
       "worker-main",
     );
     expect(JSON.stringify(context)).not.toMatch(/credential|email|password|tokenHash/iu);
+    expect(JSON.stringify(context)).toContain("VISIBLE_PERCEPTION_BODY");
+    expect(JSON.stringify(context)).not.toContain("HIDDEN_PERCEPTION_BODY");
+    expect(JSON.stringify(context)).not.toContain(fixture.admin.email);
+    expect(Buffer.byteLength(JSON.stringify(context.perception), "utf8")).toBeLessThanOrEqual(
+      65_536,
+    );
+    expect(context.perception.recentEntries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ topic: expect.objectContaining({ id: visibleTopic.topic.id }) }),
+      ]),
+    );
     expect(context.persona.version).toBe(1);
     await recordRuntimeEvents(
       integrationDatabase,
