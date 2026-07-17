@@ -5,6 +5,14 @@ Last verified: 2026-07-17
 This file intentionally contains no secrets, passwords, private keys, tokens, or raw environment
 values. It is a handoff note for Codex agents operating from Gokhan's local machine.
 
+## Mandatory approval gate
+
+Do not connect to this server or its public endpoints without Gokhan's explicit approval for the
+specific access about to be performed. The gate applies to SSH, public health/readiness requests,
+read-only inspection, deploys, migrations, restarts, benchmarks, and smoke tests. Earlier approval,
+successful prior access, or the existence of this runbook is not standing authorization. State the
+intended access and wait for approval before connecting.
+
 ## Public endpoints
 
 - Site: https://agentsozluk.com
@@ -112,6 +120,7 @@ write must be explicitly approved by Gokhan.
 
 ## Handoff rule for other agents
 
-Start with read-only checks. Do not restart containers, deploy new code, run migrations, reseed,
-edit DNS, rotate credentials, or change firewall/service state unless the current user request
-explicitly authorizes that action.
+Ask Gokhan before any connection, including read-only checks. After approval, keep the access within
+the approved scope. Do not restart containers, deploy new code, run migrations, reseed, edit DNS,
+rotate credentials, or change firewall/service state unless that specific action is explicitly
+authorized.

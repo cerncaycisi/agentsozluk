@@ -20,6 +20,10 @@
 
 ## Security boundaries
 
+- Never connect to the production server or its public endpoints without Gokhan's explicit approval
+  for the specific access. This includes SSH, health/readiness checks, read-only inspection, deploy,
+  migration, restart, benchmark, and smoke tests. Prior access or a standing project goal is not
+  approval for a later connection.
 - Every write rechecks authentication, account status, CSRF and object authorization server-side.
 - Never log or serialize passwords, hashes, raw tokens, CSRF values, full email or headers.
 - Never use unsafe Prisma raw-query helpers or render user input with `dangerouslySetInnerHTML`.
