@@ -726,6 +726,7 @@ model AgentRun {
   allowSourceReading    Boolean              @default(true)
   saturationOverride    Boolean              @default(false)
   dailyMaximumOverride  Boolean              @default(false)
+  provocationOverride   Boolean              @default(false)
   adminInstruction      String?              @db.VarChar(1000)
   perceptionSummary     Json?
   safeRunSummary        Json?

@@ -64,6 +64,8 @@ export const runtimeActionInputSchema = z
     title: z.string().trim().min(2).max(120).optional(),
     topicId: z.string().uuid().optional(),
     entryId: z.string().uuid().optional(),
+    replyToEntryId: z.string().uuid().optional(),
+    provocationSignal: z.number().min(0).max(1).optional(),
     userId: z.string().uuid().optional(),
     username: z
       .string()

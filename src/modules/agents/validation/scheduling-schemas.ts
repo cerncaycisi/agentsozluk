@@ -28,6 +28,7 @@ export const manualAgentRunSchema = z
     allowSourceReading: z.boolean().default(true),
     saturationOverride: z.boolean().default(false),
     dailyMaximumOverride: z.boolean().default(false),
+    provocationOverride: z.boolean().default(false),
     adminInstruction: z.string().trim().min(1).max(1000).optional(),
     availableAt: z.coerce.date().optional(),
     priority: z.enum(["NORMAL", "EMERGENCY"]).default("NORMAL"),

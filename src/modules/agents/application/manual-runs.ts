@@ -7,6 +7,7 @@ import { requireAgentAdminInTransaction } from "@/modules/agents/application/aut
 import {
   appendRuntimeEvent,
   findAgentForMutation,
+  getGlobalSettingsRecord,
   lockAgentProfile,
 } from "@/modules/agents/repository/control-plane";
 import {
@@ -41,7 +42,10 @@ export function createManualAgentRun(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentProfile(transaction, agentProfileId);
-    const agent = await findAgentForMutation(transaction, agentProfileId);
+    const [agent, settings] = await Promise.all([
+      findAgentForMutation(transaction, agentProfileId),
+      getGlobalSettingsRecord(transaction),
+    ]);
     if (!agent) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
     if (agent.lifecycleStatus !== "ACTIVE" || !agent.currentPersonaVersion) {
       throw new AppError("AGENT_LIFECYCLE_INVALID", 409, "Yalnız ACTIVE agent kuyruğa alınabilir.");
@@ -50,9 +54,9 @@ export function createManualAgentRun(
     const entryTarget = nonPublishing ? 0 : input.entryTarget;
     const timeoutSeconds =
       input.runType === "REFLECTION"
-        ? 600
+        ? settings.reflectionTimeoutSeconds
         : input.runType === "SOURCE_REFRESH"
-          ? 300
+          ? settings.sourceRefreshTimeoutSeconds
           : agent.manualTimeoutSeconds;
     const run = await createManualRunRecord(transaction, {
       agentProfileId,
@@ -71,6 +75,7 @@ export function createManualAgentRun(
       allowSourceReading: input.allowSourceReading,
       saturationOverride: input.saturationOverride,
       dailyMaximumOverride: input.dailyMaximumOverride,
+      provocationOverride: input.provocationOverride,
       ...(input.adminInstruction ? { adminInstruction: input.adminInstruction } : {}),
     });
     const metadata = {
@@ -79,6 +84,7 @@ export function createManualAgentRun(
       queuePriority: run.queuePriority,
       availableAt: run.availableAt.toISOString(),
       dailyMaximumOverride: run.dailyMaximumOverride,
+      provocationOverride: run.provocationOverride,
       saturationOverride: run.saturationOverride,
     };
     await appendAuditLog(transaction, {
@@ -167,6 +173,7 @@ export function previewBulkAgentRun(
       concurrency,
       saturationOverride: input.run.saturationOverride,
       dailyMaximumOverride: input.run.dailyMaximumOverride,
+      provocationOverride: input.run.provocationOverride,
       oldestQueuedAt: metrics.oldestQueued?.createdAt ?? null,
     };
   });
@@ -179,7 +186,10 @@ export function createBulkAgentRuns(
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
-    const agents = await listBulkRunAgents(transaction, bulkSelection(input));
+    const [agents, settings] = await Promise.all([
+      listBulkRunAgents(transaction, bulkSelection(input)),
+      getGlobalSettingsRecord(transaction),
+    ]);
     if (!input.allActive && agents.length !== input.agentIds?.length)
       throw new AppError(
         "AGENT_NOT_FOUND",
@@ -192,9 +202,9 @@ export function createBulkAgentRuns(
       const entryTarget = nonPublishing ? 0 : input.run.entryTarget;
       const timeoutSeconds =
         input.run.runType === "REFLECTION"
-          ? 600
+          ? settings.reflectionTimeoutSeconds
           : input.run.runType === "SOURCE_REFRESH"
-            ? 300
+            ? settings.sourceRefreshTimeoutSeconds
             : agent.manualTimeoutSeconds;
       runs.push(
         await createManualRunRecord(transaction, {
@@ -216,6 +226,7 @@ export function createBulkAgentRuns(
           allowSourceReading: input.run.allowSourceReading,
           saturationOverride: input.run.saturationOverride,
           dailyMaximumOverride: input.run.dailyMaximumOverride,
+          provocationOverride: input.run.provocationOverride,
           ...(input.run.adminInstruction ? { adminInstruction: input.run.adminInstruction } : {}),
         }),
       );

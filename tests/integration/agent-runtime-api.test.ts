@@ -667,6 +667,165 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ).toBe(1);
   });
 
+  it("enforces direct-response cooldowns and allows only an explicit admin run override", async () => {
+    const fixture = await createFixture();
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      { title: "provocation guard integration", entryBody: "Doğrudan tepki hedefi entry." },
+    );
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "provocation-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await integrationDatabase.agentAction.createMany({
+      data: [100, 101].map((sequence) => ({
+        runId,
+        agentProfileId: fixture.created.agent.profile.id,
+        sequence,
+        actionType: "CREATE_ENTRY",
+        actionStatus: "SUCCEEDED",
+        targetType: "USER",
+        targetId: fixture.admin.id,
+        input: { topicId: topic.topic.id, body: `Önceki doğrudan tepki ${sequence}.` },
+      })),
+    });
+    const propose = (sequence: number, body: string) =>
+      recordRuntimeActions(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        runtimeActionsSchema.parse({
+          workerId,
+          actions: [
+            {
+              sequence,
+              actionType: "CREATE_ENTRY",
+              targetType: "USER",
+              targetId: fixture.admin.id,
+              input: {
+                topicId: topic.topic.id,
+                replyToEntryId: topic.entry.id,
+                provocationSignal: 0.95,
+                body,
+              },
+              provenance: {
+                evidenceType: "PLATFORM_EVENT",
+                evidenceIds: [runId],
+                shortRationale: "Doğrudan tepki cooldown integration adayıdır.",
+              },
+            },
+          ],
+        }),
+      );
+    await propose(1, "Cooldown sınırında bu doğrudan tepki yayınlanmamalıdır.");
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "PROVOCATION_TARGET_COOLDOWN",
+    });
+    await integrationDatabase.agentRun.update({
+      where: { id: runId },
+      data: { provocationOverride: true },
+    });
+    await propose(2, "Açık admin override ile denetlenebilir doğrudan tepki yayınlanabilir.");
+    const overridden = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId,
+      sequence: 2,
+    });
+    expect(overridden, JSON.stringify(overridden)).toMatchObject({ actionStatus: "SUCCEEDED" });
+    expect(
+      await integrationDatabase.agentAction.findUniqueOrThrow({ where: { id: overridden.id } }),
+    ).toMatchObject({ targetType: "USER", targetId: fixture.admin.id });
+  });
+
+  it("blocks a fourth distinct agent from piling onto one user inside thirty minutes", async () => {
+    const fixture = await createFixture();
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      { title: "pile on guard integration", entryBody: "Pile-on hedefi insan entry'si." },
+    );
+    for (const persona of originalPersonaPack.personas.slice(1, 4)) {
+      const created = await createAgent(
+        integrationDatabase,
+        adminActor(fixture.admin.id),
+        createAgentSchema.parse({ persona }),
+      );
+      const run = await integrationDatabase.agentRun.create({
+        data: {
+          agentProfileId: created.agent.profile.id,
+          runType: "NORMAL_WAKE",
+          queuePriority: "SCHEDULED_CONTENT",
+          trigger: "PILE_ON_INTEGRATION_HISTORY",
+          personaVersionId: created.agent.personaVersion.id,
+          idempotencyKey: randomUUID(),
+          timeoutSeconds: 360,
+          desiredEntryMin: 1,
+          desiredEntryMax: 1,
+        },
+      });
+      await integrationDatabase.agentAction.create({
+        data: {
+          runId: run.id,
+          agentProfileId: created.agent.profile.id,
+          sequence: 1,
+          actionType: "CREATE_ENTRY",
+          actionStatus: "SUCCEEDED",
+          targetType: "USER",
+          targetId: fixture.admin.id,
+          input: { topicId: topic.topic.id, body: `Önceki farklı agent tepkisi ${run.id}.` },
+        },
+      });
+    }
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "pile-on-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            targetType: "USER",
+            targetId: fixture.admin.id,
+            input: {
+              topicId: topic.topic.id,
+              replyToEntryId: topic.entry.id,
+              provocationSignal: 0.2,
+              body: "Dördüncü farklı agent tepkisi pile-on sınırında yayınlanmamalıdır.",
+            },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Pile-on guard integration adayıdır.",
+            },
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "PROVOCATION_PILE_ON",
+    });
+  });
+
   it("rejects public writes from DRY_RUN without creating content", async () => {
     const fixture = await createFixture();
     await integrationDatabase.agentRun.update({

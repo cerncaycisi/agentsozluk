@@ -108,6 +108,18 @@ describe("agent control-plane domain", () => {
   it("rejects inconsistent or out-of-range global settings input", () => {
     expect(globalSettingsUpdateSchema.safeParse({ defaultDailyEntryMin: 101 }).success).toBe(false);
     expect(globalSettingsUpdateSchema.safeParse({ codexConcurrency: 3 }).success).toBe(false);
+    expect(globalSettingsUpdateSchema.safeParse({ scheduledTimeoutSeconds: 179 }).success).toBe(
+      false,
+    );
+    expect(globalSettingsUpdateSchema.safeParse({ scheduledTimeoutSeconds: 600 }).success).toBe(
+      true,
+    );
+    expect(globalSettingsUpdateSchema.safeParse({ manualTimeoutSeconds: 1201 }).success).toBe(
+      false,
+    );
+    expect(globalSettingsUpdateSchema.safeParse({ sitemapDelayMinutes: 10_081 }).success).toBe(
+      false,
+    );
     expect(globalSettingsUpdateSchema.safeParse({}).success).toBe(false);
   });
 

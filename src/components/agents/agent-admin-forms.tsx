@@ -175,6 +175,7 @@ interface RunConfig {
   allowSourceReading: boolean;
   saturationOverride: boolean;
   dailyMaximumOverride: boolean;
+  provocationOverride: boolean;
   adminInstruction: string;
   availableAt: string;
   priority: "NORMAL" | "EMERGENCY";
@@ -193,6 +194,7 @@ interface RunPreview {
   concurrency: number;
   saturationOverride: boolean;
   dailyMaximumOverride: boolean;
+  provocationOverride: boolean;
 }
 
 const initialRunConfig: RunConfig = {
@@ -204,6 +206,7 @@ const initialRunConfig: RunConfig = {
   allowSourceReading: true,
   saturationOverride: false,
   dailyMaximumOverride: false,
+  provocationOverride: false,
   adminInstruction: "",
   availableAt: "",
   priority: "NORMAL",
@@ -290,6 +293,7 @@ function RunConfigFields({
             ["allowSourceReading", "Source okuyabilir"],
             ["saturationOverride", "Saturation override"],
             ["dailyMaximumOverride", "Günlük maksimum override"],
+            ["provocationOverride", "Provokasyon cooldown override"],
           ] as const
         ).map(([key, label]) => (
           <label key={key} className="flex items-center gap-2 rounded-lg border p-3 font-bold">
@@ -1092,6 +1096,7 @@ export function GlobalAgentSettingsForm({
             "duplicateSimilarityThreshold",
             "degradedMode",
             "indexingMode",
+            "sitemapDelayMinutes",
           ].includes(key),
         ),
       ),

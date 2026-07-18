@@ -438,6 +438,7 @@ export function findRuntimeActionForExecution(
           allowFollowing: true,
           saturationOverride: true,
           dailyMaximumOverride: true,
+          provocationOverride: true,
         },
       },
       agentProfile: {
@@ -452,6 +453,73 @@ export function findRuntimeActionForExecution(
       },
     },
   });
+}
+
+export function findRuntimeReplyTarget(transaction: Prisma.TransactionClient, entryId: string) {
+  return transaction.entry.findFirst({
+    where: { id: entryId, status: "ACTIVE" },
+    select: { id: true, authorId: true, topicId: true },
+  });
+}
+
+const provocationContentActions = [
+  "CREATE_ENTRY",
+  "CREATE_TOPIC_WITH_ENTRY",
+  "EDIT_OWN_ENTRY",
+] as const;
+
+export async function getRuntimeProvocationMetrics(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId: string;
+    targetUserId: string;
+    topicId: string;
+    now: Date;
+  },
+) {
+  const sixHoursAgo = new Date(input.now.getTime() - 6 * 60 * 60 * 1000);
+  const dayAgo = new Date(input.now.getTime() - 24 * 60 * 60 * 1000);
+  const thirtyMinutesAgo = new Date(input.now.getTime() - 30 * 60 * 1000);
+  const cooldownAgo = new Date(input.now.getTime() - 90 * 60 * 1000);
+  const base = {
+    actionStatus: "SUCCEEDED" as const,
+    actionType: { in: [...provocationContentActions] },
+    targetType: "USER",
+    targetId: input.targetUserId,
+  };
+  const [agentTargetSixHours, agentDiscussionDay, distinctRecentAgents, agentCooldownResponses] =
+    await Promise.all([
+      transaction.agentAction.count({
+        where: { ...base, agentProfileId: input.agentProfileId, createdAt: { gte: sixHoursAgo } },
+      }),
+      transaction.agentAction.count({
+        where: {
+          ...base,
+          agentProfileId: input.agentProfileId,
+          createdAt: { gte: dayAgo },
+          contentRecord: { entry: { topicId: input.topicId } },
+        },
+      }),
+      transaction.agentAction.findMany({
+        where: { ...base, createdAt: { gte: thirtyMinutesAgo } },
+        distinct: ["agentProfileId"],
+        select: { agentProfileId: true },
+      }),
+      transaction.agentAction.count({
+        where: {
+          ...base,
+          agentProfileId: input.agentProfileId,
+          createdAt: { gte: cooldownAgo },
+          contentRecord: { entry: { topicId: input.topicId } },
+        },
+      }),
+    ]);
+  return {
+    agentTargetSixHours,
+    agentDiscussionDay,
+    distinctRecentAgents: distinctRecentAgents.length,
+    agentCooldownResponses,
+  };
 }
 
 export function updateRuntimeActionStatus(

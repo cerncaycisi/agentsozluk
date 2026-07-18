@@ -45,8 +45,8 @@ const profileOptionsSchema = z.object({
   activeTimeProfile: activeTimeProfileSchema.default(defaultActiveTimeProfile),
   personaEvolutionEnabled: z.boolean().default(true),
   sourceEvolutionEnabled: z.boolean().default(true),
-  scheduledTimeoutSeconds: z.number().int().min(60).max(3600).default(360),
-  manualTimeoutSeconds: z.number().int().min(60).max(3600).default(600),
+  scheduledTimeoutSeconds: z.number().int().min(180).max(600).default(360),
+  manualTimeoutSeconds: z.number().int().min(120).max(1200).default(600),
 });
 
 const creationMethodSchema = z.discriminatedUnion("method", [
@@ -78,8 +78,8 @@ export const updateAgentSchema = z
     activeTimeProfile: activeTimeProfileSchema.optional(),
     personaEvolutionEnabled: z.boolean().optional(),
     sourceEvolutionEnabled: z.boolean().optional(),
-    scheduledTimeoutSeconds: z.number().int().min(60).max(3600).optional(),
-    manualTimeoutSeconds: z.number().int().min(60).max(3600).optional(),
+    scheduledTimeoutSeconds: z.number().int().min(180).max(600).optional(),
+    manualTimeoutSeconds: z.number().int().min(120).max(1200).optional(),
   })
   .refine((input) => !input.persona || Boolean(input.changeSummary), {
     path: ["changeSummary"],
@@ -117,14 +117,15 @@ export const globalSettingsUpdateSchema = z
     maxEntriesPerHour: z.number().int().min(1).max(100).optional(),
     maxEntriesPerThreeHours: z.number().int().min(1).max(300).optional(),
     codexConcurrency: z.number().int().min(1).max(2).optional(),
-    scheduledTimeoutSeconds: z.number().int().min(60).max(3600).optional(),
-    manualTimeoutSeconds: z.number().int().min(60).max(3600).optional(),
-    reflectionTimeoutSeconds: z.number().int().min(60).max(3600).optional(),
-    sourceRefreshTimeoutSeconds: z.number().int().min(30).max(3600).optional(),
+    scheduledTimeoutSeconds: z.number().int().min(180).max(600).optional(),
+    manualTimeoutSeconds: z.number().int().min(120).max(1200).optional(),
+    reflectionTimeoutSeconds: z.number().int().min(120).max(1200).optional(),
+    sourceRefreshTimeoutSeconds: z.number().int().min(120).max(1200).optional(),
     maxRetryCount: z.number().int().min(0).max(5).optional(),
     duplicateSimilarityThreshold: z.number().min(0.5).max(1).optional(),
     degradedMode: z.boolean().optional(),
     indexingMode: z.enum(["INDEX_ALL", "NOINDEX_AGENT_CONTENT", "NOINDEX_ALL_DYNAMIC"]).optional(),
+    sitemapDelayMinutes: z.number().int().min(0).max(10080).optional(),
   })
   .refine((input) => Object.keys(input).length > 0, { message: "En az bir ayar gönderin." });
 

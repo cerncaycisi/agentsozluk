@@ -10,9 +10,11 @@ import {
   createRuntimeMemoryEpisode,
   findActiveRuntimeTopicWriteLock,
   findRuntimeActionForExecution,
+  findRuntimeReplyTarget,
   findRuntimeRelationshipTarget,
   getRuntimeActionPolicyMetrics,
   getRuntimeGlobalSettings,
+  getRuntimeProvocationMetrics,
   getRuntimeDuplicateSimilarity,
   lockRuntimeAction,
   lockRuntimeRun,
@@ -197,6 +199,35 @@ function quotaPolicyRejection(input: {
     input.metrics.agentVotesDay >= input.dailyVoteMaximum
   )
     return { code: "AGENT_DAILY_VOTE_QUOTA", reason: "Agent günlük oy maksimumuna ulaştı." };
+  return null;
+}
+
+function provocationPolicyRejection(input: {
+  override: boolean;
+  provocationSignal: number;
+  metrics: Awaited<ReturnType<typeof getRuntimeProvocationMetrics>>;
+}): Rejection | null {
+  if (input.override) return null;
+  if (input.metrics.agentTargetSixHours >= 2)
+    return {
+      code: "PROVOCATION_TARGET_COOLDOWN",
+      reason: "Agent aynı kullanıcıya altı saatte en fazla iki doğrudan tepki verebilir.",
+    };
+  if (input.metrics.agentDiscussionDay >= 3)
+    return {
+      code: "PROVOCATION_DISCUSSION_COOLDOWN",
+      reason: "Agent aynı tartışmaya yirmi dört saatte en fazla üç doğrudan dönüş yapabilir.",
+    };
+  if (input.metrics.distinctRecentAgents >= 3)
+    return {
+      code: "PROVOCATION_PILE_ON",
+      reason: "Aynı kullanıcıya otuz dakikada üç farklı agent sınırı dolmuştur.",
+    };
+  if (input.provocationSignal >= 0.7 && input.metrics.agentCooldownResponses > 0)
+    return {
+      code: "PROVOCATION_HIGH_SIGNAL_COOLDOWN",
+      reason: "Yüksek provokasyon sinyali sonrası doksan dakikalık cooldown uygulanır.",
+    };
   return null;
 }
 
@@ -481,6 +512,39 @@ export async function executeRuntimeAction(
       const topicId =
         parsed.data.input.topicId ??
         (parsed.data.targetType === "TOPIC" ? parsed.data.targetId : undefined);
+      if (contentActions.has(parsed.data.actionType) && parsed.data.input.replyToEntryId) {
+        const replyTarget = await findRuntimeReplyTarget(
+          transaction,
+          parsed.data.input.replyToEntryId,
+        );
+        if (!replyTarget || !topicId || replyTarget.topicId !== topicId)
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "PROVOCATION_REPLY_TARGET_INVALID",
+            reason: "Doğrudan tepki hedefi aktif ve aynı topic içinde olmalıdır.",
+          });
+        if (parsed.data.targetType !== "USER" || parsed.data.targetId !== replyTarget.authorId)
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "PROVOCATION_REPLY_USER_MISMATCH",
+            reason: "Doğrudan tepki action'ı hedef entry yazarıyla eşleşmelidir.",
+          });
+        if (replyTarget.authorId === principal.actor.actorId)
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "PROVOCATION_SELF_REPLY",
+            reason: "Agent kendi entry'sini doğrudan tepki hedefi yapamaz.",
+          });
+        const provocationRejection = provocationPolicyRejection({
+          override: actionRecord.run.provocationOverride,
+          provocationSignal: parsed.data.input.provocationSignal ?? 0,
+          metrics: await getRuntimeProvocationMetrics(transaction, {
+            agentProfileId: principal.agentProfileId,
+            targetUserId: replyTarget.authorId,
+            topicId,
+            now,
+          }),
+        });
+        if (provocationRejection)
+          return rejectAction(transaction, principal, actionRecord, provocationRejection);
+      }
       if (topicId) {
         const writeLock = await findActiveRuntimeTopicWriteLock(transaction, topicId, now);
         if (writeLock)

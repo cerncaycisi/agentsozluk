@@ -3,7 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { RuntimeControlPlane } from "@/runtime/control-plane-client";
 import type { RuntimeProvider } from "@/runtime/provider";
 import { RuntimeProviderCancelledError } from "@/runtime/provider";
-import { AgentRuntimeWorker, RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/worker";
+import {
+  AgentRuntimeWorker,
+  DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS,
+  RUNTIME_PROMPT_PROFILE_HASH,
+} from "@/runtime/worker";
 
 function fixtureContext(runId: string) {
   return {
@@ -57,6 +61,10 @@ function controlPlane(runId: string): RuntimeControlPlane {
 }
 
 describe("long-lived agent runtime worker", () => {
+  it("uses a production heartbeat interval below the fifteen-second ceiling", () => {
+    expect(DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS).toBeLessThanOrEqual(15_000);
+  });
+
   it("leases, validates structured output, executes actions and completes through the API", async () => {
     const runId = randomUUID();
     const plane = controlPlane(runId);

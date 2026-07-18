@@ -26,6 +26,7 @@ export function createManualRunRecord(
     allowSourceReading: boolean;
     saturationOverride: boolean;
     dailyMaximumOverride: boolean;
+    provocationOverride: boolean;
     adminInstruction?: string;
     idempotencySuffix?: string;
     trigger?: string;
@@ -52,6 +53,7 @@ export function createManualRunRecord(
       allowSourceReading: input.allowSourceReading,
       saturationOverride: input.saturationOverride,
       dailyMaximumOverride: input.dailyMaximumOverride,
+      provocationOverride: input.provocationOverride,
       ...(input.adminInstruction ? { adminInstruction: input.adminInstruction } : {}),
     },
   });
@@ -152,6 +154,7 @@ export function createRetryRunRecord(
       allowSourceReading: input.run.allowSourceReading,
       saturationOverride: input.run.saturationOverride,
       dailyMaximumOverride: input.run.dailyMaximumOverride,
+      provocationOverride: input.run.provocationOverride,
       adminInstruction: input.run.adminInstruction,
     },
   });
