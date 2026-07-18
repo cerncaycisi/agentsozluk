@@ -147,6 +147,7 @@ export interface ApplyWeeklyPersonaEvolutionInput {
   currentPersona: unknown;
   delta: unknown;
   existingPersonas?: unknown[];
+  previousWeeklyDeltas?: unknown[];
 }
 
 const PRECISION = 12;
@@ -160,6 +161,71 @@ function evolutionError(reasonCode: string, message: string, field: string): App
   return new AppError("VALIDATION_ERROR", 422, message, { [field]: [message] }, undefined, {
     reasonCode,
   });
+}
+
+type DeltaCollectionName = Exclude<keyof WeeklyPersonaEvolutionDelta, "safeSummary">;
+
+const weeklyDeltaCollections = [
+  { field: "interestDeltas", target: "key", bound: WEEKLY_PERSONA_EVOLUTION_BOUNDS.interest },
+  {
+    field: "sourceTrustDeltas",
+    target: "sourceId",
+    bound: WEEKLY_PERSONA_EVOLUTION_BOUNDS.sourceTrust,
+  },
+  {
+    field: "relationshipTrustDeltas",
+    target: "targetUserId",
+    bound: WEEKLY_PERSONA_EVOLUTION_BOUNDS.relationshipTrust,
+  },
+  {
+    field: "beliefConfidenceDeltas",
+    target: "topicKey",
+    bound: WEEKLY_PERSONA_EVOLUTION_BOUNDS.beliefConfidence,
+  },
+  {
+    field: "temperamentDeltas",
+    target: "key",
+    bound: WEEKLY_PERSONA_EVOLUTION_BOUNDS.temperament,
+  },
+  {
+    field: "coreValueDeltas",
+    target: "key",
+    bound: WEEKLY_PERSONA_EVOLUTION_BOUNDS.coreValue,
+  },
+] as const satisfies ReadonlyArray<{
+  field: DeltaCollectionName;
+  target: string;
+  bound: number;
+}>;
+
+export function assertWeeklyPersonaEvolutionBudget(input: {
+  delta: unknown;
+  previousWeeklyDeltas?: unknown[];
+}): WeeklyPersonaEvolutionDelta {
+  const delta = weeklyPersonaEvolutionDeltaSchema.parse(input.delta);
+  const previous = (input.previousWeeklyDeltas ?? []).map((candidate) =>
+    weeklyPersonaEvolutionDeltaSchema.parse(candidate),
+  );
+  for (const collection of weeklyDeltaCollections) {
+    const totals = new Map<string, number>();
+    for (const candidate of [...previous, delta]) {
+      const values = candidate[collection.field] as Array<Record<string, string | number>>;
+      for (const value of values) {
+        const target = String(value[collection.target]);
+        totals.set(target, rounded((totals.get(target) ?? 0) + Number(value.delta)));
+      }
+    }
+    for (const [target, total] of totals) {
+      if (Math.abs(total) > collection.bound + NORMALIZATION_EPSILON) {
+        throw evolutionError(
+          "PERSONA_WEEKLY_DELTA_BUDGET_EXCEEDED",
+          "Aynı hedef için haftalık persona evolution sınırı aşılamaz.",
+          `${collection.field}.${target}`,
+        );
+      }
+    }
+  }
+  return delta;
 }
 
 function boundedResult(current: number, delta: number, path: string): number {
@@ -314,7 +380,10 @@ export function applyWeeklyPersonaEvolution(
   input: ApplyWeeklyPersonaEvolutionInput,
 ): AppliedWeeklyPersonaEvolution {
   const current = seedPersonaSchema.parse(input.currentPersona);
-  const delta = weeklyPersonaEvolutionDeltaSchema.parse(input.delta);
+  const delta = assertWeeklyPersonaEvolutionBudget({
+    delta: input.delta,
+    previousWeeklyDeltas: input.previousWeeklyDeltas,
+  });
   assertPinnedPathsResolve(current);
 
   const temperamentDeltas = new Map(

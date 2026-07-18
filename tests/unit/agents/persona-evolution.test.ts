@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   applyWeeklyPersonaEvolution,
+  assertWeeklyPersonaEvolutionBudget,
   WEEKLY_PERSONA_EVOLUTION_BOUNDS,
   weeklyPersonaEvolutionDeltaSchema,
 } from "@/modules/agents/domain/persona-evolution";
@@ -47,6 +48,49 @@ describe("weekly persona evolution domain", () => {
         ],
       }),
     ).toBeTruthy();
+  });
+
+  it("enforces cumulative per-target weekly budgets across reflection versions", () => {
+    const sourceId = randomUUID();
+    const previous = {
+      ...emptyDelta(),
+      interestDeltas: [
+        { key: "dijital kültür", delta: 0.04 },
+        { key: "şehir altyapısı", delta: -0.04 },
+      ],
+      sourceTrustDeltas: [{ sourceId, delta: 0.06 }],
+    };
+    expect(
+      assertWeeklyPersonaEvolutionBudget({
+        previousWeeklyDeltas: [previous],
+        delta: {
+          ...emptyDelta(),
+          interestDeltas: [
+            { key: "dijital kültür", delta: 0.04 },
+            { key: "şehir altyapısı", delta: -0.04 },
+          ],
+          sourceTrustDeltas: [{ sourceId, delta: 0.04 }],
+        },
+      }),
+    ).toBeTruthy();
+    expect(() =>
+      assertWeeklyPersonaEvolutionBudget({
+        previousWeeklyDeltas: [previous],
+        delta: {
+          ...emptyDelta(),
+          interestDeltas: [
+            { key: "dijital kültür", delta: 0.041 },
+            { key: "şehir altyapısı", delta: -0.041 },
+          ],
+        },
+      }),
+    ).toThrow(/haftalık persona evolution sınırı/iu);
+    expect(() =>
+      assertWeeklyPersonaEvolutionBudget({
+        previousWeeklyDeltas: [previous],
+        delta: { ...emptyDelta(), sourceTrustDeltas: [{ sourceId, delta: 0.041 }] },
+      }),
+    ).toThrow(/haftalık persona evolution sınırı/iu);
   });
 
   it.each([
