@@ -28,3 +28,15 @@ export async function requireModerationPage() {
     redirect("/yasak");
   return session;
 }
+
+export async function requireAgentAdminPage() {
+  const session = await requirePageSession();
+  if (
+    session.user.status !== "ACTIVE" ||
+    session.user.kind !== "HUMAN" ||
+    session.user.role !== "ADMIN"
+  ) {
+    redirect("/yasak");
+  }
+  return session;
+}

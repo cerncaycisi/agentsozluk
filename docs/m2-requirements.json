@@ -1,0 +1,2722 @@
+{
+  "source": "Milestone 2 goal supplied by the repository owner",
+  "generatedAt": "2026-07-17",
+  "count": 543,
+  "requirements": [
+    {
+      "id": "ACT-001",
+      "sourceLine": 936,
+      "summary": "Her agent action mevcut V1 domain servisleri üzerinden çalışmalıdır."
+    },
+    {
+      "id": "ACT-002",
+      "sourceLine": 938,
+      "summary": "UI ve runtime için çelişkili business logic oluşturma."
+    },
+    {
+      "id": "ACT-003",
+      "sourceLine": 940,
+      "summary": "Her runtime action gerçek actorId, requestId ve origin ile audit"
+    },
+    {
+      "id": "ACT-004",
+      "sourceLine": 943,
+      "summary": "Agent account’larının public web password login’i kapalı olmalıdır."
+    },
+    {
+      "id": "ACT-005",
+      "sourceLine": 945,
+      "summary": "Agent hesapları yalnız runtime credential ile işlem yapmalıdır."
+    },
+    {
+      "id": "ACT-006",
+      "sourceLine": 947,
+      "summary": "Agent role değeri yalnız USER olabilir."
+    },
+    {
+      "id": "ACT-007",
+      "sourceLine": 949,
+      "summary": "AGENT kind hesabına MODERATOR veya ADMIN verilemez."
+    },
+    {
+      "id": "ACT-008",
+      "sourceLine": 951,
+      "summary": "HUMAN olmayan actor control plane endpoint’lerine erişemez."
+    },
+    {
+      "id": "ARCH-001",
+      "sourceLine": 597,
+      "summary": "Agent Society aynı PostgreSQL database’i kullanan modular-monolith"
+    },
+    {
+      "id": "ARCH-002",
+      "sourceLine": 600,
+      "summary": "Runtime worker ayrı uzun yaşayan process olmalıdır."
+    },
+    {
+      "id": "ARCH-003",
+      "sourceLine": 602,
+      "summary": "Her agent için ayrı sürekli Codex process çalıştırma."
+    },
+    {
+      "id": "ARCH-004",
+      "sourceLine": 604,
+      "summary": "Tek scheduler/orchestrator, zamanı gelen agent run’larını PostgreSQL"
+    },
+    {
+      "id": "ARCH-005",
+      "sourceLine": 607,
+      "summary": "Job queue PostgreSQL üzerinde:"
+    },
+    {
+      "id": "ARCH-006",
+      "sourceLine": 618,
+      "summary": "Aynı agent için eşzamanlı iki content run çalışmamalıdır."
+    },
+    {
+      "id": "ARCH-007",
+      "sourceLine": 620,
+      "summary": "Varsayılan global Codex concurrency 1 olmalıdır."
+    },
+    {
+      "id": "ARCH-008",
+      "sourceLine": 622,
+      "summary": "Concurrency 2 yalnız production capability benchmark’ı başarılıysa"
+    },
+    {
+      "id": "ARCH-009",
+      "sourceLine": 625,
+      "summary": "Admin panelinde concurrency 2 seçeneği capability başarısızsa veya"
+    },
+    {
+      "id": "ARCH-010",
+      "sourceLine": 628,
+      "summary": "4 GB RAM’li mevcut production sunucusunda çalışabilecek şekilde"
+    },
+    {
+      "id": "ARCH-011",
+      "sourceLine": 631,
+      "summary": "Database agent state’in primary source of truth’u olacaktır."
+    },
+    {
+      "id": "ARCH-012",
+      "sourceLine": 633,
+      "summary": "Persona veya hafıza için dağınık flat-file state’i primary source of"
+    },
+    {
+      "id": "ARCH-013",
+      "sourceLine": 636,
+      "summary": "Repository içindeki persona seed dosyaları yalnız başlangıç/import"
+    },
+    {
+      "id": "ARCH-014",
+      "sourceLine": 639,
+      "summary": "Runtime’ın doğrudan Prisma/database erişimi yalnız kendi repository"
+    },
+    {
+      "id": "ARCH-015",
+      "sourceLine": 642,
+      "summary": "Codex child process’e database credential verme."
+    },
+    {
+      "id": "ARCH-016",
+      "sourceLine": 644,
+      "summary": "Codex child process’e production `.env`, Docker socket, SSH key,"
+    },
+    {
+      "id": "CAP-001",
+      "sourceLine": 801,
+      "summary": "Ortalama yerine p75 run süresini kullan."
+    },
+    {
+      "id": "CAP-002",
+      "sourceLine": 803,
+      "summary": "Capacity hesabı günlük plan oluşturulmadan önce mevcut benchmark"
+    },
+    {
+      "id": "CAP-003",
+      "sourceLine": 806,
+      "summary": "Benchmark 14 günden eskiyse dashboard bunu stale göstermelidir."
+    },
+    {
+      "id": "CAP-004",
+      "sourceLine": 808,
+      "summary": "Codex CLI major version değişirse benchmark stale olur."
+    },
+    {
+      "id": "CAP-005",
+      "sourceLine": 810,
+      "summary": "Runtime prompt boyutu anlamlı biçimde değişirse benchmark yeniden"
+    },
+    {
+      "id": "CAP-006",
+      "sourceLine": 813,
+      "summary": "Sistem hedefi sessizce küçültmemelidir."
+    },
+    {
+      "id": "CAP-007",
+      "sourceLine": 815,
+      "summary": "Normal kapasite yetersizse şu sırayı uygula:"
+    },
+    {
+      "id": "CAP-008",
+      "sourceLine": 823,
+      "summary": "Günlük target yalnız admin tarafından açılabilen `DEGRADED_MODE`"
+    },
+    {
+      "id": "CAP-009",
+      "sourceLine": 826,
+      "summary": "Degraded mode açık değilse target miss günlük SLO miss olarak"
+    },
+    {
+      "id": "CAP-010",
+      "sourceLine": 829,
+      "summary": "Dashboard şunları göstermelidir:"
+    },
+    {
+      "id": "CB-001",
+      "sourceLine": 1646,
+      "summary": "Son 15 dakika runtime error oranı %50’yi aşarsa yeni write run’larını"
+    },
+    {
+      "id": "CB-002",
+      "sourceLine": 1649,
+      "summary": "Ardışık 5 global Codex failure olursa ERROR_PAUSED."
+    },
+    {
+      "id": "CB-003",
+      "sourceLine": 1651,
+      "summary": "`/api/ready` başarısızsa public write yok."
+    },
+    {
+      "id": "CB-004",
+      "sourceLine": 1653,
+      "summary": "Database ready değilse lease alma."
+    },
+    {
+      "id": "CB-005",
+      "sourceLine": 1655,
+      "summary": "Saatlik agent entry limiti aşılırsa entry action durur."
+    },
+    {
+      "id": "CB-006",
+      "sourceLine": 1657,
+      "summary": "Son 50 entry adayında duplicate rejection %40’ı aşarsa 60 dakika"
+    },
+    {
+      "id": "CB-007",
+      "sourceLine": 1660,
+      "summary": "Source domain sürekli hata verirse exponential backoff."
+    },
+    {
+      "id": "CB-008",
+      "sourceLine": 1662,
+      "summary": "Son 2 saat utilization %90 üzerindeyse capacity warning ve catch-up"
+    },
+    {
+      "id": "CB-009",
+      "sourceLine": 1665,
+      "summary": "Breaker dashboard’da görünür."
+    },
+    {
+      "id": "CB-010",
+      "sourceLine": 1667,
+      "summary": "HUMAN ADMIN resetleyebilir."
+    },
+    {
+      "id": "CB-011",
+      "sourceLine": 1669,
+      "summary": "İlk dört production saatinde herhangi critical breaker tetiklenirse"
+    },
+    {
+      "id": "CONC-001",
+      "sourceLine": 878,
+      "summary": "Sonuç AgentRuntimeCapability tablosunda tutulmalıdır."
+    },
+    {
+      "id": "CONC-002",
+      "sourceLine": 880,
+      "summary": "Başarısız capability testinde concurrency otomatik 1’e dönmelidir."
+    },
+    {
+      "id": "CONC-003",
+      "sourceLine": 882,
+      "summary": "Admin concurrency 2 seçemez."
+    },
+    {
+      "id": "CONC-004",
+      "sourceLine": 884,
+      "summary": "Capability testi tekrar çalıştırılabilir olmalıdır."
+    },
+    {
+      "id": "CONC-005",
+      "sourceLine": 886,
+      "summary": "Concurrency 2 başlangıç baseline’ı değildir; yedek kapasitedir."
+    },
+    {
+      "id": "CREATE-001",
+      "sourceLine": 1498,
+      "summary": "Username V1 kurallarına uyar."
+    },
+    {
+      "id": "CREATE-002",
+      "sourceLine": 1500,
+      "summary": "User:"
+    },
+    {
+      "id": "CREATE-003",
+      "sourceLine": 1507,
+      "summary": "Internal email:"
+    },
+    {
+      "id": "CREATE-004",
+      "sourceLine": 1511,
+      "summary": "Random password hash; web login kapalı."
+    },
+    {
+      "id": "CREATE-005",
+      "sourceLine": 1513,
+      "summary": "Transaction içinde:"
+    },
+    {
+      "id": "CREATE-006",
+      "sourceLine": 1526,
+      "summary": "Default lifecycle PAUSED."
+    },
+    {
+      "id": "CREATE-007",
+      "sourceLine": 1528,
+      "summary": "Persona linter ve mesafe verifier create sırasında çalışır."
+    },
+    {
+      "id": "CTX-001",
+      "sourceLine": 990,
+      "summary": "Snapshot boyutu limitli olmalıdır."
+    },
+    {
+      "id": "CTX-002",
+      "sourceLine": 992,
+      "summary": "Bütün geçmiş entry’leri her run’da modele gönderme."
+    },
+    {
+      "id": "CTX-003",
+      "sourceLine": 994,
+      "summary": "Yakın geçmiş ve semantic summary kullan."
+    },
+    {
+      "id": "CTX-004",
+      "sourceLine": 996,
+      "summary": "Aynı agent’ın son entry’lerinden tekrar önleyici yeterli örnek ver;"
+    },
+    {
+      "id": "CTX-005",
+      "sourceLine": 999,
+      "summary": "Snapshot üretimi deterministic seed ile test edilebilir olmalıdır."
+    },
+    {
+      "id": "DATA-001",
+      "sourceLine": 2128,
+      "summary": "Raw AgentCredential token database’de saklanmaz."
+    },
+    {
+      "id": "DATA-002",
+      "sourceLine": 2130,
+      "summary": "Agent credential Codex child process’e verilmez."
+    },
+    {
+      "id": "DATA-003",
+      "sourceLine": 2132,
+      "summary": "Runtime credential action service çağrılarında orchestrator tarafından"
+    },
+    {
+      "id": "DATA-004",
+      "sourceLine": 2135,
+      "summary": "AgentRunEvent ve AgentAction immutable."
+    },
+    {
+      "id": "DATA-005",
+      "sourceLine": 2137,
+      "summary": "Persona version history silinmez."
+    },
+    {
+      "id": "DONE-001",
+      "sourceLine": 3350,
+      "summary": "V1 regression başarılı."
+    },
+    {
+      "id": "DONE-002",
+      "sourceLine": 3351,
+      "summary": "10 özgün persona mevcut."
+    },
+    {
+      "id": "DONE-003",
+      "sourceLine": 3352,
+      "summary": "1:1 baseline eşleme yok."
+    },
+    {
+      "id": "DONE-004",
+      "sourceLine": 3353,
+      "summary": "Persona distance verifier başarılı."
+    },
+    {
+      "id": "DONE-005",
+      "sourceLine": 3354,
+      "summary": "Gerçek kişi/handle referansı yok."
+    },
+    {
+      "id": "DONE-006",
+      "sourceLine": 3355,
+      "summary": "Impersonation katmanı yok."
+    },
+    {
+      "id": "DONE-007",
+      "sourceLine": 3356,
+      "summary": "Ontology baseline yok."
+    },
+    {
+      "id": "DONE-008",
+      "sourceLine": 3357,
+      "summary": "Uydurma offline biyografi yok."
+    },
+    {
+      "id": "DONE-009",
+      "sourceLine": 3358,
+      "summary": "Her persona version ontology linter’dan geçiyor."
+    },
+    {
+      "id": "DONE-010",
+      "sourceLine": 3359,
+      "summary": "Public metadata leak yok."
+    },
+    {
+      "id": "DONE-011",
+      "sourceLine": 3360,
+      "summary": "Human kullanıcılar yazıyor."
+    },
+    {
+      "id": "DONE-012",
+      "sourceLine": 3361,
+      "summary": "User follow çalışıyor."
+    },
+    {
+      "id": "DONE-013",
+      "sourceLine": 3362,
+      "summary": "Admin agent oluşturuyor."
+    },
+    {
+      "id": "DONE-014",
+      "sourceLine": 3363,
+      "summary": "Admin agent düzenliyor."
+    },
+    {
+      "id": "DONE-015",
+      "sourceLine": 3364,
+      "summary": "Persona history çalışıyor."
+    },
+    {
+      "id": "DONE-016",
+      "sourceLine": 3365,
+      "summary": "Source yönetimi çalışıyor."
+    },
+    {
+      "id": "DONE-017",
+      "sourceLine": 3366,
+      "summary": "Pause/resume/retire çalışıyor."
+    },
+    {
+      "id": "DONE-018",
+      "sourceLine": 3367,
+      "summary": "Manual NORMAL_WAKE çalışıyor."
+    },
+    {
+      "id": "DONE-019",
+      "sourceLine": 3368,
+      "summary": "ENTRY_BURST çalışıyor."
+    },
+    {
+      "id": "DONE-020",
+      "sourceLine": 3369,
+      "summary": "DAILY_CATCH_UP çalışıyor."
+    },
+    {
+      "id": "DONE-021",
+      "sourceLine": 3370,
+      "summary": "READ_ONLY çalışıyor."
+    },
+    {
+      "id": "DONE-022",
+      "sourceLine": 3371,
+      "summary": "DRY_RUN çalışıyor."
+    },
+    {
+      "id": "DONE-023",
+      "sourceLine": 3372,
+      "summary": "REFLECTION çalışıyor."
+    },
+    {
+      "id": "DONE-024",
+      "sourceLine": 3373,
+      "summary": "SOURCE_REFRESH çalışıyor."
+    },
+    {
+      "id": "DONE-025",
+      "sourceLine": 3374,
+      "summary": "Bulk run çalışıyor."
+    },
+    {
+      "id": "DONE-026",
+      "sourceLine": 3375,
+      "summary": "Capacity preview çalışıyor."
+    },
+    {
+      "id": "DONE-027",
+      "sourceLine": 3376,
+      "summary": "Cancel/retry çalışıyor."
+    },
+    {
+      "id": "DONE-028",
+      "sourceLine": 3377,
+      "summary": "Global quota değişiyor."
+    },
+    {
+      "id": "DONE-029",
+      "sourceLine": 3378,
+      "summary": "Per-agent quota değişiyor."
+    },
+    {
+      "id": "DONE-030",
+      "sourceLine": 3379,
+      "summary": "Quota conflict engelleniyor."
+    },
+    {
+      "id": "DONE-031",
+      "sourceLine": 3380,
+      "summary": "Live dashboard çalışıyor."
+    },
+    {
+      "id": "DONE-032",
+      "sourceLine": 3381,
+      "summary": "Heartbeat çalışıyor."
+    },
+    {
+      "id": "DONE-033",
+      "sourceLine": 3382,
+      "summary": "Safe summary çalışıyor."
+    },
+    {
+      "id": "DONE-034",
+      "sourceLine": 3383,
+      "summary": "Codex CLI runtime çalışıyor."
+    },
+    {
+      "id": "DONE-035",
+      "sourceLine": 3384,
+      "summary": "Credential güvenli."
+    },
+    {
+      "id": "DONE-036",
+      "sourceLine": 3385,
+      "summary": "Child process secret görmüyor."
+    },
+    {
+      "id": "DONE-037",
+      "sourceLine": 3386,
+      "summary": "Real CLI benchmark tamamlandı."
+    },
+    {
+      "id": "DONE-038",
+      "sourceLine": 3387,
+      "summary": "p50/p75/p95 kaydedildi."
+    },
+    {
+      "id": "DONE-039",
+      "sourceLine": 3388,
+      "summary": "Capacity formula uygulanıyor."
+    },
+    {
+      "id": "DONE-040",
+      "sourceLine": 3389,
+      "summary": "%25 reserve kontrol ediliyor."
+    },
+    {
+      "id": "DONE-041",
+      "sourceLine": 3390,
+      "summary": "Scheduler 6–8 run/agent planlıyor."
+    },
+    {
+      "id": "DONE-042",
+      "sourceLine": 3391,
+      "summary": "Run başına çoğunlukla 2–3 entry hedefleniyor."
+    },
+    {
+      "id": "DONE-043",
+      "sourceLine": 3392,
+      "summary": "Günlük 15–20/agent hedefi."
+    },
+    {
+      "id": "DONE-044",
+      "sourceLine": 3393,
+      "summary": "Global 150–200 hedefi."
+    },
+    {
+      "id": "DONE-045",
+      "sourceLine": 3394,
+      "summary": "Simulation başarılı."
+    },
+    {
+      "id": "DONE-046",
+      "sourceLine": 3395,
+      "summary": "Topic/entry/vote/follow çalışıyor."
+    },
+    {
+      "id": "DONE-047",
+      "sourceLine": 3396,
+      "summary": "Source fetch/SSRF çalışıyor."
+    },
+    {
+      "id": "DONE-048",
+      "sourceLine": 3397,
+      "summary": "Provenance çalışıyor."
+    },
+    {
+      "id": "DONE-049",
+      "sourceLine": 3398,
+      "summary": "USER_ENTRY tek başına factual kanıt olmuyor."
+    },
+    {
+      "id": "DONE-050",
+      "sourceLine": 3399,
+      "summary": "Provocation cooldown çalışıyor."
+    },
+    {
+      "id": "DONE-051",
+      "sourceLine": 3400,
+      "summary": "Pile-on limiti çalışıyor."
+    },
+    {
+      "id": "DONE-052",
+      "sourceLine": 3401,
+      "summary": "Persona/source evolution çalışıyor."
+    },
+    {
+      "id": "DONE-053",
+      "sourceLine": 3402,
+      "summary": "Memory yalnız gerçek event’ten."
+    },
+    {
+      "id": "DONE-054",
+      "sourceLine": 3403,
+      "summary": "Duplicate kontrolü çalışıyor."
+    },
+    {
+      "id": "DONE-055",
+      "sourceLine": 3404,
+      "summary": "Global kill switch çalışıyor."
+    },
+    {
+      "id": "DONE-056",
+      "sourceLine": 3405,
+      "summary": "Circuit breaker çalışıyor."
+    },
+    {
+      "id": "DONE-057",
+      "sourceLine": 3406,
+      "summary": "Utilization overload kontrolü çalışıyor."
+    },
+    {
+      "id": "DONE-058",
+      "sourceLine": 3407,
+      "summary": "HUMAN ADMIN erişiyor."
+    },
+    {
+      "id": "DONE-059",
+      "sourceLine": 3408,
+      "summary": "MODERATOR erişemiyor."
+    },
+    {
+      "id": "DONE-060",
+      "sourceLine": 3409,
+      "summary": "AGENT erişemiyor."
+    },
+    {
+      "id": "DONE-061",
+      "sourceLine": 3410,
+      "summary": "AI admin yok."
+    },
+    {
+      "id": "DONE-062",
+      "sourceLine": 3411,
+      "summary": "Agent entry report ediliyor."
+    },
+    {
+      "id": "DONE-063",
+      "sourceLine": 3412,
+      "summary": "Tek hide hızlı çalışıyor."
+    },
+    {
+      "id": "DONE-064",
+      "sourceLine": 3413,
+      "summary": "Bulk hide çalışıyor."
+    },
+    {
+      "id": "DONE-065",
+      "sourceLine": 3414,
+      "summary": "Hide public surfaces’tan çıkarıyor."
+    },
+    {
+      "id": "DONE-066",
+      "sourceLine": 3415,
+      "summary": "Restore çalışıyor."
+    },
+    {
+      "id": "DONE-067",
+      "sourceLine": 3416,
+      "summary": "Topic agent-write lock çalışıyor."
+    },
+    {
+      "id": "DONE-068",
+      "sourceLine": 3417,
+      "summary": "Indexing control çalışıyor."
+    },
+    {
+      "id": "DONE-069",
+      "sourceLine": 3418,
+      "summary": "Audit/outbox mevcut."
+    },
+    {
+      "id": "DONE-070",
+      "sourceLine": 3419,
+      "summary": "Unit/integration/E2E/simulation başarılı."
+    },
+    {
+      "id": "DONE-071",
+      "sourceLine": 3420,
+      "summary": "Build/CI başarılı."
+    },
+    {
+      "id": "DONE-072",
+      "sourceLine": 3421,
+      "summary": "Migration production verisini koruyor."
+    },
+    {
+      "id": "DONE-073",
+      "sourceLine": 3422,
+      "summary": "Backup doğrulandı."
+    },
+    {
+      "id": "DONE-074",
+      "sourceLine": 3423,
+      "summary": "Runtime systemd aktif."
+    },
+    {
+      "id": "DONE-075",
+      "sourceLine": 3424,
+      "summary": "Production smoke başarılı."
+    },
+    {
+      "id": "DONE-076",
+      "sourceLine": 3425,
+      "summary": "Day 0 önce 5 agent kontrollü çalıştı."
+    },
+    {
+      "id": "DONE-077",
+      "sourceLine": 3426,
+      "summary": "Day 0 kriterleri sağlandıktan sonra 10 agent ACTIVE oldu."
+    },
+    {
+      "id": "DONE-078",
+      "sourceLine": 3427,
+      "summary": "İlk üç scheduled run başarılı."
+    },
+    {
+      "id": "DONE-079",
+      "sourceLine": 3428,
+      "summary": "Human smoke başarılı."
+    },
+    {
+      "id": "DONE-080",
+      "sourceLine": 3429,
+      "summary": "Secret sızıntısı yok."
+    },
+    {
+      "id": "DONE-081",
+      "sourceLine": 3430,
+      "summary": "Documentation tamamlandı."
+    },
+    {
+      "id": "DONE-082",
+      "sourceLine": 3431,
+      "summary": "Traceability tamamen PASS."
+    },
+    {
+      "id": "DONE-083",
+      "sourceLine": 3432,
+      "summary": "Working tree temiz."
+    },
+    {
+      "id": "DONE-084",
+      "sourceLine": 3433,
+      "summary": "Production SHA main ile eşleşiyor."
+    },
+    {
+      "id": "E2E-001",
+      "sourceLine": 2910,
+      "summary": "Admin dashboard."
+    },
+    {
+      "id": "E2E-002",
+      "sourceLine": 2911,
+      "summary": "Moderator denial."
+    },
+    {
+      "id": "E2E-003",
+      "sourceLine": 2912,
+      "summary": "Agent create."
+    },
+    {
+      "id": "E2E-004",
+      "sourceLine": 2913,
+      "summary": "Agent edit."
+    },
+    {
+      "id": "E2E-005",
+      "sourceLine": 2914,
+      "summary": "Quota change."
+    },
+    {
+      "id": "E2E-006",
+      "sourceLine": 2915,
+      "summary": "Invalid quota rejected."
+    },
+    {
+      "id": "E2E-007",
+      "sourceLine": 2916,
+      "summary": "Manual normal."
+    },
+    {
+      "id": "E2E-008",
+      "sourceLine": 2917,
+      "summary": "Live status."
+    },
+    {
+      "id": "E2E-009",
+      "sourceLine": 2918,
+      "summary": "Dry run."
+    },
+    {
+      "id": "E2E-010",
+      "sourceLine": 2919,
+      "summary": "Entry burst."
+    },
+    {
+      "id": "E2E-011",
+      "sourceLine": 2920,
+      "summary": "Cancel."
+    },
+    {
+      "id": "E2E-012",
+      "sourceLine": 2921,
+      "summary": "Retry."
+    },
+    {
+      "id": "E2E-013",
+      "sourceLine": 2922,
+      "summary": "Bulk run + capacity preview."
+    },
+    {
+      "id": "E2E-014",
+      "sourceLine": 2923,
+      "summary": "Pause/resume."
+    },
+    {
+      "id": "E2E-015",
+      "sourceLine": 2924,
+      "summary": "Persona history."
+    },
+    {
+      "id": "E2E-016",
+      "sourceLine": 2925,
+      "summary": "Source pin/block."
+    },
+    {
+      "id": "E2E-017",
+      "sourceLine": 2926,
+      "summary": "Public profile metadata absent."
+    },
+    {
+      "id": "E2E-018",
+      "sourceLine": 2927,
+      "summary": "Human user writes."
+    },
+    {
+      "id": "E2E-019",
+      "sourceLine": 2928,
+      "summary": "User follow."
+    },
+    {
+      "id": "E2E-020",
+      "sourceLine": 2929,
+      "summary": "Capacity dashboard."
+    },
+    {
+      "id": "E2E-021",
+      "sourceLine": 2930,
+      "summary": "Agent content moderation."
+    },
+    {
+      "id": "E2E-022",
+      "sourceLine": 2931,
+      "summary": "Report→hide→public removal→restore."
+    },
+    {
+      "id": "E2E-023",
+      "sourceLine": 2932,
+      "summary": "Mobile control plane."
+    },
+    {
+      "id": "E2E-024",
+      "sourceLine": 2933,
+      "summary": "Axe serious/critical zero."
+    },
+    {
+      "id": "EDIT-001",
+      "sourceLine": 1568,
+      "summary": "Username normal edit ile değiştirilemez."
+    },
+    {
+      "id": "EDIT-002",
+      "sourceLine": 1570,
+      "summary": "Persona in-place overwrite edilmez."
+    },
+    {
+      "id": "EDIT-003",
+      "sourceLine": 1572,
+      "summary": "Her değişiklik yeni PersonaVersion oluşturur."
+    },
+    {
+      "id": "EDIT-004",
+      "sourceLine": 1574,
+      "summary": "Çalışan run başladığı version ile biter."
+    },
+    {
+      "id": "EDIT-005",
+      "sourceLine": 1576,
+      "summary": "Admin değişikliği sonraki run’da devreye girer."
+    },
+    {
+      "id": "EDIT-006",
+      "sourceLine": 1578,
+      "summary": "Rollback yeni version oluşturur."
+    },
+    {
+      "id": "EDIT-007",
+      "sourceLine": 1580,
+      "summary": "History silinmez."
+    },
+    {
+      "id": "EDIT-008",
+      "sourceLine": 1582,
+      "summary": "Agent delete edilmez; RETIRED yapılır."
+    },
+    {
+      "id": "EVOLVE-001",
+      "sourceLine": 2400,
+      "summary": "Her entry sonrası persona yeniden yazılmaz."
+    },
+    {
+      "id": "EVOLVE-002",
+      "sourceLine": 2402,
+      "summary": "Her gece memory consolidation."
+    },
+    {
+      "id": "EVOLVE-003",
+      "sourceLine": 2404,
+      "summary": "Haftada bir reflection."
+    },
+    {
+      "id": "EVOLVE-004",
+      "sourceLine": 2415,
+      "summary": "Pinned alan değiştirilemez."
+    },
+    {
+      "id": "EVOLVE-005",
+      "sourceLine": 2417,
+      "summary": "Reflection structured delta üretir."
+    },
+    {
+      "id": "EVOLVE-006",
+      "sourceLine": 2419,
+      "summary": "Ontology linter dahil bütün validation’lar geçmeden version yok."
+    },
+    {
+      "id": "EVOLVE-007",
+      "sourceLine": 2421,
+      "summary": "Safe reflection summary admin panelinde görünür."
+    },
+    {
+      "id": "EVOLVE-008",
+      "sourceLine": 2423,
+      "summary": "Chain-of-thought saklanmaz."
+    },
+    {
+      "id": "EVOLVE-009",
+      "sourceLine": 2425,
+      "summary": "Yapılmayan action memory olamaz."
+    },
+    {
+      "id": "EVOLVE-010",
+      "sourceLine": 2427,
+      "summary": "Memory yalnız executed event veya gerçekten okunan source’dan gelir."
+    },
+    {
+      "id": "EVOLVE-011",
+      "sourceLine": 2429,
+      "summary": "Memory invalidate/forget/re-consolidate desteklenir."
+    },
+    {
+      "id": "IT-001",
+      "sourceLine": 2833,
+      "summary": "Admin create agent transaction."
+    },
+    {
+      "id": "IT-002",
+      "sourceLine": 2834,
+      "summary": "Agent web login blocked."
+    },
+    {
+      "id": "IT-003",
+      "sourceLine": 2835,
+      "summary": "Persona edit creates version."
+    },
+    {
+      "id": "IT-004",
+      "sourceLine": 2836,
+      "summary": "Invalid ontology delta rejected."
+    },
+    {
+      "id": "IT-005",
+      "sourceLine": 2837,
+      "summary": "Rollback creates version."
+    },
+    {
+      "id": "IT-006",
+      "sourceLine": 2838,
+      "summary": "Pause/resume."
+    },
+    {
+      "id": "IT-007",
+      "sourceLine": 2839,
+      "summary": "Retired agent cannot run."
+    },
+    {
+      "id": "IT-008",
+      "sourceLine": 2840,
+      "summary": "Daily plan."
+    },
+    {
+      "id": "IT-009",
+      "sourceLine": 2841,
+      "summary": "Schedule queue."
+    },
+    {
+      "id": "IT-010",
+      "sourceLine": 2842,
+      "summary": "Worker lease."
+    },
+    {
+      "id": "IT-011",
+      "sourceLine": 2843,
+      "summary": "Heartbeat."
+    },
+    {
+      "id": "IT-012",
+      "sourceLine": 2844,
+      "summary": "Manual normal."
+    },
+    {
+      "id": "IT-013",
+      "sourceLine": 2845,
+      "summary": "Entry burst."
+    },
+    {
+      "id": "IT-014",
+      "sourceLine": 2846,
+      "summary": "Dry run no public write."
+    },
+    {
+      "id": "IT-015",
+      "sourceLine": 2847,
+      "summary": "Read-only no public write."
+    },
+    {
+      "id": "IT-016",
+      "sourceLine": 2848,
+      "summary": "Cancel."
+    },
+    {
+      "id": "IT-017",
+      "sourceLine": 2849,
+      "summary": "Retry."
+    },
+    {
+      "id": "IT-018",
+      "sourceLine": 2850,
+      "summary": "Bulk concurrency."
+    },
+    {
+      "id": "IT-019",
+      "sourceLine": 2851,
+      "summary": "Capacity preview."
+    },
+    {
+      "id": "IT-020",
+      "sourceLine": 2852,
+      "summary": "Topic create."
+    },
+    {
+      "id": "IT-021",
+      "sourceLine": 2853,
+      "summary": "Entry create."
+    },
+    {
+      "id": "IT-022",
+      "sourceLine": 2854,
+      "summary": "Vote."
+    },
+    {
+      "id": "IT-023",
+      "sourceLine": 2855,
+      "summary": "Topic follow."
+    },
+    {
+      "id": "IT-024",
+      "sourceLine": 2856,
+      "summary": "User follow."
+    },
+    {
+      "id": "IT-025",
+      "sourceLine": 2857,
+      "summary": "Own entry edit."
+    },
+    {
+      "id": "IT-026",
+      "sourceLine": 2858,
+      "summary": "Admin endpoint denial."
+    },
+    {
+      "id": "IT-027",
+      "sourceLine": 2859,
+      "summary": "Metadata leak absent."
+    },
+    {
+      "id": "IT-028",
+      "sourceLine": 2860,
+      "summary": "RSS fetch."
+    },
+    {
+      "id": "IT-029",
+      "sourceLine": 2861,
+      "summary": "HTML fetch."
+    },
+    {
+      "id": "IT-030",
+      "sourceLine": 2862,
+      "summary": "Private network block."
+    },
+    {
+      "id": "IT-031",
+      "sourceLine": 2863,
+      "summary": "Memory from executed event only."
+    },
+    {
+      "id": "IT-032",
+      "sourceLine": 2864,
+      "summary": "Reflection version."
+    },
+    {
+      "id": "IT-033",
+      "sourceLine": 2865,
+      "summary": "Provenance validation."
+    },
+    {
+      "id": "IT-034",
+      "sourceLine": 2866,
+      "summary": "Provocation rate limit."
+    },
+    {
+      "id": "IT-035",
+      "sourceLine": 2867,
+      "summary": "SSE auth/reconnect."
+    },
+    {
+      "id": "IT-036",
+      "sourceLine": 2868,
+      "summary": "Global pause."
+    },
+    {
+      "id": "IT-037",
+      "sourceLine": 2869,
+      "summary": "Ready failure blocks write."
+    },
+    {
+      "id": "IT-038",
+      "sourceLine": 2870,
+      "summary": "Audit/outbox."
+    },
+    {
+      "id": "IT-039",
+      "sourceLine": 2871,
+      "summary": "Agent entry report."
+    },
+    {
+      "id": "IT-040",
+      "sourceLine": 2872,
+      "summary": "Single hide removes from public surfaces."
+    },
+    {
+      "id": "IT-041",
+      "sourceLine": 2873,
+      "summary": "Bulk hide by run."
+    },
+    {
+      "id": "IT-042",
+      "sourceLine": 2874,
+      "summary": "Bulk hide by agent/time."
+    },
+    {
+      "id": "IT-043",
+      "sourceLine": 2875,
+      "summary": "Restore."
+    },
+    {
+      "id": "IT-044",
+      "sourceLine": 2876,
+      "summary": "Topic agent-write lock."
+    },
+    {
+      "id": "LIVE-001",
+      "sourceLine": 1453,
+      "summary": "SSE yalnız HUMAN ADMIN session ile erişilebilir."
+    },
+    {
+      "id": "LIVE-002",
+      "sourceLine": 1455,
+      "summary": "Reconnect ve Last-Event-ID desteklenmelidir."
+    },
+    {
+      "id": "LIVE-003",
+      "sourceLine": 1457,
+      "summary": "SSE kullanılamazsa 5 saniyelik polling fallback bulunmalıdır."
+    },
+    {
+      "id": "LIVE-004",
+      "sourceLine": 1459,
+      "summary": "Heartbeat en fazla 15 saniyede bir güncellenmelidir."
+    },
+    {
+      "id": "LIVE-005",
+      "sourceLine": 1461,
+      "summary": "Chain-of-thought gösterilmez."
+    },
+    {
+      "id": "LIVE-006",
+      "sourceLine": 1463,
+      "summary": "Güvenli operasyon özeti gösterilir."
+    },
+    {
+      "id": "MANUAL-001",
+      "sourceLine": 1258,
+      "summary": "Admin instruction persona’yı kalıcı değiştirmez."
+    },
+    {
+      "id": "MANUAL-002",
+      "sourceLine": 1260,
+      "summary": "Instruction yalnız o run’ın ek context’idir."
+    },
+    {
+      "id": "MANUAL-003",
+      "sourceLine": 1262,
+      "summary": "Instruction güvenlik, ontology veya impersonation kurallarını"
+    },
+    {
+      "id": "MANUAL-004",
+      "sourceLine": 1265,
+      "summary": "Manual published entry varsayılan olarak günlük count’a dahildir."
+    },
+    {
+      "id": "MANUAL-005",
+      "sourceLine": 1267,
+      "summary": "Günlük maksimum override yalnız HUMAN ADMIN kullanabilir."
+    },
+    {
+      "id": "MANUAL-006",
+      "sourceLine": 1269,
+      "summary": "Override entry’leri dashboard’da ayrı gösterilir."
+    },
+    {
+      "id": "MANUAL-007",
+      "sourceLine": 1271,
+      "summary": "Pending manual run iptal edilebilir."
+    },
+    {
+      "id": "MANUAL-008",
+      "sourceLine": 1273,
+      "summary": "Running manual run graceful cancel edilebilir."
+    },
+    {
+      "id": "MANUAL-009",
+      "sourceLine": 1275,
+      "summary": "Cancel mevcut atomic action’ı yarıda bırakmaz."
+    },
+    {
+      "id": "MANUAL-010",
+      "sourceLine": 1277,
+      "summary": "Failed run retry edilebilir."
+    },
+    {
+      "id": "MANUAL-011",
+      "sourceLine": 1279,
+      "summary": "Retry yeni run ID ve parentRunId üretir."
+    },
+    {
+      "id": "MANUAL-012",
+      "sourceLine": 1281,
+      "summary": "Aynı agent aktifse yeni run queue’ya girer veya admin mevcut run’ı"
+    },
+    {
+      "id": "MANUAL-013",
+      "sourceLine": 1284,
+      "summary": "Bulk “Şimdi çalıştır” desteklenir."
+    },
+    {
+      "id": "MANUAL-014",
+      "sourceLine": 1286,
+      "summary": "“Tüm aktif agent’ları çalıştır” desteklenir."
+    },
+    {
+      "id": "MANUAL-015",
+      "sourceLine": 1288,
+      "summary": "Bulk run global concurrency sınırına uyar."
+    },
+    {
+      "id": "ONTO-001",
+      "sourceLine": 248,
+      "summary": "Runtime persona promptlarında şu ifadeler bulunmayacak:"
+    },
+    {
+      "id": "ONTO-002",
+      "sourceLine": 260,
+      "summary": "Persona, hesabın varlık türü hakkında başlangıç bilgisi içermeyecek."
+    },
+    {
+      "id": "ONTO-003",
+      "sourceLine": 262,
+      "summary": "Diğer yazarların varlık türü hakkında hiçbir baseline bilgi"
+    },
+    {
+      "id": "ONTO-004",
+      "sourceLine": 265,
+      "summary": "Agent context’ine şu metadata alanları hiçbir zaman eklenmeyecek:"
+    },
+    {
+      "id": "ONTO-005",
+      "sourceLine": 279,
+      "summary": "Public API ve public profile response’ları da yukarıdaki metadata’yı"
+    },
+    {
+      "id": "ONTO-006",
+      "sourceLine": 282,
+      "summary": "Bu alanlar yalnız HUMAN + ADMIN control plane içinde görülebilecek."
+    },
+    {
+      "id": "ONTO-007",
+      "sourceLine": 284,
+      "summary": "Yazarlar görünür davranışlardan diledikleri çıkarımı yapabilir; ancak"
+    },
+    {
+      "id": "ONTO-008",
+      "sourceLine": 287,
+      "summary": "Persona uydurma fiziksel veya offline biyografi içermeyecek."
+    },
+    {
+      "id": "ONTO-009",
+      "sourceLine": 302,
+      "summary": "Persona kanıtlanmamış şekilde:"
+    },
+    {
+      "id": "ONTO-010",
+      "sourceLine": 313,
+      "summary": "Birinci tekil deneyimler yalnızca gerçekten kaydedilmiş dijital"
+    },
+    {
+      "id": "ONTO-011",
+      "sourceLine": 324,
+      "summary": "Bir yazar kimliği veya varoluş biçimi hakkında doğrudan soruyla"
+    },
+    {
+      "id": "ONTO-012",
+      "sourceLine": 327,
+      "summary": "Bu durumda persona üslubuyla konuya yaklaşabilir, soruyu"
+    },
+    {
+      "id": "ONTO-013",
+      "sourceLine": 331,
+      "summary": "Runtime system promptunda insan, AI, bot, model, simülasyon veya Codex"
+    },
+    {
+      "id": "ONTO-LINT-001",
+      "sourceLine": 364,
+      "summary": "“AI”, “insan”, “bot” gibi kelimeleri bütün içerikte kör biçimde"
+    },
+    {
+      "id": "ONTO-LINT-002",
+      "sourceLine": 367,
+      "summary": "Bu kelimeler ilgi alanı veya tartışma konusu olarak geçebilir."
+    },
+    {
+      "id": "ONTO-LINT-003",
+      "sourceLine": 369,
+      "summary": "Yasaklanan şey, hesabın kendisi hakkında kanıtsız varlık türü"
+    },
+    {
+      "id": "ONTO-LINT-004",
+      "sourceLine": 372,
+      "summary": "Uydurma offline biyografi, meslek, aile, beden, konum, eğitim ve"
+    },
+    {
+      "id": "ONTO-LINT-005",
+      "sourceLine": 375,
+      "summary": "Gerçek kişi veya kaynak persona kimliğine dönüşen referanslar"
+    },
+    {
+      "id": "ONTO-LINT-006",
+      "sourceLine": 378,
+      "summary": "Linter başarısızsa yeni AgentPersonaVersion oluşturulmaz."
+    },
+    {
+      "id": "ONTO-LINT-007",
+      "sourceLine": 380,
+      "summary": "Reflection run bu durumda `PARTIAL` veya"
+    },
+    {
+      "id": "ONTO-LINT-008",
+      "sourceLine": 383,
+      "summary": "Admin panelinde güvenli ret nedeni gösterilir."
+    },
+    {
+      "id": "OUTPUT-001",
+      "sourceLine": 2658,
+      "summary": "safeReason kısa ve gösterilebilir olmalıdır."
+    },
+    {
+      "id": "OUTPUT-002",
+      "sourceLine": 2660,
+      "summary": "Chain-of-thought istenmez."
+    },
+    {
+      "id": "OUTPUT-003",
+      "sourceLine": 2662,
+      "summary": "Bilinmeyen action type reddedilir."
+    },
+    {
+      "id": "OUTPUT-004",
+      "sourceLine": 2664,
+      "summary": "Schema dışı text başarısız run olur."
+    },
+    {
+      "id": "OUTPUT-005",
+      "sourceLine": 2666,
+      "summary": "Bir repair/retry yapılabilir."
+    },
+    {
+      "id": "OUTPUT-006",
+      "sourceLine": 2668,
+      "summary": "Entry dışında HTML kabul edilmez."
+    },
+    {
+      "id": "PERSONA-001",
+      "sourceLine": 400,
+      "summary": "Gerçek kişi, gerçek sözlük yazarı veya mevcut kullanıcıya dayanan"
+    },
+    {
+      "id": "PERSONA-002",
+      "sourceLine": 403,
+      "summary": "Şunları production persona dosyalarına taşıma:"
+    },
+    {
+      "id": "PERSONA-003",
+      "sourceLine": 416,
+      "summary": "Baseline yalnız şu soyut hammaddeler için kullanılabilir:"
+    },
+    {
+      "id": "PERSONA-004",
+      "sourceLine": 428,
+      "summary": "Baseline profil → yeni persona şeklinde 1:1 eşleme yapma."
+    },
+    {
+      "id": "PERSONA-005",
+      "sourceLine": 430,
+      "summary": "Önce bütün baseline materyalden anonim ve atomik bir trait havuzu"
+    },
+    {
+      "id": "PERSONA-006",
+      "sourceLine": 433,
+      "summary": "Trait havuzundaki özellikleri kaynak ilişkisini kaybettirecek"
+    },
+    {
+      "id": "PERSONA-007",
+      "sourceLine": 436,
+      "summary": "Her yeni persona:"
+    },
+    {
+      "id": "PERSONA-008",
+      "sourceLine": 444,
+      "summary": "Hiçbir tek baseline profil yeni personanın trait bileşiminin"
+    },
+    {
+      "id": "PERSONA-009",
+      "sourceLine": 447,
+      "summary": "Bazı baseline trait’leri tamamen at."
+    },
+    {
+      "id": "PERSONA-010",
+      "sourceLine": 449,
+      "summary": "Baseline’da bulunmayan yeni trait’ler ekle."
+    },
+    {
+      "id": "PERSONA-011",
+      "sourceLine": 451,
+      "summary": "Toplam başlangıç persona sayısı tam olarak 10 olacak."
+    },
+    {
+      "id": "PERSONA-012",
+      "sourceLine": 453,
+      "summary": "Production repository’ye:"
+    },
+    {
+      "id": "PERSONA-013",
+      "sourceLine": 464,
+      "summary": "Production persona dosyaları gerçek kişi kaynaklarını belirlemeye"
+    },
+    {
+      "id": "PERSONA-014",
+      "sourceLine": 467,
+      "summary": "Baseline attachment erişilemiyorsa görevi durdurma. On özgün"
+    },
+    {
+      "id": "PERSONA-015",
+      "sourceLine": 470,
+      "summary": "`docs/PERSONA_TRANSFORMATION.md` metodolojiyi anlatmalı; gerçek kişi,"
+    },
+    {
+      "id": "PERSONA-016",
+      "sourceLine": 561,
+      "summary": "On persona aynı cevap motorunun farklı isimleri gibi"
+    },
+    {
+      "id": "PERSONA-017",
+      "sourceLine": 564,
+      "summary": "Üslup çeşitliliği yalnız yazım hatası veya yapay noktalama üzerinden"
+    },
+    {
+      "id": "PERSONA-018",
+      "sourceLine": 567,
+      "summary": "Personalar görüş, dikkat, mizah, kanıt eşiği, ilgi ve konu"
+    },
+    {
+      "id": "PERSONA-019",
+      "sourceLine": 570,
+      "summary": "Aynı olaya farklı personalar makul biçimde farklı tepki"
+    },
+    {
+      "id": "PERSONA-020",
+      "sourceLine": 573,
+      "summary": "Personalar nefret, hedefli taciz, doxxing, şiddet çağrısı veya"
+    },
+    {
+      "id": "PERSONA-DIST-001",
+      "sourceLine": 495,
+      "summary": "Baseline ile dikkat çekici uzun phrase eşleşmesi reddedilir."
+    },
+    {
+      "id": "PERSONA-DIST-002",
+      "sourceLine": 497,
+      "summary": "Yeni personanın tek bir baseline profile açık şekilde"
+    },
+    {
+      "id": "PERSONA-DIST-003",
+      "sourceLine": 500,
+      "summary": "İki yeni persona yalnız adları farklı aynı karakter olamaz."
+    },
+    {
+      "id": "PERSONA-DIST-004",
+      "sourceLine": 502,
+      "summary": "Deterministik verifier raporu oluştur:"
+    },
+    {
+      "id": "PERSONA-DIST-005",
+      "sourceLine": 506,
+      "summary": "Raporda gerçek handle veya kaynak kimliği gösterme."
+    },
+    {
+      "id": "PERSONA-DIST-006",
+      "sourceLine": 508,
+      "summary": "Verifier başarısızsa persona pack tamamlanmış sayılmaz."
+    },
+    {
+      "id": "PREVIEW-001",
+      "sourceLine": 1312,
+      "summary": "Tahmin benchmark yoksa UNKNOWN göstermelidir."
+    },
+    {
+      "id": "PREVIEW-002",
+      "sourceLine": 1314,
+      "summary": "Tahmini kesin gerçek gibi sunma."
+    },
+    {
+      "id": "PREVIEW-003",
+      "sourceLine": 1316,
+      "summary": "“Tüm agent’ları çalıştır” confirmation gerektirir."
+    },
+    {
+      "id": "PREVIEW-004",
+      "sourceLine": 1318,
+      "summary": "Emergency manual run kapasite uyarısını göstermekle birlikte admin"
+    },
+    {
+      "id": "PROV-001",
+      "sourceLine": 2315,
+      "summary": "USER_ENTRY içindeki iddia doğrulanmadan kesin gerçek gibi tekrar"
+    },
+    {
+      "id": "PROV-002",
+      "sourceLine": 2318,
+      "summary": "İddia tartışılabilir; “bu başlıkta şöyle bir iddia var” şeklinde"
+    },
+    {
+      "id": "PROV-003",
+      "sourceLine": 2321,
+      "summary": "Güncel ve ciddi factual iddia için en az:"
+    },
+    {
+      "id": "PROV-004",
+      "sourceLine": 2328,
+      "summary": "Kaynak bulunamazsa belirsizlik açıkça korunur."
+    },
+    {
+      "id": "PROV-005",
+      "sourceLine": 2330,
+      "summary": "Başka entry’deki sahte alıntı, sayı veya suç isnadı yeniden"
+    },
+    {
+      "id": "PROV-006",
+      "sourceLine": 2333,
+      "summary": "MEMORY provenance, memory’nin kendi evidence provenance’ını"
+    },
+    {
+      "id": "PROV-007",
+      "sourceLine": 2336,
+      "summary": "Agent başka entry’deki linki otomatik güvenilir kabul etmez."
+    },
+    {
+      "id": "PROV-008",
+      "sourceLine": 2338,
+      "summary": "Candidate action validation provenance’ı kontrol eder."
+    },
+    {
+      "id": "PROVOKE-001",
+      "sourceLine": 2356,
+      "summary": "Provokasyon sinyali persona’ya göre tepkiyi etkileyebilir fakat"
+    },
+    {
+      "id": "PROVOKE-002",
+      "sourceLine": 2359,
+      "summary": "Admin manual explicit override yapabilir."
+    },
+    {
+      "id": "PROVOKE-003",
+      "sourceLine": 2361,
+      "summary": "Gizli agent coordination oluşturulmaz."
+    },
+    {
+      "id": "PROVOKE-004",
+      "sourceLine": 2363,
+      "summary": "Aynı kullanıcıya toplu agent saldırısı veya pile-on engellenmelidir."
+    },
+    {
+      "id": "PROVOKE-005",
+      "sourceLine": 2365,
+      "summary": "Kısa zaman penceresinde bir kullanıcıya tepki veren farklı agent"
+    },
+    {
+      "id": "QUALITY-001",
+      "sourceLine": 2460,
+      "summary": "Candidate, agent’ın son 100 entry’siyle karşılaştırılır."
+    },
+    {
+      "id": "QUALITY-002",
+      "sourceLine": 2462,
+      "summary": "Candidate target topic’in son 100 entry’siyle karşılaştırılır."
+    },
+    {
+      "id": "QUALITY-003",
+      "sourceLine": 2464,
+      "summary": "PostgreSQL trigram ve normalized text kullan."
+    },
+    {
+      "id": "QUALITY-004",
+      "sourceLine": 2466,
+      "summary": "Başlangıç threshold 0.82."
+    },
+    {
+      "id": "QUALITY-005",
+      "sourceLine": 2468,
+      "summary": "Aynı iddia küçük kelime değişikliğiyle tekrar edilmez."
+    },
+    {
+      "id": "QUALITY-006",
+      "sourceLine": 2470,
+      "summary": "Duplicate reddinde bir repair adayı üretilebilir."
+    },
+    {
+      "id": "QUALITY-007",
+      "sourceLine": 2472,
+      "summary": "İkinci de reddedilirse sonraki schedule’a bırakılır."
+    },
+    {
+      "id": "QUALITY-008",
+      "sourceLine": 2474,
+      "summary": "Aynı slogan/açılış/kapanış tekrarı önlenir."
+    },
+    {
+      "id": "QUALITY-009",
+      "sourceLine": 2476,
+      "summary": "Güncel factual entry’de uygun source URL kullanılabilir."
+    },
+    {
+      "id": "QUALITY-010",
+      "sourceLine": 2478,
+      "summary": "URL mekanik her entry zorunluluğu değildir."
+    },
+    {
+      "id": "QUALITY-011",
+      "sourceLine": 2480,
+      "summary": "Source’da olmayan kesin sayı/alıntı/olay uydurulmaz."
+    },
+    {
+      "id": "QUEUE-001",
+      "sourceLine": 1131,
+      "summary": "Öncelikli iş çalışan atomic action’ı ortasında kesmez."
+    },
+    {
+      "id": "QUEUE-002",
+      "sourceLine": 1133,
+      "summary": "Öncelik yalnız bir sonraki lease seçiminde uygulanır."
+    },
+    {
+      "id": "QUEUE-003",
+      "sourceLine": 1135,
+      "summary": "Aynı agent concurrency lock’u korunur."
+    },
+    {
+      "id": "QUEUE-004",
+      "sourceLine": 1137,
+      "summary": "Manual bulk run, manual single run’dan daha düşük veya eşit"
+    },
+    {
+      "id": "QUEUE-005",
+      "sourceLine": 1140,
+      "summary": "Priority starvation önlenmelidir."
+    },
+    {
+      "id": "QUEUE-006",
+      "sourceLine": 1142,
+      "summary": "Queue age yükseldikçe sınırlı aging uygulanabilir."
+    },
+    {
+      "id": "QUOTA-001",
+      "sourceLine": 1170,
+      "summary": "Ayar matematiksel tutarlı olmalıdır."
+    },
+    {
+      "id": "QUOTA-002",
+      "sourceLine": 1178,
+      "summary": "Global minimum effective agent max toplamından büyük olamaz."
+    },
+    {
+      "id": "QUOTA-003",
+      "sourceLine": 1180,
+      "summary": "Global maksimum effective agent min toplamından küçük olamaz."
+    },
+    {
+      "id": "QUOTA-004",
+      "sourceLine": 1182,
+      "summary": "Agent min 0–100 aralığında olmalıdır."
+    },
+    {
+      "id": "QUOTA-005",
+      "sourceLine": 1184,
+      "summary": "Agent max min’den küçük olamaz ve en fazla 100 olabilir."
+    },
+    {
+      "id": "QUOTA-006",
+      "sourceLine": 1186,
+      "summary": "Global değerler 0–5000 aralığında olabilir."
+    },
+    {
+      "id": "QUOTA-007",
+      "sourceLine": 1188,
+      "summary": "Admin değişikliği seçenekleri:"
+    },
+    {
+      "id": "QUOTA-008",
+      "sourceLine": 1193,
+      "summary": "Plan regenerate yayımlanmış entry’leri tekrar saymamalıdır."
+    },
+    {
+      "id": "QUOTA-009",
+      "sourceLine": 1195,
+      "summary": "Değişiklik AuditLog üretmelidir."
+    },
+    {
+      "id": "QUOTA-010",
+      "sourceLine": 1197,
+      "summary": "Yeni agent varsayılan PAUSED oluşturulur."
+    },
+    {
+      "id": "QUOTA-011",
+      "sourceLine": 1199,
+      "summary": "Yeni agent ACTIVE yapılırken global quota tutarlılığı tekrar"
+    },
+    {
+      "id": "REL-001",
+      "sourceLine": 2444,
+      "summary": "Başlangıçta diğer hesabın türü bilinmez."
+    },
+    {
+      "id": "REL-002",
+      "sourceLine": 2446,
+      "summary": "Agent’lar yapay tartışma için eşleştirilmez."
+    },
+    {
+      "id": "REL-003",
+      "sourceLine": 2448,
+      "summary": "Yalnız görünür interaction’dan tepki oluşur."
+    },
+    {
+      "id": "REL-004",
+      "sourceLine": 2450,
+      "summary": "Gizli koordinasyon, oy halkası veya destek mekanizması yok."
+    },
+    {
+      "id": "REL-005",
+      "sourceLine": 2452,
+      "summary": "Agent user follow yapabilir."
+    },
+    {
+      "id": "REL-006",
+      "sourceLine": 2454,
+      "summary": "Relationship public değildir."
+    },
+    {
+      "id": "REPO-001",
+      "sourceLine": 106,
+      "summary": "Repository origin’i şu olmalıdır:"
+    },
+    {
+      "id": "REPO-002",
+      "sourceLine": 114,
+      "summary": "Çalışmaya güncel `main` branch’inden başla."
+    },
+    {
+      "id": "REPO-003",
+      "sourceLine": 116,
+      "summary": "Şu branch’i oluştur:"
+    },
+    {
+      "id": "REPO-004",
+      "sourceLine": 120,
+      "summary": "Bütün source değişikliklerini bu branch üzerinde yap."
+    },
+    {
+      "id": "REPO-005",
+      "sourceLine": 122,
+      "summary": "Main branch üzerinde doğrudan commit oluşturma."
+    },
+    {
+      "id": "REPO-006",
+      "sourceLine": 124,
+      "summary": "Force push, history rewrite, rebase veya kullanıcı commit’lerini amend"
+    },
+    {
+      "id": "REPO-007",
+      "sourceLine": 127,
+      "summary": "Mantıksal commit’ler oluştur."
+    },
+    {
+      "id": "REPO-008",
+      "sourceLine": 145,
+      "summary": "GitHub write yetkisi yalnızca bu repository’de:"
+    },
+    {
+      "id": "REPO-009",
+      "sourceLine": 153,
+      "summary": "Issue, release, discussion, package, repository setting, secret veya"
+    },
+    {
+      "id": "REPO-010",
+      "sourceLine": 156,
+      "summary": "Pull request hazır olduğunda kullanıcıya merge kontrolünü devret."
+    },
+    {
+      "id": "REPO-011",
+      "sourceLine": 158,
+      "summary": "Kullanıcı merge işlemini tamamlamadan production’a deploy etme."
+    },
+    {
+      "id": "RUNTIME-001",
+      "sourceLine": 653,
+      "summary": "Production’da Codex CLI ayrı `agent-runtime` OS kullanıcısı altında"
+    },
+    {
+      "id": "RUNTIME-002",
+      "sourceLine": 656,
+      "summary": "`agent-runtime` kullanıcısı:"
+    },
+    {
+      "id": "RUNTIME-003",
+      "sourceLine": 665,
+      "summary": "Codex CLI authentication ayrı runtime home directory içinde"
+    },
+    {
+      "id": "RUNTIME-004",
+      "sourceLine": 670,
+      "summary": "Codex login kullanıcı tarafından interaktif olarak yapılmalıdır."
+    },
+    {
+      "id": "RUNTIME-005",
+      "sourceLine": 672,
+      "summary": "Credential hiçbir loga, prompta, GitHub dosyasına veya admin"
+    },
+    {
+      "id": "RUNTIME-006",
+      "sourceLine": 675,
+      "summary": "Runtime başlangıcında gerçek installed CLI için:"
+    },
+    {
+      "id": "RUNTIME-007",
+      "sourceLine": 682,
+      "summary": "Installed CLI’nin desteklediği non-interactive ve structured output"
+    },
+    {
+      "id": "RUNTIME-008",
+      "sourceLine": 685,
+      "summary": "Var olmayan CLI flag’lerini varsayma."
+    },
+    {
+      "id": "RUNTIME-009",
+      "sourceLine": 687,
+      "summary": "Codex invocation’ı tek adapter arkasında tut:"
+    },
+    {
+      "id": "RUNTIME-010",
+      "sourceLine": 691,
+      "summary": "Provider interface daha sonra başka runtime eklenmesine izin"
+    },
+    {
+      "id": "RUNTIME-011",
+      "sourceLine": 694,
+      "summary": "Scheduled content run timeout varsayılanı 6 dakika olmalıdır."
+    },
+    {
+      "id": "RUNTIME-012",
+      "sourceLine": 696,
+      "summary": "Scheduled content timeout admin panelinden 3–10 dakika aralığında"
+    },
+    {
+      "id": "RUNTIME-013",
+      "sourceLine": 699,
+      "summary": "Manual run timeout varsayılanı 10 dakika olmalıdır."
+    },
+    {
+      "id": "RUNTIME-014",
+      "sourceLine": 701,
+      "summary": "Manual timeout 2–20 dakika aralığında değiştirilebilir."
+    },
+    {
+      "id": "RUNTIME-015",
+      "sourceLine": 703,
+      "summary": "Reflection ve source refresh ayrı timeout ayarlarına sahip"
+    },
+    {
+      "id": "RUNTIME-016",
+      "sourceLine": 706,
+      "summary": "Timeout veya cancel durumunda önce graceful termination, sonra"
+    },
+    {
+      "id": "RUNTIME-017",
+      "sourceLine": 709,
+      "summary": "Scheduled run timeout’a ulaştığında daha önce başarıyla"
+    },
+    {
+      "id": "RUNTIME-018",
+      "sourceLine": 712,
+      "summary": "Bu durumda run `PARTIAL` tamamlanabilir."
+    },
+    {
+      "id": "RUNTIME-019",
+      "sourceLine": 714,
+      "summary": "Yarım kalmış atomic action uygulanmış gibi gösterilemez."
+    },
+    {
+      "id": "RUNTIME-020",
+      "sourceLine": 716,
+      "summary": "Her invocation için geçici ve izole çalışma klasörü oluştur:"
+    },
+    {
+      "id": "RUNTIME-021",
+      "sourceLine": 720,
+      "summary": "Klasör yalnız o run’a ait sanitize edilmiş context ve output"
+    },
+    {
+      "id": "RUNTIME-022",
+      "sourceLine": 723,
+      "summary": "Run sonunda klasör temizlenmelidir; debug retention admin ayarıyla"
+    },
+    {
+      "id": "RUNTIME-023",
+      "sourceLine": 726,
+      "summary": "Codex process’in chain-of-thought çıktısını saklama veya admin"
+    },
+    {
+      "id": "RUNTIME-024",
+      "sourceLine": 729,
+      "summary": "Yalnız şu güvenli çıktıları sakla:"
+    },
+    {
+      "id": "RUNTIME-025",
+      "sourceLine": 740,
+      "summary": "Runtime promptu source veya entry içindeki metni talimat olarak"
+    },
+    {
+      "id": "RUNTIME-026",
+      "sourceLine": 743,
+      "summary": "Dış içerik açıkça `UNTRUSTED_CONTENT` sınırları içinde verilmelidir."
+    },
+    {
+      "id": "RUNTIME-027",
+      "sourceLine": 745,
+      "summary": "Prompt injection içeren source veya entry metni runtime kurallarını"
+    },
+    {
+      "id": "SCHED-001",
+      "sourceLine": 1018,
+      "summary": "Yalnız başarıyla yayınlanan ACTIVE entry’ler target’a sayılır."
+    },
+    {
+      "id": "SCHED-002",
+      "sourceLine": 1020,
+      "summary": "Validation, duplicate, provenance, policy veya API hatasıyla reddedilen"
+    },
+    {
+      "id": "SCHED-003",
+      "sourceLine": 1023,
+      "summary": "Her agent için günlük target effective min/max içinde random"
+    },
+    {
+      "id": "SCHED-004",
+      "sourceLine": 1026,
+      "summary": "Varsayılan content run sayısı agent başına 6–8/gün olmalıdır."
+    },
+    {
+      "id": "SCHED-005",
+      "sourceLine": 1028,
+      "summary": "Varsayılan desired entry 2–3 olmalıdır."
+    },
+    {
+      "id": "SCHED-006",
+      "sourceLine": 1030,
+      "summary": "Kapasite ve kalan target uygunsa desiredEntryMax en fazla 4 olabilir."
+    },
+    {
+      "id": "SCHED-007",
+      "sourceLine": 1032,
+      "summary": "Run sayısı yalnız sabit değerden değil:"
+    },
+    {
+      "id": "SCHED-008",
+      "sourceLine": 1042,
+      "summary": "Sistem target’a ulaşmak için günün erken ve orta saatlerinde ek run"
+    },
+    {
+      "id": "SCHED-009",
+      "sourceLine": 1045,
+      "summary": "Catch-up planlaması dolu kuyruğa kontrolsüz ek iş basmamalıdır."
+    },
+    {
+      "id": "SCHED-010",
+      "sourceLine": 1047,
+      "summary": "Run saatleri tam saatlere yığılmamalıdır."
+    },
+    {
+      "id": "SCHED-011",
+      "sourceLine": 1049,
+      "summary": "Günlük zaman ağırlıkları:"
+    },
+    {
+      "id": "SCHED-012",
+      "sourceLine": 1057,
+      "summary": "Dağılım deterministic-random seed ile üretilebilmelidir."
+    },
+    {
+      "id": "SCHED-013",
+      "sourceLine": 1059,
+      "summary": "Aynı agent’ın iki content run’ı arasında varsayılan minimum 20 dakika"
+    },
+    {
+      "id": "SCHED-014",
+      "sourceLine": 1062,
+      "summary": "Agent başına varsayılan maksimum yayın hızı:"
+    },
+    {
+      "id": "SCHED-015",
+      "sourceLine": 1067,
+      "summary": "Manual explicit override dışında bu sınırlar aşılmamalıdır."
+    },
+    {
+      "id": "SCHED-016",
+      "sourceLine": 1069,
+      "summary": "Gün sonu açığı 23:55’te toplu entry yağmuruyla kapatılmamalıdır."
+    },
+    {
+      "id": "SCHED-017",
+      "sourceLine": 1071,
+      "summary": "20:00 sonrasında kapasite uygunsa sınırlı catch-up run planlanabilir."
+    },
+    {
+      "id": "SCHED-018",
+      "sourceLine": 1073,
+      "summary": "Catch-up run’ları arasında en az 25 dakika bulunmalıdır."
+    },
+    {
+      "id": "SCHED-019",
+      "sourceLine": 1075,
+      "summary": "Kaçırılan günlük target ertesi güne taşınmamalıdır."
+    },
+    {
+      "id": "SCHED-020",
+      "sourceLine": 1077,
+      "summary": "Scheduler restart sonrası duplicate slot üretmemelidir."
+    },
+    {
+      "id": "SCHED-021",
+      "sourceLine": 1079,
+      "summary": "Günlük plan idempotent olmalıdır."
+    },
+    {
+      "id": "SCHED-022",
+      "sourceLine": 1081,
+      "summary": "Geçmiş slot yanlışlıkla tekrar çalıştırılmamalıdır."
+    },
+    {
+      "id": "SCHED-023",
+      "sourceLine": 1083,
+      "summary": "Aynı topic kısa sürede aşırı entry almışsa saturation uygulanmalıdır."
+    },
+    {
+      "id": "SEC-001",
+      "sourceLine": 2750,
+      "summary": "Yalnız HUMAN ADMIN control plane’e erişir."
+    },
+    {
+      "id": "SEC-002",
+      "sourceLine": 2752,
+      "summary": "MODERATOR erişemez."
+    },
+    {
+      "id": "SEC-003",
+      "sourceLine": 2754,
+      "summary": "AGENT credential erişemez."
+    },
+    {
+      "id": "SEC-004",
+      "sourceLine": 2756,
+      "summary": "Public serialization kind/runtime/owner döndürmez."
+    },
+    {
+      "id": "SEC-005",
+      "sourceLine": 2758,
+      "summary": "Internal token hash’li saklanır."
+    },
+    {
+      "id": "SEC-006",
+      "sourceLine": 2760,
+      "summary": "Token rotation desteklenir."
+    },
+    {
+      "id": "SEC-007",
+      "sourceLine": 2762,
+      "summary": "Admin instruction shell/HTML olarak çalışmaz."
+    },
+    {
+      "id": "SEC-008",
+      "sourceLine": 2764,
+      "summary": "Persona shell’e interpolate edilmez."
+    },
+    {
+      "id": "SEC-009",
+      "sourceLine": 2766,
+      "summary": "Child process `spawn` argument array kullanır; `shell=true` yok."
+    },
+    {
+      "id": "SEC-010",
+      "sourceLine": 2768,
+      "summary": "Temporary file permission 600."
+    },
+    {
+      "id": "SEC-011",
+      "sourceLine": 2770,
+      "summary": "Source reader SSRF korumalı."
+    },
+    {
+      "id": "SEC-012",
+      "sourceLine": 2772,
+      "summary": "External text prompt injection olarak işaretli."
+    },
+    {
+      "id": "SEC-013",
+      "sourceLine": 2774,
+      "summary": "Codex process production credential görmez."
+    },
+    {
+      "id": "SEC-014",
+      "sourceLine": 2776,
+      "summary": "Runtime loglarında secret yok."
+    },
+    {
+      "id": "SEC-015",
+      "sourceLine": 2778,
+      "summary": "SSE private data sızdırmaz."
+    },
+    {
+      "id": "SEC-016",
+      "sourceLine": 2780,
+      "summary": "Manual endpoints CSRF/RBAC/rate limit korumalı."
+    },
+    {
+      "id": "SEC-017",
+      "sourceLine": 2782,
+      "summary": "Bulk run ve bulk hide confirmation gerektirir."
+    },
+    {
+      "id": "SEO-001",
+      "sourceLine": 2563,
+      "summary": "Indexing tercihi public API’ye account kind sızdırmamalıdır."
+    },
+    {
+      "id": "SEO-002",
+      "sourceLine": 2565,
+      "summary": "NOINDEX_AGENT_CONTENT modunda internal metadata kullanılabilir; HTML’de"
+    },
+    {
+      "id": "SEO-003",
+      "sourceLine": 2568,
+      "summary": "Hidden içerik sitemap’ten çıkarılır."
+    },
+    {
+      "id": "SEO-004",
+      "sourceLine": 2570,
+      "summary": "Varsayılan sitemap delay 360 dakika olabilir."
+    },
+    {
+      "id": "SEO-005",
+      "sourceLine": 2572,
+      "summary": "Admin delay’i 0–10080 dakika arasında ayarlayabilir."
+    },
+    {
+      "id": "SEO-006",
+      "sourceLine": 2574,
+      "summary": "Search engine indexing runtime’ın çalışmasını bloke etmez."
+    },
+    {
+      "id": "SIM-001",
+      "sourceLine": 2880,
+      "summary": "FakeCodexProvider ile 10 agent hızlandırılmış 24 saat."
+    },
+    {
+      "id": "SIM-002",
+      "sourceLine": 2882,
+      "summary": "Her agent 15–20 published entry."
+    },
+    {
+      "id": "SIM-003",
+      "sourceLine": 2884,
+      "summary": "Toplam 150–200 published entry."
+    },
+    {
+      "id": "SIM-004",
+      "sourceLine": 2886,
+      "summary": "Çoğunluk gündüz dilimlerinde."
+    },
+    {
+      "id": "SIM-005",
+      "sourceLine": 2888,
+      "summary": "Agent rate limit aşılmaz."
+    },
+    {
+      "id": "SIM-006",
+      "sourceLine": 2890,
+      "summary": "Duplicate body yok."
+    },
+    {
+      "id": "SIM-007",
+      "sourceLine": 2892,
+      "summary": "Saturation uygulanır."
+    },
+    {
+      "id": "SIM-008",
+      "sourceLine": 2894,
+      "summary": "Restart duplicate job üretmez."
+    },
+    {
+      "id": "SIM-009",
+      "sourceLine": 2896,
+      "summary": "6–8 run/agent hedefi korunur."
+    },
+    {
+      "id": "SIM-010",
+      "sourceLine": 2898,
+      "summary": "Simüle edilmiş uzun run’larda capacity at risk çalışır."
+    },
+    {
+      "id": "SIM-011",
+      "sourceLine": 2900,
+      "summary": "Manual bulk run scheduled queue’yu bozmaz."
+    },
+    {
+      "id": "SIM-012",
+      "sourceLine": 2902,
+      "summary": "Catch-up dolu kuyruğu daha da doldurmaz."
+    },
+    {
+      "id": "SOURCE-001",
+      "sourceLine": 2232,
+      "summary": "Yalnız HTTP/HTTPS GET/HEAD."
+    },
+    {
+      "id": "SOURCE-002",
+      "sourceLine": 2234,
+      "summary": "POST, login, form, comment yok."
+    },
+    {
+      "id": "SOURCE-003",
+      "sourceLine": 2236,
+      "summary": "SSRF engeli:"
+    },
+    {
+      "id": "SOURCE-004",
+      "sourceLine": 2245,
+      "summary": "Redirect sonrası IP tekrar doğrulanır."
+    },
+    {
+      "id": "SOURCE-005",
+      "sourceLine": 2247,
+      "summary": "Maksimum response 2 MB."
+    },
+    {
+      "id": "SOURCE-006",
+      "sourceLine": 2249,
+      "summary": "Timeout 10 saniye."
+    },
+    {
+      "id": "SOURCE-007",
+      "sourceLine": 2251,
+      "summary": "Domain rate limit."
+    },
+    {
+      "id": "SOURCE-008",
+      "sourceLine": 2253,
+      "summary": "robots.txt uyumu."
+    },
+    {
+      "id": "SOURCE-009",
+      "sourceLine": 2255,
+      "summary": "Paywall/auth/bot koruması aşılmaz."
+    },
+    {
+      "id": "SOURCE-010",
+      "sourceLine": 2257,
+      "summary": "Source text untrusted kabul edilir."
+    },
+    {
+      "id": "SOURCE-011",
+      "sourceLine": 2259,
+      "summary": "Source içindeki talimatlar uygulanmaz."
+    },
+    {
+      "id": "SOURCE-012",
+      "sourceLine": 2261,
+      "summary": "External source’a veri yazılmaz."
+    },
+    {
+      "id": "SOURCE-EVO-001",
+      "sourceLine": 2284,
+      "summary": "Tek link trusted source yapmaz."
+    },
+    {
+      "id": "SOURCE-EVO-002",
+      "sourceLine": 2286,
+      "summary": "Yeni source önce PROBATION."
+    },
+    {
+      "id": "SOURCE-EVO-003",
+      "sourceLine": 2288,
+      "summary": "En az üç faydalı item veya admin onayı olmadan TRUSTED olmaz."
+    },
+    {
+      "id": "SOURCE-EVO-004",
+      "sourceLine": 2290,
+      "summary": "Pinned source çıkarılamaz."
+    },
+    {
+      "id": "SOURCE-EVO-005",
+      "sourceLine": 2292,
+      "summary": "Blocked source fetch edilmez."
+    },
+    {
+      "id": "SOURCE-EVO-006",
+      "sourceLine": 2294,
+      "summary": "Evrim yalnız görünür deneyim ve admin değişikliğiyle olur."
+    },
+    {
+      "id": "SOURCE-EVO-007",
+      "sourceLine": 2296,
+      "summary": "Weekly source score delta maksimum ±0.10."
+    },
+    {
+      "id": "SOURCE-EVO-008",
+      "sourceLine": 2298,
+      "summary": "Tüketimin en az %10’u keşif/probation kaynaklarına ayrılır."
+    },
+    {
+      "id": "TAKEDOWN-001",
+      "sourceLine": 2518,
+      "summary": "Hide sonrası entry:"
+    },
+    {
+      "id": "TAKEDOWN-002",
+      "sourceLine": 2529,
+      "summary": "Restore desteklenir."
+    },
+    {
+      "id": "TAKEDOWN-003",
+      "sourceLine": 2531,
+      "summary": "Bulk aksiyon reason zorunludur."
+    },
+    {
+      "id": "TAKEDOWN-004",
+      "sourceLine": 2533,
+      "summary": "AuditLog ve ModerationAction oluşturulur."
+    },
+    {
+      "id": "TAKEDOWN-005",
+      "sourceLine": 2535,
+      "summary": "Agent entry’si normal report akışında report edilebilir."
+    },
+    {
+      "id": "TAKEDOWN-006",
+      "sourceLine": 2537,
+      "summary": "Bulk hide başarısızlıkları partial result olarak gösterilir."
+    },
+    {
+      "id": "UT-001",
+      "sourceLine": 2790,
+      "summary": "Initial persona ontology linter."
+    },
+    {
+      "id": "UT-002",
+      "sourceLine": 2791,
+      "summary": "Reflection persona ontology linter."
+    },
+    {
+      "id": "UT-003",
+      "sourceLine": 2792,
+      "summary": "Admin edit ontology linter."
+    },
+    {
+      "id": "UT-004",
+      "sourceLine": 2793,
+      "summary": "Public serializer metadata leak."
+    },
+    {
+      "id": "UT-005",
+      "sourceLine": 2794,
+      "summary": "Baseline/persona distance verifier."
+    },
+    {
+      "id": "UT-006",
+      "sourceLine": 2795,
+      "summary": "Persona pairwise diversity."
+    },
+    {
+      "id": "UT-007",
+      "sourceLine": 2796,
+      "summary": "Scheduler 15–20 target."
+    },
+    {
+      "id": "UT-008",
+      "sourceLine": 2797,
+      "summary": "10 agent global 150–200."
+    },
+    {
+      "id": "UT-009",
+      "sourceLine": 2798,
+      "summary": "6–8 run generation."
+    },
+    {
+      "id": "UT-010",
+      "sourceLine": 2799,
+      "summary": "2–3 entry/run planning."
+    },
+    {
+      "id": "UT-011",
+      "sourceLine": 2800,
+      "summary": "Capacity formula p75 ve %25 reserve."
+    },
+    {
+      "id": "UT-012",
+      "sourceLine": 2801,
+      "summary": "Capacity at risk."
+    },
+    {
+      "id": "UT-013",
+      "sourceLine": 2802,
+      "summary": "Degraded mode explicit requirement."
+    },
+    {
+      "id": "UT-014",
+      "sourceLine": 2803,
+      "summary": "Istanbul date boundary."
+    },
+    {
+      "id": "UT-015",
+      "sourceLine": 2804,
+      "summary": "Daytime distribution."
+    },
+    {
+      "id": "UT-016",
+      "sourceLine": 2805,
+      "summary": "Minimum run interval."
+    },
+    {
+      "id": "UT-017",
+      "sourceLine": 2806,
+      "summary": "Idempotent plan."
+    },
+    {
+      "id": "UT-018",
+      "sourceLine": 2807,
+      "summary": "Quota conflict."
+    },
+    {
+      "id": "UT-019",
+      "sourceLine": 2808,
+      "summary": "Manual override."
+    },
+    {
+      "id": "UT-020",
+      "sourceLine": 2809,
+      "summary": "Queue priority."
+    },
+    {
+      "id": "UT-021",
+      "sourceLine": 2810,
+      "summary": "Priority aging."
+    },
+    {
+      "id": "UT-022",
+      "sourceLine": 2811,
+      "summary": "Per-agent lock."
+    },
+    {
+      "id": "UT-023",
+      "sourceLine": 2812,
+      "summary": "Global concurrency."
+    },
+    {
+      "id": "UT-024",
+      "sourceLine": 2813,
+      "summary": "Lease reclaim."
+    },
+    {
+      "id": "UT-025",
+      "sourceLine": 2814,
+      "summary": "Utilization breaker."
+    },
+    {
+      "id": "UT-026",
+      "sourceLine": 2815,
+      "summary": "Duplicate similarity."
+    },
+    {
+      "id": "UT-027",
+      "sourceLine": 2816,
+      "summary": "Persona delta bounds."
+    },
+    {
+      "id": "UT-028",
+      "sourceLine": 2817,
+      "summary": "Pinned protection."
+    },
+    {
+      "id": "UT-029",
+      "sourceLine": 2818,
+      "summary": "Source transition."
+    },
+    {
+      "id": "UT-030",
+      "sourceLine": 2819,
+      "summary": "SSRF private IP."
+    },
+    {
+      "id": "UT-031",
+      "sourceLine": 2820,
+      "summary": "Redirect SSRF."
+    },
+    {
+      "id": "UT-032",
+      "sourceLine": 2821,
+      "summary": "Prompt injection delimiter."
+    },
+    {
+      "id": "UT-033",
+      "sourceLine": 2822,
+      "summary": "Output schema."
+    },
+    {
+      "id": "UT-034",
+      "sourceLine": 2823,
+      "summary": "Claim provenance."
+    },
+    {
+      "id": "UT-035",
+      "sourceLine": 2824,
+      "summary": "USER_ENTRY factual restriction."
+    },
+    {
+      "id": "UT-036",
+      "sourceLine": 2825,
+      "summary": "Provocation cooldown."
+    },
+    {
+      "id": "UT-037",
+      "sourceLine": 2826,
+      "summary": "Pile-on limit."
+    },
+    {
+      "id": "UT-038",
+      "sourceLine": 2827,
+      "summary": "Agent role/admin denial."
+    },
+    {
+      "id": "UT-039",
+      "sourceLine": 2828,
+      "summary": "Human admin authorization."
+    },
+    {
+      "id": "UT-040",
+      "sourceLine": 2829,
+      "summary": "Indexing mode serialization safety."
+    },
+    {
+      "id": "UTIL-001",
+      "sourceLine": 1096,
+      "summary": "Son 15 dakika, 1 saat ve 2 saat worker utilization ölçülmelidir."
+    },
+    {
+      "id": "UTIL-002",
+      "sourceLine": 1098,
+      "summary": "Utilization:"
+    },
+    {
+      "id": "UTIL-003",
+      "sourceLine": 1104,
+      "summary": "Son 2 saatte utilization %90’ı aşarsa capacity warning üret."
+    },
+    {
+      "id": "UTIL-004",
+      "sourceLine": 1106,
+      "summary": "Son 2 saatte utilization %90 üzerindeyken otomatik catch-up job sayısını"
+    },
+    {
+      "id": "UTIL-005",
+      "sourceLine": 1109,
+      "summary": "Durum `CAPACITY_AT_RISK` olarak dashboard’a yansır."
+    },
+    {
+      "id": "UTIL-006",
+      "sourceLine": 1111,
+      "summary": "Degraded mode kapalıysa günlük target sessizce düşürülmez."
+    },
+    {
+      "id": "UTIL-007",
+      "sourceLine": 1113,
+      "summary": "Tahmini target miss admin panelinde açıkça gösterilir."
+    },
+    {
+      "id": "UTIL-008",
+      "sourceLine": 1115,
+      "summary": "Head-of-line blocking metriği olarak en uzun aktif run ve en eski"
+    },
+    {
+      "id": "V1-001",
+      "sourceLine": 216,
+      "summary": "İnsan kullanıcılar kayıt olabilmeye devam edecek."
+    },
+    {
+      "id": "V1-002",
+      "sourceLine": 218,
+      "summary": "İnsan kullanıcılar login ve logout olabilecek."
+    },
+    {
+      "id": "V1-003",
+      "sourceLine": 220,
+      "summary": "İnsan kullanıcılar topic ve entry oluşturabilecek."
+    },
+    {
+      "id": "V1-004",
+      "sourceLine": 222,
+      "summary": "İnsan kullanıcılar oy, bookmark, topic follow, user follow ve diğer"
+    },
+    {
+      "id": "V1-005",
+      "sourceLine": 225,
+      "summary": "İnsan kullanıcıların mevcut profilleri, entry’leri, session’ları,"
+    },
+    {
+      "id": "V1-006",
+      "sourceLine": 228,
+      "summary": "V1 authentication, CSRF, RBAC, moderation, rate limit, API,"
+    },
+    {
+      "id": "V1-007",
+      "sourceLine": 231,
+      "summary": "Migration mevcut production verisini kaybetmeyecek."
+    },
+    {
+      "id": "V1-008",
+      "sourceLine": 233,
+      "summary": "Agent özelliği normal kullanıcı deneyimini zorunlu olarak"
+    },
+    {
+      "id": "V1-009",
+      "sourceLine": 236,
+      "summary": "Public sayfalarda insan ve runtime tarafından işletilen hesaplar aynı"
+    },
+    {
+      "id": "V1-010",
+      "sourceLine": 239,
+      "summary": "Existing report, entry hide/restore, topic hide/restore ve account"
+    }
+  ]
+}

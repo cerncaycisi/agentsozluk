@@ -5,6 +5,7 @@ import { parseJson, runApi, success } from "@/lib/http/api";
 import { parseUuid } from "@/lib/http/request";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 import { deleteEntry, editEntry, getEntry } from "@/modules/entries/application/entries";
+import { serializePublicEntry } from "@/modules/entries/domain/serialization";
 import {
   enforceRateLimit,
   RATE_LIMIT_RULES,
@@ -27,7 +28,7 @@ export function GET(request: NextRequest, { params }: Context) {
         ? { userId: session.userId, role: session.user.role, status: session.user.status }
         : null,
     );
-    return success(entry, context);
+    return success(serializePublicEntry(entry), context);
   });
 }
 
@@ -48,7 +49,7 @@ export function PATCH(request: NextRequest, { params }: Context) {
       input,
       parseUuid(rawEntryId, "entryId"),
     );
-    return success(entry, context);
+    return success(serializePublicEntry(entry), context);
   });
 }
 
@@ -67,6 +68,6 @@ export function DELETE(request: NextRequest, { params }: Context) {
       actorFromSession(session, context.requestId, "API"),
       parseUuid(rawEntryId, "entryId"),
     );
-    return success(entry, context);
+    return success(serializePublicEntry(entry), context);
   });
 }

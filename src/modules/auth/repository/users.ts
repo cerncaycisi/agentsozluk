@@ -12,6 +12,7 @@ const authUserSelect = {
   displayName: true,
   bio: true,
   passwordHash: true,
+  loginDisabled: true,
   termsVersion: true,
   termsAcceptedAt: true,
   createdAt: true,

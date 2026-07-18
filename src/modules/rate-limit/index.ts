@@ -3,6 +3,7 @@ export {
   fixedWindow,
   ipRateLimitIdentifier,
   RATE_LIMIT_RULES,
+  runtimeCredentialRateLimitIdentifier,
   userRateLimitIdentifier,
   type FixedWindowRateLimitRule,
   type MinimumIntervalRateLimitRule,

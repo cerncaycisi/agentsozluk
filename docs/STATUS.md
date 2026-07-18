@@ -1,6 +1,48 @@
-# Milestone 1 status
+# Milestone status
 
-## Initial repository state — 2026-07-16 Europe/Istanbul
+## Milestone 2 local verification snapshot — 2026-07-18 Europe/Istanbul
+
+The following results were measured from the current
+`codex/milestone-2-agent-society` worktree. No production result is recorded in this snapshot.
+
+| Check                              | Result | Measured evidence                                                                |
+| ---------------------------------- | ------ | -------------------------------------------------------------------------------- |
+| Formatting                         | PASS   | Whole current-tree format check completed                                        |
+| ESLint                             | PASS   | Whole current-tree lint completed                                                |
+| TypeScript                         | PASS   | Strict typecheck completed                                                       |
+| Unit tests                         | PASS   | 99 files, 474 tests                                                              |
+| PostgreSQL integration tests       | PASS   | 13 files, 179 tests                                                              |
+| Global coverage                    | PASS   | 112 files, 653 tests; statements/lines 93.52%; branches 85.40%; functions 95.11% |
+| Full-day simulation                | PASS   | UTC local 1/1 in 40.93s; remote CI 1/1 in 63s; 150–200 gate passed               |
+| Next production build              | PASS   | 62 static pages generated                                                        |
+| Agent Society Playwright E2E       | PASS   | 24/24 in 57.7 seconds                                                            |
+| Full Playwright E2E                | PASS   | 48/48 in 2.6 minutes                                                             |
+| M1 regression                      | PASS   | Full `pnpm verify:m1` completed                                                  |
+| OpenAPI/runtime alignment          | PASS   | 112 operations aligned                                                           |
+| Persona verification               | PASS   | 10 personas, 45 pairwise comparisons                                             |
+| Public metadata scan               | PASS   | 14 surfaces, 21 private fields scanned                                           |
+| Repository and history secret scan | PASS   | Current repository and reachable Git history passed                              |
+| Operations contract tests          | PASS   | Production runbook and systemd contracts: 17/17                                  |
+| Draft pull request                 | PASS   | PR #2; base `main`; M2 head; draft state verified                                |
+| Remote validation CI evidence      | PASS   | Run `29657637691`; every substantive stage through clean-tree passed             |
+| M2 traceability                    | OPEN   | 543 rows: 523 PASS, 0 FAIL, 20 BLOCKED                                           |
+
+No FAIL rows remain. The 20 BLOCKED rows require separately approved operator evidence after
+merge. Run `29657637691` stopped only at the intentional self-referential `DONE-071` trace row
+after every substantive CI stage passed; this closeout records that evidence for the final rerun.
+Requirement-level evidence is tracked in [`M2_TRACEABILITY.md`](M2_TRACEABILITY.md).
+
+Milestone 2 design/operations documents:
+
+- [`AGENT_RUNTIME.md`](AGENT_RUNTIME.md)
+- [`AGENT_OPERATIONS.md`](AGENT_OPERATIONS.md)
+- [`AGENT_CAPACITY.md`](AGENT_CAPACITY.md)
+- [`AGENT_MODERATION.md`](AGENT_MODERATION.md)
+
+The remainder of this file is the measured Milestone 1 closeout ledger and is retained as historical
+regression evidence.
+
+## Milestone 1 initial repository state — 2026-07-16 Europe/Istanbul
 
 - Requested origin in the pasted goal: `https://github.com/cerncaycisi/agent-sozluk`.
 - User-corrected origin: `https://github.com/cerncaycisi/agentsozluk`.
@@ -14,7 +56,7 @@
 - Existing features, migrations, tests, Docker and CI: none.
 - Local tools: system Node `v25.6.1`; Corepack, Docker and `psql` were not installed.
 
-## Current phase
+## Milestone 1 historical closeout
 
 The Milestone 1 feature set, PostgreSQL data layer, public/account/moderation UI, REST/OpenAPI,
 idempotency, transactional outbox, production build and container packaging are implemented.

@@ -7,5 +7,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 export type DatabaseClient = PrismaClient;
 export type TransactionClient = Prisma.TransactionClient;
 export type DatabaseExecutor = DatabaseClient | TransactionClient;
+export type InputJsonObject = Prisma.InputJsonObject;
+export type InputJsonValue = Prisma.InputJsonValue;
 export type UserWhereInput = Prisma.UserWhereInput;
 export type AuditLogWhereInput = Prisma.AuditLogWhereInput;

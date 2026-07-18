@@ -45,16 +45,25 @@ async function recordAction(
     targetType: string;
     targetId: string;
     reason: string;
+    before: unknown;
+    after: unknown;
     metadata?: Record<string, unknown>;
   },
 ): Promise<void> {
+  const metadata = {
+    ...(input.metadata ?? {}),
+    actorKind: actor.actorKind,
+    before: input.before,
+    after: input.after,
+    reason: input.reason,
+  };
   await appendModerationAction(transaction, {
     moderatorId: actor.actorId,
     actionType: input.actionType,
     targetType: input.targetType.toUpperCase(),
     targetId: input.targetId,
     reason: input.reason,
-    ...(input.metadata ? { metadata: input.metadata } : {}),
+    metadata,
   });
   await appendAuditLog(transaction, {
     actorId: actor.actorId,
@@ -62,7 +71,7 @@ async function recordAction(
     entityType: input.targetType,
     entityId: input.targetId,
     requestId: actor.requestId,
-    ...(input.metadata ? { metadata: input.metadata } : {}),
+    metadata,
   });
   await appendOutboxEvent(transaction, {
     eventType: input.eventType,
@@ -71,7 +80,7 @@ async function recordAction(
     actorId: actor.actorId,
     actorKind: actor.actorKind,
     requestId: actor.requestId,
-    ...(input.metadata ? { payload: input.metadata } : {}),
+    payload: metadata,
   });
 }
 
@@ -116,6 +125,8 @@ export async function setEntryVisibility(
       targetType: "Entry",
       targetId: entryId,
       reason: input.reason,
+      before: { status: entry.status },
+      after: { status: updated.status },
       metadata: { topicId: entry.topicId },
     });
     return updated;
@@ -146,6 +157,8 @@ export async function setTopicVisibility(
       targetType: "Topic",
       targetId: topicId,
       reason: input.reason,
+      before: { status: topic.status },
+      after: { status: updated.status },
     });
     return updated;
   });
@@ -179,6 +192,16 @@ export async function renameTopic(
       targetType: "Topic",
       targetId: topicId,
       reason: input.reason,
+      before: {
+        title: topic.title,
+        normalizedTitle: topic.normalizedTitle,
+        slug: topic.slug,
+      },
+      after: {
+        title: updated.title,
+        normalizedTitle: updated.normalizedTitle,
+        slug: updated.slug,
+      },
       metadata: { previousTitle: topic.title, title },
     });
     return updated;
@@ -217,6 +240,8 @@ export async function mergeTopic(
       targetType: "Topic",
       targetId: source.id,
       reason: input.reason,
+      before: { status: source.status, mergedIntoId: source.mergedIntoId },
+      after: { status: "MERGED", mergedIntoId: target.id },
       metadata: { targetTopicId: target.id },
     });
     return { sourceTopicId: source.id, targetTopicId: target.id };
@@ -267,6 +292,8 @@ export async function moveEntry(
       targetType: "Entry",
       targetId: entryId,
       reason: input.reason,
+      before: { topicId: entry.topicId },
+      after: { topicId: updated.topicId },
       metadata: { sourceTopicId: entry.topicId, targetTopicId: target.id },
     });
     return updated;
@@ -300,6 +327,8 @@ export async function setUserSuspension(
       targetType: "User",
       targetId: userId,
       reason: input.reason,
+      before: { status: target.status },
+      after: { status: updated.status },
       metadata: { role: target.role },
     });
     return updated;
@@ -336,6 +365,8 @@ export async function setModeratorRole(
       targetType: "User",
       targetId: userId,
       reason: input.reason,
+      before: { role: target.role },
+      after: { role: updated.role },
       metadata: { previousRole: target.role, role: updated.role },
     });
     return updated;

@@ -21,8 +21,10 @@ export interface EntryPreviewItem {
 export function EntryPreview({
   entry,
   actions,
+  showTopicTitle = true,
 }: {
   entry: EntryPreviewItem;
+  showTopicTitle?: boolean;
   actions?: {
     vote: -1 | 1 | null;
     bookmarked: boolean;
@@ -35,14 +37,16 @@ export function EntryPreview({
   return (
     <article id={`entry-${entry.id}`} className="surface-card scroll-mt-24 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <h2 className="text-lg font-bold">
-          <Link
-            href={`/baslik/${entry.topic.id}-${entry.topic.slug}`}
-            className="hover:text-primary"
-          >
-            {entry.topic.title}
-          </Link>
-        </h2>
+        {showTopicTitle ? (
+          <h2 className="text-lg font-bold">
+            <Link
+              href={`/baslik/${entry.topic.id}-${entry.topic.slug}`}
+              className="hover:text-primary"
+            >
+              {entry.topic.title}
+            </Link>
+          </h2>
+        ) : null}
         {entry.status === "HIDDEN" ? (
           <span className="rounded-full bg-destructive/10 px-3 py-1 text-xs font-bold text-destructive">
             gizlenmiş entry

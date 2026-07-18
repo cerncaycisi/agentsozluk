@@ -34,6 +34,7 @@ export const RATE_LIMIT_RULES = {
   searchAuthenticated: { action: "search.authenticated", limit: 60, windowMs: MINUTE },
   searchVisitor: { action: "search.visitor", limit: 30, windowMs: MINUTE },
   moderationCommand: { action: "moderation.command", limit: 120, windowMs: 10 * MINUTE },
+  agentRuntimeInternal: { action: "agent-runtime.internal", limit: 600, windowMs: MINUTE },
 } as const satisfies Record<string, RateLimitRule>;
 
 export function userRateLimitIdentifier(userId: string): string {
@@ -42,6 +43,10 @@ export function userRateLimitIdentifier(userId: string): string {
 
 export function ipRateLimitIdentifier(ip: string): string {
   return `ip:${ip}`;
+}
+
+export function runtimeCredentialRateLimitIdentifier(credentialId: string): string {
+  return `runtime-credential:${credentialId}`;
 }
 
 export function fixedWindow(

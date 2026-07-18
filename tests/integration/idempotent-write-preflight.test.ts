@@ -5,6 +5,7 @@ import { POST as createReportRoute } from "@/app/api/v1/reports/route";
 import { POST as createEntryRoute } from "@/app/api/v1/topics/[topicId]/entries/route";
 import { POST as createTopicRoute } from "@/app/api/v1/topics/route";
 import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/config/app";
+import { canonicalRequestHash } from "@/lib/http/idempotency";
 import { sha256 } from "@/lib/security/crypto";
 import { lockUserStateForTransition } from "@/modules/auth/repository/users";
 import {
@@ -145,13 +146,15 @@ describe("idempotent write preflight", () => {
         body: "Replay sırasında yalnızca bir kez oluşturulması gereken yeterli uzunlukta entry.",
       });
 
-    expect(
-      (
-        await createEntryRoute(request(), {
-          params: Promise.resolve({ topicId: topic.id }),
-        })
-      ).status,
-    ).toBe(201);
+    const createdResponse = await createEntryRoute(request(), {
+      params: Promise.resolve({ topicId: topic.id }),
+    });
+    expect(createdResponse.status).toBe(201);
+    const createdPayload = await createdResponse.json();
+    expect(createdPayload.data).not.toHaveProperty("origin");
+    expect(createdPayload.data).not.toHaveProperty("normalizedBody");
+    expect(createdPayload.data.topic).not.toHaveProperty("createdById");
+    expect(createdPayload.data.author).not.toHaveProperty("kind");
     const replay = await createEntryRoute(request(), {
       params: Promise.resolve({ topicId: topic.id }),
     });
@@ -163,6 +166,93 @@ describe("idempotent write preflight", () => {
     ).toMatchObject({ count: 2 });
     expect(await integrationDatabase.entry.count()).toBe(1);
     expect(await integrationDatabase.idempotencyRecord.count()).toBe(1);
+  });
+
+  it("re-serializes legacy entry idempotency replays before returning public JSON", async () => {
+    const writer = await createUser("legacy_entry_replay_writer");
+    const session = await createPersistedSession(writer.id);
+    const topic = await integrationDatabase.topic.create({
+      data: {
+        title: "Legacy replay public sınırı",
+        normalizedTitle: "legacy replay public siniri",
+        slug: "legacy-replay-public-siniri",
+        createdById: writer.id,
+      },
+    });
+    const entry = await integrationDatabase.entry.create({
+      data: {
+        topicId: topic.id,
+        authorId: writer.id,
+        body: "Eski idempotency cevabı public allowlist üzerinden yeniden kurulmalıdır.",
+        normalizedBody: "eski idempotency cevabı public allowlist üzerinden yeniden kurulmalıdır.",
+        origin: "WEB",
+      },
+    });
+    const idempotencyKey = randomUUID();
+    const requestBody = {
+      body: "Eski idempotency cevabı public allowlist üzerinden yeniden kurulmalıdır.",
+    };
+    const route = `/api/v1/topics/${topic.id}/entries`;
+    await integrationDatabase.idempotencyRecord.create({
+      data: {
+        actorId: writer.id,
+        key: idempotencyKey,
+        route,
+        requestHash: canonicalRequestHash(requestBody),
+        responseStatus: 201,
+        expiresAt: new Date(Date.now() + 60 * 60_000),
+        responseBody: {
+          requestId: "legacy-request-id",
+          data: {
+            id: entry.id,
+            topicId: topic.id,
+            authorId: writer.id,
+            body: entry.body,
+            normalizedBody: entry.normalizedBody,
+            origin: "AGENT",
+            status: "ACTIVE",
+            score: 0,
+            upvoteCount: 0,
+            downvoteCount: 0,
+            createdAt: entry.createdAt.toISOString(),
+            updatedAt: entry.updatedAt.toISOString(),
+            deletedAt: null,
+            hiddenAt: null,
+            topic: {
+              id: topic.id,
+              title: topic.title,
+              slug: topic.slug,
+              status: "ACTIVE",
+              createdById: writer.id,
+            },
+            author: {
+              id: writer.id,
+              username: writer.username,
+              displayName: writer.displayName,
+              status: "ACTIVE",
+              kind: "AGENT",
+            },
+            edited: false,
+          },
+        },
+      },
+    });
+
+    const response = await createEntryRoute(
+      writeRequest(route, session, idempotencyKey, requestBody),
+      { params: Promise.resolve({ topicId: topic.id }) },
+    );
+    expect(response.status).toBe(201);
+    expect(response.headers.get("Idempotent-Replay")).toBe("true");
+    const payload = await response.json();
+    expect(payload.data).toMatchObject({ id: entry.id, body: entry.body });
+    expect(payload.data).not.toHaveProperty("origin");
+    expect(payload.data).not.toHaveProperty("normalizedBody");
+    expect(payload.data).not.toHaveProperty("deletedAt");
+    expect(payload.data).not.toHaveProperty("hiddenAt");
+    expect(payload.data.topic).not.toHaveProperty("createdById");
+    expect(payload.data.author).not.toHaveProperty("kind");
+    expect(await integrationDatabase.entry.count()).toBe(1);
   });
 
   it("charges every report replay and returns 429 after the tenth accepted request", async () => {

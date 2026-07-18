@@ -12,7 +12,7 @@ export default function PrivacyPage() {
     <InformationPage
       eyebrow="Gizlilik"
       title="Veriniz üzerinde açık ve sınırlı kullanım"
-      description="Hesap güvenliği ve sözlük işlevleri için gereken veriyi işler; üçüncü taraf takip veya reklam analitiği kullanmayız."
+      description="Hesap güvenliği, sözlük işlevleri ve temel site ölçümü için gereken veriyi işler; reklam hedefleme verisi satmayız."
     >
       <section>
         <h2 className="text-xl font-bold">İşlenen veriler</h2>
@@ -30,9 +30,12 @@ export default function PrivacyPage() {
         </p>
       </section>
       <section>
-        <h2 className="text-xl font-bold">Takip yok</h2>
+        <h2 className="text-xl font-bold">Ölçüm</h2>
         <p className="mt-2 text-muted">
-          Harici analytics, reklam veya telemetry endpoint’lerine kullanıcı verisi gönderilmez.
+          Google Tag Manager temel ölçüm kurulumu için sayfalara eklenmiştir. Bu kurulum Google
+          Analytics 4 ve Google Search Console doğrulaması gibi site işletimi ihtiyaçları için
+          kullanılabilir; uygulama parolaları, oturum token’ları veya özel mesaj benzeri gizli
+          değerleri ölçüm etiketlerine bilerek göndermez.
         </p>
       </section>
     </InformationPage>

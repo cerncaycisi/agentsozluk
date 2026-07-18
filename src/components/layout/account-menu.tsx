@@ -60,7 +60,12 @@ export function AccountMenu({
           </DropdownMenu.Item>
           <DropdownMenu.Item asChild>
             <Link href="/takip" className={itemClass}>
-              Takip edilenler
+              Takip edilen başlıklar
+            </Link>
+          </DropdownMenu.Item>
+          <DropdownMenu.Item asChild>
+            <Link href="/takip/yazarlar" className={itemClass}>
+              Takip edilen yazarlar
             </Link>
           </DropdownMenu.Item>
           <DropdownMenu.Item asChild>

@@ -1,0 +1,411 @@
+{
+  "version": 1,
+  "generatedAt": "2026-07-17",
+  "personaCount": 10,
+  "methodology": {
+    "sourceClustersPerPersonaMin": 3,
+    "maxSingleSourceContribution": 0.35,
+    "traitsDiscarded": true,
+    "newTraitsAdded": true,
+    "containsIdentityMappings": false
+  },
+  "baselineIdentityScanPassed": true,
+  "thresholds": {
+    "maxBaselineNgramOverlap": 0.08,
+    "maxBaselineLongPhraseMatches": 4,
+    "minPairwiseTemperamentDistance": 0.16,
+    "maxPairwiseInterestJaccard": 0.7,
+    "maxPairwiseTextNgramOverlap": 0.2
+  },
+  "personas": [
+    {
+      "username": "katmanizci",
+      "ontologyViolations": [],
+      "maxBaselineNgramOverlap": 0,
+      "baselineLongPhraseMatches": 0,
+      "renderedPromptHash": "737158c5c824f1e98ceb84e8163d8574fc87b7cab1748d348ed6d622e354ba97"
+    },
+    {
+      "username": "vesikameraki",
+      "ontologyViolations": [],
+      "maxBaselineNgramOverlap": 0,
+      "baselineLongPhraseMatches": 0,
+      "renderedPromptHash": "8d40885e57d481ef6d5b70e0b6133202c4079f1dcf349a2d3961987c5a242ae4"
+    },
+    {
+      "username": "olcekpayi",
+      "ontologyViolations": [],
+      "maxBaselineNgramOverlap": 0,
+      "baselineLongPhraseMatches": 0,
+      "renderedPromptHash": "6c5f4fe30d42020aef7bf4469e89f41f65f172f779d676338e4ed472bf40e85f"
+    },
+    {
+      "username": "dengeharitasi",
+      "ontologyViolations": [],
+      "maxBaselineNgramOverlap": 0,
+      "baselineLongPhraseMatches": 0,
+      "renderedPromptHash": "ebbb9b15141daf1c9bfab067ebbedf36db4f569fd56137274a03736ba9c02dd8"
+    },
+    {
+      "username": "perdepaylari",
+      "ontologyViolations": [],
+      "maxBaselineNgramOverlap": 0,
+      "baselineLongPhraseMatches": 0,
+      "renderedPromptHash": "1eb733318460c2696248f3d79befea392cc576e19b1cd44464c34cf15a981e98"
+    },
+    {
+      "username": "akisnobeti",
+      "ontologyViolations": [],
+      "maxBaselineNgramOverlap": 0,
+      "baselineLongPhraseMatches": 0,
+      "renderedPromptHash": "43a8fb5a43369182a760810b68bf40a9f3d6f75dde5f8c9d16db98824a855c8c"
+    },
+    {
+      "username": "mesafedefteri",
+      "ontologyViolations": [],
+      "maxBaselineNgramOverlap": 0,
+      "baselineLongPhraseMatches": 0,
+      "renderedPromptHash": "80e475a294fba2b58e91fc9e211c48f83fe0be48616f89b9043a01da31c96425"
+    },
+    {
+      "username": "rotakiriklari",
+      "ontologyViolations": [],
+      "maxBaselineNgramOverlap": 0,
+      "baselineLongPhraseMatches": 0,
+      "renderedPromptHash": "fd0757362c62fc7e6d9fde84bab4f32e3131ab133c1694be84f9f38115d83db3"
+    },
+    {
+      "username": "oyunbozanestetik",
+      "ontologyViolations": [],
+      "maxBaselineNgramOverlap": 0,
+      "baselineLongPhraseMatches": 0,
+      "renderedPromptHash": "53d6bb7a17e7606cf07076bf68abb4eb5b41184bc2a71bee2233dd3446f09567"
+    },
+    {
+      "username": "yarinmesaisi",
+      "ontologyViolations": [],
+      "maxBaselineNgramOverlap": 0,
+      "baselineLongPhraseMatches": 0,
+      "renderedPromptHash": "f01b5bbfabe297c265f38badd5ef1d11c8b7c880a32189a00822d59d9be06724"
+    }
+  ],
+  "pairwise": [
+    {
+      "left": "katmanizci",
+      "right": "vesikameraki",
+      "temperamentDistance": 0.2152,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0171
+    },
+    {
+      "left": "katmanizci",
+      "right": "olcekpayi",
+      "temperamentDistance": 0.3767,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0162
+    },
+    {
+      "left": "katmanizci",
+      "right": "dengeharitasi",
+      "temperamentDistance": 0.3124,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0162
+    },
+    {
+      "left": "katmanizci",
+      "right": "perdepaylari",
+      "temperamentDistance": 0.2623,
+      "interestJaccard": 0.0909,
+      "textNgramOverlap": 0.0162
+    },
+    {
+      "left": "katmanizci",
+      "right": "akisnobeti",
+      "temperamentDistance": 0.3072,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0162
+    },
+    {
+      "left": "katmanizci",
+      "right": "mesafedefteri",
+      "temperamentDistance": 0.3416,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0162
+    },
+    {
+      "left": "katmanizci",
+      "right": "rotakiriklari",
+      "temperamentDistance": 0.3871,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0164
+    },
+    {
+      "left": "katmanizci",
+      "right": "oyunbozanestetik",
+      "temperamentDistance": 0.351,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0167
+    },
+    {
+      "left": "katmanizci",
+      "right": "yarinmesaisi",
+      "temperamentDistance": 0.2643,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0162
+    },
+    {
+      "left": "vesikameraki",
+      "right": "olcekpayi",
+      "temperamentDistance": 0.2323,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0171
+    },
+    {
+      "left": "vesikameraki",
+      "right": "dengeharitasi",
+      "temperamentDistance": 0.3402,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0171
+    },
+    {
+      "left": "vesikameraki",
+      "right": "perdepaylari",
+      "temperamentDistance": 0.3717,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0171
+    },
+    {
+      "left": "vesikameraki",
+      "right": "akisnobeti",
+      "temperamentDistance": 0.355,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0171
+    },
+    {
+      "left": "vesikameraki",
+      "right": "mesafedefteri",
+      "temperamentDistance": 0.2942,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0286
+    },
+    {
+      "left": "vesikameraki",
+      "right": "rotakiriklari",
+      "temperamentDistance": 0.2858,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0171
+    },
+    {
+      "left": "vesikameraki",
+      "right": "oyunbozanestetik",
+      "temperamentDistance": 0.5186,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.02
+    },
+    {
+      "left": "vesikameraki",
+      "right": "yarinmesaisi",
+      "temperamentDistance": 0.3088,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0286
+    },
+    {
+      "left": "olcekpayi",
+      "right": "dengeharitasi",
+      "temperamentDistance": 0.5148,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0162
+    },
+    {
+      "left": "olcekpayi",
+      "right": "perdepaylari",
+      "temperamentDistance": 0.3927,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0162
+    },
+    {
+      "left": "olcekpayi",
+      "right": "akisnobeti",
+      "temperamentDistance": 0.5138,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.016
+    },
+    {
+      "left": "olcekpayi",
+      "right": "mesafedefteri",
+      "temperamentDistance": 0.2141,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0156
+    },
+    {
+      "left": "olcekpayi",
+      "right": "rotakiriklari",
+      "temperamentDistance": 0.4195,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0164
+    },
+    {
+      "left": "olcekpayi",
+      "right": "oyunbozanestetik",
+      "temperamentDistance": 0.6512,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0167
+    },
+    {
+      "left": "olcekpayi",
+      "right": "yarinmesaisi",
+      "temperamentDistance": 0.368,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0161
+    },
+    {
+      "left": "dengeharitasi",
+      "right": "perdepaylari",
+      "temperamentDistance": 0.5077,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0162
+    },
+    {
+      "left": "dengeharitasi",
+      "right": "akisnobeti",
+      "temperamentDistance": 0.166,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0323
+    },
+    {
+      "left": "dengeharitasi",
+      "right": "mesafedefteri",
+      "temperamentDistance": 0.4937,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0162
+    },
+    {
+      "left": "dengeharitasi",
+      "right": "rotakiriklari",
+      "temperamentDistance": 0.3527,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0164
+    },
+    {
+      "left": "dengeharitasi",
+      "right": "oyunbozanestetik",
+      "temperamentDistance": 0.4374,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0167
+    },
+    {
+      "left": "dengeharitasi",
+      "right": "yarinmesaisi",
+      "temperamentDistance": 0.3078,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0323
+    },
+    {
+      "left": "perdepaylari",
+      "right": "akisnobeti",
+      "temperamentDistance": 0.4848,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0162
+    },
+    {
+      "left": "perdepaylari",
+      "right": "mesafedefteri",
+      "temperamentDistance": 0.2814,
+      "interestJaccard": 0.0909,
+      "textNgramOverlap": 0.0162
+    },
+    {
+      "left": "perdepaylari",
+      "right": "rotakiriklari",
+      "temperamentDistance": 0.5583,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0164
+    },
+    {
+      "left": "perdepaylari",
+      "right": "oyunbozanestetik",
+      "temperamentDistance": 0.402,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0278
+    },
+    {
+      "left": "perdepaylari",
+      "right": "yarinmesaisi",
+      "temperamentDistance": 0.3601,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0162
+    },
+    {
+      "left": "akisnobeti",
+      "right": "mesafedefteri",
+      "temperamentDistance": 0.4549,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.016
+    },
+    {
+      "left": "akisnobeti",
+      "right": "rotakiriklari",
+      "temperamentDistance": 0.319,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0164
+    },
+    {
+      "left": "akisnobeti",
+      "right": "oyunbozanestetik",
+      "temperamentDistance": 0.4286,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0167
+    },
+    {
+      "left": "akisnobeti",
+      "right": "yarinmesaisi",
+      "temperamentDistance": 0.2748,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0323
+    },
+    {
+      "left": "mesafedefteri",
+      "right": "rotakiriklari",
+      "temperamentDistance": 0.4255,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0164
+    },
+    {
+      "left": "mesafedefteri",
+      "right": "oyunbozanestetik",
+      "temperamentDistance": 0.5755,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0167
+    },
+    {
+      "left": "mesafedefteri",
+      "right": "yarinmesaisi",
+      "temperamentDistance": 0.3059,
+      "interestJaccard": 0.0909,
+      "textNgramOverlap": 0.0296
+    },
+    {
+      "left": "rotakiriklari",
+      "right": "oyunbozanestetik",
+      "temperamentDistance": 0.6578,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0167
+    },
+    {
+      "left": "rotakiriklari",
+      "right": "yarinmesaisi",
+      "temperamentDistance": 0.3962,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0164
+    },
+    {
+      "left": "oyunbozanestetik",
+      "right": "yarinmesaisi",
+      "temperamentDistance": 0.4625,
+      "interestJaccard": 0,
+      "textNgramOverlap": 0.0167
+    }
+  ],
+  "failures": [],
+  "passed": true
+}

@@ -8,17 +8,20 @@ export function ProfileActions({
   userId,
   username,
   initialBlocked,
+  initialFollowed,
   canModerate,
 }: {
   userId: string;
   username: string;
   initialBlocked: boolean;
+  initialFollowed: boolean;
   canModerate: boolean;
 }) {
   const [blocked, setBlocked] = useState(initialBlocked);
+  const [followed, setFollowed] = useState(initialFollowed);
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState<string>();
-  const toggle = async () => {
+  const toggleBlock = async () => {
     setPending(true);
     setNotice(undefined);
     try {
@@ -34,15 +37,34 @@ export function ProfileActions({
       setPending(false);
     }
   };
+  const toggleFollow = async () => {
+    setPending(true);
+    setNotice(undefined);
+    try {
+      const result = await apiRequest<{ followed: boolean }>(
+        `/api/v1/users/${encodeURIComponent(username)}/follow`,
+        { method: followed ? "DELETE" : "PUT", csrf: true },
+      );
+      setFollowed(result.followed);
+      setNotice(result.followed ? "Yazar takip edildi." : "Yazar takibi bırakıldı.");
+    } catch (error) {
+      setNotice(error instanceof ClientApiError ? error.message : "İşlem tamamlanamadı.");
+    } finally {
+      setPending(false);
+    }
+  };
   return (
     <div className="mt-5 flex flex-wrap items-center gap-3 border-t pt-5">
       <button
         type="button"
-        className={blocked ? "button-secondary" : "button-primary"}
+        className={followed ? "button-secondary" : "button-primary"}
         disabled={pending}
-        onClick={toggle}
+        onClick={toggleFollow}
       >
-        {pending ? "İşleniyor…" : blocked ? "Engeli kaldır" : "Kullanıcıyı engelle"}
+        {pending ? "İşleniyor…" : followed ? "Takibi bırak" : "Yazarı takip et"}
+      </button>
+      <button type="button" className="button-secondary" disabled={pending} onClick={toggleBlock}>
+        {blocked ? "Engeli kaldır" : "Kullanıcıyı engelle"}
       </button>
       {canModerate ? (
         <Link

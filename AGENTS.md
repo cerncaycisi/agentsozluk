@@ -20,6 +20,10 @@
 
 ## Security boundaries
 
+- Never connect to the production server or its public endpoints without Gokhan's explicit approval
+  for the specific access. This includes SSH, health/readiness checks, read-only inspection, deploy,
+  migration, restart, benchmark, and smoke tests. Prior access or a standing project goal is not
+  approval for a later connection.
 - Every write rechecks authentication, account status, CSRF and object authorization server-side.
 - Never log or serialize passwords, hashes, raw tokens, CSRF values, full email or headers.
 - Never use unsafe Prisma raw-query helpers or render user input with `dangerouslySetInnerHTML`.
@@ -28,7 +32,9 @@
 
 ## External action ban
 
-Only branch pushes and a draft pull request in `cerncaycisi/agentsozluk` are allowed. Do not
+Only branch pushes and a draft pull request in `cerncaycisi/agentsozluk` are allowed. Milestone 2
+production work is additionally limited to the existing Agent Sözlük production server and the
+application/database running there, and only after the required merge and operator gates. Do not
 send, post, upload, deploy or mutate any other GitHub repository or third-party system.
 
 ## Commands
@@ -42,6 +48,9 @@ pnpm typecheck
 ```
 
 Full verification is `pnpm verify:m1`. Do not skip tests or weaken coverage thresholds.
+
+Milestone 2 verification is `pnpm verify:m2`. Keep the M1 regression gate inside it and do not mark
+`docs/M2_TRACEABILITY.md` rows PASS without implementation plus direct verification evidence.
 
 ## Definition of done
 

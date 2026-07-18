@@ -1,4 +1,5 @@
-import type { DatabaseClient, TransactionClient } from "@/lib/db/types";
+import { inTransaction } from "@/lib/db/transaction";
+import type { DatabaseClient, DatabaseExecutor, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
 import { requireActiveActor } from "@/modules/auth/application/guards";
@@ -9,26 +10,33 @@ import { withEditedIndicator } from "@/modules/entries/domain/entry";
 import { transitionVote, type VoteValue } from "@/modules/interactions/domain/vote";
 import {
   findBlockTarget,
+  findUserFollowTarget,
+  findUserFollowTargetByUsername,
+  findUserFollow,
   findUserBlock,
   findVote,
   listBlocks,
   listBookmarks,
   listFollows,
+  listUserFollows,
   listViewerEntryStates,
   listVotes,
   lockEntryVoteCounter,
   putBlockRecord,
   putBookmarkRecord,
   putFollowRecord,
+  putUserFollowRecord,
   removeBlockRecord,
   removeBookmarkRecord,
   removeFollowRecord,
+  removeUserFollowRecord,
   removeVoteRecord,
   updateEntryVoteCounters,
   upsertVote,
 } from "@/modules/interactions/repository/interactions";
 import { appendOutboxEvent } from "@/modules/outbox";
 import { findTopicById, lockTopicState } from "@/modules/topics/repository/topics";
+import { normalizeProfileUsername } from "@/modules/users/domain/profile";
 
 async function appendVoteOutbox(
   transaction: TransactionClient,
@@ -49,12 +57,12 @@ async function appendVoteOutbox(
 }
 
 export async function setVote(
-  client: DatabaseClient,
+  client: DatabaseExecutor,
   actor: ActorContext,
   entryId: string,
   value: VoteValue,
 ) {
-  return client.$transaction(async (transaction) => {
+  return inTransaction(client, async (transaction) => {
     await requireActiveActor(transaction, actor.actorId);
     const initialEntry = await findEntryById(transaction, entryId);
     if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
@@ -100,8 +108,8 @@ export async function setVote(
   });
 }
 
-export async function removeVote(client: DatabaseClient, actor: ActorContext, entryId: string) {
-  return client.$transaction(async (transaction) => {
+export async function removeVote(client: DatabaseExecutor, actor: ActorContext, entryId: string) {
+  return inTransaction(client, async (transaction) => {
     await requireActiveActor(transaction, actor.actorId);
     await lockEntryVoteCounter(transaction, entryId);
     const entry = await findEntryById(transaction, entryId);
@@ -131,8 +139,8 @@ export async function removeVote(client: DatabaseClient, actor: ActorContext, en
   });
 }
 
-export async function putBookmark(client: DatabaseClient, actor: ActorContext, entryId: string) {
-  return client.$transaction(async (transaction) => {
+export async function putBookmark(client: DatabaseExecutor, actor: ActorContext, entryId: string) {
+  return inTransaction(client, async (transaction) => {
     await requireActiveActor(transaction, actor.actorId);
     const initialEntry = await findEntryById(transaction, entryId);
     if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
@@ -159,16 +167,20 @@ export async function putBookmark(client: DatabaseClient, actor: ActorContext, e
   });
 }
 
-export async function deleteBookmark(client: DatabaseClient, actor: ActorContext, entryId: string) {
-  await client.$transaction(async (transaction) => {
+export async function deleteBookmark(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  entryId: string,
+) {
+  await inTransaction(client, async (transaction) => {
     await requireActiveActor(transaction, actor.actorId);
     await removeBookmarkRecord(transaction, entryId, actor.actorId);
   });
   return { bookmarked: false };
 }
 
-export async function putFollow(client: DatabaseClient, actor: ActorContext, topicId: string) {
-  return client.$transaction(async (transaction) => {
+export async function putFollow(client: DatabaseExecutor, actor: ActorContext, topicId: string) {
+  return inTransaction(client, async (transaction) => {
     await requireActiveActor(transaction, actor.actorId);
     await lockTopicState(transaction, topicId);
     const topic = await findTopicById(transaction, topicId);
@@ -192,13 +204,109 @@ export async function putFollow(client: DatabaseClient, actor: ActorContext, top
   });
 }
 
-export async function deleteFollow(client: DatabaseClient, actor: ActorContext, topicId: string) {
-  await client.$transaction(async (transaction) => {
+export async function deleteFollow(client: DatabaseExecutor, actor: ActorContext, topicId: string) {
+  await inTransaction(client, async (transaction) => {
     await requireActiveActor(transaction, actor.actorId);
     await lockTopicState(transaction, topicId);
     await removeFollowRecord(transaction, topicId, actor.actorId);
   });
   return { followed: false };
+}
+
+export async function putUserFollow(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  followedId: string,
+) {
+  if (actor.actorId === followedId)
+    throw new AppError("VALIDATION_ERROR", 422, "Kendinizi takip edemezsiniz.", {
+      userId: ["Kendinizi takip edemezsiniz."],
+    });
+  return inTransaction(client, async (transaction) => {
+    await lockUserStates(transaction, [
+      { userId: actor.actorId, mode: "shared" },
+      { userId: followedId, mode: "shared" },
+    ]);
+    await requireActiveActor(transaction, actor.actorId);
+    const target = await findUserFollowTarget(transaction, followedId);
+    if (!target || target.status !== "ACTIVE")
+      throw new AppError("USER_NOT_FOUND", 404, "Kullanıcı bulunamadı.");
+    await putUserFollowRecord(transaction, actor.actorId, followedId);
+    await appendAuditLog(transaction, {
+      actorId: actor.actorId,
+      action: "user.followed",
+      entityType: "User",
+      entityId: followedId,
+      requestId: actor.requestId,
+    });
+    return { followed: true, user: target };
+  });
+}
+
+export async function deleteUserFollow(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  followedId: string,
+) {
+  return inTransaction(client, async (transaction) => {
+    await requireActiveActor(transaction, actor.actorId);
+    await removeUserFollowRecord(transaction, actor.actorId, followedId);
+    await appendAuditLog(transaction, {
+      actorId: actor.actorId,
+      action: "user.unfollowed",
+      entityType: "User",
+      entityId: followedId,
+      requestId: actor.requestId,
+    });
+    return { followed: false };
+  });
+}
+
+export async function putUserFollowByUsername(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  username: string,
+) {
+  const normalized = normalizeProfileUsername(username);
+  const target = await inTransaction(client, (transaction) =>
+    findUserFollowTargetByUsername(transaction, normalized),
+  );
+  if (!target) throw new AppError("USER_NOT_FOUND", 404, "Kullanıcı bulunamadı.");
+  return putUserFollow(client, actor, target.id);
+}
+
+export async function deleteUserFollowByUsername(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  username: string,
+) {
+  const normalized = normalizeProfileUsername(username);
+  const target = await inTransaction(client, (transaction) =>
+    findUserFollowTargetByUsername(transaction, normalized),
+  );
+  if (!target) throw new AppError("USER_NOT_FOUND", 404, "Kullanıcı bulunamadı.");
+  return deleteUserFollow(client, actor, target.id);
+}
+
+export function getUserFollowState(
+  client: DatabaseExecutor,
+  followerId: string,
+  followedId: string,
+) {
+  return inTransaction(client, async (transaction) => ({
+    followed: Boolean(await findUserFollow(transaction, followerId, followedId)),
+  }));
+}
+
+export function getFollowedUsers(
+  client: DatabaseExecutor,
+  followerId: string,
+  skip: number,
+  take: number,
+) {
+  return inTransaction(client, (transaction) =>
+    listUserFollows(transaction, followerId, skip, take),
+  );
 }
 
 export async function putBlock(client: DatabaseClient, actor: ActorContext, blockedId: string) {

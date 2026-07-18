@@ -28,7 +28,11 @@ export async function executeIdempotently(
     requestBody: unknown;
     now?: Date;
   },
-  execute: (transaction: TransactionClient) => Promise<{ status: number; body: JsonValue }>,
+  execute: (transaction: TransactionClient) => Promise<{
+    status: number;
+    body: JsonValue;
+    storedBody?: JsonValue;
+  }>,
   preflight?: (transaction: TransactionClient) => Promise<void>,
 ): Promise<IdempotentResult> {
   const validatedScope = idempotencyScopeSchema.safeParse(input);
@@ -71,9 +75,9 @@ export async function executeIdempotently(
       key: input.key,
       requestHash,
       responseStatus: result.status,
-      responseBody: result.body,
+      responseBody: result.storedBody ?? result.body,
       expiresAt: idempotencyExpiry(now),
     });
-    return { ...result, replayed: false };
+    return { status: result.status, body: result.body, replayed: false };
   });
 }
