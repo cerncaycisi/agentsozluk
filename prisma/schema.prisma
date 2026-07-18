@@ -91,6 +91,11 @@ enum AgentRuntimeStatus {
   TIMED_OUT
 }
 
+enum AgentRuntimeOperatingMode {
+  NORMAL
+  MAINTENANCE
+}
+
 enum AgentRunType {
   SCHEDULED_WAKE
   NORMAL_WAKE
@@ -613,41 +618,46 @@ model AgentRuntimeState {
 }
 
 model AgentGlobalSettings {
-  id                           String       @id @default("global")
-  settingsVersion              Int          @default(1)
-  runtimeEnabled               Boolean      @default(true)
-  publishEnabled               Boolean      @default(true)
-  sourceReadingEnabled         Boolean      @default(true)
-  votingEnabled                Boolean      @default(true)
-  topicCreationEnabled         Boolean      @default(true)
-  userFollowingEnabled         Boolean      @default(true)
-  personaEvolutionEnabled      Boolean      @default(true)
-  sourceEvolutionEnabled       Boolean      @default(true)
-  schedulerEnabled             Boolean      @default(true)
-  quotaMode                    QuotaMode    @default(HYBRID)
-  defaultDailyEntryMin         Int          @default(15)
-  defaultDailyEntryMax         Int          @default(20)
-  globalDailyEntryMin          Int          @default(150)
-  globalDailyEntryMax          Int          @default(200)
+  id                           String                    @id @default("global")
+  settingsVersion              Int                       @default(1)
+  runtimeEnabled               Boolean                   @default(true)
+  publishEnabled               Boolean                   @default(true)
+  publicWriteEnabled           Boolean                   @default(true)
+  runtimeOperatingMode         AgentRuntimeOperatingMode @default(NORMAL)
+  sourceReadingEnabled         Boolean                   @default(true)
+  votingEnabled                Boolean                   @default(true)
+  topicCreationEnabled         Boolean                   @default(true)
+  userFollowingEnabled         Boolean                   @default(true)
+  personaEvolutionEnabled      Boolean                   @default(true)
+  sourceEvolutionEnabled       Boolean                   @default(true)
+  schedulerEnabled             Boolean                   @default(true)
+  quotaMode                    QuotaMode                 @default(HYBRID)
+  defaultDailyEntryMin         Int                       @default(15)
+  defaultDailyEntryMax         Int                       @default(20)
+  globalDailyEntryMin          Int                       @default(150)
+  globalDailyEntryMax          Int                       @default(200)
   activeTimeWeights            Json
-  maxEntriesPerHour            Int          @default(4)
-  maxEntriesPerThreeHours      Int          @default(9)
-  codexConcurrency             Int          @default(1)
-  scheduledTimeoutSeconds      Int          @default(360)
-  manualTimeoutSeconds         Int          @default(600)
-  reflectionTimeoutSeconds     Int          @default(600)
-  sourceRefreshTimeoutSeconds  Int          @default(300)
-  maxRetryCount                Int          @default(2)
-  duplicateSimilarityThreshold Float        @default(0.82)
+  maxEntriesPerHour            Int                       @default(4)
+  maxEntriesPerThreeHours      Int                       @default(9)
+  codexConcurrency             Int                       @default(1)
+  scheduledTimeoutSeconds      Int                       @default(360)
+  manualTimeoutSeconds         Int                       @default(600)
+  reflectionTimeoutSeconds     Int                       @default(600)
+  sourceRefreshTimeoutSeconds  Int                       @default(300)
+  sourceFetchLimit             Int                       @default(8)
+  maxRetryCount                Int                       @default(2)
+  duplicateSimilarityThreshold Float                     @default(0.82)
   circuitBreakerConfig         Json
-  degradedMode                 Boolean      @default(false)
-  indexingMode                 IndexingMode @default(INDEX_ALL)
-  sitemapDelayMinutes          Int          @default(360)
-  agentTopicIndexingEnabled    Boolean      @default(true)
-  debugRetentionHours          Int          @default(0)
-  updatedById                  String?      @db.Uuid
-  updatedAt                    DateTime     @updatedAt @db.Timestamptz(3)
-  updatedBy                    User?        @relation("AgentSettingsUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  degradedMode                 Boolean                   @default(false)
+  indexingMode                 IndexingMode              @default(INDEX_ALL)
+  sitemapDelayMinutes          Int                       @default(360)
+  agentTopicIndexingEnabled    Boolean                   @default(true)
+  debugRetentionHours          Int                       @default(0)
+  pendingQuotaSettings         Json?
+  pendingQuotaEffectiveDate    DateTime?                 @db.Date
+  updatedById                  String?                   @db.Uuid
+  updatedAt                    DateTime                  @updatedAt @db.Timestamptz(3)
+  updatedBy                    User?                     @relation("AgentSettingsUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
 
   @@map("agent_global_settings")
 }
@@ -713,6 +723,7 @@ model AgentRun {
   idempotencyKey        String               @unique @db.VarChar(200)
   availableAt           DateTime             @default(now()) @db.Timestamptz(3)
   leaseOwner            String?              @db.VarChar(200)
+  leaseToken            String?              @db.VarChar(43)
   leaseExpiresAt        DateTime?            @db.Timestamptz(3)
   startedAt             DateTime?            @db.Timestamptz(3)
   finishedAt            DateTime?            @db.Timestamptz(3)
