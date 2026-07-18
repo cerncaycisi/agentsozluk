@@ -21,7 +21,10 @@ import {
   updateGlobalSettings,
 } from "@/modules/agents";
 import { claimNextRuntimeRun, finishRuntimeRunRecord } from "@/modules/agents/repository/runtime";
-import { dispatchDueScheduleSlots } from "@/modules/agents/repository/scheduler";
+import {
+  dispatchDueScheduleSlots,
+  planRuntimeMaintenanceAndCatchUp,
+} from "@/modules/agents/repository/scheduler";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import {
   closeIntegrationDatabase,
@@ -120,6 +123,96 @@ describe("agent daily scheduler with PostgreSQL", () => {
     expect(
       await integrationDatabase.auditLog.count({ where: { action: "agent.schedule.generated" } }),
     ).toBe(1);
+  });
+
+  it("queues idempotent nightly, weekly and bounded evening catch-up work", async () => {
+    const admin = await createAdmin();
+    const created = await createAgent(
+      integrationDatabase,
+      actor(admin.id),
+      createAgentSchema.parse({ persona: originalPersonaPack.personas[0] }),
+    );
+    await updateGlobalSettings(integrationDatabase, actor(admin.id), {
+      globalDailyEntryMin: 15,
+      globalDailyEntryMax: 20,
+    });
+    await changeAgentLifecycle(
+      integrationDatabase,
+      actor(admin.id),
+      created.agent.profile.id,
+      lifecycleChangeSchema.parse({
+        status: "ACTIVE",
+        reason: "Activate maintenance scheduler integration fixture.",
+      }),
+    );
+    const localDate = new Date("2026-07-19T00:00:00.000Z");
+    await generateAgentDailyPlans(integrationDatabase, actor(admin.id), { localDate });
+    await integrationDatabase.agentScheduleSlot.updateMany({
+      where: { agentProfileId: created.agent.profile.id, dailyPlan: { localDate } },
+      data: { status: "COMPLETED" },
+    });
+    const stale = await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: created.agent.profile.id,
+        runType: "DAILY_CATCH_UP",
+        queuePriority: "DAILY_CATCH_UP",
+        trigger: "AUTO_CATCH_UP",
+        personaVersionId: created.agent.personaVersion.id,
+        idempotencyKey: randomUUID(),
+        timeoutSeconds: 360,
+        desiredEntryMin: 1,
+        desiredEntryMax: 4,
+        createdAt: new Date("2026-07-18T10:00:00.000Z"),
+      },
+    });
+    const now = new Date("2026-07-19T18:10:00.000Z");
+    const first = await inTransaction(integrationDatabase, (transaction) =>
+      planRuntimeMaintenanceAndCatchUp(transaction, {
+        agentProfileId: created.agent.profile.id,
+        localDate,
+        now,
+        catchUpFrozen: false,
+        concurrency: 1,
+        scheduledTimeoutSeconds: 360,
+        reflectionTimeoutSeconds: 720,
+        sourceRefreshTimeoutSeconds: 240,
+      }),
+    );
+    expect(first).toEqual({ maintenanceQueued: 3, catchUpQueued: 1 });
+    expect(
+      await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: stale.id } }),
+    ).toMatchObject({ runStatus: "CANCELLED", errorCode: "CATCH_UP_DAY_EXPIRED" });
+    const runs = await integrationDatabase.agentRun.findMany({
+      where: { agentProfileId: created.agent.profile.id },
+      orderBy: { trigger: "asc" },
+    });
+    expect(runs.filter(({ trigger }) => trigger === "NIGHTLY_MEMORY_CONSOLIDATION")).toHaveLength(
+      1,
+    );
+    expect(runs.filter(({ trigger }) => trigger === "WEEKLY_PERSONA_REFLECTION")).toHaveLength(1);
+    expect(runs.filter(({ trigger }) => trigger === "DAILY_SOURCE_REFRESH")).toHaveLength(1);
+    const catchUp = runs.find(
+      ({ trigger, runStatus }) => trigger === "AUTO_CATCH_UP" && runStatus === "QUEUED",
+    );
+    expect(catchUp).toMatchObject({
+      runType: "DAILY_CATCH_UP",
+      queuePriority: "DAILY_CATCH_UP",
+      desiredEntryMin: 1,
+    });
+    expect(catchUp!.desiredEntryMax).toBeLessThanOrEqual(4);
+    const replay = await inTransaction(integrationDatabase, (transaction) =>
+      planRuntimeMaintenanceAndCatchUp(transaction, {
+        agentProfileId: created.agent.profile.id,
+        localDate,
+        now,
+        catchUpFrozen: false,
+        concurrency: 1,
+        scheduledTimeoutSeconds: 360,
+        reflectionTimeoutSeconds: 720,
+        sourceRefreshTimeoutSeconds: 240,
+      }),
+    );
+    expect(replay).toEqual({ maintenanceQueued: 0, catchUpQueued: 0 });
   });
 
   it("queues admin manual runs with safe mode-specific write boundaries", async () => {

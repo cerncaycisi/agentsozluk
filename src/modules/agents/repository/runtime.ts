@@ -56,6 +56,8 @@ export function getRuntimeGlobalSettings(transaction: Prisma.TransactionClient) 
       maxRetryCount: true,
       schedulerEnabled: true,
       scheduledTimeoutSeconds: true,
+      reflectionTimeoutSeconds: true,
+      sourceRefreshTimeoutSeconds: true,
       codexConcurrency: true,
       circuitBreakerConfig: true,
     },
@@ -199,7 +201,13 @@ export async function claimNextRuntimeRun(
           WHEN 'DAILY_CATCH_UP' THEN 3
           WHEN 'REFLECTION' THEN 4
           WHEN 'SOURCE_REFRESH' THEN 5
-        END - LEAST(2, FLOOR(EXTRACT(EPOCH FROM (${input.now} - candidate."createdAt")) / 3600)::int)
+        END - LEAST(
+          2,
+          GREATEST(
+            0,
+            FLOOR(EXTRACT(EPOCH FROM (${input.now} - candidate."createdAt")) / 3600)::int
+          )
+        )
       ),
       candidate."createdAt" ASC
     FOR UPDATE OF candidate SKIP LOCKED
@@ -222,6 +230,7 @@ export async function claimNextRuntimeRun(
       id: true,
       agentProfileId: true,
       runType: true,
+      trigger: true,
       runStatus: true,
       queuePriority: true,
       timeoutSeconds: true,
@@ -237,6 +246,7 @@ export async function claimNextRuntimeRun(
       allowSourceReading: true,
       saturationOverride: true,
       dailyMaximumOverride: true,
+      provocationOverride: true,
     },
   });
   if (run.scheduleSlotId) {

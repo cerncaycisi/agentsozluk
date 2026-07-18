@@ -158,6 +158,7 @@ function benchmarkContext(scenario: Scenario, index: number): RuntimeContext {
     run: {
       id: randomUUID(),
       runType: scenario.runType,
+      trigger: "CAPABILITY_BENCHMARK",
       timeoutSeconds: Math.ceil(benchmarkTimeoutMs() / 1000),
       desiredEntryMin: scenario.desiredEntryMin,
       desiredEntryMax: scenario.desiredEntryMax,

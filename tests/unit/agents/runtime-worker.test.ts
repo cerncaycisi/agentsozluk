@@ -14,6 +14,7 @@ function fixtureContext(runId: string) {
     run: {
       id: runId,
       runType: "NORMAL_WAKE",
+      trigger: "UNIT_TEST",
       timeoutSeconds: 360,
       desiredEntryMin: 2,
       desiredEntryMax: 3,

@@ -194,3 +194,197 @@ export async function dispatchDueScheduleSlots(
   ]);
   return { queued: runs.length, missed: missed.count, runs };
 }
+
+function istanbulDayStart(localDate: Date): Date {
+  return new Date(
+    Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), -3),
+  );
+}
+
+function istanbulClock(now: Date): { hour: number; minute: number; weekday: string } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Istanbul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    weekday: "short",
+  }).formatToParts(now);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return {
+    hour: Number(value("hour")),
+    minute: Number(value("minute")),
+    weekday: value("weekday"),
+  };
+}
+
+export async function planRuntimeMaintenanceAndCatchUp(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId: string;
+    localDate: Date;
+    now: Date;
+    catchUpFrozen: boolean;
+    concurrency: 1 | 2;
+    scheduledTimeoutSeconds: number;
+    reflectionTimeoutSeconds: number;
+    sourceRefreshTimeoutSeconds: number;
+  },
+) {
+  const dateKey = input.localDate.toISOString().slice(0, 10);
+  const dayStart = istanbulDayStart(input.localDate);
+  const nextDayStart = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+  const clock = istanbulClock(input.now);
+  await transaction.agentRun.updateMany({
+    where: {
+      agentProfileId: input.agentProfileId,
+      trigger: "AUTO_CATCH_UP",
+      runStatus: "QUEUED",
+      createdAt: { lt: dayStart },
+    },
+    data: { runStatus: "CANCELLED", finishedAt: input.now, errorCode: "CATCH_UP_DAY_EXPIRED" },
+  });
+  const profile = await transaction.agentProfile.findFirst({
+    where: {
+      id: input.agentProfileId,
+      lifecycleStatus: "ACTIVE",
+      currentPersonaVersionId: { not: null },
+    },
+    select: {
+      currentPersonaVersionId: true,
+      personaEvolutionEnabled: true,
+      sourceEvolutionEnabled: true,
+      runtimeState: {
+        select: { todayDate: true, todayEntryTarget: true, todayPublishedEntries: true },
+      },
+    },
+  });
+  if (!profile?.currentPersonaVersionId) return { maintenanceQueued: 0, catchUpQueued: 0 };
+  let maintenanceQueued = 0;
+  const createMaintenance = async (definition: {
+    trigger: string;
+    runType: "REFLECTION" | "SOURCE_REFRESH";
+    timeoutSeconds: number;
+    allowSourceReading: boolean;
+  }) => {
+    const idempotencyKey = `maintenance:${definition.trigger}:${input.agentProfileId}:${dateKey}`;
+    if (await transaction.agentRun.findUnique({ where: { idempotencyKey } })) return;
+    await transaction.agentRun.create({
+      data: {
+        agentProfileId: input.agentProfileId,
+        runType: definition.runType,
+        queuePriority: definition.runType === "SOURCE_REFRESH" ? "SOURCE_REFRESH" : "REFLECTION",
+        trigger: definition.trigger,
+        personaVersionId: profile.currentPersonaVersionId!,
+        idempotencyKey,
+        availableAt: input.now,
+        timeoutSeconds: definition.timeoutSeconds,
+        desiredEntryMin: 0,
+        desiredEntryMax: 0,
+        allowTopicCreation: false,
+        allowVoting: false,
+        allowFollowing: false,
+        allowSourceReading: definition.allowSourceReading,
+        createdAt: input.now,
+      },
+    });
+    maintenanceQueued += 1;
+  };
+  if (clock.hour >= 2 && profile.personaEvolutionEnabled)
+    await createMaintenance({
+      trigger: "NIGHTLY_MEMORY_CONSOLIDATION",
+      runType: "REFLECTION",
+      timeoutSeconds: input.reflectionTimeoutSeconds,
+      allowSourceReading: false,
+    });
+  if (clock.weekday === "Sun" && clock.hour >= 3 && profile.personaEvolutionEnabled)
+    await createMaintenance({
+      trigger: "WEEKLY_PERSONA_REFLECTION",
+      runType: "REFLECTION",
+      timeoutSeconds: input.reflectionTimeoutSeconds,
+      allowSourceReading: false,
+    });
+  if (clock.hour >= 4 && profile.sourceEvolutionEnabled)
+    await createMaintenance({
+      trigger: "DAILY_SOURCE_REFRESH",
+      runType: "SOURCE_REFRESH",
+      timeoutSeconds: input.sourceRefreshTimeoutSeconds,
+      allowSourceReading: true,
+    });
+  const localMinute = clock.hour * 60 + clock.minute;
+  if (
+    input.catchUpFrozen ||
+    localMinute < 20 * 60 ||
+    localMinute >= 23 * 60 + 30 ||
+    !profile.runtimeState?.todayDate ||
+    profile.runtimeState.todayDate.getTime() !== input.localDate.getTime()
+  )
+    return { maintenanceQueued, catchUpQueued: 0 };
+  const remaining =
+    profile.runtimeState.todayEntryTarget - profile.runtimeState.todayPublishedEntries;
+  if (remaining <= 0) return { maintenanceQueued, catchUpQueued: 0 };
+  const [pendingScheduledSlots, pendingScheduledRuns, activeCatchUp, lastCatchUp, queueLength] =
+    await Promise.all([
+      transaction.agentScheduleSlot.count({
+        where: {
+          agentProfileId: input.agentProfileId,
+          dailyPlan: { localDate: input.localDate },
+          status: { in: ["PLANNED", "QUEUED", "RUNNING"] },
+        },
+      }),
+      transaction.agentRun.count({
+        where: {
+          agentProfileId: input.agentProfileId,
+          trigger: "SCHEDULER_SLOT",
+          runStatus: { in: ["QUEUED", "RUNNING", "CANCEL_REQUESTED"] },
+        },
+      }),
+      transaction.agentRun.count({
+        where: {
+          agentProfileId: input.agentProfileId,
+          trigger: "AUTO_CATCH_UP",
+          runStatus: { in: ["QUEUED", "RUNNING", "CANCEL_REQUESTED"] },
+        },
+      }),
+      transaction.agentRun.findFirst({
+        where: {
+          agentProfileId: input.agentProfileId,
+          trigger: "AUTO_CATCH_UP",
+          createdAt: { gte: dayStart, lt: nextDayStart },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      }),
+      transaction.agentRun.count({
+        where: {
+          runStatus: "QUEUED",
+          runType: { notIn: ["READ_ONLY", "DRY_RUN", "REFLECTION", "SOURCE_REFRESH"] },
+        },
+      }),
+    ]);
+  if (
+    pendingScheduledSlots > 0 ||
+    pendingScheduledRuns > 0 ||
+    activeCatchUp > 0 ||
+    queueLength >= input.concurrency * 3 ||
+    (lastCatchUp && input.now.getTime() - lastCatchUp.createdAt.getTime() < 25 * 60 * 1000)
+  )
+    return { maintenanceQueued, catchUpQueued: 0 };
+  const bucket = Math.floor(localMinute / 25);
+  await transaction.agentRun.create({
+    data: {
+      agentProfileId: input.agentProfileId,
+      runType: "DAILY_CATCH_UP",
+      queuePriority: "DAILY_CATCH_UP",
+      trigger: "AUTO_CATCH_UP",
+      personaVersionId: profile.currentPersonaVersionId,
+      idempotencyKey: `catch-up:${input.agentProfileId}:${dateKey}:${bucket}`,
+      availableAt: input.now,
+      timeoutSeconds: input.scheduledTimeoutSeconds,
+      desiredEntryMin: 1,
+      desiredEntryMax: Math.min(4, remaining),
+      createdAt: input.now,
+    },
+  });
+  return { maintenanceQueued, catchUpQueued: 1 };
+}

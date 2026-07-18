@@ -62,6 +62,18 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
     "# Runtime invariants",
     runtimePromptInvariants[0],
     runtimePromptInvariants[1],
+    ...(context.run.trigger === "NIGHTLY_MEMORY_CONSOLIDATION"
+      ? [
+          "# Maintenance mode",
+          "Yalnız gerçekten gözlenen ve provenance taşıyan episode'ları güvenli memoryCandidates olarak birleştir; yeni olgu veya yapılmamış action üretme.",
+        ]
+      : []),
+    ...(context.run.trigger === "WEEKLY_PERSONA_REFLECTION"
+      ? [
+          "# Weekly reflection mode",
+          "Yalnız kanıtlı belief, relationship ve source delta üret; public action üretme ve chain-of-thought açıklama.",
+        ]
+      : []),
     ...(context.run.adminInstruction
       ? ["# Trusted one-run admin instruction", context.run.adminInstruction]
       : []),

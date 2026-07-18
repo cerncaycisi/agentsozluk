@@ -25,7 +25,10 @@ import {
   findRuntimeSourceForWrite,
   storeRuntimeSourceResult,
 } from "@/modules/agents/repository/runtime";
-import { dispatchDueScheduleSlots } from "@/modules/agents/repository/scheduler";
+import {
+  dispatchDueScheduleSlots,
+  planRuntimeMaintenanceAndCatchUp,
+} from "@/modules/agents/repository/scheduler";
 import { istanbulLocalDate } from "@/modules/agents/application/scheduler";
 import { getRuntimeOperationalMetrics } from "@/modules/agents/repository/capacity";
 import {
@@ -233,6 +236,16 @@ export function leaseRuntimeRun(
         localDate: istanbulLocalDate(now),
         timeoutSeconds: settings.scheduledTimeoutSeconds,
       });
+      await planRuntimeMaintenanceAndCatchUp(transaction, {
+        agentProfileId: principal.agentProfileId,
+        localDate: istanbulLocalDate(now),
+        now,
+        catchUpFrozen: breakers.catchUpFrozen,
+        concurrency: settings.codexConcurrency === 2 ? 2 : 1,
+        scheduledTimeoutSeconds: settings.scheduledTimeoutSeconds,
+        reflectionTimeoutSeconds: settings.reflectionTimeoutSeconds,
+        sourceRefreshTimeoutSeconds: settings.sourceRefreshTimeoutSeconds,
+      });
     }
     const run = await claimNextRuntimeRun(transaction, {
       agentProfileId: principal.agentProfileId,
@@ -340,6 +353,7 @@ export function getRuntimeRunContext(
       run: {
         id: run.id,
         runType: run.runType,
+        trigger: run.trigger,
         timeoutSeconds: run.timeoutSeconds,
         desiredEntryMin: run.desiredEntryMin,
         desiredEntryMax: run.desiredEntryMax,

@@ -15,6 +15,7 @@ const contextResponseSchema = z.object({
   run: z.object({
     id: z.string().uuid(),
     runType: z.string(),
+    trigger: z.string(),
     timeoutSeconds: z.number().int().positive(),
     desiredEntryMin: z.number().int().nonnegative(),
     desiredEntryMax: z.number().int().nonnegative(),
