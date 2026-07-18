@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { runtimeActionSchema, runtimeProvenanceSchema } from "@/modules/agents";
 
+const uuidJsonPattern =
+  "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$";
+
 const observationSchema = z
   .object({
     subjectType: z.enum(["TOPIC", "ENTRY", "USER", "SOURCE"]),
@@ -83,6 +86,31 @@ export const runtimeDecisionSchema = z
 
 export type RuntimeDecision = z.infer<typeof runtimeDecisionSchema>;
 
+export function normalizeRuntimeDecisionOutput(output: unknown): unknown {
+  if (!output || typeof output !== "object" || Array.isArray(output)) return output;
+  const record = output as Record<string, unknown>;
+  if (!Array.isArray(record.actions)) return output;
+  return {
+    ...record,
+    actions: record.actions.map((action) => {
+      if (!action || typeof action !== "object" || Array.isArray(action)) return action;
+      const actionRecord = action as Record<string, unknown>;
+      const input = actionRecord.input;
+      return {
+        ...Object.fromEntries(Object.entries(actionRecord).filter(([, value]) => value !== null)),
+        input:
+          input && typeof input === "object" && !Array.isArray(input)
+            ? Object.fromEntries(
+                Object.entries(input as Record<string, unknown>).filter(
+                  ([, value]) => value !== null,
+                ),
+              )
+            : input,
+      };
+    }),
+  };
+}
+
 const provenanceJsonSchema = {
   type: "object",
   additionalProperties: false,
@@ -103,7 +131,7 @@ const provenanceJsonSchema = {
       type: "array",
       minItems: 1,
       maxItems: 20,
-      items: { type: "string", format: "uuid" },
+      items: { type: "string", pattern: uuidJsonPattern },
     },
     shortRationale: { type: "string", minLength: 1, maxLength: 500 },
   },
@@ -115,11 +143,19 @@ const observationJsonSchema = {
   required: ["subjectType", "subjectId", "summary", "salience", "provenance"],
   properties: {
     subjectType: { type: "string", enum: ["TOPIC", "ENTRY", "USER", "SOURCE"] },
-    subjectId: { type: "string", format: "uuid" },
+    subjectId: { type: "string", pattern: uuidJsonPattern },
     summary: { type: "string", minLength: 1, maxLength: 1000 },
     salience: { type: "number", minimum: 0, maximum: 1 },
     provenance: provenanceJsonSchema,
   },
+} as const;
+
+const nullableUuidJsonSchema = {
+  anyOf: [{ type: "string", pattern: uuidJsonPattern }, { type: "null" }],
+} as const;
+
+const nullableProvenanceJsonSchema = {
+  anyOf: [provenanceJsonSchema, { type: "null" }],
 } as const;
 
 export const runtimeDecisionJsonSchema: Record<string, unknown> = {
@@ -145,7 +181,8 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
         confidence: { type: "number", minimum: 0, maximum: 1 },
         topicFatigue: {
           type: "object",
-          additionalProperties: { type: "number", minimum: 0, maximum: 1 },
+          additionalProperties: false,
+          properties: {},
         },
       },
     },
@@ -156,7 +193,7 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["sequence", "actionType", "input"],
+        required: ["sequence", "actionType", "targetType", "targetId", "input", "provenance"],
         properties: {
           sequence: { type: "integer", minimum: 1 },
           actionType: {
@@ -180,25 +217,63 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
               "UPDATE_RELATIONSHIP_NOTE",
             ],
           },
-          targetType: { type: "string", minLength: 1, maxLength: 64 },
-          targetId: { type: "string", format: "uuid" },
+          targetType: { type: ["string", "null"], minLength: 1, maxLength: 64 },
+          targetId: nullableUuidJsonSchema,
           input: {
             type: "object",
             additionalProperties: false,
+            required: [
+              "body",
+              "title",
+              "topicId",
+              "entryId",
+              "userId",
+              "username",
+              "value",
+              "url",
+              "statement",
+              "summary",
+              "topicKey",
+              "confidence",
+              "familiarity",
+              "trust",
+              "interest",
+              "disagreement",
+              "sourceType",
+              "topics",
+            ],
             properties: {
-              body: { type: "string", minLength: 1, maxLength: 10_000 },
-              title: { type: "string", minLength: 2, maxLength: 120 },
-              topicId: { type: "string", format: "uuid" },
-              entryId: { type: "string", format: "uuid" },
-              userId: { type: "string", format: "uuid" },
-              username: { type: "string", pattern: "^[a-z0-9_]{3,30}$" },
-              value: { type: "integer", enum: [-1, 1] },
-              url: { type: "string", format: "uri", maxLength: 2048 },
-              statement: { type: "string", minLength: 1, maxLength: 2000 },
-              summary: { type: "string", minLength: 1, maxLength: 2000 },
+              body: { type: ["string", "null"], minLength: 1, maxLength: 10_000 },
+              title: { type: ["string", "null"], minLength: 2, maxLength: 120 },
+              topicId: nullableUuidJsonSchema,
+              entryId: nullableUuidJsonSchema,
+              userId: nullableUuidJsonSchema,
+              username: { type: ["string", "null"], pattern: "^[a-z0-9_]{3,30}$" },
+              value: { enum: [-1, 1, null] },
+              url: { type: ["string", "null"], maxLength: 2048 },
+              statement: { type: ["string", "null"], minLength: 1, maxLength: 2000 },
+              summary: { type: ["string", "null"], minLength: 1, maxLength: 2000 },
+              topicKey: { type: ["string", "null"], minLength: 1, maxLength: 200 },
+              confidence: { type: ["number", "null"], minimum: 0, maximum: 1 },
+              familiarity: { type: ["number", "null"], minimum: 0, maximum: 1 },
+              trust: { type: ["number", "null"], minimum: 0, maximum: 1 },
+              interest: { type: ["number", "null"], minimum: 0, maximum: 1 },
+              disagreement: { type: ["number", "null"], minimum: 0, maximum: 1 },
+              sourceType: { enum: ["RSS", "ATOM", "HTML", null] },
+              topics: {
+                anyOf: [
+                  {
+                    type: "array",
+                    minItems: 1,
+                    maxItems: 8,
+                    items: { type: "string", minLength: 2, maxLength: 100 },
+                  },
+                  { type: "null" },
+                ],
+              },
             },
           },
-          provenance: provenanceJsonSchema,
+          provenance: nullableProvenanceJsonSchema,
         },
       },
     },
@@ -234,7 +309,7 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
           "provenance",
         ],
         properties: {
-          userId: { type: "string", format: "uuid" },
+          userId: { type: "string", pattern: uuidJsonPattern },
           familiarity: { type: "number", minimum: 0, maximum: 1 },
           trust: { type: "number", minimum: 0, maximum: 1 },
           interest: { type: "number", minimum: 0, maximum: 1 },
@@ -252,7 +327,7 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
         additionalProperties: false,
         required: ["url", "sourceType", "topics", "provenance"],
         properties: {
-          url: { type: "string", format: "uri", maxLength: 2048 },
+          url: { type: "string", maxLength: 2048 },
           sourceType: { type: "string", enum: ["RSS", "ATOM", "HTML"] },
           topics: {
             type: "array",
@@ -274,7 +349,7 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
         observedItemIds: {
           type: "array",
           maxItems: 200,
-          items: { type: "string", format: "uuid" },
+          items: { type: "string", pattern: uuidJsonPattern },
         },
         shortRationale: { type: "string", minLength: 1, maxLength: 1000 },
       },

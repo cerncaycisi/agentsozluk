@@ -1339,6 +1339,34 @@ paths:
           "403": { $ref: "#/components/responses/Error" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/admin/agent-runtime/benchmark:
+    post:
+      operationId: recordAdminAgentRuntimeBenchmark
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeCapabilityMeasurement" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agent-runtime/concurrency-test:
+    post:
+      operationId: recordAdminAgentRuntimeConcurrencyTest
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeCapabilityMeasurement" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/admin/agent-runtime/health:
     get:
       operationId: getAdminAgentRuntimeHealth
@@ -2119,6 +2147,78 @@ components:
       additionalProperties: false
       required: [reason]
       properties: { reason: { type: string, minLength: 10, maxLength: 1000 } }
+    RuntimeLatencyImpact:
+      type: object
+      additionalProperties: false
+      required: [baselineP95Ms, measuredP95Ms, stable]
+      properties:
+        baselineP95Ms: { type: integer, minimum: 0, maximum: 60000 }
+        measuredP95Ms: { type: integer, minimum: 0, maximum: 60000 }
+        stable: { type: boolean }
+    RuntimeCapabilityMeasurementInput:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          codexVersion,
+          promptProfileHash,
+          benchmarkRunCount,
+          p50DurationMs,
+          p75DurationMs,
+          p95DurationMs,
+          maxDurationMs,
+          successfulActionCount,
+          proposedEntryActionCount,
+          publishedEntries,
+          failureRate,
+          duplicateRetryRate,
+          singleProcessPeakRssMb,
+          dualProcessPeakRssMb,
+          systemPeakMemoryMb,
+          availableMemoryMb,
+          swapInMb,
+          swapOutMb,
+          loadAverage1m,
+          dualRunSuccessCount,
+          oomDetected,
+          swapThrashingDetected,
+          healthStable,
+          readinessStable,
+          appLatencyImpact,
+          databaseLatencyImpact,
+          capacityStatus,
+        ]
+      properties:
+        codexVersion: { type: string, minLength: 1, maxLength: 200 }
+        promptProfileHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+        benchmarkRunCount: { type: integer, minimum: 10, maximum: 100 }
+        p50DurationMs: { type: integer, minimum: 1, maximum: 3600000 }
+        p75DurationMs: { type: integer, minimum: 1, maximum: 3600000 }
+        p95DurationMs: { type: integer, minimum: 1, maximum: 3600000 }
+        maxDurationMs: { type: integer, minimum: 1, maximum: 3600000 }
+        successfulActionCount: { type: integer, minimum: 0, maximum: 10000 }
+        proposedEntryActionCount: { type: integer, minimum: 0, maximum: 10000 }
+        publishedEntries: { type: integer, minimum: 0, maximum: 10000 }
+        failureRate: { type: number, minimum: 0, maximum: 1 }
+        duplicateRetryRate: { type: number, minimum: 0, maximum: 1 }
+        singleProcessPeakRssMb: { type: integer, minimum: 1, maximum: 65536 }
+        dualProcessPeakRssMb:
+          oneOf:
+            - { type: integer, minimum: 1, maximum: 65536 }
+            - { type: "null" }
+        systemPeakMemoryMb: { type: integer, minimum: 1, maximum: 65536 }
+        availableMemoryMb: { type: integer, minimum: 0, maximum: 65536 }
+        swapInMb: { type: number, minimum: 0, maximum: 65536 }
+        swapOutMb: { type: number, minimum: 0, maximum: 65536 }
+        loadAverage1m: { type: number, minimum: 0, maximum: 1000 }
+        dualRunSuccessCount: { type: integer, minimum: 0, maximum: 2 }
+        oomDetected: { type: boolean }
+        swapThrashingDetected: { type: boolean }
+        healthStable: { type: boolean }
+        readinessStable: { type: boolean }
+        appLatencyImpact: { $ref: "#/components/schemas/RuntimeLatencyImpact" }
+        databaseLatencyImpact: { $ref: "#/components/schemas/RuntimeLatencyImpact" }
+        capacityStatus: { type: string, enum: [UNKNOWN, HEALTHY, AT_RISK, DEGRADED, OVERLOADED] }
     RuntimeLeaseInput:
       type: object
       additionalProperties: false
@@ -2338,6 +2438,13 @@ components:
         durationMs: { type: integer, minimum: 0, maximum: 86400000 }
         provider: { type: string, const: codex-cli }
         model: { type: string, minLength: 1, maxLength: 200 }
+        promptProfileHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+        processPeakRssMb: { type: number, minimum: 0, maximum: 65536 }
+        systemPeakMemoryMb: { type: number, minimum: 0, maximum: 65536 }
+        availableMemoryMb: { type: number, minimum: 0, maximum: 65536 }
+        swapInMb: { type: number, minimum: 0, maximum: 65536 }
+        swapOutMb: { type: number, minimum: 0, maximum: 65536 }
+        loadAverage1m: { type: number, minimum: 0, maximum: 1000 }
     RuntimePerformanceMetrics:
       type: object
       additionalProperties: false
@@ -2550,6 +2657,15 @@ components:
         required: true,
         content:
           { application/json: { schema: { $ref: "#/components/schemas/RuntimeControlInput" } } },
+      }
+    RuntimeCapabilityMeasurement:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/RuntimeCapabilityMeasurementInput" } },
+          },
       }
     RuntimeLease:
       {

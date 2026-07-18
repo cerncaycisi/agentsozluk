@@ -25,6 +25,14 @@ export interface RuntimeProviderResult {
   version: string;
   output: unknown;
   durationMs: number;
+  hostMetrics?: {
+    processPeakRssMb: number;
+    systemPeakMemoryMb: number;
+    availableMemoryMb: number;
+    swapInMb: number;
+    swapOutMb: number;
+    loadAverage1m: number;
+  };
 }
 
 export interface RuntimeProvider {

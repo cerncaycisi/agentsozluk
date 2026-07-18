@@ -1,10 +1,18 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import type { RuntimeCapabilityMeasurementInput } from "@/modules/agents/validation/capacity-schemas";
 import type { CircuitBreakerConfig } from "@/modules/agents/domain/circuit-breaker";
 
 export function getLatestRuntimeCapability(transaction: Prisma.TransactionClient) {
   return transaction.agentRuntimeCapability.findFirst({
     orderBy: [{ measuredAt: "desc" }, { id: "desc" }],
+  });
+}
+
+export function getLatestRuntimeFingerprintRecord(transaction: Prisma.TransactionClient) {
+  return transaction.agentRun.findFirst({
+    where: { usageMetadata: { not: Prisma.JsonNull } },
+    orderBy: [{ finishedAt: "desc" }, { id: "desc" }],
+    select: { usageMetadata: true },
   });
 }
 
@@ -68,6 +76,7 @@ export function createRuntimeCapabilityRecord(
         },
         benchmarkOutcomes: {
           successfulActionCount: input.successfulActionCount,
+          proposedEntryActionCount: input.proposedEntryActionCount,
           publishedEntries: input.publishedEntries,
           failureRate: input.failureRate,
           duplicateRetryRate: input.duplicateRetryRate,

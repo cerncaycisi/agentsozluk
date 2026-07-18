@@ -18,6 +18,7 @@ export const runtimeCapabilityMeasurementSchema = z
     p95DurationMs: z.number().int().positive().max(3_600_000),
     maxDurationMs: z.number().int().positive().max(3_600_000),
     successfulActionCount: z.number().int().min(0).max(10_000),
+    proposedEntryActionCount: z.number().int().min(0).max(10_000),
     publishedEntries: z.number().int().min(0).max(10_000),
     failureRate: z.number().min(0).max(1),
     duplicateRetryRate: z.number().min(0).max(1),
@@ -45,5 +46,20 @@ export const runtimeCapabilityMeasurementSchema = z
       p95DurationMs <= maxDurationMs,
     { message: "Capability süre yüzdelikleri sıralı olmalıdır." },
   );
+
+export const runtimeCapacityBenchmarkSchema = runtimeCapabilityMeasurementSchema.refine(
+  ({ benchmarkRunCount }) => benchmarkRunCount >= 10,
+  { path: ["benchmarkRunCount"], message: "Capacity benchmark en az 10 run içermelidir." },
+);
+
+export const runtimeConcurrencyCapabilitySchema = runtimeCapabilityMeasurementSchema
+  .refine(({ benchmarkRunCount }) => benchmarkRunCount >= 10, {
+    path: ["benchmarkRunCount"],
+    message: "Concurrency testi güncel en az 10 run benchmark bazını korumalıdır.",
+  })
+  .refine(({ dualProcessPeakRssMb }) => dualProcessPeakRssMb !== null, {
+    path: ["dualProcessPeakRssMb"],
+    message: "Concurrency testi dual process peak RSS ölçmelidir.",
+  });
 
 export type RuntimeCapabilityMeasurementInput = z.infer<typeof runtimeCapabilityMeasurementSchema>;

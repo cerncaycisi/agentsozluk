@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
+import { AgentCapabilityMeasurementForm } from "@/components/agents/agent-capability-measurement-form";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { RuntimeControlForm } from "@/components/agents/agent-admin-forms";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
@@ -119,6 +120,7 @@ export default async function AgentCapacityPage() {
           </p>
         )}
       </section>
+      <AgentCapabilityMeasurementForm />
     </ModerationLayout>
   );
 }

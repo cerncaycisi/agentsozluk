@@ -224,6 +224,16 @@ const usageMetadataSchema = z
     durationMs: z.number().int().min(0).max(86_400_000),
     provider: z.literal("codex-cli"),
     model: z.string().trim().min(1).max(200).optional(),
+    promptProfileHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/u)
+      .optional(),
+    processPeakRssMb: z.number().min(0).max(65_536).optional(),
+    systemPeakMemoryMb: z.number().min(0).max(65_536).optional(),
+    availableMemoryMb: z.number().min(0).max(65_536).optional(),
+    swapInMb: z.number().min(0).max(65_536).optional(),
+    swapOutMb: z.number().min(0).max(65_536).optional(),
+    loadAverage1m: z.number().min(0).max(1000).optional(),
   })
   .strict();
 

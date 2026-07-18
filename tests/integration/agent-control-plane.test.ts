@@ -420,6 +420,7 @@ describe("agent control plane with PostgreSQL", () => {
       p95DurationMs: 240_000,
       maxDurationMs: 300_000,
       successfulActionCount: 20,
+      proposedEntryActionCount: 18,
       publishedEntries: 18,
       failureRate: 0,
       duplicateRetryRate: 0.05,
@@ -494,6 +495,40 @@ describe("agent control plane with PostgreSQL", () => {
       estimatedPublishedMin: 5,
       estimatedPublishedMax: 7,
       requiredContentMinutes: 6,
+    });
+
+    await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: created.agent.profile.id,
+        personaVersionId: created.agent.profile.currentPersonaVersionId!,
+        runType: "READ_ONLY",
+        runStatus: "SUCCEEDED",
+        queuePriority: "MANUAL_SINGLE",
+        trigger: "INTEGRATION_FINGERPRINT",
+        idempotencyKey: "integration-runtime-fingerprint",
+        timeoutSeconds: 600,
+        desiredEntryMin: 0,
+        desiredEntryMax: 0,
+        startedAt: measuredAt,
+        finishedAt: new Date(measuredAt.getTime() + 500),
+        usageMetadata: {
+          durationMs: 500,
+          provider: "codex-cli",
+          model: "codex-cli 3.0.0",
+          promptProfileHash: "b".repeat(64),
+        },
+      },
+    });
+    await expect(getRuntimeCapacity(integrationDatabase, actor(admin.id))).resolves.toMatchObject({
+      capacityStatus: "UNKNOWN",
+      configuredConcurrency: 2,
+      effectiveConcurrency: 1,
+      dualConcurrencyAvailable: false,
+      runtimeFingerprint: {
+        codexVersion: "codex-cli 3.0.0",
+        promptProfileHash: "b".repeat(64),
+      },
+      benchmark: { stale: true, staleReasons: ["CODEX_MAJOR", "PROMPT_PROFILE"] },
     });
 
     await expect(

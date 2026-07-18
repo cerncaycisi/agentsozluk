@@ -16,6 +16,7 @@ import {
   createRuntimeCapabilityRecord,
   getCapacityPlanningMetrics,
   getLatestRuntimeCapability,
+  getLatestRuntimeFingerprintRecord,
   getRuntimeOperationalMetrics,
 } from "@/modules/agents/repository/capacity";
 import {
@@ -40,6 +41,21 @@ function istanbulLocalDate(now: Date): Date {
   return new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day)));
 }
 
+function runtimeFingerprint(usageMetadata: unknown): {
+  codexVersion?: string;
+  promptProfileHash?: string;
+} {
+  if (!usageMetadata || typeof usageMetadata !== "object" || Array.isArray(usageMetadata))
+    return {};
+  const metadata = usageMetadata as Record<string, unknown>;
+  return {
+    ...(typeof metadata.model === "string" ? { codexVersion: metadata.model } : {}),
+    ...(typeof metadata.promptProfileHash === "string"
+      ? { promptProfileHash: metadata.promptProfileHash }
+      : {}),
+  };
+}
+
 export function getRuntimeCapacity(
   client: DatabaseExecutor,
   actor: ActorContext,
@@ -48,11 +64,13 @@ export function getRuntimeCapacity(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     const localDate = istanbulLocalDate(now);
-    const [settings, capability, planning] = await Promise.all([
+    const [settings, capability, planning, fingerprintRecord] = await Promise.all([
       getGlobalSettingsRecord(transaction),
       getLatestRuntimeCapability(transaction),
       getCapacityPlanningMetrics(transaction, localDate),
+      getLatestRuntimeFingerprintRecord(transaction),
     ]);
+    const fingerprint = runtimeFingerprint(fingerprintRecord?.usageMetadata);
     const configuredConcurrency = settings.codexConcurrency === 2 ? 2 : 1;
     const calculated = calculateRuntimeCapacity({
       capability,
@@ -60,6 +78,7 @@ export function getRuntimeCapacity(
       configuredConcurrency,
       degradedMode: settings.degradedMode,
       now,
+      ...fingerprint,
     });
     const operational = await getRuntimeOperationalMetrics(transaction, {
       now,
@@ -73,7 +92,8 @@ export function getRuntimeCapacity(
     return {
       localDate,
       runtimeEnabled: settings.runtimeEnabled,
-      dualConcurrencyAvailable: supportsDualConcurrency(capability, { now }),
+      dualConcurrencyAvailable: supportsDualConcurrency(capability, { now, ...fingerprint }),
+      runtimeFingerprint: fingerprint,
       ...calculated,
       capacityStatus: circuitBreakers.capacityAtRisk ? "AT_RISK" : calculated.capacityStatus,
       operational,

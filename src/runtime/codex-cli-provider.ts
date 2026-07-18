@@ -8,6 +8,7 @@ import type {
   RuntimeProviderResult,
 } from "@/runtime/provider";
 import { RuntimeProviderCancelledError, RuntimeProviderTimeoutError } from "@/runtime/provider";
+import { monitorHostProcess } from "@/runtime/host-metrics";
 
 interface CodexCliProviderOptions {
   executable: string;
@@ -87,6 +88,26 @@ function collect(
   });
 }
 
+function safeCodexFailure(stderr: string): string {
+  if (/unexpected argument|unknown option|unrecognized option/iu.test(stderr))
+    return "CODEX_ARGUMENT_UNSUPPORTED";
+  if (/not logged in|login required|authentication required|unauthorized/iu.test(stderr))
+    return "CODEX_AUTH_REQUIRED";
+  if (/schema.{0,160}(invalid|unsupported)|invalid.{0,160}schema/iu.test(stderr)) {
+    const missingProperty = stderr.match(/Missing ['"]([A-Za-z0-9_]{1,64})['"]/iu)?.[1];
+    if (missingProperty) return `CODEX_SCHEMA_MISSING_REQUIRED_${missingProperty.toUpperCase()}`;
+    if (/additionalProperties/iu.test(stderr)) return "CODEX_SCHEMA_ADDITIONAL_PROPERTIES";
+    if (/format.{0,80}(unsupported|invalid)/iu.test(stderr))
+      return "CODEX_SCHEMA_FORMAT_UNSUPPORTED";
+    return "CODEX_SCHEMA_UNSUPPORTED";
+  }
+  if (/rate limit|usage limit|quota exceeded|too many requests/iu.test(stderr))
+    return "CODEX_RATE_LIMITED";
+  if (/stream disconnected|error sending request|connection (failed|refused|closed)/iu.test(stderr))
+    return "CODEX_UPSTREAM_UNAVAILABLE";
+  return "CODEX_EXEC_FAILED";
+}
+
 export class CodexCliProvider implements RuntimeProvider {
   readonly #options: CodexCliProviderOptions;
 
@@ -152,6 +173,8 @@ export class CodexCliProvider implements RuntimeProvider {
         throw new AppError("INTERNAL_ERROR", 500, "Codex CLI structured output desteklemiyor.");
       }
       const args = [
+        "--ask-for-approval",
+        "never",
         "exec",
         "--ephemeral",
         "--ignore-user-config",
@@ -159,8 +182,6 @@ export class CodexCliProvider implements RuntimeProvider {
         "--skip-git-repo-check",
         "--sandbox",
         "read-only",
-        "--ask-for-approval",
-        "never",
         "--output-schema",
         schemaPath,
         "--output-last-message",
@@ -173,18 +194,34 @@ export class CodexCliProvider implements RuntimeProvider {
         env: safeEnvironment(this.#options.runtimeHome, workDirectory),
         stdio: ["pipe", "pipe", "pipe"],
       });
+      const monitor = monitorHostProcess(child.pid);
       const result = await collect(child, request.prompt, request.timeoutMs, request.signal);
+      const hostMetrics = await monitor.stop();
       if (result.cancelled) throw new RuntimeProviderCancelledError();
       if (result.timedOut) throw new RuntimeProviderTimeoutError();
       if (result.exitCode !== 0) {
-        throw new AppError("INTERNAL_ERROR", 500, "Codex CLI run güvenli biçimde tamamlanamadı.");
+        throw new AppError(
+          "INTERNAL_ERROR",
+          500,
+          `Codex CLI run güvenli biçimde tamamlanamadı: ${safeCodexFailure(result.stderr)}.`,
+        );
       }
-      const output = JSON.parse(await readFile(outputPath, "utf8")) as unknown;
+      let output: unknown;
+      try {
+        output = JSON.parse(await readFile(outputPath, "utf8")) as unknown;
+      } catch {
+        throw new AppError(
+          "INTERNAL_ERROR",
+          500,
+          "Codex CLI structured output dosyası geçersiz: CODEX_OUTPUT_INVALID.",
+        );
+      }
       return {
         provider: "codex-cli",
         version: inspected.version,
         output,
         durationMs: Date.now() - startedAt,
+        hostMetrics,
       };
     } finally {
       if (!this.#options.retainWorkHours) await rm(workDirectory, { recursive: true, force: true });

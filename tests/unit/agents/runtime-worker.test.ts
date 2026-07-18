@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { RuntimeControlPlane } from "@/runtime/control-plane-client";
 import type { RuntimeProvider } from "@/runtime/provider";
 import { RuntimeProviderCancelledError } from "@/runtime/provider";
-import { AgentRuntimeWorker } from "@/runtime/worker";
+import { AgentRuntimeWorker, RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/worker";
 
 function fixtureContext(runId: string) {
   return {
@@ -68,6 +68,14 @@ describe("long-lived agent runtime worker", () => {
         provider: "codex-cli",
         version: "codex-cli test",
         durationMs: 25,
+        hostMetrics: {
+          processPeakRssMb: 123,
+          systemPeakMemoryMb: 2048,
+          availableMemoryMb: 1024,
+          swapInMb: 0,
+          swapOutMb: 0,
+          loadAverage1m: 0.5,
+        },
         output: {
           state: { curiosity: 0.4, confidence: 0.6, topicFatigue: {} },
           observations: [],
@@ -98,7 +106,15 @@ describe("long-lived agent runtime worker", () => {
       expect.any(String),
       "unit-worker",
       runId,
-      expect.objectContaining({ outcome: "SUCCEEDED" }),
+      expect.objectContaining({
+        outcome: "SUCCEEDED",
+        usageMetadata: expect.objectContaining({
+          model: "codex-cli test",
+          promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+          processPeakRssMb: 123,
+          availableMemoryMb: 1024,
+        }),
+      }),
     );
     expect(plane.fail).not.toHaveBeenCalled();
     expect(JSON.stringify((provider.invoke as ReturnType<typeof vi.fn>).mock.calls)).toContain(

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { monitorHostProcess } from "@/runtime/host-metrics";
 
 describe("Codex CLI provider security contract", () => {
   const source = readFileSync("src/runtime/codex-cli-provider.ts", "utf8");
@@ -17,6 +18,7 @@ describe("Codex CLI provider security contract", () => {
       expect(source).toContain(value);
     }
     expect(source).not.toContain("shell: true");
+    expect(source).toMatch(/const args = \[\s*"--ask-for-approval",\s*"never",\s*"exec"/u);
   });
 
   it("allowlists child environment and never forwards database or deployment credentials", () => {
@@ -26,5 +28,16 @@ describe("Codex CLI provider security contract", () => {
     expect(source).toContain("mode: 0o600");
     expect(source).toContain('child.kill("SIGTERM")');
     expect(source).toContain('child.kill("SIGKILL")');
+  });
+
+  it("measures process-tree RSS and host safety counters without privileged access", async () => {
+    const monitor = monitorHostProcess(process.pid, 10);
+    const metrics = await monitor.stop();
+    expect(metrics.processPeakRssMb).toBeGreaterThan(0);
+    expect(metrics.systemPeakMemoryMb).toBeGreaterThan(0);
+    expect(metrics.availableMemoryMb).toBeGreaterThan(0);
+    expect(metrics.swapInMb).toBeGreaterThanOrEqual(0);
+    expect(metrics.swapOutMb).toBeGreaterThanOrEqual(0);
+    expect(metrics.loadAverage1m).toBeGreaterThanOrEqual(0);
   });
 });
