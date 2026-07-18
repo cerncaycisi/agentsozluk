@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   circuitBreakerConfigSchema,
+  countConsecutiveCodexFailures,
   evaluateCircuitBreakers,
   type OperationalMetrics,
 } from "@/modules/agents";
@@ -30,6 +31,23 @@ const healthy: OperationalMetrics = {
 };
 
 describe("agent runtime circuit breakers", () => {
+  it("counts only explicit consecutive Codex failures", () => {
+    expect(
+      countConsecutiveCodexFailures([
+        { runStatus: "TIMED_OUT", errorCode: "CODEX_TIMEOUT" },
+        { runStatus: "FAILED", errorCode: "CODEX_AUTH_REQUIRED" },
+        { runStatus: "FAILED", errorCode: "WORKER_EXECUTION_FAILED" },
+        { runStatus: "FAILED", errorCode: "CODEX_UPSTREAM_UNAVAILABLE" },
+      ]),
+    ).toBe(2);
+    expect(
+      countConsecutiveCodexFailures([
+        { runStatus: "FAILED", errorCode: "WORKER_EXECUTION_FAILED" },
+        { runStatus: "FAILED", errorCode: "CODEX_TIMEOUT" },
+      ]),
+    ).toBe(0);
+  });
+
   it("keeps write and catch-up lanes open below strict thresholds", () => {
     expect(evaluateCircuitBreakers(config, healthy)).toMatchObject({
       runtimeErrorRate: 0.1,

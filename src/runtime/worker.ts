@@ -49,6 +49,12 @@ export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   )
   .digest("hex");
 
+function serializeUntrustedContext(value: Record<string, unknown>): string {
+  const serialized = JSON.stringify(value);
+  if (serialized === undefined) throw new TypeError("Runtime context serialize edilemedi.");
+  return serialized.replaceAll("<", "\\u003c").replaceAll(">", "\\u003e");
+}
+
 export function buildRuntimePrompt(context: RuntimeContext): string {
   const safeContext = {
     run: { ...context.run, adminInstruction: undefined },
@@ -81,7 +87,7 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
     runtimePromptInvariants[3],
     "",
     "<UNTRUSTED_CONTENT>",
-    JSON.stringify(safeContext),
+    serializeUntrustedContext(safeContext),
     "</UNTRUSTED_CONTENT>",
     "",
     runtimePromptInvariants[4],

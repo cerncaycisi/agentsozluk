@@ -28,6 +28,22 @@ export interface OperationalMetrics {
   longestActiveStartedAt: Date | null;
 }
 
+interface TerminalRunFailure {
+  runStatus: string;
+  errorCode: string | null;
+}
+
+function isCodexFailure(run: TerminalRunFailure): boolean {
+  return (
+    ["FAILED", "TIMED_OUT"].includes(run.runStatus) && run.errorCode?.startsWith("CODEX_") === true
+  );
+}
+
+export function countConsecutiveCodexFailures(runsNewestFirst: TerminalRunFailure[]): number {
+  const firstNonCodexFailure = runsNewestFirst.findIndex((run) => !isCodexFailure(run));
+  return firstNonCodexFailure === -1 ? runsNewestFirst.length : firstNonCodexFailure;
+}
+
 export function evaluateCircuitBreakers(config: CircuitBreakerConfig, metrics: OperationalMetrics) {
   const runtimeErrorRate =
     metrics.terminalRunsInErrorWindow === 0

@@ -1,6 +1,9 @@
 import { Prisma } from "@prisma/client";
 import type { RuntimeCapabilityMeasurementInput } from "@/modules/agents/validation/capacity-schemas";
-import type { CircuitBreakerConfig } from "@/modules/agents/domain/circuit-breaker";
+import {
+  countConsecutiveCodexFailures,
+  type CircuitBreakerConfig,
+} from "@/modules/agents/domain/circuit-breaker";
 
 export function getLatestRuntimeCapability(transaction: Prisma.TransactionClient) {
   return transaction.agentRuntimeCapability.findFirst({
@@ -191,18 +194,7 @@ export async function getRuntimeOperationalMetrics(
     failedRunsInErrorWindow: terminalRuns.filter(({ runStatus }) =>
       ["FAILED", "TIMED_OUT"].includes(runStatus),
     ).length,
-    consecutiveCodexFailures:
-      latestTerminalRuns.findIndex(
-        ({ runStatus, errorCode }) =>
-          !["FAILED", "TIMED_OUT"].includes(runStatus) ||
-          !(errorCode?.startsWith("CODEX_") || errorCode === "WORKER_EXECUTION_FAILED"),
-      ) === -1
-        ? latestTerminalRuns.length
-        : latestTerminalRuns.findIndex(
-            ({ runStatus, errorCode }) =>
-              !["FAILED", "TIMED_OUT"].includes(runStatus) ||
-              !(errorCode?.startsWith("CODEX_") || errorCode === "WORKER_EXECUTION_FAILED"),
-          ),
+    consecutiveCodexFailures: countConsecutiveCodexFailures(latestTerminalRuns),
     duplicateCandidateCount: recentCandidates.length,
     duplicateRejectionCount: recentCandidates.filter(
       ({ rejectionCode }) => rejectionCode === "DUPLICATE_SIMILARITY",
