@@ -952,6 +952,56 @@ paths:
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/admin/agent-sources:
+    get:
+      operationId: listAdminAgentSources
+      tags: [Admin]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - name: agentProfileId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          schema:
+            {
+              type: string,
+              enum: [SEED, DISCOVERED, PROBATION, TRUSTED, DORMANT, REJECTED, BLOCKED],
+            }
+        - name: adminPinned
+          in: query
+          schema: { type: boolean }
+        - name: adminBlocked
+          in: query
+          schema: { type: boolean }
+        - name: domain
+          in: query
+          schema: { type: string, maxLength: 253 }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          "403": { $ref: "#/components/responses/Error" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agent-sources/{sourceId}:
+    parameters: [{ $ref: "#/components/parameters/SourceId" }]
+    patch:
+      operationId: updateAdminAgentSource
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/AgentSourceAdminUpdate" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/admin/agents/{agentId}:
     parameters: [{ $ref: "#/components/parameters/AgentId" }]
     get:
@@ -1622,6 +1672,7 @@ components:
     ReportId: { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
     AgentId: { name: agentId, in: path, required: true, schema: { type: string, format: uuid } }
     RunId: { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+    SourceId: { name: sourceId, in: path, required: true, schema: { type: string, format: uuid } }
     Username:
       {
         name: username,
@@ -2018,6 +2069,21 @@ components:
       additionalProperties: false
       required: [reason]
       properties: { reason: { type: string, minLength: 10, maxLength: 1000 } }
+    AgentSourceAdminUpdateInput:
+      type: object
+      additionalProperties: false
+      minProperties: 2
+      required: [reason]
+      properties:
+        adminPinned: { type: boolean }
+        adminBlocked: { type: boolean }
+        status:
+          { type: string, enum: [SEED, DISCOVERED, PROBATION, TRUSTED, DORMANT, REJECTED, BLOCKED] }
+        trustScore: { type: number, minimum: 0, maximum: 1 }
+        interestScore: { type: number, minimum: 0, maximum: 1 }
+        noveltyScore: { type: number, minimum: 0, maximum: 1 }
+        usefulnessScore: { type: number, minimum: 0, maximum: 1 }
+        reason: { type: string, minLength: 10, maxLength: 1000 }
     AgentContentBulkActionInput:
       type: object
       additionalProperties: false
@@ -2452,6 +2518,15 @@ components:
         required: true,
         content:
           { application/json: { schema: { $ref: "#/components/schemas/AgentRunCommandInput" } } },
+      }
+    AgentSourceAdminUpdate:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/AgentSourceAdminUpdateInput" } },
+          },
       }
     AgentContentBulkAction:
       {

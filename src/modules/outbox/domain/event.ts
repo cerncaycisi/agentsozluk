@@ -28,6 +28,7 @@ export const OUTBOX_EVENT_TYPES = [
   "agent.schedule.generated",
   "agent.run.queued",
   "agent.settings_changed",
+  "agent.source_updated",
 ] as const;
 
 export type OutboxEventType = (typeof OUTBOX_EVENT_TYPES)[number];

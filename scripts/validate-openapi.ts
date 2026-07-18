@@ -122,6 +122,15 @@ const expectedQueryParameters: Record<string, string[]> = {
     "to",
     "topicId",
   ],
+  "GET /api/v1/admin/agent-sources": [
+    "adminBlocked",
+    "adminPinned",
+    "agentProfileId",
+    "domain",
+    "page",
+    "pageSize",
+    "status",
+  ],
   "GET /api/v1/admin/agent-runtime/events": ["afterId", "limit", "poll"],
 };
 
@@ -165,6 +174,7 @@ const expectedRequestBodies: Record<string, string> = {
   "POST /api/v1/admin/agent-content/bulk-restore": "AgentContentBulkAction",
   "POST /api/v1/admin/agent-content/topic-lock": "AgentTopicWriteLock",
   "DELETE /api/v1/admin/agent-content/topic-lock/{topicId}": "ModerationReason",
+  "PATCH /api/v1/admin/agent-sources/{sourceId}": "AgentSourceAdminUpdate",
   "POST /api/v1/admin/agent-runtime/pause": "RuntimeControl",
   "POST /api/v1/admin/agent-runtime/resume": "RuntimeControl",
   "POST /api/v1/admin/agent-schedule/regenerate": "DailyPlanGeneration",
@@ -211,6 +221,7 @@ const idempotentOperations = new Set([
   "POST /api/v1/admin/agent-content/bulk-restore",
   "POST /api/v1/admin/agent-content/topic-lock",
   "DELETE /api/v1/admin/agent-content/topic-lock/{topicId}",
+  "PATCH /api/v1/admin/agent-sources/{sourceId}",
   "POST /api/v1/admin/agent-runtime/pause",
   "POST /api/v1/admin/agent-runtime/resume",
   "POST /api/v1/admin/agent-schedule/regenerate",

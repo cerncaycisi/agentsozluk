@@ -962,14 +962,26 @@ export async function storeRuntimeSourceResult(
     const usefulItems = await transaction.agentSourceItem.count({
       where: { sourceId: input.sourceId },
     });
-    await transaction.agentSource.update({
+    const currentSource = await transaction.agentSource.findUniqueOrThrow({
+      where: { id: input.sourceId },
+      select: { status: true, adminBlocked: true },
+    });
+    const evolvedStatus = currentSource.adminBlocked
+      ? currentSource.status
+      : currentSource.status === "DISCOVERED"
+        ? "PROBATION"
+        : currentSource.status === "PROBATION" && usefulItems >= 3
+          ? "TRUSTED"
+          : currentSource.status;
+    const updatedSource = await transaction.agentSource.update({
       where: { id: input.sourceId },
       data: {
         consecutiveFailures: 0,
         lastFetchedAt: input.now,
         ...(input.items.length > 0 ? { lastUsefulAt: input.now } : {}),
-        ...(usefulItems >= 3 ? { status: "TRUSTED" } : {}),
+        ...(evolvedStatus !== currentSource.status ? { status: evolvedStatus } : {}),
       },
+      select: { status: true },
     });
     for (const item of input.items)
       await transaction.agentMemoryEpisode.create({
@@ -981,7 +993,7 @@ export async function storeRuntimeSourceResult(
           subjectId: input.sourceId,
           summary: `Source item gerçekten okundu: ${item.title}`.slice(0, 2000),
           salience: 0.5,
-          provenance: usefulItems >= 3 ? "TRUSTED_SOURCE" : "PROBATION_SOURCE",
+          provenance: updatedSource.status === "TRUSTED" ? "TRUSTED_SOURCE" : "PROBATION_SOURCE",
           evidence: { sourceId: input.sourceId, contentHash: item.contentHash },
           occurredAt: input.now,
         },
@@ -991,6 +1003,60 @@ export async function storeRuntimeSourceResult(
     where: { id: input.runId },
     data: { perceptionSummary: Prisma.DbNull },
   });
+}
+
+const perceptionSourceSelect = (now: Date) =>
+  ({
+    id: true,
+    url: true,
+    sourceType: true,
+    normalizedDomain: true,
+    status: true,
+    trustScore: true,
+    consecutiveFailures: true,
+    lastFetchedAt: true,
+    topics: true,
+    items: {
+      where: { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+      select: {
+        id: true,
+        canonicalUrl: true,
+        title: true,
+        safeText: true,
+        summary: true,
+        publishedAt: true,
+        fetchedAt: true,
+      },
+      orderBy: { fetchedAt: "desc" },
+      take: 3,
+    },
+  }) satisfies Prisma.AgentSourceSelect;
+
+async function listRuntimePerceptionSources(
+  transaction: Prisma.TransactionClient,
+  input: { agentProfileId: string; now: Date },
+) {
+  const discovery = await transaction.agentSource.findFirst({
+    where: {
+      agentProfileId: input.agentProfileId,
+      status: { in: ["DISCOVERED", "PROBATION"] },
+      adminBlocked: false,
+    },
+    select: perceptionSourceSelect(input.now),
+    orderBy: [{ adminPinned: "desc" }, { interestScore: "desc" }, { updatedAt: "asc" }],
+  });
+  const primary = await transaction.agentSource.findMany({
+    where: {
+      agentProfileId: input.agentProfileId,
+      status: { in: ["SEED", "PROBATION", "TRUSTED", "DISCOVERED"] },
+      adminBlocked: false,
+      ...(discovery ? { id: { not: discovery.id } } : {}),
+    },
+    select: perceptionSourceSelect(input.now),
+    orderBy: [{ adminPinned: "desc" }, { trustScore: "desc" }],
+    take: discovery ? 7 : 8,
+  });
+  return discovery ? [...primary, discovery] : primary;
 }
 
 export async function getRuntimePerceptionRecords(
@@ -1109,39 +1175,9 @@ export async function getRuntimePerceptionRecords(
       take: 12,
     }),
     input.includeSources
-      ? transaction.agentSource.findMany({
-          where: {
-            agentProfileId: input.agentProfileId,
-            status: { in: ["SEED", "PROBATION", "TRUSTED"] },
-            adminBlocked: false,
-          },
-          select: {
-            id: true,
-            url: true,
-            sourceType: true,
-            normalizedDomain: true,
-            status: true,
-            trustScore: true,
-            consecutiveFailures: true,
-            lastFetchedAt: true,
-            topics: true,
-            items: {
-              where: { OR: [{ expiresAt: null }, { expiresAt: { gt: input.now } }] },
-              select: {
-                id: true,
-                canonicalUrl: true,
-                title: true,
-                safeText: true,
-                summary: true,
-                publishedAt: true,
-                fetchedAt: true,
-              },
-              orderBy: { fetchedAt: "desc" },
-              take: 3,
-            },
-          },
-          orderBy: [{ adminPinned: "desc" }, { trustScore: "desc" }],
-          take: 8,
+      ? listRuntimePerceptionSources(transaction, {
+          agentProfileId: input.agentProfileId,
+          now: input.now,
         })
       : Promise.resolve([]),
     transaction.agentRuntimeState.findUniqueOrThrow({

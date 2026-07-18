@@ -1198,4 +1198,102 @@ describe("internal agent runtime API with PostgreSQL", () => {
       ),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
+
+  it("reserves perception capacity for discovery sources and evolves them through probation", async () => {
+    const fixture = await createFixture();
+    for (let index = 0; index < 8; index += 1) {
+      await integrationDatabase.agentSource.create({
+        data: {
+          agentProfileId: fixture.created.agent.profile.id,
+          url: `https://trusted-${index}.source-reserve.test/feed`,
+          normalizedDomain: `trusted-${index}.source-reserve.test`,
+          sourceType: "RSS",
+          status: "TRUSTED",
+          topics: ["reserve"],
+          trustScore: 0.9 - index * 0.01,
+          interestScore: 0.8,
+          noveltyScore: 0.5,
+          usefulnessScore: 0.8,
+          addedByOrigin: "INTEGRATION_TEST",
+        },
+      });
+    }
+    const discovered = await integrationDatabase.agentSource.create({
+      data: {
+        agentProfileId: fixture.created.agent.profile.id,
+        url: "https://discovered.source-reserve.test/feed",
+        normalizedDomain: "discovered.source-reserve.test",
+        sourceType: "RSS",
+        status: "DISCOVERED",
+        topics: ["reserve"],
+        trustScore: 0.2,
+        interestScore: 0.9,
+        noveltyScore: 0.9,
+        usefulnessScore: 0.5,
+        addedByOrigin: "INTEGRATION_TEST",
+      },
+    });
+    const blocked = await integrationDatabase.agentSource.create({
+      data: {
+        agentProfileId: fixture.created.agent.profile.id,
+        url: "https://blocked.source-reserve.test/feed",
+        normalizedDomain: "blocked.source-reserve.test",
+        sourceType: "RSS",
+        status: "BLOCKED",
+        topics: ["reserve"],
+        trustScore: 1,
+        interestScore: 1,
+        noveltyScore: 1,
+        usefulnessScore: 1,
+        adminBlocked: true,
+        addedByOrigin: "INTEGRATION_TEST",
+      },
+    });
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "source-reserve-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      workerId,
+    );
+    const targets = (
+      context.perception as {
+        sourceFetchTargets: Array<{ sourceId: string; status: string }>;
+      }
+    ).sourceFetchTargets;
+    expect(targets.length).toBeLessThanOrEqual(8);
+    expect(targets.some(({ sourceId }) => sourceId === discovered.id)).toBe(true);
+    expect(targets.some(({ sourceId }) => sourceId === blocked.id)).toBe(false);
+    expect(
+      targets.filter(({ status }) => status === "DISCOVERED" || status === "PROBATION").length /
+        targets.length,
+    ).toBeGreaterThanOrEqual(0.1);
+
+    const sourceResult = (index: number) =>
+      runtimeSourceResultSchema.parse({
+        workerId,
+        sourceId: discovered.id,
+        items: Array.from({ length: index === 0 ? 3 : 1 }, (_, itemIndex) => ({
+          canonicalUrl: `https://discovered.source-reserve.test/item-${index}-${itemIndex}`,
+          title: `Discovery item ${index}-${itemIndex}`,
+          contentHash: `${index + 1}${itemIndex}`.padEnd(64, String(index + 1)),
+          safeText: `Discovery source güvenli metni ${index}-${itemIndex}.`,
+        })),
+      });
+    await recordRuntimeSourceResult(integrationDatabase, writePrincipal, runId, sourceResult(0));
+    await expect(
+      integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: discovered.id } }),
+    ).resolves.toMatchObject({ status: "PROBATION" });
+    await recordRuntimeSourceResult(integrationDatabase, writePrincipal, runId, sourceResult(1));
+    await expect(
+      integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: discovered.id } }),
+    ).resolves.toMatchObject({ status: "TRUSTED" });
+  });
 });

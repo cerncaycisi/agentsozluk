@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { AgentSourceStatus, Prisma } from "@prisma/client";
 
 export function findAgentAdminPrincipal(transaction: Prisma.TransactionClient, actorId: string) {
   return transaction.user.findUnique({
@@ -17,6 +17,112 @@ export async function lockAgentProfile(
 
 export async function lockAgentSettings(transaction: Prisma.TransactionClient): Promise<void> {
   await transaction.$executeRaw`SELECT pg_advisory_xact_lock(92024002)`;
+}
+
+export async function lockAgentSource(
+  transaction: Prisma.TransactionClient,
+  sourceId: string,
+): Promise<void> {
+  const key = `agent-source:${sourceId}`;
+  await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+}
+
+export function listAgentSourcesRecord(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId?: string;
+    status?: AgentSourceStatus;
+    adminPinned?: boolean;
+    adminBlocked?: boolean;
+    domain?: string;
+    skip: number;
+    take: number;
+  },
+) {
+  const where: Prisma.AgentSourceWhereInput = {
+    ...(input.agentProfileId ? { agentProfileId: input.agentProfileId } : {}),
+    ...(input.status ? { status: input.status } : {}),
+    ...(input.adminPinned !== undefined ? { adminPinned: input.adminPinned } : {}),
+    ...(input.adminBlocked !== undefined ? { adminBlocked: input.adminBlocked } : {}),
+    ...(input.domain
+      ? { normalizedDomain: { contains: input.domain.toLowerCase(), mode: "insensitive" } }
+      : {}),
+  };
+  return Promise.all([
+    transaction.agentSource.findMany({
+      where,
+      orderBy: [
+        { adminBlocked: "desc" },
+        { adminPinned: "desc" },
+        { updatedAt: "desc" },
+        { id: "desc" },
+      ],
+      skip: input.skip,
+      take: input.take,
+      select: {
+        id: true,
+        url: true,
+        normalizedDomain: true,
+        sourceType: true,
+        status: true,
+        topics: true,
+        trustScore: true,
+        interestScore: true,
+        noveltyScore: true,
+        usefulnessScore: true,
+        adminPinned: true,
+        adminBlocked: true,
+        discoveredFrom: true,
+        addedByOrigin: true,
+        lastFetchedAt: true,
+        lastUsefulAt: true,
+        consecutiveFailures: true,
+        createdAt: true,
+        updatedAt: true,
+        agentProfile: {
+          select: { id: true, user: { select: { username: true, displayName: true } } },
+        },
+        _count: { select: { items: true } },
+      },
+    }),
+    transaction.agentSource.count({ where }),
+  ]);
+}
+
+export function findAgentSourceForAdmin(transaction: Prisma.TransactionClient, sourceId: string) {
+  return transaction.agentSource.findUnique({
+    where: { id: sourceId },
+    include: { _count: { select: { items: true } } },
+  });
+}
+
+export function updateAgentSourceAdminRecord(
+  transaction: Prisma.TransactionClient,
+  sourceId: string,
+  data: Prisma.AgentSourceUpdateInput,
+) {
+  return transaction.agentSource.update({
+    where: { id: sourceId },
+    data,
+    include: { _count: { select: { items: true } } },
+  });
+}
+
+export function listRecentAgentSourceScoreAudits(
+  transaction: Prisma.TransactionClient,
+  sourceId: string,
+  since: Date,
+) {
+  return transaction.auditLog.findMany({
+    where: {
+      action: "agent.source.updated",
+      entityType: "AgentSource",
+      entityId: sourceId,
+      createdAt: { gte: since },
+    },
+    select: { metadata: true },
+    orderBy: { createdAt: "asc" },
+  });
 }
 
 export function findAgentIdentityConflict(

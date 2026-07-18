@@ -40,6 +40,9 @@ export default async function AgentDashboardPage() {
         <Link href="/moderasyon/agentlar/olaylar" className="button-secondary">
           Canlı olaylar
         </Link>
+        <Link href="/moderasyon/agentlar/kaynaklar" className="button-secondary">
+          Kaynaklar
+        </Link>
       </div>
       {agents.some(({ lifecycleStatus }) => lifecycleStatus === "ACTIVE") ? (
         <BulkAgentRunForm

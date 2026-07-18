@@ -132,9 +132,38 @@ export const runtimeControlSchema = z
   .object({ reason: z.string().trim().min(10).max(1000) })
   .strict();
 
+export const agentSourceAdminUpdateSchema = z
+  .object({
+    adminPinned: z.boolean().optional(),
+    adminBlocked: z.boolean().optional(),
+    status: z
+      .enum(["SEED", "DISCOVERED", "PROBATION", "TRUSTED", "REJECTED", "DORMANT", "BLOCKED"])
+      .optional(),
+    trustScore: z.number().min(0).max(1).optional(),
+    interestScore: z.number().min(0).max(1).optional(),
+    noveltyScore: z.number().min(0).max(1).optional(),
+    usefulnessScore: z.number().min(0).max(1).optional(),
+    reason: z.string().trim().min(10).max(1000),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.adminPinned && input.adminBlocked)
+      context.addIssue({
+        code: "custom",
+        path: ["adminBlocked"],
+        message: "Source aynı anda pinned ve blocked olamaz.",
+      });
+  })
+  .refine(
+    (input) =>
+      Object.entries(input).some(([key, value]) => key !== "reason" && value !== undefined),
+    { message: "En az bir source alanı değiştirilmelidir." },
+  );
+
 export type CreateAgentInput = z.infer<typeof createAgentSchema>;
 export type UpdateAgentInput = z.infer<typeof updateAgentSchema>;
 export type LifecycleChangeInput = z.infer<typeof lifecycleChangeSchema>;
 export type PersonaRollbackInput = z.infer<typeof personaRollbackSchema>;
 export type GlobalSettingsUpdateInput = z.infer<typeof globalSettingsUpdateSchema>;
 export type RuntimeControlInput = z.infer<typeof runtimeControlSchema>;
+export type AgentSourceAdminUpdateInput = z.infer<typeof agentSourceAdminUpdateSchema>;

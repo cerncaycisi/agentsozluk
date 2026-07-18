@@ -7,16 +7,20 @@ import {
   changeAgentLifecycle,
   createAgent,
   createAgentSchema,
+  agentSourceAdminUpdateSchema,
   getRuntimeCapacity,
   lifecycleChangeSchema,
+  listAgentSources,
   personaRollbackSchema,
   recordRuntimeCapability,
   rollbackPersona,
   runtimeCapabilityMeasurementSchema,
   updateAgent,
+  updateAgentSourceAdmin,
   updateAgentSchema,
   updateGlobalSettings,
 } from "@/modules/agents";
+import { findRuntimeSourceForWrite } from "@/modules/agents/repository/runtime";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import { sha256 } from "@/lib/security/crypto";
 import { redactCreationCredential } from "@/modules/agents/domain/credential";
@@ -604,5 +608,129 @@ describe("agent control plane with PostgreSQL", () => {
     expect(capacity.operational.utilization15m).toBeCloseTo(1, 5);
     expect(capacity.operational.utilization1h).toBeCloseTo(1, 5);
     expect(capacity.operational.utilization2h).toBeCloseTo(0.925, 4);
+  });
+
+  it("administers source evolution with pin, block, approval and weekly score limits", async () => {
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const source = await integrationDatabase.agentSource.create({
+      data: {
+        agentProfileId: created.agent.profile.id,
+        url: "https://source-admin.integration.test/feed",
+        normalizedDomain: "source-admin.integration.test",
+        sourceType: "RSS",
+        status: "PROBATION",
+        topics: ["integration"],
+        trustScore: 0.5,
+        interestScore: 0.5,
+        noveltyScore: 0.5,
+        usefulnessScore: 0.5,
+        addedByOrigin: "INTEGRATION_TEST",
+      },
+    });
+    const [listed, total] = await listAgentSources(integrationDatabase, actor(admin.id), {
+      agentProfileId: created.agent.profile.id,
+      status: "PROBATION",
+      domain: "source-admin",
+      skip: 0,
+      take: 20,
+    });
+    expect(total).toBe(1);
+    expect(listed[0]).toMatchObject({ id: source.id, _count: { items: 0 } });
+
+    const trusted = await updateAgentSourceAdmin(
+      integrationDatabase,
+      actor(admin.id),
+      source.id,
+      agentSourceAdminUpdateSchema.parse({
+        status: "TRUSTED",
+        adminPinned: true,
+        trustScore: 0.56,
+        reason: "Admin source içeriğini inceleyip açık trusted onayı vermektedir.",
+      }),
+      new Date("2026-07-18T08:00:00.000Z"),
+    );
+    expect(trusted).toMatchObject({ status: "TRUSTED", adminPinned: true, trustScore: 0.56 });
+    await expect(
+      updateAgentSourceAdmin(
+        integrationDatabase,
+        actor(admin.id),
+        source.id,
+        agentSourceAdminUpdateSchema.parse({
+          status: "DORMANT",
+          reason: "Pinned source doğrudan kaldırılmaya çalışıldığında işlem reddedilmelidir.",
+        }),
+        new Date("2026-07-18T09:00:00.000Z"),
+      ),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR", status: 422 });
+    await expect(
+      updateAgentSourceAdmin(
+        integrationDatabase,
+        actor(admin.id),
+        source.id,
+        agentSourceAdminUpdateSchema.parse({
+          trustScore: 0.61,
+          reason: "İkinci skor artışı haftalık toplam sınırını aşmamalıdır.",
+        }),
+        new Date("2026-07-18T10:00:00.000Z"),
+      ),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR", status: 422 });
+
+    const blocked = await updateAgentSourceAdmin(
+      integrationDatabase,
+      actor(admin.id),
+      source.id,
+      agentSourceAdminUpdateSchema.parse({
+        adminPinned: false,
+        adminBlocked: true,
+        reason: "Source güvenli fetch havuzundan çıkarılmak üzere admin tarafından block edilir.",
+      }),
+      new Date("2026-07-18T11:00:00.000Z"),
+    );
+    expect(blocked).toMatchObject({ status: "BLOCKED", adminPinned: false, adminBlocked: true });
+    await expect(
+      integrationDatabase.$transaction((transaction) =>
+        findRuntimeSourceForWrite(transaction, {
+          agentProfileId: created.agent.profile.id,
+          sourceId: source.id,
+        }),
+      ),
+    ).resolves.toBeNull();
+    expect(
+      await integrationDatabase.auditLog.count({
+        where: { action: "agent.source.updated", entityId: source.id },
+      }),
+    ).toBe(2);
+    expect(
+      await integrationDatabase.outboxEvent.count({
+        where: { eventType: "agent.source_updated", aggregateId: source.id },
+      }),
+    ).toBe(2);
+  });
+
+  it("denies source administration to moderators", async () => {
+    const admin = await createPrincipal();
+    const moderator = await createPrincipal("MODERATOR");
+    const created = await createFirstAgent(admin.id);
+    const source = await integrationDatabase.agentSource.findFirstOrThrow({
+      where: { agentProfileId: created.agent.profile.id },
+    });
+    await expect(
+      listAgentSources(integrationDatabase, actor(moderator.id, "MODERATOR"), {
+        skip: 0,
+        take: 20,
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      updateAgentSourceAdmin(
+        integrationDatabase,
+        actor(moderator.id, "MODERATOR"),
+        source.id,
+        agentSourceAdminUpdateSchema.parse({
+          adminPinned: true,
+          reason: "Moderator agent source yönetimi yapamamalıdır.",
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

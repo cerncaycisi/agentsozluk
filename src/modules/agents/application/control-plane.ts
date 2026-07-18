@@ -21,22 +21,28 @@ import {
   findAgentDetailRecord,
   findAgentForMutation,
   findAgentIdentityConflict,
+  findAgentSourceForAdmin,
   findPersonaVersion,
   getGlobalSettingsRecord,
   getQuotaProfiles,
   listAgentDashboardRecords,
   listCurrentPersonas,
+  listAgentSourcesRecord,
+  listRecentAgentSourceScoreAudits,
   listRuntimeEventsRecord,
   lockAgentProfile,
+  lockAgentSource,
   lockAgentSettings,
   rotateAgentCredentialRecords,
   updateAgentLifecycle,
   updateAgentProfileRecords,
+  updateAgentSourceAdminRecord,
   updateGlobalSettingsRecord,
 } from "@/modules/agents/repository/control-plane";
 import { getLatestRuntimeCapability } from "@/modules/agents/repository/capacity";
 import type {
   CreateAgentInput,
+  AgentSourceAdminUpdateInput,
   GlobalSettingsUpdateInput,
   LifecycleChangeInput,
   PersonaRollbackInput,
@@ -47,6 +53,131 @@ import type { RuntimeCredentialRotationInput } from "@/modules/agents/validation
 import { appendOutboxEvent } from "@/modules/outbox";
 
 const GLOBAL_SETTINGS_AGGREGATE_ID = "00000000-0000-4000-8000-000000000001";
+
+type SourceScoreField = "trustScore" | "interestScore" | "noveltyScore" | "usefulnessScore";
+
+const sourceScoreFields: SourceScoreField[] = [
+  "trustScore",
+  "interestScore",
+  "noveltyScore",
+  "usefulnessScore",
+];
+
+export function listAgentSources(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  input: Parameters<typeof listAgentSourcesRecord>[1],
+) {
+  return inTransaction(client, async (transaction) => {
+    await requireAgentAdminInTransaction(transaction, actor);
+    return listAgentSourcesRecord(transaction, input);
+  });
+}
+
+function auditedScoreDelta(metadata: unknown, field: SourceScoreField): number {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return 0;
+  const scoreChanges = (metadata as Record<string, unknown>).scoreChanges;
+  if (!scoreChanges || typeof scoreChanges !== "object" || Array.isArray(scoreChanges)) return 0;
+  const change = (scoreChanges as Record<string, unknown>)[field];
+  if (!change || typeof change !== "object" || Array.isArray(change)) return 0;
+  const { from, to } = change as Record<string, unknown>;
+  return typeof from === "number" && typeof to === "number" ? Math.abs(to - from) : 0;
+}
+
+export function updateAgentSourceAdmin(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  sourceId: string,
+  input: AgentSourceAdminUpdateInput,
+  now = new Date(),
+) {
+  return inTransaction(client, async (transaction) => {
+    await requireAgentAdminInTransaction(transaction, actor);
+    await lockAgentSource(transaction, sourceId);
+    const current = await findAgentSourceForAdmin(transaction, sourceId);
+    if (!current) throw new AppError("AGENT_SOURCE_NOT_FOUND", 404, "Agent source bulunamadı.");
+    const recentAudits = await listRecentAgentSourceScoreAudits(
+      transaction,
+      sourceId,
+      new Date(now.getTime() - 7 * 24 * 60 * 60_000),
+    );
+    const scoreChanges: Record<string, { from: number; to: number }> = {};
+    for (const field of sourceScoreFields) {
+      const next = input[field];
+      if (next === undefined || next === current[field]) continue;
+      const used = recentAudits.reduce(
+        (total, audit) => total + auditedScoreDelta(audit.metadata, field),
+        0,
+      );
+      const requested = Math.abs(next - current[field]);
+      if (used + requested > 0.100_000_1)
+        throw new AppError(
+          "VALIDATION_ERROR",
+          422,
+          `${field} için yedi günlük toplam değişim ±0.10 sınırını aşamaz.`,
+        );
+      scoreChanges[field] = { from: current[field], to: next };
+    }
+    let adminBlocked = input.adminBlocked ?? current.adminBlocked;
+    let status = input.status ?? current.status;
+    if (input.status === "BLOCKED") adminBlocked = true;
+    if (input.adminBlocked === true) status = "BLOCKED";
+    if (input.adminBlocked === false && current.status === "BLOCKED" && input.status === undefined)
+      status = "PROBATION";
+    const adminPinned = input.adminPinned ?? current.adminPinned;
+    if (adminPinned && adminBlocked)
+      throw new AppError("VALIDATION_ERROR", 422, "Source aynı anda pinned ve blocked olamaz.");
+    if (adminPinned && ["DORMANT", "REJECTED", "BLOCKED"].includes(status))
+      throw new AppError(
+        "VALIDATION_ERROR",
+        422,
+        "Pinned source dormant, rejected veya blocked durumuna alınamaz.",
+      );
+    const updated = await updateAgentSourceAdminRecord(transaction, sourceId, {
+      ...(input.adminPinned !== undefined ? { adminPinned } : {}),
+      ...(input.adminBlocked !== undefined || input.status === "BLOCKED" ? { adminBlocked } : {}),
+      ...(input.status !== undefined || input.adminBlocked !== undefined ? { status } : {}),
+      ...Object.fromEntries(
+        sourceScoreFields.flatMap((field) =>
+          input[field] === undefined ? [] : [[field, input[field]]],
+        ),
+      ),
+    });
+    const metadata = {
+      reason: input.reason,
+      status: { from: current.status, to: updated.status },
+      adminPinned: { from: current.adminPinned, to: updated.adminPinned },
+      adminBlocked: { from: current.adminBlocked, to: updated.adminBlocked },
+      scoreChanges,
+      adminTrustedApproval:
+        updated.status === "TRUSTED" && current.status !== "TRUSTED" && current._count.items < 3,
+    };
+    await appendAuditLog(transaction, {
+      actorId: actor.actorId,
+      action: "agent.source.updated",
+      entityType: "AgentSource",
+      entityId: sourceId,
+      requestId: actor.requestId,
+      metadata,
+    });
+    await appendOutboxEvent(transaction, {
+      eventType: "agent.source_updated",
+      aggregateType: "AgentSource",
+      aggregateId: sourceId,
+      actorId: actor.actorId,
+      actorKind: actor.actorKind,
+      requestId: actor.requestId,
+      payload: metadata,
+    });
+    await appendRuntimeEvent(transaction, {
+      agentProfileId: current.agentProfileId,
+      eventType: "source.status.changed",
+      safeMessage: "Agent source admin tarafından güncellendi.",
+      metadata: { sourceId, status: updated.status, adminPinned, adminBlocked },
+    });
+    return updated;
+  });
+}
 
 export function listRuntimeEvents(
   client: DatabaseExecutor,
