@@ -49,19 +49,27 @@ export class InProcessRuntimeControlPlane implements RuntimeControlPlane {
     );
   }
 
-  async context(credential: string, workerId: string, runId: string) {
+  async context(credential: string, workerId: string, runId: string, leaseToken: string) {
     return getRuntimeRunContext(
       this.#database,
       await principal(this.#database, credential, "runtime:read"),
       runId,
       workerId,
+      leaseToken,
     );
   }
 
-  async heartbeat(credential: string, workerId: string, runId: string, runtimeStatus: string) {
+  async heartbeat(
+    credential: string,
+    workerId: string,
+    runId: string,
+    leaseToken: string,
+    runtimeStatus: string,
+  ) {
     const parsed = runtimeHeartbeatSchema.parse({
       runId,
       workerId,
+      leaseToken,
       leaseSeconds: 60,
       runtimeStatus,
     });
@@ -77,13 +85,14 @@ export class InProcessRuntimeControlPlane implements RuntimeControlPlane {
     credential: string,
     workerId: string,
     runId: string,
+    leaseToken: string,
     actions: unknown[],
   ): Promise<void> {
     await recordRuntimeActions(
       this.#database,
       await principal(this.#database, credential, "runtime:write"),
       runId,
-      runtimeActionsSchema.parse({ workerId, actions }),
+      runtimeActionsSchema.parse({ workerId, leaseToken, actions }),
     );
   }
 
@@ -91,6 +100,7 @@ export class InProcessRuntimeControlPlane implements RuntimeControlPlane {
     credential: string,
     workerId: string,
     runId: string,
+    leaseToken: string,
     sequences: number[],
   ): Promise<RuntimeExecution> {
     const runtimePrincipal = await principal(this.#database, credential, "runtime:write");
@@ -99,6 +109,7 @@ export class InProcessRuntimeControlPlane implements RuntimeControlPlane {
       actions.push(
         await executeRuntimeAction(this.#database, runtimePrincipal, runId, {
           workerId,
+          leaseToken,
           sequence,
         }),
       );
@@ -109,13 +120,14 @@ export class InProcessRuntimeControlPlane implements RuntimeControlPlane {
     credential: string,
     workerId: string,
     runId: string,
+    leaseToken: string,
     memories: unknown[],
   ): Promise<void> {
     await recordRuntimeMemories(
       this.#database,
       await principal(this.#database, credential, "runtime:write"),
       runId,
-      runtimeMemoriesSchema.parse({ workerId, memories }),
+      runtimeMemoriesSchema.parse({ workerId, leaseToken, memories }),
     );
   }
 
@@ -123,13 +135,14 @@ export class InProcessRuntimeControlPlane implements RuntimeControlPlane {
     credential: string,
     workerId: string,
     runId: string,
+    leaseToken: string,
     result: Record<string, unknown>,
   ): Promise<void> {
     await recordRuntimeSourceResult(
       this.#database,
       await principal(this.#database, credential, "runtime:write"),
       runId,
-      runtimeSourceResultSchema.parse({ workerId, ...result }),
+      runtimeSourceResultSchema.parse({ workerId, leaseToken, ...result }),
     );
   }
 
@@ -137,13 +150,14 @@ export class InProcessRuntimeControlPlane implements RuntimeControlPlane {
     credential: string,
     workerId: string,
     runId: string,
+    leaseToken: string,
     input: Record<string, unknown>,
   ): Promise<void> {
     await completeRuntimeRun(
       this.#database,
       await principal(this.#database, credential, "runtime:write"),
       runId,
-      runtimeCompleteSchema.parse({ workerId, ...input }),
+      runtimeCompleteSchema.parse({ workerId, leaseToken, ...input }),
     );
   }
 
@@ -151,20 +165,21 @@ export class InProcessRuntimeControlPlane implements RuntimeControlPlane {
     credential: string,
     workerId: string,
     runId: string,
+    leaseToken: string,
     input: Record<string, unknown>,
   ): Promise<void> {
     await failRuntimeRun(
       this.#database,
       await principal(this.#database, credential, "runtime:write"),
       runId,
-      runtimeFailSchema.parse({ workerId, ...input }),
+      runtimeFailSchema.parse({ workerId, leaseToken, ...input }),
     );
   }
 }
 
 interface PromptContext {
-  run: { id: string; desiredEntryMax: number; publishEnabled: boolean };
-  agent: { profileId: string; username: string };
+  run: { desiredEntryMax: number; publishEnabled: boolean };
+  agent: { username: string };
   perception: {
     recentEntries?: Array<{ topic?: { id?: string } }>;
   };
@@ -182,10 +197,10 @@ function parsePromptContext(prompt: string): PromptContext {
 export class FakeCodexProvider implements RuntimeProvider {
   readonly #agentIndexes = new Map<string, number>();
   readonly #invocations = new Map<string, number>();
-  #forcedTopicId: string | null = null;
+  readonly #forcedTopicIdsByRun = new Map<string, string>();
 
-  forceNextTopic(topicId: string): void {
-    this.#forcedTopicId = topicId;
+  forceTopicForRun(runId: string, topicId: string): void {
+    this.#forcedTopicIdsByRun.set(runId, topicId);
   }
 
   async inspect() {
@@ -194,12 +209,12 @@ export class FakeCodexProvider implements RuntimeProvider {
 
   async invoke(request: RuntimeProviderRequest) {
     const context = parsePromptContext(request.prompt);
-    const profileId = context.agent.profileId;
-    const invocation = this.#invocations.get(profileId) ?? 0;
-    this.#invocations.set(profileId, invocation + 1);
-    if (!this.#agentIndexes.has(profileId))
-      this.#agentIndexes.set(profileId, this.#agentIndexes.size);
-    const agentIndex = this.#agentIndexes.get(profileId)!;
+    const username = context.agent.username;
+    const invocation = this.#invocations.get(username) ?? 0;
+    this.#invocations.set(username, invocation + 1);
+    if (!this.#agentIndexes.has(username))
+      this.#agentIndexes.set(username, this.#agentIndexes.size);
+    const agentIndex = this.#agentIndexes.get(username)!;
     const visibleTopicIds = [
       ...new Set(
         (context.perception.recentEntries ?? []).flatMap(({ topic }) =>
@@ -207,29 +222,139 @@ export class FakeCodexProvider implements RuntimeProvider {
         ),
       ),
     ];
-    if (visibleTopicIds.length === 0 && !this.#forcedTopicId)
+    const forcedTopicId = this.#forcedTopicIdsByRun.get(request.runId) ?? null;
+    if (visibleTopicIds.length === 0 && !forcedTopicId)
       throw new Error("SIMULATION_VISIBLE_TOPIC_MISSING");
     const entryCount = context.run.publishEnabled ? context.run.desiredEntryMax : 0;
-    const forcedTopicId = this.#forcedTopicId;
-    this.#forcedTopicId = null;
+    this.#forcedTopicIdsByRun.delete(request.runId);
+    const framingLenses = [
+      "katman",
+      "ritim",
+      "eşik",
+      "ölçek",
+      "mesafe",
+      "sapma",
+      "denge",
+      "izlek",
+      "kıvrım",
+      "doku",
+      "yön",
+      "tempo",
+      "bağ",
+      "çeper",
+      "odak",
+      "akış",
+      "kesişim",
+      "gölge",
+      "pay",
+      "rota",
+      "örüntü",
+      "gerilim",
+      "durak",
+      "yansıma",
+      "ayrım",
+      "çerçeve",
+      "geçiş",
+      "boşluk",
+      "karşılık",
+      "sınır",
+      "çekim",
+      "devinim",
+    ];
+    const readingMotions = [
+      "çapraz",
+      "kesik",
+      "saklı",
+      "açık",
+      "ters",
+      "yalın",
+      "gezgin",
+      "sakin",
+      "kırık",
+      "yoğun",
+      "ince",
+      "geniş",
+      "dar",
+      "serbest",
+      "ölçülü",
+      "yakın",
+      "uzak",
+      "dairesel",
+      "doğrusal",
+      "esnek",
+      "temkinli",
+      "canlı",
+      "durgun",
+      "dolaylı",
+      "doğrudan",
+      "aşamalı",
+      "parçalı",
+      "bütüncül",
+      "karşıt",
+      "uyumlu",
+      "oynak",
+      "sabit",
+    ];
+    const contextStances = [
+      "dengede",
+      "mesafede",
+      "akışta",
+      "askıda",
+      "odakta",
+      "çeperde",
+      "ritimde",
+      "eşikte",
+      "rotada",
+      "zeminde",
+      "yüzeyde",
+      "derinde",
+      "aralıkta",
+      "hizada",
+      "dönemeçte",
+      "geçişte",
+      "karşıda",
+      "yakında",
+      "uzakta",
+      "çaprazda",
+      "gölgede",
+      "ışıkta",
+      "dizgede",
+      "bağlamda",
+      "gerilimde",
+      "sükunette",
+      "kıyıda",
+      "merkezde",
+      "boşlukta",
+      "kesişimde",
+      "izlekte",
+      "devinimde",
+    ];
     const actions = Array.from({ length: entryCount }, (_, index) => {
       const topicId =
         forcedTopicId ??
         visibleTopicIds[(agentIndex * 7 + invocation * 3 + index) % visibleTopicIds.length]!;
+      // Keep each agent in a disjoint deterministic wording range while
+      // avoiding the 1,024-combination cycle of the three 32-word tables.
+      const wordingIndex = agentIndex * 101 + invocation * 4 + index;
+      const wordingBlock = Math.floor(wordingIndex / framingLenses.length);
+      const lens = framingLenses[wordingIndex % framingLenses.length]!;
+      const motion = readingMotions[(wordingIndex * 5 + wordingBlock) % readingMotions.length]!;
+      const stance =
+        contextStances[(wordingIndex * 11 + wordingBlock * 7) % contextStances.length]!;
+      const body = `${lens} penceresi ${motion} bir okuma kuruyor; ${context.agent.username} görünür başlık bağlamını ${stance} tutup ${stance} ${motion} ${lens} izini tartıyor.`;
       return {
-        sequence: index + 1,
-        actionType: "CREATE_ENTRY" as const,
-        targetType: "TOPIC",
+        type: "CREATE_ENTRY" as const,
         targetId: topicId,
-        input: {
-          topicId,
-          body: `Simülasyon kaydı ${context.run.id}-${index + 1}-${topicId}: ${context.agent.username} bu başlıktaki ölçü, zamanlama ve bağlam ayrımlarını birlikte değerlendiriyor.`,
-        },
-        provenance: {
-          evidenceType: "PLATFORM_EVENT" as const,
-          evidenceIds: [topicId],
-          shortRationale: "Görünür platform topic bağlamından üretilen simülasyon girdisi.",
-        },
+        body,
+        desire: 0.8,
+        safeReason: "Görünür topic bağlamı simülasyon entry adayını destekliyor.",
+        claimProvenance: [
+          {
+            provenance: "PLATFORM_EVENT" as const,
+            evidenceIds: [topicId],
+            shortRationale: "Görünür platform topic bağlamından üretilen simülasyon girdisi.",
+          },
+        ],
       };
     });
     return {
@@ -237,18 +362,14 @@ export class FakeCodexProvider implements RuntimeProvider {
       version: "fake-codex-simulation-1",
       durationMs: 1000,
       output: {
-        state: { curiosity: 0.6, confidence: 0.8, topicFatigue: {} },
+        safeSummary: "Hızlandırılmış günlük simülasyon run'ı işlendi.",
+        state: { curiosity: 0.6, confidence: 0.8, topicFatigue: { items: [] } },
         observations: [],
         actions,
         beliefDeltas: [],
         relationshipDeltas: [],
         sourceProposals: [],
         memoryCandidates: [],
-        safeRunSummary: {
-          operationSummary: "Hızlandırılmış günlük simülasyon run'ı işlendi.",
-          observedItemIds: [],
-          shortRationale: "Scheduler hedefi kadar benzersiz entry action'ı önerildi.",
-        },
       },
     };
   }

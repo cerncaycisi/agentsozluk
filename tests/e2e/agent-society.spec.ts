@@ -91,6 +91,18 @@ async function runtimeApi<T>(
   return envelope.data as T;
 }
 
+test.beforeEach(async ({ page }) => {
+  for (const host of [
+    "www.googletagmanager.com",
+    "www.google-analytics.com",
+    "region1.google-analytics.com",
+    "analytics.google.com",
+    "stats.g.doubleclick.net",
+  ]) {
+    await page.route(`https://${host}/**`, (route) => route.abort("blockedbyclient"));
+  }
+});
+
 test.describe.serial("@desktop Milestone 2 agent society", () => {
   test("E2E-001 admin dashboard", async ({ page }) => {
     await login(page);
@@ -130,14 +142,25 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
       page,
       "PATCH",
       `/api/v1/admin/agents/${agentProfileId}`,
-      { displayName: `E2E Agent ${suffix}` },
+      {
+        displayName: `E2E Agent ${suffix}`,
+        changeSummary: "E2E agent görünen adı kontrollü olarak güncellendi.",
+      },
     );
     expect(updated.user.displayName).toBe(`E2E Agent ${suffix}`);
   });
 
   test("E2E-005 quota change", async ({ page }) => {
     await login(page);
+    const settings = await browserApi<{ settingsVersion: number }>(
+      page,
+      "GET",
+      "/api/v1/admin/agent-settings",
+    );
     await browserApi(page, "PATCH", "/api/v1/admin/agent-settings", {
+      expectedSettingsVersion: settings.settingsVersion,
+      changeReason: "E2E quota apply-mode ve global target değişikliği doğrulaması.",
+      quotaApplyMode: "REGENERATE_REMAINING_TODAY",
       globalDailyEntryMin: 15,
       globalDailyEntryMax: 20,
     });
@@ -174,14 +197,19 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
       status: "ACTIVE",
       reason: "E2E normal run doğrulaması için agent aktive ediliyor.",
     });
-    const run = await browserApi<{ id: string; runType: string; runStatus: string }>(
-      page,
-      "POST",
-      `/api/v1/admin/agents/${agentProfileId}/runs`,
-      { runType: "NORMAL_WAKE", entryTarget: 2, priority: "NORMAL" },
-    );
-    cancellableRunId = run.id;
-    expect(run).toMatchObject({ runType: "NORMAL_WAKE", runStatus: "QUEUED" });
+    const result = await browserApi<{
+      count: number;
+      run: { id: string; runType: string; runStatus: string };
+    }>(page, "POST", `/api/v1/admin/agents/${agentProfileId}/runs`, {
+      runType: "NORMAL_WAKE",
+      entryTarget: 2,
+      priority: "NORMAL",
+    });
+    cancellableRunId = result.run.id;
+    expect(result).toMatchObject({
+      count: 1,
+      run: { runType: "NORMAL_WAKE", runStatus: "QUEUED" },
+    });
   });
 
   test("E2E-008 live status", async ({ page }) => {
@@ -193,29 +221,47 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     );
     expect(health.runtimeEnabled).toBe(true);
     await page.goto("/moderasyon/agentlar/olaylar");
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Canlı agent olayları" }),
+    ).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText(/Bağlantı: (LIVE|POLLING)/u, {
+      timeout: 15_000,
+    });
+    const newestEventBefore = await page.locator("ol > li").first().textContent();
+    await browserApi(page, "POST", `/api/v1/admin/agents/${agentProfileId}/runs`, {
+      runType: "READ_ONLY",
+      entryTarget: 0,
+      adminInstruction: `E2E live event ${suffix}`,
+    });
+    await expect
+      .poll(() => page.locator("ol > li").first().textContent(), { timeout: 15_000 })
+      .not.toBe(newestEventBefore);
+    await expect(
+      page.getByText("Manual agent run kuyruğa alındı.", { exact: true }).first(),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/moderasyon\/agentlar\/olaylar$/u);
   });
 
   test("E2E-009 dry run", async ({ page }) => {
     await login(page);
-    const run = await browserApi<{ runType: string; desiredEntryMax: number }>(
-      page,
-      "POST",
-      `/api/v1/admin/agents/${agentProfileId}/runs`,
-      { runType: "DRY_RUN", entryTarget: 0 },
-    );
-    expect(run).toMatchObject({ runType: "DRY_RUN", desiredEntryMax: 0 });
+    const result = await browserApi<{
+      run: { runType: string; desiredEntryMax: number };
+    }>(page, "POST", `/api/v1/admin/agents/${agentProfileId}/runs`, {
+      runType: "DRY_RUN",
+      entryTarget: 0,
+    });
+    expect(result.run).toMatchObject({ runType: "DRY_RUN", desiredEntryMax: 0 });
   });
 
   test("E2E-010 entry burst", async ({ page }) => {
     await login(page);
-    const run = await browserApi<{ runType: string; desiredEntryMax: number }>(
-      page,
-      "POST",
-      `/api/v1/admin/agents/${agentProfileId}/runs`,
-      { runType: "ENTRY_BURST", entryTarget: 3 },
-    );
-    expect(run).toMatchObject({ runType: "ENTRY_BURST", desiredEntryMax: 3 });
+    const result = await browserApi<{
+      run: { runType: string; desiredEntryMax: number };
+    }>(page, "POST", `/api/v1/admin/agents/${agentProfileId}/runs`, {
+      runType: "ENTRY_BURST",
+      entryTarget: 3,
+    });
+    expect(result.run).toMatchObject({ runType: "ENTRY_BURST", desiredEntryMax: 3 });
   });
 
   test("E2E-011 cancel", async ({ page }) => {
@@ -264,20 +310,39 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
 
   test("E2E-014 pause and resume", async ({ page }) => {
     await login(page);
-    const paused = await browserApi<{ runtimeEnabled: boolean }>(
-      page,
-      "POST",
-      "/api/v1/admin/agent-runtime/pause",
-      { reason: "E2E global runtime pause verification." },
-    );
-    expect(paused.runtimeEnabled).toBe(false);
-    const resumed = await browserApi<{ runtimeEnabled: boolean }>(
-      page,
-      "POST",
-      "/api/v1/admin/agent-runtime/resume",
-      { reason: "E2E global runtime resume verification." },
-    );
-    expect(resumed.runtimeEnabled).toBe(true);
+    await page.goto("/moderasyon/agent-kapasite");
+    await page.getByLabel("Pause gerekçesi").fill("E2E global runtime pause verification.");
+    await page.getByRole("button", { name: "Global runtime pause" }).click();
+    await expect(page.getByLabel("Resume/reset gerekçesi")).toBeVisible({ timeout: 20_000 });
+    await page.getByLabel("Resume/reset gerekçesi").fill("E2E global runtime resume verification.");
+    await page.getByRole("button", { name: "Resume ve reset" }).click();
+    await expect(page.getByLabel("Pause gerekçesi")).toBeVisible({ timeout: 20_000 });
+
+    await page.goto(`/moderasyon/agentlar/${agentProfileId}`);
+    await page.getByLabel("Yeni durum").selectOption("PAUSED");
+    await page
+      .getByLabel("Gerekçe", { exact: true })
+      .fill("E2E agent lifecycle pause verification.");
+    await page.getByRole("button", { name: "Durumu değiştir" }).click();
+    await expect(
+      page.getByText("Agent lifecycle PAUSED olarak güncellendi.", { exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(page.getByText(new RegExp(`@${agentUsername} · PAUSED`, "u"))).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.getByLabel("Yeni durum").selectOption("ACTIVE");
+    await page
+      .getByLabel("Gerekçe", { exact: true })
+      .fill("E2E agent lifecycle resume verification.");
+    await page.getByRole("button", { name: "Durumu değiştir" }).click();
+    await expect(
+      page.getByText("Agent lifecycle ACTIVE olarak güncellendi.", { exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(page.getByText(new RegExp(`@${agentUsername} · ACTIVE`, "u"))).toBeVisible({
+      timeout: 20_000,
+    });
   });
 
   test("E2E-015 persona history", async ({ page }) => {
@@ -361,6 +426,8 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     await page.goto("/moderasyon/agent-kapasite");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByText(/Concurrency/u).first()).toBeVisible();
+    await expect(page.getByText("Projected target shortfall", { exact: true })).toBeVisible();
+    await expect(page.getByText("Son actual günlük SLO miss", { exact: true })).toBeVisible();
   });
 
   test("E2E-021 agent content moderation", async ({ page, request }) => {
@@ -372,19 +439,22 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
       dailyMaximumOverride: true,
     });
     const workerId = `e2e-worker-${suffix}`;
-    const lease = await runtimeApi<{ run: { id: string } }>(
+    const lease = await runtimeApi<{ run: { id: string; leaseToken: string } }>(
       request,
       "/api/v1/internal/agent-runtime/lease",
       { workerId, leaseSeconds: 60 },
     );
     const runId = lease.run.id;
+    const leaseToken = lease.run.leaseToken;
     agentEntryBody = `Agent society E2E runtime entry ${suffix}; görünür topic bağlamına dayanan benzersiz içerik.`;
     await runtimeApi(request, `/api/v1/internal/agent-runtime/runs/${runId}/actions`, {
       workerId,
+      leaseToken,
       actions: [
         {
           sequence: 1,
           actionType: "CREATE_ENTRY",
+          safeReason: "E2E görünür topic bağlamı güvenli entry adayını destekliyor.",
           targetType: "TOPIC",
           targetId: humanTopicId,
           input: { topicId: humanTopicId, body: agentEntryBody },
@@ -400,13 +470,16 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
       actions: Array<{ actionStatus: string; result: { entryId: string } }>;
     }>(request, `/api/v1/internal/agent-runtime/runs/${runId}/actions/execute`, {
       workerId,
+      leaseToken,
       sequences: [1],
     });
     expect(executed.actions[0]!.actionStatus).toBe("SUCCEEDED");
     agentEntryId = executed.actions[0]!.result.entryId;
     await runtimeApi(request, `/api/v1/internal/agent-runtime/runs/${runId}/complete`, {
       workerId,
+      leaseToken,
       outcome: "SUCCEEDED",
+      state: { curiosity: 0.5, confidence: 0.6, topicFatigue: {} },
       safeRunSummary: {
         operationSummary: "E2E agent content run completed.",
         observedItemIds: [humanTopicId],
@@ -436,6 +509,38 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
       },
       201,
     );
+    const visitorContext = await page.context().browser()!.newContext();
+    const visitor = await visitorContext.newPage();
+    const searchQuery = `runtime entry ${suffix}`;
+    const getPublicData = async <T>(path: string): Promise<T> => {
+      const response = await visitorContext.request.get(path);
+      expect(response.status(), path).toBe(200);
+      const envelope = (await response.json()) as Envelope<T>;
+      expect(envelope.data).toBeDefined();
+      return envelope.data as T;
+    };
+    const topicEntriesPath = `/api/v1/topics/${humanTopicId}/entries?page=1&pageSize=20`;
+    const searchPath = `/api/v1/search?type=entries&q=${encodeURIComponent(searchQuery)}`;
+
+    // Warm every dynamic public surface before takedown so the same visitor
+    // proves that no stale page/API cache survives the hide transaction.
+    await visitor.goto(`/entry/${agentEntryId}`);
+    await expect(visitor.getByText(agentEntryBody, { exact: true })).toBeVisible();
+    await visitor.goto(humanTopicUrl);
+    await expect(visitor.getByText(agentEntryBody, { exact: true })).toBeVisible();
+    await visitor.goto(`/yazar/${agentUsername}`);
+    await expect(visitor.getByText(agentEntryBody, { exact: true })).toBeVisible();
+    expect(
+      (await getPublicData<Array<{ id: string }>>(topicEntriesPath)).some(
+        ({ id }) => id === agentEntryId,
+      ),
+    ).toBe(true);
+    expect(
+      (await getPublicData<Array<{ id: string }>>(searchPath)).some(
+        ({ id }) => id === agentEntryId,
+      ),
+    ).toBe(true);
+
     await page.context().clearCookies();
     await login(page);
     await browserApi(page, "POST", "/api/v1/admin/agent-content/bulk-hide", {
@@ -443,12 +548,33 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
       reason: "E2E report sonrası agent entry gizleme doğrulaması.",
       confirmation: "HIDE_AGENT_CONTENT",
     });
-    const visitorContext = await page.context().browser()!.newContext();
-    const visitor = await visitorContext.newPage();
     await visitor.goto(`/entry/${agentEntryId}`);
     await expect(
       visitor.getByRole("heading", { level: 1, name: "Bu sayfa sözlükte yok" }),
     ).toBeVisible();
+    await visitor.goto(humanTopicUrl);
+    await expect(visitor.getByText(agentEntryBody, { exact: true })).toHaveCount(0);
+    await visitor.goto(`/yazar/${agentUsername}`);
+    await expect(visitor.getByText(agentEntryBody, { exact: true })).toHaveCount(0);
+    expect(
+      (await getPublicData<Array<{ id: string }>>(topicEntriesPath)).some(
+        ({ id }) => id === agentEntryId,
+      ),
+    ).toBe(false);
+    expect(
+      (await getPublicData<Array<{ id: string }>>(searchPath)).some(
+        ({ id }) => id === agentEntryId,
+      ),
+    ).toBe(false);
+    expect(
+      (await getPublicData<Array<{ id: string }>>("/api/v1/feeds/debe")).some(
+        ({ id }) => id === agentEntryId,
+      ),
+    ).toBe(false);
+    const sitemap = await visitorContext.request.get("/sitemaps/topics/0.xml");
+    expect(sitemap.status()).toBe(200);
+    expect(await sitemap.text()).not.toContain(agentEntryId);
+
     await browserApi(page, "POST", "/api/v1/admin/agent-content/bulk-restore", {
       entryIds: [agentEntryId],
       reason: "E2E agent entry restore doğrulaması.",
@@ -456,6 +582,20 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     });
     await visitor.goto(`/entry/${agentEntryId}`);
     await expect(visitor.getByText(agentEntryBody, { exact: true })).toBeVisible();
+    await visitor.goto(humanTopicUrl);
+    await expect(visitor.getByText(agentEntryBody, { exact: true })).toBeVisible();
+    await visitor.goto(`/yazar/${agentUsername}`);
+    await expect(visitor.getByText(agentEntryBody, { exact: true })).toBeVisible();
+    expect(
+      (await getPublicData<Array<{ id: string }>>(topicEntriesPath)).some(
+        ({ id }) => id === agentEntryId,
+      ),
+    ).toBe(true);
+    expect(
+      (await getPublicData<Array<{ id: string }>>(searchPath)).some(
+        ({ id }) => id === agentEntryId,
+      ),
+    ).toBe(true);
     await visitorContext.close();
   });
 

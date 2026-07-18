@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { inTransaction } from "@/lib/db/transaction";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import {
   bulkAgentRunSchema,
   cancelAgentRun,
   changeAgentLifecycle,
+  circuitBreakerConfigSchema,
   createAgent,
   createAgentSchema,
   createBulkAgentRuns,
@@ -17,8 +19,12 @@ import {
 import { calculateRuntimeCapacity } from "@/modules/agents/domain/capacity";
 import { evaluateCircuitBreakers } from "@/modules/agents/domain/circuit-breaker";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
+import { getRuntimeOperationalMetrics } from "@/modules/agents/repository/capacity";
+import { claimNextRuntimeRun, getRuntimeGlobalSettings } from "@/modules/agents/repository/runtime";
+import { planRuntimeMaintenanceAndCatchUp } from "@/modules/agents/repository/scheduler";
 import { createTopicWithFirstEntry } from "@/modules/topics";
 import { AgentRuntimeWorker } from "@/runtime/worker";
+import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 import {
   closeIntegrationDatabase,
   integrationDatabase,
@@ -102,6 +108,38 @@ describe("accelerated 24-hour agent society simulation", () => {
       globalDailyEntryMax: 200,
       codexConcurrency: 1,
     });
+    const benchmarkObservedAt = new Date();
+    await integrationDatabase.agentRuntimeCapability.create({
+      data: {
+        codexVersion: "fake-codex-simulation-1.0.0",
+        promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+        benchmarkRunCount: 10,
+        p50DurationMs: 120_000,
+        p75DurationMs: 180_000,
+        p95DurationMs: 240_000,
+        maxDurationMs: 300_000,
+        singleProcessPeakRssMb: 400,
+        dualProcessPeakRssMb: null,
+        dualConcurrencySupported: false,
+        appLatencyImpact: { baselineP95Ms: 50, measuredP95Ms: 55, stable: true },
+        databaseLatencyImpact: { baselineP95Ms: 10, measuredP95Ms: 12, stable: true },
+        availableMemoryMb: 900,
+        capacityStatus: "HEALTHY",
+        measuredAt: benchmarkObservedAt,
+        staleAt: new Date(benchmarkObservedAt.getTime() + 14 * 24 * 60 * 60_000),
+      },
+    });
+    await integrationDatabase.agentRuntimeEvent.create({
+      data: {
+        eventType: "agent.capacity.measured",
+        safeMessage: "Simulation benchmark fingerprint observed.",
+        metadata: {
+          codexVersion: "fake-codex-simulation-1.0.0",
+          promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+        },
+        createdAt: benchmarkObservedAt,
+      },
+    });
     for (const created of createdAgents)
       await changeAgentLifecycle(
         integrationDatabase,
@@ -164,32 +202,48 @@ describe("accelerated 24-hour agent society simulation", () => {
         plans.flatMap(({ slots }) => slots.map(({ scheduledAt }) => scheduledAt.getTime())),
       ),
     ].sort((left, right) => left - right);
-    for (const instant of scheduledInstants) {
-      const simulatedAt = new Date(instant + 60_000);
-      vi.setSystemTime(simulatedAt);
-      await worker.runOnce();
+    const alignedRunIds = new Set<string>();
+    const alignCompletedContentTimestamps = async (simulatedAt: Date) => {
       const completedRuns = await integrationDatabase.agentRun.findMany({
         where: {
-          runType: "SCHEDULED_WAKE",
           runStatus: { in: ["SUCCEEDED", "PARTIAL"] },
-          scheduleSlot: { scheduledAt: { lte: simulatedAt } },
+          availableAt: { lte: simulatedAt },
         },
-        select: { id: true, scheduleSlot: { select: { scheduledAt: true } } },
+        select: {
+          id: true,
+          availableAt: true,
+          scheduleSlot: { select: { scheduledAt: true } },
+        },
       });
       for (const run of completedRuns) {
-        const timestamp = run.scheduleSlot!.scheduledAt;
-        const content = await integrationDatabase.agentContentRecord.findMany({
+        if (alignedRunIds.has(run.id)) continue;
+        const timestamp = run.scheduleSlot?.scheduledAt ?? run.availableAt;
+        const records = await integrationDatabase.agentContentRecord.findMany({
           where: { runId: run.id },
           select: { id: true, entryId: true },
         });
         await integrationDatabase.agentContentRecord.updateMany({
-          where: { id: { in: content.map(({ id }) => id) } },
+          where: { id: { in: records.map(({ id }) => id) } },
           data: { createdAt: timestamp },
         });
         await integrationDatabase.entry.updateMany({
-          where: { id: { in: content.map(({ entryId }) => entryId) } },
+          where: { id: { in: records.map(({ entryId }) => entryId) } },
           data: { createdAt: timestamp },
         });
+        alignedRunIds.add(run.id);
+      }
+    };
+    for (const instant of scheduledInstants) {
+      const simulatedAt = new Date(instant + 60_000);
+      vi.setSystemTime(simulatedAt);
+      // Production polls again immediately after productive work. Drain every
+      // leaseable run at this simulated instant so coincident slots still obey
+      // the database-authoritative global concurrency cap without starving a
+      // later credential in the accelerated clock.
+      for (;;) {
+        const processed = await worker.runOnce();
+        await alignCompletedContentTimestamps(simulatedAt);
+        if (processed === 0) break;
       }
     }
 
@@ -233,7 +287,6 @@ describe("accelerated 24-hour agent society simulation", () => {
         createdAt: new Date(Date.now() - index * 1000),
       })),
     });
-    provider.forceNextTopic(saturatedTopicId);
     const saturationRun = await createManualAgentRun(
       integrationDatabase,
       actor(admin.id),
@@ -245,12 +298,21 @@ describe("accelerated 24-hour agent society simulation", () => {
         dailyMaximumOverride: true,
       }),
     );
-    await worker.runOnce();
-    expect(
-      await integrationDatabase.agentAction.findFirstOrThrow({
-        where: { runId: saturationRun.id },
-      }),
-    ).toMatchObject({ actionStatus: "REJECTED", rejectionCode: "TOPIC_SATURATED" });
+    provider.forceTopicForRun(saturationRun.run!.id, saturatedTopicId);
+    let saturationAction = await integrationDatabase.agentAction.findFirst({
+      where: { runId: saturationRun.run!.id },
+    });
+    for (let attempt = 0; attempt < 25 && !saturationAction; attempt += 1) {
+      await worker.runOnce();
+      saturationAction = await integrationDatabase.agentAction.findFirst({
+        where: { runId: saturationRun.run!.id },
+      });
+    }
+    expect(saturationAction).toMatchObject({
+      actionStatus: "REJECTED",
+      targetId: saturatedTopicId,
+    });
+    expect(["TOPIC_SATURATED", "TOPIC_SATURATED_60M"]).toContain(saturationAction?.rejectionCode);
 
     const longRunCapacity = calculateRuntimeCapacity({
       capability: {
@@ -297,10 +359,143 @@ describe("accelerated 24-hour agent society simulation", () => {
           utilization15m: 0.95,
           utilization1h: 0.95,
           utilization2h: 0.95,
+          configuredWindowUtilization: 0.95,
           oldestQueuedAt: new Date(),
           longestActiveStartedAt: null,
         },
       ).catchUpFrozen,
     ).toBe(true);
+
+    const fullQueueNow = new Date("2026-07-18T09:00:00.000Z");
+    const fullQueueLocalDate = new Date("2026-07-18T00:00:00.000Z");
+    vi.setSystemTime(fullQueueNow);
+    const fullQueueAgent = createdAgents[0]!;
+    await integrationDatabase.agentRuntimeState.update({
+      where: { agentProfileId: fullQueueAgent.agent.profile.id },
+      data: {
+        todayDate: fullQueueLocalDate,
+        todayEntryTarget: 20,
+        todayPublishedEntries: 0,
+      },
+    });
+    const highUtilizationStartedAt = new Date(fullQueueNow.getTime() - 110 * 60_000);
+    await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: fullQueueAgent.agent.profile.id,
+        personaVersionId: fullQueueAgent.agent.personaVersion.id,
+        runType: "NORMAL_WAKE",
+        runStatus: "SUCCEEDED",
+        queuePriority: "SCHEDULED_CONTENT",
+        trigger: "SIMULATION_FULL_QUEUE_UTILIZATION",
+        idempotencyKey: randomUUID(),
+        timeoutSeconds: 900,
+        desiredEntryMin: 1,
+        desiredEntryMax: 2,
+        startedAt: highUtilizationStartedAt,
+        finishedAt: fullQueueNow,
+        usageMetadata: {
+          durationMs: 110 * 60_000,
+          provider: "codex-cli",
+          codexIntervals: [
+            {
+              startedAt: highUtilizationStartedAt.toISOString(),
+              finishedAt: fullQueueNow.toISOString(),
+              durationMs: 110 * 60_000,
+            },
+          ],
+        },
+      },
+    });
+    const fullQueueRuns = await Promise.all(
+      ["AUTO_CATCH_UP", "SIMULATION_QUEUE_FILL_A", "SIMULATION_QUEUE_FILL_B"].map(
+        (trigger, index) =>
+          integrationDatabase.agentRun.create({
+            data: {
+              agentProfileId: fullQueueAgent.agent.profile.id,
+              personaVersionId: fullQueueAgent.agent.personaVersion.id,
+              runType: index === 0 ? "DAILY_CATCH_UP" : "NORMAL_WAKE",
+              queuePriority: index === 0 ? "DAILY_CATCH_UP" : "SCHEDULED_CONTENT",
+              trigger,
+              idempotencyKey: randomUUID(),
+              timeoutSeconds: 360,
+              desiredEntryMin: 1,
+              desiredEntryMax: index === 0 ? 4 : 2,
+              availableAt: fullQueueNow,
+              createdAt: fullQueueNow,
+            },
+          }),
+      ),
+    );
+    const queuedCatchUp = fullQueueRuns[0]!;
+    const fullQueueResult = await inTransaction(integrationDatabase, async (transaction) => {
+      const settings = await getRuntimeGlobalSettings(transaction);
+      const config = circuitBreakerConfigSchema.parse(settings.circuitBreakerConfig);
+      const operational = await getRuntimeOperationalMetrics(transaction, {
+        now: fullQueueNow,
+        concurrency: 1,
+        config,
+      });
+      const breakers = evaluateCircuitBreakers(config, operational);
+      const eligibleQueueBefore = await transaction.agentRun.count({
+        where: {
+          runStatus: "QUEUED",
+          runType: { notIn: ["READ_ONLY", "DRY_RUN", "REFLECTION", "SOURCE_REFRESH"] },
+        },
+      });
+      const autoCatchUpBefore = await transaction.agentRun.count({
+        where: { agentProfileId: fullQueueAgent.agent.profile.id, trigger: "AUTO_CATCH_UP" },
+      });
+      const planned = await planRuntimeMaintenanceAndCatchUp(transaction, {
+        agentProfileId: fullQueueAgent.agent.profile.id,
+        localDate: fullQueueLocalDate,
+        now: fullQueueNow,
+        catchUpFrozen: breakers.catchUpFrozen,
+        concurrency: 1,
+        scheduledTimeoutSeconds: settings.scheduledTimeoutSeconds,
+        reflectionTimeoutSeconds: settings.reflectionTimeoutSeconds,
+        sourceRefreshTimeoutSeconds: settings.sourceRefreshTimeoutSeconds,
+        personaEvolutionEnabled: settings.personaEvolutionEnabled,
+        sourceEvolutionEnabled: settings.sourceEvolutionEnabled,
+      });
+      const autoCatchUpAfter = await transaction.agentRun.count({
+        where: { agentProfileId: fullQueueAgent.agent.profile.id, trigger: "AUTO_CATCH_UP" },
+      });
+      await transaction.agentRun.updateMany({
+        where: {
+          agentProfileId: fullQueueAgent.agent.profile.id,
+          trigger: { not: "AUTO_CATCH_UP" },
+          runStatus: "QUEUED",
+        },
+        data: { runStatus: "CANCELLED", finishedAt: fullQueueNow },
+      });
+      const claimed = await claimNextRuntimeRun(transaction, {
+        agentProfileId: fullQueueAgent.agent.profile.id,
+        workerId: "simulation-full-queue-worker",
+        leaseSeconds: 60,
+        maxRetryCount: settings.maxRetryCount,
+        writeRunsPaused: breakers.writeRunsPaused,
+        catchUpFrozen: breakers.catchUpFrozen,
+        contentSlowdownMinutes: 0,
+        now: fullQueueNow,
+      });
+      return {
+        operational,
+        breakers,
+        eligibleQueueBefore,
+        autoCatchUpBefore,
+        planned,
+        autoCatchUpAfter,
+        claimed,
+      };
+    });
+    expect(fullQueueResult.operational.utilization2h).toBeGreaterThan(0.9);
+    expect(fullQueueResult.breakers.catchUpFrozen).toBe(true);
+    expect(fullQueueResult.eligibleQueueBefore).toBeGreaterThanOrEqual(3);
+    expect(fullQueueResult.planned.catchUpQueued).toBe(0);
+    expect(fullQueueResult.autoCatchUpAfter).toBe(fullQueueResult.autoCatchUpBefore);
+    expect(fullQueueResult.claimed).toBeNull();
+    await expect(
+      integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: queuedCatchUp.id } }),
+    ).resolves.toMatchObject({ runStatus: "QUEUED", leaseOwner: null });
   }, 180_000);
 });
