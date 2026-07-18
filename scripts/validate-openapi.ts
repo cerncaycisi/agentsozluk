@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import SwaggerParser from "@apidevtools/swagger-parser";
 
 const methods = ["get", "post", "put", "patch", "delete"] as const;
@@ -7,6 +8,20 @@ type Method = (typeof methods)[number];
 
 interface OpenApiReference {
   $ref: string;
+}
+
+export interface OpenApiSchema {
+  type?: string;
+  additionalProperties?: boolean;
+  required?: string[];
+  properties?: Record<string, OpenApiSchema | OpenApiReference>;
+  oneOf?: OpenApiSchema[];
+  dependentRequired?: Record<string, string[]>;
+  const?: unknown;
+  default?: unknown;
+  enum?: unknown[];
+  pattern?: string;
+  format?: string;
 }
 
 interface OpenApiParameter {
@@ -36,12 +51,13 @@ type OpenApiPathItem = Partial<Record<Method, OpenApiOperation>> & {
   parameters?: Array<OpenApiParameter | OpenApiReference>;
 };
 
-interface OpenApiDocument {
+export interface OpenApiDocument {
   openapi?: string;
   security?: Array<Record<string, unknown>>;
   paths?: Record<string, OpenApiPathItem>;
   components?: {
     parameters?: Record<string, OpenApiParameter>;
+    schemas?: Record<string, OpenApiSchema>;
     securitySchemes?: Record<
       string,
       { type?: string; in?: string; name?: string; scheme?: string; bearerFormat?: string }
@@ -67,6 +83,7 @@ const publicOperations = new Set([
 
 const internalRuntimeOperations = new Set([
   "POST /api/v1/internal/agent-runtime/lease",
+  "POST /api/v1/internal/agent-runtime/plans/today",
   "POST /api/v1/internal/agent-runtime/heartbeat",
   "GET /api/v1/internal/agent-runtime/runs/{runId}/context",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/events",
@@ -114,6 +131,7 @@ const expectedQueryParameters: Record<string, string[]> = {
     "agentProfileId",
     "from",
     "hiddenStatus",
+    "overrideStatus",
     "page",
     "pageSize",
     "reportStatus",
@@ -132,6 +150,7 @@ const expectedQueryParameters: Record<string, string[]> = {
     "status",
   ],
   "GET /api/v1/admin/agent-runtime/events": ["afterId", "limit", "poll"],
+  "GET /api/v1/admin/agents/{agentId}/memories": ["page", "pageSize"],
 };
 
 const expectedRequestBodies: Record<string, string> = {
@@ -166,8 +185,15 @@ const expectedRequestBodies: Record<string, string> = {
   "PATCH /api/v1/admin/agent-settings": "AgentGlobalSettingsUpdate",
   "POST /api/v1/admin/agents/{agentId}/credentials/rotate": "AgentCredentialRotation",
   "POST /api/v1/admin/agents/{agentId}/runs": "ManualAgentRun",
+  "POST /api/v1/admin/agents/{agentId}/runs/cancel-pending": "CancelPendingAgentRuns",
+  "POST /api/v1/admin/agents/{agentId}/runs/graceful-stop": "GracefulStopAgentRuns",
+  "POST /api/v1/admin/agents/{agentId}/memories/{memoryId}/invalidate": "AgentMemoryInvalidate",
+  "POST /api/v1/admin/agents/{agentId}/memories/{memoryId}/forget": "AgentMemoryForget",
+  "POST /api/v1/admin/agents/{agentId}/memories/reconsolidate": "AgentMemoryReconsolidate",
   "POST /api/v1/admin/agent-runs/bulk/preview": "BulkAgentRunPreview",
   "POST /api/v1/admin/agent-runs/bulk": "BulkAgentRun",
+  "POST /api/v1/admin/agent-runs/cancel-pending": "CancelPendingGlobalAgentRuns",
+  "POST /api/v1/admin/agent-runs/graceful-stop": "GracefulStopGlobalAgentRuns",
   "POST /api/v1/admin/agent-runs/{runId}/cancel": "AgentRunCommand",
   "POST /api/v1/admin/agent-runs/{runId}/retry": "AgentRunCommand",
   "POST /api/v1/admin/agent-content/bulk-hide": "AgentContentBulkAction",
@@ -181,6 +207,7 @@ const expectedRequestBodies: Record<string, string> = {
   "POST /api/v1/admin/agent-runtime/concurrency-test": "RuntimeCapabilityMeasurement",
   "POST /api/v1/admin/agent-schedule/regenerate": "DailyPlanGeneration",
   "POST /api/v1/internal/agent-runtime/lease": "RuntimeLease",
+  "POST /api/v1/internal/agent-runtime/plans/today": "RuntimeDailyPlan",
   "POST /api/v1/internal/agent-runtime/heartbeat": "RuntimeHeartbeat",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/events": "RuntimeEvents",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/actions": "RuntimeActions",
@@ -215,8 +242,15 @@ const idempotentOperations = new Set([
   "PATCH /api/v1/admin/agent-settings",
   "POST /api/v1/admin/agents/{agentId}/credentials/rotate",
   "POST /api/v1/admin/agents/{agentId}/runs",
+  "POST /api/v1/admin/agents/{agentId}/runs/cancel-pending",
+  "POST /api/v1/admin/agents/{agentId}/runs/graceful-stop",
+  "POST /api/v1/admin/agents/{agentId}/memories/{memoryId}/invalidate",
+  "POST /api/v1/admin/agents/{agentId}/memories/{memoryId}/forget",
+  "POST /api/v1/admin/agents/{agentId}/memories/reconsolidate",
   "POST /api/v1/admin/agent-runs/bulk/preview",
   "POST /api/v1/admin/agent-runs/bulk",
+  "POST /api/v1/admin/agent-runs/cancel-pending",
+  "POST /api/v1/admin/agent-runs/graceful-stop",
   "POST /api/v1/admin/agent-runs/{runId}/cancel",
   "POST /api/v1/admin/agent-runs/{runId}/retry",
   "POST /api/v1/admin/agent-content/bulk-hide",
@@ -230,6 +264,7 @@ const idempotentOperations = new Set([
   "POST /api/v1/admin/agent-runtime/concurrency-test",
   "POST /api/v1/admin/agent-schedule/regenerate",
   "POST /api/v1/internal/agent-runtime/lease",
+  "POST /api/v1/internal/agent-runtime/plans/today",
   "POST /api/v1/internal/agent-runtime/heartbeat",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/events",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/actions",
@@ -275,6 +310,127 @@ function assertExactNames(actual: string[], expected: string[], label: string): 
       `${label} mismatch; expected [${sortedExpected.join(", ")}], got [${sortedActual.join(", ")}]`,
     );
   }
+}
+
+function inlineSchema(
+  candidate: OpenApiSchema | OpenApiReference | undefined,
+  label: string,
+): OpenApiSchema {
+  if (!candidate || "$ref" in candidate) throw new Error(`${label} must be an inline schema`);
+  return candidate;
+}
+
+function componentSchema(document: OpenApiDocument, name: string): OpenApiSchema {
+  const schema = document.components?.schemas?.[name];
+  if (!schema) throw new Error(`OpenAPI components.schemas.${name} is required`);
+  return schema;
+}
+
+const expectedCreationProperties = {
+  CUSTOM: ["method"],
+  TEMPLATE: ["method", "templateUsername"],
+  CLONE: ["method", "sourceAgentId"],
+  IMPORT: ["method", "format"],
+} as const;
+
+export function assertAgentMutationSchemaContracts(document: OpenApiDocument): void {
+  const createSchema = componentSchema(document, "AgentCreateInput");
+  const creationSchema = inlineSchema(
+    createSchema.properties?.creation,
+    "AgentCreateInput.creation",
+  );
+  if (creationSchema.oneOf?.length !== Object.keys(expectedCreationProperties).length) {
+    throw new Error("AgentCreateInput.creation must contain exactly four discriminated branches");
+  }
+  if (
+    !creationSchema.default ||
+    typeof creationSchema.default !== "object" ||
+    Array.isArray(creationSchema.default) ||
+    (creationSchema.default as Record<string, unknown>).method !== "CUSTOM" ||
+    Object.keys(creationSchema.default).length !== 1
+  ) {
+    throw new Error("AgentCreateInput.creation default must be exactly { method: CUSTOM }");
+  }
+
+  const seenMethods: string[] = [];
+  for (const branch of creationSchema.oneOf) {
+    if (branch.type !== "object" || branch.additionalProperties !== false) {
+      throw new Error("Every AgentCreateInput.creation branch must be a closed object schema");
+    }
+    const methodSchema = inlineSchema(
+      branch.properties?.method,
+      "AgentCreateInput.creation method",
+    );
+    if (methodSchema.type !== "string" || typeof methodSchema.const !== "string") {
+      throw new Error("Every AgentCreateInput.creation branch must use a string method const");
+    }
+    const method = methodSchema.const;
+    if (!(method in expectedCreationProperties)) {
+      throw new Error(`Unexpected AgentCreateInput.creation method: ${method}`);
+    }
+    const expected = [
+      ...expectedCreationProperties[method as keyof typeof expectedCreationProperties],
+    ];
+    assertExactNames(branch.required ?? [], expected, `${method} creation required fields`);
+    assertExactNames(
+      Object.keys(branch.properties ?? {}),
+      expected,
+      `${method} creation properties`,
+    );
+    seenMethods.push(method);
+
+    if (method === "TEMPLATE") {
+      const templateUsername = inlineSchema(
+        branch.properties?.templateUsername,
+        "TEMPLATE creation templateUsername",
+      );
+      if (templateUsername.type !== "string" || templateUsername.pattern !== "^[a-z0-9_]{3,32}$") {
+        throw new Error("TEMPLATE creation templateUsername must match the Zod username regex");
+      }
+    }
+    if (method === "CLONE") {
+      const sourceAgentId = inlineSchema(
+        branch.properties?.sourceAgentId,
+        "CLONE creation sourceAgentId",
+      );
+      if (sourceAgentId.type !== "string" || sourceAgentId.format !== "uuid") {
+        throw new Error("CLONE creation sourceAgentId must be a UUID string");
+      }
+    }
+    if (method === "IMPORT") {
+      const format = inlineSchema(branch.properties?.format, "IMPORT creation format");
+      if (format.type !== "string") {
+        throw new Error("IMPORT creation format must be a string enum");
+      }
+      assertExactNames(
+        (format.enum ?? []).filter((value): value is string => typeof value === "string"),
+        ["JSON", "YAML"],
+        "IMPORT creation format enum",
+      );
+    }
+  }
+  assertExactNames(
+    seenMethods,
+    Object.keys(expectedCreationProperties),
+    "AgentCreateInput.creation methods",
+  );
+
+  const updateSchema = componentSchema(document, "AgentUpdateInput");
+  const identityFields = ["persona", "displayName", "publicBio"];
+  const dependencies = updateSchema.dependentRequired ?? {};
+  assertExactNames(
+    Object.keys(dependencies),
+    identityFields,
+    "AgentUpdateInput dependentRequired fields",
+  );
+  for (const field of identityFields) {
+    assertExactNames(
+      dependencies[field] ?? [],
+      ["changeSummary"],
+      `AgentUpdateInput ${field} dependencies`,
+    );
+  }
+  inlineSchema(updateSchema.properties?.changeSummary, "AgentUpdateInput.changeSummary");
 }
 
 async function routeFiles(directory: string): Promise<string[]> {
@@ -337,6 +493,7 @@ async function main(): Promise<void> {
   ) {
     throw new Error("OpenAPI runtimeBearer must document the opaque runtime bearer token");
   }
+  assertAgentMutationSchemaContracts(sourceDocument);
 
   const documented = new Set<string>();
   for (const [routePath, pathItem] of Object.entries(document.paths ?? {})) {
@@ -439,8 +596,9 @@ async function main(): Promise<void> {
   }
 
   process.stdout.write(
-    `OpenAPI 3.1 validation passed: ${documented.size} runtime operations aligned; security, parameters, request bodies and response headers verified.\n`,
+    `OpenAPI 3.1 validation passed: ${documented.size} runtime operations aligned; security, parameters, request bodies, agent mutation schemas and response headers verified.\n`,
   );
 }
 
-void main();
+const entrypoint = process.argv[1];
+if (entrypoint && import.meta.url === pathToFileURL(path.resolve(entrypoint)).href) void main();

@@ -1118,6 +1118,124 @@ paths:
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/admin/agents/{agentId}/runs/cancel-pending:
+    parameters:
+      [
+        { $ref: "#/components/parameters/AgentId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: cancelPendingAdminAgentRuns
+      tags: [Admin]
+      requestBody: { $ref: "#/components/requestBodies/CancelPendingAgentRuns" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agents/{agentId}/runs/graceful-stop:
+    parameters:
+      [
+        { $ref: "#/components/parameters/AgentId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: gracefullyStopAdminAgentRuns
+      tags: [Admin]
+      requestBody: { $ref: "#/components/requestBodies/GracefulStopAgentRuns" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agents/{agentId}/memories:
+    parameters: [{ $ref: "#/components/parameters/AgentId" }]
+    get:
+      operationId: listAdminAgentMemories
+      tags: [Admin]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agents/{agentId}/memories/{memoryId}/invalidate:
+    parameters:
+      [
+        { $ref: "#/components/parameters/AgentId" },
+        { $ref: "#/components/parameters/MemoryId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: invalidateAdminAgentMemory
+      tags: [Admin]
+      requestBody: { $ref: "#/components/requestBodies/AgentMemoryInvalidate" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agents/{agentId}/memories/{memoryId}/forget:
+    parameters:
+      [
+        { $ref: "#/components/parameters/AgentId" },
+        { $ref: "#/components/parameters/MemoryId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: forgetAdminAgentMemory
+      tags: [Admin]
+      requestBody: { $ref: "#/components/requestBodies/AgentMemoryForget" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agents/{agentId}/memories/reconsolidate:
+    parameters:
+      [
+        { $ref: "#/components/parameters/AgentId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: reconsolidateAdminAgentMemory
+      tags: [Admin]
+      requestBody: { $ref: "#/components/requestBodies/AgentMemoryReconsolidate" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/admin/agent-runs/bulk/preview:
     post:
       operationId: previewAdminBulkAgentRuns
@@ -1144,6 +1262,36 @@ paths:
           "200": { $ref: "#/components/responses/Success" },
           "403": { $ref: "#/components/responses/Error" },
           "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agent-runs/cancel-pending:
+    post:
+      operationId: cancelAllPendingAdminAgentRuns
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/CancelPendingGlobalAgentRuns" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/agent-runs/graceful-stop:
+    post:
+      operationId: gracefullyStopAllAdminAgentRuns
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/GracefulStopGlobalAgentRuns" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
           "409": { $ref: "#/components/responses/Error" },
           "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
@@ -1224,6 +1372,10 @@ paths:
         - name: sourceProvenance
           in: query
           schema: { type: string, enum: [WITH_SOURCE, WITHOUT_SOURCE] }
+        - name: overrideStatus
+          in: query
+          description: Filter entries by whether their creating run used any explicit override.
+          schema: { type: string, enum: [WITH_OVERRIDE, WITHOUT_OVERRIDE] }
       responses:
         {
           "200": { $ref: "#/components/responses/List" },
@@ -1438,6 +1590,22 @@ paths:
       requestBody: { $ref: "#/components/requestBodies/RuntimeLease" }
       responses:
         {
+          "200": { $ref: "#/components/responses/RuntimeLeaseSuccess" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/internal/agent-runtime/plans/today:
+    post:
+      operationId: generateInternalAgentDailyPlans
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/RuntimeIdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeDailyPlan" }
+      responses:
+        {
           "200": { $ref: "#/components/responses/Success" },
           "401": { $ref: "#/components/responses/Error" },
           "403": { $ref: "#/components/responses/Error" },
@@ -1467,6 +1635,7 @@ paths:
       [
         { $ref: "#/components/parameters/RunId" },
         { $ref: "#/components/parameters/RuntimeWorkerId" },
+        { $ref: "#/components/parameters/RuntimeLeaseToken" },
       ]
     get:
       operationId: getInternalAgentRunContext
@@ -1543,6 +1712,7 @@ paths:
           "409": { $ref: "#/components/responses/Error" },
           "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
+          "503": { $ref: "#/components/responses/Error" },
           default: { $ref: "#/components/responses/Error" },
         }
   /api/v1/internal/agent-runtime/runs/{runId}/memories:
@@ -1693,12 +1863,21 @@ components:
         required: true,
         schema: { type: string, minLength: 3, maxLength: 200, pattern: "^[A-Za-z0-9._:-]+$" },
       }
+    RuntimeLeaseToken:
+      {
+        name: X-Agent-Lease-Token,
+        in: header,
+        required: true,
+        schema: { $ref: "#/components/schemas/RuntimeLeaseToken" },
+        description: Opaque per-claim fencing token returned only by the internal lease endpoint.,
+      }
     SessionId: { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
     UserId: { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
     TopicId: { name: topicId, in: path, required: true, schema: { type: string, format: uuid } }
     EntryId: { name: entryId, in: path, required: true, schema: { type: string, format: uuid } }
     ReportId: { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
     AgentId: { name: agentId, in: path, required: true, schema: { type: string, format: uuid } }
+    MemoryId: { name: memoryId, in: path, required: true, schema: { type: string, format: uuid } }
     RunId: { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
     SourceId: { name: sourceId, in: path, required: true, schema: { type: string, format: uuid } }
     Username:
@@ -1723,6 +1902,36 @@ components:
       }
     IdempotentReplay: { required: false, schema: { type: string, const: "true" } }
   schemas:
+    RuntimeLeaseToken:
+      type: string
+      minLength: 43
+      maxLength: 43
+      pattern: "^[A-Za-z0-9_-]{43}$"
+    RuntimeLeaseOutput:
+      type: object
+      additionalProperties: false
+      required: [run, reason]
+      properties:
+        run:
+          oneOf:
+            - { type: "null" }
+            - type: object
+              required: [id, timeoutSeconds, startedAt, leaseToken]
+              properties:
+                id: { type: string, format: uuid }
+                timeoutSeconds: { type: integer, minimum: 1 }
+                startedAt: { type: string, format: date-time }
+                leaseToken: { $ref: "#/components/schemas/RuntimeLeaseToken" }
+        reason:
+          oneOf:
+            - { type: "null" }
+            - { type: string }
+    RuntimeLeaseEnvelope:
+      type: object
+      required: [data, requestId]
+      properties:
+        data: { $ref: "#/components/schemas/RuntimeLeaseOutput" }
+        requestId: { type: string, format: uuid }
     SuccessEnvelope:
       type: object
       required: [data, requestId]
@@ -1926,13 +2135,31 @@ components:
       properties:
         persona: { $ref: "#/components/schemas/AgentPersonaInput" }
         creation:
-          type: object
-          required: [method]
-          properties:
-            method: { type: string, enum: [CUSTOM, TEMPLATE, CLONE, IMPORT] }
-            templateUsername: { type: string, pattern: "^[a-z0-9_]{3,32}$" }
-            sourceAgentId: { type: string, format: uuid }
-            format: { type: string, enum: [JSON, YAML] }
+          default: { method: CUSTOM }
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [method]
+              properties:
+                method: { type: string, const: CUSTOM }
+            - type: object
+              additionalProperties: false
+              required: [method, templateUsername]
+              properties:
+                method: { type: string, const: TEMPLATE }
+                templateUsername: { type: string, pattern: "^[a-z0-9_]{3,32}$" }
+            - type: object
+              additionalProperties: false
+              required: [method, sourceAgentId]
+              properties:
+                method: { type: string, const: CLONE }
+                sourceAgentId: { type: string, format: uuid }
+            - type: object
+              additionalProperties: false
+              required: [method, format]
+              properties:
+                method: { type: string, const: IMPORT }
+                format: { type: string, enum: [JSON, YAML] }
         lifecycleStatus: { type: string, enum: [DRAFT, PAUSED], default: PAUSED }
         useGlobalEntryQuota: { type: boolean, default: true }
         dailyEntry: { $ref: "#/components/schemas/AgentQuotaRange" }
@@ -1947,6 +2174,10 @@ components:
       type: object
       additionalProperties: false
       minProperties: 1
+      dependentRequired:
+        persona: [changeSummary]
+        displayName: [changeSummary]
+        publicBio: [changeSummary]
       properties:
         displayName: { type: string, minLength: 2, maxLength: 50 }
         publicBio: { type: string, minLength: 20, maxLength: 500 }
@@ -1978,13 +2209,67 @@ components:
       properties:
         version: { type: integer, minimum: 1 }
         reason: { type: string, minLength: 10, maxLength: 1000 }
+    AgentCircuitBreakerConfig:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          errorRateWindowMinutes,
+          errorRateThreshold,
+          consecutiveCodexFailures,
+          duplicateWindowSize,
+          duplicateThreshold,
+          duplicateCooldownMinutes,
+          utilizationWindowMinutes,
+          utilizationThreshold,
+        ]
+      properties:
+        errorRateWindowMinutes: { type: integer, minimum: 1, maximum: 240 }
+        errorRateThreshold: { type: number, minimum: 0, maximum: 1 }
+        consecutiveCodexFailures: { type: integer, minimum: 1, maximum: 100 }
+        duplicateWindowSize: { type: integer, minimum: 1, maximum: 500 }
+        duplicateThreshold: { type: number, minimum: 0, maximum: 1 }
+        duplicateCooldownMinutes: { type: integer, minimum: 1, maximum: 1440 }
+        utilizationWindowMinutes: { type: integer, minimum: 1, maximum: 1440 }
+        utilizationThreshold: { type: number, minimum: 0, maximum: 1 }
     AgentGlobalSettingsUpdateInput:
       type: object
       additionalProperties: false
-      minProperties: 1
+      required: [expectedSettingsVersion, changeReason]
+      minProperties: 3
+      allOf:
+        - if:
+            anyOf:
+              - required: [quotaMode]
+              - required: [defaultDailyEntryMin]
+              - required: [defaultDailyEntryMax]
+              - required: [globalDailyEntryMin]
+              - required: [globalDailyEntryMax]
+          then:
+            required: [quotaApplyMode]
       properties:
+        quotaApplyMode:
+          type: string
+          enum: [NEXT_DAY, REGENERATE_REMAINING_TODAY]
+          description: Required when any quota field is submitted.
+        expectedSettingsVersion:
+          type: integer
+          minimum: 1
+          description: Required for every admin settings change; stale versions return 409.
+        changeReason:
+          type: string
+          minLength: 10
+          maxLength: 1000
+          description: Human-admin reason stored in the immutable audit record.
         runtimeEnabled: { type: boolean }
         publishEnabled: { type: boolean }
+        publicWriteEnabled:
+          type: boolean
+          description: Global public-write kill switch; false leaves internal maintenance actions available.
+        runtimeOperatingMode:
+          type: string
+          enum: [NORMAL, MAINTENANCE]
+          description: MAINTENANCE leases only REFLECTION and SOURCE_REFRESH runs.
         sourceReadingEnabled: { type: boolean }
         votingEnabled: { type: boolean }
         topicCreationEnabled: { type: boolean }
@@ -2005,8 +2290,15 @@ components:
         manualTimeoutSeconds: { type: integer, minimum: 120, maximum: 1200 }
         reflectionTimeoutSeconds: { type: integer, minimum: 120, maximum: 1200 }
         sourceRefreshTimeoutSeconds: { type: integer, minimum: 120, maximum: 1200 }
+        sourceFetchLimit:
+          type: integer
+          minimum: 1
+          maximum: 50
+          description: Full SOURCE_REFRESH limit; normal runs retain a maximum of two sources.
+        debugRetentionHours: { type: integer, minimum: 0, maximum: 24 }
         maxRetryCount: { type: integer, minimum: 0, maximum: 5 }
         duplicateSimilarityThreshold: { type: number, minimum: 0.5, maximum: 1 }
+        circuitBreakerConfig: { $ref: "#/components/schemas/AgentCircuitBreakerConfig" }
         degradedMode: { type: boolean }
         indexingMode:
           { type: string, enum: [INDEX_ALL, NOINDEX_AGENT_CONTENT, NOINDEX_ALL_DYNAMIC] }
@@ -2020,8 +2312,10 @@ components:
     DailyPlanGenerationInput:
       type: object
       additionalProperties: false
+      required: [reason]
       properties:
         localDate: { type: string, format: date }
+        reason: { type: string, minLength: 10, maxLength: 1000 }
     ManualAgentRunInput:
       type: object
       additionalProperties: false
@@ -2046,6 +2340,7 @@ components:
         allowSourceReading: { type: boolean, default: true }
         saturationOverride: { type: boolean, default: false }
         dailyMaximumOverride: { type: boolean, default: false }
+        provocationOverride: { type: boolean, default: false }
         adminInstruction: { type: string, minLength: 1, maxLength: 1000 }
         availableAt: { type: string, format: date-time }
         priority: { type: string, enum: [NORMAL, EMERGENCY], default: NORMAL }
@@ -2099,6 +2394,55 @@ components:
       additionalProperties: false
       required: [reason]
       properties: { reason: { type: string, minLength: 10, maxLength: 1000 } }
+    CancelPendingAgentRunsInput:
+      type: object
+      additionalProperties: false
+      required: [reason, confirmation]
+      properties:
+        reason: { type: string, minLength: 10, maxLength: 1000 }
+        confirmation: { type: string, const: CANCEL_PENDING_WRITE_RUNS }
+    CancelPendingGlobalAgentRunsInput:
+      type: object
+      additionalProperties: false
+      required: [reason, confirmation]
+      properties:
+        reason: { type: string, minLength: 10, maxLength: 1000 }
+        confirmation: { type: string, const: CANCEL_ALL_PENDING_WRITE_RUNS }
+    GracefulStopAgentRunsInput:
+      type: object
+      additionalProperties: false
+      required: [reason, confirmation]
+      properties:
+        reason: { type: string, minLength: 10, maxLength: 1000 }
+        confirmation: { type: string, const: GRACEFULLY_STOP_ACTIVE_RUNS }
+    GracefulStopGlobalAgentRunsInput:
+      type: object
+      additionalProperties: false
+      required: [reason, confirmation]
+      properties:
+        reason: { type: string, minLength: 10, maxLength: 1000 }
+        confirmation: { type: string, const: GRACEFULLY_STOP_ALL_ACTIVE_RUNS }
+    AgentMemoryInvalidateInput:
+      type: object
+      additionalProperties: false
+      required: [reason, confirmation]
+      properties:
+        reason: { type: string, minLength: 10, maxLength: 1000 }
+        confirmation: { type: string, const: INVALIDATE_AGENT_MEMORY }
+    AgentMemoryForgetInput:
+      type: object
+      additionalProperties: false
+      required: [reason, confirmation]
+      properties:
+        reason: { type: string, minLength: 10, maxLength: 1000 }
+        confirmation: { type: string, const: FORGET_AGENT_MEMORY }
+    AgentMemoryReconsolidateInput:
+      type: object
+      additionalProperties: false
+      required: [reason, confirmation]
+      properties:
+        reason: { type: string, minLength: 10, maxLength: 1000 }
+        confirmation: { type: string, const: RECONSOLIDATE_AGENT_MEMORY }
     AgentSourceAdminUpdateInput:
       type: object
       additionalProperties: false
@@ -2228,13 +2572,20 @@ components:
       properties:
         workerId: { type: string, minLength: 3, maxLength: 200, pattern: "^[A-Za-z0-9._:-]+$" }
         leaseSeconds: { type: integer, minimum: 15, maximum: 300, default: 60 }
+    RuntimeDailyPlanInput:
+      type: object
+      additionalProperties: false
+      required: [workerId]
+      properties:
+        workerId: { type: string, minLength: 3, maxLength: 200, pattern: "^[A-Za-z0-9._:-]+$" }
     RuntimeHeartbeatInput:
       type: object
       additionalProperties: false
-      required: [runId, workerId, runtimeStatus]
+      required: [runId, workerId, leaseToken, runtimeStatus]
       properties:
         runId: { type: string, format: uuid }
         workerId: { type: string, minLength: 3, maxLength: 200, pattern: "^[A-Za-z0-9._:-]+$" }
+        leaseToken: { $ref: "#/components/schemas/RuntimeLeaseToken" }
         leaseSeconds: { type: integer, minimum: 15, maximum: 300, default: 60 }
         runtimeStatus:
           {
@@ -2244,9 +2595,10 @@ components:
     RuntimeEventsInput:
       type: object
       additionalProperties: false
-      required: [workerId, events]
+      required: [workerId, leaseToken, events]
       properties:
         workerId: { type: string, minLength: 3, maxLength: 200 }
+        leaseToken: { $ref: "#/components/schemas/RuntimeLeaseToken" }
         events:
           type: array
           minItems: 1
@@ -2270,9 +2622,10 @@ components:
     RuntimeActionsInput:
       type: object
       additionalProperties: false
-      required: [workerId, actions]
+      required: [workerId, leaseToken, actions]
       properties:
         workerId: { type: string, minLength: 3, maxLength: 200 }
+        leaseToken: { $ref: "#/components/schemas/RuntimeLeaseToken" }
         actions:
           type: array
           minItems: 1
@@ -2339,9 +2692,10 @@ components:
     RuntimeExecuteActionsInput:
       type: object
       additionalProperties: false
-      required: [workerId, sequences]
+      required: [workerId, leaseToken, sequences]
       properties:
         workerId: { type: string, minLength: 3, maxLength: 200 }
+        leaseToken: { $ref: "#/components/schemas/RuntimeLeaseToken" }
         sequences:
           type: array
           minItems: 1
@@ -2351,9 +2705,10 @@ components:
     RuntimeMemoriesInput:
       type: object
       additionalProperties: false
-      required: [workerId, memories]
+      required: [workerId, leaseToken, memories]
       properties:
         workerId: { type: string, minLength: 3, maxLength: 200 }
+        leaseToken: { $ref: "#/components/schemas/RuntimeLeaseToken" }
         memories:
           type: array
           minItems: 1
@@ -2371,9 +2726,10 @@ components:
     RuntimeSourceResultInput:
       type: object
       additionalProperties: false
-      required: [workerId, sourceId, items]
+      required: [workerId, leaseToken, sourceId, items]
       properties:
         workerId: { type: string, minLength: 3, maxLength: 200 }
+        leaseToken: { $ref: "#/components/schemas/RuntimeLeaseToken" }
         sourceId: { type: string, format: uuid }
         items:
           type: array
@@ -2458,9 +2814,10 @@ components:
     RuntimeCompleteInput:
       type: object
       additionalProperties: false
-      required: [workerId, outcome, safeRunSummary, usageMetadata, performanceMetrics]
+      required: [workerId, leaseToken, outcome, safeRunSummary, usageMetadata, performanceMetrics]
       properties:
         workerId: { type: string, minLength: 3, maxLength: 200 }
+        leaseToken: { $ref: "#/components/schemas/RuntimeLeaseToken" }
         outcome: { type: string, enum: [SUCCEEDED, PARTIAL] }
         safeRunSummary: { $ref: "#/components/schemas/RuntimeSafeRunSummary" }
         usageMetadata: { $ref: "#/components/schemas/RuntimeUsageMetadata" }
@@ -2468,9 +2825,10 @@ components:
     RuntimeFailInput:
       type: object
       additionalProperties: false
-      required: [workerId, outcome, errorCode, errorSummary]
+      required: [workerId, leaseToken, outcome, errorCode, errorSummary]
       properties:
         workerId: { type: string, minLength: 3, maxLength: 200 }
+        leaseToken: { $ref: "#/components/schemas/RuntimeLeaseToken" }
         outcome: { type: string, enum: [FAILED, CANCELLED, TIMED_OUT] }
         errorCode: { type: string, minLength: 1, maxLength: 100 }
         errorSummary: { type: string, minLength: 1, maxLength: 1000 }
@@ -2628,6 +2986,66 @@ components:
         content:
           { application/json: { schema: { $ref: "#/components/schemas/AgentRunCommandInput" } } },
       }
+    CancelPendingAgentRuns:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/CancelPendingAgentRunsInput" } },
+          },
+      }
+    CancelPendingGlobalAgentRuns:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/CancelPendingGlobalAgentRunsInput" } },
+          },
+      }
+    GracefulStopAgentRuns:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/GracefulStopAgentRunsInput" } },
+          },
+      }
+    GracefulStopGlobalAgentRuns:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/GracefulStopGlobalAgentRunsInput" } },
+          },
+      }
+    AgentMemoryInvalidate:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/AgentMemoryInvalidateInput" } },
+          },
+      }
+    AgentMemoryForget:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/AgentMemoryForgetInput" } } },
+      }
+    AgentMemoryReconsolidate:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/AgentMemoryReconsolidateInput" } },
+          },
+      }
     AgentSourceAdminUpdate:
       {
         required: true,
@@ -2674,6 +3092,12 @@ components:
         required: true,
         content:
           { application/json: { schema: { $ref: "#/components/schemas/RuntimeLeaseInput" } } },
+      }
+    RuntimeDailyPlan:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/RuntimeDailyPlanInput" } } },
       }
     RuntimeHeartbeat:
       {
@@ -2795,6 +3219,15 @@ components:
           },
       }
   responses:
+    RuntimeLeaseSuccess:
+      description: Internal lease response containing a per-claim fencing token when a run is leased
+      headers:
+        {
+          X-Request-Id: { $ref: "#/components/headers/RequestId" },
+          Idempotent-Replay: { $ref: "#/components/headers/IdempotentReplay" },
+        }
+      content:
+        application/json: { schema: { $ref: "#/components/schemas/RuntimeLeaseEnvelope" } }
     Success:
       description: Successful response
       headers:
