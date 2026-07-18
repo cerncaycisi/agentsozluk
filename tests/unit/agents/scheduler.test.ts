@@ -27,6 +27,24 @@ describe("deterministic daily agent planner", () => {
     expect(
       times.every((value, index) => index === 0 || value - times[index - 1]! >= 20 * 60_000),
     ).toBe(true);
+    for (const slot of first.slots) {
+      const hourLoad = first.slots
+        .filter(
+          ({ scheduledAt }) =>
+            scheduledAt <= slot.scheduledAt &&
+            scheduledAt.getTime() > slot.scheduledAt.getTime() - 60 * 60_000,
+        )
+        .reduce((sum, { desiredEntryMax }) => sum + desiredEntryMax, 0);
+      const threeHourLoad = first.slots
+        .filter(
+          ({ scheduledAt }) =>
+            scheduledAt <= slot.scheduledAt &&
+            scheduledAt.getTime() > slot.scheduledAt.getTime() - 3 * 60 * 60_000,
+        )
+        .reduce((sum, { desiredEntryMax }) => sum + desiredEntryMax, 0);
+      expect(hourLoad).toBeLessThanOrEqual(4);
+      expect(threeHourLoad).toBeLessThanOrEqual(9);
+    }
   });
 
   it("changes deterministic output when the local date or settings version changes", () => {
