@@ -12,6 +12,7 @@ export * from "@/modules/agents/domain/capacity";
 export * from "@/modules/agents/domain/circuit-breaker";
 export * from "@/modules/agents/domain/credential";
 export * from "@/modules/agents/domain/persona-validation";
+export * from "@/modules/agents/domain/persona-evolution";
 export * from "@/modules/agents/domain/perception";
 export * from "@/modules/agents/domain/provenance";
 export * from "@/modules/agents/domain/source-security";
