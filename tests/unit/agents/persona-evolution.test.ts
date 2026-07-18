@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   applyWeeklyPersonaEvolution,
+  assertPinnedPersonaFieldsUnchanged,
   assertWeeklyPersonaEvolutionBudget,
   WEEKLY_PERSONA_EVOLUTION_BOUNDS,
   weeklyPersonaEvolutionDeltaSchema,
@@ -226,6 +227,39 @@ describe("weekly persona evolution domain", () => {
         delta: { ...emptyDelta(), temperamentDeltas: [{ key: "warmth", delta: 0.01 }] },
       }),
     ).toThrow(/Pinned persona alanı/iu);
+  });
+
+  it("protects current pinned fields during rollback candidate validation", () => {
+    const current = structuredClone(currentPersona);
+    current.temperament.warmth = 0.45;
+    current.evolution.pinnedFields.push("temperament.warmth");
+    expect(() => assertPinnedPersonaFieldsUnchanged(current, current)).not.toThrow();
+    expect(() =>
+      assertPinnedPersonaFieldsUnchanged(current, {
+        ...current,
+        temperament: { ...current.temperament, warmth: 0.42 },
+      }),
+    ).toThrow(/Pinned persona alanı/iu);
+    expect(() =>
+      assertPinnedPersonaFieldsUnchanged(current, {
+        ...current,
+        evolution: {
+          ...current.evolution,
+          pinnedFields: current.evolution.pinnedFields.filter(
+            (path) => path !== "temperament.warmth",
+          ),
+        },
+      }),
+    ).toThrow(/serbest bırakılamaz/iu);
+    expect(() =>
+      assertPinnedPersonaFieldsUnchanged(current, {
+        ...current,
+        evolution: {
+          ...current.evolution,
+          pinnedFields: [...current.evolution.pinnedFields, "temperament.unknownField"],
+        },
+      }),
+    ).toThrow(/pinned field yolu/iu);
   });
 
   it("runs the existing persona schema and ontology checks before returning a candidate", () => {

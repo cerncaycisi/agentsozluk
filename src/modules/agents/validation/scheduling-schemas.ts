@@ -7,8 +7,13 @@ export const dailyPlanGenerationSchema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/u)
       .transform((value) => new Date(`${value}T00:00:00.000Z`))
       .optional(),
+    reason: z.string().trim().min(10).max(1000).optional(),
   })
   .strict();
+
+export const adminDailyPlanRegenerationSchema = dailyPlanGenerationSchema.extend({
+  reason: z.string().trim().min(10).max(1000),
+});
 
 export const manualAgentRunSchema = z
   .object({
@@ -112,8 +117,32 @@ export const agentRunCommandSchema = z
   .object({ reason: z.string().trim().min(10).max(1000) })
   .strict();
 
+const bulkRunControlReasonSchema = z.string().trim().min(10).max(1000);
+
+function bulkRunControlSchema<const Confirmation extends string>(confirmation: Confirmation) {
+  return z
+    .object({
+      reason: bulkRunControlReasonSchema,
+      confirmation: z.literal(confirmation),
+    })
+    .strict();
+}
+
+export const cancelPendingAgentRunsSchema = bulkRunControlSchema("CANCEL_PENDING_WRITE_RUNS");
+export const cancelPendingGlobalAgentRunsSchema = bulkRunControlSchema(
+  "CANCEL_ALL_PENDING_WRITE_RUNS",
+);
+export const gracefulStopAgentRunsSchema = bulkRunControlSchema("GRACEFULLY_STOP_ACTIVE_RUNS");
+export const gracefulStopGlobalAgentRunsSchema = bulkRunControlSchema(
+  "GRACEFULLY_STOP_ALL_ACTIVE_RUNS",
+);
+
 export type DailyPlanGenerationInput = z.infer<typeof dailyPlanGenerationSchema>;
 export type ManualAgentRunInput = z.infer<typeof manualAgentRunSchema>;
 export type BulkAgentRunPreviewInput = z.infer<typeof bulkAgentRunPreviewSchema>;
 export type BulkAgentRunInput = z.infer<typeof bulkAgentRunSchema>;
 export type AgentRunCommandInput = z.infer<typeof agentRunCommandSchema>;
+export type CancelPendingAgentRunsInput = z.infer<typeof cancelPendingAgentRunsSchema>;
+export type CancelPendingGlobalAgentRunsInput = z.infer<typeof cancelPendingGlobalAgentRunsSchema>;
+export type GracefulStopAgentRunsInput = z.infer<typeof gracefulStopAgentRunsSchema>;
+export type GracefulStopGlobalAgentRunsInput = z.infer<typeof gracefulStopGlobalAgentRunsSchema>;

@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { displayNameSchema } from "@/modules/auth/validation/schemas";
+import { circuitBreakerConfigSchema } from "@/modules/agents/domain/circuit-breaker";
+import { runtimeOperatingModes } from "@/modules/agents/domain/runtime-controls";
 import { seedPersonaSchema } from "@/modules/agents/personas/schema";
 
 const boundedRange = (minimum: number, maximum: number) =>
@@ -81,10 +83,15 @@ export const updateAgentSchema = z
     scheduledTimeoutSeconds: z.number().int().min(180).max(600).optional(),
     manualTimeoutSeconds: z.number().int().min(120).max(1200).optional(),
   })
-  .refine((input) => !input.persona || Boolean(input.changeSummary), {
-    path: ["changeSummary"],
-    message: "Persona değişikliği için güvenli değişiklik özeti zorunludur.",
-  })
+  .refine(
+    (input) =>
+      (!input.persona && input.displayName === undefined && input.publicBio === undefined) ||
+      Boolean(input.changeSummary),
+    {
+      path: ["changeSummary"],
+      message: "Persona kimliği değişikliği için güvenli değişiklik özeti zorunludur.",
+    },
+  )
   .refine((input) => Object.keys(input).length > 0, { message: "En az bir alan gönderin." });
 
 export const lifecycleChangeSchema = z.object({
@@ -97,10 +104,25 @@ export const personaRollbackSchema = z.object({
   reason: z.string().trim().min(10).max(1000),
 });
 
+export const quotaApplyModeSchema = z.enum(["NEXT_DAY", "REGENERATE_REMAINING_TODAY"]);
+
+const quotaSettingFieldNames = [
+  "quotaMode",
+  "defaultDailyEntryMin",
+  "defaultDailyEntryMax",
+  "globalDailyEntryMin",
+  "globalDailyEntryMax",
+] as const;
+
 export const globalSettingsUpdateSchema = z
   .object({
+    quotaApplyMode: quotaApplyModeSchema.optional(),
+    expectedSettingsVersion: z.number().int().positive().optional(),
+    changeReason: z.string().trim().min(10).max(1000).optional(),
     runtimeEnabled: z.boolean().optional(),
     publishEnabled: z.boolean().optional(),
+    publicWriteEnabled: z.boolean().optional(),
+    runtimeOperatingMode: z.enum(runtimeOperatingModes).optional(),
     sourceReadingEnabled: z.boolean().optional(),
     votingEnabled: z.boolean().optional(),
     topicCreationEnabled: z.boolean().optional(),
@@ -121,26 +143,69 @@ export const globalSettingsUpdateSchema = z
     manualTimeoutSeconds: z.number().int().min(120).max(1200).optional(),
     reflectionTimeoutSeconds: z.number().int().min(120).max(1200).optional(),
     sourceRefreshTimeoutSeconds: z.number().int().min(120).max(1200).optional(),
+    sourceFetchLimit: z.number().int().min(1).max(50).optional(),
+    debugRetentionHours: z.number().int().min(0).max(24).optional(),
     maxRetryCount: z.number().int().min(0).max(5).optional(),
     duplicateSimilarityThreshold: z.number().min(0.5).max(1).optional(),
+    circuitBreakerConfig: circuitBreakerConfigSchema.optional(),
     degradedMode: z.boolean().optional(),
     indexingMode: z.enum(["INDEX_ALL", "NOINDEX_AGENT_CONTENT", "NOINDEX_ALL_DYNAMIC"]).optional(),
     sitemapDelayMinutes: z.number().int().min(0).max(10080).optional(),
     agentTopicIndexingEnabled: z.boolean().optional(),
   })
-  .refine((input) => Object.keys(input).length > 0, { message: "En az bir ayar gönderin." });
+  .strict()
+  .superRefine((input, context) => {
+    if (input.expectedSettingsVersion === undefined)
+      context.addIssue({
+        code: "custom",
+        path: ["expectedSettingsVersion"],
+        message: "Global ayar değişikliği için güncel settings version gereklidir.",
+      });
+    if (input.changeReason === undefined)
+      context.addIssue({
+        code: "custom",
+        path: ["changeReason"],
+        message: "Global ayar değişikliği için gerekçe zorunludur.",
+      });
+    if (
+      quotaSettingFieldNames.some((field) => input[field] !== undefined) &&
+      input.quotaApplyMode === undefined
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["quotaApplyMode"],
+        message: "Quota değişikliğinin ne zaman uygulanacağı seçilmelidir.",
+      });
+  })
+  .refine(
+    (input) =>
+      Object.keys(input).some(
+        (key) =>
+          key !== "quotaApplyMode" && key !== "expectedSettingsVersion" && key !== "changeReason",
+      ),
+    { message: "En az bir ayar gönderin." },
+  );
 
 export const runtimeControlSchema = z
   .object({ reason: z.string().trim().min(10).max(1000) })
   .strict();
 
+export const agentSourceStatuses = [
+  "SEED",
+  "DISCOVERED",
+  "PROBATION",
+  "TRUSTED",
+  "DORMANT",
+  "REJECTED",
+  "BLOCKED",
+] as const;
+export type AgentSourceStatusValue = (typeof agentSourceStatuses)[number];
+
 export const agentSourceAdminUpdateSchema = z
   .object({
     adminPinned: z.boolean().optional(),
     adminBlocked: z.boolean().optional(),
-    status: z
-      .enum(["SEED", "DISCOVERED", "PROBATION", "TRUSTED", "REJECTED", "DORMANT", "BLOCKED"])
-      .optional(),
+    status: z.enum(agentSourceStatuses).optional(),
     trustScore: z.number().min(0).max(1).optional(),
     interestScore: z.number().min(0).max(1).optional(),
     noveltyScore: z.number().min(0).max(1).optional(),

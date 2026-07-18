@@ -9,18 +9,21 @@ import type { RuntimeProvider, RuntimeProviderResult } from "@/runtime/provider"
 
 function output() {
   return {
-    state: { curiosity: 0.5, confidence: 0.5, topicFatigue: {} },
+    safeSummary: "Temsilî context güvenli biçimde değerlendirildi.",
+    state: { curiosity: 0.5, confidence: 0.5, topicFatigue: { items: [] } },
     observations: [],
-    actions: [{ sequence: 1, actionType: "NO_ACTION", input: {} }],
+    actions: [
+      {
+        type: "NO_ACTION",
+        desire: 0,
+        safeReason: "Benchmark senaryosu public action gerektirmiyor.",
+        claimProvenance: [],
+      },
+    ],
     beliefDeltas: [],
     relationshipDeltas: [],
     sourceProposals: [],
     memoryCandidates: [],
-    safeRunSummary: {
-      operationSummary: "Temsilî context güvenli biçimde değerlendirildi.",
-      observedItemIds: [],
-      shortRationale: "Yayın gerektiren yeni kanıt bulunmadı.",
-    },
   };
 }
 

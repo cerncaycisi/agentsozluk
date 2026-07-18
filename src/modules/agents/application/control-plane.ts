@@ -8,9 +8,24 @@ import type { ActorContext } from "@/modules/auth/domain/actor";
 import { hashPassword } from "@/modules/auth/domain/password";
 import { requireAgentAdminInTransaction } from "@/modules/agents/application/authorization";
 import { assertLifecycleTransition } from "@/modules/agents/domain/authorization";
+import { assertPinnedPersonaFieldsUnchanged } from "@/modules/agents/domain/persona-evolution";
 import { validatePersonaCandidate } from "@/modules/agents/domain/persona-validation";
-import { assertQuotaConsistency } from "@/modules/agents/domain/quota";
-import { assertDualConcurrencySupported } from "@/modules/agents/domain/capacity";
+import {
+  assertQuotaConsistency,
+  istanbulQuotaLocalDate,
+  nextIstanbulQuotaLocalDate,
+  quotaSettingsSnapshot,
+} from "@/modules/agents/domain/quota";
+import {
+  assertDualConcurrencySupported,
+  runtimeFingerprint,
+} from "@/modules/agents/domain/capacity";
+import {
+  assertSourceScoreWeeklyBudget,
+  istanbulWeekWindow,
+  sourceScoreFields,
+  type SourceScoreChange,
+} from "@/modules/agents/domain/source-evolution";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import { seedPersonaSchema, type SeedPersona } from "@/modules/agents/personas/schema";
 import {
@@ -18,6 +33,7 @@ import {
   appendRuntimeEvent,
   countQueuedRuns,
   createAgentRecords,
+  ensureProductionActivationAnchor,
   findAgentDetailRecord,
   findAgentForMutation,
   findAgentIdentityConflict,
@@ -28,18 +44,24 @@ import {
   listAgentDashboardRecords,
   listCurrentPersonas,
   listAgentSourcesRecord,
-  listRecentAgentSourceScoreAudits,
+  listAgentSourceScoreAudits,
   listRuntimeEventsRecord,
   lockAgentProfile,
   lockAgentSource,
   lockAgentSettings,
+  promotePendingQuotaSettingsRecord,
   rotateAgentCredentialRecords,
   updateAgentLifecycle,
   updateAgentProfileRecords,
   updateAgentSourceAdminRecord,
   updateGlobalSettingsRecord,
 } from "@/modules/agents/repository/control-plane";
-import { getLatestRuntimeCapability } from "@/modules/agents/repository/capacity";
+import { regenerateRemainingAgentDailyPlansInTransaction } from "@/modules/agents/application/scheduler";
+import { lockPersonaUniverse } from "@/modules/agents/repository/persona-lock";
+import {
+  getLatestRuntimeCapability,
+  getLatestRuntimeFingerprintRecord,
+} from "@/modules/agents/repository/capacity";
 import type {
   CreateAgentInput,
   AgentSourceAdminUpdateInput,
@@ -51,17 +73,27 @@ import type {
 } from "@/modules/agents/validation/schemas";
 import type { RuntimeCredentialRotationInput } from "@/modules/agents/validation/runtime-schemas";
 import { appendOutboxEvent } from "@/modules/outbox";
+import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 
 const GLOBAL_SETTINGS_AGGREGATE_ID = "00000000-0000-4000-8000-000000000001";
+const QUOTA_SETTING_FIELDS = [
+  "quotaMode",
+  "defaultDailyEntryMin",
+  "defaultDailyEntryMax",
+  "globalDailyEntryMin",
+  "globalDailyEntryMax",
+] as const;
+const CRITICAL_RUNTIME_SETTING_FIELD_NAMES = [
+  "publicWriteEnabled",
+  "runtimeOperatingMode",
+] as const;
 
-type SourceScoreField = "trustScore" | "interestScore" | "noveltyScore" | "usefulnessScore";
-
-const sourceScoreFields: SourceScoreField[] = [
-  "trustScore",
-  "interestScore",
-  "noveltyScore",
-  "usefulnessScore",
-];
+function settingsValueEqual(left: unknown, right: unknown): boolean {
+  if (left === right) return true;
+  if (left !== null && right !== null && typeof left === "object" && typeof right === "object")
+    return JSON.stringify(left) === JSON.stringify(right);
+  return false;
+}
 
 export function listAgentSources(
   client: DatabaseExecutor,
@@ -72,16 +104,6 @@ export function listAgentSources(
     await requireAgentAdminInTransaction(transaction, actor);
     return listAgentSourcesRecord(transaction, input);
   });
-}
-
-function auditedScoreDelta(metadata: unknown, field: SourceScoreField): number {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return 0;
-  const scoreChanges = (metadata as Record<string, unknown>).scoreChanges;
-  if (!scoreChanges || typeof scoreChanges !== "object" || Array.isArray(scoreChanges)) return 0;
-  const change = (scoreChanges as Record<string, unknown>)[field];
-  if (!change || typeof change !== "object" || Array.isArray(change)) return 0;
-  const { from, to } = change as Record<string, unknown>;
-  return typeof from === "number" && typeof to === "number" ? Math.abs(to - from) : 0;
 }
 
 export function updateAgentSourceAdmin(
@@ -96,28 +118,18 @@ export function updateAgentSourceAdmin(
     await lockAgentSource(transaction, sourceId);
     const current = await findAgentSourceForAdmin(transaction, sourceId);
     if (!current) throw new AppError("AGENT_SOURCE_NOT_FOUND", 404, "Agent source bulunamadı.");
-    const recentAudits = await listRecentAgentSourceScoreAudits(
-      transaction,
-      sourceId,
-      new Date(now.getTime() - 7 * 24 * 60 * 60_000),
-    );
-    const scoreChanges: Record<string, { from: number; to: number }> = {};
+    const week = istanbulWeekWindow(now);
+    const recentAudits = await listAgentSourceScoreAudits(transaction, sourceId, week);
+    const scoreChanges: Partial<Record<(typeof sourceScoreFields)[number], SourceScoreChange>> = {};
     for (const field of sourceScoreFields) {
       const next = input[field];
       if (next === undefined || next === current[field]) continue;
-      const used = recentAudits.reduce(
-        (total, audit) => total + auditedScoreDelta(audit.metadata, field),
-        0,
-      );
-      const requested = Math.abs(next - current[field]);
-      if (used + requested > 0.100_000_1)
-        throw new AppError(
-          "VALIDATION_ERROR",
-          422,
-          `${field} için yedi günlük toplam değişim ±0.10 sınırını aşamaz.`,
-        );
       scoreChanges[field] = { from: current[field], to: next };
     }
+    const weeklyScoreBudget = assertSourceScoreWeeklyBudget({
+      audits: recentAudits,
+      changes: scoreChanges,
+    });
     let adminBlocked = input.adminBlocked ?? current.adminBlocked;
     let status = input.status ?? current.status;
     if (input.status === "BLOCKED") adminBlocked = true;
@@ -144,24 +156,52 @@ export function updateAgentSourceAdmin(
       ),
     });
     const metadata = {
+      actorKind: actor.actorKind,
       reason: input.reason,
+      changeOrigin: "ADMIN",
       status: { from: current.status, to: updated.status },
       adminPinned: { from: current.adminPinned, to: updated.adminPinned },
       adminBlocked: { from: current.adminBlocked, to: updated.adminBlocked },
       scoreChanges,
+      before: {
+        status: current.status,
+        adminPinned: current.adminPinned,
+        adminBlocked: current.adminBlocked,
+        ...Object.fromEntries(
+          sourceScoreFields.flatMap((field) =>
+            scoreChanges[field] ? [[field, scoreChanges[field]!.from]] : [],
+          ),
+        ),
+      },
+      after: {
+        status: updated.status,
+        adminPinned: updated.adminPinned,
+        adminBlocked: updated.adminBlocked,
+        ...Object.fromEntries(
+          sourceScoreFields.flatMap((field) =>
+            scoreChanges[field] ? [[field, scoreChanges[field]!.to]] : [],
+          ),
+        ),
+      },
+      weeklyScoreBudget: {
+        timeZone: "Europe/Istanbul",
+        start: week.start.toISOString(),
+        end: week.end.toISOString(),
+        fields: weeklyScoreBudget,
+      },
       adminTrustedApproval:
         updated.status === "TRUSTED" && current.status !== "TRUSTED" && current._count.items < 3,
     };
     await appendAuditLog(transaction, {
       actorId: actor.actorId,
-      action: "agent.source.updated",
+      action: "agent.source.changed",
       entityType: "AgentSource",
       entityId: sourceId,
       requestId: actor.requestId,
       metadata,
     });
     await appendOutboxEvent(transaction, {
-      eventType: "agent.source_updated",
+      eventType: "agent.source.changed",
       aggregateType: "AgentSource",
       aggregateId: sourceId,
       actorId: actor.actorId,
@@ -198,22 +238,34 @@ async function recordControlPlaneChange(
     eventType:
       | "agent.created"
       | "agent.updated"
-      | "agent.lifecycle_changed"
-      | "agent.persona_version_created"
+      | "agent.paused"
+      | "agent.resumed"
+      | "agent.retired"
+      | "agent.persona.versioned"
       | "agent.credential_rotated"
-      | "agent.settings_changed";
+      | "agent.settings.changed";
     entityType: "AgentProfile" | "AgentGlobalSettings";
     entityId: string;
+    reason: string;
+    before: unknown;
+    after: unknown;
     metadata?: Record<string, unknown>;
   },
 ): Promise<void> {
+  const auditMetadata = {
+    actorKind: actor.actorKind,
+    before: input.before,
+    after: input.after,
+    reason: input.reason,
+    ...(input.metadata ?? {}),
+  };
   await appendAuditLog(transaction, {
     actorId: actor.actorId,
     action: input.eventType,
     entityType: input.entityType,
     entityId: input.entityId,
     requestId: actor.requestId,
-    ...(input.metadata ? { metadata: input.metadata } : {}),
+    metadata: auditMetadata,
   });
   await appendOutboxEvent(transaction, {
     eventType: input.eventType,
@@ -222,7 +274,7 @@ async function recordControlPlaneChange(
     actorId: actor.actorId,
     actorKind: actor.actorKind,
     requestId: actor.requestId,
-    ...(input.metadata ? { payload: input.metadata } : {}),
+    payload: auditMetadata,
   });
 }
 
@@ -295,6 +347,7 @@ export async function createAgent(
         ? await findAgentForMutation(transaction, input.creation.sourceAgentId)
         : null;
     validateCreationMethod(input, sourceAgent);
+    await lockPersonaUniverse(transaction);
     const existing = await listCurrentPersonas(transaction);
     const validated = validatePersonaCandidate(
       input.persona,
@@ -343,6 +396,9 @@ export async function createAgent(
       eventType: "agent.created",
       entityType: "AgentProfile",
       entityId: created.profile.id,
+      reason: `Agent created through ${input.creation.method} workflow.`,
+      before: null,
+      after: creationMetadata,
       metadata: creationMetadata,
     });
     await appendRuntimeEvent(transaction, {
@@ -369,6 +425,40 @@ function jsonNumber(value: unknown, key: string): number {
   if (!value || typeof value !== "object" || Array.isArray(value)) return 0;
   const candidate = (value as Record<string, unknown>)[key];
   return typeof candidate === "number" && Number.isFinite(candidate) ? candidate : 0;
+}
+
+function agentProfileAuditSnapshot(profile: {
+  lifecycleStatus: string;
+  useGlobalEntryQuota: boolean;
+  dailyEntryMin: number | null;
+  dailyEntryMax: number | null;
+  dailyTopicMin: number;
+  dailyTopicMax: number;
+  dailyVoteMin: number;
+  dailyVoteMax: number;
+  activeTimeProfile: unknown;
+  personaEvolutionEnabled: boolean;
+  sourceEvolutionEnabled: boolean;
+  scheduledTimeoutSeconds: number;
+  manualTimeoutSeconds: number;
+  user: { displayName: string; bio: string | null };
+  currentPersonaVersion: { version: number } | null;
+}) {
+  return {
+    lifecycleStatus: profile.lifecycleStatus,
+    displayName: profile.user.displayName,
+    publicBio: profile.user.bio,
+    useGlobalEntryQuota: profile.useGlobalEntryQuota,
+    dailyEntry: { min: profile.dailyEntryMin, max: profile.dailyEntryMax },
+    dailyTopic: { min: profile.dailyTopicMin, max: profile.dailyTopicMax },
+    dailyVote: { min: profile.dailyVoteMin, max: profile.dailyVoteMax },
+    activeTimeProfile: profile.activeTimeProfile,
+    personaEvolutionEnabled: profile.personaEvolutionEnabled,
+    sourceEvolutionEnabled: profile.sourceEvolutionEnabled,
+    scheduledTimeoutSeconds: profile.scheduledTimeoutSeconds,
+    manualTimeoutSeconds: profile.manualTimeoutSeconds,
+    personaVersion: profile.currentPersonaVersion?.version ?? null,
+  };
 }
 
 export async function listAgentDashboard(client: DatabaseExecutor, actor: ActorContext) {
@@ -418,6 +508,8 @@ export async function listAgentDashboard(client: DatabaseExecutor, actor: ActorC
         personaVersion: record.currentPersonaVersion?.version ?? null,
         sourceCount: record._count.sources,
         codexInvocations: record.runs.filter(({ usageMetadata }) => usageMetadata !== null).length,
+        latestUsageMetadata:
+          record.runs.find(({ usageMetadata }) => usageMetadata !== null)?.usageMetadata ?? null,
         successRate24h: completed.length === 0 ? null : successful / completed.length,
         averageEntriesPerRun:
           record.runs.length === 0 ? null : publishedEntries / record.runs.length,
@@ -504,7 +596,19 @@ export async function updateAgent(
         ),
       );
     }
-    const personaInput = input.persona;
+    const identityPatchRequested = input.displayName !== undefined || input.publicBio !== undefined;
+    let personaInput = input.persona;
+    if (personaInput || identityPatchRequested) {
+      if (!current.currentPersonaVersion) {
+        throw new AppError("PERSONA_VERSION_NOT_FOUND", 409, "Mevcut persona sürümü bulunamadı.");
+      }
+      const currentPersona = seedPersonaSchema.parse(current.currentPersonaVersion.persona);
+      personaInput = seedPersonaSchema.parse({
+        ...(personaInput ?? currentPersona),
+        ...(input.displayName !== undefined ? { displayName: input.displayName } : {}),
+        ...(input.publicBio !== undefined ? { publicBio: input.publicBio } : {}),
+      });
+    }
     if (personaInput && personaInput.username !== current.user.username) {
       throw new AppError("VALIDATION_ERROR", 422, "Agent kullanıcı adı düzenlenemez.", {
         "persona.username": ["Mevcut kullanıcı adı korunmalıdır."],
@@ -512,14 +616,20 @@ export async function updateAgent(
     }
     let personaVersion = null;
     if (personaInput) {
-      if (!current.currentPersonaVersion) {
-        throw new AppError("PERSONA_VERSION_NOT_FOUND", 409, "Mevcut persona sürümü bulunamadı.");
+      if (!current.currentPersonaVersion || !input.changeSummary) {
+        throw new AppError(
+          "VALIDATION_ERROR",
+          422,
+          "Persona kimliği değişikliği için güvenli değişiklik özeti zorunludur.",
+        );
       }
+      assertPinnedPersonaFieldsUnchanged(current.currentPersonaVersion.persona, personaInput);
+      await lockPersonaUniverse(transaction);
       const existing = await listCurrentPersonas(transaction, agentProfileId);
       const validated = validatePersonaCandidate(
         personaInput,
         existingPersonaValues(existing),
-        input.changeSummary!,
+        input.changeSummary,
       );
       personaVersion = await appendPersonaVersion(transaction, {
         agentProfileId,
@@ -528,7 +638,7 @@ export async function updateAgent(
         persona: validated.persona,
         renderedPrompt: validated.renderedPrompt,
         changeOrigin: "ADMIN",
-        changeSummary: input.changeSummary!,
+        changeSummary: input.changeSummary,
         actorId: actor.actorId,
         validationReport: validated.report,
       });
@@ -577,16 +687,23 @@ export async function updateAgent(
       ...(effectivePublicBio !== undefined ? { publicBio: effectivePublicBio } : {}),
       profileData,
     });
+    const updatedAgent = await findAgentDetailRecord(transaction, agentProfileId);
+    if (!updatedAgent) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
     await recordControlPlaneChange(transaction, actor, {
-      eventType: personaVersion ? "agent.persona_version_created" : "agent.updated",
+      eventType: personaVersion ? "agent.persona.versioned" : "agent.updated",
       entityType: "AgentProfile",
       entityId: agentProfileId,
+      reason: input.changeSummary ?? "Agent profile settings updated by administrator.",
+      before: agentProfileAuditSnapshot(current),
+      after: agentProfileAuditSnapshot(updatedAgent),
       metadata: {
-        changedFields: Object.keys(input).filter((key) => key !== "persona"),
+        changedFields: Object.keys(input).filter(
+          (key) => key !== "persona" && key !== "changeSummary",
+        ),
         ...(personaVersion ? { personaVersion: personaVersion.version } : {}),
       },
     });
-    return findAgentDetailRecord(transaction, agentProfileId);
+    return updatedAgent;
   });
 }
 
@@ -606,6 +723,8 @@ export async function rollbackPersona(
     }
     const target = await findPersonaVersion(transaction, agentProfileId, input.version);
     if (!target) throw new AppError("PERSONA_VERSION_NOT_FOUND", 404, "Persona sürümü bulunamadı.");
+    assertPinnedPersonaFieldsUnchanged(current.currentPersonaVersion.persona, target.persona);
+    await lockPersonaUniverse(transaction);
     const existing = await listCurrentPersonas(transaction, agentProfileId);
     const validated = validatePersonaCandidate(
       target.persona,
@@ -623,10 +742,21 @@ export async function rollbackPersona(
       actorId: actor.actorId,
       validationReport: validated.report,
     });
+    await updateAgentProfileRecords(transaction, {
+      agentProfileId,
+      userId: current.userId,
+      actorId: actor.actorId,
+      displayName: validated.persona.displayName,
+      publicBio: validated.persona.publicBio,
+      profileData: {},
+    });
     await recordControlPlaneChange(transaction, actor, {
-      eventType: "agent.persona_version_created",
+      eventType: "agent.persona.versioned",
       entityType: "AgentProfile",
       entityId: agentProfileId,
+      reason: input.reason,
+      before: { personaVersion: current.currentPersonaVersion.version },
+      after: { personaVersion: created.version },
       metadata: { personaVersion: created.version, rollbackFromVersion: input.version },
     });
     await appendRuntimeEvent(transaction, {
@@ -644,6 +774,7 @@ export async function changeAgentLifecycle(
   actor: ActorContext,
   agentProfileId: string,
   input: LifecycleChangeInput,
+  now = new Date(),
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
@@ -658,6 +789,10 @@ export async function changeAgentLifecycle(
         getQuotaProfiles(transaction),
       ]);
       assertQuotaConsistency(settings, profiles);
+      await ensureProductionActivationAnchor(transaction, {
+        agentProfileId,
+        activatedAt: now,
+      });
     }
     const updated = await updateAgentLifecycle(
       transaction,
@@ -665,10 +800,21 @@ export async function changeAgentLifecycle(
       actor.actorId,
       input.status,
     );
+    const lifecycleEventType =
+      input.status === "ACTIVE"
+        ? "agent.resumed"
+        : input.status === "RETIRED"
+          ? "agent.retired"
+          : input.status === "PAUSED" || input.status === "SUSPENDED"
+            ? "agent.paused"
+            : "agent.updated";
     await recordControlPlaneChange(transaction, actor, {
-      eventType: "agent.lifecycle_changed",
+      eventType: lifecycleEventType,
       entityType: "AgentProfile",
       entityId: agentProfileId,
+      reason: input.reason,
+      before: { lifecycleStatus: current.lifecycleStatus },
+      after: { lifecycleStatus: updated.lifecycleStatus },
       metadata: { from: current.lifecycleStatus, to: input.status, reason: input.reason },
     });
     await appendRuntimeEvent(transaction, {
@@ -692,42 +838,223 @@ export async function updateGlobalSettings(
   client: DatabaseExecutor,
   actor: ActorContext,
   input: GlobalSettingsUpdateInput,
+  now = new Date(),
 ) {
+  const localDate = istanbulQuotaLocalDate(now);
+  await inTransaction(client, async (transaction) => {
+    await requireAgentAdminInTransaction(transaction, actor);
+    await lockAgentSettings(transaction);
+    await promotePendingQuotaSettingsRecord(transaction, localDate, {
+      actorId: actor.actorId,
+      actorKind: actor.actorKind,
+      requestId: actor.requestId,
+    });
+  });
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentSettings(transaction);
-    const current = await getGlobalSettingsRecord(transaction);
-    if (input.codexConcurrency === 2) {
-      assertDualConcurrencySupported(await getLatestRuntimeCapability(transaction));
-    }
-    const candidate = {
-      defaultDailyEntryMin: input.defaultDailyEntryMin ?? current.defaultDailyEntryMin,
-      defaultDailyEntryMax: input.defaultDailyEntryMax ?? current.defaultDailyEntryMax,
-      globalDailyEntryMin: input.globalDailyEntryMin ?? current.globalDailyEntryMin,
-      globalDailyEntryMax: input.globalDailyEntryMax ?? current.globalDailyEntryMax,
-    };
-    const profiles = await getQuotaProfiles(transaction);
-    assertQuotaConsistency(candidate, profiles);
-    const data = Object.fromEntries(
-      Object.entries(input).filter(([, value]) => value !== undefined),
+    const current = await getGlobalSettingsRecord(transaction, localDate);
+    const changesCriticalRuntimeControl = CRITICAL_RUNTIME_SETTING_FIELD_NAMES.some(
+      (field) => input[field] !== undefined,
     );
-    const updated = await updateGlobalSettingsRecord(transaction, actor.actorId, data);
-    await recordControlPlaneChange(transaction, actor, {
-      eventType: "agent.settings_changed",
-      entityType: "AgentGlobalSettings",
-      entityId: GLOBAL_SETTINGS_AGGREGATE_ID,
-      metadata: {
-        settingsKey: "global",
-        changedFields: Object.keys(data),
-        settingsVersion: updated.settingsVersion,
-      },
+    if (
+      changesCriticalRuntimeControl &&
+      (input.expectedSettingsVersion === undefined || !input.changeReason)
+    )
+      throw new AppError(
+        "VALIDATION_ERROR",
+        422,
+        "Kritik runtime kontrolü güncel settings version ve gerekçe gerektirir.",
+      );
+    if (
+      input.expectedSettingsVersion !== undefined &&
+      input.expectedSettingsVersion !== current.settingsVersion
+    )
+      throw new AppError(
+        "AGENT_SETTINGS_VERSION_CONFLICT",
+        409,
+        "Global agent ayarları başka bir işlem tarafından değiştirildi; güncel durumu yükleyin.",
+      );
+    if (input.codexConcurrency === 2) {
+      const [capability, fingerprintRecord] = await Promise.all([
+        getLatestRuntimeCapability(transaction),
+        getLatestRuntimeFingerprintRecord(transaction),
+      ]);
+      const observedFingerprint = runtimeFingerprint(fingerprintRecord?.usageMetadata);
+      assertDualConcurrencySupported(capability, {
+        now,
+        codexVersion: observedFingerprint.codexVersion ?? "",
+        promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+      });
+    }
+    const activeQuotaSettings = quotaSettingsSnapshot({
+      quotaMode: current.quotaMode,
+      defaultDailyEntryMin: current.defaultDailyEntryMin,
+      defaultDailyEntryMax: current.defaultDailyEntryMax,
+      globalDailyEntryMin: current.globalDailyEntryMin,
+      globalDailyEntryMax: current.globalDailyEntryMax,
     });
-    await appendRuntimeEvent(transaction, {
-      eventType: "runtime.global.changed",
-      safeMessage: "Global agent runtime ayarları güncellendi.",
-      metadata: { changedFields: Object.keys(data), settingsVersion: updated.settingsVersion },
+    const nextQuotaEffectiveDate = nextIstanbulQuotaLocalDate(now);
+    const quotaBase =
+      input.quotaApplyMode === "NEXT_DAY" &&
+      current.pendingQuotaEffectiveDate?.getTime() === nextQuotaEffectiveDate.getTime() &&
+      current.pendingQuotaSettings !== null
+        ? quotaSettingsSnapshot(current.pendingQuotaSettings)
+        : activeQuotaSettings;
+    const quotaCandidate = quotaSettingsSnapshot({
+      quotaMode: input.quotaMode ?? quotaBase.quotaMode,
+      defaultDailyEntryMin: input.defaultDailyEntryMin ?? quotaBase.defaultDailyEntryMin,
+      defaultDailyEntryMax: input.defaultDailyEntryMax ?? quotaBase.defaultDailyEntryMax,
+      globalDailyEntryMin: input.globalDailyEntryMin ?? quotaBase.globalDailyEntryMin,
+      globalDailyEntryMax: input.globalDailyEntryMax ?? quotaBase.globalDailyEntryMax,
     });
-    return updated;
+    const profiles = await getQuotaProfiles(transaction);
+    assertQuotaConsistency(quotaCandidate, profiles);
+    const quotaCommand = QUOTA_SETTING_FIELDS.some((field) => input[field] !== undefined);
+    const nonQuotaData = Object.fromEntries(
+      Object.entries(input).filter(
+        ([key, value]) =>
+          key !== "quotaApplyMode" &&
+          key !== "expectedSettingsVersion" &&
+          key !== "changeReason" &&
+          !QUOTA_SETTING_FIELDS.includes(key as (typeof QUOTA_SETTING_FIELDS)[number]) &&
+          value !== undefined &&
+          !settingsValueEqual(current[key as keyof typeof current], value),
+      ),
+    ) as Parameters<typeof updateGlobalSettingsRecord>[2];
+    let data: Parameters<typeof updateGlobalSettingsRecord>[2] = nonQuotaData;
+    let clearPendingQuota = false;
+    let effectiveLocalDate: Date | null = null;
+    if (quotaCommand && input.quotaApplyMode === "NEXT_DAY") {
+      effectiveLocalDate = nextQuotaEffectiveDate;
+      const pendingMatches =
+        current.pendingQuotaEffectiveDate?.getTime() === effectiveLocalDate.getTime() &&
+        settingsValueEqual(current.pendingQuotaSettings, quotaCandidate);
+      if (!pendingMatches)
+        data = {
+          ...data,
+          pendingQuotaSettings: quotaCandidate,
+          pendingQuotaEffectiveDate: effectiveLocalDate,
+        };
+    } else if (quotaCommand) {
+      data = {
+        ...data,
+        ...Object.fromEntries(
+          QUOTA_SETTING_FIELDS.flatMap((field) =>
+            settingsValueEqual(current[field], quotaCandidate[field])
+              ? []
+              : [[field, quotaCandidate[field]]],
+          ),
+        ),
+      };
+      clearPendingQuota =
+        current.pendingQuotaSettings !== null || current.pendingQuotaEffectiveDate !== null;
+    }
+    const hasSettingsMutation = Object.keys(data).length > 0 || clearPendingQuota;
+    const updated = hasSettingsMutation
+      ? await updateGlobalSettingsRecord(transaction, actor.actorId, data, { clearPendingQuota })
+      : current;
+    let regeneration: Awaited<
+      ReturnType<typeof regenerateRemainingAgentDailyPlansInTransaction>
+    > | null = null;
+    if (quotaCommand && input.quotaApplyMode === "REGENERATE_REMAINING_TODAY")
+      regeneration = await regenerateRemainingAgentDailyPlansInTransaction(
+        transaction,
+        actor,
+        {
+          localDate,
+          reason: input.changeReason ?? "Global quota settings changed by human administrator.",
+        },
+        now,
+      );
+    const changedFields = [
+      ...Object.keys(nonQuotaData),
+      ...(quotaCommand ? QUOTA_SETTING_FIELDS.filter((field) => input[field] !== undefined) : []),
+    ];
+    if (hasSettingsMutation) {
+      const criticalRuntimeChanges = Object.fromEntries(
+        CRITICAL_RUNTIME_SETTING_FIELD_NAMES.flatMap((field) =>
+          input[field] !== undefined && !settingsValueEqual(current[field], updated[field])
+            ? [[field, { from: current[field], to: updated[field] }]]
+            : [],
+        ),
+      );
+      const before = Object.fromEntries(
+        changedFields.map((field) => {
+          const quotaField = QUOTA_SETTING_FIELDS.find((candidate) => candidate === field);
+          return [
+            field,
+            quotaField && input.quotaApplyMode === "NEXT_DAY"
+              ? quotaBase[quotaField]
+              : current[field as keyof typeof current],
+          ];
+        }),
+      );
+      const after = Object.fromEntries(
+        changedFields.map((field) => {
+          const quotaField = QUOTA_SETTING_FIELDS.find((candidate) => candidate === field);
+          return [
+            field,
+            quotaField ? quotaCandidate[quotaField] : updated[field as keyof typeof updated],
+          ];
+        }),
+      );
+      await recordControlPlaneChange(transaction, actor, {
+        eventType: "agent.settings.changed",
+        entityType: "AgentGlobalSettings",
+        entityId: GLOBAL_SETTINGS_AGGREGATE_ID,
+        reason: input.changeReason ?? "Global settings updated by administrator.",
+        before,
+        after,
+        metadata: {
+          settingsKey: "global",
+          changedFields,
+          settingsVersion: updated.settingsVersion,
+          ...(Object.keys(criticalRuntimeChanges).length > 0 ? { criticalRuntimeChanges } : {}),
+          ...(quotaCommand
+            ? {
+                quotaApplyMode: input.quotaApplyMode ?? "IMMEDIATE_INTERNAL",
+                effectiveLocalDate:
+                  effectiveLocalDate?.toISOString().slice(0, 10) ??
+                  localDate.toISOString().slice(0, 10),
+              }
+            : {}),
+        },
+      });
+      await appendRuntimeEvent(transaction, {
+        eventType: "runtime.global.changed",
+        safeMessage:
+          input.quotaApplyMode === "NEXT_DAY"
+            ? "Global agent quota ayarları yarından itibaren uygulanmak üzere kaydedildi."
+            : "Global agent runtime ayarları güncellendi.",
+        metadata: {
+          changedFields,
+          settingsVersion: updated.settingsVersion,
+          ...(quotaCommand
+            ? {
+                quotaApplyMode: input.quotaApplyMode ?? "IMMEDIATE_INTERNAL",
+                effectiveLocalDate:
+                  effectiveLocalDate?.toISOString().slice(0, 10) ??
+                  localDate.toISOString().slice(0, 10),
+              }
+            : {}),
+        },
+      });
+    }
+    return {
+      ...updated,
+      ...(quotaCommand
+        ? {
+            quotaApplication: {
+              mode: input.quotaApplyMode ?? "IMMEDIATE_INTERNAL",
+              effectiveLocalDate:
+                effectiveLocalDate?.toISOString().slice(0, 10) ??
+                localDate.toISOString().slice(0, 10),
+              regeneration,
+            },
+          }
+        : {}),
+    };
   });
 }
 
@@ -740,13 +1067,17 @@ export async function setGlobalRuntimeEnabled(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentSettings(transaction);
+    const current = await getGlobalSettingsRecord(transaction);
     const updated = await updateGlobalSettingsRecord(transaction, actor.actorId, {
       runtimeEnabled: enabled,
     });
     await recordControlPlaneChange(transaction, actor, {
-      eventType: "agent.settings_changed",
+      eventType: "agent.settings.changed",
       entityType: "AgentGlobalSettings",
       entityId: GLOBAL_SETTINGS_AGGREGATE_ID,
+      reason: input.reason,
+      before: { runtimeEnabled: current.runtimeEnabled },
+      after: { runtimeEnabled: updated.runtimeEnabled },
       metadata: {
         settingsKey: "global",
         changedFields: ["runtimeEnabled"],
@@ -791,7 +1122,10 @@ export async function rotateAgentCredential(
       eventType: "agent.credential_rotated",
       entityType: "AgentProfile",
       entityId: agentProfileId,
-      metadata: { reason: input.reason, credentialId: credential.id },
+      reason: input.reason,
+      before: { credentialState: "CURRENT" },
+      after: { credentialState: "ROTATED", credentialId: credential.id },
+      metadata: { credentialId: credential.id },
     });
     await appendRuntimeEvent(transaction, {
       agentProfileId,

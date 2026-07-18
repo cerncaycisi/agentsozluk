@@ -3,6 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { loginHuman } from "@/modules/auth/application/authenticate";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { hashPassword } from "@/modules/auth/domain/password";
+import { inTransaction } from "@/lib/db/transaction";
 import {
   changeAgentLifecycle,
   createAgent,
@@ -24,7 +25,13 @@ import { findRuntimeSourceForWrite } from "@/modules/agents/repository/runtime";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import { sha256 } from "@/lib/security/crypto";
 import { redactCreationCredential } from "@/modules/agents/domain/credential";
+import { circuitBreakerConfigSchema } from "@/modules/agents/domain/circuit-breaker";
+import {
+  createRuntimeCapabilityRecord,
+  getRuntimeOperationalMetrics,
+} from "@/modules/agents/repository/capacity";
 import { executeIdempotently } from "@/modules/idempotency/application/idempotency";
+import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 import {
   closeIntegrationDatabase,
   integrationDatabase,
@@ -75,6 +82,137 @@ beforeEach(resetIntegrationDatabase);
 afterAll(closeIntegrationDatabase);
 
 describe("agent control plane with PostgreSQL", () => {
+  it("promotes a due pending quota as a versioned audited change before rejecting a stale command", async () => {
+    const admin = await createPrincipal();
+    const initial = await integrationDatabase.agentGlobalSettings.findUniqueOrThrow({
+      where: { id: "global" },
+    });
+    const staged = await updateGlobalSettings(
+      integrationDatabase,
+      actor(admin.id),
+      {
+        quotaApplyMode: "NEXT_DAY",
+        defaultDailyEntryMin: 16,
+        expectedSettingsVersion: initial.settingsVersion,
+        changeReason: "Raise the default minimum starting with the next Istanbul day.",
+      },
+      new Date("2026-07-18T09:00:00.000Z"),
+    );
+    const staleActor = actor(admin.id);
+
+    await expect(
+      updateGlobalSettings(
+        integrationDatabase,
+        staleActor,
+        {
+          sourceFetchLimit: 9,
+          expectedSettingsVersion: staged.settingsVersion,
+          changeReason: "Attempt another settings change from the pre-promotion version.",
+        },
+        new Date("2026-07-19T09:00:00.000Z"),
+      ),
+    ).rejects.toMatchObject({ code: "AGENT_SETTINGS_VERSION_CONFLICT", status: 409 });
+
+    await expect(
+      integrationDatabase.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } }),
+    ).resolves.toMatchObject({
+      defaultDailyEntryMin: 16,
+      sourceFetchLimit: initial.sourceFetchLimit,
+      pendingQuotaSettings: null,
+      pendingQuotaEffectiveDate: null,
+      settingsVersion: staged.settingsVersion + 1,
+    });
+    await expect(
+      integrationDatabase.auditLog.findFirstOrThrow({
+        where: {
+          action: "agent.settings.changed",
+          requestId: staleActor.requestId,
+          metadata: { path: ["quotaApplyMode"], equals: "PROMOTE_PENDING" },
+        },
+      }),
+    ).resolves.toMatchObject({
+      actorId: admin.id,
+      metadata: {
+        actorKind: "HUMAN",
+        before: { defaultDailyEntryMin: 15 },
+        after: { defaultDailyEntryMin: 16 },
+        reason: "Pending quota settings reached their effective Europe/Istanbul date.",
+        quotaApplyMode: "PROMOTE_PENDING",
+        effectiveLocalDate: "2026-07-19",
+        previousSettingsVersion: staged.settingsVersion,
+        settingsVersion: staged.settingsVersion + 1,
+      },
+    });
+    expect(
+      await integrationDatabase.outboxEvent.count({
+        where: {
+          eventType: "agent.settings.changed",
+          requestId: staleActor.requestId,
+          payload: { path: ["quotaApplyMode"], equals: "PROMOTE_PENDING" },
+        },
+      }),
+    ).toBe(1);
+  });
+
+  it("rejects stale critical runtime settings commands with optimistic version control", async () => {
+    const admin = await createPrincipal();
+    const commandActor = actor(admin.id);
+    const changeReason = "Pause public writes for optimistic concurrency coverage.";
+    const before = await integrationDatabase.agentGlobalSettings.findUniqueOrThrow({
+      where: { id: "global" },
+    });
+    const updated = await updateGlobalSettings(integrationDatabase, commandActor, {
+      publicWriteEnabled: false,
+      expectedSettingsVersion: before.settingsVersion,
+      changeReason,
+    });
+    expect(updated).toMatchObject({
+      publicWriteEnabled: false,
+      runtimeOperatingMode: "NORMAL",
+      settingsVersion: before.settingsVersion + 1,
+    });
+    await expect(
+      integrationDatabase.auditLog.findFirstOrThrow({
+        where: {
+          action: "agent.settings.changed",
+          actorId: admin.id,
+          requestId: commandActor.requestId,
+        },
+      }),
+    ).resolves.toMatchObject({
+      actorId: admin.id,
+      requestId: commandActor.requestId,
+      createdAt: expect.any(Date),
+      metadata: {
+        actorKind: "HUMAN",
+        before: { publicWriteEnabled: true },
+        after: { publicWriteEnabled: false },
+        reason: changeReason,
+        settingsKey: "global",
+        changedFields: ["publicWriteEnabled"],
+        settingsVersion: before.settingsVersion + 1,
+        criticalRuntimeChanges: {
+          publicWriteEnabled: { from: true, to: false },
+        },
+      },
+    });
+
+    await expect(
+      updateGlobalSettings(integrationDatabase, actor(admin.id), {
+        runtimeOperatingMode: "MAINTENANCE",
+        expectedSettingsVersion: before.settingsVersion,
+        changeReason: "Enter maintenance mode with an intentionally stale version.",
+      }),
+    ).rejects.toMatchObject({ code: "AGENT_SETTINGS_VERSION_CONFLICT", status: 409 });
+    await expect(
+      integrationDatabase.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } }),
+    ).resolves.toMatchObject({
+      publicWriteEnabled: false,
+      runtimeOperatingMode: "NORMAL",
+      settingsVersion: before.settingsVersion + 1,
+    });
+  });
+
   it("creates every required record atomically and returns the credential only once", async () => {
     const admin = await createPrincipal();
     const result = await createFirstAgent(admin.id);
@@ -253,8 +391,26 @@ describe("agent control plane with PostgreSQL", () => {
     );
     expect(rollback).toMatchObject({ version: 3, changeOrigin: "ROLLBACK" });
     expect(
+      (
+        await integrationDatabase.agentProfile.findUniqueOrThrow({
+          where: { id: profileId },
+          include: { user: true },
+        })
+      ).user.bio,
+    ).toBe(initial.publicBio);
+    expect(
       await integrationDatabase.agentPersonaVersion.count({ where: { agentProfileId: profileId } }),
     ).toBe(3);
+    expect(
+      await integrationDatabase.auditLog.count({
+        where: { action: "agent.persona.versioned", entityId: profileId },
+      }),
+    ).toBe(2);
+    expect(
+      await integrationDatabase.outboxEvent.count({
+        where: { eventType: "agent.persona.versioned", aggregateId: profileId },
+      }),
+    ).toBe(2);
     await expect(
       integrationDatabase.agentPersonaVersion.update({
         where: { id: rollback.id },
@@ -288,6 +444,115 @@ describe("agent control plane with PostgreSQL", () => {
     ).toBe(1);
   });
 
+  it("routes standalone public identity edits through immutable persona validation", async () => {
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const profileId = created.agent.profile.id;
+    const publicBio =
+      "Dijital altyapının görünmeyen varsayımlarını, bakım yükünü ve kullanıcı etkisini birlikte inceler.";
+    const displayName = "Katman İzci Güncel";
+
+    await expect(
+      updateAgent(
+        integrationDatabase,
+        actor(admin.id),
+        profileId,
+        updateAgentSchema.parse({
+          publicBio,
+          changeSummary: "Halka açık biyografi kontrollü olarak netleştirildi.",
+        }),
+      ),
+    ).resolves.toMatchObject({ user: { bio: publicBio } });
+    await expect(
+      updateAgent(
+        integrationDatabase,
+        actor(admin.id),
+        profileId,
+        updateAgentSchema.parse({
+          displayName,
+          changeSummary: "Halka açık görünen ad kontrollü olarak netleştirildi.",
+        }),
+      ),
+    ).resolves.toMatchObject({ user: { displayName } });
+
+    const versions = await integrationDatabase.agentPersonaVersion.findMany({
+      where: { agentProfileId: profileId },
+      orderBy: { version: "asc" },
+    });
+    expect(versions).toHaveLength(3);
+    expect(versions.at(-1)).toMatchObject({ version: 3, changeOrigin: "ADMIN" });
+    expect(versions.at(-1)?.persona).toMatchObject({ publicBio, displayName });
+
+    await expect(
+      updateAgent(
+        integrationDatabase,
+        actor(admin.id),
+        profileId,
+        updateAgentSchema.parse({
+          publicBio: "Ben bir insanım ve dijital kültür üzerine düşünüyorum.",
+          changeSummary: "Unsafe standalone ontology delta test.",
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "PERSONA_ONTOLOGY_REJECTED" });
+    expect(
+      await integrationDatabase.agentPersonaVersion.count({ where: { agentProfileId: profileId } }),
+    ).toBe(3);
+  });
+
+  it("rejects rollback when it would change a currently pinned persona field", async () => {
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const profileId = created.agent.profile.id;
+    const pinned = structuredClone(originalPersonaPack.personas[0]!);
+    pinned.temperament.warmth = 0.45;
+    pinned.evolution.pinnedFields.push("temperament.warmth");
+    await updateAgent(
+      integrationDatabase,
+      actor(admin.id),
+      profileId,
+      updateAgentSchema.parse({
+        persona: pinned,
+        changeSummary: "Warmth alanı değiştirilip sonraki rollbackler için sabitlendi.",
+      }),
+    );
+
+    await expect(
+      updateAgent(
+        integrationDatabase,
+        actor(admin.id),
+        profileId,
+        updateAgentSchema.parse({
+          persona: {
+            ...pinned,
+            temperament: { ...pinned.temperament, warmth: 0.46 },
+          },
+          changeSummary: "Admin edit ile pinned warmth alanını değiştirme denemesi.",
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: { reasonCode: "PERSONA_PINNED_FIELD_CHANGED" },
+    });
+
+    await expect(
+      rollbackPersona(
+        integrationDatabase,
+        actor(admin.id),
+        profileId,
+        personaRollbackSchema.parse({
+          version: 1,
+          reason: "Pinned alanı bozacak eski sürüme dönme denemesi.",
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      details: { reasonCode: "PERSONA_PINNED_FIELD_CHANGED" },
+    });
+    expect(
+      await integrationDatabase.agentPersonaVersion.count({ where: { agentProfileId: profileId } }),
+    ).toBe(2);
+  });
+
   it("rechecks quota consistency on activation and retires without deleting", async () => {
     const admin = await createPrincipal();
     const created = await createFirstAgent(admin.id);
@@ -300,6 +565,11 @@ describe("agent control plane with PostgreSQL", () => {
         lifecycleChangeSchema.parse({ status: "ACTIVE", reason: "Day zero activation attempt." }),
       ),
     ).rejects.toMatchObject({ code: "QUOTA_INVALID" });
+    expect(
+      await integrationDatabase.agentRuntimeEvent.count({
+        where: { eventType: "runtime.production.activated" },
+      }),
+    ).toBe(0);
 
     await updateGlobalSettings(integrationDatabase, actor(admin.id), {
       globalDailyEntryMin: 15,
@@ -316,6 +586,14 @@ describe("agent control plane with PostgreSQL", () => {
         }),
       ),
     ).resolves.toMatchObject({ lifecycleStatus: "ACTIVE" });
+    expect(
+      await integrationDatabase.agentRuntimeEvent.findFirstOrThrow({
+        where: { eventType: "runtime.production.activated" },
+      }),
+    ).toMatchObject({
+      agentProfileId: profileId,
+      metadata: { trigger: "FIRST_AGENT_ACTIVE", timeZone: "Europe/Istanbul" },
+    });
     await expect(
       changeAgentLifecycle(
         integrationDatabase,
@@ -336,6 +614,11 @@ describe("agent control plane with PostgreSQL", () => {
         reason: "Runtime kontrollü olarak devam ettirildi.",
       }),
     );
+    expect(
+      await integrationDatabase.agentRuntimeEvent.count({
+        where: { eventType: "runtime.production.activated" },
+      }),
+    ).toBe(1);
     await changeAgentLifecycle(
       integrationDatabase,
       actor(admin.id),
@@ -354,8 +637,28 @@ describe("agent control plane with PostgreSQL", () => {
         lifecycleChangeSchema.parse({ status: "ACTIVE", reason: "Emekli agent yeniden açılamaz." }),
       ),
     ).rejects.toMatchObject({ code: "AGENT_LIFECYCLE_INVALID" });
+    await expect(
+      integrationDatabase.auditLog.groupBy({
+        by: ["action"],
+        where: {
+          entityId: profileId,
+          action: { in: ["agent.resumed", "agent.paused", "agent.retired"] },
+        },
+        _count: { _all: true },
+        orderBy: { action: "asc" },
+      }),
+    ).resolves.toEqual([
+      { action: "agent.paused", _count: { _all: 1 } },
+      { action: "agent.resumed", _count: { _all: 2 } },
+      { action: "agent.retired", _count: { _all: 1 } },
+    ]);
     expect(
-      await integrationDatabase.auditLog.count({ where: { action: "agent.lifecycle_changed" } }),
+      await integrationDatabase.outboxEvent.count({
+        where: {
+          aggregateId: profileId,
+          eventType: { in: ["agent.resumed", "agent.paused", "agent.retired"] },
+        },
+      }),
     ).toBe(4);
   });
 
@@ -413,7 +716,7 @@ describe("agent control plane with PostgreSQL", () => {
     const measuredAt = new Date();
     const capability = runtimeCapabilityMeasurementSchema.parse({
       codexVersion: "codex-cli 2.4.0",
-      promptProfileHash: "a".repeat(64),
+      promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
       benchmarkRunCount: 10,
       p50DurationMs: 120_000,
       p75DurationMs: 180_000,
@@ -440,11 +743,31 @@ describe("agent control plane with PostgreSQL", () => {
       databaseLatencyImpact: { baselineP95Ms: 10, measuredP95Ms: 12, stable: true },
       capacityStatus: "HEALTHY",
     });
+    await integrationDatabase.$transaction((transaction) =>
+      createRuntimeCapabilityRecord(transaction, {
+        ...capability,
+        dualConcurrencySupported: true,
+        measuredAt,
+        staleAt: new Date(measuredAt.getTime() + 14 * 24 * 60 * 60 * 1000),
+      }),
+    );
     await expect(
-      recordRuntimeCapability(integrationDatabase, actor(admin.id), capability, measuredAt),
+      updateGlobalSettings(integrationDatabase, actor(admin.id), { codexConcurrency: 2 }),
+    ).rejects.toMatchObject({ code: "AGENT_CAPABILITY_REQUIRED" });
+    await expect(
+      recordRuntimeCapability(
+        integrationDatabase,
+        actor(admin.id),
+        capability,
+        new Date(measuredAt.getTime() + 1),
+      ),
     ).resolves.toMatchObject({
       capability: { dualConcurrencySupported: true },
       concurrencyDowngraded: false,
+    });
+    const liveFingerprintEvent = await integrationDatabase.agentRuntimeEvent.findFirstOrThrow({
+      where: { eventType: "agent.capacity.measured" },
+      orderBy: { id: "desc" },
     });
     await expect(
       updateGlobalSettings(integrationDatabase, actor(admin.id), { codexConcurrency: 2 }),
@@ -509,8 +832,8 @@ describe("agent control plane with PostgreSQL", () => {
         timeoutSeconds: 600,
         desiredEntryMin: 0,
         desiredEntryMax: 0,
-        startedAt: measuredAt,
-        finishedAt: new Date(measuredAt.getTime() + 500),
+        startedAt: liveFingerprintEvent.createdAt,
+        finishedAt: new Date(liveFingerprintEvent.createdAt.getTime() + 500),
         usageMetadata: {
           durationMs: 500,
           provider: "codex-cli",
@@ -526,10 +849,17 @@ describe("agent control plane with PostgreSQL", () => {
       dualConcurrencyAvailable: false,
       runtimeFingerprint: {
         codexVersion: "codex-cli 3.0.0",
+        promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+      },
+      observedRuntimeFingerprint: {
+        codexVersion: "codex-cli 3.0.0",
         promptProfileHash: "b".repeat(64),
       },
-      benchmark: { stale: true, staleReasons: ["CODEX_MAJOR", "PROMPT_PROFILE"] },
+      benchmark: { stale: true, staleReasons: ["CODEX_MAJOR"] },
     });
+    await expect(
+      updateGlobalSettings(integrationDatabase, actor(admin.id), { codexConcurrency: 2 }),
+    ).rejects.toMatchObject({ code: "AGENT_CAPABILITY_REQUIRED" });
 
     await expect(
       recordRuntimeCapability(
@@ -565,6 +895,51 @@ describe("agent control plane with PostgreSQL", () => {
       select: { currentPersonaVersionId: true },
     });
     const now = new Date("2026-07-18T12:00:00.000Z");
+    await integrationDatabase.$transaction(async (transaction) => {
+      await createRuntimeCapabilityRecord(transaction, {
+        codexVersion: "codex-cli 2.4.0",
+        promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+        benchmarkRunCount: 10,
+        p50DurationMs: 120_000,
+        p75DurationMs: 180_000,
+        p95DurationMs: 240_000,
+        maxDurationMs: 300_000,
+        successfulActionCount: 20,
+        proposedEntryActionCount: 18,
+        publishedEntries: 18,
+        failureRate: 0,
+        duplicateRetryRate: 0,
+        singleProcessPeakRssMb: 400,
+        dualProcessPeakRssMb: null,
+        systemPeakMemoryMb: 3000,
+        availableMemoryMb: 900,
+        swapInMb: 0,
+        swapOutMb: 0,
+        loadAverage1m: 1,
+        dualRunSuccessCount: 0,
+        oomDetected: false,
+        swapThrashingDetected: false,
+        healthStable: true,
+        readinessStable: true,
+        appLatencyImpact: { baselineP95Ms: 50, measuredP95Ms: 50, stable: true },
+        databaseLatencyImpact: { baselineP95Ms: 10, measuredP95Ms: 10, stable: true },
+        capacityStatus: "HEALTHY",
+        dualConcurrencySupported: false,
+        measuredAt: new Date(now.getTime() - 60 * 60_000),
+        staleAt: new Date(now.getTime() + 14 * 24 * 60 * 60_000),
+      });
+      await transaction.agentRuntimeEvent.create({
+        data: {
+          eventType: "agent.capacity.measured",
+          safeMessage: "Capacity integration fingerprint fixture.",
+          metadata: {
+            codexVersion: "codex-cli 2.4.0",
+            promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+          },
+          createdAt: new Date(now.getTime() - 60 * 60_000),
+        },
+      });
+    });
     const terminal = [
       {
         status: "SUCCEEDED" as const,
@@ -592,6 +967,8 @@ describe("agent control plane with PostgreSQL", () => {
       },
     ];
     for (const [index, run] of terminal.entries()) {
+      const codexStartedAt = index === 0 ? new Date(now.getTime() - 60 * 60_000) : run.startedAt;
+      const codexDurationMs = run.finishedAt.getTime() - codexStartedAt.getTime();
       await integrationDatabase.agentRun.create({
         data: {
           agentProfileId: created.agent.profile.id,
@@ -607,6 +984,19 @@ describe("agent control plane with PostgreSQL", () => {
           startedAt: run.startedAt,
           finishedAt: run.finishedAt,
           errorCode: run.errorCode,
+          usageMetadata: {
+            durationMs: codexDurationMs,
+            provider: "codex-cli",
+            model: "codex-cli 2.4.0",
+            promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+            codexIntervals: [
+              {
+                startedAt: codexStartedAt.toISOString(),
+                finishedAt: run.finishedAt.toISOString(),
+                durationMs: codexDurationMs,
+              },
+            ],
+          },
         },
       });
     }
@@ -623,26 +1013,160 @@ describe("agent control plane with PostgreSQL", () => {
         desiredEntryMin: 2,
         desiredEntryMax: 3,
         createdAt: oldestQueuedAt,
+        availableAt: oldestQueuedAt,
+      },
+    });
+    await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: created.agent.profile.id,
+        personaVersionId: profile.currentPersonaVersionId!,
+        runType: "NORMAL_WAKE",
+        queuePriority: "SCHEDULED_CONTENT",
+        trigger: "INTEGRATION_METRIC_FUTURE",
+        idempotencyKey: "integration-metric-future-queued",
+        timeoutSeconds: 600,
+        desiredEntryMin: 2,
+        desiredEntryMax: 3,
+        createdAt: new Date(now.getTime() - 30 * 60_000),
+        availableAt: new Date(now.getTime() + 60 * 60_000),
       },
     });
     const capacity = await getRuntimeCapacity(integrationDatabase, actor(admin.id), now);
     expect(capacity).toMatchObject({
-      capacityStatus: "AT_RISK",
+      capacityStatus: "HEALTHY",
+      queueLagMs: 20 * 60_000,
+      estimatedCompletionDurationMs: 180_000,
+      estimatedCompletionAt: new Date(now.getTime() + 180_000),
+      estimationBasis: "P75",
       operational: {
         terminalRunsInErrorWindow: 3,
         failedRunsInErrorWindow: 2,
+        eligibleQueuedRunCount: 1,
         oldestQueuedAt,
       },
       circuitBreakers: {
         runtimeErrorRate: 2 / 3,
         writeRunsPaused: true,
         runtimePaused: false,
-        catchUpFrozen: true,
+        catchUpFrozen: false,
       },
     });
     expect(capacity.operational.utilization15m).toBeCloseTo(1, 5);
     expect(capacity.operational.utilization1h).toBeCloseTo(1, 5);
-    expect(capacity.operational.utilization2h).toBeCloseTo(0.925, 4);
+    expect(capacity.operational.utilization2h).toBeCloseTo(0.5, 4);
+  });
+
+  it("merges busy intervals per run while preserving parallel configured-window capacity", async () => {
+    const admin = await createPrincipal();
+    const first = await createFirstAgent(admin.id);
+    const second = await createAgent(
+      integrationDatabase,
+      actor(admin.id),
+      createAgentSchema.parse({
+        persona: originalPersonaPack.personas[1],
+        creation: {
+          method: "TEMPLATE",
+          templateUsername: originalPersonaPack.personas[1]!.username,
+        },
+      }),
+    );
+    const now = new Date("2026-07-18T12:00:00.000Z");
+    const startedAt = new Date(now.getTime() - 30 * 60_000);
+    for (const [index, created] of [first, second].entries())
+      await integrationDatabase.agentRun.create({
+        data: {
+          agentProfileId: created.agent.profile.id,
+          personaVersionId: created.agent.personaVersion.id,
+          runType: "NORMAL_WAKE",
+          runStatus: "SUCCEEDED",
+          queuePriority: "SCHEDULED_CONTENT",
+          trigger: "CONFIGURED_UTILIZATION_WINDOW_TEST",
+          idempotencyKey: `configured-utilization:${index}:${randomUUID()}`,
+          timeoutSeconds: 600,
+          desiredEntryMin: 0,
+          desiredEntryMax: 0,
+          startedAt,
+          finishedAt: now,
+          usageMetadata: {
+            provider: "codex-cli",
+            durationMs: 30 * 60_000,
+            codexIntervals: [
+              {
+                startedAt: startedAt.toISOString(),
+                finishedAt: now.toISOString(),
+                durationMs: 30 * 60_000,
+              },
+            ],
+          },
+        },
+      });
+
+    const operational = await inTransaction(integrationDatabase, async (transaction) => {
+      const settings = await transaction.agentGlobalSettings.findUniqueOrThrow({
+        where: { id: "global" },
+        select: { circuitBreakerConfig: true },
+      });
+      const config = circuitBreakerConfigSchema.parse({
+        ...(settings.circuitBreakerConfig as Record<string, unknown>),
+        utilizationWindowMinutes: 30,
+      });
+      return getRuntimeOperationalMetrics(transaction, { now, concurrency: 2, config });
+    });
+
+    expect(operational.configuredWindowUtilization).toBeCloseTo(1, 5);
+    expect(operational.utilization15m).toBeCloseTo(1, 5);
+    expect(operational.utilization1h).toBeCloseTo(0.5, 5);
+    expect(operational.utilization2h).toBeCloseTo(0.25, 5);
+  });
+
+  it("includes the current Codex phase but excludes non-Codex active run time", async () => {
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const now = new Date("2026-07-18T12:00:00.000Z");
+    const runStartedAt = new Date(now.getTime() - 10 * 60_000);
+    const codexStartedAt = new Date(now.getTime() - 2 * 60_000);
+    const run = await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: created.agent.profile.id,
+        personaVersionId: created.agent.personaVersion.id,
+        runType: "NORMAL_WAKE",
+        runStatus: "RUNNING",
+        queuePriority: "SCHEDULED_CONTENT",
+        trigger: "ACTIVE_CODEX_UTILIZATION_FIXTURE",
+        idempotencyKey: "active-codex-utilization-fixture",
+        timeoutSeconds: 900,
+        desiredEntryMin: 2,
+        desiredEntryMax: 3,
+        startedAt: runStartedAt,
+        leaseOwner: "capacity-metric-worker",
+        leaseExpiresAt: new Date(now.getTime() + 60_000),
+        heartbeatAt: codexStartedAt,
+      },
+    });
+    await integrationDatabase.agentRuntimeState.update({
+      where: { agentProfileId: created.agent.profile.id },
+      data: {
+        currentRunId: run.id,
+        runtimeStatus: "THINKING",
+        lastRunAt: runStartedAt,
+        lastHeartbeatAt: codexStartedAt,
+      },
+    });
+    await integrationDatabase.agentRuntimeEvent.create({
+      data: {
+        agentProfileId: created.agent.profile.id,
+        runId: run.id,
+        eventType: "agent.heartbeat",
+        safeMessage: "Active Codex utilization fixture.",
+        metadata: { runtimeStatus: "THINKING", cancelRequested: false },
+        createdAt: codexStartedAt,
+      },
+    });
+
+    const capacity = await getRuntimeCapacity(integrationDatabase, actor(admin.id), now);
+    expect(capacity.operational.utilization15m).toBeCloseTo(2 / 15, 5);
+    expect(capacity.operational.utilization1h).toBeCloseTo(2 / 60, 5);
+    expect(capacity.operational.utilization2h).toBeCloseTo(2 / 120, 5);
   });
 
   it("administers source evolution with pin, block, approval and weekly score limits", async () => {
@@ -686,6 +1210,26 @@ describe("agent control plane with PostgreSQL", () => {
       new Date("2026-07-18T08:00:00.000Z"),
     );
     expect(trusted).toMatchObject({ status: "TRUSTED", adminPinned: true, trustScore: 0.56 });
+    const trustAudit = await integrationDatabase.auditLog.findFirstOrThrow({
+      where: {
+        action: "agent.source.changed",
+        entityType: "AgentSource",
+        entityId: source.id,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(trustAudit.metadata).toMatchObject({
+      changeOrigin: "ADMIN",
+      scoreChanges: { trustScore: { from: 0.5, to: 0.56 } },
+      before: { trustScore: 0.5 },
+      after: { trustScore: 0.56 },
+      weeklyScoreBudget: {
+        timeZone: "Europe/Istanbul",
+        fields: {
+          trustScore: { usedBefore: 0, requested: 0.06, usedAfter: 0.06, bound: 0.1 },
+        },
+      },
+    });
     await expect(
       updateAgentSourceAdmin(
         integrationDatabase,
@@ -733,12 +1277,12 @@ describe("agent control plane with PostgreSQL", () => {
     ).resolves.toBeNull();
     expect(
       await integrationDatabase.auditLog.count({
-        where: { action: "agent.source.updated", entityId: source.id },
+        where: { action: "agent.source.changed", entityId: source.id },
       }),
     ).toBe(2);
     expect(
       await integrationDatabase.outboxEvent.count({
-        where: { eventType: "agent.source_updated", aggregateId: source.id },
+        where: { eventType: "agent.source.changed", aggregateId: source.id },
       }),
     ).toBe(2);
   });

@@ -1,4 +1,17 @@
 import { AppError } from "@/lib/http/errors";
+import { z } from "zod";
+
+export const quotaSettingsSnapshotSchema = z
+  .object({
+    quotaMode: z.enum(["PER_AGENT", "GLOBAL_TOTAL", "HYBRID"]),
+    defaultDailyEntryMin: z.number().int().min(0).max(100),
+    defaultDailyEntryMax: z.number().int().min(0).max(100),
+    globalDailyEntryMin: z.number().int().min(0).max(5000),
+    globalDailyEntryMax: z.number().int().min(0).max(5000),
+  })
+  .strict();
+
+export type QuotaSettingsSnapshot = z.infer<typeof quotaSettingsSnapshotSchema>;
 
 interface QuotaSettings {
   defaultDailyEntryMin: number;
@@ -11,6 +24,39 @@ interface AgentQuota {
   useGlobalEntryQuota: boolean;
   dailyEntryMin: number | null;
   dailyEntryMax: number | null;
+}
+
+export function quotaSettingsSnapshot(settings: unknown): QuotaSettingsSnapshot {
+  return quotaSettingsSnapshotSchema.parse(settings);
+}
+
+export function istanbulQuotaLocalDate(now: Date): Date {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Istanbul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day)));
+}
+
+export function nextIstanbulQuotaLocalDate(now: Date): Date {
+  return new Date(istanbulQuotaLocalDate(now).getTime() + 24 * 60 * 60_000);
+}
+
+export function resolveQuotaSettings<T extends QuotaSettingsSnapshot>(
+  stored: T & { pendingQuotaSettings?: unknown; pendingQuotaEffectiveDate?: Date | null },
+  localDate: Date,
+): T {
+  if (
+    !stored.pendingQuotaEffectiveDate ||
+    stored.pendingQuotaSettings === null ||
+    stored.pendingQuotaSettings === undefined ||
+    stored.pendingQuotaEffectiveDate.getTime() > localDate.getTime()
+  )
+    return stored;
+  return { ...stored, ...quotaSettingsSnapshotSchema.parse(stored.pendingQuotaSettings) };
 }
 
 export function assertQuotaConsistency(settings: QuotaSettings, profiles: AgentQuota[]): void {

@@ -1,4 +1,16 @@
-import type { AgentSourceStatus, Prisma } from "@prisma/client";
+import { randomUUID } from "node:crypto";
+import { Prisma, type AgentSourceStatus } from "@prisma/client";
+import { assertSafeAuditMetadata } from "@/modules/audit/domain/metadata";
+import { insertAuditLog } from "@/modules/audit/repository/audit";
+import {
+  istanbulQuotaLocalDate,
+  quotaSettingsSnapshotSchema,
+  resolveQuotaSettings,
+} from "@/modules/agents/domain/quota";
+import { assertSafeOutboxPayload } from "@/modules/outbox/domain/event";
+import { insertOutboxEvent } from "@/modules/outbox/repository/outbox";
+
+const GLOBAL_SETTINGS_AGGREGATE_ID = "00000000-0000-4000-8000-000000000001";
 
 export function findAgentAdminPrincipal(transaction: Prisma.TransactionClient, actorId: string) {
   return transaction.user.findUnique({
@@ -108,17 +120,17 @@ export function updateAgentSourceAdminRecord(
   });
 }
 
-export function listRecentAgentSourceScoreAudits(
+export function listAgentSourceScoreAudits(
   transaction: Prisma.TransactionClient,
   sourceId: string,
-  since: Date,
+  window: { start: Date; end: Date },
 ) {
   return transaction.auditLog.findMany({
     where: {
-      action: "agent.source.updated",
+      action: { in: ["agent.source.changed", "agent.source.updated"] },
       entityType: "AgentSource",
       entityId: sourceId,
-      createdAt: { gte: since },
+      createdAt: { gte: window.start, lt: window.end },
     },
     select: { metadata: true },
     orderBy: { createdAt: "asc" },
@@ -252,7 +264,7 @@ export async function createAgentRecords(
       agentProfileId: profile.id,
       tokenHash: input.credentialTokenHash,
       prefix: input.credentialPrefix,
-      scopes: ["runtime:lease", "runtime:read", "runtime:write"],
+      scopes: ["runtime:lease", "runtime:read", "runtime:write", "runtime:plan"],
     },
   });
   if (input.sources.length > 0) {
@@ -392,6 +404,68 @@ export function findAgentDetailRecord(
       },
       sources: { orderBy: [{ adminPinned: "desc" }, { trustScore: "desc" }], take: 100 },
       runs: { orderBy: { createdAt: "desc" }, take: 50 },
+      dailyPlans: {
+        orderBy: { localDate: "desc" },
+        take: 7,
+        select: {
+          id: true,
+          localDate: true,
+          entryTarget: true,
+          topicTarget: true,
+          voteTarget: true,
+          status: true,
+          slots: {
+            orderBy: { scheduledAt: "asc" },
+            take: 24,
+            select: {
+              id: true,
+              scheduledAt: true,
+              runType: true,
+              status: true,
+              runId: true,
+            },
+          },
+        },
+      },
+      actions: {
+        orderBy: { createdAt: "desc" },
+        take: 200,
+        select: {
+          id: true,
+          actionType: true,
+          actionStatus: true,
+          targetType: true,
+          targetId: true,
+          createdAt: true,
+        },
+      },
+      beliefs: {
+        orderBy: { lastUpdatedAt: "desc" },
+        take: 20,
+        select: {
+          id: true,
+          topicKey: true,
+          statement: true,
+          confidence: true,
+          status: true,
+          version: true,
+          lastUpdatedAt: true,
+        },
+      },
+      relationships: {
+        orderBy: { updatedAt: "desc" },
+        take: 20,
+        select: {
+          id: true,
+          familiarity: true,
+          trust: true,
+          interest: true,
+          disagreement: true,
+          summary: true,
+          lastInteractionAt: true,
+          targetUser: { select: { username: true, displayName: true } },
+        },
+      },
       _count: {
         select: {
           memoryEpisodes: true,
@@ -510,8 +584,147 @@ export function updateAgentLifecycle(
   });
 }
 
-export function getGlobalSettingsRecord(transaction: Prisma.TransactionClient) {
+export function getStoredGlobalSettingsRecord(transaction: Prisma.TransactionClient) {
   return transaction.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } });
+}
+
+export async function getGlobalSettingsRecord(
+  transaction: Prisma.TransactionClient,
+  localDate = istanbulQuotaLocalDate(new Date()),
+) {
+  const stored = await getStoredGlobalSettingsRecord(transaction);
+  return resolveQuotaSettings(stored, localDate);
+}
+
+export async function promotePendingQuotaSettingsRecord(
+  transaction: Prisma.TransactionClient,
+  localDate: Date,
+  auditContext?: {
+    actorId: string;
+    actorKind: "HUMAN" | "AGENT";
+    requestId: string;
+  },
+) {
+  const stored = await getStoredGlobalSettingsRecord(transaction);
+  if (
+    !stored.pendingQuotaEffectiveDate ||
+    stored.pendingQuotaSettings === null ||
+    stored.pendingQuotaEffectiveDate.getTime() > localDate.getTime()
+  )
+    return { settings: resolveQuotaSettings(stored, localDate), promoted: false } as const;
+  const quota = quotaSettingsSnapshotSchema.parse(stored.pendingQuotaSettings);
+  const updated = await transaction.agentGlobalSettings.update({
+    where: { id: "global" },
+    data: {
+      ...quota,
+      pendingQuotaSettings: Prisma.DbNull,
+      pendingQuotaEffectiveDate: null,
+      settingsVersion: { increment: 1 },
+    },
+  });
+  const actorId = auditContext?.actorId ?? stored.updatedById;
+  const actorKind = auditContext?.actorKind ?? (actorId ? "HUMAN" : null);
+  const requestId = auditContext?.requestId ?? randomUUID();
+  const effectiveLocalDate = stored.pendingQuotaEffectiveDate.toISOString().slice(0, 10);
+  const before = {
+    quotaMode: stored.quotaMode,
+    defaultDailyEntryMin: stored.defaultDailyEntryMin,
+    defaultDailyEntryMax: stored.defaultDailyEntryMax,
+    globalDailyEntryMin: stored.globalDailyEntryMin,
+    globalDailyEntryMax: stored.globalDailyEntryMax,
+  };
+  const after = {
+    quotaMode: updated.quotaMode,
+    defaultDailyEntryMin: updated.defaultDailyEntryMin,
+    defaultDailyEntryMax: updated.defaultDailyEntryMax,
+    globalDailyEntryMin: updated.globalDailyEntryMin,
+    globalDailyEntryMax: updated.globalDailyEntryMax,
+  };
+  const metadata = {
+    actorKind,
+    before,
+    after,
+    reason: "Pending quota settings reached their effective Europe/Istanbul date.",
+    settingsKey: "global",
+    changedFields: [
+      "quotaMode",
+      "defaultDailyEntryMin",
+      "defaultDailyEntryMax",
+      "globalDailyEntryMin",
+      "globalDailyEntryMax",
+    ],
+    quotaApplyMode: "PROMOTE_PENDING",
+    effectiveLocalDate,
+    previousSettingsVersion: stored.settingsVersion,
+    settingsVersion: updated.settingsVersion,
+  };
+  assertSafeAuditMetadata(metadata);
+  assertSafeOutboxPayload(metadata);
+  await insertAuditLog(transaction, {
+    actorId,
+    action: "agent.settings.changed",
+    entityType: "AgentGlobalSettings",
+    entityId: GLOBAL_SETTINGS_AGGREGATE_ID,
+    requestId,
+    metadata,
+  });
+  await insertOutboxEvent(transaction, {
+    eventType: "agent.settings.changed",
+    aggregateType: "AgentGlobalSettings",
+    aggregateId: GLOBAL_SETTINGS_AGGREGATE_ID,
+    actorId,
+    actorKind,
+    requestId,
+    payload: metadata,
+  });
+  await appendRuntimeEvent(transaction, {
+    eventType: "quota.changed",
+    safeMessage: "Bekleyen global quota ayarları planlanan İstanbul tarihinde devreye girdi.",
+    metadata: {
+      quotaApplyMode: "PROMOTE_PENDING",
+      effectiveLocalDate,
+      settingsVersion: updated.settingsVersion,
+    },
+  });
+  return { settings: updated, promoted: true } as const;
+}
+
+export function getProductionActivationAnchor(transaction: Prisma.TransactionClient) {
+  return transaction.agentRuntimeEvent.findFirst({
+    where: { eventType: "runtime.production.activated" },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { id: true, agentProfileId: true, createdAt: true },
+  });
+}
+
+export async function ensureProductionActivationAnchor(
+  transaction: Prisma.TransactionClient,
+  input: { agentProfileId: string; activatedAt: Date },
+) {
+  const existing = await getProductionActivationAnchor(transaction);
+  if (existing) return existing;
+  return transaction.agentRuntimeEvent.create({
+    data: {
+      agentProfileId: input.agentProfileId,
+      eventType: "runtime.production.activated",
+      safeMessage: "İlk agent ACTIVE oldu; production kritik breaker koruma penceresi başladı.",
+      metadata: { trigger: "FIRST_AGENT_ACTIVE", timeZone: "Europe/Istanbul" },
+      createdAt: input.activatedAt,
+    },
+    select: { id: true, agentProfileId: true, createdAt: true },
+  });
+}
+
+export function pauseGlobalRuntimeForCriticalBreakerRecord(transaction: Prisma.TransactionClient) {
+  return transaction.agentGlobalSettings.update({
+    where: { id: "global" },
+    data: {
+      runtimeEnabled: false,
+      settingsVersion: { increment: 1 },
+      updatedBy: { disconnect: true },
+    },
+    select: { runtimeEnabled: true, settingsVersion: true, updatedAt: true },
+  });
 }
 
 export function getQuotaProfiles(transaction: Prisma.TransactionClient) {
@@ -525,10 +738,18 @@ export function updateGlobalSettingsRecord(
   transaction: Prisma.TransactionClient,
   actorId: string,
   data: Prisma.AgentGlobalSettingsUpdateInput,
+  options: { clearPendingQuota?: boolean } = {},
 ) {
   return transaction.agentGlobalSettings.update({
     where: { id: "global" },
-    data: { ...data, settingsVersion: { increment: 1 }, updatedBy: { connect: { id: actorId } } },
+    data: {
+      ...data,
+      ...(options.clearPendingQuota
+        ? { pendingQuotaSettings: Prisma.DbNull, pendingQuotaEffectiveDate: null }
+        : {}),
+      settingsVersion: { increment: 1 },
+      updatedBy: { connect: { id: actorId } },
+    },
   });
 }
 
@@ -550,7 +771,7 @@ export async function rotateAgentCredentialRecords(
       agentProfileId: input.agentProfileId,
       tokenHash: input.tokenHash,
       prefix: input.prefix,
-      scopes: ["runtime:lease", "runtime:read", "runtime:write"],
+      scopes: ["runtime:lease", "runtime:read", "runtime:write", "runtime:plan"],
     },
     select: { id: true, prefix: true, scopes: true, createdAt: true },
   });

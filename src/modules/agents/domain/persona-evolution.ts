@@ -352,6 +352,13 @@ function applyInterestDeltas(
 
 function assertPinnedFieldsUnchanged(current: SeedPersona, candidate: SeedPersona): void {
   for (const path of current.evolution.pinnedFields) {
+    if (!candidate.evolution.pinnedFields.includes(path)) {
+      throw evolutionError(
+        "PERSONA_PINNED_FIELD_CHANGED",
+        "Pinned persona alanı kaldırılamaz veya serbest bırakılamaz.",
+        `evolution.pinnedFields.${path}`,
+      );
+    }
     const before = pinnedPathValue(current, path);
     const after = pinnedPathValue(candidate, path);
     if (!before.found || !after.found || !isDeepStrictEqual(before.value, after.value)) {
@@ -376,13 +383,24 @@ function assertPinnedFieldsUnchanged(current: SeedPersona, candidate: SeedPerson
   }
 }
 
+export function assertPinnedPersonaFieldsUnchanged(
+  currentPersona: unknown,
+  candidatePersona: unknown,
+): void {
+  const current = seedPersonaSchema.parse(currentPersona);
+  const candidate = seedPersonaSchema.parse(candidatePersona);
+  assertPinnedPathsResolve(current);
+  assertPinnedPathsResolve(candidate);
+  assertPinnedFieldsUnchanged(current, candidate);
+}
+
 export function applyWeeklyPersonaEvolution(
   input: ApplyWeeklyPersonaEvolutionInput,
 ): AppliedWeeklyPersonaEvolution {
   const current = seedPersonaSchema.parse(input.currentPersona);
   const delta = assertWeeklyPersonaEvolutionBudget({
     delta: input.delta,
-    previousWeeklyDeltas: input.previousWeeklyDeltas,
+    ...(input.previousWeeklyDeltas ? { previousWeeklyDeltas: input.previousWeeklyDeltas } : {}),
   });
   assertPinnedPathsResolve(current);
 

@@ -21,6 +21,60 @@ export interface RuntimeCapabilityMeasurement {
 
 export type CapabilityStaleReason = "AGE" | "CODEX_MAJOR" | "PROMPT_PROFILE";
 
+export interface RuntimeFingerprint {
+  codexVersion?: string;
+  promptProfileHash?: string;
+}
+
+export type CapacityWarning =
+  | "BENCHMARK_MISSING"
+  | "BENCHMARK_STALE"
+  | "CAPACITY_AT_RISK"
+  | "OVERLOADED"
+  | "PROJECTED_TARGET_MISS";
+
+export function estimateRuntimeCompletion(input: {
+  now: Date;
+  p75DurationMs: number | null;
+  benchmarkFresh: boolean;
+  concurrency: 1 | 2;
+  eligibleQueuedRuns: number;
+  activeRunStartedAts: Date[];
+}): { durationMs: number; estimatedAt: Date } | null {
+  if (
+    !Number.isInteger(input.eligibleQueuedRuns) ||
+    input.eligibleQueuedRuns < 0 ||
+    ![1, 2].includes(input.concurrency)
+  )
+    throw new RangeError("Runtime completion estimator girdileri geçersizdir.");
+  if (!input.benchmarkFresh || input.p75DurationMs === null || input.p75DurationMs <= 0)
+    return null;
+  const activeRemainingMs = input.activeRunStartedAts.reduce(
+    (sum, startedAt) =>
+      sum + Math.max(0, input.p75DurationMs! - (input.now.getTime() - startedAt.getTime())),
+    0,
+  );
+  const queuedWorkMs = input.eligibleQueuedRuns * input.p75DurationMs;
+  const durationMs = Math.ceil((activeRemainingMs + queuedWorkMs) / input.concurrency);
+  return { durationMs, estimatedAt: new Date(input.now.getTime() + durationMs) };
+}
+
+export function runtimeFingerprint(usageMetadata: unknown): RuntimeFingerprint {
+  if (!usageMetadata || typeof usageMetadata !== "object" || Array.isArray(usageMetadata))
+    return {};
+  const metadata = usageMetadata as Record<string, unknown>;
+  return {
+    ...(typeof metadata.model === "string"
+      ? { codexVersion: metadata.model }
+      : typeof metadata.codexVersion === "string"
+        ? { codexVersion: metadata.codexVersion }
+        : {}),
+    ...(typeof metadata.promptProfileHash === "string"
+      ? { promptProfileHash: metadata.promptProfileHash }
+      : {}),
+  };
+}
+
 function majorVersion(version: string): number | null {
   const match = version.match(/(?:^|\D)(\d+)(?:\.|\D|$)/u);
   return match?.[1] ? Number(match[1]) : null;
@@ -52,6 +106,7 @@ export function supportsDualConcurrency(
   capability: RuntimeCapabilityMeasurement | null,
   input: { now: Date; codexVersion?: string; promptProfileHash?: string },
 ): boolean {
+  if (!input.codexVersion || !input.promptProfileHash) return false;
   if (!capability || !capabilityFreshness(capability, input).fresh) return false;
   return (
     capability.dualConcurrencySupported &&
@@ -63,9 +118,9 @@ export function supportsDualConcurrency(
 
 export function assertDualConcurrencySupported(
   capability: RuntimeCapabilityMeasurement | null,
-  now = new Date(),
+  input: { now: Date } & RuntimeFingerprint,
 ): void {
-  if (!supportsDualConcurrency(capability, { now })) {
+  if (!supportsDualConcurrency(capability, input)) {
     throw new AppError(
       "AGENT_CAPABILITY_REQUIRED",
       409,
@@ -80,6 +135,7 @@ export function calculateRuntimeCapacity(input: {
   completedRuns: number;
   estimatedPublishedMin: number;
   estimatedPublishedMax: number;
+  targetPublishedEntries?: number;
   configuredConcurrency: 1 | 2;
   degradedMode: boolean;
   now: Date;
@@ -124,6 +180,34 @@ export function calculateRuntimeCapacity(input: {
           ? "AT_RISK"
           : "HEALTHY";
   }
+  const capacityRunBudget =
+    input.capability && freshness?.fresh
+      ? Math.floor(reservedCapacityMinutes / (input.capability.p75DurationMs / 60_000))
+      : null;
+  const projectedPublishedMax =
+    capacityRunBudget === null
+      ? null
+      : input.plannedRuns === 0
+        ? 0
+        : Math.min(
+            input.estimatedPublishedMax,
+            Math.floor(
+              input.estimatedPublishedMax * Math.min(1, capacityRunBudget / input.plannedRuns),
+            ),
+          );
+  const targetPublishedEntries = input.targetPublishedEntries ?? input.estimatedPublishedMax;
+  const projectedShortfallEntries =
+    projectedPublishedMax === null
+      ? null
+      : Math.max(0, targetPublishedEntries - projectedPublishedMax);
+  if (capacityStatus === "HEALTHY" && !input.degradedMode && (projectedShortfallEntries ?? 0) > 0)
+    capacityStatus = "AT_RISK";
+  const warnings: CapacityWarning[] = [];
+  if (!input.capability) warnings.push("BENCHMARK_MISSING");
+  else if (!freshness?.fresh) warnings.push("BENCHMARK_STALE");
+  if (capacityStatus === "AT_RISK") warnings.push("CAPACITY_AT_RISK");
+  if (capacityStatus === "OVERLOADED") warnings.push("OVERLOADED");
+  if ((projectedShortfallEntries ?? 0) > 0) warnings.push("PROJECTED_TARGET_MISS");
   return {
     capacityStatus,
     plannedRuns: input.plannedRuns,
@@ -141,6 +225,12 @@ export function calculateRuntimeCapacity(input: {
       requiredContentMinutes === null ? null : 1 - requiredContentMinutes / grossCapacityMinutes,
     estimatedPublishedMin: input.estimatedPublishedMin,
     estimatedPublishedMax: input.estimatedPublishedMax,
+    targetPublishedEntries,
+    capacityRunBudget,
+    projectedPublishedMax,
+    projectedShortfallEntries,
+    projectedTargetMiss: projectedShortfallEntries !== null && projectedShortfallEntries > 0,
+    warnings,
     benchmark: input.capability
       ? {
           runCount: input.capability.benchmarkRunCount,

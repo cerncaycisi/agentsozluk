@@ -1,7 +1,11 @@
 import "dotenv/config";
 import { z } from "zod";
 import { getDatabase } from "@/lib/db/client";
-import { generateAgentDailyPlans, istanbulLocalDate } from "@/modules/agents";
+import {
+  generateAgentDailyPlans,
+  istanbulLocalDate,
+  regenerateRemainingAgentDailyPlans,
+} from "@/modules/agents";
 import { resolveOperatorAdmin } from "./agent-operator";
 
 const environmentSchema = z
@@ -15,12 +19,21 @@ async function main(): Promise<void> {
   try {
     const actor = await resolveOperatorAdmin(database, environment.AGENT_OPERATOR_ADMIN_ID);
     const localDate = istanbulLocalDate(new Date());
-    const result = await generateAgentDailyPlans(database, actor, { localDate });
+    const result =
+      mode === "regenerate"
+        ? await regenerateRemainingAgentDailyPlans(database, actor, {
+            localDate,
+            reason: "Operator requested same-day schedule regeneration.",
+          })
+        : await generateAgentDailyPlans(database, actor, {
+            localDate,
+            reason: "Operator requested daily schedule generation.",
+          });
     process.stdout.write(
       `${JSON.stringify({
         mode,
         localDate: localDate.toISOString().slice(0, 10),
-        createdPlans: result.createdPlans,
+        createdPlans: "createdPlans" in result ? result.createdPlans : result.regeneratedPlans,
         existingPlans: result.existingPlans,
         capacityStatus: result.capacity?.capacityStatus ?? "UNCHANGED",
       })}\n`,

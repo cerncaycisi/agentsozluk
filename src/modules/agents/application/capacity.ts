@@ -5,7 +5,9 @@ import type { ActorContext } from "@/modules/auth/domain/actor";
 import { requireAgentAdminInTransaction } from "@/modules/agents/application/authorization";
 import {
   calculateRuntimeCapacity,
+  estimateRuntimeCompletion,
   MINIMUM_DUAL_CONCURRENCY_MEMORY_MB,
+  runtimeFingerprint,
   supportsDualConcurrency,
 } from "@/modules/agents/domain/capacity";
 import {
@@ -15,6 +17,8 @@ import {
 import {
   createRuntimeCapabilityRecord,
   getCapacityPlanningMetrics,
+  getLatestActualCapacitySloMiss,
+  getLatestCapacityPlanningEvidence,
   getLatestRuntimeCapability,
   getLatestRuntimeFingerprintRecord,
   getRuntimeOperationalMetrics,
@@ -27,6 +31,7 @@ import {
 } from "@/modules/agents/repository/control-plane";
 import type { RuntimeCapabilityMeasurementInput } from "@/modules/agents/validation/capacity-schemas";
 import { appendOutboxEvent } from "@/modules/outbox";
+import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 
 const CAPABILITY_STALE_AFTER_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -41,21 +46,6 @@ function istanbulLocalDate(now: Date): Date {
   return new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day)));
 }
 
-function runtimeFingerprint(usageMetadata: unknown): {
-  codexVersion?: string;
-  promptProfileHash?: string;
-} {
-  if (!usageMetadata || typeof usageMetadata !== "object" || Array.isArray(usageMetadata))
-    return {};
-  const metadata = usageMetadata as Record<string, unknown>;
-  return {
-    ...(typeof metadata.model === "string" ? { codexVersion: metadata.model } : {}),
-    ...(typeof metadata.promptProfileHash === "string"
-      ? { promptProfileHash: metadata.promptProfileHash }
-      : {}),
-  };
-}
-
 export function getRuntimeCapacity(
   client: DatabaseExecutor,
   actor: ActorContext,
@@ -64,13 +54,26 @@ export function getRuntimeCapacity(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     const localDate = istanbulLocalDate(now);
-    const [settings, capability, planning, fingerprintRecord] = await Promise.all([
+    const [
+      settings,
+      capability,
+      planning,
+      fingerprintRecord,
+      planningEvidence,
+      latestActualSloMiss,
+    ] = await Promise.all([
       getGlobalSettingsRecord(transaction),
       getLatestRuntimeCapability(transaction),
       getCapacityPlanningMetrics(transaction, localDate),
       getLatestRuntimeFingerprintRecord(transaction),
+      getLatestCapacityPlanningEvidence(transaction, localDate),
+      getLatestActualCapacitySloMiss(transaction),
     ]);
-    const fingerprint = runtimeFingerprint(fingerprintRecord?.usageMetadata);
+    const observedFingerprint = runtimeFingerprint(fingerprintRecord?.usageMetadata);
+    const fingerprint = {
+      codexVersion: observedFingerprint.codexVersion ?? "UNKNOWN",
+      promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+    };
     const configuredConcurrency = settings.codexConcurrency === 2 ? 2 : 1;
     const calculated = calculateRuntimeCapacity({
       capability,
@@ -89,13 +92,36 @@ export function getRuntimeCapacity(
       circuitBreakerConfigSchema.parse(settings.circuitBreakerConfig),
       operational,
     );
+    const warnings =
+      circuitBreakers.capacityAtRisk && !calculated.warnings.includes("CAPACITY_AT_RISK")
+        ? [...calculated.warnings, "CAPACITY_AT_RISK" as const]
+        : calculated.warnings;
+    const queueLagMs = operational.oldestQueuedAt
+      ? Math.max(0, now.getTime() - operational.oldestQueuedAt.getTime())
+      : 0;
+    const completion = estimateRuntimeCompletion({
+      now,
+      p75DurationMs: capability?.p75DurationMs ?? null,
+      benchmarkFresh: calculated.benchmark?.stale === false,
+      concurrency: calculated.effectiveConcurrency === 2 ? 2 : 1,
+      eligibleQueuedRuns: operational.eligibleQueuedRunCount,
+      activeRunStartedAts: operational.activeRunStartedAts,
+    });
     return {
       localDate,
       runtimeEnabled: settings.runtimeEnabled,
       dualConcurrencyAvailable: supportsDualConcurrency(capability, { now, ...fingerprint }),
       runtimeFingerprint: fingerprint,
+      observedRuntimeFingerprint: observedFingerprint,
+      planningEvidence,
+      latestActualSloMiss,
+      queueLagMs,
+      estimatedCompletionDurationMs: completion?.durationMs ?? null,
+      estimatedCompletionAt: completion?.estimatedAt ?? null,
+      estimationBasis: completion ? ("P75" as const) : ("UNKNOWN" as const),
       ...calculated,
       capacityStatus: circuitBreakers.capacityAtRisk ? "AT_RISK" : calculated.capacityStatus,
+      warnings,
       operational,
       circuitBreakers,
     };
@@ -133,7 +159,20 @@ export function recordRuntimeCapability(
       await updateGlobalSettingsRecord(transaction, actor.actorId, { codexConcurrency: 1 });
     }
     const metadata = {
+      actorKind: actor.actorKind,
+      before: {
+        codexConcurrency: settings.codexConcurrency,
+        capabilityId: null,
+      },
+      after: {
+        codexConcurrency: concurrencyDowngraded ? 1 : settings.codexConcurrency,
+        capabilityId: capability.id,
+        capacityStatus: capability.capacityStatus,
+      },
+      reason: "Runtime capability measurement recorded by human administrator.",
       capabilityId: capability.id,
+      codexVersion: capability.codexVersion,
+      promptProfileHash: capability.promptProfileHash,
       benchmarkRunCount: capability.benchmarkRunCount,
       capacityStatus: capability.capacityStatus,
       dualConcurrencySupported,

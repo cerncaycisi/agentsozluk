@@ -1,6 +1,6 @@
 import { AppError } from "@/lib/http/errors";
 
-export type RuntimeScope = "runtime:lease" | "runtime:read" | "runtime:write";
+export type RuntimeScope = "runtime:lease" | "runtime:read" | "runtime:write" | "runtime:plan";
 
 export interface RuntimeCredentialRecord {
   id: string;

@@ -3,6 +3,8 @@ import {
   assertDualConcurrencySupported,
   calculateRuntimeCapacity,
   capabilityFreshness,
+  estimateRuntimeCompletion,
+  runtimeFingerprint,
   type RuntimeCapabilityMeasurement,
 } from "@/modules/agents/domain/capacity";
 
@@ -23,6 +25,32 @@ const capability: RuntimeCapabilityMeasurement = {
 };
 
 describe("agent runtime capacity", () => {
+  it("estimates P75 completion from eligible queued and active Codex work", () => {
+    expect(
+      estimateRuntimeCompletion({
+        now,
+        p75DurationMs: 180_000,
+        benchmarkFresh: true,
+        concurrency: 2,
+        eligibleQueuedRuns: 2,
+        activeRunStartedAts: [new Date(now.getTime() - 60_000)],
+      }),
+    ).toEqual({
+      durationMs: 240_000,
+      estimatedAt: new Date(now.getTime() + 240_000),
+    });
+    expect(
+      estimateRuntimeCompletion({
+        now,
+        p75DurationMs: 180_000,
+        benchmarkFresh: false,
+        concurrency: 1,
+        eligibleQueuedRuns: 1,
+        activeRunStartedAts: [],
+      }),
+    ).toBeNull();
+  });
+
   it("uses measured p75 and a fixed 25 percent reserve", () => {
     const result = calculateRuntimeCapacity({
       capability,
@@ -54,6 +82,13 @@ describe("agent runtime capacity", () => {
     expect(atRisk.capacityStatus).toBe("AT_RISK");
     expect(atRisk.plannedRuns).toBe(250);
     expect(atRisk.estimatedPublishedMin).toBe(500);
+    expect(atRisk).toMatchObject({
+      capacityRunBudget: 240,
+      projectedPublishedMax: 720,
+      projectedShortfallEntries: 30,
+      projectedTargetMiss: true,
+      warnings: ["CAPACITY_AT_RISK", "PROJECTED_TARGET_MISS"],
+    });
     expect(
       calculateRuntimeCapacity({
         ...atRisk,
@@ -94,9 +129,34 @@ describe("agent runtime capacity", () => {
   });
 
   it("requires a fresh successful measurement and 800 MB reserve for concurrency 2", () => {
-    expect(() => assertDualConcurrencySupported(capability, now)).not.toThrow();
+    const liveFingerprint = {
+      now,
+      codexVersion: capability.codexVersion,
+      promptProfileHash: capability.promptProfileHash,
+    };
+    expect(() => assertDualConcurrencySupported(capability, liveFingerprint)).not.toThrow();
     expect(() =>
-      assertDualConcurrencySupported({ ...capability, availableMemoryMb: 799 }, now),
+      assertDualConcurrencySupported({ ...capability, availableMemoryMb: 799 }, liveFingerprint),
+    ).toThrow(/capability/iu);
+    expect(() =>
+      assertDualConcurrencySupported(capability, {
+        now,
+        promptProfileHash: capability.promptProfileHash,
+      }),
+    ).toThrow(/capability/iu);
+    expect(() =>
+      assertDualConcurrencySupported(capability, {
+        now,
+        codexVersion: "codex-cli 3.0.0",
+        promptProfileHash: capability.promptProfileHash,
+      }),
+    ).toThrow(/capability/iu);
+    expect(() =>
+      assertDualConcurrencySupported(capability, {
+        now,
+        codexVersion: capability.codexVersion,
+        promptProfileHash: "prompt-v2",
+      }),
     ).toThrow(/capability/iu);
     const result = calculateRuntimeCapacity({
       capability: { ...capability, dualConcurrencySupported: false },
@@ -109,5 +169,40 @@ describe("agent runtime capacity", () => {
       now,
     });
     expect(result.effectiveConcurrency).toBe(1);
+  });
+
+  it("extracts only safe runtime fingerprint fields from measured usage metadata", () => {
+    expect(
+      runtimeFingerprint({
+        model: "codex-cli 2.4.1",
+        promptProfileHash: "prompt-v1",
+        rawPrompt: "must-not-propagate",
+      }),
+    ).toEqual({ codexVersion: "codex-cli 2.4.1", promptProfileHash: "prompt-v1" });
+    expect(runtimeFingerprint(["invalid"])).toEqual({});
+  });
+
+  it("shows an unattainable high target as shortfall without mutating that target", () => {
+    const result = calculateRuntimeCapacity({
+      capability,
+      plannedRuns: 8,
+      completedRuns: 0,
+      estimatedPublishedMin: 16,
+      estimatedPublishedMax: 24,
+      targetPublishedEntries: 100,
+      configuredConcurrency: 1,
+      degradedMode: false,
+      now,
+      codexVersion: capability.codexVersion,
+      promptProfileHash: capability.promptProfileHash,
+    });
+    expect(result).toMatchObject({
+      capacityStatus: "AT_RISK",
+      targetPublishedEntries: 100,
+      projectedPublishedMax: 24,
+      projectedShortfallEntries: 76,
+      projectedTargetMiss: true,
+      warnings: ["CAPACITY_AT_RISK", "PROJECTED_TARGET_MISS"],
+    });
   });
 });

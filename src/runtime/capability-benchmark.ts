@@ -5,13 +5,10 @@ import originalPersonaPack from "@/modules/agents/personas/original-personas.jso
 import { renderPersonaPrompt } from "@/modules/agents/personas/prompt-renderer";
 import { seedPersonaPackSchema } from "@/modules/agents/personas/schema";
 import type { RuntimeContext } from "@/runtime/control-plane-client";
-import {
-  normalizeRuntimeDecisionOutput,
-  runtimeDecisionJsonSchema,
-  runtimeDecisionSchema,
-} from "@/runtime/output";
+import { parseRuntimeDecisionOutput, runtimeNormalDecisionWireJsonSchema } from "@/runtime/output";
 import type { RuntimeProvider, RuntimeProviderResult } from "@/runtime/provider";
-import { buildRuntimePrompt, RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/worker";
+import { buildRuntimePrompt } from "@/runtime/worker";
+import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 
 const AVAILABLE_CONTENT_MINUTES = 960;
 const CAPACITY_RESERVE_FACTOR = 0.75;
@@ -167,11 +164,16 @@ function benchmarkContext(scenario: Scenario, index: number): RuntimeContext {
       allowFollowing: scenario.runType !== "READ_ONLY",
       allowSourceReading: scenario.includeSources,
       publishEnabled: scenario.runType !== "READ_ONLY",
+      publicWriteEnabled: scenario.runType !== "READ_ONLY",
+      runtimeOperatingMode: "NORMAL",
+      sourceFetchLimit: 8,
+      debugRetentionHours: 0,
+      saturationOverride: false,
+      dailyMaximumOverride: false,
       adminInstruction: null,
       cancelRequested: false,
     },
     agent: {
-      profileId: fixedUuid(index + 1),
       username: firstPersona.username,
       displayName: firstPersona.displayName,
       publicBio: firstPersona.publicBio,
@@ -205,7 +207,7 @@ export function capacityBenchmarkRequest(index = 0) {
     request: {
       runId: context.run.id,
       prompt: buildRuntimePrompt(context),
-      outputSchema: runtimeDecisionJsonSchema,
+      outputSchema: runtimeNormalDecisionWireJsonSchema,
       timeoutMs: benchmarkTimeoutMs(),
     },
   };
@@ -302,7 +304,7 @@ function latencyImpact(baseline: ProbeResult[], measured: ProbeResult[]) {
 
 function candidateMetrics(results: RuntimeProviderResult[]) {
   const decisions = results.flatMap((result) => {
-    const parsed = runtimeDecisionSchema.safeParse(normalizeRuntimeDecisionOutput(result.output));
+    const parsed = parseRuntimeDecisionOutput(result.output);
     return parsed.success ? [parsed.data] : [];
   });
   const actions = decisions.flatMap(({ actions }) => actions);
@@ -395,7 +397,7 @@ export async function runCapacityBenchmark(
         provider.invoke({
           runId: context.run.id,
           prompt: buildRuntimePrompt(context),
-          outputSchema: runtimeDecisionJsonSchema,
+          outputSchema: runtimeNormalDecisionWireJsonSchema,
           timeoutMs: options.timeoutMs ?? benchmarkTimeoutMs(),
         }),
         fetchImplementation,
@@ -469,7 +471,7 @@ export async function runConcurrencyCapabilityTest(
         provider.invoke({
           runId: context.run.id,
           prompt: buildRuntimePrompt(context),
-          outputSchema: runtimeDecisionJsonSchema,
+          outputSchema: runtimeNormalDecisionWireJsonSchema,
           timeoutMs: options.timeoutMs ?? benchmarkTimeoutMs(),
         }),
       ),
@@ -478,8 +480,7 @@ export async function runConcurrencyCapabilityTest(
     endpoint,
   );
   const results = settled.flatMap((item) =>
-    item.status === "fulfilled" &&
-    runtimeDecisionSchema.safeParse(normalizeRuntimeDecisionOutput(item.value.output)).success
+    item.status === "fulfilled" && parseRuntimeDecisionOutput(item.value.output).success
       ? [item.value]
       : [],
   );
