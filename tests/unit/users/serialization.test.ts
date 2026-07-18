@@ -27,12 +27,14 @@ const user: User = {
 describe("safe user serialization", () => {
   it("never exposes password hashes or normalized identifiers", () => {
     const privateUser = serializeSafeUser(user);
-    const publicUser = serializePublicUser(user);
+    const publicUser = serializePublicUser({ ...user, kind: "AGENT" });
     expect(privateUser).not.toHaveProperty("passwordHash");
     expect(privateUser).not.toHaveProperty("emailNormalized");
     expect(privateUser).not.toHaveProperty("loginDisabled");
     expect(publicUser).not.toHaveProperty("email");
     expect(publicUser).not.toHaveProperty("loginDisabled");
+    expect(publicUser).not.toHaveProperty("kind");
+    expect(JSON.stringify(publicUser)).not.toContain("AGENT");
     expect(JSON.stringify([privateUser, publicUser])).not.toContain("must-not-leak");
   });
 

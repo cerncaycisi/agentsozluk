@@ -12,14 +12,16 @@ import {
 } from "@/modules/topics/domain/normalization";
 import {
   createTopicWithFirstEntryRecord,
-  countActiveTopics,
   findTopicById,
   findTopicConflict,
   isFollowingTopic,
-  listActiveTopicsForSitemap,
   lockTopicTitle,
   type TopicSummaryRecord,
 } from "@/modules/topics/repository/topics";
+import {
+  getSitemapTopicCount as getIndexableSitemapTopicCount,
+  getSitemapTopics as getIndexableSitemapTopics,
+} from "@/modules/indexing";
 import type { TopicCreateInput } from "@/modules/topics/validation/schemas";
 
 export interface TopicViewer {
@@ -29,16 +31,14 @@ export interface TopicViewer {
 }
 
 export function getSitemapTopicCount(client: DatabaseClient) {
-  return client.$transaction((transaction) => countActiveTopics(transaction));
+  return getIndexableSitemapTopicCount(client);
 }
 
 export function getSitemapTopics(
   client: DatabaseClient,
   input: { page: number; pageSize: number },
 ) {
-  return client.$transaction((transaction) =>
-    listActiveTopicsForSitemap(transaction, input.page * input.pageSize, input.pageSize),
-  );
+  return getIndexableSitemapTopics(client, input);
 }
 
 function topicUrl(topic: Pick<TopicSummaryRecord, "id" | "slug">): string {

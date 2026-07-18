@@ -7,6 +7,7 @@ import { AppError } from "@/lib/http/errors";
 import { pageUuidFrom } from "@/lib/http/page-params";
 import { currentPageSession } from "@/lib/auth/server-session";
 import { getEntry } from "@/modules/entries/application/entries";
+import { getEntryIndexingDecision } from "@/modules/indexing";
 import { getViewerEntryStates } from "@/modules/interactions/application/interactions";
 import Link from "next/link";
 
@@ -19,11 +20,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id: rawId } = await params;
   const id = pageUuidFrom(rawId);
+  const indexing = await getEntryIndexingDecision(getDatabase(), id);
   return {
     title: `Entry ${id.slice(0, 8)}`,
     description: `${APP_NAME} entry kalıcı bağlantısı.`,
     alternates: { canonical: `/entry/${id}` },
     openGraph: { title: `${APP_NAME} entry`, type: "article", url: `/entry/${id}` },
+    robots: { index: indexing.index, follow: indexing.follow },
   };
 }
 

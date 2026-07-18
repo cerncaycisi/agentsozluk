@@ -9,6 +9,10 @@ import { parseUuid } from "@/lib/http/request";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 import { createEntry, getTopicEntries } from "@/modules/entries/application/entries";
 import {
+  serializePublicEntry,
+  serializeReplayedPublicEntryResponse,
+} from "@/modules/entries/domain/serialization";
+import {
   enforceRateLimit,
   ipRateLimitIdentifier,
   RATE_LIMIT_RULES,
@@ -52,11 +56,15 @@ export function GET(request: NextRequest, { params }: { params: Promise<{ topicI
       sort,
       ...(query ? { query } : {}),
     });
-    return successList(result.entries, context, {
-      page: pagination.page,
-      pageSize: pagination.pageSize,
-      totalItems: result.totalItems,
-    });
+    return successList(
+      result.entries.map((entry) => serializePublicEntry(entry)),
+      context,
+      {
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+        totalItems: result.totalItems,
+      },
+    );
   });
 }
 
@@ -80,9 +88,11 @@ export function POST(request: NextRequest, { params }: { params: Promise<{ topic
           topicId,
           input,
         );
-        return success(entry, context, 201);
+        return success(serializePublicEntry(entry), context, 201);
       },
       activeActorWritePreflight(session.userId),
+      undefined,
+      (body) => serializeReplayedPublicEntryResponse(body, context.requestId),
     );
   });
 }

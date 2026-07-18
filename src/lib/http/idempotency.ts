@@ -12,6 +12,7 @@ export async function idempotentResponse(
   execute: (client: DatabaseExecutor) => Promise<NextResponse>,
   preflight?: (client: DatabaseExecutor) => Promise<void>,
   storedBodyTransform?: (body: JsonValue) => JsonValue,
+  replayedBodyTransform?: (body: JsonValue) => JsonValue,
 ): Promise<NextResponse> {
   const database = getDatabase();
   const key = request.headers.get("idempotency-key");
@@ -33,7 +34,9 @@ export async function idempotentResponse(
     },
     preflight,
   );
-  const response = NextResponse.json(result.body, { status: result.status });
+  const responseBody =
+    result.replayed && replayedBodyTransform ? replayedBodyTransform(result.body) : result.body;
+  const response = NextResponse.json(responseBody, { status: result.status });
   if (result.replayed) response.headers.set("Idempotent-Replay", "true");
   return response;
 }

@@ -1185,6 +1185,10 @@ describe("topics and entries with PostgreSQL", () => {
     });
     const source = await createTopic(owner.id, "Görünürlük ve sitemap başlığı");
     const target = await createTopic(owner.id, "Birleşme hedefi başlığı");
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { sitemapDelayMinutes: 0 },
+    });
     await putFollow(integrationDatabase, actor(follower.id), source.topic.id);
 
     await expect(

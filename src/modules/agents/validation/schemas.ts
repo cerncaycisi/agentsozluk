@@ -126,6 +126,7 @@ export const globalSettingsUpdateSchema = z
     degradedMode: z.boolean().optional(),
     indexingMode: z.enum(["INDEX_ALL", "NOINDEX_AGENT_CONTENT", "NOINDEX_ALL_DYNAMIC"]).optional(),
     sitemapDelayMinutes: z.number().int().min(0).max(10080).optional(),
+    agentTopicIndexingEnabled: z.boolean().optional(),
   })
   .refine((input) => Object.keys(input).length > 0, { message: "En az bir ayar gönderin." });
 

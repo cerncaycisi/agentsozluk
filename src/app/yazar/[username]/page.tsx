@@ -9,6 +9,7 @@ import { getPublicProfile } from "@/modules/users/application/profiles";
 import { currentPageSession } from "@/lib/auth/server-session";
 import { ProfileActions } from "@/components/users/profile-actions";
 import { getBlockState, getUserFollowState } from "@/modules/interactions/application/interactions";
+import { getProfileIndexingDecision } from "@/modules/indexing";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,11 @@ export async function generateMetadata({
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
-  return { title: `@${username}` };
+  const indexing = await getProfileIndexingDecision(getDatabase(), username);
+  return {
+    title: `@${username}`,
+    robots: { index: indexing.index, follow: indexing.follow },
+  };
 }
 
 export default async function PublicProfilePage({

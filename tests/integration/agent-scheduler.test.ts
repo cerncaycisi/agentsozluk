@@ -77,6 +77,7 @@ describe("agent daily scheduler with PostgreSQL", () => {
     await updateGlobalSettings(integrationDatabase, actor(admin.id), {
       globalDailyEntryMin: 30,
       globalDailyEntryMax: 40,
+      indexingMode: "NOINDEX_ALL_DYNAMIC",
     });
     for (const created of agents) {
       await changeAgentLifecycle(

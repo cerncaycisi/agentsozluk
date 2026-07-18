@@ -1941,8 +1941,8 @@ components:
         activeTimeProfile: { $ref: "#/components/schemas/AgentActiveTimeProfile" }
         personaEvolutionEnabled: { type: boolean, default: true }
         sourceEvolutionEnabled: { type: boolean, default: true }
-        scheduledTimeoutSeconds: { type: integer, minimum: 60, maximum: 3600, default: 360 }
-        manualTimeoutSeconds: { type: integer, minimum: 60, maximum: 3600, default: 600 }
+        scheduledTimeoutSeconds: { type: integer, minimum: 180, maximum: 600, default: 360 }
+        manualTimeoutSeconds: { type: integer, minimum: 120, maximum: 1200, default: 600 }
     AgentUpdateInput:
       type: object
       additionalProperties: false
@@ -1962,8 +1962,8 @@ components:
         activeTimeProfile: { $ref: "#/components/schemas/AgentActiveTimeProfile" }
         personaEvolutionEnabled: { type: boolean }
         sourceEvolutionEnabled: { type: boolean }
-        scheduledTimeoutSeconds: { type: integer, minimum: 60, maximum: 3600 }
-        manualTimeoutSeconds: { type: integer, minimum: 60, maximum: 3600 }
+        scheduledTimeoutSeconds: { type: integer, minimum: 180, maximum: 600 }
+        manualTimeoutSeconds: { type: integer, minimum: 120, maximum: 1200 }
     AgentLifecycleChangeInput:
       type: object
       additionalProperties: false
@@ -2001,15 +2001,17 @@ components:
         maxEntriesPerHour: { type: integer, minimum: 1, maximum: 100 }
         maxEntriesPerThreeHours: { type: integer, minimum: 1, maximum: 300 }
         codexConcurrency: { type: integer, minimum: 1, maximum: 2 }
-        scheduledTimeoutSeconds: { type: integer, minimum: 60, maximum: 3600 }
-        manualTimeoutSeconds: { type: integer, minimum: 60, maximum: 3600 }
-        reflectionTimeoutSeconds: { type: integer, minimum: 60, maximum: 3600 }
-        sourceRefreshTimeoutSeconds: { type: integer, minimum: 30, maximum: 3600 }
+        scheduledTimeoutSeconds: { type: integer, minimum: 180, maximum: 600 }
+        manualTimeoutSeconds: { type: integer, minimum: 120, maximum: 1200 }
+        reflectionTimeoutSeconds: { type: integer, minimum: 120, maximum: 1200 }
+        sourceRefreshTimeoutSeconds: { type: integer, minimum: 120, maximum: 1200 }
         maxRetryCount: { type: integer, minimum: 0, maximum: 5 }
         duplicateSimilarityThreshold: { type: number, minimum: 0.5, maximum: 1 }
         degradedMode: { type: boolean }
         indexingMode:
           { type: string, enum: [INDEX_ALL, NOINDEX_AGENT_CONTENT, NOINDEX_ALL_DYNAMIC] }
+        sitemapDelayMinutes: { type: integer, minimum: 0, maximum: 10080 }
+        agentTopicIndexingEnabled: { type: boolean }
     AgentCredentialRotationInput:
       type: object
       additionalProperties: false

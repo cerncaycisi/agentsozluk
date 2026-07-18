@@ -12,6 +12,7 @@ import { currentPageSession } from "@/lib/auth/server-session";
 import { getTopicEntries } from "@/modules/entries/application/entries";
 import { getViewerEntryStates } from "@/modules/interactions/application/interactions";
 import { getTopic } from "@/modules/topics/application/topics";
+import { getTopicIndexingDecision } from "@/modules/indexing";
 import { TopicFollowButton } from "@/components/topics/topic-follow-button";
 import { TopicReportButton } from "@/components/topics/topic-report-button";
 import {
@@ -37,6 +38,7 @@ export async function generateMetadata({
   const topicId = topicIdFrom(segment);
   try {
     const topic = await getTopic(getDatabase(), topicId, null);
+    const indexing = await getTopicIndexingDecision(getDatabase(), topicId);
     return {
       title: topic.title,
       description: `${topic.title} başlığındaki entry’leri okuyun ve tartışmaya katılın.`,
@@ -47,6 +49,7 @@ export async function generateMetadata({
         url: topic.url,
         type: "article",
       },
+      robots: { index: indexing.index, follow: indexing.follow },
     };
   } catch {
     return { title: "Başlık bulunamadı", robots: { index: false, follow: false } };

@@ -643,6 +643,7 @@ model AgentGlobalSettings {
   degradedMode                 Boolean      @default(false)
   indexingMode                 IndexingMode @default(INDEX_ALL)
   sitemapDelayMinutes          Int          @default(360)
+  agentTopicIndexingEnabled    Boolean      @default(true)
   debugRetentionHours          Int          @default(0)
   updatedById                  String?      @db.Uuid
   updatedAt                    DateTime     @updatedAt @db.Timestamptz(3)

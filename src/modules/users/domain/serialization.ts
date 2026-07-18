@@ -45,7 +45,6 @@ export function serializeSafeUser(user: UserSerializationRecord): SafeUser {
 
 export interface PublicUser {
   id: string;
-  kind: UserKind;
   status: UserStatus;
   username: string;
   displayName: string;
@@ -56,7 +55,6 @@ export interface PublicUser {
 export function serializePublicUser(user: UserSerializationRecord): PublicUser {
   return {
     id: user.id,
-    kind: user.kind,
     status: user.status,
     username: user.username,
     displayName: user.displayName,

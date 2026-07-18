@@ -1097,6 +1097,7 @@ export function GlobalAgentSettingsForm({
             "degradedMode",
             "indexingMode",
             "sitemapDelayMinutes",
+            "agentTopicIndexingEnabled",
           ].includes(key),
         ),
       ),
