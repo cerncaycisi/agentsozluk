@@ -3,6 +3,7 @@ export interface RuntimeProviderRequest {
   prompt: string;
   outputSchema: Record<string, unknown>;
   timeoutMs: number;
+  debugRetentionHours?: number;
   signal?: AbortSignal;
 }
 

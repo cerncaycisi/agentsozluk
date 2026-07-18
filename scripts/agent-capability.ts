@@ -9,7 +9,12 @@ import {
 
 const environmentSchema = z
   .object({
-    CODEX_EXECUTABLE: z.string().min(1).default("codex"),
+    CODEX_EXECUTABLE: z.string().min(1).default("/usr/local/bin/codex"),
+    CODEX_SANDBOX_EXECUTABLE: z.string().min(1).default("/usr/bin/bwrap"),
+    AGENT_RUNTIME_CREDENTIAL_FILE: z
+      .string()
+      .min(1)
+      .default("/var/lib/agent-sozluk-runtime/credentials.json"),
     AGENT_RUNTIME_CODEX_HOME: z.string().min(1),
     AGENT_RUNTIME_WORK_ROOT: z.string().min(1),
     AGENT_RUNTIME_BASE_URL: z.string().url(),
@@ -30,6 +35,8 @@ async function main(): Promise<void> {
   const environment = environmentSchema.parse(process.env);
   const provider = new CodexCliProvider({
     executable: environment.CODEX_EXECUTABLE,
+    sandboxExecutable: environment.CODEX_SANDBOX_EXECUTABLE,
+    credentialFile: environment.AGENT_RUNTIME_CREDENTIAL_FILE,
     runtimeHome: environment.AGENT_RUNTIME_CODEX_HOME,
     workRoot: environment.AGENT_RUNTIME_WORK_ROOT,
   });

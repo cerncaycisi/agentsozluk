@@ -13,6 +13,10 @@ export function userEntryClaimIsSafelyFramed(body: string): boolean {
   return uncertaintyFrames.some((frame) => normalized.includes(frame));
 }
 
+export function relationshipProvenanceIsVisible(evidenceType: string): boolean {
+  return evidenceType === "USER_ENTRY" || evidenceType === "PLATFORM_EVENT";
+}
+
 export function provenanceIsRequired(actionType: string): boolean {
   return [
     "CREATE_ENTRY",

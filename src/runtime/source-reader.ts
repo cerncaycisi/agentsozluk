@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { isPrivateSourceAddress, parseSafeSourceUrl } from "@/modules/agents";
 
 const maximumResponseBytes = 2 * 1024 * 1024;
-const defaultTimeoutMs = 10_000;
+export const MAX_SOURCE_READ_TIMEOUT_MS = 10_000;
 
 export interface SourceReadItem {
   canonicalUrl: string;
@@ -30,8 +30,14 @@ export interface SourceReaderOptions {
     address: string,
     family: number,
     timeoutMs: number,
+    signal?: AbortSignal,
   ) => Promise<SourceResponse>;
   minimumDomainIntervalMs?: number;
+  timeoutMs?: number;
+}
+
+export interface SourceReadOptions {
+  signal?: AbortSignal;
   timeoutMs?: number;
 }
 
@@ -57,6 +63,7 @@ function defaultRequester(
   address: string,
   family: number,
   timeoutMs: number,
+  signal?: AbortSignal,
 ): Promise<SourceResponse> {
   return new Promise((resolve, reject) => {
     const request = (url.protocol === "https:" ? httpsRequest : httpRequest)(url, {
@@ -94,7 +101,38 @@ function defaultRequester(
         }),
       );
     });
-    request.end();
+    const onAbort = () => request.destroy(new Error("SOURCE_CANCELLED"));
+    signal?.addEventListener("abort", onAbort, { once: true });
+    request.on("close", () => signal?.removeEventListener("abort", onAbort));
+    if (signal?.aborted) onAbort();
+    else request.end();
+  });
+}
+
+function boundedOperation<T>(
+  operation: Promise<T>,
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<T> {
+  if (signal?.aborted) return Promise.reject(new Error("SOURCE_CANCELLED"));
+  if (timeoutMs <= 0) return Promise.reject(new Error("SOURCE_TIMEOUT"));
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      callback();
+    };
+    const onAbort = () => finish(() => reject(new Error("SOURCE_CANCELLED")));
+    const timer = setTimeout(() => finish(() => reject(new Error("SOURCE_TIMEOUT"))), timeoutMs);
+    timer.unref();
+    signal?.addEventListener("abort", onAbort, { once: true });
+    operation.then(
+      (value) => finish(() => resolve(value)),
+      (error: unknown) => finish(() => reject(error)),
+    );
   });
 }
 
@@ -204,32 +242,61 @@ export class SafeSourceReader {
     this.#options = options;
   }
 
-  async #paced(hostname: string): Promise<void> {
+  #remainingMs(deadlineAtMs: number): number {
+    const remainingMs = Math.ceil(deadlineAtMs - Date.now());
+    if (remainingMs <= 0) throw new Error("SOURCE_TIMEOUT");
+    return remainingMs;
+  }
+
+  async #paced(hostname: string, deadlineAtMs: number, signal?: AbortSignal): Promise<void> {
     const interval = this.#options.minimumDomainIntervalMs ?? 1000;
     const wait = (this.#lastDomainRequest.get(hostname) ?? 0) + interval - Date.now();
-    if (wait > 0) await delay(wait);
+    if (wait > 0) await boundedOperation(delay(wait), this.#remainingMs(deadlineAtMs), signal);
     this.#lastDomainRequest.set(hostname, Date.now());
   }
 
-  async #request(url: URL, redirects = 0): Promise<SourceResponse> {
+  async #request(
+    url: URL,
+    deadlineAtMs: number,
+    signal?: AbortSignal,
+    redirects = 0,
+  ): Promise<SourceResponse> {
+    if (signal?.aborted) throw new Error("SOURCE_CANCELLED");
     if (redirects > 5) throw new Error("SOURCE_REDIRECT_LIMIT");
     parseSafeSourceUrl(url.toString());
-    await this.#paced(url.hostname);
-    const addresses = await (
-      this.#options.resolver ?? ((hostname) => lookup(hostname, { all: true }))
-    )(url.hostname);
-    assertPublicSourceAddresses(addresses);
-    const selected = addresses[0]!;
-    const response = await (this.#options.requester ?? defaultRequester)(
-      url,
-      selected.address,
-      selected.family,
-      this.#options.timeoutMs ?? defaultTimeoutMs,
+    await this.#paced(url.hostname, deadlineAtMs, signal);
+    const addresses = await boundedOperation(
+      (this.#options.resolver ?? ((hostname) => lookup(hostname, { all: true })))(url.hostname),
+      this.#remainingMs(deadlineAtMs),
+      signal,
     );
+    assertPublicSourceAddresses(addresses);
+    if (signal?.aborted) throw new Error("SOURCE_CANCELLED");
+    const selected = addresses[0]!;
+    const remainingMs = this.#remainingMs(deadlineAtMs);
+    const requestTimeoutMs = Math.min(
+      this.#options.timeoutMs ?? MAX_SOURCE_READ_TIMEOUT_MS,
+      MAX_SOURCE_READ_TIMEOUT_MS,
+      remainingMs,
+    );
+    const response = await boundedOperation(
+      (this.#options.requester ?? defaultRequester)(
+        url,
+        selected.address,
+        selected.family,
+        requestTimeoutMs,
+        signal,
+      ),
+      requestTimeoutMs,
+      signal,
+    );
+    const declaredLength = Number(response.headers["content-length"] ?? 0);
+    if (declaredLength > maximumResponseBytes || response.body.byteLength > maximumResponseBytes)
+      throw new Error("SOURCE_TOO_LARGE");
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.location;
       if (!location) throw new Error("SOURCE_REDIRECT_WITHOUT_LOCATION");
-      return this.#request(new URL(location, url), redirects + 1);
+      return this.#request(new URL(location, url), deadlineAtMs, signal, redirects + 1);
     }
     if ([401, 403, 407].includes(response.status)) throw new Error("SOURCE_AUTH_REQUIRED");
     if (response.status < 200 || response.status >= 300)
@@ -237,18 +304,24 @@ export class SafeSourceReader {
     return response;
   }
 
-  async read(value: string): Promise<SourceReadItem[]> {
+  async read(value: string, options: SourceReadOptions = {}): Promise<SourceReadItem[]> {
+    const totalTimeoutMs = Math.min(
+      options.timeoutMs ?? MAX_SOURCE_READ_TIMEOUT_MS,
+      MAX_SOURCE_READ_TIMEOUT_MS,
+    );
+    if (!Number.isFinite(totalTimeoutMs) || totalTimeoutMs <= 0) throw new Error("SOURCE_TIMEOUT");
+    const deadlineAtMs = Date.now() + totalTimeoutMs;
     const url = parseSafeSourceUrl(value);
     const robotsUrl = new URL("/robots.txt", url.origin);
     let robots: SourceResponse | null = null;
     try {
-      robots = await this.#request(robotsUrl);
+      robots = await this.#request(robotsUrl, deadlineAtMs, options.signal);
     } catch (error) {
       if (!(error instanceof Error && error.message === "SOURCE_HTTP_404")) throw error;
     }
     if (robots && !robotsAllows(robots.body.toString("utf8"), url.pathname))
       throw new Error("SOURCE_ROBOTS_DISALLOWED");
-    const response = await this.#request(url);
+    const response = await this.#request(url, deadlineAtMs, options.signal);
     const contentType = response.headers["content-type"]?.toLowerCase() ?? "";
     const text = response.body.toString("utf8");
     if (contentType.includes("xml") || /<(rss|feed)\b/iu.test(text.slice(0, 1000)))
@@ -269,7 +342,7 @@ export class SafeSourceReader {
     if (feedLink?.href) {
       const feedUrl = parseSafeSourceUrl(new URL(feedLink.href, response.url).toString());
       if (!robots || robotsAllows(robots.body.toString("utf8"), feedUrl.pathname)) {
-        const feedResponse = await this.#request(feedUrl);
+        const feedResponse = await this.#request(feedUrl, deadlineAtMs, options.signal);
         const items = parseSourceFeed(
           feedResponse.body.toString("utf8"),
           new URL(feedResponse.url),

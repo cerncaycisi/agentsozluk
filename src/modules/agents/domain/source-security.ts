@@ -14,7 +14,42 @@ function privateIpv4(address: string): boolean {
   );
 }
 
+function ipv4MappedIpv6(address: string): string | null {
+  if (isIP(address) !== 6) return null;
+
+  let normalized = address.toLowerCase();
+  const dottedTail = normalized.match(/^(.*:)(\d+\.\d+\.\d+\.\d+)$/u);
+  if (dottedTail) {
+    const octets = dottedTail[2]!.split(".").map(Number);
+    normalized = `${dottedTail[1]}${((octets[0] ?? 0) * 256 + (octets[1] ?? 0)).toString(16)}:${((octets[2] ?? 0) * 256 + (octets[3] ?? 0)).toString(16)}`;
+  }
+
+  const compressedAt = normalized.indexOf("::");
+  const left = (compressedAt === -1 ? normalized : normalized.slice(0, compressedAt))
+    .split(":")
+    .filter(Boolean);
+  const right = (compressedAt === -1 ? "" : normalized.slice(compressedAt + 2))
+    .split(":")
+    .filter(Boolean);
+  const zeroCount = compressedAt === -1 ? 0 : 8 - left.length - right.length;
+  const hextets = [...left, ...Array<string>(zeroCount).fill("0"), ...right].map((part) =>
+    Number.parseInt(part, 16),
+  );
+
+  if (
+    hextets.length !== 8 ||
+    hextets.slice(0, 5).some((part) => part !== 0) ||
+    hextets[5] !== 0xffff
+  )
+    return null;
+
+  return [hextets[6]! >> 8, hextets[6]! & 0xff, hextets[7]! >> 8, hextets[7]! & 0xff].join(".");
+}
+
 function privateIpv6(address: string): boolean {
+  const mappedIpv4 = ipv4MappedIpv6(address);
+  if (mappedIpv4) return privateIpv4(mappedIpv4);
+
   const normalized = address.toLowerCase();
   return (
     normalized === "::1" ||

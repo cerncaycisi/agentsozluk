@@ -25,6 +25,7 @@ const forbidden = [
   "usageMetadata",
   "performanceMetrics",
   "leaseOwner",
+  "leaseToken",
   "tokenHash",
   "AgentRuntimeState",
   "AgentPersonaVersion",

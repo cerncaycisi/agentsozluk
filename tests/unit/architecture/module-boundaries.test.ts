@@ -27,6 +27,7 @@ describe("module boundaries", () => {
       "entries",
       "feeds",
       "idempotency",
+      "indexing",
       "interactions",
       "moderation",
       "outbox",

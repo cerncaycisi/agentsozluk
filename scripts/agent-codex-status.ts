@@ -5,7 +5,12 @@ import { normalizeRuntimeDecisionOutput, runtimeDecisionSchema } from "../src/ru
 
 const environmentSchema = z
   .object({
-    CODEX_EXECUTABLE: z.string().min(1).default("codex"),
+    CODEX_EXECUTABLE: z.string().min(1).default("/usr/local/bin/codex"),
+    CODEX_SANDBOX_EXECUTABLE: z.string().min(1).default("/usr/bin/bwrap"),
+    AGENT_RUNTIME_CREDENTIAL_FILE: z
+      .string()
+      .min(1)
+      .default("/var/lib/agent-sozluk-runtime/credentials.json"),
     AGENT_RUNTIME_CODEX_HOME: z.string().min(1),
     AGENT_RUNTIME_WORK_ROOT: z.string().min(1),
     AGENT_RUNTIME_STATUS_TIMEOUT_MS: z.coerce
@@ -14,7 +19,6 @@ const environmentSchema = z
       .min(30_000)
       .max(10 * 60_000)
       .default(3 * 60_000),
-    AGENT_RUNTIME_RETAIN_HOURS: z.coerce.number().int().min(0).max(24).default(0),
   })
   .passthrough();
 
@@ -22,9 +26,10 @@ async function main(): Promise<void> {
   const environment = environmentSchema.parse(process.env);
   const provider = new CodexCliProvider({
     executable: environment.CODEX_EXECUTABLE,
+    sandboxExecutable: environment.CODEX_SANDBOX_EXECUTABLE,
+    credentialFile: environment.AGENT_RUNTIME_CREDENTIAL_FILE,
     runtimeHome: environment.AGENT_RUNTIME_CODEX_HOME,
     workRoot: environment.AGENT_RUNTIME_WORK_ROOT,
-    retainWorkHours: environment.AGENT_RUNTIME_RETAIN_HOURS,
   });
   const inspected = await provider.inspect();
   const benchmark = capacityBenchmarkRequest(0);

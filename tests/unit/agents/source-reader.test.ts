@@ -20,6 +20,15 @@ describe("safe external source reader", () => {
     ).not.toThrow();
   });
 
+  it("blocks IPv4-mapped IPv6 DNS answers that resolve to private IPv4 space", () => {
+    expect(() => assertPublicSourceAddresses([{ address: "::ffff:a9fe:a9fe", family: 6 }])).toThrow(
+      "SOURCE_SSRF_BLOCKED",
+    );
+    expect(() =>
+      assertPublicSourceAddresses([{ address: "::ffff:93.184.216.34", family: 6 }]),
+    ).not.toThrow();
+  });
+
   it("revalidates redirect targets and blocks redirects to metadata IPs", async () => {
     const requester = vi.fn().mockImplementation(async (url: URL) => {
       if (url.pathname === "/robots.txt")
@@ -106,5 +115,155 @@ describe("safe external source reader", () => {
     const items = await reader.read("https://example.com/");
     expect(items[0]).toMatchObject({ title: "Feed item", safeText: "Feed metni" });
     expect(items[0]!.safeText).not.toContain("HTML fallback");
+  });
+
+  it("paces consecutive same-domain requests by the configured minimum interval", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-18T12:00:00.000Z"));
+    try {
+      const requestedAt: number[] = [];
+      const requester = vi.fn(async (url: URL) => {
+        requestedAt.push(Date.now());
+        return url.pathname === "/robots.txt"
+          ? { status: 404, headers: {}, body: Buffer.alloc(0), url: url.toString() }
+          : {
+              status: 200,
+              headers: { "content-type": "text/html" },
+              body: Buffer.from("<html><title>Paced</title><body>content</body></html>"),
+              url: url.toString(),
+            };
+      });
+      const reader = new SafeSourceReader({
+        minimumDomainIntervalMs: 1000,
+        resolver: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
+        requester,
+      });
+
+      const pending = reader.read("https://example.com/article");
+      await vi.advanceTimersByTimeAsync(0);
+      expect(requester).toHaveBeenCalledOnce();
+
+      await vi.advanceTimersByTimeAsync(999);
+      expect(requester).toHaveBeenCalledOnce();
+
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(pending).resolves.toHaveLength(1);
+      expect(requestedAt).toEqual([
+        new Date("2026-07-18T12:00:00.000Z").getTime(),
+        new Date("2026-07-18T12:00:01.000Z").getTime(),
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("rejects response bodies larger than the hard 2 MB limit", async () => {
+    const requester = vi.fn().mockImplementation(async (url: URL) => {
+      if (url.pathname === "/robots.txt")
+        return { status: 404, headers: {}, body: Buffer.alloc(0), url: url.toString() };
+      return {
+        status: 200,
+        headers: { "content-type": "text/html" },
+        body: Buffer.alloc(2 * 1024 * 1024 + 1, "a"),
+        url: url.toString(),
+      };
+    });
+    const reader = new SafeSourceReader({
+      minimumDomainIntervalMs: 0,
+      resolver: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
+      requester,
+    });
+
+    await expect(reader.read("https://example.com/article")).rejects.toThrow("SOURCE_TOO_LARGE");
+  });
+
+  it("caps a caller-supplied source read budget at ten seconds", async () => {
+    const requester = vi.fn().mockImplementation(async (url: URL) =>
+      url.pathname === "/robots.txt"
+        ? { status: 404, headers: {}, body: Buffer.alloc(0), url: url.toString() }
+        : {
+            status: 200,
+            headers: { "content-type": "text/html" },
+            body: Buffer.from("<html><title>Bounded</title><body>content</body></html>"),
+            url: url.toString(),
+          },
+    );
+    const reader = new SafeSourceReader({
+      minimumDomainIntervalMs: 0,
+      resolver: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
+      requester,
+    });
+
+    await expect(
+      reader.read("https://example.com/article", { timeoutMs: 60_000 }),
+    ).resolves.toHaveLength(1);
+    expect(requester).toHaveBeenCalledTimes(2);
+    expect(requester.mock.calls.every((call) => call[3] <= 10_000)).toBe(true);
+  });
+
+  it.each([401, 403, 407])(
+    "does not bypass authentication or proxy protection on HTTP %i",
+    async (status) => {
+      const requester = vi.fn().mockImplementation(async (url: URL) => {
+        if (url.pathname === "/robots.txt")
+          return { status: 404, headers: {}, body: Buffer.alloc(0), url: url.toString() };
+        return { status, headers: {}, body: Buffer.alloc(0), url: url.toString() };
+      });
+      const reader = new SafeSourceReader({
+        minimumDomainIntervalMs: 0,
+        resolver: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
+        requester,
+      });
+
+      await expect(reader.read("https://example.com/protected")).rejects.toThrow(
+        "SOURCE_AUTH_REQUIRED",
+      );
+    },
+  );
+
+  it("carries cancellation into an in-flight source request", async () => {
+    const controller = new AbortController();
+    const requester = vi.fn(
+      async (
+        _url: URL,
+        _address: string,
+        _family: number,
+        _timeoutMs: number,
+        signal?: AbortSignal,
+      ) =>
+        new Promise<never>((_resolve, reject) => {
+          signal?.addEventListener("abort", () => reject(new Error("SOURCE_CANCELLED")), {
+            once: true,
+          });
+        }),
+    );
+    const reader = new SafeSourceReader({
+      minimumDomainIntervalMs: 0,
+      resolver: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
+      requester,
+    });
+    const pending = reader.read("https://example.com/article", {
+      signal: controller.signal,
+      timeoutMs: 1000,
+    });
+
+    await vi.waitFor(() => expect(requester).toHaveBeenCalledOnce());
+    controller.abort();
+
+    await expect(pending).rejects.toThrow("SOURCE_CANCELLED");
+    expect(requester).toHaveBeenCalledOnce();
+    expect(requester.mock.calls[0]?.[4]).toBe(controller.signal);
+  });
+
+  it("bounds the complete robots-and-content read by the supplied remaining deadline", async () => {
+    const reader = new SafeSourceReader({
+      minimumDomainIntervalMs: 0,
+      resolver: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
+      requester: vi.fn(async () => new Promise<never>(() => undefined)),
+    });
+
+    await expect(reader.read("https://example.com/article", { timeoutMs: 10 })).rejects.toThrow(
+      "SOURCE_TIMEOUT",
+    );
   });
 });

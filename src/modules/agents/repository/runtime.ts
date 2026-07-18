@@ -1,5 +1,12 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, type AgentRunType } from "@prisma/client";
 import type { DatabaseExecutor } from "@/lib/db/types";
+import { createOpaqueToken } from "@/lib/security/crypto";
+import type { WeeklyPersonaEvolutionDelta } from "@/modules/agents/domain/persona-evolution";
+import { istanbulQuotaLocalDate, resolveQuotaSettings } from "@/modules/agents/domain/quota";
+import {
+  runtimeRunAllowedInOperatingMode,
+  type RuntimeOperatingMode,
+} from "@/modules/agents/domain/runtime-controls";
 
 export function findRuntimeCredentialByHash(client: DatabaseExecutor, tokenHash: string) {
   return client.agentCredential.findUnique({
@@ -36,20 +43,46 @@ export function touchRuntimeCredential(client: DatabaseExecutor, credentialId: s
   });
 }
 
-export function getRuntimeGlobalSettings(transaction: Prisma.TransactionClient) {
-  return transaction.agentGlobalSettings.findUniqueOrThrow({
+export function findRuntimeLeaseForIdempotencyReplay(
+  client: DatabaseExecutor,
+  input: { runId: string; agentProfileId: string; workerId: string; now: Date },
+) {
+  return client.agentRun.findFirst({
+    where: {
+      id: input.runId,
+      agentProfileId: input.agentProfileId,
+      leaseOwner: input.workerId,
+      runStatus: { in: ["RUNNING", "CANCEL_REQUESTED"] },
+      leaseExpiresAt: { gte: input.now },
+    },
+    select: { leaseToken: true },
+  });
+}
+
+export async function getRuntimeGlobalSettings(
+  transaction: Prisma.TransactionClient,
+  now = new Date(),
+) {
+  const stored = await transaction.agentGlobalSettings.findUniqueOrThrow({
     where: { id: "global" },
     select: {
       runtimeEnabled: true,
       publishEnabled: true,
+      publicWriteEnabled: true,
+      runtimeOperatingMode: true,
       sourceReadingEnabled: true,
       votingEnabled: true,
       topicCreationEnabled: true,
       userFollowingEnabled: true,
+      personaEvolutionEnabled: true,
       sourceEvolutionEnabled: true,
       quotaMode: true,
+      defaultDailyEntryMin: true,
       defaultDailyEntryMax: true,
+      globalDailyEntryMin: true,
       globalDailyEntryMax: true,
+      pendingQuotaSettings: true,
+      pendingQuotaEffectiveDate: true,
       maxEntriesPerHour: true,
       maxEntriesPerThreeHours: true,
       duplicateSimilarityThreshold: true,
@@ -58,10 +91,30 @@ export function getRuntimeGlobalSettings(transaction: Prisma.TransactionClient) 
       scheduledTimeoutSeconds: true,
       reflectionTimeoutSeconds: true,
       sourceRefreshTimeoutSeconds: true,
+      sourceFetchLimit: true,
+      debugRetentionHours: true,
       codexConcurrency: true,
       circuitBreakerConfig: true,
     },
   });
+  return resolveQuotaSettings(stored, istanbulQuotaLocalDate(now));
+}
+
+export async function getLatestRuntimeCircuitBreakerSnapshot(
+  transaction: Prisma.TransactionClient,
+): Promise<string[]> {
+  const record = await transaction.agentRuntimeEvent.findFirst({
+    where: { agentProfileId: null, eventType: "runtime.circuit_breaker.snapshot" },
+    orderBy: { id: "desc" },
+    select: { metadata: true },
+  });
+  if (!record?.metadata || typeof record.metadata !== "object" || Array.isArray(record.metadata))
+    return [];
+  const activeCodes = (record.metadata as Record<string, unknown>).activeCodes;
+  if (!Array.isArray(activeCodes)) return [];
+  return [
+    ...new Set(activeCodes.filter((code): code is string => typeof code === "string")),
+  ].sort();
 }
 
 export async function lockRuntimeRun(
@@ -70,6 +123,22 @@ export async function lockRuntimeRun(
 ): Promise<void> {
   const key = `agent-run:${runId}`;
   await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+}
+
+/**
+ * Serializes runtime mutations with both operator commands (advisory lock) and
+ * lease claim/reclaim (the AgentRun row lock used by `FOR UPDATE SKIP LOCKED`).
+ * Callers must acquire the agent-profile advisory lock first so the lock order
+ * stays identical to the lease path: agent profile -> run advisory -> run row.
+ */
+export async function lockRuntimeRunForLeaseMutation(
+  transaction: Prisma.TransactionClient,
+  runId: string,
+): Promise<void> {
+  await lockRuntimeRun(transaction, runId);
+  await transaction.$queryRaw`
+    SELECT "id" FROM "agent_runs" WHERE "id" = ${runId}::uuid FOR UPDATE
+  `;
 }
 
 export async function lockRuntimeAgent(
@@ -92,45 +161,63 @@ export function getRuntimeAgentLifecycle(
   });
 }
 
-export async function finalizeExpiredCancellation(
+export function countActiveRuntimeLeases(transaction: Prisma.TransactionClient, now: Date) {
+  return transaction.agentRun.count({
+    where: {
+      runStatus: { in: ["RUNNING", "CANCEL_REQUESTED"] },
+      // Lease validity elsewhere treats an expiry exactly at `now` as valid.
+      // Keep the capacity predicate identical so a lease cannot disappear from
+      // the global count one instant before it becomes reclaimable.
+      leaseExpiresAt: { gte: now },
+    },
+  });
+}
+
+export interface ExpiredRuntimeRunCandidate {
+  id: string;
+  runType: AgentRunType;
+  scheduleSlotId: string | null;
+  leaseExpiresAt: Date | null;
+  previousStatus: "RUNNING" | "CANCEL_REQUESTED";
+}
+
+export async function listExpiredCancellationRunsForFinalization(
   transaction: Prisma.TransactionClient,
   agentProfileId: string,
   now: Date,
-): Promise<void> {
-  const cancelled = await transaction.agentRun.findMany({
+): Promise<ExpiredRuntimeRunCandidate[]> {
+  const expired = await transaction.agentRun.findMany({
     where: {
       agentProfileId,
       runStatus: "CANCEL_REQUESTED",
       leaseExpiresAt: { lt: now },
     },
-    select: { id: true, scheduleSlotId: true },
+    select: { id: true, runType: true, scheduleSlotId: true, leaseExpiresAt: true },
   });
-  if (cancelled.length === 0) return;
-  const ids = cancelled.map(({ id }) => id);
-  await transaction.agentRun.updateMany({
-    where: { id: { in: ids } },
-    data: {
-      runStatus: "CANCELLED",
-      finishedAt: now,
-      leaseOwner: null,
-      leaseExpiresAt: null,
-      errorCode: "CANCEL_LEASE_EXPIRED",
-      errorSummary: "İptal istenen run lease süresi dolunca güvenli biçimde kapatıldı.",
+  return expired.map((run) => ({ ...run, previousStatus: "CANCEL_REQUESTED" as const }));
+}
+
+/**
+ * A non-maintenance run is never reclaimed while the runtime is in maintenance
+ * mode. Once its lease is expired, application orchestration terminalizes it
+ * before selecting maintenance work so committed effects can remain PARTIAL.
+ * Callers hold the agent-profile advisory lock for this transaction.
+ */
+export async function listExpiredNonMaintenanceRunsForMaintenanceFinalization(
+  transaction: Prisma.TransactionClient,
+  agentProfileId: string,
+  now: Date,
+): Promise<ExpiredRuntimeRunCandidate[]> {
+  const expired = await transaction.agentRun.findMany({
+    where: {
+      agentProfileId,
+      runStatus: "RUNNING",
+      runType: { notIn: ["REFLECTION", "SOURCE_REFRESH"] },
+      leaseExpiresAt: { lt: now },
     },
+    select: { id: true, runType: true, scheduleSlotId: true, leaseExpiresAt: true },
   });
-  await transaction.agentScheduleSlot.updateMany({
-    where: { id: { in: cancelled.flatMap(({ scheduleSlotId }) => scheduleSlotId ?? []) } },
-    data: { status: "CANCELLED" },
-  });
-  await transaction.agentRuntimeState.updateMany({
-    where: { agentProfileId, currentRunId: { in: ids } },
-    data: {
-      currentRunId: null,
-      runtimeStatus: "CANCELLED",
-      lastErrorCode: "CANCEL_LEASE_EXPIRED",
-      lastErrorSummary: "İptal istenen run lease süresi dolunca kapatıldı.",
-    },
-  });
+  return expired.map((run) => ({ ...run, previousStatus: "RUNNING" as const }));
 }
 
 interface LeaseCandidate {
@@ -148,15 +235,21 @@ export async function claimNextRuntimeRun(
     writeRunsPaused: boolean;
     catchUpFrozen: boolean;
     contentSlowdownMinutes: number;
+    runtimeOperatingMode?: RuntimeOperatingMode;
     now: Date;
   },
 ) {
+  const runtimeOperatingMode = input.runtimeOperatingMode ?? "NORMAL";
   const candidates = await transaction.$queryRaw<LeaseCandidate[]>`
     SELECT candidate."id", candidate."startedAt"
     FROM "agent_runs" AS candidate
     WHERE candidate."agentProfileId" = ${input.agentProfileId}::uuid
       AND candidate."availableAt" <= ${input.now}
       AND candidate."attempts" <= ${input.maxRetryCount}
+      AND (
+        ${runtimeOperatingMode} = 'NORMAL'
+        OR candidate."runType" IN ('REFLECTION', 'SOURCE_REFRESH')
+      )
       AND (
         NOT ${input.writeRunsPaused}
         OR candidate."runType" IN (
@@ -202,7 +295,7 @@ export async function claimNextRuntimeRun(
           WHEN 'REFLECTION' THEN 4
           WHEN 'SOURCE_REFRESH' THEN 5
         END - LEAST(
-          2,
+          5,
           GREATEST(
             0,
             FLOOR(EXTRACT(EPOCH FROM (${input.now} - candidate."createdAt")) / 3600)::int
@@ -215,12 +308,24 @@ export async function claimNextRuntimeRun(
   `;
   const candidate = candidates[0];
   if (!candidate) return null;
+  const conflictingActiveRun = await transaction.agentRun.findFirst({
+    where: {
+      id: { not: candidate.id },
+      agentProfileId: input.agentProfileId,
+      runStatus: { in: ["RUNNING", "CANCEL_REQUESTED"] },
+      leaseExpiresAt: { gte: input.now },
+    },
+    select: { id: true },
+  });
+  if (conflictingActiveRun) return null;
   const leaseExpiresAt = new Date(input.now.getTime() + input.leaseSeconds * 1000);
+  const leaseToken = createOpaqueToken();
   const run = await transaction.agentRun.update({
     where: { id: candidate.id },
     data: {
       runStatus: "RUNNING",
       leaseOwner: input.workerId,
+      leaseToken,
       leaseExpiresAt,
       heartbeatAt: input.now,
       startedAt: candidate.startedAt ?? input.now,
@@ -234,8 +339,10 @@ export async function claimNextRuntimeRun(
       runStatus: true,
       queuePriority: true,
       timeoutSeconds: true,
+      startedAt: true,
       desiredEntryMin: true,
       desiredEntryMax: true,
+      leaseToken: true,
       leaseExpiresAt: true,
       attempts: true,
       scheduleSlotId: true,
@@ -249,13 +356,15 @@ export async function claimNextRuntimeRun(
       provocationOverride: true,
     },
   });
+  if (!runtimeRunAllowedInOperatingMode(run.runType, runtimeOperatingMode))
+    throw new Error("RUNTIME_OPERATING_MODE_LEASE_VIOLATION");
   if (run.scheduleSlotId) {
     await transaction.agentScheduleSlot.updateMany({
       where: { id: run.scheduleSlotId, status: "QUEUED" },
       data: { status: "RUNNING" },
     });
   }
-  return run;
+  return { ...run, leaseToken };
 }
 
 export function setRuntimeCurrentRun(
@@ -284,10 +393,11 @@ export function findRuntimeOwnedRun(
     where: { id: runId, agentProfileId },
     include: {
       personaVersion: {
-        select: { version: true, persona: true, renderedPrompt: true },
+        select: { id: true, version: true, persona: true, renderedPrompt: true },
       },
       agentProfile: {
         select: {
+          currentPersonaVersionId: true,
           lifecycleStatus: true,
           activeTimeProfile: true,
           personaEvolutionEnabled: true,
@@ -397,10 +507,12 @@ export async function appendRuntimeActions(
         | "PROPOSE_SOURCE"
         | "UPDATE_BELIEF"
         | "UPDATE_RELATIONSHIP_NOTE";
+      safeReason: string;
       targetType?: string;
       targetId?: string;
       input: Prisma.InputJsonValue;
       provenance?: Prisma.InputJsonValue;
+      repairOfSequence?: number;
     }>;
   },
 ) {
@@ -413,11 +525,44 @@ export async function appendRuntimeActions(
       actionStatus: "PROPOSED",
       targetType: action.targetType ?? null,
       targetId: action.targetId ?? null,
-      input: action.input,
+      input: {
+        ...(action.input as Prisma.JsonObject),
+        safeReason: action.safeReason,
+      },
       ...(action.provenance !== undefined ? { provenance: action.provenance } : {}),
+      ...(action.repairOfSequence !== undefined
+        ? {
+            validationResult: {
+              valid: true,
+              phase: "repair_candidate",
+              repairOfSequence: action.repairOfSequence,
+            },
+          }
+        : {}),
     })),
   });
   return { count: input.actions.length };
+}
+
+export function listRuntimeActionsForRepairValidation(
+  transaction: Prisma.TransactionClient,
+  input: { runId: string; agentProfileId: string },
+) {
+  return transaction.agentAction.findMany({
+    where: input,
+    orderBy: { sequence: "asc" },
+    select: {
+      sequence: true,
+      actionType: true,
+      actionStatus: true,
+      targetType: true,
+      targetId: true,
+      input: true,
+      provenance: true,
+      validationResult: true,
+      rejectionCode: true,
+    },
+  });
 }
 
 export async function lockRuntimeAction(
@@ -442,7 +587,10 @@ export function findRuntimeActionForExecution(
           runType: true,
           runStatus: true,
           leaseOwner: true,
+          leaseToken: true,
           leaseExpiresAt: true,
+          startedAt: true,
+          timeoutSeconds: true,
           allowTopicCreation: true,
           allowVoting: true,
           allowFollowing: true,
@@ -453,6 +601,7 @@ export function findRuntimeActionForExecution(
       },
       agentProfile: {
         select: {
+          lifecycleStatus: true,
           useGlobalEntryQuota: true,
           dailyEntryMax: true,
           dailyTopicMax: true,
@@ -572,6 +721,7 @@ export function createRuntimeContentRecord(
     agentProfileId: string;
     runId: string;
     actionId: string;
+    createdAt: Date;
   },
 ) {
   return transaction.agentContentRecord.create({ data: input });
@@ -681,6 +831,40 @@ export function findActiveRuntimeTopicWriteLock(
   });
 }
 
+export async function lockRuntimeTopicSaturation(
+  transaction: Prisma.TransactionClient,
+  topicId: string,
+): Promise<void> {
+  const key = `agent-topic-saturation:${topicId}`;
+  await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+}
+
+export async function findActiveRuntimeTopicSaturation(
+  transaction: Prisma.TransactionClient,
+  topicId: string,
+  now: Date,
+): Promise<{ id: bigint; expiresAt: Date } | null> {
+  const events = await transaction.agentRuntimeEvent.findMany({
+    where: {
+      eventType: "topic.saturation.started",
+      metadata: { path: ["topicId"], equals: topicId },
+    },
+    orderBy: { id: "desc" },
+    take: 10,
+    select: { id: true, metadata: true },
+  });
+  for (const event of events) {
+    const metadata =
+      event.metadata && typeof event.metadata === "object" && !Array.isArray(event.metadata)
+        ? (event.metadata as Prisma.JsonObject)
+        : {};
+    const expiresAt = typeof metadata.expiresAt === "string" ? new Date(metadata.expiresAt) : null;
+    if (expiresAt && Number.isFinite(expiresAt.getTime()) && expiresAt > now)
+      return { id: event.id, expiresAt };
+  }
+  return null;
+}
+
 export async function getRuntimeDuplicateSimilarity(
   transaction: Prisma.TransactionClient,
   input: {
@@ -722,6 +906,25 @@ export async function getRuntimeDuplicateSimilarity(
   return rows[0]?.maximum ?? 0;
 }
 
+export async function getRuntimeRecentAgentEntryBodies(
+  transaction: Prisma.TransactionClient,
+  input: { agentProfileId: string; excludeEntryId?: string },
+): Promise<string[]> {
+  const records = await transaction.agentContentRecord.findMany({
+    where: {
+      agentProfileId: input.agentProfileId,
+      entry: {
+        status: "ACTIVE",
+        ...(input.excludeEntryId ? { id: { not: input.excludeEntryId } } : {}),
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    select: { entry: { select: { body: true } } },
+  });
+  return records.map(({ entry }) => entry.body);
+}
+
 export async function validateRuntimeProvenanceEvidence(
   transaction: Prisma.TransactionClient,
   input: {
@@ -751,13 +954,17 @@ export async function validateRuntimeProvenanceEvidence(
         where: { id: { in: uniqueIds }, status: "ACTIVE", topic: { status: "ACTIVE" } },
       }),
     ]);
-    return { valid: runs + events + topics + entries === uniqueIds.length, independentSources: 0 };
+    return {
+      valid: runs + events + topics + entries === uniqueIds.length,
+      independentSources: 0,
+      sourceEvidenceTexts: [] as string[],
+    };
   }
   if (input.evidenceType === "USER_ENTRY") {
     const entries = await transaction.entry.count({
       where: { id: { in: uniqueIds }, status: "ACTIVE", topic: { status: "ACTIVE" } },
     });
-    return { valid: entries === uniqueIds.length, independentSources: 0 };
+    return { valid: entries === uniqueIds.length, independentSources: 0, sourceEvidenceTexts: [] };
   }
   if (input.evidenceType === "AGENT_MEMORY") {
     const memories = await transaction.agentMemoryEpisode.count({
@@ -767,7 +974,7 @@ export async function validateRuntimeProvenanceEvidence(
         invalidatedAt: null,
       },
     });
-    return { valid: memories === uniqueIds.length, independentSources: 0 };
+    return { valid: memories === uniqueIds.length, independentSources: 0, sourceEvidenceTexts: [] };
   }
   const expectedStatuses =
     input.evidenceType === "TRUSTED_SOURCE"
@@ -784,7 +991,12 @@ export async function validateRuntimeProvenanceEvidence(
         adminBlocked: false,
       },
     },
-    select: { source: { select: { normalizedDomain: true } } },
+    select: {
+      title: true,
+      safeText: true,
+      summary: true,
+      source: { select: { normalizedDomain: true } },
+    },
   });
   const independentSources = new Set(items.map(({ source }) => source.normalizedDomain)).size;
   return {
@@ -792,6 +1004,11 @@ export async function validateRuntimeProvenanceEvidence(
       items.length === uniqueIds.length &&
       (input.evidenceType !== "MULTIPLE_SOURCES" || independentSources >= 2),
     independentSources,
+    sourceEvidenceTexts: items.flatMap(({ title, safeText, summary }) => [
+      title,
+      safeText,
+      ...(summary ? [summary] : []),
+    ]),
   };
 }
 
@@ -972,6 +1189,175 @@ export function createRuntimeMemoryEpisode(
   });
 }
 
+export function listRuntimeCurrentPersonas(
+  transaction: Prisma.TransactionClient,
+  excludeProfileId: string,
+) {
+  return transaction.agentProfile.findMany({
+    where: {
+      id: { not: excludeProfileId },
+      lifecycleStatus: { not: "RETIRED" },
+      currentPersonaVersionId: { not: null },
+    },
+    select: { currentPersonaVersion: { select: { persona: true } } },
+  });
+}
+
+export function listRuntimeWeeklyReflectionReports(
+  transaction: Prisma.TransactionClient,
+  input: { agentProfileId: string; weekStart: Date; weekEnd: Date },
+) {
+  return transaction.agentPersonaVersion.findMany({
+    where: {
+      agentProfileId: input.agentProfileId,
+      changeOrigin: "REFLECTION",
+      createdAt: { gte: input.weekStart, lt: input.weekEnd },
+    },
+    select: { validationReport: true },
+    orderBy: { version: "asc" },
+  });
+}
+
+export async function lockRuntimeReflectionStateTargets(
+  transaction: Prisma.TransactionClient,
+  input: { agentProfileId: string; delta: WeeklyPersonaEvolutionDelta },
+) {
+  const sourceIds = input.delta.sourceTrustDeltas.map(({ sourceId }) => sourceId).sort();
+  const targetUserIds = input.delta.relationshipTrustDeltas
+    .map(({ targetUserId }) => targetUserId)
+    .sort();
+  const topicKeys = input.delta.beliefConfidenceDeltas.map(({ topicKey }) => topicKey).sort();
+  for (const sourceId of sourceIds) {
+    const key = `agent-source:${sourceId}`;
+    await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+  }
+  for (const targetUserId of targetUserIds) {
+    const key = `agent-relationship:${input.agentProfileId}:${targetUserId}`;
+    await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+  }
+  for (const topicKey of topicKeys) {
+    const key = `agent-belief:${input.agentProfileId}:${topicKey}`;
+    await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+  }
+  const [sources, relationships, beliefs] = await Promise.all([
+    transaction.agentSource.findMany({
+      where: {
+        id: { in: sourceIds },
+        agentProfileId: input.agentProfileId,
+        adminBlocked: false,
+        status: { notIn: ["REJECTED", "BLOCKED"] },
+      },
+      select: { id: true, trustScore: true },
+    }),
+    transaction.agentRelationship.findMany({
+      where: {
+        agentProfileId: input.agentProfileId,
+        targetUserId: { in: targetUserIds },
+      },
+      select: { id: true, targetUserId: true, trust: true },
+    }),
+    transaction.agentBelief.findMany({
+      where: {
+        agentProfileId: input.agentProfileId,
+        topicKey: { in: topicKeys },
+        status: "ACTIVE",
+      },
+      select: {
+        topicKey: true,
+        statement: true,
+        confidence: true,
+        evidenceSummary: true,
+        evidenceProvenance: true,
+        firstFormedAt: true,
+        version: true,
+        status: true,
+      },
+      orderBy: [{ topicKey: "asc" }, { version: "desc" }],
+      distinct: ["topicKey"],
+    }),
+  ]);
+  return { sources, relationships, beliefs };
+}
+
+export async function applyRuntimeReflectionStateDeltas(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId: string;
+    now: Date;
+    sources: Array<{ id: string; trustScore: number }>;
+    relationships: Array<{ id: string; trust: number }>;
+    beliefs: Array<{
+      topicKey: string;
+      statement: string;
+      confidence: number;
+      evidenceSummary: string;
+      evidenceProvenance: Prisma.JsonValue;
+      firstFormedAt: Date;
+      version: number;
+      status: string;
+    }>;
+  },
+): Promise<void> {
+  for (const source of input.sources)
+    await transaction.agentSource.update({
+      where: { id: source.id },
+      data: { trustScore: source.trustScore },
+    });
+  for (const relationship of input.relationships)
+    await transaction.agentRelationship.update({
+      where: { id: relationship.id },
+      data: { trust: relationship.trust },
+    });
+  for (const belief of input.beliefs)
+    await transaction.agentBelief.create({
+      data: {
+        agentProfileId: input.agentProfileId,
+        topicKey: belief.topicKey,
+        statement: belief.statement,
+        confidence: belief.confidence,
+        evidenceSummary: belief.evidenceSummary,
+        evidenceProvenance: belief.evidenceProvenance as Prisma.InputJsonValue,
+        firstFormedAt: belief.firstFormedAt,
+        lastUpdatedAt: input.now,
+        version: belief.version + 1,
+        status: belief.status,
+      },
+    });
+}
+
+export async function createRuntimeReflectionPersonaVersion(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId: string;
+    currentVersionId: string;
+    version: number;
+    persona: Prisma.InputJsonValue;
+    renderedPrompt: string;
+    changeSummary: string;
+    validationReport: Prisma.InputJsonValue;
+  },
+) {
+  const created = await transaction.agentPersonaVersion.create({
+    data: {
+      agentProfileId: input.agentProfileId,
+      version: input.version,
+      persona: input.persona,
+      renderedPrompt: input.renderedPrompt,
+      changeOrigin: "REFLECTION",
+      changeSummary: input.changeSummary,
+      previousVersionId: input.currentVersionId,
+      createdById: null,
+      validationReport: input.validationReport,
+    },
+    select: { id: true, version: true, changeSummary: true, validationReport: true },
+  });
+  await transaction.agentProfile.update({
+    where: { id: input.agentProfileId },
+    data: { currentPersonaVersionId: created.id },
+  });
+  return created;
+}
+
 export function findRuntimeSourceForWrite(
   transaction: Prisma.TransactionClient,
   input: { agentProfileId: string; sourceId: string },
@@ -985,6 +1371,49 @@ export function findRuntimeSourceForWrite(
     },
     select: { id: true, status: true, topics: true },
   });
+}
+
+const runtimeSourceStateSelect = {
+  id: true,
+  normalizedDomain: true,
+  status: true,
+  consecutiveFailures: true,
+  lastFetchedAt: true,
+  lastUsefulAt: true,
+} as const satisfies Prisma.AgentSourceSelect;
+
+type RuntimeSourceStateSnapshot = Prisma.AgentSourceGetPayload<{
+  select: typeof runtimeSourceStateSelect;
+}>;
+
+export interface RuntimeSourceStateChange {
+  sourceId: string;
+  normalizedDomain: string;
+  before: Omit<RuntimeSourceStateSnapshot, "id" | "normalizedDomain">;
+  after: Omit<RuntimeSourceStateSnapshot, "id" | "normalizedDomain">;
+}
+
+function sourceStateSnapshot(
+  source: RuntimeSourceStateSnapshot,
+): RuntimeSourceStateChange["before"] {
+  return {
+    status: source.status,
+    consecutiveFailures: source.consecutiveFailures,
+    lastFetchedAt: source.lastFetchedAt,
+    lastUsefulAt: source.lastUsefulAt,
+  };
+}
+
+function sourceStateChanged(
+  before: RuntimeSourceStateChange["before"],
+  after: RuntimeSourceStateChange["after"],
+): boolean {
+  return (
+    before.status !== after.status ||
+    before.consecutiveFailures !== after.consecutiveFailures ||
+    before.lastFetchedAt?.getTime() !== after.lastFetchedAt?.getTime() ||
+    before.lastUsefulAt?.getTime() !== after.lastUsefulAt?.getTime()
+  );
 }
 
 export async function storeRuntimeSourceResult(
@@ -1005,12 +1434,40 @@ export async function storeRuntimeSourceResult(
     errorCode?: string;
   },
 ) {
+  const sourceIdentity = await transaction.agentSource.findFirstOrThrow({
+    where: { id: input.sourceId, agentProfileId: input.agentProfileId },
+    select: { normalizedDomain: true },
+  });
+  const domainLockKey = `agent-source-domain:${input.agentProfileId}:${sourceIdentity.normalizedDomain}`;
+  await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${domainLockKey}, 0))`;
+  const domainWhere = {
+    agentProfileId: input.agentProfileId,
+    normalizedDomain: sourceIdentity.normalizedDomain,
+  } as const;
+  const beforeSources = await transaction.agentSource.findMany({
+    where: domainWhere,
+    select: runtimeSourceStateSelect,
+    orderBy: { id: "asc" },
+  });
   if (input.errorCode) {
+    const currentDomainFailure = await transaction.agentSource.findFirst({
+      where: domainWhere,
+      orderBy: { consecutiveFailures: "desc" },
+      select: { consecutiveFailures: true },
+    });
+    await transaction.agentSource.updateMany({
+      where: domainWhere,
+      data: { consecutiveFailures: (currentDomainFailure?.consecutiveFailures ?? 0) + 1 },
+    });
     await transaction.agentSource.update({
       where: { id: input.sourceId },
-      data: { consecutiveFailures: { increment: 1 }, lastFetchedAt: input.now },
+      data: { lastFetchedAt: input.now },
     });
   } else {
+    await transaction.agentSource.updateMany({
+      where: domainWhere,
+      data: { consecutiveFailures: 0 },
+    });
     for (const item of input.items) {
       await transaction.agentSourceItem.upsert({
         where: {
@@ -1081,6 +1538,30 @@ export async function storeRuntimeSourceResult(
     where: { id: input.runId },
     data: { perceptionSummary: Prisma.DbNull },
   });
+  const beforeById = new Map(
+    beforeSources.map((source) => [source.id, sourceStateSnapshot(source)]),
+  );
+  const afterSources = await transaction.agentSource.findMany({
+    where: domainWhere,
+    select: runtimeSourceStateSelect,
+    orderBy: { id: "asc" },
+  });
+  return {
+    changes: afterSources.flatMap((source) => {
+      const before = beforeById.get(source.id);
+      const after = sourceStateSnapshot(source);
+      return before && sourceStateChanged(before, after)
+        ? [
+            {
+              sourceId: source.id,
+              normalizedDomain: source.normalizedDomain,
+              before,
+              after,
+            } satisfies RuntimeSourceStateChange,
+          ]
+        : [];
+    }),
+  };
 }
 
 const perceptionSourceSelect = (now: Date) =>
@@ -1091,6 +1572,7 @@ const perceptionSourceSelect = (now: Date) =>
     normalizedDomain: true,
     status: true,
     trustScore: true,
+    interestScore: true,
     consecutiveFailures: true,
     lastFetchedAt: true,
     topics: true,
@@ -1112,7 +1594,7 @@ const perceptionSourceSelect = (now: Date) =>
 
 async function listRuntimePerceptionSources(
   transaction: Prisma.TransactionClient,
-  input: { agentProfileId: string; now: Date },
+  input: { agentProfileId: string; now: Date; sourceFetchLimit: number },
 ) {
   const discovery = await transaction.agentSource.findFirst({
     where: {
@@ -1123,23 +1605,68 @@ async function listRuntimePerceptionSources(
     select: perceptionSourceSelect(input.now),
     orderBy: [{ adminPinned: "desc" }, { interestScore: "desc" }, { updatedAt: "asc" }],
   });
-  const primary = await transaction.agentSource.findMany({
+  const primaryLimit = input.sourceFetchLimit - (discovery ? 1 : 0);
+  const primary =
+    primaryLimit > 0
+      ? await transaction.agentSource.findMany({
+          where: {
+            agentProfileId: input.agentProfileId,
+            status: { in: ["SEED", "PROBATION", "TRUSTED", "DISCOVERED"] },
+            adminBlocked: false,
+            ...(discovery ? { id: { not: discovery.id } } : {}),
+          },
+          select: perceptionSourceSelect(input.now),
+          orderBy: [{ adminPinned: "desc" }, { trustScore: "desc" }],
+          take: primaryLimit,
+        })
+      : [];
+  const selected = discovery ? [...primary, discovery] : primary;
+  if (selected.length === 0) return [];
+  const domainRecords = await transaction.agentSource.findMany({
     where: {
       agentProfileId: input.agentProfileId,
-      status: { in: ["SEED", "PROBATION", "TRUSTED", "DISCOVERED"] },
-      adminBlocked: false,
-      ...(discovery ? { id: { not: discovery.id } } : {}),
+      normalizedDomain: {
+        in: [...new Set(selected.map(({ normalizedDomain }) => normalizedDomain))],
+      },
     },
-    select: perceptionSourceSelect(input.now),
-    orderBy: [{ adminPinned: "desc" }, { trustScore: "desc" }],
-    take: discovery ? 7 : 8,
+    select: { normalizedDomain: true, consecutiveFailures: true, lastFetchedAt: true },
   });
-  return discovery ? [...primary, discovery] : primary;
+  const healthByDomain = new Map<
+    string,
+    { consecutiveFailures: number; lastAttemptAt: Date | null }
+  >();
+  for (const record of domainRecords) {
+    const current = healthByDomain.get(record.normalizedDomain) ?? {
+      consecutiveFailures: 0,
+      lastAttemptAt: null,
+    };
+    current.consecutiveFailures = Math.max(current.consecutiveFailures, record.consecutiveFailures);
+    if (
+      !current.lastAttemptAt ||
+      (record.lastFetchedAt && record.lastFetchedAt > current.lastAttemptAt)
+    )
+      current.lastAttemptAt = record.lastFetchedAt;
+    healthByDomain.set(record.normalizedDomain, current);
+  }
+  return selected.map((source) => {
+    const domainHealth = healthByDomain.get(source.normalizedDomain);
+    return {
+      ...source,
+      domainConsecutiveFailures: domainHealth?.consecutiveFailures ?? source.consecutiveFailures,
+      domainLastAttemptAt: domainHealth?.lastAttemptAt ?? source.lastFetchedAt,
+    };
+  });
 }
 
 export async function getRuntimePerceptionRecords(
   transaction: Prisma.TransactionClient,
-  input: { agentProfileId: string; agentUserId: string; now: Date; includeSources: boolean },
+  input: {
+    agentProfileId: string;
+    agentUserId: string;
+    now: Date;
+    includeSources: boolean;
+    sourceFetchLimit: number;
+  },
 ) {
   const blocked = await transaction.userBlock.findMany({
     where: { OR: [{ blockerId: input.agentUserId }, { blockedId: input.agentUserId }] },
@@ -1256,6 +1783,7 @@ export async function getRuntimePerceptionRecords(
       ? listRuntimePerceptionSources(transaction, {
           agentProfileId: input.agentProfileId,
           now: input.now,
+          sourceFetchLimit: input.sourceFetchLimit,
         })
       : Promise.resolve([]),
     transaction.agentRuntimeState.findUniqueOrThrow({
@@ -1269,6 +1797,7 @@ export async function getRuntimePerceptionRecords(
         todayVotes: true,
         todaySourceReads: true,
         nextScheduledAt: true,
+        runtimeMetadata: true,
       },
     }),
     transaction.entry.groupBy({
@@ -1299,7 +1828,17 @@ export async function getMeasuredRuntimeRunMetrics(
   transaction: Prisma.TransactionClient,
   runId: string,
 ) {
-  const [publishedEntries, createdTopics, votes, sourceReads] = await Promise.all([
+  const [
+    publishedEntries,
+    createdTopics,
+    votes,
+    sourceReads,
+    proposedActions,
+    succeededActions,
+    rejectedActions,
+    committedMemoryEpisodes,
+    recordedSourceResults,
+  ] = await Promise.all([
     transaction.agentContentRecord.count({ where: { runId } }),
     transaction.agentAction.count({
       where: { runId, actionType: "CREATE_TOPIC_WITH_ENTRY", actionStatus: "SUCCEEDED" },
@@ -1312,17 +1851,45 @@ export async function getMeasuredRuntimeRunMetrics(
       },
     }),
     transaction.agentMemoryEpisode.count({ where: { runId, eventType: "SOURCE_READ" } }),
+    transaction.agentAction.count({ where: { runId } }),
+    transaction.agentAction.count({ where: { runId, actionStatus: "SUCCEEDED" } }),
+    transaction.agentAction.count({
+      where: { runId, actionStatus: { in: ["REJECTED", "FAILED"] } },
+    }),
+    transaction.agentMemoryEpisode.count({ where: { runId } }),
+    transaction.auditLog.count({
+      where: {
+        entityType: "AgentRun",
+        entityId: runId,
+        action: "agent.run.source_result_recorded",
+      },
+    }),
   ]);
-  return { publishedEntries, createdTopics, votes, sourceReads };
+  return {
+    publishedEntries,
+    createdTopics,
+    votes,
+    sourceReads,
+    proposedActions,
+    succeededActions,
+    rejectedActions,
+    committedMemoryEpisodes,
+    recordedSourceResults,
+  };
 }
 
-export function finishRuntimeRunRecord(
+export async function finishRuntimeRunRecord(
   transaction: Prisma.TransactionClient,
   input: {
     runId: string;
     agentProfileId: string;
     outcome: "SUCCEEDED" | "PARTIAL" | "FAILED" | "CANCELLED" | "TIMED_OUT";
     now: Date;
+    fastState?: {
+      curiosity: number;
+      confidence: number;
+      topicFatigue: Record<string, number>;
+    };
     safeRunSummary?: Prisma.InputJsonValue;
     usageMetadata?: Prisma.InputJsonValue;
     performanceMetrics?: Prisma.InputJsonValue;
@@ -1340,6 +1907,24 @@ export function finishRuntimeRunRecord(
       : input.outcome === "CANCELLED"
         ? "CANCELLED"
         : "MISSED";
+  const previousRuntimeMetadata = input.fastState
+    ? (
+        await transaction.agentRuntimeState.findUniqueOrThrow({
+          where: { agentProfileId: input.agentProfileId },
+          select: { runtimeMetadata: true },
+        })
+      ).runtimeMetadata
+    : undefined;
+  const runtimeMetadata = input.fastState
+    ? {
+        ...(previousRuntimeMetadata &&
+        typeof previousRuntimeMetadata === "object" &&
+        !Array.isArray(previousRuntimeMetadata)
+          ? previousRuntimeMetadata
+          : {}),
+        fastState: input.fastState,
+      }
+    : undefined;
   return Promise.all([
     transaction.agentRun.update({
       where: { id: input.runId },
@@ -1347,6 +1932,7 @@ export function finishRuntimeRunRecord(
         runStatus: input.outcome,
         finishedAt: input.now,
         leaseOwner: null,
+        leaseToken: null,
         leaseExpiresAt: null,
         heartbeatAt: input.now,
         ...(input.safeRunSummary ? { safeRunSummary: input.safeRunSummary } : {}),
@@ -1373,6 +1959,7 @@ export function finishRuntimeRunRecord(
         todayCreatedTopics: { increment: input.createdTopics ?? 0 },
         todayVotes: { increment: input.votes ?? 0 },
         todaySourceReads: { increment: input.sourceReads ?? 0 },
+        ...(runtimeMetadata ? { runtimeMetadata } : {}),
       },
     }),
     transaction.agentScheduleSlot.updateMany({

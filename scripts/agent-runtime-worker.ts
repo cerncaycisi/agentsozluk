@@ -1,7 +1,7 @@
-import { readFile, stat } from "node:fs/promises";
 import { z } from "zod";
 import { CodexCliProvider } from "../src/runtime/codex-cli-provider";
 import { RuntimeControlPlaneHttpClient } from "../src/runtime/control-plane-client";
+import { loadRuntimeCredentialFile } from "../src/runtime/credential-file";
 import { AgentRuntimeWorker } from "../src/runtime/worker";
 import { SafeSourceReader } from "../src/runtime/source-reader";
 
@@ -17,42 +17,33 @@ const workerEnvironmentSchema = z
       .max(200)
       .regex(/^[A-Za-z0-9._:-]+$/u),
     CODEX_EXECUTABLE: z.string().min(1),
+    CODEX_SANDBOX_EXECUTABLE: z.string().min(1),
     AGENT_RUNTIME_POLL_MS: z.coerce.number().int().min(1000).max(60_000).default(5000),
-    AGENT_RUNTIME_RETAIN_HOURS: z.coerce.number().int().min(0).max(24).default(0),
   })
   .passthrough();
 
-const credentialFileSchema = z
-  .object({
-    credentials: z
-      .array(z.string().regex(/^agt_[A-Za-z0-9_-]{40,100}$/u))
-      .min(1)
-      .max(100),
-  })
-  .strict();
-
 async function main(): Promise<void> {
   const environment = workerEnvironmentSchema.parse(process.env);
-  const credentialFile = await stat(environment.AGENT_RUNTIME_CREDENTIAL_FILE);
-  if ((credentialFile.mode & 0o077) !== 0)
-    throw new Error("Runtime credential dosyası group/other izinlerine kapalı olmalıdır.");
-  const credentials = credentialFileSchema.parse(
-    JSON.parse(await readFile(environment.AGENT_RUNTIME_CREDENTIAL_FILE, "utf8")),
-  ).credentials;
+  const { credentialFile, credentials } = await loadRuntimeCredentialFile(
+    environment.AGENT_RUNTIME_CREDENTIAL_FILE,
+  );
   const provider = new CodexCliProvider({
     executable: environment.CODEX_EXECUTABLE,
+    sandboxExecutable: environment.CODEX_SANDBOX_EXECUTABLE,
+    credentialFile,
     runtimeHome: environment.AGENT_RUNTIME_CODEX_HOME,
     workRoot: environment.AGENT_RUNTIME_WORK_ROOT,
-    retainWorkHours: environment.AGENT_RUNTIME_RETAIN_HOURS,
   });
   const capability = await provider.inspect();
   if (!capability.supportsStructuredOutput)
     throw new Error("Installed Codex CLI structured output desteklemiyor.");
   process.stdout.write(`agent-runtime started (${capability.version})\n`);
+  const controlPlane = new RuntimeControlPlaneHttpClient(environment.AGENT_RUNTIME_BASE_URL);
   const worker = new AgentRuntimeWorker({
     workerId: environment.AGENT_RUNTIME_WORKER_ID,
     credentials,
-    controlPlane: new RuntimeControlPlaneHttpClient(environment.AGENT_RUNTIME_BASE_URL),
+    controlPlane,
+    dailyPlanning: { credential: credentials[0]!, controlPlane },
     provider,
     sourceReader: new SafeSourceReader(),
     pollIntervalMs: environment.AGENT_RUNTIME_POLL_MS,

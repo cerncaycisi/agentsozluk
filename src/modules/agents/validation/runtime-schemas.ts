@@ -1,10 +1,16 @@
 import { z } from "zod";
+import { weeklyPersonaEvolutionDeltaSchema } from "@/modules/agents/domain/persona-evolution";
 
 export const runtimeWorkerIdSchema = z
   .string()
   .min(3)
   .max(200)
   .regex(/^[A-Za-z0-9._:-]+$/u, "Worker kimliği yalnız güvenli karakterler içerebilir.");
+
+export const runtimeLeaseTokenSchema = z
+  .string()
+  .length(43)
+  .regex(/^[A-Za-z0-9_-]{43}$/u, "Lease token biçimi geçersizdir.");
 
 export const runtimeLeaseSchema = z
   .object({
@@ -13,10 +19,17 @@ export const runtimeLeaseSchema = z
   })
   .strict();
 
+export const runtimeDailyPlanSchema = z
+  .object({
+    workerId: runtimeWorkerIdSchema,
+  })
+  .strict();
+
 export const runtimeHeartbeatSchema = z
   .object({
     runId: z.string().uuid(),
     workerId: runtimeWorkerIdSchema,
+    leaseToken: runtimeLeaseTokenSchema,
     leaseSeconds: z.number().int().min(15).max(300).default(60),
     runtimeStatus: z.enum([
       "STARTING",
@@ -43,6 +56,7 @@ const safeRuntimeMetadataSchema = z
 export const runtimeEventsSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
+    leaseToken: runtimeLeaseTokenSchema,
     events: z
       .array(
         z
@@ -109,6 +123,18 @@ export const runtimeProvenanceSchema = z
   })
   .strict();
 
+export const runtimeSafeReasonSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500)
+  .refine((value) => !/[\u0000-\u001f\u007f]/u.test(value), {
+    message: "safeReason kontrol karakteri veya satır sonu içeremez.",
+  })
+  .refine((value) => !/<\/?[a-z][^>]*>/iu.test(value), {
+    message: "safeReason HTML içeremez.",
+  });
+
 export const runtimeActionSchema = z
   .object({
     sequence: z.number().int().positive(),
@@ -130,6 +156,7 @@ export const runtimeActionSchema = z
       "UPDATE_BELIEF",
       "UPDATE_RELATIONSHIP_NOTE",
     ]),
+    safeReason: runtimeSafeReasonSchema,
     targetType: z.string().trim().min(1).max(64).optional(),
     targetId: z.string().uuid().optional(),
     input: runtimeActionInputSchema.default({}),
@@ -137,11 +164,16 @@ export const runtimeActionSchema = z
   })
   .strict();
 
+export const runtimeRecordedActionSchema = runtimeActionSchema
+  .extend({ repairOfSequence: z.number().int().positive().optional() })
+  .strict();
+
 export const runtimeActionsSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
+    leaseToken: runtimeLeaseTokenSchema,
     actions: z
-      .array(runtimeActionSchema)
+      .array(runtimeRecordedActionSchema)
       .min(1)
       .max(50)
       .refine(
@@ -154,6 +186,7 @@ export const runtimeActionsSchema = z
 export const runtimeExecuteActionsSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
+    leaseToken: runtimeLeaseTokenSchema,
     sequences: z
       .array(z.number().int().positive())
       .min(1)
@@ -165,26 +198,46 @@ export const runtimeExecuteActionsSchema = z
   })
   .strict();
 
-export const runtimeMemoryCandidateSchema = z
+export const runtimeMemoryConsolidationSchema = z
   .object({
-    subjectType: z.enum(["TOPIC", "ENTRY", "USER", "SOURCE"]),
-    subjectId: z.string().uuid(),
-    summary: z.string().trim().min(1).max(1000),
+    sourceMemoryIds: z
+      .array(z.string().uuid())
+      .min(1)
+      .max(20)
+      .refine((values) => new Set(values).size === values.length, {
+        message: "Consolidation source memory kimlikleri benzersiz olmalıdır.",
+      }),
+    summary: z
+      .string()
+      .trim()
+      .min(10)
+      .max(2000)
+      .refine((value) => !/<\/?[a-z][^>]*>/iu.test(value), {
+        message: "Consolidation özeti HTML içeremez.",
+      }),
     salience: z.number().min(0).max(1),
-    provenance: runtimeProvenanceSchema,
   })
   .strict();
 
 export const runtimeMemoriesSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
-    memories: z.array(runtimeMemoryCandidateSchema).min(1).max(50),
+    leaseToken: runtimeLeaseTokenSchema,
+    memories: z.array(runtimeMemoryConsolidationSchema).min(1).max(20),
   })
   .strict();
+
+const runtimeErrorCodeSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(100)
+  .regex(/^[A-Z][A-Z0-9_]*$/u, "errorCode yalnız machine-safe büyük harfli kod içerebilir.");
 
 export const runtimeSourceResultSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
+    leaseToken: runtimeLeaseTokenSchema,
     sourceId: z.string().uuid(),
     items: z
       .array(
@@ -200,7 +253,7 @@ export const runtimeSourceResultSchema = z
       )
       .max(50)
       .default([]),
-    errorCode: z.string().trim().min(1).max(100).optional(),
+    errorCode: runtimeErrorCodeSchema.optional(),
   })
   .strict()
   .refine((value) => !(value.errorCode && value.items.length > 0), {
@@ -218,6 +271,18 @@ const safeRunSummarySchema = z
   })
   .strict();
 
+const codexIntervalSchema = z
+  .object({
+    startedAt: z.iso.datetime(),
+    finishedAt: z.iso.datetime(),
+    durationMs: z.number().int().min(0).max(86_400_000),
+  })
+  .strict()
+  .refine(
+    ({ startedAt, finishedAt }) => new Date(finishedAt).getTime() >= new Date(startedAt).getTime(),
+    { message: "Codex interval bitişi başlangıçtan önce olamaz." },
+  );
+
 const usageMetadataSchema = z
   .object({
     inputTokens: z.number().int().min(0).optional(),
@@ -230,6 +295,7 @@ const usageMetadataSchema = z
       .string()
       .regex(/^[a-f0-9]{64}$/u)
       .optional(),
+    codexIntervals: z.array(codexIntervalSchema).min(1).max(2).optional(),
     processPeakRssMb: z.number().min(0).max(65_536).optional(),
     systemPeakMemoryMb: z.number().min(0).max(65_536).optional(),
     availableMemoryMb: z.number().min(0).max(65_536).optional(),
@@ -248,21 +314,38 @@ const performanceMetricsSchema = z
   })
   .strict();
 
+export const runtimeFastStateSchema = z
+  .object({
+    curiosity: z.number().min(0).max(1),
+    confidence: z.number().min(0).max(1),
+    topicFatigue: z
+      .record(z.string().trim().min(1).max(100), z.number().min(0).max(1))
+      .refine(
+        (topicFatigue) => Object.keys(topicFatigue).length <= 50,
+        "topicFatigue en fazla 50 konu içerebilir.",
+      ),
+  })
+  .strict();
+
 export const runtimeCompleteSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
+    leaseToken: runtimeLeaseTokenSchema,
     outcome: z.enum(["SUCCEEDED", "PARTIAL"]),
     safeRunSummary: safeRunSummarySchema,
     usageMetadata: usageMetadataSchema,
     performanceMetrics: performanceMetricsSchema,
+    state: runtimeFastStateSchema,
+    reflectionDelta: weeklyPersonaEvolutionDeltaSchema.nullable().default(null),
   })
   .strict();
 
 export const runtimeFailSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
+    leaseToken: runtimeLeaseTokenSchema,
     outcome: z.enum(["FAILED", "CANCELLED", "TIMED_OUT"]),
-    errorCode: z.string().trim().min(1).max(100),
+    errorCode: runtimeErrorCodeSchema,
     errorSummary: z.string().trim().min(1).max(1000),
     usageMetadata: usageMetadataSchema.optional(),
   })

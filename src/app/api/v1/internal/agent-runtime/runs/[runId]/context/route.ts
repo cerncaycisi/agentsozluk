@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ runId: string }> },
 ) {
   const runId = parseUuid((await params).runId, "runId");
-  return runAgentRuntimeRead(request, "runtime:read", (client, principal, workerId) =>
-    getRuntimeRunContext(client, principal, runId, workerId),
+  return runAgentRuntimeRead(request, "runtime:read", (client, principal, workerId, leaseToken) =>
+    getRuntimeRunContext(client, principal, runId, workerId, leaseToken),
   );
 }
