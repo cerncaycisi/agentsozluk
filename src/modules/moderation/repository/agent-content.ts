@@ -10,6 +10,7 @@ export interface AgentContentListInput {
   reportStatus?: "OPEN" | "RESOLVED" | "REJECTED" | "NONE";
   hiddenStatus?: "ACTIVE" | "HIDDEN";
   sourceProvenance?: "WITH_SOURCE" | "WITHOUT_SOURCE";
+  overrideStatus?: "WITH_OVERRIDE" | "WITHOUT_OVERRIDE";
   skip: number;
   take: number;
 }
@@ -62,6 +63,25 @@ export async function listAgentContentRecords(
       : input.sourceProvenance === "WITHOUT_SOURCE"
         ? { action: { NOT: { OR: sourceEvidenceFilters } } }
         : {}),
+    ...(input.overrideStatus === "WITH_OVERRIDE"
+      ? {
+          run: {
+            OR: [
+              { dailyMaximumOverride: true },
+              { saturationOverride: true },
+              { provocationOverride: true },
+            ],
+          },
+        }
+      : input.overrideStatus === "WITHOUT_OVERRIDE"
+        ? {
+            run: {
+              dailyMaximumOverride: false,
+              saturationOverride: false,
+              provocationOverride: false,
+            },
+          }
+        : {}),
   };
   const [records, totalItems] = await Promise.all([
     transaction.agentContentRecord.findMany({
@@ -84,7 +104,17 @@ export async function listAgentContentRecords(
         agentProfile: {
           select: { id: true, user: { select: { username: true, displayName: true } } },
         },
-        run: { select: { id: true, runType: true, runStatus: true, createdAt: true } },
+        run: {
+          select: {
+            id: true,
+            runType: true,
+            runStatus: true,
+            createdAt: true,
+            dailyMaximumOverride: true,
+            saturationOverride: true,
+            provocationOverride: true,
+          },
+        },
         action: { select: { id: true, provenance: true } },
       },
     }),
@@ -142,6 +172,10 @@ export async function upsertAgentTopicWriteLock(
     select: { id: true, title: true, status: true },
   });
   if (!topic) return null;
+  const previousLock = await transaction.agentTopicWriteLock.findUnique({
+    where: { topicId: input.topicId },
+    select: { id: true, topicId: true, reason: true, expiresAt: true },
+  });
   const lock = await transaction.agentTopicWriteLock.upsert({
     where: { topicId: input.topicId },
     create: input,
@@ -152,7 +186,7 @@ export async function upsertAgentTopicWriteLock(
       expiresAt: input.expiresAt,
     },
   });
-  return { lock, topic };
+  return { lock, topic, previousLock };
 }
 
 export async function deleteAgentTopicWriteLock(

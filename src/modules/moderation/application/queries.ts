@@ -1,5 +1,6 @@
 import type { DatabaseClient } from "@/lib/db/types";
 import type { ActorContext } from "@/modules/auth/domain/actor";
+import { canViewAgentControlPlaneAudit } from "@/modules/moderation/domain/audit-visibility";
 import { requireModerator } from "@/modules/moderation/domain/authorization";
 import { findModerationActor } from "@/modules/moderation/repository/actions";
 import {
@@ -58,7 +59,16 @@ export async function getAuditLogs(
   },
 ) {
   return client.$transaction(async (transaction) => {
-    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
-    return listAuditLogs(transaction, input);
+    const moderator = requireModerator(
+      await findModerationActor(transaction, actor.actorId),
+      actor,
+    );
+    return listAuditLogs(transaction, {
+      ...input,
+      includeAgentControlPlane: canViewAgentControlPlaneAudit({
+        actorKind: actor.actorKind,
+        actorRole: moderator.role,
+      }),
+    });
   });
 }

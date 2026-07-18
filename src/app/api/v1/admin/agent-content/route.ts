@@ -12,6 +12,7 @@ export const runtime = "nodejs";
 const reportStatuses = new Set(["OPEN", "RESOLVED", "REJECTED", "NONE"] as const);
 const hiddenStatuses = new Set(["ACTIVE", "HIDDEN"] as const);
 const sourceProvenanceValues = new Set(["WITH_SOURCE", "WITHOUT_SOURCE"] as const);
+const overrideStatuses = new Set(["WITH_OVERRIDE", "WITHOUT_OVERRIDE"] as const);
 
 function enumValue<T extends string>(value: string | null, allowed: ReadonlySet<T>): T | undefined {
   return value && allowed.has(value as T) ? (value as T) : undefined;
@@ -46,6 +47,11 @@ export function GET(request: NextRequest) {
                 url.searchParams.get("sourceProvenance"),
                 sourceProvenanceValues,
               )!,
+            }
+          : {}),
+        ...(enumValue(url.searchParams.get("overrideStatus"), overrideStatuses)
+          ? {
+              overrideStatus: enumValue(url.searchParams.get("overrideStatus"), overrideStatuses)!,
             }
           : {}),
         skip: pagination.skip,

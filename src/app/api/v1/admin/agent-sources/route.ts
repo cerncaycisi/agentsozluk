@@ -1,24 +1,19 @@
-import type { AgentSourceStatus } from "@prisma/client";
 import type { NextRequest } from "next/server";
 import { requestSession } from "@/lib/auth/request-session";
 import { getDatabase } from "@/lib/db/client";
 import { runApi, successList } from "@/lib/http/api";
 import { paginationFrom } from "@/lib/http/pagination";
 import { parseUuid } from "@/lib/http/request";
-import { listAgentSources } from "@/modules/agents";
+import {
+  agentSourceStatuses,
+  type AgentSourceStatusValue,
+  listAgentSources,
+} from "@/modules/agents";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 
 export const runtime = "nodejs";
 
-const statuses = new Set<AgentSourceStatus>([
-  "SEED",
-  "DISCOVERED",
-  "PROBATION",
-  "TRUSTED",
-  "DORMANT",
-  "REJECTED",
-  "BLOCKED",
-]);
+const statuses = new Set<AgentSourceStatusValue>(agentSourceStatuses);
 
 function booleanFilter(value: string | null): boolean | undefined {
   return value === "true" ? true : value === "false" ? false : undefined;
@@ -29,7 +24,7 @@ export function GET(request: NextRequest) {
     const session = await requestSession(request);
     const url = new URL(request.url);
     const pagination = paginationFrom(url);
-    const status = url.searchParams.get("status") as AgentSourceStatus | null;
+    const status = url.searchParams.get("status") as AgentSourceStatusValue | null;
     const adminPinned = booleanFilter(url.searchParams.get("adminPinned"));
     const adminBlocked = booleanFilter(url.searchParams.get("adminBlocked"));
     const [sources, totalItems] = await listAgentSources(

@@ -19,6 +19,8 @@ import type {
   AgentTopicWriteLockInput,
   ModerationReasonInput,
 } from "@/modules/moderation/validation/schemas";
+import { appendOutboxEvent } from "@/modules/outbox";
+import { lockTopicState } from "@/modules/topics/repository/topics";
 
 export function getAgentContentRecords(
   client: DatabaseExecutor,
@@ -40,6 +42,7 @@ export function setAgentTopicWriteLock(
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
+    await lockTopicState(transaction, input.topicId);
     const outcome = await upsertAgentTopicWriteLock(transaction, {
       topicId: input.topicId,
       reason: input.reason,
@@ -49,6 +52,16 @@ export function setAgentTopicWriteLock(
     });
     if (!outcome) throw new AppError("TOPIC_NOT_FOUND", 404, "Başlık bulunamadı.");
     const metadata = {
+      actorKind: actor.actorKind,
+      before: {
+        writeLocked: outcome.previousLock !== null,
+        expiresAt: outcome.previousLock?.expiresAt?.toISOString() ?? null,
+      },
+      after: {
+        writeLocked: true,
+        expiresAt: outcome.lock.expiresAt?.toISOString() ?? null,
+      },
+      reason: input.reason,
       durationMinutes: input.durationMinutes,
       expiresAt: outcome.lock.expiresAt?.toISOString() ?? null,
     };
@@ -68,6 +81,15 @@ export function setAgentTopicWriteLock(
       requestId: actor.requestId,
       metadata,
     });
+    await appendOutboxEvent(transaction, {
+      eventType: "agent.topic.write_locked",
+      aggregateType: "Topic",
+      aggregateId: input.topicId,
+      actorId: actor.actorId,
+      actorKind: actor.actorKind,
+      requestId: actor.requestId,
+      payload: metadata,
+    });
     await appendRuntimeEvent(transaction, {
       eventType: "topic.agent-write-locked",
       safeMessage: "Topic agent yazımına geçici olarak kapatıldı.",
@@ -85,15 +107,25 @@ export function removeAgentTopicWriteLock(
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
+    await lockTopicState(transaction, topicId);
     const removed = await deleteAgentTopicWriteLock(transaction, topicId);
     if (!removed) return { removed: false };
+    const metadata = {
+      actorKind: actor.actorKind,
+      before: {
+        writeLocked: true,
+        expiresAt: removed.expiresAt?.toISOString() ?? null,
+      },
+      after: { writeLocked: false, expiresAt: null },
+      reason: input.reason,
+    };
     await appendModerationAction(transaction, {
       moderatorId: actor.actorId,
       actionType: "AGENT_TOPIC_WRITE_UNLOCKED",
       targetType: "Topic",
       targetId: topicId,
       reason: input.reason,
-      metadata: {},
+      metadata,
     });
     await appendAuditLog(transaction, {
       actorId: actor.actorId,
@@ -101,7 +133,7 @@ export function removeAgentTopicWriteLock(
       entityType: "Topic",
       entityId: topicId,
       requestId: actor.requestId,
-      metadata: {},
+      metadata,
     });
     await appendRuntimeEvent(transaction, {
       eventType: "topic.agent-write-unlocked",
@@ -133,6 +165,7 @@ export async function bulkSetAgentContentVisibility(
   });
   const byEntryId = new Map(records.map((record) => [record.entryId, record]));
   const targetIds = input.entryIds ?? records.map(({ entryId }) => entryId);
+  const aggregateId = input.runId ?? input.agentProfileId ?? targetIds[0]!;
   const succeeded: Array<{ entryId: string; runId: string; agentProfileId: string }> = [];
   const failed: Array<{ entryId: string; code: string; message: string }> = [];
   for (const entryId of targetIds) {
@@ -160,6 +193,14 @@ export async function bulkSetAgentContentVisibility(
   await inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     const metadata = {
+      actorKind: actor.actorKind,
+      before: { hidden: !hidden, selectedCount: targetIds.length },
+      after: {
+        hidden,
+        succeededCount: succeeded.length,
+        failedCount: failed.length,
+      },
+      reason: input.reason,
       status,
       hidden,
       selectedCount: targetIds.length,
@@ -182,6 +223,15 @@ export async function bulkSetAgentContentVisibility(
       entityId: input.runId ?? input.agentProfileId ?? null,
       requestId: actor.requestId,
       metadata,
+    });
+    await appendOutboxEvent(transaction, {
+      eventType: hidden ? "agent.content.bulk_hidden" : "agent.content.bulk_restored",
+      aggregateType: "AgentContentRecord",
+      aggregateId,
+      actorId: actor.actorId,
+      actorKind: actor.actorKind,
+      requestId: actor.requestId,
+      payload: metadata,
     });
     await appendRuntimeEvent(transaction, {
       eventType: hidden ? "content.bulk-hidden" : "content.bulk-restored",

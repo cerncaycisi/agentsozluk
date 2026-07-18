@@ -1,4 +1,8 @@
 import type { Prisma } from "@prisma/client";
+import {
+  AGENT_CONTROL_PLANE_AUDIT_ACTION_PREFIX,
+  AGENT_CONTROL_PLANE_AUDIT_ENTITY_PREFIX,
+} from "@/modules/moderation/domain/audit-visibility";
 
 export async function moderationDashboardCounts(
   transaction: Prisma.TransactionClient,
@@ -75,6 +79,7 @@ export function listAuditLogs(
     createdFrom?: Date;
     createdTo?: Date;
     requestId?: string;
+    includeAgentControlPlane: boolean;
     skip: number;
     take: number;
   },
@@ -92,6 +97,26 @@ export function listAuditLogs(
           },
         }
       : {}),
+    ...(input.includeAgentControlPlane
+      ? {}
+      : {
+          NOT: {
+            OR: [
+              {
+                action: {
+                  startsWith: AGENT_CONTROL_PLANE_AUDIT_ACTION_PREFIX,
+                  mode: "insensitive" as const,
+                },
+              },
+              {
+                entityType: {
+                  startsWith: AGENT_CONTROL_PLANE_AUDIT_ENTITY_PREFIX,
+                  mode: "insensitive" as const,
+                },
+              },
+            ],
+          },
+        }),
   };
   return Promise.all([
     transaction.auditLog.findMany({

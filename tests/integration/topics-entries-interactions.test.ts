@@ -2254,6 +2254,78 @@ describe("search, feeds and profiles with PostgreSQL", () => {
 });
 
 describe("reports and moderation with PostgreSQL", () => {
+  it("hides every agent control-plane audit record from moderators but keeps it for HUMAN ADMIN", async () => {
+    const moderator = await createUser("agent_audit_moderator");
+    const admin = await createUser("agent_audit_admin");
+    await Promise.all([
+      integrationDatabase.user.update({
+        where: { id: moderator.id },
+        data: { role: "MODERATOR" },
+      }),
+      integrationDatabase.user.update({
+        where: { id: admin.id },
+        data: { role: "ADMIN" },
+      }),
+    ]);
+    await integrationDatabase.auditLog.createMany({
+      data: [
+        {
+          actorId: admin.id,
+          action: "moderation.completed",
+          entityType: "Report",
+          entityId: null,
+          requestId: randomUUID(),
+          metadata: { result: "RESOLVED" },
+        },
+        {
+          actorId: admin.id,
+          action: "agent.settings.changed",
+          entityType: "AgentGlobalSettings",
+          entityId: null,
+          requestId: randomUUID(),
+          metadata: { agentProfileId: randomUUID(), runtimeProvider: "protected" },
+        },
+        {
+          actorId: admin.id,
+          action: "maintenance.completed",
+          entityType: "AgentFutureControlRecord",
+          entityId: null,
+          requestId: randomUUID(),
+          metadata: { agentProfileId: randomUUID() },
+        },
+      ],
+    });
+
+    const [moderatorLogs, moderatorTotal] = await getAuditLogs(
+      integrationDatabase,
+      actor(moderator.id),
+      { skip: 0, take: 20 },
+    );
+    expect(moderatorTotal).toBe(1);
+    expect(moderatorLogs.map(({ action }) => action)).toEqual(["moderation.completed"]);
+
+    const [explicitAgentLogs, explicitAgentTotal] = await getAuditLogs(
+      integrationDatabase,
+      actor(moderator.id),
+      { action: "agent.settings.changed", skip: 0, take: 20 },
+    );
+    expect(explicitAgentLogs).toEqual([]);
+    expect(explicitAgentTotal).toBe(0);
+
+    const [adminLogs, adminTotal] = await getAuditLogs(integrationDatabase, actor(admin.id), {
+      skip: 0,
+      take: 20,
+    });
+    expect(adminTotal).toBe(3);
+    expect(adminLogs.map(({ action }) => action)).toEqual(
+      expect.arrayContaining([
+        "moderation.completed",
+        "agent.settings.changed",
+        "maintenance.completed",
+      ]),
+    );
+  });
+
   it("creates a report atomically and rejects own, duplicate and suspended reports", async () => {
     const reporter = await createUser("reporter_one");
     const author = await createUser("reported_author");
@@ -2557,6 +2629,35 @@ describe("reports and moderation with PostgreSQL", () => {
         },
       }),
     ).toHaveLength(7);
+    const hideAudit = await integrationDatabase.auditLog.findFirstOrThrow({
+      where: { action: "entry.hidden", entityId: source.entry.id },
+    });
+    expect(hideAudit).toMatchObject({
+      actorId: moderatorActor.actorId,
+      requestId: moderatorActor.requestId,
+      createdAt: expect.any(Date),
+      metadata: {
+        actorKind: "HUMAN",
+        before: { status: "ACTIVE" },
+        after: { status: "HIDDEN" },
+        reason: reason.reason,
+        topicId: source.topic.id,
+      },
+    });
+    await expect(
+      integrationDatabase.outboxEvent.findFirstOrThrow({
+        where: { eventType: "entry.hidden", aggregateId: source.entry.id },
+      }),
+    ).resolves.toMatchObject({
+      actorId: moderatorActor.actorId,
+      actorKind: "HUMAN",
+      requestId: moderatorActor.requestId,
+      payload: {
+        before: { status: "ACTIVE" },
+        after: { status: "HIDDEN" },
+        reason: reason.reason,
+      },
+    });
     expect(
       (await getModerationReport(integrationDatabase, moderatorActor, report.id)).moderationActions
         .length,
