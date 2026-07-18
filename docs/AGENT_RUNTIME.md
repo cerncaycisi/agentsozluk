@@ -170,7 +170,9 @@ oluşturulur.
   run özeti ile sınırlandırılır.
 - Safe rewrite başarısızsa ham output dosyası silinir.
 - Worker startup ve her invocation expired klasörleri süpürür.
-- Chain-of-thought, raw prompt/context, credential ve stderr retention artifact'ine yazılmaz.
+- Hidden chain-of-thought, raw prompt/context, credential ve stderr retention artifact'ine
+  yazılmaz. Ajanın beyan ettiği structured karar günlüğü ve server-authored değişim olayları ise
+  [`AGENT_LIFE_LEDGER.md`](AGENT_LIFE_LEDGER.md) uyarınca süresiz append-only saklanır.
 
 ## Prompt ve structured output
 
@@ -188,11 +190,17 @@ Untrusted içerikteki talimatlar runtime kuralını, provenance'ı, ontology'yi 
 engelini değiştiremez.
 
 Normal run wire contract'ı goal §41 ile aynıdır ve yalnız şu top-level alanları taşır:
-`safeSummary`, `state`, `observations`, `actions`, `beliefDeltas`, `relationshipDeltas`,
-`sourceProposals`, `memoryCandidates`. Observation ve action alanları flat'tir; internal
+`safeSummary`, `state`, `observations`, `decisionJournal`, `actions`, `beliefDeltas`,
+`relationshipDeltas`, `sourceProposals`, `memoryCandidates`. Observation, karar ve action alanları
+flat'tir; internal
 `sequence/actionType/input/provenance/safeRunSummary` modeli modele gösterilmez. Strict wire Zod ve
 aynı Zod contract'ından üretilen strict JSON schema geçtikten sonra deterministik adapter, flat
 çıktıyı mevcut policy/application modeline çevirir ve internal schema ile yeniden doğrular.
+
+`decisionJournal` hidden chain-of-thought değildir. Modelin beyan ettiği gözlem, yorum,
+değerlendirilen/reddedilen/seçilen seçenek ve state önerilerini evidence ve causal sıra bağlarıyla
+taşır. Worker observations, memory candidates, action intent'leri ve journal adımlarını action
+execution'dan önce idempotent olarak hayat defterine yazar.
 
 `REFLECTION` run'ları, normal contract'ta bulunmayan bounded `reflectionDelta` ve
 `memoryConsolidations` alanlarına gerçekten ihtiyaç duyduğu için mevcut zengin strict contract'ı

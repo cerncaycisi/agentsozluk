@@ -9,6 +9,7 @@ import { checkDatabaseReadiness } from "@/lib/db/readiness";
 import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
 import { appendRuntimeEvent, lockAgentSettings } from "@/modules/agents/repository/control-plane";
+import { findRuntimeActionLifeProposal } from "@/modules/agents/repository/life-ledger";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
 import {
   createRuntimeContentRecord,
@@ -72,6 +73,8 @@ const noPublicWriteRunTypes = new Set(["READ_ONLY", "DRY_RUN", "REFLECTION", "SO
 
 interface ActionExecutionDependencies {
   checkReadiness?: (executor: DatabaseExecutor) => Promise<void>;
+  /** Tests and deterministic simulations may opt out; production routes must keep this enabled. */
+  requireLifeLedger?: boolean;
   /** Test seam entered after a public action owns the global settings lock. */
   afterPublicWriteSettingsLocked?: () => Promise<void>;
   /** Test seam for a terminal replay that wins after execution rollback. */
@@ -359,6 +362,39 @@ async function appendActionAudit(
   });
 }
 
+async function appendActionStatusLifeEvent(
+  transaction: TransactionClient,
+  principal: RuntimePrincipal,
+  action: { id: string; runId: string; sequence: number; actionType: string },
+  beforeStatus: string,
+  afterStatus: string,
+  metadata: InputJsonObject = {},
+  stateDetails: InputJsonObject = {},
+): Promise<void> {
+  const predecessor = await transaction.agentRuntimeEvent.findFirst({
+    where: { agentProfileId: principal.agentProfileId, actionId: action.id },
+    orderBy: { agentSequence: "desc" },
+    select: { id: true },
+  });
+  await appendRuntimeEvent(transaction, {
+    agentProfileId: principal.agentProfileId,
+    runId: action.runId,
+    actionId: action.id,
+    eventType: "ACTION_STATUS_CHANGED",
+    subject: {
+      type: "ACTION",
+      id: action.id,
+      actionType: action.actionType,
+      sequence: action.sequence,
+    },
+    safeMessage: `${action.actionType} action durumu ${beforeStatus} → ${afterStatus} olarak değişti.`,
+    before: { status: beforeStatus },
+    after: { status: afterStatus, ...stateDetails },
+    ...(predecessor ? { causedByEventIds: [predecessor.id] } : {}),
+    metadata,
+  });
+}
+
 export function buildRuntimeSourceChangedOutboxEvent(input: {
   principal: RuntimePrincipal;
   runId: string;
@@ -547,6 +583,7 @@ async function rejectAction(
     runId: string;
     input?: unknown;
     validationResult?: unknown;
+    actionStatus: string;
   },
   rejection: Rejection,
 ) {
@@ -559,6 +596,15 @@ async function rejectAction(
     rejectionCode: rejection.code,
     rejectionReason: rejection.reason,
   });
+  await appendActionStatusLifeEvent(
+    transaction,
+    principal,
+    action,
+    action.actionStatus,
+    "REJECTED",
+    { rejectionCode: rejection.code },
+    { rejectionCode: rejection.code, rejectionReason: rejection.reason },
+  );
   await appendActionAudit(transaction, principal, action, "rejected", {
     rejectionCode: rejection.code,
   });
@@ -574,6 +620,14 @@ async function performAction(
   result: InputJsonValue;
   entryId?: string;
   changedSource?: { id: string; status: string; normalizedDomain: string };
+  lifeChange?: {
+    eventType: "BELIEF_CHANGED" | "RELATIONSHIP_CHANGED" | "SOURCE_STATE_CHANGED";
+    subject: InputJsonValue;
+    summary: string;
+    confidence?: number;
+    before?: InputJsonValue;
+    after: InputJsonValue;
+  };
 }> {
   const input = action.input;
   switch (action.actionType) {
@@ -670,6 +724,17 @@ async function performAction(
       return {
         result: { sourceId: source.id, status: source.status },
         changedSource: source,
+        lifeChange: {
+          eventType: "SOURCE_STATE_CHANGED",
+          subject: { type: "SOURCE", id: source.id },
+          summary: "Agent source adayı server-side policy ile kaydedildi.",
+          ...(source.previousState ? { before: source.previousState } : {}),
+          after: {
+            status: source.status,
+            sourceType: source.sourceType,
+            topics: source.topics,
+          },
+        },
       };
     }
     case "UPDATE_BELIEF": {
@@ -688,6 +753,19 @@ async function performAction(
           topicKey: belief.topicKey,
           confidence: belief.confidence,
           version: belief.version,
+        },
+        lifeChange: {
+          eventType: "BELIEF_CHANGED",
+          subject: { type: "BELIEF", topicKey: belief.topicKey, id: belief.id },
+          summary: "Agent belief sürümü görünür kanıt doğrulamasından sonra değişti.",
+          confidence: belief.confidence,
+          ...(belief.previousState ? { before: belief.previousState } : {}),
+          after: {
+            statement: belief.statement,
+            confidence: belief.confidence,
+            version: belief.version,
+            status: belief.status,
+          },
         },
       };
     }
@@ -713,6 +791,20 @@ async function performAction(
           targetUserId,
           trust: relationship.trust,
           familiarity: relationship.familiarity,
+        },
+        lifeChange: {
+          eventType: "RELATIONSHIP_CHANGED",
+          subject: { type: "USER", id: targetUserId, relationshipId: relationship.id },
+          summary: "Agent relationship durumu görünür etkileşim kanıtıyla değişti.",
+          confidence: relationship.trust,
+          ...(relationship.previousState ? { before: relationship.previousState } : {}),
+          after: {
+            familiarity: relationship.familiarity,
+            trust: relationship.trust,
+            interest: relationship.interest,
+            disagreement: relationship.disagreement,
+            summary: relationship.summary,
+          },
         },
       };
     }
@@ -780,6 +872,22 @@ export async function executeRuntimeAction(
           409,
           "Run deadline doldu; yeni atomic action başlatılamaz.",
         );
+      if (dependencies.requireLifeLedger !== false) {
+        const lifeProposal = await findRuntimeActionLifeProposal(transaction, {
+          agentProfileId: principal.agentProfileId,
+          runId,
+          actionId: actionRecord.id,
+        });
+        if (
+          !lifeProposal ||
+          (actionRecord.actionType !== "NO_ACTION" && lifeProposal.causedByEventIds.length === 0)
+        )
+          throw new AppError(
+            "AGENT_LIFE_LEDGER_REQUIRED",
+            409,
+            "Action, decision journal'a bağlı immutable life proposal kaydedilmeden çalıştırılamaz.",
+          );
+      }
       started = true;
       const storedPayload = storedActionPayload(actionRecord.input);
       const parsed = runtimeActionSchema.safeParse({
@@ -1071,16 +1179,55 @@ export async function executeRuntimeAction(
         rejectionCode: null,
         rejectionReason: null,
       });
+      await appendActionStatusLifeEvent(
+        transaction,
+        principal,
+        actionRecord,
+        actionRecord.actionStatus,
+        "ACCEPTED",
+      );
       if (parsed.data.actionType === "NO_ACTION") {
         const skipped = await updateRuntimeActionStatus(transaction, actionRecord.id, {
           actionStatus: "SKIPPED",
           result: { skipped: true },
         });
+        await appendActionStatusLifeEvent(
+          transaction,
+          principal,
+          actionRecord,
+          "ACCEPTED",
+          "SKIPPED",
+          {},
+          { result: { skipped: true } },
+        );
         await appendActionAudit(transaction, principal, actionRecord, "skipped");
         return skipped;
       }
       await updateRuntimeActionStatus(transaction, actionRecord.id, { actionStatus: "EXECUTING" });
+      await appendActionStatusLifeEvent(
+        transaction,
+        principal,
+        actionRecord,
+        "ACCEPTED",
+        "EXECUTING",
+      );
       const execution = await performAction(transaction, principal, parsed.data, resolvedTarget);
+      if (execution.lifeChange)
+        await appendRuntimeEvent(transaction, {
+          agentProfileId: principal.agentProfileId,
+          runId,
+          actionId: actionRecord.id,
+          eventType: execution.lifeChange.eventType,
+          subject: execution.lifeChange.subject,
+          safeMessage: execution.lifeChange.summary,
+          ...(execution.lifeChange.confidence !== undefined
+            ? { confidence: execution.lifeChange.confidence }
+            : {}),
+          ...(execution.lifeChange.before ? { before: execution.lifeChange.before } : {}),
+          after: execution.lifeChange.after,
+          evidenceIds: parsed.data.provenance?.evidenceIds ?? [],
+          metadata: { origin: "ACTION_EXECUTION" },
+        });
       if (execution.entryId)
         await createRuntimeContentRecord(transaction, {
           entryId: execution.entryId,
@@ -1094,7 +1241,7 @@ export async function executeRuntimeAction(
         evidenceIds: [runId],
         shortRationale: "Gerçekleştirilen runtime action kaydı.",
       };
-      await createRuntimeMemoryEpisode(transaction, {
+      const memoryEpisode = await createRuntimeMemoryEpisode(transaction, {
         agentProfileId: principal.agentProfileId,
         runId,
         eventType: "ACTION_EXECUTED",
@@ -1110,10 +1257,36 @@ export async function executeRuntimeAction(
         },
         occurredAt: now,
       });
+      await appendRuntimeEvent(transaction, {
+        agentProfileId: principal.agentProfileId,
+        runId,
+        actionId: actionRecord.id,
+        eventType: "MEMORY_CANDIDATE_COMMITTED",
+        subject: {
+          type: parsed.data.targetType ?? "ACTION",
+          id: parsed.data.targetId ?? actionRecord.id,
+          memoryId: memoryEpisode.id,
+        },
+        safeMessage: `${parsed.data.actionType} action sonucu episodic memory olarak kaydedildi.`,
+        confidence: contentActions.has(parsed.data.actionType) ? 0.7 : 0.4,
+        evidenceIds: actionProvenance.evidenceIds,
+        after: { memoryId: memoryEpisode.id, status: "COMMITTED", eventType: "ACTION_EXECUTED" },
+        metadata: { origin: "ACTION_EXECUTION" },
+        occurredAt: now,
+      });
       const succeeded = await updateRuntimeActionStatus(transaction, actionRecord.id, {
         actionStatus: "SUCCEEDED",
         result: execution.result,
       });
+      await appendActionStatusLifeEvent(
+        transaction,
+        principal,
+        actionRecord,
+        "EXECUTING",
+        "SUCCEEDED",
+        {},
+        { result: execution.result },
+      );
       if (execution.changedSource)
         await appendOutboxEvent(
           transaction,
@@ -1178,6 +1351,15 @@ export async function executeRuntimeAction(
         rejectionCode: rejection.code,
         rejectionReason: rejection.reason,
       });
+      await appendActionStatusLifeEvent(
+        transaction,
+        principal,
+        action,
+        action.actionStatus,
+        rejection.status,
+        { rejectionCode: rejection.code },
+        { rejectionCode: rejection.code, rejectionReason: rejection.reason },
+      );
       await appendActionAudit(transaction, principal, action, rejection.status.toLowerCase(), {
         rejectionCode: rejection.code,
       });

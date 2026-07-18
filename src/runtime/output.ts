@@ -7,6 +7,7 @@ import {
 } from "@/modules/agents/validation/runtime-schemas";
 import { weeklyPersonaEvolutionDeltaSchema } from "@/modules/agents/domain/persona-evolution";
 import { temperamentKeys } from "@/modules/agents/personas/schema";
+import { isSafeLifeLedgerText } from "@/modules/agents/domain/life-ledger-safety";
 
 const uuidJsonPattern =
   "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$";
@@ -28,6 +29,7 @@ export const runtimeNormalWireFieldNames = [
   "safeSummary",
   "state",
   "observations",
+  "decisionJournal",
   "actions",
   "beliefDeltas",
   "relationshipDeltas",
@@ -36,7 +38,7 @@ export const runtimeNormalWireFieldNames = [
 ] as const;
 
 const wireDisplayText = (maximum: number) =>
-  z.string().trim().min(1).max(maximum).regex(displaySafeWirePattern);
+  z.string().trim().min(1).max(maximum).regex(displaySafeWirePattern).refine(isSafeLifeLedgerText);
 const wireBody = z.string().trim().min(1).max(10_000).regex(entryBodyWirePattern);
 const wireProvenanceValueSchema = z.enum(runtimeWireProvenanceValues);
 
@@ -56,6 +58,32 @@ const wireObservationSchema = z
     salience: z.number().min(0).max(1),
     provenance: wireProvenanceValueSchema,
     evidenceIds: z.array(uuidWireSchema).max(20),
+  })
+  .strict();
+
+export const runtimeDecisionJournalKinds = [
+  "OBSERVATION",
+  "INTERPRETATION",
+  "OPTION_CONSIDERED",
+  "OPTION_REJECTED",
+  "OPTION_SELECTED",
+  "STATE_PROPOSAL",
+] as const;
+
+const wireDecisionJournalItemSchema = z
+  .object({
+    seq: z.number().int().positive(),
+    kind: z.enum(runtimeDecisionJournalKinds),
+    subject: wireDisplayText(200),
+    summary: wireDisplayText(1000),
+    confidence: z.number().min(0).max(1),
+    evidenceIds: z.array(uuidWireSchema).max(20),
+    causedBySeqs: z
+      .array(z.number().int().positive())
+      .max(20)
+      .refine((values) => new Set(values).size === values.length, {
+        message: "causedBySeqs değerleri benzersiz olmalıdır.",
+      }),
   })
   .strict();
 
@@ -94,8 +122,14 @@ const wireClaimProvenanceSchema = z
     "claimProvenance içindeki bütün kanıt grupları aynı provenance türünü kullanmalıdır.",
   );
 
-const wireActionCommon = {
+const wireActionIntentCommon = {
   desire: z.number().min(0).max(1),
+  expectedOutcome: wireDisplayText(500),
+  selectedOptionSeq: z.number().int().positive().nullable(),
+};
+
+const wireActionCommon = {
+  ...wireActionIntentCommon,
   safeReason: wireDisplayText(500),
   claimProvenance: wireClaimProvenanceSchema,
 };
@@ -204,6 +238,7 @@ const wireBeliefDeltaSchema = z
     evidenceSummary: wireDisplayText(2000),
     provenance: wireProvenanceValueSchema,
     evidenceIds: z.array(uuidWireSchema).min(1).max(20),
+    ...wireActionIntentCommon,
   })
   .strict();
 const wireRelationshipDeltaSchema = z
@@ -216,6 +251,7 @@ const wireRelationshipDeltaSchema = z
     summary: wireDisplayText(2000),
     provenance: wireProvenanceValueSchema,
     evidenceIds: z.array(uuidWireSchema).min(1).max(20),
+    ...wireActionIntentCommon,
   })
   .strict();
 const wireSourceProposalSchema = z
@@ -230,6 +266,7 @@ const wireSourceProposalSchema = z
     topics: z.array(z.string().trim().min(2).max(100)).min(1).max(8),
     provenance: wireProvenanceValueSchema,
     evidenceIds: z.array(uuidWireSchema).min(1).max(20),
+    ...wireActionIntentCommon,
   })
   .strict();
 
@@ -238,6 +275,7 @@ export const runtimeNormalDecisionWireSchema = z
     safeSummary: wireDisplayText(1000),
     state: wireFastStateSchema,
     observations: z.array(wireObservationSchema).max(100),
+    decisionJournal: z.array(wireDecisionJournalItemSchema).min(1).max(100),
     actions: z.array(runtimeNormalWireActionSchema).max(50),
     beliefDeltas: z.array(wireBeliefDeltaSchema).max(20),
     relationshipDeltas: z.array(wireRelationshipDeltaSchema).max(20),
@@ -257,6 +295,57 @@ export const runtimeNormalDecisionWireSchema = z
         path: ["actions"],
         message: "Action ve türetilen delta/proposal toplamı 50 sınırını aşamaz.",
       });
+    const journalBySequence = new Map<number, (typeof decision.decisionJournal)[number]>();
+    for (const [index, item] of decision.decisionJournal.entries()) {
+      if (journalBySequence.has(item.seq))
+        context.addIssue({
+          code: "custom",
+          path: ["decisionJournal", index, "seq"],
+          message: "Decision journal seq değerleri benzersiz olmalıdır.",
+        });
+      journalBySequence.set(item.seq, item);
+    }
+    for (const [index, item] of decision.decisionJournal.entries())
+      for (const causedBySeq of item.causedBySeqs) {
+        const cause = journalBySequence.get(causedBySeq);
+        if (!cause || causedBySeq >= item.seq)
+          context.addIssue({
+            code: "custom",
+            path: ["decisionJournal", index, "causedBySeqs"],
+            message:
+              "causedBySeqs yalnız mevcut ve daha önceki journal seq değerlerini içerebilir.",
+          });
+      }
+    for (const [index, action] of decision.actions.entries()) {
+      if (action.type === "NO_ACTION") continue;
+      const selected =
+        action.selectedOptionSeq === null
+          ? undefined
+          : journalBySequence.get(action.selectedOptionSeq);
+      if (!selected || selected.kind !== "OPTION_SELECTED")
+        context.addIssue({
+          code: "custom",
+          path: ["actions", index, "selectedOptionSeq"],
+          message: "Executable action geçerli bir OPTION_SELECTED journal kaydına bağlanmalıdır.",
+        });
+    }
+    for (const [field, candidates] of [
+      ["beliefDeltas", decision.beliefDeltas],
+      ["relationshipDeltas", decision.relationshipDeltas],
+      ["sourceProposals", decision.sourceProposals],
+    ] as const)
+      for (const [index, candidate] of candidates.entries()) {
+        const selected =
+          candidate.selectedOptionSeq === null
+            ? undefined
+            : journalBySequence.get(candidate.selectedOptionSeq);
+        if (!selected || selected.kind !== "OPTION_SELECTED")
+          context.addIssue({
+            code: "custom",
+            path: [field, index, "selectedOptionSeq"],
+            message: "Türetilen action geçerli bir OPTION_SELECTED journal kaydına bağlanmalıdır.",
+          });
+      }
   });
 
 export type RuntimeNormalDecisionWire = z.infer<typeof runtimeNormalDecisionWireSchema>;
@@ -292,11 +381,57 @@ const observationSchema = z
   })
   .strict();
 
+export const runtimeDecisionJournalItemSchema = z
+  .object({
+    seq: z.number().int().positive(),
+    kind: z.enum(runtimeDecisionJournalKinds),
+    subject: z
+      .string()
+      .trim()
+      .min(1)
+      .max(200)
+      .regex(displaySafeWirePattern)
+      .refine(isSafeLifeLedgerText),
+    summary: z
+      .string()
+      .trim()
+      .min(1)
+      .max(1000)
+      .regex(displaySafeWirePattern)
+      .refine(isSafeLifeLedgerText),
+    confidence: z.number().min(0).max(1),
+    evidenceIds: z.array(z.string().uuid()).max(20),
+    causedBySeqs: z
+      .array(z.number().int().positive())
+      .max(20)
+      .refine((values) => new Set(values).size === values.length, {
+        message: "causedBySeqs değerleri benzersiz olmalıdır.",
+      }),
+  })
+  .strict();
+
+const runtimeDecisionActionIntentFields = {
+  desire: z.number().min(0).max(1).default(0),
+  expectedOutcome: z
+    .string()
+    .trim()
+    .min(1)
+    .max(500)
+    .regex(displaySafeWirePattern)
+    .default("Dış dünyada doğrulanabilir bir değişiklik beklenmiyor."),
+  selectedOptionSeq: z.number().int().positive().nullable().default(null),
+};
+
+const runtimeDecisionActionSchema = runtimeActionSchema
+  .extend(runtimeDecisionActionIntentFields)
+  .strict();
+
 export const runtimeDecisionSchema = z
   .object({
     state: runtimeFastStateSchema,
     observations: z.array(observationSchema).max(100),
-    actions: z.array(runtimeActionSchema).max(50),
+    decisionJournal: z.array(runtimeDecisionJournalItemSchema).max(100).default([]),
+    actions: z.array(runtimeDecisionActionSchema).max(50),
     beliefDeltas: z
       .array(
         z
@@ -306,6 +441,7 @@ export const runtimeDecisionSchema = z
             confidence: z.number().min(0).max(1),
             evidenceSummary: z.string().trim().min(1).max(2000),
             provenance: runtimeProvenanceSchema,
+            ...runtimeDecisionActionIntentFields,
           })
           .strict(),
       )
@@ -321,6 +457,7 @@ export const runtimeDecisionSchema = z
             disagreement: z.number().min(0).max(1),
             summary: z.string().trim().min(1).max(2000),
             provenance: runtimeProvenanceSchema,
+            ...runtimeDecisionActionIntentFields,
           })
           .strict(),
       )
@@ -333,6 +470,7 @@ export const runtimeDecisionSchema = z
             sourceType: z.enum(["RSS", "ATOM", "HTML"]),
             topics: z.array(z.string().trim().min(2).max(100)).min(1).max(8),
             provenance: runtimeProvenanceSchema,
+            ...runtimeDecisionActionIntentFields,
           })
           .strict(),
       )
@@ -355,6 +493,58 @@ export const runtimeDecisionSchema = z
         path: ["actions"],
         message: "Action sequence değerleri benzersiz olmalıdır.",
       });
+    const journalBySequence = new Map<number, (typeof value.decisionJournal)[number]>();
+    for (const [index, item] of value.decisionJournal.entries()) {
+      if (journalBySequence.has(item.seq))
+        context.addIssue({
+          code: "custom",
+          path: ["decisionJournal", index, "seq"],
+          message: "Decision journal seq değerleri benzersiz olmalıdır.",
+        });
+      journalBySequence.set(item.seq, item);
+    }
+    for (const [index, item] of value.decisionJournal.entries())
+      for (const causedBySeq of item.causedBySeqs)
+        if (!journalBySequence.has(causedBySeq) || causedBySeq >= item.seq)
+          context.addIssue({
+            code: "custom",
+            path: ["decisionJournal", index, "causedBySeqs"],
+            message:
+              "causedBySeqs yalnız mevcut ve daha önceki journal seq değerlerini içerebilir.",
+          });
+    if (value.decisionJournal.length > 0)
+      for (const [index, action] of value.actions.entries()) {
+        if (action.actionType === "NO_ACTION") continue;
+        const selected =
+          action.selectedOptionSeq === null
+            ? undefined
+            : journalBySequence.get(action.selectedOptionSeq);
+        if (!selected || selected.kind !== "OPTION_SELECTED")
+          context.addIssue({
+            code: "custom",
+            path: ["actions", index, "selectedOptionSeq"],
+            message: "Executable action geçerli bir OPTION_SELECTED journal kaydına bağlanmalıdır.",
+          });
+      }
+    if (value.decisionJournal.length > 0)
+      for (const [field, candidates] of [
+        ["beliefDeltas", value.beliefDeltas],
+        ["relationshipDeltas", value.relationshipDeltas],
+        ["sourceProposals", value.sourceProposals],
+      ] as const)
+        for (const [index, candidate] of candidates.entries()) {
+          const selected =
+            candidate.selectedOptionSeq === null
+              ? undefined
+              : journalBySequence.get(candidate.selectedOptionSeq);
+          if (!selected || selected.kind !== "OPTION_SELECTED")
+            context.addIssue({
+              code: "custom",
+              path: [field, index, "selectedOptionSeq"],
+              message:
+                "Türetilen action geçerli bir OPTION_SELECTED journal kaydına bağlanmalıdır.",
+            });
+        }
   })
   .strict();
 
@@ -484,15 +674,20 @@ function adaptWireAction(action: RuntimeNormalDecisionWire["actions"][number], s
     case "NO_ACTION":
       break;
   }
-  return compactRecord({
-    sequence,
-    actionType: action.type,
-    safeReason: action.safeReason,
-    targetType: wireActionTargetType(action.type, flat),
-    targetId,
-    input,
-    provenance: actionClaimProvenance(action.claimProvenance, action.safeReason),
-  });
+  return {
+    ...compactRecord({
+      sequence,
+      actionType: action.type,
+      desire: action.desire,
+      expectedOutcome: action.expectedOutcome,
+      safeReason: action.safeReason,
+      targetType: wireActionTargetType(action.type, flat),
+      targetId,
+      input,
+      provenance: actionClaimProvenance(action.claimProvenance, action.safeReason),
+    }),
+    selectedOptionSeq: action.selectedOptionSeq,
+  };
 }
 
 function adaptedRuntimeDecision(wire: RuntimeNormalDecisionWire): unknown {
@@ -533,6 +728,7 @@ function adaptedRuntimeDecision(wire: RuntimeNormalDecisionWire): unknown {
       ),
     },
     observations,
+    decisionJournal: wire.decisionJournal,
     actions: wire.actions.map((action, index) => adaptWireAction(action, index + 1)),
     beliefDeltas: wire.beliefDeltas.map((delta) => ({
       topicKey: delta.topicKey,
@@ -540,6 +736,9 @@ function adaptedRuntimeDecision(wire: RuntimeNormalDecisionWire): unknown {
       confidence: delta.confidence,
       evidenceSummary: delta.evidenceSummary,
       provenance: wireProvenance(delta.provenance, delta.evidenceIds, delta.evidenceSummary),
+      desire: delta.desire,
+      expectedOutcome: delta.expectedOutcome,
+      selectedOptionSeq: delta.selectedOptionSeq,
     })),
     relationshipDeltas: wire.relationshipDeltas.map((delta) => ({
       userId: delta.userId,
@@ -549,6 +748,9 @@ function adaptedRuntimeDecision(wire: RuntimeNormalDecisionWire): unknown {
       disagreement: delta.disagreement,
       summary: delta.summary,
       provenance: wireProvenance(delta.provenance, delta.evidenceIds, delta.summary),
+      desire: delta.desire,
+      expectedOutcome: delta.expectedOutcome,
+      selectedOptionSeq: delta.selectedOptionSeq,
     })),
     sourceProposals: wire.sourceProposals.map((proposal) => ({
       url: proposal.url,
@@ -559,6 +761,9 @@ function adaptedRuntimeDecision(wire: RuntimeNormalDecisionWire): unknown {
         proposal.evidenceIds,
         `Source proposal: ${proposal.url}`,
       ),
+      desire: proposal.desire,
+      expectedOutcome: proposal.expectedOutcome,
+      selectedOptionSeq: proposal.selectedOptionSeq,
     })),
     reflectionDelta: null,
     memoryConsolidations: [],
@@ -689,6 +894,30 @@ const observationJsonSchema = {
   },
 } as const;
 
+const decisionJournalItemJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["seq", "kind", "subject", "summary", "confidence", "evidenceIds", "causedBySeqs"],
+  properties: {
+    seq: { type: "integer", minimum: 1 },
+    kind: { type: "string", enum: [...runtimeDecisionJournalKinds] },
+    subject: { type: "string", minLength: 1, maxLength: 200 },
+    summary: { type: "string", minLength: 1, maxLength: 1000 },
+    confidence: { type: "number", minimum: 0, maximum: 1 },
+    evidenceIds: {
+      type: "array",
+      maxItems: 20,
+      items: { type: "string", pattern: uuidJsonPattern },
+    },
+    causedBySeqs: {
+      type: "array",
+      maxItems: 20,
+      uniqueItems: true,
+      items: { type: "integer", minimum: 1 },
+    },
+  },
+} as const;
+
 const memoryConsolidationJsonSchema = {
   type: "object",
   additionalProperties: false,
@@ -815,6 +1044,7 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
   required: [
     "state",
     "observations",
+    "decisionJournal",
     "actions",
     "beliefDeltas",
     "relationshipDeltas",
@@ -855,6 +1085,11 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
       },
     },
     observations: { type: "array", maxItems: 100, items: observationJsonSchema },
+    decisionJournal: {
+      type: "array",
+      maxItems: 100,
+      items: decisionJournalItemJsonSchema,
+    },
     actions: {
       type: "array",
       maxItems: 50,
@@ -864,6 +1099,9 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
         required: [
           "sequence",
           "actionType",
+          "desire",
+          "expectedOutcome",
+          "selectedOptionSeq",
           "safeReason",
           "targetType",
           "targetId",
@@ -892,6 +1130,11 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
               "UPDATE_BELIEF",
               "UPDATE_RELATIONSHIP_NOTE",
             ],
+          },
+          desire: { type: "number", minimum: 0, maximum: 1 },
+          expectedOutcome: { type: "string", minLength: 1, maxLength: 500 },
+          selectedOptionSeq: {
+            anyOf: [{ type: "integer", minimum: 1 }, { type: "null" }],
           },
           safeReason: { type: "string", minLength: 1, maxLength: 500 },
           targetType: { type: ["string", "null"], minLength: 1, maxLength: 64 },
@@ -964,13 +1207,27 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["topicKey", "statement", "confidence", "evidenceSummary", "provenance"],
+        required: [
+          "topicKey",
+          "statement",
+          "confidence",
+          "evidenceSummary",
+          "provenance",
+          "desire",
+          "expectedOutcome",
+          "selectedOptionSeq",
+        ],
         properties: {
           topicKey: { type: "string", minLength: 1, maxLength: 200 },
           statement: { type: "string", minLength: 1, maxLength: 2000 },
           confidence: { type: "number", minimum: 0, maximum: 1 },
           evidenceSummary: { type: "string", minLength: 1, maxLength: 2000 },
           provenance: provenanceJsonSchema,
+          desire: { type: "number", minimum: 0, maximum: 1 },
+          expectedOutcome: { type: "string", minLength: 1, maxLength: 500 },
+          selectedOptionSeq: {
+            anyOf: [{ type: "integer", minimum: 1 }, { type: "null" }],
+          },
         },
       },
     },
@@ -988,6 +1245,9 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
           "disagreement",
           "summary",
           "provenance",
+          "desire",
+          "expectedOutcome",
+          "selectedOptionSeq",
         ],
         properties: {
           userId: { type: "string", pattern: uuidJsonPattern },
@@ -997,6 +1257,11 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
           disagreement: { type: "number", minimum: 0, maximum: 1 },
           summary: { type: "string", minLength: 1, maxLength: 2000 },
           provenance: provenanceJsonSchema,
+          desire: { type: "number", minimum: 0, maximum: 1 },
+          expectedOutcome: { type: "string", minLength: 1, maxLength: 500 },
+          selectedOptionSeq: {
+            anyOf: [{ type: "integer", minimum: 1 }, { type: "null" }],
+          },
         },
       },
     },
@@ -1006,7 +1271,15 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["url", "sourceType", "topics", "provenance"],
+        required: [
+          "url",
+          "sourceType",
+          "topics",
+          "provenance",
+          "desire",
+          "expectedOutcome",
+          "selectedOptionSeq",
+        ],
         properties: {
           url: { type: "string", maxLength: 2048 },
           sourceType: { type: "string", enum: ["RSS", "ATOM", "HTML"] },
@@ -1017,6 +1290,11 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
             items: { type: "string", minLength: 2, maxLength: 100 },
           },
           provenance: provenanceJsonSchema,
+          desire: { type: "number", minimum: 0, maximum: 1 },
+          expectedOutcome: { type: "string", minLength: 1, maxLength: 500 },
+          selectedOptionSeq: {
+            anyOf: [{ type: "integer", minimum: 1 }, { type: "null" }],
+          },
         },
       },
     },

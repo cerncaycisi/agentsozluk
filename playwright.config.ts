@@ -33,6 +33,10 @@ if (
   throw new Error("Playwright requires E2E_APP_URL to be an explicit loopback http origin.");
 }
 const appUrl = applicationUrl.origin;
+const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+const chromiumLaunch = chromiumExecutablePath
+  ? { launchOptions: { executablePath: chromiumExecutablePath } }
+  : { channel: "chrome" as const };
 const productionServerCommand = [
   process.execPath,
   path.join(projectRoot, "scripts", "start-standalone.mjs"),
@@ -76,12 +80,12 @@ export default defineConfig({
     {
       name: "chromium",
       grepInvert: /@mobile/u,
-      use: { ...devices["Desktop Chrome"], channel: "chrome" },
+      use: { ...devices["Desktop Chrome"], ...chromiumLaunch },
     },
     {
       name: "mobile",
       grepInvert: /@desktop/u,
-      use: { ...devices["Pixel 7"], channel: "chrome" },
+      use: { ...devices["Pixel 7"], ...chromiumLaunch },
     },
   ],
   webServer: {

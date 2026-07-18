@@ -250,7 +250,12 @@ describe("agent control plane with PostgreSQL", () => {
     ).toBe(1);
     expect(
       await integrationDatabase.agentRuntimeEvent.count({
-        where: { agentProfileId: profileId, eventType: "persona.version.created" },
+        where: { agentProfileId: profileId, eventType: "PERSONA_CHANGED" },
+      }),
+    ).toBe(1);
+    expect(
+      await integrationDatabase.agentRuntimeEvent.count({
+        where: { agentProfileId: profileId, eventType: "LIFE_GENESIS_SNAPSHOT" },
       }),
     ).toBe(1);
   });
@@ -411,6 +416,38 @@ describe("agent control plane with PostgreSQL", () => {
         where: { eventType: "agent.persona.versioned", aggregateId: profileId },
       }),
     ).toBe(2);
+    const personaLife = await integrationDatabase.agentRuntimeEvent.findMany({
+      where: { agentProfileId: profileId, eventType: "PERSONA_CHANGED" },
+      orderBy: { agentSequence: "asc" },
+    });
+    expect(personaLife).toHaveLength(3);
+    expect(
+      personaLife.slice(1).map(({ beforeState, afterState, changedFields, metadata }) => ({
+        beforeState,
+        afterState,
+        changedFields,
+        metadata,
+      })),
+    ).toEqual([
+      {
+        beforeState: { personaVersionId: initialVersionId, version: 1 },
+        afterState: {
+          personaVersionId: afterEdit.currentPersonaVersion!.id,
+          version: 2,
+        },
+        changedFields: ["personaVersionId", "version"],
+        metadata: { origin: "ADMIN", changeSummary: "Public bio netleştirildi." },
+      },
+      {
+        beforeState: {
+          personaVersionId: afterEdit.currentPersonaVersion!.id,
+          version: 2,
+        },
+        afterState: { personaVersionId: rollback.id, version: 3 },
+        changedFields: ["personaVersionId", "version"],
+        metadata: { origin: "ROLLBACK", rollbackFromVersion: 1 },
+      },
+    ]);
     await expect(
       integrationDatabase.agentPersonaVersion.update({
         where: { id: rollback.id },
@@ -1285,6 +1322,49 @@ describe("agent control plane with PostgreSQL", () => {
         where: { eventType: "agent.source.changed", aggregateId: source.id },
       }),
     ).toBe(2);
+    const sourceLife = (
+      await integrationDatabase.agentRuntimeEvent.findMany({
+        where: { agentProfileId: created.agent.profile.id, eventType: "SOURCE_STATE_CHANGED" },
+        orderBy: { agentSequence: "asc" },
+      })
+    ).filter((event) => (event.subject as { id?: unknown } | null)?.id === source.id);
+    expect(sourceLife).toHaveLength(2);
+    expect(sourceLife[0]).toMatchObject({
+      beforeState: {
+        status: "PROBATION",
+        adminPinned: false,
+        adminBlocked: false,
+        trustScore: 0.5,
+      },
+      afterState: {
+        status: "TRUSTED",
+        adminPinned: true,
+        adminBlocked: false,
+        trustScore: 0.56,
+      },
+      changedFields: ["adminPinned", "status", "trustScore"],
+      metadata: {
+        origin: "ADMIN",
+        reason: "Admin source içeriğini inceleyip açık trusted onayı vermektedir.",
+      },
+    });
+    expect(sourceLife[1]).toMatchObject({
+      beforeState: {
+        status: "TRUSTED",
+        adminPinned: true,
+        adminBlocked: false,
+      },
+      afterState: {
+        status: "BLOCKED",
+        adminPinned: false,
+        adminBlocked: true,
+      },
+      changedFields: ["adminBlocked", "adminPinned", "status"],
+      metadata: {
+        origin: "ADMIN",
+        reason: "Source güvenli fetch havuzundan çıkarılmak üzere admin tarafından block edilir.",
+      },
+    });
   });
 
   it("denies source administration to moderators", async () => {

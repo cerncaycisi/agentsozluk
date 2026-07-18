@@ -420,7 +420,7 @@ export function storeRuntimePerceptionSummary(
   });
 }
 
-export function heartbeatRuntimeRunRecord(
+export async function heartbeatRuntimeRunRecord(
   transaction: Prisma.TransactionClient,
   input: {
     runId: string;
@@ -438,7 +438,11 @@ export function heartbeatRuntimeRunRecord(
       | "CANCELLING";
   },
 ) {
-  return Promise.all([
+  const previous = await transaction.agentRuntimeState.findUniqueOrThrow({
+    where: { agentProfileId: input.agentProfileId },
+    select: { runtimeStatus: true, lastHeartbeatAt: true },
+  });
+  await Promise.all([
     transaction.agentRun.update({
       where: { id: input.runId },
       data: {
@@ -455,6 +459,13 @@ export function heartbeatRuntimeRunRecord(
       },
     }),
   ]);
+  return {
+    before: {
+      runtimeStatus: previous.runtimeStatus,
+      lastHeartbeatAt: previous.lastHeartbeatAt?.toISOString() ?? null,
+    },
+    after: { runtimeStatus: input.runtimeStatus, lastHeartbeatAt: input.now.toISOString() },
+  };
 }
 
 export async function appendRuntimeRunEvents(
@@ -1012,7 +1023,7 @@ export async function validateRuntimeProvenanceEvidence(
   };
 }
 
-export function proposeRuntimeSource(
+export async function proposeRuntimeSource(
   transaction: Prisma.TransactionClient,
   input: {
     agentProfileId: string;
@@ -1023,7 +1034,13 @@ export function proposeRuntimeSource(
     discoveredFrom: string;
   },
 ) {
-  return transaction.agentSource.upsert({
+  const lockKey = `agent-source-url:${input.agentProfileId}:${input.url}`;
+  await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`;
+  const previousState = await transaction.agentSource.findUnique({
+    where: { agentProfileId_url: { agentProfileId: input.agentProfileId, url: input.url } },
+    select: { id: true, status: true, sourceType: true, topics: true },
+  });
+  const source = await transaction.agentSource.upsert({
     where: { agentProfileId_url: { agentProfileId: input.agentProfileId, url: input.url } },
     create: {
       agentProfileId: input.agentProfileId,
@@ -1044,8 +1061,16 @@ export function proposeRuntimeSource(
       sourceType: input.sourceType,
       discoveredFrom: input.discoveredFrom,
     },
-    select: { id: true, url: true, status: true, normalizedDomain: true },
+    select: {
+      id: true,
+      url: true,
+      status: true,
+      normalizedDomain: true,
+      sourceType: true,
+      topics: true,
+    },
   });
+  return { ...source, previousState };
 }
 
 export async function createRuntimeBeliefVersion(
@@ -1069,7 +1094,7 @@ export async function createRuntimeBeliefVersion(
   const boundedConfidence = previous
     ? Math.max(previous.confidence - 0.15, Math.min(previous.confidence + 0.15, input.confidence))
     : input.confidence;
-  return transaction.agentBelief.create({
+  const created = await transaction.agentBelief.create({
     data: {
       agentProfileId: input.agentProfileId,
       topicKey: input.topicKey,
@@ -1082,8 +1107,27 @@ export async function createRuntimeBeliefVersion(
       version: (previous?.version ?? 0) + 1,
       status: "ACTIVE",
     },
-    select: { id: true, topicKey: true, confidence: true, version: true },
+    select: {
+      id: true,
+      topicKey: true,
+      statement: true,
+      confidence: true,
+      version: true,
+      status: true,
+    },
   });
+  return {
+    ...created,
+    previousState: previous
+      ? {
+          id: previous.id,
+          statement: previous.statement,
+          confidence: previous.confidence,
+          version: previous.version,
+          status: previous.status,
+        }
+      : null,
+  };
 }
 
 export async function updateRuntimeRelationship(
@@ -1112,7 +1156,7 @@ export async function updateRuntimeRelationship(
   const boundedTrust = previous
     ? Math.max(previous.trust - 0.1, Math.min(previous.trust + 0.1, input.trust))
     : input.trust;
-  return transaction.agentRelationship.upsert({
+  const updated = await transaction.agentRelationship.upsert({
     where: {
       agentProfileId_targetUserId: {
         agentProfileId: input.agentProfileId,
@@ -1137,8 +1181,28 @@ export async function updateRuntimeRelationship(
       summary: input.summary,
       lastInteractionAt: input.now,
     },
-    select: { id: true, targetUserId: true, trust: true, familiarity: true },
+    select: {
+      id: true,
+      targetUserId: true,
+      familiarity: true,
+      trust: true,
+      interest: true,
+      disagreement: true,
+      summary: true,
+    },
   });
+  return {
+    ...updated,
+    previousState: previous
+      ? {
+          familiarity: previous.familiarity,
+          trust: previous.trust,
+          interest: previous.interest,
+          disagreement: previous.disagreement,
+          summary: previous.summary,
+        }
+      : null,
+  };
 }
 
 export function findRuntimeRelationshipTarget(

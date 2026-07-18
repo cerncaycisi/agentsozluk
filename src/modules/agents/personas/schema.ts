@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sourceUrlHasSensitiveQuery } from "@/modules/agents/domain/source-query-security";
 
 const weightedKeySchema = z.object({
   key: z.string().min(2).max(100),
@@ -10,7 +11,10 @@ const sourceSchema = z.object({
   url: z
     .string()
     .url()
-    .refine((url) => ["http:", "https:"].includes(new URL(url).protocol)),
+    .refine((url) => {
+      const parsed = new URL(url);
+      return ["http:", "https:"].includes(parsed.protocol) && !sourceUrlHasSensitiveQuery(parsed);
+    }),
   sourceType: z.enum(["RSS", "ATOM", "HTML"]),
   topics: z.array(z.string().min(2).max(100)).min(1).max(8),
   status: z.enum(["SEED", "TRUSTED"]),

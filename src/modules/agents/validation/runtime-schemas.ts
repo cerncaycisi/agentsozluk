@@ -238,6 +238,7 @@ export const runtimeSourceResultSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
     leaseToken: runtimeLeaseTokenSchema,
+    attemptId: z.string().uuid(),
     sourceId: z.string().uuid(),
     items: z
       .array(
@@ -259,6 +260,15 @@ export const runtimeSourceResultSchema = z
   .refine((value) => !(value.errorCode && value.items.length > 0), {
     message: "Source sonucu aynı anda item ve error içeremez.",
   });
+
+export const runtimeSourceAttemptSchema = z
+  .object({
+    workerId: runtimeWorkerIdSchema,
+    leaseToken: runtimeLeaseTokenSchema,
+    attemptId: z.string().uuid(),
+    sourceId: z.string().uuid(),
+  })
+  .strict();
 
 const safeRunSummarySchema = z
   .object({
@@ -364,6 +374,7 @@ export type RuntimeActionsInput = z.infer<typeof runtimeActionsSchema>;
 export type RuntimeExecuteActionsInput = z.infer<typeof runtimeExecuteActionsSchema>;
 export type RuntimeMemoriesInput = z.infer<typeof runtimeMemoriesSchema>;
 export type RuntimeSourceResultInput = z.infer<typeof runtimeSourceResultSchema>;
+export type RuntimeSourceAttemptInput = z.infer<typeof runtimeSourceAttemptSchema>;
 export type RuntimeCompleteInput = z.infer<typeof runtimeCompleteSchema>;
 export type RuntimeFailInput = z.infer<typeof runtimeFailSchema>;
 export type RuntimeCredentialRotationInput = z.infer<typeof runtimeCredentialRotationSchema>;

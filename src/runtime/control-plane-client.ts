@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 
 const leaseResponseSchema = z.object({
@@ -72,6 +72,18 @@ export type RuntimeContext = z.infer<typeof contextResponseSchema>;
 export type RuntimeExecution = z.infer<typeof actionsResponseSchema>;
 export type RuntimeDailyPlanResult = z.infer<typeof dailyPlanResponseSchema>;
 
+export interface RuntimeLifeEventsBatch {
+  observations: unknown[];
+  memoryCandidates: unknown[];
+  decisionJournal: unknown[];
+  actionIntents: Array<{
+    sequence: number;
+    desire: number;
+    expectedOutcome: string;
+    selectedOptionSeq: number | null;
+  }>;
+}
+
 export interface RuntimeRequestOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -113,6 +125,15 @@ export interface RuntimeControlPlane {
     runId: string,
     leaseToken: string,
     actions: unknown[],
+    payload: RuntimeLifeEventsBatch,
+    options?: RuntimeRequestOptions,
+  ): Promise<void>;
+  recordLifeEvents(
+    credential: string,
+    workerId: string,
+    runId: string,
+    leaseToken: string,
+    payload: RuntimeLifeEventsBatch,
     options?: RuntimeRequestOptions,
   ): Promise<void>;
   executeActions(
@@ -137,6 +158,14 @@ export interface RuntimeControlPlane {
     runId: string,
     leaseToken: string,
     result: Record<string, unknown>,
+    options?: RuntimeRequestOptions,
+  ): Promise<void>;
+  recordSourceAttempt(
+    credential: string,
+    workerId: string,
+    runId: string,
+    leaseToken: string,
+    input: { attemptId: string; sourceId: string },
     options?: RuntimeRequestOptions,
   ): Promise<void>;
   complete(
@@ -312,16 +341,52 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
     runId: string,
     leaseToken: string,
     actions: unknown[],
+    payload: RuntimeLifeEventsBatch,
     options?: RuntimeRequestOptions,
   ): Promise<void> {
+    const actionSequences = actions
+      .map((action) =>
+        typeof action === "object" && action !== null && "sequence" in action
+          ? String(action.sequence)
+          : "unknown",
+      )
+      .sort()
+      .join(",");
+    const idempotencyKey = createHash("sha256")
+      .update(`decision-batch:${runId}:${actionSequences}`)
+      .digest("hex");
     await this.#request(
       credential,
       "POST",
       `/api/v1/internal/agent-runtime/runs/${runId}/actions`,
-      { workerId, leaseToken, actions },
+      { workerId, leaseToken, actions, payload },
       undefined,
       undefined,
-      options,
+      { ...options, idempotencyKey, retryTransportFailureOnce: true },
+    );
+  }
+
+  async recordLifeEvents(
+    credential: string,
+    workerId: string,
+    runId: string,
+    leaseToken: string,
+    payload: RuntimeLifeEventsBatch,
+    options?: RuntimeRequestOptions,
+  ): Promise<void> {
+    const idempotencyKey = randomUUID();
+    await this.#request(
+      credential,
+      "POST",
+      `/api/v1/internal/agent-runtime/runs/${runId}/life-events`,
+      { workerId, leaseToken, payload },
+      undefined,
+      undefined,
+      {
+        ...options,
+        idempotencyKey,
+        retryTransportFailureOnce: true,
+      },
     );
   }
 
@@ -381,6 +446,29 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
       undefined,
       undefined,
       options,
+    );
+  }
+
+  async recordSourceAttempt(
+    credential: string,
+    workerId: string,
+    runId: string,
+    leaseToken: string,
+    input: { attemptId: string; sourceId: string },
+    options?: RuntimeRequestOptions,
+  ): Promise<void> {
+    await this.#request(
+      credential,
+      "POST",
+      `/api/v1/internal/agent-runtime/runs/${runId}/sources/attempts`,
+      { workerId, leaseToken, ...input },
+      undefined,
+      undefined,
+      {
+        ...options,
+        idempotencyKey: input.attemptId,
+        retryTransportFailureOnce: true,
+      },
     );
   }
 

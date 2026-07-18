@@ -44,12 +44,43 @@ describe("runtime structured output wire contract", () => {
         evidenceIds: [evidenceId],
       },
     ],
+    decisionJournal: [
+      {
+        seq: 1,
+        kind: "OBSERVATION" as const,
+        subject: "ölçülebilir-kapasite",
+        summary: "Topic üzerinde doğrulanabilir yeni bir tartışma alanı gözlendi.",
+        confidence: 0.8,
+        evidenceIds: [evidenceId],
+        causedBySeqs: [],
+      },
+      {
+        seq: 2,
+        kind: "OPTION_CONSIDERED" as const,
+        subject: "entry-yazmak",
+        summary: "Gözlenen tartışmaya sınırlı bir entry ile katılmak değerlendirildi.",
+        confidence: 0.75,
+        evidenceIds: [evidenceId],
+        causedBySeqs: [1],
+      },
+      {
+        seq: 3,
+        kind: "OPTION_SELECTED" as const,
+        subject: "entry-yazmak",
+        summary: "Kanıtla sınırlı entry seçeneği seçildi.",
+        confidence: 0.75,
+        evidenceIds: [evidenceId],
+        causedBySeqs: [2],
+      },
+    ],
     actions: [
       {
         type: "CREATE_ENTRY" as const,
         targetId: topicId,
         body: "Ölçülen veri ile yorumun sınırını ayırmak tartışmayı daha sağlam kılar.",
         desire: 0.75,
+        expectedOutcome: "Topic üzerinde kanıtla sınırlı yeni bir entry görünür olacak.",
+        selectedOptionSeq: 3,
         safeReason: "Görünür topic kanıtı özgün ve sınırlı bir entry adayını destekliyor.",
         claimProvenance: [
           {
@@ -185,6 +216,8 @@ describe("runtime structured output wire contract", () => {
     const noAction = {
       type: "NO_ACTION" as const,
       desire: 0,
+      expectedOutcome: "Dış dünyada state değişikliği beklenmiyor.",
+      selectedOptionSeq: null,
       safeReason: "Boundary doğrulaması public action gerektirmiyor.",
       claimProvenance: [],
     };
@@ -195,6 +228,9 @@ describe("runtime structured output wire contract", () => {
       evidenceSummary: "Görünür test kanıtı toplam bütçe sınırını doğrular.",
       provenance: "PLATFORM_EVENT" as const,
       evidenceIds: [evidenceId],
+      desire: 0.6,
+      expectedOutcome: "Belief güveni görünür kanıta göre sınırlı biçimde güncellenecek.",
+      selectedOptionSeq: 3,
     };
     expect(
       runtimeNormalDecisionWireSchema.safeParse({
@@ -233,6 +269,9 @@ describe("runtime structured output wire contract", () => {
             evidenceType: "PLATFORM_EVENT",
             evidenceIds: [evidenceId],
           },
+          desire: 0.75,
+          expectedOutcome: canonical.actions[0]!.expectedOutcome,
+          selectedOptionSeq: 3,
         },
       ],
       safeRunSummary: {
@@ -244,6 +283,67 @@ describe("runtime structured output wire contract", () => {
       memoryConsolidations: [],
     });
     expect(runtimeDecisionSchema.safeParse(first).success).toBe(true);
+  });
+
+  it("preserves every observation, memory candidate, decision step and action intent", () => {
+    const secondEvidenceId = "00000000-0000-4000-8000-000000000003";
+    const secondObservation = {
+      ...canonical.observations[0],
+      subjectId: secondEvidenceId,
+      summary: "İkinci görünür gözlem bağımsız biçimde korunmalıdır.",
+      evidenceIds: [secondEvidenceId],
+    };
+    const secondMemory = {
+      ...canonical.observations[0],
+      subjectId: secondEvidenceId,
+      summary: "İkinci memory adayı bağımsız biçimde korunmalıdır.",
+      evidenceIds: [secondEvidenceId],
+    };
+    const noAction = {
+      type: "NO_ACTION" as const,
+      desire: 0.1,
+      expectedOutcome: "İkinci intent dış dünyada değişiklik üretmeyecek.",
+      selectedOptionSeq: null,
+      safeReason: "İkinci intent görünür biçimde no-action olarak korunuyor.",
+      claimProvenance: [],
+    };
+    const wire = runtimeNormalDecisionWireSchema.parse({
+      ...canonical,
+      observations: [canonical.observations[0], secondObservation],
+      memoryCandidates: [canonical.observations[0], secondMemory],
+      actions: [canonical.actions[0], noAction],
+    });
+    const adapted = adaptRuntimeNormalDecisionWire(wire);
+
+    expect(adapted.observations).toHaveLength(2);
+    expect(adapted.observations.map(({ subjectId }) => subjectId)).toEqual([
+      topicId,
+      secondEvidenceId,
+    ]);
+    expect(adapted.memoryCandidates).toHaveLength(2);
+    expect(adapted.memoryCandidates.map(({ subjectId }) => subjectId)).toEqual([
+      topicId,
+      secondEvidenceId,
+    ]);
+    expect(adapted.decisionJournal).toEqual(canonical.decisionJournal);
+    expect(adapted.actions).toHaveLength(2);
+    expect(adapted.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sequence: 1,
+          desire: canonical.actions[0]!.desire,
+          expectedOutcome: canonical.actions[0]!.expectedOutcome,
+          selectedOptionSeq: 3,
+        }),
+        expect.objectContaining({
+          sequence: 2,
+          actionType: "NO_ACTION",
+          desire: noAction.desire,
+          expectedOutcome: noAction.expectedOutcome,
+          selectedOptionSeq: null,
+        }),
+      ]),
+    );
   });
 
   it("preserves topic keys that match forbidden metadata names as schema-valid fatigue data", () => {
@@ -299,6 +399,13 @@ describe("runtime structured output wire contract", () => {
     expect(
       runtimeNormalDecisionWireSchema.safeParse({ ...canonical, reasoning: "private" }).success,
     ).toBe(false);
+    for (const forbiddenField of ["chainOfThought", "rawPrompt", "internalMonologue"])
+      expect(
+        runtimeNormalDecisionWireSchema.safeParse({
+          ...canonical,
+          [forbiddenField]: "must not be retained",
+        }).success,
+      ).toBe(false);
     expect(
       runtimeNormalDecisionWireSchema.safeParse({
         ...canonical,
@@ -315,6 +422,58 @@ describe("runtime structured output wire contract", () => {
       runtimeNormalDecisionWireSchema.safeParse({
         ...canonical,
         actions: [{ ...canonical.actions[0], body: "<b>HTML kabul edilmez</b>" }],
+      }).success,
+    ).toBe(false);
+    for (const unsafeSummary of [
+      `Bearer ${"a".repeat(32)}`,
+      `api_key=${"b".repeat(24)}`,
+      "operator@example.com",
+      "satır sonu\niçeremez",
+    ])
+      expect(
+        runtimeNormalDecisionWireSchema.safeParse({
+          ...canonical,
+          decisionJournal: [
+            { ...canonical.decisionJournal[0], summary: unsafeSummary },
+            ...canonical.decisionJournal.slice(1),
+          ],
+        }).success,
+      ).toBe(false);
+  });
+
+  it("requires a bounded causal decision journal and links executable intent to selection", () => {
+    expect(
+      runtimeNormalDecisionWireSchema.safeParse({
+        ...canonical,
+        decisionJournal: canonical.decisionJournal.map((item) =>
+          item.seq === 2 ? { ...item, causedBySeqs: [3] } : item,
+        ),
+      }).success,
+    ).toBe(false);
+    expect(
+      runtimeNormalDecisionWireSchema.safeParse({
+        ...canonical,
+        decisionJournal: [canonical.decisionJournal[0], canonical.decisionJournal[0]],
+      }).success,
+    ).toBe(false);
+    expect(
+      runtimeNormalDecisionWireSchema.safeParse({
+        ...canonical,
+        actions: [{ ...canonical.actions[0], selectedOptionSeq: 2 }],
+      }).success,
+    ).toBe(false);
+    expect(
+      runtimeNormalDecisionWireSchema.safeParse({
+        ...canonical,
+        decisionJournal: Array.from({ length: 101 }, (_, index) => ({
+          seq: index + 1,
+          kind: "OBSERVATION" as const,
+          subject: `bounded-${index}`,
+          summary: "Bounded decision journal sınırı doğrulanıyor.",
+          confidence: 0.5,
+          evidenceIds: [],
+          causedBySeqs: [],
+        })),
       }).success,
     ).toBe(false);
   });
@@ -379,6 +538,9 @@ describe("runtime structured output wire contract", () => {
       {
         sequence: 1,
         actionType: "NO_ACTION",
+        desire: 0,
+        expectedOutcome: "Dış dünyada doğrulanabilir bir değişiklik beklenmiyor.",
+        selectedOptionSeq: null,
         safeReason: "Yeni kanıt olmadığı için güvenli action üretilmedi.",
         input: {},
       },

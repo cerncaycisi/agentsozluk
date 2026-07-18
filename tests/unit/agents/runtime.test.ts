@@ -84,6 +84,7 @@ describe("agent runtime authentication and payload boundaries", () => {
     const sourceResult = {
       workerId: "worker-01",
       leaseToken,
+      attemptId: "00000000-0000-4000-8000-000000000002",
       sourceId: "00000000-0000-4000-8000-000000000001",
       items: [],
       errorCode: "SOURCE_HTTP_503",

@@ -824,6 +824,14 @@ safety margin. The first activation, five-agent stage, ten-agent escalation and 
 completion timestamps must have this same local date. Crossing midnight is fail-closed; do not
 relabel evidence from two dates as one Day 0.
 
+Before this date gate, the complete life-ledger acceptance gate in
+[`AGENT_LIFE_LEDGER.md`](AGENT_LIFE_LEDGER.md) must pass against the exact deployed revision. Prove
+strict decision-journal validation, no lost observations/memory candidates/action intents,
+server-computed before/after events for every mutable agent state, exact-once sequence/hash-chain
+integrity, pagination/export completeness, secret redaction and backup/reconstructability. If any
+check is missing or fails, keep the global runtime paused and every agent profile `PAUSED`; do not
+substitute safe run summaries or ordinary runtime events for this evidence.
+
 ### Gate 9: paused smoke and human checklist
 
 Start and finish this gate with global runtime paused and all ten agent profiles `PAUSED`. Disable

@@ -136,6 +136,22 @@ describe("agent memory lifecycle with PostgreSQL", () => {
         where: { eventType: "agent.memory.invalidated", aggregateId: memory.id },
       }),
     ).toBe(1);
+    const lifeEvent = await integrationDatabase.agentRuntimeEvent.findFirstOrThrow({
+      where: { agentProfileId: profileId, eventType: "MEMORY_CHANGED" },
+      orderBy: { agentSequence: "desc" },
+    });
+    expect(lifeEvent).toMatchObject({
+      subject: { type: "MEMORY", id: memory.id },
+      beforeState: { invalidatedAt: null },
+      changedFields: ["invalidatedAt"],
+      metadata: {
+        origin: "ADMIN",
+        reason: "Bu episode yanlış provenance ile kaydedildi.",
+      },
+    });
+    expect(lifeEvent.afterState).toMatchObject({
+      invalidatedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/u),
+    });
     expect(await integrationDatabase.agentMemoryEpisode.count()).toBe(1);
   });
 

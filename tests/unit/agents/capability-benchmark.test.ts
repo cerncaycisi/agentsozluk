@@ -12,10 +12,23 @@ function output() {
     safeSummary: "Temsilî context güvenli biçimde değerlendirildi.",
     state: { curiosity: 0.5, confidence: 0.5, topicFatigue: { items: [] } },
     observations: [],
+    decisionJournal: [
+      {
+        seq: 1,
+        kind: "STATE_PROPOSAL",
+        subject: "benchmark-scenario",
+        summary: "Temsilî benchmark context'i public action gerektirmiyor.",
+        confidence: 0.8,
+        evidenceIds: [],
+        causedBySeqs: [],
+      },
+    ],
     actions: [
       {
         type: "NO_ACTION",
         desire: 0,
+        expectedOutcome: "Benchmark dış dünyada bir state değişikliği oluşturmayacak.",
+        selectedOptionSeq: null,
         safeReason: "Benchmark senaryosu public action gerektirmiyor.",
         claimProvenance: [],
       },

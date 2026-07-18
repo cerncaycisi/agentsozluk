@@ -805,6 +805,7 @@ model AgentAction {
   run              AgentRun            @relation(fields: [runId], references: [id], onDelete: Restrict)
   agentProfile     AgentProfile        @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
   contentRecord    AgentContentRecord?
+  runtimeEvents    AgentRuntimeEvent[]
 
   @@unique([runId, sequence])
   @@index([agentProfileId, actionType, createdAt])
@@ -992,18 +993,40 @@ model UserFollow {
 }
 
 model AgentRuntimeEvent {
-  id             BigInt        @id @default(autoincrement())
-  agentProfileId String?       @db.Uuid
-  runId          String?       @db.Uuid
-  eventType      String        @db.VarChar(100)
-  safeMessage    String        @db.VarChar(1000)
-  metadata       Json
-  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
-  agentProfile   AgentProfile? @relation(fields: [agentProfileId], references: [id], onDelete: SetNull)
-  run            AgentRun?     @relation(fields: [runId], references: [id], onDelete: SetNull)
+  id                BigInt        @id @default(autoincrement())
+  agentProfileId    String?       @db.Uuid
+  runId             String?       @db.Uuid
+  actionId          String?       @db.Uuid
+  batchId           String?       @db.VarChar(64)
+  batchSequence     Int?
+  agentSequence     BigInt?
+  decisionSequence  Int?
+  schemaVersion     Int           @default(1)
+  eventType         String        @db.VarChar(100)
+  subject           Json?
+  safeMessage       String        @db.VarChar(1000)
+  confidence        Float?
+  evidenceIds       String[]      @default([]) @db.Uuid
+  causedByEventIds  BigInt[]      @default([])
+  beforeState       Json?
+  afterState        Json?
+  changedFields     String[]      @default([])
+  metadata          Json
+  occurredAt        DateTime      @default(now()) @db.Timestamptz(3)
+  contentHash       String?       @db.VarChar(64)
+  previousEventHash String?       @db.VarChar(64)
+  eventHash         String?       @db.VarChar(64)
+  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
+  agentProfile      AgentProfile? @relation(fields: [agentProfileId], references: [id], onDelete: SetNull)
+  run               AgentRun?     @relation(fields: [runId], references: [id], onDelete: SetNull)
+  action            AgentAction?  @relation(fields: [actionId], references: [id], onDelete: Restrict)
 
   @@index([createdAt])
   @@index([agentProfileId, id])
+  @@index([agentProfileId, occurredAt, id], map: "agent_runtime_events_agent_occurred_id_idx")
+  @@index([runId, id], map: "agent_runtime_events_run_id_idx")
+  @@index([actionId], map: "agent_runtime_events_action_id_idx")
+  @@index([eventType, occurredAt, id], map: "agent_runtime_events_type_occurred_id_idx")
   @@map("agent_runtime_events")
 }
 

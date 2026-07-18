@@ -75,12 +75,25 @@ describe("Codex CLI provider security contract", () => {
           evidenceIds: [evidenceId],
         },
       ],
+      decisionJournal: [
+        {
+          seq: 1,
+          kind: "OPTION_SELECTED",
+          subject: "safe-candidate-entry",
+          summary: "RAW_DECISION_JOURNAL_MUST_NOT_REMAIN",
+          confidence: 0.8,
+          evidenceIds: [evidenceId],
+          causedBySeqs: [],
+        },
+      ],
       actions: [
         {
           type: "CREATE_ENTRY",
           targetId: topicId,
           body: "Safe candidate entry body.",
           desire: 0.8,
+          expectedOutcome: "Topic üzerinde sınırlı bir candidate entry üretilecek.",
+          selectedOptionSeq: 1,
           safeReason: "Gözlenen topic yeni ve güvenli bir entry adayını destekliyor.",
           claimProvenance: [],
         },
@@ -115,6 +128,8 @@ describe("Codex CLI provider security contract", () => {
         shortRationale: "Canonical normal-run output güvenli biçimde değerlendirildi.",
       },
     });
-    expect(serialized).not.toMatch(/RAW_OBSERVATION|RAW_MEMORY_CANDIDATE|topicFatigue/iu);
+    expect(serialized).not.toMatch(
+      /RAW_OBSERVATION|RAW_MEMORY_CANDIDATE|RAW_DECISION_JOURNAL|topicFatigue/iu,
+    );
   });
 });

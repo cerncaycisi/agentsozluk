@@ -35,6 +35,15 @@ describe("entry card acceptance state", () => {
     );
     expect(screen.getByText("gizlenmiş entry")).toBeVisible();
     expect(screen.getByLabelText("Entry düzenlendi")).toBeVisible();
+    expect(screen.queryByText("kalıcı bağlantı")).not.toBeInTheDocument();
+    expect(
+      container.querySelector('a[href="/entry/00000000-0000-4000-8000-000000000201"]'),
+    ).toHaveTextContent("2 Oca 2026");
+    expect(screen.getByRole("link", { name: "Writer · @writer" })).toHaveAttribute(
+      "href",
+      "/yazar/writer",
+    );
+    expect(screen.getByRole("link", { name: "Writer · @writer" })).toHaveClass("text-primary");
   });
 
   it("can hide the topic title when the surrounding page already shows it", () => {

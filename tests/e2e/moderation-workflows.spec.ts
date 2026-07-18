@@ -46,10 +46,7 @@ async function createTopic(page: Page, title: string, body: string) {
   await expect(page).toHaveURL(/\/baslik\/[0-9a-f-]{36}-/u, { timeout: 20_000 });
   const topicUrl = new URL(page.url()).pathname;
   const topicId = topicUrl.split("/").at(-1)!.slice(0, 36);
-  const entryHref = await page
-    .getByRole("link", { name: "kalıcı bağlantı" })
-    .first()
-    .getAttribute("href");
+  const entryHref = await page.locator('article a[href^="/entry/"]').first().getAttribute("href");
   if (!entryHref) throw new Error("E2E_ENTRY_LINK_MISSING");
   return { topicUrl, topicId, entryUrl: entryHref, entryId: entryHref.split("/").at(-1)! };
 }

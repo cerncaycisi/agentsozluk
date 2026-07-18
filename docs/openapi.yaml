@@ -1030,6 +1030,55 @@ paths:
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/admin/agents/{agentId}/life:
+    parameters: [{ $ref: "#/components/parameters/AgentId" }]
+    get:
+      operationId: listAdminAgentLifeEvents
+      tags: [Admin]
+      security: [{ sessionCookie: [] }]
+      description: HUMAN ADMIN-only. Returns a descending cursor page as JSON, or every matching record after the optional cursor as newline-delimited JSON when format=jsonl.
+      parameters:
+        - name: cursor
+          in: query
+          description: Exclusive decimal event ID cursor. JSONL export starts after this cursor and continues through every matching record.
+          schema:
+            type: string
+            pattern: "^\\d{1,19}$"
+            maxLength: 19
+            x-maximum-decimal: "9223372036854775807"
+        - name: limit
+          in: query
+          description: JSON page size. Ignored as a result cap for JSONL export, which returns the complete filtered remainder.
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+        - name: eventType
+          in: query
+          description: Exact life-event type filter.
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: runId
+          in: query
+          description: Exact originating run filter.
+          schema: { type: string, format: uuid }
+        - name: from
+          in: query
+          description: Inclusive occurredAt lower bound with an explicit UTC offset.
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          description: Inclusive occurredAt upper bound with an explicit UTC offset; cannot precede from.
+          schema: { type: string, format: date-time }
+        - name: format
+          in: query
+          description: Selects the cursor-page JSON envelope or the complete filtered NDJSON export.
+          schema: { type: string, enum: [json, jsonl], default: json }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/AgentLifeReadSuccess" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/admin/agents/{agentId}/lifecycle:
     parameters:
       [
@@ -1671,6 +1720,29 @@ paths:
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/internal/agent-runtime/runs/{runId}/life-events:
+    parameters:
+      [
+        { $ref: "#/components/parameters/RunId" },
+        { $ref: "#/components/parameters/RuntimeIdempotencyKey" },
+      ]
+    post:
+      operationId: appendInternalAgentRunLifeEvents
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      description: Requires runtime:write scope and atomically records one strict life-ledger batch for the authenticated agent's currently leased run. Reusing the same Idempotency-Key with the same body returns the original batch without duplicate events.
+      requestBody: { $ref: "#/components/requestBodies/RuntimeLifeEvents" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/RuntimeLifeEventsSuccess" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          "429": { $ref: "#/components/responses/RateLimited" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/internal/agent-runtime/runs/{runId}/actions:
     parameters:
       [
@@ -1754,6 +1826,28 @@ paths:
           "401": { $ref: "#/components/responses/Error" },
           "403": { $ref: "#/components/responses/Error" },
           "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/internal/agent-runtime/runs/{runId}/sources/attempts:
+    parameters:
+      [
+        { $ref: "#/components/parameters/RunId" },
+        { $ref: "#/components/parameters/RuntimeIdempotencyKey" },
+      ]
+    post:
+      operationId: recordInternalAgentRunSourceAttempt
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      description: Records an idempotent source fetch attempt before any network I/O. The attemptId must later be supplied by the matching source result.
+      requestBody: { $ref: "#/components/requestBodies/RuntimeSourceAttempt" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
           "409": { $ref: "#/components/responses/Error" },
           "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
@@ -1853,7 +1947,7 @@ components:
         name: Idempotency-Key,
         in: header,
         required: true,
-        schema: { type: string, minLength: 1, maxLength: 255 },
+        schema: { type: string, minLength: 1, maxLength: 255, pattern: "^[!-~]{1,255}$" },
         description: Required visible-ASCII replay key for every internal runtime write.,
       }
     RuntimeWorkerId:
@@ -1951,6 +2045,134 @@ components:
             totalPages: { type: integer, minimum: 0 }
             hasNextPage: { type: boolean }
             hasPreviousPage: { type: boolean }
+        requestId: { type: string, format: uuid }
+    AgentLifeEvent:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          agentProfileId,
+          runId,
+          actionId,
+          decisionSeq,
+          eventType,
+          subject,
+          summary,
+          confidence,
+          evidenceIds,
+          causedBy,
+          before,
+          after,
+          changedFields,
+          metadata,
+          occurredAt,
+          createdAt,
+          schemaVersion,
+          agentSequence,
+          batchId,
+          batchSequence,
+          contentHash,
+          previousEventHash,
+          eventHash,
+        ]
+      properties:
+        id: { type: string, pattern: "^[1-9]\\d{0,18}$" }
+        agentProfileId: { type: string, format: uuid }
+        runId:
+          oneOf:
+            - { type: string, format: uuid }
+            - { type: "null" }
+        actionId:
+          oneOf:
+            - { type: string, format: uuid }
+            - { type: "null" }
+        decisionSeq:
+          oneOf:
+            - { type: integer, minimum: 1 }
+            - { type: "null" }
+        eventType: { type: string, minLength: 1, maxLength: 100 }
+        subject: {}
+        summary: { type: string, minLength: 1, maxLength: 1000 }
+        confidence:
+          oneOf:
+            - { type: number, minimum: 0, maximum: 1 }
+            - { type: "null" }
+        evidenceIds: { type: array, items: { type: string, format: uuid } }
+        causedBy: { type: array, items: { type: string, pattern: "^[1-9]\\d{0,18}$" } }
+        before: {}
+        after: {}
+        changedFields: { type: array, items: { type: string } }
+        metadata: {}
+        occurredAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        schemaVersion: { type: integer, minimum: 1 }
+        agentSequence: { type: string, pattern: "^[1-9]\\d{0,18}$" }
+        batchId:
+          oneOf:
+            - { type: string, pattern: "^[a-f0-9]{64}$" }
+            - { type: "null" }
+        batchSequence:
+          oneOf:
+            - { type: integer, minimum: 1 }
+            - { type: "null" }
+        contentHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+        previousEventHash:
+          oneOf:
+            - { type: string, pattern: "^[a-f0-9]{64}$" }
+            - { type: "null" }
+        eventHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+    AgentLifePage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          maxItems: 500
+          items: { $ref: "#/components/schemas/AgentLifeEvent" }
+        nextCursor:
+          oneOf:
+            - { type: string, pattern: "^[1-9]\\d{0,18}$" }
+            - { type: "null" }
+    AgentLifePageEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, requestId]
+      properties:
+        data: { $ref: "#/components/schemas/AgentLifePage" }
+        requestId: { type: string, format: uuid }
+    RuntimeLifeEventsBatchResult:
+      type: object
+      additionalProperties: false
+      required: [batchId, inserted, replayed, events]
+      oneOf:
+        - properties:
+            replayed: { const: true }
+            inserted: { const: 0 }
+        - properties:
+            replayed: { const: false }
+            inserted: { type: integer, minimum: 1, maximum: 300 }
+      properties:
+        batchId: { type: string, pattern: "^[a-f0-9]{64}$" }
+        inserted:
+          type: integer
+          minimum: 0
+          maximum: 300
+          description: Zero only for an idempotent replay; otherwise equals events length.
+        replayed: { type: boolean }
+        events:
+          type: array
+          minItems: 1
+          maxItems: 300
+          items: { $ref: "#/components/schemas/AgentLifeEvent" }
+          description: Ordered batch events. Every event has this response's batchId and a contiguous batchSequence.
+    RuntimeLifeEventsEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, requestId]
+      properties:
+        data: { $ref: "#/components/schemas/RuntimeLifeEventsBatchResult" }
         requestId: { type: string, format: uuid }
     ErrorEnvelope:
       type: object
@@ -2619,10 +2841,124 @@ components:
                   count: { type: integer, minimum: 0, maximum: 10000 }
                   durationMs: { type: integer, minimum: 0, maximum: 86400000 }
                   itemIds: { type: array, maxItems: 100, items: { type: string, format: uuid } }
+    AgentLifeObservationInput:
+      type: object
+      additionalProperties: false
+      required: [subjectType, subjectId, summary, salience, provenance]
+      properties:
+        subjectType: { type: string, enum: [TOPIC, ENTRY, USER, SOURCE] }
+        subjectId: { type: string, format: uuid }
+        summary:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 1000,
+            pattern: "^(?!.*[\\u0000-\\u001f\\u007f])(?!.*</?[A-Za-z][^>]*>).*\\S.*$",
+          }
+        salience: { type: number, minimum: 0, maximum: 1 }
+        provenance: { $ref: "#/components/schemas/RuntimeActionProvenance" }
+    AgentDecisionJournalStepInput:
+      type: object
+      additionalProperties: false
+      required: [seq, kind, subject, summary, confidence, evidenceIds, causedBySeqs]
+      properties:
+        seq: { type: integer, minimum: 1 }
+        kind:
+          type: string
+          enum:
+            [
+              OBSERVATION,
+              INTERPRETATION,
+              OPTION_CONSIDERED,
+              OPTION_REJECTED,
+              OPTION_SELECTED,
+              STATE_PROPOSAL,
+            ]
+        subject:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 200,
+            pattern: "^(?!.*[\\u0000-\\u001f\\u007f])(?!.*</?[A-Za-z][^>]*>).*\\S.*$",
+          }
+        summary:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 1000,
+            pattern: "^(?!.*[\\u0000-\\u001f\\u007f])(?!.*</?[A-Za-z][^>]*>).*\\S.*$",
+          }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        evidenceIds:
+          type: array
+          maxItems: 20
+          items: { type: string, format: uuid }
+        causedBySeqs:
+          type: array
+          maxItems: 20
+          items: { type: integer, minimum: 1 }
+          description: Every value must identify an existing step with a lower seq in this batch.
+    AgentActionIntentInput:
+      type: object
+      additionalProperties: false
+      required: [sequence, desire, expectedOutcome, selectedOptionSeq]
+      properties:
+        sequence: { type: integer, minimum: 1 }
+        desire: { type: number, minimum: 0, maximum: 1 }
+        expectedOutcome:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 500,
+            pattern: "^(?!.*[\\u0000-\\u001f\\u007f])(?!.*</?[A-Za-z][^>]*>).*\\S.*$",
+          }
+        selectedOptionSeq:
+          oneOf:
+            - { type: integer, minimum: 1 }
+            - { type: "null" }
+          description: When present, must identify an OPTION_SELECTED decisionJournal step. Executable actions require this link; NO_ACTION may use null.
+    RuntimeLifeEventsPayloadInput:
+      type: object
+      additionalProperties: false
+      required: [observations, memoryCandidates, decisionJournal, actionIntents]
+      properties:
+        observations:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/AgentLifeObservationInput" }
+        memoryCandidates:
+          type: array
+          maxItems: 50
+          items: { $ref: "#/components/schemas/AgentLifeObservationInput" }
+        decisionJournal:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/AgentDecisionJournalStepInput" }
+          description: seq values must be unique; causal references may point only to existing lower seq values.
+        actionIntents:
+          type: array
+          maxItems: 50
+          uniqueItems: true
+          items: { $ref: "#/components/schemas/AgentActionIntentInput" }
+          description: sequence values must be unique and must reference actions already proposed immutably for this run.
+      anyOf:
+        - properties: { observations: { minItems: 1 } }
+        - properties: { memoryCandidates: { minItems: 1 } }
+        - properties: { decisionJournal: { minItems: 1 } }
+        - properties: { actionIntents: { minItems: 1 } }
+    RuntimeLifeEventsInput:
+      type: object
+      additionalProperties: false
+      required: [workerId, leaseToken, payload]
+      properties:
+        workerId: { type: string, minLength: 3, maxLength: 200, pattern: "^[A-Za-z0-9._:-]+$" }
+        leaseToken: { $ref: "#/components/schemas/RuntimeLeaseToken" }
+        payload: { $ref: "#/components/schemas/RuntimeLifeEventsPayloadInput" }
     RuntimeActionsInput:
       type: object
       additionalProperties: false
-      required: [workerId, leaseToken, actions]
+      required: [workerId, leaseToken, actions, payload]
       properties:
         workerId: { type: string, minLength: 3, maxLength: 200 }
         leaseToken: { $ref: "#/components/schemas/RuntimeLeaseToken" }
@@ -2663,6 +2999,10 @@ components:
               targetId: { type: string, format: uuid }
               input: { $ref: "#/components/schemas/RuntimeActionInput" }
               provenance: { $ref: "#/components/schemas/RuntimeActionProvenance" }
+        payload:
+          allOf:
+            - { $ref: "#/components/schemas/RuntimeLifeEventsPayloadInput" }
+          description: actionIntents sequences must match the actions sequences exactly. Actions and this complete decision journal commit atomically.
     RuntimeActionInput:
       type: object
       additionalProperties: false
@@ -2726,10 +3066,11 @@ components:
     RuntimeSourceResultInput:
       type: object
       additionalProperties: false
-      required: [workerId, leaseToken, sourceId, items]
+      required: [workerId, leaseToken, attemptId, sourceId, items]
       properties:
         workerId: { type: string, minLength: 3, maxLength: 200 }
         leaseToken: { $ref: "#/components/schemas/RuntimeLeaseToken" }
+        attemptId: { type: string, format: uuid }
         sourceId: { type: string, format: uuid }
         items:
           type: array
@@ -2745,6 +3086,15 @@ components:
               contentHash: { type: string, pattern: "^[a-f0-9]{64}$" }
               safeText: { type: string, minLength: 1, maxLength: 20000 }
         errorCode: { type: string, minLength: 1, maxLength: 100 }
+    RuntimeSourceAttemptInput:
+      type: object
+      additionalProperties: false
+      required: [workerId, leaseToken, attemptId, sourceId]
+      properties:
+        workerId: { type: string, minLength: 3, maxLength: 200 }
+        leaseToken: { $ref: "#/components/schemas/RuntimeLeaseToken" }
+        attemptId: { type: string, format: uuid }
+        sourceId: { type: string, format: uuid }
     RuntimeActionProvenance:
       type: object
       additionalProperties: false
@@ -3111,6 +3461,12 @@ components:
         content:
           { application/json: { schema: { $ref: "#/components/schemas/RuntimeEventsInput" } } },
       }
+    RuntimeLifeEvents:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/RuntimeLifeEventsInput" } } },
+      }
     RuntimeActions:
       {
         required: true,
@@ -3138,6 +3494,15 @@ components:
         content:
           {
             application/json: { schema: { $ref: "#/components/schemas/RuntimeSourceResultInput" } },
+          },
+      }
+    RuntimeSourceAttempt:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/RuntimeSourceAttemptInput" } },
           },
       }
     RuntimeComplete:
@@ -3219,6 +3584,34 @@ components:
           },
       }
   responses:
+    AgentLifeReadSuccess:
+      description: JSON cursor page, or bounded-memory streaming of the complete filtered NDJSON export when format=jsonl.
+      headers:
+        X-Request-Id: { $ref: "#/components/headers/RequestId" }
+        Content-Disposition:
+          description: Present only for JSONL export; attachment filename contains the agent UUID.
+          schema: { type: string }
+        Cache-Control:
+          description: JSONL export is private and never cached.
+          schema: { type: string, const: "private, no-store" }
+        X-Content-Type-Options:
+          description: Prevents MIME sniffing of the downloaded JSONL stream.
+          schema: { type: string, const: nosniff }
+      content:
+        application/json: { schema: { $ref: "#/components/schemas/AgentLifePageEnvelope" } }
+        application/x-ndjson:
+          schema:
+            type: string
+            description: Zero or more AgentLifeEvent JSON objects streamed one per line, with a trailing newline when non-empty. No JSON envelope or in-memory all-record accumulator is used.
+    RuntimeLifeEventsSuccess:
+      description: Atomically inserted life-ledger batch or exact idempotent replay.
+      headers:
+        {
+          X-Request-Id: { $ref: "#/components/headers/RequestId" },
+          Idempotent-Replay: { $ref: "#/components/headers/IdempotentReplay" },
+        }
+      content:
+        application/json: { schema: { $ref: "#/components/schemas/RuntimeLifeEventsEnvelope" } }
     RuntimeLeaseSuccess:
       description: Internal lease response containing a per-claim fencing token when a run is leased
       headers:

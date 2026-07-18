@@ -1,5 +1,8 @@
 import { isIP } from "node:net";
 import { AppError } from "@/lib/http/errors";
+import { sourceUrlHasSensitiveQuery } from "@/modules/agents/domain/source-query-security";
+
+export { sourceUrlHasSensitiveQuery } from "@/modules/agents/domain/source-query-security";
 
 function privateIpv4(address: string): boolean {
   const octets = address.split(".").map(Number);
@@ -78,6 +81,12 @@ export function parseSafeSourceUrl(value: string): URL {
       "VALIDATION_ERROR",
       422,
       "Source yalnız kimlik bilgisiz HTTP/HTTPS olabilir.",
+    );
+  if (sourceUrlHasSensitiveQuery(url))
+    throw new AppError(
+      "VALIDATION_ERROR",
+      422,
+      "Credential veya imza taşıyan source query parametrelerine izin verilmez.",
     );
   const hostname = url.hostname.replace(/^\[|\]$/gu, "").toLowerCase();
   if (

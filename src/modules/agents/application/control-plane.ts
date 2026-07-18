@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { inTransaction } from "@/lib/db/transaction";
-import type { DatabaseExecutor, TransactionClient } from "@/lib/db/types";
+import type { DatabaseExecutor, InputJsonValue, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { createOpaqueToken, sha256 } from "@/lib/security/crypto";
 import { appendAuditLog } from "@/modules/audit";
@@ -115,6 +115,11 @@ export function updateAgentSourceAdmin(
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
+    const candidate = await findAgentSourceForAdmin(transaction, sourceId);
+    if (!candidate) throw new AppError("AGENT_SOURCE_NOT_FOUND", 404, "Agent source bulunamadı.");
+    // Preserve the shared mutation order used by runtime actions:
+    // agent profile -> source -> life-ledger advisory lock.
+    await lockAgentProfile(transaction, candidate.agentProfileId);
     await lockAgentSource(transaction, sourceId);
     const current = await findAgentSourceForAdmin(transaction, sourceId);
     if (!current) throw new AppError("AGENT_SOURCE_NOT_FOUND", 404, "Agent source bulunamadı.");
@@ -211,9 +216,15 @@ export function updateAgentSourceAdmin(
     });
     await appendRuntimeEvent(transaction, {
       agentProfileId: current.agentProfileId,
-      eventType: "source.status.changed",
+      eventType: "SOURCE_STATE_CHANGED",
+      subject: { type: "SOURCE", id: sourceId },
       safeMessage: "Agent source admin tarafından güncellendi.",
-      metadata: { sourceId, status: updated.status, adminPinned, adminBlocked },
+      before: metadata.before,
+      after: metadata.after,
+      metadata: {
+        origin: "ADMIN",
+        reason: input.reason,
+      },
     });
     return updated;
   });
@@ -403,10 +414,59 @@ export async function createAgent(
     });
     await appendRuntimeEvent(transaction, {
       agentProfileId: created.profile.id,
-      eventType: "persona.version.created",
-      safeMessage: "İlk persona sürümü oluşturuldu.",
-      metadata: { version: 1, origin: "INITIAL" },
+      eventType: "LIFE_GENESIS_SNAPSHOT",
+      subject: { type: "AGENT_PROFILE", id: created.profile.id },
+      safeMessage: "Agent yaşam günlüğü başlangıç snapshot'ı oluşturuldu.",
+      after: {
+        lifecycleStatus: input.lifecycleStatus,
+        useGlobalEntryQuota: input.useGlobalEntryQuota,
+        dailyEntry: input.useGlobalEntryQuota
+          ? { min: null, max: null }
+          : { min: input.dailyEntry?.min ?? null, max: input.dailyEntry?.max ?? null },
+        dailyTopic: input.dailyTopic,
+        dailyVote: input.dailyVote,
+        activeTimeProfile: input.activeTimeProfile,
+        personaEvolutionEnabled: input.personaEvolutionEnabled,
+        sourceEvolutionEnabled: input.sourceEvolutionEnabled,
+        scheduledTimeoutSeconds: input.scheduledTimeoutSeconds,
+        manualTimeoutSeconds: input.manualTimeoutSeconds,
+        personaVersion: 1,
+        runtimeStatus: "IDLE",
+      },
+      metadata: { origin: "AGENT_CREATION", method: input.creation.method },
     });
+    await appendRuntimeEvent(transaction, {
+      agentProfileId: created.profile.id,
+      eventType: "PERSONA_CHANGED",
+      subject: { type: "PERSONA", id: created.personaVersion.id },
+      safeMessage: "İlk persona sürümü oluşturuldu.",
+      after: { personaVersionId: created.personaVersion.id, version: 1 },
+      metadata: { origin: "INITIAL" },
+    });
+    const [initialSources] = await listAgentSourcesRecord(transaction, {
+      agentProfileId: created.profile.id,
+      skip: 0,
+      take: 100,
+    });
+    for (const source of initialSources)
+      await appendRuntimeEvent(transaction, {
+        agentProfileId: created.profile.id,
+        eventType: "SOURCE_STATE_CHANGED",
+        subject: { type: "SOURCE", id: source.id },
+        safeMessage: "İlk persona source kaydı agent yaşam durumuna eklendi.",
+        after: {
+          normalizedDomain: source.normalizedDomain,
+          urlHash: sha256(source.url),
+          status: source.status,
+          sourceType: source.sourceType,
+          topics: source.topics,
+          trustScore: source.trustScore,
+          interestScore: source.interestScore,
+          adminPinned: source.adminPinned,
+          adminBlocked: source.adminBlocked,
+        },
+        metadata: { origin: "INITIAL_PERSONA" },
+      });
     return {
       agent: created,
       credential: rawCredential,
@@ -452,7 +512,7 @@ function agentProfileAuditSnapshot(profile: {
     dailyEntry: { min: profile.dailyEntryMin, max: profile.dailyEntryMax },
     dailyTopic: { min: profile.dailyTopicMin, max: profile.dailyTopicMax },
     dailyVote: { min: profile.dailyVoteMin, max: profile.dailyVoteMax },
-    activeTimeProfile: profile.activeTimeProfile,
+    activeTimeProfile: profile.activeTimeProfile as InputJsonValue,
     personaEvolutionEnabled: profile.personaEvolutionEnabled,
     sourceEvolutionEnabled: profile.sourceEvolutionEnabled,
     scheduledTimeoutSeconds: profile.scheduledTimeoutSeconds,
@@ -644,9 +704,15 @@ export async function updateAgent(
       });
       await appendRuntimeEvent(transaction, {
         agentProfileId,
-        eventType: "persona.version.created",
+        eventType: "PERSONA_CHANGED",
+        subject: { type: "PERSONA", id: personaVersion.id },
         safeMessage: "Admin persona sürümü oluşturuldu.",
-        metadata: { version: personaVersion.version, origin: "ADMIN" },
+        before: {
+          personaVersionId: current.currentPersonaVersion.id,
+          version: current.currentPersonaVersion.version,
+        },
+        after: { personaVersionId: personaVersion.id, version: personaVersion.version },
+        metadata: { origin: "ADMIN", changeSummary: input.changeSummary },
       });
     }
     const effectiveDisplayName = personaInput?.displayName ?? input.displayName;
@@ -689,13 +755,28 @@ export async function updateAgent(
     });
     const updatedAgent = await findAgentDetailRecord(transaction, agentProfileId);
     if (!updatedAgent) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
+    const beforeProfile = agentProfileAuditSnapshot(current);
+    const afterProfile = agentProfileAuditSnapshot(updatedAgent);
+    if (JSON.stringify(beforeProfile) !== JSON.stringify(afterProfile))
+      await appendRuntimeEvent(transaction, {
+        agentProfileId,
+        eventType: "AGENT_PROFILE_CHANGED",
+        subject: { type: "AGENT_PROFILE", id: agentProfileId },
+        safeMessage: "Agent profil ve çalışma ayarları admin tarafından güncellendi.",
+        before: beforeProfile,
+        after: afterProfile,
+        metadata: {
+          origin: "ADMIN",
+          reason: input.changeSummary ?? "Agent profile settings updated by administrator.",
+        },
+      });
     await recordControlPlaneChange(transaction, actor, {
       eventType: personaVersion ? "agent.persona.versioned" : "agent.updated",
       entityType: "AgentProfile",
       entityId: agentProfileId,
       reason: input.changeSummary ?? "Agent profile settings updated by administrator.",
-      before: agentProfileAuditSnapshot(current),
-      after: agentProfileAuditSnapshot(updatedAgent),
+      before: beforeProfile,
+      after: afterProfile,
       metadata: {
         changedFields: Object.keys(input).filter(
           (key) => key !== "persona" && key !== "changeSummary",
@@ -761,9 +842,15 @@ export async function rollbackPersona(
     });
     await appendRuntimeEvent(transaction, {
       agentProfileId,
-      eventType: "persona.version.created",
+      eventType: "PERSONA_CHANGED",
+      subject: { type: "PERSONA", id: created.id },
       safeMessage: "Persona rollback yeni sürüm olarak oluşturuldu.",
-      metadata: { version: created.version, origin: "ROLLBACK" },
+      before: {
+        personaVersionId: current.currentPersonaVersion.id,
+        version: current.currentPersonaVersion.version,
+      },
+      after: { personaVersionId: created.id, version: created.version },
+      metadata: { origin: "ROLLBACK", rollbackFromVersion: input.version },
     });
     return created;
   });
@@ -821,7 +908,10 @@ export async function changeAgentLifecycle(
       agentProfileId,
       eventType: "agent.status.changed",
       safeMessage: `Lifecycle ${current.lifecycleStatus} durumundan ${input.status} durumuna geçti.`,
-      metadata: { from: current.lifecycleStatus, to: input.status },
+      before: { lifecycleStatus: current.lifecycleStatus },
+      after: { lifecycleStatus: updated.lifecycleStatus },
+      metadata: { from: current.lifecycleStatus, to: input.status, reason: input.reason },
+      occurredAt: now,
     });
     return updated;
   });

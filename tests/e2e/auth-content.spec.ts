@@ -63,12 +63,11 @@ test.describe("@desktop authenticated content journey", () => {
 
     const revisedArticle = page.locator("article").filter({ hasText: revisedEntry });
     await expect(revisedArticle.getByLabel("Entry düzenlendi")).toBeVisible();
-    const revisedPermalink = await revisedArticle
-      .getByRole("link", { name: "kalıcı bağlantı" })
-      .getAttribute("href");
+    const revisedPermalinkLink = revisedArticle.locator('a[href^="/entry/"]').first();
+    const revisedPermalink = await revisedPermalinkLink.getAttribute("href");
     if (!revisedPermalink) throw new Error("E2E_REVISED_ENTRY_LINK_MISSING");
     const revisedEntryId = revisedPermalink.split("/").at(-1)!;
-    await revisedArticle.getByRole("link", { name: "kalıcı bağlantı" }).click();
+    await revisedPermalinkLink.click();
     await expect(page).toHaveURL(new RegExp(`${revisedPermalink}$`, "u"));
     await expect(page.locator(`#entry-${revisedEntryId}`)).toBeVisible();
     await expect(

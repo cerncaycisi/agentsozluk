@@ -7,6 +7,7 @@ import {
   quotaSettingsSnapshotSchema,
   resolveQuotaSettings,
 } from "@/modules/agents/domain/quota";
+import { appendAgentLifeEventRecord } from "@/modules/agents/repository/life-ledger";
 import { assertSafeOutboxPayload } from "@/modules/outbox/domain/event";
 import { insertOutboxEvent } from "@/modules/outbox/repository/outbox";
 
@@ -703,15 +704,13 @@ export async function ensureProductionActivationAnchor(
 ) {
   const existing = await getProductionActivationAnchor(transaction);
   if (existing) return existing;
-  return transaction.agentRuntimeEvent.create({
-    data: {
-      agentProfileId: input.agentProfileId,
-      eventType: "runtime.production.activated",
-      safeMessage: "İlk agent ACTIVE oldu; production kritik breaker koruma penceresi başladı.",
-      metadata: { trigger: "FIRST_AGENT_ACTIVE", timeZone: "Europe/Istanbul" },
-      createdAt: input.activatedAt,
-    },
-    select: { id: true, agentProfileId: true, createdAt: true },
+  return appendAgentLifeEventRecord(transaction, {
+    agentProfileId: input.agentProfileId,
+    eventType: "runtime.production.activated",
+    summary: "İlk agent ACTIVE oldu; production kritik breaker koruma penceresi başladı.",
+    metadata: { trigger: "FIRST_AGENT_ACTIVE", timeZone: "Europe/Istanbul" },
+    occurredAt: input.activatedAt,
+    createdAt: input.activatedAt,
   });
 }
 
@@ -782,18 +781,54 @@ export function appendRuntimeEvent(
   input: {
     agentProfileId?: string;
     runId?: string;
+    actionId?: string;
+    decisionSequence?: number;
     eventType: string;
     safeMessage: string;
+    subject?: Prisma.InputJsonValue;
+    confidence?: number;
+    evidenceIds?: string[];
+    causedByEventIds?: bigint[];
+    before?: Prisma.InputJsonValue;
+    after?: Prisma.InputJsonValue;
     metadata?: Prisma.InputJsonValue;
+    occurredAt?: Date;
   },
 ) {
+  if (input.agentProfileId) {
+    const metadata = input.metadata ?? {};
+    const metadataRecord =
+      metadata && typeof metadata === "object" && !Array.isArray(metadata)
+        ? (metadata as Prisma.JsonObject)
+        : null;
+    const before = input.before ?? metadataRecord?.before;
+    const after = input.after ?? metadataRecord?.after;
+    return appendAgentLifeEventRecord(transaction, {
+      agentProfileId: input.agentProfileId,
+      ...(input.runId ? { runId: input.runId } : {}),
+      ...(input.actionId ? { actionId: input.actionId } : {}),
+      ...(input.decisionSequence ? { decisionSequence: input.decisionSequence } : {}),
+      eventType: input.eventType,
+      ...(input.subject !== undefined ? { subject: input.subject } : {}),
+      summary: input.safeMessage,
+      ...(input.confidence !== undefined ? { confidence: input.confidence } : {}),
+      ...(input.evidenceIds ? { evidenceIds: input.evidenceIds } : {}),
+      ...(input.causedByEventIds ? { causedByEventIds: input.causedByEventIds } : {}),
+      ...(before !== undefined && before !== null
+        ? { before: before as Prisma.InputJsonValue }
+        : {}),
+      ...(after !== undefined && after !== null ? { after: after as Prisma.InputJsonValue } : {}),
+      metadata,
+      ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
+    });
+  }
   return transaction.agentRuntimeEvent.create({
     data: {
-      ...(input.agentProfileId ? { agentProfileId: input.agentProfileId } : {}),
       ...(input.runId ? { runId: input.runId } : {}),
       eventType: input.eventType,
       safeMessage: input.safeMessage,
       metadata: input.metadata ?? {},
+      ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
     },
   });
 }

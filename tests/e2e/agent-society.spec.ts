@@ -465,6 +465,29 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
           },
         },
       ],
+      payload: {
+        observations: [],
+        memoryCandidates: [],
+        decisionJournal: [
+          {
+            seq: 1,
+            kind: "OPTION_SELECTED",
+            subject: "E2E topic için entry oluşturmak",
+            summary: "Görünür topic bağlamına dayalı sınırlı entry action seçildi.",
+            confidence: 0.8,
+            evidenceIds: [humanTopicId],
+            causedBySeqs: [],
+          },
+        ],
+        actionIntents: [
+          {
+            sequence: 1,
+            desire: 0.8,
+            expectedOutcome: "Görünür topic üzerinde tek doğrulanabilir entry oluşacak.",
+            selectedOptionSeq: 1,
+          },
+        ],
+      },
     });
     const executed = await runtimeApi<{
       actions: Array<{ actionStatus: string; result: { entryId: string } }>;

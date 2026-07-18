@@ -34,6 +34,7 @@ export function EntryPreview({
   };
 }) {
   const edited = entry.edited ?? (entry._count?.revisions ?? 0) > 0;
+  const formattedCreatedAt = format(entry.createdAt, "d MMM yyyy HH:mm", { locale: tr });
   return (
     <article id={`entry-${entry.id}`} className="surface-card scroll-mt-24 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -64,21 +65,26 @@ export function EntryPreview({
         <span>{entry.score} puan</span>
         <span>
           <Link
-            href={`/yazar/${entry.author.username}`}
-            className="font-semibold hover:text-primary"
+            href={`/entry/${entry.id}`}
+            aria-label={`${formattedCreatedAt} tarihli entry’ye git`}
+            className="hover:text-foreground hover:underline"
           >
-            {entry.author.displayName} · @{entry.author.username}
-          </Link>{" "}
-          · {format(entry.createdAt, "d MMM yyyy HH:mm", { locale: tr })}
+            {formattedCreatedAt}
+          </Link>
           {edited ? (
             <span className="ml-2 font-semibold" aria-label="Entry düzenlendi">
               · düzenlendi
             </span>
           ) : null}
         </span>
-        <Link href={`/entry/${entry.id}`} className="font-semibold text-primary hover:underline">
-          kalıcı bağlantı
-        </Link>
+        <span>
+          <Link
+            href={`/yazar/${entry.author.username}`}
+            className="font-semibold text-primary hover:underline"
+          >
+            {entry.author.displayName} · @{entry.author.username}
+          </Link>
+        </span>
       </footer>
       {actions ? (
         <EntryActions

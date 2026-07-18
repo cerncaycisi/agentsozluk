@@ -68,6 +68,7 @@ function controlPlane(runId: string): RuntimeControlPlane {
     context: vi.fn().mockResolvedValue(fixtureContext(runId)),
     heartbeat: vi.fn().mockResolvedValue({ cancelRequested: false }),
     recordActions: vi.fn().mockResolvedValue(undefined),
+    recordLifeEvents: vi.fn().mockResolvedValue(undefined),
     executeActions: vi.fn().mockResolvedValue({
       actions: [
         {
@@ -80,6 +81,7 @@ function controlPlane(runId: string): RuntimeControlPlane {
       ],
     }),
     recordMemories: vi.fn().mockResolvedValue(undefined),
+    recordSourceAttempt: vi.fn().mockResolvedValue(undefined),
     recordSourceResult: vi.fn().mockResolvedValue(undefined),
     complete: vi.fn().mockResolvedValue(undefined),
     fail: vi.fn().mockResolvedValue(undefined),
@@ -98,11 +100,38 @@ function canonicalNormalOutput(
     memoryCandidates?: Record<string, unknown>[];
   } = {},
 ) {
+  const rawActions = options.actions ?? [];
+  const hasExecutableAction = rawActions.some((action) => action.type !== "NO_ACTION");
   return {
     safeSummary,
     state: options.state ?? { curiosity: 0.4, confidence: 0.6, topicFatigue: { items: [] } },
     observations: [],
-    actions: options.actions ?? [],
+    decisionJournal: [
+      {
+        seq: 1,
+        kind: hasExecutableAction ? "OPTION_SELECTED" : "STATE_PROPOSAL",
+        subject: "runtime-run",
+        summary: hasExecutableAction
+          ? "Görünür kanıta dayanan action seçeneği seçildi."
+          : "Görünür kanıt dış dünyada action gerektirmiyor.",
+        confidence: 0.7,
+        evidenceIds: [],
+        causedBySeqs: [],
+      },
+    ],
+    actions: rawActions.map((action) => ({
+      expectedOutcome:
+        typeof action.expectedOutcome === "string"
+          ? action.expectedOutcome
+          : "Action sonucunda doğrulanabilir ve sınırlı bir state değişikliği bekleniyor.",
+      selectedOptionSeq:
+        action.selectedOptionSeq === null || typeof action.selectedOptionSeq === "number"
+          ? action.selectedOptionSeq
+          : action.type === "NO_ACTION"
+            ? null
+            : 1,
+      ...action,
+    })),
     beliefDeltas: [],
     relationshipDeltas: [],
     sourceProposals: [],
@@ -425,7 +454,25 @@ describe("long-lived agent runtime worker", () => {
           input: {},
         },
       ],
+      expect.objectContaining({
+        observations: [],
+        memoryCandidates: [],
+        decisionJournal: [
+          expect.objectContaining({ seq: 1, kind: "STATE_PROPOSAL", causedBySeqs: [] }),
+        ],
+        actionIntents: [
+          {
+            sequence: 1,
+            desire: 0,
+            expectedOutcome: "Bu run dış dünyada bir state değişikliği oluşturmayacak.",
+            selectedOptionSeq: null,
+          },
+        ],
+      }),
       expect.objectContaining({ signal: expect.any(AbortSignal), timeoutMs: expect.any(Number) }),
+    );
+    expect(vi.mocked(plane.recordActions).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(plane.executeActions).mock.invocationCallOrder[0]!,
     );
     expect(plane.complete).toHaveBeenCalledWith(
       expect.any(String),
@@ -501,12 +548,25 @@ describe("long-lived agent runtime worker", () => {
       safeSummary: "Duplicate repair akışı değerlendirildi.",
       state: { curiosity: 0.4, confidence: 0.6, topicFatigue: { items: [] } },
       observations: [],
+      decisionJournal: [
+        {
+          seq: 1,
+          kind: "OPTION_SELECTED" as const,
+          subject: "duplicate-repair-entry",
+          summary: "Aynı kanıta dayanan farklı entry anlatımı seçildi.",
+          confidence: 0.8,
+          evidenceIds: [runId],
+          causedBySeqs: [],
+        },
+      ],
       actions: [
         {
           type: "CREATE_ENTRY" as const,
           targetId: topicId,
           body,
           desire: 0.8,
+          expectedOutcome: "Topic üzerinde kanıtla sınırlı ve özgün bir entry görünür olacak.",
+          selectedOptionSeq: 1,
           safeReason,
           claimProvenance: [
             {
@@ -575,7 +635,21 @@ describe("long-lived agent runtime worker", () => {
           provenance,
         }),
       ],
+      expect.objectContaining({
+        decisionJournal: [expect.objectContaining({ seq: 1, kind: "OPTION_SELECTED" })],
+        actionIntents: [
+          {
+            sequence: 2,
+            desire: 0.8,
+            expectedOutcome: "Topic üzerinde kanıtla sınırlı ve özgün bir entry görünür olacak.",
+            selectedOptionSeq: 1,
+          },
+        ],
+      }),
       expect.any(Object),
+    );
+    expect(vi.mocked(plane.recordActions).mock.invocationCallOrder[1]).toBeLessThan(
+      vi.mocked(plane.executeActions).mock.invocationCallOrder[1]!,
     );
     expect(plane.executeActions).toHaveBeenCalledTimes(2);
     expect(plane.complete).toHaveBeenCalledWith(
@@ -916,6 +990,7 @@ describe("long-lived agent runtime worker", () => {
       LEASE_TOKEN,
       [expect.objectContaining({ sequence: 1, actionType: "NO_ACTION" })],
       expect.any(Object),
+      expect.any(Object),
     );
     expect(plane.complete).toHaveBeenCalledTimes(1);
   });
@@ -1065,6 +1140,7 @@ describe("long-lived agent runtime worker", () => {
         },
       ],
       expect.any(Object),
+      expect.any(Object),
     );
     expect(plane.recordMemories).toHaveBeenCalledWith(
       expect.any(String),
@@ -1198,6 +1274,7 @@ describe("long-lived agent runtime worker", () => {
           input: {},
         },
       ],
+      expect.any(Object),
       expect.any(Object),
     );
     expect(plane.recordMemories).not.toHaveBeenCalled();

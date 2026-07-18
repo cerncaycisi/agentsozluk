@@ -132,6 +132,56 @@ describe("runtime control-plane HTTP contract", () => {
     });
   });
 
+  it("records one idempotent life-event batch and replays a lost response with the same key", async () => {
+    const runId = randomUUID();
+    const payload = {
+      observations: [],
+      memoryCandidates: [],
+      decisionJournal: [
+        {
+          seq: 1,
+          kind: "STATE_PROPOSAL",
+          subject: "runtime-run",
+          summary: "Yeni görünür kanıt action gerektirmiyor.",
+          confidence: 0.8,
+          evidenceIds: [],
+          causedBySeqs: [],
+        },
+      ],
+      actionIntents: [
+        {
+          sequence: 1,
+          desire: 0,
+          expectedOutcome: "Dış dünyada state değişikliği beklenmiyor.",
+          selectedOptionSeq: null,
+        },
+      ],
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("connection closed after commit"))
+      .mockResolvedValueOnce(jsonResponse({ data: { recorded: true } }));
+    const client = new RuntimeControlPlaneHttpClient("http://127.0.0.1:3000", fetchMock);
+
+    await expect(
+      client.recordLifeEvents("credential", "worker-one", runId, LEASE_TOKEN, payload),
+    ).resolves.toBeUndefined();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const [url, init] of fetchMock.mock.calls) {
+      expect(String(url)).toBe(
+        `http://127.0.0.1:3000/api/v1/internal/agent-runtime/runs/${runId}/life-events`,
+      );
+      expect(init?.body).toBe(
+        JSON.stringify({ workerId: "worker-one", leaseToken: LEASE_TOKEN, payload }),
+      );
+    }
+    const firstHeaders = fetchMock.mock.calls[0]![1]?.headers as Record<string, string>;
+    const secondHeaders = fetchMock.mock.calls[1]![1]?.headers as Record<string, string>;
+    expect(firstHeaders["idempotency-key"]).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(secondHeaders["idempotency-key"]).toBe(firstHeaders["idempotency-key"]);
+  });
+
   it("combines caller cancellation with the bounded per-request timeout signal", async () => {
     const observedSignals: AbortSignal[] = [];
     const fetchMock = vi.fn<typeof fetch>().mockImplementation(

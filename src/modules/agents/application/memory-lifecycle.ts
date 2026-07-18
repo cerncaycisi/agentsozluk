@@ -131,6 +131,17 @@ export function invalidateAgentMemory(
       entityId: memory.id,
       metadata,
     });
+    await appendRuntimeEvent(transaction, {
+      agentProfileId,
+      ...(memory.runId ? { runId: memory.runId } : {}),
+      eventType: "MEMORY_CHANGED",
+      subject: { type: "MEMORY", id: memory.id },
+      safeMessage: "Admin memory kaydını gerekçeli olarak invalidated durumuna aldı.",
+      before: metadata.before,
+      after: metadata.after,
+      metadata: { origin: "ADMIN", reason: input.reason },
+      occurredAt: invalidatedAt,
+    });
     return { memoryId: memory.id, invalidatedAt, affectedCount: 1 };
   });
 }
@@ -182,6 +193,21 @@ export function forgetAgentMemory(
       entityType: "AgentMemoryEpisode",
       entityId: root.id,
       metadata,
+    });
+    await appendRuntimeEvent(transaction, {
+      agentProfileId,
+      ...(root.runId ? { runId: root.runId } : {}),
+      eventType: "MEMORY_CHANGED",
+      subject: { type: "MEMORY", id: root.id },
+      safeMessage: "Admin memory lineage'ını gerekçeli olarak invalidated durumuna aldı.",
+      before: metadata.before,
+      after: metadata.after,
+      metadata: {
+        origin: "ADMIN",
+        reason: input.reason,
+        affectedMemoryIds: closureIds,
+      },
+      occurredAt: invalidatedAt,
     });
     return {
       rootMemoryId: root.id,

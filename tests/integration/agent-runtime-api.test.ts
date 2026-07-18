@@ -33,14 +33,18 @@ import {
   recordRuntimeActions,
   recordRuntimeEvents,
   recordRuntimeMemories,
+  recordRuntimeLifeEventBatch,
   recordRuntimeSourceResult,
+  recordRuntimeSourceAttempt,
   rotateAgentCredential,
   runtimeActionsSchema as runtimeActionsSchemaApplication,
   runtimeCompleteSchema as runtimeCompleteSchemaApplication,
   runtimeEventsSchema as runtimeEventsSchemaApplication,
   runtimeFailSchema as runtimeFailSchemaApplication,
   runtimeMemoriesSchema as runtimeMemoriesSchemaApplication,
+  runtimeLifeEventBatchSchema,
   runtimeSourceResultSchema as runtimeSourceResultSchemaApplication,
+  runtimeSourceAttemptSchema as runtimeSourceAttemptSchemaApplication,
   runtimeHeartbeatSchema as runtimeHeartbeatSchemaApplication,
   runtimeCredentialRotationSchema,
   setGlobalRuntimeEnabled,
@@ -129,7 +133,7 @@ function executeRuntimeAction(
     principal,
     runId,
     { ...input, leaseToken: input.leaseToken ?? leaseTokenForWorker(input.workerId) },
-    dependencies,
+    { ...dependencies, requireLifeLedger: false },
   );
 }
 
@@ -155,6 +159,7 @@ const runtimeEventsSchema = leaseBoundSchema(runtimeEventsSchemaApplication);
 const runtimeFailSchema = leaseBoundSchema(runtimeFailSchemaApplication);
 const runtimeMemoriesSchema = leaseBoundSchema(runtimeMemoriesSchemaApplication);
 const runtimeSourceResultSchema = leaseBoundSchema(runtimeSourceResultSchemaApplication);
+const runtimeSourceAttemptSchema = leaseBoundSchema(runtimeSourceAttemptSchemaApplication);
 const runtimeHeartbeatSchema = leaseBoundSchema(runtimeHeartbeatSchemaApplication);
 
 async function createAdmin() {
@@ -404,6 +409,138 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
   });
 
+  it("requires a causal life proposal before direct production action execution", async () => {
+    const fixture = await createFixture();
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential, "runtime:write");
+    const workerId = "life-ledger-production-gate";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const leaseToken = leaseTokenForWorker(workerId);
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "UPDATE_BELIEF",
+            safeReason: "Görünür run kanıtı ölçülebilir belief güncellemesini destekliyor.",
+            input: {
+              topicKey: "life-ledger-production-gate",
+              statement: "Production action yalnız causal life proposal sonrasında çalışır.",
+              confidence: 0.8,
+              summary: "Run kaydı action ile journal arasındaki causal bağı doğruluyor.",
+            },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Leased run görünür ve immutable platform kanıtıdır.",
+            },
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      executeRuntimeActionApplication(integrationDatabase, writePrincipal, runId, {
+        workerId,
+        leaseToken,
+        sequence: 1,
+      }),
+    ).rejects.toMatchObject({ code: "AGENT_LIFE_LEDGER_REQUIRED", status: 409 });
+
+    const batch = runtimeLifeEventBatchSchema.parse({
+      workerId,
+      leaseToken,
+      payload: {
+        observations: [],
+        memoryCandidates: [],
+        decisionJournal: [
+          {
+            seq: 1,
+            kind: "OPTION_CONSIDERED",
+            subject: "Belief güncellemesini değerlendirmek",
+            summary: "Görünür run kanıtına bağlı belief güncellemesi değerlendirildi.",
+            confidence: 0.7,
+            evidenceIds: [runId],
+            causedBySeqs: [],
+          },
+          {
+            seq: 2,
+            kind: "OPTION_SELECTED",
+            subject: "Belief güncellemesini seçmek",
+            summary: "Sınırlı belief güncellemesi görünür kanıt nedeniyle seçildi.",
+            confidence: 0.8,
+            evidenceIds: [runId],
+            causedBySeqs: [1],
+          },
+        ],
+        actionIntents: [
+          {
+            sequence: 1,
+            desire: 0.8,
+            expectedOutcome: "Belief state yeni ve kanıta bağlı sürümle değişecek.",
+            selectedOptionSeq: 2,
+          },
+        ],
+      },
+    });
+    await expect(
+      recordRuntimeLifeEventBatch(integrationDatabase, writePrincipal, runId, batch),
+    ).resolves.toMatchObject({ inserted: 3, replayed: false });
+    await expect(
+      recordRuntimeLifeEventBatch(integrationDatabase, writePrincipal, runId, batch),
+    ).resolves.toMatchObject({ inserted: 0, replayed: true });
+    const proposal = await integrationDatabase.agentRuntimeEvent.findFirstOrThrow({
+      where: { runId, eventType: "ACTION_PROPOSED" },
+    });
+    expect(proposal.causedByEventIds).toHaveLength(1);
+
+    const conflictingBatch = runtimeLifeEventBatchSchema.parse({
+      ...batch,
+      payload: {
+        ...batch.payload,
+        decisionJournal: batch.payload.decisionJournal.map((step) =>
+          step.seq === 1
+            ? { ...step, summary: "Aynı action için farklı ikinci journal kabul edilmemeli." }
+            : step,
+        ),
+      },
+    });
+    await expect(
+      recordRuntimeLifeEventBatch(integrationDatabase, writePrincipal, runId, conflictingBatch),
+    ).rejects.toMatchObject({ code: "AGENT_ACTION_LIFE_PROPOSAL_EXISTS", status: 409 });
+
+    await expect(
+      executeRuntimeActionApplication(integrationDatabase, writePrincipal, runId, {
+        workerId,
+        leaseToken,
+        sequence: 1,
+      }),
+    ).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+
+    const lateBatch = runtimeLifeEventBatchSchema.parse({
+      ...batch,
+      payload: {
+        ...batch.payload,
+        decisionJournal: batch.payload.decisionJournal.map((step) =>
+          step.seq === 2
+            ? { ...step, summary: "Çalıştırılmış action için yeni journal sonradan eklenemez." }
+            : step,
+        ),
+      },
+    });
+    await expect(
+      recordRuntimeLifeEventBatch(integrationDatabase, writePrincipal, runId, lateBatch),
+    ).rejects.toMatchObject({ code: "AGENT_ACTION_STATE_INVALID", status: 409 });
+  });
+
   it("fails closed before claiming a lease when database readiness fails", async () => {
     const fixture = await createFixture();
     const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
@@ -540,10 +677,16 @@ describe("internal agent runtime API with PostgreSQL", () => {
       confidence: 0.8,
       topicFatigue: { "current-generation": 0.3 },
     };
+    const previousState = {
+      curiosity: 0.4,
+      confidence: 0.5,
+      topicFatigue: { "previous-generation": 0.6 },
+    };
     await integrationDatabase.agentRuntimeState.update({
       where: { agentProfileId: fixture.created.agent.profile.id },
-      data: { runtimeMetadata: { preservedMarker: "keep" } },
+      data: { runtimeMetadata: { preservedMarker: "keep", fastState: previousState } },
     });
+    await getRuntimeRunContext(integrationDatabase, writePrincipal, runId, workerId);
 
     await expect(
       heartbeatRuntimeRunApplication(
@@ -587,7 +730,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
       integrationDatabase.agentRuntimeState.findUniqueOrThrow({
         where: { agentProfileId: fixture.created.agent.profile.id },
       }),
-    ).resolves.toMatchObject({ runtimeMetadata: { preservedMarker: "keep" } });
+    ).resolves.toMatchObject({
+      runtimeMetadata: { preservedMarker: "keep", fastState: previousState },
+    });
 
     await expect(
       heartbeatRuntimeRunApplication(
@@ -636,6 +781,21 @@ describe("internal agent runtime API with PostgreSQL", () => {
       }),
     ).resolves.toMatchObject({
       runtimeMetadata: { preservedMarker: "keep", fastState: currentState },
+    });
+    const fastStateLife = await integrationDatabase.agentRuntimeEvent.findFirstOrThrow({
+      where: {
+        agentProfileId: fixture.created.agent.profile.id,
+        runId,
+        eventType: "FAST_STATE_CHANGED",
+      },
+      orderBy: { agentSequence: "desc" },
+    });
+    expect(fastStateLife).toMatchObject({
+      subject: { type: "AGENT_RUNTIME_STATE", id: fixture.created.agent.profile.id },
+      beforeState: previousState,
+      afterState: currentState,
+      changedFields: ["confidence", "curiosity", "topicFatigue"],
+      metadata: { origin: "RUN_COMPLETION", outcome: "SUCCEEDED" },
     });
 
     const nextWorkerId = "next-fast-state-context";
@@ -1031,6 +1191,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       runId,
       { workerId, leaseToken: originalToken, sequence: 1 },
       {
+        requireLifeLedger: false,
         checkReadiness: async () => {
           enterReadiness();
           await readinessRelease;
@@ -1126,6 +1287,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
         runId,
         { workerId, leaseToken: leased.run!.leaseToken, sequence: 1 },
         {
+          requireLifeLedger: false,
           afterPublicWriteSettingsLocked: async () => {
             enterSettingsFence();
             await settingsFenceRelease;
@@ -1276,6 +1438,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
         runId,
         { workerId, leaseToken: leased.run!.leaseToken, sequence: 1 },
         {
+          requireLifeLedger: false,
           afterPublicWriteSettingsLocked: async () => {
             enterSettingsFence();
             await settingsFenceRelease;
@@ -1407,6 +1570,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
         runId,
         { workerId, leaseToken: leased.run!.leaseToken, sequence: 1 },
         {
+          requireLifeLedger: false,
           checkReadiness: async () => {
             enterReadiness();
             await readinessRelease;
@@ -1502,6 +1666,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
         runId,
         { workerId, leaseToken: leased.run!.leaseToken, sequence: 1 },
         {
+          requireLifeLedger: false,
           checkReadiness: async () => {
             throw new Error("CONTROLLED_EXECUTION_FAILURE");
           },
@@ -1649,6 +1814,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
         runId,
         { workerId, leaseToken, sequence: 1 },
         {
+          requireLifeLedger: false,
           checkReadiness: async () => {
             enterReadiness();
             await readinessRelease;
@@ -2068,6 +2234,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
         firstRunId,
         { workerId: firstWorkerId, leaseToken: firstLeaseToken, sequence: 1 },
         {
+          requireLifeLedger: false,
           checkReadiness: async () => {
             enterReadiness();
             await readinessRelease;
@@ -3124,6 +3291,54 @@ describe("internal agent runtime API with PostgreSQL", () => {
         where: { id: fixture.created.agent.profile.id },
       }),
     ).toMatchObject({ currentPersonaVersionId: reflectedVersion.id });
+    const reflectionLife = await integrationDatabase.agentRuntimeEvent.findMany({
+      where: {
+        agentProfileId: fixture.created.agent.profile.id,
+        runId,
+        eventType: {
+          in: ["SOURCE_STATE_CHANGED", "RELATIONSHIP_CHANGED", "BELIEF_CHANGED", "PERSONA_CHANGED"],
+        },
+      },
+      orderBy: { agentSequence: "asc" },
+    });
+    expect(reflectionLife).toHaveLength(4);
+    expect(reflectionLife).toEqual([
+      expect.objectContaining({
+        eventType: "SOURCE_STATE_CHANGED",
+        subject: { type: "SOURCE", id: source.id },
+        beforeState: { trustScore: source.trustScore },
+        afterState: { trustScore: source.trustScore + sourceDirection * 0.05 },
+        changedFields: ["trustScore"],
+      }),
+      expect.objectContaining({
+        eventType: "RELATIONSHIP_CHANGED",
+        subject: {
+          type: "USER",
+          id: fixture.admin.id,
+          relationshipId: relationship.id,
+        },
+        beforeState: { trust: 0.4 },
+        afterState: { trust: 0.44 },
+        changedFields: ["trust"],
+      }),
+      expect.objectContaining({
+        eventType: "BELIEF_CHANGED",
+        subject: { type: "BELIEF", topicKey: belief.topicKey },
+        beforeState: { confidence: 0.5, version: 1 },
+        afterState: { confidence: 0.56, version: 2 },
+        changedFields: ["confidence", "version"],
+      }),
+      expect.objectContaining({
+        eventType: "PERSONA_CHANGED",
+        subject: { type: "PERSONA", id: reflectedVersion.id },
+        beforeState: {
+          personaVersionId: fixture.created.agent.personaVersion.id,
+          version: 1,
+        },
+        afterState: { personaVersionId: reflectedVersion.id, version: 2 },
+        changedFields: ["personaVersionId", "version"],
+      }),
+    ]);
 
     const secondRun = await integrationDatabase.agentRun.create({
       data: {
@@ -4839,6 +5054,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
           timeoutSeconds: 360,
           desiredEntryMin: 1,
           desiredEntryMax: 1,
+          runStatus: "SUCCEEDED",
+          startedAt: new Date(Date.now() - 1_000),
+          finishedAt: new Date(),
         },
       });
       await integrationDatabase.agentAction.create({
@@ -5074,12 +5292,24 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
     expect(JSON.stringify(sourceChangedOutbox)).not.toContain("https://example.com/feed.xml");
     expect(JSON.stringify(sourceChangedOutbox)).not.toContain(leased.run!.leaseToken);
+    const sourceAttemptId = randomUUID();
+    await recordRuntimeSourceAttempt(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeSourceAttemptSchema.parse({
+        workerId: "evolution-worker",
+        attemptId: sourceAttemptId,
+        sourceId: proposedSource.id,
+      }),
+    );
     await recordRuntimeSourceResult(
       integrationDatabase,
       writePrincipal,
       runId,
       runtimeSourceResultSchema.parse({
         workerId: "evolution-worker",
+        attemptId: sourceAttemptId,
         sourceId: proposedSource.id,
         items: [1, 2, 3].map((index) => ({
           canonicalUrl: `https://example.com/article-${index}`,
@@ -5148,6 +5378,56 @@ describe("internal agent runtime API with PostgreSQL", () => {
         where: { runId, eventType: "SOURCE_READ" },
       }),
     ).toBe(3);
+    const actionLife = await integrationDatabase.agentRuntimeEvent.findMany({
+      where: {
+        agentProfileId: fixture.created.agent.profile.id,
+        runId,
+        eventType: "ACTION_STATUS_CHANGED",
+      },
+      orderBy: { agentSequence: "asc" },
+    });
+    expect(actionLife).toHaveLength(9);
+    for (const actionId of new Set(actionLife.map(({ actionId }) => actionId))) {
+      const transitions = actionLife
+        .filter((event) => event.actionId === actionId)
+        .map(({ beforeState, afterState, changedFields }) => ({
+          beforeState,
+          afterState,
+          changedFields,
+        }));
+      expect(transitions).toEqual([
+        {
+          beforeState: { status: "PROPOSED" },
+          afterState: { status: "ACCEPTED" },
+          changedFields: ["status"],
+        },
+        {
+          beforeState: { status: "ACCEPTED" },
+          afterState: { status: "EXECUTING" },
+          changedFields: ["status"],
+        },
+        {
+          beforeState: { status: "EXECUTING" },
+          afterState: expect.objectContaining({ status: "SUCCEEDED", result: expect.any(Object) }),
+          changedFields: ["result", "status"],
+        },
+      ]);
+    }
+    const mutationLife = await integrationDatabase.agentRuntimeEvent.findMany({
+      where: {
+        agentProfileId: fixture.created.agent.profile.id,
+        runId,
+        eventType: { in: ["SOURCE_STATE_CHANGED", "BELIEF_CHANGED", "RELATIONSHIP_CHANGED"] },
+        metadata: { path: ["origin"], equals: "ACTION_EXECUTION" },
+      },
+      orderBy: { agentSequence: "asc" },
+    });
+    expect(mutationLife.map(({ eventType }) => eventType)).toEqual([
+      "SOURCE_STATE_CHANGED",
+      "BELIEF_CHANGED",
+      "RELATIONSHIP_CHANGED",
+    ]);
+    expect(mutationLife.every(({ afterState }) => afterState !== null)).toBe(true);
   });
 
   it("emits one safe source-changed event per same-domain source after a failed fetch", async () => {
@@ -5181,12 +5461,24 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
     const runId = leased.run!.id;
 
+    const sourceAttemptId = randomUUID();
+    await recordRuntimeSourceAttempt(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeSourceAttemptSchema.parse({
+        workerId,
+        attemptId: sourceAttemptId,
+        sourceId: sources[0]!.id,
+      }),
+    );
     const result = await recordRuntimeSourceResult(
       integrationDatabase,
       writePrincipal,
       runId,
       runtimeSourceResultSchema.parse({
         workerId,
+        attemptId: sourceAttemptId,
         sourceId: sources[0]!.id,
         items: [],
         errorCode: "SOURCE_HTTP_503",
@@ -6190,9 +6482,10 @@ describe("internal agent runtime API with PostgreSQL", () => {
         targets.length,
     ).toBeGreaterThanOrEqual(0.1);
 
-    const sourceResult = (index: number) =>
+    const sourceResult = (index: number, attemptId: string) =>
       runtimeSourceResultSchema.parse({
         workerId,
+        attemptId,
         sourceId: discovered.id,
         items: Array.from({ length: index === 0 ? 3 : 1 }, (_, itemIndex) => ({
           canonicalUrl: `https://discovered.source-reserve.test/item-${index}-${itemIndex}`,
@@ -6201,11 +6494,43 @@ describe("internal agent runtime API with PostgreSQL", () => {
           safeText: `Discovery source güvenli metni ${index}-${itemIndex}.`,
         })),
       });
-    await recordRuntimeSourceResult(integrationDatabase, writePrincipal, runId, sourceResult(0));
+    const firstAttemptId = randomUUID();
+    await recordRuntimeSourceAttempt(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeSourceAttemptSchema.parse({
+        workerId,
+        attemptId: firstAttemptId,
+        sourceId: discovered.id,
+      }),
+    );
+    await recordRuntimeSourceResult(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      sourceResult(0, firstAttemptId),
+    );
     await expect(
       integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: discovered.id } }),
     ).resolves.toMatchObject({ status: "PROBATION" });
-    await recordRuntimeSourceResult(integrationDatabase, writePrincipal, runId, sourceResult(1));
+    const secondAttemptId = randomUUID();
+    await recordRuntimeSourceAttempt(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeSourceAttemptSchema.parse({
+        workerId,
+        attemptId: secondAttemptId,
+        sourceId: discovered.id,
+      }),
+    );
+    await recordRuntimeSourceResult(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      sourceResult(1, secondAttemptId),
+    );
     await expect(
       integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: discovered.id } }),
     ).resolves.toMatchObject({ status: "TRUSTED" });

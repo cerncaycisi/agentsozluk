@@ -8,17 +8,25 @@ import {
   getRuntimeRunContext,
   heartbeatRuntimeRun,
   leaseRuntimeRun,
-  recordRuntimeActions,
+  recordRuntimeDecisionBatch,
+  recordRuntimeLifeEventBatch,
   recordRuntimeMemories,
   recordRuntimeSourceResult,
-  runtimeActionsSchema,
+  recordRuntimeSourceAttempt,
+  runtimeDecisionBatchSchema,
   runtimeCompleteSchema,
   runtimeFailSchema,
   runtimeHeartbeatSchema,
+  runtimeLifeEventBatchSchema,
   runtimeMemoriesSchema,
   runtimeSourceResultSchema,
+  runtimeSourceAttemptSchema,
 } from "@/modules/agents";
-import type { RuntimeControlPlane, RuntimeExecution } from "@/runtime/control-plane-client";
+import type {
+  RuntimeControlPlane,
+  RuntimeExecution,
+  RuntimeLifeEventsBatch,
+} from "@/runtime/control-plane-client";
 import type { RuntimeProvider, RuntimeProviderRequest } from "@/runtime/provider";
 
 async function principal(
@@ -87,12 +95,28 @@ export class InProcessRuntimeControlPlane implements RuntimeControlPlane {
     runId: string,
     leaseToken: string,
     actions: unknown[],
+    payload: RuntimeLifeEventsBatch,
   ): Promise<void> {
-    await recordRuntimeActions(
+    await recordRuntimeDecisionBatch(
       this.#database,
       await principal(this.#database, credential, "runtime:write"),
       runId,
-      runtimeActionsSchema.parse({ workerId, leaseToken, actions }),
+      runtimeDecisionBatchSchema.parse({ workerId, leaseToken, actions, payload }),
+    );
+  }
+
+  async recordLifeEvents(
+    credential: string,
+    workerId: string,
+    runId: string,
+    leaseToken: string,
+    payload: RuntimeLifeEventsBatch,
+  ): Promise<void> {
+    await recordRuntimeLifeEventBatch(
+      this.#database,
+      await principal(this.#database, credential, "runtime:write"),
+      runId,
+      runtimeLifeEventBatchSchema.parse({ workerId, leaseToken, payload }),
     );
   }
 
@@ -107,11 +131,13 @@ export class InProcessRuntimeControlPlane implements RuntimeControlPlane {
     const actions = [];
     for (const sequence of sequences)
       actions.push(
-        await executeRuntimeAction(this.#database, runtimePrincipal, runId, {
-          workerId,
-          leaseToken,
-          sequence,
-        }),
+        await executeRuntimeAction(
+          this.#database,
+          runtimePrincipal,
+          runId,
+          { workerId, leaseToken, sequence },
+          { requireLifeLedger: false },
+        ),
       );
     return { actions };
   }
@@ -143,6 +169,21 @@ export class InProcessRuntimeControlPlane implements RuntimeControlPlane {
       await principal(this.#database, credential, "runtime:write"),
       runId,
       runtimeSourceResultSchema.parse({ workerId, leaseToken, ...result }),
+    );
+  }
+
+  async recordSourceAttempt(
+    credential: string,
+    workerId: string,
+    runId: string,
+    leaseToken: string,
+    input: { attemptId: string; sourceId: string },
+  ): Promise<void> {
+    await recordRuntimeSourceAttempt(
+      this.#database,
+      await principal(this.#database, credential, "runtime:write"),
+      runId,
+      runtimeSourceAttemptSchema.parse({ workerId, leaseToken, ...input }),
     );
   }
 
@@ -369,6 +410,8 @@ export class FakeCodexProvider implements RuntimeProvider {
         targetId: topicId,
         body,
         desire: 0.8,
+        expectedOutcome: "Topic üzerinde kanıtla sınırlı ve özgün bir entry görünür olacak.",
+        selectedOptionSeq: 1,
         safeReason: "Görünür topic bağlamı simülasyon entry adayını destekliyor.",
         claimProvenance: [
           {
@@ -379,20 +422,32 @@ export class FakeCodexProvider implements RuntimeProvider {
         ],
       };
     });
+    const output = {
+      safeSummary: "Hızlandırılmış günlük simülasyon run'ı işlendi.",
+      state: { curiosity: 0.6, confidence: 0.8, topicFatigue: { items: [] } },
+      observations: [],
+      decisionJournal: [
+        {
+          seq: 1,
+          kind: "OPTION_SELECTED" as const,
+          subject: "simulation-entry-batch",
+          summary: "Görünür topic bağlamından güvenli entry üretme seçeneği seçildi.",
+          confidence: 0.8,
+          evidenceIds: visibleTopicIds.slice(0, 20),
+          causedBySeqs: [],
+        },
+      ],
+      actions,
+      beliefDeltas: [],
+      relationshipDeltas: [],
+      sourceProposals: [],
+      memoryCandidates: [],
+    };
     return {
       provider: "codex-cli" as const,
       version: "fake-codex-simulation-1",
       durationMs: 1000,
-      output: {
-        safeSummary: "Hızlandırılmış günlük simülasyon run'ı işlendi.",
-        state: { curiosity: 0.6, confidence: 0.8, topicFatigue: { items: [] } },
-        observations: [],
-        actions,
-        beliefDeltas: [],
-        relationshipDeltas: [],
-        sourceProposals: [],
-        memoryCandidates: [],
-      },
+      output,
     };
   }
 }

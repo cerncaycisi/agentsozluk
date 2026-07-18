@@ -11,6 +11,10 @@ import {
   lockAgentSettings,
   pauseGlobalRuntimeForCriticalBreakerRecord,
 } from "@/modules/agents/repository/control-plane";
+import {
+  canonicalLifeEventJson,
+  findRuntimeSourceAttemptLifeEvent,
+} from "@/modules/agents/repository/life-ledger";
 import { lockPersonaUniverse } from "@/modules/agents/repository/persona-lock";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
 import { duplicateRepairCandidateIsSafe } from "@/modules/agents/domain/action-policy";
@@ -88,6 +92,7 @@ import {
   type RuntimeLeaseInput,
   type RuntimeMemoriesInput,
   type RuntimeSourceResultInput,
+  type RuntimeSourceAttemptInput,
 } from "@/modules/agents/validation/runtime-schemas";
 import {
   parseSafeSourceUrl,
@@ -235,6 +240,19 @@ function previousRuntimeFastState(runtimeMetadata: unknown) {
     return null;
   const parsed = runtimeFastStateSchema.safeParse(
     (runtimeMetadata as Record<string, unknown>).fastState,
+  );
+  return parsed.success ? parsed.data : null;
+}
+
+function perceptionPreviousFastState(perceptionSummary: unknown) {
+  if (
+    !perceptionSummary ||
+    typeof perceptionSummary !== "object" ||
+    Array.isArray(perceptionSummary)
+  )
+    return null;
+  const parsed = runtimeFastStateSchema.safeParse(
+    (perceptionSummary as Record<string, unknown>).previousFastState,
   );
   return parsed.success ? parsed.data : null;
 }
@@ -556,6 +574,8 @@ async function applyRuntimeReflectionDelta(
     const relationship = relationshipByUserId.get(targetUserId)!;
     return {
       id: relationship.id,
+      targetUserId,
+      previousTrust: relationship.trust,
       trust: boundedReflectedValue(relationship.trust, delta, `relationshipTrust.${targetUserId}`),
     };
   });
@@ -563,6 +583,7 @@ async function applyRuntimeReflectionDelta(
     const belief = beliefByTopicKey.get(topicKey)!;
     return {
       ...belief,
+      previousConfidence: belief.confidence,
       confidence: boundedReflectedValue(belief.confidence, delta, `beliefConfidence.${topicKey}`),
     };
   });
@@ -573,6 +594,50 @@ async function applyRuntimeReflectionDelta(
     relationships,
     beliefs,
   });
+  for (const source of sources)
+    await appendRuntimeEvent(transaction, {
+      agentProfileId: input.run.agentProfileId,
+      runId: input.run.id,
+      eventType: "SOURCE_STATE_CHANGED",
+      subject: { type: "SOURCE", id: source.id },
+      safeMessage: "Weekly reflection source trust state'ini kontrollü sınırlar içinde değiştirdi.",
+      before: { trustScore: source.previousTrustScore },
+      after: { trustScore: source.trustScore },
+      metadata: { origin: "REFLECTION", reason: applied.delta.safeSummary },
+      occurredAt: input.now,
+    });
+  for (const relationship of relationships)
+    await appendRuntimeEvent(transaction, {
+      agentProfileId: input.run.agentProfileId,
+      runId: input.run.id,
+      eventType: "RELATIONSHIP_CHANGED",
+      subject: {
+        type: "USER",
+        id: relationship.targetUserId,
+        relationshipId: relationship.id,
+      },
+      safeMessage:
+        "Weekly reflection relationship trust state'ini kontrollü sınırlar içinde değiştirdi.",
+      confidence: relationship.trust,
+      before: { trust: relationship.previousTrust },
+      after: { trust: relationship.trust },
+      metadata: { origin: "REFLECTION", reason: applied.delta.safeSummary },
+      occurredAt: input.now,
+    });
+  for (const belief of beliefs)
+    await appendRuntimeEvent(transaction, {
+      agentProfileId: input.run.agentProfileId,
+      runId: input.run.id,
+      eventType: "BELIEF_CHANGED",
+      subject: { type: "BELIEF", topicKey: belief.topicKey },
+      safeMessage:
+        "Weekly reflection belief confidence state'ini kontrollü sınırlar içinde değiştirdi.",
+      confidence: belief.confidence,
+      before: { confidence: belief.previousConfidence, version: belief.version },
+      after: { confidence: belief.confidence, version: belief.version + 1 },
+      metadata: { origin: "REFLECTION", reason: applied.delta.safeSummary },
+      occurredAt: input.now,
+    });
   for (const source of sources) {
     await appendAuditLog(transaction, {
       actorId: input.principal.actor.actorId,
@@ -643,6 +708,20 @@ async function applyRuntimeReflectionDelta(
         beliefTopicKeys: beliefs.map(({ topicKey }) => topicKey),
       },
     },
+  });
+  await appendRuntimeEvent(transaction, {
+    agentProfileId: input.run.agentProfileId,
+    runId: input.run.id,
+    eventType: "PERSONA_CHANGED",
+    subject: { type: "PERSONA", id: version.id },
+    safeMessage: applied.delta.safeSummary,
+    before: {
+      personaVersionId: input.run.personaVersion.id,
+      version: input.run.personaVersion.version,
+    },
+    after: { personaVersionId: version.id, version: version.version },
+    metadata: { origin: "REFLECTION" },
+    occurredAt: input.now,
   });
   await appendOutboxEvent(transaction, {
     eventType: "agent.persona.versioned",
@@ -1233,7 +1312,10 @@ export async function leaseRuntimeRun(
       runId: run.id,
       eventType: "run.started",
       safeMessage: "Run worker tarafından lease edildi ve başlatıldı.",
+      before: { runStatus: run.attempts > 1 ? "RUNNING" : "QUEUED" },
+      after: { runStatus: "RUNNING", runtimeStatus: "STARTING", attempt: run.attempts },
       metadata: { phase: "STARTING", attempt: run.attempts },
+      occurredAt: now,
     });
     await auditRuntimeRun(transaction, principal, run.id, "agent.run.leased", {
       workerId: input.workerId,
@@ -1277,7 +1359,7 @@ export function heartbeatRuntimeRun(
     const cancelRequested = run.runStatus === "CANCEL_REQUESTED";
     const runtimeStatus = cancelRequested ? "CANCELLING" : input.runtimeStatus;
     const leaseExpiresAt = new Date(now.getTime() + input.leaseSeconds * 1000);
-    await heartbeatRuntimeRunRecord(transaction, {
+    const heartbeatChange = await heartbeatRuntimeRunRecord(transaction, {
       runId,
       agentProfileId: principal.agentProfileId,
       workerId: input.workerId,
@@ -1290,7 +1372,10 @@ export function heartbeatRuntimeRun(
       runId,
       eventType: "agent.heartbeat",
       safeMessage: "Agent runtime heartbeat kaydetti.",
+      before: heartbeatChange.before,
+      after: heartbeatChange.after,
       metadata: { runtimeStatus, cancelRequested },
+      occurredAt: now,
     });
     return { runId, leaseExpiresAt, cancelRequested };
   });
@@ -1335,6 +1420,24 @@ export function getRuntimeRunContext(
       await storeRuntimePerceptionSummary(transaction, runId, builtPerception);
       perception = builtPerception;
     }
+    const presentedIds = [...collectSnapshotIds(perception)].slice(0, 200);
+    const contextHash = sha256(canonicalLifeEventJson(perception));
+    await appendRuntimeEvent(transaction, {
+      agentProfileId: principal.agentProfileId,
+      runId,
+      eventType: "CONTEXT_PRESENTED",
+      subject: { type: "RUN", id: runId },
+      safeMessage: "Dondurulmuş runtime context agent karar döngüsüne sunuldu.",
+      evidenceIds: presentedIds,
+      after: {
+        personaVersionId: run.personaVersion.id,
+        presentedEvidenceCount: presentedIds.length,
+        perceptionFrozen: true,
+        contextHash,
+      },
+      metadata: { origin: "RUNTIME_CONTEXT", presentedAt: now.toISOString(), contextHash },
+      occurredAt: now,
+    });
     return {
       run: {
         id: run.id,
@@ -1561,7 +1664,7 @@ export function recordRuntimeMemories(
           422,
           "Consolidation kaynak memory kayıtları aktif ve bu agente ait olmalıdır.",
         );
-      await createRuntimeMemoryEpisode(transaction, {
+      const created = await createRuntimeMemoryEpisode(transaction, {
         agentProfileId: principal.agentProfileId,
         runId,
         eventType: "MEMORY_CONSOLIDATION",
@@ -1569,6 +1672,22 @@ export function recordRuntimeMemories(
         salience: memory.salience,
         provenance: "AGENT_MEMORY",
         evidence: { sourceMemoryIds: memory.sourceMemoryIds },
+        occurredAt: now,
+      });
+      await appendRuntimeEvent(transaction, {
+        agentProfileId: principal.agentProfileId,
+        runId,
+        eventType: "MEMORY_CANDIDATE_COMMITTED",
+        subject: { type: "MEMORY", id: created.id },
+        safeMessage: "Seçili memory kayıtları yeni consolidation memory kaydına dönüştürüldü.",
+        confidence: memory.salience,
+        evidenceIds: memory.sourceMemoryIds,
+        after: {
+          memoryId: created.id,
+          status: "COMMITTED",
+          sourceMemoryIds: memory.sourceMemoryIds,
+        },
+        metadata: { origin: "MEMORY_CONSOLIDATION" },
         occurredAt: now,
       });
       count += 1;
@@ -1603,6 +1722,18 @@ export function recordRuntimeSourceResult(
       sourceId: input.sourceId,
     });
     if (!source) throw new AppError("VALIDATION_ERROR", 422, "Source fetch hedefi geçersizdir.");
+    const attempt = await findRuntimeSourceAttemptLifeEvent(transaction, {
+      agentProfileId: principal.agentProfileId,
+      runId,
+      sourceId: source.id,
+      attemptId: input.attemptId,
+    });
+    if (!attempt)
+      throw new AppError(
+        "VALIDATION_ERROR",
+        422,
+        "Source sonucu ağ isteğinden önce kaydedilmiş fetch attempt gerektirir.",
+      );
     for (const item of input.items) parseSafeSourceUrl(item.canonicalUrl);
     const stored = await storeRuntimeSourceResult(transaction, {
       sourceId: source.id,
@@ -1619,7 +1750,7 @@ export function recordRuntimeSourceResult(
       now,
       ...(input.errorCode ? { errorCode: input.errorCode } : {}),
     });
-    for (const change of stored.changes)
+    for (const change of stored.changes) {
       await appendOutboxEvent(transaction, {
         eventType: "agent.source.changed",
         aggregateType: "AgentSource",
@@ -1642,6 +1773,55 @@ export function recordRuntimeSourceResult(
           after: runtimeSourceStatePayload(change.after),
         },
       });
+      await appendRuntimeEvent(transaction, {
+        agentProfileId: principal.agentProfileId,
+        runId,
+        eventType: "SOURCE_STATE_CHANGED",
+        subject: { type: "SOURCE", id: change.sourceId },
+        safeMessage: "Source fetch sonucu source yaşam durumu server-side değişti.",
+        before: runtimeSourceStatePayload(change.before),
+        after: runtimeSourceStatePayload(change.after),
+        metadata: {
+          origin: "SOURCE_FETCH",
+          normalizedDomain: change.normalizedDomain,
+          errorCode: input.errorCode ?? null,
+        },
+        occurredAt: now,
+      });
+    }
+    await appendRuntimeEvent(transaction, {
+      agentProfileId: principal.agentProfileId,
+      runId,
+      eventType: "SOURCE_FETCH_RESULT",
+      subject: { type: "SOURCE", id: source.id },
+      safeMessage: input.errorCode
+        ? "Source fetch güvenli hata koduyla tamamlandı."
+        : "Source fetch doğrulandı ve güvenli item kayıtları işlendi.",
+      after: {
+        attemptId: input.attemptId,
+        itemCount: input.items.length,
+        changedSourceCount: stored.changes.length,
+        errorCode: input.errorCode ?? null,
+      },
+      metadata: {
+        origin: "SOURCE_READER",
+        attemptId: input.attemptId,
+        contentHashes: input.items.map(({ contentHash }) => contentHash),
+      },
+      causedByEventIds: [attempt.id],
+      occurredAt: now,
+    });
+    if (input.items.length > 0)
+      await appendRuntimeEvent(transaction, {
+        agentProfileId: principal.agentProfileId,
+        runId,
+        eventType: "MEMORY_CHANGED",
+        subject: { type: "SOURCE", id: source.id },
+        safeMessage: "Okunan source item'ları episodic memory kayıtlarına dönüştürüldü.",
+        after: { committedMemoryCount: input.items.length, eventType: "SOURCE_READ" },
+        metadata: { origin: "SOURCE_FETCH" },
+        occurredAt: now,
+      });
     await auditRuntimeRun(transaction, principal, runId, "agent.run.source_result_recorded", {
       sourceId: source.id,
       itemCount: input.items.length,
@@ -1653,6 +1833,48 @@ export function recordRuntimeSourceResult(
       changedSourceCount: stored.changes.length,
       recordedAt: now,
     };
+  });
+}
+
+export function recordRuntimeSourceAttempt(
+  client: DatabaseExecutor,
+  principal: RuntimePrincipal,
+  runId: string,
+  input: RuntimeSourceAttemptInput,
+) {
+  return inTransaction(client, async (transaction) => {
+    await lockRuntimeAgent(transaction, principal.agentProfileId);
+    await lockRuntimeRunForLeaseMutation(transaction, runId);
+    const now = new Date();
+    const run = await findRuntimeOwnedRun(transaction, principal.agentProfileId, runId);
+    assertLeaseOwner(run, input.workerId, input.leaseToken, now);
+    assertRunExecutionBudget(run, now);
+    const settings = await getRuntimeGlobalSettings(transaction);
+    if (!run.allowSourceReading || !settings.sourceReadingEnabled)
+      throw new AppError("FORBIDDEN", 403, "Bu run için source reading kapalıdır.");
+    const source = await findRuntimeSourceForWrite(transaction, {
+      agentProfileId: principal.agentProfileId,
+      sourceId: input.sourceId,
+    });
+    if (!source) throw new AppError("VALIDATION_ERROR", 422, "Source fetch hedefi geçersizdir.");
+    const existing = await findRuntimeSourceAttemptLifeEvent(transaction, {
+      agentProfileId: principal.agentProfileId,
+      runId,
+      sourceId: source.id,
+      attemptId: input.attemptId,
+    });
+    if (existing) return { attemptId: input.attemptId, replayed: true, recordedAt: now };
+    await appendRuntimeEvent(transaction, {
+      agentProfileId: principal.agentProfileId,
+      runId,
+      eventType: "SOURCE_FETCH_ATTEMPT",
+      subject: { type: "SOURCE", id: source.id },
+      safeMessage: "Worker source ağ isteğine başlamadan önce fetch attempt kaydetti.",
+      after: { attemptId: input.attemptId, status: "STARTED" },
+      metadata: { origin: "SOURCE_READER", attemptId: input.attemptId },
+      occurredAt: now,
+    });
+    return { attemptId: input.attemptId, replayed: false, recordedAt: now };
   });
 }
 
@@ -1730,6 +1952,18 @@ export function completeRuntimeRun(
       votes: measuredMetrics.votes,
       sourceReads: measuredMetrics.sourceReads,
     });
+    const previousFastState = perceptionPreviousFastState(run.perceptionSummary);
+    await appendRuntimeEvent(transaction, {
+      agentProfileId: principal.agentProfileId,
+      runId,
+      eventType: "FAST_STATE_CHANGED",
+      subject: { type: "AGENT_RUNTIME_STATE", id: principal.agentProfileId },
+      safeMessage: "Run sonundaki hızlı agent state snapshot'ı server-side kaydedildi.",
+      ...(previousFastState ? { before: previousFastState } : {}),
+      after: input.state,
+      metadata: { origin: "RUN_COMPLETION", outcome: finalOutcome },
+      occurredAt: now,
+    });
     await appendCanonicalRunTerminalOutbox(transaction, principal, {
       runId,
       outcome: finalOutcome,
@@ -1752,7 +1986,10 @@ export function completeRuntimeRun(
       runId,
       eventType: "run.completed",
       safeMessage: `Run ${finalOutcome} durumuyla tamamlandı.`,
+      before: { runStatus: run.runStatus },
+      after: { runStatus: finalOutcome, finishedAt: now.toISOString() },
       metadata: { phase: finalOutcome, reflectionStatus: reflection.status },
+      occurredAt: now,
     });
     if (reflection.status === "APPLIED")
       await appendRuntimeEvent(transaction, {
@@ -1827,7 +2064,10 @@ export function failRuntimeRun(
       runId,
       eventType: outcome === "PARTIAL" ? "run.completed" : "run.failed",
       safeMessage: `Run ${outcome} durumuyla kapatıldı.`,
+      before: { runStatus: run.runStatus },
+      after: { runStatus: outcome, finishedAt: now.toISOString() },
       metadata: { phase: outcome, code: input.errorCode },
+      occurredAt: now,
     });
     await auditRuntimeRun(
       transaction,

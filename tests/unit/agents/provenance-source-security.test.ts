@@ -36,6 +36,17 @@ describe("agent provenance and source boundaries", () => {
     expect(() => parseSafeSourceUrl("file:///etc/passwd")).toThrow();
     expect(() => parseSafeSourceUrl("http://localhost/admin")).toThrow();
     expect(() => parseSafeSourceUrl("https://user:pass@example.com/private")).toThrow();
+    for (const query of [
+      "token=secret-value",
+      "api_key=secret-value",
+      "sig=secret-value",
+      "X-Amz-Signature=secret-value",
+      "X-Goog-Credential=secret-value",
+    ])
+      expect(() => parseSafeSourceUrl(`https://example.com/feed?${query}`)).toThrow(
+        /query parametrelerine/iu,
+      );
+    expect(parseSafeSourceUrl("https://example.com/feed?format=rss").hostname).toBe("example.com");
   });
 
   it("uses bounded exponential source failure backoff", () => {

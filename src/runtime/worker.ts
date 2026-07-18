@@ -9,6 +9,7 @@ import type {
   RuntimeControlPlane,
   RuntimeDailyPlanControlPlane,
   RuntimeExecution,
+  RuntimeLifeEventsBatch,
 } from "@/runtime/control-plane-client";
 import {
   runtimeDecisionJsonSchema,
@@ -231,6 +232,9 @@ function normalizedDecision(
         {
           sequence: 1,
           actionType: "NO_ACTION",
+          desire: 0,
+          expectedOutcome: "Reflection run dış dünyada bir state değişikliği oluşturmayacak.",
+          selectedOptionSeq: null,
           safeReason: "Reflection run public action üretmeden güvenli biçimde tamamlandı.",
           input: {},
         },
@@ -245,6 +249,9 @@ function normalizedDecision(
     ...decision.beliefDeltas.map((delta) => ({
       sequence: (sequence += 1),
       actionType: "UPDATE_BELIEF" as const,
+      desire: delta.desire,
+      expectedOutcome: delta.expectedOutcome,
+      selectedOptionSeq: delta.selectedOptionSeq,
       safeReason: "Gözlenen kanıt kontrollü bir belief güncellemesini destekliyor.",
       input: {
         topicKey: delta.topicKey,
@@ -257,6 +264,9 @@ function normalizedDecision(
     ...decision.relationshipDeltas.map((delta) => ({
       sequence: (sequence += 1),
       actionType: "UPDATE_RELATIONSHIP_NOTE" as const,
+      desire: delta.desire,
+      expectedOutcome: delta.expectedOutcome,
+      selectedOptionSeq: delta.selectedOptionSeq,
       safeReason: "Görünür etkileşim relationship notunun güncellenmesini destekliyor.",
       targetType: "USER",
       targetId: delta.userId,
@@ -273,6 +283,9 @@ function normalizedDecision(
     ...decision.sourceProposals.map((proposal) => ({
       sequence: (sequence += 1),
       actionType: "PROPOSE_SOURCE" as const,
+      desire: proposal.desire,
+      expectedOutcome: proposal.expectedOutcome,
+      selectedOptionSeq: proposal.selectedOptionSeq,
       safeReason: "Gözlenen source adayı kontrollü değerlendirme için öneriliyor.",
       input: {
         url: proposal.url,
@@ -291,10 +304,44 @@ function normalizedDecision(
       {
         sequence: 1,
         actionType: "NO_ACTION",
+        desire: 0,
+        expectedOutcome: "Bu run dış dünyada bir state değişikliği oluşturmayacak.",
+        selectedOptionSeq: null,
         safeReason: "Bu run için güvenli ve gerekli bir action bulunmadı.",
         input: {},
       },
     ],
+  };
+}
+
+function actionForControlPlane(
+  action: RuntimeDecision["actions"][number] & { repairOfSequence?: number },
+): Record<string, unknown> {
+  const { desire, expectedOutcome, selectedOptionSeq, ...rest } = action;
+  void desire;
+  void expectedOutcome;
+  void selectedOptionSeq;
+  return rest;
+}
+
+function lifeEventsForDecision(
+  decision: Pick<
+    RuntimeDecision,
+    "observations" | "memoryCandidates" | "decisionJournal" | "actions"
+  >,
+): RuntimeLifeEventsBatch {
+  return {
+    observations: decision.observations,
+    memoryCandidates: decision.memoryCandidates,
+    decisionJournal: decision.decisionJournal,
+    actionIntents: decision.actions.map(
+      ({ sequence, desire, expectedOutcome, selectedOptionSeq }) => ({
+        sequence,
+        desire,
+        expectedOutcome,
+        selectedOptionSeq,
+      }),
+    ),
   };
 }
 
@@ -466,6 +513,15 @@ export class AgentRuntimeWorker {
         );
         for (const target of selectedTargets) {
           deadline.throwIfStopped();
+          const attemptId = crypto.randomUUID();
+          await this.#options.controlPlane.recordSourceAttempt(
+            credential,
+            this.#options.workerId,
+            runId,
+            leaseToken,
+            { attemptId, sourceId: target.sourceId },
+            deadline.requestOptions(),
+          );
           try {
             const items = await this.#options.sourceReader.read(target.url, {
               signal: deadline.signal,
@@ -477,7 +533,7 @@ export class AgentRuntimeWorker {
               this.#options.workerId,
               runId,
               leaseToken,
-              { sourceId: target.sourceId, items },
+              { attemptId, sourceId: target.sourceId, items },
               deadline.requestOptions(),
             );
             sourceReads += items.length;
@@ -492,7 +548,7 @@ export class AgentRuntimeWorker {
               this.#options.workerId,
               runId,
               leaseToken,
-              { sourceId: target.sourceId, errorCode },
+              { attemptId, sourceId: target.sourceId, errorCode },
               deadline.requestOptions(),
             );
           }
@@ -549,7 +605,8 @@ export class AgentRuntimeWorker {
         this.#options.workerId,
         runId,
         leaseToken,
-        decision.actions,
+        decision.actions.map(actionForControlPlane),
+        lifeEventsForDecision(decision),
         deadline.requestOptions(),
       );
       await enterPhase("EXECUTING");
@@ -591,17 +648,31 @@ export class AgentRuntimeWorker {
           };
           deadline.throwIfStopped();
           const repairDecision = parseDecisionForContext(context, repairResult.output);
-          const repairCandidate = repairDecision.success
-            ? safeDuplicateRepairCandidate(originalAction, repairDecision.data, nextSequence)
+          const repairDecisionData = repairDecision.success ? repairDecision.data : null;
+          const repairCandidate = repairDecisionData
+            ? safeDuplicateRepairCandidate(originalAction, repairDecisionData, nextSequence)
             : null;
-          if (repairCandidate) {
+          if (repairCandidate && repairDecisionData) {
             nextSequence += 1;
             await this.#options.controlPlane.recordActions(
               credential,
               this.#options.workerId,
               runId,
               leaseToken,
-              [repairCandidate],
+              [actionForControlPlane(repairCandidate)],
+              {
+                observations: repairDecisionData.observations,
+                memoryCandidates: repairDecisionData.memoryCandidates,
+                decisionJournal: repairDecisionData.decisionJournal,
+                actionIntents: [
+                  {
+                    sequence: repairCandidate.sequence,
+                    desire: repairCandidate.desire,
+                    expectedOutcome: repairCandidate.expectedOutcome,
+                    selectedOptionSeq: repairCandidate.selectedOptionSeq,
+                  },
+                ],
+              },
               deadline.requestOptions(),
             );
             await enterPhase("EXECUTING");
