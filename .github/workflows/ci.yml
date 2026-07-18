@@ -44,6 +44,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -92,8 +94,17 @@ jobs:
       - name: OpenAPI
         run: pnpm openapi:validate
 
-      - name: Requirements
+      - name: M1 requirements
         run: pnpm requirements:check
+
+      - name: M2 agent simulation
+        run: pnpm test:agent-simulation
+
+      - name: M2 persona verifier
+        run: pnpm agent:verify-personas
+
+      - name: M2 public metadata leak scan
+        run: pnpm agent:scan-metadata
 
       - name: Production build
         env:
@@ -113,6 +124,15 @@ jobs:
 
       - name: Docker Compose config
         run: docker compose config
+
+      - name: Repository and history secret scan
+        run: pnpm security:scan-secrets
+
+      - name: Clean working tree
+        run: pnpm repo:check-clean
+
+      - name: M2 development traceability
+        run: pnpm requirements:m2:check:development
 
       - name: Upload coverage
         if: always()

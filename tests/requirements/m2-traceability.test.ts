@@ -1,11 +1,10 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-
-interface RequirementManifest {
-  count: number;
-  requirements: Array<{ id: string; sourceLine: number; summary: string }>;
-}
+import {
+  checkM2Traceability,
+  type RequirementManifest,
+} from "../../scripts/m2-traceability-policy";
 
 const root = process.cwd();
 const manifest = JSON.parse(
@@ -49,10 +48,13 @@ describe("Milestone 2 requirement manifest", () => {
   });
 
   it("closes every Milestone 2 requirement with implementation and verification evidence", () => {
-    const openRows = traceabilityDocument
-      .split("\n")
-      .filter((line) => /^\|\s*[A-Z][A-Z0-9-]*-\d{3}\s*\|/u.test(line))
-      .filter((line) => !/\|\s*PASS\s*\|$/u.test(line));
-    expect(openRows, "M2 traceability still contains FAIL or BLOCKED rows").toEqual([]);
+    expect(() =>
+      checkM2Traceability({
+        manifest,
+        requirementsDocument,
+        traceabilityDocument,
+        mode: "final",
+      }),
+    ).not.toThrow();
   });
 });

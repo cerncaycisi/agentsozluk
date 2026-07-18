@@ -7,6 +7,12 @@ if (nodeMajor !== 22)
   throw new Error(`verify:m2 requires Node.js 22; received ${process.versions.node}.`);
 
 const testDatabaseUrl = requireTestDatabaseUrl(process.env.TEST_DATABASE_URL, "verify:m2");
+const developmentTraceability = process.argv.slice(2).includes("--development");
+const unsupportedArguments = process.argv
+  .slice(2)
+  .filter((argument) => argument !== "--development");
+if (unsupportedArguments.length > 0)
+  throw new Error(`verify:m2 received unsupported arguments: ${unsupportedArguments.join(", ")}.`);
 const applicationUrl = new URL(process.env.E2E_APP_URL ?? "http://127.0.0.1:3000");
 const port = Number.parseInt(applicationUrl.port, 10);
 if (
@@ -77,8 +83,19 @@ function main(): void {
   run("OpenAPI", ["openapi:validate"]);
   run("persona verification", ["agent:verify-personas"]);
   run("public metadata leak scan", ["exec", "tsx", "scripts/scan-agent-metadata.ts"]);
-  run("M2 requirement traceability", ["requirements:m2:check"]);
-  process.stdout.write("\nMilestone 2 integrated verification passed.\n");
+  run("repository and history secret scan", ["security:scan-secrets"]);
+  if (!developmentTraceability) run("clean candidate tree", ["repo:check-clean"]);
+  run(
+    developmentTraceability
+      ? "M2 development requirement traceability"
+      : "M2 final requirement traceability",
+    [developmentTraceability ? "requirements:m2:check:development" : "requirements:m2:check"],
+  );
+  process.stdout.write(
+    developmentTraceability
+      ? "\nMilestone 2 pre-merge development verification passed.\n"
+      : "\nMilestone 2 final integrated verification passed.\n",
+  );
 }
 
 try {
