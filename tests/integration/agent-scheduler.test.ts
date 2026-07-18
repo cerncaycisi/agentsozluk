@@ -1375,7 +1375,9 @@ describe("agent daily scheduler with PostgreSQL", () => {
     });
     await integrationDatabase.agentScheduleSlot.update({
       where: { id: laterSlot.id },
-      data: { scheduledAt: new Date("2026-07-20T11:00:00.000Z") },
+      // Generated slots are minute-aligned. Keep this fixture safely later
+      // without colliding with a randomly generated slot in the same plan.
+      data: { scheduledAt: new Date("2026-07-20T11:00:30.000Z") },
     });
 
     const planAt = (now: Date) =>
