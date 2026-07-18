@@ -223,6 +223,7 @@ async function createFixture(runCount = 1, activationStartedAt = new Date()) {
           requestedById: admin.id,
           personaVersionId: created.agent.personaVersion.id,
           idempotencyKey: randomUUID(),
+          availableAt: new Date(Date.now() - 1_000),
           timeoutSeconds: 600,
           desiredEntryMin: 2,
           desiredEntryMax: 3,
