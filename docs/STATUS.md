@@ -23,10 +23,10 @@ The following results were measured from the current
 | Public metadata scan               | PASS   | 14 surfaces, 21 private fields scanned                                           |
 | Repository and history secret scan | PASS   | Current repository and reachable Git history passed                              |
 | Operations contract tests          | PASS   | Production runbook and systemd contracts: 17/17                                  |
-| M2 traceability                    | OPEN   | 543 rows: 519 PASS, 4 FAIL, 20 BLOCKED                                           |
+| M2 traceability                    | OPEN   | 543 rows: 521 PASS, 2 FAIL, 20 BLOCKED                                           |
 
-The four remaining FAIL rows are the remote-CI, clean-candidate, logical-commit and draft-PR
-closeout gates. The 20 BLOCKED rows require separately approved operator evidence after merge.
+The two remaining FAIL rows are the remote-CI and draft-PR closeout gates. The 20 BLOCKED rows
+require separately approved operator evidence after merge.
 Requirement-level evidence is tracked in [`M2_TRACEABILITY.md`](M2_TRACEABILITY.md).
 
 Milestone 2 design/operations documents:
