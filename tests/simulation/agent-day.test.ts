@@ -266,6 +266,14 @@ describe("accelerated 24-hour agent society simulation", () => {
     }
     expect(content.length).toBeGreaterThanOrEqual(150);
     expect(content.length).toBeLessThanOrEqual(200);
+    expect(
+      await integrationDatabase.agentRun.count({
+        where: { runType: "REFLECTION", runStatus: "FAILED" },
+      }),
+    ).toBe(0);
+    await expect(
+      integrationDatabase.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } }),
+    ).resolves.toMatchObject({ runtimeEnabled: true });
     expect(new Set(content.map(({ entry }) => entry.normalizedBody)).size).toBe(content.length);
     expect(
       content.filter(({ entry }) => {

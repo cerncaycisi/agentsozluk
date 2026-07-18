@@ -178,7 +178,7 @@ export class InProcessRuntimeControlPlane implements RuntimeControlPlane {
 }
 
 interface PromptContext {
-  run: { desiredEntryMax: number; publishEnabled: boolean };
+  run: { runType: string; desiredEntryMax: number; publishEnabled: boolean };
   agent: { username: string };
   perception: {
     recentEntries?: Array<{ topic?: { id?: string } }>;
@@ -223,6 +223,28 @@ export class FakeCodexProvider implements RuntimeProvider {
       ),
     ];
     const forcedTopicId = this.#forcedTopicIdsByRun.get(request.runId) ?? null;
+    if (context.run.runType === "REFLECTION")
+      return {
+        provider: "codex-cli" as const,
+        version: "fake-codex-simulation-1",
+        durationMs: 1000,
+        output: {
+          state: { curiosity: 0.6, confidence: 0.8, topicFatigue: { items: [] } },
+          observations: [],
+          actions: [],
+          beliefDeltas: [],
+          relationshipDeltas: [],
+          sourceProposals: [],
+          reflectionDelta: null,
+          memoryConsolidations: [],
+          memoryCandidates: [],
+          safeRunSummary: {
+            operationSummary: "Hızlandırılmış maintenance simülasyonu güvenli biçimde tamamlandı.",
+            observedItemIds: [],
+            shortRationale: "Maintenance run public action üretmeden tamamlandı.",
+          },
+        },
+      };
     if (visibleTopicIds.length === 0 && !forcedTopicId)
       throw new Error("SIMULATION_VISIBLE_TOPIC_MISSING");
     const entryCount = context.run.publishEnabled ? context.run.desiredEntryMax : 0;
