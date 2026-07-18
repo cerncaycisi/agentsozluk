@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
 import { AgentCapabilityMeasurementForm } from "@/components/agents/agent-capability-measurement-form";
+import { GlobalRunControlForm } from "@/components/agents/global-run-control-form";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { RuntimeControlForm } from "@/components/agents/agent-admin-forms";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
@@ -20,6 +21,49 @@ function duration(value: number | null | undefined): string {
 
 function ratio(value: number | null): string {
   return value === null ? "UNKNOWN" : `%${(value * 100).toFixed(1)}`;
+}
+
+function actualSloMiss(value: unknown): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const metadata = value as Record<string, unknown>;
+  if (
+    typeof metadata.localDate !== "string" ||
+    typeof metadata.targetPublishedEntries !== "number" ||
+    typeof metadata.publishedEntries !== "number" ||
+    typeof metadata.shortfallEntries !== "number"
+  )
+    return null;
+  return `${metadata.localDate} · target ${metadata.targetPublishedEntries} · actual ${metadata.publishedEntries} · açık ${metadata.shortfallEntries}`;
+}
+
+function planningEvidence(value: unknown): string | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const metadata = value as Record<string, unknown>;
+  if (
+    metadata.before &&
+    typeof metadata.before === "object" &&
+    !Array.isArray(metadata.before) &&
+    metadata.after &&
+    typeof metadata.after === "object" &&
+    !Array.isArray(metadata.after)
+  ) {
+    const before = metadata.before as Record<string, unknown>;
+    const after = metadata.after as Record<string, unknown>;
+    if (
+      typeof before.targetPublishedEntries === "number" &&
+      typeof after.targetPublishedEntries === "number" &&
+      typeof before.plannedRuns === "number" &&
+      typeof after.plannedRuns === "number"
+    )
+      return `degraded target ${before.targetPublishedEntries}→${after.targetPublishedEntries} · run ${before.plannedRuns}→${after.plannedRuns}`;
+  }
+  if (
+    typeof metadata.targetPublishedEntries === "number" &&
+    typeof metadata.projectedPublishedMax === "number" &&
+    typeof metadata.projectedShortfallEntries === "number"
+  )
+    return `projected target ${metadata.targetPublishedEntries} · max ${metadata.projectedPublishedMax} · açık ${metadata.projectedShortfallEntries}`;
+  return null;
 }
 
 export default async function AgentCapacityPage() {
@@ -63,16 +107,64 @@ export default async function AgentCapacityPage() {
             label="Tahmini published"
             value={`${capacity.estimatedPublishedMin}–${capacity.estimatedPublishedMax}`}
           />
+          <Row label="Günlük published hedefi" value={String(capacity.targetPublishedEntries)} />
+          <Row
+            label="Kapasiteye göre projected published max"
+            value={capacity.projectedPublishedMax?.toString() ?? "UNKNOWN"}
+          />
+          <Row
+            label="Projected target shortfall"
+            value={capacity.projectedShortfallEntries?.toString() ?? "UNKNOWN"}
+          />
+          <Row label="Capacity warnings" value={capacity.warnings.join(", ") || "—"} />
           <Row
             label="En eski queued"
             value={capacity.operational.oldestQueuedAt?.toISOString() ?? "—"}
+          />
+          <Row label="Queue lag" value={duration(capacity.queueLagMs)} />
+          <Row
+            label="Estimated completion"
+            value={
+              capacity.estimatedCompletionAt
+                ? `${capacity.estimatedCompletionAt.toISOString()} · ${duration(capacity.estimatedCompletionDurationMs)} · P75`
+                : "UNKNOWN"
+            }
           />
           <Row
             label="En uzun active başlangıcı"
             value={capacity.operational.longestActiveStartedAt?.toISOString() ?? "—"}
           />
+          <Row
+            label="Son planning evidence"
+            value={
+              capacity.planningEvidence
+                ? (planningEvidence(capacity.planningEvidence.metadata) ??
+                  `${capacity.planningEvidence.eventType} · ${capacity.planningEvidence.createdAt.toISOString()}`)
+                : "—"
+            }
+          />
+          <Row
+            label="Son actual günlük SLO miss"
+            value={
+              capacity.latestActualSloMiss
+                ? (actualSloMiss(capacity.latestActualSloMiss.metadata) ??
+                  `${capacity.latestActualSloMiss.eventType} · ${capacity.latestActualSloMiss.createdAt.toISOString()}`)
+                : "—"
+            }
+          />
         </dl>
+        {capacity.projectedTargetMiss ? (
+          <div className="mt-5 rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
+            <p className="font-black">Projected target miss</p>
+            <p className="mt-1">
+              Ölçülen p75 ve zorunlu kapasite rezervine göre hedef {capacity.targetPublishedEntries}
+              , tahmini üst sınır {capacity.projectedPublishedMax ?? "UNKNOWN"}; açık{" "}
+              {capacity.projectedShortfallEntries ?? "UNKNOWN"} entry.
+            </p>
+          </div>
+        ) : null}
         <RuntimeControlForm runtimeEnabled={capacity.runtimeEnabled} />
+        <GlobalRunControlForm />
       </section>
       <section className="surface-card mt-5 p-5">
         <h2 className="text-lg font-black">Circuit breakers</h2>

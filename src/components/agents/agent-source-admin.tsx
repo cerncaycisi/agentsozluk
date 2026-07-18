@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 
 type SourceStatus =
@@ -75,10 +76,13 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
         idempotency: true,
       });
       setNotice(message);
+      toast.success(message);
       setReason("");
       router.refresh();
     } catch (submitError) {
-      setError(errorMessage(submitError));
+      const message = errorMessage(submitError);
+      setError(message);
+      toast.error(message);
     } finally {
       setPending(false);
     }

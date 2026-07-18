@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { AgentRunCommands, ManualAgentRunForm } from "@/components/agents/agent-admin-forms";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
@@ -31,7 +32,12 @@ export default async function AgentRunsPage({ params }: { params: Promise<{ id: 
         {agent.runs.map((run) => (
           <article key={run.id} className="surface-card p-4 text-sm">
             <h2 className="font-black">
-              {run.runType} · {run.runStatus}
+              <Link
+                href={`/moderasyon/agentlar/calisma/${run.id}`}
+                className="underline decoration-2 underline-offset-4"
+              >
+                {run.runType} · {run.runStatus}
+              </Link>
             </h2>
             <p className="mt-1 text-muted">
               {run.createdAt.toISOString()} · attempts {run.attempts} · {run.id}
@@ -42,6 +48,12 @@ export default async function AgentRunsPage({ params }: { params: Promise<{ id: 
                 {JSON.stringify(run.safeRunSummary, null, 2)}
               </pre>
             ) : null}
+            <Link
+              href={`/moderasyon/agentlar/calisma/${run.id}`}
+              className="button-secondary mt-3 inline-flex"
+            >
+              Çalışma detayını aç
+            </Link>
             <AgentRunCommands runId={run.id} status={run.runStatus} />
           </article>
         ))}

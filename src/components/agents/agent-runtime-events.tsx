@@ -13,6 +13,8 @@ export interface SafeRuntimeEvent {
   createdAt: string;
 }
 
+export const LIVE_EVENT_POLL_INTERVAL_MS = 5000;
+
 function mergeEvents(current: SafeRuntimeEvent[], incoming: SafeRuntimeEvent[]) {
   const byId = new Map(current.map((event) => [event.id, event]));
   for (const event of incoming) byId.set(event.id, event);
@@ -44,7 +46,7 @@ export function AgentRuntimeEvents({ initialEvents }: { initialEvents: SafeRunti
     };
     const startPolling = () => {
       setConnection("POLLING");
-      if (!pollTimer) pollTimer = setInterval(() => void poll(), 5000);
+      if (!pollTimer) pollTimer = setInterval(() => void poll(), LIVE_EVENT_POLL_INTERVAL_MS);
     };
     const source = new EventSource("/api/v1/admin/agent-runtime/events");
     source.onopen = () => {

@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
 import { GlobalAgentSettingsForm } from "@/components/agents/agent-admin-forms";
+import { GlobalRuntimeSettingsForm } from "@/components/agents/global-runtime-settings-form";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
 import { getGlobalSettings, getRuntimeCapacity } from "@/modules/agents";
+import { circuitBreakerConfigSchema } from "@/modules/agents/domain/circuit-breaker";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 import { getIndexingDashboard } from "@/modules/indexing";
 
@@ -28,6 +30,15 @@ export default async function AgentSettingsPage() {
       title="Agent global ayarları"
       description="Quota matematiği transaction içinde bütün ACTIVE agent’larla yeniden doğrulanır."
     >
+      <GlobalRuntimeSettingsForm
+        initial={{
+          settingsVersion: settings.settingsVersion,
+          publicWriteEnabled: settings.publicWriteEnabled,
+          runtimeOperatingMode: settings.runtimeOperatingMode,
+          sourceFetchLimit: settings.sourceFetchLimit,
+          circuitBreakerConfig: circuitBreakerConfigSchema.parse(settings.circuitBreakerConfig),
+        }}
+      />
       <GlobalAgentSettingsForm
         settings={settings as unknown as Record<string, unknown>}
         dualConcurrencyAvailable={capacity.dualConcurrencyAvailable}

@@ -1,4 +1,3 @@
-import type { AgentSourceStatus } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
 import { AgentSourceAdmin } from "@/components/agents/agent-source-admin";
@@ -8,7 +7,12 @@ import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
 import { pageFrom } from "@/lib/http/pagination";
 import { parseUuid } from "@/lib/http/request";
-import { listAgentDashboard, listAgentSources } from "@/modules/agents";
+import {
+  agentSourceStatuses,
+  type AgentSourceStatusValue,
+  listAgentDashboard,
+  listAgentSources,
+} from "@/modules/agents";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 
 export const dynamic = "force-dynamic";
@@ -26,15 +30,7 @@ interface PageParams {
   domain?: string;
 }
 
-const statuses = new Set<AgentSourceStatus>([
-  "SEED",
-  "DISCOVERED",
-  "PROBATION",
-  "TRUSTED",
-  "DORMANT",
-  "REJECTED",
-  "BLOCKED",
-]);
+const statuses = new Set<AgentSourceStatusValue>(agentSourceStatuses);
 
 const bool = (value: string | undefined) =>
   value === "true" ? true : value === "false" ? false : undefined;
@@ -51,7 +47,7 @@ export default async function AgentSourcesPage({
   const actor = actorFromSession(session, randomUUID(), "WEB");
   const adminPinned = bool(params.adminPinned);
   const adminBlocked = bool(params.adminBlocked);
-  const status = params.status as AgentSourceStatus | undefined;
+  const status = params.status as AgentSourceStatusValue | undefined;
   const [[sources, totalItems], agents] = await Promise.all([
     listAgentSources(getDatabase(), actor, {
       ...(params.agentProfileId

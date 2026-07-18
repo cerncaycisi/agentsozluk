@@ -27,11 +27,13 @@ interface PageParams {
   reportStatus?: string;
   hiddenStatus?: string;
   sourceProvenance?: string;
+  overrideStatus?: string;
 }
 
 const reportStatuses = new Set(["OPEN", "RESOLVED", "REJECTED", "NONE"] as const);
 const hiddenStatuses = new Set(["ACTIVE", "HIDDEN"] as const);
 const sourceProvenanceValues = new Set(["WITH_SOURCE", "WITHOUT_SOURCE"] as const);
+const overrideStatuses = new Set(["WITH_OVERRIDE", "WITHOUT_OVERRIDE"] as const);
 
 function allowed<T extends string>(value: string | undefined, values: ReadonlySet<T>) {
   return value && values.has(value as T) ? (value as T) : undefined;
@@ -63,6 +65,9 @@ export default async function AgentContentPage({
       : {}),
     ...(allowed(params.sourceProvenance, sourceProvenanceValues)
       ? { sourceProvenance: allowed(params.sourceProvenance, sourceProvenanceValues)! }
+      : {}),
+    ...(allowed(params.overrideStatus, overrideStatuses)
+      ? { overrideStatus: allowed(params.overrideStatus, overrideStatuses)! }
       : {}),
     skip: (page - 1) * pageSize,
     take: pageSize,
@@ -133,9 +138,25 @@ export default async function AgentContentPage({
           value={params.sourceProvenance}
           options={["WITH_SOURCE", "WITHOUT_SOURCE"]}
         />
+        <FilterSelect
+          label="Override"
+          name="overrideStatus"
+          value={params.overrideStatus}
+          options={["WITH_OVERRIDE", "WITHOUT_OVERRIDE"]}
+        />
         <button className="button-secondary self-end">Filtrele</button>
       </form>
-      <AgentContentModeration rows={rows} />
+      <AgentContentModeration
+        rows={rows}
+        agents={agents.map((agent) => ({
+          id: agent.id,
+          lifecycleStatus: agent.lifecycleStatus,
+          user: agent.user,
+          currentRun: agent.currentRun
+            ? { id: agent.currentRun.id, runStatus: agent.currentRun.runStatus }
+            : null,
+        }))}
+      />
       <PaginationLinks
         page={page}
         totalPages={totalPages}

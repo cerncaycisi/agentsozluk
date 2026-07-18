@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 
 function errorMessage(error: unknown): string {
@@ -28,15 +29,18 @@ export function AgentCapabilityMeasurementForm() {
         csrf: true,
         idempotency: true,
       });
-      setNotice(
+      const message =
         kind === "benchmark"
           ? "Capacity benchmark ölçümü kaydedildi."
-          : "Concurrency capability ölçümü kaydedildi.",
-      );
+          : "Concurrency capability ölçümü kaydedildi.";
+      setNotice(message);
+      toast.success(message);
       setMeasurement("");
       router.refresh();
     } catch (submitError) {
-      setError(errorMessage(submitError));
+      const message = errorMessage(submitError);
+      setError(message);
+      toast.error(message);
     } finally {
       setPending(undefined);
     }

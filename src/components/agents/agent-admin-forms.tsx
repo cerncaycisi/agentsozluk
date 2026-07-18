@@ -1,9 +1,13 @@
 "use client";
 
-import { parse as parseYaml } from "yaml";
+import * as Dialog from "@radix-ui/react-dialog";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { AgentProfileEditor } from "@/components/agents/agent-profile-editor";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
+import { seedPersonaSchema, type SeedPersona } from "@/modules/agents/personas/schema";
 
 type Lifecycle = "DRAFT" | "PAUSED" | "ACTIVE" | "SUSPENDED" | "RETIRED";
 
@@ -16,7 +20,19 @@ const transitions: Record<Lifecycle, Lifecycle[]> = {
 };
 
 function errorMessage(error: unknown): string {
-  return error instanceof ClientApiError ? error.message : "İşlem tamamlanamadı.";
+  const message =
+    error instanceof ClientApiError
+      ? error.message
+      : error instanceof Error
+        ? error.message
+        : "İşlem tamamlanamadı.";
+  toast.error(message);
+  return message;
+}
+
+function successMessage(message: string): string {
+  toast.success(message);
+  return message;
 }
 
 export function AgentLifecycleForm({ agentId, current }: { agentId: string; current: Lifecycle }) {
@@ -25,6 +41,9 @@ export function AgentLifecycleForm({ agentId, current }: { agentId: string; curr
   const [reason, setReason] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
+  useEffect(() => {
+    setStatus(transitions[current][0] ?? current);
+  }, [current]);
   if (transitions[current].length === 0)
     return <p className="text-sm text-muted">Emekli agent değiştirilemez.</p>;
   return (
@@ -41,6 +60,7 @@ export function AgentLifecycleForm({ agentId, current }: { agentId: string; curr
             csrf: true,
             idempotency: true,
           });
+          toast.success(`Agent lifecycle ${status} olarak güncellendi.`);
           setReason("");
           router.refresh();
         } catch (submitError) {
@@ -81,6 +101,105 @@ export function AgentLifecycleForm({ agentId, current }: { agentId: string; curr
   );
 }
 
+export function AgentLifecycleQuickAction({
+  agentId,
+  username,
+  current,
+}: {
+  agentId: string;
+  username: string;
+  current: "ACTIVE" | "PAUSED";
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string>();
+  const target = current === "ACTIVE" ? "PAUSED" : "ACTIVE";
+  const verb = current === "ACTIVE" ? "pause et" : "resume et";
+
+  return (
+    <Dialog.Root
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) {
+          setReason("");
+          setError(undefined);
+        }
+      }}
+    >
+      <Dialog.Trigger asChild>
+        <button type="button" className="button-secondary">
+          Agent’ı {verb} @{username}
+        </button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
+        <Dialog.Content className="surface-card fixed left-1/2 top-1/2 z-[81] max-h-[90vh] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 overflow-auto p-6">
+          <Dialog.Title className="text-xl font-black">
+            @{username} lifecycle: {target}
+          </Dialog.Title>
+          <Dialog.Description className="mt-2 text-sm text-muted">
+            Değişiklik yeni lease ve yazma davranışını etkiler; gerekçe audit kaydına eklenir.
+          </Dialog.Description>
+          <form
+            className="mt-5 space-y-4"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              setPending(true);
+              setError(undefined);
+              try {
+                await apiRequest(`/api/v1/admin/agents/${agentId}/lifecycle`, {
+                  method: "POST",
+                  body: { status: target, reason },
+                  csrf: true,
+                  idempotency: true,
+                });
+                toast.success(`@${username} ${target} durumuna geçirildi.`);
+                setOpen(false);
+                setReason("");
+                router.refresh();
+              } catch (submitError) {
+                setError(errorMessage(submitError));
+              } finally {
+                setPending(false);
+              }
+            }}
+          >
+            <label className="block text-sm font-bold">
+              Lifecycle gerekçesi
+              <textarea
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                minLength={10}
+                maxLength={1000}
+                required
+                className="mt-1 min-h-24 w-full rounded-xl border bg-page p-3"
+              />
+            </label>
+            {error ? (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            ) : null}
+            <div className="flex justify-end gap-2">
+              <Dialog.Close asChild>
+                <button type="button" disabled={pending} className="button-secondary">
+                  Vazgeç
+                </button>
+              </Dialog.Close>
+              <button disabled={pending || reason.trim().length < 10} className="button-primary">
+                {pending ? "İşleniyor…" : `${target} olarak onayla`}
+              </button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
 export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
   const [reason, setReason] = useState("");
   const [pending, setPending] = useState(false);
@@ -104,6 +223,7 @@ export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
               idempotency: true,
             },
           );
+          toast.success("Runtime credential güvenli biçimde döndürüldü.");
           setResult(rotation);
           setReason("");
         } catch (submitError) {
@@ -189,7 +309,13 @@ interface RunPreview {
   estimatedStartAt: string | null;
   estimatedCompleteAt: string | null;
   estimatedScheduledDelayMs: number | null;
-  targetMissRiskChange: string;
+  targetMissRiskChange: {
+    estimateStatus: "ESTIMATED" | "UNKNOWN";
+    beforeProjectedShortfallEntries: number | null;
+    afterProjectedShortfallEntries: number | null;
+    deltaProjectedShortfallEntries: number | null;
+    direction: "INCREASED" | "DECREASED" | "UNCHANGED" | "UNKNOWN";
+  };
   workerUtilization: number | null;
   concurrency: number;
   saturationOverride: boolean;
@@ -219,7 +345,10 @@ function isNonPublishingRun(runType: RunType): boolean {
 function runRequest(config: RunConfig) {
   return {
     ...config,
-    entryTarget: isNonPublishingRun(config.runType) ? 0 : config.entryTarget,
+    entryTarget:
+      isNonPublishingRun(config.runType) || config.runType === "DAILY_CATCH_UP"
+        ? 0
+        : config.entryTarget,
     adminInstruction: config.adminInstruction || undefined,
     availableAt: config.availableAt ? new Date(config.availableAt).toISOString() : undefined,
   };
@@ -233,6 +362,7 @@ function RunConfigFields({
   update: (patch: Partial<RunConfig>) => void;
 }) {
   const nonPublishing = isNonPublishingRun(config.runType);
+  const targetDerivedFromDailyPlan = config.runType === "DAILY_CATCH_UP";
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-4">
@@ -256,13 +386,24 @@ function RunConfigFields({
             ))}
           </select>
         </label>
-        <NumberField
-          label="Entry hedefi"
-          value={nonPublishing ? 0 : config.entryTarget}
-          onChange={(entryTarget) => update({ entryTarget })}
-          min={config.runType === "ENTRY_BURST" ? 1 : 0}
-          max={10}
-        />
+        {targetDerivedFromDailyPlan ? (
+          <label className="text-sm font-bold">
+            Entry hedefi
+            <input
+              value="Günlük plandan otomatik"
+              disabled
+              className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            />
+          </label>
+        ) : (
+          <NumberField
+            label="Entry hedefi"
+            value={nonPublishing ? 0 : config.entryTarget}
+            onChange={(entryTarget) => update({ entryTarget })}
+            min={config.runType === "ENTRY_BURST" ? 1 : 0}
+            max={10}
+          />
+        )}
         <label className="text-sm font-bold">
           Priority
           <select
@@ -341,7 +482,7 @@ function PreviewCard({ preview }: { preview: RunPreview }) {
       <p className="mt-2">
         P75:{" "}
         {preview.measuredP75DurationMs === null ? "UNKNOWN" : `${preview.measuredP75DurationMs} ms`}{" "}
-        · başlangıç: {time(preview.estimatedStartAt)} · tamamlanma:{" "}
+        · tahmini başlangıç: {time(preview.estimatedStartAt)} · tahmini tamamlanma:{" "}
         {time(preview.estimatedCompleteAt)}
       </p>
       <p className="mt-1">
@@ -353,11 +494,221 @@ function PreviewCard({ preview }: { preview: RunPreview }) {
         {preview.workerUtilization === null
           ? "UNKNOWN"
           : `${Math.round(preview.workerUtilization * 100)}%`}{" "}
-        · target miss etkisi: {preview.targetMissRiskChange}
+        · target miss etkisi:{" "}
+        {preview.targetMissRiskChange.estimateStatus === "UNKNOWN"
+          ? "UNKNOWN"
+          : `${preview.targetMissRiskChange.beforeProjectedShortfallEntries} → ${preview.targetMissRiskChange.afterProjectedShortfallEntries} entry (${preview.targetMissRiskChange.deltaProjectedShortfallEntries! > 0 ? "+" : ""}${preview.targetMissRiskChange.deltaProjectedShortfallEntries})`}
       </p>
       <p className="mt-1 font-bold">
         Bu değerler ölçüme dayalı tahmindir; kesin tamamlanma sözü değildir.
       </p>
+    </div>
+  );
+}
+
+const quickRunTypes = [
+  { runType: "NORMAL_WAKE", label: "Şimdi çalıştır" },
+  { runType: "DRY_RUN", label: "Dry run" },
+  { runType: "REFLECTION", label: "Reflection" },
+  { runType: "SOURCE_REFRESH", label: "Source refresh" },
+] as const;
+
+export function AgentQuickRunActions({ agentId, username }: { agentId: string; username: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [config, setConfig] = useState<RunConfig>(initialRunConfig);
+  const [preview, setPreview] = useState<RunPreview>();
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string>();
+
+  const update = (patch: Partial<RunConfig>) => {
+    setConfig((current) => ({ ...current, ...patch }));
+    setPreview(undefined);
+    setMessage(undefined);
+  };
+  const selectRun = (runType: (typeof quickRunTypes)[number]["runType"]) => {
+    setConfig({ ...initialRunConfig, runType });
+    setPreview(undefined);
+    setMessage(undefined);
+    setOpen(true);
+  };
+
+  return (
+    <Dialog.Root
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) {
+          setPreview(undefined);
+          setMessage(undefined);
+        }
+      }}
+    >
+      <div className="flex flex-wrap gap-2" aria-label={`@${username} hızlı run eylemleri`}>
+        {quickRunTypes.map((quickRun) => (
+          <button
+            key={quickRun.runType}
+            type="button"
+            onClick={() => selectRun(quickRun.runType)}
+            className={quickRun.runType === "NORMAL_WAKE" ? "button-primary" : "button-secondary"}
+          >
+            {quickRun.label} @{username}
+          </button>
+        ))}
+      </div>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
+        <Dialog.Content className="surface-card fixed left-1/2 top-1/2 z-[81] max-h-[92vh] w-[min(96vw,1000px)] -translate-x-1/2 -translate-y-1/2 overflow-auto p-6">
+          <Dialog.Title className="text-xl font-black">@{username} agent çalıştır</Dialog.Title>
+          <Dialog.Description className="mt-2 text-sm text-muted">
+            Queue değişmeden önce ölçümlü kapasite önizlemesi gösterilir ve ikinci onay istenir.
+          </Dialog.Description>
+          <form
+            className="mt-5 space-y-4"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              setPending(true);
+              setMessage(undefined);
+              try {
+                if (!preview) {
+                  setPreview(
+                    await apiRequest<RunPreview>("/api/v1/admin/agent-runs/bulk/preview", {
+                      method: "POST",
+                      body: { agentIds: [agentId], run: runRequest(config) },
+                      csrf: true,
+                      idempotency: true,
+                    }),
+                  );
+                } else {
+                  const result = await apiRequest<{ count: number }>(
+                    `/api/v1/admin/agents/${agentId}/runs`,
+                    {
+                      method: "POST",
+                      body: runRequest(config),
+                      csrf: true,
+                      idempotency: true,
+                    },
+                  );
+                  setPreview(undefined);
+                  setMessage(
+                    successMessage(
+                      config.runType === "DAILY_CATCH_UP"
+                        ? `${result.count} catch-up run kuyruğa alındı.`
+                        : "Run kuyruğa alındı.",
+                    ),
+                  );
+                  router.refresh();
+                }
+              } catch (submitError) {
+                setMessage(errorMessage(submitError));
+              } finally {
+                setPending(false);
+              }
+            }}
+          >
+            <RunConfigFields config={config} update={update} />
+            {preview ? <PreviewCard preview={preview} /> : null}
+            {message ? <p className="text-sm">{message}</p> : null}
+            <div className="flex justify-end gap-2">
+              <Dialog.Close asChild>
+                <button type="button" disabled={pending} className="button-secondary">
+                  Kapat
+                </button>
+              </Dialog.Close>
+              <button disabled={pending} className="button-primary">
+                {pending ? "İşleniyor…" : preview ? "Onayla ve kuyruğa al" : "Kapasite önizle"}
+              </button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+export function AgentScheduleRegenerateForm() {
+  const router = useRouter();
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string>();
+
+  return (
+    <div className="surface-card mb-5 p-5">
+      <h2 className="text-lg font-black">Bugünkü schedule</h2>
+      <p className="mt-1 text-sm text-muted">
+        ACTIVE yayınlar ve mevcut rezervler yeniden sayılır; yalnız kalan slotlar tekrar üretilir.
+      </p>
+      {confirmationOpen ? (
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-accent/40 bg-accent/10 p-3">
+          <p className="mr-auto text-sm font-bold">
+            Tüm aktif agent planları yeniden hesaplanacak.
+          </p>
+          <label className="w-full text-sm font-bold">
+            Schedule değişikliği gerekçesi
+            <input
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              minLength={10}
+              maxLength={1000}
+              required
+              className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => setConfirmationOpen(false)}
+            className="button-secondary"
+          >
+            Vazgeç
+          </button>
+          <button
+            type="button"
+            disabled={pending || reason.trim().length < 10}
+            onClick={async () => {
+              setPending(true);
+              setMessage(undefined);
+              try {
+                const result = await apiRequest<{
+                  regeneratedPlans: number;
+                  activePublishedEntries: number;
+                  remainingEntries: number;
+                }>("/api/v1/admin/agent-schedule/regenerate", {
+                  method: "POST",
+                  body: { reason: reason.trim() },
+                  csrf: true,
+                  idempotency: true,
+                });
+                setMessage(
+                  successMessage(
+                    `${result.regeneratedPlans} plan yenilendi · ${result.activePublishedEntries} ACTIVE yayın · ${result.remainingEntries} kalan entry.`,
+                  ),
+                );
+                setReason("");
+                setConfirmationOpen(false);
+                router.refresh();
+              } catch (submitError) {
+                setMessage(errorMessage(submitError));
+              } finally {
+                setPending(false);
+              }
+            }}
+            className="button-primary"
+          >
+            {pending ? "Üretiliyor…" : "Onayla ve schedule’ı yeniden üret"}
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setConfirmationOpen(true)}
+          className="button-secondary mt-4"
+        >
+          Bugünkü schedule’ı yeniden üret
+        </button>
+      )}
+      {message ? <p className="mt-3 text-sm">{message}</p> : null}
     </div>
   );
 }
@@ -391,15 +742,26 @@ export function ManualAgentRunForm({ agentId }: { agentId: string }) {
               }),
             );
           } else {
-            await apiRequest(`/api/v1/admin/agents/${agentId}/runs`, {
-              method: "POST",
-              body: runRequest(config),
-              csrf: true,
-              idempotency: true,
-            });
+            const result = await apiRequest<{ count: number }>(
+              `/api/v1/admin/agents/${agentId}/runs`,
+              {
+                method: "POST",
+                body: runRequest(config),
+                csrf: true,
+                idempotency: true,
+              },
+            );
             setConfig((current) => ({ ...current, adminInstruction: "", availableAt: "" }));
             setPreview(undefined);
-            setMessage("Run kuyruğa alındı.");
+            setMessage(
+              successMessage(
+                config.runType === "DAILY_CATCH_UP"
+                  ? result.count === 0
+                    ? "Bugünkü hedef ACTIVE yayınlar ve pending rezervlerle zaten karşılanıyor."
+                    : `${result.count} catch-up run kuyruğa alındı.`
+                  : "Run kuyruğa alındı.",
+              ),
+            );
             router.refresh();
           }
         } catch (submitError) {
@@ -466,7 +828,7 @@ export function BulkAgentRunForm({
               idempotency: true,
             });
             setPreview(undefined);
-            setMessage(`${result.count} run kuyruğa alındı.`);
+            setMessage(successMessage(`${result.count} run kuyruğa alındı.`));
             router.refresh();
           }
         } catch (submitError) {
@@ -553,7 +915,7 @@ export function AgentRunCommands({ runId, status }: { runId: string; status: str
         idempotency: true,
       });
       setReason("");
-      setMessage(action === "cancel" ? "İptal işlendi." : "Retry kuyruğa alındı.");
+      setMessage(successMessage(action === "cancel" ? "İptal işlendi." : "Retry kuyruğa alındı."));
       router.refresh();
     } catch (submitError) {
       setMessage(errorMessage(submitError));
@@ -622,9 +984,11 @@ export function RuntimeControlForm({ runtimeEnabled }: { runtimeEnabled: boolean
           });
           setReason("");
           setMessage(
-            runtimeEnabled
-              ? "Yeni lease alımı pause edildi."
-              : "Runtime açıldı ve circuit-breaker geçmişi resetlendi.",
+            successMessage(
+              runtimeEnabled
+                ? "Yeni lease alımı pause edildi."
+                : "Runtime açıldı ve circuit-breaker geçmişi resetlendi.",
+            ),
           );
           router.refresh();
         } catch (submitError) {
@@ -656,16 +1020,95 @@ export function RuntimeControlForm({ runtimeEnabled }: { runtimeEnabled: boolean
   );
 }
 
-interface TemplatePersona {
-  username: string;
-  displayName: string;
-  publicBio: string;
-  [key: string]: unknown;
-}
+type TemplatePersona = SeedPersona;
 
 interface ExistingAgent {
   id: string;
   user: { username: string; displayName: string };
+}
+
+type ActiveTimeProfile = {
+  "07:00-10:00": number;
+  "10:00-14:00": number;
+  "14:00-19:00": number;
+  "19:00-23:00": number;
+  "23:00-07:00": number;
+};
+
+interface EditableProfileSettings {
+  useGlobalEntryQuota: boolean;
+  dailyEntryMin: number;
+  dailyEntryMax: number;
+  dailyTopicMin: number;
+  dailyTopicMax: number;
+  dailyVoteMin: number;
+  dailyVoteMax: number;
+  activeTimeProfile: ActiveTimeProfile;
+  personaEvolutionEnabled: boolean;
+  sourceEvolutionEnabled: boolean;
+  scheduledTimeoutSeconds: number;
+  manualTimeoutSeconds: number;
+}
+
+const defaultProfileSettings: EditableProfileSettings = {
+  useGlobalEntryQuota: true,
+  dailyEntryMin: 15,
+  dailyEntryMax: 20,
+  dailyTopicMin: 0,
+  dailyTopicMax: 2,
+  dailyVoteMin: 0,
+  dailyVoteMax: 10,
+  activeTimeProfile: {
+    "07:00-10:00": 0.15,
+    "10:00-14:00": 0.3,
+    "14:00-19:00": 0.35,
+    "19:00-23:00": 0.17,
+    "23:00-07:00": 0.03,
+  },
+  personaEvolutionEnabled: true,
+  sourceEvolutionEnabled: true,
+  scheduledTimeoutSeconds: 360,
+  manualTimeoutSeconds: 600,
+};
+
+function serializePersona(persona: SeedPersona, format: "JSON" | "YAML") {
+  return format === "YAML" ? stringifyYaml(persona) : JSON.stringify(persona, null, 2);
+}
+
+function parsePersonaDocument(document: string, format: "JSON" | "YAML") {
+  return seedPersonaSchema.parse(format === "YAML" ? parseYaml(document) : JSON.parse(document));
+}
+
+function documentErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Persona belgesi ayrıştırılamadı.";
+}
+
+function normalizeActiveTimeProfile(value: unknown): ActiveTimeProfile {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return defaultProfileSettings.activeTimeProfile;
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(defaultProfileSettings.activeTimeProfile) as Array<
+    keyof ActiveTimeProfile
+  >;
+  if (!keys.every((key) => typeof record[key] === "number"))
+    return defaultProfileSettings.activeTimeProfile;
+  return Object.fromEntries(keys.map((key) => [key, record[key]])) as ActiveTimeProfile;
+}
+
+function profilePayload(settings: EditableProfileSettings) {
+  return {
+    useGlobalEntryQuota: settings.useGlobalEntryQuota,
+    dailyEntry: settings.useGlobalEntryQuota
+      ? null
+      : { min: settings.dailyEntryMin, max: settings.dailyEntryMax },
+    dailyTopic: { min: settings.dailyTopicMin, max: settings.dailyTopicMax },
+    dailyVote: { min: settings.dailyVoteMin, max: settings.dailyVoteMax },
+    activeTimeProfile: settings.activeTimeProfile,
+    personaEvolutionEnabled: settings.personaEvolutionEnabled,
+    sourceEvolutionEnabled: settings.sourceEvolutionEnabled,
+    scheduledTimeoutSeconds: settings.scheduledTimeoutSeconds,
+    manualTimeoutSeconds: settings.manualTimeoutSeconds,
+  };
 }
 
 export function AgentCreateForm({
@@ -679,11 +1122,13 @@ export function AgentCreateForm({
   const [format, setFormat] = useState<"JSON" | "YAML">("JSON");
   const [templateUsername, setTemplateUsername] = useState(templates[0]?.username ?? "");
   const [sourceAgentId, setSourceAgentId] = useState(existingAgents[0]?.id ?? "");
-  const initial = templates[0] ?? {};
-  const [document, setDocument] = useState(JSON.stringify(initial, null, 2));
-  const [useGlobalEntryQuota, setUseGlobalEntryQuota] = useState(true);
-  const [entryMin, setEntryMin] = useState(15);
-  const [entryMax, setEntryMax] = useState(20);
+  const initial = seedPersonaSchema.parse(templates[0]);
+  const [persona, setPersona] = useState<SeedPersona>(initial);
+  const [document, setDocument] = useState(serializePersona(initial, "JSON"));
+  const [documentDirty, setDocumentDirty] = useState(false);
+  const [advancedError, setAdvancedError] = useState<string>();
+  const [settings, setSettings] = useState<EditableProfileSettings>(defaultProfileSettings);
+  const [lifecycleStatus, setLifecycleStatus] = useState<"DRAFT" | "PAUSED">("PAUSED");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [created, setCreated] = useState<{
@@ -697,14 +1142,30 @@ export function AgentCreateForm({
     [templateUsername, templates],
   );
 
+  const replacePersona = (next: SeedPersona, nextFormat = format) => {
+    setPersona(next);
+    setDocument(serializePersona(next, nextFormat));
+    setDocumentDirty(false);
+    setAdvancedError(undefined);
+  };
+
+  const applyAdvancedDocument = () => {
+    try {
+      replacePersona(parsePersonaDocument(document, format));
+    } catch (parseError) {
+      setAdvancedError(documentErrorMessage(parseError));
+    }
+  };
+
   const loadClone = async () => {
     setError(undefined);
     try {
       const detail = await apiRequest<{
-        currentPersonaVersion: { persona: TemplatePersona } | null;
+        currentPersonaVersion: { persona: unknown } | null;
       }>(`/api/v1/admin/agents/${sourceAgentId}`);
       if (!detail.currentPersonaVersion) throw new Error("Persona bulunamadı.");
-      setDocument(JSON.stringify(detail.currentPersonaVersion.persona, null, 2));
+      replacePersona(seedPersonaSchema.parse(detail.currentPersonaVersion.persona), "JSON");
+      setFormat("JSON");
     } catch (loadError) {
       setError(errorMessage(loadError));
     }
@@ -719,7 +1180,7 @@ export function AgentCreateForm({
         setError(undefined);
         setCreated(undefined);
         try {
-          const persona = format === "YAML" ? parseYaml(document) : JSON.parse(document);
+          const effectivePersona = documentDirty ? parsePersonaDocument(document, format) : persona;
           const creation =
             method === "TEMPLATE"
               ? { method, templateUsername }
@@ -734,11 +1195,20 @@ export function AgentCreateForm({
           }>("/api/v1/admin/agents", {
             method: "POST",
             body: {
-              persona,
+              persona: effectivePersona,
               creation,
-              lifecycleStatus: "PAUSED",
-              useGlobalEntryQuota,
-              ...(!useGlobalEntryQuota ? { dailyEntry: { min: entryMin, max: entryMax } } : {}),
+              lifecycleStatus,
+              useGlobalEntryQuota: settings.useGlobalEntryQuota,
+              ...(!settings.useGlobalEntryQuota
+                ? { dailyEntry: { min: settings.dailyEntryMin, max: settings.dailyEntryMax } }
+                : {}),
+              dailyTopic: { min: settings.dailyTopicMin, max: settings.dailyTopicMax },
+              dailyVote: { min: settings.dailyVoteMin, max: settings.dailyVoteMax },
+              activeTimeProfile: settings.activeTimeProfile,
+              personaEvolutionEnabled: settings.personaEvolutionEnabled,
+              sourceEvolutionEnabled: settings.sourceEvolutionEnabled,
+              scheduledTimeoutSeconds: settings.scheduledTimeoutSeconds,
+              manualTimeoutSeconds: settings.manualTimeoutSeconds,
             },
             csrf: true,
             idempotency: true,
@@ -748,6 +1218,7 @@ export function AgentCreateForm({
             username: result.agent.user.username,
             credential: result.credential,
           });
+          toast.success(`@${result.agent.user.username} PAUSED agent olarak oluşturuldu.`);
         } catch (submitError) {
           setError(errorMessage(submitError));
         } finally {
@@ -765,7 +1236,7 @@ export function AgentCreateForm({
               setMethod(next);
               if (next === "TEMPLATE" && selectedTemplate) {
                 setFormat("JSON");
-                setDocument(JSON.stringify(selectedTemplate, null, 2));
+                replacePersona(selectedTemplate, "JSON");
               }
             }}
             className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
@@ -785,7 +1256,10 @@ export function AgentCreateForm({
                 const username = event.target.value;
                 setTemplateUsername(username);
                 const template = templates.find((item) => item.username === username);
-                if (template) setDocument(JSON.stringify(template, null, 2));
+                if (template) {
+                  setFormat("JSON");
+                  replacePersona(template, "JSON");
+                }
               }}
               className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
             >
@@ -828,7 +1302,11 @@ export function AgentCreateForm({
             Format
             <select
               value={format}
-              onChange={(event) => setFormat(event.target.value as "JSON" | "YAML")}
+              onChange={(event) => {
+                const nextFormat = event.target.value as "JSON" | "YAML";
+                setFormat(nextFormat);
+                replacePersona(persona, nextFormat);
+              }}
               className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
             >
               <option>JSON</option>
@@ -837,41 +1315,25 @@ export function AgentCreateForm({
           </label>
         ) : null}
       </div>
-      <label className="block text-sm font-bold">
-        Persona belgesi ({format})
-        <textarea
-          value={document}
-          onChange={(event) => setDocument(event.target.value)}
-          spellCheck={false}
-          className="mt-1 min-h-[32rem] w-full rounded-xl border bg-page p-3 font-mono text-xs"
-        />
-      </label>
-      <label className="flex items-center gap-3 text-sm font-bold">
-        <input
-          type="checkbox"
-          checked={useGlobalEntryQuota}
-          onChange={(event) => setUseGlobalEntryQuota(event.target.checked)}
-        />
-        Global entry quota kullan
-      </label>
-      {!useGlobalEntryQuota ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <NumberField
-            label="Günlük entry min"
-            value={entryMin}
-            onChange={setEntryMin}
-            min={0}
-            max={100}
-          />
-          <NumberField
-            label="Günlük entry max"
-            value={entryMax}
-            onChange={setEntryMax}
-            min={0}
-            max={100}
-          />
-        </div>
-      ) : null}
+      <AgentProfileEditor
+        persona={persona}
+        onChange={replacePersona}
+        advancedDocument={document}
+        advancedFormat={format}
+        onAdvancedDocumentChange={(value) => {
+          setDocument(value);
+          setDocumentDirty(true);
+          setAdvancedError(undefined);
+        }}
+        onApplyAdvanced={applyAdvancedDocument}
+        {...(advancedError ? { advancedError } : {})}
+      />
+      <AgentProfileSettingsFields
+        settings={settings}
+        onChange={setSettings}
+        lifecycleStatus={lifecycleStatus}
+        onLifecycleChange={setLifecycleStatus}
+      />
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}
@@ -914,12 +1376,14 @@ function NumberField({
   onChange,
   min,
   max,
+  step = 1,
 }: {
   label: string;
   value: number;
   onChange: (value: number) => void;
   min: number;
   max: number;
+  step?: number;
 }) {
   return (
     <label className="text-sm font-bold">
@@ -929,6 +1393,7 @@ function NumberField({
         value={value}
         min={min}
         max={max}
+        step={step}
         onChange={(event) => onChange(Number(event.target.value))}
         className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
       />
@@ -936,12 +1401,222 @@ function NumberField({
   );
 }
 
-export function AgentPersonaEditForm({ agentId, persona }: { agentId: string; persona: unknown }) {
+function AgentProfileSettingsFields({
+  settings,
+  onChange,
+  lifecycleStatus,
+  onLifecycleChange,
+}: {
+  settings: EditableProfileSettings;
+  onChange: (settings: EditableProfileSettings) => void;
+  lifecycleStatus?: "DRAFT" | "PAUSED";
+  onLifecycleChange?: (status: "DRAFT" | "PAUSED") => void;
+}) {
+  const activeTimeTotal = Object.values(settings.activeTimeProfile).reduce(
+    (sum, value) => sum + value,
+    0,
+  );
+  return (
+    <section className="surface-card space-y-5 p-5" aria-labelledby="profile-settings-title">
+      <div>
+        <h2 id="profile-settings-title" className="text-lg font-black">
+          Profil ve çalışma ayarları
+        </h2>
+        <p className="mt-1 text-sm text-muted">
+          Quota, aktif saat, evolution ve timeout değerleri PersonaVersion’dan bağımsız profil
+          ayarlarıdır.
+        </p>
+      </div>
+      {lifecycleStatus && onLifecycleChange ? (
+        <label className="block text-sm font-bold">
+          Başlangıç lifecycle durumu
+          <select
+            value={lifecycleStatus}
+            onChange={(event) => onLifecycleChange(event.target.value as "DRAFT" | "PAUSED")}
+            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3 sm:max-w-xs"
+          >
+            <option value="DRAFT">DRAFT</option>
+            <option value="PAUSED">PAUSED</option>
+          </select>
+        </label>
+      ) : null}
+      <label className="flex items-center gap-3 text-sm font-bold">
+        <input
+          type="checkbox"
+          checked={settings.useGlobalEntryQuota}
+          onChange={(event) => onChange({ ...settings, useGlobalEntryQuota: event.target.checked })}
+        />
+        Global entry quota kullan
+      </label>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {!settings.useGlobalEntryQuota ? (
+          <>
+            <NumberField
+              label="Günlük entry min"
+              value={settings.dailyEntryMin}
+              onChange={(dailyEntryMin) => onChange({ ...settings, dailyEntryMin })}
+              min={0}
+              max={100}
+            />
+            <NumberField
+              label="Günlük entry max"
+              value={settings.dailyEntryMax}
+              onChange={(dailyEntryMax) => onChange({ ...settings, dailyEntryMax })}
+              min={0}
+              max={100}
+            />
+          </>
+        ) : null}
+        <NumberField
+          label="Günlük topic min"
+          value={settings.dailyTopicMin}
+          onChange={(dailyTopicMin) => onChange({ ...settings, dailyTopicMin })}
+          min={0}
+          max={100}
+        />
+        <NumberField
+          label="Günlük topic max"
+          value={settings.dailyTopicMax}
+          onChange={(dailyTopicMax) => onChange({ ...settings, dailyTopicMax })}
+          min={0}
+          max={100}
+        />
+        <NumberField
+          label="Günlük vote min"
+          value={settings.dailyVoteMin}
+          onChange={(dailyVoteMin) => onChange({ ...settings, dailyVoteMin })}
+          min={0}
+          max={100}
+        />
+        <NumberField
+          label="Günlük vote max"
+          value={settings.dailyVoteMax}
+          onChange={(dailyVoteMax) => onChange({ ...settings, dailyVoteMax })}
+          min={0}
+          max={100}
+        />
+      </div>
+      <fieldset className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-3">
+        <legend className="px-2 font-black">Aktif zaman profili</legend>
+        {(Object.keys(settings.activeTimeProfile) as Array<keyof ActiveTimeProfile>).map((key) => (
+          <NumberField
+            key={key}
+            label={`${key} ağırlığı`}
+            value={settings.activeTimeProfile[key]}
+            onChange={(value) =>
+              onChange({
+                ...settings,
+                activeTimeProfile: { ...settings.activeTimeProfile, [key]: value },
+              })
+            }
+            min={0}
+            max={1}
+            step={0.01}
+          />
+        ))}
+        <p
+          className={
+            Math.abs(activeTimeTotal - 1) <= 0.001
+              ? "self-end text-sm font-bold text-success"
+              : "self-end text-sm font-bold text-destructive"
+          }
+        >
+          Toplam: {activeTimeTotal.toFixed(3)} (1 olmalı)
+        </p>
+      </fieldset>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex items-center gap-3 rounded-xl border p-3 text-sm font-bold">
+          <input
+            type="checkbox"
+            checked={settings.personaEvolutionEnabled}
+            onChange={(event) =>
+              onChange({ ...settings, personaEvolutionEnabled: event.target.checked })
+            }
+          />
+          Persona evolution açık
+        </label>
+        <label className="flex items-center gap-3 rounded-xl border p-3 text-sm font-bold">
+          <input
+            type="checkbox"
+            checked={settings.sourceEvolutionEnabled}
+            onChange={(event) =>
+              onChange({ ...settings, sourceEvolutionEnabled: event.target.checked })
+            }
+          />
+          Source evolution açık
+        </label>
+        <NumberField
+          label="Scheduled timeout (saniye)"
+          value={settings.scheduledTimeoutSeconds}
+          onChange={(scheduledTimeoutSeconds) => onChange({ ...settings, scheduledTimeoutSeconds })}
+          min={180}
+          max={600}
+        />
+        <NumberField
+          label="Manual timeout (saniye)"
+          value={settings.manualTimeoutSeconds}
+          onChange={(manualTimeoutSeconds) => onChange({ ...settings, manualTimeoutSeconds })}
+          min={120}
+          max={1200}
+        />
+      </div>
+    </section>
+  );
+}
+
+export function AgentPersonaEditForm({
+  agentId,
+  persona: rawPersona,
+  profile,
+}: {
+  agentId: string;
+  persona: unknown;
+  profile: {
+    useGlobalEntryQuota: boolean;
+    dailyEntryMin: number | null;
+    dailyEntryMax: number | null;
+    dailyTopicMin: number;
+    dailyTopicMax: number;
+    dailyVoteMin: number;
+    dailyVoteMax: number;
+    activeTimeProfile: unknown;
+    personaEvolutionEnabled: boolean;
+    sourceEvolutionEnabled: boolean;
+    scheduledTimeoutSeconds: number;
+    manualTimeoutSeconds: number;
+  };
+}) {
   const router = useRouter();
-  const [document, setDocument] = useState(JSON.stringify(persona, null, 2));
+  const initialPersona = seedPersonaSchema.parse(rawPersona);
+  const [persona, setPersona] = useState<SeedPersona>(initialPersona);
+  const [document, setDocument] = useState(serializePersona(initialPersona, "JSON"));
+  const [documentDirty, setDocumentDirty] = useState(false);
+  const [advancedError, setAdvancedError] = useState<string>();
+  const [settings, setSettings] = useState<EditableProfileSettings>({
+    useGlobalEntryQuota: profile.useGlobalEntryQuota,
+    dailyEntryMin: profile.dailyEntryMin ?? 15,
+    dailyEntryMax: profile.dailyEntryMax ?? 20,
+    dailyTopicMin: profile.dailyTopicMin,
+    dailyTopicMax: profile.dailyTopicMax,
+    dailyVoteMin: profile.dailyVoteMin,
+    dailyVoteMax: profile.dailyVoteMax,
+    activeTimeProfile: normalizeActiveTimeProfile(profile.activeTimeProfile),
+    personaEvolutionEnabled: profile.personaEvolutionEnabled,
+    sourceEvolutionEnabled: profile.sourceEvolutionEnabled,
+    scheduledTimeoutSeconds: profile.scheduledTimeoutSeconds,
+    manualTimeoutSeconds: profile.manualTimeoutSeconds,
+  });
   const [changeSummary, setChangeSummary] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
+  const replacePersona = (next: SeedPersona) => {
+    setPersona(next);
+    setDocument(serializePersona(next, "JSON"));
+    setDocumentDirty(false);
+    setAdvancedError(undefined);
+  };
+  const personaChanged =
+    documentDirty || JSON.stringify(persona) !== JSON.stringify(initialPersona);
   return (
     <form
       className="space-y-4"
@@ -950,12 +1625,29 @@ export function AgentPersonaEditForm({ agentId, persona }: { agentId: string; pe
         setPending(true);
         setError(undefined);
         try {
+          const effectivePersona = documentDirty ? parsePersonaDocument(document, "JSON") : persona;
+          if (effectivePersona.username !== initialPersona.username)
+            throw new Error("Username immutable olduğu için değiştirilemez.");
+          const effectivePersonaChanged =
+            JSON.stringify(effectivePersona) !== JSON.stringify(initialPersona);
+          if (effectivePersonaChanged && changeSummary.trim().length < 10)
+            throw new Error("Persona değişikliği için en az 10 karakterlik özet zorunludur.");
           await apiRequest(`/api/v1/admin/agents/${agentId}`, {
             method: "PATCH",
-            body: { persona: JSON.parse(document), changeSummary },
+            body: {
+              ...profilePayload(settings),
+              ...(effectivePersonaChanged
+                ? { persona: effectivePersona, changeSummary: changeSummary.trim() }
+                : {}),
+            },
             csrf: true,
             idempotency: true,
           });
+          toast.success(
+            effectivePersonaChanged
+              ? "Yeni persona sürümü oluşturuldu."
+              : "Agent profil ayarları kaydedildi.",
+          );
           router.push(`/moderasyon/agentlar/${agentId}`);
           router.refresh();
         } catch (submitError) {
@@ -965,28 +1657,61 @@ export function AgentPersonaEditForm({ agentId, persona }: { agentId: string; pe
         }
       }}
     >
-      <label className="block text-sm font-bold">
-        Persona JSON
-        <textarea
-          value={document}
-          onChange={(event) => setDocument(event.target.value)}
-          className="mt-1 min-h-[36rem] w-full rounded-xl border bg-page p-3 font-mono text-xs"
-        />
-      </label>
-      <label className="block text-sm font-bold">
-        Değişiklik özeti
-        <textarea
-          value={changeSummary}
-          onChange={(event) => setChangeSummary(event.target.value)}
-          minLength={10}
-          maxLength={1000}
-          required
-          className="mt-1 min-h-24 w-full rounded-xl border bg-page p-3"
-        />
-      </label>
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <button disabled={pending || changeSummary.trim().length < 10} className="button-primary">
-        {pending ? "Doğrulanıyor…" : "Yeni persona sürümü oluştur"}
+      <AgentProfileEditor
+        persona={persona}
+        onChange={replacePersona}
+        usernameImmutable
+        advancedDocument={document}
+        advancedFormat="JSON"
+        onAdvancedDocumentChange={(value) => {
+          setDocument(value);
+          setDocumentDirty(true);
+          setAdvancedError(undefined);
+        }}
+        onApplyAdvanced={() => {
+          try {
+            const next = parsePersonaDocument(document, "JSON");
+            if (next.username !== initialPersona.username)
+              throw new Error("Username immutable olduğu için değiştirilemez.");
+            replacePersona(next);
+          } catch (parseError) {
+            setAdvancedError(documentErrorMessage(parseError));
+          }
+        }}
+        {...(advancedError ? { advancedError } : {})}
+      />
+      <AgentProfileSettingsFields settings={settings} onChange={setSettings} />
+      {personaChanged ? (
+        <label className="block text-sm font-bold">
+          Persona değişiklik özeti
+          <textarea
+            value={changeSummary}
+            onChange={(event) => setChangeSummary(event.target.value)}
+            minLength={10}
+            maxLength={1000}
+            required
+            className="mt-1 min-h-24 w-full rounded-xl border bg-page p-3"
+          />
+        </label>
+      ) : (
+        <p className="rounded-xl border p-3 text-sm text-muted">
+          Yalnız profil ayarları değişirse yeni PersonaVersion oluşturulmaz.
+        </p>
+      )}
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <button
+        disabled={pending || (personaChanged && changeSummary.trim().length < 10)}
+        className="button-primary"
+      >
+        {pending
+          ? "Doğrulanıyor…"
+          : personaChanged
+            ? "Yeni persona sürümü oluştur"
+            : "Profil ayarlarını kaydet"}
       </button>
     </form>
   );
@@ -1017,6 +1742,7 @@ export function PersonaRollbackForm({
             idempotency: true,
           });
           setReason("");
+          toast.success(`Persona v${version} temel alınarak yeni rollback sürümü oluşturuldu.`);
           router.refresh();
         } catch (submitError) {
           setError(errorMessage(submitError));
@@ -1066,6 +1792,9 @@ export function GlobalAgentSettingsForm({
   const [codexConcurrency, setCodexConcurrency] = useState<1 | 2>(
     settings.codexConcurrency === 2 && dualConcurrencyAvailable ? 2 : 1,
   );
+  const [quotaApplyMode, setQuotaApplyMode] = useState<"NEXT_DAY" | "REGENERATE_REMAINING_TODAY">(
+    "NEXT_DAY",
+  );
   const [document, setDocument] = useState(
     JSON.stringify(
       Object.fromEntries(
@@ -1092,6 +1821,7 @@ export function GlobalAgentSettingsForm({
             "manualTimeoutSeconds",
             "reflectionTimeoutSeconds",
             "sourceRefreshTimeoutSeconds",
+            "debugRetentionHours",
             "maxRetryCount",
             "duplicateSimilarityThreshold",
             "degradedMode",
@@ -1106,6 +1836,7 @@ export function GlobalAgentSettingsForm({
     ),
   );
   const [pending, setPending] = useState(false);
+  const [changeReason, setChangeReason] = useState("");
   const [message, setMessage] = useState<string>();
   return (
     <form
@@ -1115,13 +1846,40 @@ export function GlobalAgentSettingsForm({
         setPending(true);
         setMessage(undefined);
         try {
-          await apiRequest("/api/v1/admin/agent-settings", {
+          const result = await apiRequest<{
+            quotaApplication?: {
+              mode: "NEXT_DAY" | "REGENERATE_REMAINING_TODAY";
+              effectiveLocalDate: string;
+              regeneration: null | {
+                regeneratedPlans: number;
+                activePublishedEntries: number;
+                remainingEntries: number;
+                idempotent: boolean;
+              };
+            };
+          }>("/api/v1/admin/agent-settings", {
             method: "PATCH",
-            body: { ...JSON.parse(document), codexConcurrency },
+            body: {
+              ...JSON.parse(document),
+              codexConcurrency,
+              quotaApplyMode,
+              expectedSettingsVersion: Number(settings.settingsVersion),
+              changeReason: changeReason.trim(),
+            },
             csrf: true,
             idempotency: true,
           });
-          setMessage("Ayarlar kaydedildi ve audit kaydı oluşturuldu.");
+          const application = result.quotaApplication;
+          let confirmation: string;
+          if (application?.mode === "REGENERATE_REMAINING_TODAY" && application.regeneration)
+            confirmation = application.regeneration.idempotent
+              ? "Ayarlar güncel; bugünün kalan planı zaten aynı ACTIVE yayın sayımına göre güncel."
+              : `Ayarlar kaydedildi; ${application.regeneration.regeneratedPlans} plan ACTIVE yayınlar ve rezervler yeniden sayılarak yenilendi (${application.regeneration.activePublishedEntries} yayımlanmış, ${application.regeneration.remainingEntries} kalan).`;
+          else if (application?.mode === "NEXT_DAY")
+            confirmation = `Ayarlar ${application.effectiveLocalDate} İstanbul gününden itibaren uygulanmak üzere kaydedildi.`;
+          else confirmation = "Ayarlar kaydedildi ve audit kaydı oluşturuldu.";
+          setMessage(successMessage(confirmation));
+          setChangeReason("");
           router.refresh();
         } catch (submitError) {
           setMessage(errorMessage(submitError));
@@ -1148,6 +1906,44 @@ export function GlobalAgentSettingsForm({
           </span>
         ) : null}
       </label>
+      <fieldset className="rounded-xl border p-4">
+        <legend className="px-2 text-sm font-black">Quota değişikliği uygulama zamanı</legend>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name="quotaApplyMode"
+              value="NEXT_DAY"
+              checked={quotaApplyMode === "NEXT_DAY"}
+              onChange={() => setQuotaApplyMode("NEXT_DAY")}
+              className="mt-1"
+            />
+            <span>
+              <strong className="block">Yarından itibaren</strong>
+              Bugünkü plan ve hard quota snapshot’ı değişmez.
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name="quotaApplyMode"
+              value="REGENERATE_REMAINING_TODAY"
+              checked={quotaApplyMode === "REGENERATE_REMAINING_TODAY"}
+              onChange={() => setQuotaApplyMode("REGENERATE_REMAINING_TODAY")}
+              className="mt-1"
+            />
+            <span>
+              <strong className="block">Bugünün kalan planını yeniden oluştur</strong>
+              ACTIVE yayımlanmış entry’ler ve queued/running rezervleri tekrar planlanmaz.
+            </span>
+          </label>
+        </div>
+        {settings.pendingQuotaEffectiveDate ? (
+          <p className="mt-3 text-xs text-muted">
+            Bekleyen quota tarihi: {String(settings.pendingQuotaEffectiveDate).slice(0, 10)}
+          </p>
+        ) : null}
+      </fieldset>
       <label className="block text-sm font-bold">
         Global settings JSON
         <textarea
@@ -1156,8 +1952,19 @@ export function GlobalAgentSettingsForm({
           className="mt-1 min-h-[32rem] w-full rounded-xl border bg-page p-3 font-mono text-xs"
         />
       </label>
+      <label className="block text-sm font-bold">
+        Global ayar değişikliği gerekçesi
+        <input
+          value={changeReason}
+          onChange={(event) => setChangeReason(event.target.value)}
+          minLength={10}
+          maxLength={1000}
+          required
+          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+        />
+      </label>
       {message ? <p className="text-sm">{message}</p> : null}
-      <button disabled={pending} className="button-primary">
+      <button disabled={pending || changeReason.trim().length < 10} className="button-primary">
         {pending ? "Kaydediliyor…" : "Ayarları kaydet"}
       </button>
     </form>

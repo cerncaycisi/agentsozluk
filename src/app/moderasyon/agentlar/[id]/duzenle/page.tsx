@@ -35,7 +35,24 @@ export default async function AgentEditPage({ params }: { params: Promise<{ id: 
       title={`${agent.user.displayName} düzenle`}
       description="Username değiştirilemez; kaydetme yeni ve immutable bir PersonaVersion oluşturur."
     >
-      <AgentPersonaEditForm agentId={agent.id} persona={agent.currentPersonaVersion.persona} />
+      <AgentPersonaEditForm
+        agentId={agent.id}
+        persona={agent.currentPersonaVersion.persona}
+        profile={{
+          useGlobalEntryQuota: agent.useGlobalEntryQuota,
+          dailyEntryMin: agent.dailyEntryMin,
+          dailyEntryMax: agent.dailyEntryMax,
+          dailyTopicMin: agent.dailyTopicMin,
+          dailyTopicMax: agent.dailyTopicMax,
+          dailyVoteMin: agent.dailyVoteMin,
+          dailyVoteMax: agent.dailyVoteMax,
+          activeTimeProfile: agent.activeTimeProfile,
+          personaEvolutionEnabled: agent.personaEvolutionEnabled,
+          sourceEvolutionEnabled: agent.sourceEvolutionEnabled,
+          scheduledTimeoutSeconds: agent.scheduledTimeoutSeconds,
+          manualTimeoutSeconds: agent.manualTimeoutSeconds,
+        }}
+      />
     </ModerationLayout>
   );
 }
