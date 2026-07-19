@@ -543,6 +543,36 @@ describe("agent daily scheduler with PostgreSQL", () => {
     ).toBe(1);
   });
 
+  it("prorates a newly activated profile's first remaining-day plan", async () => {
+    const admin = await createAdmin();
+    const now = new Date("2026-07-18T16:00:00.000Z");
+    await createCapacityBenchmark(now);
+    const [created] = await createActiveAgents(admin.id, 1);
+    const localDate = new Date("2026-07-18T00:00:00.000Z");
+
+    await expect(
+      regenerateRemainingAgentDailyPlans(
+        integrationDatabase,
+        actor(admin.id),
+        { localDate, reason: "Prorate a newly activated profile for the remaining day." },
+        now,
+      ),
+    ).resolves.toMatchObject({
+      regeneratedPlans: 1,
+      perAgent: [{ agentProfileId: created!.agent.profile.id, targetEntries: 5 }],
+    });
+    await expect(
+      integrationDatabase.agentDailyPlan.findUniqueOrThrow({
+        where: {
+          agentProfileId_localDate: {
+            agentProfileId: created!.agent.profile.id,
+            localDate,
+          },
+        },
+      }),
+    ).resolves.toMatchObject({ entryTarget: 5 });
+  });
+
   it("rolls back a same-day quota update when remaining-plan capability evidence is stale", async () => {
     const admin = await createAdmin();
     const planningNow = new Date("2026-07-18T00:05:00.000Z");

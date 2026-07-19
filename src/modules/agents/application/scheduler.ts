@@ -247,6 +247,17 @@ function regenerationCapacityMetrics(
   );
 }
 
+function remainingIstanbulDayFraction(localDate: Date, now: Date): number {
+  const nextMidnight = new Date(
+    Date.UTC(localDate.getUTCFullYear(), localDate.getUTCMonth(), localDate.getUTCDate(), 21),
+  );
+  return Math.max(0, Math.min(1, (nextMidnight.getTime() - now.getTime()) / (24 * 60 * 60_000)));
+}
+
+function prorateFirstDayTarget(target: number, fraction: number): number {
+  return target === 0 ? 0 : Math.max(1, Math.ceil(target * fraction));
+}
+
 export async function regenerateRemainingAgentDailyPlansInTransaction(
   transaction: TransactionClient,
   actor: ActorContext,
@@ -336,10 +347,20 @@ export async function regenerateRemainingAgentDailyPlansInTransaction(
       voteMax: profile.dailyVoteMax,
       activeTimeWeights: activeTimeProfileSchema.parse(profile.activeTimeProfile),
     };
-    const targetPlan = generateDailyPlan(planningProfile, {
+    const fullDayTargetPlan = generateDailyPlan(planningProfile, {
       localDate,
       settingsVersion: settings.settingsVersion,
     });
+    const firstDayFraction = existingPlan ? 1 : remainingIstanbulDayFraction(localDate, now);
+    const targetPlan =
+      firstDayFraction === 1
+        ? fullDayTargetPlan
+        : {
+            ...fullDayTargetPlan,
+            entryTarget: prorateFirstDayTarget(fullDayTargetPlan.entryTarget, firstDayFraction),
+            topicTarget: prorateFirstDayTarget(fullDayTargetPlan.topicTarget, firstDayFraction),
+            voteTarget: prorateFirstDayTarget(fullDayTargetPlan.voteTarget, firstDayFraction),
+          };
     const activePublishedEntries = facts.activePublishedByAgent.get(profile.id) ?? 0;
     const pendingReservedEntries = facts.pendingReservedByAgent.get(profile.id) ?? 0;
     const pastPlannedReservedEntries =
