@@ -4,6 +4,7 @@ import {
   countConsecutiveCodexFailures,
   type CircuitBreakerConfig,
 } from "@/modules/agents/domain/circuit-breaker";
+import { runtimeFingerprint } from "@/modules/agents/domain/capacity";
 
 export function getLatestRuntimeCapability(transaction: Prisma.TransactionClient) {
   return transaction.agentRuntimeCapability.findFirst({
@@ -24,7 +25,12 @@ export async function getLatestRuntimeFingerprintRecord(transaction: Prisma.Tran
       select: { metadata: true, createdAt: true },
     }),
   ]);
-  if (!measurement || (run?.finishedAt && run.finishedAt >= measurement.createdAt)) return run;
+  const fingerprintedRun = runtimeFingerprint(run?.usageMetadata).codexVersion ? run : null;
+  if (
+    !measurement ||
+    (fingerprintedRun?.finishedAt && fingerprintedRun.finishedAt >= measurement.createdAt)
+  )
+    return fingerprintedRun;
   return { usageMetadata: measurement.metadata, finishedAt: measurement.createdAt };
 }
 

@@ -973,7 +973,7 @@ export async function updateGlobalSettings(
       const observedFingerprint = runtimeFingerprint(fingerprintRecord?.usageMetadata);
       assertDualConcurrencySupported(capability, {
         now,
-        codexVersion: observedFingerprint.codexVersion ?? capability?.codexVersion ?? "",
+        codexVersion: observedFingerprint.codexVersion ?? "",
         promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
       });
     }

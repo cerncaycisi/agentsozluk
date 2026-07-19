@@ -71,7 +71,7 @@ export function getRuntimeCapacity(
     ]);
     const observedFingerprint = runtimeFingerprint(fingerprintRecord?.usageMetadata);
     const fingerprint = {
-      codexVersion: observedFingerprint.codexVersion ?? capability?.codexVersion ?? "UNKNOWN",
+      codexVersion: observedFingerprint.codexVersion ?? "UNKNOWN",
       promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
     };
     const configuredConcurrency = settings.codexConcurrency === 2 ? 2 : 1;
