@@ -689,7 +689,10 @@ function adaptWireAction(action: RuntimeNormalDecisionWire["actions"][number], s
       targetType: wireActionTargetType(action.type, flat),
       targetId,
       input,
-      provenance: actionClaimProvenance(action.claimProvenance, action.safeReason),
+      provenance:
+        action.type === "NO_ACTION"
+          ? undefined
+          : actionClaimProvenance(action.claimProvenance, action.safeReason),
     }),
     selectedOptionSeq: action.selectedOptionSeq,
   };

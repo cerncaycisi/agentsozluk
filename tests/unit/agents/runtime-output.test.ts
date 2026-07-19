@@ -302,6 +302,33 @@ describe("runtime structured output wire contract", () => {
     expect(runtimeDecisionSchema.safeParse(first).success).toBe(true);
   });
 
+  it("drops irrelevant claim provenance from NO_ACTION abstentions", () => {
+    const wire = runtimeNormalDecisionWireSchema.parse({
+      ...canonical,
+      actions: [
+        {
+          type: "NO_ACTION" as const,
+          desire: 0,
+          expectedOutcome: "Dış dünyada state değişikliği olmayacak.",
+          selectedOptionSeq: null,
+          safeReason: "Güvenli ve doğrulanabilir bir action bulunmadı.",
+          claimProvenance: [
+            {
+              provenance: "PLATFORM_EVENT" as const,
+              evidenceIds: [evidenceId],
+              shortRationale: "No-op için gereksiz model iddiası.",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(adaptRuntimeNormalDecisionWire(wire).actions).toEqual([
+      expect.objectContaining({ actionType: "NO_ACTION", selectedOptionSeq: null }),
+    ]);
+    expect(adaptRuntimeNormalDecisionWire(wire).actions[0]).not.toHaveProperty("provenance");
+  });
+
   it("preserves every observation, memory candidate, decision step and action intent", () => {
     const secondEvidenceId = "00000000-0000-4000-8000-000000000003";
     const secondObservation = {

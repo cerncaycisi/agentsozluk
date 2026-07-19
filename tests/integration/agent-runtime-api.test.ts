@@ -4409,6 +4409,11 @@ describe("internal agent runtime API with PostgreSQL", () => {
             actionType: "NO_ACTION",
             safeReason: "Yeni action gerektiren güvenli bir neden bulunmadı.",
             input: {},
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [randomUUID()],
+              shortRationale: "No-op provenance görünür olmasa da abstention güvenli kalmalıdır.",
+            },
           },
           {
             sequence: 4,

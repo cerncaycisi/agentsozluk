@@ -952,7 +952,10 @@ export async function executeRuntimeAction(
           code: "SOURCE_EVOLUTION_DISABLED",
           reason: "Source evolution bu agent veya global ayarlarda kapalıdır.",
         });
-      if (parsed.data.provenance) {
+      // NO_ACTION is an auditable abstention with no external or internal
+      // mutation. A model-supplied claim must not turn that safe abstention
+      // into a rejected action or a PARTIAL run.
+      if (parsed.data.provenance && parsed.data.actionType !== "NO_ACTION") {
         const evidence = await validateRuntimeProvenanceEvidence(transaction, {
           agentProfileId: principal.agentProfileId,
           runId,
