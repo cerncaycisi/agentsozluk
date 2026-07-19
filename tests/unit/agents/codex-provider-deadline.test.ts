@@ -70,7 +70,12 @@ describe("Codex CLI provider absolute deadline", () => {
     ).rejects.toBeInstanceOf(RuntimeProviderTimeoutError);
 
     expect(spawnProcess).toHaveBeenCalledTimes(3);
-    expect(killSignals).toEqual(["SIGTERM", "SIGTERM", "SIGTERM"]);
+    // Promise.all rejects as soon as the first inspection reaches the shared
+    // deadline. The sibling timeout callbacks are already armed, but a busy CI
+    // event loop may observe their SIGTERM calls on the next turn.
+    await vi.waitFor(() => {
+      expect(killSignals).toEqual(["SIGTERM", "SIGTERM", "SIGTERM"]);
+    });
     for (const [command, rawArguments, rawOptions] of spawnMock.mock.calls) {
       const arguments_ = rawArguments as readonly string[];
       const options = rawOptions as {
