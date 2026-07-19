@@ -175,6 +175,42 @@ describe("long-lived agent runtime worker", () => {
     expect(DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS).toBeLessThanOrEqual(15_000);
   });
 
+  it("keeps the idle poll timer referenced until shutdown", async () => {
+    const probeTimer = setTimeout(() => undefined, 60_000);
+    const timerPrototype = Object.getPrototypeOf(probeTimer) as { unref: () => NodeJS.Timeout };
+    clearTimeout(probeTimer);
+    const unref = vi.spyOn(timerPrototype, "unref");
+    const plane = controlPlane(randomUUID());
+    let confirmLease!: () => void;
+    const leaseCalled = new Promise<void>((resolve) => {
+      confirmLease = resolve;
+    });
+    plane.lease = vi.fn().mockImplementation(async () => {
+      confirmLease();
+      return { run: null, reason: "NO_RUN" };
+    });
+    const controller = new AbortController();
+    const worker = new AgentRuntimeWorker({
+      workerId: "idle-daemon-worker",
+      credentials: [`agt_${"i".repeat(43)}`],
+      controlPlane: plane,
+      provider: noActionProvider(),
+      pollIntervalMs: 60_000,
+    });
+
+    try {
+      const running = worker.run(controller.signal);
+      await leaseCalled;
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(unref).not.toHaveBeenCalled();
+      controller.abort();
+      await expect(running).resolves.toBeUndefined();
+    } finally {
+      controller.abort();
+      unref.mockRestore();
+    }
+  });
+
   it.each([
     { runType: "NORMAL_WAKE", sourceFetchLimit: 8, expectedReads: 2 },
     { runType: "NORMAL_WAKE", sourceFetchLimit: 1, expectedReads: 1 },

@@ -832,7 +832,6 @@ export class AgentRuntimeWorker {
       if (processed === 0)
         await new Promise<void>((resolve) => {
           const timer = setTimeout(resolve, this.#options.pollIntervalMs ?? 5000);
-          timer.unref();
           signal.addEventListener(
             "abort",
             () => {
