@@ -59,6 +59,8 @@ export const DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS = 10_000;
 export const MAX_RUNTIME_PROCESSING_LANES = 2;
 export const ISTANBUL_DAILY_PLAN_MINUTE = 5;
 export const DEFAULT_DAILY_PLANNING_RETRY_MS = 5 * 60_000;
+export const RUNTIME_STRUCTURED_REPAIR_INSTRUCTION =
+  "Önceki çıktı uygulamanın semantik structured-output doğrulamasını geçmedi. Tek repair hakkını kullan: decisionJournal seq değerlerini benzersiz ve artan tut; causedBySeqs yalnız daha önceki seq değerlerine bağlansın; NO_ACTION dışındaki her action ve türetilen delta/proposal geçerli bir OPTION_SELECTED kaydına selectedOptionSeq ile bağlansın; her action claimProvenance içindeki bütün kanıt grupları tek ve aynı provenance türünü kullansın, farklı türleri karıştırma; topicFatigue içindeki topicKey değerleri benzersiz olsun; action ve türetilen delta/proposal toplamı 50'yi aşmasın. Yalnız geçerli structured JSON üret.";
 
 export function istanbulPlanningClock(now: Date): { dateKey: string; minuteOfDay: number } {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -581,7 +583,7 @@ export class AgentRuntimeWorker {
         if (remainingMs < 1000) throw new RuntimeProviderTimeoutError();
         const repairResult = await invokeCodex({
           runId,
-          prompt: `${prompt}\n\nÖnceki çıktı JSON schema doğrulamasını geçmedi. Tek repair hakkını kullanarak yalnız geçerli structured JSON üret.`,
+          prompt: `${prompt}\n\n${RUNTIME_STRUCTURED_REPAIR_INSTRUCTION}`,
           outputSchema,
           timeoutMs: remainingMs,
           debugRetentionHours: context.run.debugRetentionHours,

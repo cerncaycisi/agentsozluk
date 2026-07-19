@@ -7,7 +7,7 @@ import { seedPersonaPackSchema } from "@/modules/agents/personas/schema";
 import type { RuntimeContext } from "@/runtime/control-plane-client";
 import { parseRuntimeDecisionOutput, runtimeNormalDecisionWireJsonSchema } from "@/runtime/output";
 import type { RuntimeProvider, RuntimeProviderResult } from "@/runtime/provider";
-import { buildRuntimePrompt } from "@/runtime/worker";
+import { buildRuntimePrompt, RUNTIME_STRUCTURED_REPAIR_INSTRUCTION } from "@/runtime/worker";
 import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 
 const AVAILABLE_CONTENT_MINUTES = 960;
@@ -65,7 +65,7 @@ async function invokeWithStructuredRepair(
   const repaired = await provider.invoke({
     ...request,
     timeoutMs: Math.max(1, request.timeoutMs - first.durationMs),
-    prompt: `${request.prompt}\n\nÖnceki çıktı uygulamanın semantik structured-output doğrulamasını geçmedi. Tek repair hakkını kullan: decisionJournal seq değerlerini benzersiz ve artan tut; causedBySeqs yalnız daha önceki seq değerlerine bağlansın; NO_ACTION dışındaki her action ve türetilen delta/proposal geçerli bir OPTION_SELECTED kaydına selectedOptionSeq ile bağlansın. Yalnız geçerli structured JSON üret.`,
+    prompt: `${request.prompt}\n\n${RUNTIME_STRUCTURED_REPAIR_INSTRUCTION}`,
   });
   return combineSequentialResults(first, repaired);
 }

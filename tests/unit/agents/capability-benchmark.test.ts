@@ -206,6 +206,9 @@ describe("Codex capability benchmark harness", () => {
     });
 
     expect(provider.invoke).toHaveBeenCalledTimes(20);
+    expect(vi.mocked(provider.invoke).mock.calls[1]?.[0].prompt).toContain(
+      "claimProvenance içindeki bütün kanıt grupları tek ve aynı provenance türünü kullansın",
+    );
     expect(measurement).toMatchObject({
       benchmarkRunCount: 10,
       p50DurationMs: 2000,

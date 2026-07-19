@@ -919,7 +919,9 @@ describe("long-lived agent runtime worker", () => {
     expect(provider.invoke).toHaveBeenCalledTimes(2);
     expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0]).toMatchObject({
       outputSchema: runtimeNormalDecisionWireJsonSchema,
-      prompt: expect.stringContaining("Tek repair hakkını"),
+      prompt: expect.stringContaining(
+        "claimProvenance içindeki bütün kanıt grupları tek ve aynı provenance türünü kullansın",
+      ),
     });
     expect(plane.recordActions).toHaveBeenCalledTimes(1);
     expect(plane.complete).toHaveBeenCalledWith(
