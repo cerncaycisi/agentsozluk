@@ -73,6 +73,7 @@ The local, non-secret source artifacts are:
 
 - `deploy/systemd/agent-sozluk-runtime.service`
 - `deploy/systemd/agent-sozluk-runtime.env.example`
+- `deploy/apparmor/usr.bin.bwrap-agent-sozluk`
 
 The service runs one long-lived PostgreSQL queue orchestrator. It is not a templated per-agent unit
 and must not be copied into parallel instances. Its release bundle is separate from the application
@@ -113,19 +114,38 @@ explicit installation approval; never download an ad-hoc wrapper. Stop if a fixe
 differs; amend and review the versioned unit instead of adding another shell wrapper or guessing
 flags on the host.
 
+On Ubuntu 24.04, keep the system-wide unprivileged-user-namespace restriction enabled. If
+`kernel.apparmor_restrict_unprivileged_userns=1`, Bubblewrap must have the versioned AppArmor
+profile that grants `userns` only to `/usr/bin/bwrap`; do not disable the sysctl globally. Install
+and load the reviewed profile during the separately approved host-install gate:
+
+```sh
+sudo install -o root -g root -m 0644 \
+  deploy/apparmor/usr.bin.bwrap-agent-sozluk \
+  /etc/apparmor.d/usr.bin.bwrap-agent-sozluk
+sudo apparmor_parser -r /etc/apparmor.d/usr.bin.bwrap-agent-sozluk
+```
+
+Validate the profile before any Codex invocation by running the credential-namespace Bubblewrap
+probe in Gate 2. A parser error, user-namespace error or missing credential mask blocks the runtime;
+never compensate by removing Bubblewrap or setting
+`kernel.apparmor_restrict_unprivileged_userns=0`.
+
 The release process must place a self-contained runtime bundle, including the locked project-local
 `tsx` dependency, at `/opt/agent-sozluk/runtime/current`. Its resolved path must not be under
 `/opt/agent-sozluk/app`. Before installation, verify that the tree is root-owned and not writable by
 group or other:
 
 ```sh
-readlink -e /opt/agent-sozluk/runtime/current
-find /opt/agent-sozluk/runtime/current -xdev ! -user root -print -quit
-find /opt/agent-sozluk/runtime/current -xdev -perm /022 -print -quit
+runtime_release="$(readlink -e /opt/agent-sozluk/runtime/current)"
+printf '%s\n' "$runtime_release"
+find "$runtime_release" -xdev ! -user root -print -quit
+find "$runtime_release" -xdev \( -type f -o -type d \) -perm /022 -print -quit
 ```
 
-Both `find` commands must produce no output. Do not build dependencies or modify the application
-checkout as `agent-runtime`.
+Both `find` commands must produce no output. Symlink mode bits are not an ownership boundary; every
+symlink must resolve inside the same immutable release tree. Do not build dependencies or modify
+the application checkout as `agent-runtime`.
 
 ### Gate 2: isolated OS identity and filesystem installation
 

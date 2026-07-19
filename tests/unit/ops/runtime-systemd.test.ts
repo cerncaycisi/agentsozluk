@@ -11,6 +11,10 @@ const environmentExample = readFileSync(
   path.join(root, "deploy/systemd/agent-sozluk-runtime.env.example"),
   "utf8",
 );
+const bubblewrapAppArmorProfile = readFileSync(
+  path.join(root, "deploy/apparmor/usr.bin.bwrap-agent-sozluk"),
+  "utf8",
+);
 const runbook = readFileSync(path.join(root, "docs/PRODUCTION_RUNBOOK.md"), "utf8");
 
 function directiveValues(input: string, name: string): string[] {
@@ -170,6 +174,18 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
     expect(runbook).toMatch(
       /Do\s+not enable or start the unit before this interactive gate passes/u,
     );
+  });
+
+  it("keeps Ubuntu user-namespace hardening enabled with a narrow Bubblewrap profile", () => {
+    expect(bubblewrapAppArmorProfile).toContain("/usr/bin/bwrap flags=(unconfined)");
+    expect(bubblewrapAppArmorProfile).toContain("userns,");
+    expect(bubblewrapAppArmorProfile).not.toMatch(
+      /kernel\.apparmor_restrict_unprivileged_userns=0/u,
+    );
+    expect(runbook).toContain("deploy/apparmor/usr.bin.bwrap-agent-sozluk");
+    expect(runbook).toContain("sudo apparmor_parser -r");
+    expect(runbook).toContain("never compensate by removing Bubblewrap");
+    expect(runbook).toContain('runtime_release="$(readlink -e');
   });
 
   it("assigns the 00:05 Istanbul planning tick to the same singleton worker", () => {

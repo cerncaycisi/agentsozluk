@@ -356,7 +356,12 @@ function codexCompatibleJsonSchema(value: unknown): unknown {
   const record = value as Record<string, unknown>;
   return Object.fromEntries(
     Object.entries(record)
-      .filter(([key]) => key !== "$schema" && key !== "const")
+      .filter(
+        ([key, nested]) =>
+          key !== "$schema" &&
+          key !== "const" &&
+          !(key === "pattern" && typeof nested === "string" && /\(\?(?:[=!]|<[=!])/u.test(nested)),
+      )
       .map(([key, nested]) => [key, codexCompatibleJsonSchema(nested)])
       .concat("const" in record ? [["enum", [record.const]]] : []),
   );

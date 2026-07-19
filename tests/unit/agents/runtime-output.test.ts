@@ -22,6 +22,16 @@ function assertStrictObjects(value: unknown): void {
   for (const child of Object.values(schema)) assertStrictObjects(child);
 }
 
+function schemaPatterns(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(schemaPatterns);
+  if (!value || typeof value !== "object") return [];
+  const schema = value as Record<string, unknown>;
+  return [
+    ...(typeof schema.pattern === "string" ? [schema.pattern] : []),
+    ...Object.values(schema).flatMap(schemaPatterns),
+  ];
+}
+
 describe("runtime structured output wire contract", () => {
   const topicId = "00000000-0000-4000-8000-000000000001";
   const evidenceId = "00000000-0000-4000-8000-000000000002";
@@ -105,8 +115,15 @@ describe("runtime structured output wire contract", () => {
     expect(runtimeNormalDecisionWireJsonSchema).not.toHaveProperty("$schema");
     expect(JSON.stringify(runtimeNormalDecisionWireJsonSchema)).not.toContain('"format"');
     expect(JSON.stringify(runtimeNormalDecisionWireJsonSchema)).not.toContain('"const"');
+    const patterns = schemaPatterns(runtimeNormalDecisionWireJsonSchema);
+    expect(patterns.length).toBeGreaterThan(0);
+    expect(patterns.some((pattern) => /\(\?(?:[=!]|<[=!])/u.test(pattern))).toBe(false);
     assertStrictObjects(runtimeNormalDecisionWireJsonSchema);
     expect(runtimeNormalDecisionWireSchema.safeParse(canonical).success).toBe(true);
+    expect(
+      runtimeNormalDecisionWireSchema.safeParse({ ...canonical, safeSummary: "<script>x</script>" })
+        .success,
+    ).toBe(false);
     expect(
       (
         (
