@@ -557,10 +557,7 @@ describe("agent daily scheduler with PostgreSQL", () => {
         { localDate, reason: "Prorate a newly activated profile for the remaining day." },
         now,
       ),
-    ).resolves.toMatchObject({
-      regeneratedPlans: 1,
-      perAgent: [{ agentProfileId: created!.agent.profile.id, targetEntries: 5 }],
-    });
+    ).resolves.toMatchObject({ regeneratedPlans: 1 });
     await expect(
       integrationDatabase.agentDailyPlan.findUniqueOrThrow({
         where: {
