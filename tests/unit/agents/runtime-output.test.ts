@@ -524,6 +524,7 @@ describe("runtime structured output wire contract", () => {
 
   it("uses strict required properties accepted by Codex structured output", () => {
     assertStrictObjects(runtimeDecisionJsonSchema);
+    expect(JSON.stringify(runtimeDecisionJsonSchema)).not.toContain('"uniqueItems"');
   });
 
   it("removes nullable wire placeholders before Zod action validation", () => {

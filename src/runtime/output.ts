@@ -360,6 +360,7 @@ function codexCompatibleJsonSchema(value: unknown): unknown {
         ([key, nested]) =>
           key !== "$schema" &&
           key !== "const" &&
+          key !== "uniqueItems" &&
           !(key === "pattern" && typeof nested === "string" && /\(\?(?:[=!]|<[=!])/u.test(nested)),
       )
       .map(([key, nested]) => [key, codexCompatibleJsonSchema(nested)])
@@ -1046,7 +1047,7 @@ const nullableProvenanceJsonSchema = {
   anyOf: [provenanceJsonSchema, { type: "null" }],
 } as const;
 
-export const runtimeDecisionJsonSchema: Record<string, unknown> = {
+const runtimeDecisionJsonSchemaSource: Record<string, unknown> = {
   type: "object",
   additionalProperties: false,
   required: [
@@ -1331,3 +1332,7 @@ export const runtimeDecisionJsonSchema: Record<string, unknown> = {
     },
   },
 };
+
+export const runtimeDecisionJsonSchema = codexCompatibleJsonSchema(
+  runtimeDecisionJsonSchemaSource,
+) as Record<string, unknown>;
