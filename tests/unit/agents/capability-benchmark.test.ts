@@ -171,4 +171,50 @@ describe("Codex capability benchmark harness", () => {
       readinessStable: true,
     });
   });
+
+  it("uses one bounded semantic repair and includes both calls in measured duration", async () => {
+    let invocation = 0;
+    const invalidOutput = () => ({
+      ...output(),
+      actions: [
+        {
+          type: "CREATE_ENTRY",
+          targetId: "00000000-0000-4000-8000-000000000100",
+          body: "Geçerli görünen fakat journal bağı olmayan aday.",
+          desire: 0.8,
+          expectedOutcome: "Bir entry adayı oluşacak.",
+          selectedOptionSeq: null,
+          safeReason: "Semantik repair testi.",
+          claimProvenance: [],
+        },
+      ],
+    });
+    const provider: RuntimeProvider = {
+      inspect: vi
+        .fn()
+        .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
+      invoke: vi.fn().mockImplementation(async () => {
+        invocation += 1;
+        return { ...result(1000), output: invocation % 2 === 1 ? invalidOutput() : output() };
+      }),
+    };
+
+    const measurement = await runCapacityBenchmark(provider, {
+      baseUrl: "http://127.0.0.1:3000",
+      fetchImplementation: healthyFetch,
+      plannedContentRuns: 70,
+    });
+
+    expect(provider.invoke).toHaveBeenCalledTimes(20);
+    expect(measurement).toMatchObject({
+      benchmarkRunCount: 10,
+      p50DurationMs: 2000,
+      p75DurationMs: 2000,
+      p95DurationMs: 2000,
+      maxDurationMs: 2000,
+      failureRate: 0,
+      healthStable: true,
+      readinessStable: true,
+    });
+  });
 });

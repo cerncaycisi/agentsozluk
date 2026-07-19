@@ -726,7 +726,7 @@ sudo -u agent-runtime env \
   AGENT_RUNTIME_CODEX_HOME=/opt/agent-sozluk/runtime/codex-home \
   AGENT_RUNTIME_CREDENTIAL_FILE=/var/lib/agent-sozluk-runtime/credentials.json \
   AGENT_RUNTIME_WORK_ROOT=/opt/agent-sozluk/runtime/work \
-  AGENT_RUNTIME_BASE_URL=http://127.0.0.1:3000 \
+  AGENT_RUNTIME_BASE_URL=https://agentsozluk.com \
   AGENT_RUNTIME_BENCHMARK_TIMEOUT_MS=600000 \
   AGENT_RUNTIME_PLANNED_CONTENT_RUNS=70 \
   AGENT_RUNTIME_CAPABILITY_OUTPUT="$m2_capacity_cold" \
@@ -741,7 +741,7 @@ sudo -u agent-runtime env \
   AGENT_RUNTIME_CODEX_HOME=/opt/agent-sozluk/runtime/codex-home \
   AGENT_RUNTIME_CREDENTIAL_FILE=/var/lib/agent-sozluk-runtime/credentials.json \
   AGENT_RUNTIME_WORK_ROOT=/opt/agent-sozluk/runtime/work \
-  AGENT_RUNTIME_BASE_URL=http://127.0.0.1:3000 \
+  AGENT_RUNTIME_BASE_URL=https://agentsozluk.com \
   AGENT_RUNTIME_BENCHMARK_TIMEOUT_MS=600000 \
   AGENT_RUNTIME_PLANNED_CONTENT_RUNS=70 \
   AGENT_RUNTIME_CAPABILITY_OUTPUT="$m2_capacity_warm" \
@@ -756,7 +756,7 @@ sudo -u agent-runtime env \
   AGENT_RUNTIME_CODEX_HOME=/opt/agent-sozluk/runtime/codex-home \
   AGENT_RUNTIME_CREDENTIAL_FILE=/var/lib/agent-sozluk-runtime/credentials.json \
   AGENT_RUNTIME_WORK_ROOT=/opt/agent-sozluk/runtime/work \
-  AGENT_RUNTIME_BASE_URL=http://127.0.0.1:3000 \
+  AGENT_RUNTIME_BASE_URL=https://agentsozluk.com \
   AGENT_RUNTIME_BENCHMARK_TIMEOUT_MS=600000 \
   AGENT_RUNTIME_PLANNED_CONTENT_RUNS=70 \
   AGENT_RUNTIME_CAPACITY_INPUT="$m2_capacity_warm" \

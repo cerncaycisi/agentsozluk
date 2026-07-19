@@ -26,6 +26,50 @@ interface ProbeResult {
   ok: boolean;
 }
 
+function combineSequentialResults(
+  first: RuntimeProviderResult,
+  second: RuntimeProviderResult,
+): RuntimeProviderResult {
+  const firstMetrics = first.hostMetrics;
+  const secondMetrics = second.hostMetrics;
+  const hostMetrics =
+    firstMetrics && secondMetrics
+      ? {
+          processPeakRssMb: Math.max(firstMetrics.processPeakRssMb, secondMetrics.processPeakRssMb),
+          systemPeakMemoryMb: Math.max(
+            firstMetrics.systemPeakMemoryMb,
+            secondMetrics.systemPeakMemoryMb,
+          ),
+          availableMemoryMb: Math.min(
+            firstMetrics.availableMemoryMb,
+            secondMetrics.availableMemoryMb,
+          ),
+          swapInMb: firstMetrics.swapInMb + secondMetrics.swapInMb,
+          swapOutMb: firstMetrics.swapOutMb + secondMetrics.swapOutMb,
+          loadAverage1m: Math.max(firstMetrics.loadAverage1m, secondMetrics.loadAverage1m),
+        }
+      : (secondMetrics ?? firstMetrics);
+  return {
+    ...second,
+    durationMs: first.durationMs + second.durationMs,
+    ...(hostMetrics ? { hostMetrics } : {}),
+  };
+}
+
+async function invokeWithStructuredRepair(
+  provider: RuntimeProvider,
+  request: Parameters<RuntimeProvider["invoke"]>[0],
+): Promise<RuntimeProviderResult> {
+  const first = await provider.invoke(request);
+  if (parseRuntimeDecisionOutput(first.output).success) return first;
+  const repaired = await provider.invoke({
+    ...request,
+    timeoutMs: Math.max(1, request.timeoutMs - first.durationMs),
+    prompt: `${request.prompt}\n\nÖnceki çıktı uygulamanın semantik structured-output doğrulamasını geçmedi. Tek repair hakkını kullan: decisionJournal seq değerlerini benzersiz ve artan tut; causedBySeqs yalnız daha önceki seq değerlerine bağlansın; NO_ACTION dışındaki her action ve türetilen delta/proposal geçerli bir OPTION_SELECTED kaydına selectedOptionSeq ile bağlansın. Yalnız geçerli structured JSON üret.`,
+  });
+  return combineSequentialResults(first, repaired);
+}
+
 interface Scenario {
   name: string;
   runType: string;
@@ -394,7 +438,7 @@ export async function runCapacityBenchmark(
     const context = benchmarkContext(scenario, index);
     try {
       const { value: result, probes } = await withRuntimeProbes(
-        provider.invoke({
+        invokeWithStructuredRepair(provider, {
           runId: context.run.id,
           prompt: buildRuntimePrompt(context),
           outputSchema: runtimeNormalDecisionWireJsonSchema,
@@ -468,7 +512,7 @@ export async function runConcurrencyCapabilityTest(
   const { value: settled, probes: measuredProbes } = await withRuntimeProbes(
     Promise.allSettled(
       contexts.map((context) =>
-        provider.invoke({
+        invokeWithStructuredRepair(provider, {
           runId: context.run.id,
           prompt: buildRuntimePrompt(context),
           outputSchema: runtimeNormalDecisionWireJsonSchema,
