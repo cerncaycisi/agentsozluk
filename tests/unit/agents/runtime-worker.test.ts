@@ -374,6 +374,7 @@ describe("long-lived agent runtime worker", () => {
         };
         recentEntries: Array<{ body: string }>;
         sourceItems: Array<{ safeText: string }>;
+        evidenceCatalog: Record<string, string[]>;
       };
     };
     expect(Object.keys(decoded.run).sort()).toEqual(
@@ -404,6 +405,14 @@ describe("long-lived agent runtime worker", () => {
     });
     expect(decoded.perception.recentEntries[0]?.body).toBe(entryInjection);
     expect(decoded.perception.sourceItems[0]?.safeText).toBe(sourceInjection);
+    expect(decoded.perception.evidenceCatalog).toEqual({
+      PLATFORM_EVENT: [context.run.id],
+      USER_ENTRY: [],
+      TRUSTED_SOURCE: [],
+      PROBATION_SOURCE: [],
+      MULTIPLE_SOURCES: [],
+      AGENT_MEMORY: [],
+    });
   });
 
   it("fails closed when forbidden ontology metadata is nested inside perception", () => {
@@ -968,6 +977,88 @@ describe("long-lived agent runtime worker", () => {
       expect.objectContaining({ state: repairedState }),
       expect.any(Object),
     );
+    expect(plane.fail).not.toHaveBeenCalled();
+  });
+
+  it("repairs provenance that does not match the presented evidence catalog before execution", async () => {
+    const runId = randomUUID();
+    const topicId = randomUUID();
+    const sourceId = randomUUID();
+    const plane = controlPlane(runId);
+    const context = fixtureContext(runId);
+    plane.context = vi.fn().mockResolvedValue({
+      ...context,
+      perception: {
+        recentEntries: [
+          {
+            id: randomUUID(),
+            topic: { id: topicId, title: "Görünür topic" },
+            author: { id: randomUUID(), username: "author" },
+            body: "Görünür entry.",
+          },
+        ],
+        sources: [{ id: sourceId, status: "TRUSTED" }],
+        sourceItems: [],
+      },
+    });
+    const invalidAction = canonicalNormalOutput("Geçersiz source id seçildi.", {
+      actions: [
+        {
+          type: "CREATE_ENTRY",
+          targetId: topicId,
+          body: "Source kaydı kanıt sanılmamalıdır.",
+          desire: 0.8,
+          safeReason: "Source kaydı UUID'si yanlışlıkla kanıt seçildi.",
+          claimProvenance: [
+            {
+              provenance: "PLATFORM_EVENT",
+              evidenceIds: [sourceId],
+              shortRationale: "Source kaydı görünür ama kanıt değildir.",
+            },
+          ],
+        },
+      ],
+    });
+    const provider: RuntimeProvider = {
+      inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 1,
+          output: invalidAction,
+        })
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 1,
+          output: canonicalNormalOutput("Geçersiz provenance yerine abstention seçildi."),
+        }),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "provenance-catalog-worker",
+      credentials: [`agt_${"p".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(provider.invoke).toHaveBeenCalledTimes(2);
+    expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
+      "perception.evidenceCatalog",
+    );
+    expect(plane.recordActions).toHaveBeenCalledWith(
+      expect.any(String),
+      "provenance-catalog-worker",
+      runId,
+      LEASE_TOKEN,
+      [expect.objectContaining({ actionType: "NO_ACTION" })],
+      expect.any(Object),
+      expect.any(Object),
+    );
+    expect(plane.complete).toHaveBeenCalledTimes(1);
     expect(plane.fail).not.toHaveBeenCalled();
   });
 

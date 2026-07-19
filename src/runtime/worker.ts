@@ -60,7 +60,7 @@ export const MAX_RUNTIME_PROCESSING_LANES = 2;
 export const ISTANBUL_DAILY_PLAN_MINUTE = 5;
 export const DEFAULT_DAILY_PLANNING_RETRY_MS = 5 * 60_000;
 export const RUNTIME_STRUCTURED_REPAIR_INSTRUCTION =
-  "Önceki çıktı uygulamanın semantik structured-output doğrulamasını geçmedi. Tek repair hakkını kullan: decisionJournal seq değerlerini benzersiz ve artan tut; causedBySeqs yalnız daha önceki seq değerlerine bağlansın; NO_ACTION dışındaki her action ve türetilen delta/proposal geçerli bir OPTION_SELECTED kaydına selectedOptionSeq ile bağlansın; her action claimProvenance içindeki bütün kanıt grupları tek ve aynı provenance türünü kullansın, farklı türleri karıştırma; topicFatigue içindeki topicKey değerleri benzersiz olsun; action ve türetilen delta/proposal toplamı 50'yi aşmasın. Yalnız geçerli structured JSON üret.";
+  "Önceki çıktı uygulamanın semantik structured-output doğrulamasını geçmedi. Tek repair hakkını kullan: decisionJournal seq değerlerini benzersiz ve artan tut; causedBySeqs yalnız daha önceki seq değerlerine bağlansın; NO_ACTION dışındaki her action ve türetilen delta/proposal geçerli bir OPTION_SELECTED kaydına selectedOptionSeq ile bağlansın; her action claimProvenance içindeki bütün kanıt grupları tek ve aynı provenance türünü kullansın, farklı türleri karıştırma; provenance için yalnız perception.evidenceCatalog içindeki exact evidenceType/evidenceId eşleşmelerini kullan, author/source/target user id kanıt değildir; geçerli eşleşme yoksa NO_ACTION üret; topicFatigue içindeki topicKey değerleri benzersiz olsun; action ve türetilen delta/proposal toplamı 50'yi aşmasın. Yalnız geçerli structured JSON üret.";
 
 export function istanbulPlanningClock(now: Date): { dateKey: string; minuteOfDay: number } {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -141,6 +141,86 @@ function serializeUntrustedContext(value: Record<string, unknown>): string {
   return serialized.replaceAll("<", "\\u003c").replaceAll(">", "\\u003e");
 }
 
+const runtimeEvidenceTypes = [
+  "PLATFORM_EVENT",
+  "USER_ENTRY",
+  "TRUSTED_SOURCE",
+  "PROBATION_SOURCE",
+  "MULTIPLE_SOURCES",
+  "AGENT_MEMORY",
+] as const;
+
+type RuntimeEvidenceType = (typeof runtimeEvidenceTypes)[number];
+type RuntimeEvidenceCatalog = Record<RuntimeEvidenceType, string[]>;
+
+function recordArray(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value)
+    ? value.filter(
+        (item): item is Record<string, unknown> =>
+          Boolean(item) && typeof item === "object" && !Array.isArray(item),
+      )
+    : [];
+}
+
+function stringField(value: Record<string, unknown>, key: string): string | null {
+  return typeof value[key] === "string" ? value[key] : null;
+}
+
+function nestedStringField(value: Record<string, unknown>, parent: string, key: string) {
+  const nested = value[parent];
+  return nested && typeof nested === "object" && !Array.isArray(nested)
+    ? stringField(nested as Record<string, unknown>, key)
+    : null;
+}
+
+function runtimeEvidenceCatalog(context: RuntimeContext): RuntimeEvidenceCatalog {
+  const perception = context.perception;
+  const recentEntries = [
+    ...recordArray(perception.recentEntries),
+    ...recordArray(perception.ownRecentEntries),
+  ];
+  const sourceItems = recordArray(perception.sourceItems);
+  const trustedSourceIds = sourceItems.flatMap((item) =>
+    item.sourceStatus === "TRUSTED" && stringField(item, "itemId")
+      ? [stringField(item, "itemId")!]
+      : [],
+  );
+  const probationSourceIds = sourceItems.flatMap((item) =>
+    item.sourceStatus === "PROBATION" && stringField(item, "itemId")
+      ? [stringField(item, "itemId")!]
+      : [],
+  );
+  const unique = (values: Array<string | null>) => [...new Set(values.filter(Boolean) as string[])];
+  return {
+    PLATFORM_EVENT: unique([
+      context.run.id,
+      ...recentEntries.map((entry) => nestedStringField(entry, "topic", "id")),
+    ]),
+    USER_ENTRY: unique(recentEntries.map((entry) => stringField(entry, "id"))),
+    TRUSTED_SOURCE: unique(trustedSourceIds),
+    PROBATION_SOURCE: unique(probationSourceIds),
+    MULTIPLE_SOURCES: unique([...trustedSourceIds, ...probationSourceIds]),
+    AGENT_MEMORY: unique(
+      recordArray(perception.memories).map((memory) => stringField(memory, "id")),
+    ),
+  };
+}
+
+function runtimeDecisionUsesCatalog(
+  decision: RuntimeDecision,
+  catalog: RuntimeEvidenceCatalog,
+): boolean {
+  const allowed = Object.fromEntries(
+    runtimeEvidenceTypes.map((evidenceType) => [evidenceType, new Set(catalog[evidenceType])]),
+  ) as Record<RuntimeEvidenceType, Set<string>>;
+  return decision.actions.every((action) => {
+    if (action.actionType === "NO_ACTION" || !action.provenance) return true;
+    return action.provenance.evidenceIds.every((id) =>
+      allowed[action.provenance!.evidenceType].has(id),
+    );
+  });
+}
+
 function buildDuplicateRepairPrompt(
   trustedPrompt: string,
   originalAction: RuntimeDecision["actions"][number],
@@ -173,11 +253,15 @@ function safeDuplicateRepairCandidate(
 }
 
 export function buildRuntimePrompt(context: RuntimeContext): string {
+  const projectedPerception = projectRuntimePerception(context.perception);
   const safeContext = {
     run: projectAllowedFields(context.run, runtimeAllowedRunContextKeys),
     agent: projectAllowedFields(context.agent, runtimeAllowedAgentContextKeys),
     personaVersion: context.persona.version,
-    perception: projectRuntimePerception(context.perception),
+    perception: {
+      ...projectedPerception,
+      evidenceCatalog: runtimeEvidenceCatalog(context),
+    },
   };
   return [
     context.persona.renderedPrompt,
@@ -578,7 +662,16 @@ export class AgentRuntimeWorker {
       deadline.throwIfStopped();
       await enterPhase("VALIDATING");
       let parsedDecision = parseDecisionForContext(context, providerResult.output);
-      if (!parsedDecision.success) {
+      const reflectionOnly = context.run.runType === "REFLECTION";
+      let decision = parsedDecision.success
+        ? normalizedDecision(parsedDecision.data, { reflectionOnly })
+        : null;
+      const evidenceCatalog = runtimeEvidenceCatalog(context);
+      if (
+        !parsedDecision.success ||
+        !decision ||
+        !runtimeDecisionUsesCatalog(decision, evidenceCatalog)
+      ) {
         const remainingMs = deadline.remainingMs();
         if (remainingMs < 1000) throw new RuntimeProviderTimeoutError();
         const repairResult = await invokeCodex({
@@ -594,14 +687,16 @@ export class AgentRuntimeWorker {
           durationMs: providerResult.durationMs + repairResult.durationMs,
         };
         parsedDecision = parseDecisionForContext(context, providerResult.output);
+        decision = parsedDecision.success
+          ? normalizedDecision(parsedDecision.data, { reflectionOnly })
+          : null;
         deadline.throwIfStopped();
       }
       if (!parsedDecision.success) throw parsedDecision.error;
+      if (!decision || !runtimeDecisionUsesCatalog(decision, evidenceCatalog))
+        throw new Error("RUNTIME_PROVENANCE_CATALOG_INVALID");
       const consolidationRun = isMemoryConsolidationRun(context);
       const personaReflectionRun = isPersonaReflectionRun(context);
-      const decision = normalizedDecision(parsedDecision.data, {
-        reflectionOnly: context.run.runType === "REFLECTION",
-      });
       await this.#options.controlPlane.recordActions(
         credential,
         this.#options.workerId,
