@@ -637,6 +637,45 @@ describe("agent daily scheduler with PostgreSQL", () => {
     expect(await integrationDatabase.agentDailyPlan.count({ where: { localDate } })).toBe(0);
   });
 
+  it("keeps a fresh benchmark when the latest interrupted run has no Codex version", async () => {
+    const admin = await createAdmin();
+    const measuredAt = new Date("2026-07-18T00:05:00.000Z");
+    await createCapacityBenchmark(measuredAt);
+    const [created] = await createActiveAgents(admin.id, 1);
+    const queued = await createManualAgentRun(
+      integrationDatabase,
+      actor(admin.id),
+      created!.agent.profile.id,
+      manualAgentRunSchema.parse({ runType: "READ_ONLY", entryTarget: 0 }),
+      new Date(measuredAt.getTime() + 1_000),
+    );
+    await integrationDatabase.agentRun.update({
+      where: { id: queued.run!.id },
+      data: {
+        runStatus: "CANCELLED",
+        finishedAt: new Date(measuredAt.getTime() + 2_000),
+        usageMetadata: {
+          durationMs: 1_000,
+          provider: "codex-cli",
+          promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+        },
+      },
+    });
+
+    const localDate = new Date("2026-07-18T00:00:00.000Z");
+    await expect(
+      generateAgentDailyPlans(
+        integrationDatabase,
+        actor(admin.id),
+        { localDate },
+        new Date(measuredAt.getTime() + 3_000),
+      ),
+    ).resolves.toMatchObject({
+      createdPlans: 1,
+      capacity: { benchmark: { stale: false, staleReasons: [] } },
+    });
+  });
+
   it("preserves targets, compacts to six runs and persists an explicit projected SLO miss", async () => {
     const admin = await createAdmin();
     const planningNow = new Date("2026-07-18T00:05:00.000Z");

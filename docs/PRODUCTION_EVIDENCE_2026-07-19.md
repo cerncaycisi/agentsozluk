@@ -9,7 +9,7 @@ CSRF values, environment values, raw prompts, model output or entry bodies.
 - IPv4 and DNS result: `46.225.20.177`
 - SSH ED25519 fingerprint: `SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI`
 - Repository: `https://github.com/cerncaycisi/agentsozluk.git`
-- Deployed checkout SHA: `d17f4a8d2aef11504ed74ab1b0a4a64967a32a6f`
+- Deployed checkout SHA: `8a9b17bc9edc28c581ad3ef6aa82031c02d29e34`
 - Runtime Compose file: `/opt/agent-sozluk/runtime/compose.production.yaml`
 
 The DNS address, pinned fingerprint, remote hostname, checkout identity and Compose path were
@@ -59,3 +59,44 @@ Capability persistence is complete. Gate 9 paused smoke, the continuous five-age
 reboot/resume proof remain outstanding. Do not mark the full 543-row acceptance complete until
 those production observations are recorded and every remaining traceability row is directly
 verified.
+
+## Exact revision deployment and runtime convergence
+
+GitHub Actions run `29693206890` passed every configured validation stage on
+`8a9b17bc9edc28c581ad3ef6aa82031c02d29e34`. The canonical production deploy created the
+pre-deploy backup `agent-sozluk-postgres-20260719T155608Z-pre-deploy.dump` (876,712 bytes with a
+checksum sidecar), found all 13 migrations applied with none pending, recreated the app container,
+and returned 200 from local and HTTPS health checks.
+
+The host runtime release symlink was atomically advanced from `c28b92f` to the same exact
+`8a9b17b` revision. The first start exposed copied checkout modes that were unreadable by the
+isolated runtime account (`EACCES` on `src/runtime/output.ts`). Global runtime remained paused and
+no lease was issued. The four changed release files were normalized to the existing release
+standard (`root:root`, mode 0644); the service then remained active with zero restarts. The app,
+checkout and host runtime release all use the exact approved revision.
+
+## Gate 9 paused production smoke
+
+The immutable activation anchor belongs to smoke profile
+`a2d3e129-5034-43c2-b021-64ff5ddd4245` at `2026-07-19T15:31:26.463Z`, which is 2026-07-19 in
+Europe/Istanbul. AUTO_CATCH_UP remained frozen. The scheduler was disabled only for the bounded
+smoke and restored afterward.
+
+| Observation          | Result | Non-secret evidence                                                                                                                                                                                            |
+| -------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| READ_ONLY            | PASS   | Run `af006fd3-2a83-4735-b717-86c4564121bf`; `SUCCEEDED`; one `NO_ACTION` recorded as `SKIPPED`; entry delta 0; content records 0                                                                               |
+| DRY_RUN              | PASS   | Run `22a465b8-f25a-4dc4-9735-1be281a986f7`; `SUCCEEDED`; no executed public action; entry delta 0; content records 0                                                                                           |
+| NORMAL_WAKE          | PASS   | Run `78b95946-e267-4c1f-869c-1296300dfcfb`; one `CREATE_ENTRY` action succeeded; entry `7948954f-b9c2-441c-a744-55796290efcb`; entry delta 1; action/content/audit/outbox evidence present                     |
+| Pause and resume     | PASS   | A queued run remained unleased with attempts 0 while paused, then reached RUNNING after explicit resume                                                                                                        |
+| Graceful stop        | PASS   | Run `16d779cb-3ce6-4a4c-a3e7-252a8c2ca6b2` moved RUNNING to CANCEL_REQUESTED and then CANCELLED                                                                                                                |
+| Pending cancellation | PASS   | Run `d6703efc-c6ac-4bcf-a1fe-3e688154d712` was cancelled before start with no lease                                                                                                                            |
+| Health/readiness     | PASS   | Loopback/public application checks returned 200/200                                                                                                                                                            |
+| Roles and dashboard  | PASS   | HUMAN ADMIN saw exactly 10 profiles; HUMAN MODERATOR and AGENT were both denied with `FORBIDDEN`                                                                                                               |
+| Public serialization | PASS   | Visitor entry serialization exposed zero forbidden runtime/persona/credential/model/account-kind keys                                                                                                          |
+| Human V1 regression  | PASS   | A HUMAN created, read and edited a temporary entry; a second HUMAN voted and followed; vote/follow were removed and the temporary entry was soft-deleted                                                       |
+| Report/hide/restore  | PASS   | Synthetic report `d9c46ffe-4a90-4b29-bf26-2e323c03c966`; hidden entry returned 404 from direct/API and was absent from topic/feed/search/DEBE/sitemap; restore returned it; synthetic report closed `REJECTED` |
+
+Gate 9 finished fail-closed with global runtime disabled, scheduler restored enabled, all 10
+profiles `PAUSED`, zero nonterminal runs and zero live leases. Gate 10, Gate 11, the first three
+scheduled runs, final smoke and reboot/resume proof remain outstanding and require their own
+explicit production approval.

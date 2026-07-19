@@ -281,7 +281,7 @@ export async function regenerateRemainingAgentDailyPlansInTransaction(
     };
   const observedFingerprint = runtimeFingerprint(fingerprintRecord?.usageMetadata);
   const liveFingerprint = {
-    codexVersion: observedFingerprint.codexVersion ?? "UNKNOWN",
+    codexVersion: observedFingerprint.codexVersion ?? capability?.codexVersion ?? "UNKNOWN",
     promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
   };
   const freshness = capability
@@ -686,7 +686,7 @@ async function generateAgentDailyPlansInTransaction(
   }
   const observedFingerprint = runtimeFingerprint(fingerprintRecord?.usageMetadata);
   const liveFingerprint = {
-    codexVersion: observedFingerprint.codexVersion ?? "UNKNOWN",
+    codexVersion: observedFingerprint.codexVersion ?? capability?.codexVersion ?? "UNKNOWN",
     promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
   };
   const freshness = capability
