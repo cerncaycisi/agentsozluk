@@ -88,6 +88,9 @@ jobs:
       - name: Integration tests
         run: pnpm test:integration
 
+      - name: Agent life ledger acceptance
+        run: pnpm agent:verify-life-ledger
+
       - name: Coverage
         run: pnpm test:coverage
 
