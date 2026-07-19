@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { capacityBenchmarkRequest } from "../src/runtime/capability-benchmark";
 import { CodexCliProvider } from "../src/runtime/codex-cli-provider";
-import { normalizeRuntimeDecisionOutput, runtimeDecisionSchema } from "../src/runtime/output";
+import { parseRuntimeDecisionOutput } from "../src/runtime/output";
 
 const environmentSchema = z
   .object({
@@ -37,7 +37,9 @@ async function main(): Promise<void> {
     ...benchmark.request,
     timeoutMs: environment.AGENT_RUNTIME_STATUS_TIMEOUT_MS,
   });
-  const decision = runtimeDecisionSchema.parse(normalizeRuntimeDecisionOutput(result.output));
+  const parsedDecision = parseRuntimeDecisionOutput(result.output);
+  if (!parsedDecision.success) throw parsedDecision.error;
+  const decision = parsedDecision.data;
   process.stdout.write(
     `${JSON.stringify({
       executableInspected: true,
