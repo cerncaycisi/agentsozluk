@@ -66,10 +66,10 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
       "ProtectSystem=strict",
       "ProtectHome=yes",
       "ProtectClock=yes",
-      "ProtectHostname=yes",
-      "ProtectKernelTunables=yes",
+      "ProtectHostname=no",
+      "ProtectKernelTunables=no",
       "ProtectKernelModules=yes",
-      "ProtectKernelLogs=yes",
+      "ProtectKernelLogs=no",
       "ProtectControlGroups=yes",
       "ProtectProc=invisible",
       "CapabilityBoundingSet=",
@@ -96,6 +96,11 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
     expect(directiveValues(service, "InaccessiblePaths")).toEqual([
       "-/opt/agent-sozluk/app -/run/docker.sock -/var/run/docker.sock",
     ]);
+    expect(service).toContain(
+      "These systemd protections create locked /proc submounts that prevent",
+    );
+    expect(service).toContain("Bubblewrap provides a");
+    expect(service).toContain("private /proc, private /dev and UTS namespace");
   });
 
   it("uses bounded restart, shutdown, resource and journal policies", () => {

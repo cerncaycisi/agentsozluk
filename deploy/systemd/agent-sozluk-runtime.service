@@ -42,10 +42,14 @@ DevicePolicy=closed
 ProtectSystem=strict
 ProtectHome=yes
 ProtectClock=yes
-ProtectHostname=yes
-ProtectKernelTunables=yes
+# These systemd protections create locked /proc submounts that prevent the
+# unprivileged Bubblewrap child from mounting its private PID/UTS-namespace
+# /proc. The outer worker remains capability-free; Bubblewrap provides a
+# private /proc, private /dev and UTS namespace for every Codex child.
+ProtectHostname=no
+ProtectKernelTunables=no
 ProtectKernelModules=yes
-ProtectKernelLogs=yes
+ProtectKernelLogs=no
 ProtectControlGroups=yes
 ProtectProc=invisible
 ReadOnlyPaths=/opt/agent-sozluk/runtime/current /var/lib/agent-sozluk-runtime/credentials.json /etc/agent-sozluk/runtime.env
