@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { capacityBenchmarkRequest } from "../src/runtime/capability-benchmark";
+import {
+  capacityBenchmarkRequest,
+  invokeWithStructuredRepair,
+} from "../src/runtime/capability-benchmark";
 import { CodexCliProvider } from "../src/runtime/codex-cli-provider";
 import { parseRuntimeDecisionOutput } from "../src/runtime/output";
 
@@ -33,7 +36,7 @@ async function main(): Promise<void> {
   });
   const inspected = await provider.inspect();
   const benchmark = capacityBenchmarkRequest(0);
-  const result = await provider.invoke({
+  const result = await invokeWithStructuredRepair(provider, {
     ...benchmark.request,
     timeoutMs: environment.AGENT_RUNTIME_STATUS_TIMEOUT_MS,
   });

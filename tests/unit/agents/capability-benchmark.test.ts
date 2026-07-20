@@ -176,6 +176,10 @@ describe("Codex capability benchmark harness", () => {
     let invocation = 0;
     const invalidOutput = () => ({
       ...output(),
+      decisionJournal: output().decisionJournal.map((item) => ({
+        ...item,
+        subject: "00000000-0000-4000-8000-000000000100",
+      })),
       actions: [
         {
           type: "CREATE_ENTRY",
@@ -208,6 +212,9 @@ describe("Codex capability benchmark harness", () => {
     expect(provider.invoke).toHaveBeenCalledTimes(20);
     expect(vi.mocked(provider.invoke).mock.calls[1]?.[0].prompt).toContain(
       "claimProvenance içindeki bütün kanıt grupları tek ve aynı provenance türünü kullansın",
+    );
+    expect(vi.mocked(provider.invoke).mock.calls[1]?.[0].prompt).toContain(
+      "UUID, digest/hash, URL, e-posta, credential, secret veya token değerini subject içine kopyalama",
     );
     expect(measurement).toMatchObject({
       benchmarkRunCount: 10,

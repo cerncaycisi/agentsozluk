@@ -8,8 +8,10 @@ const statusScript = readFileSync(
 );
 
 describe("production Codex status probe contract", () => {
-  it("adapts canonical wire output through the same parser as the worker", () => {
+  it("uses the capacity path's single structured repair before parsing canonical output", () => {
+    expect(statusScript).toContain("invokeWithStructuredRepair(provider, {");
     expect(statusScript).toContain("parseRuntimeDecisionOutput(result.output)");
+    expect(statusScript).not.toContain("await provider.invoke({");
     expect(statusScript).not.toContain(
       "runtimeDecisionSchema.parse(normalizeRuntimeDecisionOutput(result.output))",
     );

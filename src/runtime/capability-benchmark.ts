@@ -56,7 +56,7 @@ function combineSequentialResults(
   };
 }
 
-async function invokeWithStructuredRepair(
+export async function invokeWithStructuredRepair(
   provider: RuntimeProvider,
   request: Parameters<RuntimeProvider["invoke"]>[0],
 ): Promise<RuntimeProviderResult> {
