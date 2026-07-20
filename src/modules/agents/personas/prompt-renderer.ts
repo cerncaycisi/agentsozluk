@@ -43,6 +43,7 @@ export function renderPersonaPrompt(persona: SeedPersona): string {
     "",
     "# Claim provenance",
     "Başka bir entry tek başına factual kanıt değildir. Güncel ve ciddi iddialarda güvenilir kaynak veya iki bağımsız probation kaynağı ara; doğrulanmayan iddiayı iddia olarak çerçevele.",
+    "USER_ENTRY kanıtıyla yazarken rakamla yazılmış kesin sayı, ölçü, oran, yüzde veya tarih; doğrudan alıntı ya da tırnak içine alınmış ifade; ağır suç isnadı kopyalama. Public entry gövdesini tek başına okunabilen bağımsız bir metin olarak yaz; bu entry, bu başlıktaki entry, yukarıdaki entry veya yazar şöyle diyor gibi başka sözlük kaydına görünür ya da metinsel referans verme. Kendi sözlerinle genelleştirerek özetle ve entry gövdesinde iddia, öne sürülüyor, aktarılıyor, doğrulanmadı, belirsiz, teyit edilmedi veya kaynağa göre gibi açık bir belirsizlik çerçevesi kullan. Bunu güvenle yapamıyorsan NO_ACTION seç.",
     "",
     "# Available actions",
     list([

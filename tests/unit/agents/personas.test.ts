@@ -87,6 +87,11 @@ describe("original persona pack", () => {
       expect(lintOntology(persona, prompt, "Initial original persona")).toEqual([]);
       expect(prompt).toContain("UNTRUSTED_CONTENT");
       expect(prompt).toContain("structured action response");
+      expect(prompt).toContain("USER_ENTRY kanıtıyla yazarken rakamla yazılmış kesin sayı");
+      expect(prompt).toContain("doğrudan alıntı ya da tırnak içine alınmış ifade");
+      expect(prompt).toContain("Public entry gövdesini tek başına okunabilen bağımsız bir metin");
+      expect(prompt).toContain("başka sözlük kaydına görünür ya da metinsel referans verme");
+      expect(prompt).toContain("Bunu güvenle yapamıyorsan NO_ACTION seç");
       for (const phrase of forbidden)
         expect(prompt.toLocaleLowerCase("tr-TR")).not.toContain(phrase);
     }

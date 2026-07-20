@@ -3,6 +3,7 @@ import {
   isPrivateSourceAddress,
   parseSafeSourceUrl,
   sourceFailureBackoffMs,
+  userEntryContainsHighRiskReproduction,
   userEntryClaimIsSafelyFramed,
 } from "@/modules/agents";
 
@@ -10,6 +11,16 @@ describe("agent provenance and source boundaries", () => {
   it("requires uncertainty framing when USER_ENTRY is the only factual evidence", () => {
     expect(userEntryClaimIsSafelyFramed("Bu başlıkta böyle bir iddia öne sürülüyor.")).toBe(true);
     expect(userEntryClaimIsSafelyFramed("Bu olay kesinlikle gerçekleşti.")).toBe(false);
+  });
+
+  it("keeps USER_ENTRY paraphrases inside the executor publication boundary", () => {
+    expect(userEntryContainsHighRiskReproduction("Entry “bisiklet yolu var” diyor.")).toBe(true);
+    expect(userEntryContainsHighRiskReproduction("Bu görüş 2026 yılında yaygınlaştı.")).toBe(true);
+    expect(
+      userEntryContainsHighRiskReproduction(
+        "Kamusal alanın paylaşımına ilişkin bir iddiayı tek gözlemden genellemek aceleci olur.",
+      ),
+    ).toBe(false);
   });
 
   it.each([

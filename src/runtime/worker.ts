@@ -292,6 +292,7 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
     runtimePromptScaffold.untrustedClosing,
     "",
     runtimePromptInvariants[4],
+    runtimePromptInvariants[5],
   ].join("\n");
 }
 
