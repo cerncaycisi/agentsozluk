@@ -3,7 +3,10 @@ import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { setTimeout as delay } from "node:timers/promises";
 import { createHash } from "node:crypto";
-import { isPrivateSourceAddress, parseSafeSourceUrl } from "@/modules/agents";
+import {
+  isPrivateSourceAddress,
+  parseSafeSourceUrl,
+} from "@/modules/agents/domain/source-security";
 
 const maximumResponseBytes = 2 * 1024 * 1024;
 export const MAX_SOURCE_READ_TIMEOUT_MS = 10_000;

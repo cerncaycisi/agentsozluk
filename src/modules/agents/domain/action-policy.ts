@@ -1,4 +1,4 @@
-import { normalizeEntrySearchText } from "@/modules/entries";
+import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
 
 function tokenSet(value: string): Set<string> {
   return new Set(

@@ -137,13 +137,26 @@ describe("Milestone 2 production operator runbook", () => {
     expect(gate8).toContain(
       'comm -13 "$m2_verify_dir/pre-migrations" "$m2_verify_dir/applied-migrations"',
     );
-    expect(gate8).toContain('[[ -s "$m2_verify_dir/applied-migration-ids" ]]');
+    expect(gate8).toContain("NO_NEW_MIGRATIONS");
     expect(gate8).toContain("finished_at IS NOT NULL AND rolled_back_at IS NULL");
     expect(gate8).toContain('m2_candidate_image="agent-sozluk:$m2_candidate_sha"');
     expect(gate8).toContain('--build-arg "SOURCE_REVISION=$m2_candidate_sha" app');
     expect(gate8).toContain("--pull never --force-recreate app");
     expect(gate8).toContain("m2_candidate_image_id=$(docker image inspect");
     expect(gate8).toContain("m2_runtime_stage=$(mktemp -d");
+    expect(gate8).toContain("/usr/bin/pnpm install --prod --frozen-lockfile");
+    expect(gate8).toContain("pnpm-workspace.yaml");
+    expect(gate8).toContain("NODE_USE_SYSTEM_CA=1");
+    expect(gate8).toContain("@node-rs/argon2-linux-x64-gnu");
+    expect(gate8).toContain("createRequire(wrapperPath)");
+    expect(gate8).toContain("verifySync(digest, probe)");
+    expect(gate8).toContain("debian-openssl-3.0.x");
+    expect(gate8).toContain("libquery_engine-debian-openssl-3.0.x.so.node");
+    expect(gate8).toContain('typeof prismaEngine.QueryEngine !== "function"');
+    expect(gate8).toContain("process.versions.modules");
+    expect(gate8).toContain("glibcVersionRuntime");
+    expect(gate8).toContain(".release-node-abi");
+    expect(gate8).not.toContain('docker cp "$m2_runtime_container:/app/node_modules"');
     expect(gate8).toContain("--create --hard-dereference");
     expect(gate8).toContain("-type d -exec chmod 0555");
     expect(gate8).toContain("-type f ! -perm /111 -exec chmod 0444");
@@ -246,6 +259,12 @@ describe("Milestone 2 production operator runbook", () => {
     expect(runbook).toContain("AGENT_ROLLOUT_REASON_CODE=DAY0_START");
     expect(runbook).toContain("AGENT_ROLLOUT_EVIDENCE_FILE");
     expect(prose).toContain("five `gate10-sample` commands");
+    expect(prose).toContain("Only after that checkpoint, regenerate the remaining-day plan");
+    expect(prose).toContain("while the worker remains stopped");
+    expect(prose).toContain("stale due slots");
+    expect(runbook).toContain("clock_timestamp() + interval '30 seconds'");
+    expect(runbook).toContain('make_interval(secs => settings."scheduledTimeoutSeconds")');
+    expect(runbook).toContain("m2_runtime_worker_count=$(pgrep -u agent-runtime");
     expect(prose).toContain("re-runs every proof during `complete`");
     expect(prose).toContain("current rollout-attempt anchor");
   });
@@ -258,7 +277,9 @@ describe("Milestone 2 production operator runbook", () => {
     expect(runbook).toContain("cat /proc/sys/kernel/random/boot_id");
     expect(runbook).toContain("sudo systemctl reboot");
     expect(runbook).toContain("systemctl is-active agent-sozluk-runtime.service");
-    expect(runbook).toContain("tsx/dist/preflight.*scripts/agent-runtime-worker.ts$");
+    expect(runbook).toContain(
+      "^/usr/bin/node --require .*tsx/dist/preflight\\.cjs --import file://.*tsx/dist/loader\\.mjs scripts/agent-runtime-worker\\.ts$",
+    );
     expect(runbook).toContain("http://127.0.0.1:3000/api/");
     expect(prose).toContain(
       "A reboot that does not return the singleton runtime, site or readiness blocks Day 0",

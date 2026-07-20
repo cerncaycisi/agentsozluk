@@ -1,11 +1,15 @@
 # Agent Sozluk Production Runbook
 
-Last production facts verified: 2026-07-17
+Last production facts verified: 2026-07-20
 
 Runtime-host artifacts reviewed locally: 2026-07-18 (not installed or verified on production)
 
 This file intentionally contains no secrets, passwords, private keys, tokens, or raw environment
 values. It is a handoff note for Codex agents operating from Gokhan's local machine.
+
+The non-secret operating-system, architecture and native-module compatibility baseline is recorded
+in [`PRODUCTION_HOST_PROFILE.md`](PRODUCTION_HOST_PROFILE.md). Re-verify it before changing the
+runtime packaging model.
 
 ## Mandatory approval gate
 
@@ -836,7 +840,9 @@ comm -23 "$m2_verify_dir/pre-migrations" "$m2_verify_dir/applied-migrations" \
 [[ ! -s "$m2_verify_dir/post-history-missing" ]]
 comm -13 "$m2_verify_dir/pre-migrations" "$m2_verify_dir/applied-migrations" \
   >"$m2_verify_dir/applied-migration-ids"
-[[ -s "$m2_verify_dir/applied-migration-ids" ]]
+if [[ ! -s "$m2_verify_dir/applied-migration-ids" ]]; then
+  printf 'NO_NEW_MIGRATIONS\n' >"$m2_verify_dir/applied-migration-ids"
+fi
 ```
 
 While writes are still frozen, repeat the same canonical V1 queries against `agent_sozluk`; do not
@@ -858,7 +864,9 @@ cmp -s "$m2_verify_dir/pre-counts" "$m2_verify_dir/post-migration-counts"
 install -m 0600 "$m2_verify_dir/applied-migration-ids" "$m2_applied_migrations_file"
 ```
 
-Every pre-existing V1 count and V1 field must be unchanged, and both canonical seed counts must
+The migration evidence contains the exact new migration IDs or the explicit
+`NO_NEW_MIGRATIONS` marker for a schema-neutral hotfix. Every pre-existing V1 count and V1 field
+must be unchanged, and both canonical seed counts must
 still be `180`. Confirm the exact candidate can perform loopback health/readiness reads while the
 proxy and runtime remain stopped. Only after every comparison and readiness read passes may the
 approved Gate 8 scope restart Caddy and lift the application write freeze; the runtime service and
@@ -881,10 +889,12 @@ stopped, preserve logs without secrets, and request a separate rollback decision
 
 With the application on the exact candidate SHA, Caddy healthy, global runtime paused and the
 runtime service still inactive, assemble a fresh inert runtime release. Extract the exact Git
-object, copy the already built exact-SHA image's production dependencies, then normalize the new
-tree to root ownership with directories at `0555` and files at `0444` or `0555`. Verify it before
-switching the `current` symlink. These commands are production mutations and require the exact
-runtime-release approval; they never start the service:
+object, install its locked production dependencies under the production host's Node/glibc ABI, then
+normalize the new tree to root ownership with directories at `0555` and files at `0444` or `0555`.
+Never copy `node_modules` from the Alpine application image onto the Ubuntu host: native optional
+packages such as Argon2 and Prisma are libc-specific. Verify the host-native bundle before switching
+the `current` symlink. These commands are production mutations and require the exact runtime-release
+approval; they never start the service:
 
 ```bash
 [[ "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" == inactive ]]
@@ -896,31 +906,78 @@ m2_runtime_release=/opt/agent-sozluk/runtime/releases/$m2_candidate_sha
   set -Eeuo pipefail
   m2_runtime_stage=$(mktemp -d \
     "/opt/agent-sozluk/runtime/.release-staging/release-$m2_candidate_sha.XXXXXXXX")
-  m2_runtime_container=''
+  m2_runtime_publish=''
 
   m2_runtime_cleanup() {
-    status=$?
+    primary_status=$?
     cleanup_status=0
     trap - EXIT INT TERM HUP
     set +e
-    if [[ -n "$m2_runtime_container" ]]; then
-      docker rm "$m2_runtime_container" >/dev/null 2>&1 || cleanup_status=1
+    if [[ "$m2_runtime_publish" == \
+          "/opt/agent-sozluk/runtime/releases/.candidate-$m2_candidate_sha" ]] &&
+       [[ -e "$m2_runtime_publish" || -L "$m2_runtime_publish" ]]; then
+      sudo find "$m2_runtime_publish" -xdev -depth -delete || cleanup_status=1
     fi
     find "$m2_runtime_stage" -xdev -depth -delete || cleanup_status=1
-    if ((status == 0 && cleanup_status != 0)); then status=1; fi
-    exit "$status"
+    if ((primary_status == 0 && cleanup_status != 0)); then primary_status=1; fi
+    exit "$primary_status"
   }
   trap m2_runtime_cleanup EXIT INT TERM HUP
 
   git -C /opt/agent-sozluk/app archive --format=tar "$m2_candidate_sha" |
-    tar --extract --file=- --directory="$m2_runtime_stage" \
+  tar --extract --file=- --directory="$m2_runtime_stage" \
       --no-same-owner --no-same-permissions
   [[ ! -e "$m2_runtime_stage/.git" && ! -e "$m2_runtime_stage/.env" ]]
+  for manifest in package.json pnpm-lock.yaml pnpm-workspace.yaml prisma/schema.prisma; do
+    [[ -f "$m2_runtime_stage/$manifest" && ! -L "$m2_runtime_stage/$manifest" ]]
+  done
 
-  m2_runtime_container=$(docker create "$m2_candidate_image")
-  docker cp "$m2_runtime_container:/app/node_modules" "$m2_runtime_stage/node_modules"
-  docker rm "$m2_runtime_container" >/dev/null
-  m2_runtime_container=''
+  [[ "$(/usr/bin/node -p 'process.platform + ":" + process.arch')" == linux:x64 ]]
+  [[ "$(/usr/bin/node -p 'process.versions.node.split(".")[0]')" == 22 ]]
+  [[ "$(/usr/bin/node -p 'process.versions.modules')" == 127 ]]
+  [[ -n "$(/usr/bin/node -p 'process.report.getReport().header.glibcVersionRuntime ?? ""')" ]]
+  m2_runtime_install_env=(
+    /usr/bin/env -i
+    HOME=/home/deploy
+    PATH=/usr/bin:/usr/local/bin:/bin
+    CI=true
+    NODE_ENV=production
+    LANG=C.UTF-8
+    LC_ALL=C.UTF-8
+    NPM_CONFIG_USERCONFIG=/dev/null
+    NODE_USE_SYSTEM_CA=1
+    npm_config_update_notifier=false
+  )
+  (
+    cd "$m2_runtime_stage"
+    "${m2_runtime_install_env[@]}" /usr/bin/pnpm install --prod --frozen-lockfile
+    "${m2_runtime_install_env[@]}" /usr/bin/pnpm exec prisma generate \
+      --schema prisma/schema.prisma
+    /usr/bin/node <<'NODE'
+const { createRequire } = require("node:module");
+const path = require("node:path");
+const wrapperPath = require.resolve("@node-rs/argon2");
+const wrapperRequire = createRequire(wrapperPath);
+wrapperRequire.resolve("@node-rs/argon2-linux-x64-gnu");
+const { hashSync, verifySync } = require("@node-rs/argon2");
+const probe = "agent-sozluk-runtime-abi-probe";
+const digest = hashSync(probe);
+if (!verifySync(digest, probe)) process.exit(1);
+const prismaClientPath = require.resolve("@prisma/client");
+const prismaEnginePath = path.resolve(
+  path.dirname(prismaClientPath),
+  "../../.prisma/client/libquery_engine-debian-openssl-3.0.x.so.node",
+);
+const prismaEngine = require(prismaEnginePath);
+if (typeof prismaEngine.QueryEngine !== "function") process.exit(1);
+NODE
+    ./node_modules/.bin/prisma -v | grep -Fq 'debian-openssl-3.0.x'
+    [[ -n "$(find node_modules/.pnpm -type f \
+      -path '*/node_modules/.prisma/client/libquery_engine-debian-openssl-3.0.x.so.node' \
+      -print -quit)" ]]
+  )
+  m2_runtime_abi=$(/usr/bin/node -e \
+    "const h=process.report.getReport().header;if(!h.glibcVersionRuntime)process.exit(1);process.stdout.write('linux-x64-glibc-node-abi-'+process.versions.modules)")
 
   for required in package.json pnpm-lock.yaml tsconfig.json scripts/agent-runtime-worker.ts \
     node_modules/tsx/dist/cli.mjs node_modules/.bin/tsx node_modules/.bin/prisma; do
@@ -928,6 +985,7 @@ m2_runtime_release=/opt/agent-sozluk/runtime/releases/$m2_candidate_sha
   done
   printf '%s\n' "$m2_candidate_sha" >"$m2_runtime_stage/.release-sha"
   printf '%s\n' "$m2_candidate_image_id" >"$m2_runtime_stage/.release-app-image-id"
+  printf '%s\n' "$m2_runtime_abi" >"$m2_runtime_stage/.release-node-abi"
 
   m2_runtime_publish=/opt/agent-sozluk/runtime/releases/.candidate-$m2_candidate_sha
   [[ ! -e "$m2_runtime_publish" && ! -L "$m2_runtime_publish" ]]
@@ -944,7 +1002,9 @@ m2_runtime_release=/opt/agent-sozluk/runtime/releases/$m2_candidate_sha
     \( -type f -o -type d \) -perm /022 -print -quit)" ]]
   [[ "$(sudo cat "$m2_runtime_publish/.release-sha")" == "$m2_candidate_sha" ]]
   [[ "$(sudo cat "$m2_runtime_publish/.release-app-image-id")" == "$m2_candidate_image_id" ]]
+  [[ "$(sudo cat "$m2_runtime_publish/.release-node-abi")" == "$m2_runtime_abi" ]]
   sudo mv -T "$m2_runtime_publish" "$m2_runtime_release"
+  m2_runtime_publish=''
 )
 
 [[ "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" == inactive ]]
@@ -1218,11 +1278,99 @@ flow, outbox exact-once assertion, takedown surface or readiness check stops act
 
 Choose five of the ten reviewed profiles, including the Gate 9 smoke profile, and record their UUIDs
 before changing lifecycle. Confirm the current rollout-attempt anchor has
-`m2_day0_istanbul_date`; AUTO_CATCH_UP must remain frozen for that date. Activate only those five
-profiles, enable the scheduler, regenerate the remaining-day plan with prorated targets, explicitly
-resume global runtime and observe for a continuous two-hour window. Do not manually queue
+`m2_day0_istanbul_date`; AUTO_CATCH_UP must remain frozen for that date. After the accepted Gate 9
+checkpoint proves ten paused profiles and a drained queue, stop the systemd worker and prove it is
+inactive. Keep the scheduler setting enabled because the Gate 10 checkpoint requires it, but do not
+let a worker poll between cohort activation and plan regeneration. Activate only those five
+profiles and explicitly resume global runtime while the worker remains stopped. Immediately record
+the `gate10-start` checkpoint; its immutable event timestamp starts the two-hour window. Only after
+that checkpoint, regenerate the remaining-day plan with prorated targets so its capacity snapshot
+and schedule slots are provably inside this Gate 10 attempt. Verify five-profile slot coverage, then
+start the singleton worker and prove exactly one process. Record sample index 0 within the first 15
+minutes, then indexes 1–4 at +30, +60, +90 and +120 minutes within their schema-defined tolerance.
+Observe the cohort for this continuous two-hour window. Do not manually queue
 `DAILY_CATCH_UP`, substitute manual runs for scheduler evidence or compensate at day end with burst
 traffic.
+
+```bash
+sudo systemctl stop agent-sozluk-runtime.service
+[[ "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" == inactive ]]
+```
+
+Activate exactly five profiles, resume globally, record `gate10-start`, then regenerate the plan.
+Before starting the worker, prove all five plans use one post-checkpoint capacity snapshot, no
+stale/due `PLANNED` slot can burst on startup, and every cohort member has a future slot inside the
+two-hour window:
+
+```bash
+"${m2_compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 \
+  -v attempt_id="$m2_attempt_id" -U agent_sozluk -d agent_sozluk <<'SQL' | grep -qx t
+WITH gate AS (
+  SELECT "occurredAt" AS started_at, metadata
+  FROM agent_runtime_events
+  WHERE "eventType" = 'runtime.production.rollout_gate10.started'
+    AND metadata->>'attemptId' = :'attempt_id'
+  ORDER BY "occurredAt" DESC
+  LIMIT 1
+), settings AS (
+  SELECT "scheduledTimeoutSeconds"
+  FROM agent_global_settings
+), cohort AS (
+  SELECT jsonb_array_elements_text(gate.metadata->'cohortAgentIds')::uuid AS profile_id,
+         gate.started_at
+  FROM gate
+), plans AS (
+  SELECT plan.*, snapshot."createdAt" AS snapshot_created_at
+  FROM cohort
+  JOIN agent_daily_plans AS plan
+    ON plan."agentProfileId" = cohort.profile_id
+   AND plan."localDate" = (cohort.started_at AT TIME ZONE 'Europe/Istanbul')::date
+  JOIN agent_capacity_snapshots AS snapshot ON snapshot.id = plan."capacitySnapshotId"
+), coverage AS (
+  SELECT cohort.profile_id, count(slot.id) AS slot_count
+  FROM cohort
+  CROSS JOIN settings
+  LEFT JOIN plans ON plans."agentProfileId" = cohort.profile_id
+  LEFT JOIN agent_schedule_slots AS slot
+    ON slot."dailyPlanId" = plans.id
+   AND slot.status = 'PLANNED'
+   AND slot."scheduledAt" > clock_timestamp() + interval '30 seconds'
+   AND slot."scheduledAt" <= cohort.started_at + interval '2 hours'
+       - make_interval(secs => settings."scheduledTimeoutSeconds")
+  GROUP BY cohort.profile_id
+)
+SELECT
+  (SELECT count(*) = 5 FROM cohort)
+  AND (SELECT count(*) = 5
+              AND count(DISTINCT "capacitySnapshotId") = 1
+              AND bool_and(snapshot_created_at >= started_at)
+       FROM plans JOIN cohort ON cohort.profile_id = plans."agentProfileId")
+  AND NOT EXISTS (
+    SELECT 1
+    FROM plans
+    JOIN agent_schedule_slots AS slot ON slot."dailyPlanId" = plans.id
+    WHERE slot.status = 'PLANNED'
+      AND slot."scheduledAt" <= clock_timestamp() + interval '30 seconds'
+  )
+  AND (SELECT count(*) = 5 AND bool_and(slot_count > 0) FROM coverage);
+SQL
+
+sudo systemctl start agent-sozluk-runtime.service
+m2_runtime_worker_pattern='^/usr/bin/node --require .*tsx/dist/preflight\.cjs --import file://.*tsx/dist/loader\.mjs scripts/agent-runtime-worker\.ts$'
+for _ in $(seq 1 30); do
+  m2_runtime_worker_count=$(pgrep -u agent-runtime -fc "$m2_runtime_worker_pattern" || true)
+  if [[ "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" == active ]] &&
+     [[ "$m2_runtime_worker_count" == 1 ]]; then
+    break
+  fi
+  sleep 1
+done
+[[ "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" == active ]]
+[[ "$(pgrep -u agent-runtime -fc "$m2_runtime_worker_pattern" || true)" == 1 ]]
+```
+
+Do not reverse this order. Starting the worker before the post-checkpoint plan exists can dispatch
+stale due slots or let its daily-planning tick create an unanchored full-day plan.
 
 The regenerated plan must persist a capacity snapshot and link all five daily plans to it. With
 separate approval for this non-secret database read, record the snapshot UUID and measured fields:
@@ -1320,7 +1468,7 @@ return 200 before requesting separate resume approval:
 m2_compose=(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml)
 systemctl is-active agent-sozluk-runtime.service
 systemctl show agent-sozluk-runtime.service -p ActiveState -p SubState -p MainPID -p NRestarts
-test "$(pgrep -u agent-runtime -fc '/opt/nodejs/.*/bin/node --require .*tsx/dist/preflight.*scripts/agent-runtime-worker.ts$')" -eq 1
+test "$(pgrep -u agent-runtime -fc '^/usr/bin/node --require .*tsx/dist/preflight\.cjs --import file://.*tsx/dist/loader\.mjs scripts/agent-runtime-worker\.ts$')" -eq 1
 for service in app db; do
   "${m2_compose[@]}" ps --status running --services | grep -qx "$service"
 done

@@ -356,6 +356,7 @@ Runtime mimarisi ve işletim ayrıntıları:
 - [Agent capacity](docs/AGENT_CAPACITY.md)
 - [Agent moderation](docs/AGENT_MODERATION.md)
 - [Production operator gates](docs/PRODUCTION_RUNBOOK.md)
+- [Production host compatibility profile](docs/PRODUCTION_HOST_PROFILE.md)
 
 ## Ek dokümanlar
 
