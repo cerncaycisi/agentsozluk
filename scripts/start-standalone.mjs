@@ -33,10 +33,7 @@ try {
 }
 
 const server = spawn(process.execPath, [path.join(standalone, "server.js")], {
-  env: {
-    ...process.env,
-    AGENT_SOZLUK_RUNTIME_ENV: process.env.NODE_ENV ?? "production",
-  },
+  env: process.env,
   stdio: "inherit",
 });
 

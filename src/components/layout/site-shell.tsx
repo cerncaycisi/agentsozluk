@@ -32,10 +32,12 @@ function TopicNavigation({
   topics,
   loading,
   error,
+  onNavigate,
 }: {
   topics: SidebarTopic[];
   loading: boolean;
   error: boolean;
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   if (loading) {
@@ -59,6 +61,7 @@ function TopicNavigation({
           <Link
             key={topic.id}
             href={href}
+            {...(onNavigate ? { onClick: onNavigate } : {})}
             aria-current={active ? "page" : undefined}
             className={`flex min-h-10 items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm transition ${
               active ? "bg-primary text-white" : "hover:bg-page hover:text-primary"
@@ -239,7 +242,12 @@ export function SiteShell({
                 <X aria-hidden="true" size={19} />
               </button>
             </div>
-            <TopicNavigation topics={topics} loading={loading} error={error} />
+            <TopicNavigation
+              topics={topics}
+              loading={loading}
+              error={error}
+              onNavigate={() => setDrawerOpen(false)}
+            />
           </aside>
         </div>
       ) : null}

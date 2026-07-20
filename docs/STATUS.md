@@ -1,37 +1,44 @@
 # Milestone status
 
-## Milestone 2 verification snapshot — 2026-07-19 Europe/Istanbul
+## Milestone 2 verification snapshot — 2026-07-20 Europe/Istanbul
 
-The following results were measured from the current tree and the explicitly approved Agent
-Sözlük production Gate 9 operation.
+The following results were measured from the current candidate tree in an isolated Node.js 22 and
+PostgreSQL 16 environment. Production evidence is intentionally not carried forward to a new
+candidate until the exact committed revision is deployed and the rollout gates are rerun.
 
-| Check                              | Result | Measured evidence                                                                 |
-| ---------------------------------- | ------ | --------------------------------------------------------------------------------- |
-| Formatting                         | PASS   | Whole current-tree format check completed                                         |
-| ESLint                             | PASS   | Whole current-tree lint completed                                                 |
-| TypeScript                         | PASS   | Strict typecheck completed                                                        |
-| Unit tests                         | PASS   | 99 files, 474 tests                                                               |
-| PostgreSQL integration tests       | PASS   | 13 files, 179 tests                                                               |
-| Global coverage                    | PASS   | 112 files, 653 tests; statements/lines 93.52%; branches 85.40%; functions 95.11%  |
-| Full-day simulation                | PASS   | UTC local 1/1 in 40.93s; remote CI 1/1 in 63s; 150–200 gate passed                |
-| Next production build              | PASS   | 62 static pages generated                                                         |
-| Agent Society Playwright E2E       | PASS   | 24/24 in 57.7 seconds                                                             |
-| Full Playwright E2E                | PASS   | 48/48 in 2.6 minutes                                                              |
-| M1 regression                      | PASS   | Full `pnpm verify:m1` completed                                                   |
-| OpenAPI/runtime alignment          | PASS   | 112 operations aligned                                                            |
-| Persona verification               | PASS   | 10 personas, 45 pairwise comparisons                                              |
-| Public metadata scan               | PASS   | 14 surfaces, 21 private fields scanned                                            |
-| Repository and history secret scan | PASS   | Current repository and reachable Git history passed                               |
-| Operations contract tests          | PASS   | Production runbook and systemd contracts: 17/17                                   |
-| Draft pull request                 | PASS   | PR #2; base `main`; M2 head; draft state verified                                 |
-| Remote validation CI evidence      | PASS   | Run `29693206890`; every configured stage passed                                  |
-| Exact production revision          | PASS   | App checkout/image and host runtime release at `8a9b17b`; health/readiness 200    |
-| Gate 9 paused smoke                | PASS   | Zero-write modes, one public entry, controls, roles, V1 and takedown/restore PASS |
-| M2 traceability                    | OPEN   | Gate 10, ten-agent escalation, scheduled runs and final operator proofs remain    |
+| Check                              | Result  | Measured evidence                                                                |
+| ---------------------------------- | ------- | -------------------------------------------------------------------------------- |
+| Formatting                         | PASS    | Whole current-tree format check completed                                        |
+| ESLint                             | PASS    | Whole current-tree lint completed                                                |
+| TypeScript                         | PASS    | Strict typecheck completed                                                       |
+| Clean migrations                   | PASS    | All 15 migrations applied from an empty PostgreSQL 16 database                   |
+| Canonical seed                     | PASS    | Two idempotent runs retained 12 users, 30 topics and 180 ACTIVE seed entries     |
+| Counter consistency                | PASS    | Entry mismatches 0; topic mismatches 0                                           |
+| Unit tests                         | PASS    | 110 files, 552 tests                                                             |
+| PostgreSQL integration tests       | PASS    | 15 files, 197 tests                                                              |
+| Global coverage                    | PASS    | 125 files, 749 tests; statements/lines 93.75%; branches 85.37%; functions 95.36% |
+| Full-day simulation                | PASS    | 1/1 in 42.34 seconds; 150–200 safe-entry gate passed                             |
+| Next.js production build           | PASS    | 62 static pages generated                                                        |
+| Full Playwright E2E                | PASS    | 50/50 across desktop and mobile in 2.2 minutes                                   |
+| Agent Society Playwright E2E       | PASS    | 24/24 in 56.4 seconds                                                            |
+| M1 regression                      | PASS    | Migration, seed, tests, coverage, build, E2E, requirements and Compose config    |
+| Agent unit/integration             | PASS    | 303/303 agent unit and 131/131 agent integration tests                           |
+| Life-ledger and rollout contracts  | PASS    | Local reconstruction/export and Gate 9–12 evidence-contract tests passed         |
+| Writer approval lifecycle          | PASS    | Registration-to-admin-approval-to-publish integration and E2E passed             |
+| Random root and mobile drawer      | PASS    | Root redirect, no-topic fallback and close-on-topic-selection tests passed       |
+| OpenAPI/runtime alignment          | PASS    | 116 operations aligned                                                           |
+| Persona verification               | PASS    | 10 personas, 45 pairwise comparisons                                             |
+| Public metadata scan               | PASS    | 14 surfaces, 21 private fields scanned                                           |
+| Repository and history secret scan | PASS    | Current repository and reachable Git history passed                              |
+| GitHub Actions storage hygiene     | PASS    | Cleared to 0/0; main-only cache, PR restore-only, artifacts retained one day     |
+| Operations contract tests          | PASS    | Production runbook and systemd contracts: 20/20                                  |
+| Exact production revision          | PENDING | Requires matching main SHA, green CI and exact-SHA deploy evidence               |
+| Production rollout gates           | PENDING | Gates 1–12 must be captured against the new exact deployed revision              |
+| M2 traceability                    | OPEN    | 527 PASS, 16 approved production-gated BLOCKED, 0 FAIL (543 total)               |
 
-No FAIL rows remain. The remaining BLOCKED rows require separately approved production operator
-evidence. Gate 9 is complete; Gate 10, ten-agent escalation, scheduled-run observation, final smoke
-and reboot/resume proof are not yet claimed.
+No locally provable FAIL rows remain. The 16 BLOCKED rows require the new exact candidate to pass
+the production identity, runtime, backup/migration, Day 0 rollout, two-hour observation,
+ten-agent escalation, scheduled-run, final-smoke and reboot/resume evidence gates.
 Requirement-level evidence is tracked in [`M2_TRACEABILITY.md`](M2_TRACEABILITY.md).
 
 Milestone 2 design/operations documents:

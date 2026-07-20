@@ -61,6 +61,7 @@ import { searchAll } from "@/modules/search/application/search";
 import { buildSearchQuery } from "@/modules/search/repository/search";
 import { getPublicProfile } from "@/modules/users/application/profiles";
 import {
+  approveUserWriter,
   mergeTopic,
   moveEntry,
   renameTopic,
@@ -401,11 +402,16 @@ describe("authentication and accounts with PostgreSQL", () => {
       username: "register_writer",
       role: "USER",
       kind: "HUMAN",
+      writerApproved: false,
     });
     expect(registered.user).not.toHaveProperty("passwordHash");
     expect(await authenticateSession(integrationDatabase, registered.session.token)).toMatchObject({
       userId: registered.user.id,
+      user: { writerApproved: false },
     });
+    await expect(
+      createTopic(registered.user.id, "Onay bekleyen yazar başlığı"),
+    ).rejects.toMatchObject({ code: "WRITER_APPROVAL_REQUIRED", status: 403 });
     await expect(
       registerHuman(
         integrationDatabase,
@@ -429,6 +435,82 @@ describe("authentication and accounts with PostgreSQL", () => {
       ),
     ).rejects.toMatchObject({ code: "USERNAME_TAKEN", status: 409 });
     expect(await integrationDatabase.user.count()).toBe(1);
+  });
+
+  it("requires exact admin approval before a newly registered human can publish", async () => {
+    const registered = await registerHuman(
+      integrationDatabase,
+      registration("pending_writer"),
+      { userAgent: "integration-browser", ip: "203.0.113.11" },
+      randomUUID(),
+    );
+    const admin = await createUser("writer_approval_admin");
+    const secondAdmin = await createUser("approval_second_admin");
+    const moderator = await createUser("writer_approval_moderator");
+    const existingWriter = await createUser("approval_existing_writer");
+    const existingTopic = await createTopic(
+      existingWriter.id,
+      "Onay bekleyen kullanıcı için mevcut başlık",
+    );
+    await integrationDatabase.user.update({ where: { id: admin.id }, data: { role: "ADMIN" } });
+    await integrationDatabase.user.update({
+      where: { id: secondAdmin.id },
+      data: { role: "ADMIN" },
+    });
+    await integrationDatabase.user.update({
+      where: { id: moderator.id },
+      data: { role: "MODERATOR" },
+    });
+    const reason = { reason: "Yeni kullanıcının yazar başvurusu admin tarafından doğrulandı." };
+
+    await expect(
+      approveUserWriter(integrationDatabase, actor(moderator.id), registered.user.id, reason),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    await expect(
+      createTopic(registered.user.id, "Onaysız yayın denemesi başlığı"),
+    ).rejects.toMatchObject({ code: "WRITER_APPROVAL_REQUIRED", status: 403 });
+    await expect(
+      createEntry(integrationDatabase, actor(registered.user.id), existingTopic.topic.id, {
+        body: "Admin onayı olmadan gönderilmemesi gereken yeterince uzun bir entry metni.",
+      }),
+    ).rejects.toMatchObject({ code: "WRITER_APPROVAL_REQUIRED", status: 403 });
+    await expect(
+      setModeratorRole(integrationDatabase, actor(admin.id), registered.user.id, true, reason),
+    ).rejects.toMatchObject({ code: "WRITER_APPROVAL_REQUIRED", status: 409 });
+
+    const approvalOutcomes = await Promise.allSettled([
+      approveUserWriter(integrationDatabase, actor(admin.id), registered.user.id, reason),
+      approveUserWriter(integrationDatabase, actor(secondAdmin.id), registered.user.id, reason),
+    ]);
+    expect(approvalOutcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(1);
+    expect(approvalOutcomes.find((outcome) => outcome.status === "rejected")).toMatchObject({
+      status: "rejected",
+      reason: { code: "FORBIDDEN", status: 409 },
+    });
+    await expect(
+      createEntry(integrationDatabase, actor(registered.user.id), existingTopic.topic.id, {
+        body: "Admin onayından sonra yayınlanan yeterince uzun bir doğrulama entry metni.",
+      }),
+    ).resolves.toMatchObject({ status: "ACTIVE" });
+    await expect(
+      createTopic(registered.user.id, "Admin onaylı yazar başlığı"),
+    ).resolves.toMatchObject({ topic: { status: "ACTIVE" }, entry: { status: "ACTIVE" } });
+
+    expect(
+      await integrationDatabase.moderationAction.count({
+        where: { targetId: registered.user.id, actionType: "USER_WRITER_APPROVED" },
+      }),
+    ).toBe(1);
+    expect(
+      await integrationDatabase.auditLog.count({
+        where: { entityId: registered.user.id, action: "user.writer_approved" },
+      }),
+    ).toBe(1);
+    expect(
+      await integrationDatabase.outboxEvent.count({
+        where: { aggregateId: registered.user.id, eventType: "user.writer_approved" },
+      }),
+    ).toBe(1);
   });
 
   it("maps a concurrent registration email race to EMAIL_TAKEN after rollback", async () => {

@@ -4,7 +4,11 @@ import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
 import { requireAgentAdminInTransaction } from "@/modules/agents/application/authorization";
 import { memoryDescendantClosure, memorySourceIds } from "@/modules/agents/domain/memory-lifecycle";
-import { appendRuntimeEvent, lockAgentProfile } from "@/modules/agents/repository/control-plane";
+import {
+  appendRuntimeEvent,
+  lockAgentProfile,
+  lockAgentSettings,
+} from "@/modules/agents/repository/control-plane";
 import {
   createMemoryReconsolidationRun,
   findOwnedAgentMemoryRecord,
@@ -97,6 +101,7 @@ export function invalidateAgentMemory(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentProfile(transaction, agentProfileId);
+    await lockAgentSettings(transaction);
     await ensureAgentExists(transaction, agentProfileId);
     await lockAgentMemoryRecords(transaction, agentProfileId);
     const memory = await findOwnedAgentMemoryRecord(transaction, agentProfileId, memoryId);
@@ -227,6 +232,7 @@ export function reconsolidateAgentMemory(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentProfile(transaction, agentProfileId);
+    await lockAgentSettings(transaction);
     const agent = await ensureAgentExists(transaction, agentProfileId);
     if (agent.lifecycleStatus !== "ACTIVE" || !agent.currentPersonaVersionId)
       throw new AppError(

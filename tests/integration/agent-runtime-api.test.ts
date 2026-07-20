@@ -20,6 +20,7 @@ import {
   agentSourceAdminUpdateSchema,
   executeRuntimeAction as executeRuntimeActionApplication,
   failRuntimeRun,
+  generateRuntimeDailyPlans,
   getAgentDetail,
   getRuntimeRunContext as getRuntimeRunContextApplication,
   gracefullyStopActiveAgentRuns,
@@ -278,6 +279,7 @@ async function createLeaseCapacityFixture(codexConcurrency: 1 | 2) {
         requestedById: admin.id,
         personaVersionId: created.agent.personaVersion.id,
         idempotencyKey: randomUUID(),
+        availableAt: new Date(Date.now() - 1_000),
         timeoutSeconds: 600,
         desiredEntryMin: 1,
         desiredEntryMax: 1,
@@ -1174,10 +1176,6 @@ describe("internal agent runtime API with PostgreSQL", () => {
         ],
       }),
     );
-    await integrationDatabase.agentRun.update({
-      where: { id: runId },
-      data: { leaseExpiresAt: new Date(Date.now() + 500) },
-    });
     let enterReadiness!: () => void;
     const readinessEntered = new Promise<void>((resolve) => {
       enterReadiness = resolve;
@@ -1193,14 +1191,17 @@ describe("internal agent runtime API with PostgreSQL", () => {
       { workerId, leaseToken: originalToken, sequence: 1 },
       {
         requireLifeLedger: false,
-        checkReadiness: async () => {
+        checkReadiness: async (executor) => {
+          await executor.agentRun.update({
+            where: { id: runId },
+            data: { leaseExpiresAt: new Date(Date.now() - 1_000) },
+          });
           enterReadiness();
           await readinessRelease;
         },
       },
     );
     await readinessEntered;
-    await new Promise((resolve) => setTimeout(resolve, 550));
     const secondClient = new PrismaClient({ datasourceUrl: process.env.TEST_DATABASE_URL! });
     try {
       const reclaim = leaseRuntimeRunApplication(secondClient, leasePrincipal, {
@@ -1482,6 +1483,140 @@ describe("internal agent runtime API with PostgreSQL", () => {
       releaseSettingsFence();
       await secondClient.$disconnect();
     }
+  });
+
+  it("fail-closes an expired rollout before internal effects or later post-lease mutations", async () => {
+    const fixture = await createFixture();
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential, "runtime:write");
+    const workerId = "expired-rollout-effect-fence";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "UPDATE_BELIEF",
+            safeReason: "Expired rollout must block this internal belief mutation.",
+            input: {
+              topicKey: "expired-rollout-boundary",
+              statement: "Bu belief İstanbul tarih sınırından sonra yazılmamalıdır.",
+              confidence: 0.8,
+              summary: "Controlled expiry fixture provides visible platform evidence.",
+            },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Controlled integration run is visible platform evidence.",
+            },
+          },
+        ],
+      }),
+    );
+    const attemptId = randomUUID();
+    await integrationDatabase.agentRuntimeEvent.create({
+      data: {
+        eventType: "runtime.production.rollout_attempt.started",
+        safeMessage: "Expired rollout integration fixture.",
+        metadata: { attemptId, localDate: "2000-01-01" },
+      },
+    });
+
+    const planningStateBefore = await Promise.all([
+      integrationDatabase.agentDailyPlan.count(),
+      integrationDatabase.agentScheduleSlot.count(),
+      integrationDatabase.agentCapacitySnapshot.count(),
+      integrationDatabase.agentRuntimeEvent.count({
+        where: {
+          eventType: { in: ["schedule.generated", "capacity.planning_blocked"] },
+        },
+      }),
+    ]);
+    await expect(
+      generateRuntimeDailyPlans(
+        integrationDatabase,
+        writePrincipal,
+        { workerId: "expired-rollout-planner" },
+        new Date(),
+      ),
+    ).resolves.toMatchObject({
+      rolloutExpired: true,
+      errorCode: "ROLLOUT_LOCAL_DATE_EXPIRED",
+      attemptId,
+    });
+    await expect(
+      Promise.all([
+        integrationDatabase.agentDailyPlan.count(),
+        integrationDatabase.agentScheduleSlot.count(),
+        integrationDatabase.agentCapacitySnapshot.count(),
+        integrationDatabase.agentRuntimeEvent.count({
+          where: {
+            eventType: { in: ["schedule.generated", "capacity.planning_blocked"] },
+          },
+        }),
+      ]),
+    ).resolves.toEqual(planningStateBefore);
+
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+        workerId,
+        sequence: 1,
+      }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "ROLLOUT_LOCAL_DATE_EXPIRED",
+    });
+    await expect(
+      integrationDatabase.agentBelief.count({
+        where: {
+          agentProfileId: fixture.created.agent.profile.id,
+          topicKey: "expired-rollout-boundary",
+        },
+      }),
+    ).resolves.toBe(0);
+
+    await expect(
+      recordRuntimeActions(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        runtimeActionsSchema.parse({
+          workerId,
+          actions: [
+            {
+              sequence: 2,
+              actionType: "NO_ACTION",
+              safeReason: "No later proposal may cross the expired rollout boundary.",
+              input: {},
+            },
+          ],
+        }),
+      ),
+    ).resolves.toMatchObject({
+      rolloutExpired: true,
+      errorCode: "ROLLOUT_LOCAL_DATE_EXPIRED",
+      attemptId,
+    });
+    await expect(integrationDatabase.agentAction.count({ where: { runId } })).resolves.toBe(1);
+    await expect(
+      integrationDatabase.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } }),
+    ).resolves.toMatchObject({ runtimeEnabled: false });
+    await expect(
+      integrationDatabase.agentRuntimeEvent.count({
+        where: {
+          eventType: "runtime.global.paused",
+          metadata: { path: ["attemptId"], equals: attemptId },
+        },
+      }),
+    ).resolves.toBe(1);
   });
 
   it("serializes lifecycle pause behind an in-flight action and rejects every later action", async () => {
@@ -2417,7 +2552,10 @@ describe("internal agent runtime API with PostgreSQL", () => {
       ),
     );
     const leased = attempts.flatMap(({ run }) => (run ? [run] : []));
-    expect(leased).toHaveLength(2);
+    expect(
+      leased,
+      JSON.stringify(attempts.map(({ run, reason }) => ({ leased: run !== null, reason }))),
+    ).toHaveLength(2);
     expect(new Set(leased.map(({ agentProfileId }) => agentProfileId)).size).toBe(2);
     expect(attempts.filter(({ reason }) => reason === "CAPACITY_FULL")).toHaveLength(1);
     expect(

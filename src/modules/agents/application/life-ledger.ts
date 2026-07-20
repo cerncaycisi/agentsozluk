@@ -4,6 +4,8 @@ import { AppError } from "@/lib/http/errors";
 import { constantTimeEqual } from "@/lib/security/crypto";
 import { requireAgentAdminInTransaction } from "@/modules/agents/application/authorization";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
+import { guardProductionRolloutRuntimeMutation } from "@/modules/agents/application/rollout-guard";
+import { lockAgentSettings } from "@/modules/agents/repository/control-plane";
 import {
   findRuntimeOwnedRun,
   lockRuntimeAgent,
@@ -104,13 +106,20 @@ export function recordRuntimeLifeEventBatch(
   principal: RuntimePrincipal,
   runId: string,
   input: RuntimeLifeEventBatchInput,
+  now = new Date(),
 ) {
   return inTransaction(client, async (transaction) => {
     await lockRuntimeAgent(transaction, principal.agentProfileId);
     await lockRuntimeRunForLeaseMutation(transaction, runId);
-    const now = new Date();
     const run = await findRuntimeOwnedRun(transaction, principal.agentProfileId, runId);
     assertLifeEventLease(run, input.workerId, input.leaseToken, now);
+    await lockAgentSettings(transaction);
+    const rolloutBlock = await guardProductionRolloutRuntimeMutation(
+      transaction,
+      principal.actor,
+      now,
+    );
+    if (rolloutBlock) return rolloutBlock as never;
     const batchId = lifeBatchId(principal.agentProfileId, runId, input);
     const replay = await findAgentLifeBatchRecords(transaction, batchId);
     if (replay.length > 0)

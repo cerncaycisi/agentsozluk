@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   productionActivationCatchUpFrozen,
+  productionRolloutAttemptDateMatches,
   publicRuntimeActionTypes,
   runtimeActionBlockedByPublicWriteControl,
   runtimeRunAllowedInOperatingMode,
@@ -9,7 +10,7 @@ import {
 } from "@/modules/agents/domain/runtime-controls";
 
 describe("global agent runtime controls", () => {
-  it("freezes catch-up only on and after the first activation within its Istanbul day", () => {
+  it("freezes catch-up only on and after the rollout-attempt activation within its Istanbul day", () => {
     const activationStartedAt = new Date("2026-07-18T20:30:00.000Z"); // 23:30 Istanbul
 
     expect(
@@ -34,6 +35,27 @@ describe("global agent runtime controls", () => {
       productionActivationCatchUpFrozen({
         activationStartedAt: null,
         now: new Date("2026-07-18T20:59:59.999Z"),
+      }),
+    ).toBe(false);
+  });
+
+  it("treats an active rollout crossing Istanbul midnight as expired", () => {
+    expect(
+      productionRolloutAttemptDateMatches({
+        attemptLocalDate: "2026-07-19",
+        now: new Date("2026-07-19T20:59:59.999Z"),
+      }),
+    ).toBe(true);
+    expect(
+      productionRolloutAttemptDateMatches({
+        attemptLocalDate: "2026-07-19",
+        now: new Date("2026-07-19T21:00:00.000Z"),
+      }),
+    ).toBe(false);
+    expect(
+      productionRolloutAttemptDateMatches({
+        attemptLocalDate: "not-a-date",
+        now: new Date("2026-07-19T20:00:00.000Z"),
       }),
     ).toBe(false);
   });

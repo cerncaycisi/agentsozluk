@@ -40,6 +40,11 @@ import {
   findAgentSourceForAdmin,
   findPersonaVersion,
   getGlobalSettingsRecord,
+  getProductionRolloutAttemptStartEvent,
+  getProductionRolloutCommandEvent,
+  getProductionRolloutOperationalState,
+  getProductionRolloutTerminalEvent,
+  getAgentLifeReconstructionSnapshot,
   getQuotaProfiles,
   listAgentDashboardRecords,
   listCurrentPersonas,
@@ -69,11 +74,18 @@ import type {
   LifecycleChangeInput,
   PersonaRollbackInput,
   RuntimeControlInput,
+  ProductionRolloutCommandInput,
+  ProductionRolloutStartInput,
   UpdateAgentInput,
 } from "@/modules/agents/validation/schemas";
 import type { RuntimeCredentialRotationInput } from "@/modules/agents/validation/runtime-schemas";
 import { appendOutboxEvent } from "@/modules/outbox";
 import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
+import {
+  assertProductionRolloutMutationAllowed,
+  parseProductionRolloutAttemptMetadata,
+} from "@/modules/agents/application/rollout-guard";
+import { assertProductionRolloutCompletionEvidence } from "@/modules/agents/application/production-rollout-proof";
 
 const GLOBAL_SETTINGS_AGGREGATE_ID = "00000000-0000-4000-8000-000000000001";
 const QUOTA_SETTING_FIELDS = [
@@ -242,7 +254,7 @@ export function listRuntimeEvents(
   });
 }
 
-async function recordControlPlaneChange(
+export async function recordControlPlaneChange(
   transaction: TransactionClient,
   actor: ActorContext,
   input: {
@@ -254,7 +266,11 @@ async function recordControlPlaneChange(
       | "agent.retired"
       | "agent.persona.versioned"
       | "agent.credential_rotated"
-      | "agent.settings.changed";
+      | "agent.settings.changed"
+      | "agent.rollout_attempt.started"
+      | "agent.rollout_attempt.aborted"
+      | "agent.rollout_attempt.completed"
+      | "agent.rollout_checkpoint.recorded";
     entityType: "AgentProfile" | "AgentGlobalSettings";
     entityId: string;
     reason: string;
@@ -350,6 +366,7 @@ export async function createAgent(
   const rawCredential = `agt_${createOpaqueToken()}`;
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
+    await lockAgentSettings(transaction);
     if (await findAgentIdentityConflict(transaction, input.persona.username)) {
       throw new AppError("USERNAME_TAKEN", 409, "Bu kullanıcı adı kullanılıyor.");
     }
@@ -412,28 +429,27 @@ export async function createAgent(
       after: creationMetadata,
       metadata: creationMetadata,
     });
+    const [initialSources] = await listAgentSourcesRecord(transaction, {
+      agentProfileId: created.profile.id,
+      skip: 0,
+      take: 100,
+    });
+    const reconstructionSnapshot = await getAgentLifeReconstructionSnapshot(
+      transaction,
+      created.profile.id,
+    );
     await appendRuntimeEvent(transaction, {
       agentProfileId: created.profile.id,
       eventType: "LIFE_GENESIS_SNAPSHOT",
       subject: { type: "AGENT_PROFILE", id: created.profile.id },
       safeMessage: "Agent yaşam günlüğü başlangıç snapshot'ı oluşturuldu.",
-      after: {
-        lifecycleStatus: input.lifecycleStatus,
-        useGlobalEntryQuota: input.useGlobalEntryQuota,
-        dailyEntry: input.useGlobalEntryQuota
-          ? { min: null, max: null }
-          : { min: input.dailyEntry?.min ?? null, max: input.dailyEntry?.max ?? null },
-        dailyTopic: input.dailyTopic,
-        dailyVote: input.dailyVote,
-        activeTimeProfile: input.activeTimeProfile,
-        personaEvolutionEnabled: input.personaEvolutionEnabled,
-        sourceEvolutionEnabled: input.sourceEvolutionEnabled,
-        scheduledTimeoutSeconds: input.scheduledTimeoutSeconds,
-        manualTimeoutSeconds: input.manualTimeoutSeconds,
-        personaVersion: 1,
-        runtimeStatus: "IDLE",
+      after: reconstructionSnapshot,
+      metadata: {
+        origin: "AGENT_CREATION",
+        method: input.creation.method,
+        boundary: true,
+        reconstructionVersion: 1,
       },
-      metadata: { origin: "AGENT_CREATION", method: input.creation.method },
     });
     await appendRuntimeEvent(transaction, {
       agentProfileId: created.profile.id,
@@ -442,11 +458,6 @@ export async function createAgent(
       safeMessage: "İlk persona sürümü oluşturuldu.",
       after: { personaVersionId: created.personaVersion.id, version: 1 },
       metadata: { origin: "INITIAL" },
-    });
-    const [initialSources] = await listAgentSourcesRecord(transaction, {
-      agentProfileId: created.profile.id,
-      skip: 0,
-      take: 100,
     });
     for (const source of initialSources)
       await appendRuntimeEvent(transaction, {
@@ -602,6 +613,7 @@ export async function updateAgent(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentProfile(transaction, agentProfileId);
+    await lockAgentSettings(transaction);
     const current = await findAgentForMutation(transaction, agentProfileId);
     if (!current) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
     if (current.lifecycleStatus === "RETIRED") {
@@ -797,6 +809,7 @@ export async function rollbackPersona(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentProfile(transaction, agentProfileId);
+    await lockAgentSettings(transaction);
     const current = await findAgentForMutation(transaction, agentProfileId);
     if (!current) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
     if (!current.currentPersonaVersion) {
@@ -866,11 +879,12 @@ export async function changeAgentLifecycle(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentProfile(transaction, agentProfileId);
+    await lockAgentSettings(transaction);
     const current = await findAgentForMutation(transaction, agentProfileId);
     if (!current) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
     assertLifecycleTransition(current.lifecycleStatus, input.status);
     if (input.status === "ACTIVE") {
-      await lockAgentSettings(transaction);
+      await assertProductionRolloutMutationAllowed(transaction, now);
       const [settings, profiles] = await Promise.all([
         getGlobalSettingsRecord(transaction),
         getQuotaProfiles(transaction),
@@ -943,6 +957,12 @@ export async function updateGlobalSettings(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentSettings(transaction);
+    if ((input as Record<string, unknown>).runtimeEnabled !== undefined)
+      throw new AppError(
+        "VALIDATION_ERROR",
+        422,
+        "runtimeEnabled yalnız explicit pause/resume komutuyla değiştirilebilir.",
+      );
     const current = await getGlobalSettingsRecord(transaction, localDate);
     const changesCriticalRuntimeControl = CRITICAL_RUNTIME_SETTING_FIELD_NAMES.some(
       (field) => input[field] !== undefined,
@@ -1157,6 +1177,7 @@ export async function setGlobalRuntimeEnabled(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentSettings(transaction);
+    if (enabled) await assertProductionRolloutMutationAllowed(transaction, new Date());
     const current = await getGlobalSettingsRecord(transaction);
     const updated = await updateGlobalSettingsRecord(transaction, actor.actorId, {
       runtimeEnabled: enabled,
@@ -1185,6 +1206,282 @@ export async function setGlobalRuntimeEnabled(
     });
     return updated;
   });
+}
+
+const rolloutAttemptStartedEventType = "runtime.production.rollout_attempt.started";
+const rolloutAttemptAbortedEventType = "runtime.production.rollout_attempt.aborted";
+const rolloutAttemptCompletedEventType = "runtime.production.rollout_attempt.completed";
+
+function productionRolloutReason(reasonCode: "DAY0_START" | "DAY0_ABORT" | "DAY0_COMPLETE") {
+  return {
+    DAY0_START: "Explicit Day 0 production rollout attempt started.",
+    DAY0_ABORT: "Day 0 production rollout attempt closed fail-closed.",
+    DAY0_COMPLETE: "Day 0 production rollout completed after all mandatory evidence gates.",
+  }[reasonCode];
+}
+
+function assertFailClosedProductionRolloutState(
+  state: Awaited<ReturnType<typeof getProductionRolloutOperationalState>>,
+): void {
+  if (
+    state.settings.runtimeEnabled ||
+    state.totalProfileCount !== 10 ||
+    state.pausedProfileCount !== 10 ||
+    state.activeProfileCount !== 0 ||
+    state.nonterminalRunCount !== 0 ||
+    state.liveLeaseCount !== 0
+  )
+    throw new AppError(
+      "AGENT_LIFECYCLE_INVALID",
+      409,
+      "Rollout denemesi yalnız runtime paused, on profil PAUSED ve bütün run/lease'ler terminalken başlatılabilir.",
+      undefined,
+      undefined,
+      {
+        runtimeEnabled: state.settings.runtimeEnabled,
+        totalProfileCount: state.totalProfileCount,
+        pausedProfileCount: state.pausedProfileCount,
+        activeProfileCount: state.activeProfileCount,
+        nonterminalRunCount: state.nonterminalRunCount,
+        liveLeaseCount: state.liveLeaseCount,
+      },
+    );
+}
+
+function assertCleanProductionRolloutStart(
+  state: Awaited<ReturnType<typeof getProductionRolloutOperationalState>>,
+): void {
+  assertFailClosedProductionRolloutState(state);
+  if (
+    !state.settings.schedulerEnabled ||
+    !state.settings.publicWriteEnabled ||
+    state.settings.runtimeOperatingMode !== "NORMAL"
+  )
+    throw new AppError(
+      "AGENT_LIFECYCLE_INVALID",
+      409,
+      "Rollout denemesi scheduler açık, public write açık ve runtime NORMAL iken başlatılabilir.",
+    );
+}
+
+export async function startProductionRolloutAttempt(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  input: ProductionRolloutStartInput,
+  now?: Date,
+) {
+  return inTransaction(client, async (transaction) => {
+    await requireAgentAdminInTransaction(transaction, actor);
+    await lockAgentSettings(transaction);
+    const observedNow = now ?? new Date();
+    const commandReplay = await getProductionRolloutCommandEvent(transaction, input.commandId);
+    if (commandReplay) {
+      const metadata = parseProductionRolloutAttemptMetadata(commandReplay.metadata);
+      if (
+        commandReplay.eventType !== rolloutAttemptStartedEventType ||
+        metadata?.attemptId !== input.attemptId
+      )
+        throw new AppError(
+          "IDEMPOTENCY_CONFLICT",
+          409,
+          "Rollout commandId farklı bir immutable komut için kullanılmış.",
+        );
+      return {
+        eventId: commandReplay.id.toString(),
+        ...metadata,
+        status: "STARTED" as const,
+        replayed: true,
+      };
+    }
+    const existingStart = await getProductionRolloutAttemptStartEvent(transaction, input.attemptId);
+    if (existingStart)
+      throw new AppError(
+        "IDEMPOTENCY_CONFLICT",
+        409,
+        "Rollout attemptId zaten farklı bir commandId ile kullanılmış.",
+      );
+    const state = await getProductionRolloutOperationalState(transaction, observedNow);
+    if (state.latestEvent?.eventType === rolloutAttemptCompletedEventType)
+      throw new AppError(
+        "AGENT_LIFECYCLE_INVALID",
+        409,
+        "Tamamlanmış production rollout yeniden başlatılamaz.",
+      );
+    if (state.latestEvent?.eventType === rolloutAttemptStartedEventType)
+      throw new AppError(
+        "AGENT_LIFECYCLE_INVALID",
+        409,
+        "Başka bir production rollout denemesi halen aktif.",
+      );
+    assertCleanProductionRolloutStart(state);
+    const attemptId = input.attemptId;
+    const reason = productionRolloutReason(input.reasonCode);
+    const localDate = istanbulQuotaLocalDate(observedNow).toISOString().slice(0, 10);
+    const metadata = {
+      attemptId,
+      commandId: input.commandId,
+      localDate,
+      timeZone: "Europe/Istanbul",
+      reasonCode: input.reasonCode,
+      previousEvidencePreserved: state.firstActivation !== null || state.latestEvent !== null,
+    };
+    const event = await appendRuntimeEvent(transaction, {
+      eventType: rolloutAttemptStartedEventType,
+      safeMessage: "Kontrollü production rollout denemesi operatör tarafından başlatıldı.",
+      metadata,
+      occurredAt: observedNow,
+    });
+    await recordControlPlaneChange(transaction, actor, {
+      eventType: "agent.rollout_attempt.started",
+      entityType: "AgentGlobalSettings",
+      entityId: GLOBAL_SETTINGS_AGGREGATE_ID,
+      reason,
+      before: {
+        rolloutAttemptStatus:
+          state.latestEvent?.eventType === rolloutAttemptAbortedEventType ? "ABORTED" : null,
+      },
+      after: { rolloutAttemptStatus: "STARTED", attemptId, localDate },
+      metadata: { attemptId, localDate, runtimeEventId: event.id.toString() },
+    });
+    return {
+      eventId: event.id.toString(),
+      attemptId,
+      localDate,
+      status: "STARTED" as const,
+      replayed: false,
+    };
+  });
+}
+
+async function finishProductionRolloutAttempt(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  input: ProductionRolloutCommandInput,
+  outcome: "ABORTED" | "COMPLETED",
+  now?: Date,
+) {
+  return inTransaction(client, async (transaction) => {
+    await requireAgentAdminInTransaction(transaction, actor);
+    await lockAgentSettings(transaction);
+    const observedNow = now ?? new Date();
+    const terminalEventType =
+      outcome === "ABORTED" ? rolloutAttemptAbortedEventType : rolloutAttemptCompletedEventType;
+    const expectedReasonCode = outcome === "ABORTED" ? "DAY0_ABORT" : "DAY0_COMPLETE";
+    if (input.reasonCode !== expectedReasonCode)
+      throw new AppError(
+        "VALIDATION_ERROR",
+        422,
+        "Rollout terminal reasonCode komutla eşleşmiyor.",
+      );
+    const reason = productionRolloutReason(input.reasonCode);
+    const commandReplay = await getProductionRolloutCommandEvent(transaction, input.commandId);
+    if (commandReplay) {
+      const metadata = parseProductionRolloutAttemptMetadata(commandReplay.metadata);
+      if (commandReplay.eventType !== terminalEventType || metadata?.attemptId !== input.attemptId)
+        throw new AppError(
+          "IDEMPOTENCY_CONFLICT",
+          409,
+          "Rollout commandId farklı bir immutable komut için kullanılmış.",
+        );
+      return {
+        eventId: commandReplay.id.toString(),
+        ...metadata,
+        status: outcome,
+        replayed: true,
+      };
+    }
+    const terminal = await getProductionRolloutTerminalEvent(transaction, input.attemptId);
+    if (terminal)
+      throw new AppError(
+        "IDEMPOTENCY_CONFLICT",
+        409,
+        "Terminal rollout komutu yalnız özgün commandId ile tekrar oynatılabilir.",
+      );
+    const state = await getProductionRolloutOperationalState(transaction, observedNow);
+    if (state.latestEvent?.eventType !== rolloutAttemptStartedEventType)
+      throw new AppError("AGENT_LIFECYCLE_INVALID", 409, "Aktif production rollout denemesi yok.");
+    const startedMetadata = parseProductionRolloutAttemptMetadata(state.latestEvent.metadata);
+    if (!startedMetadata)
+      throw new AppError("INTERNAL_ERROR", 500, "Rollout attempt metadata geçersiz.");
+    if (startedMetadata.attemptId !== input.attemptId)
+      throw new AppError(
+        "AGENT_LIFECYCLE_INVALID",
+        409,
+        "Komutun attemptId değeri aktif production rollout denemesiyle eşleşmiyor.",
+      );
+    if (outcome === "ABORTED") assertFailClosedProductionRolloutState(state);
+    if (
+      outcome === "COMPLETED" &&
+      (!state.settings.runtimeEnabled ||
+        !state.settings.schedulerEnabled ||
+        !state.settings.publicWriteEnabled ||
+        state.settings.runtimeOperatingMode !== "NORMAL" ||
+        state.totalProfileCount !== 10 ||
+        state.activeProfileCount !== 10)
+    )
+      throw new AppError(
+        "AGENT_LIFECYCLE_INVALID",
+        409,
+        "Rollout yalnız runtime ve scheduler açık, on profil ACTIVE ve public write NORMAL iken tamamlanabilir.",
+      );
+    const completionEvidence =
+      outcome === "COMPLETED"
+        ? await assertProductionRolloutCompletionEvidence(transaction, {
+            attemptId: input.attemptId,
+            now: observedNow,
+          })
+        : null;
+    const metadata = {
+      ...startedMetadata,
+      commandId: input.commandId,
+      reasonCode: input.reasonCode,
+      startedEventId: state.latestEvent.id.toString(),
+      ...(completionEvidence ? { completionEvidence } : {}),
+    };
+    const event = await appendRuntimeEvent(transaction, {
+      eventType: terminalEventType,
+      safeMessage:
+        outcome === "ABORTED"
+          ? "Production rollout denemesi fail-closed kapatıldı."
+          : "Production rollout denemesi bütün zorunlu kapılar sonrası tamamlandı.",
+      metadata,
+      occurredAt: observedNow,
+    });
+    await recordControlPlaneChange(transaction, actor, {
+      eventType:
+        outcome === "ABORTED" ? "agent.rollout_attempt.aborted" : "agent.rollout_attempt.completed",
+      entityType: "AgentGlobalSettings",
+      entityId: GLOBAL_SETTINGS_AGGREGATE_ID,
+      reason,
+      before: { rolloutAttemptStatus: "STARTED", ...startedMetadata },
+      after: { rolloutAttemptStatus: outcome, ...startedMetadata },
+      metadata: { ...startedMetadata, runtimeEventId: event.id.toString() },
+    });
+    return {
+      eventId: event.id.toString(),
+      ...startedMetadata,
+      status: outcome,
+      replayed: false,
+    };
+  });
+}
+
+export function abortProductionRolloutAttempt(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  input: ProductionRolloutCommandInput,
+  now?: Date,
+) {
+  return finishProductionRolloutAttempt(client, actor, input, "ABORTED", now);
+}
+
+export function completeProductionRolloutAttempt(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  input: ProductionRolloutCommandInput,
+  now?: Date,
+) {
+  return finishProductionRolloutAttempt(client, actor, input, "COMPLETED", now);
 }
 
 export async function rotateAgentCredential(

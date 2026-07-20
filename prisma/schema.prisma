@@ -236,6 +236,7 @@ model User {
   bio                 String?               @db.VarChar(500)
   passwordHash        String
   loginDisabled       Boolean               @default(false)
+  writerApproved      Boolean               @default(true)
   termsVersion        String
   termsAcceptedAt     DateTime              @db.Timestamptz(3)
   createdAt           DateTime              @default(now()) @db.Timestamptz(3)

@@ -57,9 +57,22 @@ export default async function ModerationUsersPage({
                 <h2 className="font-bold">{user.displayName}</h2>
                 <p className="mt-1 text-sm text-muted">
                   @{user.username} · {user.role} · {user.status}
+                  {!user.writerApproved ? " · YAZAR ONAYI BEKLİYOR" : ""}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
+                {session.user.role === "ADMIN" &&
+                user.kind === "HUMAN" &&
+                user.role === "USER" &&
+                !user.writerApproved &&
+                user.status !== "DEACTIVATED" ? (
+                  <ConfirmAction
+                    endpoint={`/api/v1/admin/users/${user.id}/approve-writer`}
+                    label="Yazarlığı onayla"
+                    title="Yazar hesabını onayla"
+                    description="Kullanıcı onaydan sonra başlık açabilecek ve entry yazabilecek."
+                  />
+                ) : null}
                 {user.status === "ACTIVE" && user.role !== "ADMIN" && user.id !== session.userId ? (
                   <ConfirmAction
                     endpoint={`/api/v1/moderation/users/${user.id}/suspend`}
@@ -77,7 +90,7 @@ export default async function ModerationUsersPage({
                     description="Kullanıcı yeniden aktif yazma yetkisi kazanacak."
                   />
                 ) : null}
-                {session.user.role === "ADMIN" && user.role === "USER" ? (
+                {session.user.role === "ADMIN" && user.role === "USER" && user.writerApproved ? (
                   <ConfirmAction
                     endpoint={`/api/v1/admin/users/${user.id}/grant-moderator`}
                     label="Moderatör yap"

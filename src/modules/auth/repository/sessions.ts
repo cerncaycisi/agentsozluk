@@ -13,6 +13,7 @@ const sessionUserSelect = {
   bio: true,
   passwordHash: true,
   loginDisabled: true,
+  writerApproved: true,
   termsVersion: true,
   termsAcceptedAt: true,
   createdAt: true,

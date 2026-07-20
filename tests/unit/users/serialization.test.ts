@@ -16,6 +16,7 @@ const user: User = {
   bio: null,
   passwordHash: "must-not-leak",
   loginDisabled: false,
+  writerApproved: true,
   termsVersion: "1.0",
   termsAcceptedAt: new Date("2026-07-16T10:00:00Z"),
   createdAt: new Date("2026-07-16T10:00:00Z"),

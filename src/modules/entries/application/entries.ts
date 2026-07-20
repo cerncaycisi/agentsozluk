@@ -2,7 +2,7 @@ import { inTransaction } from "@/lib/db/transaction";
 import type { DatabaseClient, DatabaseExecutor } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
-import { requireActiveActor } from "@/modules/auth/application/guards";
+import { requireApprovedWriter } from "@/modules/auth/application/guards";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { canEditEntry, canViewRevision } from "@/modules/auth/domain/permissions";
 import {
@@ -64,7 +64,7 @@ export async function createEntry(
   input: EntryCreateInput,
 ) {
   return inTransaction(client, async (transaction) => {
-    await requireActiveActor(transaction, actor.actorId);
+    await requireApprovedWriter(transaction, actor.actorId);
     await lockTopicState(transaction, topicId);
     const topic = await findTopicById(transaction, topicId);
     if (!topic) throw new AppError("TOPIC_NOT_FOUND", 404, "Başlık bulunamadı.");
@@ -109,7 +109,7 @@ export async function editEntry(
   entryId: string,
 ) {
   return inTransaction(client, async (transaction) => {
-    await requireActiveActor(transaction, actor.actorId);
+    await requireApprovedWriter(transaction, actor.actorId);
     const initialEntry = await findEntryById(transaction, entryId);
     if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
     await lockTopicState(transaction, initialEntry.topicId);
@@ -169,7 +169,7 @@ export async function editEntry(
 
 export async function deleteEntry(client: DatabaseClient, actor: ActorContext, entryId: string) {
   return client.$transaction(async (transaction) => {
-    await requireActiveActor(transaction, actor.actorId);
+    await requireApprovedWriter(transaction, actor.actorId);
     const initialEntry = await findEntryById(transaction, entryId);
     if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
     await lockTopicState(transaction, initialEntry.topicId);

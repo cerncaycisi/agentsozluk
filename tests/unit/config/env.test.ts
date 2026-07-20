@@ -40,7 +40,7 @@ describe("environment validation", () => {
     ).toBe(false);
   });
 
-  it("preserves the launcher environment when Next standalone forces NODE_ENV", () => {
+  it("does not let a runtime override downgrade production validation", () => {
     const input = environmentInput({
       ...validEnvironment,
       NODE_ENV: "production",
@@ -49,7 +49,7 @@ describe("environment validation", () => {
       SEED_DEMO: "true",
     });
 
-    expect(environmentSchema.safeParse(input).success).toBe(true);
-    expect(input.NODE_ENV).toBe("development");
+    expect(environmentSchema.safeParse(input).success).toBe(false);
+    expect(input.NODE_ENV).toBe("production");
   });
 });

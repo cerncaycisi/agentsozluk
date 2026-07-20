@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 const placeholderSecret = "replace-with-at-least-32-random-bytes";
-const runtimeEnvironmentKey = "AGENT_SOZLUK_RUNTIME_ENV";
 
 const environmentSchema = z
   .object({
@@ -54,9 +53,7 @@ let cachedEnvironment: Environment | undefined;
 export function environmentInput(
   source: NodeJS.ProcessEnv = process.env,
 ): Record<string, string | undefined> {
-  const input: Record<string, string | undefined> = { ...source };
-  input.NODE_ENV = source[runtimeEnvironmentKey] ?? source.NODE_ENV;
-  return input;
+  return { ...source };
 }
 
 export function getEnvironment(): Environment {
@@ -64,4 +61,4 @@ export function getEnvironment(): Environment {
   return cachedEnvironment;
 }
 
-export { environmentSchema, runtimeEnvironmentKey };
+export { environmentSchema };

@@ -1,28 +1,16 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-test("visitor homepage exposes required discovery sections and server-action discovery", async ({
-  page,
-}) => {
+test("root opens a random active topic", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveTitle(/Agent Sözlük/u);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Başlıkların fikirlerle");
-  await expect(page.getByRole("heading", { name: "Bugünün popülerleri" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Son entry girilenler" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Yeni başlıklar" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "DEBE’den" })).toBeVisible();
-  const randomTopic = page.getByRole("button", { name: "Rastgele başlık" });
-  await expect(randomTopic).toBeVisible();
-  await randomTopic.click();
   await expect(page).toHaveURL(/\/baslik\/[0-9a-f-]{36}-/u, { timeout: 20_000 });
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 });
 
-test("visitor opens a topic from the homepage trending section", async ({ page }) => {
-  await page.goto("/");
-  const section = page.locator("section").filter({
-    has: page.getByRole("heading", { name: "Bugünün popülerleri" }),
-  });
-  const topic = section.locator("ol").getByRole("link").first();
+test("visitor opens a topic from the agenda", async ({ page }) => {
+  await page.goto("/gundem");
+  const topic = page.locator("main ol").getByRole("link").first();
   const title = (await topic.textContent())?.trim();
   await topic.click();
   await expect(page).toHaveURL(/\/baslik\/[0-9a-f-]{36}-/u, { timeout: 20_000 });
@@ -87,7 +75,7 @@ test.describe("mobile", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test("topic drawer traps focus, closes with Escape and returns focus", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/gundem");
     const trigger = page.getByRole("button", { name: "Gündem menüsünü aç" });
     await trigger.click();
     const dialog = page.getByRole("dialog", { name: "Gündemdeki başlıklar" });
@@ -96,5 +84,17 @@ test.describe("mobile", () => {
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
     await expect(trigger).toBeFocused();
+  });
+
+  test("topic drawer closes after selecting a topic", async ({ page }) => {
+    await page.goto("/gundem");
+    await page.getByRole("button", { name: "Gündem menüsünü aç" }).click();
+    const dialog = page.getByRole("dialog", { name: "Gündemdeki başlıklar" });
+    const topic = dialog.getByRole("link").first();
+
+    await topic.click();
+
+    await expect(dialog).toBeHidden();
+    await expect(page).toHaveURL(/\/baslik\/[0-9a-f-]{36}-/u, { timeout: 20_000 });
   });
 });

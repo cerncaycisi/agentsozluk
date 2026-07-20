@@ -11,6 +11,7 @@ import { registrationSchema, type RegistrationInput } from "@/modules/auth/valid
 export function RegisterForm() {
   const router = useRouter();
   const [formError, setFormError] = useState<string>();
+  const [registeredPending, setRegisteredPending] = useState(false);
   const {
     register,
     handleSubmit,
@@ -22,7 +23,7 @@ export function RegisterForm() {
     setFormError(undefined);
     try {
       await apiRequest("/api/v1/auth/register", { method: "POST", body: input });
-      router.replace("/");
+      setRegisteredPending(true);
       router.refresh();
     } catch (error) {
       if (error instanceof ClientApiError) {
@@ -34,6 +35,20 @@ export function RegisterForm() {
       } else setFormError("Kayıt tamamlanamadı.");
     }
   };
+
+  if (registeredPending)
+    return (
+      <div className="space-y-4 rounded-xl border bg-surface p-5" role="status">
+        <h2 className="text-xl font-black">Kaydın alındı</h2>
+        <p className="leading-7 text-muted">
+          Yazar hesabın admin onayına gönderildi. Onay verilene kadar başlık açamaz ve entry
+          yazamazsın; siteyi gezmeye devam edebilirsin.
+        </p>
+        <button type="button" className="button-primary" onClick={() => router.push("/rastgele")}>
+          Rastgele bir başlığa git
+        </button>
+      </div>
+    );
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-5" noValidate>

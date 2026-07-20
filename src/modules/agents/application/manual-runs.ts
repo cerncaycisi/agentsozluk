@@ -20,6 +20,7 @@ import {
   findAgentForMutation,
   getGlobalSettingsRecord,
   lockAgentProfile,
+  lockAgentSettings,
 } from "@/modules/agents/repository/control-plane";
 import {
   cancelAgentRunRecord,
@@ -213,6 +214,7 @@ export function createManualAgentRun(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentProfile(transaction, agentProfileId);
+    await lockAgentSettings(transaction);
     const [agent, settings] = await Promise.all([
       findAgentForMutation(transaction, agentProfileId),
       getGlobalSettingsRecord(transaction),
@@ -572,6 +574,7 @@ export function createBulkAgentRuns(
       );
     const profileIds = initialAgents.map(({ id }) => id).sort();
     for (const profileId of profileIds) await lockAgentProfile(transaction, profileId);
+    await lockAgentSettings(transaction);
     await dependencies.afterProfilesLocked?.();
     const [agents, settings] = await Promise.all([
       listBulkRunAgents(transaction, profileIds),
@@ -899,6 +902,7 @@ export function cancelAgentRun(
     if (!snapshot) throw new AppError("AGENT_RUN_NOT_FOUND", 404, "Agent run bulunamadı.");
     await lockAgentProfile(transaction, snapshot.agentProfileId);
     await lockRuntimeRunForLeaseMutation(transaction, runId);
+    await lockAgentSettings(transaction);
     const run = await findAgentRunForCommand(transaction, runId);
     if (!run) throw new AppError("AGENT_RUN_NOT_FOUND", 404, "Agent run bulunamadı.");
     if (!["QUEUED", "RUNNING"].includes(run.runStatus))
@@ -941,6 +945,7 @@ export function retryAgentRun(
     if (!snapshot) throw new AppError("AGENT_RUN_NOT_FOUND", 404, "Agent run bulunamadı.");
     await lockAgentProfile(transaction, snapshot.agentProfileId);
     await lockRuntimeRunForLeaseMutation(transaction, runId);
+    await lockAgentSettings(transaction);
     const run = await findAgentRunForCommand(transaction, runId);
     if (!run) throw new AppError("AGENT_RUN_NOT_FOUND", 404, "Agent run bulunamadı.");
     if (!["FAILED", "TIMED_OUT", "CANCELLED", "PARTIAL"].includes(run.runStatus))

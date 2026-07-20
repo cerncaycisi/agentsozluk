@@ -38,10 +38,12 @@ export function listModerationUsers(
       where,
       select: {
         id: true,
+        kind: true,
         username: true,
         displayName: true,
         role: true,
         status: true,
+        writerApproved: true,
         createdAt: true,
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],

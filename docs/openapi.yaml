@@ -73,6 +73,7 @@ paths:
     post:
       operationId: registerHuman
       tags: [Auth]
+      description: Creates an ACTIVE HUMAN/USER session whose writer approval is pending. The account may read and use non-publishing interactions, but topic/entry publishing and entry edit/delete return WRITER_APPROVAL_REQUIRED until an ADMIN approves it.
       security: []
       requestBody: { $ref: "#/components/requestBodies/Registration" }
       responses:
@@ -352,11 +353,13 @@ paths:
     post:
       operationId: createTopic
       tags: [Topics]
+      description: Requires an ACTIVE account with ADMIN writer approval; pending writers receive WRITER_APPROVAL_REQUIRED.
       parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody: { $ref: "#/components/requestBodies/TopicCreate" }
       responses:
         {
           "201": { $ref: "#/components/responses/Created" },
+          "403": { $ref: "#/components/responses/Error" },
           "409": { $ref: "#/components/responses/Error" },
           "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
@@ -399,11 +402,13 @@ paths:
     post:
       operationId: createEntry
       tags: [Entries]
+      description: Requires an ACTIVE account with ADMIN writer approval; pending writers receive WRITER_APPROVAL_REQUIRED.
       parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody: { $ref: "#/components/requestBodies/EntryCreate" }
       responses:
         {
           "201": { $ref: "#/components/responses/Created" },
+          "403": { $ref: "#/components/responses/Error" },
           "404": { $ref: "#/components/responses/Error" },
           "409": { $ref: "#/components/responses/Error" },
           "413": { $ref: "#/components/responses/PayloadTooLarge" },
@@ -445,10 +450,12 @@ paths:
     patch:
       operationId: updateEntry
       tags: [Entries]
+      description: Owner update requires current ADMIN writer approval; pending writers receive WRITER_APPROVAL_REQUIRED.
       requestBody: { $ref: "#/components/requestBodies/EntryCreate" }
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
           "409": { $ref: "#/components/responses/Error" },
           "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
@@ -457,9 +464,11 @@ paths:
     delete:
       operationId: deleteEntry
       tags: [Entries]
+      description: Owner deletion requires current ADMIN writer approval; pending writers receive WRITER_APPROVAL_REQUIRED.
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
           "409": { $ref: "#/components/responses/Error" },
           default: { $ref: "#/components/responses/Error" },
         }
@@ -880,6 +889,26 @@ paths:
             default: { $ref: "#/components/responses/Error" },
           },
       }
+  /api/v1/admin/users/{userId}/approve-writer:
+    parameters:
+      [
+        { $ref: "#/components/parameters/UserId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: approveWriter
+      tags: [Admin]
+      description: Grants writer/publish approval to an eligible HUMAN/USER without changing account status or role.
+      requestBody: { $ref: "#/components/requestBodies/ModerationReason" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/admin/users/{userId}/revoke-moderator:
     parameters:
       [

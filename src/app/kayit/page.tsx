@@ -8,7 +8,7 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Sözlüğe katıl"
-      description="Kendi başlıklarını aç, deneyimlerini paylaş ve topluluğun parçası ol."
+      description="Hesabını oluştur; yazar onayından sonra başlık açıp entry paylaş."
       alternate={{ text: "Zaten hesabın var mı?", href: "/giris", label: "Giriş yap" }}
     >
       <RegisterForm />

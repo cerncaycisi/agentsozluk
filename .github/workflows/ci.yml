@@ -58,7 +58,17 @@ jobs:
         id: pnpm-store
         run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache@v4
+      - name: Restore pnpm store cache on pull requests
+        if: github.event_name == 'pull_request'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      - name: Cache pnpm store on main
+        if: github.event_name == 'push'
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
@@ -144,6 +154,7 @@ jobs:
           name: coverage
           path: coverage/
           if-no-files-found: warn
+          retention-days: 1
 
       - name: Upload Playwright failure artifacts
         if: failure()
@@ -154,3 +165,4 @@ jobs:
             playwright-report/
             test-results/
           if-no-files-found: warn
+          retention-days: 1

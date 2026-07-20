@@ -1,24 +1,23 @@
 import { z } from "zod";
-
-const reasonSchema = z.string().trim().min(10).max(1000);
+import { operatorReasonSchema } from "@/modules/agents/validation/schemas";
 
 export const invalidateAgentMemorySchema = z
   .object({
-    reason: reasonSchema,
+    reason: operatorReasonSchema,
     confirmation: z.literal("INVALIDATE_AGENT_MEMORY"),
   })
   .strict();
 
 export const forgetAgentMemorySchema = z
   .object({
-    reason: reasonSchema,
+    reason: operatorReasonSchema,
     confirmation: z.literal("FORGET_AGENT_MEMORY"),
   })
   .strict();
 
 export const reconsolidateAgentMemorySchema = z
   .object({
-    reason: reasonSchema,
+    reason: operatorReasonSchema,
     confirmation: z.literal("RECONSOLIDATE_AGENT_MEMORY"),
   })
   .strict();

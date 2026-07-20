@@ -19,7 +19,7 @@ export const publicRuntimeActionTypes = [
 const publicRuntimeActions = new Set<string>(publicRuntimeActionTypes);
 const maintenanceRuntimeRunTypes = new Set(["REFLECTION", "SOURCE_REFRESH"]);
 
-function istanbulCalendarDateKey(value: Date): string {
+export function istanbulCalendarDateKey(value: Date): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Europe/Istanbul",
     year: "numeric",
@@ -31,7 +31,16 @@ function istanbulCalendarDateKey(value: Date): string {
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
-/** Catch-up stays frozen for the activation anchor's Istanbul calendar day only. */
+export function productionRolloutAttemptDateMatches(input: {
+  attemptLocalDate: string;
+  now: Date;
+}): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/u.test(input.attemptLocalDate)
+    ? istanbulCalendarDateKey(input.now) === input.attemptLocalDate
+    : false;
+}
+
+/** Catch-up stays frozen for the current rollout attempt's Istanbul calendar day only. */
 export function productionActivationCatchUpFrozen(input: {
   activationStartedAt: Date | null;
   now: Date;

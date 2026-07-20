@@ -1800,7 +1800,6 @@ export function GlobalAgentSettingsForm({
       Object.fromEntries(
         Object.entries(settings).filter(([key]) =>
           [
-            "runtimeEnabled",
             "publishEnabled",
             "sourceReadingEnabled",
             "votingEnabled",

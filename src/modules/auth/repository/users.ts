@@ -13,6 +13,7 @@ const authUserSelect = {
   bio: true,
   passwordHash: true,
   loginDisabled: true,
+  writerApproved: true,
   termsVersion: true,
   termsAcceptedAt: true,
   createdAt: true,
@@ -110,7 +111,7 @@ export async function findActiveUserForWrite(transaction: Prisma.TransactionClie
   await lockUserStateForMutation(transaction, id);
   return transaction.user.findUnique({
     where: { id },
-    select: { id: true, status: true },
+    select: { id: true, status: true, writerApproved: true },
   });
 }
 
@@ -142,6 +143,7 @@ export function createHumanUser(
       kind: "HUMAN",
       role: "USER",
       status: "ACTIVE",
+      writerApproved: false,
       ...input,
       usernameNormalized: input.username,
     },

@@ -4,6 +4,52 @@ import { circuitBreakerConfigSchema } from "@/modules/agents/domain/circuit-brea
 import { runtimeOperatingModes } from "@/modules/agents/domain/runtime-controls";
 import { seedPersonaSchema } from "@/modules/agents/personas/schema";
 
+const operatorReasonControlCharacter = /[\u0000-\u001f\u007f-\u009f]/u;
+const operatorReasonUrl = /\b[a-z][a-z0-9+.-]{1,31}:\/\/[^\s<>"']+|\bwww\.[^\s<>"']+/iu;
+const operatorReasonEmail = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/iu;
+const operatorReasonHtmlElement = /<\/?[a-z][^>]*>/iu;
+const operatorReasonOtp = /\b\d{6}\b/u;
+const operatorReasonOpaqueToken = /[A-Za-z0-9_-]{24,}/gu;
+const operatorReasonCredentialPatterns = [
+  /\b(?:Bearer|Basic)\s+\S+/iu,
+  /\b(?:(?:AKIA|ASIA)[A-Z0-9]{16}|sk-[A-Za-z0-9_-]{8,}|agt_[A-Za-z0-9_-]{8,}|github_pat_[A-Za-z0-9_]{8,}|gh[pousr]_[A-Za-z0-9]{8,}|glpat-[A-Za-z0-9_-]{8,}|xox[baprs]-[A-Za-z0-9-]{8,})\b/iu,
+  /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/u,
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----/iu,
+  /(?:^|[^a-z0-9])["']?(?:api[\s_-]?key|access[\s_-]?key(?:[\s_-]?id)?|access[\s_-]?token|refresh[\s_-]?token|client[\s_-]?secret|private[\s_-]?key|secret[\s_-]?(?:access[\s_-]?)?key|signing[\s_-]?key|jwt[\s_-]?secret|password(?:[\s_-]?hash)?|passwd|pwd|secret|token(?:[\s_-]?hash)?|credential|authorization|x[\s_-]?amz[\s_-]?signature|x[\s_-]?goog[\s_-]?signature|signature|sig|key)["']?\s*[:=]\s*[^\s,;]+/iu,
+  /(?:^|[?&])(?:token|key|api[_-]?key|sig|signature|credential|x-amz-[^=&#\s]+|x-goog-[^=&#\s]+)=[^&#\s]+/iu,
+] as const;
+
+export const operatorReasonSchema = z
+  .string()
+  .refine((value) => !operatorReasonControlCharacter.test(value), {
+    message: "Operator gerekçesi kontrol karakteri veya satır sonu içeremez.",
+  })
+  .refine((value) => !operatorReasonUrl.test(value), {
+    message: "Operator gerekçesi URL içeremez.",
+  })
+  .refine((value) => !operatorReasonEmail.test(value), {
+    message: "Operator gerekçesi e-posta adresi içeremez.",
+  })
+  .refine((value) => !operatorReasonHtmlElement.test(value), {
+    message: "Operator gerekçesi HTML içeremez.",
+  })
+  .refine((value) => !operatorReasonCredentialPatterns.some((pattern) => pattern.test(value)), {
+    message: "Operator gerekçesi credential, token, anahtar veya imza içeremez.",
+  })
+  .refine((value) => !operatorReasonOtp.test(value), {
+    message: "Operator gerekçesi altı haneli doğrulama kodu içeremez.",
+  })
+  .refine(
+    (value) =>
+      ![...value.matchAll(operatorReasonOpaqueToken)].some(
+        ({ 0: token }) => /[a-z]/u.test(token) && /[A-Z]/u.test(token) && /\d/u.test(token),
+      ),
+    { message: "Operator gerekçesi yüksek entropili opaque değer içeremez." },
+  )
+  .trim()
+  .min(10)
+  .max(1000);
+
 const boundedRange = (minimum: number, maximum: number) =>
   z
     .object({
@@ -72,7 +118,7 @@ export const updateAgentSchema = z
     displayName: displayNameSchema.optional(),
     publicBio: z.string().trim().min(20).max(500).optional(),
     persona: seedPersonaSchema.optional(),
-    changeSummary: z.string().trim().min(10).max(1000).optional(),
+    changeSummary: operatorReasonSchema.optional(),
     useGlobalEntryQuota: z.boolean().optional(),
     dailyEntry: boundedRange(0, 100).nullable().optional(),
     dailyTopic: boundedRange(0, 100).optional(),
@@ -96,12 +142,12 @@ export const updateAgentSchema = z
 
 export const lifecycleChangeSchema = z.object({
   status: z.enum(["DRAFT", "PAUSED", "ACTIVE", "SUSPENDED", "RETIRED"]),
-  reason: z.string().trim().min(10).max(1000),
+  reason: operatorReasonSchema,
 });
 
 export const personaRollbackSchema = z.object({
   version: z.number().int().positive(),
-  reason: z.string().trim().min(10).max(1000),
+  reason: operatorReasonSchema,
 });
 
 export const quotaApplyModeSchema = z.enum(["NEXT_DAY", "REGENERATE_REMAINING_TODAY"]);
@@ -118,8 +164,7 @@ export const globalSettingsUpdateSchema = z
   .object({
     quotaApplyMode: quotaApplyModeSchema.optional(),
     expectedSettingsVersion: z.number().int().positive().optional(),
-    changeReason: z.string().trim().min(10).max(1000).optional(),
-    runtimeEnabled: z.boolean().optional(),
+    changeReason: operatorReasonSchema.optional(),
     publishEnabled: z.boolean().optional(),
     publicWriteEnabled: z.boolean().optional(),
     runtimeOperatingMode: z.enum(runtimeOperatingModes).optional(),
@@ -186,8 +231,22 @@ export const globalSettingsUpdateSchema = z
     { message: "En az bir ayar gönderin." },
   );
 
-export const runtimeControlSchema = z
-  .object({ reason: z.string().trim().min(10).max(1000) })
+export const runtimeControlSchema = z.object({ reason: operatorReasonSchema }).strict();
+
+export const productionRolloutStartSchema = z
+  .object({
+    attemptId: z.string().uuid(),
+    commandId: z.string().uuid(),
+    reasonCode: z.literal("DAY0_START"),
+  })
+  .strict();
+
+export const productionRolloutCommandSchema = z
+  .object({
+    attemptId: z.string().uuid(),
+    commandId: z.string().uuid(),
+    reasonCode: z.enum(["DAY0_ABORT", "DAY0_COMPLETE"]),
+  })
   .strict();
 
 export const agentSourceStatuses = [
@@ -210,7 +269,7 @@ export const agentSourceAdminUpdateSchema = z
     interestScore: z.number().min(0).max(1).optional(),
     noveltyScore: z.number().min(0).max(1).optional(),
     usefulnessScore: z.number().min(0).max(1).optional(),
-    reason: z.string().trim().min(10).max(1000),
+    reason: operatorReasonSchema,
   })
   .strict()
   .superRefine((input, context) => {
@@ -233,4 +292,6 @@ export type LifecycleChangeInput = z.infer<typeof lifecycleChangeSchema>;
 export type PersonaRollbackInput = z.infer<typeof personaRollbackSchema>;
 export type GlobalSettingsUpdateInput = z.infer<typeof globalSettingsUpdateSchema>;
 export type RuntimeControlInput = z.infer<typeof runtimeControlSchema>;
+export type ProductionRolloutStartInput = z.infer<typeof productionRolloutStartSchema>;
+export type ProductionRolloutCommandInput = z.infer<typeof productionRolloutCommandSchema>;
 export type AgentSourceAdminUpdateInput = z.infer<typeof agentSourceAdminUpdateSchema>;

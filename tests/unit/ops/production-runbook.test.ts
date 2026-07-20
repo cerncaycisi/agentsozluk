@@ -25,6 +25,19 @@ describe("Milestone 2 production operator runbook", () => {
     expect(prose).toContain("requires a new explicit approval");
   });
 
+  it("binds the SSH fingerprint and single DNS answer to the pinned production identity", () => {
+    expect(runbook).toContain(
+      "ssh-keygen -F 46.225.20.177 -f /private/tmp/agent-sozluk-known_hosts",
+    );
+    expect(runbook).toContain("awk '$NF == \"(ED25519)\" {print $2}'");
+    expect(runbook).toContain('test "$m2_known_host_fingerprint" =');
+    expect(runbook).toContain("'SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI'");
+    expect(runbook).toContain('m2_domain_ipv4="$(dig +short A agentsozluk.com)"');
+    expect(runbook).toContain("test \"$m2_domain_ipv4\" = '46.225.20.177'");
+    expect(runbook).not.toContain("ssh-keygen -lf /private/tmp/agent-sozluk-known_hosts -E sha256");
+    expect(runbook).not.toContain("dig +short A agentsozluk.com | grep -Fx");
+  });
+
   it("defines an exact merged-SHA and clean-checkout gate", () => {
     expect(runbook).toContain("### Gate 6: exact merged revision");
     expect(runbook).toContain("git rev-parse origin/main");
@@ -185,6 +198,25 @@ describe("Milestone 2 production operator runbook", () => {
     expect(prose).toContain("Crossing midnight is fail-closed");
   });
 
+  it("preserves failed rollout evidence while anchoring a clean retry to one Istanbul date", () => {
+    expect(runbook).toContain("`runtime.production.activated`");
+    expect(runbook).toContain("`runtime.production.rollout_attempt.started`");
+    expect(prose).toContain("A failed attempt is never deleted or relabelled");
+    expect(prose).toContain("zero nonterminal runs");
+    expect(prose).toContain("exactly ten `PAUSED` profiles");
+    expect(prose).toContain("zero live leases");
+    expect(runbook).toContain("startProductionRolloutAttempt");
+    expect(runbook).toContain("abortProductionRolloutAttempt");
+    expect(runbook).toContain("completeProductionRolloutAttempt");
+    expect(runbook).toContain("AGENT_ROLLOUT_ATTEMPT_ID");
+    expect(runbook).toContain("AGENT_ROLLOUT_COMMAND_ID");
+    expect(runbook).toContain("AGENT_ROLLOUT_REASON_CODE=DAY0_START");
+    expect(runbook).toContain("AGENT_ROLLOUT_EVIDENCE_FILE");
+    expect(prose).toContain("five `gate10-sample` commands");
+    expect(prose).toContain("re-runs every proof during `complete`");
+    expect(prose).toContain("current rollout-attempt anchor");
+  });
+
   it("requires an approved reboot and verified runtime, site and readiness return", () => {
     expect(prose).toContain("approved host reboot and return proof are mandatory final evidence");
     expect(prose).toContain(
@@ -193,11 +225,14 @@ describe("Milestone 2 production operator runbook", () => {
     expect(runbook).toContain("cat /proc/sys/kernel/random/boot_id");
     expect(runbook).toContain("sudo systemctl reboot");
     expect(runbook).toContain("systemctl is-active agent-sozluk-runtime.service");
-    expect(runbook).toContain("scripts/agent-runtime-worker.ts");
+    expect(runbook).toContain("tsx/dist/preflight.*scripts/agent-runtime-worker.ts$");
     expect(runbook).toContain("http://127.0.0.1:3000/api/");
     expect(prose).toContain(
       "A reboot that does not return the singleton runtime, site or readiness blocks Day 0",
     );
+    expect(prose).toContain("byte-for-byte equality with the post-reboot result");
+    expect(runbook).toContain("broken_links");
+    expect(runbook).toContain("chain_fingerprint");
   });
 
   it("keeps the evidence record non-secret and complete", () => {

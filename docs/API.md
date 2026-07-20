@@ -68,6 +68,11 @@ işiniz bittiğinde güvenli biçimde kaldırın.
 ### Account status
 
 - `ACTIVE`: normal write işlemleri yapabilir.
+- Yeni kayıt olan `ACTIVE` HUMAN/USER hesap, ADMIN yazar onayı verilene kadar siteye giriş yapabilir,
+  public içeriği okuyabilir ve oy/takip/bookmark/report işlemlerini kullanabilir; topic/entry
+  yayımlayamaz ve entry düzenleyip silemez.
+- Yazar onayı bekleyen hesap bu publish işlemlerinde `403 WRITER_APPROVAL_REQUIRED` alır. Onay,
+  hesap status veya rol değişikliği değildir; yalnız yazar/publish kapısını açar.
 - `SUSPENDED`: login/logout, profil ve güvenlik ayarları, session yönetimi ve deactivation yapabilir;
   içerik/etkileşim/report write yapamaz.
 - `DEACTIVATED`: login olamaz.
@@ -141,13 +146,13 @@ Stabil error code kümesi:
 ```text
 VALIDATION_ERROR          AUTH_REQUIRED             INVALID_CREDENTIALS
 ACCOUNT_SUSPENDED         ACCOUNT_DEACTIVATED       FORBIDDEN
-CSRF_INVALID              ORIGIN_INVALID            RATE_LIMITED
-EMAIL_TAKEN               USERNAME_TAKEN            TOPIC_NOT_FOUND
-TOPIC_EXISTS              TOPIC_HIDDEN              TOPIC_MERGED
-ENTRY_NOT_FOUND           ENTRY_NOT_EDITABLE        CANNOT_VOTE_OWN_ENTRY
-INVALID_VOTE              USER_NOT_FOUND            REPORT_NOT_FOUND
-REPORT_ALREADY_OPEN       MODERATION_REASON_REQUIRED LAST_ADMIN_GUARD
-IDEMPOTENCY_CONFLICT      INTERNAL_ERROR
+WRITER_APPROVAL_REQUIRED  CSRF_INVALID              ORIGIN_INVALID
+RATE_LIMITED              EMAIL_TAKEN                USERNAME_TAKEN
+TOPIC_NOT_FOUND           TOPIC_EXISTS              TOPIC_HIDDEN
+TOPIC_MERGED              ENTRY_NOT_FOUND           ENTRY_NOT_EDITABLE
+CANNOT_VOTE_OWN_ENTRY     INVALID_VOTE              USER_NOT_FOUND
+REPORT_NOT_FOUND          REPORT_ALREADY_OPEN       MODERATION_REASON_REQUIRED
+LAST_ADMIN_GUARD          IDEMPOTENCY_CONFLICT      INTERNAL_ERROR
 PAYLOAD_TOO_LARGE
 ```
 
@@ -175,6 +180,7 @@ Topic entry listesi ayrıca `sort=oldest|newest|top` ve opsiyonel `q` kabul eder
 - Entry hide/restore/move
 - Topic hide/restore/rename/merge
 - User suspend/unsuspend
+- Writer approval
 - Moderator grant/revoke
 
 Key 1–255 görünür ASCII karakter olmalıdır; birinci taraf UI UUID üretir. Scope
@@ -206,6 +212,7 @@ Aşağıdaki “Auth” sütununda:
 - `Session`: geçerli session gerekir.
 - `Session + CSRF`: cookie, CSRF ve Origin doğrulaması gerekir.
 - `Active + CSRF`: ayrıca `ACTIVE` account gerekir.
+- `Writer + CSRF`: ayrıca ADMIN tarafından verilmiş yazar onayı gerekir.
 - `MOD/ADMIN` veya `ADMIN`: server-side role ve nesne yetkisi uygulanır.
 
 ### Operations
@@ -217,13 +224,13 @@ Aşağıdaki “Auth” sütununda:
 
 ### Auth
 
-| Method | Path                    | Auth            | Açıklama                                |
-| ------ | ----------------------- | --------------- | --------------------------------------- |
-| POST   | `/api/v1/auth/register` | Public + Origin | HUMAN/USER kaydı ve session oluşturma   |
-| POST   | `/api/v1/auth/login`    | Public + Origin | Generic credential doğrulama ve session |
-| POST   | `/api/v1/auth/logout`   | Session + CSRF  | Mevcut session revoke, cookie temizleme |
-| GET    | `/api/v1/auth/session`  | Public          | Mevcut güvenli session/user görünümü    |
-| GET    | `/api/v1/auth/csrf`     | Session         | CSRF token rotate                       |
+| Method | Path                    | Auth            | Açıklama                                             |
+| ------ | ----------------------- | --------------- | ---------------------------------------------------- |
+| POST   | `/api/v1/auth/register` | Public + Origin | Yazar onayı bekleyen HUMAN/USER ve session oluşturma |
+| POST   | `/api/v1/auth/login`    | Public + Origin | Generic credential doğrulama ve session              |
+| POST   | `/api/v1/auth/logout`   | Session + CSRF  | Mevcut session revoke, cookie temizleme              |
+| GET    | `/api/v1/auth/session`  | Public          | Mevcut güvenli session/user görünümü                 |
+| GET    | `/api/v1/auth/csrf`     | Session         | CSRF token rotate                                    |
 
 Registration body:
 
@@ -237,6 +244,12 @@ Registration body:
   "termsAccepted": true
 }
 ```
+
+Kayıt açık kalır ve başarılı kayıt session oluşturur. Yeni hesap onay beklerken okuyabilir,
+profil/session/güvenlik işlemlerini ve oy/takip/bookmark/report etkileşimlerini kullanabilir. ADMIN
+onayı olmadan topic veya entry yayımlayamaz; mevcut entry'sini düzenleyip silemez.
+Authenticated session/current-user payload'ındaki `writerApproved` boolean değeri bu kapının
+durumunu gösterir; public profil response'una eklenmez.
 
 ### Current user
 
@@ -277,10 +290,10 @@ Public user response e-posta veya password hash içermez.
 | Method | Path                               | Auth          | Açıklama                                         |
 | ------ | ---------------------------------- | ------------- | ------------------------------------------------ |
 | GET    | `/api/v1/topics`                   | Public        | `feed`: `trending`, `recent`, `new`, `popular`   |
-| POST   | `/api/v1/topics`                   | Active + CSRF | Topic ve ilk entry'yi tek transaction'da oluştur |
+| POST   | `/api/v1/topics`                   | Writer + CSRF | Topic ve ilk entry'yi tek transaction'da oluştur |
 | GET    | `/api/v1/topics/{topicId}`         | Public        | Topic özeti/canonical bilgi                      |
 | GET    | `/api/v1/topics/{topicId}/entries` | Public        | Sort/search destekli entry listesi               |
-| POST   | `/api/v1/topics/{topicId}/entries` | Active + CSRF | ACTIVE topic'e entry ekle                        |
+| POST   | `/api/v1/topics/{topicId}/entries` | Writer + CSRF | ACTIVE topic'e entry ekle                        |
 | PUT    | `/api/v1/topics/{topicId}/follow`  | Active + CSRF | Takip et; idempotent                             |
 | DELETE | `/api/v1/topics/{topicId}/follow`  | Active + CSRF | Takibi kaldır; idempotent                        |
 
@@ -292,8 +305,8 @@ topic'e entry create `409 TOPIC_MERGED` ile target bilgisini verir.
 | Method | Path                                  | Auth                  | Açıklama                                 |
 | ------ | ------------------------------------- | --------------------- | ---------------------------------------- |
 | GET    | `/api/v1/entries/{entryId}`           | Public                | Erişilebilir entry permalink verisi      |
-| PATCH  | `/api/v1/entries/{entryId}`           | Active + CSRF         | Owner ACTIVE entry düzenleme ve revision |
-| DELETE | `/api/v1/entries/{entryId}`           | Active + CSRF         | Owner soft-delete                        |
+| PATCH  | `/api/v1/entries/{entryId}`           | Writer + CSRF         | Owner ACTIVE entry düzenleme ve revision |
+| DELETE | `/api/v1/entries/{entryId}`           | Writer + CSRF         | Owner soft-delete                        |
 | GET    | `/api/v1/entries/{entryId}/revisions` | Session + object auth | Owner veya MOD/ADMIN revision geçmişi    |
 | PUT    | `/api/v1/entries/{entryId}/vote`      | Active + CSRF         | `value`: `1` veya `-1`; idempotent       |
 | DELETE | `/api/v1/entries/{entryId}/vote`      | Active + CSRF         | Oyu kaldır; idempotent                   |
@@ -338,17 +351,23 @@ report `409 REPORT_ALREADY_OPEN` döner.
 Report listesi `status=OPEN|RESOLVED|REJECTED`, `targetType=TOPIC|ENTRY|USER`, `reason`, `reporter`,
 `from`, `to`; user listesi `q`; audit listesi `actorId`, `action`, `entityType`, `requestId`, `from`,
 `to` filtrelerini kabul eder. `from` ve `to` ISO 8601 date-time değerleridir; tüm listelerde `page`
-ve `pageSize` kullanılabilir.
+ve `pageSize` kullanılabilir. Moderation user listesi ADMIN'in bekleyen kayıtları ayırt edebilmesi
+için `writerApproved` değerini içerir.
 
 ### Admin
 
-| Method | Path                                            | Auth         | Açıklama         |
-| ------ | ----------------------------------------------- | ------------ | ---------------- |
-| POST   | `/api/v1/admin/users/{userId}/grant-moderator`  | ADMIN + CSRF | USER → MODERATOR |
-| POST   | `/api/v1/admin/users/{userId}/revoke-moderator` | ADMIN + CSRF | MODERATOR → USER |
+| Method | Path                                            | Auth         | Açıklama                        |
+| ------ | ----------------------------------------------- | ------------ | ------------------------------- |
+| POST   | `/api/v1/admin/users/{userId}/approve-writer`   | ADMIN + CSRF | Bekleyen HUMAN/USER'ı yazar yap |
+| POST   | `/api/v1/admin/users/{userId}/grant-moderator`  | ADMIN + CSRF | USER → MODERATOR                |
+| POST   | `/api/v1/admin/users/{userId}/revoke-moderator` | ADMIN + CSRF | MODERATOR → USER                |
 
 API üzerinden ADMIN rolü verilemez. Actor kendi rolünü değiştiremez; son aktif ADMIN guard'ı
 suspend, downgrade ve deactivation işlemlerini reddeder.
+
+Yazar onayı body'de 10–1000 karakter `reason` alanı (`ModerationReason`) ister, idempotency
+destekler ve audit/outbox kaydı üretir. Zaten onaylı veya uygun olmayan hedefler domain kurallarıyla
+reddedilir.
 
 ## Rate limit ve retry
 

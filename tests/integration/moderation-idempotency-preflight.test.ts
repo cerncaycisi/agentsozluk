@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { POST as approveWriter } from "@/app/api/v1/admin/users/[userId]/approve-writer/route";
 import { POST as hideTopic } from "@/app/api/v1/moderation/topics/[topicId]/hide/route";
 import { POST as suspendUser } from "@/app/api/v1/moderation/users/[userId]/suspend/route";
 import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/config/app";
@@ -113,6 +114,38 @@ async function callSuspend(
   });
 }
 
+function approveWriterRequest(
+  userId: string,
+  session: { token: string; csrfToken: string },
+  idempotencyKey: string,
+): NextRequest {
+  const origin = applicationOrigin();
+  return new NextRequest(`${origin}/api/v1/admin/users/${userId}/approve-writer`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: [
+        `${SESSION_COOKIE_NAME}=${encodeURIComponent(session.token)}`,
+        `${CSRF_COOKIE_NAME}=${encodeURIComponent(session.csrfToken)}`,
+      ].join("; "),
+      Origin: origin,
+      "X-CSRF-Token": session.csrfToken,
+      "Idempotency-Key": idempotencyKey,
+    },
+    body: JSON.stringify({ reason: "Yazar başvurusu admin tarafından doğrulandı ve onaylandı." }),
+  });
+}
+
+async function callApproveWriter(
+  userId: string,
+  session: { token: string; csrfToken: string },
+  idempotencyKey: string,
+) {
+  return approveWriter(approveWriterRequest(userId, session, idempotencyKey), {
+    params: Promise.resolve({ userId }),
+  });
+}
+
 beforeEach(async () => {
   await resetIntegrationDatabase();
 });
@@ -122,6 +155,46 @@ afterAll(async () => {
 });
 
 describe("moderation idempotency preflight", () => {
+  it("executes an idempotent admin writer approval exactly once", async () => {
+    const admin = await createUser("writer_approval_replay_admin");
+    const pendingWriter = await createUser("writer_approval_replay_target");
+    await integrationDatabase.user.update({
+      where: { id: admin.id },
+      data: { role: "ADMIN" },
+    });
+    await integrationDatabase.user.update({
+      where: { id: pendingWriter.id },
+      data: { writerApproved: false },
+    });
+    const session = await createPersistedSession(admin.id);
+    const idempotencyKey = randomUUID();
+
+    const first = await callApproveWriter(pendingWriter.id, session, idempotencyKey);
+    expect(first.status).toBe(200);
+    expect(first.headers.get("Idempotent-Replay")).toBeNull();
+    await expect(first.json()).resolves.toMatchObject({ data: { writerApproved: true } });
+
+    const replay = await callApproveWriter(pendingWriter.id, session, idempotencyKey);
+    expect(replay.status).toBe(200);
+    expect(replay.headers.get("Idempotent-Replay")).toBe("true");
+    await expect(replay.json()).resolves.toMatchObject({ data: { writerApproved: true } });
+    expect(
+      await integrationDatabase.moderationAction.count({
+        where: { targetId: pendingWriter.id, actionType: "USER_WRITER_APPROVED" },
+      }),
+    ).toBe(1);
+    expect(
+      await integrationDatabase.auditLog.count({
+        where: { entityId: pendingWriter.id, action: "user.writer_approved" },
+      }),
+    ).toBe(1);
+    expect(
+      await integrationDatabase.outboxEvent.count({
+        where: { aggregateId: pendingWriter.id, eventType: "user.writer_approved" },
+      }),
+    ).toBe(1);
+  });
+
   it("rejects a stored replay after the moderator is demoted", async () => {
     const moderator = await createUser("replay_demoted_moderator", "MODERATOR");
     const author = await createUser("replay_demoted_author");

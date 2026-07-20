@@ -1,4 +1,4 @@
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { z, type ZodType } from "zod";
 import { SESSION_COOKIE_NAME } from "@/config/app";
 import { getDatabase } from "@/lib/db/client";
@@ -13,6 +13,7 @@ import {
   authenticateRuntimeRequest,
   type RuntimePrincipal,
 } from "@/modules/agents/application/runtime-auth";
+import { isProductionRolloutRuntimeMutationBlocked } from "@/modules/agents/application/rollout-guard";
 import type { RuntimeScope } from "@/modules/agents/domain/runtime-auth";
 import {
   runtimeLeaseTokenSchema,
@@ -142,7 +143,23 @@ export function runAgentRuntimeAction<T>(
     return idempotentResponse(
       request,
       { actorId: principal.actor.actorId, route: request.nextUrl.pathname, requestBody: input },
-      async (client) => success(await action(client, principal, input), context),
+      async (client) => {
+        const result = await action(client, principal, input);
+        if (isProductionRolloutRuntimeMutationBlocked(result))
+          return NextResponse.json(
+            {
+              error: {
+                code: result.errorCode,
+                message:
+                  "Production rollout İstanbul tarihi geçti; runtime mutation fail-closed reddedildi.",
+                attemptId: result.attemptId,
+                requestId: context.requestId,
+              },
+            },
+            { status: 409, headers: { "X-Request-Id": context.requestId } },
+          );
+        return success(result, context);
+      },
       async (client) => {
         await authenticateRuntimeRequest(client, authInput);
       },

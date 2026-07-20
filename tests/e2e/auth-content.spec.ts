@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("@desktop authenticated content journey", () => {
-  test("registers, publishes, interacts and manages the account lifecycle", async ({
+  test("registers, receives admin writer approval, publishes and manages the account lifecycle", async ({
     browser,
     page,
   }) => {
@@ -29,10 +29,52 @@ test.describe("@desktop authenticated content journey", () => {
     await page.getByRole("checkbox", { name: /Topluluk kurallarını/u }).check();
     await page.getByRole("button", { name: "Hesap oluştur" }).click();
 
-    await expect(page).toHaveURL(/\/$/u, { timeout: 20_000 });
+    const registrationStatus = page.getByRole("status");
+    await expect(
+      registrationStatus.getByRole("heading", { level: 2, name: "Kaydın alındı" }),
+    ).toBeVisible({ timeout: 20_000 });
+    await expect(registrationStatus).toContainText(
+      "Yazar hesabın admin onayına gönderildi. Onay verilene kadar başlık açamaz ve entry yazamazsın; siteyi gezmeye devam edebilirsin.",
+    );
     await expect(page.getByRole("button", { name: "Hesap menüsünü aç" })).toContainText(
       displayName,
     );
+
+    await page.goto("/baslik/ac");
+    await expect(
+      page.getByText("Yazar hesabınız admin onayı bekliyor. Onaydan sonra başlık açabilirsiniz.", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Başlık", exact: true })).toHaveCount(0);
+
+    const adminContext = await browser.newContext();
+    const adminPage = await adminContext.newPage();
+    await adminPage.setExtraHTTPHeaders({ "x-forwarded-for": "203.0.113.252" });
+    await adminPage.goto("/giris");
+    await adminPage.getByLabel("E-posta").fill("admin@local.test");
+    await adminPage
+      .getByLabel("Şifre")
+      .fill(process.env.DEMO_PASSWORD ?? "change-this-demo-password");
+    await adminPage.getByRole("button", { name: "Giriş yap" }).click();
+    await expect(adminPage.getByRole("button", { name: "Hesap menüsünü aç" })).toBeVisible({
+      timeout: 20_000,
+    });
+    await adminPage.goto(`/moderasyon/kullanicilar?q=${encodeURIComponent(username)}`);
+    const userCard = adminPage.locator("article").filter({ hasText: `@${username}` });
+    await expect(userCard).toContainText("YAZAR ONAYI BEKLİYOR");
+    await userCard.getByRole("button", { name: "Yazarlığı onayla", exact: true }).click();
+    const approvalDialog = adminPage.getByRole("alertdialog");
+    await approvalDialog
+      .getByLabel("Gerekçe")
+      .fill("E2E kayıt ve yayın akışı için yeni yazar hesabı onaylanıyor.");
+    await approvalDialog.getByRole("button", { name: "Onayla" }).click();
+    await expect(approvalDialog).toBeHidden({ timeout: 20_000 });
+    await expect(userCard).not.toContainText("YAZAR ONAYI BEKLİYOR", { timeout: 20_000 });
+    await expect(
+      userCard.getByRole("button", { name: "Yazarlığı onayla", exact: true }),
+    ).toHaveCount(0);
+    await adminContext.close();
 
     await page.goto("/baslik/ac");
     await page.getByRole("textbox", { name: "Başlık", exact: true }).fill(topicTitle);

@@ -12,6 +12,6 @@ describe("server action architecture", () => {
 
     expect(action).toContain('"use server"');
     expect(action).toContain("getRandomTopic(getDatabase())");
-    expect(page).toContain("action={randomTopicAction}");
+    expect(page).toContain('redirect("/rastgele")');
   });
 });

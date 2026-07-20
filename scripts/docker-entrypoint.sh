@@ -9,5 +9,4 @@ if [ "${NODE_ENV:-production}" != "production" ] && [ "${SEED_DEMO:-false}" = "t
   ./node_modules/.bin/tsx prisma/seed/index.ts
 fi
 
-export AGENT_SOZLUK_RUNTIME_ENV="${NODE_ENV:-production}"
 exec node server.js

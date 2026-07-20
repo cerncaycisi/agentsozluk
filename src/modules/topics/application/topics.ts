@@ -2,7 +2,7 @@ import { inTransaction } from "@/lib/db/transaction";
 import type { DatabaseClient, DatabaseExecutor } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
-import { requireActiveActor } from "@/modules/auth/application/guards";
+import { requireApprovedWriter } from "@/modules/auth/application/guards";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { appendOutboxEvent } from "@/modules/outbox";
 import {
@@ -59,7 +59,7 @@ export async function createTopicWithFirstEntry(
   const normalizedTitle = normalizeTopicTitle(input.title);
   const title = input.title.normalize("NFKC").trim().replaceAll(/\s+/gu, " ");
   return inTransaction(client, async (transaction) => {
-    await requireActiveActor(transaction, actor.actorId);
+    await requireApprovedWriter(transaction, actor.actorId);
     await lockTopicTitle(transaction, normalizedTitle);
     const conflict = await findTopicConflict(transaction, normalizedTitle);
     if (conflict) throw topicExistsError(conflict);

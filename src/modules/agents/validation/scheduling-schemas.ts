@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { operatorReasonSchema } from "@/modules/agents/validation/schemas";
 
 export const dailyPlanGenerationSchema = z
   .object({
@@ -7,12 +8,12 @@ export const dailyPlanGenerationSchema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/u)
       .transform((value) => new Date(`${value}T00:00:00.000Z`))
       .optional(),
-    reason: z.string().trim().min(10).max(1000).optional(),
+    reason: operatorReasonSchema.optional(),
   })
   .strict();
 
 export const adminDailyPlanRegenerationSchema = dailyPlanGenerationSchema.extend({
-  reason: z.string().trim().min(10).max(1000),
+  reason: operatorReasonSchema,
 });
 
 export const manualAgentRunSchema = z
@@ -113,16 +114,12 @@ export const bulkAgentRunSchema = z
       });
   });
 
-export const agentRunCommandSchema = z
-  .object({ reason: z.string().trim().min(10).max(1000) })
-  .strict();
-
-const bulkRunControlReasonSchema = z.string().trim().min(10).max(1000);
+export const agentRunCommandSchema = z.object({ reason: operatorReasonSchema }).strict();
 
 function bulkRunControlSchema<const Confirmation extends string>(confirmation: Confirmation) {
   return z
     .object({
-      reason: bulkRunControlReasonSchema,
+      reason: operatorReasonSchema,
       confirmation: z.literal(confirmation),
     })
     .strict();

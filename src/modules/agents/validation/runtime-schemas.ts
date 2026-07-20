@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { isSafeLifeLedgerText } from "@/modules/agents/domain/life-ledger-safety";
 import { weeklyPersonaEvolutionDeltaSchema } from "@/modules/agents/domain/persona-evolution";
+import { operatorReasonSchema } from "@/modules/agents/validation/schemas";
 
 export const runtimeWorkerIdSchema = z
   .string()
@@ -53,6 +55,15 @@ const safeRuntimeMetadataSchema = z
   })
   .strict();
 
+const runtimeWorkerEventTypeSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(100)
+  .refine((value) => !value.toLowerCase().startsWith("runtime.production."), {
+    message: "Worker event type production control-plane namespace kullanamaz.",
+  });
+
 export const runtimeEventsSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
@@ -61,7 +72,7 @@ export const runtimeEventsSchema = z
       .array(
         z
           .object({
-            eventType: z.string().trim().min(1).max(100),
+            eventType: runtimeWorkerEventTypeSchema,
             safeMessage: z.string().trim().min(1).max(1000),
             metadata: safeRuntimeMetadataSchema.default({}),
           })
@@ -329,7 +340,15 @@ export const runtimeFastStateSchema = z
     curiosity: z.number().min(0).max(1),
     confidence: z.number().min(0).max(1),
     topicFatigue: z
-      .record(z.string().trim().min(1).max(100), z.number().min(0).max(1))
+      .record(
+        z
+          .string()
+          .trim()
+          .min(1)
+          .max(100)
+          .refine(isSafeLifeLedgerText, "topicFatigue anahtarı hassas içerik barındıramaz."),
+        z.number().min(0).max(1),
+      )
       .refine(
         (topicFatigue) => Object.keys(topicFatigue).length <= 50,
         "topicFatigue en fazla 50 konu içerebilir.",
@@ -363,7 +382,7 @@ export const runtimeFailSchema = z
 
 export const runtimeCredentialRotationSchema = z
   .object({
-    reason: z.string().trim().min(10).max(1000),
+    reason: operatorReasonSchema,
   })
   .strict();
 

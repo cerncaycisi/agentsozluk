@@ -6,7 +6,7 @@ import { constantTimeEqual, sha256 } from "@/lib/security/crypto";
 import { appendAuditLog } from "@/modules/audit";
 import {
   appendRuntimeEvent,
-  getProductionActivationAnchor,
+  getProductionSafetyWindowAnchor,
   listAgentSourceScoreAudits,
   lockAgentSettings,
   pauseGlobalRuntimeForCriticalBreakerRecord,
@@ -99,6 +99,10 @@ import {
   sourceFailureBackoffMs,
 } from "@/modules/agents/domain/source-security";
 import { appendOutboxEvent } from "@/modules/outbox";
+import {
+  guardProductionRolloutRuntimeMutation,
+  pauseExpiredProductionRollout,
+} from "@/modules/agents/application/rollout-guard";
 
 type OwnedRun = NonNullable<Awaited<ReturnType<typeof findRuntimeOwnedRun>>>;
 type RuntimeSourceState = Awaited<
@@ -1056,7 +1060,7 @@ async function autoPauseRuntimeForProductionCriticalBreaker(
     breakers: ReturnType<typeof evaluateCircuitBreakers>;
   },
 ): Promise<boolean> {
-  const activation = await getProductionActivationAnchor(transaction);
+  const activation = await getProductionSafetyWindowAnchor(transaction);
   const decision = evaluateProductionCriticalBreakerAutoPause({
     activationStartedAt: activation?.createdAt ?? null,
     now: input.now,
@@ -1198,6 +1202,12 @@ export async function leaseRuntimeRun(
     // authoritative concurrency value with every global lease claim and with
     // admin concurrency updates, without introducing an inverse lock order.
     await lockAgentSettings(transaction);
+    const rolloutDate = await pauseExpiredProductionRollout(
+      transaction,
+      principal.actor,
+      new Date(),
+    );
+    if (rolloutDate.expired) return { run: null, reason: "ERROR_PAUSED" };
     const settings = await getRuntimeGlobalSettings(transaction);
     if (!settings.runtimeEnabled) return { run: null, reason: "PAUSED" };
     const maintenanceMode = settings.runtimeOperatingMode === "MAINTENANCE";
@@ -1247,7 +1257,7 @@ export async function leaseRuntimeRun(
     if (breakers.runtimePaused) return { run: null, reason: "ERROR_PAUSED" };
     const activeLeaseCount = await countActiveRuntimeLeases(transaction, now);
     if (activeLeaseCount >= concurrency) return { run: null, reason: "CAPACITY_FULL" };
-    const activation = await getProductionActivationAnchor(transaction);
+    const activation = await getProductionSafetyWindowAnchor(transaction);
     const catchUpFrozen =
       maintenanceMode ||
       breakers.catchUpFrozen ||
@@ -1352,10 +1362,19 @@ export function heartbeatRuntimeRun(
   return inTransaction(client, async (transaction) => {
     await lockRuntimeAgent(transaction, principal.agentProfileId);
     await lockRuntimeRunForLeaseMutation(transaction, runId);
+    await lockAgentSettings(transaction);
     const now = new Date();
     const run = await findRuntimeOwnedRun(transaction, principal.agentProfileId, runId);
     assertLeaseOwner(run, input.workerId, input.leaseToken, now);
     assertRunDeadline(run, now);
+    const rolloutDate = await pauseExpiredProductionRollout(transaction, principal.actor, now);
+    if (rolloutDate.expired)
+      return {
+        runId,
+        leaseExpiresAt: run.leaseExpiresAt ?? now,
+        cancelRequested: true,
+        rolloutExpired: true as const,
+      };
     const cancelRequested = run.runStatus === "CANCEL_REQUESTED";
     const runtimeStatus = cancelRequested ? "CANCELLING" : input.runtimeStatus;
     const leaseExpiresAt = new Date(now.getTime() + input.leaseSeconds * 1000);
@@ -1391,10 +1410,12 @@ export function getRuntimeRunContext(
   return inTransaction(client, async (transaction) => {
     await lockRuntimeAgent(transaction, principal.agentProfileId);
     await lockRuntimeRunForLeaseMutation(transaction, runId);
+    await lockAgentSettings(transaction);
     const now = new Date();
     const run = await findRuntimeOwnedRun(transaction, principal.agentProfileId, runId);
     assertLeaseOwner(run, workerId, leaseToken, now);
     assertRunDeadline(run, now);
+    const rolloutDate = await pauseExpiredProductionRollout(transaction, principal.actor, now);
     const settings = await getRuntimeGlobalSettings(transaction);
     const publicWriteEnabled = runtimePublicWritesAllowed({
       publicWriteEnabled: settings.publicWriteEnabled,
@@ -1459,7 +1480,7 @@ export function getRuntimeRunContext(
         saturationOverride: run.saturationOverride,
         dailyMaximumOverride: run.dailyMaximumOverride,
         adminInstruction: run.adminInstruction,
-        cancelRequested: run.runStatus === "CANCEL_REQUESTED",
+        cancelRequested: run.runStatus === "CANCEL_REQUESTED" || rolloutDate.expired,
       },
       agent: {
         username: run.agentProfile.user.username,
@@ -1489,6 +1510,13 @@ export function recordRuntimeEvents(
     const run = await findRuntimeOwnedRun(transaction, principal.agentProfileId, runId);
     assertLeaseOwner(run, input.workerId, input.leaseToken, now);
     assertRunExecutionBudget(run, now);
+    await lockAgentSettings(transaction);
+    const rolloutBlock = await guardProductionRolloutRuntimeMutation(
+      transaction,
+      principal.actor,
+      now,
+    );
+    if (rolloutBlock) return rolloutBlock as never;
     const result = await appendRuntimeRunEvents(transaction, {
       runId,
       agentProfileId: principal.agentProfileId,
@@ -1512,14 +1540,21 @@ export function recordRuntimeActions(
   principal: RuntimePrincipal,
   runId: string,
   input: RuntimeActionsInput,
+  now = new Date(),
 ) {
   return inTransaction(client, async (transaction) => {
     await lockRuntimeAgent(transaction, principal.agentProfileId);
     await lockRuntimeRunForLeaseMutation(transaction, runId);
-    const now = new Date();
     const run = await findRuntimeOwnedRun(transaction, principal.agentProfileId, runId);
     assertLeaseOwner(run, input.workerId, input.leaseToken, now);
     assertRunExecutionBudget(run, now);
+    await lockAgentSettings(transaction);
+    const rolloutBlock = await guardProductionRolloutRuntimeMutation(
+      transaction,
+      principal.actor,
+      now,
+    );
+    if (rolloutBlock) return rolloutBlock as never;
     const existingActions = await listRuntimeActionsForRepairValidation(transaction, {
       runId,
       agentProfileId: principal.agentProfileId,
@@ -1634,6 +1669,13 @@ export function recordRuntimeMemories(
     const run = await findRuntimeOwnedRun(transaction, principal.agentProfileId, runId);
     assertLeaseOwner(run, input.workerId, input.leaseToken, now);
     assertRunExecutionBudget(run, now);
+    await lockAgentSettings(transaction);
+    const rolloutBlock = await guardProductionRolloutRuntimeMutation(
+      transaction,
+      principal.actor,
+      now,
+    );
+    if (rolloutBlock) return rolloutBlock as never;
     if (
       run.runType !== "REFLECTION" ||
       !["NIGHTLY_MEMORY_CONSOLIDATION", "ADMIN_MEMORY_RECONSOLIDATE"].includes(run.trigger)
@@ -1714,6 +1756,13 @@ export function recordRuntimeSourceResult(
     const run = await findRuntimeOwnedRun(transaction, principal.agentProfileId, runId);
     assertLeaseOwner(run, input.workerId, input.leaseToken, now);
     assertRunExecutionBudget(run, now);
+    await lockAgentSettings(transaction);
+    const rolloutBlock = await guardProductionRolloutRuntimeMutation(
+      transaction,
+      principal.actor,
+      now,
+    );
+    if (rolloutBlock) return rolloutBlock as never;
     const settings = await getRuntimeGlobalSettings(transaction);
     if (!run.allowSourceReading || !settings.sourceReadingEnabled)
       throw new AppError("FORBIDDEN", 403, "Bu run için source reading kapalıdır.");
@@ -1849,6 +1898,13 @@ export function recordRuntimeSourceAttempt(
     const run = await findRuntimeOwnedRun(transaction, principal.agentProfileId, runId);
     assertLeaseOwner(run, input.workerId, input.leaseToken, now);
     assertRunExecutionBudget(run, now);
+    await lockAgentSettings(transaction);
+    const rolloutBlock = await guardProductionRolloutRuntimeMutation(
+      transaction,
+      principal.actor,
+      now,
+    );
+    if (rolloutBlock) return rolloutBlock as never;
     const settings = await getRuntimeGlobalSettings(transaction);
     if (!run.allowSourceReading || !settings.sourceReadingEnabled)
       throw new AppError("FORBIDDEN", 403, "Bu run için source reading kapalıdır.");
@@ -1891,6 +1947,13 @@ export function completeRuntimeRun(
     const run = await findRuntimeOwnedRun(transaction, principal.agentProfileId, runId);
     assertLeaseOwner(run, input.workerId, input.leaseToken, now);
     assertRunExecutionBudget(run, now);
+    await lockAgentSettings(transaction);
+    const rolloutBlock = await guardProductionRolloutRuntimeMutation(
+      transaction,
+      principal.actor,
+      now,
+    );
+    if (rolloutBlock) return rolloutBlock as never;
     const settings = await getRuntimeGlobalSettings(transaction);
     let finalOutcome = input.outcome;
     let reflection:
@@ -2023,6 +2086,10 @@ export function failRuntimeRun(
     // after lease expiry. Agent→run serialization makes this safe: a reclaim either
     // changes the owner first (and this rejects) or observes the already-closed run.
     assertTerminalReporter(run, input.workerId, input.leaseToken);
+    await lockAgentSettings(transaction);
+    // A terminal failure report is cleanup, not a new runtime effect. Persist the
+    // fail-closed pause when necessary, then allow the owned run to terminalize.
+    await guardProductionRolloutRuntimeMutation(transaction, principal.actor, now);
     const measuredMetrics = await getMeasuredRuntimeRunMetrics(transaction, runId);
     const terminal = terminalizeInterruptedRuntimeRun(input.outcome, measuredMetrics);
     const outcome = terminal.outcome;

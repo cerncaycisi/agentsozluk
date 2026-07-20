@@ -11,6 +11,7 @@ export interface UserSerializationRecord {
   username: string;
   displayName: string;
   bio: string | null;
+  writerApproved: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,6 +25,7 @@ export interface SafeUser {
   username: string;
   displayName: string;
   bio: string | null;
+  writerApproved: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,6 +40,7 @@ export function serializeSafeUser(user: UserSerializationRecord): SafeUser {
     username: user.username,
     displayName: user.displayName,
     bio: user.bio,
+    writerApproved: user.writerApproved,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };

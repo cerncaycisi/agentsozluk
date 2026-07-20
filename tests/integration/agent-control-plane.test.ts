@@ -5,7 +5,9 @@ import type { ActorContext } from "@/modules/auth/domain/actor";
 import { hashPassword } from "@/modules/auth/domain/password";
 import { inTransaction } from "@/lib/db/transaction";
 import {
+  abortProductionRolloutAttempt,
   changeAgentLifecycle,
+  completeProductionRolloutAttempt,
   createAgent,
   createAgentSchema,
   agentSourceAdminUpdateSchema,
@@ -15,12 +17,15 @@ import {
   personaRollbackSchema,
   recordRuntimeCapability,
   rollbackPersona,
+  setGlobalRuntimeEnabled,
+  startProductionRolloutAttempt,
   runtimeCapabilityMeasurementSchema,
   updateAgent,
   updateAgentSourceAdmin,
   updateAgentSchema,
   updateGlobalSettings,
 } from "@/modules/agents";
+import { getProductionSafetyWindowAnchor } from "@/modules/agents/repository/control-plane";
 import { findRuntimeSourceForWrite } from "@/modules/agents/repository/runtime";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import { sha256 } from "@/lib/security/crypto";
@@ -699,6 +704,179 @@ describe("agent control plane with PostgreSQL", () => {
     ).toBe(4);
   });
 
+  it("serializes explicit rollout attempts, preserves history and refuses evidence-free completion", async () => {
+    const admin = await createPrincipal();
+    const created = [];
+    for (const persona of originalPersonaPack.personas)
+      created.push(
+        await createAgent(
+          integrationDatabase,
+          actor(admin.id),
+          createAgentSchema.parse({
+            persona,
+            creation: { method: "TEMPLATE", templateUsername: persona.username },
+          }),
+        ),
+      );
+    expect(created).toHaveLength(10);
+    await updateGlobalSettings(integrationDatabase, actor(admin.id), {
+      globalDailyEntryMin: 150,
+      globalDailyEntryMax: 200,
+    });
+
+    const firstActivationAt = new Date(Date.now() - 24 * 60 * 60_000);
+    await changeAgentLifecycle(
+      integrationDatabase,
+      actor(admin.id),
+      created[0]!.agent.profile.id,
+      lifecycleChangeSchema.parse({
+        status: "ACTIVE",
+        reason: "Create the immutable historical activation boundary.",
+      }),
+      firstActivationAt,
+    );
+    await changeAgentLifecycle(
+      integrationDatabase,
+      actor(admin.id),
+      created[0]!.agent.profile.id,
+      lifecycleChangeSchema.parse({
+        status: "PAUSED",
+        reason: "Return to a clean fail-closed rollout state.",
+      }),
+    );
+    await setGlobalRuntimeEnabled(integrationDatabase, actor(admin.id), false, {
+      reason: "Return the global runtime to the clean fail-closed rollout state.",
+    });
+    const firstActivation = await integrationDatabase.agentRuntimeEvent.findFirstOrThrow({
+      where: { eventType: "runtime.production.activated" },
+      select: { id: true, createdAt: true },
+    });
+
+    const startAt = new Date();
+    const firstAttemptId = randomUUID();
+    const firstStartCommandId = randomUUID();
+    const starts = await Promise.all([
+      startProductionRolloutAttempt(
+        integrationDatabase,
+        actor(admin.id),
+        {
+          attemptId: firstAttemptId,
+          commandId: firstStartCommandId,
+          reasonCode: "DAY0_START",
+        },
+        startAt,
+      ),
+      startProductionRolloutAttempt(
+        integrationDatabase,
+        actor(admin.id),
+        {
+          attemptId: firstAttemptId,
+          commandId: firstStartCommandId,
+          reasonCode: "DAY0_START",
+        },
+        startAt,
+      ),
+    ]);
+    expect(starts.map(({ eventId }) => eventId)).toEqual([starts[0]!.eventId, starts[0]!.eventId]);
+    expect(starts.filter(({ replayed }) => replayed)).toHaveLength(1);
+    expect(
+      await integrationDatabase.agentRuntimeEvent.count({
+        where: { eventType: "runtime.production.rollout_attempt.started" },
+      }),
+    ).toBe(1);
+    const retryAnchor = await integrationDatabase.$transaction((transaction) =>
+      getProductionSafetyWindowAnchor(transaction),
+    );
+    expect(retryAnchor?.id).not.toBe(firstActivation.id);
+    expect(retryAnchor?.createdAt.getTime()).toBeGreaterThan(firstActivation.createdAt.getTime());
+
+    await expect(
+      abortProductionRolloutAttempt(integrationDatabase, actor(admin.id), {
+        attemptId: firstAttemptId,
+        commandId: randomUUID(),
+        reasonCode: "DAY0_ABORT",
+      }),
+    ).resolves.toMatchObject({ status: "ABORTED", replayed: false });
+    await expect(
+      integrationDatabase.$transaction((transaction) =>
+        getProductionSafetyWindowAnchor(transaction),
+      ),
+    ).resolves.toBeNull();
+
+    const retryAttemptId = randomUUID();
+    const retry = await startProductionRolloutAttempt(integrationDatabase, actor(admin.id), {
+      attemptId: retryAttemptId,
+      commandId: randomUUID(),
+      reasonCode: "DAY0_START",
+    });
+    expect(retry).toMatchObject({ status: "STARTED", replayed: false });
+    const retryEvent = await integrationDatabase.agentRuntimeEvent.findUniqueOrThrow({
+      where: { id: BigInt(retry.eventId) },
+      select: { metadata: true },
+    });
+    expect(retryEvent.metadata).toMatchObject({ previousEvidencePreserved: true });
+    expect(
+      await integrationDatabase.agentRuntimeEvent.count({
+        where: { eventType: "runtime.production.activated" },
+      }),
+    ).toBe(1);
+
+    for (const item of created)
+      await changeAgentLifecycle(
+        integrationDatabase,
+        actor(admin.id),
+        item.agent.profile.id,
+        lifecycleChangeSchema.parse({
+          status: "ACTIVE",
+          reason: "Activate after the current rollout attempt was explicitly opened.",
+        }),
+      );
+    await setGlobalRuntimeEnabled(integrationDatabase, actor(admin.id), true, {
+      reason: "Resume after all final rollout evidence has passed.",
+    });
+    await expect(
+      completeProductionRolloutAttempt(integrationDatabase, actor(admin.id), {
+        attemptId: retryAttemptId,
+        commandId: randomUUID(),
+        reasonCode: "DAY0_COMPLETE",
+      }),
+    ).rejects.toMatchObject({ code: "AGENT_LIFECYCLE_INVALID" });
+    await expect(
+      integrationDatabase.$transaction((transaction) =>
+        getProductionSafetyWindowAnchor(transaction),
+      ),
+    ).resolves.toMatchObject({ id: BigInt(retry.eventId) });
+
+    await setGlobalRuntimeEnabled(integrationDatabase, actor(admin.id), false, {
+      reason: "Pause after completion proof was correctly rejected.",
+    });
+    for (const item of created)
+      await changeAgentLifecycle(
+        integrationDatabase,
+        actor(admin.id),
+        item.agent.profile.id,
+        lifecycleChangeSchema.parse({
+          status: "PAUSED",
+          reason: "Restore clean fail-closed state after rejected completion.",
+        }),
+      );
+    const abortCommandId = randomUUID();
+    await expect(
+      abortProductionRolloutAttempt(integrationDatabase, actor(admin.id), {
+        attemptId: retryAttemptId,
+        commandId: abortCommandId,
+        reasonCode: "DAY0_ABORT",
+      }),
+    ).resolves.toMatchObject({ status: "ABORTED", replayed: false });
+    await expect(
+      abortProductionRolloutAttempt(integrationDatabase, actor(admin.id), {
+        attemptId: retryAttemptId,
+        commandId: abortCommandId,
+        reasonCode: "DAY0_ABORT",
+      }),
+    ).resolves.toMatchObject({ status: "ABORTED", replayed: true });
+  });
+
   it("rechecks every non-retired profile before accepting an agent quota edit", async () => {
     const admin = await createPrincipal();
     const created = await createFirstAgent(admin.id);
@@ -1209,6 +1387,7 @@ describe("agent control plane with PostgreSQL", () => {
   it("administers source evolution with pin, block, approval and weekly score limits", async () => {
     const admin = await createPrincipal();
     const created = await createFirstAgent(admin.id);
+    const sourceChangeAt = new Date();
     const source = await integrationDatabase.agentSource.create({
       data: {
         agentProfileId: created.agent.profile.id,
@@ -1244,7 +1423,7 @@ describe("agent control plane with PostgreSQL", () => {
         trustScore: 0.56,
         reason: "Admin source içeriğini inceleyip açık trusted onayı vermektedir.",
       }),
-      new Date("2026-07-18T08:00:00.000Z"),
+      sourceChangeAt,
     );
     expect(trusted).toMatchObject({ status: "TRUSTED", adminPinned: true, trustScore: 0.56 });
     const trustAudit = await integrationDatabase.auditLog.findFirstOrThrow({
@@ -1276,7 +1455,7 @@ describe("agent control plane with PostgreSQL", () => {
           status: "DORMANT",
           reason: "Pinned source doğrudan kaldırılmaya çalışıldığında işlem reddedilmelidir.",
         }),
-        new Date("2026-07-18T09:00:00.000Z"),
+        sourceChangeAt,
       ),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR", status: 422 });
     await expect(
@@ -1288,7 +1467,7 @@ describe("agent control plane with PostgreSQL", () => {
           trustScore: 0.61,
           reason: "İkinci skor artışı haftalık toplam sınırını aşmamalıdır.",
         }),
-        new Date("2026-07-18T10:00:00.000Z"),
+        sourceChangeAt,
       ),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR", status: 422 });
 
@@ -1301,7 +1480,7 @@ describe("agent control plane with PostgreSQL", () => {
         adminBlocked: true,
         reason: "Source güvenli fetch havuzundan çıkarılmak üzere admin tarafından block edilir.",
       }),
-      new Date("2026-07-18T11:00:00.000Z"),
+      sourceChangeAt,
     );
     expect(blocked).toMatchObject({ status: "BLOCKED", adminPinned: false, adminBlocked: true });
     await expect(

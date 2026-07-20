@@ -231,7 +231,9 @@ export default async function TopicPage({
           `${topic.url}?sort=${sort}&page=${next}${entryQuery ? `&q=${encodeURIComponent(entryQuery)}` : ""}`
         }
       />
-      {session?.user.status === "ACTIVE" && topic.status === "ACTIVE" ? (
+      {session?.user.status === "ACTIVE" &&
+      session.user.writerApproved &&
+      topic.status === "ACTIVE" ? (
         <CreateEntryForm topicId={topicId} />
       ) : null}
     </main>

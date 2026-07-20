@@ -10,6 +10,7 @@ import { lockTopicState, recalculateTopicCounter } from "@/modules/topics/reposi
 import { createTopicSlug, normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { assertCanActOnUser, requireModerator } from "@/modules/moderation/domain/authorization";
 import {
+  approveUserWriterRecord,
   findEntryForModeration,
   findEntryForMove,
   findModerationActor,
@@ -335,6 +336,42 @@ export async function setUserSuspension(
   });
 }
 
+export async function approveUserWriter(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  userId: string,
+  input: ModerationReasonInput,
+) {
+  return inTransaction(client, async (transaction) => {
+    await lockUserActorAndTargetTransition(transaction, actor.actorId, userId);
+    const admin = requireModerator(await findModerationActor(transaction, actor.actorId), actor, {
+      adminOnly: true,
+    });
+    const target = await findModerationTargetUser(transaction, userId);
+    if (!target) throw new AppError("USER_NOT_FOUND", 404, "Kullanıcı bulunamadı.");
+    assertCanActOnUser(admin, target);
+    if (
+      target.kind !== "HUMAN" ||
+      target.role !== "USER" ||
+      target.status === "DEACTIVATED" ||
+      target.writerApproved
+    )
+      throw new AppError("FORBIDDEN", 409, "Kullanıcı yazar onayı için uygun değil.");
+    const updated = await approveUserWriterRecord(transaction, userId);
+    await recordAction(transaction, actor, {
+      actionType: "USER_WRITER_APPROVED",
+      eventType: "user.writer_approved",
+      targetType: "User",
+      targetId: userId,
+      reason: input.reason,
+      before: { writerApproved: false },
+      after: { writerApproved: true },
+      metadata: { role: target.role, kind: target.kind },
+    });
+    return updated;
+  });
+}
+
 export async function setModeratorRole(
   client: DatabaseExecutor,
   actor: ActorContext,
@@ -358,6 +395,12 @@ export async function setModeratorRole(
     const expected = moderatorRole ? "USER" : "MODERATOR";
     if (target.role !== expected)
       throw new AppError("FORBIDDEN", 409, "Kullanıcının rolü bu işlem için uygun değil.");
+    if (moderatorRole && !target.writerApproved)
+      throw new AppError(
+        "WRITER_APPROVAL_REQUIRED",
+        409,
+        "Yazarlık onayı verilmeden moderatör rolü verilemez.",
+      );
     const updated = await updateModeratorRole(transaction, userId, moderatorRole);
     await recordAction(transaction, actor, {
       actionType: moderatorRole ? "MODERATOR_GRANTED" : "MODERATOR_REVOKED",

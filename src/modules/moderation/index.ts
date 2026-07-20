@@ -5,6 +5,7 @@ export {
   setAgentTopicWriteLock,
 } from "@/modules/moderation/application/agent-content";
 export {
+  approveUserWriter,
   mergeTopic,
   moveEntry,
   renameTopic,

@@ -4,6 +4,7 @@ import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { requireAgentAdminInTransaction } from "@/modules/agents/application/authorization";
+import { guardProductionRolloutRuntimeMutation } from "@/modules/agents/application/rollout-guard";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
 import {
   DEFAULT_AVAILABLE_CONTENT_MINUTES,
@@ -1015,6 +1016,13 @@ export function generateRuntimeDailyPlans(
       principal.actor.origin !== "AGENT"
     )
       throw new AppError("FORBIDDEN", 403, "Günlük runtime planı yalnız runtime actor üretebilir.");
+    await lockAgentSettings(transaction);
+    const rolloutBlock = await guardProductionRolloutRuntimeMutation(
+      transaction,
+      principal.actor,
+      now,
+    );
+    if (rolloutBlock) return rolloutBlock;
     const result = await generateAgentDailyPlansInTransaction(
       transaction,
       principal.actor,

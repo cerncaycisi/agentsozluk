@@ -8,6 +8,7 @@ import {
   resolveQuotaSettings,
 } from "@/modules/agents/domain/quota";
 import { appendAgentLifeEventRecord } from "@/modules/agents/repository/life-ledger";
+import { assertSafeLifeLedgerValue } from "@/modules/agents/domain/life-ledger-safety";
 import { assertSafeOutboxPayload } from "@/modules/outbox/domain/event";
 import { insertOutboxEvent } from "@/modules/outbox/repository/outbox";
 
@@ -286,6 +287,19 @@ export async function createAgentRecords(
     profile: { ...profile, currentPersonaVersionId: personaVersion.id },
     personaVersion,
   };
+}
+
+export async function getAgentLifeReconstructionSnapshot(
+  transaction: Prisma.TransactionClient,
+  agentProfileId: string,
+): Promise<Prisma.InputJsonValue> {
+  const rows = await transaction.$queryRaw<Array<{ snapshot: Prisma.JsonValue | null }>>`
+    SELECT agent_life_reconstruction_snapshot(${agentProfileId}::UUID) AS "snapshot"
+  `;
+  const snapshot = rows[0]?.snapshot;
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot))
+    throw new Error("AGENT_LIFE_RECONSTRUCTION_SNAPSHOT_NOT_FOUND");
+  return snapshot as Prisma.InputJsonValue;
 }
 
 export function listCurrentPersonas(
@@ -698,6 +712,141 @@ export function getProductionActivationAnchor(transaction: Prisma.TransactionCli
   });
 }
 
+const productionRolloutAttemptEventTypes = [
+  "runtime.production.rollout_attempt.started",
+  "runtime.production.rollout_attempt.aborted",
+  "runtime.production.rollout_attempt.completed",
+] as const;
+
+export function getLatestProductionRolloutAttemptEvent(transaction: Prisma.TransactionClient) {
+  return transaction.agentRuntimeEvent.findFirst({
+    where: {
+      eventType: { in: [...productionRolloutAttemptEventTypes] },
+      agentProfileId: null,
+      runId: null,
+      actionId: null,
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: { id: true, eventType: true, metadata: true, createdAt: true },
+  });
+}
+
+export function getProductionRolloutAttemptStartEvent(
+  transaction: Prisma.TransactionClient,
+  attemptId: string,
+) {
+  return transaction.agentRuntimeEvent.findFirst({
+    where: {
+      eventType: "runtime.production.rollout_attempt.started",
+      agentProfileId: null,
+      runId: null,
+      actionId: null,
+      metadata: { path: ["attemptId"], equals: attemptId },
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { id: true, eventType: true, metadata: true, createdAt: true, occurredAt: true },
+  });
+}
+
+export function getProductionRolloutCommandEvent(
+  transaction: Prisma.TransactionClient,
+  commandId: string,
+) {
+  return transaction.agentRuntimeEvent.findFirst({
+    where: {
+      eventType: { startsWith: "runtime.production.rollout" },
+      agentProfileId: null,
+      runId: null,
+      actionId: null,
+      metadata: { path: ["commandId"], equals: commandId },
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { id: true, eventType: true, metadata: true, createdAt: true, occurredAt: true },
+  });
+}
+
+export function getProductionRolloutTerminalEvent(
+  transaction: Prisma.TransactionClient,
+  attemptId: string,
+) {
+  return transaction.agentRuntimeEvent.findFirst({
+    where: {
+      eventType: {
+        in: [
+          "runtime.production.rollout_attempt.aborted",
+          "runtime.production.rollout_attempt.completed",
+        ],
+      },
+      agentProfileId: null,
+      runId: null,
+      actionId: null,
+      metadata: { path: ["attemptId"], equals: attemptId },
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { id: true, eventType: true, metadata: true, createdAt: true, occurredAt: true },
+  });
+}
+
+export async function getProductionSafetyWindowAnchor(transaction: Prisma.TransactionClient) {
+  const latestAttemptEvent = await getLatestProductionRolloutAttemptEvent(transaction);
+  if (!latestAttemptEvent) return getProductionActivationAnchor(transaction);
+  return latestAttemptEvent.eventType === "runtime.production.rollout_attempt.started"
+    ? latestAttemptEvent
+    : null;
+}
+
+export async function getProductionRolloutOperationalState(
+  transaction: Prisma.TransactionClient,
+  now: Date,
+) {
+  const [
+    settings,
+    profileCounts,
+    nonterminalRunCount,
+    liveLeaseCount,
+    firstActivation,
+    latestEvent,
+  ] = await Promise.all([
+    transaction.agentGlobalSettings.findUniqueOrThrow({
+      where: { id: "global" },
+      select: {
+        runtimeEnabled: true,
+        schedulerEnabled: true,
+        publicWriteEnabled: true,
+        runtimeOperatingMode: true,
+      },
+    }),
+    transaction.agentProfile.groupBy({
+      by: ["lifecycleStatus"],
+      _count: { _all: true },
+    }),
+    transaction.agentRun.count({
+      where: { runStatus: { in: ["QUEUED", "RUNNING", "CANCEL_REQUESTED"] } },
+    }),
+    transaction.agentRun.count({
+      where: {
+        runStatus: { in: ["RUNNING", "CANCEL_REQUESTED"] },
+        leaseExpiresAt: { gt: now },
+      },
+    }),
+    getProductionActivationAnchor(transaction),
+    getLatestProductionRolloutAttemptEvent(transaction),
+  ]);
+  const count = (lifecycleStatus: "PAUSED" | "ACTIVE") =>
+    profileCounts.find((item) => item.lifecycleStatus === lifecycleStatus)?._count._all ?? 0;
+  const totalProfileCount = profileCounts.reduce((sum, item) => sum + item._count._all, 0);
+  return {
+    settings,
+    totalProfileCount,
+    pausedProfileCount: count("PAUSED"),
+    activeProfileCount: count("ACTIVE"),
+    nonterminalRunCount,
+    liveLeaseCount,
+    firstActivation,
+    latestEvent,
+  };
+}
+
 export async function ensureProductionActivationAnchor(
   transaction: Prisma.TransactionClient,
   input: { agentProfileId: string; activatedAt: Date },
@@ -822,6 +971,7 @@ export function appendRuntimeEvent(
       ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
     });
   }
+  assertSafeLifeLedgerValue({ summary: input.safeMessage, metadata: input.metadata ?? {} });
   return transaction.agentRuntimeEvent.create({
     data: {
       ...(input.runId ? { runId: input.runId } : {}),

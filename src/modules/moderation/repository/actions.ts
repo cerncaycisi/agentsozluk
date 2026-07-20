@@ -161,7 +161,23 @@ export async function moveEntryRecord(
 export function findModerationTargetUser(transaction: Prisma.TransactionClient, userId: string) {
   return transaction.user.findUnique({
     where: { id: userId },
-    select: { id: true, role: true, status: true },
+    select: { id: true, kind: true, role: true, status: true, writerApproved: true },
+  });
+}
+
+export function approveUserWriterRecord(transaction: Prisma.TransactionClient, userId: string) {
+  return transaction.user.update({
+    where: { id: userId },
+    data: { writerApproved: true },
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      kind: true,
+      role: true,
+      status: true,
+      writerApproved: true,
+    },
   });
 }
 

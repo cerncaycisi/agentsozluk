@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import path from "node:path";
 import { requireTestDatabaseUrl } from "./scripts/test-database-safety";
+import { isProductionE2EServerMode } from "./tests/e2e/production-server-mode";
 
 function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
@@ -12,7 +13,7 @@ if (nodeMajor !== 22) {
 }
 
 const projectRoot = process.cwd();
-const useProductionServer = Boolean(process.env.CI) || process.env.E2E_PRODUCTION_SERVER === "true";
+const useProductionServer = isProductionE2EServerMode();
 const testDatabaseUrl = requireTestDatabaseUrl(process.env.TEST_DATABASE_URL, "Playwright");
 const applicationUrl = new URL(process.env.E2E_APP_URL ?? "http://127.0.0.1:3000");
 const applicationPort = Number.parseInt(applicationUrl.port, 10);

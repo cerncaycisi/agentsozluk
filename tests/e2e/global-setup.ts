@@ -1,5 +1,7 @@
 import { spawnSync } from "node:child_process";
+import { PrismaClient } from "@prisma/client";
 import { requireTestDatabaseUrl } from "../../scripts/test-database-safety";
+import { isProductionE2EServerMode } from "./production-server-mode";
 
 function runPnpm(args: string[], label: string, environment: NodeJS.ProcessEnv): void {
   const pnpmCli = process.env.npm_execpath;
@@ -10,7 +12,7 @@ function runPnpm(args: string[], label: string, environment: NodeJS.ProcessEnv):
   if (result.status !== 0) throw new Error(`${label} failed with exit code ${result.status}`);
 }
 
-export default function globalSetup(): void {
+export default async function globalSetup(): Promise<void> {
   const testDatabaseUrl = requireTestDatabaseUrl(process.env.TEST_DATABASE_URL, "E2E setup");
   const environment: NodeJS.ProcessEnv = {
     ...process.env,
@@ -29,4 +31,22 @@ export default function globalSetup(): void {
     environment,
   );
   runPnpm(["db:seed"], "E2E database seed", environment);
+  if (isProductionE2EServerMode()) {
+    const database = new PrismaClient({ datasourceUrl: testDatabaseUrl });
+    try {
+      await database.agentRuntimeEvent.create({
+        data: {
+          eventType: "runtime.production.rollout_attempt.completed",
+          safeMessage: "Production-server E2E rollout guard fixture completed.",
+          metadata: {
+            attemptId: "00000000-0000-4000-8000-0000000000e2",
+            localDate: "2000-01-01",
+            origin: "E2E_TEST_FIXTURE",
+          },
+        },
+      });
+    } finally {
+      await database.$disconnect();
+    }
+  }
 }

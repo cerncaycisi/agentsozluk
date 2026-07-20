@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page } from "@playwright/test";
 
 const demoPassword = process.env.DEMO_PASSWORD ?? "change-this-demo-password";
 let ipCounter = 20;
@@ -23,6 +23,13 @@ async function register(page: Page, label: string) {
   await page.getByLabel("Şifre tekrarı").fill(password);
   await page.getByRole("checkbox", { name: /Topluluk kurallarını/u }).check();
   await page.getByRole("button", { name: "Hesap oluştur" }).click();
+  const registrationStatus = page.getByRole("status");
+  await expect(
+    registrationStatus.getByRole("heading", { level: 2, name: "Kaydın alındı" }),
+  ).toBeVisible({ timeout: 20_000 });
+  await expect(registrationStatus).toContainText(
+    "Yazar hesabın admin onayına gönderildi. Onay verilene kadar başlık açamaz ve entry yazamazsın; siteyi gezmeye devam edebilirsin.",
+  );
   await expect(page.getByRole("button", { name: "Hesap menüsünü aç" })).toContainText(displayName);
   return { email, username, displayName, password };
 }
@@ -86,12 +93,29 @@ async function confirm(page: Page, buttonName: string, reason: string): Promise<
   await expect(dialog).toBeHidden({ timeout: 20_000 });
 }
 
+async function approveWriterViaAdmin(browser: Browser, user: { username: string }): Promise<void> {
+  const adminContext = await browser.newContext();
+  const adminPage = await adminContext.newPage();
+  await login(adminPage, "admin@local.test", demoPassword);
+  await adminPage.goto(`/moderasyon/kullanicilar?q=${encodeURIComponent(user.username)}`);
+  const userCard = adminPage.locator("article").filter({ hasText: `@${user.username}` });
+  await expect(userCard).toContainText("YAZAR ONAYI BEKLİYOR");
+  await confirm(
+    adminPage,
+    "Yazarlığı onayla",
+    "E2E moderasyon akışındaki içerik yazarı admin tarafından onaylanıyor.",
+  );
+  await expect(userCard).not.toContainText("YAZAR ONAYI BEKLİYOR", { timeout: 20_000 });
+  await adminContext.close();
+}
+
 test.describe("@desktop moderation and admin workflows", () => {
   test("hides, resolves and restores a reported entry", async ({ browser }) => {
     test.setTimeout(120_000);
     const authorContext = await browser.newContext();
     const authorPage = await authorContext.newPage();
     const author = await register(authorPage, "author");
+    await approveWriterViaAdmin(browser, author);
     const title = `Moderasyon hedefi ${Date.now().toString(36)}`;
     const body = "Moderasyon E2E akışında gizlenip geri açılacak yeterince uzun entry metni.";
     const target = await createTopic(authorPage, title, body);
@@ -155,17 +179,74 @@ test.describe("@desktop moderation and admin workflows", () => {
     expect(author.email).toContain("@example.test");
   });
 
-  test("suspends, blocks writes, unsuspends and changes moderator role", async ({ browser }) => {
+  test("keeps writer approval admin-only, then manages status and moderator role", async ({
+    browser,
+  }) => {
     test.setTimeout(120_000);
     const userContext = await browser.newContext();
     const userPage = await userContext.newPage();
     const user = await register(userPage, "admin_target");
+
+    const moderatorContext = await browser.newContext();
+    const moderatorPage = await moderatorContext.newPage();
+    await login(moderatorPage, "moderator@local.test", demoPassword);
+    await moderatorPage.goto(`/moderasyon/kullanicilar?q=${encodeURIComponent(user.username)}`);
+    const moderatorUserCard = moderatorPage
+      .locator("article")
+      .filter({ hasText: `@${user.username}` });
+    await expect(moderatorUserCard).toContainText("YAZAR ONAYI BEKLİYOR");
+    await expect(
+      moderatorUserCard.getByRole("button", { name: "Yazarlığı onayla", exact: true }),
+    ).toHaveCount(0);
 
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
     await login(adminPage, "admin@local.test", demoPassword);
     await adminPage.goto(`/moderasyon/kullanicilar?q=${encodeURIComponent(user.username)}`);
     let userCard = adminPage.locator("article").filter({ hasText: `@${user.username}` });
+    await expect(userCard).toContainText("YAZAR ONAYI BEKLİYOR");
+    await userCard.getByRole("button", { name: "Yazarlığı onayla", exact: true }).click();
+    const approvalDialog = adminPage.getByRole("alertdialog");
+    const approvalEndpoint = (
+      await approvalDialog.getByLabel("Gerekçe").getAttribute("id")
+    )?.replace(/^moderation-/u, "");
+    if (!approvalEndpoint) throw new Error("E2E_WRITER_APPROVAL_ENDPOINT_MISSING");
+    const moderatorAttempt = await moderatorPage.evaluate(
+      async ({ endpoint }) => {
+        const csrf = document.cookie
+          .split(";")
+          .map((part) => part.trim())
+          .find((part) => part.startsWith("ajan_csrf="))
+          ?.split("=")
+          .slice(1)
+          .join("=");
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": decodeURIComponent(csrf ?? ""),
+            "Idempotency-Key": crypto.randomUUID(),
+          },
+          body: JSON.stringify({
+            reason: "E2E admin-only yetki sınırı moderator hesabıyla doğrulanıyor.",
+          }),
+        });
+        return { status: response.status, body: await response.json() };
+      },
+      { endpoint: approvalEndpoint },
+    );
+    expect(moderatorAttempt.status, JSON.stringify(moderatorAttempt.body)).toBe(403);
+    await approvalDialog
+      .getByLabel("Gerekçe")
+      .fill("E2E admin-only yazar onayı kullanıcı moderasyon ekranında doğrulanıyor.");
+    await approvalDialog.getByRole("button", { name: "Onayla" }).click();
+    await expect(approvalDialog).toBeHidden({ timeout: 20_000 });
+    await expect(userCard).not.toContainText("YAZAR ONAYI BEKLİYOR", { timeout: 20_000 });
+    await moderatorContext.close();
+
+    await userPage.goto("/baslik/ac");
+    await expect(userPage.getByRole("textbox", { name: "Başlık", exact: true })).toBeVisible();
+
     await confirm(adminPage, "Askıya al", "E2E yetki testi için kullanıcı geçici askıya alınıyor.");
     await expect(userCard).toContainText("SUSPENDED");
 

@@ -133,6 +133,7 @@ describe("agent control-plane domain", () => {
     expect(parse({ defaultDailyEntryMin: 15 })).toBe(false);
     expect(parse({ defaultDailyEntryMin: 15, quotaApplyMode: "NEXT_DAY" })).toBe(true);
     expect(parse({ schedulerEnabled: false })).toBe(true);
+    expect(parse({ runtimeEnabled: true })).toBe(false);
     expect(globalSettingsUpdateSchema.safeParse({ schedulerEnabled: false }).success).toBe(false);
     expect(
       globalSettingsUpdateSchema.safeParse({

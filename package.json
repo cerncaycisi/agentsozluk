@@ -30,6 +30,7 @@
     "agent:runtime:dev": "tsx watch scripts/agent-runtime-worker.ts",
     "agent:plan:today": "tsx scripts/agent-plan.ts today",
     "agent:plan:regenerate": "tsx scripts/agent-plan.ts regenerate",
+    "agent:rollout": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/agent-rollout.ts",
     "agent:seed": "tsx scripts/agent-seed.ts",
     "agent:status": "tsx scripts/agent-codex-status.ts",
     "agent:capacity": "tsx scripts/agent-capability.ts capacity",

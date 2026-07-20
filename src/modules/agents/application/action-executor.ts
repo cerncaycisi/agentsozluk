@@ -66,6 +66,10 @@ import {
 } from "@/modules/interactions";
 import { createTopicWithFirstEntry } from "@/modules/topics";
 import { appendOutboxEvent, type OutboxEventInput } from "@/modules/outbox";
+import {
+  guardProductionRolloutRuntimeMutation,
+  ROLLOUT_LOCAL_DATE_EXPIRED,
+} from "@/modules/agents/application/rollout-guard";
 
 const contentActions = new Set(["CREATE_ENTRY", "CREATE_TOPIC_WITH_ENTRY", "EDIT_OWN_ENTRY"]);
 const terminalStatuses = new Set(["REJECTED", "SUCCEEDED", "FAILED", "SKIPPED"]);
@@ -77,6 +81,8 @@ interface ActionExecutionDependencies {
   requireLifeLedger?: boolean;
   /** Test seam entered after a public action owns the global settings lock. */
   afterPublicWriteSettingsLocked?: () => Promise<void>;
+  /** Test seam entered after any effect-producing action owns the settings lock. */
+  afterEffectSettingsLocked?: () => Promise<void>;
   /** Test seam for a terminal replay that wins after execution rollback. */
   beforeFallback?: () => Promise<void>;
 }
@@ -919,14 +925,27 @@ export async function executeRuntimeAction(
           phase: "schema",
         }),
       });
-      if (isPublicRuntimeAction(parsed.data.actionType)) {
+      if (parsed.data.actionType !== "NO_ACTION") {
         // Lock order: agent profile -> run row -> action row -> global settings
         // -> optional topic saturation. Global settings mutations do not acquire
         // the earlier action-side locks. This lock is held through commit, so a
-        // public-write/mode PATCH cannot return while an action validated against
-        // the previous snapshot still has a public mutation left to commit.
+        // rollout expiry or settings mutation cannot return while an action
+        // validated against the previous snapshot still has an effect to commit.
         await lockAgentSettings(transaction);
-        await dependencies.afterPublicWriteSettingsLocked?.();
+        await dependencies.afterEffectSettingsLocked?.();
+        if (isPublicRuntimeAction(parsed.data.actionType))
+          await dependencies.afterPublicWriteSettingsLocked?.();
+        const rolloutBlock = await guardProductionRolloutRuntimeMutation(
+          transaction,
+          principal.actor,
+          now,
+        );
+        if (rolloutBlock)
+          return rejectAction(transaction, principal, actionRecord, {
+            code: ROLLOUT_LOCAL_DATE_EXPIRED,
+            reason:
+              "Production rollout İstanbul tarihi geçti; effect-producing action fail-closed reddedildi.",
+          });
       }
       const settings = await getRuntimeGlobalSettings(transaction);
       const staticRejection = staticPolicyRejection({

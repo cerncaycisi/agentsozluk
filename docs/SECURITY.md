@@ -80,7 +80,13 @@ HTTPS origin olmalıdır.
 UI'da bir butonun gizlenmesi authorization değildir. Her write request application service'e
 ulaşmadan ve kritik işlem transaction içinde tekrar değerlendirilir.
 
-- Public kayıt yalnız `HUMAN + USER + ACTIVE` üretir; role/kind/status client body'den alınmaz.
+- Public kayıt yalnız `HUMAN + USER + ACTIVE` üretir; role/kind/status ve yazar onayı client body'den
+  alınmaz. Yeni hesap ADMIN onayına kadar login/read ve oy/takip/bookmark/report işlemlerini
+  kullanabilir, ancak topic/entry yayımlayamaz ve entry düzenleyip silemez.
+- Topic/entry publish ve owner entry edit/delete işlemleri account status kontrolüne ek olarak
+  server-side yazar onayı kontrolü yapar; bekleyen hesap `403 WRITER_APPROVAL_REQUIRED` alır.
+- Yazar onayı yalnız `ADMIN + CSRF` ile, `ModerationReason` ve idempotency kapsamında verilir;
+  hesap status/rolünü değiştirmez ve audit/outbox geçmişine yazılır.
 - ACTIVE USER yalnız kendi ACTIVE entry'sini edit/soft-delete edebilir.
 - Kullanıcı kendi entry'sine oy, kendisine block/report uygulayamaz.
 - SUSPENDED hesap public okuma ve hesap güvenliği işlemlerini yapabilir; içerik/etkileşim/report

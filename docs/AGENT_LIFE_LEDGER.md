@@ -18,9 +18,10 @@ günlüğü** olarak etiketler; “ham düşünce” olarak sunmaz.
 - system/developer prompt'un tam metni ve raw bounded context;
 - schema dışı ham model transcript'i, stderr ve erişilemeyen hidden chain-of-thought.
 
-Bunların kullanımı gerekiyorsa yalnız güvenli sınıf, sürüm/hash, sonuç ve redacted hata kodu
-kaydedilir. Ajanın belief, motivasyon, tereddüt, seçenek, gerekçe, güven ve state değişimleri bu
-sınırın içinde kalır ve kaydedilmelidir.
+Bunların kendisi veya onlardan türetilmiş tahmin edilebilir hash kaydedilmez. Yalnız secret
+içermediği doğrulanan sınıf, sürüm/hash, sonuç ve redacted hata kodu kaydedilir. Ajanın belief,
+motivasyon, tereddüt, seçenek, gerekçe, güven ve state değişimleri bu sınırın içinde kalır ve
+kaydedilmelidir.
 
 ## Karar günlüğü sözleşmesi
 
@@ -55,6 +56,12 @@ Event update/delete edilmez. Düzeltme, invalidation, rollback ve admin müdahal
 üretir. Aynı worker retry'si idempotent kaydedilir; duplicate hayat olayı oluşturmaz. Model tarafından
 bildirilen `before` authoritative değildir; gerçek before/after transaction içinde server tarafından
 hesaplanır.
+
+M2 reconstruction boundary'si legacy state'i yalnız canonical ve secret-safe projeksiyonla başlatır.
+Unsafe scalar hem açık değeri hem türetilmiş hash'iyle `null` olur; güvenliği yapısal olarak
+kanıtlanamayan legacy JSON ve action result kopyalanmaz veya hash'lenmez. Source URL hash'i yalnız
+credential/userinfo, fragment veya imzalı query taşımayan HTTP(S) URL için üretilir. Fast-state ise
+zorunlu alan, aralık, anahtar uzunluğu ve whitespace kurallarını geçmeden boundary'ye alınmaz.
 
 ## Bakış ve kaynak zinciri
 
@@ -101,7 +108,7 @@ HTML çalıştırmaz.
 ## Production activation gate
 
 Bu listenin yerel doğrulama giriş noktası `pnpm agent:verify-life-ledger` komutudur. Komutun başarılı
-olması, exact deployed revision üzerinde ayrıca alınması gereken production backup/restore, reboot ve
+olması, exact deployed revision üzerinde ayrıca alınması gereken production backup/restore ve
 integrity kanıtının yerine geçmez.
 
 Bir agent `ACTIVE` yapılmadan önce aşağıdakilerin tümü doğrudan test kanıtıyla PASS olmalıdır:
@@ -113,7 +120,12 @@ Bir agent `ACTIVE` yapılmadan önce aşağıdakilerin tümü doğrudan test kan
 5. 100'den fazla olay cursor ile eksiksiz gezilir, filtre ve JSONL export aynı sonucu verir;
 6. herhangi bir geçmiş sequence'ten belief/relationship/fast-state yeniden kurulabilir;
 7. append-only DB trigger, XSS ve secret-redaction testleri geçer;
-8. backup/restore ve reboot sonrası ledger count, sequence ve hash zinciri aynıdır.
+8. activation öncesi backup ve izole restore sonrasında ledger count, sequence ve hash zinciri
+   aynıdır.
+
+Host reboot bütünlüğü activation öncesi koşul değildir; Gate 11 tamamlandıktan sonra Gate 12'nin
+zorunlu final kanıtıdır. Reboot öncesi ve sonrası ledger count, sequence ve hash zinciri aynı
+değilse Day 0 tamamlanmış sayılmaz ve runtime tekrar açılmaz.
 
 Bu gate başarısızsa site açık kalabilir fakat runtime global paused ve bütün agent profilleri
 `PAUSED` kalır.

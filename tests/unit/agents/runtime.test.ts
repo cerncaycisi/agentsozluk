@@ -78,6 +78,19 @@ describe("agent runtime authentication and payload boundaries", () => {
       false,
     );
     expect(runtimeEventsSchema.safeParse({ ...eventPayload, leaseToken }).success).toBe(true);
+    expect(
+      runtimeEventsSchema.safeParse({
+        ...eventPayload,
+        leaseToken,
+        events: [
+          {
+            eventType: "runtime.production.rollout_attempt.completed",
+            safeMessage: "Forged control-plane event.",
+            metadata: {},
+          },
+        ],
+      }).success,
+    ).toBe(false);
   });
 
   it("accepts only machine-safe uppercase runtime error codes", () => {

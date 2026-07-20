@@ -93,6 +93,59 @@ export const runtimeLifeEventPayloadSchema = z
   })
   .strict();
 
+type RuntimeLifeEventPayload = z.infer<typeof runtimeLifeEventPayloadSchema>;
+
+function refineRuntimeLifeEventPayload(
+  payload: RuntimeLifeEventPayload,
+  context: z.RefinementCtx,
+): void {
+  if (
+    payload.observations.length +
+      payload.memoryCandidates.length +
+      payload.decisionJournal.length +
+      payload.actionIntents.length ===
+    0
+  )
+    context.addIssue({
+      code: "custom",
+      path: ["payload"],
+      message: "Life event batch en az bir kayıt içermelidir.",
+    });
+  const journalBySequence = new Map(payload.decisionJournal.map((step) => [step.seq, step]));
+  if (journalBySequence.size !== payload.decisionJournal.length)
+    context.addIssue({
+      code: "custom",
+      path: ["payload", "decisionJournal"],
+      message: "Decision journal seq değerleri benzersiz olmalıdır.",
+    });
+  for (const [index, step] of payload.decisionJournal.entries())
+    for (const cause of step.causedBySeqs)
+      if (cause >= step.seq || !journalBySequence.has(cause))
+        context.addIssue({
+          code: "custom",
+          path: ["payload", "decisionJournal", index, "causedBySeqs"],
+          message: "Decision journal nedenleri yalnız daha erken mevcut adımları gösterebilir.",
+        });
+  if (
+    new Set(payload.actionIntents.map(({ sequence }) => sequence)).size !==
+    payload.actionIntents.length
+  )
+    context.addIssue({
+      code: "custom",
+      path: ["payload", "actionIntents"],
+      message: "Action intent sequence değerleri benzersiz olmalıdır.",
+    });
+  for (const [index, intent] of payload.actionIntents.entries()) {
+    if (intent.selectedOptionSeq === null) continue;
+    if (journalBySequence.get(intent.selectedOptionSeq)?.kind !== "OPTION_SELECTED")
+      context.addIssue({
+        code: "custom",
+        path: ["payload", "actionIntents", index, "selectedOptionSeq"],
+        message: "Action intent yalnız OPTION_SELECTED journal adımına bağlanabilir.",
+      });
+  }
+}
+
 export const runtimeLifeEventBatchSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
@@ -101,57 +154,14 @@ export const runtimeLifeEventBatchSchema = z
   })
   .strict()
   .superRefine(({ payload }, context) => {
-    if (
-      payload.observations.length +
-        payload.memoryCandidates.length +
-        payload.decisionJournal.length +
-        payload.actionIntents.length ===
-      0
-    )
-      context.addIssue({
-        code: "custom",
-        path: ["payload"],
-        message: "Life event batch en az bir kayıt içermelidir.",
-      });
-    const journalBySequence = new Map(payload.decisionJournal.map((step) => [step.seq, step]));
-    if (journalBySequence.size !== payload.decisionJournal.length)
-      context.addIssue({
-        code: "custom",
-        path: ["payload", "decisionJournal"],
-        message: "Decision journal seq değerleri benzersiz olmalıdır.",
-      });
-    for (const [index, step] of payload.decisionJournal.entries())
-      for (const cause of step.causedBySeqs)
-        if (cause >= step.seq || !journalBySequence.has(cause))
-          context.addIssue({
-            code: "custom",
-            path: ["payload", "decisionJournal", index, "causedBySeqs"],
-            message: "Decision journal nedenleri yalnız daha erken mevcut adımları gösterebilir.",
-          });
-    if (
-      new Set(payload.actionIntents.map(({ sequence }) => sequence)).size !==
-      payload.actionIntents.length
-    )
-      context.addIssue({
-        code: "custom",
-        path: ["payload", "actionIntents"],
-        message: "Action intent sequence değerleri benzersiz olmalıdır.",
-      });
-    for (const [index, intent] of payload.actionIntents.entries()) {
-      if (intent.selectedOptionSeq === null) continue;
-      if (journalBySequence.get(intent.selectedOptionSeq)?.kind !== "OPTION_SELECTED")
-        context.addIssue({
-          code: "custom",
-          path: ["payload", "actionIntents", index, "selectedOptionSeq"],
-          message: "Action intent yalnız OPTION_SELECTED journal adımına bağlanabilir.",
-        });
-    }
+    refineRuntimeLifeEventPayload(payload, context);
   });
 
 export const runtimeDecisionBatchSchema = runtimeActionsSchema
   .extend({ payload: runtimeLifeEventPayloadSchema })
   .strict()
   .superRefine(({ actions, payload }, context) => {
+    refineRuntimeLifeEventPayload(payload, context);
     const actionSequences = [...actions.map(({ sequence }) => sequence)].sort((a, b) => a - b);
     const intentSequences = [...payload.actionIntents.map(({ sequence }) => sequence)].sort(
       (a, b) => a - b,
