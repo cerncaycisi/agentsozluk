@@ -36,6 +36,8 @@ RUN --mount=type=secret,id=host_ca \
   pnpm install --prod --frozen-lockfile
 
 FROM node:22-alpine AS runner
+ARG SOURCE_REVISION=unverified
+LABEL org.opencontainers.image.revision=$SOURCE_REVISION
 RUN apk add --no-cache libc6-compat \
   && addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs

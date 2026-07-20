@@ -53,6 +53,9 @@ describe("Milestone 2 production operator runbook", () => {
       "set -Eeuo pipefail",
       "umask 077",
       "application-wide write freeze",
+      "stop caddy app",
+      "systemctl stop agent-sozluk-runtime.service",
+      "\"runStatus\" IN ('QUEUED', 'RUNNING', 'CANCEL_REQUESTED')",
       "m2_open_transactions",
       "pg_database_size(current_database())",
       "m2_backup_free_bytes >= m2_db_bytes + m2_headroom_bytes",
@@ -116,17 +119,47 @@ describe("Milestone 2 production operator runbook", () => {
   it("runs only additive migrations through the Compose array and proves V1 preservation", () => {
     expect(runbook).toContain("### Gate 8: deploy, additive migration and V1 preservation");
     expect(
-      gate8.match(/"\$\{m2_compose\[@\]\}" exec -T app pnpm prisma migrate status/gu),
-    ).toHaveLength(2);
-    expect(gate8).toContain('"${m2_compose[@]}" exec -T app pnpm db:deploy');
+      gate8.match(
+        /"\$\{m2_compose\[@\]\}" exec -T app \.\/node_modules\/\.bin\/prisma migrate status/gu,
+      ),
+    ).toHaveLength(1);
+    expect(gate8).toContain("scripts/docker-entrypoint.sh");
+    expect(gate8).toContain("./node_modules/.bin/prisma migrate deploy");
+    expect(gate8).not.toMatch(/exec -T app (?:pnpm|npm|npx|yarn|corepack)\b/gu);
+    expect(gate8).not.toMatch(/exec -T app .*prisma migrate deploy/gu);
+    expect(gate8).toContain('>"$m2_verify_dir/pre-migrations"');
+    expect(gate8).toContain('>"$m2_verify_dir/candidate-migrations"');
+    expect(gate8).toContain('>"$m2_verify_dir/applied-migrations"');
+    expect(gate8).toContain(
+      'comm -23 "$m2_verify_dir/pre-migrations" "$m2_verify_dir/candidate-migrations"',
+    );
+    expect(gate8).toContain('[[ ! -s "$m2_verify_dir/pre-candidate-missing" ]]');
+    expect(gate8).toContain(
+      'comm -13 "$m2_verify_dir/pre-migrations" "$m2_verify_dir/applied-migrations"',
+    );
+    expect(gate8).toContain('[[ -s "$m2_verify_dir/applied-migration-ids" ]]');
+    expect(gate8).toContain("finished_at IS NOT NULL AND rolled_back_at IS NULL");
+    expect(gate8).toContain('m2_candidate_image="agent-sozluk:$m2_candidate_sha"');
+    expect(gate8).toContain('--build-arg "SOURCE_REVISION=$m2_candidate_sha" app');
+    expect(gate8).toContain("--pull never --force-recreate app");
+    expect(gate8).toContain("m2_candidate_image_id=$(docker image inspect");
+    expect(gate8).toContain("m2_runtime_stage=$(mktemp -d");
+    expect(gate8).toContain("--create --hard-dereference");
+    expect(gate8).toContain("-type d -exec chmod 0555");
+    expect(gate8).toContain("-type f ! -perm /111 -exec chmod 0444");
+    expect(gate8).toContain('sudo mv -Tf "$m2_runtime_next"');
+    expect(gate8).toContain(
+      'cmp -s "$m2_verify_dir/candidate-migrations" "$m2_verify_dir/applied-migrations"',
+    );
     expect(gate8).not.toMatch(/^\$m2_compose exec/gmu);
     expect(gate8.replace(/\s+/gu, " ")).toContain(
       "keep the Gate 7 application-wide write freeze active",
     );
     expect(gate8).toContain('[[ "$m2_pre_fingerprint" == "$m2_post_migration_fingerprint" ]]');
     expect(gate8).toContain("to_regclass('public.user_follows')");
-    expect(gate8).toContain("keep runtime and application writes paused");
-    expect(gate8).toContain("Never run `db:reset`, seed or an ad-hoc repair");
+    expect(gate8.replace(/\s+/gu, " ")).toContain("keep Caddy and runtime stopped");
+    expect(gate8).toContain('install -m 0600 "$m2_verify_dir/applied-migration-ids"');
+    expect(gate8.replace(/\s+/gu, " ")).toContain("Never run `db:reset`, seed or an ad-hoc repair");
   });
 
   it("requires cold, warm and dual real-CLI capacity evidence and persists it", () => {

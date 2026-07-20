@@ -165,10 +165,10 @@ probe in Gate 2. A parser error, user-namespace error or missing credential mask
 never compensate by removing Bubblewrap or setting
 `kernel.apparmor_restrict_unprivileged_userns=0`.
 
-The release process must place a self-contained runtime bundle, including the locked project-local
-`tsx` dependency, at `/opt/agent-sozluk/runtime/current`. Its resolved path must not be under
-`/opt/agent-sozluk/app`. Before installation, verify that the tree is root-owned and not writable by
-group or other:
+Each runtime bundle must be self-contained, include the locked project-local `tsx` dependency, live
+under a full-SHA directory and be selected through `/opt/agent-sozluk/runtime/current`. Its resolved
+path must not be under `/opt/agent-sozluk/app`. Before installation, verify that the tree is
+root-owned and not writable by group or other:
 
 ```sh
 runtime_release="$(readlink -e /opt/agent-sozluk/runtime/current)"
@@ -198,6 +198,12 @@ sudo install -d -o root -g agent-runtime -m 0750 \
   /var/lib/agent-sozluk-runtime
 sudo install -d -o agent-runtime -g agent-runtime -m 0700 \
   /opt/agent-sozluk/runtime/work
+sudo chown root:root /opt/agent-sozluk/runtime
+sudo chmod 0755 /opt/agent-sozluk/runtime
+sudo install -d -o root -g root -m 0755 \
+  /opt/agent-sozluk/runtime/releases
+sudo install -d -o deploy -g deploy -m 0700 \
+  /opt/agent-sozluk/runtime/.release-staging
 sudo install -d -o root -g agent-runtime -m 0750 /etc/agent-sozluk
 sudo install -o root -g agent-runtime -m 0640 \
   deploy/systemd/agent-sozluk-runtime.env.example \
@@ -205,6 +211,22 @@ sudo install -o root -g agent-runtime -m 0640 \
 sudo install -o root -g root -m 0644 \
   deploy/systemd/agent-sozluk-runtime.service \
   /etc/systemd/system/agent-sozluk-runtime.service
+```
+
+The currently selected release may be normalized once while the runtime service is stopped. This
+directly remediates a legacy release whose copied files retained group/other write bits; no
+adversarial third operator is part of this maintenance model:
+
+```bash
+test "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" = inactive
+runtime_release="$(readlink -e /opt/agent-sozluk/runtime/current)"
+[[ "$runtime_release" =~ ^/opt/agent-sozluk/runtime/releases/[0-9a-f]{40}$ ]]
+sudo chown -R root:root -- "$runtime_release"
+sudo find "$runtime_release" -xdev -type d -exec chmod 0555 {} +
+sudo find "$runtime_release" -xdev -type f -perm /111 -exec chmod 0555 {} +
+sudo find "$runtime_release" -xdev -type f ! -perm /111 -exec chmod 0444 {} +
+test -z "$(find "$runtime_release" -xdev ! -user root -print -quit)"
+test -z "$(find "$runtime_release" -xdev \( -type f -o -type d \) -perm /022 -print -quit)"
 ```
 
 `/etc/agent-sozluk/runtime.env` contains only non-secret settings and paths. Edit it with
@@ -435,9 +457,16 @@ scratch database that passed both guards; it never touches the production databa
 set -Eeuo pipefail
 umask 077
 m2_compose=(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml)
+m2_candidate_sha='<approved-40-character-main-sha>'
+m2_predeploy_sha='<recorded-40-character-production-sha>'
 m2_backup_file=/opt/agent-sozluk/backups/agent-sozluk-pre-m2-YYYYMMDDTHHMMSSZ.dump
+m2_applied_migrations_file=/opt/agent-sozluk/backups/agent-sozluk-m2-YYYYMMDDTHHMMSSZ-applied-migrations.txt
 m2_restore_database=agent_sozluk_m2_restore_YYYYMMDD_HHMMSS
 m2_scratch_created=0
+
+[[ "$m2_candidate_sha" =~ ^[0-9a-f]{40}$ ]]
+[[ "$m2_predeploy_sha" =~ ^[0-9a-f]{40}$ ]]
+[[ ! -e "$m2_applied_migrations_file" && ! -L "$m2_applied_migrations_file" ]]
 
 install -d -m 0700 /opt/agent-sozluk/backups
 m2_verify_dir=$(mktemp -d /opt/agent-sozluk/backups/.m2-verify.XXXXXX)
@@ -463,7 +492,11 @@ m2_cleanup() {
   fi
   rm -f "$m2_verify_dir/v1-counts.sql" "$m2_verify_dir/v1-fingerprint.sql" \
     "$m2_verify_dir/pre-counts" "$m2_verify_dir/post-dump-counts" \
-    "$m2_verify_dir/restore-counts" "$m2_verify_dir/post-migration-counts" || cleanup_status=1
+    "$m2_verify_dir/restore-counts" "$m2_verify_dir/post-migration-counts" \
+    "$m2_verify_dir/pre-migrations" "$m2_verify_dir/candidate-migrations" \
+    "$m2_verify_dir/applied-migrations" "$m2_verify_dir/pre-candidate-missing" \
+    "$m2_verify_dir/post-history-missing" "$m2_verify_dir/applied-migration-ids" || \
+    cleanup_status=1
   rmdir "$m2_verify_dir" 2>/dev/null || cleanup_status=1
   if ((status == 0 && cleanup_status != 0)); then status=1; fi
   exit "$status"
@@ -633,10 +666,34 @@ m2_v1_fingerprint() {
 }
 ```
 
-After the write freeze is active, require zero other open transactions for this database. Then take
-the baseline, produce one serializable/deferrable custom-format dump, and immediately repeat the
-baseline. `set -o pipefail` above makes a failed `psql` fail the hash pipeline instead of hashing an
-empty or partial stream:
+After confirming through the admin control plane that global runtime and all ten profiles are
+paused with zero live leases, establish the application-wide write freeze by stopping the runtime
+service, public proxy and app. The database stays healthy and private for the operator procedure.
+These stops, and the later starts, are production mutations covered only by the exact Gate 7/8
+approval:
+
+```bash
+"${m2_compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 \
+  -U agent_sozluk -d agent_sozluk <<'SQL' | grep -qx t
+SELECT
+  (SELECT count(*) = 1 AND bool_and(NOT "runtimeEnabled") FROM agent_global_settings)
+  AND (SELECT count(*) = 10 AND bool_and("lifecycleStatus" = 'PAUSED') FROM agent_profiles)
+  AND (SELECT count(*) = 0 FROM agent_runs
+       WHERE "runStatus" IN ('QUEUED', 'RUNNING', 'CANCEL_REQUESTED'))
+  AND (SELECT count(*) = 0 FROM agent_runs
+       WHERE "leaseToken" IS NOT NULL AND "leaseExpiresAt" > now());
+SQL
+sudo systemctl stop agent-sozluk-runtime.service
+[[ "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" == inactive ]]
+"${m2_compose[@]}" stop caddy app
+[[ -z "$("${m2_compose[@]}" ps --status running -q caddy)" ]]
+[[ -z "$("${m2_compose[@]}" ps --status running -q app)" ]]
+[[ -n "$("${m2_compose[@]}" ps --status running -q db)" ]]
+```
+
+Now require zero other open transactions for this database. Then take the baseline, produce one
+serializable/deferrable custom-format dump, and immediately repeat the baseline. `set -o pipefail`
+above makes a failed `psql` fail the hash pipeline instead of hashing an empty or partial stream:
 
 ```bash
 m2_open_transactions=$("${m2_compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 \
@@ -696,17 +753,90 @@ incident-specific plan.
 
 ### Gate 8: deploy, additive migration and V1 preservation
 
-Deploy only the already merged, green SHA using the existing deployment mechanism. Do not edit the
-checkout, Compose file or environment by hand. Obtain explicit approval for the exact deploy and
-migration, confirm runtime remains globally paused, keep the Gate 7 application-wide write freeze
-active, and record the current migration list. The approved deployment mechanism must not reopen
-traffic before the post-migration invariant passes. Then run the versioned deploy command exactly
-once:
+Deploy only the already merged, green SHA. Do not edit the checkout, Compose file or environment by
+hand. Obtain explicit approval for the exact checkout transition, image build, deploy and
+migration; confirm runtime remains globally paused; and keep the Gate 7 application-wide write
+freeze active. The proxy, app and runtime service remain stopped until the commands below
+explicitly advance them. Build a full-SHA image, record its immutable image ID and prove the running
+container uses that image ID and revision.
+
+The final application image intentionally has no global package manager. Its versioned
+`scripts/docker-entrypoint.sh` is the sole migration executor: it calls the production dependency at
+`./node_modules/.bin/prisma migrate deploy` before starting the application process. Start the exact
+candidate app image once through the approved deployment mechanism while the write/traffic freeze
+remains active. Do not run a second manual deploy command in the running app container. A failed
+entrypoint migration must leave the candidate app unavailable and stop rollout.
+
+Before starting the candidate, capture the successfully applied migration names without using
+`prisma migrate status`: that command exits non-zero when the database is correctly behind the
+candidate. Advance the clean checkout from the approved pre-deploy SHA to the fetched full
+candidate SHA, prove every previously applied migration still exists in that candidate, and only
+then build and start it. The Compose start must use the existing full-SHA image without rebuilding
+or pulling. After the candidate app starts, require its direct, image-local status command to pass
+and prove the successfully applied database set is byte-identical to the exact checkout's migration
+set:
 
 ```bash
-"${m2_compose[@]}" exec -T app pnpm prisma migrate status
-"${m2_compose[@]}" exec -T app pnpm db:deploy
-"${m2_compose[@]}" exec -T app pnpm prisma migrate status
+"${m2_compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 \
+  -U agent_sozluk -d agent_sozluk \
+  -c 'SELECT migration_name FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL ORDER BY migration_name;' \
+  >"$m2_verify_dir/pre-migrations"
+
+[[ "$(git -C /opt/agent-sozluk/app rev-parse HEAD)" == "$m2_predeploy_sha" ]]
+[[ -z "$(git -C /opt/agent-sozluk/app status --porcelain=v1 --untracked-files=all)" ]]
+git -C /opt/agent-sozluk/app fetch --prune origin main
+[[ "$(git -C /opt/agent-sozluk/app rev-parse origin/main)" == "$m2_candidate_sha" ]]
+git -C /opt/agent-sozluk/app checkout --detach "$m2_candidate_sha"
+[[ "$(git -C /opt/agent-sozluk/app rev-parse HEAD)" == "$m2_candidate_sha" ]]
+[[ -z "$(git -C /opt/agent-sozluk/app status --porcelain=v1 --untracked-files=all)" ]]
+
+find /opt/agent-sozluk/app/prisma/migrations -mindepth 1 -maxdepth 1 -type d \
+  -printf '%f\n' | LC_ALL=C sort >"$m2_verify_dir/candidate-migrations"
+comm -23 "$m2_verify_dir/pre-migrations" "$m2_verify_dir/candidate-migrations" \
+  >"$m2_verify_dir/pre-candidate-missing"
+[[ ! -s "$m2_verify_dir/pre-candidate-missing" ]]
+
+m2_candidate_image="agent-sozluk:$m2_candidate_sha"
+if docker image inspect "$m2_candidate_image" >/dev/null 2>&1; then
+  printf 'candidate image tag already exists; stop rather than overwrite it\n' >&2
+  exit 95
+fi
+APP_IMAGE="$m2_candidate_image" "${m2_compose[@]}" build --pull=false \
+  --build-arg "SOURCE_REVISION=$m2_candidate_sha" app
+m2_candidate_image_id=$(docker image inspect --format '{{.Id}}' "$m2_candidate_image")
+test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' \
+  "$m2_candidate_image")" = "$m2_candidate_sha"
+test -z "$("${m2_compose[@]}" ps --status running -q caddy)"
+APP_IMAGE="$m2_candidate_image" "${m2_compose[@]}" up -d --no-deps --no-build \
+  --pull never --force-recreate app
+for _ in $(seq 1 60); do
+  m2_app_container=$("${m2_compose[@]}" ps --status running -q app)
+  if test -n "$m2_app_container" && \
+    test "$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \
+      "$m2_app_container")" = healthy; then
+    break
+  fi
+  sleep 2
+done
+m2_app_container=$("${m2_compose[@]}" ps --status running -q app)
+test -n "$m2_app_container"
+test "$(docker inspect --format '{{.Image}}' "$m2_app_container")" = "$m2_candidate_image_id"
+test "$(docker inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' \
+  "$m2_app_container")" = "$m2_candidate_sha"
+test -z "$("${m2_compose[@]}" ps --status running -q caddy)"
+
+"${m2_compose[@]}" exec -T app ./node_modules/.bin/prisma migrate status
+"${m2_compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 \
+  -U agent_sozluk -d agent_sozluk \
+  -c 'SELECT migration_name FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL ORDER BY migration_name;' \
+  >"$m2_verify_dir/applied-migrations"
+cmp -s "$m2_verify_dir/candidate-migrations" "$m2_verify_dir/applied-migrations"
+comm -23 "$m2_verify_dir/pre-migrations" "$m2_verify_dir/applied-migrations" \
+  >"$m2_verify_dir/post-history-missing"
+[[ ! -s "$m2_verify_dir/post-history-missing" ]]
+comm -13 "$m2_verify_dir/pre-migrations" "$m2_verify_dir/applied-migrations" \
+  >"$m2_verify_dir/applied-migration-ids"
+[[ -s "$m2_verify_dir/applied-migration-ids" ]]
 ```
 
 While writes are still frozen, repeat the same canonical V1 queries against `agent_sozluk`; do not
@@ -724,15 +854,113 @@ cmp -s "$m2_verify_dir/pre-counts" "$m2_verify_dir/post-migration-counts"
   -U agent_sozluk -d agent_sozluk \
   -c "SELECT to_regclass('public.user_follows') IS NOT NULL AND to_regclass('public.agent_profiles') IS NOT NULL AND to_regclass('public.agent_runs') IS NOT NULL AND to_regclass('public.agent_runtime_capabilities') IS NOT NULL;" \
   | grep -qx t
+
+install -m 0600 "$m2_verify_dir/applied-migration-ids" "$m2_applied_migrations_file"
 ```
 
 Every pre-existing V1 count and V1 field must be unchanged, and both canonical seed counts must
-still be `180`. Confirm the application can perform loopback health/readiness reads while runtime is
-paused. Only after every comparison and readiness read passes may the separately approved
-deployment mechanism lift the application write freeze. Migration error, destructive SQL, count or
-fingerprint drift, dirty checkout, SHA mismatch, premature traffic reopening or readiness failure
-is fail-closed: stop, keep runtime and application writes paused, preserve logs without secrets,
-and request a separate rollback decision. Never run `db:reset`, seed or an ad-hoc repair.
+still be `180`. Confirm the exact candidate can perform loopback health/readiness reads while the
+proxy and runtime remain stopped. Only after every comparison and readiness read passes may the
+approved Gate 8 scope restart Caddy and lift the application write freeze; the runtime service and
+global runtime remain paused:
+
+```bash
+"${m2_compose[@]}" exec -T app node -e \
+  "Promise.all(['health','ready'].map(p=>fetch('http://127.0.0.1:3000/api/'+p).then(r=>{if(!r.ok)throw new Error(p+':'+r.status)}))).catch(e=>{console.error(e.message);process.exit(1)})"
+"${m2_compose[@]}" start caddy
+[[ -n "$("${m2_compose[@]}" ps --status running -q caddy)" ]]
+[[ "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" == inactive ]]
+```
+
+Migration error, destructive SQL, count or fingerprint drift, dirty checkout, SHA/image mismatch,
+premature traffic reopening or readiness failure is fail-closed: stop, keep Caddy and runtime
+stopped, preserve logs without secrets, and request a separate rollback decision. Never run
+`db:reset`, seed or an ad-hoc repair.
+
+### Gate 8A: immutable runtime release convergence
+
+With the application on the exact candidate SHA, Caddy healthy, global runtime paused and the
+runtime service still inactive, assemble a fresh inert runtime release. Extract the exact Git
+object, copy the already built exact-SHA image's production dependencies, then normalize the new
+tree to root ownership with directories at `0555` and files at `0444` or `0555`. Verify it before
+switching the `current` symlink. These commands are production mutations and require the exact
+runtime-release approval; they never start the service:
+
+```bash
+[[ "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" == inactive ]]
+m2_runtime_previous=$(readlink -e /opt/agent-sozluk/runtime/current)
+[[ "$m2_runtime_previous" =~ ^/opt/agent-sozluk/runtime/releases/[0-9a-f]{40}$ ]]
+m2_runtime_release=/opt/agent-sozluk/runtime/releases/$m2_candidate_sha
+[[ ! -e "$m2_runtime_release" && ! -L "$m2_runtime_release" ]]
+(
+  set -Eeuo pipefail
+  m2_runtime_stage=$(mktemp -d \
+    "/opt/agent-sozluk/runtime/.release-staging/release-$m2_candidate_sha.XXXXXXXX")
+  m2_runtime_container=''
+
+  m2_runtime_cleanup() {
+    status=$?
+    cleanup_status=0
+    trap - EXIT INT TERM HUP
+    set +e
+    if [[ -n "$m2_runtime_container" ]]; then
+      docker rm "$m2_runtime_container" >/dev/null 2>&1 || cleanup_status=1
+    fi
+    find "$m2_runtime_stage" -xdev -depth -delete || cleanup_status=1
+    if ((status == 0 && cleanup_status != 0)); then status=1; fi
+    exit "$status"
+  }
+  trap m2_runtime_cleanup EXIT INT TERM HUP
+
+  git -C /opt/agent-sozluk/app archive --format=tar "$m2_candidate_sha" |
+    tar --extract --file=- --directory="$m2_runtime_stage" \
+      --no-same-owner --no-same-permissions
+  [[ ! -e "$m2_runtime_stage/.git" && ! -e "$m2_runtime_stage/.env" ]]
+
+  m2_runtime_container=$(docker create "$m2_candidate_image")
+  docker cp "$m2_runtime_container:/app/node_modules" "$m2_runtime_stage/node_modules"
+  docker rm "$m2_runtime_container" >/dev/null
+  m2_runtime_container=''
+
+  for required in package.json pnpm-lock.yaml tsconfig.json scripts/agent-runtime-worker.ts \
+    node_modules/tsx/dist/cli.mjs node_modules/.bin/tsx node_modules/.bin/prisma; do
+    [[ -e "$m2_runtime_stage/$required" || -L "$m2_runtime_stage/$required" ]]
+  done
+  printf '%s\n' "$m2_candidate_sha" >"$m2_runtime_stage/.release-sha"
+  printf '%s\n' "$m2_candidate_image_id" >"$m2_runtime_stage/.release-app-image-id"
+
+  m2_runtime_publish=/opt/agent-sozluk/runtime/releases/.candidate-$m2_candidate_sha
+  [[ ! -e "$m2_runtime_publish" && ! -L "$m2_runtime_publish" ]]
+  sudo install -d -o root -g root -m 0700 "$m2_runtime_publish"
+  tar --create --hard-dereference --file=- --directory="$m2_runtime_stage" . |
+    sudo tar --extract --file=- --directory="$m2_runtime_publish" \
+      --no-same-owner --no-same-permissions
+  sudo chown -R root:root -- "$m2_runtime_publish"
+  sudo find "$m2_runtime_publish" -xdev -type d -exec chmod 0555 {} +
+  sudo find "$m2_runtime_publish" -xdev -type f -perm /111 -exec chmod 0555 {} +
+  sudo find "$m2_runtime_publish" -xdev -type f ! -perm /111 -exec chmod 0444 {} +
+  [[ -z "$(sudo find "$m2_runtime_publish" -xdev ! -user root -print -quit)" ]]
+  [[ -z "$(sudo find "$m2_runtime_publish" -xdev \
+    \( -type f -o -type d \) -perm /022 -print -quit)" ]]
+  [[ "$(sudo cat "$m2_runtime_publish/.release-sha")" == "$m2_candidate_sha" ]]
+  [[ "$(sudo cat "$m2_runtime_publish/.release-app-image-id")" == "$m2_candidate_image_id" ]]
+  sudo mv -T "$m2_runtime_publish" "$m2_runtime_release"
+)
+
+[[ "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" == inactive ]]
+m2_runtime_next=/opt/agent-sozluk/runtime/.current-$m2_candidate_sha
+[[ ! -e "$m2_runtime_next" && ! -L "$m2_runtime_next" ]]
+sudo ln -s "releases/$m2_candidate_sha" "$m2_runtime_next"
+sudo chown -h root:root "$m2_runtime_next"
+sudo mv -Tf "$m2_runtime_next" /opt/agent-sozluk/runtime/current
+[[ "$(readlink -e /opt/agent-sozluk/runtime/current)" == \
+  "/opt/agent-sozluk/runtime/releases/$m2_candidate_sha" ]]
+[[ "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" == inactive ]]
+```
+
+Keep the prior normalized full-SHA release for a separately approved filesystem rollback. Never use
+`cp -a`, `ln -sfn`, a short SHA or a mutable `latest` path. The runtime remains inactive until the
+Gate 3 capability probe and Gate 4 start approval pass.
 
 ### Capacity prerequisite: real CLI benchmark and persisted measurement
 
