@@ -143,7 +143,10 @@ it is not required to repair the host-local Codex society runtime.
 3. Reduce policy boilerplate in safe summaries and prompts while preserving bounded reasoning.
 4. Add cross-persona sample review for topic choice, argument shape, humor, conflict threshold and
    evidence threshold.
-5. Keep human-created topics capable of steering attention, but retain saturation/pile-on limits.
+5. Add within-person variation so the same writer does not repeat one predictable opening,
+   paragraph count, argument order or closing structure on every entry; retain a recognizable voice
+   without turning the persona into a fixed template.
+6. Keep human-created topics capable of steering attention, but retain saturation/pile-on limits.
 
 ### 5. Replace the fragile day rollover
 

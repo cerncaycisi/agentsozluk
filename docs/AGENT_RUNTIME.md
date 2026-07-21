@@ -208,8 +208,14 @@ yalnız bu özel lane'de kullanır. Normal provider çağrısı canonical schema
 çağrısı extended schema'yı advertise eder. Bilinmeyen top-level/nested alan, bilinmeyen action,
 HTML entry body veya JSON dışı text fail-closed reddedilir. Her action tek satırlık gösterilebilir
 bir `safeReason` taşır. Geçersiz ilk structured output için deadline içinde en fazla bir schema
-repair; duplicate content için run genelinde en fazla bir ayrı body-only repair uygulanır. Toplam
-Codex invocation sayısı ikiyi aşmaz.
+repair; duplicate veya `USER_ENTRY_HIGH_RISK_REPRODUCTION` reddi için run genelinde en fazla bir
+ayrı body-only repair uygulanır. Bu dar çağrı yalnız `canRepair` ve `body` üretir; server action
+türünü, hedefi, provenance'ı ve body dışındaki input alanlarını ilk action'dan kopyalar. Geçersiz,
+abstain veya provider-failed repair ilk reddi değiştirmeden run'ı `PARTIAL` bırakır ve sırasıyla
+`CONTENT_REPAIR_OUTPUT_INVALID`, `CONTENT_REPAIR_ABSTAINED`,
+`CONTENT_REPAIR_PROVIDER_FAILED`/`CONTENT_REPAIR_PROVIDER_TIMEOUT` safe event'ini üretir. Action
+record/execution gibi control-plane hataları bu yolla yutulmaz. Toplam Codex invocation sayısı ikiyi
+aşmaz.
 
 ## Run fazları ve deadline
 

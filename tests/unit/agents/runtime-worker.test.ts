@@ -16,6 +16,7 @@ import {
   AgentRuntimeWorker,
   buildRuntimePrompt,
   DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS,
+  runtimeContentRepairWireJsonSchema,
   RUNTIME_PROMPT_PROFILE_HASH,
 } from "@/runtime/worker";
 
@@ -669,10 +670,10 @@ describe("long-lived agent runtime worker", () => {
             provider: "codex-cli",
             version: "test",
             durationMs: 8,
-            output: decision(
-              "Kapasite kararı ancak gözlenen süre ve yük birlikte okununca anlam kazanır.",
-              "Aynı kanıt farklı ve daha özgün bir anlatımı destekliyor.",
-            ),
+            output: {
+              canRepair: true,
+              body: "Kapasite kararı ancak gözlenen süre ve yük birlikte okununca anlam kazanır.",
+            },
           }),
       };
       const worker = new AgentRuntimeWorker({
@@ -706,7 +707,9 @@ describe("long-lived agent runtime worker", () => {
           }),
         ],
         expect.objectContaining({
-          decisionJournal: [expect.objectContaining({ seq: 1, kind: "OPTION_SELECTED" })],
+          observations: [],
+          memoryCandidates: [],
+          decisionJournal: [],
           actionIntents: [
             {
               sequence: 2,
@@ -737,12 +740,168 @@ describe("long-lived agent runtime worker", () => {
         usageMetadata: { codexIntervals: unknown[] };
       };
       expect(completion.usageMetadata.codexIntervals).toHaveLength(2);
+      expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].outputSchema).toBe(
+        runtimeContentRepairWireJsonSchema,
+      );
       if (firstRejectionCode === "USER_ENTRY_HIGH_RISK_REPRODUCTION")
         expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
           "Başka entry'den doğrudan alıntıyı, entry/yazar/kullanıcı atfını ve görünür referansı tamamen kaldır.",
         );
     },
   );
+
+  it("keeps the run PARTIAL when the narrow content repair repeats the rejected body", async () => {
+    const runId = randomUUID();
+    const topicId = randomUUID();
+    const plane = controlPlane(runId);
+    plane.executeActions = vi.fn().mockResolvedValue({
+      actions: [
+        {
+          id: randomUUID(),
+          sequence: 1,
+          actionType: "CREATE_ENTRY",
+          actionStatus: "REJECTED",
+          rejectionCode: "USER_ENTRY_HIGH_RISK_REPRODUCTION",
+        },
+      ],
+    });
+    const originalBody = "Başlıktaki yazarın söylediği cümleyi aynen aktaran entry.";
+    const originalDecision = canonicalNormalOutput("Riskli entry adayı değerlendirildi.", {
+      actions: [
+        {
+          type: "CREATE_ENTRY",
+          targetId: topicId,
+          body: originalBody,
+          desire: 0.8,
+          safeReason: "Görünür topic entry adayını destekliyor.",
+          claimProvenance: [
+            {
+              provenance: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Görünür runtime olayı entry adayını destekliyor.",
+            },
+          ],
+        },
+      ],
+    });
+    const provider: RuntimeProvider = {
+      inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 10,
+          output: originalDecision,
+        })
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 8,
+          output: { canRepair: true, body: originalBody },
+        }),
+    };
+    const onSafeEvent = vi.fn();
+    const worker = new AgentRuntimeWorker({
+      workerId: "invalid-content-repair-worker",
+      credentials: [`agt_${"r".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      onSafeEvent,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(provider.invoke).toHaveBeenCalledTimes(2);
+    expect(plane.recordActions).toHaveBeenCalledTimes(1);
+    expect(plane.complete).toHaveBeenCalledWith(
+      expect.any(String),
+      "invalid-content-repair-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({ outcome: "PARTIAL" }),
+      expect.any(Object),
+    );
+    expect(plane.fail).not.toHaveBeenCalled();
+    expect(onSafeEvent).toHaveBeenCalledWith({
+      level: "error",
+      code: "CONTENT_REPAIR_CANDIDATE_INVALID",
+      runId,
+    });
+  });
+
+  it("keeps the run PARTIAL and emits a specific event when the repair provider fails", async () => {
+    const runId = randomUUID();
+    const topicId = randomUUID();
+    const plane = controlPlane(runId);
+    plane.executeActions = vi.fn().mockResolvedValue({
+      actions: [
+        {
+          id: randomUUID(),
+          sequence: 1,
+          actionType: "CREATE_ENTRY",
+          actionStatus: "REJECTED",
+          rejectionCode: "USER_ENTRY_HIGH_RISK_REPRODUCTION",
+        },
+      ],
+    });
+    const provider: RuntimeProvider = {
+      inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 10,
+          output: canonicalNormalOutput("Riskli entry adayı değerlendirildi.", {
+            actions: [
+              {
+                type: "CREATE_ENTRY",
+                targetId: topicId,
+                body: "Başlıktaki entry'den görünür bir alıntı taşıyan metin.",
+                desire: 0.8,
+                safeReason: "Görünür topic entry adayını destekliyor.",
+                claimProvenance: [
+                  {
+                    provenance: "PLATFORM_EVENT",
+                    evidenceIds: [runId],
+                    shortRationale: "Görünür runtime olayı entry adayını destekliyor.",
+                  },
+                ],
+              },
+            ],
+          }),
+        })
+        .mockRejectedValueOnce(new Error("SIMULATED_REPAIR_PROVIDER_FAILURE")),
+    };
+    const onSafeEvent = vi.fn();
+    const worker = new AgentRuntimeWorker({
+      workerId: "failed-content-repair-worker",
+      credentials: [`agt_${"s".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      onSafeEvent,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(provider.invoke).toHaveBeenCalledTimes(2);
+    expect(plane.recordActions).toHaveBeenCalledTimes(1);
+    expect(plane.complete).toHaveBeenCalledWith(
+      expect.any(String),
+      "failed-content-repair-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({ outcome: "PARTIAL" }),
+      expect.any(Object),
+    );
+    expect(plane.fail).not.toHaveBeenCalled();
+    expect(onSafeEvent).toHaveBeenCalledWith({
+      level: "error",
+      code: "CONTENT_REPAIR_PROVIDER_FAILED",
+      runId,
+    });
+  });
 
   it("uses one lease deadline across source read, provider and sequential atomic actions", async () => {
     const runId = randomUUID();
