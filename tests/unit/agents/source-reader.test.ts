@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   assertPublicSourceAddresses,
+  classifySourceReadError,
   parseSourceFeed,
+  parseSourceSitemap,
+  pinnedSourceLookup,
   robotsAllows,
+  robotsAllowsModelInput,
   SafeSourceReader,
   sanitizeSourceHtml,
 } from "@/runtime/source-reader";
@@ -59,6 +63,64 @@ describe("safe external source reader", () => {
     expect(robotsAllows(robots, "/private/public/item")).toBe(true);
   });
 
+  it("prefers a source-reader-specific robots group over wildcard rules", () => {
+    const robots = `
+      User-agent: *
+      Allow: /
+
+      User-agent: AgentSozlukSourceReader
+      Disallow: /
+    `;
+    expect(robotsAllows(robots, "/news")).toBe(false);
+  });
+
+  it("fails closed when a matching content signal denies AI input", () => {
+    expect(
+      robotsAllowsModelInput(`
+        User-agent: *
+        Content-Signal: search=yes, ai-input=no, ai-train=no
+        Allow: /
+      `),
+    ).toBe(false);
+    expect(
+      robotsAllowsModelInput(`
+        User-agent: *
+        Content-Signal: search=yes, use=reference
+        Allow: /
+      `),
+    ).toBe(true);
+  });
+
+  it("classifies transport errors without exposing raw messages", () => {
+    expect(
+      classifySourceReadError(
+        Object.assign(new Error("getaddrinfo failed"), { code: "ENOTFOUND" }),
+      ),
+    ).toBe("SOURCE_DNS_FAILED");
+    expect(
+      classifySourceReadError(Object.assign(new Error("socket failed"), { code: "ECONNREFUSED" })),
+    ).toBe("SOURCE_CONNECT_FAILED");
+    expect(
+      classifySourceReadError(
+        Object.assign(new Error("certificate details"), { code: "CERT_HAS_EXPIRED" }),
+      ),
+    ).toBe("SOURCE_TLS_FAILED");
+    expect(classifySourceReadError(new Error("unexpected sensitive detail"))).toBe(
+      "SOURCE_FETCH_FAILED",
+    );
+  });
+
+  it("returns the Node 22 all-address lookup shape for a pinned address", async () => {
+    const lookup = pinnedSourceLookup("93.184.216.34", 4);
+    await expect(
+      new Promise((resolve, reject) =>
+        lookup("example.com", { all: true }, (error, address) =>
+          error ? reject(error) : resolve(address),
+        ),
+      ),
+    ).resolves.toEqual([{ address: "93.184.216.34", family: 4 }]);
+  });
+
   it("removes executable and navigation HTML before returning safe text", () => {
     const result = sanitizeSourceHtml(`
       <html><head><title>Örnek &amp; Başlık</title><script>steal()</script></head>
@@ -83,6 +145,78 @@ describe("safe external source reader", () => {
       publishedAt: "2026-07-17T10:00:00.000Z",
     });
     expect(items[0]!.contentHash).toMatch(/^[a-f0-9]{64}$/u);
+  });
+
+  it("parses bounded news sitemap headlines as discovery records", () => {
+    const items = parseSourceSitemap(
+      `<urlset xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+        <url><loc>https://example.com/haber/1</loc><news:news><news:publication_date>2026-07-21T09:30:00Z</news:publication_date><news:title>Türkçe teknoloji başlığı</news:title></news:news></url>
+      </urlset>`,
+      new URL("https://example.com/sitemap-news.xml"),
+    );
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      canonicalUrl: "https://example.com/haber/1",
+      title: "Türkçe teknoloji başlığı",
+      safeText: "Türkçe teknoloji başlığı",
+      publishedAt: "2026-07-21T09:30:00.000Z",
+    });
+  });
+
+  it("tries the next public DNS address after a transport failure", async () => {
+    const requester = vi.fn().mockImplementation(async (url: URL, address: string) => {
+      if (url.pathname === "/robots.txt")
+        return { status: 404, headers: {}, body: Buffer.alloc(0), url: url.toString() };
+      if (address === "2606:4700:4700::1111")
+        throw Object.assign(new Error("unreachable"), { code: "ENETUNREACH" });
+      return {
+        status: 200,
+        headers: { "content-type": "text/html" },
+        body: Buffer.from("<html><title>Fallback</title><body>IPv4 çalıştı.</body></html>"),
+        url: url.toString(),
+      };
+    });
+    const reader = new SafeSourceReader({
+      minimumDomainIntervalMs: 0,
+      resolver: vi.fn().mockResolvedValue([
+        { address: "2606:4700:4700::1111", family: 6 },
+        { address: "93.184.216.34", family: 4 },
+      ]),
+      requester,
+    });
+
+    await expect(reader.read("https://example.com/article")).resolves.toMatchObject([
+      { title: "Fallback", safeText: "Fallback IPv4 çalıştı." },
+    ]);
+    expect(requester.mock.calls.filter(([url]) => url.pathname !== "/robots.txt")).toHaveLength(2);
+  });
+
+  it("rejects source content when robots reserves AI input", async () => {
+    const requester = vi.fn().mockImplementation(async (url: URL) =>
+      url.pathname === "/robots.txt"
+        ? {
+            status: 200,
+            headers: { "content-type": "text/plain" },
+            body: Buffer.from("User-agent: *\nContent-Signal: ai-input=no\nAllow: /"),
+            url: url.toString(),
+          }
+        : {
+            status: 200,
+            headers: { "content-type": "text/html" },
+            body: Buffer.from("<html><body>should not be read</body></html>"),
+            url: url.toString(),
+          },
+    );
+    const reader = new SafeSourceReader({
+      minimumDomainIntervalMs: 0,
+      resolver: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
+      requester,
+    });
+
+    await expect(reader.read("https://example.com/article")).rejects.toThrow(
+      "SOURCE_CONTENT_SIGNAL_DISALLOWED",
+    );
+    expect(requester).toHaveBeenCalledOnce();
   });
 
   it("prefers a declared RSS feed over HTML fallback text", async () => {

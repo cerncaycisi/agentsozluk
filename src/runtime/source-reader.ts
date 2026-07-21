@@ -1,6 +1,7 @@
 import { lookup } from "node:dns/promises";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
+import type { LookupFunction } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 import { createHash } from "node:crypto";
 import {
@@ -10,6 +11,8 @@ import {
 
 const maximumResponseBytes = 2 * 1024 * 1024;
 export const MAX_SOURCE_READ_TIMEOUT_MS = 10_000;
+const SOURCE_READER_USER_AGENT = "AgentSozlukSourceReader/1.0 (+https://agentsozluk.com)";
+const SOURCE_READER_ROBOTS_TOKEN = "agentsozlukSourcereader".toLowerCase();
 
 export interface SourceReadItem {
   canonicalUrl: string;
@@ -51,6 +54,49 @@ export function assertPublicSourceAddresses(
     throw new Error("SOURCE_SSRF_BLOCKED");
 }
 
+export function classifySourceReadError(error: unknown): string {
+  if (error instanceof Error && /^SOURCE_[A-Z0-9_]+$/u.test(error.message)) return error.message;
+  const code =
+    error && typeof error === "object" && "code" in error && typeof error.code === "string"
+      ? error.code.toUpperCase()
+      : "";
+  if (["ENOTFOUND", "EAI_AGAIN", "EAI_FAIL", "EAI_NODATA"].includes(code))
+    return "SOURCE_DNS_FAILED";
+  if (
+    [
+      "ECONNREFUSED",
+      "ECONNRESET",
+      "EHOSTUNREACH",
+      "ENETUNREACH",
+      "ENETDOWN",
+      "EPIPE",
+      "ERR_INVALID_IP_ADDRESS",
+    ].includes(code)
+  )
+    return "SOURCE_CONNECT_FAILED";
+  if (
+    code.startsWith("CERT_") ||
+    code.startsWith("ERR_TLS_") ||
+    [
+      "DEPTH_ZERO_SELF_SIGNED_CERT",
+      "SELF_SIGNED_CERT_IN_CHAIN",
+      "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+      "UNABLE_TO_GET_ISSUER_CERT",
+    ].includes(code)
+  )
+    return "SOURCE_TLS_FAILED";
+  if (["ETIMEDOUT", "ESOCKETTIMEDOUT"].includes(code)) return "SOURCE_TIMEOUT";
+  return "SOURCE_FETCH_FAILED";
+}
+
+export function pinnedSourceLookup(address: string, family: number): LookupFunction {
+  return (_hostname, options, callback) => {
+    const resolved = { address, family: family === 6 ? 6 : 4 } as const;
+    if (options.all) callback(null, [resolved]);
+    else callback(null, resolved.address, resolved.family);
+  };
+}
+
 function normalizeHeaders(headers: NodeJS.Dict<string | string[]>): Record<string, string> {
   return Object.fromEntries(
     Object.entries(headers).flatMap(([key, value]) =>
@@ -74,9 +120,9 @@ function defaultRequester(
       headers: {
         accept:
           "application/atom+xml, application/rss+xml, application/xml, text/xml, text/html;q=0.8",
-        "user-agent": "AgentSozlukSourceReader/1.0 (+https://agentsozluk.com)",
+        "user-agent": SOURCE_READER_USER_AGENT,
       },
-      lookup: (_hostname, _options, callback) => callback(null, address, family === 6 ? 6 : 4),
+      lookup: pinnedSourceLookup(address, family),
     });
     request.setTimeout(timeoutMs, () => request.destroy(new Error("SOURCE_TIMEOUT")));
     request.on("error", reject);
@@ -214,9 +260,54 @@ export function parseSourceFeed(xml: string, baseUrl: URL): SourceReadItem[] {
   });
 }
 
-export function robotsAllows(robotsText: string, pathname: string): boolean {
-  let applies = false;
-  let decision: { length: number; allowed: boolean } | null = null;
+export function parseSourceSitemap(xml: string, baseUrl: URL): SourceReadItem[] {
+  const blocks = [...xml.matchAll(/<url\b[^>]*>([\s\S]*?)<\/url>/giu)].slice(0, 50);
+  return blocks.flatMap(([, block]) => {
+    if (!block) return [];
+    const rawUrl = xmlText(block.match(/<loc\b[^>]*>([\s\S]*?)<\/loc>/iu)?.[1] ?? "");
+    const title = xmlText(
+      block.match(/<news:title\b[^>]*>([\s\S]*?)<\/news:title>/iu)?.[1] ?? "",
+    ).slice(0, 500);
+    if (!rawUrl || !title) return [];
+    let canonicalUrl: string;
+    try {
+      const parsed = parseSafeSourceUrl(new URL(rawUrl, baseUrl).toString());
+      if (parsed.origin !== baseUrl.origin) return [];
+      canonicalUrl = parsed.toString();
+    } catch {
+      return [];
+    }
+    const dateValue = xmlText(
+      block.match(/<news:publication_date\b[^>]*>([\s\S]*?)<\/news:publication_date>/iu)?.[1] ?? "",
+    );
+    const parsedDate = Date.parse(dateValue);
+    return [
+      {
+        canonicalUrl,
+        title,
+        publishedAt: Number.isNaN(parsedDate) ? null : new Date(parsedDate).toISOString(),
+        safeText: title,
+        contentHash: createHash("sha256").update(`${canonicalUrl}\n${title}`).digest("hex"),
+      },
+    ];
+  });
+}
+
+interface RobotsGroup {
+  agents: string[];
+  contentSignals: string[];
+  rules: Array<{ allowed: boolean; path: string }>;
+}
+
+function robotsGroups(robotsText: string): RobotsGroup[] {
+  const groups: RobotsGroup[] = [];
+  let current: RobotsGroup = { agents: [], contentSignals: [], rules: [] };
+  let hasDirectives = false;
+  const flush = () => {
+    if (current.agents.length > 0) groups.push(current);
+    current = { agents: [], contentSignals: [], rules: [] };
+    hasDirectives = false;
+  };
   for (const rawLine of robotsText.split(/\r?\n/u)) {
     const line = rawLine.replace(/#.*$/u, "").trim();
     if (!line) continue;
@@ -225,15 +316,45 @@ export function robotsAllows(robotsText: string, pathname: string): boolean {
     const key = line.slice(0, separator).trim().toLowerCase();
     const value = line.slice(separator + 1).trim();
     if (key === "user-agent") {
-      applies =
-        value === "*" || value.toLowerCase() === "agentsozlukSourcereader/1.0".toLowerCase();
+      if (hasDirectives) flush();
+      current.agents.push(value.toLowerCase());
       continue;
     }
-    if (!applies || !["allow", "disallow"].includes(key) || !value || !pathname.startsWith(value))
-      continue;
-    if (!decision || value.length > decision.length)
-      decision = { length: value.length, allowed: key === "allow" };
+    if (current.agents.length === 0) continue;
+    hasDirectives = true;
+    if (key === "content-signal") current.contentSignals.push(value);
+    if (["allow", "disallow"].includes(key) && value)
+      current.rules.push({ allowed: key === "allow", path: value });
   }
+  flush();
+  return groups;
+}
+
+export function robotsAllowsModelInput(robotsText: string): boolean {
+  const groups = robotsGroups(robotsText);
+  const exact = groups.filter(({ agents }) => agents.includes(SOURCE_READER_ROBOTS_TOKEN));
+  const applicable = exact.length > 0 ? exact : groups.filter(({ agents }) => agents.includes("*"));
+  return !applicable.some(({ contentSignals }) =>
+    contentSignals.some((signal) =>
+      signal
+        .split(",")
+        .map((part) => part.split("=", 2).map((value) => value.trim().toLowerCase()))
+        .some(([key, value]) => key === "ai-input" && value === "no"),
+    ),
+  );
+}
+
+export function robotsAllows(robotsText: string, pathname: string): boolean {
+  const groups = robotsGroups(robotsText);
+  const exact = groups.filter(({ agents }) => agents.includes(SOURCE_READER_ROBOTS_TOKEN));
+  const applicable = exact.length > 0 ? exact : groups.filter(({ agents }) => agents.includes("*"));
+  let decision: { length: number; allowed: boolean } | null = null;
+  for (const { rules } of applicable)
+    for (const rule of rules) {
+      if (!pathname.startsWith(rule.path)) continue;
+      if (!decision || rule.path.length > decision.length)
+        decision = { length: rule.path.length, allowed: rule.allowed };
+    }
   return decision?.allowed ?? true;
 }
 
@@ -268,31 +389,48 @@ export class SafeSourceReader {
     if (redirects > 5) throw new Error("SOURCE_REDIRECT_LIMIT");
     parseSafeSourceUrl(url.toString());
     await this.#paced(url.hostname, deadlineAtMs, signal);
-    const addresses = await boundedOperation(
-      (this.#options.resolver ?? ((hostname) => lookup(hostname, { all: true })))(url.hostname),
-      this.#remainingMs(deadlineAtMs),
-      signal,
-    );
+    let addresses: Array<{ address: string; family: number }>;
+    try {
+      addresses = await boundedOperation(
+        (this.#options.resolver ?? ((hostname) => lookup(hostname, { all: true })))(url.hostname),
+        this.#remainingMs(deadlineAtMs),
+        signal,
+      );
+    } catch (error) {
+      throw new Error(classifySourceReadError(error));
+    }
     assertPublicSourceAddresses(addresses);
     if (signal?.aborted) throw new Error("SOURCE_CANCELLED");
-    const selected = addresses[0]!;
-    const remainingMs = this.#remainingMs(deadlineAtMs);
-    const requestTimeoutMs = Math.min(
-      this.#options.timeoutMs ?? MAX_SOURCE_READ_TIMEOUT_MS,
-      MAX_SOURCE_READ_TIMEOUT_MS,
-      remainingMs,
-    );
-    const response = await boundedOperation(
-      (this.#options.requester ?? defaultRequester)(
-        url,
-        selected.address,
-        selected.family,
-        requestTimeoutMs,
-        signal,
-      ),
-      requestTimeoutMs,
-      signal,
-    );
+    let response: SourceResponse | null = null;
+    let lastTransportError: unknown;
+    for (const [index, selected] of addresses.entries()) {
+      const remainingMs = this.#remainingMs(deadlineAtMs);
+      const remainingAddresses = addresses.length - index;
+      const requestTimeoutMs = Math.min(
+        this.#options.timeoutMs ?? MAX_SOURCE_READ_TIMEOUT_MS,
+        MAX_SOURCE_READ_TIMEOUT_MS,
+        Math.max(1, Math.floor(remainingMs / remainingAddresses)),
+      );
+      try {
+        response = await boundedOperation(
+          (this.#options.requester ?? defaultRequester)(
+            url,
+            selected.address,
+            selected.family,
+            requestTimeoutMs,
+            signal,
+          ),
+          requestTimeoutMs,
+          signal,
+        );
+        break;
+      } catch (error) {
+        if (signal?.aborted || classifySourceReadError(error) === "SOURCE_CANCELLED")
+          throw new Error("SOURCE_CANCELLED");
+        lastTransportError = error;
+      }
+    }
+    if (!response) throw new Error(classifySourceReadError(lastTransportError));
     const declaredLength = Number(response.headers["content-length"] ?? 0);
     if (declaredLength > maximumResponseBytes || response.body.byteLength > maximumResponseBytes)
       throw new Error("SOURCE_TOO_LARGE");
@@ -324,11 +462,15 @@ export class SafeSourceReader {
     }
     if (robots && !robotsAllows(robots.body.toString("utf8"), url.pathname))
       throw new Error("SOURCE_ROBOTS_DISALLOWED");
+    if (robots && !robotsAllowsModelInput(robots.body.toString("utf8")))
+      throw new Error("SOURCE_CONTENT_SIGNAL_DISALLOWED");
     const response = await this.#request(url, deadlineAtMs, options.signal);
     const contentType = response.headers["content-type"]?.toLowerCase() ?? "";
     const text = response.body.toString("utf8");
-    if (contentType.includes("xml") || /<(rss|feed)\b/iu.test(text.slice(0, 1000)))
-      return parseSourceFeed(text, new URL(response.url));
+    if (contentType.includes("xml") || /<(rss|feed|urlset)\b/iu.test(text.slice(0, 1000)))
+      return /<urlset\b/iu.test(text.slice(0, 2000))
+        ? parseSourceSitemap(text, new URL(response.url))
+        : parseSourceFeed(text, new URL(response.url));
     if (!contentType.includes("html") && !contentType.startsWith("text/"))
       throw new Error("SOURCE_CONTENT_TYPE_UNSUPPORTED");
     const feedLink = [...text.matchAll(/<link\b[^>]*>/giu)]

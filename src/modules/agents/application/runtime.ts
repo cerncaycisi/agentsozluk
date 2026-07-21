@@ -2010,6 +2010,8 @@ export function completeRuntimeRun(
       safeRunSummary,
       usageMetadata: input.usageMetadata,
       performanceMetrics: { reported: input.performanceMetrics, measured: measuredMetrics },
+      ...(input.errorCode ? { errorCode: input.errorCode } : {}),
+      ...(input.errorSummary ? { errorSummary: input.errorSummary } : {}),
       publishedEntries: measuredMetrics.publishedEntries,
       createdTopics: measuredMetrics.createdTopics,
       votes: measuredMetrics.votes,
@@ -2040,7 +2042,10 @@ export function completeRuntimeRun(
         {
           eventType: "run.completed",
           safeMessage: `Run ${finalOutcome} durumuyla tamamlandı.`,
-          metadata: { phase: finalOutcome, code: `REFLECTION_${reflection.status}` },
+          metadata: {
+            phase: finalOutcome,
+            code: input.errorCode ?? `REFLECTION_${reflection.status}`,
+          },
         },
       ],
     });
@@ -2051,7 +2056,11 @@ export function completeRuntimeRun(
       safeMessage: `Run ${finalOutcome} durumuyla tamamlandı.`,
       before: { runStatus: run.runStatus },
       after: { runStatus: finalOutcome, finishedAt: now.toISOString() },
-      metadata: { phase: finalOutcome, reflectionStatus: reflection.status },
+      metadata: {
+        phase: finalOutcome,
+        reflectionStatus: reflection.status,
+        errorCode: input.errorCode ?? null,
+      },
       occurredAt: now,
     });
     if (reflection.status === "APPLIED")

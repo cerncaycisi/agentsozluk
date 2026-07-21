@@ -20,7 +20,11 @@ import {
   type RuntimeDecision,
 } from "@/runtime/output";
 import { z } from "zod";
-import { MAX_SOURCE_READ_TIMEOUT_MS, type SafeSourceReader } from "@/runtime/source-reader";
+import {
+  classifySourceReadError,
+  MAX_SOURCE_READ_TIMEOUT_MS,
+  type SafeSourceReader,
+} from "@/runtime/source-reader";
 import { RuntimeRunDeadline } from "@/runtime/run-deadline";
 import { duplicateRepairCandidateIsSafe } from "@/modules/agents/domain/action-policy";
 import { sourceFetchTargetLimit } from "@/modules/agents/domain/runtime-controls";
@@ -595,6 +599,7 @@ export class AgentRuntimeWorker {
     };
     let providerResult: RuntimeProviderResult | null = null;
     let sourceReads = 0;
+    let sourceTargetsAttempted = 0;
     try {
       await enterPhase("STARTING");
       let context = await this.#options.controlPlane.context(
@@ -624,6 +629,7 @@ export class AgentRuntimeWorker {
           0,
           sourceFetchTargetLimit(context.run.runType, context.run.sourceFetchLimit),
         );
+        sourceTargetsAttempted = selectedTargets.length;
         for (const target of selectedTargets) {
           deadline.throwIfStopped();
           const attemptId = crypto.randomUUID();
@@ -641,6 +647,17 @@ export class AgentRuntimeWorker {
               timeoutMs: Math.min(MAX_SOURCE_READ_TIMEOUT_MS, deadline.remainingMs()),
             });
             deadline.throwIfStopped();
+            if (items.length === 0) {
+              await this.#options.controlPlane.recordSourceResult(
+                credential,
+                this.#options.workerId,
+                runId,
+                leaseToken,
+                { attemptId, sourceId: target.sourceId, errorCode: "SOURCE_NO_USEFUL_ITEMS" },
+                deadline.requestOptions(),
+              );
+              continue;
+            }
             await this.#options.controlPlane.recordSourceResult(
               credential,
               this.#options.workerId,
@@ -652,10 +669,7 @@ export class AgentRuntimeWorker {
             sourceReads += items.length;
           } catch (error) {
             deadline.throwIfStopped();
-            const message = error instanceof Error ? error.message : "SOURCE_FETCH_FAILED";
-            const errorCode = /^SOURCE_[A-Z0-9_]+$/u.test(message)
-              ? message
-              : "SOURCE_FETCH_FAILED";
+            const errorCode = classifySourceReadError(error);
             await this.#options.controlPlane.recordSourceResult(
               credential,
               this.#options.workerId,
@@ -897,15 +911,30 @@ export class AgentRuntimeWorker {
         );
       }
       deadline.throwIfStopped();
+      const sourceRefreshErrorCode =
+        context.run.runType === "SOURCE_REFRESH" && sourceReads === 0
+          ? sourceTargetsAttempted === 0
+            ? "SOURCE_REFRESH_NO_TARGETS"
+            : "SOURCE_REFRESH_NO_USEFUL_ITEMS"
+          : null;
+      const completionOutcome =
+        measured.rejected.length > 0 || sourceRefreshErrorCode ? "PARTIAL" : "SUCCEEDED";
       await this.#options.controlPlane.complete(
         credential,
         this.#options.workerId,
         runId,
         leaseToken,
         {
-          outcome: measured.rejected.length > 0 ? "PARTIAL" : "SUCCEEDED",
+          outcome: completionOutcome,
           safeRunSummary: {
             ...decision.safeRunSummary,
+            ...(sourceRefreshErrorCode
+              ? {
+                  operationSummary:
+                    "Source refresh tamamlandı ancak güvenli ve kullanılabilir source item üretemedi.",
+                  shortRationale: sourceRefreshErrorCode,
+                }
+              : {}),
             proposedActionCount: executedActions.length,
             completedActionCount: measured.succeeded.length + measured.skipped.length,
             rejectedActionCount: measured.rejected.length,
@@ -924,6 +953,12 @@ export class AgentRuntimeWorker {
             votes: measured.votes,
             sourceReads,
           },
+          ...(sourceRefreshErrorCode
+            ? {
+                errorCode: sourceRefreshErrorCode,
+                errorSummary: "Source refresh güvenli ve kullanılabilir source item üretemedi.",
+              }
+            : {}),
           state: decision.state,
           reflectionDelta: personaReflectionRun ? decision.reflectionDelta : null,
         },

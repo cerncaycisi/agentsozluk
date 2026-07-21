@@ -361,13 +361,21 @@ export const runtimeCompleteSchema = z
     workerId: runtimeWorkerIdSchema,
     leaseToken: runtimeLeaseTokenSchema,
     outcome: z.enum(["SUCCEEDED", "PARTIAL"]),
+    errorCode: runtimeErrorCodeSchema.optional(),
+    errorSummary: z.string().trim().min(1).max(1000).optional(),
     safeRunSummary: safeRunSummarySchema,
     usageMetadata: usageMetadataSchema,
     performanceMetrics: performanceMetricsSchema,
     state: runtimeFastStateSchema,
     reflectionDelta: weeklyPersonaEvolutionDeltaSchema.nullable().default(null),
   })
-  .strict();
+  .strict()
+  .refine((value) => Boolean(value.errorCode) === Boolean(value.errorSummary), {
+    message: "Partial terminal errorCode ve errorSummary birlikte bulunmalıdır.",
+  })
+  .refine((value) => value.outcome === "PARTIAL" || !value.errorCode, {
+    message: "SUCCEEDED run terminal error taşıyamaz.",
+  });
 
 export const runtimeFailSchema = z
   .object({

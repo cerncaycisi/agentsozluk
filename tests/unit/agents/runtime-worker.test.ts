@@ -247,6 +247,67 @@ describe("long-lived agent runtime worker", () => {
     },
   );
 
+  it("marks an all-unusable source refresh PARTIAL with a safe aggregate code", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const context = fixtureContext(runId);
+    plane.context = vi.fn().mockResolvedValue({
+      ...context,
+      run: { ...context.run, runType: "SOURCE_REFRESH", sourceFetchLimit: 8 },
+      perception: {
+        sourceFetchTargets: [
+          { sourceId: randomUUID(), url: "https://dns.example/feed.xml" },
+          { sourceId: randomUUID(), url: "https://empty.example/feed.xml" },
+        ],
+      },
+    });
+    const sourceReader = {
+      read: vi
+        .fn()
+        .mockRejectedValueOnce(Object.assign(new Error("lookup detail"), { code: "ENOTFOUND" }))
+        .mockResolvedValueOnce([]),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "source-refresh-all-unusable",
+      credentials: [`agt_${"u".repeat(43)}`],
+      controlPlane: plane,
+      provider: noActionProvider(),
+      sourceReader,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+    expect(plane.recordSourceResult).toHaveBeenNthCalledWith(
+      1,
+      expect.any(String),
+      "source-refresh-all-unusable",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({ errorCode: "SOURCE_DNS_FAILED" }),
+      expect.any(Object),
+    );
+    expect(plane.recordSourceResult).toHaveBeenNthCalledWith(
+      2,
+      expect.any(String),
+      "source-refresh-all-unusable",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({ errorCode: "SOURCE_NO_USEFUL_ITEMS" }),
+      expect.any(Object),
+    );
+    expect(plane.complete).toHaveBeenCalledWith(
+      expect.any(String),
+      "source-refresh-all-unusable",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({
+        outcome: "PARTIAL",
+        errorCode: "SOURCE_REFRESH_NO_USEFUL_ITEMS",
+        performanceMetrics: expect.objectContaining({ sourceReads: 0 }),
+      }),
+      expect.any(Object),
+    );
+  });
+
   it("runs exactly two bounded local lanes and waits for a lane before starting a third credential", async () => {
     const credentials = ["a", "b", "c"].map((suffix) => `agt_${suffix.repeat(43)}`);
     const runIds = credentials.map(() => randomUUID());

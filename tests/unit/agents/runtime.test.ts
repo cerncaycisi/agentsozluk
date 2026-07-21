@@ -353,5 +353,20 @@ describe("agent runtime authentication and payload boundaries", () => {
         },
       }).success,
     ).toBe(false);
+    expect(
+      runtimeCompleteSchema.safeParse({
+        ...completion,
+        outcome: "PARTIAL",
+        errorCode: "SOURCE_REFRESH_NO_USEFUL_ITEMS",
+        errorSummary: "Source refresh güvenli ve kullanılabilir item üretmedi.",
+      }).success,
+    ).toBe(true);
+    expect(
+      runtimeCompleteSchema.safeParse({
+        ...completion,
+        errorCode: "SOURCE_REFRESH_NO_USEFUL_ITEMS",
+        errorSummary: "Başarılı run hata kodu taşıyamaz.",
+      }).success,
+    ).toBe(false);
   });
 });
