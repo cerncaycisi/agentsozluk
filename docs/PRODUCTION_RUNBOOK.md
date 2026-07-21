@@ -990,6 +990,8 @@ NODE
   m2_runtime_publish=/opt/agent-sozluk/runtime/releases/.candidate-$m2_candidate_sha
   [[ ! -e "$m2_runtime_publish" && ! -L "$m2_runtime_publish" ]]
   sudo install -d -o root -g root -m 0700 "$m2_runtime_publish"
+  # Preserve pnpm symbolic links. `--hard-dereference` only expands hard links;
+  # never add `-h`/`--dereference`, which breaks tsx -> esbuild resolution.
   tar --create --hard-dereference --file=- --directory="$m2_runtime_stage" . |
     sudo tar --extract --file=- --directory="$m2_runtime_publish" \
       --no-same-owner --no-same-permissions
@@ -1003,6 +1005,14 @@ NODE
   [[ "$(sudo cat "$m2_runtime_publish/.release-sha")" == "$m2_candidate_sha" ]]
   [[ "$(sudo cat "$m2_runtime_publish/.release-app-image-id")" == "$m2_candidate_image_id" ]]
   [[ "$(sudo cat "$m2_runtime_publish/.release-node-abi")" == "$m2_runtime_abi" ]]
+  [[ -L "$m2_runtime_publish/node_modules/tsx" ]]
+  [[ -L "$m2_runtime_publish/node_modules/.pnpm/tsx@4.23.1/node_modules/esbuild" ]]
+  sudo -u agent-runtime /usr/bin/node - "$m2_runtime_publish/node_modules" <<'NODE'
+const { createRequire } = require("node:module");
+const [modulesPath] = process.argv.slice(2);
+const tsxPath = require.resolve("tsx", { paths: [modulesPath] });
+createRequire(tsxPath).resolve("esbuild");
+NODE
   sudo mv -T "$m2_runtime_publish" "$m2_runtime_release"
   m2_runtime_publish=''
 )

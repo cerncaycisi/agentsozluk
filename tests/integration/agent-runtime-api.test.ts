@@ -3028,6 +3028,11 @@ describe("internal agent runtime API with PostgreSQL", () => {
       votingTendency: expect.any(Number),
       followingTendency: expect.any(Number),
     });
+    expect(Object.keys(context.persona.behavior).sort()).toEqual([
+      "followingTendency",
+      "topicCreationTendency",
+      "votingTendency",
+    ]);
     await recordRuntimeEvents(
       integrationDatabase,
       writePrincipal,

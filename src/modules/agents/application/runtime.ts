@@ -1491,7 +1491,14 @@ export function getRuntimeRunContext(
         version: run.personaVersion.version,
         document: run.personaVersion.persona,
         renderedPrompt: run.personaVersion.renderedPrompt,
-        behavior: seedPersonaSchema.parse(run.personaVersion.persona).behavior,
+        behavior: (() => {
+          const behavior = seedPersonaSchema.parse(run.personaVersion.persona).behavior;
+          return {
+            topicCreationTendency: behavior.topicCreationTendency,
+            votingTendency: behavior.votingTendency,
+            followingTendency: behavior.followingTendency,
+          };
+        })(),
       },
       perception,
     };
