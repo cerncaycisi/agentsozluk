@@ -221,15 +221,21 @@ function runtimeDecisionUsesCatalog(
   });
 }
 
-function buildDuplicateRepairPrompt(
+function buildContentRepairPrompt(
   trustedPrompt: string,
   originalAction: RuntimeDecision["actions"][number],
+  rejectionCode: string,
 ): string {
+  const repairInstruction =
+    rejectionCode === "USER_ENTRY_HIGH_RISK_REPRODUCTION"
+      ? "Başka entry'den doğrudan alıntıyı, entry/yazar/kullanıcı atfını ve görünür referansı tamamen kaldır. Düşünceyi yalnız kendi bağımsız sözlerinle, tek başına okunabilen bir sözlük entry'si olarak yeniden kur."
+      : "Duplicate veya tekrarlanan çerçeveyi kaldır; aynı kanıtla gerçekten farklı ve bağımsız bir anlatım kur.";
   return [
     trustedPrompt,
     "",
-    "# Tek duplicate repair hakkı",
+    "# Tek content reconsideration hakkı",
     "Aşağıdaki reddedilen content action için yalnız bir repair adayı üret. actionType, targetType, targetId, body dışındaki input alanları ve provenance aynı kalmalı; yalnız body gerçekten farklılaşabilir.",
+    repairInstruction,
     "Kaynakta bulunmayan sayı, doğrudan alıntı veya spesifik olay ekleme. Güvenli repair mümkün değilse yalnız safeReason taşıyan NO_ACTION üret. Başka action, delta veya açıklama üretme.",
     "<REJECTED_CANDIDATE>",
     serializeUntrustedContext({ action: originalAction }),
@@ -237,7 +243,7 @@ function buildDuplicateRepairPrompt(
   ].join("\n");
 }
 
-function safeDuplicateRepairCandidate(
+function safeContentRepairCandidate(
   originalAction: RuntimeDecision["actions"][number],
   decision: RuntimeDecision,
   sequence: number,
@@ -709,7 +715,8 @@ export class AgentRuntimeWorker {
       );
       await enterPhase("EXECUTING");
       const executedActions: RuntimeExecution["actions"] = [];
-      let duplicateRepairAttempted = false;
+      let contentRepairAttempted = false;
+      const successfullyRepairedSequences = new Set<number>();
       let nextSequence = Math.max(0, ...decision.actions.map(({ sequence }) => sequence)) + 1;
       for (const originalAction of decision.actions) {
         await heartbeat();
@@ -724,17 +731,25 @@ export class AgentRuntimeWorker {
         );
         executedActions.push(...execution.actions);
         deadline.throwIfStopped();
-        const duplicateRejected = execution.actions.some(
+        const repairableRejection = execution.actions.find(
           ({ actionStatus, rejectionCode }) =>
             actionStatus === "REJECTED" &&
-            ["DUPLICATE_SIMILARITY", "DUPLICATE_FRAMING"].includes(rejectionCode ?? ""),
+            [
+              "DUPLICATE_SIMILARITY",
+              "DUPLICATE_FRAMING",
+              "USER_ENTRY_HIGH_RISK_REPRODUCTION",
+            ].includes(rejectionCode ?? ""),
         );
-        if (duplicateRejected && !duplicateRepairAttempted && codexIntervals.length < 2) {
-          duplicateRepairAttempted = true;
+        if (repairableRejection && !contentRepairAttempted && codexIntervals.length < 2) {
+          contentRepairAttempted = true;
           await enterPhase("VALIDATING");
           const repairResult = await invokeCodex({
             runId,
-            prompt: buildDuplicateRepairPrompt(prompt, originalAction),
+            prompt: buildContentRepairPrompt(
+              prompt,
+              originalAction,
+              repairableRejection.rejectionCode ?? "",
+            ),
             outputSchema,
             timeoutMs: deadline.remainingMs(),
             debugRetentionHours: context.run.debugRetentionHours,
@@ -748,7 +763,7 @@ export class AgentRuntimeWorker {
           const repairDecision = parseDecisionForContext(context, repairResult.output);
           const repairDecisionData = repairDecision.success ? repairDecision.data : null;
           const repairCandidate = repairDecisionData
-            ? safeDuplicateRepairCandidate(originalAction, repairDecisionData, nextSequence)
+            ? safeContentRepairCandidate(originalAction, repairDecisionData, nextSequence)
             : null;
           if (repairCandidate && repairDecisionData) {
             nextSequence += 1;
@@ -783,11 +798,21 @@ export class AgentRuntimeWorker {
               deadline.requestOptions(),
             );
             executedActions.push(...repairedExecution.actions);
+            if (repairedExecution.actions.some(({ actionStatus }) => actionStatus === "SUCCEEDED"))
+              successfullyRepairedSequences.add(originalAction.sequence);
             deadline.throwIfStopped();
           }
         }
       }
-      const execution: RuntimeExecution = { actions: executedActions };
+      const execution: RuntimeExecution = {
+        actions: executedActions.filter(
+          ({ sequence, actionStatus }) =>
+            !(
+              successfullyRepairedSequences.has(sequence) &&
+              ["REJECTED", "FAILED"].includes(actionStatus)
+            ),
+        ),
+      };
       const measured = measuredExecution(execution);
       if (consolidationRun && decision.memoryConsolidations.length > 0) {
         await enterPhase("REFLECTING");

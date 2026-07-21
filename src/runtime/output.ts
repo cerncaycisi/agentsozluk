@@ -143,13 +143,6 @@ const wireCreateEntrySchema = z
     ...wireActionCommon,
   })
   .strict();
-const wireCreateEntryReplySchema = wireCreateEntrySchema
-  .extend({
-    topicId: uuidWireSchema,
-    replyToEntryId: uuidWireSchema,
-    provocationSignal: z.number().min(0).max(1),
-  })
-  .strict();
 const wireCreateTopicSchema = z
   .object({
     type: z.literal("CREATE_TOPIC_WITH_ENTRY"),
@@ -212,7 +205,6 @@ const wireUpdateRelationshipActionSchema = z
 
 const runtimeNormalWireActionSchema = z.union([
   wireNoActionSchema,
-  wireCreateEntryReplySchema,
   wireCreateEntrySchema,
   wireCreateTopicSchema,
   wireEditEntrySchema,
@@ -590,12 +582,8 @@ function actionClaimProvenance(
   );
 }
 
-function wireActionTargetType(
-  actionType: string,
-  flatAction: Record<string, unknown>,
-): string | undefined {
-  if (actionType === "CREATE_ENTRY")
-    return typeof flatAction.replyToEntryId === "string" ? "USER" : "TOPIC";
+function wireActionTargetType(actionType: string): string | undefined {
+  if (actionType === "CREATE_ENTRY") return "TOPIC";
   if (["FOLLOW_TOPIC", "UNFOLLOW_TOPIC"].includes(actionType)) return "TOPIC";
   if (
     [
@@ -620,11 +608,8 @@ function adaptWireAction(action: RuntimeNormalDecisionWire["actions"][number], s
   switch (action.type) {
     case "CREATE_ENTRY":
       input = compactRecord({
-        topicId: flat.topicId ?? targetId,
+        topicId: targetId,
         body: flat.body,
-        replyToEntryId: flat.replyToEntryId,
-        userId: typeof flat.replyToEntryId === "string" ? targetId : undefined,
-        provocationSignal: flat.provocationSignal,
       });
       break;
     case "CREATE_TOPIC_WITH_ENTRY":
@@ -687,7 +672,7 @@ function adaptWireAction(action: RuntimeNormalDecisionWire["actions"][number], s
       desire: action.desire,
       expectedOutcome: action.expectedOutcome,
       safeReason: action.safeReason,
-      targetType: wireActionTargetType(action.type, flat),
+      targetType: wireActionTargetType(action.type),
       targetId,
       input,
       provenance:

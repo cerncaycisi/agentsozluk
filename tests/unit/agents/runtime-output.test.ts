@@ -410,32 +410,31 @@ describe("runtime structured output wire contract", () => {
     expect(runtimeDecisionSchema.safeParse(decision).success).toBe(true);
   });
 
-  it("maps a canonical direct reply to the existing USER-target policy shape", () => {
-    const authorId = "00000000-0000-4000-8000-000000000003";
-    const entryId = "00000000-0000-4000-8000-000000000004";
-    const reply = runtimeNormalDecisionWireSchema.parse({
+  it("keeps CREATE_ENTRY flat and rejects direct-reply fields", () => {
+    const entry = runtimeNormalDecisionWireSchema.parse({
       ...canonical,
-      actions: [
-        {
-          ...canonical.actions[0],
-          targetId: authorId,
-          topicId,
-          replyToEntryId: entryId,
-          provocationSignal: 0.2,
-        },
-      ],
     });
-    expect(adaptRuntimeNormalDecisionWire(reply).actions[0]).toMatchObject({
+    expect(adaptRuntimeNormalDecisionWire(entry).actions[0]).toMatchObject({
       actionType: "CREATE_ENTRY",
-      targetType: "USER",
-      targetId: authorId,
+      targetType: "TOPIC",
+      targetId: topicId,
       input: {
         topicId,
-        userId: authorId,
-        replyToEntryId: entryId,
-        provocationSignal: 0.2,
       },
     });
+    expect(
+      runtimeNormalDecisionWireSchema.safeParse({
+        ...canonical,
+        actions: [
+          {
+            ...canonical.actions[0],
+            topicId,
+            replyToEntryId: "00000000-0000-4000-8000-000000000004",
+            provocationSignal: 0.2,
+          },
+        ],
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects unknown fields, unknown actions, HTML bodies and schema-external text", () => {

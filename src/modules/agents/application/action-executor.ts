@@ -1032,7 +1032,8 @@ export async function executeRuntimeAction(
         )
           return rejectAction(transaction, principal, actionRecord, {
             code: "USER_ENTRY_HIGH_RISK_REPRODUCTION",
-            reason: "USER_ENTRY içindeki sayı, alıntı veya ağır suç isnadı yeniden üretilemez.",
+            reason:
+              "Başka entry'ye atfedilen doğrudan alıntı veya belirsizlik çerçevesi olmayan ağır suç isnadı yeniden üretilemez.",
           });
         if (
           parsed.data.actionType === "UPDATE_RELATIONSHIP_NOTE" &&
