@@ -135,11 +135,15 @@ export function seriousFactualClaimRequiresStrongEvidence(body: string): boolean
 
 export function userEntryContainsHighRiskReproduction(body: string): boolean {
   const normalized = normalizedGroundingText(body);
-  return (
-    exactNumericClaims(body).size > 0 ||
-    directQuoteClaims(body).length > 0 ||
-    seriousCrimeMarkers.some((marker) => normalized.includes(marker))
-  );
+  const explicitlyAttributedQuote =
+    directQuoteClaims(body).length > 0 &&
+    ["entry", "kullanıcı", "yazar", "başlıktaki", "yukarıdaki", "önceki"].some((marker) =>
+      normalized.includes(marker),
+    );
+  const unframedSevereAllegation =
+    seriousCrimeMarkers.some((marker) => normalized.includes(marker)) &&
+    !uncertaintyMarkers.some((marker) => normalized.includes(marker));
+  return explicitlyAttributedQuote || unframedSevereAllegation;
 }
 
 const offlineFirstPersonPatterns = [

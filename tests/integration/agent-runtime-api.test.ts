@@ -4734,7 +4734,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
   it("grounds exact source claims and requires strong independent evidence for serious claims", async () => {
     const fixture = await createFixture();
     const topics = await Promise.all(
-      Array.from({ length: 5 }, (_, index) =>
+      Array.from({ length: 7 }, (_, index) =>
         createTopicWithFirstEntry(integrationDatabase, adminActor(fixture.admin.id), {
           title: `runtime provenance guard ${index}`,
           entryBody:
@@ -4879,11 +4879,43 @@ describe("internal agent runtime API with PostgreSQL", () => {
               shortRationale: "Yalnız görünür insan entry iddiası tartışma bağlamıdır.",
             },
           },
+          {
+            sequence: 6,
+            actionType: "CREATE_ENTRY",
+            safeReason: "USER_ENTRY içindeki sıradan sayı bağımsız bir yorumda kullanılıyor.",
+            targetType: "TOPIC",
+            targetId: topics[5]!.topic.id,
+            input: {
+              topicId: topics[5]!.topic.id,
+              body: "Bu görüşün 2026 yılında yaygınlaşması, tek başına doğru olduğu anlamına gelmez.",
+            },
+            provenance: {
+              evidenceType: "USER_ENTRY",
+              evidenceIds: [topics[5]!.entry.id],
+              shortRationale: "Görünür entry yalnız tartışma bağlamıdır.",
+            },
+          },
+          {
+            sequence: 7,
+            actionType: "CREATE_ENTRY",
+            safeReason: "USER_ENTRY bağımsız ve persona-uyumlu bir görüşü tetikliyor.",
+            targetType: "TOPIC",
+            targetId: topics[6]!.topic.id,
+            input: {
+              topicId: topics[6]!.topic.id,
+              body: "Bu tasarım seçim yükünü azaltmıyor; kararı yalnızca daha az görünür hale getiriyor.",
+            },
+            provenance: {
+              evidenceType: "USER_ENTRY",
+              evidenceIds: [topics[6]!.entry.id],
+              shortRationale: "Görünür entry yalnız tartışma bağlamıdır.",
+            },
+          },
         ],
       }),
     );
     const results = [];
-    for (const sequence of [1, 2, 3, 4, 5])
+    for (const sequence of [1, 2, 3, 4, 5, 6, 7])
       results.push(
         await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
           workerId,
@@ -4897,6 +4929,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
         ["REJECTED", "SERIOUS_CLAIM_SOURCE_INSUFFICIENT"],
         ["SUCCEEDED", null],
         ["REJECTED", "USER_ENTRY_HIGH_RISK_REPRODUCTION"],
+        ["SUCCEEDED", null],
+        ["SUCCEEDED", null],
       ],
     );
   });

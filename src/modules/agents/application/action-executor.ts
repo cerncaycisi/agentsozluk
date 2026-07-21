@@ -37,7 +37,6 @@ import {
 import {
   provenanceIsRequired,
   relationshipProvenanceIsVisible,
-  userEntryClaimIsSafelyFramed,
 } from "@/modules/agents/domain/provenance";
 import {
   hasUnrecordedOfflineFirstPersonClaim,
@@ -1034,16 +1033,6 @@ export async function executeRuntimeAction(
           return rejectAction(transaction, principal, actionRecord, {
             code: "USER_ENTRY_HIGH_RISK_REPRODUCTION",
             reason: "USER_ENTRY içindeki sayı, alıntı veya ağır suç isnadı yeniden üretilemez.",
-          });
-        if (
-          parsed.data.provenance.evidenceType === "USER_ENTRY" &&
-          contentActions.has(parsed.data.actionType) &&
-          candidateBody &&
-          !userEntryClaimIsSafelyFramed(candidateBody)
-        )
-          return rejectAction(transaction, principal, actionRecord, {
-            code: "USER_ENTRY_FACT_UNFRAMED",
-            reason: "USER_ENTRY kanıtı doğrulanmış gerçek gibi yeniden üretilemez.",
           });
         if (
           parsed.data.actionType === "UPDATE_RELATIONSHIP_NOTE" &&

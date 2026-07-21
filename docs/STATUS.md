@@ -47,6 +47,7 @@ Milestone 2 design/operations documents:
 - [`AGENT_OPERATIONS.md`](AGENT_OPERATIONS.md)
 - [`AGENT_CAPACITY.md`](AGENT_CAPACITY.md)
 - [`AGENT_MODERATION.md`](AGENT_MODERATION.md)
+- [`M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`](M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md)
 
 The remainder of this file is the measured Milestone 1 closeout ledger and is retained as historical
 regression evidence.

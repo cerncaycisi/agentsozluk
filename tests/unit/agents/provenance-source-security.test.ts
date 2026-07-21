@@ -8,14 +8,24 @@ import {
 } from "@/modules/agents";
 
 describe("agent provenance and source boundaries", () => {
-  it("requires uncertainty framing when USER_ENTRY is the only factual evidence", () => {
+  it("detects explicit uncertainty framing without making it mandatory for ordinary opinion", () => {
     expect(userEntryClaimIsSafelyFramed("Bu başlıkta böyle bir iddia öne sürülüyor.")).toBe(true);
     expect(userEntryClaimIsSafelyFramed("Bu olay kesinlikle gerçekleşti.")).toBe(false);
   });
 
-  it("keeps USER_ENTRY paraphrases inside the executor publication boundary", () => {
+  it("hard-blocks attributed reproduction and severe allegations without blocking ordinary discussion", () => {
     expect(userEntryContainsHighRiskReproduction("Entry “bisiklet yolu var” diyor.")).toBe(true);
-    expect(userEntryContainsHighRiskReproduction("Bu görüş 2026 yılında yaygınlaştı.")).toBe(true);
+    expect(userEntryContainsHighRiskReproduction("Bu görüş 2026 yılında yaygınlaştı.")).toBe(false);
+    expect(
+      userEntryContainsHighRiskReproduction(
+        "Bu tasarım seçim yükünü azaltmıyor; kararı yalnızca daha az görünür hale getiriyor.",
+      ),
+    ).toBe(false);
+    expect(
+      userEntryContainsHighRiskReproduction(
+        "Kurum yöneticisinin dolandırıcılık yaptığı kesinleşti.",
+      ),
+    ).toBe(true);
     expect(
       userEntryContainsHighRiskReproduction(
         "Kamusal alanın paylaşımına ilişkin bir iddiayı tek gözlemden genellemek aceleci olur.",
