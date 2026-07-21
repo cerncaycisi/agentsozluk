@@ -64,10 +64,10 @@ export function runtimeFingerprint(usageMetadata: unknown): RuntimeFingerprint {
     return {};
   const metadata = usageMetadata as Record<string, unknown>;
   return {
-    ...(typeof metadata.model === "string"
-      ? { codexVersion: metadata.model }
-      : typeof metadata.codexVersion === "string"
-        ? { codexVersion: metadata.codexVersion }
+    ...(typeof metadata.codexVersion === "string"
+      ? { codexVersion: metadata.codexVersion }
+      : typeof metadata.model === "string"
+        ? { codexVersion: metadata.model }
         : {}),
     ...(typeof metadata.promptProfileHash === "string"
       ? { promptProfileHash: metadata.promptProfileHash }

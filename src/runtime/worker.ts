@@ -1039,7 +1039,11 @@ export class AgentRuntimeWorker {
           usageMetadata: {
             durationMs: providerResult.durationMs,
             provider: providerResult.provider,
-            model: providerResult.version,
+            codexVersion: providerResult.version,
+            model: providerResult.model ?? providerResult.version,
+            ...(providerResult.reasoningEffort
+              ? { reasoningEffort: providerResult.reasoningEffort }
+              : {}),
             promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
             codexIntervals,
             ...providerResult.hostMetrics,
@@ -1093,7 +1097,15 @@ export class AgentRuntimeWorker {
                 providerResult?.durationMs ??
                 codexIntervals.reduce((sum, interval) => sum + interval.durationMs, 0),
               provider: providerResult?.provider ?? ("codex-cli" as const),
-              ...(providerResult ? { model: providerResult.version } : {}),
+              ...(providerResult
+                ? {
+                    codexVersion: providerResult.version,
+                    model: providerResult.model ?? providerResult.version,
+                    ...(providerResult.reasoningEffort
+                      ? { reasoningEffort: providerResult.reasoningEffort }
+                      : {}),
+                  }
+                : {}),
               promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
               codexIntervals,
               ...(providerResult?.hostMetrics ?? {}),

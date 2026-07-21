@@ -20,6 +20,9 @@ interface CodexCliProviderOptions {
   spawnProcess?: typeof spawn;
 }
 
+export const AGENT_RUNTIME_CODEX_MODEL = "gpt-5.6-sol";
+export const AGENT_RUNTIME_CODEX_REASONING_EFFORT = "high" as const;
+
 export const RETAINED_RUNTIME_WORK_FILES = ["output.json", "output.schema.json"] as const;
 const maximumActiveRunAndCleanupGraceMs = 25 * 60 * 1000;
 const runtimeWorkExpiryTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -328,7 +331,12 @@ export class CodexCliProvider implements RuntimeProvider {
   async #inspectWithin(
     timeoutMs: number,
     signal?: AbortSignal,
-  ): Promise<{ version: string; supportsStructuredOutput: boolean }> {
+  ): Promise<{
+    version: string;
+    supportsStructuredOutput: boolean;
+    model: string;
+    reasoningEffort: typeof AGENT_RUNTIME_CODEX_REASONING_EFFORT;
+  }> {
     const [version, topLevelHelp, execHelp] = await Promise.all([
       this.#inspectCommand(["--version"], timeoutMs, signal),
       this.#inspectCommand(["--help"], timeoutMs, signal),
@@ -338,12 +346,19 @@ export class CodexCliProvider implements RuntimeProvider {
       throw new AppError("INTERNAL_ERROR", 500, "Codex CLI yardım çıktısı incelenemedi.");
     return {
       version,
+      model: AGENT_RUNTIME_CODEX_MODEL,
+      reasoningEffort: AGENT_RUNTIME_CODEX_REASONING_EFFORT,
       supportsStructuredOutput:
         execHelp.includes("--output-schema") && execHelp.includes("--output-last-message"),
     };
   }
 
-  async inspect(): Promise<{ version: string; supportsStructuredOutput: boolean }> {
+  async inspect(): Promise<{
+    version: string;
+    supportsStructuredOutput: boolean;
+    model: string;
+    reasoningEffort: typeof AGENT_RUNTIME_CODEX_REASONING_EFFORT;
+  }> {
     await mkdir(this.#options.workRoot, { recursive: true, mode: 0o700 });
     // A worker restart must also sweep leftovers; otherwise the final retained run
     // could outlive the hard twenty-four-hour debug ceiling indefinitely.
@@ -395,6 +410,10 @@ export class CodexCliProvider implements RuntimeProvider {
       const args = [
         "--ask-for-approval",
         "never",
+        "--model",
+        AGENT_RUNTIME_CODEX_MODEL,
+        "-c",
+        `model_reasoning_effort="${AGENT_RUNTIME_CODEX_REASONING_EFFORT}"`,
         "exec",
         "--ephemeral",
         "--ignore-user-config",
@@ -450,6 +469,8 @@ export class CodexCliProvider implements RuntimeProvider {
       return {
         provider: "codex-cli",
         version: inspected.version,
+        model: inspected.model,
+        reasoningEffort: inspected.reasoningEffort,
         output,
         durationMs: Date.now() - startedAt,
         hostMetrics,

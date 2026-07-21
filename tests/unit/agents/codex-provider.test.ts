@@ -28,7 +28,10 @@ describe("Codex CLI provider security contract", () => {
     expect(source).not.toContain("shell: true");
     expect(source).toContain('this.#inspectCommand(["--help"]');
     expect(source).toContain('this.#inspectCommand(["exec", "--help"]');
-    expect(source).toMatch(/const args = \[\s*"--ask-for-approval",\s*"never",\s*"exec"/u);
+    expect(source).toMatch(/const args = \[\s*"--ask-for-approval",\s*"never"/u);
+    expect(source).toContain('AGENT_RUNTIME_CODEX_MODEL = "gpt-5.6-sol"');
+    expect(source).toContain('AGENT_RUNTIME_CODEX_REASONING_EFFORT = "high"');
+    expect(source).toContain('`model_reasoning_effort="${AGENT_RUNTIME_CODEX_REASONING_EFFORT}"`');
   });
 
   it("allowlists child environment and never forwards database or deployment credentials", () => {

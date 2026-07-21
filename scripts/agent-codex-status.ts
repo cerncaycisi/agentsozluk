@@ -47,6 +47,8 @@ async function main(): Promise<void> {
     `${JSON.stringify({
       executableInspected: true,
       version: inspected.version,
+      model: inspected.model,
+      reasoningEffort: inspected.reasoningEffort,
       supportsStructuredOutput: inspected.supportsStructuredOutput,
       structuredDryRun: true,
       scenario: benchmark.scenario,

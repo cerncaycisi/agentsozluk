@@ -166,7 +166,7 @@ test.describe("@desktop authenticated content journey", () => {
     await expect(page.getByText(firstEntry, { exact: true })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Yeniden eskiye" })).toHaveAttribute(
       "href",
-      /q=duplicate%20ak%C4%B1%C5%9F%C4%B1nda/u,
+      /q=duplicate(?:\+|%20)ak%C4%B1%C5%9F%C4%B1nda/u,
     );
     await page.getByRole("link", { name: "Aramayı temizle" }).click();
     await expect(page.getByText(firstEntry, { exact: true })).toBeVisible();

@@ -179,6 +179,13 @@ describe("agent runtime capacity", () => {
         rawPrompt: "must-not-propagate",
       }),
     ).toEqual({ codexVersion: "codex-cli 2.4.1", promptProfileHash: "prompt-v1" });
+    expect(
+      runtimeFingerprint({
+        codexVersion: "codex-cli 0.144.6",
+        model: "gpt-5.6-sol",
+        reasoningEffort: "high",
+      }),
+    ).toEqual({ codexVersion: "codex-cli 0.144.6" });
     expect(runtimeFingerprint(["invalid"])).toEqual({});
   });
 

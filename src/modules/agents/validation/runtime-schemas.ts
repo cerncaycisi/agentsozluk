@@ -317,7 +317,9 @@ const usageMetadataSchema = z
     cachedInputTokens: z.number().int().min(0).optional(),
     durationMs: z.number().int().min(0).max(86_400_000),
     provider: z.literal("codex-cli"),
+    codexVersion: z.string().trim().min(1).max(200).optional(),
     model: z.string().trim().min(1).max(200).optional(),
+    reasoningEffort: z.enum(["none", "low", "medium", "high", "xhigh", "max"]).optional(),
     promptProfileHash: z
       .string()
       .regex(/^[a-f0-9]{64}$/u)

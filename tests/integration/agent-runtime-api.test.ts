@@ -5457,7 +5457,10 @@ describe("internal agent runtime API with PostgreSQL", () => {
         }),
       ).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
     const proposedSource = await integrationDatabase.agentSource.findFirstOrThrow({
-      where: { agentProfileId: fixture.created.agent.profile.id },
+      where: {
+        agentProfileId: fixture.created.agent.profile.id,
+        url: "https://example.com/feed.xml",
+      },
     });
     const sourceChangedOutbox = await integrationDatabase.outboxEvent.findMany({
       where: { eventType: "agent.source.changed", aggregateId: proposedSource.id },
@@ -5509,8 +5512,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
       }),
     );
     expect(
-      await integrationDatabase.agentSource.findFirstOrThrow({
-        where: { agentProfileId: fixture.created.agent.profile.id },
+      await integrationDatabase.agentSource.findUniqueOrThrow({
+        where: { id: proposedSource.id },
       }),
     ).toMatchObject({ status: "TRUSTED", normalizedDomain: "example.com" });
     const evolvedSourceOutbox = await integrationDatabase.outboxEvent.findMany({

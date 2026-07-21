@@ -150,6 +150,8 @@ flag'i varsaymaz.
 
 Her invocation shell kullanmadan argument array ile şu davranışları ister:
 
+- model: `gpt-5.6-sol`
+- reasoning effort: `high`
 - approval: `never`
 - ephemeral execution ve user config/rule izolasyonu
 - git repository kontrolünü atlama
@@ -295,6 +297,10 @@ dosyasındadır:
 | `AGENT_RUNTIME_STOCHASTIC_TICK_MAX_MS` | 60000–1800000 ms; varsayılan 600000   |
 | `CODEX_EXECUTABLE`                     | Doğrulanmış installed binary yolu     |
 | `CODEX_SANDBOX_EXECUTABLE`             | Sabit Bubblewrap binary yolu          |
+
+Model ve reasoning effort kullanıcı config'ine bırakılmaz. Provider her invocation'da
+`gpt-5.6-sol` ve `high` değerlerini CLI argument'leriyle pinler; usage metadata gerçek model,
+reasoning effort ve Codex CLI sürümünü ayrı alanlarda saklar.
 
 Production kurulum, login, benchmark ve start için bu belgeyi komut kaynağı olarak kullanmayın;
 operator gate'leri için [`PRODUCTION_RUNBOOK.md`](PRODUCTION_RUNBOOK.md) izlenmelidir.

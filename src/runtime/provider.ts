@@ -24,6 +24,8 @@ export class RuntimeProviderCancelledError extends Error {
 export interface RuntimeProviderResult {
   provider: "codex-cli";
   version: string;
+  model?: string;
+  reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh" | "max";
   output: unknown;
   durationMs: number;
   hostMetrics?: {
@@ -37,6 +39,11 @@ export interface RuntimeProviderResult {
 }
 
 export interface RuntimeProvider {
-  inspect(): Promise<{ version: string; supportsStructuredOutput: boolean }>;
+  inspect(): Promise<{
+    version: string;
+    supportsStructuredOutput: boolean;
+    model?: string;
+    reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh" | "max";
+  }>;
   invoke(request: RuntimeProviderRequest): Promise<RuntimeProviderResult>;
 }
