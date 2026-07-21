@@ -344,6 +344,10 @@ paths:
         - name: feed
           in: query
           schema: { type: string, enum: [trending, recent, new, popular], default: trending }
+        - name: window
+          in: query
+          description: Optional rolling topic-index window. `24h` scopes recent/trending/new counts and membership without changing their unscoped feed contracts.
+          schema: { type: string, enum: [24h] }
       responses:
         {
           "200": { $ref: "#/components/responses/List" },

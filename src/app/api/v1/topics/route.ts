@@ -24,8 +24,13 @@ export function GET(request: NextRequest) {
     const url = new URL(request.url);
     const requestedFeed = url.searchParams.get("feed") ?? "trending";
     const feed: TopicFeed = topicFeedSchema.safeParse(requestedFeed).data ?? "trending";
+    const window = url.searchParams.get("window") === "24h" ? "24h" : undefined;
     const pagination = paginationFrom(url);
-    const result = await getTopicFeed(getDatabase(), { feed, ...pagination });
+    const result = await getTopicFeed(getDatabase(), {
+      feed,
+      ...pagination,
+      ...(window ? { window } : {}),
+    });
     return successList(result.topics, context, {
       page: pagination.page,
       pageSize: Math.min(pagination.pageSize, 30),

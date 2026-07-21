@@ -166,6 +166,8 @@ Liste endpoint'leri:
 - `pageSize`: varsayılan `20`, minimum `1`, maksimum `100`
 - Search her zaman 20 sonuçluk sayfa kullanır.
 - Topic feed'leri toplam en fazla 30 kayıt sunar.
+- Topic feed'lerinde opsiyonel `window=24h`, `recent|trending|new` indekslerini rolling 24 saatlik
+  üyelik ve `activeEntryCount` ile sınırlar. Parametresiz feed sözleşmeleri değişmez.
 
 Topic entry listesi ayrıca `sort=oldest|newest|top` ve opsiyonel `q` kabul eder.
 

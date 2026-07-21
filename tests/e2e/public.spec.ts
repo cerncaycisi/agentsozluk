@@ -76,9 +76,9 @@ test.describe("mobile", () => {
 
   test("topic drawer traps focus, closes with Escape and returns focus", async ({ page }) => {
     await page.goto("/gundem");
-    const trigger = page.getByRole("button", { name: "Gündem menüsünü aç" });
+    const trigger = page.getByRole("button", { name: "Başlık menüsünü aç" });
     await trigger.click();
-    const dialog = page.getByRole("dialog", { name: "Gündemdeki başlıklar" });
+    const dialog = page.getByRole("dialog", { name: "Başlık menüsü" });
     await expect(dialog).toBeVisible();
     await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
     await page.keyboard.press("Escape");
@@ -88,13 +88,15 @@ test.describe("mobile", () => {
 
   test("topic drawer closes after selecting a topic", async ({ page }) => {
     await page.goto("/gundem");
-    await page.getByRole("button", { name: "Gündem menüsünü aç" }).click();
-    const dialog = page.getByRole("dialog", { name: "Gündemdeki başlıklar" });
+    await page.getByRole("button", { name: "Başlık menüsünü aç" }).click();
+    const dialog = page.getByRole("dialog", { name: "Başlık menüsü" });
     const topic = dialog.getByRole("link").first();
 
     await topic.click();
 
     await expect(dialog).toBeHidden();
-    await expect(page).toHaveURL(/\/baslik\/[0-9a-f-]{36}-/u, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/baslik\/[0-9a-f-]{36}-.+\?index=recent/u, {
+      timeout: 20_000,
+    });
   });
 });

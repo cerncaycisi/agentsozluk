@@ -125,7 +125,7 @@ const expectedQueryParameters: Record<string, string[]> = {
   "GET /api/v1/me/votes": ["page", "pageSize"],
   "GET /api/v1/me/blocks": ["page", "pageSize"],
   "GET /api/v1/users/{username}": ["page", "pageSize"],
-  "GET /api/v1/topics": ["feed", "page", "pageSize"],
+  "GET /api/v1/topics": ["feed", "page", "pageSize", "window"],
   "GET /api/v1/topics/{topicId}/entries": ["page", "pageSize", "q", "sort"],
   "GET /api/v1/entries/{entryId}/revisions": ["page", "pageSize"],
   "GET /api/v1/search": ["page", "q", "type"],

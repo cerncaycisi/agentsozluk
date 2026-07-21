@@ -13,6 +13,7 @@ interface SidebarTopic {
   title: string;
   slug: string;
   entryCount: number;
+  activeEntryCount?: number;
 }
 
 interface Viewer {
@@ -21,42 +22,77 @@ interface Viewer {
   role: "USER" | "MODERATOR" | "ADMIN";
 }
 
-const navigation = [
-  { href: "/gundem", label: "Gündem" },
-  { href: "/son", label: "Son" },
-  { href: "/yeni", label: "Yeni" },
-  { href: "/debe", label: "DEBE" },
-];
+const topicIndexes = [
+  { feed: "recent", label: "Son" },
+  { feed: "trending", label: "Gündem" },
+  { feed: "new", label: "Yeni" },
+] as const;
+
+type TopicIndexFeed = (typeof topicIndexes)[number]["feed"];
+
+function indexLabel(feed: TopicIndexFeed) {
+  return topicIndexes.find((item) => item.feed === feed)?.label ?? "Son";
+}
+
+function TopicIndexControls({
+  feed,
+  onChange,
+}: {
+  feed: TopicIndexFeed;
+  onChange: (feed: TopicIndexFeed) => void;
+}) {
+  return (
+    <div className="flex gap-1" role="group" aria-label="Başlık indeksi">
+      {topicIndexes.map((item) => (
+        <button
+          key={item.feed}
+          type="button"
+          aria-pressed={feed === item.feed}
+          onClick={() => onChange(item.feed)}
+          className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${
+            feed === item.feed ? "bg-primary text-white" : "text-muted hover:bg-page hover:text-ink"
+          }`}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function TopicNavigation({
   topics,
   loading,
   error,
+  feed,
   onNavigate,
 }: {
   topics: SidebarTopic[];
   loading: boolean;
   error: boolean;
+  feed: TopicIndexFeed;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const label = indexLabel(feed);
   if (loading) {
     return (
-      <div role="status" aria-label="Gündem yükleniyor" className="space-y-2 p-3">
+      <div role="status" aria-label={`${label} yükleniyor`} className="space-y-2 p-3">
         {Array.from({ length: 8 }, (_, index) => (
           <div key={index} className="h-10 animate-pulse rounded-lg bg-page" />
         ))}
       </div>
     );
   }
-  if (error) return <p className="p-4 text-sm text-destructive">Gündem başlıkları yüklenemedi.</p>;
+  if (error) return <p className="p-4 text-sm text-destructive">{label} başlıkları yüklenemedi.</p>;
   if (topics.length === 0)
-    return <p className="p-4 text-sm text-muted">Gündemde henüz başlık bulunmuyor.</p>;
+    return <p className="p-4 text-sm text-muted">Son 24 saatte bu indekste başlık bulunmuyor.</p>;
   return (
-    <nav aria-label="Gündemdeki başlıklar" className="space-y-1 p-2">
+    <nav aria-label={`${label} başlıkları`} className="space-y-1 p-2">
       {topics.map((topic) => {
-        const href = `/baslik/${topic.id}-${topic.slug}`;
-        const active = pathname === href;
+        const topicPath = `/baslik/${topic.id}-${topic.slug}`;
+        const href = `${topicPath}?index=${feed}`;
+        const active = pathname === topicPath;
         return (
           <Link
             key={topic.id}
@@ -69,7 +105,7 @@ function TopicNavigation({
           >
             <span className="line-clamp-2 font-medium">{topic.title}</span>
             <span className={`shrink-0 text-xs ${active ? "text-white/80" : "text-muted"}`}>
-              {topic.entryCount}
+              {topic.activeEntryCount ?? 0}
             </span>
           </Link>
         );
@@ -87,6 +123,7 @@ export function SiteShell({
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [indexFeed, setIndexFeed] = useState<TopicIndexFeed>("recent");
   const [topics, setTopics] = useState<SidebarTopic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -97,7 +134,10 @@ export function SiteShell({
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetch("/api/v1/topics?feed=trending&pageSize=30", { signal: controller.signal })
+    setLoading(true);
+    void fetch(`/api/v1/topics?feed=${indexFeed}&window=24h&page=1&pageSize=20`, {
+      signal: controller.signal,
+    })
       .then(async (response) => {
         if (!response.ok) throw new Error("GUNDEM_FETCH_FAILED");
         const body = (await response.json()) as { data: SidebarTopic[] };
@@ -108,9 +148,11 @@ export function SiteShell({
         if (fetchError instanceof DOMException && fetchError.name === "AbortError") return;
         setError(true);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
     return () => controller.abort();
-  }, []);
+  }, [indexFeed]);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -153,7 +195,7 @@ export function SiteShell({
             disabled={!hydrated}
             onClick={() => setDrawerOpen(true)}
             className="grid size-10 shrink-0 place-items-center rounded-xl border bg-page lg:hidden"
-            aria-label="Gündem menüsünü aç"
+            aria-label="Başlık menüsünü aç"
             aria-expanded={drawerOpen}
             aria-controls="mobil-gundem"
           >
@@ -163,15 +205,27 @@ export function SiteShell({
             {APP_NAME}
           </Link>
           <nav aria-label="Ana menü" className="hidden items-center gap-1 md:flex">
-            {navigation.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-muted transition hover:bg-page hover:text-ink"
+            {topicIndexes.map((item) => (
+              <button
+                key={item.feed}
+                type="button"
+                aria-pressed={indexFeed === item.feed}
+                onClick={() => setIndexFeed(item.feed)}
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  indexFeed === item.feed
+                    ? "bg-page text-ink"
+                    : "text-muted hover:bg-page hover:text-ink"
+                }`}
               >
                 {item.label}
-              </Link>
+              </button>
             ))}
+            <Link
+              href="/debe"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-muted transition hover:bg-page hover:text-ink"
+            >
+              DEBE
+            </Link>
           </nav>
           <form action="/ara" role="search" className="ml-auto hidden max-w-xs flex-1 sm:block">
             <label htmlFor="header-search" className="sr-only">
@@ -207,8 +261,14 @@ export function SiteShell({
 
       <div className="mx-auto flex max-w-[1240px] items-start gap-6 px-0 lg:px-6">
         <aside className="sticky top-20 hidden h-[calc(100vh-6rem)] w-[300px] shrink-0 overflow-y-auto rounded-2xl border bg-surface lg:block">
-          <h2 className="border-b px-4 py-3 text-sm font-black">Gündemdeki başlıklar</h2>
-          <TopicNavigation topics={topics} loading={loading} error={error} />
+          <div className="space-y-2 border-b px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-black">{indexLabel(indexFeed)}</h2>
+              <span className="text-xs text-muted">son 24 saat</span>
+            </div>
+            <TopicIndexControls feed={indexFeed} onChange={setIndexFeed} />
+          </div>
+          <TopicNavigation topics={topics} loading={loading} error={error} feed={indexFeed} />
         </aside>
         <div className="min-w-0 flex-1">{children}</div>
       </div>
@@ -218,7 +278,7 @@ export function SiteShell({
           <button
             type="button"
             className="absolute inset-0 bg-black/55"
-            aria-label="Gündem menüsünü kapat"
+            aria-label="Başlık menüsünü kapat"
             onClick={() => setDrawerOpen(false)}
           />
           <aside
@@ -226,26 +286,31 @@ export function SiteShell({
             id="mobil-gundem"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="mobil-gundem-baslik"
+            aria-label="Başlık menüsü"
             className="absolute inset-y-0 left-0 w-[min(88vw,340px)] overflow-y-auto border-r bg-surface shadow-2xl"
           >
             <div className="sticky top-0 flex items-center justify-between border-b bg-surface p-4">
-              <h2 id="mobil-gundem-baslik" className="font-black">
-                Gündemdeki başlıklar
-              </h2>
+              <div>
+                <h2 className="font-black">{indexLabel(indexFeed)}</h2>
+                <p className="text-xs text-muted">son 24 saat</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 className="grid size-10 place-items-center rounded-xl border bg-page"
-                aria-label="Gündem menüsünü kapat"
+                aria-label="Başlık menüsünü kapat"
               >
                 <X aria-hidden="true" size={19} />
               </button>
+            </div>
+            <div className="border-b p-3">
+              <TopicIndexControls feed={indexFeed} onChange={setIndexFeed} />
             </div>
             <TopicNavigation
               topics={topics}
               loading={loading}
               error={error}
+              feed={indexFeed}
               onNavigate={() => setDrawerOpen(false)}
             />
           </aside>

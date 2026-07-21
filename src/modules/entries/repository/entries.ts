@@ -140,6 +140,7 @@ export function listTopicEntries(
     take: number;
     sort: "oldest" | "newest" | "top";
     query?: string;
+    createdAtWindow?: { start: Date; end: Date };
   },
 ) {
   const orderBy: Prisma.EntryOrderByWithRelationInput[] =
@@ -163,6 +164,9 @@ export function listTopicEntries(
   const where: Prisma.EntryWhereInput = {
     topicId: input.topicId,
     ...visibleStatus,
+    ...(input.createdAtWindow
+      ? { createdAt: { gte: input.createdAtWindow.start, lte: input.createdAtWindow.end } }
+      : {}),
     ...(input.query ? { normalizedBody: { contains: input.query, mode: "insensitive" } } : {}),
   };
   return Promise.all([

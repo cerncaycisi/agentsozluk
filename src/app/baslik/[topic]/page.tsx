@@ -29,6 +29,30 @@ function topicIdFrom(segment: string): string {
   return pageUuidFrom(segment.slice(0, 36));
 }
 
+type TopicIndexFeed = "recent" | "trending" | "new";
+
+function topicIndexFrom(value: string | undefined): TopicIndexFeed | undefined {
+  return value === "recent" || value === "trending" || value === "new" ? value : undefined;
+}
+
+function topicUrlWithQuery(
+  baseUrl: string,
+  input: {
+    sort?: "oldest" | "newest" | "top";
+    index?: TopicIndexFeed | undefined;
+    page?: number;
+    query?: string | undefined;
+  },
+): string {
+  const parameters = new URLSearchParams();
+  if (input.sort) parameters.set("sort", input.sort);
+  if (input.index) parameters.set("index", input.index);
+  if (input.page) parameters.set("page", String(input.page));
+  if (input.query) parameters.set("q", input.query);
+  const query = parameters.toString();
+  return query ? `${baseUrl}?${query}` : baseUrl;
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -61,7 +85,7 @@ export default async function TopicPage({
   searchParams,
 }: {
   params: Promise<{ topic: string }>;
-  searchParams: Promise<{ page?: string; q?: string; sort?: string }>;
+  searchParams: Promise<{ page?: string; q?: string; sort?: string; index?: string }>;
 }) {
   const { topic: segment } = await params;
   const topicId = topicIdFrom(segment);
@@ -91,6 +115,8 @@ export default async function TopicPage({
   const query = await searchParams;
   const page = pageFrom(query.page);
   const sort = query.sort === "newest" || query.sort === "top" ? query.sort : "oldest";
+  const topicIndex = topicIndexFrom(query.index);
+  const now = new Date();
   const entryQuery = (query.q ?? "").normalize("NFKC").trim().slice(0, 100);
   const pageSize = 20;
   const database = getDatabase();
@@ -114,6 +140,14 @@ export default async function TopicPage({
       pageSize,
       skip: (page - 1) * pageSize,
       sort,
+      ...(topicIndex
+        ? {
+            createdAtWindow: {
+              start: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+              end: now,
+            },
+          }
+        : {}),
       ...(entryQuery ? { query: entryQuery } : {}),
     });
   } catch (error) {
@@ -134,7 +168,9 @@ export default async function TopicPage({
   return (
     <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
       <header className="mb-7">
-        <p className="text-accent-contrast text-sm font-bold">{topic.entryCount} entry</p>
+        <p className="text-accent-contrast text-sm font-bold">
+          {topicIndex ? `${result.totalItems} entry · son 24 saat` : `${topic.entryCount} entry`}
+        </p>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-3xl font-black tracking-tight">{topic.title}</h1>
           {topic.status === "HIDDEN" ? (
@@ -148,6 +184,7 @@ export default async function TopicPage({
             Başlık içinde ara
           </label>
           <input type="hidden" name="sort" value={sort} />
+          {topicIndex ? <input type="hidden" name="index" value={topicIndex} /> : null}
           <input
             id="topic-entry-search"
             name="q"
@@ -161,7 +198,10 @@ export default async function TopicPage({
             Başlıkta ara
           </button>
           {entryQuery ? (
-            <a href={`${topic.url}?sort=${sort}`} className="button-secondary">
+            <a
+              href={topicUrlWithQuery(topic.url, { sort, index: topicIndex })}
+              className="button-secondary"
+            >
               Aramayı temizle
             </a>
           ) : null}
@@ -170,7 +210,11 @@ export default async function TopicPage({
           {(["oldest", "newest", "top"] as const).map((value) => (
             <a
               key={value}
-              href={`${topic.url}?sort=${value}${entryQuery ? `&q=${encodeURIComponent(entryQuery)}` : ""}`}
+              href={topicUrlWithQuery(topic.url, {
+                sort: value,
+                index: topicIndex,
+                query: entryQuery || undefined,
+              })}
               className={`rounded-lg border px-3 py-2 text-sm font-semibold ${sort === value ? "bg-primary text-white" : "bg-surface"}`}
             >
               {value === "oldest"
@@ -181,6 +225,11 @@ export default async function TopicPage({
             </a>
           ))}
         </nav>
+        {topicIndex ? (
+          <a href={topic.url} className="mt-3 inline-block text-sm font-semibold text-primary">
+            Tüm entry’leri göster
+          </a>
+        ) : null}
         {session?.user.status === "ACTIVE" ? (
           <div className="mt-5 flex flex-wrap items-start gap-3">
             {topic.status === "ACTIVE" ? (
@@ -220,7 +269,9 @@ export default async function TopicPage({
           <p className="surface-card p-6 text-muted">
             {entryQuery
               ? "Bu aramayla eşleşen aktif entry yok."
-              : "Bu başlıkta görüntülenebilen entry yok."}
+              : topicIndex
+                ? "Bu başlıkta son 24 saatte görüntülenebilen entry yok."
+                : "Bu başlıkta görüntülenebilen entry yok."}
           </p>
         ) : null}
       </div>
@@ -228,7 +279,12 @@ export default async function TopicPage({
         page={page}
         totalPages={totalPages}
         hrefFor={(next) =>
-          `${topic.url}?sort=${sort}&page=${next}${entryQuery ? `&q=${encodeURIComponent(entryQuery)}` : ""}`
+          topicUrlWithQuery(topic.url, {
+            sort,
+            index: topicIndex,
+            page: next,
+            query: entryQuery || undefined,
+          })
         }
       />
       {session?.user.status === "ACTIVE" &&

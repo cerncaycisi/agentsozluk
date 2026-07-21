@@ -294,6 +294,7 @@ export async function getTopicEntries(
     skip: number;
     sort: "oldest" | "newest" | "top";
     query?: string;
+    createdAtWindow?: { start: Date; end: Date };
   },
 ) {
   return client.$transaction(async (transaction) => {
@@ -318,6 +319,7 @@ export async function getTopicEntries(
       skip: input.skip,
       take: input.pageSize,
       sort: input.sort,
+      ...(input.createdAtWindow ? { createdAtWindow: input.createdAtWindow } : {}),
       ...(input.query ? { query: input.query, includeAllHidden: false } : {}),
     };
     const [entries, totalItems] = await listTopicEntries(transaction, listInput);

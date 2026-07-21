@@ -21,6 +21,7 @@ export interface ChronologicalTopicRow {
   entryCount: number;
   lastEntryAt: Date | null;
   createdAt: Date;
+  activeEntryCount?: number;
 }
 
 export interface TopicFeedPage<T> {
@@ -50,12 +51,14 @@ interface ChronologicalTopicQueryRow {
   entryCount: number | null;
   lastEntryAt: Date | null;
   createdAt: Date | null;
+  activeEntryCount?: number | null;
+  windowLastEntryAt?: Date | null;
   totalItems: number;
 }
 
 export async function listScoredTopics(
   transaction: Prisma.TransactionClient,
-  input: { windowStart: Date; now: Date; skip: number; take: number },
+  input: { windowStart: Date; now: Date; skip: number; take: number; activityOnly?: boolean },
 ): Promise<TopicFeedPage<TopicFeedRow>> {
   const rows = await transaction.$queryRaw<ScoredTopicQueryRow[]>(Prisma.sql`
       WITH entry_activity AS (
@@ -110,6 +113,7 @@ export async function listScoredTopics(
         LEFT JOIN entry_activity ON entry_activity."topicId" = topic.id
         LEFT JOIN vote_activity ON vote_activity."topicId" = topic.id
         WHERE topic.status = 'ACTIVE'
+          ${input.activityOnly ? Prisma.sql`AND entry_activity."topicId" IS NOT NULL` : Prisma.sql``}
       ),
       totals AS (
         SELECT count(*)::integer AS "totalItems"
@@ -170,6 +174,109 @@ export async function listScoredTopics(
           positiveVotes: row.positiveVotes,
           negativeVotes: row.negativeVotes,
           trendScore: row.trendScore,
+        },
+      ];
+    }),
+    totalItems: rows[0]?.totalItems ?? 0,
+  };
+}
+
+export async function listWindowedChronologicalTopics(
+  transaction: Prisma.TransactionClient,
+  input: {
+    mode: "recent" | "new";
+    windowStart: Date;
+    now: Date;
+    skip: number;
+    take: number;
+  },
+): Promise<TopicFeedPage<ChronologicalTopicRow>> {
+  const windowFilter =
+    input.mode === "recent"
+      ? Prisma.sql`entry_activity."topicId" IS NOT NULL`
+      : Prisma.sql`topic."createdAt" >= ${input.windowStart} AND topic."createdAt" <= ${input.now}`;
+  const orderBy =
+    input.mode === "recent"
+      ? Prisma.sql`"windowLastEntryAt" DESC NULLS LAST, id ASC`
+      : Prisma.sql`"createdAt" DESC, id ASC`;
+  const outerOrderBy =
+    input.mode === "recent"
+      ? Prisma.sql`paged."windowLastEntryAt" DESC NULLS LAST, paged.id ASC NULLS LAST`
+      : Prisma.sql`paged."createdAt" DESC NULLS LAST, paged.id ASC NULLS LAST`;
+  const rows = await transaction.$queryRaw<ChronologicalTopicQueryRow[]>(Prisma.sql`
+    WITH entry_activity AS (
+      SELECT
+        entry."topicId",
+        count(*)::integer AS "activeEntryCount",
+        max(entry."createdAt") AS "windowLastEntryAt"
+      FROM entries AS entry
+      WHERE entry.status = 'ACTIVE'
+        AND entry."createdAt" >= ${input.windowStart}
+        AND entry."createdAt" <= ${input.now}
+      GROUP BY entry."topicId"
+    ),
+    indexed_topics AS (
+      SELECT
+        topic.id,
+        topic.title,
+        topic.slug,
+        topic."entryCount",
+        topic."lastEntryAt",
+        topic."createdAt",
+        coalesce(entry_activity."activeEntryCount", 0)::integer AS "activeEntryCount",
+        entry_activity."windowLastEntryAt"
+      FROM topics AS topic
+      LEFT JOIN entry_activity ON entry_activity."topicId" = topic.id
+      WHERE topic.status = 'ACTIVE'
+        AND ${windowFilter}
+    ),
+    totals AS (
+      SELECT count(*)::integer AS "totalItems"
+      FROM indexed_topics
+    ),
+    paged AS (
+      SELECT *
+      FROM indexed_topics
+      ORDER BY ${orderBy}
+      OFFSET ${input.skip}
+      LIMIT ${input.take}
+    )
+    SELECT
+      paged.id,
+      paged.title,
+      paged.slug,
+      paged."entryCount",
+      paged."lastEntryAt",
+      paged."createdAt",
+      paged."activeEntryCount",
+      paged."windowLastEntryAt",
+      totals."totalItems"
+    FROM totals
+    LEFT JOIN paged ON true
+    ORDER BY ${outerOrderBy}
+  `);
+  return {
+    topics: rows.flatMap((row) => {
+      if (
+        row.id === null ||
+        row.title === null ||
+        row.slug === null ||
+        row.entryCount === null ||
+        row.createdAt === null ||
+        row.activeEntryCount === null ||
+        row.activeEntryCount === undefined
+      ) {
+        return [];
+      }
+      return [
+        {
+          id: row.id,
+          title: row.title,
+          slug: row.slug,
+          entryCount: row.entryCount,
+          lastEntryAt: row.lastEntryAt,
+          createdAt: row.createdAt,
+          activeEntryCount: row.activeEntryCount,
         },
       ];
     }),

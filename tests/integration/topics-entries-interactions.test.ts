@@ -2234,6 +2234,10 @@ describe("search, feeds and profiles with PostgreSQL", () => {
       where: { id: second.topic.id },
       data: { status: "ACTIVE", createdAt: now, lastEntryAt: previousDayEntryAt },
     });
+    await integrationDatabase.entry.update({
+      where: { id: second.entry.id },
+      data: { createdAt: new Date("2026-07-14T10:00:00.000Z") },
+    });
     const recent = await getTopicFeed(integrationDatabase, {
       feed: "recent",
       page: 1,
@@ -2253,6 +2257,53 @@ describe("search, feeds and profiles with PostgreSQL", () => {
       now,
     });
     expect(newest.topics[0]?.id).toBe(second.topic.id);
+
+    const recent24Hours = await getTopicFeed(integrationDatabase, {
+      feed: "recent",
+      window: "24h",
+      page: 1,
+      pageSize: 30,
+      skip: 0,
+      now,
+    });
+    expect(recent24Hours.topics.map((topic) => topic.id)).toEqual([first.topic.id]);
+    expect(recent24Hours.topics[0]).toMatchObject({ activeEntryCount: 2 });
+
+    const trending24Hours = await getTopicFeed(integrationDatabase, {
+      feed: "trending",
+      window: "24h",
+      page: 1,
+      pageSize: 30,
+      skip: 0,
+      now,
+    });
+    expect(trending24Hours.topics.map((topic) => topic.id)).toEqual([first.topic.id]);
+
+    const new24Hours = await getTopicFeed(integrationDatabase, {
+      feed: "new",
+      window: "24h",
+      page: 1,
+      pageSize: 30,
+      skip: 0,
+      now,
+    });
+    expect(new24Hours.topics.map((topic) => topic.id)).toEqual([second.topic.id]);
+    expect(new24Hours.topics[0]).toMatchObject({ activeEntryCount: 0 });
+
+    const scopedEntries = await getTopicEntries(integrationDatabase, {
+      topicId: first.topic.id,
+      viewer: null,
+      page: 1,
+      pageSize: 20,
+      skip: 0,
+      sort: "oldest",
+      createdAtWindow: {
+        start: new Date("2026-07-16T00:00:00.000Z"),
+        end: now,
+      },
+    });
+    expect(scopedEntries.entries.map((entry) => entry.id)).toEqual([secondEntry.id]);
+    expect(scopedEntries.totalItems).toBe(1);
 
     for (const feed of ["trending", "new"] as const) {
       const emptyPage = await getTopicFeed(integrationDatabase, {

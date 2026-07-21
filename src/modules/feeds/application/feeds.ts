@@ -12,6 +12,7 @@ import {
   listChronologicalTopics,
   listDebeEntries,
   listScoredTopics,
+  listWindowedChronologicalTopics,
 } from "@/modules/feeds/repository/feeds";
 import { withEditedIndicator } from "@/modules/entries/domain/entry";
 
@@ -33,15 +34,25 @@ export interface TopicFeedItem {
 
 export async function getTopicFeed(
   client: DatabaseClient,
-  input: { feed: TopicFeed; page: number; pageSize: number; skip: number; now?: Date },
+  input: {
+    feed: TopicFeed;
+    page: number;
+    pageSize: number;
+    skip: number;
+    now?: Date;
+    window?: "24h";
+  },
 ): Promise<{ topics: TopicFeedItem[]; totalItems: number }> {
   const now = input.now ?? new Date();
   const { skip, take } = boundedFeedWindow(input.skip, input.pageSize);
+  const windowStart = topicFeedWindowStart("trending", now);
 
   if (input.feed === "recent" || input.feed === "new") {
     const mode = input.feed;
     const result = await client.$transaction((transaction) =>
-      listChronologicalTopics(transaction, { mode, skip, take }),
+      input.window === "24h"
+        ? listWindowedChronologicalTopics(transaction, { mode, windowStart, now, skip, take })
+        : listChronologicalTopics(transaction, { mode, skip, take }),
     );
     return {
       topics: result.topics,
@@ -49,12 +60,18 @@ export async function getTopicFeed(
     };
   }
 
-  const windowStart =
+  const scoredWindowStart =
     input.feed === "popular"
       ? currentIstanbulDayWindow(now).start
       : topicFeedWindowStart(input.feed, now);
   const result = await client.$transaction((transaction) =>
-    listScoredTopics(transaction, { windowStart, now, skip, take }),
+    listScoredTopics(transaction, {
+      windowStart: scoredWindowStart,
+      now,
+      skip,
+      take,
+      activityOnly: input.window === "24h" && input.feed === "trending",
+    }),
   );
   return {
     topics: result.topics,
