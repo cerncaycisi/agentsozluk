@@ -34,6 +34,7 @@ import {
   runtimePromptInvariants,
   runtimePromptScaffold,
 } from "@/runtime/prompt-profile";
+import { renderRuntimeWritingVariation } from "@/runtime/writing-variation";
 
 export { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 
@@ -307,6 +308,8 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
     ...(context.run.adminInstruction
       ? [runtimePromptScaffold.adminHeading, context.run.adminInstruction]
       : []),
+    "",
+    renderRuntimeWritingVariation(context.run.id),
     runtimePromptInvariants[2],
     runtimePromptInvariants[3],
     "",

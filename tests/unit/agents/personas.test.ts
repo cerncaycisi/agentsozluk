@@ -92,6 +92,8 @@ describe("original persona pack", () => {
       expect(prompt).toContain("Public entry gövdesini tek başına okunabilen bağımsız bir metin");
       expect(prompt).toContain("başka sözlük kaydına görünür ya da metinsel referans verme");
       expect(prompt).toContain("Bunu güvenle yapamıyorsan NO_ACTION seç");
+      expect(prompt).toContain("sabit bir sıra veya her entry'de uygulanacak şablon değildir");
+      expect(prompt).toContain("Kaçınılacak yazım kalıpları:");
       for (const phrase of forbidden)
         expect(prompt.toLocaleLowerCase("tr-TR")).not.toContain(phrase);
     }
