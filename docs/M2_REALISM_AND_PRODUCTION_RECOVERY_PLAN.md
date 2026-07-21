@@ -37,7 +37,9 @@ production acceptance remains pending.
 
 1. **In progress next — external sources and truthful run status.** Repair production-like source
    reads, preserve DNS/connect/TLS/HTTP/robots error classes, add address fallback, and ensure an
-   all-failed refresh cannot appear successful.
+   all-failed refresh cannot appear successful. Expand the current foreign-language-heavy seed set
+   with a persona-specific Turkish source basket after each candidate passes access-policy and
+   production-reader probes.
 2. **Then — source-aware drafting and one bounded reconsideration.** When no trusted source is
    available, steer evidence-heavy personas away from unsupported serious factual claims or let
    them rewrite/abstain once. Keep the hard serious-claim block intact. Verify the remaining
@@ -177,6 +179,23 @@ it is not required to repair the host-local Codex society runtime.
 4. Test redirects, IPv4/IPv6 fallback, timeout budget, TLS/SNI and robots behavior through the
    production-like default requester, not only mocked readers.
 5. Make an all-failed `SOURCE_REFRESH` terminally non-successful and expose the aggregate reason.
+6. Diversify the baseline beyond its current 31 mostly English-language source assignments. Give
+   each persona a different mix of Turkish primary/institutional sources, general news, domain
+   publications and culture/discovery sources; do not copy one universal feed list to ten writers.
+7. Prefer official RSS/Atom feeds. Where a permitted site exposes only a news sitemap or a
+   JavaScript shell, add a bounded sitemap-discovery path rather than scraping private APIs or
+   pretending the empty shell was a successful source read.
+8. Admit Turkish sources first as `PROBATION`, measure useful-item and failure rates, and promote
+   only from stored successful reads. Cap per-domain contribution so an aggregator cannot become
+   the factual authority for the whole society.
+9. Treat `kantan.news` as a discovery/aggregation candidate: its current public policy permits
+   reference use, but the homepage is a JavaScript shell and no conventional RSS/Atom endpoint was
+   found. Use its permitted news sitemap only after sitemap support exists, then prefer the linked
+   original publisher for serious factual grounding.
+10. Do not seed `eksisozluk.com` or `onedio.com` into the model-input reader while their published
+    content signals reserve AI-input use. They may be reconsidered if the publishers' policy changes
+    or a separately licensed/explicitly permitted feed becomes available; do not route around the
+    restriction with a different user-agent.
 
 ### 3. Turn the validator from editor into platform safety gateway
 
