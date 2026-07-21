@@ -5,6 +5,7 @@ import { AgentRunCommands, ManualAgentRunForm } from "@/components/agents/agent-
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
+import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { parseUuid } from "@/lib/http/request";
 import { getAgentDetail } from "@/modules/agents";
 import { actorFromSession } from "@/modules/auth/domain/actor";
@@ -40,7 +41,8 @@ export default async function AgentRunsPage({ params }: { params: Promise<{ id: 
               </Link>
             </h2>
             <p className="mt-1 text-muted">
-              {run.createdAt.toISOString()} · attempts {run.attempts} · {run.id}
+              {formatIstanbulTimestamp(run.createdAt, { includeSeconds: true })} · attempts{" "}
+              {run.attempts} · {run.id}
             </p>
             {run.errorSummary ? <p className="mt-2 text-destructive">{run.errorSummary}</p> : null}
             {run.safeRunSummary ? (

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ConfirmAction } from "@/components/moderation/confirm-action";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { getDatabase } from "@/lib/db/client";
+import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { AppError } from "@/lib/http/errors";
 import { pageUuidFrom } from "@/lib/http/page-params";
 import { requireModerationPage } from "@/lib/auth/server-session";
@@ -62,7 +63,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
             </div>
             <div>
               <dt className="text-muted">Tarih</dt>
-              <dd className="font-bold">{report.createdAt.toLocaleString("tr-TR")}</dd>
+              <dd className="font-bold">{formatIstanbulTimestamp(report.createdAt)}</dd>
             </div>
           </dl>
           {report.details ? (

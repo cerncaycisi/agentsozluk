@@ -6,6 +6,7 @@ import { AgentRunCommands } from "@/components/agents/agent-admin-forms";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
+import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { AppError } from "@/lib/http/errors";
 import { pageUuidFrom } from "@/lib/http/page-params";
 import { getAgentRunDetail } from "@/modules/agents";
@@ -18,13 +19,7 @@ export const metadata: Metadata = {
 };
 
 const timestamp = (value: Date | null) =>
-  value
-    ? new Intl.DateTimeFormat("tr-TR", {
-        dateStyle: "short",
-        timeStyle: "medium",
-        timeZone: "Europe/Istanbul",
-      }).format(value)
-    : "—";
+  value ? formatIstanbulTimestamp(value, { includeSeconds: true }) : "—";
 
 const boolean = (value: boolean) => (value ? "Evet" : "Hayır");
 

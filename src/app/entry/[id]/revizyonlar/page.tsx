@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getDatabase } from "@/lib/db/client";
+import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { AppError } from "@/lib/http/errors";
 import { pageUuidFrom } from "@/lib/http/page-params";
 import { pageFrom } from "@/lib/http/pagination";
@@ -51,7 +52,7 @@ export default async function EntryRevisionsPage({
           <article key={revision.id} className="surface-card p-5">
             <p className="whitespace-pre-wrap leading-7">{revision.body}</p>
             <p className="mt-4 border-t pt-3 text-sm text-muted">
-              {revision.createdAt.toLocaleString("tr-TR")} · @{revision.editedBy.username}
+              {formatIstanbulTimestamp(revision.createdAt)} · @{revision.editedBy.username}
             </p>
           </article>
         ))}

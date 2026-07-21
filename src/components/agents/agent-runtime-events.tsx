@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { apiRequest } from "@/lib/http/client";
 
 export interface SafeRuntimeEvent {
@@ -81,7 +82,7 @@ export function AgentRuntimeEvents({ initialEvents }: { initialEvents: SafeRunti
             <div className="flex flex-wrap items-center justify-between gap-2">
               <strong>{event.eventType}</strong>
               <time className="text-xs text-muted">
-                {new Date(event.createdAt).toLocaleString("tr-TR")}
+                {formatIstanbulTimestamp(event.createdAt, { includeSeconds: true })}
               </time>
             </div>
             <p className="mt-2">{event.safeMessage}</p>

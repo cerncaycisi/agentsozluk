@@ -10,6 +10,7 @@ import {
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
+import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { AppError } from "@/lib/http/errors";
 import { parseUuid } from "@/lib/http/request";
 import { getAgentDetail, listAgentMemories } from "@/modules/agents";
@@ -74,8 +75,18 @@ export default async function AgentMemoryPage({ params }: { params: Promise<{ id
             <p className="mt-4 whitespace-pre-wrap text-sm">{memory.summary}</p>
             <dl className="mt-4 grid gap-3 text-xs sm:grid-cols-3">
               <MemoryFact label="Salience" value={String(memory.salience)} />
-              <MemoryFact label="Occurred" value={memory.occurredAt.toISOString()} />
-              <MemoryFact label="Invalidated" value={memory.invalidatedAt?.toISOString() ?? "—"} />
+              <MemoryFact
+                label="Occurred"
+                value={formatIstanbulTimestamp(memory.occurredAt, { includeSeconds: true })}
+              />
+              <MemoryFact
+                label="Invalidated"
+                value={
+                  memory.invalidatedAt
+                    ? formatIstanbulTimestamp(memory.invalidatedAt, { includeSeconds: true })
+                    : "—"
+                }
+              />
               <MemoryFact label="Subject" value={memory.subjectType ?? "—"} />
               <MemoryFact label="Subject ID" value={memory.subjectId ?? "—"} />
               <MemoryFact label="Run ID" value={memory.runId ?? "—"} />

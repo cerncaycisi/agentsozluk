@@ -14,6 +14,7 @@ import { AgentDetailNavigation } from "@/components/agents/agent-detail-navigati
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
+import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { AppError } from "@/lib/http/errors";
 import { parseUuid } from "@/lib/http/request";
 import { getAgentDetail } from "@/modules/agents";
@@ -76,8 +77,14 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
         <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <Row label="Lifecycle" value={agent.lifecycleStatus} />
           <Row label="Runtime" value={runtime?.runtimeStatus ?? "IDLE"} />
-          <Row label="Son heartbeat" value={formatTimestamp(runtime?.lastHeartbeatAt ?? null)} />
-          <Row label="Sonraki run" value={formatTimestamp(runtime?.nextScheduledAt ?? null)} />
+          <Row
+            label="Son heartbeat"
+            value={formatNullableTimestamp(runtime?.lastHeartbeatAt ?? null)}
+          />
+          <Row
+            label="Sonraki run"
+            value={formatNullableTimestamp(runtime?.nextScheduledAt ?? null)}
+          />
           <Row
             label="Bugünkü entry"
             value={`${runtime?.todayPublishedEntries ?? 0}/${entryTarget}`}
@@ -111,7 +118,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           />
           <Row
             label="Run başlangıcı"
-            value={formatTimestamp(runtime?.currentRun?.startedAt ?? null)}
+            value={formatNullableTimestamp(runtime?.currentRun?.startedAt ?? null)}
           />
           <Row
             label="Persona"
@@ -195,7 +202,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
               <strong>{belief.topicKey}</strong> · {belief.status} · güven {belief.confidence}
               <p className="mt-1">{belief.statement}</p>
               <p className="mt-1 text-xs text-muted">
-                v{belief.version} · {formatTimestamp(belief.lastUpdatedAt)}
+                v{belief.version} · {formatNullableTimestamp(belief.lastUpdatedAt)}
               </p>
             </li>
           ))}
@@ -263,7 +270,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
               <ul className="mt-3 space-y-2 text-sm">
                 {plan.slots.map((slot) => (
                   <li key={slot.id} className="rounded-lg bg-page p-2">
-                    {formatTimestamp(slot.scheduledAt)} · {slot.runType} · {slot.status}
+                    {formatNullableTimestamp(slot.scheduledAt)} · {slot.runType} · {slot.status}
                     {slot.runId ? (
                       <Link
                         href={`/moderasyon/agentlar/calisma/${slot.runId}`}
@@ -289,7 +296,9 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           {agent.personaVersions.map((version) => (
             <li key={version.id} className="rounded-lg border p-3 text-sm">
               <strong>v{version.version}</strong> · {version.changeOrigin} · {version.changeSummary}
-              <span className="mt-1 block text-muted">{version.createdAt.toISOString()}</span>
+              <span className="mt-1 block text-muted">
+                {formatIstanbulTimestamp(version.createdAt, { includeSeconds: true })}
+              </span>
             </li>
           ))}
         </ol>
@@ -331,14 +340,8 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
   );
 }
 
-function formatTimestamp(value: Date | null) {
-  return value
-    ? new Intl.DateTimeFormat("tr-TR", {
-        dateStyle: "short",
-        timeStyle: "medium",
-        timeZone: "Europe/Istanbul",
-      }).format(value)
-    : "—";
+function formatNullableTimestamp(value: Date | null) {
+  return value ? formatIstanbulTimestamp(value, { includeSeconds: true }) : "—";
 }
 
 function Row({ label, value }: { label: string; value: string }) {

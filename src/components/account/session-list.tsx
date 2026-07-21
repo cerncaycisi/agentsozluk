@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 
 interface ActiveSession {
@@ -100,8 +101,8 @@ export function SessionList() {
                 ) : null}
               </p>
               <p className="mt-1 text-sm text-muted">
-                Oluşturuldu: {new Date(session.createdAt).toLocaleString("tr-TR")} · Son kullanım:{" "}
-                {new Date(session.lastUsedAt).toLocaleString("tr-TR")}
+                Oluşturuldu: {formatIstanbulTimestamp(session.createdAt)} · Son kullanım:{" "}
+                {formatIstanbulTimestamp(session.lastUsedAt)}
               </p>
             </div>
             <button

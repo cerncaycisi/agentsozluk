@@ -5,6 +5,7 @@ import { GlobalRuntimeSettingsForm } from "@/components/agents/global-runtime-se
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
+import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { getGlobalSettings, getRuntimeCapacity } from "@/modules/agents";
 import { circuitBreakerConfigSchema } from "@/modules/agents/domain/circuit-breaker";
 import { actorFromSession } from "@/modules/auth/domain/actor";
@@ -74,16 +75,8 @@ export default async function AgentSettingsPage() {
                 {indexing.queue.map((topic) => (
                   <tr key={topic.id} className="border-t">
                     <td className="py-2">{topic.title}</td>
-                    <td className="py-2">
-                      {topic.createdAt.toLocaleString("tr-TR", {
-                        timeZone: "Europe/Istanbul",
-                      })}
-                    </td>
-                    <td className="py-2">
-                      {topic.eligibleAt.toLocaleString("tr-TR", {
-                        timeZone: "Europe/Istanbul",
-                      })}
-                    </td>
+                    <td className="py-2">{formatIstanbulTimestamp(topic.createdAt)}</td>
+                    <td className="py-2">{formatIstanbulTimestamp(topic.eligibleAt)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -6,6 +6,7 @@ import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { RuntimeControlForm } from "@/components/agents/agent-admin-forms";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
+import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { getRuntimeCapacity } from "@/modules/agents";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 
@@ -119,27 +120,39 @@ export default async function AgentCapacityPage() {
           <Row label="Capacity warnings" value={capacity.warnings.join(", ") || "—"} />
           <Row
             label="En eski queued"
-            value={capacity.operational.oldestQueuedAt?.toISOString() ?? "—"}
+            value={
+              capacity.operational.oldestQueuedAt
+                ? formatIstanbulTimestamp(capacity.operational.oldestQueuedAt, {
+                    includeSeconds: true,
+                  })
+                : "—"
+            }
           />
           <Row label="Queue lag" value={duration(capacity.queueLagMs)} />
           <Row
             label="Estimated completion"
             value={
               capacity.estimatedCompletionAt
-                ? `${capacity.estimatedCompletionAt.toISOString()} · ${duration(capacity.estimatedCompletionDurationMs)} · P75`
+                ? `${formatIstanbulTimestamp(capacity.estimatedCompletionAt, { includeSeconds: true })} · ${duration(capacity.estimatedCompletionDurationMs)} · P75`
                 : "UNKNOWN"
             }
           />
           <Row
             label="En uzun active başlangıcı"
-            value={capacity.operational.longestActiveStartedAt?.toISOString() ?? "—"}
+            value={
+              capacity.operational.longestActiveStartedAt
+                ? formatIstanbulTimestamp(capacity.operational.longestActiveStartedAt, {
+                    includeSeconds: true,
+                  })
+                : "—"
+            }
           />
           <Row
             label="Son planning evidence"
             value={
               capacity.planningEvidence
                 ? (planningEvidence(capacity.planningEvidence.metadata) ??
-                  `${capacity.planningEvidence.eventType} · ${capacity.planningEvidence.createdAt.toISOString()}`)
+                  `${capacity.planningEvidence.eventType} · ${formatIstanbulTimestamp(capacity.planningEvidence.createdAt, { includeSeconds: true })}`)
                 : "—"
             }
           />
@@ -148,7 +161,7 @@ export default async function AgentCapacityPage() {
             value={
               capacity.latestActualSloMiss
                 ? (actualSloMiss(capacity.latestActualSloMiss.metadata) ??
-                  `${capacity.latestActualSloMiss.eventType} · ${capacity.latestActualSloMiss.createdAt.toISOString()}`)
+                  `${capacity.latestActualSloMiss.eventType} · ${formatIstanbulTimestamp(capacity.latestActualSloMiss.createdAt, { includeSeconds: true })}`)
                 : "—"
             }
           />
@@ -204,7 +217,12 @@ export default async function AgentCapacityPage() {
               label="Stale nedenleri"
               value={capacity.benchmark.staleReasons.join(", ") || "—"}
             />
-            <Row label="Measured at" value={capacity.benchmark.measuredAt.toISOString()} />
+            <Row
+              label="Measured at"
+              value={formatIstanbulTimestamp(capacity.benchmark.measuredAt, {
+                includeSeconds: true,
+              })}
+            />
           </dl>
         ) : (
           <p className="mt-4 text-sm text-muted">

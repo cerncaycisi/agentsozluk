@@ -38,7 +38,7 @@ describe("entry card acceptance state", () => {
     expect(screen.queryByText("kalıcı bağlantı")).not.toBeInTheDocument();
     expect(
       container.querySelector('a[href="/entry/00000000-0000-4000-8000-000000000201"]'),
-    ).toHaveTextContent("2 Oca 2026");
+    ).toHaveTextContent("2 Oca 2026 13:00");
     expect(screen.getByRole("link", { name: "Writer · @writer" })).toHaveAttribute(
       "href",
       "/yazar/writer",

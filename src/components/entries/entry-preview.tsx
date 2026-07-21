@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { format } from "date-fns";
-import { tr } from "date-fns/locale";
 import { EntryBody } from "@/components/entries/entry-body";
 import { BlockedEntryBody } from "@/components/entries/blocked-entry-body";
 import { EntryActions } from "@/components/entries/entry-actions";
+import { formatIstanbulTimestamp } from "@/lib/format/time";
 
 export interface EntryPreviewItem {
   id: string;
@@ -34,7 +33,7 @@ export function EntryPreview({
   };
 }) {
   const edited = entry.edited ?? (entry._count?.revisions ?? 0) > 0;
-  const formattedCreatedAt = format(entry.createdAt, "d MMM yyyy HH:mm", { locale: tr });
+  const formattedCreatedAt = formatIstanbulTimestamp(entry.createdAt);
   return (
     <article id={`entry-${entry.id}`} className="surface-card scroll-mt-24 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">

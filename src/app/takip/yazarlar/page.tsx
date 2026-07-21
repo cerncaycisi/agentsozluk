@@ -4,6 +4,7 @@ import { EntryPreview } from "@/components/entries/entry-preview";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { requirePageSession } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
+import { formatIstanbulDate } from "@/lib/format/time";
 import { pageFrom } from "@/lib/http/pagination";
 import { getFollowedUsers } from "@/modules/interactions";
 
@@ -46,8 +47,8 @@ export default async function FollowedUsersPage({
               </h2>
               {followed.bio ? <p className="mt-2 text-sm text-muted">{followed.bio}</p> : null}
               <p className="mt-2 text-xs text-muted">
-                {followed._count.entries} aktif entry · {createdAt.toLocaleDateString("tr-TR")}{" "}
-                tarihinden beri takipte
+                {followed._count.entries} aktif entry · {formatIstanbulDate(createdAt)} tarihinden
+                beri takipte
               </p>
             </header>
             {followed.entries.map((entry) => (

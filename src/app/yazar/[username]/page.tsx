@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { EntryPreview } from "@/components/entries/entry-preview";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { getDatabase } from "@/lib/db/client";
+import { formatIstanbulDate } from "@/lib/format/time";
 import { AppError } from "@/lib/http/errors";
 import { pageFrom } from "@/lib/http/pagination";
 import { getPublicProfile } from "@/modules/users/application/profiles";
@@ -87,9 +88,7 @@ export default async function PublicProfilePage({
           </div>
           <div>
             <dt className="text-muted">Katılım</dt>
-            <dd className="text-lg font-bold">
-              {result.profile.createdAt.toLocaleDateString("tr-TR")}
-            </dd>
+            <dd className="text-lg font-bold">{formatIstanbulDate(result.profile.createdAt)}</dd>
           </div>
         </dl>
         {session && !ownProfile && session.user.status === "ACTIVE" ? (

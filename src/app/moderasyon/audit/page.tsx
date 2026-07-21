@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { getDatabase } from "@/lib/db/client";
+import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { requireModerationPage } from "@/lib/auth/server-session";
 import { pageFrom } from "@/lib/http/pagination";
 import { actorFromSession } from "@/modules/auth/domain/actor";
@@ -69,7 +70,9 @@ export default async function AuditPage({
           <article key={log.id} className="surface-card p-5">
             <div className="flex flex-wrap justify-between gap-3">
               <h2 className="font-bold">{log.action}</h2>
-              <time className="text-sm text-muted">{log.createdAt.toLocaleString("tr-TR")}</time>
+              <time className="text-sm text-muted">
+                {formatIstanbulTimestamp(log.createdAt, { includeSeconds: true })}
+              </time>
             </div>
             <p className="mt-2 break-all text-sm text-muted">
               {log.entityType} · {log.entityId ?? "—"} · {log.requestId}

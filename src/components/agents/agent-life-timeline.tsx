@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState } from "react";
+import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 
 export type AgentLifeSubject =
@@ -169,7 +170,7 @@ function LifeEventCard({ event }: { event: AgentLifeEventView }) {
           {renderedSubject ? <p className="mt-1 break-all font-bold">{renderedSubject}</p> : null}
         </div>
         <time className="text-xs text-muted" dateTime={event.occurredAt}>
-          {new Date(event.occurredAt).toLocaleString("tr-TR")}
+          {formatIstanbulTimestamp(event.occurredAt, { includeSeconds: true })}
         </time>
       </div>
 

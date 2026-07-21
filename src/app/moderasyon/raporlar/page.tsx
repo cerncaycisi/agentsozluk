@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { getDatabase } from "@/lib/db/client";
+import { formatIstanbulDate } from "@/lib/format/time";
 import { requireModerationPage } from "@/lib/auth/server-session";
 import { pageFrom } from "@/lib/http/pagination";
 import { actorFromSession } from "@/modules/auth/domain/actor";
@@ -69,7 +70,7 @@ export default async function ReportsPage({
                 <td className="p-4">{report.targetType}</td>
                 <td className="p-4">{report.reason}</td>
                 <td className="p-4">@{report.reporter.username}</td>
-                <td className="p-4">{report.createdAt.toLocaleDateString("tr-TR")}</td>
+                <td className="p-4">{formatIstanbulDate(report.createdAt)}</td>
                 <td className="p-4">
                   <Link
                     className="font-semibold text-primary hover:underline"
@@ -91,7 +92,7 @@ export default async function ReportsPage({
             </p>
             <h2 className="mt-2 font-bold">{report.reason}</h2>
             <p className="mt-2 text-sm text-muted">
-              @{report.reporter.username} · {report.createdAt.toLocaleDateString("tr-TR")}
+              @{report.reporter.username} · {formatIstanbulDate(report.createdAt)}
             </p>
             <Link
               className="mt-4 inline-block font-semibold text-primary"
