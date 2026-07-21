@@ -49,7 +49,15 @@ describe("runtime control-plane HTTP contract", () => {
             cancelRequested: false,
           },
           agent: { username: "runtime_agent", displayName: "Runtime Agent", publicBio: null },
-          persona: { version: 1, renderedPrompt: "Trusted persona." },
+          persona: {
+            version: 1,
+            renderedPrompt: "Trusted persona.",
+            behavior: {
+              topicCreationTendency: 0.5,
+              votingTendency: 0.5,
+              followingTendency: 0.5,
+            },
+          },
           perception: {},
         },
       });

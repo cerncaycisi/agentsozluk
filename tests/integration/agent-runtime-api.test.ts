@@ -3023,6 +3023,11 @@ describe("internal agent runtime API with PostgreSQL", () => {
       ),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
     expect(context.persona.version).toBe(1);
+    expect(context.persona.behavior).toMatchObject({
+      topicCreationTendency: expect.any(Number),
+      votingTendency: expect.any(Number),
+      followingTendency: expect.any(Number),
+    });
     await recordRuntimeEvents(
       integrationDatabase,
       writePrincipal,
@@ -5554,6 +5559,56 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(
       await integrationDatabase.agentMemoryEpisode.count({
         where: { runId, eventType: "SOURCE_READ" },
+      }),
+    ).toBe(3);
+    const learnedSourceMemory = await integrationDatabase.agentMemoryEpisode.findFirstOrThrow({
+      where: {
+        runId,
+        eventType: "SOURCE_READ",
+        evidence: { path: ["contentHash"], equals: "1".repeat(64) },
+      },
+    });
+    expect(learnedSourceMemory.summary).toContain(
+      "İçerikten kalan güvenli not: Source reader tarafından normalize edilen güvenli metin 1.",
+    );
+    expect(learnedSourceMemory.evidence).toEqual(
+      expect.objectContaining({
+        sourceId: proposedSource.id,
+        sourceItemId: expect.any(String),
+        contentHash: "1".repeat(64),
+      }),
+    );
+    const repeatedAttemptId = randomUUID();
+    await recordRuntimeSourceAttempt(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeSourceAttemptSchema.parse({
+        workerId: "evolution-worker",
+        attemptId: repeatedAttemptId,
+        sourceId: proposedSource.id,
+      }),
+    );
+    await recordRuntimeSourceResult(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeSourceResultSchema.parse({
+        workerId: "evolution-worker",
+        attemptId: repeatedAttemptId,
+        sourceId: proposedSource.id,
+        items: [1, 2, 3].map((index) => ({
+          canonicalUrl: `https://example.com/article-${index}`,
+          title: `Güvenli source item ${index}`,
+          publishedAt: `2026-07-1${index}T10:00:00.000Z`,
+          contentHash: index.toString().repeat(64),
+          safeText: `Source reader tarafından normalize edilen güvenli metin ${index}.`,
+        })),
+      }),
+    );
+    expect(
+      await integrationDatabase.agentMemoryEpisode.count({
+        where: { eventType: "SOURCE_READ", subjectId: proposedSource.id },
       }),
     ).toBe(3);
     const actionLife = await integrationDatabase.agentRuntimeEvent.findMany({

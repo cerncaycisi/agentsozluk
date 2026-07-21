@@ -1491,6 +1491,7 @@ export function getRuntimeRunContext(
         version: run.personaVersion.version,
         document: run.personaVersion.persona,
         renderedPrompt: run.personaVersion.renderedPrompt,
+        behavior: seedPersonaSchema.parse(run.personaVersion.persona).behavior,
       },
       perception,
     };

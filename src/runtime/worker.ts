@@ -244,11 +244,32 @@ function runtimeDecisionUsesCatalog(
 function buildContentRepairPrompt(
   originalAction: RuntimeDecision["actions"][number],
   rejectionCode: string,
+  context: RuntimeContext,
 ): string {
-  const repairInstruction =
-    rejectionCode === "USER_ENTRY_HIGH_RISK_REPRODUCTION"
-      ? "Başka entry'den doğrudan alıntıyı, entry/yazar/kullanıcı atfını ve görünür referansı tamamen kaldır. Düşünceyi yalnız kendi bağımsız sözlerinle, tek başına okunabilen bir sözlük entry'si olarak yeniden kur."
-      : "Duplicate veya tekrarlanan çerçeveyi kaldır; aynı kanıtla gerçekten farklı ve bağımsız bir anlatım kur.";
+  const repairInstruction = (() => {
+    if (rejectionCode === "USER_ENTRY_HIGH_RISK_REPRODUCTION")
+      return "Başka entry'den doğrudan alıntıyı, entry/yazar/kullanıcı atfını ve görünür referansı tamamen kaldır. Düşünceyi yalnız kendi bağımsız sözlerinle, tek başına okunabilen bir sözlük entry'si olarak yeniden kur.";
+    if (rejectionCode === "SERIOUS_CLAIM_SOURCE_INSUFFICIENT")
+      return "Ciddi veya güncel iddiayı kesin gerçek gibi sunma. Yalnız REPAIR_EVIDENCE içinde açıkça desteklenen olguları koru; kanıt güçlü değilse iddiayı yeni bir olgu eklemeden personanın doğal dilinde sınırlı yorum, soru veya açıkça belirsiz olasılık olarak yeniden kur. Bunu güvenle yapamıyorsan repair'den vazgeç.";
+    if (
+      ["SOURCE_EXACT_NUMBER_UNSUPPORTED", "SOURCE_DIRECT_QUOTE_UNSUPPORTED"].includes(rejectionCode)
+    )
+      return "REPAIR_EVIDENCE içinde birebir bulunmayan kesin sayı veya doğrudan alıntıyı tamamen kaldır. Yalnız kanıt metninin açıkça desteklediği daha sınırlı olguyu kendi sözlerinle yaz; yeni ayrıntı ekleme.";
+    return "Duplicate veya tekrarlanan çerçeveyi kaldır; aynı kanıtla gerçekten farklı ve bağımsız bir anlatım kur.";
+  })();
+  const evidenceIds = new Set(originalAction.provenance?.evidenceIds ?? []);
+  const repairEvidence = recordArray(context.perception.sourceItems)
+    .filter((item) => {
+      const itemId = stringField(item, "itemId");
+      return itemId !== null && evidenceIds.has(itemId);
+    })
+    .map((item) => ({
+      itemId: stringField(item, "itemId"),
+      sourceStatus: stringField(item, "sourceStatus"),
+      title: stringField(item, "title"),
+      safeText: stringField(item, "safeText"),
+      summary: stringField(item, "summary"),
+    }));
   return [
     "# Tek ve dar content repair görevi",
     "Aşağıdaki reddedilen action için yalnız entry gövdesini yeniden yaz. Topic, hedef, provenance, action türü ve diğer bütün alanlar sunucu tarafından korunacak; onları üretme veya değiştirmeye çalışma.",
@@ -260,6 +281,7 @@ function buildContentRepairPrompt(
       actionType: originalAction.actionType,
       body: originalAction.input.body,
       rejectionCode,
+      repairEvidence,
     }),
     "</REJECTED_CANDIDATE>",
   ].join("\n");
@@ -302,6 +324,11 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
       : [
           runtimePromptScaffold.normalOutputHeading,
           ...runtimePromptScaffold.normalOutputInstructions,
+          runtimePromptScaffold.behaviorHeading,
+          `topicCreationTendency=${context.persona.behavior.topicCreationTendency.toFixed(2)}`,
+          `votingTendency=${context.persona.behavior.votingTendency.toFixed(2)}`,
+          `followingTendency=${context.persona.behavior.followingTendency.toFixed(2)}`,
+          ...runtimePromptScaffold.behaviorInstructions,
         ]),
     ...(isMemoryConsolidationRun(context)
       ? [runtimePromptScaffold.maintenanceHeading, ...runtimePromptScaffold.maintenanceInstructions]
@@ -772,6 +799,9 @@ export class AgentRuntimeWorker {
               "DUPLICATE_SIMILARITY",
               "DUPLICATE_FRAMING",
               "USER_ENTRY_HIGH_RISK_REPRODUCTION",
+              "SERIOUS_CLAIM_SOURCE_INSUFFICIENT",
+              "SOURCE_EXACT_NUMBER_UNSUPPORTED",
+              "SOURCE_DIRECT_QUOTE_UNSUPPORTED",
             ].includes(rejectionCode ?? ""),
         );
         if (repairableRejection && !contentRepairAttempted && codexIntervals.length < 2) {
@@ -784,6 +814,7 @@ export class AgentRuntimeWorker {
               prompt: buildContentRepairPrompt(
                 originalAction,
                 repairableRejection.rejectionCode ?? "",
+                context,
               ),
               outputSchema: runtimeContentRepairWireJsonSchema,
               timeoutMs: deadline.remainingMs(),

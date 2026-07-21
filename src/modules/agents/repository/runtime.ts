@@ -1480,6 +1480,14 @@ function sourceStateChanged(
   );
 }
 
+function sourceMemorySummary(item: { title: string; safeText: string }): string {
+  const boundedText = item.safeText.replaceAll(/\s+/gu, " ").trim().slice(0, 1500);
+  return `Source item gerçekten okundu: ${item.title}. İçerikten kalan güvenli not: ${boundedText}`.slice(
+    0,
+    2000,
+  );
+}
+
 export async function storeRuntimeSourceResult(
   transaction: Prisma.TransactionClient,
   input: {
@@ -1532,8 +1540,9 @@ export async function storeRuntimeSourceResult(
       where: domainWhere,
       data: { consecutiveFailures: 0 },
     });
+    const storedItems = [];
     for (const item of input.items) {
-      await transaction.agentSourceItem.upsert({
+      const storedItem = await transaction.agentSourceItem.upsert({
         where: {
           sourceId_contentHash: { sourceId: input.sourceId, contentHash: item.contentHash },
         },
@@ -1556,7 +1565,9 @@ export async function storeRuntimeSourceResult(
           safeText: item.safeText,
           expiresAt: new Date(input.now.getTime() + 7 * 24 * 60 * 60 * 1000),
         },
+        select: { id: true },
       });
+      storedItems.push({ ...item, sourceItemId: storedItem.id });
     }
     const usefulItems = await transaction.agentSourceItem.count({
       where: { sourceId: input.sourceId },
@@ -1582,21 +1593,48 @@ export async function storeRuntimeSourceResult(
       },
       select: { status: true },
     });
-    for (const item of input.items)
-      await transaction.agentMemoryEpisode.create({
-        data: {
+    for (const item of storedItems) {
+      const existingMemory = await transaction.agentMemoryEpisode.findFirst({
+        where: {
           agentProfileId: input.agentProfileId,
-          runId: input.runId,
           eventType: "SOURCE_READ",
-          subjectType: "SOURCE",
           subjectId: input.sourceId,
-          summary: `Source item gerçekten okundu: ${item.title}`.slice(0, 2000),
-          salience: 0.5,
-          provenance: updatedSource.status === "TRUSTED" ? "TRUSTED_SOURCE" : "PROBATION_SOURCE",
-          evidence: { sourceId: input.sourceId, contentHash: item.contentHash },
-          occurredAt: input.now,
+          evidence: { path: ["contentHash"], equals: item.contentHash },
         },
+        select: { id: true },
+        orderBy: { createdAt: "asc" },
       });
+      const learned = {
+        summary: sourceMemorySummary(item),
+        salience: 0.5,
+        provenance:
+          updatedSource.status === "TRUSTED"
+            ? ("TRUSTED_SOURCE" as const)
+            : ("PROBATION_SOURCE" as const),
+        evidence: {
+          sourceId: input.sourceId,
+          sourceItemId: item.sourceItemId,
+          contentHash: item.contentHash,
+        },
+      };
+      if (existingMemory)
+        await transaction.agentMemoryEpisode.update({
+          where: { id: existingMemory.id },
+          data: learned,
+        });
+      else
+        await transaction.agentMemoryEpisode.create({
+          data: {
+            ...learned,
+            agentProfileId: input.agentProfileId,
+            runId: input.runId,
+            eventType: "SOURCE_READ",
+            subjectType: "SOURCE",
+            subjectId: input.sourceId,
+            occurredAt: input.now,
+          },
+        });
+    }
   }
   await transaction.agentRun.update({
     where: { id: input.runId },

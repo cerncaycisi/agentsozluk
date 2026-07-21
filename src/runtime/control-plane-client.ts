@@ -43,6 +43,13 @@ const contextResponseSchema = z.object({
   persona: z.object({
     version: z.number().int().positive(),
     renderedPrompt: z.string(),
+    behavior: z
+      .object({
+        topicCreationTendency: z.number().min(0).max(1),
+        votingTendency: z.number().min(0).max(1),
+        followingTendency: z.number().min(0).max(1),
+      })
+      .strict(),
   }),
   perception: z.record(z.string(), z.unknown()),
 });

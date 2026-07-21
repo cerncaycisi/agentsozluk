@@ -222,7 +222,15 @@ function benchmarkContext(scenario: Scenario, index: number): RuntimeContext {
       displayName: firstPersona.displayName,
       publicBio: firstPersona.publicBio,
     },
-    persona: { version: 1, renderedPrompt: longPersonaPrompt },
+    persona: {
+      version: 1,
+      renderedPrompt: longPersonaPrompt,
+      behavior: {
+        topicCreationTendency: 0.5,
+        votingTendency: 0.5,
+        followingTendency: 0.5,
+      },
+    },
     perception: {
       observedAt: "2026-07-18T12:00:00.000Z",
       recentEntries: entries,
