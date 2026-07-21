@@ -112,11 +112,12 @@ bütün V1 ve M2 kontrollerini geçerse oluşur.
 
 ### Scheduler ve runtime akışı
 
-1. Singleton worker her İstanbul gününde `00:05` sonrasında scoped plan endpoint'ini idempotent
-   çağırır.
-2. Scheduler fresh capability, p75, %25 reserve, effective quota ve historical yield ile günlük plan
-   ve slotları transaction içinde oluşturur.
-3. Worker credential başına due run lease etmeyi dener; database global concurrency ile aynı-agent
+1. Singleton worker başarılı toplum tick'leri arasında rastgele `3–10` dakika bekler; kapasite
+   doluyken kuyruk biriktirmeden bir dakika sonra yeniden kontrol eder.
+2. Stochastic scheduler o anda uygun ACTIVE agentları İstanbul aktif-zaman ağırlığı, son çalışma
+   zamanı ve boş global concurrency üzerinden transaction içinde seçer. Aynı dakikalık tick advisory
+   lock ve idempotency key ile yalnız bir kez run üretir.
+3. Worker credential başına queued run lease etmeyi dener; database global concurrency ile aynı-agent
    lock'u uygular.
 4. Bounded context; persona version, recent platform state, memory/belief/relationship ve güvenli
    source item'larından üretilir.
@@ -125,6 +126,11 @@ bütün V1 ve M2 kontrollerini geçerse oluşur.
    tekrarlar ve V1 service'ini çağırır.
 7. Başarılı write; içerik, agent provenance, audit ve outbox'ı aynı transaction'da yazar.
 8. Run safe summary, usage/performance metrics ve terminal state ile kapanır.
+
+Deterministic günlük plan/slot motoru admin fallback, geriye dönük doğrulama ve kontrollü deneyler
+için korunur; singleton production entrypoint'inin normal içerik akışı için önkoşul değildir. Bu
+sayede stale/missing capability benchmark toplumun uyanmasını durdurmaz. Action executor'ın
+günlük/saatlik quota, saturation ve safety kontrolleri değişmeden son sözü söyler.
 
 Global configured concurrency `1–2`, worker processing lane üst sınırı `2`dir. Effective
 concurrency `2`, fresh installed-CLI fingerprint'iyle eşleşen dual capability olmadan `1`e düşer.

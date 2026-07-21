@@ -8,6 +8,7 @@ import type {
   RuntimeContext,
   RuntimeControlPlane,
   RuntimeDailyPlanControlPlane,
+  RuntimeStochasticSchedulerControlPlane,
   RuntimeExecution,
   RuntimeLifeEventsBatch,
 } from "@/runtime/control-plane-client";
@@ -55,8 +56,15 @@ export interface RuntimeWorkerOptions {
     credential: string;
     controlPlane: RuntimeDailyPlanControlPlane;
   };
+  stochasticScheduling?: {
+    credential: string;
+    controlPlane: RuntimeStochasticSchedulerControlPlane;
+  };
   now?: () => Date;
+  random?: () => number;
   dailyPlanningRetryMs?: number;
+  stochasticTickMinimumMs?: number;
+  stochasticTickMaximumMs?: number;
   onSafeEvent?: (event: { level: "info" | "error"; code: string; runId?: string }) => void;
 }
 
@@ -64,6 +72,26 @@ export const DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS = 10_000;
 export const MAX_RUNTIME_PROCESSING_LANES = 2;
 export const ISTANBUL_DAILY_PLAN_MINUTE = 5;
 export const DEFAULT_DAILY_PLANNING_RETRY_MS = 5 * 60_000;
+export const DEFAULT_STOCHASTIC_TICK_MINIMUM_MS = 3 * 60_000;
+export const DEFAULT_STOCHASTIC_TICK_MAXIMUM_MS = 10 * 60_000;
+export const STOCHASTIC_BUSY_RETRY_MS = 60_000;
+
+export function randomStochasticTickDelay(
+  random: () => number = Math.random,
+  minimumMs = DEFAULT_STOCHASTIC_TICK_MINIMUM_MS,
+  maximumMs = DEFAULT_STOCHASTIC_TICK_MAXIMUM_MS,
+): number {
+  if (
+    !Number.isInteger(minimumMs) ||
+    !Number.isInteger(maximumMs) ||
+    minimumMs < 60_000 ||
+    maximumMs > 30 * 60_000 ||
+    maximumMs < minimumMs
+  )
+    throw new RangeError("Stochastic tick gecikmesi 1-30 dakika aralığında olmalıdır.");
+  const unit = Math.min(1 - Number.EPSILON, Math.max(0, random()));
+  return minimumMs + Math.floor(unit * (maximumMs - minimumMs + 1));
+}
 export const RUNTIME_STRUCTURED_REPAIR_INSTRUCTION =
   "Önceki çıktı uygulamanın semantik structured-output doğrulamasını geçmedi. Tek repair hakkını kullan: her decisionJournal subject değeri kısa, insan-okur bir konu veya eylem etiketi olsun; UUID, digest/hash, URL, e-posta, credential, secret veya token değerini subject içine kopyalama; teknik kimlikleri yalnız evidenceIds/targetId gibi şema alanlarında tut; decisionJournal seq değerlerini benzersiz ve artan tut; causedBySeqs yalnız daha önceki seq değerlerine bağlansın; NO_ACTION dışındaki her action ve türetilen delta/proposal geçerli bir OPTION_SELECTED kaydına selectedOptionSeq ile bağlansın; her action claimProvenance içindeki bütün kanıt grupları tek ve aynı provenance türünü kullansın, farklı türleri karıştırma; provenance için yalnız perception.evidenceCatalog içindeki exact evidenceType/evidenceId eşleşmelerini kullan, author/source/target user id kanıt değildir; geçerli eşleşme yoksa NO_ACTION üret; topicFatigue içindeki topicKey değerleri benzersiz olsun; action ve türetilen delta/proposal toplamı 50'yi aşmasın. Yalnız geçerli structured JSON üret.";
 
@@ -516,6 +544,7 @@ export class AgentRuntimeWorker {
   #runOnceInFlight: Promise<number> | null = null;
   #completedPlanningDateKey: string | null = null;
   #planningRetryNotBefore = 0;
+  #stochasticTickNotBefore = 0;
 
   constructor(options: RuntimeWorkerOptions) {
     if (options.credentials.length === 0)
@@ -531,6 +560,43 @@ export class AgentRuntimeWorker {
     this.#processingLanes = processingLanes;
     if (options.dailyPlanning && !options.credentials.includes(options.dailyPlanning.credential))
       throw new Error("Günlük plan credential'ı worker credential listesinde bulunmalıdır.");
+    if (
+      options.stochasticScheduling &&
+      !options.credentials.includes(options.stochasticScheduling.credential)
+    )
+      throw new Error(
+        "Stochastic scheduler credential'ı worker credential listesinde bulunmalıdır.",
+      );
+  }
+
+  async #tickStochasticScheduling(): Promise<void> {
+    const scheduling = this.#options.stochasticScheduling;
+    if (!scheduling) return;
+    const now = this.#options.now?.() ?? new Date();
+    if (now.getTime() < this.#stochasticTickNotBefore) return;
+    try {
+      const result = await scheduling.controlPlane.tickScheduler(
+        scheduling.credential,
+        this.#options.workerId,
+      );
+      const busy = ["CAPACITY_FULL", "QUEUE_NOT_EMPTY", "NO_ELIGIBLE_AGENT"].includes(
+        result.skipReason ?? "",
+      );
+      this.#stochasticTickNotBefore =
+        now.getTime() +
+        (busy
+          ? STOCHASTIC_BUSY_RETRY_MS
+          : randomStochasticTickDelay(
+              this.#options.random,
+              this.#options.stochasticTickMinimumMs,
+              this.#options.stochasticTickMaximumMs,
+            ));
+      if (result.createdRuns > 0)
+        this.#options.onSafeEvent?.({ level: "info", code: "STOCHASTIC_TICK_QUEUED" });
+    } catch {
+      this.#stochasticTickNotBefore = now.getTime() + STOCHASTIC_BUSY_RETRY_MS;
+      this.#options.onSafeEvent?.({ level: "error", code: "STOCHASTIC_TICK_FAILED" });
+    }
   }
 
   async #tickDailyPlanning(): Promise<void> {
@@ -1073,6 +1139,7 @@ export class AgentRuntimeWorker {
   async runOnce(): Promise<number> {
     if (this.#runOnceInFlight) return this.#runOnceInFlight;
     const execution = (async () => {
+      await this.#tickStochasticScheduling();
       await this.#tickDailyPlanning();
       return this.#runCredentialLanes();
     })();

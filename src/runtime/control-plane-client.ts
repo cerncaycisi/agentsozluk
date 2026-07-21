@@ -74,10 +74,31 @@ const dailyPlanResponseSchema = z.object({
   blockedReason: z.string().nullable(),
 });
 
+const stochasticTickResponseSchema = z.object({
+  tickKey: z.iso.datetime(),
+  createdRuns: z.number().int().nonnegative(),
+  selectedAgentProfileIds: z.array(z.string().uuid()),
+  skipReason: z
+    .enum([
+      "RUNTIME_DISABLED",
+      "SCHEDULER_DISABLED",
+      "PUBLIC_WRITE_DISABLED",
+      "MAINTENANCE_MODE",
+      "CAPACITY_FULL",
+      "QUEUE_NOT_EMPTY",
+      "TICK_ALREADY_PROCESSED",
+      "QUIET_WINDOW",
+      "NO_ELIGIBLE_AGENT",
+    ])
+    .nullable(),
+  workerId: z.string(),
+});
+
 export type RuntimeLease = z.infer<typeof leaseResponseSchema>;
 export type RuntimeContext = z.infer<typeof contextResponseSchema>;
 export type RuntimeExecution = z.infer<typeof actionsResponseSchema>;
 export type RuntimeDailyPlanResult = z.infer<typeof dailyPlanResponseSchema>;
+export type RuntimeStochasticTickResult = z.infer<typeof stochasticTickResponseSchema>;
 
 export interface RuntimeLifeEventsBatch {
   observations: unknown[];
@@ -196,6 +217,10 @@ export interface RuntimeDailyPlanControlPlane {
   planToday(credential: string, workerId: string): Promise<RuntimeDailyPlanResult>;
 }
 
+export interface RuntimeStochasticSchedulerControlPlane {
+  tickScheduler(credential: string, workerId: string): Promise<RuntimeStochasticTickResult>;
+}
+
 interface Envelope {
   data?: unknown;
   error?: { code?: string; message?: string };
@@ -292,6 +317,21 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
       await this.#request(credential, "POST", "/api/v1/internal/agent-runtime/plans/today", {
         workerId,
       }),
+    );
+  }
+
+  async tickScheduler(credential: string, workerId: string): Promise<RuntimeStochasticTickResult> {
+    const idempotencyKey = randomUUID();
+    return stochasticTickResponseSchema.parse(
+      await this.#request(
+        credential,
+        "POST",
+        "/api/v1/internal/agent-runtime/scheduler/tick",
+        { workerId },
+        undefined,
+        undefined,
+        { idempotencyKey, retryTransportFailureOnce: true },
+      ),
     );
   }
 

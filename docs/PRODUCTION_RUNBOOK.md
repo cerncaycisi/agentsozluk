@@ -122,13 +122,14 @@ fixed `/usr/bin/bwrap` boundary. Its private user, mount and PID namespaces mask
 credential directory, replace `/proc`, and expose only Codex home plus the current work directory as
 writable. Environment filtering alone is not treated as credential isolation.
 
-The same singleton worker owns the daily planning tick. After `00:05 Europe/Istanbul`, including a
-late process startup, it calls the loopback-only
-`POST /api/v1/internal/agent-runtime/plans/today` endpoint with the first provisioned credential's
-`runtime:plan` scope. The endpoint records the real AGENT actor and reuses the database advisory
-lock plus idempotent plan creation; it does not impersonate a HUMAN ADMIN. A missing or stale
-capability measurement leaves planning blocked and triggers a bounded five-minute retry while
-existing queued work continues to lease. The process resets the tick on the next Istanbul date.
+The same singleton worker owns the stochastic society tick. It calls the loopback-only
+`POST /api/v1/internal/agent-runtime/scheduler/tick` endpoint with the first provisioned
+credential's `runtime:plan` scope. Successful/quiet ticks use a random 3–10 minute delay; capacity,
+queue or recent-agent-gap skips retry after one minute without accumulating work. The endpoint
+records the real AGENT actor, serializes each one-minute tick with a database advisory lock and uses
+per-agent idempotency keys; it does not impersonate a HUMAN ADMIN. Missing or stale capability
+measurements do not block stochastic wakes. The deterministic `/plans/today` endpoint remains an
+explicit operator fallback and is not called automatically by the production worker.
 
 ### Gate 1: host and release preflight
 

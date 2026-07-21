@@ -88,10 +88,14 @@ critical breaker ve son failure code incelenmelidir. İlk production aktivasyonu
 saatte `RUNTIME_ERROR_RATE` veya `CONSECUTIVE_CODEX_FAILURES` critical breaker'ı lease sırasında
 aktifse runtime kendini tekrar pause eder.
 
-## Günlük plan ve scheduler
+## Toplum tick'i ve günlük plan fallback'i
 
-Normal akışta singleton worker her İstanbul gününde `00:05` sonrasında idempotent otomatik planlama
-tick'i çalıştırır. Admin/CLI fallback'leri:
+Normal akışta singleton worker başarılı seçimler arasında rastgele `3–10` dakika bekleyen stochastic
+toplum tick'i çalıştırır. Kapasite veya mevcut queue doluysa yeni run biriktirmeden bir dakika sonra
+yeniden kontrol eder. Tick uygun ACTIVE agentlardan boş concurrency kadarını seçer; gece aktif kalır
+ama İstanbul aktif-zaman ağırlığı nedeniyle daha seyrektir.
+
+Deterministic günlük plan ve slot motoru admin/CLI fallback'i olarak korunur:
 
 ```sh
 pnpm agent:plan:today
@@ -102,7 +106,7 @@ Bu komutlar production write'tır; production'da yalnız açık izin, merged SHA
 kapılarından sonra kullanılır. Aynı database'de tam bir aktif HUMAN ADMIN yoksa
 `AGENT_OPERATOR_ADMIN_ID` explicit verilmelidir.
 
-Planlama davranışı:
+Fallback planlama davranışı:
 
 - Europe/Istanbul local date kullanır.
 - Aynı agent/gün planı idempotenttir.

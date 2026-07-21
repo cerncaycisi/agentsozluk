@@ -1695,6 +1695,23 @@ paths:
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/internal/agent-runtime/scheduler/tick:
+    post:
+      operationId: tickInternalAgentStochasticScheduler
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/RuntimeIdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeStochasticTick" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/internal/agent-runtime/heartbeat:
     post:
       operationId: heartbeatInternalAgentRun
@@ -2833,6 +2850,12 @@ components:
       required: [workerId]
       properties:
         workerId: { type: string, minLength: 3, maxLength: 200, pattern: "^[A-Za-z0-9._:-]+$" }
+    RuntimeStochasticTickInput:
+      type: object
+      additionalProperties: false
+      required: [workerId]
+      properties:
+        workerId: { type: string, minLength: 3, maxLength: 200, pattern: "^[A-Za-z0-9._:-]+$" }
     RuntimeHeartbeatInput:
       type: object
       additionalProperties: false
@@ -3481,6 +3504,15 @@ components:
         required: true,
         content:
           { application/json: { schema: { $ref: "#/components/schemas/RuntimeDailyPlanInput" } } },
+      }
+    RuntimeStochasticTick:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/RuntimeStochasticTickInput" } },
+          },
       }
     RuntimeHeartbeat:
       {

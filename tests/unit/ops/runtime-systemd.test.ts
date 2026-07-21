@@ -135,6 +135,8 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
         "AGENT_RUNTIME_CODEX_HOME",
         "AGENT_RUNTIME_CREDENTIAL_FILE",
         "AGENT_RUNTIME_POLL_MS",
+        "AGENT_RUNTIME_STOCHASTIC_TICK_MAX_MS",
+        "AGENT_RUNTIME_STOCHASTIC_TICK_MIN_MS",
         "AGENT_RUNTIME_WORKER_ID",
         "AGENT_RUNTIME_WORK_ROOT",
         "CODEX_EXECUTABLE",
@@ -193,12 +195,13 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
     expect(runbook).toContain('runtime_release="$(readlink -e');
   });
 
-  it("assigns the 00:05 Istanbul planning tick to the same singleton worker", () => {
+  it("assigns the stochastic society tick to the same singleton worker", () => {
     expect(directiveValues(service, "ExecStart")).toEqual([
       "/usr/bin/pnpm exec tsx scripts/agent-runtime-worker.ts",
     ]);
-    expect(runbook).toContain("00:05 Europe/Istanbul");
-    expect(runbook).toContain("/api/v1/internal/agent-runtime/plans/today");
+    expect(runbook).toContain("random 3–10 minute delay");
+    expect(runbook).toContain("/api/v1/internal/agent-runtime/scheduler/tick");
+    expect(runbook).toContain("/plans/today");
     expect(runbook).toContain("runtime:plan");
     expect(runbook).toContain("does not impersonate a HUMAN ADMIN");
   });

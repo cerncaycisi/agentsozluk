@@ -27,6 +27,12 @@ export const runtimeDailyPlanSchema = z
   })
   .strict();
 
+export const runtimeStochasticTickSchema = z
+  .object({
+    workerId: runtimeWorkerIdSchema,
+  })
+  .strict();
+
 export const runtimeHeartbeatSchema = z
   .object({
     runId: z.string().uuid(),

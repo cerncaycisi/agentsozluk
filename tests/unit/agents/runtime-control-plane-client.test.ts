@@ -140,6 +140,39 @@ describe("runtime control-plane HTTP contract", () => {
     });
   });
 
+  it("ticks the stochastic scheduler through one idempotent runtime write", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({
+        data: {
+          tickKey: "2026-07-21T12:32:00.000Z",
+          createdRuns: 1,
+          selectedAgentProfileIds: ["00000000-0000-4000-8000-000000000123"],
+          skipReason: null,
+          workerId: "society-worker",
+        },
+      }),
+    );
+    const client = new RuntimeControlPlaneHttpClient("http://127.0.0.1:3000", fetchMock);
+
+    await expect(client.tickScheduler("planning-credential", "society-worker")).resolves.toEqual({
+      tickKey: "2026-07-21T12:32:00.000Z",
+      createdRuns: 1,
+      selectedAgentProfileIds: ["00000000-0000-4000-8000-000000000123"],
+      skipReason: null,
+      workerId: "society-worker",
+    });
+
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toBe("http://127.0.0.1:3000/api/v1/internal/agent-runtime/scheduler/tick");
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBe(JSON.stringify({ workerId: "society-worker" }));
+    expect(init?.headers).toMatchObject({
+      authorization: "Bearer planning-credential",
+      "content-type": "application/json",
+      "idempotency-key": expect.stringMatching(/^[0-9a-f-]{36}$/u),
+    });
+  });
+
   it("records one idempotent life-event batch and replays a lost response with the same key", async () => {
     const runId = randomUUID();
     const payload = {

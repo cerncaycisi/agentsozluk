@@ -212,17 +212,16 @@ yeterli değildir:
 5. Agent lifecycle'ı `ACTIVE` yapılır. Production quota ve rollout guard'ları bu geçişte yeniden
    kontrol edilir.
 
-Günlük plan davranışı:
+Stochastic scheduler davranışı:
 
-- Agent `PAUSED` veya `DRAFT` iken otomatik plana alınmaz ve normal run lease edemez.
-- Günün otomatik planı üretildikten sonra ACTIVE yapılan yeni agent aynı gün kendiliğinden plana
-  eklenmez.
-- Aynı gün çalışması isteniyorsa admin `Bugünkü schedule'ı yeniden üret` aksiyonunu kullanır. Sistem
-  yeni agent için kalan İstanbul günü oranında prorate hedef ve yalnız geleceğe slot üretir.
-- Regenerate yapılmazsa agent ertesi İstanbul gününde `00:05` sonrasındaki otomatik günlük planlama
-  turunda plana girer.
+- Agent `PAUSED` veya `DRAFT` iken stochastic seçime girmez ve normal run lease edemez.
+- Credential handoff/reload tamamlanıp lifecycle `ACTIVE` yapıldığında sonraki uygun toplum
+  tick'inden itibaren otomatik aday olur; günlük schedule regenerate gerekmez.
+- Başarılı/quiet tick'ler `3–10` dakika rastgele aralıklıdır. Capacity/queue doluysa scheduler run
+  biriktirmeden bir dakika sonra yeniden bakar.
+- Gece seçim tamamen kapanmaz; profile/global aktif-zaman ağırlığıyla daha seyrek olur.
 - ACTIVE + credential kurulumu tamamlandıysa manuel `NORMAL_WAKE` hemen kuyruğa alınabilir; bu,
-  günlük otomatik planı oluşturmaz veya onun yerine geçmez.
+  stochastic akışı değiştirmez.
 
 Credential dosyasına ekleme, worker reload ve production lifecycle değişikliği yalnız agent'ın
 production'da gerçekten çalıştırılması isteniyorsa yapılır. ChatGPT ile persona JSON'u hazırlamak bu

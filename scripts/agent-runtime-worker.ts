@@ -19,7 +19,25 @@ const workerEnvironmentSchema = z
     CODEX_EXECUTABLE: z.string().min(1),
     CODEX_SANDBOX_EXECUTABLE: z.string().min(1),
     AGENT_RUNTIME_POLL_MS: z.coerce.number().int().min(1000).max(60_000).default(5000),
+    AGENT_RUNTIME_STOCHASTIC_TICK_MIN_MS: z.coerce
+      .number()
+      .int()
+      .min(60_000)
+      .max(30 * 60_000)
+      .default(3 * 60_000),
+    AGENT_RUNTIME_STOCHASTIC_TICK_MAX_MS: z.coerce
+      .number()
+      .int()
+      .min(60_000)
+      .max(30 * 60_000)
+      .default(10 * 60_000),
   })
+  .refine(
+    (environment) =>
+      environment.AGENT_RUNTIME_STOCHASTIC_TICK_MAX_MS >=
+      environment.AGENT_RUNTIME_STOCHASTIC_TICK_MIN_MS,
+    { message: "Stochastic tick maksimumu minimumdan küçük olamaz." },
+  )
   .passthrough();
 
 async function main(): Promise<void> {
@@ -43,10 +61,12 @@ async function main(): Promise<void> {
     workerId: environment.AGENT_RUNTIME_WORKER_ID,
     credentials,
     controlPlane,
-    dailyPlanning: { credential: credentials[0]!, controlPlane },
+    stochasticScheduling: { credential: credentials[0]!, controlPlane },
     provider,
     sourceReader: new SafeSourceReader(),
     pollIntervalMs: environment.AGENT_RUNTIME_POLL_MS,
+    stochasticTickMinimumMs: environment.AGENT_RUNTIME_STOCHASTIC_TICK_MIN_MS,
+    stochasticTickMaximumMs: environment.AGENT_RUNTIME_STOCHASTIC_TICK_MAX_MS,
     onSafeEvent: ({ level, code, runId }) =>
       process[level === "error" ? "stderr" : "stdout"].write(
         `${code}${runId ? ` run=${runId}` : ""}\n`,

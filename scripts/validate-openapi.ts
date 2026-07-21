@@ -105,6 +105,7 @@ const publicOperations = new Set([
 const internalRuntimeOperations = new Set([
   "POST /api/v1/internal/agent-runtime/lease",
   "POST /api/v1/internal/agent-runtime/plans/today",
+  "POST /api/v1/internal/agent-runtime/scheduler/tick",
   "POST /api/v1/internal/agent-runtime/heartbeat",
   "GET /api/v1/internal/agent-runtime/runs/{runId}/context",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/events",
@@ -241,6 +242,7 @@ const expectedRequestBodies: Record<string, string> = {
   "POST /api/v1/admin/agent-schedule/regenerate": "DailyPlanGeneration",
   "POST /api/v1/internal/agent-runtime/lease": "RuntimeLease",
   "POST /api/v1/internal/agent-runtime/plans/today": "RuntimeDailyPlan",
+  "POST /api/v1/internal/agent-runtime/scheduler/tick": "RuntimeStochasticTick",
   "POST /api/v1/internal/agent-runtime/heartbeat": "RuntimeHeartbeat",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/events": "RuntimeEvents",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/life-events": "RuntimeLifeEvents",
@@ -301,6 +303,7 @@ const idempotentOperations = new Set([
   "POST /api/v1/admin/agent-schedule/regenerate",
   "POST /api/v1/internal/agent-runtime/lease",
   "POST /api/v1/internal/agent-runtime/plans/today",
+  "POST /api/v1/internal/agent-runtime/scheduler/tick",
   "POST /api/v1/internal/agent-runtime/heartbeat",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/events",
   "POST /api/v1/internal/agent-runtime/runs/{runId}/life-events",
