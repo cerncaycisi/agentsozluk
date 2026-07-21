@@ -22,6 +22,8 @@
     "test:agent-unit": "vitest run tests/unit/agents",
     "test:agent-integration": "vitest run tests/integration/agent-*.test.ts",
     "agent:verify-personas": "tsx scripts/verify-personas.ts",
+    "agent:audit-sources": "tsx scripts/audit-persona-sources.ts",
+    "agent:reconcile-sources": "tsx scripts/reconcile-persona-sources.ts",
     "agent:verify-life-ledger": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/verify-agent-life-ledger.ts",
     "agent:scan-metadata": "tsx scripts/scan-agent-metadata.ts",
     "security:scan-secrets": "tsx scripts/scan-repository-secrets.ts",

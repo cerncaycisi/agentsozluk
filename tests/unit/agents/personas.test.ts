@@ -16,6 +16,15 @@ const packRaw = readFileSync(
   "utf8",
 );
 const pack = seedPersonaPackSchema.parse(JSON.parse(packRaw));
+const sourceVerification = JSON.parse(
+  readFileSync(path.join(root, "src/modules/agents/personas/source-verification.json"), "utf8"),
+) as {
+  schemaVersion: number;
+  environment: string;
+  productionSha: string;
+  reader: string;
+  results: Array<{ url: string; status: string; observedItemCount: number }>;
+};
 const signatures = JSON.parse(
   readFileSync(path.join(root, "src/modules/agents/personas/baseline-signatures.json"), "utf8"),
 ) as Record<string, unknown> & {
@@ -65,10 +74,59 @@ describe("original persona pack", () => {
     expect(pack.methodology.maxSingleSourceContribution).toBeLessThanOrEqual(0.4);
     for (const persona of pack.personas) {
       expect(persona.identity.biography).toBe("");
-      expect(persona.sources.length).toBeGreaterThanOrEqual(3);
+      expect(persona.sources.length).toBeGreaterThanOrEqual(5);
       expect(persona.interests.reduce((sum, interest) => sum + interest.weight, 0)).toBeCloseTo(1);
       expect(persona.behavior).toMatchObject({ defaultEntryMin: 15, defaultEntryMax: 20 });
     }
+  });
+
+  it("uses only production-reader-verified diverse source URLs", () => {
+    const verified = new Map(sourceVerification.results.map((result) => [result.url, result]));
+    const sourceAssignments = pack.personas.flatMap((persona) => persona.sources);
+    const sourceUrls = new Set(sourceAssignments.map(({ url }) => url));
+    const sourceDomains = new Set(sourceAssignments.map(({ url }) => new URL(url).hostname));
+    const turkishDomains = new Set([
+      "argonotlar.com",
+      "bantmag.com",
+      "bianet.org",
+      "bilimgenc.tubitak.gov.tr",
+      "fayn.press",
+      "haber.aero",
+      "journo.com.tr",
+      "kantan.news",
+      "medyascope.tv",
+      "sanatatak.com",
+      "t24.com.tr",
+      "teyit.org",
+      "www.aa.com.tr",
+      "www.arkitera.com",
+      "www.k24kitap.org",
+      "www.log.com.tr",
+      "www.newslabturkey.org",
+      "www.trthaber.com",
+    ]);
+
+    expect(sourceVerification).toMatchObject({
+      schemaVersion: 1,
+      environment: "agent-sozluk-prod",
+      reader: "SafeSourceReader",
+    });
+    expect(sourceAssignments).toHaveLength(55);
+    expect(sourceUrls.size).toBe(42);
+    expect(sourceDomains.size).toBe(42);
+    expect(
+      [...sourceDomains].filter((domain) => turkishDomains.has(domain)).length,
+    ).toBeGreaterThanOrEqual(15);
+    for (const persona of pack.personas) {
+      expect(persona.sources.some(({ url }) => turkishDomains.has(new URL(url).hostname))).toBe(
+        true,
+      );
+    }
+    for (const { url } of sourceAssignments) {
+      expect(verified.get(url)).toMatchObject({ status: "USABLE" });
+      expect(verified.get(url)!.observedItemCount).toBeGreaterThan(0);
+    }
+    expect(new Set(sourceVerification.results.map(({ url }) => url))).toEqual(sourceUrls);
   });
 
   it("renders ontology-neutral prompts with explicit untrusted-content boundaries", () => {

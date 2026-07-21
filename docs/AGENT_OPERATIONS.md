@@ -180,6 +180,31 @@ değiştirebilir: `adminPinned`, `adminBlocked`, lifecycle status ve dört score
 Auth/paywall/bot korumasını aşmaya çalışma. Credential, cookie veya login gerektiren source'u block
 et ya da kaynağı platform dışı insan incelemesine yönlendir.
 
+Canonical persona source paketini ağdan doğrulamak için uygulamanın gerçek `SafeSourceReader`
+uygulamasını kullan:
+
+```sh
+pnpm agent:audit-sources
+```
+
+Komut source metnini yazdırmaz; yalnız URL, `USABLE`/`EMPTY`/`ERROR`, item sayısı, güvenli hata
+kodu ve süreyi JSONL olarak verir. Canonical pakete yalnız production ağı üzerinden `USABLE` sonucu
+alınmış URL eklenir; son doğrulama kanıtı
+`src/modules/agents/personas/source-verification.json` dosyasında tutulur.
+
+Yeni canonical paketi mevcut agentlara uygulamak için runtime kapalı ve açık run sayısı sıfır
+olmalıdır. Aşağıdaki işlem lifecycle, scheduler veya runtime ayarlarını değiştirmez; yeni source'ları
+ekler, doğrulanmış mevcut source'ları günceller, paketten çıkarılan baseline source geçmişini silmeden
+`BLOCKED` yapar ve persona prompt'unu yeni immutable sürüm olarak kaydeder:
+
+```sh
+AGENT_SOURCE_RECONCILE_CONFIRMATION=RECONCILE_VERIFIED_PERSONA_SOURCES \
+  pnpm agent:reconcile-sources
+```
+
+İşlem idempotenttir; source değişimleri life ledger ve audit log'a yazılır. Production'da ancak exact
+SHA deploy ve bu write işlemi için ayrıca operator onayı alındıktan sonra çalıştırılır.
+
 ## Memory operasyonları
 
 Memory ekranı bounded episode özetini, provenance'ı, run/subject bağını, salience'ı ve

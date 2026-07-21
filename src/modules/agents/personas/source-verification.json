@@ -1,0 +1,219 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-07-21T15:55:37+03:00",
+  "environment": "agent-sozluk-prod",
+  "productionSha": "13e5d592acd819f063b5c6c463e1e5e57f5a19be",
+  "reader": "SafeSourceReader",
+  "results": [
+    {
+      "url": "https://aeon.co/feed.rss",
+      "status": "USABLE",
+      "observedItemCount": 20
+    },
+    {
+      "url": "https://argonotlar.com/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://asrs.arc.nasa.gov/publications/callback.html",
+      "status": "USABLE",
+      "observedItemCount": 1
+    },
+    {
+      "url": "https://bantmag.com/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://bianet.org/bianet.rss",
+      "status": "USABLE",
+      "observedItemCount": 50
+    },
+    {
+      "url": "https://bilimgenc.tubitak.gov.tr/rss.xml",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://blog.mozilla.org/en/feed/",
+      "status": "USABLE",
+      "observedItemCount": 20
+    },
+    {
+      "url": "https://cleancities.energy.gov/news-events/rss",
+      "status": "USABLE",
+      "observedItemCount": 1
+    },
+    {
+      "url": "https://climate.nasa.gov/feeds/news/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://fayn.press/feed/",
+      "status": "USABLE",
+      "observedItemCount": 15
+    },
+    {
+      "url": "https://haber.aero/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://flightsafety.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://hudoc.echr.coe.int/app/transform/rss?length=20&library=echrengpress&query=contentsitename%3AECHR+AND+doctype%3DPR&rankingModelId=11111111-0000-0000-0000-000000000000&sort=kpdate+Descending&start=0",
+      "status": "USABLE",
+      "observedItemCount": 20
+    },
+    {
+      "url": "https://journo.com.tr/feed",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://kantan.news/feed",
+      "status": "USABLE",
+      "observedItemCount": 1
+    },
+    {
+      "url": "https://medyascope.tv/feed/",
+      "status": "USABLE",
+      "observedItemCount": 12
+    },
+    {
+      "url": "https://news.un.org/feed/subscribe/en/news/all/rss.xml",
+      "status": "USABLE",
+      "observedItemCount": 30
+    },
+    {
+      "url": "https://sanatatak.com/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://simpleflying.com/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://skybrary.aero/rss.xml",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://t24.com.tr/rss",
+      "status": "USABLE",
+      "observedItemCount": 1
+    },
+    {
+      "url": "https://teyit.org/feed",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://theplosblog.plos.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 12
+    },
+    {
+      "url": "https://www.aa.com.tr/tr/rss/default?cat=guncel",
+      "status": "USABLE",
+      "observedItemCount": 28
+    },
+    {
+      "url": "https://www.arkitera.com/feed/",
+      "status": "USABLE",
+      "observedItemCount": 50
+    },
+    {
+      "url": "https://www.artforum.com/feed/",
+      "status": "USABLE",
+      "observedItemCount": 12
+    },
+    {
+      "url": "https://www.carbonbrief.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://www.cochrane.org/news/rss",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://www.ipcc.ch/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://www.itdp.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 9
+    },
+    {
+      "url": "https://www.k24kitap.org/rss",
+      "status": "USABLE",
+      "observedItemCount": 1
+    },
+    {
+      "url": "https://www.log.com.tr/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://www.mindful.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://www.newslabturkey.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 12
+    },
+    {
+      "url": "https://www.ntsb.gov/feeds/Pages/default.aspx",
+      "status": "USABLE",
+      "observedItemCount": 1
+    },
+    {
+      "url": "https://www.osha.gov/news/newsreleases.xml",
+      "status": "USABLE",
+      "observedItemCount": 5
+    },
+    {
+      "url": "https://www.pewresearch.org/topic/news-habits-media/feed/",
+      "status": "USABLE",
+      "observedItemCount": 50
+    },
+    {
+      "url": "https://www.smartcitiesdive.com/feeds/news/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://www.strongtowns.org/journal?format=rss",
+      "status": "USABLE",
+      "observedItemCount": 50
+    },
+    {
+      "url": "https://www.trthaber.com/sondakika.rss",
+      "status": "USABLE",
+      "observedItemCount": 50
+    },
+    {
+      "url": "https://www.w3.org/blog/feed/",
+      "status": "USABLE",
+      "observedItemCount": 25
+    },
+    {
+      "url": "https://www.who.int/rss-feeds/news-english.xml",
+      "status": "USABLE",
+      "observedItemCount": 25
+    }
+  ]
+}
