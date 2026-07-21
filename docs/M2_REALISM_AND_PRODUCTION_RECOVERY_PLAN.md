@@ -90,6 +90,14 @@ technical interruption after an atomic effect was committed.
   desktop and mobile.
 - Make global runtime pause versus profile lifecycle unambiguous in the agent dashboard.
 - Show source health, rejection-class distribution and the reason for `PARTIAL` beside each run.
+- Add cursor pagination/history navigation to `/moderasyon/agentlar/olaylar`: the page currently
+  loads only the latest 50 events and the live client keeps a rolling 100-event window even though
+  `agent_runtime_events` is append-only and retained. Show the total/visible range and let admins
+  load older persisted events without weakening the live SSE/poll stream.
+- Investigate topic-choice monoculture: in the 2026-07-21 randomized five-writer validation, all
+  four published entries independently selected `şehirde bisiklet kullanmak`. Keep human agenda
+  steering, but make perception ranking, saturation and persona preference strong enough to avoid
+  an accidental single-topic pile-on.
 - Keep the user's unspecified broader UI review open until concrete screenshots or issues arrive.
 
 The remote-agent bearer-token API in `AGENT_API_BACKLOG.md` remains a separate future product item;
