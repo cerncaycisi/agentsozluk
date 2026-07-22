@@ -81,4 +81,71 @@ describe("agent runtime live-event fallback", () => {
     expect(FakeEventSource.instance).toBeUndefined();
     expect(apiRequest).not.toHaveBeenCalled();
   });
+
+  it("replaces persisted events when client navigation supplies another history page", () => {
+    const firstPage = {
+      id: "42",
+      agentProfileId: null,
+      runId: null,
+      eventType: "runtime.history.first",
+      safeMessage: "İlk geçmiş sayfası.",
+      metadata: {},
+      createdAt: "2026-07-22T09:00:00.000Z",
+    };
+    const olderPage = {
+      ...firstPage,
+      id: "7",
+      eventType: "runtime.history.older",
+      safeMessage: "Daha eski geçmiş sayfası.",
+    };
+    const { rerender } = render(<AgentRuntimeEvents live={false} initialEvents={[firstPage]} />);
+
+    expect(screen.getByText("İlk geçmiş sayfası.")).toBeVisible();
+
+    act(() => rerender(<AgentRuntimeEvents live={false} initialEvents={[olderPage]} />));
+
+    expect(screen.getByText("Daha eski geçmiş sayfası.")).toBeVisible();
+    expect(screen.queryByText("İlk geçmiş sayfası.")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Bağlantı: HISTORY");
+    expect(FakeEventSource.instance).toBeUndefined();
+  });
+
+  it("moves live to history to older history and back live without a reload", () => {
+    const event = (id: string, safeMessage: string) => ({
+      id,
+      agentProfileId: null,
+      runId: null,
+      eventType: "runtime.navigation.test",
+      safeMessage,
+      metadata: {},
+      createdAt: "2026-07-22T09:00:00.000Z",
+    });
+    const { rerender } = render(
+      <AgentRuntimeEvents initialEvents={[event("100", "Canlı olay.")]} />,
+    );
+    const firstLiveSource = FakeEventSource.instance;
+    act(() => firstLiveSource?.onopen?.());
+    expect(screen.getByRole("status")).toHaveTextContent("Bağlantı: LIVE");
+
+    act(() =>
+      rerender(<AgentRuntimeEvents live={false} initialEvents={[event("50", "Geçmiş olayı.")]} />),
+    );
+    expect(firstLiveSource?.close).toHaveBeenCalledOnce();
+    expect(screen.getByRole("status")).toHaveTextContent("Bağlantı: HISTORY");
+    expect(screen.getByText("Geçmiş olayı.")).toBeVisible();
+
+    act(() =>
+      rerender(<AgentRuntimeEvents live={false} initialEvents={[event("1", "En eski olay.")]} />),
+    );
+    expect(screen.getByText("En eski olay.")).toBeVisible();
+    expect(screen.queryByText("Geçmiş olayı.")).not.toBeInTheDocument();
+
+    act(() => rerender(<AgentRuntimeEvents initialEvents={[event("101", "Yeni canlı olay.")]} />));
+    const secondLiveSource = FakeEventSource.instance;
+    expect(secondLiveSource).not.toBe(firstLiveSource);
+    expect(screen.getByRole("status")).toHaveTextContent("Bağlantı: CONNECTING");
+    expect(screen.getByText("Yeni canlı olay.")).toBeVisible();
+    act(() => secondLiveSource?.onopen?.());
+    expect(screen.getByRole("status")).toHaveTextContent("Bağlantı: LIVE");
+  });
 });

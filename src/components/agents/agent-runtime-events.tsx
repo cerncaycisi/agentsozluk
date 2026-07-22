@@ -38,6 +38,12 @@ export function AgentRuntimeEvents({
   const latestId = useRef(initialEvents.at(-1)?.id);
 
   useEffect(() => {
+    setEvents(initialEvents);
+    latestId.current = initialEvents.at(-1)?.id;
+    setConnection(live ? "CONNECTING" : "HISTORY");
+  }, [initialEvents, live]);
+
+  useEffect(() => {
     if (!live) {
       setConnection("HISTORY");
       return;
