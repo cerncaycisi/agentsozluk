@@ -9,6 +9,7 @@ import {
 } from "@/modules/agents/domain/runtime-controls";
 import {
   appendRuntimeEvent,
+  getProductionActivationAnchor,
   getGlobalSettingsRecord,
   getLatestProductionRolloutAttemptEvent,
   pauseGlobalRuntimeForCriticalBreakerRecord,
@@ -17,6 +18,7 @@ import { appendOutboxEvent } from "@/modules/outbox";
 
 const GLOBAL_SETTINGS_AGGREGATE_ID = "00000000-0000-4000-8000-000000000001";
 const STARTED = "runtime.production.rollout_attempt.started";
+const ABORTED = "runtime.production.rollout_attempt.aborted";
 const COMPLETED = "runtime.production.rollout_attempt.completed";
 export const ROLLOUT_LOCAL_DATE_EXPIRED = "ROLLOUT_LOCAL_DATE_EXPIRED";
 
@@ -65,6 +67,11 @@ export async function assertProductionRolloutMutationAllowed(
       throw new AppError("INTERNAL_ERROR", 500, "Completed rollout metadata geçersiz.");
     return;
   }
+  if (latest?.eventType === ABORTED) {
+    if (!parseProductionRolloutAttemptMetadata(latest.metadata))
+      throw new AppError("INTERNAL_ERROR", 500, "Aborted rollout metadata geçersiz.");
+    if (await getProductionActivationAnchor(transaction)) return;
+  }
   const metadata =
     latest?.eventType === STARTED ? parseProductionRolloutAttemptMetadata(latest.metadata) : null;
   if (
@@ -97,6 +104,53 @@ export async function pauseExpiredProductionRollout(
   if (!metadata) throw new AppError("INTERNAL_ERROR", 500, "Rollout attempt metadata geçersiz.");
   if (productionRolloutAttemptDateMatches({ attemptLocalDate: metadata.localDate, now }))
     return { expired: false, attemptId: metadata.attemptId };
+
+  // A Day 0 attempt is a one-time safety gate, not a permanent midnight kill
+  // switch. Once production has a durable activation anchor, an accidentally
+  // open later observation/rollout attempt may expire without pausing the
+  // established society. Terminalize that stale attempt exactly once under the
+  // global settings lock and continue steady-state operation.
+  const activationAnchor = await getProductionActivationAnchor(transaction);
+  if (activationAnchor) {
+    const evidence = {
+      command: "AUTO_ABORT_EXPIRED_STEADY_STATE_ATTEMPT",
+      reasonCode: "STEADY_STATE_ROLLOUT_LOCAL_DATE_EXPIRED",
+      attemptId: metadata.attemptId,
+      localDate: metadata.localDate,
+      attemptLocalDate: metadata.localDate,
+      observedLocalDate: istanbulCalendarDateKey(now),
+    };
+    const event = await appendRuntimeEvent(transaction, {
+      eventType: ABORTED,
+      safeMessage:
+        "Süresi dolan steady-state rollout denemesi toplum akışı durdurulmadan otomatik kapatıldı.",
+      metadata: evidence,
+      occurredAt: now,
+    });
+    await appendAuditLog(transaction, {
+      actorId: actor.actorId,
+      action: "agent.rollout_attempt.aborted",
+      entityType: "AgentGlobalSettings",
+      entityId: GLOBAL_SETTINGS_AGGREGATE_ID,
+      requestId: actor.requestId,
+      metadata: {
+        ...evidence,
+        before: { rolloutAttemptStatus: "STARTED" },
+        after: { rolloutAttemptStatus: "ABORTED" },
+        runtimeEventId: event.id.toString(),
+      },
+    });
+    await appendOutboxEvent(transaction, {
+      eventType: "agent.rollout_attempt.aborted",
+      aggregateType: "AgentGlobalSettings",
+      aggregateId: GLOBAL_SETTINGS_AGGREGATE_ID,
+      actorId: actor.actorId,
+      actorKind: actor.actorKind,
+      requestId: actor.requestId,
+      payload: { ...evidence, runtimeEventId: event.id.toString() },
+    });
+    return { expired: false, attemptId: metadata.attemptId };
+  }
 
   const settings = await getGlobalSettingsRecord(transaction);
   if (!settings.runtimeEnabled) return { expired: true, attemptId: metadata.attemptId };

@@ -1,6 +1,5 @@
 import type { Prisma } from "@prisma/client";
 import { WRITE_CAPABLE_AGENT_RUN_TYPES } from "@/modules/agents/domain/manual-runs";
-import { istanbulDayBounds } from "@/modules/agents/repository/scheduler";
 
 export function createManualRunRecord(
   transaction: Prisma.TransactionClient,
@@ -12,7 +11,6 @@ export function createManualRunRecord(
     runType:
       | "NORMAL_WAKE"
       | "ENTRY_BURST"
-      | "DAILY_CATCH_UP"
       | "READ_ONLY"
       | "DRY_RUN"
       | "REFLECTION"
@@ -76,87 +74,6 @@ export function listBulkRunAgents(transaction: Prisma.TransactionClient, agentId
     },
     orderBy: { id: "asc" },
   });
-}
-
-export async function getManualCatchUpFacts(
-  transaction: Prisma.TransactionClient,
-  input: { agentProfileIds: string[]; localDate: Date },
-) {
-  if (input.agentProfileIds.length === 0) return new Map();
-  const bounds = istanbulDayBounds(input.localDate);
-  const [plans, published, pendingRuns, plannedSlots] = await Promise.all([
-    transaction.agentDailyPlan.findMany({
-      where: {
-        agentProfileId: { in: input.agentProfileIds },
-        localDate: input.localDate,
-        status: { not: "CANCELLED" },
-      },
-      select: { agentProfileId: true, entryTarget: true },
-    }),
-    transaction.agentContentRecord.groupBy({
-      by: ["agentProfileId"],
-      where: {
-        agentProfileId: { in: input.agentProfileIds },
-        createdAt: { gte: bounds.start, lt: bounds.end },
-        entry: { status: "ACTIVE" },
-      },
-      _count: { _all: true },
-    }),
-    transaction.agentRun.findMany({
-      where: {
-        agentProfileId: { in: input.agentProfileIds },
-        runType: { in: [...WRITE_CAPABLE_AGENT_RUN_TYPES] },
-        runStatus: { in: ["QUEUED", "RUNNING", "CANCEL_REQUESTED"] },
-        availableAt: { lt: bounds.end },
-      },
-      select: {
-        agentProfileId: true,
-        desiredEntryMax: true,
-        _count: {
-          select: {
-            contentRecords: {
-              where: {
-                createdAt: { gte: bounds.start, lt: bounds.end },
-                entry: { status: "ACTIVE" },
-              },
-            },
-          },
-        },
-      },
-    }),
-    transaction.agentScheduleSlot.groupBy({
-      by: ["agentProfileId"],
-      where: {
-        agentProfileId: { in: input.agentProfileIds },
-        status: "PLANNED",
-        scheduledAt: { gte: bounds.start, lt: bounds.end },
-      },
-      _sum: { desiredEntryMax: true },
-    }),
-  ]);
-  const publishedByAgent = new Map(
-    published.map((record) => [record.agentProfileId, record._count._all]),
-  );
-  const pendingByAgent = new Map(
-    plannedSlots.map((record) => [record.agentProfileId, record._sum.desiredEntryMax ?? 0]),
-  );
-  for (const run of pendingRuns) {
-    const remainingReservation = Math.max(0, run.desiredEntryMax - run._count.contentRecords);
-    pendingByAgent.set(
-      run.agentProfileId,
-      (pendingByAgent.get(run.agentProfileId) ?? 0) + remainingReservation,
-    );
-  }
-  return new Map(
-    plans.map((plan) => [
-      plan.agentProfileId,
-      {
-        targetEntries: plan.entryTarget,
-        activePublishedEntries: publishedByAgent.get(plan.agentProfileId) ?? 0,
-        pendingReservedEntries: pendingByAgent.get(plan.agentProfileId) ?? 0,
-      },
-    ]),
-  );
 }
 
 export async function getBulkRunPreviewMetrics(transaction: Prisma.TransactionClient) {

@@ -6,7 +6,6 @@ import {
   AgentLifecycleForm,
   AgentQuickRunActions,
   AgentRunCommands,
-  AgentScheduleRegenerateForm,
   BulkAgentRunForm,
 } from "@/components/agents/agent-admin-forms";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
@@ -62,7 +61,7 @@ const runtimeValues = [
   "CANCELLED",
   "TIMED_OUT",
 ] as const;
-const sortValues = ["name", "heartbeat", "next-run", "projection", "queue"] as const;
+const sortValues = ["name", "heartbeat", "next-run", "queue"] as const;
 
 function oneOf<T extends string>(value: string | undefined, values: readonly T[]) {
   return value && values.includes(value as T) ? (value as T) : undefined;
@@ -102,8 +101,6 @@ export default async function AgentDashboardPage({
         (left.nextRunAt?.getTime() ?? Number.MAX_SAFE_INTEGER) -
         (right.nextRunAt?.getTime() ?? Number.MAX_SAFE_INTEGER)
       );
-    if (sort === "projection")
-      return (right.targetProjection ?? -1) - (left.targetProjection ?? -1);
     if (sort === "queue") return right.queueLength - left.queueLength;
     return left.user.displayName.localeCompare(right.user.displayName, "tr-TR");
   });
@@ -119,7 +116,7 @@ export default async function AgentDashboardPage({
   return (
     <ModerationLayout
       title="Agent control plane"
-      description="Lifecycle, runtime durumu, günlük hedefler ve güvenli operasyon özetleri. Yalnız HUMAN ADMIN erişebilir."
+      description="Lifecycle, runtime durumu, gerçek üretim ve güvenli operasyon özetleri. Yalnız HUMAN ADMIN erişebilir."
     >
       <div className="mb-5 flex flex-wrap gap-3">
         <Link href="/moderasyon/agentlar/yeni" className="button-primary">
@@ -182,7 +179,6 @@ export default async function AgentDashboardPage({
             <option value="name">Ada göre</option>
             <option value="heartbeat">Son heartbeat</option>
             <option value="next-run">Sonraki run</option>
-            <option value="projection">Target projection</option>
             <option value="queue">Queue uzunluğu</option>
           </select>
         </label>
@@ -203,7 +199,6 @@ export default async function AgentDashboardPage({
             .map(({ id, user }) => ({ id, user }))}
         />
       ) : null}
-      <AgentScheduleRegenerateForm />
       <div className="space-y-5">
         {agents.map((agent) => (
           <article key={agent.id} className="surface-card p-5">
@@ -255,18 +250,9 @@ export default async function AgentDashboardPage({
                 label="Run başlangıcı"
                 value={timestamp(agent.currentRun?.startedAt ?? null)}
               />
-              <Metric
-                label="Entry"
-                value={`${agent.today?.publishedEntries ?? 0}/${agent.today?.entryTarget ?? 0}`}
-              />
-              <Metric
-                label="Topic"
-                value={`${agent.today?.createdTopics ?? 0}/${agent.today?.topicTarget ?? 0}`}
-              />
-              <Metric
-                label="Vote"
-                value={`${agent.today?.votes ?? 0}/${agent.today?.voteTarget ?? 0}`}
-              />
+              <Metric label="Entry" value={String(agent.today?.publishedEntries ?? 0)} />
+              <Metric label="Topic" value={String(agent.today?.createdTopics ?? 0)} />
+              <Metric label="Vote" value={String(agent.today?.votes ?? 0)} />
               <Metric label="Source read" value={String(agent.today?.sourceReads ?? 0)} />
               <Metric label="Queue" value={String(agent.queueLength)} />
               <Metric label="Sonraki run" value={timestamp(agent.nextRunAt)} />
@@ -284,7 +270,6 @@ export default async function AgentDashboardPage({
               />
               <Metric label="Sources" value={String(agent.sourceCount)} />
               <Metric label="24h başarı" value={percentage(agent.successRate24h)} />
-              <Metric label="Target projection" value={percentage(agent.targetProjection)} />
               <Metric
                 label="P75 run"
                 value={agent.p75RunDurationMs === null ? "—" : `${agent.p75RunDurationMs} ms`}

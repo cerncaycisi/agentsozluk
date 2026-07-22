@@ -51,10 +51,7 @@ import {
   type ExpiredRuntimeRunCandidate,
 } from "@/modules/agents/repository/runtime";
 import {
-  cancelExpiredQueuedCatchUpRunRecord,
-  dispatchDueScheduleSlots,
-  listExpiredQueuedCatchUpRuns,
-  planRuntimeMaintenanceAndCatchUp,
+  planRuntimeMaintenance,
   type QueuedRunEventRecord,
 } from "@/modules/agents/repository/scheduler";
 import { istanbulLocalDate } from "@/modules/agents/application/scheduler";
@@ -151,92 +148,6 @@ async function appendAutomaticRunQueuedOutbox(
   });
 }
 
-async function terminalizeExpiredQueuedCatchUpRuns(
-  transaction: TransactionClient,
-  principal: RuntimePrincipal,
-  input: { localDate: Date; now: Date },
-): Promise<number> {
-  const candidates = await listExpiredQueuedCatchUpRuns(transaction, {
-    agentProfileId: principal.agentProfileId,
-    localDate: input.localDate,
-  });
-  let terminalized = 0;
-  for (const candidate of candidates) {
-    await lockRuntimeRunForLeaseMutation(transaction, candidate.id);
-    const run = await cancelExpiredQueuedCatchUpRunRecord(transaction, {
-      runId: candidate.id,
-      agentProfileId: principal.agentProfileId,
-      localDate: input.localDate,
-      now: input.now,
-    });
-    if (!run) continue;
-    const measured = await getMeasuredRuntimeRunMetrics(transaction, run.id);
-    const evidence = {
-      agentProfileId: principal.agentProfileId,
-      runId: run.id,
-      outcome: "CANCELLED" as const,
-      requestedOutcome: "CANCELLED" as const,
-      errorCode: "CATCH_UP_DAY_EXPIRED",
-      reasonCode: "CATCH_UP_DAY_EXPIRED",
-      trigger: run.trigger,
-      expiredLocalDate: input.localDate.toISOString().slice(0, 10),
-      before: { runStatus: "QUEUED" as const },
-      after: { runStatus: "CANCELLED" as const },
-      measured: {
-        publishedEntries: measured.publishedEntries,
-        createdTopics: measured.createdTopics,
-        votes: measured.votes,
-        sourceReads: measured.sourceReads,
-        proposedActions: measured.proposedActions,
-        succeededActions: measured.succeededActions,
-        rejectedActions: measured.rejectedActions,
-        committedMemoryEpisodes: measured.committedMemoryEpisodes,
-      },
-    };
-    await appendRuntimeRunEvents(transaction, {
-      runId: run.id,
-      agentProfileId: principal.agentProfileId,
-      events: [
-        {
-          eventType: "run.failed",
-          safeMessage: "Önceki İstanbul gününe ait catch-up run CANCELLED durumuyla kapatıldı.",
-          metadata: {
-            phase: "CANCELLED",
-            code: "CATCH_UP_DAY_EXPIRED",
-            reasonCode: "CATCH_UP_DAY_EXPIRED",
-          },
-        },
-      ],
-    });
-    await appendAuditLog(transaction, {
-      actorId: null,
-      action: "agent.run.failed",
-      entityType: "AgentRun",
-      entityId: run.id,
-      requestId: principal.actor.requestId,
-      metadata: evidence,
-    });
-    await appendOutboxEvent(transaction, {
-      eventType: "agent.run.failed",
-      aggregateType: "AgentRun",
-      aggregateId: run.id,
-      actorId: null,
-      actorKind: null,
-      requestId: principal.actor.requestId,
-      payload: evidence,
-    });
-    await appendRuntimeEvent(transaction, {
-      agentProfileId: principal.agentProfileId,
-      runId: run.id,
-      eventType: "run.failed",
-      safeMessage: "Önceki İstanbul gününe ait catch-up run CANCELLED durumuyla kapatıldı.",
-      metadata: evidence,
-    });
-    terminalized += 1;
-  }
-  return terminalized;
-}
-
 type PerceptionRecords = Awaited<ReturnType<typeof getRuntimePerceptionRecords>>;
 
 function previousRuntimeFastState(runtimeMetadata: unknown) {
@@ -299,15 +210,11 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       })),
     )
     .slice(0, 10);
-  const { runtimeMetadata, ...targetProgress } = records.state;
+  const { runtimeMetadata } = records.state;
   const snapshot = {
     observedAt: now.toISOString(),
     limits: { maximumBytes: 65_536, recentEntries: 24, ownEntries: 8, sourceItems: 10 },
     previousFastState: previousRuntimeFastState(runtimeMetadata),
-    targetProgress: {
-      ...targetProgress,
-      nextScheduledAt: targetProgress.nextScheduledAt?.toISOString() ?? null,
-    },
     recentEntries: selectedEntries,
     ownRecentEntries: records.ownEntries.slice(0, 8).map((entry) => ({
       ...entry,
@@ -1268,22 +1175,10 @@ export async function leaseRuntimeRun(
     if (settings.schedulerEnabled) {
       const queuedRuns: QueuedRunEventRecord[] = [];
       const localDate = istanbulLocalDate(now);
-      await terminalizeExpiredQueuedCatchUpRuns(transaction, principal, { localDate, now });
-      if (!maintenanceMode) {
-        const dispatched = await dispatchDueScheduleSlots(transaction, {
-          now,
-          localDate,
-          timeoutSeconds: settings.scheduledTimeoutSeconds,
-        });
-        queuedRuns.push(...dispatched.runs);
-      }
-      const planned = await planRuntimeMaintenanceAndCatchUp(transaction, {
+      const planned = await planRuntimeMaintenance(transaction, {
         agentProfileId: principal.agentProfileId,
         localDate,
         now,
-        catchUpFrozen,
-        concurrency,
-        scheduledTimeoutSeconds: settings.scheduledTimeoutSeconds,
         reflectionTimeoutSeconds: settings.reflectionTimeoutSeconds,
         sourceRefreshTimeoutSeconds: settings.sourceRefreshTimeoutSeconds,
         personaEvolutionEnabled: settings.personaEvolutionEnabled,

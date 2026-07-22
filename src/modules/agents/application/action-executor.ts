@@ -16,11 +16,9 @@ import {
   createRuntimeBeliefVersion,
   createRuntimeMemoryEpisode,
   findActiveRuntimeTopicWriteLock,
-  findActiveRuntimeTopicSaturation,
   findRuntimeActionForExecution,
   findRuntimeReplyTarget,
   findRuntimeRelationshipTarget,
-  getRuntimeActionPolicyMetrics,
   getRuntimeGlobalSettings,
   getRuntimeProvocationMetrics,
   getRuntimeDuplicateSimilarity,
@@ -28,7 +26,6 @@ import {
   lockRuntimeAction,
   lockRuntimeAgent,
   lockRuntimeRunForLeaseMutation,
-  lockRuntimeTopicSaturation,
   proposeRuntimeSource,
   updateRuntimeRelationship,
   updateRuntimeActionStatus,
@@ -293,19 +290,6 @@ function validationWithRepairMarker(
   } as InputJsonObject;
 }
 
-function istanbulDayBounds(now: Date): { dayStart: Date; dayEnd: Date } {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Istanbul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-  const value = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((part) => part.type === type)?.value);
-  const dayStart = new Date(Date.UTC(value("year"), value("month") - 1, value("day"), -3));
-  return { dayStart, dayEnd: new Date(dayStart.getTime() + 24 * 60 * 60 * 1000) };
-}
-
 function requiredString(value: unknown, field: string): string {
   if (typeof value !== "string" || value.length === 0)
     throw new AppError("VALIDATION_ERROR", 422, `${field} alanı zorunludur.`, {
@@ -486,66 +470,6 @@ function staticPolicyRejection(input: {
       code: "PROVENANCE_REQUIRED",
       reason: "İçerik action'ı denetlenebilir provenance taşımak zorundadır.",
     };
-  return null;
-}
-
-function quotaPolicyRejection(input: {
-  actionType: string;
-  dailyMaximumOverride: boolean;
-  saturationOverride: boolean;
-  quotaMode: "PER_AGENT" | "GLOBAL_TOTAL" | "HYBRID";
-  effectiveAgentMaximum: number;
-  globalMaximum: number;
-  maxEntriesPerHour: number;
-  maxEntriesPerThreeHours: number;
-  dailyTopicMaximum: number;
-  dailyVoteMaximum: number;
-  metrics: Awaited<ReturnType<typeof getRuntimeActionPolicyMetrics>>;
-}): Rejection | null {
-  if (["CREATE_ENTRY", "CREATE_TOPIC_WITH_ENTRY"].includes(input.actionType)) {
-    if (!input.dailyMaximumOverride) {
-      if (
-        input.quotaMode !== "GLOBAL_TOTAL" &&
-        input.metrics.agentDay >= input.effectiveAgentMaximum
-      )
-        return { code: "AGENT_DAILY_QUOTA", reason: "Agent günlük entry maksimumuna ulaştı." };
-      if (input.quotaMode !== "PER_AGENT" && input.metrics.globalDay >= input.globalMaximum)
-        return { code: "GLOBAL_DAILY_QUOTA", reason: "Global günlük entry maksimumuna ulaşıldı." };
-      if (input.metrics.agentHour >= input.maxEntriesPerHour)
-        return { code: "HOURLY_ENTRY_RATE", reason: "Agent saatlik entry hız sınırına ulaştı." };
-      if (input.metrics.agentThreeHours >= input.maxEntriesPerThreeHours)
-        return { code: "THREE_HOUR_ENTRY_RATE", reason: "Agent üç saatlik entry sınırına ulaştı." };
-    }
-    if (!input.saturationOverride) {
-      if (input.metrics.agentTopicTwoHours >= 2)
-        return {
-          code: "AGENT_TOPIC_TWO_HOUR_SATURATION",
-          reason: "Agent aynı topic için iki saatlik saturation sınırına ulaştı.",
-        };
-      if (input.metrics.agentTopicDay >= 5)
-        return {
-          code: "AGENT_TOPIC_DAILY_SATURATION",
-          reason: "Agent aynı topic için günlük saturation sınırına ulaştı.",
-        };
-      if (input.metrics.topicRecent >= 15)
-        return {
-          code: "TOPIC_SATURATED",
-          reason: "Topic son 30 dakikadaki yayın yoğunluğu nedeniyle saturated durumdadır.",
-        };
-    }
-  }
-  if (
-    input.actionType === "CREATE_TOPIC_WITH_ENTRY" &&
-    !input.dailyMaximumOverride &&
-    input.metrics.agentTopicsDay >= input.dailyTopicMaximum
-  )
-    return { code: "AGENT_DAILY_TOPIC_QUOTA", reason: "Agent günlük topic maksimumuna ulaştı." };
-  if (
-    ["VOTE_UP", "VOTE_DOWN"].includes(input.actionType) &&
-    !input.dailyMaximumOverride &&
-    input.metrics.agentVotesDay >= input.dailyVoteMaximum
-  )
-    return { code: "AGENT_DAILY_VOTE_QUOTA", reason: "Agent günlük oy maksimumuna ulaştı." };
   return null;
 }
 
@@ -1087,49 +1011,6 @@ export async function executeRuntimeAction(
             reason: "Topic agent yazımına geçici olarak kapalıdır.",
           });
       }
-      let activeSaturation: Awaited<ReturnType<typeof findActiveRuntimeTopicSaturation>> = null;
-      if (topicId && ["CREATE_ENTRY", "CREATE_TOPIC_WITH_ENTRY"].includes(parsed.data.actionType)) {
-        await lockRuntimeTopicSaturation(transaction, topicId);
-        activeSaturation = await findActiveRuntimeTopicSaturation(transaction, topicId, now);
-        if (activeSaturation && !actionRecord.run.saturationOverride)
-          return rejectAction(transaction, principal, actionRecord, {
-            code: "TOPIC_SATURATED_60M",
-            reason: "Topic kısa süreli yoğunluk nedeniyle 60 dakika agent yazımına kapalıdır.",
-          });
-      }
-      const { dayStart, dayEnd } = istanbulDayBounds(now);
-      const metrics = await getRuntimeActionPolicyMetrics(transaction, {
-        agentProfileId: principal.agentProfileId,
-        ...(topicId ? { topicId } : {}),
-        now,
-        dayStart,
-        dayEnd,
-      });
-      if (
-        topicId &&
-        ["CREATE_ENTRY", "CREATE_TOPIC_WITH_ENTRY"].includes(parsed.data.actionType) &&
-        metrics.topicRecent >= 15 &&
-        !activeSaturation
-      ) {
-        const expiresAt = new Date(now.getTime() + 60 * 60_000);
-        await appendRuntimeEvent(transaction, {
-          agentProfileId: principal.agentProfileId,
-          runId,
-          eventType: "topic.saturation.started",
-          safeMessage: "Topic 30 dakikadaki entry yoğunluğu nedeniyle 60 dakika saturated oldu.",
-          metadata: {
-            topicId,
-            observedActiveEntries: metrics.topicRecent,
-            windowMinutes: 30,
-            expiresAt: expiresAt.toISOString(),
-          },
-        });
-        if (!actionRecord.run.saturationOverride)
-          return rejectAction(transaction, principal, actionRecord, {
-            code: "TOPIC_SATURATED_60M",
-            reason: "Topic kısa süreli yoğunluk nedeniyle 60 dakika agent yazımına kapalıdır.",
-          });
-      }
       if (contentActions.has(parsed.data.actionType)) {
         const candidateBody = parsed.data.input.body;
         if (candidateBody) {
@@ -1165,23 +1046,6 @@ export async function executeRuntimeAction(
             });
         }
       }
-      const effectiveAgentMaximum = actionRecord.agentProfile.useGlobalEntryQuota
-        ? settings.defaultDailyEntryMax
-        : (actionRecord.agentProfile.dailyEntryMax ?? settings.defaultDailyEntryMax);
-      const quotaRejection = quotaPolicyRejection({
-        actionType: parsed.data.actionType,
-        dailyMaximumOverride: actionRecord.run.dailyMaximumOverride,
-        saturationOverride: actionRecord.run.saturationOverride,
-        quotaMode: settings.quotaMode,
-        effectiveAgentMaximum,
-        globalMaximum: settings.globalDailyEntryMax,
-        maxEntriesPerHour: settings.maxEntriesPerHour,
-        maxEntriesPerThreeHours: settings.maxEntriesPerThreeHours,
-        dailyTopicMaximum: actionRecord.agentProfile.dailyTopicMax,
-        dailyVoteMaximum: actionRecord.agentProfile.dailyVoteMax,
-        metrics,
-      });
-      if (quotaRejection) return rejectAction(transaction, principal, actionRecord, quotaRejection);
       await updateRuntimeActionStatus(transaction, actionRecord.id, {
         actionStatus: "ACCEPTED",
         validationResult: validationWithRepairMarker(actionRecord, {

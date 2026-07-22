@@ -1526,6 +1526,8 @@ paths:
   /api/v1/admin/agent-schedule/regenerate:
     post:
       operationId: regenerateAdminAgentSchedule
+      deprecated: true
+      description: Retired compatibility endpoint. Returns AGENT_DAILY_PLANNING_RETIRED.
       tags: [Admin]
       parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody: { $ref: "#/components/requestBodies/DailyPlanGeneration" }
@@ -1533,6 +1535,7 @@ paths:
         {
           "200": { $ref: "#/components/responses/Success" },
           "403": { $ref: "#/components/responses/Error" },
+          "410": { $ref: "#/components/responses/Error" },
           "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
@@ -1557,6 +1560,7 @@ paths:
         {
           "200": { $ref: "#/components/responses/Success" },
           "403": { $ref: "#/components/responses/Error" },
+          "410": { $ref: "#/components/responses/Error" },
           "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
@@ -1682,6 +1686,8 @@ paths:
   /api/v1/internal/agent-runtime/plans/today:
     post:
       operationId: generateInternalAgentDailyPlans
+      deprecated: true
+      description: Retired compatibility endpoint. Returns AGENT_DAILY_PLANNING_RETIRED.
       tags: [Agent Runtime]
       security: [{ runtimeBearer: [] }]
       parameters: [{ $ref: "#/components/parameters/RuntimeIdempotencyKey" }]
@@ -1691,6 +1697,7 @@ paths:
           "200": { $ref: "#/components/responses/Success" },
           "401": { $ref: "#/components/responses/Error" },
           "403": { $ref: "#/components/responses/Error" },
+          "410": { $ref: "#/components/responses/Error" },
           "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },

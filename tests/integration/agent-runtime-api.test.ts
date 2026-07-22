@@ -38,6 +38,7 @@ import {
   recordRuntimeSourceResult,
   recordRuntimeSourceAttempt,
   rotateAgentCredential,
+  runRuntimeStochasticTick,
   runtimeActionsSchema as runtimeActionsSchemaApplication,
   runtimeCompleteSchema as runtimeCompleteSchemaApplication,
   runtimeEventsSchema as runtimeEventsSchemaApplication,
@@ -192,7 +193,11 @@ function adminActor(adminId: string): ActorContext {
   };
 }
 
-async function createFixture(runCount = 1, activationStartedAt = new Date()) {
+async function createFixture(
+  runCount = 1,
+  activationStartedAt = new Date(),
+  createActivationAnchor = true,
+) {
   const admin = await createAdmin();
   const created = await createAgent(
     integrationDatabase,
@@ -203,16 +208,22 @@ async function createFixture(runCount = 1, activationStartedAt = new Date()) {
     globalDailyEntryMin: 15,
     globalDailyEntryMax: 20,
   });
-  await changeAgentLifecycle(
-    integrationDatabase,
-    adminActor(admin.id),
-    created.agent.profile.id,
-    lifecycleChangeSchema.parse({
-      status: "ACTIVE",
-      reason: "Runtime integration fixture activation.",
-    }),
-    activationStartedAt,
-  );
+  if (createActivationAnchor)
+    await changeAgentLifecycle(
+      integrationDatabase,
+      adminActor(admin.id),
+      created.agent.profile.id,
+      lifecycleChangeSchema.parse({
+        status: "ACTIVE",
+        reason: "Runtime integration fixture activation.",
+      }),
+      activationStartedAt,
+    );
+  else
+    await integrationDatabase.agentProfile.update({
+      where: { id: created.agent.profile.id },
+      data: { lifecycleStatus: "ACTIVE" },
+    });
   const runs = await Promise.all(
     Array.from({ length: runCount }, (_, index) =>
       integrationDatabase.agentRun.create({
@@ -1486,7 +1497,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
   });
 
   it("fail-closes an expired rollout before internal effects or later post-lease mutations", async () => {
-    const fixture = await createFixture();
+    const fixture = await createFixture(1, new Date(), false);
     const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
     const writePrincipal = await runtimePrincipal(fixture.credential, "runtime:write");
     const workerId = "expired-rollout-effect-fence";
@@ -1617,6 +1628,45 @@ describe("internal agent runtime API with PostgreSQL", () => {
         },
       }),
     ).resolves.toBe(1);
+  });
+
+  it("auto-terminalizes an expired steady-state attempt without pausing the established society", async () => {
+    const fixture = await createFixture(0);
+    const principal = await runtimePrincipal(fixture.credential);
+    const attemptId = randomUUID();
+    await integrationDatabase.agentRuntimeEvent.create({
+      data: {
+        eventType: "runtime.production.rollout_attempt.started",
+        safeMessage: "Expired steady-state rollout integration fixture.",
+        metadata: { attemptId, localDate: "2000-01-01" },
+      },
+    });
+
+    const result = await runRuntimeStochasticTick(
+      integrationDatabase,
+      principal,
+      { workerId: "steady-state-expiry-worker" },
+      new Date("2026-07-22T12:00:00.000Z"),
+    );
+
+    expect(result).not.toHaveProperty("rolloutExpired");
+    await expect(
+      integrationDatabase.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } }),
+    ).resolves.toMatchObject({ runtimeEnabled: true });
+    await expect(
+      integrationDatabase.agentRuntimeEvent.findFirstOrThrow({
+        where: {
+          eventType: "runtime.production.rollout_attempt.aborted",
+          metadata: { path: ["attemptId"], equals: attemptId },
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      }),
+    ).resolves.toMatchObject({
+      metadata: expect.objectContaining({
+        command: "AUTO_ABORT_EXPIRED_STEADY_STATE_ATTEMPT",
+        reasonCode: "STEADY_STATE_ROLLOUT_LOCAL_DATE_EXPIRED",
+      }),
+    });
   });
 
   it("serializes lifecycle pause behind an in-flight action and rejects every later action", async () => {
@@ -6232,7 +6282,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("creates one append-only 60-minute topic saturation state under concurrent agent writes", async () => {
+  it("does not turn topic activity telemetry into a publication quota", async () => {
     const firstFixture = await createFixture();
     const secondAdmin = await createAdmin();
     const secondCreated = await createAgent(
@@ -6301,6 +6351,10 @@ describe("internal agent runtime API with PostgreSQL", () => {
           leaseSeconds: 60,
         });
         const runId = leased.run!.id;
+        const candidateBodies = [
+          "Yoğun tartışmalar, farklı örnekler kısa ve açık gerekçelerle sunulduğunda daha okunabilir kalıyor.",
+          "Bir başlığın uzunluğu tek başına değerini belirlemiyor; yeni bilgi ekleyen kısa notlar da akışı zenginleştiriyor.",
+        ] as const;
         await recordRuntimeActions(
           integrationDatabase,
           writePrincipal,
@@ -6316,7 +6370,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
                 targetId: topic.topic.id,
                 input: {
                   topicId: topic.topic.id,
-                  body: `Saturation concurrency adayı ${index + 1} farklı ve güvenli bir entry metnidir.`,
+                  body: candidateBodies[index]!,
                 },
                 provenance: {
                   evidenceType: "PLATFORM_EVENT",
@@ -6330,7 +6384,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
         return { fixture, writePrincipal, runId, workerId: workers[index]! };
       }),
     );
-    const saturated = await Promise.all(
+    const published = await Promise.all(
       leasedRuns.map(({ writePrincipal, runId, workerId }) =>
         executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
           workerId,
@@ -6338,25 +6392,20 @@ describe("internal agent runtime API with PostgreSQL", () => {
         }),
       ),
     );
-    expect(saturated).toEqual([
+    expect(published).toEqual([
       expect.objectContaining({
-        actionStatus: "REJECTED",
-        rejectionCode: "TOPIC_SATURATED_60M",
+        actionStatus: "SUCCEEDED",
+        rejectionCode: null,
       }),
       expect.objectContaining({
-        actionStatus: "REJECTED",
-        rejectionCode: "TOPIC_SATURATED_60M",
+        actionStatus: "SUCCEEDED",
+        rejectionCode: null,
       }),
     ]);
     const saturationEvents = await integrationDatabase.agentRuntimeEvent.findMany({
       where: { eventType: "topic.saturation.started" },
     });
-    expect(saturationEvents).toHaveLength(1);
-    expect(saturationEvents[0]!.metadata).toMatchObject({
-      topicId: topic.topic.id,
-      observedActiveEntries: 15,
-      windowMinutes: 30,
-    });
+    expect(saturationEvents).toHaveLength(0);
 
     const override = leasedRuns[0]!;
     await integrationDatabase.agentRun.update({
@@ -6399,10 +6448,10 @@ describe("internal agent runtime API with PostgreSQL", () => {
       await integrationDatabase.agentRuntimeEvent.count({
         where: { eventType: "topic.saturation.started" },
       }),
-    ).toBe(1);
+    ).toBe(0);
   });
 
-  it("keeps hourly entry limits unless an explicit daily-maximum override is enabled", async () => {
+  it("does not reject agent entries because an hourly or daily target was reached", async () => {
     const fixture = await createFixture();
     const topics = await Promise.all(
       Array.from({ length: 6 }, (_, index) =>
@@ -6471,10 +6520,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
         workerId,
         sequence: 5,
       }),
-    ).resolves.toMatchObject({
-      actionStatus: "REJECTED",
-      rejectionCode: "HOURLY_ENTRY_RATE",
-    });
+    ).resolves.toMatchObject({ actionStatus: "SUCCEEDED", rejectionCode: null });
     await integrationDatabase.agentRun.update({
       where: { id: runId },
       data: { dailyMaximumOverride: true },

@@ -7,6 +7,7 @@ import {
   changeAgentLifecycle,
   bulkAgentRunPreviewSchema,
   bulkAgentRunSchema,
+  cancelAllPendingWriteAgentRuns,
   cancelAgentRun,
   circuitBreakerConfigSchema,
   createAgent,
@@ -22,6 +23,7 @@ import {
   manualAgentRunSchema,
   previewBulkAgentRun,
   regenerateRemainingAgentDailyPlans,
+  retireAgentDailyPlanning,
   retryAgentRun,
   updateGlobalSettings,
 } from "@/modules/agents";
@@ -33,7 +35,7 @@ import {
 } from "@/modules/agents/repository/runtime";
 import {
   dispatchDueScheduleSlots,
-  planRuntimeMaintenanceAndCatchUp,
+  planRuntimeMaintenance,
 } from "@/modules/agents/repository/scheduler";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
@@ -931,7 +933,7 @@ describe("agent daily scheduler with PostgreSQL", () => {
     });
   });
 
-  it("queues idempotent nightly, weekly and bounded evening catch-up work", async () => {
+  it("queues idempotent nightly, weekly and source maintenance without daily catch-up", async () => {
     const admin = await createAdmin();
     const planningNow = new Date("2026-07-19T00:05:00.000Z");
     await createCapacityBenchmark(planningNow);
@@ -961,20 +963,17 @@ describe("agent daily scheduler with PostgreSQL", () => {
     });
     const now = new Date("2026-07-19T18:10:00.000Z");
     const first = await inTransaction(integrationDatabase, (transaction) =>
-      planRuntimeMaintenanceAndCatchUp(transaction, {
+      planRuntimeMaintenance(transaction, {
         agentProfileId: created.agent.profile.id,
         localDate,
         now,
-        catchUpFrozen: false,
-        concurrency: 1,
-        scheduledTimeoutSeconds: 360,
         reflectionTimeoutSeconds: 720,
         sourceRefreshTimeoutSeconds: 240,
         personaEvolutionEnabled: true,
         sourceEvolutionEnabled: true,
       }),
     );
-    expect(first).toMatchObject({ maintenanceQueued: 3, catchUpQueued: 1 });
+    expect(first).toMatchObject({ maintenanceQueued: 3 });
     const runs = await integrationDatabase.agentRun.findMany({
       where: { agentProfileId: created.agent.profile.id },
       orderBy: { trigger: "asc" },
@@ -984,33 +983,22 @@ describe("agent daily scheduler with PostgreSQL", () => {
     );
     expect(runs.filter(({ trigger }) => trigger === "WEEKLY_PERSONA_REFLECTION")).toHaveLength(1);
     expect(runs.filter(({ trigger }) => trigger === "DAILY_SOURCE_REFRESH")).toHaveLength(1);
-    const catchUp = runs.find(
-      ({ trigger, runStatus }) => trigger === "AUTO_CATCH_UP" && runStatus === "QUEUED",
-    );
-    expect(catchUp).toMatchObject({
-      runType: "DAILY_CATCH_UP",
-      queuePriority: "DAILY_CATCH_UP",
-      desiredEntryMin: 1,
-    });
-    expect(catchUp!.desiredEntryMax).toBeLessThanOrEqual(4);
+    expect(runs.filter(({ trigger }) => trigger === "AUTO_CATCH_UP")).toHaveLength(0);
     const replay = await inTransaction(integrationDatabase, (transaction) =>
-      planRuntimeMaintenanceAndCatchUp(transaction, {
+      planRuntimeMaintenance(transaction, {
         agentProfileId: created.agent.profile.id,
         localDate,
         now,
-        catchUpFrozen: false,
-        concurrency: 1,
-        scheduledTimeoutSeconds: 360,
         reflectionTimeoutSeconds: 720,
         sourceRefreshTimeoutSeconds: 240,
         personaEvolutionEnabled: true,
         sourceEvolutionEnabled: true,
       }),
     );
-    expect(replay).toMatchObject({ maintenanceQueued: 0, catchUpQueued: 0 });
+    expect(replay).toMatchObject({ maintenanceQueued: 0 });
   });
 
-  it("terminalizes a prior-day queued catch-up once with canonical lifecycle evidence", async () => {
+  it("retires prior-day queued catch-up through the explicit fail-closed recovery", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     const now = new Date("2026-07-19T18:10:00.000Z");
     vi.setSystemTime(now);
@@ -1059,66 +1047,31 @@ describe("agent daily scheduler with PostgreSQL", () => {
         },
       });
 
-      const firstPrincipal = await authenticateRuntimeRequest(integrationDatabase, {
-        authorization: `Bearer ${created!.credential}`,
-        hasBrowserSession: false,
-        requiredScope: "runtime:lease",
-        requestId: randomUUID(),
+      await integrationDatabase.agentGlobalSettings.update({
+        where: { id: "global" },
+        data: { runtimeEnabled: false },
       });
-      await leaseRuntimeRun(integrationDatabase, firstPrincipal, {
-        workerId: "expired-catch-up-terminal-one",
-        leaseSeconds: 60,
-      });
-      const secondPrincipal = await authenticateRuntimeRequest(integrationDatabase, {
-        authorization: `Bearer ${created!.credential}`,
-        hasBrowserSession: false,
-        requiredScope: "runtime:lease",
-        requestId: randomUUID(),
-      });
-      await leaseRuntimeRun(integrationDatabase, secondPrincipal, {
-        workerId: "expired-catch-up-terminal-two",
-        leaseSeconds: 60,
+      const cancellation = await cancelAllPendingWriteAgentRuns(
+        integrationDatabase,
+        actor(admin.id),
+        {
+          reason: "Cancel obsolete queued daily catch-up before stochastic-only recovery.",
+          confirmation: "CANCEL_ALL_PENDING_WRITE_RUNS",
+        },
+      );
+      const retired = await retireAgentDailyPlanning(integrationDatabase, actor(admin.id), {
+        reason: "Retire obsolete daily targets and planned slots before runtime resume.",
       });
 
       await expect(
         integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: stale.id } }),
       ).resolves.toMatchObject({
         runStatus: "CANCELLED",
-        errorCode: "CATCH_UP_DAY_EXPIRED",
+        errorCode: null,
         finishedAt: now,
       });
-      const terminalOutbox = await integrationDatabase.outboxEvent.findMany({
-        where: { eventType: "agent.run.failed", aggregateId: stale.id },
-      });
-      expect(terminalOutbox).toHaveLength(1);
-      expect(terminalOutbox[0]).toMatchObject({
-        aggregateType: "AgentRun",
-        actorId: null,
-        actorKind: null,
-        requestId: firstPrincipal.actor.requestId,
-        payload: {
-          agentProfileId: stale.agentProfileId,
-          runId: stale.id,
-          outcome: "CANCELLED",
-          requestedOutcome: "CANCELLED",
-          errorCode: "CATCH_UP_DAY_EXPIRED",
-          reasonCode: "CATCH_UP_DAY_EXPIRED",
-          trigger: "AUTO_CATCH_UP",
-          expiredLocalDate: "2026-07-19",
-          before: { runStatus: "QUEUED" },
-          after: { runStatus: "CANCELLED" },
-          measured: {
-            publishedEntries: 0,
-            createdTopics: 0,
-            votes: 0,
-            sourceReads: 0,
-            proposedActions: 0,
-            succeededActions: 0,
-            rejectedActions: 0,
-            committedMemoryEpisodes: 0,
-          },
-        },
-      });
+      expect(cancellation).toMatchObject({ count: 1, after: { status: "CANCELLED", count: 1 } });
+      expect(retired).toMatchObject({ cancelledSlots: 0, clearedRuntimeStates: 1 });
       expect(
         await integrationDatabase.outboxEvent.count({
           where: { eventType: "agent.run.queued", aggregateId: stale.id },
@@ -1126,20 +1079,14 @@ describe("agent daily scheduler with PostgreSQL", () => {
       ).toBe(1);
       expect(
         await integrationDatabase.auditLog.count({
-          where: { action: "agent.run.failed", entityId: stale.id, actorId: null },
+          where: { action: "agent.daily_planning.retired", actorId: admin.id },
         }),
       ).toBe(1);
       expect(
-        await integrationDatabase.agentRunEvent.count({
-          where: { runId: stale.id, eventType: "run.failed" },
+        await integrationDatabase.outboxEvent.count({
+          where: { eventType: "agent.daily_planning.retired", actorId: admin.id },
         }),
       ).toBe(1);
-      expect(
-        await integrationDatabase.agentRuntimeEvent.count({
-          where: { runId: stale.id, eventType: "run.failed" },
-        }),
-      ).toBe(1);
-      expect(JSON.stringify(terminalOutbox)).not.toContain(created!.credential);
     } finally {
       vi.useRealTimers();
     }
@@ -1202,25 +1149,21 @@ describe("agent daily scheduler with PostgreSQL", () => {
         leaseSeconds: 60,
       });
       expect(firstLease).toMatchObject({
-        run: expect.objectContaining({ runStatus: "RUNNING", trigger: "AUTO_CATCH_UP" }),
+        run: expect.objectContaining({
+          runStatus: "RUNNING",
+          trigger: "NIGHTLY_MEMORY_CONSOLIDATION",
+        }),
       });
 
       const expectedTriggers = [
-        "SCHEDULER_SLOT",
         "NIGHTLY_MEMORY_CONSOLIDATION",
         "WEEKLY_PERSONA_REFLECTION",
         "DAILY_SOURCE_REFRESH",
-        "AUTO_CATCH_UP",
       ];
       const queuedRuns = await integrationDatabase.agentRun.findMany({
         where: {
-          OR: [
-            { scheduleSlotId: dueSlot.id },
-            {
-              agentProfileId: workerAgent!.agent.profile.id,
-              trigger: { in: expectedTriggers.slice(1) },
-            },
-          ],
+          agentProfileId: workerAgent!.agent.profile.id,
+          trigger: { in: expectedTriggers },
         },
         orderBy: { trigger: "asc" },
       });
@@ -1263,13 +1206,8 @@ describe("agent daily scheduler with PostgreSQL", () => {
       });
       const replayRuns = await integrationDatabase.agentRun.findMany({
         where: {
-          OR: [
-            { scheduleSlotId: dueSlot.id },
-            {
-              agentProfileId: workerAgent!.agent.profile.id,
-              trigger: { in: expectedTriggers.slice(1) },
-            },
-          ],
+          agentProfileId: workerAgent!.agent.profile.id,
+          trigger: { in: expectedTriggers },
         },
         select: { id: true },
         orderBy: { id: "asc" },
@@ -1283,12 +1221,15 @@ describe("agent daily scheduler with PostgreSQL", () => {
       expect(new Set(replayEvents.map(({ aggregateId }) => aggregateId)).size).toBe(
         queuedRunIds.length,
       );
+      await expect(
+        integrationDatabase.agentScheduleSlot.findUniqueOrThrow({ where: { id: dueSlot.id } }),
+      ).resolves.toMatchObject({ status: "PLANNED", runId: null });
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it("freezes catch-up planning and lease eligibility on the activation Istanbul day only", async () => {
+  it("keeps legacy daily slots and catch-up inert while maintenance remains live", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     const now = new Date("2026-07-19T18:10:00.000Z");
     vi.setSystemTime(now);
@@ -1359,7 +1300,7 @@ describe("agent daily scheduler with PostgreSQL", () => {
       );
       await expect(
         integrationDatabase.agentScheduleSlot.findUniqueOrThrow({ where: { id: dueSlot.id } }),
-      ).resolves.toMatchObject({ status: "QUEUED", runId: expect.any(String) });
+      ).resolves.toMatchObject({ status: "PLANNED", runId: null });
       await expect(
         integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: existingCatchUp.id } }),
       ).resolves.toMatchObject({ runStatus: "QUEUED", attempts: 0 });
@@ -1400,7 +1341,7 @@ describe("agent daily scheduler with PostgreSQL", () => {
     }
   });
 
-  it("queues bounded early catch-up without waiting for all later planned slots", async () => {
+  it("does not create catch-up from a daily-plan shortfall", async () => {
     const admin = await createAdmin();
     const planningNow = new Date("2026-07-20T00:05:00.000Z");
     await createCapacityBenchmark(planningNow);
@@ -1448,13 +1389,10 @@ describe("agent daily scheduler with PostgreSQL", () => {
 
     const planAt = (now: Date) =>
       inTransaction(integrationDatabase, (transaction) =>
-        planRuntimeMaintenanceAndCatchUp(transaction, {
+        planRuntimeMaintenance(transaction, {
           agentProfileId: created.agent.profile.id,
           localDate,
           now,
-          catchUpFrozen: false,
-          concurrency: 1,
-          scheduledTimeoutSeconds: 360,
           reflectionTimeoutSeconds: 720,
           sourceRefreshTimeoutSeconds: 240,
           personaEvolutionEnabled: true,
@@ -1464,116 +1402,25 @@ describe("agent daily scheduler with PostgreSQL", () => {
 
     await expect(planAt(firstNow)).resolves.toMatchObject({
       maintenanceQueued: 2,
-      catchUpQueued: 1,
     });
-    const firstCatchUp = await integrationDatabase.agentRun.findFirstOrThrow({
-      where: { agentProfileId: created.agent.profile.id, trigger: "AUTO_CATCH_UP" },
-      orderBy: { createdAt: "asc" },
-    });
-    expect(firstCatchUp.idempotencyKey).toContain(":EARLY:");
-    await integrationDatabase.agentRun.update({
-      where: { id: firstCatchUp.id },
-      data: {
-        runStatus: "SUCCEEDED",
-        startedAt: firstNow,
-        finishedAt: new Date(firstNow.getTime() + 60_000),
-      },
-    });
-
     const secondNow = new Date(firstNow.getTime() + 30 * 60_000);
     await expect(planAt(secondNow)).resolves.toMatchObject({
       maintenanceQueued: 0,
-      catchUpQueued: 1,
-    });
-    const secondCatchUp = await integrationDatabase.agentRun.findFirstOrThrow({
-      where: {
-        agentProfileId: created.agent.profile.id,
-        trigger: "AUTO_CATCH_UP",
-        id: { not: firstCatchUp.id },
-      },
-    });
-    await integrationDatabase.agentRun.update({
-      where: { id: secondCatchUp.id },
-      data: {
-        runStatus: "SUCCEEDED",
-        startedAt: secondNow,
-        finishedAt: new Date(secondNow.getTime() + 60_000),
-      },
     });
     await expect(planAt(new Date(secondNow.getTime() + 30 * 60_000))).resolves.toMatchObject({
       maintenanceQueued: 0,
-      catchUpQueued: 0,
     });
-    expect(
-      await integrationDatabase.agentRun.count({
-        where: { agentProfileId: created.agent.profile.id, trigger: "AUTO_CATCH_UP" },
-      }),
-    ).toBe(2);
-  });
-
-  it("does not double-reserve an automatic catch-up after a manual catch-up", async () => {
-    const admin = await createAdmin();
-    const planningNow = new Date("2026-07-20T00:05:00.000Z");
-    await createCapacityBenchmark(planningNow);
-    const created = await createAgent(
-      integrationDatabase,
-      actor(admin.id),
-      createAgentSchema.parse({ persona: originalPersonaPack.personas[0] }),
-    );
-    await updateGlobalSettings(integrationDatabase, actor(admin.id), {
-      defaultDailyEntryMin: 4,
-      defaultDailyEntryMax: 4,
-      globalDailyEntryMin: 4,
-      globalDailyEntryMax: 4,
-    });
-    await changeAgentLifecycle(
-      integrationDatabase,
-      actor(admin.id),
-      created.agent.profile.id,
-      lifecycleChangeSchema.parse({
-        status: "ACTIVE",
-        reason: "Activate manual-to-auto catch-up reservation fixture.",
-      }),
-    );
-    const localDate = new Date("2026-07-20T00:00:00.000Z");
-    await generateAgentDailyPlans(integrationDatabase, actor(admin.id), { localDate }, planningNow);
-    await integrationDatabase.agentScheduleSlot.updateMany({
-      where: { agentProfileId: created.agent.profile.id, dailyPlan: { localDate } },
-      data: { status: "COMPLETED" },
-    });
-    const now = new Date("2026-07-20T08:00:00.000Z");
-    const manual = await createManualAgentRun(
-      integrationDatabase,
-      actor(admin.id),
-      created.agent.profile.id,
-      manualAgentRunSchema.parse({ runType: "DAILY_CATCH_UP", entryTarget: 4 }),
-      now,
-    );
-    expect(manual).toMatchObject({
-      count: 1,
-      catchUp: { pendingReservedEntries: 0, newlyReservedEntries: 4 },
-    });
-
-    const planned = await inTransaction(integrationDatabase, (transaction) =>
-      planRuntimeMaintenanceAndCatchUp(transaction, {
-        agentProfileId: created.agent.profile.id,
-        localDate,
-        now,
-        catchUpFrozen: false,
-        concurrency: 1,
-        scheduledTimeoutSeconds: 360,
-        reflectionTimeoutSeconds: 720,
-        sourceRefreshTimeoutSeconds: 240,
-        personaEvolutionEnabled: true,
-        sourceEvolutionEnabled: true,
-      }),
-    );
-    expect(planned.catchUpQueued).toBe(0);
     expect(
       await integrationDatabase.agentRun.count({
         where: { agentProfileId: created.agent.profile.id, trigger: "AUTO_CATCH_UP" },
       }),
     ).toBe(0);
+  });
+
+  it("rejects retired manual daily catch-up at the API schema boundary", () => {
+    expect(() =>
+      manualAgentRunSchema.parse({ runType: "DAILY_CATCH_UP", entryTarget: 4 }),
+    ).toThrow();
   });
 
   it("creates and leases zero catch-up work above 90 percent two-hour utilization", async () => {
@@ -1641,13 +1488,10 @@ describe("agent daily scheduler with PostgreSQL", () => {
         config,
       });
       const breakers = evaluateCircuitBreakers(config, operational);
-      const planned = await planRuntimeMaintenanceAndCatchUp(transaction, {
+      const planned = await planRuntimeMaintenance(transaction, {
         agentProfileId: created!.agent.profile.id,
         localDate,
         now,
-        catchUpFrozen: breakers.catchUpFrozen,
-        concurrency: 1,
-        scheduledTimeoutSeconds: settings.scheduledTimeoutSeconds,
         reflectionTimeoutSeconds: settings.reflectionTimeoutSeconds,
         sourceRefreshTimeoutSeconds: settings.sourceRefreshTimeoutSeconds,
         personaEvolutionEnabled: settings.personaEvolutionEnabled,
@@ -1710,7 +1554,7 @@ describe("agent daily scheduler with PostgreSQL", () => {
         }),
       ]),
     });
-    expect(result.planned.catchUpQueued).toBe(0);
+    expect(result.planned.maintenanceQueued).toBeGreaterThanOrEqual(0);
     expect(result.automaticallyCreated).toBe(0);
     expect(result.claimed).toBeNull();
     expect(
@@ -1720,7 +1564,7 @@ describe("agent daily scheduler with PostgreSQL", () => {
     ).toMatchObject({ runStatus: "QUEUED", leaseOwner: null });
   });
 
-  it("recounts only successfully published ACTIVE entries before planning catch-up", async () => {
+  it("does not reinterpret actual publication counters as daily target progress", async () => {
     const admin = await createAdmin();
     const planningNow = new Date("2026-07-21T00:05:00.000Z");
     await createCapacityBenchmark(planningNow);
@@ -1819,32 +1663,28 @@ describe("agent daily scheduler with PostgreSQL", () => {
     const now = new Date("2026-07-21T08:00:00.000Z"); // 11:00 Europe/Istanbul
     await expect(
       inTransaction(integrationDatabase, (transaction) =>
-        planRuntimeMaintenanceAndCatchUp(transaction, {
+        planRuntimeMaintenance(transaction, {
           agentProfileId: created.agent.profile.id,
           localDate,
           now,
-          catchUpFrozen: false,
-          concurrency: 1,
-          scheduledTimeoutSeconds: 360,
           reflectionTimeoutSeconds: 720,
           sourceRefreshTimeoutSeconds: 240,
           personaEvolutionEnabled: true,
           sourceEvolutionEnabled: true,
         }),
       ),
-    ).resolves.toMatchObject({ maintenanceQueued: 2, catchUpQueued: 1 });
+    ).resolves.toMatchObject({ maintenanceQueued: 2 });
     await expect(
       integrationDatabase.agentRuntimeState.findUniqueOrThrow({
         where: { agentProfileId: created.agent.profile.id },
         select: { todayPublishedEntries: true },
       }),
-    ).resolves.toEqual({ todayPublishedEntries: 1 });
-    await expect(
-      integrationDatabase.agentRun.findFirstOrThrow({
+    ).resolves.toEqual({ todayPublishedEntries: 15 });
+    expect(
+      await integrationDatabase.agentRun.count({
         where: { agentProfileId: created.agent.profile.id, trigger: "AUTO_CATCH_UP" },
-        select: { desiredEntryMax: true },
       }),
-    ).resolves.toEqual({ desiredEntryMax: 2 });
+    ).toBe(0);
   });
 
   it("keeps nightly memory consolidation independent while global and profile evolution are frozen", async () => {
@@ -1875,20 +1715,17 @@ describe("agent daily scheduler with PostgreSQL", () => {
     );
     const now = new Date("2026-07-19T02:05:00.000Z");
     const result = await inTransaction(integrationDatabase, (transaction) =>
-      planRuntimeMaintenanceAndCatchUp(transaction, {
+      planRuntimeMaintenance(transaction, {
         agentProfileId: created.agent.profile.id,
         localDate: new Date("2026-07-19T00:00:00.000Z"),
         now,
-        catchUpFrozen: false,
-        concurrency: 1,
-        scheduledTimeoutSeconds: 360,
         reflectionTimeoutSeconds: 600,
         sourceRefreshTimeoutSeconds: 300,
         personaEvolutionEnabled: false,
         sourceEvolutionEnabled: false,
       }),
     );
-    expect(result).toMatchObject({ maintenanceQueued: 1, catchUpQueued: 0 });
+    expect(result).toMatchObject({ maintenanceQueued: 1 });
     expect(
       await integrationDatabase.agentRun.findMany({
         where: { agentProfileId: created.agent.profile.id },
@@ -1925,7 +1762,6 @@ describe("agent daily scheduler with PostgreSQL", () => {
         runType: "NORMAL_WAKE",
         entryTarget: 3,
         priority: "EMERGENCY",
-        dailyMaximumOverride: true,
         adminInstruction: "Focus on current public platform context only.",
       }),
     );
@@ -1934,7 +1770,7 @@ describe("agent daily scheduler with PostgreSQL", () => {
       queuePriority: "EMERGENCY_ADMIN",
       desiredEntryMin: 3,
       desiredEntryMax: 3,
-      dailyMaximumOverride: true,
+      dailyMaximumOverride: false,
     });
     const entryBurst = await createManualAgentRun(
       integrationDatabase,
@@ -1979,159 +1815,6 @@ describe("agent daily scheduler with PostgreSQL", () => {
     expect(
       await integrationDatabase.auditLog.count({ where: { action: "agent.run.queued" } }),
     ).toBe(3);
-  });
-
-  it("derives manual DAILY_CATCH_UP jobs from ACTIVE publications and pending reservations", async () => {
-    const admin = await createAdmin();
-    const planningNow = new Date("2026-07-18T00:05:00.000Z");
-    await createCapacityBenchmark(planningNow);
-    const created = await createAgent(
-      integrationDatabase,
-      actor(admin.id),
-      createAgentSchema.parse({ persona: originalPersonaPack.personas[0] }),
-    );
-    await updateGlobalSettings(integrationDatabase, actor(admin.id), {
-      defaultDailyEntryMin: 12,
-      defaultDailyEntryMax: 12,
-      globalDailyEntryMin: 12,
-      globalDailyEntryMax: 12,
-    });
-    await changeAgentLifecycle(
-      integrationDatabase,
-      actor(admin.id),
-      created.agent.profile.id,
-      lifecycleChangeSchema.parse({
-        status: "ACTIVE",
-        reason: "Activate manual catch-up integration fixture.",
-      }),
-    );
-    const localDate = new Date("2026-07-18T00:00:00.000Z");
-    await generateAgentDailyPlans(integrationDatabase, actor(admin.id), { localDate }, planningNow);
-    await integrationDatabase.agentScheduleSlot.updateMany({
-      where: { agentProfileId: created.agent.profile.id, dailyPlan: { localDate } },
-      data: { status: "COMPLETED" },
-    });
-    const now = new Date("2026-07-18T09:00:00.000Z");
-    const topic = await integrationDatabase.topic.create({
-      data: {
-        title: "Manual catch-up fixture",
-        normalizedTitle: `manual catch up ${randomUUID()}`,
-        slug: `manual-catch-up-${randomUUID()}`,
-        createdById: created.agent.user.id,
-      },
-    });
-    const publishedRun = await integrationDatabase.agentRun.create({
-      data: {
-        agentProfileId: created.agent.profile.id,
-        personaVersionId: created.agent.personaVersion.id,
-        runType: "NORMAL_WAKE",
-        runStatus: "SUCCEEDED",
-        queuePriority: "SCHEDULED_CONTENT",
-        trigger: "MANUAL_CATCH_UP_PUBLISHED_FIXTURE",
-        idempotencyKey: randomUUID(),
-        availableAt: new Date("2026-07-18T06:00:00.000Z"),
-        startedAt: new Date("2026-07-18T06:00:00.000Z"),
-        finishedAt: new Date("2026-07-18T06:05:00.000Z"),
-        timeoutSeconds: 360,
-        desiredEntryMin: 2,
-        desiredEntryMax: 3,
-      },
-    });
-    for (const [index, status] of (["ACTIVE", "ACTIVE", "HIDDEN"] as const).entries()) {
-      const sequence = index + 1;
-      const createdAt = new Date(`2026-07-18T06:0${sequence}:00.000Z`);
-      const action = await integrationDatabase.agentAction.create({
-        data: {
-          runId: publishedRun.id,
-          agentProfileId: created.agent.profile.id,
-          sequence,
-          actionType: "CREATE_ENTRY",
-          actionStatus: "SUCCEEDED",
-          input: { body: `Manual catch-up publication ${sequence}` },
-          result: {},
-          createdAt,
-        },
-      });
-      const entry = await integrationDatabase.entry.create({
-        data: {
-          topicId: topic.id,
-          authorId: created.agent.user.id,
-          body: `Manual catch-up publication ${sequence}`,
-          normalizedBody: `manual catch-up publication ${sequence}`,
-          status,
-          origin: "AGENT",
-          ...(status === "HIDDEN" ? { hiddenAt: now } : {}),
-          createdAt,
-        },
-      });
-      await integrationDatabase.agentContentRecord.create({
-        data: {
-          entryId: entry.id,
-          agentProfileId: created.agent.profile.id,
-          runId: publishedRun.id,
-          actionId: action.id,
-          createdAt,
-        },
-      });
-    }
-    await integrationDatabase.agentRun.create({
-      data: {
-        agentProfileId: created.agent.profile.id,
-        personaVersionId: created.agent.personaVersion.id,
-        runType: "NORMAL_WAKE",
-        queuePriority: "MANUAL_SINGLE",
-        trigger: "MANUAL_CATCH_UP_PENDING_FIXTURE",
-        idempotencyKey: randomUUID(),
-        availableAt: now,
-        timeoutSeconds: 600,
-        desiredEntryMin: 2,
-        desiredEntryMax: 3,
-      },
-    });
-    await integrationDatabase.agentRuntimeState.update({
-      where: { agentProfileId: created.agent.profile.id },
-      data: { todayPublishedEntries: 99 },
-    });
-
-    const first = await createManualAgentRun(
-      integrationDatabase,
-      actor(admin.id),
-      created.agent.profile.id,
-      manualAgentRunSchema.parse({ runType: "DAILY_CATCH_UP", entryTarget: 10 }),
-      now,
-    );
-    expect(first).toMatchObject({
-      count: 2,
-      catchUp: {
-        targetEntries: 12,
-        activePublishedEntries: 2,
-        pendingReservedEntries: 3,
-        newlyReservedEntries: 7,
-        desiredEntryTargets: [4, 3],
-      },
-    });
-    expect(first.runs.map(({ desiredEntryMax }) => desiredEntryMax)).toEqual([4, 3]);
-    expect(first.runs.every(({ desiredEntryMax }) => desiredEntryMax <= 4)).toBe(true);
-    await expect(
-      integrationDatabase.agentRuntimeState.findUniqueOrThrow({
-        where: { agentProfileId: created.agent.profile.id },
-        select: { todayPublishedEntries: true },
-      }),
-    ).resolves.toEqual({ todayPublishedEntries: 2 });
-
-    const replayFromNewRequest = await createManualAgentRun(
-      integrationDatabase,
-      actor(admin.id),
-      created.agent.profile.id,
-      manualAgentRunSchema.parse({ runType: "DAILY_CATCH_UP", entryTarget: 1 }),
-      now,
-    );
-    expect(replayFromNewRequest).toMatchObject({ count: 0, run: null, runs: [] });
-    expect(
-      await integrationDatabase.agentRun.count({
-        where: { agentProfileId: created.agent.profile.id, trigger: "ADMIN_MANUAL" },
-      }),
-    ).toBe(2);
   });
 
   it("previews measured utilization and the estimated target-miss change without certainty claims", async () => {

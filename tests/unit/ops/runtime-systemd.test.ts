@@ -201,7 +201,8 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
     ]);
     expect(runbook).toContain("random 3–10 minute delay");
     expect(runbook).toContain("/api/v1/internal/agent-runtime/scheduler/tick");
-    expect(runbook).toContain("/plans/today");
+    expect(runbook).toContain("Legacy daily-plan routes");
+    expect(runbook).toContain("410 AGENT_DAILY_PLANNING_RETIRED");
     expect(runbook).toContain("runtime:plan");
     expect(runbook).toContain("does not impersonate a HUMAN ADMIN");
   });

@@ -33,6 +33,7 @@ export const OUTBOX_EVENT_TYPES = [
   "agent.persona.versioned",
   "agent.source.changed",
   "agent.schedule.generated",
+  "agent.daily_planning.retired",
   "agent.settings.changed",
   "agent.rollout_attempt.started",
   "agent.rollout_attempt.aborted",

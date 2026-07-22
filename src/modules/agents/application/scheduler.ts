@@ -31,6 +31,7 @@ import {
   getGlobalSettingsRecord,
   lockAgentSettings,
   promotePendingQuotaSettingsRecord,
+  updateGlobalSettingsRecord,
 } from "@/modules/agents/repository/control-plane";
 import {
   createCapacitySnapshotRecord,
@@ -41,8 +42,12 @@ import {
   listDailyPlansForDate,
   lockDailyPlanning,
   regenerateDailyPlanRecords,
+  retireLegacyDailyPlanningRecords,
 } from "@/modules/agents/repository/scheduler";
-import { activeTimeProfileSchema } from "@/modules/agents/validation/schemas";
+import {
+  activeTimeProfileSchema,
+  type RuntimeControlInput,
+} from "@/modules/agents/validation/schemas";
 import type { DailyPlanGenerationInput } from "@/modules/agents/validation/scheduling-schemas";
 import { appendOutboxEvent } from "@/modules/outbox";
 import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
@@ -636,6 +641,65 @@ export function regenerateRemainingAgentDailyPlans(
     await lockAgentSettings(transaction);
     await promotePendingQuotaSettingsRecord(transaction, istanbulLocalDate(now));
     return regenerateRemainingAgentDailyPlansInTransaction(transaction, actor, input, now);
+  });
+}
+
+export function retireAgentDailyPlanning(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  input: RuntimeControlInput,
+) {
+  return inTransaction(client, async (transaction) => {
+    await requireAgentAdminInTransaction(transaction, actor);
+    await lockAgentSettings(transaction);
+    const settings = await getGlobalSettingsRecord(transaction);
+    if (settings.runtimeEnabled)
+      throw new AppError(
+        "AGENT_LIFECYCLE_INVALID",
+        409,
+        "Eski günlük planlama yalnız global runtime pause durumundayken kapatılabilir.",
+      );
+    const retired = await retireLegacyDailyPlanningRecords(transaction);
+    const updated = await updateGlobalSettingsRecord(
+      transaction,
+      actor.actorId,
+      {},
+      {
+        clearPendingQuota: true,
+      },
+    );
+    const metadata = {
+      reason: input.reason,
+      cancelledPlans: retired.cancelledPlans,
+      cancelledSlots: retired.cancelledSlots,
+      clearedRuntimeStates: retired.clearedRuntimeStates,
+      previousSettingsVersion: settings.settingsVersion,
+      settingsVersion: updated.settingsVersion,
+    };
+    await appendAuditLog(transaction, {
+      actorId: actor.actorId,
+      action: "agent.daily_planning.retired",
+      entityType: "AgentGlobalSettings",
+      entityId: "00000000-0000-4000-8000-000000000001",
+      requestId: actor.requestId,
+      metadata,
+    });
+    await appendOutboxEvent(transaction, {
+      eventType: "agent.daily_planning.retired",
+      aggregateType: "AgentGlobalSettings",
+      aggregateId: "00000000-0000-4000-8000-000000000001",
+      actorId: actor.actorId,
+      actorKind: actor.actorKind,
+      requestId: actor.requestId,
+      payload: metadata,
+    });
+    await appendRuntimeEvent(transaction, {
+      eventType: "scheduler.daily_planning.retired",
+      safeMessage:
+        "Eski günlük hedef, planlı slot ve catch-up akışı kapatıldı; stochastic toplum akışı tek otomatik public akış oldu.",
+      metadata,
+    });
+    return { ...retired, settingsVersion: updated.settingsVersion };
   });
 }
 

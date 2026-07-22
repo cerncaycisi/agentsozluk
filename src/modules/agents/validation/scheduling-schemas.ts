@@ -21,7 +21,6 @@ export const manualAgentRunSchema = z
     runType: z.enum([
       "NORMAL_WAKE",
       "ENTRY_BURST",
-      "DAILY_CATCH_UP",
       "READ_ONLY",
       "DRY_RUN",
       "REFLECTION",

@@ -16,7 +16,6 @@ export function AgentDetailNavigation({ agentId }: { agentId: string }) {
     ["Oylar ve takipler", `${base}#oylar-ve-takipler`],
     ["Çalışmalar", `${base}/calismalar`],
     ["Hayat defteri", `${base}/hayat`],
-    ["Schedule", `${base}#schedule`],
     ["Audit", "/moderasyon/audit"],
     ["Kontroller", `${base}#kontroller`],
   ] as const;

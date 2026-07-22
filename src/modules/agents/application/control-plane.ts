@@ -885,11 +885,6 @@ export async function changeAgentLifecycle(
     assertLifecycleTransition(current.lifecycleStatus, input.status);
     if (input.status === "ACTIVE") {
       await assertProductionRolloutMutationAllowed(transaction, now);
-      const [settings, profiles] = await Promise.all([
-        getGlobalSettingsRecord(transaction),
-        getQuotaProfiles(transaction),
-      ]);
-      assertQuotaConsistency(settings, profiles);
       await ensureProductionActivationAnchor(transaction, {
         agentProfileId,
         activatedAt: now,
@@ -1220,21 +1215,18 @@ function productionRolloutReason(reasonCode: "DAY0_START" | "DAY0_ABORT" | "DAY0
   }[reasonCode];
 }
 
-function assertFailClosedProductionRolloutState(
+function assertRuntimeFailClosedProductionRolloutState(
   state: Awaited<ReturnType<typeof getProductionRolloutOperationalState>>,
 ): void {
   if (
     state.settings.runtimeEnabled ||
-    state.totalProfileCount !== 10 ||
-    state.pausedProfileCount !== 10 ||
-    state.activeProfileCount !== 0 ||
     state.nonterminalRunCount !== 0 ||
     state.liveLeaseCount !== 0
   )
     throw new AppError(
       "AGENT_LIFECYCLE_INVALID",
       409,
-      "Rollout denemesi yalnız runtime paused, on profil PAUSED ve bütün run/lease'ler terminalken başlatılabilir.",
+      "Rollout denemesi yalnız runtime paused ve bütün run/lease'ler terminalken kapatılabilir.",
       undefined,
       undefined,
       {
@@ -1251,7 +1243,17 @@ function assertFailClosedProductionRolloutState(
 function assertCleanProductionRolloutStart(
   state: Awaited<ReturnType<typeof getProductionRolloutOperationalState>>,
 ): void {
-  assertFailClosedProductionRolloutState(state);
+  assertRuntimeFailClosedProductionRolloutState(state);
+  if (
+    state.totalProfileCount === 0 ||
+    state.pausedProfileCount !== state.totalProfileCount ||
+    state.activeProfileCount !== 0
+  )
+    throw new AppError(
+      "AGENT_LIFECYCLE_INVALID",
+      409,
+      "Yeni rollout denemesi bütün mevcut profiller PAUSED iken başlatılabilir.",
+    );
   if (
     !state.settings.schedulerEnabled ||
     !state.settings.publicWriteEnabled ||
@@ -1409,15 +1411,15 @@ async function finishProductionRolloutAttempt(
         409,
         "Komutun attemptId değeri aktif production rollout denemesiyle eşleşmiyor.",
       );
-    if (outcome === "ABORTED") assertFailClosedProductionRolloutState(state);
+    if (outcome === "ABORTED") assertRuntimeFailClosedProductionRolloutState(state);
     if (
       outcome === "COMPLETED" &&
       (!state.settings.runtimeEnabled ||
         !state.settings.schedulerEnabled ||
         !state.settings.publicWriteEnabled ||
         state.settings.runtimeOperatingMode !== "NORMAL" ||
-        state.totalProfileCount !== 10 ||
-        state.activeProfileCount !== 10)
+        state.totalProfileCount < 10 ||
+        state.activeProfileCount !== state.totalProfileCount)
     )
       throw new AppError(
         "AGENT_LIFECYCLE_INVALID",

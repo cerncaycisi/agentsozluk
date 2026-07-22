@@ -595,7 +595,7 @@ describe("agent control plane with PostgreSQL", () => {
     ).toBe(2);
   });
 
-  it("rechecks quota consistency on activation and retires without deleting", async () => {
+  it("activates independently of retired daily quotas and retires without deleting", async () => {
     const admin = await createPrincipal();
     const created = await createFirstAgent(admin.id);
     const profileId = created.agent.profile.id;
@@ -604,27 +604,9 @@ describe("agent control plane with PostgreSQL", () => {
         integrationDatabase,
         actor(admin.id),
         profileId,
-        lifecycleChangeSchema.parse({ status: "ACTIVE", reason: "Day zero activation attempt." }),
-      ),
-    ).rejects.toMatchObject({ code: "QUOTA_INVALID" });
-    expect(
-      await integrationDatabase.agentRuntimeEvent.count({
-        where: { eventType: "runtime.production.activated" },
-      }),
-    ).toBe(0);
-
-    await updateGlobalSettings(integrationDatabase, actor(admin.id), {
-      globalDailyEntryMin: 15,
-      globalDailyEntryMax: 20,
-    });
-    await expect(
-      changeAgentLifecycle(
-        integrationDatabase,
-        actor(admin.id),
-        profileId,
         lifecycleChangeSchema.parse({
           status: "ACTIVE",
-          reason: "Quota artık matematiksel olarak tutarlı.",
+          reason: "Sürekli stokastik akış için günlük hedeften bağımsız aktivasyon.",
         }),
       ),
     ).resolves.toMatchObject({ lifecycleStatus: "ACTIVE" });
@@ -850,16 +832,6 @@ describe("agent control plane with PostgreSQL", () => {
     await setGlobalRuntimeEnabled(integrationDatabase, actor(admin.id), false, {
       reason: "Pause after completion proof was correctly rejected.",
     });
-    for (const item of created)
-      await changeAgentLifecycle(
-        integrationDatabase,
-        actor(admin.id),
-        item.agent.profile.id,
-        lifecycleChangeSchema.parse({
-          status: "PAUSED",
-          reason: "Restore clean fail-closed state after rejected completion.",
-        }),
-      );
     const abortCommandId = randomUUID();
     await expect(
       abortProductionRolloutAttempt(integrationDatabase, actor(admin.id), {
@@ -875,6 +847,11 @@ describe("agent control plane with PostgreSQL", () => {
         reasonCode: "DAY0_ABORT",
       }),
     ).resolves.toMatchObject({ status: "ABORTED", replayed: true });
+    await expect(
+      setGlobalRuntimeEnabled(integrationDatabase, actor(admin.id), true, {
+        reason: "Continue normal operations after preserving the aborted rollout evidence.",
+      }),
+    ).resolves.toMatchObject({ runtimeEnabled: true });
   });
 
   it("rechecks every non-retired profile before accepting an agent quota edit", async () => {

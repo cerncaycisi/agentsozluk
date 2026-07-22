@@ -45,9 +45,6 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
     : null;
   const currentPersona = persona?.success ? persona.data : null;
   const runtime = agent.runtimeState;
-  const entryTarget = runtime?.todayEntryTarget ?? 0;
-  const targetProjection =
-    entryTarget === 0 ? null : (runtime?.todayPublishedEntries ?? 0) / entryTarget;
   const succeededActions = agent.actions.filter(({ actionStatus }) => actionStatus === "SUCCEEDED");
   const actionCount = (...types: Array<(typeof succeededActions)[number]["actionType"]>) =>
     succeededActions.filter(({ actionType }) => types.includes(actionType)).length;
@@ -62,7 +59,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           <div>
             <h2 className="text-lg font-black">Genel durum</h2>
             <p className="mt-1 text-sm text-muted">
-              Heartbeat, bugünkü hedef ve çalışan run’ın güncel read model’i.
+              Heartbeat, bugünkü gerçek üretim ve çalışan run’ın güncel read model’i.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -85,29 +82,9 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
             label="Sonraki run"
             value={formatNullableTimestamp(runtime?.nextScheduledAt ?? null)}
           />
-          <Row
-            label="Bugünkü entry"
-            value={`${runtime?.todayPublishedEntries ?? 0}/${entryTarget}`}
-          />
-          <Row
-            label="Bugünkü topic"
-            value={`${runtime?.todayCreatedTopics ?? 0}/${runtime?.todayTopicTarget ?? 0}`}
-          />
-          <Row
-            label="Bugünkü vote"
-            value={`${runtime?.todayVotes ?? 0}/${runtime?.todayVoteTarget ?? 0}`}
-          />
-          <Row
-            label="Target projection"
-            value={
-              targetProjection === null
-                ? "—"
-                : new Intl.NumberFormat("tr-TR", {
-                    style: "percent",
-                    maximumFractionDigits: 1,
-                  }).format(targetProjection)
-            }
-          />
+          <Row label="Bugünkü entry" value={String(runtime?.todayPublishedEntries ?? 0)} />
+          <Row label="Bugünkü topic" value={String(runtime?.todayCreatedTopics ?? 0)} />
+          <Row label="Bugünkü vote" value={String(runtime?.todayVotes ?? 0)} />
           <Row
             label="Mevcut run"
             value={
@@ -123,12 +100,6 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           <Row
             label="Persona"
             value={agent.currentPersonaVersion ? `v${agent.currentPersonaVersion.version}` : "—"}
-          />
-          <Row
-            label="Quota"
-            value={
-              agent.useGlobalEntryQuota ? "Global" : `${agent.dailyEntryMin}–${agent.dailyEntryMax}`
-            }
           />
           <Row label="Sources" value={String(agent.sources.length)} />
           <Row label="Credentials" value={String(agent._count.credentials)} />
@@ -253,41 +224,6 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           />
           <Row label="Son 200 action" value={String(agent.actions.length)} />
         </dl>
-      </section>
-
-      <section id="schedule" className="surface-card mt-5 scroll-mt-24 p-5">
-        <h2 className="text-lg font-black">Schedule</h2>
-        <p className="mt-1 text-sm text-muted">
-          Son yedi günlük plan ve her planın en fazla 24 slotu.
-        </p>
-        <div className="mt-4 space-y-3">
-          {agent.dailyPlans.map((plan) => (
-            <details key={plan.id} className="rounded-xl border p-3">
-              <summary className="cursor-pointer font-bold">
-                {plan.localDate.toISOString().slice(0, 10)} · {plan.status} · entry{" "}
-                {plan.entryTarget}, topic {plan.topicTarget}, vote {plan.voteTarget}
-              </summary>
-              <ul className="mt-3 space-y-2 text-sm">
-                {plan.slots.map((slot) => (
-                  <li key={slot.id} className="rounded-lg bg-page p-2">
-                    {formatNullableTimestamp(slot.scheduledAt)} · {slot.runType} · {slot.status}
-                    {slot.runId ? (
-                      <Link
-                        href={`/moderasyon/agentlar/calisma/${slot.runId}`}
-                        className="ml-2 font-bold text-primary"
-                      >
-                        Run
-                      </Link>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </details>
-          ))}
-        </div>
-        {agent.dailyPlans.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">Henüz günlük plan yok.</p>
-        ) : null}
       </section>
 
       <section id="persona" className="surface-card mt-5 scroll-mt-24 p-5">

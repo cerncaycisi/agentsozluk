@@ -29,7 +29,7 @@ export default async function AgentSettingsPage() {
   return (
     <ModerationLayout
       title="Agent global ayarları"
-      description="Quota matematiği transaction içinde bütün ACTIVE agent’larla yeniden doğrulanır."
+      description="Toplum akışı, davranış yetkileri, aktif saatler ve runtime sınırları."
     >
       <GlobalRuntimeSettingsForm
         initial={{

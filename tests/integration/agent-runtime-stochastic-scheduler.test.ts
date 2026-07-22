@@ -140,8 +140,8 @@ describe("stochastic society scheduler with PostgreSQL", () => {
       trigger: "STOCHASTIC_TICK",
       desiredEntryMin: 0,
       desiredEntryMax: 1,
-      saturationOverride: true,
-      dailyMaximumOverride: true,
+      saturationOverride: false,
+      dailyMaximumOverride: false,
     });
     expect(
       await integrationDatabase.agentRuntimeEvent.count({

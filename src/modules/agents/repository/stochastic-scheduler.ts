@@ -134,8 +134,10 @@ export async function createStochasticWakeRuns(
           allowVoting: input.allowVoting,
           allowFollowing: input.allowFollowing,
           allowSourceReading: input.allowSourceReading,
-          saturationOverride: true,
-          dailyMaximumOverride: true,
+          // These persistence fields are legacy evidence only. Daily quotas
+          // and automatic topic saturation no longer participate in dispatch.
+          saturationOverride: false,
+          dailyMaximumOverride: false,
           provocationOverride: false,
           createdAt: input.now,
         },

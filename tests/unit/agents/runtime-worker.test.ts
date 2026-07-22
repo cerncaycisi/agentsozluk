@@ -471,14 +471,12 @@ describe("long-lived agent runtime worker", () => {
         "allowSourceReading",
         "allowTopicCreation",
         "allowVoting",
-        "dailyMaximumOverride",
         "desiredEntryMax",
         "desiredEntryMin",
         "publishEnabled",
         "publicWriteEnabled",
         "runType",
         "runtimeOperatingMode",
-        "saturationOverride",
         "sourceFetchLimit",
         "trigger",
       ].sort(),
@@ -491,6 +489,7 @@ describe("long-lived agent runtime worker", () => {
       confidence: 0.55,
       topicFatigue: { "visible-topic": 0.3, model: 0.2, owner: 0.4 },
     });
+    expect(decoded.perception).not.toHaveProperty("targetProgress");
     expect(decoded.perception.recentEntries[0]?.body).toBe(entryInjection);
     expect(decoded.perception.sourceItems[0]?.safeText).toBe(sourceInjection);
     expect(decoded.perception.evidenceCatalog).toEqual({

@@ -1,8 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import {
-  catchUpWindowForLocalMinute,
-  type GeneratedDailyPlan,
-} from "@/modules/agents/domain/scheduler";
+import type { GeneratedDailyPlan } from "@/modules/agents/domain/scheduler";
 
 interface DueScheduleSlot {
   id: string;
@@ -515,15 +512,12 @@ function istanbulClock(now: Date): { hour: number; minute: number; weekday: stri
   };
 }
 
-export async function planRuntimeMaintenanceAndCatchUp(
+export async function planRuntimeMaintenance(
   transaction: Prisma.TransactionClient,
   input: {
     agentProfileId: string;
     localDate: Date;
     now: Date;
-    catchUpFrozen: boolean;
-    concurrency: 1 | 2;
-    scheduledTimeoutSeconds: number;
     reflectionTimeoutSeconds: number;
     sourceRefreshTimeoutSeconds: number;
     personaEvolutionEnabled: boolean;
@@ -531,8 +525,6 @@ export async function planRuntimeMaintenanceAndCatchUp(
   },
 ) {
   const dateKey = input.localDate.toISOString().slice(0, 10);
-  const dayStart = istanbulDayStart(input.localDate);
-  const nextDayStart = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
   const clock = istanbulClock(input.now);
   const profile = await transaction.agentProfile.findFirst({
     where: {
@@ -544,13 +536,10 @@ export async function planRuntimeMaintenanceAndCatchUp(
       currentPersonaVersionId: true,
       personaEvolutionEnabled: true,
       sourceEvolutionEnabled: true,
-      runtimeState: {
-        select: { todayDate: true, todayEntryTarget: true, todayPublishedEntries: true },
-      },
     },
   });
   if (!profile?.currentPersonaVersionId)
-    return { maintenanceQueued: 0, catchUpQueued: 0, runs: [] as QueuedRunEventRecord[] };
+    return { maintenanceQueued: 0, runs: [] as QueuedRunEventRecord[] };
   let maintenanceQueued = 0;
   const queuedRuns: QueuedRunEventRecord[] = [];
   const createMaintenance = async (definition: {
@@ -610,123 +599,29 @@ export async function planRuntimeMaintenanceAndCatchUp(
       timeoutSeconds: input.sourceRefreshTimeoutSeconds,
       allowSourceReading: true,
     });
-  const localMinute = clock.hour * 60 + clock.minute;
-  const catchUpWindow = catchUpWindowForLocalMinute(localMinute);
-  if (
-    input.catchUpFrozen ||
-    !catchUpWindow ||
-    !profile.runtimeState?.todayDate ||
-    profile.runtimeState.todayDate.getTime() !== input.localDate.getTime()
-  )
-    return { maintenanceQueued, catchUpQueued: 0, runs: queuedRuns };
-  const regenerationFacts = await getDailyRegenerationFacts(transaction, {
-    agentProfileIds: [input.agentProfileId],
-    localDate: input.localDate,
+  return { maintenanceQueued, runs: queuedRuns };
+}
+
+export async function retireLegacyDailyPlanningRecords(transaction: Prisma.TransactionClient) {
+  const cancelledSlots = await transaction.agentScheduleSlot.updateMany({
+    where: { status: "PLANNED" },
+    data: { status: "CANCELLED" },
   });
-  const activePublishedEntries =
-    regenerationFacts.activePublishedByAgent.get(input.agentProfileId) ?? 0;
-  const pendingReservedEntries =
-    regenerationFacts.pendingReservedByAgent.get(input.agentProfileId) ?? 0;
-  if (profile.runtimeState.todayPublishedEntries !== activePublishedEntries)
-    await transaction.agentRuntimeState.update({
-      where: { agentProfileId: input.agentProfileId },
-      data: { todayPublishedEntries: activePublishedEntries },
-    });
-  const projectedPublishedEntries = activePublishedEntries + pendingReservedEntries;
-  const remaining = profile.runtimeState.todayEntryTarget - projectedPublishedEntries;
-  if (remaining <= 0) return { maintenanceQueued, catchUpQueued: 0, runs: queuedRuns };
-  const expectedPublished = Math.ceil(
-    profile.runtimeState.todayEntryTarget * catchUpWindow.expectedProgress,
-  );
-  if (projectedPublishedEntries >= expectedPublished)
-    return { maintenanceQueued, catchUpQueued: 0, runs: queuedRuns };
-  const catchUpWindowStart = new Date(dayStart.getTime() + catchUpWindow.startMinute * 60_000);
-  const catchUpWindowEnd = new Date(dayStart.getTime() + catchUpWindow.endMinute * 60_000);
-  const imminentCutoff = new Date(input.now.getTime() + 25 * 60_000);
-  const [
-    imminentScheduledSlots,
-    pendingScheduledRuns,
-    activeCatchUp,
-    lastCatchUp,
-    catchUpsInWindow,
-    queueLength,
-  ] = await Promise.all([
-    transaction.agentScheduleSlot.count({
-      where: {
-        agentProfileId: input.agentProfileId,
-        dailyPlan: { localDate: input.localDate },
-        status: { in: ["PLANNED", "QUEUED", "RUNNING"] },
-        scheduledAt: { lte: imminentCutoff },
-      },
-    }),
-    transaction.agentRun.count({
-      where: {
-        agentProfileId: input.agentProfileId,
-        trigger: "SCHEDULER_SLOT",
-        runStatus: { in: ["QUEUED", "RUNNING", "CANCEL_REQUESTED"] },
-      },
-    }),
-    transaction.agentRun.count({
-      where: {
-        agentProfileId: input.agentProfileId,
-        trigger: "AUTO_CATCH_UP",
-        runStatus: { in: ["QUEUED", "RUNNING", "CANCEL_REQUESTED"] },
-      },
-    }),
-    transaction.agentRun.findFirst({
-      where: {
-        agentProfileId: input.agentProfileId,
-        trigger: "AUTO_CATCH_UP",
-        createdAt: { gte: dayStart, lt: nextDayStart },
-      },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true },
-    }),
-    transaction.agentRun.count({
-      where: {
-        agentProfileId: input.agentProfileId,
-        trigger: "AUTO_CATCH_UP",
-        createdAt: { gte: catchUpWindowStart, lt: catchUpWindowEnd },
-      },
-    }),
-    transaction.agentRun.count({
-      where: {
-        runStatus: "QUEUED",
-        runType: { notIn: ["READ_ONLY", "DRY_RUN", "REFLECTION", "SOURCE_REFRESH"] },
-      },
-    }),
-  ]);
-  if (
-    imminentScheduledSlots > 0 ||
-    pendingScheduledRuns > 0 ||
-    activeCatchUp > 0 ||
-    catchUpsInWindow >= catchUpWindow.maximumRuns ||
-    queueLength >= input.concurrency * 3 ||
-    (lastCatchUp && input.now.getTime() - lastCatchUp.createdAt.getTime() < 25 * 60 * 1000)
-  )
-    return { maintenanceQueued, catchUpQueued: 0, runs: queuedRuns };
-  const bucket = Math.floor(localMinute / 25);
-  const desiredEntryMax = Math.min(
-    4,
-    remaining,
-    Math.max(1, expectedPublished - projectedPublishedEntries),
-  );
-  const catchUpRun = await transaction.agentRun.create({
-    select: queuedRunEventSelect,
+  const cancelledPlans = await transaction.agentDailyPlan.updateMany({
+    where: { status: { in: ["PLANNED", "ACTIVE"] } },
+    data: { status: "CANCELLED" },
+  });
+  const clearedRuntimeStates = await transaction.agentRuntimeState.updateMany({
     data: {
-      agentProfileId: input.agentProfileId,
-      runType: "DAILY_CATCH_UP",
-      queuePriority: "DAILY_CATCH_UP",
-      trigger: "AUTO_CATCH_UP",
-      personaVersionId: profile.currentPersonaVersionId,
-      idempotencyKey: `catch-up:${input.agentProfileId}:${dateKey}:${catchUpWindow.phase}:${bucket}`,
-      availableAt: input.now,
-      timeoutSeconds: input.scheduledTimeoutSeconds,
-      desiredEntryMin: 1,
-      desiredEntryMax,
-      createdAt: input.now,
+      todayEntryTarget: 0,
+      todayTopicTarget: 0,
+      todayVoteTarget: 0,
+      nextScheduledAt: null,
     },
   });
-  queuedRuns.push(catchUpRun);
-  return { maintenanceQueued, catchUpQueued: 1, runs: queuedRuns };
+  return {
+    cancelledSlots: cancelledSlots.count,
+    cancelledPlans: cancelledPlans.count,
+    clearedRuntimeStates: clearedRuntimeStates.count,
+  };
 }

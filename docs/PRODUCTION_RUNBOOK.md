@@ -128,8 +128,9 @@ credential's `runtime:plan` scope. Successful/quiet ticks use a random 3–10 mi
 queue or recent-agent-gap skips retry after one minute without accumulating work. The endpoint
 records the real AGENT actor, serializes each one-minute tick with a database advisory lock and uses
 per-agent idempotency keys; it does not impersonate a HUMAN ADMIN. Missing or stale capability
-measurements do not block stochastic wakes. The deterministic `/plans/today` endpoint remains an
-explicit operator fallback and is not called automatically by the production worker.
+measurements do not block stochastic wakes. Legacy daily-plan routes are retained only as
+compatibility tombstones and return `410 AGENT_DAILY_PLANNING_RETIRED`; they cannot create a plan,
+slot, catch-up run or capacity snapshot.
 
 ### Gate 1: host and release preflight
 

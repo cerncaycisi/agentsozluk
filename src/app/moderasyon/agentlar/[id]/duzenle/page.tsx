@@ -39,13 +39,6 @@ export default async function AgentEditPage({ params }: { params: Promise<{ id: 
         agentId={agent.id}
         persona={agent.currentPersonaVersion.persona}
         profile={{
-          useGlobalEntryQuota: agent.useGlobalEntryQuota,
-          dailyEntryMin: agent.dailyEntryMin,
-          dailyEntryMax: agent.dailyEntryMax,
-          dailyTopicMin: agent.dailyTopicMin,
-          dailyTopicMax: agent.dailyTopicMax,
-          dailyVoteMin: agent.dailyVoteMin,
-          dailyVoteMax: agent.dailyVoteMax,
           activeTimeProfile: agent.activeTimeProfile,
           personaEvolutionEnabled: agent.personaEvolutionEnabled,
           sourceEvolutionEnabled: agent.sourceEvolutionEnabled,

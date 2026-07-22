@@ -11,10 +11,7 @@ import {
   runtimeFingerprint,
 } from "@/modules/agents/domain/capacity";
 import { circuitBreakerConfigSchema } from "@/modules/agents/domain/circuit-breaker";
-import {
-  isWriteCapableAgentRunType,
-  planManualDailyCatchUp,
-} from "@/modules/agents/domain/manual-runs";
+import { isWriteCapableAgentRunType } from "@/modules/agents/domain/manual-runs";
 import {
   appendRuntimeEvent,
   findAgentForMutation,
@@ -27,7 +24,6 @@ import {
   createRetryRunRecord,
   createManualRunRecord,
   findAgentRunForCommand,
-  getManualCatchUpFacts,
   getAgentRunDetailRecord,
   getBulkRunPreviewMetrics,
   listAgentProfileIdsForBulkRunCommand,
@@ -40,7 +36,6 @@ import {
   getLatestRuntimeFingerprintRecord,
   getRuntimeOperationalMetrics,
 } from "@/modules/agents/repository/capacity";
-import { istanbulDayBounds } from "@/modules/agents/repository/scheduler";
 import { lockRuntimeRunForLeaseMutation } from "@/modules/agents/repository/runtime";
 import type {
   AgentRunCommandInput,
@@ -58,12 +53,6 @@ import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 function isNonPublishingRun(runType: ManualAgentRunInput["runType"]): boolean {
   return ["READ_ONLY", "DRY_RUN", "REFLECTION", "SOURCE_REFRESH"].includes(runType);
 }
-
-type ManualRunAgent = {
-  id: string;
-  currentPersonaVersionId: string;
-  manualTimeoutSeconds: number;
-};
 
 interface AgentRunCommandDependencies {
   /** Test seam for holding the serialized command after its authoritative re-read. */
@@ -120,90 +109,6 @@ interface BulkAgentRunCreateDependencies {
 
 const BULK_RUN_METADATA_ID_LIMIT = 100;
 
-async function resolveManualCatchUpPlans(
-  transaction: Parameters<typeof getManualCatchUpFacts>[0],
-  agents: ManualRunAgent[],
-  now: Date,
-) {
-  const localDate = istanbulLocalDate(now);
-  const facts = await getManualCatchUpFacts(transaction, {
-    agentProfileIds: agents.map(({ id }) => id),
-    localDate,
-  });
-  return {
-    localDate,
-    plans: agents.map((agent) => {
-      const fact = facts.get(agent.id);
-      if (!fact)
-        throw new AppError(
-          "VALIDATION_ERROR",
-          409,
-          "DAILY_CATCH_UP için agent'ın bugünkü günlük planı bulunmalıdır.",
-          undefined,
-          undefined,
-          { agentProfileId: agent.id, localDate: localDate.toISOString().slice(0, 10) },
-        );
-      return { agent, plan: planManualDailyCatchUp(fact) };
-    }),
-  };
-}
-
-function catchUpAvailableAt(input: ManualAgentRunInput, now: Date, localDate: Date): Date {
-  const availableAt = input.availableAt ?? now;
-  if (availableAt >= istanbulDayBounds(localDate).end)
-    throw new AppError(
-      "VALIDATION_ERROR",
-      422,
-      "DAILY_CATCH_UP bugünün İstanbul günü içinde çalıştırılmalıdır.",
-      { availableAt: ["Bugünün İstanbul günü bittikten sonraya planlanamaz."] },
-    );
-  return availableAt;
-}
-
-async function createManualCatchUpRunRecords(
-  transaction: Parameters<typeof createManualRunRecord>[0],
-  input: {
-    actor: ActorContext;
-    runInput: ManualAgentRunInput;
-    agent: ManualRunAgent;
-    desiredEntryTargets: number[];
-    availableAt: Date;
-    idempotencyPrefix?: string;
-    trigger?: string;
-    queuePriority: "MANUAL_SINGLE" | "EMERGENCY_ADMIN" | "SCHEDULED_CONTENT";
-  },
-) {
-  const runs = [];
-  for (const [index, desiredEntryMax] of input.desiredEntryTargets.entries())
-    runs.push(
-      await createManualRunRecord(transaction, {
-        agentProfileId: input.agent.id,
-        personaVersionId: input.agent.currentPersonaVersionId,
-        requestedById: input.actor.actorId,
-        requestId: input.actor.requestId,
-        idempotencySuffix: `${input.idempotencyPrefix ? `${input.idempotencyPrefix}:` : ""}catch-up:${index}`,
-        ...(input.trigger ? { trigger: input.trigger } : {}),
-        runType: "DAILY_CATCH_UP",
-        queuePriority: input.queuePriority,
-        availableAt: input.availableAt,
-        timeoutSeconds: input.agent.manualTimeoutSeconds,
-        desiredEntryMin: Math.max(1, desiredEntryMax - 1),
-        desiredEntryMax,
-        allowTopicCreation: input.runInput.allowTopicCreation,
-        allowVoting: input.runInput.allowVoting,
-        allowFollowing: input.runInput.allowFollowing,
-        allowSourceReading: input.runInput.allowSourceReading,
-        saturationOverride: input.runInput.saturationOverride,
-        dailyMaximumOverride: input.runInput.dailyMaximumOverride,
-        provocationOverride: input.runInput.provocationOverride,
-        ...(input.runInput.adminInstruction
-          ? { adminInstruction: input.runInput.adminInstruction }
-          : {}),
-      }),
-    );
-  return runs;
-}
-
 export function createManualAgentRun(
   client: DatabaseExecutor,
   actor: ActorContext,
@@ -223,85 +128,12 @@ export function createManualAgentRun(
     if (agent.lifecycleStatus !== "ACTIVE" || !agent.currentPersonaVersion) {
       throw new AppError("AGENT_LIFECYCLE_INVALID", 409, "Yalnız ACTIVE agent kuyruğa alınabilir.");
     }
-    if (input.runType === "DAILY_CATCH_UP") {
-      const resolved = await resolveManualCatchUpPlans(
-        transaction,
-        [
-          {
-            id: agent.id,
-            currentPersonaVersionId: agent.currentPersonaVersion.id,
-            manualTimeoutSeconds: agent.manualTimeoutSeconds,
-          },
-        ],
-        now,
+    if (input.saturationOverride || input.dailyMaximumOverride)
+      throw new AppError(
+        "AGENT_DAILY_PLANNING_RETIRED",
+        410,
+        "Günlük maksimum ve otomatik topic saturation kontrolleri kaldırıldı; bu override'lar artık kullanılamaz.",
       );
-      const catchUp = resolved.plans[0]!;
-      const runs = await createManualCatchUpRunRecords(transaction, {
-        actor,
-        runInput: input,
-        agent: catchUp.agent,
-        desiredEntryTargets: catchUp.plan.desiredEntryTargets,
-        availableAt: catchUpAvailableAt(input, now, resolved.localDate),
-        queuePriority: input.priority === "EMERGENCY" ? "EMERGENCY_ADMIN" : "MANUAL_SINGLE",
-      });
-      await transaction.agentRuntimeState.updateMany({
-        where: { agentProfileId, todayDate: resolved.localDate },
-        data: { todayPublishedEntries: catchUp.plan.activePublishedEntries },
-      });
-      const metadata = {
-        agentProfileId,
-        runType: input.runType,
-        runCount: runs.length,
-        localDate: resolved.localDate.toISOString().slice(0, 10),
-        targetEntries: catchUp.plan.targetEntries,
-        activePublishedEntries: catchUp.plan.activePublishedEntries,
-        pendingReservedEntries: catchUp.plan.pendingReservedEntries,
-        newlyReservedEntries: catchUp.plan.remainingEntries,
-        desiredEntryTargets: catchUp.plan.desiredEntryTargets,
-        dailyMaximumOverride: input.dailyMaximumOverride,
-        provocationOverride: input.provocationOverride,
-        saturationOverride: input.saturationOverride,
-      };
-      await appendAuditLog(transaction, {
-        actorId: actor.actorId,
-        action: "agent.run.catch_up_queued",
-        entityType: "AgentProfile",
-        entityId: agentProfileId,
-        requestId: actor.requestId,
-        metadata: {
-          actorKind: actor.actorKind,
-          before: { runCount: 0 },
-          after: { runCount: runs.length, runStatus: "QUEUED" },
-          reason: "Manual catch-up work queued by human administrator.",
-          ...metadata,
-        },
-      });
-      for (const run of runs)
-        await appendOutboxEvent(transaction, {
-          eventType: "agent.run.queued",
-          aggregateType: "AgentRun",
-          aggregateId: run.id,
-          actorId: actor.actorId,
-          actorKind: actor.actorKind,
-          requestId: actor.requestId,
-          payload: {
-            ...metadata,
-            runId: run.id,
-            desiredEntryMin: run.desiredEntryMin,
-            desiredEntryMax: run.desiredEntryMax,
-          },
-        });
-      await appendRuntimeEvent(transaction, {
-        agentProfileId,
-        eventType: "run.catch_up_queued",
-        safeMessage:
-          runs.length === 0
-            ? "Bugünkü ACTIVE yayın ve pending rezervler günlük hedefi zaten karşılıyor."
-            : `${runs.length} manual catch-up run bugünkü kalan hedef için kuyruğa alındı.`,
-        metadata,
-      });
-      return { runs, count: runs.length, run: runs[0] ?? null, catchUp: metadata };
-    }
     const nonPublishing = isNonPublishingRun(input.runType);
     const entryTarget = nonPublishing ? 0 : input.entryTarget;
     const timeoutSeconds =
@@ -317,7 +149,7 @@ export function createManualAgentRun(
       requestId: actor.requestId,
       runType: input.runType,
       queuePriority: input.priority === "EMERGENCY" ? "EMERGENCY_ADMIN" : "MANUAL_SINGLE",
-      availableAt: input.availableAt ?? new Date(),
+      availableAt: input.availableAt ?? now,
       timeoutSeconds,
       desiredEntryMin: entryTarget,
       desiredEntryMax: entryTarget,
@@ -325,8 +157,8 @@ export function createManualAgentRun(
       allowVoting: !nonPublishing && input.allowVoting,
       allowFollowing: !nonPublishing && input.allowFollowing,
       allowSourceReading: input.allowSourceReading,
-      saturationOverride: input.saturationOverride,
-      dailyMaximumOverride: input.dailyMaximumOverride,
+      saturationOverride: false,
+      dailyMaximumOverride: false,
       provocationOverride: input.provocationOverride,
       ...(input.adminInstruction ? { adminInstruction: input.adminInstruction } : {}),
     });
@@ -395,6 +227,12 @@ export function previewBulkAgentRun(
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
+    if (input.run.saturationOverride || input.run.dailyMaximumOverride)
+      throw new AppError(
+        "AGENT_DAILY_PLANNING_RETIRED",
+        410,
+        "Günlük maksimum ve otomatik topic saturation kontrolleri kaldırıldı; bu override'lar artık kullanılamaz.",
+      );
     const localDate = istanbulLocalDate(now);
     const [agents, metrics, planning, fingerprintRecord] = await Promise.all([
       listBulkRunAgents(transaction, bulkSelection(input)),
@@ -408,34 +246,11 @@ export function previewBulkAgentRun(
         404,
         "Seçili ACTIVE agent listesi eksik veya geçersiz.",
       );
-    let runCount = agents.length;
-    let addedPublishedMin = isNonPublishingRun(input.run.runType)
+    const runCount = agents.length;
+    const addedPublishedMin = isNonPublishingRun(input.run.runType)
       ? 0
       : agents.length * input.run.entryTarget;
-    let addedPublishedMax = addedPublishedMin;
-    let catchUpPlans: Awaited<ReturnType<typeof resolveManualCatchUpPlans>>["plans"] = [];
-    if (input.run.runType === "DAILY_CATCH_UP") {
-      const resolved = await resolveManualCatchUpPlans(
-        transaction,
-        agents.map((agent) => ({
-          ...agent,
-          currentPersonaVersionId: agent.currentPersonaVersionId!,
-        })),
-        now,
-      );
-      catchUpPlans = resolved.plans;
-      runCount = catchUpPlans.reduce((sum, item) => sum + item.plan.desiredEntryTargets.length, 0);
-      addedPublishedMax = catchUpPlans.reduce((sum, item) => sum + item.plan.remainingEntries, 0);
-      addedPublishedMin = catchUpPlans.reduce(
-        (sum, item) =>
-          sum +
-          item.plan.desiredEntryTargets.reduce(
-            (targetSum, target) => targetSum + Math.max(1, target - 1),
-            0,
-          ),
-        0,
-      );
-    }
+    const addedPublishedMax = addedPublishedMin;
     const observedFingerprint = runtimeFingerprint(fingerprintRecord?.usageMetadata);
     const observedCodexVersion =
       observedFingerprint.codexVersion ?? metrics.capability?.codexVersion;
@@ -542,16 +357,13 @@ export function previewBulkAgentRun(
       workerUtilizationWindowMinutes: breakerConfig.utilizationWindowMinutes,
       workerUtilizationMeasuredAt: now,
       concurrency,
-      saturationOverride: input.run.saturationOverride,
-      dailyMaximumOverride: input.run.dailyMaximumOverride,
+      saturationOverride: false,
+      dailyMaximumOverride: false,
       provocationOverride: input.run.provocationOverride,
       oldestQueuedAt: operational.oldestQueuedAt,
       capacityStatusBefore: beforeCapacity.capacityStatus,
       capacityStatusAfter: afterCapacity.capacityStatus,
-      catchUp:
-        input.run.runType === "DAILY_CATCH_UP"
-          ? catchUpPlans.map(({ agent, plan }) => ({ agentProfileId: agent.id, ...plan }))
-          : null,
+      catchUp: null,
     };
   });
 }
@@ -565,6 +377,12 @@ export function createBulkAgentRuns(
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
+    if (input.run.saturationOverride || input.run.dailyMaximumOverride)
+      throw new AppError(
+        "AGENT_DAILY_PLANNING_RETIRED",
+        410,
+        "Günlük maksimum ve otomatik topic saturation kontrolleri kaldırıldı; bu override'lar artık kullanılamaz.",
+      );
     const initialAgents = await listBulkRunAgents(transaction, bulkSelection(input));
     if (!input.allActive && initialAgents.length !== input.agentIds?.length)
       throw new AppError(
@@ -586,78 +404,6 @@ export function createBulkAgentRuns(
         409,
         "Bulk run sırasında ACTIVE agent veya current persona state değişti; yeniden önizleyin.",
       );
-    if (input.run.runType === "DAILY_CATCH_UP") {
-      const resolved = await resolveManualCatchUpPlans(
-        transaction,
-        agents.map((agent) => ({
-          ...agent,
-          currentPersonaVersionId: agent.currentPersonaVersionId!,
-        })),
-        now,
-      );
-      const availableAt = catchUpAvailableAt(input.run, now, resolved.localDate);
-      const runs = [];
-      for (const { agent, plan } of resolved.plans) {
-        runs.push(
-          ...(await createManualCatchUpRunRecords(transaction, {
-            actor,
-            runInput: input.run,
-            agent,
-            desiredEntryTargets: plan.desiredEntryTargets,
-            availableAt,
-            idempotencyPrefix: agent.id,
-            trigger: "ADMIN_BULK",
-            queuePriority:
-              input.run.priority === "EMERGENCY" ? "EMERGENCY_ADMIN" : "SCHEDULED_CONTENT",
-          })),
-        );
-        await transaction.agentRuntimeState.updateMany({
-          where: { agentProfileId: agent.id, todayDate: resolved.localDate },
-          data: { todayPublishedEntries: plan.activePublishedEntries },
-        });
-      }
-      const perAgent = resolved.plans.map(({ agent, plan }) => ({
-        agentProfileId: agent.id,
-        targetEntries: plan.targetEntries,
-        activePublishedEntries: plan.activePublishedEntries,
-        pendingReservedEntries: plan.pendingReservedEntries,
-        newlyReservedEntries: plan.remainingEntries,
-        runCount: plan.desiredEntryTargets.length,
-        desiredEntryTargets: plan.desiredEntryTargets,
-      }));
-      const metadata = {
-        runCount: runs.length,
-        allActive: input.allActive,
-        runType: input.run.runType,
-        localDate: resolved.localDate.toISOString().slice(0, 10),
-        queuePriority: input.run.priority === "EMERGENCY" ? "EMERGENCY_ADMIN" : "SCHEDULED_CONTENT",
-        perAgent,
-      };
-      await appendAuditLog(transaction, {
-        actorId: actor.actorId,
-        action: "agent.run.bulk_queued",
-        entityType: "AgentRun",
-        entityId: null,
-        requestId: actor.requestId,
-        metadata: {
-          actorKind: actor.actorKind,
-          before: { runCount: 0 },
-          after: { runCount: runs.length, runStatus: "QUEUED" },
-          reason: "Bulk catch-up work queued by human administrator.",
-          ...metadata,
-        },
-      });
-      for (const run of runs) await appendCanonicalRunQueuedOutbox(transaction, actor, run);
-      await appendRuntimeEvent(transaction, {
-        eventType: "run.bulk_queued",
-        safeMessage:
-          runs.length === 0
-            ? "Seçili agent'ların bugünkü hedefleri ACTIVE yayın ve pending rezervlerle karşılanıyor."
-            : `${runs.length} manual catch-up run bulk kuyruğa alındı.`,
-        metadata,
-      });
-      return { runs, count: runs.length, catchUp: { ...metadata, perAgent } };
-    }
     const nonPublishing = isNonPublishingRun(input.run.runType);
     const runs = [];
     for (const agent of agents) {
@@ -679,7 +425,7 @@ export function createBulkAgentRuns(
           runType: input.run.runType,
           queuePriority:
             input.run.priority === "EMERGENCY" ? "EMERGENCY_ADMIN" : "SCHEDULED_CONTENT",
-          availableAt: input.run.availableAt ?? new Date(),
+          availableAt: input.run.availableAt ?? now,
           timeoutSeconds,
           desiredEntryMin: entryTarget,
           desiredEntryMax: entryTarget,
@@ -687,8 +433,8 @@ export function createBulkAgentRuns(
           allowVoting: !nonPublishing && input.run.allowVoting,
           allowFollowing: !nonPublishing && input.run.allowFollowing,
           allowSourceReading: input.run.allowSourceReading,
-          saturationOverride: input.run.saturationOverride,
-          dailyMaximumOverride: input.run.dailyMaximumOverride,
+          saturationOverride: false,
+          dailyMaximumOverride: false,
           provocationOverride: input.run.provocationOverride,
           ...(input.run.adminInstruction ? { adminInstruction: input.run.adminInstruction } : {}),
         }),

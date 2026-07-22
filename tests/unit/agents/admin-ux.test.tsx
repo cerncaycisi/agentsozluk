@@ -7,7 +7,6 @@ import {
   AgentLifecycleForm,
   AgentPersonaEditForm,
   AgentQuickRunActions,
-  AgentScheduleRegenerateForm,
   PersonaRollbackForm,
 } from "@/components/agents/agent-admin-forms";
 import { AgentDetailNavigation } from "@/components/agents/agent-detail-navigation";
@@ -151,10 +150,6 @@ describe("agent admin UX contracts", () => {
         expect.objectContaining({
           method: "PATCH",
           body: expect.objectContaining({
-            useGlobalEntryQuota: true,
-            dailyEntry: null,
-            dailyTopic: { min: 0, max: 2 },
-            dailyVote: { min: 0, max: 10 },
             persona: expect.objectContaining({
               username: persona.username,
               temperament: expect.objectContaining({ curiosity: 0.88 }),
@@ -206,37 +201,7 @@ describe("agent admin UX contracts", () => {
     await waitFor(() => expect(screen.getByLabelText("Yeni durum")).toHaveValue("ACTIVE"));
   });
 
-  it("regenerates today's schedule only after explicit confirmation", async () => {
-    mocks.apiRequest.mockResolvedValue({
-      regeneratedPlans: 2,
-      activePublishedEntries: 11,
-      remainingEntries: 9,
-    });
-    const user = userEvent.setup();
-    render(<AgentScheduleRegenerateForm />);
-
-    await user.click(screen.getByRole("button", { name: "Bugünkü schedule’ı yeniden üret" }));
-    expect(mocks.apiRequest).not.toHaveBeenCalled();
-    await user.type(
-      screen.getByLabelText("Schedule değişikliği gerekçesi"),
-      "Bugünün kalan planını kontrollü olarak yeniden hesapla.",
-    );
-    await user.click(screen.getByRole("button", { name: "Onayla ve schedule’ı yeniden üret" }));
-    await waitFor(() =>
-      expect(mocks.apiRequest).toHaveBeenCalledWith(
-        "/api/v1/admin/agent-schedule/regenerate",
-        expect.objectContaining({
-          method: "POST",
-          body: { reason: "Bugünün kalan planını kontrollü olarak yeniden hesapla." },
-        }),
-      ),
-    );
-    expect(mocks.toastSuccess).toHaveBeenCalledWith(
-      "2 plan yenilendi · 11 ACTIVE yayın · 9 kalan entry.",
-    );
-  });
-
-  it("exposes all twelve real detail destinations in one labelled navigation", () => {
+  it("exposes the real detail destinations without retired daily scheduling", () => {
     render(<AgentDetailNavigation agentId={agentId} />);
     const navigation = screen.getByRole("navigation", { name: "Agent detay bölümleri" });
     expect(navigation).toBeVisible();
@@ -251,7 +216,6 @@ describe("agent admin UX contracts", () => {
       "Entry ve topic’ler": `/moderasyon/agent-icerikleri?agentProfileId=${agentId}`,
       "Oylar ve takipler": `${base}#oylar-ve-takipler`,
       Çalışmalar: `${base}/calismalar`,
-      Schedule: `${base}#schedule`,
       Audit: "/moderasyon/audit",
       Kontroller: `${base}#kontroller`,
     };

@@ -2,6 +2,9 @@
 
 This manifest contains all 543 unique requirement IDs extracted from the owner-supplied goal.
 
+This is an immutable record of the original requested contract. ADR-012 is the current product
+decision for scheduling and supersedes daily-target/plan/catch-up behavior operationally.
+
 | Requirement      | Source line | Summary                                                                  |
 | ---------------- | ----------: | ------------------------------------------------------------------------ |
 | ACT-001          |         936 | Her agent action mevcut V1 domain servisleri üzerinden çalışmalıdır.     |

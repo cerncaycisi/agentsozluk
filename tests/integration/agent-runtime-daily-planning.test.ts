@@ -11,7 +11,6 @@ import {
   updateGlobalSettings,
 } from "@/modules/agents";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
-import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 import {
   closeIntegrationDatabase,
   integrationDatabase,
@@ -59,44 +58,11 @@ function planningRequest(credential: string, idempotencyKey = randomUUID()) {
   });
 }
 
-async function createFreshCapability(now: Date) {
-  await integrationDatabase.agentRuntimeCapability.create({
-    data: {
-      codexVersion: "codex-cli 2.4.0",
-      promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
-      benchmarkRunCount: 10,
-      p50DurationMs: 90_000,
-      p75DurationMs: 120_000,
-      p95DurationMs: 180_000,
-      maxDurationMs: 240_000,
-      singleProcessPeakRssMb: 400,
-      dualConcurrencySupported: false,
-      appLatencyImpact: { baselineP95Ms: 50, measuredP95Ms: 55, stable: true },
-      databaseLatencyImpact: { baselineP95Ms: 10, measuredP95Ms: 12, stable: true },
-      availableMemoryMb: 900,
-      capacityStatus: "HEALTHY",
-      measuredAt: now,
-      staleAt: new Date(now.getTime() + 14 * 24 * 60 * 60_000),
-    },
-  });
-  await integrationDatabase.agentRuntimeEvent.create({
-    data: {
-      eventType: "agent.capacity.measured",
-      safeMessage: "Planner integration benchmark fingerprint observed.",
-      metadata: {
-        codexVersion: "codex-cli 2.4.0",
-        promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
-      },
-      createdAt: now,
-    },
-  });
-}
-
 beforeEach(resetIntegrationDatabase);
 afterAll(closeIntegrationDatabase);
 
-describe("runtime-owned automatic daily planning with PostgreSQL", () => {
-  it("requires runtime:plan and creates one idempotent current-day plan as the real AGENT actor", async () => {
+describe("retired runtime daily planning with PostgreSQL", () => {
+  it("requires runtime:plan, then returns 410 without creating a plan", async () => {
     const admin = await createAdmin();
     const created = await createAgent(
       integrationDatabase,
@@ -134,32 +100,12 @@ describe("runtime-owned automatic daily planning with PostgreSQL", () => {
         scopes: ["runtime:lease", "runtime:read", "runtime:write", "runtime:plan"],
       },
     });
-    await createFreshCapability(new Date());
-
-    const [left, right] = await Promise.all([
-      planTodayRoute(planningRequest(created.credential)),
-      planTodayRoute(planningRequest(created.credential)),
-    ]);
-    expect([left.status, right.status]).toEqual([200, 200]);
-    const results = await Promise.all([left.json(), right.json()]);
-    expect(
-      results.map((body) => body.data.createdPlans).reduce((sum, value) => sum + value, 0),
-    ).toBe(1);
-    expect(results.every((body) => body.data.blocked === false)).toBe(true);
-
-    expect(await integrationDatabase.agentDailyPlan.count()).toBe(1);
-    expect(await integrationDatabase.agentCapacitySnapshot.count()).toBe(1);
-    expect(
-      await integrationDatabase.auditLog.findFirstOrThrow({
-        where: { action: "agent.schedule.generated" },
-        select: { actorId: true },
-      }),
-    ).toEqual({ actorId: created.agent.user.id });
-    expect(
-      await integrationDatabase.outboxEvent.findFirstOrThrow({
-        where: { eventType: "agent.schedule.generated" },
-        select: { actorKind: true },
-      }),
-    ).toEqual({ actorKind: "AGENT" });
+    const retired = await planTodayRoute(planningRequest(created.credential));
+    expect(retired.status).toBe(410);
+    expect(await retired.json()).toMatchObject({
+      error: { code: "AGENT_DAILY_PLANNING_RETIRED" },
+    });
+    expect(await integrationDatabase.agentDailyPlan.count()).toBe(0);
+    expect(await integrationDatabase.agentCapacitySnapshot.count()).toBe(0);
   });
 });

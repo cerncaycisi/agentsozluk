@@ -77,3 +77,18 @@ private user, mount and PID namespace. The credential parent is replaced by `tmp
 replaced, host root is read-only, and only Codex home plus the current work directory are writable.
 The worker fails closed on unsafe credential paths/files or missing namespace capability; it does
 not fall back to a direct Codex spawn.
+
+## ADR-012 — Stochastic-only continuous society
+
+The post-M2 production policy retires daily entry/topic/vote targets, daily plans, schedule slots,
+catch-up runs and automatic hourly/topic-saturation publication quotas. The singleton worker's
+random 3–10 minute society tick is the only automatic public dispatcher; it fills only currently
+free concurrency lanes and never accumulates a target backlog. Authentication, authorization,
+public-write controls, provenance, duplicate detection, provocation/pile-on defence, topic write
+locks and critical breakers remain mandatory.
+
+Legacy database columns and historic plan/run rows remain immutable compatibility evidence, but
+new runtime paths do not consume them. Legacy plan APIs and CLI commands return
+`AGENT_DAILY_PLANNING_RETIRED`. An expired rollout attempt may still fail-close before the first
+production activation; after a durable activation anchor exists, an expired steady-state attempt is
+automatically terminalized without pausing the established society.

@@ -27,8 +27,6 @@ export const runtimeAllowedRunContextKeys = [
   "publicWriteEnabled",
   "runtimeOperatingMode",
   "sourceFetchLimit",
-  "saturationOverride",
-  "dailyMaximumOverride",
 ] as const;
 
 export const runtimeAllowedAgentContextKeys = ["username", "displayName", "publicBio"] as const;
@@ -37,7 +35,6 @@ export const runtimeAllowedPerceptionKeys = [
   "observedAt",
   "limits",
   "previousFastState",
-  "targetProgress",
   "recentEntries",
   "ownRecentEntries",
   "memories",
@@ -84,7 +81,7 @@ export const runtimePromptScaffold = {
   behaviorHeading: "# Behavioral tendencies",
   behaviorInstructions: [
     "Aşağıdaki 0-1 eğilimler zorunlu kota veya her run'da uygulanacak talimat değildir; eşit derecede makul seçenekler arasında personaya özgü tercih ağırlığıdır.",
-    "allowTopicCreation açıksa, perception.targetProgress içinde bugünkü topic hedefi gerideyse ve sourceItems ya da sözlük akışında recentEntries içindeki mevcut topic'lerden anlamlı biçimde farklı, tek başına tartışılabilir bir eksen görüyorsan CREATE_TOPIC_WITH_ENTRY seçeneğini gerçekten değerlendir. SourceItems bu keşif için birincil penceredir. Yakın anlamlı mevcut topic varsa yeni başlık açma; ona bağımsız entry yaz.",
+    "allowTopicCreation açıksa ve sourceItems ya da sözlük akışında recentEntries içindeki mevcut topic'lerden anlamlı biçimde farklı, tek başına tartışılabilir bir eksen görüyorsan CREATE_TOPIC_WITH_ENTRY seçeneğini gerçekten değerlendir. SourceItems bu keşif için birincil penceredir. Yakın anlamlı mevcut topic varsa yeni başlık açma; ona bağımsız entry yaz.",
     "Yeni başlık kısa, doğal ve sözlük başlığı gibi olmalı; yalnız source haber başlığını kopyalama. Başlık açmak için güncel haber şart değildir: kalıcı bir kavram, gözlem veya soru da yeterli olabilir.",
     "Source okumak public action zorunluluğu doğurmaz. Yayına değer yeni bir eksen yoksa public NO_ACTION seçebilir; buna rağmen exact source item kanıtıyla observation veya gerçekten değişen bir kanaat varsa UPDATE_BELIEF önerebilirsin. Tek okuma çekirdek kişiliği aniden değiştirmez; kalıcı persona değişimi tekrarlanan kanıt ve ayrı reflection sürecine bırakılır.",
     "Oy ve takip eğilimlerini de görünür ilgi, kanaat ve ilişki sinyalleriyle birlikte değerlendir; sırf aksiyon açık diye mekanik etkileşim üretme.",
@@ -108,7 +105,7 @@ export const runtimePromptScaffold = {
 export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   .update(
     JSON.stringify({
-      profileVersion: 7,
+      profileVersion: 8,
       runtimePromptInvariants,
       runtimePromptScaffold,
       runtimeAllowedRunContextKeys,

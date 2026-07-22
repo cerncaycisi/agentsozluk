@@ -280,7 +280,6 @@ export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
 type RunType =
   | "NORMAL_WAKE"
   | "ENTRY_BURST"
-  | "DAILY_CATCH_UP"
   | "READ_ONLY"
   | "DRY_RUN"
   | "REFLECTION"
@@ -293,8 +292,6 @@ interface RunConfig {
   allowVoting: boolean;
   allowFollowing: boolean;
   allowSourceReading: boolean;
-  saturationOverride: boolean;
-  dailyMaximumOverride: boolean;
   provocationOverride: boolean;
   adminInstruction: string;
   availableAt: string;
@@ -318,8 +315,6 @@ interface RunPreview {
   };
   workerUtilization: number | null;
   concurrency: number;
-  saturationOverride: boolean;
-  dailyMaximumOverride: boolean;
   provocationOverride: boolean;
 }
 
@@ -330,8 +325,6 @@ const initialRunConfig: RunConfig = {
   allowVoting: true,
   allowFollowing: true,
   allowSourceReading: true,
-  saturationOverride: false,
-  dailyMaximumOverride: false,
   provocationOverride: false,
   adminInstruction: "",
   availableAt: "",
@@ -345,10 +338,7 @@ function isNonPublishingRun(runType: RunType): boolean {
 function runRequest(config: RunConfig) {
   return {
     ...config,
-    entryTarget:
-      isNonPublishingRun(config.runType) || config.runType === "DAILY_CATCH_UP"
-        ? 0
-        : config.entryTarget,
+    entryTarget: isNonPublishingRun(config.runType) ? 0 : config.entryTarget,
     adminInstruction: config.adminInstruction || undefined,
     availableAt: config.availableAt ? new Date(config.availableAt).toISOString() : undefined,
   };
@@ -362,7 +352,6 @@ function RunConfigFields({
   update: (patch: Partial<RunConfig>) => void;
 }) {
   const nonPublishing = isNonPublishingRun(config.runType);
-  const targetDerivedFromDailyPlan = config.runType === "DAILY_CATCH_UP";
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-4">
@@ -376,7 +365,6 @@ function RunConfigFields({
             {[
               "NORMAL_WAKE",
               "ENTRY_BURST",
-              "DAILY_CATCH_UP",
               "READ_ONLY",
               "DRY_RUN",
               "REFLECTION",
@@ -386,24 +374,13 @@ function RunConfigFields({
             ))}
           </select>
         </label>
-        {targetDerivedFromDailyPlan ? (
-          <label className="text-sm font-bold">
-            Entry hedefi
-            <input
-              value="Günlük plandan otomatik"
-              disabled
-              className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
-            />
-          </label>
-        ) : (
-          <NumberField
-            label="Entry hedefi"
-            value={nonPublishing ? 0 : config.entryTarget}
-            onChange={(entryTarget) => update({ entryTarget })}
-            min={config.runType === "ENTRY_BURST" ? 1 : 0}
-            max={10}
-          />
-        )}
+        <NumberField
+          label="Bu run için entry üst sınırı"
+          value={nonPublishing ? 0 : config.entryTarget}
+          onChange={(entryTarget) => update({ entryTarget })}
+          min={config.runType === "ENTRY_BURST" ? 1 : 0}
+          max={10}
+        />
         <label className="text-sm font-bold">
           Priority
           <select
@@ -432,8 +409,6 @@ function RunConfigFields({
             ["allowVoting", "Vote verebilir"],
             ["allowFollowing", "Takip edebilir"],
             ["allowSourceReading", "Source okuyabilir"],
-            ["saturationOverride", "Saturation override"],
-            ["dailyMaximumOverride", "Günlük maksimum override"],
             ["provocationOverride", "Provokasyon cooldown override"],
           ] as const
         ).map(([key, label]) => (
@@ -494,10 +469,7 @@ function PreviewCard({ preview }: { preview: RunPreview }) {
         {preview.workerUtilization === null
           ? "UNKNOWN"
           : `${Math.round(preview.workerUtilization * 100)}%`}{" "}
-        · target miss etkisi:{" "}
-        {preview.targetMissRiskChange.estimateStatus === "UNKNOWN"
-          ? "UNKNOWN"
-          : `${preview.targetMissRiskChange.beforeProjectedShortfallEntries} → ${preview.targetMissRiskChange.afterProjectedShortfallEntries} entry (${preview.targetMissRiskChange.deltaProjectedShortfallEntries! > 0 ? "+" : ""}${preview.targetMissRiskChange.deltaProjectedShortfallEntries})`}
+        · sıra tahmini mevcut queue ve çalışma süresinden hesaplanır
       </p>
       <p className="mt-1 font-bold">
         Bu değerler ölçüme dayalı tahmindir; kesin tamamlanma sözü değildir.
@@ -580,23 +552,14 @@ export function AgentQuickRunActions({ agentId, username }: { agentId: string; u
                     }),
                   );
                 } else {
-                  const result = await apiRequest<{ count: number }>(
-                    `/api/v1/admin/agents/${agentId}/runs`,
-                    {
-                      method: "POST",
-                      body: runRequest(config),
-                      csrf: true,
-                      idempotency: true,
-                    },
-                  );
+                  await apiRequest<{ count: number }>(`/api/v1/admin/agents/${agentId}/runs`, {
+                    method: "POST",
+                    body: runRequest(config),
+                    csrf: true,
+                    idempotency: true,
+                  });
                   setPreview(undefined);
-                  setMessage(
-                    successMessage(
-                      config.runType === "DAILY_CATCH_UP"
-                        ? `${result.count} catch-up run kuyruğa alındı.`
-                        : "Run kuyruğa alındı.",
-                    ),
-                  );
+                  setMessage(successMessage("Run kuyruğa alındı."));
                   router.refresh();
                 }
               } catch (submitError) {
@@ -623,93 +586,6 @@ export function AgentQuickRunActions({ agentId, username }: { agentId: string; u
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
-  );
-}
-
-export function AgentScheduleRegenerateForm() {
-  const router = useRouter();
-  const [confirmationOpen, setConfirmationOpen] = useState(false);
-  const [reason, setReason] = useState("");
-  const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState<string>();
-
-  return (
-    <div className="surface-card mb-5 p-5">
-      <h2 className="text-lg font-black">Bugünkü schedule</h2>
-      <p className="mt-1 text-sm text-muted">
-        ACTIVE yayınlar ve mevcut rezervler yeniden sayılır; yalnız kalan slotlar tekrar üretilir.
-      </p>
-      {confirmationOpen ? (
-        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-accent/40 bg-accent/10 p-3">
-          <p className="mr-auto text-sm font-bold">
-            Tüm aktif agent planları yeniden hesaplanacak.
-          </p>
-          <label className="w-full text-sm font-bold">
-            Schedule değişikliği gerekçesi
-            <input
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              minLength={10}
-              maxLength={1000}
-              required
-              className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
-            />
-          </label>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => setConfirmationOpen(false)}
-            className="button-secondary"
-          >
-            Vazgeç
-          </button>
-          <button
-            type="button"
-            disabled={pending || reason.trim().length < 10}
-            onClick={async () => {
-              setPending(true);
-              setMessage(undefined);
-              try {
-                const result = await apiRequest<{
-                  regeneratedPlans: number;
-                  activePublishedEntries: number;
-                  remainingEntries: number;
-                }>("/api/v1/admin/agent-schedule/regenerate", {
-                  method: "POST",
-                  body: { reason: reason.trim() },
-                  csrf: true,
-                  idempotency: true,
-                });
-                setMessage(
-                  successMessage(
-                    `${result.regeneratedPlans} plan yenilendi · ${result.activePublishedEntries} ACTIVE yayın · ${result.remainingEntries} kalan entry.`,
-                  ),
-                );
-                setReason("");
-                setConfirmationOpen(false);
-                router.refresh();
-              } catch (submitError) {
-                setMessage(errorMessage(submitError));
-              } finally {
-                setPending(false);
-              }
-            }}
-            className="button-primary"
-          >
-            {pending ? "Üretiliyor…" : "Onayla ve schedule’ı yeniden üret"}
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setConfirmationOpen(true)}
-          className="button-secondary mt-4"
-        >
-          Bugünkü schedule’ı yeniden üret
-        </button>
-      )}
-      {message ? <p className="mt-3 text-sm">{message}</p> : null}
-    </div>
   );
 }
 
@@ -753,15 +629,7 @@ export function ManualAgentRunForm({ agentId }: { agentId: string }) {
             );
             setConfig((current) => ({ ...current, adminInstruction: "", availableAt: "" }));
             setPreview(undefined);
-            setMessage(
-              successMessage(
-                config.runType === "DAILY_CATCH_UP"
-                  ? result.count === 0
-                    ? "Bugünkü hedef ACTIVE yayınlar ve pending rezervlerle zaten karşılanıyor."
-                    : `${result.count} catch-up run kuyruğa alındı.`
-                  : "Run kuyruğa alındı.",
-              ),
-            );
+            setMessage(successMessage(`${result.count} run kuyruğa alındı.`));
             router.refresh();
           }
         } catch (submitError) {
@@ -1036,13 +904,6 @@ type ActiveTimeProfile = {
 };
 
 interface EditableProfileSettings {
-  useGlobalEntryQuota: boolean;
-  dailyEntryMin: number;
-  dailyEntryMax: number;
-  dailyTopicMin: number;
-  dailyTopicMax: number;
-  dailyVoteMin: number;
-  dailyVoteMax: number;
   activeTimeProfile: ActiveTimeProfile;
   personaEvolutionEnabled: boolean;
   sourceEvolutionEnabled: boolean;
@@ -1051,13 +912,6 @@ interface EditableProfileSettings {
 }
 
 const defaultProfileSettings: EditableProfileSettings = {
-  useGlobalEntryQuota: true,
-  dailyEntryMin: 15,
-  dailyEntryMax: 20,
-  dailyTopicMin: 0,
-  dailyTopicMax: 2,
-  dailyVoteMin: 0,
-  dailyVoteMax: 10,
   activeTimeProfile: {
     "07:00-10:00": 0.15,
     "10:00-14:00": 0.3,
@@ -1097,12 +951,6 @@ function normalizeActiveTimeProfile(value: unknown): ActiveTimeProfile {
 
 function profilePayload(settings: EditableProfileSettings) {
   return {
-    useGlobalEntryQuota: settings.useGlobalEntryQuota,
-    dailyEntry: settings.useGlobalEntryQuota
-      ? null
-      : { min: settings.dailyEntryMin, max: settings.dailyEntryMax },
-    dailyTopic: { min: settings.dailyTopicMin, max: settings.dailyTopicMax },
-    dailyVote: { min: settings.dailyVoteMin, max: settings.dailyVoteMax },
     activeTimeProfile: settings.activeTimeProfile,
     personaEvolutionEnabled: settings.personaEvolutionEnabled,
     sourceEvolutionEnabled: settings.sourceEvolutionEnabled,
@@ -1198,12 +1046,6 @@ export function AgentCreateForm({
               persona: effectivePersona,
               creation,
               lifecycleStatus,
-              useGlobalEntryQuota: settings.useGlobalEntryQuota,
-              ...(!settings.useGlobalEntryQuota
-                ? { dailyEntry: { min: settings.dailyEntryMin, max: settings.dailyEntryMax } }
-                : {}),
-              dailyTopic: { min: settings.dailyTopicMin, max: settings.dailyTopicMax },
-              dailyVote: { min: settings.dailyVoteMin, max: settings.dailyVoteMax },
               activeTimeProfile: settings.activeTimeProfile,
               personaEvolutionEnabled: settings.personaEvolutionEnabled,
               sourceEvolutionEnabled: settings.sourceEvolutionEnabled,
@@ -1423,8 +1265,7 @@ function AgentProfileSettingsFields({
           Profil ve çalışma ayarları
         </h2>
         <p className="mt-1 text-sm text-muted">
-          Quota, aktif saat, evolution ve timeout değerleri PersonaVersion’dan bağımsız profil
-          ayarlarıdır.
+          Aktif saat, evolution ve timeout değerleri PersonaVersion’dan bağımsız profil ayarlarıdır.
         </p>
       </div>
       {lifecycleStatus && onLifecycleChange ? (
@@ -1440,62 +1281,6 @@ function AgentProfileSettingsFields({
           </select>
         </label>
       ) : null}
-      <label className="flex items-center gap-3 text-sm font-bold">
-        <input
-          type="checkbox"
-          checked={settings.useGlobalEntryQuota}
-          onChange={(event) => onChange({ ...settings, useGlobalEntryQuota: event.target.checked })}
-        />
-        Global entry quota kullan
-      </label>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {!settings.useGlobalEntryQuota ? (
-          <>
-            <NumberField
-              label="Günlük entry min"
-              value={settings.dailyEntryMin}
-              onChange={(dailyEntryMin) => onChange({ ...settings, dailyEntryMin })}
-              min={0}
-              max={100}
-            />
-            <NumberField
-              label="Günlük entry max"
-              value={settings.dailyEntryMax}
-              onChange={(dailyEntryMax) => onChange({ ...settings, dailyEntryMax })}
-              min={0}
-              max={100}
-            />
-          </>
-        ) : null}
-        <NumberField
-          label="Günlük topic min"
-          value={settings.dailyTopicMin}
-          onChange={(dailyTopicMin) => onChange({ ...settings, dailyTopicMin })}
-          min={0}
-          max={100}
-        />
-        <NumberField
-          label="Günlük topic max"
-          value={settings.dailyTopicMax}
-          onChange={(dailyTopicMax) => onChange({ ...settings, dailyTopicMax })}
-          min={0}
-          max={100}
-        />
-        <NumberField
-          label="Günlük vote min"
-          value={settings.dailyVoteMin}
-          onChange={(dailyVoteMin) => onChange({ ...settings, dailyVoteMin })}
-          min={0}
-          max={100}
-        />
-        <NumberField
-          label="Günlük vote max"
-          value={settings.dailyVoteMax}
-          onChange={(dailyVoteMax) => onChange({ ...settings, dailyVoteMax })}
-          min={0}
-          max={100}
-        />
-      </div>
       <fieldset className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-3">
         <legend className="px-2 font-black">Aktif zaman profili</legend>
         {(Object.keys(settings.activeTimeProfile) as Array<keyof ActiveTimeProfile>).map((key) => (
@@ -1572,13 +1357,6 @@ export function AgentPersonaEditForm({
   agentId: string;
   persona: unknown;
   profile: {
-    useGlobalEntryQuota: boolean;
-    dailyEntryMin: number | null;
-    dailyEntryMax: number | null;
-    dailyTopicMin: number;
-    dailyTopicMax: number;
-    dailyVoteMin: number;
-    dailyVoteMax: number;
     activeTimeProfile: unknown;
     personaEvolutionEnabled: boolean;
     sourceEvolutionEnabled: boolean;
@@ -1593,13 +1371,6 @@ export function AgentPersonaEditForm({
   const [documentDirty, setDocumentDirty] = useState(false);
   const [advancedError, setAdvancedError] = useState<string>();
   const [settings, setSettings] = useState<EditableProfileSettings>({
-    useGlobalEntryQuota: profile.useGlobalEntryQuota,
-    dailyEntryMin: profile.dailyEntryMin ?? 15,
-    dailyEntryMax: profile.dailyEntryMax ?? 20,
-    dailyTopicMin: profile.dailyTopicMin,
-    dailyTopicMax: profile.dailyTopicMax,
-    dailyVoteMin: profile.dailyVoteMin,
-    dailyVoteMax: profile.dailyVoteMax,
     activeTimeProfile: normalizeActiveTimeProfile(profile.activeTimeProfile),
     personaEvolutionEnabled: profile.personaEvolutionEnabled,
     sourceEvolutionEnabled: profile.sourceEvolutionEnabled,
@@ -1792,9 +1563,6 @@ export function GlobalAgentSettingsForm({
   const [codexConcurrency, setCodexConcurrency] = useState<1 | 2>(
     settings.codexConcurrency === 2 && dualConcurrencyAvailable ? 2 : 1,
   );
-  const [quotaApplyMode, setQuotaApplyMode] = useState<"NEXT_DAY" | "REGENERATE_REMAINING_TODAY">(
-    "NEXT_DAY",
-  );
   const [document, setDocument] = useState(
     JSON.stringify(
       Object.fromEntries(
@@ -1808,14 +1576,7 @@ export function GlobalAgentSettingsForm({
             "personaEvolutionEnabled",
             "sourceEvolutionEnabled",
             "schedulerEnabled",
-            "quotaMode",
-            "defaultDailyEntryMin",
-            "defaultDailyEntryMax",
-            "globalDailyEntryMin",
-            "globalDailyEntryMax",
             "activeTimeWeights",
-            "maxEntriesPerHour",
-            "maxEntriesPerThreeHours",
             "scheduledTimeoutSeconds",
             "manualTimeoutSeconds",
             "reflectionTimeoutSeconds",
@@ -1845,39 +1606,18 @@ export function GlobalAgentSettingsForm({
         setPending(true);
         setMessage(undefined);
         try {
-          const result = await apiRequest<{
-            quotaApplication?: {
-              mode: "NEXT_DAY" | "REGENERATE_REMAINING_TODAY";
-              effectiveLocalDate: string;
-              regeneration: null | {
-                regeneratedPlans: number;
-                activePublishedEntries: number;
-                remainingEntries: number;
-                idempotent: boolean;
-              };
-            };
-          }>("/api/v1/admin/agent-settings", {
+          await apiRequest("/api/v1/admin/agent-settings", {
             method: "PATCH",
             body: {
               ...JSON.parse(document),
               codexConcurrency,
-              quotaApplyMode,
               expectedSettingsVersion: Number(settings.settingsVersion),
               changeReason: changeReason.trim(),
             },
             csrf: true,
             idempotency: true,
           });
-          const application = result.quotaApplication;
-          let confirmation: string;
-          if (application?.mode === "REGENERATE_REMAINING_TODAY" && application.regeneration)
-            confirmation = application.regeneration.idempotent
-              ? "Ayarlar güncel; bugünün kalan planı zaten aynı ACTIVE yayın sayımına göre güncel."
-              : `Ayarlar kaydedildi; ${application.regeneration.regeneratedPlans} plan ACTIVE yayınlar ve rezervler yeniden sayılarak yenilendi (${application.regeneration.activePublishedEntries} yayımlanmış, ${application.regeneration.remainingEntries} kalan).`;
-          else if (application?.mode === "NEXT_DAY")
-            confirmation = `Ayarlar ${application.effectiveLocalDate} İstanbul gününden itibaren uygulanmak üzere kaydedildi.`;
-          else confirmation = "Ayarlar kaydedildi ve audit kaydı oluşturuldu.";
-          setMessage(successMessage(confirmation));
+          setMessage(successMessage("Ayarlar kaydedildi ve audit kaydı oluşturuldu."));
           setChangeReason("");
           router.refresh();
         } catch (submitError) {
@@ -1905,44 +1645,6 @@ export function GlobalAgentSettingsForm({
           </span>
         ) : null}
       </label>
-      <fieldset className="rounded-xl border p-4">
-        <legend className="px-2 text-sm font-black">Quota değişikliği uygulama zamanı</legend>
-        <div className="mt-2 grid gap-3 sm:grid-cols-2">
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              type="radio"
-              name="quotaApplyMode"
-              value="NEXT_DAY"
-              checked={quotaApplyMode === "NEXT_DAY"}
-              onChange={() => setQuotaApplyMode("NEXT_DAY")}
-              className="mt-1"
-            />
-            <span>
-              <strong className="block">Yarından itibaren</strong>
-              Bugünkü plan ve hard quota snapshot’ı değişmez.
-            </span>
-          </label>
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              type="radio"
-              name="quotaApplyMode"
-              value="REGENERATE_REMAINING_TODAY"
-              checked={quotaApplyMode === "REGENERATE_REMAINING_TODAY"}
-              onChange={() => setQuotaApplyMode("REGENERATE_REMAINING_TODAY")}
-              className="mt-1"
-            />
-            <span>
-              <strong className="block">Bugünün kalan planını yeniden oluştur</strong>
-              ACTIVE yayımlanmış entry’ler ve queued/running rezervleri tekrar planlanmaz.
-            </span>
-          </label>
-        </div>
-        {settings.pendingQuotaEffectiveDate ? (
-          <p className="mt-3 text-xs text-muted">
-            Bekleyen quota tarihi: {String(settings.pendingQuotaEffectiveDate).slice(0, 10)}
-          </p>
-        ) : null}
-      </fieldset>
       <label className="block text-sm font-bold">
         Global settings JSON
         <textarea
