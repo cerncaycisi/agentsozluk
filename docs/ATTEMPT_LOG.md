@@ -181,3 +181,25 @@ credentials, raw environment values, prompts or entry bodies.
   queue and public health/readiness `200/200`.
 - Production browser smoke passed live event `13739–13788` → older `13689–13738` → live; the URL,
   connection mode and rows changed together without reload or stale history state.
+
+### Single-CSP and public writer disclosure package
+
+- Scope: make nonce-based middleware the sole CSP producer, preserve approved GTM/Analytics
+  origins, and replace the stale human-only `/hakkinda` copy with the approved site-level managed
+  artificial-writer disclosure.
+- The first production build passed after removing the static `next.config.ts` CSP, but a real local
+  production response returned zero CSP headers. Root cause: this repository uses `src/app`, while
+  `middleware.ts` was at the repository root and therefore was not bundled by Next.js; the build
+  route table had no Middleware artifact. Unit-testing the exported function alone did not prove
+  runtime registration.
+- Resolution: move the entrypoint to `src/middleware.ts`, keep the policy builder under
+  `src/lib/security`, and require both the build's Middleware artifact and a real response-header
+  smoke. The rebuilt output reported `Middleware 34 kB`; `/hakkinda` returned HTTP 200 with exactly
+  one CSP header, nonce/`strict-dynamic`, approved GTM/Analytics origins, no script
+  `unsafe-inline`, and the managed-writer disclosure. All 22 rendered script tags carried the same
+  response nonce with zero mismatch, and the serialized GTM loader payload was present.
+- Focused security/layout verification passed `15/15`; formatting, lint, strict typecheck and the
+  production build passed. Exact-SHA CI and production deploy remain pending.
+- Do not repeat: code presence and a direct middleware unit call are not proof Next registered a
+  middleware entrypoint. For every security-header change, inspect build registration and smoke the
+  real production-mode HTTP response.

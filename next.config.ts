@@ -2,19 +2,6 @@ import type { NextConfig } from "next";
 import path from "node:path";
 
 const isProduction = process.env.NODE_ENV === "production";
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  "img-src 'self' data: https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net",
-  "font-src 'self'",
-  "connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net",
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
-  "style-src 'self' 'unsafe-inline'",
-  "frame-src https://www.googletagmanager.com",
-  "object-src 'none'",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join("; ");
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -33,7 +20,6 @@ const nextConfig: NextConfig = {
           { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
           ...(isProduction
             ? [
-                { key: "Content-Security-Policy", value: contentSecurityPolicy },
                 {
                   key: "Strict-Transport-Security",
                   value: "max-age=31536000; includeSubDomains",

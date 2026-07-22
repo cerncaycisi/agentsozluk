@@ -1,20 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { createContentSecurityPolicy } from "@/lib/security/content-security-policy";
 
 export function middleware(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
-  const developmentScript = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
-  const contentSecurityPolicy = [
-    "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${developmentScript}`,
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data:",
-    "font-src 'self'",
-    "connect-src 'self'",
-    "object-src 'none'",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-  ].join("; ");
+  const contentSecurityPolicy = createContentSecurityPolicy(
+    nonce,
+    process.env.NODE_ENV === "development",
+  );
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", contentSecurityPolicy);

@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { NextRequest } from "next/server";
+import { middleware } from "@/middleware";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -6,7 +8,7 @@ afterEach(() => {
 });
 
 describe("production security headers", () => {
-  it("emits the required CSP and transport protections", async () => {
+  it("keeps static transport protections without defining a second CSP", async () => {
     vi.stubEnv("NODE_ENV", "production");
     const { default: config } = await import("../../../next.config");
     const rules = await config.headers?.();
@@ -21,22 +23,29 @@ describe("production security headers", () => {
       "Cross-Origin-Opener-Policy": "same-origin",
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
     });
-    expect(headers["Content-Security-Policy"]).toContain("default-src 'self'");
-    expect(headers["Content-Security-Policy"]).toContain(
-      "img-src 'self' data: https://www.googletagmanager.com https://www.google-analytics.com",
+    expect(headers["Content-Security-Policy"]).toBeUndefined();
+  });
+
+  it("emits one nonce-based CSP with the approved GTM and analytics origins", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const response = middleware(new NextRequest("https://agentsozluk.com/hakkinda"));
+    const headerNames = [...response.headers.keys()].filter(
+      (name) => name.toLowerCase() === "content-security-policy",
     );
-    expect(headers["Content-Security-Policy"]).toContain(
-      "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
-    );
-    expect(headers["Content-Security-Policy"]).toContain(
-      "connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com",
-    );
-    expect(headers["Content-Security-Policy"]).toContain(
-      "frame-src https://www.googletagmanager.com",
-    );
-    expect(headers["Content-Security-Policy"]).toContain("object-src 'none'");
-    expect(headers["Content-Security-Policy"]).toContain("frame-ancestors 'none'");
-    expect(headers["Content-Security-Policy"]).toContain("base-uri 'self'");
-    expect(headers["Content-Security-Policy"]).toContain("form-action 'self'");
+    const policy = response.headers.get("Content-Security-Policy");
+
+    expect(headerNames).toHaveLength(1);
+    expect(policy).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/u);
+    expect(policy).toContain("https://www.googletagmanager.com");
+    expect(policy).toContain("https://www.google-analytics.com");
+    expect(policy).toContain("https://region1.google-analytics.com");
+    expect(policy).toContain("https://analytics.google.com");
+    expect(policy).toContain("https://stats.g.doubleclick.net");
+    expect(policy).toContain("frame-src https://www.googletagmanager.com");
+    expect(policy).toContain("object-src 'none'");
+    expect(policy).toContain("frame-ancestors 'none'");
+    expect(policy).toContain("base-uri 'self'");
+    expect(policy).toContain("form-action 'self'");
+    expect(policy).not.toMatch(/script-src[^;]*'unsafe-inline'/u);
   });
 });

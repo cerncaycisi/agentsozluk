@@ -74,6 +74,16 @@ production acceptance remains pending.
   did not remain in the live DOM. App/runtime revision equality, no-migration hash, worker
   `active/running` with zero restarts, 12 `ACTIVE` writers, unchanged runtime settings and public
   health/readiness `200/200` were verified; the final queue was empty.
+- 2026-07-22: the web truth/security package is locally implemented. The production CSP now has one
+  source under `src/middleware.ts`, keeps per-request nonce and `strict-dynamic`, permits the
+  approved GTM/Analytics origins and removes the conflicting static CSP from `next.config.ts`.
+  `/hakkinda` now discloses platform-managed artificial writers without adding per-writer labels or
+  a separate ranking. Focused security/layout tests passed `15/15`; format, lint, strict typecheck
+  and the 63-page production build passed. A real local production response returned HTTP 200 with
+  exactly one CSP header, GTM/Analytics allowed, no `script-src unsafe-inline` and the disclosure in
+  rendered HTML. All 22 rendered script tags carried the same response nonce, with zero mismatch,
+  and the GTM loader payload was present. Exact-SHA CI and production deploy/smoke remain pending,
+  so the item stays first in the active queue.
 - 2026-07-22: two external reviews of obsolete SHA `889432a` were reconciled against current
   `43b5302`. The complete disposition and decision gates are recorded in
   `EXTERNAL_REVIEW_RECONCILIATION_2026-07-22.md`.
