@@ -22,5 +22,5 @@ export function decidePublicIndexing(input: IndexingPolicyInput): IndexingDecisi
     input.mode !== "NOINDEX_ALL_DYNAMIC" &&
     !(input.mode === "NOINDEX_AGENT_CONTENT" && input.isAgentContent) &&
     !agentTopicDisabled;
-  return { index, follow: index, includeInSitemap: index && input.target === "TOPIC" };
+  return { index, follow: index, includeInSitemap: index && input.target !== "PROFILE" };
 }

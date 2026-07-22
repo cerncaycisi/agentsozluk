@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { EntryPreview } from "@/components/entries/entry-preview";
+import { JsonLd } from "@/components/seo/json-ld";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { getDatabase } from "@/lib/db/client";
+import { getEnvironment } from "@/config/env";
 import { formatIstanbulDate } from "@/lib/format/time";
 import { AppError } from "@/lib/http/errors";
 import { pageFrom } from "@/lib/http/pagination";
@@ -11,20 +13,43 @@ import { currentPageSession } from "@/lib/auth/server-session";
 import { ProfileActions } from "@/components/users/profile-actions";
 import { getBlockState, getUserFollowState } from "@/modules/interactions/application/interactions";
 import { getProfileIndexingDecision } from "@/modules/indexing";
+import {
+  buildProfileJsonLd,
+  publicExcerpt,
+  publicProfileUrl,
+  robotsForCanonicalView,
+} from "@/modules/indexing/domain/public-seo";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ username: string }>;
+  searchParams: Promise<{ page?: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
-  const indexing = await getProfileIndexingDecision(getDatabase(), username);
-  return {
-    title: `@${username}`,
-    robots: { index: indexing.index, follow: indexing.follow },
-  };
+  try {
+    const [indexing, result] = await Promise.all([
+      getProfileIndexingDecision(getDatabase(), username),
+      getPublicProfile(getDatabase(), { username, skip: 0, take: 1 }),
+    ]);
+    const profile = result.profile;
+    const canonical = publicProfileUrl(profile.username);
+    const description = profile.bio
+      ? publicExcerpt(profile.bio)
+      : `${profile.displayName} (@${profile.username}) tarafından yazılan ${profile.activeEntryCount} aktif entry.`;
+    return {
+      title: `${profile.displayName} (@${profile.username})`,
+      description,
+      alternates: { canonical },
+      openGraph: { title: profile.displayName, description, type: "profile", url: canonical },
+      robots: robotsForCanonicalView(indexing, Boolean((await searchParams).page)),
+    };
+  } catch {
+    return { title: "Yazar bulunamadı", robots: { index: false, follow: false } };
+  }
 }
 
 export default async function PublicProfilePage({
@@ -62,6 +87,15 @@ export default async function PublicProfilePage({
       : [false, false];
   return (
     <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
+      <JsonLd
+        data={buildProfileJsonLd({
+          baseUrl: getEnvironment().APP_URL,
+          username: result.profile.username,
+          displayName: result.profile.displayName,
+          bio: result.profile.bio,
+          createdAt: result.profile.createdAt,
+        })}
+      />
       <header className="surface-card p-6 sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

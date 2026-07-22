@@ -3,10 +3,12 @@ import { cookies } from "next/headers";
 import Script from "next/script";
 import { Toaster } from "sonner";
 import { APP_NAME } from "@/config/app";
+import { JsonLd } from "@/components/seo/json-ld";
 import { SiteShell } from "@/components/layout/site-shell";
 import { SESSION_COOKIE_NAME } from "@/config/app";
 import { getDatabase } from "@/lib/db/client";
 import { authenticateSession } from "@/modules/auth/application/sessions";
+import { buildWebsiteJsonLd } from "@/modules/indexing/domain/public-seo";
 import "./globals.css";
 
 const GOOGLE_TAG_MANAGER_ID = "GTM-MTGXSB7H";
@@ -46,6 +48,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang="tr" data-theme={themeAttribute} suppressHydrationWarning>
       <head>
+        <JsonLd data={buildWebsiteJsonLd(process.env.APP_URL ?? "http://localhost:3000")} />
         <Script id="google-tag-manager" strategy="afterInteractive">
           {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],

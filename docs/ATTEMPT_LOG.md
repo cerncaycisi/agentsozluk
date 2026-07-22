@@ -341,3 +341,25 @@ credentials, raw environment values, prompts or entry bodies.
   psql `:'name'` placeholders inside `-c`, do not pipe long remote operator scripts through stdin,
   and do not claim fail-closed service state from a cleanup message without re-reading the actual
   service states.
+
+### SEO/GEO S1 local candidate
+
+- Scope: content-derived topic/entry/profile metadata, canonical-query noindex, public-only JSON-LD,
+  dynamic Open Graph PNG routes and policy-aware entry sitemaps. No production/public endpoint or
+  production SSH connection was used.
+- The first combined focused test ran all unit assertions successfully but the PostgreSQL suite did
+  not start because `TEST_DATABASE_URL` was absent. Exact guard error:
+  `Integration tests requires TEST_DATABASE_URL.` This was environment setup, not a product-test
+  failure. An allowlisted local scratch database with the discovered PostgreSQL owner was migrated;
+  the focused PostgreSQL suite then passed `2/2`, and the database was dropped.
+- The first seed-backed production smoke seed did not start because local `APP_URL` and
+  `APP_SECRET` test values were absent; Zod reported both as required strings. The rerun supplied
+  explicit local-only test values and seeded `12/30/180` without bypassing environment validation.
+  Do not repeat: seed commands must receive the complete validated application environment even
+  when the target is a disposable local database.
+- Final local evidence: SEO/security unit tests `8/8`, indexing integration `2/2`, format, lint,
+  strict typecheck and a 63-page production build passed. Seed-backed smoke returned
+  health/readiness `200/200`, canonical main views, query `noindex, follow`, three `200 image/png`
+  Open Graph routes, static/topic/entry sitemap partitions and two parseable JSON-LD scripts with
+  zero forbidden private keys. Both allowlisted S1 scratch databases were dropped and verified
+  absent.

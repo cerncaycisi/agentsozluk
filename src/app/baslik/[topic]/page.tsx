@@ -3,16 +3,19 @@ import { headers } from "next/headers";
 import { notFound, permanentRedirect } from "next/navigation";
 import { CreateEntryForm } from "@/components/entries/create-entry-form";
 import { EntryPreview } from "@/components/entries/entry-preview";
+import { JsonLd } from "@/components/seo/json-ld";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { getDatabase } from "@/lib/db/client";
+import { getEnvironment } from "@/config/env";
 import { AppError } from "@/lib/http/errors";
 import { pageFrom } from "@/lib/http/pagination";
-import { parseTopicRouteReference } from "@/lib/routing/public-urls";
+import { entryPublicUrl, parseTopicRouteReference } from "@/lib/routing/public-urls";
 import { currentPageSession } from "@/lib/auth/server-session";
 import { getTopicEntries } from "@/modules/entries/application/entries";
 import { getViewerEntryStates } from "@/modules/interactions/application/interactions";
 import { getTopic, getTopicByPublicId } from "@/modules/topics/application/topics";
 import { getTopicIndexingDecision } from "@/modules/indexing";
+import { buildTopicJsonLd, robotsForCanonicalView } from "@/modules/indexing/domain/public-seo";
 import { TopicFollowButton } from "@/components/topics/topic-follow-button";
 import { TopicReportButton } from "@/components/topics/topic-report-button";
 import {
@@ -51,10 +54,13 @@ function topicUrlWithQuery(
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ topic: string }>;
+  searchParams: Promise<{ page?: string; q?: string; sort?: string; index?: string }>;
 }): Promise<Metadata> {
   const { topic: segment } = await params;
+  const query = await searchParams;
   const reference = parseTopicRouteReference(segment);
   if (!reference) return { title: "Başlık bulunamadı", robots: { index: false, follow: false } };
   try {
@@ -63,17 +69,22 @@ export async function generateMetadata({
         ? await getTopicByPublicId(getDatabase(), reference.publicId, null)
         : await getTopic(getDatabase(), reference.id, null);
     const indexing = await getTopicIndexingDecision(getDatabase(), topic.id);
+    const description = `${topic.title} hakkında ${topic.entryCount} aktif entry. Görüşleri okuyun ve tartışmaya katılın.`;
+    const hasViewParameters = Boolean(query.page || query.q || query.sort || query.index);
     return {
       title: topic.title,
-      description: `${topic.title} başlığındaki entry’leri okuyun ve tartışmaya katılın.`,
+      description,
       alternates: { canonical: topic.url },
       openGraph: {
         title: topic.title,
-        description: `${topic.entryCount} aktif entry`,
+        description,
         url: topic.url,
         type: "article",
+        publishedTime: topic.createdAt.toISOString(),
+        modifiedTime: topic.updatedAt.toISOString(),
+        authors: [`/yazar/${encodeURIComponent(topic.createdBy.username)}`],
       },
-      robots: { index: indexing.index, follow: indexing.follow },
+      robots: robotsForCanonicalView(indexing, hasViewParameters),
     };
   } catch {
     return { title: "Başlık bulunamadı", robots: { index: false, follow: false } };
@@ -182,6 +193,26 @@ export default async function TopicPage({
   const totalPages = Math.max(1, Math.ceil(result.totalItems / pageSize));
   return (
     <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
+      <JsonLd
+        data={buildTopicJsonLd({
+          baseUrl: getEnvironment().APP_URL,
+          url: topic.url,
+          title: topic.title,
+          entryCount: topic.entryCount,
+          createdAt: topic.createdAt,
+          updatedAt: topic.updatedAt,
+          author: topic.createdBy,
+          entries: result.entries
+            .filter((entry) => entry.status === "ACTIVE")
+            .map((entry) => ({
+              url: entryPublicUrl(entry),
+              body: entry.body,
+              createdAt: entry.createdAt,
+              updatedAt: entry.updatedAt,
+              author: entry.author,
+            })),
+        })}
+      />
       <header className="mb-7">
         <p className="text-accent-contrast text-sm font-bold">
           {topicIndex ? `${result.totalItems} entry · son 24 saat` : `${topic.entryCount} entry`}

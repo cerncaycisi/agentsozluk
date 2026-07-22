@@ -93,6 +93,7 @@ export function findTopicById(transaction: Prisma.TransactionClient, topicId: st
     select: {
       ...topicSummarySelect,
       createdById: true,
+      createdBy: { select: { username: true, displayName: true } },
       mergedInto: { select: topicSummarySelect },
     },
   });
@@ -104,6 +105,7 @@ export function findTopicByPublicId(transaction: Prisma.TransactionClient, publi
     select: {
       ...topicSummarySelect,
       createdById: true,
+      createdBy: { select: { username: true, displayName: true } },
       mergedInto: { select: topicSummarySelect },
     },
   });

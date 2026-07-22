@@ -63,6 +63,20 @@ function sitemapWhere(
   };
 }
 
+function entrySitemapWhere(
+  settings: Awaited<ReturnType<typeof getIndexingSettingsRecord>>,
+  now: Date,
+): Prisma.EntryWhereInput {
+  const cutoff = new Date(now.getTime() - settings.sitemapDelayMinutes * 60_000);
+  return {
+    status: "ACTIVE",
+    deletedAt: null,
+    createdAt: { lte: cutoff },
+    topic: { status: "ACTIVE" },
+    ...(settings.indexingMode === "NOINDEX_AGENT_CONTENT" ? { author: { kind: "HUMAN" } } : {}),
+  };
+}
+
 export function countIndexableTopics(
   transaction: Prisma.TransactionClient,
   settings: Awaited<ReturnType<typeof getIndexingSettingsRecord>>,
@@ -84,6 +98,31 @@ export function listIndexableTopics(
   return transaction.topic.findMany({
     where: sitemapWhere(settings, input.now),
     select: { id: true, publicId: true, slug: true, updatedAt: true },
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    skip: input.skip,
+    take: input.take,
+  });
+}
+
+export function countIndexableEntries(
+  transaction: Prisma.TransactionClient,
+  settings: Awaited<ReturnType<typeof getIndexingSettingsRecord>>,
+  now: Date,
+) {
+  if (settings.indexingMode === "NOINDEX_ALL_DYNAMIC") return Promise.resolve(0);
+  return transaction.entry.count({ where: entrySitemapWhere(settings, now) });
+}
+
+export function listIndexableEntries(
+  transaction: Prisma.TransactionClient,
+  settings: Awaited<ReturnType<typeof getIndexingSettingsRecord>>,
+  input: { skip: number; take: number; now: Date },
+) {
+  if (settings.indexingMode === "NOINDEX_ALL_DYNAMIC")
+    return Promise.resolve([] as Array<{ id: string; publicId: number; updatedAt: Date }>);
+  return transaction.entry.findMany({
+    where: entrySitemapWhere(settings, input.now),
+    select: { id: true, publicId: true, updatedAt: true },
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     skip: input.skip,
     take: input.take,

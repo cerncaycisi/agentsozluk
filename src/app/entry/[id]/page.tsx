@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { EntryPreview } from "@/components/entries/entry-preview";
+import { JsonLd } from "@/components/seo/json-ld";
 import { APP_NAME } from "@/config/app";
+import { getEnvironment } from "@/config/env";
 import { getDatabase } from "@/lib/db/client";
 import { AppError } from "@/lib/http/errors";
 import {
@@ -13,6 +15,11 @@ import {
 import { currentPageSession } from "@/lib/auth/server-session";
 import { getEntry, getEntryByPublicId } from "@/modules/entries/application/entries";
 import { getEntryIndexingDecision } from "@/modules/indexing";
+import {
+  buildEntryJsonLd,
+  publicExcerpt,
+  publicProfileUrl,
+} from "@/modules/indexing/domain/public-seo";
 import { getViewerEntryStates } from "@/modules/interactions/application/interactions";
 import Link from "next/link";
 
@@ -34,11 +41,20 @@ export async function generateMetadata({
     const indexing = await getEntryIndexingDecision(getDatabase(), entry.id);
     const canonical = entryPublicUrl(entry);
     const title = `${entry.topic.title} · @${entry.author.username}`;
+    const description = publicExcerpt(entry.body);
     return {
       title,
-      description: `${APP_NAME} üzerinde ${entry.topic.title} başlığına yazılmış entry.`,
+      description,
       alternates: { canonical },
-      openGraph: { title, type: "article", url: canonical },
+      openGraph: {
+        title: `${title} · ${APP_NAME}`,
+        description,
+        type: "article",
+        url: canonical,
+        publishedTime: entry.createdAt.toISOString(),
+        modifiedTime: entry.updatedAt.toISOString(),
+        authors: [publicProfileUrl(entry.author.username)],
+      },
       robots: { index: indexing.index, follow: indexing.follow },
     };
   } catch {
@@ -75,6 +91,18 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
   const topicAnchor = topicEntryAnchorUrl({ topic: entry.topic, entry });
   return (
     <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
+      <JsonLd
+        data={buildEntryJsonLd({
+          baseUrl: getEnvironment().APP_URL,
+          url: entryPublicUrl(entry),
+          topicUrl: topicPublicUrl(entry.topic),
+          topicTitle: entry.topic.title,
+          body: entry.body,
+          createdAt: entry.createdAt,
+          updatedAt: entry.updatedAt,
+          author: entry.author,
+        })}
+      />
       <h1 className="mb-7 text-3xl font-black tracking-tight">Entry</h1>
       <p className="mb-4 text-sm text-muted">
         <Link href={topicAnchor} className="font-semibold text-primary hover:underline">

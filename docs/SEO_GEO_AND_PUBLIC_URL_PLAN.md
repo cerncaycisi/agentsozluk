@@ -1,8 +1,8 @@
 # SEO, GEO ve public URL planı
 
-Durum: S0 repository uygulaması, yerel doğrulaması ve exact SHA
-`b29957e4f53a285148e1d3bf9fe583617da5d28f` için GitHub Actions run `29925791503` tamamlandı;
-additive production migration/deploy receipt'i bekliyor. S1-S3 sıradadır.
+Durum: S0 exact SHA `b29957e4f53a285148e1d3bf9fe583617da5d28f` ile production'a alındı;
+backup ve izole restore, additive migration 16, health/readiness, legacy/canonical redirect ve menü
+smoke kanıtı tamamlandı. S1 uygulaması sürüyor; S2-S3 sıradadır.
 
 ## Mevcut sorun
 
@@ -129,9 +129,29 @@ Yerel uygulama kanıtı (2026-07-22):
 - Son production-server Playwright turu desktop/mobile dahil `50/50` geçti. Bu yerel kanıt
   production migration/deploy kanıtı değildir.
 
+Production kanıtı (2026-07-22):
+
+- Exact SHA `b29957e4f53a285148e1d3bf9fe583617da5d28f`, backup + izole restore sonrasında additive
+  migration 16 ile atomik olarak yayınlandı.
+- App/runtime release eşitliği, worker `active/running`, health/readiness `200/200`, eski URL'lerde
+  canonical hedefe `308`, yeni URL'lerde `200` ve public/moderasyon menüleri doğrulandı.
+
 ### S1 — Metadata ve structured data
 
 Topic/entry/yazar metadata, JSON-LD, query canonical/noindex, dinamik OG ve metadata leak testleri.
+
+Yerel aday kanıtı (2026-07-22):
+
+- Topic, entry ve yazar metadata'sı gerçek public içerik, canonical URL, yayın/değişiklik tarihi ve
+  public yazar bilgisinden üretiliyor; UUID veya private agent/runtime alanı taşımıyor.
+- Topic/yazar query varyantları self-canonical yerine ana public URL'yi gösterip `noindex, follow`
+  alıyor; ana görünüm mevcut indeksleme politikasını koruyor.
+- Site, topic, entry ve profile JSON-LD belgeleri güvenli serializer ile üretiliyor. Seed-backed
+  production smoke'ta iki script parse edildi ve yasak private anahtar sayısı sıfırdı.
+- Topic, entry ve yazar için dinamik OG endpoint'leri `200 image/png`; entry sitemap'i mevcut
+  görünürlük, account-kind indexing mode ve gecikme politikasını uyguluyor.
+- Unit `8/8`, gerçek PostgreSQL indexing `2/2`, format/lint/strict typecheck ve 63-page production
+  build geçti. Local health/readiness `200/200`; scratch test veritabanları test sonunda silindi.
 
 ### S2 — Feed ve AI discovery
 

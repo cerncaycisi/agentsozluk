@@ -4,12 +4,14 @@ import type { ActorContext } from "@/modules/auth/domain/actor";
 import { requireAgentAdminInTransaction } from "@/modules/agents/application/authorization";
 import { decidePublicIndexing } from "@/modules/indexing/domain/policy";
 import {
+  countIndexableEntries,
   countIndexableTopics,
   getEntryIndexingRecord,
   getIndexingDashboardRecords,
   getIndexingSettingsRecord,
   getProfileIndexingRecord,
   getTopicIndexingRecord,
+  listIndexableEntries,
   listIndexableTopics,
 } from "@/modules/indexing/repository/indexing";
 
@@ -40,7 +42,7 @@ export function getEntryIndexingDecision(client: DatabaseClient, entryId: string
       target: "ENTRY",
       isAgentContent: record?.author.kind === "AGENT",
       agentTopicIndexingEnabled: settings.agentTopicIndexingEnabled,
-      visible: record?.status === "ACTIVE" && !record.deletedAt && record.topic.status !== "HIDDEN",
+      visible: record?.status === "ACTIVE" && !record.deletedAt && record.topic.status === "ACTIVE",
     });
   });
 }
@@ -75,6 +77,27 @@ export function getSitemapTopics(
   return client.$transaction(async (transaction) => {
     const settings = await getIndexingSettingsRecord(transaction);
     return listIndexableTopics(transaction, settings, {
+      skip: input.page * input.pageSize,
+      take: input.pageSize,
+      now: input.now ?? new Date(),
+    });
+  });
+}
+
+export function getSitemapEntryCount(client: DatabaseClient, now = new Date()) {
+  return client.$transaction(async (transaction) => {
+    const settings = await getIndexingSettingsRecord(transaction);
+    return countIndexableEntries(transaction, settings, now);
+  });
+}
+
+export function getSitemapEntries(
+  client: DatabaseClient,
+  input: { page: number; pageSize: number; now?: Date },
+) {
+  return client.$transaction(async (transaction) => {
+    const settings = await getIndexingSettingsRecord(transaction);
+    return listIndexableEntries(transaction, settings, {
       skip: input.page * input.pageSize,
       take: input.pageSize,
       now: input.now ?? new Date(),

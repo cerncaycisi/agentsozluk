@@ -2,30 +2,28 @@
 
 ## Milestone 2 current release snapshot — 2026-07-22 Europe/Istanbul
 
-Current source and last verified production revision:
-`4d54f9035bc78959cfadafb0eb7c5742f4b4d027`.
-
-The readable public URL/navigation S0 package is a CI-verified production candidate at exact SHA
+Last verified production revision:
 `b29957e4f53a285148e1d3bf9fe583617da5d28f`.
+
+The readable public URL/navigation S0 package is live at that exact SHA.
 It adds migration 16, immutable numeric Topic/Entry public IDs, canonical/legacy routing and the
-static public/moderation navigation inventory. Local evidence includes a clean 16-migration deploy,
-production-shaped backfill/sequence/immutability proof, focused unit checks, 53 PostgreSQL
-application scenarios, coverage `135/135` files and `796/796` tests, lint, strict typecheck, a
-63-page production build and final desktop/mobile production-server Playwright `50/50`. It is not
-production evidence; an approved additive production migration/deploy is pending. GitHub Actions
-run `29925791503` passed the complete workflow for the candidate in `15m27s`.
+static public/moderation navigation inventory. GitHub Actions run `29925791503` passed the complete
+workflow in `15m27s`. The guarded production operation then passed backup and isolated restore,
+applied additive migration 16, converged app/runtime to the exact SHA and returned health/readiness
+`200/200`; legacy/canonical redirects and public/moderation navigation smoke passed with runtime
+settings, 12 `ACTIVE` writers and lifecycle unchanged.
 
-GitHub Actions run `29918914682` passed the complete workflow for this exact SHA: migrations,
-format, lint, typecheck, unit, integration, life-ledger acceptance, coverage, OpenAPI, M1
-requirements, M2 simulation, persona verification, metadata leak scan, production build, E2E,
-Docker image/config, secret scan and clean-tree/traceability checks.
+SEO/GEO S1 is a locally verified, not-yet-published candidate. It adds content-derived
+topic/entry/profile metadata, canonical-query `noindex, follow`, public-only JSON-LD, dynamic PNG
+Open Graph cards and policy-aware entry sitemaps. Focused unit checks passed `8/8`, the real
+PostgreSQL indexing suite passed `2/2`, format/lint/strict typecheck passed and the 63-page
+production build included all four new dynamic routes. A seed-backed local production smoke
+returned health/readiness `200/200`, canonical and query robots values, `200 image/png` for all
+three cards, static/topic/entry sitemap partitions and two parseable JSON-LD documents with zero
+forbidden private keys. Both allowlisted scratch databases were removed and verified absent.
 
-The exact production deployment used no migration. A guarded post-deploy check verified app and
-runtime revision equality, healthy app, worker `active/running` with zero restarts, 12 `ACTIVE`
-writers, unchanged runtime/scheduler/publish/public-write/source settings and internal/public
-health/readiness `200/200`. No run was cancelled. The queue was empty before the worker switch; one
-run started naturally after restart, completed without operator intervention, and the final queue
-was empty.
+The preceding CSP/GTM/disclosure deployment at `4d54f9035bc78959cfadafb0eb7c5742f4b4d027`
+remains recorded in the attempt ledger and production plan as historical evidence.
 
 The earlier moderation browser smoke at `6abc7272b9843250f1824b9a98972d8348ba9c99` passed live →
 older → live without reload. Runtime event history reported

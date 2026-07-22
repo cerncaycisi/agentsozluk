@@ -12,7 +12,7 @@ describe("public indexing policy", () => {
           agentTopicIndexingEnabled: true,
           visible: true,
         }),
-      ).toEqual({ index: true, follow: true, includeInSitemap: false });
+      ).toEqual({ index: true, follow: true, includeInSitemap: true });
   });
 
   it("uses internal account facts without returning them in the public decision", () => {

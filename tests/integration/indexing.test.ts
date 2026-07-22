@@ -5,6 +5,8 @@ import {
   getEntryIndexingDecision,
   getIndexingDashboard,
   getProfileIndexingDecision,
+  getSitemapEntries,
+  getSitemapEntryCount,
   getSitemapTopicCount,
   getSitemapTopics,
   getTopicIndexingDecision,
@@ -102,6 +104,16 @@ describe("indexing policy with PostgreSQL", () => {
         createdAt: new Date(now.getTime() - 7 * 60 * 60_000),
       },
     });
+    const humanEntry = await integrationDatabase.entry.create({
+      data: {
+        topicId: oldHuman.id,
+        authorId: human.id,
+        body: "Indexlenebilir insan entry içeriği.",
+        normalizedBody: "indexlenebilir insan entry içeriği.",
+        origin: "WEB",
+        createdAt: new Date(now.getTime() - 7 * 60 * 60_000),
+      },
+    });
     const hiddenTopicEntry = await integrationDatabase.entry.create({
       data: {
         topicId: hiddenTopic.id,
@@ -114,6 +126,12 @@ describe("indexing policy with PostgreSQL", () => {
     });
 
     expect(await getSitemapTopicCount(integrationDatabase, now)).toBe(2);
+    expect(await getSitemapEntryCount(integrationDatabase, now)).toBe(2);
+    expect(
+      (await getSitemapEntries(integrationDatabase, { page: 0, pageSize: 10, now })).map(
+        ({ id }) => id,
+      ),
+    ).toEqual(expect.arrayContaining([agentEntry.id, humanEntry.id]));
     expect(
       (await getSitemapTopics(integrationDatabase, { page: 0, pageSize: 10, now })).map(
         ({ id }) => id,
@@ -128,6 +146,12 @@ describe("indexing policy with PostgreSQL", () => {
       sitemapDelayMinutes: 0,
     });
     expect(await getSitemapTopicCount(integrationDatabase, now)).toBe(2);
+    expect(await getSitemapEntryCount(integrationDatabase, now)).toBe(1);
+    expect(
+      (await getSitemapEntries(integrationDatabase, { page: 0, pageSize: 10, now })).map(
+        ({ id }) => id,
+      ),
+    ).toEqual([humanEntry.id]);
     expect(await getTopicIndexingDecision(integrationDatabase, oldAgent.id)).toEqual({
       index: false,
       follow: false,
@@ -159,6 +183,7 @@ describe("indexing policy with PostgreSQL", () => {
       sitemapDelayMinutes: 10_080,
     });
     expect(await getSitemapTopicCount(integrationDatabase, now)).toBe(0);
+    expect(await getSitemapEntryCount(integrationDatabase, now)).toBe(0);
     await updateGlobalSettings(integrationDatabase, actor(human.id), {
       indexingMode: "NOINDEX_ALL_DYNAMIC",
       agentTopicIndexingEnabled: true,
@@ -175,7 +200,11 @@ describe("indexing policy with PostgreSQL", () => {
       },
     });
     expect(await getSitemapTopicCount(integrationDatabase, now)).toBe(0);
+    expect(await getSitemapEntryCount(integrationDatabase, now)).toBe(0);
     expect(await getSitemapTopics(integrationDatabase, { page: 0, pageSize: 10, now })).toEqual([]);
+    expect(await getSitemapEntries(integrationDatabase, { page: 0, pageSize: 10, now })).toEqual(
+      [],
+    );
     expect(await getIndexingDashboard(integrationDatabase, actor(human.id), now)).toMatchObject({
       newUrlsToday: 0,
       delayedTopics: 0,
