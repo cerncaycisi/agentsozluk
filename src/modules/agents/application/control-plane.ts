@@ -619,53 +619,16 @@ export async function updateAgent(
     if (current.lifecycleStatus === "RETIRED") {
       throw new AppError("AGENT_LIFECYCLE_INVALID", 409, "Emekli agent düzenlenemez.");
     }
-    const quotaChanged = input.useGlobalEntryQuota !== undefined || input.dailyEntry !== undefined;
-    const quotaCandidate = quotaChanged
-      ? {
-          useGlobalEntryQuota: input.useGlobalEntryQuota ?? current.useGlobalEntryQuota,
-          dailyEntryMin:
-            input.useGlobalEntryQuota === true
-              ? null
-              : input.dailyEntry !== undefined
-                ? (input.dailyEntry?.min ?? null)
-                : current.dailyEntryMin,
-          dailyEntryMax:
-            input.useGlobalEntryQuota === true
-              ? null
-              : input.dailyEntry !== undefined
-                ? (input.dailyEntry?.max ?? null)
-                : current.dailyEntryMax,
-        }
-      : null;
     if (
-      quotaCandidate?.useGlobalEntryQuota &&
-      input.dailyEntry !== undefined &&
-      input.dailyEntry !== null
+      input.useGlobalEntryQuota !== undefined ||
+      input.dailyEntry !== undefined ||
+      input.dailyTopic !== undefined ||
+      input.dailyVote !== undefined
     ) {
       throw new AppError(
-        "QUOTA_INVALID",
-        422,
-        "Global quota seçiliyken özel agent entry quota gönderilemez.",
-      );
-    }
-    if (
-      quotaCandidate &&
-      !quotaCandidate.useGlobalEntryQuota &&
-      (quotaCandidate.dailyEntryMin === null || quotaCandidate.dailyEntryMax === null)
-    ) {
-      throw new AppError("QUOTA_INVALID", 422, "Özel quota için entry min/max zorunludur.");
-    }
-    if (quotaCandidate) {
-      await lockAgentSettings(transaction);
-      const [settings, profiles] = await Promise.all([
-        getGlobalSettingsRecord(transaction),
-        getQuotaProfiles(transaction),
-      ]);
-      assertQuotaConsistency(
-        settings,
-        profiles.map((profile) =>
-          profile.id === agentProfileId ? { ...profile, ...quotaCandidate } : profile,
-        ),
+        "AGENT_DAILY_PLANNING_RETIRED",
+        410,
+        "Agent günlük hedef ve quota ayarları kaldırıldı; stochastic toplum akışı hedefsiz çalışır.",
       );
     }
     const identityPatchRequested = input.displayName !== undefined || input.publicBio !== undefined;
@@ -730,19 +693,6 @@ export async function updateAgent(
     const effectiveDisplayName = personaInput?.displayName ?? input.displayName;
     const effectivePublicBio = personaInput?.publicBio ?? input.publicBio;
     const profileData = {
-      ...(quotaCandidate
-        ? {
-            useGlobalEntryQuota: quotaCandidate.useGlobalEntryQuota,
-            dailyEntryMin: quotaCandidate.dailyEntryMin,
-            dailyEntryMax: quotaCandidate.dailyEntryMax,
-          }
-        : {}),
-      ...(input.dailyTopic
-        ? { dailyTopicMin: input.dailyTopic.min, dailyTopicMax: input.dailyTopic.max }
-        : {}),
-      ...(input.dailyVote
-        ? { dailyVoteMin: input.dailyVote.min, dailyVoteMax: input.dailyVote.max }
-        : {}),
       ...(input.activeTimeProfile ? { activeTimeProfile: input.activeTimeProfile } : {}),
       ...(input.personaEvolutionEnabled !== undefined
         ? { personaEvolutionEnabled: input.personaEvolutionEnabled }

@@ -52,6 +52,16 @@ Full verification is `pnpm verify:m1`. Do not skip tests or weaken coverage thre
 Milestone 2 verification is `pnpm verify:m2`. Keep the M1 regression gate inside it and do not mark
 `docs/M2_TRACEABILITY.md` rows PASS without implementation plus direct verification evidence.
 
+## Attempt ledger
+
+- Read `docs/ATTEMPT_LOG.md` before repeating environment recovery, CI diagnosis or production
+  deployment work.
+- After a material success or failure, append the date, exact SHA/environment, exact safe error,
+  root cause, verified resolution and a short `do not repeat` note.
+- Never put secrets, credentials, raw environment values, prompts or entry bodies in the ledger.
+- A failed attempt is not evidence for a code regression until environment and fixture causes have
+  been separated with a focused rerun.
+
 ## Definition of done
 
 All 811 requirement IDs must map to real implementation and verification in

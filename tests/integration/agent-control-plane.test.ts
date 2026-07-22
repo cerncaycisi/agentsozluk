@@ -854,14 +854,10 @@ describe("agent control plane with PostgreSQL", () => {
     ).resolves.toMatchObject({ runtimeEnabled: true });
   });
 
-  it("rechecks every non-retired profile before accepting an agent quota edit", async () => {
+  it("rejects retired per-agent daily target and quota edits", async () => {
     const admin = await createPrincipal();
     const created = await createFirstAgent(admin.id);
     const profileId = created.agent.profile.id;
-    await updateGlobalSettings(integrationDatabase, actor(admin.id), {
-      globalDailyEntryMin: 15,
-      globalDailyEntryMax: 20,
-    });
 
     await expect(
       updateAgent(
@@ -873,7 +869,7 @@ describe("agent control plane with PostgreSQL", () => {
           dailyEntry: { min: 0, max: 0 },
         }),
       ),
-    ).rejects.toMatchObject({ code: "QUOTA_INVALID" });
+    ).rejects.toMatchObject({ code: "AGENT_DAILY_PLANNING_RETIRED", status: 410 });
     expect(
       await integrationDatabase.agentProfile.findUniqueOrThrow({ where: { id: profileId } }),
     ).toMatchObject({
@@ -888,15 +884,11 @@ describe("agent control plane with PostgreSQL", () => {
         actor(admin.id),
         profileId,
         updateAgentSchema.parse({
-          useGlobalEntryQuota: false,
-          dailyEntry: { min: 15, max: 20 },
+          dailyTopic: { min: 2, max: 4 },
+          dailyVote: { min: 5, max: 10 },
         }),
       ),
-    ).resolves.toMatchObject({
-      useGlobalEntryQuota: false,
-      dailyEntryMin: 15,
-      dailyEntryMax: 20,
-    });
+    ).rejects.toMatchObject({ code: "AGENT_DAILY_PLANNING_RETIRED", status: 410 });
   });
 
   it("allows concurrency 2 only with the latest fresh successful capability measurement", async () => {

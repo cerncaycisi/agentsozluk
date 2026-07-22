@@ -118,12 +118,14 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     expect(denied.error?.code).toBe("FORBIDDEN");
   });
 
-  test("E2E-003 agent create", async ({ page }) => {
+  test("E2E-003 agent create", async ({ page }, testInfo) => {
     await login(page);
+    const basePersona =
+      originalPersonaPack.personas[testInfo.retry % originalPersonaPack.personas.length]!;
     const persona = {
-      ...originalPersonaPack.personas[0],
-      username: `${originalPersonaPack.personas[0]!.username}_${suffix}`.slice(0, 32),
-      displayName: `${originalPersonaPack.personas[0]!.displayName} ${suffix.slice(-4)}`,
+      ...basePersona,
+      username: `${basePersona.username}_${suffix}`.slice(0, 32),
+      displayName: `${basePersona.displayName} ${suffix.slice(-4)}`,
     };
     const created = await browserApi<{
       agent: { profile: { id: string }; user: { username: string } };
@@ -150,45 +152,39 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     expect(updated.user.displayName).toBe(`E2E Agent ${suffix}`);
   });
 
-  test("E2E-005 quota change", async ({ page }) => {
+  test("E2E-005 global daily planning is retired", async ({ page }) => {
     await login(page);
     const settings = await browserApi<{ settingsVersion: number }>(
       page,
       "GET",
       "/api/v1/admin/agent-settings",
     );
-    await browserApi(page, "PATCH", "/api/v1/admin/agent-settings", {
-      expectedSettingsVersion: settings.settingsVersion,
-      changeReason: "E2E quota apply-mode ve global target değişikliği doğrulaması.",
-      quotaApplyMode: "REGENERATE_REMAINING_TODAY",
-      globalDailyEntryMin: 15,
-      globalDailyEntryMax: 20,
-    });
-    const updated = await browserApi<{
-      useGlobalEntryQuota: boolean;
-      dailyEntryMin: number;
-      dailyEntryMax: number;
-    }>(page, "PATCH", `/api/v1/admin/agents/${agentProfileId}`, {
-      useGlobalEntryQuota: false,
-      dailyEntry: { min: 15, max: 20 },
-    });
-    expect(updated).toMatchObject({
-      useGlobalEntryQuota: false,
-      dailyEntryMin: 15,
-      dailyEntryMax: 20,
-    });
+    const retired = await browserApi<Envelope>(
+      page,
+      "PATCH",
+      "/api/v1/admin/agent-settings",
+      {
+        expectedSettingsVersion: settings.settingsVersion,
+        changeReason: "E2E retired global daily target contract verification.",
+        quotaApplyMode: "REGENERATE_REMAINING_TODAY",
+        globalDailyEntryMin: 15,
+        globalDailyEntryMax: 20,
+      },
+      410,
+    );
+    expect(retired.error?.code).toBe("AGENT_DAILY_PLANNING_RETIRED");
   });
 
-  test("E2E-006 invalid quota rejected", async ({ page }) => {
+  test("E2E-006 per-agent daily planning is retired", async ({ page }) => {
     await login(page);
-    const rejected = await browserApi<Envelope>(
+    const retired = await browserApi<Envelope>(
       page,
       "PATCH",
       `/api/v1/admin/agents/${agentProfileId}`,
-      { useGlobalEntryQuota: false, dailyEntry: { min: 20, max: 15 } },
-      422,
+      { useGlobalEntryQuota: false, dailyEntry: { min: 15, max: 20 } },
+      410,
     );
-    expect(rejected.error?.code).toBe("VALIDATION_ERROR");
+    expect(retired.error?.code).toBe("AGENT_DAILY_PLANNING_RETIRED");
   });
 
   test("E2E-007 manual normal", async ({ page }) => {
@@ -426,8 +422,8 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     await page.goto("/moderasyon/agent-kapasite");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByText(/Concurrency/u).first()).toBeVisible();
-    await expect(page.getByText("Projected target shortfall", { exact: true })).toBeVisible();
-    await expect(page.getByText("Son actual günlük SLO miss", { exact: true })).toBeVisible();
+    await expect(page.getByText("Eligible queued run", { exact: true })).toBeVisible();
+    await expect(page.getByText("Gerçek utilization · 1 saat", { exact: true })).toBeVisible();
   });
 
   test("E2E-021 agent content moderation", async ({ page, request }) => {
@@ -436,7 +432,6 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
       runType: "NORMAL_WAKE",
       entryTarget: 1,
       priority: "EMERGENCY",
-      dailyMaximumOverride: true,
     });
     const workerId = `e2e-worker-${suffix}`;
     const lease = await runtimeApi<{ run: { id: string; leaseToken: string } }>(
