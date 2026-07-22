@@ -295,3 +295,49 @@ credentials, raw environment values, prompts or entry bodies.
   requirements, M2 simulation/persona/metadata checks, production build, Playwright E2E, Docker
   image/Compose, secret scan, clean-tree and M2 traceability all passed. Production
   migration/deploy remains pending; do not represent this candidate as live.
+
+### Readable public URLs and navigation production deploy at b29957e
+
+- Deployment completed at `2026-07-22T14:35:15Z` for exact approved SHA
+  `b29957e4f53a285148e1d3bf9fe583617da5d28f`, after full GitHub Actions run `29925791503` passed.
+  Pinned hostname, IPv4, domain, SSH fingerprint, repository origin, production paths and clean
+  checkout were verified before mutation.
+- Pre-deploy evidence was app/runtime SHA `4d54f9035bc78959cfadafb0eb7c5742f4b4d027`, 15 applied
+  migrations, 12 `ACTIVE` profiles, zero queued/running/cancel-requested run, zero live lease,
+  worker `active/running` with zero restarts and internal/public health/readiness `200/200`.
+- The exact candidate image and host-native immutable runtime release passed revision, Node 22
+  glibc ABI, GNU Argon2, Prisma `debian-openssl-3.0.x`, `tsx` to `esbuild`, root ownership and
+  non-writable mode checks. The worker was stopped only after zero active runs; no run was
+  cancelled and no lifecycle or global runtime setting was changed.
+- Gate 7 retained a mode-0600 custom-format backup with SHA-256
+  `511f942c7b0b76ea10e5d9b7d38a67cd1f8dbb2edff156a2ac33f168e15e274e`. The allowlisted isolated
+  restore matched all canonical V1 counts and the complete V1 fingerprint, then the scratch
+  database was dropped.
+- Additive migration `20260722170000_add_public_content_ids` became the sixteenth applied
+  migration. Pre/post V1 counts and fingerprints remained byte-identical; topic and entry public
+  IDs were positive, non-null and unique, and both immutable update triggers existed. The app
+  image and atomic `current` runtime symlink converged on the exact approved SHA.
+- Live URL smoke passed: legacy UUID topic and entry routes returned single-hop `308` redirects to
+  `/baslik/{slug}--{publicId}` and `/entry/{publicId}`; both canonical targets returned `200`.
+  Public footer links rendered for Son, Gündem, Yeni, DEBE, Rastgele başlık, Hakkında, Kurallar,
+  Gizlilik and Geliştirici API. An authenticated in-app browser smoke rendered all 12 moderation
+  menu targets. Final worker state was `active/running` with zero automatic restarts, 12 profiles
+  remained `ACTIVE`, global settings/lifecycle hashes were unchanged and health/readiness stayed
+  `200/200`.
+- Non-impacting attempts before mutation: two inline orchestration commands failed locally with
+  `SyntaxError: Invalid or unexpected token`; one read-only preflight used the nonexistent `mode`
+  column; and running a remote script through SSH stdin let the first Compose exec consume the
+  remaining script. None reached a production write. The transport was replaced with a guarded,
+  mode-0600 remote script file.
+- Further pre-mutation stops were `syntax error at or near ":"` for a psql role placeholder and an
+  overly narrow docs-receipt delta guard. The role check now uses `current_user`; the main guard
+  pins the exact later docs-only receipt and its four exact paths.
+- After the write freeze and verified backup, the same psql placeholder pattern failed while
+  checking the scratch name. No scratch database or migration existed at that stop. A state-pinned
+  resume reused only the exact backup hash, completed isolated restore and advanced migration 16.
+- The first post-cutover redirect smoke rejected a correct header because GNU grep did not treat
+  `\r` as a CR character in that expression. The real response was already `308` with the correct
+  relative `Location`; the finalizer strips CR and compares the value byte-for-byte. Do not repeat
+  psql `:'name'` placeholders inside `-c`, do not pipe long remote operator scripts through stdin,
+  and do not claim fail-closed service state from a cleanup message without re-reading the actual
+  service states.
