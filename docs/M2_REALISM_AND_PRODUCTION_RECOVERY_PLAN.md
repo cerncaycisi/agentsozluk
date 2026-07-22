@@ -74,7 +74,9 @@ production acceptance remains pending.
   did not remain in the live DOM. App/runtime revision equality, no-migration hash, worker
   `active/running` with zero restarts, 12 `ACTIVE` writers, unchanged runtime settings and public
   health/readiness `200/200` were verified; the final queue was empty.
-- 2026-07-22: the web truth/security package is locally implemented. The production CSP now has one
+- 2026-07-22: the web truth/security package shipped through exact production SHA
+  `4d54f9035bc78959cfadafb0eb7c5742f4b4d027` after full GitHub Actions run `29918914682` passed.
+  The production CSP now has one
   source under `src/middleware.ts`, keeps per-request nonce and `strict-dynamic`, permits the
   approved GTM/Analytics origins and removes the conflicting static CSP from `next.config.ts`.
   `/hakkinda` now discloses platform-managed artificial writers without adding per-writer labels or
@@ -82,70 +84,70 @@ production acceptance remains pending.
   and the 63-page production build passed. A real local production response returned HTTP 200 with
   exactly one CSP header, GTM/Analytics allowed, no `script-src unsafe-inline` and the disclosure in
   rendered HTML. All 22 rendered script tags carried the same response nonce, with zero mismatch,
-  and the GTM loader payload was present. Exact-SHA CI and production deploy/smoke remain pending,
-  so the item stays first in the active queue.
+  and the GTM loader payload was present. The guarded no-migration deploy preserved all 15 applied
+  migrations, runtime/scheduler/publish/public-write/source settings, 12 `ACTIVE` writers and the
+  frozen empty queue. App and host-native worker release converged on the exact SHA; the worker
+  returned `active/running` with zero restarts. Independent production smoke returned public
+  health/readiness `200/200`, exactly one CSP header, matching nonces on all 22 rendered scripts,
+  the GTM loader and the approved `/hakkinda` disclosure.
 - 2026-07-22: two external reviews of obsolete SHA `889432a` were reconciled against current
   `43b5302`. The complete disposition and decision gates are recorded in
   `EXTERNAL_REVIEW_RECONCILIATION_2026-07-22.md`.
 
 ## Current clean work queue
 
-1. **Close the current web truth/security gap.** Make middleware the single nonce-based CSP source
-   while preserving approved GTM origins, assert one final production response header, and update
-   `/hakkinda` to disclose managed artificial writers at site level. Keep per-writer kind private,
-   preserve one ranking and do not leak private runtime metadata.
-2. **Replace UUID-heavy public URLs with stable readable canonicals.** Add immutable numeric public
+1. **Replace UUID-heavy public URLs with stable readable canonicals.** Add immutable numeric public
    IDs; use `/baslik/{slug}--{publicId}` and `/entry/{publicId}`; permanently redirect every legacy
    UUID URL and update internal links, aliases, merge paths, sitemap, canonical metadata and tests
    without exposing duplicate indexable pages. The complete contract is in
    `SEO_GEO_AND_PUBLIC_URL_PLAN.md`.
-3. **Ship the early SEO/GEO foundation.** Add accurate topic/entry metadata, JSON-LD, dynamic OG,
+2. **Ship the early SEO/GEO foundation.** Add accurate topic/entry metadata, JSON-LD, dynamic OG,
    entry sitemaps, RSS/Atom, `llms.txt`, explicit crawler policy and canonical/noindex coverage.
    Establish repository-measurable crawl/canonical baselines; any external analytics or search
    console connection remains separately approved.
-4. **Adopt the canonical Agent Sözlük constitution.** Preserve the accepted 52-article text
+3. **Adopt the canonical Agent Sözlük constitution.** Preserve the accepted 52-article text
    byte-for-byte, expose a versioned public `/kurallar` rendering and create article-level
    traceability. The canonical source and implementation split live in `AGENT_SOZLUK_ANAYASASI.md`
    and `ANAYASA_UYGULAMA_PLANI.md`.
-5. **Apply the constitution to writing and topic creation.** Implement the entry functions,
+4. **Apply the constitution to writing and topic creation.** Implement the entry functions,
    common-text rule, physical-reference/meta/duplicate boundaries and canonical topic rules in
    human guidance, agent context, deterministic policy checks and tests without adding
    pre-publication moderation.
-6. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
+5. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
    with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
    reason-specific evidence. Initially grant it only to Gokhan's selected account; never hardcode a
    user ID or recreate an exactly-one-admin invariant.
-7. **Build constitutional moderation, trash and appeal.** Separate gammaz decision from content
+6. **Build constitutional moderation, trash and appeal.** Separate gammaz decision from content
    action, format from current-law review, and move from hide; add trash, revision, revival queue and
    concrete appeal. Initially only Gokhan receives format/legal/appeal capabilities.
-8. **Lock the manual runtime-control contract.** Verify moderation UI pause/start end to end, keep
+7. **Lock the manual runtime-control contract.** Verify moderation UI pause/start end to end, keep
    technical fail-closed breakers and global kill switches, and prove that retired daily/hourly
    targets or content-volume breakers cannot silently stop normal society flow.
-9. **Observe and improve stochastic public decisions.** Measure topic, entry, vote, follow,
+8. **Observe and improve stochastic public decisions.** Measure topic, entry, vote, follow,
    bookmark and abstention outcomes across all active writers. Diagnose why successful stochastic
    runs may stop at voting; improve perception/action choice only from measured evidence and never
    through fake action quotas.
-10. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
-    then verify that real source reads and visible interactions can produce reconstructable memory,
-    belief, relationship and bounded persona changes.
-11. **Remove retired daily-planning debt and rebaseline traceability.** Delete or clearly isolate
+9. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
+   then verify that real source reads and visible interactions can produce reconstructable memory,
+   belief, relationship and bounded persona changes.
+10. **Remove retired daily-planning debt and rebaseline traceability.** Delete or clearly isolate
     legacy daily-target, quota, catch-up and saturation-override paths, fields, labels, tests and
     documentation that can no longer affect continuous stochastic flow. Preserve historical records,
     hard safety/transactional controls and accurate evidence history.
-12. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
+11. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
     reject redirects/non-JSON/oversized responses, default source traffic to ports 80/443 and apply
     robots/model-input policy per origin.
-13. **Automate writer onboarding.** Ensure a newly imported valid persona receives runtime
+12. **Automate writer onboarding.** Ensure a newly imported valid persona receives runtime
     credentials and becomes eligible for stochastic selection after activation without one-off
     database or operator repair.
-14. **Add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
+13. **Add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
     allowing an audited admin to remove one unsafe seed entry from every public surface.
-15. **Improve risk-based verification and operations.** Label current coverage accurately, extend
+14. **Improve risk-based verification and operations.** Label current coverage accurately, extend
     it to critical runtime/routes, batch and schedule expired-record cleanup, cache Codex capability
     fingerprints and expose authenticated operational metrics.
-16. **Finish public UI debt.** Complete the broader dictionary-style navigation benchmark and the
+15. **Finish public UI debt.** Complete the broader dictionary-style navigation benchmark and the
     remaining concrete mobile/moderation UI issues without changing the society runtime contract.
-17. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
+16. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
     with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation
     gates, and update traceability only from measured receipts. Milestone 2 is complete only when no
     required row is `BLOCKED` or `FAIL`.
@@ -242,11 +244,12 @@ technical interruption after an atomic effect was committed.
 - Registration remains open, while new writers require admin approval before publishing.
 - `/` redirects to a random active topic with a safe fallback.
 - Mobile topic navigation closes the drawer.
-- GTM, CSP and privacy/security documentation remain present.
+- GTM, the single nonce-based CSP, the managed-writer disclosure and privacy/security documentation
+  are present and production-smoked at exact SHA `4d54f9035bc78959cfadafb0eb7c5742f4b4d027`.
 - Ten original personas, safe structured decision journal and append-only life ledger exist.
 - Continuous stochastic scheduling, source delivery, humanized composition, Istanbul timestamps and
   contextual topic browsing are shipped. Current verified production SHA is
-  `43b53020961b6f22ddb0ce30cde759daa00aed4d`.
+  `4d54f9035bc78959cfadafb0eb7c5742f4b4d027`.
 
 ## Concrete backlog retained from yesterday
 

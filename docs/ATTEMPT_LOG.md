@@ -199,7 +199,44 @@ credentials, raw environment values, prompts or entry bodies.
   `unsafe-inline`, and the managed-writer disclosure. All 22 rendered script tags carried the same
   response nonce with zero mismatch, and the serialized GTM loader payload was present.
 - Focused security/layout verification passed `15/15`; formatting, lint, strict typecheck and the
-  production build passed. Exact-SHA CI and production deploy remain pending.
+  production build passed. Full GitHub Actions run `29918914682` then passed for exact SHA
+  `4d54f9035bc78959cfadafb0eb7c5742f4b4d027`.
 - Do not repeat: code presence and a direct middleware unit call are not proof Next registered a
   middleware entrypoint. For every security-header change, inspect build registration and smoke the
   real production-mode HTTP response.
+
+### Single-CSP production deploy at 4d54f903
+
+- Pinned hostname, IPv4, domain, SSH fingerprint, repository origin and Compose path were verified
+  before every connection. Pre-deploy checkout, app image and immutable worker release were clean
+  and equal at `6abc7272b9843250f1824b9a98972d8348ba9c99`; worker state was `active/running` with zero
+  restarts, runtime/scheduler/publish/public-write/source settings were enabled in `NORMAL` mode,
+  all 12 writers were `ACTIVE`, and no run was queued or running.
+- The old and candidate Git migration trees had the same aggregate hash. The candidate application
+  image passed its production build and exact revision-label check. The host-native runtime bundle
+  passed Node 22/glibc ABI, GNU Argon2, Prisma `debian-openssl-3.0.x`, immutable ownership/mode and
+  `tsx` to `esbuild` symlink-resolution probes. GNU tar used `--hard-dereference`; no migration
+  command ran.
+- At cutover, the worker stopped only after zero active runs. A SHA-specific Compose override used
+  the already-proven environment-validation, database-wait and `node server.js` entrypoint without
+  Prisma. The app image and `current` runtime symlink atomically converged on exact SHA
+  `4d54f9035bc78959cfadafb0eb7c5742f4b4d027`.
+- Frozen-state evidence remained byte-identical: queue count `0`, all selected global settings,
+  complete lifecycle mapping and the 15 applied-migration aggregate
+  `dc2a538aac7677e4aa7976096dffffe8`. The worker returned `active/running` with zero automatic
+  restarts and the scheduler later began one normal run without operator queue mutation.
+- Production smoke passed: internal and public health/readiness `200/200`; exactly one CSP response
+  header; `strict-dynamic` plus approved GTM/Analytics origins; no `script-src unsafe-inline`; all
+  22 rendered script tags matched the response nonce; GTM loader present; approved managed-writer
+  disclosure rendered on `/hakkinda`. The temporary remote deploy script was removed.
+- Non-impacting reconnaissance failures encountered before cutover: an intentionally broad `find`
+  reached protected `runtime/work` and `runtime/codex-home` paths and returned `Permission denied`;
+  a later format probe returned `file: command not found`. Both connections were read-only and were
+  replaced with exact allowlisted paths and tools already present on the host.
+- One independent receipt command stopped after its server/app/runtime/database checks because
+  `grep -F` treated the `^` header anchor literally. The production smoke had already passed; a new
+  fully guarded read-only connection used `awk`/non-literal anchoring and independently reconfirmed
+  the CSP, GTM, disclosure and `200/200` results.
+- Do not repeat: keep production discovery path-specific, do not assume the host has `file`, and do
+  not combine fixed-string grep with regex anchors. Record both successful and failed operator
+  attempts here even when a failure is confined to a read-only evidence command.
