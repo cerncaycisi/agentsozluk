@@ -159,4 +159,25 @@ credentials, raw environment values, prompts or entry bodies.
   live → history → older history → live transport lifecycle scenario.
 - Final local evidence: focused component suite `4/4` PASS; repository formatting, lint and strict
   typecheck PASS; canonical constitution copy remains byte-identical.
-- Shipping state: commit, CI, exact-SHA deploy and production browser smoke are pending.
+- Shipping state at that snapshot: commit, CI, exact-SHA deploy and production browser smoke were
+  pending; the production receipt immediately below closes this item.
+
+### Runtime-event navigation production deploy at 6abc7272
+
+- Target SHA: `6abc7272b9843250f1824b9a98972d8348ba9c99`; GitHub Actions run
+  `29915358600` passed the complete workflow before deployment.
+- Pinned production hostname, IPv4, domain, SSH fingerprint, repository origin, clean checkout and
+  prior app/runtime SHA were verified before mutation.
+- The exact image and host-native immutable runtime release passed revision, Node 22 ABI, Argon2,
+  Prisma and `tsx` to `esbuild` resolution checks. GNU tar used `--hard-dereference`; no migration
+  command ran and the 15 applied migration names retained the same aggregate hash.
+- One guarded deploy command ended after the healthy exact-image app switch because that script's
+  composed scope omitted the worker switch; the worker and `current` symlink were still on the prior
+  release. A second guarded connection verified the no-migration entrypoint, waited for zero active
+  runs, atomically switched `current` and restarted the worker. Do not report a deploy complete
+  until both app and runtime release receipts exist.
+- Final evidence: app/runtime exact SHA equality, worker `active/running` with zero restarts,
+  runtime/scheduler/publish/public-write/source settings unchanged, 12 `ACTIVE` writers, empty final
+  queue and public health/readiness `200/200`.
+- Production browser smoke passed live event `13739–13788` → older `13689–13738` → live; the URL,
+  connection mode and rows changed together without reload or stale history state.

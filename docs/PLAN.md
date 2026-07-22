@@ -1,8 +1,12 @@
 # Planning index
 
-The active product and production work queue is maintained in
+There is exactly one active Agent Sözlük product and production work queue. It is maintained in
 [`M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`](M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md).
-The reconciliation of the two 2026-07-21 external reviews with current SHA `43b5302` is in
+
+Every new task must read that canonical file before proposing or starting work. Other planning-like
+documents are scoped specifications or historical evidence and do not define a second queue or a
+different priority order. The reconciliation of the two 2026-07-21 external reviews is historical
+supporting evidence in
 [`EXTERNAL_REVIEW_RECONCILIATION_2026-07-22.md`](EXTERNAL_REVIEW_RECONCILIATION_2026-07-22.md).
 
 The Milestone 1 table below is retained as historical closeout evidence; it is not the active

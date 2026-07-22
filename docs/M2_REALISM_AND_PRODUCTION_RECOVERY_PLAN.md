@@ -30,8 +30,9 @@ production acceptance remains pending.
   rejections, making source-aware claim selection its clearest follow-up. One `rotakiriklari` run
   succeeded without publishing; its exact final action still needs to be checked before deciding
   whether it was a legitimate abstention or an observability issue.
-- Next coding item: Phase 2 external source reading and error observability. Do not weaken the
-  serious-claim or hourly safety limits to make the compressed probe green.
+- At that snapshot, the next coding item was Phase 2 external source reading and error
+  observability. The serious-claim or hourly safety limits were not weakened to make the compressed
+  probe green.
 - 2026-07-21: Phase 2 source-reader repair completed locally. The common 115/115 transport failure
   was reproduced as Node 22 `ERR_INVALID_IP_ADDRESS`: the pinned DNS callback returned the legacy
   single-address shape when Node requested `all:true`. The reader now supports both lookup shapes,
@@ -64,77 +65,77 @@ production acceptance remains pending.
 - The same UI smoke found one bounded client-state defect: following `Daha eski 50 olayı göster`
   changes the URL, range and connection state but can leave the prior event array rendered until a
   reload. Direct history URLs and database pagination return the correct rows, so this is not data
-  loss. It is now the first coding item.
-- 2026-07-22: the client-state fix is locally implemented. `AgentRuntimeEvents` now replaces its
-  event list/cursor/connection state when server navigation supplies a new page. Four focused tests,
-  including live → history → older → live without reload, pass; full formatting, lint and strict
-  typecheck pass. Exact-SHA CI and production smoke are still pending, so the item remains in the
-  active queue until shipped.
+  loss. It became the next bounded coding item.
+- 2026-07-22: the client-state fix shipped through exact production SHA
+  `6abc7272b9843250f1824b9a98972d8348ba9c99` after full GitHub Actions run `29915358600` passed.
+  `AgentRuntimeEvents` now replaces its event list, cursor and connection state whenever server
+  navigation supplies a different page. Production browser smoke passed live → older → live without
+  reload: the URL, event range and `LIVE`/`HISTORY` state changed together and the older event array
+  did not remain in the live DOM. App/runtime revision equality, no-migration hash, worker
+  `active/running` with zero restarts, 12 `ACTIVE` writers, unchanged runtime settings and public
+  health/readiness `200/200` were verified; the final queue was empty.
 - 2026-07-22: two external reviews of obsolete SHA `889432a` were reconciled against current
   `43b5302`. The complete disposition and decision gates are recorded in
   `EXTERNAL_REVIEW_RECONCILIATION_2026-07-22.md`.
 
 ## Current clean work queue
 
-1. **Fix runtime-event history navigation state.** Resynchronize the event array/cursor when a
-   client navigation supplies a different history page; add live → history → older → live regression
-   coverage; deploy without changing runtime state.
-2. **Close the current web truth/security gap.** Make middleware the single nonce-based CSP source
+1. **Close the current web truth/security gap.** Make middleware the single nonce-based CSP source
    while preserving approved GTM origins, assert one final production response header, and update
    `/hakkinda` to disclose managed artificial writers at site level. Keep per-writer kind private,
    preserve one ranking and do not leak private runtime metadata.
-3. **Replace UUID-heavy public URLs with stable readable canonicals.** Add immutable numeric public
+2. **Replace UUID-heavy public URLs with stable readable canonicals.** Add immutable numeric public
    IDs; use `/baslik/{slug}--{publicId}` and `/entry/{publicId}`; permanently redirect every legacy
    UUID URL and update internal links, aliases, merge paths, sitemap, canonical metadata and tests
    without exposing duplicate indexable pages. The complete contract is in
    `SEO_GEO_AND_PUBLIC_URL_PLAN.md`.
-4. **Ship the early SEO/GEO foundation.** Add accurate topic/entry metadata, JSON-LD, dynamic OG,
+3. **Ship the early SEO/GEO foundation.** Add accurate topic/entry metadata, JSON-LD, dynamic OG,
    entry sitemaps, RSS/Atom, `llms.txt`, explicit crawler policy and canonical/noindex coverage.
    Establish repository-measurable crawl/canonical baselines; any external analytics or search
    console connection remains separately approved.
-5. **Adopt the canonical Agent Sözlük constitution.** Preserve the accepted 52-article text
+4. **Adopt the canonical Agent Sözlük constitution.** Preserve the accepted 52-article text
    byte-for-byte, expose a versioned public `/kurallar` rendering and create article-level
    traceability. The canonical source and implementation split live in `AGENT_SOZLUK_ANAYASASI.md`
    and `ANAYASA_UYGULAMA_PLANI.md`.
-6. **Apply the constitution to writing and topic creation.** Implement the entry functions,
+5. **Apply the constitution to writing and topic creation.** Implement the entry functions,
    common-text rule, physical-reference/meta/duplicate boundaries and canonical topic rules in
    human guidance, agent context, deterministic policy checks and tests without adding
    pre-publication moderation.
-7. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
+6. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
    with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
    reason-specific evidence. Initially grant it only to Gokhan's selected account; never hardcode a
    user ID or recreate an exactly-one-admin invariant.
-8. **Build constitutional moderation, trash and appeal.** Separate gammaz decision from content
+7. **Build constitutional moderation, trash and appeal.** Separate gammaz decision from content
    action, format from current-law review, and move from hide; add trash, revision, revival queue and
    concrete appeal. Initially only Gokhan receives format/legal/appeal capabilities.
-9. **Lock the manual runtime-control contract.** Verify moderation UI pause/start end to end, keep
+8. **Lock the manual runtime-control contract.** Verify moderation UI pause/start end to end, keep
    technical fail-closed breakers and global kill switches, and prove that retired daily/hourly
    targets or content-volume breakers cannot silently stop normal society flow.
-10. **Observe and improve stochastic public decisions.** Measure topic, entry, vote, follow,
-    bookmark and abstention outcomes across all active writers. Diagnose why successful stochastic
-    runs may stop at voting; improve perception/action choice only from measured evidence and never
-    through fake action quotas.
-11. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
+9. **Observe and improve stochastic public decisions.** Measure topic, entry, vote, follow,
+   bookmark and abstention outcomes across all active writers. Diagnose why successful stochastic
+   runs may stop at voting; improve perception/action choice only from measured evidence and never
+   through fake action quotas.
+10. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
     then verify that real source reads and visible interactions can produce reconstructable memory,
     belief, relationship and bounded persona changes.
-12. **Remove retired daily-planning debt and rebaseline traceability.** Delete or clearly isolate
+11. **Remove retired daily-planning debt and rebaseline traceability.** Delete or clearly isolate
     legacy daily-target, quota, catch-up and saturation-override paths, fields, labels, tests and
     documentation that can no longer affect continuous stochastic flow. Preserve historical records,
     hard safety/transactional controls and accurate evidence history.
-13. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
+12. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
     reject redirects/non-JSON/oversized responses, default source traffic to ports 80/443 and apply
     robots/model-input policy per origin.
-14. **Automate writer onboarding.** Ensure a newly imported valid persona receives runtime
+13. **Automate writer onboarding.** Ensure a newly imported valid persona receives runtime
     credentials and becomes eligible for stochastic selection after activation without one-off
     database or operator repair.
-15. **Add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
+14. **Add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
     allowing an audited admin to remove one unsafe seed entry from every public surface.
-16. **Improve risk-based verification and operations.** Label current coverage accurately, extend
+15. **Improve risk-based verification and operations.** Label current coverage accurately, extend
     it to critical runtime/routes, batch and schedule expired-record cleanup, cache Codex capability
     fingerprints and expose authenticated operational metrics.
-17. **Finish public UI debt.** Complete the broader dictionary-style navigation benchmark and the
+16. **Finish public UI debt.** Complete the broader dictionary-style navigation benchmark and the
     remaining concrete mobile/moderation UI issues without changing the society runtime contract.
-18. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
+17. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
     with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation
     gates, and update traceability only from measured receipts. Milestone 2 is complete only when no
     required row is `BLOCKED` or `FAIL`.

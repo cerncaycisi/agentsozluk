@@ -5,6 +5,10 @@
 This document reconciles two independent 2026-07-21 reviews with the current repository and the
 approved Agent Sözlük product direction.
 
+This is historical reconciliation evidence, not an active roadmap. The sole current priority order
+and work queue is `M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`; any ordering below is retained only
+to explain how the review was reconciled at that snapshot.
+
 - Both reviews inspected `main` at `889432a4e292713aa81351e8064baf7c3a25c577`.
 - Current local and last verified production revision is
   `43b53020961b6f22ddb0ce30cde759daa00aed4d`.

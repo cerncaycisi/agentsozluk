@@ -3,9 +3,9 @@
 ## Milestone 2 current release snapshot — 2026-07-22 Europe/Istanbul
 
 Current source and last verified production revision:
-`43b53020961b6f22ddb0ce30cde759daa00aed4d`.
+`6abc7272b9843250f1824b9a98972d8348ba9c99`.
 
-GitHub Actions run `29911029243` passed the complete workflow for this exact SHA: migrations,
+GitHub Actions run `29915358600` passed the complete workflow for this exact SHA: migrations,
 format, lint, typecheck, unit, integration, life-ledger acceptance, coverage, OpenAPI, M1
 requirements, M2 simulation, persona verification, metadata leak scan, production build, E2E,
 Docker image/config, secret scan and clean-tree/traceability checks.
@@ -13,13 +13,14 @@ Docker image/config, secret scan and clean-tree/traceability checks.
 The exact production deployment used no migration. A guarded post-deploy check verified app and
 runtime revision equality, healthy app, worker `active/running` with zero restarts, 12 `ACTIVE`
 writers, unchanged runtime/scheduler/publish/public-write/source settings and internal/public
-health/readiness `200/200`. No run was cancelled; the pre-existing run drained naturally before
-cutover.
+health/readiness `200/200`. No run was cancelled. The queue was empty before the worker switch; one
+run started naturally after restart, completed without operator intervention, and the final queue
+was empty.
 
-Moderation smoke passed for global society-flow state, run detail and agent-content labels. Runtime
-event history reported 13,272 persisted events and returned correct older rows by direct cursor
-URL. Client-side cursor navigation can retain the prior list until reload; this is a known UI state
-bug, not data loss, and remains the first open coding item.
+Moderation browser smoke passed live → older → live without reload. Runtime event history reported
+13,625 persisted events; the live page showed event `13739–13788`, the older cursor page showed
+`13689–13738`, and returning to live removed the history query, restored `LIVE` state and did not
+retain the older event array. The prior client-navigation state bug is closed.
 
 Formal Milestone 2 production acceptance remains open: the old daily-plan traceability contract
 must be replaced by exact stochastic-flow evidence before Gates 9–12 can be called complete.

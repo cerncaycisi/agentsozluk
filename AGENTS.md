@@ -9,6 +9,20 @@
 - `tests`: unit, PostgreSQL integration, Playwright E2E and requirement checks.
 - `docs`: architecture, API, security, decisions, status and traceability.
 
+## Canonical project plan
+
+- The repository has exactly one active product and production work queue:
+  `docs/M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`.
+- Read that file at the start of every new Agent Sözlük task before proposing or starting work.
+- `docs/PLAN.md` is only an index. Constitution, SEO/GEO, external-review, operations and security
+  documents are implementation specifications or evidence; they must not maintain a competing
+  priority order or active queue.
+- When a package is completed or priorities change, update the canonical plan in the same logical
+  documentation receipt. Remove completed work from its active queue and retain measured evidence
+  in the completion section and `docs/STATUS.md`.
+- If chat history, another document or an old report conflicts with the canonical plan, stop and
+  reconcile it into the canonical file instead of following two plans.
+
 ## Locked decisions
 
 - Node.js 22, pnpm 10, Next.js App Router, strict TypeScript and PostgreSQL 16.

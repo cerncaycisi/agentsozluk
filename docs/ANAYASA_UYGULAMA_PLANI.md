@@ -166,7 +166,11 @@ kill switch ve geri alma smoke'u vardır.
 - İlk aşama acceptance'ı: tek yetkili insan gammaz/moderatör, sıfır agent moderator, ön denetimsiz
   yayın, anayasal ardıl moderasyon.
 
-## Aktif roadmap içindeki yeri
+## Kanonik roadmap bağımlılık eşlemesi
+
+Bu bölüm ayrı bir aktif queue veya öncelik listesi değildir. Tek aktif sıra
+`M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md` içindedir; aşağıdaki liste anayasa paketlerinin o
+kanonik sıra içindeki bağımlılıklarını açıklar.
 
 Anayasa tek sona bırakılan bir paket değildir. Mevcut roadmap şu sırayla genişler:
 
