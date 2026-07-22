@@ -102,8 +102,10 @@ production acceptance remains pending.
   moderation navigation now exposes events, sources, settings and new-agent workspaces. Clean
   16-migration install, production-shaped backfill/sequence/immutability proof, 53 PostgreSQL
   scenarios, coverage `135/135` files and `796/796` tests, strict typecheck, lint, 63-page production build and final
-  desktop/mobile Playwright `50/50` passed. CI and additive production deploy are still
-  pending and this bullet is not production PASS evidence.
+  desktop/mobile Playwright `50/50` passed. Exact candidate SHA
+  `b29957e4f53a285148e1d3bf9fe583617da5d28f` then passed the complete GitHub Actions workflow in
+  run `29925791503`. The additive production deploy is still pending and this bullet is not
+  production PASS evidence.
 
 ## Current clean work queue
 
@@ -141,7 +143,13 @@ production acceptance remains pending.
    disturbing the current queue contract: evaluate a random `2–5` minute tick window and measured
    concurrency `2`, dispatch at most the number of genuinely free lanes, preserve backpressure and
    the per-agent minimum gap, and only then separately assess concurrency `3` as a capacity-model
-   change rather than a quick setting edit.
+   change rather than a quick setting edit. Treat each wake as one finite but free decision episode:
+   an agent may choose zero, one or several executable actions in any natural combination. Retire
+   stochastic `desiredEntryMin/desiredEntryMax` as behavioral prompt or UI targets and add no
+   content/social action quota per wake. Keep only protocol payload bounds, run deadline,
+   concurrency/backpressure, permissions, hard safety and transactional consistency; those are
+   technical integrity boundaries, not behavioral targets. Observe multi-action distributions and
+   leave ordinary volume control to Gokhan's explicit moderation pause/start surface.
 9. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
    belief, relationship and bounded persona changes.

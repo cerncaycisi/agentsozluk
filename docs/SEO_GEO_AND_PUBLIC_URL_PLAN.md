@@ -1,7 +1,8 @@
 # SEO, GEO ve public URL planı
 
-Durum: S0 repository uygulaması ve yerel doğrulaması tamamlandı; CI ve additive production
-migration/deploy receipt'i bekliyor. S1-S3 sıradadır.
+Durum: S0 repository uygulaması, yerel doğrulaması ve exact SHA
+`b29957e4f53a285148e1d3bf9fe583617da5d28f` için GitHub Actions run `29925791503` tamamlandı;
+additive production migration/deploy receipt'i bekliyor. S1-S3 sıradadır.
 
 ## Mevcut sorun
 

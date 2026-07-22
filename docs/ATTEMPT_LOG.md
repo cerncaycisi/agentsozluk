@@ -285,8 +285,13 @@ credentials, raw environment values, prompts or entry bodies.
   so 199 integration tests stopped at reset with `User was denied access on the database`. A direct
   Prisma probe proved the difference. The corrected allowlisted scratch URL named the local owner
   explicitly; no privilege, engine or coverage bypass was used.
-- Final evidence: coverage `135/135` files and `796/796` tests PASS (statements/lines `93.45%`,
-  branches `85.41%`, functions `94.84%`), lint PASS, strict typecheck PASS, 63-page production build PASS, desktop/mobile
-  production-server Playwright `50/50` PASS. CI and production migration/deploy remain
-  pending. The allowlisted public-URL scratch database was dropped after validation and verified
-  absent. Do not represent this local candidate as live.
+- Final local evidence: coverage `135/135` files and `796/796` tests PASS (statements/lines
+  `93.45%`, branches `85.41%`, functions `94.84%`), lint PASS, strict typecheck PASS, 63-page
+  production build PASS and desktop/mobile production-server Playwright `50/50` PASS. The
+  allowlisted public-URL scratch database was dropped after validation and verified absent.
+- Publication evidence: commit `b29957e4f53a285148e1d3bf9fe583617da5d28f` was pushed directly
+  to `main`. GitHub Actions run `29925791503` completed successfully in `15m27s`: migration deploy,
+  format, lint, typecheck, unit, integration, life-ledger acceptance, coverage, OpenAPI, M1
+  requirements, M2 simulation/persona/metadata checks, production build, Playwright E2E, Docker
+  image/Compose, secret scan, clean-tree and M2 traceability all passed. Production
+  migration/deploy remains pending; do not represent this candidate as live.

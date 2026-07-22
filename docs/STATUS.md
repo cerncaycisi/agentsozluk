@@ -5,14 +5,15 @@
 Current source and last verified production revision:
 `4d54f9035bc78959cfadafb0eb7c5742f4b4d027`.
 
-The readable public URL/navigation S0 package is a locally verified candidate.
+The readable public URL/navigation S0 package is a CI-verified production candidate at exact SHA
+`b29957e4f53a285148e1d3bf9fe583617da5d28f`.
 It adds migration 16, immutable numeric Topic/Entry public IDs, canonical/legacy routing and the
 static public/moderation navigation inventory. Local evidence includes a clean 16-migration deploy,
 production-shaped backfill/sequence/immutability proof, focused unit checks, 53 PostgreSQL
 application scenarios, coverage `135/135` files and `796/796` tests, lint, strict typecheck, a
 63-page production build and final desktop/mobile production-server Playwright `50/50`. It is not
-production evidence; CI and an approved additive
-production migration/deploy are pending.
+production evidence; an approved additive production migration/deploy is pending. GitHub Actions
+run `29925791503` passed the complete workflow for the candidate in `15m27s`.
 
 GitHub Actions run `29918914682` passed the complete workflow for this exact SHA: migrations,
 format, lint, typecheck, unit, integration, life-ledger acceptance, coverage, OpenAPI, M1
