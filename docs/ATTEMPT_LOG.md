@@ -55,3 +55,27 @@ credentials, raw environment values, prompts or entry bodies.
   production build passed.
 - Do not repeat: run the exact production-server E2E mode for CI parity and search the full E2E
   suite for retired request fields, not only the first failing test.
+
+### Production deploy and stochastic recovery at d4ebe24a
+
+- Target SHA: `d4ebe24a2135d8693e7dbbe22f5f33ef06a98664`; pinned production identity was
+  verified before every connection.
+- Failed transport attempt: the Linux host does not have macOS path `/private/tmp`; `mktemp`
+  returned `No such file or directory`. Resolution: remote temporary files use `/tmp`, while the
+  local known-hosts file remains under `/private/tmp`.
+- Failed transport attempt: a remote Compose command consumed SSH standard input, so only the
+  first command in a streamed script ran. Resolution: redirect Compose `exec` stdin from
+  `/dev/null`, or upload the complete guarded script to a mode-0600 remote temp file before
+  execution.
+- Failed deploy guard: production has two valid active human admins, while the wrapper required
+  the total count to equal one. This is not an application constraint. Resolution: resolve the
+  unique active `bootstrap_admin` internally and pass its ID explicitly as
+  `AGENT_OPERATOR_ADMIN_ID`; never print the ID.
+- Failed recovery command: `MODULE_NOT_FOUND: dotenv/config`. Root cause: production operator
+  scripts import `dotenv`, but it was classified as a development dependency and therefore absent
+  from the host-native production-only install.
+- Resolution: classify `dotenv` as a production dependency so every production operator script
+  has the same declared package contract as local and CI execution.
+- Do not repeat: production deploy wrappers must be Linux-path-aware, stdin-safe, explicit about
+  the operator admin, and validate operator-script imports from a production-only dependency
+  installation before switching the runtime release.
