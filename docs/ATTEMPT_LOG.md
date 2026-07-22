@@ -79,3 +79,20 @@ credentials, raw environment values, prompts or entry bodies.
 - Do not repeat: production deploy wrappers must be Linux-path-aware, stdin-safe, explicit about
   the operator admin, and validate operator-script imports from a production-only dependency
   installation before switching the runtime release.
+
+### Moderation observability package
+
+- Scope: persisted runtime-event history pagination, global society-flow visibility and removal of
+  retired daily/saturation override labels from current moderation surfaces.
+- Read-only snapshot query failure: using psql variable syntax inside `-c` produced
+  `ERROR: syntax error at or near ":"`. Resolution: pass the already validated UTC anchor as a
+  SQL timestamp literal; no production write occurred.
+- Local verification: focused UI tests passed `14/14`; the runtime-event PostgreSQL pagination
+  scenario passed `1/1`; the complete agent unit suite passed `330/330`; format, lint, strict
+  typecheck and production build passed.
+- Validation orchestration failure: running `next build` and standalone `tsc --noEmit` concurrently
+  made TypeScript read `.next/types` while Next.js was replacing it, producing multiple
+  `TS6053 ... .next/types/... not found` errors. The build completed successfully and a subsequent
+  serial typecheck passed.
+- Do not repeat: never run standalone typecheck concurrently with `next build` in this repository;
+  both commands mutate or consume the same generated `.next/types` tree.

@@ -985,10 +985,14 @@ export function appendRuntimeEvent(
 
 export async function listRuntimeEventsRecord(
   transaction: Prisma.TransactionClient,
-  input: { afterId?: bigint; take: number },
+  input: { afterId?: bigint; beforeId?: bigint; take: number },
 ) {
   const records = await transaction.agentRuntimeEvent.findMany({
-    ...(input.afterId ? { where: { id: { gt: input.afterId } } } : {}),
+    ...(input.afterId
+      ? { where: { id: { gt: input.afterId } } }
+      : input.beforeId
+        ? { where: { id: { lt: input.beforeId } } }
+        : {}),
     orderBy: { id: input.afterId ? "asc" : "desc" },
     take: input.take,
     select: {
@@ -1002,4 +1006,8 @@ export async function listRuntimeEventsRecord(
     },
   });
   return input.afterId ? records : records.reverse();
+}
+
+export function countRuntimeEventsRecord(transaction: Prisma.TransactionClient) {
+  return transaction.agentRuntimeEvent.count();
 }

@@ -89,8 +89,6 @@ export default async function AgentRunDetailPage({
           <Metric label="Oy verebilir" value={boolean(run.allowVoting)} />
           <Metric label="Takip edebilir" value={boolean(run.allowFollowing)} />
           <Metric label="Source okuyabilir" value={boolean(run.allowSourceReading)} />
-          <Metric label="Saturation override" value={boolean(run.saturationOverride)} />
-          <Metric label="Daily maximum override" value={boolean(run.dailyMaximumOverride)} />
           <Metric label="Provocation override" value={boolean(run.provocationOverride)} />
           {run.parentRunId ? (
             <div>

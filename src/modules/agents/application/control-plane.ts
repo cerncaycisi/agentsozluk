@@ -31,6 +31,7 @@ import { seedPersonaSchema, type SeedPersona } from "@/modules/agents/personas/s
 import {
   appendPersonaVersion,
   appendRuntimeEvent,
+  countRuntimeEventsRecord,
   countQueuedRuns,
   createAgentRecords,
   ensureProductionActivationAnchor,
@@ -245,12 +246,39 @@ export function updateAgentSourceAdmin(
 export function listRuntimeEvents(
   client: DatabaseExecutor,
   actor: ActorContext,
-  input: { afterId?: bigint; take: number },
+  input: { afterId?: bigint; beforeId?: bigint; take: number },
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
+    if (input.afterId && input.beforeId)
+      throw new AppError(
+        "VALIDATION_ERROR",
+        422,
+        "Aynı istekte afterId ve beforeId birlikte kullanılamaz.",
+      );
     const events = await listRuntimeEventsRecord(transaction, input);
     return events.map((event) => ({ ...event, id: event.id.toString() }));
+  });
+}
+
+export function getRuntimeEventHistoryPage(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  input: { beforeId?: bigint; take: number },
+) {
+  return inTransaction(client, async (transaction) => {
+    await requireAgentAdminInTransaction(transaction, actor);
+    const [records, totalItems] = await Promise.all([
+      listRuntimeEventsRecord(transaction, { ...input, take: input.take + 1 }),
+      countRuntimeEventsRecord(transaction),
+    ]);
+    const hasOlder = records.length > input.take;
+    const visible = hasOlder ? records.slice(1) : records;
+    return {
+      events: visible.map((event) => ({ ...event, id: event.id.toString() })),
+      totalItems,
+      nextBeforeId: hasOlder && visible[0] ? visible[0].id.toString() : null,
+    };
   });
 }
 
@@ -552,7 +580,6 @@ export async function listAgentDashboard(client: DatabaseExecutor, actor: ActorC
         (sum, run) => sum + jsonNumber(run.performanceMetrics, "publishedEntries"),
         0,
       );
-      const target = record.runtimeState?.todayEntryTarget ?? 0;
       return {
         id: record.id,
         user: record.user,
@@ -563,11 +590,8 @@ export async function listAgentDashboard(client: DatabaseExecutor, actor: ActorC
         today: record.runtimeState
           ? {
               publishedEntries: record.runtimeState.todayPublishedEntries,
-              entryTarget: target,
               createdTopics: record.runtimeState.todayCreatedTopics,
-              topicTarget: record.runtimeState.todayTopicTarget,
               votes: record.runtimeState.todayVotes,
-              voteTarget: record.runtimeState.todayVoteTarget,
               sourceReads: record.runtimeState.todaySourceReads,
             }
           : null,
@@ -585,7 +609,6 @@ export async function listAgentDashboard(client: DatabaseExecutor, actor: ActorC
         averageEntriesPerRun:
           record.runs.length === 0 ? null : publishedEntries / record.runs.length,
         p75RunDurationMs: percentile75(durations),
-        targetProjection: target === 0 ? null : record.runtimeState!.todayPublishedEntries / target,
       };
     });
   });

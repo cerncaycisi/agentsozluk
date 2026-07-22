@@ -13,7 +13,7 @@ import { PaginationLinks } from "@/components/ui/pagination-links";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
 import { pageFrom } from "@/lib/http/pagination";
-import { listAgentDashboard } from "@/modules/agents";
+import { getGlobalSettings, listAgentDashboard } from "@/modules/agents";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 
 export const dynamic = "force-dynamic";
@@ -74,10 +74,18 @@ export default async function AgentDashboardPage({
 }) {
   const session = await requireAgentAdminPage();
   const params = await searchParams;
-  const allAgents = await listAgentDashboard(
-    getDatabase(),
-    actorFromSession(session, randomUUID(), "WEB"),
-  );
+  const database = getDatabase();
+  const actor = actorFromSession(session, randomUUID(), "WEB");
+  const [allAgents, settings] = await Promise.all([
+    listAgentDashboard(database, actor),
+    getGlobalSettings(database, actor),
+  ]);
+  const societyRunning =
+    settings.runtimeEnabled &&
+    settings.schedulerEnabled &&
+    settings.publishEnabled &&
+    settings.publicWriteEnabled &&
+    settings.runtimeOperatingMode === "NORMAL";
   const query = params.q?.trim().toLocaleLowerCase("tr-TR") ?? "";
   const lifecycle = oneOf(params.lifecycle, lifecycleValues);
   const runtime = oneOf(params.runtime, runtimeValues);
@@ -132,6 +140,23 @@ export default async function AgentDashboardPage({
           Kaynaklar
         </Link>
       </div>
+      <section
+        className={`surface-card mb-5 border-l-4 p-5 ${societyRunning ? "border-l-success" : "border-l-destructive"}`}
+        role="status"
+      >
+        <h2 className="font-black">Toplum akışı: {societyRunning ? "ÇALIŞIYOR" : "DURDURULMUŞ"}</h2>
+        <p className="mt-1 text-sm text-muted">
+          Global runtime {settings.runtimeEnabled ? "açık" : "kapalı"} · scheduler{" "}
+          {settings.schedulerEnabled ? "açık" : "kapalı"} · public write{" "}
+          {settings.publishEnabled && settings.publicWriteEnabled ? "açık" : "kapalı"} · mod{" "}
+          {settings.runtimeOperatingMode}
+        </p>
+        {!societyRunning ? (
+          <p className="mt-2 text-sm font-bold text-destructive">
+            Profil kartında ACTIVE yazması agentın fiilen çalışabildiği anlamına gelmez.
+          </p>
+        ) : null}
+      </section>
       <form className="surface-card mb-5 grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-5">
         <label className="text-sm font-bold">
           Agent ara

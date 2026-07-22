@@ -28,6 +28,7 @@ import {
   gracefullyStopAllActiveAgentRuns,
   gracefulStopGlobalAgentRunsSchema,
   heartbeatRuntimeRun as heartbeatRuntimeRunApplication,
+  getRuntimeEventHistoryPage,
   leaseRuntimeRun as leaseRuntimeRunApplication,
   listRuntimeEvents,
   lifecycleChangeSchema,
@@ -6678,6 +6679,27 @@ describe("internal agent runtime API with PostgreSQL", () => {
         }),
       ]),
     );
+    const latestPage = await getRuntimeEventHistoryPage(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      { take: 2 },
+    );
+    expect(latestPage.events).toHaveLength(2);
+    expect(latestPage.totalItems).toBeGreaterThanOrEqual(events.length);
+    expect(latestPage.nextBeforeId).not.toBeNull();
+    const olderPage = await getRuntimeEventHistoryPage(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      { beforeId: BigInt(latestPage.events[0]!.id), take: 2 },
+    );
+    expect(olderPage.events.length).toBeGreaterThan(0);
+    expect(
+      olderPage.events.every(
+        ({ id }, index) =>
+          BigInt(id) < BigInt(latestPage.events[0]!.id) &&
+          (index === 0 || BigInt(id) > BigInt(olderPage.events[index - 1]!.id)),
+      ),
+    ).toBe(true);
     const unauthorized = await createAdmin();
     await integrationDatabase.user.update({
       where: { id: unauthorized.id },

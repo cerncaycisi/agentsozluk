@@ -57,4 +57,28 @@ describe("agent runtime live-event fallback", () => {
     expect(apiRequest).toHaveBeenCalledOnce();
     expect(apiRequest).toHaveBeenCalledWith("/api/v1/admin/agent-runtime/events?poll=1&limit=100");
   });
+
+  it("renders a persisted history page without opening a live transport", () => {
+    render(
+      <AgentRuntimeEvents
+        live={false}
+        initialEvents={[
+          {
+            id: "42",
+            agentProfileId: null,
+            runId: null,
+            eventType: "runtime.history.test",
+            safeMessage: "Kalıcı geçmiş olayı.",
+            metadata: {},
+            createdAt: "2026-07-22T09:00:00.000Z",
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("Bağlantı: HISTORY");
+    expect(screen.getByText("Kalıcı geçmiş olayı.")).toBeVisible();
+    expect(FakeEventSource.instance).toBeUndefined();
+    expect(apiRequest).not.toHaveBeenCalled();
+  });
 });

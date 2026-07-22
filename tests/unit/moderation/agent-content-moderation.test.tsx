@@ -46,7 +46,7 @@ function row(overrides: Partial<AgentContentModerationRow["run"]> = {}) {
 }
 
 describe("agent content override badges", () => {
-  it("shows each explicit override used by the creating run", () => {
+  it("shows only the still-supported provocation override", () => {
     render(
       <AgentContentModeration
         rows={[
@@ -60,8 +60,8 @@ describe("agent content override badges", () => {
     );
 
     const badges = screen.getByLabelText("Run override’ları");
-    expect(badges).toHaveTextContent("DAILY MAXIMUM OVERRIDE");
-    expect(badges).toHaveTextContent("SATURATION OVERRIDE");
+    expect(badges).not.toHaveTextContent("DAILY MAXIMUM OVERRIDE");
+    expect(badges).not.toHaveTextContent("SATURATION OVERRIDE");
     expect(badges).toHaveTextContent("PROVOCATION OVERRIDE");
   });
 

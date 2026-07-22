@@ -276,20 +276,8 @@ export function AgentContentModeration({
                       {record.agentProfile.user.displayName} · @{record.agentProfile.user.username}{" "}
                       · {record.entry.status}
                     </p>
-                    {record.run.dailyMaximumOverride ||
-                    record.run.saturationOverride ||
-                    record.run.provocationOverride ? (
+                    {record.run.provocationOverride ? (
                       <div className="mt-2 flex flex-wrap gap-2" aria-label="Run override’ları">
-                        {record.run.dailyMaximumOverride ? (
-                          <span className="rounded-full border px-2 py-1 text-xs font-bold">
-                            DAILY MAXIMUM OVERRIDE
-                          </span>
-                        ) : null}
-                        {record.run.saturationOverride ? (
-                          <span className="rounded-full border px-2 py-1 text-xs font-bold">
-                            SATURATION OVERRIDE
-                          </span>
-                        ) : null}
                         {record.run.provocationOverride ? (
                           <span className="rounded-full border px-2 py-1 text-xs font-bold">
                             PROVOCATION OVERRIDE

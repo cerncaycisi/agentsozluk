@@ -24,12 +24,24 @@ function mergeEvents(current: SafeRuntimeEvent[], incoming: SafeRuntimeEvent[]) 
     .slice(-100);
 }
 
-export function AgentRuntimeEvents({ initialEvents }: { initialEvents: SafeRuntimeEvent[] }) {
+export function AgentRuntimeEvents({
+  initialEvents,
+  live = true,
+}: {
+  initialEvents: SafeRuntimeEvent[];
+  live?: boolean;
+}) {
   const [events, setEvents] = useState(initialEvents);
-  const [connection, setConnection] = useState<"CONNECTING" | "LIVE" | "POLLING">("CONNECTING");
+  const [connection, setConnection] = useState<"CONNECTING" | "LIVE" | "POLLING" | "HISTORY">(
+    live ? "CONNECTING" : "HISTORY",
+  );
   const latestId = useRef(initialEvents.at(-1)?.id);
 
   useEffect(() => {
+    if (!live) {
+      setConnection("HISTORY");
+      return;
+    }
     let pollTimer: ReturnType<typeof setInterval> | undefined;
     const poll = async () => {
       try {
@@ -69,7 +81,7 @@ export function AgentRuntimeEvents({ initialEvents }: { initialEvents: SafeRunti
       source.close();
       if (pollTimer) clearInterval(pollTimer);
     };
-  }, []);
+  }, [live]);
 
   return (
     <section>

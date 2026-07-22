@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   actorFromSession: vi.fn(),
   getAgentDetail: vi.fn(),
   getAgentRunDetail: vi.fn(),
+  getGlobalSettings: vi.fn(),
   getDatabase: vi.fn(),
   listAgentDashboard: vi.fn(),
   notFound: vi.fn(() => {
@@ -50,6 +51,7 @@ vi.mock("@/lib/db/client", () => ({ getDatabase: mocks.getDatabase }));
 vi.mock("@/modules/agents", () => ({
   getAgentDetail: mocks.getAgentDetail,
   getAgentRunDetail: mocks.getAgentRunDetail,
+  getGlobalSettings: mocks.getGlobalSettings,
   listAgentDashboard: mocks.listAgentDashboard,
 }));
 vi.mock("@/modules/auth/domain/actor", () => ({ actorFromSession: mocks.actorFromSession }));
@@ -145,6 +147,13 @@ describe("agent run detail admin page", () => {
       lifecycleStatus: "ACTIVE",
       runs: [run],
     });
+    mocks.getGlobalSettings.mockResolvedValue({
+      runtimeEnabled: true,
+      schedulerEnabled: true,
+      publishEnabled: true,
+      publicWriteEnabled: true,
+      runtimeOperatingMode: "NORMAL",
+    });
     mocks.listAgentDashboard.mockResolvedValue([
       {
         id: agentId,
@@ -160,11 +169,8 @@ describe("agent run detail admin page", () => {
         },
         today: {
           publishedEntries: 1,
-          entryTarget: 15,
           createdTopics: 0,
-          topicTarget: 1,
           votes: 2,
-          voteTarget: 5,
           sourceReads: 1,
         },
         queueLength: 0,
@@ -173,7 +179,6 @@ describe("agent run detail admin page", () => {
         personaVersion: 1,
         sourceCount: 4,
         successRate24h: 1,
-        targetProjection: 0.75,
         p75RunDurationMs: 60_000,
         codexInvocations: 1,
         averageEntriesPerRun: 1,
@@ -226,6 +231,22 @@ describe("agent run detail admin page", () => {
 
     expect(renderToStaticMarkup(history)).toContain(expectedHref);
     expect(renderToStaticMarkup(dashboard)).toContain(expectedHref);
+    expect(renderToStaticMarkup(dashboard)).toContain("Toplum akışı: ÇALIŞIYOR");
+  });
+
+  it("warns that ACTIVE profiles cannot run while the global society is paused", async () => {
+    mocks.getGlobalSettings.mockResolvedValue({
+      runtimeEnabled: false,
+      schedulerEnabled: true,
+      publishEnabled: true,
+      publicWriteEnabled: true,
+      runtimeOperatingMode: "NORMAL",
+    });
+
+    const page = await AgentDashboardPage({ searchParams: Promise.resolve({}) });
+    const html = renderToStaticMarkup(page);
+    expect(html).toContain("Toplum akışı: DURDURULMUŞ");
+    expect(html).toContain("ACTIVE yazması agentın fiilen çalışabildiği anlamına gelmez");
   });
 
   it("maps a missing run to the page-level 404 boundary", async () => {
