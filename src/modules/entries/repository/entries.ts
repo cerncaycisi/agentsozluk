@@ -3,6 +3,7 @@ import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
 
 export const entryDetailSelect = {
   id: true,
+  publicId: true,
   topicId: true,
   authorId: true,
   body: true,
@@ -19,10 +20,14 @@ export const entryDetailSelect = {
   topic: {
     select: {
       id: true,
+      publicId: true,
       title: true,
       slug: true,
       status: true,
       mergedIntoId: true,
+      mergedInto: {
+        select: { id: true, publicId: true, title: true, slug: true },
+      },
       createdById: true,
     },
   },
@@ -73,6 +78,10 @@ export function createEntryRecord(
 
 export function findEntryById(transaction: Prisma.TransactionClient, entryId: string) {
   return transaction.entry.findUnique({ where: { id: entryId }, select: entryDetailSelect });
+}
+
+export function findEntryByPublicId(transaction: Prisma.TransactionClient, publicId: number) {
+  return transaction.entry.findUnique({ where: { publicId }, select: entryDetailSelect });
 }
 
 export async function updateEntryRecord(

@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getDatabase } from "@/lib/db/client";
 import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { AppError } from "@/lib/http/errors";
-import { pageUuidFrom } from "@/lib/http/page-params";
+import { entryPublicUrl, parseEntryRouteReference } from "@/lib/routing/public-urls";
 import { pageFrom } from "@/lib/http/pagination";
 import { requirePageSession } from "@/lib/auth/server-session";
-import { getEntryRevisions } from "@/modules/entries/application/entries";
+import {
+  getEntry,
+  getEntryByPublicId,
+  getEntryRevisions,
+} from "@/modules/entries/application/entries";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 
 export const dynamic = "force-dynamic";
@@ -23,22 +27,30 @@ export default async function EntryRevisionsPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   const { id: rawId } = await params;
-  const id = pageUuidFrom(rawId);
+  const reference = parseEntryRouteReference(rawId);
+  if (!reference) notFound();
   const session = await requirePageSession();
   const page = pageFrom((await searchParams).page);
   const pageSize = 20;
   let result;
   try {
-    result = await getEntryRevisions(
-      getDatabase(),
-      id,
-      {
-        userId: session.userId,
-        role: session.user.role,
-        status: session.user.status,
-      },
-      { skip: (page - 1) * pageSize, take: pageSize },
-    );
+    const viewer = {
+      userId: session.userId,
+      role: session.user.role,
+      status: session.user.status,
+    } as const;
+    const entry =
+      reference.kind === "public"
+        ? await getEntryByPublicId(getDatabase(), reference.publicId, viewer)
+        : await getEntry(getDatabase(), reference.id, viewer);
+    if (reference.kind === "legacy") {
+      const canonical = `${entryPublicUrl(entry)}/revizyonlar`;
+      permanentRedirect(page > 1 ? `${canonical}?page=${page}` : canonical);
+    }
+    result = await getEntryRevisions(getDatabase(), entry.id, viewer, {
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
   } catch (error) {
     if (error instanceof AppError && error.code === "ENTRY_NOT_FOUND") notFound();
     throw error;

@@ -15,11 +15,13 @@ import {
   listWindowedChronologicalTopics,
 } from "@/modules/feeds/repository/feeds";
 import { withEditedIndicator } from "@/modules/entries/domain/entry";
+import { topicPublicUrl } from "@/lib/routing/public-urls";
 
 export type { TopicFeed } from "@/modules/feeds/domain/feed";
 
 export interface TopicFeedItem {
   id: string;
+  publicId: number;
   title: string;
   slug: string;
   entryCount: number;
@@ -90,5 +92,5 @@ export async function getRandomTopic(client: DatabaseClient, randomKey = Math.ra
     findRandomActiveTopic(transaction, randomKey),
   );
   if (!topic) throw new AppError("TOPIC_NOT_FOUND", 404, "Rastgele başlık bulunamadı.");
-  return { ...topic, url: `/baslik/${topic.id}-${topic.slug}` };
+  return { ...topic, url: topicPublicUrl(topic) };
 }

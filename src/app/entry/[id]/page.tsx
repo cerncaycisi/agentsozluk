@@ -4,9 +4,14 @@ import { EntryPreview } from "@/components/entries/entry-preview";
 import { APP_NAME } from "@/config/app";
 import { getDatabase } from "@/lib/db/client";
 import { AppError } from "@/lib/http/errors";
-import { pageUuidFrom } from "@/lib/http/page-params";
+import {
+  entryPublicUrl,
+  parseEntryRouteReference,
+  topicEntryAnchorUrl,
+  topicPublicUrl,
+} from "@/lib/routing/public-urls";
 import { currentPageSession } from "@/lib/auth/server-session";
-import { getEntry } from "@/modules/entries/application/entries";
+import { getEntry, getEntryByPublicId } from "@/modules/entries/application/entries";
 import { getEntryIndexingDecision } from "@/modules/indexing";
 import { getViewerEntryStates } from "@/modules/interactions/application/interactions";
 import Link from "next/link";
@@ -19,39 +24,55 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id: rawId } = await params;
-  const id = pageUuidFrom(rawId);
-  const indexing = await getEntryIndexingDecision(getDatabase(), id);
-  return {
-    title: `Entry ${id.slice(0, 8)}`,
-    description: `${APP_NAME} entry kalıcı bağlantısı.`,
-    alternates: { canonical: `/entry/${id}` },
-    openGraph: { title: `${APP_NAME} entry`, type: "article", url: `/entry/${id}` },
-    robots: { index: indexing.index, follow: indexing.follow },
-  };
+  const reference = parseEntryRouteReference(rawId);
+  if (!reference) return { title: "Entry bulunamadı", robots: { index: false, follow: false } };
+  try {
+    const entry =
+      reference.kind === "public"
+        ? await getEntryByPublicId(getDatabase(), reference.publicId, null)
+        : await getEntry(getDatabase(), reference.id, null);
+    const indexing = await getEntryIndexingDecision(getDatabase(), entry.id);
+    const canonical = entryPublicUrl(entry);
+    const title = `${entry.topic.title} · @${entry.author.username}`;
+    return {
+      title,
+      description: `${APP_NAME} üzerinde ${entry.topic.title} başlığına yazılmış entry.`,
+      alternates: { canonical },
+      openGraph: { title, type: "article", url: canonical },
+      robots: { index: indexing.index, follow: indexing.follow },
+    };
+  } catch {
+    return { title: "Entry bulunamadı", robots: { index: false, follow: false } };
+  }
 }
 
 export default async function EntryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: rawId } = await params;
-  const id = pageUuidFrom(rawId);
+  const reference = parseEntryRouteReference(rawId);
+  if (!reference) notFound();
   const session = await currentPageSession();
   const viewer = session
     ? { userId: session.userId, role: session.user.role, status: session.user.status }
     : null;
   let entry;
   try {
-    entry = await getEntry(getDatabase(), id, viewer);
+    entry =
+      reference.kind === "public"
+        ? await getEntryByPublicId(getDatabase(), reference.publicId, viewer)
+        : await getEntry(getDatabase(), reference.id, viewer);
   } catch (error) {
     if (error instanceof AppError && error.code === "ENTRY_NOT_FOUND") notFound();
     throw error;
   }
-  if ("canonicalTopicId" in entry && entry.canonicalTopicId)
-    permanentRedirect(`/baslik/${entry.canonicalTopicId}`);
+  if ("canonicalTopic" in entry && entry.canonicalTopic)
+    permanentRedirect(topicPublicUrl(entry.canonicalTopic));
+  if (reference.kind === "legacy") permanentRedirect(entryPublicUrl(entry));
   const [votes, bookmarks] = session
     ? await getViewerEntryStates(getDatabase(), session.userId, [entry.id])
     : [[], []];
   const vote = votes[0];
   const bookmark = bookmarks[0];
-  const topicAnchor = `/baslik/${entry.topic.id}-${entry.topic.slug}#entry-${entry.id}`;
+  const topicAnchor = topicEntryAnchorUrl({ topic: entry.topic, entry });
   return (
     <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
       <h1 className="mb-7 text-3xl font-black tracking-tight">Entry</h1>

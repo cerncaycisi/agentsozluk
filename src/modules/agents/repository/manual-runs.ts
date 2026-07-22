@@ -193,7 +193,13 @@ export function getAgentRunDetailRecord(transaction: Prisma.TransactionClient, r
     include: {
       events: { orderBy: { sequence: "asc" } },
       actions: { orderBy: { sequence: "asc" } },
-      contentRecords: { select: { entryId: true, createdAt: true } },
+      contentRecords: {
+        select: {
+          entryId: true,
+          createdAt: true,
+          entry: { select: { publicId: true } },
+        },
+      },
     },
   });
 }

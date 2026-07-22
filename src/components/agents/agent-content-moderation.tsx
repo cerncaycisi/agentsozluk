@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { entryPublicUrl } from "@/lib/routing/public-urls";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -11,10 +12,11 @@ export interface AgentContentModerationRow {
   createdAt: string;
   entry: {
     id: string;
+    publicId: number;
     body: string;
     status: string;
     createdAt: string;
-    topic: { id: string; title: string; slug: string };
+    topic: { id: string; publicId: number; title: string; slug: string };
   };
   agentProfile: { id: string; user: { username: string; displayName: string } };
   run: {
@@ -287,7 +289,7 @@ export function AgentContentModeration({
                     ) : null}
                   </div>
                   <div className="flex gap-2">
-                    <Link className="button-secondary" href={`/entry/${record.entry.id}`}>
+                    <Link className="button-secondary" href={entryPublicUrl(record.entry)}>
                       Entry
                     </Link>
                     {record.reports[0] ? (

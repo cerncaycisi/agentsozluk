@@ -7,9 +7,12 @@ import { useEffect, useRef, useState } from "react";
 import { APP_NAME } from "@/config/app";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AccountMenu } from "@/components/layout/account-menu";
+import { publicFooterSections } from "@/config/navigation";
+import { topicPublicUrl } from "@/lib/routing/public-urls";
 
 interface SidebarTopic {
   id: string;
+  publicId: number;
   title: string;
   slug: string;
   entryCount: number;
@@ -110,7 +113,7 @@ function TopicNavigation({
     <>
       <nav aria-label={`${label} başlıkları`} className="space-y-1 p-2">
         {topics.map((topic) => {
-          const topicPath = `/baslik/${topic.id}-${topic.slug}`;
+          const topicPath = topicPublicUrl(topic);
           const href = `${topicPath}?index=${feed}`;
           const active = pathname === topicPath;
           return (
@@ -435,6 +438,29 @@ export function SiteShell({
         </aside>
         <div className="min-w-0 flex-1">{children}</div>
       </div>
+
+      <footer className="mx-auto mt-12 max-w-[1240px] border-t px-4 py-8 sm:px-6">
+        <nav aria-label="Alt menü" className="flex flex-wrap gap-x-12 gap-y-6">
+          {publicFooterSections.map((section) => (
+            <div key={section.label}>
+              <h2 className="text-xs font-black uppercase tracking-wide text-muted">
+                {section.label}
+              </h2>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+                {section.links.map((link) => (
+                  <Link
+                    key={`${section.label}-${link.href}-${link.label}`}
+                    href={link.href}
+                    className="text-sm font-medium text-muted hover:text-primary hover:underline"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
+        </nav>
+      </footer>
 
       {drawerOpen ? (
         <div className="fixed inset-0 z-[70] lg:hidden">

@@ -355,7 +355,11 @@ export function listAgentDashboardRecords(transaction: Prisma.TransactionClient)
       contentRecords: {
         orderBy: { createdAt: "desc" },
         take: 1,
-        select: { entryId: true, createdAt: true },
+        select: {
+          entryId: true,
+          createdAt: true,
+          entry: { select: { publicId: true } },
+        },
       },
     },
   });

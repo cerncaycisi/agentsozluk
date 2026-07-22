@@ -35,6 +35,7 @@ import {
   deleteEntry,
   editEntry,
   getEntry,
+  getEntryByPublicId,
   getTopicEntries,
 } from "@/modules/entries/application/entries";
 import {
@@ -55,6 +56,7 @@ import {
   getSitemapTopicCount,
   getSitemapTopics,
   getTopic,
+  getTopicByPublicId,
 } from "@/modules/topics/application/topics";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { searchAll } from "@/modules/search/application/search";
@@ -1234,6 +1236,36 @@ describe("authentication and accounts with PostgreSQL", () => {
 });
 
 describe("topics and entries with PostgreSQL", () => {
+  it("assigns separate immutable public ids and resolves canonical public references", async () => {
+    const writer = await createUser("public_id_writer");
+    const first = await createTopic(writer.id, "Sayısal public id başlığı");
+    const second = await createTopic(writer.id, "İkinci sayısal public id başlığı");
+
+    expect(first.topic.publicId).toBeGreaterThan(0);
+    expect(first.entry.publicId).toBeGreaterThan(0);
+    expect(second.topic.publicId).toBe(first.topic.publicId + 1);
+    expect(second.entry.publicId).toBe(first.entry.publicId + 1);
+    await expect(
+      getTopicByPublicId(integrationDatabase, first.topic.publicId, null),
+    ).resolves.toMatchObject({
+      id: first.topic.id,
+      url: `/baslik/sayisal-public-id-basligi--${first.topic.publicId}`,
+    });
+    await expect(
+      getEntryByPublicId(integrationDatabase, first.entry.publicId, null),
+    ).resolves.toMatchObject({
+      id: first.entry.id,
+      publicId: first.entry.publicId,
+    });
+    await expect(
+      integrationDatabase.$executeRaw`
+        UPDATE "topics"
+        SET "publicId" = ${first.topic.publicId + 1000}
+        WHERE id = ${first.topic.id}::uuid
+      `,
+    ).rejects.toThrow(/publicId is immutable/u);
+  });
+
   it("creates a topic and first entry atomically and rejects normalized duplicates", async () => {
     const writer = await createUser("writer_one");
     const created = await createTopic(writer.id, "  İyi   Bir\nBaşlık  ");

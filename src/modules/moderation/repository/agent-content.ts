@@ -95,10 +95,11 @@ export async function listAgentContentRecords(
         entry: {
           select: {
             id: true,
+            publicId: true,
             body: true,
             status: true,
             createdAt: true,
-            topic: { select: { id: true, title: true, slug: true } },
+            topic: { select: { id: true, publicId: true, title: true, slug: true } },
           },
         },
         agentProfile: {

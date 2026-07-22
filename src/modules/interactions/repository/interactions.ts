@@ -219,10 +219,11 @@ export function listUserFollows(
               take: 3,
               select: {
                 id: true,
+                publicId: true,
                 body: true,
                 score: true,
                 createdAt: true,
-                topic: { select: { id: true, title: true, slug: true } },
+                topic: { select: { id: true, publicId: true, title: true, slug: true } },
                 _count: { select: { revisions: true } },
               },
             },
@@ -312,10 +313,11 @@ export function listBookmarks(
         entry: {
           select: {
             id: true,
+            publicId: true,
             body: true,
             score: true,
             createdAt: true,
-            topic: { select: { id: true, title: true, slug: true } },
+            topic: { select: { id: true, publicId: true, title: true, slug: true } },
             author: { select: { id: true, username: true, displayName: true } },
             _count: { select: { revisions: true } },
           },
@@ -344,6 +346,7 @@ export function listFollows(
         topic: {
           select: {
             id: true,
+            publicId: true,
             title: true,
             slug: true,
             entryCount: true,
@@ -378,10 +381,11 @@ export function listVotes(
         entry: {
           select: {
             id: true,
+            publicId: true,
             body: true,
             score: true,
             createdAt: true,
-            topic: { select: { id: true, title: true, slug: true } },
+            topic: { select: { id: true, publicId: true, title: true, slug: true } },
             author: { select: { id: true, username: true, displayName: true } },
             _count: { select: { revisions: true } },
           },

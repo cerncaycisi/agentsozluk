@@ -14,6 +14,7 @@ import {
   createEntryRecord,
   createEntryRevision,
   findEntryById,
+  findEntryByPublicId,
   listBlockedAuthorIds,
   listEntryRevisions,
   listTopicEntries,
@@ -29,6 +30,7 @@ import {
   updateTopicAfterEntryCreate,
 } from "@/modules/topics/repository/topics";
 import type { EntryCreateInput, EntryUpdateInput } from "@/modules/entries/validation/schemas";
+import { topicPublicUrl } from "@/lib/routing/public-urls";
 
 export interface EntryViewer {
   userId: string;
@@ -37,7 +39,7 @@ export interface EntryViewer {
 }
 
 function mergedTopicError(topic: {
-  mergedInto: { id: string; title: string; slug: string } | null;
+  mergedInto: { id: string; publicId: number; title: string; slug: string } | null;
 }) {
   return new AppError(
     "TOPIC_MERGED",
@@ -50,7 +52,7 @@ function mergedTopicError(topic: {
         ? {
             id: topic.mergedInto.id,
             title: topic.mergedInto.title,
-            url: `/baslik/${topic.mergedInto.id}-${topic.mergedInto.slug}`,
+            url: topicPublicUrl(topic.mergedInto),
           }
         : null,
     },
@@ -229,13 +231,16 @@ function canInspectEntry(viewer: EntryViewer | null, entry: { authorId: string }
   );
 }
 
-export async function getEntry(
+async function getEntryRecord(
   client: DatabaseClient,
-  entryId: string,
+  reference: { id: string } | { publicId: number },
   viewer: EntryViewer | null,
 ) {
   return client.$transaction(async (transaction) => {
-    const entry = await findEntryById(transaction, entryId);
+    const entry =
+      "id" in reference
+        ? await findEntryById(transaction, reference.id)
+        : await findEntryByPublicId(transaction, reference.publicId);
     if (!entry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
     const canInspectTopic = Boolean(
       viewer &&
@@ -252,10 +257,28 @@ export async function getEntry(
       entry.status === "DELETED" && !canInspectEntry(viewer, entry)
         ? { ...visibleEntry, body: "bu entry yazar tarafından silindi", normalizedBody: "" }
         : visibleEntry;
-    return entry.topic.status === "MERGED" && entry.topic.mergedIntoId
-      ? { ...presentedEntry, canonicalTopicId: entry.topic.mergedIntoId }
-      : presentedEntry;
+    const canonicalTopic =
+      entry.topic.status === "MERGED" && entry.topic.mergedInto ? entry.topic.mergedInto : null;
+    return {
+      ...presentedEntry,
+      ...(entry.topic.status === "MERGED" && entry.topic.mergedIntoId
+        ? { canonicalTopicId: entry.topic.mergedIntoId }
+        : {}),
+      canonicalTopic,
+    };
   });
+}
+
+export function getEntry(client: DatabaseClient, entryId: string, viewer: EntryViewer | null) {
+  return getEntryRecord(client, { id: entryId }, viewer);
+}
+
+export function getEntryByPublicId(
+  client: DatabaseClient,
+  publicId: number,
+  viewer: EntryViewer | null,
+) {
+  return getEntryRecord(client, { publicId }, viewer);
 }
 
 export async function getEntryRevisions(

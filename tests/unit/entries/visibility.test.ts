@@ -4,10 +4,17 @@ import { getEntry } from "@/modules/entries/application/entries";
 
 const authorId = "018f5d51-8f89-7a4e-89df-2166b53ea41f";
 const canonicalTopicId = "018f5d51-8f89-7a4e-89df-2166b53ea420";
+const canonicalTopic = {
+  id: canonicalTopicId,
+  publicId: 420,
+  title: "Kanonik başlık",
+  slug: "kanonik-baslik",
+};
 
 function databaseReturning(status: "HIDDEN" | "DELETED"): DatabaseClient {
   const entry = {
     id: "018f5d51-8f89-7a4e-89df-2166b53ea421",
+    publicId: 421,
     topicId: "018f5d51-8f89-7a4e-89df-2166b53ea422",
     authorId,
     body: "yalnız yetkili kişinin görebileceği entry içeriği",
@@ -23,10 +30,12 @@ function databaseReturning(status: "HIDDEN" | "DELETED"): DatabaseClient {
     hiddenAt: status === "HIDDEN" ? new Date("2026-07-17T11:00:00.000Z") : null,
     topic: {
       id: "018f5d51-8f89-7a4e-89df-2166b53ea422",
+      publicId: 422,
       title: "Birleştirilmiş başlık",
       slug: "birlestirilmis-baslik",
       status: "MERGED",
       mergedIntoId: canonicalTopicId,
+      mergedInto: canonicalTopic,
       createdById: authorId,
     },
     author: {
@@ -57,6 +66,7 @@ describe("merged-topic entry visibility", () => {
       body: "bu entry yazar tarafından silindi",
       normalizedBody: "",
       canonicalTopicId,
+      canonicalTopic,
     });
   });
 
@@ -70,6 +80,7 @@ describe("merged-topic entry visibility", () => {
     ).resolves.toMatchObject({
       body: "yalnız yetkili kişinin görebileceği entry içeriği",
       canonicalTopicId,
+      canonicalTopic,
     });
   });
 });

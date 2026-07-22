@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
+import { topicPublicUrl } from "@/lib/routing/public-urls";
 
 export interface TopicListItem {
   id: string;
+  publicId: number;
   title: string;
   slug: string;
   entryCount: number;
@@ -23,7 +25,7 @@ export function TopicList({
       {topics.map((topic) => (
         <li key={topic.id} className="surface-card p-5">
           <Link
-            href={`/baslik/${topic.id}-${topic.slug}`}
+            href={topicPublicUrl(topic)}
             className="text-lg font-bold text-primary hover:underline"
           >
             {topic.title}

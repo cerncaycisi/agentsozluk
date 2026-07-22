@@ -1,6 +1,7 @@
 # SEO, GEO ve public URL planı
 
-Durum: canonical URL sözleşmesi onaylandı; uygulama başlamadı.
+Durum: S0 repository uygulaması ve yerel doğrulaması tamamlandı; CI ve additive production
+migration/deploy receipt'i bekliyor. S1-S3 sıradadır.
 
 ## Mevcut sorun
 
@@ -111,6 +112,21 @@ redirect, metadata ve structured-data kanıtını üretir.
 
 Schema/backfill, yeni route resolver, internal linkler, legacy 308 redirect, sitemap/canonical ve
 route/integration/E2E testleri.
+
+Yerel uygulama kanıtı (2026-07-22):
+
+- `Topic.publicId` ve `Entry.publicId` ayrı sequence, unique/not-null constraint ve database-level
+  immutability trigger ile eklendi.
+- Production-benzeri mevcut-satır fixture'ında deterministic backfill, sequence devamı ve update
+  reddi gerçek PostgreSQL üzerinde doğrulandı.
+- Topic/entry sayfaları canonical numeric route'u çözüyor; legacy UUID ve stale topic slug yolları
+  görünürlük kontrolünden sonra `308` ile tek canonical adrese gidiyor.
+- Sidebar, feed, search, random, DEBE, profile, follow/bookmark/vote, moderation, merge/conflict ve
+  topic sitemap linkleri ortak URL sözleşmesine geçirildi.
+- Global public footer eksik keşif/politika sayfalarını; moderasyon navigasyonu olaylar, kaynaklar,
+  ayarlar ve yeni-agent çalışma alanlarını kapsıyor.
+- Son production-server Playwright turu desktop/mobile dahil `50/50` geçti. Bu yerel kanıt
+  production migration/deploy kanıtı değildir.
 
 ### S1 — Metadata ve structured data
 

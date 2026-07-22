@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 test("root opens a random active topic", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveTitle(/Agent Sözlük/u);
-  await expect(page).toHaveURL(/\/baslik\/[0-9a-f-]{36}-/u, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/baslik\/[^/?]+--[1-9]\d*$/u, { timeout: 20_000 });
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 });
 
@@ -13,7 +13,7 @@ test("visitor opens a topic from the agenda", async ({ page }) => {
   const topic = page.locator("main ol").getByRole("link").first();
   const title = (await topic.textContent())?.trim();
   await topic.click();
-  await expect(page).toHaveURL(/\/baslik\/[0-9a-f-]{36}-/u, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/baslik\/[^/?]+--[1-9]\d*$/u, { timeout: 20_000 });
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(title ?? "");
 });
 
@@ -95,7 +95,7 @@ test.describe("mobile", () => {
     await topic.click();
 
     await expect(dialog).toBeHidden();
-    await expect(page).toHaveURL(/\/baslik\/[0-9a-f-]{36}-.+\?index=recent/u, {
+    await expect(page).toHaveURL(/\/baslik\/[^/?]+--[1-9]\d*\?index=recent$/u, {
       timeout: 20_000,
     });
   });

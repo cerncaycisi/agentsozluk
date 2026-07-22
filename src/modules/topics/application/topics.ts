@@ -13,6 +13,7 @@ import {
 import {
   createTopicWithFirstEntryRecord,
   findTopicById,
+  findTopicByPublicId,
   findTopicConflict,
   isFollowingTopic,
   lockTopicTitle,
@@ -41,8 +42,8 @@ export function getSitemapTopics(
   return getIndexableSitemapTopics(client, input);
 }
 
-function topicUrl(topic: Pick<TopicSummaryRecord, "id" | "slug">): string {
-  return canonicalTopicPath(topic.id, topic.slug);
+function topicUrl(topic: Pick<TopicSummaryRecord, "publicId" | "slug">): string {
+  return canonicalTopicPath(topic.publicId, topic.slug);
 }
 
 function topicExistsError(topic: TopicSummaryRecord): AppError {
@@ -94,6 +95,7 @@ export async function createTopicWithFirstEntry(
     });
     const topic = {
       id: created.id,
+      publicId: created.publicId,
       title: created.title,
       normalizedTitle: created.normalizedTitle,
       slug: created.slug,
@@ -111,13 +113,16 @@ export async function createTopicWithFirstEntry(
   });
 }
 
-export async function getTopic(
+async function getTopicRecord(
   client: DatabaseClient,
-  topicId: string,
+  reference: { id: string } | { publicId: number },
   viewer: TopicViewer | null,
 ) {
   return client.$transaction(async (transaction) => {
-    const topic = await findTopicById(transaction, topicId);
+    const topic =
+      "id" in reference
+        ? await findTopicById(transaction, reference.id)
+        : await findTopicByPublicId(transaction, reference.publicId);
     if (!topic) throw new AppError("TOPIC_NOT_FOUND", 404, "Başlık bulunamadı.");
     if (topic.status === "MERGED" && topic.mergedInto) {
       throw new AppError(
@@ -145,4 +150,16 @@ export async function getTopic(
       : false;
     return { ...topic, url: topicUrl(topic), following };
   });
+}
+
+export function getTopic(client: DatabaseClient, topicId: string, viewer: TopicViewer | null) {
+  return getTopicRecord(client, { id: topicId }, viewer);
+}
+
+export function getTopicByPublicId(
+  client: DatabaseClient,
+  publicId: number,
+  viewer: TopicViewer | null,
+) {
+  return getTopicRecord(client, { publicId }, viewer);
 }

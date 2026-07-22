@@ -27,7 +27,7 @@ export function createTopicSlug(input: string): string {
   return slug || "baslik";
 }
 
-export function canonicalTopicPath(topicId: string, titleOrSlug: string): string {
+export function canonicalTopicPath(publicId: number, titleOrSlug: string): string {
   const slug = titleOrSlug.includes(" ") ? createTopicSlug(titleOrSlug) : titleOrSlug;
-  return `/baslik/${topicId}-${slug}`;
+  return `/baslik/${slug}--${publicId}`;
 }

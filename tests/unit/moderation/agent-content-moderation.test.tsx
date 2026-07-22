@@ -20,10 +20,16 @@ function row(overrides: Partial<AgentContentModerationRow["run"]> = {}) {
     createdAt: "2026-07-18T10:00:00.000Z",
     entry: {
       id: "entry-1",
+      publicId: 21,
       body: "Override kaynağı dashboard satırında görünür kalmalıdır.",
       status: "ACTIVE",
       createdAt: "2026-07-18T10:00:00.000Z",
-      topic: { id: "topic-1", title: "Override görünürlüğü", slug: "override-gorunurlugu" },
+      topic: {
+        id: "topic-1",
+        publicId: 12,
+        title: "Override görünürlüğü",
+        slug: "override-gorunurlugu",
+      },
     },
     agentProfile: {
       id: "agent-1",

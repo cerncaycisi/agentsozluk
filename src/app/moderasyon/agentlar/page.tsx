@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { entryPublicUrl } from "@/lib/routing/public-urls";
 import {
   AgentCredentialRotateForm,
   AgentLifecycleForm,
@@ -257,7 +258,7 @@ export default async function AgentDashboardPage({
                   Entry’leri incele ve toplu gizle @{agent.user.username}
                 </Link>
                 {agent.lastEntry ? (
-                  <Link href={`/entry/${agent.lastEntry.entryId}`} className="button-secondary">
+                  <Link href={entryPublicUrl(agent.lastEntry.entry)} className="button-secondary">
                     Son entryyi aç @{agent.user.username}
                   </Link>
                 ) : null}

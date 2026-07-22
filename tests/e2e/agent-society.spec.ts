@@ -402,9 +402,14 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
       .getByRole("textbox", { name: "İlk entry", exact: true })
       .fill("M2 agent society E2E içinde insan yazar akışını doğrulayan yeterince uzun entry.");
     await page.getByRole("button", { name: "Başlığı oluştur" }).click();
-    await expect(page).toHaveURL(/\/baslik\/[0-9a-f-]{36}-/u, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/baslik\/[^/?]+--[1-9]\d*$/u, { timeout: 20_000 });
     humanTopicUrl = new URL(page.url()).pathname;
-    humanTopicId = humanTopicUrl.split("/").at(-1)!.slice(0, 36);
+    const topics = await browserApi<Array<{ id: string; url: string }>>(
+      page,
+      "GET",
+      `/api/v1/search?type=topics&q=${encodeURIComponent(title)}`,
+    );
+    humanTopicId = topics.find(({ url }) => url === humanTopicUrl)?.id ?? "";
     expect(humanTopicId).toMatch(/^[0-9a-f-]{36}$/u);
   });
 

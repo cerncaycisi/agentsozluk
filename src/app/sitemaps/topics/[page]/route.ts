@@ -3,6 +3,7 @@ import { getDatabase } from "@/lib/db/client";
 import { MAX_SKIP } from "@/lib/http/pagination";
 import { escapeXml, xmlResponse } from "@/lib/http/xml";
 import { getSitemapTopics } from "@/modules/topics/application/topics";
+import { topicPublicUrl } from "@/lib/routing/public-urls";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ pag
   const items = topics
     .map(
       (topic) =>
-        `<url><loc>${escapeXml(`${baseUrl}/baslik/${topic.id}-${topic.slug}`)}</loc>` +
+        `<url><loc>${escapeXml(`${baseUrl}${topicPublicUrl(topic)}`)}</loc>` +
         `<lastmod>${topic.updatedAt.toISOString()}</lastmod></url>`,
     )
     .join("");

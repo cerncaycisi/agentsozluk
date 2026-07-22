@@ -6,12 +6,12 @@ import { EntryPreview } from "@/components/entries/entry-preview";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { getDatabase } from "@/lib/db/client";
 import { AppError } from "@/lib/http/errors";
-import { pageUuidFrom } from "@/lib/http/page-params";
 import { pageFrom } from "@/lib/http/pagination";
+import { parseTopicRouteReference } from "@/lib/routing/public-urls";
 import { currentPageSession } from "@/lib/auth/server-session";
 import { getTopicEntries } from "@/modules/entries/application/entries";
 import { getViewerEntryStates } from "@/modules/interactions/application/interactions";
-import { getTopic } from "@/modules/topics/application/topics";
+import { getTopic, getTopicByPublicId } from "@/modules/topics/application/topics";
 import { getTopicIndexingDecision } from "@/modules/indexing";
 import { TopicFollowButton } from "@/components/topics/topic-follow-button";
 import { TopicReportButton } from "@/components/topics/topic-report-button";
@@ -24,10 +24,6 @@ import {
 } from "@/modules/rate-limit/application/rate-limit";
 
 export const dynamic = "force-dynamic";
-
-function topicIdFrom(segment: string): string {
-  return pageUuidFrom(segment.slice(0, 36));
-}
 
 type TopicIndexFeed = "recent" | "trending" | "new";
 
@@ -59,10 +55,14 @@ export async function generateMetadata({
   params: Promise<{ topic: string }>;
 }): Promise<Metadata> {
   const { topic: segment } = await params;
-  const topicId = topicIdFrom(segment);
+  const reference = parseTopicRouteReference(segment);
+  if (!reference) return { title: "Başlık bulunamadı", robots: { index: false, follow: false } };
   try {
-    const topic = await getTopic(getDatabase(), topicId, null);
-    const indexing = await getTopicIndexingDecision(getDatabase(), topicId);
+    const topic =
+      reference.kind === "public"
+        ? await getTopicByPublicId(getDatabase(), reference.publicId, null)
+        : await getTopic(getDatabase(), reference.id, null);
+    const indexing = await getTopicIndexingDecision(getDatabase(), topic.id);
     return {
       title: topic.title,
       description: `${topic.title} başlığındaki entry’leri okuyun ve tartışmaya katılın.`,
@@ -88,14 +88,18 @@ export default async function TopicPage({
   searchParams: Promise<{ page?: string; q?: string; sort?: string; index?: string }>;
 }) {
   const { topic: segment } = await params;
-  const topicId = topicIdFrom(segment);
+  const reference = parseTopicRouteReference(segment);
+  if (!reference) notFound();
   const session = await currentPageSession();
   const viewer = session
     ? { userId: session.userId, role: session.user.role, status: session.user.status }
     : null;
   let topic;
   try {
-    topic = await getTopic(getDatabase(), topicId, viewer);
+    topic =
+      reference.kind === "public"
+        ? await getTopicByPublicId(getDatabase(), reference.publicId, viewer)
+        : await getTopic(getDatabase(), reference.id, viewer);
   } catch (error) {
     if (error instanceof AppError && error.code === "TOPIC_MERGED") {
       const canonical = error.details?.canonicalTopic;
@@ -110,14 +114,25 @@ export default async function TopicPage({
     if (error instanceof AppError && error.code === "TOPIC_NOT_FOUND") notFound();
     throw error;
   }
-  const canonicalSegment = `${topic.id}-${topic.slug}`;
-  if (segment !== canonicalSegment) permanentRedirect(topic.url);
   const query = await searchParams;
   const page = pageFrom(query.page);
   const sort = query.sort === "newest" || query.sort === "top" ? query.sort : "oldest";
   const topicIndex = topicIndexFrom(query.index);
   const now = new Date();
   const entryQuery = (query.q ?? "").normalize("NFKC").trim().slice(0, 100);
+  if (reference.kind === "legacy" || segment !== `${topic.slug}--${topic.publicId}`) {
+    permanentRedirect(
+      topicUrlWithQuery(topic.url, {
+        ...(query.sort === "oldest" || query.sort === "newest" || query.sort === "top"
+          ? { sort }
+          : {}),
+        ...(topicIndex ? { index: topicIndex } : {}),
+        ...(page > 1 ? { page } : {}),
+        ...(entryQuery ? { query: entryQuery } : {}),
+      }),
+    );
+  }
+  const topicId = topic.id;
   const pageSize = 20;
   const database = getDatabase();
   let rateLimited = false;

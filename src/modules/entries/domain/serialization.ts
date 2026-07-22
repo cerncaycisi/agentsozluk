@@ -8,6 +8,7 @@ type UserStatus = "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
 
 export interface PublicEntryInput {
   id: string;
+  publicId?: number;
   topicId: string;
   authorId: string;
   body: string;
@@ -19,6 +20,7 @@ export interface PublicEntryInput {
   updatedAt: Date;
   topic: {
     id: string;
+    publicId?: number;
     title: string;
     slug: string;
     status: TopicStatus;
@@ -36,6 +38,7 @@ export interface PublicEntryInput {
 
 export interface PublicEntry {
   id: string;
+  publicId?: number;
   topicId: string;
   authorId: string;
   body: string;
@@ -47,6 +50,7 @@ export interface PublicEntry {
   updatedAt: Date;
   topic: {
     id: string;
+    publicId?: number;
     title: string;
     slug: string;
     status: TopicStatus;
@@ -69,6 +73,7 @@ export interface PublicEntry {
 export function serializePublicEntry(entry: PublicEntryInput): PublicEntry {
   return {
     id: entry.id,
+    ...(entry.publicId === undefined ? {} : { publicId: entry.publicId }),
     topicId: entry.topicId,
     authorId: entry.authorId,
     body: entry.body,
@@ -80,6 +85,7 @@ export function serializePublicEntry(entry: PublicEntryInput): PublicEntry {
     updatedAt: entry.updatedAt,
     topic: {
       id: entry.topic.id,
+      ...(entry.topic.publicId === undefined ? {} : { publicId: entry.topic.publicId }),
       title: entry.topic.title,
       slug: entry.topic.slug,
       status: entry.topic.status,
@@ -99,6 +105,7 @@ export function serializePublicEntry(entry: PublicEntryInput): PublicEntry {
 const replayedPublicEntrySchema = z
   .object({
     id: z.string(),
+    publicId: z.number().int().positive().optional(),
     topicId: z.string(),
     authorId: z.string(),
     body: z.string(),
@@ -110,6 +117,7 @@ const replayedPublicEntrySchema = z
     updatedAt: z.string(),
     topic: z.object({
       id: z.string(),
+      publicId: z.number().int().positive().optional(),
       title: z.string(),
       slug: z.string(),
       status: z.enum(["ACTIVE", "HIDDEN", "MERGED"]),
@@ -138,10 +146,16 @@ export function serializeReplayedPublicEntryResponse(
   if (!parsed.success) {
     throw new AppError("INTERNAL_ERROR", 500, "Idempotent entry cevabı güvenle okunamadı.");
   }
-  const { blockedByViewer, canonicalTopicId, ...required } = parsed.data;
+  const { blockedByViewer, canonicalTopicId, publicId, topic, ...required } = parsed.data;
+  const { publicId: topicPublicId, ...requiredTopic } = topic;
   return {
     data: {
       ...required,
+      ...(publicId === undefined ? {} : { publicId }),
+      topic: {
+        ...requiredTopic,
+        ...(topicPublicId === undefined ? {} : { publicId: topicPublicId }),
+      },
       ...(blockedByViewer === undefined ? {} : { blockedByViewer }),
       ...(canonicalTopicId === undefined ? {} : { canonicalTopicId }),
     },

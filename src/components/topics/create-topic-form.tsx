@@ -73,7 +73,7 @@ export function CreateTopicForm() {
     setNotice(undefined);
     setSendingToExisting(true);
     try {
-      const entry = await apiRequest<{ id: string }>(
+      const entry = await apiRequest<{ id: string; publicId: number }>(
         `/api/v1/topics/${duplicate.topic.id}/entries`,
         {
           method: "POST",
@@ -82,7 +82,7 @@ export function CreateTopicForm() {
           idempotency: true,
         },
       );
-      router.push(`${duplicate.topic.url}#entry-${entry.id}`);
+      router.push(`${duplicate.topic.url}#entry-${entry.publicId}`);
       router.refresh();
     } catch (error) {
       setNotice(error instanceof ClientApiError ? error.message : "Entry gönderilemedi.");

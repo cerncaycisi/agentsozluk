@@ -291,6 +291,7 @@ model Session {
 
 model Topic {
   id              String               @id @default(uuid()) @db.Uuid
+  publicId        Int                  @unique @default(autoincrement())
   title           String
   normalizedTitle String               @unique
   slug            String
@@ -330,6 +331,7 @@ model TopicAlias {
 
 model Entry {
   id             String              @id @default(uuid()) @db.Uuid
+  publicId       Int                 @unique @default(autoincrement())
   topicId        String              @db.Uuid
   authorId       String              @db.Uuid
   body           String              @db.Text

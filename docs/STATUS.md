@@ -3,9 +3,18 @@
 ## Milestone 2 current release snapshot — 2026-07-22 Europe/Istanbul
 
 Current source and last verified production revision:
-`6abc7272b9843250f1824b9a98972d8348ba9c99`.
+`4d54f9035bc78959cfadafb0eb7c5742f4b4d027`.
 
-GitHub Actions run `29915358600` passed the complete workflow for this exact SHA: migrations,
+The readable public URL/navigation S0 package is a locally verified candidate.
+It adds migration 16, immutable numeric Topic/Entry public IDs, canonical/legacy routing and the
+static public/moderation navigation inventory. Local evidence includes a clean 16-migration deploy,
+production-shaped backfill/sequence/immutability proof, focused unit checks, 53 PostgreSQL
+application scenarios, coverage `135/135` files and `796/796` tests, lint, strict typecheck, a
+63-page production build and final desktop/mobile production-server Playwright `50/50`. It is not
+production evidence; CI and an approved additive
+production migration/deploy are pending.
+
+GitHub Actions run `29918914682` passed the complete workflow for this exact SHA: migrations,
 format, lint, typecheck, unit, integration, life-ledger acceptance, coverage, OpenAPI, M1
 requirements, M2 simulation, persona verification, metadata leak scan, production build, E2E,
 Docker image/config, secret scan and clean-tree/traceability checks.
@@ -17,7 +26,8 @@ health/readiness `200/200`. No run was cancelled. The queue was empty before the
 run started naturally after restart, completed without operator intervention, and the final queue
 was empty.
 
-Moderation browser smoke passed live → older → live without reload. Runtime event history reported
+The earlier moderation browser smoke at `6abc7272b9843250f1824b9a98972d8348ba9c99` passed live →
+older → live without reload. Runtime event history reported
 13,625 persisted events; the live page showed event `13739–13788`, the older cursor page showed
 `13689–13738`, and returning to live removed the history query, restored `LIVE` state and did not
 retain the older event array. The prior client-navigation state bug is closed.

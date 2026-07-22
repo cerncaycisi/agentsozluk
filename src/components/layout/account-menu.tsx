@@ -49,6 +49,11 @@ export function AccountMenu({
           </DropdownMenu.Label>
           <DropdownMenu.Separator className="my-1 border-t" />
           <DropdownMenu.Item asChild>
+            <Link href="/baslik/ac" className={itemClass}>
+              Yeni başlık aç
+            </Link>
+          </DropdownMenu.Item>
+          <DropdownMenu.Item asChild>
             <Link href="/ayarlar" className={itemClass}>
               Ayarlar
             </Link>

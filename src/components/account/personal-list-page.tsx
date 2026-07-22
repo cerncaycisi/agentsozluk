@@ -9,6 +9,7 @@ import {
   getFollows,
   getVotes,
 } from "@/modules/interactions/application/interactions";
+import { topicPublicUrl } from "@/lib/routing/public-urls";
 
 export async function PersonalListPage({
   kind,
@@ -59,10 +60,7 @@ export async function PersonalListPage({
           ? (items as Awaited<ReturnType<typeof getFollows>>[0]).map((item) => (
               <article key={item.topic.id} className="surface-card p-5">
                 <h2 className="font-bold">
-                  <Link
-                    className="hover:text-primary"
-                    href={`/baslik/${item.topic.id}-${item.topic.slug}`}
-                  >
+                  <Link className="hover:text-primary" href={topicPublicUrl(item.topic)}>
                     {item.topic.title}
                   </Link>
                 </h2>

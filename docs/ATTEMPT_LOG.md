@@ -240,3 +240,53 @@ credentials, raw environment values, prompts or entry bodies.
 - Do not repeat: keep production discovery path-specific, do not assume the host has `file`, and do
   not combine fixed-string grep with regex anchors. Record both successful and failed operator
   attempts here even when a failure is confined to a read-only evidence command.
+
+### Readable public URLs and navigation inventory — local candidate
+
+- Scope: implement S0 numeric public IDs/canonical routing plus the missing public and moderation
+  menu inventory. No production/public endpoint or production SSH connection was used.
+- Database contract: additive migration 16 adds separate Topic/Entry integer sequences,
+  deterministic `createdAt,id` backfill, not-null unique indexes and immutable update triggers.
+  Internal UUID primary/foreign keys and API mutation targets remain unchanged.
+- Routing contract: canonical topic `/baslik/{slug}--{publicId}`, canonical entry
+  `/entry/{publicId}`, numeric topic-entry anchors, visibility-aware legacy UUID `308`, stale-slug
+  `308`, canonical merge/rename/conflict/search/sitemap/internal links and richer entry metadata.
+- Navigation contract: a global footer exposes public discovery and policy/API pages; the account
+  menu exposes topic creation; moderation navigation now includes agent events, sources, settings
+  and creation instead of leaving those static workspaces unlinked.
+- Local Docker evidence was unavailable: both Colima profiles reported `Broken` and
+  `colima [profile=m1build] is not running`. A real local PostgreSQL listener was already healthy on
+  loopback, so no Colima recovery, install or download was required.
+- Focused verification initially returned 4 failures because existing test fixtures omitted
+  `publicId` or asserted UUID URLs. After converting fixtures to the approved public contract, the
+  focused suite passed `30/30`; strict typecheck passed.
+- The first production-shaped backfill fixture failed before migration with
+  `invalid input value for enum "ContentOrigin": "USER"`. PostgreSQL rolled the fixture transaction
+  back completely (users/topics/entries all zero). The fixture was corrected to the existing `WEB`
+  enum; deterministic backfill, separate sequence continuation and database update rejection then
+  returned `PUBLIC_ID_BACKFILL_SEQUENCE_IMMUTABILITY_OK`. Its allowlisted scratch DB was dropped.
+- Clean migration deploy applied all 16 migrations. Full integration passed, and the added public-ID
+  integration/contract subset passed `55/55` including 53 real PostgreSQL application scenarios.
+- First production-server E2E run: `35` passed, `10` failed and `5` did not run. Every initial fail
+  was a stale test assumption requiring a 36-character UUID in the browser URL; the received pages
+  were already correct new canonical URLs with visible content. Tests were changed to assert public
+  canonicals and obtain internal UUIDs from API records instead of parsing public URLs.
+- Second E2E run reached `49/50`. The remaining real product defect was the duplicate-topic
+  `send entry to existing topic` client path: it combined the new canonical topic URL with an old
+  UUID fragment. The client now uses `entry.publicId`, matching the rendered numeric anchor.
+- One focused rerun command did not start because direct Playwright invocation lost `npm_execpath`
+  and selected bundled Node 24/pnpm 11; the engine guard stopped it with
+  `ERR_PNPM_UNSUPPORTED_ENGINE`. No engine bypass or install occurred. Reusing the repository's
+  Node 22/pnpm 10 script path fixed the tool invocation.
+- The first final coverage rerun omitted `TEST_DATABASE_URL`: 119 unit files and 597 tests passed,
+  while all 16 integration suites correctly refused to start with
+  `Integration tests requires TEST_DATABASE_URL.` The second rerun used a passwordless local URL
+  without an explicit role; PostgreSQL CLI inferred the operating-system user but Prisma did not,
+  so 199 integration tests stopped at reset with `User was denied access on the database`. A direct
+  Prisma probe proved the difference. The corrected allowlisted scratch URL named the local owner
+  explicitly; no privilege, engine or coverage bypass was used.
+- Final evidence: coverage `135/135` files and `796/796` tests PASS (statements/lines `93.45%`,
+  branches `85.41%`, functions `94.84%`), lint PASS, strict typecheck PASS, 63-page production build PASS, desktop/mobile
+  production-server Playwright `50/50` PASS. CI and production migration/deploy remain
+  pending. The allowlisted public-URL scratch database was dropped after validation and verified
+  absent. Do not represent this local candidate as live.

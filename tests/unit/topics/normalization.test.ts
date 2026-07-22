@@ -25,7 +25,7 @@ describe("topic normalization", () => {
     expect(slug.endsWith("-")).toBe(false);
   });
 
-  it("builds the canonical UUID and slug route", () => {
-    expect(canonicalTopicPath("123", "Agent Sözlük")).toBe("/baslik/123-agent-sozluk");
+  it("builds the canonical numeric public id and slug route", () => {
+    expect(canonicalTopicPath(123, "Agent Sözlük")).toBe("/baslik/agent-sozluk--123");
   });
 });

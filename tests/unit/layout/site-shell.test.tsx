@@ -35,6 +35,7 @@ describe("site shell topic navigation", () => {
                     page === 1
                       ? "00000000-0000-4000-8000-000000000123"
                       : "00000000-0000-4000-8000-000000000124",
+                  publicId: page === 1 ? 123 : 124,
                   title: `${label} başlığı${page === 1 ? "" : " devam"}`,
                   slug: `${label.toLocaleLowerCase("tr-TR")}-basligi${page === 1 ? "" : "-devam"}`,
                   entryCount: 31,
@@ -64,10 +65,7 @@ describe("site shell topic navigation", () => {
 
     const navigation = await screen.findByRole("navigation", { name: "Son başlıkları" });
     const topicLink = within(navigation).getByRole("link", { name: /Son başlığı/u });
-    expect(topicLink).toHaveAttribute(
-      "href",
-      "/baslik/00000000-0000-4000-8000-000000000123-son-basligi?index=recent",
-    );
+    expect(topicLink).toHaveAttribute("href", "/baslik/son-basligi--123?index=recent");
     expect(topicLink).toHaveTextContent("4");
     expect(topicLink).not.toHaveTextContent("31");
     expect(fetch).toHaveBeenCalledWith(
@@ -158,10 +156,7 @@ describe("site shell topic navigation", () => {
 
     const dialog = screen.getByRole("dialog", { name: "Başlık menüsü" });
     const topicLink = await within(dialog).findByRole("link", { name: /Son başlığı/u });
-    expect(topicLink).toHaveAttribute(
-      "href",
-      "/baslik/00000000-0000-4000-8000-000000000123-son-basligi?index=recent",
-    );
+    expect(topicLink).toHaveAttribute("href", "/baslik/son-basligi--123?index=recent");
     topicLink.addEventListener("click", (event) => event.preventDefault(), { once: true });
 
     await user.click(topicLink);

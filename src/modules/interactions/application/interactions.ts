@@ -37,6 +37,7 @@ import {
 import { appendOutboxEvent } from "@/modules/outbox";
 import { findTopicById, lockTopicState } from "@/modules/topics/repository/topics";
 import { normalizeProfileUsername } from "@/modules/users/domain/profile";
+import { topicPublicUrl } from "@/lib/routing/public-urls";
 
 async function appendVoteOutbox(
   transaction: TransactionClient,
@@ -192,7 +193,7 @@ export async function putFollow(client: DatabaseExecutor, actor: ActorContext, t
           ? {
               id: topic.mergedInto.id,
               title: topic.mergedInto.title,
-              url: `/baslik/${topic.mergedInto.id}-${topic.mergedInto.slug}`,
+              url: topicPublicUrl(topic.mergedInto),
             }
           : null,
       };

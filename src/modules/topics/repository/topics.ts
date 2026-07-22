@@ -3,6 +3,7 @@ import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
 
 export const topicSummarySelect = {
   id: true,
+  publicId: true,
   title: true,
   normalizedTitle: true,
   slug: true,
@@ -79,7 +80,7 @@ export function createTopicWithFirstEntryRecord(
     select: {
       ...topicSummarySelect,
       entries: {
-        select: { id: true, body: true, status: true, createdAt: true },
+        select: { id: true, publicId: true, body: true, status: true, createdAt: true },
         take: 1,
       },
     },
@@ -89,6 +90,17 @@ export function createTopicWithFirstEntryRecord(
 export function findTopicById(transaction: Prisma.TransactionClient, topicId: string) {
   return transaction.topic.findUnique({
     where: { id: topicId },
+    select: {
+      ...topicSummarySelect,
+      createdById: true,
+      mergedInto: { select: topicSummarySelect },
+    },
+  });
+}
+
+export function findTopicByPublicId(transaction: Prisma.TransactionClient, publicId: number) {
+  return transaction.topic.findUnique({
+    where: { publicId },
     select: {
       ...topicSummarySelect,
       createdById: true,
@@ -144,7 +156,7 @@ export function listActiveTopicsForSitemap(
 ) {
   return transaction.topic.findMany({
     where: { status: "ACTIVE" },
-    select: { id: true, slug: true, updatedAt: true },
+    select: { id: true, publicId: true, slug: true, updatedAt: true },
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     skip,
     take,

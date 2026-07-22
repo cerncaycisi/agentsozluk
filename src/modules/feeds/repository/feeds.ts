@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 
 export interface TopicFeedRow {
   id: string;
+  publicId: number;
   title: string;
   slug: string;
   entryCount: number;
@@ -16,6 +17,7 @@ export interface TopicFeedRow {
 
 export interface ChronologicalTopicRow {
   id: string;
+  publicId: number;
   title: string;
   slug: string;
   entryCount: number;
@@ -31,6 +33,7 @@ export interface TopicFeedPage<T> {
 
 interface ScoredTopicQueryRow {
   id: string | null;
+  publicId: number | null;
   title: string | null;
   slug: string | null;
   entryCount: number | null;
@@ -46,6 +49,7 @@ interface ScoredTopicQueryRow {
 
 interface ChronologicalTopicQueryRow {
   id: string | null;
+  publicId: number | null;
   title: string | null;
   slug: string | null;
   entryCount: number | null;
@@ -87,6 +91,7 @@ export async function listScoredTopics(
       scored AS (
         SELECT
           topic.id,
+          topic."publicId",
           topic.title,
           topic.slug,
           topic."entryCount",
@@ -128,6 +133,7 @@ export async function listScoredTopics(
       )
       SELECT
         paged.id,
+        paged."publicId",
         paged.title,
         paged.slug,
         paged."entryCount",
@@ -149,6 +155,7 @@ export async function listScoredTopics(
     topics: rows.flatMap((row) => {
       if (
         row.id === null ||
+        row.publicId === null ||
         row.title === null ||
         row.slug === null ||
         row.entryCount === null ||
@@ -164,6 +171,7 @@ export async function listScoredTopics(
       return [
         {
           id: row.id,
+          publicId: row.publicId,
           title: row.title,
           slug: row.slug,
           entryCount: row.entryCount,
@@ -218,6 +226,7 @@ export async function listWindowedChronologicalTopics(
     indexed_topics AS (
       SELECT
         topic.id,
+        topic."publicId",
         topic.title,
         topic.slug,
         topic."entryCount",
@@ -243,6 +252,7 @@ export async function listWindowedChronologicalTopics(
     )
     SELECT
       paged.id,
+      paged."publicId",
       paged.title,
       paged.slug,
       paged."entryCount",
@@ -259,6 +269,7 @@ export async function listWindowedChronologicalTopics(
     topics: rows.flatMap((row) => {
       if (
         row.id === null ||
+        row.publicId === null ||
         row.title === null ||
         row.slug === null ||
         row.entryCount === null ||
@@ -271,6 +282,7 @@ export async function listWindowedChronologicalTopics(
       return [
         {
           id: row.id,
+          publicId: row.publicId,
           title: row.title,
           slug: row.slug,
           entryCount: row.entryCount,
@@ -298,7 +310,7 @@ export async function listChronologicalTopics(
       : Prisma.sql`paged."createdAt" DESC NULLS LAST, paged.id ASC NULLS LAST`;
   const rows = await transaction.$queryRaw<ChronologicalTopicQueryRow[]>(Prisma.sql`
     WITH active_topics AS (
-      SELECT id, title, slug, "entryCount", "lastEntryAt", "createdAt"
+      SELECT id, "publicId", title, slug, "entryCount", "lastEntryAt", "createdAt"
       FROM topics
       WHERE status = 'ACTIVE'
     ),
@@ -315,6 +327,7 @@ export async function listChronologicalTopics(
     )
     SELECT
       paged.id,
+      paged."publicId",
       paged.title,
       paged.slug,
       paged."entryCount",
@@ -329,6 +342,7 @@ export async function listChronologicalTopics(
     topics: rows.flatMap((row) => {
       if (
         row.id === null ||
+        row.publicId === null ||
         row.title === null ||
         row.slug === null ||
         row.entryCount === null ||
@@ -339,6 +353,7 @@ export async function listChronologicalTopics(
       return [
         {
           id: row.id,
+          publicId: row.publicId,
           title: row.title,
           slug: row.slug,
           entryCount: row.entryCount,
@@ -364,13 +379,14 @@ export function listDebeEntries(
     },
     select: {
       id: true,
+      publicId: true,
       body: true,
       score: true,
       upvoteCount: true,
       downvoteCount: true,
       createdAt: true,
       updatedAt: true,
-      topic: { select: { id: true, title: true, slug: true } },
+      topic: { select: { id: true, publicId: true, title: true, slug: true } },
       author: { select: { id: true, username: true, displayName: true, status: true } },
       _count: { select: { revisions: true } },
     },
@@ -383,7 +399,7 @@ export async function findRandomActiveTopic(
   transaction: Prisma.TransactionClient,
   randomKey: number,
 ) {
-  const select = { id: true, title: true, slug: true } as const;
+  const select = { id: true, publicId: true, title: true, slug: true } as const;
   return (
     (await transaction.topic.findFirst({
       where: { status: "ACTIVE", randomKey: { gte: randomKey } },

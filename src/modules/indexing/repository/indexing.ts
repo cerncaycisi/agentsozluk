@@ -78,10 +78,12 @@ export function listIndexableTopics(
   input: { skip: number; take: number; now: Date },
 ) {
   if (settings.indexingMode === "NOINDEX_ALL_DYNAMIC")
-    return Promise.resolve([] as Array<{ id: string; slug: string; updatedAt: Date }>);
+    return Promise.resolve(
+      [] as Array<{ id: string; publicId: number; slug: string; updatedAt: Date }>,
+    );
   return transaction.topic.findMany({
     where: sitemapWhere(settings, input.now),
-    select: { id: true, slug: true, updatedAt: true },
+    select: { id: true, publicId: true, slug: true, updatedAt: true },
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     skip: input.skip,
     take: input.take,

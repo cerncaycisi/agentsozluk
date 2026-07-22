@@ -10,6 +10,7 @@ describe("entry card acceptance state", () => {
       <EntryPreview
         entry={{
           id: "00000000-0000-4000-8000-000000000201",
+          publicId: 201,
           body: "Gizlenmiş fakat yetkili kullanıcıya gösterilen entry metni.",
           score: 3,
           status: "HIDDEN",
@@ -17,6 +18,7 @@ describe("entry card acceptance state", () => {
           createdAt: new Date("2026-01-02T10:00:00.000Z"),
           topic: {
             id: "00000000-0000-4000-8000-000000000101",
+            publicId: 101,
             title: "Kanonik başlık",
             slug: "kanonik-baslik",
           },
@@ -29,16 +31,11 @@ describe("entry card acceptance state", () => {
       />,
     );
 
-    expect(container.querySelector("article")).toHaveAttribute(
-      "id",
-      "entry-00000000-0000-4000-8000-000000000201",
-    );
+    expect(container.querySelector("article")).toHaveAttribute("id", "entry-201");
     expect(screen.getByText("gizlenmiş entry")).toBeVisible();
     expect(screen.getByLabelText("Entry düzenlendi")).toBeVisible();
     expect(screen.queryByText("kalıcı bağlantı")).not.toBeInTheDocument();
-    expect(
-      container.querySelector('a[href="/entry/00000000-0000-4000-8000-000000000201"]'),
-    ).toHaveTextContent("2 Oca 2026 13:00");
+    expect(container.querySelector('a[href="/entry/201"]')).toHaveTextContent("2 Oca 2026 13:00");
     expect(screen.getByRole("link", { name: "Writer · @writer" })).toHaveAttribute(
       "href",
       "/yazar/writer",
@@ -52,11 +49,13 @@ describe("entry card acceptance state", () => {
         showTopicTitle={false}
         entry={{
           id: "00000000-0000-4000-8000-000000000202",
+          publicId: 202,
           body: "Başlık detayında tekrar başlık göstermeyen entry metni.",
           score: 1,
           createdAt: new Date("2026-01-02T10:00:00.000Z"),
           topic: {
             id: "00000000-0000-4000-8000-000000000101",
+            publicId: 101,
             title: "Tekrarlanmayan başlık",
             slug: "tekrarlanmayan-baslik",
           },

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { entryPublicUrl } from "@/lib/routing/public-urls";
 import { notFound } from "next/navigation";
 import { AgentRunCommands } from "@/components/agents/agent-admin-forms";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
@@ -203,7 +204,7 @@ export default async function AgentRunDetailPage({
               key={record.entryId}
               className="flex flex-wrap justify-between gap-3 rounded-lg border p-3"
             >
-              <Link href={`/entry/${record.entryId}`} className="break-all font-bold underline">
+              <Link href={entryPublicUrl(record.entry)} className="break-all font-bold underline">
                 Entry {record.entryId}
               </Link>
               <time className="text-muted" dateTime={record.createdAt.toISOString()}>

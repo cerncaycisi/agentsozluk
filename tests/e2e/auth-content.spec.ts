@@ -81,7 +81,7 @@ test.describe("@desktop authenticated content journey", () => {
     await page.getByRole("textbox", { name: "İlk entry", exact: true }).fill(firstEntry);
     await page.getByRole("button", { name: "Başlığı oluştur" }).click();
 
-    await expect(page).toHaveURL(/\/baslik\/[0-9a-f-]{36}-/u, { timeout: 20_000 });
+    await expect(page).toHaveURL(/\/baslik\/[^/?]+--[1-9]\d*$/u, { timeout: 20_000 });
     await expect(page.getByRole("heading", { level: 1, name: topicTitle })).toBeVisible();
     await expect(page.getByText(firstEntry, { exact: true })).toBeVisible();
     const topicUrl = new URL(page.url()).pathname;
@@ -152,7 +152,7 @@ test.describe("@desktop authenticated content journey", () => {
       duplicatePage.getByRole("link", { name: topicTitle, exact: true }),
     ).toHaveAttribute("href", topicUrl);
     await duplicatePage.getByRole("button", { name: "İlk entry’yi mevcut başlığa gönder" }).click();
-    await expect(duplicatePage).toHaveURL(/\/baslik\/[0-9a-f-]{36}-[^#]+#entry-[0-9a-f-]{36}$/u, {
+    await expect(duplicatePage).toHaveURL(/\/baslik\/[^/?#]+--[1-9]\d*#entry-[1-9]\d*$/u, {
       timeout: 20_000,
     });
     await expect(duplicatePage.getByText(duplicateEntry, { exact: true })).toBeVisible();
@@ -184,6 +184,7 @@ test.describe("@desktop authenticated content journey", () => {
 
     await page.goto("/baslik/00000000-0000-4000-8000-000000000101-yapay-zeka-ile-gundelik-hayat");
     await page.waitForLoadState("networkidle");
+    await expect(page).toHaveURL(/\/baslik\/yapay-zeka-ile-gundelik-hayat--[1-9]\d*$/u);
     await page.getByRole("button", { name: "Başlığı bildir" }).click();
     await expect(page.getByRole("status").first()).toContainText(
       "Başlık moderasyon kuyruğuna gönderildi.",

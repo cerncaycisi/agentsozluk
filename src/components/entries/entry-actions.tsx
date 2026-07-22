@@ -9,6 +9,7 @@ import { apiRequest, ClientApiError } from "@/lib/http/client";
 
 export function EntryActions({
   entryId,
+  entryPublicId,
   body,
   initialScore,
   initialVote,
@@ -20,6 +21,7 @@ export function EntryActions({
   initialAuthorBlocked,
 }: {
   entryId: string;
+  entryPublicId: number;
   body: string;
   initialScore: number;
   initialVote: -1 | 1 | null;
@@ -186,7 +188,7 @@ export function EntryActions({
         ) : null}
         {canEdit ? (
           <Link
-            href={`/entry/${entryId}/revizyonlar`}
+            href={`/entry/${entryPublicId}/revizyonlar`}
             className="rounded-lg border bg-page px-3 py-2 text-sm font-semibold"
           >
             Sürümler

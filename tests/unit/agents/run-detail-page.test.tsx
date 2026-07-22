@@ -127,7 +127,13 @@ const run = {
       createdAt: new Date("2026-07-18T08:01:10.000Z"),
     },
   ],
-  contentRecords: [{ entryId, createdAt: new Date("2026-07-18T08:01:20.000Z") }],
+  contentRecords: [
+    {
+      entryId,
+      entry: { publicId: 421 },
+      createdAt: new Date("2026-07-18T08:01:20.000Z"),
+    },
+  ],
   idempotencyKey: "internal-idempotency-secret",
   leaseOwner: "internal-worker-name",
   adminInstruction: "internal-admin-instruction",
@@ -203,7 +209,7 @@ describe("agent run detail admin page", () => {
     expect(html).toContain("Run güvenle tamamlandı.");
     expect(html).toContain("PLATFORM_EVENT");
     expect(html).toContain("Validation result");
-    expect(html).toContain(`href=\"/entry/${entryId}\"`);
+    expect(html).toContain('href="/entry/421"');
     expect(html).toContain(`href=\"/moderasyon/agent-icerikleri?runId=${runId}\"`);
     expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).not.toContain("internal-idempotency-secret");

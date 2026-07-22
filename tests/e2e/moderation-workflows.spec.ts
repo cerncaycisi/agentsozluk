@@ -50,12 +50,33 @@ async function createTopic(page: Page, title: string, body: string) {
   await page.getByRole("textbox", { name: "Başlık", exact: true }).fill(title);
   await page.getByRole("textbox", { name: "İlk entry", exact: true }).fill(body);
   await page.getByRole("button", { name: "Başlığı oluştur" }).click();
-  await expect(page).toHaveURL(/\/baslik\/[0-9a-f-]{36}-/u, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/baslik\/[^/?]+--[1-9]\d*$/u, { timeout: 20_000 });
   const topicUrl = new URL(page.url()).pathname;
-  const topicId = topicUrl.split("/").at(-1)!.slice(0, 36);
   const entryHref = await page.locator('article a[href^="/entry/"]').first().getAttribute("href");
   if (!entryHref) throw new Error("E2E_ENTRY_LINK_MISSING");
-  return { topicUrl, topicId, entryUrl: entryHref, entryId: entryHref.split("/").at(-1)! };
+  const results = await page.evaluate(
+    async ({ topicQuery, entryQuery }) => {
+      const [topicsResponse, entriesResponse] = await Promise.all([
+        fetch(`/api/v1/search?type=topics&q=${encodeURIComponent(topicQuery)}`),
+        fetch(`/api/v1/search?type=entries&q=${encodeURIComponent(entryQuery)}`),
+      ]);
+      return {
+        topicsStatus: topicsResponse.status,
+        entriesStatus: entriesResponse.status,
+        topics: ((await topicsResponse.json()) as { data?: Array<{ id: string; url: string }> })
+          .data,
+        entries: ((await entriesResponse.json()) as { data?: Array<{ id: string; url: string }> })
+          .data,
+      };
+    },
+    { topicQuery: title, entryQuery: body },
+  );
+  expect(results.topicsStatus).toBe(200);
+  expect(results.entriesStatus).toBe(200);
+  const topicId = results.topics?.find(({ url }) => url === topicUrl)?.id;
+  const entryId = results.entries?.find(({ url }) => url === entryHref)?.id;
+  if (!topicId || !entryId) throw new Error("E2E_INTERNAL_CONTENT_ID_MISSING");
+  return { topicUrl, topicId, entryUrl: entryHref, entryId };
 }
 
 async function postCommand(page: Page, path: string, body: Record<string, unknown>) {
@@ -301,8 +322,8 @@ test.describe("@desktop moderation and admin workflows", () => {
     });
     await page.goto(source.topicUrl);
     await expect(page.getByRole("heading", { level: 1, name: renamedTitle })).toBeVisible();
-    await expect(page).toHaveURL(
-      new RegExp(`/baslik/${source.topicId}-yeni-kanonik-baslik-${suffix}$`, "u"),
+    expect(new URL(page.url()).pathname).toMatch(
+      new RegExp(`/baslik/yeni-kanonik-baslik-${suffix}--\\d+$`, "u"),
     );
 
     const renamedUrl = new URL(page.url()).pathname;
@@ -311,7 +332,7 @@ test.describe("@desktop moderation and admin workflows", () => {
       reason: "E2E yönlendirme testi için kaynak başlık hedefle birleştiriliyor.",
     });
     await page.goto(renamedUrl);
-    await expect(page).toHaveURL(new RegExp(`/baslik/${target.topicId}-`, "u"));
+    expect(new URL(page.url()).pathname).toBe(target.topicUrl);
     await expect(
       page.getByRole("heading", { level: 1, name: `Birleştirme hedefi ${suffix}` }),
     ).toBeVisible();
