@@ -436,3 +436,24 @@ credentials, raw environment values, prompts or entry bodies.
   settings are frozen. Non-behavioral SEO/UI/docs changes and operator human posts remain allowed
   only with append-only public-safe evidence. Automatic weekly persona evolution remains natural;
   manual runs require an emergency log entry.
+
+### Epoch 2 read-only reporting package — local candidate
+
+- Scope: add the read-only `society-baseline-report` and `experiment-memory-report` operator tools,
+  shared pure attribution/window helpers and unit contracts. No runtime, schema, migration,
+  scheduler, prompt, persona, setting, traceability or production state changed.
+- The reports use half-open offset-aware windows, Europe/Istanbul day buckets, exact trigger/run-type
+  classification, run linkage before the six timestamp fallbacks, `CREATE_TOPIC_WITH_ENTRY` for
+  topic attribution and `ContentOrigin.SEED` exclusion. Unknown trigger pairs are warnings, never
+  silently natural. The memory report queries only instruction presence, never its raw value.
+- Focused helper and read-only-contract verification passed `11/11`; formatting, lint, strict
+  typecheck and the complete unit suite (`122` files / `612` tests) passed. Both CLI help paths
+  completed without opening a database connection.
+- The first real local query smoke used `agent_sozluk_m1_dev` and stopped with exact Prisma error
+  `The table public.agent_runs does not exist in the current database.` That database contains only
+  the M1 schema; no migration or fixture mutation was performed. Do not use an M1-only database to
+  smoke M2 operator reports.
+- Read-only table discovery found an existing M2-schema local test database. Both reports then ran
+  successfully against `agent_sozluk_m1_test`, including empty-count, `N/A` ratio and empty operator
+  run-set paths. No database row was created, changed or removed, and no production connection was
+  made.

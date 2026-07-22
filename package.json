@@ -38,6 +38,8 @@
     "agent:status": "tsx scripts/agent-codex-status.ts",
     "agent:capacity": "tsx scripts/agent-capability.ts capacity",
     "agent:concurrency-test": "tsx scripts/agent-capability.ts concurrency",
+    "agent:report:society": "tsx scripts/society-baseline-report.ts",
+    "agent:report:experiment-memory": "tsx scripts/experiment-memory-report.ts",
     "agent:simulate-day": "vitest run tests/simulation/agent-day.test.ts --reporter=verbose",
     "test:agent-simulation": "vitest run tests/simulation --passWithNoTests=false",
     "test:agent-e2e": "\"$npm_node_execpath\" node_modules/@playwright/test/cli.js test tests/e2e/agent-society.spec.ts",

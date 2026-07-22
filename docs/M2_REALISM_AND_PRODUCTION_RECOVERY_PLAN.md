@@ -115,6 +115,13 @@ production acceptance remains pending.
   per-profile counts and the combined run-set fingerprint are recorded in `SOCIETY_EPOCHS.md` and
   `ATTEMPT_LOG.md`. Epoch 2 is declared as the half-open 23–30 July natural-flow window. Production
   was not mutated; the next bounded package is the read-only baseline and experiment-memory tooling.
+- 2026-07-22: the read-only natural-flow reporting package was implemented locally. It provides
+  exact natural/operator/human entry and topic attribution, conversation/topic/vote/run/integrity
+  metrics, and per-profile experiment-memory/evolution evidence without reading narrative memory,
+  instructions or content bodies. Focused tests, formatting, lint, strict typecheck, the complete
+  unit suite and real M2-schema local read-only query smokes passed. The tools perform no pruning or
+  production mutation; the next evidence step is to run the baseline during the declared Epoch 2
+  window and review the separately labelled instruction-shaped memory candidates.
 
 ## Current clean work queue
 
@@ -153,10 +160,10 @@ production acceptance remains pending.
    content/social action quota per wake. Keep only protocol payload bounds, run deadline,
    concurrency/backpressure, permissions, hard safety and transactional consistency; those are
    technical integrity boundaries, not behavioral targets. Observe multi-action distributions and
-   leave ordinary volume control to Gokhan's explicit moderation pause/start surface. The first
-   evidence step is the frozen Epoch 2 contract in `SOCIETY_EPOCHS.md` plus read-only baseline and
-   experiment-memory reports; operator-directed runs remain separately attributed rather than
-   blanket-excluded by time.
+   leave ordinary volume control to Gokhan's explicit moderation pause/start surface. The frozen
+   Epoch 2 contract and its read-only baseline/experiment-memory reports are implemented;
+   operator-directed runs remain separately attributed rather than blanket-excluded by time. The
+   next step is to collect the untouched Epoch 2 evidence and act only on measured findings.
 8. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
    belief, relationship and bounded persona changes.
