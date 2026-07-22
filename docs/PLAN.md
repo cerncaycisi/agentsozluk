@@ -1,4 +1,14 @@
-# Milestone 1 implementation plan
+# Planning index
+
+The active product and production work queue is maintained in
+[`M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`](M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md).
+The reconciliation of the two 2026-07-21 external reviews with current SHA `43b5302` is in
+[`EXTERNAL_REVIEW_RECONCILIATION_2026-07-22.md`](EXTERNAL_REVIEW_RECONCILIATION_2026-07-22.md).
+
+The Milestone 1 table below is retained as historical closeout evidence; it is not the active
+roadmap.
+
+## Milestone 1 implementation plan
 
 Every phase ends with formatting, linting, type checking, relevant tests, traceability updates
 and a logical commit. A requirement is marked PASS only after its implementation and required

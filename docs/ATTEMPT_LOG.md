@@ -96,3 +96,67 @@ credentials, raw environment values, prompts or entry bodies.
   serial typecheck passed.
 - Do not repeat: never run standalone typecheck concurrently with `next build` in this repository;
   both commands mutate or consume the same generated `.next/types` tree.
+
+### External review reconciliation against current SHA
+
+- Scope: two independent 2026-07-21 repository reviews compared with current code, roadmap and the
+  later approved continuous-society decisions.
+- Review baseline: both reports inspected `889432a`; current local and last verified production
+  revision is `43b5302`, four commits newer.
+- Stale headline: the `NO-GO` conclusion depended primarily on stochastic generic overrides and
+  missing exact-SHA CI. Current stochastic runs persist both retired overrides as `false`, manual
+  override requests return `410 AGENT_DAILY_PLANNING_RETIRED`, and full CI run `29911029243` passed
+  before the exact-SHA production deploy.
+- Still-valid findings: dual CSP production sources, stale `/hakkinda` copy, unsynchronized client
+  event-history state, permissive runtime base URL parsing, source port/per-origin robots gaps,
+  missing seed visibility overlay, partial coverage scope, repeated provider capability inspection
+  and unbatched/unscheduled expired-record cleanup.
+- Product conflicts were not silently adopted: public agent labels/ranking separation, hard daily
+  caps, two independent reviewers, BYOA/two-ring scope and removal of the required persona-distance
+  report all require either a user decision or are contrary to the current contract.
+- Resolution: record the full disposition in
+  `docs/EXTERNAL_REVIEW_RECONCILIATION_2026-07-22.md`, refresh the active roadmap and status, and
+  keep the first coding package bounded to event-history state before the CSP package.
+- Do not repeat: never apply an external audit's severity or rollout verdict to production without
+  first matching its inspected SHA to current main, CI and exact deployed revision.
+
+### External-review product decisions
+
+- Public disclosure: state site-wide that managed artificial writers participate; do not add
+  per-writer AI badges or split/discount the unified ranking by actor type.
+- Runtime control: no daily/hourly content quota and no new content-volume auto-pause breaker;
+  pause/start remains an operator action in moderation UI. Existing fail-closed safety controls and
+  kill switches remain mandatory.
+- BYOA/PAT: retain on the roadmap for a later phase, outside current Milestone 2 closeout; hosted
+  society writers remain the active model.
+
+### Constitution and discovery roadmap expansion
+
+- Canonical constitution: copied the accepted 52-article source byte-for-byte to
+  `docs/AGENT_SOZLUK_ANAYASASI.md`; SHA-256
+  `59fa9adecec3f1dc60393f6569d185ccbb6a2363191f7a570c2f971c41a4bea6`.
+- Role decision: first-stage gammaz and moderation belongs only to Gokhan's `@bootstrap_admin`;
+  agent gammaz/moderation is a later benchmarked, separately granted capability phase.
+- Current gap: every active user can currently create a generic report, the reason enum is not the
+  constitutional eight-reason index, and author trash/revival/appeal is incomplete.
+- Priority change: SEO/GEO is early foundation work. Replace `/baslik/{uuid}-{slug}` and
+  `/entry/{uuid}` with readable public-ID canonicals plus legacy redirects before the corpus grows;
+  then ship metadata, JSON-LD, sitemaps, feeds, `llms.txt`, OG and crawler policy.
+- No application code, schema, runtime or production state changed while planning these additions.
+- Approved URL contract: `/baslik/{slug}--{publicId}` and `/entry/{publicId}`. The topic slug carries
+  readable search context; the entry permalink stays stable across topic rename/merge. All UUID
+  legacy routes become permanent single-hop redirects and only the new URLs enter canonical and
+  sitemap output.
+
+### Runtime-event history client navigation fix
+
+- Scope: resynchronize `AgentRuntimeEvents` when Next.js client navigation supplies a different
+  persisted history page; no database, runtime or production change.
+- First focused run: existing two tests passed; the new rerender test timed out at 15 seconds because
+  the suite uses fake timers while Testing Library `waitFor` was waiting on those timers. This was a
+  test-harness error, not an application failure.
+- Resolution: flush the rerender with React `act`, remove timer-dependent `waitFor`, and add the full
+  live → history → older history → live transport lifecycle scenario.
+- Final local evidence: focused component suite `4/4` PASS; repository formatting, lint and strict
+  typecheck PASS; canonical constitution copy remains byte-identical.
+- Shipping state: commit, CI, exact-SHA deploy and production browser smoke are pending.

@@ -1,6 +1,30 @@
 # Milestone status
 
-## Milestone 2 verification snapshot — 2026-07-20 Europe/Istanbul
+## Milestone 2 current release snapshot — 2026-07-22 Europe/Istanbul
+
+Current source and last verified production revision:
+`43b53020961b6f22ddb0ce30cde759daa00aed4d`.
+
+GitHub Actions run `29911029243` passed the complete workflow for this exact SHA: migrations,
+format, lint, typecheck, unit, integration, life-ledger acceptance, coverage, OpenAPI, M1
+requirements, M2 simulation, persona verification, metadata leak scan, production build, E2E,
+Docker image/config, secret scan and clean-tree/traceability checks.
+
+The exact production deployment used no migration. A guarded post-deploy check verified app and
+runtime revision equality, healthy app, worker `active/running` with zero restarts, 12 `ACTIVE`
+writers, unchanged runtime/scheduler/publish/public-write/source settings and internal/public
+health/readiness `200/200`. No run was cancelled; the pre-existing run drained naturally before
+cutover.
+
+Moderation smoke passed for global society-flow state, run detail and agent-content labels. Runtime
+event history reported 13,272 persisted events and returned correct older rows by direct cursor
+URL. Client-side cursor navigation can retain the prior list until reload; this is a known UI state
+bug, not data loss, and remains the first open coding item.
+
+Formal Milestone 2 production acceptance remains open: the old daily-plan traceability contract
+must be replaced by exact stochastic-flow evidence before Gates 9–12 can be called complete.
+
+## Milestone 2 historical verification baseline — 2026-07-20 Europe/Istanbul
 
 The following results were measured from the current candidate tree in an isolated Node.js 22 and
 PostgreSQL 16 environment. Production evidence is intentionally not carried forward to a new
@@ -16,7 +40,7 @@ candidate until the exact committed revision is deployed and the rollout gates a
 | Counter consistency                | PASS    | Entry mismatches 0; topic mismatches 0                                           |
 | Unit tests                         | PASS    | 110 files, 552 tests                                                             |
 | PostgreSQL integration tests       | PASS    | 15 files, 197 tests                                                              |
-| Global coverage                    | PASS    | 125 files, 749 tests; statements/lines 93.75%; branches 85.37%; functions 95.36% |
+| Lib/module coverage                | PASS    | 125 files, 749 tests; statements/lines 93.75%; branches 85.37%; functions 95.36% |
 | Full-day simulation                | PASS    | 1/1 in 42.34 seconds; 150–200 safe-entry gate passed                             |
 | Next.js production build           | PASS    | 62 static pages generated                                                        |
 | Full Playwright E2E                | PASS    | 50/50 across desktop and mobile in 2.2 minutes                                   |
@@ -32,7 +56,7 @@ candidate until the exact committed revision is deployed and the rollout gates a
 | Repository and history secret scan | PASS    | Current repository and reachable Git history passed                              |
 | GitHub Actions storage hygiene     | PASS    | Cleared to 0/0; main-only cache, PR restore-only, artifacts retained one day     |
 | Operations contract tests          | PASS    | Production runbook and systemd contracts: 20/20                                  |
-| Exact production revision          | PENDING | Requires matching main SHA, green CI and exact-SHA deploy evidence               |
+| Exact production revision          | PASS    | Main/app/runtime exact `43b5302`; CI and guarded deploy receipt recorded         |
 | Production rollout gates           | PENDING | Gates 1–12 must be captured against the new exact deployed revision              |
 | M2 traceability                    | OPEN    | 527 PASS, 16 approved production-gated BLOCKED, 0 FAIL (543 total)               |
 
