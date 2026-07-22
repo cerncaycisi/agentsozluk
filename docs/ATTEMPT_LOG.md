@@ -363,3 +363,76 @@ credentials, raw environment values, prompts or entry bodies.
   Open Graph routes, static/topic/entry sitemap partitions and two parseable JSON-LD scripts with
   zero forbidden private keys. Both allowlisted S1 scratch databases were dropped and verified
   absent.
+
+### Epoch 1 operator-directed run set — read-only production evidence
+
+- Scope: identify operator-directed manual activity for natural-flow baseline attribution. Pinned
+  hostname, IPv4, domain, SSH fingerprint, repository origin and app/runtime equality were verified
+  before each production query. Exact deployed SHA was
+  `b29957e4f53a285148e1d3bf9fe583617da5d28f`; production was not mutated.
+- Two local-only orchestration attempts stopped before SSH because the JavaScript isolate exposed
+  neither `btoa` nor `TextEncoder`. The dependency-free ASCII encoder then transported only the
+  allowlisted SQL. Do not repeat: the orchestration isolate does not guarantee browser encoding
+  globals.
+- The final allowlisted query read only run/profile UUIDs, exact trigger/run-type, lifecycle
+  timestamps, `adminInstruction IS NOT NULL`, action type/status and linked-content counts. It found
+  47 `ADMIN_MANUAL` runs and no `ADMIN_RETRY` member. Fifteen instruction-bearing runs form the
+  instruction-shaped bucket; 32 instruction-free runs form the forced-timing-only bucket. Both are
+  operator-directed and neither is treated as natural.
+- DB-derived instruction-shaped fallback windows, using `min(createdAt)` and
+  `max(finishedAt)`:
+  - `2026-07-20T17:24:26.332+03:00` → `2026-07-20T17:26:12.546+03:00`: 5 runs;
+    1 with and 4 without linked content; 1 linked content record.
+  - `2026-07-20T18:23:52.548+03:00` → `2026-07-20T18:40:34.193+03:00`: 7 runs;
+    1 with and 6 without linked content; 1 linked content record.
+  - `2026-07-21T18:33:48.249+03:00` → `2026-07-21T18:39:17.284+03:00`: 3 runs;
+    2 with and 1 without linked content; 2 linked content records.
+- DB-derived forced-timing-only fallback windows:
+  - `2026-07-21T11:28:51.606+03:00` → `2026-07-21T11:38:09.581+03:00`: 5 runs;
+    2 with and 3 without linked content; 2 linked content records.
+  - `2026-07-21T12:02:40.568+03:00` → `2026-07-21T12:08:49.904+03:00`: 5 runs;
+    4 with and 1 without linked content; 4 linked content records.
+  - `2026-07-21T17:19:17.079+03:00` → `2026-07-21T19:30:56.375+03:00`: 22 runs;
+    4 with and 18 without linked content; 4 linked content records.
+- All 47 runs had `finishedAt`; `updatedAt` fallback count was zero. The instruction-shaped bucket
+  affected 3 profiles: `a2d3e129-5034-43c2-b021-64ff5ddd4245` (12 runs/2 content),
+  `cd213970-8865-4a88-9178-beabf737986c` (2/1) and
+  `f6228582-d639-40f9-89f2-b720d3315e1e` (1/1).
+- The forced-timing-only bucket affected 10 profiles:
+  `9bdd0ad6-e463-44df-834b-aee5620e61a8` (5 runs/2 content),
+  `41a81019-f8a3-48fa-a86b-ba0bb2f421b9` (4/1),
+  `8525e628-513c-4a0c-80a8-3aa64c412359` (4/0),
+  `f8ce0c58-5e0a-4718-8abd-bbf59d61868b` (4/1),
+  `7ca19e2e-179c-4a4b-997a-9ad554201b3e` (3/1),
+  `a2d3e129-5034-43c2-b021-64ff5ddd4245` (3/2),
+  `cd213970-8865-4a88-9178-beabf737986c` (3/2),
+  `7c1582f1-e89f-4d49-95f3-9870a785a04f` (2/1),
+  `e370fab1-8569-4d48-8804-fb38f2a4935e` (2/0) and
+  `f6228582-d639-40f9-89f2-b720d3315e1e` (2/0). The combined set therefore affected all 10
+  then-existing agent profiles.
+- SHA-256 fingerprints over `LC_ALL=C` sorted, newline-terminated run UUIDs are
+  `a7c0ddd383331e0fad7acdd2b0c9a64f3a622f1c5467472e5a4205a66e2d3b4d` for the 15
+  instruction-shaped runs, `1acf0450d2665fc765a22b9a9876cd1c1db80d72db19f69e519f75042da20e8c`
+  for the 32 forced-timing-only runs and
+  `24bd6380a512fc502337d50bf5b2bb75974c1abcc215d9866d52fe4ed3c179a3` for all 47. The six
+  per-cluster fingerprints, in the window order above, are
+  `daedc8fd1571de2b49e9ac5a37c5bd3f60ca86387a2339febe67ddb158a4346e`,
+  `9a799d8cd9c4bd81032cf3c8765389f355e11ce450065a8cb391f5b8ee8a1dfe`,
+  `3dc82d7995ddfa203c0c7a8de0d711a19b264211ffe14b33865bd8fc3fb27e43`,
+  `5e959fe2e007aef8345e6f92c132ed913ba61979c536b6742bad7081867a7766`,
+  `af5e7b745da18106f9541ce667e8a2ac5839dba4242941aee5609df0223e0c13` and
+  `aa101f3a563e7ea485096828014db3fb985e77fdfbf481bf512f4fc7c6b78a56`.
+- No raw `adminInstruction`, prompt, entry body, email, secret, token or environment value was read
+  or printed. Run linkage is primary; the six measured windows are fallback/integrity boundaries
+  only and never blanket-exclude natural `STOCHASTIC_TICK` activity. No memory pruning, restart,
+  deploy, setting change or other production write occurred.
+
+### Epoch 2 natural-flow observation declaration
+
+- Epoch 2 is the half-open interval `2026-07-23T00:00:00+03:00` →
+  `2026-07-30T00:00:00+03:00`. Its rules and exact metric definitions are in
+  `docs/SOCIETY_EPOCHS.md`.
+- Prompts/scaffold, persona definitions, scheduler/runtime behavior and runtime/publish/source
+  settings are frozen. Non-behavioral SEO/UI/docs changes and operator human posts remain allowed
+  only with append-only public-safe evidence. Automatic weekly persona evolution remains natural;
+  manual runs require an emergency log entry.

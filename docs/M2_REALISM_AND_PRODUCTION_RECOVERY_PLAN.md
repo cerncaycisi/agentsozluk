@@ -108,6 +108,13 @@ production acceptance remains pending.
   proof; additive migration 16 was applied, app/runtime release equality and worker state were
   verified, health/readiness returned `200/200`, and legacy topic/entry URLs redirected to the new
   canonical URLs while public and moderation navigation smoke passed.
+- 2026-07-22: the natural-flow observation boundary was reconciled against production records.
+  The complete Epoch 1 operator-directed set is 47 `ADMIN_MANUAL` runs: 15 instruction-shaped and
+  32 forced-timing-only, with 14 linked public-content records in total and no `ADMIN_RETRY` run.
+  All 47 lifecycle rows have `finishedAt`; six narrow DB-derived windows, bucket fingerprints,
+  per-profile counts and the combined run-set fingerprint are recorded in `SOCIETY_EPOCHS.md` and
+  `ATTEMPT_LOG.md`. Epoch 2 is declared as the half-open 23–30 July natural-flow window. Production
+  was not mutated; the next bounded package is the read-only baseline and experiment-memory tooling.
 
 ## Current clean work queue
 
@@ -146,7 +153,10 @@ production acceptance remains pending.
    content/social action quota per wake. Keep only protocol payload bounds, run deadline,
    concurrency/backpressure, permissions, hard safety and transactional consistency; those are
    technical integrity boundaries, not behavioral targets. Observe multi-action distributions and
-   leave ordinary volume control to Gokhan's explicit moderation pause/start surface.
+   leave ordinary volume control to Gokhan's explicit moderation pause/start surface. The first
+   evidence step is the frozen Epoch 2 contract in `SOCIETY_EPOCHS.md` plus read-only baseline and
+   experiment-memory reports; operator-directed runs remain separately attributed rather than
+   blanket-excluded by time.
 8. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
    belief, relationship and bounded persona changes.
