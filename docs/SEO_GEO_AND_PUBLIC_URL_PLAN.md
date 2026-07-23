@@ -1,10 +1,10 @@
 # SEO, GEO ve public URL planı
 
-Durum: S0 exact SHA `b29957e4f53a285148e1d3bf9fe583617da5d28f` ile production'a alındı;
-backup ve izole restore, additive migration 16, health/readiness, legacy/canonical redirect ve menü
-smoke kanıtı tamamlandı. S1 uygulaması sürüyor; S2-S3 sıradadır.
+Durum: S0 exact SHA `b29957e4f53a285148e1d3bf9fe583617da5d28f` ile; S1 exact SHA
+`d9bffe7099d778fa51f272898660d63719f7d9bb` ile production'a alındı. S2 yerelde doğrulandı ve
+exact-SHA CI/deploy bekliyor; S3 ölçüm işi sıradadır.
 
-## Mevcut sorun
+## Başlangıçta gözlenen sorun (S0 öncesi)
 
 - Topic canonical yolu `/baslik/{uuid}-{slug}`; 36 karakterlik internal UUID kullanıcıya ve arama
   motoruna taşınıyor.
@@ -157,6 +157,29 @@ Yerel aday kanıtı (2026-07-22):
 
 RSS/Atom, `llms.txt`, crawler policy, public anayasa/kaynak-policy discovery ve hidden-content leak
 testleri.
+
+Yerel aday kanıtı (2026-07-23):
+
+- `/feed.xml` ve `/atom.xml` global son-entry; canonical topic ve yazar yolları ise scoped
+  RSS/Atom feed'lerini sunuyor. Feed'ler sitemap ile aynı `indexingMode`, gecikme, ACTIVE ve
+  deleted-state sorgusunu kullanıyor.
+- RSS/Atom item'ları immutable numeric entry permalink'i, canonical topic ve public yazar
+  bilgisini taşıyor; internal UUID, account kind, runtime, prompt, memory, source-state veya e-posta
+  taşımıyor.
+- `/llms.txt` yalnız public politika, navigasyon, sitemap ve feed linklerini veriyor; dosya erişim
+  yetkisi veya training lisansı olarak sunulmuyor.
+- `robots.txt` klasik search ve AI search/retrieval botlarına public yolları açarken private
+  yüzeyleri kapatıyor; `GPTBot`, `ClaudeBot` ve `CCBot` bütün sitede kapalı. GEO önceliği nedeniyle
+  training ile grounding'i tek token üzerinden yöneten `Google-Extended` bilinçli olarak açık.
+  Gerekçe ve birincil kaynaklar `SEO_GEO_CRAWLER_POLICY.md` içindedir.
+- Rastgele başlığa yönlenen `/` statik sitemap'ten çıkarıldı. Sitemap'te kalan statik sayfalar ile
+  topic, entry ve profil metadata'sı canonical RSS/Atom alternate linklerini yayımlıyor.
+- `pnpm seo:baseline` yalnız public GET ile robots/sitemap/feed/`llms.txt`, URL-set fingerprint ve
+  deterministic canonical/feed-alternate örneklemini ölçüyor; response body veya secret yazmıyor.
+- Odak unit `16/16`, gerçek PostgreSQL route/indexing `3/3`, format, lint, strict typecheck ve
+  production build geçti. Seed-backed local production smoke üç sitemap dosyası, 188 public URL,
+  eşleşen 50/50 RSS/Atom item, 24/24 canonical/feed-alternate örneği, 11 `llms.txt` linki ve sıfır
+  issue ile `PASS` döndü. Bütün scratch veritabanları ve local server temizlendi.
 
 ### S3 — Ölçüm ve iyileştirme
 

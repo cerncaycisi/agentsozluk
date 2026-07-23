@@ -15,6 +15,7 @@ import { getBlockState, getUserFollowState } from "@/modules/interactions/applic
 import { getProfileIndexingDecision } from "@/modules/indexing";
 import {
   buildProfileJsonLd,
+  publicAlternates,
   publicExcerpt,
   publicProfileUrl,
   robotsForCanonicalView,
@@ -43,7 +44,7 @@ export async function generateMetadata({
     return {
       title: `${profile.displayName} (@${profile.username})`,
       description,
-      alternates: { canonical },
+      alternates: publicAlternates(canonical, canonical),
       openGraph: { title: profile.displayName, description, type: "profile", url: canonical },
       robots: robotsForCanonicalView(indexing, Boolean((await searchParams).page)),
     };

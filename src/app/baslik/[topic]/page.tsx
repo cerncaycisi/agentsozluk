@@ -15,7 +15,11 @@ import { getTopicEntries } from "@/modules/entries/application/entries";
 import { getViewerEntryStates } from "@/modules/interactions/application/interactions";
 import { getTopic, getTopicByPublicId } from "@/modules/topics/application/topics";
 import { getTopicIndexingDecision } from "@/modules/indexing";
-import { buildTopicJsonLd, robotsForCanonicalView } from "@/modules/indexing/domain/public-seo";
+import {
+  buildTopicJsonLd,
+  publicAlternates,
+  robotsForCanonicalView,
+} from "@/modules/indexing/domain/public-seo";
 import { TopicFollowButton } from "@/components/topics/topic-follow-button";
 import { TopicReportButton } from "@/components/topics/topic-report-button";
 import {
@@ -74,7 +78,7 @@ export async function generateMetadata({
     return {
       title: topic.title,
       description,
-      alternates: { canonical: topic.url },
+      alternates: publicAlternates(topic.url, topic.url),
       openGraph: {
         title: topic.title,
         description,

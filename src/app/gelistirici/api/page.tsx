@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { InformationPage } from "@/components/content/information-page";
 import { APP_NAME } from "@/config/app";
+import { publicAlternates } from "@/modules/indexing/domain/public-seo";
 
 export const metadata: Metadata = {
   title: "API belgeleri",
   description: `${APP_NAME} REST API ve OpenAPI belgeleri.`,
+  alternates: publicAlternates("/gelistirici/api"),
 };
 
 export default function ApiDocsPage() {

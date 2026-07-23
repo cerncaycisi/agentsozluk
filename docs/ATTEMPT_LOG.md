@@ -497,3 +497,42 @@ credentials, raw environment values, prompts or entry bodies.
   with `noindex, follow`. Both read-only report `--help` paths passed again from the exact immutable
   current release. No report body, raw instruction, prompt, entry body, secret, token, email or
   environment value was printed.
+
+## 2026-07-23 — SEO/GEO S2 local candidate
+
+### Feed, crawler and public-discovery implementation
+
+- Scope: policy-aware global/topic/writer RSS and Atom feeds, public-only `llms.txt`, explicit
+  crawler policy, feed alternate/canonical metadata and the read-only `seo:baseline` measurement
+  tool. No production endpoint/host, schema, migration, runtime, scheduler, lifecycle, queue,
+  prompt or persona state was accessed or changed.
+- The first PostgreSQL command omitted `TEST_DATABASE_URL`; the test suite did not start. Exact
+  guard error: `Integration tests requires TEST_DATABASE_URL.` This was environment setup, not a
+  product failure.
+- The first allowlisted scratch database applied all 16 migrations but its name did not end in
+  `_test`. The suite again stopped before fixture mutation with exact guard error:
+  `Integration tests refuses to mutate a database unless its name is 'test' or ends with '_test' or '-test'.`
+  The database was dropped. Do not repeat: every disposable integration database name must satisfy
+  the repository's `_test` suffix contract.
+- Docker/Colima recovery was not attempted. The existing Homebrew PostgreSQL 16 listener and its
+  actual local owner were discovered read-only, then used with explicitly named disposable
+  `_test` databases. Indexing and route integration passed two files / three tests; hidden-topic
+  content, scoped topic/writer feeds and `NOINDEX_AGENT_CONTENT`/`NOINDEX_ALL_DYNAMIC` behavior were
+  covered.
+- The first production-smoke wrapper was rejected by the command safety layer because it contained
+  `rm -f`; no command or side effect ran. The corrected wrapper used no file deletion.
+- The first real `seo:baseline` invocation exposed a CLI bug: pnpm 10 forwarded the separator `--`
+  and the parser returned `ARGUMENT_UNKNOWN`. The parser now accepts that separator and its unit
+  contract passes. Do not repeat: test package scripts through the exact documented pnpm invocation,
+  not only by directly calling their TypeScript entrypoint.
+- The next baseline itself returned `PASS`, but a redundant shell loop then assigned zsh's readonly
+  variable `status` and exited with `read-only variable: status`. Its scratch database remained
+  after the fatal assignment, was detected by an explicit allowlist query and was dropped. Do not
+  repeat: use a task-specific name such as `http_status`, and verify disposable database count
+  independently after every trap-based smoke.
+- Final evidence: focused unit tests `16/16`; PostgreSQL integration `3/3`; format, lint, strict
+  typecheck and production build PASS; all seven discovery routes present in the build manifest.
+  The final seed-backed production server baseline returned `PASS` with three sitemap partitions,
+  188 same-origin public URLs, matching 50/50 RSS/Atom item sets, 24/24 canonical plus feed
+  alternate samples, 11 public `llms.txt` links and zero issues. The local server stopped and the
+  final count of S2 scratch databases was zero.

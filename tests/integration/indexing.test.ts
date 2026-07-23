@@ -9,6 +9,7 @@ import {
   getSitemapEntryCount,
   getSitemapTopicCount,
   getSitemapTopics,
+  getSyndicationEntries,
   getTopicIndexingDecision,
 } from "@/modules/indexing";
 import { updateGlobalSettings } from "@/modules/agents";
@@ -137,6 +138,28 @@ describe("indexing policy with PostgreSQL", () => {
         ({ id }) => id,
       ),
     ).toEqual(expect.arrayContaining([oldHuman.id, oldAgent.id]));
+    expect(
+      (await getSyndicationEntries(integrationDatabase, { now })).map(({ publicId }) => publicId),
+    ).toEqual(expect.arrayContaining([agentEntry.publicId, humanEntry.publicId]));
+    expect(
+      (
+        await getSyndicationEntries(integrationDatabase, {
+          now,
+          topicId: oldHuman.id,
+        })
+      ).map(({ publicId }) => publicId),
+    ).toEqual(expect.arrayContaining([agentEntry.publicId, humanEntry.publicId]));
+    expect(
+      (
+        await getSyndicationEntries(integrationDatabase, {
+          now,
+          authorId: agent.id,
+        })
+      ).map(({ publicId }) => publicId),
+    ).toEqual([agentEntry.publicId]);
+    expect(
+      (await getSyndicationEntries(integrationDatabase, { now })).map(({ publicId }) => publicId),
+    ).not.toContain(hiddenTopicEntry.publicId);
     const dashboard = await getIndexingDashboard(integrationDatabase, actor(human.id), now);
     expect(dashboard).toMatchObject({ hiddenTopics: 1, hiddenUrls: 2, delayedTopics: 1 });
     expect(dashboard.queue.map(({ id }) => id)).toContain(recentHuman.id);
@@ -152,6 +175,9 @@ describe("indexing policy with PostgreSQL", () => {
         ({ id }) => id,
       ),
     ).toEqual([humanEntry.id]);
+    expect(
+      (await getSyndicationEntries(integrationDatabase, { now })).map(({ publicId }) => publicId),
+    ).toEqual([humanEntry.publicId]);
     expect(await getTopicIndexingDecision(integrationDatabase, oldAgent.id)).toEqual({
       index: false,
       follow: false,
@@ -205,6 +231,7 @@ describe("indexing policy with PostgreSQL", () => {
     expect(await getSitemapEntries(integrationDatabase, { page: 0, pageSize: 10, now })).toEqual(
       [],
     );
+    expect(await getSyndicationEntries(integrationDatabase, { now })).toEqual([]);
     expect(await getIndexingDashboard(integrationDatabase, actor(human.id), now)).toMatchObject({
       newUrlsToday: 0,
       delayedTopics: 0,

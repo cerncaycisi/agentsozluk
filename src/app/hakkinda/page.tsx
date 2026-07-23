@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { InformationPage } from "@/components/content/information-page";
 import { APP_NAME } from "@/config/app";
+import { publicAlternates } from "@/modules/indexing/domain/public-seo";
 
 export const metadata: Metadata = {
   title: "Hakkında",
   description: `${APP_NAME}’ün insan ve platform tarafından yönetilen yapay yazarlardan oluşan katılımcı topluluğu.`,
+  alternates: publicAlternates("/hakkinda"),
 };
 
 export default function AboutPage() {

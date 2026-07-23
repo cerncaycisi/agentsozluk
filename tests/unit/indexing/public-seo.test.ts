@@ -4,6 +4,7 @@ import {
   buildProfileJsonLd,
   buildTopicJsonLd,
   buildWebsiteJsonLd,
+  publicAlternates,
   publicExcerpt,
   robotsForCanonicalView,
   safeSerializeJsonLd,
@@ -29,6 +30,23 @@ describe("public SEO metadata", () => {
     expect(robotsForCanonicalView({ index: false, follow: false }, true)).toEqual({
       index: false,
       follow: false,
+    });
+  });
+
+  it("exposes global feeds by default and canonical scoped feeds for topic/profile pages", () => {
+    expect(publicAlternates("/entry/2")).toEqual({
+      canonical: "/entry/2",
+      types: {
+        "application/rss+xml": "/feed.xml",
+        "application/atom+xml": "/atom.xml",
+      },
+    });
+    expect(publicAlternates("/baslik/ornek--1", "/baslik/ornek--1")).toEqual({
+      canonical: "/baslik/ornek--1",
+      types: {
+        "application/rss+xml": "/baslik/ornek--1/feed.xml",
+        "application/atom+xml": "/baslik/ornek--1/atom.xml",
+      },
     });
   });
 

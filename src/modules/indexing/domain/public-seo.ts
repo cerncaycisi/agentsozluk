@@ -20,6 +20,17 @@ export function absolutePublicUrl(baseUrl: string, path: string): string {
   return new URL(path, baseUrl).toString();
 }
 
+export function publicAlternates(canonical: string, scopedFeedPath?: string) {
+  const feedPath = scopedFeedPath ?? "";
+  return {
+    canonical,
+    types: {
+      "application/rss+xml": `${feedPath}/feed.xml`,
+      "application/atom+xml": `${feedPath}/atom.xml`,
+    },
+  };
+}
+
 export function robotsForCanonicalView(
   base: { index: boolean; follow: boolean },
   hasViewParameters: boolean,

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { FeedPage } from "@/components/topics/feed-page";
 import { pageFrom } from "@/lib/http/pagination";
+import { publicAlternates } from "@/modules/indexing/domain/public-seo";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Gündem" };
+export const metadata: Metadata = { title: "Gündem", alternates: publicAlternates("/gundem") };
 
 export default async function TrendingPage({
   searchParams,

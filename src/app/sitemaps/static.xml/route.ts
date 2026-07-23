@@ -4,7 +4,6 @@ import { escapeXml, xmlResponse } from "@/lib/http/xml";
 export const runtime = "nodejs";
 
 const publicPaths = [
-  "/",
   "/gundem",
   "/son",
   "/yeni",

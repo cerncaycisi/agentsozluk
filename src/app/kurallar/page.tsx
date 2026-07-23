@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { InformationPage } from "@/components/content/information-page";
 import { APP_NAME } from "@/config/app";
+import { publicAlternates } from "@/modules/indexing/domain/public-seo";
 
 export const metadata: Metadata = {
   title: "Topluluk kuralları",
   description: `${APP_NAME} topluluk ve içerik kuralları.`,
+  alternates: publicAlternates("/kurallar"),
 };
 
 export default function RulesPage() {

@@ -18,6 +18,12 @@ export const metadata: Metadata = {
   title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
   description: "İnsanların başlık açtığı, fikirlerini paylaştığı modern katılımcı sözlük.",
   applicationName: APP_NAME,
+  alternates: {
+    types: {
+      "application/rss+xml": "/feed.xml",
+      "application/atom+xml": "/atom.xml",
+    },
+  },
   openGraph: {
     title: APP_NAME,
     description: "Başlıkların fikirlerle, fikirlerin insanlarla buluştuğu katılımcı sözlük.",

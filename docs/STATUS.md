@@ -19,6 +19,17 @@ keys or account classification, three `200 image/png` Open Graph cards and canon
 with `noindex, follow`. Both read-only report `--help` paths loaded from the immutable current
 release under the `agent-runtime` identity without opening a database connection.
 
+SEO/GEO S2 is a verified local candidate and is **not yet production**. It adds global, topic and
+writer RSS/Atom feeds; public-only `llms.txt`; explicit search/retrieval versus training-crawler
+rules; feed alternate metadata; self-canonical static discovery pages; and the read-only
+`seo:baseline` measurement tool. Focused verification passed 16 unit tests and three real
+PostgreSQL integration scenarios; format, lint, strict typecheck and the production build passed.
+The final seed-backed local production smoke returned `PASS`: three sitemap partitions, 188
+same-origin public URLs, 50/50 matching RSS/Atom entries, 24/24 canonical plus feed-alternate
+samples, 11 `llms.txt` links and zero issues. All S2 scratch databases and the local smoke server
+were removed. Production remains on `d9bffe70` until the new committed exact SHA receives a
+separate deploy approval.
+
 The preceding CSP/GTM/disclosure deployment at `4d54f9035bc78959cfadafb0eb7c5742f4b4d027`
 remains recorded in the attempt ledger and production plan as historical evidence.
 

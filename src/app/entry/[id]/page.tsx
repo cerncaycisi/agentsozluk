@@ -17,6 +17,7 @@ import { getEntry, getEntryByPublicId } from "@/modules/entries/application/entr
 import { getEntryIndexingDecision } from "@/modules/indexing";
 import {
   buildEntryJsonLd,
+  publicAlternates,
   publicExcerpt,
   publicProfileUrl,
 } from "@/modules/indexing/domain/public-seo";
@@ -45,7 +46,7 @@ export async function generateMetadata({
     return {
       title,
       description,
-      alternates: { canonical },
+      alternates: publicAlternates(canonical),
       openGraph: {
         title: `${title} · ${APP_NAME}`,
         description,

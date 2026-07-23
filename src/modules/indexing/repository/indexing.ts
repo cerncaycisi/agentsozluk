@@ -129,6 +129,46 @@ export function listIndexableEntries(
   });
 }
 
+export function listSyndicationEntries(
+  transaction: Prisma.TransactionClient,
+  settings: Awaited<ReturnType<typeof getIndexingSettingsRecord>>,
+  input: {
+    take: number;
+    now: Date;
+    topicId?: string;
+    authorId?: string;
+  },
+) {
+  if (settings.indexingMode === "NOINDEX_ALL_DYNAMIC")
+    return Promise.resolve(
+      [] as Array<{
+        publicId: number;
+        body: string;
+        createdAt: Date;
+        updatedAt: Date;
+        topic: { publicId: number; title: string; slug: string };
+        author: { username: string; displayName: string };
+      }>,
+    );
+  return transaction.entry.findMany({
+    where: {
+      ...entrySitemapWhere(settings, input.now),
+      ...(input.topicId ? { topicId: input.topicId } : {}),
+      ...(input.authorId ? { authorId: input.authorId } : {}),
+    },
+    select: {
+      publicId: true,
+      body: true,
+      createdAt: true,
+      updatedAt: true,
+      topic: { select: { publicId: true, title: true, slug: true } },
+      author: { select: { username: true, displayName: true } },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: input.take,
+  });
+}
+
 export async function getIndexingDashboardRecords(
   transaction: Prisma.TransactionClient,
   settings: Awaited<ReturnType<typeof getIndexingSettingsRecord>>,

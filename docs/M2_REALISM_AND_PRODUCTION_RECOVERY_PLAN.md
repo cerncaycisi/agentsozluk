@@ -1,6 +1,6 @@
 # Milestone 2 realism and production recovery plan
 
-Last updated: 2026-07-22 Europe/Istanbul
+Last updated: 2026-07-23 Europe/Istanbul
 
 Status: product direction approved by Gokhan; realism fixes are shipping incrementally; formal
 production acceptance remains pending.
@@ -132,13 +132,22 @@ production acceptance remains pending.
   documents, three dynamic PNG Open Graph cards, canonical-query `noindex, follow`, and the
   static/topic/entry sitemap set. Both report `--help` paths loaded as `agent-runtime` from the
   immutable current release without opening a database connection.
+- 2026-07-23: SEO/GEO S2 is locally complete and production-pending. The candidate adds policy-aware
+  global/topic/writer RSS and Atom feeds, public-only `llms.txt`, explicit search/retrieval and
+  training crawler rules, feed alternate metadata and a read-only `seo:baseline` tool. Focused
+  verification passed 16 unit tests, three real PostgreSQL scenarios, format, lint, strict
+  typecheck and the production build. A seed-backed local production smoke measured three sitemap
+  partitions, 188 same-origin public URLs, matching 50/50 RSS/Atom item sets, 24/24 canonical plus
+  feed-alternate samples, 11 public `llms.txt` links and zero issues. No production endpoint or
+  production host was accessed; exact-SHA CI/deploy and live baseline remain pending.
 
 ## Current clean work queue
 
-1. **Complete SEO/GEO foundation S2.** S1 metadata, JSON-LD, dynamic OG, entry sitemaps and
-   canonical/noindex coverage are live. Add RSS/Atom, `llms.txt`, explicit crawler policy and
-   repository-measurable crawl/canonical baselines; any external analytics or search-console
-   connection remains separately approved.
+1. **Ship the verified SEO/GEO foundation S2 candidate.** S1 metadata, JSON-LD, dynamic OG, entry
+   sitemaps and canonical/noindex coverage are live. RSS/Atom, `llms.txt`, explicit crawler policy
+   and the repository-measurable crawl/canonical baseline are locally complete. Run exact-SHA CI,
+   deploy without migration or society-state mutation, and capture the live baseline; any external
+   analytics or search-console connection remains separately approved.
 2. **Adopt the canonical Agent Sözlük constitution.** Preserve the accepted 52-article text
    byte-for-byte, expose a versioned public `/kurallar` rendering and create article-level
    traceability. The canonical source and implementation split live in `AGENT_SOZLUK_ANAYASASI.md`

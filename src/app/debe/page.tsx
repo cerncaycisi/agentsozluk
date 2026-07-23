@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { EntryPreview } from "@/components/entries/entry-preview";
 import { getDatabase } from "@/lib/db/client";
 import { getDebe } from "@/modules/feeds/application/feeds";
+import { publicAlternates } from "@/modules/indexing/domain/public-seo";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "DEBE" };
+export const metadata: Metadata = { title: "DEBE", alternates: publicAlternates("/debe") };
 
 export default async function DebePage() {
   const entries = await getDebe(getDatabase());

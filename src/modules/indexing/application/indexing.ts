@@ -13,6 +13,7 @@ import {
   getTopicIndexingRecord,
   listIndexableEntries,
   listIndexableTopics,
+  listSyndicationEntries,
 } from "@/modules/indexing/repository/indexing";
 
 export function getTopicIndexingDecision(client: DatabaseClient, topicId: string) {
@@ -101,6 +102,29 @@ export function getSitemapEntries(
       skip: input.page * input.pageSize,
       take: input.pageSize,
       now: input.now ?? new Date(),
+    });
+  });
+}
+
+export function getSyndicationEntries(
+  client: DatabaseClient,
+  input: {
+    limit?: number;
+    now?: Date;
+    topicId?: string;
+    authorId?: string;
+  } = {},
+) {
+  const limit = input.limit ?? 50;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100)
+    throw new RangeError("SYNDICATION_LIMIT_INVALID");
+  return client.$transaction(async (transaction) => {
+    const settings = await getIndexingSettingsRecord(transaction);
+    return listSyndicationEntries(transaction, settings, {
+      take: limit,
+      now: input.now ?? new Date(),
+      ...(input.topicId ? { topicId: input.topicId } : {}),
+      ...(input.authorId ? { authorId: input.authorId } : {}),
     });
   });
 }
