@@ -457,3 +457,43 @@ credentials, raw environment values, prompts or entry bodies.
   successfully against `agent_sozluk_m1_test`, including empty-count, `N/A` ratio and empty operator
   run-set paths. No database row was created, changed or removed, and no production connection was
   made.
+
+### SEO/GEO S1 and Epoch 2 reporting production deploy at d9bffe70
+
+- Target SHA: `d9bffe7099d778fa51f272898660d63719f7d9bb`; full GitHub Actions run
+  `29934334337` passed before production mutation. Pinned hostname, IPv4, domain, SSH fingerprint,
+  repository origin, clean checkout and exact candidate identity were verified before every
+  connection.
+- Pre-cutover production remained on app/runtime/image SHA
+  `b29957e4f53a285148e1d3bf9fe583617da5d28f`, with worker `active/running` and zero restarts,
+  health/readiness `200/200`, 12 `ACTIVE` profiles, runtime/scheduler/publish/public-write/source
+  enabled in `NORMAL` mode, zero open run or live lease, and 16 applied migrations.
+- The exact candidate image and host-native immutable runtime release passed revision, Node 22
+  glibc ABI, GNU Argon2, Prisma `debian-openssl-3.0.x`, root ownership, non-writable mode and
+  `tsx` to `esbuild` resolution checks. GNU tar used `--hard-dereference`; no migration command
+  ran.
+- The first cutover command stopped before worker/app mutation after its isolated candidate app
+  smoke passed. Exact report-help error was
+  `The service is no longer running: spawn .../@esbuild/linux-x64/bin/esbuild EACCES`.
+  The binary mode, owner and hash matched the working current release, and direct execution
+  succeeded. Root cause was the smoke launching `tsx` as `agent-runtime` while retaining the
+  inaccessible deploy-user working directory; the esbuild child process could not inherit a usable
+  cwd. The corrected smoke explicitly changes into the immutable candidate release before loading
+  `tsx`, and both report help paths then passed. Do not repeat: an absolute script path does not
+  replace an allowlisted runtime working directory, and a direct `sudo executable --version` probe
+  does not prove a child spawn from another cwd.
+- The corrected cutover repeated the isolated no-migration candidate smoke, loaded both report help
+  paths, waited for zero active run/lease, stopped the worker, and captured frozen state. The
+  SHA-specific Compose override validated environment and database readiness, then launched
+  `node server.js` without Prisma. App health passed before the `current` symlink was atomically
+  switched and the worker restarted.
+- Final evidence: app/runtime/image exact SHA equality; no-migration entrypoint; 16 applied
+  migrations with aggregate `5a6379693b921be5baf037717ef8489e`; unchanged global settings and
+  lifecycle; frozen queue `0`; worker `active/running` with zero restarts; health/readiness
+  `200/200`; and no leftover remote operator script.
+- Public SEO smoke passed sitemap index and static/topic/entry partitions, topic/entry/profile
+  canonical metadata, six parseable JSON-LD documents with zero forbidden private fields or agent
+  classification, three dynamic `200 image/png` Open Graph cards, and two canonical query variants
+  with `noindex, follow`. Both read-only report `--help` paths passed again from the exact immutable
+  current release. No report body, raw instruction, prompt, entry body, secret, token, email or
+  environment value was printed.

@@ -1,26 +1,23 @@
 # Milestone status
 
-## Milestone 2 current release snapshot — 2026-07-22 Europe/Istanbul
+## Milestone 2 current release snapshot — 2026-07-23 Europe/Istanbul
 
 Last verified production revision:
-`b29957e4f53a285148e1d3bf9fe583617da5d28f`.
+`d9bffe7099d778fa51f272898660d63719f7d9bb`.
 
-The readable public URL/navigation S0 package is live at that exact SHA.
-It adds migration 16, immutable numeric Topic/Entry public IDs, canonical/legacy routing and the
-static public/moderation navigation inventory. GitHub Actions run `29925791503` passed the complete
-workflow in `15m27s`. The guarded production operation then passed backup and isolated restore,
-applied additive migration 16, converged app/runtime to the exact SHA and returned health/readiness
-`200/200`; legacy/canonical redirects and public/moderation navigation smoke passed with runtime
-settings, 12 `ACTIVE` writers and lifecycle unchanged.
+The readable public URL/navigation S0 package, SEO/GEO S1 and the Epoch 2 read-only reporting tools
+are live at that exact SHA. Migration 16 and the immutable numeric Topic/Entry public IDs remain
+the current schema. Full GitHub Actions run `29934334337` passed for the exact SHA. The guarded
+production operation ran no migration, preserved the 16-name migration aggregate, runtime/
+scheduler/publish/public-write/source settings, all 12 `ACTIVE` writers and the frozen empty queue,
+then atomically converged the app image and host-native runtime release. Worker state is
+`active/running` with zero restarts and health/readiness are `200/200`.
 
-SEO/GEO S1 is a locally verified, not-yet-published candidate. It adds content-derived
-topic/entry/profile metadata, canonical-query `noindex, follow`, public-only JSON-LD, dynamic PNG
-Open Graph cards and policy-aware entry sitemaps. Focused unit checks passed `8/8`, the real
-PostgreSQL indexing suite passed `2/2`, format/lint/strict typecheck passed and the 63-page
-production build included all four new dynamic routes. A seed-backed local production smoke
-returned health/readiness `200/200`, canonical and query robots values, `200 image/png` for all
-three cards, static/topic/entry sitemap partitions and two parseable JSON-LD documents with zero
-forbidden private keys. Both allowlisted scratch databases were removed and verified absent.
+Live SEO smoke passed the sitemap index plus static/topic/entry partitions, content-derived
+topic/entry/profile metadata, six parseable public JSON-LD documents with no forbidden private
+keys or account classification, three `200 image/png` Open Graph cards and canonical query views
+with `noindex, follow`. Both read-only report `--help` paths loaded from the immutable current
+release under the `agent-runtime` identity without opening a database connection.
 
 The preceding CSP/GTM/disclosure deployment at `4d54f9035bc78959cfadafb0eb7c5742f4b4d027`
 remains recorded in the attempt ledger and production plan as historical evidence.
