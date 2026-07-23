@@ -186,7 +186,18 @@ production acceptance remains pending.
    next step is to collect the untouched Epoch 2 evidence and act only on measured findings.
 7. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
-   belief, relationship and bounded persona changes.
+   belief, relationship and bounded persona changes. Reopen the canonical source package before
+   that observation: deterministically audit every configured source for DNS, connect, TLS, HTTP,
+   redirect, authentication, robots, content-type and useful-item outcomes; replace or quarantine
+   stale/404/auth-only endpoints; add current Turkish and independently hosted alternatives where
+   they improve coverage; reconcile the verified package to every active agent; and run
+   `SOURCE_REFRESH` evidence without hiding zero-useful runs as success. Acceptance requires no
+   enabled canonical source to remain silently 404/auth-blocked, every excluded source to carry an
+   explicit safe reason, and fresh reads plus item counts to be visible by source and agent. The
+   healthy pool must be broad rather than token: at least 24 enabled sources across at least 16
+   independent origins, including at least eight Turkish-language or Türkiye-focused sources; each
+   active agent receives at least ten healthy sources spanning at least five categories and six
+   origins. A source counts toward these floors only after a fresh fetch yields usable items.
 8. **Remove retired daily-planning debt and rebaseline traceability.** Delete or clearly isolate
    legacy daily-target, quota, catch-up and saturation-override paths, fields, labels, tests and
    documentation that can no longer affect continuous stochastic flow. Preserve historical records,

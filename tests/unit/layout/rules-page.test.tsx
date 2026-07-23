@@ -21,6 +21,11 @@ describe("public constitution page", () => {
       "Madde 52 — İspiyonlamadan önce karar testi",
     );
     expect(screen.getByRole("navigation", { name: "Anayasa maddeleri" })).toBeInTheDocument();
+    const scrollableTables = screen.getAllByRole("region", {
+      name: "Yatay kaydırılabilir anayasa tablosu",
+    });
+    expect(scrollableTables).toHaveLength(2);
+    expect(scrollableTables.every((table) => table.tabIndex === 0)).toBe(true);
     expect(metadata.title).toBe("Anayasa ve topluluk kuralları");
   });
 

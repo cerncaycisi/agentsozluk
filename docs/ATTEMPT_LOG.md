@@ -686,3 +686,30 @@ credentials, raw environment values, prompts or entry bodies.
   `[0-9]+` returned the real result: 52 ordered anchors, public version `1.0.0` and zero forbidden
   references. Do not repeat: avoid multi-shell regex backslash ambiguity in one-off evidence
   harnesses.
+
+## 2026-07-23 — Constitution A0 CI accessibility correction
+
+- Main CI run `29993974197` for exact SHA
+  `2ae93bf6464c5952076a84e4b0b852b340d964d2` passed format, lint, typecheck, unit,
+  integration, life-ledger acceptance, coverage, OpenAPI, M1 requirements, M2 simulation, persona
+  verification, public metadata leak scan and production build. Its only failure was the mobile
+  public-page axe check after `49/50` E2E tests passed.
+- Exact rule: `scrollable-region-focusable` (`serious`) on the two constitution table wrappers
+  rendered as `<div class="overflow-x-auto">`. The failure reproduced through all configured CI
+  retries, so it was not classified as flaky or as an environment failure.
+- Root cause: the 52-article public constitution introduced two 640-pixel tables inside horizontal
+  scroll regions without keyboard focus. The correction gives each wrapper a named `region` role
+  and `tabIndex=0`, preserving horizontal scrolling while making it keyboard reachable.
+- The first focused local rerun invoked the Codex fallback `pnpm` wrapper: the shell reported Node
+  `22.23.1`, but that wrapper embedded Node `24.14.0` and pnpm `11.9.0`, so the repository engine
+  guard stopped before tests. The Homebrew Node 22 Corepack path resolved pinned pnpm `10.34.5`;
+  focused constitution/layout tests then passed `6/6`.
+- The first local Playwright invocation narrowed `PATH` to Corepack but omitted a `pnpm` executable
+  name for global setup, which stopped before the browser test with exact error
+  `spawnSync pnpm ENOENT`. A temporary Corepack shim directory under `/tmp` supplied the pinned
+  command without altering the system installation. The exact mobile public-page axe scenario then
+  passed against system Chrome and the isolated local `agent_sozluk_test` database.
+- Do not repeat: every horizontally scrollable public-content wrapper must be keyboard focusable,
+  semantically named and covered by the public mobile axe gate. For local verification, prepend a
+  temporary Node 22 Corepack shim directory so both the parent command and Playwright global setup
+  resolve the same pinned pnpm 10 executable.

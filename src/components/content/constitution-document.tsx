@@ -69,7 +69,12 @@ export function ConstitutionDocument({ markdown }: { markdown: string }) {
           ),
           hr: () => <hr className="my-8 border-line" />,
           table: ({ children }) => (
-            <div className="overflow-x-auto">
+            <div
+              role="region"
+              aria-label="Yatay kaydırılabilir anayasa tablosu"
+              tabIndex={0}
+              className="overflow-x-auto"
+            >
               <table className="w-full min-w-[640px] border-collapse text-left text-sm">
                 {children}
               </table>
