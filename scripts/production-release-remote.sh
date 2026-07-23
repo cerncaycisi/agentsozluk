@@ -214,6 +214,7 @@ build_runtime_release() {
   runtime_stage="$(
     mktemp -d "$runtime_root/.release-staging/release-$candidate_sha.XXXXXXXX"
   )"
+  find "$runtime_stage" -xdev -depth -delete
   runtime_publish="$runtime_root/releases/.candidate-$candidate_sha"
   test ! -e "$runtime_publish"
   test ! -L "$runtime_publish"
@@ -232,17 +233,7 @@ build_runtime_release() {
   }
   trap runtime_cleanup EXIT INT TERM HUP
 
-  git -C "$app_root" archive --format=tar "$candidate_sha" |
-    tar --extract --file=- --directory="$runtime_stage" \
-      --no-same-owner --no-same-permissions
-  test ! -e "$runtime_stage/.git"
-  test ! -e "$runtime_stage/.env"
-  test "$(/usr/bin/node -p 'process.platform + ":" + process.arch')" = linux:x64
-  test "$(/usr/bin/node -p 'process.versions.node.split(".")[0]')" = 22
-  test "$(/usr/bin/node -p 'process.versions.modules')" = 127
-  test -n "$(
-    /usr/bin/node -p 'process.report.getReport().header.glibcVersionRuntime ?? ""'
-  )"
+  bash -n "$app_root/scripts/assemble-runtime-release.sh"
   install_env=(
     /usr/bin/env -i
     HOME=/home/deploy
@@ -255,39 +246,11 @@ build_runtime_release() {
     NODE_USE_SYSTEM_CA=1
     npm_config_update_notifier=false
   )
-  (
-    cd "$runtime_stage"
-    "${install_env[@]}" /usr/bin/pnpm install --prod --frozen-lockfile
-    "${install_env[@]}" /usr/bin/pnpm exec prisma generate \
-      --schema prisma/schema.prisma
-    /usr/bin/node <<'NODE'
-const { createRequire } = require("node:module");
-const path = require("node:path");
-const wrapperPath = require.resolve("@node-rs/argon2");
-const wrapperRequire = createRequire(wrapperPath);
-wrapperRequire.resolve("@node-rs/argon2-linux-x64-gnu");
-const { hashSync, verifySync } = require("@node-rs/argon2");
-const probe = "agent-sozluk-runtime-abi-probe";
-const digest = hashSync(probe);
-if (!verifySync(digest, probe)) process.exit(1);
-const prismaClientPath = require.resolve("@prisma/client");
-const prismaEnginePath = path.resolve(
-  path.dirname(prismaClientPath),
-  "../../.prisma/client/libquery_engine-debian-openssl-3.0.x.so.node",
-);
-const prismaEngine = require(prismaEnginePath);
-if (typeof prismaEngine.QueryEngine !== "function") process.exit(1);
-NODE
-    ./node_modules/.bin/prisma -v |
-      grep -Fq 'debian-openssl-3.0.x'
-  )
-  runtime_abi="$(
-    /usr/bin/node -e \
-      "const h=process.report.getReport().header;if(!h.glibcVersionRuntime)process.exit(1);process.stdout.write('linux-x64-glibc-node-abi-'+process.versions.modules)"
-  )"
-  printf '%s\n' "$candidate_sha" >"$runtime_stage/.release-sha"
-  printf '%s\n' "$image_id" >"$runtime_stage/.release-app-image-id"
-  printf '%s\n' "$runtime_abi" >"$runtime_stage/.release-node-abi"
+  "${install_env[@]}" /usr/bin/bash "$app_root/scripts/assemble-runtime-release.sh" \
+    --sha "$candidate_sha" \
+    --image-id "$image_id" \
+    --output "$runtime_stage"
+  runtime_abi="$(cat "$runtime_stage/.release-node-abi")"
 
   sudo install -d -o root -g root -m 0700 "$runtime_publish"
   tar --create --hard-dereference --file=- --directory="$runtime_stage" . |

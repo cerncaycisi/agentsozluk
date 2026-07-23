@@ -10,6 +10,7 @@ WORKDIR /app
 
 FROM base AS dependencies
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/runtime-release/package.json ./packages/runtime-release/package.json
 COPY prisma/schema.prisma ./prisma/schema.prisma
 RUN --mount=type=secret,id=host_ca \
   if [ -s /run/secrets/host_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/host_ca; fi; \
@@ -30,6 +31,7 @@ RUN --mount=type=secret,id=host_ca \
 
 FROM base AS production-dependencies
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/runtime-release/package.json ./packages/runtime-release/package.json
 COPY prisma/schema.prisma ./prisma/schema.prisma
 RUN --mount=type=secret,id=host_ca \
   if [ -s /run/secrets/host_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/host_ca; fi; \

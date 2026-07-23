@@ -182,7 +182,11 @@ describe("Milestone 2 production operator runbook", () => {
     expect(runbook).toContain("AGENT_SOZLUK_PRODUCTION_APPROVED_SHA");
     expect(runbook).toContain("pnpm smoke:release");
     expect(prose).toContain("It is not a replacement for Gate 7/8 when a release adds a migration");
-    expect(prose).toContain("runs `bash -n`, and executes it in a separate connection");
+    expect(prose).toContain(
+      "transfers both remote scripts mode `0700`, runs `bash -n`, and executes them in separate connections",
+    );
+    expect(prose).toContain("uploads one `release-candidate-<sha>` artifact for one day");
+    expect(prose).toContain("fail-closed at 160 MiB before upload");
     expect(prose).toContain("never invokes Docker system/volume prune");
   });
 

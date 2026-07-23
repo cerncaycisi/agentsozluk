@@ -1,0 +1,84 @@
+name: Release Candidate Bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact 40-character main commit to package
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: release-candidate-${{ inputs.candidate_sha }}
+  cancel-in-progress: false
+
+jobs:
+  bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          fetch-depth: 0
+
+      - name: Verify exact candidate
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          git fetch --no-tags origin main
+          test "$(git rev-parse origin/main)" = "$CANDIDATE_SHA"
+          successful_ci="$(
+            gh run list \
+              --workflow CI \
+              --commit "$CANDIDATE_SHA" \
+              --event push \
+              --status success \
+              --limit 20 \
+              --json headSha,conclusion,event,workflowName \
+              --jq '[.[] | select(
+                .headSha == env.CANDIDATE_SHA and
+                .conclusion == "success" and
+                .event == "push" and
+                .workflowName == "CI"
+              )] | length'
+          )"
+          test "$successful_ci" -ge 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable pinned pnpm
+        run: corepack enable && corepack prepare pnpm@10.34.5 --activate
+
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build exact release bundle
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          RELEASE_BUNDLE_MAX_BYTES: "167772160"
+        run: |
+          bash scripts/build-release-bundle.sh \
+            --sha "$CANDIDATE_SHA" \
+            --output "$RUNNER_TEMP/release-bundle"
+
+      - name: Upload exact release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate-${{ inputs.candidate_sha }}
+          path: ${{ runner.temp }}/release-bundle/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0

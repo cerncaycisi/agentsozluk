@@ -38,18 +38,24 @@ are not portable to the Ubuntu host.
 
 ## Runtime compatibility contract
 
-The host runtime release must be installed on the production host from the exact locked Git object.
-It must contain the GNU/glibc Argon2 binding and Prisma's `debian-openssl-3.0.x` engine. Never copy
-the Alpine image's `node_modules` tree into the host runtime release.
+The host runtime release must be assembled from the exact locked Git object on Ubuntu 24.04
+x86_64/glibc with Node 22 and pnpm 10. The default build-once lane does that in the pinned
+`ubuntu-24.04` release-candidate workflow and promotes the checksum-verified artifact; the explicit
+fallback performs the same repository-owned assembly on the production host. It must contain the
+GNU/glibc Argon2 binding and Prisma's `debian-openssl-3.0.x` engine. Never copy the Alpine image's
+`node_modules` tree into the host runtime release.
 
 Before publication, Gate 8A must prove all of the following:
 
 - Node reports `linux:x64`, a non-empty glibc runtime version and module ABI 127.
-- `pnpm install --prod --frozen-lockfile` runs on the host with pnpm 10.
-- Node uses the production host's trusted system CA store for dependency and Prisma engine fetches.
-- Prisma Client generation completes on the host.
+- The minimal runtime workspace is installed with a frozen lockfile and pnpm 10 in the matching
+  Linux/glibc build environment; a host-build fallback uses the production host's trusted system
+  CA store for dependency and Prisma engine fetches.
+- Prisma Client generation completes in that matching Linux/glibc build environment.
 - `@node-rs/argon2-linux-x64-gnu`, `@node-rs/argon2` and `@prisma/client` load successfully.
 - Prisma's generated `debian-openssl-3.0.x` native engine loads successfully.
+- Artifact SHA-256, source SHA, application image ID and Node ABI receipts are verified before
+  production installation, and all native load probes are repeated on the production host.
 - The published release records its Git SHA, application image ID and host Node ABI.
 - The final release is root-owned and has no group/other-writable file or directory.
 

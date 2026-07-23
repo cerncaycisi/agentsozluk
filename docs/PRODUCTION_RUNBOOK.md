@@ -805,31 +805,78 @@ for an unattended broad prune.
 
 Use the versioned release lane only for an exact green `main` SHA whose migration directory is
 byte-for-byte equal to the successfully applied production migration set. It is not a replacement
-for Gate 7/8 when a release adds a migration. The two versioned entrypoints are:
+for Gate 7/8 when a release adds a migration. The versioned entrypoints are:
 
 - `scripts/deploy-production-no-migration.sh`: local SSH identity/DNS/fingerprint guard, exact
-  approval receipt, clean local checkout, guarded script transport and exact remote checkout.
+  approval receipt, clean local checkout, green-CI/artifact verification, guarded transport and
+  exact remote checkout.
 - `scripts/production-release-remote.sh`: resumable server-side image/runtime preparation,
   no-migration proof, run/lease drain without cancellation, app/runtime cutover, shared smoke,
   verification and optional allowlist cleanup.
+- `scripts/build-release-bundle.sh` and `scripts/assemble-runtime-release.sh`: one exact application
+  image plus its matching minimal Linux/glibc runtime release, built from one clean Git receipt.
+- `scripts/verify-release-bundle.mjs` and `scripts/install-release-artifact-remote.sh`: strict local
+  manifest/checksum/size verification and inert production installation before the existing
+  guarded cutover.
 
 Every use still requires Gokhan's explicit approval for the exact SHA, build, cutover, restart,
-smoke and optional cleanup. The non-secret approval receipt must equal that SHA; it cannot broaden
-or manufacture approval:
+smoke and optional cleanup. Building the release artifact in GitHub Actions is also an explicit
+operator action: do it only for the current exact green `main` SHA after confirming Actions storage
+headroom. `.github/workflows/release-candidate.yml` performs no SSH or production access. It accepts
+only a manual exact SHA, proves that SHA is current `origin/main`, requires a successful push `CI`
+run for it, builds and smokes the image, assembles the Ubuntu 24.04 x64/glibc worker release, and
+uploads one `release-candidate-<sha>` artifact for one day. The combined compressed payload is
+fail-closed at 160 MiB before upload.
+
+Dispatch and capture the resulting numeric run ID:
+
+```bash
+m2_candidate_sha='<approved-current-green-40-character-sha>'
+gh workflow run release-candidate.yml \
+  --repo cerncaycisi/agentsozluk \
+  --ref main \
+  -f "candidate_sha=$m2_candidate_sha"
+gh run list \
+  --repo cerncaycisi/agentsozluk \
+  --workflow release-candidate.yml \
+  --commit "$m2_candidate_sha" \
+  --limit 1
+```
+
+Do not infer the run ID from an older candidate or artifact name. The production wrapper requires
+the exact numeric run, checks its workflow/event/status/conclusion/head SHA, independently requires
+green push CI for the same SHA, downloads only the exact named artifact under
+`/Volumes/GB/agent-sozluk-release-artifacts`, verifies GitHub's independent artifact-ZIP SHA-256,
+and then verifies the rigid internal manifest, both archive SHA-256 checksums, byte counts, ABI and
+archive paths before the first SSH connection.
+
+The non-secret production approval receipt must equal that SHA; it cannot broaden or manufacture
+approval:
 
 ```bash
 AGENT_SOZLUK_PRODUCTION_APPROVED_SHA='<approved-40-character-sha>' \
   pnpm release:production:no-migration -- \
   --sha '<approved-40-character-sha>' \
+  --artifact-run '<successful-release-candidate-run-id>' \
   --execute \
   --cleanup
 ```
 
-Omit `--cleanup` unless the same approval explicitly includes post-cutover retention. The wrapper
-requires the local clean checkout and remote `origin/main` to equal the supplied SHA, verifies the
-pinned hostname/IP/domain/ED25519/repository identity on every SSH session, transfers the remote
-script as mode `0700`, runs `bash -n`, and executes it in a separate connection so no child can
-consume the operator script from SSH stdin.
+Omit `--cleanup` unless the same approval explicitly includes post-cutover retention. Add
+`--keep-artifact` only when the local exact bundle is needed for a diagnosed retry; otherwise the
+wrapper removes that one verified GB-disk directory after a successful release. A production-host
+build remains an explicit emergency fallback, never the default: replace `--artifact-run` with
+`--build-on-host` only when the exact approval expressly permits the additional server build and
+disk use.
+
+The wrapper requires the local clean checkout and remote `origin/main` to equal the supplied SHA,
+verifies the pinned hostname/IP/domain/ED25519/repository identity on every SSH session, transfers
+both remote scripts mode `0700`, runs `bash -n`, and executes them in separate connections so no
+child can consume an operator script from archive stdin. The artifact installer only loads the
+exact labelled image and publishes the matching root-owned immutable runtime release; it cannot
+start/stop a service, change `current`, run Compose, migrate, alter settings/lifecycle or touch the
+queue. The existing release script then re-verifies and reuses those inert stages before the normal
+drain and atomic cutover.
 
 The remote lane stores only public-safe hashes, image IDs, migration names and release paths under
 `/opt/agent-sozluk/runtime/.release-op-<sha>`. It never stores environment values, credentials,
@@ -837,6 +884,13 @@ prompts or entry bodies. Re-running the same SHA reuses a correctly labelled ima
 immutable host-native runtime release. It can resume after the candidate app is healthy but before
 the `current` symlink changes, or after the symlink changes but before the worker restarts. Any
 settings, lifecycle, migration, image, volume or identity mismatch fails closed.
+
+The runtime workspace manifest contains only the complete dependency closure of the production
+`agent:*` operator/runtime scripts plus the pinned `tsx` and Prisma generators; it does not carry
+Next.js or React. Both CI assembly and the host-build fallback use the same
+`assemble-runtime-release.sh` contract. Production repeats the Linux x64/glibc, Node 22 ABI 127,
+GNU Argon2, Debian OpenSSL Prisma and `tsx`/`esbuild` load probes before publication, so a CI
+artifact never weakens the host ABI gate.
 
 `pnpm smoke:release` is the single schema-neutral semantic contract used by local/CI validation,
 the isolated exact image and the live exact app. It checks canonical query order, alias paths,
