@@ -42,9 +42,9 @@ export default async function RulesPage() {
 
       <nav aria-label="Anayasa maddeleri">
         <h2 className="text-xl font-black">Maddeler</h2>
-        <ol className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+        <ol className="mt-3 text-sm sm:columns-2 sm:gap-6">
           {constitution.articles.map((article) => (
-            <li key={article.number}>
+            <li key={article.number} className="mb-1 break-inside-avoid">
               <Link href={`#${article.anchor}`} className="text-link hover:underline">
                 {article.number}. {article.title}
               </Link>

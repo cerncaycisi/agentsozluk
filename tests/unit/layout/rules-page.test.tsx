@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import RulesPage, { metadata } from "@/app/kurallar/page";
 
@@ -20,7 +20,11 @@ describe("public constitution page", () => {
     expect(document.querySelector("#madde-52")).toHaveTextContent(
       "Madde 52 — İspiyonlamadan önce karar testi",
     );
-    expect(screen.getByRole("navigation", { name: "Anayasa maddeleri" })).toBeInTheDocument();
+    const articleNavigation = screen.getByRole("navigation", { name: "Anayasa maddeleri" });
+    expect(articleNavigation).toBeInTheDocument();
+    const articleList = within(articleNavigation).getByRole("list");
+    expect(articleList).toHaveClass("sm:columns-2");
+    expect(articleList).not.toHaveClass("grid", "sm:grid-cols-2");
     const scrollableTables = screen.getAllByRole("region", {
       name: "Yatay kaydırılabilir anayasa tablosu",
     });
