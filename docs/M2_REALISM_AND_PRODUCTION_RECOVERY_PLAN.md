@@ -243,9 +243,19 @@ production acceptance remains pending.
    `3eef786ddde42026884b21e9c34ed9432493b155`; serial CI passed all gates in `23m51s`. The
    six-lane parallel replacement passed every lane and the fail-closed `validate` aggregator at
    `e62e1cbf916d11a2bcd78543c2747895f59382aa` in `4m54s`, versus the serial `23m51s`. First
-   production proof and build-once artifact promotion remain open. Bounded storage cleanup removed
-   two obsolete lockfile caches totalling `401,334,874` bytes and retained the current cache;
-   mandatory one-day coverage evidence remains enabled.
+   production proof remains open. Build-once promotion code is implemented at exact source SHA
+   `438d6b3716f9013b279dd382ff3999d4a1390bc0`: a manual green-main-only workflow builds and
+   smokes one image plus a minimal matching Ubuntu/glibc runtime; a 160 MiB pre-upload cap and
+   one-day retention bound Actions storage; the local wrapper authenticates the workflow/run,
+   GitHub artifact ZIP digest, internal manifest/checksums/size/ABI and archive paths before any
+   SSH; and an inert installer can stage the exact image/release without changing services,
+   `current`, settings, lifecycle or queue state. The old server build is now an explicit fallback
+   through the same assembler. Local validation passed 133 unit files / 667 tests, format, lint,
+   strict typecheck, release/OpenAPI/requirements/persona/metadata gates and the 64-page production
+   build. The new GitHub workflow, first artifact and first production promotion remain evidence
+   gates, so queue item 1 is not yet complete. Bounded storage cleanup removed two obsolete
+   lockfile caches totalling `401,334,874` bytes and retained the current cache; mandatory one-day
+   coverage evidence remains enabled.
 2. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
    with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
    reason-specific evidence. Initially grant it only to Gokhan's selected account; never hardcode a

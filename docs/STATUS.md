@@ -78,6 +78,30 @@ correcting the behavior lane's PostgreSQL fixture, run `30015780890` passed ever
 compared with the equivalent serial run's `23m51s`—about `79%` shorter. Local workflow/release
 contract tests passed `12/12`, with format, lint, typecheck and diff hygiene also green.
 
+Build-once artifact promotion is implemented locally at exact source SHA
+`438d6b3716f9013b279dd382ff3999d4a1390bc0`. The manual release-candidate workflow accepts only the
+current exact green `main` SHA, builds and smokes one immutable image, assembles a matching
+Ubuntu 24.04 x64/glibc runtime from a dedicated seven-dependency workspace, fails before upload
+above 160 MiB and retains the artifact for one day. Before production access, the local wrapper
+checks the exact CI/workflow/run identity, GitHub's artifact-ZIP SHA-256, rigid internal manifest,
+both archive hashes and sizes, ABI and archive paths. The remote artifact installer is inert: it
+may load the exact image and publish the root-owned immutable release, but cannot run Compose,
+start/stop services, switch `current`, migrate or alter runtime/lifecycle/queue state. The existing
+resumable lane then re-verifies and reuses those stages. The prior server build is available only
+through explicit `--build-on-host` fallback and uses the same runtime assembler.
+
+Measured local evidence: the current minimal dependency deploy is 265 MiB uncompressed, contains
+the complete production `agent:*` script dependency closure, excludes Next.js/React and reused 53
+packages with zero downloads. Shell and Node syntax, 34 focused release/runbook/CI tests, complete
+unit `133/133` files / `667/667` tests, format, ESLint, strict typecheck, shared release smoke,
+OpenAPI 117 operations, all 811 M1 requirements, persona `10/10` and `45/45`, metadata 14 surfaces /
+21 forbidden fields, M2 development traceability `527 PASS / 16 approved BLOCKED / 0 FAIL`, secret
+scan and the 64-page production build passed. The first build invocation omitted the documented
+build-only environment and correctly failed Zod validation for `DATABASE_URL`, `APP_URL` and
+`APP_SECRET`; rerunning with the same non-secret CI/Docker build placeholders passed. The new
+GitHub workflow and first production artifact promotion remain unproven; no production connection
+or mutation occurred for this package.
+
 ## Milestone 2 constitution A2 production release — 2026-07-23 Europe/Istanbul
 
 Base SHA `f1474bf062d4cf9c72c90e2cecfced81021c1aed` implements the constitutional topic-creation

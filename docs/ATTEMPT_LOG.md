@@ -1151,3 +1151,48 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   `unknown flag: --confirm`. Retrying the same exact IDs with the supported syntax succeeded.
   Final inventory contains only current cache ID `5985774350`; no artifact, current cache or
   repository content was deleted.
+
+## 2026-07-23 — Build-once release artifact promotion candidate
+
+- Scope: exact source commit `438d6b3716f9013b279dd382ff3999d4a1390bc0`; local implementation,
+  package experiments and read-only GitHub artifact/API checks only. No production SSH, public
+  endpoint request, deploy, migration, restart, setting, lifecycle or queue mutation occurred.
+- A full root production dependency deploy measured about 669–688 MiB uncompressed; legacy deploy
+  remained about 662 MiB and 113 MiB at zstd level 19, so it did not solve transfer/storage cost.
+  The first filtered attempt stopped with exact
+  `ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE`; resolution was a dedicated runtime workspace plus
+  `--config.inject-workspace-packages=true`, not bypassing the lock or engine contract. The current
+  seven-dependency runtime deploy measured 265 MiB uncompressed, reused 53 packages with zero
+  downloads, contains the complete static external dependency closure of every production
+  `agent:*` script plus the pinned `tsx`/Prisma generators, and excludes Next.js and React.
+  Do not repeat: `pnpm deploy` must use the dedicated filtered workspace and injected-workspace
+  setting; `--legacy` still packages the root application.
+- The manual release workflow proves its input is current `origin/main` with successful push CI,
+  builds and smokes one exact labelled image, assembles its matching Ubuntu 24.04 x64/glibc Node 22
+  ABI 127 runtime from the same clean Git receipt, writes rigid public-safe manifest/checksum/size
+  receipts, fails before upload above 160 MiB and retains one artifact for one day. It contains no
+  SSH or production address.
+- The production wrapper now requires either an exact successful release-candidate run or explicit
+  `--build-on-host` fallback. Before any SSH it verifies exact green CI, workflow/event/status/head
+  identity, the unique unexpired artifact and GitHub's independent ZIP digest, then the internal
+  manifest, both archive SHA-256 values, byte counts, ABI, zstd integrity and archive paths. A
+  read-only download of coverage artifact `8567533673` reproduced its GitHub API digest exactly,
+  proving the local digest-download mechanism; the temporary file was deleted.
+- The mode-0700 remote artifact installer repeats hostname/repository/checkout guards, verifies the
+  image label/ID and Linux native loads, and may only publish inert image/runtime stages. It cannot
+  run Compose, start/stop a service, switch `current`, migrate, change settings/lifecycle or touch
+  a run. The existing resumable remote lane performs the later drain/cutover and now uses the same
+  minimal assembler for its host-build fallback.
+- The first local production build invocation omitted the documented non-secret build-only
+  environment and stopped while prerendering `/kurallar` with Zod `invalid_type` for
+  `DATABASE_URL`, `APP_URL` and `APP_SECRET`. Rerunning with the repository's CI/Docker build-only
+  placeholders generated all 64 pages. Do not repeat: direct local production builds need the
+  documented build-only environment; this was an environment invocation error, not a product
+  regression.
+- Final local evidence: shell/Node syntax PASS; focused release/runbook/CI contracts `34/34`;
+  complete unit `133/133` files / `667/667` tests; format, ESLint, strict typecheck,
+  `git diff --check` and repository/history secret scan PASS; release smoke PASS; OpenAPI 117
+  operations; all 811 M1 requirements; personas `10/10` and `45/45`; metadata 14 surfaces / 21
+  forbidden fields; M2 development traceability 527 PASS / 16 approved BLOCKED / 0 FAIL; production
+  build 64/64 pages. The workflow has not yet run and no artifact has been promoted; GitHub and
+  production proof remain separate gates.
