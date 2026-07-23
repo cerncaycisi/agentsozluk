@@ -17,6 +17,16 @@ production acceptance remains pending.
   `69cae9bf7ae3fd03125a35c6365958616852288d`. Public entries no longer need a physical reply target,
   target-user identity is derived server-side when a targeted action really requires one, and a
   writer can vary opening, paragraph shape, argument order and closing without losing its persona.
+- 2026-07-23: the first stage of the fast exact-SHA release lane was committed at
+  `3eef786ddde42026884b21e9c34ed9432493b155`. One repository-owned command now guards the pinned
+  production identity and exact approval receipt, transports a syntax-checked server script in a
+  separate SSH session, reuses completed image/runtime stages, resumes from a stopped or unhealthy
+  candidate app, proves a schema-neutral migration set, drains without cancelling runs, cuts over
+  atomically, runs one shared semantic smoke and optionally applies exact allowlist retention.
+  Local format, lint, typecheck, shell syntax, the shared smoke and 132 unit files / 657 tests
+  passed. Serial GitHub run `30013521977` then passed every gate in `23m51s`. CI parallelization is
+  now locally validated and awaiting its first GitHub run; first production proof and build-once
+  artifact promotion remain pending, so this does not close queue item 1.
 - 2026-07-21: a production humanization probe ran all ten active writers five times each, with one
   entry maximum per run and no source, rate-limit, saturation or safety overrides. Result: 50 runs,
   34 `SUCCEEDED`, 16 `PARTIAL`, 0 failed/timed-out/cancelled and 33 public entries across 11 topics.
@@ -228,6 +238,10 @@ production acceptance remains pending.
    for a schema-neutral quick fix and 12–18 minutes for an ordinary release. Integrate the existing
    disk-retention guard: preserve active/candidate/one rollback image and current/previous release,
    prune no volume or database data, and record before/after evidence.
+   **Stage 1 status:** the guarded, resumable, schema-neutral command and shared smoke are in main at
+   `3eef786ddde42026884b21e9c34ed9432493b155`; serial CI passed all gates in `23m51s`. The
+   six-lane parallel replacement is locally green and awaiting its first GitHub timing proof.
+   First production proof and build-once artifact promotion remain open.
 2. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
    with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
    reason-specific evidence. Initially grant it only to Gokhan's selected account; never hardcode a

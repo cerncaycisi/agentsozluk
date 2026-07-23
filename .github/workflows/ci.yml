@@ -13,9 +13,91 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
+  quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      APP_URL: http://127.0.0.1:3000
+      APP_SECRET: agent-sozluk-ci-validation-only-secret
+      NEXT_PUBLIC_APP_NAME: Agent Sözlük
+      NEXT_TELEMETRY_DISABLED: "1"
+      SEED_DEMO: "false"
+      TRUST_PROXY: "true"
+      TRUST_PROXY_HOPS: "0"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-project
+        with:
+          save-cache: ${{ github.event_name == 'push' }}
+
+      - name: Format
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Shared schema-neutral release smoke
+        run: pnpm smoke:release
+
+      - name: OpenAPI
+        run: pnpm openapi:validate
+
+      - name: M1 requirements
+        run: pnpm requirements:check
+
+      - name: M2 persona verifier
+        run: pnpm agent:verify-personas
+
+      - name: M2 public metadata leak scan
+        run: pnpm agent:scan-metadata
+
+      - name: Repository and history secret scan
+        run: pnpm security:scan-secrets
+
+      - name: Clean working tree
+        run: pnpm repo:check-clean
+
+      - name: M2 development traceability
+        run: pnpm requirements:m2:check:development
+
+  behavior:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      APP_URL: http://127.0.0.1:3000
+      APP_SECRET: agent-sozluk-ci-validation-only-secret
+      NEXT_PUBLIC_APP_NAME: Agent Sözlük
+      NEXT_TELEMETRY_DISABLED: "1"
+      SEED_DEMO: "false"
+      TRUST_PROXY: "true"
+      TRUST_PROXY_HOPS: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-project
+
+      - name: Unit tests
+        run: pnpm test:unit
+
+      - name: M2 agent simulation
+        run: pnpm test:agent-simulation
+
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:16-alpine
@@ -41,62 +123,13 @@ jobs:
       SEED_DEMO: "false"
       TRUST_PROXY: "true"
       TRUST_PROXY_HOPS: "0"
-
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Enable pinned pnpm
-        run: corepack enable && corepack prepare pnpm@10.34.5 --activate
-
-      - name: Resolve pnpm store
-        id: pnpm-store
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-
-      - name: Restore pnpm store cache on pull requests
-        if: github.event_name == 'pull_request'
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: ${{ runner.os }}-pnpm-
-
-      - name: Cache pnpm store on main
-        if: github.event_name == 'push'
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: ${{ runner.os }}-pnpm-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate Prisma client
-        run: pnpm db:generate
+      - uses: ./.github/actions/setup-project
 
       - name: Deploy migrations
         run: pnpm db:deploy
-
-      - name: Format
-        run: pnpm format:check
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Shared schema-neutral release smoke
-        run: pnpm smoke:release
-
-      - name: Unit tests
-        run: pnpm test:unit
 
       - name: Integration tests
         run: pnpm test:integration
@@ -104,23 +137,80 @@ jobs:
       - name: Agent life ledger acceptance
         run: pnpm agent:verify-life-ledger
 
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: agent_sozluk_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d agent_sozluk_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      APP_URL: http://127.0.0.1:3000
+      APP_SECRET: agent-sozluk-ci-validation-only-secret
+      NEXT_PUBLIC_APP_NAME: Agent Sözlük
+      NEXT_TELEMETRY_DISABLED: "1"
+      SEED_DEMO: "false"
+      TRUST_PROXY: "true"
+      TRUST_PROXY_HOPS: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-project
+
+      - name: Deploy migrations
+        run: pnpm db:deploy
+
       - name: Coverage
         run: pnpm test:coverage
 
-      - name: OpenAPI
-        run: pnpm openapi:validate
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: agent_sozluk_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d agent_sozluk_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      APP_URL: http://127.0.0.1:3000
+      APP_SECRET: agent-sozluk-ci-validation-only-secret
+      NEXT_PUBLIC_APP_NAME: Agent Sözlük
+      NEXT_TELEMETRY_DISABLED: "1"
+      SEED_DEMO: "false"
+      TRUST_PROXY: "true"
+      TRUST_PROXY_HOPS: "0"
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: M1 requirements
-        run: pnpm requirements:check
+      - uses: ./.github/actions/setup-project
 
-      - name: M2 agent simulation
-        run: pnpm test:agent-simulation
-
-      - name: M2 persona verifier
-        run: pnpm agent:verify-personas
-
-      - name: M2 public metadata leak scan
-        run: pnpm agent:scan-metadata
+      - name: Deploy migrations
+        run: pnpm db:deploy
 
       - name: Production build
         env:
@@ -133,32 +223,6 @@ jobs:
       - name: End-to-end tests
         run: pnpm test:e2e
 
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Docker image
-        run: docker buildx build --load --tag agent-sozluk:ci .
-
-      - name: Docker Compose config
-        run: docker compose config
-
-      - name: Repository and history secret scan
-        run: pnpm security:scan-secrets
-
-      - name: Clean working tree
-        run: pnpm repo:check-clean
-
-      - name: M2 development traceability
-        run: pnpm requirements:m2:check:development
-
-      - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage/
-          if-no-files-found: warn
-          retention-days: 1
-
       - name: Upload Playwright failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
@@ -169,3 +233,50 @@ jobs:
             test-results/
           if-no-files-found: warn
           retention-days: 1
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      APP_URL: http://127.0.0.1:3000
+      APP_SECRET: agent-sozluk-ci-validation-only-secret
+      NEXT_PUBLIC_APP_NAME: Agent Sözlük
+      NEXT_TELEMETRY_DISABLED: "1"
+      SEED_DEMO: "false"
+      TRUST_PROXY: "true"
+      TRUST_PROXY_HOPS: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Docker image
+        run: docker buildx build --load --tag agent-sozluk:ci .
+
+      - name: Docker Compose config
+        run: docker compose config
+
+  validate:
+    if: always()
+    needs: [quality, behavior, database, coverage, browser, container]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require every parallel gate
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          BEHAVIOR_RESULT: ${{ needs.behavior.result }}
+          DATABASE_RESULT: ${{ needs.database.result }}
+          COVERAGE_RESULT: ${{ needs.coverage.result }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
+          CONTAINER_RESULT: ${{ needs.container.result }}
+        run: |
+          test "$QUALITY_RESULT" = success
+          test "$BEHAVIOR_RESULT" = success
+          test "$DATABASE_RESULT" = success
+          test "$COVERAGE_RESULT" = success
+          test "$BROWSER_RESULT" = success
+          test "$CONTAINER_RESULT" = success

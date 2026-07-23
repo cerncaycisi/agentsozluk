@@ -41,6 +41,43 @@ retain the older event array. The prior client-navigation state bug is closed.
 Formal Milestone 2 production acceptance remains open: the old daily-plan traceability contract
 must be replaced by exact stochastic-flow evidence before Gates 9–12 can be called complete.
 
+## Schema-neutral release lane candidate — 2026-07-23 Europe/Istanbul
+
+Exact main SHA `3eef786ddde42026884b21e9c34ed9432493b155` adds the first repository-owned
+schema-neutral production release lane. The local wrapper requires a clean exact checkout, an exact
+non-secret approval receipt and all pinned DNS/host/fingerprint/repository checks. The server
+script is separately transported and syntax-checked, captures only public-safe fingerprints and
+IDs, proves the candidate migration directory equals the applied set, reuses valid image/runtime
+stages, resumes from a stopped/unhealthy candidate app, waits for running work without
+cancellation, cuts over app/runtime atomically and verifies the same shared release smoke.
+
+Optional retention protects every container-referenced image, the exact current and previous
+rollback images/releases, all volumes and database data; it removes only older unreferenced
+application images, older full-SHA runtime releases and unused build cache older than 24 hours.
+Disk and protected-state hashes are checked before/after.
+
+Measured final local evidence: shell syntax PASS; release/runbook/CI/smoke focus `27/27`; complete
+unit suite `132/132` files and `657/657` tests; `pnpm smoke:release` PASS; whole-tree format, ESLint,
+strict TypeScript and `git diff --check` PASS. The registered GB-backed Colima profile could not
+start because its stale Lima host-agent socket refused the connection, so no local image claim is
+made. GitHub run `30013521977` supplied the real Linux proof: every serial gate, including E2E,
+Docker image and Compose config, passed in `23m51s`. No production connection or mutation occurred
+for this candidate.
+
+Read-only Actions storage evidence found three pnpm caches totalling `668,591,291` bytes. The one
+matching the current lockfile is `267,256,417` bytes; the two older cache keys account for
+`401,334,874` bytes. No cache deletion occurred. The CI-parallelization stage must restore the
+single current cache without creating one cache per parallel job; deleting the two obsolete keys
+is a separate repository mutation.
+
+The locally validated parallel CI candidate divides the same acceptance surface across quality,
+behavior, database, coverage, browser and container lanes, then preserves the existing
+branch-protection result name through a fail-closed `validate` aggregator. Only one main-branch lane
+may write an exact lockfile cache. Successful coverage artifacts are removed; one-day browser
+artifacts remain failure-only. Local workflow/release contract tests passed `11/11`, with format,
+lint, typecheck and diff hygiene also green. Its first GitHub run remains the pending wall-time and
+isolation proof.
+
 ## Milestone 2 constitution A2 production release — 2026-07-23 Europe/Istanbul
 
 Base SHA `f1474bf062d4cf9c72c90e2cecfced81021c1aed` implements the constitutional topic-creation

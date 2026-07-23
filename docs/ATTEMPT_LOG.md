@@ -1057,3 +1057,68 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   hash `0d11cf434f6d4a7d69a77c887409b9b4f2effd0d241ecacef76b9b9fdb782c76`;
   container-image reference hash remained
   `c7f8c08ac0459aefe893da01564a6893b76c4c6a6afb99d4a8652cf6df1175a5`.
+
+## 2026-07-23 — Repository-owned schema-neutral release lane candidate
+
+- Scope: exact main SHA `3eef786ddde42026884b21e9c34ed9432493b155`; local implementation and
+  validation only. No production SSH, public endpoint check, deploy, migration, restart, setting,
+  lifecycle or queue mutation occurred.
+- The new local entrypoint fails closed unless the worktree and HEAD equal the exact approved SHA,
+  `--execute` is present and the non-secret approval receipt matches. It verifies all pinned
+  production identities on every connection and transfers the server script mode `0700`, runs
+  `bash -n`, then executes in a separate SSH session.
+- The server entrypoint records public-safe state fingerprints, requires an unchanged migration
+  set, reuses valid exact image/runtime stages, resumes when the candidate app exists but is
+  stopped/unhealthy, waits without cancelling runs, uses a no-migration Compose override, switches
+  the immutable runtime symlink atomically and runs one shared local/image/live smoke.
+- Optional cleanup preserves all container references, the current and immediately previous
+  image/release, volumes and database data; only older unreferenced application images, older
+  full-SHA runtime releases and build cache older than 24 hours are eligible.
+- A local wrapper check initially assigned its exit code to zsh's read-only `status` variable and
+  stopped with `zsh: read-only variable: status`; renaming the local harness variable to
+  `exit_status` verified the expected fail-closed exit `90`. Do not repeat: avoid shell-reserved
+  status variables in zsh test harnesses.
+- The first chat update expanded short SHA `3eef786` to an incorrect guessed full value. A direct
+  `git rev-parse HEAD`, `git ls-remote origin refs/heads/main` and GitHub run lookup all agreed on
+  exact SHA `3eef786ddde42026884b21e9c34ed9432493b155`, and the draft receipts were corrected before
+  commit. Do not repeat: never infer or autocomplete an exact SHA from its short prefix; read all
+  40 characters from Git.
+- The first post-resume focused run passed 26 assertions and failed one stale source-text
+  expectation after the code intentionally replaced an image-only branch with an image-plus-health
+  resume branch. Updating the test to assert the new contract produced `27/27` PASS. A following
+  format check found only that changed test's line wrapping; Prettier fixed it mechanically.
+- The registered GB-backed `colima-m1build` Docker context was not running. Starting only that
+  known profile stopped with
+  `ha.sock: connect: connection refused` while inspecting its existing Lima instance. No default
+  Colima profile was touched, no download was attempted and no image test ran. Do not repeat:
+  treat this as isolated local VM maintenance, not a product regression or reason to use the known
+  broken default profile; rely on the normal Linux CI Docker/Compose gate for this candidate.
+- A read-only GitHub cache inventory found three pnpm caches totalling `668,591,291` bytes. The
+  current lockfile cache is `267,256,417` bytes; two older lockfile caches total `401,334,874`
+  bytes. No cache was deleted in this package. Do not repeat: CI parallelization must restore one
+  current cache without saving a duplicate per job, and bounded cache deletion needs a separately
+  authorized repository action.
+- Final local evidence: `bash -n` PASS; focused release/runbook/smoke/CI tests `27/27`; unit
+  `132/132` files and `657/657` tests; shared static release smoke PASS; whole-tree format, ESLint,
+  strict typecheck and `git diff --check` PASS. GitHub Actions run `30013521977` then passed every
+  existing serial gate, including E2E, Docker image and Compose config, in `23m51s`; first
+  production use remains separate pending evidence.
+- That serial run emitted only the GitHub-hosted runner annotation that several upstream
+  `actions/*@v4` and `docker/setup-buildx-action@v3` actions still target deprecated Node.js 20 and
+  are being forced onto Node.js 24. No project command failed. Treat it as an upstream action
+  maintenance warning, not as evidence of an Agent Sözlük Node.js 22 mismatch.
+
+## 2026-07-23 — Parallel CI candidate
+
+- Scope: local workflow/test/documentation change following successful serial run `30013521977`;
+  no production connection or mutation occurred.
+- The single 23-minute job is split into independent `quality`, `behavior`, `database`, `coverage`,
+  `browser` and `container` lanes. A final job retains the branch-protection name `validate` and
+  fails unless every lane succeeds; no validation gate or acceptance threshold was removed.
+- One repository-local composite action pins Node.js 22 and pnpm `10.34.5`, restores the lockfile
+  cache for each lane and permits only the main-branch quality lane to save an exact cache miss.
+  Successful coverage is no longer uploaded as an artifact; only one-day Playwright evidence is
+  uploaded on failure.
+- Local evidence before commit: whole-tree format, ESLint and strict typecheck PASS; workflow
+  contract plus release-script tests `11/11`; `git diff --check` PASS. The first parallel GitHub run
+  is the required syntax, isolation and wall-time proof.
