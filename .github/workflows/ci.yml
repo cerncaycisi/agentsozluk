@@ -92,6 +92,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Shared schema-neutral release smoke
+        run: pnpm smoke:release
+
       - name: Unit tests
         run: pnpm test:unit
 

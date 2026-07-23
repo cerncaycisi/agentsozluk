@@ -175,6 +175,17 @@ describe("Milestone 2 production operator runbook", () => {
     expect(gate8.replace(/\s+/gu, " ")).toContain("Never run `db:reset`, seed or an ad-hoc repair");
   });
 
+  it("defines one guarded resumable lane for schema-neutral exact-SHA releases", () => {
+    expect(runbook).toContain("### Repository-owned schema-neutral release lane");
+    expect(runbook).toContain("scripts/deploy-production-no-migration.sh");
+    expect(runbook).toContain("scripts/production-release-remote.sh");
+    expect(runbook).toContain("AGENT_SOZLUK_PRODUCTION_APPROVED_SHA");
+    expect(runbook).toContain("pnpm smoke:release");
+    expect(prose).toContain("It is not a replacement for Gate 7/8 when a release adds a migration");
+    expect(prose).toContain("runs `bash -n`, and executes it in a separate connection");
+    expect(prose).toContain("never invokes Docker system/volume prune");
+  });
+
   it("requires cold, warm and dual real-CLI capacity evidence and persists it", () => {
     expect(capacityGate).toContain("[`AGENT_CAPACITY.md`](AGENT_CAPACITY.md)");
     expect(capacityGate.match(/agent:capacity/gu)).toHaveLength(2);

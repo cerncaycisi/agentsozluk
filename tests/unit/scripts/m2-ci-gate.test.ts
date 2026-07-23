@@ -37,6 +37,7 @@ describe("Milestone 2 pull request CI gate", () => {
       "pnpm format:check",
       "pnpm lint",
       "pnpm typecheck",
+      "pnpm smoke:release",
       "pnpm test:unit",
       "pnpm test:integration",
       "pnpm test:coverage",

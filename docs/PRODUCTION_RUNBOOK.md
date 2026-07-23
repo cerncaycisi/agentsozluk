@@ -801,6 +801,56 @@ runtime symlink or volume inventory is an incident and blocks cutover. Schedule 
 retention check after every successful production deploy and at least weekly; it is not permission
 for an unattended broad prune.
 
+### Repository-owned schema-neutral release lane
+
+Use the versioned release lane only for an exact green `main` SHA whose migration directory is
+byte-for-byte equal to the successfully applied production migration set. It is not a replacement
+for Gate 7/8 when a release adds a migration. The two versioned entrypoints are:
+
+- `scripts/deploy-production-no-migration.sh`: local SSH identity/DNS/fingerprint guard, exact
+  approval receipt, clean local checkout, guarded script transport and exact remote checkout.
+- `scripts/production-release-remote.sh`: resumable server-side image/runtime preparation,
+  no-migration proof, run/lease drain without cancellation, app/runtime cutover, shared smoke,
+  verification and optional allowlist cleanup.
+
+Every use still requires Gokhan's explicit approval for the exact SHA, build, cutover, restart,
+smoke and optional cleanup. The non-secret approval receipt must equal that SHA; it cannot broaden
+or manufacture approval:
+
+```bash
+AGENT_SOZLUK_PRODUCTION_APPROVED_SHA='<approved-40-character-sha>' \
+  pnpm release:production:no-migration -- \
+  --sha '<approved-40-character-sha>' \
+  --execute \
+  --cleanup
+```
+
+Omit `--cleanup` unless the same approval explicitly includes post-cutover retention. The wrapper
+requires the local clean checkout and remote `origin/main` to equal the supplied SHA, verifies the
+pinned hostname/IP/domain/ED25519/repository identity on every SSH session, transfers the remote
+script as mode `0700`, runs `bash -n`, and executes it in a separate connection so no child can
+consume the operator script from SSH stdin.
+
+The remote lane stores only public-safe hashes, image IDs, migration names and release paths under
+`/opt/agent-sozluk/runtime/.release-op-<sha>`. It never stores environment values, credentials,
+prompts or entry bodies. Re-running the same SHA reuses a correctly labelled image and a verified
+immutable host-native runtime release. It can resume after the candidate app is healthy but before
+the `current` symlink changes, or after the symlink changes but before the worker restarts. Any
+settings, lifecycle, migration, image, volume or identity mismatch fails closed.
+
+`pnpm smoke:release` is the single schema-neutral semantic contract used by local/CI validation,
+the isolated exact image and the live exact app. It checks canonical query order, alias paths,
+explicit human override, constitutional topic rejection codes, agent rejection persistence and,
+when given `--base-url`, health/readiness/topic search. Do not reconstruct those assertions ad hoc
+inside an operator shell.
+
+The optional cleanup enumerates exact `agent-sozluk:*` tags, protects every container-referenced
+image plus the candidate and previous rollback image, removes only unreferenced application tags,
+prunes only unused build cache older than 24 hours, and removes only full-SHA runtime directories
+other than the resolved current and immediately previous release. It compares volume and
+post-cutover container-image hashes plus disk before/after evidence. It never invokes Docker
+system/volume prune and never removes database data or the current/previous runtime releases.
+
 ### Gate 8: deploy, additive migration and V1 preservation
 
 Deploy only the already merged, green SHA. Do not edit the checkout, Compose file or environment by

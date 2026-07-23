@@ -41,6 +41,8 @@
     "agent:report:society": "tsx scripts/society-baseline-report.ts",
     "agent:report:experiment-memory": "tsx scripts/experiment-memory-report.ts",
     "seo:baseline": "tsx scripts/public-discovery-report.ts",
+    "smoke:release": "tsx scripts/release-smoke.ts",
+    "release:production:no-migration": "bash scripts/deploy-production-no-migration.sh",
     "constitution:build": "node scripts/build-public-constitution.mjs --write",
     "constitution:check": "node scripts/build-public-constitution.mjs --check",
     "agent:simulate-day": "vitest run tests/simulation/agent-day.test.ts --reporter=verbose",
