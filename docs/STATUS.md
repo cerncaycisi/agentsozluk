@@ -70,13 +70,14 @@ matching the current lockfile is `267,256,417` bytes; the two older cache keys a
 single current cache without creating one cache per parallel job; deleting the two obsolete keys
 is a separate repository mutation.
 
-The locally validated parallel CI candidate divides the same acceptance surface across quality,
-behavior, database, coverage, browser and container lanes, then preserves the existing
-branch-protection result name through a fail-closed `validate` aggregator. Only one main-branch lane
-may write an exact lockfile cache. Successful coverage artifacts are removed; one-day browser
-artifacts remain failure-only. Local workflow/release contract tests passed `11/11`, with format,
-lint, typecheck and diff hygiene also green. Its first GitHub run remains the pending wall-time and
-isolation proof.
+The parallel CI at exact SHA `e62e1cbf916d11a2bcd78543c2747895f59382aa` divides the same
+acceptance surface across quality, behavior, database, coverage, browser and container lanes, then
+preserves the existing branch-protection result name through a fail-closed `validate` aggregator.
+Only one main-branch lane may write an exact lockfile cache. Successful coverage artifacts are
+removed; one-day browser artifacts remain failure-only. After correcting the behavior lane's
+PostgreSQL fixture, run `30015780890` passed every lane in `4m54s`, compared with the equivalent
+serial run's `23m51s`—about `79%` shorter. Local workflow/release contract tests passed `12/12`,
+with format, lint, typecheck and diff hygiene also green.
 
 ## Milestone 2 constitution A2 production release — 2026-07-23 Europe/Istanbul
 

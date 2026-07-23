@@ -1131,3 +1131,11 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   service and deploy migrations before simulation, with a workflow contract test to keep both
   requirements. Do not repeat: classify tests by their actual fixture dependencies, not directory
   name alone, when splitting CI.
+- Corrected exact SHA `e62e1cbf916d11a2bcd78543c2747895f59382aa` passed GitHub run
+  `30015780890` end to end. Measured wall time was `4m54s`, down from the immediately preceding
+  equivalent serial run's `23m51s` (`18m57s` / about `79%` shorter; about `4.9x` faster). Lane
+  durations: quality `1m12s`, behavior `2m45s`, database `2m46s`, coverage `3m41s`, container
+  `3m02s`, browser about `4m25s`, final fail-closed aggregator `2s`.
+- The successful run uploaded no coverage or Playwright artifact. The same upstream Node.js 20
+  action deprecation annotation remained non-blocking. First production use and build-once
+  promotion are still separate work; do not report the faster CI as production deployment proof.
