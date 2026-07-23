@@ -1122,3 +1122,12 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
 - Local evidence before commit: whole-tree format, ESLint and strict typecheck PASS; workflow
   contract plus release-script tests `11/11`; `git diff --check` PASS. The first parallel GitHub run
   is the required syntax, isolation and wall-time proof.
+- First parallel run `30015520558` proved the workflow syntax and concurrency but its `behavior`
+  lane failed after all `132/132` unit files and `658/658` unit tests passed. Exact simulation
+  failure: `Can't reach database server at 127.0.0.1:5432`. Root cause: the simulation imports the
+  integration database reset helper, while the new behavior lane had no PostgreSQL service or
+  migration step. This is CI lane isolation, not a product regression; the immediately preceding
+  serial run passed the same simulation. Resolution: give the behavior lane its own PostgreSQL 16
+  service and deploy migrations before simulation, with a workflow contract test to keep both
+  requirements. Do not repeat: classify tests by their actual fixture dependencies, not directory
+  name alone, when splitting CI.

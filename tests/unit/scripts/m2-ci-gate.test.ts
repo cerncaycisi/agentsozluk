@@ -15,6 +15,7 @@ interface WorkflowJob {
   steps?: WorkflowStep[];
   needs?: string[];
   if?: string;
+  services?: Record<string, unknown>;
 }
 
 interface Workflow {
@@ -88,6 +89,15 @@ describe("Milestone 2 pull request CI gate", () => {
     expect(runCommands).not.toContain("pnpm requirements:m2:check");
     expect(runCommands).not.toContain("pnpm verify:m2");
     expect(steps.some((step) => step["continue-on-error"] === true)).toBe(false);
+  });
+
+  it("provides a migrated PostgreSQL service to the database-backed simulation lane", () => {
+    expect(jobs.behavior?.services).toHaveProperty("postgres");
+    const behaviorCommands = (jobs.behavior?.steps ?? []).flatMap(({ run }) => (run ? [run] : []));
+    expect(behaviorCommands).toContain("pnpm db:deploy");
+    expect(behaviorCommands.indexOf("pnpm db:deploy")).toBeLessThan(
+      behaviorCommands.indexOf("pnpm test:agent-simulation"),
+    );
   });
 
   it("scans full reachable history and proves generators leave the candidate tree clean", () => {
