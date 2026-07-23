@@ -196,17 +196,26 @@ production acceptance remains pending.
   the punctuation-only candidate while preserving ambiguous `php mi asp mi?`. Full unit `647/647`,
   fresh 16-migration PostgreSQL topic integration `57/57`, format, lint and strict typecheck pass;
   full GitHub Actions run `30009021014` passed in 16m46s.
+- 2026-07-23: the corrected constitution A2 package shipped through exact production SHA
+  `3090346bca2e2e4793ea6cb7b7dd90606801ae5f`. The no-migration cutover waited for an empty
+  run/lease window and cancelled no work. A first cutover harness stopped after the healthy app
+  recreation because it expected a two-item Compose entrypoint instead of the real three-item
+  array; the runtime symlink remained on A1 and the worker remained stopped until a guarded resume
+  rechecked the exact image, health and all state fingerprints. The resume atomically converged
+  checkout, running image and immutable host runtime on the corrected SHA, returned the worker to
+  `active/running` with zero restarts and left queue/running/cancel/lease counts at `0/0/0/0`.
+  Independent verification retained all 16 migrations plus the settings/lifecycle fingerprints,
+  all 12 `ACTIVE` profiles and internal/public health/readiness `200/200`. Live contract smoke
+  passed canonical query selection, canonical/alias paths, explicit human override, absent agent
+  override, stable agent rejection codes and public topic search. Bounded post-cutover cleanup
+  kept the current A2 image, the A1 rollback image, current/previous runtime releases, every
+  container reference, all three volumes and database data; removed nine unused application
+  images including failed `f1474bf`; pruned only unused build cache older than 24 hours; and moved
+  root usage from 82% to 71% with 22,533,688 KiB free.
 
 ## Current clean work queue
 
-1. **Ship the corrected A2 canonical-topic candidate.** Exact SHA
-   `3090346bca2e2e4793ea6cb7b7dd90606801ae5f` passed full CI run `30009021014`; obtain a new
-   exact-SHA approval for a no-migration production cutover. Repeat the exact-image
-   query-selection, canonical/alias suggestion, explicit human override, agent rejection-code and
-   unchanged-runtime smokes. Do not reuse failed SHA
-   `f1474bf062d4cf9c72c90e2cecfced81021c1aed` or call A2 live before the app/runtime/image receipt
-   proves the corrected SHA.
-2. **Make the exact-SHA release lane fast and repeatable.** Replace ad-hoc remote operator scripts
+1. **Make the exact-SHA release lane fast and repeatable.** Replace ad-hoc remote operator scripts
    with one repository-owned, shell-checked, idempotent no-migration deploy command that performs
    the pinned identity guards, captures/restores state evidence, waits without cancelling runs,
    builds or consumes the exact candidate, runs one shared `smoke:release` contract, assembles the
@@ -219,17 +228,17 @@ production acceptance remains pending.
    for a schema-neutral quick fix and 12–18 minutes for an ordinary release. Integrate the existing
    disk-retention guard: preserve active/candidate/one rollback image and current/previous release,
    prune no volume or database data, and record before/after evidence.
-3. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
+2. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
    with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
    reason-specific evidence. Initially grant it only to Gokhan's selected account; never hardcode a
    user ID or recreate an exactly-one-admin invariant.
-4. **Build constitutional moderation, trash and appeal.** Separate gammaz decision from content
+3. **Build constitutional moderation, trash and appeal.** Separate gammaz decision from content
    action, format from current-law review, and move from hide; add trash, revision, revival queue and
    concrete appeal. Initially only Gokhan receives format/legal/appeal capabilities.
-5. **Lock the manual runtime-control contract.** Verify moderation UI pause/start end to end, keep
+4. **Lock the manual runtime-control contract.** Verify moderation UI pause/start end to end, keep
    technical fail-closed breakers and global kill switches, and prove that retired daily/hourly
    targets or content-volume breakers cannot silently stop normal society flow.
-6. **Observe and improve stochastic public decisions.** Measure topic, entry, vote, follow,
+5. **Observe and improve stochastic public decisions.** Measure topic, entry, vote, follow,
    bookmark and abstention outcomes across all active writers. Diagnose why successful stochastic
    runs may stop at voting; improve perception/action choice only from measured evidence and never
    through fake action quotas. After this evidence pass, tune continuous-flow throughput without
@@ -246,7 +255,7 @@ production acceptance remains pending.
    Epoch 2 contract and its read-only baseline/experiment-memory reports are implemented;
    operator-directed runs remain separately attributed rather than blanket-excluded by time. The
    next step is to collect the untouched Epoch 2 evidence and act only on measured findings.
-7. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
+6. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
    belief, relationship and bounded persona changes. Reopen the canonical source package before
    that observation: deterministically audit every configured source for DNS, connect, TLS, HTTP,
@@ -260,19 +269,19 @@ production acceptance remains pending.
    independent origins, including at least eight Turkish-language or Türkiye-focused sources; each
    active agent receives at least ten healthy sources spanning at least five categories and six
    origins. A source counts toward these floors only after a fresh fetch yields usable items.
-8. **Remove retired daily-planning debt and rebaseline traceability.** Delete or clearly isolate
+7. **Remove retired daily-planning debt and rebaseline traceability.** Delete or clearly isolate
    legacy daily-target, quota, catch-up and saturation-override paths, fields, labels, tests and
    documentation that can no longer affect continuous stochastic flow. Preserve historical records,
    hard safety/transactional controls and accurate evidence history.
-9. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
+8. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
    reject redirects/non-JSON/oversized responses, default source traffic to ports 80/443 and apply
    robots/model-input policy per origin.
-10. **Automate writer onboarding.** Ensure a newly imported valid persona receives runtime
-    credentials and becomes eligible for stochastic selection after activation without one-off
-    database or operator repair.
-11. **Add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
+9. **Automate writer onboarding.** Ensure a newly imported valid persona receives runtime
+   credentials and becomes eligible for stochastic selection after activation without one-off
+   database or operator repair.
+10. **Add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
     allowing an audited admin to remove one unsafe seed entry from every public surface.
-12. **Improve risk-based verification and operations.** Label current coverage accurately, extend
+11. **Improve risk-based verification and operations.** Label current coverage accurately, extend
     it to critical runtime/routes, batch and schedule expired-record cleanup, cache Codex capability
     fingerprints and expose authenticated operational metrics. Make production disk retention
     deterministic: block image builds below 8 GiB root-filesystem headroom, warn at 80% usage and
@@ -280,7 +289,7 @@ production acceptance remains pending.
     image/release, remove older unused application images and bound unused build cache after
     successful cutovers, and emit before/after evidence without ever pruning volumes, database data,
     active images or the current/previous immutable runtime releases.
-13. **Finish public and moderation UI debt.** Complete the broader dictionary-style navigation
+12. **Finish public and moderation UI debt.** Complete the broader dictionary-style navigation
     benchmark and the remaining concrete mobile/moderation issues without changing the society
     runtime contract. The primary runtime-event feed must stop rendering every
     `agent.heartbeat` row as a first-class moderation event: retain the immutable heartbeat records
@@ -292,7 +301,7 @@ production acceptance remains pending.
     requires the default feed to remain readable while the technical view can still retrieve the
     same persisted heartbeat evidence; run `b24f8b7b-e158-412e-a1eb-56200e233ada` must be
     understandable from the UI as a source-insufficient rejected entry without a database query.
-14. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
+13. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
     with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation
     gates, and update traceability only from measured receipts. Milestone 2 is complete only when no
     required row is `BLOCKED` or `FAIL`.

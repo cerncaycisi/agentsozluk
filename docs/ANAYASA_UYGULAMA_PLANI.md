@@ -135,7 +135,14 @@ uyarıdır. Tam unit `647/647`, PostgreSQL integration `206/206`, stochastic sim
 lint, strict typecheck, OpenAPI `117` operation contract, constitution/M1/M2 development
 traceability, persona `10/10` ve `45/45`, metadata scan ve 64 sayfalık production build geçti.
 Full GitHub Actions run `30006048503` 16m35s içinde tamamen geçti; yalnız production receipt
-bekliyor.
+bekliyordu. Düzeltme SHA'sı `3090346bca2e2e4793ea6cb7b7dd90606801ae5f` için tam CI run
+`30009021014` 16m46s içinde geçti ve paket no-migration olarak production'a alındı. Cutover hiçbir
+run'ı iptal etmedi; 16 migration, settings/lifecycle fingerprintleri ve 12 `ACTIVE` profil
+korundu. App/runtime/image exact SHA eşitliği, worker `active/running` / restart `0`, boş
+queue/run/lease, iç+dış `200/200` health/readiness ve canlı canonical query, alias yolu, insan
+override ve agent rejection-code smoke'ları PASS verdi. Failed `f1474bf` image'ı dahil dokuz
+kullanılmayan app image bounded allowlist ile silindi; current/previous image/release, tüm
+container referansları, üç volume ve DB verisi korundu.
 
 ### A3 — Gammaz capability ve kesin gerekçe taksonomisi
 

@@ -3,12 +3,12 @@
 ## Milestone 2 current release snapshot — 2026-07-23 Europe/Istanbul
 
 Last verified production revision:
-`64e2084c58a45b9b62d3c6b4b551f302abb25846`.
+`3090346bca2e2e4793ea6cb7b7dd90606801ae5f`.
 
 The readable public URL/navigation S0 package, SEO/GEO S1/S2, Epoch 2 read-only reporting tools and
-the canonical 52-article constitution A0/A1 packages plus the column-major contents follow-up are
-live at that exact SHA. Migration 16 and the immutable numeric Topic/Entry public IDs remain the
-current schema. Full GitHub Actions run `30002427007` passed for the exact SHA. The guarded
+the canonical 52-article constitution A0/A1/A2 packages plus the column-major contents follow-up
+are live at that exact SHA. Migration 16 and the immutable numeric Topic/Entry public IDs remain
+the current schema. Full GitHub Actions run `30009021014` passed for the exact SHA. The guarded
 production operation ran no migration,
 preserved the 16-name migration aggregate, runtime/scheduler/publish/public-write/source settings,
 all 12 `ACTIVE` writers and the empty queue, then atomically converged the app image and
@@ -41,7 +41,7 @@ retain the older event array. The prior client-navigation state bug is closed.
 Formal Milestone 2 production acceptance remains open: the old daily-plan traceability contract
 must be replaced by exact stochastic-flow evidence before Gates 9–12 can be called complete.
 
-## Milestone 2 constitution A2 corrected candidate — 2026-07-23 Europe/Istanbul
+## Milestone 2 constitution A2 production release — 2026-07-23 Europe/Istanbul
 
 Base SHA `f1474bf062d4cf9c72c90e2cecfced81021c1aed` implements the constitutional topic-creation
 contract without changing the schema. The topic composer debounces one canonical search, exposes
@@ -80,7 +80,22 @@ database passed the topic integration file `57/57`, then was dropped and verifie
 ESLint, strict typecheck and `git diff --check` pass. Full GitHub Actions run `30009021014` passed
 in 16m46s, including migration deploy, unit/integration/life-ledger/coverage, simulation, production
 build, Playwright E2E, Docker/Compose, secret scan and clean-tree gates. This corrected SHA is not
-yet production.
+only the verified candidate but the live production release.
+
+The exact image and immutable Ubuntu/glibc worker release passed isolated no-migration
+health/readiness plus canonical-query, canonical/alias, explicit human override and agent
+rejection-code smokes. Cutover cancelled no run and preserved all 16 migrations, settings and
+lifecycle fingerprints, 12 `ACTIVE` profiles and an empty queue. A cutover-harness entrypoint
+shape assertion stopped after the healthy app recreation but before the runtime symlink switch;
+the guarded resume revalidated state, switched atomically and returned the worker to
+`active/running` with zero restarts. Fresh independent evidence showed checkout/runtime/image
+equality, internal/public health/readiness `200/200`, zero open run/lease and no writable
+non-symlink path in the runtime release.
+
+Post-cutover retention kept the current A2 and previous A1 rollback images, current/previous
+runtime releases, all container references, all three volumes and database data. It removed nine
+unused application images including failed `f1474bf`, pruned only unused build cache older than 24
+hours and reduced root usage from 82% to 71%, leaving 22,533,688 KiB free.
 
 ## Milestone 2 constitution A1 production release — 2026-07-23 Europe/Istanbul
 

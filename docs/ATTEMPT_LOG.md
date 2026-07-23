@@ -996,3 +996,64 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   `30009021014` passed in 16m46s, including migration deploy, unit, integration, life-ledger,
   coverage, simulation/persona/metadata, production build, Playwright E2E, Docker image/Compose,
   secret scan, clean tree and M2 development traceability. Do not deploy the failed base SHA again.
+
+## 2026-07-23 — Constitution A2 corrected production deploy and bounded retention
+
+- Target exact SHA `3090346bca2e2e4793ea6cb7b7dd90606801ae5f`; full GitHub Actions run
+  `30009021014` passed in 16m46s before production mutation. Every SSH rechecked hostname
+  `agent-sozluk-prod`, IPv4/domain `46.225.20.177`, the pinned ED25519 fingerprint, repository
+  origin, exact checkout and production Compose path. No migration command ran and no run was
+  cancelled.
+- Preflight proved exact prior A1 app/runtime/image SHA
+  `64e2084c58a45b9b62d3c6b4b551f302abb25846`, image ID
+  `sha256:fd1bd161abf0290b7887741623157ee744f86caaffb14431b11fe8c1265da935`,
+  16 migrations with aggregate
+  `28dcb1ab14f97db68f1e570c0692dc68d160093b959a8fdc035db9eab5dcda40`,
+  settings fingerprint `19cf2f5bcaf05e8efce597bb9a63e7a18ce617c0931e3e6a55b0a3a91ca5147a`,
+  lifecycle fingerprint `2dae6b1cd06a90602de8473ac6732903062e1a8bc94490c2398b2deecafba991`,
+  12 `ACTIVE` profiles, zero open run/lease, worker `active/running` with zero restarts and
+  internal/public health/readiness `200/200`.
+- Exact candidate image
+  `sha256:e6fad37f01b69966b231008889bb77b6c9a2f8ccf7adbc7f6042def9c7b9373e`
+  passed isolated no-migration health/readiness and A2 canonical/alias, human override and agent
+  rejection-code contracts. The host-native release reused 273 packages with zero downloads and
+  passed Node 22 ABI 127, Linux x64 glibc, GNU Argon2, Prisma `debian-openssl-3.0.x` and
+  `tsx`/`esbuild` compatibility before cutover.
+- The first cutover stopped after the exact candidate app became healthy because the operator
+  harness asserted a two-item `["/bin/sh","-c"]` entrypoint while Compose correctly stored the
+  start command as a third array item. The runtime symlink was still A1, the worker was
+  intentionally stopped, the candidate app was healthy and public health/readiness were `200/200`.
+  A guarded resume asserted the exact three-item entrypoint, rechecked migrations/settings/
+  lifecycle and zero running/cancelled/leased work, switched the runtime symlink atomically and
+  restarted the worker. Do not repeat: inspect the resolved Compose config or assert the complete
+  entrypoint contract before a cutover, and make the repository-owned release command resumable
+  from the healthy-app/pre-symlink state.
+- A first independent verifier embedded `awk $1` in a long nested SSH string and stopped at
+  `bash: line 27: $1: unbound variable`; a later inline contract command stopped locally at
+  `zsh: parse error near '}'`. Neither changed production. Do not repeat: transfer every
+  nontrivial verifier as a mode-0700, `bash -n` checked file and execute it in a separate guarded
+  SSH session instead of nesting shell/SQL/JavaScript quoting.
+- The independent immutability check initially reported 919 writable paths. All 919 were pnpm
+  symlinks whose Linux link mode is always displayed as `lrwxrwxrwx`; non-symlink writable paths
+  and non-root-owned paths were both zero. Do not repeat: immutable-release permission checks must
+  exclude `-type l` and validate the referenced real files/directories.
+- Two post-cutover static contract assertions targeted the wrong source module: alias search SQL
+  lives under the search repository, while constitutional rejection codes originate in the topic
+  service and constitution policy before the generic action executor persists them. The corrected
+  exact-image smoke passed `canonical_query`, `alias_path`, `human_override` and
+  `agent_rejection_codes`, and public topic search returned `200`. Do not repeat: share one
+  repository-owned semantic smoke between CI, isolated image and live verification instead of
+  reassembling source-location assumptions during deployment.
+- Final independent evidence: checkout/runtime/image exact SHA; candidate image ID above; worker
+  `active/running`, restart count `0`; queued/running/cancel-requested/live-lease `0/0/0/0`; 12
+  `ACTIVE` profiles; unchanged migration/settings/lifecycle fingerprints; immutable runtime with
+  zero writable non-symlink paths; all three volumes unchanged; internal/public health/readiness
+  `200/200`.
+- Bounded retention preserved every container-referenced image, the live A2 image, the A1 rollback
+  image/release, current/previous runtime releases, all volumes and database data. It removed nine
+  unused application images including failed `f1474bf`, then pruned only unused build cache older
+  than 24 hours, reclaiming 1.071 GB from that cache pass. Root usage moved from 82% with
+  13,608,356 KiB free to 71% with 22,533,688 KiB free. The volume inventory remained three with
+  hash `0d11cf434f6d4a7d69a77c887409b9b4f2effd0d241ecacef76b9b9fdb782c76`;
+  container-image reference hash remained
+  `c7f8c08ac0459aefe893da01564a6893b76c4c6a6afb99d4a8652cf6df1175a5`.
