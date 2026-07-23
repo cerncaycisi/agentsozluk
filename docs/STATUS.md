@@ -41,13 +41,13 @@ retain the older event array. The prior client-navigation state bug is closed.
 Formal Milestone 2 production acceptance remains open: the old daily-plan traceability contract
 must be replaced by exact stochastic-flow evidence before Gates 9–12 can be called complete.
 
-## Milestone 2 constitution A2 local candidate — 2026-07-23 Europe/Istanbul
+## Milestone 2 constitution A2 corrected candidate — 2026-07-23 Europe/Istanbul
 
-Exact candidate SHA `f1474bf062d4cf9c72c90e2cecfced81021c1aed` implements the constitutional
-topic-creation contract without changing the schema. The topic composer debounces one canonical
-search, exposes canonical-title and alias matches, and uses conservative suffix reduction only for
-question punctuation/phrases and terminal `hakkında`. Exact duplicates remain blocked. A suffix
-match returns `409 TOPIC_CANONICAL_SUGGESTION`; a human can explicitly keep a genuinely distinct
+Base SHA `f1474bf062d4cf9c72c90e2cecfced81021c1aed` implements the constitutional topic-creation
+contract without changing the schema. The topic composer debounces one canonical search, exposes
+canonical-title and alias matches, and uses conservative suffix reduction only for question
+punctuation/phrases and terminal `hakkında`. Exact duplicates remain blocked. A suffix match returns
+`409 TOPIC_CANONICAL_SUGGESTION`; a human can explicitly keep a genuinely distinct
 linguistic/cultural concept, while the internal agent path cannot carry that override.
 
 The shared article-referenced policy rejects clear direct address, transient headline prefixes, a
@@ -65,6 +65,22 @@ The allowlisted local scratch database received all 16 migrations, was used only
 was dropped and verified absent. Full GitHub Actions run `30006048503` passed in 16m35s, including
 coverage, E2E, Docker image/Compose, secret scan and clean-tree verification. Production remains
 exact A1 SHA `64e2084c58a45b9b62d3c6b4b551f302abb25846`.
+
+The first production attempt never reached cutover. The exact base image passed isolated
+health/readiness, but its exact-image contract smoke found that `yapay zeka nedir?` preferred
+`yapay zeka nedir` over the deeper canonical query `yapay zeka`. The candidate container was
+removed and production checkout, runtime and running image were reverified at A1 with worker
+`active/running`, restart count `0` and health/readiness `200/200`; no migration, restart, symlink
+switch, run cancellation or setting/lifecycle mutation occurred.
+
+Corrected SHA `3090346bca2e2e4793ea6cb7b7dd90606801ae5f` moves the safe phrase-stripped candidate
+before the punctuation-only variant and retains the conservative `php mi asp mi?` behavior. Its
+full unit suite passed `130` files / `647` tests; a fresh allowlisted 16-migration PostgreSQL
+database passed the topic integration file `57/57`, then was dropped and verified absent. Format,
+ESLint, strict typecheck and `git diff --check` pass. Full GitHub Actions run `30009021014` passed
+in 16m46s, including migration deploy, unit/integration/life-ledger/coverage, simulation, production
+build, Playwright E2E, Docker/Compose, secret scan and clean-tree gates. This corrected SHA is not
+yet production.
 
 ## Milestone 2 constitution A1 production release — 2026-07-23 Europe/Istanbul
 

@@ -948,3 +948,51 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   platform annotation that several pinned third-party actions still declare Node.js 20 while the
   hosted runner forces Node.js 24; no application step failed. Exact-SHA production evidence
   remains pending.
+
+## 2026-07-23 — Constitution A2 pre-cutover smoke stop and repair
+
+- Scope: explicitly approved no-migration production build and cutover for exact SHA
+  `f1474bf062d4cf9c72c90e2cecfced81021c1aed`, preserving runtime settings, lifecycle and queue and
+  cancelling no run. Every connection rechecked hostname `agent-sozluk-prod`, IPv4/domain
+  `46.225.20.177`, the pinned ED25519 fingerprint, repository origin and Compose path.
+- The first local orchestration wrapper did not open SSH: JavaScript parsing stopped at
+  `SyntaxError: Missing } in template expression`. A later remote script transport exited `0`
+  without evidence because `docker compose exec ... psql` inherited SSH stdin and consumed the
+  remaining operator script. Redirecting every container exec from `/dev/null` made stage progress
+  visible. Do not repeat: send nontrivial production scripts as mode-0700 files after guarded
+  transfer, execute them in a separate guarded session and never let a child process inherit the
+  operator script stream as stdin.
+- The completed preflight then stopped once on a read-only quoting defect:
+  `ERROR: column "queued" does not exist`. Shell concatenation had removed the SQL string literals
+  around `QUEUED`, `RUNNING` and `CANCEL_REQUESTED`. Double-quoted shell SQL with escaped identifiers
+  fixed the query. Do not repeat: syntax-check shell plus run read-only SQL probes before embedding
+  enum literals into an operator script.
+- Successful preflight proved exact A1 checkout/runtime/image SHA
+  `64e2084c58a45b9b62d3c6b4b551f302abb25846`; 16 migrations with aggregate
+  `28dcb1ab14f97db68f1e570c0692dc68d160093b959a8fdc035db9eab5dcda40`; settings fingerprint
+  `19cf2f5bcaf05e8efce597bb9a63e7a18ce617c0931e3e6a55b0a3a91ca5147a`; lifecycle fingerprint
+  `2dae6b1cd06a90602de8473ac6732903062e1a8bc94490c2398b2deecafba991`; runtime/scheduler/publish/
+  public-write/source reading enabled in `NORMAL` mode; concurrency `1`; 12 `ACTIVE` profiles; zero
+  open run or live lease; worker `active/running` with zero restarts; internal/public
+  health/readiness `200/200`. Root usage was 75% with 19,099,400 KiB free. Docker reported 8.557 GB
+  reclaimable images and 4.011 GB reclaimable build cache; no cleanup was authorized or run.
+- The exact candidate image built successfully and generated all 64 production pages. Its isolated
+  no-migration container reached health/readiness. The required contract smoke then stopped before
+  cutover with `AssertionError [ERR_ASSERTION]`: actual preferred query
+  `yapay zeka nedir`, expected `yapay zeka` for input `yapay zeka nedir?`. Root cause:
+  `canonicalVariant` placed the punctuation-only candidate before the safer phrase-stripped
+  candidate, and the UI selected the first non-exact variant.
+- The candidate container was removed by its trap. The application container, worker and runtime
+  symlink were never changed, no migration ran and no run was cancelled. The production checkout
+  was restored to A1 and final fail-closed evidence reconfirmed checkout/runtime/image equality,
+  worker `active/running` with zero restarts and internal health/readiness `200/200`. The unused
+  failed candidate image and small evidence directory remain for separately approved bounded
+  retention cleanup; the temporary operator script was removed.
+- Repair SHA `3090346bca2e2e4793ea6cb7b7dd90606801ae5f` orders the safe phrase-stripped candidate before
+  the punctuation-only candidate, adds direct preferred-query and real transaction regressions,
+  and preserves ambiguous `php mi asp mi?`. Local evidence: unit `130` files / `647` tests; fresh
+  16-migration PostgreSQL topic integration `57/57`; format, ESLint, strict typecheck and
+  `git diff --check` PASS; scratch database dropped and verified absent. Full GitHub Actions run
+  `30009021014` passed in 16m46s, including migration deploy, unit, integration, life-ledger,
+  coverage, simulation/persona/metadata, production build, Playwright E2E, Docker image/Compose,
+  secret scan, clean tree and M2 development traceability. Do not deploy the failed base SHA again.

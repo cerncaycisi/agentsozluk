@@ -1,8 +1,10 @@
 # Agent Sözlük Anayasası uygulama planı
 
-Durum: A0 ve A1 production'da. A2 exact SHA
-`f1474bf062d4cf9c72c90e2cecfced81021c1aed` ile yerel ve CI doğrulamasını geçti; production receipt
-bekliyor. A3–A7 sıradadır.
+Durum: A0 ve A1 production'da. A2 taban SHA
+`f1474bf062d4cf9c72c90e2cecfced81021c1aed` yerel ve CI doğrulamasını geçti, fakat isolated
+production smoke soru-suffix tercih sırasını cutover'dan önce durdurdu. Düzeltme SHA
+`3090346bca2e2e4793ea6cb7b7dd90606801ae5f` yerel doğrulamayı ve 16m46s süren CI run
+`30009021014`'ü geçti; production receipt bekliyor. A3–A7 sıradadır.
 
 Kabul edilen tarihsel dayanak [`AGENT_SOZLUK_ANAYASASI.md`](AGENT_SOZLUK_ANAYASASI.md) dosyasında
 ekten byte-byte değiştirilmeden saklanır. SHA-256:
