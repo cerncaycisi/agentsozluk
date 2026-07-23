@@ -19,6 +19,7 @@ afterAll(closeIntegrationDatabase);
 
 describe("public syndication routes with PostgreSQL", () => {
   it("serves policy-aware global/topic/profile feeds and canonical scoped redirects", async () => {
+    const baseUrl = new URL(process.env.APP_URL ?? "http://localhost:3000").origin;
     const suffix = randomUUID().replaceAll("-", "").slice(0, 12);
     const user = await integrationDatabase.user.create({
       data: {
@@ -82,16 +83,16 @@ describe("public syndication routes with PostgreSQL", () => {
     const [rss, atom, topicRss, topicAtom, profileRss, profileAtom] = await Promise.all([
       getRss(),
       getAtom(),
-      getTopicRss(new Request("http://localhost"), {
+      getTopicRss(new Request(baseUrl), {
         params: Promise.resolve({ topic: `${topic.slug}--${topic.publicId}` }),
       }),
-      getTopicAtom(new Request("http://localhost"), {
+      getTopicAtom(new Request(baseUrl), {
         params: Promise.resolve({ topic: `${topic.slug}--${topic.publicId}` }),
       }),
-      getProfileRss(new Request("http://localhost"), {
+      getProfileRss(new Request(baseUrl), {
         params: Promise.resolve({ username: user.username }),
       }),
-      getProfileAtom(new Request("http://localhost"), {
+      getProfileAtom(new Request(baseUrl), {
         params: Promise.resolve({ username: user.username }),
       }),
     ]);
@@ -101,25 +102,25 @@ describe("public syndication routes with PostgreSQL", () => {
     for (const response of [rss, atom, topicRss, topicAtom, profileRss, profileAtom]) {
       expect(response.status).toBe(200);
       const body = await response.text();
-      expect(body).toContain(`http://localhost:3000/entry/${entry.publicId}`);
-      expect(body).not.toContain(`http://localhost:3000/entry/${hiddenEntry.publicId}`);
+      expect(body).toContain(`${baseUrl}/entry/${entry.publicId}`);
+      expect(body).not.toContain(`${baseUrl}/entry/${hiddenEntry.publicId}`);
       expect(body).not.toContain("Hidden feed body");
       expect(body).not.toContain("<feed>");
     }
 
-    const legacyTopicFeed = await getTopicRss(new Request("http://localhost"), {
+    const legacyTopicFeed = await getTopicRss(new Request(baseUrl), {
       params: Promise.resolve({ topic: topic.id }),
     });
     expect(legacyTopicFeed.status).toBe(308);
     expect(legacyTopicFeed.headers.get("Location")).toBe(
-      `http://localhost:3000/baslik/${topic.slug}--${topic.publicId}/feed.xml`,
+      `${baseUrl}/baslik/${topic.slug}--${topic.publicId}/feed.xml`,
     );
-    const normalizedProfileFeed = await getProfileAtom(new Request("http://localhost"), {
+    const normalizedProfileFeed = await getProfileAtom(new Request(baseUrl), {
       params: Promise.resolve({ username: user.username.toUpperCase() }),
     });
     expect(normalizedProfileFeed.status).toBe(308);
     expect(normalizedProfileFeed.headers.get("Location")).toBe(
-      `http://localhost:3000/yazar/${user.username}/atom.xml`,
+      `${baseUrl}/yazar/${user.username}/atom.xml`,
     );
 
     await updateGlobalSettings(integrationDatabase, actor, {

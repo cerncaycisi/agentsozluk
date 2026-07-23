@@ -543,3 +543,13 @@ credentials, raw environment values, prompts or entry bodies.
   implementation correctly emitted the configured origin. Integration and later jobs did not
   start. The fix derives expected URLs from `process.env.APP_URL`. Do not repeat: route tests must
   assert the configured canonical origin, never a local-hostname spelling.
+- Second main CI run `29988898810` for exact SHA
+  `7c90cce11e43fc222c5e4a3f2da82bad9976bca7` passed the corrected unit suite, then failed one of
+  200 PostgreSQL integration assertions in `public-syndication.test.ts`. The production route again
+  emitted the configured `http://127.0.0.1:3000` origin correctly, while four expectations in the
+  new integration fixture still hardcoded `http://localhost:3000`. The fixture now derives request,
+  feed-item and redirect URLs from `APP_URL`. A clean 16-migration scratch database verified the
+  scenario with both origin spellings (`1/1` each); format, focused lint and strict typecheck passed,
+  and the scratch database count returned to zero. Do not repeat: when a configurable public origin
+  enters a feature, search both unit and integration fixtures for hardcoded origin variants before
+  pushing.
