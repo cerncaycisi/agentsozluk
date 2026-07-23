@@ -3,12 +3,13 @@
 ## Milestone 2 current release snapshot — 2026-07-23 Europe/Istanbul
 
 Last verified production revision:
-`acd6e5a23028070c4a41b7e5fc5e733b791e87a4`.
+`4b41bc798e6f0ef0e7c9bf139bed4e2c9e2132a0`.
 
 The readable public URL/navigation S0 package, SEO/GEO S1/S2, Epoch 2 read-only reporting tools and
-the canonical 52-article constitution A0 package are live at that exact SHA. Migration 16 and the
-immutable numeric Topic/Entry public IDs remain the current schema. Full GitHub Actions run
-`29995444532` passed for the exact SHA. The guarded production operation ran no migration,
+the canonical 52-article constitution A0 package plus its column-major contents follow-up are live
+at that exact SHA. Migration 16 and the immutable numeric Topic/Entry public IDs remain the current
+schema. Full GitHub Actions run `29998571958` passed for the exact SHA. The guarded production
+operation ran no migration,
 preserved the 16-name migration aggregate, runtime/scheduler/publish/public-write/source settings,
 all 12 `ACTIVE` writers and the empty queue, then atomically converged the app image and
 host-native runtime release. Worker state is `active/running` with zero restarts and
@@ -71,6 +72,13 @@ version `1.0.0`, two named keyboard-focusable table regions, `/hakkinda`, intern
 health/readiness `200/200`, and a real 390×844 Axe pass with zero WCAG A/AA violations and no
 page-level horizontal overflow. Settings and lifecycle fingerprints were unchanged, all 12
 profiles remained `ACTIVE`, the queue stayed empty and worker restart count is zero.
+
+The follow-up exact SHA `4b41bc798e6f0ef0e7c9bf139bed4e2c9e2132a0` replaced the row-major
+two-column index with column-major reading order. Real production Chrome proved desktop 1–26 in the
+left column followed by 27–52 in the right column, mobile 1–52 in one column, no page-level
+horizontal overflow and zero WCAG A/AA Axe violations. The schema-neutral cutover preserved the
+same 16 migrations, settings/lifecycle fingerprints, 12 `ACTIVE` profiles and empty queue; worker
+state is `active/running` with zero restarts and health/readiness are `200/200`.
 
 ## Milestone 2 historical verification baseline — 2026-07-20 Europe/Istanbul
 

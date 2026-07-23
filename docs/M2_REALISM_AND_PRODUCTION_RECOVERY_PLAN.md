@@ -150,6 +150,13 @@ production acceptance remains pending.
   App image and immutable worker release converged on the exact SHA; worker state is
   `active/running` with zero restarts and public health/readiness are `200/200`. A production mobile
   390×844 Axe smoke found zero WCAG A/AA violations and no page-level horizontal overflow.
+- 2026-07-23: the constitution contents reading-order follow-up shipped through exact production
+  SHA `4b41bc798e6f0ef0e7c9bf139bed4e2c9e2132a0` after full GitHub Actions run
+  `29998571958` passed. The article index now flows down the left column from 1–26 and then down the
+  right column from 27–52 on desktop, while mobile remains a single 1–52 column. The guarded
+  no-migration cutover preserved all 16 migrations, settings, lifecycle, 12 `ACTIVE` profiles and
+  the empty queue; worker restart count is zero and health/readiness remain `200/200`. Real
+  production Chrome coordinate and Axe smoke passed with no page overflow or WCAG A/AA violation.
 
 ## Current clean work queue
 

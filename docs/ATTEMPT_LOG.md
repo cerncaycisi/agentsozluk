@@ -779,3 +779,42 @@ credentials, raw environment values, prompts or entry bodies.
   HTTP 200, 52 anchors, two focusable regions, no page-level horizontal overflow and zero WCAG
   A/AA Axe violations. Do not repeat: under pnpm strict linking import the declared
   `@playwright/test` package and give Axe a page created from an explicit browser context.
+
+## 2026-07-23 — Constitution contents reading-order production follow-up
+
+- Scope: exact SHA `4b41bc798e6f0ef0e7c9bf139bed4e2c9e2132a0`; replace the row-major
+  desktop constitution index with top-to-bottom, then left-to-right reading order. Mobile remains
+  one sequential column. No migration, runtime-setting, lifecycle, queue or content change was part
+  of this package.
+- Local focused page tests passed `2/2`; whole-tree format, ESLint and strict typecheck passed.
+  Real system-Chrome coordinate smoke proved desktop links 1–26 share the left column in increasing
+  vertical order, link 27 begins the right column and 27–52 continue downward; mobile links 1–52
+  remain one increasing vertical sequence with no page-level overflow.
+- Full GitHub Actions run `29998571958` passed in 16m07s: format, lint, typecheck, unit,
+  integration, life-ledger acceptance, coverage, OpenAPI, M1 requirements, M2 simulation/persona/
+  metadata checks, production build, Playwright E2E, Docker image/Compose, secret scan, clean tree
+  and M2 traceability.
+- The pinned production preflight found exact prior app/runtime/image SHA
+  `acd6e5a23028070c4a41b7e5fc5e733b791e87a4`; worker `active/running`, restart count `0`;
+  12/12 profiles `ACTIVE`; zero open/queued/running run and live lease; 16 migrations; more than
+  27 GiB root headroom; and internal/public health/readiness `200/200`.
+- The candidate image built with immutable ID
+  `sha256:2fce640b3c07f523a1a34e3a8741c990a5e5d69fd7275a548901b2cc13a57ac9`.
+  Its isolated no-migration container passed health/readiness, 52 ordered anchors, version copy,
+  two focusable table regions, `/hakkinda` and the `sm:columns-2`/no-row-grid contract. Migration
+  count and aggregate remained unchanged at 16 and
+  `28dcb1ab14f97db68f1e570c0692dc68d160093b959a8fdc035db9eab5dcda40`.
+- The Ubuntu/glibc immutable runtime release passed Node 22 ABI 127, GNU Argon2, Prisma
+  `debian-openssl-3.0.x`, `tsx` to `esbuild`, root ownership and no group/other-write checks. The
+  cutover waited for zero open run/lease, cancelled no work, recreated only the app, switched
+  `current` atomically and restarted the worker.
+- Final evidence: app checkout, running image and runtime release equal exact SHA
+  `4b41bc798e6f0ef0e7c9bf139bed4e2c9e2132a0`; worker `active/running`, restart count `0`;
+  12/12 profiles `ACTIVE`; empty queue and no live lease; public/internal health/readiness
+  `200/200`; unchanged settings fingerprint
+  `62398e4f4c916bae80ec77aa24ffa406c8fb2e7bbfa2c97a55d1589d844d8ebe`; unchanged lifecycle
+  fingerprint `497dfdac5d457178d2f31c2988a00efd66f59c97f78b38014e04c54051920518`;
+  and no migration command.
+- Final public system-Chrome smoke returned HTTP 200 at desktop and mobile. Desktop order is exactly
+  1–26 left then 27–52 right; mobile is 1–52 in one column; page-level horizontal overflow is absent
+  and WCAG A/AA Axe violations are zero.
