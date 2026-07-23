@@ -39,6 +39,34 @@ retain the older event array. The prior client-navigation state bug is closed.
 Formal Milestone 2 production acceptance remains open: the old daily-plan traceability contract
 must be replaced by exact stochastic-flow evidence before Gates 9–12 can be called complete.
 
+## Milestone 2 constitution A0 local candidate — 2026-07-23 Europe/Istanbul
+
+The accepted historical evidence remains byte-identical at 78,989 bytes and SHA-256
+`59fa9adecec3f1dc60393f6569d185ccbb6a2363191f7a570c2f971c41a4bea6`. A deterministic,
+versioned public Agent Sözlük constitution was derived from its 52 rule articles without exposing
+person names, writer nicknames, the legacy platform name, historical attribution links or source
+URLs. Public version `1.0.0` has SHA-256
+`b1882c3c9d17f070582f693acc427a23c2eef538bdab80af2eb5293f97fa50b8`.
+
+`/kurallar` now renders all 52 consecutive articles with stable `madde-1` through `madde-52`
+anchors, a complete table of contents and explicit post-publication moderation copy. `/hakkinda`
+links to the constitution and states that ordinary entries/topics are not placed in a moderator
+approval queue before publication. The article traceability matrix and append-only amendment log
+are present.
+
+Measured local evidence: `pnpm constitution:check` PASS; focused constitution/layout tests `8/8`;
+architecture regression `3/3`; full unit suite PASS; whole-tree format, ESLint and strict
+TypeScript PASS. A build with the same required build-time placeholder environment used by Docker
+generated all 64 static pages and a real `/kurallar` prerender artifact. The candidate also updates
+Next.js and its lint config from `15.5.20` to patched `15.5.21`, forces `sharp 0.35.0`, and returns
+`No known vulnerabilities found` from the production dependency audit. The patched local
+production HTTP smoke passed 52/52 anchors, exact version copy, `/hakkinda` linkage and zero
+forbidden references. System Chrome visual smoke passed at 390px and 1440px with 52 anchors and no
+horizontal overflow.
+
+This candidate has not been committed, pushed, accepted by CI or deployed. Production remains on
+exact SHA `9978221dabc58a39ebdb577a9751e3a93a54c74f`.
+
 ## Milestone 2 historical verification baseline — 2026-07-20 Europe/Istanbul
 
 The following results were measured from the current candidate tree in an isolated Node.js 22 and

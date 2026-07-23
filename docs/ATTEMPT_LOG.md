@@ -608,3 +608,81 @@ credentials, raw environment values, prompts or entry bodies.
   `e74887b7f99456b7f2e99c75a8785a6c8f90ac7d8a5a8c5f64eafe64a9284e7c`,
   `4803cd2b8ae3baad2a35d448f4b05c91e89309caabc8dc3d3e52642a12131bb8` and
   `f6a43e2a07e9af854bb8cbec7703b2624a601ce22ad6586270421db03a3e3edf`.
+
+## 2026-07-23 — Single-run read-only rejection diagnosis
+
+- Scope was limited by explicit operator approval to run
+  `b24f8b7b-e158-412e-a1eb-56200e233ada`: public writer identity, terminal run error fields and
+  action rejection fields only. No entry body, prompt, action input, secret, token or environment
+  value was selected or printed; no production state changed.
+- The first identity guard used the nonexistent path
+  `/opt/agent-sozluk/runtime/.release-sha` and stopped before the database query with exact error
+  `No such file or directory`. The current runbook stores the marker in the selected immutable
+  release at `/opt/agent-sozluk/runtime/current/.release-sha`.
+- Do not repeat: read the current release marker through the runbook's `current` symlink, not from
+  the runtime parent directory.
+- The corrected connection verified pinned hostname, connection IPv4, remote DNS, SSH fingerprint,
+  repository origin, app SHA and immutable runtime SHA. Production remained on exact SHA
+  `9978221dabc58a39ebdb577a9751e3a93a54c74f`.
+- Read-only evidence: `@yarinmesaisi` / `Yarın Mesaisi`; run `PARTIAL`; one `CREATE_ENTRY` action
+  `REJECTED`; code `SERIOUS_CLAIM_SOURCE_INSUFFICIENT`. The safe reason requires a trusted source
+  or two independent sources for a current or serious factual claim. The run itself had no separate
+  terminal error code.
+- Product finding: UUID-only runtime events do not make the terminal cause self-explanatory. The
+  canonical UI debt now requires writer name plus safe action rejection/error summaries and a
+  direct explanation of `PARTIAL`, while retaining raw heartbeat evidence behind a technical view.
+
+## 2026-07-23 — Constitution A0 local candidate
+
+- Scope: preserve the accepted historical constitution evidence byte-for-byte, generate a
+  versioned 52-article public Agent Sözlük norm without person/nickname/legacy-platform
+  attribution, render `/kurallar`, explain post-publication moderation on `/hakkinda`, and add
+  article traceability plus an append-only amendment log. No production connection or mutation was
+  part of this package.
+- Historical evidence stayed at 78,989 bytes and SHA-256
+  `59fa9adecec3f1dc60393f6569d185ccbb6a2363191f7a570c2f971c41a4bea6`; public version `1.0.0`
+  generated SHA-256 `b1882c3c9d17f070582f693acc427a23c2eef538bdab80af2eb5293f97fa50b8`.
+  `pnpm constitution:check` proves exact regeneration, 52 consecutive article headings and public
+  source freshness.
+- The first full unit run exposed a repository architecture-contract failure: placing a bounded
+  parser under a new `src/modules/constitution` root made the fixed module inventory require real
+  application/repository/validation/public layers. The parser and filesystem loader belong to
+  shared content support and were moved to `src/lib/content`; the empty module directories were
+  removed. The architecture rerun passed `3/3`, and the complete unit suite then passed. Do not
+  repeat: do not create a new domain-module root for a read-only public-content parser unless the
+  feature genuinely owns every required module layer.
+- A plain local `pnpm build` reached `/kurallar` prerendering and stopped because `DATABASE_URL`,
+  `APP_URL` and `APP_SECRET` were absent. This was the required build-time configuration contract,
+  not a page regression. The Docker/CI-equivalent build-only placeholder environment generated all
+  64 static pages and the `/kurallar` prerender manifest. Do not repeat: a forced-static route that
+  imports application configuration must be built with the documented build-time environment.
+- The first raw-HTML smoke expected one contiguous `Sürüm 1.0.0` string, but React SSR correctly
+  inserted empty comment separators between adjacent text nodes. The structural page was valid;
+  normalizing only those separators made the exact version/anchor check pass. Do not repeat: assert
+  SSR text-node content structurally or normalize React's empty hydration separators.
+- The repository Playwright package had no matching downloaded Chromium binary and returned
+  `Executable doesn't exist ... chromium_headless_shell-1228`. No browser download was started.
+  The existing system Chrome binary ran the same 390px/1440px smoke successfully: 52 anchors and
+  no horizontal overflow. Do not repeat: use the existing system browser for bounded local visual
+  smoke when the repository-managed binary is absent.
+- Final measured evidence: focused constitution/layout tests `8/8`; architecture regression `3/3`;
+  full unit suite PASS; format, ESLint and strict typecheck PASS; 64-page production build PASS;
+  local production HTTP smoke passed 52/52 anchors, version and `/hakkinda` linkage with zero
+  forbidden references. No migration, schema, database, runtime, scheduler, lifecycle, queue,
+  prompt or persona state changed.
+- The post-install production audit found no issue in `react-markdown` or `remark-gfm`, but exposed
+  pre-existing current advisories in `next 15.5.20` (three high, three moderate) and its
+  `sharp 0.34.5` chain (one high; inherited libvips CVEs). The candidate updates Next.js and
+  `eslint-config-next` to `15.5.21` and pins the compatible transitive image library to
+  `sharp 0.35.0`. `pnpm why sharp` resolves one `0.35.0` copy under Next, and
+  `pnpm audit --prod --audit-level moderate` now returns `No known vulnerabilities found`.
+- The long patched build command yielded its wrapper output while the single Next worker continued
+  in the background. Process inspection proved one active build, so no duplicate build was started;
+  the existing process was observed to completion and produced a fresh build ID, prerender manifest
+  and `/kurallar` route. Do not repeat: after a long command wrapper yields without a terminal
+  summary, inspect the exact process and artifact timestamps before retrying.
+- The first patched HTTP smoke accidentally used a doubly escaped JavaScript `\d` pattern and
+  reported `ANCHORS:0`; `/hakkinda` passed in the same smoke. Replacing the harness expression with
+  `[0-9]+` returned the real result: 52 ordered anchors, public version `1.0.0` and zero forbidden
+  references. Do not repeat: avoid multi-shell regex backslash ambiguity in one-off evidence
+  harnesses.

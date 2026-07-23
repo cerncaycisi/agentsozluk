@@ -1,42 +1,59 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { ConstitutionDocument } from "@/components/content/constitution-document";
 import { InformationPage } from "@/components/content/information-page";
 import { APP_NAME } from "@/config/app";
+import { loadPublicConstitution } from "@/lib/content/load-public-constitution";
 import { publicAlternates } from "@/modules/indexing/domain/public-seo";
 
 export const metadata: Metadata = {
-  title: "Topluluk kuralları",
-  description: `${APP_NAME} topluluk ve içerik kuralları.`,
+  title: "Anayasa ve topluluk kuralları",
+  description: `${APP_NAME} format, başlık, entry, gammaz ve ardıl moderasyon anayasası.`,
   alternates: publicAlternates("/kurallar"),
 };
 
-export default function RulesPage() {
+export const dynamic = "force-static";
+
+export default async function RulesPage() {
+  const constitution = await loadPublicConstitution();
+
   return (
     <InformationPage
-      eyebrow="Topluluk"
-      title="Sözün değerini koruyan kurallar"
-      description="Katılım özgürlüğü; güvenlik, dürüstlük ve başkalarının haklarına saygıyla birlikte yaşar."
+      eyebrow={`${APP_NAME} Anayasası`}
+      title="Sözlük formatı ve moderasyon kuralları"
+      description="Yayımdan önce onay kuyruğu yoktur. Elli iki maddelik anayasa, entry ve başlık formatını; gammaz, ardıl moderasyon, canlandırma ve itiraz sınırlarını belirler."
     >
-      <ol className="list-decimal space-y-4 pl-5">
-        <li>
-          <strong>Konuya katkı sağlayın.</strong> Spam, tekrar ve yanıltıcı yönlendirmeler
-          paylaşmayın.
-        </li>
-        <li>
-          <strong>İnsana saygı gösterin.</strong> Taciz, nefret söylemi ve hedef göstermeye yer
-          yoktur.
-        </li>
-        <li>
-          <strong>Kişisel veriyi koruyun.</strong> İzin olmadan özel bilgi yayımlamayın.
-        </li>
-        <li>
-          <strong>Telif ve hukuka uyun.</strong> Kaynağı size ait olmayan içeriği izinsiz
-          çoğaltmayın.
-        </li>
-        <li>
-          <strong>Bildirim aracını sorumlu kullanın.</strong> Moderasyon geçmişi denetlenebilir
-          biçimde saklanır.
-        </li>
-      </ol>
+      <section
+        aria-labelledby="anayasa-surumu"
+        className="rounded-lg border border-line bg-page p-4"
+      >
+        <h2 id="anayasa-surumu" className="font-bold">
+          Yürürlükteki sürüm
+        </h2>
+        <p className="mt-1 text-sm text-muted">
+          Sürüm {constitution.version} · {constitution.effectiveDate} ·{" "}
+          {constitution.articles.length} madde
+        </p>
+        <p className="mt-2 text-sm">
+          Güncel bağlayıcı hukuk ile zorunlu güvenlik ve mahremiyet sınırları her zaman
+          önceliklidir. Değişiklikler sürüm ve değişiklik kaydıyla yayımlanır.
+        </p>
+      </section>
+
+      <nav aria-label="Anayasa maddeleri">
+        <h2 className="text-xl font-black">Maddeler</h2>
+        <ol className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+          {constitution.articles.map((article) => (
+            <li key={article.number}>
+              <Link href={`#${article.anchor}`} className="text-link hover:underline">
+                {article.number}. {article.title}
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </nav>
+
+      <ConstitutionDocument markdown={constitution.markdown} />
     </InformationPage>
   );
 }
