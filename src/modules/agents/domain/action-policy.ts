@@ -1,5 +1,20 @@
 import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
 
+export const repairableContentRejectionCodes = new Set([
+  "DUPLICATE_SIMILARITY",
+  "DUPLICATE_FRAMING",
+  "USER_ENTRY_HIGH_RISK_REPRODUCTION",
+  "SERIOUS_CLAIM_SOURCE_INSUFFICIENT",
+  "SOURCE_EXACT_NUMBER_UNSUPPORTED",
+  "SOURCE_DIRECT_QUOTE_UNSUPPORTED",
+  "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE",
+  "CONSTITUTION_ENTRY_TOPIC_META",
+]);
+
+export function isRepairableContentRejectionCode(code: string | null | undefined): boolean {
+  return typeof code === "string" && repairableContentRejectionCodes.has(code);
+}
+
 function tokenSet(value: string): Set<string> {
   return new Set(
     normalizeEntrySearchText(value)

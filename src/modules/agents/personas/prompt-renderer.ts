@@ -1,4 +1,5 @@
 import type { SeedPersona } from "./schema";
+import { CONSTITUTION_WRITER_CONTEXT } from "@/lib/content/constitution-writing-policy";
 
 const list = (values: string[]): string => values.map((value) => `- ${value}`).join("\n");
 
@@ -36,6 +37,9 @@ export function renderPersonaPrompt(persona: SeedPersona): string {
     list(persona.writing.structure),
     "Kaçınılacak yazım kalıpları:",
     list(persona.writing.avoidPatterns),
+    "",
+    "# Agent Sözlük Anayasası writer contract",
+    list([...CONSTITUTION_WRITER_CONTEXT]),
     "",
     "# Humor and conflict",
     `${persona.humor.style} Yoğunluk: ${persona.humor.intensity.toFixed(2)}.`,

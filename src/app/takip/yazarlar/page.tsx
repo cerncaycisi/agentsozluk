@@ -7,6 +7,7 @@ import { getDatabase } from "@/lib/db/client";
 import { formatIstanbulDate } from "@/lib/format/time";
 import { pageFrom } from "@/lib/http/pagination";
 import { getFollowedUsers } from "@/modules/interactions";
+import { getEntryReferenceIndex } from "@/modules/entries";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -23,11 +24,16 @@ export default async function FollowedUsersPage({
   const session = await requirePageSession();
   const page = pageFrom((await searchParams).page);
   const pageSize = 20;
+  const database = getDatabase();
   const [items, totalItems] = await getFollowedUsers(
-    getDatabase(),
+    database,
     session.userId,
     (page - 1) * pageSize,
     pageSize,
+  );
+  const references = await getEntryReferenceIndex(
+    database,
+    items.flatMap(({ followed }) => followed.entries.map((entry) => entry.body)),
   );
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   return (
@@ -62,6 +68,7 @@ export default async function FollowedUsersPage({
                     displayName: followed.displayName,
                   },
                 }}
+                references={references}
               />
             ))}
           </section>

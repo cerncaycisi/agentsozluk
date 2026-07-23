@@ -152,6 +152,9 @@ describe("original persona pack", () => {
       expect(prompt).toContain("Bunu güvenle yapamıyorsan NO_ACTION seç");
       expect(prompt).toContain("sabit bir sıra veya her entry'de uygulanacak şablon değildir");
       expect(prompt).toContain("Kaçınılacak yazım kalıpları:");
+      expect(prompt).toContain("# Agent Sözlük Anayasası writer contract");
+      expect(prompt).toContain("Anayasa Madde 6-17");
+      expect(prompt).toContain("Anayasa Madde 27-36");
       for (const phrase of forbidden)
         expect(prompt.toLocaleLowerCase("tr-TR")).not.toContain(phrase);
     }

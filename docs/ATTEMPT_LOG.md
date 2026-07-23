@@ -818,3 +818,46 @@ credentials, raw environment values, prompts or entry bodies.
 - Final public system-Chrome smoke returned HTTP 200 at desktop and mobile. Desktop order is exactly
   1–26 left then 27–52 right; mobile is 1–52 in one column; page-level horizontal overflow is absent
   and WCAG A/AA Axe violations are zero.
+
+## 2026-07-23 — Constitution A1 writing and dictionary-reference local candidate
+
+- Scope: add article 50/51 composer guidance, an article-referenced agent writer contract, narrow
+  physical-reference/topic-meta agent checks, one bounded repair path and visible canonical
+  `[[başlık]]`, `@yazar`, `(bkz: başlık)` and `(bkz: #entry)` rendering. Human publication remains
+  post-moderated; no production connection, deployment, migration or runtime mutation occurred.
+- The first focused unit run exposed two local implementation defects: a reused global reference
+  regular expression retained its cursor between bodies, and one prompt test still addressed a
+  scaffold item by its old array index. Resetting the expression cursor per body and asserting the
+  named constitution section fixed the causes. Do not repeat: batch parsers with global regular
+  expressions must reset state for every input, and prompt tests should assert named contracts
+  rather than positional array indices.
+- The first full integration run passed `202/203`. One pre-existing provenance fixture used
+  topic-page-meta wording and therefore triggered the new article 14 code before the distinct
+  high-risk user-entry rule it intended to test. The fixture was changed to isolate only that
+  provenance behavior; the complete rerun passed `203/203`. Do not repeat: a policy fixture must
+  contain one intended violation when rejection precedence is part of the contract.
+- The first full unit run passed `636/638` but failed the architecture inventory because a shared
+  content policy was initially placed under a new incomplete domain-module root. It was moved to
+  `src/lib/content`, the empty module directory was removed and the complete rerun passed
+  `638/638`. Do not repeat: shared stateless content policy does not justify a new bounded module
+  unless every required module layer genuinely exists.
+- A first integration invocation omitted `TEST_DATABASE_URL` and stopped at the existing safety
+  guard with `Integration tests requires TEST_DATABASE_URL.` The passwordless allowlisted local
+  PostgreSQL 16 test database was then supplied and the suite passed. Do not repeat: use the
+  documented test database environment on the first integration invocation.
+- A plain `pnpm build` compiled and typechecked, then `/kurallar` prerendering correctly stopped
+  because `DATABASE_URL`, `APP_URL` and `APP_SECRET` were absent. The documented Docker-equivalent
+  build-only placeholder environment generated all 64 pages. Do not repeat: local production
+  builds that import forced-static configuration use the repository's non-production build-only
+  contract; never source or print a real environment file.
+- The final-mode `requirements:m2:check` correctly stopped on
+  `DONE-034 must be PASS for final M2 verification; found BLOCKED.` This candidate has not run the
+  production acceptance gates, so the result is an evidence guard rather than a product
+  regression. The correct development-mode check passed `527 PASS / 16 approved post-merge
+BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-production package and
+  reserve final mode for the actual Gate 9–12 closeout.
+- Final measured evidence: unit `129` files / `638` tests; PostgreSQL integration `17` files /
+  `203` tests; whole-tree format, ESLint and strict typecheck PASS; persona verification `10`
+  profiles / `45` pairwise comparisons; constitution generation, M1 requirements, M2 development
+  traceability, repository/history secret scan and `git diff --check` PASS; Next.js production
+  build `64/64` static pages. CI and exact-SHA production evidence are intentionally pending.

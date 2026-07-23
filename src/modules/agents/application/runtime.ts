@@ -17,7 +17,10 @@ import {
 } from "@/modules/agents/repository/life-ledger";
 import { lockPersonaUniverse } from "@/modules/agents/repository/persona-lock";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
-import { duplicateRepairCandidateIsSafe } from "@/modules/agents/domain/action-policy";
+import {
+  duplicateRepairCandidateIsSafe,
+  isRepairableContentRejectionCode,
+} from "@/modules/agents/domain/action-policy";
 import {
   appendRuntimeActions,
   applyRuntimeReflectionStateDeltas,
@@ -1462,15 +1465,14 @@ export function recordRuntimeActions(
       runId,
       agentProfileId: principal.agentProfileId,
     });
-    const duplicateRejections = existingActions.filter(
+    const repairableRejections = existingActions.filter(
       ({ actionStatus, rejectionCode }) =>
-        actionStatus === "REJECTED" &&
-        ["DUPLICATE_SIMILARITY", "DUPLICATE_FRAMING"].includes(rejectionCode ?? ""),
+        actionStatus === "REJECTED" && isRepairableContentRejectionCode(rejectionCode),
     );
     const repairCandidates = input.actions.filter(
       ({ repairOfSequence }) => repairOfSequence !== undefined,
     );
-    if (duplicateRejections.length > 0 && repairCandidates.length === 0)
+    if (repairableRejections.length > 0 && repairCandidates.length === 0)
       throw new AppError(
         "AGENT_DUPLICATE_REPAIR_REQUIRED",
         409,
@@ -1504,7 +1506,7 @@ export function recordRuntimeActions(
       if (
         !origin ||
         origin.actionStatus !== "REJECTED" ||
-        !["DUPLICATE_SIMILARITY", "DUPLICATE_FRAMING"].includes(origin.rejectionCode ?? "") ||
+        !isRepairableContentRejectionCode(origin.rejectionCode) ||
         marker(origin.validationResult) !== null ||
         existingActions.some(({ validationResult }) => marker(validationResult) !== null) ||
         candidate.sequence <= Math.max(0, ...existingActions.map(({ sequence }) => sequence)) ||

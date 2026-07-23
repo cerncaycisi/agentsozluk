@@ -36,6 +36,7 @@ import {
   editEntry,
   getEntry,
   getEntryByPublicId,
+  getEntryReferenceIndex,
   getTopicEntries,
 } from "@/modules/entries/application/entries";
 import {
@@ -1289,6 +1290,19 @@ describe("topics and entries with PostgreSQL", () => {
     expect(await integrationDatabase.entry.count()).toBe(1);
   });
 
+  it("keeps human publication immediate instead of turning constitutional guidance into premoderation", async () => {
+    const writer = await createUser("human_constitution_writer");
+    const topic = await createTopic(writer.id, "Anayasa rehberi ve ardıl moderasyon");
+    const entry = await createEntry(integrationDatabase, actor(writer.id), topic.topic.id, {
+      body: "Üstteki entry yanlış ifadesi formatça sorunlu olsa da insan yayını ön denetime girmez.",
+    });
+    expect(entry).toMatchObject({
+      status: "ACTIVE",
+      authorId: writer.id,
+      topicId: topic.topic.id,
+    });
+  });
+
   it("returns topic visibility, follow, merge and paginated sitemap contracts", async () => {
     const owner = await createUser("topic_contract_owner");
     const follower = await createUser("topic_contract_follower");
@@ -2023,6 +2037,63 @@ describe("interactions with PostgreSQL", () => {
 });
 
 describe("search, feeds and profiles with PostgreSQL", () => {
+  it("resolves only visible canonical entry, topic, alias and writer references", async () => {
+    const writer = await createUser("referansyazari");
+    const mentioned = await createUser("gorunuryazar");
+    const suspended = await createUser("askidayazar");
+    const deactivated = await createUser("kapaliyazar");
+    await integrationDatabase.user.update({
+      where: { id: suspended.id },
+      data: { status: "SUSPENDED" },
+    });
+    await integrationDatabase.user.update({
+      where: { id: deactivated.id },
+      data: { status: "DEACTIVATED" },
+    });
+    const visible = await createTopic(writer.id, "Görünür Kanonik Başlık");
+    await integrationDatabase.topicAlias.create({
+      data: {
+        topicId: visible.topic.id,
+        title: "Görünür Eski Ad",
+        normalizedTitle: normalizeTopicTitle("Görünür Eski Ad"),
+        slug: "gorunur-eski-ad",
+      },
+    });
+    const hidden = await createTopic(writer.id, "Gizli Referans Başlığı");
+    await integrationDatabase.topic.update({
+      where: { id: hidden.topic.id },
+      data: { status: "HIDDEN" },
+    });
+    await integrationDatabase.entry.update({
+      where: { id: hidden.entry.id },
+      data: { status: "HIDDEN", hiddenAt: new Date() },
+    });
+
+    const references = await getEntryReferenceIndex(integrationDatabase, [
+      [
+        "[[Görünür Kanonik Başlık]]",
+        "(bkz: Görünür Eski Ad)",
+        "(bkz: Gizli Referans Başlığı)",
+        `(bkz: #${visible.entry.publicId})`,
+        `(bkz: #${hidden.entry.publicId})`,
+        `@${mentioned.username}`,
+        `@${suspended.username}`,
+        `@${deactivated.username}`,
+      ].join(" "),
+    ]);
+
+    expect(references.topics?.get(normalizeTopicTitle("Görünür Kanonik Başlık"))).toBe(
+      visible.topic.url,
+    );
+    expect(references.topics?.get(normalizeTopicTitle("Görünür Eski Ad"))).toBe(visible.topic.url);
+    expect(references.topics?.has(normalizeTopicTitle("Gizli Referans Başlığı"))).toBe(false);
+    expect(references.entries?.get(visible.entry.publicId)).toBe(
+      `/entry/${visible.entry.publicId}`,
+    );
+    expect(references.entries?.has(hidden.entry.publicId)).toBe(false);
+    expect(references.users).toEqual(new Set([mentioned.username, suspended.username]));
+  });
+
   it("searches topics, aliases, users and active entries with stable result contracts", async () => {
     const writer = await createUser("acikkaynakci");
     await integrationDatabase.user.update({

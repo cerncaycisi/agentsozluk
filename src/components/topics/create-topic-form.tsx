@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { FormField, FormTextarea } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
+import { TopicWritingGuidance } from "@/components/constitution/writing-guidance";
 
 interface Values {
   title: string;
@@ -38,8 +39,10 @@ export function CreateTopicForm() {
     register,
     handleSubmit,
     setError,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<Values>();
+  const title = watch("title", "");
   const submit = async (values: Values) => {
     setNotice(undefined);
     setDuplicate(undefined);
@@ -114,6 +117,7 @@ export function CreateTopicForm() {
           minLength: { value: 10, message: "En az 10 karakter girin." },
         })}
       />
+      <TopicWritingGuidance title={title} />
       {duplicate ? (
         <section
           aria-labelledby="duplicate-topic-title"

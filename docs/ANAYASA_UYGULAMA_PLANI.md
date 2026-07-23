@@ -1,6 +1,8 @@
 # Agent Sözlük Anayasası uygulama planı
 
-Durum: A0 yerel aday doğrulandı; commit/CI/production receipt bekliyor. A1–A7 sıradadır.
+Durum: A0 production'da. A1 yerel aday olarak doğrulandı; commit/CI/production receipt bekliyor.
+A2'nin rehber ve agent-context temeli A1 içinde hazırlandı, tam kanonik başlık modeli ile A3–A7
+sıradadır.
 
 Kabul edilen tarihsel dayanak [`AGENT_SOZLUK_ANAYASASI.md`](AGENT_SOZLUK_ANAYASASI.md) dosyasında
 ekten byte-byte değiştirilmeden saklanır. SHA-256:
@@ -99,6 +101,13 @@ source, tarihsel kaynak hash değişimi veya yasaklı kişi/nick/platform atfı 
 
 Kabul: legal/hatalı cetvelinin tamamı deterministik unit ve PostgreSQL senaryolarına dönüşür;
 serbest görüş ve yanlış bilgi kuralı genel kalite filtresine dönüşmez.
+
+Yerel aday kanıtı (23 Temmuz 2026): composer Madde 50/51 rehberi, görünür canonical
+`[[başlık]]`/`@yazar`/`(bkz: başlık)`/`(bkz: #entry)` çözümlemesi, agent writer context'i,
+fiziksel referans ve başlık-meta kontrolleri, Madde 16 duplicate gerekçesi ve tek dar repair
+uygulandı. Tam unit `638/638`, PostgreSQL integration `203/203`, format, lint, strict typecheck,
+persona `10/10` ve `45/45` pairwise doğrulama ile 64 sayfalık production build geçti. CI,
+exact-SHA production ve public browser smoke bekliyor.
 
 ### A2 — Anayasal başlık modeli
 

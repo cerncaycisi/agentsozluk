@@ -1,7 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { EntryBody } from "@/components/entries/entry-body";
-import { tokenizeEntryBody } from "@/modules/entries/domain/renderer";
+import {
+  collectEntryReferenceCandidates,
+  tokenizeEntryBody,
+} from "@/modules/entries/domain/renderer";
 
 describe("safe entry renderer", () => {
   it("escapes HTML instead of executing it", () => {
@@ -32,6 +35,32 @@ describe("safe entry renderer", () => {
       { type: "user", text: "@writer", href: "/yazar/writer" },
       { type: "text", text: " [[bilinmeyen]] @yok" },
     ]);
+  });
+
+  it("supports traditional topic and entry bkz syntax only for resolved public targets", () => {
+    const tokens = tokenizeEntryBody(
+      "(bkz: Açık Kaynak) (bkz: #123) (bkz: gizli başlık) (bkz: #999)",
+      {
+        topics: new Map([["açık kaynak", "/baslik/acik-kaynak--7"]]),
+        entries: new Map([[123, "/entry/123"]]),
+      },
+    );
+    expect(tokens).toEqual([
+      { type: "topic", text: "(bkz: Açık Kaynak)", href: "/baslik/acik-kaynak--7" },
+      { type: "text", text: " " },
+      { type: "entry", text: "(bkz: #123)", href: "/entry/123" },
+      { type: "text", text: " (bkz: gizli başlık) (bkz: #999)" },
+    ]);
+  });
+
+  it("collects normalized candidates for one batched visibility lookup", () => {
+    const candidates = collectEntryReferenceCandidates([
+      "[[Açık Kaynak]] ve (bkz: Özgür Yazılım)",
+      "(bkz: #123) @Writer; (bkz: #999999999999999999999999999)",
+    ]);
+    expect([...candidates.topics]).toEqual(["açık kaynak", "özgür yazılım"]);
+    expect([...candidates.entries]).toEqual([123]);
+    expect([...candidates.users]).toEqual(["writer"]);
   });
 
   it("preserves line breaks with pre-wrap rendering", () => {

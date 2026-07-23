@@ -4094,6 +4094,95 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(storedRepair.validationResult).toMatchObject({ repairOfSequence: 2 });
   });
 
+  it("accepts one body-only repair after a constitutional physical-reference rejection", async () => {
+    const fixture = await createFixture();
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "anayasal runtime entry kontrolü",
+        entryBody: "İlk insan entry kendi başına geçerli ve bağımsız bir tanımdır.",
+      },
+    );
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "constitution-repair-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const provenance = {
+      evidenceType: "PLATFORM_EVENT" as const,
+      evidenceIds: [runId],
+      shortRationale: "Runtime run görünür ve doğrulanabilir platform kanıtıdır.",
+    };
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Fiziksel referans policy tarafından denetlenmelidir.",
+            targetType: "TOPIC",
+            targetId: topic.topic.id,
+            input: {
+              topicId: topic.topic.id,
+              body: "Üstteki entry yanlış; bu yüzden aynı görüşe katılmıyorum.",
+            },
+            provenance,
+          },
+        ],
+      }),
+    );
+    const rejected = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId,
+      sequence: 1,
+    });
+    expect(rejected).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE",
+    });
+
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 2,
+            repairOfSequence: 1,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Entry aynı görüşü fiziksel referans olmadan bağımsızlaştırıyor.",
+            targetType: "TOPIC",
+            targetId: topic.topic.id,
+            input: {
+              topicId: topic.topic.id,
+              body: "Bu yaklaşım sonuçtan çok varsayıma dayandığı için ikna edici değildir.",
+            },
+            provenance,
+          },
+        ],
+      }),
+    );
+    const repaired = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId,
+      sequence: 2,
+    });
+    expect(repaired).toMatchObject({ actionStatus: "SUCCEEDED", rejectionCode: null });
+    expect(
+      await integrationDatabase.agentContentRecord.count({
+        where: { runId },
+      }),
+    ).toBe(1);
+  });
+
   it("rejects ambiguous CREATE_ENTRY targets and uses one canonical topic for policy and write", async () => {
     const fixture = await createFixture();
     const [lockedTopic, otherTopic] = await Promise.all([
@@ -4932,7 +5021,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
             targetId: topics[4]!.topic.id,
             input: {
               topicId: topics[4]!.topic.id,
-              body: "Bu başlıktaki entry “kesin olarak suçlu” diye bir iddia aktarıyor.",
+              body: "Bir kullanıcı “kesin olarak suçlu” diye bir iddia aktarıyor.",
             },
             provenance: {
               evidenceType: "USER_ENTRY",

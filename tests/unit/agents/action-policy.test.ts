@@ -5,6 +5,7 @@ import {
   hasUnrecordedOfflineFirstPersonClaim,
   maximumEntrySimilarity,
   repeatedEntryFraming,
+  isRepairableContentRejectionCode,
   sourceGroundingIssue,
 } from "@/modules/agents";
 
@@ -106,5 +107,19 @@ describe("agent action duplicate policy", () => {
         provenance: { ...provenance, evidenceIds: ["00000000-0000-4000-8000-000000000004"] },
       }),
     ).toBe(false);
+  });
+
+  it("shares the complete body-repair rejection allowlist between worker and server", () => {
+    for (const code of [
+      "DUPLICATE_SIMILARITY",
+      "USER_ENTRY_HIGH_RISK_REPRODUCTION",
+      "SERIOUS_CLAIM_SOURCE_INSUFFICIENT",
+      "SOURCE_DIRECT_QUOTE_UNSUPPORTED",
+      "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE",
+      "CONSTITUTION_ENTRY_TOPIC_META",
+    ])
+      expect(isRepairableContentRejectionCode(code)).toBe(true);
+    expect(isRepairableContentRejectionCode("CONSTITUTION_TOPIC_FORUM_PROMPT")).toBe(false);
+    expect(isRepairableContentRejectionCode(null)).toBe(false);
   });
 });

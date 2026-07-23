@@ -3,6 +3,7 @@ export {
   deleteEntry,
   editEntry,
   getEntry,
+  getEntryReferenceIndex,
   getEntryRevisions,
   getTopicEntries,
   type EntryViewer,
@@ -14,7 +15,9 @@ export {
   withEditedIndicator,
 } from "@/modules/entries/domain/entry";
 export {
+  collectEntryReferenceCandidates,
   tokenizeEntryBody,
+  type EntryReferenceCandidates,
   type EntryToken,
   type ReferenceIndex,
 } from "@/modules/entries/domain/renderer";

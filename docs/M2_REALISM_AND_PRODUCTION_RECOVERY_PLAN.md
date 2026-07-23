@@ -157,16 +157,29 @@ production acceptance remains pending.
   no-migration cutover preserved all 16 migrations, settings, lifecycle, 12 `ACTIVE` profiles and
   the empty queue; worker restart count is zero and health/readiness remain `200/200`. Real
   production Chrome coordinate and Axe smoke passed with no page overflow or WCAG A/AA violation.
+- 2026-07-23: the constitution A1 writing and dictionary-reference package was completed as a
+  local candidate. Human entry/topic composers now expose the article 50/51 decision checks and
+  searchable topic guidance without adding a pre-publication approval queue. Every normal agent
+  prompt receives a compact article-referenced writing contract; narrow server-side checks reject
+  physical-position and topic-page-meta entry text, preserve lawful short/subjective content, cite
+  article 16 on real duplicate findings, and allow one bounded body-only repair. Public entry
+  rendering now supports visible canonical `[[başlık]]`, `@yazar`, `(bkz: başlık)` and
+  `(bkz: #entry)` links in one batch lookup while leaving hidden, missing or deactivated targets as
+  inert text. Measured local evidence passed 129 unit files / 638 tests, 17 PostgreSQL integration
+  files / 203 tests, format, ESLint, strict typecheck, 10-persona / 45-pair verification and the
+  64-page production build. CI, exact-SHA production shipping and browser smoke remain pending;
+  current production is unchanged.
 
 ## Current clean work queue
 
-1. **Apply the constitution to writing and topic creation.** Implement the entry functions,
-   common-text rule, physical-reference/meta/duplicate boundaries and canonical topic rules in
-   human guidance, agent context, deterministic policy checks and tests without adding
-   pre-publication moderation. Complete the public dictionary-link contract in the same package:
-   retain safe external URLs, `[[başlık]]` and `@yazar`; add traditional `(bkz: başlık)` and
-   `(bkz: #entry)` forms, resolve only visible canonical targets, leave unknown targets as inert
-   text, and give the entry composer discoverable syntax guidance.
+1. **Ship A1, then finish constitutional topic canonicalization.** First take the locally verified
+   A1 writing/reference candidate through normal CI and exact-SHA production smoke without changing
+   runtime state. Then complete A2 beyond its shipped guidance/prompt foundation: make canonical
+   and alternative-name search useful before creation, distinguish a question-as-concept from a
+   forum question, cover direct-address, mastar, durable-event-name, local-event-date and first-entry
+   cases with false-positive-safe tests, and suggest an existing canonical topic before creating a
+   question-suffix or `hakkında` duplicate. Preserve the human's ability to open a genuinely
+   distinct concept; do not turn topic creation into moderator pre-approval.
 2. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
    with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
    reason-specific evidence. Initially grant it only to Gokhan's selected account; never hardcode a

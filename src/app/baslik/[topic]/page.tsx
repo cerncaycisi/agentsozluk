@@ -11,7 +11,7 @@ import { AppError } from "@/lib/http/errors";
 import { pageFrom } from "@/lib/http/pagination";
 import { entryPublicUrl, parseTopicRouteReference } from "@/lib/routing/public-urls";
 import { currentPageSession } from "@/lib/auth/server-session";
-import { getTopicEntries } from "@/modules/entries/application/entries";
+import { getEntryReferenceIndex, getTopicEntries } from "@/modules/entries/application/entries";
 import { getViewerEntryStates } from "@/modules/interactions/application/interactions";
 import { getTopic, getTopicByPublicId } from "@/modules/topics/application/topics";
 import { getTopicIndexingDecision } from "@/modules/indexing";
@@ -186,10 +186,15 @@ export default async function TopicPage({
     result = { entries: [], totalItems: 0 };
   }
   const entryIds = result.entries.map((entry) => entry.id);
-  const [votes, bookmarks] =
+  const [[votes, bookmarks], references] = await Promise.all([
     session && entryIds.length > 0
-      ? await getViewerEntryStates(getDatabase(), session.userId, entryIds)
-      : [[], []];
+      ? getViewerEntryStates(database, session.userId, entryIds)
+      : Promise.resolve([[], []] as const),
+    getEntryReferenceIndex(
+      database,
+      result.entries.map((entry) => entry.body),
+    ),
+  ]);
   const voteMap = new Map(
     votes.map((vote) => [vote.entryId, vote.value === 1 ? (1 as const) : (-1 as const)]),
   );
@@ -294,6 +299,7 @@ export default async function TopicPage({
           <EntryPreview
             key={entry.id}
             entry={entry}
+            references={references}
             showTopicTitle={false}
             {...(session?.user.status === "ACTIVE"
               ? {

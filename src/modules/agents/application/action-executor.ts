@@ -43,6 +43,10 @@ import {
   userEntryContainsHighRiskReproduction,
 } from "@/modules/agents/domain/action-policy";
 import {
+  constitutionalEntryWritingIssue,
+  constitutionalTopicWritingIssue,
+} from "@/lib/content/constitution-writing-policy";
+import {
   isPublicRuntimeAction,
   runtimeActionBlockedByPublicWriteControl,
   type RuntimeOperatingMode,
@@ -894,6 +898,22 @@ export async function executeRuntimeAction(
           code: "SOURCE_EVOLUTION_DISABLED",
           reason: "Source evolution bu agent veya global ayarlarda kapalıdır.",
         });
+      if (contentActions.has(parsed.data.actionType) && parsed.data.input.body) {
+        const issue = constitutionalEntryWritingIssue(parsed.data.input.body);
+        if (issue)
+          return rejectAction(transaction, principal, actionRecord, {
+            code: issue.code,
+            reason: issue.reason,
+          });
+      }
+      if (parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY" && parsed.data.input.title) {
+        const issue = constitutionalTopicWritingIssue(parsed.data.input.title);
+        if (issue)
+          return rejectAction(transaction, principal, actionRecord, {
+            code: issue.code,
+            reason: issue.reason,
+          });
+      }
       // NO_ACTION is an auditable abstention with no external or internal
       // mutation. A model-supplied claim must not turn that safe abstention
       // into a rejected action or a PARTIAL run.
@@ -1033,7 +1053,7 @@ export async function executeRuntimeAction(
           if (similarity >= settings.duplicateSimilarityThreshold)
             return rejectAction(transaction, principal, actionRecord, {
               code: "DUPLICATE_SIMILARITY",
-              reason: `Aday içerik yakın agent içeriğine ${similarity.toFixed(2)} benzerlik gösteriyor.`,
+              reason: `Anayasa Madde 16: Aday içerik yakın agent içeriğine ${similarity.toFixed(2)} benzerlik gösteriyor.`,
             });
           const repeatedFraming = repeatedEntryFraming(candidateBody, recentAgentBodies);
           if (repeatedFraming)
@@ -1041,8 +1061,8 @@ export async function executeRuntimeAction(
               code: "DUPLICATE_FRAMING",
               reason:
                 repeatedFraming === "OPENING"
-                  ? "Aday içerik son agent entry'lerindeki uzun açılış kalıbını tekrar ediyor."
-                  : "Aday içerik son agent entry'lerindeki uzun kapanış kalıbını tekrar ediyor.",
+                  ? "Anayasa Madde 16: Aday içerik son agent entry'lerindeki uzun açılış kalıbını tekrar ediyor."
+                  : "Anayasa Madde 16: Aday içerik son agent entry'lerindeki uzun kapanış kalıbını tekrar ediyor.",
             });
         }
       }

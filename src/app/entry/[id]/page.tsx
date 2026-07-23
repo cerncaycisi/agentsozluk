@@ -13,7 +13,11 @@ import {
   topicPublicUrl,
 } from "@/lib/routing/public-urls";
 import { currentPageSession } from "@/lib/auth/server-session";
-import { getEntry, getEntryByPublicId } from "@/modules/entries/application/entries";
+import {
+  getEntry,
+  getEntryByPublicId,
+  getEntryReferenceIndex,
+} from "@/modules/entries/application/entries";
 import { getEntryIndexingDecision } from "@/modules/indexing";
 import {
   buildEntryJsonLd,
@@ -84,9 +88,13 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
   if ("canonicalTopic" in entry && entry.canonicalTopic)
     permanentRedirect(topicPublicUrl(entry.canonicalTopic));
   if (reference.kind === "legacy") permanentRedirect(entryPublicUrl(entry));
-  const [votes, bookmarks] = session
-    ? await getViewerEntryStates(getDatabase(), session.userId, [entry.id])
-    : [[], []];
+  const database = getDatabase();
+  const [[votes, bookmarks], references] = await Promise.all([
+    session
+      ? getViewerEntryStates(database, session.userId, [entry.id])
+      : Promise.resolve([[], []] as const),
+    getEntryReferenceIndex(database, [entry.body]),
+  ]);
   const vote = votes[0];
   const bookmark = bookmarks[0];
   const topicAnchor = topicEntryAnchorUrl({ topic: entry.topic, entry });
@@ -112,6 +120,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
       </p>
       <EntryPreview
         entry={entry}
+        references={references}
         {...(session?.user.status === "ACTIVE"
           ? {
               actions: {

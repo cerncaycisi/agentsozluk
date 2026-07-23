@@ -11,6 +11,7 @@ import {
   withEditedIndicator,
 } from "@/modules/entries/domain/entry";
 import {
+  findVisibleEntryReferences,
   createEntryRecord,
   createEntryRevision,
   findEntryById,
@@ -30,7 +31,11 @@ import {
   updateTopicAfterEntryCreate,
 } from "@/modules/topics/repository/topics";
 import type { EntryCreateInput, EntryUpdateInput } from "@/modules/entries/validation/schemas";
-import { topicPublicUrl } from "@/lib/routing/public-urls";
+import { entryPublicUrl, topicPublicUrl } from "@/lib/routing/public-urls";
+import {
+  collectEntryReferenceCandidates,
+  type ReferenceIndex,
+} from "@/modules/entries/domain/renderer";
 
 export interface EntryViewer {
   userId: string;
@@ -368,4 +373,36 @@ export async function getTopicEntries(
       totalItems,
     };
   });
+}
+
+export async function getEntryReferenceIndex(
+  client: DatabaseClient,
+  bodies: readonly string[],
+): Promise<ReferenceIndex> {
+  const candidates = collectEntryReferenceCandidates(bodies);
+  if (candidates.topics.size === 0 && candidates.entries.size === 0 && candidates.users.size === 0)
+    return {};
+
+  const resolved = await client.$transaction((transaction) =>
+    findVisibleEntryReferences(transaction, {
+      normalizedTopicTitles: [...candidates.topics],
+      entryPublicIds: [...candidates.entries],
+      usernames: [...candidates.users],
+    }),
+  );
+  const topics = new Map<string, string>();
+  for (const topic of resolved.topics) {
+    const url = topicPublicUrl(topic);
+    if (candidates.topics.has(topic.normalizedTitle)) topics.set(topic.normalizedTitle, url);
+    for (const alias of topic.aliases) topics.set(alias.normalizedTitle, url);
+  }
+  const entries = new Map(
+    resolved.entries.map((entry) => [entry.publicId, entryPublicUrl(entry)] as const),
+  );
+  const users = new Set(resolved.users.map((user) => user.usernameNormalized));
+  return {
+    ...(topics.size > 0 ? { topics } : {}),
+    ...(entries.size > 0 ? { entries } : {}),
+    ...(users.size > 0 ? { users } : {}),
+  };
 }

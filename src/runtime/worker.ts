@@ -27,7 +27,10 @@ import {
   type SafeSourceReader,
 } from "@/runtime/source-reader";
 import { RuntimeRunDeadline } from "@/runtime/run-deadline";
-import { duplicateRepairCandidateIsSafe } from "@/modules/agents/domain/action-policy";
+import {
+  duplicateRepairCandidateIsSafe,
+  isRepairableContentRejectionCode,
+} from "@/modules/agents/domain/action-policy";
 import { sourceFetchTargetLimit } from "@/modules/agents/domain/runtime-controls";
 import { runtimeFastStateSchema } from "@/modules/agents/validation/runtime-schemas";
 import {
@@ -283,6 +286,10 @@ function buildContentRepairPrompt(
       ["SOURCE_EXACT_NUMBER_UNSUPPORTED", "SOURCE_DIRECT_QUOTE_UNSUPPORTED"].includes(rejectionCode)
     )
       return "REPAIR_EVIDENCE içinde birebir bulunmayan kesin sayı veya doğrudan alıntıyı tamamen kaldır. Yalnız kanıt metninin açıkça desteklediği daha sınırlı olguyu kendi sözlerinle yaz; yeni ayrıntı ekleme.";
+    if (rejectionCode === "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE")
+      return "Başka entry'nin sırasına veya konumuna yapılan atfı tamamen kaldır. Aynı düşünceyi başlığın kavramı hakkında tek başına okunabilen bağımsız bir entry olarak yeniden kur.";
+    if (rejectionCode === "CONSTITUTION_ENTRY_TOPIC_META")
+      return "Başlığın sözlükteki entry, yazar veya moderasyon hâlini anlatan kısmı tamamen kaldır. Yalnız başlığın gösterdiği kavram hakkında bağımsız bir entry yaz.";
     return "Duplicate veya tekrarlanan çerçeveyi kaldır; aynı kanıtla gerçekten farklı ve bağımsız bir anlatım kur.";
   })();
   const evidenceIds = new Set(originalAction.provenance?.evidenceIds ?? []);
@@ -369,6 +376,8 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
       : []),
     "",
     renderRuntimeWritingVariation(context.run.id),
+    runtimePromptScaffold.constitutionHeading,
+    ...runtimePromptScaffold.constitutionInstructions,
     runtimePromptInvariants[2],
     runtimePromptInvariants[3],
     "",
@@ -860,15 +869,7 @@ export class AgentRuntimeWorker {
         deadline.throwIfStopped();
         const repairableRejection = execution.actions.find(
           ({ actionStatus, rejectionCode }) =>
-            actionStatus === "REJECTED" &&
-            [
-              "DUPLICATE_SIMILARITY",
-              "DUPLICATE_FRAMING",
-              "USER_ENTRY_HIGH_RISK_REPRODUCTION",
-              "SERIOUS_CLAIM_SOURCE_INSUFFICIENT",
-              "SOURCE_EXACT_NUMBER_UNSUPPORTED",
-              "SOURCE_DIRECT_QUOTE_UNSUPPORTED",
-            ].includes(rejectionCode ?? ""),
+            actionStatus === "REJECTED" && isRepairableContentRejectionCode(rejectionCode),
         );
         if (repairableRejection && !contentRepairAttempted && codexIntervals.length < 2) {
           contentRepairAttempted = true;

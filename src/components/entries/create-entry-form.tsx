@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { FormTextarea } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
+import { EntryWritingGuidance } from "@/components/constitution/writing-guidance";
 
 export function CreateEntryForm({ topicId }: { topicId: string }) {
   const router = useRouter();
@@ -43,6 +44,7 @@ export function CreateEntryForm({ topicId }: { topicId: string }) {
           minLength: { value: 10, message: "En az 10 karakter girin." },
         })}
       />
+      <EntryWritingGuidance />
       {notice ? (
         <p role="status" className="text-sm text-muted">
           {notice}

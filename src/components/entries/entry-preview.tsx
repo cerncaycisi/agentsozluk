@@ -4,6 +4,7 @@ import { BlockedEntryBody } from "@/components/entries/blocked-entry-body";
 import { EntryActions } from "@/components/entries/entry-actions";
 import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { entryPublicUrl, topicPublicUrl } from "@/lib/routing/public-urls";
+import type { ReferenceIndex } from "@/modules/entries";
 
 export interface EntryPreviewItem {
   id: string;
@@ -22,10 +23,12 @@ export interface EntryPreviewItem {
 export function EntryPreview({
   entry,
   actions,
+  references,
   showTopicTitle = true,
 }: {
   entry: EntryPreviewItem;
   showTopicTitle?: boolean;
+  references?: ReferenceIndex;
   actions?: {
     vote: -1 | 1 | null;
     bookmarked: boolean;
@@ -56,7 +59,7 @@ export function EntryPreview({
         {entry.blockedByViewer ? (
           <BlockedEntryBody body={entry.body} />
         ) : (
-          <EntryBody body={entry.body} />
+          <EntryBody body={entry.body} {...(references ? { references } : {})} />
         )}
       </div>
       <footer className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-sm text-muted">

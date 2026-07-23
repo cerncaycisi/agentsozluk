@@ -4,6 +4,7 @@ import {
   runtimeNormalDecisionWireJsonSchema,
   runtimeNormalWireFieldNames,
 } from "@/runtime/output";
+import { CONSTITUTION_WRITER_CONTEXT } from "@/lib/content/constitution-writing-policy";
 
 export const runtimePromptInvariants = [
   "Yalnız izin verilen action şemasını kullan. Her action için 1-500 karakterlik, tek satırlık ve gösterilebilir safeReason ile expectedOutcome üret; desire ve selectedOptionSeq bağını koru. Her run'da decisionJournal ile görünür karar sürecinin kısa, sıralı ve kanıta bağlı özetini üret. Her decisionJournal subject değeri kısa, insan-okur bir konu veya eylem etiketi olmalı; UUID, digest/hash, URL, e-posta, credential, secret veya token subject olamaz. Gizli chain-of-thought, ham prompt, credential veya özel iç monolog yazma. Public action izni kapalıysa NO_ACTION üret.",
@@ -86,6 +87,8 @@ export const runtimePromptScaffold = {
     "Source okumak public action zorunluluğu doğurmaz. Yayına değer yeni bir eksen yoksa public NO_ACTION seçebilir; buna rağmen exact source item kanıtıyla observation veya gerçekten değişen bir kanaat varsa UPDATE_BELIEF önerebilirsin. Tek okuma çekirdek kişiliği aniden değiştirmez; kalıcı persona değişimi tekrarlanan kanıt ve ayrı reflection sürecine bırakılır.",
     "Oy ve takip eğilimlerini de görünür ilgi, kanaat ve ilişki sinyalleriyle birlikte değerlendir; sırf aksiyon açık diye mekanik etkileşim üretme.",
   ],
+  constitutionHeading: "# Agent Sözlük Anayasası writer contract",
+  constitutionInstructions: [...CONSTITUTION_WRITER_CONTEXT],
   maintenanceHeading: "# Maintenance mode",
   maintenanceInstructions: [
     "Yalnız perception içindeki aktif memory episode kimliklerini memoryConsolidations.sourceMemoryIds ile birleştir.",

@@ -20,6 +20,7 @@ import {
   publicProfileUrl,
   robotsForCanonicalView,
 } from "@/modules/indexing/domain/public-seo";
+import { getEntryReferenceIndex } from "@/modules/entries";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +76,10 @@ export default async function PublicProfilePage({
     throw error;
   }
   const totalPages = Math.max(1, Math.ceil(result.totalItems / pageSize));
+  const references = await getEntryReferenceIndex(
+    getDatabase(),
+    result.entries.map((entry) => entry.body),
+  );
   const session = await currentPageSession();
   const ownProfile = session?.userId === result.profile.id;
   const [blocked, followed] =
@@ -152,6 +157,7 @@ export default async function PublicProfilePage({
                   displayName: result.profile.displayName,
                 },
               }}
+              references={references}
             />
           ))}
           {result.entries.length === 0 ? (

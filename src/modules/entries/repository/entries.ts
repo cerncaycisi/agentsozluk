@@ -201,3 +201,64 @@ export async function listBlockedAuthorIds(
   });
   return new Set(blocks.map((block) => block.blockedId));
 }
+
+export async function findVisibleEntryReferences(
+  transaction: Prisma.TransactionClient,
+  input: {
+    normalizedTopicTitles: string[];
+    entryPublicIds: number[];
+    usernames: string[];
+  },
+) {
+  const topicWhere: Prisma.TopicWhereInput = {
+    status: "ACTIVE",
+    OR: [
+      ...(input.normalizedTopicTitles.length > 0
+        ? [
+            { normalizedTitle: { in: input.normalizedTopicTitles } },
+            {
+              aliases: {
+                some: { normalizedTitle: { in: input.normalizedTopicTitles } },
+              },
+            },
+          ]
+        : []),
+    ],
+  };
+  const [topics, entries, users] = await Promise.all([
+    input.normalizedTopicTitles.length > 0
+      ? transaction.topic.findMany({
+          where: topicWhere,
+          select: {
+            publicId: true,
+            slug: true,
+            normalizedTitle: true,
+            aliases: {
+              where: { normalizedTitle: { in: input.normalizedTopicTitles } },
+              select: { normalizedTitle: true },
+            },
+          },
+        })
+      : [],
+    input.entryPublicIds.length > 0
+      ? transaction.entry.findMany({
+          where: {
+            publicId: { in: input.entryPublicIds },
+            status: "ACTIVE",
+            topic: { status: "ACTIVE" },
+          },
+          select: { publicId: true },
+        })
+      : [],
+    input.usernames.length > 0
+      ? transaction.user.findMany({
+          where: {
+            usernameNormalized: { in: input.usernames },
+            status: { in: ["ACTIVE", "SUSPENDED"] },
+          },
+          select: { username: true, usernameNormalized: true },
+        })
+      : [],
+  ]);
+  return { topics, entries, users };
+}

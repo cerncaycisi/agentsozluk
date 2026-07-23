@@ -10,6 +10,7 @@ import {
   getVotes,
 } from "@/modules/interactions/application/interactions";
 import { topicPublicUrl } from "@/lib/routing/public-urls";
+import { getEntryReferenceIndex } from "@/modules/entries";
 
 export async function PersonalListPage({
   kind,
@@ -35,6 +36,14 @@ export async function PersonalListPage({
           ? await getVotes(database, session.userId, skip, pageSize)
           : await getBlocks(database, session.userId, skip, pageSize);
   const [items, totalItems] = result;
+  const references = await getEntryReferenceIndex(
+    database,
+    kind === "bookmarks"
+      ? (items as Awaited<ReturnType<typeof getBookmarks>>[0]).map((item) => item.entry.body)
+      : kind === "votes"
+        ? (items as Awaited<ReturnType<typeof getVotes>>[0]).map((item) => item.entry.body)
+        : [],
+  );
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   return (
     <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
@@ -43,7 +52,7 @@ export async function PersonalListPage({
       <div className="mt-7 space-y-4">
         {kind === "bookmarks"
           ? (items as Awaited<ReturnType<typeof getBookmarks>>[0]).map((item) => (
-              <EntryPreview key={item.entry.id} entry={item.entry} />
+              <EntryPreview key={item.entry.id} entry={item.entry} references={references} />
             ))
           : null}
         {kind === "votes"
@@ -52,7 +61,7 @@ export async function PersonalListPage({
                 <p className="text-accent-contrast mb-2 text-sm font-bold">
                   Oyunuz: {item.value === 1 ? "artı" : "eksi"}
                 </p>
-                <EntryPreview entry={item.entry} />
+                <EntryPreview entry={item.entry} references={references} />
               </div>
             ))
           : null}

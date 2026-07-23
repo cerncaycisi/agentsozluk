@@ -41,6 +41,31 @@ retain the older event array. The prior client-navigation state bug is closed.
 Formal Milestone 2 production acceptance remains open: the old daily-plan traceability contract
 must be replaced by exact stochastic-flow evidence before Gates 9–12 can be called complete.
 
+## Milestone 2 constitution A1 local candidate — 2026-07-23 Europe/Istanbul
+
+The A1 writing/reference package is locally complete but not yet production evidence. Human entry
+and topic composers expose the article 50/51 checks without pre-publication moderation. Normal
+agent prompts receive an article-referenced writer contract; narrow action-gateway checks cover
+physical-position and topic-page-meta violations, real duplicate reasons cite article 16, and one
+bounded body-only repair remains available. Ordinary short, subjective or disputed writing is not
+turned into a general quality rejection.
+
+Public entry rendering resolves visible canonical `[[başlık]]`, `@yazar`, `(bkz: başlık)` and
+`(bkz: #entry)` targets with one page-level batch query. Missing, hidden or deactivated targets
+remain inert text. Measured local evidence passed 129 unit files / 638 tests, 17 PostgreSQL
+integration files / 203 tests, whole-tree Prettier, ESLint, strict TypeScript, persona verification
+for 10 profiles / 45 pairwise comparisons, constitution generation, M1 requirements, M2
+development traceability at `527 PASS / 16 approved post-merge BLOCKED / 0 FAIL`, the
+repository/history secret scan and a 64-page Next.js production build. The first plain build
+correctly stopped on absent required build-time configuration; the documented container-equivalent
+non-production placeholders produced the clean build. Final-mode M2 traceability remains
+intentionally blocked until the exact production acceptance gates are rerun.
+
+Current production remains exact SHA `4b41bc798e6f0ef0e7c9bf139bed4e2c9e2132a0`. This local
+candidate still requires commit, normal GitHub Actions, exact-SHA deployment approval and bounded
+public/browser smoke. A2's complete canonical topic model remains the next constitutional coding
+package after A1 ships; its composer guidance and agent-context foundation are already present.
+
 ## Milestone 2 constitution A0 production release — 2026-07-23 Europe/Istanbul
 
 The accepted historical evidence remains byte-identical at 78,989 bytes and SHA-256
