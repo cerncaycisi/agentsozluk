@@ -172,16 +172,28 @@ production acceptance remains pending.
   lifecycle and 12 `ACTIVE` profiles; no run was cancelled. App, immutable runtime and running
   image converged on the exact SHA, the worker returned `active/running` with zero restarts, final
   queue/run/lease counts were zero and internal/public health/readiness stayed `200/200`.
+- 2026-07-23: the constitution A2 canonical-topic package completed locally at exact candidate SHA
+  `f1474bf062d4cf9c72c90e2cecfced81021c1aed`. The topic composer now searches the most useful
+  conservative canonical query after 400 ms, returns both canonical-title and alias matches, and
+  preserves the draft by opening suggestions separately. Exact duplicates remain impossible;
+  question/`hakkında` suffix variants return the canonical topic and let a human explicitly
+  override only when the intended linguistic or cultural concept is genuinely distinct. Internal
+  agents cannot use that override. Their action gateway now rejects clear direct address, an answer
+  posted under a question-title, transient headline forms and a dependent first entry, while
+  ambiguous mastar and event-date cases remain article-linked advisories rather than false-positive
+  bans. Measured local evidence passed 130 unit files / 647 tests, 17 PostgreSQL integration files /
+  206 tests, the accelerated stochastic simulation, format, ESLint, strict typecheck, OpenAPI,
+  constitution/M1/M2 development traceability, persona and metadata gates, and the 64-page
+  production build. Full GitHub Actions run `30006048503` passed in 16m35s; production remains on
+  the A1 SHA until a separately approved exact-SHA cutover passes.
 
 ## Current clean work queue
 
-1. **Finish constitutional topic canonicalization.** Complete A2 beyond its shipped guidance/prompt
-   foundation: make canonical and alternative-name search useful before creation, distinguish a
-   question-as-concept from a forum question, cover direct-address, mastar, durable-event-name,
-   local-event-date and first-entry cases with false-positive-safe tests, and suggest an existing
-   canonical topic before creating a question-suffix or `hakkında` duplicate. Preserve the human's
-   ability to open a genuinely distinct concept; do not turn topic creation into moderator
-   pre-approval.
+1. **Ship the CI-verified A2 canonical-topic candidate.** Take exact SHA
+   `f1474bf062d4cf9c72c90e2cecfced81021c1aed` through a separately approved no-migration production
+   cutover. Smoke the live topic composer search, canonical/alias suggestion, explicit human
+   override, agent rejection codes and unchanged runtime state. Do not call A2 live before the
+   app/runtime/image receipt proves the exact SHA.
 2. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
    with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
    reason-specific evidence. Initially grant it only to Gokhan's selected account; never hardcode a

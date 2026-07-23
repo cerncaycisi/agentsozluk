@@ -900,3 +900,51 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   unchanged lifecycle fingerprint `0aff428628f794afac49a9c4d727cf0c430baa871a391240cf6e0cec75ca9275`;
   unchanged migration aggregate; no temporary candidate container, override or operator script.
   Root usage ended at 75% with 19,104,084 KiB free, so no unapproved image/cache prune was run.
+
+## 2026-07-23 — Constitution A2 local candidate
+
+- Scope: canonical/alias suggestions before topic creation; conservative question/`hakkında`
+  suffix matching; explicit human distinct-concept override; agent-only constitutional topic
+  rejection; article-linked mastar and event-local-date advisories. No production connection,
+  migration, runtime/scheduler/lifecycle/queue mutation or external write other than the approved
+  repository push occurred.
+- The first new suggestion-component test run passed 29 other focused assertions but timed out at
+  15 seconds. Product code had returned; the test combined fake timers with `waitFor`, whose polling
+  also depended on the frozen clock. Replacing `waitFor` with the existing deterministic timer and
+  promise flush made the same test pass in 67 ms. Do not repeat: after advancing a fake debounce
+  timer, assert the mocked promise result directly instead of waiting on another fake-timer poll.
+- Strict typecheck then stopped on
+  `TOPIC_CANONICAL_SUGGESTION is not assignable to parameter of type ErrorCode`. The new stable API
+  code had not yet been added to the central error union. Adding it to the error/API/OpenAPI
+  contracts produced a clean typecheck. A subsequent command used the nonexistent script name
+  `openapi:check` and stopped with `Command "openapi:check" not found`; the repository's actual
+  `openapi:validate` script passed all 117 runtime operations. Do not repeat: use package scripts by
+  their exact recorded names.
+- The first integration invocation omitted `TEST_DATABASE_URL` and stopped at the existing safety
+  guard before fixture mutation. Reusing the old local `agent_sozluk_m1_test` name on the next
+  invocation was also wrong: that database no longer carried the current schema, so its missing
+  `topics.publicId` produced 34 downstream setup failures. These were one environment root cause,
+  not 34 product regressions. A scratch-database existence preflight then used unsupported
+  `psql -c` variable syntax and stopped safely at `syntax error at or near ":"`; no database was
+  created by that attempt. Do not repeat: discover the actual local PostgreSQL owner, create one
+  exact allowlisted `_test` scratch database, apply the current migration set, and avoid stale
+  shared test databases or unsupported `psql -c` interpolation.
+- The corrected scratch flow applied all 16 migrations. The topic/account/search/moderation
+  integration file passed `57/57`; the agent action-gateway focus passed with the three expected
+  rejection codes and no public content; the complete integration suite passed 17 files / 206
+  tests. The scratch database was dropped after verification and a catalog query returned
+  remaining count `0`.
+- Final local evidence for exact candidate SHA
+  `f1474bf062d4cf9c72c90e2cecfced81021c1aed`: format, ESLint, strict typecheck and `git diff
+--check` PASS; unit 130 files / 647 tests; PostgreSQL integration 17 files / 206 tests; OpenAPI
+  117 operations; constitution 52 articles; M1 requirements `3/3`; M2 development traceability
+  `527 PASS / 16 approved post-merge BLOCKED / 0 FAIL`; accelerated stochastic simulation PASS;
+  persona verification 10 profiles / 45 pairs; metadata scan 14 surfaces / 21 forbidden fields;
+  Next.js production build 64/64 pages.
+- Full GitHub Actions run `30006048503` passed in 16m35s, including migration deploy, format, lint,
+  typecheck, unit, integration, life-ledger acceptance, coverage, OpenAPI, M1 requirements, M2
+  simulation/persona/metadata, production build, Playwright E2E, Docker image/Compose, repository
+  secret scan, clean tree and M2 development traceability. GitHub emitted only a non-blocking
+  platform annotation that several pinned third-party actions still declare Node.js 20 while the
+  hosted runner forces Node.js 24; no application step failed. Exact-SHA production evidence
+  remains pending.

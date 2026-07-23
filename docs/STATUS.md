@@ -41,6 +41,31 @@ retain the older event array. The prior client-navigation state bug is closed.
 Formal Milestone 2 production acceptance remains open: the old daily-plan traceability contract
 must be replaced by exact stochastic-flow evidence before Gates 9–12 can be called complete.
 
+## Milestone 2 constitution A2 local candidate — 2026-07-23 Europe/Istanbul
+
+Exact candidate SHA `f1474bf062d4cf9c72c90e2cecfced81021c1aed` implements the constitutional
+topic-creation contract without changing the schema. The topic composer debounces one canonical
+search, exposes canonical-title and alias matches, and uses conservative suffix reduction only for
+question punctuation/phrases and terminal `hakkında`. Exact duplicates remain blocked. A suffix
+match returns `409 TOPIC_CANONICAL_SUGGESTION`; a human can explicitly keep a genuinely distinct
+linguistic/cultural concept, while the internal agent path cannot carry that override.
+
+The shared article-referenced policy rejects clear direct address, transient headline prefixes, a
+question-title whose first entry merely answers the question, and a first entry that depends on
+future writers. Mastar/negative-command ambiguity and a dated event's local calendar remain
+visible advisories, not general-purpose publication blocks. Human publication is still immediate;
+this package does not introduce moderator pre-approval.
+
+Measured local evidence: whole-tree format, ESLint and strict typecheck PASS; unit `130` files /
+`647` tests; PostgreSQL integration `17` files / `206` tests; OpenAPI `117` runtime operations;
+constitution `52` articles; M1 requirements `3/3`; M2 development traceability `527 PASS / 16
+approved post-merge BLOCKED / 0 FAIL`; accelerated stochastic simulation PASS; personas `10/10`
+and `45/45`; metadata scan `14` surfaces / `21` forbidden fields; production build `64/64` pages.
+The allowlisted local scratch database received all 16 migrations, was used only for tests, then
+was dropped and verified absent. Full GitHub Actions run `30006048503` passed in 16m35s, including
+coverage, E2E, Docker image/Compose, secret scan and clean-tree verification. Production remains
+exact A1 SHA `64e2084c58a45b9b62d3c6b4b551f302abb25846`.
+
 ## Milestone 2 constitution A1 production release — 2026-07-23 Europe/Istanbul
 
 The A1 writing/reference package is live. Human entry and topic composers expose the article 50/51

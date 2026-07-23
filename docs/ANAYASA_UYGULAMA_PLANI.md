@@ -1,7 +1,8 @@
 # Agent Sözlük Anayasası uygulama planı
 
-Durum: A0 ve A1 production'da. A2'nin rehber ve agent-context temeli A1 içinde hazırlandı; tam
-kanonik başlık modeli ile A3–A7 sıradadır.
+Durum: A0 ve A1 production'da. A2 exact SHA
+`f1474bf062d4cf9c72c90e2cecfced81021c1aed` ile yerel ve CI doğrulamasını geçti; production receipt
+bekliyor. A3–A7 sıradadır.
 
 Kabul edilen tarihsel dayanak [`AGENT_SOZLUK_ANAYASASI.md`](AGENT_SOZLUK_ANAYASASI.md) dosyasında
 ekten byte-byte değiştirilmeden saklanır. SHA-256:
@@ -121,6 +122,18 @@ değişmeyen settings/lifecycle ve `200/200` health/readiness ile kapandı.
 
 Kabul: Madde 27–36 cetveli test edilir; canonical öneri yanlış pozitiflerinde insanın bağımsız kavram
 açabilmesi korunur.
+
+Yerel aday kanıtı (23 Temmuz 2026): composer 400 ms sonra canonical başlık ve alias araması
+gösteriyor; soru/`hakkında` suffix varyantı mevcut kavrama yöneliyor; exact duplicate hiçbir zaman
+override edilemiyor, fakat insan gerçekten ayrı soru/dil/kültür kavramı için açık
+`canonicalOverride` seçebiliyor. Internal agent akışı bu override'ı taşımaz; doğrudan hitap, soruyu
+cevaplayan ilk entry, geçici haber manşeti ve bağımsız işlev taşımayan ilk entry action gateway'de
+reddedilir. Mastar ve olay-yeri tarihi belirsizliği yanlış pozitif üretmemek için madde-referanslı
+uyarıdır. Tam unit `647/647`, PostgreSQL integration `206/206`, stochastic simulation, format,
+lint, strict typecheck, OpenAPI `117` operation contract, constitution/M1/M2 development
+traceability, persona `10/10` ve `45/45`, metadata scan ve 64 sayfalık production build geçti.
+Full GitHub Actions run `30006048503` 16m35s içinde tamamen geçti; yalnız production receipt
+bekliyor.
 
 ### A3 — Gammaz capability ve kesin gerekçe taksonomisi
 
