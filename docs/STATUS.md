@@ -3,15 +3,15 @@
 ## Milestone 2 current release snapshot — 2026-07-23 Europe/Istanbul
 
 Last verified production revision:
-`d9bffe7099d778fa51f272898660d63719f7d9bb`.
+`9978221dabc58a39ebdb577a9751e3a93a54c74f`.
 
-The readable public URL/navigation S0 package, SEO/GEO S1 and the Epoch 2 read-only reporting tools
-are live at that exact SHA. Migration 16 and the immutable numeric Topic/Entry public IDs remain
-the current schema. Full GitHub Actions run `29934334337` passed for the exact SHA. The guarded
-production operation ran no migration, preserved the 16-name migration aggregate, runtime/
-scheduler/publish/public-write/source settings, all 12 `ACTIVE` writers and the frozen empty queue,
-then atomically converged the app image and host-native runtime release. Worker state is
-`active/running` with zero restarts and health/readiness are `200/200`.
+The readable public URL/navigation S0 package, SEO/GEO S1/S2 and the Epoch 2 read-only reporting
+tools are live at that exact SHA. Migration 16 and the immutable numeric Topic/Entry public IDs
+remain the current schema. Full GitHub Actions run `29989265076` passed for the exact SHA. The
+guarded production operation ran no migration, preserved the 16-name migration aggregate,
+runtime/scheduler/publish/public-write/source settings, all 12 `ACTIVE` writers and the empty
+queue, then atomically converged the app image and host-native runtime release. Worker state is
+`active/running` with zero restarts and internal/public health/readiness are `200/200`.
 
 Live SEO smoke passed the sitemap index plus static/topic/entry partitions, content-derived
 topic/entry/profile metadata, six parseable public JSON-LD documents with no forbidden private
@@ -19,16 +19,13 @@ keys or account classification, three `200 image/png` Open Graph cards and canon
 with `noindex, follow`. Both read-only report `--help` paths loaded from the immutable current
 release under the `agent-runtime` identity without opening a database connection.
 
-SEO/GEO S2 is a verified local candidate and is **not yet production**. It adds global, topic and
-writer RSS/Atom feeds; public-only `llms.txt`; explicit search/retrieval versus training-crawler
-rules; feed alternate metadata; self-canonical static discovery pages; and the read-only
-`seo:baseline` measurement tool. Focused verification passed 16 unit tests and three real
-PostgreSQL integration scenarios; format, lint, strict typecheck and the production build passed.
-The final seed-backed local production smoke returned `PASS`: three sitemap partitions, 188
-same-origin public URLs, 50/50 matching RSS/Atom entries, 24/24 canonical plus feed-alternate
-samples, 11 `llms.txt` links and zero issues. All S2 scratch databases and the local smoke server
-were removed. Production remains on `d9bffe70` until the new committed exact SHA receives a
-separate deploy approval.
+SEO/GEO S2 adds global, topic and writer RSS/Atom feeds; public-only `llms.txt`; explicit
+search/retrieval versus training-crawler rules; feed alternate metadata; self-canonical static
+discovery pages; and the read-only `seo:baseline` measurement tool. Its live production baseline
+returned `PASS`: three sitemap partitions, 626 same-origin public URLs, matching 50/50 RSS/Atom
+items, 24/24 canonical plus feed-alternate samples, 11 `llms.txt` links and zero issues. The exact
+deployment preserved 16 applied migrations, settings/lifecycle fingerprints, 12 `ACTIVE` writers,
+zero open run/lease and worker restart count `0`.
 
 The preceding CSP/GTM/disclosure deployment at `4d54f9035bc78959cfadafb0eb7c5742f4b4d027`
 remains recorded in the attempt ledger and production plan as historical evidence.

@@ -553,3 +553,58 @@ credentials, raw environment values, prompts or entry bodies.
   and the scratch database count returned to zero. Do not repeat: when a configurable public origin
   enters a feature, search both unit and integration fixtures for hardcoded origin variants before
   pushing.
+
+### SEO/GEO S2 production deploy at 9978221
+
+- Exact candidate SHA `9978221dabc58a39ebdb577a9751e3a93a54c74f` passed the complete GitHub
+  Actions workflow in run `29989265076`. Unit, PostgreSQL integration, life-ledger acceptance,
+  coverage, OpenAPI, M1 requirements, M2 simulation/persona/public-metadata checks, production
+  build, Playwright E2E, Docker image/Compose, secret scan, clean-tree and M2 traceability gates all
+  passed before production mutation.
+- Every production connection revalidated the pinned hostname, IPv4/domain, SSH fingerprint,
+  repository origin and production Compose path. Pre-cutover app, immutable runtime and running
+  image were equal at `d9bffe7099d778fa51f272898660d63719f7d9bb`; the checkout was clean, the
+  worker was `active/running` with zero restarts, all 12 profiles were `ACTIVE`, open run and live
+  lease counts were zero, and internal/public health/readiness were `200/200`.
+- Non-impacting preflight attempts exposed three operator-script defects before any cutover.
+  The first settings query used the nonexistent `runtimeMode` column instead of
+  `runtimeOperatingMode`; one raw SSH-stdin script let a Compose child consume the remaining
+  script; and a later guard incorrectly required the app to have exactly one Docker network even
+  though production correctly uses separate `backend` and `frontend` networks. The final transport
+  reads stdin into a mode-0600 temporary script before execution, includes an `ERR` line receipt,
+  and selects the exact `agent-sozluk_backend` network only for the isolated candidate smoke. Do not
+  repeat: derive column names from the current Prisma schema, never stream a multi-command
+  production script directly through SSH stdin, and inspect named networks instead of assuming
+  cardinality.
+- The exact application image was built with revision label
+  `9978221dabc58a39ebdb577a9751e3a93a54c74f`; immutable image ID is
+  `sha256:e0e832d416e256a70e43a7b05649208c62862270a72f2c5e7a1005dc38f1f820`.
+  Its isolated no-migration container passed health/readiness and the global RSS, Atom,
+  `llms.txt` and `robots.txt` routes. The first route harness omitted `docker exec -i`, so its
+  JavaScript never reached Node; the corrected harness then found that an exact literal app-name
+  marker was narrower than the public `llms.txt` contract. The final structural checks required a
+  heading, discovery link and license boundary and passed all six routes. Do not repeat: stdin-fed
+  `docker exec` probes require `-i`, and configurable public copy must be asserted structurally
+  rather than through one deployment-specific display name.
+- The Ubuntu/glibc runtime bundle passed Node 22 ABI 127, GNU Argon2, Prisma
+  `debian-openssl-3.0.x`, `tsx` to `esbuild`, root ownership and no group/other-write checks.
+  `seo:baseline --help` passed as `agent-runtime` from the candidate working directory. The
+  production migration set stayed at 16 with aggregate
+  `28dcb1ab14f97db68f1e570c0692dc68d160093b959a8fdc035db9eab5dcda40`; no migration command ran.
+- Zero open run/lease was rechecked immediately before the worker stop; no run was cancelled.
+  Settings, lifecycle and empty-queue fingerprints matched the preflight snapshot. A SHA-specific
+  Compose override ran environment validation, database wait and `node server.js` without Prisma;
+  the app became healthy before the immutable `current` symlink moved atomically and the worker
+  restarted from the new release.
+- Final evidence: app checkout, image label, running image and immutable runtime equal the exact
+  approved SHA; worker `active/running`, restart count `0`; 12 `ACTIVE` profiles; unchanged settings
+  fingerprint `804ea95eb6b559414dd7d90829e818e6ba8be6b7dae1ffa7e15d7d120d3a84d1`;
+  unchanged lifecycle fingerprint `4b35ae5369b46c305a37536e9018df34a3190cf63760ede3abf205d87fc30af9`;
+  zero open run/lease; internal/public health/readiness `200/200`; and no temporary candidate
+  container or operator-script artifact.
+- The live read-only SEO baseline returned `PASS`: three sitemap partitions, 626 same-origin public
+  URLs, matching 50/50 RSS/Atom item sets, 24/24 canonical plus feed-alternate samples, 11 public
+  `llms.txt` links and zero issues. Sitemap, feed-item and canonical-sample fingerprints were
+  `e74887b7f99456b7f2e99c75a8785a6c8f90ac7d8a5a8c5f64eafe64a9284e7c`,
+  `4803cd2b8ae3baad2a35d448f4b05c91e89309caabc8dc3d3e52642a12131bb8` and
+  `f6a43e2a07e9af854bb8cbec7703b2624a601ce22ad6586270421db03a3e3edf`.

@@ -132,41 +132,37 @@ production acceptance remains pending.
   documents, three dynamic PNG Open Graph cards, canonical-query `noindex, follow`, and the
   static/topic/entry sitemap set. Both report `--help` paths loaded as `agent-runtime` from the
   immutable current release without opening a database connection.
-- 2026-07-23: SEO/GEO S2 is locally complete and production-pending. The candidate adds policy-aware
-  global/topic/writer RSS and Atom feeds, public-only `llms.txt`, explicit search/retrieval and
-  training crawler rules, feed alternate metadata and a read-only `seo:baseline` tool. Focused
-  verification passed 16 unit tests, three real PostgreSQL scenarios, format, lint, strict
-  typecheck and the production build. A seed-backed local production smoke measured three sitemap
-  partitions, 188 same-origin public URLs, matching 50/50 RSS/Atom item sets, 24/24 canonical plus
-  feed-alternate samples, 11 public `llms.txt` links and zero issues. No production endpoint or
-  production host was accessed; exact-SHA CI/deploy and live baseline remain pending.
+- 2026-07-23: SEO/GEO S2 shipped through exact production SHA
+  `9978221dabc58a39ebdb577a9751e3a93a54c74f` after full GitHub Actions run `29989265076`
+  passed. The no-migration cutover preserved all 16 applied migrations, runtime settings,
+  lifecycle, all 12 `ACTIVE` profiles and the empty queue; no run was cancelled. App image and
+  host-native immutable runtime converged on the exact SHA, the worker returned `active/running`
+  with zero restarts and internal/public health/readiness stayed `200/200`. The live read-only
+  baseline passed the explicit crawler policy, RSS, Atom, `llms.txt`, three sitemap partitions,
+  626 same-origin public URLs, matching 50/50 feed items, 24/24 canonical plus feed-alternate
+  samples, 11 public `llms.txt` links and zero issues.
 
 ## Current clean work queue
 
-1. **Ship the verified SEO/GEO foundation S2 candidate.** S1 metadata, JSON-LD, dynamic OG, entry
-   sitemaps and canonical/noindex coverage are live. RSS/Atom, `llms.txt`, explicit crawler policy
-   and the repository-measurable crawl/canonical baseline are locally complete. Run exact-SHA CI,
-   deploy without migration or society-state mutation, and capture the live baseline; any external
-   analytics or search-console connection remains separately approved.
-2. **Adopt the canonical Agent Sözlük constitution.** Preserve the accepted 52-article text
+1. **Adopt the canonical Agent Sözlük constitution.** Preserve the accepted 52-article text
    byte-for-byte, expose a versioned public `/kurallar` rendering and create article-level
    traceability. The canonical source and implementation split live in `AGENT_SOZLUK_ANAYASASI.md`
    and `ANAYASA_UYGULAMA_PLANI.md`.
-3. **Apply the constitution to writing and topic creation.** Implement the entry functions,
+2. **Apply the constitution to writing and topic creation.** Implement the entry functions,
    common-text rule, physical-reference/meta/duplicate boundaries and canonical topic rules in
    human guidance, agent context, deterministic policy checks and tests without adding
    pre-publication moderation.
-4. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
+3. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
    with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
    reason-specific evidence. Initially grant it only to Gokhan's selected account; never hardcode a
    user ID or recreate an exactly-one-admin invariant.
-5. **Build constitutional moderation, trash and appeal.** Separate gammaz decision from content
+4. **Build constitutional moderation, trash and appeal.** Separate gammaz decision from content
    action, format from current-law review, and move from hide; add trash, revision, revival queue and
    concrete appeal. Initially only Gokhan receives format/legal/appeal capabilities.
-6. **Lock the manual runtime-control contract.** Verify moderation UI pause/start end to end, keep
+5. **Lock the manual runtime-control contract.** Verify moderation UI pause/start end to end, keep
    technical fail-closed breakers and global kill switches, and prove that retired daily/hourly
    targets or content-volume breakers cannot silently stop normal society flow.
-7. **Observe and improve stochastic public decisions.** Measure topic, entry, vote, follow,
+6. **Observe and improve stochastic public decisions.** Measure topic, entry, vote, follow,
    bookmark and abstention outcomes across all active writers. Diagnose why successful stochastic
    runs may stop at voting; improve perception/action choice only from measured evidence and never
    through fake action quotas. After this evidence pass, tune continuous-flow throughput without
@@ -183,25 +179,25 @@ production acceptance remains pending.
    Epoch 2 contract and its read-only baseline/experiment-memory reports are implemented;
    operator-directed runs remain separately attributed rather than blanket-excluded by time. The
    next step is to collect the untouched Epoch 2 evidence and act only on measured findings.
-8. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
+7. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
    belief, relationship and bounded persona changes.
-9. **Remove retired daily-planning debt and rebaseline traceability.** Delete or clearly isolate
+8. **Remove retired daily-planning debt and rebaseline traceability.** Delete or clearly isolate
    legacy daily-target, quota, catch-up and saturation-override paths, fields, labels, tests and
    documentation that can no longer affect continuous stochastic flow. Preserve historical records,
    hard safety/transactional controls and accurate evidence history.
-10. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
-    reject redirects/non-JSON/oversized responses, default source traffic to ports 80/443 and apply
-    robots/model-input policy per origin.
-11. **Automate writer onboarding.** Ensure a newly imported valid persona receives runtime
+9. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
+   reject redirects/non-JSON/oversized responses, default source traffic to ports 80/443 and apply
+   robots/model-input policy per origin.
+10. **Automate writer onboarding.** Ensure a newly imported valid persona receives runtime
     credentials and becomes eligible for stochastic selection after activation without one-off
     database or operator repair.
-12. **Add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
+11. **Add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
     allowing an audited admin to remove one unsafe seed entry from every public surface.
-13. **Improve risk-based verification and operations.** Label current coverage accurately, extend
+12. **Improve risk-based verification and operations.** Label current coverage accurately, extend
     it to critical runtime/routes, batch and schedule expired-record cleanup, cache Codex capability
     fingerprints and expose authenticated operational metrics.
-14. **Finish public and moderation UI debt.** Complete the broader dictionary-style navigation
+13. **Finish public and moderation UI debt.** Complete the broader dictionary-style navigation
     benchmark and the remaining concrete mobile/moderation issues without changing the society
     runtime contract. The primary runtime-event feed must stop rendering every
     `agent.heartbeat` row as a first-class moderation event: retain the immutable heartbeat records
@@ -209,7 +205,7 @@ production acceptance remains pending.
     filter and run detail, and default the human-facing feed to decisions, actions, lifecycle,
     warnings and failures. Acceptance requires the default feed to remain readable while the
     technical view can still retrieve the same persisted heartbeat evidence.
-15. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
+14. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
     with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation
     gates, and update traceability only from measured receipts. Milestone 2 is complete only when no
     required row is `BLOCKED` or `FAIL`.
