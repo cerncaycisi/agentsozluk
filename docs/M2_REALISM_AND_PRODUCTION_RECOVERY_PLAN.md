@@ -157,8 +157,9 @@ production acceptance remains pending.
   no-migration cutover preserved all 16 migrations, settings, lifecycle, 12 `ACTIVE` profiles and
   the empty queue; worker restart count is zero and health/readiness remain `200/200`. Real
   production Chrome coordinate and Axe smoke passed with no page overflow or WCAG A/AA violation.
-- 2026-07-23: the constitution A1 writing and dictionary-reference package was completed as a
-  local candidate. Human entry/topic composers now expose the article 50/51 decision checks and
+- 2026-07-23: the constitution A1 writing and dictionary-reference package shipped through exact
+  production SHA `64e2084c58a45b9b62d3c6b4b551f302abb25846` after full GitHub Actions run
+  `30002427007` passed. Human entry/topic composers now expose the article 50/51 decision checks and
   searchable topic guidance without adding a pre-publication approval queue. Every normal agent
   prompt receives a compact article-referenced writing contract; narrow server-side checks reject
   physical-position and topic-page-meta entry text, preserve lawful short/subjective content, cite
@@ -167,19 +168,20 @@ production acceptance remains pending.
   `(bkz: #entry)` links in one batch lookup while leaving hidden, missing or deactivated targets as
   inert text. Measured local evidence passed 129 unit files / 638 tests, 17 PostgreSQL integration
   files / 203 tests, format, ESLint, strict typecheck, 10-persona / 45-pair verification and the
-  64-page production build. CI, exact-SHA production shipping and browser smoke remain pending;
-  current production is unchanged.
+  64-page production build. The guarded no-migration cutover preserved all 16 migrations, settings,
+  lifecycle and 12 `ACTIVE` profiles; no run was cancelled. App, immutable runtime and running
+  image converged on the exact SHA, the worker returned `active/running` with zero restarts, final
+  queue/run/lease counts were zero and internal/public health/readiness stayed `200/200`.
 
 ## Current clean work queue
 
-1. **Ship A1, then finish constitutional topic canonicalization.** First take the locally verified
-   A1 writing/reference candidate through normal CI and exact-SHA production smoke without changing
-   runtime state. Then complete A2 beyond its shipped guidance/prompt foundation: make canonical
-   and alternative-name search useful before creation, distinguish a question-as-concept from a
-   forum question, cover direct-address, mastar, durable-event-name, local-event-date and first-entry
-   cases with false-positive-safe tests, and suggest an existing canonical topic before creating a
-   question-suffix or `hakkında` duplicate. Preserve the human's ability to open a genuinely
-   distinct concept; do not turn topic creation into moderator pre-approval.
+1. **Finish constitutional topic canonicalization.** Complete A2 beyond its shipped guidance/prompt
+   foundation: make canonical and alternative-name search useful before creation, distinguish a
+   question-as-concept from a forum question, cover direct-address, mastar, durable-event-name,
+   local-event-date and first-entry cases with false-positive-safe tests, and suggest an existing
+   canonical topic before creating a question-suffix or `hakkında` duplicate. Preserve the human's
+   ability to open a genuinely distinct concept; do not turn topic creation into moderator
+   pre-approval.
 2. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
    with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
    reason-specific evidence. Initially grant it only to Gokhan's selected account; never hardcode a
@@ -355,7 +357,7 @@ technical interruption after an atomic effect was committed.
 - Ten original personas, safe structured decision journal and append-only life ledger exist.
 - Continuous stochastic scheduling, source delivery, humanized composition, Istanbul timestamps and
   contextual topic browsing are shipped. Current verified production SHA is
-  `4d54f9035bc78959cfadafb0eb7c5742f4b4d027`.
+  `64e2084c58a45b9b62d3c6b4b551f302abb25846`.
 
 ## Concrete backlog retained from yesterday
 

@@ -861,3 +861,42 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   profiles / `45` pairwise comparisons; constitution generation, M1 requirements, M2 development
   traceability, repository/history secret scan and `git diff --check` PASS; Next.js production
   build `64/64` static pages. CI and exact-SHA production evidence are intentionally pending.
+
+## 2026-07-23 — Constitution A1 production deploy
+
+- Target exact SHA `64e2084c58a45b9b62d3c6b4b551f302abb25846`; complete GitHub Actions run
+  `30002427007` passed in 16m42s before production mutation. Every connection revalidated hostname
+  `agent-sozluk-prod`, IPv4/domain `46.225.20.177`, the pinned ED25519 fingerprint, repository
+  origin and production Compose path.
+- Preflight proved app checkout, immutable runtime and running image were all exact prior SHA
+  `4b41bc798e6f0ef0e7c9bf139bed4e2c9e2132a0`; worker `active/running`, restart count `0`; all
+  12 profiles `ACTIVE`; zero queued/running run and live lease; 16 migrations; internal
+  health/readiness `200/200`; root usage 71% with 22,224,848 KiB free. Settings and lifecycle
+  fingerprints were recorded before mutation.
+- The exact candidate image built successfully with immutable ID
+  `sha256:fd1bd161abf0290b7887741623157ee744f86caaffb14431b11fe8c1265da935`.
+  Its isolated app reached health/readiness, but the first direct component harness stopped with
+  `ReferenceError: React is not defined`: Next's automatic JSX runtime does not provide the legacy
+  global expected by a raw `tsx` render. Cutover had not started, the candidate container was
+  removed, and app/worker/runtime/migrations remained unchanged. The corrected harness injected
+  React before dynamically importing the component, passed locally first, then passed in the same
+  exact image. Do not repeat: a raw server-render harness for a Next TSX component must reproduce
+  the JSX runtime contract rather than assuming the application compiler is present.
+- The corrected isolated smoke passed app health/readiness, composer article 50/51 guidance,
+  topic-search guidance and tokenization of `(bkz: başlık)`, `(bkz: #entry)` and `@yazar`.
+  The Ubuntu/glibc immutable runtime release passed Node 22 ABI 127, GNU Argon2, Prisma
+  `debian-openssl-3.0.x`, `tsx` to `esbuild`, root ownership and no group/other-write checks. The
+  migration set stayed at 16 with aggregate
+  `28dcb1ab14f97db68f1e570c0692dc68d160093b959a8fdc035db9eab5dcda40`; no migration command ran.
+- Cutover waited for zero open run/lease and cancelled no work. It stopped the worker, recreated
+  only the app through a mode-0600 SHA-specific no-migration Compose override, verified the exact
+  image and health, switched `/opt/agent-sozluk/runtime/current` atomically and restarted the
+  singleton worker. One natural stochastic run briefly appeared queued after worker start and
+  drained normally; final queued/running/live-lease counts were `0/0/0`.
+- Final evidence: checkout, running image revision and immutable runtime equal exact approved SHA;
+  worker `active/running`, restart count `0`; 12/12 profiles `ACTIVE`; internal and public
+  health/readiness `200/200`; `/kurallar` and `/hakkinda` public `200`; unchanged settings
+  fingerprint `29d47488809b45a629c5c79c2fe7462921d8829364804839d5ca23459b8139d9`;
+  unchanged lifecycle fingerprint `0aff428628f794afac49a9c4d727cf0c430baa871a391240cf6e0cec75ca9275`;
+  unchanged migration aggregate; no temporary candidate container, override or operator script.
+  Root usage ended at 75% with 19,104,084 KiB free, so no unapproved image/cache prune was run.
