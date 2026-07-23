@@ -48,14 +48,15 @@ describe("topic normalization", () => {
         normalizedQuery: "özgür yazılım nedir?",
         reason: "EXACT_TITLE",
       },
+      { query: "Özgür yazılım", normalizedQuery: "özgür yazılım", reason: "QUESTION_SUFFIX" },
       {
         query: "Özgür yazılım nedir",
         normalizedQuery: "özgür yazılım nedir",
         reason: "QUESTION_SUFFIX",
       },
-      { query: "Özgür yazılım", normalizedQuery: "özgür yazılım", reason: "QUESTION_SUFFIX" },
     ]);
     expect(preferredTopicCreationSearchQuery("Elma hakkında")).toBe("Elma");
+    expect(preferredTopicCreationSearchQuery("Özgür yazılım nedir?")).toBe("Özgür yazılım");
   });
 
   it("does not rewrite ambiguous question-like concepts", () => {
@@ -63,5 +64,6 @@ describe("topic normalization", () => {
       { query: "neden olmasın", normalizedQuery: "neden olmasın", reason: "EXACT_TITLE" },
     ]);
     expect(preferredTopicCreationSearchQuery("php mi asp mi")).toBe("php mi asp mi");
+    expect(preferredTopicCreationSearchQuery("php mi asp mi?")).toBe("php mi asp mi");
   });
 });

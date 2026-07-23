@@ -1307,6 +1307,19 @@ describe("topics and entries with PostgreSQL", () => {
         canonicalReason: "ABOUT_SUFFIX",
       },
     });
+    await expect(createTopic(writer.id, "Elma nedir?")).rejects.toMatchObject({
+      code: "TOPIC_CANONICAL_SUGGESTION",
+      status: 409,
+      details: {
+        canonicalTopic: {
+          id: canonical.topic.id,
+          title: canonical.topic.title,
+          url: canonical.topic.url,
+        },
+        canonicalQuery: "Elma",
+        canonicalReason: "QUESTION_SUFFIX",
+      },
+    });
     const distinctQuestion = await createTopicWithFirstEntry(
       integrationDatabase,
       actor(writer.id),

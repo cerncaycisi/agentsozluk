@@ -23,8 +23,6 @@ function withoutTerminalQuestionMark(input: string): string {
 function canonicalVariant(input: string): Omit<TopicCanonicalSearchCandidate, "normalizedQuery">[] {
   const candidates: Omit<TopicCanonicalSearchCandidate, "normalizedQuery">[] = [];
   const withoutQuestionMark = withoutTerminalQuestionMark(input);
-  if (withoutQuestionMark !== input)
-    candidates.push({ query: withoutQuestionMark, reason: "QUESTION_SUFFIX" });
 
   const aboutMatch = /^(.*?)\s+hakkında(?:\s+bilgi)?$/iu.exec(withoutQuestionMark);
   if (aboutMatch?.[1]) candidates.push({ query: aboutMatch[1].trim(), reason: "ABOUT_SUFFIX" });
@@ -35,6 +33,8 @@ function canonicalVariant(input: string): Omit<TopicCanonicalSearchCandidate, "n
     );
   if (questionMatch?.[1])
     candidates.push({ query: questionMatch[1].trim(), reason: "QUESTION_SUFFIX" });
+  if (withoutQuestionMark !== input)
+    candidates.push({ query: withoutQuestionMark, reason: "QUESTION_SUFFIX" });
 
   return candidates;
 }
