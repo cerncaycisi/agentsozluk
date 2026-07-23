@@ -1139,3 +1139,15 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
 - The successful run uploaded no coverage or Playwright artifact. The same upstream Node.js 20
   action deprecation annotation remained non-blocking. First production use and build-once
   promotion are still separate work; do not report the faster CI as production deployment proof.
+- Follow-up traceability review found that removing the successful coverage upload contradicted
+  still-active requirement `CI-009` and its PASS row. Existing coverage artifacts measured only
+  about `0.8 MiB` each with one-day retention; they were not the storage driver. Resolution:
+  restore the `coverage/` artifact with one-day retention and keep Playwright upload failure-only.
+  Do not repeat: storage optimization may shorten retention or payload but must not invalidate a
+  PASS requirement without explicitly reconciling the canonical requirement first.
+- Read-only inventory proved two obsolete pnpm lockfile caches consumed `401,334,874` bytes, while
+  the current exact cache consumed `267,256,417` bytes. The first exact-ID deletion attempt stopped
+  without mutation because this installed `gh` version rejects `--confirm` with
+  `unknown flag: --confirm`. Retrying the same exact IDs with the supported syntax succeeded.
+  Final inventory contains only current cache ID `5985774350`; no artifact, current cache or
+  repository content was deleted.

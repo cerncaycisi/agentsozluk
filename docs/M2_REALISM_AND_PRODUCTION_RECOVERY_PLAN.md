@@ -243,7 +243,9 @@ production acceptance remains pending.
    `3eef786ddde42026884b21e9c34ed9432493b155`; serial CI passed all gates in `23m51s`. The
    six-lane parallel replacement passed every lane and the fail-closed `validate` aggregator at
    `e62e1cbf916d11a2bcd78543c2747895f59382aa` in `4m54s`, versus the serial `23m51s`. First
-   production proof and build-once artifact promotion remain open.
+   production proof and build-once artifact promotion remain open. Bounded storage cleanup removed
+   two obsolete lockfile caches totalling `401,334,874` bytes and retained the current cache;
+   mandatory one-day coverage evidence remains enabled.
 2. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
    with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
    reason-specific evidence. Initially grant it only to Gokhan's selected account; never hardcode a

@@ -64,20 +64,19 @@ made. GitHub run `30013521977` supplied the real Linux proof: every serial gate,
 Docker image and Compose config, passed in `23m51s`. No production connection or mutation occurred
 for this candidate.
 
-Read-only Actions storage evidence found three pnpm caches totalling `668,591,291` bytes. The one
-matching the current lockfile is `267,256,417` bytes; the two older cache keys account for
-`401,334,874` bytes. No cache deletion occurred. The CI-parallelization stage must restore the
-single current cache without creating one cache per parallel job; deleting the two obsolete keys
-is a separate repository mutation.
+Actions storage reconciliation found three pnpm caches totalling `668,591,291` bytes. The two
+obsolete lockfile keys, totalling `401,334,874` bytes, were deleted by exact cache ID after the
+current key was positively identified. Final inventory retains only current cache ID `5985774350`
+at `267,256,417` bytes. No artifact, current cache or repository content was deleted.
 
 The parallel CI at exact SHA `e62e1cbf916d11a2bcd78543c2747895f59382aa` divides the same
 acceptance surface across quality, behavior, database, coverage, browser and container lanes, then
 preserves the existing branch-protection result name through a fail-closed `validate` aggregator.
 Only one main-branch lane may write an exact lockfile cache. Successful coverage artifacts are
-removed; one-day browser artifacts remain failure-only. After correcting the behavior lane's
-PostgreSQL fixture, run `30015780890` passed every lane in `4m54s`, compared with the equivalent
-serial run's `23m51s`—about `79%` shorter. Local workflow/release contract tests passed `12/12`,
-with format, lint, typecheck and diff hygiene also green.
+retained for one day as required by `CI-009`; one-day browser artifacts remain failure-only. After
+correcting the behavior lane's PostgreSQL fixture, run `30015780890` passed every lane in `4m54s`,
+compared with the equivalent serial run's `23m51s`—about `79%` shorter. Local workflow/release
+contract tests passed `12/12`, with format, lint, typecheck and diff hygiene also green.
 
 ## Milestone 2 constitution A2 production release — 2026-07-23 Europe/Istanbul
 

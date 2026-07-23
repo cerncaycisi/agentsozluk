@@ -7,7 +7,14 @@ interface WorkflowStep {
   name?: string;
   run?: string;
   uses?: string;
-  with?: { "fetch-depth"?: number };
+  if?: string;
+  with?: {
+    "fetch-depth"?: number;
+    name?: string;
+    path?: string;
+    "retention-days"?: number;
+    "if-no-files-found"?: string;
+  };
   "continue-on-error"?: boolean;
 }
 
@@ -118,7 +125,7 @@ describe("Milestone 2 pull request CI gate", () => {
     expect(traceabilityIndex).toBeGreaterThan(cleanTreeIndex);
   });
 
-  it("uses one cache writer and restore-only parallel consumers without success artifacts", () => {
+  it("uses one cache writer and retains bounded validation artifacts", () => {
     expect(setupSteps.some((step) => step.uses === "actions/cache/restore@v4")).toBe(true);
     expect(setupSteps.filter((step) => step.uses === "actions/cache/save@v4")).toHaveLength(1);
     expect(
@@ -138,7 +145,22 @@ describe("Milestone 2 pull request CI gate", () => {
             Boolean((step as WorkflowStep & { with?: unknown }).with),
         ),
       ).toBe(false);
-    expect(steps.some((step) => step.name === "Upload coverage")).toBe(false);
+    const coverageArtifact = jobs.coverage?.steps?.find((step) => step.name === "Upload coverage");
+    expect(coverageArtifact).toMatchObject({
+      if: "always()",
+      uses: "actions/upload-artifact@v4",
+      with: {
+        name: "coverage",
+        path: "coverage/",
+        "if-no-files-found": "warn",
+        "retention-days": 1,
+      },
+    });
+    const browserArtifact = jobs.browser?.steps?.find(
+      (step) => step.name === "Upload Playwright failure artifacts",
+    );
+    expect(browserArtifact?.if).toBe("failure()");
+    expect(browserArtifact?.with?.["retention-days"]).toBe(1);
   });
 
   it("keeps separate pre-merge and final integrated verifier entrypoints", () => {

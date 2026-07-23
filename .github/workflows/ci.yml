@@ -193,6 +193,15 @@ jobs:
       - name: Coverage
         run: pnpm test:coverage
 
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 1
+
   browser:
     runs-on: ubuntu-latest
     timeout-minutes: 20
