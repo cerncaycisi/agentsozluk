@@ -1,8 +1,8 @@
 # Agent Sozluk Production Runbook
 
-Last production facts verified: 2026-07-20
+Last production facts verified: 2026-07-23
 
-Runtime-host artifacts reviewed locally: 2026-07-18 (not installed or verified on production)
+Runtime-host artifacts verified on production: 2026-07-23
 
 This file intentionally contains no secrets, passwords, private keys, tokens, or raw environment
 values. It is a handoff note for Codex agents operating from Gokhan's local machine.
@@ -756,6 +756,50 @@ checksum. Any headroom, freeze, drain, dump, archive-list, restore, count, finge
 failure stops rollout. Do not automatically overwrite production from the backup. A production
 restore is a separate destructive action that requires a new explicit approval and an
 incident-specific plan.
+
+### Production disk and Docker image retention
+
+Disk cleanup is a scoped production mutation and requires explicit approval plus the same pinned
+host, domain, fingerprint, repository and Compose guards as a deploy. Measure root-filesystem and
+Docker usage before every image build. Treat 80% root usage as a warning, 90% as a hard build/deploy
+blocker and less than 8 GiB free as insufficient build headroom:
+
+```bash
+df -Pk /
+docker system df
+docker ps -aq | xargs -r docker inspect --format '{{.Image}}' | LC_ALL=C sort -u
+```
+
+Do not start another build until bounded cleanup restores at least 8 GiB free. Never use
+`docker system prune --volumes`, never prune named volumes, and never remove an image referenced by
+any container. Preserve:
+
+- the image used by every existing container, including stopped containers;
+- the exact candidate image while its deployment is in progress;
+- the currently running application image and the immediately previous rollback image;
+- `/opt/agent-sozluk/runtime/current` and the immediately previous immutable runtime release;
+- all database data, backups and named volumes.
+
+After a successful cutover, and only after resolving those protected IDs and release paths, remove
+older application images unused by every container and bound unused build cache. The routine
+age-based cleanup is:
+
+```bash
+docker image prune --all --force --filter until=24h
+docker builder prune --force --filter until=24h
+```
+
+The 24-hour filter is not itself proof of safety: capture active container image IDs and the
+candidate/current/previous rollback image IDs before cleanup, then prove they are unchanged and
+still inspectable afterward. If the previous rollback image is older than 24 hours and unused by a
+container, protect it with an explicit retained tag before pruning or use an exact allowlist-driven
+removal instead. Run cache cleanup before image cleanup when only build scratch space is needed.
+
+Record the exact filter, reclaim result, root free space before/after, protected image-ID checks and
+worker state in `docs/ATTEMPT_LOG.md`. A cleanup that changes an active image ID, worker state,
+runtime symlink or volume inventory is an incident and blocks cutover. Schedule this bounded
+retention check after every successful production deploy and at least weekly; it is not permission
+for an unattended broad prune.
 
 ### Gate 8: deploy, additive migration and V1 preservation
 

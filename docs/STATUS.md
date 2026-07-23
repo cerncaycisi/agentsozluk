@@ -3,15 +3,16 @@
 ## Milestone 2 current release snapshot — 2026-07-23 Europe/Istanbul
 
 Last verified production revision:
-`9978221dabc58a39ebdb577a9751e3a93a54c74f`.
+`acd6e5a23028070c4a41b7e5fc5e733b791e87a4`.
 
-The readable public URL/navigation S0 package, SEO/GEO S1/S2 and the Epoch 2 read-only reporting
-tools are live at that exact SHA. Migration 16 and the immutable numeric Topic/Entry public IDs
-remain the current schema. Full GitHub Actions run `29989265076` passed for the exact SHA. The
-guarded production operation ran no migration, preserved the 16-name migration aggregate,
-runtime/scheduler/publish/public-write/source settings, all 12 `ACTIVE` writers and the empty
-queue, then atomically converged the app image and host-native runtime release. Worker state is
-`active/running` with zero restarts and internal/public health/readiness are `200/200`.
+The readable public URL/navigation S0 package, SEO/GEO S1/S2, Epoch 2 read-only reporting tools and
+the canonical 52-article constitution A0 package are live at that exact SHA. Migration 16 and the
+immutable numeric Topic/Entry public IDs remain the current schema. Full GitHub Actions run
+`29995444532` passed for the exact SHA. The guarded production operation ran no migration,
+preserved the 16-name migration aggregate, runtime/scheduler/publish/public-write/source settings,
+all 12 `ACTIVE` writers and the empty queue, then atomically converged the app image and
+host-native runtime release. Worker state is `active/running` with zero restarts and
+internal/public health/readiness are `200/200`.
 
 Live SEO smoke passed the sitemap index plus static/topic/entry partitions, content-derived
 topic/entry/profile metadata, six parseable public JSON-LD documents with no forbidden private
@@ -39,7 +40,7 @@ retain the older event array. The prior client-navigation state bug is closed.
 Formal Milestone 2 production acceptance remains open: the old daily-plan traceability contract
 must be replaced by exact stochastic-flow evidence before Gates 9–12 can be called complete.
 
-## Milestone 2 constitution A0 local candidate — 2026-07-23 Europe/Istanbul
+## Milestone 2 constitution A0 production release — 2026-07-23 Europe/Istanbul
 
 The accepted historical evidence remains byte-identical at 78,989 bytes and SHA-256
 `59fa9adecec3f1dc60393f6569d185ccbb6a2363191f7a570c2f971c41a4bea6`. A deterministic,
@@ -64,8 +65,12 @@ production HTTP smoke passed 52/52 anchors, exact version copy, `/hakkinda` link
 forbidden references. System Chrome visual smoke passed at 390px and 1440px with 52 anchors and no
 horizontal overflow.
 
-This candidate has not been committed, pushed, accepted by CI or deployed. Production remains on
-exact SHA `9978221dabc58a39ebdb577a9751e3a93a54c74f`.
+Exact SHA `acd6e5a23028070c4a41b7e5fc5e733b791e87a4` passed full GitHub Actions run
+`29995444532` and was deployed without a migration. Production smoke passed 52 ordered anchors,
+version `1.0.0`, two named keyboard-focusable table regions, `/hakkinda`, internal/public
+health/readiness `200/200`, and a real 390×844 Axe pass with zero WCAG A/AA violations and no
+page-level horizontal overflow. Settings and lifecycle fingerprints were unchanged, all 12
+profiles remained `ACTIVE`, the queue stayed empty and worker restart count is zero.
 
 ## Milestone 2 historical verification baseline — 2026-07-20 Europe/Istanbul
 

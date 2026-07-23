@@ -713,3 +713,69 @@ credentials, raw environment values, prompts or entry bodies.
   semantically named and covered by the public mobile axe gate. For local verification, prepend a
   temporary Node 22 Corepack shim directory so both the parent command and Playwright global setup
   resolve the same pinned pnpm 10 executable.
+
+## 2026-07-23 — Constitution deploy disk-pressure recovery and image retention
+
+- Scope: exact candidate SHA `acd6e5a23028070c4a41b7e5fc5e733b791e87a4` on the pinned Agent
+  Sözlük production host. No migration ran, no active run was cancelled, and no runtime, scheduler,
+  lifecycle, queue, database or volume state was intentionally changed.
+- The first migration-set guard compared the 16 migration directories with a Git tree listing that
+  also included `migration_lock.toml`, so it stopped before checkout transition or image build.
+  Filtering `git ls-tree` to tree objects produced the correct directory-only comparison. Do not
+  repeat: compare migration directories to Git tree entries of type `tree`, not every child name.
+- The exact candidate image was successfully created with immutable ID
+  `sha256:ad9de5b7c8090520f76f15ebe84bb76f4c99431fc99e245a25254a0a6532f086`,
+  but Compose returned exit 1 while writing its final temporary metadata file:
+  `no space left on device`. Root usage was 99% with about 981 MiB free. Docker inventory attributed
+  the pressure to 30.76 GB of images, 26.14 GB reclaimable, plus 12.99 GB of build cache; volumes
+  occupied only about 550 MB. Do not repeat: enforce the 8 GiB pre-build headroom gate and inspect
+  Docker usage before starting a production build.
+- A bounded builder-cache prune restored roughly 7 GiB free without removing images, containers,
+  volumes or releases. The worker had entered `failed/failed` with exit status 1 and six restarts
+  during the disk-pressure window; deploy-user journal access returned no diagnostic rows, so disk
+  pressure is a temporal correlation rather than a proven worker root cause. With zero open runs
+  and live leases, resetting the failed state and restarting returned the worker to
+  `active/running` with zero restarts.
+- The first cleanup SSH transport reset before any command with
+  `kex_exchange_identification: read: Connection reset by peer`; a single retry after repeating the
+  pinned identity checks connected normally. The first isolated no-migration candidate page probe
+  then failed only its harness with `Error: constitution version/count marker`: the assertion
+  expected contiguous raw HTML text across React tags. The ephemeral container was removed and the
+  running application was not switched. Do not repeat: derive visible-text assertions by stripping
+  markup and normalizing whitespace while retaining structural HTML checks separately.
+- The first host-native runtime-release script over-escaped three single-quoted Node expressions
+  and passed the invalid source `process.platform + \":\" + process.arch`; Node 22 stopped with
+  `SyntaxError: Invalid or unexpected token`. The staging trap removed the incomplete tree and no
+  release, symlink, worker or application state changed. The exact runbook expressions were copied
+  without backslash escapes; the release then passed Node 22 ABI 127, GNU Argon2, Prisma
+  `debian-openssl-3.0.x`, `tsx` to `esbuild`, root ownership and no group/other-write checks. Do not
+  repeat: do not add JSON-style escaping inside a shell single-quoted `node -p` program.
+- With explicit operator approval, `docker image prune --all --force --filter until=24h` removed
+  only unused images and reclaimed `22.55GB`. Root free space rose from `7256560` KiB to
+  `29277132` KiB. The exact candidate image remained inspectable, all active container image IDs
+  were byte-identical before/after, and the worker remained `active/running`.
+- Durable rule: after every successful cutover and at least weekly, retain active images, the
+  candidate during deployment, and one previous rollback image/release; remove only older unused
+  application images and bound unused build cache. Never prune volumes, database data, images
+  referenced by any container, or current/previous immutable runtime releases. Record before/after
+  headroom and protected-ID evidence here.
+- The corrected isolated candidate passed internal health/readiness, all 52 ordered article
+  anchors, version/count copy, two focusable table regions and `/hakkinda`; the migration count
+  remained 16 with aggregate
+  `28dcb1ab14f97db68f1e570c0692dc68d160093b959a8fdc035db9eab5dcda40`.
+  The cutover waited for zero open runs and live leases, stopped no in-flight work, recreated only
+  the app from the exact candidate image, switched `current` atomically and restarted the worker.
+- Final evidence: app checkout, running image and immutable runtime release equal
+  `acd6e5a23028070c4a41b7e5fc5e733b791e87a4`; worker `active/running`, restart count `0`; 12/12
+  profiles `ACTIVE`; zero open, queued or running run and zero live lease; public/internal
+  health/readiness `200/200`; unchanged settings fingerprint
+  `62398e4f4c916bae80ec77aa24ffa406c8fb2e7bbfa2c97a55d1589d844d8ebe`; unchanged lifecycle
+  fingerprint `497dfdac5d457178d2f31c2988a00efd66f59c97f78b38014e04c54051920518`;
+  and no migration command.
+- The first local public-browser harness imported the non-hoisted package name `playwright` and
+  stopped with `MODULE_NOT_FOUND`; the second used `browser.newPage()` and Axe 4.12.1 stopped with
+  `Please use browser.newContext()`. Neither error touched production. Using the installed
+  `@playwright/test` export and a real browser context produced the final 390×844 production smoke:
+  HTTP 200, 52 anchors, two focusable regions, no page-level horizontal overflow and zero WCAG
+  A/AA Axe violations. Do not repeat: under pnpm strict linking import the declared
+  `@playwright/test` package and give Axe a page created from an explicit browser context.

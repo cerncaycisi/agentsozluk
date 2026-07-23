@@ -76,6 +76,20 @@ Milestone 2 verification is `pnpm verify:m2`. Keep the M1 regression gate inside
 - A failed attempt is not evidence for a code regression until environment and fixture causes have
   been separated with a focused rerun.
 
+## Production disk and image retention
+
+- Before every production image build, record root-filesystem free space and `docker system df`.
+  Do not start the build with less than 8 GiB free.
+- After a successful production cutover, retain the running application image, the immediately
+  previous rollback image and their current/previous immutable runtime releases. Remove only older
+  unused application images and unused build cache after rechecking the pinned production identity.
+- Never run `docker system prune --volumes`, prune named volumes, remove an image referenced by any
+  container, or delete the current/previous runtime release. Production cleanup remains an
+  explicitly approved mutation.
+- Record the cleanup filter, reclaimed bytes, free space before/after and proof that active image
+  IDs plus worker state were unchanged in `docs/ATTEMPT_LOG.md`. Treat 80% root usage as a warning
+  and 90% as a build/deploy blocker until bounded cleanup restores headroom.
+
 ## Definition of done
 
 All 811 requirement IDs must map to real implementation and verification in
