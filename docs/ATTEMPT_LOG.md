@@ -536,3 +536,10 @@ credentials, raw environment values, prompts or entry bodies.
   188 same-origin public URLs, matching 50/50 RSS/Atom item sets, 24/24 canonical plus feed
   alternate samples, 11 public `llms.txt` links and zero issues. The local server stopped and the
   final count of S2 scratch databases was zero.
+- First main CI run `29988733784` for exact SHA
+  `abd727ab044d5100509d0434fc6c3e8c04267384` passed setup, migration, format, lint and typecheck,
+  then failed only the new public-discovery unit file. Two assertions hardcoded
+  `http://localhost:3000` while CI intentionally supplied `APP_URL=http://127.0.0.1:3000`; the
+  implementation correctly emitted the configured origin. Integration and later jobs did not
+  start. The fix derives expected URLs from `process.env.APP_URL`. Do not repeat: route tests must
+  assert the configured canonical origin, never a local-hostname spelling.
