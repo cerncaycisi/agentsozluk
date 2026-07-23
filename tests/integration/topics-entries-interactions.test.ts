@@ -1290,6 +1290,58 @@ describe("topics and entries with PostgreSQL", () => {
     expect(await integrationDatabase.entry.count()).toBe(1);
   });
 
+  it("suggests an existing canonical topic for suffix variants while preserving human override", async () => {
+    const writer = await createUser("canonical_suggestion_writer");
+    const canonical = await createTopic(writer.id, "Elma");
+
+    await expect(createTopic(writer.id, "Elma hakkında bilgi")).rejects.toMatchObject({
+      code: "TOPIC_CANONICAL_SUGGESTION",
+      status: 409,
+      details: {
+        canonicalTopic: {
+          id: canonical.topic.id,
+          title: canonical.topic.title,
+          url: canonical.topic.url,
+        },
+        canonicalQuery: "Elma",
+        canonicalReason: "ABOUT_SUFFIX",
+      },
+    });
+    const distinctQuestion = await createTopicWithFirstEntry(
+      integrationDatabase,
+      actor(writer.id),
+      {
+        title: "Elma nedir",
+        entryBody:
+          "“Elma nedir?” sorusunun çocuk dilindeki kültürel yerini anlatan bağımsız entry.",
+        canonicalOverride: true,
+      },
+    );
+    expect(distinctQuestion.topic.title).toBe("Elma nedir");
+    expect(await integrationDatabase.topic.count()).toBe(2);
+    expect(await integrationDatabase.entry.count()).toBe(2);
+  });
+
+  it("uses aliases as canonical creation suggestions", async () => {
+    const writer = await createUser("canonical_alias_writer");
+    const canonical = await createTopic(writer.id, "Açık Kaynak Yazılım");
+    await integrationDatabase.topicAlias.create({
+      data: {
+        topicId: canonical.topic.id,
+        title: "Özgür Yazılım",
+        normalizedTitle: normalizeTopicTitle("Özgür Yazılım"),
+        slug: "ozgur-yazilim",
+      },
+    });
+    await expect(createTopic(writer.id, "Özgür Yazılım hakkında")).rejects.toMatchObject({
+      code: "TOPIC_CANONICAL_SUGGESTION",
+      details: {
+        canonicalTopic: { id: canonical.topic.id },
+        canonicalQuery: "Özgür Yazılım",
+      },
+    });
+  });
+
   it("keeps human publication immediate instead of turning constitutional guidance into premoderation", async () => {
     const writer = await createUser("human_constitution_writer");
     const topic = await createTopic(writer.id, "Anayasa rehberi ve ardıl moderasyon");

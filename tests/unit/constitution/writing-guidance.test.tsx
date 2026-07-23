@@ -31,4 +31,14 @@ describe("constitutional writing guidance", () => {
       "/kurallar#madde-51",
     );
   });
+
+  it("shows article-linked title checks without blocking a distinct human concept", () => {
+    render(
+      <TopicWritingGuidance
+        title="aşık olduğun kişinin seni terk etmesi"
+        entryBody="İlişkilerde sık karşılaşılan bir ayrılık deneyimidir."
+      />,
+    );
+    expect(screen.getByText(/Madde 30: Başlık okura doğrudan seslenmemeli/u)).toBeInTheDocument();
+  });
 });

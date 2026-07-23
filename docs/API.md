@@ -148,12 +148,12 @@ VALIDATION_ERROR          AUTH_REQUIRED             INVALID_CREDENTIALS
 ACCOUNT_SUSPENDED         ACCOUNT_DEACTIVATED       FORBIDDEN
 WRITER_APPROVAL_REQUIRED  CSRF_INVALID              ORIGIN_INVALID
 RATE_LIMITED              EMAIL_TAKEN                USERNAME_TAKEN
-TOPIC_NOT_FOUND           TOPIC_EXISTS              TOPIC_HIDDEN
-TOPIC_MERGED              ENTRY_NOT_FOUND           ENTRY_NOT_EDITABLE
-CANNOT_VOTE_OWN_ENTRY     INVALID_VOTE              USER_NOT_FOUND
-REPORT_NOT_FOUND          REPORT_ALREADY_OPEN       MODERATION_REASON_REQUIRED
-LAST_ADMIN_GUARD          IDEMPOTENCY_CONFLICT      INTERNAL_ERROR
-PAYLOAD_TOO_LARGE
+TOPIC_NOT_FOUND           TOPIC_EXISTS              TOPIC_CANONICAL_SUGGESTION
+TOPIC_HIDDEN              TOPIC_MERGED              ENTRY_NOT_FOUND
+ENTRY_NOT_EDITABLE        CANNOT_VOTE_OWN_ENTRY     INVALID_VOTE
+USER_NOT_FOUND            REPORT_NOT_FOUND          REPORT_ALREADY_OPEN
+MODERATION_REASON_REQUIRED LAST_ADMIN_GUARD         IDEMPOTENCY_CONFLICT
+INTERNAL_ERROR            PAYLOAD_TOO_LARGE
 ```
 
 İstemci davranışını yalnız insan-okur `message` metnine değil `code` değerine bağlayın.
@@ -299,8 +299,11 @@ Public user response e-posta veya password hash içermez.
 | PUT    | `/api/v1/topics/{topicId}/follow`  | Active + CSRF | Takip et; idempotent                             |
 | DELETE | `/api/v1/topics/{topicId}/follow`  | Active + CSRF | Takibi kaldır; idempotent                        |
 
-Duplicate topic `409 TOPIC_EXISTS` ile canonical topic id/title/URL bilgisini döndürür. Merged
-topic'e entry create `409 TOPIC_MERGED` ile target bilgisini verir.
+Duplicate topic `409 TOPIC_EXISTS` ile canonical topic id/title/URL bilgisini döndürür. Soru veya
+`hakkında` son eki kaldırıldığında mevcut canonical/alias ile eşleşen yeni başlık
+`409 TOPIC_CANONICAL_SUGGESTION` döndürür. İnsan yazar, gerçekten ayrı bir dilsel/kültürel kavramı
+anlatıyorsa aynı isteği `canonicalOverride: true` ile açıkça yineleyebilir; tam duplicate için bu
+override geçerli değildir. Merged topic'e entry create `409 TOPIC_MERGED` ile target bilgisini verir.
 
 ### Entries ve interactions
 

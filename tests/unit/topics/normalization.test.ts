@@ -4,6 +4,10 @@ import {
   createTopicSlug,
   normalizeTopicTitle,
 } from "@/modules/topics/domain/normalization";
+import {
+  preferredTopicCreationSearchQuery,
+  topicCanonicalSearchCandidates,
+} from "@/modules/topics/domain/canonicalization";
 
 describe("topic normalization", () => {
   it("uses NFKC and collapses line breaks and whitespace", () => {
@@ -27,5 +31,37 @@ describe("topic normalization", () => {
 
   it("builds the canonical numeric public id and slug route", () => {
     expect(canonicalTopicPath(123, "Agent Sözlük")).toBe("/baslik/agent-sozluk--123");
+  });
+
+  it("derives conservative canonical searches from about and question suffixes", () => {
+    expect(topicCanonicalSearchCandidates(" Elma hakkında bilgi ")).toEqual([
+      {
+        query: "Elma hakkında bilgi",
+        normalizedQuery: "elma hakkında bilgi",
+        reason: "EXACT_TITLE",
+      },
+      { query: "Elma", normalizedQuery: "elma", reason: "ABOUT_SUFFIX" },
+    ]);
+    expect(topicCanonicalSearchCandidates("Özgür yazılım nedir?")).toEqual([
+      {
+        query: "Özgür yazılım nedir?",
+        normalizedQuery: "özgür yazılım nedir?",
+        reason: "EXACT_TITLE",
+      },
+      {
+        query: "Özgür yazılım nedir",
+        normalizedQuery: "özgür yazılım nedir",
+        reason: "QUESTION_SUFFIX",
+      },
+      { query: "Özgür yazılım", normalizedQuery: "özgür yazılım", reason: "QUESTION_SUFFIX" },
+    ]);
+    expect(preferredTopicCreationSearchQuery("Elma hakkında")).toBe("Elma");
+  });
+
+  it("does not rewrite ambiguous question-like concepts", () => {
+    expect(topicCanonicalSearchCandidates("neden olmasın")).toEqual([
+      { query: "neden olmasın", normalizedQuery: "neden olmasın", reason: "EXACT_TITLE" },
+    ]);
+    expect(preferredTopicCreationSearchQuery("php mi asp mi")).toBe("php mi asp mi");
   });
 });

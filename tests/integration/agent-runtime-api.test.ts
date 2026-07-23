@@ -4183,6 +4183,95 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ).toBe(1);
   });
 
+  it("rejects non-canonical agent topics, question answers and dependent first entries", async () => {
+    const fixture = await createFixture();
+    const canonical = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "Elma",
+        entryBody: "Gülgiller familyasında yetişen ve yenilebilen bir meyvedir.",
+      },
+    );
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "constitution-topic-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const provenance = {
+      evidenceType: "PLATFORM_EVENT" as const,
+      evidenceIds: [runId],
+      shortRationale: "Runtime run görünür ve doğrulanabilir platform kanıtıdır.",
+    };
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Kanonik suffix eşleşmesi create servisinde denetlenmelidir.",
+            input: {
+              title: "Elma hakkında",
+              body: "Elmanın kültürel kullanımlarını anlatan bağımsız bir entry.",
+            },
+            provenance,
+          },
+          {
+            sequence: 2,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Soru başlığı altında yalnız cevabı yazmak reddedilmelidir.",
+            input: {
+              title: "Armut nedir",
+              body: "Gülgiller familyasında yetişen, tatlı ve sulu bir meyvedir.",
+            },
+            provenance,
+          },
+          {
+            sequence: 3,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "İlk entry kendi başına anayasal işlev taşımalıdır.",
+            input: {
+              title: "uzun süre beklemek",
+              body: "Bilenler yazsın.",
+            },
+            provenance,
+          },
+        ],
+      }),
+    );
+    const [canonicalRejected, questionRejected, firstEntryRejected] = await Promise.all(
+      [1, 2, 3].map((sequence) =>
+        executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+          workerId,
+          sequence,
+        }),
+      ),
+    );
+    expect(canonicalRejected).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_CANONICAL_SUGGESTION",
+    });
+    expect(questionRejected).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "CONSTITUTION_TOPIC_QUESTION_ANSWER",
+    });
+    expect(firstEntryRejected).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "CONSTITUTION_TOPIC_FIRST_ENTRY_DEPENDENT",
+    });
+    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(0);
+    expect(await integrationDatabase.topic.findMany({ select: { id: true } })).toEqual([
+      { id: canonical.topic.id },
+    ]);
+  });
+
   it("rejects ambiguous CREATE_ENTRY targets and uses one canonical topic for policy and write", async () => {
     const fixture = await createFixture();
     const [lockedTopic, otherTopic] = await Promise.all([

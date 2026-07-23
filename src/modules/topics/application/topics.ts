@@ -10,13 +10,15 @@ import {
   createTopicSlug,
   normalizeTopicTitle,
 } from "@/modules/topics/domain/normalization";
+import { topicCanonicalSearchCandidates } from "@/modules/topics/domain/canonicalization";
 import {
   createTopicWithFirstEntryRecord,
+  findActiveTopicConflicts,
   findTopicById,
   findTopicByPublicId,
   findTopicConflict,
   isFollowingTopic,
-  lockTopicTitle,
+  lockTopicTitles,
   type TopicSummaryRecord,
 } from "@/modules/topics/repository/topics";
 import {
@@ -52,6 +54,24 @@ function topicExistsError(topic: TopicSummaryRecord): AppError {
   });
 }
 
+function topicCanonicalSuggestionError(
+  topic: TopicSummaryRecord,
+  candidate: ReturnType<typeof topicCanonicalSearchCandidates>[number],
+): AppError {
+  return new AppError(
+    "TOPIC_CANONICAL_SUGGESTION",
+    409,
+    "Aynı kavram için mevcut kanonik başlık öneriliyor.",
+    undefined,
+    undefined,
+    {
+      canonicalTopic: { id: topic.id, title: topic.title, url: topicUrl(topic) },
+      canonicalQuery: candidate.query,
+      canonicalReason: candidate.reason,
+    },
+  );
+}
+
 export async function createTopicWithFirstEntry(
   client: DatabaseExecutor,
   actor: ActorContext,
@@ -59,11 +79,36 @@ export async function createTopicWithFirstEntry(
 ) {
   const normalizedTitle = normalizeTopicTitle(input.title);
   const title = input.title.normalize("NFKC").trim().replaceAll(/\s+/gu, " ");
+  const canonicalCandidates = topicCanonicalSearchCandidates(title);
   return inTransaction(client, async (transaction) => {
     await requireApprovedWriter(transaction, actor.actorId);
-    await lockTopicTitle(transaction, normalizedTitle);
+    await lockTopicTitles(
+      transaction,
+      input.canonicalOverride
+        ? [normalizedTitle]
+        : canonicalCandidates.map((candidate) => candidate.normalizedQuery),
+    );
     const conflict = await findTopicConflict(transaction, normalizedTitle);
     if (conflict) throw topicExistsError(conflict);
+    if (!input.canonicalOverride) {
+      const variantCandidates = canonicalCandidates.filter(
+        (candidate) => candidate.normalizedQuery !== normalizedTitle,
+      );
+      if (variantCandidates.length > 0) {
+        const variantConflicts = await findActiveTopicConflicts(
+          transaction,
+          variantCandidates.map((candidate) => candidate.normalizedQuery),
+        );
+        for (const candidate of variantCandidates) {
+          const canonicalTopic = variantConflicts.find(
+            (topic) =>
+              topic.normalizedTitle === candidate.normalizedQuery ||
+              topic.aliases.some((alias) => alias.normalizedTitle === candidate.normalizedQuery),
+          );
+          if (canonicalTopic) throw topicCanonicalSuggestionError(canonicalTopic, candidate);
+        }
+      }
+    }
 
     const created = await createTopicWithFirstEntryRecord(transaction, {
       title,

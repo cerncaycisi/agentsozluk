@@ -36,4 +36,21 @@ describe("topic validation", () => {
     const alias = normalizeTopicTitle("Eski İstanbul Başlığı");
     expect(normalizeTopicTitle("ESKİ istanbul başlığı")).toBe(alias);
   });
+
+  it("accepts only an explicit boolean canonical override", () => {
+    expect(
+      topicCreateSchema.parse({
+        title: "Ayrı dilsel kavram",
+        entryBody: "İlk entry için yeterince uzun ve güvenli içerik.",
+        canonicalOverride: true,
+      }),
+    ).toMatchObject({ canonicalOverride: true });
+    expect(() =>
+      topicCreateSchema.parse({
+        title: "Ayrı dilsel kavram",
+        entryBody: "İlk entry için yeterince uzun ve güvenli içerik.",
+        canonicalOverride: "true",
+      }),
+    ).toThrow();
+  });
 });

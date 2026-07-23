@@ -38,12 +38,42 @@ export async function lockTopicTitle(
   `;
 }
 
+export async function lockTopicTitles(
+  transaction: Prisma.TransactionClient,
+  normalizedTitles: string[],
+): Promise<void> {
+  for (const normalizedTitle of [...new Set(normalizedTitles)].sort())
+    await lockTopicTitle(transaction, normalizedTitle);
+}
+
 export function findTopicConflict(transaction: Prisma.TransactionClient, normalizedTitle: string) {
   return transaction.topic.findFirst({
     where: {
       OR: [{ normalizedTitle }, { aliases: { some: { normalizedTitle } } }],
     },
     select: topicSummarySelect,
+  });
+}
+
+export function findActiveTopicConflicts(
+  transaction: Prisma.TransactionClient,
+  normalizedTitles: string[],
+) {
+  return transaction.topic.findMany({
+    where: {
+      status: "ACTIVE",
+      OR: [
+        { normalizedTitle: { in: normalizedTitles } },
+        { aliases: { some: { normalizedTitle: { in: normalizedTitles } } } },
+      ],
+    },
+    select: {
+      ...topicSummarySelect,
+      aliases: {
+        where: { normalizedTitle: { in: normalizedTitles } },
+        select: { normalizedTitle: true },
+      },
+    },
   });
 }
 

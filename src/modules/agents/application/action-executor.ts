@@ -44,7 +44,7 @@ import {
 } from "@/modules/agents/domain/action-policy";
 import {
   constitutionalEntryWritingIssue,
-  constitutionalTopicWritingIssue,
+  constitutionalTopicCreationIssue,
 } from "@/lib/content/constitution-writing-policy";
 import {
   isPublicRuntimeAction,
@@ -907,7 +907,10 @@ export async function executeRuntimeAction(
           });
       }
       if (parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY" && parsed.data.input.title) {
-        const issue = constitutionalTopicWritingIssue(parsed.data.input.title);
+        const issue = constitutionalTopicCreationIssue(
+          parsed.data.input.title,
+          parsed.data.input.body ?? "",
+        );
         if (issue)
           return rejectAction(transaction, principal, actionRecord, {
             code: issue.code,

@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { FormField, FormTextarea } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { TopicWritingGuidance } from "@/components/constitution/writing-guidance";
+import { TopicCanonicalSuggestions } from "@/components/topics/topic-canonical-suggestions";
 
 interface Values {
   title: string;
@@ -32,9 +33,16 @@ export function CreateTopicForm() {
   const router = useRouter();
   const [notice, setNotice] = useState<string>();
   const [duplicate, setDuplicate] = useState<
-    { topic: CanonicalTopic; entryBody: string } | undefined
+    | {
+        topic: CanonicalTopic;
+        title: string;
+        entryBody: string;
+        canonicalSuggestion: boolean;
+      }
+    | undefined
   >();
   const [sendingToExisting, setSendingToExisting] = useState(false);
+  const [creatingOverride, setCreatingOverride] = useState(false);
   const {
     register,
     handleSubmit,
@@ -43,6 +51,7 @@ export function CreateTopicForm() {
     formState: { errors, isSubmitting },
   } = useForm<Values>();
   const title = watch("title", "");
+  const entryBody = watch("entryBody", "");
   const submit = async (values: Values) => {
     setNotice(undefined);
     setDuplicate(undefined);
@@ -61,14 +70,43 @@ export function CreateTopicForm() {
           if (field === "title" || field === "entryBody")
             setError(field, { message: messages[0] ?? "Alan geçersiz." });
         }
-        const canonicalTopic =
-          error.code === "TOPIC_EXISTS" ? canonicalTopicFrom(error) : undefined;
+        const canonicalTopic = ["TOPIC_EXISTS", "TOPIC_CANONICAL_SUGGESTION"].includes(error.code)
+          ? canonicalTopicFrom(error)
+          : undefined;
         if (canonicalTopic) {
-          setDuplicate({ topic: canonicalTopic, entryBody: values.entryBody });
+          setDuplicate({
+            topic: canonicalTopic,
+            title: values.title,
+            entryBody: values.entryBody,
+            canonicalSuggestion: error.code === "TOPIC_CANONICAL_SUGGESTION",
+          });
         } else {
           setNotice(error.message);
         }
       } else setNotice("Başlık oluşturulamadı.");
+    }
+  };
+  const createSeparateTopic = async () => {
+    if (!duplicate?.canonicalSuggestion) return;
+    setNotice(undefined);
+    setCreatingOverride(true);
+    try {
+      const result = await apiRequest<{ topic: { url: string } }>("/api/v1/topics", {
+        method: "POST",
+        body: {
+          title: duplicate.title,
+          entryBody: duplicate.entryBody,
+          canonicalOverride: true,
+        },
+        csrf: true,
+        idempotency: true,
+      });
+      router.push(result.topic.url);
+      router.refresh();
+    } catch (error) {
+      setNotice(error instanceof ClientApiError ? error.message : "Başlık oluşturulamadı.");
+    } finally {
+      setCreatingOverride(false);
     }
   };
   const sendToExisting = async () => {
@@ -117,14 +155,17 @@ export function CreateTopicForm() {
           minLength: { value: 10, message: "En az 10 karakter girin." },
         })}
       />
-      <TopicWritingGuidance title={title} />
+      <TopicCanonicalSuggestions title={title} />
+      <TopicWritingGuidance title={title} entryBody={entryBody} />
       {duplicate ? (
         <section
           aria-labelledby="duplicate-topic-title"
           className="rounded-xl border border-accent bg-accent/10 p-4"
         >
           <h2 id="duplicate-topic-title" className="font-bold">
-            Bu başlık zaten var
+            {duplicate.canonicalSuggestion
+              ? "Bu kavram için mevcut başlık öneriliyor"
+              : "Bu başlık zaten var"}
           </h2>
           <p className="mt-2 text-sm">
             <Link href={duplicate.topic.url} className="font-semibold text-primary hover:underline">
@@ -140,6 +181,16 @@ export function CreateTopicForm() {
           >
             {sendingToExisting ? "Gönderiliyor…" : "İlk entry’yi mevcut başlığa gönder"}
           </button>
+          {duplicate.canonicalSuggestion ? (
+            <button
+              type="button"
+              className="button-secondary ml-3 mt-4"
+              disabled={creatingOverride || sendingToExisting}
+              onClick={() => void createSeparateTopic()}
+            >
+              {creatingOverride ? "Oluşturuluyor…" : "Ayrı kavram olarak yine de oluştur"}
+            </button>
+          ) : null}
         </section>
       ) : null}
       {notice ? (
@@ -147,7 +198,11 @@ export function CreateTopicForm() {
           {notice}
         </p>
       ) : null}
-      <button className="button-primary" type="submit" disabled={isSubmitting || sendingToExisting}>
+      <button
+        className="button-primary"
+        type="submit"
+        disabled={isSubmitting || sendingToExisting || creatingOverride}
+      >
         {isSubmitting ? "Oluşturuluyor…" : "Başlığı oluştur"}
       </button>
     </form>

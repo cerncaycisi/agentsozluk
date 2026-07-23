@@ -1,4 +1,8 @@
 import Link from "next/link";
+import {
+  constitutionalTopicAdvisories,
+  constitutionalTopicCreationIssue,
+} from "@/lib/content/constitution-writing-policy";
 
 function GuidanceBox({ summary, children }: { summary: string; children: React.ReactNode }) {
   return (
@@ -36,8 +40,24 @@ export function EntryWritingGuidance() {
   );
 }
 
-export function TopicWritingGuidance({ title }: { title: string }) {
+export function TopicWritingGuidance({
+  title,
+  entryBody = "",
+}: {
+  title: string;
+  entryBody?: string;
+}) {
   const normalizedTitle = title.normalize("NFKC").trim();
+  const issue =
+    normalizedTitle && entryBody.trim()
+      ? constitutionalTopicCreationIssue(normalizedTitle, entryBody)
+      : normalizedTitle
+        ? constitutionalTopicCreationIssue(
+            normalizedTitle,
+            "Sorunun kendisini konu alan soru ifadesi.",
+          )
+        : null;
+  const advisories = normalizedTitle ? constitutionalTopicAdvisories(normalizedTitle) : [];
   return (
     <GuidanceBox summary="Başlık açma kontrolü">
       <p>
@@ -62,6 +82,14 @@ export function TopicWritingGuidance({ title }: { title: string }) {
           Anayasa Madde 51: başlık karar testini aç
         </Link>
       </div>
+      {issue || advisories.length > 0 ? (
+        <ul className="list-disc space-y-1 pl-5 text-foreground">
+          {issue ? <li>{issue.reason}</li> : null}
+          {advisories.map((advisory) => (
+            <li key={advisory.code}>{advisory.reason}</li>
+          ))}
+        </ul>
+      ) : null}
     </GuidanceBox>
   );
 }

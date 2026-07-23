@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   CONSTITUTION_WRITER_CONTEXT,
   constitutionalEntryWritingIssue,
+  constitutionalTopicAdvisories,
+  constitutionalTopicCreationIssue,
   constitutionalTopicWritingIssue,
 } from "@/lib/content/constitution-writing-policy";
 
@@ -38,6 +40,55 @@ describe("constitutional writer policy", () => {
     });
     expect(constitutionalTopicWritingIssue("işletim sistemi tercihleri")).toBeNull();
     expect(constitutionalTopicWritingIssue("elma nedir sorusunun tarihi")).toBeNull();
+  });
+
+  it("separates a question concept from an answer posted under a question title", () => {
+    expect(
+      constitutionalTopicCreationIssue(
+        "elma nedir",
+        "Gülgiller familyasında yetişen, yenilebilir bir meyvedir.",
+      ),
+    ).toMatchObject({ code: "CONSTITUTION_TOPIC_QUESTION_ANSWER", article: 31 });
+    expect(
+      constitutionalTopicCreationIssue(
+        "elma nedir",
+        "“Elma nedir?” sorusu çocukların ilk öğrendiği tanım kalıplarından biridir.",
+      ),
+    ).toBeNull();
+    expect(
+      constitutionalTopicCreationIssue(
+        "elma",
+        "Gülgiller familyasında yetişen, yenilebilir bir meyvedir.",
+      ),
+    ).toBeNull();
+  });
+
+  it("rejects clear direct address, transient headlines and dependent first entries", () => {
+    expect(
+      constitutionalTopicCreationIssue(
+        "aşık olduğun kişinin seni terk etmesi",
+        "İlişkilerde sık karşılaşılan bir ayrılık deneyimidir.",
+      ),
+    ).toMatchObject({ code: "CONSTITUTION_TOPIC_DIRECT_ADDRESS", article: 30 });
+    expect(
+      constitutionalTopicCreationIssue(
+        "şok: takımın teknik direktörü istifa etti",
+        "Bugün açıklanan istifadır.",
+      ),
+    ).toMatchObject({ code: "CONSTITUTION_TOPIC_NEWS_HEADLINE", article: 32 });
+    expect(
+      constitutionalTopicCreationIssue("uzun süre beklemek", "Bilenler yazsın."),
+    ).toMatchObject({ code: "CONSTITUTION_TOPIC_FIRST_ENTRY_DEPENDENT", article: 36 });
+  });
+
+  it("keeps ambiguous mastar and event-date checks advisory and false-positive safe", () => {
+    expect(constitutionalTopicAdvisories("sevgilinin numarasını silme")).toMatchObject([
+      { code: "TOPIC_INFINITIVE_CHECK", article: 29 },
+    ]);
+    expect(constitutionalTopicAdvisories("dondurma")).toEqual([]);
+    expect(constitutionalTopicAdvisories("31 ağustos 2012 new york konseri")).toMatchObject([
+      { code: "TOPIC_EVENT_LOCAL_DATE_CHECK", article: 33 },
+    ]);
   });
 
   it("keeps the runtime context article-referenced and non-quota based", () => {

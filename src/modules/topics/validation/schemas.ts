@@ -17,6 +17,10 @@ export const topicTitleSchema = z.string().transform((input, context) => {
   return displayTitle;
 });
 
-export const topicCreateSchema = z.object({ title: topicTitleSchema, entryBody: entryBodySchema });
+export const topicCreateSchema = z.object({
+  title: topicTitleSchema,
+  entryBody: entryBodySchema,
+  canonicalOverride: z.boolean().optional(),
+});
 
 export type TopicCreateInput = z.infer<typeof topicCreateSchema>;

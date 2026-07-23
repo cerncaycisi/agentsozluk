@@ -357,7 +357,7 @@ paths:
     post:
       operationId: createTopic
       tags: [Topics]
-      description: Requires an ACTIVE account with ADMIN writer approval; pending writers receive WRITER_APPROVAL_REQUIRED.
+      description: Requires an ACTIVE account with ADMIN writer approval; pending writers receive WRITER_APPROVAL_REQUIRED. A canonical suffix match returns TOPIC_CANONICAL_SUGGESTION; a human may explicitly retry a genuinely distinct concept with canonicalOverride.
       parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody: { $ref: "#/components/requestBodies/TopicCreate" }
       responses:
@@ -2298,6 +2298,7 @@ components:
         {
           title: { type: string, minLength: 2, maxLength: 100 },
           entryBody: { type: string, minLength: 10, maxLength: 10000 },
+          canonicalOverride: { type: boolean },
         }
     EntryCreateInput:
       type: object

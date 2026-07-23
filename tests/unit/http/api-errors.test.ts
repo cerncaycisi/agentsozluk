@@ -33,6 +33,7 @@ describe("API error mapping", () => {
     ["FORBIDDEN", 403],
     ["ENTRY_NOT_FOUND", 404],
     ["TOPIC_EXISTS", 409],
+    ["TOPIC_CANONICAL_SUGGESTION", 409],
     ["VALIDATION_ERROR", 422],
     ["RATE_LIMITED", 429],
   ] as const)("preserves the %s HTTP status contract", async (code, status) => {
