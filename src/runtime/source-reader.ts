@@ -4,6 +4,7 @@ import { request as httpsRequest } from "node:https";
 import type { LookupFunction } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 import { createHash } from "node:crypto";
+import { brotliDecompressSync, gunzipSync, inflateSync } from "node:zlib";
 import {
   isPrivateSourceAddress,
   parseSafeSourceUrl,
@@ -55,38 +56,76 @@ export function assertPublicSourceAddresses(
 }
 
 export function classifySourceReadError(error: unknown): string {
-  if (error instanceof Error && /^SOURCE_[A-Z0-9_]+$/u.test(error.message)) return error.message;
-  const code =
-    error && typeof error === "object" && "code" in error && typeof error.code === "string"
-      ? error.code.toUpperCase()
-      : "";
-  if (["ENOTFOUND", "EAI_AGAIN", "EAI_FAIL", "EAI_NODATA"].includes(code))
-    return "SOURCE_DNS_FAILED";
-  if (
-    [
-      "ECONNREFUSED",
-      "ECONNRESET",
-      "EHOSTUNREACH",
-      "ENETUNREACH",
-      "ENETDOWN",
-      "EPIPE",
-      "ERR_INVALID_IP_ADDRESS",
-    ].includes(code)
-  )
-    return "SOURCE_CONNECT_FAILED";
-  if (
-    code.startsWith("CERT_") ||
-    code.startsWith("ERR_TLS_") ||
-    [
-      "DEPTH_ZERO_SELF_SIGNED_CERT",
-      "SELF_SIGNED_CERT_IN_CHAIN",
-      "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
-      "UNABLE_TO_GET_ISSUER_CERT",
-    ].includes(code)
-  )
-    return "SOURCE_TLS_FAILED";
-  if (["ETIMEDOUT", "ESOCKETTIMEDOUT"].includes(code)) return "SOURCE_TIMEOUT";
+  const candidates: unknown[] = [error];
+  const visited = new Set<unknown>();
+  for (let index = 0; index < candidates.length && index < 16; index += 1) {
+    const candidate = candidates[index];
+    if (!candidate || visited.has(candidate)) continue;
+    visited.add(candidate);
+    if (candidate instanceof Error && /^SOURCE_[A-Z0-9_]+$/u.test(candidate.message))
+      return candidate.message;
+    if (candidate instanceof AggregateError) candidates.push(...candidate.errors);
+    if (typeof candidate === "object" && "cause" in candidate) candidates.push(candidate.cause);
+    const code =
+      typeof candidate === "object" && "code" in candidate && typeof candidate.code === "string"
+        ? candidate.code.toUpperCase()
+        : "";
+    if (["ENOTFOUND", "EAI_AGAIN", "EAI_FAIL", "EAI_NODATA"].includes(code))
+      return "SOURCE_DNS_FAILED";
+    if (
+      [
+        "ECONNABORTED",
+        "ECONNREFUSED",
+        "ECONNRESET",
+        "EHOSTUNREACH",
+        "ENETUNREACH",
+        "ENETDOWN",
+        "EPIPE",
+        "EADDRNOTAVAIL",
+        "EAFNOSUPPORT",
+        "ERR_INVALID_IP_ADDRESS",
+        "ERR_SOCKET_CLOSED",
+        "ERR_STREAM_DESTROYED",
+      ].includes(code)
+    )
+      return "SOURCE_CONNECT_FAILED";
+    if (
+      code.startsWith("CERT_") ||
+      code.startsWith("ERR_TLS_") ||
+      code.startsWith("ERR_SSL_") ||
+      code.startsWith("ERR_OSSL_") ||
+      [
+        "DEPTH_ZERO_SELF_SIGNED_CERT",
+        "EPROTO",
+        "SELF_SIGNED_CERT_IN_CHAIN",
+        "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+        "UNABLE_TO_GET_ISSUER_CERT",
+      ].includes(code)
+    )
+      return "SOURCE_TLS_FAILED";
+    if (["ABORT_ERR", "ETIMEDOUT", "ESOCKETTIMEDOUT", "UND_ERR_CONNECT_TIMEOUT"].includes(code))
+      return "SOURCE_TIMEOUT";
+  }
   return "SOURCE_FETCH_FAILED";
+}
+
+function decodeSourceBody(body: Buffer, contentEncoding: string | undefined): Buffer {
+  const encoding = contentEncoding?.split(",", 1)[0]?.trim().toLowerCase();
+  if (!encoding || encoding === "identity") return body;
+  try {
+    const options = { maxOutputLength: maximumResponseBytes };
+    if (encoding === "gzip" || encoding === "x-gzip") return gunzipSync(body, options);
+    if (encoding === "deflate") return inflateSync(body, options);
+    if (encoding === "br") return brotliDecompressSync(body, options);
+  } catch (error) {
+    const code =
+      error && typeof error === "object" && "code" in error && typeof error.code === "string"
+        ? error.code
+        : "";
+    if (code === "ERR_BUFFER_TOO_LARGE") throw new Error("SOURCE_TOO_LARGE");
+    throw new Error("SOURCE_CONTENT_ENCODING_INVALID");
+  }
+  throw new Error("SOURCE_CONTENT_ENCODING_UNSUPPORTED");
 }
 
 export function pinnedSourceLookup(address: string, family: number): LookupFunction {
@@ -442,7 +481,9 @@ export class SafeSourceReader {
     if ([401, 403, 407].includes(response.status)) throw new Error("SOURCE_AUTH_REQUIRED");
     if (response.status < 200 || response.status >= 300)
       throw new Error(`SOURCE_HTTP_${response.status}`);
-    return response;
+    const decodedBody = decodeSourceBody(response.body, response.headers["content-encoding"]);
+    if (decodedBody.byteLength > maximumResponseBytes) throw new Error("SOURCE_TOO_LARGE");
+    return { ...response, body: decodedBody };
   }
 
   async read(value: string, options: SourceReadOptions = {}): Promise<SourceReadItem[]> {

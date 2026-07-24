@@ -74,7 +74,13 @@ describe("original persona pack", () => {
     expect(pack.methodology.maxSingleSourceContribution).toBeLessThanOrEqual(0.4);
     for (const persona of pack.personas) {
       expect(persona.identity.biography).toBe("");
-      expect(persona.sources.length).toBeGreaterThanOrEqual(5);
+      expect(persona.sources.length).toBeGreaterThanOrEqual(10);
+      expect(
+        new Set(persona.sources.map(({ url }) => new URL(url).origin)).size,
+      ).toBeGreaterThanOrEqual(6);
+      expect(new Set(persona.sources.flatMap(({ topics }) => topics)).size).toBeGreaterThanOrEqual(
+        5,
+      );
       expect(persona.interests.reduce((sum, interest) => sum + interest.weight, 0)).toBeCloseTo(1);
       expect(persona.behavior).toMatchObject({ defaultEntryMin: 15, defaultEntryMax: 20 });
     }
@@ -87,23 +93,51 @@ describe("original persona pack", () => {
     const sourceDomains = new Set(sourceAssignments.map(({ url }) => new URL(url).hostname));
     const turkishDomains = new Set([
       "argonotlar.com",
+      "acikbilim.com",
+      "altyazi.net",
+      "artdogistanbul.com",
       "bantmag.com",
       "bianet.org",
+      "bilimakademisi.org",
       "bilimgenc.tubitak.gov.tr",
+      "cazkolik.com",
+      "dergipark.org.tr",
+      "disk.org.tr",
+      "evrimagaci.org",
       "fayn.press",
+      "fikirturu.com",
       "haber.aero",
+      "ifade.org.tr",
       "journo.com.tr",
       "kantan.news",
+      "manifold.press",
       "medyascope.tv",
+      "sarkac.org",
       "sanatatak.com",
+      "turkiye.un.org",
+      "vesaire.press",
       "t24.com.tr",
       "teyit.org",
       "www.aa.com.tr",
+      "www.agos.com.tr",
       "www.arkitera.com",
+      "www.birbabaindie.com",
+      "www.bloomberght.com",
+      "www.dunya.com",
+      "www.ekonomim.com",
+      "www.evrensel.net",
+      "www.havayolu101.com",
+      "www.iklimhaber.org",
       "www.k24kitap.org",
       "www.log.com.tr",
+      "www.lojiport.com",
       "www.newslabturkey.org",
+      "www.ntv.com.tr",
+      "www.sivilsayfalar.org",
+      "www.sosyalbilimler.org",
+      "www.tmmob.org.tr",
       "www.trthaber.com",
+      "yesilgazete.org",
     ]);
 
     expect(sourceVerification).toMatchObject({
@@ -111,12 +145,12 @@ describe("original persona pack", () => {
       environment: "agent-sozluk-prod",
       reader: "SafeSourceReader",
     });
-    expect(sourceAssignments).toHaveLength(55);
-    expect(sourceUrls.size).toBe(42);
-    expect(sourceDomains.size).toBe(42);
+    expect(sourceAssignments).toHaveLength(109);
+    expect(sourceUrls.size).toBe(72);
+    expect(sourceDomains.size).toBe(72);
     expect(
       [...sourceDomains].filter((domain) => turkishDomains.has(domain)).length,
-    ).toBeGreaterThanOrEqual(15);
+    ).toBeGreaterThanOrEqual(30);
     for (const persona of pack.personas) {
       expect(persona.sources.some(({ url }) => turkishDomains.has(new URL(url).hostname))).toBe(
         true,

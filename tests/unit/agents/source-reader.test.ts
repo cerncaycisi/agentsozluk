@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { gzipSync } from "node:zlib";
 import {
   assertPublicSourceAddresses,
   classifySourceReadError,
@@ -108,6 +109,23 @@ describe("safe external source reader", () => {
     expect(classifySourceReadError(new Error("unexpected sensitive detail"))).toBe(
       "SOURCE_FETCH_FAILED",
     );
+  });
+
+  it("classifies nested and aggregate transport causes without exposing their messages", () => {
+    const tlsCause = Object.assign(new Error("upstream certificate detail"), {
+      code: "ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR",
+    });
+    expect(classifySourceReadError(new Error("outer", { cause: tlsCause }))).toBe(
+      "SOURCE_TLS_FAILED",
+    );
+    expect(
+      classifySourceReadError(
+        new AggregateError(
+          [Object.assign(new Error("socket detail"), { code: "EADDRNOTAVAIL" })],
+          "aggregate detail",
+        ),
+      ),
+    ).toBe("SOURCE_CONNECT_FAILED");
   });
 
   it("returns the Node 22 all-address lookup shape for a pinned address", async () => {
@@ -249,6 +267,60 @@ describe("safe external source reader", () => {
     const items = await reader.read("https://example.com/");
     expect(items[0]).toMatchObject({ title: "Feed item", safeText: "Feed metni" });
     expect(items[0]!.safeText).not.toContain("HTML fallback");
+  });
+
+  it("decodes a bounded gzip RSS response before parsing it", async () => {
+    const requester = vi.fn().mockImplementation(async (url: URL) => {
+      if (url.pathname === "/robots.txt")
+        return { status: 404, headers: {}, body: Buffer.alloc(0), url: url.toString() };
+      return {
+        status: 200,
+        headers: {
+          "content-encoding": "gzip",
+          "content-type": "application/rss+xml",
+        },
+        body: gzipSync(
+          `<rss><channel><item><title>Sıkıştırılmış kaynak</title><link>/post</link><description>Güvenli metin</description></item></channel></rss>`,
+        ),
+        url: url.toString(),
+      };
+    });
+    const reader = new SafeSourceReader({
+      minimumDomainIntervalMs: 0,
+      resolver: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
+      requester,
+    });
+
+    await expect(reader.read("https://example.com/feed.xml")).resolves.toMatchObject([
+      {
+        title: "Sıkıştırılmış kaynak",
+        safeText: "Güvenli metin",
+        canonicalUrl: "https://example.com/post",
+      },
+    ]);
+  });
+
+  it("rejects a compressed response whose decoded body exceeds the hard limit", async () => {
+    const requester = vi.fn().mockImplementation(async (url: URL) => {
+      if (url.pathname === "/robots.txt")
+        return { status: 404, headers: {}, body: Buffer.alloc(0), url: url.toString() };
+      return {
+        status: 200,
+        headers: {
+          "content-encoding": "gzip",
+          "content-type": "text/plain",
+        },
+        body: gzipSync(Buffer.alloc(2 * 1024 * 1024 + 1, "a")),
+        url: url.toString(),
+      };
+    });
+    const reader = new SafeSourceReader({
+      minimumDomainIntervalMs: 0,
+      resolver: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
+      requester,
+    });
+
+    await expect(reader.read("https://example.com/feed.xml")).rejects.toThrow("SOURCE_TOO_LARGE");
   });
 
   it("paces consecutive same-domain requests by the configured minimum interval", async () => {
