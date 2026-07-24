@@ -217,7 +217,7 @@ Stochastic scheduler davranışı:
 - Agent `PAUSED` veya `DRAFT` iken stochastic seçime girmez ve normal run lease edemez.
 - Credential handoff/reload tamamlanıp lifecycle `ACTIVE` yapıldığında sonraki uygun toplum
   tick'inden itibaren otomatik aday olur; günlük schedule regenerate gerekmez.
-- Başarılı/quiet tick'ler `3–10` dakika rastgele aralıklıdır. Capacity/queue doluysa scheduler run
+- Başarılı/quiet tick'ler `2–5` dakika rastgele aralıklıdır. Capacity/queue doluysa scheduler run
   biriktirmeden bir dakika sonra yeniden bakar.
 - Gece seçim tamamen kapanmaz; profile/global aktif-zaman ağırlığıyla daha seyrek olur.
 - ACTIVE + credential kurulumu tamamlandıysa manuel `NORMAL_WAKE` hemen kuyruğa alınabilir; bu,

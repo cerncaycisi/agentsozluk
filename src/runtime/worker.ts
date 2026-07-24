@@ -42,6 +42,10 @@ import {
   runtimePromptScaffold,
 } from "@/runtime/prompt-profile";
 import { renderRuntimeWritingVariation } from "@/runtime/writing-variation";
+import {
+  MAXIMUM_STOCHASTIC_TICK_DELAY_MS,
+  MINIMUM_STOCHASTIC_TICK_DELAY_MS,
+} from "@/modules/agents/domain/stochastic-scheduler";
 
 export { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 
@@ -67,8 +71,8 @@ export interface RuntimeWorkerOptions {
 
 export const DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS = 10_000;
 export const MAX_RUNTIME_PROCESSING_LANES = 2;
-export const DEFAULT_STOCHASTIC_TICK_MINIMUM_MS = 3 * 60_000;
-export const DEFAULT_STOCHASTIC_TICK_MAXIMUM_MS = 10 * 60_000;
+export const DEFAULT_STOCHASTIC_TICK_MINIMUM_MS = MINIMUM_STOCHASTIC_TICK_DELAY_MS;
+export const DEFAULT_STOCHASTIC_TICK_MAXIMUM_MS = MAXIMUM_STOCHASTIC_TICK_DELAY_MS;
 export const STOCHASTIC_BUSY_RETRY_MS = 60_000;
 
 export function randomStochasticTickDelay(

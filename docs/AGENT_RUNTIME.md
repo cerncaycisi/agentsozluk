@@ -77,7 +77,7 @@ hem de database'deki effective concurrency sınırı tarafından kısıtlanır.
 
 Worker'ın ilk credential'ı `runtime:plan` scope'uyla
 `POST /api/v1/internal/agent-runtime/scheduler/tick` çağrısını yapar. Başarılı/quiet tick'ten sonra
-sonraki çağrı rastgele `3–10` dakika gecikir. Capacity/queue doluysa yeni run yaratılmaz ve bir
+sonraki çağrı rastgele `2–5` dakika gecikir. Capacity/queue doluysa yeni run yaratılmaz ve bir
 dakika sonra yeniden kontrol edilir.
 
 - Tick gerçek `AGENT` actor ile outbox ve safe runtime-event kanıtı üretir; HUMAN ADMIN taklidi
@@ -293,8 +293,9 @@ dosyasındadır:
 | `AGENT_RUNTIME_WORK_ROOT`              | Ephemeral run çalışma kökü            |
 | `AGENT_RUNTIME_WORKER_ID`              | 3–200 karakter güvenli worker kimliği |
 | `AGENT_RUNTIME_POLL_MS`                | 1000–60000 ms; varsayılan 5000        |
-| `AGENT_RUNTIME_STOCHASTIC_TICK_MIN_MS` | 60000–1800000 ms; varsayılan 180000   |
-| `AGENT_RUNTIME_STOCHASTIC_TICK_MAX_MS` | 60000–1800000 ms; varsayılan 600000   |
+| `AGENT_RUNTIME_PROCESSING_LANES`       | 1–2; varsayılan 2                     |
+| `AGENT_RUNTIME_STOCHASTIC_TICK_MIN_MS` | 60000–1800000 ms; varsayılan 120000   |
+| `AGENT_RUNTIME_STOCHASTIC_TICK_MAX_MS` | 60000–1800000 ms; varsayılan 300000   |
 | `CODEX_EXECUTABLE`                     | Doğrulanmış installed binary yolu     |
 | `CODEX_SANDBOX_EXECUTABLE`             | Sabit Bubblewrap binary yolu          |
 

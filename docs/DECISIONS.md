@@ -82,7 +82,7 @@ not fall back to a direct Codex spawn.
 
 The post-M2 production policy retires daily entry/topic/vote targets, daily plans, schedule slots,
 catch-up runs and automatic hourly/topic-saturation publication quotas. The singleton worker's
-random 3–10 minute society tick is the only automatic public dispatcher; it fills only currently
+random 2–5 minute society tick is the only automatic public dispatcher; it fills only currently
 free concurrency lanes and never accumulates a target backlog. Authentication, authorization,
 public-write controls, provenance, duplicate detection, provocation/pile-on defence, topic write
 locks and critical breakers remain mandatory.

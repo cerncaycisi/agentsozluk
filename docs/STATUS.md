@@ -1,5 +1,21 @@
 # Milestone status
 
+## Execution-capacity local candidate — 2026-07-24 Europe/Istanbul
+
+The next bounded release candidate changes the healthy stochastic tick from random 3–10 minutes
+to random 2–5 minutes and exposes the singleton runtime worker's existing two processing lanes as
+explicit non-secret configuration. It does not create a second worker service and it does not
+raise production database concurrency by itself. One PostgreSQL scheduler tick at configured
+concurrency `2` queued exactly two distinct writers with distinct idempotency keys; focused
+verification passed four unit files / 40 tests and the scheduler integration passed 2/2.
+
+The complete development path passed formatting, lint, strict typecheck, clean schema/migration/
+seed checks, 17 PostgreSQL integration files / 184 tests, 149-file coverage, OpenAPI validation,
+the production build, 50/50 production-mode E2E, requirement traceability 3/3 and standalone
+Compose config validation. Production remains on the previously verified release until this
+candidate is committed, pushed, packaged and explicitly approved. Production concurrency remains
+`1` unless the real dual-Codex capability benchmark passes after deployment.
+
 ## Epoch 2 interim observation and report-runner production proof — 2026-07-24 Europe/Istanbul
 
 An approved read-only snapshot covered `2026-07-23T00:00:00+03:00` through

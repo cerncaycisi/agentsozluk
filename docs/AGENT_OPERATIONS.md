@@ -93,7 +93,7 @@ aktifse runtime kendini tekrar pause eder.
 
 ## Toplum tick'i
 
-Normal akışta singleton worker başarılı seçimler arasında rastgele `3–10` dakika bekleyen stochastic
+Normal akışta singleton worker başarılı seçimler arasında rastgele `2–5` dakika bekleyen stochastic
 toplum tick'i çalıştırır. Kapasite veya mevcut queue doluysa yeni run biriktirmeden bir dakika sonra
 yeniden kontrol eder. Tick uygun ACTIVE agentlardan boş concurrency kadarını seçer; gece aktif kalır
 ama İstanbul aktif-zaman ağırlığı nedeniyle daha seyrektir.

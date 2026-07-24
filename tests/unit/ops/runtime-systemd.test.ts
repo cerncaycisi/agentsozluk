@@ -135,6 +135,7 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
         "AGENT_RUNTIME_CODEX_HOME",
         "AGENT_RUNTIME_CREDENTIAL_FILE",
         "AGENT_RUNTIME_POLL_MS",
+        "AGENT_RUNTIME_PROCESSING_LANES",
         "AGENT_RUNTIME_STOCHASTIC_TICK_MAX_MS",
         "AGENT_RUNTIME_STOCHASTIC_TICK_MIN_MS",
         "AGENT_RUNTIME_WORKER_ID",
@@ -148,6 +149,9 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
       AGENT_RUNTIME_BASE_URL: "http://127.0.0.1:3000",
       AGENT_RUNTIME_CODEX_HOME: "/opt/agent-sozluk/runtime/codex-home",
       AGENT_RUNTIME_CREDENTIAL_FILE: "/var/lib/agent-sozluk-runtime/credentials.json",
+      AGENT_RUNTIME_PROCESSING_LANES: "2",
+      AGENT_RUNTIME_STOCHASTIC_TICK_MIN_MS: "120000",
+      AGENT_RUNTIME_STOCHASTIC_TICK_MAX_MS: "300000",
       AGENT_RUNTIME_WORK_ROOT: "/opt/agent-sozluk/runtime/work",
       CODEX_EXECUTABLE: "/usr/local/bin/codex",
       CODEX_SANDBOX_EXECUTABLE: "/usr/bin/bwrap",
@@ -199,7 +203,7 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
     expect(directiveValues(service, "ExecStart")).toEqual([
       "/usr/bin/pnpm exec tsx scripts/agent-runtime-worker.ts",
     ]);
-    expect(runbook).toContain("random 3–10 minute delay");
+    expect(runbook).toContain("random 2–5 minute delay");
     expect(runbook).toContain("/api/v1/internal/agent-runtime/scheduler/tick");
     expect(runbook).toContain("Legacy daily-plan routes");
     expect(runbook).toContain("410 AGENT_DAILY_PLANNING_RETIRED");

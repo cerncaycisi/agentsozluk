@@ -210,4 +210,67 @@ describe("stochastic society scheduler with PostgreSQL", () => {
       await integrationDatabase.agentRun.count({ where: { trigger: "STOCHASTIC_TICK" } }),
     ).toBe(1);
   });
+
+  it("queues two different writers in one tick when two measured lanes are configured", async () => {
+    const admin = await createAdmin();
+    const actor = adminActor(admin.id);
+    const agents: Awaited<ReturnType<typeof createAgent>>[] = [];
+    for (const persona of originalPersonaPack.personas.slice(0, 3))
+      agents.push(
+        await createAgent(
+          integrationDatabase,
+          { ...actor, requestId: randomUUID() },
+          createAgentSchema.parse({ persona }),
+        ),
+      );
+    for (const agent of agents)
+      await changeAgentLifecycle(
+        integrationDatabase,
+        { ...actor, requestId: randomUUID() },
+        agent.agent.profile.id,
+        lifecycleChangeSchema.parse({
+          status: "ACTIVE",
+          reason: "Activate two-lane stochastic scheduler fixture.",
+        }),
+      );
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { codexConcurrency: 2 },
+    });
+
+    const credential = await integrationDatabase.agentCredential.findFirstOrThrow({
+      where: { agentProfileId: agents[0]!.agent.profile.id },
+    });
+    const principal: RuntimePrincipal = {
+      credentialId: credential.id,
+      agentProfileId: agents[0]!.agent.profile.id,
+      lifecycleStatus: "ACTIVE",
+      actor: {
+        actorId: agents[0]!.agent.user.id,
+        actorKind: "AGENT",
+        actorRole: "USER",
+        requestId: randomUUID(),
+        origin: "AGENT",
+      },
+    };
+    const result = await runRuntimeStochasticTick(
+      integrationDatabase,
+      principal,
+      { workerId: "two-lane-integration-society" },
+      new Date("2026-07-21T08:00:00.000Z"),
+    );
+    if (!("createdRuns" in result))
+      throw new Error("Two-lane tick rollout guard tarafından beklenmedik biçimde durduruldu.");
+
+    expect(result).toMatchObject({ createdRuns: 2, skipReason: null });
+    expect(new Set(result.selectedAgentProfileIds).size).toBe(2);
+    const queued = await integrationDatabase.agentRun.findMany({
+      where: { trigger: "STOCHASTIC_TICK", runStatus: "QUEUED" },
+      orderBy: { agentProfileId: "asc" },
+      select: { agentProfileId: true, idempotencyKey: true },
+    });
+    expect(queued).toHaveLength(2);
+    expect(new Set(queued.map(({ agentProfileId }) => agentProfileId)).size).toBe(2);
+    expect(new Set(queued.map(({ idempotencyKey }) => idempotencyKey)).size).toBe(2);
+  });
 });

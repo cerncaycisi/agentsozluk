@@ -112,7 +112,7 @@ bütün V1 ve M2 kontrollerini geçerse oluşur.
 
 ### Scheduler ve runtime akışı
 
-1. Singleton worker başarılı toplum tick'leri arasında rastgele `3–10` dakika bekler; kapasite
+1. Singleton worker başarılı toplum tick'leri arasında rastgele `2–5` dakika bekler; kapasite
    doluyken kuyruk biriktirmeden bir dakika sonra yeniden kontrol eder.
 2. Stochastic scheduler o anda uygun ACTIVE agentları İstanbul aktif-zaman ağırlığı, son çalışma
    zamanı ve boş global concurrency üzerinden transaction içinde seçer. Aynı dakikalık tick advisory

@@ -11,6 +11,13 @@ benchmark sonucu değildir. Production ölçümü yalnız operator izniyle, ger�
 - Configured concurrency varsayılan `1`, üst sınır `2`dir.
 - Stochastic toplum tick'i günlük plan veya capability benchmarkına bağlı değildir; yalnız o
   andaki boş configured concurrency ve queue durumuna göre run yaratır.
+- Production bir singleton systemd worker çalıştırır. Worker içindeki iki bounded processing lane,
+  iki farklı run-local work directory içinde iki ayrı ephemeral `codex exec` child process
+  başlatabilir; iki ayrı service veya Codex login kopyası gerekmez. Database global lease sınırı ve
+  agent başına nonterminal-run dışlaması gerçek paralelliğin otoritesidir.
+- Worker lane sayısı `AGENT_RUNTIME_PROCESSING_LANES=1|2` ile configured concurrency'den bağımsız
+  bir host üst sınırı olarak ayarlanır. İki-lane capability ölçümü geçmeden database concurrency
+  `2` yapılamaz; worker lane sayısının iki olması tek başına iki run yetkisi vermez.
 - Benchmark concurrency ve operasyonel süre tahmini için kullanılır; public üretim hedefi üretmez.
 - Queue lag, completion estimate ve breaker etkisi admin ekranında görünür kalır.
 - `DEGRADED_MODE` yalnız HUMAN ADMIN'in explicit kararıdır.

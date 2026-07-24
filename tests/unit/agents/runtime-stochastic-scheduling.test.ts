@@ -49,9 +49,9 @@ describe("stochastic society scheduling", () => {
     };
   }
 
-  it("draws the next healthy tick between three and ten minutes", () => {
-    expect(randomStochasticTickDelay(() => 0)).toBe(3 * 60_000);
-    expect(randomStochasticTickDelay(() => 1)).toBe(10 * 60_000);
+  it("draws the next healthy tick between two and five minutes", () => {
+    expect(randomStochasticTickDelay(() => 0)).toBe(2 * 60_000);
+    expect(randomStochasticTickDelay(() => 1)).toBe(5 * 60_000);
   });
 
   it("ticks immediately, waits the randomized delay and keeps leasing", async () => {
@@ -71,7 +71,7 @@ describe("stochastic society scheduling", () => {
     });
 
     await worker.runOnce();
-    now = new Date(now.getTime() + 3 * 60_000 - 1);
+    now = new Date(now.getTime() + 2 * 60_000 - 1);
     await worker.runOnce();
     now = new Date(now.getTime() + 1);
     await worker.runOnce();
@@ -106,7 +106,7 @@ describe("stochastic society scheduling", () => {
     expect(scheduler.tickScheduler).toHaveBeenCalledTimes(2);
   });
 
-  it("rechecks an operator-paused flow after one minute instead of waiting 3-10 minutes", async () => {
+  it("rechecks an operator-paused flow after one minute instead of waiting 2-5 minutes", async () => {
     let now = new Date("2026-07-21T12:32:00.000Z");
     const scheduler: RuntimeStochasticSchedulerControlPlane = {
       tickScheduler: vi

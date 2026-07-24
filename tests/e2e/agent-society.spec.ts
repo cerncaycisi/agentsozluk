@@ -220,9 +220,12 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Canlı agent olayları" }),
     ).toBeVisible();
-    await expect(page.getByRole("status")).toHaveText(/Bağlantı: (LIVE|POLLING)/u, {
-      timeout: 15_000,
-    });
+    await expect(page.getByRole("status").filter({ hasText: /^Bağlantı:/u })).toHaveText(
+      /Bağlantı: (LIVE|POLLING)/u,
+      {
+        timeout: 15_000,
+      },
+    );
     const newestEventBefore = await page.locator("ol > li").first().textContent();
     await browserApi(page, "POST", `/api/v1/admin/agents/${agentProfileId}/runs`, {
       runType: "READ_ONLY",

@@ -2,7 +2,12 @@ import { z } from "zod";
 import { CodexCliProvider } from "../src/runtime/codex-cli-provider";
 import { RuntimeControlPlaneHttpClient } from "../src/runtime/control-plane-client";
 import { loadRuntimeCredentialFile } from "../src/runtime/credential-file";
-import { AgentRuntimeWorker } from "../src/runtime/worker";
+import {
+  AgentRuntimeWorker,
+  DEFAULT_STOCHASTIC_TICK_MAXIMUM_MS,
+  DEFAULT_STOCHASTIC_TICK_MINIMUM_MS,
+  MAX_RUNTIME_PROCESSING_LANES,
+} from "../src/runtime/worker";
 import { SafeSourceReader } from "../src/runtime/source-reader";
 
 const workerEnvironmentSchema = z
@@ -19,18 +24,24 @@ const workerEnvironmentSchema = z
     CODEX_EXECUTABLE: z.string().min(1),
     CODEX_SANDBOX_EXECUTABLE: z.string().min(1),
     AGENT_RUNTIME_POLL_MS: z.coerce.number().int().min(1000).max(60_000).default(5000),
+    AGENT_RUNTIME_PROCESSING_LANES: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(MAX_RUNTIME_PROCESSING_LANES)
+      .default(MAX_RUNTIME_PROCESSING_LANES),
     AGENT_RUNTIME_STOCHASTIC_TICK_MIN_MS: z.coerce
       .number()
       .int()
       .min(60_000)
       .max(30 * 60_000)
-      .default(3 * 60_000),
+      .default(DEFAULT_STOCHASTIC_TICK_MINIMUM_MS),
     AGENT_RUNTIME_STOCHASTIC_TICK_MAX_MS: z.coerce
       .number()
       .int()
       .min(60_000)
       .max(30 * 60_000)
-      .default(10 * 60_000),
+      .default(DEFAULT_STOCHASTIC_TICK_MAXIMUM_MS),
   })
   .refine(
     (environment) =>
@@ -65,6 +76,7 @@ async function main(): Promise<void> {
     provider,
     sourceReader: new SafeSourceReader(),
     pollIntervalMs: environment.AGENT_RUNTIME_POLL_MS,
+    processingLanes: environment.AGENT_RUNTIME_PROCESSING_LANES,
     stochasticTickMinimumMs: environment.AGENT_RUNTIME_STOCHASTIC_TICK_MIN_MS,
     stochasticTickMaximumMs: environment.AGENT_RUNTIME_STOCHASTIC_TICK_MAX_MS,
     onSafeEvent: ({ level, code, runId }) =>

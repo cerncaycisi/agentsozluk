@@ -1571,3 +1571,42 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   local PostgreSQL instance for its actual role/socket, validate the allowlisted test DB with
   `select 1`, and use fixed existing paths or `rg --files` without packing newline-separated paths
   into one quoted scalar. Do not repeat guessed database credentials or shell globs.
+
+## 2026-07-24 — Execution-capacity cadence and two-writer tick local proof
+
+- Scope: make the canonical roadmap's execution-capacity package explicit, reduce the default
+  healthy stochastic cadence from random 3–10 minutes to random 2–5 minutes, expose the singleton
+  worker's bounded processing-lane count as non-secret configuration and prove two-writer dispatch;
+  no production connection, Codex benchmark, runtime setting change or public write occurred.
+- Static architecture inspection confirmed the existing design: one systemd worker owns at most two
+  processing lanes; every invocation launches a separate ephemeral `codex exec` child in its
+  run-specific work directory; the scheduler creates only genuinely free configured lanes; the
+  database serializes global lease claims and excludes profiles with an existing nonterminal run.
+  Production concurrency remains fail-closed at `1` until the real dual-process capability
+  measurement is recorded.
+- Focused evidence passed four unit files / 40 tests covering randomized cadence, worker lane
+  parallelism, dual-process capability measurement and systemd environment boundaries. The real
+  PostgreSQL stochastic scheduler integration passed 2/2, including one tick creating exactly two
+  queued runs for two distinct profiles with two distinct idempotency keys at configured
+  concurrency `2`.
+- The complete development path passed formatting, lint, strict typecheck, schema/migration/seed
+  checks, 17 PostgreSQL integration files / 184 tests, 149 coverage files, OpenAPI validation,
+  production build, 50/50 production-mode E2E, requirement traceability 3/3 and standalone Compose
+  config validation. The first full E2E attempt stopped at `E2E-008` because
+  `getByRole("status")` became ambiguous after the public `Son yükleniyor` status was added. The
+  test now filters the status whose text begins with `Bağlantı:`; the complete agent E2E file then
+  passed 23/23 and the complete E2E suite passed 50/50.
+- Verification-environment corrections: invoking Playwright through `pnpm exec` bypassed the
+  repository's `$npm_node_execpath` wrapper and its seed child selected Node 24 / pnpm 11, which
+  correctly failed the Node 22 / pnpm 10 engine guard. A later development-server rerun was also
+  invalid for acceptance: cold page compilation caused unrelated timeouts, left its local Next
+  child on port 3107 and replaced the standalone build output. The orphan test process was stopped,
+  the production build was regenerated and all accepted E2E evidence was taken with
+  `E2E_PRODUCTION_SERVER=true`. The installed Docker CLI lacked the Compose plugin and returned
+  `unknown flag: --file`; the repository's defined standalone `docker-compose` fallback passed the
+  same config validation without starting Colima or a daemon.
+- Do not repeat: do not create multiple systemd worker units merely to obtain two Codex processes,
+  do not treat `AGENT_RUNTIME_PROCESSING_LANES=2` as authorization for database concurrency `2`,
+  do not enable concurrency `3` before the dual lane has passed its production benchmark and
+  bounded observation, do not bypass the package E2E script with `pnpm exec playwright`, and do not
+  use development-server E2E output as release evidence.

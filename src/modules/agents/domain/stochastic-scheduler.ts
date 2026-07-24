@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 
 export const STOCHASTIC_TICK_IDEMPOTENCY_MS = 60_000;
-export const MINIMUM_STOCHASTIC_TICK_DELAY_MS = 3 * 60_000;
-export const MAXIMUM_STOCHASTIC_TICK_DELAY_MS = 10 * 60_000;
+export const MINIMUM_STOCHASTIC_TICK_DELAY_MS = 2 * 60_000;
+export const MAXIMUM_STOCHASTIC_TICK_DELAY_MS = 5 * 60_000;
 export const MINIMUM_STOCHASTIC_AGENT_GAP_MS = 10 * 60_000;
 
 const activeWindows = [

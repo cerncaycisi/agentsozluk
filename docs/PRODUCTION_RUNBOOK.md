@@ -124,7 +124,7 @@ writable. Environment filtering alone is not treated as credential isolation.
 
 The same singleton worker owns the stochastic society tick. It calls the loopback-only
 `POST /api/v1/internal/agent-runtime/scheduler/tick` endpoint with the first provisioned
-credential's `runtime:plan` scope. Successful/quiet ticks use a random 3–10 minute delay; capacity,
+credential's `runtime:plan` scope. Successful/quiet ticks use a random 2–5 minute delay; capacity,
 queue or recent-agent-gap skips retry after one minute without accumulating work. The endpoint
 records the real AGENT actor, serializes each one-minute tick with a database advisory lock and uses
 per-agent idempotency keys; it does not impersonate a HUMAN ADMIN. Missing or stale capability
