@@ -223,67 +223,38 @@ production acceptance remains pending.
   container reference, all three volumes and database data; removed nine unused application
   images including failed `f1474bf`; pruned only unused build cache older than 24 hours; and moved
   root usage from 82% to 71% with 22,533,688 KiB free.
+- 2026-07-24: the build-once exact-SHA release lane completed its first production proof. Exact
+  source SHA `959af520f9d4a29866fee4f6ac69976d9bac2f02` passed all seven CI jobs in run
+  `30077075275`; release workflow `30077476136` produced one-day artifact `8590589412`
+  (`226,214,451` bytes, GitHub ZIP digest
+  `sha256:36c4d100f23fb118d0b7bc6b71b17a5b7a39ebc69d8432a06d91546adc54b0d6`).
+  The wrapper verified the ZIP, v2 manifest, archive hashes/paths, ABI and the portable Docker-save
+  config digest before SSH. Pinned production identity guards passed; the destination loaded the
+  image as daemon-local ID
+  `sha256:a46a9f762ad238f2e2ae3ecbffeeb62ff9bab39ce9b9014a4ba35c8fcdb08c84`
+  while preserving the separate portable config digest
+  `sha256:98d1b05c9e54d01b3eb2c7d91343b5943a76d78f1612794aeec4a7651b6d707f`.
+  One running job drained naturally with no cancellation, then app and immutable runtime switched
+  atomically without a migration. Shared static/live smoke passed; health/readiness/search were
+  `200/200/200`; worker returned `active/running`; and the required settings, lifecycle, queue,
+  volume and database preservation guards passed. Bounded cleanup retained the new and immediate
+  rollback image/release plus all volumes/database data, removed two older unused application
+  images and 38 older runtime releases, pruned only eligible cache older than 24 hours and moved
+  root usage from 76% (18,710,616 KiB free) to 32% (51,391,300 KiB free). Queue item 1 is complete.
 
 ## Current clean work queue
 
-1. **Make the exact-SHA release lane fast and repeatable.** Replace ad-hoc remote operator scripts
-   with one repository-owned, shell-checked, idempotent no-migration deploy command that performs
-   the pinned identity guards, captures/restores state evidence, waits without cancelling runs,
-   builds or consumes the exact candidate, runs one shared `smoke:release` contract, assembles the
-   host-native runtime release and cuts over atomically. Run that same smoke before production
-   approval. Parallelize independent CI gates instead of serializing unit, integration, coverage,
-   simulation, build, E2E and Docker work. After bounded Actions artifact/cache cleanup, build each
-   immutable application image once in CI and promote its verified SHA rather than rebuilding it on
-   production; package the matching Linux/glibc worker release from the same source receipt. Keep
-   docs-only receipts on `[skip ci]`, preserve the full acceptance gates, and target 8–12 minutes
-   for a schema-neutral quick fix and 12–18 minutes for an ordinary release. Integrate the existing
-   disk-retention guard: preserve active/candidate/one rollback image and current/previous release,
-   prune no volume or database data, and record before/after evidence.
-   **Stage 1 status:** the guarded, resumable, schema-neutral command and shared smoke are in main at
-   `3eef786ddde42026884b21e9c34ed9432493b155`; serial CI passed all gates in `23m51s`. The
-   six-lane parallel replacement passed every lane and the fail-closed `validate` aggregator at
-   `e62e1cbf916d11a2bcd78543c2747895f59382aa` in `4m54s`, versus the serial `23m51s`. First
-   production proof remains open. Build-once promotion code is implemented at exact source SHA
-   `438d6b3716f9013b279dd382ff3999d4a1390bc0`: a manual green-main-only workflow builds and
-   smokes one image plus a minimal matching Ubuntu/glibc runtime; a bounded pre-upload cap and
-   one-day retention bound Actions storage; the local wrapper authenticates the workflow/run,
-   GitHub artifact ZIP digest, internal manifest/checksums/size/ABI and archive paths before any
-   SSH; and an inert installer can stage the exact image/release without changing services,
-   `current`, settings, lifecycle or queue state. The old server build is now an explicit fallback
-   through the same assembler. Local validation passed 133 unit files / 667 tests, format, lint,
-   strict typecheck, release/OpenAPI/requirements/persona/metadata gates and the 64-page production
-   build. The new GitHub workflow, first artifact and first production promotion remain evidence
-   gates, so queue item 1 is not yet complete. First run `30020282846` built and smoked both
-   stages but correctly stopped before upload: the measured `227,226,573`-byte (216.7 MiB) bundle
-   exceeded the initial 160 MiB estimate. The cap is now calibrated to 240 MiB and emits separate
-   image/runtime byte counts on failure. Follow-up workflow `30074005142` built and uploaded
-   artifact `8589270031` in `7m13s`; its independent ZIP digest, manifest, archive hashes/sizes,
-   ABI and zstd checks passed. Pre-SSH verification then exposed an old 170 MB duplicate API cap
-   and a macOS awk reserved-variable error in path validation. Both are corrected with a
-   payload-plus-1-MiB ZIP bound and one portable ZIP/tar path validator. Fresh exact-SHA workflow
-   `30075139795` then uploaded artifact `8589699907`; its ZIP digest, manifest, archive hashes,
-   ABI, zstd and path validation passed locally. The first approved promotion stopped before
-   runtime stage or cutover because GitHub's Docker-save config digest `d9e3f704…` became
-   daemon-local ID `344bc56a…` after production Docker loaded the same archive. The old installer
-   incorrectly required those environment-specific identities to be equal. Production remained on
-   healthy app/runtime SHA `3090346…` with worker `active/running`, restart `0`, queue/lease
-   `0/0/0/0` and health/readiness `200/200`. The correction separates portable config/tar receipts
-   from the root-owned loaded-image receipt, rejects unreceipted tag reuse and emits coded
-   unexpected failures. A new exact SHA, CI artifact and production proof remain required. Bounded
-   storage cleanup removed two obsolete
-   lockfile caches totalling `401,334,874` bytes and retained the current cache; mandatory one-day
-   coverage evidence remains enabled.
-2. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
+1. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
    with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
    reason-specific evidence. Initially grant it only to Gokhan's selected account; never hardcode a
    user ID or recreate an exactly-one-admin invariant.
-3. **Build constitutional moderation, trash and appeal.** Separate gammaz decision from content
+2. **Build constitutional moderation, trash and appeal.** Separate gammaz decision from content
    action, format from current-law review, and move from hide; add trash, revision, revival queue and
    concrete appeal. Initially only Gokhan receives format/legal/appeal capabilities.
-4. **Lock the manual runtime-control contract.** Verify moderation UI pause/start end to end, keep
+3. **Lock the manual runtime-control contract.** Verify moderation UI pause/start end to end, keep
    technical fail-closed breakers and global kill switches, and prove that retired daily/hourly
    targets or content-volume breakers cannot silently stop normal society flow.
-5. **Observe and improve stochastic public decisions.** Measure topic, entry, vote, follow,
+4. **Observe and improve stochastic public decisions.** Measure topic, entry, vote, follow,
    bookmark and abstention outcomes across all active writers. Diagnose why successful stochastic
    runs may stop at voting; improve perception/action choice only from measured evidence and never
    through fake action quotas. After this evidence pass, tune continuous-flow throughput without
@@ -300,7 +271,7 @@ production acceptance remains pending.
    Epoch 2 contract and its read-only baseline/experiment-memory reports are implemented;
    operator-directed runs remain separately attributed rather than blanket-excluded by time. The
    next step is to collect the untouched Epoch 2 evidence and act only on measured findings.
-6. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
+5. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
    belief, relationship and bounded persona changes. Reopen the canonical source package before
    that observation: deterministically audit every configured source for DNS, connect, TLS, HTTP,
@@ -314,19 +285,19 @@ production acceptance remains pending.
    independent origins, including at least eight Turkish-language or Türkiye-focused sources; each
    active agent receives at least ten healthy sources spanning at least five categories and six
    origins. A source counts toward these floors only after a fresh fetch yields usable items.
-7. **Remove retired daily-planning debt and rebaseline traceability.** Delete or clearly isolate
+6. **Remove retired daily-planning debt and rebaseline traceability.** Delete or clearly isolate
    legacy daily-target, quota, catch-up and saturation-override paths, fields, labels, tests and
    documentation that can no longer affect continuous stochastic flow. Preserve historical records,
    hard safety/transactional controls and accurate evidence history.
-8. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
+7. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
    reject redirects/non-JSON/oversized responses, default source traffic to ports 80/443 and apply
    robots/model-input policy per origin.
-9. **Automate writer onboarding.** Ensure a newly imported valid persona receives runtime
+8. **Automate writer onboarding.** Ensure a newly imported valid persona receives runtime
    credentials and becomes eligible for stochastic selection after activation without one-off
    database or operator repair.
-10. **Add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
-    allowing an audited admin to remove one unsafe seed entry from every public surface.
-11. **Improve risk-based verification and operations.** Label current coverage accurately, extend
+9. **Add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
+   allowing an audited admin to remove one unsafe seed entry from every public surface.
+10. **Improve risk-based verification and operations.** Label current coverage accurately, extend
     it to critical runtime/routes, batch and schedule expired-record cleanup, cache Codex capability
     fingerprints and expose authenticated operational metrics. Make production disk retention
     deterministic: block image builds below 8 GiB root-filesystem headroom, warn at 80% usage and
@@ -334,7 +305,7 @@ production acceptance remains pending.
     image/release, remove older unused application images and bound unused build cache after
     successful cutovers, and emit before/after evidence without ever pruning volumes, database data,
     active images or the current/previous immutable runtime releases.
-12. **Finish public and moderation UI debt.** Complete the broader dictionary-style navigation
+11. **Finish public and moderation UI debt.** Complete the broader dictionary-style navigation
     benchmark and the remaining concrete mobile/moderation issues without changing the society
     runtime contract. The primary runtime-event feed must stop rendering every
     `agent.heartbeat` row as a first-class moderation event: retain the immutable heartbeat records
@@ -346,7 +317,7 @@ production acceptance remains pending.
     requires the default feed to remain readable while the technical view can still retrieve the
     same persisted heartbeat evidence; run `b24f8b7b-e158-412e-a1eb-56200e233ada` must be
     understandable from the UI as a source-insufficient rejected entry without a database query.
-13. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
+12. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
     with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation
     gates, and update traceability only from measured receipts. Milestone 2 is complete only when no
     required row is `BLOCKED` or `FAIL`.

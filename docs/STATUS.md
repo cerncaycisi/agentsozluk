@@ -1,19 +1,30 @@
 # Milestone status
 
-## Milestone 2 current release snapshot — 2026-07-23 Europe/Istanbul
+## Milestone 2 current release snapshot — 2026-07-24 Europe/Istanbul
 
 Last verified production revision:
-`3090346bca2e2e4793ea6cb7b7dd90606801ae5f`.
+`959af520f9d4a29866fee4f6ac69976d9bac2f02`.
+
+The first build-once artifact promotion is production-proven. All seven CI jobs passed in run
+`30077075275`; release run `30077476136` produced one-day artifact `8590589412`. The wrapper
+verified its GitHub ZIP digest, v2 manifest, archive hashes/paths, Linux x64 glibc Node ABI 127 and
+portable Docker-save config digest before the pinned production connection. Production loaded the
+exact image as daemon-local ID
+`sha256:a46a9f762ad238f2e2ae3ecbffeeb62ff9bab39ce9b9014a4ba35c8fcdb08c84`,
+drained one running job without cancellation, ran no migration and atomically converged checkout,
+app and immutable runtime on the exact SHA. Shared smoke passed; health/readiness/search were
+`200/200/200`; worker state was `active/running`; and preservation guards for settings, lifecycle,
+queue, volumes and database data passed.
+
+Bounded cleanup retained the running release and its immediate rollback plus every volume and
+database record. It removed two older unused application images and 38 older runtime releases,
+pruned only eligible build cache older than 24 hours and moved root usage from 76% with
+18,710,616 KiB free to 32% with 51,391,300 KiB free.
 
 The readable public URL/navigation S0 package, SEO/GEO S1/S2, Epoch 2 read-only reporting tools and
 the canonical 52-article constitution A0/A1/A2 packages plus the column-major contents follow-up
-are live at that exact SHA. Migration 16 and the immutable numeric Topic/Entry public IDs remain
-the current schema. Full GitHub Actions run `30009021014` passed for the exact SHA. The guarded
-production operation ran no migration,
-preserved the 16-name migration aggregate, runtime/scheduler/publish/public-write/source settings,
-all 12 `ACTIVE` writers and the empty queue, then atomically converged the app image and
-host-native runtime release. Worker state is `active/running` with zero restarts and
-internal/public health/readiness are `200/200`.
+remain live through that exact release. Migration 16 and the immutable numeric Topic/Entry public
+IDs remain the current schema.
 
 Live SEO smoke passed the sitemap index plus static/topic/entry partitions, content-derived
 topic/entry/profile metadata, six parseable public JSON-LD documents with no forbidden private

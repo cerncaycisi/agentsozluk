@@ -1272,3 +1272,38 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   Do not repeat: never compare a cross-daemon saved-image config digest directly with the
   destination daemon's loaded image ID, and never leave a production `test` failure without a safe
   error code.
+
+## 2026-07-24 — Build-once artifact promotion production proof
+
+- Exact green-main SHA `959af520f9d4a29866fee4f6ac69976d9bac2f02` passed all seven CI jobs in
+  run `30077075275`. Release Candidate Bundle run `30077476136` completed in `7m37s` and uploaded
+  one-day artifact `8590589412`, size `226,214,451` bytes, with GitHub ZIP digest
+  `sha256:36c4d100f23fb118d0b7bc6b71b17a5b7a39ebc69d8432a06d91546adc54b0d6`.
+- Before SSH, the repository wrapper verified the exact CI/workflow/run/head identity, artifact ZIP
+  digest, rigid v2 manifest, archive hashes/sizes/paths, zstd frames, image-tar hash and
+  `linux-x64-glibc-node-abi-127`. Every production connection rechecked hostname
+  `agent-sozluk-prod`, IPv4/domain `46.225.20.177`, the pinned ED25519 fingerprint, repository
+  origin and production Compose path.
+- The destination validated the portable Docker-save config digest
+  `sha256:98d1b05c9e54d01b3eb2c7d91343b5943a76d78f1612794aeec4a7651b6d707f`, hashed
+  the exact load stream and stored the distinct daemon-local image ID
+  `sha256:a46a9f762ad238f2e2ae3ecbffeeb62ff9bab39ce9b9014a4ba35c8fcdb08c84`
+  in its root-owned receipt. Static release smoke, image source-revision validation and the
+  Linux-native runtime probes passed. This is the production proof that portable config identity
+  and destination image ID must remain separate.
+- Drain observed one running job and one lease. The worker accepted no new work; attempt 5 reached
+  queued/running/cancel-requested/lease `0/0/0/0`; no run was cancelled. The no-migration lane
+  recreated the app, atomically switched the immutable runtime and restarted the worker. Shared
+  static/live smoke passed; health/readiness/search were `200/200/200`; exact checkout/image/runtime
+  SHA equality passed; worker returned `active/running`; and settings, lifecycle, queue, volume and
+  database preservation guards passed.
+- Bounded cleanup preserved the exact running image/release, the immediate rollback image/release,
+  every container reference, all volumes and database data. It removed two older unused
+  application images (`64e2084…` and the failed unreceipted `6d2e528…` candidate), removed 38 older
+  runtime releases and pruned only unused build cache older than 24 hours. Root usage moved from
+  76% with 18,710,616 KiB free to 32% with 51,391,300 KiB free. The volume hash remained
+  `0d11cf434f6d4a7d69a77c887409b9b4f2effd0d241ecacef76b9b9fdb782c76`; final container-reference
+  hash was `74bcc13a51fd7e68455ac2550e154903b269d535f9c721baee142fd81b9588c2`.
+- Do not repeat: never rebuild an already verified artifact on production, never compare a portable
+  Docker config digest directly with a daemon-local loaded ID, and never bypass the drain,
+  preservation or bounded-retention guards to shorten a deploy.
