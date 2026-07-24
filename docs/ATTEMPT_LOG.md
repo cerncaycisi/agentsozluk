@@ -1547,9 +1547,17 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   invocation then demonstrated the already-known stdin-consumption trap by returning only identity
   and worker lines. The final read-only query captured SQL in a shell variable and ran Compose with
   stdin closed. No failed observation attempt changed production.
+- The documentation closeout worktree initially had no `node_modules`, so the first format command
+  stopped with `prettier: command not found`. Reusing binaries from another worktree was not a
+  valid substitute because TypeScript resolves modules from the current checkout. A frozen
+  `pnpm install --offline` reused all 735 packages with zero downloads; the first typecheck then
+  exposed the expected ungenerated Prisma client. `pnpm db:generate` followed by the repository
+  Node 22 / pnpm 10 typecheck passed, as did format, lint and diff hygiene.
 - Do not repeat: use the exact Compose subcommand surface, never leave a streamed SSH script behind
   a Compose stdin consumer, derive production columns from Prisma rather than memory, and launch
-  repository checks with the pinned Node 22 / pnpm 10 toolchain. The current capacity form also
+  repository checks with the pinned Node 22 / pnpm 10 toolchain. In a fresh worktree, install the
+  frozen lockfile offline when possible and generate Prisma before typecheck; do not borrow another
+  worktree's `.bin` directory as a module-resolution shortcut. The current capacity form also
   requires three manual pastes into one textarea; replace it with one validated cold/warm/dual
   package import rather than documenting that ambiguity as normal operator procedure.
 
