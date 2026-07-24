@@ -54,6 +54,9 @@ runtime_stage="$(
   mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/agent-sozluk-runtime.XXXXXXXX"
 )"
 find "$runtime_stage" -xdev -depth -delete
+image_tar="$(
+  mktemp "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/agent-sozluk-image.XXXXXXXX"
+)"
 output_created=0
 cleanup() {
   local exit_status=$?
@@ -61,6 +64,9 @@ cleanup() {
   set +e
   if test -d "$runtime_stage"; then
     find "$runtime_stage" -xdev -depth -delete
+  fi
+  if test -f "$image_tar"; then
+    find "$image_tar" -xdev -delete
   fi
   if ((exit_status != 0 && output_created == 1)) && test -d "$output"; then
     find "$output" -xdev -depth -delete
@@ -79,24 +85,51 @@ test "$(
     --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' \
     "$image_ref"
 )" = "$candidate_sha"
-image_id="$(docker image inspect --format '{{.Id}}' "$image_ref")"
-[[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
 docker run --rm --entrypoint /app/node_modules/.bin/tsx \
   "$image_ref" scripts/release-smoke.ts </dev/null
 
+docker save "$image_ref" >"$image_tar"
+image_config_path="$(
+  IMAGE_REF="$image_ref" node -e '
+    const fs = require("node:fs");
+    const value = JSON.parse(fs.readFileSync(0, "utf8"));
+    if (!Array.isArray(value) || value.length !== 1) process.exit(1);
+    if (!Array.isArray(value[0]?.RepoTags) || !value[0].RepoTags.includes(process.env.IMAGE_REF)) {
+      process.exit(1);
+    }
+    const config = value[0]?.Config;
+    if (typeof config !== "string" ||
+        !/^(?:blobs\/sha256\/)?[0-9a-f]{64}(?:\.json)?$/u.test(config)) {
+      process.exit(1);
+    }
+    process.stdout.write(config);
+  ' < <(tar --extract --to-stdout --file="$image_tar" manifest.json)
+)"
+image_config_hex="$(
+  printf '%s\n' "$image_config_path" |
+    sed -E 's#^blobs/sha256/##; s#\.json$##'
+)"
+test "$(
+  tar --extract --to-stdout --file="$image_tar" "$image_config_path" |
+    sha256sum |
+    cut -d ' ' -f 1
+)" = "$image_config_hex"
+image_config_digest="sha256:$image_config_hex"
+image_tar_sha256="$(sha256sum "$image_tar" | cut -d ' ' -f 1)"
+
 "$root/scripts/assemble-runtime-release.sh" \
   --sha "$candidate_sha" \
-  --image-id "$image_id" \
+  --image-config-digest "$image_config_digest" \
   --output "$runtime_stage"
 
 install -d -m 0700 "$output"
 output_created=1
 image_archive="$output/app-image.tar.zst"
 runtime_archive="$output/runtime-release.tar.zst"
-docker save "$image_ref" |
-  zstd -q -T0 -19 -o "$image_archive"
+zstd -q -T0 -19 "$image_tar" -o "$image_archive"
 tar --create --file=- --directory="$runtime_stage" . |
   zstd -q -T0 -19 -o "$runtime_archive"
+find "$image_tar" -xdev -delete
 
 (
   cd "$output"
@@ -116,10 +149,11 @@ maximum_bytes="${RELEASE_BUNDLE_MAX_BYTES:-251658240}"
 }
 
 {
-  printf 'format=agent-sozluk-release-v1\n'
+  printf 'format=agent-sozluk-release-v2\n'
   printf 'source_sha=%s\n' "$candidate_sha"
   printf 'image_ref=%s\n' "$image_ref"
-  printf 'image_id=%s\n' "$image_id"
+  printf 'image_config_digest=%s\n' "$image_config_digest"
+  printf 'image_tar_sha256=%s\n' "$image_tar_sha256"
   printf 'runtime_abi=%s\n' "$runtime_abi"
   printf 'image_archive=app-image.tar.zst\n'
   printf 'image_sha256=%s\n' "$image_sha256"
@@ -132,5 +166,5 @@ maximum_bytes="${RELEASE_BUNDLE_MAX_BYTES:-251658240}"
 
 trap - EXIT INT TERM HUP
 find "$runtime_stage" -xdev -depth -delete
-printf 'RELEASE_BUNDLE_READY sha=%s image_id=%s total_bytes=%s\n' \
-  "$candidate_sha" "$image_id" "$total_bytes"
+printf 'RELEASE_BUNDLE_READY sha=%s image_config_digest=%s total_bytes=%s\n' \
+  "$candidate_sha" "$image_config_digest" "$total_bytes"

@@ -44,6 +44,9 @@ describe("schema-neutral production release lane", () => {
     expect(remote).toContain(
       'test "$(docker inspect --format \'{{.Image}}\' "$app_container")" = "$image_id"',
     );
+    expect(remote).toContain("candidate-image-config-digest");
+    expect(remote).toContain(".release-app-image-config-digest");
+    expect(remote).toContain("artifact-receipts");
     expect(remote).toContain('if test "$current_sha" != "$candidate_sha"');
     expect(remote).not.toMatch(/\b(?:prisma migrate deploy|db:deploy|db:reset)\b/gu);
   });

@@ -2,13 +2,14 @@
 set -Eeuo pipefail
 
 candidate_sha=''
-image_id=''
+image_config_digest=''
 output=''
 
 usage() {
   printf '%s\n' \
     'Usage:' \
-    '  assemble-runtime-release.sh --sha <40-char-sha> --image-id <sha256:id> --output <new-dir>'
+    '  assemble-runtime-release.sh --sha <40-char-sha> \' \
+    '    --image-config-digest <sha256:digest> --output <new-dir>'
 }
 
 while (($# > 0)); do
@@ -17,8 +18,8 @@ while (($# > 0)); do
       candidate_sha="${2:-}"
       shift 2
       ;;
-    --image-id)
-      image_id="${2:-}"
+    --image-config-digest)
+      image_config_digest="${2:-}"
       shift 2
       ;;
     --output)
@@ -41,8 +42,8 @@ done
   printf 'RUNTIME_ASSEMBLY_FAIL code=INVALID_SHA\n' >&2
   exit 90
 }
-[[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]] || {
-  printf 'RUNTIME_ASSEMBLY_FAIL code=INVALID_IMAGE_ID\n' >&2
+[[ "$image_config_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+  printf 'RUNTIME_ASSEMBLY_FAIL code=INVALID_IMAGE_CONFIG_DIGEST\n' >&2
   exit 90
 }
 test -n "$output" || {
@@ -134,7 +135,7 @@ runtime_abi="$(
     "const h=process.report.getReport().header;if(!h.glibcVersionRuntime)process.exit(1);process.stdout.write('linux-x64-glibc-node-abi-'+process.versions.modules)"
 )"
 printf '%s\n' "$candidate_sha" >"$output/.release-sha"
-printf '%s\n' "$image_id" >"$output/.release-app-image-id"
+printf '%s\n' "$image_config_digest" >"$output/.release-app-image-config-digest"
 printf '%s\n' "$runtime_abi" >"$output/.release-node-abi"
 
 for required in \
@@ -168,5 +169,5 @@ test -n "$(
 
 trap - EXIT INT TERM HUP
 find "$dependency_stage" -xdev -depth -delete
-printf 'RUNTIME_ASSEMBLY_READY sha=%s image_id=%s abi=%s\n' \
-  "$candidate_sha" "$image_id" "$runtime_abi"
+printf 'RUNTIME_ASSEMBLY_READY sha=%s image_config_digest=%s abi=%s\n' \
+  "$candidate_sha" "$image_config_digest" "$runtime_abi"

@@ -1,6 +1,6 @@
 # Milestone 2 realism and production recovery plan
 
-Last updated: 2026-07-23 Europe/Istanbul
+Last updated: 2026-07-24 Europe/Istanbul
 
 Status: product direction approved by Gokhan; realism fixes are shipping incrementally; formal
 production acceptance remains pending.
@@ -260,8 +260,16 @@ production acceptance remains pending.
    artifact `8589270031` in `7m13s`; its independent ZIP digest, manifest, archive hashes/sizes,
    ABI and zstd checks passed. Pre-SSH verification then exposed an old 170 MB duplicate API cap
    and a macOS awk reserved-variable error in path validation. Both are corrected with a
-   payload-plus-1-MiB ZIP bound and one portable ZIP/tar path validator, but that correction moves
-   `main`, so a fresh exact-SHA workflow remains required. Bounded
+   payload-plus-1-MiB ZIP bound and one portable ZIP/tar path validator. Fresh exact-SHA workflow
+   `30075139795` then uploaded artifact `8589699907`; its ZIP digest, manifest, archive hashes,
+   ABI, zstd and path validation passed locally. The first approved promotion stopped before
+   runtime stage or cutover because GitHub's Docker-save config digest `d9e3f704…` became
+   daemon-local ID `344bc56a…` after production Docker loaded the same archive. The old installer
+   incorrectly required those environment-specific identities to be equal. Production remained on
+   healthy app/runtime SHA `3090346…` with worker `active/running`, restart `0`, queue/lease
+   `0/0/0/0` and health/readiness `200/200`. The correction separates portable config/tar receipts
+   from the root-owned loaded-image receipt, rejects unreceipted tag reuse and emits coded
+   unexpected failures. A new exact SHA, CI artifact and production proof remain required. Bounded
    storage cleanup removed two obsolete
    lockfile caches totalling `401,334,874` bytes and retained the current cache; mandatory one-day
    coverage evidence remains enabled.

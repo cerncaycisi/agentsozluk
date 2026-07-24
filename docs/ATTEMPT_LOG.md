@@ -1238,3 +1238,37 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   ZIP and tar path listings with real safe/absolute/parent-path execution tests. Do not repeat:
   duplicated artifact limits must have a relational test, and local promotion primitives must run
   on the actual macOS operator toolchain before requesting production approval.
+
+## 2026-07-24 — First production artifact promotion stopped before cutover
+
+- Exact green-main SHA `6d2e528b60f1926c97801bd774a2831f34794040`, release workflow
+  `30075139795` and one-day artifact `8589699907` passed local run/artifact identity, ZIP digest,
+  rigid manifest, archive hash/size, ABI, zstd and safe-path verification before the approved
+  production connection.
+- The repository-owned wrapper verified the pinned DNS, hostname, ED25519 fingerprint and
+  repository identity, moved only the server checkout to the exact candidate and streamed the
+  application archive. It then exited `1` before runtime staging, state capture, app recreation,
+  runtime-symlink cutover or cleanup. The old installer emitted no coded error for its bare image-ID
+  assertion; this observability gap is part of the correction.
+- Independent evidence proved the archive itself was intact. Its Docker-save config path and
+  SHA-256 were `d9e3f70411e4f3146dc64f30b00ef3b092809c893f8c0e67c460e619e1bc972c`.
+  Production Docker loaded the same exact tag, creation timestamp and source-revision label as
+  daemon-local image ID
+  `344bc56a47fbdb2acaf7d313a2713242c3a8bc63cf2b3b63a01fa38e42d295c0`.
+  No container referenced either candidate identity. Root cause: Docker image IDs are
+  daemon/storage-driver-local after load, while the old contract incorrectly treated the CI
+  saved-image config digest as the required production daemon ID.
+- Production remained healthy on running app image and immutable runtime SHA
+  `3090346bca2e2e4793ea6cb7b7dd90606801ae5f`; worker state was `active/running`, restart count `0`,
+  queue/running/cancel/lease counts `0/0/0/0`, and internal health/readiness were `200/200`.
+  No migration, app/worker restart, lifecycle/settings/queue write, symlink switch, volume change or
+  cleanup occurred.
+- Resolution candidate: release manifest v2 records a portable Docker-save config digest plus the
+  uncompressed tar SHA-256. The inert installer hashes the exact load stream, validates source
+  revision and smoke, then stores the actual loaded daemon ID in a separate root-owned mode-0444
+  receipt. Runtime provenance remains tied to the portable digest; cutover uses the receipted loaded
+  ID. Existing tags are reusable only with an exact receipt; unreceipted collisions fail with a
+  stable code. Wrapper/installer/remote scripts now emit coded unexpected-failure receipts.
+  Do not repeat: never compare a cross-daemon saved-image config digest directly with the
+  destination daemon's loaded image ID, and never leave a production `test` failure without a safe
+  error code.

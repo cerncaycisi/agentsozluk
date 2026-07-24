@@ -208,7 +208,8 @@ describe("build-once exact-SHA release artifacts", () => {
   it("verifies the exact manifest, checksums and byte counts before promotion", () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), "agent-sozluk-bundle-test."));
     const candidateSha = "a".repeat(40);
-    const imageId = `sha256:${"b".repeat(64)}`;
+    const imageConfigDigest = `sha256:${"b".repeat(64)}`;
+    const imageTarHash = "c".repeat(64);
     const image = Buffer.from("image-archive");
     const runtime = Buffer.from("runtime-archive");
     const imageHash = sha256(image);
@@ -219,10 +220,11 @@ describe("build-once exact-SHA release artifacts", () => {
       writeFileSync(
         path.join(directory, "manifest.env"),
         [
-          "format=agent-sozluk-release-v1",
+          "format=agent-sozluk-release-v2",
           `source_sha=${candidateSha}`,
           `image_ref=agent-sozluk:${candidateSha}`,
-          `image_id=${imageId}`,
+          `image_config_digest=${imageConfigDigest}`,
+          `image_tar_sha256=${imageTarHash}`,
           "runtime_abi=linux-x64-glibc-node-abi-127",
           "image_archive=app-image.tar.zst",
           `image_sha256=${imageHash}`,
@@ -242,10 +244,16 @@ describe("build-once exact-SHA release artifacts", () => {
         execFileSync(process.execPath, [verifierPath, directory, candidateSha], {
           encoding: "utf8",
         }),
-      ) as { imageId: string; sourceSha: string; totalBytes: number };
+      ) as {
+        imageConfigDigest: string;
+        imageTarSha256: string;
+        sourceSha: string;
+        totalBytes: number;
+      };
       expect(receipt).toEqual(
         expect.objectContaining({
-          imageId,
+          imageConfigDigest,
+          imageTarSha256: imageTarHash,
           sourceSha: candidateSha,
           totalBytes: image.length + runtime.length,
         }),
@@ -278,12 +286,28 @@ describe("build-once exact-SHA release artifacts", () => {
     expect(wrapper).toContain("--build-on-host");
     expect(wrapper).toContain("AMBIGUOUS_RELEASE_SOURCE");
     expect(installer).toContain("docker load");
+    expect(installer).toContain("IMAGE_TAR_HASH_MISMATCH");
+    expect(installer).toContain("UNVERIFIED_EXISTING_IMAGE");
+    expect(installer).toContain("agent-sozluk-artifact-image-v1");
+    expect(installer).toContain("loaded_image_id");
+    expect(installer).toContain("image_config_digest");
+    expect(installer).not.toContain(
+      'docker image inspect --format \'{{.Id}}\' "$candidate_image")" = "$image_config_digest"',
+    );
+    expect(assembler).toContain("--image-config-digest");
+    expect(assembler).toContain(".release-app-image-config-digest");
+    expect(builder).toContain("image_tar_sha256");
+    expect(verifier).toContain("imageConfigDigest");
+    expect(verifier).toContain("imageTarSha256");
+    expect(wrapper).toContain("IMAGE_TAR_HASH_MISMATCH");
     expect(installer).toContain("RELEASE_ARTIFACT_RUNTIME_READY");
     expect(installer).toContain("sudo mv -T");
     expect(installer).not.toContain("systemctl");
     expect(installer).not.toContain("docker compose");
     expect(installer).not.toContain("/runtime/current");
     expect(remote).toContain("scripts/assemble-runtime-release.sh");
+    expect(remote).toContain("candidate-image-config-digest");
+    expect(remote).toContain("artifact-receipts");
     expect(remote).not.toContain("/usr/bin/pnpm install --prod --frozen-lockfile");
   });
 

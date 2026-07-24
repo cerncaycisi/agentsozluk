@@ -18,7 +18,8 @@ const expectedKeys = [
   "format",
   "source_sha",
   "image_ref",
-  "image_id",
+  "image_config_digest",
+  "image_tar_sha256",
   "runtime_abi",
   "image_archive",
   "image_sha256",
@@ -48,10 +49,15 @@ for (const [index, line] of lines.entries()) {
 }
 
 const value = (key) => manifest.get(key) ?? fail("MANIFEST_SCHEMA");
-if (value("format") !== "agent-sozluk-release-v1") fail("FORMAT_MISMATCH");
+if (value("format") !== "agent-sozluk-release-v2") fail("FORMAT_MISMATCH");
 if (value("source_sha") !== candidateSha) fail("SOURCE_SHA_MISMATCH");
 if (value("image_ref") !== `agent-sozluk:${candidateSha}`) fail("IMAGE_REF_MISMATCH");
-if (!/^sha256:[0-9a-f]{64}$/u.test(value("image_id"))) fail("IMAGE_ID_INVALID");
+if (!/^sha256:[0-9a-f]{64}$/u.test(value("image_config_digest"))) {
+  fail("IMAGE_CONFIG_DIGEST_INVALID");
+}
+if (!/^[0-9a-f]{64}$/u.test(value("image_tar_sha256"))) {
+  fail("IMAGE_TAR_HASH_INVALID");
+}
 if (value("runtime_abi") !== "linux-x64-glibc-node-abi-127") fail("RUNTIME_ABI_MISMATCH");
 if (value("image_archive") !== "app-image.tar.zst") fail("IMAGE_ARCHIVE_INVALID");
 if (value("runtime_archive") !== "runtime-release.tar.zst") {
@@ -110,8 +116,9 @@ if (checksumText !== expectedChecksumText) fail("CHECKSUM_RECEIPT_MISMATCH");
 
 process.stdout.write(
   JSON.stringify({
-    imageId: value("image_id"),
+    imageConfigDigest: value("image_config_digest"),
     imagePath,
+    imageTarSha256: value("image_tar_sha256"),
     runtimeAbi: value("runtime_abi"),
     runtimePath,
     sourceSha: candidateSha,

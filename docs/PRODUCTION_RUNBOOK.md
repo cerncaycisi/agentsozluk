@@ -852,7 +852,12 @@ the exact numeric run, checks its workflow/event/status/conclusion/head SHA, ind
 green push CI for the same SHA, downloads only the exact named artifact under
 `/Volumes/GB/agent-sozluk-release-artifacts`, verifies GitHub's independent artifact-ZIP SHA-256,
 and then verifies the rigid internal manifest, both archive SHA-256 checksums, byte counts, ABI and
-archive paths before the first SSH connection.
+archive paths before the first SSH connection. Docker image IDs are daemon-local: the bundle
+records the portable saved-image config digest and uncompressed Docker-save tar SHA-256, while the
+production installer records the actual post-load daemon image ID in a separate root-owned
+receipt. The installer must never require those two IDs to be equal. It accepts an existing exact
+tag only when that immutable receipt matches the source SHA, config digest, tar hash and current
+loaded image ID; an unreceipted collision fails closed.
 
 The non-secret production approval receipt must equal that SHA; it cannot broaden or manufacture
 approval:
@@ -883,11 +888,13 @@ queue. The existing release script then re-verifies and reuses those inert stage
 drain and atomic cutover.
 
 The remote lane stores only public-safe hashes, image IDs, migration names and release paths under
-`/opt/agent-sozluk/runtime/.release-op-<sha>`. It never stores environment values, credentials,
-prompts or entry bodies. Re-running the same SHA reuses a correctly labelled image and a verified
-immutable host-native runtime release. It can resume after the candidate app is healthy but before
-the `current` symlink changes, or after the symlink changes but before the worker restarts. Any
-settings, lifecycle, migration, image, volume or identity mismatch fails closed.
+`/opt/agent-sozluk/runtime/.release-op-<sha>`, plus the root-owned artifact/image identity receipt
+under `/opt/agent-sozluk/runtime/artifact-receipts/<sha>.env`. It never stores environment values,
+credentials, prompts or entry bodies. Re-running the same SHA reuses a correctly labelled image
+only through that receipt and a verified immutable host-native runtime release. It can resume after
+the candidate app is healthy but before the `current` symlink changes, or after the symlink changes
+but before the worker restarts. Any settings, lifecycle, migration, image, artifact receipt, volume
+or identity mismatch fails closed.
 
 The runtime workspace manifest contains only the complete dependency closure of the production
 `agent:*` operator/runtime scripts plus the pinned `tsx` and Prisma generators; it does not carry

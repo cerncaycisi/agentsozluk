@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+report_unexpected_error() {
+  local exit_status=$?
+  printf 'RELEASE_WRAPPER_FAIL code=UNEXPECTED line=%s status=%s\n' \
+    "${BASH_LINENO[0]:-unknown}" "$exit_status" >&2
+  exit "$exit_status"
+}
+trap report_unexpected_error ERR
+
 candidate_sha=''
 execute=0
 cleanup=no-cleanup
@@ -251,9 +259,13 @@ NODE
     ARTIFACT_RECEIPT="$artifact_receipt" \
       node -p 'JSON.parse(process.env.ARTIFACT_RECEIPT).runtimePath'
   )"
-  artifact_image_id="$(
+  artifact_image_config_digest="$(
     ARTIFACT_RECEIPT="$artifact_receipt" \
-      node -p 'JSON.parse(process.env.ARTIFACT_RECEIPT).imageId'
+      node -p 'JSON.parse(process.env.ARTIFACT_RECEIPT).imageConfigDigest'
+  )"
+  artifact_image_tar_sha256="$(
+    ARTIFACT_RECEIPT="$artifact_receipt" \
+      node -p 'JSON.parse(process.env.ARTIFACT_RECEIPT).imageTarSha256'
   )"
   artifact_runtime_abi="$(
     ARTIFACT_RECEIPT="$artifact_receipt" \
@@ -273,6 +285,14 @@ NODE
       exit 90
     fi
   done
+  test "$(
+    zstd -q --decompress --stdout "$image_archive" |
+      shasum -a 256 |
+      awk '{print $1}'
+  )" = "$artifact_image_tar_sha256" || {
+    printf 'RELEASE_WRAPPER_FAIL code=IMAGE_TAR_HASH_MISMATCH\n' >&2
+    exit 90
+  }
 fi
 
 expected_ip=46.225.20.177
@@ -339,7 +359,7 @@ if test "$build_on_host" = 0; then
        test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
        test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
        test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
-       exec '$remote_artifact_installer' image '$candidate_sha' '$artifact_image_id' '$artifact_runtime_abi'"
+       exec '$remote_artifact_installer' image '$candidate_sha' '$artifact_image_config_digest' '$artifact_runtime_abi' '$artifact_image_tar_sha256'"
   zstd -q --decompress --stdout "$runtime_archive" |
     ssh "${ssh_options[@]}" deploy@"$expected_ip" \
       "set -euo pipefail
@@ -347,7 +367,7 @@ if test "$build_on_host" = 0; then
        test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
        test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
        test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
-       exec '$remote_artifact_installer' runtime '$candidate_sha' '$artifact_image_id' '$artifact_runtime_abi'"
+       exec '$remote_artifact_installer' runtime '$candidate_sha' '$artifact_image_config_digest' '$artifact_runtime_abi' '$artifact_image_tar_sha256'"
 fi
 
 trap - EXIT INT TERM HUP

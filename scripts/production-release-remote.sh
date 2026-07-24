@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+report_unexpected_error() {
+  local exit_status=$?
+  printf 'RELEASE_FAIL code=UNEXPECTED line=%s status=%s\n' \
+    "${BASH_LINENO[0]:-unknown}" "$exit_status" >&2
+  exit "$exit_status"
+}
+trap report_unexpected_error ERR
+
 candidate_sha="${1:-}"
 cleanup_requested="${2:-no-cleanup}"
 app_root=/opt/agent-sozluk/app
@@ -10,6 +18,7 @@ env_file="$app_root/.env"
 state_dir="$runtime_root/.release-op-$candidate_sha"
 candidate_image="agent-sozluk:$candidate_sha"
 override="$state_dir/no-migration-compose.yaml"
+artifact_image_receipt="$runtime_root/artifact-receipts/$candidate_sha.env"
 
 [[ "$candidate_sha" =~ ^[0-9a-f]{40}$ ]] || {
   printf 'RELEASE_FAIL code=INVALID_SHA\n' >&2
@@ -36,6 +45,12 @@ compose=(
 
 hash_stream() {
   sha256sum | cut -d ' ' -f 1
+}
+
+artifact_receipt_value() {
+  local key="$1"
+  awk -F= -v key="$key" \
+    '$1 == key {print substr($0, length(key) + 2)}' "$artifact_image_receipt"
 }
 
 migration_snapshot() {
@@ -140,7 +155,8 @@ assert_release() {
   local release="$runtime_root/releases/$candidate_sha"
   test -d "$release"
   test "$(cat "$release/.release-sha")" = "$candidate_sha"
-  test "$(cat "$release/.release-app-image-id")" = "$(cat "$state_dir/candidate-image-id")"
+  test "$(cat "$release/.release-app-image-config-digest")" = \
+    "$(cat "$state_dir/candidate-image-config-digest")"
   test -z "$(find "$release" -xdev ! -user root -print -quit)"
   test -z "$(
     find "$release" -xdev \( -type f -o -type d \) -perm /022 -print -quit
@@ -175,7 +191,7 @@ capture_initial_state() {
 }
 
 build_candidate_image() {
-  local free_kib used_percent image_id
+  local free_kib used_percent image_id image_config_digest
   free_kib="$(df -Pk / | awk 'NR == 2 {print $4}')"
   used_percent="$(df -Pk / | awk 'NR == 2 {gsub("%", "", $5); print $5}')"
   if ((free_kib < 8388608 || used_percent >= 90)); then
@@ -195,6 +211,18 @@ build_candidate_image() {
   fi
   image_id="$(docker image inspect --format '{{.Id}}' "$candidate_image")"
   printf '%s\n' "$image_id" >"$state_dir/candidate-image-id"
+  if test -f "$artifact_image_receipt"; then
+    test ! -L "$artifact_image_receipt"
+    test "$(stat -c '%U|%G|%a' "$artifact_image_receipt")" = 'root|root|444'
+    test "$(artifact_receipt_value format)" = agent-sozluk-artifact-image-v1
+    test "$(artifact_receipt_value source_sha)" = "$candidate_sha"
+    image_config_digest="$(artifact_receipt_value image_config_digest)"
+    [[ "$image_config_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+    test "$(artifact_receipt_value loaded_image_id)" = "$image_id"
+  else
+    image_config_digest="$image_id"
+  fi
+  printf '%s\n' "$image_config_digest" >"$state_dir/candidate-image-config-digest"
   docker run --rm --entrypoint /app/node_modules/.bin/tsx \
     "$candidate_image" scripts/release-smoke.ts </dev/null
   printf 'RELEASE_IMAGE_READY sha=%s image_id=%s\n' "$candidate_sha" "$image_id"
@@ -202,8 +230,9 @@ build_candidate_image() {
 
 build_runtime_release() {
   local release="$runtime_root/releases/$candidate_sha"
-  local image_id runtime_stage runtime_publish runtime_abi
+  local image_id image_config_digest runtime_stage runtime_publish runtime_abi
   image_id="$(cat "$state_dir/candidate-image-id")"
+  image_config_digest="$(cat "$state_dir/candidate-image-config-digest")"
   if test -d "$release"; then
     assert_release
     printf 'RELEASE_RUNTIME_REUSED sha=%s\n' "$candidate_sha"
@@ -248,7 +277,7 @@ build_runtime_release() {
   )
   "${install_env[@]}" /usr/bin/bash "$app_root/scripts/assemble-runtime-release.sh" \
     --sha "$candidate_sha" \
-    --image-id "$image_id" \
+    --image-config-digest "$image_config_digest" \
     --output "$runtime_stage"
   runtime_abi="$(cat "$runtime_stage/.release-node-abi")"
 
@@ -448,7 +477,7 @@ verify_release() {
 cleanup_images() {
   local candidate_id previous_id volume_hash_before volume_hash_after
   local container_hash_before container_hash_after disk_before disk_after
-  local previous_runtime current_runtime release release_name
+  local previous_runtime current_runtime release release_name receipt
   local container_id record ref image_id removed=0 removed_releases=0
   local -a container_ids app_refs
   candidate_id="$(cat "$state_dir/candidate-image-id")"
@@ -506,6 +535,10 @@ cleanup_images() {
       continue
     fi
     sudo find "$release" -xdev -depth -delete
+    receipt="$runtime_root/artifact-receipts/$release_name.env"
+    if test -f "$receipt" && test ! -L "$receipt"; then
+      sudo find "$receipt" -xdev -delete
+    fi
     removed_releases=$((removed_releases + 1))
   done
   test -d "$current_runtime"

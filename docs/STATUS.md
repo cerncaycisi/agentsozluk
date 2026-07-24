@@ -91,11 +91,17 @@ archive hashes/byte counts, ABI and zstd integrity passed independent local veri
 verification found two still-local pre-SSH wrapper defects: its API ZIP ceiling remained at the old
 170 MB estimate, and its inline awk path loop used macOS-reserved name `index`. The corrected
 wrapper derives a 240 MiB payload plus 1 MiB ZIP-overhead bound and uses one portable, executable
-path validator for both ZIP and tar listings. A fresh exact-SHA artifact remains required because
-the wrapper correction moves `main`. Before production access, the local wrapper
-checks the exact CI/workflow/run identity, GitHub's artifact-ZIP SHA-256, rigid internal manifest,
-both archive hashes and sizes, ABI and archive paths. The remote artifact installer is inert: it
-may load the exact image and publish the root-owned immutable release, but cannot run Compose,
+path validator for both ZIP and tar listings. Fresh exact-SHA workflow `30075139795` then uploaded
+artifact `8589699907`; its independent ZIP/manifest/archive/ABI/path checks passed. Its first approved
+production promotion stopped before runtime stage and cutover: GitHub's saved-image config digest
+`d9e3f704…` became daemon-local image ID `344bc56a…` after production Docker loaded the same
+archive, while the installer incorrectly required equality. The running app/runtime remained on
+healthy SHA `3090346…`; worker restart count and queue/lease remained zero. The correction records
+portable config/tar identity separately from the root-owned loaded-image ID, rejects unreceipted tag
+reuse and requires a new exact artifact/proof. Before production access, the local wrapper checks
+the exact CI/workflow/run identity, GitHub's artifact-ZIP SHA-256, rigid internal manifest, both
+archive hashes and sizes, ABI and archive paths. The remote artifact installer is inert: it may
+load the exact image and publish the root-owned immutable release, but cannot run Compose,
 start/stop services, switch `current`, migrate or alter runtime/lifecycle/queue state. The existing
 resumable lane then re-verifies and reuses those stages. The prior server build is available only
 through explicit `--build-on-host` fallback and uses the same runtime assembler.
