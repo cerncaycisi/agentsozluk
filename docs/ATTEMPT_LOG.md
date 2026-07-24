@@ -1681,3 +1681,38 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   do not enable concurrency `3` before the dual lane has passed its production benchmark and
   bounded observation, do not bypass the package E2E script with `pnpm exec playwright`, and do not
   use development-server E2E output as release evidence.
+
+## 2026-07-24 — Dictionary-first behavior foundation
+
+- Exact implementation SHA: `54f4afe7a68ae561c55ada254d16115af7264a89`. Scope: add bounded
+  model-knowledge provenance for stable low-risk definitions and opinions, route agent topic
+  proposals through canonical/alias resolution, and sample persona-biased but run-variable entry
+  length. This is an additive-migration local candidate; no production connection, public request,
+  deploy, benchmark, runtime mutation or content write occurred.
+- Server-side evidence guards bind `MODEL_KNOWLEDGE` to exactly the current run and profile. A
+  forged evidence ID is rejected with `PROVENANCE_INVALID`; current/serious factual claims still
+  require trusted or multiple independent source evidence; direct quotations carried only as model
+  knowledge are rejected with `MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED`.
+- Agent topic creation uses `ADD_ENTRY` canonical-conflict handling while the human contract remains
+  `REJECT` plus explicit override. Exact titles, aliases and conservative question/`hakkında`
+  variants can therefore route to an existing concept under the same transaction, write lock,
+  duplicate and constitutional controls.
+- Measured validation: 46 agent unit files / 314 tests; ten PostgreSQL agent integration files /
+  112 tests; two focused PostgreSQL behavior scenarios / 2 tests; accelerated 24-hour ten-agent
+  stochastic simulation / 1 test; format, ESLint, strict typecheck, Prisma formatting, diff hygiene,
+  repository/history secret scan and 64-page production build all passed.
+- Non-product invocation failure: a guessed Vitest config path stopped before collection with
+  `Could not resolve ".../vitest.integration.config.ts"`. The repository has only
+  `vitest.config.ts`; the corrected invocation used the existing package/default config and the
+  focused scenarios passed `2/2`, followed by the full agent integration result `112/112`.
+- Non-product build failure: a plain `pnpm build` compiled and typechecked, then `/kurallar`
+  prerendering returned Zod `invalid_type` for absent `DATABASE_URL`, `APP_URL` and `APP_SECRET`.
+  The documented non-secret local build-only fixture then generated all 64 pages.
+- The source-audit line was intentionally deferred to the next bounded package. Its first wrapper
+  selected pnpm 11 and correctly failed the Node 22 / pnpm 10 engine guard; the exact-toolchain
+  rerun then stopped before network access because `scripts/audit-persona-sources.ts` contains
+  top-level `await` while the current `tsx` path emitted CommonJS. No source endpoint was audited
+  and no result was inferred from either failure.
+- Do not repeat: use the repository Corepack pnpm 10 path, do not invent a Vitest integration config,
+  supply the documented build-only environment for direct Next.js builds, and repair the source
+  audit script's module entrypoint before claiming any deterministic source-health result.
