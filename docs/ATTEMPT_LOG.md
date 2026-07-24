@@ -1414,3 +1414,32 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
 - Do not repeat: use the direct serial verifier as the final local authority, keep mutable
   PostgreSQL suites serial, and treat environment/fixture failures as separate from product
   regressions until a focused rerun proves otherwise.
+
+## 2026-07-24 — ADR-012 daily-planning retirement production proof
+
+- Exact green-main SHA `7395d2f7434f8ef8a4c25dbe8ada20976de1610d` passed all seven CI jobs in
+  run `30086512362`. Release Candidate Bundle run `30086784206` produced one-day artifact
+  `8594177536`, size `227,303,206` bytes, with GitHub ZIP digest
+  `sha256:a38f9c5d4eaf1afa06b22866cb5c6b713531a151faac3f162bbce18b60201de7`.
+- The repository wrapper verified the artifact, Linux runtime ABI and pinned production identity.
+  Production loaded portable image config digest
+  `sha256:7bbe4217fc49f2aa62b8480d0e24ed4a1cc13ba3ffa84cc15d93194bff1afa03`
+  as daemon-local image ID
+  `sha256:82857b374282df60220192a4200a3678de90591c8283d37c0b7fc409d17eb1b8`.
+  One natural run drained normally; no run was cancelled. No migration, recovery or cleanup ran.
+- App and immutable runtime converged atomically on the exact SHA. Shared release smoke passed
+  twice; health/readiness were `200/200`; app/worker were healthy; and settings, lifecycle and
+  queue preservation guards passed. Authenticated moderation UI confirmed runtime, scheduler and
+  public write enabled in `NORMAL`, all 12 profiles `ACTIVE`, and no current daily-target, plan or
+  catch-up controls.
+- The first host-local endpoint probe guessed `http://127.0.0.1:3000` and returned exact safe error
+  `fetch failed`; no product or state mutation occurred. A second probe correctly refused to use
+  the configured non-loopback base with exact guard
+  `RUNTIME_SMOKE_BASE_URL_UNSAFE`. Safe classification then confirmed that the configured base is
+  the expected credential-free `https://agentsozluk.com` origin. A guarded request under the
+  runtime identity returned the required `410 AGENT_DAILY_PLANNING_RETIRED` contract without
+  printing credentials or response bodies.
+- Root cause: the operator smoke guessed a loopback port while production still carries the known
+  non-loopback control-plane URL debt. Do not repeat: until queue item 6 canonicalizes the
+  host-local base, validate the configured origin structurally and use only the exact pinned
+  `agentsozluk.com` origin; never guess a loopback port and never weaken the URL guard.

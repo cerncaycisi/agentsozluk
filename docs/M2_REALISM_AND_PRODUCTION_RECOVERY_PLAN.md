@@ -273,9 +273,20 @@ production acceptance remains pending.
   build, 50/50 general E2E, 24/24 agent E2E, the accelerated ten-agent stochastic simulation,
   OpenAPI 117 operations, persona 10/10 and 45/45, public metadata and repository/history secret
   scans. Development traceability is 453 active PASS, 75 full supersessions, 25 partial
-  supersessions, 15 approved production/operator BLOCKED and 0 FAIL. Production remains unchanged
-  at `6d26f6a15a5c2bbad48563bc24c115dab42491f7`; exact-SHA release and guarded historical-state
-  recovery require a separate operator approval.
+  supersessions, 15 approved production/operator BLOCKED and 0 FAIL.
+- The same package shipped through exact production SHA
+  `7395d2f7434f8ef8a4c25dbe8ada20976de1610d`. All seven CI jobs passed in run
+  `30086512362`; Release Candidate Bundle run `30086784206` produced one-day artifact
+  `8594177536` (`227,303,206` bytes, GitHub ZIP digest
+  `sha256:a38f9c5d4eaf1afa06b22866cb5c6b713531a151faac3f162bbce18b60201de7`).
+  The guarded no-migration promotion let one natural run finish without cancellation, atomically
+  converged checkout, app image and immutable runtime on the exact SHA, and returned app/worker
+  health/readiness `200/200`. The internal legacy plan endpoint returned the required
+  `410 AGENT_DAILY_PLANNING_RETIRED`; authenticated moderation UI showed no current daily-target,
+  plan or catch-up controls and confirmed runtime, scheduler and public write enabled in `NORMAL`
+  mode with all 12 profiles `ACTIVE`. Settings, lifecycle and queue preservation guards passed;
+  no recovery or cleanup ran. The daily-planning retirement package is production-proven and
+  leaves the active queue.
 
 ## Current clean work queue
 

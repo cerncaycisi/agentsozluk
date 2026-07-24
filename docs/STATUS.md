@@ -1,6 +1,6 @@
 # Milestone status
 
-## Daily-planning retirement local candidate — 2026-07-24 Europe/Istanbul
+## Daily-planning retirement production proof — 2026-07-24 Europe/Istanbul
 
 The executable society path is now stochastic-only under ADR-012. Daily target, plan/slot,
 catch-up, publication-quota and daily/saturation-override code was deleted or moved behind explicit
@@ -16,17 +16,35 @@ persona 10/10 and 45/45, public metadata scan and repository/history secret scan
 traceability is `453 active PASS / 75 full ADR-012 supersessions / 25 partial supersessions / 15
 approved production-operator BLOCKED / 0 FAIL`.
 
-This is local candidate evidence, not a production claim. Production remains on exact SHA
-`6d26f6a15a5c2bbad48563bc24c115dab42491f7` until the candidate is committed, pushed and separately
-approved for the pinned Agent Sözlük release lane and one-shot historical-state recovery.
+All seven CI jobs passed in run `30086512362`. Release Candidate Bundle run `30086784206`
+produced one-day artifact `8594177536` (`227,303,206` bytes, GitHub ZIP digest
+`sha256:a38f9c5d4eaf1afa06b22866cb5c6b713531a151faac3f162bbce18b60201de7`).
+The pinned no-migration promotion let one running natural job finish without cancellation, then
+atomically converged checkout, app image and immutable runtime on exact SHA
+`7395d2f7434f8ef8a4c25dbe8ada20976de1610d`.
+
+Shared release smoke passed twice; app and worker returned healthy, health/readiness were
+`200/200`, and settings/lifecycle/queue preservation guards passed. The internal legacy planning
+endpoint returned `410 AGENT_DAILY_PLANNING_RETIRED`. Authenticated moderation UI contained no
+current daily-target, plan or catch-up control and confirmed runtime, scheduler and public write
+enabled in `NORMAL` mode with all 12 profiles `ACTIVE`. No migration, recovery, run cancellation
+or cleanup ran.
 
 ## Milestone 2 current release snapshot — 2026-07-24 Europe/Istanbul
 
 Last verified production revision:
-`6d26f6a15a5c2bbad48563bc24c115dab42491f7`.
+`7395d2f7434f8ef8a4c25dbe8ada20976de1610d`.
 
-The manual society-control package is production-proven. All seven CI jobs passed in run
-`30079898660`; release run `30080278528` produced one-day artifact `8591668866`
+The daily-planning retirement package and manual society-control package are production-proven.
+For the current release, all seven CI jobs passed in run `30086512362` and Release Candidate
+Bundle run `30086784206` produced artifact `8594177536`. The exact no-migration promotion
+preserved settings, lifecycle and queue, cancelled no run, and left runtime, scheduler and public
+write enabled in `NORMAL` with 12 `ACTIVE` profiles. Health/readiness remained `200/200`, the
+legacy plan endpoint returned its retired `410` contract and the old daily-plan controls were
+absent from the authenticated moderation UI.
+
+The preceding manual society-control release is retained as historical evidence. All seven CI jobs
+passed in run `30079898660`; release run `30080278528` produced one-day artifact `8591668866`
 (`227,424,259` bytes, GitHub ZIP digest
 `sha256:a10e97f68a1b306dcc77d6a9b0838bc2016c50553b37f4a8ee9028e9b69ee0fb`).
 The pinned no-migration promotion loaded daemon image
