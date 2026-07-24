@@ -14,6 +14,7 @@ import {
   circuitBreakerConfigSchema,
   evaluateCircuitBreakers,
 } from "@/modules/agents/domain/circuit-breaker";
+import { societyFlowEnabled } from "@/modules/agents/domain/runtime-controls";
 import {
   createRuntimeCapabilityRecord,
   getCapacityPlanningMetrics,
@@ -110,6 +111,11 @@ export function getRuntimeCapacity(
     return {
       localDate,
       runtimeEnabled: settings.runtimeEnabled,
+      schedulerEnabled: settings.schedulerEnabled,
+      publishEnabled: settings.publishEnabled,
+      publicWriteEnabled: settings.publicWriteEnabled,
+      runtimeOperatingMode: settings.runtimeOperatingMode,
+      societyFlowEnabled: societyFlowEnabled(settings),
       dualConcurrencyAvailable: supportsDualConcurrency(capability, { now, ...fingerprint }),
       runtimeFingerprint: fingerprint,
       observedRuntimeFingerprint: observedFingerprint,

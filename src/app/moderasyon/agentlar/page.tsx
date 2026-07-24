@@ -15,6 +15,7 @@ import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
 import { pageFrom } from "@/lib/http/pagination";
 import { getGlobalSettings, listAgentDashboard } from "@/modules/agents";
+import { societyFlowEnabled } from "@/modules/agents/domain/runtime-controls";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 
 export const dynamic = "force-dynamic";
@@ -81,12 +82,7 @@ export default async function AgentDashboardPage({
     listAgentDashboard(database, actor),
     getGlobalSettings(database, actor),
   ]);
-  const societyRunning =
-    settings.runtimeEnabled &&
-    settings.schedulerEnabled &&
-    settings.publishEnabled &&
-    settings.publicWriteEnabled &&
-    settings.runtimeOperatingMode === "NORMAL";
+  const societyRunning = societyFlowEnabled(settings);
   const query = params.q?.trim().toLocaleLowerCase("tr-TR") ?? "";
   const lifecycle = oneOf(params.lifecycle, lifecycleValues);
   const runtime = oneOf(params.runtime, runtimeValues);

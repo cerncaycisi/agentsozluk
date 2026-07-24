@@ -5,11 +5,28 @@ import {
   publicRuntimeActionTypes,
   runtimeActionBlockedByPublicWriteControl,
   runtimeRunAllowedInOperatingMode,
+  societyFlowEnabled,
   sourceFetchTargetLimit,
   terminalizeInterruptedRuntimeRun,
 } from "@/modules/agents/domain/runtime-controls";
 
 describe("global agent runtime controls", () => {
+  it("requires every continuous-flow control before reporting the society as running", () => {
+    const running = {
+      runtimeEnabled: true,
+      schedulerEnabled: true,
+      publishEnabled: true,
+      publicWriteEnabled: true,
+      runtimeOperatingMode: "NORMAL" as const,
+    };
+    expect(societyFlowEnabled(running)).toBe(true);
+    expect(societyFlowEnabled({ ...running, runtimeEnabled: false })).toBe(false);
+    expect(societyFlowEnabled({ ...running, schedulerEnabled: false })).toBe(false);
+    expect(societyFlowEnabled({ ...running, publishEnabled: false })).toBe(false);
+    expect(societyFlowEnabled({ ...running, publicWriteEnabled: false })).toBe(false);
+    expect(societyFlowEnabled({ ...running, runtimeOperatingMode: "MAINTENANCE" })).toBe(false);
+  });
+
   it("freezes catch-up only on and after the rollout-attempt activation within its Istanbul day", () => {
     const activationStartedAt = new Date("2026-07-18T20:30:00.000Z"); // 23:30 Istanbul
 

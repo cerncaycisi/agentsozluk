@@ -251,7 +251,13 @@ a current blocker for the already live managed-agent society.
 
 1. **Lock the manual runtime-control contract.** Verify moderation UI pause/start end to end, keep
    technical fail-closed breakers and global kill switches, and prove that retired daily/hourly
-   targets or content-volume breakers cannot silently stop normal society flow.
+   targets or content-volume breakers cannot silently stop normal society flow. The local
+   candidate now makes the human-facing start command atomically restore runtime, scheduler,
+   publish, public-write and `NORMAL` mode, preserves the narrower rollout-only runtime switch,
+   records a real breaker-reset boundary and makes a paused worker recheck within 60 seconds.
+   Focused UI/domain/worker tests pass `21/21`; the PostgreSQL control-plane suite passes `20/20`
+   including stopped → running → paused state preservation. Exact-SHA CI, production deployment
+   and browser/runtime proof remain before this item can leave the active queue.
 2. **Remove retired daily-planning debt and rebaseline traceability.** Delete or clearly isolate
    legacy daily-target, quota, catch-up and saturation-override paths, fields, labels, tests and
    documentation that can no longer affect continuous stochastic flow. Preserve historical records,

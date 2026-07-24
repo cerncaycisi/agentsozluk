@@ -1,6 +1,24 @@
 export const runtimeOperatingModes = ["NORMAL", "MAINTENANCE"] as const;
 export type RuntimeOperatingMode = (typeof runtimeOperatingModes)[number];
 
+export interface SocietyFlowControls {
+  runtimeEnabled: boolean;
+  schedulerEnabled: boolean;
+  publishEnabled: boolean;
+  publicWriteEnabled: boolean;
+  runtimeOperatingMode: RuntimeOperatingMode;
+}
+
+export function societyFlowEnabled(input: SocietyFlowControls): boolean {
+  return (
+    input.runtimeEnabled &&
+    input.schedulerEnabled &&
+    input.publishEnabled &&
+    input.publicWriteEnabled &&
+    input.runtimeOperatingMode === "NORMAL"
+  );
+}
+
 export const publicRuntimeActionTypes = [
   "CREATE_ENTRY",
   "CREATE_TOPIC_WITH_ENTRY",

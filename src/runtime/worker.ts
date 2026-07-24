@@ -591,9 +591,15 @@ export class AgentRuntimeWorker {
       const busy = ["CAPACITY_FULL", "QUEUE_NOT_EMPTY", "NO_ELIGIBLE_AGENT"].includes(
         result.skipReason ?? "",
       );
+      const flowBlocked = [
+        "RUNTIME_DISABLED",
+        "SCHEDULER_DISABLED",
+        "PUBLIC_WRITE_DISABLED",
+        "MAINTENANCE_MODE",
+      ].includes(result.skipReason ?? "");
       this.#stochasticTickNotBefore =
         now.getTime() +
-        (busy
+        (busy || flowBlocked
           ? STOCHASTIC_BUSY_RETRY_MS
           : randomStochasticTickDelay(
               this.#options.random,

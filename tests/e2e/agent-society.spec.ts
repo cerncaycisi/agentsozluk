@@ -307,12 +307,14 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
   test("E2E-014 pause and resume", async ({ page }) => {
     await login(page);
     await page.goto("/moderasyon/agent-kapasite");
-    await page.getByLabel("Pause gerekçesi").fill("E2E global runtime pause verification.");
-    await page.getByRole("button", { name: "Global runtime pause" }).click();
-    await expect(page.getByLabel("Resume/reset gerekçesi")).toBeVisible({ timeout: 20_000 });
-    await page.getByLabel("Resume/reset gerekçesi").fill("E2E global runtime resume verification.");
-    await page.getByRole("button", { name: "Resume ve reset" }).click();
-    await expect(page.getByLabel("Pause gerekçesi")).toBeVisible({ timeout: 20_000 });
+    await page.getByLabel("Durdurma gerekçesi").fill("E2E society flow pause verification.");
+    await page.getByRole("button", { name: "Toplumu durdur" }).click();
+    await expect(page.getByLabel("Başlatma/reset gerekçesi")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("DURDURULMUŞ", { exact: true })).toBeVisible();
+    await page.getByLabel("Başlatma/reset gerekçesi").fill("E2E society flow resume verification.");
+    await page.getByRole("button", { name: "Toplumu başlat" }).click();
+    await expect(page.getByLabel("Durdurma gerekçesi")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("ÇALIŞIYOR", { exact: true })).toBeVisible();
 
     await page.goto(`/moderasyon/agentlar/${agentProfileId}`);
     await page.getByLabel("Yeni durum").selectOption("PAUSED");

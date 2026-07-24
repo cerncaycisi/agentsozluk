@@ -1176,6 +1176,87 @@ export async function setGlobalRuntimeEnabled(
   });
 }
 
+function societyFlowSnapshot(settings: {
+  runtimeEnabled: boolean;
+  schedulerEnabled: boolean;
+  publishEnabled: boolean;
+  publicWriteEnabled: boolean;
+  runtimeOperatingMode: "NORMAL" | "MAINTENANCE";
+}) {
+  return {
+    runtimeEnabled: settings.runtimeEnabled,
+    schedulerEnabled: settings.schedulerEnabled,
+    publishEnabled: settings.publishEnabled,
+    publicWriteEnabled: settings.publicWriteEnabled,
+    runtimeOperatingMode: settings.runtimeOperatingMode,
+  };
+}
+
+/**
+ * Human-facing society switch. Pausing closes the global lease/write gate while
+ * preserving the configured flow. Starting restores every control required for
+ * continuous public scheduling and records a breaker reset boundary.
+ */
+export async function setSocietyFlowEnabled(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  enabled: boolean,
+  input: RuntimeControlInput,
+) {
+  return inTransaction(client, async (transaction) => {
+    await requireAgentAdminInTransaction(transaction, actor);
+    await lockAgentSettings(transaction);
+    if (enabled) await assertProductionRolloutMutationAllowed(transaction, new Date());
+    const current = await getGlobalSettingsRecord(transaction);
+    const before = societyFlowSnapshot(current);
+    const updated = await updateGlobalSettingsRecord(
+      transaction,
+      actor.actorId,
+      enabled
+        ? {
+            runtimeEnabled: true,
+            schedulerEnabled: true,
+            publishEnabled: true,
+            publicWriteEnabled: true,
+            runtimeOperatingMode: "NORMAL",
+          }
+        : { runtimeEnabled: false },
+    );
+    const after = societyFlowSnapshot(updated);
+    const changedFields = (Object.keys(before) as Array<keyof typeof before>).filter(
+      (field) => before[field] !== after[field],
+    );
+    await recordControlPlaneChange(transaction, actor, {
+      eventType: "agent.settings.changed",
+      entityType: "AgentGlobalSettings",
+      entityId: GLOBAL_SETTINGS_AGGREGATE_ID,
+      reason: input.reason,
+      before,
+      after,
+      metadata: {
+        settingsKey: "global",
+        changedFields,
+        settingsVersion: updated.settingsVersion,
+        reason: input.reason,
+        command: enabled ? "START_SOCIETY_FLOW" : "PAUSE_SOCIETY_FLOW",
+      },
+    });
+    await appendRuntimeEvent(transaction, {
+      eventType: enabled ? "breaker.reset" : "runtime.global.paused",
+      safeMessage: enabled
+        ? "Toplum akışı admin tarafından başlatıldı; sürekli akış kontrolleri açıldı ve breaker geçmişi resetlendi."
+        : "Toplum akışı admin tarafından durduruldu; yeni lease ve public run üretimi kapatıldı.",
+      metadata: {
+        settingsVersion: updated.settingsVersion,
+        reason: input.reason,
+        command: enabled ? "START_SOCIETY_FLOW" : "PAUSE_SOCIETY_FLOW",
+        changedFields,
+      },
+    });
+    return updated;
+  });
+}
+
 const rolloutAttemptStartedEventType = "runtime.production.rollout_attempt.started";
 const rolloutAttemptAbortedEventType = "runtime.production.rollout_attempt.aborted";
 const rolloutAttemptCompletedEventType = "runtime.production.rollout_attempt.completed";

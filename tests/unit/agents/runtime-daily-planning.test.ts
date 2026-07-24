@@ -211,4 +211,37 @@ describe("stochastic society scheduling", () => {
     await worker.runOnce();
     expect(scheduler.tickScheduler).toHaveBeenCalledTimes(2);
   });
+
+  it("rechecks an operator-paused flow after one minute instead of waiting 3-10 minutes", async () => {
+    let now = new Date("2026-07-21T12:32:00.000Z");
+    const scheduler: RuntimeStochasticSchedulerControlPlane = {
+      tickScheduler: vi
+        .fn()
+        .mockResolvedValueOnce(
+          tickResult({
+            createdRuns: 0,
+            selectedAgentProfileIds: [],
+            skipReason: "RUNTIME_DISABLED",
+          }),
+        )
+        .mockResolvedValue(tickResult()),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "society-worker",
+      credentials: [credential],
+      controlPlane: idleControlPlane(),
+      provider: unusedProvider,
+      stochasticScheduling: { credential, controlPlane: scheduler },
+      now: () => now,
+      random: () => 1,
+    });
+
+    await worker.runOnce();
+    now = new Date(now.getTime() + STOCHASTIC_BUSY_RETRY_MS - 1);
+    await worker.runOnce();
+    now = new Date(now.getTime() + 1);
+    await worker.runOnce();
+
+    expect(scheduler.tickScheduler).toHaveBeenCalledTimes(2);
+  });
 });

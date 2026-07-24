@@ -830,61 +830,82 @@ export function AgentRunCommands({ runId, status }: { runId: string; status: str
   );
 }
 
-export function RuntimeControlForm({ runtimeEnabled }: { runtimeEnabled: boolean }) {
+interface RuntimeControlFormProps {
+  societyFlowEnabled: boolean;
+  runtimeEnabled: boolean;
+  schedulerEnabled: boolean;
+  publicWriteEnabled: boolean;
+  runtimeOperatingMode: "NORMAL" | "MAINTENANCE";
+}
+
+export function RuntimeControlForm({
+  societyFlowEnabled,
+  runtimeEnabled,
+  schedulerEnabled,
+  publicWriteEnabled,
+  runtimeOperatingMode,
+}: RuntimeControlFormProps) {
   const router = useRouter();
   const [reason, setReason] = useState("");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string>();
-  const command = runtimeEnabled ? "pause" : "resume";
+  const command = societyFlowEnabled ? "pause" : "resume";
   return (
-    <form
-      className="mt-4 grid gap-3 border-t pt-4 sm:grid-cols-[1fr_auto]"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        setPending(true);
-        setMessage(undefined);
-        try {
-          await apiRequest(`/api/v1/admin/agent-runtime/${command}`, {
-            method: "POST",
-            body: { reason },
-            csrf: true,
-            idempotency: true,
-          });
-          setReason("");
-          setMessage(
-            successMessage(
-              runtimeEnabled
-                ? "Yeni lease alımı pause edildi."
-                : "Runtime açıldı ve circuit-breaker geçmişi resetlendi.",
-            ),
-          );
-          router.refresh();
-        } catch (submitError) {
-          setMessage(errorMessage(submitError));
-        } finally {
-          setPending(false);
-        }
-      }}
-    >
-      <label className="text-sm font-bold">
-        {runtimeEnabled ? "Pause" : "Resume/reset"} gerekçesi
-        <input
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          minLength={10}
-          maxLength={1000}
-          required
-          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
-        />
-      </label>
-      <button
-        disabled={pending || reason.trim().length < 10}
-        className={runtimeEnabled ? "button-secondary self-end" : "button-primary self-end"}
+    <div className="mt-4 border-t pt-4">
+      <p className="text-sm text-muted">
+        Runtime {runtimeEnabled ? "açık" : "kapalı"} · scheduler{" "}
+        {schedulerEnabled ? "açık" : "kapalı"} · public write{" "}
+        {publicWriteEnabled ? "açık" : "kapalı"} · mod {runtimeOperatingMode}
+      </p>
+      <form
+        className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          setPending(true);
+          setMessage(undefined);
+          try {
+            await apiRequest(`/api/v1/admin/agent-runtime/${command}`, {
+              method: "POST",
+              body: { reason },
+              csrf: true,
+              idempotency: true,
+            });
+            setReason("");
+            setMessage(
+              successMessage(
+                societyFlowEnabled
+                  ? "Toplum durduruldu; çalışan run iptal edilmeden yeni lease ve public run üretimi kapatıldı."
+                  : "Toplum başlatıldı; runtime, scheduler, public write ve NORMAL mod açıldı. Worker en geç 60 saniyede yeniden deneyecek.",
+              ),
+            );
+            router.refresh();
+          } catch (submitError) {
+            setMessage(errorMessage(submitError));
+          } finally {
+            setPending(false);
+          }
+        }}
       >
-        {pending ? "İşleniyor…" : runtimeEnabled ? "Global runtime pause" : "Resume ve reset"}
-      </button>
-      {message ? <p className="text-sm sm:col-span-2">{message}</p> : null}
-    </form>
+        <label className="text-sm font-bold">
+          {societyFlowEnabled ? "Durdurma" : "Başlatma/reset"} gerekçesi
+          <input
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            minLength={10}
+            maxLength={1000}
+            required
+            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          />
+        </label>
+        <button
+          disabled={pending || reason.trim().length < 10}
+          className={societyFlowEnabled ? "button-secondary self-end" : "button-primary self-end"}
+        >
+          {pending ? "İşleniyor…" : societyFlowEnabled ? "Toplumu durdur" : "Toplumu başlat"}
+        </button>
+        {message ? <p className="text-sm sm:col-span-2">{message}</p> : null}
+      </form>
+    </div>
   );
 }
 

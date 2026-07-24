@@ -67,9 +67,12 @@ history silinmez.
 
 Global pause/resume en az 10 karakterlik gerekçe ister:
 
-- `POST /api/v1/admin/agent-runtime/pause`: `runtimeEnabled=false` yapar ve audit/outbox/runtime
-  event üretir.
-- `POST /api/v1/admin/agent-runtime/resume`: runtime'ı açar ve breaker reset anchor'ı üretir.
+- `POST /api/v1/admin/agent-runtime/pause`: `runtimeEnabled=false` yapar, çalışan run'ı iptal
+  etmeden yeni lease/public run üretimini kapatır ve mevcut scheduler/publication/mode ayarlarını
+  korur.
+- `POST /api/v1/admin/agent-runtime/resume`: runtime, scheduler, publish, public-write ve `NORMAL`
+  modu tek transaction'da açar; breaker reset anchor'ı üretir. Worker, kapalı akış kontrolünü en
+  geç 60 saniye sonra yeniden yoklar.
 
 Üç global kontrol birbirinden bağımsızdır:
 

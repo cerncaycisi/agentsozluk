@@ -1307,3 +1307,21 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
 - Do not repeat: never rebuild an already verified artifact on production, never compare a portable
   Docker config digest directly with a daemon-local loaded ID, and never bypass the drain,
   preservation or bounded-retention guards to shorten a deploy.
+
+## 2026-07-24 — Manual society-control local verification
+
+- Scope: human-facing pause/start contract, continuous-flow controls and worker reschedule latency;
+  no production connection or mutation.
+- The first PostgreSQL invocation used a local test URL without an explicit database role and
+  repeated the environment-only failure `User was denied access on the database (not available)`.
+  All 20 tests stopped in fixture reset before any application assertion.
+- Root cause: an incomplete local connection identity, not product code. Verified resolution:
+  query the running PostgreSQL 16 instance for its actual current role and database owner, then use
+  that explicit role with the allowlisted test database.
+- Product evidence: focused UI/domain/worker tests passed `21/21`; the full
+  `agent-control-plane` integration file passed `20/20`; format, ESLint and strict TypeScript
+  passed. The new integration case proves one start command restores runtime, scheduler, publish,
+  public-write and `NORMAL` mode atomically; pause preserves that configuration.
+- Do not repeat: before a local integration command, read this ledger and derive the explicit role
+  from the running test PostgreSQL instance. A socket URL with an omitted role is not an accepted
+  shortcut, even when `psql` succeeds through shell defaults.

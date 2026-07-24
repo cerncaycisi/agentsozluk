@@ -18,6 +18,7 @@ import {
   recordRuntimeCapability,
   rollbackPersona,
   setGlobalRuntimeEnabled,
+  setSocietyFlowEnabled,
   startProductionRolloutAttempt,
   runtimeCapabilityMeasurementSchema,
   updateAgent,
@@ -852,6 +853,78 @@ describe("agent control plane with PostgreSQL", () => {
         reason: "Continue normal operations after preserving the aborted rollout evidence.",
       }),
     ).resolves.toMatchObject({ runtimeEnabled: true });
+  });
+
+  it("atomically restores every continuous-flow control from the admin society switch", async () => {
+    const admin = await createPrincipal();
+    await setGlobalRuntimeEnabled(integrationDatabase, actor(admin.id), false, {
+      reason: "Prepare a fully stopped society-control integration fixture.",
+    });
+    const stoppedSettings = await integrationDatabase.agentGlobalSettings.findUniqueOrThrow({
+      where: { id: "global" },
+    });
+    await updateGlobalSettings(integrationDatabase, actor(admin.id), {
+      schedulerEnabled: false,
+      publishEnabled: false,
+      publicWriteEnabled: false,
+      runtimeOperatingMode: "MAINTENANCE",
+      expectedSettingsVersion: stoppedSettings.settingsVersion,
+      changeReason: "Prepare every continuous-flow control in the stopped integration fixture.",
+    });
+
+    await expect(getRuntimeCapacity(integrationDatabase, actor(admin.id))).resolves.toMatchObject({
+      runtimeEnabled: false,
+      schedulerEnabled: false,
+      publishEnabled: false,
+      publicWriteEnabled: false,
+      runtimeOperatingMode: "MAINTENANCE",
+      societyFlowEnabled: false,
+    });
+
+    await expect(
+      setSocietyFlowEnabled(integrationDatabase, actor(admin.id), true, {
+        reason: "Start the society and restore every continuous-flow control atomically.",
+      }),
+    ).resolves.toMatchObject({
+      runtimeEnabled: true,
+      schedulerEnabled: true,
+      publishEnabled: true,
+      publicWriteEnabled: true,
+      runtimeOperatingMode: "NORMAL",
+    });
+    await expect(getRuntimeCapacity(integrationDatabase, actor(admin.id))).resolves.toMatchObject({
+      societyFlowEnabled: true,
+    });
+    await expect(
+      integrationDatabase.agentRuntimeEvent.findFirstOrThrow({
+        where: { eventType: "breaker.reset" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      }),
+    ).resolves.toMatchObject({
+      metadata: {
+        command: "START_SOCIETY_FLOW",
+        changedFields: [
+          "runtimeEnabled",
+          "schedulerEnabled",
+          "publishEnabled",
+          "publicWriteEnabled",
+          "runtimeOperatingMode",
+        ],
+      },
+    });
+
+    await setSocietyFlowEnabled(integrationDatabase, actor(admin.id), false, {
+      reason: "Pause the society without erasing its continuous-flow configuration.",
+    });
+    await expect(
+      integrationDatabase.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } }),
+    ).resolves.toMatchObject({
+      runtimeEnabled: false,
+      schedulerEnabled: true,
+      publishEnabled: true,
+      publicWriteEnabled: true,
+      runtimeOperatingMode: "NORMAL",
+    });
   });
 
   it("rejects retired per-agent daily target and quota edits", async () => {

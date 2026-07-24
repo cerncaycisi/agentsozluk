@@ -8,6 +8,7 @@ import {
   AgentPersonaEditForm,
   AgentQuickRunActions,
   PersonaRollbackForm,
+  RuntimeControlForm,
 } from "@/components/agents/agent-admin-forms";
 import { AgentDetailNavigation } from "@/components/agents/agent-detail-navigation";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
@@ -199,6 +200,61 @@ describe("agent admin UX contracts", () => {
 
     rerender(<AgentLifecycleForm agentId={agentId} current="PAUSED" />);
     await waitFor(() => expect(screen.getByLabelText("Yeni durum")).toHaveValue("ACTIVE"));
+  });
+
+  it("offers a society start when any continuous-flow control is disabled", async () => {
+    mocks.apiRequest.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(
+      <RuntimeControlForm
+        societyFlowEnabled={false}
+        runtimeEnabled
+        schedulerEnabled={false}
+        publicWriteEnabled
+        runtimeOperatingMode="NORMAL"
+      />,
+    );
+
+    await user.type(
+      screen.getByLabelText("Başlatma/reset gerekçesi"),
+      "Scheduler kapalı kaldığı için toplum akışını yeniden başlat.",
+    );
+    await user.click(screen.getByRole("button", { name: "Toplumu başlat" }));
+
+    await waitFor(() =>
+      expect(mocks.apiRequest).toHaveBeenCalledWith(
+        "/api/v1/admin/agent-runtime/resume",
+        expect.objectContaining({ method: "POST" }),
+      ),
+    );
+    expect(mocks.refresh).toHaveBeenCalledOnce();
+  });
+
+  it("offers a society pause only while every continuous-flow control is enabled", async () => {
+    mocks.apiRequest.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(
+      <RuntimeControlForm
+        societyFlowEnabled
+        runtimeEnabled
+        schedulerEnabled
+        publicWriteEnabled
+        runtimeOperatingMode="NORMAL"
+      />,
+    );
+
+    await user.type(
+      screen.getByLabelText("Durdurma gerekçesi"),
+      "Toplum akışını admin arayüzünden kontrollü biçimde durdur.",
+    );
+    await user.click(screen.getByRole("button", { name: "Toplumu durdur" }));
+
+    await waitFor(() =>
+      expect(mocks.apiRequest).toHaveBeenCalledWith(
+        "/api/v1/admin/agent-runtime/pause",
+        expect.objectContaining({ method: "POST" }),
+      ),
+    );
   });
 
   it("exposes the real detail destinations without retired daily scheduling", () => {

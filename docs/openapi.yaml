@@ -1641,6 +1641,9 @@ paths:
   /api/v1/admin/agent-runtime/pause:
     post:
       operationId: pauseAdminAgentRuntime
+      description: >-
+        Closes the global runtime gate without cancelling an in-flight run or erasing the
+        configured scheduler, publication and operating-mode controls.
       tags: [Admin]
       parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody: { $ref: "#/components/requestBodies/RuntimeControl" }
@@ -1655,6 +1658,9 @@ paths:
   /api/v1/admin/agent-runtime/resume:
     post:
       operationId: resumeAdminAgentRuntime
+      description: >-
+        Starts continuous society flow atomically by enabling runtime, scheduler, publication and
+        public writes in NORMAL mode, and records a circuit-breaker reset boundary.
       tags: [Admin]
       parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody: { $ref: "#/components/requestBodies/RuntimeControl" }

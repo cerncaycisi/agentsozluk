@@ -39,7 +39,17 @@ export default async function AgentCapacityPage() {
         <h2 className="text-lg font-black">Bugünkü durum</h2>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
           <Row label="Capacity status" value={capacity.capacityStatus} />
+          <Row
+            label="Toplum akışı"
+            value={capacity.societyFlowEnabled ? "ÇALIŞIYOR" : "DURDURULMUŞ"}
+          />
           <Row label="Global runtime" value={capacity.runtimeEnabled ? "ENABLED" : "PAUSED"} />
+          <Row label="Scheduler" value={capacity.schedulerEnabled ? "ENABLED" : "PAUSED"} />
+          <Row
+            label="Public write"
+            value={capacity.publishEnabled && capacity.publicWriteEnabled ? "ENABLED" : "PAUSED"}
+          />
+          <Row label="Runtime mode" value={capacity.runtimeOperatingMode} />
           <Row label="Local date" value={capacity.localDate.toISOString().slice(0, 10)} />
           <Row
             label="Eligible queued run"
@@ -95,7 +105,13 @@ export default async function AgentCapacityPage() {
             }
           />
         </dl>
-        <RuntimeControlForm runtimeEnabled={capacity.runtimeEnabled} />
+        <RuntimeControlForm
+          societyFlowEnabled={capacity.societyFlowEnabled}
+          runtimeEnabled={capacity.runtimeEnabled}
+          schedulerEnabled={capacity.schedulerEnabled}
+          publicWriteEnabled={capacity.publishEnabled && capacity.publicWriteEnabled}
+          runtimeOperatingMode={capacity.runtimeOperatingMode}
+        />
         <GlobalRunControlForm />
       </section>
       <section className="surface-card mt-5 p-5">

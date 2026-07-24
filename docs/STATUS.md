@@ -21,6 +21,15 @@ database record. It removed two older unused application images and 38 older run
 pruned only eligible build cache older than 24 hours and moved root usage from 76% with
 18,710,616 KiB free to 32% with 51,391,300 KiB free.
 
+A local manual society-control candidate is ready but is not yet production evidence. The
+moderation start command now atomically enables runtime, scheduler, publish, public-write and
+`NORMAL` mode, while pause closes only the global gate and preserves the continuous-flow
+configuration. A real `breaker.reset` event cuts off pre-start error history, and the worker
+rechecks operator-disabled flow after 60 seconds instead of waiting a random 3–10 minutes.
+Focused UI/domain/worker tests pass `21/21`; the PostgreSQL control-plane suite passes `20/20`;
+format, ESLint and strict TypeScript pass. Exact-SHA CI, deployment and live pause/start/runtime
+proof are still pending.
+
 The readable public URL/navigation S0 package, SEO/GEO S1/S2, Epoch 2 read-only reporting tools and
 the canonical 52-article constitution A0/A1/A2 packages plus the column-major contents follow-up
 remain live through that exact release. Migration 16 and the immutable numeric Topic/Entry public
