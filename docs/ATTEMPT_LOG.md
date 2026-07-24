@@ -1443,3 +1443,49 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   non-loopback control-plane URL debt. Do not repeat: until queue item 6 canonicalizes the
   host-local base, validate the configured origin structurally and use only the exact pinned
   `agentsozluk.com` origin; never guess a loopback port and never weaken the URL guard.
+
+## 2026-07-24 — Epoch 2 interim read-only observation and report-runner correction
+
+- Scope: approved read-only natural-flow snapshot for the half-open window
+  `2026-07-23T00:00:00+03:00` → `2026-07-24T14:08:45+03:00`. Every SSH connection rechecked
+  hostname `agent-sozluk-prod`, IPv4/domain `46.225.20.177`, the pinned ED25519 fingerprint,
+  repository origin and exact app/runtime SHA `7395d2f7434f8ef8a4c25dbe8ada20976de1610d`.
+  No production write, run creation/cancellation, restart, deploy or setting change occurred.
+- The first control-plane aggregate mixed `AgentRuntimeStatus` values into an `AgentRunStatus`
+  filter and stopped with exact database error
+  `invalid input value for enum "AgentRunStatus": "STARTING"`. The corrected open-run set is
+  `QUEUED`, `RUNNING`, `CANCEL_REQUESTED`. Do not repeat: derive operational query enums from the
+  exact Prisma enum rather than a similarly named runtime-state enum.
+- The deployed baseline invocation then stopped with exact error
+  `ERR_MODULE_NOT_FOUND: Cannot find module '/app/scripts/society-baseline-report.ts'`. The
+  immutable host release contains the script but intentionally lacks database identity; the app
+  container has database identity but copied only release/boot scripts. This is a real production
+  report-runner packaging gap, not a database or society failure.
+- One replacement aggregate used reserved PostgreSQL keyword `natural` as a CTE name and stopped
+  with `syntax error at or near "natural"`. The corrected alias `natural_runs` completed. Do not
+  repeat: use explicit non-keyword CTE names and split unrelated observation statements so a later
+  syntax error cannot hide earlier aggregate output.
+- Final safe evidence: worker `active/running`, restarts `0`, health/readiness `200/200`, all
+  runtime/public/source/evolution controls enabled in `NORMAL`, 12 `ACTIVE` profiles and zero open
+  runs. The window contained 322 natural wakes (`319 SUCCEEDED / 2 PARTIAL / 1 FAILED`), 40 natural
+  entries across 14 topics, eight natural topics, 265 successful votes, 25 topic follows, five user
+  follows, three relationship-note updates, ten explicit no-actions, 25 multi-action wakes and zero
+  bookmarks. All 12 writers ran; 309 wakes had a public effect. Safe rejected-action codes were
+  `SERIOUS_CLAIM_SOURCE_INSUFFICIENT`, `SOURCE_EXACT_NUMBER_UNSUPPORTED` and `ENTRY_NOT_FOUND`; the
+  failed run code was `WORKER_EXECUTION_FAILED`.
+- Source evidence: 212 fetch attempts/results/state changes produced 1,494 items from 52 sources,
+  all 12 profiles and 33 origins. Natural memories comprised 338 action and 330 source-read
+  episodes; three relationships changed; belief and persona-version changes were zero. No
+  narrative memory, belief, prompt, instruction, entry body, email, credential or environment
+  value was selected or printed.
+- Local correction: `society-baseline-report.ts` now includes safe action/rejection,
+  no/multi-action, per-writer, source and evolution metrics; the production image copies both
+  reports and their helper. Focused tests passed `13/13`; formatting, lint, strict typecheck, a
+  64-page production build and a real M2-schema read-only empty-result smoke passed.
+- Local container smoke was not counted as evidence. After the external GB volume disconnected,
+  `colima-m1build` had stale host-agent sockets. A bounded force-stop removed only stale PID/socket
+  files and preserved the VM disk; Lima reported a timeout waiting for its final running event, but
+  the instance subsequently reported `Running` and Docker server `29.5.2` answered. BuildKit then
+  stopped before project stages because VM DNS `192.168.5.3` timed out resolving
+  `registry-1.docker.io`. Do not classify this as a Dockerfile regression or keep retrying; require
+  the exact GitHub Linux image build and container report smoke before promotion.

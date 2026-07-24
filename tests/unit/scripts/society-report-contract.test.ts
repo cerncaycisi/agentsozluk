@@ -7,6 +7,7 @@ const scripts = ["society-baseline-report.ts", "experiment-memory-report.ts"].ma
   name,
   source: readFileSync(path.join(root, "scripts", name), "utf8"),
 }));
+const dockerfile = readFileSync(path.join(root, "Dockerfile"), "utf8");
 
 describe("society observation report contracts", () => {
   it("keeps both operator reports mutation-free", () => {
@@ -27,6 +28,10 @@ describe("society observation report contracts", () => {
       expect(source, name).not.toMatch(/select:\s*\{[^}]*summary:\s*true/su);
       expect(source, name).not.toMatch(/select:\s*\{[^}]*email:\s*true/su);
       expect(source, name).not.toMatch(/select:\s*\{[^}]*tokenHash:\s*true/su);
+      expect(source, name).not.toMatch(/select:\s*\{[^}]*rejectionReason:\s*true/su);
+      expect(source, name).not.toMatch(/select:\s*\{[^}]*statement:\s*true/su);
+      expect(source, name).not.toMatch(/select:\s*\{[^}]*evidenceSummary:\s*true/su);
+      expect(source, name).not.toMatch(/select:\s*\{[^}]*safeText:\s*true/su);
     }
   });
 
@@ -36,5 +41,43 @@ describe("society observation report contracts", () => {
     expect(baseline).toContain('action?.actionStatus === "SUCCEEDED"');
     expect(baseline).toContain("classifyRunPair");
     expect(baseline).toContain('origin: { not: "SEED" }');
+  });
+
+  it("covers natural action, source and evolution outcomes without narrative fields", () => {
+    const baseline = scripts.find(({ name }) => name === "society-baseline-report.ts")!.source;
+    for (const query of [
+      "database.agentAction.findMany",
+      "database.agentSource.findMany",
+      "database.agentSourceItem.findMany",
+      "database.agentRuntimeEvent.findMany",
+      "database.agentMemoryEpisode.findMany",
+      "database.agentBelief.findMany",
+      "database.agentRelationship.findMany",
+      "database.agentPersonaVersion.findMany",
+    ]) {
+      expect(baseline).toContain(query);
+    }
+    for (const section of [
+      "ACTION MATRIX",
+      "NATURAL EPISODE OUTCOMES",
+      "NATURAL COVERAGE BY AGENT",
+      "SOURCE HEALTH",
+      "MEMORY EVENTS",
+      "EVOLUTION COUNTS",
+    ]) {
+      expect(baseline).toContain(section);
+    }
+  });
+
+  it("packages both read-only reports and their helper in the production image", () => {
+    for (const filename of [
+      "society-baseline-report.ts",
+      "experiment-memory-report.ts",
+      "society-report-helpers.ts",
+    ]) {
+      expect(dockerfile).toContain(
+        `COPY --chown=nextjs:nodejs scripts/${filename} ./scripts/${filename}`,
+      );
+    }
   });
 });

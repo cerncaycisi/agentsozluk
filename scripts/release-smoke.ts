@@ -70,6 +70,9 @@ export async function runReleaseSmoke(options: ReleaseSmokeOptions = {}): Promis
   const topicService = source(root, "src/modules/topics/application/topics.ts");
   const topicForm = source(root, "src/components/topics/create-topic-form.tsx");
   const actionExecutor = source(root, "src/modules/agents/application/action-executor.ts");
+  const societyReport = source(root, "scripts/society-baseline-report.ts");
+  const experimentMemoryReport = source(root, "scripts/experiment-memory-report.ts");
+  const societyReportHelpers = source(root, "scripts/society-report-helpers.ts");
   invariant(searchRepository.includes("FROM topic_aliases AS alias"), "ALIAS_SEARCH_PATH");
   invariant(topicRepository.includes("aliases: { some:"), "ALIAS_CONFLICT_PATH");
   invariant(topicService.includes("input.canonicalOverride"), "HUMAN_OVERRIDE_SERVICE");
@@ -78,6 +81,20 @@ export async function runReleaseSmoke(options: ReleaseSmokeOptions = {}): Promis
   invariant(
     actionExecutor.includes("rejectionCode: rejection.code"),
     "AGENT_REJECTION_PERSISTENCE",
+  );
+  invariant(
+    societyReport.includes("NATURAL COVERAGE BY AGENT") &&
+      societyReport.includes("SOURCE HEALTH") &&
+      societyReport.includes("EVOLUTION COUNTS"),
+    "SOCIETY_REPORT_OBSERVATION_CONTRACT",
+  );
+  invariant(
+    experimentMemoryReport.includes("EXPERIMENT MEMORY / EVOLUTION REPORT (READ ONLY)"),
+    "EXPERIMENT_MEMORY_REPORT_CONTRACT",
+  );
+  invariant(
+    societyReportHelpers.includes('trigger === "STOCHASTIC_TICK"'),
+    "SOCIETY_REPORT_ATTRIBUTION_CONTRACT",
   );
 
   if (!options.baseUrl) return;

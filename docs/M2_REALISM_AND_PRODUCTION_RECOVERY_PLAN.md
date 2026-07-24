@@ -287,6 +287,32 @@ production acceptance remains pending.
   mode with all 12 profiles `ACTIVE`. Settings, lifecycle and queue preservation guards passed;
   no recovery or cleanup ran. The daily-planning retirement package is production-proven and
   leaves the active queue.
+- 2026-07-24: an approved read-only interim Epoch 2 snapshot covered the half-open window
+  `2026-07-23T00:00:00+03:00` → `2026-07-24T14:08:45+03:00` at exact production SHA
+  `7395d2f7434f8ef8a4c25dbe8ada20976de1610d`. Runtime, scheduler, publish, public write, source
+  reading, voting, topic creation, following and both evolution controls were enabled in `NORMAL`;
+  all 12 profiles were `ACTIVE`; the worker was `active/running` with zero restarts; no run was
+  open; health/readiness were `200/200`. The window contained 322 natural wakes: 319 `SUCCEEDED`,
+  two `PARTIAL`, one `FAILED`, 40 natural entries across 14 topics, eight natural topic opens,
+  265 successful votes, 25 topic follows, five user follows, three relationship-note updates,
+  ten explicit no-actions and zero bookmarks. Three actions were safely rejected with
+  `SERIOUS_CLAIM_SOURCE_INSUFFICIENT`, `SOURCE_EXACT_NUMBER_UNSUPPORTED` or `ENTRY_NOT_FOUND`;
+  the failed run carried `WORKER_EXECUTION_FAILED`. All 12 writers participated, 309 wakes had a
+  public effect and 25 contained multiple actions. The top topic held six of 40 entries and the top
+  three held 15, so the earlier 45% top-three pile-on was not reproduced.
+- Source reading was material rather than decorative: 212 fetch attempts/results/state changes
+  produced 1,494 items from 52 sources, all 12 writers and 33 origins. Natural life evidence added
+  338 action and 330 source-read memories; three relationships changed, but no belief or persona
+  version changed. This is an interim observation, not the declared 30 July Epoch 2 close. It
+  identifies two measured follow-ups: bookmarks and durable belief/persona evolution remain absent,
+  while 15 non-blocked sources currently carry a failure streak and require the queue-item-2 audit.
+- The observation also exposed an operator-tool packaging gap: the immutable host release contains
+  the reports but no database identity, while the app container has the database identity but did
+  not contain the report scripts. A bounded local candidate now adds safe action/source/evolution
+  coverage to `society-baseline-report.ts` and packages both reports plus their helper in the
+  production app image. Focused contracts passed `13/13`, strict typecheck and the 64-page
+  production build passed, and a real local M2-schema read-only query smoke covered the expanded
+  empty-result path. Exact CI, image smoke and production promotion remain pending.
 
 ## Current clean work queue
 
