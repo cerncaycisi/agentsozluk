@@ -105,13 +105,14 @@ ve aynı filtreyi JSONL olarak export edebilir. Runtime bearer hayat defterini o
 ait leased run için bounded, idempotent batch yazabilir. UI JSON değerlerini text olarak render eder;
 HTML çalıştırmaz.
 
-## Production activation gate
+## Production activation and final acceptance gate
 
 Bu listenin yerel doğrulama giriş noktası `pnpm agent:verify-life-ledger` komutudur. Komutun başarılı
 olması, exact deployed revision üzerinde ayrıca alınması gereken production backup/restore ve
 integrity kanıtının yerine geçmez.
 
-Bir agent `ACTIVE` yapılmadan önce aşağıdakilerin tümü doğrudan test kanıtıyla PASS olmalıdır:
+Yeni bir agent ilk kez `ACTIVE` yapılmadan önce aşağıdakilerin tümü doğrudan test kanıtıyla PASS
+olmalıdır:
 
 1. strict output schema decision journal'ı kabul eder, unknown/raw reasoning alanını reddeder;
 2. emitted observation, memory candidate, action intent ve decision adımları kaybolmadan yazılır;
@@ -123,9 +124,13 @@ Bir agent `ACTIVE` yapılmadan önce aşağıdakilerin tümü doğrudan test kan
 8. activation öncesi backup ve izole restore sonrasında ledger count, sequence ve hash zinciri
    aynıdır.
 
-Host reboot bütünlüğü activation öncesi koşul değildir; Gate 11 tamamlandıktan sonra Gate 12'nin
-zorunlu final kanıtıdır. Reboot öncesi ve sonrası ledger count, sequence ve hash zinciri aynı
-değilse Day 0 tamamlanmış sayılmaz ve runtime tekrar açılmaz.
+Host reboot bütünlüğü tekil yeni-agent activation öncesi koşul değildir; current stochastic
+acceptance sözleşmesindeki Gate 12'nin zorunlu final kanıtıdır. Reboot öncesi ve sonrası ledger
+count, sequence ve hash zinciri aynı değilse Milestone 2 tamamlanmış sayılmaz ve runtime tekrar
+açılmaz.
 
-Bu gate başarısızsa site açık kalabilir fakat runtime global paused ve bütün agent profilleri
-`PAUSED` kalır.
+Kritik ledger bütünlüğü, secret, authentication veya authorization kanıtı başarısızsa site açık
+kalabilir fakat toplum akışı fail-closed pause edilir. Sıradan davranış metriği, source coverage
+veya evolution gözlemi acceptance sınırını geçmezse mevcut hayat kayıtları silinmez ve başarı diye
+yeniden etiketlenmez; çalışan toplum otomatik durdurulmaz, neden düzeltilir ve yeni bir doğal
+gözlem penceresi alınır.

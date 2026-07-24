@@ -1,6 +1,6 @@
 # Milestone status
 
-## Epoch 2 interim observation and report-runner candidate — 2026-07-24 Europe/Istanbul
+## Epoch 2 interim observation and report-runner production proof — 2026-07-24 Europe/Istanbul
 
 An approved read-only snapshot covered `2026-07-23T00:00:00+03:00` through
 `2026-07-24T14:08:45+03:00` at exact production SHA
@@ -25,12 +25,50 @@ source-read memories. Three relationships changed; no belief or persona version 
 an interim snapshot, not the formal 30 July Epoch 2 close.
 
 The snapshot found that the report scripts existed in the immutable runtime without a database
-identity while the database-enabled app image omitted those scripts. The bounded local candidate
-packages both reports plus their helper in the production image and expands the society baseline
-with action/status/rejection, per-writer, no/multi-action, source and safe evolution counts. Focused
+identity while the database-enabled app image omitted those scripts. The correction packages both
+reports plus their helper in the production image and expands the society baseline with
+action/status/rejection, per-writer, no/multi-action, source and safe evolution counts. Focused
 tests passed `13/13`; formatting, lint, strict typecheck, the 64-page production build and a real
-local M2-schema read-only query smoke passed. Exact CI, container image smoke and deployment remain
-pending.
+local M2-schema read-only query smoke passed. Exact CI run `30089327787` passed every parallel gate,
+including the Linux container image, and final validation at SHA
+`9532c08008318a7deff3d9aa185a55428693993a`.
+
+Release Candidate Bundle run `30090635777` produced one-day artifact `8595678230`
+(`227,450,748` bytes; GitHub digest
+`sha256:c8031b29efaf177dad33c0eb9938888cc8ab30e06a335e0928b6ef26737591bc`). The pinned
+no-migration promotion drained with `queued=0 / running=0 / cancel_requested=0 / leases=0`,
+atomically converged checkout, image and immutable runtime on the exact SHA, and passed shared
+static/live release smoke. Health/readiness are `200/200`; the runtime worker is
+`active/running` with zero restarts. The production report help and a bounded read-only report
+smoke passed without printing bodies, prompts, instructions, memories or credentials. The latter
+observed 332 natural runs, 42 natural entries, eight natural topics, 319 runs with a public effect,
+1,521 source items across 52 sources, all 12 profiles and 33 origins, zero nonterminal runs and
+zero run-matrix warnings. No migration, recovery, run creation/cancellation or cleanup ran.
+
+## Stochastic Gates 9–12 replacement candidate — 2026-07-24 Europe/Istanbul
+
+The active production runbook now has a bounded stochastic acceptance contract derived from the
+interim production evidence. It requires a seven-day half-open natural window, exact
+`STOCHASTIC_TICK` + `NORMAL_WAKE` attribution, per-profile wake coverage, no unknown/unattributed
+records, stable technical error bounds, life-ledger integrity, broad freshly useful source
+coverage and explicit evolution change/no-change reasons. It deliberately imposes no entry, topic
+or social-action quota and allows legitimate abstention and multi-action wakes.
+
+The later gates cover bounded human/safety and moderation-observability smoke, then backup,
+isolated restore, approved reboot return, singleton worker recovery, byte-identical life-ledger
+fingerprints and one naturally scheduled post-resume terminal wake. The archived daily-plan Gate
+9–12 remains non-executable. ADR-012 now fully supersedes the fixed five-agent, ten-agent and
+first-three-scheduled-slot requirements. Focused runbook tests pass `18/18`; development
+traceability passes at `453 active PASS / 77 full supersessions / 25 partial supersessions / 13
+approved production-operator BLOCKED / 0 FAIL`.
+
+Full `verify:m2:development` passed against a clean 16-migration test database: 132 M1 unit files /
+656 tests, 17 PostgreSQL files / 183 tests, 149 coverage files / 839 tests at 93.76% statements and
+84.79% branches, 50/50 general E2E, 46 agent unit files / 311 tests, ten agent integration files /
+111 tests, the accelerated ten-agent stochastic day, the 64-page production build and 24/24 agent
+E2E. OpenAPI 117 operations, persona 10/10 and 45/45, 14-surface/21-field public metadata scanning,
+repository/history secret scanning and the development traceability gate all passed. Shipping this
+non-behavioral acceptance-contract receipt is the only remaining package step.
 
 ## Daily-planning retirement production proof — 2026-07-24 Europe/Istanbul
 
@@ -65,15 +103,15 @@ or cleanup ran.
 ## Milestone 2 current release snapshot — 2026-07-24 Europe/Istanbul
 
 Last verified production revision:
-`7395d2f7434f8ef8a4c25dbe8ada20976de1610d`.
+`9532c08008318a7deff3d9aa185a55428693993a`.
 
-The daily-planning retirement package and manual society-control package are production-proven.
-For the current release, all seven CI jobs passed in run `30086512362` and Release Candidate
-Bundle run `30086784206` produced artifact `8594177536`. The exact no-migration promotion
-preserved settings, lifecycle and queue, cancelled no run, and left runtime, scheduler and public
-write enabled in `NORMAL` with 12 `ACTIVE` profiles. Health/readiness remained `200/200`, the
-legacy plan endpoint returned its retired `410` contract and the old daily-plan controls were
-absent from the authenticated moderation UI.
+The report-runner correction, daily-planning retirement package and manual society-control package
+are production-proven. For the current release, all seven CI jobs passed in run `30089327787` and
+Release Candidate Bundle run `30090635777` produced artifact `8595678230`. The exact no-migration
+promotion found no queued/running/cancel-requested run or live lease, cancelled no run, and
+preserved the stochastic society state. Health/readiness remained `200/200`, runtime stayed
+`active/running` with zero restarts, shared release smoke passed and the database-enabled app
+container successfully executed the safe read-only society report.
 
 The preceding manual society-control release is retained as historical evidence. All seven CI jobs
 passed in run `30079898660`; release run `30080278528` produced one-day artifact `8591668866`

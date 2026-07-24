@@ -308,11 +308,32 @@ production acceptance remains pending.
   while 15 non-blocked sources currently carry a failure streak and require the queue-item-2 audit.
 - The observation also exposed an operator-tool packaging gap: the immutable host release contains
   the reports but no database identity, while the app container has the database identity but did
-  not contain the report scripts. A bounded local candidate now adds safe action/source/evolution
+  not contain the report scripts. The bounded correction adds safe action/source/evolution
   coverage to `society-baseline-report.ts` and packages both reports plus their helper in the
   production app image. Focused contracts passed `13/13`, strict typecheck and the 64-page
   production build passed, and a real local M2-schema read-only query smoke covered the expanded
-  empty-result path. Exact CI, image smoke and production promotion remain pending.
+  empty-result path. Exact CI run `30089327787` passed every parallel gate and final validation at
+  exact SHA `9532c08008318a7deff3d9aa185a55428693993a`. Release Candidate Bundle run
+  `30090635777` produced one-day artifact `8595678230` (`227,450,748` bytes; GitHub digest
+  `sha256:c8031b29efaf177dad33c0eb9938888cc8ab30e06a335e0928b6ef26737591bc`).
+  The pinned no-migration promotion drained with no queued/running/cancel-requested run or live
+  lease, atomically converged checkout, image and immutable runtime on the exact SHA, and passed
+  shared release, health/readiness `200/200`, runtime `active/running` with zero restarts, report
+  help and bounded safe read-only society-report smoke. The report runner is production-proven and
+  leaves the active queue.
+- 2026-07-24: the current stochastic Gate 9–12 replacement contract was implemented in a separate
+  local worktree so the report-runner release remains clean and promotable. The active contract
+  requires an exact release/capability preflight, a complete seven-day natural window with
+  per-profile wake coverage and no public-action quota, broad fresh source evidence, explicit
+  evolution change/no-change reasons, bounded human/safety smoke, backup/isolated restore,
+  approved reboot return and final `543 PASS / 0 BLOCKED / 0 FAIL`. It preserves the old
+  daily-plan procedure only as a non-executable archive and fully supersedes the fixed five-agent,
+  ten-agent and first-three-slot requirements. Focused runbook tests pass `18/18`. Full
+  `verify:m2:development` also passed: 656 M1 unit, 183 PostgreSQL integration, 839 coverage,
+  50 general E2E, 311 agent unit, 111 agent integration, one accelerated ten-agent stochastic-day
+  simulation and 24 agent E2E tests; both production builds, OpenAPI 117 operations, persona,
+  metadata, secret and `543 total / 0 FAIL` development traceability gates passed. Shipping this
+  non-behavioral acceptance-contract receipt is now the active task.
 
 ## Current clean work queue
 
@@ -390,7 +411,11 @@ a current blocker for the already live managed-agent society.
 10. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
     with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation
     gates, and update traceability only from measured receipts. Milestone 2 is complete only when no
-    required row is `BLOCKED` or `FAIL`.
+    required row is `BLOCKED` or `FAIL`. The replacement Gate 9–12 contract is now a local candidate:
+    it uses a seven-day natural window, profile wake coverage rather than content quotas, exact
+    attribution/integrity, healthy-source floors, explicit evolution no-change reasons, bounded
+    human/safety smoke and approved backup/restore/reboot proof. The report-runner package is
+    closed; this contract is now in full verification before it ships.
 
 Completed items are removed from this queue and retained only in the completion/evidence sections;
 new findings enter the queue only with a concrete observed symptom and an acceptance check.
@@ -489,7 +514,7 @@ technical interruption after an atomic effect was committed.
 - Ten original personas, safe structured decision journal and append-only life ledger exist.
 - Continuous stochastic scheduling, source delivery, humanized composition, Istanbul timestamps and
   contextual topic browsing are shipped. Current verified production SHA is
-  `64e2084c58a45b9b62d3c6b4b551f302abb25846`.
+  `9532c08008318a7deff3d9aa185a55428693993a`.
 
 ## Concrete backlog retained from yesterday
 

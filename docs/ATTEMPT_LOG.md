@@ -1489,3 +1489,85 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   stopped before project stages because VM DNS `192.168.5.3` timed out resolving
   `registry-1.docker.io`. Do not classify this as a Dockerfile regression or keep retrying; require
   the exact GitHub Linux image build and container report smoke before promotion.
+
+## 2026-07-24 — Report-runner RC artifact and stochastic acceptance contract
+
+- Exact report-runner SHA `9532c08008318a7deff3d9aa185a55428693993a` passed every parallel CI
+  job and final validation in run `30089327787`, including the Linux image/Compose gate. The
+  approved storage action positively matched then deleted only prior RC artifact `8594177536`
+  (`release-candidate-7395d2f7434f8ef8a4c25dbe8ada20976de1610d`, `227,303,206` bytes).
+- The first Release Candidate Bundle dispatch omitted its required `candidate_sha` input and GitHub
+  rejected it before creating a run with exact error
+  `HTTP 422: Required input 'candidate_sha' not provided`. Root cause: invoking the workflow by ID
+  with only `--ref main` even though the current workflow contract declares a mandatory dispatch
+  input. Verified resolution: inspect the workflow YAML first and dispatch with
+  `-f candidate_sha=<exact-40-character-main-SHA>`.
+- Corrected workflow run `30090635777` completed in `7m14s` and uploaded one-day artifact
+  `8595678230`, name
+  `release-candidate-9532c08008318a7deff3d9aa185a55428693993a`, size `227,450,748` bytes and
+  GitHub digest
+  `sha256:c8031b29efaf177dad33c0eb9938888cc8ab30e06a335e0928b6ef26737591bc`.
+  No production connection or mutation occurred.
+- A separate local worktree keeps the exact report-runner checkout clean while the next
+  non-behavioral package replaces the archived daily-plan Gate 9–12 contract with measured
+  stochastic acceptance. Focused runbook tests pass `18/18`; development traceability passes at
+  `453 active PASS`, `77` full ADR-012 supersessions, `25` partial supersessions, `13` approved
+  production-operator `BLOCKED` and `0 FAIL`.
+- Do not repeat: every RC dispatch must first read the current workflow inputs and pass the exact
+  SHA explicitly; a green branch plus `--ref` is not a substitute for `candidate_sha`.
+
+## 2026-07-24 — Report-runner exact-SHA production promotion
+
+- Approved scope: promote exact SHA `9532c08008318a7deff3d9aa185a55428693993a` from Release
+  Candidate Bundle run `30090635777`, artifact `8595678230`, without migration; wait for work
+  rather than cancel it; preserve runtime, scheduler, settings, lifecycle and queue; run shared
+  release, exact-identity, health/readiness, report-help and safe read-only society-report smoke.
+  Every production connection rechecked the pinned hostname, IPv4/domain, ED25519 fingerprint,
+  repository origin, app SHA and immutable-runtime SHA.
+- The guarded release found `queued=0 / running=0 / cancel_requested=0 / leases=0`, loaded image ID
+  `sha256:7509130d8d8ffc84c002f9825303c2e71d79664d6b0dde021aff7fb51b0baefa`, and atomically
+  converged checkout, image and immutable runtime on the exact SHA. Shared static/live smoke passed
+  twice. Final health/readiness were `200/200`; `agent-sozluk-runtime.service` was
+  `active/running` with restart count `0`. No migration, recovery, run creation/cancellation or
+  cleanup ran.
+- Report help passed. A bounded production report for the half-open window beginning
+  `2026-07-23T00:00:00+03:00` verified the baseline heading, action matrix, per-agent coverage,
+  source health, evolution and summary sections. Safe summary evidence was 332 natural runs, 42
+  natural entries, eight natural topics, 319 natural runs with public effect, zero nonterminal
+  runs, 1,521 source items from 52 sources, all 12 profiles and 33 origins, 1,137 memory episodes,
+  three relationship updates, zero belief/persona changes and zero run-matrix warnings. No body,
+  prompt, instruction, narrative memory, email, credential or environment value was selected or
+  printed.
+- The first combined smoke wrapper failed locally before SSH with
+  `SyntaxError: Invalid or unexpected token`; the first remote heredoc then proved report markers
+  but its inner Compose process consumed the remaining SSH stdin. Two follow-up health wrappers
+  exited `1` with empty stdout/stderr because they referenced nonexistent
+  `agent-sozluk-worker.service`. Verified resolution: pass `</dev/null` to inner Compose commands
+  when the outer script arrives over stdin, and use the repository/runbook-owned unit name
+  `agent-sozluk-runtime.service`. Do not repeat guessed unit names or count a truncated transport
+  script as complete smoke evidence.
+
+## 2026-07-24 — Stochastic Gates 9–12 replacement verification
+
+- Scope: replace the archived daily-plan acceptance procedure with a measured stochastic contract;
+  fully supersede fixed five-agent, ten-agent and first-three-slot requirements; keep content,
+  topic and social behavior observational rather than quota-driven. This package changes
+  runbook/plan/status/traceability contracts and their regression test, not the running society
+  implementation.
+- Focused runbook/report tests passed `23/23`. Development traceability passed at
+  `453 active PASS`, `77` full ADR-012 supersessions, `25` partial supersessions, `13` approved
+  production-operator `BLOCKED` and `0 FAIL`, 543 rows total.
+- Full `verify:m2:development` passed against the explicit allowlisted local PostgreSQL 16 test
+  database: 132 M1 unit files / 656 tests, 17 PostgreSQL files / 183 tests, 149 coverage files /
+  839 tests at 93.76% statements and 84.79% branches, 50/50 general E2E, 46 agent unit files / 311
+  tests, ten agent integration files / 111 tests, the accelerated ten-agent stochastic day, two
+  64-page production builds and 24/24 agent E2E. OpenAPI 117 operations, persona 10/10 and 45/45,
+  14-surface/21-field public metadata scanning, repository/history secret scanning and development
+  traceability all passed.
+- The first full-verification launch did not start because `TEST_DATABASE_URL` was absent; a shell
+  precondition returned exit `1` with empty stdout/stderr. Two discovery commands also stopped
+  before reading files with `zsh: no matches found: docker-compose*.y*ml` and then
+  `File name too long (os error 63)`. Verified resolution: read this ledger first, query the running
+  local PostgreSQL instance for its actual role/socket, validate the allowlisted test DB with
+  `select 1`, and use fixed existing paths or `rg --files` without packing newline-separated paths
+  into one quoted scalar. Do not repeat guessed database credentials or shell globs.

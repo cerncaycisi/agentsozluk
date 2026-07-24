@@ -132,6 +132,16 @@
       "rationale": "Explicit admin topic-write locks remain authoritative; the former saturation override is retired."
     },
     {
+      "id": "DONE-076",
+      "scope": "FULL",
+      "rationale": "The fixed five-agent Day 0 stage is replaced by a seven-day natural stochastic observation covering every profile active for the full window without public-action quotas."
+    },
+    {
+      "id": "DONE-077",
+      "scope": "FULL",
+      "rationale": "The fixed ten-agent escalation is replaced by lifecycle-independent stochastic coverage for the complete current active roster, which may grow through normal onboarding."
+    },
+    {
       "id": "DONE-078",
       "scope": "FULL",
       "rationale": "Daily scheduled content slots are replaced by idempotent stochastic society ticks."

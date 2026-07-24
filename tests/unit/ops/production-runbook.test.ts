@@ -15,8 +15,13 @@ const gate8 = runbook.slice(
 );
 const capacityGate = runbook.slice(
   runbook.indexOf("### Capacity prerequisite: real CLI benchmark and persisted measurement"),
+  runbook.indexOf("## Current stochastic production acceptance — Gates 9–12"),
+);
+const stochasticAcceptance = runbook.slice(
+  runbook.indexOf("## Current stochastic production acceptance — Gates 9–12"),
   runbook.indexOf("## Historical daily-plan Day 0 gate — archived, do not execute"),
 );
+const stochasticAcceptanceProse = stochasticAcceptance.replace(/\s+/gu, " ");
 
 describe("Milestone 2 production operator runbook", () => {
   it("keeps every production connection and mutation behind a per-action approval gate", () => {
@@ -209,6 +214,85 @@ describe("Milestone 2 production operator runbook", () => {
     expect(capacityGate).toContain("Concurrency testi kaydet");
     expect(capacityGate).toContain("FROM agent_runtime_capabilities");
     expect(capacityGate).toContain("cold/warm/dual sample counts");
+  });
+
+  it("defines the current seven-day stochastic acceptance without public-action quotas", () => {
+    expect(stochasticAcceptance).toContain(
+      "## Current stochastic production acceptance — Gates 9–12",
+    );
+    expect(stochasticAcceptanceProse).toContain(
+      "at least seven complete consecutive Europe/Istanbul days",
+    );
+    expect(stochasticAcceptance).toContain("`STOCHASTIC_TICK` + `NORMAL_WAKE`");
+    expect(stochasticAcceptance).toContain("run_matrix_warnings=0");
+    expect(stochasticAcceptanceProse).toContain("at least three terminal natural wakes");
+    expect(stochasticAcceptanceProse).toContain(
+      "this proves scheduler coverage, not a content quota",
+    );
+    expect(stochasticAcceptanceProse).toContain(
+      "combined natural `FAILED` plus `TIMED_OUT` rate is at most 5%",
+    );
+    expect(stochasticAcceptance).toContain("agent_content_without_run_linkage=0");
+    expect(stochasticAcceptanceProse).toContain(
+      "An agent may take zero, one or several permitted actions",
+    );
+    expect(stochasticAcceptanceProse).toContain("mandatory observations but not action quotas");
+    expect(stochasticAcceptance).not.toContain("15–20 entries per agent");
+    expect(stochasticAcceptance).not.toContain("150–200 global target");
+    expect(stochasticAcceptance).not.toContain("SCHEDULER_SLOT");
+    expect(stochasticAcceptance).not.toContain("AUTO_CATCH_UP");
+  });
+
+  it("requires broad fresh source evidence and explicit evolution no-change reasons", () => {
+    for (const evidence of [
+      "at least 24 freshly useful enabled",
+      "at least 16 independent origins",
+      "at least eight Turkish-language or",
+      "at least ten freshly useful sources",
+      "at least five categories and six origins",
+      "no enabled source is silently 404/auth/robots/TLS/",
+      "eligibility and",
+      "no-change decisions are explicitly counted with stable reasons",
+    ])
+      expect(stochasticAcceptanceProse).toContain(evidence);
+    expect(stochasticAcceptanceProse).toContain("No state change is forced");
+  });
+
+  it("keeps natural observation separate from bounded human and recovery smokes", () => {
+    expect(stochasticAcceptanceProse).toContain("Operator-directed runs are classified by");
+    expect(stochasticAcceptanceProse).toContain("Do not add operator runs to the natural window");
+    for (const evidence of [
+      "registration stays open",
+      "cannot publish before admin approval",
+      "HUMAN ADMIN pause and start",
+      "cancel no running work",
+      "one agent-content takedown and restore cycle",
+      "default moderation event feed hides heartbeat noise without deleting it",
+      "terminal run detail explains writer, actions, `PARTIAL`",
+      "A missing observation is FAIL",
+    ])
+      expect(stochasticAcceptanceProse).toContain(evidence);
+  });
+
+  it("requires approved backup, restore and reboot with a natural post-resume wake", () => {
+    for (const evidence of [
+      "repeat Gate 7 backup and",
+      "isolated restore",
+      "byte-identical V1 preservation",
+      "deterministic chain fingerprint",
+      "specific approvals for pause,",
+      "reboot, post-reboot connection and final resume",
+      "require a different boot ID",
+      "exactly one hardened runtime worker",
+      "byte-identical ledger",
+      "one naturally scheduled wake",
+      "it may legitimately abstain",
+      "final `pnpm requirements:m2:check`",
+      "`543 PASS`",
+    ])
+      expect(stochasticAcceptanceProse).toContain(evidence);
+    expect(stochasticAcceptanceProse).toContain("Do not print either boot ID");
+    expect(stochasticAcceptanceProse).toContain("A failed gate remains immutable evidence");
   });
 
   it("preserves the retired human smoke only inside an explicit non-executable archive", () => {
