@@ -828,7 +828,9 @@ run for it, builds and smokes the image, assembles the Ubuntu 24.04 x64/glibc wo
 uploads one `release-candidate-<sha>` artifact for one day. The combined compressed payload is
 fail-closed at 240 MiB before upload. This ceiling is calibrated above the first measured
 216.7 MiB bundle while keeping one run bounded; the failure receipt reports the image and runtime
-archive byte counts separately.
+archive byte counts separately. The local API receipt permits only 1 MiB of ZIP framing overhead
+above that payload ceiling, and the same portable path validator checks both ZIP and tar listings
+before any production connection.
 
 Dispatch and capture the resulting numeric run ID:
 

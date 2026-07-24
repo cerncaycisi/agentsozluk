@@ -256,7 +256,12 @@ production acceptance remains pending.
    gates, so queue item 1 is not yet complete. First run `30020282846` built and smoked both
    stages but correctly stopped before upload: the measured `227,226,573`-byte (216.7 MiB) bundle
    exceeded the initial 160 MiB estimate. The cap is now calibrated to 240 MiB and emits separate
-   image/runtime byte counts on failure; a fresh exact-SHA workflow remains required. Bounded
+   image/runtime byte counts on failure. Follow-up workflow `30074005142` built and uploaded
+   artifact `8589270031` in `7m13s`; its independent ZIP digest, manifest, archive hashes/sizes,
+   ABI and zstd checks passed. Pre-SSH verification then exposed an old 170 MB duplicate API cap
+   and a macOS awk reserved-variable error in path validation. Both are corrected with a
+   payload-plus-1-MiB ZIP bound and one portable ZIP/tar path validator, but that correction moves
+   `main`, so a fresh exact-SHA workflow remains required. Bounded
    storage cleanup removed two obsolete
    lockfile caches totalling `401,334,874` bytes and retained the current cache; mandatory one-day
    coverage evidence remains enabled.

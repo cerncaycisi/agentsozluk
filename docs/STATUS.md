@@ -85,7 +85,14 @@ Ubuntu 24.04 x64/glibc runtime from a dedicated seven-dependency workspace, fail
 above 240 MiB and retains the artifact for one day. The first workflow run
 `30020282846` built and smoked both stages but stopped before upload at the original 160 MiB
 ceiling: the measured bundle was `227,226,573` bytes (216.7 MiB). The recalibrated bounded ceiling
-also reports image/runtime component sizes on failure. Before production access, the local wrapper
+also reports image/runtime component sizes on failure. Exact follow-up run `30074005142` then
+built and uploaded artifact `8589270031` in `7m13s`; its GitHub ZIP digest, internal manifest,
+archive hashes/byte counts, ABI and zstd integrity passed independent local verification. That
+verification found two still-local pre-SSH wrapper defects: its API ZIP ceiling remained at the old
+170 MB estimate, and its inline awk path loop used macOS-reserved name `index`. The corrected
+wrapper derives a 240 MiB payload plus 1 MiB ZIP-overhead bound and uses one portable, executable
+path validator for both ZIP and tar listings. A fresh exact-SHA artifact remains required because
+the wrapper correction moves `main`. Before production access, the local wrapper
 checks the exact CI/workflow/run identity, GitHub's artifact-ZIP SHA-256, rigid internal manifest,
 both archive hashes and sizes, ABI and archive paths. The remote artifact installer is inert: it
 may load the exact image and publish the root-owned immutable release, but cannot run Compose,

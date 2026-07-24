@@ -1215,3 +1215,26 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   resolution only with a new exact-SHA green-main workflow and monitor Actions storage before
   upload. Do not repeat: derive bounded artifact ceilings from a measured first bundle and make
   component sizes observable rather than treating an estimate as acceptance evidence.
+
+## 2026-07-24 — First uploaded artifact and local promotion-preflight corrections
+
+- After exact cache ID `5994935628` (`267,073,277` bytes) was explicitly approved and deleted,
+  Actions cache inventory was zero and unexpired artifacts totalled `10,054,366` bytes. Exact SHA
+  `925996aba7cd269db1746048dbf0b95dff9cf0e8` had green push CI run `30073645204`; local HEAD,
+  `origin/main` and remote `main` matched before dispatch.
+- Release workflow `30074005142` completed successfully in `7m13s` and uploaded unique one-day
+  artifact `8589270031`. GitHub reported ZIP size `227,230,921` bytes and digest
+  `61f69dd2751c28ae6b8532cc9eec2123b1af164660bb45aa8086296b01377e44`. Independent local download
+  matched both values. The rigid manifest, both archive SHA-256 values, zstd frames and ABI
+  `linux-x64-glibc-node-abi-127` passed; the image archive is `169,090,472` bytes, runtime archive
+  `58,139,195` bytes and combined payload `227,229,667` bytes. No production connection or
+  mutation occurred.
+- The pre-SSH promotion review found two wrapper defects. First, the API metadata guard still
+  rejected ZIPs above the obsolete `170000000`-byte estimate even though the builder now permits a
+  measured 240 MiB payload. Second, both archive-path checks used `index` as an awk loop variable;
+  macOS awk stopped with `awk: syntax error` because `index` is a built-in function name.
+- Resolution candidate: bind the API ZIP ceiling to the 240 MiB payload plus exactly 1 MiB framing
+  overhead, add a test that proves the numeric relationship, and reuse one portable awk file for
+  ZIP and tar path listings with real safe/absolute/parent-path execution tests. Do not repeat:
+  duplicated artifact limits must have a relational test, and local promotion primitives must run
+  on the actual macOS operator toolchain before requesting production approval.

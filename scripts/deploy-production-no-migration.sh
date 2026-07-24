@@ -177,7 +177,7 @@ if (
   !Number.isSafeInteger(matching[0].id) ||
   !Number.isSafeInteger(matching[0].size_in_bytes) ||
   matching[0].size_in_bytes <= 0 ||
-  matching[0].size_in_bytes > 170000000 ||
+  matching[0].size_in_bytes > 252706816 ||
   !/^sha256:[0-9a-f]{64}$/u.test(matching[0].digest ?? "")
 ) {
   process.stderr.write("RELEASE_WRAPPER_FAIL code=ARTIFACT_API_MISMATCH\n");
@@ -224,15 +224,7 @@ NODE
     test "sha256:$(shasum -a 256 "$artifact_zip" | awk '{print $1}')" = \
       "$artifact_digest"
     if ! unzip -Z1 "$artifact_zip" |
-        awk '
-          /^\// { exit 1 }
-          {
-            count = split($0, parts, "/")
-            for (index = 1; index <= count; index += 1) {
-              if (parts[index] == "..") exit 1
-            }
-          }
-        '; then
+        awk -f "$root/scripts/validate-release-archive-paths.awk"; then
       printf 'RELEASE_WRAPPER_FAIL code=ARTIFACT_ZIP_PATH_INVALID\n' >&2
       exit 90
     fi
@@ -276,15 +268,7 @@ NODE
     }
     if ! zstd -q --decompress --stdout "$archive" |
         tar --list --file=- |
-        awk '
-          /^\// { exit 1 }
-          {
-            count = split($0, parts, "/")
-            for (index = 1; index <= count; index += 1) {
-              if (parts[index] == "..") exit 1
-            }
-          }
-        '; then
+        awk -f "$root/scripts/validate-release-archive-paths.awk"; then
       printf 'RELEASE_WRAPPER_FAIL code=ARCHIVE_PATH_INVALID\n' >&2
       exit 90
     fi

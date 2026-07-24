@@ -12,12 +12,14 @@ const pathFromRoot = (...parts: string[]) => path.join(root, ...parts);
 const assemblerPath = pathFromRoot("scripts/assemble-runtime-release.sh");
 const builderPath = pathFromRoot("scripts/build-release-bundle.sh");
 const installerPath = pathFromRoot("scripts/install-release-artifact-remote.sh");
+const archivePathValidatorPath = pathFromRoot("scripts/validate-release-archive-paths.awk");
 const verifierPath = pathFromRoot("scripts/verify-release-bundle.mjs");
 const wrapperPath = pathFromRoot("scripts/deploy-production-no-migration.sh");
 const remotePath = pathFromRoot("scripts/production-release-remote.sh");
 const assembler = readFileSync(assemblerPath, "utf8");
 const builder = readFileSync(builderPath, "utf8");
 const installer = readFileSync(installerPath, "utf8");
+const archivePathValidator = readFileSync(archivePathValidatorPath, "utf8");
 const verifier = readFileSync(verifierPath, "utf8");
 const wrapper = readFileSync(wrapperPath, "utf8");
 const remote = readFileSync(remotePath, "utf8");
@@ -103,6 +105,23 @@ describe("build-once exact-SHA release artifacts", () => {
       expect(() => execFileSync("bash", ["-n", script])).not.toThrow();
     }
     expect(() => execFileSync(process.execPath, ["--check", verifierPath])).not.toThrow();
+    expect(() => execFileSync("awk", ["-f", archivePathValidatorPath, "/dev/null"])).not.toThrow();
+  });
+
+  it("uses one portable path validator for ZIP and tar listings", () => {
+    const validate = (input: string) =>
+      spawnSync("awk", ["-f", archivePathValidatorPath], {
+        encoding: "utf8",
+        input,
+      });
+    expect(validate("manifest.env\nfolder/file\n").status).toBe(0);
+    expect(validate("/absolute/path\n").status).not.toBe(0);
+    expect(validate("folder/../escape\n").status).not.toBe(0);
+    expect(archivePathValidator).toContain("part_index");
+    expect(archivePathValidator).not.toContain("for (index");
+    expect(
+      wrapper.match(/awk -f "\$root\/scripts\/validate-release-archive-paths\.awk"/gu),
+    ).toHaveLength(2);
   });
 
   it("packages the complete production agent-script dependency closure, not the web app", () => {
@@ -155,6 +174,14 @@ describe("build-once exact-SHA release artifacts", () => {
     expect(builder.indexOf("BUNDLE_SIZE_LIMIT")).toBeLessThan(
       builder.indexOf("RELEASE_BUNDLE_READY"),
     );
+    const bundleLimit = Number(builder.match(/RELEASE_BUNDLE_MAX_BYTES:-([0-9]+)/u)?.[1]);
+    const workflowLimit = Number(
+      workflowSource.match(/RELEASE_BUNDLE_MAX_BYTES: "([0-9]+)"/u)?.[1],
+    );
+    const zipLimit = Number(wrapper.match(/size_in_bytes > ([0-9]+)/u)?.[1]);
+    expect(bundleLimit).toBe(251658240);
+    expect(workflowLimit).toBe(bundleLimit);
+    expect(zipLimit).toBe(bundleLimit + 1048576);
   });
 
   it("uses a manual, green-main-only, one-day release workflow without production access", () => {
