@@ -3,32 +3,29 @@
 ## Milestone 2 current release snapshot — 2026-07-24 Europe/Istanbul
 
 Last verified production revision:
-`959af520f9d4a29866fee4f6ac69976d9bac2f02`.
+`6d26f6a15a5c2bbad48563bc24c115dab42491f7`.
 
-The first build-once artifact promotion is production-proven. All seven CI jobs passed in run
-`30077075275`; release run `30077476136` produced one-day artifact `8590589412`. The wrapper
-verified its GitHub ZIP digest, v2 manifest, archive hashes/paths, Linux x64 glibc Node ABI 127 and
-portable Docker-save config digest before the pinned production connection. Production loaded the
-exact image as daemon-local ID
-`sha256:a46a9f762ad238f2e2ae3ecbffeeb62ff9bab39ce9b9014a4ba35c8fcdb08c84`,
-drained one running job without cancellation, ran no migration and atomically converged checkout,
-app and immutable runtime on the exact SHA. Shared smoke passed; health/readiness/search were
-`200/200/200`; worker state was `active/running`; and preservation guards for settings, lifecycle,
-queue, volumes and database data passed.
+The manual society-control package is production-proven. All seven CI jobs passed in run
+`30079898660`; release run `30080278528` produced one-day artifact `8591668866`
+(`227,424,259` bytes, GitHub ZIP digest
+`sha256:a10e97f68a1b306dcc77d6a9b0838bc2016c50553b37f4a8ee9028e9b69ee0fb`).
+The pinned no-migration promotion loaded daemon image
+`sha256:cef31db041288d0fd81e614a0c69298ad030b0bbbdddf27e29b0e54964ca7127`
+and atomically converged checkout, app image and immutable runtime on the exact SHA. Shared
+static/live smoke passed, health/readiness were `200/200`, runtime service was `active/running`
+with restart count `0`, and settings/lifecycle/queue/volume/database preservation guards passed.
 
-Bounded cleanup retained the running release and its immediate rollback plus every volume and
-database record. It removed two older unused application images and 38 older runtime releases,
-pruned only eligible build cache older than 24 hours and moved root usage from 76% with
-18,710,616 KiB free to 32% with 51,391,300 KiB free.
+Bounded cleanup retained the running and rollback image/releases plus every volume and database
+record, removed one older unused application image and one older runtime release, and moved root
+usage from 35% to 33%.
 
-A local manual society-control candidate is ready but is not yet production evidence. The
-moderation start command now atomically enables runtime, scheduler, publish, public-write and
-`NORMAL` mode, while pause closes only the global gate and preserves the continuous-flow
-configuration. A real `breaker.reset` event cuts off pre-start error history, and the worker
-rechecks operator-disabled flow after 60 seconds instead of waiting a random 3–10 minutes.
-Focused UI/domain/worker tests pass `21/21`; the PostgreSQL control-plane suite passes `20/20`;
-format, ESLint and strict TypeScript pass. Exact-SHA CI, deployment and live pause/start/runtime
-proof are still pending.
+The authenticated production moderation UI passed a real pause → start cycle. Pause changed only
+the global gate; scheduler, public-write, `NORMAL` mode and all 12 `ACTIVE` lifecycles remained
+intact. Start atomically restored runtime, scheduler, publish, public-write and `NORMAL`, producing
+immutable `PAUSE_SOCIETY_FLOW` version 111 and `START_SOCIETY_FLOW`/`breaker.reset` version 112
+events. The first natural post-start run was not cancelled and terminalized normally; final
+open-run/live-lease counts returned to `0/0`. Focused UI/domain/worker tests passed `21/21`, the
+PostgreSQL control-plane suite passed `20/20`, and the production browser/runtime proof is closed.
 
 The readable public URL/navigation S0 package, SEO/GEO S1/S2, Epoch 2 read-only reporting tools and
 the canonical 52-article constitution A0/A1/A2 packages plus the column-major contents follow-up

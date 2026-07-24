@@ -1325,3 +1325,45 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
 - Do not repeat: before a local integration command, read this ledger and derive the explicit role
   from the running test PostgreSQL instance. A socket URL with an omitted role is not an accepted
   shortcut, even when `psql` succeeds through shell defaults.
+
+## 2026-07-24 — Manual society-control production proof
+
+- Exact green-main SHA `6d26f6a15a5c2bbad48563bc24c115dab42491f7` passed all seven CI jobs in
+  run `30079898660`. Release Candidate Bundle run `30080278528` completed successfully and
+  produced one-day artifact `8591668866`, size `227,424,259` bytes, with GitHub ZIP digest
+  `sha256:a10e97f68a1b306dcc77d6a9b0838bc2016c50553b37f4a8ee9028e9b69ee0fb`.
+- Two local operator invocation errors occurred before any production mutation. A guessed
+  nonexistent `scripts/promote-release-artifact.sh` path returned `No such file or directory`.
+  Calling the real wrapper through pnpm with an extra literal `--` then failed pre-SSH with
+  `RELEASE_WRAPPER_FAIL code=UNKNOWN_ARGUMENT`. The correct direct invocation is the documented
+  `bash scripts/deploy-production-no-migration.sh --sha ... --artifact-run ... --execute --cleanup`
+  form; do not invent a promotion script or pass a package-manager separator to the shell wrapper.
+- The corrected wrapper verified the artifact identity, digest, manifest, archive paths and hashes,
+  Linux x64 glibc Node ABI 127 and pinned production identity before mutation. The destination
+  loaded portable image config digest
+  `sha256:0d70d8025b7691cee8f922fd6c95ebb68b4357b5e12e918db3519a1f9f9797ae`
+  as daemon-local image ID
+  `sha256:cef31db041288d0fd81e614a0c69298ad030b0bbbdddf27e29b0e54964ca7127`.
+  Drain started at queued/running/cancel-requested/lease `0/0/0/0`; no run was cancelled. No
+  migration ran. App, image and immutable runtime converged on the exact SHA; shared release smoke
+  passed twice and health/readiness/search returned `200/200/200`.
+- Bounded cleanup preserved the new and immediate rollback image/releases, every container
+  reference, all volumes and database data. It removed one older unused application image and one
+  older runtime release. Root usage moved from 35% with `49,480,928` KiB free to 33% with
+  `51,083,140` KiB free; the volume fingerprint remained unchanged.
+- The first post-deploy read-only snapshot repeated an already documented operator mistake by
+  checking nonexistent `/opt/agent-sozluk/runtime/.release-sha`. It stopped before the database
+  query with exact error `No such file or directory`; no state changed. The corrected immutable
+  marker is `/opt/agent-sozluk/runtime/current/.release-sha`. Do not repeat: use the repository
+  runbook's `current/.release-sha` guard verbatim rather than rewriting a custom path.
+- The authenticated moderation UI passed the real pause → start cycle. Initial state was runtime,
+  scheduler, publish and public-write enabled, mode `NORMAL`, settings version 110, 12 `ACTIVE`
+  profiles and zero open run/lease. Pause changed only the global runtime gate and recorded
+  `PAUSE_SOCIETY_FLOW` at version 111. Start atomically restored every continuous-flow control,
+  recorded `START_SOCIETY_FLOW` plus `breaker.reset` at version 112 and left all lifecycles intact.
+  One natural run started after resume, was not cancelled and terminalized normally; final
+  open-run/live-lease counts returned to `0/0`.
+- Final evidence: exact checkout/runtime/image SHA matched; runtime service was `active/running`
+  with restart count `0`; runtime, scheduler, publish and public-write were enabled in `NORMAL`;
+  all 12 profiles were `ACTIVE`; health/readiness were `200/200`. The manual society-control
+  contract is production-proven.
