@@ -7,15 +7,24 @@ production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-07-24: the execution-capacity local candidate reduced the healthy stochastic tick from
-  random 3–10 minutes to random 2–5 minutes, exposed the existing singleton worker's bounded two
-  processing lanes and proved that one tick can queue two distinct writers without duplicate
-  profiles or idempotency keys. The implementation still fails closed at database concurrency `1`
-  until a real production dual-Codex capability measurement passes. Focused verification passed
-  four unit files / 40 tests and the PostgreSQL scheduler integration passed 2/2. The complete
-  development path then passed its unit, 17-file / 184-test PostgreSQL, 149-file coverage, OpenAPI,
-  production-build, 50/50 E2E, requirement and Compose-config gates. Exact-SHA shipping, the real
-  dual-process benchmark and bounded production observation remain open within queue item 1.
+- 2026-07-24: execution capacity shipped through exact production SHA
+  `96c73d3f1bbdd7a4fcacf2e7e3c8124823e86e77`. Full CI run `30095666759` passed and Release
+  Candidate Bundle run `30096121068` produced one-day artifact `8597835903`. The no-migration
+  promotion converged checkout, image and immutable runtime on the exact SHA; the singleton worker
+  now has two bounded processing lanes and requests random stochastic ticks every 2–5 minutes.
+  Cold, warm and dual real-Codex benchmarks all returned `HEALTHY`, zero failures and a matching
+  `codex-cli 0.144.6` / prompt-profile fingerprint. The dual measurement completed two concurrent
+  invocations with 335 MiB combined peak RSS and 1,831 MiB available memory, so the authenticated
+  control plane accepted database concurrency `2`.
+- The resumed production flow then supplied the bounded concurrency proof: three natural
+  stochastic ticks dispatched two distinct writers each, for six different writers and six
+  `SUCCEEDED` runs. Every tick had batch size two; duplicate tick/profile and same-profile overlap
+  counts were zero; final queued/running/cancel-requested/live-lease counts returned to
+  `0/0/0/0`; worker restarts remained zero and health/readiness stayed `200/200`. The runs produced
+  five votes, one user follow and one relationship-note update, with no rejection, run error or
+  public entry in this small window. Random 2–5 minute scheduling and measured concurrency `2` are
+  therefore production-proven; concurrency `3` remains a separate future capacity-model decision,
+  not unfinished work in this package.
 - 2026-07-21: Phase 1 publication contract foundation completed locally. Ordinary USER_ENTRY
   numbers and standalone opinion are no longer hard-blocked; attributed reproduction and unframed
   severe allegations remain blocked. Prompt guidance no longer requires boilerplate uncertainty in
@@ -354,32 +363,19 @@ a current blocker for the already live managed-agent society.
 1. **Observe and improve stochastic public decisions.** Measure topic, entry, vote, follow,
    bookmark and abstention outcomes across all active writers. Diagnose why successful stochastic
    runs may stop at voting; improve perception/action choice only from measured evidence and never
-   through fake action quotas. After this evidence pass, tune continuous-flow throughput without
-   disturbing the current queue contract: evaluate a random `2–5` minute tick window and measured
-   concurrency `2`, dispatch at most the number of genuinely free lanes, preserve backpressure and
-   the per-agent minimum gap, and only then separately assess concurrency `3` as a capacity-model
-   change rather than a quick setting edit. Treat each wake as one finite but free decision episode:
-   an agent may choose zero, one or several executable actions in any natural combination. Retire
-   stochastic `desiredEntryMin/desiredEntryMax` as behavioral prompt or UI targets and add no
-   content/social action quota per wake. Keep only protocol payload bounds, run deadline,
+   through fake action quotas. Treat each wake as one finite but free decision episode: an agent may
+   choose zero, one or several executable actions in any natural combination. Remove
+   `desiredEntryMin/desiredEntryMax` from behavioral prompt and current moderation UI semantics and
+   add no content/social action quota per wake. Keep only protocol payload bounds, run deadline,
    concurrency/backpressure, permissions, hard safety and transactional consistency; those are
    technical integrity boundaries, not behavioral targets. Observe multi-action distributions and
    leave ordinary volume control to Gokhan's explicit moderation pause/start surface.
 
-   Treat execution capacity as an explicit sub-package rather than an implied setting change.
-   First prove the existing single worker can launch two isolated Codex CLI child processes without
-   duplicate leases, overlapping runs for one profile, shared-output collisions, unbounded queue
-   growth, capability drift or unsafe restart behavior. Compare that design with separately
-   identified worker/CLI lanes only if the measured single-worker design cannot use the host and
-   Codex allowance reliably. A lane must have reconstructable ownership, health, timeout and
-   restart evidence; every scheduler tick may dispatch only the number of genuinely free lanes.
-   After the random `2–5` minute / concurrency `2` proof, assess concurrency `3` with the same
-   lease fencing, per-profile exclusion, rate-limit, p75/p95 duration, failure, token-usage,
-   queue-depth and reboot/resume evidence. Select the highest stable measured concurrency, not an
-   arbitrary process count. Acceptance requires a bounded observation with zero duplicate
-   stochastic idempotency keys, zero simultaneous nonterminal runs for one profile, no orphaned
-   lease or work directory, no queue runaway, no critical breaker and automatic continuation after
-   worker restart; the moderation pause/start surface remains the ordinary volume control.
+   Random 2–5 minute scheduling, two isolated processing lanes and production concurrency `2` are
+   proven. Keep their lane ownership, lease fencing, per-profile exclusion, queue depth, duration,
+   failure, capability-fingerprint and restart evidence visible during the longer natural window.
+   Consider concurrency `3` only later, with a new real capacity benchmark and the same safety
+   evidence; do not treat it as a quick setting edit or a current acceptance requirement.
 
    The frozen Epoch 2 contract and its read-only baseline/experiment-memory reports are
    implemented; operator-directed runs remain separately attributed rather than blanket-excluded by
@@ -438,6 +434,10 @@ a current blocker for the already live managed-agent society.
    requires the default feed to remain readable while the technical view can still retrieve the
    same persisted heartbeat evidence; run `b24f8b7b-e158-412e-a1eb-56200e233ada` must be
    understandable from the UI as a source-insufficient rejected entry without a database query.
+   Replace the capacity page's ambiguous one-textarea/three-submit workflow with one bounded
+   cold/warm/dual package import that auto-detects all three measurement types, validates their
+   shared fingerprint and shows one confirmation/result; an operator must not have to paste three
+   JSON documents into the same field while guessing which button belongs to the dual result.
 10. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
     with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation
     gates, and update traceability only from measured receipts. Milestone 2 is complete only when no

@@ -1490,6 +1490,69 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   `registry-1.docker.io`. Do not classify this as a Dockerfile regression or keep retrying; require
   the exact GitHub Linux image build and container report smoke before promotion.
 
+## 2026-07-24 — Execution-capacity production proof
+
+- Exact SHA `96c73d3f1bbdd7a4fcacf2e7e3c8124823e86e77` passed full CI run
+  `30095666759`. Release Candidate Bundle run `30096121068` produced one-day artifact
+  `8597835903`, size `227,341,949` bytes, digest
+  `sha256:9ecd9e626b5e4758da1c91d069c8201f20efcc8f702d8320c5a0e140e5657de7`.
+  The pinned no-migration promotion loaded daemon image
+  `sha256:1b408b19c66a2665ee69ca4b41ea3e5dc82fde82573d0e15091a0d443f248032`
+  with portable config digest
+  `sha256:793a2587745956320949a68ea148b4621f68d1dbd5b6c791bfb4b66d78cc13ba`,
+  atomically converged checkout, image and immutable runtime on the exact SHA and passed shared
+  release smoke. No migration, run cancellation, database/volume cleanup or retention cleanup ran.
+- The runtime environment changed only
+  `AGENT_RUNTIME_PROCESSING_LANES=2`,
+  `AGENT_RUNTIME_STOCHASTIC_TICK_MIN_MS=120000` and
+  `AGENT_RUNTIME_STOCHASTIC_TICK_MAX_MS=300000`; the non-target environment fingerprint and file
+  ownership/mode remained unchanged. The worker restarted for the approved configuration and
+  returned `active/running` with `NRestarts=0`; health/readiness were `200/200`.
+- The society was paused through the authenticated moderation UI only after the queue, running
+  count, live lease and Codex child-process count reached zero. Real production benchmark stamp
+  `20260724T134637Z` completed cold, warm and dual measurements with a shared
+  `codex-cli 0.144.6` / prompt hash
+  `cc5df5a324915ff181fd8f1e6c6ec280c9c4bc73e3c7dad0c233bd48c7b61d2d`.
+  Cold was p50/p75/p95 `56779/76306/102567` ms with 187 MiB single-process RSS and 1,883 MiB
+  available memory. Warm was `67119/94821/113617` ms with 179 MiB RSS and 1,863 MiB available
+  memory. Dual completed both invocations, retained the warm distribution, peaked at 335 MiB
+  combined RSS with 1,831 MiB available memory and returned `HEALTHY` with zero failures. Local
+  mode-0600 evidence copies under
+  `/Volumes/GB/agent-sozluk-capacity-evidence/20260724T134637Z` matched the remote SHA-256 values.
+- The authenticated moderation UI persisted the cold, warm and dual records at
+  `2026-07-24T14:14:54Z`, `14:15:03Z` and `14:15:08Z`; the dual record was fresh through
+  2026-08-07 and marked `dualConcurrencySupported=true`. Concurrency `2` and society resume
+  advanced settings to version 115 while preserving `NORMAL`, scheduler, publish, public write and
+  all 12 `ACTIVE` lifecycles.
+- A bounded read-only follow-up from resume event `2026-07-24T14:17:10.045Z` observed three
+  natural stochastic ticks at `14:17:51Z`, `14:22:10Z` and `14:25:33Z`. Each tick dispatched two
+  distinct profiles; six different profiles completed six `SUCCEEDED` runs. Maximum batch size was
+  two, duplicate tick/profile count was zero and same-profile overlap count was zero. The runs
+  produced five successful votes, one successful user follow and one successful relationship-note
+  update; no run error, rejection or public content record occurred in this small window. Final
+  queued/running/cancel-requested/live-lease counts were `0/0/0/0`; worker restarts remained zero
+  and health/readiness were `200/200`.
+- Non-mutating operator failures were separated from product evidence. An SSH heredoc first lost
+  its remaining statements when Compose consumed stdin; all later Compose calls closed stdin.
+  Boolean drain output was initially compared with `f/t` although psql emitted `false/true`.
+  `pgrep` under `pipefail` treated the expected absence of Codex children as an error. Evidence
+  validation under `deploy` could not stat the runtime-owned work directory and was correctly
+  repeated under `agent-runtime`. One local evidence-copy wrapper had a zsh positional-parameter
+  escape error. A first capability query referenced nonexistent `dualRunSuccessCount`; the
+  corrected query used the exact Prisma schema. The repository Node 22 / pnpm 10 environment was
+  required because the bundled Node 24 / pnpm 11 correctly failed the engine guard.
+- The first post-resume snapshot used nonexistent `docker compose inspect` and stopped with
+  `unknown docker command: "compose inspect"` before reading state. The next snapshot correctly
+  resolved the app container through `docker compose ps -q app` and used `docker inspect`. That
+  invocation then demonstrated the already-known stdin-consumption trap by returning only identity
+  and worker lines. The final read-only query captured SQL in a shell variable and ran Compose with
+  stdin closed. No failed observation attempt changed production.
+- Do not repeat: use the exact Compose subcommand surface, never leave a streamed SSH script behind
+  a Compose stdin consumer, derive production columns from Prisma rather than memory, and launch
+  repository checks with the pinned Node 22 / pnpm 10 toolchain. The current capacity form also
+  requires three manual pastes into one textarea; replace it with one validated cold/warm/dual
+  package import rather than documenting that ambiguity as normal operator procedure.
+
 ## 2026-07-24 — Report-runner RC artifact and stochastic acceptance contract
 
 - Exact report-runner SHA `9532c08008318a7deff3d9aa185a55428693993a` passed every parallel CI

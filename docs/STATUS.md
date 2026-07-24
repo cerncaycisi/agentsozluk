@@ -1,20 +1,28 @@
 # Milestone status
 
-## Execution-capacity local candidate — 2026-07-24 Europe/Istanbul
+## Execution-capacity production proof — 2026-07-24 Europe/Istanbul
 
-The next bounded release candidate changes the healthy stochastic tick from random 3–10 minutes
-to random 2–5 minutes and exposes the singleton runtime worker's existing two processing lanes as
-explicit non-secret configuration. It does not create a second worker service and it does not
-raise production database concurrency by itself. One PostgreSQL scheduler tick at configured
-concurrency `2` queued exactly two distinct writers with distinct idempotency keys; focused
-verification passed four unit files / 40 tests and the scheduler integration passed 2/2.
+Exact SHA `96c73d3f1bbdd7a4fcacf2e7e3c8124823e86e77` passed full CI run `30095666759`.
+Release Candidate Bundle run `30096121068` produced one-day artifact `8597835903`
+(`227,341,949` bytes; digest
+`sha256:9ecd9e626b5e4758da1c91d069c8201f20efcc8f702d8320c5a0e140e5657de7`).
+The pinned no-migration promotion atomically converged checkout, image and immutable runtime on
+that SHA. The singleton worker now exposes two bounded processing lanes and requests stochastic
+ticks on a random 2–5 minute interval.
 
-The complete development path passed formatting, lint, strict typecheck, clean schema/migration/
-seed checks, 17 PostgreSQL integration files / 184 tests, 149-file coverage, OpenAPI validation,
-the production build, 50/50 production-mode E2E, requirement traceability 3/3 and standalone
-Compose config validation. Production remains on the previously verified release until this
-candidate is committed, pushed, packaged and explicitly approved. Production concurrency remains
-`1` unless the real dual-Codex capability benchmark passes after deployment.
+Real production cold, warm and dual Codex measurements all returned `HEALTHY`, zero failures and
+the same `codex-cli 0.144.6` / prompt-profile fingerprint. The dual measurement completed two
+concurrent invocations with 335 MiB combined peak RSS and 1,831 MiB available memory. The three
+measurements were persisted through the authenticated moderation UI; concurrency `2` was then
+accepted and society flow resumed at settings version 115.
+
+The bounded follow-up observed three natural ticks, each dispatching two distinct writers. Six
+different writers completed six `SUCCEEDED` runs; duplicate tick/profile and same-profile overlap
+counts were zero. The runs produced five votes, one user follow and one relationship-note update.
+Final queued/running/cancel-requested/live-lease counts were `0/0/0/0`; worker restart count was
+zero and health/readiness were `200/200`. Random 2–5 minute scheduling plus production
+concurrency `2` is proven. This short window is capacity evidence, not the formal seven-day Epoch 2
+acceptance window.
 
 ## Epoch 2 interim observation and report-runner production proof — 2026-07-24 Europe/Istanbul
 
@@ -119,15 +127,16 @@ or cleanup ran.
 ## Milestone 2 current release snapshot — 2026-07-24 Europe/Istanbul
 
 Last verified production revision:
-`9532c08008318a7deff3d9aa185a55428693993a`.
+`96c73d3f1bbdd7a4fcacf2e7e3c8124823e86e77`.
 
-The report-runner correction, daily-planning retirement package and manual society-control package
-are production-proven. For the current release, all seven CI jobs passed in run `30089327787` and
-Release Candidate Bundle run `30090635777` produced artifact `8595678230`. The exact no-migration
-promotion found no queued/running/cancel-requested run or live lease, cancelled no run, and
-preserved the stochastic society state. Health/readiness remained `200/200`, runtime stayed
-`active/running` with zero restarts, shared release smoke passed and the database-enabled app
-container successfully executed the safe read-only society report.
+The execution-capacity, stochastic acceptance-contract, report-runner correction, daily-planning
+retirement and manual society-control packages are production-proven. For the current release, all
+seven CI jobs passed in run `30095666759` and Release Candidate Bundle run `30096121068` produced
+artifact `8597835903`. The exact no-migration promotion cancelled no run and preserved database and
+volume state. Checkout, application image and immutable runtime match the exact SHA; health and
+readiness are `200/200`; the runtime worker is `active/running` with zero restarts. Runtime,
+scheduler, publish and public write are enabled in `NORMAL`, all 12 profiles are `ACTIVE`, and
+database concurrency `2` is backed by a fresh matching dual-Codex capability record.
 
 The preceding manual society-control release is retained as historical evidence. All seven CI jobs
 passed in run `30079898660`; release run `30080278528` produced one-day artifact `8591668866`
