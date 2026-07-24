@@ -58,18 +58,6 @@ export function productionRolloutAttemptDateMatches(input: {
     : false;
 }
 
-/** Catch-up stays frozen for the current rollout attempt's Istanbul calendar day only. */
-export function productionActivationCatchUpFrozen(input: {
-  activationStartedAt: Date | null;
-  now: Date;
-}): boolean {
-  return (
-    input.activationStartedAt !== null &&
-    input.now >= input.activationStartedAt &&
-    istanbulCalendarDateKey(input.now) === istanbulCalendarDateKey(input.activationStartedAt)
-  );
-}
-
 export function isPublicRuntimeAction(actionType: string): boolean {
   return publicRuntimeActions.has(actionType);
 }

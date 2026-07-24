@@ -30,8 +30,6 @@ const contextResponseSchema = z.object({
     runtimeOperatingMode: z.enum(["NORMAL", "MAINTENANCE"]),
     sourceFetchLimit: z.number().int().min(1).max(50),
     debugRetentionHours: z.number().int().min(0).max(24),
-    saturationOverride: z.boolean(),
-    dailyMaximumOverride: z.boolean(),
     adminInstruction: z.string().nullable(),
     cancelRequested: z.boolean(),
   }),
@@ -66,14 +64,6 @@ const actionsResponseSchema = z.object({
   ),
 });
 
-const dailyPlanResponseSchema = z.object({
-  localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
-  createdPlans: z.number().int().nonnegative(),
-  existingPlans: z.number().int().nonnegative(),
-  blocked: z.boolean(),
-  blockedReason: z.string().nullable(),
-});
-
 const stochasticTickResponseSchema = z.object({
   tickKey: z.iso.datetime(),
   createdRuns: z.number().int().nonnegative(),
@@ -97,7 +87,6 @@ const stochasticTickResponseSchema = z.object({
 export type RuntimeLease = z.infer<typeof leaseResponseSchema>;
 export type RuntimeContext = z.infer<typeof contextResponseSchema>;
 export type RuntimeExecution = z.infer<typeof actionsResponseSchema>;
-export type RuntimeDailyPlanResult = z.infer<typeof dailyPlanResponseSchema>;
 export type RuntimeStochasticTickResult = z.infer<typeof stochasticTickResponseSchema>;
 
 export interface RuntimeLifeEventsBatch {
@@ -213,10 +202,6 @@ export interface RuntimeControlPlane {
   ): Promise<void>;
 }
 
-export interface RuntimeDailyPlanControlPlane {
-  planToday(credential: string, workerId: string): Promise<RuntimeDailyPlanResult>;
-}
-
 export interface RuntimeStochasticSchedulerControlPlane {
   tickScheduler(credential: string, workerId: string): Promise<RuntimeStochasticTickResult>;
 }
@@ -309,14 +294,6 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
           retryTransportFailureOnce: true,
         },
       ),
-    );
-  }
-
-  async planToday(credential: string, workerId: string): Promise<RuntimeDailyPlanResult> {
-    return dailyPlanResponseSchema.parse(
-      await this.#request(credential, "POST", "/api/v1/internal/agent-runtime/plans/today", {
-        workerId,
-      }),
     );
   }
 

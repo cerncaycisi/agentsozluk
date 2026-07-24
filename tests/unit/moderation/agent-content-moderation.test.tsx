@@ -40,8 +40,6 @@ function row(overrides: Partial<AgentContentModerationRow["run"]> = {}) {
       runType: "MANUAL",
       runStatus: "SUCCEEDED",
       createdAt: "2026-07-18T10:00:00.000Z",
-      dailyMaximumOverride: false,
-      saturationOverride: false,
       provocationOverride: false,
       ...overrides,
     },
@@ -57,8 +55,6 @@ describe("agent content override badges", () => {
       <AgentContentModeration
         rows={[
           row({
-            dailyMaximumOverride: true,
-            saturationOverride: true,
             provocationOverride: true,
           }),
         ]}

@@ -36,7 +36,7 @@ export default async function AgentCapacityPage() {
       description="P75 run süresi, canlı queue, gerçek utilization ve zorunlu kapasite rezervi."
     >
       <section className="surface-card p-5">
-        <h2 className="text-lg font-black">Bugünkü durum</h2>
+        <h2 className="text-lg font-black">Canlı runtime durumu</h2>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
           <Row label="Capacity status" value={capacity.capacityStatus} />
           <Row
@@ -60,7 +60,10 @@ export default async function AgentCapacityPage() {
             label="Concurrency"
             value={`${capacity.effectiveConcurrency} effective / ${capacity.configuredConcurrency} configured`}
           />
-          <Row label="Worker utilization tahmini" value={ratio(capacity.estimatedUtilization)} />
+          <Row
+            label="Worker utilization · breaker penceresi"
+            value={ratio(capacity.estimatedUtilization)}
+          />
           <Row
             label="Gerçek utilization · 15 dk"
             value={ratio(capacity.operational.utilization15m)}
@@ -73,7 +76,7 @@ export default async function AgentCapacityPage() {
             label="Gerçek utilization · 2 saat"
             value={ratio(capacity.operational.utilization2h)}
           />
-          <Row label="Capacity reserve" value={ratio(capacity.capacityReserve)} />
+          <Row label="Canlı kapasite rezervi" value={ratio(capacity.capacityReserve)} />
           <Row label="Capacity warnings" value={capacity.warnings.join(", ") || "—"} />
           <Row
             label="En eski queued"

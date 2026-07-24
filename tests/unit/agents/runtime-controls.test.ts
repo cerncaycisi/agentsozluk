@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  productionActivationCatchUpFrozen,
   productionRolloutAttemptDateMatches,
   publicRuntimeActionTypes,
   runtimeActionBlockedByPublicWriteControl,
@@ -25,35 +24,6 @@ describe("global agent runtime controls", () => {
     expect(societyFlowEnabled({ ...running, publishEnabled: false })).toBe(false);
     expect(societyFlowEnabled({ ...running, publicWriteEnabled: false })).toBe(false);
     expect(societyFlowEnabled({ ...running, runtimeOperatingMode: "MAINTENANCE" })).toBe(false);
-  });
-
-  it("freezes catch-up only on and after the rollout-attempt activation within its Istanbul day", () => {
-    const activationStartedAt = new Date("2026-07-18T20:30:00.000Z"); // 23:30 Istanbul
-
-    expect(
-      productionActivationCatchUpFrozen({
-        activationStartedAt,
-        now: new Date("2026-07-18T20:29:59.999Z"),
-      }),
-    ).toBe(false);
-    expect(
-      productionActivationCatchUpFrozen({
-        activationStartedAt,
-        now: new Date("2026-07-18T20:59:59.999Z"),
-      }),
-    ).toBe(true);
-    expect(
-      productionActivationCatchUpFrozen({
-        activationStartedAt,
-        now: new Date("2026-07-18T21:00:00.000Z"),
-      }),
-    ).toBe(false);
-    expect(
-      productionActivationCatchUpFrozen({
-        activationStartedAt: null,
-        now: new Date("2026-07-18T20:59:59.999Z"),
-      }),
-    ).toBe(false);
   });
 
   it("treats an active rollout crossing Istanbul midnight as expired", () => {

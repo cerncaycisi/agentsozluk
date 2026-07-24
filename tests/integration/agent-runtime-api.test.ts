@@ -20,7 +20,6 @@ import {
   agentSourceAdminUpdateSchema,
   executeRuntimeAction as executeRuntimeActionApplication,
   failRuntimeRun,
-  generateRuntimeDailyPlans,
   getAgentDetail,
   getRuntimeRunContext as getRuntimeRunContextApplication,
   gracefullyStopActiveAgentRuns,
@@ -205,10 +204,6 @@ async function createFixture(
     adminActor(admin.id),
     createAgentSchema.parse({ persona: originalPersonaPack.personas[0] }),
   );
-  await updateGlobalSettings(integrationDatabase, adminActor(admin.id), {
-    globalDailyEntryMin: 15,
-    globalDailyEntryMax: 20,
-  });
   if (createActivationAnchor)
     await changeAgentLifecycle(
       integrationDatabase,
@@ -261,10 +256,6 @@ async function createLeaseCapacityFixture(codexConcurrency: 1 | 2) {
   }
   await updateGlobalSettings(integrationDatabase, adminActor(admin.id), {
     schedulerEnabled: false,
-    defaultDailyEntryMin: 15,
-    defaultDailyEntryMax: 20,
-    globalDailyEntryMin: 45,
-    globalDailyEntryMax: 60,
   });
   // The concurrency=2 capability gate is covered by capacity integration tests.
   // This fixture isolates the database claim semaphore itself.
@@ -1542,41 +1533,6 @@ describe("internal agent runtime API with PostgreSQL", () => {
       },
     });
 
-    const planningStateBefore = await Promise.all([
-      integrationDatabase.agentDailyPlan.count(),
-      integrationDatabase.agentScheduleSlot.count(),
-      integrationDatabase.agentCapacitySnapshot.count(),
-      integrationDatabase.agentRuntimeEvent.count({
-        where: {
-          eventType: { in: ["schedule.generated", "capacity.planning_blocked"] },
-        },
-      }),
-    ]);
-    await expect(
-      generateRuntimeDailyPlans(
-        integrationDatabase,
-        writePrincipal,
-        { workerId: "expired-rollout-planner" },
-        new Date(),
-      ),
-    ).resolves.toMatchObject({
-      rolloutExpired: true,
-      errorCode: "ROLLOUT_LOCAL_DATE_EXPIRED",
-      attemptId,
-    });
-    await expect(
-      Promise.all([
-        integrationDatabase.agentDailyPlan.count(),
-        integrationDatabase.agentScheduleSlot.count(),
-        integrationDatabase.agentCapacitySnapshot.count(),
-        integrationDatabase.agentRuntimeEvent.count({
-          where: {
-            eventType: { in: ["schedule.generated", "capacity.planning_blocked"] },
-          },
-        }),
-      ]),
-    ).resolves.toEqual(planningStateBefore);
-
     await expect(
       executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
         workerId,
@@ -2056,8 +2012,6 @@ describe("internal agent runtime API with PostgreSQL", () => {
         allowVoting: true,
         allowFollowing: true,
         allowSourceReading: true,
-        saturationOverride: false,
-        dailyMaximumOverride: false,
         provocationOverride: false,
         priority: "NORMAL",
       },
@@ -2142,8 +2096,6 @@ describe("internal agent runtime API with PostgreSQL", () => {
         allowVoting: true,
         allowFollowing: true,
         allowSourceReading: true,
-        saturationOverride: false,
-        dailyMaximumOverride: false,
         provocationOverride: false,
         priority: "NORMAL",
       },
@@ -6472,8 +6424,6 @@ describe("internal agent runtime API with PostgreSQL", () => {
     await integrationDatabase.agentGlobalSettings.update({
       where: { id: "global" },
       data: {
-        globalDailyEntryMin: 30,
-        globalDailyEntryMax: 40,
         codexConcurrency: 2,
       },
     });

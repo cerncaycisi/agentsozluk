@@ -5,9 +5,9 @@ import { getDatabase } from "@/lib/db/client";
 import {
   abortProductionRolloutAttempt,
   cancelAllPendingWriteAgentRuns,
-  retireAgentDailyPlanning,
   setGlobalRuntimeEnabled,
 } from "@/modules/agents";
+import { retireAgentDailyPlanning } from "@/modules/agents/historical/daily-planning-recovery";
 import { resolveOperatorAdmin } from "./agent-operator";
 
 const environmentSchema = z
@@ -94,6 +94,7 @@ async function main(): Promise<void> {
     process.stdout.write(
       `${JSON.stringify({
         cancelledQueuedRuns: cancellation.count,
+        cancelledLegacyRuns: retirement.cancelledRuns,
         cancelledPlans: retirement.cancelledPlans,
         cancelledSlots: retirement.cancelledSlots,
         clearedRuntimeStates: retirement.clearedRuntimeStates,

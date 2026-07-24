@@ -3,6 +3,7 @@ import type { DatabaseExecutor } from "@/lib/db/types";
 import { appendAuditLog } from "@/modules/audit";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { requireAgentAdminInTransaction } from "@/modules/agents/application/authorization";
+import { istanbulLocalDate } from "@/modules/agents/domain/istanbul-time";
 import {
   calculateRuntimeCapacity,
   estimateRuntimeCompletion,
@@ -17,9 +18,6 @@ import {
 import { societyFlowEnabled } from "@/modules/agents/domain/runtime-controls";
 import {
   createRuntimeCapabilityRecord,
-  getCapacityPlanningMetrics,
-  getLatestActualCapacitySloMiss,
-  getLatestCapacityPlanningEvidence,
   getLatestRuntimeCapability,
   getLatestRuntimeFingerprintRecord,
   getRuntimeOperationalMetrics,
@@ -36,17 +34,6 @@ import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 
 const CAPABILITY_STALE_AFTER_MS = 14 * 24 * 60 * 60 * 1000;
 
-function istanbulLocalDate(now: Date): Date {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Europe/Istanbul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
-  return new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day)));
-}
-
 export function getRuntimeCapacity(
   client: DatabaseExecutor,
   actor: ActorContext,
@@ -55,20 +42,10 @@ export function getRuntimeCapacity(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     const localDate = istanbulLocalDate(now);
-    const [
-      settings,
-      capability,
-      planning,
-      fingerprintRecord,
-      planningEvidence,
-      latestActualSloMiss,
-    ] = await Promise.all([
+    const [settings, capability, fingerprintRecord] = await Promise.all([
       getGlobalSettingsRecord(transaction),
       getLatestRuntimeCapability(transaction),
-      getCapacityPlanningMetrics(transaction, localDate),
       getLatestRuntimeFingerprintRecord(transaction),
-      getLatestCapacityPlanningEvidence(transaction, localDate),
-      getLatestActualCapacitySloMiss(transaction),
     ]);
     const observedFingerprint = runtimeFingerprint(fingerprintRecord?.usageMetadata);
     const fingerprint = {
@@ -78,7 +55,6 @@ export function getRuntimeCapacity(
     const configuredConcurrency = settings.codexConcurrency === 2 ? 2 : 1;
     const calculated = calculateRuntimeCapacity({
       capability,
-      ...planning,
       configuredConcurrency,
       degradedMode: settings.degradedMode,
       now,
@@ -119,13 +95,16 @@ export function getRuntimeCapacity(
       dualConcurrencyAvailable: supportsDualConcurrency(capability, { now, ...fingerprint }),
       runtimeFingerprint: fingerprint,
       observedRuntimeFingerprint: observedFingerprint,
-      planningEvidence,
-      latestActualSloMiss,
       queueLagMs,
       estimatedCompletionDurationMs: completion?.durationMs ?? null,
       estimatedCompletionAt: completion?.estimatedAt ?? null,
       estimationBasis: completion ? ("P75" as const) : ("UNKNOWN" as const),
       ...calculated,
+      estimatedUtilization: operational.configuredWindowUtilization,
+      capacityReserve:
+        operational.configuredWindowUtilization === null
+          ? null
+          : Math.max(0, 1 - operational.configuredWindowUtilization),
       capacityStatus: circuitBreakers.capacityAtRisk ? "AT_RISK" : calculated.capacityStatus,
       warnings,
       operational,

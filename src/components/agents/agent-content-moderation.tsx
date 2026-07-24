@@ -24,8 +24,6 @@ export interface AgentContentModerationRow {
     runType: string;
     runStatus: string;
     createdAt: string;
-    dailyMaximumOverride: boolean;
-    saturationOverride: boolean;
     provocationOverride: boolean;
   };
   action: { id: string; provenance: unknown };

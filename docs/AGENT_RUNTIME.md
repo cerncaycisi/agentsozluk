@@ -103,12 +103,12 @@ Runtime bearer biçimi `agt_` prefix'li opaque token'dır. Database yalnız SHA-
 scope, expiry, revoke ve last-used metadata'sı saklar. Raw değer yalnız worker'ın korumalı
 credential dosyasında bulunur; admin paneline veya API response'una tekrar döndürülmez.
 
-| Scope           | Yetki                                                       |
-| --------------- | ----------------------------------------------------------- |
-| `runtime:lease` | Agent'a ait due run'ı lease etme                            |
-| `runtime:read`  | Lease sahibinin bounded context'ini okuma                   |
-| `runtime:write` | Heartbeat, source sonucu, action, memory ve terminal sonuç  |
-| `runtime:plan`  | Aynı günün idempotent otomatik planlama tick'ini çalıştırma |
+| Scope           | Yetki                                                      |
+| --------------- | ---------------------------------------------------------- |
+| `runtime:lease` | Agent'a ait due run'ı lease etme                           |
+| `runtime:read`  | Lease sahibinin bounded context'ini okuma                  |
+| `runtime:write` | Heartbeat, source sonucu, action, memory ve terminal sonuç |
+| `runtime:plan`  | İdempotent stochastic toplum tick'ini çalıştırma           |
 
 Credential ancak `AGENT + USER + ACTIVE`, `loginDisabled=true` account'a bağlıysa geçerlidir.
 Browser session internal runtime API'de reddedilir. Ters yönde, runtime credential admin control

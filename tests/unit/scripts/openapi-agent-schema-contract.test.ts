@@ -80,4 +80,34 @@ describe("OpenAPI agent mutation schema contracts", () => {
       );
     },
   );
+
+  it("rejects daily targets returning as active create settings", () => {
+    const drifted = cloneDocument();
+    const createSchema = drifted.components?.schemas?.AgentCreateInput;
+    if (!createSchema?.properties) throw new Error("Missing AgentCreateInput fixture");
+    createSchema.properties.dailyEntry = { type: "integer" };
+    expect(() => assertAgentMutationSchemaContracts(drifted)).toThrow(
+      /AgentCreateInput properties mismatch/u,
+    );
+  });
+
+  it("requires update quota fields to remain explicit retired tombstones", () => {
+    const drifted = cloneDocument();
+    const updateSchema = drifted.components?.schemas?.AgentUpdateInput;
+    const field = inlineSchema(updateSchema?.properties?.dailyEntry, "dailyEntry");
+    field.deprecated = false;
+    expect(() => assertAgentMutationSchemaContracts(drifted)).toThrow(
+      /AgentUpdateInput.dailyEntry must remain an explicit retired tombstone/u,
+    );
+  });
+
+  it("rejects retired manual-run controls", () => {
+    const drifted = cloneDocument();
+    const manualRun = drifted.components?.schemas?.ManualAgentRunInput;
+    if (!manualRun?.properties) throw new Error("Missing ManualAgentRunInput fixture");
+    manualRun.properties.dailyMaximumOverride = { type: "boolean" };
+    expect(() => assertAgentMutationSchemaContracts(drifted)).toThrow(
+      /ManualAgentRunInput.dailyMaximumOverride must be absent/u,
+    );
+  });
 });

@@ -112,6 +112,15 @@ export interface RequirementManifest {
   requirements: Array<{ id: string; sourceLine: number; summary: string }>;
 }
 
+export interface SupersessionManifest {
+  decision: string;
+  requirements: Array<{
+    id: string;
+    scope: "FULL" | "PARTIAL";
+    rationale: string;
+  }>;
+}
+
 interface TraceabilityRow {
   id: string;
   implementation: string;
@@ -123,6 +132,7 @@ export interface M2TraceabilityCheckInput {
   manifest: RequirementManifest;
   requirementsDocument: string;
   traceabilityDocument: string;
+  supersessions: SupersessionManifest;
   mode: M2TraceabilityMode;
 }
 
@@ -130,6 +140,8 @@ export interface M2TraceabilityCheckResult {
   total: number;
   passed: number;
   blocked: number;
+  superseded: number;
+  partiallySuperseded: number;
 }
 
 const requirementIdPattern = /^[A-Z][A-Z0-9-]*-\d{3}$/u;
@@ -195,6 +207,7 @@ export function checkM2Traceability({
   manifest,
   requirementsDocument,
   traceabilityDocument,
+  supersessions,
   mode,
 }: M2TraceabilityCheckInput): M2TraceabilityCheckResult {
   const manifestIds = manifest.requirements.map(({ id }) => id);
@@ -217,13 +230,52 @@ export function checkM2Traceability({
     manifestIds,
   );
 
+  if (supersessions.decision !== "ADR-012") {
+    throw new Error("M2 supersession manifest must be governed by ADR-012.");
+  }
+  const supersessionIds = supersessions.requirements.map(({ id }) => id);
+  if (new Set(supersessionIds).size !== supersessionIds.length) {
+    throw new Error("M2 supersession manifest contains duplicate requirement IDs.");
+  }
+  const manifestIdSet = new Set(manifestIds);
+  for (const supersession of supersessions.requirements) {
+    if (!manifestIdSet.has(supersession.id)) {
+      throw new Error(`Unknown superseded M2 requirement ${supersession.id}.`);
+    }
+    if (!["FULL", "PARTIAL"].includes(supersession.scope)) {
+      throw new Error(`${supersession.id} has invalid supersession scope ${supersession.scope}.`);
+    }
+    if (supersession.rationale.trim().length < 30) {
+      throw new Error(`${supersession.id} lacks a concrete ADR-012 supersession rationale.`);
+    }
+  }
+  const fullySuperseded = new Set(
+    supersessions.requirements.filter(({ scope }) => scope === "FULL").map(({ id }) => id),
+  );
+  const partiallySuperseded = supersessions.requirements.filter(
+    ({ scope }) => scope === "PARTIAL",
+  ).length;
+
   const allowedBlocked = new Set(M2_DEVELOPMENT_BLOCKER_IDS);
   let passed = 0;
   let blocked = 0;
+  let superseded = 0;
 
   for (const row of rows) {
     if (!(["PASS", "FAIL", "BLOCKED"] as string[]).includes(row.status)) {
       throw new Error(`${row.id} has invalid traceability status ${row.status}.`);
+    }
+    if (
+      placeholderPattern.test(row.implementation) ||
+      placeholderPattern.test(row.validation) ||
+      row.implementation.length === 0 ||
+      row.validation.length === 0
+    ) {
+      throw new Error(`${row.id} lacks concrete implementation or validation evidence.`);
+    }
+    if (fullySuperseded.has(row.id)) {
+      superseded += 1;
+      continue;
     }
     if (mode === "final" && row.status !== "PASS") {
       throw new Error(`${row.id} must be PASS for final M2 verification; found ${row.status}.`);
@@ -234,15 +286,6 @@ export function checkM2Traceability({
     if (row.status === "BLOCKED" && !allowedBlocked.has(row.id)) {
       throw new Error(`${row.id} is not an approved post-merge production/operator blocker.`);
     }
-    if (
-      placeholderPattern.test(row.implementation) ||
-      placeholderPattern.test(row.validation) ||
-      row.implementation.length === 0 ||
-      row.validation.length === 0
-    ) {
-      throw new Error(`${row.id} lacks concrete implementation or validation evidence.`);
-    }
-
     if (row.status === "PASS") {
       passed += 1;
       continue;
@@ -250,5 +293,11 @@ export function checkM2Traceability({
     blocked += 1;
   }
 
-  return { total: rows.length, passed, blocked };
+  return {
+    total: rows.length,
+    passed,
+    blocked,
+    superseded,
+    partiallySuperseded,
+  };
 }

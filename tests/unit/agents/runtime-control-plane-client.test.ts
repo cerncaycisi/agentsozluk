@@ -43,8 +43,6 @@ describe("runtime control-plane HTTP contract", () => {
             runtimeOperatingMode: "NORMAL",
             sourceFetchLimit: 8,
             debugRetentionHours: 12,
-            saturationOverride: false,
-            dailyMaximumOverride: false,
             adminInstruction: null,
             cancelRequested: false,
           },
@@ -103,40 +101,6 @@ describe("runtime control-plane HTTP contract", () => {
       workerId: "worker-one",
       leaseToken: LEASE_TOKEN,
       sequences: [1],
-    });
-  });
-
-  it("uses the narrow runtime planning endpoint with an idempotent authenticated write", async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      jsonResponse({
-        data: {
-          localDate: "2026-07-18",
-          createdPlans: 10,
-          existingPlans: 0,
-          blocked: false,
-          blockedReason: null,
-        },
-      }),
-    );
-    const client = new RuntimeControlPlaneHttpClient("http://127.0.0.1:3000", fetchMock);
-
-    await expect(client.planToday("planning-credential", "orchestrator-01")).resolves.toEqual({
-      localDate: "2026-07-18",
-      createdPlans: 10,
-      existingPlans: 0,
-      blocked: false,
-      blockedReason: null,
-    });
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toBe("http://127.0.0.1:3000/api/v1/internal/agent-runtime/plans/today");
-    expect(init?.method).toBe("POST");
-    expect(init?.body).toBe(JSON.stringify({ workerId: "orchestrator-01" }));
-    expect(init?.headers).toMatchObject({
-      authorization: "Bearer planning-credential",
-      "content-type": "application/json",
-      "idempotency-key": expect.stringMatching(/^[0-9a-f-]{36}$/u),
     });
   });
 

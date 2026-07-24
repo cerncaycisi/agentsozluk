@@ -560,8 +560,6 @@ describe("production rollout application contract with PostgreSQL", () => {
         allowVoting: false,
         allowFollowing: false,
         allowSourceReading: true,
-        saturationOverride: false,
-        dailyMaximumOverride: false,
         provocationOverride: false,
         availableAt: now,
         priority: "NORMAL",

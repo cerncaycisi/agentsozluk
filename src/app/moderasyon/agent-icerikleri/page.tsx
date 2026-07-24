@@ -139,7 +139,7 @@ export default async function AgentContentPage({
           options={["WITH_SOURCE", "WITHOUT_SOURCE"]}
         />
         <FilterSelect
-          label="Override"
+          label="Provocation override"
           name="overrideStatus"
           value={params.overrideStatus}
           options={["WITH_OVERRIDE", "WITHOUT_OVERRIDE"]}

@@ -853,9 +853,9 @@ export async function executeRuntimeAction(
         }),
       });
       if (parsed.data.actionType !== "NO_ACTION") {
-        // Lock order: agent profile -> run row -> action row -> global settings
-        // -> optional topic saturation. Global settings mutations do not acquire
-        // the earlier action-side locks. This lock is held through commit, so a
+        // Lock order: agent profile -> run row -> action row -> global settings.
+        // Global settings mutations do not acquire the earlier action-side
+        // locks. This lock is held through commit, so a
         // rollout expiry or settings mutation cannot return while an action
         // validated against the previous snapshot still has an effect to commit.
         await lockAgentSettings(transaction);

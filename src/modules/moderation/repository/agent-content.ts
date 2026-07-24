@@ -64,23 +64,9 @@ export async function listAgentContentRecords(
         ? { action: { NOT: { OR: sourceEvidenceFilters } } }
         : {}),
     ...(input.overrideStatus === "WITH_OVERRIDE"
-      ? {
-          run: {
-            OR: [
-              { dailyMaximumOverride: true },
-              { saturationOverride: true },
-              { provocationOverride: true },
-            ],
-          },
-        }
+      ? { run: { provocationOverride: true } }
       : input.overrideStatus === "WITHOUT_OVERRIDE"
-        ? {
-            run: {
-              dailyMaximumOverride: false,
-              saturationOverride: false,
-              provocationOverride: false,
-            },
-          }
+        ? { run: { provocationOverride: false } }
         : {}),
   };
   const [records, totalItems] = await Promise.all([
@@ -111,8 +97,6 @@ export async function listAgentContentRecords(
             runType: true,
             runStatus: true,
             createdAt: true,
-            dailyMaximumOverride: true,
-            saturationOverride: true,
             provocationOverride: true,
           },
         },

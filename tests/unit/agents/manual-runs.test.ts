@@ -7,8 +7,8 @@ import {
   gracefulStopGlobalAgentRunsSchema,
 } from "@/modules/agents/validation/scheduling-schemas";
 
-describe("manual agent run planning", () => {
-  it("classifies only public-write-capable run types for pending cancellation", () => {
+describe("manual run control and historical queue cleanup", () => {
+  it("classifies active and legacy public-write run types for pending cancellation", () => {
     for (const runType of ["SCHEDULED_WAKE", "NORMAL_WAKE", "ENTRY_BURST", "DAILY_CATCH_UP"])
       expect(isWriteCapableAgentRunType(runType)).toBe(true);
     for (const runType of [

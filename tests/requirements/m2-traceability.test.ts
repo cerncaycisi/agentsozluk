@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   checkM2Traceability,
   type RequirementManifest,
+  type SupersessionManifest,
 } from "../../scripts/m2-traceability-policy";
 
 const root = process.cwd();
@@ -12,6 +13,9 @@ const manifest = JSON.parse(
 ) as RequirementManifest;
 const requirementsDocument = readFileSync(path.join(root, "docs/M2_REQUIREMENTS.md"), "utf8");
 const traceabilityDocument = readFileSync(path.join(root, "docs/M2_TRACEABILITY.md"), "utf8");
+const supersessions = JSON.parse(
+  readFileSync(path.join(root, "docs/m2-superseded-requirements.json"), "utf8"),
+) as SupersessionManifest;
 
 const extractTableIds = (input: string): string[] =>
   Array.from(input.matchAll(/^\|\s*([A-Z][A-Z0-9-]*-\d{3})\s*\|/gmu), (match) => match[1]!);
@@ -53,6 +57,7 @@ describe("Milestone 2 requirement manifest", () => {
         manifest,
         requirementsDocument,
         traceabilityDocument,
+        supersessions,
         mode: "final",
       }),
     ).not.toThrow();

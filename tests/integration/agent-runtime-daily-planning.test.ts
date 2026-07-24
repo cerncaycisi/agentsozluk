@@ -8,7 +8,6 @@ import {
   createAgent,
   createAgentSchema,
   lifecycleChangeSchema,
-  updateGlobalSettings,
 } from "@/modules/agents";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import {
@@ -69,10 +68,6 @@ describe("retired runtime daily planning with PostgreSQL", () => {
       adminActor(admin.id),
       createAgentSchema.parse({ persona: originalPersonaPack.personas[0] }),
     );
-    await updateGlobalSettings(integrationDatabase, adminActor(admin.id), {
-      globalDailyEntryMin: 15,
-      globalDailyEntryMax: 20,
-    });
     await changeAgentLifecycle(
       integrationDatabase,
       adminActor(admin.id),

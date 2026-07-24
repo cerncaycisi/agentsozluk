@@ -1321,7 +1321,24 @@ record raw prompts, model output, credentials or environment values. After persi
 either retain the three mode-0600 JSON files under the approved evidence-retention policy or obtain
 explicit approval to remove only those exact paths.
 
-## Production smoke and Day 0 activation gate
+## Historical daily-plan Day 0 gate — archived, do not execute
+
+The Gate 9–12 procedure below is preserved only as immutable evidence of the original M2
+daily-plan acceptance contract. ADR-012 retired its daily targets, plan regeneration, schedule
+slots, catch-up lane and scheduled-run minimums. None of the commands or SQL in this archived
+section is a current production instruction. Do not start or complete a new rollout attempt from
+this section, do not regenerate a plan, and do not count `SCHEDULER_SLOT` runs as current stochastic
+acceptance evidence. The `pnpm agent:rollout` CLI now fails with
+`AGENT_DAILY_PLANNING_RETIRED` for every mode except `abort`, which remains available only to close
+an already-open historical attempt safely.
+
+Current stochastic production acceptance is intentionally open in the canonical
+[`M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`](M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md). Its
+replacement Gate 9–12 procedure must be written and reviewed from measured stochastic evidence
+before execution. Until then, use only the non-archived host, release, health, rollback and safe
+read-only sections of this runbook, each behind its own explicit approval.
+
+### Archived contract begins
 
 This section requires the merged revision, successful Gates 6–8, verified backup, runtime host
 gates, Codex login and measured capacity. Every public request, admin mutation, lifecycle change,
@@ -1711,6 +1728,8 @@ The production evidence record must contain:
 
 Do not put passwords, tokens, cookies, private URLs, raw headers, environment values, source text,
 entry bodies, prompts or journal output in the evidence record.
+
+### Archived contract ends
 
 ## Safe read-only checks
 

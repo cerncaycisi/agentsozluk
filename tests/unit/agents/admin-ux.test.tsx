@@ -36,13 +36,6 @@ vi.mock("sonner", () => ({
 const agentId = "00000000-0000-4000-8000-000000000101";
 const persona = seedPersonaPackSchema.parse(originalPersonaPack).personas[0]!;
 const profile = {
-  useGlobalEntryQuota: true,
-  dailyEntryMin: null,
-  dailyEntryMax: null,
-  dailyTopicMin: 0,
-  dailyTopicMax: 2,
-  dailyVoteMin: 0,
-  dailyVoteMax: 10,
   activeTimeProfile: {
     "07:00-10:00": 0.15,
     "10:00-14:00": 0.3,
@@ -64,17 +57,8 @@ const preview = {
   estimatedStartAt: "2026-07-18T12:00:00.000Z",
   estimatedCompleteAt: "2026-07-18T12:01:00.000Z",
   estimatedScheduledDelayMs: 0,
-  targetMissRiskChange: {
-    estimateStatus: "ESTIMATED" as const,
-    beforeProjectedShortfallEntries: 3,
-    afterProjectedShortfallEntries: 3,
-    deltaProjectedShortfallEntries: 0,
-    direction: "UNCHANGED" as const,
-  },
   workerUtilization: 0.25,
   concurrency: 1,
-  saturationOverride: false,
-  dailyMaximumOverride: false,
   provocationOverride: false,
 };
 

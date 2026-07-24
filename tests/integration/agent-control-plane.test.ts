@@ -88,78 +88,6 @@ beforeEach(resetIntegrationDatabase);
 afterAll(closeIntegrationDatabase);
 
 describe("agent control plane with PostgreSQL", () => {
-  it("promotes a due pending quota as a versioned audited change before rejecting a stale command", async () => {
-    const admin = await createPrincipal();
-    const initial = await integrationDatabase.agentGlobalSettings.findUniqueOrThrow({
-      where: { id: "global" },
-    });
-    const staged = await updateGlobalSettings(
-      integrationDatabase,
-      actor(admin.id),
-      {
-        quotaApplyMode: "NEXT_DAY",
-        defaultDailyEntryMin: 16,
-        expectedSettingsVersion: initial.settingsVersion,
-        changeReason: "Raise the default minimum starting with the next Istanbul day.",
-      },
-      new Date("2026-07-18T09:00:00.000Z"),
-    );
-    const staleActor = actor(admin.id);
-
-    await expect(
-      updateGlobalSettings(
-        integrationDatabase,
-        staleActor,
-        {
-          sourceFetchLimit: 9,
-          expectedSettingsVersion: staged.settingsVersion,
-          changeReason: "Attempt another settings change from the pre-promotion version.",
-        },
-        new Date("2026-07-19T09:00:00.000Z"),
-      ),
-    ).rejects.toMatchObject({ code: "AGENT_SETTINGS_VERSION_CONFLICT", status: 409 });
-
-    await expect(
-      integrationDatabase.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } }),
-    ).resolves.toMatchObject({
-      defaultDailyEntryMin: 16,
-      sourceFetchLimit: initial.sourceFetchLimit,
-      pendingQuotaSettings: null,
-      pendingQuotaEffectiveDate: null,
-      settingsVersion: staged.settingsVersion + 1,
-    });
-    await expect(
-      integrationDatabase.auditLog.findFirstOrThrow({
-        where: {
-          action: "agent.settings.changed",
-          requestId: staleActor.requestId,
-          metadata: { path: ["quotaApplyMode"], equals: "PROMOTE_PENDING" },
-        },
-      }),
-    ).resolves.toMatchObject({
-      actorId: admin.id,
-      metadata: {
-        actorKind: "HUMAN",
-        before: { defaultDailyEntryMin: 15 },
-        after: { defaultDailyEntryMin: 16 },
-        reason: "Pending quota settings reached their effective Europe/Istanbul date.",
-        quotaApplyMode: "PROMOTE_PENDING",
-        effectiveLocalDate: "2026-07-19",
-        previousSettingsVersion: staged.settingsVersion,
-        settingsVersion: staged.settingsVersion + 1,
-      },
-    });
-    expect(
-      await integrationDatabase.outboxEvent.count({
-        where: {
-          eventType: "agent.settings.changed",
-          requestId: staleActor.requestId,
-          payload: { path: ["quotaApplyMode"], equals: "PROMOTE_PENDING" },
-        },
-      }),
-    ).toBe(1);
-  });
-
   it("rejects stale critical runtime settings commands with optimistic version control", async () => {
     const admin = await createPrincipal();
     const commandActor = actor(admin.id);
@@ -702,11 +630,6 @@ describe("agent control plane with PostgreSQL", () => {
         ),
       );
     expect(created).toHaveLength(10);
-    await updateGlobalSettings(integrationDatabase, actor(admin.id), {
-      globalDailyEntryMin: 150,
-      globalDailyEntryMax: 200,
-    });
-
     const firstActivationAt = new Date(Date.now() - 24 * 60 * 60_000);
     await changeAgentLifecycle(
       integrationDatabase,
@@ -946,9 +869,9 @@ describe("agent control plane with PostgreSQL", () => {
     expect(
       await integrationDatabase.agentProfile.findUniqueOrThrow({ where: { id: profileId } }),
     ).toMatchObject({
-      useGlobalEntryQuota: true,
-      dailyEntryMin: null,
-      dailyEntryMax: null,
+      useGlobalEntryQuota: false,
+      dailyEntryMin: 0,
+      dailyEntryMax: 0,
     });
 
     await expect(
@@ -1070,11 +993,6 @@ describe("agent control plane with PostgreSQL", () => {
       capacityStatus: "HEALTHY",
       configuredConcurrency: 2,
       effectiveConcurrency: 2,
-      plannedRuns: 2,
-      completedRuns: 1,
-      estimatedPublishedMin: 5,
-      estimatedPublishedMax: 7,
-      requiredContentMinutes: 6,
     });
 
     await integrationDatabase.agentRun.create({
@@ -1305,7 +1223,6 @@ describe("agent control plane with PostgreSQL", () => {
         runtimeErrorRate: 2 / 3,
         writeRunsPaused: true,
         runtimePaused: false,
-        catchUpFrozen: false,
       },
     });
     expect(capacity.operational.utilization15m).toBeCloseTo(1, 5);

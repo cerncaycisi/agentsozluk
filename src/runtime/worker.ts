@@ -7,7 +7,6 @@ import {
 import type {
   RuntimeContext,
   RuntimeControlPlane,
-  RuntimeDailyPlanControlPlane,
   RuntimeStochasticSchedulerControlPlane,
   RuntimeExecution,
   RuntimeLifeEventsBatch,
@@ -55,17 +54,12 @@ export interface RuntimeWorkerOptions {
   heartbeatIntervalMs?: number;
   pollIntervalMs?: number;
   processingLanes?: number;
-  dailyPlanning?: {
-    credential: string;
-    controlPlane: RuntimeDailyPlanControlPlane;
-  };
   stochasticScheduling?: {
     credential: string;
     controlPlane: RuntimeStochasticSchedulerControlPlane;
   };
   now?: () => Date;
   random?: () => number;
-  dailyPlanningRetryMs?: number;
   stochasticTickMinimumMs?: number;
   stochasticTickMaximumMs?: number;
   onSafeEvent?: (event: { level: "info" | "error"; code: string; runId?: string }) => void;
@@ -73,8 +67,6 @@ export interface RuntimeWorkerOptions {
 
 export const DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS = 10_000;
 export const MAX_RUNTIME_PROCESSING_LANES = 2;
-export const ISTANBUL_DAILY_PLAN_MINUTE = 5;
-export const DEFAULT_DAILY_PLANNING_RETRY_MS = 5 * 60_000;
 export const DEFAULT_STOCHASTIC_TICK_MINIMUM_MS = 3 * 60_000;
 export const DEFAULT_STOCHASTIC_TICK_MAXIMUM_MS = 10 * 60_000;
 export const STOCHASTIC_BUSY_RETRY_MS = 60_000;
@@ -112,23 +104,6 @@ export const runtimeContentRepairWireJsonSchema = Object.fromEntries(
 );
 
 type RuntimeContentRepairWire = z.infer<typeof runtimeContentRepairWireSchema>;
-
-export function istanbulPlanningClock(now: Date): { dateKey: string; minuteOfDay: number } {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Istanbul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(now);
-  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
-  return {
-    dateKey: `${values.year}-${values.month}-${values.day}`,
-    minuteOfDay: Number(values.hour) * 60 + Number(values.minute),
-  };
-}
 
 const memoryConsolidationTriggers = new Set([
   "NIGHTLY_MEMORY_CONSOLIDATION",
@@ -551,8 +526,6 @@ export class AgentRuntimeWorker {
   readonly #options: RuntimeWorkerOptions;
   readonly #processingLanes: number;
   #runOnceInFlight: Promise<number> | null = null;
-  #completedPlanningDateKey: string | null = null;
-  #planningRetryNotBefore = 0;
   #stochasticTickNotBefore = 0;
 
   constructor(options: RuntimeWorkerOptions) {
@@ -567,8 +540,6 @@ export class AgentRuntimeWorker {
       throw new Error("Runtime processing lane sayısı 1 veya 2 olmalıdır.");
     this.#options = options;
     this.#processingLanes = processingLanes;
-    if (options.dailyPlanning && !options.credentials.includes(options.dailyPlanning.credential))
-      throw new Error("Günlük plan credential'ı worker credential listesinde bulunmalıdır.");
     if (
       options.stochasticScheduling &&
       !options.credentials.includes(options.stochasticScheduling.credential)
@@ -611,39 +582,6 @@ export class AgentRuntimeWorker {
     } catch {
       this.#stochasticTickNotBefore = now.getTime() + STOCHASTIC_BUSY_RETRY_MS;
       this.#options.onSafeEvent?.({ level: "error", code: "STOCHASTIC_TICK_FAILED" });
-    }
-  }
-
-  async #tickDailyPlanning(): Promise<void> {
-    const planning = this.#options.dailyPlanning;
-    if (!planning) return;
-    const now = this.#options.now?.() ?? new Date();
-    const { dateKey, minuteOfDay } = istanbulPlanningClock(now);
-    if (
-      minuteOfDay < ISTANBUL_DAILY_PLAN_MINUTE ||
-      this.#completedPlanningDateKey === dateKey ||
-      now.getTime() < this.#planningRetryNotBefore
-    )
-      return;
-    try {
-      const result = await planning.controlPlane.planToday(
-        planning.credential,
-        this.#options.workerId,
-      );
-      if (result.localDate !== dateKey) throw new Error("DAILY_PLAN_DATE_MISMATCH");
-      if (result.blocked) {
-        this.#planningRetryNotBefore =
-          now.getTime() + (this.#options.dailyPlanningRetryMs ?? DEFAULT_DAILY_PLANNING_RETRY_MS);
-        this.#options.onSafeEvent?.({ level: "info", code: "DAILY_PLAN_BLOCKED" });
-        return;
-      }
-      this.#completedPlanningDateKey = dateKey;
-      this.#planningRetryNotBefore = 0;
-      this.#options.onSafeEvent?.({ level: "info", code: "DAILY_PLAN_READY" });
-    } catch {
-      this.#planningRetryNotBefore =
-        now.getTime() + (this.#options.dailyPlanningRetryMs ?? DEFAULT_DAILY_PLANNING_RETRY_MS);
-      this.#options.onSafeEvent?.({ level: "error", code: "DAILY_PLAN_FAILED" });
     }
   }
 
@@ -1159,7 +1097,6 @@ export class AgentRuntimeWorker {
     if (this.#runOnceInFlight) return this.#runOnceInFlight;
     const execution = (async () => {
       await this.#tickStochasticScheduling();
-      await this.#tickDailyPlanning();
       return this.#runCredentialLanes();
     })();
     this.#runOnceInFlight = execution;

@@ -25,8 +25,6 @@ function transactionFixture() {
         runType: "MANUAL",
         runStatus: "SUCCEEDED",
         createdAt,
-        dailyMaximumOverride: true,
-        saturationOverride: false,
         provocationOverride: true,
       },
       action: { id: "action-1", provenance: { evidenceType: "PLATFORM_EVENT" } },
@@ -42,7 +40,7 @@ function transactionFixture() {
 }
 
 describe("agent content override filters", () => {
-  it("lists runs using any explicit override and returns all override flags", async () => {
+  it("lists runs using the supported provocation override", async () => {
     const { transaction, findMany, count } = transactionFixture();
 
     const [records, totalItems] = await listAgentContentRecords(
@@ -51,23 +49,13 @@ describe("agent content override filters", () => {
       createdAt,
     );
 
-    const overrideFilter = {
-      run: {
-        OR: [
-          { dailyMaximumOverride: true },
-          { saturationOverride: true },
-          { provocationOverride: true },
-        ],
-      },
-    };
+    const overrideFilter = { run: { provocationOverride: true } };
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining(overrideFilter),
         select: expect.objectContaining({
           run: {
             select: expect.objectContaining({
-              dailyMaximumOverride: true,
-              saturationOverride: true,
               provocationOverride: true,
             }),
           },
@@ -76,14 +64,10 @@ describe("agent content override filters", () => {
     );
     expect(count).toHaveBeenCalledWith({ where: expect.objectContaining(overrideFilter) });
     expect(totalItems).toBe(1);
-    expect(records[0]?.run).toMatchObject({
-      dailyMaximumOverride: true,
-      saturationOverride: false,
-      provocationOverride: true,
-    });
+    expect(records[0]?.run).toMatchObject({ provocationOverride: true });
   });
 
-  it("separately lists only runs with every override disabled", async () => {
+  it("separately lists runs without a provocation override", async () => {
     const { transaction, findMany, count } = transactionFixture();
 
     await listAgentContentRecords(
@@ -92,13 +76,7 @@ describe("agent content override filters", () => {
       createdAt,
     );
 
-    const withoutOverrideFilter = {
-      run: {
-        dailyMaximumOverride: false,
-        saturationOverride: false,
-        provocationOverride: false,
-      },
-    };
+    const withoutOverrideFilter = { run: { provocationOverride: false } };
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining(withoutOverrideFilter) }),
     );

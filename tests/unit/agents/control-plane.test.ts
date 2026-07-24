@@ -1,5 +1,4 @@
-import type { Prisma } from "@prisma/client";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { AppError } from "@/lib/http/errors";
 import {
   assertLifecycleTransition,
@@ -7,13 +6,7 @@ import {
 } from "@/modules/agents/domain/authorization";
 import { redactCreationCredential } from "@/modules/agents/domain/credential";
 import { validatePersonaCandidate } from "@/modules/agents/domain/persona-validation";
-import {
-  assertQuotaConsistency,
-  nextIstanbulQuotaLocalDate,
-  resolveQuotaSettings,
-} from "@/modules/agents/domain/quota";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
-import { promotePendingQuotaSettingsRecord } from "@/modules/agents/repository/control-plane";
 import {
   createAgentSchema,
   defaultActiveTimeProfile,
@@ -60,39 +53,18 @@ describe("agent control-plane domain", () => {
     expect(() => assertLifecycleTransition("DRAFT", "ACTIVE")).toThrow(/DRAFT.*ACTIVE/iu);
   });
 
-  it("defaults new agents to PAUSED with measured quota and timeout defaults", () => {
+  it("defaults new agents to PAUSED without daily target inputs", () => {
     const parsed = createAgentSchema.parse({ persona: originalPersonaPack.personas[0] });
     expect(parsed).toMatchObject({
       lifecycleStatus: "PAUSED",
-      useGlobalEntryQuota: true,
-      dailyTopic: { min: 0, max: 2 },
-      dailyVote: { min: 0, max: 10 },
       activeTimeProfile: defaultActiveTimeProfile,
       scheduledTimeoutSeconds: 360,
       manualTimeoutSeconds: 600,
     });
-  });
-
-  it("validates global and effective per-agent quota mathematics", () => {
-    const settings = {
-      defaultDailyEntryMin: 15,
-      defaultDailyEntryMax: 20,
-      globalDailyEntryMin: 150,
-      globalDailyEntryMax: 200,
-    };
-    const tenAgents = Array.from({ length: 10 }, () => ({
-      useGlobalEntryQuota: true,
-      dailyEntryMin: null,
-      dailyEntryMax: null,
-    }));
-    expect(() => assertQuotaConsistency(settings, tenAgents)).not.toThrow();
-    expect(() =>
-      assertQuotaConsistency({ ...settings, globalDailyEntryMax: 140 }, tenAgents),
-    ).toThrow(/global maksimum/iu);
-    expect(() =>
-      assertQuotaConsistency({ ...settings, globalDailyEntryMin: 201 }, tenAgents),
-    ).toThrow(/global minimum/iu);
-    expect(() => assertQuotaConsistency(settings, [])).not.toThrow();
+    expect(parsed).not.toHaveProperty("useGlobalEntryQuota");
+    expect(parsed).not.toHaveProperty("dailyEntry");
+    expect(parsed).not.toHaveProperty("dailyTopic");
+    expect(parsed).not.toHaveProperty("dailyVote");
   });
 
   it("rejects ontology violations and clone-like pairwise personas", () => {
@@ -112,7 +84,7 @@ describe("agent control-plane domain", () => {
     ).toThrow(/varlık türü/iu);
   });
 
-  it("rejects inconsistent or out-of-range global settings input", () => {
+  it("bounds global settings and preserves retired fields only as 410 tombstones", () => {
     const commandMetadata = {
       expectedSettingsVersion: 1,
       changeReason: "Update global settings through the admin control plane.",
@@ -129,8 +101,8 @@ describe("agent control-plane domain", () => {
     expect(parse({ debugRetentionHours: 25 })).toBe(false);
     expect(parse({ sitemapDelayMinutes: 10_081 })).toBe(false);
     expect(globalSettingsUpdateSchema.safeParse({}).success).toBe(false);
-    expect(parse({ quotaApplyMode: "NEXT_DAY" })).toBe(false);
-    expect(parse({ defaultDailyEntryMin: 15 })).toBe(false);
+    expect(parse({ quotaApplyMode: "NEXT_DAY" })).toBe(true);
+    expect(parse({ defaultDailyEntryMin: 15 })).toBe(true);
     expect(parse({ defaultDailyEntryMin: 15, quotaApplyMode: "NEXT_DAY" })).toBe(true);
     expect(parse({ schedulerEnabled: false })).toBe(true);
     expect(parse({ runtimeEnabled: true })).toBe(false);
@@ -174,127 +146,6 @@ describe("agent control-plane domain", () => {
         circuitBreakerConfig: { ...circuitBreakerConfig, unknownThreshold: 1 },
       }),
     ).toBe(false);
-  });
-
-  it("keeps a pending quota snapshot inactive today and resolves it on the Istanbul effective day", () => {
-    const now = new Date("2026-07-18T12:00:00.000Z");
-    const effectiveDate = nextIstanbulQuotaLocalDate(now);
-    const stored = {
-      quotaMode: "HYBRID" as const,
-      defaultDailyEntryMin: 15,
-      defaultDailyEntryMax: 20,
-      globalDailyEntryMin: 150,
-      globalDailyEntryMax: 200,
-      pendingQuotaEffectiveDate: effectiveDate,
-      pendingQuotaSettings: {
-        quotaMode: "GLOBAL_TOTAL",
-        defaultDailyEntryMin: 10,
-        defaultDailyEntryMax: 12,
-        globalDailyEntryMin: 100,
-        globalDailyEntryMax: 120,
-      },
-    };
-    expect(resolveQuotaSettings(stored, new Date("2026-07-18T00:00:00.000Z"))).toMatchObject({
-      quotaMode: "HYBRID",
-      defaultDailyEntryMax: 20,
-      globalDailyEntryMax: 200,
-    });
-    expect(resolveQuotaSettings(stored, effectiveDate)).toMatchObject({
-      quotaMode: "GLOBAL_TOTAL",
-      defaultDailyEntryMin: 10,
-      defaultDailyEntryMax: 12,
-      globalDailyEntryMin: 100,
-      globalDailyEntryMax: 120,
-    });
-  });
-
-  it("promotes due pending quota settings as one versioned audit and outbox change", async () => {
-    const pendingQuotaEffectiveDate = new Date("2026-07-19T00:00:00.000Z");
-    const stored = {
-      id: "global",
-      settingsVersion: 7,
-      quotaMode: "HYBRID" as const,
-      defaultDailyEntryMin: 15,
-      defaultDailyEntryMax: 20,
-      globalDailyEntryMin: 150,
-      globalDailyEntryMax: 200,
-      pendingQuotaEffectiveDate,
-      pendingQuotaSettings: {
-        quotaMode: "GLOBAL_TOTAL",
-        defaultDailyEntryMin: 16,
-        defaultDailyEntryMax: 20,
-        globalDailyEntryMin: 160,
-        globalDailyEntryMax: 200,
-      },
-      updatedById: "admin",
-    };
-    const updated = {
-      ...stored,
-      settingsVersion: 8,
-      quotaMode: "GLOBAL_TOTAL" as const,
-      defaultDailyEntryMin: 16,
-      globalDailyEntryMin: 160,
-      pendingQuotaEffectiveDate: null,
-      pendingQuotaSettings: null,
-    };
-    const transaction = {
-      agentGlobalSettings: {
-        findUniqueOrThrow: vi.fn().mockResolvedValue(stored),
-        update: vi.fn().mockResolvedValue(updated),
-      },
-      auditLog: { create: vi.fn().mockResolvedValue({}) },
-      outboxEvent: { create: vi.fn().mockResolvedValue({}) },
-      agentRuntimeEvent: { create: vi.fn().mockResolvedValue({}) },
-    };
-
-    await expect(
-      promotePendingQuotaSettingsRecord(
-        transaction as unknown as Prisma.TransactionClient,
-        pendingQuotaEffectiveDate,
-        { actorId: "admin", actorKind: "HUMAN", requestId: "promotion-request" },
-      ),
-    ).resolves.toEqual({ settings: updated, promoted: true });
-    expect(transaction.agentGlobalSettings.update).toHaveBeenCalledWith({
-      where: { id: "global" },
-      data: expect.objectContaining({
-        settingsVersion: { increment: 1 },
-        quotaMode: "GLOBAL_TOTAL",
-        defaultDailyEntryMin: 16,
-        pendingQuotaEffectiveDate: null,
-      }),
-    });
-    expect(transaction.auditLog.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        actorId: "admin",
-        action: "agent.settings.changed",
-        requestId: "promotion-request",
-        metadata: expect.objectContaining({
-          actorKind: "HUMAN",
-          before: expect.objectContaining({ defaultDailyEntryMin: 15 }),
-          after: expect.objectContaining({ defaultDailyEntryMin: 16 }),
-          quotaApplyMode: "PROMOTE_PENDING",
-          previousSettingsVersion: 7,
-          settingsVersion: 8,
-        }),
-      }),
-    });
-    expect(transaction.outboxEvent.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        eventType: "agent.settings.changed",
-        actorKind: "HUMAN",
-        requestId: "promotion-request",
-        payload: expect.objectContaining({
-          quotaApplyMode: "PROMOTE_PENDING",
-          settingsVersion: 8,
-        }),
-      }),
-    });
-    expect(transaction.agentRuntimeEvent.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        eventType: "quota.changed",
-        metadata: expect.objectContaining({ settingsVersion: 8 }),
-      }),
-    });
   });
 
   it("requires an audit summary for every public persona identity change", () => {

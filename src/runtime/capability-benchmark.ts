@@ -212,8 +212,6 @@ function benchmarkContext(scenario: Scenario, index: number): RuntimeContext {
       runtimeOperatingMode: "NORMAL",
       sourceFetchLimit: 8,
       debugRetentionHours: 0,
-      saturationOverride: false,
-      dailyMaximumOverride: false,
       adminInstruction: null,
       cancelRequested: false,
     },

@@ -50,17 +50,6 @@ export const operatorReasonSchema = z
   .min(10)
   .max(1000);
 
-const boundedRange = (minimum: number, maximum: number) =>
-  z
-    .object({
-      min: z.number().int().min(minimum).max(maximum),
-      max: z.number().int().min(minimum).max(maximum),
-    })
-    .refine(({ min, max }) => max >= min, {
-      path: ["max"],
-      message: "Maksimum değer minimumdan küçük olamaz.",
-    });
-
 export const activeTimeProfileSchema = z
   .object({
     "07:00-10:00": z.number().min(0).max(1),
@@ -86,16 +75,37 @@ export const defaultActiveTimeProfile = {
 } as const;
 
 const profileOptionsSchema = z.object({
-  useGlobalEntryQuota: z.boolean().default(true),
-  dailyEntry: boundedRange(0, 100).optional(),
-  dailyTopic: boundedRange(0, 100).default({ min: 0, max: 2 }),
-  dailyVote: boundedRange(0, 100).default({ min: 0, max: 10 }),
   activeTimeProfile: activeTimeProfileSchema.default(defaultActiveTimeProfile),
   personaEvolutionEnabled: z.boolean().default(true),
   sourceEvolutionEnabled: z.boolean().default(true),
   scheduledTimeoutSeconds: z.number().int().min(180).max(600).default(360),
   manualTimeoutSeconds: z.number().int().min(120).max(1200).default(600),
 });
+
+const retiredQuotaRangeSchema = z
+  .object({
+    min: z.number().int().min(0).max(100),
+    max: z.number().int().min(0).max(100),
+  })
+  .strict();
+
+const retiredAgentDailyPlanningFields = {
+  useGlobalEntryQuota: z.boolean().optional(),
+  dailyEntry: retiredQuotaRangeSchema.nullable().optional(),
+  dailyTopic: retiredQuotaRangeSchema.optional(),
+  dailyVote: retiredQuotaRangeSchema.optional(),
+} as const;
+
+const retiredGlobalDailyPlanningFields = {
+  quotaApplyMode: z.enum(["NEXT_DAY", "REGENERATE_REMAINING_TODAY"]).optional(),
+  quotaMode: z.enum(["PER_AGENT", "GLOBAL_TOTAL", "HYBRID"]).optional(),
+  defaultDailyEntryMin: z.number().int().min(0).max(100).optional(),
+  defaultDailyEntryMax: z.number().int().min(0).max(100).optional(),
+  globalDailyEntryMin: z.number().int().min(0).max(5000).optional(),
+  globalDailyEntryMax: z.number().int().min(0).max(5000).optional(),
+  maxEntriesPerHour: z.number().int().min(1).max(100).optional(),
+  maxEntriesPerThreeHours: z.number().int().min(1).max(300).optional(),
+} as const;
 
 const creationMethodSchema = z.discriminatedUnion("method", [
   z.object({ method: z.literal("CUSTOM") }),
@@ -119,16 +129,14 @@ export const updateAgentSchema = z
     publicBio: z.string().trim().min(20).max(500).optional(),
     persona: seedPersonaSchema.optional(),
     changeSummary: operatorReasonSchema.optional(),
-    useGlobalEntryQuota: z.boolean().optional(),
-    dailyEntry: boundedRange(0, 100).nullable().optional(),
-    dailyTopic: boundedRange(0, 100).optional(),
-    dailyVote: boundedRange(0, 100).optional(),
     activeTimeProfile: activeTimeProfileSchema.optional(),
     personaEvolutionEnabled: z.boolean().optional(),
     sourceEvolutionEnabled: z.boolean().optional(),
     scheduledTimeoutSeconds: z.number().int().min(180).max(600).optional(),
     manualTimeoutSeconds: z.number().int().min(120).max(1200).optional(),
+    ...retiredAgentDailyPlanningFields,
   })
+  .strict()
   .refine(
     (input) =>
       (!input.persona && input.displayName === undefined && input.publicBio === undefined) ||
@@ -150,19 +158,8 @@ export const personaRollbackSchema = z.object({
   reason: operatorReasonSchema,
 });
 
-export const quotaApplyModeSchema = z.enum(["NEXT_DAY", "REGENERATE_REMAINING_TODAY"]);
-
-const quotaSettingFieldNames = [
-  "quotaMode",
-  "defaultDailyEntryMin",
-  "defaultDailyEntryMax",
-  "globalDailyEntryMin",
-  "globalDailyEntryMax",
-] as const;
-
 export const globalSettingsUpdateSchema = z
   .object({
-    quotaApplyMode: quotaApplyModeSchema.optional(),
     expectedSettingsVersion: z.number().int().positive().optional(),
     changeReason: operatorReasonSchema.optional(),
     publishEnabled: z.boolean().optional(),
@@ -175,14 +172,7 @@ export const globalSettingsUpdateSchema = z
     personaEvolutionEnabled: z.boolean().optional(),
     sourceEvolutionEnabled: z.boolean().optional(),
     schedulerEnabled: z.boolean().optional(),
-    quotaMode: z.enum(["PER_AGENT", "GLOBAL_TOTAL", "HYBRID"]).optional(),
-    defaultDailyEntryMin: z.number().int().min(0).max(100).optional(),
-    defaultDailyEntryMax: z.number().int().min(0).max(100).optional(),
-    globalDailyEntryMin: z.number().int().min(0).max(5000).optional(),
-    globalDailyEntryMax: z.number().int().min(0).max(5000).optional(),
     activeTimeWeights: activeTimeProfileSchema.optional(),
-    maxEntriesPerHour: z.number().int().min(1).max(100).optional(),
-    maxEntriesPerThreeHours: z.number().int().min(1).max(300).optional(),
     codexConcurrency: z.number().int().min(1).max(2).optional(),
     scheduledTimeoutSeconds: z.number().int().min(180).max(600).optional(),
     manualTimeoutSeconds: z.number().int().min(120).max(1200).optional(),
@@ -197,6 +187,7 @@ export const globalSettingsUpdateSchema = z
     indexingMode: z.enum(["INDEX_ALL", "NOINDEX_AGENT_CONTENT", "NOINDEX_ALL_DYNAMIC"]).optional(),
     sitemapDelayMinutes: z.number().int().min(0).max(10080).optional(),
     agentTopicIndexingEnabled: z.boolean().optional(),
+    ...retiredGlobalDailyPlanningFields,
   })
   .strict()
   .superRefine((input, context) => {
@@ -212,22 +203,10 @@ export const globalSettingsUpdateSchema = z
         path: ["changeReason"],
         message: "Global ayar değişikliği için gerekçe zorunludur.",
       });
-    if (
-      quotaSettingFieldNames.some((field) => input[field] !== undefined) &&
-      input.quotaApplyMode === undefined
-    )
-      context.addIssue({
-        code: "custom",
-        path: ["quotaApplyMode"],
-        message: "Quota değişikliğinin ne zaman uygulanacağı seçilmelidir.",
-      });
   })
   .refine(
     (input) =>
-      Object.keys(input).some(
-        (key) =>
-          key !== "quotaApplyMode" && key !== "expectedSettingsVersion" && key !== "changeReason",
-      ),
+      Object.keys(input).some((key) => key !== "expectedSettingsVersion" && key !== "changeReason"),
     { message: "En az bir ayar gönderin." },
   );
 

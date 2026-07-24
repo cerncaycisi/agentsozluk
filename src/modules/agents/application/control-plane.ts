@@ -8,14 +8,9 @@ import type { ActorContext } from "@/modules/auth/domain/actor";
 import { hashPassword } from "@/modules/auth/domain/password";
 import { requireAgentAdminInTransaction } from "@/modules/agents/application/authorization";
 import { assertLifecycleTransition } from "@/modules/agents/domain/authorization";
+import { istanbulLocalDate } from "@/modules/agents/domain/istanbul-time";
 import { assertPinnedPersonaFieldsUnchanged } from "@/modules/agents/domain/persona-evolution";
 import { validatePersonaCandidate } from "@/modules/agents/domain/persona-validation";
-import {
-  assertQuotaConsistency,
-  istanbulQuotaLocalDate,
-  nextIstanbulQuotaLocalDate,
-  quotaSettingsSnapshot,
-} from "@/modules/agents/domain/quota";
 import {
   assertDualConcurrencySupported,
   runtimeFingerprint,
@@ -46,7 +41,6 @@ import {
   getProductionRolloutOperationalState,
   getProductionRolloutTerminalEvent,
   getAgentLifeReconstructionSnapshot,
-  getQuotaProfiles,
   listAgentDashboardRecords,
   listCurrentPersonas,
   listAgentSourcesRecord,
@@ -55,14 +49,12 @@ import {
   lockAgentProfile,
   lockAgentSource,
   lockAgentSettings,
-  promotePendingQuotaSettingsRecord,
   rotateAgentCredentialRecords,
   updateAgentLifecycle,
   updateAgentProfileRecords,
   updateAgentSourceAdminRecord,
   updateGlobalSettingsRecord,
 } from "@/modules/agents/repository/control-plane";
-import { regenerateRemainingAgentDailyPlansInTransaction } from "@/modules/agents/application/scheduler";
 import { lockPersonaUniverse } from "@/modules/agents/repository/persona-lock";
 import {
   getLatestRuntimeCapability,
@@ -89,12 +81,19 @@ import {
 import { assertProductionRolloutCompletionEvidence } from "@/modules/agents/application/production-rollout-proof";
 
 const GLOBAL_SETTINGS_AGGREGATE_ID = "00000000-0000-4000-8000-000000000001";
-const QUOTA_SETTING_FIELDS = [
+const RETIRED_DAILY_PLANNING_FIELD_NAMES = [
+  "quotaApplyMode",
   "quotaMode",
   "defaultDailyEntryMin",
   "defaultDailyEntryMax",
   "globalDailyEntryMin",
   "globalDailyEntryMax",
+  "maxEntriesPerHour",
+  "maxEntriesPerThreeHours",
+  "useGlobalEntryQuota",
+  "dailyEntry",
+  "dailyTopic",
+  "dailyVote",
 ] as const;
 const CRITICAL_RUNTIME_SETTING_FIELD_NAMES = [
   "publicWriteEnabled",
@@ -410,9 +409,6 @@ export async function createAgent(
       existingPersonaValues(existing),
       `Initial ${input.creation.method.toLowerCase()} persona`,
     );
-    if (!input.useGlobalEntryQuota && !input.dailyEntry) {
-      throw new AppError("QUOTA_INVALID", 422, "Özel quota için entry min/max zorunludur.");
-    }
     const created = await createAgentRecords(transaction, {
       userId,
       email: internalEmail,
@@ -421,13 +417,6 @@ export async function createAgent(
       publicBio: validated.persona.publicBio,
       passwordHash,
       lifecycleStatus: input.lifecycleStatus,
-      useGlobalEntryQuota: input.useGlobalEntryQuota,
-      dailyEntryMin: input.useGlobalEntryQuota ? null : (input.dailyEntry?.min ?? null),
-      dailyEntryMax: input.useGlobalEntryQuota ? null : (input.dailyEntry?.max ?? null),
-      dailyTopicMin: input.dailyTopic.min,
-      dailyTopicMax: input.dailyTopic.max,
-      dailyVoteMin: input.dailyVote.min,
-      dailyVoteMax: input.dailyVote.max,
       activeTimeProfile: input.activeTimeProfile,
       personaEvolutionEnabled: input.personaEvolutionEnabled,
       sourceEvolutionEnabled: input.sourceEvolutionEnabled,
@@ -528,13 +517,6 @@ function jsonNumber(value: unknown, key: string): number {
 
 function agentProfileAuditSnapshot(profile: {
   lifecycleStatus: string;
-  useGlobalEntryQuota: boolean;
-  dailyEntryMin: number | null;
-  dailyEntryMax: number | null;
-  dailyTopicMin: number;
-  dailyTopicMax: number;
-  dailyVoteMin: number;
-  dailyVoteMax: number;
   activeTimeProfile: unknown;
   personaEvolutionEnabled: boolean;
   sourceEvolutionEnabled: boolean;
@@ -547,10 +529,6 @@ function agentProfileAuditSnapshot(profile: {
     lifecycleStatus: profile.lifecycleStatus,
     displayName: profile.user.displayName,
     publicBio: profile.user.bio,
-    useGlobalEntryQuota: profile.useGlobalEntryQuota,
-    dailyEntry: { min: profile.dailyEntryMin, max: profile.dailyEntryMax },
-    dailyTopic: { min: profile.dailyTopicMin, max: profile.dailyTopicMax },
-    dailyVote: { min: profile.dailyVoteMin, max: profile.dailyVoteMax },
     activeTimeProfile: profile.activeTimeProfile as InputJsonValue,
     personaEvolutionEnabled: profile.personaEvolutionEnabled,
     sourceEvolutionEnabled: profile.sourceEvolutionEnabled,
@@ -643,10 +621,9 @@ export async function updateAgent(
       throw new AppError("AGENT_LIFECYCLE_INVALID", 409, "Emekli agent düzenlenemez.");
     }
     if (
-      input.useGlobalEntryQuota !== undefined ||
-      input.dailyEntry !== undefined ||
-      input.dailyTopic !== undefined ||
-      input.dailyVote !== undefined
+      RETIRED_DAILY_PLANNING_FIELD_NAMES.some(
+        (field) => (input as Record<string, unknown>)[field] !== undefined,
+      )
     ) {
       throw new AppError(
         "AGENT_DAILY_PLANNING_RETIRED",
@@ -912,16 +889,6 @@ export async function updateGlobalSettings(
   input: GlobalSettingsUpdateInput,
   now = new Date(),
 ) {
-  const localDate = istanbulQuotaLocalDate(now);
-  await inTransaction(client, async (transaction) => {
-    await requireAgentAdminInTransaction(transaction, actor);
-    await lockAgentSettings(transaction);
-    await promotePendingQuotaSettingsRecord(transaction, localDate, {
-      actorId: actor.actorId,
-      actorKind: actor.actorKind,
-      requestId: actor.requestId,
-    });
-  });
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentSettings(transaction);
@@ -931,7 +898,17 @@ export async function updateGlobalSettings(
         422,
         "runtimeEnabled yalnız explicit pause/resume komutuyla değiştirilebilir.",
       );
-    const current = await getGlobalSettingsRecord(transaction, localDate);
+    if (
+      RETIRED_DAILY_PLANNING_FIELD_NAMES.some(
+        (field) => (input as Record<string, unknown>)[field] !== undefined,
+      )
+    )
+      throw new AppError(
+        "AGENT_DAILY_PLANNING_RETIRED",
+        410,
+        "Günlük hedef ve quota ayarları kaldırıldı; stochastic toplum akışı hedefsiz çalışır.",
+      );
+    const current = await getGlobalSettingsRecord(transaction);
     const changesCriticalRuntimeControl = CRITICAL_RUNTIME_SETTING_FIELD_NAMES.some(
       (field) => input[field] !== undefined,
     );
@@ -965,90 +942,20 @@ export async function updateGlobalSettings(
         promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
       });
     }
-    const activeQuotaSettings = quotaSettingsSnapshot({
-      quotaMode: current.quotaMode,
-      defaultDailyEntryMin: current.defaultDailyEntryMin,
-      defaultDailyEntryMax: current.defaultDailyEntryMax,
-      globalDailyEntryMin: current.globalDailyEntryMin,
-      globalDailyEntryMax: current.globalDailyEntryMax,
-    });
-    const nextQuotaEffectiveDate = nextIstanbulQuotaLocalDate(now);
-    const quotaBase =
-      input.quotaApplyMode === "NEXT_DAY" &&
-      current.pendingQuotaEffectiveDate?.getTime() === nextQuotaEffectiveDate.getTime() &&
-      current.pendingQuotaSettings !== null
-        ? quotaSettingsSnapshot(current.pendingQuotaSettings)
-        : activeQuotaSettings;
-    const quotaCandidate = quotaSettingsSnapshot({
-      quotaMode: input.quotaMode ?? quotaBase.quotaMode,
-      defaultDailyEntryMin: input.defaultDailyEntryMin ?? quotaBase.defaultDailyEntryMin,
-      defaultDailyEntryMax: input.defaultDailyEntryMax ?? quotaBase.defaultDailyEntryMax,
-      globalDailyEntryMin: input.globalDailyEntryMin ?? quotaBase.globalDailyEntryMin,
-      globalDailyEntryMax: input.globalDailyEntryMax ?? quotaBase.globalDailyEntryMax,
-    });
-    const profiles = await getQuotaProfiles(transaction);
-    assertQuotaConsistency(quotaCandidate, profiles);
-    const quotaCommand = QUOTA_SETTING_FIELDS.some((field) => input[field] !== undefined);
-    const nonQuotaData = Object.fromEntries(
+    const data = Object.fromEntries(
       Object.entries(input).filter(
         ([key, value]) =>
-          key !== "quotaApplyMode" &&
           key !== "expectedSettingsVersion" &&
           key !== "changeReason" &&
-          !QUOTA_SETTING_FIELDS.includes(key as (typeof QUOTA_SETTING_FIELDS)[number]) &&
           value !== undefined &&
           !settingsValueEqual(current[key as keyof typeof current], value),
       ),
     ) as Parameters<typeof updateGlobalSettingsRecord>[2];
-    let data: Parameters<typeof updateGlobalSettingsRecord>[2] = nonQuotaData;
-    let clearPendingQuota = false;
-    let effectiveLocalDate: Date | null = null;
-    if (quotaCommand && input.quotaApplyMode === "NEXT_DAY") {
-      effectiveLocalDate = nextQuotaEffectiveDate;
-      const pendingMatches =
-        current.pendingQuotaEffectiveDate?.getTime() === effectiveLocalDate.getTime() &&
-        settingsValueEqual(current.pendingQuotaSettings, quotaCandidate);
-      if (!pendingMatches)
-        data = {
-          ...data,
-          pendingQuotaSettings: quotaCandidate,
-          pendingQuotaEffectiveDate: effectiveLocalDate,
-        };
-    } else if (quotaCommand) {
-      data = {
-        ...data,
-        ...Object.fromEntries(
-          QUOTA_SETTING_FIELDS.flatMap((field) =>
-            settingsValueEqual(current[field], quotaCandidate[field])
-              ? []
-              : [[field, quotaCandidate[field]]],
-          ),
-        ),
-      };
-      clearPendingQuota =
-        current.pendingQuotaSettings !== null || current.pendingQuotaEffectiveDate !== null;
-    }
-    const hasSettingsMutation = Object.keys(data).length > 0 || clearPendingQuota;
+    const hasSettingsMutation = Object.keys(data).length > 0;
     const updated = hasSettingsMutation
-      ? await updateGlobalSettingsRecord(transaction, actor.actorId, data, { clearPendingQuota })
+      ? await updateGlobalSettingsRecord(transaction, actor.actorId, data)
       : current;
-    let regeneration: Awaited<
-      ReturnType<typeof regenerateRemainingAgentDailyPlansInTransaction>
-    > | null = null;
-    if (quotaCommand && input.quotaApplyMode === "REGENERATE_REMAINING_TODAY")
-      regeneration = await regenerateRemainingAgentDailyPlansInTransaction(
-        transaction,
-        actor,
-        {
-          localDate,
-          reason: input.changeReason ?? "Global quota settings changed by human administrator.",
-        },
-        now,
-      );
-    const changedFields = [
-      ...Object.keys(nonQuotaData),
-      ...(quotaCommand ? QUOTA_SETTING_FIELDS.filter((field) => input[field] !== undefined) : []),
-    ];
+    const changedFields = Object.keys(data);
     if (hasSettingsMutation) {
       const criticalRuntimeChanges = Object.fromEntries(
         CRITICAL_RUNTIME_SETTING_FIELD_NAMES.flatMap((field) =>
@@ -1058,24 +965,10 @@ export async function updateGlobalSettings(
         ),
       );
       const before = Object.fromEntries(
-        changedFields.map((field) => {
-          const quotaField = QUOTA_SETTING_FIELDS.find((candidate) => candidate === field);
-          return [
-            field,
-            quotaField && input.quotaApplyMode === "NEXT_DAY"
-              ? quotaBase[quotaField]
-              : current[field as keyof typeof current],
-          ];
-        }),
+        changedFields.map((field) => [field, current[field as keyof typeof current]]),
       );
       const after = Object.fromEntries(
-        changedFields.map((field) => {
-          const quotaField = QUOTA_SETTING_FIELDS.find((candidate) => candidate === field);
-          return [
-            field,
-            quotaField ? quotaCandidate[quotaField] : updated[field as keyof typeof updated],
-          ];
-        }),
+        changedFields.map((field) => [field, updated[field as keyof typeof updated]]),
       );
       await recordControlPlaneChange(transaction, actor, {
         eventType: "agent.settings.changed",
@@ -1089,50 +982,18 @@ export async function updateGlobalSettings(
           changedFields,
           settingsVersion: updated.settingsVersion,
           ...(Object.keys(criticalRuntimeChanges).length > 0 ? { criticalRuntimeChanges } : {}),
-          ...(quotaCommand
-            ? {
-                quotaApplyMode: input.quotaApplyMode ?? "IMMEDIATE_INTERNAL",
-                effectiveLocalDate:
-                  effectiveLocalDate?.toISOString().slice(0, 10) ??
-                  localDate.toISOString().slice(0, 10),
-              }
-            : {}),
         },
       });
       await appendRuntimeEvent(transaction, {
         eventType: "runtime.global.changed",
-        safeMessage:
-          input.quotaApplyMode === "NEXT_DAY"
-            ? "Global agent quota ayarları yarından itibaren uygulanmak üzere kaydedildi."
-            : "Global agent runtime ayarları güncellendi.",
+        safeMessage: "Global agent runtime ayarları güncellendi.",
         metadata: {
           changedFields,
           settingsVersion: updated.settingsVersion,
-          ...(quotaCommand
-            ? {
-                quotaApplyMode: input.quotaApplyMode ?? "IMMEDIATE_INTERNAL",
-                effectiveLocalDate:
-                  effectiveLocalDate?.toISOString().slice(0, 10) ??
-                  localDate.toISOString().slice(0, 10),
-              }
-            : {}),
         },
       });
     }
-    return {
-      ...updated,
-      ...(quotaCommand
-        ? {
-            quotaApplication: {
-              mode: input.quotaApplyMode ?? "IMMEDIATE_INTERNAL",
-              effectiveLocalDate:
-                effectiveLocalDate?.toISOString().slice(0, 10) ??
-                localDate.toISOString().slice(0, 10),
-              regeneration,
-            },
-          }
-        : {}),
-    };
+    return updated;
   });
 }
 
@@ -1372,7 +1233,7 @@ export async function startProductionRolloutAttempt(
     assertCleanProductionRolloutStart(state);
     const attemptId = input.attemptId;
     const reason = productionRolloutReason(input.reasonCode);
-    const localDate = istanbulQuotaLocalDate(observedNow).toISOString().slice(0, 10);
+    const localDate = istanbulLocalDate(observedNow).toISOString().slice(0, 10);
     const metadata = {
       attemptId,
       commandId: input.commandId,

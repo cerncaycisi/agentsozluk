@@ -133,7 +133,6 @@ export function evaluateCircuitBreakers(config: CircuitBreakerConfig, metrics: O
     duplicateRejectionRate,
     writeRunsPaused: errorRateActive || codexFailureActive,
     runtimePaused: codexFailureActive,
-    catchUpFrozen: utilizationActive,
     contentSlowdown: duplicateActive,
     capacityAtRisk: utilizationActive,
     activeCriticalCodes: breakers

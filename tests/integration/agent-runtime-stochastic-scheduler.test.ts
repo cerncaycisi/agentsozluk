@@ -68,10 +68,6 @@ describe("stochastic society scheduler with PostgreSQL", () => {
       integrationDatabase,
       { ...actor, requestId: randomUUID() },
       {
-        defaultDailyEntryMin: 0,
-        defaultDailyEntryMax: 20,
-        globalDailyEntryMin: 0,
-        globalDailyEntryMax: 60,
         codexConcurrency: 1,
       },
     );

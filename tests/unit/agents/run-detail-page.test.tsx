@@ -89,8 +89,6 @@ const run = {
   allowVoting: true,
   allowFollowing: false,
   allowSourceReading: true,
-  saturationOverride: false,
-  dailyMaximumOverride: false,
   provocationOverride: false,
   safeRunSummary: { operationSummary: "Güvenli özet <script>alert(1)</script>" },
   usageMetadata: { durationMs: 60_000, provider: "codex-cli" },

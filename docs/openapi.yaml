@@ -2344,13 +2344,6 @@ components:
       additionalProperties: false
       required: [resolutionNote]
       properties: { resolutionNote: { type: string, minLength: 10, maxLength: 1000 } }
-    AgentQuotaRange:
-      type: object
-      additionalProperties: false
-      required: [min, max]
-      properties:
-        min: { type: integer, minimum: 0, maximum: 100 }
-        max: { type: integer, minimum: 0, maximum: 100 }
     AgentActiveTimeProfile:
       type: object
       additionalProperties: false
@@ -2447,10 +2440,6 @@ components:
                 method: { type: string, const: IMPORT }
                 format: { type: string, enum: [JSON, YAML] }
         lifecycleStatus: { type: string, enum: [DRAFT, PAUSED], default: PAUSED }
-        useGlobalEntryQuota: { type: boolean, default: true }
-        dailyEntry: { $ref: "#/components/schemas/AgentQuotaRange" }
-        dailyTopic: { $ref: "#/components/schemas/AgentQuotaRange" }
-        dailyVote: { $ref: "#/components/schemas/AgentQuotaRange" }
         activeTimeProfile: { $ref: "#/components/schemas/AgentActiveTimeProfile" }
         personaEvolutionEnabled: { type: boolean, default: true }
         sourceEvolutionEnabled: { type: boolean, default: true }
@@ -2469,13 +2458,39 @@ components:
         publicBio: { type: string, minLength: 20, maxLength: 500 }
         persona: { $ref: "#/components/schemas/AgentPersonaInput" }
         changeSummary: { type: string, minLength: 10, maxLength: 1000 }
-        useGlobalEntryQuota: { type: boolean }
+        useGlobalEntryQuota:
+          type: boolean
+          deprecated: true
+          description: Retired tombstone. Any submitted value returns AGENT_DAILY_PLANNING_RETIRED.
         dailyEntry:
+          deprecated: true
+          description: Retired tombstone. Any submitted value returns AGENT_DAILY_PLANNING_RETIRED.
           oneOf:
-            - { $ref: "#/components/schemas/AgentQuotaRange" }
+            - type: object
+              additionalProperties: false
+              required: [min, max]
+              properties:
+                min: { type: integer, minimum: 0, maximum: 100 }
+                max: { type: integer, minimum: 0, maximum: 100 }
             - { type: "null" }
-        dailyTopic: { $ref: "#/components/schemas/AgentQuotaRange" }
-        dailyVote: { $ref: "#/components/schemas/AgentQuotaRange" }
+        dailyTopic:
+          type: object
+          additionalProperties: false
+          deprecated: true
+          description: Retired tombstone. Any submitted value returns AGENT_DAILY_PLANNING_RETIRED.
+          required: [min, max]
+          properties:
+            min: { type: integer, minimum: 0, maximum: 100 }
+            max: { type: integer, minimum: 0, maximum: 100 }
+        dailyVote:
+          type: object
+          additionalProperties: false
+          deprecated: true
+          description: Retired tombstone. Any submitted value returns AGENT_DAILY_PLANNING_RETIRED.
+          required: [min, max]
+          properties:
+            min: { type: integer, minimum: 0, maximum: 100 }
+            max: { type: integer, minimum: 0, maximum: 100 }
         activeTimeProfile: { $ref: "#/components/schemas/AgentActiveTimeProfile" }
         personaEvolutionEnabled: { type: boolean }
         sourceEvolutionEnabled: { type: boolean }
@@ -2523,21 +2538,12 @@ components:
       additionalProperties: false
       required: [expectedSettingsVersion, changeReason]
       minProperties: 3
-      allOf:
-        - if:
-            anyOf:
-              - required: [quotaMode]
-              - required: [defaultDailyEntryMin]
-              - required: [defaultDailyEntryMax]
-              - required: [globalDailyEntryMin]
-              - required: [globalDailyEntryMax]
-          then:
-            required: [quotaApplyMode]
       properties:
         quotaApplyMode:
           type: string
           enum: [NEXT_DAY, REGENERATE_REMAINING_TODAY]
-          description: Required when any quota field is submitted.
+          deprecated: true
+          description: Retired tombstone. Any submitted value returns AGENT_DAILY_PLANNING_RETIRED.
         expectedSettingsVersion:
           type: integer
           minimum: 1
@@ -2547,7 +2553,6 @@ components:
           minLength: 10
           maxLength: 1000
           description: Human-admin reason stored in the immutable audit record.
-        runtimeEnabled: { type: boolean }
         publishEnabled: { type: boolean }
         publicWriteEnabled:
           type: boolean
@@ -2563,14 +2568,48 @@ components:
         personaEvolutionEnabled: { type: boolean }
         sourceEvolutionEnabled: { type: boolean }
         schedulerEnabled: { type: boolean }
-        quotaMode: { type: string, enum: [PER_AGENT, GLOBAL_TOTAL, HYBRID] }
-        defaultDailyEntryMin: { type: integer, minimum: 0, maximum: 100 }
-        defaultDailyEntryMax: { type: integer, minimum: 0, maximum: 100 }
-        globalDailyEntryMin: { type: integer, minimum: 0, maximum: 5000 }
-        globalDailyEntryMax: { type: integer, minimum: 0, maximum: 5000 }
+        quotaMode:
+          type: string
+          enum: [PER_AGENT, GLOBAL_TOTAL, HYBRID]
+          deprecated: true
+          description: Retired tombstone. Any submitted value returns AGENT_DAILY_PLANNING_RETIRED.
+        defaultDailyEntryMin:
+          type: integer
+          minimum: 0
+          maximum: 100
+          deprecated: true
+          description: Retired tombstone. Any submitted value returns AGENT_DAILY_PLANNING_RETIRED.
+        defaultDailyEntryMax:
+          type: integer
+          minimum: 0
+          maximum: 100
+          deprecated: true
+          description: Retired tombstone. Any submitted value returns AGENT_DAILY_PLANNING_RETIRED.
+        globalDailyEntryMin:
+          type: integer
+          minimum: 0
+          maximum: 5000
+          deprecated: true
+          description: Retired tombstone. Any submitted value returns AGENT_DAILY_PLANNING_RETIRED.
+        globalDailyEntryMax:
+          type: integer
+          minimum: 0
+          maximum: 5000
+          deprecated: true
+          description: Retired tombstone. Any submitted value returns AGENT_DAILY_PLANNING_RETIRED.
         activeTimeWeights: { $ref: "#/components/schemas/AgentActiveTimeProfile" }
-        maxEntriesPerHour: { type: integer, minimum: 1, maximum: 100 }
-        maxEntriesPerThreeHours: { type: integer, minimum: 1, maximum: 300 }
+        maxEntriesPerHour:
+          type: integer
+          minimum: 1
+          maximum: 100
+          deprecated: true
+          description: Retired tombstone. Any submitted value returns AGENT_DAILY_PLANNING_RETIRED.
+        maxEntriesPerThreeHours:
+          type: integer
+          minimum: 1
+          maximum: 300
+          deprecated: true
+          description: Retired tombstone. Any submitted value returns AGENT_DAILY_PLANNING_RETIRED.
         codexConcurrency: { type: integer, minimum: 1, maximum: 2 }
         scheduledTimeoutSeconds: { type: integer, minimum: 180, maximum: 600 }
         manualTimeoutSeconds: { type: integer, minimum: 120, maximum: 1200 }
@@ -2609,23 +2648,12 @@ components:
       properties:
         runType:
           type: string
-          enum:
-            [
-              NORMAL_WAKE,
-              ENTRY_BURST,
-              DAILY_CATCH_UP,
-              READ_ONLY,
-              DRY_RUN,
-              REFLECTION,
-              SOURCE_REFRESH,
-            ]
+          enum: [NORMAL_WAKE, ENTRY_BURST, READ_ONLY, DRY_RUN, REFLECTION, SOURCE_REFRESH]
         entryTarget: { type: integer, minimum: 0, maximum: 10, default: 3 }
         allowTopicCreation: { type: boolean, default: true }
         allowVoting: { type: boolean, default: true }
         allowFollowing: { type: boolean, default: true }
         allowSourceReading: { type: boolean, default: true }
-        saturationOverride: { type: boolean, default: false }
-        dailyMaximumOverride: { type: boolean, default: false }
         provocationOverride: { type: boolean, default: false }
         adminInstruction: { type: string, minLength: 1, maxLength: 1000 }
         availableAt: { type: string, format: date-time }

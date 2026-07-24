@@ -27,7 +27,6 @@ const leaseInput = {
   leaseSeconds: 60,
   maxRetryCount: 2,
   writeRunsPaused: false,
-  catchUpFrozen: true,
   contentSlowdownMinutes: 0,
   runtimeOperatingMode: "MAINTENANCE" as const,
   now: new Date("2026-07-18T15:00:00.000Z"),
@@ -106,6 +105,11 @@ describe("maintenance-mode lease fencing", () => {
     await expect(
       claimNextRuntimeRun(transaction as unknown as Prisma.TransactionClient, leaseInput),
     ).resolves.toBeNull();
+    const queryText = (
+      transaction.$queryRaw.mock.calls[0]?.[0] as unknown as TemplateStringsArray
+    ).join("?");
+    expect(queryText).toContain(`candidate."runType" NOT IN ('SCHEDULED_WAKE', 'DAILY_CATCH_UP')`);
+    expect(queryText).toContain(`candidate."trigger" NOT IN ('SCHEDULER_SLOT', 'AUTO_CATCH_UP')`);
     expect(transaction.agentRun.findFirst).toHaveBeenCalledWith({
       where: {
         id: { not: candidateId },

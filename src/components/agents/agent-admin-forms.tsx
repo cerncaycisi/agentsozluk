@@ -306,13 +306,6 @@ interface RunPreview {
   estimatedStartAt: string | null;
   estimatedCompleteAt: string | null;
   estimatedScheduledDelayMs: number | null;
-  targetMissRiskChange: {
-    estimateStatus: "ESTIMATED" | "UNKNOWN";
-    beforeProjectedShortfallEntries: number | null;
-    afterProjectedShortfallEntries: number | null;
-    deltaProjectedShortfallEntries: number | null;
-    direction: "INCREASED" | "DECREASED" | "UNCHANGED" | "UNKNOWN";
-  };
   workerUtilization: number | null;
   concurrency: number;
   provocationOverride: boolean;

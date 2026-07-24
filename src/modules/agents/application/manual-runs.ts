@@ -4,13 +4,15 @@ import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { requireAgentAdminInTransaction } from "@/modules/agents/application/authorization";
-import { istanbulLocalDate } from "@/modules/agents/application/scheduler";
 import {
   calculateRuntimeCapacity,
   estimateRuntimeCompletion,
   runtimeFingerprint,
 } from "@/modules/agents/domain/capacity";
-import { circuitBreakerConfigSchema } from "@/modules/agents/domain/circuit-breaker";
+import {
+  circuitBreakerConfigSchema,
+  evaluateCircuitBreakers,
+} from "@/modules/agents/domain/circuit-breaker";
 import { isWriteCapableAgentRunType } from "@/modules/agents/domain/manual-runs";
 import {
   appendRuntimeEvent,
@@ -32,7 +34,6 @@ import {
   listAgentRunsRecord,
 } from "@/modules/agents/repository/manual-runs";
 import {
-  getCapacityPlanningMetrics,
   getLatestRuntimeFingerprintRecord,
   getRuntimeOperationalMetrics,
 } from "@/modules/agents/repository/capacity";
@@ -128,12 +129,6 @@ export function createManualAgentRun(
     if (agent.lifecycleStatus !== "ACTIVE" || !agent.currentPersonaVersion) {
       throw new AppError("AGENT_LIFECYCLE_INVALID", 409, "Yalnız ACTIVE agent kuyruğa alınabilir.");
     }
-    if (input.saturationOverride || input.dailyMaximumOverride)
-      throw new AppError(
-        "AGENT_DAILY_PLANNING_RETIRED",
-        410,
-        "Günlük maksimum ve otomatik topic saturation kontrolleri kaldırıldı; bu override'lar artık kullanılamaz.",
-      );
     const nonPublishing = isNonPublishingRun(input.runType);
     const entryTarget = nonPublishing ? 0 : input.entryTarget;
     const timeoutSeconds =
@@ -157,8 +152,6 @@ export function createManualAgentRun(
       allowVoting: !nonPublishing && input.allowVoting,
       allowFollowing: !nonPublishing && input.allowFollowing,
       allowSourceReading: input.allowSourceReading,
-      saturationOverride: false,
-      dailyMaximumOverride: false,
       provocationOverride: input.provocationOverride,
       ...(input.adminInstruction ? { adminInstruction: input.adminInstruction } : {}),
     });
@@ -167,9 +160,7 @@ export function createManualAgentRun(
       runType: run.runType,
       queuePriority: run.queuePriority,
       availableAt: run.availableAt.toISOString(),
-      dailyMaximumOverride: run.dailyMaximumOverride,
       provocationOverride: run.provocationOverride,
-      saturationOverride: run.saturationOverride,
     };
     await appendAuditLog(transaction, {
       actorId: actor.actorId,
@@ -227,17 +218,9 @@ export function previewBulkAgentRun(
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
-    if (input.run.saturationOverride || input.run.dailyMaximumOverride)
-      throw new AppError(
-        "AGENT_DAILY_PLANNING_RETIRED",
-        410,
-        "Günlük maksimum ve otomatik topic saturation kontrolleri kaldırıldı; bu override'lar artık kullanılamaz.",
-      );
-    const localDate = istanbulLocalDate(now);
-    const [agents, metrics, planning, fingerprintRecord] = await Promise.all([
+    const [agents, metrics, fingerprintRecord] = await Promise.all([
       listBulkRunAgents(transaction, bulkSelection(input)),
       getBulkRunPreviewMetrics(transaction),
-      getCapacityPlanningMetrics(transaction, localDate),
       getLatestRuntimeFingerprintRecord(transaction),
     ]);
     if (!input.allActive && agents.length !== input.agentIds?.length)
@@ -247,10 +230,6 @@ export function previewBulkAgentRun(
         "Seçili ACTIVE agent listesi eksik veya geçersiz.",
       );
     const runCount = agents.length;
-    const addedPublishedMin = isNonPublishingRun(input.run.runType)
-      ? 0
-      : agents.length * input.run.entryTarget;
-    const addedPublishedMax = addedPublishedMin;
     const observedFingerprint = runtimeFingerprint(fingerprintRecord?.usageMetadata);
     const observedCodexVersion =
       observedFingerprint.codexVersion ?? metrics.capability?.codexVersion;
@@ -261,7 +240,6 @@ export function previewBulkAgentRun(
     const configuredConcurrency = metrics.settings.codexConcurrency === 2 ? 2 : 1;
     const beforeCapacity = calculateRuntimeCapacity({
       capability: metrics.capability,
-      ...planning,
       configuredConcurrency,
       degradedMode: metrics.settings.degradedMode,
       now,
@@ -274,6 +252,7 @@ export function previewBulkAgentRun(
       concurrency,
       config: breakerConfig,
     });
+    const circuitBreakers = evaluateCircuitBreakers(breakerConfig, operational);
     const benchmarkFresh = beforeCapacity.benchmark?.stale === false;
     const p75DurationMs = benchmarkFresh ? (metrics.capability?.p75DurationMs ?? null) : null;
     const existingWorkCompletion = p75DurationMs
@@ -300,40 +279,6 @@ export function previewBulkAgentRun(
             activeRunStartedAts: operational.activeRunStartedAts,
           })
       : null;
-    const afterCapacity = calculateRuntimeCapacity({
-      capability: metrics.capability,
-      ...planning,
-      plannedRuns: planning.plannedRuns + runCount,
-      estimatedPublishedMin: planning.estimatedPublishedMin + addedPublishedMin,
-      estimatedPublishedMax: planning.estimatedPublishedMax + addedPublishedMax,
-      configuredConcurrency,
-      degradedMode: metrics.settings.degradedMode,
-      now,
-      ...fingerprint,
-    });
-    const targetMissRiskChange =
-      beforeCapacity.projectedShortfallEntries === null ||
-      afterCapacity.projectedShortfallEntries === null
-        ? {
-            estimateStatus: "UNKNOWN" as const,
-            beforeProjectedShortfallEntries: null,
-            afterProjectedShortfallEntries: null,
-            deltaProjectedShortfallEntries: null,
-            direction: "UNKNOWN" as const,
-          }
-        : {
-            estimateStatus: "ESTIMATED" as const,
-            beforeProjectedShortfallEntries: beforeCapacity.projectedShortfallEntries,
-            afterProjectedShortfallEntries: afterCapacity.projectedShortfallEntries,
-            deltaProjectedShortfallEntries:
-              afterCapacity.projectedShortfallEntries - beforeCapacity.projectedShortfallEntries,
-            direction:
-              afterCapacity.projectedShortfallEntries > beforeCapacity.projectedShortfallEntries
-                ? ("INCREASED" as const)
-                : afterCapacity.projectedShortfallEntries < beforeCapacity.projectedShortfallEntries
-                  ? ("DECREASED" as const)
-                  : ("UNCHANGED" as const),
-          };
     return {
       runCount,
       existingQueueLength: metrics.queueLength,
@@ -352,18 +297,15 @@ export function previewBulkAgentRun(
       estimatedScheduledDelayMs: p75DurationMs
         ? Math.ceil(runCount / concurrency) * p75DurationMs
         : null,
-      targetMissRiskChange,
       workerUtilization: operational.configuredWindowUtilization,
       workerUtilizationWindowMinutes: breakerConfig.utilizationWindowMinutes,
       workerUtilizationMeasuredAt: now,
       concurrency,
-      saturationOverride: false,
-      dailyMaximumOverride: false,
       provocationOverride: input.run.provocationOverride,
       oldestQueuedAt: operational.oldestQueuedAt,
-      capacityStatusBefore: beforeCapacity.capacityStatus,
-      capacityStatusAfter: afterCapacity.capacityStatus,
-      catchUp: null,
+      capacityStatus: circuitBreakers.capacityAtRisk
+        ? ("AT_RISK" as const)
+        : beforeCapacity.capacityStatus,
     };
   });
 }
@@ -377,12 +319,6 @@ export function createBulkAgentRuns(
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
-    if (input.run.saturationOverride || input.run.dailyMaximumOverride)
-      throw new AppError(
-        "AGENT_DAILY_PLANNING_RETIRED",
-        410,
-        "Günlük maksimum ve otomatik topic saturation kontrolleri kaldırıldı; bu override'lar artık kullanılamaz.",
-      );
     const initialAgents = await listBulkRunAgents(transaction, bulkSelection(input));
     if (!input.allActive && initialAgents.length !== input.agentIds?.length)
       throw new AppError(
@@ -433,8 +369,6 @@ export function createBulkAgentRuns(
           allowVoting: !nonPublishing && input.run.allowVoting,
           allowFollowing: !nonPublishing && input.run.allowFollowing,
           allowSourceReading: input.run.allowSourceReading,
-          saturationOverride: false,
-          dailyMaximumOverride: false,
           provocationOverride: input.run.provocationOverride,
           ...(input.run.adminInstruction ? { adminInstruction: input.run.adminInstruction } : {}),
         }),

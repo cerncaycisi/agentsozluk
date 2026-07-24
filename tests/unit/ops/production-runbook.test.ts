@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const runbook = readFileSync(path.join(process.cwd(), "docs/PRODUCTION_RUNBOOK.md"), "utf8");
+const rolloutCli = readFileSync(path.join(process.cwd(), "scripts/agent-rollout.ts"), "utf8");
 const prose = runbook.replace(/\s+/gu, " ");
 const gate7 = runbook.slice(
   runbook.indexOf("### Gate 7: backup and isolated restore drill"),
@@ -14,7 +15,7 @@ const gate8 = runbook.slice(
 );
 const capacityGate = runbook.slice(
   runbook.indexOf("### Capacity prerequisite: real CLI benchmark and persisted measurement"),
-  runbook.indexOf("## Production smoke and Day 0 activation gate"),
+  runbook.indexOf("## Historical daily-plan Day 0 gate — archived, do not execute"),
 );
 
 describe("Milestone 2 production operator runbook", () => {
@@ -210,7 +211,16 @@ describe("Milestone 2 production operator runbook", () => {
     expect(capacityGate).toContain("cold/warm/dual sample counts");
   });
 
-  it("defines the full human, role-denial, metadata and takedown smoke", () => {
+  it("preserves the retired human smoke only inside an explicit non-executable archive", () => {
+    expect(runbook).toContain("## Historical daily-plan Day 0 gate — archived, do not execute");
+    expect(prose).toContain("None of the commands or SQL in this archived section is a current");
+    expect(prose).toContain(
+      "The `pnpm agent:rollout` CLI now fails with `AGENT_DAILY_PLANNING_RETIRED`",
+    );
+    expect(runbook).toContain("### Archived contract begins");
+    expect(runbook).toContain("### Archived contract ends");
+    expect(rolloutCli).toContain("assertLegacyRolloutModeIsSafeToRun(mode)");
+    expect(rolloutCli).toContain("AGENT_DAILY_PLANNING_RETIRED");
     expect(runbook).toContain("### Gate 9: paused smoke and human checklist");
     for (const evidence of [
       "HUMAN ADMIN",
@@ -231,9 +241,9 @@ describe("Milestone 2 production operator runbook", () => {
     expect(prose).toContain("transition the smoke profile back to `PAUSED`");
   });
 
-  it("gates ten-agent activation on a sampled green five-agent observation", () => {
+  it("preserves the old sampled five-agent contract as historical evidence only", () => {
     expect(runbook).toContain("### Gate 10: controlled five-agent stage");
-    expect(prose).toContain("AUTO_CATCH_UP must remain frozen");
+    expect(prose).toContain("ADR-012 retired its daily targets");
     expect(prose).toContain("continuous two-hour window");
     expect(prose).toContain("success rate is at least 90%");
     expect(prose).toContain("at least five real terminal `SCHEDULER_SLOT` runs");

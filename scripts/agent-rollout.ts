@@ -49,6 +49,13 @@ function filesystemErrorCode(error: unknown): string | null {
   return typeof code === "string" && /^[A-Z0-9_]+$/.test(code) ? code : null;
 }
 
+function assertLegacyRolloutModeIsSafeToRun(mode: string): void {
+  if (mode !== "abort")
+    throw new Error(
+      "AGENT_DAILY_PLANNING_RETIRED: legacy Gate 9-12 rollout commands are archived; only abort remains available for closing an already-open historical attempt.",
+    );
+}
+
 export async function readRolloutEvidenceFile(filePath: string): Promise<Record<string, unknown>> {
   let handle: FileHandle | undefined;
   try {
@@ -112,6 +119,7 @@ async function main(): Promise<void> {
       "complete",
     ])
     .parse(process.argv[2]);
+  assertLegacyRolloutModeIsSafeToRun(mode);
   if (process.env.AGENT_OPERATOR_ENV_FILE) process.loadEnvFile(process.env.AGENT_OPERATOR_ENV_FILE);
   if (process.env.AGENT_DB_IP && process.env.DATABASE_URL) {
     const databaseUrl = new URL(process.env.DATABASE_URL);

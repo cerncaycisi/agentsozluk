@@ -72,13 +72,12 @@ describe("agent runtime circuit breakers", () => {
     ).toBe(0);
   });
 
-  it("keeps write and catch-up lanes open below strict thresholds", () => {
+  it("keeps the write lane open below strict thresholds", () => {
     expect(evaluateCircuitBreakers(config, healthy)).toMatchObject({
       runtimeErrorRate: 0.1,
       duplicateRejectionRate: 0.1,
       writeRunsPaused: false,
       runtimePaused: false,
-      catchUpFrozen: false,
       contentSlowdown: false,
       capacityAtRisk: false,
     });
@@ -103,7 +102,7 @@ describe("agent runtime circuit breakers", () => {
     });
   });
 
-  it("requires the full duplicate window and freezes catch-up only above utilization threshold", () => {
+  it("requires the full duplicate window and marks capacity risk above utilization threshold", () => {
     expect(
       evaluateCircuitBreakers(config, {
         ...healthy,
@@ -112,7 +111,11 @@ describe("agent runtime circuit breakers", () => {
         utilization2h: 0.9,
         configuredWindowUtilization: 0.9,
       }),
-    ).toMatchObject({ duplicateRejectionRate: null, contentSlowdown: false, catchUpFrozen: false });
+    ).toMatchObject({
+      duplicateRejectionRate: null,
+      contentSlowdown: false,
+      capacityAtRisk: false,
+    });
     expect(
       evaluateCircuitBreakers(config, {
         ...healthy,
@@ -124,7 +127,6 @@ describe("agent runtime circuit breakers", () => {
     ).toMatchObject({
       duplicateRejectionRate: 0.42,
       contentSlowdown: true,
-      catchUpFrozen: true,
       capacityAtRisk: true,
       activeCriticalCodes: [],
       breakers: expect.arrayContaining([
@@ -149,7 +151,6 @@ describe("agent runtime circuit breakers", () => {
         configuredWindowUtilization: 0.1,
       }),
     ).toMatchObject({
-      catchUpFrozen: true,
       capacityAtRisk: true,
       breakers: expect.arrayContaining([
         expect.objectContaining({
@@ -178,7 +179,6 @@ describe("agent runtime circuit breakers", () => {
         configuredWindowUtilization: 0.91,
       }),
     ).toMatchObject({
-      catchUpFrozen: true,
       capacityAtRisk: true,
       breakers: expect.arrayContaining([
         expect.objectContaining({ code: "WORKER_UTILIZATION_2H", active: false }),

@@ -25,6 +25,26 @@ const capability: RuntimeCapabilityMeasurement = {
 };
 
 describe("agent runtime capacity", () => {
+  it("reports live capability without daily publication projections", () => {
+    const result = calculateRuntimeCapacity({
+      capability,
+      configuredConcurrency: 1,
+      degradedMode: false,
+      now,
+      codexVersion: capability.codexVersion,
+      promptProfileHash: capability.promptProfileHash,
+    });
+    expect(result).toMatchObject({
+      capacityStatus: "HEALTHY",
+      configuredConcurrency: 1,
+      effectiveConcurrency: 1,
+      warnings: [],
+    });
+    expect(result).not.toHaveProperty("plannedRuns");
+    expect(result).not.toHaveProperty("targetPublishedEntries");
+    expect(result).not.toHaveProperty("projectedShortfallEntries");
+  });
+
   it("estimates P75 completion from eligible queued and active Codex work", () => {
     expect(
       estimateRuntimeCompletion({
@@ -49,73 +69,6 @@ describe("agent runtime capacity", () => {
         activeRunStartedAts: [],
       }),
     ).toBeNull();
-  });
-
-  it("uses measured p75 and a fixed 25 percent reserve", () => {
-    const result = calculateRuntimeCapacity({
-      capability,
-      plannedRuns: 240,
-      completedRuns: 20,
-      estimatedPublishedMin: 480,
-      estimatedPublishedMax: 720,
-      configuredConcurrency: 1,
-      degradedMode: false,
-      now,
-    });
-    expect(result.requiredContentMinutes).toBe(720);
-    expect(result.reservedCapacityMinutes).toBe(720);
-    expect(result.capacityStatus).toBe("HEALTHY");
-    expect(result.benchmark?.p75DurationMs).toBe(180_000);
-  });
-
-  it("reports risk and overload without silently reducing planned output", () => {
-    const atRisk = calculateRuntimeCapacity({
-      capability,
-      plannedRuns: 250,
-      completedRuns: 0,
-      estimatedPublishedMin: 500,
-      estimatedPublishedMax: 750,
-      configuredConcurrency: 1,
-      degradedMode: false,
-      now,
-    });
-    expect(atRisk.capacityStatus).toBe("AT_RISK");
-    expect(atRisk.plannedRuns).toBe(250);
-    expect(atRisk.estimatedPublishedMin).toBe(500);
-    expect(atRisk).toMatchObject({
-      capacityRunBudget: 240,
-      projectedPublishedMax: 720,
-      projectedShortfallEntries: 30,
-      projectedTargetMiss: true,
-      warnings: ["CAPACITY_AT_RISK", "PROJECTED_TARGET_MISS"],
-    });
-    expect(
-      calculateRuntimeCapacity({
-        ...atRisk,
-        capability,
-        plannedRuns: 400,
-        completedRuns: 0,
-        configuredConcurrency: 1,
-        degradedMode: false,
-        now,
-      }).capacityStatus,
-    ).toBe("OVERLOADED");
-    const degraded = calculateRuntimeCapacity({
-      capability,
-      plannedRuns: 250,
-      completedRuns: 0,
-      estimatedPublishedMin: 500,
-      estimatedPublishedMax: 750,
-      configuredConcurrency: 1,
-      degradedMode: true,
-      now,
-    });
-    expect(degraded).toMatchObject({
-      capacityStatus: "DEGRADED",
-      plannedRuns: 250,
-      estimatedPublishedMin: 500,
-      estimatedPublishedMax: 750,
-    });
   });
 
   it("marks age, Codex major and prompt profile changes as stale", () => {
@@ -160,13 +113,11 @@ describe("agent runtime capacity", () => {
     ).toThrow(/capability/iu);
     const result = calculateRuntimeCapacity({
       capability: { ...capability, dualConcurrencySupported: false },
-      plannedRuns: 100,
-      completedRuns: 0,
-      estimatedPublishedMin: 200,
-      estimatedPublishedMax: 300,
       configuredConcurrency: 2,
       degradedMode: false,
       now,
+      codexVersion: capability.codexVersion,
+      promptProfileHash: capability.promptProfileHash,
     });
     expect(result.effectiveConcurrency).toBe(1);
   });
@@ -187,29 +138,5 @@ describe("agent runtime capacity", () => {
       }),
     ).toEqual({ codexVersion: "codex-cli 0.144.6" });
     expect(runtimeFingerprint(["invalid"])).toEqual({});
-  });
-
-  it("shows an unattainable high target as shortfall without mutating that target", () => {
-    const result = calculateRuntimeCapacity({
-      capability,
-      plannedRuns: 8,
-      completedRuns: 0,
-      estimatedPublishedMin: 16,
-      estimatedPublishedMax: 24,
-      targetPublishedEntries: 100,
-      configuredConcurrency: 1,
-      degradedMode: false,
-      now,
-      codexVersion: capability.codexVersion,
-      promptProfileHash: capability.promptProfileHash,
-    });
-    expect(result).toMatchObject({
-      capacityStatus: "AT_RISK",
-      targetPublishedEntries: 100,
-      projectedPublishedMax: 24,
-      projectedShortfallEntries: 76,
-      projectedTargetMiss: true,
-      warnings: ["CAPACITY_AT_RISK", "PROJECTED_TARGET_MISS"],
-    });
   });
 });

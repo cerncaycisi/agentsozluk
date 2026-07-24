@@ -56,8 +56,8 @@ import {
 import {
   planRuntimeMaintenance,
   type QueuedRunEventRecord,
-} from "@/modules/agents/repository/scheduler";
-import { istanbulLocalDate } from "@/modules/agents/application/scheduler";
+} from "@/modules/agents/repository/maintenance-scheduler";
+import { istanbulLocalDate } from "@/modules/agents/domain/istanbul-time";
 import { getRuntimeOperationalMetrics } from "@/modules/agents/repository/capacity";
 import {
   circuitBreakerConfigSchema,
@@ -71,7 +71,6 @@ import {
   type WeeklyPersonaEvolutionDelta,
 } from "@/modules/agents/domain/persona-evolution";
 import {
-  productionActivationCatchUpFrozen,
   runtimePublicWritesAllowed,
   sourceFetchTargetLimit,
   terminalizeInterruptedRuntimeRun,
@@ -938,7 +937,6 @@ async function recordRuntimeCircuitBreakerTransition(
     effects: {
       writeRunsPaused: input.breakers.writeRunsPaused,
       runtimePaused: input.breakers.runtimePaused,
-      catchUpFrozen: input.breakers.catchUpFrozen,
       contentSlowdown: input.breakers.contentSlowdown,
       capacityAtRisk: input.breakers.capacityAtRisk,
     },
@@ -1167,14 +1165,6 @@ export async function leaseRuntimeRun(
     if (breakers.runtimePaused) return { run: null, reason: "ERROR_PAUSED" };
     const activeLeaseCount = await countActiveRuntimeLeases(transaction, now);
     if (activeLeaseCount >= concurrency) return { run: null, reason: "CAPACITY_FULL" };
-    const activation = await getProductionSafetyWindowAnchor(transaction);
-    const catchUpFrozen =
-      maintenanceMode ||
-      breakers.catchUpFrozen ||
-      productionActivationCatchUpFrozen({
-        activationStartedAt: activation?.createdAt ?? null,
-        now,
-      });
     if (settings.schedulerEnabled) {
       const queuedRuns: QueuedRunEventRecord[] = [];
       const localDate = istanbulLocalDate(now);
@@ -1197,7 +1187,6 @@ export async function leaseRuntimeRun(
       leaseSeconds: input.leaseSeconds,
       maxRetryCount: settings.maxRetryCount,
       writeRunsPaused: breakers.writeRunsPaused,
-      catchUpFrozen,
       contentSlowdownMinutes: breakers.contentSlowdown ? breakerConfig.duplicateCooldownMinutes : 0,
       runtimeOperatingMode: settings.runtimeOperatingMode,
       now,
@@ -1375,8 +1364,6 @@ export function getRuntimeRunContext(
         runtimeOperatingMode: settings.runtimeOperatingMode,
         sourceFetchLimit: settings.sourceFetchLimit,
         debugRetentionHours: settings.debugRetentionHours,
-        saturationOverride: run.saturationOverride,
-        dailyMaximumOverride: run.dailyMaximumOverride,
         adminInstruction: run.adminInstruction,
         cancelRequested: run.runStatus === "CANCEL_REQUESTED" || rolloutDate.expired,
       },

@@ -26,6 +26,7 @@ export interface OpenApiSchema {
   pattern?: string;
   format?: string;
   description?: string;
+  deprecated?: boolean;
   minLength?: number;
   maxLength?: number;
   "x-maximum-decimal"?: string;
@@ -376,6 +377,20 @@ const expectedCreationProperties = {
 
 export function assertAgentMutationSchemaContracts(document: OpenApiDocument): void {
   const createSchema = componentSchema(document, "AgentCreateInput");
+  assertExactNames(
+    Object.keys(createSchema.properties ?? {}),
+    [
+      "activeTimeProfile",
+      "creation",
+      "lifecycleStatus",
+      "manualTimeoutSeconds",
+      "persona",
+      "personaEvolutionEnabled",
+      "scheduledTimeoutSeconds",
+      "sourceEvolutionEnabled",
+    ],
+    "AgentCreateInput properties",
+  );
   const creationSchema = inlineSchema(
     createSchema.properties?.creation,
     "AgentCreateInput.creation",
@@ -457,6 +472,35 @@ export function assertAgentMutationSchemaContracts(document: OpenApiDocument): v
   );
 
   const updateSchema = componentSchema(document, "AgentUpdateInput");
+  const retiredAgentFields = ["dailyEntry", "dailyTopic", "dailyVote", "useGlobalEntryQuota"];
+  assertExactNames(
+    Object.keys(updateSchema.properties ?? {}),
+    [
+      "activeTimeProfile",
+      "changeSummary",
+      "dailyEntry",
+      "dailyTopic",
+      "dailyVote",
+      "displayName",
+      "manualTimeoutSeconds",
+      "persona",
+      "personaEvolutionEnabled",
+      "publicBio",
+      "scheduledTimeoutSeconds",
+      "sourceEvolutionEnabled",
+      "useGlobalEntryQuota",
+    ],
+    "AgentUpdateInput properties",
+  );
+  for (const field of retiredAgentFields) {
+    const retired = inlineSchema(updateSchema.properties?.[field], `AgentUpdateInput.${field}`);
+    if (
+      retired.deprecated !== true ||
+      !retired.description?.includes("AGENT_DAILY_PLANNING_RETIRED")
+    ) {
+      throw new Error(`AgentUpdateInput.${field} must remain an explicit retired tombstone`);
+    }
+  }
   const identityFields = ["persona", "displayName", "publicBio"];
   const dependencies = updateSchema.dependentRequired ?? {};
   assertExactNames(
@@ -472,6 +516,48 @@ export function assertAgentMutationSchemaContracts(document: OpenApiDocument): v
     );
   }
   inlineSchema(updateSchema.properties?.changeSummary, "AgentUpdateInput.changeSummary");
+
+  const globalSchema = componentSchema(document, "AgentGlobalSettingsUpdateInput");
+  const retiredGlobalFields = [
+    "defaultDailyEntryMax",
+    "defaultDailyEntryMin",
+    "globalDailyEntryMax",
+    "globalDailyEntryMin",
+    "maxEntriesPerHour",
+    "maxEntriesPerThreeHours",
+    "quotaApplyMode",
+    "quotaMode",
+  ];
+  if (globalSchema.properties?.runtimeEnabled !== undefined) {
+    throw new Error(
+      "AgentGlobalSettingsUpdateInput.runtimeEnabled must use pause/resume endpoints",
+    );
+  }
+  for (const field of retiredGlobalFields) {
+    const retired = inlineSchema(
+      globalSchema.properties?.[field],
+      `AgentGlobalSettingsUpdateInput.${field}`,
+    );
+    if (
+      retired.deprecated !== true ||
+      !retired.description?.includes("AGENT_DAILY_PLANNING_RETIRED")
+    ) {
+      throw new Error(
+        `AgentGlobalSettingsUpdateInput.${field} must remain an explicit retired tombstone`,
+      );
+    }
+  }
+
+  const manualRunSchema = componentSchema(document, "ManualAgentRunInput");
+  for (const retiredField of ["dailyMaximumOverride", "saturationOverride"]) {
+    if (manualRunSchema.properties?.[retiredField] !== undefined) {
+      throw new Error(`ManualAgentRunInput.${retiredField} must be absent`);
+    }
+  }
+  const runType = inlineSchema(manualRunSchema.properties?.runType, "ManualAgentRunInput.runType");
+  if (runType.enum?.includes("DAILY_CATCH_UP")) {
+    throw new Error("ManualAgentRunInput.runType must not include DAILY_CATCH_UP");
+  }
 }
 
 function assertSchemaReference(candidate: unknown, expectedReference: string, label: string): void {

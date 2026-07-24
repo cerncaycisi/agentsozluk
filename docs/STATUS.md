@@ -1,5 +1,25 @@
 # Milestone status
 
+## Daily-planning retirement local candidate — 2026-07-24 Europe/Istanbul
+
+The executable society path is now stochastic-only under ADR-012. Daily target, plan/slot,
+catch-up, publication-quota and daily/saturation-override code was deleted or moved behind explicit
+historical compatibility/recovery boundaries. Legacy plan endpoints and rollout modes fail with
+`AGENT_DAILY_PLANNING_RETIRED`; new leases exclude legacy scheduled/catch-up work. Existing schema,
+migrations and historical rows are preserved, and no new migration is required.
+
+Full local `verify:m2:development` passed: format, ESLint, strict TypeScript, clean 16-migration
+install, idempotent 12-user/30-topic/180-entry seed, 149 coverage files / 833 tests at 93.76%
+statements and 84.76% branches, 17 PostgreSQL files / 183 tests, production build, 50/50 general
+E2E, 24/24 agent E2E, accelerated ten-agent stochastic simulation, OpenAPI 117 operations,
+persona 10/10 and 45/45, public metadata scan and repository/history secret scan. Development
+traceability is `453 active PASS / 75 full ADR-012 supersessions / 25 partial supersessions / 15
+approved production-operator BLOCKED / 0 FAIL`.
+
+This is local candidate evidence, not a production claim. Production remains on exact SHA
+`6d26f6a15a5c2bbad48563bc24c115dab42491f7` until the candidate is committed, pushed and separately
+approved for the pinned Agent Sözlük release lane and one-shot historical-state recovery.
+
 ## Milestone 2 current release snapshot — 2026-07-24 Europe/Istanbul
 
 Last verified production revision:

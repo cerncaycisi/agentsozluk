@@ -6,6 +6,7 @@ import {
   M2_DEVELOPMENT_BLOCKER_IDS,
   M2_DEVELOPMENT_BLOCKERS,
   type RequirementManifest,
+  type SupersessionManifest,
 } from "../../../scripts/m2-traceability-policy";
 
 const root = process.cwd();
@@ -34,6 +35,10 @@ const expectedBlockerIds = [
   "RUNTIME-007",
   "V1-007",
 ];
+const noSupersessions: SupersessionManifest = {
+  decision: "ADR-012",
+  requirements: [],
+};
 
 function requirementsDocument(): string {
   return manifest.requirements.map(({ id }) => `| ${id} | requirement |`).join("\n");
@@ -69,15 +74,23 @@ describe("Milestone 2 staged traceability policy", () => {
         manifest,
         requirementsDocument: requirementsDocument(),
         traceabilityDocument: traceabilityDocument(new Map([[blockedId, "BLOCKED"]])),
+        supersessions: noSupersessions,
         mode: "development",
       }),
-    ).toEqual({ total: 543, passed: 542, blocked: 1 });
+    ).toEqual({
+      total: 543,
+      passed: 542,
+      blocked: 1,
+      superseded: 0,
+      partiallySuperseded: 0,
+    });
 
     expect(() =>
       checkM2Traceability({
         manifest,
         requirementsDocument: requirementsDocument(),
         traceabilityDocument: traceabilityDocument(new Map([["CAP-001", "BLOCKED"]])),
+        supersessions: noSupersessions,
         mode: "development",
       }),
     ).toThrow("CAP-001 is not an approved post-merge production/operator blocker");
@@ -89,6 +102,7 @@ describe("Milestone 2 staged traceability policy", () => {
         manifest,
         requirementsDocument: requirementsDocument(),
         traceabilityDocument: traceabilityDocument(new Map([["DONE-075", "FAIL"]])),
+        supersessions: noSupersessions,
         mode: "development",
       }),
     ).toThrow("DONE-075 must not remain FAIL");
@@ -98,6 +112,7 @@ describe("Milestone 2 staged traceability policy", () => {
         manifest,
         requirementsDocument: requirementsDocument(),
         traceabilityDocument: traceabilityDocument(new Map([["DONE-075", "BLOCKED"]])),
+        supersessions: noSupersessions,
         mode: "final",
       }),
     ).toThrow("DONE-075 must be PASS for final M2 verification");
@@ -113,8 +128,41 @@ describe("Milestone 2 staged traceability policy", () => {
         manifest,
         requirementsDocument: requirementsDocument(),
         traceabilityDocument: document,
+        supersessions: noSupersessions,
         mode: "development",
       }),
     ).toThrow("CAP-001 lacks concrete implementation or validation evidence");
+  });
+
+  it("separates full and partial ADR-012 supersessions from active PASS rows", () => {
+    expect(
+      checkM2Traceability({
+        manifest,
+        requirementsDocument: requirementsDocument(),
+        traceabilityDocument: traceabilityDocument(),
+        supersessions: {
+          decision: "ADR-012",
+          requirements: [
+            {
+              id: "CAP-001",
+              scope: "FULL",
+              rationale: "This full supersession fixture has a sufficiently concrete rationale.",
+            },
+            {
+              id: "CAP-002",
+              scope: "PARTIAL",
+              rationale: "This partial supersession fixture keeps an explicitly active remainder.",
+            },
+          ],
+        },
+        mode: "final",
+      }),
+    ).toEqual({
+      total: 543,
+      passed: 542,
+      blocked: 0,
+      superseded: 1,
+      partiallySuperseded: 1,
+    });
   });
 });

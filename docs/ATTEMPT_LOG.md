@@ -1367,3 +1367,50 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   with restart count `0`; runtime, scheduler, publish and public-write were enabled in `NORMAL`;
   all 12 profiles were `ACTIVE`; health/readiness were `200/200`. The manual society-control
   contract is production-proven.
+
+## 2026-07-24 — ADR-012 daily-planning retirement local candidate
+
+- Scope: remove or isolate executable daily-target, plan/slot, catch-up, publication-quota and
+  daily/saturation-override behavior while preserving immutable schema/history and hard safety
+  controls. No production connection or mutation occurred.
+- The first complete unit run reached 649/650 tests; only the module-boundary rule failed because
+  the new historical recovery application wrapper imported a Prisma runtime value. The recovery
+  database-null conversion was moved into the repository, restoring a type-only application
+  boundary. The next complete unit run passed 650/650.
+- The first combined PostgreSQL focus command omitted `TEST_DATABASE_URL`; all three integration
+  files stopped before application assertions with exact error
+  `Integration tests requires TEST_DATABASE_URL`. Re-running with the explicit allowlisted local
+  PostgreSQL role passed 23/23. Do not repeat: every direct integration invocation must carry the
+  explicit test database URL even when a prior shell session used it.
+- A verification command used nonexistent script name `persona:verify` and returned
+  `Command "persona:verify" not found`. The repository commands are
+  `agent:verify-personas` and `agent:scan-metadata`; both passed. Do not infer script names when
+  package.json is the authoritative command registry.
+- One simulation attempt overlapped a detached integration fixture and stopped with
+  `USERNAME_TAKEN`. A clean reset proved zero users and zero agent profiles before the isolated
+  rerun, which passed. Do not run fixture-mutating integration and simulation commands against the
+  same local database concurrently.
+- The first long `verify:m2:development` was launched through a JavaScript orchestration wrapper;
+  it continued without exposing a reusable terminal session or final exit status. The authoritative
+  rerun used a direct terminal session and was polled to completion. Do not launch long verification
+  gates through a wrapper that cannot return the child session identifier.
+- The authoritative rerun initially found one historical production-rollout fixture still sending
+  retired `saturationOverride` and `dailyMaximumOverride` keys. Zod rejected them with
+  `unrecognized_keys`; removing those retired fixture inputs made the focused rollout file pass
+  5/5 and the complete PostgreSQL suite pass 17 files / 183 tests.
+- A final documentation-only focus mistakenly included
+  `tests/requirements/m2-traceability.test.ts`, whose deliberate final-mode assertion stopped at
+  `DONE-034 must be PASS for final M2 verification; found BLOCKED`. This is the expected formal
+  production-acceptance gate, not a candidate regression. The correct local candidate command
+  `requirements:m2:check:development` passed with the measured 15 approved production/operator
+  blockers. Do not substitute the final gate for the development gate before those external
+  receipts exist.
+- Final evidence: full `verify:m2:development` PASS; coverage 149 files / 833 tests at 93.76%
+  statements and 84.76% branches; production build PASS; general E2E 50/50; agent E2E 24/24;
+  accelerated ten-agent stochastic simulation PASS; OpenAPI 117 operations; personas 10/10 and
+  45/45; metadata and repository/history secret scans PASS. Development traceability reports
+  453 active PASS, 75 full ADR-012 supersessions, 25 partial supersessions, 15 approved
+  production/operator BLOCKED and 0 FAIL.
+- Do not repeat: use the direct serial verifier as the final local authority, keep mutable
+  PostgreSQL suites serial, and treat environment/fixture failures as separate from product
+  regressions until a focused rerun proves otherwise.

@@ -1,7 +1,5 @@
 import { AppError } from "@/lib/http/errors";
 
-export const DEFAULT_AVAILABLE_CONTENT_MINUTES = 960;
-export const MINIMUM_CAPACITY_RESERVE_FACTOR = 0.75;
 export const MINIMUM_DUAL_CONCURRENCY_MEMORY_MB = 800;
 
 export interface RuntimeCapabilityMeasurement {
@@ -30,8 +28,7 @@ export type CapacityWarning =
   | "BENCHMARK_MISSING"
   | "BENCHMARK_STALE"
   | "CAPACITY_AT_RISK"
-  | "OVERLOADED"
-  | "PROJECTED_TARGET_MISS";
+  | "OVERLOADED";
 
 export function estimateRuntimeCompletion(input: {
   now: Date;
@@ -131,20 +128,12 @@ export function assertDualConcurrencySupported(
 
 export function calculateRuntimeCapacity(input: {
   capability: RuntimeCapabilityMeasurement | null;
-  plannedRuns: number;
-  completedRuns: number;
-  estimatedPublishedMin: number;
-  estimatedPublishedMax: number;
-  targetPublishedEntries?: number;
   configuredConcurrency: 1 | 2;
   degradedMode: boolean;
   now: Date;
-  availableContentMinutes?: number;
   codexVersion?: string;
   promptProfileHash?: string;
 }) {
-  const availableContentMinutes =
-    input.availableContentMinutes ?? DEFAULT_AVAILABLE_CONTENT_MINUTES;
   const freshness = input.capability
     ? capabilityFreshness(input.capability, {
         now: input.now,
@@ -165,71 +154,19 @@ export function calculateRuntimeCapacity(input: {
     })
       ? 2
       : 1;
-  const grossCapacityMinutes = availableContentMinutes * effectiveConcurrency;
-  const reservedCapacityMinutes = grossCapacityMinutes * MINIMUM_CAPACITY_RESERVE_FACTOR;
-  const requiredContentMinutes = input.capability
-    ? (input.plannedRuns * input.capability.p75DurationMs) / 60_000
-    : null;
   let capacityStatus: RuntimeCapabilityMeasurement["capacityStatus"] = "UNKNOWN";
-  if (input.capability && freshness?.fresh && requiredContentMinutes !== null) {
-    capacityStatus = input.degradedMode
-      ? "DEGRADED"
-      : requiredContentMinutes > grossCapacityMinutes
-        ? "OVERLOADED"
-        : requiredContentMinutes > reservedCapacityMinutes
-          ? "AT_RISK"
-          : "HEALTHY";
+  if (input.capability && freshness?.fresh) {
+    capacityStatus = input.degradedMode ? "DEGRADED" : input.capability.capacityStatus;
   }
-  const capacityRunBudget =
-    input.capability && freshness?.fresh
-      ? Math.floor(reservedCapacityMinutes / (input.capability.p75DurationMs / 60_000))
-      : null;
-  const projectedPublishedMax =
-    capacityRunBudget === null
-      ? null
-      : input.plannedRuns === 0
-        ? 0
-        : Math.min(
-            input.estimatedPublishedMax,
-            Math.floor(
-              input.estimatedPublishedMax * Math.min(1, capacityRunBudget / input.plannedRuns),
-            ),
-          );
-  const targetPublishedEntries = input.targetPublishedEntries ?? input.estimatedPublishedMax;
-  const projectedShortfallEntries =
-    projectedPublishedMax === null
-      ? null
-      : Math.max(0, targetPublishedEntries - projectedPublishedMax);
-  if (capacityStatus === "HEALTHY" && !input.degradedMode && (projectedShortfallEntries ?? 0) > 0)
-    capacityStatus = "AT_RISK";
   const warnings: CapacityWarning[] = [];
   if (!input.capability) warnings.push("BENCHMARK_MISSING");
   else if (!freshness?.fresh) warnings.push("BENCHMARK_STALE");
   if (capacityStatus === "AT_RISK") warnings.push("CAPACITY_AT_RISK");
   if (capacityStatus === "OVERLOADED") warnings.push("OVERLOADED");
-  if ((projectedShortfallEntries ?? 0) > 0) warnings.push("PROJECTED_TARGET_MISS");
   return {
     capacityStatus,
-    plannedRuns: input.plannedRuns,
-    completedRuns: input.completedRuns,
     configuredConcurrency: input.configuredConcurrency,
     effectiveConcurrency,
-    availableContentMinutes,
-    reserveFactor: MINIMUM_CAPACITY_RESERVE_FACTOR,
-    grossCapacityMinutes,
-    reservedCapacityMinutes,
-    requiredContentMinutes,
-    estimatedUtilization:
-      requiredContentMinutes === null ? null : requiredContentMinutes / grossCapacityMinutes,
-    capacityReserve:
-      requiredContentMinutes === null ? null : 1 - requiredContentMinutes / grossCapacityMinutes,
-    estimatedPublishedMin: input.estimatedPublishedMin,
-    estimatedPublishedMax: input.estimatedPublishedMax,
-    targetPublishedEntries,
-    capacityRunBudget,
-    projectedPublishedMax,
-    projectedShortfallEntries,
-    projectedTargetMiss: projectedShortfallEntries !== null && projectedShortfallEntries > 0,
     warnings,
     benchmark: input.capability
       ? {

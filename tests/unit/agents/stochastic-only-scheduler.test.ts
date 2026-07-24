@@ -1,9 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
-import {
-  planRuntimeMaintenance,
-  retireLegacyDailyPlanningRecords,
-} from "@/modules/agents/repository/scheduler";
+import { planRuntimeMaintenance } from "@/modules/agents/repository/maintenance-scheduler";
+import { retireLegacyDailyPlanningRecords } from "@/modules/agents/repository/historical-daily-planning";
 
 describe("stochastic-only scheduler", () => {
   it("queues only maintenance work and never creates daily catch-up", async () => {
@@ -61,13 +59,16 @@ describe("stochastic-only scheduler", () => {
     const slotUpdate = vi.fn().mockResolvedValue({ count: 95 });
     const planUpdate = vi.fn().mockResolvedValue({ count: 12 });
     const runtimeUpdate = vi.fn().mockResolvedValue({ count: 12 });
+    const runUpdate = vi.fn().mockResolvedValue({ count: 7 });
     const transaction = {
+      agentRun: { updateMany: runUpdate },
       agentScheduleSlot: { updateMany: slotUpdate },
       agentDailyPlan: { updateMany: planUpdate },
       agentRuntimeState: { updateMany: runtimeUpdate },
     } as unknown as Prisma.TransactionClient;
 
     await expect(retireLegacyDailyPlanningRecords(transaction)).resolves.toEqual({
+      cancelledRuns: 7,
       cancelledSlots: 95,
       cancelledPlans: 12,
       clearedRuntimeStates: 12,
@@ -75,6 +76,21 @@ describe("stochastic-only scheduler", () => {
     expect(slotUpdate).toHaveBeenCalledWith({
       where: { status: "PLANNED" },
       data: { status: "CANCELLED" },
+    });
+    expect(runUpdate).toHaveBeenCalledWith({
+      where: {
+        runStatus: "QUEUED",
+        OR: [
+          { runType: { in: ["SCHEDULED_WAKE", "DAILY_CATCH_UP"] } },
+          { trigger: { in: ["SCHEDULER_SLOT", "AUTO_CATCH_UP"] } },
+        ],
+      },
+      data: {
+        runStatus: "CANCELLED",
+        finishedAt: expect.any(Date),
+        errorCode: "DAILY_PLANNING_RETIRED",
+        errorSummary: "Legacy daily-planning run was retired before stochastic runtime recovery.",
+      },
     });
     expect(runtimeUpdate).toHaveBeenCalledWith({
       data: {

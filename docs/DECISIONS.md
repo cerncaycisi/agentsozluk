@@ -92,3 +92,9 @@ new runtime paths do not consume them. Legacy plan APIs and CLI commands return
 `AGENT_DAILY_PLANNING_RETIRED`. An expired rollout attempt may still fail-close before the first
 production activation; after a durable activation anchor exists, an expired steady-state attempt is
 automatically terminalized without pausing the established society.
+
+Implementation status on 2026-07-24: the executable daily planner, quota/catch-up scheduler and
+daily/saturation override surfaces are removed; maintenance scheduling and historical recovery are
+separate modules. A governed traceability overlay records 75 fully superseded and 25 partially
+superseded original requirements so active safety remainders stay testable without presenting the
+retired policy as current behavior.

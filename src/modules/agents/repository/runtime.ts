@@ -2,7 +2,6 @@ import { Prisma, type AgentRunType } from "@prisma/client";
 import type { DatabaseExecutor } from "@/lib/db/types";
 import { createOpaqueToken } from "@/lib/security/crypto";
 import type { WeeklyPersonaEvolutionDelta } from "@/modules/agents/domain/persona-evolution";
-import { istanbulQuotaLocalDate, resolveQuotaSettings } from "@/modules/agents/domain/quota";
 import {
   runtimeRunAllowedInOperatingMode,
   type RuntimeOperatingMode,
@@ -59,11 +58,8 @@ export function findRuntimeLeaseForIdempotencyReplay(
   });
 }
 
-export async function getRuntimeGlobalSettings(
-  transaction: Prisma.TransactionClient,
-  now = new Date(),
-) {
-  const stored = await transaction.agentGlobalSettings.findUniqueOrThrow({
+export async function getRuntimeGlobalSettings(transaction: Prisma.TransactionClient) {
+  return transaction.agentGlobalSettings.findUniqueOrThrow({
     where: { id: "global" },
     select: {
       runtimeEnabled: true,
@@ -76,15 +72,6 @@ export async function getRuntimeGlobalSettings(
       userFollowingEnabled: true,
       personaEvolutionEnabled: true,
       sourceEvolutionEnabled: true,
-      quotaMode: true,
-      defaultDailyEntryMin: true,
-      defaultDailyEntryMax: true,
-      globalDailyEntryMin: true,
-      globalDailyEntryMax: true,
-      pendingQuotaSettings: true,
-      pendingQuotaEffectiveDate: true,
-      maxEntriesPerHour: true,
-      maxEntriesPerThreeHours: true,
       duplicateSimilarityThreshold: true,
       maxRetryCount: true,
       schedulerEnabled: true,
@@ -97,7 +84,6 @@ export async function getRuntimeGlobalSettings(
       circuitBreakerConfig: true,
     },
   });
-  return resolveQuotaSettings(stored, istanbulQuotaLocalDate(now));
 }
 
 export async function getLatestRuntimeCircuitBreakerSnapshot(
@@ -233,7 +219,6 @@ export async function claimNextRuntimeRun(
     leaseSeconds: number;
     maxRetryCount: number;
     writeRunsPaused: boolean;
-    catchUpFrozen: boolean;
     contentSlowdownMinutes: number;
     runtimeOperatingMode?: RuntimeOperatingMode;
     now: Date;
@@ -257,7 +242,8 @@ export async function claimNextRuntimeRun(
           'CAPACITY_BENCHMARK', 'CONCURRENCY_TEST'
         )
       )
-      AND (NOT ${input.catchUpFrozen} OR candidate."runType" <> 'DAILY_CATCH_UP')
+      AND candidate."runType" NOT IN ('SCHEDULED_WAKE', 'DAILY_CATCH_UP')
+      AND candidate."trigger" NOT IN ('SCHEDULER_SLOT', 'AUTO_CATCH_UP')
       AND (
         ${input.contentSlowdownMinutes} = 0
         OR candidate."runType" IN (
@@ -351,8 +337,6 @@ export async function claimNextRuntimeRun(
       allowVoting: true,
       allowFollowing: true,
       allowSourceReading: true,
-      saturationOverride: true,
-      dailyMaximumOverride: true,
       provocationOverride: true,
     },
   });
@@ -605,18 +589,12 @@ export function findRuntimeActionForExecution(
           allowTopicCreation: true,
           allowVoting: true,
           allowFollowing: true,
-          saturationOverride: true,
-          dailyMaximumOverride: true,
           provocationOverride: true,
         },
       },
       agentProfile: {
         select: {
           lifecycleStatus: true,
-          useGlobalEntryQuota: true,
-          dailyEntryMax: true,
-          dailyTopicMax: true,
-          dailyVoteMax: true,
           sourceEvolutionEnabled: true,
           user: { select: { id: true } },
         },
@@ -738,99 +716,6 @@ export function createRuntimeContentRecord(
   return transaction.agentContentRecord.create({ data: input });
 }
 
-export async function getRuntimeActionPolicyMetrics(
-  transaction: Prisma.TransactionClient,
-  input: {
-    agentProfileId: string;
-    topicId?: string;
-    now: Date;
-    dayStart: Date;
-    dayEnd: Date;
-  },
-) {
-  const hourStart = new Date(input.now.getTime() - 60 * 60 * 1000);
-  const threeHoursStart = new Date(input.now.getTime() - 3 * 60 * 60 * 1000);
-  const twoHoursStart = new Date(input.now.getTime() - 2 * 60 * 60 * 1000);
-  const thirtyMinutesStart = new Date(input.now.getTime() - 30 * 60 * 1000);
-  const base = { agentProfileId: input.agentProfileId };
-  const [
-    agentDay,
-    globalDay,
-    agentHour,
-    agentThreeHours,
-    agentTopicTwoHours,
-    agentTopicDay,
-    topicRecent,
-    agentTopicsDay,
-    agentVotesDay,
-  ] = await Promise.all([
-    transaction.agentContentRecord.count({
-      where: { ...base, createdAt: { gte: input.dayStart, lt: input.dayEnd } },
-    }),
-    transaction.agentContentRecord.count({
-      where: { createdAt: { gte: input.dayStart, lt: input.dayEnd } },
-    }),
-    transaction.agentContentRecord.count({ where: { ...base, createdAt: { gte: hourStart } } }),
-    transaction.agentContentRecord.count({
-      where: { ...base, createdAt: { gte: threeHoursStart } },
-    }),
-    input.topicId
-      ? transaction.agentContentRecord.count({
-          where: {
-            ...base,
-            createdAt: { gte: twoHoursStart },
-            entry: { topicId: input.topicId },
-          },
-        })
-      : Promise.resolve(0),
-    input.topicId
-      ? transaction.agentContentRecord.count({
-          where: {
-            ...base,
-            createdAt: { gte: input.dayStart, lt: input.dayEnd },
-            entry: { topicId: input.topicId },
-          },
-        })
-      : Promise.resolve(0),
-    input.topicId
-      ? transaction.entry.count({
-          where: {
-            topicId: input.topicId,
-            status: "ACTIVE",
-            createdAt: { gte: thirtyMinutesStart },
-          },
-        })
-      : Promise.resolve(0),
-    transaction.agentAction.count({
-      where: {
-        agentProfileId: input.agentProfileId,
-        actionType: "CREATE_TOPIC_WITH_ENTRY",
-        actionStatus: "SUCCEEDED",
-        createdAt: { gte: input.dayStart, lt: input.dayEnd },
-      },
-    }),
-    transaction.agentAction.count({
-      where: {
-        agentProfileId: input.agentProfileId,
-        actionType: { in: ["VOTE_UP", "VOTE_DOWN"] },
-        actionStatus: "SUCCEEDED",
-        createdAt: { gte: input.dayStart, lt: input.dayEnd },
-      },
-    }),
-  ]);
-  return {
-    agentDay,
-    globalDay,
-    agentHour,
-    agentThreeHours,
-    agentTopicTwoHours,
-    agentTopicDay,
-    topicRecent,
-    agentTopicsDay,
-    agentVotesDay,
-  };
-}
-
 export function findActiveRuntimeTopicWriteLock(
   transaction: Prisma.TransactionClient,
   topicId: string,
@@ -840,40 +725,6 @@ export function findActiveRuntimeTopicWriteLock(
     where: { topicId, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
     select: { id: true, reason: true, expiresAt: true },
   });
-}
-
-export async function lockRuntimeTopicSaturation(
-  transaction: Prisma.TransactionClient,
-  topicId: string,
-): Promise<void> {
-  const key = `agent-topic-saturation:${topicId}`;
-  await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
-}
-
-export async function findActiveRuntimeTopicSaturation(
-  transaction: Prisma.TransactionClient,
-  topicId: string,
-  now: Date,
-): Promise<{ id: bigint; expiresAt: Date } | null> {
-  const events = await transaction.agentRuntimeEvent.findMany({
-    where: {
-      eventType: "topic.saturation.started",
-      metadata: { path: ["topicId"], equals: topicId },
-    },
-    orderBy: { id: "desc" },
-    take: 10,
-    select: { id: true, metadata: true },
-  });
-  for (const event of events) {
-    const metadata =
-      event.metadata && typeof event.metadata === "object" && !Array.isArray(event.metadata)
-        ? (event.metadata as Prisma.JsonObject)
-        : {};
-    const expiresAt = typeof metadata.expiresAt === "string" ? new Date(metadata.expiresAt) : null;
-    if (expiresAt && Number.isFinite(expiresAt.getTime()) && expiresAt > now)
-      return { id: event.id, expiresAt };
-  }
-  return null;
 }
 
 export async function getRuntimeDuplicateSimilarity(
