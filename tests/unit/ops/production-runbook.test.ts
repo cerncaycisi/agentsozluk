@@ -186,7 +186,8 @@ describe("Milestone 2 production operator runbook", () => {
       "transfers both remote scripts mode `0700`, runs `bash -n`, and executes them in separate connections",
     );
     expect(prose).toContain("uploads one `release-candidate-<sha>` artifact for one day");
-    expect(prose).toContain("fail-closed at 160 MiB before upload");
+    expect(prose).toContain("fail-closed at 240 MiB before upload");
+    expect(prose).toContain("image and runtime archive byte counts separately");
     expect(prose).toContain("never invokes Docker system/volume prune");
   });
 

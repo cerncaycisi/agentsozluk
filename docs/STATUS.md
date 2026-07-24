@@ -82,7 +82,10 @@ Build-once artifact promotion is implemented locally at exact source SHA
 `438d6b3716f9013b279dd382ff3999d4a1390bc0`. The manual release-candidate workflow accepts only the
 current exact green `main` SHA, builds and smokes one immutable image, assembles a matching
 Ubuntu 24.04 x64/glibc runtime from a dedicated seven-dependency workspace, fails before upload
-above 160 MiB and retains the artifact for one day. Before production access, the local wrapper
+above 240 MiB and retains the artifact for one day. The first workflow run
+`30020282846` built and smoked both stages but stopped before upload at the original 160 MiB
+ceiling: the measured bundle was `227,226,573` bytes (216.7 MiB). The recalibrated bounded ceiling
+also reports image/runtime component sizes on failure. Before production access, the local wrapper
 checks the exact CI/workflow/run identity, GitHub's artifact-ZIP SHA-256, rigid internal manifest,
 both archive hashes and sizes, ABI and archive paths. The remote artifact installer is inert: it
 may load the exact image and publish the root-owned immutable release, but cannot run Compose,

@@ -826,7 +826,9 @@ headroom. `.github/workflows/release-candidate.yml` performs no SSH or productio
 only a manual exact SHA, proves that SHA is current `origin/main`, requires a successful push `CI`
 run for it, builds and smokes the image, assembles the Ubuntu 24.04 x64/glibc worker release, and
 uploads one `release-candidate-<sha>` artifact for one day. The combined compressed payload is
-fail-closed at 160 MiB before upload.
+fail-closed at 240 MiB before upload. This ceiling is calibrated above the first measured
+216.7 MiB bundle while keeping one run bounded; the failure receipt reports the image and runtime
+archive byte counts separately.
 
 Dispatch and capture the resulting numeric run ID:
 

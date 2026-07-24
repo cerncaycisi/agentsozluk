@@ -68,7 +68,7 @@ jobs:
       - name: Build exact release bundle
         env:
           CANDIDATE_SHA: ${{ inputs.candidate_sha }}
-          RELEASE_BUNDLE_MAX_BYTES: "167772160"
+          RELEASE_BUNDLE_MAX_BYTES: "251658240"
         run: |
           bash scripts/build-release-bundle.sh \
             --sha "$CANDIDATE_SHA" \

@@ -108,10 +108,10 @@ runtime_abi="$(cat "$runtime_stage/.release-node-abi")"
 image_bytes="$(wc -c <"$image_archive" | tr -d ' ')"
 runtime_bytes="$(wc -c <"$runtime_archive" | tr -d ' ')"
 total_bytes=$((image_bytes + runtime_bytes))
-maximum_bytes="${RELEASE_BUNDLE_MAX_BYTES:-167772160}"
+maximum_bytes="${RELEASE_BUNDLE_MAX_BYTES:-251658240}"
 ((total_bytes <= maximum_bytes)) || {
-  printf 'RELEASE_BUNDLE_FAIL code=BUNDLE_SIZE_LIMIT total_bytes=%s maximum_bytes=%s\n' \
-    "$total_bytes" "$maximum_bytes" >&2
+  printf 'RELEASE_BUNDLE_FAIL code=BUNDLE_SIZE_LIMIT image_bytes=%s runtime_bytes=%s total_bytes=%s maximum_bytes=%s\n' \
+    "$image_bytes" "$runtime_bytes" "$total_bytes" "$maximum_bytes" >&2
   exit 96
 }
 

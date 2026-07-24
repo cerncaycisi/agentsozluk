@@ -1196,3 +1196,22 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   forbidden fields; M2 development traceability 527 PASS / 16 approved BLOCKED / 0 FAIL; production
   build 64/64 pages. The workflow has not yet run and no artifact has been promoted; GitHub and
   production proof remain separate gates.
+
+## 2026-07-24 — First release-candidate workflow size-gate stop
+
+- Manual release workflow run `30020282846` targeted exact green-main SHA
+  `170cdcb4e9ce7262694ca72683a1dd2be6a013c9`. Exact checkout, dependency install, Docker image
+  build, 64-page application build, image load, shared release smoke, minimal Linux/glibc runtime
+  assembly, Prisma/Argon2/tsx native probes and ABI 127 all passed.
+- The run then stopped before upload with exact safe error
+  `RELEASE_BUNDLE_FAIL code=BUNDLE_SIZE_LIMIT total_bytes=227226573 maximum_bytes=167772160`
+  and exit `96`. Upload was skipped and the run produced zero artifacts. No production access or
+  mutation occurred.
+- Root cause: the initial 160 MiB ceiling was an unverified estimate below the first measured
+  combined image/runtime payload, which is 216.7 MiB. This is a release-packaging calibration
+  failure, not an application build, smoke or runtime-ABI regression.
+- Resolution candidate: retain the one-day artifact and fail-closed size gate, calibrate it to
+  240 MiB, and include separate image/runtime byte counts in any future size failure. Verify the
+  resolution only with a new exact-SHA green-main workflow and monitor Actions storage before
+  upload. Do not repeat: derive bounded artifact ceilings from a measured first bundle and make
+  component sizes observable rather than treating an estimate as acceptance evidence.

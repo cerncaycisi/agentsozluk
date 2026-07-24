@@ -150,7 +150,8 @@ describe("build-once exact-SHA release artifacts", () => {
     expect(builder).toContain("docker save");
     expect(builder).toContain("runtime-release.tar.zst");
     expect(builder).toContain("sha256sum app-image.tar.zst runtime-release.tar.zst");
-    expect(builder).toContain("RELEASE_BUNDLE_MAX_BYTES:-167772160");
+    expect(builder).toContain("RELEASE_BUNDLE_MAX_BYTES:-251658240");
+    expect(builder).toContain("image_bytes=%s runtime_bytes=%s");
     expect(builder.indexOf("BUNDLE_SIZE_LIMIT")).toBeLessThan(
       builder.indexOf("RELEASE_BUNDLE_READY"),
     );
