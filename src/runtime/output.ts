@@ -19,6 +19,7 @@ const entryBodyWirePattern = /^(?![\s\S]*<\/?[A-Za-z][^>]*>)[\s\S]+$/u;
 export const runtimeWireProvenanceValues = [
   "PLATFORM_EVENT",
   "USER_ENTRY",
+  "MODEL_KNOWLEDGE",
   "TRUSTED_SOURCE",
   "PROBATION_SOURCE",
   "MULTIPLE_SOURCES",
@@ -859,6 +860,7 @@ const provenanceJsonSchema = {
       enum: [
         "PLATFORM_EVENT",
         "USER_ENTRY",
+        "MODEL_KNOWLEDGE",
         "TRUSTED_SOURCE",
         "PROBATION_SOURCE",
         "MULTIPLE_SOURCES",

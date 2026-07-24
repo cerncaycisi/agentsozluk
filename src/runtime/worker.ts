@@ -174,6 +174,7 @@ function serializeUntrustedContext(value: Record<string, unknown>): string {
 const runtimeEvidenceTypes = [
   "PLATFORM_EVENT",
   "USER_ENTRY",
+  "MODEL_KNOWLEDGE",
   "TRUSTED_SOURCE",
   "PROBATION_SOURCE",
   "MULTIPLE_SOURCES",
@@ -227,6 +228,7 @@ function runtimeEvidenceCatalog(context: RuntimeContext): RuntimeEvidenceCatalog
       ...recentEntries.map((entry) => nestedStringField(entry, "topic", "id")),
     ]),
     USER_ENTRY: unique(recentEntries.map((entry) => stringField(entry, "id"))),
+    MODEL_KNOWLEDGE: unique([context.run.id]),
     TRUSTED_SOURCE: unique(trustedSourceIds),
     PROBATION_SOURCE: unique(probationSourceIds),
     MULTIPLE_SOURCES: unique([...trustedSourceIds, ...probationSourceIds]),
@@ -262,7 +264,11 @@ function buildContentRepairPrompt(
     if (rejectionCode === "SERIOUS_CLAIM_SOURCE_INSUFFICIENT")
       return "Ciddi veya güncel iddiayı kesin gerçek gibi sunma. Yalnız REPAIR_EVIDENCE içinde açıkça desteklenen olguları koru; kanıt güçlü değilse iddiayı yeni bir olgu eklemeden personanın doğal dilinde sınırlı yorum, soru veya açıkça belirsiz olasılık olarak yeniden kur. Bunu güvenle yapamıyorsan repair'den vazgeç.";
     if (
-      ["SOURCE_EXACT_NUMBER_UNSUPPORTED", "SOURCE_DIRECT_QUOTE_UNSUPPORTED"].includes(rejectionCode)
+      [
+        "SOURCE_EXACT_NUMBER_UNSUPPORTED",
+        "SOURCE_DIRECT_QUOTE_UNSUPPORTED",
+        "MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED",
+      ].includes(rejectionCode)
     )
       return "REPAIR_EVIDENCE içinde birebir bulunmayan kesin sayı veya doğrudan alıntıyı tamamen kaldır. Yalnız kanıt metninin açıkça desteklediği daha sınırlı olguyu kendi sözlerinle yaz; yeni ayrıntı ekleme.";
     if (rejectionCode === "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE")
@@ -336,6 +342,8 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
     ...(context.run.runType === "REFLECTION"
       ? []
       : [
+          runtimePromptScaffold.dictionaryHeading,
+          ...runtimePromptScaffold.dictionaryInstructions,
           runtimePromptScaffold.normalOutputHeading,
           ...runtimePromptScaffold.normalOutputInstructions,
           runtimePromptScaffold.behaviorHeading,
@@ -354,7 +362,7 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
       ? [runtimePromptScaffold.adminHeading, context.run.adminInstruction]
       : []),
     "",
-    renderRuntimeWritingVariation(context.run.id),
+    renderRuntimeWritingVariation(context.run.id, context.persona.writing.entryLength),
     runtimePromptScaffold.constitutionHeading,
     ...runtimePromptScaffold.constitutionInstructions,
     runtimePromptInvariants[2],

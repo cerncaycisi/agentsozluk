@@ -2,6 +2,7 @@ import { inTransaction } from "@/lib/db/transaction";
 import type { DatabaseClient, DatabaseExecutor } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
+import { createEntry } from "@/modules/entries";
 import { requireApprovedWriter } from "@/modules/auth/application/guards";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { appendOutboxEvent } from "@/modules/outbox";
@@ -72,10 +73,45 @@ function topicCanonicalSuggestionError(
   );
 }
 
+export async function resolveCanonicalTopicProposal(
+  client: DatabaseExecutor,
+  proposedTitle: string,
+) {
+  const title = proposedTitle.normalize("NFKC").trim().replaceAll(/\s+/gu, " ");
+  const normalizedTitle = normalizeTopicTitle(title);
+  const canonicalCandidates = topicCanonicalSearchCandidates(title);
+  return inTransaction(client, async (transaction) => {
+    await lockTopicTitles(
+      transaction,
+      canonicalCandidates.map((candidate) => candidate.normalizedQuery),
+    );
+    const exact = await findTopicConflict(transaction, normalizedTitle);
+    if (exact) return { topic: exact, reason: "EXACT_OR_ALIAS" as const };
+    const variantCandidates = canonicalCandidates.filter(
+      (candidate) => candidate.normalizedQuery !== normalizedTitle,
+    );
+    if (variantCandidates.length === 0) return null;
+    const conflicts = await findActiveTopicConflicts(
+      transaction,
+      variantCandidates.map((candidate) => candidate.normalizedQuery),
+    );
+    for (const candidate of variantCandidates) {
+      const topic = conflicts.find(
+        (conflict) =>
+          conflict.normalizedTitle === candidate.normalizedQuery ||
+          conflict.aliases.some((alias) => alias.normalizedTitle === candidate.normalizedQuery),
+      );
+      if (topic) return { topic, reason: candidate.reason };
+    }
+    return null;
+  });
+}
+
 export async function createTopicWithFirstEntry(
   client: DatabaseExecutor,
   actor: ActorContext,
   input: TopicCreateInput,
+  options: { canonicalConflictStrategy?: "REJECT" | "ADD_ENTRY" } = {},
 ) {
   const normalizedTitle = normalizeTopicTitle(input.title);
   const title = input.title.normalize("NFKC").trim().replaceAll(/\s+/gu, " ");
@@ -89,7 +125,17 @@ export async function createTopicWithFirstEntry(
         : canonicalCandidates.map((candidate) => candidate.normalizedQuery),
     );
     const conflict = await findTopicConflict(transaction, normalizedTitle);
-    if (conflict) throw topicExistsError(conflict);
+    if (conflict) {
+      if (options.canonicalConflictStrategy !== "ADD_ENTRY") throw topicExistsError(conflict);
+      const entry = await createEntry(transaction, actor, conflict.id, {
+        body: input.entryBody,
+      });
+      return {
+        topic: { ...conflict, url: topicUrl(conflict) },
+        entry,
+        resolution: "EXISTING" as const,
+      };
+    }
     if (!input.canonicalOverride) {
       const variantCandidates = canonicalCandidates.filter(
         (candidate) => candidate.normalizedQuery !== normalizedTitle,
@@ -105,7 +151,18 @@ export async function createTopicWithFirstEntry(
               topic.normalizedTitle === candidate.normalizedQuery ||
               topic.aliases.some((alias) => alias.normalizedTitle === candidate.normalizedQuery),
           );
-          if (canonicalTopic) throw topicCanonicalSuggestionError(canonicalTopic, candidate);
+          if (canonicalTopic) {
+            if (options.canonicalConflictStrategy !== "ADD_ENTRY")
+              throw topicCanonicalSuggestionError(canonicalTopic, candidate);
+            const entry = await createEntry(transaction, actor, canonicalTopic.id, {
+              body: input.entryBody,
+            });
+            return {
+              topic: { ...canonicalTopic, url: topicUrl(canonicalTopic) },
+              entry,
+              resolution: "EXISTING" as const,
+            };
+          }
         }
       }
     }
@@ -154,6 +211,7 @@ export async function createTopicWithFirstEntry(
     return {
       topic: { ...topic, url: topicUrl(created) },
       entry,
+      resolution: "CREATED" as const,
     };
   });
 }

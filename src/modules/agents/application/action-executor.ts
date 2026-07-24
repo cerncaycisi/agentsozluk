@@ -36,6 +36,7 @@ import {
   relationshipProvenanceIsVisible,
 } from "@/modules/agents/domain/provenance";
 import {
+  containsDirectQuoteClaim,
   hasUnrecordedOfflineFirstPersonClaim,
   repeatedEntryFraming,
   seriousFactualClaimRequiresStrongEvidence,
@@ -64,7 +65,7 @@ import {
   removeVote,
   setVote,
 } from "@/modules/interactions";
-import { createTopicWithFirstEntry } from "@/modules/topics";
+import { createTopicWithFirstEntry, resolveCanonicalTopicProposal } from "@/modules/topics";
 import { appendOutboxEvent, type OutboxEventInput } from "@/modules/outbox";
 import {
   guardProductionRolloutRuntimeMutation,
@@ -574,12 +575,23 @@ async function performAction(
       return { result: { entryId: created.id, topicId: created.topicId }, entryId: created.id };
     }
     case "CREATE_TOPIC_WITH_ENTRY": {
-      const created = await createTopicWithFirstEntry(transaction, principal.actor, {
-        title: requiredString(input.title, "title"),
-        entryBody: requiredString(input.body, "body"),
-      });
+      const created = await createTopicWithFirstEntry(
+        transaction,
+        principal.actor,
+        {
+          title: requiredString(input.title, "title"),
+          entryBody: requiredString(input.body, "body"),
+        },
+        {
+          canonicalConflictStrategy: "ADD_ENTRY",
+        },
+      );
       return {
-        result: { topicId: created.topic.id, entryId: created.entry.id },
+        result: {
+          topicId: created.topic.id,
+          entryId: created.entry.id,
+          topicResolution: created.resolution,
+        },
         entryId: created.entry.id,
       };
     }
@@ -960,6 +972,15 @@ export async function executeRuntimeAction(
         }
         if (
           candidateBody &&
+          parsed.data.provenance.evidenceType === "MODEL_KNOWLEDGE" &&
+          containsDirectQuoteClaim(candidateBody)
+        )
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED",
+            reason: "Model bilgisi doğrudan alıntı kanıtı olarak kullanılamaz.",
+          });
+        if (
+          candidateBody &&
           seriousFactualClaimRequiresStrongEvidence(candidateBody) &&
           !(
             parsed.data.provenance.evidenceType === "TRUSTED_SOURCE" ||
@@ -992,7 +1013,11 @@ export async function executeRuntimeAction(
           });
       }
 
-      const topicId = resolvedTarget.topicId;
+      const canonicalTopic =
+        parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY" && parsed.data.input.title
+          ? await resolveCanonicalTopicProposal(transaction, parsed.data.input.title)
+          : null;
+      const topicId = resolvedTarget.topicId ?? canonicalTopic?.topic.id;
       if (contentActions.has(parsed.data.actionType) && parsed.data.input.replyToEntryId) {
         const replyTarget = await findRuntimeReplyTarget(
           transaction,

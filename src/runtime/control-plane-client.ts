@@ -48,6 +48,11 @@ const contextResponseSchema = z.object({
         followingTendency: z.number().min(0).max(1),
       })
       .strict(),
+    writing: z
+      .object({
+        entryLength: z.enum(["SHORT", "MEDIUM", "LONG", "MIXED"]),
+      })
+      .strict(),
   }),
   perception: z.record(z.string(), z.unknown()),
 });

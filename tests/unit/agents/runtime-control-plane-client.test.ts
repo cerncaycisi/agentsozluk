@@ -55,6 +55,7 @@ describe("runtime control-plane HTTP contract", () => {
               votingTendency: 0.5,
               followingTendency: 0.5,
             },
+            writing: { entryLength: "MEDIUM" },
           },
           perception: {},
         },

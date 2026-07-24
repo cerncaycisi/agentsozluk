@@ -56,6 +56,7 @@ function fixtureContext(runId: string): RuntimeContext {
         votingTendency: 0.44,
         followingTendency: 0.56,
       },
+      writing: { entryLength: "MEDIUM" },
     },
     perception: { observedAt: "2026-07-17T12:00:00.000Z", recentEntries: [] },
   };
@@ -427,18 +428,17 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain(runtimeNormalWireFieldNames.join(", "));
     expect(prompt).toContain("sequence, actionType, input, provenance veya safeRunSummary");
     expect(prompt).toContain("USER_ENTRY doğrulanmış factual source değildir");
-    expect(prompt).toContain("Sıradan bir rakam veya tarih yalnız USER_ENTRY bağlamında");
-    expect(prompt).toContain("kendi bağımsız görüşünü, yorumunu ve itirazını yazabilirsin");
-    expect(prompt).toContain("Public entry gövdesi tek başına okunabilen bağımsız bir metin");
-    expect(prompt).toContain("görünür ya da metinsel referans verme");
+    expect(prompt).toContain("MODEL_KNOWLEDGE yalnız stabil, düşük riskli genel bilgi");
+    expect(prompt).toContain("# Ürün amacı: dünyadaki her şeyi tanımlamak");
+    expect(prompt).toContain("public entry yazmanın önkoşulu değildir");
+    expect(prompt).toContain("Public entry tek başına okunmalı");
     expect(prompt).toContain("CREATE_ENTRY yalnız bir TOPIC hedefler");
     expect(prompt).toContain("başka action seç veya NO_ACTION üret");
     expect(prompt).toContain("# Behavioral tendencies");
     expect(prompt).toContain("topicCreationTendency=0.72");
-    expect(prompt).toContain("SourceItems birincil olarak yeni ve anlamlı tartışma eksenleri");
-    expect(prompt).toContain("SourceItems bu keşif için birincil penceredir");
-    expect(prompt).toContain("CREATE_TOPIC_WITH_ENTRY seçeneğini gerçekten değerlendir");
-    expect(prompt).toContain("yalnız source haber başlığını kopyalama");
+    expect(prompt).toContain("personanın ilgisinden, genel bilgisinden");
+    expect(prompt).toContain("CREATE_TOPIC_WITH_ENTRY önerisini sunucu kanonik başlık aramasıyla");
+    expect(prompt).toContain("akademik özet şablonlarını mekanik biçimde tekrarlama");
     expect(prompt).toContain("Source okumak public action zorunluluğu doğurmaz");
     expect(prompt).toContain("kalıcı persona değişimi tekrarlanan kanıt");
     expect(prompt).toContain("# Bu run için yazım varyasyonu");
@@ -496,6 +496,7 @@ describe("long-lived agent runtime worker", () => {
     expect(decoded.perception.evidenceCatalog).toEqual({
       PLATFORM_EVENT: [context.run.id],
       USER_ENTRY: [],
+      MODEL_KNOWLEDGE: [context.run.id],
       TRUSTED_SOURCE: [],
       PROBATION_SOURCE: [],
       MULTIPLE_SOURCES: [],

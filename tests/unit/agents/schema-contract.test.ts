@@ -8,6 +8,10 @@ const migration = readFileSync(
   path.join(root, "prisma/migrations/20260717163037_milestone_2_agent_runtime/migration.sql"),
   "utf8",
 );
+const modelKnowledgeMigration = readFileSync(
+  path.join(root, "prisma/migrations/20260724190000_add_model_knowledge_provenance/migration.sql"),
+  "utf8",
+);
 
 describe("Milestone 2 agent database contract", () => {
   it("declares every required runtime enum", () => {
@@ -29,6 +33,15 @@ describe("Milestone 2 agent database contract", () => {
     ]) {
       expect(schema).toContain(`enum ${enumName} {`);
     }
+  });
+
+  it("adds model knowledge as an additive provenance value", () => {
+    expect(schema).toMatch(
+      /enum EvidenceProvenance \{[\s\S]*MODEL_KNOWLEDGE[\s\S]*TRUSTED_SOURCE/u,
+    );
+    expect(modelKnowledgeMigration).toContain(
+      `ALTER TYPE "EvidenceProvenance" ADD VALUE IF NOT EXISTS 'MODEL_KNOWLEDGE'`,
+    );
   });
 
   it("declares the control-plane, runtime, memory and provenance models", () => {

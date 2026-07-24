@@ -7,6 +7,7 @@ export const repairableContentRejectionCodes = new Set([
   "SERIOUS_CLAIM_SOURCE_INSUFFICIENT",
   "SOURCE_EXACT_NUMBER_UNSUPPORTED",
   "SOURCE_DIRECT_QUOTE_UNSUPPORTED",
+  "MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED",
   "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE",
   "CONSTITUTION_ENTRY_TOPIC_META",
 ]);
@@ -100,6 +101,10 @@ function directQuoteClaims(value: string): string[] {
     ...normalized.matchAll(/["“]([^"”\n]{8,})["”]/gu),
     ...normalized.matchAll(/‘([^’\n]{8,})’/gu),
   ].flatMap((match) => (match[1] ? [normalizedGroundingText(match[1])] : []));
+}
+
+export function containsDirectQuoteClaim(value: string): boolean {
+  return directQuoteClaims(value).length > 0;
 }
 
 const uncertaintyMarkers = [

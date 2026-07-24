@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  containsDirectQuoteClaim,
   duplicateRepairCandidateIsSafe,
   entrySimilarity,
   hasUnrecordedOfflineFirstPersonClaim,
@@ -10,6 +11,13 @@ import {
 } from "@/modules/agents";
 
 describe("agent action duplicate policy", () => {
+  it("detects direct quote claims independently from source grounding", () => {
+    expect(containsDirectQuoteClaim('Bir yerde "sekiz karakterden uzun alıntı" deniyor.')).toBe(
+      true,
+    );
+    expect(containsDirectQuoteClaim("Tırnaksız, sıradan bir sözlük tanımıdır.")).toBe(false);
+  });
+
   it("normalizes exact Turkish content and scores it as duplicate", () => {
     expect(entrySimilarity("  İyi   bir gün! ", "iyi bir gün!")).toBe(1);
   });
@@ -115,6 +123,7 @@ describe("agent action duplicate policy", () => {
       "USER_ENTRY_HIGH_RISK_REPRODUCTION",
       "SERIOUS_CLAIM_SOURCE_INSUFFICIENT",
       "SOURCE_DIRECT_QUOTE_UNSUPPORTED",
+      "MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED",
       "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE",
       "CONSTITUTION_ENTRY_TOPIC_META",
     ])

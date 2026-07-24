@@ -4135,7 +4135,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ).toBe(1);
   });
 
-  it("rejects non-canonical agent topics, question answers and dependent first entries", async () => {
+  it("routes a canonical agent topic to the existing concept while rejecting invalid first entries", async () => {
     const fixture = await createFixture();
     const canonical = await createTopicWithFirstEntry(
       integrationDatabase,
@@ -4154,9 +4154,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
     const runId = leased.run!.id;
     const provenance = {
-      evidenceType: "PLATFORM_EVENT" as const,
+      evidenceType: "MODEL_KNOWLEDGE" as const,
       evidenceIds: [runId],
-      shortRationale: "Runtime run görünür ve doğrulanabilir platform kanıtıdır.",
+      shortRationale: "Stabil ve düşük riskli genel kavram bilgisi exact run'a bağlıdır.",
     };
     await recordRuntimeActions(
       integrationDatabase,
@@ -4195,20 +4195,38 @@ describe("internal agent runtime API with PostgreSQL", () => {
             },
             provenance,
           },
+          {
+            sequence: 4,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Model bilgisi yalnız exact run kimliğine bağlanabilmelidir.",
+            input: {
+              title: "muz",
+              body: "Muz, farklı mutfaklarda kullanılan yenilebilir bir meyvedir.",
+            },
+            provenance: {
+              ...provenance,
+              evidenceIds: [randomUUID()],
+            },
+          },
         ],
       }),
     );
-    const [canonicalRejected, questionRejected, firstEntryRejected] = await Promise.all(
-      [1, 2, 3].map((sequence) =>
-        executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
-          workerId,
-          sequence,
-        }),
-      ),
-    );
-    expect(canonicalRejected).toMatchObject({
-      actionStatus: "REJECTED",
-      rejectionCode: "TOPIC_CANONICAL_SUGGESTION",
+    const [canonicalRouted, questionRejected, firstEntryRejected, forgedKnowledgeRejected] =
+      await Promise.all(
+        [1, 2, 3, 4].map((sequence) =>
+          executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+            workerId,
+            sequence,
+          }),
+        ),
+      );
+    expect(canonicalRouted).toMatchObject({
+      actionStatus: "SUCCEEDED",
+      rejectionCode: null,
+      result: {
+        topicId: canonical.topic.id,
+        topicResolution: "EXISTING",
+      },
     });
     expect(questionRejected).toMatchObject({
       actionStatus: "REJECTED",
@@ -4218,7 +4236,11 @@ describe("internal agent runtime API with PostgreSQL", () => {
       actionStatus: "REJECTED",
       rejectionCode: "CONSTITUTION_TOPIC_FIRST_ENTRY_DEPENDENT",
     });
-    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(0);
+    expect(forgedKnowledgeRejected).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "PROVENANCE_INVALID",
+    });
+    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(1);
     expect(await integrationDatabase.topic.findMany({ select: { id: true } })).toEqual([
       { id: canonical.topic.id },
     ]);
@@ -4925,7 +4947,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
   it("grounds exact source claims and requires strong independent evidence for serious claims", async () => {
     const fixture = await createFixture();
     const topics = await Promise.all(
-      Array.from({ length: 7 }, (_, index) =>
+      Array.from({ length: 9 }, (_, index) =>
         createTopicWithFirstEntry(integrationDatabase, adminActor(fixture.admin.id), {
           title: `runtime provenance guard ${index}`,
           entryBody:
@@ -5102,11 +5124,44 @@ describe("internal agent runtime API with PostgreSQL", () => {
               shortRationale: "Görünür entry yalnız tartışma bağlamıdır.",
             },
           },
+          {
+            sequence: 8,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Model bilgisi güncel ve ciddi iddia için dış kaynak yerine geçmemelidir.",
+            targetType: "TOPIC",
+            targetId: topics[7]!.topic.id,
+            input: {
+              topicId: topics[7]!.topic.id,
+              body: "Bugün kurum yöneticisinin dolandırıcılık yaptığı kesinleşti.",
+            },
+            provenance: {
+              evidenceType: "MODEL_KNOWLEDGE",
+              evidenceIds: [runId],
+              shortRationale: "Genel model bilgisi exact run'a bağlı fakat dış kaynak değildir.",
+            },
+          },
+          {
+            sequence: 9,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Model bilgisi doğrudan alıntı için kaynak yerine geçmemelidir.",
+            targetType: "TOPIC",
+            targetId: topics[8]!.topic.id,
+            input: {
+              topicId: topics[8]!.topic.id,
+              body: 'Bir yazara göre "bütün ölçüler kendiliğinden anlamlıdır."',
+            },
+            provenance: {
+              evidenceType: "MODEL_KNOWLEDGE",
+              evidenceIds: [runId],
+              shortRationale:
+                "Genel model bilgisi exact run'a bağlı fakat alıntı kaynağı değildir.",
+            },
+          },
         ],
       }),
     );
     const results = [];
-    for (const sequence of [1, 2, 3, 4, 5, 6, 7])
+    for (const sequence of [1, 2, 3, 4, 5, 6, 7, 8, 9])
       results.push(
         await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
           workerId,
@@ -5122,6 +5177,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
         ["REJECTED", "USER_ENTRY_HIGH_RISK_REPRODUCTION"],
         ["SUCCEEDED", null],
         ["SUCCEEDED", null],
+        ["REJECTED", "SERIOUS_CLAIM_SOURCE_INSUFFICIENT"],
+        ["REJECTED", "MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED"],
       ],
     );
   });

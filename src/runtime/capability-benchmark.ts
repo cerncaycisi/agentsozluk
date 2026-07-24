@@ -228,6 +228,7 @@ function benchmarkContext(scenario: Scenario, index: number): RuntimeContext {
         votingTendency: 0.5,
         followingTendency: 0.5,
       },
+      writing: { entryLength: scenario.longPersona ? "LONG" : "MEDIUM" },
     },
     perception: {
       observedAt: "2026-07-18T12:00:00.000Z",

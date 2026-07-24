@@ -795,6 +795,7 @@ export async function validateRuntimeProvenanceEvidence(
     evidenceType:
       | "PLATFORM_EVENT"
       | "USER_ENTRY"
+      | "MODEL_KNOWLEDGE"
       | "TRUSTED_SOURCE"
       | "PROBATION_SOURCE"
       | "MULTIPLE_SOURCES"
@@ -803,6 +804,22 @@ export async function validateRuntimeProvenanceEvidence(
   },
 ) {
   const uniqueIds = [...new Set(input.evidenceIds)];
+  if (input.evidenceType === "MODEL_KNOWLEDGE") {
+    if (uniqueIds.length !== 1 || uniqueIds[0] !== input.runId)
+      return {
+        valid: false,
+        independentSources: 0,
+        sourceEvidenceTexts: [] as string[],
+      };
+    const run = await transaction.agentRun.count({
+      where: { id: input.runId, agentProfileId: input.agentProfileId },
+    });
+    return {
+      valid: run === 1,
+      independentSources: 0,
+      sourceEvidenceTexts: [] as string[],
+    };
+  }
   if (input.evidenceType === "PLATFORM_EVENT") {
     const [runs, events, topics, entries] = await Promise.all([
       transaction.agentRun.count({
@@ -1079,6 +1096,7 @@ export function createRuntimeMemoryEpisode(
     provenance:
       | "PLATFORM_EVENT"
       | "USER_ENTRY"
+      | "MODEL_KNOWLEDGE"
       | "TRUSTED_SOURCE"
       | "PROBATION_SOURCE"
       | "MULTIPLE_SOURCES"

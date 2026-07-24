@@ -3,6 +3,7 @@ export {
   getSitemapTopicCount,
   getSitemapTopics,
   getTopic,
+  resolveCanonicalTopicProposal,
   type TopicViewer,
 } from "@/modules/topics/application/topics";
 export {
