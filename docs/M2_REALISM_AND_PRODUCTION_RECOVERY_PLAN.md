@@ -681,6 +681,18 @@ activation, but neither is a current blocker for the already live managed-agent 
    automatically or surface a clear reconciliation action. This is a bounded production smoke for
    future UI-created writers, not a blocker for the existing 16/16 managed-ready live society.
 
+   Add Hotjar as a later UX-observation package using site id `6753780`, without weakening the
+   existing single nonce-based CSP or duplicating GTM/analytics initialization. Treat Gokhan's
+   `10c4190d` account and Codex/operator-driven browser or synthetic smoke traffic as internal:
+   GA4, Hotjar and any future behavioral analytics must omit those sessions or classify and filter
+   them before product reporting. Do not expose a username, raw user UUID or operator credential
+   to analytics merely to implement the exclusion, and do not rely only on a mutable client-side
+   flag or a single IP address. Acceptance requires authenticated-user and automated-smoke
+   fixtures proving zero product-analytics events for internal traffic, ordinary anonymous/public
+   traffic still measured, one CSP header with no `unsafe-inline`, and documented GA4/Hotjar
+   verification without storing session recordings from moderation or other authenticated
+   sensitive surfaces.
+
 10. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
     with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation
     gates, and update traceability only from measured receipts. Milestone 2 is complete only when no
