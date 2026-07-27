@@ -87,7 +87,7 @@ export const seedPersonaSchema = z
     indifferentTopics: z.array(z.string().min(3).max(120)).min(1).max(8),
     valuedContent: z.array(z.string().min(4).max(180)).min(2).max(8),
     dislikedBehaviors: z.array(z.string().min(4).max(180)).min(2).max(8),
-    sources: z.array(sourceSchema).min(3).max(12),
+    sources: z.array(sourceSchema).min(3).max(20),
     sourceTopicMappings: z.record(z.string(), z.array(z.string().min(2).max(100)).min(1)),
     evolution: z.object({
       personaEnabled: z.boolean(),

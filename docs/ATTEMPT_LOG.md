@@ -1716,3 +1716,133 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
 - Do not repeat: use the repository Corepack pnpm 10 path, do not invent a Vitest integration config,
   supply the documented build-only environment for direct Next.js builds, and repair the source
   audit script's module entrypoint before claiming any deterministic source-health result.
+
+## 2026-07-24 — Canonical-source production comparison and reader recovery
+
+- Scope: Gokhan explicitly authorized a read-only production inspection of source-fetch evidence
+  to test whether upstreams might treat the production server IP differently. Every completed
+  query rechecked hostname `agent-sozluk-prod`, connection/domain IPv4 `46.225.20.177`, the pinned
+  ED25519 fingerprint, repository origin and exact app/runtime SHA
+  `96c73d3f1bbdd7a4fcacf2e7e3c8124823e86e77`. No production write, outbound probe, run creation or
+  cancellation, restart, deploy, setting change, raw content or environment read occurred.
+- The first guard incorrectly repeated the already documented obsolete path
+  `/opt/agent-sozluk/runtime/.release-sha` and stopped before the database query with
+  `No such file or directory`. The second transport verified identity but emitted no SQL rows
+  because `</dev/null` overrode its SQL heredoc. The corrected commands used
+  `/opt/agent-sozluk/runtime/current/.release-sha` and a controlled psql heredoc. Do not repeat:
+  copy the current-release marker path from this ledger/runbook and never combine a SQL heredoc
+  with a later stdin redirection.
+- Safe production evidence: 89 source rows, 58 domains, 12 profiles, 23 admin-blocked rows, 38
+  rows with a failure streak, 66 fetched in the prior 24 hours and 51 useful in that window. The
+  repeated zero-item `SOURCE_FETCH_FAILED` set covered T24, WHO, ASRS, K24, NTSB, Kantan, Bilim
+  Genç, Clean Cities and Skybrary endpoints. Existing attempt/result timestamps place those
+  failures between 1.1 and 4.5 seconds rather than at the ten-second reader deadline.
+- The exact same nine endpoints completed through the repository Node 22 `SafeSourceReader` from
+  the local machine with its default pacing. This makes a production-specific egress, TLS or
+  upstream WAF difference plausible, but historical rows cannot prove an IP block because the
+  current classifier flattened the underlying safe transport cause to `SOURCE_FETCH_FAILED`.
+- UN News was a separate deterministic parser defect, not IP-block evidence. Its endpoint returned
+  HTTP 200 and gzip-encoded RSS; the reader retained the encoded buffer and parsed it as UTF-8,
+  yielding zero items. A bounded local correction now decodes gzip, deflate and Brotli while
+  enforcing the existing 2 MiB encoded and decoded limits. The corrected reader produced 30 UN
+  News items; six additional Turkish-language/Türkiye-focused candidates produced 25 BM Türkiye,
+  24 BBC Türkçe, 50 Euronews Türkçe, 30 Evrim Ağacı, 10 İklim Haber and 9 Sivil Sayfalar items.
+- Local focused evidence after the correction: source-reader and audit-entrypoint unit tests
+  `26/26` passed. This is not yet production evidence. The remaining gate is exact-SHA CI and an
+  approved production-network refresh that records the newly preserved safe error classes before
+  canonical source reconciliation.
+
+## 2026-07-24 — Dictionary-first production migration, release and five-writer smoke
+
+- Exact artifact candidate `7b5f6b82750655651c00550529da05f1fd560cf4` from Release Candidate
+  Bundle run `30104334923`, artifact `8601151488`, GitHub digest
+  `sha256:ba23384c607acf6a1f303c83a5ed138ce2b49728ca894a7f5fce08460094e160`
+  was promoted only after the pinned hostname/IP/domain/SSH fingerprint/repository guards passed.
+  The staged image ID was
+  `sha256:c0310992ed711f89783b1173d640ef149213d02b14075caaceebe15095721fb7`.
+- The first migration-gate attempt stopped after graceful drain and before backup, scratch
+  database, production migration or cutover with exact safe error
+  `awk: cmd. line:1: Unexpected token`. Recovery restored the prior app/Caddy and worker on exact
+  SHA `96c73d3f1bbdd7a4fcacf2e7e3c8124823e86e77`; health/readiness remained `200/200`.
+  Root cause was one operator wrapper's doubly escaped nested `awk` for database-volume free
+  space. The corrected command used positional shell fields, was first exercised read-only on the
+  production DB container, and used a new evidence directory rather than overwriting attempt 1.
+  Do not repeat: never put nested escaped `awk` inside an SSH-transported shell; test the exact
+  container command before stopping services.
+- Attempt 2 drained two running natural runs without cancellation and reached
+  `0 queued / 0 running / 0 cancel-requested / 0 leases`. It created a mode-0600 production backup
+  `/opt/agent-sozluk/backups/agent-sozluk-pre-7b5f6b82750655651c00550529da05f1fd560cf4-20260724T154447Z.dump`
+  with SHA-256
+  `489629c9fc43f064089df9f1c7bd6b83a839821e8b92a9b1c894befab9b33980`,
+  restored it to an allowlisted scratch database, proved equal table row counts, applied additive
+  migration `20260724190000_add_model_knowledge_provenance` there, dropped the scratch database,
+  then applied the same migration to production. Applied migrations increased from 16 to 17;
+  settings, lifecycle and queue fingerprints stayed equal.
+- The repository-owned release lane reused the verified image/runtime stages, atomically converged
+  checkout, app image and immutable runtime on the exact candidate SHA, passed shared release
+  smoke twice, and returned worker `active/running`, restart count `0`, and internal/public
+  health/readiness `200/200`. No cleanup ran in this promotion.
+- The credential-safe real Codex status probe passed on `codex-cli 0.144.6`,
+  `gpt-5.6-sol`, reasoning effort `high`: executable inspection, structured output parsing and one
+  bounded structured action completed in `39,669 ms`; peak process RSS was about `171.65 MiB`,
+  swap input/output stayed zero.
+- The authenticated in-app browser lane was unavailable under the Codex browser network policy, so
+  the approved five-writer smoke used the existing application service and an explicit active HUMAN
+  ADMIN ID rather than copying cookies/CSRF or inserting database rows. Three harness attempts
+  stopped before run creation with exact safe errors: runtime work `stat ... Permission denied`,
+  container `chown ... Operation not permitted`, and `OPERATOR_ADMIN_SELECTION_AMBIGUOUS`.
+  Verified corrections were sudo-scoped stat/hash, explicit container `-u 0` only for ephemeral
+  file ownership/cleanup, and an explicit operator admin UUID instead of an exactly-one-admin
+  assumption. Do not repeat: distinguish public display name from username and always pass the
+  selected admin ID to server-native operator tooling.
+- The final instructionless smoke randomly selected five unique ACTIVE writers:
+  `kurusfarki`, `mesafedefteri`, `yarinmesaisi`, `iztakvimi` and `dengeharitasi`. All five
+  `NORMAL_WAKE` runs ended `SUCCEEDED`; all five produced one public content record through one
+  successful `CREATE_TOPIC_WITH_ENTRY`; no run was `PARTIAL`/`FAILED`, no rejection/error code
+  occurred, and no provocation/daily/saturation override was enabled. Post-verification proved
+  `5/5` terminal success and `5` linked public records, exact app/runtime/image SHA, 17 migrations,
+  preserved settings/lifecycle fingerprints, worker `active/running` with zero restarts,
+  health/readiness `200/200`, and both temporary operator-script copies absent.
+
+## 2026-07-24 — Production-network 72-source audit and canonical-pack expansion
+
+- Scope: Gokhan explicitly requested that source candidates be tested from the pinned Agent Sözlük
+  production server rather than inferred from local connectivity. Every connection rechecked
+  hostname `agent-sozluk-prod`, IPv4/domain `46.225.20.177`, the pinned ED25519 fingerprint,
+  repository origin and exact app/runtime SHA
+  `7b5f6b82750655651c00550529da05f1fd560cf4`. The audit copied only the candidate reader/audit
+  code and URL list to an ephemeral app-container path, performed outbound reads under the
+  existing SSRF, robots, timeout and 2 MiB bounds, and emitted only URL, safe status, item count
+  and duration. It did not print response bodies, prompts, instructions, credentials or
+  environment values and did not create/cancel a society run or alter runtime settings.
+- Production result: `72/72 USABLE / 0 EMPTY / 0 ERROR`. The pool spans 72 unique URLs and 72
+  origins. Previously suspect ASRS, Bilim Genç, Clean Cities, Kantan, T24, NTSB, Skybrary and WHO
+  all returned usable items on the fresh production pass, so their historical generic failures do
+  not establish a current server-IP block. UN News returned 30 items only with the candidate's
+  bounded gzip decode, confirming the separate deterministic compressed-body parser defect.
+- The repository receipt records the exact 72 production-observed item counts. The canonical
+  ten-persona pack now has 109 source assignments, 10–14 sources per persona, at least ten
+  independent origins and at least five topic categories per persona. The schema permits up to 20
+  sources while canonical-pack verification enforces the minimum of ten; the general schema keeps
+  backward-compatible admission for an imported profile until deterministic reconciliation tops
+  it up. No publication or action quota was introduced.
+- A guarded read-only production count found 12 ACTIVE writers with only 5–7 enabled origins each;
+  `kurusfarki` and `iztakvimi` are active imported profiles outside the ten canonical usernames.
+  The reconciliation candidate now selects the ten canonical profiles plus every additional ACTIVE
+  profile, preserves any URL already present in the verified pool and deterministically fills each
+  imported profile to at least ten unique origins using topic affinity plus a stable hash
+  tie-breaker. Unknown initial-persona URLs remain eligible for the existing history-preserving
+  block path. This prevents the previous canonical-only reconciliation from silently leaving new
+  writers behind.
+- Local exact-toolchain evidence used the existing
+  `/Volumes/GB/.toolchains/node-v22.23.1-darwin-arm64` plus Corepack pnpm `10.34.5`, not the broken
+  default Colima profile or Node 24. Persona verification passed 10 profiles and 45 pairwise
+  comparisons; focused source/persona/assignment tests passed `38/38`; metadata scan covered 14
+  surfaces and 21 forbidden fields; the full agent unit set passed 48 files / 320 tests; repository
+  secret scan, full formatting, full ESLint and strict typecheck passed.
+- One transport archive carried macOS AppleDouble entries and Linux tar reported
+  `Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'`, exiting `1`
+  after extracting the intended files. Exact `._*` artifacts were removed, candidate-file hashes
+  were rechecked and only then was the audit run. Do not repeat: disable macOS xattrs/AppleDouble
+  when building an operator transport archive, or transfer explicit files with an allowlisted
+  manifest and verify their hashes before execution.
