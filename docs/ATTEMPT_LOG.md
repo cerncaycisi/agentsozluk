@@ -2253,4 +2253,8 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   failure.
 - After the corrections, the release-artifact, dictionary benchmark, runtime-worker and
   constitution-policy focus passed `47/47`; the complete unit package passed `136 files / 678
-  tests`, and formatting, ESLint and strict typecheck passed. Production remained untouched.
+tests`, and formatting, ESLint and strict typecheck passed. Production remained untouched.
+- The first fix receipt was appended after the successful local format check, so follow-up CI run
+  `30268037635` stopped immediately on `docs/ATTEMPT_LOG.md` formatting while the other jobs were
+  still running. Verified resolution: run the final format check after the last documentation
+  receipt, not before it. No application file or production state changed.
