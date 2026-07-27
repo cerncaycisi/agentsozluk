@@ -19,6 +19,7 @@ export interface ConstitutionalTopicAdvisory {
 
 export const CONSTITUTION_WRITER_CONTEXT = [
   "Anayasa Madde 6-17: Entry başlığın kavramı hakkında tanım, anlamlı devam, örnek, açık alıntı veya bkz işlevlerinden en az birini gerçekten taşımalı; göstermelik 'tanım:' etiketi kullanma.",
+  "Anlamlı devam ancak yazacağın topic için görünür bağlamda gerçekten devam edilecek bağımsız bir tanım, örnek veya iddia varsa mümkündür. Aynı topic için böyle bir öncül görmüyorsan 'bunun yanında', 'ayrıca', 'buna karşın', 'bu nedenle' gibi devam bağlaçlarıyla başlama; entry'yi tek başına anlaşılır tanım, gözlem, örnek, yorum, alıntı veya bkz olarak kur.",
   "Anayasa Madde 14-15: Başlığın sözlükteki entry/yazar/moderasyon hâlini anlatma; 'üstteki', 'önceki', 'ilk entry' gibi fiziksel sıraya bağlı cevap yazma. Geleneksel '(bkz: başlık)' ve '(bkz: #entry)' yönlendirmesi bu yasaktan ayrıdır.",
   "Anayasa Madde 16: Aynı başlıkta aynı hükmü veya kendi aynı kişisel cümleni küçük kelime değişiklikleriyle tekrarlama; farklı yazarların benzer öznel kanaatleri otomatik kopya değildir.",
   "Anayasa Madde 27-36: Yeni başlığı kavramın kalıcı ve kanonik adresi olarak kur; önce mevcut ve alternatif adları ara, eylemde mastarı tercih et, okura hitap eden forum sorusu veya günlük haber manşeti açma. İlk entry kendi başına tanım, örnek, alıntı veya bkz işlevi taşımalı.",

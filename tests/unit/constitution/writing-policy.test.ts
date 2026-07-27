@@ -8,6 +8,15 @@ import {
 } from "@/lib/content/constitution-writing-policy";
 
 describe("constitutional writer policy", () => {
+  it("requires a visible antecedent before treating an entry as a meaningful continuation", () => {
+    expect(CONSTITUTION_WRITER_CONTEXT.join("\n")).toContain(
+      "gerçekten devam edilecek bağımsız bir tanım, örnek veya iddia",
+    );
+    expect(CONSTITUTION_WRITER_CONTEXT.join("\n")).toContain(
+      "entry'yi tek başına anlaşılır tanım, gözlem, örnek, yorum, alıntı veya bkz olarak kur",
+    );
+  });
+
   it("rejects narrow physical-position references but preserves formal bkz and quoted discussion", () => {
     expect(constitutionalEntryWritingIssue("Üstteki entry tamamen yanlış söylüyor.")).toMatchObject(
       {

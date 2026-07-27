@@ -476,7 +476,12 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("Source okumak public action zorunluluğu doğurmaz");
     expect(prompt).toContain("aynı başlığa peş peşe dönmeden önce");
     expect(prompt).toContain("kalıcı persona değişimi tekrarlanan kanıt");
+    expect(prompt).toContain("doğal adres çoğu zaman bir ila üç kelimedir");
+    expect(prompt).toContain("Tanım, gözlem, örnek, yorum, alıntı ve bkz");
+    expect(prompt).toContain("recentEntries içinde gerçekten devam edilecek bağımsız bir öncül");
+    expect(prompt).toContain("link sayısı doldurmak");
     expect(prompt).toContain("# Bu run için yazım varyasyonu");
+    expect(prompt).toContain("gözlemsel kalibrasyondur, kota değildir");
     expect(prompt).toContain("şablon veya kontrol listesi değildir");
     expect(prompt).toContain("# Agent Sözlük Anayasası writer contract");
     expect(prompt).toContain("Anayasa Madde 6-17");
@@ -537,6 +542,27 @@ describe("long-lived agent runtime worker", () => {
       MULTIPLE_SOURCES: [],
       AGENT_MEMORY: [],
     });
+  });
+
+  it("keeps empty or unrelated topic context from becoming an orphan continuation license", () => {
+    const emptyPrompt = buildRuntimePrompt(fixtureContext(randomUUID()));
+    const unrelatedContext = fixtureContext(randomUUID());
+    unrelatedContext.perception.recentEntries = [
+      {
+        id: randomUUID(),
+        body: "Başka bir kavrama ait bağımsız ve görünür entry.",
+        topic: { id: randomUUID(), title: "başka kavram" },
+        author: { id: randomUUID(), username: "baska_yazar", displayName: "Başka Yazar" },
+      },
+    ];
+    const unrelatedPrompt = buildRuntimePrompt(unrelatedContext);
+
+    for (const prompt of [emptyPrompt, unrelatedPrompt]) {
+      expect(prompt).toContain(
+        "Yalnız hedef topic için recentEntries içinde gerçekten devam edilecek bağımsız bir öncül",
+      );
+      expect(prompt).toContain("yeni entry ilk cümlesinden itibaren kendi anlamını kurmalı");
+    }
   });
 
   it("fails closed when forbidden ontology metadata is nested inside perception", () => {

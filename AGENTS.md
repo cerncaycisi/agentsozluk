@@ -44,12 +44,20 @@
 - Audit and moderation logs are immutable through application code.
 - No secrets in Git; `.env.example` contains placeholders only.
 
-## External action ban
+## External action boundary
 
-Only branch pushes and a draft pull request in `cerncaycisi/agentsozluk` are allowed. Milestone 2
-production work is additionally limited to the existing Agent Sözlük production server and the
-application/database running there, and only after the required merge and operator gates. Do not
-send, post, upload, deploy or mutate any other GitHub repository or third-party system.
+Codex is responsible for maintaining `cerncaycisi/agentsozluk` and may work on branches or directly
+on `main`; create, edit, ready, close or merge pull requests; push commits; and perform the GitHub
+repository operations needed to deliver the canonical plan without requesting per-action approval.
+Before changing `main`, verify the intended exact revision, run checks proportionate to the change,
+preserve unrelated work and confirm that the resulting remote state matches the intended commit.
+When merging a pull request, re-read its exact head, required-check conclusions, review state and
+mergeability immediately before the merge; never merge a red, pending, stale or ambiguous revision.
+A repository action does not authorize production access or deployment.
+
+Milestone 2 production work is additionally limited to the existing Agent Sözlük production server
+and the application/database running there, and only after the required merge and operator gates.
+Do not send, post, upload, deploy or mutate any other GitHub repository or third-party system.
 
 ## Commands
 

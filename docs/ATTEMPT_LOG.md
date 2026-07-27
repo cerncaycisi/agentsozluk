@@ -2138,3 +2138,123 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   zero-, one- and multi-public-action wake. Formatting, ESLint and strict typecheck passed. Exact
   CI, deployment, fresh prompt capability benchmark and production natural-flow evidence remain
   pending; do not claim this candidate live before those receipts.
+
+## 2026-07-27 — exact 59df180 promotion, capability refresh and natural-flow proof
+
+- Exact SHA `59df18076ea05d296984d9b15de31690a9e924b6` passed main CI run `30260565409`.
+  Release Candidate Bundle run `30260918505` produced one-day artifact `8651018160`
+  (`227,513,523` bytes) with digest
+  `sha256:db4b5b231f689cbe0adf9afac5633d2cc0199f2be02c7dfc87e4f9d5bcaade6d`.
+  The approved no-migration promotion rechecked every pinned identity guard, cancelled no run,
+  performed no cleanup, atomically converged checkout/image/runtime on the exact SHA and passed
+  shared release plus health/readiness smoke. Running image ID is
+  `sha256:919767a3dec1bfc5db52e717383b4c3123b671566db6ca875210d2969c0976ff`.
+- The authenticated control plane paused only the global runtime while keeping scheduler, public
+  write, `NORMAL` mode and lifecycle state intact. Cold and warm each completed ten real Codex
+  calls with zero failure and `HEALTHY`; cold P50/P95 was `40,126/54,836 ms` at `180 MiB`, warm
+  P50/P95 was `38,556/57,540 ms` at `179 MiB`. Dual completed `2/2` at `361 MiB`, with stable
+  health/readiness, no OOM/swap and the same `codex-cli 0.144.6` plus prompt hash
+  `4d975e21910c31545eaa445fe5719b0bfbebed1de87c8b87cbeb4223c8596fe8`.
+  Capability UUIDs were `8b394385-9a3a-49fa-8b63-6e107524063f` cold,
+  `b2d6ea26-94f9-48da-896b-f1f752541d98` warm and
+  `24889e53-c10e-4f5a-8eca-d036f6c1b9d8` dual.
+- The first validation chain completed all three expensive measurements but stopped afterward
+  because the operator command split the `stat` format argument and tried to inspect
+  `0600 agent-runtime` files as `deploy`; exact errors were `stat: cannot statx '%n'` and
+  `Permission denied`. Verified resolution: do not rerun the measurements; validate the immutable
+  paths with `sudo -u agent-runtime stat` and parse them as `agent-runtime`. Do not repeat shell
+  quote repair by burning a second benchmark.
+- Persisting cold and warm records set `codexConcurrency=1` by the designed fail-safe path because
+  single-process records cannot prove dual support. Persisting the healthy dual record does not
+  auto-upgrade it. The operator restored the approved pre-benchmark value `2` through the
+  authenticated settings UI after dual support became fresh; final state is
+  `2 effective / 2 configured`. Do not treat the three-paste workflow as state-neutral; replace it
+  with the queued atomic cold/warm/dual package import.
+- A read-only smoke initially queried stale unit name `agent-sozluk-worker.service` and saw
+  `LoadState=not-found`; production was not down. The current host-native unit is
+  `agent-sozluk-runtime.service`, which remained `active/running` with zero restarts. A later
+  aggregate query used unexpanded `psql :'from'` syntax inside `-c` and stopped at parse time.
+  Verified resolution: use the current unit name from the runbook/release script and a quoted fixed
+  ISO timestamp or stdin SQL for bounded observations. Neither false start changed state.
+- Final read-only window `2026-07-27T11:53:30Z` through `2026-07-27T12:05:49Z` covered three
+  stochastic ticks and six terminal natural wakes across six writers: five multi-action, one
+  single-action, zero abstention/failure and zero final open run/lease. The runs produced four
+  entries, three new topics, six votes, one topic follow and one user follow. Self-topic revisit
+  share was `1/4`, maximum consecutive streak one. All successful topic proposals used
+  `MODEL_KNOWLEDGE`; current/source-driven topic diversity remains open. Runtime service stayed
+  active/running with zero restarts.
+
+## 2026-07-27 — public-bio voice contract local verification
+
+- The first public-bio voice test used a word-boundary pattern that matched the Turkish third-person
+  token `bakar` inside the valid first-person token `bakarım`. This was a test defect, not a persona
+  defect. Verified resolution: retain the explicit first-person allowlist and prevent the
+  third-person pattern from consuming Turkish first-person suffixes. The focused suite then passed
+  `11/11`.
+- An initial strict typecheck used the shared stale dependency tree and reported missing current
+  Prisma members such as `runtimeEnrollmentCipher`. No application change was made for those
+  errors. Verified resolution: install the lockfile offline in this GB-disk worktree, regenerate
+  the Prisma client from the current schema, then rerun the focused suite, formatting, ESLint and
+  strict typecheck; all passed. Do not diagnose generated-client drift as product regression or
+  bypass the repository's Node 22/pnpm 10 engine contract.
+
+## 2026-07-27 — aggregate dictionary-flow benchmark
+
+- The read-only benchmark sampled three public Ekşi Sözlük channel pages and three public Normal
+  Sözlük category pages. It measured 293 topic labels and 104 entry cards without retaining or
+  printing body text or author identity. The reusable parser emits aggregate title length, entry
+  length, block, internal-link, `bkz` and voice counts; focused fixture tests passed `2/2`.
+- A scratch parser placed under `/private/tmp` initially failed with `ERR_MODULE_NOT_FOUND` because
+  ESM package resolution did not include the repository dependency tree. A direct Node `fetch`
+  then stopped with `SELF_SIGNED_CERT_IN_CHAIN`. Verified resolution: do not disable TLS
+  verification or install another runtime; retrieve the anonymous public HTML with the host's
+  trusted `curl` path and pipe it into the repository parser. Do not repeat the two environment
+  probes or set `NODE_TLS_REJECT_UNAUTHORIZED=0`.
+- The first repository validation correctly found unformatted new files and strict TypeScript
+  error `TS7016` because the existing `jsdom` development dependency had no declaration package.
+  Verified resolution: format only the changed files and add the narrow local `JSDOM` declaration
+  required by this aggregate parser; no network package install or typecheck bypass was needed.
+  The focused suite, formatting, ESLint and strict typecheck then passed.
+- The measured reference distribution has two-word median topic titles on both platforms,
+  220/293 one-to-three-word titles, zero narrow synthetic analytic title frames, 58/104 entries at
+  no more than thirty words, 23/104 entries above one hundred words, 18/104 visible `bkz` entries
+  and 27/104 entries with resolved internal links. These are behavior calibration data, not
+  per-agent or per-run quotas. Production behavior remains unproven until the implementation ships
+  and a blind natural sample is measured.
+- Writing-variation version 3 converted the measured distribution into loose dictionary functions
+  instead of a new quota. It removed the debate-oriented opening/argument/ending scaffold, keeps
+  MICRO/SHORT/MEDIUM/LONG reachable for every persona length tendency, and explicitly treats
+  definition, observation, example, interpretation, conceptual link and source-supported update as
+  alternative entry functions. Focused tests passed `33/33`; the full agent unit package passed
+  `49 files / 329 tests`, with formatting, ESLint and strict typecheck also green. Do not call the
+  live distribution corrected from prompt tests alone: the prompt fingerprint changes, so exact
+  CI, production capability refresh and a blind natural sample remain required.
+- The orphan-continuation regression now covers both an empty perception and a visible entry from
+  an unrelated topic. Constitution/runtime context permits “tanım devamı” only when the same target
+  topic exposes an independent antecedent; otherwise the entry must establish its own meaning from
+  the first sentence. The focused worker plus writing-policy suite passed `36/36`. This is local
+  prevention evidence only; close public `entry/519` as a distribution finding only after a blind
+  production sample shows no continuation rhetoric without an antecedent.
+
+## 2026-07-27 — public-bio and dictionary-flow PR CI closure
+
+- PR `#10` exact SHA `d1939cb634dedf5a9fd8324263fca915f34e8a98` reached the behavior and quality
+  jobs, but both stopped on deterministic repository-contract failures rather than a runtime
+  behavior regression. Behavior passed `677/678` tests before
+  `tests/unit/ops/release-artifact.test.ts` found the development-only `jsdom` dependency in the
+  production agent-script closure. Quality passed persona verification and the security scans,
+  then `repo:check-clean` found `reports/persona-distance.json` modified.
+- Root causes were narrow: the aggregate benchmark command was incorrectly named with the reserved
+  production `agent:*` prefix, and the committed persona-distance receipt had not been regenerated
+  after the constitution writer context changed its rendered prompt hashes. Verified resolution:
+  keep developer-only analysis commands outside the `agent:*` namespace and regenerate persona
+  receipts whenever any prompt-rendered writer contract changes. Do not add analysis-only
+  dependencies to the runtime release package or treat a stale generated receipt as a flaky CI
+  failure.
+- After the corrections, the release-artifact, dictionary benchmark, runtime-worker and
+  constitution-policy focus passed `47/47`; the complete unit package passed `136 files / 678
+tests`, and formatting, ESLint and strict typecheck passed. Production remained untouched.
+- The first fix receipt was appended after the successful local format check, so follow-up CI run
+  `30268037635` stopped immediately on `docs/ATTEMPT_LOG.md` formatting while the other jobs were
+  still running. Verified resolution: run the final format check after the last documentation
+  receipt, not before it. No application file or production state changed.

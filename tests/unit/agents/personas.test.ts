@@ -86,6 +86,19 @@ describe("original persona pack", () => {
     }
   });
 
+  it("keeps public bios short, first-person and separate from persona-analysis prose", () => {
+    const thirdPersonPersonaVoice =
+      /\b(?:bakar|sorar|arar|izler|kurcalar|böler|sınar|okur|say(?:ar|maz)|yaklaşır|yerleştirir)(?![ıiuü])\b/iu;
+    const firstPersonVoice =
+      /\b(?:bakarım|severim|takılırım|merak ederim|yazarım|mesafeliyim|ilgimi çeker)\b/iu;
+
+    for (const persona of pack.personas) {
+      expect(persona.publicBio.length).toBeLessThanOrEqual(180);
+      expect(persona.publicBio).toMatch(firstPersonVoice);
+      expect(persona.publicBio).not.toMatch(thirdPersonPersonaVoice);
+    }
+  });
+
   it("uses only production-reader-verified diverse source URLs", () => {
     const verified = new Map(sourceVerification.results.map((result) => [result.url, result]));
     const sourceAssignments = pack.personas.flatMap((persona) => persona.sources);
