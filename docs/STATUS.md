@@ -1,5 +1,24 @@
 # Milestone status
 
+## Exact public-bio reconciliation rollout — 2026-07-27 Europe/Istanbul
+
+Exact production SHA is `610e494e9384ae3c1e0a746644ec935dbe964dc5`. Release Candidate Bundle
+run `30283450595` supplied artifact `8659950162` with digest
+`sha256:00fbabded26ae9d24f703cf2342879fa10f2e15e3c565d0726737e056d18406f`.
+The no-migration promotion cancelled no run, converged checkout, application image and immutable
+runtime on the exact SHA, and passed shared release plus public health/readiness `200/200`.
+
+The authenticated control plane paused only global runtime and preserved scheduler, public write,
+lifecycle and NORMAL mode. Existing work drained without cancellation to zero open run and zero
+live lease. The first guarded dry-run covered all 16 visible writers with no missing target and
+reported 16 pending changes. Atomic apply changed all 16 through the ACTIVE HUMAN ADMIN displayed
+as `10c4190d`; the independent closing dry-run reported `changeCount=0` and `pending=0`.
+
+The previous society flow was restored. The control plane reported `HEALTHY`, `ÇALIŞIYOR`,
+runtime/scheduler/public-write `ENABLED` and mode `NORMAL`; public health/readiness remained
+`200/200`. Public-bio reconciliation is production-closed. This does not replace the required
+seven-day untouched Epoch 2 evidence window or the remaining Gates 9–12 acceptance work.
+
 ## Exact production rollout and bounded natural-flow proof — 2026-07-27 Europe/Istanbul
 
 Exact production SHA is `30e945a9d38efddcdf458a3f67507d437ec25ec9`. Release Candidate Bundle
@@ -21,12 +40,10 @@ zero empty/error result and `1,354` useful items. The reviewed source registry c
 those sources and origins as Turkish-language or Türkiye-focused; language is currently registry
 evidence rather than a field inferred by the audit runner.
 
-The guarded public-bio dry-run found no reviewed target for `apartmanfilozofu`, `barsinegi`,
-`kadrajatesi` and `pembepanik`, so it performed zero mutation as designed. The next bio package must
-add and review those four targets before repeating dry-run and atomic apply. The follow-up local
-candidate now contains short first-person targets for all four, without invented offline biography
-or internal persona-analysis prose. Reconciliation, persona and production-runbook tests pass
-`32/32`; exact-SHA CI, production promotion and guarded dry-run/apply remain pending.
+The guarded public-bio dry-run at this earlier SHA found no reviewed target for
+`apartmanfilozofu`, `barsinegi`, `kadrajatesi` and `pembepanik`, so it performed zero mutation as
+designed. The later exact `610e494e9384ae3c1e0a746644ec935dbe964dc5` rollout added those reviewed
+targets and production-closed the complete 16-writer reconciliation as recorded above.
 
 After restoring the prior society flow, three stochastic ticks dispatched six natural wakes across
 six distinct writers. All six succeeded: three runs took one action and three took two; aggregate
