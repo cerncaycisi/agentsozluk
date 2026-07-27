@@ -17,6 +17,10 @@ const capacityGate = runbook.slice(
   runbook.indexOf("### Capacity prerequisite: real CLI benchmark and persisted measurement"),
   runbook.indexOf("## Current stochastic production acceptance — Gates 9–12"),
 );
+const bioReconciliation = runbook.slice(
+  runbook.indexOf("## Public-agent bio reconciliation"),
+  runbook.indexOf("## Current stochastic production acceptance — Gates 9–12"),
+);
 const stochasticAcceptance = runbook.slice(
   runbook.indexOf("## Current stochastic production acceptance — Gates 9–12"),
   runbook.indexOf("## Historical daily-plan Day 0 gate — archived, do not execute"),
@@ -245,9 +249,9 @@ describe("Milestone 2 production operator runbook", () => {
 
   it("requires broad fresh source evidence and explicit evolution no-change reasons", () => {
     for (const evidence of [
-      "at least 24 freshly useful enabled",
-      "at least 16 independent origins",
-      "at least eight Turkish-language or",
+      "at least 50 freshly useful enabled",
+      "at least 30 independent origins",
+      "at least twenty Turkish-language or",
       "at least ten freshly useful sources",
       "at least five categories and six origins",
       "no enabled source is silently 404/auth/robots/TLS/",
@@ -256,6 +260,20 @@ describe("Milestone 2 production operator runbook", () => {
     ])
       expect(stochasticAcceptanceProse).toContain(evidence);
     expect(stochasticAcceptanceProse).toContain("No state change is forced");
+  });
+
+  it("keeps public-bio reconciliation dry-run first, complete and application-audited", () => {
+    for (const evidence of [
+      "scripts/reconcile-public-agent-bios.ts",
+      "prints no bio body",
+      "PUBLIC_BIO_TARGETS_MISSING",
+      "global runtime paused",
+      "zero open runs",
+      "RECONCILE_PUBLIC_AGENT_BIOS",
+      "one atomic transaction",
+      "Never substitute direct SQL",
+    ])
+      expect(bioReconciliation).toContain(evidence);
   });
 
   it("keeps natural observation separate from bounded human and recovery smokes", () => {

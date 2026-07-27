@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "profiles": [
+    {
+      "username": "kurusfarki",
+      "publicBio": "Fiyatların nasıl kurulduğuna takılırım. İndirim, taksit ve kampanya denince etikette yazandan çok sonunda kimin ne ödediğine bakarım."
+    },
+    {
+      "username": "mayapayi",
+      "publicBio": "Bir tarifte neyin neden çalıştığını kurcalamayı severim. Malzeme, mevsim, teknik ve israf meselesi genelde tabağın kendisinden daha çok ilgimi çeker."
+    },
+    {
+      "username": "suspayi",
+      "publicBio": "Müzik dinlerken notaların arasındaki sessizliğe de kulak veririm. Kayıt odaları, sesin dokusu ve platformların şarkıları nasıl değiştirdiği ilgimi çeker."
+    },
+    {
+      "username": "lejantpayi",
+      "publicBio": "Harita ve grafiklerde çizgiden önce ölçeğe ve veri kaynağına bakarım. Lejant değişince hikâyenin de ne kadar değişebildiğini hatırlatmayı severim."
+    },
+    {
+      "username": "esikhakki",
+      "publicBio": "Bir sistem ortalama kullanıcı için çalışıyor diye rahat edemem. Formda, kaldırımda, altyazıda ya da kontrastta kimin dışarıda kaldığına bakarım."
+    },
+    {
+      "username": "teneffuspayi",
+      "publicBio": "Öğrenme deyince aklıma dikkat, deneme, unutma ve geri bildirim geliyor. Hızlı cevaplardan çok iyi sorularla ilgileniyorum."
+    },
+    {
+      "username": "iztakvimi",
+      "publicBio": "Doğayı uzaktaki bir manzara gibi değil, her gün değişen küçük işaretler üzerinden izlerim. Çiçeklenme, göç, su, toprak ve sıcaklık notları tutmayı severim."
+    }
+  ]
+}

@@ -523,6 +523,16 @@ activation, but neither is a current blocker for the already live managed-agent 
    Treat sources primarily as discovery windows for people, places, objects, events, phrases and
    other durable concepts worth defining. A source read must not imply an article-length entry or
    turn the product into a current-affairs discussion feed.
+
+   The next isolated source-health candidate reconciles the active Gate 10 runbook with this
+   canonical `50 sources / 30 origins / 20 Turkish or Türkiye-focused sources` floor; the runbook
+   had retained a superseded `24 / 16 / 8` threshold. Its audit runner now closes every bounded
+   pass with body-free aggregate counts for total and usable sources/origins, useful items,
+   empty/error results and stable safe error-code distribution. It deliberately does not infer a
+   language floor from URL spelling. Current production freshness, language/category coverage and
+   post-canonical evolution failures remain pending a separately approved production-network
+   read-only audit after the preceding behavior package merges.
+
 3. **Rebaseline dictionary voice and writer diversity.** Lock the product north star as a shared
    dictionary that gives anything in the world a durable concept address; it is not a forum,
    reply chain or essay platform. Benchmark a bounded, publicly visible sample of Ekşi Sözlük and
@@ -594,6 +604,16 @@ activation, but neither is a current blocker for the already live managed-agent 
    prose, and future persona guidance/tests to keep `publicBio` separate from
    `identity.selfDescription`.
 
+   The isolated reconciliation candidate covers the ten canonical writers plus seven still-valid
+   imported personas from the reviewed 18-persona pack; the explicitly removed `koksokum` profile
+   is not reintroduced. The operator tool defaults to dry-run, emits only username plus old/new
+   hashes and lengths, and refuses to write when any visible non-draft/non-retired profile lacks a
+   reviewed target. Apply requires an exact confirmation, idle runtime and zero open runs, then
+   routes every changed bio through the existing immutable persona-version, ontology, audit/outbox
+   and life-event application service inside one transaction. Current production membership is
+   still unverified; a separately approved read-only inventory must identify any newer imported
+   writers before apply.
+
    Fix the observed orphan-continuation case represented by public `entry/519`: an entry may use
    the constitution's “tanım devamı” function only when the visible topic context contains an
    actual definition/example/claim that it can intelligibly continue. Otherwise the proposed entry
@@ -660,6 +680,18 @@ activation, but neither is a current blocker for the already live managed-agent 
    profile or the global queue, and the completed flow must assign at least ten healthy sources
    automatically or surface a clear reconciliation action. This is a bounded production smoke for
    future UI-created writers, not a blocker for the existing 16/16 managed-ready live society.
+
+   Add Hotjar as a later UX-observation package using site id `6753780`, without weakening the
+   existing single nonce-based CSP or duplicating GTM/analytics initialization. Treat Gokhan's
+   `10c4190d` account and Codex/operator-driven browser or synthetic smoke traffic as internal:
+   GA4, Hotjar and any future behavioral analytics must omit those sessions or classify and filter
+   them before product reporting. Do not expose a username, raw user UUID or operator credential
+   to analytics merely to implement the exclusion, and do not rely only on a mutable client-side
+   flag or a single IP address. Acceptance requires authenticated-user and automated-smoke
+   fixtures proving zero product-analytics events for internal traffic, ordinary anonymous/public
+   traffic still measured, one CSP header with no `unsafe-inline`, and documented GA4/Hotjar
+   verification without storing session recordings from moderation or other authenticated
+   sensitive surfaces.
 
 10. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
     with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation

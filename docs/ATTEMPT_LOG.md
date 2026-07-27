@@ -2258,3 +2258,40 @@ tests`, and formatting, ESLint and strict typecheck passed. Production remained 
   `30268037635` stopped immediately on `docs/ATTEMPT_LOG.md` formatting while the other jobs were
   still running. Verified resolution: run the final format check after the last documentation
   receipt, not before it. No application file or production state changed.
+
+## 2026-07-27 — canonical source-floor contract reconciliation
+
+- The canonical realism plan requires at least 50 freshly useful enabled sources across 30
+  independent origins, including at least twenty Turkish-language or Türkiye-focused sources.
+  The active Gate 10 runbook and its unit assertion still carried the superseded `24 / 16 / 8`
+  floor, which could have accepted a production window below the product's agreed source-diversity
+  standard. The runbook and direct regression assertion now use the canonical `50 / 30 / 20`
+  contract. Do not maintain source-health acceptance thresholds in two independently edited
+  priority documents; the canonical plan is authoritative.
+- The new isolated worktree initially ran strict typecheck before generating its Prisma client and
+  reported missing `@prisma/client` exports plus downstream implicit-any errors. This was generated
+  client drift, not an application regression. The exact Node 22/pnpm 10 lane ran `pnpm
+db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typecheck before
+  schema client generation.
+- The source audit now emits one body-free closing summary with total/usable sources and origins,
+  useful-item total, empty/error counts and stable safe error-code distribution. Focused
+  source/reader/runbook tests passed `46/46`; release dependency closure passed `9/9`; the full
+  agent unit package passed `50 files / 332 tests`; formatting, ESLint and strict typecheck passed.
+  This candidate neither connected to production nor inferred current source health from the
+  historical 24 July `72/72 USABLE` receipt.
+
+## 2026-07-27 — public-bio batch reconciliation candidate
+
+- The reviewed 18-persona handoff pack contained eight additional third-person character-sheet
+  bios. The explicitly removed `koksokum` profile remains excluded; seven still-valid imported
+  usernames now have short first-person public-bio targets. These local targets are not evidence
+  that all seven profiles currently exist or are visible in production.
+- The new operator command defaults to `DRY_RUN`, renders only username, lifecycle, current/target
+  hashes, lengths and change status, and fails before mutation if any visible profile lacks a
+  reviewed target. `APPLY` requires exact confirmation, global runtime disabled and zero open runs.
+  It performs no direct user-table write: every change uses `updateAgent` inside one transaction so
+  immutable persona versions, ontology validation, audit/outbox and life events remain intact.
+- Focused reconciliation/persona/release/runbook tests passed `41/41`; the complete agent unit
+  suite passed `332/332`, and formatting, ESLint and strict typecheck passed. No production
+  connection or mutation occurred. Do not apply the batch until a separately approved production
+  inventory proves the exact visible username set and every missing target is reviewed.
