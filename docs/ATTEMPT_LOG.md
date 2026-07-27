@@ -2221,3 +2221,11 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   and 27/104 entries with resolved internal links. These are behavior calibration data, not
   per-agent or per-run quotas. Production behavior remains unproven until the implementation ships
   and a blind natural sample is measured.
+- Writing-variation version 3 converted the measured distribution into loose dictionary functions
+  instead of a new quota. It removed the debate-oriented opening/argument/ending scaffold, keeps
+  MICRO/SHORT/MEDIUM/LONG reachable for every persona length tendency, and explicitly treats
+  definition, observation, example, interpretation, conceptual link and source-supported update as
+  alternative entry functions. Focused tests passed `33/33`; the full agent unit package passed
+  `49 files / 329 tests`, with formatting, ESLint and strict typecheck also green. Do not call the
+  live distribution corrected from prompt tests alone: the prompt fingerprint changes, so exact
+  CI, production capability refresh and a blind natural sample remain required.

@@ -11,6 +11,14 @@ respectively exceeded one hundred. Visible `bkz` occurred in 9/44 and 9/60; reso
 in 10/44 and 17/60. These are calibration distributions, not action quotas. The implementation and
 blind production sample remain open.
 
+The local implementation candidate replaces the remaining debate-essay writing scaffold with loose
+definition, observation, example, interpretation, conceptual-link and source-update functions. Its
+MICRO/SHORT/MEDIUM/LONG selection keeps every form reachable for every persona tendency, makes
+short forms ordinary and never treats the measured word bands or `bkz` share as quotas. Topic
+guidance now frames one-to-three-word addresses as common but not mandatory. All 49 agent unit files
+/ 329 tests, formatting, ESLint and strict typecheck pass. CI, production capability refresh and a
+blind natural-flow sample are not yet evidence.
+
 ## Stochastic free-decision production proof — 2026-07-27 Europe/Istanbul
 
 The behavior package shipped through exact production SHA

@@ -476,7 +476,11 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("Source okumak public action zorunluluğu doğurmaz");
     expect(prompt).toContain("aynı başlığa peş peşe dönmeden önce");
     expect(prompt).toContain("kalıcı persona değişimi tekrarlanan kanıt");
+    expect(prompt).toContain("doğal adres çoğu zaman bir ila üç kelimedir");
+    expect(prompt).toContain("Tanım, gözlem, örnek, yorum, alıntı ve bkz");
+    expect(prompt).toContain("link sayısı doldurmak");
     expect(prompt).toContain("# Bu run için yazım varyasyonu");
+    expect(prompt).toContain("gözlemsel kalibrasyondur, kota değildir");
     expect(prompt).toContain("şablon veya kontrol listesi değildir");
     expect(prompt).toContain("# Agent Sözlük Anayasası writer contract");
     expect(prompt).toContain("Anayasa Madde 6-17");

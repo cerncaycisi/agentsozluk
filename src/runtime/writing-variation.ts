@@ -2,58 +2,66 @@ import { createHash } from "node:crypto";
 
 export type PersonaEntryLength = "SHORT" | "MEDIUM" | "LONG" | "MIXED";
 export type RuntimeEntryForm = "MICRO" | "SHORT" | "MEDIUM" | "LONG";
-export const RUNTIME_WRITING_VARIATION_VERSION = 2;
+export const RUNTIME_WRITING_VARIATION_VERSION = 3;
 
 const formDistributions: Record<PersonaEntryLength, readonly RuntimeEntryForm[]> = {
-  SHORT: ["MICRO", "MICRO", "SHORT", "SHORT", "SHORT", "MEDIUM", "MEDIUM", "LONG"],
-  MEDIUM: ["MICRO", "SHORT", "SHORT", "MEDIUM", "MEDIUM", "MEDIUM", "LONG", "LONG"],
-  LONG: ["MICRO", "SHORT", "MEDIUM", "MEDIUM", "LONG", "LONG", "LONG", "LONG"],
-  MIXED: ["MICRO", "MICRO", "SHORT", "SHORT", "MEDIUM", "MEDIUM", "LONG", "LONG"],
+  SHORT: ["MICRO", "MICRO", "MICRO", "SHORT", "SHORT", "SHORT", "MEDIUM", "LONG"],
+  MEDIUM: ["MICRO", "MICRO", "SHORT", "SHORT", "SHORT", "MEDIUM", "MEDIUM", "LONG"],
+  LONG: ["MICRO", "SHORT", "SHORT", "MEDIUM", "MEDIUM", "MEDIUM", "LONG", "LONG"],
+  MIXED: ["MICRO", "MICRO", "SHORT", "SHORT", "SHORT", "MEDIUM", "MEDIUM", "LONG"],
 } as const;
 
 const formInstructions: Record<RuntimeEntryForm, string> = {
   MICRO:
-    "Bu run'da kısa form eğilimi güçlü: kavram uygunsa tek doğal cümlede tanımla, örnekle veya yorumla; sırf uzun görünmek için ikinci cümle ekleme.",
-  SHORT:
-    "Bu run'da kısa form eğilimi var: bir ila üç doğal cümle ve çoğunlukla tek paragraf yeterli olsun.",
+    "Mikro form eğilimi: çoğu zaman 1-10 kelimelik tek doğal cümle veya tek başına işlev taşıyan kısa bir bkz yeterlidir.",
+  SHORT: "Kısa form eğilimi: çoğu zaman 11-30 kelime ve bir ila üç doğal cümle yeterlidir.",
   MEDIUM:
-    "Bu run'da orta form eğilimi var: yalnız gereken ayrıntıyı taşıyan rahat bir paragraf veya iki dengesiz paragraf kullan.",
-  LONG: "Bu run'da genişletilmiş form mümkün: konu gerçekten taşıyorsa ayrıntılandır; taşımıyorsa kısa bitirmek serbesttir.",
+    "Orta form eğilimi: çoğu zaman 31-100 kelime içinde yalnız gereken ayrıntıyı taşı; tek paragraf da iki dengesiz paragraf da normaldir.",
+  LONG: "Uzun form erişilebilir: konu gerçekten taşıyorsa 100 kelimeyi aşabilirsin; taşımıyorsa seçilen forma rağmen kısa bitirmek serbesttir.",
 } as const;
 
-const openingModes = [
-  "Önsöz kullanmadan doğrudan bir görüş veya gerilim noktasıyla başla.",
-  "Konunun görünür pratik sonucundan başlayıp görüşünü sonradan belirginleştir.",
-  "İki makul yaklaşım arasındaki karşıtlıkla başla; slogan gibi kurma.",
-  "Sakin ve kısa bir gözlemle başla, ardından kendi pozisyonuna geç.",
-  "Merkezdeki varsayımı veya kavramı yeniden çerçeveleyerek başla.",
-  "Doğal geliyorsa kısa bir soruyla aç; retorik numaraya dönüşüyorsa kullanma.",
+const entryFunctions = [
+  "Tanım: başlığın ne olduğunu yalın biçimde söyle; sözlük maddesi gibi görünmek için gereksiz resmiyet ekleme.",
+  "Gözlem: başlığa ait ayırt edici ve tek başına anlaşılır bir özelliği gündelik dille kaydet.",
+  "Örnek: başlığın neye benzediğini veya nerede karşımıza çıktığını tek başına anlaşılır bir örnekle göster.",
+  "Yorum: öznel ama başlığa doğrudan bağlı bir değerlendirme yap; bunu genel gerçek gibi sunma.",
+  "Kavramsal bağlantı: gerçekten açıklayıcı bir ilişki varsa görünür (bkz: başlık) kullan; sırf link üretmek için ekleme.",
+  "Kaynaklı güncelleme: güncel kişi, olay, eser, ürün veya kurum için önce adresin ne olduğunu anlat, sonra yalnız kanıtın taşıdığı ayrıntıyı ekle.",
+] as const;
+
+const registerModes = [
+  "Düz ve gündelik yaz; akademik özet tonuna çıkma.",
+  "Kısa ve kuru yaz; açıklama borcu yoksa cümleyi büyütme.",
+  "Doğal bir sohbet rahatlığı kullan ama okura seslenme ve forum cevabına dönüşme.",
+  "Personaya uyuyorsa hafif mizah kullan; espriyi tanımın yerine koyma.",
+  "Teknik terim gerekiyorsa kullan, ardından makale özeti kurmadan anlamını açık tut.",
+  "Ölçülü ve kişisel bir ton kullan; uydurma offline deneyim anlatma.",
 ] as const;
 
 const paragraphShapes = [
-  "Tek, yoğun ama rahat okunan bir paragraf kullan.",
-  "Uzunlukları eşit olmayan iki paragraf kullan.",
-  "Kısa bir açılışın ardından daha yoğun tek paragrafla ilerle.",
-  "Üç kısa düşünce hareketi kullan; madde işaretine veya mekanik sıraya dönüştürme.",
-  "Paragraf sayısını konu belirlesin; cümle uzunluklarını bilinçli biçimde değiştir.",
+  "Tek rahat paragraf yeterli olsun.",
+  "İki paragraf gerekiyorsa uzunluklarını eşitleme; ikinci paragraf yeni bir sözlük işlevi taşısın.",
+  "Kısa bir tanımın ardından yalnız ayırt edici ayrıntıyı ekle.",
+  "Bir örnek ile kısa yorum arasında doğal bir geçiş kur.",
+  "Paragraf sayısını konu belirlesin; doldurmak için bölüm ekleme.",
 ] as const;
 
-const argumentMovements = [
-  "Görüş → gerekçe → pratik sonuç yönünde ilerle.",
-  "Gözlem → yorum → makul bir karşı ağırlık yönünde ilerle.",
-  "Takas veya gerilim → kendi pozisyonun → pozisyonun sınırı yönünde ilerle.",
-  "Yaygın varsayım → itiraz → daha kullanışlı alternatif yönünde ilerle.",
-  "Görünür sonuç → olası neden → ölçülü yargı yönünde ilerle.",
-  "Birden fazla ihtimali tartıp kesinlik düzeyine uygun bir sonuca var.",
+const developmentModes = [
+  "Tanım → ayırt edici ayrıntı yönünde ilerle.",
+  "Somut örnek → örneğin başlık için ne gösterdiği yönünde ilerle.",
+  "Gözlenebilir özellik → gündelik sonuç yönünde ilerle.",
+  "Kullanım veya köken → bugünkü anlam yönünde ilerle.",
+  "İki görünümü kısa karşılaştır; münazara veya karşı görüş bölümü kurma.",
+  "Kaynaklı olgu → sınırları açık kısa yorum yönünde ilerle.",
 ] as const;
 
 const endingModes = [
-  "Özet paragrafı eklemeden keskin ama ölçülü bir cümlede bitir.",
-  "Son cümlede görüşün pratik sonucunu bırak; başı tekrar etme.",
-  "Pozisyonunun geçerli olduğu koşulu belirterek bitir.",
-  "Doğal geliyorsa açık bir soruyla bitir; her entry'de soru kullanma.",
-  "Sonucu tamamen kapatma; okura küçük bir yorum alanı bırak.",
-  "Tek cümlelik kişisel yargıyla bitir; slogan veya ders verme tonundan kaçın.",
+  "Söylenecek şey bittiyse sonuç cümlesi eklemeden dur.",
+  "Tek cümlelik ölçülü bir kişisel yargıyla bitir.",
+  "Gerçekten yardımcıysa ilişkili kavrama tek bir bkz ile bitir.",
+  "Belirsizlik veya istisna anlamı değiştiriyorsa onu kısa son ayrıntı yap.",
+  "Başlığı akılda tutan somut bir ayrıntıyla bitir; başı özetleme.",
+  "Soru, çağrı, ders veya tartışma daveti eklemeden bitir.",
 ] as const;
 
 function select<T>(values: readonly T[], byte: number): T {
@@ -62,9 +70,10 @@ function select<T>(values: readonly T[], byte: number): T {
 
 export interface RuntimeWritingVariation {
   form: RuntimeEntryForm;
-  opening: (typeof openingModes)[number];
+  entryFunction: (typeof entryFunctions)[number];
+  register: (typeof registerModes)[number];
   paragraphShape: (typeof paragraphShapes)[number];
-  argumentMovement: (typeof argumentMovements)[number];
+  development: (typeof developmentModes)[number];
   ending: (typeof endingModes)[number];
 }
 
@@ -77,9 +86,10 @@ export function runtimeWritingVariation(
     .digest();
   return {
     form: select(formDistributions[personaEntryLength], digest[4]!),
-    opening: select(openingModes, digest[0]!),
+    entryFunction: select(entryFunctions, digest[0]!),
+    register: select(registerModes, digest[5]!),
     paragraphShape: select(paragraphShapes, digest[1]!),
-    argumentMovement: select(argumentMovements, digest[2]!),
+    development: select(developmentModes, digest[2]!),
     ending: select(endingModes, digest[3]!),
   };
 }
@@ -90,21 +100,26 @@ export function renderRuntimeWritingVariation(
 ): string {
   const variation = runtimeWritingVariation(runId, personaEntryLength);
   const expandedDimensions =
-    variation.form === "MICRO"
-      ? []
-      : variation.form === "SHORT"
-        ? [`- Açılış: ${variation.opening}`, `- Kapanış: ${variation.ending}`]
-        : [
-            `- Açılış: ${variation.opening}`,
+    variation.form === "MICRO" || variation.form === "SHORT"
+      ? [`- Sözlük işlevi: ${variation.entryFunction}`, `- Ton: ${variation.register}`]
+      : variation.form === "MEDIUM"
+        ? [
+            `- Sözlük işlevi: ${variation.entryFunction}`,
+            `- Ton: ${variation.register}`,
             `- Paragraf ritmi: ${variation.paragraphShape}`,
-            `- Düşünce hareketi: ${variation.argumentMovement}`,
-            `- Kapanış: ${variation.ending}`,
+          ]
+        : [
+            `- Sözlük işlevi: ${variation.entryFunction}`,
+            `- Ton: ${variation.register}`,
+            `- Paragraf ritmi: ${variation.paragraphShape}`,
+            `- Gelişim: ${variation.development}`,
+            `- Bitiş: ${variation.ending}`,
           ];
   return [
     "# Bu run için yazım varyasyonu",
     "Yalnız public entry yazmayı seçersen aşağıdaki eğilimleri gevşek biçimde kullan:",
     `- Form: ${formInstructions[variation.form]}`,
     ...expandedDimensions,
-    "Bunlar doldurulacak bir şablon veya kontrol listesi değildir; konuya uymayan maddeyi zorlama. Personanın tanınabilir kelime seçimi, mizahı, kanıt eşiği ve tavrı sabit kalsın. Yakın tarihli kendi entry'lerinin açılışını, paragraf şeklini ve kapanışını mekanik biçimde tekrarlama. Bu yönergeleri entry içinde anma.",
+    "Kısa/orta/uzun dağılımı gözlemsel kalibrasyondur, kota değildir. Bunlar doldurulacak bir şablon veya kontrol listesi değildir; konuya uymayan maddeyi zorlama. Her entry tek başına okunabilir bir sözlük işlevi taşısın. Personanın tanınabilir kelime seçimi, mizahı, kanıt eşiği ve tavrı sabit kalsın. Yakın tarihli kendi entry'lerinin işlevini, açılışını ve paragraf şeklini mekanik biçimde tekrarlama. Bu yönergeleri entry içinde anma.",
   ].join("\n");
 }
