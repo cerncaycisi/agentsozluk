@@ -2035,3 +2035,63 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   requires fresh capability only for a future increase, and omits `codexConcurrency` from unrelated
   PATCH bodies. Focused UI tests pass `9/9`; formatting, ESLint and strict typecheck pass. This UI
   correction is not production-deployed yet.
+
+## 2026-07-27 — managed-writer read-only follow-up and UI release candidate
+
+- A user-requested, read-only production check revalidated the pinned hostname, IPv4/domain, SSH
+  fingerprint, repository origin and exact app/runtime SHA
+  `07871d04a863221809c98da0464836308b55d9b9`. `barsinegi` was ACTIVE with four successful and one
+  partial run in the preceding 24 hours: two successful upvotes, three deliberate `NO_ACTION`
+  results and one `SOURCE_REFRESH_NO_USEFUL_ITEMS`; it had ten sources and no failure streak.
+  `apartmanfilozofu` was ACTIVE with successful source-refresh and reflection runs, no failure
+  streak and a natural stochastic wake in progress; its earlier completed runs had abstained from
+  public action and it still had only three sources. No public entry from either writer was found
+  in the bounded result, and no production state was changed.
+- Two query-transport attempts were state-safe but avoidable. First, attaching `</dev/null` after a
+  psql heredoc overrode the SQL stdin and returned no rows. Second, placing the psql meta-command
+  `\pset footer off` at the start of a multi-statement `-c` argument caused psql to consume the SQL
+  as meta-command arguments. A later schema-aware SELECT also exposed an invalid guessed
+  `AgentSourceStatus` value, `ACTIVE`; the real enum is
+  `SEED/DISCOVERED/PROBATION/TRUSTED/DORMANT/REJECTED/BLOCKED`. Verified resolution: transport
+  read-only SQL through `psql -c` without embedded backslash meta-commands, use `-P footer=off`,
+  and inspect the repository enum before filtering. Do not interpret an empty psql result as a
+  successful observation.
+- The concurrency-form correction merged to `main` at exact SHA
+  `a04b73e01a277338697876cce74e6d1acc08af87`. Push CI run `30255637835` passed browser, container,
+  coverage, behavior, database, quality and final validation. Release Candidate Bundle run
+  `30256005213` produced one-day artifact `8649086405` (227,627,328 bytes), digest
+  `sha256:e823a56bb347b63253bd8b8b2a7dc0f5f4d7d4f6ae1e42da8028146a577ca1c9`.
+  Gokhan then explicitly approved the exact artifact promotion plus target-only source repair.
+- Production preflight proved the pinned server and old exact app/runtime SHA
+  `07871d04a863221809c98da0464836308b55d9b9`, root usage 48% with `39,734,500 KiB` free,
+  runtime/scheduler/publish/public-write enabled in `NORMAL`, database concurrency `2`, 16 ACTIVE
+  writers, zero queued/running/cancel-requested/live-lease work, worker `active/running` with zero
+  restarts and internal/public health/readiness `200/200`. The wrapper verified the GitHub run,
+  artifact identity/digest, archive paths and portable image/runtime receipts; migration sets
+  matched. It loaded image ID
+  `sha256:fa6cf2d44b2358a07961718628a3c839747a7eee18a8ac0b4341987640cef6db`,
+  cancelled no run, recreated only the app, atomically switched the immutable runtime and passed
+  shared release plus health/readiness/search smoke. Final checkout, image revision and runtime
+  marker all equal `a04b73e01a277338697876cce74e6d1acc08af87`; no migration or cleanup ran.
+- Authenticated production browser smoke showed `2 · çift lane` selected while the stale
+  capability explanation correctly said only a future 1 → 2 increase needs a fresh capacity
+  measurement. No settings form was submitted. The semantic postflight preserved
+  runtime/scheduler/publish/public-write enabled in `NORMAL`, concurrency `2`, 16 ACTIVE writers,
+  worker zero restarts and health/readiness `200/200`.
+- `apartmanfilozofu` source repair used one exact, hash-checked, confirmation-gated operator script
+  and a target-only advisory profile lock; global society flow was never paused. The transaction
+  waited for the target to have no open run, created seven source rows, updated three, blocked none
+  and added one persona version, leaving ten healthy sources. Manual run
+  `ecfdb630-5c7c-47d3-9505-ff3aab7d4fe1` was the only requested `SOURCE_REFRESH`; it completed
+  `SUCCEEDED`, fetched 160 items from seven sources and correctly emitted
+  `NO_ACTION / SKIPPED` because maintenance runs do not publish. No limit override or run
+  cancellation occurred. Both remote/container temporary scripts and the local operator script
+  were deleted; the exact-SHA worktree returned clean. Root usage ended at 50% with
+  `37,870,416 KiB` free; normal stochastic work resumed independently.
+- Two operator-shell lessons are non-product failures. A first copy command stopped locally before
+  SSH with `zsh: parameter not set` because a remote `awk $1` expression was interpolated inside a
+  local double-quoted command; split guard/copy/execute phases and use a quoted remote heredoc. The
+  successful long-running command later returned SSH status 255 only because its forced TTY stayed
+  at an interactive prompt after the success JSON and was manually closed. Treat the recorded
+  transaction/run state as authoritative, avoid `ssh -tt ... bash -s` for non-interactive
+  operators, and never misclassify post-success PTY teardown as a failed source transaction.
