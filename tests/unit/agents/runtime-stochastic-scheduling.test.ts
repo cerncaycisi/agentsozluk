@@ -65,7 +65,7 @@ describe("stochastic society scheduling", () => {
       credentials: [credential],
       controlPlane,
       provider: unusedProvider,
-      stochasticScheduling: { credential, controlPlane: scheduler },
+      stochasticScheduling: { controlPlane: scheduler },
       now: () => now,
       random: () => 0,
     });
@@ -94,7 +94,7 @@ describe("stochastic society scheduling", () => {
       credentials: [credential],
       controlPlane: idleControlPlane(),
       provider: unusedProvider,
-      stochasticScheduling: { credential, controlPlane: scheduler },
+      stochasticScheduling: { controlPlane: scheduler },
       now: () => now,
     });
 
@@ -125,7 +125,7 @@ describe("stochastic society scheduling", () => {
       credentials: [credential],
       controlPlane: idleControlPlane(),
       provider: unusedProvider,
-      stochasticScheduling: { credential, controlPlane: scheduler },
+      stochasticScheduling: { controlPlane: scheduler },
       now: () => now,
       random: () => 1,
     });
@@ -137,5 +137,38 @@ describe("stochastic society scheduling", () => {
     await worker.runOnce();
 
     expect(scheduler.tickScheduler).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses the refreshed credential roster for scheduling and lease lanes without a restart", async () => {
+    let now = new Date("2026-07-21T12:32:00.000Z");
+    const addedCredential = `agt_${"n".repeat(43)}`;
+    let currentCredentials = [credential];
+    const loadCredentials = vi.fn(async () => [...currentCredentials]);
+    const controlPlane = idleControlPlane();
+    const scheduler: RuntimeStochasticSchedulerControlPlane = {
+      tickScheduler: vi.fn().mockResolvedValue(tickResult()),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "society-worker",
+      credentials: [credential],
+      loadCredentials,
+      controlPlane,
+      provider: unusedProvider,
+      processingLanes: 2,
+      stochasticScheduling: { controlPlane: scheduler },
+      now: () => now,
+      random: () => 0,
+    });
+
+    await worker.runOnce();
+    currentCredentials = [addedCredential, credential];
+    now = new Date(now.getTime() + 2 * 60_000);
+    await worker.runOnce();
+
+    expect(loadCredentials).toHaveBeenCalledTimes(2);
+    expect(scheduler.tickScheduler).toHaveBeenNthCalledWith(1, credential, "society-worker");
+    expect(scheduler.tickScheduler).toHaveBeenNthCalledWith(2, addedCredential, "society-worker");
+    expect(controlPlane.lease).toHaveBeenCalledWith(addedCredential, "society-worker");
+    expect(controlPlane.lease).toHaveBeenCalledWith(credential, "society-worker");
   });
 });

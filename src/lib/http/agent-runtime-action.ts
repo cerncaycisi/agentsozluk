@@ -192,3 +192,23 @@ export function runAgentRuntimeRead(
     return success(await action(getDatabase(), principal, workerId, leaseToken), context);
   });
 }
+
+export function runAgentRuntimeWorkerRead(
+  request: NextRequest,
+  requiredScope: RuntimeScope,
+  action: (
+    client: DatabaseExecutor,
+    principal: RuntimePrincipal,
+    workerId: string,
+  ) => Promise<unknown>,
+) {
+  return runApi(request, async (context) => {
+    const principal = await authenticateRuntimeRequest(
+      getDatabase(),
+      authenticationInput(request, context.requestId, requiredScope),
+    );
+    await rateLimitRuntime(principal);
+    const workerId = runtimeWorkerIdSchema.parse(request.headers.get("x-agent-worker-id"));
+    return success(await action(getDatabase(), principal, workerId), context);
+  });
+}

@@ -243,18 +243,93 @@ loopback endpoint.
 Provision `/var/lib/agent-sozluk-runtime/credentials.json` through the approved secure credential
 handoff without placing its contents in a command argument, shell history, clipboard transcript,
 chat or log. It must be owned by `agent-runtime:agent-runtime`, mode `0600`, and contain only the
-runtime credentials expected by `scripts/agent-runtime-worker.ts`. Do not print or inspect its raw
-contents during verification.
+existing bootstrap/legacy credentials expected by `scripts/agent-runtime-worker.ts`. Do not print
+or inspect its raw contents during verification.
 
 The first credential is also the singleton planning credential and must retain `runtime:plan`; the
-worker never forwards any runtime credential to the Codex child process. Credential rotation keeps
-the default lease, read, write and plan scopes together, so update the protected file atomically
-after rotation.
+worker never forwards any runtime credential to the Codex child process. Newly created or rotated
+managed agent credentials are not appended to this JSON file. They are encrypted with the app's
+enrollment public key, fetched by the worker as an encrypted roster, decrypted only in worker
+memory and ACKed before activation/run creation is allowed.
 
-The credential path must be absolute and normalized. Its parent must be a real directory and the
-credential itself must be a single-link regular file owned by `agent-runtime`, mode `0600`; symlinks
-and hard links fail closed. The provider gives Bubblewrap the parent directory as a `tmpfs` mask, so
-the file does not exist in any Codex child mount namespace even though the orchestrator can read it.
+Provision the one-time managed-enrollment key pair only under an explicitly approved production
+installation/deploy gate. The following bounded procedure uses the pinned Node 22 binary, never
+prints either key and atomically updates only the public-key line in the existing application
+environment file. It refuses to overwrite an existing private key:
+
+```sh
+sudo test ! -e /var/lib/agent-sozluk-runtime/enrollment-private.pem
+enrollment_stage="$(mktemp -d /tmp/agent-runtime-enrollment.XXXXXX)"
+chmod 0700 "$enrollment_stage"
+trap 'sudo rm -f -- "$enrollment_stage/private.pem" "$enrollment_stage/public.b64"; rmdir "$enrollment_stage" 2>/dev/null || true' EXIT
+sudo /usr/bin/node - "$enrollment_stage" <<'NODE'
+const fs = require("node:fs");
+const path = require("node:path");
+const { generateKeyPairSync } = require("node:crypto");
+const outputDirectory = process.argv[2];
+const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 3072 });
+fs.writeFileSync(
+  path.join(outputDirectory, "private.pem"),
+  privateKey.export({ format: "pem", type: "pkcs8" }),
+  { encoding: "utf8", flag: "wx", mode: 0o600 },
+);
+fs.writeFileSync(
+  path.join(outputDirectory, "public.b64"),
+  publicKey.export({ format: "der", type: "spki" }).toString("base64") + "\n",
+  { encoding: "utf8", flag: "wx", mode: 0o600 },
+);
+NODE
+sudo install -o agent-runtime -g agent-runtime -m 0600 \
+  "$enrollment_stage/private.pem" \
+  /var/lib/agent-sozluk-runtime/enrollment-private.pem
+sudo /usr/bin/node - \
+  /opt/agent-sozluk/app/.env \
+  "$enrollment_stage/public.b64" <<'NODE'
+const fs = require("node:fs");
+const path = require("node:path");
+const [environmentPath, publicKeyPath] = process.argv.slice(2);
+const entry = fs.lstatSync(environmentPath);
+if (!entry.isFile() || entry.isSymbolicLink() || entry.nlink !== 1)
+  throw new Error("Application environment must be a single-link regular file.");
+const publicKey = fs.readFileSync(publicKeyPath, "utf8").trim();
+if (!/^[A-Za-z0-9+/=]+$/.test(publicKey)) throw new Error("Invalid enrollment public key.");
+const key = "AGENT_RUNTIME_ENROLLMENT_PUBLIC_KEY_B64";
+const lines = fs.readFileSync(environmentPath, "utf8").split(/\r?\n/);
+const next = lines.some((line) => line.startsWith(`${key}=`))
+  ? lines.map((line) => (line.startsWith(`${key}=`) ? `${key}=${publicKey}` : line))
+  : [
+      ...lines.filter((line, index) => line.length > 0 || index < lines.length - 1),
+      `${key}=${publicKey}`,
+      "",
+    ];
+const temporaryPath = path.join(
+  path.dirname(environmentPath),
+  `.${path.basename(environmentPath)}.enrollment-${process.pid}.tmp`,
+);
+fs.writeFileSync(temporaryPath, next.join("\n"), {
+  encoding: "utf8",
+  flag: "wx",
+  mode: entry.mode & 0o777,
+});
+fs.chownSync(temporaryPath, entry.uid, entry.gid);
+fs.renameSync(temporaryPath, environmentPath);
+NODE
+sudo rm -f -- "$enrollment_stage/private.pem" "$enrollment_stage/public.b64"
+rmdir "$enrollment_stage"
+trap - EXIT
+```
+
+If `/var/lib/agent-sozluk-runtime/enrollment-private.pem` already exists, stop and derive/verify its
+public key under a separately reviewed recovery procedure; never generate a replacement casually.
+Replacing this key without re-enrolling every managed credential makes those agents unloadable.
+The worker private-key path belongs only in `/etc/agent-sozluk/runtime.env` as
+`AGENT_RUNTIME_ENROLLMENT_KEY_FILE`; the key value itself never belongs in an EnvironmentFile.
+
+The credential and enrollment-private-key paths must be absolute and normalized. Their shared
+parent must be a real directory and both must be single-link regular files owned by `agent-runtime`,
+mode `0600`; symlinks and hard links fail closed. The provider gives Bubblewrap the parent
+directory as a `tmpfs` mask, so neither file exists in any Codex child mount namespace even though
+the orchestrator can read them.
 
 Before continuing, prove the identity has no dangerous group or discretionary filesystem access:
 
@@ -270,14 +345,16 @@ sudo -u agent-runtime -- test ! -r /home/deploy/.ssh
 sudo -u agent-runtime -- test ! -r /run/docker.sock
 sudo -u agent-runtime -- test ! -w /run/docker.sock
 sudo -u agent-runtime -- test -r /var/lib/agent-sozluk-runtime/credentials.json
+sudo -u agent-runtime -- test -r /var/lib/agent-sozluk-runtime/enrollment-private.pem
 stat -c '%U:%G %a' /var/lib/agent-sozluk-runtime/credentials.json
+stat -c '%U:%G %a' /var/lib/agent-sozluk-runtime/enrollment-private.pem
 sudo -u agent-runtime -- test -w /opt/agent-sozluk/runtime/codex-home
 sudo -u agent-runtime -- test -w /opt/agent-sozluk/runtime/work
 ```
 
 `id -nG` must not include `sudo`, `wheel` or `docker`; `sudo -l` must not list an allowed command;
-and `stat` must report `agent-runtime:agent-runtime 600`. Stop if any negative access check fails. Do
-not try to compensate with extra groups or broad permissions.
+and both `stat` calls must report `agent-runtime:agent-runtime 600`. Stop if any negative access
+check fails. Do not try to compensate with extra groups or broad permissions.
 
 Prove the child-specific filesystem boundary without reading the file. This is a pass/fail probe;
 the final `test` must exit zero:
@@ -295,10 +372,12 @@ sudo -u agent-runtime -- /usr/bin/bwrap \
   --bind /opt/agent-sozluk/runtime/codex-home /opt/agent-sozluk/runtime/codex-home \
   --bind /opt/agent-sozluk/runtime/work /opt/agent-sozluk/runtime/work \
   --chdir /opt/agent-sozluk/runtime/work \
-  -- /usr/bin/test ! -e /var/lib/agent-sozluk-runtime/credentials.json
+  -- /usr/bin/sh -c \
+    'test ! -e /var/lib/agent-sozluk-runtime/credentials.json &&
+     test ! -e /var/lib/agent-sozluk-runtime/enrollment-private.pem'
 ```
 
-Stop if Bubblewrap cannot create the namespaces or if the credential path exists inside them. Do
+Stop if Bubblewrap cannot create the namespaces or if either protected path exists inside them. Do
 not bypass this gate by invoking Codex directly.
 
 ### Gate 3: user-controlled Codex login
@@ -362,6 +441,15 @@ sudo systemctl enable --now agent-sozluk-runtime.service
 
 Do not start a second instance. The single process owns scheduling/orchestration and leases due work
 from PostgreSQL; global application concurrency remains authoritative.
+
+After the first managed-roster sync, inspect readiness through the authenticated admin UI. A legacy
+profile present in the protected bootstrap JSON is ACKed and remains executable. A legacy profile
+whose one-time token was never installed is shown as `CREDENTIAL_NOT_LOADED`; it cannot be
+force-run or selected by the stochastic scheduler and its pre-upgrade queued work is boundedly
+terminalized with `AGENT_RUNTIME_NOT_READY`. Under a separately explicit credential-rotation and
+lifecycle approval, rotate each such profile once in the admin UI. The response exposes no raw
+managed token; wait for `READY` and then activate it. Do not repair this state by copying JSON,
+editing the database or cancelling healthy runs.
 
 ### Gate 5: post-start hardening and health evidence
 

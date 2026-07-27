@@ -14,7 +14,12 @@ export async function POST(
   return runAgentAdminAction(
     request,
     runtimeCredentialRotationSchema,
-    (client, actor, input) => rotateAgentCredential(client, actor, agentId, input),
+    async (client, actor, input) => {
+      const result = await rotateAgentCredential(client, actor, agentId, input);
+      return result.runtimeEnrollmentManaged
+        ? { ...result, credential: null, credentialShownOnce: false }
+        : result;
+    },
     { storedBodyTransform: redactCreationCredential },
   );
 }

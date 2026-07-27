@@ -105,10 +105,12 @@ export function AgentLifecycleQuickAction({
   agentId,
   username,
   current,
+  onChanged,
 }: {
   agentId: string;
   username: string;
   current: "ACTIVE" | "PAUSED";
+  onChanged?: (status: "ACTIVE" | "PAUSED") => void;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -157,6 +159,7 @@ export function AgentLifecycleQuickAction({
                   idempotency: true,
                 });
                 toast.success(`@${username} ${target} durumuna geçirildi.`);
+                onChanged?.(target);
                 setOpen(false);
                 setReason("");
                 router.refresh();
@@ -204,7 +207,10 @@ export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
   const [reason, setReason] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
-  const [result, setResult] = useState<{ credential: string | null }>();
+  const [result, setResult] = useState<{
+    credential: string | null;
+    runtimeEnrollmentManaged: boolean;
+  }>();
   return (
     <form
       className="space-y-3"
@@ -214,15 +220,15 @@ export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
         setError(undefined);
         setResult(undefined);
         try {
-          const rotation = await apiRequest<{ credential: string | null }>(
-            `/api/v1/admin/agents/${agentId}/credentials/rotate`,
-            {
-              method: "POST",
-              body: { reason },
-              csrf: true,
-              idempotency: true,
-            },
-          );
+          const rotation = await apiRequest<{
+            credential: string | null;
+            runtimeEnrollmentManaged: boolean;
+          }>(`/api/v1/admin/agents/${agentId}/credentials/rotate`, {
+            method: "POST",
+            body: { reason },
+            csrf: true,
+            idempotency: true,
+          });
           toast.success("Runtime credential güvenli biçimde döndürüldü.");
           setResult(rotation);
           setReason("");
@@ -255,7 +261,12 @@ export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
       ) : null}
       {result ? (
         <div className="rounded-xl border border-success/40 bg-success/10 p-4">
-          {result.credential ? (
+          {result.runtimeEnrollmentManaged ? (
+            <p className="text-sm font-bold">
+              Yeni credential worker’a şifreli roster üzerinden otomatik aktarılacak. JSON veya
+              terminal kopyalama gerekmez.
+            </p>
+          ) : result.credential ? (
             <>
               <p className="text-sm font-bold">Yeni credential yalnız şimdi gösterilir:</p>
               <code className="mt-2 block break-all rounded-lg bg-page p-3 text-xs">
@@ -997,7 +1008,37 @@ export function AgentCreateForm({
     id: string;
     credential: string | null;
     username: string;
+    runtimeEnrollmentManaged: boolean;
+    lifecycleStatus: "DRAFT" | "PAUSED" | "ACTIVE";
   }>();
+  const [createdReadiness, setCreatedReadiness] = useState<{
+    ready: boolean;
+    reason: string;
+    syncedAt: string | null;
+  }>();
+
+  useEffect(() => {
+    if (!created?.runtimeEnrollmentManaged || created.lifecycleStatus === "ACTIVE") return;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const poll = async () => {
+      try {
+        const detail = await apiRequest<{
+          runtimeReadiness: { ready: boolean; reason: string; syncedAt: string | null };
+        }>(`/api/v1/admin/agents/${created.id}`);
+        if (stopped) return;
+        setCreatedReadiness(detail.runtimeReadiness);
+        if (!detail.runtimeReadiness.ready) timer = setTimeout(poll, 3000);
+      } catch {
+        if (!stopped) timer = setTimeout(poll, 5000);
+      }
+    };
+    void poll();
+    return () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [created]);
 
   const selectedTemplate = useMemo(
     () => templates.find(({ username }) => username === templateUsername),
@@ -1041,6 +1082,7 @@ export function AgentCreateForm({
         setPending(true);
         setError(undefined);
         setCreated(undefined);
+        setCreatedReadiness(undefined);
         try {
           const effectivePersona = documentDirty ? parsePersonaDocument(document, format) : persona;
           const creation =
@@ -1054,6 +1096,7 @@ export function AgentCreateForm({
           const result = await apiRequest<{
             agent: { profile: { id: string }; user: { username: string } };
             credential: string | null;
+            runtimeEnrollmentManaged: boolean;
           }>("/api/v1/admin/agents", {
             method: "POST",
             body: {
@@ -1073,8 +1116,12 @@ export function AgentCreateForm({
             id: result.agent.profile.id,
             username: result.agent.user.username,
             credential: result.credential,
+            runtimeEnrollmentManaged: result.runtimeEnrollmentManaged,
+            lifecycleStatus,
           });
-          toast.success(`@${result.agent.user.username} PAUSED agent olarak oluşturuldu.`);
+          toast.success(
+            `@${result.agent.user.username} ${lifecycleStatus} agent olarak oluşturuldu.`,
+          );
         } catch (submitError) {
           setError(errorMessage(submitError));
         } finally {
@@ -1198,7 +1245,36 @@ export function AgentCreateForm({
       {created ? (
         <div className="rounded-xl border border-success/40 bg-success/10 p-4">
           <p className="font-bold">@{created.username} oluşturuldu.</p>
-          {created.credential ? (
+          {created.runtimeEnrollmentManaged ? (
+            <>
+              <p className="mt-2 text-sm font-bold">
+                1/3 oluşturuldu · 2/3 worker enrollment{" "}
+                {createdReadiness?.ready
+                  ? "hazır"
+                  : `bekleniyor (${createdReadiness?.reason ?? "ROSTER_SYNC_PENDING"})`}
+                {" · "}3/3 lifecycle {created.lifecycleStatus}
+              </p>
+              {createdReadiness?.ready && created.lifecycleStatus === "PAUSED" ? (
+                <div className="mt-3">
+                  <AgentLifecycleQuickAction
+                    agentId={created.id}
+                    username={created.username}
+                    current="PAUSED"
+                    onChanged={(status) =>
+                      setCreated((current) =>
+                        current ? { ...current, lifecycleStatus: status } : current,
+                      )
+                    }
+                  />
+                </div>
+              ) : null}
+              {created.lifecycleStatus === "ACTIVE" ? (
+                <p className="mt-2 text-sm font-bold text-success">
+                  Hazır: agent stochastic toplum akışınca seçilebilir ve force-run alabilir.
+                </p>
+              ) : null}
+            </>
+          ) : created.credential ? (
             <>
               <p className="mt-2 text-sm">Credential yalnız şimdi gösterilir; güvenli yere alın:</p>
               <code className="mt-2 block break-all rounded-lg bg-page p-3 text-xs">

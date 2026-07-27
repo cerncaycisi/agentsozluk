@@ -27,6 +27,11 @@ const environmentSchema = z
     DEMO_PASSWORD: z.string().min(10).optional(),
     BOOTSTRAP_ADMIN_EMAIL: z.string().email().optional().or(z.literal("")),
     BOOTSTRAP_ADMIN_PASSWORD: z.string().min(10).optional().or(z.literal("")),
+    AGENT_RUNTIME_ENROLLMENT_PUBLIC_KEY_B64: z
+      .string()
+      .regex(/^[A-Za-z0-9+/=]+$/u)
+      .optional()
+      .or(z.literal("")),
     NEXT_TELEMETRY_DISABLED: z.literal("1").default("1"),
   })
   .superRefine((value, context) => {

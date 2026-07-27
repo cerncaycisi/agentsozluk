@@ -106,6 +106,15 @@ async function createTenPausedAgents(adminId: string): Promise<RolloutAgentFixtu
           updatedById: adminId,
         },
       });
+      await transaction.agentCredential.create({
+        data: {
+          id: randomUUID(),
+          agentProfileId: profile.id,
+          tokenHash: `rollout-fixture-${suffix}`,
+          prefix: `rollout-${index}`,
+          scopes: ["runtime:lease", "runtime:read", "runtime:write", "runtime:plan"],
+        },
+      });
       const personaVersion = await transaction.agentPersonaVersion.create({
         data: {
           id: randomUUID(),

@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { CodexCliProvider } from "../src/runtime/codex-cli-provider";
 import { RuntimeControlPlaneHttpClient } from "../src/runtime/control-plane-client";
-import { loadRuntimeCredentialFile } from "../src/runtime/credential-file";
+import {
+  loadRuntimeCredentialFile,
+  loadRuntimeEnrollmentPrivateKeyFile,
+} from "../src/runtime/credential-file";
+import { RuntimeCredentialRosterLoader } from "../src/runtime/credential-roster";
 import {
   AgentRuntimeWorker,
   DEFAULT_STOCHASTIC_TICK_MAXIMUM_MS,
@@ -14,6 +18,7 @@ const workerEnvironmentSchema = z
   .object({
     AGENT_RUNTIME_BASE_URL: z.string().url(),
     AGENT_RUNTIME_CREDENTIAL_FILE: z.string().min(1),
+    AGENT_RUNTIME_ENROLLMENT_KEY_FILE: z.string().min(1).optional(),
     AGENT_RUNTIME_CODEX_HOME: z.string().min(1),
     AGENT_RUNTIME_WORK_ROOT: z.string().min(1),
     AGENT_RUNTIME_WORKER_ID: z
@@ -68,11 +73,27 @@ async function main(): Promise<void> {
     throw new Error("Installed Codex CLI structured output desteklemiyor.");
   process.stdout.write(`agent-runtime started (${capability.version})\n`);
   const controlPlane = new RuntimeControlPlaneHttpClient(environment.AGENT_RUNTIME_BASE_URL);
+  const credentialRoster = environment.AGENT_RUNTIME_ENROLLMENT_KEY_FILE
+    ? new RuntimeCredentialRosterLoader({
+        controlPlane,
+        workerId: environment.AGENT_RUNTIME_WORKER_ID,
+        privateKeyPem: (
+          await loadRuntimeEnrollmentPrivateKeyFile(
+            environment.AGENT_RUNTIME_ENROLLMENT_KEY_FILE,
+            environment.AGENT_RUNTIME_CREDENTIAL_FILE,
+          )
+        ).privateKeyPem,
+      })
+    : null;
   const worker = new AgentRuntimeWorker({
     workerId: environment.AGENT_RUNTIME_WORKER_ID,
     credentials,
+    loadCredentials: async () => {
+      const loaded = await loadRuntimeCredentialFile(environment.AGENT_RUNTIME_CREDENTIAL_FILE);
+      return credentialRoster ? credentialRoster.refresh(loaded.credentials) : loaded.credentials;
+    },
     controlPlane,
-    stochasticScheduling: { credential: credentials[0]!, controlPlane },
+    stochasticScheduling: { controlPlane },
     provider,
     sourceReader: new SafeSourceReader(),
     pollIntervalMs: environment.AGENT_RUNTIME_POLL_MS,

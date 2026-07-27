@@ -99,9 +99,11 @@ public dispatch mekanizmasıdır.
 
 ## Runtime credential modeli
 
-Runtime bearer biçimi `agt_` prefix'li opaque token'dır. Database yalnız SHA-256 hash, kısa prefix,
-scope, expiry, revoke ve last-used metadata'sı saklar. Raw değer yalnız worker'ın korumalı
-credential dosyasında bulunur; admin paneline veya API response'una tekrar döndürülmez.
+Runtime bearer biçimi `agt_` prefix'li opaque token'dır. Database SHA-256 hash, kısa prefix, scope,
+expiry, revoke ve last-used metadata'sını saklar. Yeni/rotate edilmiş credential ayrıca worker'ın
+public RSA anahtarıyla OAEP-SHA256 şifrelenmiş bir enrollment envelope'u taşır; raw token database'e
+yazılmaz. Private key yalnız worker'ın korumalı dizinindedir. Uygulama envelope'u açamaz; Codex
+child private key'i veya runtime credential dizinini göremez.
 
 | Scope           | Yetki                                                      |
 | --------------- | ---------------------------------------------------------- |
@@ -110,10 +112,24 @@ credential dosyasında bulunur; admin paneline veya API response'una tekrar dön
 | `runtime:write` | Heartbeat, source sonucu, action, memory ve terminal sonuç |
 | `runtime:plan`  | İdempotent stochastic toplum tick'ini çalıştırma           |
 
-Credential ancak `AGENT + USER + ACTIVE`, `loginDisabled=true` account'a bağlıysa geçerlidir.
-Browser session internal runtime API'de reddedilir. Ters yönde, runtime credential admin control
-plane'e erişemez. Credential rotation eski token'ı revoke eder; protected dosya güvenli kanaldan
-atomik güncellenmelidir.
+Credential ancak `AGENT + USER + ACTIVE`, `loginDisabled=true` account'a bağlıysa lease/write için
+geçerlidir. Browser session internal runtime API'de reddedilir. Ters yönde, runtime credential
+admin control plane'e erişemez.
+
+Worker her loop başında korumalı bootstrap dosyasını yeniden okur, managed roster'ı loopback
+internal API'den çeker, envelope'ları yalnız process memory'sinde açar ve yüklediği credential
+kimliklerini exact roster fingerprint'iyle ACK eder. Bootstrap dosyasındaki legacy tokenlar da
+authenticated identity endpoint'iyle UUID'ye çözülür; server yalnız gerçekten ACK edilen legacy
+profili worker-ready sayar. Böylece dosyaya hiç eklenmemiş eski bir agent varsayımsal olarak hazır
+görünmez. Yeni agent `PAUSED` oluşturulur. Fresh ACK gelmeden lifecycle `ACTIVE`, tekli run ve bulk
+preview/create çağrıları `AGENT_RUNTIME_NOT_READY` ile fail-closed durur. Admin paneli bu beklemeyi
+ve readiness sonucunu gösterir; credential JSON'u kopyalama veya sırf yeni agent için worker
+restartı gerekmez.
+
+Credential rotation eski token'ı transaction içinde revoke eder ve yeni managed envelope'u
+oluşturur. Worker sonraki loop'ta roster'ı yeniler. Production enrollment public/private key
+yapılandırması yoksa create/rotate işlemi `AGENT_RUNTIME_ENROLLMENT_UNAVAILABLE` ile durur; sessizce
+legacy handoff'a düşmez.
 
 Per-lease fencing token runtime credential değildir. Yalnız internal lease response'unda döner,
 worker memory'sinde tutulur ve context GET için `X-Agent-Lease-Token`, diğer post-lease çağrılarda
@@ -126,7 +142,7 @@ eşleşiyorsa `AgentRun` üzerinden yeniden ekler. Terminal, expired veya reclai
 lease replay'i `409 AGENT_RUN_LEASE_INVALID` alır; tombstone korunduğu için aynı key yeni claim
 çalıştıramaz. Boş lease response'u normal biçimde replay edilir.
 
-Credential dosyası şu şekli taşır; gerçek değer repository'ye veya loga yazılmaz:
+Bootstrap credential dosyası şu şekli taşır; gerçek değer repository'ye veya loga yazılmaz:
 
 ```json
 {
@@ -134,11 +150,12 @@ Credential dosyası şu şekli taşır; gerçek değer repository'ye veya loga y
 }
 ```
 
-Worker dosyanın group/other izinleri açıkken başlamaz. Production artifact'i mode `0600` ve yalnız
-`agent-runtime` kullanıcısının erişimiyle kurulmalıdır. Dosya mutlak/normalize bir yolda, symlink
-olmayan gerçek bir parent altında, tek-link normal dosya olmalıdır. Provider parent dizini her Codex
-child mount namespace'inde `tmpfs` ile kapatır; token yalnız orchestrator memory'sinde ve HTTP client
-çağrılarında kalır.
+Bu dosya mevcut bootstrap/legacy credential'ları taşır; yeni managed agent token'ları buraya
+eklenmez. Worker dosyanın group/other izinleri açıkken başlamaz. Production artifact'i mode `0600`
+ve yalnız `agent-runtime` kullanıcısının erişimiyle kurulmalıdır. Enrollment private key de aynı
+korumalı parent altında, mode `0600`, tek-link normal dosya ve aynı owner/group ile tutulur. Her iki
+yol mutlak/normalize olmalıdır. Provider parent dizini her Codex child mount namespace'inde `tmpfs`
+ile kapatır; credential ve private key yalnız orchestrator memory'sinde kalır.
 
 ## Codex CLI adapter sınırı
 

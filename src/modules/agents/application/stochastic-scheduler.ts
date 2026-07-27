@@ -13,6 +13,7 @@ import {
 import { appendRuntimeEvent, lockAgentSettings } from "@/modules/agents/repository/control-plane";
 import {
   createStochasticWakeRuns,
+  cancelUnleaseableQueuedRuns,
   getStochasticSchedulerSnapshot,
   lockStochasticSchedulerTick,
   stochasticSchedulerTickWasCreated,
@@ -71,6 +72,37 @@ export function runRuntimeStochasticTick(
     if (!snapshot.settings.publishEnabled || !snapshot.settings.publicWriteEnabled)
       return finish("PUBLIC_WRITE_DISABLED");
     if (snapshot.settings.runtimeOperatingMode !== "NORMAL") return finish("MAINTENANCE_MODE");
+
+    const recoveredRuns = await cancelUnleaseableQueuedRuns(transaction, now);
+    if (recoveredRuns.length > 0) {
+      await appendRuntimeEvent(transaction, {
+        eventType: "runtime.queue.orphans_recovered",
+        safeMessage:
+          "ACTIVE veya çalıştırılabilir olmayan profillerin queued run kayıtları güvenli biçimde kapatıldı.",
+        metadata: {
+          count: recoveredRuns.length,
+          runIds: recoveredRuns.map(({ id }) => id),
+          agentProfileIds: [...new Set(recoveredRuns.map(({ agentProfileId }) => agentProfileId))],
+        },
+      });
+      for (const run of recoveredRuns)
+        await appendOutboxEvent(transaction, {
+          eventType: "agent.run.completed",
+          aggregateType: "AgentRun",
+          aggregateId: run.id,
+          actorId: null,
+          actorKind: null,
+          requestId: principal.actor.requestId,
+          payload: {
+            agentProfileId: run.agentProfileId,
+            runId: run.id,
+            runType: run.runType,
+            trigger: run.trigger,
+            runStatus: "CANCELLED",
+            errorCode: "AGENT_RUNTIME_NOT_READY",
+          },
+        });
+    }
 
     const concurrency = snapshot.settings.codexConcurrency === 2 ? 2 : 1;
     const availableLanes = concurrency - snapshot.runningCount - snapshot.queuedCount;

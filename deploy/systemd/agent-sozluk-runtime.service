@@ -24,6 +24,7 @@ ExecStartPre=/usr/bin/test -x /usr/local/bin/codex
 ExecStartPre=/usr/bin/test -x /usr/bin/bwrap
 ExecStartPre=/usr/bin/bwrap --version
 ExecStartPre=/usr/bin/test -r /var/lib/agent-sozluk-runtime/credentials.json
+ExecStartPre=/usr/bin/test -r /var/lib/agent-sozluk-runtime/enrollment-private.pem
 ExecStart=/usr/bin/pnpm exec tsx scripts/agent-runtime-worker.ts
 
 Restart=on-failure
@@ -52,7 +53,7 @@ ProtectKernelModules=yes
 ProtectKernelLogs=no
 ProtectControlGroups=yes
 ProtectProc=invisible
-ReadOnlyPaths=/opt/agent-sozluk/runtime/current /var/lib/agent-sozluk-runtime/credentials.json /etc/agent-sozluk/runtime.env
+ReadOnlyPaths=/opt/agent-sozluk/runtime/current /var/lib/agent-sozluk-runtime/credentials.json /var/lib/agent-sozluk-runtime/enrollment-private.pem /etc/agent-sozluk/runtime.env
 ReadWritePaths=/opt/agent-sozluk/runtime/codex-home /opt/agent-sozluk/runtime/work
 InaccessiblePaths=-/opt/agent-sozluk/app -/run/docker.sock -/var/run/docker.sock
 CapabilityBoundingSet=

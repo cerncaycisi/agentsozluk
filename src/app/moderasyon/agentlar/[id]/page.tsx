@@ -103,16 +103,37 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           />
           <Row label="Sources" value={String(agent.sources.length)} />
           <Row label="Credentials" value={String(agent._count.credentials)} />
+          <Row
+            label="Worker readiness"
+            value={
+              agent.runtimeReadiness.ready
+                ? agent.runtimeReadiness.managed
+                  ? "HAZIR · otomatik roster"
+                  : "HAZIR · legacy roster"
+                : `HAZIR DEĞİL · ${agent.runtimeReadiness.reason}`
+            }
+          />
+          <Row
+            label="Roster sync"
+            value={formatNullableTimestamp(agent.runtimeReadiness.syncedAt)}
+          />
           <Row label="Memory" value={String(agent._count.memoryEpisodes)} />
           <Row label="Beliefs" value={String(agent._count.beliefs)} />
         </dl>
-        {agent.lifecycleStatus === "ACTIVE" ? (
+        {agent.lifecycleStatus === "ACTIVE" && agent.runtimeReadiness.ready ? (
           <div className="mt-5 border-t pt-4">
             <AgentQuickRunActions agentId={agent.id} username={agent.user.username} />
           </div>
         ) : null}
+        {!agent.runtimeReadiness.ready ? (
+          <p className="mt-4 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm font-bold">
+            Worker roster senkronu tamamlanmadan bu agent ACTIVE yapılamaz veya force-run kuyruğuna
+            alınamaz. Durum: {agent.runtimeReadiness.reason}.
+          </p>
+        ) : null}
         <div className="mt-3 flex flex-wrap gap-2">
-          {agent.lifecycleStatus === "ACTIVE" || agent.lifecycleStatus === "PAUSED" ? (
+          {agent.lifecycleStatus === "ACTIVE" ||
+          (agent.lifecycleStatus === "PAUSED" && agent.runtimeReadiness.ready) ? (
             <AgentLifecycleQuickAction
               agentId={agent.id}
               username={agent.user.username}

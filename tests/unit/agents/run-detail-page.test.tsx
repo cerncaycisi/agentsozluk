@@ -164,6 +164,12 @@ describe("agent run detail admin page", () => {
         user: { displayName: "Katman İzci", username: "katmanizci" },
         lifecycleStatus: "ACTIVE",
         runtimeStatus: "RUNNING",
+        runtimeReadiness: {
+          ready: true,
+          mode: "LEGACY",
+          reason: "LEGACY_UNVERIFIED",
+          syncedAt: null,
+        },
         lastHeartbeatAt: run.heartbeatAt,
         currentRun: {
           id: run.id,

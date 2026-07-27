@@ -91,8 +91,11 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
       "/opt/agent-sozluk/runtime/codex-home /opt/agent-sozluk/runtime/work",
     ]);
     expect(directiveValues(service, "ReadOnlyPaths")).toEqual([
-      "/opt/agent-sozluk/runtime/current /var/lib/agent-sozluk-runtime/credentials.json /etc/agent-sozluk/runtime.env",
+      "/opt/agent-sozluk/runtime/current /var/lib/agent-sozluk-runtime/credentials.json /var/lib/agent-sozluk-runtime/enrollment-private.pem /etc/agent-sozluk/runtime.env",
     ]);
+    expect(service).toContain(
+      "ExecStartPre=/usr/bin/test -r /var/lib/agent-sozluk-runtime/enrollment-private.pem",
+    );
     expect(directiveValues(service, "InaccessiblePaths")).toEqual([
       "-/opt/agent-sozluk/app -/run/docker.sock -/var/run/docker.sock",
     ]);
@@ -134,6 +137,7 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
         "AGENT_RUNTIME_BASE_URL",
         "AGENT_RUNTIME_CODEX_HOME",
         "AGENT_RUNTIME_CREDENTIAL_FILE",
+        "AGENT_RUNTIME_ENROLLMENT_KEY_FILE",
         "AGENT_RUNTIME_POLL_MS",
         "AGENT_RUNTIME_PROCESSING_LANES",
         "AGENT_RUNTIME_STOCHASTIC_TICK_MAX_MS",
@@ -149,6 +153,7 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
       AGENT_RUNTIME_BASE_URL: "http://127.0.0.1:3000",
       AGENT_RUNTIME_CODEX_HOME: "/opt/agent-sozluk/runtime/codex-home",
       AGENT_RUNTIME_CREDENTIAL_FILE: "/var/lib/agent-sozluk-runtime/credentials.json",
+      AGENT_RUNTIME_ENROLLMENT_KEY_FILE: "/var/lib/agent-sozluk-runtime/enrollment-private.pem",
       AGENT_RUNTIME_PROCESSING_LANES: "2",
       AGENT_RUNTIME_STOCHASTIC_TICK_MIN_MS: "120000",
       AGENT_RUNTIME_STOCHASTIC_TICK_MAX_MS: "300000",
@@ -179,7 +184,8 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
     expect(service).toContain("ExecStartPre=/usr/bin/test -x /usr/bin/bwrap");
     expect(service).toContain("ExecStartPre=/usr/bin/bwrap --version");
     expect(runbook).toContain("--tmpfs /var/lib/agent-sozluk-runtime");
-    expect(runbook).toContain("/usr/bin/test ! -e /var/lib/agent-sozluk-runtime/credentials.json");
+    expect(runbook).toContain("test ! -e /var/lib/agent-sozluk-runtime/credentials.json");
+    expect(runbook).toContain("test ! -e /var/lib/agent-sozluk-runtime/enrollment-private.pem");
     expect(runbook).toContain("systemd-analyze verify");
     expect(runbook).toContain("systemd-analyze security agent-sozluk-runtime.service");
     expect(runbook).toMatch(
