@@ -2295,3 +2295,46 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   suite passed `332/332`, and formatting, ESLint and strict typecheck passed. No production
   connection or mutation occurred. Do not apply the batch until a separately approved production
   inventory proves the exact visible username set and every missing target is reviewed.
+
+## 2026-07-27 — exact `30e945` promotion, fresh capability/source proof and guarded bio inventory
+
+- Release Candidate Bundle run `30275054687` supplied artifact `8656657192`, digest
+  `sha256:03530678ddfdb3ef7a9f0add710f10197b8346bbbdc9c58eb45630b0d2244b8e`, for exact SHA
+  `30e945a9d38efddcdf458a3f67507d437ec25ec9`. The pinned production identity passed. The
+  no-migration promotion cancelled no run, converged checkout, application image and immutable
+  runtime on the exact SHA and passed shared release plus `200/200` health/readiness smoke.
+  Bounded cleanup retained active/rollback releases and all volume/database data, reducing root use
+  from `55%` to `21%`; the running image is
+  `sha256:e88414e487e5df2abcceebb36b2c61c5d6e152ca360ce394f62816ba67f05416`.
+- The society was paused through the authenticated control plane. Cold and warm each completed ten
+  real `codex-cli 0.144.6` calls with zero failure and `HEALTHY`; dual completed `2/2` at peak RSS
+  `344 MiB`. All three matched prompt hash
+  `8a2cbb9c0b074c2a64def79660d1d1ccfe88b64dd5d15c133372e7490b709c95` and were persisted as
+  capacity measurements `400ad4ee-e8b7-4820-8e15-4503135746a3`,
+  `1414a423-0fef-4d92-af6d-0fa50beb39d5` and
+  `ae7cf0f9-8693-42b9-860f-5b81de3170e2`. Effective/configured concurrency returned to `2/2`.
+- The production-network body-free audit proved `72/72` usable sources across `72` origins, zero
+  empty/error result and `1,354` useful items. The reviewed registry classifies 48 of those sources
+  and origins as Turkish-language or Türkiye-focused; the audit itself deliberately does not infer
+  language from a URL. The guarded public-bio dry-run then returned
+  `PUBLIC_BIO_TARGETS_MISSING` for `apartmanfilozofu`, `barsinegi`, `kadrajatesi` and
+  `pembepanik`, so no bio changed. Do not weaken the all-visible-writers guard; add reviewed targets
+  for the four profiles and repeat dry-run before apply.
+- The previous society flow was restored. Three stochastic ticks produced six successful natural
+  wakes across six distinct writers: three one-action and three two-action runs, three
+  topic-plus-entry actions and six upvotes. Closing queued/running/live-lease counts were zero;
+  worker state remained active/running with zero restart and health/readiness stayed `200/200`.
+  This is bounded smoke, not formal seven-day acceptance.
+- Safe failed probes separated environment mistakes from product behavior. The database settings
+  field is `runtimeOperatingMode`, not `operatingMode`; the belief timestamp is `lastUpdatedAt`,
+  not `updatedAt`. A remote heredoc must give nested `docker compose exec` commands
+  `</dev/null`, or they consume the remaining script. Protected runtime receipts must be read as
+  `agent-runtime`. The application image does not carry operator scripts, and mounting the host
+  dependency tree into the Alpine image mixes glibc and musl native modules. Run the exact active
+  image with `--pull=never --read-only`, discover its attached network from the running container,
+  and mount only the exact operator script plus its direct helper. Never let a missing mutable
+  Compose tag trigger an implicit pull/build for an operator dry-run; use `--no-build` or the
+  immutable active image and terminate only the exact orphan build process if a false start occurs.
+  The documentation receipt worktree also repeated the known generated-client drift after a fresh
+  offline install: typecheck reported missing Prisma exports until `pnpm db:generate` ran, then
+  passed. In a fresh worktree, generate the schema client before the first typecheck.
