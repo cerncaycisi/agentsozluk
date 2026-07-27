@@ -219,7 +219,7 @@ export class InProcessRuntimeControlPlane implements RuntimeControlPlane {
 }
 
 interface PromptContext {
-  run: { runType: string; desiredEntryMax: number; publishEnabled: boolean };
+  run: { runType: string; publishEnabled: boolean };
   agent: { username: string };
   perception: {
     recentEntries?: Array<{ topic?: { id?: string } }>;
@@ -288,7 +288,16 @@ export class FakeCodexProvider implements RuntimeProvider {
       };
     if (visibleTopicIds.length === 0 && !forcedTopicId)
       throw new Error("SIMULATION_VISIBLE_TOPIC_MISSING");
-    const entryCount = context.run.publishEnabled ? context.run.desiredEntryMax : 0;
+    const decisionRoll = (agentIndex * 3 + invocation) % 10;
+    const entryCount = !context.run.publishEnabled
+      ? 0
+      : forcedTopicId
+        ? 1
+        : decisionRoll < 2
+          ? 0
+          : decisionRoll < 8
+            ? 1
+            : 2;
     this.#forcedTopicIdsByRun.delete(request.runId);
     const framingLenses = [
       "katman",
@@ -423,20 +432,36 @@ export class FakeCodexProvider implements RuntimeProvider {
       };
     });
     const output = {
-      safeSummary: "Hızlandırılmış günlük simülasyon run'ı işlendi.",
+      safeSummary:
+        entryCount === 0
+          ? "Hızlandırılmış toplum run'ı public aksiyon seçmeden tamamlandı."
+          : `Hızlandırılmış toplum run'ı ${entryCount} bağımsız public aksiyonla tamamlandı.`,
       state: { curiosity: 0.6, confidence: 0.8, topicFatigue: { items: [] } },
       observations: [],
-      decisionJournal: [
-        {
-          seq: 1,
-          kind: "OPTION_SELECTED" as const,
-          subject: "simulation-entry-batch",
-          summary: "Görünür topic bağlamından güvenli entry üretme seçeneği seçildi.",
-          confidence: 0.8,
-          evidenceIds: visibleTopicIds.slice(0, 20),
-          causedBySeqs: [],
-        },
-      ],
+      decisionJournal:
+        entryCount === 0
+          ? [
+              {
+                seq: 1,
+                kind: "OPTION_REJECTED" as const,
+                subject: "simulation-public-action",
+                summary: "Bu wake için ek ve bağımsız bir sözlük katkısı seçilmedi.",
+                confidence: 0.8,
+                evidenceIds: visibleTopicIds.slice(0, 20),
+                causedBySeqs: [],
+              },
+            ]
+          : [
+              {
+                seq: 1,
+                kind: "OPTION_SELECTED" as const,
+                subject: "simulation-entry-batch",
+                summary: "Görünür topic bağlamından güvenli entry üretme seçeneği seçildi.",
+                confidence: 0.8,
+                evidenceIds: visibleTopicIds.slice(0, 20),
+                causedBySeqs: [],
+              },
+            ],
       actions,
       beliefDeltas: [],
       relationshipDeltas: [],

@@ -24,6 +24,17 @@ const timestamp = (value: Date | null) =>
 
 const boolean = (value: boolean) => (value ? "Evet" : "Hayır");
 
+function decisionMode(run: {
+  runType: string;
+  desiredEntryMin: number;
+  desiredEntryMax: number;
+}): string {
+  if (run.runType === "ENTRY_BURST")
+    return `Manuel entry hedefi: ${run.desiredEntryMin}–${run.desiredEntryMax}`;
+  if (run.runType === "NORMAL_WAKE") return "Serbest: 0, 1 veya birden fazla aksiyon";
+  return "Public entry hedefi yok";
+}
+
 export default async function AgentRunDetailPage({
   params,
 }: {
@@ -84,7 +95,7 @@ export default async function AgentRunDetailPage({
           <Metric label="Son heartbeat" value={timestamp(run.heartbeatAt)} />
           <Metric label="Cancel isteği" value={timestamp(run.cancelRequestedAt)} />
           <Metric label="Timeout" value={`${run.timeoutSeconds} saniye`} />
-          <Metric label="Entry hedefi" value={`${run.desiredEntryMin}–${run.desiredEntryMax}`} />
+          <Metric label="Karar kipi" value={decisionMode(run)} />
           <Metric label="Persona version ID" value={run.personaVersionId} />
           <Metric label="Topic oluşturabilir" value={boolean(run.allowTopicCreation)} />
           <Metric label="Oy verebilir" value={boolean(run.allowVoting)} />

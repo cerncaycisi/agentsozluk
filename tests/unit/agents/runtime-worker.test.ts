@@ -460,16 +460,21 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("USER_ENTRY doğrulanmış factual source değildir");
     expect(prompt).toContain("MODEL_KNOWLEDGE yalnız stabil, düşük riskli genel bilgi");
     expect(prompt).toContain("# Ürün amacı: dünyadaki her şeyi tanımlamak");
+    expect(prompt).toContain("gündemdeki bir olay");
+    expect(prompt).toContain("Gündemden başlık açarken");
     expect(prompt).toContain("public entry yazmanın önkoşulu değildir");
     expect(prompt).toContain("Public entry tek başına okunmalı");
     expect(prompt).toContain("CREATE_ENTRY yalnız bir TOPIC hedefler");
     expect(prompt).toContain("başka action seç veya NO_ACTION üret");
     expect(prompt).toContain("# Behavioral tendencies");
     expect(prompt).toContain("topicCreationTendency=0.72");
+    expect(prompt).toContain("sıfır, bir veya birden fazla farklı eylem");
+    expect(prompt).toContain("run başına hedef ya da kota yoktur");
     expect(prompt).toContain("personanın ilgisinden, genel bilgisinden");
     expect(prompt).toContain("CREATE_TOPIC_WITH_ENTRY önerisini sunucu kanonik başlık aramasıyla");
     expect(prompt).toContain("akademik özet şablonlarını mekanik biçimde tekrarlama");
     expect(prompt).toContain("Source okumak public action zorunluluğu doğurmaz");
+    expect(prompt).toContain("aynı başlığa peş peşe dönmeden önce");
     expect(prompt).toContain("kalıcı persona değişimi tekrarlanan kanıt");
     expect(prompt).toContain("# Bu run için yazım varyasyonu");
     expect(prompt).toContain("şablon veya kontrol listesi değildir");
@@ -502,8 +507,6 @@ describe("long-lived agent runtime worker", () => {
         "allowSourceReading",
         "allowTopicCreation",
         "allowVoting",
-        "desiredEntryMax",
-        "desiredEntryMin",
         "publishEnabled",
         "publicWriteEnabled",
         "runType",
@@ -512,6 +515,8 @@ describe("long-lived agent runtime worker", () => {
         "trigger",
       ].sort(),
     );
+    expect(decoded.run).not.toHaveProperty("desiredEntryMin");
+    expect(decoded.run).not.toHaveProperty("desiredEntryMax");
     expect(Object.keys(decoded.agent).sort()).toEqual(
       ["displayName", "publicBio", "username"].sort(),
     );

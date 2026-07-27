@@ -213,6 +213,9 @@ describe("agent run detail admin page", () => {
     expect(html).toContain("Run güvenle tamamlandı.");
     expect(html).toContain("PLATFORM_EVENT");
     expect(html).toContain("Validation result");
+    expect(html).toContain("Karar kipi");
+    expect(html).toContain("Serbest: 0, 1 veya birden fazla aksiyon");
+    expect(html).not.toContain("Entry hedefi");
     expect(html).toContain('href="/entry/421"');
     expect(html).toContain(`href=\"/moderasyon/agent-icerikleri?runId=${runId}\"`);
     expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");

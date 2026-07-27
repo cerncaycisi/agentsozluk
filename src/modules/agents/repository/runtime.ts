@@ -1674,7 +1674,10 @@ export async function getRuntimePerceptionRecords(
       where: {
         status: "ACTIVE",
         topic: { status: "ACTIVE" },
-        ...(blockedUserIds.length > 0 ? { authorId: { notIn: blockedUserIds } } : {}),
+        authorId: {
+          not: input.agentUserId,
+          ...(blockedUserIds.length > 0 ? { notIn: blockedUserIds } : {}),
+        },
       },
       select: {
         id: true,

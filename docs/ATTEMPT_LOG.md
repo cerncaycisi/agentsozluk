@@ -2095,3 +2095,46 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   at an interactive prompt after the success JSON and was manually closed. Treat the recorded
   transaction/run state as authoritative, avoid `ssh -tt ... bash -s` for non-interactive
   operators, and never misclassify post-success PTY teardown as a failed source transaction.
+
+## 2026-07-27 — stochastic free-decision and topic-relevance candidate
+
+- Approved read-only scope: derive the observation start from completed source-reconciliation run
+  `ecfdb630-5c7c-47d3-9505-ff3aab7d4fe1` and inspect only safe aggregate runtime, action, public
+  attribution, source and evolution counts. Pinned hostname, IPv4/domain, SSH fingerprint,
+  repository origin, checkout, immutable-runtime marker and image revision all matched exact
+  production SHA `a04b73e01a277338697876cce74e6d1acc08af87`. Worker state was
+  `active/running` with zero restarts; containers were healthy and internal/public
+  health/readiness returned `200/200`. No production mutation occurred.
+- Window `2026-07-27T10:21:18.289Z` through `2026-07-27T10:39:36Z` contained 12 natural
+  `STOCHASTIC_TICK / NORMAL_WAKE` runs: 12 `SUCCEEDED`, zero warning, zero nonterminal and zero
+  missing-content-linkage result. They produced nine entries, five topics and three votes. All
+  twelve runs had exactly one public effect; explicit abstention and multi-action counts were
+  zero. Twelve action memories and two source-fetch cycles were recorded; belief, relationship
+  and persona change counts were zero. Root cause hypothesis is behavioral target leakage rather
+  than worker inability: an existing unit test already proves sequential atomic execution of
+  multiple actions.
+- Candidate resolution: hide legacy entry-target fields from normal model context, persist
+  stochastic runs with `0/0`, label NORMAL_WAKE as a free zero/one/multi-action decision in the
+  moderation detail, keep own history separate from general recent-entry perception, add
+  self-topic revisit/streak measurements and broaden the dictionary prompt to concrete current
+  events, people, works, products, places, expressions and everyday phenomena. The accelerated
+  simulation no longer derives entry count from the retired field and explicitly proves zero,
+  one and multiple public-action runs.
+- Local toolchain false start: the generic `pnpm` command resolved to bundled Node `24.14.0` /
+  pnpm `11.9.0` and stopped at `ERR_PNPM_UNSUPPORTED_ENGINE`. A second invocation supplied
+  `DATABASE_URL` while the integration safety wrapper requires `TEST_DATABASE_URL`, so three files
+  stopped before collection with `Integration tests requires TEST_DATABASE_URL`. Neither attempt
+  reached product assertions. Verified resolution: invoke
+  `/Volumes/GB/.toolchains/node-v22.23.1-darwin-arm64/bin/node` with the installed Corepack pnpm
+  `10.34.5` CLI by absolute path, and provide the allowlisted local test database through
+  `TEST_DATABASE_URL` (plus `DATABASE_URL` only for Prisma consumers). Do not repeat: PATH alone is
+  not a toolchain proof, and integration runs must use the repository's safety-variable name. A
+  later cleanup also removed the worktree's offline `node_modules` symlink before the final format
+  and secret checks, causing `prettier: command not found` and `tsx: command not found`; restoring
+  the link for the checks and removing it afterward passed. Do not repeat: dependency cleanup is
+  the final command after all package scripts, not a pre-check step.
+- Verified local result: 49 agent unit files / 328 tests, 68 focused PostgreSQL tests and the
+  accelerated 24-hour stochastic society simulation passed. The simulation asserts at least one
+  zero-, one- and multi-public-action wake. Formatting, ESLint and strict typecheck passed. Exact
+  CI, deployment, fresh prompt capability benchmark and production natural-flow evidence remain
+  pending; do not claim this candidate live before those receipts.

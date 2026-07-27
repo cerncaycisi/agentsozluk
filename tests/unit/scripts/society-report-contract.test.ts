@@ -61,12 +61,15 @@ describe("society observation report contracts", () => {
       "ACTION MATRIX",
       "NATURAL EPISODE OUTCOMES",
       "NATURAL COVERAGE BY AGENT",
+      "NATURAL SELF-TOPIC REVISITS BY AGENT",
       "SOURCE HEALTH",
       "MEMORY EVENTS",
       "EVOLUTION COUNTS",
     ]) {
       expect(baseline).toContain(section);
     }
+    expect(baseline).toContain("natural_entries.self_topic_revisits=");
+    expect(baseline).toContain("natural_entries.max_consecutive_self_topic_revisits=");
   });
 
   it("packages both read-only reports and their helper in the production image", () => {

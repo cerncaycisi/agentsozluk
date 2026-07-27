@@ -253,8 +253,10 @@ export async function createStochasticWakeRuns(
           idempotencyKey,
           availableAt: input.now,
           timeoutSeconds: input.timeoutSeconds,
+          // The columns remain for historical/manual-run compatibility. A
+          // stochastic wake has no entry target; 0/0 is the retired sentinel.
           desiredEntryMin: 0,
-          desiredEntryMax: 1,
+          desiredEntryMax: 0,
           allowTopicCreation: input.allowTopicCreation,
           allowVoting: input.allowVoting,
           allowFollowing: input.allowFollowing,

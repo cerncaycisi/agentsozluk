@@ -149,7 +149,13 @@ describe("accelerated 24-hour stochastic agent society simulation", () => {
         include: { entry: { select: { normalizedBody: true } } },
       }),
       integrationDatabase.agentRun.findMany({
-        select: { agentProfileId: true, runType: true, runStatus: true, trigger: true },
+        select: {
+          agentProfileId: true,
+          runType: true,
+          runStatus: true,
+          trigger: true,
+          actions: { select: { actionType: true } },
+        },
       }),
       integrationDatabase.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } }),
     ]);
@@ -167,6 +173,12 @@ describe("accelerated 24-hour stochastic agent society simulation", () => {
       ),
     ).toHaveLength(0);
     expect(stochasticRuns.every(({ runType }) => runType === "NORMAL_WAKE")).toBe(true);
+    const publicActionCounts = stochasticRuns.map(
+      ({ actions }) => actions.filter(({ actionType }) => actionType !== "NO_ACTION").length,
+    );
+    expect(publicActionCounts.some((count) => count === 0)).toBe(true);
+    expect(publicActionCounts.some((count) => count === 1)).toBe(true);
+    expect(publicActionCounts.some((count) => count > 1)).toBe(true);
     expect(
       runs.every(({ runType }) =>
         ["NORMAL_WAKE", "REFLECTION", "SOURCE_REFRESH"].includes(runType),
