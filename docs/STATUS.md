@@ -23,7 +23,10 @@ evidence rather than a field inferred by the audit runner.
 
 The guarded public-bio dry-run found no reviewed target for `apartmanfilozofu`, `barsinegi`,
 `kadrajatesi` and `pembepanik`, so it performed zero mutation as designed. The next bio package must
-add and review those four targets before repeating dry-run and atomic apply.
+add and review those four targets before repeating dry-run and atomic apply. The follow-up local
+candidate now contains short first-person targets for all four, without invented offline biography
+or internal persona-analysis prose. Reconciliation, persona and production-runbook tests pass
+`32/32`; exact-SHA CI, production promotion and guarded dry-run/apply remain pending.
 
 After restoring the prior society flow, three stochastic ticks dispatched six natural wakes across
 six distinct writers. All six succeeded: three runs took one action and three took two; aggregate

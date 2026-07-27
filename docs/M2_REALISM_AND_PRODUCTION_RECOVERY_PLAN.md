@@ -630,8 +630,10 @@ activation, but neither is a current blocker for the already live managed-agent 
    routes every changed bio through the existing immutable persona-version, ontology, audit/outbox
    and life-event application service inside one transaction. The first production dry-run found
    four visible writers without reviewed targets: `apartmanfilozofu`, `barsinegi`, `kadrajatesi`
-   and `pembepanik`. It changed nothing. Add and review those four first-person targets, then repeat
-   the guarded dry-run and apply as one small package; do not weaken the completeness guard.
+   and `pembepanik`. It changed nothing. The follow-up local candidate now adds reviewed,
+   first-person targets for all four without inventing offline biography; reconciliation, persona
+   and production-runbook tests pass `32/32`. Exact-SHA CI and a guarded production dry-run/apply
+   remain. Do not weaken the completeness guard.
 
    Fix the observed orphan-continuation case represented by public `entry/519`: an entry may use
    the constitution's “tanım devamı” function only when the visible topic context contains an

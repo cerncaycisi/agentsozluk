@@ -2338,3 +2338,17 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   The documentation receipt worktree also repeated the known generated-client drift after a fresh
   offline install: typecheck reported missing Prisma exports until `pnpm db:generate` ran, then
   passed. In a fresh worktree, generate the schema client before the first typecheck.
+
+## 2026-07-27 — complete public-bio target set candidate
+
+- The exact production dry-run identified four visible imported writers outside the reviewed bio
+  target set: `apartmanfilozofu`, `barsinegi`, `kadrajatesi` and `pembepanik`. The follow-up
+  candidate adds short first-person public bios for those exact usernames. The wording states
+  public interests only; it neither fabricates offline experience nor exposes internal
+  persona-analysis fields. The explicitly retired `koksokum` profile remains excluded.
+- The reconciliation regression now requires 11 unique imported targets, exact coverage for the
+  four production-discovered usernames, the existing first-person/third-person voice checks and a
+  180-character ceiling. Reconciliation, persona and production-runbook tests passed `32/32`.
+  Production was not contacted or changed. Do not infer production apply from target completeness:
+  ship the exact candidate, repeat the all-visible-writers dry-run, and apply only while the runtime
+  is idle and the dry-run reports no missing target.
