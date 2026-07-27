@@ -7,10 +7,12 @@ import { appendAuditLog } from "@/modules/audit";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { hashPassword } from "@/modules/auth/domain/password";
 import { requireAgentAdminInTransaction } from "@/modules/agents/application/authorization";
+import { assertManagedRuntimeCredentialReady } from "@/modules/agents/application/runtime-readiness";
 import { assertLifecycleTransition } from "@/modules/agents/domain/authorization";
 import { istanbulLocalDate } from "@/modules/agents/domain/istanbul-time";
 import { assertPinnedPersonaFieldsUnchanged } from "@/modules/agents/domain/persona-evolution";
 import { validatePersonaCandidate } from "@/modules/agents/domain/persona-validation";
+import { sealRuntimeCredential } from "@/modules/agents/domain/runtime-credential-enrollment";
 import {
   assertDualConcurrencySupported,
   runtimeFingerprint,
@@ -60,6 +62,10 @@ import {
   getLatestRuntimeCapability,
   getLatestRuntimeFingerprintRecord,
 } from "@/modules/agents/repository/capacity";
+import {
+  getRuntimeCredentialReadiness,
+  getRuntimeCredentialSync,
+} from "@/modules/agents/repository/runtime-credentials";
 import type {
   CreateAgentInput,
   AgentSourceAdminUpdateInput,
@@ -382,15 +388,52 @@ function validateCreationMethod(
   }
 }
 
+function managedRuntimeEnrollmentCipher(input: {
+  credential: string;
+  agentProfileId: string;
+  credentialId: string;
+}): string | null {
+  const publicKeyDerBase64 = process.env.AGENT_RUNTIME_ENROLLMENT_PUBLIC_KEY_B64?.trim();
+  if (!publicKeyDerBase64) {
+    if (process.env.NODE_ENV === "production")
+      throw new AppError(
+        "AGENT_RUNTIME_ENROLLMENT_UNAVAILABLE",
+        503,
+        "Agent runtime enrollment yapılandırması hazır değil; agent oluşturma veya credential döndürme güvenli biçimde durduruldu.",
+      );
+    return null;
+  }
+  try {
+    return sealRuntimeCredential(input.credential, {
+      agentProfileId: input.agentProfileId,
+      credentialId: input.credentialId,
+      publicKeyDerBase64,
+    });
+  } catch {
+    throw new AppError(
+      "AGENT_RUNTIME_ENROLLMENT_UNAVAILABLE",
+      503,
+      "Agent runtime enrollment anahtarı geçersiz; agent oluşturma veya credential döndürme güvenli biçimde durduruldu.",
+    );
+  }
+}
+
 export async function createAgent(
   client: DatabaseExecutor,
   actor: ActorContext,
   input: CreateAgentInput,
 ) {
   const userId = randomUUID();
+  const agentProfileId = randomUUID();
+  const credentialId = randomUUID();
   const internalEmail = `agent+${userId}@invalid.local`;
   const passwordHash = await hashPassword(createOpaqueToken());
   const rawCredential = `agt_${createOpaqueToken()}`;
+  const runtimeEnrollmentCipher = managedRuntimeEnrollmentCipher({
+    credential: rawCredential,
+    agentProfileId,
+    credentialId,
+  });
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentSettings(transaction);
@@ -411,6 +454,8 @@ export async function createAgent(
     );
     const created = await createAgentRecords(transaction, {
       userId,
+      agentProfileId,
+      credentialId,
       email: internalEmail,
       username: validated.persona.username,
       displayName: validated.persona.displayName,
@@ -430,6 +475,7 @@ export async function createAgent(
       todayDate: istanbulDate(),
       credentialTokenHash: sha256(rawCredential),
       credentialPrefix: rawCredential.slice(0, 16),
+      runtimeEnrollmentCipher,
       sources: sourceRecords(validated.persona),
     });
     const creationMetadata = {
@@ -499,6 +545,7 @@ export async function createAgent(
       agent: created,
       credential: rawCredential,
       credentialShownOnce: true,
+      runtimeEnrollmentManaged: Boolean(runtimeEnrollmentCipher),
     };
   });
 }
@@ -541,9 +588,11 @@ function agentProfileAuditSnapshot(profile: {
 export async function listAgentDashboard(client: DatabaseExecutor, actor: ActorContext) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
-    const [records, queued] = await Promise.all([
+    const now = new Date();
+    const [records, queued, credentialSync] = await Promise.all([
       listAgentDashboardRecords(transaction),
       countQueuedRuns(transaction),
+      getRuntimeCredentialSync(transaction),
     ]);
     const queuedByAgent = new Map(queued.map((item) => [item.agentProfileId, item._count._all]));
     return records.map((record) => {
@@ -557,6 +606,14 @@ export async function listAgentDashboard(client: DatabaseExecutor, actor: ActorC
       const publishedEntries = record.runs.reduce(
         (sum, run) => sum + jsonNumber(run.performanceMetrics, "publishedEntries"),
         0,
+      );
+      const currentCredential = record.credentials[0] ?? null;
+      const managedCredential = Boolean(currentCredential?.runtimeEnrollmentCipher);
+      const rosterFresh = Boolean(
+        credentialSync && now.getTime() - credentialSync.syncedAt.getTime() <= 120_000,
+      );
+      const credentialLoaded = Boolean(
+        currentCredential && credentialSync?.loadedCredentialIds.includes(currentCredential.id),
       );
       return {
         id: record.id,
@@ -587,6 +644,32 @@ export async function listAgentDashboard(client: DatabaseExecutor, actor: ActorC
         averageEntriesPerRun:
           record.runs.length === 0 ? null : publishedEntries / record.runs.length,
         p75RunDurationMs: percentile75(durations),
+        runtimeReadiness: !currentCredential
+          ? {
+              ready: false,
+              mode: "NONE" as const,
+              reason: "CREDENTIAL_NOT_FOUND" as const,
+              syncedAt: credentialSync?.syncedAt ?? null,
+            }
+          : !credentialSync && !managedCredential
+            ? {
+                ready: true,
+                mode: "LEGACY" as const,
+                reason: "LEGACY_UNVERIFIED" as const,
+                syncedAt: null,
+              }
+            : {
+                ready: rosterFresh && credentialLoaded,
+                mode: managedCredential ? ("MANAGED" as const) : ("LEGACY" as const),
+                reason: !credentialSync
+                  ? ("ROSTER_NOT_SYNCED" as const)
+                  : !rosterFresh
+                    ? ("ROSTER_SYNC_STALE" as const)
+                    : !credentialLoaded
+                      ? ("CREDENTIAL_NOT_LOADED" as const)
+                      : ("READY" as const),
+                syncedAt: credentialSync?.syncedAt ?? null,
+              },
       };
     });
   });
@@ -601,7 +684,14 @@ export async function getAgentDetail(
     await requireAgentAdminInTransaction(transaction, actor);
     const agent = await findAgentDetailRecord(transaction, agentProfileId);
     if (!agent) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
-    return agent;
+    return {
+      ...agent,
+      runtimeReadiness: await getRuntimeCredentialReadiness(
+        transaction,
+        agentProfileId,
+        new Date(),
+      ),
+    };
   });
 }
 
@@ -835,6 +925,7 @@ export async function changeAgentLifecycle(
     assertLifecycleTransition(current.lifecycleStatus, input.status);
     if (input.status === "ACTIVE") {
       await assertProductionRolloutMutationAllowed(transaction, now);
+      await assertManagedRuntimeCredentialReady(transaction, agentProfileId, now);
       await ensureProductionActivationAnchor(transaction, {
         agentProfileId,
         activatedAt: now,
@@ -1407,19 +1498,28 @@ export async function rotateAgentCredential(
   agentProfileId: string,
   input: RuntimeCredentialRotationInput,
 ) {
+  const credentialId = randomUUID();
   const rawCredential = `agt_${createOpaqueToken()}`;
+  const runtimeEnrollmentCipher = managedRuntimeEnrollmentCipher({
+    credential: rawCredential,
+    agentProfileId,
+    credentialId,
+  });
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentProfile(transaction, agentProfileId);
+    await lockAgentSettings(transaction);
     const agent = await findAgentForMutation(transaction, agentProfileId);
     if (!agent) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
     if (agent.lifecycleStatus === "RETIRED") {
       throw new AppError("AGENT_LIFECYCLE_INVALID", 409, "Emekli agent credential'ı döndürülemez.");
     }
     const credential = await rotateAgentCredentialRecords(transaction, {
+      credentialId,
       agentProfileId,
       tokenHash: sha256(rawCredential),
       prefix: rawCredential.slice(0, 16),
+      runtimeEnrollmentCipher,
       now: new Date(),
     });
     await recordControlPlaneChange(transaction, actor, {
@@ -1442,6 +1542,7 @@ export async function rotateAgentCredential(
       credentialRecord: credential,
       credential: rawCredential,
       credentialShownOnce: true,
+      runtimeEnrollmentManaged: Boolean(runtimeEnrollmentCipher),
     };
   });
 }

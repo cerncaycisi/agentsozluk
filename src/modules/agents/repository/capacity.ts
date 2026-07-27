@@ -219,10 +219,35 @@ async function eligibleQueueMetrics(transaction: Prisma.TransactionClient, now: 
   const rows = await transaction.$queryRaw<Array<{ count: number; oldestAt: Date | null }>>`
     SELECT
       COUNT(*)::int AS "count",
-      MIN(GREATEST("createdAt", "availableAt")) AS "oldestAt"
-    FROM "agent_runs"
-    WHERE "runStatus" = 'QUEUED'
-      AND "availableAt" <= ${now}
+      MIN(GREATEST(run."createdAt", run."availableAt")) AS "oldestAt"
+    FROM "agent_runs" AS run
+    JOIN "agent_profiles" AS profile
+      ON profile."id" = run."agentProfileId"
+    LEFT JOIN LATERAL (
+      SELECT credential."id", credential."runtimeEnrollmentCipher"
+      FROM "agent_credentials" AS credential
+      WHERE credential."agentProfileId" = profile."id"
+        AND credential."revokedAt" IS NULL
+      ORDER BY credential."createdAt" DESC, credential."id" DESC
+      LIMIT 1
+    ) AS credential ON TRUE
+    LEFT JOIN "agent_runtime_credential_sync" AS sync
+      ON sync."id" = 'global'
+    WHERE run."runStatus" = 'QUEUED'
+      AND run."availableAt" <= ${now}
+      AND profile."lifecycleStatus" = 'ACTIVE'
+      AND profile."currentPersonaVersionId" IS NOT NULL
+      AND (
+        (
+          sync."id" IS NULL
+          AND credential."id" IS NOT NULL
+          AND credential."runtimeEnrollmentCipher" IS NULL
+        )
+        OR (
+          sync."syncedAt" >= ${new Date(now.getTime() - 120_000)}
+          AND credential."id" = ANY(sync."loadedCredentialIds")
+        )
+      )
   `;
   return rows[0] ?? { count: 0, oldestAt: null };
 }

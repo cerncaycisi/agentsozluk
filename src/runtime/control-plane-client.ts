@@ -89,10 +89,38 @@ const stochasticTickResponseSchema = z.object({
   workerId: z.string(),
 });
 
+const runtimeCredentialRosterResponseSchema = z.object({
+  workerId: z.string(),
+  desiredFingerprint: z.string().regex(/^[a-f0-9]{64}$/u),
+  activeCredentialIds: z.array(z.string().uuid()),
+  entries: z.array(
+    z.object({
+      credentialId: z.string().uuid(),
+      agentProfileId: z.string().uuid(),
+      prefix: z.string().min(1).max(24),
+      enrollmentCipher: z.string().min(1),
+    }),
+  ),
+});
+
+const runtimeCredentialIdentityResponseSchema = z.object({
+  workerId: z.string(),
+  credentialId: z.string().uuid(),
+  agentProfileId: z.string().uuid(),
+});
+
+const runtimeCredentialRosterSyncResponseSchema = z.object({
+  workerId: z.string(),
+  desiredFingerprint: z.string().regex(/^[a-f0-9]{64}$/u),
+  loadedCredentialCount: z.number().int().nonnegative(),
+  syncedAt: z.union([z.iso.datetime(), z.date()]),
+});
+
 export type RuntimeLease = z.infer<typeof leaseResponseSchema>;
 export type RuntimeContext = z.infer<typeof contextResponseSchema>;
 export type RuntimeExecution = z.infer<typeof actionsResponseSchema>;
 export type RuntimeStochasticTickResult = z.infer<typeof stochasticTickResponseSchema>;
+export type RuntimeCredentialRoster = z.infer<typeof runtimeCredentialRosterResponseSchema>;
 
 export interface RuntimeLifeEventsBatch {
   observations: unknown[];
@@ -109,6 +137,20 @@ export interface RuntimeLifeEventsBatch {
 export interface RuntimeRequestOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
+}
+
+export interface RuntimeCredentialRosterControlPlane {
+  credentialRoster(credential: string, workerId: string): Promise<RuntimeCredentialRoster>;
+  credentialIdentity(
+    credential: string,
+    workerId: string,
+  ): Promise<z.infer<typeof runtimeCredentialIdentityResponseSchema>>;
+  acknowledgeCredentialRoster(
+    credential: string,
+    workerId: string,
+    desiredFingerprint: string,
+    loadedCredentialIds: string[],
+  ): Promise<void>;
 }
 
 interface RuntimeHttpRequestOptions extends RuntimeRequestOptions {
@@ -310,6 +352,53 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
         "POST",
         "/api/v1/internal/agent-runtime/scheduler/tick",
         { workerId },
+        undefined,
+        undefined,
+        { idempotencyKey, retryTransportFailureOnce: true },
+      ),
+    );
+  }
+
+  async credentialRoster(credential: string, workerId: string): Promise<RuntimeCredentialRoster> {
+    return runtimeCredentialRosterResponseSchema.parse(
+      await this.#request(
+        credential,
+        "GET",
+        "/api/v1/internal/agent-runtime/credentials/roster",
+        undefined,
+        workerId,
+      ),
+    );
+  }
+
+  async credentialIdentity(
+    credential: string,
+    workerId: string,
+  ): Promise<z.infer<typeof runtimeCredentialIdentityResponseSchema>> {
+    return runtimeCredentialIdentityResponseSchema.parse(
+      await this.#request(
+        credential,
+        "GET",
+        "/api/v1/internal/agent-runtime/credentials/identity",
+        undefined,
+        workerId,
+      ),
+    );
+  }
+
+  async acknowledgeCredentialRoster(
+    credential: string,
+    workerId: string,
+    desiredFingerprint: string,
+    loadedCredentialIds: string[],
+  ): Promise<void> {
+    const idempotencyKey = randomUUID();
+    runtimeCredentialRosterSyncResponseSchema.parse(
+      await this.#request(
+        credential,
+        "POST",
+        "/api/v1/internal/agent-runtime/credentials/sync",
+        { workerId, desiredFingerprint, loadedCredentialIds },
         undefined,
         undefined,
         { idempotencyKey, retryTransportFailureOnce: true },

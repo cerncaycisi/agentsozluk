@@ -105,6 +105,9 @@ const publicOperations = new Set([
 
 const internalRuntimeOperations = new Set([
   "POST /api/v1/internal/agent-runtime/lease",
+  "GET /api/v1/internal/agent-runtime/credentials/identity",
+  "GET /api/v1/internal/agent-runtime/credentials/roster",
+  "POST /api/v1/internal/agent-runtime/credentials/sync",
   "POST /api/v1/internal/agent-runtime/plans/today",
   "POST /api/v1/internal/agent-runtime/scheduler/tick",
   "POST /api/v1/internal/agent-runtime/heartbeat",
@@ -242,6 +245,7 @@ const expectedRequestBodies: Record<string, string> = {
   "POST /api/v1/admin/agent-runtime/concurrency-test": "RuntimeCapabilityMeasurement",
   "POST /api/v1/admin/agent-schedule/regenerate": "DailyPlanGeneration",
   "POST /api/v1/internal/agent-runtime/lease": "RuntimeLease",
+  "POST /api/v1/internal/agent-runtime/credentials/sync": "RuntimeCredentialRosterAck",
   "POST /api/v1/internal/agent-runtime/plans/today": "RuntimeDailyPlan",
   "POST /api/v1/internal/agent-runtime/scheduler/tick": "RuntimeStochasticTick",
   "POST /api/v1/internal/agent-runtime/heartbeat": "RuntimeHeartbeat",
@@ -303,6 +307,7 @@ const idempotentOperations = new Set([
   "POST /api/v1/admin/agent-runtime/concurrency-test",
   "POST /api/v1/admin/agent-schedule/regenerate",
   "POST /api/v1/internal/agent-runtime/lease",
+  "POST /api/v1/internal/agent-runtime/credentials/sync",
   "POST /api/v1/internal/agent-runtime/plans/today",
   "POST /api/v1/internal/agent-runtime/scheduler/tick",
   "POST /api/v1/internal/agent-runtime/heartbeat",

@@ -4,6 +4,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  AgentCreateForm,
   AgentLifecycleForm,
   AgentPersonaEditForm,
   AgentQuickRunActions,
@@ -184,6 +185,39 @@ describe("agent admin UX contracts", () => {
 
     rerender(<AgentLifecycleForm agentId={agentId} current="PAUSED" />);
     await waitFor(() => expect(screen.getByLabelText("Yeni durum")).toHaveValue("ACTIVE"));
+  });
+
+  it("turns managed agent creation into one readiness-to-activation workflow", async () => {
+    mocks.apiRequest.mockImplementation((path: string, options?: { method?: string }) => {
+      if (path === "/api/v1/admin/agents" && options?.method === "POST")
+        return Promise.resolve({
+          agent: {
+            profile: { id: agentId },
+            user: { username: persona.username },
+          },
+          credential: null,
+          runtimeEnrollmentManaged: true,
+        });
+      if (path === `/api/v1/admin/agents/${agentId}`)
+        return Promise.resolve({
+          runtimeReadiness: {
+            ready: true,
+            reason: "READY",
+            syncedAt: "2026-07-27T07:00:00.000Z",
+          },
+        });
+      return Promise.reject(new Error(`Unexpected request: ${path}`));
+    });
+    const user = userEvent.setup();
+    render(<AgentCreateForm templates={[persona]} existingAgents={[]} />);
+
+    await user.click(screen.getByRole("button", { name: "Agent oluştur" }));
+
+    await waitFor(() => expect(screen.getByText(/2\/3 worker enrollment hazır/u)).toBeVisible());
+    expect(
+      screen.getByRole("button", { name: `Agent’ı resume et @${persona.username}` }),
+    ).toBeVisible();
+    expect(screen.queryByText(/Credential yalnız şimdi gösterilir/u)).not.toBeInTheDocument();
   });
 
   it("offers a society start when any continuous-flow control is disabled", async () => {

@@ -1069,6 +1069,10 @@ describe("agent control plane with PostgreSQL", () => {
       where: { id: created.agent.profile.id },
       select: { currentPersonaVersionId: true },
     });
+    await integrationDatabase.agentProfile.update({
+      where: { id: created.agent.profile.id },
+      data: { lifecycleStatus: "ACTIVE" },
+    });
     const now = new Date("2026-07-18T12:00:00.000Z");
     await integrationDatabase.$transaction(async (transaction) => {
       await createRuntimeCapabilityRecord(transaction, {

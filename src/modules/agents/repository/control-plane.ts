@@ -141,6 +141,8 @@ export async function createAgentRecords(
   transaction: Prisma.TransactionClient,
   input: {
     userId: string;
+    agentProfileId: string;
+    credentialId: string;
     email: string;
     username: string;
     displayName: string;
@@ -160,6 +162,7 @@ export async function createAgentRecords(
     todayDate: Date;
     credentialTokenHash: string;
     credentialPrefix: string;
+    runtimeEnrollmentCipher: string | null;
     sources: Array<{
       url: string;
       normalizedDomain: string;
@@ -201,6 +204,7 @@ export async function createAgentRecords(
   });
   const profile = await transaction.agentProfile.create({
     data: {
+      id: input.agentProfileId,
       userId: user.id,
       lifecycleStatus: input.lifecycleStatus,
       useGlobalEntryQuota: false,
@@ -244,10 +248,12 @@ export async function createAgentRecords(
   });
   await transaction.agentCredential.create({
     data: {
+      id: input.credentialId,
       agentProfileId: profile.id,
       tokenHash: input.credentialTokenHash,
       prefix: input.credentialPrefix,
       scopes: ["runtime:lease", "runtime:read", "runtime:write", "runtime:plan"],
+      runtimeEnrollmentCipher: input.runtimeEnrollmentCipher,
     },
   });
   if (input.sources.length > 0) {
@@ -314,6 +320,12 @@ export function listAgentDashboardRecords(transaction: Prisma.TransactionClient)
         },
       },
       currentPersonaVersion: { select: { version: true, createdAt: true } },
+      credentials: {
+        where: { revokedAt: null },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 1,
+        select: { id: true, runtimeEnrollmentCipher: true },
+      },
       _count: { select: { sources: true, runs: true } },
       runs: {
         where: { createdAt: { gte: since } },
@@ -748,9 +760,11 @@ export function updateGlobalSettingsRecord(
 export async function rotateAgentCredentialRecords(
   transaction: Prisma.TransactionClient,
   input: {
+    credentialId: string;
     agentProfileId: string;
     tokenHash: string;
     prefix: string;
+    runtimeEnrollmentCipher: string | null;
     now: Date;
   },
 ) {
@@ -760,10 +774,12 @@ export async function rotateAgentCredentialRecords(
   });
   return transaction.agentCredential.create({
     data: {
+      id: input.credentialId,
       agentProfileId: input.agentProfileId,
       tokenHash: input.tokenHash,
       prefix: input.prefix,
       scopes: ["runtime:lease", "runtime:read", "runtime:write", "runtime:plan"],
+      runtimeEnrollmentCipher: input.runtimeEnrollmentCipher,
     },
     select: { id: true, prefix: true, scopes: true, createdAt: true },
   });

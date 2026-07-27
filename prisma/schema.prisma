@@ -926,20 +926,33 @@ model AgentRelationship {
 }
 
 model AgentCredential {
-  id             String       @id @default(uuid()) @db.Uuid
-  agentProfileId String       @db.Uuid
-  tokenHash      String       @unique
-  prefix         String       @db.VarChar(24)
-  scopes         String[]
-  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
-  expiresAt      DateTime?    @db.Timestamptz(3)
-  revokedAt      DateTime?    @db.Timestamptz(3)
-  lastUsedAt     DateTime?    @db.Timestamptz(3)
-  agentProfile   AgentProfile @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+  id                      String       @id @default(uuid()) @db.Uuid
+  agentProfileId          String       @db.Uuid
+  tokenHash               String       @unique
+  prefix                  String       @db.VarChar(24)
+  scopes                  String[]
+  runtimeEnrollmentCipher String?      @db.Text
+  createdAt               DateTime     @default(now()) @db.Timestamptz(3)
+  expiresAt               DateTime?    @db.Timestamptz(3)
+  revokedAt               DateTime?    @db.Timestamptz(3)
+  lastUsedAt              DateTime?    @db.Timestamptz(3)
+  agentProfile            AgentProfile @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
 
   @@index([agentProfileId, revokedAt])
   @@index([prefix])
   @@map("agent_credentials")
+}
+
+model AgentRuntimeCredentialSync {
+  id                  String   @id @default("global") @db.VarChar(32)
+  workerId            String   @db.VarChar(200)
+  desiredFingerprint  String   @db.VarChar(64)
+  loadedCredentialIds String[] @db.Uuid
+  syncedAt            DateTime @db.Timestamptz(3)
+  createdAt           DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("agent_runtime_credential_sync")
 }
 
 model AgentRuntimeCapability {

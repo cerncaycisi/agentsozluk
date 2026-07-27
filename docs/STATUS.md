@@ -1,5 +1,39 @@
 # Milestone status
 
+## Runtime onboarding and queue-recovery candidate — 2026-07-27 Europe/Istanbul
+
+The weekend operator report identified a reproducible control-plane gap: three new writers could
+be ACTIVE and force-run queued even though the long-lived worker had never loaded their one-time
+credentials. Those unleaseable rows could hold the stochastic scheduler at `QUEUE_NOT_EMPTY`; the
+admin journey exposed lifecycle, credential, queue and society controls as unrelated operations.
+No production incident claim has been inferred from local code alone; exact live reconstruction
+still requires a separately approved read-only snapshot.
+
+The local candidate adds an encrypted managed credential roster, hot worker reload, exact
+worker-readiness ACK for managed and protected-file legacy credentials, activation/manual/bulk
+fail-closed gates, stochastic candidate filtering, bounded orphan terminalization and per-credential
+failure isolation. New create/rotate responses do not expose managed raw credentials. The creation
+screen auto-polls readiness before offering activation; the dashboard shows ready/blocked ACTIVE
+writers, lane occupancy, queue depth, exact blocker and a direct society-control destination.
+Production without the enrollment key refuses create/rotate instead of silently creating another
+legacy handoff.
+
+Measured local evidence passed all 49 agent unit files / 327 tests, all 11 PostgreSQL agent
+integration files / 115 tests, formatting, ESLint, strict typecheck, Prisma schema validation,
+OpenAPI alignment for 120 runtime operations, M1 requirements, development-mode M2 traceability,
+repository/history secret scanning, diff hygiene and a 67-page production build. The additive
+enrollment migration applied cleanly to the isolated test database. This candidate is not merged
+or live; production key provisioning, migration, promotion, the three existing legacy writers'
+managed rotation and a natural multi-writer smoke remain operator-gated.
+
+Candidate commit `b9ef0e3` is pushed as stacked draft PR #5. Initial CI run `30247099782` passed
+quality, database, behavior and coverage. Its browser job correctly exposed an obsolete E2E
+assumption that agent creation still returns a raw credential; the updated E2E flow uses an
+ephemeral RSA key, verifies the sanitized response, decrypts the test-only managed envelope and
+ACKs the real roster before activation. Focused and complete production-server E2E pass locally
+(`50/50`). The same CI run's container setup stopped before image build on a Docker Hub registry
+header timeout; an exact-SHA rerun remains pending after the E2E correction.
+
 ## Canonical-source recovery candidate — 2026-07-24 Europe/Istanbul
 
 A guarded production-network audit exercised 72 canonical candidate URLs with the corrected

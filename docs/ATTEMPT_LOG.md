@@ -1846,3 +1846,84 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   were rechecked and only then was the audit run. Do not repeat: disable macOS xattrs/AppleDouble
   when building an operator transport archive, or transfer explicit files with an allowlisted
   manifest and verify their hashes before execution.
+
+## 2026-07-27 — Three-writer onboarding and queue-recovery candidate
+
+- Scope: local-only diagnosis and implementation after the operator reported that three newly
+  created writers were force-run, society progress stopped, manual pause/reset was confusing and
+  the worker resumed with one effective lane. No production connection, write, restart, deploy or
+  public-endpoint check was made. Candidate branch `codex/runtime-onboarding-recovery` started from
+  source-audit SHA `a99f67d94a4332f07443768922a228c2ed008899`; source PR #4 remained untouched.
+- Root cause in code: create returned a one-time raw credential while the long-lived worker loaded
+  a static protected JSON file only at startup. Lifecycle/manual/bulk paths checked `ACTIVE` and
+  persona state but not whether the current worker had the profile credential. Lease remained
+  profile-scoped, so an unloaded profile's queued row could not be consumed and could keep the
+  stochastic scheduler at `QUEUE_NOT_EMPTY`. A rejected credential could also abort a lane loop.
+- Resolution candidate: RSA-OAEP managed enrollment envelopes, hot roster reload, exact worker ACK
+  for both managed and actually loaded legacy credentials, fresh readiness gates for activation and
+  manual/bulk dispatch, unloaded-profile exclusion from stochastic candidates/queue capacity,
+  bounded orphan terminalization with immutable safe evidence and per-credential auth-failure
+  isolation. The admin create flow now auto-polls worker readiness before activation; the dashboard
+  shows ready/blocker/lane/queue state and links directly to society/queue controls.
+- Environment false start: PATH resolved the Codex fallback package manager, which invoked Node
+  `24.14.0` and pnpm `11.9.0`; exact engine error was `ERR_PNPM_UNSUPPORTED_ENGINE` because the
+  repository requires Node 22 and pnpm 10. Verified resolution used the installed Node
+  `22.23.1` with `/opt/homebrew/bin/corepack pnpm` `10.34.5`. Do not repeat: do not invoke the
+  fallback pnpm shim for this repository and do not start/reset Colima when native Node 22 is
+  already available.
+- Isolated database false start: the first focused onboarding run after the additive schema change
+  failed before product assertions because the local test database lacked
+  `runtimeEnrollmentCipher`. The test-only `agent_sozluk_test` database was reset through Prisma,
+  applying migration `20260727090000_add_runtime_credential_enrollment`; reruns passed. Do not
+  repeat: apply the candidate migration to the allowlisted isolated test database before
+  classifying a missing-column setup failure as a code regression.
+- Test-isolation false start: the new `agent_runtime_credential_sync` table was initially absent
+  from the integration TRUNCATE allowlist, so one test's deliberately stale sync timestamp leaked
+  into later files and produced `AGENT_RUNTIME_NOT_READY / ROSTER_SYNC_STALE`. Adding the table to
+  the test reset restored isolation. Do not repeat: every additive mutable table must enter the
+  integration reset allowlist in the same logical change.
+- Expanded unit false start: the first all-agent run passed `324/326`; both failures were the same
+  dashboard test fixture omitting the new server-projected `runtimeReadiness` field. Adding an
+  explicit worker-ready fixture made the file pass `6/6` and the complete agent unit rerun pass
+  `326/326`. Do not repeat: application dashboard fixtures must include runtime readiness whenever
+  the page renders activation or run controls.
+- Expanded integration false start: the first all-agent PostgreSQL run passed `114/115`; the old
+  Gate 9 fixture created profile/persona rows directly without the credential record that a real
+  agent creation always owns. The application correctly returned `AGENT_RUNTIME_NOT_READY`.
+  Adding a non-managed fixture credential made the focused rollout file pass `5/5` and the complete
+  integration rerun pass `115/115`. Do not repeat: direct rollout fixtures must reproduce the
+  executable credential invariant instead of bypassing creation and expecting dispatch.
+- Final diff review found two pre-production durability gaps: a rejected/revoked bootstrap token
+  was ACK-excluded but still returned to the worker's executable list, and a concurrent lease claim
+  could make bulk orphan recovery report a cancellation it did not commit. The loader now returns
+  only identity-verified bootstrap tokens, with a direct revoked-token regression, and orphan
+  recovery emits evidence only for rows whose conditional `QUEUED` update actually succeeds. Do
+  not repeat: distinguish ACK identity from executable token selection and bind terminal evidence
+  to the successful conditional state transition.
+- Final verified local evidence: all 49 agent unit files passed `327/327`; all 11 PostgreSQL agent
+  integration files passed `115/115`; formatting, ESLint, strict TypeScript, Prisma schema
+  validation, OpenAPI alignment for 120 operations, M1 requirements, development-mode M2
+  traceability (`453 active PASS / 13 approved post-merge BLOCKED / 0 FAIL`), repository/history
+  secret scanning, diff hygiene and a 67-page production build passed. The onboarding suite proves
+  production key absence fails closed, legacy credentials are unready unless actually ACKed,
+  pre-upgrade unleaseable queued work is cancelled without poisoning capacity, three managed
+  PAUSED writers cannot activate before exact ACK, stale preview is rejected, fresh ACK permits all
+  three run records and pausing one queued writer recovers only its orphan. No production
+  connection, public request or mutation occurred.
+- Stacked draft PR #5 was opened from candidate commit `b9ef0e3` against source PR #4. Initial CI
+  run `30247099782` passed quality, database, behavior and coverage. The container job stopped in
+  `docker/setup-buildx-action` before application image build with exact external error
+  `Get "https://registry-1.docker.io/v2/": Client.Timeout exceeded while awaiting headers`.
+  Separately, browser build/install passed but E2E-003 returned
+  `503 AGENT_RUNTIME_ENROLLMENT_UNAVAILABLE`: the old test expected a raw create-response
+  credential while production now correctly requires managed enrollment and returns no raw token.
+- The E2E harness was corrected without a production bypass: Playwright creates one ephemeral RSA
+  test pair, passes only its public key to the production-mode server, verifies the sanitized admin
+  response, opens the database envelope with the test private key and calls the real roster/sync
+  endpoints before lifecycle activation. The first local focused attempt stopped in global setup
+  because the child seed resolved Node `24.14.0` / pnpm `11.9.0` and hit
+  `ERR_PNPM_UNSUPPORTED_ENGINE`; pinning the already-installed Corepack pnpm `10.34.5` CLI with
+  Node `22.23.1` made the same focused production-server E2E pass `1/1`; the complete desktop/mobile
+  production-server package then passed `50/50`. Do not repeat: managed onboarding E2E must
+  exercise encrypted roster ACK, and local nested package scripts must inherit the repository Node
+  22/pnpm 10 toolchain.

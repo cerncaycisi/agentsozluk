@@ -2,7 +2,10 @@ import { chmod, link, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { loadRuntimeCredentialFile } from "@/runtime/credential-file";
+import {
+  loadRuntimeCredentialFile,
+  loadRuntimeEnrollmentPrivateKeyFile,
+} from "@/runtime/credential-file";
 
 const temporaryRoots: string[] = [];
 const credential = `agt_${"x".repeat(43)}`;
@@ -63,5 +66,25 @@ describe("runtime credential file boundary", () => {
     await expect(loadRuntimeCredentialFile("credentials.json")).rejects.toThrow(
       /mutlak ve normalize/iu,
     );
+  });
+
+  it("loads the enrollment private key only from the same protected credential directory", async () => {
+    const { root, credentialFile, ownership } = await fixture();
+    const privateKeyFile = path.join(root, "enrollment-private.pem");
+    await writeFile(privateKeyFile, "test-private-key", { mode: 0o600 });
+
+    await expect(
+      loadRuntimeEnrollmentPrivateKeyFile(privateKeyFile, credentialFile, ownership),
+    ).resolves.toEqual({
+      privateKeyFile,
+      privateKeyPem: "test-private-key",
+    });
+    await expect(
+      loadRuntimeEnrollmentPrivateKeyFile(
+        path.join(tmpdir(), "outside-private.pem"),
+        credentialFile,
+        ownership,
+      ),
+    ).rejects.toThrow(/aynı korumalı dizinde/iu);
   });
 });

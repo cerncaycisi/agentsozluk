@@ -20,7 +20,17 @@ export function GET(request: NextRequest) {
 }
 
 export function POST(request: NextRequest) {
-  return runAgentAdminAction(request, createAgentSchema, createAgent, {
-    storedBodyTransform: redactCreationCredential,
-  });
+  return runAgentAdminAction(
+    request,
+    createAgentSchema,
+    async (client, actor, input) => {
+      const result = await createAgent(client, actor, input);
+      return result.runtimeEnrollmentManaged
+        ? { ...result, credential: null, credentialShownOnce: false }
+        : result;
+    },
+    {
+      storedBodyTransform: redactCreationCredential,
+    },
+  );
 }

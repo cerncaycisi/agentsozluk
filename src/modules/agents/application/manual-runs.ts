@@ -4,6 +4,7 @@ import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { requireAgentAdminInTransaction } from "@/modules/agents/application/authorization";
+import { assertManagedRuntimeCredentialReady } from "@/modules/agents/application/runtime-readiness";
 import {
   calculateRuntimeCapacity,
   estimateRuntimeCompletion,
@@ -129,6 +130,7 @@ export function createManualAgentRun(
     if (agent.lifecycleStatus !== "ACTIVE" || !agent.currentPersonaVersion) {
       throw new AppError("AGENT_LIFECYCLE_INVALID", 409, "Yalnız ACTIVE agent kuyruğa alınabilir.");
     }
+    await assertManagedRuntimeCredentialReady(transaction, agentProfileId, now);
     const nonPublishing = isNonPublishingRun(input.runType);
     const entryTarget = nonPublishing ? 0 : input.entryTarget;
     const timeoutSeconds =
@@ -229,6 +231,8 @@ export function previewBulkAgentRun(
         404,
         "Seçili ACTIVE agent listesi eksik veya geçersiz.",
       );
+    for (const agent of agents)
+      await assertManagedRuntimeCredentialReady(transaction, agent.id, now);
     const runCount = agents.length;
     const observedFingerprint = runtimeFingerprint(fingerprintRecord?.usageMetadata);
     const observedCodexVersion =
@@ -340,6 +344,8 @@ export function createBulkAgentRuns(
         409,
         "Bulk run sırasında ACTIVE agent veya current persona state değişti; yeniden önizleyin.",
       );
+    for (const agent of agents)
+      await assertManagedRuntimeCredentialReady(transaction, agent.id, now);
     const nonPublishing = isNonPublishingRun(input.run.runType);
     const runs = [];
     for (const agent of agents) {

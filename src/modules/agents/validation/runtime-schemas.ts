@@ -33,6 +33,14 @@ export const runtimeStochasticTickSchema = z
   })
   .strict();
 
+export const runtimeCredentialRosterAckSchema = z
+  .object({
+    workerId: runtimeWorkerIdSchema,
+    desiredFingerprint: z.string().regex(/^[a-f0-9]{64}$/u),
+    loadedCredentialIds: z.array(z.string().uuid()).max(100),
+  })
+  .strict();
+
 export const runtimeHeartbeatSchema = z
   .object({
     runId: z.string().uuid(),

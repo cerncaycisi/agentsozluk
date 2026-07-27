@@ -11,6 +11,7 @@ import type {
   RuntimeExecution,
   RuntimeLifeEventsBatch,
 } from "@/runtime/control-plane-client";
+import { RuntimeControlPlaneError } from "@/runtime/control-plane-client";
 import {
   runtimeDecisionJsonSchema,
   runtimeDecisionSchema,
@@ -52,6 +53,7 @@ export { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 export interface RuntimeWorkerOptions {
   workerId: string;
   credentials: string[];
+  loadCredentials?: () => Promise<string[]>;
   controlPlane: RuntimeControlPlane;
   provider: RuntimeProvider;
   sourceReader?: Pick<SafeSourceReader, "read">;
@@ -59,7 +61,6 @@ export interface RuntimeWorkerOptions {
   pollIntervalMs?: number;
   processingLanes?: number;
   stochasticScheduling?: {
-    credential: string;
     controlPlane: RuntimeStochasticSchedulerControlPlane;
   };
   now?: () => Date;
@@ -552,23 +553,18 @@ export class AgentRuntimeWorker {
       throw new Error("Runtime processing lane sayısı 1 veya 2 olmalıdır.");
     this.#options = options;
     this.#processingLanes = processingLanes;
-    if (
-      options.stochasticScheduling &&
-      !options.credentials.includes(options.stochasticScheduling.credential)
-    )
-      throw new Error(
-        "Stochastic scheduler credential'ı worker credential listesinde bulunmalıdır.",
-      );
   }
 
-  async #tickStochasticScheduling(): Promise<void> {
+  async #tickStochasticScheduling(credentials: string[]): Promise<void> {
     const scheduling = this.#options.stochasticScheduling;
     if (!scheduling) return;
+    const credential = credentials[0];
+    if (!credential) throw new Error("Stochastic scheduler için runtime credential bulunamadı.");
     const now = this.#options.now?.() ?? new Date();
     if (now.getTime() < this.#stochasticTickNotBefore) return;
     try {
       const result = await scheduling.controlPlane.tickScheduler(
-        scheduling.credential,
+        credential,
         this.#options.workerId,
       );
       const busy = ["CAPACITY_FULL", "QUEUE_NOT_EMPTY", "NO_ELIGIBLE_AGENT"].includes(
@@ -598,7 +594,19 @@ export class AgentRuntimeWorker {
   }
 
   async #processCredential(credential: string): Promise<boolean> {
-    const lease = await this.#options.controlPlane.lease(credential, this.#options.workerId);
+    let lease;
+    try {
+      lease = await this.#options.controlPlane.lease(credential, this.#options.workerId);
+    } catch (error) {
+      if (
+        error instanceof RuntimeControlPlaneError &&
+        ["AUTH_REQUIRED", "FORBIDDEN"].includes(error.code)
+      ) {
+        this.#options.onSafeEvent?.({ level: "error", code: "RUNTIME_CREDENTIAL_REJECTED" });
+        return false;
+      }
+      throw error;
+    }
     if (!lease.run) return false;
     const runId = lease.run.id;
     const leaseToken = lease.run.leaseToken;
@@ -1080,13 +1088,13 @@ export class AgentRuntimeWorker {
     }
   }
 
-  async #runCredentialLanes(): Promise<number> {
+  async #runCredentialLanes(credentials: string[]): Promise<number> {
     let cursor = 0;
     let processed = 0;
     const laneFailures: unknown[] = [];
     const processLane = async () => {
-      while (laneFailures.length === 0 && cursor < this.#options.credentials.length) {
-        const credential = this.#options.credentials[cursor];
+      while (laneFailures.length === 0 && cursor < credentials.length) {
+        const credential = credentials[cursor];
         cursor += 1;
         try {
           if (credential && (await this.#processCredential(credential))) processed += 1;
@@ -1096,10 +1104,7 @@ export class AgentRuntimeWorker {
       }
     };
     await Promise.all(
-      Array.from(
-        { length: Math.min(this.#processingLanes, this.#options.credentials.length) },
-        processLane,
-      ),
+      Array.from({ length: Math.min(this.#processingLanes, credentials.length) }, processLane),
     );
     if (laneFailures.length > 0) throw laneFailures[0];
     return processed;
@@ -1108,8 +1113,12 @@ export class AgentRuntimeWorker {
   async runOnce(): Promise<number> {
     if (this.#runOnceInFlight) return this.#runOnceInFlight;
     const execution = (async () => {
-      await this.#tickStochasticScheduling();
-      return this.#runCredentialLanes();
+      const credentials = this.#options.loadCredentials
+        ? await this.#options.loadCredentials()
+        : this.#options.credentials;
+      if (credentials.length === 0) throw new Error("En az bir runtime credential gereklidir.");
+      await this.#tickStochasticScheduling(credentials);
+      return this.#runCredentialLanes(credentials);
     })();
     this.#runOnceInFlight = execution;
     try {

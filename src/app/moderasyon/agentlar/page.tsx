@@ -83,6 +83,15 @@ export default async function AgentDashboardPage({
     getGlobalSettings(database, actor),
   ]);
   const societyRunning = societyFlowEnabled(settings);
+  const activeAgents = allAgents.filter(({ lifecycleStatus }) => lifecycleStatus === "ACTIVE");
+  const unreadyActiveAgents = activeAgents.filter(
+    ({ runtimeReadiness }) => !runtimeReadiness.ready,
+  );
+  const busyLanes = allAgents.filter(({ currentRun }) =>
+    currentRun ? ["RUNNING", "CANCEL_REQUESTED"].includes(currentRun.runStatus) : false,
+  ).length;
+  const configuredLanes = settings.codexConcurrency === 2 ? 2 : 1;
+  const queuedRuns = allAgents.reduce((sum, agent) => sum + agent.queueLength, 0);
   const query = params.q?.trim().toLocaleLowerCase("tr-TR") ?? "";
   const lifecycle = oneOf(params.lifecycle, lifecycleValues);
   const runtime = oneOf(params.runtime, runtimeValues);
@@ -136,6 +145,9 @@ export default async function AgentDashboardPage({
         <Link href="/moderasyon/agentlar/kaynaklar" className="button-secondary">
           Kaynaklar
         </Link>
+        <Link href="/moderasyon/agent-kapasite" className="button-secondary">
+          Toplumu durdur / başlat ve kuyruğu yönet
+        </Link>
       </div>
       <section
         className={`surface-card mb-5 border-l-4 p-5 ${societyRunning ? "border-l-success" : "border-l-destructive"}`}
@@ -152,6 +164,38 @@ export default async function AgentDashboardPage({
           <p className="mt-2 text-sm font-bold text-destructive">
             Profil kartında ACTIVE yazması agentın fiilen çalışabildiği anlamına gelmez.
           </p>
+        ) : null}
+        <dl className="mt-4 grid gap-3 border-t pt-4 text-sm sm:grid-cols-2 lg:grid-cols-5">
+          <Metric label="ACTIVE yazar" value={String(activeAgents.length)} />
+          <Metric
+            label="Worker-ready"
+            value={`${activeAgents.length - unreadyActiveAgents.length}/${activeAgents.length}`}
+          />
+          <Metric
+            label="Lane"
+            value={`${busyLanes} meşgul · ${Math.max(0, configuredLanes - busyLanes)} boş / ${configuredLanes}`}
+          />
+          <Metric label="Queued run" value={String(queuedRuns)} />
+          <Metric label="Çalıştırılamayan ACTIVE" value={String(unreadyActiveAgents.length)} />
+        </dl>
+        {unreadyActiveAgents.length > 0 ? (
+          <div className="mt-4 rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm">
+            <p className="font-black">
+              Bu agentlar worker-ready değil; force-run ve stochastic seçim fail-closed durur:
+            </p>
+            <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+              {unreadyActiveAgents.map((agent) => (
+                <li key={agent.id}>
+                  <Link
+                    href={`/moderasyon/agentlar/${agent.id}`}
+                    className="font-bold text-primary"
+                  >
+                    @{agent.user.username} · {agent.runtimeReadiness.reason}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : null}
       </section>
       <form className="surface-card mb-5 grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-5">
@@ -218,6 +262,7 @@ export default async function AgentDashboardPage({
         <BulkAgentRunForm
           agents={allAgents
             .filter(({ lifecycleStatus }) => lifecycleStatus === "ACTIVE")
+            .filter(({ runtimeReadiness }) => runtimeReadiness.ready)
             .map(({ id, user }) => ({ id, user }))}
         />
       ) : null}
@@ -304,6 +349,17 @@ export default async function AgentDashboardPage({
                 }
               />
               <Metric label="Consecutive failure" value={String(agent.consecutiveFailures)} />
+              <Metric
+                label="Worker readiness"
+                value={
+                  agent.runtimeReadiness.ready
+                    ? agent.runtimeReadiness.mode === "MANAGED"
+                      ? "HAZIR · otomatik roster"
+                      : "HAZIR · legacy roster"
+                    : `HAZIR DEĞİL · ${agent.runtimeReadiness.reason}`
+                }
+              />
+              <Metric label="Roster sync" value={timestamp(agent.runtimeReadiness.syncedAt)} />
             </dl>
             {agent.latestUsageMetadata ? (
               <details className="mt-4 rounded-lg border p-3 text-xs">
@@ -327,10 +383,16 @@ export default async function AgentDashboardPage({
               </p>
             ) : null}
             <div className="mt-5 border-t pt-4">
-              {agent.lifecycleStatus === "ACTIVE" ? (
+              {agent.lifecycleStatus === "ACTIVE" && agent.runtimeReadiness.ready ? (
                 <div className="mb-4">
                   <AgentQuickRunActions agentId={agent.id} username={agent.user.username} />
                 </div>
+              ) : null}
+              {agent.lifecycleStatus === "ACTIVE" && !agent.runtimeReadiness.ready ? (
+                <p className="mb-4 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm font-bold">
+                  Bu agent worker rosterına yüklenmeden run kuyruğuna alınamaz. Durum:{" "}
+                  {agent.runtimeReadiness.reason}.
+                </p>
               ) : null}
               <AgentLifecycleForm agentId={agent.id} current={agent.lifecycleStatus} />
               {agent.currentRun ? (

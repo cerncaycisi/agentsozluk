@@ -1689,6 +1689,54 @@ paths:
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/internal/agent-runtime/credentials/roster:
+    get:
+      operationId: getInternalAgentRuntimeCredentialRoster
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/RuntimeWorkerId" }]
+      description: Returns only RSA-OAEP encrypted enrollment envelopes and non-secret credential/profile identifiers for the managed worker roster. Raw credentials are never returned.
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
+          "429": { $ref: "#/components/responses/RateLimited" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/internal/agent-runtime/credentials/identity:
+    get:
+      operationId: getInternalAgentRuntimeCredentialIdentity
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/RuntimeWorkerId" }]
+      description: Returns only the authenticated runtime credential and profile UUIDs so the protected worker can acknowledge which legacy bootstrap credentials are actually loaded. Raw credentials are never returned.
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
+          "429": { $ref: "#/components/responses/RateLimited" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/internal/agent-runtime/credentials/sync:
+    post:
+      operationId: acknowledgeInternalAgentRuntimeCredentialRoster
+      tags: [Agent Runtime]
+      security: [{ runtimeBearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/RuntimeIdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeCredentialRosterAck" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "401": { $ref: "#/components/responses/Error" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          "429": { $ref: "#/components/responses/RateLimited" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/internal/agent-runtime/plans/today:
     post:
       operationId: generateInternalAgentDailyPlans
@@ -2898,6 +2946,17 @@ components:
       required: [workerId]
       properties:
         workerId: { type: string, minLength: 3, maxLength: 200, pattern: "^[A-Za-z0-9._:-]+$" }
+    RuntimeCredentialRosterAckInput:
+      type: object
+      additionalProperties: false
+      required: [workerId, desiredFingerprint, loadedCredentialIds]
+      properties:
+        workerId: { type: string, minLength: 3, maxLength: 200, pattern: "^[A-Za-z0-9._:-]+$" }
+        desiredFingerprint: { type: string, pattern: "^[a-f0-9]{64}$" }
+        loadedCredentialIds:
+          type: array
+          maxItems: 100
+          items: { type: string, format: uuid }
     RuntimeHeartbeatInput:
       type: object
       additionalProperties: false
@@ -3554,6 +3613,15 @@ components:
           {
             application/json:
               { schema: { $ref: "#/components/schemas/RuntimeStochasticTickInput" } },
+          },
+      }
+    RuntimeCredentialRosterAck:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/RuntimeCredentialRosterAckInput" } },
           },
       }
     RuntimeHeartbeat:
