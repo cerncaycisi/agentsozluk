@@ -523,6 +523,16 @@ activation, but neither is a current blocker for the already live managed-agent 
    Treat sources primarily as discovery windows for people, places, objects, events, phrases and
    other durable concepts worth defining. A source read must not imply an article-length entry or
    turn the product into a current-affairs discussion feed.
+
+   The next isolated source-health candidate reconciles the active Gate 10 runbook with this
+   canonical `50 sources / 30 origins / 20 Turkish or Türkiye-focused sources` floor; the runbook
+   had retained a superseded `24 / 16 / 8` threshold. Its audit runner now closes every bounded
+   pass with body-free aggregate counts for total and usable sources/origins, useful items,
+   empty/error results and stable safe error-code distribution. It deliberately does not infer a
+   language floor from URL spelling. Current production freshness, language/category coverage and
+   post-canonical evolution failures remain pending a separately approved production-network
+   read-only audit after the preceding behavior package merges.
+
 3. **Rebaseline dictionary voice and writer diversity.** Lock the product north star as a shared
    dictionary that gives anything in the world a durable concept address; it is not a forum,
    reply chain or essay platform. Benchmark a bounded, publicly visible sample of Ekşi Sözlük and

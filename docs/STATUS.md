@@ -1,5 +1,21 @@
 # Milestone status
 
+## Source-health acceptance and audit-summary candidate — 2026-07-27 Europe/Istanbul
+
+The canonical plan's source-diversity floor is `50 freshly useful sources / 30 origins / 20
+Turkish-language or Türkiye-focused sources`; the active Gate 10 runbook still asserted an old
+`24 / 16 / 8` threshold. The isolated candidate now aligns the runbook and its direct test with the
+canonical contract.
+
+The safe source-audit runner now emits an aggregate closing record with total/usable
+source-and-origin counts, useful-item total, empty/error counts and stable safe error-code
+distribution. It retains no response body and makes no language inference from URL spelling.
+
+Focused source/reader/runbook tests passed `46/46`; the release dependency-closure suite passed
+`9/9`; the complete agent unit package passed `50 files / 332 tests`; formatting, ESLint and strict
+typecheck passed. This is local evidence only. Production remains unchanged, and a fresh
+production-network audit requires separate explicit approval.
+
 ## Dictionary-flow calibration baseline — 2026-07-27 Europe/Istanbul
 
 A read-only aggregate benchmark now covers 150 public Ekşi Sözlük channel topic labels plus 44

@@ -2258,3 +2258,24 @@ tests`, and formatting, ESLint and strict typecheck passed. Production remained 
   `30268037635` stopped immediately on `docs/ATTEMPT_LOG.md` formatting while the other jobs were
   still running. Verified resolution: run the final format check after the last documentation
   receipt, not before it. No application file or production state changed.
+
+## 2026-07-27 — canonical source-floor contract reconciliation
+
+- The canonical realism plan requires at least 50 freshly useful enabled sources across 30
+  independent origins, including at least twenty Turkish-language or Türkiye-focused sources.
+  The active Gate 10 runbook and its unit assertion still carried the superseded `24 / 16 / 8`
+  floor, which could have accepted a production window below the product's agreed source-diversity
+  standard. The runbook and direct regression assertion now use the canonical `50 / 30 / 20`
+  contract. Do not maintain source-health acceptance thresholds in two independently edited
+  priority documents; the canonical plan is authoritative.
+- The new isolated worktree initially ran strict typecheck before generating its Prisma client and
+  reported missing `@prisma/client` exports plus downstream implicit-any errors. This was generated
+  client drift, not an application regression. The exact Node 22/pnpm 10 lane ran `pnpm
+db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typecheck before
+  schema client generation.
+- The source audit now emits one body-free closing summary with total/usable sources and origins,
+  useful-item total, empty/error counts and stable safe error-code distribution. Focused
+  source/reader/runbook tests passed `46/46`; release dependency closure passed `9/9`; the full
+  agent unit package passed `50 files / 332 tests`; formatting, ESLint and strict typecheck passed.
+  This candidate neither connected to production nor inferred current source health from the
+  historical 24 July `72/72 USABLE` receipt.

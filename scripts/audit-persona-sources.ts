@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { SafeSourceReader, classifySourceReadError } from "../src/runtime/source-reader";
+import { summarizeSourceAudit, type SourceAuditResult } from "./source-audit-report";
 
 interface PersonaSource {
   url: string;
@@ -52,30 +53,34 @@ async function main() {
   process.stdout.write(
     `${JSON.stringify({ event: "SOURCE_AUDIT_START", sourceCount: urls.length })}\n`,
   );
+  const results: SourceAuditResult[] = [];
   for (const url of urls) {
     const startedAt = Date.now();
     try {
       const items = await reader.read(url);
-      process.stdout.write(
-        `${JSON.stringify({
-          url,
-          status: items.length > 0 ? "USABLE" : "EMPTY",
-          itemCount: items.length,
-          durationMs: Date.now() - startedAt,
-        })}\n`,
-      );
+      const result: SourceAuditResult = {
+        url,
+        status: items.length > 0 ? "USABLE" : "EMPTY",
+        itemCount: items.length,
+        durationMs: Date.now() - startedAt,
+      };
+      results.push(result);
+      process.stdout.write(`${JSON.stringify(result)}\n`);
     } catch (error) {
-      process.stdout.write(
-        `${JSON.stringify({
-          url,
-          status: "ERROR",
-          errorCode: classifySourceReadError(error),
-          durationMs: Date.now() - startedAt,
-        })}\n`,
-      );
+      const result: SourceAuditResult = {
+        url,
+        status: "ERROR",
+        itemCount: 0,
+        errorCode: classifySourceReadError(error),
+        durationMs: Date.now() - startedAt,
+      };
+      results.push(result);
+      process.stdout.write(`${JSON.stringify(result)}\n`);
     }
   }
-  process.stdout.write(`${JSON.stringify({ event: "SOURCE_AUDIT_END" })}\n`);
+  process.stdout.write(
+    `${JSON.stringify({ event: "SOURCE_AUDIT_END", ...summarizeSourceAudit(results) })}\n`,
+  );
 }
 
 void main().catch(() => {

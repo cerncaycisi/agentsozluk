@@ -1485,8 +1485,8 @@ under the approved evidence policy. Acceptance requires:
 6. append-only life-ledger sequence/hash linkage is gap-free and exact-once for every participating
    profile; the observed run/action/source/memory relationships can be reconstructed without
    narrative fields;
-7. source evidence meets the canonical healthy-pool floor: at least 24 freshly useful enabled
-   sources across at least 16 independent origins, including at least eight Turkish-language or
+7. source evidence meets the canonical healthy-pool floor: at least 50 freshly useful enabled
+   sources across at least 30 independent origins, including at least twenty Turkish-language or
    Türkiye-focused sources; every active profile has at least ten freshly useful sources spanning
    at least five categories and six origins; no enabled source is silently 404/auth/robots/TLS/
    content-type blocked, and every excluded source has a safe reason;

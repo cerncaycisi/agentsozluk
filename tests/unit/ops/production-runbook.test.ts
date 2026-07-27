@@ -245,9 +245,9 @@ describe("Milestone 2 production operator runbook", () => {
 
   it("requires broad fresh source evidence and explicit evolution no-change reasons", () => {
     for (const evidence of [
-      "at least 24 freshly useful enabled",
-      "at least 16 independent origins",
-      "at least eight Turkish-language or",
+      "at least 50 freshly useful enabled",
+      "at least 30 independent origins",
+      "at least twenty Turkish-language or",
       "at least ten freshly useful sources",
       "at least five categories and six origins",
       "no enabled source is silently 404/auth/robots/TLS/",
