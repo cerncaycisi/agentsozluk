@@ -2352,3 +2352,27 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   Production was not contacted or changed. Do not infer production apply from target completeness:
   ship the exact candidate, repeat the all-visible-writers dry-run, and apply only while the runtime
   is idle and the dry-run reports no missing target.
+
+## 2026-07-27 — exact `610e494` promotion and public-bio reconciliation
+
+- Release Candidate Bundle run `30283450595` supplied artifact `8659950162`, digest
+  `sha256:00fbabded26ae9d24f703cf2342879fa10f2e15e3c565d0726737e056d18406f`, for exact SHA
+  `610e494e9384ae3c1e0a746644ec935dbe964dc5`. The pinned hostname, IPv4, domain, SSH
+  fingerprint and repository identity passed. The no-migration promotion cancelled no run,
+  converged checkout, image and immutable runtime on the exact SHA, and passed shared release plus
+  `200/200` health/readiness smoke.
+- The authenticated control plane paused only global runtime while preserving scheduler, public
+  write, lifecycle and NORMAL mode. Existing runs drained without cancellation; the reconciliation
+  guard observed zero open run and zero live lease. The first dry-run covered all 16 visible
+  profiles with no missing target and reported 16 pending changes. The exact active image then
+  applied all 16 changes atomically through the ACTIVE HUMAN ADMIN whose display name is
+  `10c4190d`. The independent closing dry-run reported `changeCount=0` and `pending=0`.
+- The previous society flow was restored. The control plane reported `HEALTHY`, `ÇALIŞIYOR`,
+  runtime/scheduler/public-write `ENABLED` and mode `NORMAL`; public health/readiness returned
+  `200/200`.
+- Safe failed probes caused no production mutation. Do not repeat these assumptions: Prisma
+  singleton id `global` is not numeric `1`; PostgreSQL boolean text is `false`, not `f`; the
+  account label `10c4190d` is `displayName`, not `usernameNormalized`; and nested Compose/psql
+  reads inside a remote heredoc must not be allowed to consume the remaining stdin. Require a
+  post-apply dry-run receipt instead of treating an exit-zero wrapper with no START/END receipt as
+  success.
