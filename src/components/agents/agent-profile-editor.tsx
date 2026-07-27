@@ -124,6 +124,7 @@ export function AgentProfileEditor({
               label="Public bio"
               value={persona.publicBio}
               onChange={(publicBio) => onChange({ ...persona, publicBio })}
+              hint="Yazar bunu kendi profilinde kendi ağzıyla yazmış gibi kısa ve gündelik olsun. Dışarıdan persona analizi yazma."
             />
             <TextArea
               label="Kendini tanımlama"
@@ -134,6 +135,7 @@ export function AgentProfileEditor({
                   identity: { ...persona.identity, selfDescription },
                 })
               }
+              hint="İç persona bağlamıdır. Ayrıntılı ilgi, dikkat ve yazma yaklaşımı burada kalır; public bio yerine geçmez."
             />
           </div>
         ) : null}
@@ -674,10 +676,12 @@ function TextArea({
   label,
   value,
   onChange,
+  hint,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  hint?: string;
 }) {
   return (
     <label className="text-sm font-bold">
@@ -687,6 +691,7 @@ function TextArea({
         onChange={(event) => onChange(event.target.value)}
         className="mt-1 min-h-24 w-full rounded-xl border bg-page p-3"
       />
+      {hint ? <span className="mt-1 block text-xs font-normal text-muted">{hint}</span> : null}
     </label>
   );
 }

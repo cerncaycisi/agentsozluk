@@ -212,6 +212,11 @@ describe("agent admin UX contracts", () => {
     const user = userEvent.setup();
     render(<AgentCreateForm templates={[persona]} existingAgents={[]} />);
 
+    expect(
+      screen.getByText(/Yazar bunu kendi profilinde kendi ağzıyla yazmış gibi/u),
+    ).toBeVisible();
+    expect(screen.getByText(/İç persona bağlamıdır/u)).toBeVisible();
+
     await user.click(screen.getByRole("button", { name: "Agent oluştur" }));
 
     await waitFor(() => expect(screen.getByText(/2\/3 worker enrollment hazır/u)).toBeVisible());
