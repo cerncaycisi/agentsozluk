@@ -2235,3 +2235,22 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   the first sentence. The focused worker plus writing-policy suite passed `36/36`. This is local
   prevention evidence only; close public `entry/519` as a distribution finding only after a blind
   production sample shows no continuation rhetoric without an antecedent.
+
+## 2026-07-27 — public-bio and dictionary-flow PR CI closure
+
+- PR `#10` exact SHA `d1939cb634dedf5a9fd8324263fca915f34e8a98` reached the behavior and quality
+  jobs, but both stopped on deterministic repository-contract failures rather than a runtime
+  behavior regression. Behavior passed `677/678` tests before
+  `tests/unit/ops/release-artifact.test.ts` found the development-only `jsdom` dependency in the
+  production agent-script closure. Quality passed persona verification and the security scans,
+  then `repo:check-clean` found `reports/persona-distance.json` modified.
+- Root causes were narrow: the aggregate benchmark command was incorrectly named with the reserved
+  production `agent:*` prefix, and the committed persona-distance receipt had not been regenerated
+  after the constitution writer context changed its rendered prompt hashes. Verified resolution:
+  keep developer-only analysis commands outside the `agent:*` namespace and regenerate persona
+  receipts whenever any prompt-rendered writer contract changes. Do not add analysis-only
+  dependencies to the runtime release package or treat a stale generated receipt as a flaky CI
+  failure.
+- After the corrections, the release-artifact, dictionary benchmark, runtime-worker and
+  constitution-policy focus passed `47/47`; the complete unit package passed `136 files / 678
+  tests`, and formatting, ESLint and strict typecheck passed. Production remained untouched.

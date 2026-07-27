@@ -10,8 +10,8 @@ entry bodies, author identities or protected passages. The executable tool accep
 HTML and emits aggregate counts only:
 
 ```sh
-pnpm agent:benchmark-dictionary-flow --platform eksi
-pnpm agent:benchmark-dictionary-flow --platform normal
+pnpm benchmark:dictionary-flow --platform eksi
+pnpm benchmark:dictionary-flow --platform normal
 ```
 
 HTML may be piped on stdin or supplied with `--input PATH`. Network retrieval deliberately remains

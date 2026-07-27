@@ -24,7 +24,7 @@
     "agent:verify-personas": "tsx scripts/verify-personas.ts",
     "agent:audit-sources": "tsx scripts/audit-persona-sources.ts",
     "agent:reconcile-sources": "tsx scripts/reconcile-persona-sources.ts",
-    "agent:benchmark-dictionary-flow": "tsx scripts/benchmark-dictionary-flow.ts",
+    "benchmark:dictionary-flow": "tsx scripts/benchmark-dictionary-flow.ts",
     "agent:verify-life-ledger": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/verify-agent-life-ledger.ts",
     "agent:scan-metadata": "tsx scripts/scan-agent-metadata.ts",
     "security:scan-secrets": "tsx scripts/scan-repository-secrets.ts",
