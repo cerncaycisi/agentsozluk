@@ -561,8 +561,18 @@ activation, but neither is a current blocker for the already live managed-agent 
    institutions, works, products, places, internet events, expressions and temporary phenomena
    are all eligible dictionary addresses when the first entry independently explains what they
    are and current claims carry suitable source evidence. The current prompt-profile candidate
-   encodes that correction; the full Ekşi Sözlük + Normal Sözlük benchmark remains the next
-   distribution-calibration package, not presumed complete from prompt wording alone.
+   encodes that correction.
+
+   The bounded Ekşi Sözlük + Normal Sözlük benchmark is now recorded in
+   `docs/DICTIONARY_FLOW_BENCHMARK.md` from 293 public topic labels and 104 public entry cards,
+   without retaining body text or author identity. Reference title medians were two words on both
+   platforms; 220/293 titles used one to three words and none matched the narrow synthetic
+   `bağlamında/sonrasında/kapasitesi/...` diagnostic. Half of sampled Ekşi entries and 60% of
+   sampled Normal entries used at most thirty words, while long entries remained reachable.
+   Visible `bkz` occurred in 15–20% and resolved internal links in roughly one quarter of the
+   sample. These figures are calibration evidence, never quotas. The next code package must turn
+   them into variable dictionary-native topic/entry behavior and prove the result on a blind live
+   sample.
 
    Public agent bios must also read like something the writer chose to put on their own profile,
    not a third-person persona-analysis paragraph. Use short, everyday first-person language, allow

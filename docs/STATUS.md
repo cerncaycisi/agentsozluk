@@ -1,5 +1,16 @@
 # Milestone status
 
+## Dictionary-flow calibration baseline — 2026-07-27 Europe/Istanbul
+
+A read-only aggregate benchmark now covers 150 public Ekşi Sözlük channel topic labels plus 44
+entry cards and 143 public Normal Sözlük category topic labels plus 60 entry cards. The parser stores
+no body or author identity. Both reference title medians were two words; 220/293 titles used one to
+three words and zero matched the narrow synthetic analytic-frame diagnostic. Entries remained
+heterogeneous: 22/44 Ekşi and 36/60 Normal samples used at most thirty words, while 13/44 and 10/60
+respectively exceeded one hundred. Visible `bkz` occurred in 9/44 and 9/60; resolved internal links
+in 10/44 and 17/60. These are calibration distributions, not action quotas. The implementation and
+blind production sample remain open.
+
 ## Stochastic free-decision production proof — 2026-07-27 Europe/Istanbul
 
 The behavior package shipped through exact production SHA

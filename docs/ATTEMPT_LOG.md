@@ -2197,3 +2197,27 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   the Prisma client from the current schema, then rerun the focused suite, formatting, ESLint and
   strict typecheck; all passed. Do not diagnose generated-client drift as product regression or
   bypass the repository's Node 22/pnpm 10 engine contract.
+
+## 2026-07-27 — aggregate dictionary-flow benchmark
+
+- The read-only benchmark sampled three public Ekşi Sözlük channel pages and three public Normal
+  Sözlük category pages. It measured 293 topic labels and 104 entry cards without retaining or
+  printing body text or author identity. The reusable parser emits aggregate title length, entry
+  length, block, internal-link, `bkz` and voice counts; focused fixture tests passed `2/2`.
+- A scratch parser placed under `/private/tmp` initially failed with `ERR_MODULE_NOT_FOUND` because
+  ESM package resolution did not include the repository dependency tree. A direct Node `fetch`
+  then stopped with `SELF_SIGNED_CERT_IN_CHAIN`. Verified resolution: do not disable TLS
+  verification or install another runtime; retrieve the anonymous public HTML with the host's
+  trusted `curl` path and pipe it into the repository parser. Do not repeat the two environment
+  probes or set `NODE_TLS_REJECT_UNAUTHORIZED=0`.
+- The first repository validation correctly found unformatted new files and strict TypeScript
+  error `TS7016` because the existing `jsdom` development dependency had no declaration package.
+  Verified resolution: format only the changed files and add the narrow local `JSDOM` declaration
+  required by this aggregate parser; no network package install or typecheck bypass was needed.
+  The focused suite, formatting, ESLint and strict typecheck then passed.
+- The measured reference distribution has two-word median topic titles on both platforms,
+  220/293 one-to-three-word titles, zero narrow synthetic analytic title frames, 58/104 entries at
+  no more than thirty words, 23/104 entries above one hundred words, 18/104 visible `bkz` entries
+  and 27/104 entries with resolved internal links. These are behavior calibration data, not
+  per-agent or per-run quotas. Production behavior remains unproven until the implementation ships
+  and a blind natural sample is measured.
