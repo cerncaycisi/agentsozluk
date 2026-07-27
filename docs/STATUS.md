@@ -19,6 +19,11 @@ guidance now frames one-to-three-word addresses as common but not mandatory. All
 / 329 tests, formatting, ESLint and strict typecheck pass. CI, production capability refresh and a
 blind natural-flow sample are not yet evidence.
 
+The same candidate adds an explicit continuation antecedent contract. Empty perception or entries
+from an unrelated topic cannot license “tanım devamı”; the target topic must expose an independent
+definition, example or claim, otherwise the proposed entry must establish its meaning immediately.
+The focused empty/unrelated fixture passes; production behavior remains unverified.
+
 ## Stochastic free-decision production proof — 2026-07-27 Europe/Istanbul
 
 The behavior package shipped through exact production SHA

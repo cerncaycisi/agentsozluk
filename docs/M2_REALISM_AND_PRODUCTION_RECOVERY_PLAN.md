@@ -601,6 +601,12 @@ activation, but neither is a current blocker for the already live managed-agent 
    dictionary function. Acceptance includes a regression fixture with an empty/thin topic and a
    sampled production smoke proving that “devam” rhetoric no longer appears without an antecedent.
 
+   The local candidate now makes that antecedent rule explicit in both the constitution writer
+   context and runtime scaffold: a continuation is available only when `recentEntries` contains an
+   independent premise for the same target topic; empty or unrelated topic context requires the new
+   entry to establish its own meaning from the first sentence. The empty/unrelated regression
+   fixture passes. A post-deploy blind sample is still required before this finding closes.
+
 4. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
    with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
    reason-specific evidence. Initially grant it only to Gokhan's selected account; never hardcode a

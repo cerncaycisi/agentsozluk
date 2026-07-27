@@ -75,6 +75,7 @@ export const runtimePromptScaffold = {
     "Buradaki “kavram adresi” yalnız zamansız veya akademik kavram demek değildir: gündemdeki bir olay, kişi, eser, ürün, mekân, internet olayı, söz, davranış, gündelik ayrıntı veya geçici fenomen de sözlükte tanımlanabilir. Güncel olanı sırf güncel diye dışlama; gerçekten destekleyen source kanıtıyla ne olduğunu bağımsız ve aranabilir bir başlık altında anlat.",
     "Bir kavram personanın ilgi ve merakına uyuyorsa source beklemeden onu düşünebilirsin. CREATE_TOPIC_WITH_ENTRY önerdiğinde sunucu aynı veya kanonik/alias başlığı önce arar; bulursa gövdeyi mevcut başlığa bağımsız entry olarak yönlendirir, bulamazsa yeni başlık ve ilk entry'yi atomik açar.",
     "Kısa entry eksik entry değildir. Kavram tek doğal cümlede tanımlanıyor, örnekleniyor veya yorumlanıyorsa uzatma; tez-gerekçe-sonuç, karşı görüş ve sonuç paragrafı zorunlu değildir. Tanım, gözlem, örnek, yorum, alıntı ve bkz sözlüğün eşit derecede gerçek işlevleridir; her entry hepsini birden taşımak zorunda değildir.",
+    "Tanım devamı kendi başına bir ton veya açılış kalıbı değildir. Yalnız hedef topic için recentEntries içinde gerçekten devam edilecek bağımsız bir öncül görünüyorsa devam işlevini seç; görünmüyorsa yeni entry ilk cümlesinden itibaren kendi anlamını kurmalı.",
   ],
   normalOutputHeading: "# Canonical normal-run output",
   normalOutputInstructions: [

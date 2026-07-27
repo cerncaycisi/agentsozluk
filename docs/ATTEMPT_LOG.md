@@ -2229,3 +2229,9 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   `49 files / 329 tests`, with formatting, ESLint and strict typecheck also green. Do not call the
   live distribution corrected from prompt tests alone: the prompt fingerprint changes, so exact
   CI, production capability refresh and a blind natural sample remain required.
+- The orphan-continuation regression now covers both an empty perception and a visible entry from
+  an unrelated topic. Constitution/runtime context permits “tanım devamı” only when the same target
+  topic exposes an independent antecedent; otherwise the entry must establish its own meaning from
+  the first sentence. The focused worker plus writing-policy suite passed `36/36`. This is local
+  prevention evidence only; close public `entry/519` as a distribution finding only after a blind
+  production sample shows no continuation rhetoric without an antecedent.
