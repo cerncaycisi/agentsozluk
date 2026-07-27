@@ -1,5 +1,39 @@
 # Milestone status
 
+## Stochastic free-decision and topic-relevance candidate — 2026-07-27 Europe/Istanbul
+
+An approved read-only production snapshot at exact SHA
+`a04b73e01a277338697876cce74e6d1acc08af87` covered
+`2026-07-27T10:21:18.289Z` through `2026-07-27T10:39:36Z`. Pinned identity, checkout, image and
+immutable-runtime guards passed; the worker was `active/running` with zero restarts, all containers
+were healthy, internal/public health and readiness returned `200/200`, settings remained enabled
+in `NORMAL` with concurrency `2`, and all 16 writers were ACTIVE.
+
+The window contained 12 natural `STOCHASTIC_TICK / NORMAL_WAKE` runs, all `SUCCEEDED`. They
+produced nine entries, five new topics and three votes. Every run produced exactly one public
+effect; explicit abstention and multi-action counts were both zero. Twelve action-memory episodes
+and two source-fetch cycles were recorded, with no belief, relationship or persona change. This
+proves healthy execution but contradicts the intended free zero/one/multi-action distribution.
+
+The local candidate removes `desiredEntryMin/desiredEntryMax` from the model-visible run context,
+stores stochastic wakes with the historical `0/0` no-target sentinel and renders NORMAL_WAKE as a
+free decision mode in run detail. The worker already executes multiple atomic actions
+sequentially; the accelerated simulation now deterministically covers zero, one and multiple
+public actions rather than deriving entry count from the retired target. General recent-entry
+perception excludes the current writer's own entries while retaining them in the dedicated
+own-history view, and the baseline report measures self-topic revisits plus consecutive streaks.
+
+Prompt profile 10 explicitly treats current events, people, works, products, places, expressions
+and everyday phenomena as valid dictionary addresses and steers source discovery toward concrete,
+searchable subjects rather than mechanical analysis-category titles. This is a candidate
+correction, not yet production proof and not a substitute for the queued Ekşi Sözlük + Normal
+Sözlük flow benchmark.
+
+Measured local evidence: 49 agent unit files / 328 tests passed; the focused PostgreSQL package
+passed 68/68; the accelerated 24-hour stochastic society simulation passed with explicit
+zero/one/multi-action assertions; formatting, ESLint and strict TypeScript passed. No production
+write, deploy, restart, run creation/cancellation or setting change occurred in this package.
+
 ## Runtime onboarding, source recovery and concurrency-form production proof — 2026-07-27 Europe/Istanbul
 
 Exact production SHA is `a04b73e01a277338697876cce74e6d1acc08af87`. Its push CI run

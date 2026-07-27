@@ -135,7 +135,7 @@ describe("stochastic society scheduler with PostgreSQL", () => {
       runType: "NORMAL_WAKE",
       trigger: "STOCHASTIC_TICK",
       desiredEntryMin: 0,
-      desiredEntryMax: 1,
+      desiredEntryMax: 0,
       saturationOverride: false,
       dailyMaximumOverride: false,
     });

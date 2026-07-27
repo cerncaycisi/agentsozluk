@@ -2983,6 +2983,12 @@ describe("internal agent runtime API with PostgreSQL", () => {
       where: { id: hiddenTopic.topic.id },
       data: { status: "HIDDEN" },
     });
+    const ownPerceptionEntry = await createEntry(
+      integrationDatabase,
+      writePrincipal.actor,
+      visibleTopic.topic.id,
+      { body: "OWN_PERCEPTION_BODY yalnız ownRecentEntries içinde görünmelidir." },
+    );
     const context = await getRuntimeRunContext(
       integrationDatabase,
       readPrincipal,
@@ -3007,6 +3013,12 @@ describe("internal agent runtime API with PostgreSQL", () => {
       expect.arrayContaining([
         expect.objectContaining({ topic: expect.objectContaining({ id: visibleTopic.topic.id }) }),
       ]),
+    );
+    expect(context.perception.recentEntries).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: ownPerceptionEntry.id })]),
+    );
+    expect(context.perception.ownRecentEntries).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: ownPerceptionEntry.id })]),
     );
     await expect(
       recordRuntimeMemories(

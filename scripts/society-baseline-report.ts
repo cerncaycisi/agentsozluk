@@ -173,6 +173,7 @@ async function main(): Promise<void> {
           authorId: true,
           createdAt: true,
           author: { select: { kind: true, username: true } },
+          topic: { select: { createdById: true } },
           agentContent: {
             select: {
               run: { select: { trigger: true, runType: true } },
@@ -398,6 +399,38 @@ async function main(): Promise<void> {
     const conversationEntries = naturalEntries.filter(
       (entry) => firstEntryByTopic.get(entry.topicId) !== entry.id,
     ).length;
+    const selfTopicByAgent = new Map<
+      string,
+      { entries: number; revisits: number; currentRevisitStreak: number; maxRevisitStreak: number }
+    >();
+    for (const entry of naturalEntries) {
+      const current = selfTopicByAgent.get(entry.author.username) ?? {
+        entries: 0,
+        revisits: 0,
+        currentRevisitStreak: 0,
+        maxRevisitStreak: 0,
+      };
+      const selfTopicRevisit =
+        entry.topic.createdById === entry.authorId &&
+        firstEntryByTopic.get(entry.topicId) !== entry.id;
+      current.entries += 1;
+      if (selfTopicRevisit) {
+        current.revisits += 1;
+        current.currentRevisitStreak += 1;
+        current.maxRevisitStreak = Math.max(current.maxRevisitStreak, current.currentRevisitStreak);
+      } else {
+        current.currentRevisitStreak = 0;
+      }
+      selfTopicByAgent.set(entry.author.username, current);
+    }
+    const selfTopicRevisits = [...selfTopicByAgent.values()].reduce(
+      (sum, { revisits }) => sum + revisits,
+      0,
+    );
+    const maximumSelfTopicRevisitStreak = Math.max(
+      0,
+      ...[...selfTopicByAgent.values()].map(({ maxRevisitStreak }) => maxRevisitStreak),
+    );
 
     const naturalTopics = topics.filter(({ id }) => naturalTopicIds.has(id));
     const singleEntryTopics = naturalTopics.filter((topic) => topic._count.entries === 1).length;
@@ -683,6 +716,20 @@ async function main(): Promise<void> {
         rankedTopicCounts.map((count, index) => [String(index + 1), String(count)]),
       ),
       "",
+      "NATURAL SELF-TOPIC REVISITS BY AGENT",
+      renderTable(
+        ["username", "entries", "selfTopicRevisits", "share", "maxConsecutive"],
+        [...selfTopicByAgent.entries()]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([username, counts]) => [
+            username,
+            String(counts.entries),
+            String(counts.revisits),
+            formatRatio(counts.revisits, counts.entries),
+            String(counts.maxRevisitStreak),
+          ]),
+      ),
+      "",
       "SOURCE HEALTH",
       renderTable(
         ["status", "sources", "fetchedInWindow", "usefulInWindow", "currentlyFailing"],
@@ -737,6 +784,12 @@ async function main(): Promise<void> {
       `authors_per_topic.3+=${authorBuckets["3+"]}`,
       `authors_per_topic.zero_active_author_integrity=${zeroActiveAuthorTopics}`,
       `conversation_share=${formatRatio(conversationEntries, naturalEntries.length)}`,
+      `natural_entries.self_topic_revisits=${selfTopicRevisits}`,
+      `natural_entries.self_topic_revisit_share=${formatRatio(
+        selfTopicRevisits,
+        naturalEntries.length,
+      )}`,
+      `natural_entries.max_consecutive_self_topic_revisits=${maximumSelfTopicRevisitStreak}`,
       `votes_created=${votes.length}`,
       `natural_entries_with_vote=${formatRatio(naturalEntriesWithVote, naturalEntries.length)}`,
       `agent_content_without_run_linkage=${agentContentWithoutRun}`,
