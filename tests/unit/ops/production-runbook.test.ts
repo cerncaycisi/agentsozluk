@@ -70,9 +70,9 @@ describe("Milestone 2 production operator runbook", () => {
       "chmod 0600",
       'sha256sum "$m2_backup_file"',
       "pg_restore --list",
-      'createdb -U agent_sozluk "$m2_restore_database"',
+      'createdb -U postgres -O agent_sozluk "$m2_restore_database"',
       "--exit-on-error --no-owner --no-privileges",
-      'dropdb -U agent_sozluk "$m2_restore_database"',
+      'dropdb -U postgres "$m2_restore_database"',
     ])
       expect(gate7).toContain(command);
     expect(gate7).toContain("^agent_sozluk_m2_restore_[0-9]{8}_[0-9]{6}$");
