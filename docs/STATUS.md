@@ -1,15 +1,19 @@
 # Milestone status
 
-## Runtime onboarding, source recovery and three-writer production proof — 2026-07-27 Europe/Istanbul
+## Runtime onboarding, source recovery and concurrency-form production proof — 2026-07-27 Europe/Istanbul
 
-Exact production SHA is `07871d04a863221809c98da0464836308b55d9b9`. Final-main CI run
-`30248551070` passed all seven jobs; Release Candidate Bundle run `30248914078` produced artifact
-`8646322022` with digest
-`sha256:a0d9172ce56f23e1a778a8db0564cf14f1d919f0396330b489ce73e35d9063a1`.
+Exact production SHA is `a04b73e01a277338697876cce74e6d1acc08af87`. Its push CI run
+`30255637835` passed all parallel jobs and final validation; Release Candidate Bundle run
+`30256005213` produced artifact `8649086405` with digest
+`sha256:e823a56bb347b63253bd8b8b2a7dc0f5f4d7d4f6ae1e42da8028146a577ca1c9`.
+The earlier onboarding release at `07871d04a863221809c98da0464836308b55d9b9` passed final-main CI
+run `30248551070` and artifact promotion from run `30248914078`.
 Backup plus isolated restore passed before additive migration
 `20260727090000_add_runtime_credential_enrollment`; checkout, application image and immutable
-runtime then converged atomically on the exact SHA. Health/readiness are `200/200`; the runtime
-service is `active/running` with zero restarts and root usage is 48% with about 37.8 GiB free.
+runtime then converged atomically on the onboarding SHA. The later no-migration artifact promotion
+cancelled no run and converged all three release markers on the current exact SHA.
+Health/readiness are `200/200`; the runtime service is `active/running` with zero restarts and root
+usage is 50% with about 36.1 GiB free.
 
 The production enrollment private key is owned by `agent-runtime`, mode `0600`, and its value was
 never printed. The three approved imported writers `barsinegi`, `pembepanik` and `kadrajatesi`
@@ -26,9 +30,18 @@ fetching 120 sources across all 15 writers. Scheduler follow-up for the three ne
 writers returned one success and two expected partials:
 `SOURCE_REFRESH_NO_USEFUL_ITEMS` and `SOURCE_REFRESH_NO_TARGETS`. Two subsequent natural
 `STOCHASTIC_TICK / NORMAL_WAKE` runs for two distinct writers both succeeded and produced one
-public entry plus one upvote. Final open-run count returned to zero. `apartmanfilozofu` became
-ACTIVE after that reconciliation and retains only three sources; the next approved all-writer
-reconcile must include it.
+public entry plus one upvote. `apartmanfilozofu` became ACTIVE after that initial reconciliation.
+The approved follow-up used a target-only profile lock without pausing global society flow, created
+seven source rows, updated three and blocked none, leaving ten healthy sources. Its one explicit
+`SOURCE_REFRESH` completed `SUCCEEDED` and fetched 160 items from seven sources; its expected
+non-publishing decision was `NO_ACTION / SKIPPED`.
+
+The global settings UI now renders the actual configured `2 · çift lane` value even while the
+capacity record is stale and omits concurrency from unrelated PATCH requests. Authenticated
+production browser smoke showed `2 · çift lane` selected with the correct stale-capability
+explanation. Final settings remain runtime/scheduler/publish/public-write enabled in `NORMAL`,
+concurrency `2`, with 16 ACTIVE writers. No migration, volume/database cleanup, run cancellation
+or global society pause occurred in this follow-up.
 
 ## Canonical-source recovery production proof — 2026-07-24 to 2026-07-27 Europe/Istanbul
 

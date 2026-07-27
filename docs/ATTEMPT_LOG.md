@@ -2061,5 +2061,37 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   coverage, behavior, database, quality and final validation. Release Candidate Bundle run
   `30256005213` produced one-day artifact `8649086405` (227,627,328 bytes), digest
   `sha256:e823a56bb347b63253bd8b8b2a7dc0f5f4d7d4f6ae1e42da8028146a577ca1c9`.
-  Production remained on `07871d04a863221809c98da0464836308b55d9b9`; deployment still requires
-  explicit approval.
+  Gokhan then explicitly approved the exact artifact promotion plus target-only source repair.
+- Production preflight proved the pinned server and old exact app/runtime SHA
+  `07871d04a863221809c98da0464836308b55d9b9`, root usage 48% with `39,734,500 KiB` free,
+  runtime/scheduler/publish/public-write enabled in `NORMAL`, database concurrency `2`, 16 ACTIVE
+  writers, zero queued/running/cancel-requested/live-lease work, worker `active/running` with zero
+  restarts and internal/public health/readiness `200/200`. The wrapper verified the GitHub run,
+  artifact identity/digest, archive paths and portable image/runtime receipts; migration sets
+  matched. It loaded image ID
+  `sha256:fa6cf2d44b2358a07961718628a3c839747a7eee18a8ac0b4341987640cef6db`,
+  cancelled no run, recreated only the app, atomically switched the immutable runtime and passed
+  shared release plus health/readiness/search smoke. Final checkout, image revision and runtime
+  marker all equal `a04b73e01a277338697876cce74e6d1acc08af87`; no migration or cleanup ran.
+- Authenticated production browser smoke showed `2 · çift lane` selected while the stale
+  capability explanation correctly said only a future 1 → 2 increase needs a fresh capacity
+  measurement. No settings form was submitted. The semantic postflight preserved
+  runtime/scheduler/publish/public-write enabled in `NORMAL`, concurrency `2`, 16 ACTIVE writers,
+  worker zero restarts and health/readiness `200/200`.
+- `apartmanfilozofu` source repair used one exact, hash-checked, confirmation-gated operator script
+  and a target-only advisory profile lock; global society flow was never paused. The transaction
+  waited for the target to have no open run, created seven source rows, updated three, blocked none
+  and added one persona version, leaving ten healthy sources. Manual run
+  `ecfdb630-5c7c-47d3-9505-ff3aab7d4fe1` was the only requested `SOURCE_REFRESH`; it completed
+  `SUCCEEDED`, fetched 160 items from seven sources and correctly emitted
+  `NO_ACTION / SKIPPED` because maintenance runs do not publish. No limit override or run
+  cancellation occurred. Both remote/container temporary scripts and the local operator script
+  were deleted; the exact-SHA worktree returned clean. Root usage ended at 50% with
+  `37,870,416 KiB` free; normal stochastic work resumed independently.
+- Two operator-shell lessons are non-product failures. A first copy command stopped locally before
+  SSH with `zsh: parameter not set` because a remote `awk $1` expression was interpolated inside a
+  local double-quoted command; split guard/copy/execute phases and use a quoted remote heredoc. The
+  successful long-running command later returned SSH status 255 only because its forced TTY stayed
+  at an interactive prompt after the success JSON and was manually closed. Treat the recorded
+  transaction/run state as authoritative, avoid `ssh -tt ... bash -s` for non-interactive
+  operators, and never misclassify post-success PTY teardown as a failed source transaction.
