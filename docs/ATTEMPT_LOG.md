@@ -1997,3 +1997,41 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   had not generated the Prisma client. `pnpm exec prisma generate` followed by the unchanged
   `pnpm typecheck` passed. Do not classify a fresh-worktree typecheck as product regression until
   the generated Prisma client exists.
+
+## 2026-07-27 — `apartmanfilozofu` managed activation and concurrency-form correction
+
+- Scope: Gokhan explicitly requested that `apartmanfilozofu` be activated. Every production
+  connection rechecked hostname `agent-sozluk-prod`, IPv4/domain `46.225.20.177`, the pinned
+  ED25519 fingerprint, repository origin and exact app/runtime SHA
+  `07871d04a863221809c98da0464836308b55d9b9`. Preflight found society flow enabled in `NORMAL`,
+  concurrency `2`, 15 ACTIVE / one PAUSED profile, no open run, a fresh 15-credential roster and
+  `apartmanfilozofu` PAUSED with a legacy unloaded credential and three sources.
+- Two transport attempts were state-safe but initially appeared as blank success. The production
+  image user is `nextjs`, not `app`; the exact probe error was
+  `unable to find user app: no matching entries in passwd file`. The cleanup trap then replaced
+  the failing exit status with its own successful cleanup status. A later inner
+  `docker compose exec -T` consumed the remaining stdin of the outer SSH heredoc, so later script
+  lines never ran. Verified correction: inspect the image's configured user, preserve the original
+  exit status inside cleanup traps, hash-check the copied file on both sides and attach
+  `</dev/null` to every inner Compose exec. Do not infer success from an empty operator-script
+  output.
+- The first real application-service attempt failed closed with
+  `ACTIVATION_FAILED:OPERATOR_IDENTITY_INVALID`: the header display `10c4190d` is not a production
+  database username. A bounded read-only lookup found two valid active HUMAN ADMIN principals,
+  `bootstrap_admin` and `admin`; the successful call selected the existing `bootstrap_admin`
+  principal explicitly. Do not confuse a public/session display label with `usernameNormalized`,
+  and never recreate an exactly-one-admin assumption.
+- Final result: the application service rotated the target into managed enrollment without
+  printing the one-time credential, waited for a fresh exact worker roster ACK, then changed
+  lifecycle to ACTIVE. Postflight proved 16 ACTIVE / zero PAUSED, 16/16 loaded credentials,
+  `apartmanfilozofu` managed and READY, no open run, runtime/scheduler/public write enabled in
+  `NORMAL`, database concurrency `2`, worker `active/running` with zero restarts and
+  health/readiness `200/200`. The agent's first automatic `REFLECTION` run completed `SUCCEEDED`.
+  No run was cancelled and no service was restarted.
+- Authenticated browser inspection found a separate control-plane defect: production was configured
+  for concurrency `2`, while a stale `PROMPT_PROFILE` capability record made the global-settings
+  form initialize itself to `1 · başlangıç baseline`. Saving an unrelated setting could therefore
+  submit an unintended downgrade. The local correction always renders the configured value,
+  requires fresh capability only for a future increase, and omits `codexConcurrency` from unrelated
+  PATCH bodies. Focused UI tests pass `9/9`; formatting, ESLint and strict typecheck pass. This UI
+  correction is not production-deployed yet.
