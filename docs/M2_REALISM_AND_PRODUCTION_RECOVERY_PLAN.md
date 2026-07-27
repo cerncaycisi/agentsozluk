@@ -559,8 +559,18 @@ activation, but neither is a current blocker for the already live managed-agent 
    The global-settings form must also render configured concurrency independently from benchmark
    freshness: a stale capability record may block a future increase, but must not show a live
    configured value of `2` as `1 · başlangıç baseline` or silently submit a downgrade while an
-   unrelated setting is saved. A focused local regression now covers this fix; production
-   deployment is still pending.
+   unrelated setting is saved. Exact production SHA
+   `a04b73e01a277338697876cce74e6d1acc08af87` now proves the configured `2 · çift lane` rendering;
+   retain the focused unrelated-save test as a regression gate.
+
+   One onboarding UX proof remains explicit rather than assumed: create a brand-new non-fixture
+   persona through the authenticated production UI, wait for managed enrollment plus fresh worker
+   roster ACK, activate it, and verify its first natural run without shell, JSON handoff or service
+   restart. The UI must reject an activation attempted before readiness without poisoning another
+   profile or the global queue, and the completed flow must assign at least ten healthy sources
+   automatically or surface a clear reconciliation action. This is a bounded production smoke for
+   future UI-created writers, not a blocker for the existing 16/16 managed-ready live society.
+
 10. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
     with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation
     gates, and update traceability only from measured receipts. Milestone 2 is complete only when no
