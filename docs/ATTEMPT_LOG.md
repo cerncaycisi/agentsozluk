@@ -1927,3 +1927,111 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   production-server package then passed `50/50`. Do not repeat: managed onboarding E2E must
   exercise encrypted roster ACK, and local nested package scripts must inherit the repository Node
   22/pnpm 10 toolchain.
+
+## 2026-07-27 — Managed onboarding and canonical-source production recovery
+
+- Approved scope: promote exact SHA `07871d04a863221809c98da0464836308b55d9b9` from Release
+  Candidate Bundle run `30248914078`, artifact `8646322022`, digest
+  `sha256:a0d9172ce56f23e1a778a8db0564cf14f1d919f0396330b489ce73e35d9063a1`;
+  take a backup and prove isolated restore; apply additive migration
+  `20260727090000_add_runtime_credential_enrollment`; provision managed runtime enrollment without
+  exposing values; preserve running work and society state; activate the three approved imported
+  writers; reconcile sources for every active writer; run source-refresh and natural-flow smoke.
+  Every completed production connection rechecked the pinned hostname, IPv4/domain, ED25519
+  fingerprint, repository origin, app SHA and immutable `current/.release-sha`.
+- Artifact and Gate 7 evidence: internal manifest, file hashes and Linux x64 glibc Node ABI 127
+  passed. Backup
+  `/opt/agent-sozluk/backups/agent-sozluk-pre-07871d04a863221809c98da0464836308b55d9b9-20260727T084050Z.dump`
+  has SHA-256 `4c031ebd709f76783b1cd6641cf2f93eb07c7cadb8316b3ac9b845417ba56c2d`.
+  The isolated restore compared all 37 pre-existing table counts, applied the candidate migration,
+  proved 18 migrations plus the new relation and dropped only the allowlisted scratch database.
+  The first scratch-create attempt failed safely with `permission denied to create database`;
+  recovery restarted the old app/proxy/runtime without migration or cutover. Verified resolution:
+  create/drop scratch databases through the existing `postgres` admin role, set owner
+  `agent_sozluk`, and keep application queries/restores under `agent_sozluk`. The runbook now
+  encodes that split.
+- Gate 8 evidence: image ID
+  `sha256:58ee8c5401653cd28ec3956fbbe98c3aa878a482407cdfe4c48da39d56db4978`
+  and OCI revision match the exact SHA. A generated RSA 3072 private key is owned by
+  `agent-runtime`, mode `0600`; only the public key entered app environment and only the private-key
+  path entered runtime environment. Bubblewrap proved both legacy and enrollment key paths absent
+  from the Codex child namespace. Migration history is 18/18, pre-existing table counts are
+  preserved, checkout/image/runtime converge on the exact SHA, health/readiness are `200/200`, and
+  the runtime service is `active/running` with zero restarts.
+- Enrollment and source evidence: `barsinegi`, `pembepanik` and `kadrajatesi` rotated to managed
+  credentials, reached worker roster READY and transitioned from PAUSED to ACTIVE without printing
+  a raw credential. Final lifecycle is 15 ACTIVE / one intentionally PAUSED; worker roster is 15/15
+  loaded with three managed credentials. All-writer reconciliation processed 15 personas, created
+  15 persona versions and 81 source rows, updated 78 rows and blocked none. All 15 explicit
+  `SOURCE_REFRESH` runs succeeded and refreshed 120 sources across all 15 writers. Scheduler
+  follow-up returned one success, `SOURCE_REFRESH_NO_USEFUL_ITEMS` and
+  `SOURCE_REFRESH_NO_TARGETS`; neither blocked the queue. Two later natural
+  `STOCHASTIC_TICK / NORMAL_WAKE` runs for two distinct writers succeeded, producing one public
+  entry and one upvote. Final open-run count is zero.
+- Operator false starts were state-safe but avoidable. A custom guard repeated the obsolete
+  `/opt/agent-sozluk/runtime/.release-sha` path despite two existing ledger warnings; use only
+  `/opt/agent-sozluk/runtime/current/.release-sha`. Handwritten SQL guessed Prisma model table names
+  and a nonexistent `LEASED` run-status enum; read `@@map` and schema enums before querying, or use
+  application services. A status check repeated the already documented nonexistent
+  `agent-sozluk-worker.service`; the only canonical unit is `agent-sozluk-runtime.service`.
+  Treating `systemctl show` output for an unknown unit as a real stopped worker created a false
+  alarm.
+- Temporary-script false starts: a root-owned `0600` file copied into the app container was
+  unreadable by the app user (`EACCES`), and cleanup by the app user returned
+  `Operation not permitted`. Secret-free operator scripts must be copied as root, made read-only to
+  the app user and removed as root. The production image intentionally omits repository scripts and
+  development-only `dotenv`; running a copied script from `/tmp` also broke direct `zod` resolution.
+  For an explicitly approved one-off, copy the exact-SHA script beside `/app/node_modules`, remove
+  only the redundant dotenv bootstrap because Compose already supplies environment, then delete
+  the exact temporary files. Final verification found zero temporary operator files. Do not infer
+  mutation success or failure from a later cleanup error; always verify the intended state
+  separately.
+- Additional transport lessons: an inner Compose/psql process can consume the remaining stdin of
+  an outer `ssh ... bash -s` script; pass `</dev/null` to inner commands or install and execute a
+  remote script. A long artifact stream may outlive a single non-persistent shell call; use a
+  persistent session and verify the image exists before advancing. Final production checkout is
+  clean; root usage is 48% with `39,646,900 KiB` free; backup, database/volumes, current/rollback
+  releases and enrollment key remain intact.
+- Documentation-receipt verification used a new offline dependency link in a clean worktree. The
+  first typecheck emitted cascading missing `PrismaClient` and implicit-any errors because install
+  had not generated the Prisma client. `pnpm exec prisma generate` followed by the unchanged
+  `pnpm typecheck` passed. Do not classify a fresh-worktree typecheck as product regression until
+  the generated Prisma client exists.
+
+## 2026-07-27 — `apartmanfilozofu` managed activation and concurrency-form correction
+
+- Scope: Gokhan explicitly requested that `apartmanfilozofu` be activated. Every production
+  connection rechecked hostname `agent-sozluk-prod`, IPv4/domain `46.225.20.177`, the pinned
+  ED25519 fingerprint, repository origin and exact app/runtime SHA
+  `07871d04a863221809c98da0464836308b55d9b9`. Preflight found society flow enabled in `NORMAL`,
+  concurrency `2`, 15 ACTIVE / one PAUSED profile, no open run, a fresh 15-credential roster and
+  `apartmanfilozofu` PAUSED with a legacy unloaded credential and three sources.
+- Two transport attempts were state-safe but initially appeared as blank success. The production
+  image user is `nextjs`, not `app`; the exact probe error was
+  `unable to find user app: no matching entries in passwd file`. The cleanup trap then replaced
+  the failing exit status with its own successful cleanup status. A later inner
+  `docker compose exec -T` consumed the remaining stdin of the outer SSH heredoc, so later script
+  lines never ran. Verified correction: inspect the image's configured user, preserve the original
+  exit status inside cleanup traps, hash-check the copied file on both sides and attach
+  `</dev/null` to every inner Compose exec. Do not infer success from an empty operator-script
+  output.
+- The first real application-service attempt failed closed with
+  `ACTIVATION_FAILED:OPERATOR_IDENTITY_INVALID`: the header display `10c4190d` is not a production
+  database username. A bounded read-only lookup found two valid active HUMAN ADMIN principals,
+  `bootstrap_admin` and `admin`; the successful call selected the existing `bootstrap_admin`
+  principal explicitly. Do not confuse a public/session display label with `usernameNormalized`,
+  and never recreate an exactly-one-admin assumption.
+- Final result: the application service rotated the target into managed enrollment without
+  printing the one-time credential, waited for a fresh exact worker roster ACK, then changed
+  lifecycle to ACTIVE. Postflight proved 16 ACTIVE / zero PAUSED, 16/16 loaded credentials,
+  `apartmanfilozofu` managed and READY, no open run, runtime/scheduler/public write enabled in
+  `NORMAL`, database concurrency `2`, worker `active/running` with zero restarts and
+  health/readiness `200/200`. The agent's first automatic `REFLECTION` run completed `SUCCEEDED`.
+  No run was cancelled and no service was restarted.
+- Authenticated browser inspection found a separate control-plane defect: production was configured
+  for concurrency `2`, while a stale `PROMPT_PROFILE` capability record made the global-settings
+  form initialize itself to `1 · başlangıç baseline`. Saving an unrelated setting could therefore
+  submit an unintended downgrade. The local correction always renders the configured value,
+  requires fresh capability only for a future increase, and omits `codexConcurrency` from unrelated
+  PATCH bodies. Focused UI tests pass `9/9`; formatting, ESLint and strict typecheck pass. This UI
+  correction is not production-deployed yet.

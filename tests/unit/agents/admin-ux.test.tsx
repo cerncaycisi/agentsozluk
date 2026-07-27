@@ -8,6 +8,7 @@ import {
   AgentLifecycleForm,
   AgentPersonaEditForm,
   AgentQuickRunActions,
+  GlobalAgentSettingsForm,
   PersonaRollbackForm,
   RuntimeControlForm,
 } from "@/components/agents/agent-admin-forms";
@@ -271,6 +272,41 @@ describe("agent admin UX contracts", () => {
       expect(mocks.apiRequest).toHaveBeenCalledWith(
         "/api/v1/admin/agent-runtime/pause",
         expect.objectContaining({ method: "POST" }),
+      ),
+    );
+  });
+
+  it("shows and preserves configured dual concurrency when the benchmark becomes stale", async () => {
+    mocks.apiRequest.mockResolvedValue({});
+    const user = userEvent.setup();
+    render(
+      <GlobalAgentSettingsForm
+        settings={{
+          settingsVersion: 119,
+          codexConcurrency: 2,
+          publishEnabled: true,
+          schedulerEnabled: true,
+        }}
+        dualConcurrencyAvailable={false}
+      />,
+    );
+
+    expect(screen.getByLabelText(/Codex concurrency/u)).toHaveValue("2");
+    expect(screen.getByText(/2 lane şu an ayarlı/u)).toBeVisible();
+
+    await user.type(
+      screen.getByLabelText("Global ayar değişikliği gerekçesi"),
+      "Concurrency değişmeden mevcut ayarları güvenle koru.",
+    );
+    await user.click(screen.getByRole("button", { name: "Ayarları kaydet" }));
+
+    await waitFor(() =>
+      expect(mocks.apiRequest).toHaveBeenCalledWith(
+        "/api/v1/admin/agent-settings",
+        expect.objectContaining({
+          method: "PATCH",
+          body: expect.not.objectContaining({ codexConcurrency: expect.anything() }),
+        }),
       ),
     );
   });

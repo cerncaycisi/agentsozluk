@@ -580,7 +580,7 @@ m2_cleanup() {
   if ((m2_scratch_created == 1)); then
     if ! m2_assert_scratch_name; then
       cleanup_status=1
-    elif ! "${m2_compose[@]}" exec -T db dropdb --if-exists -U agent_sozluk "$m2_restore_database"; then
+    elif ! "${m2_compose[@]}" exec -T db dropdb --if-exists -U postgres "$m2_restore_database"; then
       cleanup_status=1
     fi
   fi
@@ -824,7 +824,7 @@ SQL
 )
 [[ -z "$m2_existing_database" ]]
 m2_assert_scratch_name
-"${m2_compose[@]}" exec -T db createdb -U agent_sozluk "$m2_restore_database"
+"${m2_compose[@]}" exec -T db createdb -U postgres -O agent_sozluk "$m2_restore_database"
 m2_scratch_created=1
 "${m2_compose[@]}" exec -T db pg_restore -U agent_sozluk -d "$m2_restore_database" \
   --exit-on-error --no-owner --no-privileges <"$m2_backup_file"
@@ -835,7 +835,7 @@ cmp -s "$m2_verify_dir/pre-counts" "$m2_verify_dir/restore-counts"
 [[ "$m2_pre_fingerprint" == "$m2_restore_fingerprint" ]]
 
 m2_assert_scratch_name
-"${m2_compose[@]}" exec -T db dropdb -U agent_sozluk "$m2_restore_database"
+"${m2_compose[@]}" exec -T db dropdb -U postgres "$m2_restore_database"
 m2_scratch_created=0
 ```
 

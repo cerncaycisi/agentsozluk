@@ -1650,9 +1650,8 @@ export function GlobalAgentSettingsForm({
   dualConcurrencyAvailable: boolean;
 }) {
   const router = useRouter();
-  const [codexConcurrency, setCodexConcurrency] = useState<1 | 2>(
-    settings.codexConcurrency === 2 && dualConcurrencyAvailable ? 2 : 1,
-  );
+  const configuredCodexConcurrency: 1 | 2 = settings.codexConcurrency === 2 ? 2 : 1;
+  const [codexConcurrency, setCodexConcurrency] = useState<1 | 2>(configuredCodexConcurrency);
   const [document, setDocument] = useState(
     JSON.stringify(
       Object.fromEntries(
@@ -1696,14 +1695,15 @@ export function GlobalAgentSettingsForm({
         setPending(true);
         setMessage(undefined);
         try {
+          const settingsUpdate = {
+            ...JSON.parse(document),
+            expectedSettingsVersion: Number(settings.settingsVersion),
+            changeReason: changeReason.trim(),
+            ...(codexConcurrency === configuredCodexConcurrency ? {} : { codexConcurrency }),
+          };
           await apiRequest("/api/v1/admin/agent-settings", {
             method: "PATCH",
-            body: {
-              ...JSON.parse(document),
-              codexConcurrency,
-              expectedSettingsVersion: Number(settings.settingsVersion),
-              changeReason: changeReason.trim(),
-            },
+            body: settingsUpdate,
             csrf: true,
             idempotency: true,
           });
@@ -1725,11 +1725,19 @@ export function GlobalAgentSettingsForm({
           className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
         >
           <option value={1}>1 · başlangıç baseline</option>
-          <option value={2} disabled={!dualConcurrencyAvailable}>
-            2 · capability ölçümü gerekli
+          <option
+            value={2}
+            disabled={!dualConcurrencyAvailable && configuredCodexConcurrency !== 2}
+          >
+            2 · çift lane
           </option>
         </select>
-        {!dualConcurrencyAvailable ? (
+        {!dualConcurrencyAvailable && configuredCodexConcurrency === 2 ? (
+          <span className="mt-1 block font-normal text-muted">
+            2 lane şu an ayarlı ve çalışmaya devam eder. 1’e düşürdükten sonra yeniden 2’ye çıkmak
+            için güncel production kapasite ölçümü gerekir.
+          </span>
+        ) : !dualConcurrencyAvailable ? (
           <span className="mt-1 block font-normal text-muted">
             Güncel ve başarılı production capability ölçümü olmadığı için 2 devre dışı.
           </span>
