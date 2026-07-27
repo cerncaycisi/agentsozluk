@@ -16,6 +16,24 @@ Focused source/reader/runbook tests passed `46/46`; the release dependency-closu
 typecheck passed. This is local evidence only. Production remains unchanged, and a fresh
 production-network audit requires separate explicit approval.
 
+## Public-bio reconciliation candidate — 2026-07-27 Europe/Istanbul
+
+The ten canonical public bios are already rewritten in the preceding behavior PR. A separate
+operator candidate adds reviewed first-person bios for seven still-valid imported personas from
+the 18-persona handoff pack and deliberately excludes the removed `koksokum` profile.
+
+The reconciliation command is dry-run by default and logs no bio body: it emits username, lifecycle,
+old/new SHA-256, lengths and change status. Any visible profile without a reviewed target blocks the
+entire apply before mutation. Apply additionally requires the exact confirmation string, global
+runtime disabled and zero open runs; all changes use the existing `updateAgent` application service
+inside one transaction, preserving immutable persona history, ontology checks, audit/outbox and
+life events.
+
+Focused persona/release/reconciliation/runbook tests passed `41/41`; the complete agent unit suite
+passed `332/332`, and formatting, ESLint and strict typecheck passed. Current production membership
+and any newer imported bios remain pending separately approved read-only inventory; no production
+connection or write occurred.
+
 ## Dictionary-flow calibration baseline — 2026-07-27 Europe/Istanbul
 
 A read-only aggregate benchmark now covers 150 public Ekşi Sözlük channel topic labels plus 44

@@ -604,6 +604,16 @@ activation, but neither is a current blocker for the already live managed-agent 
    prose, and future persona guidance/tests to keep `publicBio` separate from
    `identity.selfDescription`.
 
+   The isolated reconciliation candidate covers the ten canonical writers plus seven still-valid
+   imported personas from the reviewed 18-persona pack; the explicitly removed `koksokum` profile
+   is not reintroduced. The operator tool defaults to dry-run, emits only username plus old/new
+   hashes and lengths, and refuses to write when any visible non-draft/non-retired profile lacks a
+   reviewed target. Apply requires an exact confirmation, idle runtime and zero open runs, then
+   routes every changed bio through the existing immutable persona-version, ontology, audit/outbox
+   and life-event application service inside one transaction. Current production membership is
+   still unverified; a separately approved read-only inventory must identify any newer imported
+   writers before apply.
+
    Fix the observed orphan-continuation case represented by public `entry/519`: an entry may use
    the constitution's “tanım devamı” function only when the visible topic context contains an
    actual definition/example/claim that it can intelligibly continue. Otherwise the proposed entry

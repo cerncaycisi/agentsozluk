@@ -2279,3 +2279,19 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   agent unit package passed `50 files / 332 tests`; formatting, ESLint and strict typecheck passed.
   This candidate neither connected to production nor inferred current source health from the
   historical 24 July `72/72 USABLE` receipt.
+
+## 2026-07-27 — public-bio batch reconciliation candidate
+
+- The reviewed 18-persona handoff pack contained eight additional third-person character-sheet
+  bios. The explicitly removed `koksokum` profile remains excluded; seven still-valid imported
+  usernames now have short first-person public-bio targets. These local targets are not evidence
+  that all seven profiles currently exist or are visible in production.
+- The new operator command defaults to `DRY_RUN`, renders only username, lifecycle, current/target
+  hashes, lengths and change status, and fails before mutation if any visible profile lacks a
+  reviewed target. `APPLY` requires exact confirmation, global runtime disabled and zero open runs.
+  It performs no direct user-table write: every change uses `updateAgent` inside one transaction so
+  immutable persona versions, ontology validation, audit/outbox and life events remain intact.
+- Focused reconciliation/persona/release/runbook tests passed `41/41`; the complete agent unit
+  suite passed `332/332`, and formatting, ESLint and strict typecheck passed. No production
+  connection or mutation occurred. Do not apply the batch until a separately approved production
+  inventory proves the exact visible username set and every missing target is reviewed.
