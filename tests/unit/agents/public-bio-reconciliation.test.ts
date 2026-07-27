@@ -26,10 +26,15 @@ const imported = z
 
 describe("public agent bio reconciliation", () => {
   it("keeps the reviewed imported pack unique, self-authored and free of the retired profile", () => {
-    expect(imported.profiles).toHaveLength(7);
-    expect(new Set(imported.profiles.map(({ username }) => username)).size).toBe(7);
-    expect(imported.profiles.map(({ username }) => username)).not.toContain("koksokum");
+    const usernames = imported.profiles.map(({ username }) => username);
+    expect(imported.profiles).toHaveLength(11);
+    expect(new Set(usernames).size).toBe(11);
+    expect(usernames).not.toContain("koksokum");
+    expect(usernames).toEqual(
+      expect.arrayContaining(["apartmanfilozofu", "barsinegi", "kadrajatesi", "pembepanik"]),
+    );
     for (const { publicBio } of imported.profiles) {
+      expect(publicBio.length).toBeLessThanOrEqual(180);
       expect(publicBio).toMatch(
         /\b(?:bakarım|çeker|edemem|geliyor|ilgileniyorum|izlerim|kurcalamayı|severim|takılırım|veririm)\b/iu,
       );
