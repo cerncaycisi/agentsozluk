@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { generateKeyPairSync } from "node:crypto";
 import path from "node:path";
 import { requireTestDatabaseUrl } from "./scripts/test-database-safety";
 import { isProductionE2EServerMode } from "./tests/e2e/production-server-mode";
@@ -58,6 +59,18 @@ const developmentServerCommand = [
 
 const appSecret = "agent-sozluk-e2e-validation-only-secret";
 const demoPassword = "change-this-demo-password";
+if (
+  !process.env.AGENT_RUNTIME_E2E_PRIVATE_KEY_B64 ||
+  !process.env.AGENT_RUNTIME_ENROLLMENT_PUBLIC_KEY_B64
+) {
+  const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  process.env.AGENT_RUNTIME_E2E_PRIVATE_KEY_B64 = Buffer.from(
+    privateKey.export({ format: "pem", type: "pkcs8" }),
+  ).toString("base64");
+  process.env.AGENT_RUNTIME_ENROLLMENT_PUBLIC_KEY_B64 = publicKey
+    .export({ format: "der", type: "spki" })
+    .toString("base64");
+}
 
 process.env.APP_URL = appUrl;
 process.env.APP_SECRET = appSecret;
@@ -100,6 +113,7 @@ export default defineConfig({
       TEST_DATABASE_URL: testDatabaseUrl,
       APP_URL: appUrl,
       APP_SECRET: appSecret,
+      AGENT_RUNTIME_ENROLLMENT_PUBLIC_KEY_B64: process.env.AGENT_RUNTIME_ENROLLMENT_PUBLIC_KEY_B64,
       SEED_DEMO: "false",
       DEMO_PASSWORD: demoPassword,
       NEXT_TELEMETRY_DISABLED: "1",

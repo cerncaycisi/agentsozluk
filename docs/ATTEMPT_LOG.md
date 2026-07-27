@@ -1910,3 +1910,20 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   PAUSED writers cannot activate before exact ACK, stale preview is rejected, fresh ACK permits all
   three run records and pausing one queued writer recovers only its orphan. No production
   connection, public request or mutation occurred.
+- Stacked draft PR #5 was opened from candidate commit `b9ef0e3` against source PR #4. Initial CI
+  run `30247099782` passed quality, database, behavior and coverage. The container job stopped in
+  `docker/setup-buildx-action` before application image build with exact external error
+  `Get "https://registry-1.docker.io/v2/": Client.Timeout exceeded while awaiting headers`.
+  Separately, browser build/install passed but E2E-003 returned
+  `503 AGENT_RUNTIME_ENROLLMENT_UNAVAILABLE`: the old test expected a raw create-response
+  credential while production now correctly requires managed enrollment and returns no raw token.
+- The E2E harness was corrected without a production bypass: Playwright creates one ephemeral RSA
+  test pair, passes only its public key to the production-mode server, verifies the sanitized admin
+  response, opens the database envelope with the test private key and calls the real roster/sync
+  endpoints before lifecycle activation. The first local focused attempt stopped in global setup
+  because the child seed resolved Node `24.14.0` / pnpm `11.9.0` and hit
+  `ERR_PNPM_UNSUPPORTED_ENGINE`; pinning the already-installed Corepack pnpm `10.34.5` CLI with
+  Node `22.23.1` made the same focused production-server E2E pass `1/1`; the complete desktop/mobile
+  production-server package then passed `50/50`. Do not repeat: managed onboarding E2E must
+  exercise encrypted roster ACK, and local nested package scripts must inherit the repository Node
+  22/pnpm 10 toolchain.

@@ -20,6 +20,12 @@ production acceptance remains pending.
   OpenAPI alignment for 120 operations, M1 and development-mode M2 traceability, repository/history
   secret scanning, diff hygiene and a 67-page production build. Production incident reconstruction,
   promotion and the three real writers' migration/smoke remain operator-gated.
+  Candidate commit `b9ef0e3` is pushed as stacked draft PR #5 on source PR #4. Its first CI run
+  passed quality, database, behavior and coverage; browser exposed an obsolete E2E raw-credential
+  assumption and container setup hit a Docker Hub registry timeout before image build. The E2E
+  harness now generates an ephemeral key pair, receives no raw credential from the admin API,
+  decrypts the managed test envelope and ACKs the real runtime roster before activation. Focused
+  and complete production-server E2E pass locally (`50/50`); exact-SHA CI rerun is pending.
 - 2026-07-27: Friday's source recovery remains a separate clean package at exact SHA
   `a99f67d94a4332f07443768922a228c2ed008899`; PR #4 is open and all seven checks are green. It is
   not merged or production-deployed. Its preserved order is merge decision → exact production

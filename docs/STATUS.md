@@ -26,6 +26,14 @@ enrollment migration applied cleanly to the isolated test database. This candida
 or live; production key provisioning, migration, promotion, the three existing legacy writers'
 managed rotation and a natural multi-writer smoke remain operator-gated.
 
+Candidate commit `b9ef0e3` is pushed as stacked draft PR #5. Initial CI run `30247099782` passed
+quality, database, behavior and coverage. Its browser job correctly exposed an obsolete E2E
+assumption that agent creation still returns a raw credential; the updated E2E flow uses an
+ephemeral RSA key, verifies the sanitized response, decrypts the test-only managed envelope and
+ACKs the real roster before activation. Focused and complete production-server E2E pass locally
+(`50/50`). The same CI run's container setup stopped before image build on a Docker Hub registry
+header timeout; an exact-SHA rerun remains pending after the E2E correction.
+
 ## Canonical-source recovery candidate — 2026-07-24 Europe/Istanbul
 
 A guarded production-network audit exercised 72 canonical candidate URLs with the corrected

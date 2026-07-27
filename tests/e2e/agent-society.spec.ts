@@ -1,5 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { PrismaClient } from "@prisma/client";
+import { unsealRuntimeCredential } from "@/modules/agents/domain/runtime-credential-enrollment";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 
 const demoPassword = process.env.DEMO_PASSWORD ?? "change-this-demo-password";
@@ -13,6 +15,7 @@ let humanTopicId = "";
 let humanTopicUrl = "";
 let agentEntryId = "";
 let agentEntryBody = "";
+const runtimeDatabase = new PrismaClient();
 
 interface Envelope<T = Record<string, unknown>> {
   data?: T;
@@ -91,6 +94,26 @@ async function runtimeApi<T>(
   return envelope.data as T;
 }
 
+async function runtimeGet<T>(
+  request: APIRequestContext,
+  path: string,
+  workerId: string,
+): Promise<T> {
+  const response = await request.get(path, {
+    headers: {
+      authorization: `Bearer ${runtimeCredential}`,
+      "x-agent-worker-id": workerId,
+    },
+  });
+  const envelope = (await response.json()) as Envelope<T>;
+  expect(response.status(), JSON.stringify(envelope.error)).toBe(200);
+  return envelope.data as T;
+}
+
+test.afterAll(async () => {
+  await runtimeDatabase.$disconnect();
+});
+
 test.beforeEach(async ({ page }) => {
   for (const host of [
     "www.googletagmanager.com",
@@ -118,7 +141,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     expect(denied.error?.code).toBe("FORBIDDEN");
   });
 
-  test("E2E-003 agent create", async ({ page }, testInfo) => {
+  test("E2E-003 agent create", async ({ page, request }, testInfo) => {
     await login(page);
     const basePersona =
       originalPersonaPack.personas[testInfo.retry % originalPersonaPack.personas.length]!;
@@ -129,13 +152,39 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     };
     const created = await browserApi<{
       agent: { profile: { id: string }; user: { username: string } };
-      credential: string;
+      credential: null;
+      runtimeEnrollmentManaged: boolean;
     }>(page, "POST", "/api/v1/admin/agents", { persona, lifecycleStatus: "PAUSED" });
     agentProfileId = created.agent.profile.id;
     agentUsername = created.agent.user.username;
-    runtimeCredential = created.credential;
     expect(agentProfileId).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(created).toMatchObject({ credential: null, runtimeEnrollmentManaged: true });
+
+    const credentialRecord = await runtimeDatabase.agentCredential.findFirstOrThrow({
+      where: { agentProfileId, revokedAt: null },
+      select: { id: true, runtimeEnrollmentCipher: true },
+    });
+    const privateKey = process.env.AGENT_RUNTIME_E2E_PRIVATE_KEY_B64;
+    if (!credentialRecord.runtimeEnrollmentCipher || !privateKey)
+      throw new Error("E2E_MANAGED_RUNTIME_ENROLLMENT_MISSING");
+    runtimeCredential = unsealRuntimeCredential(credentialRecord.runtimeEnrollmentCipher, {
+      agentProfileId,
+      credentialId: credentialRecord.id,
+      privateKeyPem: Buffer.from(privateKey, "base64"),
+    });
     expect(runtimeCredential).toMatch(/^agt_[A-Za-z0-9_-]{40,100}$/u);
+
+    const workerId = `e2e-enrollment-${suffix}`;
+    const roster = await runtimeGet<{
+      desiredFingerprint: string;
+      entries: Array<{ credentialId: string }>;
+    }>(request, "/api/v1/internal/agent-runtime/credentials/roster", workerId);
+    expect(roster.entries.map(({ credentialId }) => credentialId)).toContain(credentialRecord.id);
+    await runtimeApi(request, "/api/v1/internal/agent-runtime/credentials/sync", {
+      workerId,
+      desiredFingerprint: roster.desiredFingerprint,
+      loadedCredentialIds: roster.entries.map(({ credentialId }) => credentialId),
+    });
   });
 
   test("E2E-004 agent edit", async ({ page }) => {
