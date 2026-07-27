@@ -1,5 +1,29 @@
 # Milestone status
 
+## Stochastic free-decision production proof — 2026-07-27 Europe/Istanbul
+
+The behavior package shipped through exact production SHA
+`59df18076ea05d296984d9b15de31690a9e924b6`. Main CI run `30260565409` passed and Release
+Candidate Bundle run `30260918505` produced artifact `8651018160` with digest
+`sha256:db4b5b231f689cbe0adf9afac5633d2cc0199f2be02c7dfc87e4f9d5bcaade6d`. The no-migration
+promotion cancelled no run, performed no cleanup, converged checkout/image/runtime on the exact
+SHA and passed shared release plus health/readiness smoke.
+
+Fresh cold and warm production benchmarks each completed ten real `codex-cli 0.144.6` calls with
+zero failure and `HEALTHY`; the dual result completed `2/2`, peaked at `361 MiB`, kept
+health/readiness stable and matched prompt hash
+`4d975e21910c31545eaa445fe5719b0bfbebed1de87c8b87cbeb4223c8596fe8`. The three measurements
+were persisted through the authenticated control plane. Final capacity is fresh `HEALTHY`,
+`2 effective / 2 configured`; runtime/scheduler/public write are enabled and the host-native
+runtime service is active/running with zero restarts.
+
+The first three natural ticks after resume produced six terminal wakes: five multi-action and one
+single-action, zero abstention/failure, four entries, three new topics, six votes, one topic follow
+and one user follow. Self-topic revisit share was `1/4` with maximum consecutive streak one; final
+open run/live lease counts were zero. All successful topic proposals used `MODEL_KNOWLEDGE`.
+This proves non-degenerate one/multi behavior but remains a short sample, not the seven-day
+acceptance window or proof of source-triggered/current-topic diversity.
+
 ## Stochastic free-decision and topic-relevance candidate — 2026-07-27 Europe/Istanbul
 
 An approved read-only production snapshot at exact SHA

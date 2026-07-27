@@ -95,315 +95,315 @@
       "right": "vesikameraki",
       "temperamentDistance": 0.2152,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0572
+      "textNgramOverlap": 0.0578
     },
     {
       "left": "katmanizci",
       "right": "olcekpayi",
       "temperamentDistance": 0.3767,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0593
+      "textNgramOverlap": 0.06
     },
     {
       "left": "katmanizci",
       "right": "dengeharitasi",
       "temperamentDistance": 0.3124,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0508
+      "textNgramOverlap": 0.0515
     },
     {
       "left": "katmanizci",
       "right": "perdepaylari",
       "temperamentDistance": 0.2623,
       "interestJaccard": 0.0909,
-      "textNgramOverlap": 0.0593
+      "textNgramOverlap": 0.0609
     },
     {
       "left": "katmanizci",
       "right": "akisnobeti",
       "temperamentDistance": 0.3072,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0127
+      "textNgramOverlap": 0.0128
     },
     {
       "left": "katmanizci",
       "right": "mesafedefteri",
       "temperamentDistance": 0.3416,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0127
+      "textNgramOverlap": 0.0128
     },
     {
       "left": "katmanizci",
       "right": "rotakiriklari",
       "temperamentDistance": 0.3871,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0127
+      "textNgramOverlap": 0.0128
     },
     {
       "left": "katmanizci",
       "right": "oyunbozanestetik",
       "temperamentDistance": 0.351,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0129
+      "textNgramOverlap": 0.0131
     },
     {
       "left": "katmanizci",
       "right": "yarinmesaisi",
       "temperamentDistance": 0.2643,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0127
+      "textNgramOverlap": 0.0128
     },
     {
       "left": "vesikameraki",
       "right": "olcekpayi",
       "temperamentDistance": 0.2323,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0471
+      "textNgramOverlap": 0.0477
     },
     {
       "left": "vesikameraki",
       "right": "dengeharitasi",
       "temperamentDistance": 0.3402,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0854
+      "textNgramOverlap": 0.088
     },
     {
       "left": "vesikameraki",
       "right": "perdepaylari",
       "temperamentDistance": 0.3717,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0571
+      "textNgramOverlap": 0.0587
     },
     {
       "left": "vesikameraki",
       "right": "akisnobeti",
       "temperamentDistance": 0.355,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0123
+      "textNgramOverlap": 0.0126
     },
     {
       "left": "vesikameraki",
       "right": "mesafedefteri",
       "temperamentDistance": 0.2942,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0164
+      "textNgramOverlap": 0.0166
     },
     {
       "left": "vesikameraki",
       "right": "rotakiriklari",
       "temperamentDistance": 0.2858,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0125
+      "textNgramOverlap": 0.0128
     },
     {
       "left": "vesikameraki",
       "right": "oyunbozanestetik",
       "temperamentDistance": 0.5186,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0194
+      "textNgramOverlap": 0.0197
     },
     {
       "left": "vesikameraki",
       "right": "yarinmesaisi",
       "temperamentDistance": 0.3088,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0184
+      "textNgramOverlap": 0.0187
     },
     {
       "left": "olcekpayi",
       "right": "dengeharitasi",
       "temperamentDistance": 0.5148,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.05
+      "textNgramOverlap": 0.0515
     },
     {
       "left": "olcekpayi",
       "right": "perdepaylari",
       "temperamentDistance": 0.3927,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0444
+      "textNgramOverlap": 0.0457
     },
     {
       "left": "olcekpayi",
       "right": "akisnobeti",
       "temperamentDistance": 0.5138,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0121
+      "textNgramOverlap": 0.0126
     },
     {
       "left": "olcekpayi",
       "right": "mesafedefteri",
       "temperamentDistance": 0.2141,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0121
+      "textNgramOverlap": 0.0122
     },
     {
       "left": "olcekpayi",
       "right": "rotakiriklari",
       "temperamentDistance": 0.4195,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0125
+      "textNgramOverlap": 0.0128
     },
     {
       "left": "olcekpayi",
       "right": "oyunbozanestetik",
       "temperamentDistance": 0.6512,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0129
+      "textNgramOverlap": 0.0131
     },
     {
       "left": "olcekpayi",
       "right": "yarinmesaisi",
       "temperamentDistance": 0.368,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0161
+      "textNgramOverlap": 0.0163
     },
     {
       "left": "dengeharitasi",
       "right": "perdepaylari",
       "temperamentDistance": 0.5077,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.055
+      "textNgramOverlap": 0.0565
     },
     {
       "left": "dengeharitasi",
       "right": "akisnobeti",
       "temperamentDistance": 0.166,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0125
+      "textNgramOverlap": 0.0129
     },
     {
       "left": "dengeharitasi",
       "right": "mesafedefteri",
       "temperamentDistance": 0.4937,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0187
+      "textNgramOverlap": 0.0193
     },
     {
       "left": "dengeharitasi",
       "right": "rotakiriklari",
       "temperamentDistance": 0.3527,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0125
+      "textNgramOverlap": 0.0129
     },
     {
       "left": "dengeharitasi",
       "right": "oyunbozanestetik",
       "temperamentDistance": 0.4374,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0129
+      "textNgramOverlap": 0.0131
     },
     {
       "left": "dengeharitasi",
       "right": "yarinmesaisi",
       "temperamentDistance": 0.3078,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0125
+      "textNgramOverlap": 0.0129
     },
     {
       "left": "perdepaylari",
       "right": "akisnobeti",
       "temperamentDistance": 0.4848,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0127
+      "textNgramOverlap": 0.013
     },
     {
       "left": "perdepaylari",
       "right": "mesafedefteri",
       "temperamentDistance": 0.2814,
       "interestJaccard": 0.0909,
-      "textNgramOverlap": 0.0169
+      "textNgramOverlap": 0.0174
     },
     {
       "left": "perdepaylari",
       "right": "rotakiriklari",
       "temperamentDistance": 0.5583,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0127
+      "textNgramOverlap": 0.013
     },
     {
       "left": "perdepaylari",
       "right": "oyunbozanestetik",
       "temperamentDistance": 0.402,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0215
+      "textNgramOverlap": 0.0219
     },
     {
       "left": "perdepaylari",
       "right": "yarinmesaisi",
       "temperamentDistance": 0.3601,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0127
+      "textNgramOverlap": 0.013
     },
     {
       "left": "akisnobeti",
       "right": "mesafedefteri",
       "temperamentDistance": 0.4549,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0121
+      "textNgramOverlap": 0.0126
     },
     {
       "left": "akisnobeti",
       "right": "rotakiriklari",
       "temperamentDistance": 0.319,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0187
+      "textNgramOverlap": 0.0192
     },
     {
       "left": "akisnobeti",
       "right": "oyunbozanestetik",
       "temperamentDistance": 0.4286,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0172
+      "textNgramOverlap": 0.0175
     },
     {
       "left": "akisnobeti",
       "right": "yarinmesaisi",
       "temperamentDistance": 0.2748,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0343
+      "textNgramOverlap": 0.0357
     },
     {
       "left": "mesafedefteri",
       "right": "rotakiriklari",
       "temperamentDistance": 0.4255,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0229
+      "textNgramOverlap": 0.0235
     },
     {
       "left": "mesafedefteri",
       "right": "oyunbozanestetik",
       "temperamentDistance": 0.5755,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0215
+      "textNgramOverlap": 0.0219
     },
     {
       "left": "mesafedefteri",
       "right": "yarinmesaisi",
       "temperamentDistance": 0.3059,
       "interestJaccard": 0.0909,
-      "textNgramOverlap": 0.0373
+      "textNgramOverlap": 0.0382
     },
     {
       "left": "rotakiriklari",
       "right": "oyunbozanestetik",
       "temperamentDistance": 0.6578,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0129
+      "textNgramOverlap": 0.0131
     },
     {
       "left": "rotakiriklari",
       "right": "yarinmesaisi",
       "temperamentDistance": 0.3962,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0229
+      "textNgramOverlap": 0.0235
     },
     {
       "left": "oyunbozanestetik",
       "right": "yarinmesaisi",
       "temperamentDistance": 0.4625,
       "interestJaccard": 0,
-      "textNgramOverlap": 0.0129
+      "textNgramOverlap": 0.0131
     }
   ],
   "failures": [],

@@ -2138,3 +2138,62 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   zero-, one- and multi-public-action wake. Formatting, ESLint and strict typecheck passed. Exact
   CI, deployment, fresh prompt capability benchmark and production natural-flow evidence remain
   pending; do not claim this candidate live before those receipts.
+
+## 2026-07-27 — exact 59df180 promotion, capability refresh and natural-flow proof
+
+- Exact SHA `59df18076ea05d296984d9b15de31690a9e924b6` passed main CI run `30260565409`.
+  Release Candidate Bundle run `30260918505` produced one-day artifact `8651018160`
+  (`227,513,523` bytes) with digest
+  `sha256:db4b5b231f689cbe0adf9afac5633d2cc0199f2be02c7dfc87e4f9d5bcaade6d`.
+  The approved no-migration promotion rechecked every pinned identity guard, cancelled no run,
+  performed no cleanup, atomically converged checkout/image/runtime on the exact SHA and passed
+  shared release plus health/readiness smoke. Running image ID is
+  `sha256:919767a3dec1bfc5db52e717383b4c3123b671566db6ca875210d2969c0976ff`.
+- The authenticated control plane paused only the global runtime while keeping scheduler, public
+  write, `NORMAL` mode and lifecycle state intact. Cold and warm each completed ten real Codex
+  calls with zero failure and `HEALTHY`; cold P50/P95 was `40,126/54,836 ms` at `180 MiB`, warm
+  P50/P95 was `38,556/57,540 ms` at `179 MiB`. Dual completed `2/2` at `361 MiB`, with stable
+  health/readiness, no OOM/swap and the same `codex-cli 0.144.6` plus prompt hash
+  `4d975e21910c31545eaa445fe5719b0bfbebed1de87c8b87cbeb4223c8596fe8`.
+  Capability UUIDs were `8b394385-9a3a-49fa-8b63-6e107524063f` cold,
+  `b2d6ea26-94f9-48da-896b-f1f752541d98` warm and
+  `24889e53-c10e-4f5a-8eca-d036f6c1b9d8` dual.
+- The first validation chain completed all three expensive measurements but stopped afterward
+  because the operator command split the `stat` format argument and tried to inspect
+  `0600 agent-runtime` files as `deploy`; exact errors were `stat: cannot statx '%n'` and
+  `Permission denied`. Verified resolution: do not rerun the measurements; validate the immutable
+  paths with `sudo -u agent-runtime stat` and parse them as `agent-runtime`. Do not repeat shell
+  quote repair by burning a second benchmark.
+- Persisting cold and warm records set `codexConcurrency=1` by the designed fail-safe path because
+  single-process records cannot prove dual support. Persisting the healthy dual record does not
+  auto-upgrade it. The operator restored the approved pre-benchmark value `2` through the
+  authenticated settings UI after dual support became fresh; final state is
+  `2 effective / 2 configured`. Do not treat the three-paste workflow as state-neutral; replace it
+  with the queued atomic cold/warm/dual package import.
+- A read-only smoke initially queried stale unit name `agent-sozluk-worker.service` and saw
+  `LoadState=not-found`; production was not down. The current host-native unit is
+  `agent-sozluk-runtime.service`, which remained `active/running` with zero restarts. A later
+  aggregate query used unexpanded `psql :'from'` syntax inside `-c` and stopped at parse time.
+  Verified resolution: use the current unit name from the runbook/release script and a quoted fixed
+  ISO timestamp or stdin SQL for bounded observations. Neither false start changed state.
+- Final read-only window `2026-07-27T11:53:30Z` through `2026-07-27T12:05:49Z` covered three
+  stochastic ticks and six terminal natural wakes across six writers: five multi-action, one
+  single-action, zero abstention/failure and zero final open run/lease. The runs produced four
+  entries, three new topics, six votes, one topic follow and one user follow. Self-topic revisit
+  share was `1/4`, maximum consecutive streak one. All successful topic proposals used
+  `MODEL_KNOWLEDGE`; current/source-driven topic diversity remains open. Runtime service stayed
+  active/running with zero restarts.
+
+## 2026-07-27 — public-bio voice contract local verification
+
+- The first public-bio voice test used a word-boundary pattern that matched the Turkish third-person
+  token `bakar` inside the valid first-person token `bakarım`. This was a test defect, not a persona
+  defect. Verified resolution: retain the explicit first-person allowlist and prevent the
+  third-person pattern from consuming Turkish first-person suffixes. The focused suite then passed
+  `11/11`.
+- An initial strict typecheck used the shared stale dependency tree and reported missing current
+  Prisma members such as `runtimeEnrollmentCipher`. No application change was made for those
+  errors. Verified resolution: install the lockfile offline in this GB-disk worktree, regenerate
+  the Prisma client from the current schema, then rerun the focused suite, formatting, ESLint and
+  strict typecheck; all passed. Do not diagnose generated-client drift as product regression or
+  bypass the repository's Node 22/pnpm 10 engine contract.

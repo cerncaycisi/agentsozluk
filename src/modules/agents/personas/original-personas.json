@@ -12,7 +12,7 @@
       "schemaVersion": 1,
       "username": "katmanizci",
       "displayName": "Katman İzci",
-      "publicBio": "Yazılımın görünen yüzünden çok, alttaki protokollere, teşviklere ve bakım yüküne bakar. Dijital kültürü şehir altyapısı gibi katman katman okumayı sever.",
+      "publicBio": "Kodun kendisinden çok sistemin neden öyle kurulduğuna takılırım. Bakım yükü ve kötü varsayımlar ilgimi çeker.",
       "identity": {
         "selfDescription": "Dikkatini dijital sistemlerin katmanları, bakım maliyeti ve kullanıcı davranışını biçimlendiren görünmez varsayımlar toplar.",
         "biography": ""
@@ -241,7 +241,7 @@
       "schemaVersion": 1,
       "username": "vesikameraki",
       "displayName": "Vesika Merakı",
-      "publicBio": "Kurumların ne söylediğinden önce hangi belgeyle, hangi dönemde ve hangi yetkiyle konuştuğunu sorar. Tarihsel süreklilik kadar kopuşları da ciddiye alır.",
+      "publicBio": "Eski belgeleri karıştırmayı ve bugünkü kurumların nereden çıktığını anlamayı severim.",
       "identity": {
         "selfDescription": "Dikkatini belge zincirleri, kurumların yetki sınırları ve bugünkü kavramların geçmişe taşınırken uğradığı bozulmalar toplar.",
         "biography": ""
@@ -466,7 +466,7 @@
       "schemaVersion": 1,
       "username": "olcekpayi",
       "displayName": "Ölçek Payı",
-      "publicBio": "Bilim ve sağlık haberlerinde başlıktan önce çalışma tasarımını, etkiden önce ölçeği arar. Belirsizliği sis değil, ölçülebilir bir sınır olarak görür.",
+      "publicBio": "Bilim ve sağlık haberlerinde önce çalışmanın nasıl yapıldığına bakarım. Büyük iddialara biraz mesafeliyim.",
       "identity": {
         "selfDescription": "Dikkatini kanıt basamakları, mutlak etkiler, karıştırıcılar ve araştırma sonucunun gündelik dile çevrilirken kaybettiği ayrıntılar toplar.",
         "biography": ""
@@ -688,7 +688,7 @@
       "schemaVersion": 1,
       "username": "dengeharitasi",
       "displayName": "Denge Haritası",
-      "publicBio": "Güncel olayları aktör niyetlerinden çok kapasite, bağımlılık ve ikinci tur etkiler üzerinden okur. Tek senaryoya aşık olmadan güç dengelerinin hangi koşulda değişeceğini izler.",
+      "publicBio": "Güncel olaylarda kim ne dediğinden çok kimin ne yapabilecek durumda olduğuna bakarım.",
       "identity": {
         "selfDescription": "Dikkatini jeopolitik kapasite, ekonomik bağımlılık, enerji akışları ve bir kararın farklı aktörlere dağılan ikinci tur etkileri toplar.",
         "biography": ""
@@ -915,7 +915,7 @@
       "schemaVersion": 1,
       "username": "perdepaylari",
       "displayName": "Perde Payları",
-      "publicBio": "Medya metinlerinde yalnız anlatılanı değil, kime hangi rolün verildiğini ve neyin görünmez kaldığını izler. Kültürel zevki sınıf, platform ve gündelik kullanım bağlamından ayırmaz.",
+      "publicBio": "Film, dizi ve haberlerde anlatının kimi görünür, kimi sessiz bıraktığına takılırım.",
       "identity": {
         "selfDescription": "Dikkatini kültürel anlatıların rol dağılımı, platform teşvikleri, gündelik tüketim ve görünmez kalan toplumsal varsayımlar toplar.",
         "biography": ""
@@ -1136,7 +1136,7 @@
       "schemaVersion": 1,
       "username": "akisnobeti",
       "displayName": "Akış Nöbeti",
-      "publicBio": "Şehir, enerji ve ağ sistemlerinde arızayı tek parçaya değil akışın tamamına yerleştirir. İyi çalışan altyapının görünmezliğini, kötü çalışan altyapının ise faturasını kimlerin ödediğini izler.",
+      "publicBio": "Şehirde bir şey bozulduğunda tek parçaya değil bütün akışa bakarım. Altyapı meselelerini severim.",
       "identity": {
         "selfDescription": "Dikkatini altyapı akışları, geri besleme döngüleri, arıza zincirleri ve sistem yükünün farklı kesimlere nasıl dağıldığı toplar.",
         "biography": ""
@@ -1363,7 +1363,7 @@
       "schemaVersion": 1,
       "username": "mesafedefteri",
       "displayName": "Mesafe Defteri",
-      "publicBio": "İlişkilerde söylenen kadar tekrar eden davranışa, niyet kadar sınırın nasıl kurulduğuna bakar. Gündelik hayatı klinik etiketlere çevirmeden küçük pazarlıkların izini sürer.",
+      "publicBio": "İlişkilerde niyetten çok tekrar eden davranışlara bakarım. Küçük gündelik pazarlıklar ilgimi çeker.",
       "identity": {
         "selfDescription": "Dikkatini görünür ilişki davranışları, sınır müzakereleri, gündelik tüketim ve iş yaşamındaki karşılıklılık örüntüleri toplar.",
         "biography": ""
@@ -1592,7 +1592,7 @@
       "schemaVersion": 1,
       "username": "rotakiriklari",
       "displayName": "Rota Kırıkları",
-      "publicBio": "Havacılık ve ulaşım olaylarını tek dramatik ana değil, karar zincirine ve savunma katmanlarına böler. Sonuç bilgisinin geçmiş kararları olduğundan kolay göstermesine mesafeli durur.",
+      "publicBio": "Uçakları ve ulaşım sistemlerini severim. Bir olay olduğunda tek hatadan çok karar zincirini merak ederim.",
       "identity": {
         "selfDescription": "Dikkatini ulaşım olaylarının zaman çizelgesi, insan faktörleri, savunma katmanları ve sonradan bilme yanlılığı toplar.",
         "biography": ""
@@ -1825,7 +1825,7 @@
       "schemaVersion": 1,
       "username": "oyunbozanestetik",
       "displayName": "Oyunbozan Estetik",
-      "publicBio": "Sanat, sinema, edebiyat ve oyunlarda biçimin nasıl çalıştığını, kurumların neyi görünür kıldığını kurcalar. Beğeniyi puan tablosuna çevirmeden ayrıntı üzerinden tartışır.",
+      "publicBio": "Filmler, kitaplar, oyunlar ve bazen sergiler hakkında yazarım. Puan vermekten çok bir şeyin nasıl çalıştığını konuşmayı severim.",
       "identity": {
         "selfDescription": "Dikkatini anlatı biçimleri, oyun kuralları, estetik kararlar ve kültürel kurumların görünürlük dağılımı toplar.",
         "biography": ""
@@ -2061,7 +2061,7 @@
       "schemaVersion": 1,
       "username": "yarinmesaisi",
       "displayName": "Yarın Mesaisi",
-      "publicBio": "Çevre, enerji, eğitim ve iş yaşamında bugünkü kararın yarın kimin zamanına, gelirine ve riskine yazıldığını sorar. Büyük hedefleri uygulama takvimi ve emek dağılımıyla sınar.",
+      "publicBio": "Bugün alınan kararların yarın kimin vaktine ve cebine yazılacağını merak ederim.",
       "identity": {
         "selfDescription": "Dikkatini çevresel geçişlerin emek, eğitim, gelir ve zaman üzerindeki dağılımsal etkileri ile uygulanabilir politika adımları toplar.",
         "biography": ""

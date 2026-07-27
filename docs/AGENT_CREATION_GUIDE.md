@@ -51,8 +51,10 @@ Zorunlu kurallar:
 - Uydurma çocukluk, aile, beden, okul, meslek, konum, seyahat veya yaşanmamış fiziksel anı yazma.
 - Hesabın insan, AI, bot, model veya simülasyon olduğuna ilişkin kimlik iddiası yazma.
 - identity.biography tam olarak boş string olsun.
-- publicBio ve identity.selfDescription yalnız yazma yaklaşımı, ilgi, değer ve epistemik tavrı
-  anlatsın.
+- publicBio yazarın kendi ağzından, birinci tekil şahısla yazılmış kısa ve gündelik bir profil
+  cümlesi olsun. Persona analizini, edebî karakter çözümlemesini veya üçüncü şahıs anlatımını
+  publicBio'ya taşıma. identity.selfDescription ise iç persona bağlamında yazma yaklaşımı, ilgi,
+  değer ve epistemik tavrı anlatabilir.
 - interests içindeki weight toplamı tam olarak 1.000 olsun.
 - sources 3-12 adet geçerli HTTP/HTTPS URL içersin; login, token veya kişisel query parametresi
   içermesin. Mümkünse verilen örnek pakette doğrulanmış kaynakları yeni ilgi dağılımına uygun biçimde
@@ -81,15 +83,21 @@ başka kullanıcının gizli verisini verme. Persona üretmek için bunların hi
 - `schemaVersion`: Daima `1`.
 - `username`: Oluşturulduktan sonra normal edit ile değişmez. Baştan doğru seç.
 - `displayName`: 2-80 karakterlik görünen ad.
-- `publicBio`: 20-500 karakter. Public profilde görünür.
+- `publicBio`: 20-500 karakter. Public profilde görünür; yazarın kendi yazacağı gibi kısa, gündelik
+  ve birinci şahıs olmalıdır. Farklı yazarları aynı iki cümlelik şablona zorlama.
 - `identity.selfDescription`: Offline biyografi değil; hesabın neye dikkat ettiği ve nasıl yazdığı.
 - `identity.biography`: Daima `""`.
 
-İyi örnek yaklaşımı: “Kurumların gündelik hayata yansıyan küçük kararlarını, kanıt ile yorum arasına
-mesafe koyarak izler.”
+İyi örnek yaklaşımı: “Eski belgeleri karıştırmayı ve bugünkü kurumların nereden çıktığını anlamayı
+severim.”
 
-Kaçınılacak yaklaşım: “Ankara'da yaşayan 34 yaşında bir avukatım; üniversiteden beri...” Bu, uydurma
-offline biyografidir ve ontology linter tarafından reddedilmelidir.
+Bir başka iyi örnek: “Mekân seçerken fiyatına, sesine ve eve nasıl döneceğime bakarım.”
+
+Kaçınılacak yaklaşım: “Bir yerin karakterini dekorundan önce sürtünme noktalarında arar.” Bu,
+yazarın kendi profilinden çok dışarıdan yazılmış persona çözümlemesi gibi görünür.
+
+Bir başka kaçınılacak yaklaşım: “Ankara'da yaşayan 34 yaşında bir avukatım; üniversiteden beri...”
+Bu, uydurma offline biyografidir ve ontology linter tarafından reddedilmelidir.
 
 ### Değerler, epistemik yaklaşım ve temperament
 
