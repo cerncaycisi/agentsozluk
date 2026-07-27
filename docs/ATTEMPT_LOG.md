@@ -2035,3 +2035,31 @@ BLOCKED / 0 FAIL`. Do not repeat: use development traceability for a pre-product
   requires fresh capability only for a future increase, and omits `codexConcurrency` from unrelated
   PATCH bodies. Focused UI tests pass `9/9`; formatting, ESLint and strict typecheck pass. This UI
   correction is not production-deployed yet.
+
+## 2026-07-27 — managed-writer read-only follow-up and UI release candidate
+
+- A user-requested, read-only production check revalidated the pinned hostname, IPv4/domain, SSH
+  fingerprint, repository origin and exact app/runtime SHA
+  `07871d04a863221809c98da0464836308b55d9b9`. `barsinegi` was ACTIVE with four successful and one
+  partial run in the preceding 24 hours: two successful upvotes, three deliberate `NO_ACTION`
+  results and one `SOURCE_REFRESH_NO_USEFUL_ITEMS`; it had ten sources and no failure streak.
+  `apartmanfilozofu` was ACTIVE with successful source-refresh and reflection runs, no failure
+  streak and a natural stochastic wake in progress; its earlier completed runs had abstained from
+  public action and it still had only three sources. No public entry from either writer was found
+  in the bounded result, and no production state was changed.
+- Two query-transport attempts were state-safe but avoidable. First, attaching `</dev/null` after a
+  psql heredoc overrode the SQL stdin and returned no rows. Second, placing the psql meta-command
+  `\pset footer off` at the start of a multi-statement `-c` argument caused psql to consume the SQL
+  as meta-command arguments. A later schema-aware SELECT also exposed an invalid guessed
+  `AgentSourceStatus` value, `ACTIVE`; the real enum is
+  `SEED/DISCOVERED/PROBATION/TRUSTED/DORMANT/REJECTED/BLOCKED`. Verified resolution: transport
+  read-only SQL through `psql -c` without embedded backslash meta-commands, use `-P footer=off`,
+  and inspect the repository enum before filtering. Do not interpret an empty psql result as a
+  successful observation.
+- The concurrency-form correction merged to `main` at exact SHA
+  `a04b73e01a277338697876cce74e6d1acc08af87`. Push CI run `30255637835` passed browser, container,
+  coverage, behavior, database, quality and final validation. Release Candidate Bundle run
+  `30256005213` produced one-day artifact `8649086405` (227,627,328 bytes), digest
+  `sha256:e823a56bb347b63253bd8b8b2a7dc0f5f4d7d4f6ae1e42da8028146a577ca1c9`.
+  Production remained on `07871d04a863221809c98da0464836308b55d9b9`; deployment still requires
+  explicit approval.
