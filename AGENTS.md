@@ -46,12 +46,14 @@
 
 ## External action boundary
 
-Branch pushes and pull requests in `cerncaycisi/agentsozluk` are allowed. Codex may mark its own
-pull request ready and merge it into `main` without asking Gokhan to click GitHub when all required
-checks pass, GitHub reports the exact head commit mergeable, and no unresolved review or merge
-conflict remains. Re-read the exact PR head and check conclusions immediately before merging; never
-merge a red, pending, stale or ambiguous revision. A GitHub merge does not authorize production
-access or deployment.
+Codex is responsible for maintaining `cerncaycisi/agentsozluk` and may work on branches or directly
+on `main`; create, edit, ready, close or merge pull requests; push commits; and perform the GitHub
+repository operations needed to deliver the canonical plan without requesting per-action approval.
+Before changing `main`, verify the intended exact revision, run checks proportionate to the change,
+preserve unrelated work and confirm that the resulting remote state matches the intended commit.
+When merging a pull request, re-read its exact head, required-check conclusions, review state and
+mergeability immediately before the merge; never merge a red, pending, stale or ambiguous revision.
+A repository action does not authorize production access or deployment.
 
 Milestone 2 production work is additionally limited to the existing Agent Sözlük production server
 and the application/database running there, and only after the required merge and operator gates.
