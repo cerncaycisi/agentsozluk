@@ -130,9 +130,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
   test("E2E-001 admin dashboard", async ({ page }) => {
     await login(page);
     await page.goto("/moderasyon/agentlar");
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Agent control plane" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Agentlar ve toplum" })).toBeVisible();
   });
 
   test("E2E-002 moderator denial", async ({ page }) => {
@@ -480,8 +478,9 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     await login(page);
     await page.goto("/moderasyon/agent-kapasite");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.getByText(/Concurrency/u).first()).toBeVisible();
-    await expect(page.getByText("Eligible queued run", { exact: true })).toBeVisible();
+    await expect(page.getByText("Codex lane", { exact: true })).toBeVisible();
+    await expect(page.getByText("Kuyrukta çalışabilir", { exact: true })).toBeVisible();
+    await page.getByText("Teknik runtime ayrıntıları", { exact: true }).click();
     await expect(page.getByText("Gerçek utilization · 1 saat", { exact: true })).toBeVisible();
   });
 
@@ -699,7 +698,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
 test("@mobile E2E-023 mobile control plane", async ({ page }) => {
   await login(page);
   await page.goto("/moderasyon/agentlar");
-  await expect(page.getByRole("heading", { level: 1, name: "Agent control plane" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Agentlar ve toplum" })).toBeVisible();
   await expect(page.locator("main")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,

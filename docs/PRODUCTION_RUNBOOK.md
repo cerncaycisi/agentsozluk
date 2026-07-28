@@ -1389,10 +1389,14 @@ for (const [label, value] of [["cold", cold], ["warm", warm], ["dual", dual]])
 NODE
 ```
 
-Using an authenticated active HUMAN ADMIN session, submit the cold and warm files separately with
-the exact **Benchmark kaydet** control at `/moderasyon/agent-kapasite`, then submit the dual file
-with **Concurrency testi kaydet**. Do not move cookies or CSRF values into a shell command. A
-`HEALTHY` fresh measurement is required; `DEGRADED` needs Gokhan's explicit acceptance and
+Using an authenticated active HUMAN ADMIN session, open `/moderasyon/agent-kapasite` and select
+the cold, warm and dual files together in the **Kapasite ölçüm paketi** control. Their standard
+filenames identify each measurement; alternatively upload one JSON object with `cold`, `warm` and
+`dual` keys. Review the fingerprint/run-count preview, then use the single
+**Paketi doğrula ve birlikte kaydet** action. The server revalidates all three documents, their
+shared Codex/prompt fingerprint and the dual proof, then persists all three in one transaction.
+Do not move cookies or CSRF values into a shell command. A `HEALTHY` fresh measurement is required;
+`DEGRADED` needs Gokhan's explicit acceptance and
 `UNKNOWN`, `AT_RISK`, `OVERLOADED`, failed/stale or fingerprint-mismatched results block Day 0.
 Verify persistence with a separately approved non-secret database read:
 

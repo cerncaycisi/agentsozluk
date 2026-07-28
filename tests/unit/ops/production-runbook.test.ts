@@ -214,8 +214,8 @@ describe("Milestone 2 production operator runbook", () => {
     expect(capacityGate).toContain("value.p95DurationMs <= value.maxDurationMs");
     expect(capacityGate).toContain("dual.dualRunSuccessCount !== 2");
     expect(capacityGate).toContain("dual.dualProcessPeakRssMb > 0");
-    expect(capacityGate).toContain("Benchmark kaydet");
-    expect(capacityGate).toContain("Concurrency testi kaydet");
+    expect(capacityGate).toContain("Kapasite ölçüm paketi");
+    expect(capacityGate).toContain("Paketi doğrula ve birlikte kaydet");
     expect(capacityGate).toContain("FROM agent_runtime_capabilities");
     expect(capacityGate).toContain("cold/warm/dual sample counts");
   });

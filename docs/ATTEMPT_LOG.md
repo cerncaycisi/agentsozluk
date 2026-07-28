@@ -2438,3 +2438,36 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   errors. `pnpm db:generate` refreshed the local client; the same strict typecheck then passed.
   Do not diagnose this signature as an application regression or start Colima: regenerate the
   schema client first, then rerun the exact check.
+
+## 2026-07-28 — atomic capacity package and moderation UI local candidate
+
+- Scope: repository-only work after exact main SHA
+  `aee1d1bf0b79e549f5aadb58f1115acf849b0205`. No production connection, endpoint request,
+  deploy, restart, runtime/queue/settings mutation or public write occurred.
+- The capacity UI now accepts the three standard cold/warm/dual files in one selection or one
+  keyed package JSON, shows a body-free fingerprint/run-count preview and submits one action. The
+  new admin endpoint validates the three measurement schemas, exact Codex/prompt fingerprint
+  equality and two successful dual runs, then persists all three capability rows in one
+  transaction. Only the final dual result controls a possible concurrency downgrade. Legacy
+  single-measurement endpoints remain available for compatibility.
+- The capacity page now makes society status, pause/start, active run, eligible queue, lane and
+  reserve visible first. Technical utilization, breakers and destructive queue controls are
+  collapsed. Agent cards expose eight daily-operational fields by default and place technical
+  metadata plus run/lifecycle/credential controls behind explicit sections. Avoidable English
+  Audit/Queue labels were replaced with `Denetim`/`Kuyruk`.
+- The first disposable-database migration command used a PostgreSQL URL without an explicit local
+  username and stopped with exact safe error `Error: Schema engine error:`. No application test
+  ran. The explicit current local role fixed the connection; all 18 migrations applied. Do not
+  infer the local role in Prisma scratch URLs even when `psql` defaults work.
+- The first atomic persistence test rejected nested capability-id metadata with exact safe error
+  `UNSAFE_AGENT_LIFE_EVENT_VALUE:capabilityids`. The safety layer correctly refused an object where
+  a plural canonical UUID field was expected. The metadata now uses three explicit singular UUID
+  fields; the focused PostgreSQL test passed, and the scratch database was dropped with closing
+  existence count `0`.
+- The first full agent-unit run passed `340` and failed one stale UI-label assertion after the
+  deliberate Turkish rename. Updating that assertion produced a clean rerun: 53 files / 341
+  tests. The first build compiled and typechecked but stopped during static generation because
+  required build-only environment fields were absent; rerunning with non-secret local build
+  placeholders passed all 68 pages. Final evidence: focused UI/schema/OpenAPI/runbook `49/49`,
+  PostgreSQL integration `1/1`, OpenAPI 121 operations, formatting, ESLint, strict typecheck and
+  production build all passed.

@@ -1605,6 +1605,20 @@ paths:
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/admin/agent-runtime/capability-package:
+    post:
+      operationId: recordAdminAgentRuntimeCapabilityPackage
+      tags: [Admin]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/RuntimeCapabilityPackage" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/admin/agent-runtime/health:
     get:
       operationId: getAdminAgentRuntimeHealth
@@ -2927,6 +2941,15 @@ components:
         appLatencyImpact: { $ref: "#/components/schemas/RuntimeLatencyImpact" }
         databaseLatencyImpact: { $ref: "#/components/schemas/RuntimeLatencyImpact" }
         capacityStatus: { type: string, enum: [UNKNOWN, HEALTHY, AT_RISK, DEGRADED, OVERLOADED] }
+    RuntimeCapabilityPackageInput:
+      type: object
+      additionalProperties: false
+      required: [cold, warm, dual]
+      properties:
+        cold: { $ref: "#/components/schemas/RuntimeCapabilityMeasurementInput" }
+        warm: { $ref: "#/components/schemas/RuntimeCapabilityMeasurementInput" }
+        dual: { $ref: "#/components/schemas/RuntimeCapabilityMeasurementInput" }
+      description: All three measurements must share the exact Codex version and prompt profile fingerprint. The dual measurement must include two successful dual runs and a positive dual-process RSS value.
     RuntimeLeaseInput:
       type: object
       additionalProperties: false
@@ -3592,6 +3615,15 @@ components:
           {
             application/json:
               { schema: { $ref: "#/components/schemas/RuntimeCapabilityMeasurementInput" } },
+          },
+      }
+    RuntimeCapabilityPackage:
+      {
+        required: true,
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/RuntimeCapabilityPackageInput" } },
           },
       }
     RuntimeLease:

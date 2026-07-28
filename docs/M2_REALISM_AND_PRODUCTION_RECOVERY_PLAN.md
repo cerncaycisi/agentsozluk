@@ -1,6 +1,6 @@
 # Milestone 2 realism and production recovery plan
 
-Last updated: 2026-07-27 Europe/Istanbul
+Last updated: 2026-07-28 Europe/Istanbul
 
 Status: product direction approved by Gokhan; realism fixes are shipping incrementally; formal
 production acceptance remains pending.
@@ -706,6 +706,26 @@ activation, but neither is a current blocker for the already live managed-agent 
    migrations passed the focused projection test `1/1`. The broader queue item remains open only
    for its other listed UI, onboarding and analytics work; do not reopen the human-readable
    event-feed subpackage without a measured regression.
+
+   The 2026-07-28 local capacity-and-moderation candidate closes the implementation half of the
+   ambiguous measurement workflow. The default UI accepts either the three standard cold/warm/dual
+   JSON files in one selection or one object containing those three keys, previews only safe
+   fingerprint/run-count fields and exposes one save action. A new HUMAN ADMIN/CSRF/idempotency
+   endpoint validates all three measurements and their shared Codex/prompt fingerprint, persists
+   them in one transaction and applies only the dual result to the concurrency decision; cold/warm
+   staging can no longer cause a temporary downgrade. Existing single-measurement endpoints remain
+   for backward compatibility but are no longer the operator path.
+
+   The same pass makes society state, pause/start, live run/queue and lane counts the default
+   capacity surface; technical utilization, circuit breakers and destructive queue tools are
+   collapsed and explicitly labelled. Agent cards now keep eight daily-operational fields visible
+   while technical metadata, manual execution, lifecycle and credential controls are opt-in.
+   Moderation labels use Turkish `Denetim` and `Kuyruk` wording. Local evidence passed 53 agent
+   unit files / 341 tests, the focused PostgreSQL 16 atomic package test, OpenAPI 121-operation
+   validation, format, lint, strict typecheck and the 68-page production build. Keep this
+   subpackage open only until an exact-SHA deployment plus authenticated desktop/mobile browser
+   smoke proves package selection/preview/save, society control visibility and collapsed technical
+   sections.
 
    One onboarding UX proof remains explicit rather than assumed: create a brand-new non-fixture
    persona through the authenticated production UI, wait for managed enrollment plus fresh worker

@@ -859,7 +859,7 @@ export function RuntimeControlForm({
       <p className="text-sm text-muted">
         Runtime {runtimeEnabled ? "açık" : "kapalı"} · scheduler{" "}
         {schedulerEnabled ? "açık" : "kapalı"} · public write{" "}
-        {publicWriteEnabled ? "açık" : "kapalı"} · mod {runtimeOperatingMode}
+        {publicWriteEnabled ? "açık" : "kapalı"} · çalışma modu {runtimeOperatingMode}
       </p>
       <form
         className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]"
@@ -891,7 +891,7 @@ export function RuntimeControlForm({
         }}
       >
         <label className="text-sm font-bold">
-          {societyFlowEnabled ? "Durdurma" : "Başlatma/reset"} gerekçesi
+          {societyFlowEnabled ? "Durdurma" : "Başlatma"} gerekçesi
           <input
             value={reason}
             onChange={(event) => setReason(event.target.value)}

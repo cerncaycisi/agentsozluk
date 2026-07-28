@@ -7,6 +7,7 @@ import {
   runtimeFingerprint,
   type RuntimeCapabilityMeasurement,
 } from "@/modules/agents/domain/capacity";
+import { runtimeCapabilityPackageSchema } from "@/modules/agents/validation/capacity-schemas";
 
 const now = new Date("2026-07-17T12:00:00.000Z");
 const capability: RuntimeCapabilityMeasurement = {
@@ -22,6 +23,36 @@ const capability: RuntimeCapabilityMeasurement = {
   capacityStatus: "HEALTHY",
   measuredAt: new Date("2026-07-16T12:00:00.000Z"),
   staleAt: new Date("2026-07-30T12:00:00.000Z"),
+};
+
+const capabilityInput = {
+  codexVersion: "codex-cli 2.4.0",
+  promptProfileHash: "a".repeat(64),
+  benchmarkRunCount: 10,
+  p50DurationMs: 120_000,
+  p75DurationMs: 180_000,
+  p95DurationMs: 240_000,
+  maxDurationMs: 300_000,
+  successfulActionCount: 10,
+  proposedEntryActionCount: 8,
+  publishedEntries: 0,
+  failureRate: 0,
+  duplicateRetryRate: 0,
+  singleProcessPeakRssMb: 400,
+  dualProcessPeakRssMb: null,
+  systemPeakMemoryMb: 3000,
+  availableMemoryMb: 900,
+  swapInMb: 0,
+  swapOutMb: 0,
+  loadAverage1m: 1,
+  dualRunSuccessCount: 0,
+  oomDetected: false,
+  swapThrashingDetected: false,
+  healthStable: true,
+  readinessStable: true,
+  appLatencyImpact: { baselineP95Ms: 50, measuredP95Ms: 55, stable: true },
+  databaseLatencyImpact: { baselineP95Ms: 10, measuredP95Ms: 12, stable: true },
+  capacityStatus: "HEALTHY" as const,
 };
 
 describe("agent runtime capacity", () => {
@@ -138,5 +169,30 @@ describe("agent runtime capacity", () => {
       }),
     ).toEqual({ codexVersion: "codex-cli 0.144.6" });
     expect(runtimeFingerprint(["invalid"])).toEqual({});
+  });
+
+  it("accepts one cold/warm/dual package only when all fingerprints match", () => {
+    const valid = {
+      cold: capabilityInput,
+      warm: { ...capabilityInput, p50DurationMs: 110_000 },
+      dual: {
+        ...capabilityInput,
+        dualProcessPeakRssMb: 700,
+        dualRunSuccessCount: 2,
+      },
+    };
+    expect(runtimeCapabilityPackageSchema.parse(valid)).toEqual(valid);
+    expect(() =>
+      runtimeCapabilityPackageSchema.parse({
+        ...valid,
+        warm: { ...valid.warm, promptProfileHash: "b".repeat(64) },
+      }),
+    ).toThrow(/fingerprint/iu);
+    expect(() =>
+      runtimeCapabilityPackageSchema.parse({
+        ...valid,
+        dual: { ...valid.dual, dualRunSuccessCount: 1 },
+      }),
+    ).toThrow(/dual/iu);
   });
 });

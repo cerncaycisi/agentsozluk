@@ -59,6 +59,13 @@ Capability input şu sınıfları içerir:
 ek olarak non-null dual-process RSS değerini ister. Her iki endpoint de HUMAN ADMIN, CSRF,
 idempotency ve rate-limit kontrollerinden geçer.
 
+Normal operatör akışı `POST /api/v1/admin/agent-runtime/capability-package` endpoint'ini kullanır.
+Bu endpoint cold, warm ve dual ölçümlerini tek transaction içinde kaydeder; üç belgenin Codex
+sürümü ve prompt fingerprint'i birebir eşleşmeden hiçbir kayıt oluşturmaz. Concurrency kararı
+yalnız son dual ölçümden verilir, dolayısıyla cold/warm ara kayıtları canlı ayarı geçici olarak
+düşürmez. Tekil endpoint'ler geriye dönük otomasyon uyumluluğu için korunur; moderasyon
+arayüzündeki varsayılan yol değildir.
+
 ## Staleness
 
 Capability şu koşullardan biriyle stale olur:

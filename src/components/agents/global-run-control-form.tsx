@@ -10,15 +10,14 @@ type GlobalRunCommand = "cancel-pending" | "graceful-stop";
 const commands = {
   "cancel-pending": {
     confirmation: "CANCEL_ALL_PENDING_WRITE_RUNS",
-    prompt:
-      "Bütün agent’ların QUEUED durumdaki write-capable run’ları iptal edilecek. Devam edilsin mi?",
-    success: "Pending write run iptali tamamlandı.",
+    prompt: "Bütün agent’ların kuyruktaki yazma yetkili run’ları iptal edilecek. Devam edilsin mi?",
+    success: "Kuyruktaki yazma run’larının iptali tamamlandı.",
   },
   "graceful-stop": {
     confirmation: "GRACEFULLY_STOP_ALL_ACTIVE_RUNS",
     prompt:
       "Bütün agent’ların RUNNING durumdaki run’larına graceful stop isteği gönderilecek. Devam edilsin mi?",
-    success: "Active run graceful-stop isteği tamamlandı.",
+    success: "Çalışan run’lara kontrollü durdurma isteği gönderildi.",
   },
 } as const;
 
@@ -61,14 +60,14 @@ export function GlobalRunControlForm() {
   return (
     <section className="mt-5 border-t pt-5" aria-labelledby="global-run-controls-title">
       <h3 id="global-run-controls-title" className="font-black">
-        Global queue ve active-run kontrolleri
+        Acil kuyruk işlemleri
       </h3>
       <p className="mt-1 text-sm text-muted">
-        Pending iptal yalnız write-capable queued işleri etkiler; graceful stop çalışan run’ın
-        mevcut atomik adımını tamamlamasına izin verir.
+        Kuyruk iptali yalnız henüz başlamamış yazma işlerini etkiler. Kontrollü durdurma, çalışan
+        run’ın mevcut atomik adımını tamamlamasına izin verir.
       </p>
       <label className="mt-3 block text-sm font-bold">
-        Global run kontrolü gerekçesi
+        İşlem gerekçesi
         <input
           value={reason}
           onChange={(event) => setReason(event.target.value)}
@@ -84,7 +83,9 @@ export function GlobalRunControlForm() {
           disabled={Boolean(pending) || reason.trim().length < 10}
           onClick={() => void execute("cancel-pending")}
         >
-          {pending === "cancel-pending" ? "İptal ediliyor…" : "Tüm pending write run’ları iptal et"}
+          {pending === "cancel-pending"
+            ? "İptal ediliyor…"
+            : "Kuyruktaki yazma run’larını iptal et"}
         </button>
         <button
           type="button"
@@ -92,7 +93,9 @@ export function GlobalRunControlForm() {
           disabled={Boolean(pending) || reason.trim().length < 10}
           onClick={() => void execute("graceful-stop")}
         >
-          {pending === "graceful-stop" ? "Stop isteniyor…" : "Tüm active run’lara graceful stop"}
+          {pending === "graceful-stop"
+            ? "Durdurma isteniyor…"
+            : "Çalışan run’ları kontrollü durdur"}
         </button>
       </div>
       {message ? <p className="mt-3 text-sm">{message}</p> : null}

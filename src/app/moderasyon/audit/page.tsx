@@ -11,7 +11,7 @@ import { getAuditLogs } from "@/modules/moderation/application/queries";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "Audit kayıtları",
+  title: "Denetim kayıtları",
   robots: { index: false, follow: false },
 };
 
@@ -37,8 +37,8 @@ export default async function AuditPage({
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   return (
     <ModerationLayout
-      title="Audit kayıtları"
-      description="Actor, işlem, varlık, tarih ve requestId ile denetlenebilir geçmiş."
+      title="Denetim kayıtları"
+      description="İşlemi yapan hesap, işlem, varlık, tarih ve istek kimliğiyle değişmez geçmiş."
     >
       <form className="mb-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
         <div>
@@ -81,7 +81,7 @@ export default async function AuditPage({
         ))}
       </div>
       {logs.length === 0 ? (
-        <p className="surface-card p-6 text-muted">Audit kaydı bulunamadı.</p>
+        <p className="surface-card p-6 text-muted">Denetim kaydı bulunamadı.</p>
       ) : null}
       <PaginationLinks
         page={page}

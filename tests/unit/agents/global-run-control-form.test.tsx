@@ -34,13 +34,15 @@ describe("global run controls", () => {
     mocks.apiRequest.mockResolvedValue({ count: 2 });
     render(<GlobalRunControlForm />);
 
-    const cancel = screen.getByRole("button", { name: "Tüm pending write run’ları iptal et" });
-    const stop = screen.getByRole("button", { name: "Tüm active run’lara graceful stop" });
+    const cancel = screen.getByRole("button", {
+      name: "Kuyruktaki yazma run’larını iptal et",
+    });
+    const stop = screen.getByRole("button", { name: "Çalışan run’ları kontrollü durdur" });
     expect(cancel).toBeDisabled();
     expect(stop).toBeDisabled();
 
     await userEvent.type(
-      screen.getByLabelText("Global run kontrolü gerekçesi"),
+      screen.getByLabelText("İşlem gerekçesi"),
       "Kontrollü global queue ve run müdahalesi.",
     );
     await userEvent.click(cancel);
@@ -61,7 +63,7 @@ describe("global run controls", () => {
     );
 
     await userEvent.type(
-      screen.getByLabelText("Global run kontrolü gerekçesi"),
+      screen.getByLabelText("İşlem gerekçesi"),
       "Kontrollü active run graceful stop müdahalesi.",
     );
     await userEvent.click(stop);

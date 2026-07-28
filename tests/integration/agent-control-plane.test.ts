@@ -16,11 +16,13 @@ import {
   listAgentSources,
   personaRollbackSchema,
   recordRuntimeCapability,
+  recordRuntimeCapabilityPackage,
   rollbackPersona,
   setGlobalRuntimeEnabled,
   setSocietyFlowEnabled,
   startProductionRolloutAttempt,
   runtimeCapabilityMeasurementSchema,
+  runtimeCapabilityPackageSchema,
   updateAgent,
   updateAgentSourceAdmin,
   updateAgentSchema,
@@ -1060,6 +1062,90 @@ describe("agent control plane with PostgreSQL", () => {
     await expect(
       updateGlobalSettings(integrationDatabase, actor(admin.id), { codexConcurrency: 2 }),
     ).rejects.toMatchObject({ code: "AGENT_CAPABILITY_REQUIRED" });
+  });
+
+  it("persists cold, warm and dual as one package and applies only the dual concurrency result", async () => {
+    const admin = await createPrincipal();
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { codexConcurrency: 2 },
+    });
+    const baseMeasurement = {
+      codexVersion: "codex-cli 2.4.0",
+      promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+      benchmarkRunCount: 10,
+      p50DurationMs: 120_000,
+      p75DurationMs: 180_000,
+      p95DurationMs: 240_000,
+      maxDurationMs: 300_000,
+      successfulActionCount: 10,
+      proposedEntryActionCount: 8,
+      publishedEntries: 0,
+      failureRate: 0,
+      duplicateRetryRate: 0,
+      singleProcessPeakRssMb: 400,
+      dualProcessPeakRssMb: null,
+      systemPeakMemoryMb: 3000,
+      availableMemoryMb: 900,
+      swapInMb: 0,
+      swapOutMb: 0,
+      loadAverage1m: 1,
+      dualRunSuccessCount: 0,
+      oomDetected: false,
+      swapThrashingDetected: false,
+      healthStable: true,
+      readinessStable: true,
+      appLatencyImpact: { baselineP95Ms: 50, measuredP95Ms: 55, stable: true },
+      databaseLatencyImpact: { baselineP95Ms: 10, measuredP95Ms: 12, stable: true },
+      capacityStatus: "HEALTHY" as const,
+    };
+    const capabilityPackage = runtimeCapabilityPackageSchema.parse({
+      cold: baseMeasurement,
+      warm: { ...baseMeasurement, p50DurationMs: 110_000 },
+      dual: {
+        ...baseMeasurement,
+        dualProcessPeakRssMb: 700,
+        dualRunSuccessCount: 2,
+      },
+    });
+
+    await expect(
+      recordRuntimeCapabilityPackage(
+        integrationDatabase,
+        actor(admin.id),
+        capabilityPackage,
+        new Date("2026-07-28T08:00:00.000Z"),
+      ),
+    ).resolves.toMatchObject({
+      dualConcurrencySupported: true,
+      concurrencyDowngraded: false,
+      measurements: {
+        cold: { runCount: 10, capacityStatus: "HEALTHY" },
+        warm: { runCount: 10, capacityStatus: "HEALTHY" },
+        dual: { runCount: 10, capacityStatus: "HEALTHY" },
+      },
+    });
+
+    const [records, settings, audit] = await Promise.all([
+      integrationDatabase.agentRuntimeCapability.findMany({
+        orderBy: [{ measuredAt: "desc" }, { id: "desc" }],
+      }),
+      integrationDatabase.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } }),
+      integrationDatabase.auditLog.findFirstOrThrow({
+        where: { action: "agent.capacity.package_measured" },
+      }),
+    ]);
+    expect(records).toHaveLength(3);
+    expect(records.map(({ dualConcurrencySupported }) => dualConcurrencySupported)).toEqual([
+      true,
+      false,
+      false,
+    ]);
+    expect(settings.codexConcurrency).toBe(2);
+    expect(audit.metadata).toMatchObject({
+      dualConcurrencySupported: true,
+      concurrencyDowngraded: false,
+    });
   });
 
   it("measures real utilization, head-of-line blocking and runtime breaker signals", async () => {

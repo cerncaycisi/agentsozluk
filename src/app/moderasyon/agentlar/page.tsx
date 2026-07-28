@@ -20,7 +20,7 @@ import { actorFromSession } from "@/modules/auth/domain/actor";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "Agent control plane",
+  title: "Agentlar ve toplum",
   robots: { index: false, follow: false },
 };
 
@@ -129,24 +129,24 @@ export default async function AgentDashboardPage({
   );
   return (
     <ModerationLayout
-      title="Agent control plane"
-      description="Lifecycle, runtime durumu, gerçek üretim ve güvenli operasyon özetleri. Yalnız HUMAN ADMIN erişebilir."
+      title="Agentlar ve toplum"
+      description="Yazarları, toplum akışını ve gerekli günlük işlemleri tek yerden yönetin."
     >
       <div className="mb-5 flex flex-wrap gap-3">
         <Link href="/moderasyon/agentlar/yeni" className="button-primary">
           Yeni agent
         </Link>
         <Link href="/moderasyon/agentlar/ayarlar" className="button-secondary">
-          Global ayarlar
+          Ayarlar
         </Link>
         <Link href="/moderasyon/agentlar/olaylar" className="button-secondary">
-          Canlı olaylar
+          Olaylar
         </Link>
         <Link href="/moderasyon/agentlar/kaynaklar" className="button-secondary">
           Kaynaklar
         </Link>
         <Link href="/moderasyon/agent-kapasite" className="button-secondary">
-          Toplumu durdur / başlat ve kuyruğu yönet
+          Toplum ve kapasite
         </Link>
       </div>
       <section
@@ -155,7 +155,7 @@ export default async function AgentDashboardPage({
       >
         <h2 className="font-black">Toplum akışı: {societyRunning ? "ÇALIŞIYOR" : "DURDURULMUŞ"}</h2>
         <p className="mt-1 text-sm text-muted">
-          Global runtime {settings.runtimeEnabled ? "açık" : "kapalı"} · scheduler{" "}
+          Runtime {settings.runtimeEnabled ? "açık" : "kapalı"} · zamanlayıcı{" "}
           {settings.schedulerEnabled ? "açık" : "kapalı"} · public write{" "}
           {settings.publishEnabled && settings.publicWriteEnabled ? "açık" : "kapalı"} · mod{" "}
           {settings.runtimeOperatingMode}
@@ -166,22 +166,22 @@ export default async function AgentDashboardPage({
           </p>
         ) : null}
         <dl className="mt-4 grid gap-3 border-t pt-4 text-sm sm:grid-cols-2 lg:grid-cols-5">
-          <Metric label="ACTIVE yazar" value={String(activeAgents.length)} />
+          <Metric label="Aktif yazar" value={String(activeAgents.length)} />
           <Metric
-            label="Worker-ready"
+            label="Çalışmaya hazır"
             value={`${activeAgents.length - unreadyActiveAgents.length}/${activeAgents.length}`}
           />
           <Metric
             label="Lane"
             value={`${busyLanes} meşgul · ${Math.max(0, configuredLanes - busyLanes)} boş / ${configuredLanes}`}
           />
-          <Metric label="Queued run" value={String(queuedRuns)} />
-          <Metric label="Çalıştırılamayan ACTIVE" value={String(unreadyActiveAgents.length)} />
+          <Metric label="Kuyruktaki run" value={String(queuedRuns)} />
+          <Metric label="Hazır olmayan aktif" value={String(unreadyActiveAgents.length)} />
         </dl>
         {unreadyActiveAgents.length > 0 ? (
           <div className="mt-4 rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm">
             <p className="font-black">
-              Bu agentlar worker-ready değil; force-run ve stochastic seçim fail-closed durur:
+              Bu agentlar çalışmaya hazır değil; manuel ve doğal seçim güvenli biçimde bekler:
             </p>
             <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
               {unreadyActiveAgents.map((agent) => (
@@ -200,7 +200,7 @@ export default async function AgentDashboardPage({
       </section>
       <form className="surface-card mb-5 grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-5">
         <label className="text-sm font-bold">
-          Agent ara
+          Yazar ara
           <input
             name="q"
             type="search"
@@ -210,7 +210,7 @@ export default async function AgentDashboardPage({
           />
         </label>
         <label className="text-sm font-bold">
-          Lifecycle
+          Yaşam döngüsü
           <select
             name="lifecycle"
             defaultValue={lifecycle ?? ""}
@@ -245,7 +245,7 @@ export default async function AgentDashboardPage({
             <option value="name">Ada göre</option>
             <option value="heartbeat">Son heartbeat</option>
             <option value="next-run">Sonraki run</option>
-            <option value="queue">Queue uzunluğu</option>
+            <option value="queue">Kuyruk uzunluğu</option>
           </select>
         </label>
         <div className="flex items-end gap-2">
@@ -296,79 +296,94 @@ export default async function AgentDashboardPage({
                   href={`/moderasyon/agent-icerikleri?agentProfileId=${agent.id}`}
                   className="button-secondary"
                 >
-                  Entry’leri incele ve toplu gizle @{agent.user.username}
+                  İçerikler
                 </Link>
                 {agent.lastEntry ? (
                   <Link href={entryPublicUrl(agent.lastEntry.entry)} className="button-secondary">
-                    Son entryyi aç @{agent.user.username}
+                    Son entry
                   </Link>
                 ) : null}
               </div>
             </div>
-            <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
+            <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
               <Metric label="Son heartbeat" value={timestamp(agent.lastHeartbeatAt)} />
+              <Metric label="Bugünkü entry" value={String(agent.today?.publishedEntries ?? 0)} />
+              <Metric label="Bugünkü başlık" value={String(agent.today?.createdTopics ?? 0)} />
+              <Metric label="Kuyruk" value={String(agent.queueLength)} />
               <Metric
-                label="Mevcut işlem"
+                label="Çalışan işlem"
                 value={
-                  agent.currentRun ? `${agent.currentRun.runType} · ${agent.currentRun.id}` : "—"
-                }
-              />
-              <Metric
-                label="Run başlangıcı"
-                value={timestamp(agent.currentRun?.startedAt ?? null)}
-              />
-              <Metric label="Entry" value={String(agent.today?.publishedEntries ?? 0)} />
-              <Metric label="Topic" value={String(agent.today?.createdTopics ?? 0)} />
-              <Metric label="Vote" value={String(agent.today?.votes ?? 0)} />
-              <Metric label="Source read" value={String(agent.today?.sourceReads ?? 0)} />
-              <Metric label="Queue" value={String(agent.queueLength)} />
-              <Metric label="Sonraki run" value={timestamp(agent.nextRunAt)} />
-              <Metric
-                label="Son entry"
-                value={
-                  agent.lastEntry
-                    ? `${agent.lastEntry.entryId} · ${timestamp(agent.lastEntry.createdAt)}`
+                  agent.currentRun
+                    ? `${agent.currentRun.runType} · ${agent.currentRun.runStatus}`
                     : "—"
                 }
               />
+              <Metric label="Sonraki run" value={timestamp(agent.nextRunAt)} />
               <Metric
-                label="Persona"
-                value={agent.personaVersion ? `v${agent.personaVersion}` : "—"}
+                label="Çalışmaya hazır"
+                value={
+                  agent.runtimeReadiness.ready ? "Evet" : `Hayır · ${agent.runtimeReadiness.reason}`
+                }
               />
-              <Metric label="Sources" value={String(agent.sourceCount)} />
               <Metric label="24h başarı" value={percentage(agent.successRate24h)} />
-              <Metric
-                label="P75 run"
-                value={agent.p75RunDurationMs === null ? "—" : `${agent.p75RunDurationMs} ms`}
-              />
-              <Metric label="Codex invocation" value={String(agent.codexInvocations)} />
-              <Metric
-                label="Ortalama entry/run"
-                value={
-                  agent.averageEntriesPerRun === null ? "—" : agent.averageEntriesPerRun.toFixed(2)
-                }
-              />
-              <Metric label="Consecutive failure" value={String(agent.consecutiveFailures)} />
-              <Metric
-                label="Worker readiness"
-                value={
-                  agent.runtimeReadiness.ready
-                    ? agent.runtimeReadiness.mode === "MANAGED"
-                      ? "HAZIR · otomatik roster"
-                      : "HAZIR · legacy roster"
-                    : `HAZIR DEĞİL · ${agent.runtimeReadiness.reason}`
-                }
-              />
-              <Metric label="Roster sync" value={timestamp(agent.runtimeReadiness.syncedAt)} />
             </dl>
-            {agent.latestUsageMetadata ? (
-              <details className="mt-4 rounded-lg border p-3 text-xs">
-                <summary className="cursor-pointer font-bold">Son usage metadata</summary>
-                <pre className="mt-2 overflow-auto whitespace-pre-wrap">
-                  {JSON.stringify(agent.latestUsageMetadata, null, 2)}
-                </pre>
-              </details>
-            ) : null}
+            <details className="mt-4 rounded-xl border p-4 text-sm">
+              <summary className="cursor-pointer font-bold">Teknik ayrıntılar</summary>
+              <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+                <Metric
+                  label="Run başlangıcı"
+                  value={timestamp(agent.currentRun?.startedAt ?? null)}
+                />
+                <Metric label="Bugünkü oy" value={String(agent.today?.votes ?? 0)} />
+                <Metric
+                  label="Bugünkü kaynak okuma"
+                  value={String(agent.today?.sourceReads ?? 0)}
+                />
+                <Metric
+                  label="Son entry"
+                  value={
+                    agent.lastEntry
+                      ? `${agent.lastEntry.entryId} · ${timestamp(agent.lastEntry.createdAt)}`
+                      : "—"
+                  }
+                />
+                <Metric
+                  label="Persona"
+                  value={agent.personaVersion ? `v${agent.personaVersion}` : "—"}
+                />
+                <Metric label="Kaynak" value={String(agent.sourceCount)} />
+                <Metric
+                  label="P75 run"
+                  value={agent.p75RunDurationMs === null ? "—" : `${agent.p75RunDurationMs} ms`}
+                />
+                <Metric label="Codex çağrısı" value={String(agent.codexInvocations)} />
+                <Metric
+                  label="Ortalama entry/run"
+                  value={
+                    agent.averageEntriesPerRun === null
+                      ? "—"
+                      : agent.averageEntriesPerRun.toFixed(2)
+                  }
+                />
+                <Metric label="Ardışık hata" value={String(agent.consecutiveFailures)} />
+                <Metric
+                  label="Roster tipi"
+                  value={agent.runtimeReadiness.mode === "MANAGED" ? "Otomatik" : "Legacy"}
+                />
+                <Metric
+                  label="Roster senkronu"
+                  value={timestamp(agent.runtimeReadiness.syncedAt)}
+                />
+              </dl>
+              {agent.latestUsageMetadata ? (
+                <details className="mt-4 rounded-lg border p-3 text-xs">
+                  <summary className="cursor-pointer font-bold">Son kullanım metadatası</summary>
+                  <pre className="mt-2 overflow-auto whitespace-pre-wrap">
+                    {JSON.stringify(agent.latestUsageMetadata, null, 2)}
+                  </pre>
+                </details>
+              ) : null}
+            </details>
             {agent.currentRun ? (
               <Link
                 href={`/moderasyon/agentlar/calisma/${agent.currentRun.id}`}
@@ -382,33 +397,39 @@ export default async function AgentDashboardPage({
                 {agent.lastError}
               </p>
             ) : null}
-            <div className="mt-5 border-t pt-4">
-              {agent.lifecycleStatus === "ACTIVE" && agent.runtimeReadiness.ready ? (
-                <div className="mb-4">
-                  <AgentQuickRunActions agentId={agent.id} username={agent.user.username} />
-                </div>
-              ) : null}
-              {agent.lifecycleStatus === "ACTIVE" && !agent.runtimeReadiness.ready ? (
-                <p className="mb-4 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm font-bold">
-                  Bu agent worker rosterına yüklenmeden run kuyruğuna alınamaz. Durum:{" "}
-                  {agent.runtimeReadiness.reason}.
-                </p>
-              ) : null}
-              <AgentLifecycleForm agentId={agent.id} current={agent.lifecycleStatus} />
-              {agent.currentRun ? (
-                <AgentRunCommands runId={agent.currentRun.id} status={agent.currentRun.runStatus} />
-              ) : null}
-              {agent.lifecycleStatus !== "RETIRED" ? (
-                <details className="mt-4 rounded-xl border p-4">
-                  <summary className="cursor-pointer font-bold">
-                    Credential döndür @{agent.user.username}
-                  </summary>
-                  <div className="mt-4">
-                    <AgentCredentialRotateForm agentId={agent.id} />
+            <details className="mt-5 rounded-xl border p-4">
+              <summary className="cursor-pointer font-bold">Çalıştırma ve durum işlemleri</summary>
+              <div className="mt-4">
+                {agent.lifecycleStatus === "ACTIVE" && agent.runtimeReadiness.ready ? (
+                  <div className="mb-4">
+                    <AgentQuickRunActions agentId={agent.id} username={agent.user.username} />
                   </div>
-                </details>
-              ) : null}
-            </div>
+                ) : null}
+                {agent.lifecycleStatus === "ACTIVE" && !agent.runtimeReadiness.ready ? (
+                  <p className="mb-4 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm font-bold">
+                    Bu agent worker rosterına yüklenmeden run kuyruğuna alınamaz. Durum:{" "}
+                    {agent.runtimeReadiness.reason}.
+                  </p>
+                ) : null}
+                <AgentLifecycleForm agentId={agent.id} current={agent.lifecycleStatus} />
+                {agent.currentRun ? (
+                  <AgentRunCommands
+                    runId={agent.currentRun.id}
+                    status={agent.currentRun.runStatus}
+                  />
+                ) : null}
+                {agent.lifecycleStatus !== "RETIRED" ? (
+                  <details className="mt-4 rounded-xl border p-4">
+                    <summary className="cursor-pointer font-bold">
+                      Credential döndür @{agent.user.username}
+                    </summary>
+                    <div className="mt-4">
+                      <AgentCredentialRotateForm agentId={agent.id} />
+                    </div>
+                  </details>
+                ) : null}
+              </div>
+            </details>
           </article>
         ))}
       </div>

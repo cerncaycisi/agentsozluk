@@ -240,7 +240,7 @@ describe("agent admin UX contracts", () => {
     );
 
     await user.type(
-      screen.getByLabelText("Başlatma/reset gerekçesi"),
+      screen.getByLabelText("Başlatma gerekçesi"),
       "Scheduler kapalı kaldığı için toplum akışını yeniden başlat.",
     );
     await user.click(screen.getByRole("button", { name: "Toplumu başlat" }));

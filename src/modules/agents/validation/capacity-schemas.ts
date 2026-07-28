@@ -63,3 +63,42 @@ export const runtimeConcurrencyCapabilitySchema = runtimeCapabilityMeasurementSc
   });
 
 export type RuntimeCapabilityMeasurementInput = z.infer<typeof runtimeCapabilityMeasurementSchema>;
+
+export const runtimeCapabilityPackageSchema = z
+  .object({
+    cold: runtimeCapacityBenchmarkSchema,
+    warm: runtimeCapacityBenchmarkSchema,
+    dual: runtimeConcurrencyCapabilitySchema,
+  })
+  .strict()
+  .superRefine(({ cold, warm, dual }, context) => {
+    if (dual.dualRunSuccessCount !== 2) {
+      context.addIssue({
+        code: "custom",
+        path: ["dual", "dualRunSuccessCount"],
+        message: "Dual ölçümü tam iki başarılı paralel run içermelidir.",
+      });
+    }
+    const measurements = [
+      ["warm", warm],
+      ["dual", dual],
+    ] as const;
+    for (const [kind, measurement] of measurements) {
+      if (measurement.codexVersion !== cold.codexVersion) {
+        context.addIssue({
+          code: "custom",
+          path: [kind, "codexVersion"],
+          message: "Cold, warm ve dual ölçümleri aynı Codex sürümünü kullanmalıdır.",
+        });
+      }
+      if (measurement.promptProfileHash !== cold.promptProfileHash) {
+        context.addIssue({
+          code: "custom",
+          path: [kind, "promptProfileHash"],
+          message: "Cold, warm ve dual ölçümleri aynı prompt fingerprint’ini kullanmalıdır.",
+        });
+      }
+    }
+  });
+
+export type RuntimeCapabilityPackageInput = z.infer<typeof runtimeCapabilityPackageSchema>;

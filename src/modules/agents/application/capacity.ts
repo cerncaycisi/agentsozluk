@@ -28,11 +28,28 @@ import {
   lockAgentSettings,
   updateGlobalSettingsRecord,
 } from "@/modules/agents/repository/control-plane";
-import type { RuntimeCapabilityMeasurementInput } from "@/modules/agents/validation/capacity-schemas";
+import type {
+  RuntimeCapabilityMeasurementInput,
+  RuntimeCapabilityPackageInput,
+} from "@/modules/agents/validation/capacity-schemas";
 import { appendOutboxEvent } from "@/modules/outbox";
 import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 
 const CAPABILITY_STALE_AFTER_MS = 14 * 24 * 60 * 60 * 1000;
+
+function dualConcurrencySupported(input: RuntimeCapabilityMeasurementInput): boolean {
+  return (
+    input.dualRunSuccessCount === 2 &&
+    input.dualProcessPeakRssMb !== null &&
+    !input.oomDetected &&
+    !input.swapThrashingDetected &&
+    input.healthStable &&
+    input.readinessStable &&
+    input.appLatencyImpact.stable &&
+    input.databaseLatencyImpact.stable &&
+    input.availableMemoryMb >= MINIMUM_DUAL_CONCURRENCY_MEMORY_MB
+  );
+}
 
 export function getRuntimeCapacity(
   client: DatabaseExecutor,
@@ -122,24 +139,15 @@ export function recordRuntimeCapability(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentSettings(transaction);
-    const dualConcurrencySupported =
-      input.dualRunSuccessCount === 2 &&
-      input.dualProcessPeakRssMb !== null &&
-      !input.oomDetected &&
-      !input.swapThrashingDetected &&
-      input.healthStable &&
-      input.readinessStable &&
-      input.appLatencyImpact.stable &&
-      input.databaseLatencyImpact.stable &&
-      input.availableMemoryMb >= MINIMUM_DUAL_CONCURRENCY_MEMORY_MB;
+    const supportsDual = dualConcurrencySupported(input);
     const capability = await createRuntimeCapabilityRecord(transaction, {
       ...input,
-      dualConcurrencySupported,
+      dualConcurrencySupported: supportsDual,
       measuredAt: now,
       staleAt: new Date(now.getTime() + CAPABILITY_STALE_AFTER_MS),
     });
     const settings = await getGlobalSettingsRecord(transaction);
-    const concurrencyDowngraded = !dualConcurrencySupported && settings.codexConcurrency !== 1;
+    const concurrencyDowngraded = !supportsDual && settings.codexConcurrency !== 1;
     if (concurrencyDowngraded) {
       await updateGlobalSettingsRecord(transaction, actor.actorId, { codexConcurrency: 1 });
     }
@@ -160,7 +168,7 @@ export function recordRuntimeCapability(
       promptProfileHash: capability.promptProfileHash,
       benchmarkRunCount: capability.benchmarkRunCount,
       capacityStatus: capability.capacityStatus,
-      dualConcurrencySupported,
+      dualConcurrencySupported: supportsDual,
       concurrencyDowngraded,
     };
     await appendAuditLog(transaction, {
@@ -182,11 +190,112 @@ export function recordRuntimeCapability(
     });
     await appendRuntimeEvent(transaction, {
       eventType: "agent.capacity.measured",
-      safeMessage: dualConcurrencySupported
+      safeMessage: supportsDual
         ? "Runtime capability ölçümü concurrency 2 desteğini doğruladı."
         : "Runtime capability ölçümü concurrency 2 desteğini doğrulamadı.",
       metadata,
     });
     return { capability, concurrencyDowngraded };
+  });
+}
+
+export function recordRuntimeCapabilityPackage(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  input: RuntimeCapabilityPackageInput,
+  now = new Date(),
+) {
+  return inTransaction(client, async (transaction) => {
+    await requireAgentAdminInTransaction(transaction, actor);
+    await lockAgentSettings(transaction);
+    const measurements = [
+      ["cold", input.cold],
+      ["warm", input.warm],
+      ["dual", input.dual],
+    ] as const;
+    const capabilities: Array<{
+      kind: (typeof measurements)[number][0];
+      capability: Awaited<ReturnType<typeof createRuntimeCapabilityRecord>>;
+    }> = [];
+    for (const [index, [kind, measurement]] of measurements.entries()) {
+      const measuredAt: Date = new Date(now.getTime() + index);
+      capabilities.push({
+        kind,
+        capability: await createRuntimeCapabilityRecord(transaction, {
+          ...measurement,
+          dualConcurrencySupported: kind === "dual" && dualConcurrencySupported(measurement),
+          measuredAt,
+          staleAt: new Date(measuredAt.getTime() + CAPABILITY_STALE_AFTER_MS),
+        }),
+      });
+    }
+    const dual = capabilities[2]!.capability;
+    const settings = await getGlobalSettingsRecord(transaction);
+    const concurrencyDowngraded = !dual.dualConcurrencySupported && settings.codexConcurrency !== 1;
+    if (concurrencyDowngraded) {
+      await updateGlobalSettingsRecord(transaction, actor.actorId, { codexConcurrency: 1 });
+    }
+    const metadata = {
+      actorKind: actor.actorKind,
+      before: {
+        codexConcurrency: settings.codexConcurrency,
+        capabilityId: null,
+      },
+      after: {
+        codexConcurrency: concurrencyDowngraded ? 1 : settings.codexConcurrency,
+        capabilityId: dual.id,
+        capacityStatus: dual.capacityStatus,
+      },
+      reason: "Cold, warm and dual runtime capability package recorded by human administrator.",
+      coldCapabilityId: capabilities[0]!.capability.id,
+      warmCapabilityId: capabilities[1]!.capability.id,
+      dualCapabilityId: dual.id,
+      codexVersion: dual.codexVersion,
+      promptProfileHash: dual.promptProfileHash,
+      benchmarkRunCounts: Object.fromEntries(
+        capabilities.map(({ kind, capability }) => [kind, capability.benchmarkRunCount]),
+      ),
+      capacityStatus: dual.capacityStatus,
+      dualConcurrencySupported: dual.dualConcurrencySupported,
+      concurrencyDowngraded,
+    };
+    await appendAuditLog(transaction, {
+      actorId: actor.actorId,
+      action: "agent.capacity.package_measured",
+      entityType: "AgentRuntimeCapability",
+      entityId: dual.id,
+      requestId: actor.requestId,
+      metadata,
+    });
+    await appendOutboxEvent(transaction, {
+      eventType: "agent.capacity.measured",
+      aggregateType: "AgentRuntimeCapability",
+      aggregateId: dual.id,
+      actorId: actor.actorId,
+      actorKind: actor.actorKind,
+      requestId: actor.requestId,
+      payload: metadata,
+    });
+    await appendRuntimeEvent(transaction, {
+      eventType: "agent.capacity.measured",
+      safeMessage: dual.dualConcurrencySupported
+        ? "Cold, warm ve dual kapasite paketi concurrency 2 desteğini doğruladı."
+        : "Cold, warm ve dual kapasite paketi concurrency 2 desteğini doğrulamadı.",
+      metadata,
+    });
+    return {
+      measurements: Object.fromEntries(
+        capabilities.map(({ kind, capability }) => [
+          kind,
+          {
+            id: capability.id,
+            runCount: capability.benchmarkRunCount,
+            capacityStatus: capability.capacityStatus,
+          },
+        ]),
+      ),
+      dualConcurrencySupported: dual.dualConcurrencySupported,
+      concurrencyDowngraded,
+    };
   });
 }

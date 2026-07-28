@@ -1,5 +1,27 @@
 # Milestone status
 
+## Capacity-package and moderation UI candidate — 2026-07-28 Europe/Istanbul
+
+This repository-only candidate replaces the capacity page's one-textarea/two-button workflow with
+one cold/warm/dual package import. An operator selects the three standard JSON files together or
+one object containing the three named measurements, reviews a safe fingerprint/run-count preview
+and uses one save action. The new authenticated endpoint revalidates each document, requires a
+shared Codex version and prompt fingerprint, requires two successful dual runs and persists all
+three measurements atomically. Only the final dual proof may change configured concurrency;
+cold/warm staging cannot temporarily downgrade it.
+
+The broader moderation pass prioritizes society state and pause/start, then live run, queue, lane
+and capacity-reserve counts. Technical utilization, circuit breakers and destructive global queue
+tools are collapsed by default. Agent cards show only the daily operational summary until the
+operator opens technical or action controls. Navigation and labels replace avoidable Audit/Queue
+mixtures with `Denetim` and `Kuyruk`.
+
+Verification passed: 53 agent unit files / 341 tests; focused UI/schema/OpenAPI/runbook tests
+`49/49`; one PostgreSQL 16 integration proof of three-record atomic persistence and unchanged
+configured concurrency; OpenAPI `121` operations; formatting, ESLint, strict typecheck and the
+68-page production build. The scratch database was dropped and its absence verified. Production
+was not contacted or changed; exact-SHA deployment and authenticated desktop/mobile smoke remain.
+
 ## Human-readable agent events and run detail — production-closed 2026-07-28 Europe/Istanbul
 
 Exact production SHA is `4f09e46d3d9aaf1c328b6a7d1adf5a6cf377664f`. Release Candidate Bundle
