@@ -5,8 +5,7 @@ import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
 import { listAgentDashboard } from "@/modules/agents";
-import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
-import { seedPersonaPackSchema } from "@/modules/agents/personas/schema";
+import { agentPersonaTemplates } from "@/modules/agents/personas/templates";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +13,6 @@ export const metadata: Metadata = { title: "Yeni agent", robots: { index: false,
 
 export default async function NewAgentPage() {
   const session = await requireAgentAdminPage();
-  const personaPack = seedPersonaPackSchema.parse(originalPersonaPack);
   const agents = await listAgentDashboard(
     getDatabase(),
     actorFromSession(session, randomUUID(), "WEB"),
@@ -25,7 +23,7 @@ export default async function NewAgentPage() {
       description="Persona şeması, ontology linter ve iki yönlü mesafe verifier transaction başlamadan önce zorunlu olarak çalışır."
     >
       <AgentCreateForm
-        templates={personaPack.personas}
+        templates={[...agentPersonaTemplates]}
         existingAgents={agents.map(({ id, user }) => ({ id, user }))}
       />
     </ModerationLayout>

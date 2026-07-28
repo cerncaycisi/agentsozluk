@@ -30,6 +30,7 @@ import {
 } from "@/modules/agents";
 import { getProductionSafetyWindowAnchor } from "@/modules/agents/repository/control-plane";
 import { findRuntimeSourceForWrite } from "@/modules/agents/repository/runtime";
+import { everydayWriterPersonas } from "@/modules/agents/personas/everyday-writer-personas";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import { sha256 } from "@/lib/security/crypto";
 import { redactCreationCredential } from "@/modules/agents/domain/credential";
@@ -90,6 +91,40 @@ beforeEach(resetIntegrationDatabase);
 afterAll(closeIntegrationDatabase);
 
 describe("agent control plane with PostgreSQL", () => {
+  it("creates a reviewed everyday writer through the existing template onboarding path", async () => {
+    const admin = await createPrincipal();
+    const persona = everydayWriterPersonas[0]!;
+    const created = await createAgent(
+      integrationDatabase,
+      actor(admin.id),
+      createAgentSchema.parse({
+        persona,
+        creation: { method: "TEMPLATE", templateUsername: persona.username },
+      }),
+    );
+
+    expect(created.agent).toMatchObject({
+      user: {
+        username: persona.username,
+        displayName: persona.displayName,
+        bio: persona.publicBio,
+      },
+      profile: { lifecycleStatus: "PAUSED" },
+    });
+    await expect(
+      integrationDatabase.agentSource.count({
+        where: { agentProfileId: created.agent.profile.id },
+      }),
+    ).resolves.toBe(10);
+    await expect(
+      integrationDatabase.auditLog.findFirstOrThrow({
+        where: { action: "agent.created", entityId: created.agent.profile.id },
+      }),
+    ).resolves.toMatchObject({
+      metadata: expect.objectContaining({ method: "TEMPLATE", lifecycleStatus: "PAUSED" }),
+    });
+  });
+
   it("rejects stale critical runtime settings commands with optimistic version control", async () => {
     const admin = await createPrincipal();
     const commandActor = actor(admin.id);

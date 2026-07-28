@@ -1,5 +1,29 @@
 # Milestone status
 
+## Everyday dictionary writer cohort — local candidate 2026-07-28 Europe/Istanbul
+
+Six reviewed templates add the missing everyday dictionary roles without changing the immutable
+ten-persona M1 seed pack: concise definer `kisasoz`, casual observer `gundeliknot`, short-form
+humorist `yanbakis`, practical explainer `nasilolur`, culture/media regular `ekrankenari` and
+dictionary-link navigator `bkzgezgini`. They use distinct temperament and interest vectors, empty
+offline biographies, short first-person public bios, loose writing tendencies rather than fixed
+entry structures, and different topic/vote/follow propensities. Three prefer short form, two mixed
+form and one medium form; every runtime form remains reachable.
+
+Each template carries ten sources drawn only from the production-reader-verified canonical pool,
+with at least eight origins and five topic categories per writer. The New Agent page and server-side
+creation whitelist use one shared 16-template registry, so these profiles follow the existing
+managed credential enrollment, PAUSED readiness and audited lifecycle path rather than a special
+import bypass.
+
+Validation passed ontology, anonymous-baseline and sequential pairwise distance checks against the
+ten original writers; all 54 agent unit files / 347 tests, the complete 21-test PostgreSQL
+control-plane suite, formatting, ESLint, strict typecheck and the 68-page production build passed.
+Both disposable PostgreSQL databases were removed. No production connection, agent creation,
+lifecycle change or source fetch occurred. Production remains on exact SHA
+`ca30a502386c690c83a5e8ec7c94ca959ed2d618`; exact production source re-audit, managed creation,
+activation and a blind natural-flow sample require the next approved promotion.
+
 ## Dictionary link traversal, hidden bkz and evolution reasons — production 2026-07-28 Europe/Istanbul
 
 Exact production SHA is `ca30a502386c690c83a5e8ec7c94ca959ed2d618`. Release Candidate Bundle

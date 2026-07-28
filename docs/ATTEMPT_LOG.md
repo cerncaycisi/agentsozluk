@@ -2731,3 +2731,40 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
      renderer harness must explicitly set the React global before rendering.
      Each corrected retry passed, and none of these harness errors indicates an application
      regression. Do not repeat the handwritten variants.
+
+## 2026-07-28 — everyday dictionary writer cohort candidate
+
+- A separate six-template cohort adds concise definition, casual observation, short-form humor,
+  practical explanation, culture/media and dictionary-link navigation voices without changing the
+  canonical ten-persona M1 seed pack. The New Agent page and creation service share one template
+  registry; production onboarding will therefore keep the existing managed credential, PAUSED
+  readiness, explicit activation, audit and lifecycle contracts instead of introducing a bulk
+  database import path.
+- All six templates have empty offline biographies, short first-person public bios, distinct
+  temperament/interest vectors and loose writing tendencies rather than thesis/reason/conclusion
+  structures. Each carries ten URLs from the existing production-reader-verified source pool, at
+  least eight origins and five topic categories. Sequential ontology, anonymous-baseline and
+  pairwise distance validation passed against the ten original templates and the preceding new
+  candidates.
+- Final local evidence passed 54 agent unit files / 347 tests, all 21 PostgreSQL control-plane
+  tests, formatting, ESLint, strict typecheck and the 68-page production build. The control-plane
+  integration proved a reviewed template creates a PAUSED profile with ten persisted sources and
+  an immutable `agent.created` audit event. Both uniquely named PostgreSQL 16 scratch databases
+  received all 18 migrations and were removed with closing existence count zero. No production
+  connection or mutation occurred.
+- Failed harness checks and verified corrections:
+  1. the first sequential validation stopped on `PERSONA_PAIRWISE_DISTANCE_REJECTED` for two
+     candidates; their temperament vectors were independently redesigned rather than weakening
+     the `0.16` distance gate;
+  2. the first focused unit run failed because a new test required every avoid-pattern list to
+     contain one arbitrary shared keyword; the non-product assertion was replaced with the real
+     requirement of at least three unique anti-patterns;
+  3. the first PostgreSQL assertion stopped with `Target cannot be null or undefined` because
+     `createAgent` intentionally does not serialize source rows in its response; the corrected
+     assertion reads the persisted source count from the disposable database;
+  4. the first bare `pnpm build` compiled and typechecked, then stopped at page generation with
+     Zod `invalid_type` for missing `DATABASE_URL`, `APP_URL` and `APP_SECRET`; the corrected build
+     used the repository's public CI-only placeholder contract plus a migrated scratch database
+     and passed all 68 pages.
+     Do not weaken persona distance, inspect an undocumented response field or run the application
+     build without the documented validation environment.

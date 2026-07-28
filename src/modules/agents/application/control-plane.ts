@@ -23,7 +23,7 @@ import {
   sourceScoreFields,
   type SourceScoreChange,
 } from "@/modules/agents/domain/source-evolution";
-import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
+import { findAgentPersonaTemplate } from "@/modules/agents/personas/templates";
 import { seedPersonaSchema, type SeedPersona } from "@/modules/agents/personas/schema";
 import {
   appendPersonaVersion,
@@ -379,9 +379,7 @@ function validateCreationMethod(
 ): void {
   if (input.creation.method === "TEMPLATE") {
     const templateUsername = input.creation.templateUsername;
-    const template = originalPersonaPack.personas.find(
-      ({ username }) => username === templateUsername,
-    );
+    const template = findAgentPersonaTemplate(templateUsername);
     if (!template) {
       throw new AppError("VALIDATION_ERROR", 422, "Persona şablonu bulunamadı.");
     }
