@@ -2572,3 +2572,29 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   worktree dependency-resolution errors, not application failures. Reusing the already-installed
   Node 22/pnpm 10 dependency tree on the GB disk required no install or download and made the
   intended checks run.
+
+## 2026-07-28 — exact `828d277` stale-error correction promotion
+
+- Release Candidate Bundle run `30344601050` supplied artifact `8682593147` (227,465,777 bytes),
+  digest `sha256:4f59f34e62299c208b57b808e360463f9325393c52bcc14651c77be5a7fb074a`,
+  for exact SHA `828d2772d9d77081896ef8d329fd9905dc3d8a3f`. Local `main`, `origin/main`,
+  workflow head SHA and artifact metadata matched before production access. The pinned hostname,
+  IPv4, domain, SSH fingerprint and repository guards passed before mutation.
+- Artifact image/runtime validation, static release smoke, archive safety, Linux x64 glibc
+  Node-ABI 127 and image-label checks passed. The loaded image is
+  `sha256:f9657246923a23d61588005433360be509649b57ff29b1dd8bfb14a22627e0bc`.
+- The wrapper observed two running natural runs. A later stochastic tick briefly added queued and
+  running work; fourteen drain checks eventually reached zero queued, running, cancel-requested and
+  live lease counts. No run was cancelled and society flow was not paused or started.
+- The no-migration cutover recreated the application container, atomically converged checkout,
+  image and immutable runtime release on the exact SHA and returned the singleton worker as
+  `active/running`. Shared release smoke returned `health=200`, `ready=200`, `search=200`, and
+  closing verification reported `RELEASE_COMPLETE PASS`. Settings, lifecycle, queue, migrations
+  and volume/database data were preserved. No cleanup or capability persistence ran.
+- Authenticated browser smoke traversed all three agent-list pages. Every visible `SUCCEEDED` card
+  omitted the stale worker-failure summary; a real `FAILED` card retained its safe explanation.
+  `Toplu şimdi çalıştır` and `Önizleme ve ikinci açık onay olmadan kuyruk değişmez.` rendered on the
+  live surface. The society summary remained working with 16 ACTIVE and 16/16 ready writers.
+- Do not repeat the old dashboard rule of rendering any historical `lastErrorSummary` beside a
+  current success. Persist current PARTIAL/terminal error state and gate error presentation by the
+  current runtime status.

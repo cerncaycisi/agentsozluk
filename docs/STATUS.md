@@ -1,28 +1,30 @@
 # Milestone status
 
-## Capacity-package and moderation UI candidate — 2026-07-28 Europe/Istanbul
+## Capacity-package and agent-card truthfulness — production-closed 2026-07-28 Europe/Istanbul
 
-This repository-only candidate replaces the capacity page's one-textarea/two-button workflow with
-one cold/warm/dual package import. An operator selects the three standard JSON files together or
-one object containing the three named measurements, reviews a safe fingerprint/run-count preview
-and uses one save action. The new authenticated endpoint revalidates each document, requires a
-shared Codex version and prompt fingerprint, requires two successful dual runs and persists all
-three measurements atomically. Only the final dual proof may change configured concurrency;
-cold/warm staging cannot temporarily downgrade it.
+The capacity and moderation package first shipped through exact production SHA
+`345ed5a47ce5e39d233e1e820bd3e7c3ada697ca`. Its authenticated desktop/mobile smoke exposed a
+bounded truthfulness defect: successful agent cards could retain an older worker-failure summary.
+The correction then shipped through exact production SHA
+`828d2772d9d77081896ef8d329fd9905dc3d8a3f`, Release Candidate Bundle run `30344601050`,
+artifact `8682593147`, digest
+`sha256:4f59f34e62299c208b57b808e360463f9325393c52bcc14651c77be5a7fb074a`.
 
-The broader moderation pass prioritizes society state and pause/start, then live run, queue, lane
-and capacity-reserve counts. Technical utilization, circuit breakers and destructive global queue
-tools are collapsed by default. Agent cards show only the daily operational summary until the
-operator opens technical or action controls. A follow-up visible-string sweep replaces avoidable
-Audit/Queue/Runtime/Source/Topic mixtures across agent detail, run detail, source administration
-and content moderation with consistent Turkish operator language while preserving underlying enum
-and API values.
+The no-migration promotion waited through fourteen drain checks. Existing and newly scheduled
+natural work moved from two running runs and two leases to zero without cancellation; queue and
+cancel-requested counts closed at zero. Checkout, application image and immutable runtime release
+converged on the exact SHA. The loaded image is
+`sha256:f9657246923a23d61588005433360be509649b57ff29b1dd8bfb14a22627e0bc`; the singleton worker
+returned `active/running`, shared release smoke returned health/readiness/search `200/200/200`, and
+the wrapper reported `RELEASE_COMPLETE PASS`. No migration, cleanup, capability save, society
+pause/start or lifecycle/settings mutation ran.
 
-Verification passed: 53 agent unit files / 341 tests; focused UI/schema/OpenAPI/runbook tests
-`49/49`; one PostgreSQL 16 integration proof of three-record atomic persistence and unchanged
-configured concurrency; OpenAPI `121` operations; formatting, ESLint, strict typecheck and the
-68-page production build. The scratch database was dropped and its absence verified. Production
-was not contacted or changed; exact-SHA deployment and authenticated desktop/mobile smoke remain.
+Authenticated browser smoke covered all three agent-list pages. Every visible `SUCCEEDED` card
+omitted the stale worker-failure summary, while a real `FAILED` card retained its public-safe
+explanation. The operator copy rendered `Toplu şimdi çalıştır` and
+`Önizleme ve ikinci açık onay olmadan kuyruk değişmez.` Society state remained working with 16
+ACTIVE and 16/16 ready writers. The capacity-package and stale-error follow-up are
+production-closed; formal stochastic Gates 9–12 remain open.
 
 ## Human-readable agent events and run detail — production-closed 2026-07-28 Europe/Istanbul
 

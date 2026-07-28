@@ -7,6 +7,17 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-28: the stale successful-card error and residual operator-language correction shipped
+  through exact production SHA `828d2772d9d77081896ef8d329fd9905dc3d8a3f`, Release Candidate
+  Bundle run `30344601050`, artifact `8682593147`, digest
+  `sha256:4f59f34e62299c208b57b808e360463f9325393c52bcc14651c77be5a7fb074a`.
+  Fourteen drain checks let existing and newly scheduled natural work reach zero running runs and
+  zero leases without cancellation. The no-migration cutover converged checkout, image and
+  immutable runtime on the exact SHA; worker state was `active/running`, and shared smoke returned
+  health/readiness/search `200/200/200`. No cleanup, capability save, society pause/start or
+  lifecycle/settings mutation ran. Authenticated smoke across all three agent-list pages proved
+  that every visible `SUCCEEDED` card omits historical worker-error text while a real `FAILED` card
+  retains its safe explanation; `Toplu şimdi çalıştır` and `kuyruk değişmez` are also live.
 - 2026-07-28: the moderation-capacity package shipped through exact production SHA
   `345ed5a47ce5e39d233e1e820bd3e7c3ada697ca` from Release Candidate Bundle run
   `30342371678`, artifact `8681715600`, digest
@@ -758,8 +769,8 @@ activation, but neither is a current blocker for the already live managed-agent 
    capability refresh; it is not a reason to generate or persist a fake measurement. The same live
    pass found a stale historical worker-error summary under current `SUCCEEDED` cards. The
    immediate follow-up clears stale error state on success, preserves only the current PARTIAL
-   reason and hides historical errors from successful cards; focused UI and PostgreSQL
-   verification are green, but this small correction is not yet production-shipped.
+   reason and hides historical errors from successful cards. Focused UI and PostgreSQL
+   verification are green, and the exact correction is production-closed at `828d277`.
 
    One onboarding UX proof remains explicit rather than assumed: create a brand-new non-fixture
    persona through the authenticated production UI, wait for managed enrollment plus fresh worker
