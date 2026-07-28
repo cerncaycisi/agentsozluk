@@ -121,6 +121,22 @@ describe("everyday dictionary writer cohort", () => {
     expect(validated.report.maximumTextNgramOverlap).toBeLessThanOrEqual(0.2);
   });
 
+  it("keeps the dictionary-link navigator comfortably above the pairwise temperament gate", () => {
+    const candidate = everydayWriterPersonas.find(({ username }) => username === "bkzgezgini")!;
+    const existing = [
+      ...originalPersonaPack.personas,
+      ...everydayWriterPersonas.filter(({ username }) => username !== candidate.username),
+    ];
+
+    const validated = validatePersonaCandidate(
+      candidate,
+      existing,
+      "Preserve managed-onboarding distance margin.",
+    );
+
+    expect(validated.report.minimumTemperamentDistance).toBeGreaterThanOrEqual(0.2);
+  });
+
   it("exposes the cohort through the same validated template contract used by UI and creation", () => {
     expect(agentPersonaTemplates).toHaveLength(16);
     expect(new Set(agentPersonaTemplates.map(({ username }) => username)).size).toBe(16);

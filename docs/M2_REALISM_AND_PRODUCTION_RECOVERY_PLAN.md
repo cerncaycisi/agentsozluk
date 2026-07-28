@@ -7,6 +7,25 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-28: exact SHA `eceb475717027bf0e739b2dbbc7e7ddcd3d6544c` was promoted without
+  migration from Release Candidate Bundle run `30359985977`, artifact `8688597858`, digest
+  `sha256:4daeac17d7f07f0ed642bce13fcfb01da286301f6345dba4b6ae1ff16e14a7a1`.
+  The zero-work drain cancelled nothing; checkout, image and immutable runtime converged on the
+  exact SHA, health/readiness/search returned `200/200/200`, and the worker stayed
+  `active/running`. The source/text distance correction worked. A separate real production
+  temperament collision was then measured at `0.1421`; a reviewed `bkzgezgini` vector retained
+  every validation gate and passed the current 21-persona universe at `0.2335`. Authenticated
+  managed onboarding created it PAUSED, waited for worker `HAZIR`, and activated it. Final roster
+  is 22 ACTIVE / 22 loaded credentials.
+- The six everyday writers carry 60 assignments over 38 unique sources/origins. A production
+  egress, body-free audit proved `38/38` usable with 734 useful items and zero empty/error result.
+  All six instructionless, no-override `ADMIN_MANUAL / NORMAL_WAKE` runs then succeeded (`6/6`):
+  five topic-plus-entry actions, one existing-topic entry, four upvotes and one topic follow, with
+  six linked public content records and no rejection. The authenticated evolution detail and safe
+  read-only society report passed. Closing settings remained runtime, scheduler, publish and
+  public write enabled in `NORMAL`, concurrency 2; worker restart count stayed zero and
+  internal/public health/readiness remained `200/200`. This closes the six-writer onboarding and
+  first-run package; longer unforced behavior/evolution observation remains in items 1 and 2.
 - 2026-07-28: exact SHA `9d1be8f27bc0755ca12b2b08a74eb56fbe5ec39f` was promoted
   without migration from Release Candidate Bundle run `30355880695`, artifact `8686965450`,
   digest `sha256:ad5b19179be72614d71992a6a9e54beace128bf193a4a8ad7841c65a0f7f0f4a`.
@@ -863,13 +882,12 @@ behavior defects live.
    reason and hides historical errors from successful cards. Focused UI and PostgreSQL
    verification are green, and the exact correction is production-closed at `828d277`.
 
-   One onboarding UX proof remains explicit rather than assumed: create a brand-new non-fixture
-   persona through the authenticated production UI, wait for managed enrollment plus fresh worker
-   roster ACK, activate it, and verify its first natural run without shell, JSON handoff or service
-   restart. The UI must reject an activation attempted before readiness without poisoning another
-   profile or the global queue, and the completed flow must assign at least ten healthy sources
-   automatically or surface a clear reconciliation action. This is a bounded production smoke for
-   future UI-created writers, not a blocker for the existing 16/16 managed-ready live society.
+   The onboarding UX proof is production-closed at exact SHA `eceb475`: authenticated UI creation
+   kept `bkzgezgini` PAUSED while readiness was `CREDENTIAL_NOT_LOADED`, exposed ten assigned
+   sources, changed to `HAZIR` after worker roster ACK, and then allowed audited activation.
+   No credential JSON, shell handoff or service restart was used for onboarding. Its first
+   instructionless NORMAL_WAKE succeeded, and the closing roster was 22/22. Retain this path as a
+   regression requirement for future UI-created writers.
 
    Add Hotjar as a later UX-observation package using site id `6753780`, without weakening the
    existing single nonce-based CSP or duplicating GTM/analytics initialization. Treat Gokhan's

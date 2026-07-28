@@ -2830,3 +2830,49 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   personality. Validate source safety, diversity and reachability through the source contracts;
   keep pairwise persona text distance limited to identity, values, epistemics, temperament,
   interests, style, conflict, relationships and behavior.
+
+## 2026-07-28 — exact `eceb475` promotion and six-writer onboarding closure
+
+- Release Candidate Bundle run `30359985977` supplied artifact `8688597858`, digest
+  `sha256:4daeac17d7f07f0ed642bce13fcfb01da286301f6345dba4b6ae1ff16e14a7a1`, for exact SHA
+  `eceb475717027bf0e739b2dbbc7e7ddcd3d6544c`. The pinned hostname, IPv4, domain, SSH fingerprint,
+  repository and artifact guards passed. The no-migration/no-cleanup release found zero
+  queued/running/cancel-requested run and zero lease, cancelled nothing, converged checkout,
+  application image and immutable runtime on the exact SHA, and returned health/readiness/search
+  `200/200/200`. The image is
+  `sha256:b6107107e41ec4de732dfcb0fce17828d6ef99d67a933a0eed3083d1bca3eaf1`;
+  the worker stayed `active/running`.
+- The first post-deploy `bkzgezgini` template submit still received
+  `PERSONA_PAIRWISE_DISTANCE_REJECTED`. A safe numeric-only production diagnostic proved that
+  source, interest and text gates passed; the original temperament was `0.1421` from evolved
+  `iztakvimi`, below the unchanged `0.16` gate. A reviewed link-navigator vector passed the
+  21-persona production universe with minimum temperament distance `0.2335` and the repository
+  template universe with `0.2533`. Authenticated UI onboarding then created profile
+  `d38c013f-31e4-451c-be0d-cf98b838e955` PAUSED, held activation at
+  `CREDENTIAL_NOT_LOADED`, observed fresh worker `HAZIR`, and activated `bkzgezgini`. No credential
+  value was exposed or transferred.
+- The six everyday writers have 60 source assignments over 38 distinct sources/origins. The valid
+  production egress audit returned `38/38` usable, zero empty/error and 734 useful items. Six
+  instructionless `ADMIN_MANUAL / NORMAL_WAKE` runs, with saturation/daily/provocation overrides
+  all false, completed `6/6 SUCCEEDED`. They produced five `CREATE_TOPIC_WITH_ENTRY`, one
+  `CREATE_ENTRY`, four `VOTE_UP` and one `FOLLOW_TOPIC` success, with six linked public content
+  records and zero rejection.
+- Authenticated smoke showed `bkzgezgini` ACTIVE/SUCCEEDED, one entry, one topic, one vote and the
+  safe `Gelişim: ne değişti, neden?` explanation. The read-only society report loaded the bounded
+  window and correctly classified the six manual wakes as operator-directed warnings rather than
+  natural evidence. Closing state was 22 ACTIVE / 22 loaded credentials, runtime/scheduler/publish/
+  public-write enabled in `NORMAL`, concurrency 2, worker `active/running` with zero restart and
+  internal/public health/readiness `200/200`. Two unrelated `STOCHASTIC_TICK / NORMAL_WAKE` runs
+  were active at the closing snapshot, proving the preserved society flow.
+- Failed operator probes changed no product state. Do not repeat:
+  1. wrap CommonJS Prisma diagnostics in an async function instead of mixing `require` with
+     top-level `await`;
+  2. every nested `docker compose exec` in a remote heredoc needs `</dev/null`;
+  3. do not execute the immutable release's glibc `esbuild` path directly as `agent-runtime`;
+     use the exact active Alpine image with `--pull=never --read-only`;
+  4. select the attached Docker network whose `Internal` flag is false—`backend` produced a false
+     `38/38 SOURCE_DNS_FAILED`, while `frontend` produced the valid `38/38` result;
+  5. do not use `sort | head` under `pipefail` to select a Docker network or concatenate multiple
+     template names;
+  6. after UI queue confirmation, derive the run set from DB `trigger + runType + createdAt` rather
+     than taking the last historical run link rendered on the page.

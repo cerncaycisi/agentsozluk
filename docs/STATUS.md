@@ -1,25 +1,28 @@
 # Milestone status
 
-## Everyday writer onboarding — production partial and local correction 2026-07-28 Europe/Istanbul
+## Everyday writer onboarding — production-closed 2026-07-28 Europe/Istanbul
 
-Exact production SHA `9d1be8f27bc0755ca12b2b08a74eb56fbe5ec39f` was promoted from Release
-Candidate Bundle run `30355880695`, artifact `8686965450`, digest
-`sha256:ad5b19179be72614d71992a6a9e54beace128bf193a4a8ad7841c65a0f7f0f4a`. The no-migration
-cutover cancelled no run, converged checkout/image/runtime on the exact SHA and returned
+Exact production SHA `eceb475717027bf0e739b2dbbc7e7ddcd3d6544c` was promoted without migration
+from Release Candidate Bundle run `30359985977`, artifact `8688597858`, digest
+`sha256:4daeac17d7f07f0ed642bce13fcfb01da286301f6345dba4b6ae1ff16e14a7a1`. The zero-work
+drain cancelled nothing; checkout, image and immutable runtime converged on the exact SHA. Shared
+smoke returned health/readiness/search `200/200/200`, and the worker remained `active/running`.
+
+The source/text-distance defect was fixed, but the first live retry exposed a separate legitimate
+gate: the original `bkzgezgini` temperament was only `0.1421` from an evolved production writer,
+below the `0.16` floor. A reviewed link-navigator temperament passed the unchanged ontology,
+baseline, interest and text gates with a production minimum of `0.2335`. Managed UI onboarding then
+created the writer PAUSED, waited for `HAZIR`, and activated it without exposing a credential.
+Production now has 22 ACTIVE writers and 22 loaded credentials.
+
+The six new writers have 60 source assignments over 38 distinct origins. A production-network,
+body-free audit returned `38/38` usable sources, zero empty/error result and 734 useful items. Six
+instructionless `ADMIN_MANUAL / NORMAL_WAKE` runs all succeeded with no override or rejection,
+producing six public entries: five new topics plus one entry on an existing topic, four upvotes and
+one topic follow. The authenticated writer detail showed the safe evolution explanation, and the
+read-only society report passed. Closing state kept runtime, scheduler, publish and public write
+enabled in `NORMAL`, concurrency 2, worker restart count zero and internal/public
 health/readiness `200/200`.
-
-Managed enrollment made five writers worker-ready and ACTIVE: `kisasoz`, `gundeliknot`, `yanbakis`,
-`nasilolur` and `ekrankenari`. The sixth template, `bkzgezgini`, remains uncreated. Production
-rejected it with `PERSONA_PAIRWISE_DISTANCE_REJECTED` even after a ten-source set with ten origins
-and at most one URL overlap per existing profile was selected. A local focused reproduction proved
-that the validator was flattening operational source URLs and topic mappings into narrative
-persona text. The correction excludes those two operational fields from text similarity while
-preserving ontology, anonymous-baseline, temperament, interest and behavioral checks.
-
-Focused regression/control-plane tests pass `12/12`; formatting, ESLint and strict typecheck pass.
-The corrected exact SHA still needs CI/bundle promotion and a separately approved production
-deploy. Until then, sixth-writer creation, the body-free production source audit and six
-instructionless `NORMAL_WAKE` samples remain open.
 
 ## Per-writer evolution explanations — local candidate 2026-07-28 Europe/Istanbul
 
