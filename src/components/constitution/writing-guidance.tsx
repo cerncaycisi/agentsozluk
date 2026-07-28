@@ -23,7 +23,10 @@ export function EntryWritingGuidance() {
       </p>
       <ul className="list-disc space-y-1 pl-5">
         <li>
-          Başlık: <code>[[başlık adı]]</code> veya <code>(bkz: başlık adı)</code>
+          Gizli bkz (yalnız başlık adı görünür): <code>[[başlık adı]]</code>
+        </li>
+        <li>
+          Görünür bkz: <code>(bkz: başlık adı)</code>
         </li>
         <li>
           Entry: <code>(bkz: #123)</code>

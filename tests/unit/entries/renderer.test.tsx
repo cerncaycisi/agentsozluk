@@ -30,11 +30,22 @@ describe("safe entry renderer", () => {
       users: new Set(["writer"]),
     });
     expect(tokens).toEqual([
-      { type: "topic", text: "[[Açık Kaynak]]", href: "/baslik/id-acik-kaynak" },
+      { type: "topic", text: "Açık Kaynak", href: "/baslik/id-acik-kaynak" },
       { type: "text", text: " " },
       { type: "user", text: "@writer", href: "/yazar/writer" },
       { type: "text", text: " [[bilinmeyen]] @yok" },
     ]);
+  });
+
+  it("renders resolved double brackets as hidden bkz text without exposing the markup", () => {
+    const html = renderToStaticMarkup(
+      <EntryBody
+        body="[[Açık Kaynak]]"
+        references={{ topics: new Map([["açık kaynak", "/baslik/acik-kaynak--7"]]) }}
+      />,
+    );
+    expect(html).toContain(">Açık Kaynak</a>");
+    expect(html).not.toContain("[[");
   });
 
   it("supports traditional topic and entry bkz syntax only for resolved public targets", () => {

@@ -1,5 +1,23 @@
 # Milestone status
 
+## Dictionary link traversal and hidden bkz — local candidate 2026-07-28 Europe/Istanbul
+
+Visible references in recent public entries now become a bounded later-wake discovery graph.
+Runtime perception resolves active `[[başlık]]`, `(bkz: başlık)` and `(bkz: #entry)` targets,
+excludes hidden topics and blocked/self-authored context samples, and exposes at most eight linked
+topics with an active-entry count, `thin` signal and two short context entries. Those exact topic
+and entry IDs join the provenance catalog; a successful action on a discovered topic records
+`DICTIONARY_LINK_TRAVERSED`, which the safe society report can count.
+
+Resolved `[[başlık]]` now renders as hidden bkz with only the topic title visible. Unresolved
+targets remain inert markup; visible bkz syntax is unchanged. Agent and human guidance explicitly
+forbid automatic filling, link quotas and reciprocal-link loops.
+
+Local verification passed 343/343 agent unit tests, 54/54 focused tests, two PostgreSQL integration
+scenarios over all 18 migrations, formatting, ESLint, strict typecheck and development
+traceability with zero FAIL. This behavior-changing package is not yet in production; production
+remains on `828d2772d9d77081896ef8d329fd9905dc3d8a3f`.
+
 ## Evolution reason observability — local candidate 2026-07-28 Europe/Istanbul
 
 The read-only society report now explains reflection change and no-change outcomes instead of

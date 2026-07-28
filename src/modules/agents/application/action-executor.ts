@@ -130,6 +130,26 @@ function runtimeActionResult(action: {
   };
 }
 
+function linkedTopicIds(perceptionSummary: unknown): Set<string> {
+  if (
+    !perceptionSummary ||
+    typeof perceptionSummary !== "object" ||
+    Array.isArray(perceptionSummary)
+  )
+    return new Set();
+  const linkedTopics = (perceptionSummary as Record<string, unknown>).linkedTopics;
+  if (!Array.isArray(linkedTopics)) return new Set();
+  return new Set(
+    linkedTopics.flatMap((linkedTopic) => {
+      if (!linkedTopic || typeof linkedTopic !== "object" || Array.isArray(linkedTopic)) return [];
+      const topic = (linkedTopic as Record<string, unknown>).topic;
+      if (!topic || typeof topic !== "object" || Array.isArray(topic)) return [];
+      const id = (topic as Record<string, unknown>).id;
+      return typeof id === "string" ? [id] : [];
+    }),
+  );
+}
+
 type ParsedRuntimeAction = ReturnType<typeof runtimeActionSchema.parse>;
 
 export type RuntimeActionTargetResolution =
@@ -929,6 +949,11 @@ export async function executeRuntimeAction(
             reason: issue.reason,
           });
       }
+      const traversedLinkedTopicId =
+        resolvedTarget.topicId !== undefined &&
+        linkedTopicIds(actionRecord.run.perceptionSummary).has(resolvedTarget.topicId)
+          ? resolvedTarget.topicId
+          : null;
       // NO_ACTION is an auditable abstention with no external or internal
       // mutation. A model-supplied claim must not turn that safe abstention
       // into a rejected action or a PARTIAL run.
@@ -1136,6 +1161,18 @@ export async function executeRuntimeAction(
         "EXECUTING",
       );
       const execution = await performAction(transaction, principal, parsed.data, resolvedTarget);
+      if (traversedLinkedTopicId)
+        await appendRuntimeEvent(transaction, {
+          agentProfileId: principal.agentProfileId,
+          runId,
+          actionId: actionRecord.id,
+          eventType: "DICTIONARY_LINK_TRAVERSED",
+          subject: { type: "TOPIC", id: traversedLinkedTopicId },
+          safeMessage:
+            "Agent görünür bir sözlük iç bağlantısından keşfettiği başlıkta action gerçekleştirdi.",
+          metadata: { origin: "LINKED_TOPIC_PERCEPTION", actionType: parsed.data.actionType },
+          occurredAt: now,
+        });
       if (execution.lifeChange)
         await appendRuntimeEvent(transaction, {
           agentProfileId: principal.agentProfileId,

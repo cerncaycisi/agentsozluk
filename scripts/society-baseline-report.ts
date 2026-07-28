@@ -46,6 +46,7 @@ const SOURCE_EVENT_TYPES = [
   "SOURCE_FETCH_RESULT",
   "SOURCE_STATE_CHANGED",
 ] as const;
+const DICTIONARY_EVENT_TYPES = ["DICTIONARY_LINK_TRAVERSED"] as const;
 interface AgentCoverage {
   runs: number;
   succeeded: number;
@@ -208,6 +209,7 @@ async function main(): Promise<void> {
       personaVersions,
       reflectionEvents,
       activeProfiles,
+      dictionaryEvents,
     ] = await Promise.all([
       database.entry.findMany({
         where: { createdAt: { gte: window.from, lt: window.to }, origin: { not: "SEED" } },
@@ -374,6 +376,17 @@ async function main(): Promise<void> {
         where: { lifecycleStatus: "ACTIVE" },
         orderBy: { user: { username: "asc" } },
         select: { user: { select: { username: true } } },
+      }),
+      database.agentRuntimeEvent.findMany({
+        where: {
+          occurredAt: { gte: window.from, lt: window.to },
+          eventType: { in: [...DICTIONARY_EVENT_TYPES] },
+        },
+        select: {
+          eventType: true,
+          run: { select: { trigger: true, runType: true } },
+          action: { select: { actionType: true, actionStatus: true } },
+        },
       }),
     ]);
 
@@ -711,6 +724,16 @@ async function main(): Promise<void> {
     const activeAgentsWithoutReflection = [...reflectionByAgent.values()].filter(
       ({ runs: reflectionRuns }) => reflectionRuns === 0,
     ).length;
+    const dictionaryEventCounts = new Map<string, number>();
+    for (const event of dictionaryEvents) {
+      const runClass = event.run
+        ? classifyRunPair(event.run.trigger, event.run.runType)
+        : "unknown";
+      increment(
+        dictionaryEventCounts,
+        `${runClass}|${event.eventType}|${event.action?.actionType ?? "-"}|${event.action?.actionStatus ?? "-"}`,
+      );
+    }
 
     const output = [
       "SOCIETY NATURAL-FLOW BASELINE (READ ONLY)",
@@ -925,6 +948,14 @@ async function main(): Promise<void> {
           .map(([key, count]) => [...key.split("|"), String(count)]),
       ),
       "",
+      "DICTIONARY DISCOVERY EVENTS",
+      renderTable(
+        ["runClass", "eventType", "actionType", "status", "count"],
+        [...dictionaryEventCounts.entries()]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([key, count]) => [...key.split("|"), String(count)]),
+      ),
+      "",
       "SUMMARY",
       ...ATTRIBUTIONS.map((attribution) => `entries.${attribution}=${entryTotals[attribution]}`),
       ...ATTRIBUTIONS.map((attribution) => `topics.${attribution}=${topicTotals[attribution]}`),
@@ -970,6 +1001,7 @@ async function main(): Promise<void> {
       ),
       `reflection_reason.UNKNOWN=${reflectionReasonCounts.get("UNKNOWN") ?? 0}`,
       `active_agents_without_reflection=${activeAgentsWithoutReflection}`,
+      `dictionary_links.traversed=${dictionaryEvents.length}`,
       `run_matrix_warnings=${warnings.length}`,
       ...[...new Set(warnings)].map((warning) => `WARNING ${warning}`),
     ];

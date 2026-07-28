@@ -565,6 +565,58 @@ describe("long-lived agent runtime worker", () => {
     }
   });
 
+  it("exposes resolved dictionary links as bounded later-wake discovery evidence", () => {
+    const context = fixtureContext(randomUUID());
+    const linkedTopicId = randomUUID();
+    const linkedEntryId = randomUUID();
+    context.perception.linkedTopics = [
+      {
+        topic: { id: linkedTopicId, title: "gitar" },
+        activeEntryCount: 1,
+        thin: true,
+        referenceKinds: ["TOPIC"],
+        discoveredFromEntryIds: [randomUUID()],
+        recentEntries: [
+          {
+            id: linkedEntryId,
+            body: "Altı telli olanı en yaygın biçimidir.",
+            createdAt: "2026-07-28T09:00:00.000Z",
+            score: 1,
+            author: {
+              id: randomUUID(),
+              username: "telinsesi",
+              displayName: "Telin Sesi",
+            },
+          },
+        ],
+      },
+    ];
+
+    const prompt = buildRuntimePrompt(context);
+    const opening = "<UNTRUSTED_CONTENT>\n";
+    const closing = "\n</UNTRUSTED_CONTENT>";
+    const payloadStart = prompt.indexOf(opening) + opening.length;
+    const payloadEnd = prompt.indexOf(closing, payloadStart);
+    const decoded = JSON.parse(prompt.slice(payloadStart, payloadEnd)) as {
+      perception: {
+        linkedTopics: Array<{ topic: { id: string }; thin: boolean }>;
+        evidenceCatalog: Record<string, string[]>;
+      };
+    };
+
+    expect(decoded.perception.linkedTopics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ topic: { id: linkedTopicId, title: "gitar" }, thin: true }),
+      ]),
+    );
+    expect(decoded.perception.evidenceCatalog.PLATFORM_EVENT).toEqual(
+      expect.arrayContaining([context.run.id, linkedTopicId]),
+    );
+    expect(decoded.perception.evidenceCatalog.USER_ENTRY).toContain(linkedEntryId);
+    expect(prompt).toContain("sonraki bir uyanışta keşif için izleyebilirsin");
+    expect(prompt).toContain("otomatik tamamlama kuyruğu");
+  });
+
   it("fails closed when forbidden ontology metadata is nested inside perception", () => {
     const context = fixtureContext(randomUUID());
     expect(() =>

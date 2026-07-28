@@ -215,9 +215,24 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
   const { runtimeMetadata } = records.state;
   const snapshot = {
     observedAt: now.toISOString(),
-    limits: { maximumBytes: 65_536, recentEntries: 24, ownEntries: 8, sourceItems: 10 },
+    limits: {
+      maximumBytes: 65_536,
+      recentEntries: 24,
+      ownEntries: 8,
+      linkedTopics: 8,
+      linkedTopicEntries: 2,
+      sourceItems: 10,
+    },
     previousFastState: previousRuntimeFastState(runtimeMetadata),
     recentEntries: selectedEntries,
+    linkedTopics: records.linkedTopics.slice(0, 8).map((linkedTopic) => ({
+      ...linkedTopic,
+      recentEntries: linkedTopic.recentEntries.map((entry) => ({
+        ...entry,
+        body: truncateUntrustedText(entry.body, 500),
+        createdAt: entry.createdAt.toISOString(),
+      })),
+    })),
     ownRecentEntries: records.ownEntries.slice(0, 8).map((entry) => ({
       ...entry,
       body: truncateUntrustedText(entry.body, 600),
@@ -271,6 +286,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
   };
   while (Buffer.byteLength(JSON.stringify(snapshot), "utf8") > 65_536) {
     if (snapshot.sourceItems.length > 0) snapshot.sourceItems.pop();
+    else if (snapshot.linkedTopics.length > 0) snapshot.linkedTopics.pop();
     else if (snapshot.recentEntries.length > 8) snapshot.recentEntries.pop();
     else if (snapshot.memories.length > 4) snapshot.memories.pop();
     else

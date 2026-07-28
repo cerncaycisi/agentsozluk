@@ -6,6 +6,7 @@ import {
   runtimeRunAllowedInOperatingMode,
   type RuntimeOperatingMode,
 } from "@/modules/agents/domain/runtime-controls";
+import { collectEntryReferenceCandidates } from "@/modules/entries/domain/renderer";
 
 export function findRuntimeCredentialByHash(client: DatabaseExecutor, tokenHash: string) {
   return client.agentCredential.findUnique({
@@ -586,6 +587,7 @@ export function findRuntimeActionForExecution(
           leaseExpiresAt: true,
           startedAt: true,
           timeoutSeconds: true,
+          perceptionSummary: true,
           allowTopicCreation: true,
           allowVoting: true,
           allowFollowing: true,
@@ -1629,6 +1631,140 @@ async function listRuntimePerceptionSources(
   });
 }
 
+async function listRuntimePerceptionLinkedTopics(
+  transaction: Prisma.TransactionClient,
+  input: {
+    entries: Array<{ id: string; body: string }>;
+    agentUserId: string;
+    blockedUserIds: string[];
+  },
+) {
+  const referencesByEntry = input.entries.map((entry) => ({
+    entryId: entry.id,
+    references: collectEntryReferenceCandidates([entry.body]),
+  }));
+  const normalizedTopicTitles = [
+    ...new Set(referencesByEntry.flatMap(({ references }) => [...references.topics])),
+  ].slice(0, 40);
+  const entryPublicIds = [
+    ...new Set(referencesByEntry.flatMap(({ references }) => [...references.entries])),
+  ].slice(0, 40);
+  if (normalizedTopicTitles.length === 0 && entryPublicIds.length === 0) return [];
+
+  const visibleEntryWhere: Prisma.EntryWhereInput = {
+    status: "ACTIVE",
+    authorId: {
+      not: input.agentUserId,
+      ...(input.blockedUserIds.length > 0 ? { notIn: input.blockedUserIds } : {}),
+    },
+  };
+  const linkedTopicSelect = {
+    id: true,
+    title: true,
+    normalizedTitle: true,
+    aliases: {
+      where: { normalizedTitle: { in: normalizedTopicTitles } },
+      select: { normalizedTitle: true },
+    },
+    entries: {
+      where: visibleEntryWhere,
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+      take: 2,
+      select: {
+        id: true,
+        body: true,
+        createdAt: true,
+        score: true,
+        author: { select: { id: true, username: true, displayName: true } },
+      },
+    },
+    _count: { select: { entries: { where: { status: "ACTIVE" } } } },
+  } satisfies Prisma.TopicSelect;
+  const [topicsByTitle, entriesByPublicId] = await Promise.all([
+    normalizedTopicTitles.length > 0
+      ? transaction.topic.findMany({
+          where: {
+            status: "ACTIVE",
+            OR: [
+              { normalizedTitle: { in: normalizedTopicTitles } },
+              { aliases: { some: { normalizedTitle: { in: normalizedTopicTitles } } } },
+            ],
+          },
+          select: linkedTopicSelect,
+        })
+      : [],
+    entryPublicIds.length > 0
+      ? transaction.entry.findMany({
+          where: {
+            publicId: { in: entryPublicIds },
+            status: "ACTIVE",
+            topic: { status: "ACTIVE" },
+          },
+          select: { publicId: true, topic: { select: linkedTopicSelect } },
+        })
+      : [],
+  ]);
+
+  type LinkedTopic = (typeof topicsByTitle)[number];
+  const topicsById = new Map<string, LinkedTopic>();
+  const topicIdByNormalizedTitle = new Map<string, string>();
+  for (const topic of topicsByTitle) {
+    topicsById.set(topic.id, topic);
+    topicIdByNormalizedTitle.set(topic.normalizedTitle, topic.id);
+    for (const alias of topic.aliases)
+      topicIdByNormalizedTitle.set(alias.normalizedTitle, topic.id);
+  }
+  const topicIdByEntryPublicId = new Map<number, string>();
+  for (const entry of entriesByPublicId) {
+    topicsById.set(entry.topic.id, entry.topic);
+    topicIdByEntryPublicId.set(entry.publicId, entry.topic.id);
+  }
+
+  const discoveries = new Map<
+    string,
+    { discoveredFromEntryIds: Set<string>; referenceKinds: Set<"TOPIC" | "ENTRY"> }
+  >();
+  for (const { entryId, references } of referencesByEntry) {
+    for (const normalizedTitle of references.topics) {
+      const topicId = topicIdByNormalizedTitle.get(normalizedTitle);
+      if (!topicId) continue;
+      const current = discoveries.get(topicId) ?? {
+        discoveredFromEntryIds: new Set<string>(),
+        referenceKinds: new Set<"TOPIC" | "ENTRY">(),
+      };
+      current.discoveredFromEntryIds.add(entryId);
+      current.referenceKinds.add("TOPIC");
+      discoveries.set(topicId, current);
+    }
+    for (const publicId of references.entries) {
+      const topicId = topicIdByEntryPublicId.get(publicId);
+      if (!topicId) continue;
+      const current = discoveries.get(topicId) ?? {
+        discoveredFromEntryIds: new Set<string>(),
+        referenceKinds: new Set<"TOPIC" | "ENTRY">(),
+      };
+      current.discoveredFromEntryIds.add(entryId);
+      current.referenceKinds.add("ENTRY");
+      discoveries.set(topicId, current);
+    }
+  }
+
+  return [...discoveries.entries()].slice(0, 8).flatMap(([topicId, discovery]) => {
+    const topic = topicsById.get(topicId);
+    if (!topic) return [];
+    return [
+      {
+        topic: { id: topic.id, title: topic.title },
+        activeEntryCount: topic._count.entries,
+        thin: topic._count.entries <= 1,
+        referenceKinds: [...discovery.referenceKinds],
+        discoveredFromEntryIds: [...discovery.discoveredFromEntryIds].slice(0, 4),
+        recentEntries: topic.entries,
+      },
+    ];
+  });
+}
+
 export async function getRuntimePerceptionRecords(
   transaction: Prisma.TransactionClient,
   input: {
@@ -1784,6 +1920,11 @@ export async function getRuntimePerceptionRecords(
       _count: { _all: true },
     }),
   ]);
+  const linkedTopics = await listRuntimePerceptionLinkedTopics(transaction, {
+    entries,
+    agentUserId: input.agentUserId,
+    blockedUserIds,
+  });
   return {
     followedTopicIds: topicFollows.map(({ topicId }) => topicId),
     followedUserIds: userFollows.map(({ followedId }) => followedId),
@@ -1795,6 +1936,7 @@ export async function getRuntimePerceptionRecords(
     sources,
     state,
     recentTopicCounts,
+    linkedTopics,
   };
 }
 

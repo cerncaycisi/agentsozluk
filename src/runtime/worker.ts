@@ -207,9 +207,14 @@ function nestedStringField(value: Record<string, unknown>, parent: string, key: 
 
 function runtimeEvidenceCatalog(context: RuntimeContext): RuntimeEvidenceCatalog {
   const perception = context.perception;
+  const linkedTopics = recordArray(perception.linkedTopics);
+  const linkedTopicEntries = linkedTopics.flatMap((linkedTopic) =>
+    recordArray(linkedTopic.recentEntries),
+  );
   const recentEntries = [
     ...recordArray(perception.recentEntries),
     ...recordArray(perception.ownRecentEntries),
+    ...linkedTopicEntries,
   ];
   const sourceItems = recordArray(perception.sourceItems);
   const trustedSourceIds = sourceItems.flatMap((item) =>
@@ -227,6 +232,7 @@ function runtimeEvidenceCatalog(context: RuntimeContext): RuntimeEvidenceCatalog
     PLATFORM_EVENT: unique([
       context.run.id,
       ...recentEntries.map((entry) => nestedStringField(entry, "topic", "id")),
+      ...linkedTopics.map((linkedTopic) => nestedStringField(linkedTopic, "topic", "id")),
     ]),
     USER_ENTRY: unique(recentEntries.map((entry) => stringField(entry, "id"))),
     MODEL_KNOWLEDGE: unique([context.run.id]),

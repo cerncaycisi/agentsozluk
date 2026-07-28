@@ -68,6 +68,7 @@ describe("society observation report contracts", () => {
       "REFLECTION CHANGE / NO-CHANGE REASONS",
       "REFLECTION COVERAGE BY ACTIVE AGENT",
       "REFLECTION PARTIAL / FAILURE CODES",
+      "DICTIONARY DISCOVERY EVENTS",
     ]) {
       expect(baseline).toContain(section);
     }
@@ -83,6 +84,7 @@ describe("society observation report contracts", () => {
       expect(baseline).toContain(reason);
     }
     expect(baseline).toContain("active_agents_without_reflection=");
+    expect(baseline).toContain("dictionary_links.traversed=");
     expect(baseline).toContain("natural_entries.self_topic_revisits=");
     expect(baseline).toContain("natural_entries.max_consecutive_self_topic_revisits=");
   });

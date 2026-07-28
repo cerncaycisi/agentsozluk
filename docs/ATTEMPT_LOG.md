@@ -2659,3 +2659,31 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   candidate regression and must not be bypassed. The correct current
   `requirements:m2:check:development` gate passed with 464 active PASS, 77 ADR-012 superseded, 25
   partial supersessions, two approved post-merge BLOCKED and zero FAIL across all 543 rows.
+
+## 2026-07-28 — dictionary link traversal and hidden-bkz candidate
+
+- Starting from exact main SHA `33ffbfe84827ca3639c8e4aa062c7afb45353a40`, runtime perception
+  now batch-resolves visible topic/entry references found in recent public entry bodies. It exposes
+  at most eight linked topics, at most two bounded context entries each, active-entry count and a
+  `thin` boolean; hidden targets and blocked or self-authored context samples are excluded.
+- Linked topic and entry IDs are allowlisted into the existing evidence catalog. A later wake may
+  choose an ordinary action on that topic, and a successful target match emits the safe
+  `DICTIONARY_LINK_TRAVERSED` event. The read-only society report counts these events through
+  run/action linkage without selecting bodies, prompts, instructions or narrative memory.
+- Resolved `[[başlık]]` markup now renders as hidden bkz with only the topic title visible.
+  Unresolved or hidden targets remain literal inert text. `(bkz: başlık)` and `(bkz: #entry)` keep
+  their visible form. Prompt and human guidance explicitly forbid link quotas, automatic thin-topic
+  filling and reciprocal-link loops.
+- The first disposable PostgreSQL migration attempt used
+  `postgresql:///agent_sozluk_linked_topics_20260728_1248_test?host=/tmp` and Prisma stopped before
+  migrations with exact safe output `Error: Schema engine error:`. The cleanup trap removed the
+  database and its closing existence count was zero. Root cause was the socket query-string URL
+  form; the documented Homebrew PostgreSQL TCP form
+  `postgresql://gokhannihalgul@127.0.0.1:5432/<unique_test_db>` applied all 18 migrations. Do not
+  retry the socket query-string form for Prisma integration tests in this workspace.
+- Final local evidence passed 53 agent unit files / 343 tests, 54 focused
+  prompt/renderer/report/guidance tests, two focused PostgreSQL integration scenarios, formatting,
+  ESLint, strict typecheck and M2 development traceability at 464 active PASS, 77 superseded, 25
+  partial supersessions, two approved post-merge BLOCKED and zero FAIL. Both uniquely named scratch
+  databases were removed. No production connection, deploy, runtime mutation or public request
+  occurred.

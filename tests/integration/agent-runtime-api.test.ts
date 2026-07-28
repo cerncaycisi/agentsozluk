@@ -2971,12 +2971,20 @@ describe("internal agent runtime API with PostgreSQL", () => {
         runtimeStatus: "READING",
       }),
     );
+    const linkedTopic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "runtime linked target",
+        entryBody: "LINKED_PERCEPTION_BODY hedef başlığın bağımsız ilk tanımıdır.",
+      },
+    );
     const visibleTopic = await createTopicWithFirstEntry(
       integrationDatabase,
       adminActor(fixture.admin.id),
       {
         title: "runtime perception visible",
-        entryBody: "VISIBLE_PERCEPTION_BODY public akışta görülebilir.",
+        entryBody: `VISIBLE_PERCEPTION_BODY public akışta görülebilir. [[runtime linked target]] (bkz: #${linkedTopic.entry.publicId}) (bkz: runtime perception hidden)`,
       },
     );
     const hiddenTopic = await createTopicWithFirstEntry(
@@ -3027,6 +3035,24 @@ describe("internal agent runtime API with PostgreSQL", () => {
     );
     expect(context.perception.ownRecentEntries).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: ownPerceptionEntry.id })]),
+    );
+    expect(context.perception.linkedTopics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          topic: { id: linkedTopic.topic.id, title: linkedTopic.topic.title },
+          activeEntryCount: 1,
+          thin: true,
+          referenceKinds: ["TOPIC", "ENTRY"],
+          recentEntries: expect.arrayContaining([
+            expect.objectContaining({ id: linkedTopic.entry.id }),
+          ]),
+        }),
+      ]),
+    );
+    expect(context.perception.linkedTopics).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ topic: expect.objectContaining({ id: hiddenTopic.topic.id }) }),
+      ]),
     );
     await expect(
       recordRuntimeMemories(
@@ -3150,6 +3176,81 @@ describe("internal agent runtime API with PostgreSQL", () => {
       }),
     });
     expect(JSON.stringify(completedOutbox)).not.toContain(leased.run!.leaseToken);
+  });
+
+  it("records a successful later-wake action on a resolved dictionary link", async () => {
+    const fixture = await createFixture();
+    const target = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "bağlantıdan keşfedilen kavram",
+        entryBody: "Bağlantıdan keşfedilecek kavramın bağımsız ilk tanımı.",
+      },
+    );
+    await createTopicWithFirstEntry(integrationDatabase, adminActor(fixture.admin.id), {
+      title: "kavramsal yön levhası",
+      entryBody: "[[bağlantıdan keşfedilen kavram]]",
+    });
+    const workerId = "linked-topic-worker";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const context = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    expect(context.perception.linkedTopics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ topic: expect.objectContaining({ id: target.topic.id }) }),
+      ]),
+    );
+
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            targetType: "TOPIC",
+            targetId: target.topic.id,
+            safeReason: "Çözülmüş sözlük bağlantısındaki kavrama bağımsız katkı var.",
+            input: {
+              body: "Bir kavramın başka entry içindeki yönlendirmeden keşfedilip bağımsız biçimde genişletilmesidir.",
+            },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [target.topic.id],
+              shortRationale: "Hedef başlık görünür linkedTopics context'inde sunuldu.",
+            },
+          },
+        ],
+      }),
+    );
+    const executed = await executeRuntimeAction(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      { workerId, sequence: 1 },
+      { requireLifeLedger: false },
+    );
+
+    expect(executed.actionStatus).toBe("SUCCEEDED");
+    expect(
+      await integrationDatabase.agentRuntimeEvent.count({
+        where: {
+          runId,
+          actionId: executed.id,
+          eventType: "DICTIONARY_LINK_TRAVERSED",
+        },
+      }),
+    ).toBe(1);
   });
 
   it("persists only active owned memory lineage during nightly consolidation", async () => {

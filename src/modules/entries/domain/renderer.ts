@@ -31,7 +31,7 @@ type ReferenceMatch = RegExpExecArray & {
 };
 
 type ParsedReference =
-  | { type: "topic"; normalizedTitle: string }
+  | { type: "topic"; normalizedTitle: string; displayText?: string }
   | { type: "entry"; publicId: number }
   | { type: "user"; username: string };
 
@@ -39,7 +39,12 @@ function parseReference(match: ReferenceMatch): ParsedReference | null {
   const bracketTopic = match[1];
   const username = match[2];
   const traditionalTarget = match[3]?.trim();
-  if (bracketTopic) return { type: "topic", normalizedTitle: normalizeTopicTitle(bracketTopic) };
+  if (bracketTopic)
+    return {
+      type: "topic",
+      normalizedTitle: normalizeTopicTitle(bracketTopic),
+      displayText: bracketTopic.trim(),
+    };
   if (username) return { type: "user", username: username.toLowerCase() };
   if (!traditionalTarget) return null;
   const entryMatch = /^#([1-9]\d*)$/u.exec(traditionalTarget);
@@ -107,7 +112,7 @@ export function tokenizeEntryBody(body: string, references: ReferenceIndex = {})
       const parsed = parseReference(reference as ReferenceMatch);
       if (parsed?.type === "topic") {
         const href = references.topics?.get(parsed.normalizedTitle);
-        if (href) tokens.push({ type: "topic", text: reference[0], href });
+        if (href) tokens.push({ type: "topic", text: parsed.displayText ?? reference[0], href });
         else appendText(tokens, reference[0]);
       } else if (parsed?.type === "entry") {
         const href = references.entries?.get(parsed.publicId);
