@@ -2499,3 +2499,21 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   production were untouched; the remaining non-expired artifacts were only three small coverage
   reports. Do not retain deployed RC bundles or failed browser artifacts when a new bounded RC
   would otherwise exceed the account's included Actions storage.
+- GitHub CI run `30341083037` for exact SHA
+  `8d30ded233830888b43413751935cf549efd8e77` passed quality, behavior, database, coverage and
+  container jobs but failed E2E-014. The pause succeeded, then the test searched for the retired
+  `Başlatma/reset gerekçesi` label instead of `Başlatma gerekçesi`; the interrupted serial test left
+  runtime disabled, which caused the later E2E-008 retry to report `runtimeEnabled=false`.
+  Resolution updates the locator and adds `finally` cleanup that restores both society flow and the
+  test agent lifecycle after any interrupted assertion. Do not let a state-mutating serial E2E
+  depend on the happy path for cleanup.
+- The first corrected local E2E 1–14 run passed 13 tests and proved the cleanup path, then exposed
+  two more retired badge assertions (`DURDURULMUŞ` / `ÇALIŞIYOR`). The redesigned capacity page
+  intentionally renders semantic headings `Toplum durduruldu` / `Toplum çalışıyor`; the test now
+  locates those headings instead of presentation-specific badges.
+- The closing Node 22/pnpm 10 local serial rerun reset the isolated `agent_sozluk_test` database,
+  applied all 18 migrations and passed E2E-001 through E2E-014 `14/14` in 1.5 minutes, including
+  pause, resume and lifecycle restoration.
+- After extracting the failure evidence, failed run `30341083037` artifacts `8681179651`
+  (`playwright-failure`) and `8681152803` (`coverage`) were deleted to keep the next exact-SHA RC
+  within bounded Actions storage.

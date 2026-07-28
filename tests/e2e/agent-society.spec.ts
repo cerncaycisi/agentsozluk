@@ -356,41 +356,63 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
 
   test("E2E-014 pause and resume", async ({ page }) => {
     await login(page);
-    await page.goto("/moderasyon/agent-kapasite");
-    await page.getByLabel("Durdurma gerekçesi").fill("E2E society flow pause verification.");
-    await page.getByRole("button", { name: "Toplumu durdur" }).click();
-    await expect(page.getByLabel("Başlatma/reset gerekçesi")).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText("DURDURULMUŞ", { exact: true })).toBeVisible();
-    await page.getByLabel("Başlatma/reset gerekçesi").fill("E2E society flow resume verification.");
-    await page.getByRole("button", { name: "Toplumu başlat" }).click();
-    await expect(page.getByLabel("Durdurma gerekçesi")).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText("ÇALIŞIYOR", { exact: true })).toBeVisible();
+    let societyPaused = false;
+    let agentPaused = false;
+    try {
+      await page.goto("/moderasyon/agent-kapasite");
+      await page.getByLabel("Durdurma gerekçesi").fill("E2E society flow pause verification.");
+      await page.getByRole("button", { name: "Toplumu durdur" }).click();
+      societyPaused = true;
+      await expect(page.getByLabel("Başlatma gerekçesi")).toBeVisible({ timeout: 20_000 });
+      await expect(
+        page.getByRole("heading", { level: 2, name: "Toplum durduruldu" }),
+      ).toBeVisible();
+      await page.getByLabel("Başlatma gerekçesi").fill("E2E society flow resume verification.");
+      await page.getByRole("button", { name: "Toplumu başlat" }).click();
+      await expect(page.getByLabel("Durdurma gerekçesi")).toBeVisible({ timeout: 20_000 });
+      societyPaused = false;
+      await expect(page.getByRole("heading", { level: 2, name: "Toplum çalışıyor" })).toBeVisible();
 
-    await page.goto(`/moderasyon/agentlar/${agentProfileId}`);
-    await page.getByLabel("Yeni durum").selectOption("PAUSED");
-    await page
-      .getByLabel("Gerekçe", { exact: true })
-      .fill("E2E agent lifecycle pause verification.");
-    await page.getByRole("button", { name: "Durumu değiştir" }).click();
-    await expect(
-      page.getByText("Agent lifecycle PAUSED olarak güncellendi.", { exact: true }),
-    ).toBeVisible();
-    await page.reload();
-    await expect(page.getByText(new RegExp(`@${agentUsername} · PAUSED`, "u"))).toBeVisible({
-      timeout: 20_000,
-    });
-    await page.getByLabel("Yeni durum").selectOption("ACTIVE");
-    await page
-      .getByLabel("Gerekçe", { exact: true })
-      .fill("E2E agent lifecycle resume verification.");
-    await page.getByRole("button", { name: "Durumu değiştir" }).click();
-    await expect(
-      page.getByText("Agent lifecycle ACTIVE olarak güncellendi.", { exact: true }),
-    ).toBeVisible();
-    await page.reload();
-    await expect(page.getByText(new RegExp(`@${agentUsername} · ACTIVE`, "u"))).toBeVisible({
-      timeout: 20_000,
-    });
+      await page.goto(`/moderasyon/agentlar/${agentProfileId}`);
+      await page.getByLabel("Yeni durum").selectOption("PAUSED");
+      await page
+        .getByLabel("Gerekçe", { exact: true })
+        .fill("E2E agent lifecycle pause verification.");
+      await page.getByRole("button", { name: "Durumu değiştir" }).click();
+      agentPaused = true;
+      await expect(
+        page.getByText("Agent lifecycle PAUSED olarak güncellendi.", { exact: true }),
+      ).toBeVisible();
+      await page.reload();
+      await expect(page.getByText(new RegExp(`@${agentUsername} · PAUSED`, "u"))).toBeVisible({
+        timeout: 20_000,
+      });
+      await page.getByLabel("Yeni durum").selectOption("ACTIVE");
+      await page
+        .getByLabel("Gerekçe", { exact: true })
+        .fill("E2E agent lifecycle resume verification.");
+      await page.getByRole("button", { name: "Durumu değiştir" }).click();
+      await expect(
+        page.getByText("Agent lifecycle ACTIVE olarak güncellendi.", { exact: true }),
+      ).toBeVisible();
+      agentPaused = false;
+      await page.reload();
+      await expect(page.getByText(new RegExp(`@${agentUsername} · ACTIVE`, "u"))).toBeVisible({
+        timeout: 20_000,
+      });
+    } finally {
+      if (agentPaused) {
+        await browserApi(page, "POST", `/api/v1/admin/agents/${agentProfileId}/lifecycle`, {
+          status: "ACTIVE",
+          reason: "E2E cleanup restores active lifecycle after an interrupted assertion.",
+        });
+      }
+      if (societyPaused) {
+        await browserApi(page, "POST", "/api/v1/admin/agent-runtime/resume", {
+          reason: "E2E cleanup restores society flow after an interrupted assertion.",
+        });
+      }
+    }
   });
 
   test("E2E-015 persona history", async ({ page }) => {
