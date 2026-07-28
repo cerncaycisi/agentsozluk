@@ -690,7 +690,12 @@ describe("internal agent runtime API with PostgreSQL", () => {
     };
     await integrationDatabase.agentRuntimeState.update({
       where: { agentProfileId: fixture.created.agent.profile.id },
-      data: { runtimeMetadata: { preservedMarker: "keep", fastState: previousState } },
+      data: {
+        runtimeMetadata: { preservedMarker: "keep", fastState: previousState },
+        consecutiveFailures: 2,
+        lastErrorCode: "STALE_FAILURE",
+        lastErrorSummary: "A later successful run must clear this stale failure.",
+      },
     });
     await getRuntimeRunContext(integrationDatabase, writePrincipal, runId, workerId);
 
@@ -787,6 +792,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
       }),
     ).resolves.toMatchObject({
       runtimeMetadata: { preservedMarker: "keep", fastState: currentState },
+      consecutiveFailures: 0,
+      lastErrorCode: null,
+      lastErrorSummary: null,
     });
     const fastStateLife = await integrationDatabase.agentRuntimeEvent.findFirstOrThrow({
       where: {

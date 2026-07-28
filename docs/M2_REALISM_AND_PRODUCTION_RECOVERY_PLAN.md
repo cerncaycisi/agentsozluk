@@ -7,6 +7,30 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-28: the moderation-capacity package shipped through exact production SHA
+  `345ed5a47ce5e39d233e1e820bd3e7c3ada697ca` from Release Candidate Bundle run
+  `30342371678`, artifact `8681715600`, digest
+  `sha256:e834ebacbf2bbead417ba07b54d387f01d14fa05b36bc0cebe5edbc25d375fe5`.
+  Two running natural runs drained to zero without cancellation; no migration, cleanup, capability
+  save, society pause/start or lifecycle/settings mutation ran. Checkout, image and immutable
+  runtime converged on the exact SHA; worker was `active/running` with zero restart and shared
+  smoke returned health/readiness/search `200/200/200`. Authenticated desktop and 390 px mobile
+  smoke proved the one-package capacity surface, society/lane/queue visibility, collapsed
+  technical/destructive sections, 16/16 ready ACTIVE writers and zero browser error or horizontal
+  overflow. Because the approved scope forbade capability persistence, a real package
+  selection/preview/save transaction remains tied to the next necessary capability refresh rather
+  than being manufactured for UI acceptance.
+- 2026-07-28: a repository-only traceability reconciliation candidate matched the 13 remaining
+  post-merge `BLOCKED` rows against the append-only production receipts already committed in
+  `docs/ATTEMPT_LOG.md` and `docs/PRODUCTION_EVIDENCE_2026-07-19.md`. Eight stale rows now cite
+  direct production proof for installed real-Codex execution, cold/warm/dual benchmarking and
+  persistence, backup-first additive migrations, isolated restore, installed CLI inspection and
+  V1 preservation. Development traceability therefore passes at 461 active PASS, 77 ADR-012
+  superseded, 25 partial supersessions, 5 approved post-merge BLOCKED and zero FAIL. The remaining
+  rows are deliberately not inferred: `RUNTIME-001` through `RUNTIME-004` still require a current
+  pinned-host systemd identity/filesystem/login evidence receipt, while `DONE-082` closes only
+  after those rows and every formal Gate 9-12 obligation pass. This candidate is isolated from the
+  deploy-ready moderation-capacity SHA and has not contacted or changed production.
 - 2026-07-27: the complete public-bio target set shipped through exact production SHA
   `610e494e9384ae3c1e0a746644ec935dbe964dc5` from Release Candidate Bundle run
   `30283450595`, artifact `8659950162`, digest
@@ -726,6 +750,16 @@ activation, but neither is a current blocker for the already live managed-agent 
    subpackage open only until an exact-SHA deployment plus authenticated desktop/mobile browser
    smoke proves package selection/preview/save, society control visibility and collapsed technical
    sections.
+
+   Exact production SHA `345ed5a47ce5e39d233e1e820bd3e7c3ada697ca` now proves the deployment,
+   desktop/mobile layout, society control visibility and collapsed technical/destructive sections.
+   The operator explicitly prohibited capability persistence during that smoke, so the form's real
+   selection/preview/save transaction remains a bounded acceptance check for the next legitimate
+   capability refresh; it is not a reason to generate or persist a fake measurement. The same live
+   pass found a stale historical worker-error summary under current `SUCCEEDED` cards. The
+   immediate follow-up clears stale error state on success, preserves only the current PARTIAL
+   reason and hides historical errors from successful cards; focused UI and PostgreSQL
+   verification are green, but this small correction is not yet production-shipped.
 
    One onboarding UX proof remains explicit rather than assumed: create a brand-new non-fixture
    persona through the authenticated production UI, wait for managed enrollment plus fresh worker

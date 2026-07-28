@@ -2517,3 +2517,58 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
 - After extracting the failure evidence, failed run `30341083037` artifacts `8681179651`
   (`playwright-failure`) and `8681152803` (`coverage`) were deleted to keep the next exact-SHA RC
   within bounded Actions storage.
+
+## 2026-07-28 — exact `345ed5a` moderation-capacity promotion and browser smoke
+
+- Release Candidate Bundle run `30342371678` supplied artifact `8681715600` (227,325,872 bytes),
+  digest `sha256:e834ebacbf2bbead417ba07b54d387f01d14fa05b36bc0cebe5edbc25d375fe5`,
+  for exact SHA `345ed5a47ce5e39d233e1e820bd3e7c3ada697ca`. The pinned hostname, IPv4,
+  domain, SSH fingerprint and repository origin passed before transfer or mutation. The wrapper
+  independently required the exact successful push CI and release-bundle run.
+- The artifact image and host-native runtime archives passed bounded size, SHA-256, archive-path,
+  zstd, image-config, release-smoke, Node 22 glibc ABI, ownership/mode and symlink checks. The
+  loaded application image is
+  `sha256:c745bc95f5e920b466731c1024848680b0774eb4afd7d76bf06876e41053a85d`.
+- The deploy observed two running natural runs. Four drain checks moved
+  `running/lease` from `2/2` to `1/1` and then `0/0`; queued and cancel-requested counts remained
+  zero. No run was cancelled. The no-migration cutover recreated only the application container,
+  atomically switched the immutable runtime release and restarted the singleton worker.
+- Closing release verification proved checkout, application image label and runtime release equal
+  the exact SHA; shared release smoke returned `health=200`, `ready=200`, `search=200`; worker state
+  was `active/running` with zero restart. The wrapper rechecked equal global-settings and complete
+  lifecycle fingerprints, equal applied/candidate migration sets and an unchanged Docker-volume
+  hash. No migration, cleanup, capability persistence, society pause/start or lifecycle mutation
+  ran.
+- Authenticated desktop smoke rendered the new one-step `Kapasite ölçüm paketi` surface, society
+  state `Toplum çalışıyor`, runtime/scheduler/public-write enabled, `2 etkin / 2 ayarlı` lanes,
+  16/16 ready ACTIVE writers and zero eligible queue. Technical runtime, breaker and destructive
+  queue sections were collapsed. The approved scope prohibited capability persistence, so no file
+  selection or save was submitted.
+- Authenticated 390×844 mobile smoke rendered the same capacity and agent-management surfaces with
+  document width 375 against viewport width 390. The three capacity technical/destructive sections
+  and 24 agent-card detail/control sections were closed by default. Browser console error count was
+  zero. The temporary viewport override was reset and the smoke tab was closed.
+- The live smoke exposed one bounded truthfulness defect rather than hiding it: several cards
+  displayed current `SUCCEEDED` while still rendering a historical worker-failure summary. The
+  production release itself remains healthy; the defect is a stale dashboard-state presentation
+  issue queued in the immediate follow-up below.
+
+## 2026-07-28 — stale agent-card error and residual operator-language follow-up candidate
+
+- A successful run now clears `lastErrorCode` and `lastErrorSummary` together with the consecutive
+  failure counter. A `PARTIAL` run persists only its own current safe code/summary. The dashboard
+  defensively renders an error card only for current `PARTIAL`, `FAILED` or `TIMED_OUT` states, so
+  pre-existing stale database summaries cannot contradict a visible `SUCCEEDED` state.
+- The remaining visible `Bulk şimdi çalıştır` and `queue değişmez` copy became
+  `Toplu şimdi çalıştır` and `kuyruk değişmez`; persisted trigger names, enum values and API
+  contracts were not translated.
+- Focused server-rendered UI verification passed `8/8`. A uniquely named PostgreSQL 16 scratch
+  database applied all 18 migrations; the targeted lease-fencing/run-completion scenario passed
+  `1/1` and proved stale error fields become null after a later success. The scratch database was
+  dropped and its closing existence count was zero. Formatting, ESLint and strict typecheck passed.
+- The first isolated-worktree traceability command stopped before tests with exact safe errors
+  `sh: tsx: command not found` and `Local package.json exists, but node_modules missing`; the first
+  direct Vitest retry then stopped at `Cannot find module '@vitejs/plugin-react'`. Both were
+  worktree dependency-resolution errors, not application failures. Reusing the already-installed
+  Node 22/pnpm 10 dependency tree on the GB disk required no install or download and made the
+  intended checks run.

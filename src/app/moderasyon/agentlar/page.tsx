@@ -63,6 +63,7 @@ const runtimeValues = [
   "CANCELLED",
   "TIMED_OUT",
 ] as const;
+const runtimeErrorValues = ["PARTIAL", "FAILED", "TIMED_OUT"] as const;
 const sortValues = ["name", "heartbeat", "next-run", "queue"] as const;
 
 function oneOf<T extends string>(value: string | undefined, values: readonly T[]) {
@@ -392,7 +393,10 @@ export default async function AgentDashboardPage({
                 Mevcut çalışma detayını aç
               </Link>
             ) : null}
-            {agent.lastError ? (
+            {agent.lastError &&
+            runtimeErrorValues.includes(
+              agent.runtimeStatus as (typeof runtimeErrorValues)[number],
+            ) ? (
               <p className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                 {agent.lastError}
               </p>

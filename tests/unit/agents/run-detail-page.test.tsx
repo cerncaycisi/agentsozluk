@@ -292,6 +292,48 @@ describe("agent run detail admin page", () => {
     expect(renderToStaticMarkup(dashboard)).toContain("Toplum akışı: ÇALIŞIYOR");
   });
 
+  it("does not show a stale historical error on a currently successful agent card", async () => {
+    mocks.listAgentDashboard.mockResolvedValue([
+      {
+        id: agentId,
+        user: { displayName: "Katman İzci", username: "katmanizci" },
+        lifecycleStatus: "ACTIVE",
+        runtimeStatus: "SUCCEEDED",
+        runtimeReadiness: {
+          ready: true,
+          mode: "LEGACY",
+          reason: "LEGACY_UNVERIFIED",
+          syncedAt: null,
+        },
+        lastHeartbeatAt: run.heartbeatAt,
+        currentRun: null,
+        today: {
+          publishedEntries: 1,
+          createdTopics: 0,
+          votes: 2,
+          sourceReads: 1,
+        },
+        queueLength: 0,
+        nextRunAt: null,
+        lastEntry: null,
+        personaVersion: 1,
+        sourceCount: 4,
+        successRate24h: 1,
+        p75RunDurationMs: 60_000,
+        codexInvocations: 1,
+        averageEntriesPerRun: 1,
+        consecutiveFailures: 0,
+        latestUsageMetadata: null,
+        lastError: "Runtime worker run'ı güvenli biçimde tamamlayamadı.",
+      },
+    ]);
+
+    const page = await AgentDashboardPage({ searchParams: Promise.resolve({}) });
+    const html = renderToStaticMarkup(page);
+    expect(html).toContain("@katmanizci · ACTIVE · SUCCEEDED");
+    expect(html).not.toContain("Runtime worker run'ı güvenli biçimde tamamlayamadı.");
+  });
+
   it("warns that ACTIVE profiles cannot run while the global society is paused", async () => {
     mocks.getGlobalSettings.mockResolvedValue({
       runtimeEnabled: false,

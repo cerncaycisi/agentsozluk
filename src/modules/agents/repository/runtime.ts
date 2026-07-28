@@ -1922,13 +1922,25 @@ export async function finishRuntimeRunRecord(
         currentRunId: null,
         runtimeStatus: input.outcome,
         lastHeartbeatAt: input.now,
-        ...(input.outcome === "SUCCEEDED" || input.outcome === "PARTIAL"
-          ? { lastSuccessfulRunAt: input.now, consecutiveFailures: 0 }
-          : {
-              consecutiveFailures: { increment: 1 },
-              lastErrorCode: input.errorCode ?? input.outcome,
-              lastErrorSummary: input.errorSummary ?? "Runtime run başarısız tamamlandı.",
-            }),
+        ...(input.outcome === "SUCCEEDED"
+          ? {
+              lastSuccessfulRunAt: input.now,
+              consecutiveFailures: 0,
+              lastErrorCode: null,
+              lastErrorSummary: null,
+            }
+          : input.outcome === "PARTIAL"
+            ? {
+                lastSuccessfulRunAt: input.now,
+                consecutiveFailures: 0,
+                lastErrorCode: input.errorCode ?? null,
+                lastErrorSummary: input.errorSummary ?? null,
+              }
+            : {
+                consecutiveFailures: { increment: 1 },
+                lastErrorCode: input.errorCode ?? input.outcome,
+                lastErrorSummary: input.errorSummary ?? "Runtime run başarısız tamamlandı.",
+              }),
         todayPublishedEntries: { increment: input.publishedEntries ?? 0 },
         todayCreatedTopics: { increment: input.createdTopics ?? 0 },
         todayVotes: { increment: input.votes ?? 0 },

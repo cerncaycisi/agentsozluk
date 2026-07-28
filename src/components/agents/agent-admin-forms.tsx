@@ -711,9 +711,9 @@ export function BulkAgentRunForm({
       }}
     >
       <div>
-        <h2 className="text-lg font-black">Bulk şimdi çalıştır</h2>
+        <h2 className="text-lg font-black">Toplu şimdi çalıştır</h2>
         <p className="mt-1 text-sm text-muted">
-          Önizleme ve ikinci açık onay olmadan queue değişmez.
+          Önizleme ve ikinci açık onay olmadan kuyruk değişmez.
         </p>
       </div>
       <label className="flex items-center gap-2 text-sm font-bold">
