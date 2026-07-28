@@ -97,20 +97,22 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
           </h2>
           <p className="break-all text-sm text-muted">{source.url}</p>
           <p className="mt-1 text-xs text-muted">
-            @{source.agentProfile.user.username} · {source._count.items} item · failures{" "}
+            @{source.agentProfile.user.username} · {source._count.items} öğe · ardışık hata{" "}
             {source.consecutiveFailures}
           </p>
         </div>
         <div className="flex gap-2 text-xs font-bold">
-          {source.adminPinned ? <span className="rounded-lg border px-2 py-1">PINNED</span> : null}
+          {source.adminPinned ? (
+            <span className="rounded-lg border px-2 py-1">SABİTLENMİŞ</span>
+          ) : null}
           {source.adminBlocked ? (
-            <span className="rounded-lg border px-2 py-1">BLOCKED</span>
+            <span className="rounded-lg border px-2 py-1">ENGELLİ</span>
           ) : null}
         </div>
       </div>
       <div className="mt-5 grid gap-3 sm:grid-cols-4">
         <label className="text-sm font-bold">
-          Status
+          Durum
           <select
             value={status}
             onChange={(event) => setStatus(event.target.value as SourceStatus)}
@@ -123,17 +125,17 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
             )}
           </select>
         </label>
-        <ScoreField label="Trust" value={trustScore} setValue={setTrustScore} />
-        <ScoreField label="Interest" value={interestScore} setValue={setInterestScore} />
-        <ScoreField label="Novelty" value={noveltyScore} setValue={setNoveltyScore} />
-        <ScoreField label="Usefulness" value={usefulnessScore} setValue={setUsefulnessScore} />
+        <ScoreField label="Güven" value={trustScore} setValue={setTrustScore} />
+        <ScoreField label="İlgi" value={interestScore} setValue={setInterestScore} />
+        <ScoreField label="Yenilik" value={noveltyScore} setValue={setNoveltyScore} />
+        <ScoreField label="Fayda" value={usefulnessScore} setValue={setUsefulnessScore} />
         <label className="flex items-center gap-2 rounded-xl border p-3 text-sm font-bold">
           <input
             type="checkbox"
             checked={adminPinned}
             onChange={(event) => setAdminPinned(event.target.checked)}
           />
-          Pinned
+          Sabitlenmiş
         </label>
         <label className="flex items-center gap-2 rounded-xl border p-3 text-sm font-bold">
           <input
@@ -141,7 +143,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
             checked={adminBlocked}
             onChange={(event) => setAdminBlocked(event.target.checked)}
           />
-          Blocked
+          Engelli
         </label>
       </div>
       <label className="mt-4 block text-sm font-bold">
@@ -170,7 +172,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
                 noveltyScore,
                 usefulnessScore,
               },
-              "Source güncellendi.",
+              "Kaynak güncellendi.",
             )
           }
         >

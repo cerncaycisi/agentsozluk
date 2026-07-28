@@ -2471,3 +2471,17 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   placeholders passed all 68 pages. Final evidence: focused UI/schema/OpenAPI/runbook `49/49`,
   PostgreSQL integration `1/1`, OpenAPI 121 operations, formatting, ESLint, strict typecheck and
   production build all passed.
+
+## 2026-07-28 — moderation visible-language follow-up
+
+- Scope: repository-only follow-up after exact main SHA
+  `5f29e9616a5c29ce49cb90d1d3d2f90963e83a68`; production remained untouched.
+- A deterministic visible-string scan found residual mixed-language operator labels in agent
+  details, run details, content/source moderation and runtime settings. Labels were normalized to
+  Turkish while enum values, route/query names and API contracts remained unchanged. Do not
+  translate persisted enum values or request fields to solve a display-only terminology issue.
+- The first focused rerun used the Codex fallback Node 24/pnpm 11 and stopped at the existing
+  `ERR_PNPM_UNSUPPORTED_ENGINE` guard before tests. The repository-recorded Homebrew Node
+  22/Corepack pnpm 10 lane then ran and exposed only two stale accessible-label assertions;
+  updating those expectations made the focused rerun clean. Do not invoke the unqualified Codex
+  fallback `pnpm` for this repository.

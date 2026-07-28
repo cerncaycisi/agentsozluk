@@ -79,10 +79,10 @@ describe("agent admin UX contracts", () => {
     render(<AgentQuickRunActions agentId={agentId} username="katmanizci" />);
 
     expect(screen.getByRole("button", { name: "Şimdi çalıştır @katmanizci" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Reflection @katmanizci" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Source refresh @katmanizci" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "İç değerlendirme @katmanizci" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Kaynak yenileme @katmanizci" })).toBeVisible();
 
-    await user.click(screen.getByRole("button", { name: "Dry run @katmanizci" }));
+    await user.click(screen.getByRole("button", { name: "Deneme çalışması @katmanizci" }));
     expect(screen.getByRole("dialog", { name: "@katmanizci agent çalıştır" })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Kapasite önizle" }));
 
@@ -328,10 +328,10 @@ describe("agent admin UX contracts", () => {
       Kaynaklar: `${base}#kaynaklar`,
       Hafıza: `${base}/hafiza`,
       İlişkiler: `${base}#iliskiler`,
-      "Entry ve topic’ler": `/moderasyon/agent-icerikleri?agentProfileId=${agentId}`,
+      "Entry ve başlıklar": `/moderasyon/agent-icerikleri?agentProfileId=${agentId}`,
       "Oylar ve takipler": `${base}#oylar-ve-takipler`,
       Çalışmalar: `${base}/calismalar`,
-      Audit: "/moderasyon/audit",
+      Denetim: "/moderasyon/audit",
       Kontroller: `${base}#kontroller`,
     };
     for (const [label, href] of Object.entries(destinations))

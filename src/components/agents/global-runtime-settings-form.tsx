@@ -180,21 +180,21 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
       >
         <dl className="grid gap-3 text-sm sm:grid-cols-3">
           <div>
-            <dt className="font-bold text-muted">Public write</dt>
-            <dd>{settings.publicWriteEnabled ? "ENABLED" : "PAUSED / READ ONLY"}</dd>
+            <dt className="font-bold text-muted">Genel yazma</dt>
+            <dd>{settings.publicWriteEnabled ? "AÇIK" : "DURAKLATILDI / SALT OKUNUR"}</dd>
           </div>
           <div>
-            <dt className="font-bold text-muted">Operating mode</dt>
+            <dt className="font-bold text-muted">Çalışma modu</dt>
             <dd>{settings.runtimeOperatingMode}</dd>
           </div>
           <div>
-            <dt className="font-bold text-muted">Settings version</dt>
+            <dt className="font-bold text-muted">Ayar sürümü</dt>
             <dd>{settings.settingsVersion}</dd>
           </div>
         </dl>
         <div className="grid gap-4 sm:max-w-sm">
           <NumberField
-            label="Source fetch limit"
+            label="Kaynak okuma üst sınırı"
             value={settings.sourceFetchLimit}
             min={1}
             max={50}
@@ -205,16 +205,16 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
         </div>
 
         <fieldset className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-4">
-          <legend className="px-2 font-black">Error circuit breaker</legend>
+          <legend className="px-2 font-black">Otomatik hata freni</legend>
           <NumberField
-            label="Error window (dakika)"
+            label="Hata ölçüm aralığı (dakika)"
             value={breaker.errorRateWindowMinutes}
             min={1}
             max={240}
             onChange={(value) => setBreaker("errorRateWindowMinutes", value)}
           />
           <NumberField
-            label="Error rate threshold"
+            label="Hata oranı eşiği"
             value={breaker.errorRateThreshold}
             min={0}
             max={1}
@@ -222,21 +222,21 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
             onChange={(value) => setBreaker("errorRateThreshold", value)}
           />
           <NumberField
-            label="Consecutive Codex failure"
+            label="Ardışık Codex hatası"
             value={breaker.consecutiveCodexFailures}
             min={1}
             max={100}
             onChange={(value) => setBreaker("consecutiveCodexFailures", value)}
           />
           <NumberField
-            label="Duplicate window size"
+            label="Tekrar kontrol örneklemi"
             value={breaker.duplicateWindowSize}
             min={1}
             max={500}
             onChange={(value) => setBreaker("duplicateWindowSize", value)}
           />
           <NumberField
-            label="Duplicate threshold"
+            label="Tekrar oranı eşiği"
             value={breaker.duplicateThreshold}
             min={0}
             max={1}
@@ -244,21 +244,21 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
             onChange={(value) => setBreaker("duplicateThreshold", value)}
           />
           <NumberField
-            label="Duplicate cooldown (dakika)"
+            label="Tekrar freni (dakika)"
             value={breaker.duplicateCooldownMinutes}
             min={1}
             max={1440}
             onChange={(value) => setBreaker("duplicateCooldownMinutes", value)}
           />
           <NumberField
-            label="Utilization window (dakika)"
+            label="Kullanım ölçüm aralığı (dakika)"
             value={breaker.utilizationWindowMinutes}
             min={1}
             max={1440}
             onChange={(value) => setBreaker("utilizationWindowMinutes", value)}
           />
           <NumberField
-            label="Utilization threshold"
+            label="Kullanım oranı eşiği"
             value={breaker.utilizationThreshold}
             min={0}
             max={1}

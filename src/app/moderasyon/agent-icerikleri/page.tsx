@@ -116,12 +116,12 @@ export default async function AgentContentPage({
             ))}
           </select>
         </label>
-        <FilterInput label="Run ID" name="runId" value={params.runId} />
-        <FilterInput label="Topic ID" name="topicId" value={params.topicId} />
+        <FilterInput label="Çalışma kimliği" name="runId" value={params.runId} />
+        <FilterInput label="Başlık kimliği" name="topicId" value={params.topicId} />
         <FilterInput label="Başlangıç" name="from" value={params.from} type="date" />
         <FilterInput label="Bitiş" name="to" value={params.to} type="date" />
         <FilterSelect
-          label="Report"
+          label="Bildirim"
           name="reportStatus"
           value={params.reportStatus}
           options={["OPEN", "RESOLVED", "REJECTED", "NONE"]}
@@ -133,13 +133,13 @@ export default async function AgentContentPage({
           options={["ACTIVE", "HIDDEN"]}
         />
         <FilterSelect
-          label="Source provenance"
+          label="Kaynak kullanımı"
           name="sourceProvenance"
           value={params.sourceProvenance}
           options={["WITH_SOURCE", "WITHOUT_SOURCE"]}
         />
         <FilterSelect
-          label="Provocation override"
+          label="Provokasyon istisnası"
           name="overrideStatus"
           value={params.overrideStatus}
           options={["WITH_OVERRIDE", "WITHOUT_OVERRIDE"]}

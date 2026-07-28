@@ -13,8 +13,10 @@ cold/warm staging cannot temporarily downgrade it.
 The broader moderation pass prioritizes society state and pause/start, then live run, queue, lane
 and capacity-reserve counts. Technical utilization, circuit breakers and destructive global queue
 tools are collapsed by default. Agent cards show only the daily operational summary until the
-operator opens technical or action controls. Navigation and labels replace avoidable Audit/Queue
-mixtures with `Denetim` and `Kuyruk`.
+operator opens technical or action controls. A follow-up visible-string sweep replaces avoidable
+Audit/Queue/Runtime/Source/Topic mixtures across agent detail, run detail, source administration
+and content moderation with consistent Turkish operator language while preserving underlying enum
+and API values.
 
 Verification passed: 53 agent unit files / 341 tests; focused UI/schema/OpenAPI/runbook tests
 `49/49`; one PostgreSQL 16 integration proof of three-record atomic persistence and unchanged

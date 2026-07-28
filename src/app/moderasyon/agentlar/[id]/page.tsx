@@ -59,7 +59,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           <div>
             <h2 className="text-lg font-black">Genel durum</h2>
             <p className="mt-1 text-sm text-muted">
-              Heartbeat, bugünkü gerçek üretim ve çalışan run’ın güncel read model’i.
+              Yaşam sinyali, bugünkü gerçek üretim ve çalışan işin güncel özeti.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -72,21 +72,21 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
         <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-          <Row label="Lifecycle" value={agent.lifecycleStatus} />
-          <Row label="Runtime" value={runtime?.runtimeStatus ?? "IDLE"} />
+          <Row label="Yaşam döngüsü" value={agent.lifecycleStatus} />
+          <Row label="Çalışma durumu" value={runtime?.runtimeStatus ?? "IDLE"} />
           <Row
-            label="Son heartbeat"
+            label="Son yaşam sinyali"
             value={formatNullableTimestamp(runtime?.lastHeartbeatAt ?? null)}
           />
           <Row
-            label="Sonraki run"
+            label="Sonraki çalışma"
             value={formatNullableTimestamp(runtime?.nextScheduledAt ?? null)}
           />
           <Row label="Bugünkü entry" value={String(runtime?.todayPublishedEntries ?? 0)} />
-          <Row label="Bugünkü topic" value={String(runtime?.todayCreatedTopics ?? 0)} />
-          <Row label="Bugünkü vote" value={String(runtime?.todayVotes ?? 0)} />
+          <Row label="Bugünkü başlık" value={String(runtime?.todayCreatedTopics ?? 0)} />
+          <Row label="Bugünkü oy" value={String(runtime?.todayVotes ?? 0)} />
           <Row
-            label="Mevcut run"
+            label="Mevcut çalışma"
             value={
               runtime?.currentRun
                 ? `${runtime.currentRun.runType} · ${runtime.currentRun.runStatus}`
@@ -94,31 +94,31 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
             }
           />
           <Row
-            label="Run başlangıcı"
+            label="Çalışma başlangıcı"
             value={formatNullableTimestamp(runtime?.currentRun?.startedAt ?? null)}
           />
           <Row
             label="Persona"
             value={agent.currentPersonaVersion ? `v${agent.currentPersonaVersion.version}` : "—"}
           />
-          <Row label="Sources" value={String(agent.sources.length)} />
-          <Row label="Credentials" value={String(agent._count.credentials)} />
+          <Row label="Kaynaklar" value={String(agent.sources.length)} />
+          <Row label="Kimlik kayıtları" value={String(agent._count.credentials)} />
           <Row
-            label="Worker readiness"
+            label="İşleyici hazırlığı"
             value={
               agent.runtimeReadiness.ready
                 ? agent.runtimeReadiness.managed
-                  ? "HAZIR · otomatik roster"
-                  : "HAZIR · legacy roster"
+                  ? "HAZIR · otomatik liste"
+                  : "HAZIR · eski liste"
                 : `HAZIR DEĞİL · ${agent.runtimeReadiness.reason}`
             }
           />
           <Row
-            label="Roster sync"
+            label="Liste eşitleme"
             value={formatNullableTimestamp(agent.runtimeReadiness.syncedAt)}
           />
-          <Row label="Memory" value={String(agent._count.memoryEpisodes)} />
-          <Row label="Beliefs" value={String(agent._count.beliefs)} />
+          <Row label="Hafıza" value={String(agent._count.memoryEpisodes)} />
+          <Row label="Kanaatler" value={String(agent._count.beliefs)} />
         </dl>
         {agent.lifecycleStatus === "ACTIVE" && agent.runtimeReadiness.ready ? (
           <div className="mt-5 border-t pt-4">
@@ -248,7 +248,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
       </section>
 
       <section id="persona" className="surface-card mt-5 scroll-mt-24 p-5">
-        <h2 className="text-lg font-black">Persona history</h2>
+        <h2 className="text-lg font-black">Persona geçmişi</h2>
         <ol className="mt-4 space-y-3">
           {agent.personaVersions.map((version) => (
             <li key={version.id} className="rounded-lg border p-3 text-sm">
@@ -286,7 +286,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
         </div>
         {agent.lifecycleStatus !== "RETIRED" ? (
           <div className="mt-5 border-t pt-5">
-            <h3 className="font-black">Runtime credential</h3>
+            <h3 className="font-black">Çalışma kimliği</h3>
             <div className="mt-3">
               <AgentCredentialRotateForm agentId={agent.id} />
             </div>

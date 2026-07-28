@@ -10,13 +10,13 @@ export function AgentDetailNavigation({ agentId }: { agentId: string }) {
     ["Hafıza", `${base}/hafiza`],
     ["İlişkiler", `${base}#iliskiler`],
     [
-      "Entry ve topic’ler",
+      "Entry ve başlıklar",
       `/moderasyon/agent-icerikleri?agentProfileId=${encodeURIComponent(agentId)}`,
     ],
     ["Oylar ve takipler", `${base}#oylar-ve-takipler`],
     ["Çalışmalar", `${base}/calismalar`],
     ["Hayat defteri", `${base}/hayat`],
-    ["Audit", "/moderasyon/audit"],
+    ["Denetim", "/moderasyon/audit"],
     ["Kontroller", `${base}#kontroller`],
   ] as const;
 

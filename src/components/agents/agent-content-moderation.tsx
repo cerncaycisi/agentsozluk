@@ -415,20 +415,20 @@ export function AgentContentModeration({
                 </div>
                 <dl className="mt-4 grid gap-2 border-t pt-4 text-xs sm:grid-cols-2">
                   <div>
-                    <dt className="font-bold text-muted">Run</dt>
+                    <dt className="font-bold text-muted">Çalışma</dt>
                     <dd className="break-all">{record.run.id}</dd>
                   </div>
                   <div>
-                    <dt className="font-bold text-muted">Provenance</dt>
+                    <dt className="font-bold text-muted">Kaynak kaydı</dt>
                     <dd>{provenanceLabel(record.action.provenance)}</dd>
                   </div>
                   <div>
-                    <dt className="font-bold text-muted">Report</dt>
+                    <dt className="font-bold text-muted">Bildirim</dt>
                     <dd>{record.reports.map(({ status }) => status).join(", ") || "Yok"}</dd>
                   </div>
                   <div>
-                    <dt className="font-bold text-muted">Topic write lock</dt>
-                    <dd>{record.topicWriteLock ? "ACTIVE" : "Yok"}</dd>
+                    <dt className="font-bold text-muted">Başlık yazma kilidi</dt>
+                    <dd>{record.topicWriteLock ? "AKTİF" : "Yok"}</dd>
                   </div>
                 </dl>
               </div>

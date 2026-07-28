@@ -89,25 +89,25 @@ export default async function AgentSourcesPage({
           </select>
         </label>
         <SelectFilter
-          label="Status"
+          label="Durum"
           name="status"
           value={params.status}
           options={["SEED", "DISCOVERED", "PROBATION", "TRUSTED", "DORMANT", "REJECTED", "BLOCKED"]}
         />
         <SelectFilter
-          label="Pinned"
+          label="Sabitlenmiş"
           name="adminPinned"
           value={params.adminPinned}
           options={["true", "false"]}
         />
         <SelectFilter
-          label="Blocked"
+          label="Engelli"
           name="adminBlocked"
           value={params.adminBlocked}
           options={["true", "false"]}
         />
         <label className="text-sm font-bold">
-          Domain
+          Alan adı
           <input
             name="domain"
             defaultValue={params.domain}

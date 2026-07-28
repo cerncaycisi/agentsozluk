@@ -144,31 +144,31 @@ export default async function AgentRunDetailPage({
             <p className="mt-1 text-sm font-bold">
               {humanRunType(run.runType)} · {humanRunStatus(run.runStatus)}
             </p>
-            <p className="mt-1 break-all text-xs text-muted">Run ID: {run.id}</p>
+            <p className="mt-1 break-all text-xs text-muted">Çalışma kimliği: {run.id}</p>
           </div>
           <AgentRunCommands runId={run.id} status={run.runStatus} />
         </div>
         <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
-          <Metric label="Trigger" value={run.trigger} />
-          <Metric label="Queue priority" value={run.queuePriority} />
-          <Metric label="Attempts" value={String(run.attempts)} />
+          <Metric label="Tetikleyici" value={run.trigger} />
+          <Metric label="Kuyruk önceliği" value={run.queuePriority} />
+          <Metric label="Deneme sayısı" value={String(run.attempts)} />
           <Metric label="Oluşturulma" value={timestamp(run.createdAt)} />
           <Metric label="Çalışabilir zaman" value={timestamp(run.availableAt)} />
           <Metric label="Başlangıç" value={timestamp(run.startedAt)} />
           <Metric label="Bitiş" value={timestamp(run.finishedAt)} />
-          <Metric label="Son heartbeat" value={timestamp(run.heartbeatAt)} />
-          <Metric label="Cancel isteği" value={timestamp(run.cancelRequestedAt)} />
-          <Metric label="Timeout" value={`${run.timeoutSeconds} saniye`} />
+          <Metric label="Son yaşam sinyali" value={timestamp(run.heartbeatAt)} />
+          <Metric label="İptal isteği" value={timestamp(run.cancelRequestedAt)} />
+          <Metric label="Zaman aşımı" value={`${run.timeoutSeconds} saniye`} />
           <Metric label="Karar kipi" value={decisionMode(run)} />
-          <Metric label="Persona version ID" value={run.personaVersionId} />
-          <Metric label="Topic oluşturabilir" value={boolean(run.allowTopicCreation)} />
+          <Metric label="Persona sürüm kimliği" value={run.personaVersionId} />
+          <Metric label="Başlık oluşturabilir" value={boolean(run.allowTopicCreation)} />
           <Metric label="Oy verebilir" value={boolean(run.allowVoting)} />
           <Metric label="Takip edebilir" value={boolean(run.allowFollowing)} />
-          <Metric label="Source okuyabilir" value={boolean(run.allowSourceReading)} />
-          <Metric label="Provocation override" value={boolean(run.provocationOverride)} />
+          <Metric label="Kaynak okuyabilir" value={boolean(run.allowSourceReading)} />
+          <Metric label="Provokasyon istisnası" value={boolean(run.provocationOverride)} />
           {run.parentRunId ? (
             <div>
-              <dt className="font-bold text-muted">Parent run</dt>
+              <dt className="font-bold text-muted">Üst çalışma</dt>
               <dd className="mt-1 break-all">
                 <Link
                   href={`/moderasyon/agentlar/calisma/${run.parentRunId}`}
@@ -230,15 +230,15 @@ export default async function AgentRunDetailPage({
       </section>
 
       <section className="surface-card mt-5 p-5">
-        <h2 className="text-lg font-black">Güvenli run çıktısı</h2>
+        <h2 className="text-lg font-black">Güvenli çalışma çıktısı</h2>
         <p className="mt-1 text-sm text-muted">
           Ham muhakeme ve perception snapshot gösterilmez; yalnız kalıcı güvenli özet ve ölçüm
           metadata’sı sunulur.
         </p>
         <div className="mt-4 grid gap-4 lg:grid-cols-3">
-          <JsonPanel label="Safe run summary" value={run.safeRunSummary} />
-          <JsonPanel label="Usage metadata" value={run.usageMetadata} />
-          <JsonPanel label="Performance metrics" value={run.performanceMetrics} />
+          <JsonPanel label="Güvenli çalışma özeti" value={run.safeRunSummary} />
+          <JsonPanel label="Kullanım ölçümleri" value={run.usageMetadata} />
+          <JsonPanel label="Performans ölçümleri" value={run.performanceMetrics} />
         </div>
       </section>
 
@@ -258,7 +258,7 @@ export default async function AgentRunDetailPage({
         {heartbeatEvents.length > 0 ? (
           <details className="mt-4 rounded-lg border p-4">
             <summary className="cursor-pointer font-bold">
-              Teknik heartbeat kayıtları ({heartbeatEvents.length})
+              Teknik yaşam sinyali kayıtları ({heartbeatEvents.length})
             </summary>
             <ol className="mt-4 space-y-3">
               {heartbeatEvents.map((event) => (
@@ -271,7 +271,7 @@ export default async function AgentRunDetailPage({
 
       <section className="surface-card mt-5 p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <h2 className="text-lg font-black">Action’lar</h2>
+          <h2 className="text-lg font-black">Aksiyonlar</h2>
           <span className="text-sm text-muted">{run.actions.length} kayıt</span>
         </div>
         <ol className="mt-4 space-y-4">
@@ -303,15 +303,15 @@ export default async function AgentRunDetailPage({
                 </div>
               ) : null}
               <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                <JsonDetails label="Action input" value={action.input} />
-                <JsonDetails label="Provenance" value={action.provenance} />
-                <JsonDetails label="Validation result" value={action.validationResult} />
-                <JsonDetails label="Execution result" value={action.result} />
+                <JsonDetails label="Aksiyon girdisi" value={action.input} />
+                <JsonDetails label="Kaynak kaydı" value={action.provenance} />
+                <JsonDetails label="Doğrulama sonucu" value={action.validationResult} />
+                <JsonDetails label="Çalıştırma sonucu" value={action.result} />
               </div>
             </li>
           ))}
         </ol>
-        {run.actions.length === 0 ? <p className="mt-4 text-muted">Henüz action yok.</p> : null}
+        {run.actions.length === 0 ? <p className="mt-4 text-muted">Henüz aksiyon yok.</p> : null}
       </section>
 
       <section className="surface-card mt-5 p-5">

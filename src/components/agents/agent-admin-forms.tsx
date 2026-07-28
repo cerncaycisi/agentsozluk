@@ -386,14 +386,14 @@ function RunConfigFields({
           max={10}
         />
         <label className="text-sm font-bold">
-          Priority
+          Öncelik
           <select
             value={config.priority}
             onChange={(event) => update({ priority: event.target.value as RunConfig["priority"] })}
             className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
           >
             <option value="NORMAL">Normal</option>
-            <option value="EMERGENCY">Emergency</option>
+            <option value="EMERGENCY">Acil</option>
           </select>
         </label>
         <label className="text-sm font-bold">
@@ -409,11 +409,11 @@ function RunConfigFields({
       <div className="grid gap-2 text-sm sm:grid-cols-3">
         {(
           [
-            ["allowTopicCreation", "Topic oluşturabilir"],
-            ["allowVoting", "Vote verebilir"],
+            ["allowTopicCreation", "Başlık oluşturabilir"],
+            ["allowVoting", "Oy verebilir"],
             ["allowFollowing", "Takip edebilir"],
-            ["allowSourceReading", "Source okuyabilir"],
-            ["provocationOverride", "Provokasyon cooldown override"],
+            ["allowSourceReading", "Kaynak okuyabilir"],
+            ["provocationOverride", "Provokasyon bekleme süresi istisnası"],
           ] as const
         ).map(([key, label]) => (
           <label key={key} className="flex items-center gap-2 rounded-lg border p-3 font-bold">
@@ -428,7 +428,7 @@ function RunConfigFields({
         ))}
       </div>
       <label className="block text-sm font-bold">
-        Kısa admin instruction
+        Kısa yönetici yönlendirmesi
         <textarea
           value={config.adminInstruction}
           onChange={(event) => update({ adminInstruction: event.target.value })}
@@ -438,7 +438,7 @@ function RunConfigFields({
       </label>
       {config.priority === "EMERGENCY" ? (
         <p className="rounded-lg border border-accent/40 bg-accent/10 p-3 text-sm">
-          Emergency run kapasite uyarısını aşabilir; çalışan atomic action kesilmez.
+          Acil çalışma kapasite uyarısını aşabilir; çalışan atomik aksiyon kesilmez.
         </p>
       ) : null}
     </>
@@ -455,8 +455,8 @@ function PreviewCard({ preview }: { preview: RunPreview }) {
   return (
     <div className="rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm">
       <p className="font-black">
-        {preview.runCount} run eklenecek · mevcut queue {preview.existingQueueLength} · concurrency{" "}
-        {preview.concurrency}
+        {preview.runCount} çalışma eklenecek · mevcut kuyruk {preview.existingQueueLength} ·
+        eşzamanlılık {preview.concurrency}
       </p>
       <p className="mt-2">
         P75:{" "}
@@ -469,11 +469,11 @@ function PreviewCard({ preview }: { preview: RunPreview }) {
         {preview.estimatedScheduledDelayMs === null
           ? "UNKNOWN"
           : `${Math.ceil(preview.estimatedScheduledDelayMs / 60_000)} dk`}{" "}
-        · utilization:{" "}
+        · kullanım:{" "}
         {preview.workerUtilization === null
           ? "UNKNOWN"
           : `${Math.round(preview.workerUtilization * 100)}%`}{" "}
-        · sıra tahmini mevcut queue ve çalışma süresinden hesaplanır
+        · sıra tahmini mevcut kuyruk ve çalışma süresinden hesaplanır
       </p>
       <p className="mt-1 font-bold">
         Bu değerler ölçüme dayalı tahmindir; kesin tamamlanma sözü değildir.
@@ -484,9 +484,9 @@ function PreviewCard({ preview }: { preview: RunPreview }) {
 
 const quickRunTypes = [
   { runType: "NORMAL_WAKE", label: "Şimdi çalıştır" },
-  { runType: "DRY_RUN", label: "Dry run" },
-  { runType: "REFLECTION", label: "Reflection" },
-  { runType: "SOURCE_REFRESH", label: "Source refresh" },
+  { runType: "DRY_RUN", label: "Deneme çalışması" },
+  { runType: "REFLECTION", label: "İç değerlendirme" },
+  { runType: "SOURCE_REFRESH", label: "Kaynak yenileme" },
 ] as const;
 
 export function AgentQuickRunActions({ agentId, username }: { agentId: string; username: string }) {
@@ -1147,7 +1147,7 @@ export function AgentCreateForm({
             <option value="CUSTOM">Sıfırdan</option>
             <option value="TEMPLATE">Persona şablonundan</option>
             <option value="CLONE">Mevcut agent’ı kopyalayarak</option>
-            <option value="IMPORT">Structured import</option>
+            <option value="IMPORT">Yapılandırılmış içe aktarma</option>
           </select>
         </label>
         {method === "TEMPLATE" ? (

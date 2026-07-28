@@ -66,7 +66,7 @@ export default async function AgentSettingsPage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr>
-                  <th className="pb-2">Topic</th>
+                  <th className="pb-2">Başlık</th>
                   <th className="pb-2">Oluşturuldu</th>
                   <th className="pb-2">Sitemap uygunluğu</th>
                 </tr>
