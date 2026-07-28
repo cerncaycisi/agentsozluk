@@ -189,6 +189,11 @@ export function getAgentRunDetailRecord(transaction: Prisma.TransactionClient, r
     where: { id: runId },
     omit: { leaseToken: true },
     include: {
+      agentProfile: {
+        select: {
+          user: { select: { displayName: true, username: true } },
+        },
+      },
       events: { orderBy: { sequence: "asc" } },
       actions: { orderBy: { sequence: "asc" } },
       contentRecords: {

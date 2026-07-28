@@ -2376,3 +2376,32 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   reads inside a remote heredoc must not be allowed to consume the remaining stdin. Require a
   post-apply dry-run receipt instead of treating an exit-zero wrapper with no START/END receipt as
   success.
+
+## 2026-07-28 — human-readable event feed and run-detail local candidate
+
+- Scope: repository-only work based on exact main SHA
+  `419a444c489bd9c21dc40c7b1fdccd55e441b1f4`. No production connection, public endpoint request,
+  deploy, restart, run creation/cancellation or setting change occurred.
+- The default runtime-event repository query and matching count now omit only
+  `agent.heartbeat`; an explicit technical flag returns the complete immutable stream. The flag
+  survives server-rendered history pagination, SSE and polling. Safe public writer identity and
+  run links replace UUID-only reconstruction in the readable cards.
+- Run detail names the writer, translates every current `AgentActionType` and terminal status,
+  summarizes successful versus rejected/failed/skipped actions, exposes the existing safe
+  rejection code/reason, and groups heartbeat evidence under a collapsed technical section.
+- The first focused PostgreSQL invocation stopped before tests with exact guard
+  `Integration tests requires TEST_DATABASE_URL.` This was missing local test configuration, not
+  a product regression. The corrected run used the already-installed Homebrew PostgreSQL `16.14`
+  and a uniquely named disposable `_test` database, applied all 18 migrations, passed the focused
+  runtime-event projection test `1/1`, dropped the database and verified that it no longer exists.
+  Do not repeat: for focused PostgreSQL integration in this workspace, use a unique local `_test`
+  database and explicit `TEST_DATABASE_URL`; do not start Colima or bypass the integration guard.
+- Verification: formatting, ESLint and strict typecheck passed; runtime-event page/component,
+  run-detail and production-runbook tests passed `33/33`; the complete agent unit package passed
+  `52 files / 338 tests`; M1 requirements passed `3/3`; `git diff --check` passed. M2 development
+  traceability passed with 453 active PASS, 13 approved post-merge BLOCKED and zero FAIL. The
+  final-only M2 check stopped at exact expected state
+  `DONE-034 must be PASS for final M2 verification; found BLOCKED.` Do not weaken or relabel that
+  gate: it closes only after the outstanding final acceptance evidence. Production acceptance for
+  this package remains pending an exact-SHA deploy plus authenticated readable/technical/history
+  browser smoke and the known source-insufficient PARTIAL exemplar.

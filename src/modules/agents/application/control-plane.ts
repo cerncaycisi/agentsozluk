@@ -251,7 +251,7 @@ export function updateAgentSourceAdmin(
 export function listRuntimeEvents(
   client: DatabaseExecutor,
   actor: ActorContext,
-  input: { afterId?: bigint; beforeId?: bigint; take: number },
+  input: { afterId?: bigint; beforeId?: bigint; take: number; includeTechnical?: boolean },
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
@@ -269,13 +269,16 @@ export function listRuntimeEvents(
 export function getRuntimeEventHistoryPage(
   client: DatabaseExecutor,
   actor: ActorContext,
-  input: { beforeId?: bigint; take: number },
+  input: { beforeId?: bigint; take: number; includeTechnical?: boolean },
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     const [records, totalItems] = await Promise.all([
       listRuntimeEventsRecord(transaction, { ...input, take: input.take + 1 }),
-      countRuntimeEventsRecord(transaction),
+      countRuntimeEventsRecord(
+        transaction,
+        input.includeTechnical ? { includeTechnical: true } : {},
+      ),
     ]);
     const hasOlder = records.length > input.take;
     const visible = hasOlder ? records.slice(1) : records;

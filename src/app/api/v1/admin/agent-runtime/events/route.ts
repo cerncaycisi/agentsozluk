@@ -31,9 +31,14 @@ export function GET(request: NextRequest) {
       url.searchParams.get("afterId") ?? request.headers.get("last-event-id"),
     );
     const take = takeValue(url.searchParams.get("limit"));
+    const includeTechnical = url.searchParams.get("technical") === "1";
     if (url.searchParams.get("poll") === "1") {
       return success(
-        await listRuntimeEvents(getDatabase(), actor, { ...(afterId ? { afterId } : {}), take }),
+        await listRuntimeEvents(getDatabase(), actor, {
+          ...(afterId ? { afterId } : {}),
+          take,
+          includeTechnical,
+        }),
         context,
       );
     }
@@ -64,6 +69,7 @@ export function GET(request: NextRequest) {
             const events = await listRuntimeEvents(getDatabase(), actor, {
               ...(cursor ? { afterId: cursor } : {}),
               take,
+              includeTechnical,
             });
             for (const event of events) {
               cursor = BigInt(event.id);

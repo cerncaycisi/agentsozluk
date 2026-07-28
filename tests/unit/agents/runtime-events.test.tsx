@@ -58,6 +58,45 @@ describe("agent runtime live-event fallback", () => {
     expect(apiRequest).toHaveBeenCalledWith("/api/v1/admin/agent-runtime/events?poll=1&limit=100");
   });
 
+  it("keeps heartbeat evidence in an explicit technical stream with writer and run links", async () => {
+    render(
+      <AgentRuntimeEvents
+        includeTechnical
+        initialEvents={[
+          {
+            id: "43",
+            agentProfileId: "018f5d51-8f89-4a4e-89df-2166b53ea420",
+            agentProfile: {
+              user: { displayName: "Katman İzci", username: "katmanizci" },
+            },
+            runId: "018f5d51-8f89-4a4e-89df-2166b53ea41f",
+            eventType: "agent.heartbeat",
+            safeMessage: "Agent runtime heartbeat kaydetti.",
+            metadata: { runtimeStatus: "THINKING" },
+            createdAt: "2026-07-22T09:00:00.000Z",
+          },
+        ]}
+      />,
+    );
+
+    expect(FakeEventSource.instance?.url).toBe("/api/v1/admin/agent-runtime/events?technical=1");
+    expect(screen.getByText("Teknik heartbeat")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Katman İzci (@katmanizci)" })).toHaveAttribute(
+      "href",
+      "/moderasyon/agentlar/018f5d51-8f89-4a4e-89df-2166b53ea420",
+    );
+    expect(screen.getByRole("link", { name: "Çalışma detayını aç" })).toHaveAttribute(
+      "href",
+      "/moderasyon/agentlar/calisma/018f5d51-8f89-4a4e-89df-2166b53ea41f",
+    );
+
+    act(() => FakeEventSource.instance?.onerror?.());
+    await act(async () => vi.advanceTimersByTimeAsync(LIVE_EVENT_POLL_INTERVAL_MS));
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/v1/admin/agent-runtime/events?poll=1&limit=100&afterId=43&technical=1",
+    );
+  });
+
   it("renders a persisted history page without opening a live transport", () => {
     render(
       <AgentRuntimeEvents
@@ -66,6 +105,7 @@ describe("agent runtime live-event fallback", () => {
           {
             id: "42",
             agentProfileId: null,
+            agentProfile: null,
             runId: null,
             eventType: "runtime.history.test",
             safeMessage: "Kalıcı geçmiş olayı.",
@@ -86,6 +126,7 @@ describe("agent runtime live-event fallback", () => {
     const firstPage = {
       id: "42",
       agentProfileId: null,
+      agentProfile: null,
       runId: null,
       eventType: "runtime.history.first",
       safeMessage: "İlk geçmiş sayfası.",
@@ -114,6 +155,7 @@ describe("agent runtime live-event fallback", () => {
     const event = (id: string, safeMessage: string) => ({
       id,
       agentProfileId: null,
+      agentProfile: null,
       runId: null,
       eventType: "runtime.navigation.test",
       safeMessage,

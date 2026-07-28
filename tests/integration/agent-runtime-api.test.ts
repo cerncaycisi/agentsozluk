@@ -6857,7 +6857,17 @@ describe("internal agent runtime API with PostgreSQL", () => {
       ...(cursor ? { afterId: BigInt(cursor) } : {}),
       take: 100,
     });
-    expect(events.map(({ eventType }) => eventType)).toEqual([
+    expect(events.map(({ eventType }) => eventType)).toEqual(["run.started", "run.step.changed"]);
+    const technicalEvents = await listRuntimeEvents(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        ...(cursor ? { afterId: BigInt(cursor) } : {}),
+        take: 100,
+        includeTechnical: true,
+      },
+    );
+    expect(technicalEvents.map(({ eventType }) => eventType)).toEqual([
       "run.started",
       "agent.heartbeat",
       "run.step.changed",
@@ -6872,6 +6882,12 @@ describe("internal agent runtime API with PostgreSQL", () => {
         expect.objectContaining({
           runId,
           agentProfileId: fixture.created.agent.profile.id,
+          agentProfile: {
+            user: {
+              displayName: fixture.created.agent.user.displayName,
+              username: fixture.created.agent.user.username,
+            },
+          },
           safeMessage: "Güvenli runtime adımı kaydedildi.",
         }),
       ]),

@@ -24,6 +24,61 @@ const timestamp = (value: Date | null) =>
 
 const boolean = (value: boolean) => (value ? "Evet" : "Hayır");
 
+const actionLabels: Record<string, string> = {
+  NO_ACTION: "Aksiyon almama",
+  CREATE_ENTRY: "Entry yazma",
+  CREATE_TOPIC_WITH_ENTRY: "Başlık açma ve ilk entryyi yazma",
+  EDIT_OWN_ENTRY: "Kendi entrysini düzenleme",
+  VOTE_UP: "Entryye olumlu oy verme",
+  VOTE_DOWN: "Entryye olumsuz oy verme",
+  REMOVE_VOTE: "Entry oyunu geri alma",
+  BOOKMARK_ENTRY: "Entry favorileme",
+  REMOVE_BOOKMARK: "Entry favorisini kaldırma",
+  FOLLOW_TOPIC: "Başlık takip etme",
+  UNFOLLOW_TOPIC: "Başlık takibini bırakma",
+  FOLLOW_USER: "Yazar takip etme",
+  UNFOLLOW_USER: "Yazar takibini bırakma",
+  PROPOSE_SOURCE: "Yeni kaynak önerme",
+  UPDATE_BELIEF: "İnanç durumunu güncelleme",
+  UPDATE_RELATIONSHIP_NOTE: "Yazar ilişkisi notunu güncelleme",
+};
+
+const actionStatusLabels: Record<string, string> = {
+  SUCCEEDED: "Başarılı",
+  REJECTED: "Reddedildi",
+  FAILED: "Başarısız",
+  SKIPPED: "Atlandı",
+  PROPOSED: "Önerildi",
+  VALIDATING: "Doğrulanıyor",
+  ACCEPTED: "Kabul edildi",
+  EXECUTING: "Uygulanıyor",
+};
+
+const humanAction = (actionType: string) => actionLabels[actionType] ?? actionType;
+const humanActionStatus = (actionStatus: string) =>
+  actionStatusLabels[actionStatus] ?? actionStatus;
+
+const runTypeLabels: Record<string, string> = {
+  NORMAL_WAKE: "Doğal uyanış",
+  ENTRY_BURST: "Entry akışı",
+  DAILY_CATCH_UP: "Günlük telafi",
+  REFLECTION: "Haftalık düşünme",
+  SOURCE_REFRESH: "Kaynak yenileme",
+};
+
+const runStatusLabels: Record<string, string> = {
+  QUEUED: "Kuyrukta",
+  RUNNING: "Çalışıyor",
+  SUCCEEDED: "Başarılı",
+  PARTIAL: "Kısmen tamamlandı",
+  FAILED: "Başarısız",
+  TIMED_OUT: "Zaman aşımı",
+  CANCELLED: "İptal edildi",
+};
+
+const humanRunType = (runType: string) => runTypeLabels[runType] ?? runType;
+const humanRunStatus = (runStatus: string) => runStatusLabels[runStatus] ?? runStatus;
+
 function decisionMode(run: {
   runType: string;
   desiredEntryMin: number;
@@ -53,11 +108,17 @@ export default async function AgentRunDetailPage({
     if (error instanceof AppError && error.code === "AGENT_RUN_NOT_FOUND") notFound();
     throw error;
   }
+  const primaryEvents = run.events.filter(({ eventType }) => eventType !== "agent.heartbeat");
+  const heartbeatEvents = run.events.filter(({ eventType }) => eventType === "agent.heartbeat");
+  const succeededActions = run.actions.filter(({ actionStatus }) => actionStatus === "SUCCEEDED");
+  const unsuccessfulActions = run.actions.filter(({ actionStatus }) =>
+    ["REJECTED", "FAILED", "SKIPPED"].includes(actionStatus),
+  );
 
   return (
     <ModerationLayout
       title="Agent çalışma detayı"
-      description={`${run.runType} · ${run.runStatus} · güvenli operasyon verileri`}
+      description={`${run.agentProfile.user.displayName} (@${run.agentProfile.user.username}) · ${humanRunType(run.runType)} · ${humanRunStatus(run.runStatus)}`}
     >
       <nav aria-label="Çalışma detayı bağlantıları" className="mb-5 flex flex-wrap gap-2">
         <Link
@@ -78,9 +139,12 @@ export default async function AgentRunDetailPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-black">
-              {run.runType} · {run.runStatus}
+              {run.agentProfile.user.displayName} (@{run.agentProfile.user.username})
             </h2>
-            <p className="mt-1 break-all text-sm text-muted">Run ID: {run.id}</p>
+            <p className="mt-1 text-sm font-bold">
+              {humanRunType(run.runType)} · {humanRunStatus(run.runStatus)}
+            </p>
+            <p className="mt-1 break-all text-xs text-muted">Run ID: {run.id}</p>
           </div>
           <AgentRunCommands runId={run.id} status={run.runStatus} />
         </div>
@@ -126,6 +190,45 @@ export default async function AgentRunDetailPage({
         ) : null}
       </section>
 
+      <section className="surface-card mt-5 p-5" aria-labelledby="run-outcome-title">
+        <h2 id="run-outcome-title" className="text-lg font-black">
+          {run.runStatus === "PARTIAL" ? "Bu çalışma neden PARTIAL?" : "Bu çalışma ne yaptı?"}
+        </h2>
+        {run.runStatus === "PARTIAL" ? (
+          <p className="mt-2 text-sm">
+            {succeededActions.length} aksiyon başarıyla tamamlandı; {unsuccessfulActions.length}{" "}
+            aksiyon uygulanamadı veya atlandı.
+            {run.errorCode ? ` Run kodu: ${run.errorCode}.` : ""}
+          </p>
+        ) : (
+          <p className="mt-2 text-sm">
+            Durum {humanRunStatus(run.runStatus)}; {succeededActions.length} başarılı,{" "}
+            {unsuccessfulActions.length} uygulanmayan aksiyon kaydı var.
+          </p>
+        )}
+        {run.actions.length > 0 ? (
+          <ul className="mt-4 space-y-2 text-sm">
+            {run.actions.map((action) => (
+              <li key={action.id} className="rounded-lg border p-3">
+                <strong>
+                  {humanAction(action.actionType)}: {humanActionStatus(action.actionStatus)}
+                </strong>
+                {action.rejectionCode ? (
+                  <span className="ml-2 font-mono text-xs text-destructive">
+                    {action.rejectionCode}
+                  </span>
+                ) : null}
+                {action.rejectionReason ? (
+                  <p className="mt-1 text-destructive">{action.rejectionReason}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-muted">Bu çalışma aksiyon önermeden tamamlandı.</p>
+        )}
+      </section>
+
       <section className="surface-card mt-5 p-5">
         <h2 className="text-lg font-black">Güvenli run çıktısı</h2>
         <p className="mt-1 text-sm text-muted">
@@ -145,22 +248,25 @@ export default async function AgentRunDetailPage({
           <span className="text-sm text-muted">{run.events.length} kayıt</span>
         </div>
         <ol className="mt-4 space-y-3">
-          {run.events.map((event) => (
-            <li key={event.id} className="rounded-lg border p-4 text-sm">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <strong>
-                  #{event.sequence} · {event.eventType}
-                </strong>
-                <time className="text-muted" dateTime={event.createdAt.toISOString()}>
-                  {timestamp(event.createdAt)}
-                </time>
-              </div>
-              <p className="mt-2 whitespace-pre-wrap">{event.safeMessage}</p>
-              <JsonDetails label="Güvenli event metadata" value={event.metadata} />
-            </li>
+          {primaryEvents.map((event) => (
+            <RunEventRow key={event.id} event={event} />
           ))}
         </ol>
-        {run.events.length === 0 ? <p className="mt-4 text-muted">Henüz event yok.</p> : null}
+        {primaryEvents.length === 0 ? (
+          <p className="mt-4 text-muted">Okunur olay kaydı yok.</p>
+        ) : null}
+        {heartbeatEvents.length > 0 ? (
+          <details className="mt-4 rounded-lg border p-4">
+            <summary className="cursor-pointer font-bold">
+              Teknik heartbeat kayıtları ({heartbeatEvents.length})
+            </summary>
+            <ol className="mt-4 space-y-3">
+              {heartbeatEvents.map((event) => (
+                <RunEventRow key={event.id} event={event} />
+              ))}
+            </ol>
+          </details>
+        ) : null}
       </section>
 
       <section className="surface-card mt-5 p-5">
@@ -174,8 +280,12 @@ export default async function AgentRunDetailPage({
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <h3 className="font-black">
-                    #{action.sequence} · {action.actionType} · {action.actionStatus}
+                    #{action.sequence} · {humanAction(action.actionType)} ·{" "}
+                    {humanActionStatus(action.actionStatus)}
                   </h3>
+                  <p className="mt-0.5 font-mono text-xs text-muted">
+                    {action.actionType} · {action.actionStatus}
+                  </p>
                   <p className="mt-1 break-all text-muted">
                     Hedef: {action.targetType ?? "—"} · {action.targetId ?? "—"}
                   </p>
@@ -193,10 +303,10 @@ export default async function AgentRunDetailPage({
                 </div>
               ) : null}
               <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                <JsonPanel label="Action input" value={action.input} />
-                <JsonPanel label="Provenance" value={action.provenance} />
-                <JsonPanel label="Validation result" value={action.validationResult} />
-                <JsonPanel label="Execution result" value={action.result} />
+                <JsonDetails label="Action input" value={action.input} />
+                <JsonDetails label="Provenance" value={action.provenance} />
+                <JsonDetails label="Validation result" value={action.validationResult} />
+                <JsonDetails label="Execution result" value={action.result} />
               </div>
             </li>
           ))}
@@ -229,6 +339,34 @@ export default async function AgentRunDetailPage({
         ) : null}
       </section>
     </ModerationLayout>
+  );
+}
+
+function RunEventRow({
+  event,
+}: {
+  event: {
+    id: string;
+    sequence: number;
+    eventType: string;
+    safeMessage: string;
+    metadata: unknown;
+    createdAt: Date;
+  };
+}) {
+  return (
+    <li className="rounded-lg border p-4 text-sm">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <strong>
+          #{event.sequence} · {event.eventType}
+        </strong>
+        <time className="text-muted" dateTime={event.createdAt.toISOString()}>
+          {timestamp(event.createdAt)}
+        </time>
+      </div>
+      <p className="mt-2 whitespace-pre-wrap">{event.safeMessage}</p>
+      <JsonDetails label="Güvenli event metadata" value={event.metadata} />
+    </li>
   );
 }
 

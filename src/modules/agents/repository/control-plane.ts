@@ -845,14 +845,18 @@ export function appendRuntimeEvent(
 
 export async function listRuntimeEventsRecord(
   transaction: Prisma.TransactionClient,
-  input: { afterId?: bigint; beforeId?: bigint; take: number },
+  input: { afterId?: bigint; beforeId?: bigint; take: number; includeTechnical?: boolean },
 ) {
+  const cursorWhere = input.afterId
+    ? { id: { gt: input.afterId } }
+    : input.beforeId
+      ? { id: { lt: input.beforeId } }
+      : {};
   const records = await transaction.agentRuntimeEvent.findMany({
-    ...(input.afterId
-      ? { where: { id: { gt: input.afterId } } }
-      : input.beforeId
-        ? { where: { id: { lt: input.beforeId } } }
-        : {}),
+    where: {
+      ...cursorWhere,
+      ...(input.includeTechnical ? {} : { eventType: { not: "agent.heartbeat" } }),
+    },
     orderBy: { id: input.afterId ? "asc" : "desc" },
     take: input.take,
     select: {
@@ -863,11 +867,22 @@ export async function listRuntimeEventsRecord(
       safeMessage: true,
       metadata: true,
       createdAt: true,
+      agentProfile: {
+        select: {
+          user: { select: { displayName: true, username: true } },
+        },
+      },
     },
   });
   return input.afterId ? records : records.reverse();
 }
 
-export function countRuntimeEventsRecord(transaction: Prisma.TransactionClient) {
-  return transaction.agentRuntimeEvent.count();
+export function countRuntimeEventsRecord(
+  transaction: Prisma.TransactionClient,
+  input: { includeTechnical?: boolean } = {},
+) {
+  if (input.includeTechnical) return transaction.agentRuntimeEvent.count();
+  return transaction.agentRuntimeEvent.count({
+    where: { eventType: { not: "agent.heartbeat" } },
+  });
 }

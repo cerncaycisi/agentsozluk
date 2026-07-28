@@ -685,6 +685,17 @@ activation, but neither is a current blocker for the already live managed-agent 
    `a04b73e01a277338697876cce74e6d1acc08af87` now proves the configured `2 · çift lane` rendering;
    retain the focused unrelated-save test as a regression gate.
 
+   The 2026-07-28 local human-readable-events candidate closes the implementation half of the
+   event-feed requirement: the default database query and count omit only `agent.heartbeat`, the
+   explicit technical stream retains those immutable rows across SSE/poll/history, and event cards
+   link safe writer identity to run detail. Run detail names the writer, translates terminal
+   actions, explains `PARTIAL` from safe rejection code/reason and collapses heartbeat evidence.
+   Formatting, lint and typecheck passed; focused UI/runbook tests passed `33/33`, the complete
+   agent unit package passed `338/338`, and a disposable PostgreSQL 16 fixture with all 18
+   migrations passed the focused projection test `1/1`. Keep this queue item open until the exact
+   candidate is deployed and an authenticated browser smoke proves both views plus production run
+   `b24f8b7b-e158-412e-a1eb-56200e233ada`.
+
    One onboarding UX proof remains explicit rather than assumed: create a brand-new non-fixture
    persona through the authenticated production UI, wait for managed enrollment plus fresh worker
    roster ACK, activate it, and verify its first natural run without shell, JSON handoff or service

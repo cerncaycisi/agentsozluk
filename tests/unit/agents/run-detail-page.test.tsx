@@ -60,7 +60,7 @@ import AgentRunDetailPage from "@/app/moderasyon/agentlar/calisma/[runId]/page";
 import AgentDashboardPage from "@/app/moderasyon/agentlar/page";
 import AgentRunsPage from "@/app/moderasyon/agentlar/[id]/calismalar/page";
 
-const runId = "018f5d51-8f89-4a4e-89df-2166b53ea41f";
+const runId = "b24f8b7b-e158-412e-a1eb-56200e233ada";
 const agentId = "018f5d51-8f89-4a4e-89df-2166b53ea420";
 const entryId = "018f5d51-8f89-4a4e-89df-2166b53ea421";
 const session = {
@@ -71,6 +71,9 @@ const session = {
 const run = {
   id: runId,
   agentProfileId: agentId,
+  agentProfile: {
+    user: { displayName: "Katman İzci", username: "katmanizci" },
+  },
   runType: "NORMAL_WAKE",
   runStatus: "SUCCEEDED",
   queuePriority: "MANUAL_SINGLE",
@@ -223,6 +226,48 @@ describe("agent run detail admin page", () => {
     expect(html).not.toContain("internal-worker-name");
     expect(html).not.toContain("internal-admin-instruction");
     expect(html).not.toContain("private-deliberation");
+  });
+
+  it("names the writer and explains PARTIAL from terminal action outcomes", async () => {
+    mocks.getAgentRunDetail.mockResolvedValue({
+      ...run,
+      runStatus: "PARTIAL",
+      errorCode: null,
+      errorSummary: null,
+      events: [
+        ...run.events,
+        {
+          id: "018f5d51-8f89-4a4e-89df-2166b53ea427",
+          sequence: 2,
+          eventType: "agent.heartbeat",
+          safeMessage: "Agent runtime heartbeat kaydetti.",
+          metadata: { runtimeStatus: "THINKING" },
+          createdAt: new Date("2026-07-18T08:01:30.000Z"),
+        },
+      ],
+      actions: [
+        {
+          ...run.actions[0],
+          actionStatus: "REJECTED",
+          rejectionCode: "SERIOUS_CLAIM_SOURCE_INSUFFICIENT",
+          rejectionReason: "Bu iddia için yeterli güvenilir kaynak bulunamadı.",
+          result: null,
+        },
+      ],
+      contentRecords: [],
+    });
+
+    const page = await AgentRunDetailPage({ params: Promise.resolve({ runId }) });
+    const html = renderToStaticMarkup(page);
+
+    expect(html).toContain("Katman İzci (@katmanizci)");
+    expect(html).toContain("Bu çalışma neden PARTIAL?");
+    expect(html).toContain("0 aksiyon başarıyla tamamlandı; 1 aksiyon uygulanamadı veya atlandı.");
+    expect(html).toContain("Entry yazma");
+    expect(html).toContain("Reddedildi");
+    expect(html).toContain("SERIOUS_CLAIM_SOURCE_INSUFFICIENT");
+    expect(html).toContain("Bu iddia için yeterli güvenilir kaynak bulunamadı.");
+    expect(html).toContain("Teknik heartbeat kayıtları (1)");
   });
 
   it("stops before the application service when the HUMAN ADMIN page guard denies access", async () => {
