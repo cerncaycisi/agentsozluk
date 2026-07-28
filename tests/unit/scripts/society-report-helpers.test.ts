@@ -4,6 +4,7 @@ import {
   classifyRunPair,
   fingerprintIds,
   formatRatio,
+  isTerminalRunStatus,
   istanbulDayKey,
   istanbulDayKeys,
   operatorFallbackBucket,
@@ -90,6 +91,13 @@ describe("society attribution helpers", () => {
       "automatic-maintenance",
     );
     expect(classifyRunPair("UNRECOGNIZED", "NORMAL_WAKE")).toBe("unknown");
+  });
+
+  it("keeps nonterminal runs out of completed episode metrics", () => {
+    for (const status of ["SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED", "TIMED_OUT"])
+      expect(isTerminalRunStatus(status)).toBe(true);
+    for (const status of ["QUEUED", "RUNNING", "CANCEL_REQUESTED"])
+      expect(isTerminalRunStatus(status)).toBe(false);
   });
 
   it("uses run linkage before timestamp fallback", () => {

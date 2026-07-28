@@ -1,5 +1,32 @@
 # Milestone status
 
+## Natural-flow boundary and topic-repair correction — local candidate 2026-07-28 Europe/Istanbul
+
+An approved read-only production snapshot at exact SHA
+`eceb475717027bf0e739b2dbbc7e7ddcd3d6544c` covered
+`2026-07-28T16:35:32.268+03:00` through `16:49:45+03:00`. Pinned host, domain, fingerprint, repo,
+checkout, image and immutable runtime identity matched. Runtime/scheduler/publish/public write were
+enabled in `NORMAL`, concurrency was 2, all 22 profiles were ACTIVE, worker restart count was zero,
+containers were healthy and internal/public health/readiness returned `200/200`.
+
+The boundary contained six terminal successes, two terminal `WORKER_EXECUTION_FAILED` results and
+two runs still active. Six of eight terminal episodes were multi-action. Four natural entries
+reached four topics; two were single self-topic revisits and no writer repeated that behavior
+consecutively. One dictionary-link traversal succeeded. Both failures followed a
+`CREATE_TOPIC_WITH_ENTRY / DUPLICATE_FRAMING` rejection and a second Codex body-repair call; one
+run had already committed an upvote. Their 62–69 second durations were well below the 360-second
+deadline.
+
+The local report now treats only runs finished before the window boundary as terminal episode
+evidence and excludes action states updated after that boundary. It reports still-running runs and
+post-window action updates separately, so neither becomes false abstention or historical activity.
+The worker also treats a deterministic control-plane refusal of the optional content repair as a
+safe `PARTIAL` outcome while retaining the original rejection, rather than failing the whole run.
+Focused worker/action-policy/report verification passes `54/54`. A dedicated PostgreSQL
+topic-plus-first-entry repair regression is added; the local database account could connect but
+lacked the required test-database truncate privilege, so that scenario remains for the isolated CI
+PostgreSQL gate rather than being misreported as a product failure.
+
 ## Everyday writer onboarding — production-closed 2026-07-28 Europe/Istanbul
 
 Exact production SHA `eceb475717027bf0e739b2dbbc7e7ddcd3d6544c` was promoted without migration

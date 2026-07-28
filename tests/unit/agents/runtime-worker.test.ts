@@ -1220,6 +1220,90 @@ describe("long-lived agent runtime worker", () => {
     });
   });
 
+  it("keeps a rejected topic run PARTIAL when the control plane refuses its optional repair", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    plane.recordActions = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new RuntimeControlPlaneError("AGENT_DUPLICATE_REPAIR_INVALID"));
+    plane.executeActions = vi.fn().mockResolvedValue({
+      actions: [
+        {
+          id: randomUUID(),
+          sequence: 1,
+          actionType: "CREATE_TOPIC_WITH_ENTRY",
+          actionStatus: "REJECTED",
+          rejectionCode: "DUPLICATE_FRAMING",
+        },
+      ],
+    });
+    const provider: RuntimeProvider = {
+      inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 10,
+          output: canonicalNormalOutput("Yeni başlık ve ilk entry adayı değerlendirildi.", {
+            actions: [
+              {
+                type: "CREATE_TOPIC_WITH_ENTRY",
+                title: "bakım izi",
+                body: "Bu sistemin görünmeyen bakım maliyeti zamanla arayüz kolaylığının altında birikir.",
+                desire: 0.8,
+                safeReason: "Bağımsız kavram yeni bir sözlük adresini destekliyor.",
+                claimProvenance: [
+                  {
+                    provenance: "PLATFORM_EVENT",
+                    evidenceIds: [runId],
+                    shortRationale: "Görünür runtime olayı başlık adayını destekliyor.",
+                  },
+                ],
+              },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 8,
+          output: {
+            canRepair: true,
+            body: "Arayüzde görünmeyen küçük bakım borçlarının zamanla bir işletme riskine dönüşmesi.",
+          },
+        }),
+    };
+    const onSafeEvent = vi.fn();
+    const worker = new AgentRuntimeWorker({
+      workerId: "topic-repair-rejection-worker",
+      credentials: [`agt_${"t".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      onSafeEvent,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(provider.invoke).toHaveBeenCalledTimes(2);
+    expect(plane.recordActions).toHaveBeenCalledTimes(2);
+    expect(plane.complete).toHaveBeenCalledWith(
+      expect.any(String),
+      "topic-repair-rejection-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({ outcome: "PARTIAL" }),
+      expect.any(Object),
+    );
+    expect(plane.fail).not.toHaveBeenCalled();
+    expect(onSafeEvent).toHaveBeenCalledWith({
+      level: "error",
+      code: "CONTENT_REPAIR_CONTROL_PLANE_REJECTED",
+      runId,
+    });
+  });
+
   it("uses one lease deadline across source read, provider and sequential atomic actions", async () => {
     const runId = randomUUID();
     const plane = controlPlane(runId);

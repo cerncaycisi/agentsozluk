@@ -115,6 +115,26 @@ describe("agent action duplicate policy", () => {
         provenance: { ...provenance, evidenceIds: ["00000000-0000-4000-8000-000000000004"] },
       }),
     ).toBe(false);
+    const topicOriginal = {
+      sequence: 4,
+      actionType: "CREATE_TOPIC_WITH_ENTRY",
+      input: {
+        title: "bakım izi",
+        body: "Bu sistemin görünmeyen bakım maliyeti zamanla arayüz kolaylığının altında birikir.",
+      },
+      provenance,
+    };
+    expect(
+      duplicateRepairCandidateIsSafe(topicOriginal, {
+        ...topicOriginal,
+        sequence: 8,
+        repairOfSequence: 4,
+        input: {
+          ...topicOriginal.input,
+          body: "Arayüzde görünmeyen küçük bakım borçlarının zamanla işletme riskine dönüşmesi.",
+        },
+      }),
+    ).toBe(true);
   });
 
   it("shares the complete body-repair rejection allowlist between worker and server", () => {

@@ -89,6 +89,9 @@ describe("society observation report contracts", () => {
     expect(baseline).toContain("dictionary_links.traversed=");
     expect(baseline).toContain("natural_entries.self_topic_revisits=");
     expect(baseline).toContain("natural_entries.max_consecutive_self_topic_revisits=");
+    expect(baseline).toContain("run.finishedAt < window.to");
+    expect(baseline).toContain("updatedAt < window.to");
+    expect(baseline).toContain("actions_updated_after_window_excluded=");
   });
 
   it("packages both read-only reports and their helper in the production image", () => {

@@ -110,6 +110,12 @@ export const runtimeContentRepairWireJsonSchema = Object.fromEntries(
 
 type RuntimeContentRepairWire = z.infer<typeof runtimeContentRepairWireSchema>;
 
+const recoverableContentRepairControlPlaneCodes = new Set([
+  "AGENT_DUPLICATE_REPAIR_INVALID",
+  "AGENT_DUPLICATE_REPAIR_REQUIRED",
+  "VALIDATION_ERROR",
+]);
+
 const memoryConsolidationTriggers = new Set([
   "NIGHTLY_MEMORY_CONSOLIDATION",
   "ADMIN_MEMORY_RECONSOLIDATE",
@@ -904,52 +910,76 @@ export class AgentRuntimeWorker {
                 });
               } else {
                 nextSequence += 1;
-                await this.#options.controlPlane.recordActions(
-                  credential,
-                  this.#options.workerId,
-                  runId,
-                  leaseToken,
-                  [actionForControlPlane(repairCandidate)],
-                  {
-                    observations: [],
-                    memoryCandidates: [],
-                    decisionJournal: [],
-                    actionIntents: [
-                      {
-                        sequence: repairCandidate.sequence,
-                        desire: repairCandidate.desire,
-                        expectedOutcome: repairCandidate.expectedOutcome,
-                        selectedOptionSeq: repairCandidate.selectedOptionSeq,
-                      },
-                    ],
-                  },
-                  deadline.requestOptions(),
-                );
-                await enterPhase("EXECUTING");
-                const repairedExecution = await this.#options.controlPlane.executeActions(
-                  credential,
-                  this.#options.workerId,
-                  runId,
-                  leaseToken,
-                  [repairCandidate.sequence],
-                  deadline.requestOptions(),
-                );
-                executedActions.push(...repairedExecution.actions);
-                if (
-                  repairedExecution.actions.some(({ actionStatus }) => actionStatus === "SUCCEEDED")
-                ) {
-                  successfullyRepairedSequences.add(originalAction.sequence);
-                  this.#options.onSafeEvent?.({
-                    level: "info",
-                    code: "CONTENT_REPAIR_SUCCEEDED",
+                try {
+                  await this.#options.controlPlane.recordActions(
+                    credential,
+                    this.#options.workerId,
                     runId,
-                  });
-                } else {
-                  this.#options.onSafeEvent?.({
-                    level: "info",
-                    code: "CONTENT_REPAIR_STILL_REJECTED",
+                    leaseToken,
+                    [actionForControlPlane(repairCandidate)],
+                    {
+                      observations: [],
+                      memoryCandidates: [],
+                      decisionJournal: [],
+                      actionIntents: [
+                        {
+                          sequence: repairCandidate.sequence,
+                          desire: repairCandidate.desire,
+                          expectedOutcome: repairCandidate.expectedOutcome,
+                          selectedOptionSeq: repairCandidate.selectedOptionSeq,
+                        },
+                      ],
+                    },
+                    deadline.requestOptions(),
+                  );
+                  await enterPhase("EXECUTING");
+                  const repairedExecution = await this.#options.controlPlane.executeActions(
+                    credential,
+                    this.#options.workerId,
                     runId,
-                  });
+                    leaseToken,
+                    [repairCandidate.sequence],
+                    deadline.requestOptions(),
+                  );
+                  executedActions.push(...repairedExecution.actions);
+                  if (
+                    repairedExecution.actions.some(
+                      ({ actionStatus }) => actionStatus === "SUCCEEDED",
+                    )
+                  ) {
+                    successfullyRepairedSequences.add(originalAction.sequence);
+                    this.#options.onSafeEvent?.({
+                      level: "info",
+                      code: "CONTENT_REPAIR_SUCCEEDED",
+                      runId,
+                    });
+                  } else {
+                    this.#options.onSafeEvent?.({
+                      level: "info",
+                      code: "CONTENT_REPAIR_STILL_REJECTED",
+                      runId,
+                    });
+                  }
+                } catch (rawRepairSubmissionError) {
+                  const repairSubmissionError = deadline.normalizeError(rawRepairSubmissionError);
+                  if (
+                    repairSubmissionError instanceof RuntimeProviderCancelledError ||
+                    repairSubmissionError instanceof RuntimeProviderTimeoutError ||
+                    deadline.signal.aborted
+                  )
+                    throw repairSubmissionError;
+                  if (
+                    repairSubmissionError instanceof RuntimeControlPlaneError &&
+                    recoverableContentRepairControlPlaneCodes.has(repairSubmissionError.code)
+                  ) {
+                    this.#options.onSafeEvent?.({
+                      level: "error",
+                      code: "CONTENT_REPAIR_CONTROL_PLANE_REJECTED",
+                      runId,
+                    });
+                    continue;
+                  }
+                  throw repairSubmissionError;
                 }
                 deadline.throwIfStopped();
               }

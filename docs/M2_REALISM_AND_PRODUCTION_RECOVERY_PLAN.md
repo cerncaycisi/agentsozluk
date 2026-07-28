@@ -617,6 +617,25 @@ behavior defects live.
    implementing evidence-backed corrections, then reserve the untouched seven-day sample for the
    final behavior SHA without imposing a replacement quota.
 
+   A second approved read-only window, from the six-writer onboarding completion at
+   `2026-07-28T16:35:32.268+03:00` through `16:49:45+03:00`, found six terminal successes, two
+   terminal failures and two runs still active at the boundary. Six of the eight terminal episodes
+   proposed multiple actions. Four natural entries reached four topics, two of them revisits to a
+   topic created by the same writer; the maximum consecutive self-topic revisit was one. One
+   dictionary link traversal succeeded. Both failures followed a rejected
+   `CREATE_TOPIC_WITH_ENTRY / DUPLICATE_FRAMING` action and a second Codex body-repair invocation;
+   one of those runs had already committed an upvote. Neither was a timeout.
+
+   That snapshot exposed two implementation defects rather than a behavioral reason to add quotas.
+   The report counted the two still-running episodes as zero-action and could read an action's
+   post-window terminal status because run/action rows were selected by creation time alone. The
+   local correction counts episode outcomes only when `finishedAt < to`, excludes action states
+   updated at or after `to`, and reports both exclusions explicitly. The optional topic-body repair
+   path now preserves the original rejection and closes the run `PARTIAL` when the control plane
+   deterministically rejects the repair candidate, instead of losing the already measured episode
+   behind `WORKER_EXECUTION_FAILED`. A dedicated topic-plus-first-entry PostgreSQL regression joins
+   the worker and report contract tests before promotion.
+
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
    belief, relationship and bounded persona changes. The canonical package and all-writer

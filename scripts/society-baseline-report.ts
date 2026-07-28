@@ -7,6 +7,7 @@ import {
   classifyContentAttribution,
   classifyRunPair,
   formatRatio,
+  isTerminalRunStatus,
   istanbulDayKey,
   istanbulDayKeys,
   operatorFallbackBucket,
@@ -27,7 +28,6 @@ const ATTRIBUTIONS: readonly ContentAttribution[] = [
   "unattributed",
 ];
 
-const TERMINAL_RUN_STATUSES = ["SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED", "TIMED_OUT"] as const;
 const PUBLIC_EFFECT_ACTIONS = new Set([
   "CREATE_ENTRY",
   "CREATE_TOPIC_WITH_ENTRY",
@@ -277,6 +277,7 @@ async function main(): Promise<void> {
           runType: true,
           runStatus: true,
           errorCode: true,
+          finishedAt: true,
           agentProfile: { select: { user: { select: { username: true } } } },
           _count: { select: { contentRecords: true } },
         },
@@ -289,6 +290,7 @@ async function main(): Promise<void> {
           actionType: true,
           actionStatus: true,
           rejectionCode: true,
+          updatedAt: true,
           run: { select: { trigger: true, runType: true } },
           agentProfile: { select: { user: { select: { username: true } } } },
         },
@@ -533,9 +535,13 @@ async function main(): Promise<void> {
     const warnings: string[] = [];
     const epochFrom = new Date(EPOCH_2_FROM).getTime();
     const epochTo = new Date(EPOCH_2_TO).getTime();
-    const terminalRuns = runs.filter((run) =>
-      TERMINAL_RUN_STATUSES.some((status) => status === run.runStatus),
+    const terminalRuns = runs.filter(
+      (run) =>
+        isTerminalRunStatus(run.runStatus) && run.finishedAt !== null && run.finishedAt < window.to,
     );
+    const terminalRunIds = new Set(terminalRuns.map(({ id }) => id));
+    const windowActions = actions.filter(({ updatedAt }) => updatedAt < window.to);
+    const actionsUpdatedAfterWindow = actions.length - windowActions.length;
     for (const run of terminalRuns) {
       const key = `${run.trigger}|${run.runType}|${run.runStatus}|${run.errorCode ?? "-"}`;
       increment(runMatrix, key);
@@ -546,7 +552,7 @@ async function main(): Promise<void> {
       if (inEpoch2 && (runClass === "operator-directed" || runClass === "unknown")) {
         warnings.push(`${run.trigger} + ${run.runType} classified as ${runClass}`);
       }
-      if (runClass === "natural-public") {
+      if (runClass === "natural-public" && terminalRunIds.has(run.id)) {
         const username = run.agentProfile.user.username;
         const coverage = coverageByAgent.get(username) ?? emptyAgentCoverage();
         coverage.runs += 1;
@@ -556,7 +562,7 @@ async function main(): Promise<void> {
         coverageByAgent.set(username, coverage);
       }
     }
-    for (const action of actions) {
+    for (const action of windowActions) {
       const runClass = classifyRunPair(action.run.trigger, action.run.runType);
       increment(
         actionMatrix,
@@ -611,19 +617,21 @@ async function main(): Promise<void> {
     const naturalRuns = runs.filter(
       (run) => classifyRunPair(run.trigger, run.runType) === "natural-public",
     );
-    const zeroActionRuns = naturalRuns.filter(
+    const terminalNaturalRuns = naturalRuns.filter((run) => terminalRunIds.has(run.id));
+    const nonterminalNaturalRuns = naturalRuns.length - terminalNaturalRuns.length;
+    const zeroActionRuns = terminalNaturalRuns.filter(
       (run) => (actionsByRun.get(run.id)?.length ?? 0) === 0,
     ).length;
-    const explicitNoActionRuns = naturalRuns.filter((run) =>
+    const explicitNoActionRuns = terminalNaturalRuns.filter((run) =>
       actionsByRun.get(run.id)?.some((action) => action.actionType === "NO_ACTION"),
     ).length;
-    const multiActionRuns = naturalRuns.filter(
+    const multiActionRuns = terminalNaturalRuns.filter(
       (run) => (actionsByRun.get(run.id)?.length ?? 0) > 1,
     ).length;
-    const naturalRunsWithSucceededAction = naturalRuns.filter((run) =>
+    const naturalRunsWithSucceededAction = terminalNaturalRuns.filter((run) =>
       actionsByRun.get(run.id)?.some((action) => action.actionStatus === "SUCCEEDED"),
     ).length;
-    const naturalRunsWithPublicEffect = naturalRuns.filter((run) =>
+    const naturalRunsWithPublicEffect = terminalNaturalRuns.filter((run) =>
       actionsByRun
         .get(run.id)
         ?.some(
@@ -785,6 +793,7 @@ async function main(): Promise<void> {
       renderTable(
         [
           "runs",
+          "nonterminal",
           "zeroAction",
           "explicitNoAction",
           "multiAction",
@@ -793,7 +802,8 @@ async function main(): Promise<void> {
         ],
         [
           [
-            String(naturalRuns.length),
+            String(terminalNaturalRuns.length),
+            String(nonterminalNaturalRuns),
             String(zeroActionRuns),
             String(explicitNoActionRuns),
             String(multiActionRuns),
@@ -984,7 +994,9 @@ async function main(): Promise<void> {
       `operator_runs_with_content=${operatorRunsWithContent}`,
       `operator_runs_without_content=${operatorRuns.length - operatorRunsWithContent}`,
       `nonterminal_runs=${runs.length - terminalRuns.length}`,
-      `natural_runs=${naturalRuns.length}`,
+      `actions_updated_after_window_excluded=${actionsUpdatedAfterWindow}`,
+      `natural_runs=${terminalNaturalRuns.length}`,
+      `natural_runs.nonterminal=${nonterminalNaturalRuns}`,
       `natural_runs.zero_action=${zeroActionRuns}`,
       `natural_runs.explicit_no_action=${explicitNoActionRuns}`,
       `natural_runs.multi_action=${multiActionRuns}`,

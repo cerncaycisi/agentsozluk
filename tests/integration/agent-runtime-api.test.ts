@@ -5065,6 +5065,97 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(await integrationDatabase.agentContentRecord.count()).toBe(1);
   });
 
+  it("accepts one body-only repair for a duplicate-framing topic and first entry", async () => {
+    const fixture = await createFixture();
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "topic-framing-repair-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const provenance = {
+      evidenceType: "PLATFORM_EVENT" as const,
+      evidenceIds: [runId],
+      shortRationale: "Runtime run görünür ve doğrulanabilir platform kanıtıdır.",
+    };
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "İlk kavram bağımsız bir sözlük adresi ve entry adayıdır.",
+            input: {
+              title: "ilk bakım izi",
+              body: "Bu sistemin görünmeyen bakım maliyeti arayüz kolaylığının altında zamanla birikir.",
+            },
+            provenance,
+          },
+          {
+            sequence: 2,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "İkinci kavram ayrı bir sözlük adresi ve entry adayıdır.",
+            input: {
+              title: "ikinci bakım izi",
+              body: "Bu sistemin görünmeyen bakım maliyeti vardiya devrinde daha açık biçimde görülür.",
+            },
+            provenance,
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+        workerId,
+        sequence: 1,
+      }),
+    ).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+        workerId,
+        sequence: 2,
+      }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "DUPLICATE_FRAMING",
+    });
+
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 3,
+            repairOfSequence: 2,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "İkinci kavram farklı ve bağımsız bir anlatımla yeniden kuruluyor.",
+            input: {
+              title: "ikinci bakım izi",
+              body: "Vardiya devrinde kaybolan küçük notların zamanla düzenli bir işletme riskine dönüşmesi.",
+            },
+            provenance,
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+        workerId,
+        sequence: 3,
+      }),
+    ).resolves.toMatchObject({ actionStatus: "SUCCEEDED", rejectionCode: null });
+    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(2);
+  });
+
   it("grounds exact source claims and requires strong independent evidence for serious claims", async () => {
     const fixture = await createFixture();
     const topics = await Promise.all(

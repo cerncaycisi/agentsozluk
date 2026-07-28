@@ -69,6 +69,12 @@ export const EXPECTED_OPERATOR_FINGERPRINTS = {
 
 export type RunClass = "natural-public" | "automatic-maintenance" | "operator-directed" | "unknown";
 
+const TERMINAL_RUN_STATUSES = new Set(["SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED", "TIMED_OUT"]);
+
+export function isTerminalRunStatus(value: string): boolean {
+  return TERMINAL_RUN_STATUSES.has(value);
+}
+
 export type ContentAttribution =
   | "natural-agent"
   | "operator-directed-agent"

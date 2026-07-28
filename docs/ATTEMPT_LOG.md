@@ -2876,3 +2876,42 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
      template names;
   6. after UI queue confirmation, derive the run set from DB `trigger + runType + createdAt` rather
      than taking the last historical run link rendered on the page.
+
+## 2026-07-28 — post-onboarding natural snapshot and boundary/repair correction
+
+- Scope: approved read-only natural-society observation from the completion of the six
+  instructionless onboarding wakes through connection time. Every connection rechecked hostname,
+  IPv4/domain, pinned ED25519 fingerprint, repository origin, app HEAD, image revision and
+  immutable `current/.release-sha`; all matched exact production SHA
+  `eceb475717027bf0e739b2dbbc7e7ddcd3d6544c`.
+- Two guard-only false starts changed nothing. The first remote domain parser expanded an
+  incorrectly escaped `awk $1` under `set -u` and stopped with `$1: unbound variable`. The second
+  used unsupported GNU date precision and stopped with
+  `date: invalid argument ‘milliseconds’`. Use the runbook-safe whitespace parser and
+  `date --iso-8601=seconds`; do not retype shell-sensitive `awk` inside nested SSH quoting.
+- The successful safe window was `2026-07-28T16:35:32.268+03:00` through
+  `2026-07-28T16:49:45+03:00`. Runtime/scheduler/publish/public write were enabled in `NORMAL`,
+  concurrency was 2, lifecycle was 22 ACTIVE, worker was `active/running` with zero restart,
+  app/db/caddy were healthy and internal/public health/readiness were `200/200`. Two runs and two
+  leases were active at the boundary; no write, restart, pause, cancellation or setting change
+  occurred.
+- The packaged report found six terminal successes, two terminal failures and two boundary-active
+  natural wakes. Six of the eight terminal episodes were multi-action. Four natural entries reached
+  four topics, two as non-consecutive self-topic revisits; one dictionary traversal succeeded.
+  Both failures carried `WORKER_EXECUTION_FAILED` after
+  `CREATE_TOPIC_WITH_ENTRY / DUPLICATE_FRAMING`; both had two Codex intervals, one had already
+  committed an upvote, and their 62–69 second durations were below the 360-second deadline.
+- The report itself exposed a half-open-window bug: the two boundary-active runs were counted as
+  zero-action, and action rows created before `to` could expose a status updated after `to`. The
+  correction requires `finishedAt < to` for terminal episode/coverage metrics and excludes action
+  rows with `updatedAt >= to`, reporting both nonterminal runs and post-window action updates.
+- The optional content-repair path now catches only deterministic control-plane validation
+  refusals, preserves the original rejected action and closes the episode `PARTIAL`; cancellation,
+  timeout and transport-ambiguous failures still fail closed. A dedicated
+  `CREATE_TOPIC_WITH_ENTRY` body-repair PostgreSQL regression was added. Focused unit/contract
+  evidence passes `54/54`.
+- Local PostgreSQL false starts were environmental and reached no product assertion. The first
+  omitted `TEST_DATABASE_URL`; the second used the repository's explicit `_test` URL but that
+  local role lacked truncate permission, returning `User was denied access on the database`.
+  Docker profiles were already `Broken` and were not restarted or reset. Keep the regression in
+  the isolated CI PostgreSQL gate rather than bypassing database safety or altering local roles.
