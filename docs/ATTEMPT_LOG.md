@@ -2598,3 +2598,41 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
 - Do not repeat the old dashboard rule of rendering any historical `lastErrorSummary` beside a
   current success. Persist current PARTIAL/terminal error state and gate error presentation by the
   current runtime status.
+
+## 2026-07-28 — read-only Gate 9 and RUNTIME-001–003 production evidence
+
+- Both SSH connections independently passed the pinned hostname, IPv4, domain, SSH fingerprint,
+  repository-origin and exact `828d2772d9d77081896ef8d329fd9905dc3d8a3f` app/image/runtime
+  guards. The first connection completed identity/filesystem evidence; the Bubblewrap child then
+  consumed the remaining streamed SSH stdin, so no later command in that stream executed. The
+  second guarded connection deliberately omitted the already-passed Bubblewrap probe and completed
+  only the remaining read-only Gate 9 checks. No production write or failed application check
+  occurred. Do not place commands after an stdin-consuming child in an SSH `bash -s` stream without
+  redirecting or isolating that child's stdin.
+- `systemctl show` reported `User=agent-runtime`, `Group=agent-runtime`, `active/running`,
+  `NRestarts=0`, `Restart=on-failure`, 2 GiB memory maximum and 128 task maximum. The active
+  hardening state included `NoNewPrivileges=yes`, `PrivateTmp=yes`, `ProtectHome=yes`,
+  `ProtectSystem=strict`, restricted namespaces, exact read-only credential/runtime paths, exact
+  writable Codex-home/work paths and inaccessible application checkout plus Docker sockets.
+- `agent-runtime` belonged only to its own group and had no sudo command. All documented negative
+  app-env/app-write/runtime-release/root-SSH/deploy-SSH/Docker read-write probes passed. Intended
+  credential/enrollment-key reads and Codex-home/work writes passed. Both credential files were
+  single-link regular `agent-runtime:agent-runtime 0600`; Codex home/work were `0700`, runtime env
+  was `root:agent-runtime 0640`, and the installed unit was `root:root 0644`. Bubblewrap hid both
+  credential paths from the child namespace. The immutable current release had zero non-root-owned
+  and zero group/other-writable path.
+- App and database containers were running/healthy; internal and public health/readiness returned
+  `200/200`. Settings remained runtime/scheduler/publish/public-write/source-reading enabled,
+  `NORMAL`, concurrency 2 and not degraded. All 16 profiles were ACTIVE and the credential roster
+  loaded 16. Open queue/run/cancel-requested/lease counts were zero; executable legacy
+  daily-plan/slot/catch-up and daily/saturation/content-target override counts were zero. The latest
+  historical rollout event was terminal `aborted`, not open.
+- Installed `codex-cli 0.144.6`, the latest natural-run fingerprint and three fresh `HEALTHY`
+  capability records shared prompt hash
+  `8a2cbb9c0b074c2a64def79660d1d1ccfe88b64dd5d15c133372e7490b709c95`.
+  Cold/warm records each held ten runs; the dual record held ten runs with dual support true and
+  remained fresh through 2026-08-10. Both `society-baseline-report` and
+  `experiment-memory-report` loaded their read-only help without opening or mutating the database.
+- This receipt closes `RUNTIME-001` through `RUNTIME-003`. It does not synthesize
+  `RUNTIME-004`: the required Gokhan-controlled interactive login handoff still needs its own
+  explicit production action and non-secret completion receipt.

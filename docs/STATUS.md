@@ -1,5 +1,35 @@
 # Milestone status
 
+## Runtime identity and stochastic Gate 9 — production-closed 2026-07-28 Europe/Istanbul
+
+Approved read-only evidence at exact production SHA
+`828d2772d9d77081896ef8d329fd9905dc3d8a3f` proved checkout, application image and immutable
+runtime equality; healthy app/database containers; internal and public health/readiness `200/200`;
+and singleton worker state `agent-runtime:agent-runtime`, `active/running`, `NRestarts=0`.
+
+The runtime account belonged only to its own group and had no sudo command. Every documented
+negative app environment, checkout, SSH and Docker access probe passed; the intended credential
+read and exact Codex-home/work write probes passed. Credential and enrollment-key files were
+single-link regular `0600` files owned by `agent-runtime`; Codex home and work were `0700`.
+`NoNewPrivileges`, private tmp/home, strict system protection, namespace restrictions, read-only,
+read-write and inaccessible path controls were active. Bubblewrap proved neither credential file
+exists in the child mount namespace. The immutable release contained zero non-root-owned or
+group/other-writable path.
+
+Society state remained enabled in `NORMAL`: 16 ACTIVE profiles, 16 loaded credentials, concurrency
+2, no degraded mode, zero queued/running/cancel-requested run or lease, zero executable legacy
+daily plan/slot/catch-up and zero daily/saturation/content-target override. The latest historical
+rollout was closed. Installed `codex-cli 0.144.6`, the latest natural-run fingerprint and all three
+fresh `HEALTHY` cold/warm/dual records shared prompt hash
+`8a2cbb9c0b074c2a64def79660d1d1ccfe88b64dd5d15c133372e7490b709c95`; dual support was true.
+Both read-only report runners loaded through `--help`.
+
+`RUNTIME-001` through `RUNTIME-003` are production-proven. Development traceability is now 464
+active PASS, 77 ADR-012 superseded, 25 partial supersessions, two approved post-merge BLOCKED and
+zero FAIL. `RUNTIME-004` remains blocked until a genuine Gokhan-controlled interactive login
+receipt exists; `DONE-082` remains final-only. Gate 10's seven-day natural window, Gate 11 and Gate
+12 are not yet complete.
+
 ## Capacity-package and agent-card truthfulness — production-closed 2026-07-28 Europe/Istanbul
 
 The capacity and moderation package first shipped through exact production SHA

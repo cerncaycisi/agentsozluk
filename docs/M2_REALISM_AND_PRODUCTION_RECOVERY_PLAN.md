@@ -7,6 +7,21 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-28: approved read-only Gate 9 and runtime-isolation evidence closed `RUNTIME-001` through
+  `RUNTIME-003` at exact production SHA `828d2772d9d77081896ef8d329fd9905dc3d8a3f`. The singleton
+  worker ran as `agent-runtime:agent-runtime`, `active/running`, with zero restart; the account had
+  no dangerous group or sudo permission, every documented app/env/SSH/Docker deny and bounded
+  credential/Codex-home/work allow probe passed, Bubblewrap hid both protected credential files,
+  and the immutable release had zero non-root or group/other-writable path. App/database containers
+  were healthy, internal and public health/readiness were `200/200`, and app/image/runtime SHA
+  matched. Society state was runtime/scheduler/publish/public-write enabled in `NORMAL`, 16 ACTIVE
+  profiles with 16 loaded credentials, zero open queue/run/lease, zero executable legacy
+  daily-plan/slot/catch-up/override and a closed historical rollout. Cold/warm/dual capability
+  records were fresh `HEALTHY`; dual support, installed `codex-cli 0.144.6`, prompt hash and the
+  latest natural-run fingerprint matched. Both read-only report runners loaded through `--help`.
+  Development traceability is now 464 active PASS, 77 ADR-012 superseded, 25 partial supersessions,
+  two approved post-merge BLOCKED and zero FAIL. `RUNTIME-004` still requires a genuine
+  Gokhan-controlled interactive login receipt; `DONE-082` remains final-only.
 - 2026-07-28: the stale successful-card error and residual operator-language correction shipped
   through exact production SHA `828d2772d9d77081896ef8d329fd9905dc3d8a3f`, Release Candidate
   Bundle run `30344601050`, artifact `8682593147`, digest
@@ -36,12 +51,9 @@ production acceptance remains pending.
   `docs/ATTEMPT_LOG.md` and `docs/PRODUCTION_EVIDENCE_2026-07-19.md`. Eight stale rows now cite
   direct production proof for installed real-Codex execution, cold/warm/dual benchmarking and
   persistence, backup-first additive migrations, isolated restore, installed CLI inspection and
-  V1 preservation. Development traceability therefore passes at 461 active PASS, 77 ADR-012
-  superseded, 25 partial supersessions, 5 approved post-merge BLOCKED and zero FAIL. The remaining
-  rows are deliberately not inferred: `RUNTIME-001` through `RUNTIME-004` still require a current
-  pinned-host systemd identity/filesystem/login evidence receipt, while `DONE-082` closes only
-  after those rows and every formal Gate 9-12 obligation pass. This candidate is isolated from the
-  deploy-ready moderation-capacity SHA and has not contacted or changed production.
+  V1 preservation. That repository-only pass initially left five rows blocked; the later approved
+  Gate 9 receipt above closed the three systemd/filesystem rows without inferring the interactive
+  login. `RUNTIME-004` and final-only `DONE-082` remain blocked until their own evidence exists.
 - 2026-07-27: the complete public-bio target set shipped through exact production SHA
   `610e494e9384ae3c1e0a746644ec935dbe964dc5` from Release Candidate Bundle run
   `30283450595`, artifact `8659950162`, digest
