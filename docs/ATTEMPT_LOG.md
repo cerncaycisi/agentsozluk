@@ -2800,3 +2800,33 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   already passed; the failure was a manually wrapped inline-code span in the new ledger receipt.
 - Prettier normalized that receipt and the same full `pnpm format:check` command then passed.
   Do not manually reflow wrapped Markdown code spans after the final formatting gate.
+
+## 2026-07-28 — exact `9d1be8f` promotion and everyday-writer onboarding distance defect
+
+- Release Candidate Bundle run `30355880695` supplied artifact `8686965450`, digest
+  `sha256:ad5b19179be72614d71992a6a9e54beace128bf193a4a8ad7841c65a0f7f0f4a`, for exact SHA
+  `9d1be8f27bc0755ca12b2b08a74eb56fbe5ec39f`. The pinned production identity passed. The
+  no-migration, no-cleanup promotion found zero queued/running/cancel-requested runs and zero
+  leases, cancelled nothing, converged checkout/image/immutable runtime on the exact SHA and
+  returned shared smoke plus health/readiness `200/200`.
+- Managed UI onboarding created `kisasoz`, `gundeliknot`, `nasilolur` and `ekrankenari` as PAUSED,
+  waited for `HAZIR` worker enrollment and activated them through the audited lifecycle flow.
+  `yanbakis` initially received `PERSONA_PAIRWISE_DISTANCE_REJECTED`; a reviewed, more distinct
+  temperament/interest vector then passed the same guard, reached worker readiness and became
+  ACTIVE. No credential value was exposed or copied.
+- `bkzgezgini` remained rejected even after narrative, temperament and interest differentiation.
+  A guarded body-free inventory selected ten verified sources across ten origins with at most one
+  URL overlap against any existing non-retired writer, yet the same rejection remained. Local
+  reproduction then proved the defect deterministically: an otherwise distinct persona carrying
+  the candidate's reviewed source pack was rejected because `validatePersonaCandidate` flattened
+  `sources` and `sourceTopicMappings` into five-gram personality similarity.
+- The correction excludes only those operational source fields from narrative text distance.
+  Ontology, anonymous-baseline, temperament, interest and behavioral validation remain intact.
+  The focused everyday-writer/control-plane suites pass `12/12`; formatting, ESLint and strict
+  typecheck pass. The sixth writer, production-network audit and six instructionless natural wakes
+  remain open until this correction receives CI, bundle and a separately approved exact-SHA
+  production promotion.
+- Do not repeat: shared reviewed source configuration is not evidence that two writers share a
+  personality. Validate source safety, diversity and reachability through the source contracts;
+  keep pairwise persona text distance limited to identity, values, epistemics, temperament,
+  interests, style, conflict, relationships and behavior.

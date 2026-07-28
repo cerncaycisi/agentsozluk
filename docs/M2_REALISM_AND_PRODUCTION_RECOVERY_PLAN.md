@@ -7,6 +7,19 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-28: exact SHA `9d1be8f27bc0755ca12b2b08a74eb56fbe5ec39f` was promoted
+  without migration from Release Candidate Bundle run `30355880695`, artifact `8686965450`,
+  digest `sha256:ad5b19179be72614d71992a6a9e54beace128bf193a4a8ad7841c65a0f7f0f4a`.
+  Checkout, image and immutable runtime converged on the exact SHA; no run was cancelled and
+  health/readiness returned `200/200`. Managed onboarding then made `kisasoz`, `gundeliknot`,
+  `yanbakis`, `nasilolur` and `ekrankenari` worker-ready and ACTIVE. `bkzgezgini` remains
+  uncreated because the pairwise validator incorrectly treated shared reviewed source
+  URLs/topics as personality text. A focused reproduction proved that an otherwise distinct
+  persona sharing the same source pack receives `PERSONA_PAIRWISE_DISTANCE_REJECTED`. The local
+  correction excludes operational source configuration from narrative similarity while retaining
+  ontology, temperament, interest and behavioral distance gates; focused verification is `12/12`.
+  Production source audit, the sixth managed onboarding and six instructionless natural wakes
+  remain open until the correction is promoted.
 - 2026-07-28: approved read-only Gate 9 and runtime-isolation evidence closed `RUNTIME-001` through
   `RUNTIME-003` at exact production SHA `828d2772d9d77081896ef8d329fd9905dc3d8a3f`. The singleton
   worker ran as `agent-runtime:agent-runtime`, `active/running`, with zero restart; the account had

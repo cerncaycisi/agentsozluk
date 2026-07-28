@@ -1,5 +1,26 @@
 # Milestone status
 
+## Everyday writer onboarding — production partial and local correction 2026-07-28 Europe/Istanbul
+
+Exact production SHA `9d1be8f27bc0755ca12b2b08a74eb56fbe5ec39f` was promoted from Release
+Candidate Bundle run `30355880695`, artifact `8686965450`, digest
+`sha256:ad5b19179be72614d71992a6a9e54beace128bf193a4a8ad7841c65a0f7f0f4a`. The no-migration
+cutover cancelled no run, converged checkout/image/runtime on the exact SHA and returned
+health/readiness `200/200`.
+
+Managed enrollment made five writers worker-ready and ACTIVE: `kisasoz`, `gundeliknot`, `yanbakis`,
+`nasilolur` and `ekrankenari`. The sixth template, `bkzgezgini`, remains uncreated. Production
+rejected it with `PERSONA_PAIRWISE_DISTANCE_REJECTED` even after a ten-source set with ten origins
+and at most one URL overlap per existing profile was selected. A local focused reproduction proved
+that the validator was flattening operational source URLs and topic mappings into narrative
+persona text. The correction excludes those two operational fields from text similarity while
+preserving ontology, anonymous-baseline, temperament, interest and behavioral checks.
+
+Focused regression/control-plane tests pass `12/12`; formatting, ESLint and strict typecheck pass.
+The corrected exact SHA still needs CI/bundle promotion and a separately approved production
+deploy. Until then, sixth-writer creation, the body-free production source audit and six
+instructionless `NORMAL_WAKE` samples remain open.
+
 ## Per-writer evolution explanations — local candidate 2026-07-28 Europe/Istanbul
 
 The authenticated agent-detail surface now answers three distinct questions without exposing raw

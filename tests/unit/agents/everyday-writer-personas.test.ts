@@ -13,6 +13,7 @@ import {
   agentPersonaTemplates,
   findAgentPersonaTemplate,
 } from "@/modules/agents/personas/templates";
+import type { SeedPersona } from "@/modules/agents/personas/schema";
 
 const root = process.cwd();
 const sourceVerification = JSON.parse(
@@ -98,6 +99,26 @@ describe("everyday dictionary writer cohort", () => {
       );
       existing.push(persona);
     }
+  });
+
+  it("does not treat a shared reviewed source pack as a cloned personality", () => {
+    const candidate = everydayWriterPersonas.find(({ username }) => username === "bkzgezgini")!;
+    const sourceCarrier = structuredClone(originalPersonaPack.personas[0]!) as SeedPersona;
+    sourceCarrier.sources = structuredClone(candidate.sources);
+    sourceCarrier.sourceTopicMappings = structuredClone(candidate.sourceTopicMappings);
+
+    const validated = validatePersonaCandidate(
+      candidate,
+      [sourceCarrier],
+      "Verify that shared reviewed sources do not define persona distance.",
+    );
+
+    expect(validated.report).toMatchObject({
+      ontologyPassed: true,
+      baselineDistancePassed: true,
+      pairwiseDistancePassed: true,
+    });
+    expect(validated.report.maximumTextNgramOverlap).toBeLessThanOrEqual(0.2);
   });
 
   it("exposes the cohort through the same validated template contract used by UI and creation", () => {

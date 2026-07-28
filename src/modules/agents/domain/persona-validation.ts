@@ -33,6 +33,12 @@ const flattenStrings = (value: unknown): string[] => {
   return [];
 };
 
+const personaSimilarityStrings = (persona: SeedPersona): string[] => {
+  return Object.entries(persona)
+    .filter(([key]) => key !== "sources" && key !== "sourceTopicMappings")
+    .flatMap(([, value]) => flattenStrings(value));
+};
+
 const ngrams = (tokens: string[], size: number): string[] => {
   const values: string[] = [];
   for (let index = 0; index <= tokens.length - size; index += 1) {
@@ -105,7 +111,7 @@ export function validatePersonaCandidate(
     );
   }
 
-  const candidateTokens = normalize(flattenStrings(persona).join(" "));
+  const candidateTokens = normalize(personaSimilarityStrings(persona).join(" "));
   const candidateHashes = new Set(
     ngrams(candidateTokens, signatures.ngramSize).map((value) => hash(value)),
   );
@@ -131,7 +137,7 @@ export function validatePersonaCandidate(
   const existingPersonas = existingInputs.map((value) => seedPersonaSchema.parse(value));
   const distances = existingPersonas.map((existing) => {
     const leftText = new Set(ngrams(candidateTokens, 5));
-    const rightText = new Set(ngrams(normalize(flattenStrings(existing).join(" ")), 5));
+    const rightText = new Set(ngrams(normalize(personaSimilarityStrings(existing).join(" ")), 5));
     return {
       temperament: temperamentDistance(persona, existing),
       interests: interestJaccard(persona, existing),
