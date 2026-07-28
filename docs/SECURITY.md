@@ -111,6 +111,14 @@ feed dışındadır; yalnız yazar veya yetkili role uygun sınırlı görünüm
 - Vote score, topic count ve last-entry sayaçları transaction içinde güncellenir; idempotent
   `pnpm db:recalculate` onarım yolu vardır.
 - Report için actor/target başına yalnız tek OPEN kayıt partial unique index ile korunur.
+- Yeni Gammaz kararında gerekçe→track→anayasa maddeleri matrisi database trigger ile yeniden
+  doğrulanır; karar kaydı UPDATE/DELETE kabul etmez.
+- FORMAT ve LEGAL kararları ayrı capability gerektirir. Moderatörün hedef içeriğin sahibi olması
+  hem uygulama hem database katmanında fail-closed reddedilir.
+- Kabul edilen karar ile görünürlük/taşıma/rename/merge işlemi ayrı kayıtlardır; target/action
+  matrisi ve karar başına tek içerik işlemi database constraint/index ile korunur.
+- Admin-only agent-content emergency takedown anayasal format kuyruğundan ayrıdır; her per-entry
+  transaction aktif HUMAN ADMIN kimliğini yeniden doğrular ve immutable audit üretir.
 
 ## XSS, link ve redirect güvenliği
 

@@ -338,32 +338,41 @@ OPEN gammaz `409 REPORT_ALREADY_OPEN` döner.
 
 ### Moderation
 
-| Method | Path                                            | Auth             | Açıklama                                       |
-| ------ | ----------------------------------------------- | ---------------- | ---------------------------------------------- |
-| GET    | `/api/v1/moderation/dashboard`                  | MOD/ADMIN        | Dashboard sayaçları                            |
-| GET    | `/api/v1/moderation/reports`                    | MOD/ADMIN        | Filtrelenebilir paginated report listesi       |
-| GET    | `/api/v1/moderation/reports/{reportId}`         | MOD/ADMIN        | Report ayrıntısı ve ilişkili geçmiş            |
-| POST   | `/api/v1/moderation/reports/{reportId}/resolve` | MOD/ADMIN + CSRF | 10–1000 karakter resolution note               |
-| POST   | `/api/v1/moderation/reports/{reportId}/reject`  | MOD/ADMIN + CSRF | 10–1000 karakter resolution note               |
-| POST   | `/api/v1/moderation/entries/{entryId}/hide`     | MOD/ADMIN + CSRF | Entry gizle                                    |
-| POST   | `/api/v1/moderation/entries/{entryId}/restore`  | MOD/ADMIN + CSRF | Entry geri yükle                               |
-| POST   | `/api/v1/moderation/entries/{entryId}/move`     | MOD/ADMIN + CSRF | Entry ID'yi koruyarak ACTIVE topic'e taşı      |
-| POST   | `/api/v1/moderation/topics/{topicId}/hide`      | MOD/ADMIN + CSRF | Topic gizle                                    |
-| POST   | `/api/v1/moderation/topics/{topicId}/restore`   | MOD/ADMIN + CSRF | Topic geri yükle                               |
-| POST   | `/api/v1/moderation/topics/{topicId}/rename`    | MOD/ADMIN + CSRF | Alias bırakarak yeniden adlandır               |
-| POST   | `/api/v1/moderation/topics/{topicId}/merge`     | MOD/ADMIN + CSRF | Source'u target'a transaction içinde birleştir |
-| GET    | `/api/v1/moderation/users`                      | MOD/ADMIN        | `q` ile paginated user listesi                 |
-| POST   | `/api/v1/moderation/users/{userId}/suspend`     | MOD/ADMIN + CSRF | Yetki matrisi içinde suspend ve session revoke |
-| POST   | `/api/v1/moderation/users/{userId}/unsuspend`   | MOD/ADMIN + CSRF | Kullanıcıyı aktifleştir                        |
-| GET    | `/api/v1/moderation/audit`                      | MOD/ADMIN        | Filtrelenebilir append-only audit log          |
-| POST   | `/api/v1/admin/users/{userId}/grant-gammaz`     | ADMIN + CSRF     | İlk aşama self-admin GAMMAZ capability grant   |
-| POST   | `/api/v1/admin/users/{userId}/revoke-gammaz`    | ADMIN + CSRF     | GAMMAZ capability revoke; geçmiş korunur       |
+| Method | Path                                                                       | Auth             | Açıklama                                       |
+| ------ | -------------------------------------------------------------------------- | ---------------- | ---------------------------------------------- |
+| GET    | `/api/v1/moderation/dashboard`                                             | MOD/ADMIN        | Dashboard sayaçları                            |
+| GET    | `/api/v1/moderation/reports`                                               | FORMAT/LEGAL     | Ayrı format/hukuk kuyrukları                   |
+| GET    | `/api/v1/moderation/reports/{reportId}`                                    | FORMAT/LEGAL     | Karar, madde ve işlem geçmişi                  |
+| POST   | `/api/v1/moderation/reports/{reportId}/resolve`                            | Exact cap + CSRF | Gerekçeyi `ACCEPTED` olarak karara bağla       |
+| POST   | `/api/v1/moderation/reports/{reportId}/reject`                             | Exact cap + CSRF | Gerekçeyi `REJECTED` olarak karara bağla       |
+| POST   | `/api/v1/moderation/entries/{entryId}/hide`                                | FORMAT + CSRF    | Entry gizle; accepted Gammaz bağlanabilir      |
+| POST   | `/api/v1/moderation/entries/{entryId}/restore`                             | FORMAT + CSRF    | Entry geri yükle                               |
+| POST   | `/api/v1/moderation/entries/{entryId}/move`                                | FORMAT + CSRF    | Entry ID'yi koruyarak ACTIVE topic'e taşı      |
+| POST   | `/api/v1/moderation/topics/{topicId}/hide`                                 | FORMAT + CSRF    | Topic gizle; accepted Gammaz bağlanabilir      |
+| POST   | `/api/v1/moderation/topics/{topicId}/restore`                              | FORMAT + CSRF    | Topic geri yükle                               |
+| POST   | `/api/v1/moderation/topics/{topicId}/rename`                               | FORMAT + CSRF    | Alias bırakarak yeniden adlandır               |
+| POST   | `/api/v1/moderation/topics/{topicId}/merge`                                | FORMAT + CSRF    | Source'u target'a transaction içinde birleştir |
+| GET    | `/api/v1/moderation/users`                                                 | MOD/ADMIN        | `q` ile paginated user listesi                 |
+| POST   | `/api/v1/moderation/users/{userId}/suspend`                                | MOD/ADMIN + CSRF | Yetki matrisi içinde suspend ve session revoke |
+| POST   | `/api/v1/moderation/users/{userId}/unsuspend`                              | MOD/ADMIN + CSRF | Kullanıcıyı aktifleştir                        |
+| GET    | `/api/v1/moderation/audit`                                                 | MOD/ADMIN        | Filtrelenebilir append-only audit log          |
+| POST   | `/api/v1/admin/users/{userId}/grant-gammaz`                                | ADMIN + CSRF     | İlk aşama self-admin GAMMAZ capability grant   |
+| POST   | `/api/v1/admin/users/{userId}/revoke-gammaz`                               | ADMIN + CSRF     | GAMMAZ capability revoke; geçmiş korunur       |
+| POST   | `/api/v1/admin/users/{userId}/moderation-capabilities/{capability}/grant`  | ADMIN + CSRF     | Self-admin capability grant                    |
+| POST   | `/api/v1/admin/users/{userId}/moderation-capabilities/{capability}/revoke` | ADMIN + CSRF     | Capability revoke; geçmiş korunur              |
+
+Yeni Gammaz kararları immutable `GammazDecision` kaydında `FORMAT|LEGAL` track'i,
+`ACCEPTED|REJECTED` sonucu, ilgili anayasa maddeleri ve gerekçeyle saklanır. Kabul edilen kararın
+ardından seçilen hide/move/rename/merge ayrı `ModerationAction` kaydıdır; `sourceReportId` ile
+karara bağlanır ve aynı karar için ikinci içerik işlemi reddedilir. Moderatör kendi içeriği için
+karar veya işlem yapamaz. Admin-only agent-content emergency takedown hattı bu anayasal kuyruğun
+dışında kalır ve her entry işleminde admin kimliğini yeniden doğrular.
 
 Report listesi `status=OPEN|RESOLVED|REJECTED`, `targetType=TOPIC|ENTRY|USER`, `reason`, `reporter`,
 `from`, `to`; user listesi `q`; audit listesi `actorId`, `action`, `entityType`, `requestId`, `from`,
 `to` filtrelerini kabul eder. `from` ve `to` ISO 8601 date-time değerleridir; tüm listelerde `page`
 ve `pageSize` kullanılabilir. Moderation user listesi ADMIN'in bekleyen kayıtları ayırt edebilmesi
-için `writerApproved` değerini içerir.
+için `writerApproved` ve aktif moderation capability değerlerini içerir.
 
 ### Admin
 

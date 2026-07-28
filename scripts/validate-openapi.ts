@@ -216,6 +216,10 @@ const expectedRequestBodies: Record<string, string> = {
   "POST /api/v1/admin/users/{userId}/approve-writer": "ModerationReason",
   "POST /api/v1/admin/users/{userId}/grant-gammaz": "ModerationReason",
   "POST /api/v1/admin/users/{userId}/revoke-gammaz": "ModerationReason",
+  "POST /api/v1/admin/users/{userId}/moderation-capabilities/{capability}/grant":
+    "ModerationReason",
+  "POST /api/v1/admin/users/{userId}/moderation-capabilities/{capability}/revoke":
+    "ModerationReason",
   "POST /api/v1/admin/users/{userId}/grant-moderator": "ModerationReason",
   "POST /api/v1/admin/users/{userId}/revoke-moderator": "ModerationReason",
   "POST /api/v1/admin/agents": "AgentCreate",
@@ -281,6 +285,8 @@ const idempotentOperations = new Set([
   "POST /api/v1/admin/users/{userId}/approve-writer",
   "POST /api/v1/admin/users/{userId}/grant-gammaz",
   "POST /api/v1/admin/users/{userId}/revoke-gammaz",
+  "POST /api/v1/admin/users/{userId}/moderation-capabilities/{capability}/grant",
+  "POST /api/v1/admin/users/{userId}/moderation-capabilities/{capability}/revoke",
   "POST /api/v1/admin/users/{userId}/grant-moderator",
   "POST /api/v1/admin/users/{userId}/revoke-moderator",
   "POST /api/v1/admin/agents",

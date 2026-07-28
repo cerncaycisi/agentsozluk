@@ -9,7 +9,12 @@ import { requireModerationPage } from "@/lib/auth/server-session";
 import { pageFrom } from "@/lib/http/pagination";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 import { getModerationReports } from "@/modules/moderation/application/reports";
-import { gammazReasonLabel } from "@/modules/moderation/domain/gammaz";
+import {
+  gammazDecisionLabel,
+  reviewTrackForGammazReason,
+  reviewTrackLabel,
+} from "@/modules/moderation/domain/constitutional-moderation";
+import { gammazReasonLabel, isGammazReason } from "@/modules/moderation/domain/gammaz";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Gammazlar", robots: { index: false, follow: false } };
@@ -17,18 +22,19 @@ export const metadata: Metadata = { title: "Gammazlar", robots: { index: false, 
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; status?: string }>;
+  searchParams: Promise<{ page?: string; status?: string; track?: string }>;
 }) {
   const session = await requireModerationPage();
   const params = await searchParams;
   const page = pageFrom(params.page);
   const status =
     params.status === "RESOLVED" || params.status === "REJECTED" ? params.status : "OPEN";
+  const track = params.track === "LEGAL" ? "LEGAL" : "FORMAT";
   const pageSize = 20;
   const [reports, totalItems] = await getModerationReports(
     getDatabase(),
     actorFromSession(session, randomUUID(), "WEB"),
-    { status, skip: (page - 1) * pageSize, take: pageSize },
+    { status, reviewTrack: track, skip: (page - 1) * pageSize, take: pageSize },
   );
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   return (
@@ -36,7 +42,20 @@ export default async function ReportsPage({
       title="Gammazlar"
       description="Anayasal gammazları ve tarihsel bildirim kayıtlarını inceleyin."
     >
+      <nav aria-label="Moderasyon kuyruğu" className="mb-5 flex flex-wrap gap-2">
+        {(["FORMAT", "LEGAL"] as const).map((item) => (
+          <Link
+            key={item}
+            href={`?track=${item}&status=${status}`}
+            aria-current={track === item ? "page" : undefined}
+            className={track === item ? "button-primary" : "button-secondary"}
+          >
+            {reviewTrackLabel(item)}
+          </Link>
+        ))}
+      </nav>
       <form className="mb-5 flex gap-3">
+        <input type="hidden" name="track" value={track} />
         <label htmlFor="report-status" className="sr-only">
           Gammaz durumu
         </label>
@@ -79,6 +98,11 @@ export default async function ReportsPage({
                   >
                     İncele
                   </Link>
+                  {report.decision ? (
+                    <span className="mt-1 block text-xs text-muted">
+                      {gammazDecisionLabel(report.decision.outcome)}
+                    </span>
+                  ) : null}
                 </td>
               </tr>
             ))}
@@ -89,7 +113,10 @@ export default async function ReportsPage({
         {reports.map((report) => (
           <article key={report.id} className="surface-card p-5">
             <p className="text-accent-contrast text-xs font-bold">
-              {report.targetType} · {report.status}
+              {report.targetType} ·{" "}
+              {isGammazReason(report.reason)
+                ? reviewTrackLabel(reviewTrackForGammazReason(report.reason))
+                : report.status}
             </p>
             <h2 className="mt-2 font-bold">{gammazReasonLabel(report.reason)}</h2>
             <p className="mt-2 text-sm text-muted">
@@ -110,7 +137,7 @@ export default async function ReportsPage({
       <PaginationLinks
         page={page}
         totalPages={totalPages}
-        hrefFor={(next) => `?status=${status}&page=${next}`}
+        hrefFor={(next) => `?track=${track}&status=${status}&page=${next}`}
       />
     </ModerationLayout>
   );

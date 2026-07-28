@@ -5,7 +5,7 @@ import { appendAuditLog } from "@/modules/audit";
 import { requireAgentAdminInTransaction } from "@/modules/agents";
 import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
 import type { ActorContext } from "@/modules/auth/domain/actor";
-import { setEntryVisibility } from "@/modules/moderation/application/actions";
+import { setAgentEntryVisibility } from "@/modules/moderation/application/actions";
 import {
   type AgentContentListInput,
   deleteAgentTopicWriteLock,
@@ -179,7 +179,7 @@ export async function bulkSetAgentContentVisibility(
       continue;
     }
     try {
-      await setEntryVisibility(client, actor, entryId, hidden, { reason: input.reason });
+      await setAgentEntryVisibility(client, actor, entryId, hidden, { reason: input.reason });
       succeeded.push({
         entryId,
         runId: record.runId,

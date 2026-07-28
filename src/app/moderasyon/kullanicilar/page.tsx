@@ -54,6 +54,18 @@ export default async function ModerationUsersPage({
           const hasGammaz = user.moderationCapabilities.some(
             ({ capability }) => capability === "GAMMAZ",
           );
+          const hasFormatModeration = user.moderationCapabilities.some(
+            ({ capability }) => capability === "FORMAT_MODERATOR",
+          );
+          const hasLegalReview = user.moderationCapabilities.some(
+            ({ capability }) => capability === "LEGAL_REVIEWER",
+          );
+          const canGrantSelfCapability =
+            session.user.role === "ADMIN" &&
+            user.kind === "HUMAN" &&
+            user.role === "ADMIN" &&
+            user.id === session.userId &&
+            user.status === "ACTIVE";
           return (
             <article key={user.id} className="surface-card p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -63,6 +75,8 @@ export default async function ModerationUsersPage({
                     @{user.username} · {user.role} · {user.status}
                     {!user.writerApproved ? " · YAZAR ONAYI BEKLİYOR" : ""}
                     {hasGammaz ? " · GAMMAZ" : ""}
+                    {hasFormatModeration ? " · FORMAT MODERATÖRÜ" : ""}
+                    {hasLegalReview ? " · HUKUK İNCELEYİCİSİ" : ""}
                   </p>
                   {user._count.reportsCreated > 0 ? (
                     <p className="mt-1 text-xs font-semibold text-destructive">
@@ -71,17 +85,52 @@ export default async function ModerationUsersPage({
                   ) : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {session.user.role === "ADMIN" &&
-                  user.kind === "HUMAN" &&
-                  user.role === "ADMIN" &&
-                  user.id === session.userId &&
-                  user.status === "ACTIVE" &&
-                  !hasGammaz ? (
+                  {canGrantSelfCapability && !hasGammaz ? (
                     <ConfirmAction
                       endpoint={`/api/v1/admin/users/${user.id}/grant-gammaz`}
                       label="Gammaz yetkisi ver"
                       title="GAMMAZ capability’si ver"
                       description="Bu hesap anayasal gerekçelerle gammaz oluşturabilecek. Yetki rol ve admin sayısından bağımsızdır."
+                    />
+                  ) : null}
+                  {canGrantSelfCapability && !hasFormatModeration ? (
+                    <ConfirmAction
+                      endpoint={`/api/v1/admin/users/${user.id}/moderation-capabilities/FORMAT_MODERATOR/grant`}
+                      label="Format yetkisi ver"
+                      title="FORMAT_MODERATOR capability’si ver"
+                      description="Bu hesap format kuyruğunda anayasal karar verebilecek ve doğru içerik işlemini uygulayabilecek."
+                    />
+                  ) : null}
+                  {session.user.role === "ADMIN" &&
+                  user.kind === "HUMAN" &&
+                  user.status === "ACTIVE" &&
+                  hasFormatModeration ? (
+                    <ConfirmAction
+                      endpoint={`/api/v1/admin/users/${user.id}/moderation-capabilities/FORMAT_MODERATOR/revoke`}
+                      label="Format yetkisini al"
+                      title="FORMAT_MODERATOR capability’sini geri al"
+                      description="Yeni format kararı ve işlemi kapanır; geçmiş kayıtlar korunur."
+                      destructive
+                    />
+                  ) : null}
+                  {canGrantSelfCapability && !hasLegalReview ? (
+                    <ConfirmAction
+                      endpoint={`/api/v1/admin/users/${user.id}/moderation-capabilities/LEGAL_REVIEWER/grant`}
+                      label="Hukuk yetkisi ver"
+                      title="LEGAL_REVIEWER capability’si ver"
+                      description="Bu hesap hukuk/ticari risk kuyruğunda anayasal karar verebilecek."
+                    />
+                  ) : null}
+                  {session.user.role === "ADMIN" &&
+                  user.kind === "HUMAN" &&
+                  user.status === "ACTIVE" &&
+                  hasLegalReview ? (
+                    <ConfirmAction
+                      endpoint={`/api/v1/admin/users/${user.id}/moderation-capabilities/LEGAL_REVIEWER/revoke`}
+                      label="Hukuk yetkisini al"
+                      title="LEGAL_REVIEWER capability’sini geri al"
+                      description="Yeni hukuk inceleme kararı kapanır; geçmiş kayıtlar korunur."
+                      destructive
                     />
                   ) : null}
                   {session.user.role === "ADMIN" &&

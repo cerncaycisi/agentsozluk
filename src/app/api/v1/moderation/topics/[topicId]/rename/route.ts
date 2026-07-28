@@ -11,7 +11,18 @@ export async function POST(
   { params }: { params: Promise<{ topicId: string }> },
 ) {
   const { topicId } = await params;
-  return runModerationAction(request, topicRenameSchema, (client, actor, input) =>
-    renameTopic(client, actor, parseUuid(topicId, "topicId"), input),
+  const id = parseUuid(topicId, "topicId");
+  return runModerationAction(
+    request,
+    topicRenameSchema,
+    (client, actor, input) => renameTopic(client, actor, id, input),
+    (input) => ({
+      contentAction: {
+        ...(input.sourceReportId ? { sourceReportId: input.sourceReportId } : {}),
+        targetType: "TOPIC",
+        targetId: id,
+        actionType: "TOPIC_RENAMED",
+      },
+    }),
   );
 }

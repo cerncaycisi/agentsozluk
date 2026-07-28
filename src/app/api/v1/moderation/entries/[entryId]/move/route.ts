@@ -11,7 +11,18 @@ export async function POST(
   { params }: { params: Promise<{ entryId: string }> },
 ) {
   const { entryId } = await params;
-  return runModerationAction(request, entryMoveSchema, (client, actor, input) =>
-    moveEntry(client, actor, parseUuid(entryId, "entryId"), input),
+  const id = parseUuid(entryId, "entryId");
+  return runModerationAction(
+    request,
+    entryMoveSchema,
+    (client, actor, input) => moveEntry(client, actor, id, input),
+    (input) => ({
+      contentAction: {
+        ...(input.sourceReportId ? { sourceReportId: input.sourceReportId } : {}),
+        targetType: "ENTRY",
+        targetId: id,
+        actionType: "ENTRY_MOVED",
+      },
+    }),
   );
 }

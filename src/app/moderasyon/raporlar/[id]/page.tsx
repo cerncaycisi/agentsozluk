@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ConfirmAction } from "@/components/moderation/confirm-action";
+import { ConstitutionalContentAction } from "@/components/moderation/constitutional-content-action";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { getDatabase } from "@/lib/db/client";
 import { formatIstanbulTimestamp } from "@/lib/format/time";
@@ -10,7 +11,17 @@ import { pageUuidFrom } from "@/lib/http/page-params";
 import { requireModerationPage } from "@/lib/auth/server-session";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 import { getModerationReport } from "@/modules/moderation/application/reports";
-import { gammazEvidenceRows, gammazReasonLabel } from "@/modules/moderation/domain/gammaz";
+import {
+  gammazDecisionLabel,
+  allowedContentActions,
+  reviewTrackForGammazReason,
+  reviewTrackLabel,
+} from "@/modules/moderation/domain/constitutional-moderation";
+import {
+  gammazEvidenceRows,
+  gammazReasonLabel,
+  isGammazReason,
+} from "@/modules/moderation/domain/gammaz";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -35,13 +46,17 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
   }
   const { report } = data;
   const evidenceRows = gammazEvidenceRows(report.evidence);
-  const targetStatus = data.target?.status;
-  const targetEndpoint =
-    report.targetType === "ENTRY"
-      ? `/api/v1/moderation/entries/${report.targetId}/${targetStatus === "HIDDEN" ? "restore" : "hide"}`
-      : report.targetType === "TOPIC"
-        ? `/api/v1/moderation/topics/${report.targetId}/${targetStatus === "HIDDEN" ? "restore" : "hide"}`
-        : `/api/v1/moderation/users/${report.targetId}/${targetStatus === "SUSPENDED" ? "unsuspend" : "suspend"}`;
+  const reviewTrack = isGammazReason(report.reason)
+    ? reviewTrackForGammazReason(report.reason)
+    : null;
+  const appliedContentAction = report.decision
+    ? data.moderationActions.find(
+        (action) =>
+          action.decisionId === report.decision?.id &&
+          action.actionType !== "GAMMAZ_REASON_ACCEPTED" &&
+          action.actionType !== "GAMMAZ_REASON_REJECTED",
+      )
+    : null;
   return (
     <ModerationLayout
       title="Gammaz detayı"
@@ -67,6 +82,12 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
               <dt className="text-muted">Tarih</dt>
               <dd className="font-bold">{formatIstanbulTimestamp(report.createdAt)}</dd>
             </div>
+            {reviewTrack ? (
+              <div>
+                <dt className="text-muted">İnceleme hattı</dt>
+                <dd className="font-bold">{reviewTrackLabel(reviewTrack)}</dd>
+              </div>
+            ) : null}
           </dl>
           {report.details ? (
             <p className="mt-5 whitespace-pre-wrap rounded-xl bg-page p-4">{report.details}</p>
@@ -82,6 +103,36 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
             </dl>
           ) : null}
         </section>
+        {report.decision ? (
+          <section className="surface-card p-6">
+            <h2 className="text-xl font-black">Gammaz kararı</h2>
+            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-muted">Sonuç</dt>
+                <dd className="font-bold">{gammazDecisionLabel(report.decision.outcome)}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Karar veren</dt>
+                <dd className="font-bold">@{report.decision.moderator.username}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Hat</dt>
+                <dd className="font-bold">{reviewTrackLabel(report.decision.reviewTrack)}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Anayasa maddeleri</dt>
+                <dd className="font-bold">
+                  {report.decision.constitutionalArticles
+                    .map((article) => `Madde ${article}`)
+                    .join(", ")}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-5 whitespace-pre-wrap rounded-xl bg-page p-4">
+              {report.decision.rationale}
+            </p>
+          </section>
+        ) : null}
         <section className="surface-card p-6">
           <h2 className="text-xl font-black">Hedef önizleme</h2>
           <pre className="mt-4 overflow-x-auto whitespace-pre-wrap rounded-xl bg-page p-4 text-sm">
@@ -90,7 +141,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
         </section>
         {report.status === "OPEN" ? (
           <section className="surface-card p-6">
-            <h2 className="text-xl font-black">Karar ve hedef işlemleri</h2>
+            <h2 className="text-xl font-black">Gammaz gerekçesi kararı</h2>
             <div className="mt-5 flex flex-wrap gap-3">
               <ConfirmAction
                 endpoint={`/api/v1/moderation/reports/${report.id}/resolve`}
@@ -107,14 +158,29 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
                 fieldName="resolutionNote"
                 destructive
               />
-              <ConfirmAction
-                endpoint={targetEndpoint}
-                label="Hedefe işlem yap"
-                title="Hedef işlemini onayla"
-                description="Hedefin mevcut durumuna uygun moderasyon işlemi uygulanır."
-                destructive
-              />
             </div>
+          </section>
+        ) : null}
+        {report.decision?.outcome === "ACCEPTED" ? (
+          <section className="surface-card p-6">
+            <h2 className="text-xl font-black">İçerik işlemi</h2>
+            <p className="mt-2 text-muted">
+              Gammaz gerekçesi kabul edildi. Hide, move, rename veya merge işlemi bu karardan ayrı
+              bir moderasyon kaydı olarak uygulanır.
+            </p>
+            {appliedContentAction ? (
+              <p className="mt-4 rounded-xl bg-page p-4 font-bold">
+                Uygulandı: {appliedContentAction.actionType}
+              </p>
+            ) : isGammazReason(report.reason) &&
+              (report.targetType === "ENTRY" || report.targetType === "TOPIC") ? (
+              <ConstitutionalContentAction
+                reportId={report.id}
+                targetType={report.targetType}
+                targetId={report.targetId}
+                actions={allowedContentActions(report.reason, report.targetType)}
+              />
+            ) : null}
           </section>
         ) : null}
         <section className="surface-card p-6">

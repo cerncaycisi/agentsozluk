@@ -3015,3 +3015,45 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
       removed its scratch database with closing count zero. Do not infer that all-green test
       assertions imply coverage acceptance; inspect the scoped threshold line and add behavioral
       tests for new domain helpers.
+
+## 2026-07-28 — A4 constitutional moderation local integration
+
+- Scope: separate immutable Gammaz decisions from content actions, split FORMAT/LEGAL queues,
+  enforce exact capability and target-owner conflict guards, link accepted decisions to one
+  allowlisted hide/move/rename/merge action, and retain the independent admin-only agent-content
+  emergency takedown lane.
+- Migration evidence: the first scratch wrapper applied all 20 migrations but its evidence query
+  used `prisma_migrations` instead of Prisma's real `_prisma_migrations` table. The wrapper dropped
+  the database; a clean rerun then proved `20` migrations, `2` decision triggers, `3` decision
+  constraints and closing scratch database count `0`. Do not guess Prisma's migration-table name
+  in evidence queries.
+- Local database runner failure: a later full integration wrapper used
+  `postgresql://localhost:5432/...` without the verified local PostgreSQL role. Prisma stopped
+  before product assertions with `User was denied access on the database (not available)`, making
+  all 60 selected tests appear failed. This repeated the existing 2026-07-22 environment trap.
+  The scratch database was removed; `postgresql://gokhannihalgul@localhost:5432/...` was verified
+  read-only and the corrected moderation suite passed `60/60`. Do not omit the verified local role
+  from Prisma scratch URLs and never classify a database-reset denial as a product regression.
+- The first full integration run passed `189/195`. Four failures showed that the new constitutional
+  format capability had accidentally blocked the existing admin-only bulk agent-content
+  hide/restore safety lane; two idempotency fixtures still assumed role-only topic moderation.
+  The resolved design keeps bulk agent takedown separate and rechecks active HUMAN ADMIN inside
+  every per-entry transaction, while ordinary content moderation still requires
+  `FORMAT_MODERATOR`. The idempotency tests now grant/revoke the exact capability. Focused rerun
+  passed `72/72`; no safety threshold or authorization check was weakened.
+- A database defense-in-depth trigger was then added for decision-linked content actions. Its
+  first scope condition matched the decision's own `REPORT_ACCEPTED/REPORT_REJECTED` history row
+  because that row also carries `decisionId`; three moderation tests failed with
+  `content action target does not match gammaz decision`. The trigger now applies only when
+  `decisionId` is present and `targetType <> 'REPORT'`. A clean 20-migration rerun passed the full
+  `topics-entries-interactions` file `60/60`. Do not infer that every decision-linked
+  ModerationAction is a content mutation; REPORT history and target content are separate records.
+- The first complete coverage run passed all `915/915` assertions but reported `87.26%` moderation
+  line coverage, below the unchanged `90%` domain floor. No threshold, include rule or production
+  guard was weakened. Real PostgreSQL authorization-preflight scenarios now cover missing and exact
+  capabilities, accepted-decision actions, disallowed actions, target mismatch, missing targets,
+  direct moderation, self-conflict and capability-revocation races. The final clean coverage run
+  passed 165 files / 915 tests at `93.70%` overall lines and `90.90%` moderation lines; the
+  68-page production build passed and disposable database count closed at zero. Do not treat
+  all-green assertions as coverage acceptance; inspect the domain threshold and add behavioral
+  evidence rather than lowering it.

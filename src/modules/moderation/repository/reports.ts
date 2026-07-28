@@ -1,5 +1,13 @@
-import type { Prisma, ReportReason, ReportStatus, ReportTargetType } from "@prisma/client";
+import type {
+  GammazDecisionOutcome,
+  ModerationReviewTrack,
+  Prisma,
+  ReportReason,
+  ReportStatus,
+  ReportTargetType,
+} from "@prisma/client";
 import { lockUserStateForMutation } from "@/modules/auth/repository/users";
+import { GAMMAZ_REASONS } from "@/modules/moderation/domain/gammaz";
 
 export function findReportTarget(
   transaction: Prisma.TransactionClient,
@@ -86,6 +94,27 @@ export async function decideReportRecord(
   return transaction.report.findUniqueOrThrow({ where: { id: reportId } });
 }
 
+export async function lockReportForDecision(
+  transaction: Prisma.TransactionClient,
+  reportId: string,
+): Promise<void> {
+  await transaction.$executeRaw`SELECT 1 FROM "reports" WHERE "id" = ${reportId}::uuid FOR UPDATE`;
+}
+
+export function createGammazDecisionRecord(
+  transaction: Prisma.TransactionClient,
+  input: {
+    reportId: string;
+    moderatorId: string;
+    reviewTrack: ModerationReviewTrack;
+    outcome: GammazDecisionOutcome;
+    constitutionalArticles: number[];
+    rationale: string;
+  },
+) {
+  return transaction.gammazDecision.create({ data: input });
+}
+
 export function listReports(
   transaction: Prisma.TransactionClient,
   input: {
@@ -95,6 +124,7 @@ export function listReports(
     createdFrom?: Date;
     createdTo?: Date;
     reporterUsername?: string;
+    reviewTrack?: "FORMAT" | "LEGAL";
     skip: number;
     take: number;
   },
@@ -103,6 +133,15 @@ export function listReports(
     ...(input.status ? { status: input.status } : {}),
     ...(input.targetType ? { targetType: input.targetType } : {}),
     ...(input.reason ? { reason: input.reason } : {}),
+    ...(input.reviewTrack === "LEGAL"
+      ? { reason: "GAMMAZ_7_LEGAL_OR_COMMERCIAL_RISK" }
+      : input.reviewTrack === "FORMAT"
+        ? {
+            reason: {
+              in: GAMMAZ_REASONS.filter((reason) => reason !== "GAMMAZ_7_LEGAL_OR_COMMERCIAL_RISK"),
+            },
+          }
+        : {}),
     ...(input.createdFrom || input.createdTo
       ? {
           createdAt: {
@@ -119,6 +158,7 @@ export function listReports(
       include: {
         reporter: { select: { id: true, username: true, displayName: true } },
         handledBy: { select: { id: true, username: true, displayName: true } },
+        decision: { select: { outcome: true, reviewTrack: true } },
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       skip: input.skip,
@@ -134,6 +174,11 @@ export function findReportDetail(transaction: Prisma.TransactionClient, reportId
     include: {
       reporter: { select: { id: true, username: true, displayName: true } },
       handledBy: { select: { id: true, username: true, displayName: true } },
+      decision: {
+        include: {
+          moderator: { select: { id: true, username: true, displayName: true } },
+        },
+      },
     },
   });
 }

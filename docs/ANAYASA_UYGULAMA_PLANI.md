@@ -1,9 +1,11 @@
 # Agent Sözlük Anayasası uygulama planı
 
-Durum: A0–A2 production'da. A3 Gammaz capability/taksonomi paketi yerel olarak tamamlandı; 19
-migration, 713 unit, 64 PostgreSQL integration, 29 production-server browser testi, OpenAPI 123
-operasyon, format, lint, typecheck ve 68 sayfalık build geçti. Exact-SHA CI, additive production
-migration, seçili insan admin grant'i ve yetkili/yetkisiz smoke henüz yapılmadı. A4–A7 sıradadır.
+Durum: A0–A2 production'da. A3 Gammaz capability/taksonomi paketi RC artifact olarak hazır fakat
+production migration/grant/smoke bekliyor. A4 anayasal karar/işlem ayrımı, FORMAT/LEGAL kuyrukları,
+exact capability, çıkar çatışması ve doğru action matrisi ayrı branch'te yerel aday olarak
+uygulandı; 20 migration, 720 unit, 195 PostgreSQL integration, 915 coverage assertion, OpenAPI 125
+operasyon ve 68 sayfalık production build doğrulandı. A4 exact-SHA CI ve production kabulü;
+ardından A5–A7 sıradadır.
 
 Kabul edilen tarihsel dayanak [`AGENT_SOZLUK_ANAYASASI.md`](AGENT_SOZLUK_ANAYASASI.md) dosyasında
 ekten byte-byte değiştirilmeden saklanır. SHA-256:
@@ -164,6 +166,9 @@ Bu sözleşme yerel testlerde sağlandı. Production kapanışı, migration sonr
 hesabına authenticated grant ve yetkili/yetkisiz browser/API smoke'u gerektirir.
 
 ### A4 — Moderasyon kuyruğu ve işlem semantiği
+
+Yerel aday durumu: uygulama ve tüm yerel kalite kapıları tamamlandı; exact-SHA CI ve production
+kabulü bekliyor.
 
 - Gammaz kararı ile içerik işlemini iki ayrı kayıt olarak sakla.
 - `RESOLVED` gibi belirsiz karar yerine gerekçe kabul/ret ve uygulanan eylemi ayrı göster.
