@@ -2492,3 +2492,10 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   remaining expectations and expands the local rerun to the complete agent-unit package. Do not
   validate a cross-page visible-language sweep with only the initially touched test files; search
   all test sources for the replaced labels and run the full unit package before push.
+- Before packaging the corrected candidate, the Actions artifact inventory showed two already
+  deployed, reproducible one-day release bundles and two failed-CI Playwright bundles consuming
+  about 481 MB together. Exact artifact IDs `8679678314`, `8659950162`, `8681012091` and
+  `8680876373` were deleted through the repository API. Source history, workflow runs and
+  production were untouched; the remaining non-expired artifacts were only three small coverage
+  reports. Do not retain deployed RC bundles or failed browser artifacts when a new bounded RC
+  would otherwise exceed the account's included Actions storage.
