@@ -5,6 +5,7 @@ export function AgentDetailNavigation({ agentId }: { agentId: string }) {
   const items = [
     ["Genel", `${base}#genel`],
     ["Persona", `${base}/duzenle#persona`],
+    ["Evolution", `${base}#evolution`],
     ["İlgi ve kanaatler", `${base}#ilgi-ve-kanaatler`],
     ["Kaynaklar", `${base}#kaynaklar`],
     ["Hafıza", `${base}/hafiza`],

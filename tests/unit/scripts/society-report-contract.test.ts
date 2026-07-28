@@ -83,7 +83,9 @@ describe("society observation report contracts", () => {
     ]) {
       expect(baseline).toContain(reason);
     }
-    expect(baseline).toContain("active_agents_without_reflection=");
+    expect(baseline).toContain("active_agents_without_persona_reflection=");
+    expect(baseline).toContain("reflection_runs.persona_evolution=");
+    expect(baseline).toContain("reflection_runs.memory_consolidation=");
     expect(baseline).toContain("dictionary_links.traversed=");
     expect(baseline).toContain("natural_entries.self_topic_revisits=");
     expect(baseline).toContain("natural_entries.max_consecutive_self_topic_revisits=");

@@ -2768,3 +2768,25 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
      and passed all 68 pages.
      Do not weaken persona distance, inspect an undocumented response field or run the application
      build without the documented validation environment.
+
+## 2026-07-28 — per-writer evolution explanation candidate
+
+- The authenticated writer detail now projects the latest twenty `REFLECTION` runs through one
+  shared safe status allowlist. It explains applied/no-change/rejected outcomes, links the safe run
+  detail and counts persisted persona, belief, relationship and source-state changes. Raw
+  completion metadata, prompts, instructions and narrative memory are neither returned nor
+  rendered.
+- Memory consolidation and persona evolution are distinct purposes. A nightly/admin memory
+  consolidation `NO_DELTA` now reads as an expected no-persona-change maintenance outcome, and the
+  society report no longer uses those runs to claim persona-evolution coverage.
+- The first disposable PostgreSQL run stopped before application assertions with exact safe error
+  `Integration tests refuses to mutate a database unless its name is 'test' or ends with '_test' or
+  '-test'.` The cleanup trap removed the database and a closing catalog query returned zero.
+  Root cause was the scratch name `agentsz_test_evolution_20260728`, which contains but does not end
+  with the required suffix. The corrected name `agentsz_evolution_20260728_test` received all 18
+  migrations, passed the complete control-plane suite and was also removed. Do not infer test-name
+  safety from a substring; always end disposable integration database names with `_test`.
+- Final evidence passed focused reason/UI/report tests `19/19`, all 56 agent unit files / 351
+  tests, all 22 PostgreSQL control-plane tests, formatting, ESLint, strict typecheck and the
+  68-page production build. All scratch databases were removed. No production connection, public
+  request, deploy, restart or runtime mutation occurred.

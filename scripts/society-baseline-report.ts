@@ -12,6 +12,7 @@ import {
   operatorFallbackBucket,
   parseReflectionStatus,
   parseWindowArguments,
+  reflectionPurpose,
   renderTable,
   type ContentAttribution,
   type ReflectionStatus,
@@ -693,6 +694,7 @@ async function main(): Promise<void> {
     const personaVersionCounts = new Map<string, number>();
     for (const version of personaVersions) increment(personaVersionCounts, version.changeOrigin);
     const reflectionReasonCounts = new Map<string, number>();
+    const reflectionPurposeCounts = new Map<string, number>();
     const reflectionFailureCodes = new Map<string, number>();
     const reflectionByAgent = new Map<string, AgentReflectionCoverage>();
     const seenReflectionRuns = new Set<string>();
@@ -700,7 +702,16 @@ async function main(): Promise<void> {
       if (!event.run || !event.runId || seenReflectionRuns.has(event.runId)) continue;
       seenReflectionRuns.add(event.runId);
       const status = parseReflectionStatus(event.metadata);
-      increment(reflectionReasonCounts, status);
+      const purpose = reflectionPurpose(event.run.trigger);
+      increment(reflectionReasonCounts, `${purpose}|${status}`);
+      increment(reflectionPurposeCounts, purpose);
+      if (event.run.runStatus !== "SUCCEEDED") {
+        increment(
+          reflectionFailureCodes,
+          `${purpose}|${event.run.runStatus}|${event.run.errorCode ?? `REFLECTION_${status}`}`,
+        );
+      }
+      if (purpose === "MEMORY_CONSOLIDATION") continue;
       const coverage =
         reflectionByAgent.get(event.run.agentProfile.user.username) ??
         emptyAgentReflectionCoverage();
@@ -709,12 +720,6 @@ async function main(): Promise<void> {
       if (["FAILED", "CANCELLED", "TIMED_OUT"].includes(event.run.runStatus)) coverage.failed += 1;
       incrementReflectionCoverage(coverage, status);
       reflectionByAgent.set(event.run.agentProfile.user.username, coverage);
-      if (event.run.runStatus !== "SUCCEEDED") {
-        increment(
-          reflectionFailureCodes,
-          `${event.run.runStatus}|${event.run.errorCode ?? `REFLECTION_${status}`}`,
-        );
-      }
     }
     for (const profile of activeProfiles) {
       if (!reflectionByAgent.has(profile.user.username)) {
@@ -902,10 +907,10 @@ async function main(): Promise<void> {
       "",
       "REFLECTION CHANGE / NO-CHANGE REASONS",
       renderTable(
-        ["reason", "count"],
+        ["purpose", "reason", "count"],
         [...reflectionReasonCounts.entries()]
           .sort(([left], [right]) => left.localeCompare(right))
-          .map(([reason, count]) => [reason, String(count)]),
+          .map(([key, count]) => [...key.split("|"), String(count)]),
       ),
       "",
       "REFLECTION COVERAGE BY ACTIVE AGENT",
@@ -942,7 +947,7 @@ async function main(): Promise<void> {
       "",
       "REFLECTION PARTIAL / FAILURE CODES",
       renderTable(
-        ["status", "safeCode", "count"],
+        ["purpose", "status", "safeCode", "count"],
         [...reflectionFailureCodes.entries()]
           .sort(([left], [right]) => left.localeCompare(right))
           .map(([key, count]) => [...key.split("|"), String(count)]),
@@ -996,11 +1001,15 @@ async function main(): Promise<void> {
       `relationships.updated=${relationshipsUpdated}`,
       `persona_versions=${personaVersions.length}`,
       `reflection_runs=${seenReflectionRuns.size}`,
-      ...REFLECTION_STATUSES.map(
-        (status) => `reflection_reason.${status}=${reflectionReasonCounts.get(status) ?? 0}`,
+      `reflection_runs.persona_evolution=${reflectionPurposeCounts.get("PERSONA_EVOLUTION") ?? 0}`,
+      `reflection_runs.memory_consolidation=${reflectionPurposeCounts.get("MEMORY_CONSOLIDATION") ?? 0}`,
+      ...(["PERSONA_EVOLUTION", "MEMORY_CONSOLIDATION"] as const).flatMap((purpose) =>
+        [...REFLECTION_STATUSES, "UNKNOWN"].map(
+          (status) =>
+            `reflection_reason.${purpose}.${status}=${reflectionReasonCounts.get(`${purpose}|${status}`) ?? 0}`,
+        ),
       ),
-      `reflection_reason.UNKNOWN=${reflectionReasonCounts.get("UNKNOWN") ?? 0}`,
-      `active_agents_without_reflection=${activeAgentsWithoutReflection}`,
+      `active_agents_without_persona_reflection=${activeAgentsWithoutReflection}`,
       `dictionary_links.traversed=${dictionaryEvents.length}`,
       `run_matrix_warnings=${warnings.length}`,
       ...[...new Set(warnings)].map((warning) => `WARNING ${warning}`),

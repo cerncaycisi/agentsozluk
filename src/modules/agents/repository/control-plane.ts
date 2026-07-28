@@ -459,6 +459,45 @@ export function findAgentDetailRecord(
   });
 }
 
+export function listAgentEvolutionRunsRecord(
+  transaction: Prisma.TransactionClient,
+  agentProfileId: string,
+  take = 20,
+) {
+  return transaction.agentRun.findMany({
+    where: { agentProfileId, runType: "REFLECTION" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take,
+    select: {
+      id: true,
+      trigger: true,
+      runStatus: true,
+      errorCode: true,
+      createdAt: true,
+      finishedAt: true,
+      runtimeEvents: {
+        where: {
+          eventType: {
+            in: [
+              "run.completed",
+              "PERSONA_CHANGED",
+              "BELIEF_CHANGED",
+              "RELATIONSHIP_CHANGED",
+              "SOURCE_STATE_CHANGED",
+            ],
+          },
+        },
+        orderBy: [{ occurredAt: "asc" }, { id: "asc" }],
+        select: {
+          eventType: true,
+          metadata: true,
+          occurredAt: true,
+        },
+      },
+    },
+  });
+}
+
 export function findAgentForMutation(
   transaction: Prisma.TransactionClient,
   agentProfileId: string,

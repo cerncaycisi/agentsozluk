@@ -11,6 +11,7 @@ import {
   PersonaRollbackForm,
 } from "@/components/agents/agent-admin-forms";
 import { AgentDetailNavigation } from "@/components/agents/agent-detail-navigation";
+import { AgentEvolutionSummary } from "@/components/agents/agent-evolution-summary";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
@@ -159,6 +160,12 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           </div>
         ) : null}
       </section>
+
+      <AgentEvolutionSummary
+        personaEvolutionEnabled={agent.personaEvolutionEnabled}
+        sourceEvolutionEnabled={agent.sourceEvolutionEnabled}
+        evolution={agent.evolution}
+      />
 
       <section id="ilgi-ve-kanaatler" className="surface-card mt-5 scroll-mt-24 p-5">
         <h2 className="text-lg font-black">İlgi ve kanaatler</h2>

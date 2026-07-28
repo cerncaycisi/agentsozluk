@@ -11,6 +11,7 @@ import {
   createAgent,
   createAgentSchema,
   agentSourceAdminUpdateSchema,
+  getAgentDetail,
   getRuntimeCapacity,
   lifecycleChangeSchema,
   listAgentSources,
@@ -91,6 +92,104 @@ beforeEach(resetIntegrationDatabase);
 afterAll(closeIntegrationDatabase);
 
 describe("agent control plane with PostgreSQL", () => {
+  it("projects allowlisted per-writer evolution reasons without narrative metadata", async () => {
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const profileId = created.agent.profile.id;
+    const personaVersionId = created.agent.personaVersion.id;
+    const weekly = await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: profileId,
+        personaVersionId,
+        runType: "REFLECTION",
+        runStatus: "SUCCEEDED",
+        queuePriority: "REFLECTION",
+        trigger: "WEEKLY_PERSONA_REFLECTION",
+        idempotencyKey: randomUUID(),
+        timeoutSeconds: 600,
+        desiredEntryMin: 0,
+        desiredEntryMax: 0,
+        createdAt: new Date("2026-07-28T08:00:00.000Z"),
+        finishedAt: new Date("2026-07-28T08:01:00.000Z"),
+      },
+    });
+    const nightly = await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: profileId,
+        personaVersionId,
+        runType: "REFLECTION",
+        runStatus: "SUCCEEDED",
+        queuePriority: "REFLECTION",
+        trigger: "NIGHTLY_MEMORY_CONSOLIDATION",
+        idempotencyKey: randomUUID(),
+        timeoutSeconds: 600,
+        desiredEntryMin: 0,
+        desiredEntryMax: 0,
+        createdAt: new Date("2026-07-28T07:00:00.000Z"),
+        finishedAt: new Date("2026-07-28T07:01:00.000Z"),
+      },
+    });
+    await integrationDatabase.agentRuntimeEvent.createMany({
+      data: [
+        {
+          agentProfileId: profileId,
+          runId: weekly.id,
+          eventType: "run.completed",
+          safeMessage: "Run tamamlandı.",
+          metadata: { reflectionStatus: "APPLIED", privateReason: "must not be projected" },
+          occurredAt: weekly.finishedAt!,
+        },
+        {
+          agentProfileId: profileId,
+          runId: weekly.id,
+          eventType: "PERSONA_CHANGED",
+          safeMessage: "Persona değişti.",
+          metadata: { origin: "REFLECTION" },
+          occurredAt: weekly.finishedAt!,
+        },
+        {
+          agentProfileId: profileId,
+          runId: weekly.id,
+          eventType: "BELIEF_CHANGED",
+          safeMessage: "Kanaat değişti.",
+          metadata: { origin: "REFLECTION" },
+          occurredAt: weekly.finishedAt!,
+        },
+        {
+          agentProfileId: profileId,
+          runId: nightly.id,
+          eventType: "run.completed",
+          safeMessage: "Run tamamlandı.",
+          metadata: { reflectionStatus: "NO_DELTA" },
+          occurredAt: nightly.finishedAt!,
+        },
+      ],
+    });
+
+    const detail = await getAgentDetail(integrationDatabase, actor(admin.id), profileId);
+
+    expect(detail.evolution).toMatchObject({
+      sampledRunCount: 2,
+      statusCounts: { APPLIED: 1, NO_DELTA: 1, UNKNOWN: 0 },
+      outcomes: [
+        {
+          runId: weekly.id,
+          status: "APPLIED",
+          purpose: "PERSONA_EVOLUTION",
+          changes: { persona: 1, belief: 1, relationship: 0, source: 0 },
+        },
+        {
+          runId: nightly.id,
+          status: "NO_DELTA",
+          purpose: "MEMORY_CONSOLIDATION",
+          label: "Persona değişimi beklenmiyordu",
+          changes: { persona: 0, belief: 0, relationship: 0, source: 0 },
+        },
+      ],
+    });
+    expect(JSON.stringify(detail.evolution)).not.toContain("must not be projected");
+  });
+
   it("creates a reviewed everyday writer through the existing template onboarding path", async () => {
     const admin = await createPrincipal();
     const persona = everydayWriterPersonas[0]!;

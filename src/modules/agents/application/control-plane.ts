@@ -11,6 +11,11 @@ import { assertManagedRuntimeCredentialReady } from "@/modules/agents/applicatio
 import { assertLifecycleTransition } from "@/modules/agents/domain/authorization";
 import { istanbulLocalDate } from "@/modules/agents/domain/istanbul-time";
 import { assertPinnedPersonaFieldsUnchanged } from "@/modules/agents/domain/persona-evolution";
+import {
+  describeReflectionOutcome,
+  parseReflectionStatus,
+  type ReflectionStatus,
+} from "@/modules/agents/domain/evolution-observability";
 import { validatePersonaCandidate } from "@/modules/agents/domain/persona-validation";
 import { sealRuntimeCredential } from "@/modules/agents/domain/runtime-credential-enrollment";
 import {
@@ -44,6 +49,7 @@ import {
   getProductionRolloutTerminalEvent,
   getAgentLifeReconstructionSnapshot,
   listAgentDashboardRecords,
+  listAgentEvolutionRunsRecord,
   listCurrentPersonas,
   listAgentSourcesRecord,
   listAgentSourceScoreAudits,
@@ -683,10 +689,57 @@ export async function getAgentDetail(
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
-    const agent = await findAgentDetailRecord(transaction, agentProfileId);
+    const [agent, evolutionRuns] = await Promise.all([
+      findAgentDetailRecord(transaction, agentProfileId),
+      listAgentEvolutionRunsRecord(transaction, agentProfileId),
+    ]);
     if (!agent) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
+    const evolutionOutcomes = evolutionRuns.map((run) => {
+      const completion = run.runtimeEvents.find(({ eventType }) => eventType === "run.completed");
+      const status = parseReflectionStatus(completion?.metadata);
+      const copy = describeReflectionOutcome({ trigger: run.trigger, status });
+      const eventCount = (eventType: string) =>
+        run.runtimeEvents.filter((event) => event.eventType === eventType).length;
+      return {
+        runId: run.id,
+        trigger: run.trigger,
+        runStatus: run.runStatus,
+        errorCode: run.errorCode,
+        createdAt: run.createdAt,
+        finishedAt: run.finishedAt,
+        status,
+        ...copy,
+        changes: {
+          persona: eventCount("PERSONA_CHANGED"),
+          belief: eventCount("BELIEF_CHANGED"),
+          relationship: eventCount("RELATIONSHIP_CHANGED"),
+          source: eventCount("SOURCE_STATE_CHANGED"),
+        },
+      };
+    });
+    const statusCounts = Object.fromEntries(
+      (
+        [
+          "APPLIED",
+          "NO_DELTA",
+          "PARTIAL_RUN",
+          "FROZEN",
+          "STALE_PERSONA",
+          "REJECTED_PERSONA_DELTA",
+          "UNKNOWN",
+        ] satisfies ReflectionStatus[]
+      ).map((status) => [
+        status,
+        evolutionOutcomes.filter((outcome) => outcome.status === status).length,
+      ]),
+    ) as Record<ReflectionStatus, number>;
     return {
       ...agent,
+      evolution: {
+        sampledRunCount: evolutionOutcomes.length,
+        statusCounts,
+        outcomes: evolutionOutcomes,
+      },
       runtimeReadiness: await getRuntimeCredentialReadiness(
         transaction,
         agentProfileId,

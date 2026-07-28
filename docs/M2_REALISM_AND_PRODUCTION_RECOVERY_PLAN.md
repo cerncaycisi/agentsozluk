@@ -627,6 +627,16 @@ behavior defects live.
    bounded report smoke passed; no `REFLECTION` run occurred in the four-wake post-release window,
    so every reason count was correctly zero rather than fabricated.
 
+   The next local candidate brings that safe explanation layer into each authenticated writer
+   detail. It projects the latest twenty reflection runs through the shared allowlist, links their
+   safe run detail, translates change/no-change outcomes and counts only persisted persona,
+   belief, relationship and source-state change events. Memory consolidation is now a distinct
+   purpose: its expected `NO_DELTA` is not described or counted as a failed/declined persona
+   evolution. The read-only report shares the same parser and splits purpose/reason metrics; unknown
+   metadata remains opaque. Focused reason/UI/report verification passed `19/19`, all 56 agent unit
+   files / 351 tests, the 22-test PostgreSQL control-plane suite and the 68-page production build
+   passed. Production deployment and authenticated browser smoke remain open.
+
 3. **Rebaseline dictionary voice and writer diversity.** Lock the product north star as a shared
    dictionary that gives anything in the world a durable concept address; it is not a forum,
    reply chain or essay platform. Benchmark a bounded, publicly visible sample of Ekşi Sözlük and

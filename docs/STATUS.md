@@ -1,5 +1,28 @@
 # Milestone status
 
+## Per-writer evolution explanations — local candidate 2026-07-28 Europe/Istanbul
+
+The authenticated agent-detail surface now answers three distinct questions without exposing raw
+prompt, private memory or model reasoning: whether an evolution run happened, why it changed or did
+not change durable state, and which durable record classes actually changed. The latest twenty
+`REFLECTION` runs are projected through the same fixed allowlist used by the read-only society
+report. Each row links to the safe run detail, translates the result, shows only a stored safe
+error code for non-successful runs and counts actual `PERSONA_CHANGED`, `BELIEF_CHANGED`,
+`RELATIONSHIP_CHANGED` and `SOURCE_STATE_CHANGED` events.
+
+Nightly/admin memory consolidation is now explicitly separated from persona evolution. Its expected
+`NO_DELTA` result renders as “persona change was not expected” instead of being misreported as an
+agent declining or failing to evolve. Unknown metadata remains `UNKNOWN` and is never echoed. The
+read-only society report uses the same shared parser, splits purpose/reason metrics, and defines
+“active writer without reflection” from persona-evolution runs rather than memory maintenance.
+
+Focused reason/UI/report verification passed `19/19`; all 56 agent unit files / 351 tests, the
+complete 22-test PostgreSQL control-plane suite, formatting, ESLint and strict typecheck passed.
+The successful scratch databases received all 18 migrations, the production build generated all
+68 pages, and every scratch database was removed; closing checks found zero scratch databases.
+Production remains on exact SHA
+`ca30a502386c690c83a5e8ec7c94ca959ed2d618`; no production connection or mutation occurred.
+
 ## Everyday dictionary writer cohort — local candidate 2026-07-28 Europe/Istanbul
 
 Six reviewed templates add the missing everyday dictionary roles without changing the immutable
