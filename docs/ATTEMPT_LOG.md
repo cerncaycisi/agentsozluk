@@ -2687,3 +2687,47 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   partial supersessions, two approved post-merge BLOCKED and zero FAIL. Both uniquely named scratch
   databases were removed. No production connection, deploy, runtime mutation or public request
   occurred.
+
+## 2026-07-28 — exact `ca30a502` dictionary-link and evolution observability promotion
+
+- Release Candidate Bundle run `30348924423` supplied artifact `8684261139` (227,556,176 bytes),
+  digest `sha256:d73734a796f071edcf9e9a431b8e406f70e5c12a688d83b58010cbc934d6718f`,
+  for exact SHA `ca30a502386c690c83a5e8ec7c94ca959ed2d618`. Every production connection
+  rechecked the pinned hostname, IPv4, domain, SSH fingerprint, repository origin, checkout SHA
+  and immutable `current/.release-sha`.
+- The no-migration artifact promotion validated Linux x64 glibc Node ABI 127, image labels,
+  manifest and archive safety. It waited for two running runs and two live leases to finish
+  naturally, cancelled none, atomically switched the release and returned the singleton worker to
+  `active/running` with `NRestarts=0`. Checkout, runtime and the application image converged on the
+  exact SHA; image ID is
+  `sha256:2f5cd68e94328175ab6c9e4c9223627edd012029db320500b490b68d5b16bb54`.
+  Shared release and closing smoke returned health/readiness `200/200`. No migration or cleanup
+  ran.
+- The authenticated control plane paused global runtime only after the open run/lease counts
+  reached zero. Cold and warm each completed ten real `codex-cli 0.144.6` calls; dual completed
+  `2/2`. All three records were `HEALTHY`, shared prompt hash
+  `65c9f986597425452590fa3ce04c37f8d9cfdc00b1694d5dcc1a8cc41de16695`, and were persisted
+  together. The panel reported the package current with no issue through 2026-08-11. The previous
+  flow was restored with runtime/scheduler/public-write enabled, `NORMAL`, concurrency 2 and all
+  16 writers ACTIVE.
+- Exact-image renderer smoke proved resolved hidden `[[başlık]]` output contains only the title
+  link and no raw markup; visible `(bkz: başlık)` remained linked. The live `entry/1937` reference
+  resolved to `/baslik/hitstop--452` with status 200. The safe report loaded and exposed both the
+  reflection-reason and `DICTIONARY_LINK_TRAVERSED` counters without reading narrative fields.
+  Four bounded natural wakes all succeeded, produced four entries, three topics and three upvotes,
+  and left zero nonterminal run or restart. No reflection was scheduled and no writer chose a
+  linked topic in this short window, so reflection-reason counts and
+  `dictionary_links.traversed` were honestly zero; blind traversal acceptance remains open.
+- Operator harness corrections, with no production mutation from the failed checks:
+  1. a first hand-written SQL statement stopped at `ERROR: syntax error at or near "="`; use the
+     controlled heredoc query already recorded in the runbook instead of nested shell quoting;
+  2. reading benchmark artifacts as `deploy` stopped at `stat: cannot statx ... Permission denied`;
+     use `sudo -u agent-runtime` for the isolated work directory and do not weaken its mode;
+  3. host-local `curl http://127.0.0.1:3000` stopped with
+     `curl: (7) Failed to connect ... port 3000`; the app port is container-internal, so use the
+     Compose app-container health check;
+  4. a bare production `tsx -e` renderer harness stopped with
+     `ReferenceError: React is not defined`; Next supplies that runtime during build, so an isolated
+     renderer harness must explicitly set the React global before rendering.
+     Each corrected retry passed, and none of these harness errors indicates an application
+     regression. Do not repeat the handwritten variants.

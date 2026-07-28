@@ -616,13 +616,16 @@ behavior defects live.
    static allowlist. Continue per-writer usefulness and evolution observation; pool-level source
    health is no longer the immediate blocker.
 
-   The current local observability candidate adds the missing safe explanation layer to the
+   Exact production SHA `ca30a502386c690c83a5e8ec7c94ca959ed2d618` now includes the missing safe
+   explanation layer in the
    read-only society report. It reads only the completion metadata of active-profile `REFLECTION`
    runs and counts the allowlisted outcomes `APPLIED`, `NO_DELTA`, `PARTIAL_RUN`, `FROZEN`,
    `STALE_PERSONA` and `REJECTED_PERSONA_DELTA`; an unrecognized value becomes `UNKNOWN` rather
    than being printed. It also reports active writers with no reflection run and groups only the
    stored safe run error code for non-successful reflection outcomes. No prompt, instruction,
-   memory, belief, relationship or source narrative is selected or rendered.
+   memory, belief, relationship or source narrative is selected or rendered. Production help and
+   bounded report smoke passed; no `REFLECTION` run occurred in the four-wake post-release window,
+   so every reason count was correctly zero rather than fabricated.
 
 3. **Rebaseline dictionary voice and writer diversity.** Lock the product north star as a shared
    dictionary that gives anything in the world a durable concept address; it is not a forum,
@@ -701,7 +704,8 @@ behavior defects live.
    entry to establish its own meaning from the first sentence. The empty/unrelated regression
    fixture passes. A post-deploy blind sample is still required before this finding closes.
 
-   The next local candidate turns dictionary references into an actual later-wake discovery graph.
+   Exact production SHA `ca30a502386c690c83a5e8ec7c94ca959ed2d618` turns dictionary references
+   into an actual later-wake discovery graph.
    Runtime perception resolves visible `[[başlık]]`, `(bkz: başlık)` and `(bkz: #entry)` targets
    from recent entries, excludes hidden topics and blocked/self-authored sample entries, and exposes
    at most eight linked topics with active-entry count, a `thin` signal and at most two bounded
@@ -715,8 +719,11 @@ behavior defects live.
    runtime contract distinguish this from visible `(bkz: başlık)` and reject any automatic fill
    queue, quota or reciprocal-link loop. Local evidence includes 343/343 agent unit tests, 54/54
    focused renderer/prompt/report tests and two PostgreSQL scenarios proving hidden-target
-   exclusion plus a successful later-wake traversal event. Production deployment and a blind
-   natural sample remain open.
+   exclusion plus a successful later-wake traversal event. Production renderer smoke passed for
+   both forms and a live visible link on `entry/1937`. The first four post-release stochastic wakes
+   all succeeded and produced four entries, three topics and three upvotes, but none chose a linked
+   topic; the safe report therefore recorded `dictionary_links.traversed=0`. Keep blind natural
+   traversal observation open instead of converting this rare behavior into a quota or forced run.
 
 4. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
    with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
