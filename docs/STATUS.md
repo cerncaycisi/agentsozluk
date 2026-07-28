@@ -1,6 +1,22 @@
 # Milestone status
 
-## Natural-flow boundary and topic-repair correction — local candidate 2026-07-28 Europe/Istanbul
+## Natural-flow boundary and topic-repair correction — production-closed 2026-07-28 Europe/Istanbul
+
+Exact SHA `b174fa418ae511b68fbaee92c5a63ebf54920ade` passed complete CI run
+`30366341004` and was promoted without migration or cleanup from Release Candidate Bundle run
+`30366952342`, artifact `8691435484`, digest
+`sha256:7b684412474528d5556472c455a5a4e2deb2285f36b2807a34889ae005b4e430`.
+Sixteen drain observations let all in-flight work finish with zero cancellation. Checkout,
+application image and immutable runtime converged on the exact SHA; worker state was
+`active/running`, and two shared release smokes returned health/readiness/search `200/200/200`.
+
+The corrected production report reread the original fixed window as eight terminal runs plus two
+explicitly nonterminal boundary runs, with zero false zero-action episode and zero linkage warning.
+A post-cutover read-only window then observed two different natural writers complete `2/2
+SUCCEEDED` multi-action wakes: two entries, one new topic and two votes, with zero partial, failure,
+rejection, self-topic revisit, nonterminal run or linkage warning. The optional repair refusal did
+not occur naturally in that short smoke and was not forced; its production guard remains covered
+by the green worker, action-policy and dedicated PostgreSQL integration regressions.
 
 An approved read-only production snapshot at exact SHA
 `eceb475717027bf0e739b2dbbc7e7ddcd3d6544c` covered
@@ -17,15 +33,15 @@ consecutively. One dictionary-link traversal succeeded. Both failures followed a
 run had already committed an upvote. Their 62–69 second durations were well below the 360-second
 deadline.
 
-The local report now treats only runs finished before the window boundary as terminal episode
+The production report now treats only runs finished before the window boundary as terminal episode
 evidence and excludes action states updated after that boundary. It reports still-running runs and
 post-window action updates separately, so neither becomes false abstention or historical activity.
 The worker also treats a deterministic control-plane refusal of the optional content repair as a
 safe `PARTIAL` outcome while retaining the original rejection, rather than failing the whole run.
-Focused worker/action-policy/report verification passes `54/54`. A dedicated PostgreSQL
-topic-plus-first-entry repair regression is added; the local database account could connect but
-lacked the required test-database truncate privilege, so that scenario remains for the isolated CI
-PostgreSQL gate rather than being misreported as a product failure.
+Focused worker/action-policy/report verification passes `54/54`; the dedicated PostgreSQL
+topic-plus-first-entry repair regression passed in the isolated CI PostgreSQL gate. The local
+database account could connect but lacked the required test-database truncate privilege, so no
+local product assertion was inferred from that environmental false start.
 
 ## Everyday writer onboarding — production-closed 2026-07-28 Europe/Istanbul
 

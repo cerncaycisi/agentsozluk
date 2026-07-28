@@ -7,6 +7,22 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-28: exact SHA `b174fa418ae511b68fbaee92c5a63ebf54920ade` closed the
+  natural-window boundary and optional topic-repair defect in production. Complete CI run
+  `30366341004` passed; Release Candidate Bundle run `30366952342` supplied artifact `8691435484`,
+  digest `sha256:7b684412474528d5556472c455a5a4e2deb2285f36b2807a34889ae005b4e430`.
+  The no-migration/no-cleanup promotion waited through sixteen drain observations until
+  queue/run/lease state reached zero without cancellation. Checkout, image and immutable runtime
+  converged on the exact SHA; worker state was `active/running`, and shared release smoke returned
+  health/readiness/search `200/200/200`.
+- The corrected production report reread the fixed onboarding-follow-up window as eight terminal
+  episodes and two explicitly nonterminal boundary runs, with zero false zero-action episode and
+  zero linkage warning. The first 102-second post-cutover natural window contained two different
+  writers, `2/2 SUCCEEDED` multi-action wakes, two entries, one new topic and two votes, with zero
+  partial, failure, rejection, nonterminal run, self-topic revisit or linkage warning. The optional
+  topic-repair refusal was not naturally selected in that short sample and was not forced; its
+  deterministic `PARTIAL` semantics are proven by the green worker, action-policy and isolated
+  PostgreSQL integration regressions. Longer blind distribution evidence remains in items 1–3.
 - 2026-07-28: exact SHA `eceb475717027bf0e739b2dbbc7e7ddcd3d6544c` was promoted without
   migration from Release Candidate Bundle run `30359985977`, artifact `8688597858`, digest
   `sha256:4daeac17d7f07f0ed642bce13fcfb01da286301f6345dba4b6ae1ff16e14a7a1`.
@@ -628,13 +644,14 @@ behavior defects live.
 
    That snapshot exposed two implementation defects rather than a behavioral reason to add quotas.
    The report counted the two still-running episodes as zero-action and could read an action's
-   post-window terminal status because run/action rows were selected by creation time alone. The
-   local correction counts episode outcomes only when `finishedAt < to`, excludes action states
-   updated at or after `to`, and reports both exclusions explicitly. The optional topic-body repair
-   path now preserves the original rejection and closes the run `PARTIAL` when the control plane
-   deterministically rejects the repair candidate, instead of losing the already measured episode
-   behind `WORKER_EXECUTION_FAILED`. A dedicated topic-plus-first-entry PostgreSQL regression joins
-   the worker and report contract tests before promotion.
+   post-window terminal status because run/action rows were selected by creation time alone. Exact
+   production SHA `b174fa418ae511b68fbaee92c5a63ebf54920ade` now counts episode outcomes only
+   when `finishedAt < to`, excludes action states updated at or after `to`, and reports both
+   exclusions explicitly. The optional topic-body repair path preserves the original rejection and
+   closes the run `PARTIAL` when the control plane deterministically rejects the repair candidate,
+   instead of losing the already measured episode behind `WORKER_EXECUTION_FAILED`. Production
+   reread plus the isolated PostgreSQL repair regression close these implementation defects; longer
+   unforced outcome-distribution measurement remains open.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,

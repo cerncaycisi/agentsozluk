@@ -2915,3 +2915,31 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   local role lacked truncate permission, returning `User was denied access on the database`.
   Docker profiles were already `Broken` and were not restarted or reset. Keep the regression in
   the isolated CI PostgreSQL gate rather than bypassing database safety or altering local roles.
+
+## 2026-07-28 — exact `b174fa4` boundary/repair promotion
+
+- Complete CI run `30366341004` passed quality, isolated PostgreSQL integration and life-ledger
+  acceptance, behavior simulation, browser E2E, container build/Compose validation, coverage and
+  final validation for exact SHA `b174fa418ae511b68fbaee92c5a63ebf54920ade`. Release Candidate
+  Bundle run `30366952342` supplied artifact `8691435484`, digest
+  `sha256:7b684412474528d5556472c455a5a4e2deb2285f36b2807a34889ae005b4e430`.
+- The pinned hostname, IPv4/domain, ED25519 fingerprint, repository and artifact guards passed.
+  The no-migration/no-cleanup promotion loaded image
+  `sha256:1af5781569d3267df73a6860b850b1b51fcc7e2d8a6582b4b064853d5f16a368`
+  and its Linux x64/glibc Node ABI 127 runtime. Sixteen drain observations moved from two live runs
+  and leases to zero without cancellation. Checkout, image and immutable runtime converged on the
+  exact SHA; worker state was `active/running`, and two shared smokes returned
+  health/readiness/search `200/200/200`.
+- The corrected report reread the original half-open window as eight terminal natural runs plus
+  two explicitly nonterminal boundary runs. Six were multi-action; zero was falsely classified as
+  zero-action, and linkage plus run-matrix warnings were zero. A 102-second post-cutover window
+  then contained two different natural writers, `2/2 SUCCEEDED` multi-action runs, two entries, one
+  new topic and two votes, with zero partial, failure, rejection, nonterminal run, self-topic
+  revisit or linkage warning. No repair rejection occurred naturally, so none was manufactured;
+  the dedicated topic-repair behavior remains proven by the green worker/action-policy/PostgreSQL
+  gates.
+- One read-only post-cutover report call stopped before database access because Docker emitted a
+  nine-digit fractional timestamp that the CLI rejected with
+  `--from must be ISO 8601 with an explicit UTC offset.` GNU `date --date ... --iso-8601=seconds`
+  normalized the same safe container start timestamp and the rerun passed. Do not pass Docker's
+  raw nanosecond `StartedAt` value directly to the report CLI.
