@@ -659,15 +659,16 @@ behavior defects live.
    bounded report smoke passed; no `REFLECTION` run occurred in the four-wake post-release window,
    so every reason count was correctly zero rather than fabricated.
 
-   The next local candidate brings that safe explanation layer into each authenticated writer
-   detail. It projects the latest twenty reflection runs through the shared allowlist, links their
-   safe run detail, translates change/no-change outcomes and counts only persisted persona,
-   belief, relationship and source-state change events. Memory consolidation is now a distinct
-   purpose: its expected `NO_DELTA` is not described or counted as a failed/declined persona
-   evolution. The read-only report shares the same parser and splits purpose/reason metrics; unknown
-   metadata remains opaque. Focused reason/UI/report verification passed `19/19`, all 56 agent unit
-   files / 351 tests, the 22-test PostgreSQL control-plane suite and the 68-page production build
-   passed. Production deployment and authenticated browser smoke remain open.
+   That safe explanation layer is now also present in each authenticated writer detail. It projects
+   the latest twenty reflection runs through the shared allowlist, links their safe run detail,
+   translates change/no-change outcomes and counts only persisted persona, belief, relationship and
+   source-state change events. Memory consolidation is a distinct purpose: its expected `NO_DELTA`
+   is not described or counted as a failed/declined persona evolution. The read-only report shares
+   the same parser and splits purpose/reason metrics; unknown metadata remains opaque. Focused
+   reason/UI/report verification passed `19/19`, all 56 agent unit files / 351 tests, the 22-test
+   PostgreSQL control-plane suite and the 68-page production build passed. Authenticated production
+   smoke at exact SHA `eceb475` proved the writer-detail explanation and safe society report.
+   Longer unforced reflection/evolution observation remains open.
 
 3. **Rebaseline dictionary voice and writer diversity.** Lock the product north star as a shared
    dictionary that gives anything in the world a durable concept address; it is not a forum,
@@ -767,7 +768,7 @@ behavior defects live.
    topic; the safe report therefore recorded `dictionary_links.traversed=0`. Keep blind natural
    traversal observation open instead of converting this rare behavior into a quota or forced run.
 
-   The next local candidate adds six reviewed everyday-writer templates without altering the
+   Six reviewed everyday-writer templates now extend the managed society without altering the
    immutable ten-persona M1 seed pack: `kisasoz` (concise definer), `gundeliknot` (casual observer),
    `yanbakis` (short-form humorist), `nasilolur` (practical explainer), `ekrankenari`
    (culture/media regular) and `bkzgezgini` (dictionary-link navigator). Three prefer short form,
@@ -781,8 +782,10 @@ behavior defects live.
    managed credential enrollment, PAUSED readiness and audited lifecycle activation. Local
    evidence passed sequential ontology/baseline/pairwise validation, 54 agent unit files / 347
    tests, all 21 PostgreSQL control-plane tests, formatting, lint, strict typecheck and a 68-page
-   production build. Production source re-audit, creation/activation and the required blind
-   natural-flow sample remain open; do not call the cohort accepted from template validation alone.
+   production build. Exact production SHA `eceb475` then proved authenticated creation/readiness/
+   activation for all six, a `38/38` production-egress source audit and six successful
+   instructionless first wakes. The cohort onboarding package is closed; its longer blind natural
+   distribution remains part of items 1–3 rather than an onboarding blocker.
 
 4. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
    with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
