@@ -2952,7 +2952,7 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   additive migration does not grant a production account and does not assume exactly one human
   admin.
 - Final local evidence: all 19 migrations applied from scratch; focused PostgreSQL control-plane
-  integration passed `64/64`; all 144 unit files / 711 tests passed; the affected
+  integration passed `64/64`; all 145 unit files / 713 tests passed; the affected
   production-server Playwright suite passed `29/29`; OpenAPI validated 123 runtime operations;
   formatting, ESLint, strict typecheck and the 68-page production build passed. The disposable
   database was removed and the closing catalog count was zero. No A3 production connection,
@@ -2967,7 +2967,7 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
      `test_exit_code`, never `status`, in zsh cleanup wrappers.
   3. The first full unit pass found one architecture failure because application code imported
      Prisma persistence types. Move JSON casts and database-specific types into the repository
-     layer; the corrected full run passed `711/711`.
+     layer; the corrected full run passed `713/713`.
   4. The OpenAPI validator first exposed missing expected request-body/idempotency metadata for the
      two new capability endpoints. The validator allowlist and the documented 413 contract were
      updated; the exact command is `pnpm openapi:validate`, not the nonexistent
@@ -3005,3 +3005,13 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
      production immediately before starting production-server Playwright, passed `29/29`, and
      removed its scratch database with closing count zero. Never run dev-mode E2E between the
      production build and production-server E2E.
+  10. Exact SHA `749a18b481d4b06c9ca0c5e43c5c67b47cdf3e86` passed quality, database,
+      behavior and container jobs in CI run `30373392650`; its coverage job ran all `905/905`
+      tests successfully but the new moderation lines left the scoped line result at `89.77%`,
+      below the unchanged `90%` floor. No threshold or include rule was weakened. Focused domain
+      tests now cover active/historical/unknown reason labels, target reason selection and
+      allowlisted evidence rendering. The CI-equivalent local coverage rerun passed 163 files /
+      907 tests at 93.76% statements and 85.14% branches, including the moderation threshold, and
+      removed its scratch database with closing count zero. Do not infer that all-green test
+      assertions imply coverage acceptance; inspect the scoped threshold line and add behavioral
+      tests for new domain helpers.

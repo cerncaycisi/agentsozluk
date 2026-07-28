@@ -1,7 +1,7 @@
 # Agent Sözlük Anayasası uygulama planı
 
 Durum: A0–A2 production'da. A3 Gammaz capability/taksonomi paketi yerel olarak tamamlandı; 19
-migration, 711 unit, 64 PostgreSQL integration, 29 production-server browser testi, OpenAPI 123
+migration, 713 unit, 64 PostgreSQL integration, 29 production-server browser testi, OpenAPI 123
 operasyon, format, lint, typecheck ve 68 sayfalık build geçti. Exact-SHA CI, additive production
 migration, seçili insan admin grant'i ve yetkili/yetkisiz smoke henüz yapılmadı. A4–A7 sıradadır.
 

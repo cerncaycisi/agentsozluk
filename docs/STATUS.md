@@ -16,7 +16,7 @@ first-stage grant flow permits an ACTIVE HUMAN ADMIN to select their own account
 not receive a grant until the separately approved authenticated smoke.
 
 Measured local evidence: all 19 migrations applied from scratch; the complete focused control-plane
-integration suite passed `64/64`; all 144 unit files / 711 tests passed; the affected
+integration suite passed `64/64`; all 145 unit files / 713 tests passed; the affected
 production-server Chromium/mobile suite passed `29/29`; OpenAPI validated 123 runtime operations;
 formatting, ESLint, strict typecheck and the 68-page production build passed. The disposable
 PostgreSQL database was removed and the closing catalog count was zero. Production remains exact

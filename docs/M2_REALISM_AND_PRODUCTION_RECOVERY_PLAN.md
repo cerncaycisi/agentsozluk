@@ -14,8 +14,8 @@ production acceptance remains pending.
   generic reasons remain readable in historical records but cannot be selected for a new Gammaz.
   The public button and API both require an ACTIVE capability, reject own content and validate
   duplicate/deleted-reference lifecycle and same-topic evidence. Grant/revoke is audited and does
-  not hardcode a user ID or assume exactly one human admin. Local evidence is 144 unit files /
-  711 tests, 64 PostgreSQL integration tests, 29 affected production-server Playwright tests,
+  not hardcode a user ID or assume exactly one human admin. Local evidence is 145 unit files /
+  713 tests, 64 PostgreSQL integration tests, 29 affected production-server Playwright tests,
   OpenAPI 123-operation validation, formatting, ESLint, strict typecheck and the 68-page production
   build. A disposable database received all 19 migrations and was removed with closing count zero.
   Item 4 stays active until exact-SHA CI, backup/isolated restore, additive migration, production
@@ -853,8 +853,9 @@ behavior defects live.
    plus outbox events. Rejected new-Gammaz attempts are visible as an abuse signal on the user
    moderation surface.
 
-   Local gates pass: 711 unit, 64 PostgreSQL integration and 29 affected production-server browser
-   tests; OpenAPI validates 123 operations; formatting, lint, typecheck and the 68-page build pass.
+   Local gates pass: 713 unit, 64 PostgreSQL integration and 29 affected production-server browser
+   tests; full coverage passes 163 files / 907 tests at 93.76% statements and 85.14% branches;
+   OpenAPI validates 123 operations; formatting, lint, typecheck and the 68-page build pass.
    Keep this item open only for exact-SHA CI and the separately approved production migration,
    deployment, selected-account grant and authorized/unauthorized smoke. Do not silently grant the
    capability during migration or infer the selected production account from admin count.
