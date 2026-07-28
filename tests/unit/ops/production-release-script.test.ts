@@ -27,6 +27,12 @@ describe("schema-neutral production release lane", () => {
     expect(wrapper).toContain("IdentityAgent=none");
   });
 
+  it("accepts a pnpm-forwarded argument separator without treating it as release scope", () => {
+    expect(wrapper).toContain("    --)\n");
+    expect(wrapper).toContain("Some pnpm versions forward the conventional argument separator");
+    expect(() => execFileSync("bash", [wrapperPath, "--", "--help"])).not.toThrow();
+  });
+
   it("uses a separate checked transport and execution session", () => {
     expect(wrapper).toContain("install -m 0700 /dev/stdin");
     expect(wrapper).toContain("bash -n '$remote_script'");

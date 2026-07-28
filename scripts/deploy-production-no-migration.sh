@@ -20,7 +20,7 @@ usage() {
   printf '%s\n' \
     'Usage:' \
     '  AGENT_SOZLUK_PRODUCTION_APPROVED_SHA=<40-char-sha> \' \
-    '    pnpm release:production:no-migration -- \' \
+    '    pnpm release:production:no-migration \' \
     '      --sha <40-char-sha> --artifact-run <run-id> --execute [--cleanup] [--keep-artifact]' \
     '' \
     'Fallback only when the exact approval explicitly permits a production-host build:' \
@@ -31,6 +31,11 @@ usage() {
 
 while (($# > 0)); do
   case "$1" in
+    --)
+      # Some pnpm versions forward the conventional argument separator to the
+      # script. Treat that separator as syntax, not as a release argument.
+      shift
+      ;;
     --sha)
       candidate_sha="${2:-}"
       shift 2

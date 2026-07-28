@@ -952,7 +952,7 @@ approval:
 
 ```bash
 AGENT_SOZLUK_PRODUCTION_APPROVED_SHA='<approved-40-character-sha>' \
-  pnpm release:production:no-migration -- \
+  pnpm release:production:no-migration \
   --sha '<approved-40-character-sha>' \
   --artifact-run '<successful-release-candidate-run-id>' \
   --execute \

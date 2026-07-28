@@ -2405,3 +2405,36 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   gate: it closes only after the outstanding final acceptance evidence. Production acceptance for
   this package remains pending an exact-SHA deploy plus authenticated readable/technical/history
   browser smoke and the known source-insufficient PARTIAL exemplar.
+
+## 2026-07-28 — exact `4f09e46` promotion and human-readable event-feed production proof
+
+- Release Candidate Bundle run `30336946716` supplied artifact `8679678314`, digest
+  `sha256:e7b0c1dc4ef9ce3b991936cf2866dd19e67c41af6a437e3037cd34983e9e6d36`, for exact SHA
+  `4f09e46d3d9aaf1c328b6a7d1adf5a6cf377664f`. Pinned hostname, IPv4, domain, SSH fingerprint
+  and repository identity passed. The first local wrapper invocation included a pnpm argument
+  separator that reached the script and stopped before SSH with exact safe error
+  `RELEASE_WRAPPER_FAIL code=UNKNOWN_ARGUMENT`; no production read or mutation occurred. The
+  corrected invocation omitted that separator. The wrapper and runbook now use the canonical
+  direct form, while the wrapper tolerates a forwarded separator so this operator-only failure
+  cannot recur.
+- The no-migration release observed two running runs and waited through seven bounded drain checks
+  until running run and live lease counts reached zero; cancel-requested remained zero. It
+  cancelled no run. Checkout, application image and immutable runtime converged on the exact SHA.
+  Shared release smoke and health/readiness passed `200/200`; image id was
+  `sha256:8430ec1a839b27b60d1f5f091fc29ba21f8c329b481e9e5540479b3b0c16c8ec`, and worker state
+  was active/running with zero restart. Migration, settings and lifecycle fingerprints plus the
+  Docker volume set remained unchanged. No cleanup was requested or performed.
+- Authenticated browser smoke proved the readable event stream renders zero
+  `agent.heartbeat` rows while its technical view renders 25 persisted heartbeat rows. The
+  connection remained `LIVE`; following the older-50 link changed it to `HISTORY`, and
+  `Canlı akışa dön` restored `LIVE`. Run
+  `b24f8b7b-e158-412e-a1eb-56200e233ada` names `Yarın Mesaisi (@yarinmesaisi)`, reports zero
+  successful and one rejected/skipped action, renders `Entry yazma: Reddedildi`, and explains
+  `SERIOUS_CLAIM_SOURCE_INSUFFICIENT` with the safe trusted-source rule. No entry body, prompt,
+  credential or private reasoning was read or emitted.
+- The documentation-receipt typecheck initially reproduced the known generated-client drift:
+  schema fields such as `runtimeEnrollmentCipher`, `agentRuntimeCredentialSync` and
+  `MODEL_KNOWLEDGE` were absent from the installed Prisma client, followed by derived implicit-any
+  errors. `pnpm db:generate` refreshed the local client; the same strict typecheck then passed.
+  Do not diagnose this signature as an application regression or start Colima: regenerate the
+  schema client first, then rerun the exact check.

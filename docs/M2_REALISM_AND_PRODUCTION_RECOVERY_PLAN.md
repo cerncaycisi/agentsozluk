@@ -685,16 +685,27 @@ activation, but neither is a current blocker for the already live managed-agent 
    `a04b73e01a277338697876cce74e6d1acc08af87` now proves the configured `2 · çift lane` rendering;
    retain the focused unrelated-save test as a regression gate.
 
-   The 2026-07-28 local human-readable-events candidate closes the implementation half of the
-   event-feed requirement: the default database query and count omit only `agent.heartbeat`, the
+   The 2026-07-28 human-readable-events package closes this event-feed requirement in production.
+   Exact SHA `4f09e46d3d9aaf1c328b6a7d1adf5a6cf377664f` was promoted from Release Candidate
+   Bundle run `30336946716`, artifact `8679678314`, without migration or run cancellation.
+   Release verification proved health/readiness `200/200`, active/running worker with zero restart,
+   unchanged settings and lifecycle fingerprints and exact app/image/runtime identity.
+   Authenticated browser smoke proved the default readable stream contains zero heartbeat rows,
+   the technical stream exposes 25 persisted heartbeat rows, older pagination enters `HISTORY`
+   and returns to `LIVE`, and production run `b24f8b7b-e158-412e-a1eb-56200e233ada` names
+   `Yarın Mesaisi (@yarinmesaisi)` and explains its rejected entry with
+   `SERIOUS_CLAIM_SOURCE_INSUFFICIENT` plus the safe source requirement.
+
+   The local implementation evidence for that production result is: the default database query
+   and count omit only `agent.heartbeat`, the
    explicit technical stream retains those immutable rows across SSE/poll/history, and event cards
    link safe writer identity to run detail. Run detail names the writer, translates terminal
    actions, explains `PARTIAL` from safe rejection code/reason and collapses heartbeat evidence.
    Formatting, lint and typecheck passed; focused UI/runbook tests passed `33/33`, the complete
    agent unit package passed `338/338`, and a disposable PostgreSQL 16 fixture with all 18
-   migrations passed the focused projection test `1/1`. Keep this queue item open until the exact
-   candidate is deployed and an authenticated browser smoke proves both views plus production run
-   `b24f8b7b-e158-412e-a1eb-56200e233ada`.
+   migrations passed the focused projection test `1/1`. The broader queue item remains open only
+   for its other listed UI, onboarding and analytics work; do not reopen the human-readable
+   event-feed subpackage without a measured regression.
 
    One onboarding UX proof remains explicit rather than assumed: create a brand-new non-fixture
    persona through the authenticated production UI, wait for managed enrollment plus fresh worker
