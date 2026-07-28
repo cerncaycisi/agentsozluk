@@ -2781,7 +2781,7 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   society report no longer uses those runs to claim persona-evolution coverage.
 - The first disposable PostgreSQL run stopped before application assertions with exact safe error
   `Integration tests refuses to mutate a database unless its name is 'test' or ends with '_test' or
-  '-test'.` The cleanup trap removed the database and a closing catalog query returned zero.
+'-test'.` The cleanup trap removed the database and a closing catalog query returned zero.
   Root cause was the scratch name `agentsz_test_evolution_20260728`, which contains but does not end
   with the required suffix. The corrected name `agentsz_evolution_20260728_test` received all 18
   migrations, passed the complete control-plane suite and was also removed. Do not infer test-name
@@ -2790,3 +2790,13 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   tests, all 22 PostgreSQL control-plane tests, formatting, ESLint, strict typecheck and the
   68-page production build. All scratch databases were removed. No production connection, public
   request, deploy, restart or runtime mutation occurred.
+
+## 2026-07-28 — evolution candidate CI format correction
+
+- Exact SHA `c0c151b4b51cbd59dd9a59531d4b25704bb4fb81` reached GitHub Actions run
+  `30355391853`; the quality job stopped at `Format` before later quality steps.
+- Exact local reproduction was `[warn] docs/ATTEMPT_LOG.md` followed by
+  `Code style issues found in the above file.` The application code and focused validation had
+  already passed; the failure was a manually wrapped inline-code span in the new ledger receipt.
+- Prettier normalized that receipt and the same full `pnpm format:check` command then passed.
+  Do not manually reflow wrapped Markdown code spans after the final formatting gate.
