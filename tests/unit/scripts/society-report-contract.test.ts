@@ -65,9 +65,24 @@ describe("society observation report contracts", () => {
       "SOURCE HEALTH",
       "MEMORY EVENTS",
       "EVOLUTION COUNTS",
+      "REFLECTION CHANGE / NO-CHANGE REASONS",
+      "REFLECTION COVERAGE BY ACTIVE AGENT",
+      "REFLECTION PARTIAL / FAILURE CODES",
     ]) {
       expect(baseline).toContain(section);
     }
+    for (const reason of [
+      "APPLIED",
+      "NO_DELTA",
+      "PARTIAL_RUN",
+      "FROZEN",
+      "STALE_PERSONA",
+      "REJECTED_PERSONA_DELTA",
+      "UNKNOWN",
+    ]) {
+      expect(baseline).toContain(reason);
+    }
+    expect(baseline).toContain("active_agents_without_reflection=");
     expect(baseline).toContain("natural_entries.self_topic_revisits=");
     expect(baseline).toContain("natural_entries.max_consecutive_self_topic_revisits=");
   });

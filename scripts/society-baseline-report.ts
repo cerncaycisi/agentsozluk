@@ -3,15 +3,18 @@ import { getDatabase } from "@/lib/db/client";
 import {
   EPOCH_2_FROM,
   EPOCH_2_TO,
+  REFLECTION_STATUSES,
   classifyContentAttribution,
   classifyRunPair,
   formatRatio,
   istanbulDayKey,
   istanbulDayKeys,
   operatorFallbackBucket,
+  parseReflectionStatus,
   parseWindowArguments,
   renderTable,
   type ContentAttribution,
+  type ReflectionStatus,
   type RunClass,
 } from "./society-report-helpers";
 
@@ -43,7 +46,6 @@ const SOURCE_EVENT_TYPES = [
   "SOURCE_FETCH_RESULT",
   "SOURCE_STATE_CHANGED",
 ] as const;
-
 interface AgentCoverage {
   runs: number;
   succeeded: number;
@@ -58,6 +60,19 @@ interface AgentCoverage {
   relationshipUpdates: number;
   noActions: number;
   rejectedOrFailedActions: number;
+}
+
+interface AgentReflectionCoverage {
+  runs: number;
+  partial: number;
+  failed: number;
+  applied: number;
+  noDelta: number;
+  partialRun: number;
+  frozen: number;
+  stalePersona: number;
+  rejectedPersonaDelta: number;
+  unknown: number;
 }
 
 function help(): string {
@@ -91,6 +106,34 @@ function emptyAgentCoverage(): AgentCoverage {
     noActions: 0,
     rejectedOrFailedActions: 0,
   };
+}
+
+function emptyAgentReflectionCoverage(): AgentReflectionCoverage {
+  return {
+    runs: 0,
+    partial: 0,
+    failed: 0,
+    applied: 0,
+    noDelta: 0,
+    partialRun: 0,
+    frozen: 0,
+    stalePersona: 0,
+    rejectedPersonaDelta: 0,
+    unknown: 0,
+  };
+}
+
+function incrementReflectionCoverage(
+  coverage: AgentReflectionCoverage,
+  status: ReflectionStatus,
+): void {
+  if (status === "APPLIED") coverage.applied += 1;
+  else if (status === "NO_DELTA") coverage.noDelta += 1;
+  else if (status === "PARTIAL_RUN") coverage.partialRun += 1;
+  else if (status === "FROZEN") coverage.frozen += 1;
+  else if (status === "STALE_PERSONA") coverage.stalePersona += 1;
+  else if (status === "REJECTED_PERSONA_DELTA") coverage.rejectedPersonaDelta += 1;
+  else coverage.unknown += 1;
 }
 
 function emptyAttributionCounts(): Record<ContentAttribution, number> {
@@ -163,6 +206,8 @@ async function main(): Promise<void> {
       beliefs,
       relationships,
       personaVersions,
+      reflectionEvents,
+      activeProfiles,
     ] = await Promise.all([
       database.entry.findMany({
         where: { createdAt: { gte: window.from, lt: window.to }, origin: { not: "SEED" } },
@@ -303,6 +348,32 @@ async function main(): Promise<void> {
       database.agentPersonaVersion.findMany({
         where: { createdAt: { gte: window.from, lt: window.to } },
         select: { changeOrigin: true },
+      }),
+      database.agentRuntimeEvent.findMany({
+        where: {
+          occurredAt: { gte: window.from, lt: window.to },
+          eventType: "run.completed",
+          run: { runType: "REFLECTION", agentProfile: { lifecycleStatus: "ACTIVE" } },
+        },
+        orderBy: [{ occurredAt: "asc" }, { id: "asc" }],
+        select: {
+          runId: true,
+          metadata: true,
+          run: {
+            select: {
+              trigger: true,
+              runType: true,
+              runStatus: true,
+              errorCode: true,
+              agentProfile: { select: { user: { select: { username: true } } } },
+            },
+          },
+        },
+      }),
+      database.agentProfile.findMany({
+        where: { lifecycleStatus: "ACTIVE" },
+        orderBy: { user: { username: "asc" } },
+        select: { user: { select: { username: true } } },
       }),
     ]);
 
@@ -608,6 +679,38 @@ async function main(): Promise<void> {
     ).length;
     const personaVersionCounts = new Map<string, number>();
     for (const version of personaVersions) increment(personaVersionCounts, version.changeOrigin);
+    const reflectionReasonCounts = new Map<string, number>();
+    const reflectionFailureCodes = new Map<string, number>();
+    const reflectionByAgent = new Map<string, AgentReflectionCoverage>();
+    const seenReflectionRuns = new Set<string>();
+    for (const event of reflectionEvents) {
+      if (!event.run || !event.runId || seenReflectionRuns.has(event.runId)) continue;
+      seenReflectionRuns.add(event.runId);
+      const status = parseReflectionStatus(event.metadata);
+      increment(reflectionReasonCounts, status);
+      const coverage =
+        reflectionByAgent.get(event.run.agentProfile.user.username) ??
+        emptyAgentReflectionCoverage();
+      coverage.runs += 1;
+      if (event.run.runStatus === "PARTIAL") coverage.partial += 1;
+      if (["FAILED", "CANCELLED", "TIMED_OUT"].includes(event.run.runStatus)) coverage.failed += 1;
+      incrementReflectionCoverage(coverage, status);
+      reflectionByAgent.set(event.run.agentProfile.user.username, coverage);
+      if (event.run.runStatus !== "SUCCEEDED") {
+        increment(
+          reflectionFailureCodes,
+          `${event.run.runStatus}|${event.run.errorCode ?? `REFLECTION_${status}`}`,
+        );
+      }
+    }
+    for (const profile of activeProfiles) {
+      if (!reflectionByAgent.has(profile.user.username)) {
+        reflectionByAgent.set(profile.user.username, emptyAgentReflectionCoverage());
+      }
+    }
+    const activeAgentsWithoutReflection = [...reflectionByAgent.values()].filter(
+      ({ runs: reflectionRuns }) => reflectionRuns === 0,
+    ).length;
 
     const output = [
       "SOCIETY NATURAL-FLOW BASELINE (READ ONLY)",
@@ -774,6 +877,54 @@ async function main(): Promise<void> {
         ],
       ),
       "",
+      "REFLECTION CHANGE / NO-CHANGE REASONS",
+      renderTable(
+        ["reason", "count"],
+        [...reflectionReasonCounts.entries()]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([reason, count]) => [reason, String(count)]),
+      ),
+      "",
+      "REFLECTION COVERAGE BY ACTIVE AGENT",
+      renderTable(
+        [
+          "username",
+          "runs",
+          "partial",
+          "failed",
+          "applied",
+          "noDelta",
+          "partialRun",
+          "frozen",
+          "stalePersona",
+          "rejectedDelta",
+          "unknown",
+        ],
+        [...reflectionByAgent.entries()]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([username, coverage]) => [
+            username,
+            String(coverage.runs),
+            String(coverage.partial),
+            String(coverage.failed),
+            String(coverage.applied),
+            String(coverage.noDelta),
+            String(coverage.partialRun),
+            String(coverage.frozen),
+            String(coverage.stalePersona),
+            String(coverage.rejectedPersonaDelta),
+            String(coverage.unknown),
+          ]),
+      ),
+      "",
+      "REFLECTION PARTIAL / FAILURE CODES",
+      renderTable(
+        ["status", "safeCode", "count"],
+        [...reflectionFailureCodes.entries()]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([key, count]) => [...key.split("|"), String(count)]),
+      ),
+      "",
       "SUMMARY",
       ...ATTRIBUTIONS.map((attribution) => `entries.${attribution}=${entryTotals[attribution]}`),
       ...ATTRIBUTIONS.map((attribution) => `topics.${attribution}=${topicTotals[attribution]}`),
@@ -813,6 +964,12 @@ async function main(): Promise<void> {
       `relationships.interacted=${relationshipsInteracted}`,
       `relationships.updated=${relationshipsUpdated}`,
       `persona_versions=${personaVersions.length}`,
+      `reflection_runs=${seenReflectionRuns.size}`,
+      ...REFLECTION_STATUSES.map(
+        (status) => `reflection_reason.${status}=${reflectionReasonCounts.get(status) ?? 0}`,
+      ),
+      `reflection_reason.UNKNOWN=${reflectionReasonCounts.get("UNKNOWN") ?? 0}`,
+      `active_agents_without_reflection=${activeAgentsWithoutReflection}`,
       `run_matrix_warnings=${warnings.length}`,
       ...[...new Set(warnings)].map((warning) => `WARNING ${warning}`),
     ];

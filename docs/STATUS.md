@@ -1,5 +1,21 @@
 # Milestone status
 
+## Evolution reason observability — local candidate 2026-07-28 Europe/Istanbul
+
+The read-only society report now explains reflection change and no-change outcomes instead of
+showing only aggregate belief, relationship and persona-version counts. It reports the stable
+allowlisted reasons `APPLIED`, `NO_DELTA`, `PARTIAL_RUN`, `FROZEN`, `STALE_PERSONA` and
+`REJECTED_PERSONA_DELTA`, active-writer reflection coverage, writers with no reflection run and
+safe PARTIAL/failure codes. Unknown metadata is counted as `UNKNOWN` and is never echoed.
+
+Formatting, ESLint, strict typecheck, report `--help` and 34 focused tests pass. This is repository
+evidence only; production remains on exact SHA
+`828d2772d9d77081896ef8d329fd9905dc3d8a3f` until a separately approved release. The formal
+seven-day natural acceptance window is deliberately last: verified behavior corrections may ship
+first and restart that window from the final accepted behavior SHA. Development traceability
+remains 464 active PASS, 77 ADR-012 superseded, 25 partial supersessions, two approved post-merge
+BLOCKED and zero FAIL; the final-only checker correctly remains blocked by `DONE-082`.
+
 ## Runtime identity and stochastic Gate 9 — production-closed 2026-07-28 Europe/Istanbul
 
 Approved read-only evidence at exact production SHA

@@ -7,6 +7,7 @@ import {
   istanbulDayKey,
   istanbulDayKeys,
   operatorFallbackBucket,
+  parseReflectionStatus,
   parseWindowArguments,
   ratio,
 } from "../../../scripts/society-report-helpers";
@@ -121,5 +122,21 @@ describe("society attribution helpers", () => {
       "911169ddaaf146aff539f58c26c489af3b892dff0fe283c1c264c65ae5aa59a2",
     );
     expect(fingerprintIds(["a", "b"])).toBe(fingerprintIds(["b", "a"]));
+  });
+});
+
+describe("society reflection reason helpers", () => {
+  it("accepts only the stable allowlisted completion reasons", () => {
+    expect(parseReflectionStatus({ reflectionStatus: "APPLIED" })).toBe("APPLIED");
+    expect(parseReflectionStatus({ reflectionStatus: "NO_DELTA" })).toBe("NO_DELTA");
+    expect(parseReflectionStatus({ reflectionStatus: "REJECTED_PERSONA_DELTA" })).toBe(
+      "REJECTED_PERSONA_DELTA",
+    );
+  });
+
+  it("maps absent or unrecognized metadata to UNKNOWN without echoing it", () => {
+    expect(parseReflectionStatus(null)).toBe("UNKNOWN");
+    expect(parseReflectionStatus({ reflectionStatus: "raw private reason" })).toBe("UNKNOWN");
+    expect(parseReflectionStatus(["NO_DELTA"])).toBe("UNKNOWN");
   });
 });

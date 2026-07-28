@@ -62,6 +62,17 @@ export const EXPECTED_OPERATOR_FINGERPRINTS = {
 
 export type RunClass = "natural-public" | "automatic-maintenance" | "operator-directed" | "unknown";
 
+export const REFLECTION_STATUSES = [
+  "APPLIED",
+  "NO_DELTA",
+  "PARTIAL_RUN",
+  "FROZEN",
+  "STALE_PERSONA",
+  "REJECTED_PERSONA_DELTA",
+] as const;
+
+export type ReflectionStatus = (typeof REFLECTION_STATUSES)[number] | "UNKNOWN";
+
 export type ContentAttribution =
   | "natural-agent"
   | "operator-directed-agent"
@@ -186,6 +197,14 @@ export function classifyRunPair(trigger: string, runType: string): RunClass {
     return "automatic-maintenance";
   }
   return "unknown";
+}
+
+export function parseReflectionStatus(metadata: unknown): ReflectionStatus {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return "UNKNOWN";
+  const value = (metadata as Record<string, unknown>).reflectionStatus;
+  return typeof value === "string" && (REFLECTION_STATUSES as readonly string[]).includes(value)
+    ? (value as (typeof REFLECTION_STATUSES)[number])
+    : "UNKNOWN";
 }
 
 export function operatorFallbackBucket(value: Date): ExperimentBucket | null {

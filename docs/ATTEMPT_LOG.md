@@ -2636,3 +2636,26 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
 - This receipt closes `RUNTIME-001` through `RUNTIME-003`. It does not synthesize
   `RUNTIME-004`: the required Gokhan-controlled interactive login handoff still needs its own
   explicit production action and non-secret completion receipt.
+
+## 2026-07-28 — safe evolution change/no-change observability candidate
+
+- Starting from exact repository SHA `b8bc8b1`, the read-only society report gained an explicit
+  reflection outcome layer. It counts only allowlisted completion states (`APPLIED`, `NO_DELTA`,
+  `PARTIAL_RUN`, `FROZEN`, `STALE_PERSONA`, `REJECTED_PERSONA_DELTA`), maps every unknown metadata
+  value to `UNKNOWN`, shows active writers with no reflection run, and groups only stored safe
+  error codes for non-successful reflection runs. It does not select or print prompts,
+  instructions, entry/source/memory/belief/relationship narratives or credentials.
+- The first typecheck stopped with exact safe error
+  `scripts/society-report-helpers.ts(205,67): error TS2322: Type 'unknown' is not assignable to type
+'ReflectionStatus'.` Root cause was TypeScript not narrowing an unknown JSON value through
+  `Array.some`; the allowlist parser now checks for a string, uses a fixed readonly allowlist and
+  casts only after membership succeeds. Do not weaken the parser or echo an unrecognized metadata
+  value to make this type narrow.
+- Final verification passed formatting, ESLint, strict typecheck, report `--help` smoke and 34/34
+  focused report/runbook tests. No production connection, database query, deploy or runtime
+  mutation occurred.
+- The final-only `requirements:m2:check` was also invoked and stopped at the existing expected
+  closure guard: `DONE-082 must be PASS for final M2 verification; found BLOCKED.` This is not a
+  candidate regression and must not be bypassed. The correct current
+  `requirements:m2:check:development` gate passed with 464 active PASS, 77 ADR-012 superseded, 25
+  partial supersessions, two approved post-merge BLOCKED and zero FAIL across all 543 rows.
