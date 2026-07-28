@@ -2485,3 +2485,10 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   22/Corepack pnpm 10 lane then ran and exposed only two stale accessible-label assertions;
   updating those expectations made the focused rerun clean. Do not invoke the unqualified Codex
   fallback `pnpm` for this repository.
+- GitHub CI run `30340678927` for exact SHA
+  `719cd37bf9fd337b8bee09c27ae083501ecd23d4` passed the quality job but failed the unit step on
+  four additional stale English-label assertions in `run-detail-page` and
+  `global-runtime-settings-form`; the UI rendered the intended Turkish labels. The fix updates the
+  remaining expectations and expands the local rerun to the complete agent-unit package. Do not
+  validate a cross-page visible-language sweep with only the initially touched test files; search
+  all test sources for the replaced labels and run the full unit package before push.

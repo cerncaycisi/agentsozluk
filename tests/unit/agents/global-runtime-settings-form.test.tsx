@@ -52,10 +52,10 @@ describe("global runtime settings controls", () => {
     render(<GlobalRuntimeSettingsForm initial={initial} />);
 
     await userEvent.type(
-      screen.getByLabelText("Global ayar değişikliği gerekçesi"),
+      screen.getByLabelText("Genel ayar değişikliği gerekçesi"),
       "Public write bakım penceresi için durduruluyor.",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Public write pause" }));
+    await userEvent.click(screen.getByRole("button", { name: "Genel yazmayı durdur" }));
     await waitFor(() =>
       expect(mocks.apiRequest).toHaveBeenCalledWith("/api/v1/admin/agent-settings", {
         method: "PATCH",
@@ -68,10 +68,10 @@ describe("global runtime settings controls", () => {
         idempotency: true,
       }),
     );
-    expect(screen.getByText("PAUSED / READ ONLY")).toBeInTheDocument();
+    expect(screen.getByText("DURAKLATILDI / SALT OKUNUR")).toBeInTheDocument();
     expect(screen.getByText("8")).toBeInTheDocument();
     expect(mocks.toastSuccess).toHaveBeenCalledWith(
-      "Public write pause edildi; read-only runtime devam ediyor.",
+      "Genel yazma durduruldu; salt okunur çalışma sürüyor.",
     );
   });
 
@@ -79,16 +79,14 @@ describe("global runtime settings controls", () => {
     mocks.apiRequest.mockResolvedValue({ settingsVersion: 8 });
     render(<GlobalRuntimeSettingsForm initial={initial} />);
     await userEvent.type(
-      screen.getByLabelText("Global ayar değişikliği gerekçesi"),
+      screen.getByLabelText("Genel ayar değişikliği gerekçesi"),
       "Kaynak ve breaker sınırları ölçüme göre güncelleniyor.",
     );
-    await userEvent.clear(screen.getByLabelText("Source fetch limit"));
-    await userEvent.type(screen.getByLabelText("Source fetch limit"), "5");
-    await userEvent.clear(screen.getByLabelText("Consecutive Codex failure"));
-    await userEvent.type(screen.getByLabelText("Consecutive Codex failure"), "4");
-    await userEvent.click(
-      screen.getByRole("button", { name: "Runtime kontrol ayarlarını kaydet" }),
-    );
+    await userEvent.clear(screen.getByLabelText("Kaynak okuma üst sınırı"));
+    await userEvent.type(screen.getByLabelText("Kaynak okuma üst sınırı"), "5");
+    await userEvent.clear(screen.getByLabelText("Ardışık Codex hatası"));
+    await userEvent.type(screen.getByLabelText("Ardışık Codex hatası"), "4");
+    await userEvent.click(screen.getByRole("button", { name: "Toplum çalışma ayarlarını kaydet" }));
 
     await waitFor(() =>
       expect(mocks.apiRequest).toHaveBeenCalledWith("/api/v1/admin/agent-settings", {

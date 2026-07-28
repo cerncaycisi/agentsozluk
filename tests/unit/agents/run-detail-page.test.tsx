@@ -215,7 +215,7 @@ describe("agent run detail admin page", () => {
     expect(html).toContain("Agent çalışma detayı");
     expect(html).toContain("Run güvenle tamamlandı.");
     expect(html).toContain("PLATFORM_EVENT");
-    expect(html).toContain("Validation result");
+    expect(html).toContain("Doğrulama sonucu");
     expect(html).toContain("Karar kipi");
     expect(html).toContain("Serbest: 0, 1 veya birden fazla aksiyon");
     expect(html).not.toContain("Entry hedefi");
@@ -267,7 +267,7 @@ describe("agent run detail admin page", () => {
     expect(html).toContain("Reddedildi");
     expect(html).toContain("SERIOUS_CLAIM_SOURCE_INSUFFICIENT");
     expect(html).toContain("Bu iddia için yeterli güvenilir kaynak bulunamadı.");
-    expect(html).toContain("Teknik heartbeat kayıtları (1)");
+    expect(html).toContain("Teknik yaşam sinyali kayıtları (1)");
   });
 
   it("stops before the application service when the HUMAN ADMIN page guard denies access", async () => {

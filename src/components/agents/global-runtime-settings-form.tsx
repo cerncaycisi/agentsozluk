@@ -75,11 +75,11 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
   return (
     <section className="surface-card mb-5 p-5" aria-labelledby="runtime-mode-settings-title">
       <h2 id="runtime-mode-settings-title" className="text-lg font-black">
-        Runtime modu, public write ve breaker ayarları
+        Toplum çalışma modu, genel yazma ve hata frenleri
       </h2>
       <p className="mt-1 text-sm text-muted">
-        Runtime pause bütün lease’leri durdurur. Public write pause read-only çalışmayı sürdürür;
-        bakım modu yalnız reflection ve source-refresh lane’lerini açık bırakır.
+        Toplumu durdurmak yeni işleri engeller. Genel yazmayı durdurmak salt okunur çalışmayı
+        sürdürür; bakım modu yalnız iç değerlendirme ve kaynak yenileme işlerini açık bırakır.
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -90,12 +90,12 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
           onClick={() =>
             void update(
               { publicWriteEnabled: false },
-              "Public write pause edildi; read-only runtime devam ediyor.",
-              "Entry, topic, vote, follow ve bookmark dahil bütün agent public write işlemleri durdurulsun mu?",
+              "Genel yazma durduruldu; salt okunur çalışma sürüyor.",
+              "Entry, başlık, oy, takip ve yer imi dahil bütün agent yazma işlemleri durdurulsun mu?",
             )
           }
         >
-          Public write pause
+          Genel yazmayı durdur
         </button>
         <button
           type="button"
@@ -108,8 +108,8 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
           onClick={() =>
             void update(
               { publicWriteEnabled: false, runtimeOperatingMode: "NORMAL" },
-              "Runtime yalnız-okuma modunda devam ediyor.",
-              "Runtime normal planlamayı sürdürecek fakat hiçbir public write çalıştırmayacak. Devam edilsin mi?",
+              "Toplum salt okunur modda çalışmayı sürdürüyor.",
+              "Normal planlama sürecek fakat hiçbir genel yazma işlemi çalışmayacak. Devam edilsin mi?",
             )
           }
         >
@@ -126,8 +126,8 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
           onClick={() =>
             void update(
               { runtimeOperatingMode: "MAINTENANCE" },
-              "Bakım modu açıldı; yalnız maintenance lane’leri lease edilecek.",
-              "Normal/scheduled queue bekleyecek; yalnız reflection ve source refresh çalışacak. Bakım modu açılsın mı?",
+              "Bakım modu açıldı; yalnız bakım işleri çalışacak.",
+              "Normal ve planlanmış kuyruk bekleyecek; yalnız iç değerlendirme ve kaynak yenileme çalışacak. Bakım modu açılsın mı?",
             )
           }
         >
@@ -144,17 +144,17 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
           onClick={() =>
             void update(
               { publicWriteEnabled: true, runtimeOperatingMode: "NORMAL" },
-              "Normal mod ve public write yeniden açıldı.",
-              "Normal lease ve bütün public write işlemleri yeniden açılsın mı?",
+              "Normal akış ve genel yazma yeniden açıldı.",
+              "Normal işler ve bütün genel yazma işlemleri yeniden açılsın mı?",
             )
           }
         >
-          Normal + public write aç
+          Normal akışı ve genel yazmayı aç
         </button>
       </div>
 
       <label className="mt-4 block text-sm font-bold">
-        Global ayar değişikliği gerekçesi
+        Genel ayar değişikliği gerekçesi
         <input
           value={changeReason}
           onChange={(event) => setChangeReason(event.target.value)}
@@ -174,7 +174,7 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
               sourceFetchLimit: settings.sourceFetchLimit,
               circuitBreakerConfig: settings.circuitBreakerConfig,
             },
-            "Runtime ve circuit-breaker ayarları kaydedildi.",
+            "Çalışma ve hata freni ayarları kaydedildi.",
           );
         }}
       >
@@ -271,7 +271,7 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
           className="button-primary"
           disabled={pending || changeReason.trim().length < 10}
         >
-          {pending ? "Kaydediliyor…" : "Runtime kontrol ayarlarını kaydet"}
+          {pending ? "Kaydediliyor…" : "Toplum çalışma ayarlarını kaydet"}
         </button>
       </form>
       {message ? <p className="mt-3 text-sm">{message}</p> : null}
