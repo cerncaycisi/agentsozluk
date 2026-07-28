@@ -79,6 +79,10 @@ import {
   getModerationReport,
   getModerationReports,
 } from "@/modules/moderation/application/reports";
+import {
+  setUserModerationCapability,
+  userHasModerationCapability,
+} from "@/modules/moderation/application/capabilities";
 import { getAuditLogs, getModerationDashboard } from "@/modules/moderation/application/queries";
 import { enforceRateLimit } from "@/modules/rate-limit/application/rate-limit";
 import {
@@ -115,6 +119,12 @@ function actor(userId: string): ActorContext {
     requestId: randomUUID(),
     origin: "API",
   };
+}
+
+async function grantGammazCapability(userId: string, grantedById = userId) {
+  return integrationDatabase.userModerationCapability.create({
+    data: { userId, grantedById, capability: "GAMMAZ" },
+  });
 }
 
 async function createTopic(userId: string, title = "Gerçek PostgreSQL başlığı") {
@@ -2067,8 +2077,9 @@ describe("interactions with PostgreSQL", () => {
         createReport(integrationDatabase, actor(writer.id), {
           targetType: "ENTRY" as const,
           targetId: targetEntry.id,
-          reason: "OTHER" as const,
+          reason: "GAMMAZ_1_NOT_DICTIONARY_FUNCTION" as const,
           details: "Askıdaki kullanıcı bu bildirimi oluşturamamalıdır.",
+          evidence: {},
         }),
     ];
 
@@ -2555,6 +2566,72 @@ describe("search, feeds and profiles with PostgreSQL", () => {
 });
 
 describe("reports and moderation with PostgreSQL", () => {
+  it("grants and revokes GAMMAZ independently of role and admin count with immutable evidence", async () => {
+    const firstAdmin = await createUser("gammaz_admin_one");
+    const secondAdmin = await createUser("gammaz_admin_two");
+    await integrationDatabase.user.updateMany({
+      where: { id: { in: [firstAdmin.id, secondAdmin.id] } },
+      data: { role: "ADMIN" },
+    });
+    await expect(
+      setUserModerationCapability(
+        integrationDatabase,
+        actor(firstAdmin.id),
+        secondAdmin.id,
+        "GAMMAZ",
+        true,
+        { reason: "İlk aşamada başka bir admin hesabına doğrudan grant yapılamaz." },
+      ),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    await expect(
+      setUserModerationCapability(
+        integrationDatabase,
+        actor(firstAdmin.id),
+        firstAdmin.id,
+        "GAMMAZ",
+        true,
+        { reason: "İlk aşama anayasal gammaz yetkisi açıkça veriliyor." },
+      ),
+    ).resolves.toMatchObject({ userId: firstAdmin.id, capability: "GAMMAZ", active: true });
+    await expect(
+      userHasModerationCapability(integrationDatabase, firstAdmin.id, "GAMMAZ"),
+    ).resolves.toBe(true);
+    expect(
+      await integrationDatabase.user.count({ where: { role: "ADMIN", status: "ACTIVE" } }),
+    ).toBe(2);
+    await expect(
+      setUserModerationCapability(
+        integrationDatabase,
+        actor(firstAdmin.id),
+        firstAdmin.id,
+        "GAMMAZ",
+        false,
+        { reason: "Yetki geri alma ve audit akışı doğrulanıyor." },
+      ),
+    ).resolves.toMatchObject({ active: false });
+    await expect(
+      userHasModerationCapability(integrationDatabase, firstAdmin.id, "GAMMAZ"),
+    ).resolves.toBe(false);
+    expect(
+      await integrationDatabase.moderationAction.count({
+        where: { targetId: firstAdmin.id, actionType: { startsWith: "CAPABILITY_" } },
+      }),
+    ).toBe(2);
+    expect(
+      await integrationDatabase.auditLog.count({
+        where: {
+          entityType: "UserModerationCapability",
+          action: { in: ["user.capability_granted", "user.capability_revoked"] },
+        },
+      }),
+    ).toBe(2);
+    expect(
+      await integrationDatabase.outboxEvent.count({
+        where: { eventType: { in: ["user.capability_granted", "user.capability_revoked"] } },
+      }),
+    ).toBe(2);
+  });
+
   it("hides every agent control-plane audit record from moderators but keeps it for HUMAN ADMIN", async () => {
     const moderator = await createUser("agent_audit_moderator");
     const admin = await createUser("agent_audit_admin");
@@ -2627,66 +2704,149 @@ describe("reports and moderation with PostgreSQL", () => {
     );
   });
 
-  it("creates a report atomically and rejects own, duplicate and suspended reports", async () => {
+  it("creates a constitutional gammaz atomically and rejects missing capability, own, duplicate and suspended reports", async () => {
     const reporter = await createUser("reporter_one");
     const author = await createUser("reported_author");
     const created = await createTopic(author.id, "Bildirilecek Başlık");
+    const second = await createTopic(author.id, "Düzeltilecek Başlık");
+    await expect(
+      createReport(integrationDatabase, actor(reporter.id), {
+        targetType: "ENTRY",
+        targetId: created.entry.id,
+        reason: "GAMMAZ_1_NOT_DICTIONARY_FUNCTION",
+        details: "Entry sözlük işlevlerinden hiçbirini yerine getirmiyor.",
+        evidence: {},
+      }),
+    ).rejects.toMatchObject({ code: "GAMMAZ_CAPABILITY_REQUIRED", status: 403 });
+    await grantGammazCapability(reporter.id);
     const report = await createReport(integrationDatabase, actor(reporter.id), {
       targetType: "ENTRY",
       targetId: created.entry.id,
-      reason: "SPAM",
-      details: "Tekrarlanan tanıtım içeriği bulunuyor.",
+      reason: "GAMMAZ_1_NOT_DICTIONARY_FUNCTION",
+      details: "Entry sözlük işlevlerinden hiçbirini yerine getirmiyor.",
+      evidence: {},
     });
-    expect(report).toMatchObject({ reporterId: reporter.id, status: "OPEN" });
+    expect(report).toMatchObject({
+      reporterId: reporter.id,
+      status: "OPEN",
+      reason: "GAMMAZ_1_NOT_DICTIONARY_FUNCTION",
+      evidence: {},
+    });
     await createReport(integrationDatabase, actor(reporter.id), {
       targetType: "TOPIC",
-      targetId: created.topic.id,
-      reason: "OFF_TOPIC",
-    });
-    await createReport(integrationDatabase, actor(reporter.id), {
-      targetType: "USER",
-      targetId: author.id,
-      reason: "HARASSMENT",
+      targetId: second.topic.id,
+      reason: "TOPIC_CANONICALIZATION_REQUEST",
+      details: "Başlığın kanonik sözlük adresi daha sade kurulmalıdır.",
+      evidence: { suggestedTitle: "kanonik başlık" },
     });
     expect(
       await integrationDatabase.outboxEvent.count({ where: { eventType: "report.created" } }),
-    ).toBe(3);
+    ).toBe(2);
     expect(await integrationDatabase.auditLog.count({ where: { action: "report.created" } })).toBe(
-      3,
+      2,
     );
     await expect(
       createReport(integrationDatabase, actor(reporter.id), {
         targetType: "ENTRY",
         targetId: created.entry.id,
-        reason: "OFF_TOPIC",
+        reason: "GAMMAZ_4_PHYSICAL_ENTRY_REFERENCE",
+        details: "Entry başlıktaki başka entry’lere fiziksel olarak referans veriyor.",
+        evidence: {},
       }),
     ).rejects.toMatchObject({ code: "REPORT_ALREADY_OPEN", status: 409 });
+    await grantGammazCapability(author.id);
     await expect(
       createReport(integrationDatabase, actor(author.id), {
         targetType: "TOPIC",
         targetId: created.topic.id,
-        reason: "OTHER",
+        reason: "TOPIC_CANONICALIZATION_REQUEST",
         details: "Kendi başlığını bildirmeyi deniyor.",
+        evidence: { suggestedTitle: "başka başlık" },
       }),
     ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    await integrationDatabase.entry.update({
+      where: { id: second.entry.id },
+      data: { status: "HIDDEN", hiddenAt: new Date() },
+    });
     await expect(
       createReport(integrationDatabase, actor(reporter.id), {
-        targetType: "USER",
-        targetId: reporter.id,
-        reason: "HARASSMENT",
+        targetType: "ENTRY",
+        targetId: second.entry.id,
+        reason: "GAMMAZ_5_DICTIONARY_META",
+        details: "Zaten gizlenmiş entry için yeni gammaz oluşturmayı deniyor.",
+        evidence: {},
       }),
-    ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    ).rejects.toMatchObject({ code: "REPORT_NOT_FOUND", status: 404 });
     await integrationDatabase.user.update({
       where: { id: reporter.id },
       data: { status: "SUSPENDED" },
     });
     await expect(
       createReport(integrationDatabase, actor(reporter.id), {
-        targetType: "USER",
-        targetId: author.id,
-        reason: "HARASSMENT",
+        targetType: "ENTRY",
+        targetId: second.entry.id,
+        reason: "GAMMAZ_5_DICTIONARY_META",
+        details: "Askıdaki hesap yeni gammaz oluşturmayı deniyor.",
+        evidence: {},
       }),
     ).rejects.toMatchObject({ code: "ACCOUNT_SUSPENDED", status: 403 });
+  });
+
+  it("validates entry evidence identity, topic and lifecycle before persisting a gammaz", async () => {
+    const reporter = await createUser("gammaz_evidence_reporter");
+    const author = await createUser("gammaz_evidence_author");
+    await grantGammazCapability(reporter.id);
+    const target = await createTopic(author.id, "Gammaz Delil Başlığı");
+    const duplicate = await createEntry(integrationDatabase, actor(author.id), target.topic.id, {
+      body: "Bu entry kopya karşılaştırması için aynı başlıkta aktif kalır.",
+    });
+    const otherTopic = await createTopic(author.id, "Başka Delil Başlığı");
+
+    await expect(
+      createReport(integrationDatabase, actor(reporter.id), {
+        targetType: "ENTRY",
+        targetId: target.entry.id,
+        reason: "GAMMAZ_8_DUPLICATE_ENTRY",
+        details: "Önceki aktif entry ile aynı anlatımı tekrar ediyor.",
+        evidence: { duplicateEntryPublicId: otherTopic.entry.publicId },
+      }),
+    ).rejects.toMatchObject({ code: "GAMMAZ_EVIDENCE_TARGET_MISMATCH", status: 422 });
+
+    const created = await createReport(integrationDatabase, actor(reporter.id), {
+      targetType: "ENTRY",
+      targetId: target.entry.id,
+      reason: "GAMMAZ_8_DUPLICATE_ENTRY",
+      details: "Önceki aktif entry ile aynı anlatımı tekrar ediyor.",
+      evidence: { duplicateEntryPublicId: duplicate.publicId },
+    });
+    expect(created.evidence).toMatchObject({
+      duplicateEntryPublicId: duplicate.publicId,
+      evidenceEntryId: duplicate.id,
+      evidenceEntryStatus: "ACTIVE",
+    });
+
+    await integrationDatabase.report.update({
+      where: { id: created.id },
+      data: {
+        status: "REJECTED",
+        handledById: reporter.id,
+        handledAt: new Date(),
+        resolutionNote: "Yeni lifecycle denemesi için açık rapor kapatılıyor.",
+      },
+    });
+    await integrationDatabase.entry.update({
+      where: { id: duplicate.id },
+      data: { status: "HIDDEN", hiddenAt: new Date() },
+    });
+    await expect(
+      createReport(integrationDatabase, actor(reporter.id), {
+        targetType: "ENTRY",
+        targetId: target.entry.id,
+        reason: "GAMMAZ_8_DUPLICATE_ENTRY",
+        details: "Gizlenmiş entry aktif kopya delili olarak kullanılamaz.",
+        evidence: { duplicateEntryPublicId: duplicate.publicId },
+      }),
+    ).rejects.toMatchObject({ code: "GAMMAZ_EVIDENCE_NOT_ACTIVE", status: 422 });
   });
 
   it("lists, inspects and resolves reports with immutable history and dashboard counts", async () => {
@@ -2697,12 +2857,14 @@ describe("reports and moderation with PostgreSQL", () => {
       where: { id: moderator.id },
       data: { role: "MODERATOR" },
     });
+    await grantGammazCapability(reporter.id, moderator.id);
     const created = await createTopic(author.id, "Moderasyon Bildirimi");
     const report = await createReport(integrationDatabase, actor(reporter.id), {
       targetType: "TOPIC",
       targetId: created.topic.id,
-      reason: "OFF_TOPIC",
+      reason: "TOPIC_CANONICALIZATION_REQUEST",
       details: "Başlık kategori dışında değerlendiriliyor.",
+      evidence: { suggestedTitle: "moderasyon bildirimi" },
     });
     const moderatorActor = actor(moderator.id);
     const [reports, total] = await getModerationReports(integrationDatabase, moderatorActor, {
@@ -2725,7 +2887,9 @@ describe("reports and moderation with PostgreSQL", () => {
     const rejectedReport = await createReport(integrationDatabase, actor(reporter.id), {
       targetType: "TOPIC",
       targetId: created.topic.id,
-      reason: "SPAM",
+      reason: "GAMMAZ_7_LEGAL_OR_COMMERCIAL_RISK",
+      details: "Başlıkta incelenmesi gereken olası bir ticari risk bulunuyor.",
+      evidence: { legalRiskCategory: "COMMERCIAL_RISK" },
     });
     await expect(
       decideReport(integrationDatabase, moderatorActor, rejectedReport.id, "REJECTED", {
@@ -2767,11 +2931,14 @@ describe("reports and moderation with PostgreSQL", () => {
       where: { id: { in: [resolver.id, rejecter.id] } },
       data: { role: "MODERATOR" },
     });
+    await grantGammazCapability(reporter.id, resolver.id);
     const created = await createTopic(author.id, "Eşzamanlı Bildirim Kararı");
     const report = await createReport(integrationDatabase, actor(reporter.id), {
       targetType: "TOPIC",
       targetId: created.topic.id,
-      reason: "OFF_TOPIC",
+      reason: "TOPIC_CANONICALIZATION_REQUEST",
+      details: "Başlık için daha açık bir kanonik adres öneriliyor.",
+      evidence: { suggestedTitle: "eşzamanlı bildirim kararı" },
     });
 
     let signalRowLocked = () => {};
@@ -2864,6 +3031,7 @@ describe("reports and moderation with PostgreSQL", () => {
       where: { id: moderator.id },
       data: { role: "MODERATOR" },
     });
+    await grantGammazCapability(reporter.id, moderator.id);
     const moderatorActor = actor(moderator.id);
     const source = await createTopic(author.id, "Kaynak Moderasyon Başlığı");
     const target = await createTopic(author.id, "Hedef Moderasyon Başlığı");
@@ -2871,7 +3039,9 @@ describe("reports and moderation with PostgreSQL", () => {
     const report = await createReport(integrationDatabase, actor(reporter.id), {
       targetType: "TOPIC",
       targetId: source.topic.id,
-      reason: "OFF_TOPIC",
+      reason: "TOPIC_CANONICALIZATION_REQUEST",
+      details: "Başlık başka bir kanonik adrese taşınmalıdır.",
+      evidence: { suggestedTitle: "hedef moderasyon başlığı" },
     });
 
     await setEntryVisibility(integrationDatabase, moderatorActor, source.entry.id, true, reason);

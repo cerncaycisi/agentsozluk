@@ -2943,3 +2943,65 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   `--from must be ISO 8601 with an explicit UTC offset.` GNU `date --date ... --iso-8601=seconds`
   normalized the same safe container start timestamp and the rerun passed. Do not pass Docker's
   raw nanosecond `StartedAt` value directly to the report CLI.
+
+## 2026-07-28 — A3 Gammaz capability and constitutional taxonomy local candidate
+
+- Scope: replace unrestricted generic report writes with an independently granted `GAMMAZ`
+  capability, exact active reasons `1,2,3,4,5,7,8,9`, reason-specific structured evidence,
+  unauthorized/own-content guards, audited grant/revoke and readable historical reasons. The
+  additive migration does not grant a production account and does not assume exactly one human
+  admin.
+- Final local evidence: all 19 migrations applied from scratch; focused PostgreSQL control-plane
+  integration passed `64/64`; all 144 unit files / 711 tests passed; the affected
+  production-server Playwright suite passed `29/29`; OpenAPI validated 123 runtime operations;
+  formatting, ESLint, strict typecheck and the 68-page production build passed. The disposable
+  database was removed and the closing catalog count was zero. No A3 production connection,
+  migration, capability grant or deploy occurred.
+- Environment/test corrections and do-not-repeat notes:
+  1. The first integration invocation omitted `TEST_DATABASE_URL` and stopped before collection
+     with `Integration tests requires TEST_DATABASE_URL`. Use a unique disposable database whose
+     name ends in `_test`; never infer a product failure from this guard.
+  2. A successful integration wrapper used zsh's reserved read-only variable `status`, so the
+     wrapper ended with `zsh:10: read-only variable: status` after the tests. The exact scratch
+     database was then dropped manually and absence count verified as zero. Use
+     `test_exit_code`, never `status`, in zsh cleanup wrappers.
+  3. The first full unit pass found one architecture failure because application code imported
+     Prisma persistence types. Move JSON casts and database-specific types into the repository
+     layer; the corrected full run passed `711/711`.
+  4. The OpenAPI validator first exposed missing expected request-body/idempotency metadata for the
+     two new capability endpoints. The validator allowlist and the documented 413 contract were
+     updated; the exact command is `pnpm openapi:validate`, not the nonexistent
+     `pnpm openapi:check`.
+  5. The first Playwright launch let global setup inherit Node 24.14 and pnpm 11.9, returning
+     `ERR_PNPM_UNSUPPORTED_ENGINE` before product assertions. Launch Playwright with the Homebrew
+     Node 22 binary and pin `npm_execpath` to the cached Corepack pnpm 10 CLI.
+  6. The first combined browser run passed `28/29`; one row locator matched two legitimate
+     same-reason Gammaz records and failed Playwright strict mode. Capture the created report ID
+     from the POST response and target its exact moderation URL. The repeated combined run then
+     passed `29/29`; do not select mutable queue records by reason text alone.
+  7. The final clean-database rerun applied `19/19` migrations and installed all six Gammaz report
+     constraints, but the wrapper's closing catalog query used unsupported `psql` variable syntax
+     and stopped with `syntax error at or near ":"` after the exact scratch database had already
+     been dropped. A literal allowlisted catalog query then proved the database count was zero.
+     Keep non-secret generated database names in a bounded shell variable and use a separately
+     escaped literal query for this local PostgreSQL client.
+  8. The first final production-build rerun compiled and typechecked the application but stopped
+     while prerendering `/kurallar` because the direct shell omitted the public CI-only `APP_URL`
+     and `APP_SECRET` placeholders. The scratch database was still removed. The corrected rerun
+     used the values already declared in `.github/workflows/ci.yml`, generated all 68 pages and
+     again removed its scratch database with closing count zero. Do not launch a direct local
+     `next build` outside the workflow environment without the repository's documented public
+     build-only environment contract.
+  9. A final browser rerun first omitted `TEST_DATABASE_URL` and stopped at the existing safety
+     guard. The corrected command then used a unique `_test` database but mistakenly left
+     Playwright in development-server mode despite the ledger's CI-parity rule. It passed `21/21`
+     completed tests before the dev server stopped answering `/api/health`; `E2E-022` timed out
+     during browser-context cleanup and the remaining tests did not run. The scratch database was
+     manually dropped and verified absent. This is an environment-runner failure, not product
+     evidence. Use `E2E_PRODUCTION_SERVER=true` with the already successful production build and
+     an explicit allowlisted `TEST_DATABASE_URL`. The first production-mode retry then stopped
+     before tests because the preceding dev run had replaced `.next` and left no standalone
+     `server.js`; that scratch database was also removed. The final atomic wrapper rebuilt
+     production immediately before starting production-server Playwright, passed `29/29`, and
+     removed its scratch database with closing count zero. Never run dev-mode E2E between the
+     production build and production-server E2E.

@@ -1,5 +1,28 @@
 # Milestone status
 
+## First-stage constitutional Gammaz — local candidate 2026-07-28 Europe/Istanbul
+
+The A3 candidate replaces unrestricted generic report creation with a separately granted,
+auditable `GAMMAZ` capability. New Gammaz writes target only an entry or topic, use the active
+constitutional reasons `1,2,3,4,5,7,8,9` or the separate topic-canonicalization request, and carry
+only the evidence required by that reason. Removed reason `6` and legacy generic report reasons
+remain readable for historical moderation but are rejected on new writes.
+
+Authorization is enforced independently in UI and application code. A reporter must be ACTIVE and
+hold an active Gammaz grant, cannot Gammaz their own content, and cannot use a duplicate or deleted
+reference from another topic or the wrong lifecycle state. Grant/revoke is audited, creates safe
+outbox receipts and contains no hardcoded production account or exactly-one-admin assumption. The
+first-stage grant flow permits an ACTIVE HUMAN ADMIN to select their own account; production will
+not receive a grant until the separately approved authenticated smoke.
+
+Measured local evidence: all 19 migrations applied from scratch; the complete focused control-plane
+integration suite passed `64/64`; all 144 unit files / 711 tests passed; the affected
+production-server Chromium/mobile suite passed `29/29`; OpenAPI validated 123 runtime operations;
+formatting, ESLint, strict typecheck and the 68-page production build passed. The disposable
+PostgreSQL database was removed and the closing catalog count was zero. Production remains exact
+SHA `b174fa418ae511b68fbaee92c5a63ebf54920ade`; no A3 migration, capability grant or production
+change has occurred.
+
 ## Natural-flow boundary and topic-repair correction — production-closed 2026-07-28 Europe/Istanbul
 
 Exact SHA `b174fa418ae511b68fbaee92c5a63ebf54920ade` passed complete CI run

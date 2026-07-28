@@ -10,10 +10,11 @@ import { pageUuidFrom } from "@/lib/http/page-params";
 import { requireModerationPage } from "@/lib/auth/server-session";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 import { getModerationReport } from "@/modules/moderation/application/reports";
+import { gammazEvidenceRows, gammazReasonLabel } from "@/modules/moderation/domain/gammaz";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "Bildirim detayı",
+  title: "Gammaz detayı",
   robots: { index: false, follow: false },
 };
 
@@ -33,6 +34,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
     throw error;
   }
   const { report } = data;
+  const evidenceRows = gammazEvidenceRows(report.evidence);
   const targetStatus = data.target?.status;
   const targetEndpoint =
     report.targetType === "ENTRY"
@@ -42,24 +44,24 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
         : `/api/v1/moderation/users/${report.targetId}/${targetStatus === "SUSPENDED" ? "unsuspend" : "suspend"}`;
   return (
     <ModerationLayout
-      title="Bildirim detayı"
-      description={`${report.targetType} hedefi için ${report.reason} bildirimi.`}
+      title="Gammaz detayı"
+      description={`${report.targetType} hedefi için ${gammazReasonLabel(report.reason)}.`}
     >
       <div className="grid gap-5">
         <section className="surface-card p-6">
-          <h2 className="text-xl font-black">Bildirim</h2>
+          <h2 className="text-xl font-black">Gammaz</h2>
           <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-muted">Durum</dt>
               <dd className="font-bold">{report.status}</dd>
             </div>
             <div>
-              <dt className="text-muted">Bildiren</dt>
+              <dt className="text-muted">Gammazlayan</dt>
               <dd className="font-bold">@{report.reporter.username}</dd>
             </div>
             <div>
               <dt className="text-muted">Gerekçe</dt>
-              <dd className="font-bold">{report.reason}</dd>
+              <dd className="font-bold">{gammazReasonLabel(report.reason)}</dd>
             </div>
             <div>
               <dt className="text-muted">Tarih</dt>
@@ -68,6 +70,16 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
           </dl>
           {report.details ? (
             <p className="mt-5 whitespace-pre-wrap rounded-xl bg-page p-4">{report.details}</p>
+          ) : null}
+          {evidenceRows.length > 0 ? (
+            <dl className="mt-5 grid gap-3 rounded-xl bg-page p-4 text-sm sm:grid-cols-2">
+              {evidenceRows.map((row) => (
+                <div key={row.label}>
+                  <dt className="text-muted">{row.label}</dt>
+                  <dd className="font-bold">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
           ) : null}
         </section>
         <section className="surface-card p-6">
@@ -82,16 +94,16 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
             <div className="mt-5 flex flex-wrap gap-3">
               <ConfirmAction
                 endpoint={`/api/v1/moderation/reports/${report.id}/resolve`}
-                label="Çöz"
-                title="Bildirimi çöz"
-                description="İncelemeyi tamamlayıp bildirimi çözüldü olarak işaretleyin."
+                label="Gerekçeyi kabul et"
+                title="Gammaz gerekçesini kabul et"
+                description="Gammaz gerekçesinin doğru olduğunu kaydedin. İçerik işlemi ayrıca uygulanır."
                 fieldName="resolutionNote"
               />
               <ConfirmAction
                 endpoint={`/api/v1/moderation/reports/${report.id}/reject`}
-                label="Reddet"
-                title="Bildirimi reddet"
-                description="Bildirimin neden reddedildiğini kaydedin."
+                label="Gerekçeyi reddet"
+                title="Gammaz gerekçesini reddet"
+                description="Seçilen gerekçenin neden doğrulanmadığını kaydedin."
                 fieldName="resolutionNote"
                 destructive
               />

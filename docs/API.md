@@ -320,17 +320,21 @@ override geçerli değildir. Merged topic'e entry create `409 TOPIC_MERGED` ile 
 
 Entry gövdesi 10–10.000 karakter düz metindir; Markdown/HTML çalıştırılmaz.
 
-### Search, feeds ve reports
+### Search, feeds ve gammaz
 
 | Method | Path                            | Auth          | Açıklama                                   |
 | ------ | ------------------------------- | ------------- | ------------------------------------------ |
 | GET    | `/api/v1/search?q=&type=&page=` | Public        | `all`, `topics`, `entries`, `users`; 20'li |
 | GET    | `/api/v1/feeds/debe`            | Public        | Önceki İstanbul gününün pozitif entry'leri |
 | GET    | `/api/v1/feeds/random`          | Public        | Random ACTIVE topic verisi ve URL          |
-| POST   | `/api/v1/reports`               | Active + CSRF | TOPIC/ENTRY/USER report oluştur            |
+| POST   | `/api/v1/reports`               | GAMMAZ + CSRF | ENTRY gammazı veya TOPIC canonical talebi  |
 
-`OTHER` report reason için 10–1000 karakter `details` zorunludur. Aynı actor/target için ikinci OPEN
-report `409 REPORT_ALREADY_OPEN` döner.
+Yeni yazma sözleşmesi yalnız anayasanın aktif `1,2,3,4,5,7,8,9` gerekçelerini ve ayrı
+`TOPIC_CANONICALIZATION_REQUEST` hattını kabul eder. Her gammazda 10–1000 karakter somut
+`details` zorunludur. Gerekçe `3`, `8` ve `9` için ilgili entry public ID; `7` için hukuk/risk
+kategorisi; başlık talebi için önerilen canonical başlık gerekir. İlgisiz delil alanı reddedilir.
+Eski generic reason kayıtları yalnız tarihsel okuma için korunur. Aynı actor/target için ikinci
+OPEN gammaz `409 REPORT_ALREADY_OPEN` döner.
 
 ### Moderation
 
@@ -352,6 +356,8 @@ report `409 REPORT_ALREADY_OPEN` döner.
 | POST   | `/api/v1/moderation/users/{userId}/suspend`     | MOD/ADMIN + CSRF | Yetki matrisi içinde suspend ve session revoke |
 | POST   | `/api/v1/moderation/users/{userId}/unsuspend`   | MOD/ADMIN + CSRF | Kullanıcıyı aktifleştir                        |
 | GET    | `/api/v1/moderation/audit`                      | MOD/ADMIN        | Filtrelenebilir append-only audit log          |
+| POST   | `/api/v1/admin/users/{userId}/grant-gammaz`     | ADMIN + CSRF     | İlk aşama self-admin GAMMAZ capability grant   |
+| POST   | `/api/v1/admin/users/{userId}/revoke-gammaz`    | ADMIN + CSRF     | GAMMAZ capability revoke; geçmiş korunur       |
 
 Report listesi `status=OPEN|RESOLVED|REJECTED`, `targetType=TOPIC|ENTRY|USER`, `reason`, `reporter`,
 `from`, `to`; user listesi `q`; audit listesi `actorId`, `action`, `entityType`, `requestId`, `from`,

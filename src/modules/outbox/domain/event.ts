@@ -19,6 +19,8 @@ export const OUTBOX_EVENT_TYPES = [
   "user.unsuspended",
   "user.role_changed",
   "user.writer_approved",
+  "user.capability_granted",
+  "user.capability_revoked",
   "user.deactivated",
   "agent.created",
   "agent.updated",

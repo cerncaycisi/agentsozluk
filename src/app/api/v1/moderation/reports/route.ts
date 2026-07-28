@@ -5,6 +5,7 @@ import { runApi, successList } from "@/lib/http/api";
 import { paginationFrom } from "@/lib/http/pagination";
 import { parseDate } from "@/lib/http/request";
 import { actorFromSession } from "@/modules/auth/domain/actor";
+import { ALL_REPORT_REASONS } from "@/modules/moderation/domain/gammaz";
 import { getModerationReports } from "@/modules/moderation/application/reports";
 import type { ReportReason, ReportTargetType } from "@/modules/moderation/validation/schemas";
 
@@ -14,16 +15,7 @@ type ReportStatus = "OPEN" | "RESOLVED" | "REJECTED";
 
 const statuses = new Set<ReportStatus>(["OPEN", "RESOLVED", "REJECTED"]);
 const targetTypes = new Set<ReportTargetType>(["TOPIC", "ENTRY", "USER"]);
-const reasons = new Set<ReportReason>([
-  "SPAM",
-  "HARASSMENT",
-  "HATE",
-  "ILLEGAL_CONTENT",
-  "PERSONAL_DATA",
-  "COPYRIGHT",
-  "OFF_TOPIC",
-  "OTHER",
-]);
+const reasons = new Set<ReportReason>(ALL_REPORT_REASONS);
 
 export function GET(request: NextRequest) {
   return runApi(request, async (context) => {

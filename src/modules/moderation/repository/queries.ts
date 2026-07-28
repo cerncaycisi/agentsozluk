@@ -3,6 +3,7 @@ import {
   AGENT_CONTROL_PLANE_AUDIT_ACTION_PREFIX,
   AGENT_CONTROL_PLANE_AUDIT_ENTITY_PREFIX,
 } from "@/modules/moderation/domain/audit-visibility";
+import { GAMMAZ_REASONS } from "@/modules/moderation/domain/gammaz";
 
 export async function moderationDashboardCounts(
   transaction: Prisma.TransactionClient,
@@ -44,6 +45,18 @@ export function listModerationUsers(
         role: true,
         status: true,
         writerApproved: true,
+        moderationCapabilities: {
+          where: { revokedAt: null },
+          select: { capability: true },
+          orderBy: { capability: "asc" },
+        },
+        _count: {
+          select: {
+            reportsCreated: {
+              where: { status: "REJECTED", reason: { in: [...GAMMAZ_REASONS] } },
+            },
+          },
+        },
         createdAt: true,
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],

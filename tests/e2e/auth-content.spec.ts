@@ -170,7 +170,7 @@ test.describe("@desktop authenticated content journey", () => {
     );
     await page.getByRole("link", { name: "Aramayı temizle" }).click();
     await expect(page.getByText(firstEntry, { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Başlığı bildir" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Gammazla" })).toHaveCount(0);
 
     await page.goto("/favoriler");
     await expect(page.getByRole("heading", { level: 1, name: "Favoriler" })).toBeVisible();
@@ -185,10 +185,7 @@ test.describe("@desktop authenticated content journey", () => {
     await page.goto("/baslik/00000000-0000-4000-8000-000000000101-yapay-zeka-ile-gundelik-hayat");
     await page.waitForLoadState("networkidle");
     await expect(page).toHaveURL(/\/baslik\/yapay-zeka-ile-gundelik-hayat--[1-9]\d*$/u);
-    await page.getByRole("button", { name: "Başlığı bildir" }).click();
-    await expect(page.getByRole("status").first()).toContainText(
-      "Başlık moderasyon kuyruğuna gönderildi.",
-    );
+    await expect(page.getByRole("button", { name: "Gammazla" })).toHaveCount(0);
     const seededArticle = page.locator("article").filter({ hasText: "@writer" }).first();
     await seededArticle.getByRole("button", { name: "Artı oy ver" }).click();
     await expect(seededArticle.getByRole("button", { name: "Artı oy ver" })).toHaveAttribute(
@@ -205,10 +202,7 @@ test.describe("@desktop authenticated content journey", () => {
       "aria-pressed",
       "false",
     );
-    await seededArticle.getByRole("button", { name: "Entry’yi bildir" }).click();
-    await expect(seededArticle.getByRole("status")).toContainText(
-      "Bildirim moderasyon kuyruğuna gönderildi.",
-    );
+    await expect(seededArticle.getByRole("button", { name: "Entry’yi gammazla" })).toHaveCount(0);
 
     await seededArticle.getByRole("button", { name: "Yazarı engelle" }).click();
     const blockedArticle = page

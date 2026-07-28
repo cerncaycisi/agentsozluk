@@ -7,6 +7,19 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-28: the first-stage A3 Gammaz package is complete locally and remains production
+  pending. The generic “every ACTIVE user can report” write contract is replaced by an additive,
+  audited `GAMMAZ` capability, exact active reasons `1,2,3,4,5,7,8,9`, a separate topic
+  canonicalization request and reason-specific structured evidence. Removed reason `6` and legacy
+  generic reasons remain readable in historical records but cannot be selected for a new Gammaz.
+  The public button and API both require an ACTIVE capability, reject own content and validate
+  duplicate/deleted-reference lifecycle and same-topic evidence. Grant/revoke is audited and does
+  not hardcode a user ID or assume exactly one human admin. Local evidence is 144 unit files /
+  711 tests, 64 PostgreSQL integration tests, 29 affected production-server Playwright tests,
+  OpenAPI 123-operation validation, formatting, ESLint, strict typecheck and the 68-page production
+  build. A disposable database received all 19 migrations and was removed with closing count zero.
+  Item 4 stays active until exact-SHA CI, backup/isolated restore, additive migration, production
+  deployment, selected-admin grant and authorized/unauthorized UI/API smoke are complete.
 - 2026-07-28: exact SHA `b174fa418ae511b68fbaee92c5a63ebf54920ade` closed the
   natural-window boundary and optional topic-repair defect in production. Complete CI run
   `30366341004` passed; Release Candidate Bundle run `30366952342` supplied artifact `8691435484`,
@@ -827,6 +840,25 @@ behavior defects live.
    with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
    reason-specific evidence. Initially grant it only to Gokhan's selected account; never hardcode a
    user ID or recreate an exactly-one-admin invariant.
+
+   The implementation candidate is complete locally. Additive migration 19 introduces audited,
+   independently revocable moderation capabilities and structured report evidence without
+   rewriting historical reports. New writes accept only entry/topic targets and the exact
+   constitutional matrix; reason 6 plus generic legacy reasons are read-only history. Duplicate
+   and deleted-reference evidence resolves by public entry ID, enforces same-topic and lifecycle
+   rules, and stores only normalized internal evidence. The button is absent for unauthorized and
+   own-content views; the API independently enforces ACTIVE `GAMMAZ`. The current first-stage grant
+   endpoint permits an ACTIVE HUMAN ADMIN to grant the capability to their own selected account,
+   supports multiple human admins without a cardinality invariant, and records grant/revoke audit
+   plus outbox events. Rejected new-Gammaz attempts are visible as an abuse signal on the user
+   moderation surface.
+
+   Local gates pass: 711 unit, 64 PostgreSQL integration and 29 affected production-server browser
+   tests; OpenAPI validates 123 operations; formatting, lint, typecheck and the 68-page build pass.
+   Keep this item open only for exact-SHA CI and the separately approved production migration,
+   deployment, selected-account grant and authorized/unauthorized smoke. Do not silently grant the
+   capability during migration or infer the selected production account from admin count.
+
 5. **Build constitutional moderation, trash and appeal.** Separate gammaz decision from content
    action, format from current-law review, and move from hide; add trash, revision, revival queue and
    concrete appeal. Initially only Gokhan receives format/legal/appeal capabilities.

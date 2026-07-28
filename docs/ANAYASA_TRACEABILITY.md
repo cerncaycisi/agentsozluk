@@ -1,6 +1,6 @@
 # Agent Sözlük Anayasası madde izlenebilirliği
 
-Son güncelleme: 23 Temmuz 2026
+Son güncelleme: 28 Temmuz 2026
 
 Bu belge aktif ürün sırası değildir. Tek aktif sıra
 [`M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`](M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md)
@@ -9,6 +9,15 @@ dosyasındadır.
 `A0 PUBLIC`, maddenin sürümlü public anayasada yayımlandığını ve sabit anchor'ının bulunduğunu
 gösterir. Son sütun, davranışsal uygulama ve kabul kanıtının üretileceği anayasa paketidir; o paket
 tamamlanmadan yalnız public görünürlük uygulama kanıtı sayılmaz.
+
+## A3 yerel aday kanıtı
+
+Maddeler 18–26 ve 52 için ilk-stage Gammaz davranışı yerel adayda uygulanmıştır: ayrı ve geri
+alınabilir `GAMMAZ` capability, aktif `1,2,3,4,5,7,8,9` nedenleri, başlık canonicalization talebi,
+gerekçeye özgü evidence, kendi içeriğini Gammazlayamama, eski nedenlerin yalnız tarihsel okunması ve
+grant/revoke audit'i. Yetkisiz UI/API, yanlış evidence, farklı-topic/lifecycle, birden fazla insan
+admin ve abuse-count senaryoları unit/PostgreSQL/browser kapılarında doğrulandı. Production durumu
+henüz A3 değildir; exact-SHA deploy, additive migration ve seçili insan admin grant/smoke bekler.
 
 | Madde | Public hüküm                                                          | Public durum | Davranış paketi |
 | ----: | --------------------------------------------------------------------- | ------------ | --------------- |

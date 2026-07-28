@@ -9,9 +9,10 @@ import { requireModerationPage } from "@/lib/auth/server-session";
 import { pageFrom } from "@/lib/http/pagination";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 import { getModerationReports } from "@/modules/moderation/application/reports";
+import { gammazReasonLabel } from "@/modules/moderation/domain/gammaz";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Bildirimler", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Gammazlar", robots: { index: false, follow: false } };
 
 export default async function ReportsPage({
   searchParams,
@@ -32,12 +33,12 @@ export default async function ReportsPage({
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   return (
     <ModerationLayout
-      title="Bildirimler"
-      description="Açık ve sonuçlanmış kullanıcı bildirimlerini inceleyin."
+      title="Gammazlar"
+      description="Anayasal gammazları ve tarihsel bildirim kayıtlarını inceleyin."
     >
       <form className="mb-5 flex gap-3">
         <label htmlFor="report-status" className="sr-only">
-          Bildirim durumu
+          Gammaz durumu
         </label>
         <select
           id="report-status"
@@ -59,7 +60,7 @@ export default async function ReportsPage({
             <tr className="border-b">
               <th className="p-4">Tür</th>
               <th className="p-4">Gerekçe</th>
-              <th className="p-4">Bildiren</th>
+              <th className="p-4">Gammazlayan</th>
               <th className="p-4">Tarih</th>
               <th className="p-4">İşlem</th>
             </tr>
@@ -68,7 +69,7 @@ export default async function ReportsPage({
             {reports.map((report) => (
               <tr key={report.id} className="border-b last:border-0">
                 <td className="p-4">{report.targetType}</td>
-                <td className="p-4">{report.reason}</td>
+                <td className="p-4">{gammazReasonLabel(report.reason)}</td>
                 <td className="p-4">@{report.reporter.username}</td>
                 <td className="p-4">{formatIstanbulDate(report.createdAt)}</td>
                 <td className="p-4">
@@ -90,7 +91,7 @@ export default async function ReportsPage({
             <p className="text-accent-contrast text-xs font-bold">
               {report.targetType} · {report.status}
             </p>
-            <h2 className="mt-2 font-bold">{report.reason}</h2>
+            <h2 className="mt-2 font-bold">{gammazReasonLabel(report.reason)}</h2>
             <p className="mt-2 text-sm text-muted">
               @{report.reporter.username} · {formatIstanbulDate(report.createdAt)}
             </p>
@@ -104,7 +105,7 @@ export default async function ReportsPage({
         ))}
       </div>
       {reports.length === 0 ? (
-        <p className="surface-card p-6 text-muted">Bu filtrede bildirim yok.</p>
+        <p className="surface-card p-6 text-muted">Bu filtrede gammaz yok.</p>
       ) : null}
       <PaginationLinks
         page={page}

@@ -258,14 +258,36 @@ describe("idempotent write preflight", () => {
   it("charges every report replay and returns 429 after the tenth accepted request", async () => {
     const reporter = await createUser("report_replay_limited_writer");
     const target = await createUser("report_replay_target");
+    await integrationDatabase.userModerationCapability.create({
+      data: { userId: reporter.id, grantedById: reporter.id, capability: "GAMMAZ" },
+    });
+    const topic = await integrationDatabase.topic.create({
+      data: {
+        title: "Gammaz replay rate sınırı",
+        normalizedTitle: "gammaz replay rate siniri",
+        slug: "gammaz-replay-rate-siniri",
+        createdById: target.id,
+      },
+    });
+    const entry = await integrationDatabase.entry.create({
+      data: {
+        topicId: topic.id,
+        authorId: target.id,
+        body: "Gammaz idempotency tekrarında yalnız bir rapor oluşmasını sağlayan hedef entry.",
+        normalizedBody:
+          "gammaz idempotency tekrarında yalnız bir rapor oluşmasını sağlayan hedef entry.",
+        origin: "WEB",
+      },
+    });
     const session = await createPersistedSession(reporter.id);
     const idempotencyKey = randomUUID();
     const request = () =>
       writeRequest("/api/v1/reports", session, idempotencyKey, {
-        targetType: "USER",
-        targetId: target.id,
-        reason: "HARASSMENT",
+        targetType: "ENTRY",
+        targetId: entry.id,
+        reason: "GAMMAZ_1_NOT_DICTIONARY_FUNCTION",
         details: "Replay rate limit doğrulaması için açıklama.",
+        evidence: {},
       });
 
     expect((await createReportRoute(request())).status).toBe(201);

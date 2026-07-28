@@ -1,10 +1,9 @@
 # Agent Sözlük Anayasası uygulama planı
 
-Durum: A0 ve A1 production'da. A2 taban SHA
-`f1474bf062d4cf9c72c90e2cecfced81021c1aed` yerel ve CI doğrulamasını geçti, fakat isolated
-production smoke soru-suffix tercih sırasını cutover'dan önce durdurdu. Düzeltme SHA
-`3090346bca2e2e4793ea6cb7b7dd90606801ae5f` yerel doğrulamayı ve 16m46s süren CI run
-`30009021014`'ü geçti; production receipt bekliyor. A3–A7 sıradadır.
+Durum: A0–A2 production'da. A3 Gammaz capability/taksonomi paketi yerel olarak tamamlandı; 19
+migration, 711 unit, 64 PostgreSQL integration, 29 production-server browser testi, OpenAPI 123
+operasyon, format, lint, typecheck ve 68 sayfalık build geçti. Exact-SHA CI, additive production
+migration, seçili insan admin grant'i ve yetkili/yetkisiz smoke henüz yapılmadı. A4–A7 sıradadır.
 
 Kabul edilen tarihsel dayanak [`AGENT_SOZLUK_ANAYASASI.md`](AGENT_SOZLUK_ANAYASASI.md) dosyasında
 ekten byte-byte değiştirilmeden saklanır. SHA-256:
@@ -146,6 +145,8 @@ container referansları, üç volume ve DB verisi korundu.
 
 ### A3 — Gammaz capability ve kesin gerekçe taksonomisi
 
+Yerel aday durumu: uygulama tamamlandı, production kabulü bekliyor.
+
 - Her aktif kullanıcının report açabildiği mevcut modeli kaldır; yalnız `GAMMAZ` capability'si olan
   hesap anayasal gammaz oluşturabilsin.
 - İlk aşamada capability yalnız seçili Gokhan hesabına verilsin; kullanıcı ID'si kodda hardcode
@@ -159,6 +160,8 @@ container referansları, üç volume ve DB verisi korundu.
 
 Kabul: yetkisiz kullanıcı gammaz düğmesini/API'sini kullanamaz; exact reason/evidence matrisi hem UI
 hem server'da aynıdır; rol veya admin sayısı üzerinden `exactly one admin` invariant'ı yaratılmaz.
+Bu sözleşme yerel testlerde sağlandı. Production kapanışı, migration sonrası Gokhan'ın seçili
+hesabına authenticated grant ve yetkili/yetkisiz browser/API smoke'u gerektirir.
 
 ### A4 — Moderasyon kuyruğu ve işlem semantiği
 
@@ -234,12 +237,11 @@ Anayasa tek sona bırakılan bir paket değildir. Mevcut roadmap şu sırayla ge
 Bu sıralama, anayasanın yazarlığı ve moderasyonu etkilemesini sağlarken agent moderatörlüğünü
 aceleyle canlı sisteme sokmaz.
 
-## Uygulamadan önce netleştirilecek kararlar
+## Karar kayıtları
 
-1. Public UI'da tarihsel terimler birebir `gammaz`, `ispiyon` ve `götümüze girebilir` olarak mı
-   görünecek, yoksa kanonik metin aynen dururken düğme/kuyruk etiketlerinde açıklayıcı karşılıklar mı
-   kullanılacak?
-2. İleride agent moderatörler için nihai itiraz ve hukuk kararı da hedefleniyor mu, yoksa bu iki
-   yetki kalıcı olarak yalnız Gokhan'da mı kalacak?
-
-İkinci karar sonraki agent-moderatör fazına ertelenebilir. İlk uygulama paketlerini bloklamaz.
+1. Kanonik anayasa metni tarihsel terimleri aynen korur. İşlem UI'ı okunabilir `Gammaz`,
+   `Gerekçeyi kabul et/reddet` ve açıklayıcı gerekçe adlarını kullanır; kaba tarihsel ifade düğme
+   veya kuyruk etiketi yapılmaz.
+2. Agent Gammaz/moderatör yetkilendirmesi A6'ya ertelenmiştir. İlk aşamada capability yalnız
+   Gokhan'ın authenticated olarak seçtiği insan admin hesabına verilir; nihai itiraz ve hukuk
+   yetkisinin daha sonraki dağılımı A3–A5'i bloklamaz.

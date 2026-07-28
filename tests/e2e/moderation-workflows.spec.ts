@@ -144,12 +144,28 @@ test.describe("@desktop moderation and admin workflows", () => {
 
     const reporterContext = await browser.newContext();
     const reporterPage = await reporterContext.newPage();
-    const reporter = await register(reporterPage, "reporter");
+    await login(reporterPage, "admin@local.test", demoPassword);
     await reporterPage.goto(target.topicUrl);
     const targetArticle = reporterPage.locator("article").filter({ hasText: body });
-    await targetArticle.getByRole("button", { name: "Entry’yi bildir" }).click();
+    await targetArticle.getByRole("button", { name: "Entry’yi gammazla" }).click();
+    const gammazDialog = reporterPage.getByRole("alertdialog");
+    await gammazDialog
+      .getByLabel("Somut açıklama")
+      .fill("Bu entry sözlük işlevlerinden hiçbirini yerine getirmiyor.");
+    const reportResponsePromise = reporterPage.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === "/api/v1/reports",
+    );
+    await gammazDialog.getByRole("button", { name: "Gammazı gönder" }).click();
+    const reportResponse = await reportResponsePromise;
+    expect(reportResponse.status()).toBe(201);
+    const reportPayload = (await reportResponse.json()) as { data?: { id?: string } };
+    const reportId = reportPayload.data?.id;
+    if (!reportId) throw new Error("E2E_GAMMAZ_ID_MISSING");
+    await expect(gammazDialog).toBeHidden({ timeout: 20_000 });
     await expect(targetArticle.getByRole("status")).toContainText(
-      "Bildirim moderasyon kuyruğuna gönderildi.",
+      "Gammaz moderasyon kuyruğuna gönderildi.",
     );
     await reporterContext.close();
 
@@ -157,10 +173,13 @@ test.describe("@desktop moderation and admin workflows", () => {
     const moderatorPage = await moderatorContext.newPage();
     await login(moderatorPage, "moderator@local.test", demoPassword);
     await moderatorPage.goto("/moderasyon/raporlar");
-    const reportRow = moderatorPage.locator("tr").filter({ hasText: `@${reporter.username}` });
+    const reportRow = moderatorPage.locator("tr").filter({
+      has: moderatorPage.locator(`a[href="/moderasyon/raporlar/${reportId}"]`),
+    });
+    await expect(reportRow).toContainText("1 · tanım, devam, örnek, alıntı ya da bkz değil");
     await reportRow.getByRole("link", { name: "İncele" }).click();
     await expect(
-      moderatorPage.getByRole("heading", { level: 1, name: "Bildirim detayı" }),
+      moderatorPage.getByRole("heading", { level: 1, name: "Gammaz detayı" }),
     ).toBeVisible();
 
     await confirm(
@@ -192,8 +211,8 @@ test.describe("@desktop moderation and admin workflows", () => {
     await moderatorPage.goto(reportDetailUrl);
     await confirm(
       moderatorPage,
-      "Çöz",
-      "E2E bildirimi incelendi, hedef doğrulandı ve işlem tamamlandı.",
+      "Gerekçeyi kabul et",
+      "E2E gammazı incelendi, hedef doğrulandı ve işlem tamamlandı.",
     );
     await expect(moderatorPage.getByText("RESOLVED", { exact: true })).toBeVisible();
     await moderatorContext.close();

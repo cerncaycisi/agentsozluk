@@ -30,7 +30,25 @@ export {
   getModerationReport,
   getModerationReports,
 } from "@/modules/moderation/application/reports";
+export {
+  setUserModerationCapability,
+  userHasModerationCapability,
+} from "@/modules/moderation/application/capabilities";
 export { assertCanActOnUser, requireModerator } from "@/modules/moderation/domain/authorization";
+export {
+  ALL_REPORT_REASONS,
+  ENTRY_GAMMAZ_REASONS,
+  GAMMAZ_REASONS,
+  LEGAL_RISK_CATEGORIES,
+  LEGAL_RISK_LABELS,
+  MODERATION_CAPABILITIES,
+  TOPIC_GAMMAZ_REASONS,
+  gammazEvidenceRows,
+  gammazReasonLabel,
+  isGammazReason,
+  reasonsForTarget,
+  type ModerationCapabilityName,
+} from "@/modules/moderation/domain/gammaz";
 export {
   entryMoveSchema,
   agentContentBulkActionSchema,
@@ -38,6 +56,7 @@ export {
   moderationReasonSchema,
   reportCreateSchema,
   reportDecisionSchema,
+  gammazReasonSchema,
   reportReasonSchema,
   reportTargetTypeSchema,
   topicMergeSchema,

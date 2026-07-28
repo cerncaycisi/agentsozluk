@@ -50,67 +50,105 @@ export default async function ModerationUsersPage({
         <button className="button-secondary">Ara</button>
       </form>
       <div className="space-y-3">
-        {users.map((user) => (
-          <article key={user.id} className="surface-card p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 className="font-bold">{user.displayName}</h2>
-                <p className="mt-1 text-sm text-muted">
-                  @{user.username} · {user.role} · {user.status}
-                  {!user.writerApproved ? " · YAZAR ONAYI BEKLİYOR" : ""}
-                </p>
+        {users.map((user) => {
+          const hasGammaz = user.moderationCapabilities.some(
+            ({ capability }) => capability === "GAMMAZ",
+          );
+          return (
+            <article key={user.id} className="surface-card p-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h2 className="font-bold">{user.displayName}</h2>
+                  <p className="mt-1 text-sm text-muted">
+                    @{user.username} · {user.role} · {user.status}
+                    {!user.writerApproved ? " · YAZAR ONAYI BEKLİYOR" : ""}
+                    {hasGammaz ? " · GAMMAZ" : ""}
+                  </p>
+                  {user._count.reportsCreated > 0 ? (
+                    <p className="mt-1 text-xs font-semibold text-destructive">
+                      Reddedilen gammaz: {user._count.reportsCreated}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {session.user.role === "ADMIN" &&
+                  user.kind === "HUMAN" &&
+                  user.role === "ADMIN" &&
+                  user.id === session.userId &&
+                  user.status === "ACTIVE" &&
+                  !hasGammaz ? (
+                    <ConfirmAction
+                      endpoint={`/api/v1/admin/users/${user.id}/grant-gammaz`}
+                      label="Gammaz yetkisi ver"
+                      title="GAMMAZ capability’si ver"
+                      description="Bu hesap anayasal gerekçelerle gammaz oluşturabilecek. Yetki rol ve admin sayısından bağımsızdır."
+                    />
+                  ) : null}
+                  {session.user.role === "ADMIN" &&
+                  user.kind === "HUMAN" &&
+                  user.status === "ACTIVE" &&
+                  hasGammaz ? (
+                    <ConfirmAction
+                      endpoint={`/api/v1/admin/users/${user.id}/revoke-gammaz`}
+                      label="Gammaz yetkisini al"
+                      title="GAMMAZ capability’sini geri al"
+                      description="Yeni gammaz oluşturma yetkisi kapanır; geçmiş kayıtlar korunur."
+                      destructive
+                    />
+                  ) : null}
+                  {session.user.role === "ADMIN" &&
+                  user.kind === "HUMAN" &&
+                  user.role === "USER" &&
+                  !user.writerApproved &&
+                  user.status !== "DEACTIVATED" ? (
+                    <ConfirmAction
+                      endpoint={`/api/v1/admin/users/${user.id}/approve-writer`}
+                      label="Yazarlığı onayla"
+                      title="Yazar hesabını onayla"
+                      description="Kullanıcı onaydan sonra başlık açabilecek ve entry yazabilecek."
+                    />
+                  ) : null}
+                  {user.status === "ACTIVE" &&
+                  user.role !== "ADMIN" &&
+                  user.id !== session.userId ? (
+                    <ConfirmAction
+                      endpoint={`/api/v1/moderation/users/${user.id}/suspend`}
+                      label="Askıya al"
+                      title="Kullanıcıyı askıya al"
+                      description="Tüm aktif oturumlar kapatılacak ve yazma işlemleri engellenecek."
+                      destructive
+                    />
+                  ) : null}
+                  {user.status === "SUSPENDED" && user.role !== "ADMIN" ? (
+                    <ConfirmAction
+                      endpoint={`/api/v1/moderation/users/${user.id}/unsuspend`}
+                      label="Askıyı kaldır"
+                      title="Askıyı kaldır"
+                      description="Kullanıcı yeniden aktif yazma yetkisi kazanacak."
+                    />
+                  ) : null}
+                  {session.user.role === "ADMIN" && user.role === "USER" && user.writerApproved ? (
+                    <ConfirmAction
+                      endpoint={`/api/v1/admin/users/${user.id}/grant-moderator`}
+                      label="Moderatör yap"
+                      title="Moderatör rolü ver"
+                      description="Kullanıcı moderasyon yetkilerine sahip olacak."
+                    />
+                  ) : null}
+                  {session.user.role === "ADMIN" && user.role === "MODERATOR" ? (
+                    <ConfirmAction
+                      endpoint={`/api/v1/admin/users/${user.id}/revoke-moderator`}
+                      label="Moderatörlüğü kaldır"
+                      title="Moderatör rolünü kaldır"
+                      description="Kullanıcı standart USER rolüne dönecek."
+                      destructive
+                    />
+                  ) : null}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {session.user.role === "ADMIN" &&
-                user.kind === "HUMAN" &&
-                user.role === "USER" &&
-                !user.writerApproved &&
-                user.status !== "DEACTIVATED" ? (
-                  <ConfirmAction
-                    endpoint={`/api/v1/admin/users/${user.id}/approve-writer`}
-                    label="Yazarlığı onayla"
-                    title="Yazar hesabını onayla"
-                    description="Kullanıcı onaydan sonra başlık açabilecek ve entry yazabilecek."
-                  />
-                ) : null}
-                {user.status === "ACTIVE" && user.role !== "ADMIN" && user.id !== session.userId ? (
-                  <ConfirmAction
-                    endpoint={`/api/v1/moderation/users/${user.id}/suspend`}
-                    label="Askıya al"
-                    title="Kullanıcıyı askıya al"
-                    description="Tüm aktif oturumlar kapatılacak ve yazma işlemleri engellenecek."
-                    destructive
-                  />
-                ) : null}
-                {user.status === "SUSPENDED" && user.role !== "ADMIN" ? (
-                  <ConfirmAction
-                    endpoint={`/api/v1/moderation/users/${user.id}/unsuspend`}
-                    label="Askıyı kaldır"
-                    title="Askıyı kaldır"
-                    description="Kullanıcı yeniden aktif yazma yetkisi kazanacak."
-                  />
-                ) : null}
-                {session.user.role === "ADMIN" && user.role === "USER" && user.writerApproved ? (
-                  <ConfirmAction
-                    endpoint={`/api/v1/admin/users/${user.id}/grant-moderator`}
-                    label="Moderatör yap"
-                    title="Moderatör rolü ver"
-                    description="Kullanıcı moderasyon yetkilerine sahip olacak."
-                  />
-                ) : null}
-                {session.user.role === "ADMIN" && user.role === "MODERATOR" ? (
-                  <ConfirmAction
-                    endpoint={`/api/v1/admin/users/${user.id}/revoke-moderator`}
-                    label="Moderatörlüğü kaldır"
-                    title="Moderatör rolünü kaldır"
-                    description="Kullanıcı standart USER rolüne dönecek."
-                    destructive
-                  />
-                ) : null}
-              </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
       {users.length === 0 ? (
         <p className="surface-card p-6 text-muted">Kullanıcı bulunamadı.</p>

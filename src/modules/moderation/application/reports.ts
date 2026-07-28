@@ -9,6 +9,7 @@ import { appendModerationAction } from "@/modules/moderation/repository/history"
 import {
   createReportRecord,
   decideReportRecord,
+  findReportEvidenceEntryByPublicId,
   findReportDetail,
   findReporterStatus,
   findReportTarget,
@@ -44,20 +45,77 @@ export async function createReport(
           403,
           "Yalnızca aktif kullanıcılar bildirim yapabilir.",
         );
+      if (reporter.moderationCapabilities.length === 0)
+        throw new AppError(
+          "GAMMAZ_CAPABILITY_REQUIRED",
+          403,
+          "Gammaz oluşturmak için GAMMAZ capability’si gerekir.",
+        );
       const target = await findReportTarget(transaction, input.targetType, input.targetId);
       if (!target) throw new AppError("REPORT_NOT_FOUND", 404, "Bildirilecek içerik bulunamadı.");
-      if (
-        (input.targetType === "USER" && input.targetId === actor.actorId) ||
-        targetOwnerId(target) === actor.actorId
-      ) {
+      if ("status" in target && target.status !== "ACTIVE")
+        throw new AppError("REPORT_NOT_FOUND", 404, "Bildirilecek içerik bulunamadı.");
+      if (targetOwnerId(target) === actor.actorId) {
         throw new AppError("FORBIDDEN", 403, "Kendinizi veya kendi içeriğinizi bildiremezsiniz.");
+      }
+      const evidence = Object.fromEntries(
+        Object.entries(input.evidence).filter((entry) => entry[1] !== undefined),
+      ) as Record<string, string | number>;
+      const evidencePublicId =
+        input.reason === "GAMMAZ_8_DUPLICATE_ENTRY"
+          ? input.evidence.duplicateEntryPublicId
+          : input.reason === "GAMMAZ_3_MISSING_CONTINUATION_CONTEXT" ||
+              input.reason === "GAMMAZ_9_DELETED_BKZ_TARGET"
+            ? input.evidence.referenceEntryPublicId
+            : undefined;
+      if (evidencePublicId !== undefined) {
+        const evidenceEntry = await findReportEvidenceEntryByPublicId(
+          transaction,
+          evidencePublicId,
+        );
+        if (!evidenceEntry)
+          throw new AppError(
+            "GAMMAZ_EVIDENCE_NOT_FOUND",
+            422,
+            "Gösterilen delil entry’si bulunamadı.",
+          );
+        if (
+          input.targetType !== "ENTRY" ||
+          !("topicId" in target) ||
+          evidenceEntry.topicId !== target.topicId ||
+          evidenceEntry.id === target.id
+        )
+          throw new AppError(
+            "GAMMAZ_EVIDENCE_TARGET_MISMATCH",
+            422,
+            "Delil entry’si hedefle aynı başlıkta ve farklı bir entry olmalıdır.",
+          );
+        if (input.reason === "GAMMAZ_8_DUPLICATE_ENTRY" && evidenceEntry.status !== "ACTIVE")
+          throw new AppError(
+            "GAMMAZ_EVIDENCE_NOT_ACTIVE",
+            422,
+            "Kopya delili olarak gösterilen önceki entry aktif olmalıdır.",
+          );
+        if (
+          (input.reason === "GAMMAZ_3_MISSING_CONTINUATION_CONTEXT" ||
+            input.reason === "GAMMAZ_9_DELETED_BKZ_TARGET") &&
+          evidenceEntry.status === "ACTIVE"
+        )
+          throw new AppError(
+            "GAMMAZ_EVIDENCE_NOT_DELETED",
+            422,
+            "Bu gerekçe için gösterilen dayanak entry artık aktif olmamalıdır.",
+          );
+        evidence.evidenceEntryId = evidenceEntry.id;
+        evidence.evidenceEntryStatus = evidenceEntry.status;
       }
       const report = await createReportRecord(transaction, {
         reporterId: actor.actorId,
         targetType: input.targetType,
         targetId: input.targetId,
         reason: input.reason,
-        ...(input.details ? { details: input.details } : {}),
+        details: input.details,
+        evidence,
       });
       await appendOutboxEvent(transaction, {
         eventType: "report.created",
@@ -70,6 +128,7 @@ export async function createReport(
           targetType: report.targetType,
           targetId: report.targetId,
           reason: report.reason,
+          evidence,
         },
       });
       await appendAuditLog(transaction, {
@@ -82,6 +141,7 @@ export async function createReport(
           targetType: report.targetType,
           targetId: report.targetId,
           reason: report.reason,
+          evidence,
         },
       });
       return report;

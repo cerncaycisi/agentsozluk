@@ -79,6 +79,7 @@ paths:
       responses:
         {
           "201": { $ref: "#/components/responses/Created" },
+          "403": { $ref: "#/components/responses/Error" },
           "413": { $ref: "#/components/responses/PayloadTooLarge" },
           "422": { $ref: "#/components/responses/ValidationError" },
           "429": { $ref: "#/components/responses/RateLimited" },
@@ -631,6 +632,15 @@ paths:
                   COPYRIGHT,
                   OFF_TOPIC,
                   OTHER,
+                  GAMMAZ_1_NOT_DICTIONARY_FUNCTION,
+                  GAMMAZ_2_NON_TURKISH_NON_QUOTE,
+                  GAMMAZ_3_MISSING_CONTINUATION_CONTEXT,
+                  GAMMAZ_4_PHYSICAL_ENTRY_REFERENCE,
+                  GAMMAZ_5_DICTIONARY_META,
+                  GAMMAZ_7_LEGAL_OR_COMMERCIAL_RISK,
+                  GAMMAZ_8_DUPLICATE_ENTRY,
+                  GAMMAZ_9_DELETED_BKZ_TARGET,
+                  TOPIC_CANONICALIZATION_REQUEST,
                 ],
             }
         - name: reporter
@@ -931,6 +941,46 @@ paths:
             default: { $ref: "#/components/responses/Error" },
           },
       }
+  /api/v1/admin/users/{userId}/grant-gammaz:
+    parameters:
+      [
+        { $ref: "#/components/parameters/UserId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: grantGammazCapability
+      tags: [Admin]
+      description: İlk aşamada yalnız aktif HUMAN ADMIN'in kendi hesabına GAMMAZ capability'si verir.
+      requestBody: { $ref: "#/components/requestBodies/ModerationReason" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/users/{userId}/revoke-gammaz:
+    parameters:
+      [
+        { $ref: "#/components/parameters/UserId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: revokeGammazCapability
+      tags: [Admin]
+      description: Etkin GAMMAZ capability'sini geri alır; geçmiş gammaz ve audit kayıtlarını korur.
+      requestBody: { $ref: "#/components/requestBodies/ModerationReason" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/moderation/audit:
     get:
       operationId: listAuditLog
@@ -2381,22 +2431,37 @@ components:
     ReportCreateInput:
       type: object
       additionalProperties: false
-      required: [targetType, targetId, reason]
+      required: [targetType, targetId, reason, details, evidence]
       properties:
-        targetType: { type: string, enum: [TOPIC, ENTRY, USER] }
+        targetType: { type: string, enum: [TOPIC, ENTRY] }
         targetId: { type: string, format: uuid }
         reason:
           {
             type: string,
             enum:
-              [SPAM, HARASSMENT, HATE, ILLEGAL_CONTENT, PERSONAL_DATA, COPYRIGHT, OFF_TOPIC, OTHER],
+              [
+                GAMMAZ_1_NOT_DICTIONARY_FUNCTION,
+                GAMMAZ_2_NON_TURKISH_NON_QUOTE,
+                GAMMAZ_3_MISSING_CONTINUATION_CONTEXT,
+                GAMMAZ_4_PHYSICAL_ENTRY_REFERENCE,
+                GAMMAZ_5_DICTIONARY_META,
+                GAMMAZ_7_LEGAL_OR_COMMERCIAL_RISK,
+                GAMMAZ_8_DUPLICATE_ENTRY,
+                GAMMAZ_9_DELETED_BKZ_TARGET,
+                TOPIC_CANONICALIZATION_REQUEST,
+              ],
           }
-        details:
-          {
-            type: string,
-            maxLength: 1000,
-            description: Required with 10-1000 characters when reason is OTHER.,
-          }
+        details: { type: string, minLength: 10, maxLength: 1000 }
+        evidence:
+          type: object
+          additionalProperties: false
+          description: Yalnız seçilen gerekçenin zorunlu delil alanı gönderilir; ilgisiz alan reddedilir.
+          properties:
+            duplicateEntryPublicId: { type: integer, minimum: 1 }
+            referenceEntryPublicId: { type: integer, minimum: 1 }
+            legalRiskCategory:
+              { type: string, enum: [COPYRIGHT, PERSONAL_RIGHTS, COMMERCIAL_RISK, ILLEGAL_CONTENT] }
+            suggestedTitle: { type: string, minLength: 2, maxLength: 120 }
     ModerationReasonInput:
       type: object
       required: [reason]

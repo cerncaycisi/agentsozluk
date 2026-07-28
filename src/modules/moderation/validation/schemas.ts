@@ -1,31 +1,66 @@
 import { z } from "zod";
+import {
+  ALL_REPORT_REASONS,
+  GAMMAZ_REASONS,
+  LEGAL_RISK_CATEGORIES,
+  reasonsForTarget,
+} from "@/modules/moderation/domain/gammaz";
 
 export const reportTargetTypeSchema = z.enum(["TOPIC", "ENTRY", "USER"]);
-export const reportReasonSchema = z.enum([
-  "SPAM",
-  "HARASSMENT",
-  "HATE",
-  "ILLEGAL_CONTENT",
-  "PERSONAL_DATA",
-  "COPYRIGHT",
-  "OFF_TOPIC",
-  "OTHER",
-]);
+export const reportReasonSchema = z.enum(ALL_REPORT_REASONS);
+
+export const gammazReasonSchema = z.enum(GAMMAZ_REASONS);
 
 export const reportCreateSchema = z
   .object({
-    targetType: reportTargetTypeSchema,
+    targetType: z.enum(["TOPIC", "ENTRY"]),
     targetId: z.string().uuid(),
-    reason: reportReasonSchema,
-    details: z.string().trim().max(1000).optional(),
+    reason: gammazReasonSchema,
+    details: z.string().trim().min(10).max(1000),
+    evidence: z
+      .object({
+        duplicateEntryPublicId: z.number().int().positive().optional(),
+        referenceEntryPublicId: z.number().int().positive().optional(),
+        legalRiskCategory: z.enum(LEGAL_RISK_CATEGORIES).optional(),
+        suggestedTitle: z.string().trim().min(2).max(120).optional(),
+      })
+      .strict()
+      .default({}),
   })
   .superRefine((value, context) => {
-    if (value.reason === "OTHER" && (!value.details || value.details.length < 10)) {
+    if (!reasonsForTarget(value.targetType).includes(value.reason)) {
       context.addIssue({
         code: "custom",
-        path: ["details"],
-        message: "Diğer gerekçesi için 10–1000 karakter açıklama zorunludur.",
+        path: ["reason"],
+        message: "Bu gammaz gerekçesi seçilen hedef türü için kullanılamaz.",
       });
+    }
+    const requiredEvidenceKey =
+      value.reason === "GAMMAZ_8_DUPLICATE_ENTRY"
+        ? "duplicateEntryPublicId"
+        : value.reason === "GAMMAZ_3_MISSING_CONTINUATION_CONTEXT" ||
+            value.reason === "GAMMAZ_9_DELETED_BKZ_TARGET"
+          ? "referenceEntryPublicId"
+          : value.reason === "GAMMAZ_7_LEGAL_OR_COMMERCIAL_RISK"
+            ? "legalRiskCategory"
+            : value.reason === "TOPIC_CANONICALIZATION_REQUEST"
+              ? "suggestedTitle"
+              : null;
+    if (requiredEvidenceKey && value.evidence[requiredEvidenceKey] === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["evidence", requiredEvidenceKey],
+        message: "Seçilen gammaz gerekçesi için bu delil zorunludur.",
+      });
+    }
+    for (const key of Object.keys(value.evidence)) {
+      if (key !== requiredEvidenceKey) {
+        context.addIssue({
+          code: "custom",
+          path: ["evidence", key],
+          message: "Seçilen gammaz gerekçesi için ilgisiz delil alanı gönderilemez.",
+        });
+      }
     }
   });
 
@@ -95,6 +130,7 @@ export const agentTopicWriteLockSchema = z
 export type ReportCreateInput = z.infer<typeof reportCreateSchema>;
 export type ReportTargetType = z.infer<typeof reportTargetTypeSchema>;
 export type ReportReason = z.infer<typeof reportReasonSchema>;
+export type GammazReason = z.infer<typeof gammazReasonSchema>;
 export type ReportDecisionInput = z.infer<typeof reportDecisionSchema>;
 export type ModerationReasonInput = z.infer<typeof moderationReasonSchema>;
 export type TopicRenameInput = z.infer<typeof topicRenameSchema>;

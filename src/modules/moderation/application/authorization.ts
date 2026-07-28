@@ -12,6 +12,7 @@ import {
 export interface ModerationAuthorizationOptions {
   adminOnly?: boolean;
   targetUserId?: string;
+  allowSelfAdminTarget?: boolean;
 }
 
 /**
@@ -46,6 +47,15 @@ export function authorizeModerationCommand(
     );
     if (!options.targetUserId) return;
     if (!target) throw new AppError("USER_NOT_FOUND", 404, "Kullanıcı bulunamadı.");
+    if (options.allowSelfAdminTarget) {
+      if (!options.adminOnly)
+        throw new AppError(
+          "FORBIDDEN",
+          403,
+          "Kendi hesabını hedefleyen işlem yalnız admin capability akışında kullanılabilir.",
+        );
+      return;
+    }
     assertCanActOnUser(moderator, target);
   });
 }

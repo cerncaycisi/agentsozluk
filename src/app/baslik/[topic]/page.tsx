@@ -13,6 +13,7 @@ import { entryPublicUrl, parseTopicRouteReference } from "@/lib/routing/public-u
 import { currentPageSession } from "@/lib/auth/server-session";
 import { getEntryReferenceIndex, getTopicEntries } from "@/modules/entries/application/entries";
 import { getViewerEntryStates } from "@/modules/interactions/application/interactions";
+import { userHasModerationCapability } from "@/modules/moderation/application/capabilities";
 import { getTopic, getTopicByPublicId } from "@/modules/topics/application/topics";
 import { getTopicIndexingDecision } from "@/modules/indexing";
 import {
@@ -186,7 +187,7 @@ export default async function TopicPage({
     result = { entries: [], totalItems: 0 };
   }
   const entryIds = result.entries.map((entry) => entry.id);
-  const [[votes, bookmarks], references] = await Promise.all([
+  const [[votes, bookmarks], references, canGammaz] = await Promise.all([
     session && entryIds.length > 0
       ? getViewerEntryStates(database, session.userId, entryIds)
       : Promise.resolve([[], []] as const),
@@ -194,6 +195,9 @@ export default async function TopicPage({
       database,
       result.entries.map((entry) => entry.body),
     ),
+    session?.user.status === "ACTIVE"
+      ? userHasModerationCapability(database, session.userId, "GAMMAZ")
+      : Promise.resolve(false),
   ]);
   const voteMap = new Map(
     votes.map((vote) => [vote.entryId, vote.value === 1 ? (1 as const) : (-1 as const)]),
@@ -290,7 +294,9 @@ export default async function TopicPage({
             {topic.status === "ACTIVE" ? (
               <TopicFollowButton topicId={topicId} initialFollowed={topic.following} />
             ) : null}
-            {session.userId !== topic.createdById ? <TopicReportButton topicId={topicId} /> : null}
+            {canGammaz && topic.status === "ACTIVE" && session.userId !== topic.createdById ? (
+              <TopicReportButton topicId={topicId} />
+            ) : null}
           </div>
         ) : null}
       </header>
@@ -310,7 +316,8 @@ export default async function TopicPage({
                       entry.authorId === session.userId &&
                       entry.status === "ACTIVE" &&
                       entry.origin !== "SEED",
-                    canReport: entry.authorId !== session.userId,
+                    canReport:
+                      canGammaz && entry.status === "ACTIVE" && entry.authorId !== session.userId,
                     canBlockAuthor: entry.authorId !== session.userId,
                   },
                 }

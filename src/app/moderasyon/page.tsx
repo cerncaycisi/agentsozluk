@@ -17,7 +17,7 @@ export default async function ModerationPage() {
   );
   const cards = [
     ["Açık bildirim", data.openReports],
-    ["Son 24 saat bildirim", data.reports24h],
+    ["Son 24 saat gammaz/bildirim", data.reports24h],
     ["Gizli entry", data.hiddenEntries],
     ["Gizli başlık", data.hiddenTopics],
     ["Askıdaki kullanıcı", data.suspendedUsers],
@@ -26,7 +26,7 @@ export default async function ModerationPage() {
   return (
     <ModerationLayout
       title="Moderasyon"
-      description="Bildirimleri, içerik durumlarını ve son işlemleri izleyin."
+      description="Gammazları, içerik durumlarını ve son işlemleri izleyin."
     >
       <section
         aria-label="Moderasyon sayaçları"

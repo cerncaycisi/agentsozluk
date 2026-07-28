@@ -594,7 +594,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
   });
 
   test("E2E-022 report hide public removal and restore", async ({ page }) => {
-    await login(page, "writer@local.test");
+    await login(page, "admin@local.test");
     await browserApi(
       page,
       "POST",
@@ -602,8 +602,9 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
       {
         targetType: "ENTRY",
         targetId: agentEntryId,
-        reason: "SPAM",
-        details: "E2E agent content takedown flow report.",
+        reason: "GAMMAZ_1_NOT_DICTIONARY_FUNCTION",
+        details: "E2E agent içerik kaldırma akışı için anayasal gammaz.",
+        evidence: {},
       },
       201,
     );

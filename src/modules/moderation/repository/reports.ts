@@ -31,10 +31,13 @@ export function createReportRecord(
     targetType: ReportTargetType;
     targetId: string;
     reason: ReportReason;
-    details?: string;
+    details: string;
+    evidence: Record<string, string | number>;
   },
 ) {
-  return transaction.report.create({ data: input });
+  return transaction.report.create({
+    data: { ...input, evidence: input.evidence as Prisma.InputJsonObject },
+  });
 }
 
 export async function findReporterStatus(
@@ -44,7 +47,24 @@ export async function findReporterStatus(
   await lockUserStateForMutation(transaction, reporterId);
   return transaction.user.findUnique({
     where: { id: reporterId },
-    select: { status: true },
+    select: {
+      status: true,
+      moderationCapabilities: {
+        where: { capability: "GAMMAZ", revokedAt: null },
+        select: { id: true },
+        take: 1,
+      },
+    },
+  });
+}
+
+export function findReportEvidenceEntryByPublicId(
+  transaction: Prisma.TransactionClient,
+  publicId: number,
+) {
+  return transaction.entry.findUnique({
+    where: { publicId },
+    select: { id: true, publicId: true, topicId: true, status: true },
   });
 }
 

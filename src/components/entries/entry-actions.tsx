@@ -1,11 +1,12 @@
 "use client";
 
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { Bookmark, Flag, Pencil, ThumbsDown, ThumbsUp, Trash2, UserX } from "lucide-react";
+import { Bookmark, Pencil, ThumbsDown, ThumbsUp, Trash2, UserX } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
+import { GammazButton } from "@/components/moderation/gammaz-button";
 
 export function EntryActions({
   entryId,
@@ -91,21 +92,6 @@ export function EntryActions({
       await apiRequest(`/api/v1/entries/${entryId}`, { method: "DELETE", csrf: true });
       router.refresh();
     });
-  const report = () =>
-    run(async () => {
-      await apiRequest("/api/v1/reports", {
-        method: "POST",
-        body: {
-          targetType: "ENTRY",
-          targetId: entryId,
-          reason: "OTHER",
-          details: "Bu entry topluluk kurallarına aykırı görünüyor.",
-        },
-        csrf: true,
-        idempotency: true,
-      });
-      setNotice("Bildirim moderasyon kuyruğuna gönderildi.");
-    });
   const toggleAuthorBlock = () =>
     run(async () => {
       const result = await apiRequest<{ blocked: boolean }>(`/api/v1/me/blocks/${authorId}`, {
@@ -152,17 +138,7 @@ export function EntryActions({
         >
           <Bookmark aria-hidden="true" size={17} />
         </button>
-        {canReport ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => void report()}
-            className="grid size-10 place-items-center rounded-lg border bg-page"
-            aria-label="Entry’yi bildir"
-          >
-            <Flag aria-hidden="true" size={17} />
-          </button>
-        ) : null}
+        {canReport ? <GammazButton targetType="ENTRY" targetId={entryId} compact /> : null}
         {canBlockAuthor ? (
           <button
             type="button"

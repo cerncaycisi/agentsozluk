@@ -122,6 +122,20 @@ async function seed(): Promise<void> {
     });
   }
 
+  const seededGammaz = await database.userModerationCapability.findFirst({
+    where: { userId: uuid(1), capability: "GAMMAZ", revokedAt: null },
+    select: { id: true },
+  });
+  if (!seededGammaz) {
+    await database.userModerationCapability.create({
+      data: {
+        userId: uuid(1),
+        capability: "GAMMAZ",
+        grantedById: uuid(1),
+      },
+    });
+  }
+
   for (const [index, title] of topicTitles.entries()) {
     const data = {
       title,

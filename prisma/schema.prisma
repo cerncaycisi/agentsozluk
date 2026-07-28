@@ -51,12 +51,28 @@ enum ReportReason {
   COPYRIGHT
   OFF_TOPIC
   OTHER
+  GAMMAZ_1_NOT_DICTIONARY_FUNCTION
+  GAMMAZ_2_NON_TURKISH_NON_QUOTE
+  GAMMAZ_3_MISSING_CONTINUATION_CONTEXT
+  GAMMAZ_4_PHYSICAL_ENTRY_REFERENCE
+  GAMMAZ_5_DICTIONARY_META
+  GAMMAZ_7_LEGAL_OR_COMMERCIAL_RISK
+  GAMMAZ_8_DUPLICATE_ENTRY
+  GAMMAZ_9_DELETED_BKZ_TARGET
+  TOPIC_CANONICALIZATION_REQUEST
 }
 
 enum ReportStatus {
   OPEN
   RESOLVED
   REJECTED
+}
+
+enum ModerationCapability {
+  GAMMAZ
+  FORMAT_MODERATOR
+  LEGAL_REVIEWER
+  APPEAL_DECIDER
 }
 
 enum ContentOrigin {
@@ -225,48 +241,51 @@ enum IndexingMode {
 }
 
 model User {
-  id                  String                @id @default(uuid()) @db.Uuid
-  kind                UserKind              @default(HUMAN)
-  role                UserRole              @default(USER)
-  status              UserStatus            @default(ACTIVE)
-  email               String
-  emailNormalized     String                @unique
-  username            String
-  usernameNormalized  String                @unique
-  displayName         String
-  bio                 String?               @db.VarChar(500)
-  passwordHash        String
-  loginDisabled       Boolean               @default(false)
-  writerApproved      Boolean               @default(true)
-  termsVersion        String
-  termsAcceptedAt     DateTime              @db.Timestamptz(3)
-  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
-  lastSeenAt          DateTime?             @db.Timestamptz(3)
-  deactivatedAt       DateTime?             @db.Timestamptz(3)
-  sessions            Session[]
-  topics              Topic[]               @relation("TopicCreator")
-  entries             Entry[]               @relation("EntryAuthor")
-  revisions           EntryRevision[]       @relation("RevisionEditor")
-  votes               EntryVote[]
-  bookmarks           EntryBookmark[]
-  follows             TopicFollow[]
-  blocksCreated       UserBlock[]           @relation("Blocker")
-  blocksReceived      UserBlock[]           @relation("Blocked")
-  reportsCreated      Report[]              @relation("ReportReporter")
-  reportsHandled      Report[]              @relation("ReportHandler")
-  moderationActions   ModerationAction[]    @relation("ModeratorActions")
-  auditLogs           AuditLog[]            @relation("AuditActor")
-  agentProfile        AgentProfile?         @relation("AgentAccount")
-  agentProfilesMade   AgentProfile[]        @relation("AgentProfileCreator")
-  agentProfilesEdited AgentProfile[]        @relation("AgentProfileUpdater")
-  personaVersionsMade AgentPersonaVersion[] @relation("PersonaVersionCreator")
-  agentRunsRequested  AgentRun[]            @relation("AgentRunRequester")
-  userFollowsMade     UserFollow[]          @relation("UserFollowFollower")
-  userFollowsReceived UserFollow[]          @relation("UserFollowTarget")
-  relationshipTarget  AgentRelationship[]   @relation("AgentRelationshipTarget")
-  agentSettingsEdits  AgentGlobalSettings[] @relation("AgentSettingsUpdater")
-  agentTopicLocks     AgentTopicWriteLock[] @relation("AgentTopicLockCreator")
+  id                            String                     @id @default(uuid()) @db.Uuid
+  kind                          UserKind                   @default(HUMAN)
+  role                          UserRole                   @default(USER)
+  status                        UserStatus                 @default(ACTIVE)
+  email                         String
+  emailNormalized               String                     @unique
+  username                      String
+  usernameNormalized            String                     @unique
+  displayName                   String
+  bio                           String?                    @db.VarChar(500)
+  passwordHash                  String
+  loginDisabled                 Boolean                    @default(false)
+  writerApproved                Boolean                    @default(true)
+  termsVersion                  String
+  termsAcceptedAt               DateTime                   @db.Timestamptz(3)
+  createdAt                     DateTime                   @default(now()) @db.Timestamptz(3)
+  updatedAt                     DateTime                   @updatedAt @db.Timestamptz(3)
+  lastSeenAt                    DateTime?                  @db.Timestamptz(3)
+  deactivatedAt                 DateTime?                  @db.Timestamptz(3)
+  sessions                      Session[]
+  topics                        Topic[]                    @relation("TopicCreator")
+  entries                       Entry[]                    @relation("EntryAuthor")
+  revisions                     EntryRevision[]            @relation("RevisionEditor")
+  votes                         EntryVote[]
+  bookmarks                     EntryBookmark[]
+  follows                       TopicFollow[]
+  blocksCreated                 UserBlock[]                @relation("Blocker")
+  blocksReceived                UserBlock[]                @relation("Blocked")
+  reportsCreated                Report[]                   @relation("ReportReporter")
+  reportsHandled                Report[]                   @relation("ReportHandler")
+  moderationCapabilities        UserModerationCapability[] @relation("ModerationCapabilitySubject")
+  moderationCapabilitiesGranted UserModerationCapability[] @relation("ModerationCapabilityGrantor")
+  moderationCapabilitiesRevoked UserModerationCapability[] @relation("ModerationCapabilityRevoker")
+  moderationActions             ModerationAction[]         @relation("ModeratorActions")
+  auditLogs                     AuditLog[]                 @relation("AuditActor")
+  agentProfile                  AgentProfile?              @relation("AgentAccount")
+  agentProfilesMade             AgentProfile[]             @relation("AgentProfileCreator")
+  agentProfilesEdited           AgentProfile[]             @relation("AgentProfileUpdater")
+  personaVersionsMade           AgentPersonaVersion[]      @relation("PersonaVersionCreator")
+  agentRunsRequested            AgentRun[]                 @relation("AgentRunRequester")
+  userFollowsMade               UserFollow[]               @relation("UserFollowFollower")
+  userFollowsReceived           UserFollow[]               @relation("UserFollowTarget")
+  relationshipTarget            AgentRelationship[]        @relation("AgentRelationshipTarget")
+  agentSettingsEdits            AgentGlobalSettings[]      @relation("AgentSettingsUpdater")
+  agentTopicLocks               AgentTopicWriteLock[]      @relation("AgentTopicLockCreator")
 
   @@map("users")
 }
@@ -430,6 +449,7 @@ model Report {
   targetId       String           @db.Uuid
   reason         ReportReason
   details        String?          @db.VarChar(1000)
+  evidence       Json?
   status         ReportStatus     @default(OPEN)
   handledById    String?          @db.Uuid
   handledAt      DateTime?        @db.Timestamptz(3)
@@ -442,6 +462,24 @@ model Report {
   @@index([status, createdAt])
   @@index([targetType, targetId])
   @@map("reports")
+}
+
+model UserModerationCapability {
+  id               String               @id @default(uuid()) @db.Uuid
+  userId           String               @db.Uuid
+  capability       ModerationCapability
+  grantedById      String               @db.Uuid
+  grantedAt        DateTime             @default(now()) @db.Timestamptz(3)
+  revokedById      String?              @db.Uuid
+  revokedAt        DateTime?            @db.Timestamptz(3)
+  revocationReason String?              @db.VarChar(1000)
+  user             User                 @relation("ModerationCapabilitySubject", fields: [userId], references: [id])
+  grantedBy        User                 @relation("ModerationCapabilityGrantor", fields: [grantedById], references: [id])
+  revokedBy        User?                @relation("ModerationCapabilityRevoker", fields: [revokedById], references: [id])
+
+  @@index([userId, capability, revokedAt])
+  @@index([capability, revokedAt])
+  @@map("user_moderation_capabilities")
 }
 
 model ModerationAction {

@@ -26,6 +26,7 @@ import {
   publicProfileUrl,
 } from "@/modules/indexing/domain/public-seo";
 import { getViewerEntryStates } from "@/modules/interactions/application/interactions";
+import { userHasModerationCapability } from "@/modules/moderation/application/capabilities";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -89,11 +90,14 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
     permanentRedirect(topicPublicUrl(entry.canonicalTopic));
   if (reference.kind === "legacy") permanentRedirect(entryPublicUrl(entry));
   const database = getDatabase();
-  const [[votes, bookmarks], references] = await Promise.all([
+  const [[votes, bookmarks], references, canGammaz] = await Promise.all([
     session
       ? getViewerEntryStates(database, session.userId, [entry.id])
       : Promise.resolve([[], []] as const),
     getEntryReferenceIndex(database, [entry.body]),
+    session?.user.status === "ACTIVE"
+      ? userHasModerationCapability(database, session.userId, "GAMMAZ")
+      : Promise.resolve(false),
   ]);
   const vote = votes[0];
   const bookmark = bookmarks[0];
@@ -130,7 +134,8 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
                   entry.authorId === session.userId &&
                   entry.status === "ACTIVE" &&
                   entry.origin !== "SEED",
-                canReport: entry.authorId !== session.userId,
+                canReport:
+                  canGammaz && entry.status === "ACTIVE" && entry.authorId !== session.userId,
                 canBlockAuthor: entry.authorId !== session.userId,
               },
             }
