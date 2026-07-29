@@ -3481,6 +3481,30 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   loosen home protection or copy registry credentials. Production re-enable and aggregate cleanup
   smoke require the corrected exact SHA.
 
+## 2026-07-29 — explicit source locale-focus metadata local candidate
+
+- Scope: replace the production source-health report's separate reviewed Turkish/Türkiye count
+  with one additive safe field carried by source creation, reconciliation, administration and
+  body-free audit output. No production connection, source fetch, deployment or external write
+  occurred.
+- Implementation: additive migration 24 adds `AgentSourceLocaleFocus` and
+  `AgentSource.localeFocus`, defaulting unknown sources to `GLOBAL`. The reviewed registry
+  classifies 48 exact canonical URLs as Turkish-language, Türkiye-focused or both; it performs no
+  hostname/path language inference. The source admin API/UI supports filtering and reasoned
+  updates, while audit summaries report usable focused source/origin counts and per-class totals.
+  Canonical reconciliation persists the reviewed value for both new and existing assignments.
+- Verification: migration 24 applied cleanly to the local test database. The source control-plane
+  PostgreSQL file passed `22/22`; focused schema/audit tests passed `11/11`;
+  admin/OpenAPI/navigation checks passed `28/28`; OpenAPI validated 136 runtime operations; ESLint
+  and strict typecheck passed.
+- Corrected attempt: encoded `{}` input was no longer accepted as a URL array but initially fell
+  through to the default canonical target set, causing an unintended local read-only source audit.
+  The run was interrupted; the parser now routes every provided encoded value through strict
+  target validation and fails closed before reader construction. The direct regression passes.
+- Do not repeat: an explicitly provided malformed or empty-shape audit payload must never silently
+  select the canonical network target set; do not derive locale focus from URL spelling and do not
+  count assignment metadata as fresh source usability without a successful fetch.
+
 ## 2026-07-29 — maintenance Docker-config hotfix production closeout
 
 - Exact release: SHA `6136cc2610ee4e114193daddbbe1e9c495e10789`, Release Candidate Bundle run
@@ -3556,3 +3580,23 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
      captured and restored around the database freeze.
 - Do not repeat: invoke `verify-release-bundle.mjs` with its checked-in positional contract and
   copy versioned systemd unit names from `deploy/systemd` instead of reconstructing them from prose.
+
+## 2026-07-29 — source-locale branch refresh local database guard correction
+
+- Environment: local-only `codex/source-locale-metadata` candidate after merging current `main`;
+  production was not accessed. The first focused PostgreSQL validation supplied the generic
+  `postgres` role and stopped before migration or tests with Prisma `Schema engine error`.
+  Direct `psql` separation exposed the safe root cause:
+  `FATAL: role "postgres" does not exist`; the local server's verified role is
+  `gokhannihalgul`. Prisma schema validation itself passed.
+- Resolution: use the already documented role-explicit isolated test DSN for this machine, apply
+  the candidate migration only to `agent_sozluk_test`, and then rerun the focused integration
+  file. This failure is environment/fixture evidence, not a code regression.
+- Do not repeat: before invoking Prisma against the system PostgreSQL, read the existing local
+  database receipt and verify `current_user`; never copy the generic fallback DSN from
+  `tests/setup.ts` into an explicit integration command on this host.
+- Verified resolution: the role-explicit connection reported 24 migrations with none pending;
+  source control-plane integration passed `22/22`. The exact reviewed registry and migration URL
+  sets matched `48/48`; focused locale/schema/audit tests passed `11/11`, adjacent admin/source/
+  navigation/OpenAPI unit checks passed `53/53`, and format, ESLint, strict typecheck plus OpenAPI
+  136 all passed after the current `main` merge.

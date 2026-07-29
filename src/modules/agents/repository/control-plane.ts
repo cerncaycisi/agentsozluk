@@ -1,4 +1,4 @@
-import type { AgentSourceStatus, Prisma } from "@prisma/client";
+import type { AgentSourceLocaleFocus, AgentSourceStatus, Prisma } from "@prisma/client";
 import { appendAgentLifeEventRecord } from "@/modules/agents/repository/life-ledger";
 import { assertSafeLifeLedgerValue } from "@/modules/agents/domain/life-ledger-safety";
 
@@ -34,6 +34,7 @@ export function listAgentSourcesRecord(
   input: {
     agentProfileId?: string;
     status?: AgentSourceStatus;
+    localeFocus?: AgentSourceLocaleFocus;
     adminPinned?: boolean;
     adminBlocked?: boolean;
     domain?: string;
@@ -44,6 +45,7 @@ export function listAgentSourcesRecord(
   const where: Prisma.AgentSourceWhereInput = {
     ...(input.agentProfileId ? { agentProfileId: input.agentProfileId } : {}),
     ...(input.status ? { status: input.status } : {}),
+    ...(input.localeFocus ? { localeFocus: input.localeFocus } : {}),
     ...(input.adminPinned !== undefined ? { adminPinned: input.adminPinned } : {}),
     ...(input.adminBlocked !== undefined ? { adminBlocked: input.adminBlocked } : {}),
     ...(input.domain
@@ -67,6 +69,7 @@ export function listAgentSourcesRecord(
         normalizedDomain: true,
         sourceType: true,
         status: true,
+        localeFocus: true,
         topics: true,
         trustScore: true,
         interestScore: true,
@@ -168,6 +171,7 @@ export async function createAgentRecords(
       normalizedDomain: string;
       sourceType: string;
       status: "SEED" | "TRUSTED";
+      localeFocus: AgentSourceLocaleFocus;
       topics: Prisma.InputJsonValue;
       trustScore: number;
       interestScore: number;

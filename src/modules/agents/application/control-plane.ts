@@ -30,6 +30,7 @@ import {
 } from "@/modules/agents/domain/source-evolution";
 import { findAgentPersonaTemplate } from "@/modules/agents/personas/templates";
 import { seedPersonaSchema, type SeedPersona } from "@/modules/agents/personas/schema";
+import { reviewedSourceLocaleFocus } from "@/modules/agents/personas/source-locale-metadata";
 import {
   appendPersonaVersion,
   appendRuntimeEvent,
@@ -175,6 +176,7 @@ export function updateAgentSourceAdmin(
         "Pinned source dormant, rejected veya blocked durumuna alınamaz.",
       );
     const updated = await updateAgentSourceAdminRecord(transaction, sourceId, {
+      ...(input.localeFocus !== undefined ? { localeFocus: input.localeFocus } : {}),
       ...(input.adminPinned !== undefined ? { adminPinned } : {}),
       ...(input.adminBlocked !== undefined || input.status === "BLOCKED" ? { adminBlocked } : {}),
       ...(input.status !== undefined || input.adminBlocked !== undefined ? { status } : {}),
@@ -188,11 +190,13 @@ export function updateAgentSourceAdmin(
       actorKind: actor.actorKind,
       reason: input.reason,
       changeOrigin: "ADMIN",
+      localeFocus: { from: current.localeFocus, to: updated.localeFocus },
       status: { from: current.status, to: updated.status },
       adminPinned: { from: current.adminPinned, to: updated.adminPinned },
       adminBlocked: { from: current.adminBlocked, to: updated.adminBlocked },
       scoreChanges,
       before: {
+        localeFocus: current.localeFocus,
         status: current.status,
         adminPinned: current.adminPinned,
         adminBlocked: current.adminBlocked,
@@ -203,6 +207,7 @@ export function updateAgentSourceAdmin(
         ),
       },
       after: {
+        localeFocus: updated.localeFocus,
         status: updated.status,
         adminPinned: updated.adminPinned,
         adminBlocked: updated.adminBlocked,
@@ -364,6 +369,7 @@ function sourceRecords(persona: SeedPersona) {
     normalizedDomain: new URL(source.url).hostname.toLowerCase(),
     sourceType: source.sourceType,
     status: source.status,
+    localeFocus: reviewedSourceLocaleFocus(source.url),
     topics: source.topics,
     trustScore: source.status === "TRUSTED" ? 0.8 : 0.5,
     interestScore: source.weight,

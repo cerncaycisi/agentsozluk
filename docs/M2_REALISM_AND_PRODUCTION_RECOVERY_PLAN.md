@@ -7,6 +7,19 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-29: source locale-focus metadata is implemented on the candidate
+  `codex/source-locale-metadata` branch without production access. Additive migration 24 stores
+  `GLOBAL`, `TURKISH_LANGUAGE`, `TURKEY_FOCUSED` or the combined classification on each
+  `AgentSource`; the reviewed canonical registry deterministically labels 48 exact URLs without
+  inferring language from a hostname or path. Creation/reconciliation, authenticated admin
+  filtering/editing and the body-free source audit now use the same safe field; later canonical
+  reconciliation preserves an admin-reviewed override. The audit closing
+  record reports usable Turkish/Türkiye-focused source and origin counts plus the per-class
+  distribution. The migration applied cleanly to the local test database; source administration
+  passed 22/22 PostgreSQL scenarios, focused schema/audit and admin/OpenAPI checks passed 39/39,
+  OpenAPI validated all 136 runtime operations, and lint plus strict typecheck passed. Production
+  remains exact `b55e1e63c7c4f28f87da8f4775b3e73836533b94`; this package is not yet merged
+  or deployed.
 - 2026-07-29: anonymous-public analytics and bounded operational-record maintenance code shipped
   through exact production SHA `2cee14909cbd3f66ad785e270d7710325ca3973e`, then the maintenance
   Docker-config correction reached exact production SHA
@@ -772,8 +785,10 @@ behavior defects live.
    `72/72` usable sources and origins, zero empty/error result and `1,354` useful items. The reviewed
    registry marks 48 as Turkish-language or Türkiye-focused; make that language classification an
    explicit safe metadata field so future audits verify it directly rather than recomputing a
-   static allowlist. Continue per-writer usefulness and evolution observation; pool-level source
-   health is no longer the immediate blocker.
+   static allowlist. The stacked source-locale candidate now implements that field, migration,
+   admin controls and aggregate audit output; merge, production migration and a fresh
+   production-network reread remain open. Continue per-writer usefulness and evolution
+   observation; pool-level source health is no longer the immediate blocker.
 
    Exact production SHA `ca30a502386c690c83a5e8ec7c94ca959ed2d618` now includes the missing safe
    explanation layer in the

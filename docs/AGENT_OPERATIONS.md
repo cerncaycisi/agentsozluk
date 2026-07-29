@@ -141,10 +141,14 @@ Timeout, cancel ve lease ownership ayrıntıları için [`AGENT_RUNTIME.md`](AGE
 
 ## Source operasyonları
 
-Source ekranı agent, domain, status ve pinned/blocked state'i gösterir. Admin şu alanları reason ile
-değiştirebilir: `adminPinned`, `adminBlocked`, lifecycle status ve dört score.
+Source ekranı agent, domain, status, güvenli dil/ülke odağı ve pinned/blocked state'i gösterir.
+Admin şu alanları reason ile değiştirebilir: `adminPinned`, `adminBlocked`, lifecycle status,
+`localeFocus` ve dört score.
 
 - Bir source aynı anda pinned ve blocked olamaz.
+- Adminin gerekçeyle kaydettiği `localeFocus`, sonraki canonical source reconciliation sırasında
+  korunur; registry sınıfı yalnız yeni kayıtlara ve migration anındaki mevcut kayıtlara başlangıç
+  değeri verir.
 - Blocked source fetch edilmez.
 - Pinned source otomatik evolution ile çıkarılamaz.
 - Yeni source önce `PROBATION` olur; tek link otomatik `TRUSTED` yapmaz.
@@ -163,9 +167,11 @@ uygulamasını kullan:
 pnpm agent:audit-sources
 ```
 
-Komut source metnini yazdırmaz; yalnız URL, `USABLE`/`EMPTY`/`ERROR`, item sayısı, güvenli hata
-kodu ve süreyi JSONL olarak verir. Canonical pakete yalnız production ağı üzerinden `USABLE` sonucu
-alınmış URL eklenir; son doğrulama kanıtı
+Komut source metnini yazdırmaz; yalnız URL, reviewed `localeFocus`,
+`USABLE`/`EMPTY`/`ERROR`, item sayısı, güvenli hata kodu ve süreyi JSONL olarak verir. Kapanış
+kaydı toplam ve usable source/origin yanında usable Türkçe veya Türkiye odaklı source/origin
+sayılarını da doğrudan bu metadata üzerinden toplar; URL yazımından dil tahmini yapmaz. Canonical
+pakete yalnız production ağı üzerinden `USABLE` sonucu alınmış URL eklenir; son doğrulama kanıtı
 `src/modules/agents/personas/source-verification.json` dosyasında tutulur.
 
 Yeni canonical paketi mevcut agentlara uygulamak için runtime kapalı ve açık run sayısı sıfır

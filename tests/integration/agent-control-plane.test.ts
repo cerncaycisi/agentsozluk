@@ -1589,12 +1589,17 @@ describe("agent control plane with PostgreSQL", () => {
     const [listed, total] = await listAgentSources(integrationDatabase, actor(admin.id), {
       agentProfileId: created.agent.profile.id,
       status: "PROBATION",
+      localeFocus: "GLOBAL",
       domain: "source-admin",
       skip: 0,
       take: 20,
     });
     expect(total).toBe(1);
-    expect(listed[0]).toMatchObject({ id: source.id, _count: { items: 0 } });
+    expect(listed[0]).toMatchObject({
+      id: source.id,
+      localeFocus: "GLOBAL",
+      _count: { items: 0 },
+    });
 
     const trusted = await updateAgentSourceAdmin(
       integrationDatabase,
@@ -1602,13 +1607,19 @@ describe("agent control plane with PostgreSQL", () => {
       source.id,
       agentSourceAdminUpdateSchema.parse({
         status: "TRUSTED",
+        localeFocus: "TURKISH_LANGUAGE",
         adminPinned: true,
         trustScore: 0.56,
         reason: "Admin source içeriğini inceleyip açık trusted onayı vermektedir.",
       }),
       sourceChangeAt,
     );
-    expect(trusted).toMatchObject({ status: "TRUSTED", adminPinned: true, trustScore: 0.56 });
+    expect(trusted).toMatchObject({
+      status: "TRUSTED",
+      localeFocus: "TURKISH_LANGUAGE",
+      adminPinned: true,
+      trustScore: 0.56,
+    });
     const trustAudit = await integrationDatabase.auditLog.findFirstOrThrow({
       where: {
         action: "agent.source.changed",
@@ -1619,9 +1630,10 @@ describe("agent control plane with PostgreSQL", () => {
     });
     expect(trustAudit.metadata).toMatchObject({
       changeOrigin: "ADMIN",
+      localeFocus: { from: "GLOBAL", to: "TURKISH_LANGUAGE" },
       scoreChanges: { trustScore: { from: 0.5, to: 0.56 } },
-      before: { trustScore: 0.5 },
-      after: { trustScore: 0.56 },
+      before: { localeFocus: "GLOBAL", trustScore: 0.5 },
+      after: { localeFocus: "TURKISH_LANGUAGE", trustScore: 0.56 },
       weeklyScoreBudget: {
         timeZone: "Europe/Istanbul",
         fields: {
@@ -1693,18 +1705,20 @@ describe("agent control plane with PostgreSQL", () => {
     expect(sourceLife).toHaveLength(2);
     expect(sourceLife[0]).toMatchObject({
       beforeState: {
+        localeFocus: "GLOBAL",
         status: "PROBATION",
         adminPinned: false,
         adminBlocked: false,
         trustScore: 0.5,
       },
       afterState: {
+        localeFocus: "TURKISH_LANGUAGE",
         status: "TRUSTED",
         adminPinned: true,
         adminBlocked: false,
         trustScore: 0.56,
       },
-      changedFields: ["adminPinned", "status", "trustScore"],
+      changedFields: ["adminPinned", "localeFocus", "status", "trustScore"],
       metadata: {
         origin: "ADMIN",
         reason: "Admin source içeriğini inceleyip açık trusted onayı vermektedir.",

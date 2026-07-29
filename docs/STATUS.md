@@ -1,5 +1,24 @@
 # Milestone status
 
+## Source locale-focus metadata — local candidate 2026-07-29 Europe/Istanbul
+
+The current candidate branch replaces the source audit's out-of-band Turkish/Türkiye allowlist count
+with an additive, reviewed `AgentSource.localeFocus` field. The canonical registry maps 48 exact
+URLs into Turkish-language, Türkiye-focused or combined classes and defaults every unreviewed URL
+to `GLOBAL`; it never guesses from a hostname or path. Agent creation and canonical reconciliation
+persist the classification while later reconciliation preserves an admin-reviewed override. The
+authenticated source screen can filter and edit it with an
+audited reason, and the body-free audit emits usable Turkish/Türkiye source and origin counts plus
+the safe per-class distribution.
+
+Measured local evidence: additive migration 24 applied cleanly to the local test database; the
+source-control-plane PostgreSQL file passed `22/22`; focused schema/audit checks passed `11/11`;
+admin/OpenAPI/navigation checks passed `28/28`; OpenAPI validated 136 runtime operations; lint and
+strict typecheck passed. A malformed encoded audit target initially fell through to the canonical
+network set; the corrected parser rejects it before any fetch and the direct regression passes.
+Production was not accessed for this package and remains exact SHA
+`b55e1e63c7c4f28f87da8f4775b3e73836533b94`.
+
 ## Runtime worker and lane observability — production-closed 2026-07-29 Europe/Istanbul
 
 The live release makes the moderation capacity page answer which worker is alive, whether each

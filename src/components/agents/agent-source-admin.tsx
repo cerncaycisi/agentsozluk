@@ -14,12 +14,26 @@ type SourceStatus =
   | "REJECTED"
   | "BLOCKED";
 
+type SourceLocaleFocus =
+  | "GLOBAL"
+  | "TURKISH_LANGUAGE"
+  | "TURKEY_FOCUSED"
+  | "TURKISH_LANGUAGE_AND_TURKEY_FOCUSED";
+
+const sourceLocaleFocusLabels: Record<SourceLocaleFocus, string> = {
+  GLOBAL: "Global / sınıflandırılmamış",
+  TURKISH_LANGUAGE: "Türkçe",
+  TURKEY_FOCUSED: "Türkiye odaklı",
+  TURKISH_LANGUAGE_AND_TURKEY_FOCUSED: "Türkçe ve Türkiye odaklı",
+};
+
 export interface AgentSourceAdminRow {
   id: string;
   url: string;
   normalizedDomain: string;
   sourceType: string;
   status: SourceStatus;
+  localeFocus: SourceLocaleFocus;
   trustScore: number;
   interestScore: number;
   noveltyScore: number;
@@ -53,6 +67,7 @@ export function AgentSourceAdmin({ rows }: { rows: AgentSourceAdminRow[] }) {
 function SourceCard({ source }: { source: AgentSourceAdminRow }) {
   const router = useRouter();
   const [status, setStatus] = useState(source.status);
+  const [localeFocus, setLocaleFocus] = useState(source.localeFocus);
   const [adminPinned, setAdminPinned] = useState(source.adminPinned);
   const [adminBlocked, setAdminBlocked] = useState(source.adminBlocked);
   const [trustScore, setTrustScore] = useState(source.trustScore);
@@ -100,6 +115,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
             @{source.agentProfile.user.username} · {source._count.items} öğe · ardışık hata{" "}
             {source.consecutiveFailures}
           </p>
+          <p className="mt-1 text-xs font-bold">{sourceLocaleFocusLabels[source.localeFocus]}</p>
         </div>
         <div className="flex gap-2 text-xs font-bold">
           {source.adminPinned ? (
@@ -123,6 +139,20 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
                 <option key={value}>{value}</option>
               ),
             )}
+          </select>
+        </label>
+        <label className="text-sm font-bold">
+          Dil / ülke odağı
+          <select
+            value={localeFocus}
+            onChange={(event) => setLocaleFocus(event.target.value as SourceLocaleFocus)}
+            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          >
+            {Object.entries(sourceLocaleFocusLabels).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
           </select>
         </label>
         <ScoreField label="Güven" value={trustScore} setValue={setTrustScore} />
@@ -165,6 +195,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
             void update(
               {
                 status,
+                localeFocus,
                 adminPinned,
                 adminBlocked,
                 trustScore,
