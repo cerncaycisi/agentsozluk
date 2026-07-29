@@ -11,7 +11,10 @@ import {
   uniqueVerifiedSourcePool,
 } from "@/modules/agents/personas/source-assignment";
 import { seedPersonaPackSchema, seedPersonaSchema } from "@/modules/agents/personas/schema";
-import { reviewedSourceLocaleFocus } from "@/modules/agents/personas/source-locale-metadata";
+import {
+  reconciledSourceLocaleFocus,
+  reviewedSourceLocaleFocus,
+} from "@/modules/agents/personas/source-locale-metadata";
 import { appendRuntimeEvent, lockAgentProfile } from "@/modules/agents/repository/control-plane";
 import { appendAuditLog } from "@/modules/audit";
 import { resolveOperatorAdmin } from "./agent-operator";
@@ -163,7 +166,7 @@ async function main(): Promise<void> {
             update: {
               normalizedDomain: new URL(source.url).hostname.toLowerCase(),
               sourceType: source.sourceType,
-              localeFocus: reviewedSourceLocaleFocus(source.url),
+              localeFocus: reconciledSourceLocaleFocus(before?.localeFocus, source.url),
               topics: source.topics,
               interestScore: source.weight,
               adminPinned: source.pinned,

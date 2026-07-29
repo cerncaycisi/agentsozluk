@@ -70,6 +70,13 @@ export function reviewedSourceLocaleFocus(url: string): SourceLocaleFocus {
   return "GLOBAL";
 }
 
+export function reconciledSourceLocaleFocus(
+  current: SourceLocaleFocus | null | undefined,
+  url: string,
+): SourceLocaleFocus {
+  return current ?? reviewedSourceLocaleFocus(url);
+}
+
 export function isTurkishOrTurkeyFocused(localeFocus: SourceLocaleFocus): boolean {
   return localeFocus !== "GLOBAL";
 }

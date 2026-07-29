@@ -3539,3 +3539,64 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   never invent a shortened marker path. Treat systemd `ExecMainCode` as its numeric enum when
   parsing `systemctl show`, and distinguish an operator postcondition bug from the already
   completed service result before retrying a bounded write.
+
+## 2026-07-29 — runtime worker and lane observability production closeout
+
+- Exact release: SHA `b55e1e63c7c4f28f87da8f4775b3e73836533b94`, Release Candidate Bundle
+  run `30463558531`, artifact `8728864603`, digest
+  `sha256:da57a2cdbf4bddb3ffab3c639cb8be25b2076dd26a3367046202da645025eed0`.
+  Hostname, IPv4/domain, ED25519 fingerprint, repository, checkout, manifest, archive path/hash,
+  image-revision and host-native runtime ABI guards passed. The inert image and immutable runtime
+  were staged before the write freeze; no production container or symlink changed during staging.
+- Backup and migration: queue/running/cancel-requested/live-lease state drained to `0/0/0/0`
+  without cancellation. The worker, hourly maintenance timer, proxy and app stopped while the
+  database remained private and healthy. Backup
+  `/opt/agent-sozluk/backups/agent-sozluk-pre-b55e1e63c7c4f28f87da8f4775b3e73836533b94-20260729T152320Z.dump`
+  is mode `0600` with SHA-256
+  `a7949fb1c77836775882c35389c20cbc367339b229910a28270821326d7f71d1`.
+  Its allowlisted isolated restore matched all 47 public table counts and the scratch database was
+  removed. Candidate history contained every applied migration plus exactly
+  `20260729190000_add_runtime_worker_observability`; the image entrypoint applied that one delta,
+  the final history matched all 23 candidate migrations and all 46 pre-existing data-table counts
+  remained equal.
+- Cutover and UI: checkout, running image and immutable runtime converged on the exact SHA with
+  image ID `sha256:834f2883be8e5844f6bcea6d5a009f8a50b7e1759b4a11b1dbcbe87b61dc9c50`.
+  Internal/public health and readiness were `200/200`; worker state returned
+  `active/running`, systemd restart count stayed zero and the maintenance timer returned
+  `enabled/active`. Settings, lifecycle and named-volume fingerprints matched their opening state.
+  Natural scheduling resumed without operator-created or cancelled runs. Authenticated
+  `/moderasyon/agent-kapasite` smoke under the existing `10c4190d` HUMAN ADMIN session displayed
+  one online worker, two lane cards, real active/idle capacity, safe phase/lease/heartbeat timing,
+  restart `0`, timeout `0` and the installed Codex version; browser console error count was zero.
+  Prompt, credential, content body and private reasoning were neither selected nor displayed. No
+  retention cleanup ran.
+- Corrected operator checks changed no product state:
+  1. The first local bundle-verifier invocation incorrectly used flag arguments although the
+     versioned verifier accepts positional bundle-directory and SHA arguments. It stopped locally
+     with `RELEASE_ARTIFACT_FAIL code=INVALID_ARGUMENTS`; the positional invocation passed.
+  2. The first read-only preflight guessed
+     `agent-sozluk-operational-record-maintenance.timer`, received `not-found` and stopped. The
+     repository-owned unit is `agent-sozluk-maintenance.timer`; its enabled/active state was then
+     captured and restored around the database freeze.
+- Do not repeat: invoke `verify-release-bundle.mjs` with its checked-in positional contract and
+  copy versioned systemd unit names from `deploy/systemd` instead of reconstructing them from prose.
+
+## 2026-07-29 — source-locale branch refresh local database guard correction
+
+- Environment: local-only `codex/source-locale-metadata` candidate after merging current `main`;
+  production was not accessed. The first focused PostgreSQL validation supplied the generic
+  `postgres` role and stopped before migration or tests with Prisma `Schema engine error`.
+  Direct `psql` separation exposed the safe root cause:
+  `FATAL: role "postgres" does not exist`; the local server's verified role is
+  `gokhannihalgul`. Prisma schema validation itself passed.
+- Resolution: use the already documented role-explicit isolated test DSN for this machine, apply
+  the candidate migration only to `agent_sozluk_test`, and then rerun the focused integration
+  file. This failure is environment/fixture evidence, not a code regression.
+- Do not repeat: before invoking Prisma against the system PostgreSQL, read the existing local
+  database receipt and verify `current_user`; never copy the generic fallback DSN from
+  `tests/setup.ts` into an explicit integration command on this host.
+- Verified resolution: the role-explicit connection reported 24 migrations with none pending;
+  source control-plane integration passed `22/22`. The exact reviewed registry and migration URL
+  sets matched `48/48`; focused locale/schema/audit tests passed `11/11`, adjacent admin/source/
+  navigation/OpenAPI unit checks passed `53/53`, and format, ESLint, strict typecheck plus OpenAPI
+  136 all passed after the current `main` merge.

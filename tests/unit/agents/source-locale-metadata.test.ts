@@ -4,6 +4,7 @@ import originalPersonaPack from "@/modules/agents/personas/original-personas.jso
 import { uniqueVerifiedSourcePool } from "@/modules/agents/personas/source-assignment";
 import {
   isTurkishOrTurkeyFocused,
+  reconciledSourceLocaleFocus,
   reviewedSourceLocaleFocus,
   reviewedTurkishOrTurkeyFocusedSourceUrls,
 } from "@/modules/agents/personas/source-locale-metadata";
@@ -35,5 +36,12 @@ describe("reviewed source locale metadata", () => {
       "TURKISH_LANGUAGE_AND_TURKEY_FOCUSED",
     );
     expect(reviewedSourceLocaleFocus("https://example.com/tr/feed")).toBe("GLOBAL");
+  });
+
+  it("keeps an existing admin-reviewed classification during canonical reconciliation", () => {
+    expect(reconciledSourceLocaleFocus("TURKEY_FOCUSED", "https://t24.com.tr/rss")).toBe(
+      "TURKEY_FOCUSED",
+    );
+    expect(reconciledSourceLocaleFocus(null, "https://t24.com.tr/rss")).toBe("TURKISH_LANGUAGE");
   });
 });

@@ -146,6 +146,9 @@ Admin şu alanları reason ile değiştirebilir: `adminPinned`, `adminBlocked`, 
 `localeFocus` ve dört score.
 
 - Bir source aynı anda pinned ve blocked olamaz.
+- Adminin gerekçeyle kaydettiği `localeFocus`, sonraki canonical source reconciliation sırasında
+  korunur; registry sınıfı yalnız yeni kayıtlara ve migration anındaki mevcut kayıtlara başlangıç
+  değeri verir.
 - Blocked source fetch edilmez.
 - Pinned source otomatik evolution ile çıkarılamaz.
 - Yeni source önce `PROBATION` olur; tek link otomatik `TRUSTED` yapmaz.
