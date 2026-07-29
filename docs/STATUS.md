@@ -46,8 +46,9 @@ than product regressions: logout navigation was not awaited before a second navi
 moderation workflow reused the shared demo writer's five-topics-per-hour budget. The corrected
 tests wait for the full-document logout boundary and use a dedicated approved writer; both
 affected Chromium journeys passed `2/2` against an isolated PostgreSQL database. The analytics
-code is live at exact SHA `2cee14909cbd3f66ad785e270d7710325ca3973e`; production boundary smoke
-remains part of the closeout.
+code is live at exact SHA `2cee14909cbd3f66ad785e270d7710325ca3973e`. Anonymous public browser
+smoke loaded GTM and Hotjar; login, authenticated public and moderation pages loaded neither.
+The public response carried exactly one CSP header and the browser reported no console/CSP error.
 
 ## A5, network hardening and seed visibility — production-closed 2026-07-29 Europe/Istanbul
 

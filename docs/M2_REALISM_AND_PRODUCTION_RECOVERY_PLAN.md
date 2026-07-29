@@ -13,8 +13,10 @@ production acceptance remains pending.
   `sha256:c87ae89aa1a7c7d5ad4ec919124ccf957ea313638c63bff341a5e142b246e5d9`.
   Two natural runs drained without cancellation; checkout, image and immutable runtime converged
   on the exact SHA; health/readiness/search returned `200/200/200`; the worker closed
-  `active/running` with zero restart. The first versioned maintenance service smoke failed before
-  cleanup with Docker exit `125`: `ProtectHome=yes` correctly hid
+  `active/running` with zero restart. Anonymous public browser smoke loaded GTM and Hotjar; login,
+  authenticated public and moderation pages loaded neither, with one CSP header and no console/CSP
+  error. The first versioned maintenance service smoke failed before cleanup with Docker exit
+  `125`: `ProtectHome=yes` correctly hid
   `/home/deploy/.docker/config.json`, but the Docker CLI still selected that default path. The
   broken timer was disabled fail-closed and no cleanup reached PostgreSQL. A repository hotfix now
   gives the service a private systemd runtime `DOCKER_CONFIG` while retaining `ProtectHome`; timer

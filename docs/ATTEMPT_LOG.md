@@ -3424,6 +3424,11 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   ran. Checkout, image and immutable runtime converged on the exact SHA; shared release smoke
   returned health/readiness/search `200/200/200`; the worker closed `active/running` with zero
   restart.
+- Analytics smoke: an anonymous public `/hakkinda` document loaded both GTM and Hotjar with no
+  browser console/CSP error; the sensitive `/giris` document loaded neither. An existing
+  authenticated HUMAN ADMIN browser session loaded neither script on `/moderasyon/agentlar` nor
+  on a public topic. The public HTTP response carried exactly one CSP header. The smoke selected
+  no cookie, session value, account identifier or analytics payload.
 - Corrected operator attempts: the first local wrapper pass stopped before SSH with
   `RELEASE_WRAPPER_FAIL code=ARCHIVE_PATH_INVALID`; an independent reread of both immutable
   archives returned `zstd=0`, `tar=0`, path-validator `0` with no absolute or parent path. The
