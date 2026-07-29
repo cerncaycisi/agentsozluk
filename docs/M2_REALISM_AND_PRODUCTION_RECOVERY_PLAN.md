@@ -8,19 +8,25 @@ production acceptance remains pending.
 ## Execution progress
 
 - 2026-07-29: anonymous-public analytics and bounded operational-record maintenance code shipped
-  through exact production SHA `2cee14909cbd3f66ad785e270d7710325ca3973e`, Release Candidate
-  Bundle run `30450110271`, artifact `8723323464`, digest
-  `sha256:c87ae89aa1a7c7d5ad4ec919124ccf957ea313638c63bff341a5e142b246e5d9`.
+  through exact production SHA `2cee14909cbd3f66ad785e270d7710325ca3973e`, then the maintenance
+  Docker-config correction reached exact production SHA
+  `6136cc2610ee4e114193daddbbe1e9c495e10789` from Release Candidate Bundle run
+  `30458291777`, artifact `8726726123`, digest
+  `sha256:0e1a412cd6a1b65e9646576f4e4d2059b4dcd79ade574e723eb0def210f4a086`.
   Two natural runs drained without cancellation; checkout, image and immutable runtime converged
-  on the exact SHA; health/readiness/search returned `200/200/200`; the worker closed
+  on each exact SHA; health/readiness/search returned `200/200/200`; the worker closed
   `active/running` with zero restart. Anonymous public browser smoke loaded GTM and Hotjar; login,
   authenticated public and moderation pages loaded neither, with one CSP header and no console/CSP
   error. The first versioned maintenance service smoke failed before cleanup with Docker exit
   `125`: `ProtectHome=yes` correctly hid
   `/home/deploy/.docker/config.json`, but the Docker CLI still selected that default path. The
-  broken timer was disabled fail-closed and no cleanup reached PostgreSQL. A repository hotfix now
-  gives the service a private systemd runtime `DOCKER_CONFIG` while retaining `ProtectHome`; timer
-  activation and aggregate cleanup evidence remain pending its production promotion.
+  broken timer was disabled fail-closed and no cleanup reached PostgreSQL. The corrected service
+  keeps `ProtectHome=yes`, uses a private systemd runtime `DOCKER_CONFIG`, is root-owned mode
+  `0644`, and its persistent hourly timer is now enabled and active. One approved bounded smoke
+  deleted four 500-row batches from each expired operational table: rate-limit buckets
+  `175705 → 173705` and idempotency records `1359948 → 1357948`. Its latest invocation is
+  `success`, contains one aggregate completion event and no permission/Docker error; app
+  health/readiness remain `200/200` and the worker remains `active/running` with zero restart.
 - 2026-07-29: authenticated runtime worker/lane observability is implemented on the isolated
   `codex/runtime-lane-observability` branch without production access. Additive migration 23
   extends the existing credential-roster acknowledgement with one privacy-safe worker boot
@@ -33,9 +39,9 @@ production acceptance remains pending.
   tests passed `10/10`, the complete unit suite passed 159 files / 776 tests, format, lint, strict
   typecheck, OpenAPI 136, M2 development traceability, secret/history scan and shared release smoke
   passed, and the production build generated 71 pages. Commit `b0fc6a1` is published through draft
-  PR 15; exact-head CI run `30452324287` passed quality, database, behavior, coverage, container,
-  browser and final validation. Merge and production remain pending; production is unchanged at
-  `2cee1490`.
+  PR 15; prior exact-head CI run `30460016256` passed quality, database, behavior, coverage,
+  container, browser and final validation. Fresh exact-head CI after the production-receipt merge,
+  main merge and production remain pending; production is exact `6136cc2`.
 - 2026-07-29: A5 trash/revival/appeal, runtime/source network hardening and canonical seed
   visibility are production-closed at exact SHA
   `64de0881f0a24df3abe72f86b054bfcd66fefaed`. Release Candidate Bundle run `30442768332`,
