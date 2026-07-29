@@ -860,7 +860,14 @@ behavior defects live.
    a later separately benchmarked phase.
 5. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
    reject redirects/non-JSON/oversized responses, default source traffic to ports 80/443 and apply
-   robots/model-input policy per origin.
+   robots/model-input policy per origin. Local candidate
+   `d746ce8e556d748eef733893113f95846efa6147` implements the exact loopback origin,
+   redirect/content-type/2 MiB response guards, default-port plus explicit hostname-port policy,
+   expanded non-global destination rejection and per-origin cached policy evaluation before a
+   redirected source or discovered feed body is read. Focused security tests pass `61/61`, the
+   complete unit suite passes 151 files / 745 tests, quality/OpenAPI/development traceability gates
+   pass and the production build generates 71 pages. Keep this item active until exact main CI and
+   production runtime/source smoke close it.
 6. **Add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
    allowing an audited admin to remove one unsafe seed entry from every public surface.
 7. **Improve risk-based verification and operations.** Label current coverage accurately, extend

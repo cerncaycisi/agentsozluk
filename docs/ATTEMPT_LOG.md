@@ -3195,3 +3195,33 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   cutover. After a clean feature commit and rebase, main fast-forwarded to the exact commit; the
   temporary `/Volumes/GB/ai-projects/agentsz-a5` worktree and its local branch were removed. Do not
   create a second worktree for ordinary sequential Agent Sözlük work.
+
+## 2026-07-29 — Runtime and source network hardening local candidate
+
+- Scope: exact main commit `d746ce8e556d748eef733893113f95846efa6147` canonicalizes the
+  host-local control-plane origin, blocks redirects/non-JSON/oversized envelopes, limits source
+  traffic to default ports unless an exact hostname-port exception exists, expands non-global
+  destination rejection and applies robots/model-input policy independently per redirected or
+  discovered-feed origin. No production connection, deploy, runtime change or source mutation
+  occurred.
+- Verification: focused runtime/source security passed `61/61`; the full unit suite passed
+  151 files / 745 tests; format, lint, strict typecheck and repository secret scan passed; OpenAPI
+  validated 134 operations; M1 traceability passed; M2 development traceability reported
+  464 active PASS, 77 ADR-012 superseded, 25 partial supersessions, two approved post-merge BLOCKED
+  and zero FAIL. The production build generated 71 pages.
+- Local environment corrections:
+  1. The first typecheck used a Prisma client generated before migrations 19–21 and reported
+     missing `gammazDecision`, `entryTrashCase` and related types. `prisma generate` against the
+     current checked-in schema restored the expected client; typecheck then passed. After merging
+     schema changes, regenerate the local client before classifying broad TypeScript errors.
+  2. `requirements:m2:check` invokes the final acceptance policy and correctly stopped at
+     `DONE-082 must be PASS for final M2 verification; found BLOCKED`. During an unfinished
+     milestone package use `requirements:m2:check:development`; never relabel the approved final
+     blockers or weaken the final verifier.
+  3. The first bare `next build` compiled but `/kurallar` prerender stopped because
+     `DATABASE_URL`, `APP_URL` and `APP_SECRET` were absent. The rerun used non-secret build-only
+     placeholders and generated all 71 pages. Supply the standard build-only environment for local
+     production builds; do not copy production environment values.
+- Do not repeat: do not treat a URL schema check as a network trust boundary, do not reuse the
+  initial origin's robots decision across a redirect/feed origin, and do not add a non-default
+  source port without an exact hostname-port policy plus direct regression evidence.

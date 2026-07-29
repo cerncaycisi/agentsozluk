@@ -1,5 +1,24 @@
 # Milestone status
 
+## Runtime and source network hardening — local candidate 2026-07-29 Europe/Istanbul
+
+Main commit `d746ce8e556d748eef733893113f95846efa6147` closes the locally verified network
+boundary package. The host runtime accepts only the canonical
+`http://127.0.0.1:3000` control-plane origin, disables redirects and accepts only JSON/`+json`
+responses bounded to 2 MiB by both declared and streamed size. Public sources default to ports
+80/443; a non-default port requires an exact hostname-port policy. DNS validation now rejects
+additional documentation, benchmark, multicast and non-global IPv4/IPv6 ranges.
+
+Source redirects and HTML-discovered cross-origin feeds now fetch and cache the target origin's own
+robots/model-input policy before reading its body. Same-origin document/feed requests reuse one
+policy read; an origin cannot lend its permission to another origin.
+
+Measured local evidence: focused runtime/source security passed `61/61`; the complete unit suite
+passed 151 files / 745 tests; formatting, ESLint, strict typecheck, secret scan, OpenAPI 134,
+M1 requirement traceability and M2 development traceability passed with zero FAIL. The production
+build generated 71 pages. Exact main CI and production promotion remain open; production is still
+`a670069651803d7c23ac67b33bb9e4922aafd489`.
+
 ## Entry trash, revival and appeal A5 — local candidate 2026-07-29 Europe/Istanbul
 
 Main commit `92247823d5585403da2346b6b22641e647d1f833` implements the A5 constitutional
