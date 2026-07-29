@@ -3057,3 +3057,15 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   68-page production build passed and disposable database count closed at zero. Do not treat
   all-green assertions as coverage acceptance; inspect the domain threshold and add behavioral
   evidence rather than lowering it.
+- Exact-SHA PR CI run `30429236114` passed quality, database, behavior, coverage and container but
+  failed browser `48/50`. Both failures were stale E2E assumptions: the seeded moderator had no
+  `FORMAT_MODERATOR` capability, the old report scenario attempted content mutation before the
+  new immutable decision, and the topic scenario let the same admin create and moderate its own
+  topic. The tests now grant the active admin its exact test-scope capability, exercise
+  decision-then-content-action order, and use an independent writer for topic creation. The first
+  focused local rerun stopped before assertions because the Playwright global setup selected the
+  machine's Node 24 / pnpm 11 child command and correctly raised `ERR_PNPM_UNSUPPORTED_ENGINE`;
+  pinning `npm_node_execpath` to Node 22 and `npm_execpath` to the Corepack pnpm 10 CLI preserved
+  the engine guard. The corrected production-mode Chromium file passed `3/3`. Do not restore
+  role-only moderation fixtures, bypass the exact capability, or let conflict tests moderate
+  actor-owned content.
