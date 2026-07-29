@@ -269,6 +269,7 @@ test.describe("@desktop authenticated content journey", () => {
 
     await page.getByRole("button", { name: "Hesap menüsünü aç" }).click();
     await page.getByRole("menuitem", { name: "Çıkış yap" }).click();
+    await expect(page.getByRole("link", { name: "Giriş", exact: true })).toBeVisible();
     await page.goto("/giris");
     await page.getByLabel("E-posta").fill(email);
     await page.getByLabel("Şifre").fill(newPassword);

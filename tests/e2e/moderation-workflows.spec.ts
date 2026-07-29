@@ -440,10 +440,11 @@ test.describe("@desktop moderation and admin workflows", () => {
   });
 
   test("redirects old topic URLs after rename and merge", async ({ browser }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(150_000);
     const authorContext = await browser.newContext();
     const authorPage = await authorContext.newPage();
-    await login(authorPage, "writer@local.test", demoPassword);
+    const author = await register(authorPage, "topic_redirect_author");
+    await approveWriterViaAdmin(browser, author);
     const suffix = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
     const source = await createTopic(
       authorPage,

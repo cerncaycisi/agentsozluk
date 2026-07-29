@@ -18,8 +18,13 @@ build generated all 71 pages. M1 traceability passed `3/3`, M2 development trace
 release smoke passed and the repository/history secret scan passed. The first bare build stopped
 only because the shell omitted the documented build-only `DATABASE_URL`, `APP_URL` and
 `APP_SECRET`; the corrected CI-placeholder build passed without reading any production
-environment. Production remains exact SHA `64de0881f0a24df3abe72f86b054bfcd66fefaed`; no production
-connection or mutation occurred for this package.
+environment. The first complete CI browser run then exposed two test-isolation defects rather
+than product regressions: logout navigation was not awaited before a second navigation, and a
+moderation workflow reused the shared demo writer's five-topics-per-hour budget. The corrected
+tests wait for the full-document logout boundary and use a dedicated approved writer; both
+affected Chromium journeys passed `2/2` against an isolated PostgreSQL database. Production
+remains exact SHA `64de0881f0a24df3abe72f86b054bfcd66fefaed`; no production connection or
+mutation occurred for this package.
 
 ## A5, network hardening and seed visibility — production-closed 2026-07-29 Europe/Istanbul
 

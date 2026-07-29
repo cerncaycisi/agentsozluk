@@ -1019,6 +1019,12 @@ behavior defects live.
    exact Hotjar network allowlist and no `script-src unsafe-inline`. The complete unit suite passed
    156 files / 766 tests; format, lint, strict typecheck, the 71-page production build, M1/M2
    development traceability, OpenAPI, release smoke and repository/history secret scan are green.
+   The first complete CI browser run found two E2E-only isolation defects: the account journey
+   began a second navigation before the new full-document logout completed, and the topic
+   redirect workflow consumed the shared demo writer's finite topic-create budget. The corrected
+   journeys wait for logout completion and use a dedicated approved writer; the two affected
+   Chromium scenarios passed `2/2` against an isolated PostgreSQL database without weakening any
+   product rate limit.
    Keep this subpackage open only until an explicitly approved production browser smoke proves
    ordinary public loading plus zero requests on authenticated moderation.
 

@@ -3360,6 +3360,20 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   5. Formatting the already aligned traceability table would have created a 1,600-line
      whitespace-only diff. The mechanical formatting was reverted before commit; do not reformat
      that legacy table for an unrelated package.
+  6. Main CI run `30446787067` passed quality, behavior, database, coverage and container jobs but
+     its browser job closed at `49 passed / 2 failed`. The account-lifecycle test called
+     `page.goto("/giris")` while the new full-document logout navigation was still in flight,
+     producing exact `net::ERR_ABORTED`. The topic redirect/merge test reused
+     `writer@local.test`, whose user-scoped five-topics-per-hour budget is shared across the
+     complete E2E suite; the second topic therefore remained on `/baslik/ac`. The correction
+     awaits the logout boundary and gives that workflow its own registered, admin-approved writer.
+     An isolated PostgreSQL focused rerun passed both Chromium journeys `2/2`.
+  7. The first focused rerun reset its isolated database successfully but its global-setup child
+     process inherited bundled Node 24/pnpm 11 and stopped at `ERR_PNPM_UNSUPPORTED_ENGINE` before
+     seeding. Pin both `npm_node_execpath` to Homebrew Node 22 and `npm_execpath` to the Corepack
+     pnpm 10.34.5 CLI for Playwright child commands; the corrected rerun passed without installing
+     another toolchain.
 - Do not repeat: do not identify internal operators to analytics, do not treat IP filtering or a
   client-only flag as the exclusion boundary, do not render analytics on authenticated or
-  moderation/account pages, and do not add a second CSP header or `script-src unsafe-inline`.
+  moderation/account pages, do not let E2E fixtures share user-scoped write budgets, and do not add
+  a second CSP header or `script-src unsafe-inline`.
