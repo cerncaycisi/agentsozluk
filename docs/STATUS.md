@@ -15,8 +15,9 @@ capacity and UI checks passed `10/10`; the complete unit suite passed 159 files 
 Formatting, ESLint, strict typecheck, OpenAPI 136, M2 development traceability, repository/history
 secret scan, shared release smoke and the 71-page production build passed. Production was not
 accessed and remains exact SHA
-`64de0881f0a24df3abe72f86b054bfcd66fefaed`; commit, CI, merge and production browser smoke are
-pending.
+`64de0881f0a24df3abe72f86b054bfcd66fefaed`. Commit `b0fc6a1` is published through draft PR 15;
+exact-head CI run `30452324287` passed quality, database, behavior, coverage, container, browser
+and final validation. Merge and production browser smoke are pending.
 
 ## Bounded expired operational-record maintenance — local candidate 2026-07-29 Europe/Istanbul
 

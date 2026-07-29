@@ -18,8 +18,10 @@ production acceptance remains pending.
   database and the onboarding/telemetry integration scenarios passed `4/4`; focused worker/UI
   tests passed `10/10`, the complete unit suite passed 159 files / 776 tests, format, lint, strict
   typecheck, OpenAPI 136, M2 development traceability, secret/history scan and shared release smoke
-  passed, and the production build generated 71 pages. Commit, CI, merge and production remain
-  pending; production is unchanged at `64de0881`.
+  passed, and the production build generated 71 pages. Commit `b0fc6a1` is published through draft
+  PR 15; exact-head CI run `30452324287` passed quality, database, behavior, coverage, container,
+  browser and final validation. Merge and production remain pending; production is unchanged at
+  `64de0881`.
 - 2026-07-29: A5 trash/revival/appeal, runtime/source network hardening and canonical seed
   visibility are production-closed at exact SHA
   `64de0881f0a24df3abe72f86b054bfcd66fefaed`. Release Candidate Bundle run `30442768332`,
@@ -953,8 +955,9 @@ behavior defects live.
    writer, phase, queue-wait, duration, timeout and result views. The moderation capacity page
    displays these fields without boot UUID, prompt, credential, content or reasoning disclosure.
    All 23 migrations, the real PostgreSQL telemetry path, the complete 159-file unit suite,
-   development traceability and release smoke pass; production promotion and a browser smoke are
-   still pending.
+   development traceability and release smoke pass. Draft PR 15 exact-head CI run `30452324287`
+   also passed all six parallel lanes plus final validation; merge, production promotion and an
+   authenticated production browser smoke are still pending.
 
 8. **Finish public and moderation UI debt.** Complete the broader dictionary-style navigation
    benchmark and the remaining concrete mobile/moderation issues without changing the society

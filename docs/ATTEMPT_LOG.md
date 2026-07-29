@@ -3429,6 +3429,10 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   159 files / 776 tests. Format, ESLint, strict typecheck, OpenAPI 136, M2 development
   traceability, repository/history secret scan, shared release smoke, diff hygiene and the
   71-page production build passed.
+- GitHub evidence: commit `b0fc6a188baa706887e9d5d3927e571d98b12189` is published through
+  draft PR 15. Exact-head CI run `30452324287` passed quality, database, behavior, coverage,
+  container, browser and the final validate gate. The GitHub-hosted Node 20 action deprecation
+  annotations were warnings on third-party action runtimes, not application-engine failures.
 - Corrected attempts:
   1. The first focused command resolved the Codex fallback pnpm shim, which launched bundled Node
      24.14.0/pnpm 11.9.0 and stopped at `ERR_PNPM_UNSUPPORTED_ENGINE` before any test. The exact
