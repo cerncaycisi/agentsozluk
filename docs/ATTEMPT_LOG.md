@@ -3413,3 +3413,31 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   database URL or credential on a timer command line, never broaden this operational cleanup into
   immutable evidence or user/content history, and never invoke the Codex fallback pnpm shim for
   this repository when the native Node 22/Corepack pnpm 10 toolchain is available.
+
+## 2026-07-29 — analytics deploy and maintenance Docker-config correction
+
+- Exact release: SHA `2cee14909cbd3f66ad785e270d7710325ca3973e`, Release Candidate Bundle run
+  `30450110271`, artifact `8723323464`, digest
+  `sha256:c87ae89aa1a7c7d5ad4ec919124ccf957ea313638c63bff341a5e142b246e5d9`.
+  The pinned hostname, IPv4/domain, SSH fingerprint, repository and artifact guards matched.
+  Two running natural runs drained to zero without cancellation. No migration or retention cleanup
+  ran. Checkout, image and immutable runtime converged on the exact SHA; shared release smoke
+  returned health/readiness/search `200/200/200`; the worker closed `active/running` with zero
+  restart.
+- Corrected operator attempts: the first local wrapper pass stopped before SSH with
+  `RELEASE_WRAPPER_FAIL code=ARCHIVE_PATH_INVALID`; an independent reread of both immutable
+  archives returned `zstd=0`, `tar=0`, path-validator `0` with no absolute or parent path. The
+  second process was interrupted during inert image transport by the local tool-session boundary;
+  a pinned read-only snapshot proved no candidate stage, app/runtime still on the previous SHA and
+  worker health unchanged. The resumable third invocation reused the verified bundle and completed.
+- Maintenance smoke: the versioned unit files passed `systemd-analyze verify` and were installed
+  root-owned mode `0644`. The first oneshot then failed before application/database execution with
+  Docker exit `125`: `ProtectHome=yes` made `/home/deploy/.docker/config.json` unreadable while the
+  Docker CLI still selected that default path. No cleanup aggregate event existed, so no expired
+  record deletion was claimed. The enabled symlink was removed and the timer closed
+  `disabled/inactive/dead`; app exact SHA remained healthy and worker state stayed
+  `active/running/0`.
+- Verified correction: keep `ProtectHome=yes` and provide the unit a mode-0700 systemd
+  `RuntimeDirectory` as `DOCKER_CONFIG`. Do not point unattended maintenance at a human home,
+  loosen home protection or copy registry credentials. Production re-enable and aggregate cleanup
+  smoke require the corrected exact SHA.
