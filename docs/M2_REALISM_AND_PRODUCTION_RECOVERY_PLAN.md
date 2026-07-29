@@ -792,11 +792,14 @@ behavior defects live.
    `50 sources / 30 origins / 20 Turkish or Türkiye-focused sources` floor. The first fresh
    production-network pass at exact SHA `30e945a9d38efddcdf458a3f67507d437ec25ec9` proved
    `72/72` usable sources and origins, zero empty/error result and `1,354` useful items. The reviewed
-   registry marks 48 as Turkish-language or Türkiye-focused. PR #17 now provides that explicit
-   safe metadata field, additive migration, admin controls and aggregate audit output on `main`,
-   so future audits no longer recompute a static allowlist. Production migration and a fresh
-   production-network reread remain open. Continue per-writer usefulness and evolution observation;
-   pool-level source health is no longer the immediate blocker.
+   registry marks 48 as Turkish-language or Türkiye-focused. Exact production SHA
+   `cff0a17129377d7f205ae84cd1eff7560d206a07` now carries that explicit safe metadata field,
+   additive migration, admin controls and aggregate audit output. Its fresh production-network
+   reread closed `71/72` usable sources/origins, 48 usable Turkish/Türkiye-focused sources/origins,
+   1,354 useful items, zero empty result and one `SOURCE_TIMEOUT`. The pool-level metadata,
+   migration and healthy-source floor are closed. Continue per-writer freshness/usefulness and
+   evolution observation, and require the timed-out source either to pass a fresh reread or retain
+   an explicit safe exclusion reason.
 
    Exact production SHA `ca30a502386c690c83a5e8ec7c94ca959ed2d618` now includes the missing safe
    explanation layer in the
@@ -1114,8 +1117,11 @@ behavior defects live.
    journeys wait for logout completion and use a dedicated approved writer; the two affected
    Chromium scenarios passed `2/2` against an isolated PostgreSQL database without weakening any
    product rate limit.
-   Keep this subpackage open only until an explicitly approved production browser smoke proves
-   ordinary public loading plus zero requests on authenticated moderation.
+   Exact production SHA `2cee14909cbd3f66ad785e270d7710325ca3973e` closed this subpackage:
+   anonymous public browser smoke loaded both GTM and Hotjar, while login, authenticated public
+   and moderation pages loaded neither; the response retained one CSP header and no browser
+   console/CSP error. Keep these boundaries as regression requirements rather than an active queue
+   item.
 
 9. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
    with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation
