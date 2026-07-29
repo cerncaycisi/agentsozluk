@@ -3600,3 +3600,8 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   sets matched `48/48`; focused locale/schema/audit tests passed `11/11`, adjacent admin/source/
   navigation/OpenAPI unit checks passed `53/53`, and format, ESLint, strict typecheck plus OpenAPI
   136 all passed after the current `main` merge.
+- GitHub closeout: exact PR head `6a60616a155c0013824149741bca92c503d34c43` passed CI run
+  `30466905271` across quality, database, behavior, container, coverage, browser and final
+  validation, then PR #17 squash-merged cleanly to exact `main` SHA
+  `971fc3559dca324a8f66f0fb39b4a7446646a83d`. Production remained untouched at
+  `b55e1e63c7c4f28f87da8f4775b3e73836533b94`.

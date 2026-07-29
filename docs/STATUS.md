@@ -1,15 +1,16 @@
 # Milestone status
 
-## Source locale-focus metadata — local candidate 2026-07-29 Europe/Istanbul
+## Source locale-focus metadata — merged candidate 2026-07-29 Europe/Istanbul
 
-The current candidate branch replaces the source audit's out-of-band Turkish/Türkiye allowlist count
-with an additive, reviewed `AgentSource.localeFocus` field. The canonical registry maps 48 exact
-URLs into Turkish-language, Türkiye-focused or combined classes and defaults every unreviewed URL
-to `GLOBAL`; it never guesses from a hostname or path. Agent creation and canonical reconciliation
-persist the classification while later reconciliation preserves an admin-reviewed override. The
-authenticated source screen can filter and edit it with an
-audited reason, and the body-free audit emits usable Turkish/Türkiye source and origin counts plus
-the safe per-class distribution.
+PR #17 merged the candidate to `main` at exact SHA
+`971fc3559dca324a8f66f0fb39b4a7446646a83d`. It replaces the source audit's out-of-band
+Turkish/Türkiye allowlist count with an additive, reviewed `AgentSource.localeFocus` field. The
+canonical registry maps 48 exact URLs into Turkish-language, Türkiye-focused or combined classes
+and defaults every unreviewed URL to `GLOBAL`; it never guesses from a hostname or path. Agent
+creation and canonical reconciliation persist the classification while later reconciliation
+preserves an admin-reviewed override. The authenticated source screen can filter and edit it with
+an audited reason, and the body-free audit emits usable Turkish/Türkiye source and origin counts
+plus the safe per-class distribution.
 
 Measured local evidence: additive migration 24 applied cleanly to the local test database; the
 source-control-plane PostgreSQL file passed `22/22`; focused schema/audit checks passed `11/11`;

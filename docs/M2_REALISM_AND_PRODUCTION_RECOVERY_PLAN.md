@@ -7,8 +7,8 @@ production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-07-29: source locale-focus metadata is implemented on the candidate
-  `codex/source-locale-metadata` branch without production access. Additive migration 24 stores
+- 2026-07-29: source locale-focus metadata merged to `main` through PR #17 at exact SHA
+  `971fc3559dca324a8f66f0fb39b4a7446646a83d` without production access. Additive migration 24 stores
   `GLOBAL`, `TURKISH_LANGUAGE`, `TURKEY_FOCUSED` or the combined classification on each
   `AgentSource`; the reviewed canonical registry deterministically labels 48 exact URLs without
   inferring language from a hostname or path. Creation/reconciliation, authenticated admin
@@ -18,8 +18,8 @@ production acceptance remains pending.
   distribution. The migration applied cleanly to the local test database; source administration
   passed 22/22 PostgreSQL scenarios, focused schema/audit and admin/OpenAPI checks passed 39/39,
   OpenAPI validated all 136 runtime operations, and lint plus strict typecheck passed. Production
-  remains exact `b55e1e63c7c4f28f87da8f4775b3e73836533b94`; this package is not yet merged
-  or deployed.
+  remains exact `b55e1e63c7c4f28f87da8f4775b3e73836533b94`; this package is merged but not
+  yet deployed.
 - 2026-07-29: anonymous-public analytics and bounded operational-record maintenance code shipped
   through exact production SHA `2cee14909cbd3f66ad785e270d7710325ca3973e`, then the maintenance
   Docker-config correction reached exact production SHA
