@@ -552,6 +552,11 @@ sudo systemctl show agent-sozluk-maintenance.service \
   -p Result -p ExecMainCode -p ExecMainStatus
 ```
 
+The service keeps `ProtectHome=yes`. Its versioned `DOCKER_CONFIG` points at the private
+systemd-managed runtime directory instead of `/home/deploy/.docker`, so Docker Compose can use the
+host daemon without attempting to read the protected operator home. Do not remove `ProtectHome`,
+point the service at a human Docker config or copy registry credentials into this directory.
+
 Do not use this lane to delete sessions, audit/outbox/moderation records, source items, agent life
 history, credentials, content or database volumes. Disable/stop also requires explicit approval:
 
