@@ -106,6 +106,47 @@ async function postCommand(page: Page, path: string, body: Record<string, unknow
   return result.body;
 }
 
+async function ensureModerationCapability(
+  page: Page,
+  capability: "FORMAT_MODERATOR" | "LEGAL_REVIEWER",
+): Promise<void> {
+  const result = await page.evaluate(async (targetCapability) => {
+    const meResponse = await fetch("/api/v1/me");
+    const meBody = (await meResponse.json()) as { data?: { user?: { id?: string } } };
+    const userId = meBody.data?.user?.id;
+    if (!userId)
+      return {
+        status: meResponse.status,
+        code: "E2E_CURRENT_USER_ID_MISSING",
+      };
+    const csrf = document.cookie
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith("ajan_csrf="))
+      ?.split("=")
+      .slice(1)
+      .join("=");
+    const response = await fetch(
+      `/api/v1/admin/users/${userId}/moderation-capabilities/${targetCapability}/grant`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": decodeURIComponent(csrf ?? ""),
+          "Idempotency-Key": crypto.randomUUID(),
+        },
+        body: JSON.stringify({
+          reason: "E2E anayasal moderasyon capability doğrulaması için test yetkisi veriliyor.",
+        }),
+      },
+    );
+    const body = (await response.json()) as { error?: { code?: string } };
+    return { status: response.status, code: body.error?.code };
+  }, capability);
+  if (result.status === 409 && result.code === "CAPABILITY_ALREADY_GRANTED") return;
+  expect(result.status, JSON.stringify(result)).toBe(200);
+}
+
 async function confirm(page: Page, buttonName: string, reason: string): Promise<void> {
   await page.getByRole("button", { name: buttonName, exact: true }).click();
   const dialog = page.getByRole("alertdialog");
@@ -145,6 +186,7 @@ test.describe("@desktop moderation and admin workflows", () => {
     const reporterContext = await browser.newContext();
     const reporterPage = await reporterContext.newPage();
     await login(reporterPage, "admin@local.test", demoPassword);
+    await ensureModerationCapability(reporterPage, "FORMAT_MODERATOR");
     await reporterPage.goto(target.topicUrl);
     const targetArticle = reporterPage.locator("article").filter({ hasText: body });
     await targetArticle.getByRole("button", { name: "Entry’yi gammazla" }).click();
@@ -167,11 +209,7 @@ test.describe("@desktop moderation and admin workflows", () => {
     await expect(targetArticle.getByRole("status")).toContainText(
       "Gammaz moderasyon kuyruğuna gönderildi.",
     );
-    await reporterContext.close();
-
-    const moderatorContext = await browser.newContext();
-    const moderatorPage = await moderatorContext.newPage();
-    await login(moderatorPage, "moderator@local.test", demoPassword);
+    const moderatorPage = reporterPage;
     await moderatorPage.goto("/moderasyon/raporlar");
     const reportRow = moderatorPage.locator("tr").filter({
       has: moderatorPage.locator(`a[href="/moderasyon/raporlar/${reportId}"]`),
@@ -184,9 +222,17 @@ test.describe("@desktop moderation and admin workflows", () => {
 
     await confirm(
       moderatorPage,
-      "Hedefe işlem yap",
-      "E2E moderasyon testi için entry geçici olarak gizleniyor.",
+      "Gerekçeyi kabul et",
+      "E2E gammazı incelendi; anayasal gerekçe hedef entry için kabul ediliyor.",
     );
+    await expect(moderatorPage.getByText("Gerekçe kabul edildi", { exact: true })).toBeVisible();
+    await moderatorPage
+      .getByLabel("İşlem gerekçesi")
+      .fill("E2E moderasyon testi için entry geçici olarak çöp alanına gönderiliyor.");
+    await moderatorPage.getByRole("button", { name: "İçerik işlemini uygula" }).click();
+    await expect(moderatorPage.getByText("Uygulandı: ENTRY_HIDDEN", { exact: true })).toBeVisible({
+      timeout: 20_000,
+    });
     await expect(moderatorPage.getByText(/"status": "HIDDEN"/u)).toBeVisible();
     const reportDetailUrl = new URL(moderatorPage.url()).pathname;
 
@@ -209,13 +255,8 @@ test.describe("@desktop moderation and admin workflows", () => {
     await visitorContext.close();
 
     await moderatorPage.goto(reportDetailUrl);
-    await confirm(
-      moderatorPage,
-      "Gerekçeyi kabul et",
-      "E2E gammazı incelendi, hedef doğrulandı ve işlem tamamlandı.",
-    );
-    await expect(moderatorPage.getByText("RESOLVED", { exact: true })).toBeVisible();
-    await moderatorContext.close();
+    await expect(moderatorPage.getByText("Gerekçe kabul edildi", { exact: true })).toBeVisible();
+    await reporterContext.close();
     expect(author.email).toContain("@example.test");
   });
 
@@ -312,20 +353,28 @@ test.describe("@desktop moderation and admin workflows", () => {
     await adminContext.close();
   });
 
-  test("redirects old topic URLs after rename and merge", async ({ page }) => {
+  test("redirects old topic URLs after rename and merge", async ({ browser }) => {
     test.setTimeout(90_000);
-    await login(page, "moderator@local.test", demoPassword);
-    const suffix = Date.now().toString(36);
+    const authorContext = await browser.newContext();
+    const authorPage = await authorContext.newPage();
+    await login(authorPage, "writer@local.test", demoPassword);
+    const suffix = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
     const source = await createTopic(
-      page,
+      authorPage,
       `Yeniden adlandırılacak ${suffix}`,
       "Yeniden adlandırma ve birleştirme E2E testi için kaynak entry metni.",
     );
     const target = await createTopic(
-      page,
+      authorPage,
       `Birleştirme hedefi ${suffix}`,
       "Yeniden adlandırma ve birleştirme E2E testi için hedef entry metni.",
     );
+    await authorContext.close();
+
+    const moderatorContext = await browser.newContext();
+    const page = await moderatorContext.newPage();
+    await login(page, "admin@local.test", demoPassword);
+    await ensureModerationCapability(page, "FORMAT_MODERATOR");
     await postCommand(page, `/api/v1/moderation/topics/${source.topicId}/hide`, {
       reason: "E2E görünürlük testi için başlık geçici olarak gizleniyor.",
     });
@@ -355,5 +404,6 @@ test.describe("@desktop moderation and admin workflows", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: `Birleştirme hedefi ${suffix}` }),
     ).toBeVisible();
+    await moderatorContext.close();
   });
 });

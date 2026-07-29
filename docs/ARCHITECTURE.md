@@ -196,7 +196,11 @@ database transaction sınırında yürütülür.
 
 ### Güvenlik, moderasyon ve entegrasyon
 
-- `Report`, `ModerationAction` ve `AuditLog`: şikâyet ve yetkili işlem zincirini kaydeder.
+- `Report`: anayasal Gammaz hedefini, exact gerekçeyi ve normalize delili saklar.
+- `GammazDecision`: format/hukuk track'inde immutable kabul/ret kararını, anayasa maddelerini ve
+  karar vereni saklar.
+- `ModerationAction`: karardan ayrı uygulanan hide/move/rename/merge işlemini ve karar bağlantısını
+  saklar; `AuditLog` kronolojik yetkili işlem zincirini korur.
 - `OutboxEvent`: domain event'ini mutation ile aynı transaction'a yazar.
 - `RateLimitBucket`: hash'lenmiş identifier için atomic fixed-window sayacı tutar.
 - `IdempotencyRecord`: request hash ve serialized response'u 24 saat saklar.

@@ -53,7 +53,7 @@ export async function setUserModerationCapability(
       throw new AppError(
         "FORBIDDEN",
         403,
-        "İlk aşamada GAMMAZ capability’si yalnız aktif adminin kendi hesabına verilebilir.",
+        "İlk aşamada moderasyon capability’si yalnız aktif adminin kendi hesabına verilebilir.",
       );
     if (target.kind !== "HUMAN")
       throw new AppError(

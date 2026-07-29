@@ -4,9 +4,22 @@ import type { DatabaseClient, DatabaseExecutor } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
 import type { ActorContext } from "@/modules/auth/domain/actor";
-import { requireModerator } from "@/modules/moderation/domain/authorization";
+import {
+  requireModerationCapability,
+  requireAnyModerationCapability,
+  requireModerator,
+} from "@/modules/moderation/domain/authorization";
+import {
+  assertNoModerationConflict,
+  capabilityForReviewTrack,
+  constitutionalArticlesForGammazReason,
+  reviewTrackForGammazReason,
+  type GammazDecisionOutcome,
+} from "@/modules/moderation/domain/constitutional-moderation";
+import { isGammazReason } from "@/modules/moderation/domain/gammaz";
 import { appendModerationAction } from "@/modules/moderation/repository/history";
 import {
+  createGammazDecisionRecord,
   createReportRecord,
   decideReportRecord,
   findReportEvidenceEntryByPublicId,
@@ -16,6 +29,7 @@ import {
   listRelatedReports,
   listReports,
   listTargetModerationHistory,
+  lockReportForDecision,
 } from "@/modules/moderation/repository/reports";
 import { findModerationActor } from "@/modules/moderation/repository/actions";
 import type {
@@ -160,7 +174,10 @@ export async function getModerationReports(
   input: Parameters<typeof listReports>[1],
 ) {
   return client.$transaction(async (transaction) => {
-    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
+    const principal = await findModerationActor(transaction, actor.actorId);
+    if (input.reviewTrack)
+      requireModerationCapability(principal, actor, capabilityForReviewTrack(input.reviewTrack));
+    else requireAnyModerationCapability(principal, actor, ["FORMAT_MODERATOR", "LEGAL_REVIEWER"]);
     return listReports(transaction, input);
   });
 }
@@ -174,6 +191,13 @@ export async function getModerationReport(
     requireModerator(await findModerationActor(transaction, actor.actorId), actor);
     const report = await findReportDetail(transaction, reportId);
     if (!report) throw new AppError("REPORT_NOT_FOUND", 404, "Bildirim bulunamadı.");
+    if (isGammazReason(report.reason))
+      requireModerationCapability(
+        await findModerationActor(transaction, actor.actorId),
+        actor,
+        capabilityForReviewTrack(reviewTrackForGammazReason(report.reason)),
+      );
+    else requireModerator(await findModerationActor(transaction, actor.actorId), actor);
     const [target, relatedReports, moderationActions] = await Promise.all([
       findReportTarget(transaction, report.targetType, report.targetId),
       listRelatedReports(transaction, report.targetType, report.targetId),
@@ -187,17 +211,52 @@ export async function decideReport(
   client: DatabaseExecutor,
   actor: ActorContext,
   reportId: string,
-  decision: "RESOLVED" | "REJECTED",
+  requestedOutcome: GammazDecisionOutcome | "RESOLVED",
   input: ReportDecisionInput,
 ) {
   return inTransaction(client, async (transaction) => {
-    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
+    const outcome: GammazDecisionOutcome =
+      requestedOutcome === "RESOLVED" ? "ACCEPTED" : requestedOutcome;
+    await lockReportForDecision(transaction, reportId);
     const report = await findReportDetail(transaction, reportId);
     if (!report) throw new AppError("REPORT_NOT_FOUND", 404, "Bildirim bulunamadı.");
     if (report.status !== "OPEN")
       throw new AppError("REPORT_ALREADY_OPEN", 409, "Bu bildirim daha önce sonuçlandırılmış.");
+    if (!isGammazReason(report.reason))
+      throw new AppError(
+        "LEGACY_REPORT_READ_ONLY",
+        409,
+        "Tarihsel bildirim yalnız okunabilir; anayasal Gammaz kararı verilemez.",
+      );
+    const reviewTrack = reviewTrackForGammazReason(report.reason);
+    requireModerationCapability(
+      await findModerationActor(transaction, actor.actorId),
+      actor,
+      capabilityForReviewTrack(reviewTrack),
+    );
+    const target = await findReportTarget(transaction, report.targetType, report.targetId);
+    if (
+      !target ||
+      !assertNoModerationConflict({
+        actorId: actor.actorId,
+        targetOwnerId: targetOwnerId(target) ?? null,
+      })
+    )
+      throw new AppError(
+        "MODERATION_CONFLICT_OF_INTEREST",
+        403,
+        "Kendi içeriğiniz hakkında moderasyon kararı veremezsiniz.",
+      );
+    const decision = await createGammazDecisionRecord(transaction, {
+      reportId,
+      moderatorId: actor.actorId,
+      reviewTrack,
+      outcome,
+      constitutionalArticles: [...constitutionalArticlesForGammazReason(report.reason)],
+      rationale: input.resolutionNote,
+    });
     const updated = await decideReportRecord(transaction, reportId, {
-      status: decision,
+      status: outcome === "ACCEPTED" ? "RESOLVED" : "REJECTED",
       handledById: actor.actorId,
       handledAt: new Date(),
       resolutionNote: input.resolutionNote,
@@ -206,11 +265,20 @@ export async function decideReport(
       throw new AppError("REPORT_ALREADY_OPEN", 409, "Bu bildirim daha önce sonuçlandırılmış.");
     await appendModerationAction(transaction, {
       moderatorId: actor.actorId,
-      actionType: decision === "RESOLVED" ? "REPORT_RESOLVED" : "REPORT_REJECTED",
-      targetType: report.targetType,
-      targetId: report.targetId,
+      reportId,
+      decisionId: decision.id,
+      actionType: outcome === "ACCEPTED" ? "GAMMAZ_REASON_ACCEPTED" : "GAMMAZ_REASON_REJECTED",
+      targetType: "REPORT",
+      targetId: report.id,
       reason: input.resolutionNote,
-      metadata: { reportId },
+      metadata: {
+        reportId,
+        reviewTrack,
+        outcome,
+        constitutionalArticles: decision.constitutionalArticles,
+        targetType: report.targetType,
+        targetId: report.targetId,
+      },
     });
     await appendAuditLog(transaction, {
       actorId: actor.actorId,
@@ -218,7 +286,13 @@ export async function decideReport(
       entityType: "Report",
       entityId: reportId,
       requestId: actor.requestId,
-      metadata: { decision, targetType: report.targetType, targetId: report.targetId },
+      metadata: {
+        decisionId: decision.id,
+        outcome,
+        reviewTrack,
+        targetType: report.targetType,
+        targetId: report.targetId,
+      },
     });
     await appendOutboxEvent(transaction, {
       eventType: "moderation.completed",
@@ -227,8 +301,14 @@ export async function decideReport(
       actorId: actor.actorId,
       actorKind: actor.actorKind,
       requestId: actor.requestId,
-      payload: { decision, targetType: report.targetType, targetId: report.targetId },
+      payload: {
+        decisionId: decision.id,
+        outcome,
+        reviewTrack,
+        targetType: report.targetType,
+        targetId: report.targetId,
+      },
     });
-    return updated;
+    return { ...updated, decision };
   });
 }

@@ -32,6 +32,16 @@ async function createUser(username: string, role: "USER" | "MODERATOR" = "USER")
   });
 }
 
+async function grantFormatCapability(userId: string) {
+  return integrationDatabase.userModerationCapability.create({
+    data: {
+      userId,
+      grantedById: userId,
+      capability: "FORMAT_MODERATOR",
+    },
+  });
+}
+
 async function createPersistedSession(userId: string) {
   const token = `session-${randomUUID()}`;
   const csrfToken = `csrf-${randomUUID()}`;
@@ -195,8 +205,9 @@ describe("moderation idempotency preflight", () => {
     ).toBe(1);
   });
 
-  it("rejects a stored replay after the moderator is demoted", async () => {
+  it("rejects a stored replay after the format capability is revoked", async () => {
     const moderator = await createUser("replay_demoted_moderator", "MODERATOR");
+    const capability = await grantFormatCapability(moderator.id);
     const author = await createUser("replay_demoted_author");
     const topic = await integrationDatabase.topic.create({
       data: {
@@ -213,15 +224,21 @@ describe("moderation idempotency preflight", () => {
     expect(first.status).toBe(200);
     expect(first.headers.get("Idempotent-Replay")).toBeNull();
 
-    await integrationDatabase.user.update({
-      where: { id: moderator.id },
-      data: { role: "USER" },
+    await integrationDatabase.userModerationCapability.update({
+      where: { id: capability.id },
+      data: {
+        revokedAt: new Date(),
+        revokedById: moderator.id,
+        revocationReason: "Idempotent replay öncesi capability geri alındı.",
+      },
     });
 
     const replay = await callHide(topic.id, session, idempotencyKey);
     expect(replay.status).toBe(403);
     expect(replay.headers.get("Idempotent-Replay")).toBeNull();
-    await expect(replay.json()).resolves.toMatchObject({ error: { code: "FORBIDDEN" } });
+    await expect(replay.json()).resolves.toMatchObject({
+      error: { code: "MODERATION_CAPABILITY_REQUIRED" },
+    });
     expect(await integrationDatabase.idempotencyRecord.count()).toBe(1);
     expect(await integrationDatabase.moderationAction.count()).toBe(1);
     expect(await integrationDatabase.rateLimitBucket.findFirst()).toMatchObject({ count: 2 });
@@ -256,6 +273,7 @@ describe("moderation idempotency preflight", () => {
 
   it("charges every stored replay to the moderation rate bucket and eventually returns 429", async () => {
     const moderator = await createUser("replay_limited_moderator", "MODERATOR");
+    await grantFormatCapability(moderator.id);
     const author = await createUser("replay_limited_author");
     const topic = await integrationDatabase.topic.create({
       data: {

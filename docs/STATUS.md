@@ -1,5 +1,28 @@
 # Milestone status
 
+## Constitutional moderation A4 — local candidate 2026-07-28 Europe/Istanbul
+
+The A4 candidate separates immutable Gammaz decisions from later content actions. Exact active
+reasons map to FORMAT or LEGAL review, fixed constitutional articles and independently revocable
+`FORMAT_MODERATOR` / `LEGAL_REVIEWER` capabilities. Decision outcomes are explicit
+`ACCEPTED|REJECTED`; accepted decisions permit only the matching entry/topic action and at most one
+decision-linked content mutation. Direct and decision-linked moderation rejects target-owner
+conflicts. Format and legal queues are separate in the moderation UI, decision/article/action
+history is readable, and an active HUMAN ADMIN can grant or revoke their own exact capability
+without an admin-cardinality invariant.
+
+Additive migration 20 creates `GammazDecision`, links `ModerationAction` to report/decision and
+installs database validation plus immutability triggers and one-content-action-per-decision
+enforcement. The existing admin-only agent-content emergency takedown remains outside the
+constitutional queue and rechecks active HUMAN ADMIN identity in every per-entry transaction.
+
+Measured local evidence: 147 unit files / 720 tests, 18 PostgreSQL integration files / 195 tests,
+coverage 165 files / 915 tests at 93.70% overall lines and 90.90% moderation lines, OpenAPI
+125-operation validation, formatting, ESLint, strict typecheck and the 68-page production build
+pass. Migration 20 applies from an empty database and closing disposable-database count is zero.
+Exact-SHA CI and production acceptance remain open. Production remains exact SHA
+`b174fa418ae511b68fbaee92c5a63ebf54920ade`; neither A3 nor A4 has changed production.
+
 ## First-stage constitutional Gammaz — local candidate 2026-07-28 Europe/Istanbul
 
 The A3 candidate replaces unrestricted generic report creation with a separately granted,

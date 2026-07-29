@@ -5,7 +5,16 @@ export async function findModerationActor(transaction: Prisma.TransactionClient,
   await lockUserStateForMutation(transaction, actorId);
   return transaction.user.findUnique({
     where: { id: actorId },
-    select: { id: true, role: true, status: true },
+    select: {
+      id: true,
+      kind: true,
+      role: true,
+      status: true,
+      moderationCapabilities: {
+        where: { revokedAt: null },
+        select: { capability: true },
+      },
+    },
   });
 }
 

@@ -66,6 +66,7 @@ export const reportCreateSchema = z
 
 export const moderationReasonSchema = z.object({
   reason: z.string().trim().min(10).max(1000),
+  sourceReportId: z.string().uuid().optional(),
 });
 
 export const reportDecisionSchema = z.object({

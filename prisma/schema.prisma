@@ -75,6 +75,16 @@ enum ModerationCapability {
   APPEAL_DECIDER
 }
 
+enum ModerationReviewTrack {
+  FORMAT
+  LEGAL
+}
+
+enum GammazDecisionOutcome {
+  ACCEPTED
+  REJECTED
+}
+
 enum ContentOrigin {
   WEB
   API
@@ -271,6 +281,7 @@ model User {
   blocksReceived                UserBlock[]                @relation("Blocked")
   reportsCreated                Report[]                   @relation("ReportReporter")
   reportsHandled                Report[]                   @relation("ReportHandler")
+  gammazDecisions               GammazDecision[]           @relation("GammazDecisionModerator")
   moderationCapabilities        UserModerationCapability[] @relation("ModerationCapabilitySubject")
   moderationCapabilitiesGranted UserModerationCapability[] @relation("ModerationCapabilityGrantor")
   moderationCapabilitiesRevoked UserModerationCapability[] @relation("ModerationCapabilityRevoker")
@@ -443,25 +454,45 @@ model UserBlock {
 }
 
 model Report {
-  id             String           @id @default(uuid()) @db.Uuid
-  reporterId     String           @db.Uuid
-  targetType     ReportTargetType
-  targetId       String           @db.Uuid
-  reason         ReportReason
-  details        String?          @db.VarChar(1000)
-  evidence       Json?
-  status         ReportStatus     @default(OPEN)
-  handledById    String?          @db.Uuid
-  handledAt      DateTime?        @db.Timestamptz(3)
-  resolutionNote String?          @db.VarChar(1000)
-  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime         @updatedAt @db.Timestamptz(3)
-  reporter       User             @relation("ReportReporter", fields: [reporterId], references: [id])
-  handledBy      User?            @relation("ReportHandler", fields: [handledById], references: [id])
+  id                String             @id @default(uuid()) @db.Uuid
+  reporterId        String             @db.Uuid
+  targetType        ReportTargetType
+  targetId          String             @db.Uuid
+  reason            ReportReason
+  details           String?            @db.VarChar(1000)
+  evidence          Json?
+  status            ReportStatus       @default(OPEN)
+  handledById       String?            @db.Uuid
+  handledAt         DateTime?          @db.Timestamptz(3)
+  resolutionNote    String?            @db.VarChar(1000)
+  createdAt         DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime           @updatedAt @db.Timestamptz(3)
+  reporter          User               @relation("ReportReporter", fields: [reporterId], references: [id])
+  handledBy         User?              @relation("ReportHandler", fields: [handledById], references: [id])
+  decision          GammazDecision?
+  moderationActions ModerationAction[]
 
   @@index([status, createdAt])
   @@index([targetType, targetId])
   @@map("reports")
+}
+
+model GammazDecision {
+  id                     String                @id @default(uuid()) @db.Uuid
+  reportId               String                @unique @db.Uuid
+  moderatorId            String                @db.Uuid
+  reviewTrack            ModerationReviewTrack
+  outcome                GammazDecisionOutcome
+  constitutionalArticles Int[]
+  rationale              String                @db.VarChar(1000)
+  createdAt              DateTime              @default(now()) @db.Timestamptz(3)
+  report                 Report                @relation(fields: [reportId], references: [id], onDelete: Restrict)
+  moderator              User                  @relation("GammazDecisionModerator", fields: [moderatorId], references: [id], onDelete: Restrict)
+  moderationActions      ModerationAction[]
+
+  @@index([reviewTrack, outcome, createdAt(sort: Desc)])
+  @@index([moderatorId, createdAt(sort: Desc)])
+  @@map("gammaz_decisions")
 }
 
 model UserModerationCapability {
@@ -483,17 +514,23 @@ model UserModerationCapability {
 }
 
 model ModerationAction {
-  id          String   @id @default(uuid()) @db.Uuid
-  moderatorId String   @db.Uuid
+  id          String          @id @default(uuid()) @db.Uuid
+  moderatorId String          @db.Uuid
+  reportId    String?         @db.Uuid
+  decisionId  String?         @db.Uuid
   actionType  String
   targetType  String
-  targetId    String   @db.Uuid
-  reason      String   @db.VarChar(1000)
+  targetId    String          @db.Uuid
+  reason      String          @db.VarChar(1000)
   metadata    Json
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
-  moderator   User     @relation("ModeratorActions", fields: [moderatorId], references: [id])
+  createdAt   DateTime        @default(now()) @db.Timestamptz(3)
+  moderator   User            @relation("ModeratorActions", fields: [moderatorId], references: [id])
+  report      Report?         @relation(fields: [reportId], references: [id], onDelete: Restrict)
+  decision    GammazDecision? @relation(fields: [decisionId], references: [id], onDelete: Restrict)
 
   @@index([targetType, targetId, createdAt(sort: Desc)])
+  @@index([reportId, createdAt(sort: Desc)])
+  @@index([decisionId, createdAt(sort: Desc)])
   @@map("moderation_actions")
 }
 

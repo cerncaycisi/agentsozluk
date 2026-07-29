@@ -73,6 +73,7 @@ import {
   setTopicVisibility,
   setUserSuspension,
 } from "@/modules/moderation/application/actions";
+import { authorizeModerationCommand } from "@/modules/moderation/application/authorization";
 import {
   createReport,
   decideReport,
@@ -124,6 +125,16 @@ function actor(userId: string): ActorContext {
 async function grantGammazCapability(userId: string, grantedById = userId) {
   return integrationDatabase.userModerationCapability.create({
     data: { userId, grantedById, capability: "GAMMAZ" },
+  });
+}
+
+async function grantReviewCapability(
+  userId: string,
+  capability: "FORMAT_MODERATOR" | "LEGAL_REVIEWER",
+  grantedById = userId,
+) {
+  return integrationDatabase.userModerationCapability.create({
+    data: { userId, grantedById, capability },
   });
 }
 
@@ -197,7 +208,8 @@ async function waitForBlockedReportUpdates(expectedCount: number): Promise<void>
       WHERE datname = current_database()
         AND pid <> pg_backend_pid()
         AND wait_event_type = 'Lock'
-        AND query ILIKE '%UPDATE%reports%'
+        AND query ILIKE '%FROM%reports%'
+        AND query ILIKE '%FOR UPDATE%'
     `;
     if ((activity?.blockedCount ?? 0) >= expectedCount) return;
     await new Promise<void>((resolve) => setTimeout(resolve, 10));
@@ -276,6 +288,64 @@ async function waitForBlockedUserMutationLock(): Promise<void> {
     await new Promise<void>((resolve) => setTimeout(resolve, 10));
   }
   throw new Error("Expected an authenticated mutation to wait on the user-state lock.");
+}
+
+async function holdModerationCapabilityRowLock(
+  capabilityId: string,
+): Promise<{ release: () => Promise<void> }> {
+  let releaseRow!: () => void;
+  let resolveAcquired!: () => void;
+  let rejectAcquired!: (error: unknown) => void;
+  const releaseSignal = new Promise<void>((resolve) => {
+    releaseRow = resolve;
+  });
+  const acquired = new Promise<void>((resolve, reject) => {
+    resolveAcquired = resolve;
+    rejectAcquired = reject;
+  });
+  const transaction = integrationDatabase.$transaction(
+    async (client) => {
+      await client.$queryRaw<Array<{ id: string }>>`
+        SELECT "id"
+        FROM "user_moderation_capabilities"
+        WHERE "id" = ${capabilityId}::uuid
+        FOR UPDATE
+      `;
+      resolveAcquired();
+      await releaseSignal;
+    },
+    { timeout: 10_000 },
+  );
+  void transaction.catch(rejectAcquired);
+  await acquired;
+
+  let released = false;
+  return {
+    release: async () => {
+      if (!released) {
+        released = true;
+        releaseRow();
+      }
+      await transaction;
+    },
+  };
+}
+
+async function waitForBlockedCapabilityUpdate(): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const [activity] = await integrationDatabase.$queryRaw<Array<{ blockedCount: number }>>`
+      SELECT count(*)::integer AS "blockedCount"
+      FROM pg_stat_activity
+      WHERE datname = current_database()
+        AND pid <> pg_backend_pid()
+        AND wait_event_type = 'Lock'
+        AND query ILIKE '%UPDATE%user_moderation_capabilities%'
+    `;
+    if ((activity?.blockedCount ?? 0) >= 1) return;
+    await new Promise<void>((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error("Expected capability revocation to wait on the capability row lock.");
 }
 
 async function holdAdvisoryLock(key: string): Promise<{ release: () => Promise<void> }> {
@@ -1386,6 +1456,7 @@ describe("topics and entries with PostgreSQL", () => {
       where: { id: moderator.id },
       data: { role: "MODERATOR" },
     });
+    await grantReviewCapability(moderator.id, "FORMAT_MODERATOR");
     const source = await createTopic(owner.id, "Görünürlük ve sitemap başlığı");
     const target = await createTopic(owner.id, "Birleşme hedefi başlığı");
     await integrationDatabase.agentGlobalSettings.update({
@@ -1500,6 +1571,7 @@ describe("topics and entries with PostgreSQL", () => {
       where: { id: moderator.id },
       data: { role: "MODERATOR" },
     });
+    await grantReviewCapability(moderator.id, "FORMAT_MODERATOR");
     const source = await createTopic(author.id, "Birleşme ile oluşturma yarışı kaynağı");
     const target = await createTopic(author.id, "Birleşme ile oluşturma yarışı hedefi");
     const heldLock = await holdAdvisoryLock(`topic-state:${source.topic.id}`);
@@ -1555,6 +1627,7 @@ describe("topics and entries with PostgreSQL", () => {
       where: { id: moderator.id },
       data: { role: "MODERATOR" },
     });
+    await grantReviewCapability(moderator.id, "FORMAT_MODERATOR");
     const created = await createTopic(author.id, "Entry delete ve hide yarış başlığı");
     const heldLock = await holdAdvisoryLock(`entry-state:${created.entry.id}`);
     const deleteOutcome = deleteEntry(integrationDatabase, actor(author.id), created.entry.id).then(
@@ -1611,6 +1684,7 @@ describe("topics and entries with PostgreSQL", () => {
       where: { id: moderator.id },
       data: { role: "MODERATOR" },
     });
+    await grantReviewCapability(moderator.id, "FORMAT_MODERATOR");
     const first = await createTopic(author.id, "Örtüşen merge ilk başlık");
     const middle = await createTopic(author.id, "Örtüşen merge orta başlık");
     const last = await createTopic(author.id, "Örtüşen merge son başlık");
@@ -1717,6 +1791,7 @@ describe("topics and entries with PostgreSQL", () => {
       where: { id: moderator.id },
       data: { role: "MODERATOR" },
     });
+    await grantReviewCapability(moderator.id, "FORMAT_MODERATOR");
     const source = await createTopic(author.id, "Korunan Seed Başlığı");
     const target = await createTopic(author.id, "Korunan Seed Hedefi");
     const body = "Production boyunca özgün kalacak korunan seed entry içeriği.";
@@ -1877,6 +1952,7 @@ describe("interactions with PostgreSQL", () => {
       where: { id: moderator.id },
       data: { role: "MODERATOR" },
     });
+    await grantReviewCapability(moderator.id, "FORMAT_MODERATOR");
     const created = await createTopic(author.id, "Topic görünürlüğü ve etkileşim yarışı");
     const heldTopic = await holdAdvisoryLock(`topic-state:${created.topic.id}`);
     const hideOutcome = setTopicVisibility(
@@ -1925,6 +2001,7 @@ describe("interactions with PostgreSQL", () => {
       where: { id: author.id },
       data: { role: "MODERATOR" },
     });
+    await grantReviewCapability(author.id, "FORMAT_MODERATOR");
     const created = await createTopic(author.id);
     const viewerContent = await createTopic(viewer.id, "Engellenen Moderatör Yetkisi");
 
@@ -2849,6 +2926,180 @@ describe("reports and moderation with PostgreSQL", () => {
     ).rejects.toMatchObject({ code: "GAMMAZ_EVIDENCE_NOT_ACTIVE", status: 422 });
   });
 
+  it("requires the exact review capability, rejects target-owner conflicts and keeps decisions immutable", async () => {
+    const reporter = await createUser("constitutional_reporter");
+    const moderator = await createUser("constitutional_moderator");
+    const author = await createUser("constitutional_author");
+    await grantGammazCapability(reporter.id);
+    const externalTarget = await createTopic(author.id, "Anayasal Moderasyon Kararı");
+    const externalReport = await createReport(integrationDatabase, actor(reporter.id), {
+      targetType: "ENTRY",
+      targetId: externalTarget.entry.id,
+      reason: "GAMMAZ_1_NOT_DICTIONARY_FUNCTION",
+      details: "Entry bağımsız bir sözlük işlevi taşımadığı için inceleniyor.",
+      evidence: {},
+    });
+
+    await expect(
+      decideReport(integrationDatabase, actor(moderator.id), externalReport.id, "ACCEPTED", {
+        resolutionNote: "Format gerekçesi doğru görünse de capability olmadan karar verilemez.",
+      }),
+    ).rejects.toMatchObject({ code: "MODERATION_CAPABILITY_REQUIRED", status: 403 });
+    await expect(
+      authorizeModerationCommand(integrationDatabase, actor(moderator.id), {
+        reportDecisionId: externalReport.id,
+      }),
+    ).rejects.toMatchObject({ code: "MODERATION_CAPABILITY_REQUIRED", status: 403 });
+
+    await grantReviewCapability(moderator.id, "FORMAT_MODERATOR");
+    await expect(
+      authorizeModerationCommand(integrationDatabase, actor(moderator.id), {
+        reportDecisionId: externalReport.id,
+      }),
+    ).resolves.toBeUndefined();
+    const decided = await decideReport(
+      integrationDatabase,
+      actor(moderator.id),
+      externalReport.id,
+      "ACCEPTED",
+      {
+        resolutionNote: "Anayasal format gerekçesi hedef ve kanıtla doğrulandı.",
+      },
+    );
+    expect(decided).toMatchObject({
+      status: "RESOLVED",
+      decision: {
+        moderatorId: moderator.id,
+        reviewTrack: "FORMAT",
+        outcome: "ACCEPTED",
+        constitutionalArticles: [6, 17],
+      },
+    });
+    await expect(
+      authorizeModerationCommand(integrationDatabase, actor(moderator.id), {
+        contentAction: {
+          sourceReportId: externalReport.id,
+          targetType: "ENTRY",
+          targetId: externalTarget.entry.id,
+          actionType: "ENTRY_HIDDEN",
+        },
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      authorizeModerationCommand(integrationDatabase, actor(moderator.id), {
+        contentAction: {
+          sourceReportId: externalReport.id,
+          targetType: "ENTRY",
+          targetId: externalTarget.entry.id,
+          actionType: "TOPIC_HIDDEN",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "MODERATION_ACTION_NOT_ALLOWED", status: 422 });
+    const otherTarget = await createTopic(author.id, "Başka Anayasal Moderasyon Hedefi");
+    await expect(
+      authorizeModerationCommand(integrationDatabase, actor(moderator.id), {
+        contentAction: {
+          sourceReportId: externalReport.id,
+          targetType: "ENTRY",
+          targetId: otherTarget.entry.id,
+          actionType: "ENTRY_HIDDEN",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "MODERATION_DECISION_TARGET_MISMATCH", status: 422 });
+    await expect(
+      authorizeModerationCommand(integrationDatabase, actor(moderator.id), {
+        contentAction: {
+          targetType: "ENTRY",
+          targetId: externalTarget.entry.id,
+          actionType: "ENTRY_HIDDEN",
+        },
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      authorizeModerationCommand(integrationDatabase, actor(moderator.id), {
+        contentAction: {
+          targetType: "ENTRY",
+          targetId: "00000000-0000-4000-8000-000000000999",
+          actionType: "ENTRY_HIDDEN",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "REPORT_NOT_FOUND", status: 404 });
+    await expect(
+      integrationDatabase.moderationAction.create({
+        data: {
+          moderatorId: moderator.id,
+          reportId: externalReport.id,
+          decisionId: decided.decision.id,
+          actionType: "TOPIC_HIDDEN",
+          targetType: "ENTRY",
+          targetId: externalTarget.entry.id,
+          reason: "Database yanlış anayasal içerik işlemini reddetmelidir.",
+          metadata: {},
+        },
+      }),
+    ).rejects.toThrow(/not allowed/);
+    await setEntryVisibility(
+      integrationDatabase,
+      actor(moderator.id),
+      externalTarget.entry.id,
+      true,
+      {
+        reason: "Kabul edilen format gerekçesi ayrı içerik işlemiyle uygulanıyor.",
+        sourceReportId: externalReport.id,
+      },
+    );
+    expect(
+      await integrationDatabase.moderationAction.findFirst({
+        where: { reportId: externalReport.id, targetType: "ENTRY" },
+      }),
+    ).toMatchObject({
+      decisionId: decided.decision.id,
+      actionType: "ENTRY_HIDDEN",
+    });
+    const moveTarget = await createTopic(author.id, "İkinci İçerik İşlemi Hedefi");
+    await expect(
+      moveEntry(integrationDatabase, actor(moderator.id), externalTarget.entry.id, {
+        reason: "Aynı karar için ikinci içerik işlemi uygulanmamalıdır.",
+        targetTopicId: moveTarget.topic.id,
+        sourceReportId: externalReport.id,
+      }),
+    ).rejects.toMatchObject({ code: "MODERATION_ACTION_ALREADY_APPLIED", status: 409 });
+    await expect(
+      integrationDatabase.gammazDecision.update({
+        where: { id: decided.decision.id },
+        data: { rationale: "Immutable karar sonradan değiştirilemez." },
+      }),
+    ).rejects.toThrow(/append-only/);
+
+    const ownedTarget = await createTopic(moderator.id, "Çıkar Çatışması Başlığı");
+    await expect(
+      authorizeModerationCommand(integrationDatabase, actor(moderator.id), {
+        contentAction: {
+          targetType: "TOPIC",
+          targetId: ownedTarget.topic.id,
+          actionType: "TOPIC_HIDDEN",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "MODERATION_CONFLICT_OF_INTEREST", status: 403 });
+    await expect(
+      setTopicVisibility(integrationDatabase, actor(moderator.id), ownedTarget.topic.id, true, {
+        reason: "Capability sahibi de kendi başlığını doğrudan modere edemez.",
+      }),
+    ).rejects.toMatchObject({ code: "MODERATION_CONFLICT_OF_INTEREST", status: 403 });
+    const ownedReport = await createReport(integrationDatabase, actor(reporter.id), {
+      targetType: "TOPIC",
+      targetId: ownedTarget.topic.id,
+      reason: "TOPIC_CANONICALIZATION_REQUEST",
+      details: "Başlık için daha açık bir kanonik adres öneriliyor.",
+      evidence: { suggestedTitle: "çıkar çatışması" },
+    });
+    await expect(
+      decideReport(integrationDatabase, actor(moderator.id), ownedReport.id, "REJECTED", {
+        resolutionNote: "Hedef sahibi kendi içeriği hakkında karar veremez.",
+      }),
+    ).rejects.toMatchObject({ code: "MODERATION_CONFLICT_OF_INTEREST", status: 403 });
+  });
+
   it("lists, inspects and resolves reports with immutable history and dashboard counts", async () => {
     const reporter = await createUser("reporter_two");
     const author = await createUser("report_target");
@@ -2858,6 +3109,10 @@ describe("reports and moderation with PostgreSQL", () => {
       data: { role: "MODERATOR" },
     });
     await grantGammazCapability(reporter.id, moderator.id);
+    await Promise.all([
+      grantReviewCapability(moderator.id, "FORMAT_MODERATOR"),
+      grantReviewCapability(moderator.id, "LEGAL_REVIEWER"),
+    ]);
     const created = await createTopic(author.id, "Moderasyon Bildirimi");
     const report = await createReport(integrationDatabase, actor(reporter.id), {
       targetType: "TOPIC",
@@ -2897,8 +3152,9 @@ describe("reports and moderation with PostgreSQL", () => {
       }),
     ).resolves.toMatchObject({ status: "REJECTED", handledById: moderator.id });
     expect(
-      await integrationDatabase.moderationAction.count({ where: { targetId: created.topic.id } }),
+      await integrationDatabase.moderationAction.count({ where: { reportId: { not: null } } }),
     ).toBe(2);
+    expect(await integrationDatabase.gammazDecision.count()).toBe(2);
     expect(
       await integrationDatabase.outboxEvent.count({ where: { eventType: "moderation.completed" } }),
     ).toBe(2);
@@ -2932,6 +3188,10 @@ describe("reports and moderation with PostgreSQL", () => {
       data: { role: "MODERATOR" },
     });
     await grantGammazCapability(reporter.id, resolver.id);
+    await Promise.all([
+      grantReviewCapability(resolver.id, "FORMAT_MODERATOR"),
+      grantReviewCapability(rejecter.id, "FORMAT_MODERATOR"),
+    ]);
     const created = await createTopic(author.id, "Eşzamanlı Bildirim Kararı");
     const report = await createReport(integrationDatabase, actor(reporter.id), {
       targetType: "TOPIC",
@@ -3002,11 +3262,14 @@ describe("reports and moderation with PostgreSQL", () => {
     expect(
       await integrationDatabase.moderationAction.count({
         where: {
-          targetId: created.topic.id,
-          actionType: { in: ["REPORT_RESOLVED", "REPORT_REJECTED"] },
+          reportId: report.id,
+          actionType: { in: ["GAMMAZ_REASON_ACCEPTED", "GAMMAZ_REASON_REJECTED"] },
         },
       }),
     ).toBe(1);
+    expect(await integrationDatabase.gammazDecision.count({ where: { reportId: report.id } })).toBe(
+      1,
+    );
     expect(
       await integrationDatabase.auditLog.count({
         where: { action: "moderation.completed", entityId: report.id },
@@ -3031,6 +3294,7 @@ describe("reports and moderation with PostgreSQL", () => {
       where: { id: moderator.id },
       data: { role: "MODERATOR" },
     });
+    await grantReviewCapability(moderator.id, "FORMAT_MODERATOR");
     await grantGammazCapability(reporter.id, moderator.id);
     const moderatorActor = actor(moderator.id);
     const source = await createTopic(author.id, "Kaynak Moderasyon Başlığı");
@@ -3206,7 +3470,7 @@ describe("reports and moderation with PostgreSQL", () => {
     ).toBe(2);
   });
 
-  it("serializes moderator-role revocation ahead of a concurrent moderation write", async () => {
+  it("serializes review-capability revocation ahead of a concurrent moderation write", async () => {
     const admin = await createUser("role_race_admin");
     const moderator = await createUser("role_race_moderator");
     const author = await createUser("role_race_author");
@@ -3218,13 +3482,17 @@ describe("reports and moderation with PostgreSQL", () => {
       where: { id: moderator.id },
       data: { role: "MODERATOR" },
     });
-    const created = await createTopic(author.id, "Rol iptali yarış başlığı");
-    const reason = { reason: "Rol geçişi ile moderasyon yazısı birlikte serileştirilmelidir." };
-    const heldRow = await holdUserRowLock(moderator.id);
-    const revocationOutcome = setModeratorRole(
+    const capability = await grantReviewCapability(moderator.id, "FORMAT_MODERATOR", admin.id);
+    const created = await createTopic(author.id, "Capability iptali yarış başlığı");
+    const reason = {
+      reason: "Capability geçişi ile moderasyon yazısı birlikte serileştirilmelidir.",
+    };
+    const heldRow = await holdModerationCapabilityRowLock(capability.id);
+    const revocationOutcome = setUserModerationCapability(
       integrationDatabase,
       actor(admin.id),
       moderator.id,
+      "FORMAT_MODERATOR",
       false,
       reason,
     ).then(
@@ -3233,7 +3501,7 @@ describe("reports and moderation with PostgreSQL", () => {
     );
 
     try {
-      await waitForBlockedUserUpdate();
+      await waitForBlockedCapabilityUpdate();
       const moderationOutcome = setTopicVisibility(
         integrationDatabase,
         actor(moderator.id),
@@ -3250,7 +3518,7 @@ describe("reports and moderation with PostgreSQL", () => {
       expect(await revocationOutcome).toEqual({ status: "fulfilled" });
       expect(await moderationOutcome).toMatchObject({
         status: "rejected",
-        reason: { code: "FORBIDDEN", status: 403 },
+        reason: { code: "MODERATION_CAPABILITY_REQUIRED", status: 403 },
       });
     } finally {
       await heldRow.release();
@@ -3258,7 +3526,10 @@ describe("reports and moderation with PostgreSQL", () => {
 
     expect(
       await integrationDatabase.user.findUniqueOrThrow({ where: { id: moderator.id } }),
-    ).toMatchObject({ role: "USER", status: "ACTIVE" });
+    ).toMatchObject({ role: "MODERATOR", status: "ACTIVE" });
+    await expect(
+      userHasModerationCapability(integrationDatabase, moderator.id, "FORMAT_MODERATOR"),
+    ).resolves.toBe(false);
     expect(
       await integrationDatabase.topic.findUniqueOrThrow({ where: { id: created.topic.id } }),
     ).toMatchObject({ status: "ACTIVE" });

@@ -7,6 +7,22 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-28: the A4 constitutional moderation candidate is implemented on a separate delivery
+  branch while A3 remains production-pending. It stores immutable `ACCEPTED|REJECTED` Gammaz
+  decisions separately from later content actions, maps exact reasons to FORMAT/LEGAL queues and
+  constitutional articles, enforces independently revocable capabilities and target-owner
+  conflicts, and allows only the matching hide/move/rename/merge action. The database revalidates
+  decision reason/track/articles/capability/conflict and decision-linked content
+  target/action/capability/conflict, while a partial unique index permits only one content action
+  per accepted decision. Historical generic reports remain read-only. The moderation UI exposes
+  separate queues, readable decision history and self-admin format/legal capability controls.
+  The pre-existing HUMAN ADMIN emergency agent-content takedown remains a separate safety lane and
+  rechecks admin identity inside every per-entry transaction. Current local evidence is 147 unit
+  files / 720 tests, 18 PostgreSQL integration files / 195 tests, coverage 165 files / 915 tests at
+  93.70% overall and 90.90% moderation lines, OpenAPI 125-operation validation, formatting, ESLint,
+  strict typecheck and the 68-page production build; migration 20 applied from scratch and all
+  disposable databases closed at count zero. Item 5 remains active for exact-SHA CI, production
+  acceptance and the still-unimplemented A5 trash/revival/appeal half.
 - 2026-07-28: the first-stage A3 Gammaz package is complete locally and remains production
   pending. The generic “every ACTIVE user can report” write contract is replaced by an additive,
   audited `GAMMAZ` capability, exact active reasons `1,2,3,4,5,7,8,9`, a separate topic
@@ -860,9 +876,12 @@ behavior defects live.
    deployment, selected-account grant and authorized/unauthorized smoke. Do not silently grant the
    capability during migration or infer the selected production account from admin count.
 
-5. **Build constitutional moderation, trash and appeal.** Separate gammaz decision from content
-   action, format from current-law review, and move from hide; add trash, revision, revival queue and
-   concrete appeal. Initially only Gokhan receives format/legal/appeal capabilities.
+5. **Close A4 constitutional moderation, then build A5 trash and appeal.** A4's separate Gammaz
+   decision/content-action records, FORMAT/LEGAL queues, exact capability/conflict enforcement and
+   hide/move/rename/merge matrix and local quality gates are complete; finish exact-SHA CI and
+   production acceptance without bypassing the still-pending A3 migration/grant. Then add A5
+   trash, revision, revival queue and concrete appeal. Initially only Gokhan receives
+   format/legal/appeal capabilities.
 6. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
    reject redirects/non-JSON/oversized responses, default source traffic to ports 80/443 and apply
    robots/model-input policy per origin.

@@ -11,7 +11,11 @@ export async function POST(
   { params }: { params: Promise<{ reportId: string }> },
 ) {
   const { reportId } = await params;
-  return runModerationAction(request, reportDecisionSchema, (client, actor, input) =>
-    decideReport(client, actor, parseUuid(reportId, "reportId"), "RESOLVED", input),
+  const id = parseUuid(reportId, "reportId");
+  return runModerationAction(
+    request,
+    reportDecisionSchema,
+    (client, actor, input) => decideReport(client, actor, id, "ACCEPTED", input),
+    { reportDecisionId: id },
   );
 }

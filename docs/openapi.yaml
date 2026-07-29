@@ -981,6 +981,48 @@ paths:
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/admin/users/{userId}/moderation-capabilities/{capability}/grant:
+    parameters:
+      [
+        { $ref: "#/components/parameters/UserId" },
+        { $ref: "#/components/parameters/ModerationCapability" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: grantModerationCapability
+      tags: [Admin]
+      description: İlk aşamada aktif HUMAN ADMIN'in kendi hesabına seçilen capability'yi verir.
+      requestBody: { $ref: "#/components/requestBodies/ModerationReason" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/users/{userId}/moderation-capabilities/{capability}/revoke:
+    parameters:
+      [
+        { $ref: "#/components/parameters/UserId" },
+        { $ref: "#/components/parameters/ModerationCapability" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: revokeModerationCapability
+      tags: [Admin]
+      description: Seçilen capability'yi geri alır; geçmiş karar, işlem ve audit kayıtlarını korur.
+      requestBody: { $ref: "#/components/requestBodies/ModerationReason" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/moderation/audit:
     get:
       operationId: listAuditLog
@@ -2145,6 +2187,11 @@ components:
     TopicId: { name: topicId, in: path, required: true, schema: { type: string, format: uuid } }
     EntryId: { name: entryId, in: path, required: true, schema: { type: string, format: uuid } }
     ReportId: { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
+    ModerationCapability:
+      name: capability
+      in: path
+      required: true
+      schema: { type: string, enum: [GAMMAZ, FORMAT_MODERATOR, LEGAL_REVIEWER, APPEAL_DECIDER] }
     AgentId: { name: agentId, in: path, required: true, schema: { type: string, format: uuid } }
     MemoryId: { name: memoryId, in: path, required: true, schema: { type: string, format: uuid } }
     RunId: { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -2465,7 +2512,14 @@ components:
     ModerationReasonInput:
       type: object
       required: [reason]
-      properties: { reason: { type: string, minLength: 10, maxLength: 1000 } }
+      properties:
+        reason: { type: string, minLength: 10, maxLength: 1000 }
+        sourceReportId:
+          {
+            type: string,
+            format: uuid,
+            description: Accepted constitutional Gammaz decision linked to this content action,
+          }
     ReportDecisionInput:
       type: object
       additionalProperties: false

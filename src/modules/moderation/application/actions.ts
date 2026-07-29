@@ -8,7 +8,18 @@ import { isCanonicalSeedEntry } from "@/modules/entries/domain/entry";
 import { lockEntryState } from "@/modules/entries/repository/entries";
 import { lockTopicState, recalculateTopicCounter } from "@/modules/topics/repository/topics";
 import { createTopicSlug, normalizeTopicTitle } from "@/modules/topics/domain/normalization";
-import { assertCanActOnUser, requireModerator } from "@/modules/moderation/domain/authorization";
+import {
+  assertCanActOnUser,
+  requireModerationCapability,
+  requireModerator,
+} from "@/modules/moderation/domain/authorization";
+import {
+  assertNoModerationConflict,
+  capabilityForReviewTrack,
+  isContentActionAllowed,
+  reviewTrackForGammazReason,
+} from "@/modules/moderation/domain/constitutional-moderation";
+import { isGammazReason } from "@/modules/moderation/domain/gammaz";
 import {
   approveUserWriterRecord,
   findEntryForModeration,
@@ -29,6 +40,7 @@ import {
   updateUserSuspension,
 } from "@/modules/moderation/repository/actions";
 import { appendModerationAction } from "@/modules/moderation/repository/history";
+import { findReportDetail, findReportTarget } from "@/modules/moderation/repository/reports";
 import type {
   EntryMoveInput,
   ModerationReasonInput,
@@ -41,6 +53,8 @@ async function recordAction(
   transaction: TransactionClient,
   actor: ActorContext,
   input: {
+    reportId?: string;
+    decisionId?: string;
     actionType: string;
     eventType: OutboxEventType;
     targetType: string;
@@ -60,6 +74,8 @@ async function recordAction(
   };
   await appendModerationAction(transaction, {
     moderatorId: actor.actorId,
+    ...(input.reportId ? { reportId: input.reportId } : {}),
+    ...(input.decisionId ? { decisionId: input.decisionId } : {}),
     actionType: input.actionType,
     targetType: input.targetType.toUpperCase(),
     targetId: input.targetId,
@@ -85,15 +101,106 @@ async function recordAction(
   });
 }
 
-export async function setEntryVisibility(
+async function requireContentActionPermission(
+  transaction: TransactionClient,
+  actor: ActorContext,
+  input: {
+    sourceReportId?: string;
+    targetType: "ENTRY" | "TOPIC";
+    targetId: string;
+    actionType: string;
+  },
+): Promise<{ reportId?: string; decisionId?: string }> {
+  const principal = await findModerationActor(transaction, actor.actorId);
+  const target = await findReportTarget(transaction, input.targetType, input.targetId);
+  if (
+    target &&
+    !assertNoModerationConflict({
+      actorId: actor.actorId,
+      targetOwnerId:
+        "authorId" in target
+          ? target.authorId
+          : "createdById" in target
+            ? target.createdById
+            : null,
+    })
+  )
+    throw new AppError(
+      "MODERATION_CONFLICT_OF_INTEREST",
+      403,
+      "Kendi içeriğiniz üzerinde moderasyon işlemi yapamazsınız.",
+    );
+  if (!input.sourceReportId) {
+    requireModerationCapability(principal, actor, "FORMAT_MODERATOR");
+    return {};
+  }
+  const report = await findReportDetail(transaction, input.sourceReportId);
+  if (
+    !report ||
+    !report.decision ||
+    report.decision.outcome !== "ACCEPTED" ||
+    !isGammazReason(report.reason)
+  )
+    throw new AppError(
+      "MODERATION_DECISION_REQUIRED",
+      409,
+      "İçerik işlemi için kabul edilmiş anayasal Gammaz kararı gerekir.",
+    );
+  if (report.targetType !== input.targetType || report.targetId !== input.targetId)
+    throw new AppError(
+      "MODERATION_DECISION_TARGET_MISMATCH",
+      422,
+      "Gammaz kararı bu içerik hedefiyle eşleşmiyor.",
+    );
+  const track = reviewTrackForGammazReason(report.reason);
+  requireModerationCapability(principal, actor, capabilityForReviewTrack(track));
+  if (!isContentActionAllowed(report.reason, input.targetType, input.actionType))
+    throw new AppError(
+      "MODERATION_ACTION_NOT_ALLOWED",
+      422,
+      "Bu Gammaz gerekçesi için seçilen içerik işlemi uygulanamaz.",
+    );
+  if (
+    await transaction.moderationAction.findFirst({
+      where: {
+        decisionId: report.decision.id,
+        targetType: { not: "REPORT" },
+      },
+      select: { id: true },
+    })
+  )
+    throw new AppError(
+      "MODERATION_ACTION_ALREADY_APPLIED",
+      409,
+      "Bu Gammaz kararı için içerik işlemi daha önce uygulanmış.",
+    );
+  if (!target || report.targetType !== input.targetType || report.targetId !== input.targetId)
+    throw new AppError("MODERATION_DECISION_TARGET_MISMATCH", 422, "Gammaz hedefi bulunamadı.");
+  return { reportId: report.id, decisionId: report.decision.id };
+}
+
+async function setEntryVisibilityWithAuthorization(
   client: DatabaseExecutor,
   actor: ActorContext,
   entryId: string,
   hidden: boolean,
   input: ModerationReasonInput,
+  authorization: "CONSTITUTIONAL" | "AGENT_CONTENT_ADMIN",
 ) {
   return inTransaction(client, async (transaction) => {
-    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
+    let relation: { reportId?: string; decisionId?: string } = {};
+    if (authorization === "AGENT_CONTENT_ADMIN") {
+      requireModerator(await findModerationActor(transaction, actor.actorId), actor, {
+        adminOnly: true,
+      });
+    } else {
+      relation = await requireContentActionPermission(transaction, actor, {
+        ...(input.sourceReportId ? { sourceReportId: input.sourceReportId } : {}),
+        targetType: "ENTRY",
+        targetId: entryId,
+        actionType: hidden ? "ENTRY_HIDDEN" : "ENTRY_RESTORED",
+      });
+    }
     const initialEntry = await findEntryForModeration(transaction, entryId);
     if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
     await lockTopicState(transaction, initialEntry.topicId);
@@ -121,6 +228,7 @@ export async function setEntryVisibility(
       );
     await recalculateTopicCounter(transaction, entry.topicId);
     await recordAction(transaction, actor, {
+      ...relation,
       actionType: hidden ? "ENTRY_HIDDEN" : "ENTRY_RESTORED",
       eventType: hidden ? "entry.hidden" : "entry.restored",
       targetType: "Entry",
@@ -134,6 +242,40 @@ export async function setEntryVisibility(
   });
 }
 
+export function setEntryVisibility(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  entryId: string,
+  hidden: boolean,
+  input: ModerationReasonInput,
+) {
+  return setEntryVisibilityWithAuthorization(
+    client,
+    actor,
+    entryId,
+    hidden,
+    input,
+    "CONSTITUTIONAL",
+  );
+}
+
+export function setAgentEntryVisibility(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  entryId: string,
+  hidden: boolean,
+  input: ModerationReasonInput,
+) {
+  return setEntryVisibilityWithAuthorization(
+    client,
+    actor,
+    entryId,
+    hidden,
+    input,
+    "AGENT_CONTENT_ADMIN",
+  );
+}
+
 export async function setTopicVisibility(
   client: DatabaseExecutor,
   actor: ActorContext,
@@ -142,7 +284,12 @@ export async function setTopicVisibility(
   input: ModerationReasonInput,
 ) {
   return inTransaction(client, async (transaction) => {
-    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
+    const relation = await requireContentActionPermission(transaction, actor, {
+      ...(input.sourceReportId ? { sourceReportId: input.sourceReportId } : {}),
+      targetType: "TOPIC",
+      targetId: topicId,
+      actionType: hidden ? "TOPIC_HIDDEN" : "TOPIC_RESTORED",
+    });
     await lockTopicState(transaction, topicId);
     const topic = await findTopicForModeration(transaction, topicId);
     if (!topic) throw new AppError("TOPIC_NOT_FOUND", 404, "Başlık bulunamadı.");
@@ -153,6 +300,7 @@ export async function setTopicVisibility(
     if (!updated)
       throw new AppError("TOPIC_HIDDEN", 409, "Başlığın durumu eşzamanlı olarak değişti.");
     await recordAction(transaction, actor, {
+      ...relation,
       actionType: hidden ? "TOPIC_HIDDEN" : "TOPIC_RESTORED",
       eventType: hidden ? "topic.hidden" : "topic.restored",
       targetType: "Topic",
@@ -174,7 +322,12 @@ export async function renameTopic(
   const title = input.title.normalize("NFKC").trim().replaceAll(/\s+/gu, " ");
   const normalizedTitle = normalizeTopicTitle(title);
   return inTransaction(client, async (transaction) => {
-    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
+    const relation = await requireContentActionPermission(transaction, actor, {
+      ...(input.sourceReportId ? { sourceReportId: input.sourceReportId } : {}),
+      targetType: "TOPIC",
+      targetId: topicId,
+      actionType: "TOPIC_RENAMED",
+    });
     await lockTopicState(transaction, topicId);
     await lockModerationKey(transaction, normalizedTitle);
     const topic = await findTopicForModeration(transaction, topicId);
@@ -188,6 +341,7 @@ export async function renameTopic(
       slug: createTopicSlug(title),
     });
     await recordAction(transaction, actor, {
+      ...relation,
       actionType: "TOPIC_RENAMED",
       eventType: "topic.renamed",
       targetType: "Topic",
@@ -218,7 +372,12 @@ export async function mergeTopic(
   if (sourceTopicId === input.targetTopicId)
     throw new AppError("VALIDATION_ERROR", 422, "Başlık kendisiyle birleştirilemez.");
   return inTransaction(client, async (transaction) => {
-    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
+    const relation = await requireContentActionPermission(transaction, actor, {
+      ...(input.sourceReportId ? { sourceReportId: input.sourceReportId } : {}),
+      targetType: "TOPIC",
+      targetId: sourceTopicId,
+      actionType: "TOPIC_MERGED",
+    });
     await lockTopicState(transaction, [sourceTopicId, input.targetTopicId]);
     const [source, target] = await Promise.all([
       findTopicForModeration(transaction, sourceTopicId),
@@ -236,6 +395,7 @@ export async function mergeTopic(
     await mergeTopicRecords(transaction, source, target.id);
     await recalculateTopicCounter(transaction, target.id);
     await recordAction(transaction, actor, {
+      ...relation,
       actionType: "TOPIC_MERGED",
       eventType: "topic.merged",
       targetType: "Topic",
@@ -256,7 +416,12 @@ export async function moveEntry(
   input: EntryMoveInput,
 ) {
   return inTransaction(client, async (transaction) => {
-    requireModerator(await findModerationActor(transaction, actor.actorId), actor);
+    const relation = await requireContentActionPermission(transaction, actor, {
+      ...(input.sourceReportId ? { sourceReportId: input.sourceReportId } : {}),
+      targetType: "ENTRY",
+      targetId: entryId,
+      actionType: "ENTRY_MOVED",
+    });
     const initialEntry = await findEntryForMove(transaction, entryId);
     if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
     await lockTopicState(transaction, [initialEntry.topicId, input.targetTopicId]);
@@ -288,6 +453,7 @@ export async function moveEntry(
     await recalculateTopicCounter(transaction, entry.topicId);
     await recalculateTopicCounter(transaction, target.id);
     await recordAction(transaction, actor, {
+      ...relation,
       actionType: "ENTRY_MOVED",
       eventType: "entry.moved",
       targetType: "Entry",
