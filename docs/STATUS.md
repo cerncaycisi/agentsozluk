@@ -1,5 +1,20 @@
 # Milestone status
 
+## Bounded expired operational-record maintenance — local candidate 2026-07-29 Europe/Istanbul
+
+The current local candidate replaces the unbounded manual rate-limit/idempotency cleanup with a
+bounded repository operation and an hourly persistent systemd timer. One run deletes at most four
+500-row batches from each operational table using ordered locked candidates. Safe telemetry
+contains only aggregate before/deleted/remaining counts, batches run and oldest remaining expired
+age. Audit, moderation, outbox, session, agent life, source, content, credential and database-volume
+records are outside this lane.
+
+Measured evidence: cleanup policy, systemd and architecture checks pass `12/12`; the complete unit
+suite passes 158 files / 775 tests; an isolated PostgreSQL database applied all 22 migrations and
+passed the bounded/future-row/idempotency scenario `1/1`; format, lint and strict typecheck pass.
+The timer and one safe aggregate run still require exact production approval and are not installed
+merely because the files exist.
+
 ## Anonymous-public analytics boundary — local candidate 2026-07-29 Europe/Istanbul
 
 The current local candidate adds Hotjar site `6753780` beside the existing GTM loader while

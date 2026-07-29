@@ -1,0 +1,41 @@
+[Unit]
+Description=Agent Sozluk bounded expired operational-record cleanup
+Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/agent-sozluk/app
+ExecStart=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T app /app/node_modules/.bin/tsx /app/scripts/cleanup-rate-limits.ts --batch-size=500 --max-batches=4
+
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RemoveIPC=yes
+RestrictAddressFamilies=AF_UNIX
+SystemCallArchitectures=native
+ReadOnlyPaths=/opt/agent-sozluk/app /opt/agent-sozluk/runtime/compose.production.yaml
+InaccessiblePaths=-/var/lib/agent-sozluk-runtime -/opt/agent-sozluk/runtime/codex-home -/opt/agent-sozluk/runtime/work
+
+TimeoutStartSec=5min
+Nice=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=agent-sozluk-maintenance

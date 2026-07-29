@@ -3377,3 +3377,39 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   client-only flag as the exclusion boundary, do not render analytics on authenticated or
   moderation/account pages, do not let E2E fixtures share user-scoped write budgets, and do not add
   a second CSP header or `script-src unsafe-inline`.
+
+## 2026-07-29 — bounded expired operational-record maintenance local candidate
+
+- Scope: replace the unbounded, manually invoked deletion of expired rate-limit buckets and
+  idempotency responses with an ordered bounded repository operation plus a versioned persistent
+  hourly timer. No production connection, timer installation, database write or service change
+  occurred.
+- Implementation: one invocation deletes at most four 500-row batches per table through
+  `FOR UPDATE SKIP LOCKED`. The app-container script emits only safe aggregate counts, batches and
+  oldest remaining expired age. It never emits raw key, action identifier, route, response body or
+  actor identity. The timer has up to fifteen minutes of randomized delay, cannot overlap another
+  instance of the same oneshot service and receives only the existing Compose/env-file paths—not
+  environment values—on its command line. Its scope explicitly excludes sessions, audit,
+  moderation, outbox, source, content, life-ledger, credential and volume/database data.
+- Verification: policy, versioned systemd and architecture tests passed `12/12`; the complete unit
+  suite passed 158 files / 775 tests. An allowlisted isolated PostgreSQL database applied all 22
+  migrations and passed `1/1` bounded deletion, future-row preservation and idempotent replay
+  scenario. Format, lint and strict typecheck passed, and the scratch database was removed. Release
+  smoke passed, OpenAPI validated 136 runtime operations, M1 traceability passed `3/3`, M2
+  development traceability reported 464 active PASS / 2 approved post-merge BLOCKED / 0 FAIL, and
+  the repository plus reachable Git history secret scan passed.
+- Corrected local attempt: the first systemd/runbook test asserted one prose sentence across a
+  Prettier line wrap and stopped at `8/9`; the product checks were already green. The assertion now
+  checks both semantic fragments, and the rerun passed `9/9`. The first format check correctly
+  identified only the five new TypeScript files; targeted Prettier formatting fixed them without
+  touching legacy documents. The first complete unit run then enforced the repository's module
+  architecture because the new maintenance domain initially had no public application/validation
+  layers. The final package adds those real layers and public index; the architecture suite and
+  complete rerun passed instead of weakening the boundary. A later release-smoke wrapper resolved
+  the Codex fallback Node `24.14.0` / pnpm `11.9.0` lane and correctly stopped at
+  `ERR_PNPM_UNSUPPORTED_ENGINE` before any product check. The same commands passed with the
+  repository-native Homebrew Node `22.23.1` and Corepack pnpm `10.34.5`.
+- Do not repeat: never use an unbounded `deleteMany` for an expired-record backlog, never place a
+  database URL or credential on a timer command line, never broaden this operational cleanup into
+  immutable evidence or user/content history, and never invoke the Codex fallback pnpm shim for
+  this repository when the native Node 22/Corepack pnpm 10 toolchain is available.

@@ -29,6 +29,7 @@ describe("module boundaries", () => {
       "idempotency",
       "indexing",
       "interactions",
+      "maintenance",
       "moderation",
       "outbox",
       "rate-limit",

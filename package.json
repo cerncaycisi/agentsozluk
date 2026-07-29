@@ -60,6 +60,7 @@
     "db:reset": "prisma migrate reset --force",
     "db:recalculate": "tsx scripts/recalculate-counters.ts",
     "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
+    "maintenance:expired-records": "tsx scripts/cleanup-rate-limits.ts",
     "maintenance:rate-limits": "tsx scripts/cleanup-rate-limits.ts",
     "env:validate": "tsx scripts/validate-environment.ts",
     "openapi:validate": "tsx scripts/validate-openapi.ts",

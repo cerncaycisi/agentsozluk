@@ -1,0 +1,13 @@
+[Unit]
+Description=Run Agent Sozluk bounded expired-record cleanup hourly
+Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=15min
+AccuracySec=1min
+Persistent=true
+Unit=agent-sozluk-maintenance.service
+
+[Install]
+WantedBy=timers.target

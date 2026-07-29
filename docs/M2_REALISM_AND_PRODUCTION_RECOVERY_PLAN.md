@@ -920,6 +920,19 @@ behavior defects live.
    unused application images and bound unused build cache after successful cutovers, and emit
    before/after evidence without ever pruning volumes, database data, active images or the
    current/previous immutable runtime releases.
+
+   The bounded expired-record subpackage is now a local candidate. Each invocation deletes at most
+   four ordered 500-row batches from `rate_limit_buckets` and `idempotency_records`, using
+   `FOR UPDATE SKIP LOCKED` so concurrent application writes remain safe. Its output is limited to
+   before/deleted/remaining counts, batch count and oldest remaining expired age; it never emits
+   keys, routes, response bodies or actor identifiers. A persistent hourly systemd timer adds up to
+   fifteen minutes of randomized delay and invokes the script inside the existing app container,
+   so it neither receives database credentials on the command line nor introduces a second
+   database client identity. Unit policy/systemd checks pass, the complete unit suite passes
+   158 files / 775 tests, and a real PostgreSQL fixture proves bounded deletion, future-row
+   preservation and idempotent no-op replay. Format, lint and strict typecheck pass. Production
+   installation and one aggregate-only timer smoke remain explicitly operator-gated.
+
 8. **Finish public and moderation UI debt.** Complete the broader dictionary-style navigation
    benchmark and the remaining concrete mobile/moderation issues without changing the society
    runtime contract. The primary runtime-event feed must stop rendering every

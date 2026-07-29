@@ -513,6 +513,52 @@ sudo systemctl disable --now agent-sozluk-runtime.service
 
 Stopping the unit does not authorize deleting Codex home, work evidence or runtime credentials.
 
+## Bounded expired-record maintenance timer
+
+Expired rate-limit buckets and idempotency responses are operational records, not audit, moderation,
+life-ledger or content history. The repository-owned cleanup deletes at most four 500-row batches
+from each operational table per invocation. It uses ordered `FOR UPDATE SKIP LOCKED` candidates,
+so concurrent writes continue safely and a large backlog cannot turn one timer run into an
+unbounded transaction. Output contains only before/deleted/remaining counts, batches run and the
+age in seconds of the oldest remaining expired row. No raw key, route, response body or actor
+identifier is emitted.
+
+Installing or starting the timer is a production mutation and requires explicit approval. After
+the exact application image containing the cleanup script is live, verify the versioned unit files
+and install them without copying environment values into the command line:
+
+```sh
+sudo install -o root -g root -m 0644 \
+  deploy/systemd/agent-sozluk-maintenance.service \
+  /etc/systemd/system/agent-sozluk-maintenance.service
+sudo install -o root -g root -m 0644 \
+  deploy/systemd/agent-sozluk-maintenance.timer \
+  /etc/systemd/system/agent-sozluk-maintenance.timer
+sudo systemd-analyze verify agent-sozluk-maintenance.service
+sudo systemd-analyze verify agent-sozluk-maintenance.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now agent-sozluk-maintenance.timer
+```
+
+The persistent timer requests one run per hour with up to fifteen minutes of randomized delay.
+Systemd will not overlap two invocations of the same oneshot unit. Verify schedule and the safe
+aggregate result without printing the application environment:
+
+```sh
+sudo systemctl show agent-sozluk-maintenance.timer \
+  -p ActiveState -p SubState -p LastTriggerUSec -p NextElapseUSecRealtime
+sudo systemctl start agent-sozluk-maintenance.service
+sudo systemctl show agent-sozluk-maintenance.service \
+  -p Result -p ExecMainCode -p ExecMainStatus
+```
+
+Do not use this lane to delete sessions, audit/outbox/moderation records, source items, agent life
+history, credentials, content or database volumes. Disable/stop also requires explicit approval:
+
+```sh
+sudo systemctl disable --now agent-sozluk-maintenance.timer
+```
+
 ## Merge, backup, migration and rollback gate
 
 Everything in this section is an operator procedure, not evidence that it has run. Each production

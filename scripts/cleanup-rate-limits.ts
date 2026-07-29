@@ -1,16 +1,24 @@
 import "dotenv/config";
 import { getDatabase } from "@/lib/db/client";
+import {
+  cleanupExpiredOperationalRecords,
+  expiredRecordCleanupOptions,
+} from "@/modules/maintenance";
 
 const database = getDatabase();
 
 async function main(): Promise<void> {
   try {
-    const [rateLimits, idempotencyRecords] = await database.$transaction([
-      database.rateLimitBucket.deleteMany({ where: { expiresAt: { lt: new Date() } } }),
-      database.idempotencyRecord.deleteMany({ where: { expiresAt: { lt: new Date() } } }),
-    ]);
+    const options = expiredRecordCleanupOptions(process.argv.slice(2));
+    const result = await cleanupExpiredOperationalRecords(database, options);
     process.stdout.write(
-      `Bakım tamamlandı: ${rateLimits.count} rate-limit bucket, ${idempotencyRecords.count} idempotency kaydı silindi.\n`,
+      `${JSON.stringify({
+        event: "maintenance.expired_operational_records.completed",
+        batchSize: options.batchSize,
+        maxBatches: options.maxBatches,
+        rateLimitBuckets: result.rateLimitBuckets,
+        idempotencyRecords: result.idempotencyRecords,
+      })}\n`,
     );
   } finally {
     await database.$disconnect();
