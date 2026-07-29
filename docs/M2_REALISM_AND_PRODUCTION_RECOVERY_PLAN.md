@@ -783,12 +783,11 @@ behavior defects live.
    `50 sources / 30 origins / 20 Turkish or Türkiye-focused sources` floor. The first fresh
    production-network pass at exact SHA `30e945a9d38efddcdf458a3f67507d437ec25ec9` proved
    `72/72` usable sources and origins, zero empty/error result and `1,354` useful items. The reviewed
-   registry marks 48 as Turkish-language or Türkiye-focused; make that language classification an
-   explicit safe metadata field so future audits verify it directly rather than recomputing a
-   static allowlist. The stacked source-locale candidate now implements that field, migration,
-   admin controls and aggregate audit output; merge, production migration and a fresh
-   production-network reread remain open. Continue per-writer usefulness and evolution
-   observation; pool-level source health is no longer the immediate blocker.
+   registry marks 48 as Turkish-language or Türkiye-focused. PR #17 now provides that explicit
+   safe metadata field, additive migration, admin controls and aggregate audit output on `main`,
+   so future audits no longer recompute a static allowlist. Production migration and a fresh
+   production-network reread remain open. Continue per-writer usefulness and evolution observation;
+   pool-level source health is no longer the immediate blocker.
 
    Exact production SHA `ca30a502386c690c83a5e8ec7c94ca959ed2d618` now includes the missing safe
    explanation layer in the
