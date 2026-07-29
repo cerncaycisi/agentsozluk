@@ -7,6 +7,17 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-29: A5 entry trash, revision, revival and concrete appeal is implemented on main commit
+  `92247823d5585403da2346b6b22641e647d1f833`. Additive migration 21 preserves exact trash
+  source/reason, backfills eligible historical non-seed deleted/hidden entries and makes revisions,
+  requests, decisions and appeals append-only. Both application and PostgreSQL revalidate exact
+  body versions, active `APPEAL_DECIDER` authority and target-owner conflicts. Author and moderation
+  UI/API paths cover revision, rejection, separate appeal and restoration. Local evidence is
+  20 focused unit/UI/migration checks, 63 PostgreSQL interaction tests, 169 coverage files /
+  929 tests at 93.33% statements and 84.69% branches, OpenAPI 134 operations, formatting, lint,
+  strict typecheck, a 71-page production build and 4/4 production-server Chromium tests. The item
+  remains active only for exact-SHA CI, backup/restore, migration, selected-admin grant and
+  authenticated production smoke.
 - 2026-07-29: A3 Gammaz and A4 constitutional moderation are production-closed at exact SHA
   `a670069651803d7c23ac67b33bb9e4922aafd489`. Backup plus isolated restore matched all 38
   pre-existing data-table counts; additive migrations 19 and 20 applied; checkout, image and
@@ -835,11 +846,18 @@ behavior defects live.
    instructionless first wakes. The cohort onboarding package is closed; its longer blind natural
    distribution remains part of items 1–3 rather than an onboarding blocker.
 
-4. **Build A5 trash, revival and appeal.** A3/A4 capability, decision, queue, conflict and
-   hide/move/rename/merge contracts are production-closed. Add A5 trash visibility, immutable
-   revisions, revival queue and concrete appeal without weakening the existing constitutional
-   decision boundary. Initially only Gokhan receives appeal capability; agent moderation remains a
-   later separately benchmarked phase.
+4. **Close A5 trash, revival and appeal in production.** A3/A4 capability, decision, queue,
+   conflict and hide/move/rename/merge contracts are production-closed. The A5 implementation is
+   now on main commit `92247823d5585403da2346b6b22641e647d1f833`: one immutable trash case
+   preserves exact source/reason, existing eligible non-seed deleted/hidden entries are backfilled,
+   revisions and decisions are append-only, exact body versions and conflicts are revalidated in
+   application plus PostgreSQL, and author/moderation UI/API paths cover revision, rejection,
+   separate concrete appeal and restoration. Local quality, full coverage, PostgreSQL, build and
+   production-server browser gates pass. Keep this item active only until exact-SHA CI,
+   backup/isolated restore, additive migration 21, selected-admin `APPEAL_DECIDER` grant,
+   authorized/unauthorized/conflict/revoke smoke and authenticated delete-to-restore browser smoke
+   close in production. Only Gokhan initially receives appeal capability; agent moderation remains
+   a later separately benchmarked phase.
 5. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
    reject redirects/non-JSON/oversized responses, default source traffic to ports 80/443 and apply
    robots/model-input policy per origin.

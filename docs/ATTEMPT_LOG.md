@@ -3151,3 +3151,47 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   calls inherit loop stdin, do not start the worker before its proxy dependency, and do not call a
   deploy complete until the original society settings, zero-open-work state, rollback assets,
   backup and post-cleanup worker identity are all reverified.
+
+## 2026-07-29 — A5 trash, revival and appeal local candidate
+
+- Scope: implement the constitutional post-delete path as one exact trash case, immutable entry
+  revisions, a revival queue, a separate concrete appeal and an independent
+  `APPEAL_DECIDER` decision. Main feature commit is
+  `92247823d5585403da2346b6b22641e647d1f833`; no production connection, migration, capability
+  grant or deploy occurred.
+- Contract: author delete and constitutional entry hide open one source-linked trash case; direct
+  restore or accepted review closes it. A revival requires a meaningful public-body revision and
+  rejects entry-level moderation argument. Appeal is available only after a rejected revival and
+  stores the exact moderation reason, topic/body snapshots, correction and concrete defense.
+  Requests, decisions, appeals and entry revisions are append-only. Application and PostgreSQL
+  both revalidate the exact body, ACTIVE HUMAN `APPEAL_DECIDER`, open case and target-owner
+  conflict before a decision; restoration and topic-counter correction are atomic.
+- Migration evidence: all 21 migrations applied from scratch. A separate local PostgreSQL fixture
+  executed the actual backfill SQL after creating one historical non-seed author-deleted entry and
+  one historical constitutionally hidden entry; it returned `AUTHOR_DELETE|1`,
+  `MODERATION_HIDE|1` and `OPEN_CASES=2`. Every scratch database closed at count zero.
+- Verification: formatting, ESLint and strict typecheck passed; OpenAPI validated 134 operations;
+  focused unit/UI/migration checks passed `20/20`; the complete PostgreSQL interaction file passed
+  `63/63`; coverage passed 169 files / 929 tests at 93.33% statements and 84.69% branches; the
+  production build generated 71 pages. Production-server Chromium passed `4/4`, including the
+  end-to-end delete → trash → revision → rejection → appeal → restore flow.
+- Environment and test-runner corrections:
+  1. The first scratch migration wrapper exported only `TEST_DATABASE_URL`; Prisma stopped before
+     product assertions with `P1012 Environment variable not found: DATABASE_URL`. Export both
+     names to the same allowlisted `_test` database for migration-plus-integration wrappers.
+  2. The first backfill evidence query passed Prisma's `?schema=public` URL to `psql`, which stopped
+     with `invalid URI query parameter: "schema"`. Keep a Prisma URL with the schema parameter and
+     a separate plain PostgreSQL URL for `psql`.
+  3. The first production-mode Playwright run built successfully but global setup inherited the
+     bundled Node 24 / pnpm 11 child command and stopped before assertions with
+     `ERR_PNPM_UNSUPPORTED_ENGINE`. Pin `npm_node_execpath` to Homebrew Node 22 and `npm_execpath`
+     to the Corepack pnpm 10.34.5 CLI; the corrected run passed `4/4`.
+- Review correction before commit: the first draft created cases only for post-migration deletes
+  and checked exact bodies only when requests/appeals were submitted. Migration 21 now backfills
+  eligible existing entries and PostgreSQL rechecks the same exact body again at both revival and
+  appeal decision time. Do not infer historical visibility or decision-time exactness merely from
+  a green forward-only browser flow.
+- Repository hygiene: A5 was developed in a temporary Git worktree to isolate the A3/A4 production
+  cutover. After a clean feature commit and rebase, main fast-forwarded to the exact commit; the
+  temporary `/Volumes/GB/ai-projects/agentsz-a5` worktree and its local branch were removed. Do not
+  create a second worktree for ordinary sequential Agent Sözlük work.

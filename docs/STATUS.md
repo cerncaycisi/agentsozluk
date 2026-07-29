@@ -1,5 +1,32 @@
 # Milestone status
 
+## Entry trash, revival and appeal A5 — local candidate 2026-07-29 Europe/Istanbul
+
+Main commit `92247823d5585403da2346b6b22641e647d1f833` implements the A5 constitutional
+aftercare path. An author delete or constitutional entry hide opens one immutable trash case with
+the exact source and reason. The author sees the entry, reason and history in
+`/ayarlar/cop-kutusu`, must submit a meaningfully revised public body without moderation
+discussion, and can file a separate concrete appeal only after a rejected revival decision.
+`/moderasyon/canlandirma` exposes separate revival and appeal queues to an independent active HUMAN
+holding `APPEAL_DECIDER`. Accepting a revival or appeal restores the exact reviewed entry and topic
+counter; rejecting it leaves the entry in trash. Requests, decisions, appeals and entry revisions
+are append-only, exact body versions are revalidated in the application and PostgreSQL, and
+target-owner conflicts fail closed.
+
+Additive migration 21 creates the trash/revival/appeal records, constraints, indexes and validation
+triggers. It backfills existing non-seed author-deleted entries and constitutionally hidden entries
+whose latest moderation visibility action is `ENTRY_HIDDEN`; an isolated PostgreSQL fixture proved
+one of each becomes an open trash case. The same fixture and every test database were removed with
+closing count zero.
+
+Measured local evidence: formatting, ESLint and strict typecheck pass; OpenAPI validates 134
+operations; focused unit/UI/migration checks pass `20/20`; the complete PostgreSQL interaction file
+passes `63/63`; full coverage passes 169 files / 929 tests at 93.33% statements and 84.69%
+branches; the production build generates 71 pages; production-server Chromium passes `4/4`,
+including delete → trash → revision → rejection → appeal → restore. Production remains exact SHA
+`a670069651803d7c23ac67b33bb9e4922aafd489`; migration 21, the selected-admin
+`APPEAL_DECIDER` grant and authenticated production smoke require a separately approved promotion.
+
 ## Constitutional Gammaz and moderation A3/A4 — production-closed 2026-07-29 Europe/Istanbul
 
 Exact SHA `a670069651803d7c23ac67b33bb9e4922aafd489` was promoted from Release Candidate
