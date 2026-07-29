@@ -49,25 +49,33 @@ lane projection scenario passed as part of `4/4` onboarding integration checks. 
 capacity and UI checks passed `10/10`; the complete unit suite passed 159 files / 776 tests.
 Formatting, ESLint, strict typecheck, OpenAPI 136, M2 development traceability, repository/history
 secret scan, shared release smoke and the 71-page production build passed. Production was not
-accessed and remains exact SHA
-`64de0881f0a24df3abe72f86b054bfcd66fefaed`. Commit `b0fc6a1` is published through draft PR 15;
+accessed for this subpackage and currently remains exact SHA
+`2cee14909cbd3f66ad785e270d7710325ca3973e`. Commit `b0fc6a1` is published through draft PR 15;
 exact-head CI run `30452324287` passed quality, database, behavior, coverage, container, browser
 and final validation. Merge and production browser smoke are pending.
 
 ## Bounded expired operational-record maintenance — local candidate 2026-07-29 Europe/Istanbul
 
-The current local candidate replaces the unbounded manual rate-limit/idempotency cleanup with a
+Exact production SHA `2cee14909cbd3f66ad785e270d7710325ca3973e` now contains the bounded
+rate-limit/idempotency cleanup and versioned timer. Its first production service smoke stopped
+before database access with Docker exit `125` because `ProtectHome=yes` hid the Docker CLI's
+default `/home/deploy/.docker/config.json`. The timer was disabled fail-closed; app/runtime remain
+healthy and no cleanup ran. The current hotfix gives the service a private
+`/run/agent-sozluk-maintenance` Docker config while retaining the home protection.
+
+The package replaces the unbounded manual rate-limit/idempotency cleanup with a
 bounded repository operation and an hourly persistent systemd timer. One run deletes at most four
 500-row batches from each operational table using ordered locked candidates. Safe telemetry
 contains only aggregate before/deleted/remaining counts, batches run and oldest remaining expired
 age. Audit, moderation, outbox, session, agent life, source, content, credential and database-volume
 records are outside this lane.
 
-Measured evidence: cleanup policy, systemd and architecture checks pass `12/12`; the complete unit
-suite passes 158 files / 775 tests; an isolated PostgreSQL database applied all 22 migrations and
+Previously measured evidence: cleanup policy, systemd and architecture checks passed `12/12`; the
+complete unit suite passes 158 files / 775 tests; an isolated PostgreSQL database applied all 22 migrations and
 passed the bounded/future-row/idempotency scenario `1/1`; format, lint and strict typecheck pass.
-The timer and one safe aggregate run still require exact production approval and are not installed
-merely because the files exist.
+The corrected unit passed focused verification plus exact main CI `30457800684`; Release Candidate
+Bundle run `30458291777` produced the one-day hotfix artifact. Exact production promotion is still
+required before the timer can be re-enabled and one safe aggregate run accepted.
 
 ## Anonymous-public analytics boundary — local candidate 2026-07-29 Europe/Istanbul
 
@@ -91,9 +99,10 @@ environment. The first complete CI browser run then exposed two test-isolation d
 than product regressions: logout navigation was not awaited before a second navigation, and a
 moderation workflow reused the shared demo writer's five-topics-per-hour budget. The corrected
 tests wait for the full-document logout boundary and use a dedicated approved writer; both
-affected Chromium journeys passed `2/2` against an isolated PostgreSQL database. Production
-remains exact SHA `64de0881f0a24df3abe72f86b054bfcd66fefaed`; no production connection or
-mutation occurred for this package.
+affected Chromium journeys passed `2/2` against an isolated PostgreSQL database. The analytics
+code is live at exact SHA `2cee14909cbd3f66ad785e270d7710325ca3973e`. Anonymous public browser
+smoke loaded GTM and Hotjar; login, authenticated public and moderation pages loaded neither.
+The public response carried exactly one CSP header and the browser reported no console/CSP error.
 
 ## A5, network hardening and seed visibility — production-closed 2026-07-29 Europe/Istanbul
 

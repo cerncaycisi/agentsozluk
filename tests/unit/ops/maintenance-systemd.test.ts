@@ -23,9 +23,13 @@ describe("bounded operational-record maintenance timer", () => {
     expect(service).toContain(
       "--env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml",
     );
+    expect(service).toContain("RuntimeDirectory=agent-sozluk-maintenance");
+    expect(service).toContain("RuntimeDirectoryMode=0700");
+    expect(service).toContain("Environment=DOCKER_CONFIG=/run/agent-sozluk-maintenance");
     expect(service).not.toMatch(/(?:DATABASE_URL=|APP_SECRET=|PASSWORD=|TOKEN=)/u);
     expect(service).toContain("NoNewPrivileges=yes");
     expect(service).toContain("ProtectSystem=strict");
+    expect(service).toContain("ProtectHome=yes");
     expect(service).toContain("RestrictAddressFamilies=AF_UNIX");
     expect(service).toContain("TimeoutStartSec=5min");
     expect(dockerfile).toContain("scripts/cleanup-rate-limits.ts ./scripts/cleanup-rate-limits.ts");
