@@ -3605,3 +3605,61 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   validation, then PR #17 squash-merged cleanly to exact `main` SHA
   `971fc3559dca324a8f66f0fb39b4a7446646a83d`. Production remained untouched at
   `b55e1e63c7c4f28f87da8f4775b3e73836533b94`.
+
+## 2026-07-29 — source locale-focus metadata production closeout
+
+- Exact release: SHA `cff0a17129377d7f205ae84cd1eff7560d206a07`, Release Candidate Bundle run
+  `30468150916`, artifact `8730701995`, digest
+  `sha256:5e3b083a3842e74398d79d85e951aa1a8b55424c0c7980719ce6ef72d89981c7`.
+  The pinned hostname, IPv4/domain, ED25519 fingerprint, repository, clean checkout, ZIP digest,
+  rigid bundle manifest, archive hashes, image revision and Linux x64 glibc Node ABI 127 guards
+  passed. Root usage was 34% with more than 47 GiB free before staging. The exact image and
+  immutable runtime were staged without changing the running app, runtime symlink, services or
+  database.
+- Backup and migration: drain was `queued/running/cancel-requested/live-lease = 0/0/0/0`; no run
+  was cancelled. Worker and hourly maintenance timer stopped, then Caddy/app stopped while the
+  database remained private and healthy. Backup
+  `/opt/agent-sozluk/backups/agent-sozluk-pre-cff0a17129377d7f205ae84cd1eff7560d206a07-20260729T162614Z.dump`
+  is mode `0600` with SHA-256
+  `847cd3ebf64de281aba5b5cbec6590aee4d5f5c34ba2f8fd544917a7f819f0bf`.
+  Its allowlisted restore matched all 46 pre-existing data-table counts plus the canonical V1
+  fingerprint. Candidate history contained every applied migration plus exactly
+  `20260729210000_add_source_locale_focus`; the candidate image applied that one delta to the
+  scratch database and then production. Final history contained 24 successful migrations,
+  pre-existing counts and V1 fingerprint remained equal, and the scratch database count returned
+  to zero.
+- Cutover and smoke: checkout, running image and immutable runtime converged on the exact SHA with
+  image ID `sha256:c9247d02e5b71ba5ab2008322a2e273f0908be000199113f2e36c4f3b70a7ce3`.
+  Internal/public health and readiness returned `200/200`; worker returned `active/running` with
+  zero restart and the maintenance timer returned `active/waiting`. Runtime, scheduler, publish
+  and public write stayed enabled in `NORMAL`; 22 profiles remained ACTIVE and settings/lifecycle/
+  volume fingerprints were preserved. Natural scheduling resumed and a natural run/lease was
+  observed after restoration. The authenticated `10c4190d` moderation session displayed all four
+  locale classes; the `TURKISH_LANGUAGE` filter produced the expected query and populated result
+  set.
+- Aggregate source evidence: the body-free audit ran from the exact immutable production runtime
+  and emitted only its closing aggregate. Of 72 sources/origins, 71 were usable; 48 usable
+  sources/origins were Turkish-language or Türkiye-focused; usable class counts were 23 global,
+  46 Turkish-language, one Türkiye-focused and one combined. The audit found 1,354 useful items,
+  zero empty source and one `SOURCE_TIMEOUT`. Database assignment counts closed at 72 global,
+  169 Turkish-language, six Türkiye-focused and five combined. No source URL/body, entry, prompt,
+  credential, cookie or environment value was selected for the receipt. No retention cleanup ran;
+  root closed at 37% with 48,030,672 KiB free. Exact temporary operator scripts and the local
+  verified artifact copy were removed; the production backup, image/runtime release and artifact
+  receipt remain.
+- Corrected operator attempts:
+  1. A long here-document reached SSH as empty stdin and exited before freeze or mutation. The
+     versioned mode-0700 operator script transport then executed normally. Do not infer execution
+     from a zero-status empty stdin; require the first explicit phase event.
+  2. The scratch-existence probe repeated the already documented unsupported `psql -c` variable
+     form and printed `syntax error at or near ":"`. The validated allowlist name and fail-on-
+     collision `createdb` still protected the target, and the isolated restore/migration/drop
+     completed correctly. Do not repeat: send the `:'scratch_name'` query on psql stdin when using
+     `-v`; never place it in `-c`, and never hide that command inside `test -z "$(…)"`.
+  3. The first audit call used the application image, which intentionally omits the operator audit
+     script, and stopped read-only with `ERR_MODULE_NOT_FOUND`. The matching immutable runtime
+     release contains the complete audited dependency closure and produced the aggregate above.
+     Do not run operator-only scripts from the minimized Next.js application image.
+  4. One final read-only state query over-escaped quoted PostgreSQL identifiers and stopped with
+     `syntax error at or near "\"`. Separate stdin-fed aggregate queries returned the closing
+     state. Keep complex PostgreSQL smoke SQL out of nested SSH quoting.

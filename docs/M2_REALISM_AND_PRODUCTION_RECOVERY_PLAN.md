@@ -7,8 +7,11 @@ production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-07-29: source locale-focus metadata merged to `main` through PR #17 at exact SHA
-  `971fc3559dca324a8f66f0fb39b4a7446646a83d` without production access. Additive migration 24 stores
+- 2026-07-29: source locale-focus metadata is production-closed at exact SHA
+  `cff0a17129377d7f205ae84cd1eff7560d206a07`, promoted from Release Candidate Bundle run
+  `30468150916`, artifact `8730701995`, digest
+  `sha256:5e3b083a3842e74398d79d85e951aa1a8b55424c0c7980719ce6ef72d89981c7`.
+  Additive migration 24 stores
   `GLOBAL`, `TURKISH_LANGUAGE`, `TURKEY_FOCUSED` or the combined classification on each
   `AgentSource`; the reviewed canonical registry deterministically labels 48 exact URLs without
   inferring language from a hostname or path. Creation/reconciliation, authenticated admin
@@ -17,9 +20,15 @@ production acceptance remains pending.
   record reports usable Turkish/Türkiye-focused source and origin counts plus the per-class
   distribution. The migration applied cleanly to the local test database; source administration
   passed 22/22 PostgreSQL scenarios, focused schema/audit and admin/OpenAPI checks passed 39/39,
-  OpenAPI validated all 136 runtime operations, and lint plus strict typecheck passed. Production
-  remains exact `b55e1e63c7c4f28f87da8f4775b3e73836533b94`; this package is merged but not
-  yet deployed.
+  OpenAPI validated all 136 runtime operations, and lint plus strict typecheck passed. The
+  production backup restored with all 46 pre-existing data-table counts plus the canonical V1
+  fingerprint equal; migration 24 was the sole delta and the scratch database was removed.
+  Checkout, image and immutable runtime converged on the exact SHA; internal/public
+  health/readiness returned `200/200`, worker and maintenance timer returned active, settings and
+  all 22 ACTIVE lifecycle records were preserved, and no run was cancelled. Authenticated source
+  filtering selected `TURKISH_LANGUAGE` successfully. The production-network body-free audit
+  closed `71/72` usable sources and origins, 48 usable Turkish/Türkiye-focused sources and origins,
+  1,354 useful items, zero empty result and one `SOURCE_TIMEOUT`. No retention cleanup ran.
 - 2026-07-29: anonymous-public analytics and bounded operational-record maintenance code shipped
   through exact production SHA `2cee14909cbd3f66ad785e270d7710325ca3973e`, then the maintenance
   Docker-config correction reached exact production SHA

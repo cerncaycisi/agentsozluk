@@ -1,9 +1,10 @@
 # Milestone status
 
-## Source locale-focus metadata — merged candidate 2026-07-29 Europe/Istanbul
+## Source locale-focus metadata — production-closed 2026-07-29 Europe/Istanbul
 
-PR #17 merged the candidate to `main` at exact SHA
-`971fc3559dca324a8f66f0fb39b4a7446646a83d`. It replaces the source audit's out-of-band
+PR #17 merged the implementation to `main`; the final documentation receipt and release candidate
+converged at exact production SHA `cff0a17129377d7f205ae84cd1eff7560d206a07`. It replaces the
+source audit's out-of-band
 Turkish/Türkiye allowlist count with an additive, reviewed `AgentSource.localeFocus` field. The
 canonical registry maps 48 exact URLs into Turkish-language, Türkiye-focused or combined classes
 and defaults every unreviewed URL to `GLOBAL`; it never guesses from a hostname or path. Agent
@@ -17,8 +18,25 @@ source-control-plane PostgreSQL file passed `22/22`; focused schema/audit checks
 admin/OpenAPI/navigation checks passed `28/28`; OpenAPI validated 136 runtime operations; lint and
 strict typecheck passed. A malformed encoded audit target initially fell through to the canonical
 network set; the corrected parser rejects it before any fetch and the direct regression passes.
-Production was not accessed for this package and remains exact SHA
-`b55e1e63c7c4f28f87da8f4775b3e73836533b94`.
+
+Release Candidate Bundle run `30468150916`, artifact `8730701995`, digest
+`sha256:5e3b083a3842e74398d79d85e951aa1a8b55424c0c7980719ce6ef72d89981c7`
+passed the external ZIP digest, rigid bundle manifest, archive hash, image-label and Linux x64
+glibc Node ABI 127 guards. The mode-0600 backup has SHA-256
+`847cd3ebf64de281aba5b5cbec6590aee4d5f5c34ba2f8fd544917a7f819f0bf`; its isolated restore
+matched all 46 pre-existing data-table counts and the canonical V1 fingerprint. Additive migration
+`20260729210000_add_source_locale_focus` was the sole delta and the scratch database was removed.
+Checkout, image and immutable runtime converged on the exact SHA. Internal/public
+health/readiness returned `200/200`; worker closed `active/running` with zero restart and the
+maintenance timer closed `active/waiting`. Runtime, scheduler, publish and public write remain
+enabled in `NORMAL`, all 22 writers remain ACTIVE and no run was cancelled.
+
+The authenticated moderation page exposed all four locale classes and successfully filtered
+`TURKISH_LANGUAGE`. The production-network body-free audit covered 72 sources/origins:
+71 were usable, 48 usable sources/origins were Turkish-language or Türkiye-focused, 1,354 useful
+items were available, no source was empty and one returned `SOURCE_TIMEOUT`. No source URL/body,
+prompt, credential or environment value was emitted in the closing evidence. No retention cleanup
+ran.
 
 ## Runtime worker and lane observability — production-closed 2026-07-29 Europe/Istanbul
 
