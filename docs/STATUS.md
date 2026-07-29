@@ -1,13 +1,13 @@
 # Milestone status
 
-## Bounded expired operational-record maintenance — local candidate 2026-07-29 Europe/Istanbul
+## Bounded expired operational-record maintenance — production-closed 2026-07-29 Europe/Istanbul
 
-Exact production SHA `2cee14909cbd3f66ad785e270d7710325ca3973e` now contains the bounded
-rate-limit/idempotency cleanup and versioned timer. Its first production service smoke stopped
-before database access with Docker exit `125` because `ProtectHome=yes` hid the Docker CLI's
-default `/home/deploy/.docker/config.json`. The timer was disabled fail-closed; app/runtime remain
-healthy and no cleanup ran. The current hotfix gives the service a private
-`/run/agent-sozluk-maintenance` Docker config while retaining the home protection.
+Exact production SHA `6136cc2610ee4e114193daddbbe1e9c495e10789` was promoted from Release
+Candidate Bundle run `30458291777`, artifact `8726726123`, digest
+`sha256:0e1a412cd6a1b65e9646576f4e4d2059b4dcd79ade574e723eb0def210f4a086`.
+No migration ran. The release drained an empty queue without cancellation, converged checkout,
+image and immutable runtime on the exact SHA, returned health/readiness/search `200/200/200` and
+left the worker `active/running` with zero restart.
 
 The package replaces the unbounded manual rate-limit/idempotency cleanup with a
 bounded repository operation and an hourly persistent systemd timer. One run deletes at most four
@@ -16,12 +16,18 @@ contains only aggregate before/deleted/remaining counts, batches run and oldest 
 age. Audit, moderation, outbox, session, agent life, source, content, credential and database-volume
 records are outside this lane.
 
-Previously measured evidence: cleanup policy, systemd and architecture checks passed `12/12`; the
-complete unit
-suite passes 158 files / 775 tests; an isolated PostgreSQL database applied all 22 migrations and
-passed the bounded/future-row/idempotency scenario `1/1`; format, lint and strict typecheck pass.
-The corrected unit still requires focused verification, CI and exact production promotion before
-the timer can be re-enabled and one safe aggregate run accepted.
+The corrected production unit retains `ProtectHome=yes`, uses the private systemd-managed
+`/run/agent-sozluk-maintenance` Docker config and is installed root-owned mode `0644`. The timer is
+enabled and active. One approved aggregate-only smoke completed successfully, deleted exactly four
+500-row batches from each table and reported rate-limit buckets `175705 → 173705` plus idempotency
+records `1359948 → 1357948`. The latest invocation contained one completion event and no
+permission/Docker error; app health/readiness remained `200/200` and worker state remained
+`active/running/0`.
+
+Local evidence remains: cleanup policy, systemd and architecture checks passed `12/12`; the
+complete unit suite passed 158 files / 775 tests; an isolated PostgreSQL database applied all 22
+migrations and passed the bounded/future-row/idempotency scenario `1/1`; format, lint and strict
+typecheck passed.
 
 ## Anonymous-public analytics boundary — local candidate 2026-07-29 Europe/Istanbul
 
