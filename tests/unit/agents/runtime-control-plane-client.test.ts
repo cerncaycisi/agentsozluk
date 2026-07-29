@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { RuntimeControlPlaneHttpClient } from "@/runtime/control-plane-client";
+import {
+  canonicalRuntimeControlPlaneBaseUrl,
+  RuntimeControlPlaneHttpClient,
+} from "@/runtime/control-plane-client";
 import type { RuntimeControlPlaneError } from "@/runtime/control-plane-client";
 
 const LEASE_TOKEN = "l".repeat(43);
@@ -13,6 +16,82 @@ function jsonResponse(data: unknown, status = 200): Response {
 }
 
 describe("runtime control-plane HTTP contract", () => {
+  it("canonicalizes only the expected host-local loopback origin", () => {
+    expect(canonicalRuntimeControlPlaneBaseUrl("http://127.0.0.1:3000")).toBe(
+      "http://127.0.0.1:3000",
+    );
+    expect(canonicalRuntimeControlPlaneBaseUrl("http://localhost:3000/")).toBe(
+      "http://127.0.0.1:3000",
+    );
+    expect(canonicalRuntimeControlPlaneBaseUrl("http://[::1]:3000")).toBe("http://127.0.0.1:3000");
+    for (const value of [
+      "https://127.0.0.1:3000",
+      "http://127.0.0.1",
+      "http://127.0.0.1:3001",
+      "http://example.com:3000",
+      "http://user:pass@127.0.0.1:3000",
+      "http://127.0.0.1:3000/api",
+      "http://127.0.0.1:3000/?target=other",
+      "http://127.0.0.1:3000/#fragment",
+    ])
+      expect(() => canonicalRuntimeControlPlaneBaseUrl(value)).toThrow(
+        "CONTROL_PLANE_BASE_URL_INVALID",
+      );
+  });
+
+  it("disables redirects and requires bounded JSON responses", async () => {
+    const cases = [
+      {
+        response: new Response(JSON.stringify({ data: {} }), {
+          status: 302,
+          headers: { "content-type": "application/json", location: "http://example.com" },
+        }),
+        code: "CONTROL_PLANE_REDIRECT_BLOCKED",
+      },
+      {
+        response: new Response("not json", {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+        code: "CONTROL_PLANE_CONTENT_TYPE_INVALID",
+      },
+      {
+        response: new Response("{broken", {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+        code: "CONTROL_PLANE_RESPONSE_INVALID",
+      },
+      {
+        response: new Response("{}", {
+          status: 200,
+          headers: {
+            "content-type": "application/json",
+            "content-length": String(2 * 1024 * 1024 + 1),
+          },
+        }),
+        code: "CONTROL_PLANE_RESPONSE_TOO_LARGE",
+      },
+      {
+        response: new Response(Buffer.alloc(2 * 1024 * 1024 + 1, " "), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+        code: "CONTROL_PLANE_RESPONSE_TOO_LARGE",
+      },
+    ];
+
+    for (const { response, code } of cases) {
+      const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(response);
+      const client = new RuntimeControlPlaneHttpClient("http://localhost:3000", fetchMock);
+      await expect(client.lease("credential", "worker-one")).rejects.toMatchObject({ code });
+      expect(fetchMock.mock.calls[0]![1]).toMatchObject({
+        redirect: "manual",
+        headers: expect.objectContaining({ accept: "application/json" }),
+      });
+    }
+  });
+
   it("parses the authoritative lease start and DB debug retention without identity aliases", async () => {
     const runId = randomUUID();
     const startedAt = new Date().toISOString();

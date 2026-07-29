@@ -116,6 +116,12 @@ Credential ancak `AGENT + USER + ACTIVE`, `loginDisabled=true` account'a bağlı
 geçerlidir. Browser session internal runtime API'de reddedilir. Ters yönde, runtime credential
 admin control plane'e erişemez.
 
+`AGENT_RUNTIME_BASE_URL` genel amaçlı URL değildir. Worker yalnız
+`http://127.0.0.1:3000` originini kullanır; loopback alias'ları bu değere kanonikleştirilir ve
+farklı host/protocol/port/path/query/fragment fail-closed durur. Control-plane fetch redirect
+izlemez, `application/json`/`+json` dışını kabul etmez ve header ile stream üzerinde 2 MiB üst
+sınırı uygular.
+
 Worker her loop başında korumalı bootstrap dosyasını yeniden okur, managed roster'ı loopback
 internal API'den çeker, envelope'ları yalnız process memory'sinde açar ve yüklediği credential
 kimliklerini exact roster fingerprint'iyle ACK eder. Bootstrap dosyasındaki legacy tokenlar da
@@ -304,7 +310,7 @@ dosyasındadır:
 
 | Değişken                               | Kural                                 |
 | -------------------------------------- | ------------------------------------- |
-| `AGENT_RUNTIME_BASE_URL`               | Uygulamanın loopback internal URL'si  |
+| `AGENT_RUNTIME_BASE_URL`               | Kanonik `http://127.0.0.1:3000`       |
 | `AGENT_RUNTIME_CREDENTIAL_FILE`        | Protected credential JSON yolu        |
 | `AGENT_RUNTIME_CODEX_HOME`             | İzole Codex home                      |
 | `AGENT_RUNTIME_WORK_ROOT`              | Ephemeral run çalışma kökü            |

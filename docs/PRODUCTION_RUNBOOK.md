@@ -132,6 +132,11 @@ measurements do not block stochastic wakes. Legacy daily-plan routes are retaine
 compatibility tombstones and return `410 AGENT_DAILY_PLANNING_RETIRED`; they cannot create a plan,
 slot, catch-up run or capacity snapshot.
 
+The worker control-plane origin must remain exactly `http://127.0.0.1:3000`. Runtime startup
+canonicalizes loopback aliases but rejects every different protocol, host, port, path, query,
+fragment or embedded credential. The client does not follow redirects and accepts only a bounded
+JSON envelope. Do not work around this guard with a proxy/public URL or another environment key.
+
 ### Gate 1: host and release preflight
 
 After explicit approval for read-only production inspection, verify the expected paths and installed

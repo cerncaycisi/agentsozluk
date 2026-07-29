@@ -258,6 +258,74 @@ interface Envelope {
   error?: { code?: string; message?: string };
 }
 
+const CONTROL_PLANE_HOST = "127.0.0.1";
+const CONTROL_PLANE_PORT = "3000";
+const MAXIMUM_CONTROL_PLANE_RESPONSE_BYTES = 2 * 1024 * 1024;
+
+export function canonicalRuntimeControlPlaneBaseUrl(value: string): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new RuntimeControlPlaneError("CONTROL_PLANE_BASE_URL_INVALID");
+  }
+  const hostname = url.hostname.replace(/^\[|\]$/gu, "").toLowerCase();
+  if (
+    url.protocol !== "http:" ||
+    !["127.0.0.1", "localhost", "::1"].includes(hostname) ||
+    url.port !== CONTROL_PLANE_PORT ||
+    url.username ||
+    url.password ||
+    url.pathname !== "/" ||
+    url.search ||
+    url.hash
+  )
+    throw new RuntimeControlPlaneError("CONTROL_PLANE_BASE_URL_INVALID");
+  return `http://${CONTROL_PLANE_HOST}:${CONTROL_PLANE_PORT}`;
+}
+
+function jsonContentType(response: Response): boolean {
+  const mediaType = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+  return mediaType === "application/json" || Boolean(mediaType?.endsWith("+json"));
+}
+
+async function boundedJsonEnvelope(response: Response): Promise<Envelope> {
+  if (response.redirected || (response.status >= 300 && response.status < 400))
+    throw new RuntimeControlPlaneError("CONTROL_PLANE_REDIRECT_BLOCKED");
+  if (!jsonContentType(response))
+    throw new RuntimeControlPlaneError("CONTROL_PLANE_CONTENT_TYPE_INVALID");
+
+  const declaredLength = Number(response.headers.get("content-length") ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAXIMUM_CONTROL_PLANE_RESPONSE_BYTES)
+    throw new RuntimeControlPlaneError("CONTROL_PLANE_RESPONSE_TOO_LARGE");
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new RuntimeControlPlaneError("CONTROL_PLANE_RESPONSE_INVALID");
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.byteLength;
+    if (received > MAXIMUM_CONTROL_PLANE_RESPONSE_BYTES) {
+      await reader.cancel();
+      throw new RuntimeControlPlaneError("CONTROL_PLANE_RESPONSE_TOO_LARGE");
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return JSON.parse(new TextDecoder().decode(bytes)) as Envelope;
+  } catch {
+    throw new RuntimeControlPlaneError("CONTROL_PLANE_RESPONSE_INVALID");
+  }
+}
+
 function isRetryableTransportError(error: unknown): boolean {
   return (
     error instanceof TypeError ||
@@ -270,7 +338,7 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
   readonly #fetch: typeof fetch;
 
   constructor(baseUrl: string, fetchImplementation: typeof fetch = fetch) {
-    this.#baseUrl = baseUrl.replace(/\/$/u, "");
+    this.#baseUrl = canonicalRuntimeControlPlaneBaseUrl(baseUrl);
     this.#fetch = fetchImplementation;
   }
 
@@ -296,6 +364,7 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
             "content-type": "application/json",
             "idempotency-key": options?.idempotencyKey ?? randomUUID(),
           }),
+      accept: "application/json",
     };
     const request = () => {
       const timeoutSignal = AbortSignal.timeout(requestTimeoutMs);
@@ -303,6 +372,7 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
         method,
         headers,
         ...(input === undefined ? {} : { body: JSON.stringify(input) }),
+        redirect: "manual",
         signal: options?.signal ? AbortSignal.any([options.signal, timeoutSignal]) : timeoutSignal,
       });
     };
@@ -313,7 +383,7 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
       if (!options?.retryTransportFailureOnce || !isRetryableTransportError(error)) throw error;
       response = await request();
     }
-    const envelope = (await response.json()) as Envelope;
+    const envelope = await boundedJsonEnvelope(response);
     if (!response.ok) {
       const code = envelope.error?.code ?? `HTTP_${response.status}`;
       throw new RuntimeControlPlaneError(code);

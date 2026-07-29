@@ -9,6 +9,7 @@ import {
   isPrivateSourceAddress,
   parseSafeSourceUrl,
 } from "@/modules/agents/domain/source-security";
+import type { SourceNetworkPolicy } from "@/modules/agents/domain/source-security";
 
 const maximumResponseBytes = 2 * 1024 * 1024;
 export const MAX_SOURCE_READ_TIMEOUT_MS = 10_000;
@@ -41,6 +42,7 @@ export interface SourceReaderOptions {
   ) => Promise<SourceResponse>;
   minimumDomainIntervalMs?: number;
   timeoutMs?: number;
+  allowedNonDefaultPorts?: Readonly<Record<string, readonly number[]>>;
 }
 
 export interface SourceReadOptions {
@@ -260,7 +262,11 @@ function xmlText(value: string): string {
     .trim();
 }
 
-export function parseSourceFeed(xml: string, baseUrl: URL): SourceReadItem[] {
+export function parseSourceFeed(
+  xml: string,
+  baseUrl: URL,
+  policy: SourceNetworkPolicy = {},
+): SourceReadItem[] {
   const blocks = [...xml.matchAll(/<(item|entry)\b[^>]*>([\s\S]*?)<\/\1>/giu)].slice(0, 50);
   return blocks.flatMap(([, , block]) => {
     if (!block) return [];
@@ -279,7 +285,7 @@ export function parseSourceFeed(xml: string, baseUrl: URL): SourceReadItem[] {
     let canonicalUrl: string;
     try {
       canonicalUrl = new URL(rawLink, baseUrl).toString();
-      parseSafeSourceUrl(canonicalUrl);
+      parseSafeSourceUrl(canonicalUrl, policy);
     } catch {
       return [];
     }
@@ -299,7 +305,11 @@ export function parseSourceFeed(xml: string, baseUrl: URL): SourceReadItem[] {
   });
 }
 
-export function parseSourceSitemap(xml: string, baseUrl: URL): SourceReadItem[] {
+export function parseSourceSitemap(
+  xml: string,
+  baseUrl: URL,
+  policy: SourceNetworkPolicy = {},
+): SourceReadItem[] {
   const blocks = [...xml.matchAll(/<url\b[^>]*>([\s\S]*?)<\/url>/giu)].slice(0, 50);
   return blocks.flatMap(([, block]) => {
     if (!block) return [];
@@ -310,7 +320,7 @@ export function parseSourceSitemap(xml: string, baseUrl: URL): SourceReadItem[] 
     if (!rawUrl || !title) return [];
     let canonicalUrl: string;
     try {
-      const parsed = parseSafeSourceUrl(new URL(rawUrl, baseUrl).toString());
+      const parsed = parseSafeSourceUrl(new URL(rawUrl, baseUrl).toString(), policy);
       if (parsed.origin !== baseUrl.origin) return [];
       canonicalUrl = parsed.toString();
     } catch {
@@ -405,6 +415,16 @@ export class SafeSourceReader {
     this.#options = options;
   }
 
+  #networkPolicy(): SourceNetworkPolicy {
+    return this.#options.allowedNonDefaultPorts
+      ? { allowedNonDefaultPorts: this.#options.allowedNonDefaultPorts }
+      : {};
+  }
+
+  #parseUrl(value: string): URL {
+    return parseSafeSourceUrl(value, this.#networkPolicy());
+  }
+
   #remainingMs(deadlineAtMs: number): number {
     const remainingMs = Math.ceil(deadlineAtMs - Date.now());
     if (remainingMs <= 0) throw new Error("SOURCE_TIMEOUT");
@@ -423,10 +443,12 @@ export class SafeSourceReader {
     deadlineAtMs: number,
     signal?: AbortSignal,
     redirects = 0,
+    beforeRequest?: (target: URL) => Promise<void>,
   ): Promise<SourceResponse> {
     if (signal?.aborted) throw new Error("SOURCE_CANCELLED");
     if (redirects > 5) throw new Error("SOURCE_REDIRECT_LIMIT");
-    parseSafeSourceUrl(url.toString());
+    this.#parseUrl(url.toString());
+    await beforeRequest?.(url);
     await this.#paced(url.hostname, deadlineAtMs, signal);
     let addresses: Array<{ address: string; family: number }>;
     try {
@@ -476,7 +498,13 @@ export class SafeSourceReader {
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.location;
       if (!location) throw new Error("SOURCE_REDIRECT_WITHOUT_LOCATION");
-      return this.#request(new URL(location, url), deadlineAtMs, signal, redirects + 1);
+      return this.#request(
+        new URL(location, url),
+        deadlineAtMs,
+        signal,
+        redirects + 1,
+        beforeRequest,
+      );
     }
     if ([401, 403, 407].includes(response.status)) throw new Error("SOURCE_AUTH_REQUIRED");
     if (response.status < 200 || response.status >= 300)
@@ -493,25 +521,42 @@ export class SafeSourceReader {
     );
     if (!Number.isFinite(totalTimeoutMs) || totalTimeoutMs <= 0) throw new Error("SOURCE_TIMEOUT");
     const deadlineAtMs = Date.now() + totalTimeoutMs;
-    const url = parseSafeSourceUrl(value);
-    const robotsUrl = new URL("/robots.txt", url.origin);
-    let robots: SourceResponse | null = null;
-    try {
-      robots = await this.#request(robotsUrl, deadlineAtMs, options.signal);
-    } catch (error) {
-      if (!(error instanceof Error && error.message === "SOURCE_HTTP_404")) throw error;
-    }
-    if (robots && !robotsAllows(robots.body.toString("utf8"), url.pathname))
-      throw new Error("SOURCE_ROBOTS_DISALLOWED");
-    if (robots && !robotsAllowsModelInput(robots.body.toString("utf8")))
-      throw new Error("SOURCE_CONTENT_SIGNAL_DISALLOWED");
-    const response = await this.#request(url, deadlineAtMs, options.signal);
+    const url = this.#parseUrl(value);
+    const robotsByOrigin = new Map<string, Promise<string | null>>();
+    const robotsForOrigin = (origin: string): Promise<string | null> => {
+      const cached = robotsByOrigin.get(origin);
+      if (cached) return cached;
+      const request = (async () => {
+        try {
+          const robots = await this.#request(
+            new URL("/robots.txt", origin),
+            deadlineAtMs,
+            options.signal,
+          );
+          return robots.body.toString("utf8");
+        } catch (error) {
+          if (error instanceof Error && error.message === "SOURCE_HTTP_404") return null;
+          throw error;
+        }
+      })();
+      robotsByOrigin.set(origin, request);
+      return request;
+    };
+    const enforceOriginPolicy = async (target: URL): Promise<void> => {
+      const robots = await robotsForOrigin(target.origin);
+      if (robots && !robotsAllows(robots, target.pathname))
+        throw new Error("SOURCE_ROBOTS_DISALLOWED");
+      if (robots && !robotsAllowsModelInput(robots))
+        throw new Error("SOURCE_CONTENT_SIGNAL_DISALLOWED");
+    };
+
+    const response = await this.#request(url, deadlineAtMs, options.signal, 0, enforceOriginPolicy);
     const contentType = response.headers["content-type"]?.toLowerCase() ?? "";
     const text = response.body.toString("utf8");
     if (contentType.includes("xml") || /<(rss|feed|urlset)\b/iu.test(text.slice(0, 1000)))
       return /<urlset\b/iu.test(text.slice(0, 2000))
-        ? parseSourceSitemap(text, new URL(response.url))
-        : parseSourceFeed(text, new URL(response.url));
+        ? parseSourceSitemap(text, new URL(response.url), this.#networkPolicy())
+        : parseSourceFeed(text, new URL(response.url), this.#networkPolicy());
     if (!contentType.includes("html") && !contentType.startsWith("text/"))
       throw new Error("SOURCE_CONTENT_TYPE_UNSUPPORTED");
     const feedLink = [...text.matchAll(/<link\b[^>]*>/giu)]
@@ -526,15 +571,20 @@ export class SafeSourceReader {
           /type=["']application\/(rss\+xml|atom\+xml)/iu.test(tag),
       );
     if (feedLink?.href) {
-      const feedUrl = parseSafeSourceUrl(new URL(feedLink.href, response.url).toString());
-      if (!robots || robotsAllows(robots.body.toString("utf8"), feedUrl.pathname)) {
-        const feedResponse = await this.#request(feedUrl, deadlineAtMs, options.signal);
-        const items = parseSourceFeed(
-          feedResponse.body.toString("utf8"),
-          new URL(feedResponse.url),
-        );
-        if (items.length > 0) return items;
-      }
+      const feedUrl = this.#parseUrl(new URL(feedLink.href, response.url).toString());
+      const feedResponse = await this.#request(
+        feedUrl,
+        deadlineAtMs,
+        options.signal,
+        0,
+        enforceOriginPolicy,
+      );
+      const items = parseSourceFeed(
+        feedResponse.body.toString("utf8"),
+        new URL(feedResponse.url),
+        this.#networkPolicy(),
+      );
+      if (items.length > 0) return items;
     }
     const sanitized = sanitizeSourceHtml(text);
     if (!sanitized.safeText) return [];

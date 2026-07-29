@@ -229,6 +229,24 @@ Secret sızıntısı şüphesinde ilgili credential'ı rotate edin, bütün sess
 değerlendirin, audit/log erişimini sınırlayın ve Git history'yi rewrite etmeden repository sahibinin
 incident sürecini izleyin.
 
+## Agent runtime ağ sınırı
+
+- Host worker control plane için yalnız `http://127.0.0.1:3000` kanonik originini kullanır.
+  `localhost` ve `[::1]` girdileri bu değere normalize edilir; farklı protocol, port, host,
+  credential, path, query veya fragment worker başlamadan reddedilir.
+- Internal control-plane istemcisi redirect takip etmez. Response yalnız JSON veya `+json`
+  content type ile ve en fazla 2 MiB olarak kabul edilir; header ve gerçek stream boyutu ayrı
+  doğrulanır.
+- Public source URL'leri varsayılan olarak yalnız HTTP 80 ve HTTPS 443 portlarını kullanabilir.
+  Gerekli bir istisna ancak exact hostname + port kod politikasıyla tanımlanabilir; bir origin
+  için verilen istisna başka domaine taşınmaz.
+- Source redirecti veya HTML içinden keşfedilen cross-origin feed okunmadan önce hedef originin
+  kendi `robots.txt` ve `Content-Signal: ai-input=no` politikası değerlendirilir. Politika aynı
+  read bütçesi içinde origin başına cache edilir.
+- DNS cevaplarının tamamı bağlantıdan önce incelenir. Loopback/private/link-local yanında
+  documentation, benchmark, multicast ve diğer non-global IPv4/IPv6 destination sınıfları da
+  reddedilir; redirect her hedefte aynı kontrolü yeniden çalıştırır.
+
 ## Production seed corpus güvenliği
 
 Canonical 180 `ContentOrigin.SEED` entry, production ürün verisidir; geçici fixture değildir.

@@ -53,6 +53,114 @@ describe("safe external source reader", () => {
     await expect(reader.read("https://example.com/article")).rejects.toThrow(/Private|local/u);
   });
 
+  it("allows a non-default source port only through an exact hostname-port policy", async () => {
+    const requester = vi.fn().mockImplementation(async (url: URL) =>
+      url.pathname === "/robots.txt"
+        ? { status: 404, headers: {}, body: Buffer.alloc(0), url: url.toString() }
+        : {
+            status: 200,
+            headers: { "content-type": "text/html" },
+            body: Buffer.from("<html><title>Policy</title><body>Explicit port.</body></html>"),
+            url: url.toString(),
+          },
+    );
+    const reader = new SafeSourceReader({
+      minimumDomainIntervalMs: 0,
+      resolver: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
+      requester,
+      allowedNonDefaultPorts: { "example.com": [8443] },
+    });
+
+    await expect(reader.read("https://example.com:8443/article")).resolves.toMatchObject([
+      { title: "Policy", safeText: "Policy Explicit port." },
+    ]);
+    expect(requester.mock.calls.map(([url]) => url.port)).toEqual(["8443", "8443"]);
+  });
+
+  it("applies model-input policy before following a cross-origin source redirect", async () => {
+    const requester = vi.fn().mockImplementation(async (url: URL) => {
+      if (url.hostname === "source.example" && url.pathname === "/robots.txt")
+        return {
+          status: 200,
+          headers: { "content-type": "text/plain" },
+          body: Buffer.from("User-agent: *\nAllow: /"),
+          url: url.toString(),
+        };
+      if (url.hostname === "source.example")
+        return {
+          status: 302,
+          headers: { location: "https://target.example/news" },
+          body: Buffer.alloc(0),
+          url: url.toString(),
+        };
+      if (url.pathname === "/robots.txt")
+        return {
+          status: 200,
+          headers: { "content-type": "text/plain" },
+          body: Buffer.from("User-agent: *\nContent-Signal: ai-input=no\nAllow: /"),
+          url: url.toString(),
+        };
+      throw new Error("TARGET_BODY_MUST_NOT_BE_READ");
+    });
+    const reader = new SafeSourceReader({
+      minimumDomainIntervalMs: 0,
+      resolver: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
+      requester,
+    });
+
+    await expect(reader.read("https://source.example/article")).rejects.toThrow(
+      "SOURCE_CONTENT_SIGNAL_DISALLOWED",
+    );
+    expect(
+      requester.mock.calls.some(
+        ([url]) => url.hostname === "target.example" && url.pathname === "/news",
+      ),
+    ).toBe(false);
+  });
+
+  it("applies robots policy per origin before following a discovered cross-origin feed", async () => {
+    const requester = vi.fn().mockImplementation(async (url: URL) => {
+      if (url.hostname === "source.example" && url.pathname === "/robots.txt")
+        return {
+          status: 200,
+          headers: { "content-type": "text/plain" },
+          body: Buffer.from("User-agent: *\nAllow: /"),
+          url: url.toString(),
+        };
+      if (url.hostname === "source.example")
+        return {
+          status: 200,
+          headers: { "content-type": "text/html" },
+          body: Buffer.from(
+            '<html><head><link rel="alternate" type="application/rss+xml" href="https://feed.example/private.xml"></head><body>Fallback</body></html>',
+          ),
+          url: url.toString(),
+        };
+      if (url.pathname === "/robots.txt")
+        return {
+          status: 200,
+          headers: { "content-type": "text/plain" },
+          body: Buffer.from("User-agent: *\nDisallow: /private.xml"),
+          url: url.toString(),
+        };
+      throw new Error("FEED_BODY_MUST_NOT_BE_READ");
+    });
+    const reader = new SafeSourceReader({
+      minimumDomainIntervalMs: 0,
+      resolver: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
+      requester,
+    });
+
+    await expect(reader.read("https://source.example/")).rejects.toThrow(
+      "SOURCE_ROBOTS_DISALLOWED",
+    );
+    expect(
+      requester.mock.calls.some(
+        ([url]) => url.hostname === "feed.example" && url.pathname === "/private.xml",
+      ),
+    ).toBe(false);
+  });
+
   it("honors longest matching robots rule", () => {
     const robots = `
       User-agent: *
@@ -267,6 +375,7 @@ describe("safe external source reader", () => {
     const items = await reader.read("https://example.com/");
     expect(items[0]).toMatchObject({ title: "Feed item", safeText: "Feed metni" });
     expect(items[0]!.safeText).not.toContain("HTML fallback");
+    expect(requester.mock.calls.filter(([url]) => url.pathname === "/robots.txt")).toHaveLength(1);
   });
 
   it("decodes a bounded gzip RSS response before parsing it", async () => {

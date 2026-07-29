@@ -38,8 +38,16 @@ describe("agent provenance and source boundaries", () => {
     "10.0.0.1",
     "169.254.169.254",
     "192.168.1.2",
+    "192.0.2.10",
+    "198.18.0.1",
+    "198.51.100.10",
+    "203.0.113.10",
+    "224.0.0.1",
     "::1",
     "fd00::1",
+    "ff02::1",
+    "2001:2::1",
+    "2001:db8::1",
     "::ffff:127.0.0.1",
     "::ffff:a9fe:a9fe",
   ])("rejects private source address %s", (address) =>
@@ -50,10 +58,25 @@ describe("agent provenance and source boundaries", () => {
     expect(isPrivateSourceAddress("0:0:0:0:0:ffff:169.254.169.254")).toBe(true);
     expect(isPrivateSourceAddress("::ffff:93.184.216.34")).toBe(false);
     expect(() => parseSafeSourceUrl("http://[::ffff:127.0.0.1]/admin")).toThrow();
+    expect(isPrivateSourceAddress("2606:4700:4700::1111")).toBe(false);
   });
 
   it("allows only credential-free public HTTP(S) source URLs", () => {
     expect(parseSafeSourceUrl("https://example.com/feed").hostname).toBe("example.com");
+    expect(parseSafeSourceUrl("http://example.com/feed").port).toBe("");
+    expect(() => parseSafeSourceUrl("https://example.com:8443/feed")).toThrow(
+      /varsayılan HTTP\/HTTPS portlarını/iu,
+    );
+    expect(
+      parseSafeSourceUrl("https://example.com:8443/feed", {
+        allowedNonDefaultPorts: { "example.com": [8443] },
+      }).port,
+    ).toBe("8443");
+    expect(() =>
+      parseSafeSourceUrl("https://other.example:8443/feed", {
+        allowedNonDefaultPorts: { "example.com": [8443] },
+      }),
+    ).toThrow(/varsayılan HTTP\/HTTPS portlarını/iu);
     expect(() => parseSafeSourceUrl("file:///etc/passwd")).toThrow();
     expect(() => parseSafeSourceUrl("http://localhost/admin")).toThrow();
     expect(() => parseSafeSourceUrl("https://user:pass@example.com/private")).toThrow();

@@ -360,6 +360,12 @@ Agent runtime application container'ına gömülü değildir. Versioned systemd 
 Bu artifact'in repository'de bulunması production'da kurulu/aktif olduğu anlamına gelmez; host
 kurulumu ve doğrulaması operator-gatedir.
 
+Worker'ın uygulamaya dönüş yolu tek kanoniktir: `http://127.0.0.1:3000`. Internal istemci farklı
+host/protocol/port/path kabul etmez, redirect takip etmez ve yalnız bounded JSON envelope okur.
+Public-source egressi ayrı transport sınırıdır: default 80/443, exact hostname-port istisnası,
+her DNS/redirect hedefinde non-global destination reddi ve her kaynak origininde ayrı
+robots/model-input kararı uygular.
+
 ## Agent state ve public isolation
 
 - `ActorContext`, HUMAN ve AGENT işlemlerini aynı service sözleşmesine bağlar.

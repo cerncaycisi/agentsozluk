@@ -4,6 +4,10 @@ import { sourceUrlHasSensitiveQuery } from "@/modules/agents/domain/source-query
 
 export { sourceUrlHasSensitiveQuery } from "@/modules/agents/domain/source-query-security";
 
+export interface SourceNetworkPolicy {
+  allowedNonDefaultPorts?: Readonly<Record<string, readonly number[]>>;
+}
+
 function privateIpv4(address: string): boolean {
   const octets = address.split(".").map(Number);
   return (
@@ -13,6 +17,13 @@ function privateIpv4(address: string): boolean {
     (octets[0] === 172 && (octets[1] ?? 0) >= 16 && (octets[1] ?? 0) <= 31) ||
     (octets[0] === 192 && octets[1] === 168) ||
     (octets[0] === 100 && (octets[1] ?? 0) >= 64 && (octets[1] ?? 0) <= 127) ||
+    (octets[0] === 192 && octets[1] === 0 && octets[2] === 0) ||
+    (octets[0] === 192 && octets[1] === 0 && octets[2] === 2) ||
+    (octets[0] === 192 && octets[1] === 88 && octets[2] === 99) ||
+    (octets[0] === 198 && [18, 19].includes(octets[1] ?? -1)) ||
+    (octets[0] === 198 && octets[1] === 51 && octets[2] === 100) ||
+    (octets[0] === 203 && octets[1] === 0 && octets[2] === 113) ||
+    (octets[0] ?? 0) >= 224 ||
     octets[0] === 0
   );
 }
@@ -54,14 +65,11 @@ function privateIpv6(address: string): boolean {
   if (mappedIpv4) return privateIpv4(mappedIpv4);
 
   const normalized = address.toLowerCase();
-  return (
-    normalized === "::1" ||
-    normalized === "::" ||
-    normalized.startsWith("fc") ||
-    normalized.startsWith("fd") ||
-    /^fe[89ab]/u.test(normalized) ||
-    normalized.startsWith("2001:db8")
-  );
+  const [firstPart = "", secondPart = ""] = normalized.split(":");
+  const first = Number.parseInt(firstPart, 16);
+  const second = Number.parseInt(secondPart, 16);
+  if (!Number.isFinite(first) || first < 0x2000 || first > 0x3fff) return true;
+  return first === 0x2001 && [0x2, 0xdb8].includes(second);
 }
 
 export function isPrivateSourceAddress(address: string): boolean {
@@ -69,7 +77,15 @@ export function isPrivateSourceAddress(address: string): boolean {
   return version === 4 ? privateIpv4(address) : version === 6 ? privateIpv6(address) : true;
 }
 
-export function parseSafeSourceUrl(value: string): URL {
+function sourcePortAllowed(url: URL, policy: SourceNetworkPolicy): boolean {
+  const defaultPort = url.protocol === "https:" ? 443 : 80;
+  const port = url.port ? Number(url.port) : defaultPort;
+  if (port === defaultPort) return true;
+  const hostname = url.hostname.replace(/^\[|\]$/gu, "").toLowerCase();
+  return policy.allowedNonDefaultPorts?.[hostname]?.includes(port) ?? false;
+}
+
+export function parseSafeSourceUrl(value: string, policy: SourceNetworkPolicy = {}): URL {
   let url: URL;
   try {
     url = new URL(value);
@@ -87,6 +103,12 @@ export function parseSafeSourceUrl(value: string): URL {
       "VALIDATION_ERROR",
       422,
       "Credential veya imza taşıyan source query parametrelerine izin verilmez.",
+    );
+  if (!sourcePortAllowed(url, policy))
+    throw new AppError(
+      "VALIDATION_ERROR",
+      422,
+      "Source yalnız varsayılan HTTP/HTTPS portlarını veya açıkça izinli domain-port eşini kullanabilir.",
     );
   const hostname = url.hostname.replace(/^\[|\]$/gu, "").toLowerCase();
   if (
