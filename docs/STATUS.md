@@ -1,24 +1,32 @@
 # Milestone status
 
-## Runtime worker and lane observability — local candidate 2026-07-29 Europe/Istanbul
+## Runtime worker and lane observability — production-closed 2026-07-29 Europe/Istanbul
 
-The current isolated branch makes the moderation capacity page answer which worker is alive,
-whether each configured capacity slot is active or idle, which writer/run is executing, its safe
-runtime phase and lease/heartbeat age, and the latest queue-wait, Codex-duration/result,
-timeout/restart and capability-fingerprint evidence. It reuses the credential-roster heartbeat
-and stores only a boot UUID plus bounded operational metadata; prompts, credentials, entry bodies
-and private reasoning are neither queried nor displayed.
+The live release makes the moderation capacity page answer which worker is alive, whether each
+configured capacity slot is active or idle, which writer/run is executing, its safe runtime phase
+and lease/heartbeat age, and the latest queue-wait, Codex-duration/result, timeout/restart and
+capability-fingerprint evidence. It reuses the credential-roster heartbeat and stores only a boot
+UUID plus bounded operational metadata; prompts, credentials, entry bodies and private reasoning
+are neither queried nor displayed.
 
 Measured evidence: all 23 migrations applied from scratch and the PostgreSQL worker boot/restart/
 lane projection scenario passed as part of `4/4` onboarding integration checks. Focused worker,
 capacity and UI checks passed `10/10`; the complete unit suite passed 159 files / 776 tests.
 Formatting, ESLint, strict typecheck, OpenAPI 136, M2 development traceability, repository/history
-secret scan, shared release smoke and the 71-page production build passed. Production was not
-accessed for this package and remains exact SHA
-`6136cc2610ee4e114193daddbbe1e9c495e10789`. Commit `b0fc6a1` is published through draft PR 15;
-prior exact-head CI run `30460016256` passed quality, database, behavior, coverage, container,
-browser and final validation. Fresh exact-head CI after the production-receipt merge, main merge
-and production browser smoke are pending.
+secret scan, shared release smoke and the 71-page production build passed.
+
+Exact SHA `b55e1e63c7c4f28f87da8f4775b3e73836533b94` was promoted from Release
+Candidate Bundle run `30463558531`, artifact `8728864603`, digest
+`sha256:da57a2cdbf4bddb3ffab3c639cb8be25b2076dd26a3367046202da645025eed0`.
+The mode-0600 production backup restored into an allowlisted scratch database and all 47 public
+table counts matched before the scratch database was removed. Additive migration
+`20260729190000_add_runtime_worker_observability` was the sole migration delta. Checkout, image
+and immutable runtime converged on the exact SHA; health/readiness closed `200/200`, the worker
+returned `active/running` with zero systemd restart and the hourly maintenance timer returned
+enabled/active. Authenticated `/moderasyon/agent-kapasite` smoke displayed the online worker,
+two real lane cards, active/idle capacity, safe lease/heartbeat/run duration, restart `0`,
+timeout `0` and no browser console error. Runtime settings and profile lifecycle fingerprints
+were unchanged, no run was cancelled and no retention cleanup ran.
 
 ## Bounded expired operational-record maintenance — production-closed 2026-07-29 Europe/Istanbul
 

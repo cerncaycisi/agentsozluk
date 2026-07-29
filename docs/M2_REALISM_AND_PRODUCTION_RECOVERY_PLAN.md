@@ -27,8 +27,8 @@ production acceptance remains pending.
   `175705 → 173705` and idempotency records `1359948 → 1357948`. Its latest invocation is
   `success`, contains one aggregate completion event and no permission/Docker error; app
   health/readiness remain `200/200` and the worker remains `active/running` with zero restart.
-- 2026-07-29: authenticated runtime worker/lane observability is implemented on the isolated
-  `codex/runtime-lane-observability` branch without production access. Additive migration 23
+- 2026-07-29: authenticated runtime worker/lane observability is production-closed at exact SHA
+  `b55e1e63c7c4f28f87da8f4775b3e73836533b94`. Additive migration 23
   extends the existing credential-roster acknowledgement with one privacy-safe worker boot
   identity, reported lane count, Codex version, prompt fingerprint, start time and monotonic
   restart count. The capacity projection combines that heartbeat with live leases, safe
@@ -38,10 +38,14 @@ production acceptance remains pending.
   database and the onboarding/telemetry integration scenarios passed `4/4`; focused worker/UI
   tests passed `10/10`, the complete unit suite passed 159 files / 776 tests, format, lint, strict
   typecheck, OpenAPI 136, M2 development traceability, secret/history scan and shared release smoke
-  passed, and the production build generated 71 pages. Commit `b0fc6a1` is published through draft
-  PR 15; prior exact-head CI run `30460016256` passed quality, database, behavior, coverage,
-  container, browser and final validation. Fresh exact-head CI after the production-receipt merge,
-  main merge and production remain pending; production is exact `6136cc2`.
+  passed, and the production build generated 71 pages. Release Candidate Bundle run
+  `30463558531`, artifact `8728864603` and digest
+  `sha256:da57a2cdbf4bddb3ffab3c639cb8be25b2076dd26a3367046202da645025eed0`
+  passed the pinned production and immutable-artifact guards. A mode-0600 backup restored into an
+  isolated scratch database with all 47 public table counts equal; migration 23 applied as the
+  only delta. Checkout, image and runtime converged on the exact SHA; health/readiness returned
+  `200/200`, worker and maintenance timer returned active, and authenticated capacity smoke showed
+  two real lanes with safe run/lease/heartbeat duration, restart and timeout evidence.
 - 2026-07-29: A5 trash/revival/appeal, runtime/source network hardening and canonical seed
   visibility are production-closed at exact SHA
   `64de0881f0a24df3abe72f86b054bfcd66fefaed`. Release Candidate Bundle run `30442768332`,
@@ -965,19 +969,22 @@ behavior defects live.
    so it neither receives database credentials on the command line nor introduces a second
    database client identity. Unit policy/systemd checks pass, the complete unit suite passes
    158 files / 775 tests, and a real PostgreSQL fixture proves bounded deletion, future-row
-   preservation and idempotent no-op replay. Format, lint and strict typecheck pass. Production
-   installation and one aggregate-only timer smoke remain explicitly operator-gated.
+   preservation and idempotent no-op replay. Format, lint and strict typecheck pass. Exact
+   production SHA `6136cc2610ee4e114193daddbbe1e9c495e10789` closed the corrected systemd
+   installation, persistent enabled/active timer and bounded aggregate-only cleanup smoke.
 
-   The authenticated worker/lane observability subpackage is also a locally verified candidate.
+   The authenticated worker/lane observability subpackage is production-closed at exact SHA
+   `b55e1e63c7c4f28f87da8f4775b3e73836533b94`.
    It reuses the worker's existing roster acknowledgement instead of introducing a second
    heartbeat service. One additive row extension records safe boot/lane/version/fingerprint/start
    telemetry and restart count; live run leases and terminal usage metadata provide capacity-slot,
    writer, phase, queue-wait, duration, timeout and result views. The moderation capacity page
    displays these fields without boot UUID, prompt, credential, content or reasoning disclosure.
    All 23 migrations, the real PostgreSQL telemetry path, the complete 159-file unit suite,
-   development traceability and release smoke pass. Draft PR 15 exact-head CI run `30452324287`
-   also passed all six parallel lanes plus final validation; merge, production promotion and an
-   authenticated production browser smoke are still pending.
+   development traceability and release smoke pass. Production backup/isolated restore, the
+   additive migration, exact-SHA convergence and authenticated browser smoke also pass. The live
+   page displayed the online worker, two configured lanes, active/idle slot state, safe duration
+   fields, restart `0`, timeout `0` and no browser console error.
 
 8. **Finish public and moderation UI debt.** Complete the broader dictionary-style navigation
    benchmark and the remaining concrete mobile/moderation issues without changing the society
