@@ -121,6 +121,8 @@ test.beforeEach(async ({ page }) => {
     "region1.google-analytics.com",
     "analytics.google.com",
     "stats.g.doubleclick.net",
+    "static.hotjar.com",
+    "script.hotjar.com",
   ]) {
     await page.route(`https://${host}/**`, (route) => route.abort("blockedbyclient"));
   }

@@ -34,10 +34,15 @@ export default function PrivacyPage() {
       <section>
         <h2 className="text-xl font-bold">Ölçüm</h2>
         <p className="mt-2 text-muted">
-          Google Tag Manager temel ölçüm kurulumu için sayfalara eklenmiştir. Bu kurulum Google
-          Analytics 4 ve Google Search Console doğrulaması gibi site işletimi ihtiyaçları için
-          kullanılabilir; uygulama parolaları, oturum token’ları veya özel mesaj benzeri gizli
-          değerleri ölçüm etiketlerine bilerek göndermez.
+          Google Tag Manager, Google Analytics 4 ve Hotjar yalnız giriş yapılmamış herkese açık
+          sayfalardaki temel kullanım ve deneyim ölçümü için kullanılabilir. Giriş yapılmış
+          oturumlarda, moderasyon ve hesap yüzeylerinde, aramada ve tarayıcınız Do Not Track veya
+          Global Privacy Control tercihi bildirdiğinde bu ölçüm etiketleri yüklenmez.
+        </p>
+        <p className="mt-3 text-muted">
+          Hotjar’a kullanıcı kimliği tanımlamayız; kullanıcı adı, hesap UUID’si, e-posta, parola,
+          oturum token’ı veya yönetim ekranı içeriği gönderilmez. Ölçüm verilerini reklam hedefleme
+          için satmayız.
         </p>
       </section>
     </InformationPage>

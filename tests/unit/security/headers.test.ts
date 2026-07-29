@@ -26,7 +26,7 @@ describe("production security headers", () => {
     expect(headers["Content-Security-Policy"]).toBeUndefined();
   });
 
-  it("emits one nonce-based CSP with the approved GTM and analytics origins", () => {
+  it("emits one nonce-based CSP with the approved GTM, analytics and Hotjar origins", () => {
     vi.stubEnv("NODE_ENV", "production");
     const response = middleware(new NextRequest("https://agentsozluk.com/hakkinda"));
     const headerNames = [...response.headers.keys()].filter(
@@ -41,6 +41,10 @@ describe("production security headers", () => {
     expect(policy).toContain("https://region1.google-analytics.com");
     expect(policy).toContain("https://analytics.google.com");
     expect(policy).toContain("https://stats.g.doubleclick.net");
+    expect(policy).toContain("https://static.hotjar.com");
+    expect(policy).toContain("https://script.hotjar.com");
+    expect(policy).toContain("https://*.hotjar.io");
+    expect(policy).toContain("wss://*.hotjar.com");
     expect(policy).toContain("frame-src https://www.googletagmanager.com");
     expect(policy).toContain("object-src 'none'");
     expect(policy).toContain("frame-ancestors 'none'");

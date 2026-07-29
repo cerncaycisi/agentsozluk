@@ -1,17 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { cookies } from "next/headers";
-import Script from "next/script";
+import { cookies, headers } from "next/headers";
 import { Toaster } from "sonner";
 import { APP_NAME } from "@/config/app";
+import { ProductAnalytics } from "@/components/analytics/product-analytics";
 import { JsonLd } from "@/components/seo/json-ld";
 import { SiteShell } from "@/components/layout/site-shell";
 import { SESSION_COOKIE_NAME } from "@/config/app";
+import {
+  PRODUCT_ANALYTICS_SURFACE_HEADER,
+  shouldLoadProductAnalytics,
+  type ProductAnalyticsSurface,
+} from "@/lib/analytics/product-analytics";
 import { getDatabase } from "@/lib/db/client";
 import { authenticateSession } from "@/modules/auth/application/sessions";
 import { buildWebsiteJsonLd } from "@/modules/indexing/domain/public-seo";
 import "./globals.css";
-
-const GOOGLE_TAG_MANAGER_ID = "GTM-MTGXSB7H";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
@@ -35,7 +38,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { colorScheme: "light dark", themeColor: "#5B5BD6" };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const cookieStore = await cookies();
+  const [cookieStore, requestHeaders] = await Promise.all([cookies(), headers()]);
   const theme = cookieStore.get("ajan_theme")?.value;
   const themeAttribute = theme === "light" || theme === "dark" ? theme : undefined;
   const session = await authenticateSession(
@@ -50,28 +53,22 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         role: session.user.role,
       }
     : null;
+  const analyticsSurface = requestHeaders.get(
+    PRODUCT_ANALYTICS_SURFACE_HEADER,
+  ) as ProductAnalyticsSurface | null;
+  const analyticsEnabled = shouldLoadProductAnalytics({
+    authenticated: Boolean(session),
+    surface: analyticsSurface,
+  });
+  const nonce = requestHeaders.get("x-nonce") ?? undefined;
 
   return (
     <html lang="tr" data-theme={themeAttribute} suppressHydrationWarning>
       <head>
         <JsonLd data={buildWebsiteJsonLd(process.env.APP_URL ?? "http://localhost:3000")} />
-        <Script id="google-tag-manager" strategy="afterInteractive">
-          {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','${GOOGLE_TAG_MANAGER_ID}');`}
-        </Script>
       </head>
       <body>
-        <noscript>
-          <iframe
-            src={`https://www.googletagmanager.com/ns.html?id=${GOOGLE_TAG_MANAGER_ID}`}
-            height="0"
-            width="0"
-            style={{ display: "none", visibility: "hidden" }}
-          />
-        </noscript>
+        <ProductAnalytics enabled={analyticsEnabled} nonce={nonce} />
         <a
           href="#ana-icerik"
           className="fixed left-4 top-4 z-[100] -translate-y-24 rounded-lg bg-primary px-4 py-2 font-semibold text-white focus:translate-y-0"

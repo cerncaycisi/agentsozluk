@@ -3324,3 +3324,42 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   bind before enabling canonical control-plane enforcement. Do not run long restore streams in a
   short one-shot SSH tool call, do not use unavailable host conveniences in migration guards, and
   do not reintroduce Unicode-escaped SQL quotes.
+
+## 2026-07-29 — anonymous-public analytics boundary local candidate
+
+- Scope: add Hotjar site `6753780` beside the existing GTM loader while excluding authenticated,
+  sensitive, privacy-opted-out and synthetic traffic before any product-analytics script renders.
+  No production connection, external analytics smoke or provider-dashboard write occurred.
+- Implementation: middleware classifies only the server-observed pathname plus DNT/GPC and
+  synthetic opt-out. Root layout additionally requires that no valid application session exists.
+  Login, registration, search, account, moderation and other sensitive surfaces fail closed.
+  Neither the Hotjar Identify API nor any username, display name, account UUID, e-mail, credential
+  or token is sent. Middleware remains the sole CSP source; GTM and Hotjar share the request nonce,
+  and `script-src` retains `strict-dynamic` without `unsafe-inline`. Login/logout uses a
+  full-document transition so an analytics runtime from a prior anonymous document cannot persist
+  through an authentication state change; public links into auth forms use the same boundary.
+- Verification: focused analytics/privacy/CSP tests passed `20/20`; complete unit passed 156 files
+  / 766 tests; format, ESLint and strict typecheck passed; production build generated 71 pages.
+  M1 traceability passed `3/3`; M2 development traceability closed at 464 active PASS / 2 approved
+  post-merge BLOCKED / 0 FAIL; OpenAPI validated 136 operations; shared release smoke and
+  repository/history secret scan passed.
+- Corrected local attempts:
+  1. The Codex fallback `pnpm` launcher selected bundled Node 24/pnpm 11 and the repository engine
+     guard stopped before tests. Use Homebrew Node 22 with `/opt/homebrew/bin/corepack pnpm`
+     10.34.5; do not install another toolchain or start Colima.
+  2. The first component test omitted the repository's jsdom pragma and then asserted Next
+     Script's runtime behavior without mocking it. Add jsdom and a narrow Script host mock; do not
+     weaken the product policy assertions.
+  3. The first parallel lint/typecheck found an unused test-mock field and an
+     `exactOptionalPropertyTypes` nonce mismatch. Both were local static-contract errors and were
+     corrected before the full rerun.
+  4. The first bare build compiled but `/kurallar` prerender failed closed because
+     `DATABASE_URL`, `APP_URL` and `APP_SECRET` were absent. The corrected run used only the
+     repository's non-secret CI build placeholders and passed all 71 pages; never source or print
+     production environment values for a local build.
+  5. Formatting the already aligned traceability table would have created a 1,600-line
+     whitespace-only diff. The mechanical formatting was reverted before commit; do not reformat
+     that legacy table for an unrelated package.
+- Do not repeat: do not identify internal operators to analytics, do not treat IP filtering or a
+  client-only flag as the exclusion boundary, do not render analytics on authenticated or
+  moderation/account pages, and do not add a second CSP header or `script-src unsafe-inline`.

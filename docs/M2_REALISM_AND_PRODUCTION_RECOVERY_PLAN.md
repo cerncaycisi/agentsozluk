@@ -1002,17 +1002,25 @@ behavior defects live.
    instructionless NORMAL_WAKE succeeded, and the closing roster was 22/22. Retain this path as a
    regression requirement for future UI-created writers.
 
-   Add Hotjar as a later UX-observation package using site id `6753780`, without weakening the
-   existing single nonce-based CSP or duplicating GTM/analytics initialization. Treat Gokhan's
-   `10c4190d` account and Codex/operator-driven browser or synthetic smoke traffic as internal:
-   GA4, Hotjar and any future behavioral analytics must omit those sessions or classify and filter
-   them before product reporting. Do not expose a username, raw user UUID or operator credential
-   to analytics merely to implement the exclusion, and do not rely only on a mutable client-side
-   flag or a single IP address. Acceptance requires authenticated-user and automated-smoke
-   fixtures proving zero product-analytics events for internal traffic, ordinary anonymous/public
-   traffic still measured, one CSP header with no `unsafe-inline`, and documented GA4/Hotjar
-   verification without storing session recordings from moderation or other authenticated
-   sensitive surfaces.
+   The 2026-07-29 local analytics candidate adds Hotjar site id `6753780` beside the existing GTM
+   loader without duplicating initialization. The server renders both tags only for anonymous
+   public traffic. Any authenticated session—including the account displayed as `10c4190d` and
+   Codex/operator admin sessions—plus login, registration, search, account, moderation and other
+   sensitive surfaces receives no analytics tags. DNT/GPC and explicit synthetic-smoke opt-out
+   signals also fail closed. The implementation sends no username, user UUID, e-mail or Identify
+   API call and does not rely on IP filtering or a client-only flag. Login/logout uses a
+   full-document transition so a tracker loaded in an earlier anonymous document cannot survive
+   into an authenticated App Router session; public links into the auth forms also cross a full
+   document boundary.
+
+   Focused local evidence is 20/20: ordinary anonymous/public traffic enables both loaders,
+   authenticated/sensitive/synthetic/privacy-opted-out fixtures render zero analytics tags, missing
+   middleware classification fails closed, and the sole CSP retains nonce/`strict-dynamic`, the
+   exact Hotjar network allowlist and no `script-src unsafe-inline`. The complete unit suite passed
+   156 files / 766 tests; format, lint, strict typecheck, the 71-page production build, M1/M2
+   development traceability, OpenAPI, release smoke and repository/history secret scan are green.
+   Keep this subpackage open only until an explicitly approved production browser smoke proves
+   ordinary public loading plus zero requests on authenticated moderation.
 
 9. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
    with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation

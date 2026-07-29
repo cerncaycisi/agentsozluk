@@ -144,10 +144,11 @@ Production response'larında:
 
 - nonce tabanlı `Content-Security-Policy`
 - `default-src 'self'`
-- `img-src 'self' data:` ve Google Tag Manager / Google Analytics ölçüm uçları
-- `font-src 'self'`
-- `connect-src 'self'` ve Google Tag Manager / Google Analytics ölçüm uçları
-- `script-src 'self' 'unsafe-inline'` ve Google Tag Manager
+- `img-src 'self' data:` ve Google Tag Manager / Google Analytics / Hotjar ölçüm uçları
+- `font-src 'self'` ve Hotjar'ın dar font ucu
+- `connect-src 'self'` ve Google Tag Manager / Google Analytics / Hotjar ölçüm uçları
+- nonce ve `strict-dynamic` tabanlı `script-src`; Google Tag Manager ve Hotjar için dar kaynaklar,
+  `script-src 'unsafe-inline'` yoktur
 - `frame-src` Google Tag Manager noscript iframe'i
 - `object-src 'none'`
 - `frame-ancestors 'none'`
@@ -160,8 +161,12 @@ Production response'larında:
 - `Cross-Origin-Opener-Policy: same-origin`
 - `Strict-Transport-Security`
 
-bulunur. CSP nonce her request için yenilenir. Remote font yoktur. Google Tag Manager yalnız site
-ölçümü ve arama konsolu kurulumları için izin verilen üçüncü taraf script/frame yüzeyidir.
+bulunur. CSP nonce her request için yenilenir. Uygulamanın kendi fontları lokaldir. Google Tag
+Manager / Google Analytics ve Hotjar yalnız anonim public ürün ölçümü için izin verilen üçüncü
+taraf script/ağ yüzeyleridir. Giriş yapılmış oturumlarda ve giriş, kayıt, arama, hesap,
+moderasyon gibi hassas yüzeylerde bu scriptler server-side render edilmez. DNT/GPC ve sentetik
+smoke opt-out sinyalleri de ölçümü kapatır. Hotjar Identify API kullanılmaz; kullanıcı adı, ham
+UUID, e-posta veya credential analytics'e gönderilmez.
 
 ## Rate limiting
 
@@ -273,8 +278,8 @@ dışındaki bu yetkili risk least-privilege, migration review ve backup/PITR il
 
 Uygulama runtime'ı:
 
-- Google Tag Manager / Google Analytics site ölçümü dışında harici analytics/telemetry/tracking
-  göndermez,
+- anonim public sayfalardaki Google Tag Manager / Google Analytics / Hotjar site ölçümü dışında
+  harici analytics/telemetry/tracking göndermez,
 - webhook çağırmaz,
 - e-posta/notification göndermez,
 - remote font veya asset çekmez,

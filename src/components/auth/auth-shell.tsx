@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 export function AuthShell({
   title,
   description,
@@ -24,9 +22,9 @@ export function AuthShell({
         <div className="mt-7">{children}</div>
         <p className="mt-7 border-t pt-5 text-center text-sm text-muted">
           {alternate.text}{" "}
-          <Link href={alternate.href} className="font-semibold text-primary hover:underline">
+          <a href={alternate.href} className="font-semibold text-primary hover:underline">
             {alternate.label}
-          </Link>
+          </a>
         </p>
       </section>
     </main>

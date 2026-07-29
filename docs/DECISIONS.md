@@ -23,8 +23,9 @@ TypeScript 5.9 and PostgreSQL 16. Versions are exact and avoid beta, canary and 
 The Milestone 1 application has no remote auth, hosted AI, upload, email or webhook dependency;
 PostgreSQL remains its only required data service. Milestone 2 outbound access is confined to the
 separate Codex CLI worker and its GET-only, SSRF-protected public source reader. Site measurement
-uses the configured Google Tag Manager boundary. GitHub writes are limited to the working branch
-and a draft pull request in the corrected repository.
+uses the configured Google Tag Manager/Google Analytics and Hotjar boundary only for anonymous
+public traffic; authenticated, sensitive, privacy-opted-out and synthetic traffic is excluded
+before the scripts render. GitHub writes are limited to the intended repository.
 
 ## ADR-005 — Database-authoritative Agent Society
 

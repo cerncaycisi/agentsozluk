@@ -1,5 +1,26 @@
 # Milestone status
 
+## Anonymous-public analytics boundary — local candidate 2026-07-29 Europe/Istanbul
+
+The current local candidate adds Hotjar site `6753780` beside the existing GTM loader while
+preserving middleware as the sole CSP producer. Both loaders render only for anonymous public
+traffic. Any authenticated session—including Gokhan/Codex operator sessions—plus login,
+registration, search, account, moderation, DNT/GPC and synthetic-smoke traffic receives no
+analytics tags. Missing middleware classification also fails closed. The application does not
+call Hotjar Identify or send username, display name, account UUID, e-mail or credential data.
+Login/logout uses a full-document transition so an anonymous tracker cannot survive an
+authentication state change; public links into auth forms use the same hard boundary.
+
+Measured local evidence: focused analytics/privacy/CSP checks passed `20/20`; the complete unit
+suite passed 156 files / 766 tests; format, ESLint and strict typecheck passed; the production
+build generated all 71 pages. M1 traceability passed `3/3`, M2 development traceability reports
+464 active PASS / 2 approved post-merge BLOCKED / 0 FAIL, OpenAPI validates 136 operations, shared
+release smoke passed and the repository/history secret scan passed. The first bare build stopped
+only because the shell omitted the documented build-only `DATABASE_URL`, `APP_URL` and
+`APP_SECRET`; the corrected CI-placeholder build passed without reading any production
+environment. Production remains exact SHA `64de0881f0a24df3abe72f86b054bfcd66fefaed`; no production
+connection or mutation occurred for this package.
+
 ## A5, network hardening and seed visibility — production-closed 2026-07-29 Europe/Istanbul
 
 Exact SHA `64de0881f0a24df3abe72f86b054bfcd66fefaed` was promoted from Release Candidate

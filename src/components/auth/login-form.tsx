@@ -1,16 +1,16 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { FormField } from "@/components/ui/form-field";
+import { navigateDocument } from "@/lib/browser/document-navigation";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { safeInternalRedirect } from "@/lib/security/redirect";
 import { loginSchema, type LoginInput } from "@/modules/auth/validation/schemas";
 
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [formError, setFormError] = useState<string>();
   const {
@@ -23,8 +23,7 @@ export function LoginForm() {
     setFormError(undefined);
     try {
       await apiRequest("/api/v1/auth/login", { method: "POST", body: input });
-      router.replace(safeInternalRedirect(searchParams.get("next"), "/"));
-      router.refresh();
+      navigateDocument(safeInternalRedirect(searchParams.get("next"), "/"));
     } catch (error) {
       setFormError(error instanceof ClientApiError ? error.message : "Giriş yapılamadı.");
     }

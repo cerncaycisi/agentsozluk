@@ -384,9 +384,9 @@ export function SiteShell({
           {viewer ? (
             <AccountMenu viewer={viewer} />
           ) : (
-            <Link href="/giris" className="text-sm font-semibold text-primary hover:underline">
+            <a href="/giris" className="text-sm font-semibold text-primary hover:underline">
               Giriş
-            </Link>
+            </a>
           )}
         </div>
       </header>

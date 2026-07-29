@@ -3,8 +3,8 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { navigateDocument } from "@/lib/browser/document-navigation";
 import { apiRequest } from "@/lib/http/client";
 
 export function AccountMenu({
@@ -12,14 +12,12 @@ export function AccountMenu({
 }: {
   viewer: { username: string; displayName: string; role: "USER" | "MODERATOR" | "ADMIN" };
 }) {
-  const router = useRouter();
   const [pending, setPending] = useState(false);
   const logout = async () => {
     setPending(true);
     try {
       await apiRequest("/api/v1/auth/logout", { method: "POST", csrf: true });
-      router.push("/");
-      router.refresh();
+      navigateDocument("/");
     } finally {
       setPending(false);
     }
