@@ -4,6 +4,7 @@ import { AppError } from "@/lib/http/errors";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
 import { runtimeCredentialRosterFingerprint } from "@/modules/agents/domain/runtime-credential-enrollment";
 import {
+  getRuntimeCredentialSync,
   listRuntimeCredentialRosterRecords,
   upsertRuntimeCredentialSync,
 } from "@/modules/agents/repository/runtime-credentials";
@@ -95,17 +96,47 @@ export function acknowledgeRuntimeCredentialRoster(
         409,
         "Worker bütün yönetilen runtime credential kayıtlarını yüklemedi.",
       );
+    const currentSync = await getRuntimeCredentialSync(transaction);
+    const telemetry = input.workerTelemetry;
+    const bootChanged = Boolean(
+      telemetry && currentSync?.workerBootId && currentSync.workerBootId !== telemetry.bootId,
+    );
     const sync = await upsertRuntimeCredentialSync(transaction, {
       workerId: input.workerId,
       desiredFingerprint,
       loadedCredentialIds: loadedIds,
       syncedAt: now,
+      ...(telemetry
+        ? {
+            workerTelemetry: {
+              bootId: telemetry.bootId,
+              processingLanes: telemetry.processingLanes,
+              codexVersion: telemetry.codexVersion,
+              promptProfileHash: telemetry.promptProfileHash,
+              startedAt:
+                bootChanged || !currentSync?.workerStartedAt
+                  ? new Date(telemetry.startedAt)
+                  : currentSync.workerStartedAt,
+              restartCount: (currentSync?.workerRestartCount ?? 0) + (bootChanged ? 1 : 0),
+            },
+          }
+        : {}),
     });
     return {
       workerId: sync.workerId,
       desiredFingerprint: sync.desiredFingerprint,
       loadedCredentialCount: sync.loadedCredentialIds.length,
       syncedAt: sync.syncedAt,
+      workerTelemetry: sync.workerBootId
+        ? {
+            bootId: sync.workerBootId,
+            processingLanes: sync.processingLanes,
+            codexVersion: sync.codexVersion,
+            promptProfileHash: sync.promptProfileHash,
+            startedAt: sync.workerStartedAt,
+            restartCount: sync.workerRestartCount,
+          }
+        : null,
     };
   });
 }

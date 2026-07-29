@@ -33,12 +33,46 @@ export function upsertRuntimeCredentialSync(
     desiredFingerprint: string;
     loadedCredentialIds: string[];
     syncedAt: Date;
+    workerTelemetry?: {
+      bootId: string;
+      processingLanes: number;
+      codexVersion: string;
+      promptProfileHash: string;
+      startedAt: Date;
+      restartCount: number;
+    };
   },
 ) {
+  const { workerTelemetry, ...roster } = input;
   return transaction.agentRuntimeCredentialSync.upsert({
     where: { id: "global" },
-    create: { id: "global", ...input },
-    update: input,
+    create: {
+      id: "global",
+      ...roster,
+      ...(workerTelemetry
+        ? {
+            workerBootId: workerTelemetry.bootId,
+            processingLanes: workerTelemetry.processingLanes,
+            codexVersion: workerTelemetry.codexVersion,
+            promptProfileHash: workerTelemetry.promptProfileHash,
+            workerStartedAt: workerTelemetry.startedAt,
+            workerRestartCount: workerTelemetry.restartCount,
+          }
+        : {}),
+    },
+    update: {
+      ...roster,
+      ...(workerTelemetry
+        ? {
+            workerBootId: workerTelemetry.bootId,
+            processingLanes: workerTelemetry.processingLanes,
+            codexVersion: workerTelemetry.codexVersion,
+            promptProfileHash: workerTelemetry.promptProfileHash,
+            workerStartedAt: workerTelemetry.startedAt,
+            workerRestartCount: workerTelemetry.restartCount,
+          }
+        : {}),
+    },
   });
 }
 

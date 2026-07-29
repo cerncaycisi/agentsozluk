@@ -7,6 +7,19 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-29: authenticated runtime worker/lane observability is implemented on the isolated
+  `codex/runtime-lane-observability` branch without production access. Additive migration 23
+  extends the existing credential-roster acknowledgement with one privacy-safe worker boot
+  identity, reported lane count, Codex version, prompt fingerprint, start time and monotonic
+  restart count. The capacity projection combines that heartbeat with live leases, safe
+  heartbeat phases and terminal run metadata to show active/idle capacity slots, writer/run,
+  lease/heartbeat age, queue wait, Codex duration/result and one-hour timeout count without
+  selecting prompts, credentials, entry bodies or private reasoning. A full 23-migration scratch
+  database and the onboarding/telemetry integration scenarios passed `4/4`; focused worker/UI
+  tests passed `10/10`, the complete unit suite passed 159 files / 776 tests, format, lint, strict
+  typecheck, OpenAPI 136, M2 development traceability, secret/history scan and shared release smoke
+  passed, and the production build generated 71 pages. Commit, CI, merge and production remain
+  pending; production is unchanged at `64de0881`.
 - 2026-07-29: A5 trash/revival/appeal, runtime/source network hardening and canonical seed
   visibility are production-closed at exact SHA
   `64de0881f0a24df3abe72f86b054bfcd66fefaed`. Release Candidate Bundle run `30442768332`,
@@ -932,6 +945,16 @@ behavior defects live.
    158 files / 775 tests, and a real PostgreSQL fixture proves bounded deletion, future-row
    preservation and idempotent no-op replay. Format, lint and strict typecheck pass. Production
    installation and one aggregate-only timer smoke remain explicitly operator-gated.
+
+   The authenticated worker/lane observability subpackage is also a locally verified candidate.
+   It reuses the worker's existing roster acknowledgement instead of introducing a second
+   heartbeat service. One additive row extension records safe boot/lane/version/fingerprint/start
+   telemetry and restart count; live run leases and terminal usage metadata provide capacity-slot,
+   writer, phase, queue-wait, duration, timeout and result views. The moderation capacity page
+   displays these fields without boot UUID, prompt, credential, content or reasoning disclosure.
+   All 23 migrations, the real PostgreSQL telemetry path, the complete 159-file unit suite,
+   development traceability and release smoke pass; production promotion and a browser smoke are
+   still pending.
 
 8. **Finish public and moderation UI debt.** Complete the broader dictionary-style navigation
    benchmark and the remaining concrete mobile/moderation issues without changing the society

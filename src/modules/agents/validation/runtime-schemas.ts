@@ -33,11 +33,22 @@ export const runtimeStochasticTickSchema = z
   })
   .strict();
 
+export const runtimeWorkerTelemetrySchema = z
+  .object({
+    bootId: z.string().uuid(),
+    processingLanes: z.number().int().min(1).max(2),
+    codexVersion: z.string().trim().min(1).max(200),
+    promptProfileHash: z.string().regex(/^[a-f0-9]{64}$/u),
+    startedAt: z.iso.datetime(),
+  })
+  .strict();
+
 export const runtimeCredentialRosterAckSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
     desiredFingerprint: z.string().regex(/^[a-f0-9]{64}$/u),
     loadedCredentialIds: z.array(z.string().uuid()).max(100),
+    workerTelemetry: runtimeWorkerTelemetrySchema.optional(),
   })
   .strict();
 
