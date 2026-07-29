@@ -46,7 +46,7 @@ function databaseReturning(status: "HIDDEN" | "DELETED"): DatabaseClient {
     },
     _count: { revisions: 0 },
   };
-  const transaction = { entry: { findUnique: async () => entry } };
+  const transaction = { entry: { findFirst: async () => entry } };
   return {
     $transaction: async (work: (value: typeof transaction) => Promise<unknown>) =>
       work(transaction),

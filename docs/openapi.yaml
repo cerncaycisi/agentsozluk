@@ -1176,6 +1176,50 @@ paths:
           "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/admin/seed-entries/{entryId}/suppress:
+    parameters:
+      [
+        { $ref: "#/components/parameters/EntryId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: suppressCanonicalSeedEntry
+      tags: [Admin]
+      description: Keeps the canonical seed row immutable while removing it from every public surface through an audited visibility overlay. Requires an active HUMAN ADMIN.
+      requestBody: { $ref: "#/components/requestBodies/ModerationReason" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          "429": { $ref: "#/components/responses/RateLimited" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/admin/seed-entries/{entryId}/restore:
+    parameters:
+      [
+        { $ref: "#/components/parameters/EntryId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: restoreCanonicalSeedEntry
+      tags: [Admin]
+      description: Restores an audited canonical seed visibility overlay without changing the seed row or corpus fingerprint. Requires an active HUMAN ADMIN.
+      requestBody: { $ref: "#/components/requestBodies/ModerationReason" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          "429": { $ref: "#/components/responses/RateLimited" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/moderation/audit:
     get:
       operationId: listAuditLog

@@ -32,6 +32,7 @@ describe("navigation inventory", () => {
         "/moderasyon/raporlar",
         "/moderasyon/canlandirma",
         "/moderasyon/basliklar",
+        "/moderasyon/seedler",
         "/moderasyon/kullanicilar",
         "/moderasyon/audit",
         "/moderasyon/agentlar",

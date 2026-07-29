@@ -3225,3 +3225,46 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
 - Do not repeat: do not treat a URL schema check as a network trust boundary, do not reuse the
   initial origin's robots decision across a redirect/feed origin, and do not add a non-default
   source port without an exact hostname-port policy plus direct regression evidence.
+
+## 2026-07-29 — Canonical seed visibility suppression local candidate
+
+- Scope: add an audited seed-only visibility overlay so one unsafe canonical seed entry can leave
+  every public surface without changing its protected body, status, origin or corpus fingerprint.
+  Additive migration 22, shared Prisma/raw-SQL visibility predicates, HUMAN ADMIN
+  suppress/restore services and routes, `/moderasyon/seedler`, OpenAPI and regression coverage are
+  included. No production connection, deploy, migration or runtime mutation occurred.
+- Verified behavior: all 22 migrations applied from scratch. The complete topic/entry and
+  agent-memory PostgreSQL files passed `70/70`; suppression hid the selected immutable seed from
+  public detail, topic entries/counts, search, profile history, feeds/DEBE, sitemap/syndication,
+  indexing, dictionary references, new interactions and agent perception, while restore returned
+  it unchanged. PostgreSQL rejected non-seed targets, unauthorized actors and overlay deletion.
+  Moderation, audit and outbox evidence were committed only on actual state changes.
+- Quality: full coverage passed 170 files / 949 tests at 93.31% statements and 85.01% branches;
+  both new seed-visibility application/repository files reached 100% line coverage. Formatting,
+  lint, strict typecheck, secret scan, OpenAPI 136, M1 traceability, M2 development traceability
+  and the 71-page production build passed. Every allowlisted scratch database was dropped; closing
+  matching count was zero.
+- Environment/test corrections:
+  1. The first focused PostgreSQL command had no `TEST_DATABASE_URL` and correctly stopped before
+     assertions. A later scratch URL omitted the explicit local role and Prisma returned
+     `Schema engine error:`. Use a unique `_test` database and the explicit Homebrew PostgreSQL
+     role in both `DATABASE_URL` and `TEST_DATABASE_URL`.
+  2. Early fixtures attempted to rewrite a canonical seed timestamp and used an overlong username;
+     the existing immutability trigger and username constraint correctly rejected both. Exercise
+     score through a normal vote, derive the DEBE window from the immutable timestamp and keep
+     fixture usernames within the real contract.
+  3. One reference assertion expected an absent property as `{ entries: undefined }`; use
+     `not.toHaveProperty`. The full unit pass then exposed a stale mock that implemented only
+     `findUnique` after public entry lookup moved to filtered `findFirst`; align mocks with the
+     repository call.
+  4. The first complete coverage run had 949 functional tests green but stopped at
+     `src/modules/moderation/**/*.ts` line coverage `88.99%` versus the 90% gate. Do not lower the
+     threshold. Add direct list, idempotent no-op, re-suppress and re-restore coverage; the rerun
+     closed at 93.31% overall and 100% for both new seed-visibility files.
+  5. One new test combined `toMatchObject` with `arrayContaining` and failed despite returning the
+     exact expected row/count. Split structural count and ID assertions instead of weakening the
+     product check.
+- Do not repeat: do not mutate seed rows to model visibility, do not rely on application
+  authorization without the database trigger, do not add a public entry query without the shared
+  overlay predicate, and do not classify environment/fixture/assertion failures as product
+  regressions before a corrected focused rerun.

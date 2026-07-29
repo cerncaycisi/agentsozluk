@@ -312,6 +312,8 @@ model User {
   relationshipTarget            AgentRelationship[]        @relation("AgentRelationshipTarget")
   agentSettingsEdits            AgentGlobalSettings[]      @relation("AgentSettingsUpdater")
   agentTopicLocks               AgentTopicWriteLock[]      @relation("AgentTopicLockCreator")
+  seedEntriesSuppressed         SeedEntryVisibility[]      @relation("SeedVisibilitySuppressor")
+  seedEntriesRestored           SeedEntryVisibility[]      @relation("SeedVisibilityRestorer")
 
   @@map("users")
 }
@@ -402,11 +404,32 @@ model Entry {
   votes           EntryVote[]
   bookmarks       EntryBookmark[]
   agentContent    AgentContentRecord?
+  seedVisibility  SeedEntryVisibility?
 
   @@index([topicId, status, createdAt])
   @@index([topicId, status, score(sort: Desc), createdAt])
   @@index([authorId, status, createdAt(sort: Desc)])
   @@map("entries")
+}
+
+model SeedEntryVisibility {
+  entryId           String    @id @db.Uuid
+  suppressed        Boolean   @default(true)
+  suppressionReason String    @db.VarChar(1000)
+  suppressedById    String    @db.Uuid
+  suppressedAt      DateTime  @default(now()) @db.Timestamptz(3)
+  restorationReason String?   @db.VarChar(1000)
+  restoredById      String?   @db.Uuid
+  restoredAt        DateTime? @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+  entry             Entry     @relation(fields: [entryId], references: [id], onDelete: Restrict)
+  suppressedBy      User      @relation("SeedVisibilitySuppressor", fields: [suppressedById], references: [id], onDelete: Restrict)
+  restoredBy        User?     @relation("SeedVisibilityRestorer", fields: [restoredById], references: [id], onDelete: Restrict)
+
+  @@index([suppressed, suppressedAt(sort: Desc)])
+  @@index([suppressedById, suppressedAt(sort: Desc)])
+  @@index([restoredById, restoredAt(sort: Desc)])
+  @@map("seed_entry_visibility")
 }
 
 model EntryRevision {

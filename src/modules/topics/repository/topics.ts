@@ -1,5 +1,6 @@
 import type { ContentOrigin, Prisma } from "@prisma/client";
 import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
+import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
 
 export const topicSummarySelect = {
   id: true,
@@ -147,6 +148,26 @@ export function isFollowingTopic(
   userId: string,
 ) {
   return transaction.topicFollow.findUnique({ where: { topicId_userId: { topicId, userId } } });
+}
+
+export async function getPublicTopicEntrySummary(
+  transaction: Prisma.TransactionClient,
+  topicId: string,
+) {
+  const where: Prisma.EntryWhereInput = {
+    topicId,
+    status: "ACTIVE",
+    ...publiclyVisibleEntryWhere,
+  };
+  const [entryCount, latest] = await Promise.all([
+    transaction.entry.count({ where }),
+    transaction.entry.findFirst({
+      where,
+      select: { createdAt: true },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    }),
+  ]);
+  return { entryCount, lastEntryAt: latest?.createdAt ?? null };
 }
 
 export async function updateTopicAfterEntryCreate(

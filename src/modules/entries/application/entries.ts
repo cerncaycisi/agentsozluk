@@ -15,7 +15,8 @@ import {
   createEntryRecord,
   createEntryRevision,
   findEntryById,
-  findEntryByPublicId,
+  findPublicEntryById,
+  findPublicEntryByPublicId,
   listBlockedAuthorIds,
   listEntryRevisions,
   listTopicEntries,
@@ -252,8 +253,8 @@ async function getEntryRecord(
   return client.$transaction(async (transaction) => {
     const entry =
       "id" in reference
-        ? await findEntryById(transaction, reference.id)
-        : await findEntryByPublicId(transaction, reference.publicId);
+        ? await findPublicEntryById(transaction, reference.id)
+        : await findPublicEntryByPublicId(transaction, reference.publicId);
     if (!entry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
     const canInspectTopic = Boolean(
       viewer &&

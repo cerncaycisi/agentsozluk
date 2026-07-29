@@ -14,6 +14,7 @@ import {
 } from "@/modules/agents";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import { getRuntimePerceptionRecords } from "@/modules/agents/repository/runtime";
+import { setCanonicalSeedEntrySuppression } from "@/modules/moderation/application/seed-visibility";
 import {
   closeIntegrationDatabase,
   integrationDatabase,
@@ -87,6 +88,60 @@ beforeEach(resetIntegrationDatabase);
 afterAll(closeIntegrationDatabase);
 
 describe("agent memory lifecycle with PostgreSQL", () => {
+  it("keeps a suppressed canonical seed entry out of agent perception", async () => {
+    const admin = await createPrincipal();
+    const author = await createPrincipal();
+    const created = await createTestAgent(admin.id);
+    const topic = await integrationDatabase.topic.create({
+      data: {
+        title: "Agent seed görünürlük algısı",
+        normalizedTitle: "agent seed görünürlük algısı",
+        slug: "agent-seed-gorunurluk-algisi",
+        createdById: author.id,
+        entryCount: 2,
+        lastEntryAt: new Date(),
+        entries: {
+          create: [
+            {
+              authorId: author.id,
+              body: "Agent algısında kalması gereken normal ve yeterince uzun entry.",
+              normalizedBody: "agent algısında kalması gereken normal ve yeterince uzun entry",
+              origin: "API",
+            },
+            {
+              authorId: author.id,
+              body: "Agent algısından çıkarılması gereken korunan ve yeterince uzun seed entry.",
+              normalizedBody:
+                "agent algısından çıkarılması gereken korunan ve yeterince uzun seed entry",
+              origin: "SEED",
+            },
+          ],
+        },
+      },
+      include: { entries: { orderBy: { createdAt: "asc" } } },
+    });
+    const seedEntry = topic.entries.find(({ origin }) => origin === "SEED")!;
+    await setCanonicalSeedEntrySuppression(
+      integrationDatabase,
+      actor(admin.id),
+      seedEntry.id,
+      true,
+      { reason: "Bu seed entry agent algısına ve public yüzeylere taşınmamalıdır." },
+    );
+
+    const perception = await integrationDatabase.$transaction((transaction) =>
+      getRuntimePerceptionRecords(transaction, {
+        agentProfileId: created.agent.profile.id,
+        agentUserId: created.agent.user.id,
+        now: new Date(),
+        includeSources: false,
+        sourceFetchLimit: 8,
+      }),
+    );
+    expect(perception.entries.map(({ id }) => id)).not.toContain(seedEntry.id);
+    expect(perception.entries).toHaveLength(1);
+  });
+
   it("allows a HUMAN ADMIN to list and invalidate one episode, then excludes it from context", async () => {
     const admin = await createPrincipal();
     const created = await createTestAgent(admin.id);

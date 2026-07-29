@@ -1,4 +1,8 @@
 import { Prisma } from "@prisma/client";
+import {
+  publiclyVisibleEntrySql,
+  publiclyVisibleEntryWhere,
+} from "@/modules/entries/repository/public-visibility";
 
 export interface TopicFeedRow {
   id: string;
@@ -72,6 +76,7 @@ export async function listScoredTopics(
           count(DISTINCT entry."authorId")::integer AS "uniqueAuthorCount"
         FROM entries AS entry
         WHERE entry.status = 'ACTIVE'
+          AND ${publiclyVisibleEntrySql(Prisma.sql`entry`)}
           AND entry."createdAt" >= ${input.windowStart}
           AND entry."createdAt" <= ${input.now}
         GROUP BY entry."topicId"
@@ -84,8 +89,19 @@ export async function listScoredTopics(
         FROM entry_votes AS vote
         JOIN entries AS entry ON entry.id = vote."entryId"
         WHERE entry.status = 'ACTIVE'
+          AND ${publiclyVisibleEntrySql(Prisma.sql`entry`)}
           AND vote."updatedAt" >= ${input.windowStart}
           AND vote."updatedAt" <= ${input.now}
+        GROUP BY entry."topicId"
+      ),
+      visible_totals AS (
+        SELECT
+          entry."topicId",
+          count(*)::integer AS "entryCount",
+          max(entry."createdAt") AS "lastEntryAt"
+        FROM entries AS entry
+        WHERE entry.status = 'ACTIVE'
+          AND ${publiclyVisibleEntrySql(Prisma.sql`entry`)}
         GROUP BY entry."topicId"
       ),
       scored AS (
@@ -94,8 +110,8 @@ export async function listScoredTopics(
           topic."publicId",
           topic.title,
           topic.slug,
-          topic."entryCount",
-          topic."lastEntryAt",
+          coalesce(visible_totals."entryCount", 0)::integer AS "entryCount",
+          visible_totals."lastEntryAt",
           topic."createdAt",
           coalesce(entry_activity."activeEntryCount", 0)::integer AS "activeEntryCount",
           coalesce(entry_activity."uniqueAuthorCount", 0)::integer AS "uniqueAuthorCount",
@@ -107,16 +123,17 @@ export async function listScoredTopics(
             + coalesce(vote_activity."positiveVotes", 0) * 2
             - coalesce(vote_activity."negativeVotes", 0)
             + CASE
-                WHEN topic."lastEntryAt" IS NULL THEN 0
+                WHEN visible_totals."lastEntryAt" IS NULL THEN 0
                 ELSE greatest(
                   0,
-                  24 - floor(extract(epoch FROM (${input.now} - topic."lastEntryAt")) / 3600)
+                  24 - floor(extract(epoch FROM (${input.now} - visible_totals."lastEntryAt")) / 3600)
                 )
               END
           )::double precision AS "trendScore"
         FROM topics AS topic
         LEFT JOIN entry_activity ON entry_activity."topicId" = topic.id
         LEFT JOIN vote_activity ON vote_activity."topicId" = topic.id
+        LEFT JOIN visible_totals ON visible_totals."topicId" = topic.id
         WHERE topic.status = 'ACTIVE'
           ${input.activityOnly ? Prisma.sql`AND entry_activity."topicId" IS NOT NULL` : Prisma.sql``}
       ),
@@ -219,8 +236,19 @@ export async function listWindowedChronologicalTopics(
         max(entry."createdAt") AS "windowLastEntryAt"
       FROM entries AS entry
       WHERE entry.status = 'ACTIVE'
+        AND ${publiclyVisibleEntrySql(Prisma.sql`entry`)}
         AND entry."createdAt" >= ${input.windowStart}
         AND entry."createdAt" <= ${input.now}
+      GROUP BY entry."topicId"
+    ),
+    visible_totals AS (
+      SELECT
+        entry."topicId",
+        count(*)::integer AS "entryCount",
+        max(entry."createdAt") AS "lastEntryAt"
+      FROM entries AS entry
+      WHERE entry.status = 'ACTIVE'
+        AND ${publiclyVisibleEntrySql(Prisma.sql`entry`)}
       GROUP BY entry."topicId"
     ),
     indexed_topics AS (
@@ -229,13 +257,14 @@ export async function listWindowedChronologicalTopics(
         topic."publicId",
         topic.title,
         topic.slug,
-        topic."entryCount",
-        topic."lastEntryAt",
+        coalesce(visible_totals."entryCount", 0)::integer AS "entryCount",
+        visible_totals."lastEntryAt",
         topic."createdAt",
         coalesce(entry_activity."activeEntryCount", 0)::integer AS "activeEntryCount",
         entry_activity."windowLastEntryAt"
       FROM topics AS topic
       LEFT JOIN entry_activity ON entry_activity."topicId" = topic.id
+      LEFT JOIN visible_totals ON visible_totals."topicId" = topic.id
       WHERE topic.status = 'ACTIVE'
         AND ${windowFilter}
     ),
@@ -309,10 +338,28 @@ export async function listChronologicalTopics(
       ? Prisma.sql`paged."lastEntryAt" DESC NULLS LAST, paged.id ASC NULLS LAST`
       : Prisma.sql`paged."createdAt" DESC NULLS LAST, paged.id ASC NULLS LAST`;
   const rows = await transaction.$queryRaw<ChronologicalTopicQueryRow[]>(Prisma.sql`
-    WITH active_topics AS (
-      SELECT id, "publicId", title, slug, "entryCount", "lastEntryAt", "createdAt"
-      FROM topics
-      WHERE status = 'ACTIVE'
+    WITH visible_totals AS (
+      SELECT
+        entry."topicId",
+        count(*)::integer AS "entryCount",
+        max(entry."createdAt") AS "lastEntryAt"
+      FROM entries AS entry
+      WHERE entry.status = 'ACTIVE'
+        AND ${publiclyVisibleEntrySql(Prisma.sql`entry`)}
+      GROUP BY entry."topicId"
+    ),
+    active_topics AS (
+      SELECT
+        topic.id,
+        topic."publicId",
+        topic.title,
+        topic.slug,
+        coalesce(visible_totals."entryCount", 0)::integer AS "entryCount",
+        visible_totals."lastEntryAt",
+        topic."createdAt"
+      FROM topics AS topic
+      LEFT JOIN visible_totals ON visible_totals."topicId" = topic.id
+      WHERE topic.status = 'ACTIVE'
     ),
     totals AS (
       SELECT count(*)::integer AS "totalItems"
@@ -376,6 +423,7 @@ export function listDebeEntries(
       score: { gt: 0 },
       createdAt: { gte: input.start, lt: input.end },
       topic: { status: "ACTIVE" },
+      ...publiclyVisibleEntryWhere,
     },
     select: {
       id: true,
@@ -402,12 +450,19 @@ export async function findRandomActiveTopic(
   const select = { id: true, publicId: true, title: true, slug: true } as const;
   return (
     (await transaction.topic.findFirst({
-      where: { status: "ACTIVE", randomKey: { gte: randomKey } },
+      where: {
+        status: "ACTIVE",
+        randomKey: { gte: randomKey },
+        entries: { some: { status: "ACTIVE", ...publiclyVisibleEntryWhere } },
+      },
       select,
       orderBy: [{ randomKey: "asc" }, { id: "asc" }],
     })) ??
     transaction.topic.findFirst({
-      where: { status: "ACTIVE" },
+      where: {
+        status: "ACTIVE",
+        entries: { some: { status: "ACTIVE", ...publiclyVisibleEntryWhere } },
+      },
       select,
       orderBy: [{ randomKey: "asc" }, { id: "asc" }],
     })

@@ -1,5 +1,29 @@
 # Milestone status
 
+## Canonical seed visibility suppression — local candidate 2026-07-29 Europe/Istanbul
+
+The current working-tree candidate preserves each canonical seed entry body, status, origin and
+fingerprint while adding a separate audited visibility overlay. Only an active HUMAN ADMIN can
+suppress or restore a canonical seed entry. PostgreSQL independently rejects non-seed targets,
+unauthorized suppressors/restorers, target changes and overlay deletion.
+
+Suppression was verified across public entry detail, topic entry lists and recomputed public
+counters, search, writer history, chronological/trending feeds, DEBE, new vote/bookmark writes,
+sitemap, RSS/Atom syndication, indexing decisions, dictionary-reference resolution and agent
+perception. Restore returns the unchanged entry through the same surfaces. The moderation page
+lists/searches canonical seed entries and every state change emits moderation history, immutable
+audit and outbox evidence.
+
+Measured local evidence: all 22 migrations applied from scratch; the complete topic/entry and
+agent-memory PostgreSQL files passed `70/70`; full coverage passed 170 files / 949 tests at 93.31%
+statements and 85.01% branches; the new seed-visibility application and repository files reached
+100% line coverage. Formatting, ESLint, strict typecheck, repository/history secret scan, OpenAPI
+136 operations, M1 traceability and M2 development traceability passed with zero FAIL. The
+production build generated 71 pages including `/moderasyon/seedler` and both admin mutation
+routes. Every scratch database was removed; closing matching database count was zero. No
+production connection or mutation occurred. Production remains exact SHA
+`a670069651803d7c23ac67b33bb9e4922aafd489`.
+
 ## Runtime and source network hardening — local candidate 2026-07-29 Europe/Istanbul
 
 Main commit `d746ce8e556d748eef733893113f95846efa6147` closes the locally verified network

@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
 
 export async function lockEntryVoteCounter(
   transaction: Prisma.TransactionClient,
@@ -214,7 +215,11 @@ export function listUserFollows(
             displayName: true,
             bio: true,
             entries: {
-              where: { status: "ACTIVE", topic: { status: "ACTIVE" } },
+              where: {
+                status: "ACTIVE",
+                topic: { status: "ACTIVE" },
+                ...publiclyVisibleEntryWhere,
+              },
               orderBy: [{ createdAt: "desc" }, { id: "desc" }],
               take: 3,
               select: {
@@ -229,7 +234,13 @@ export function listUserFollows(
             },
             _count: {
               select: {
-                entries: { where: { status: "ACTIVE", topic: { status: "ACTIVE" } } },
+                entries: {
+                  where: {
+                    status: "ACTIVE",
+                    topic: { status: "ACTIVE" },
+                    ...publiclyVisibleEntryWhere,
+                  },
+                },
               },
             },
           },
@@ -303,7 +314,11 @@ export function listBookmarks(
 ) {
   const where: Prisma.EntryBookmarkWhereInput = {
     userId,
-    entry: { status: "ACTIVE", topic: { status: "ACTIVE" } },
+    entry: {
+      status: "ACTIVE",
+      topic: { status: "ACTIVE" },
+      ...publiclyVisibleEntryWhere,
+    },
   };
   return Promise.all([
     transaction.entryBookmark.findMany({
@@ -331,14 +346,14 @@ export function listBookmarks(
   ]);
 }
 
-export function listFollows(
+export async function listFollows(
   transaction: Prisma.TransactionClient,
   userId: string,
   skip: number,
   take: number,
 ) {
   const where: Prisma.TopicFollowWhereInput = { userId, topic: { status: "ACTIVE" } };
-  return Promise.all([
+  const [items, totalItems] = await Promise.all([
     transaction.topicFollow.findMany({
       where,
       select: {
@@ -349,8 +364,19 @@ export function listFollows(
             publicId: true,
             title: true,
             slug: true,
-            entryCount: true,
-            lastEntryAt: true,
+            entries: {
+              where: { status: "ACTIVE", ...publiclyVisibleEntryWhere },
+              select: { createdAt: true },
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+              take: 1,
+            },
+            _count: {
+              select: {
+                entries: {
+                  where: { status: "ACTIVE", ...publiclyVisibleEntryWhere },
+                },
+              },
+            },
           },
         },
       },
@@ -360,6 +386,20 @@ export function listFollows(
     }),
     transaction.topicFollow.count({ where }),
   ]);
+  return [
+    items.map(({ topic, ...item }) => ({
+      ...item,
+      topic: {
+        id: topic.id,
+        publicId: topic.publicId,
+        title: topic.title,
+        slug: topic.slug,
+        entryCount: topic._count.entries,
+        lastEntryAt: topic.entries[0]?.createdAt ?? null,
+      },
+    })),
+    totalItems,
+  ] as const;
 }
 
 export function listVotes(
@@ -370,7 +410,11 @@ export function listVotes(
 ) {
   const where: Prisma.EntryVoteWhereInput = {
     userId,
-    entry: { status: "ACTIVE", topic: { status: "ACTIVE" } },
+    entry: {
+      status: "ACTIVE",
+      topic: { status: "ACTIVE" },
+      ...publiclyVisibleEntryWhere,
+    },
   };
   return Promise.all([
     transaction.entryVote.findMany({

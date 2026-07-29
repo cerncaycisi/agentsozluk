@@ -7,6 +7,19 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-29: canonical seed visibility suppression is implemented as a local candidate without
+  mutating the protected seed rows or fingerprint. Additive migration 22 introduces one
+  HUMAN-ADMIN-controlled, delete-protected visibility overlay with database authorization and
+  seed-origin guards. Suppression removes the selected entry from public detail, topic entry
+  lists/counts, search, profile history, feeds/DEBE, votes/bookmarks, sitemap/syndication,
+  indexing, dictionary-reference resolution and agent perception; restore returns it through the
+  same audited path. The moderation page can search all canonical seed entries and records every
+  state change in moderation history, audit and outbox evidence. Measured local evidence is all 22
+  migrations from scratch, 70/70 focused PostgreSQL regressions, full coverage across 170 files /
+  949 tests at 93.31% statements and 85.01% branches, formatting, lint, strict typecheck, secret
+  scan, OpenAPI 136 operations, M1/M2 development traceability and a 71-page production build.
+  Item 6 remains active only for exact-SHA CI, backup/restore, migration and authenticated
+  production suppression/restore smoke.
 - 2026-07-29: A5 entry trash, revision, revival and concrete appeal is implemented on main commit
   `92247823d5585403da2346b6b22641e647d1f833`. Additive migration 21 preserves exact trash
   source/reason, backfills eligible historical non-seed deleted/hidden entries and makes revisions,
@@ -869,7 +882,17 @@ behavior defects live.
    pass and the production build generates 71 pages. Keep this item active until exact main CI and
    production runtime/source smoke close it.
 6. **Add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
-   allowing an audited admin to remove one unsafe seed entry from every public surface.
+   allowing an audited admin to remove one unsafe seed entry from every public surface. The local
+   candidate now uses a separate one-row visibility overlay rather than changing the canonical
+   entry. PostgreSQL enforces a seed-only target, active HUMAN ADMIN suppress/restore authority,
+   immutable target and undeletable history row; application writes also require the existing
+   agent-admin guard and append moderation, audit and outbox evidence. The shared public filter is
+   applied to detail, topic entries and public counters, search, profiles, topic feeds, DEBE,
+   bookmarks/votes, sitemap, syndication, indexing, dictionary references and agent perception.
+   `/moderasyon/seedler` supplies search, status and reasoned confirm actions. Full local coverage
+   and production build pass. Keep this item active only until exact-SHA CI, backup/isolated
+   restore, additive migration 22 and authenticated suppress → all-surface hidden → restore smoke
+   close in production.
 7. **Improve risk-based verification and operations.** Label current coverage accurately, extend
    it to critical runtime/routes, batch and schedule expired-record cleanup, cache Codex capability
    fingerprints and expose authenticated operational metrics. Include execution-capacity metrics by

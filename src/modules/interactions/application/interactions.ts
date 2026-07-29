@@ -5,7 +5,11 @@ import { appendAuditLog } from "@/modules/audit";
 import { requireActiveActor } from "@/modules/auth/application/guards";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import { lockUserStates } from "@/modules/auth/repository/users";
-import { findEntryById, lockEntryState } from "@/modules/entries/repository/entries";
+import {
+  findEntryById,
+  findPublicEntryById,
+  lockEntryState,
+} from "@/modules/entries/repository/entries";
 import { withEditedIndicator } from "@/modules/entries/domain/entry";
 import { transitionVote, type VoteValue } from "@/modules/interactions/domain/vote";
 import {
@@ -65,12 +69,12 @@ export async function setVote(
 ) {
   return inTransaction(client, async (transaction) => {
     await requireActiveActor(transaction, actor.actorId);
-    const initialEntry = await findEntryById(transaction, entryId);
+    const initialEntry = await findPublicEntryById(transaction, entryId);
     if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
     await lockTopicState(transaction, initialEntry.topicId);
     await lockEntryVoteCounter(transaction, entryId);
     await lockEntryState(transaction, entryId);
-    const entry = await findEntryById(transaction, entryId);
+    const entry = await findPublicEntryById(transaction, entryId);
     if (!entry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
     if (entry.topicId !== initialEntry.topicId)
       throw new AppError(
@@ -143,11 +147,11 @@ export async function removeVote(client: DatabaseExecutor, actor: ActorContext, 
 export async function putBookmark(client: DatabaseExecutor, actor: ActorContext, entryId: string) {
   return inTransaction(client, async (transaction) => {
     await requireActiveActor(transaction, actor.actorId);
-    const initialEntry = await findEntryById(transaction, entryId);
+    const initialEntry = await findPublicEntryById(transaction, entryId);
     if (!initialEntry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
     await lockTopicState(transaction, initialEntry.topicId);
     await lockEntryState(transaction, entryId);
-    const entry = await findEntryById(transaction, entryId);
+    const entry = await findPublicEntryById(transaction, entryId);
     if (!entry) throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
     if (entry.topicId !== initialEntry.topicId)
       throw new AppError(

@@ -62,6 +62,11 @@ import {
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { searchAll } from "@/modules/search/application/search";
 import { buildSearchQuery } from "@/modules/search/repository/search";
+import {
+  getEntryIndexingDecision,
+  getSitemapEntries,
+  getSyndicationEntries,
+} from "@/modules/indexing";
 import { getPublicProfile } from "@/modules/users/application/profiles";
 import {
   approveUserWriter,
@@ -93,6 +98,10 @@ import {
   setUserModerationCapability,
   userHasModerationCapability,
 } from "@/modules/moderation/application/capabilities";
+import {
+  getCanonicalSeedEntries,
+  setCanonicalSeedEntrySuppression,
+} from "@/modules/moderation/application/seed-visibility";
 import { getAuditLogs, getModerationDashboard } from "@/modules/moderation/application/queries";
 import { enforceRateLimit } from "@/modules/rate-limit/application/rate-limit";
 import {
@@ -1861,6 +1870,204 @@ describe("topics and entries with PostgreSQL", () => {
       topicId: source.topic.id,
       score: 1,
     });
+  });
+
+  it("suppresses one immutable seed entry from every public surface and restores it", async () => {
+    const author = await createUser("seed_visibility_author");
+    const viewer = await createUser("seed_visibility_viewer");
+    const admin = await createUser("seed_visibility_admin");
+    await integrationDatabase.user.update({
+      where: { id: admin.id },
+      data: { role: "ADMIN" },
+    });
+    const adminActor = { ...actor(admin.id), actorRole: "ADMIN" as const };
+    const topic = await createTopic(author.id, "Seed Görünürlük Başlığı");
+    const body = "saklıseedifade public yüzeylerden kaldırılacak değişmez seed entry metnidir.";
+    const seedEntry = await createEntry(
+      integrationDatabase,
+      { ...actor(author.id), origin: "SEED" },
+      topic.topic.id,
+      { body },
+    );
+    await setVote(integrationDatabase, actor(viewer.id), seedEntry.id, 1);
+    const now = new Date(seedEntry.createdAt.getTime() + 24 * 60 * 60 * 1000);
+
+    await expect(
+      getCanonicalSeedEntries(integrationDatabase, adminActor, {
+        query: "Seed Görünürlük",
+        skip: 0,
+        take: 20,
+      }),
+    ).resolves.toMatchObject([[{ id: seedEntry.id }], 1]);
+    const [allSeedEntries, totalSeedEntries] = await getCanonicalSeedEntries(
+      integrationDatabase,
+      adminActor,
+      { skip: 0, take: 20 },
+    );
+    expect(totalSeedEntries).toBe(1);
+    expect(allSeedEntries.map(({ id }) => id)).toEqual([seedEntry.id]);
+
+    await expect(
+      setCanonicalSeedEntrySuppression(integrationDatabase, adminActor, seedEntry.id, true, {
+        reason: "Bu kanonik seed entry güvenli public gösterim için uygun değildir.",
+      }),
+    ).resolves.toMatchObject({ changed: true, suppressed: true });
+    await expect(
+      setCanonicalSeedEntrySuppression(integrationDatabase, adminActor, seedEntry.id, true, {
+        reason: "Aynı görünürlük durumunda ikinci yazma yapılmamalıdır.",
+      }),
+    ).resolves.toMatchObject({ changed: false, suppressed: true });
+
+    await expect(
+      integrationDatabase.entry.findUniqueOrThrow({ where: { id: seedEntry.id } }),
+    ).resolves.toMatchObject({ body, status: "ACTIVE", origin: "SEED" });
+    await expect(getEntry(integrationDatabase, seedEntry.id, null)).rejects.toMatchObject({
+      code: "ENTRY_NOT_FOUND",
+      status: 404,
+    });
+    await expect(
+      getEntry(integrationDatabase, seedEntry.id, {
+        userId: admin.id,
+        role: "ADMIN",
+        status: "ACTIVE",
+      }),
+    ).rejects.toMatchObject({ code: "ENTRY_NOT_FOUND", status: 404 });
+    const topicEntries = await getTopicEntries(integrationDatabase, {
+      topicId: topic.topic.id,
+      viewer: null,
+      page: 1,
+      pageSize: 20,
+      skip: 0,
+      sort: "oldest",
+    });
+    expect(topicEntries.entries.map(({ id }) => id)).toEqual([topic.entry.id]);
+    await expect(getTopic(integrationDatabase, topic.topic.id, null)).resolves.toMatchObject({
+      entryCount: 1,
+    });
+    expect(
+      (
+        await searchAll(integrationDatabase, {
+          query: "saklıseedifade",
+          type: "entries",
+          page: 1,
+          pageSize: 20,
+          skip: 0,
+        })
+      ).results,
+    ).toHaveLength(0);
+    const profile = await getPublicProfile(integrationDatabase, {
+      username: author.username,
+      skip: 0,
+      take: 20,
+    });
+    expect(profile.profile.activeEntryCount).toBe(1);
+    expect(profile.entries.map(({ id }) => id)).toEqual([topic.entry.id]);
+    expect((await getDebe(integrationDatabase, now)).map(({ id }) => id)).not.toContain(
+      seedEntry.id,
+    );
+    expect(
+      (await getSitemapEntries(integrationDatabase, { page: 0, pageSize: 100, now })).map(
+        ({ id }) => id,
+      ),
+    ).not.toContain(seedEntry.id);
+    expect(
+      (await getSyndicationEntries(integrationDatabase, { limit: 100, now })).map(
+        ({ publicId }) => publicId,
+      ),
+    ).not.toContain(seedEntry.publicId);
+    await expect(
+      getEntryIndexingDecision(integrationDatabase, seedEntry.id),
+    ).resolves.toMatchObject({ index: false });
+    expect(
+      await getEntryReferenceIndex(integrationDatabase, [`(bkz: #${seedEntry.publicId})`]),
+    ).not.toHaveProperty("entries");
+    await expect(
+      setVote(integrationDatabase, actor(viewer.id), seedEntry.id, 1),
+    ).rejects.toMatchObject({ code: "ENTRY_NOT_FOUND" });
+    await expect(
+      putBookmark(integrationDatabase, actor(viewer.id), seedEntry.id),
+    ).rejects.toMatchObject({ code: "ENTRY_NOT_FOUND" });
+    expect(
+      await integrationDatabase.auditLog.count({
+        where: { action: "seed.entry.suppressed", entityId: seedEntry.id },
+      }),
+    ).toBe(1);
+    expect(
+      await integrationDatabase.moderationAction.count({
+        where: { actionType: "SEED_ENTRY_SUPPRESSED", targetId: seedEntry.id },
+      }),
+    ).toBe(1);
+    expect(
+      await integrationDatabase.outboxEvent.count({
+        where: { eventType: "seed.entry.suppressed", aggregateId: seedEntry.id },
+      }),
+    ).toBe(1);
+
+    await expect(
+      setCanonicalSeedEntrySuppression(integrationDatabase, adminActor, seedEntry.id, false, {
+        reason: "Public görünürlüğü yeniden açmak için güvenli inceleme tamamlandı.",
+      }),
+    ).resolves.toMatchObject({ changed: true, suppressed: false });
+    await expect(getEntry(integrationDatabase, seedEntry.id, null)).resolves.toMatchObject({
+      id: seedEntry.id,
+      body,
+    });
+    await expect(
+      setCanonicalSeedEntrySuppression(integrationDatabase, adminActor, seedEntry.id, false, {
+        reason: "Aynı geri açılmış durumda ikinci yazma yapılmamalıdır.",
+      }),
+    ).resolves.toMatchObject({ changed: false, suppressed: false });
+    expect(
+      (
+        await searchAll(integrationDatabase, {
+          query: "saklıseedifade",
+          type: "entries",
+          page: 1,
+          pageSize: 20,
+          skip: 0,
+        })
+      ).results.map(({ id }) => id),
+    ).toContain(seedEntry.id);
+    await expect(
+      setCanonicalSeedEntrySuppression(integrationDatabase, adminActor, seedEntry.id, true, {
+        reason: "Restore sonrasında yeni denetimli gizleme döngüsü doğrulanmaktadır.",
+      }),
+    ).resolves.toMatchObject({ changed: true, suppressed: true });
+    await expect(
+      setCanonicalSeedEntrySuppression(integrationDatabase, adminActor, seedEntry.id, false, {
+        reason: "İkinci denetimli döngü sonunda görünürlük yeniden açılmaktadır.",
+      }),
+    ).resolves.toMatchObject({ changed: true, suppressed: false });
+    await expect(
+      integrationDatabase.seedEntryVisibility.delete({ where: { entryId: seedEntry.id } }),
+    ).rejects.toThrow(/seed visibility history cannot be deleted/u);
+  });
+
+  it("rejects non-seed and non-admin visibility overlays", async () => {
+    const author = await createUser("seed_visibility_reject_a");
+    const admin = await createUser("seed_visibility_reject_b");
+    await integrationDatabase.user.update({ where: { id: admin.id }, data: { role: "ADMIN" } });
+    const topic = await createTopic(author.id, "Seed Görünürlük Reddi");
+    await expect(
+      setCanonicalSeedEntrySuppression(
+        integrationDatabase,
+        { ...actor(admin.id), actorRole: "ADMIN" },
+        topic.entry.id,
+        true,
+        { reason: "Seed olmayan entry için overlay açılmamalıdır." },
+      ),
+    ).rejects.toMatchObject({ code: "SEED_ENTRY_NOT_FOUND", status: 404 });
+    const seedEntry = await createEntry(
+      integrationDatabase,
+      { ...actor(author.id), origin: "SEED" },
+      topic.topic.id,
+      { body: "Yetkisiz görünürlük denemesi için yeterince uzun seed entry metni." },
+    );
+    await expect(
+      setCanonicalSeedEntrySuppression(integrationDatabase, actor(author.id), seedEntry.id, true, {
+        reason: "Yetkisiz yazar seed görünürlüğünü değiştirememelidir.",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
   });
 });
 

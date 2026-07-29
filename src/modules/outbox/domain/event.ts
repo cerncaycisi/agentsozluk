@@ -16,6 +16,8 @@ export const OUTBOX_EVENT_TYPES = [
   "entry.revival_decided",
   "entry.appeal_submitted",
   "entry.appeal_decided",
+  "seed.entry.suppressed",
+  "seed.entry.restored",
   "entry.voted",
   "report.created",
   "moderation.completed",

@@ -7,6 +7,10 @@ import {
   type RuntimeOperatingMode,
 } from "@/modules/agents/domain/runtime-controls";
 import { collectEntryReferenceCandidates } from "@/modules/entries/domain/renderer";
+import {
+  publiclyVisibleEntrySql,
+  publiclyVisibleEntryWhere,
+} from "@/modules/entries/repository/public-visibility";
 
 export function findRuntimeCredentialByHash(client: DatabaseExecutor, tokenHash: string) {
   return client.agentCredential.findUnique({
@@ -607,7 +611,7 @@ export function findRuntimeActionForExecution(
 
 export function findRuntimeReplyTarget(transaction: Prisma.TransactionClient, entryId: string) {
   return transaction.entry.findFirst({
-    where: { id: entryId, status: "ACTIVE" },
+    where: { id: entryId, status: "ACTIVE", ...publiclyVisibleEntryWhere },
     select: { id: true, authorId: true, topicId: true },
   });
 }
@@ -744,6 +748,7 @@ export async function getRuntimeDuplicateSimilarity(
       FROM "agent_content_records" AS content
       JOIN "entries" AS entry ON entry."id" = content."entryId"
       WHERE content."agentProfileId" = ${input.agentProfileId}::uuid
+        AND ${publiclyVisibleEntrySql(Prisma.sql`entry`)}
         AND (${input.excludeEntryId ?? null}::uuid IS NULL OR entry."id" <> ${input.excludeEntryId ?? null}::uuid)
       ORDER BY content."createdAt" DESC
       LIMIT 100
@@ -753,6 +758,7 @@ export async function getRuntimeDuplicateSimilarity(
       WHERE ${input.topicId ?? null}::uuid IS NOT NULL
         AND entry."topicId" = ${input.topicId ?? null}::uuid
         AND entry."status" = 'ACTIVE'
+        AND ${publiclyVisibleEntrySql(Prisma.sql`entry`)}
         AND (${input.excludeEntryId ?? null}::uuid IS NULL OR entry."id" <> ${input.excludeEntryId ?? null}::uuid)
       ORDER BY entry."createdAt" DESC
       LIMIT 100
@@ -779,6 +785,7 @@ export async function getRuntimeRecentAgentEntryBodies(
       agentProfileId: input.agentProfileId,
       entry: {
         status: "ACTIVE",
+        ...publiclyVisibleEntryWhere,
         ...(input.excludeEntryId ? { id: { not: input.excludeEntryId } } : {}),
       },
     },
@@ -832,7 +839,12 @@ export async function validateRuntimeProvenanceEvidence(
       }),
       transaction.topic.count({ where: { id: { in: uniqueIds }, status: "ACTIVE" } }),
       transaction.entry.count({
-        where: { id: { in: uniqueIds }, status: "ACTIVE", topic: { status: "ACTIVE" } },
+        where: {
+          id: { in: uniqueIds },
+          status: "ACTIVE",
+          topic: { status: "ACTIVE" },
+          ...publiclyVisibleEntryWhere,
+        },
       }),
     ]);
     return {
@@ -843,7 +855,12 @@ export async function validateRuntimeProvenanceEvidence(
   }
   if (input.evidenceType === "USER_ENTRY") {
     const entries = await transaction.entry.count({
-      where: { id: { in: uniqueIds }, status: "ACTIVE", topic: { status: "ACTIVE" } },
+      where: {
+        id: { in: uniqueIds },
+        status: "ACTIVE",
+        topic: { status: "ACTIVE" },
+        ...publiclyVisibleEntryWhere,
+      },
     });
     return { valid: entries === uniqueIds.length, independentSources: 0, sourceEvidenceTexts: [] };
   }
@@ -1653,6 +1670,7 @@ async function listRuntimePerceptionLinkedTopics(
 
   const visibleEntryWhere: Prisma.EntryWhereInput = {
     status: "ACTIVE",
+    ...publiclyVisibleEntryWhere,
     authorId: {
       not: input.agentUserId,
       ...(input.blockedUserIds.length > 0 ? { notIn: input.blockedUserIds } : {}),
@@ -1678,7 +1696,11 @@ async function listRuntimePerceptionLinkedTopics(
         author: { select: { id: true, username: true, displayName: true } },
       },
     },
-    _count: { select: { entries: { where: { status: "ACTIVE" } } } },
+    _count: {
+      select: {
+        entries: { where: { status: "ACTIVE", ...publiclyVisibleEntryWhere } },
+      },
+    },
   } satisfies Prisma.TopicSelect;
   const [topicsByTitle, entriesByPublicId] = await Promise.all([
     normalizedTopicTitles.length > 0
@@ -1699,6 +1721,7 @@ async function listRuntimePerceptionLinkedTopics(
             publicId: { in: entryPublicIds },
             status: "ACTIVE",
             topic: { status: "ACTIVE" },
+            ...publiclyVisibleEntryWhere,
           },
           select: { publicId: true, topic: { select: linkedTopicSelect } },
         })
@@ -1810,6 +1833,7 @@ export async function getRuntimePerceptionRecords(
       where: {
         status: "ACTIVE",
         topic: { status: "ACTIVE" },
+        ...publiclyVisibleEntryWhere,
         authorId: {
           not: input.agentUserId,
           ...(blockedUserIds.length > 0 ? { notIn: blockedUserIds } : {}),
@@ -1827,7 +1851,12 @@ export async function getRuntimePerceptionRecords(
       take: 100,
     }),
     transaction.entry.findMany({
-      where: { authorId: input.agentUserId, status: "ACTIVE", topic: { status: "ACTIVE" } },
+      where: {
+        authorId: input.agentUserId,
+        status: "ACTIVE",
+        topic: { status: "ACTIVE" },
+        ...publiclyVisibleEntryWhere,
+      },
       select: {
         id: true,
         body: true,
@@ -1916,6 +1945,7 @@ export async function getRuntimePerceptionRecords(
         status: "ACTIVE",
         createdAt: { gte: new Date(input.now.getTime() - 30 * 60 * 1000) },
         topic: { status: "ACTIVE" },
+        ...publiclyVisibleEntryWhere,
       },
       _count: { _all: true },
     }),

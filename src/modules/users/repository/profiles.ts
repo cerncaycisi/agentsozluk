@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
 
 export function findPublicProfile(
   transaction: Prisma.TransactionClient,
@@ -15,7 +16,13 @@ export function findPublicProfile(
       createdAt: true,
       _count: {
         select: {
-          entries: { where: { status: "ACTIVE", topic: { status: "ACTIVE" } } },
+          entries: {
+            where: {
+              status: "ACTIVE",
+              topic: { status: "ACTIVE" },
+              ...publiclyVisibleEntryWhere,
+            },
+          },
           topics: { where: { status: "ACTIVE" } },
         },
       },
@@ -31,6 +38,7 @@ export function listPublicProfileEntries(
     authorId: input.userId,
     status: "ACTIVE",
     topic: { status: "ACTIVE" },
+    ...publiclyVisibleEntryWhere,
   };
   return Promise.all([
     transaction.entry.findMany({

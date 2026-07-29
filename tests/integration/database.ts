@@ -22,6 +22,7 @@ export async function resetIntegrationDatabase(): Promise<void> {
       "entry_revival_decisions",
       "entry_revival_requests",
       "entry_trash_cases",
+      "seed_entry_visibility",
       "moderation_actions",
       "reports",
       "user_blocks",

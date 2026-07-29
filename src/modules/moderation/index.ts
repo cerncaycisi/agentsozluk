@@ -34,6 +34,10 @@ export {
   setUserModerationCapability,
   userHasModerationCapability,
 } from "@/modules/moderation/application/capabilities";
+export {
+  getCanonicalSeedEntries,
+  setCanonicalSeedEntrySuppression,
+} from "@/modules/moderation/application/seed-visibility";
 export { assertCanActOnUser, requireModerator } from "@/modules/moderation/domain/authorization";
 export {
   ALL_REPORT_REASONS,

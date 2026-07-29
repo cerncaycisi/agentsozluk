@@ -133,6 +133,12 @@ export function buildSearchQuery(input: {
       CROSS JOIN search_settings
       WHERE entry.status = 'ACTIVE'
         AND topic.status = 'ACTIVE'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM seed_entry_visibility AS seed_visibility
+          WHERE seed_visibility."entryId" = entry.id
+            AND seed_visibility.suppressed = true
+        )
         AND (
           immutable_unaccent(entry."normalizedBody") ILIKE immutable_unaccent(${queryContainsPattern}) ESCAPE E'\\\\'
           OR (${entryTokenMatch})

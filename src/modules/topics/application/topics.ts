@@ -18,6 +18,7 @@ import {
   findTopicById,
   findTopicByPublicId,
   findTopicConflict,
+  getPublicTopicEntrySummary,
   isFollowingTopic,
   lockTopicTitles,
   type TopicSummaryRecord,
@@ -251,7 +252,8 @@ async function getTopicRecord(
     const following = viewer
       ? Boolean(await isFollowingTopic(transaction, topic.id, viewer.userId))
       : false;
-    return { ...topic, url: topicUrl(topic), following };
+    const publicEntrySummary = await getPublicTopicEntrySummary(transaction, topic.id);
+    return { ...topic, ...publicEntrySummary, url: topicUrl(topic), following };
   });
 }
 

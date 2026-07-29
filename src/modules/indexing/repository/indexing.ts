@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
 import { normalizeProfileUsername } from "@/modules/users/domain/profile";
 
 export function getIndexingSettingsRecord(transaction: Prisma.TransactionClient) {
@@ -23,8 +24,8 @@ export function getTopicIndexingRecord(transaction: Prisma.TransactionClient, to
 }
 
 export function getEntryIndexingRecord(transaction: Prisma.TransactionClient, entryId: string) {
-  return transaction.entry.findUnique({
-    where: { id: entryId },
+  return transaction.entry.findFirst({
+    where: { id: entryId, ...publiclyVisibleEntryWhere },
     select: {
       status: true,
       deletedAt: true,
@@ -73,6 +74,7 @@ function entrySitemapWhere(
     deletedAt: null,
     createdAt: { lte: cutoff },
     topic: { status: "ACTIVE" },
+    ...publiclyVisibleEntryWhere,
     ...(settings.indexingMode === "NOINDEX_AGENT_CONTENT" ? { author: { kind: "HUMAN" } } : {}),
   };
 }
@@ -197,6 +199,7 @@ export async function getIndexingDashboardRecords(
     status: "ACTIVE",
     deletedAt: null,
     topic: { status: { not: "HIDDEN" } },
+    ...publiclyVisibleEntryWhere,
   };
   const [
     newUrlsToday,
@@ -225,6 +228,7 @@ export async function getIndexingDashboardRecords(
           { status: { not: "ACTIVE" } },
           { deletedAt: { not: null } },
           { topic: { status: "HIDDEN" } },
+          { seedVisibility: { is: { suppressed: true } } },
         ],
       },
     }),

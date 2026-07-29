@@ -1,5 +1,6 @@
 import type { ContentOrigin, Prisma } from "@prisma/client";
 import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
+import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
 
 export const entryDetailSelect = {
   id: true,
@@ -82,6 +83,20 @@ export function findEntryById(transaction: Prisma.TransactionClient, entryId: st
 
 export function findEntryByPublicId(transaction: Prisma.TransactionClient, publicId: number) {
   return transaction.entry.findUnique({ where: { publicId }, select: entryDetailSelect });
+}
+
+export function findPublicEntryById(transaction: Prisma.TransactionClient, entryId: string) {
+  return transaction.entry.findFirst({
+    where: { id: entryId, ...publiclyVisibleEntryWhere },
+    select: entryDetailSelect,
+  });
+}
+
+export function findPublicEntryByPublicId(transaction: Prisma.TransactionClient, publicId: number) {
+  return transaction.entry.findFirst({
+    where: { publicId, ...publiclyVisibleEntryWhere },
+    select: entryDetailSelect,
+  });
 }
 
 export async function updateEntryRecord(
@@ -172,6 +187,7 @@ export function listTopicEntries(
         : { status: { in: ["ACTIVE", "DELETED"] } };
   const where: Prisma.EntryWhereInput = {
     topicId: input.topicId,
+    ...publiclyVisibleEntryWhere,
     ...visibleStatus,
     ...(input.createdAtWindow
       ? { createdAt: { gte: input.createdAtWindow.start, lte: input.createdAtWindow.end } }
@@ -246,6 +262,7 @@ export async function findVisibleEntryReferences(
             publicId: { in: input.entryPublicIds },
             status: "ACTIVE",
             topic: { status: "ACTIVE" },
+            ...publiclyVisibleEntryWhere,
           },
           select: { publicId: true },
         })

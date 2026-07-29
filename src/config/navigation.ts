@@ -28,6 +28,7 @@ export const moderationNavSections = [
       { href: "/moderasyon/raporlar", label: "Gammazlar" },
       { href: "/moderasyon/canlandirma", label: "Canlandırma" },
       { href: "/moderasyon/basliklar", label: "Başlıklar" },
+      { href: "/moderasyon/seedler", label: "Seed görünürlüğü" },
       { href: "/moderasyon/kullanicilar", label: "Kullanıcılar" },
       { href: "/moderasyon/audit", label: "Denetim" },
     ],
