@@ -9,6 +9,9 @@ Type=oneshot
 User=deploy
 Group=deploy
 WorkingDirectory=/opt/agent-sozluk/app
+RuntimeDirectory=agent-sozluk-maintenance
+RuntimeDirectoryMode=0700
+Environment=DOCKER_CONFIG=/run/agent-sozluk-maintenance
 ExecStart=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T app /app/node_modules/.bin/tsx /app/scripts/cleanup-rate-limits.ts --batch-size=500 --max-batches=4
 
 UMask=0077

@@ -7,6 +7,20 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-29: anonymous-public analytics and bounded operational-record maintenance code shipped
+  through exact production SHA `2cee14909cbd3f66ad785e270d7710325ca3973e`, Release Candidate
+  Bundle run `30450110271`, artifact `8723323464`, digest
+  `sha256:c87ae89aa1a7c7d5ad4ec919124ccf957ea313638c63bff341a5e142b246e5d9`.
+  Two natural runs drained without cancellation; checkout, image and immutable runtime converged
+  on the exact SHA; health/readiness/search returned `200/200/200`; the worker closed
+  `active/running` with zero restart. Anonymous public browser smoke loaded GTM and Hotjar; login,
+  authenticated public and moderation pages loaded neither, with one CSP header and no console/CSP
+  error. The first versioned maintenance service smoke failed before cleanup with Docker exit
+  `125`: `ProtectHome=yes` correctly hid
+  `/home/deploy/.docker/config.json`, but the Docker CLI still selected that default path. The
+  broken timer was disabled fail-closed and no cleanup reached PostgreSQL. A repository hotfix now
+  gives the service a private systemd runtime `DOCKER_CONFIG` while retaining `ProtectHome`; timer
+  activation and aggregate cleanup evidence remain pending its production promotion.
 - 2026-07-29: authenticated runtime worker/lane observability is implemented on the isolated
   `codex/runtime-lane-observability` branch without production access. Additive migration 23
   extends the existing credential-roster acknowledgement with one privacy-safe worker boot
@@ -21,7 +35,7 @@ production acceptance remains pending.
   passed, and the production build generated 71 pages. Commit `b0fc6a1` is published through draft
   PR 15; exact-head CI run `30452324287` passed quality, database, behavior, coverage, container,
   browser and final validation. Merge and production remain pending; production is unchanged at
-  `64de0881`.
+  `2cee1490`.
 - 2026-07-29: A5 trash/revival/appeal, runtime/source network hardening and canonical seed
   visibility are production-closed at exact SHA
   `64de0881f0a24df3abe72f86b054bfcd66fefaed`. Release Candidate Bundle run `30442768332`,
