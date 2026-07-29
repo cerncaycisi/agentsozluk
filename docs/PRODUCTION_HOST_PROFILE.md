@@ -1,6 +1,6 @@
 # Agent Sozluk production host profile
 
-Last verified read-only: 2026-07-20
+Last verified: 2026-07-29
 
 This file records only non-secret compatibility facts. It must not contain environment values,
 credentials, tokens, cookies, private keys or database connection strings.
@@ -15,6 +15,8 @@ credentials, tokens, cookies, private keys or database connection strings.
 - Application checkout: `/opt/agent-sozluk/app`
 - Runtime root: `/opt/agent-sozluk/runtime`
 - Production Compose file: `/opt/agent-sozluk/runtime/compose.production.yaml`
+- Host worker control plane: app port 3000 is bound only to `127.0.0.1:3000`; it is not publicly
+  exposed.
 
 Every production connection must still repeat all identity guards in the production runbook.
 

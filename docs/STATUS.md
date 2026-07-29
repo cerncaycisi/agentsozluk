@@ -1,5 +1,38 @@
 # Milestone status
 
+## A5, network hardening and seed visibility — production-closed 2026-07-29 Europe/Istanbul
+
+Exact SHA `64de0881f0a24df3abe72f86b054bfcd66fefaed` was promoted from Release Candidate
+Bundle run `30442768332`, artifact `8720381619`, digest
+`sha256:2287841729c044f85e0a65f3a33d72e60ae0da4f729ddb94239ad6f09e8b71ed`.
+The pinned hostname, IPv4/domain, ED25519 fingerprint, repository and exact-revision guards
+matched. The 258,224,138-byte mode-0600 backup has SHA-256
+`8038f8635c4422f9267629b47d0d5700b724ebd5a81aff996acd6d63412f49e5`; its isolated
+restore matched all 41 public table counts and the scratch database was removed.
+
+Additive migrations `20260729113000_add_entry_trash_revival_appeal` and
+`20260729170000_add_seed_entry_visibility` applied successfully. The active HUMAN ADMIN displayed
+as `10c4190d` now holds `APPEAL_DECIDER`. Production smoke proved five A5 tables and eleven
+validation/immutability triggers, authorized revival/appeal queue reads, safe missing-appeal
+handling and the canonical runtime/source policy. One canonical seed was selected without reading
+its body, suppressed through the application service, returned public detail 404 and disappeared
+from topic count, indexing, dictionary-reference and sitemap projections, then was restored to
+public detail 200. Moderation/audit/outbox pairs were recorded and the final hidden-seed count is
+zero.
+
+The first worker start exposed a real topology mismatch: hardened code correctly rejected the old
+public control-plane URL, while the host had no loopback app listener. The runtime env now contains
+only the canonical host-local control-plane origin, and production Compose binds app port 3000
+only to `127.0.0.1`. Other runtime env values and ownership/mode were preserved. Final checkout,
+image and immutable runtime equal the exact SHA; host-loopback/public health and readiness are
+`200/200`, worker is `active/running` with `NRestarts=0`, society flow is restored to
+runtime/scheduler/publish/public-write enabled in `NORMAL`, 22 profiles are ACTIVE and
+queue/running/cancel-requested/lease counts are `0/0/0/0`.
+
+Retention removed one older unused application image, one older immutable release and bounded old
+build cache. The exact current and immediate rollback image/release, backup, all named volumes and
+database data remain; root usage closed at 26% with 56,248,456 KiB free.
+
 ## Canonical seed visibility suppression — local candidate 2026-07-29 Europe/Istanbul
 
 The current working-tree candidate preserves each canonical seed entry body, status, origin and

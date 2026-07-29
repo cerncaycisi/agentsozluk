@@ -3268,3 +3268,59 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   authorization without the database trigger, do not add a public entry query without the shared
   overlay predicate, and do not classify environment/fixture/assertion failures as product
   regressions before a corrected focused rerun.
+
+## 2026-07-29 — A5, runtime/source hardening and seed visibility production closeout
+
+- Scope: promote exact SHA `64de0881f0a24df3abe72f86b054bfcd66fefaed` from Release
+  Candidate Bundle run `30442768332`, artifact `8720381619`, digest
+  `sha256:2287841729c044f85e0a65f3a33d72e60ae0da4f729ddb94239ad6f09e8b71ed`;
+  apply additive migrations 21 and 22; grant `APPEAL_DECIDER` to the active HUMAN ADMIN displayed
+  as `10c4190d`; verify A5, network hardening and a body-free seed suppress/restore; and perform
+  bounded retention. Every SSH connection rechecked the pinned hostname, IPv4/domain, ED25519
+  fingerprint, repository and exact revision.
+- Backup and migration: the pre-migration dump is
+  `/opt/agent-sozluk/backups/agent-sozluk-pre-64de0881f0a24df3abe72f86b054bfcd66fefaed-20260729T103007Z.dump`,
+  258,224,138 bytes, mode `0600`, SHA-256
+  `8038f8635c4422f9267629b47d0d5700b724ebd5a81aff996acd6d63412f49e5`.
+  The isolated restore matched all 41 public table counts and the allowlisted scratch database was
+  removed. Candidate history contained every applied migration and exactly the two approved
+  additions; the entrypoint applied both and the final applied set matched the candidate set.
+- Product smoke: `10c4190d` received `APPEAL_DECIDER`; five A5 tables, eleven validation/
+  immutability triggers, authorized queue reads and safe missing-appeal handling passed. The
+  runtime control-plane and source URL policy rejected noncanonical/private/non-default-port
+  inputs. Canonical seed public ID `126` was selected without reading its body, suppressed through
+  the application service, returned detail 404 and disappeared from topic count, indexing,
+  dictionary-reference and sitemap projections, then was immediately restored to detail 200.
+  Suppress/restore each produced moderation, audit and outbox evidence; final suppressed count was
+  zero.
+- Runtime topology correction: the first worker start failed closed five times with
+  `CONTROL_PLANE_BASE_URL_INVALID` because the existing runtime env still used the historical
+  public control-plane origin. After atomically changing only that key to the canonical loopback
+  origin, startup advanced but failed with `fetch failed`: Compose exposed app port 3000 only
+  inside its Docker network and the host had no loopback listener. The host-owned Compose file now
+  binds only `127.0.0.1:3000:3000`; config parsing, host-local health, public health and stable
+  worker startup passed. Other runtime env values and file ownership/mode were preserved.
+- Final state: checkout, running image and immutable runtime equal the exact candidate SHA.
+  Runtime/scheduler/publish/public-write are enabled in `NORMAL`; 22 profiles are ACTIVE;
+  queue/running/cancel-requested/lease counts are `0/0/0/0`; worker is `active/running` with
+  `NRestarts=0`; host-local/public health and readiness are 200. Retention removed one older
+  unused application image, one older immutable release and bounded old build cache while
+  preserving the current and immediate rollback image/release, backup, every named volume and
+  database. Root usage closed at 26% with 56,248,456 KiB free.
+- Failed operator attempts changed no product data:
+  1. Two read-only SQL probes repeated the already documented literal `\u0027` quoting mistake and
+     stopped at PostgreSQL parse time. Production SQL must use quoted heredocs only.
+  2. A monolithic restore SSH call outlived the short tool session and left its allowlisted scratch
+     database after the client disappeared. The scratch was positively identified and removed;
+     the successful retry used a persistent process session before the 41-table comparison.
+  3. A migration guard called host-missing `rg` and stopped before app start; the corrected exact
+     comparison used shell `test`.
+  4. A PTY heredoc stopped the worker but did not consume the remaining app/proxy stop commands.
+     Noninteractive fail-fast SSH performed and verified the complete write freeze.
+  5. The first two runtime-env guards used unsudoed `test -f` beneath the protected
+     `/etc/agent-sozluk` directory and stopped before creating a temporary file. Use `sudo test`
+     for metadata guards without weakening directory permissions.
+- Do not repeat: never assume Docker `expose` creates a host listener; deploy the loopback-only
+  bind before enabling canonical control-plane enforcement. Do not run long restore streams in a
+  short one-shot SSH tool call, do not use unavailable host conveniences in migration guards, and
+  do not reintroduce Unicode-escaped SQL quotes.

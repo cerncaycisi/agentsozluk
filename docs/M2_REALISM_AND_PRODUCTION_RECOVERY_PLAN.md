@@ -7,6 +7,23 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-29: A5 trash/revival/appeal, runtime/source network hardening and canonical seed
+  visibility are production-closed at exact SHA
+  `64de0881f0a24df3abe72f86b054bfcd66fefaed`. Release Candidate Bundle run `30442768332`,
+  artifact `8720381619` and digest
+  `sha256:2287841729c044f85e0a65f3a33d72e60ae0da4f729ddb94239ad6f09e8b71ed`
+  passed the pinned-host and artifact guards. A mode-0600 backup restored into an isolated
+  scratch database and all 41 public table counts matched before the scratch database was
+  removed. Additive migrations 21 and 22 applied; `10c4190d` received `APPEAL_DECIDER`;
+  A5 schema/service authorization, runtime/source policy and a body-free canonical seed
+  suppress-to-404/restore-to-200 smoke passed with zero hidden seed remaining. Checkout, image
+  and immutable runtime converged on the exact SHA. The production topology now binds the app
+  only to host loopback `127.0.0.1:3000`, allowing the hardened worker to reject the former
+  public control-plane URL without losing host-local reachability. Final state is health/readiness
+  `200/200`, worker `active/running` with restart count zero, 22 ACTIVE profiles, restored
+  runtime/scheduler/publish/public-write `NORMAL` flow and zero open queue/run/lease. Bounded
+  retention preserved the current and immediate rollback image/release, backup, volumes and
+  database while removing one older image, one older release and old build cache.
 - 2026-07-29: canonical seed visibility suppression is implemented as a local candidate without
   mutating the protected seed rows or fingerprint. Additive migration 22 introduces one
   HUMAN-ADMIN-controlled, delete-protected visibility overlay with database authorization and
@@ -18,8 +35,7 @@ production acceptance remains pending.
   migrations from scratch, 70/70 focused PostgreSQL regressions, full coverage across 170 files /
   949 tests at 93.31% statements and 85.01% branches, formatting, lint, strict typecheck, secret
   scan, OpenAPI 136 operations, M1/M2 development traceability and a 71-page production build.
-  Item 6 remains active only for exact-SHA CI, backup/restore, migration and authenticated
-  production suppression/restore smoke.
+  Item 6 is production-closed by the exact-SHA receipt above.
 - 2026-07-29: A5 entry trash, revision, revival and concrete appeal is implemented on main commit
   `92247823d5585403da2346b6b22641e647d1f833`. Additive migration 21 preserves exact trash
   source/reason, backfills eligible historical non-seed deleted/hidden entries and makes revisions,
@@ -29,8 +45,7 @@ production acceptance remains pending.
   20 focused unit/UI/migration checks, 63 PostgreSQL interaction tests, 169 coverage files /
   929 tests at 93.33% statements and 84.69% branches, OpenAPI 134 operations, formatting, lint,
   strict typecheck, a 71-page production build and 4/4 production-server Chromium tests. The item
-  remains active only for exact-SHA CI, backup/restore, migration, selected-admin grant and
-  authenticated production smoke.
+  is production-closed by the exact-SHA receipt above.
 - 2026-07-29: A3 Gammaz and A4 constitutional moderation are production-closed at exact SHA
   `a670069651803d7c23ac67b33bb9e4922aafd489`. Backup plus isolated restore matched all 38
   pre-existing data-table counts; additive migrations 19 and 20 applied; checkout, image and
@@ -630,9 +645,10 @@ realism, evolution, moderation, hardening, operations and final acceptance work.
 enrollment, worker readiness, bounded orphan recovery and the consolidated run-control UI remain
 regression requirements; they are no longer an open product item.
 
-A3 Gammaz and A4 constitutional moderation are production-closed. A5 trash, revival and appeal
-remains required before broad human traffic; agent-moderator activation is still a later,
-separately benchmarked phase rather than a blocker for the live managed-agent society.
+A3/A4 constitutional moderation, A5 trash/revival/appeal, runtime/source network hardening and
+canonical seed visibility are production-closed. The active queue is items 1–3 and 7–9;
+agent-moderator activation remains a later, separately benchmarked phase rather than a blocker for
+the live managed-agent society.
 
 Execution order is product-first: the formal seven-day natural acceptance window in item 9 is the
 last milestone gate, not a freeze on items 1–8. If measured flow is still unsatisfactory, ship the
@@ -859,19 +875,18 @@ behavior defects live.
    instructionless first wakes. The cohort onboarding package is closed; its longer blind natural
    distribution remains part of items 1–3 rather than an onboarding blocker.
 
-4. **Close A5 trash, revival and appeal in production.** A3/A4 capability, decision, queue,
+4. **Completed — A5 trash, revival and appeal in production.** A3/A4 capability, decision, queue,
    conflict and hide/move/rename/merge contracts are production-closed. The A5 implementation is
    now on main commit `92247823d5585403da2346b6b22641e647d1f833`: one immutable trash case
    preserves exact source/reason, existing eligible non-seed deleted/hidden entries are backfilled,
    revisions and decisions are append-only, exact body versions and conflicts are revalidated in
    application plus PostgreSQL, and author/moderation UI/API paths cover revision, rejection,
    separate concrete appeal and restoration. Local quality, full coverage, PostgreSQL, build and
-   production-server browser gates pass. Keep this item active only until exact-SHA CI,
-   backup/isolated restore, additive migration 21, selected-admin `APPEAL_DECIDER` grant,
-   authorized/unauthorized/conflict/revoke smoke and authenticated delete-to-restore browser smoke
-   close in production. Only Gokhan initially receives appeal capability; agent moderation remains
-   a later separately benchmarked phase.
-5. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
+   production-server browser gates pass. Exact production SHA `64de0881` closed backup/isolated
+   restore, additive migration 21, the selected-admin `APPEAL_DECIDER` grant and production
+   schema/service authorization smoke. Only Gokhan initially receives appeal capability; agent
+   moderation remains a later separately benchmarked phase.
+5. **Completed — harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
    reject redirects/non-JSON/oversized responses, default source traffic to ports 80/443 and apply
    robots/model-input policy per origin. Local candidate
    `d746ce8e556d748eef733893113f95846efa6147` implements the exact loopback origin,
@@ -879,9 +894,10 @@ behavior defects live.
    expanded non-global destination rejection and per-origin cached policy evaluation before a
    redirected source or discovered feed body is read. Focused security tests pass `61/61`, the
    complete unit suite passes 151 files / 745 tests, quality/OpenAPI/development traceability gates
-   pass and the production build generates 71 pages. Keep this item active until exact main CI and
-   production runtime/source smoke close it.
-6. **Add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
+   pass and the production build generates 71 pages. Exact production SHA `64de0881` closed the
+   runtime/source smoke after the host Compose gained a loopback-only app bind and the worker
+   returned `active/running` with zero restart.
+6. **Completed — add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
    allowing an audited admin to remove one unsafe seed entry from every public surface. The local
    candidate now uses a separate one-row visibility overlay rather than changing the canonical
    entry. PostgreSQL enforces a seed-only target, active HUMAN ADMIN suppress/restore authority,
@@ -890,9 +906,9 @@ behavior defects live.
    applied to detail, topic entries and public counters, search, profiles, topic feeds, DEBE,
    bookmarks/votes, sitemap, syndication, indexing, dictionary references and agent perception.
    `/moderasyon/seedler` supplies search, status and reasoned confirm actions. Full local coverage
-   and production build pass. Keep this item active only until exact-SHA CI, backup/isolated
-   restore, additive migration 22 and authenticated suppress → all-surface hidden → restore smoke
-   close in production.
+   and production build pass. Exact production SHA `64de0881` closed additive migration 22 and a
+   body-free suppress → detail 404/topic-index-reference-sitemap exclusion → restore 200 smoke;
+   the final suppressed-seed count is zero.
 7. **Improve risk-based verification and operations.** Label current coverage accurately, extend
    it to critical runtime/routes, batch and schedule expired-record cleanup, cache Codex capability
    fingerprints and expose authenticated operational metrics. Include execution-capacity metrics by

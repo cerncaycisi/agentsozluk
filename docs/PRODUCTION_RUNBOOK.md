@@ -136,6 +136,22 @@ The worker control-plane origin must remain exactly `http://127.0.0.1:3000`. Run
 canonicalizes loopback aliases but rejects every different protocol, host, port, path, query,
 fragment or embedded credential. The client does not follow redirects and accepts only a bounded
 JSON envelope. Do not work around this guard with a proxy/public URL or another environment key.
+The production Compose topology must therefore bind the app only to host loopback:
+`127.0.0.1:3000:3000`. Docker `expose: 3000` alone is insufficient because it is visible only
+inside the Compose network. Before starting the worker, verify the rendered port binding without
+printing environment values, then require a body-free host-local health response:
+
+```sh
+compose='docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml'
+$compose port app 3000 | grep -qx '127.0.0.1:3000'
+curl --fail --silent --show-error --output /dev/null \
+  http://127.0.0.1:3000/api/health
+```
+
+If the worker reports `CONTROL_PLANE_BASE_URL_INVALID`, verify only that the configured key equals
+the canonical loopback origin; never print the environment file. If it then reports `fetch failed`,
+check the loopback listener and Compose port mapping before retrying. Do not fall back to the
+public domain.
 
 ### Gate 1: host and release preflight
 
