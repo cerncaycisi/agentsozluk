@@ -99,8 +99,8 @@ export async function updateEntryRecord(
 export async function createEntryRevision(
   transaction: Prisma.TransactionClient,
   input: { entryId: string; body: string; editedById: string },
-): Promise<void> {
-  await transaction.entryRevision.create({ data: input });
+) {
+  return transaction.entryRevision.create({ data: input });
 }
 
 export function listEntryRevisions(

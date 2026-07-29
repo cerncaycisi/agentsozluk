@@ -39,6 +39,7 @@ export function EntryActions({
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [authorBlocked, setAuthorBlocked] = useState(initialAuthorBlocked);
   const [editing, setEditing] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [text, setText] = useState(body);
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState<string>();
@@ -90,6 +91,7 @@ export function EntryActions({
   const remove = () =>
     run(async () => {
       await apiRequest(`/api/v1/entries/${entryId}`, { method: "DELETE", csrf: true });
+      setDeleteOpen(false);
       router.refresh();
     });
   const toggleAuthorBlock = () =>
@@ -171,7 +173,7 @@ export function EntryActions({
           </Link>
         ) : null}
         {canEdit ? (
-          <AlertDialog.Root>
+          <AlertDialog.Root open={deleteOpen} onOpenChange={setDeleteOpen}>
             <AlertDialog.Trigger asChild>
               <button
                 type="button"
@@ -189,17 +191,21 @@ export function EntryActions({
                   Entry silinsin mi?
                 </AlertDialog.Title>
                 <AlertDialog.Description className="mt-3 text-muted">
-                  Entry metni herkese açık görünümden kaldırılır. Bu işlem geri alınamaz.
+                  Entry herkese açık görünümden kaldırılıp çöp kutunuza taşınır. Orada düzeltip
+                  canlandırma isteyebilirsiniz.
                 </AlertDialog.Description>
                 <div className="mt-6 flex justify-end gap-3">
                   <AlertDialog.Cancel asChild>
                     <button className="button-secondary">Vazgeç</button>
                   </AlertDialog.Cancel>
-                  <AlertDialog.Action asChild>
-                    <button onClick={() => void remove()} className="button-primary bg-destructive">
-                      Entry’yi sil
-                    </button>
-                  </AlertDialog.Action>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => void remove()}
+                    className="button-primary bg-destructive"
+                  >
+                    {pending ? "Siliniyor…" : "Entry’yi sil"}
+                  </button>
                 </div>
               </AlertDialog.Content>
             </AlertDialog.Portal>

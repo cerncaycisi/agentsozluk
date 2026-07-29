@@ -48,6 +48,10 @@ import type {
   TopicRenameInput,
 } from "@/modules/moderation/validation/schemas";
 import { appendOutboxEvent, type OutboxEventType } from "@/modules/outbox";
+import {
+  closeOpenTrashCaseForEntry,
+  openModerationHiddenTrashCase,
+} from "@/modules/moderation/application/trash-appeal";
 
 async function recordAction(
   transaction: TransactionClient,
@@ -64,7 +68,7 @@ async function recordAction(
     after: unknown;
     metadata?: Record<string, unknown>;
   },
-): Promise<void> {
+) {
   const metadata = {
     ...(input.metadata ?? {}),
     actorKind: actor.actorKind,
@@ -72,7 +76,7 @@ async function recordAction(
     after: input.after,
     reason: input.reason,
   };
-  await appendModerationAction(transaction, {
+  const action = await appendModerationAction(transaction, {
     moderatorId: actor.actorId,
     ...(input.reportId ? { reportId: input.reportId } : {}),
     ...(input.decisionId ? { decisionId: input.decisionId } : {}),
@@ -99,6 +103,7 @@ async function recordAction(
     requestId: actor.requestId,
     payload: metadata,
   });
+  return action;
 }
 
 async function requireContentActionPermission(
@@ -227,7 +232,7 @@ async function setEntryVisibilityWithAuthorization(
         "Entry durumu eşzamanlı olarak değişti; işlemi yeniden deneyin.",
       );
     await recalculateTopicCounter(transaction, entry.topicId);
-    await recordAction(transaction, actor, {
+    const action = await recordAction(transaction, actor, {
       ...relation,
       actionType: hidden ? "ENTRY_HIDDEN" : "ENTRY_RESTORED",
       eventType: hidden ? "entry.hidden" : "entry.restored",
@@ -238,6 +243,18 @@ async function setEntryVisibilityWithAuthorization(
       after: { status: updated.status },
       metadata: { topicId: entry.topicId },
     });
+    if (hidden) {
+      await openModerationHiddenTrashCase(transaction, {
+        entryId,
+        authorId: entry.authorId,
+        topicId: entry.topicId,
+        sourceActionId: action.id,
+        sourceReason: input.reason,
+        openedAt: action.createdAt,
+      });
+    } else {
+      await closeOpenTrashCaseForEntry(transaction, entryId, action.createdAt);
+    }
     return updated;
   });
 }

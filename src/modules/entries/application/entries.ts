@@ -36,6 +36,7 @@ import {
   collectEntryReferenceCandidates,
   type ReferenceIndex,
 } from "@/modules/entries/domain/renderer";
+import { openAuthorDeletedTrashCase } from "@/modules/moderation/application/trash-appeal";
 
 export interface EntryViewer {
   userId: string;
@@ -199,7 +200,8 @@ export async function deleteEntry(client: DatabaseClient, actor: ActorContext, e
       )
     )
       throw new AppError("ENTRY_NOT_EDITABLE", 403, "Bu entry silinemez.");
-    const deleted = await softDeleteEntryRecord(transaction, entryId, new Date());
+    const deletedAt = new Date();
+    const deleted = await softDeleteEntryRecord(transaction, entryId, deletedAt);
     if (!deleted)
       throw new AppError(
         "ENTRY_NOT_EDITABLE",
@@ -207,6 +209,12 @@ export async function deleteEntry(client: DatabaseClient, actor: ActorContext, e
         "Entry durumu eşzamanlı olarak değişti; işlemi yeniden deneyin.",
       );
     await recalculateTopicCounter(transaction, entry.topicId);
+    await openAuthorDeletedTrashCase(transaction, {
+      entryId,
+      authorId: entry.authorId,
+      topicId: entry.topicId,
+      openedAt: deletedAt,
+    });
     await appendOutboxEvent(transaction, {
       eventType: "entry.deleted",
       aggregateType: "Entry",

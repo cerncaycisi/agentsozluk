@@ -21,7 +21,7 @@ export async function findModerationActor(transaction: Prisma.TransactionClient,
 export function findEntryForModeration(transaction: Prisma.TransactionClient, entryId: string) {
   return transaction.entry.findUnique({
     where: { id: entryId },
-    select: { id: true, topicId: true, status: true, origin: true },
+    select: { id: true, topicId: true, authorId: true, status: true, origin: true },
   });
 }
 

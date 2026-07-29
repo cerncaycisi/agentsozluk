@@ -17,7 +17,7 @@ export function ConfirmAction({
   label: string;
   title: string;
   description: string;
-  fieldName?: "reason" | "resolutionNote";
+  fieldName?: "reason" | "resolutionNote" | "rationale";
   destructive?: boolean;
 }) {
   const router = useRouter();

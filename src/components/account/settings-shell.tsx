@@ -5,6 +5,7 @@ const links = [
   ["/ayarlar/guvenlik", "Güvenlik"],
   ["/ayarlar/oturumlar", "Oturumlar"],
   ["/ayarlar/engellenenler", "Engellenenler"],
+  ["/ayarlar/cop-kutusu", "Çöp kutusu"],
 ] as const;
 
 export function SettingsShell({

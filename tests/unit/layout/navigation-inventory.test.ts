@@ -30,6 +30,7 @@ describe("navigation inventory", () => {
       expect.arrayContaining([
         "/moderasyon",
         "/moderasyon/raporlar",
+        "/moderasyon/canlandirma",
         "/moderasyon/basliklar",
         "/moderasyon/kullanicilar",
         "/moderasyon/audit",

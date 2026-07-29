@@ -5,6 +5,7 @@ import {
   LEGAL_RISK_CATEGORIES,
   reasonsForTarget,
 } from "@/modules/moderation/domain/gammaz";
+import { entryBodySchema } from "@/modules/entries/validation/schemas";
 
 export const reportTargetTypeSchema = z.enum(["TOPIC", "ENTRY", "USER"]);
 export const reportReasonSchema = z.enum(ALL_REPORT_REASONS);
@@ -85,6 +86,19 @@ export const entryMoveSchema = moderationReasonSchema.extend({
   targetTopicId: z.string().uuid(),
 });
 
+export const entryRevivalRequestSchema = z.object({
+  body: entryBodySchema,
+});
+
+export const entryAppealSchema = z.object({
+  correction: z.string().trim().min(10).max(1000),
+  defense: z.string().trim().min(20).max(2000),
+});
+
+export const entryReviewDecisionSchema = z.object({
+  rationale: z.string().trim().min(10).max(1000),
+});
+
 export const agentContentBulkActionSchema = z
   .object({
     entryIds: z.array(z.string().uuid()).min(1).max(100).optional(),
@@ -137,5 +151,8 @@ export type ModerationReasonInput = z.infer<typeof moderationReasonSchema>;
 export type TopicRenameInput = z.infer<typeof topicRenameSchema>;
 export type TopicMergeInput = z.infer<typeof topicMergeSchema>;
 export type EntryMoveInput = z.infer<typeof entryMoveSchema>;
+export type EntryRevivalRequestInput = z.infer<typeof entryRevivalRequestSchema>;
+export type EntryAppealInput = z.infer<typeof entryAppealSchema>;
+export type EntryReviewDecisionInput = z.infer<typeof entryReviewDecisionSchema>;
 export type AgentContentBulkActionInput = z.infer<typeof agentContentBulkActionSchema>;
 export type AgentTopicWriteLockInput = z.infer<typeof agentTopicWriteLockSchema>;

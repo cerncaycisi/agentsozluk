@@ -85,6 +85,16 @@ enum GammazDecisionOutcome {
   REJECTED
 }
 
+enum EntryTrashSource {
+  AUTHOR_DELETE
+  MODERATION_HIDE
+}
+
+enum EntryReviewOutcome {
+  ACCEPTED
+  REJECTED
+}
+
 enum ContentOrigin {
   WEB
   API
@@ -274,6 +284,11 @@ model User {
   topics                        Topic[]                    @relation("TopicCreator")
   entries                       Entry[]                    @relation("EntryAuthor")
   revisions                     EntryRevision[]            @relation("RevisionEditor")
+  trashCases                    EntryTrashCase[]           @relation("EntryTrashAuthor")
+  revivalRequests               EntryRevivalRequest[]      @relation("EntryRevivalRequester")
+  revivalDecisions              EntryRevivalDecision[]     @relation("EntryRevivalDecider")
+  appeals                       EntryAppeal[]              @relation("EntryAppealAppellant")
+  appealDecisions               EntryAppealDecision[]      @relation("EntryAppealDecider")
   votes                         EntryVote[]
   bookmarks                     EntryBookmark[]
   follows                       TopicFollow[]
@@ -339,6 +354,8 @@ model Topic {
   mergedTopics    Topic[]              @relation("TopicMerge")
   aliases         TopicAlias[]
   entries         Entry[]
+  trashCases      EntryTrashCase[]
+  appeals         EntryAppeal[]
   follows         TopicFollow[]
   agentWriteLock  AgentTopicWriteLock?
 
@@ -361,27 +378,30 @@ model TopicAlias {
 }
 
 model Entry {
-  id             String              @id @default(uuid()) @db.Uuid
-  publicId       Int                 @unique @default(autoincrement())
-  topicId        String              @db.Uuid
-  authorId       String              @db.Uuid
-  body           String              @db.Text
-  normalizedBody String              @db.Text
-  status         EntryStatus         @default(ACTIVE)
-  score          Int                 @default(0)
-  upvoteCount    Int                 @default(0)
-  downvoteCount  Int                 @default(0)
-  origin         ContentOrigin
-  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
-  deletedAt      DateTime?           @db.Timestamptz(3)
-  hiddenAt       DateTime?           @db.Timestamptz(3)
-  topic          Topic               @relation(fields: [topicId], references: [id])
-  author         User                @relation("EntryAuthor", fields: [authorId], references: [id])
-  revisions      EntryRevision[]
-  votes          EntryVote[]
-  bookmarks      EntryBookmark[]
-  agentContent   AgentContentRecord?
+  id              String                @id @default(uuid()) @db.Uuid
+  publicId        Int                   @unique @default(autoincrement())
+  topicId         String                @db.Uuid
+  authorId        String                @db.Uuid
+  body            String                @db.Text
+  normalizedBody  String                @db.Text
+  status          EntryStatus           @default(ACTIVE)
+  score           Int                   @default(0)
+  upvoteCount     Int                   @default(0)
+  downvoteCount   Int                   @default(0)
+  origin          ContentOrigin
+  createdAt       DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime              @updatedAt @db.Timestamptz(3)
+  deletedAt       DateTime?             @db.Timestamptz(3)
+  hiddenAt        DateTime?             @db.Timestamptz(3)
+  topic           Topic                 @relation(fields: [topicId], references: [id])
+  author          User                  @relation("EntryAuthor", fields: [authorId], references: [id])
+  revisions       EntryRevision[]
+  trashCases      EntryTrashCase[]
+  revivalRequests EntryRevivalRequest[]
+  appeals         EntryAppeal[]
+  votes           EntryVote[]
+  bookmarks       EntryBookmark[]
+  agentContent    AgentContentRecord?
 
   @@index([topicId, status, createdAt])
   @@index([topicId, status, score(sort: Desc), createdAt])
@@ -390,13 +410,14 @@ model Entry {
 }
 
 model EntryRevision {
-  id         String   @id @default(uuid()) @db.Uuid
-  entryId    String   @db.Uuid
-  body       String   @db.Text
-  editedById String   @db.Uuid
-  createdAt  DateTime @default(now()) @db.Timestamptz(3)
-  entry      Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  editedBy   User     @relation("RevisionEditor", fields: [editedById], references: [id])
+  id              String                @id @default(uuid()) @db.Uuid
+  entryId         String                @db.Uuid
+  body            String                @db.Text
+  editedById      String                @db.Uuid
+  createdAt       DateTime              @default(now()) @db.Timestamptz(3)
+  entry           Entry                 @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  editedBy        User                  @relation("RevisionEditor", fields: [editedById], references: [id])
+  revivalRequests EntryRevivalRequest[]
 
   @@index([entryId, createdAt(sort: Desc)])
   @@map("entry_revisions")
@@ -527,11 +548,109 @@ model ModerationAction {
   moderator   User            @relation("ModeratorActions", fields: [moderatorId], references: [id])
   report      Report?         @relation(fields: [reportId], references: [id], onDelete: Restrict)
   decision    GammazDecision? @relation(fields: [decisionId], references: [id], onDelete: Restrict)
+  trashCase   EntryTrashCase?
 
   @@index([targetType, targetId, createdAt(sort: Desc)])
   @@index([reportId, createdAt(sort: Desc)])
   @@index([decisionId, createdAt(sort: Desc)])
   @@map("moderation_actions")
+}
+
+model EntryTrashCase {
+  id              String                @id @default(uuid()) @db.Uuid
+  entryId         String                @db.Uuid
+  authorId        String                @db.Uuid
+  topicId         String                @db.Uuid
+  source          EntryTrashSource
+  sourceActionId  String?               @unique @db.Uuid
+  sourceReason    String                @db.VarChar(1000)
+  openedAt        DateTime              @default(now()) @db.Timestamptz(3)
+  closedAt        DateTime?             @db.Timestamptz(3)
+  entry           Entry                 @relation(fields: [entryId], references: [id], onDelete: Restrict)
+  author          User                  @relation("EntryTrashAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  topic           Topic                 @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  sourceAction    ModerationAction?     @relation(fields: [sourceActionId], references: [id], onDelete: Restrict)
+  revivalRequests EntryRevivalRequest[]
+  appeals         EntryAppeal[]
+
+  @@index([authorId, closedAt, openedAt(sort: Desc)])
+  @@index([entryId, openedAt(sort: Desc)])
+  @@map("entry_trash_cases")
+}
+
+model EntryRevivalRequest {
+  id                 String                @id @default(uuid()) @db.Uuid
+  trashCaseId        String                @db.Uuid
+  entryId            String                @db.Uuid
+  requestedById      String                @db.Uuid
+  previousRevisionId String                @db.Uuid
+  submittedBody      String                @db.Text
+  createdAt          DateTime              @default(now()) @db.Timestamptz(3)
+  trashCase          EntryTrashCase        @relation(fields: [trashCaseId], references: [id], onDelete: Restrict)
+  entry              Entry                 @relation(fields: [entryId], references: [id], onDelete: Restrict)
+  requestedBy        User                  @relation("EntryRevivalRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  previousRevision   EntryRevision         @relation(fields: [previousRevisionId], references: [id], onDelete: Restrict)
+  decision           EntryRevivalDecision?
+  appeals            EntryAppeal[]
+
+  @@index([trashCaseId, createdAt(sort: Desc)])
+  @@index([requestedById, createdAt(sort: Desc)])
+  @@map("entry_revival_requests")
+}
+
+model EntryRevivalDecision {
+  id                     String              @id @default(uuid()) @db.Uuid
+  requestId              String              @unique @db.Uuid
+  deciderId              String              @db.Uuid
+  outcome                EntryReviewOutcome
+  constitutionalArticles Int[]
+  rationale              String              @db.VarChar(1000)
+  createdAt              DateTime            @default(now()) @db.Timestamptz(3)
+  request                EntryRevivalRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  decider                User                @relation("EntryRevivalDecider", fields: [deciderId], references: [id], onDelete: Restrict)
+
+  @@index([deciderId, createdAt(sort: Desc)])
+  @@map("entry_revival_decisions")
+}
+
+model EntryAppeal {
+  id                 String               @id @default(uuid()) @db.Uuid
+  trashCaseId        String               @unique @db.Uuid
+  entryId            String               @db.Uuid
+  topicId            String               @db.Uuid
+  appellantId        String               @db.Uuid
+  revivalRequestId   String               @db.Uuid
+  moderationReason   String               @db.VarChar(1000)
+  topicTitleSnapshot String               @db.VarChar(120)
+  bodySnapshot       String               @db.Text
+  correction         String               @db.VarChar(1000)
+  defense            String               @db.VarChar(2000)
+  createdAt          DateTime             @default(now()) @db.Timestamptz(3)
+  trashCase          EntryTrashCase       @relation(fields: [trashCaseId], references: [id], onDelete: Restrict)
+  entry              Entry                @relation(fields: [entryId], references: [id], onDelete: Restrict)
+  topic              Topic                @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  appellant          User                 @relation("EntryAppealAppellant", fields: [appellantId], references: [id], onDelete: Restrict)
+  revivalRequest     EntryRevivalRequest  @relation(fields: [revivalRequestId], references: [id], onDelete: Restrict)
+  decision           EntryAppealDecision?
+
+  @@index([appellantId, createdAt(sort: Desc)])
+  @@index([revivalRequestId])
+  @@map("entry_appeals")
+}
+
+model EntryAppealDecision {
+  id                     String             @id @default(uuid()) @db.Uuid
+  appealId               String             @unique @db.Uuid
+  deciderId              String             @db.Uuid
+  outcome                EntryReviewOutcome
+  constitutionalArticles Int[]
+  rationale              String             @db.VarChar(1000)
+  createdAt              DateTime           @default(now()) @db.Timestamptz(3)
+  appeal                 EntryAppeal        @relation(fields: [appealId], references: [id], onDelete: Restrict)
+  decider                User               @relation("EntryAppealDecider", fields: [deciderId], references: [id], onDelete: Restrict)
+
+  @@index([deciderId, createdAt(sort: Desc)])
+  @@map("entry_appeal_decisions")
 }
 
 model AuditLog {

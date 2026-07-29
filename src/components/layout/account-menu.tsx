@@ -78,6 +78,11 @@ export function AccountMenu({
               Oylarım
             </Link>
           </DropdownMenu.Item>
+          <DropdownMenu.Item asChild>
+            <Link href="/ayarlar/cop-kutusu" className={itemClass}>
+              Entry çöp kutusu
+            </Link>
+          </DropdownMenu.Item>
           {viewer.role === "MODERATOR" || viewer.role === "ADMIN" ? (
             <DropdownMenu.Item asChild>
               <Link href="/moderasyon" className={itemClass}>

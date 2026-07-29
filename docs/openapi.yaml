@@ -297,6 +297,19 @@ paths:
           "200": { $ref: "#/components/responses/Success" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/me/trash:
+    get:
+      operationId: listOwnEntryTrash
+      tags: [Account]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          "401": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
 
   /api/v1/users/{username}:
     parameters: [{ $ref: "#/components/parameters/Username" }]
@@ -490,6 +503,48 @@ paths:
         {
           "200": { $ref: "#/components/responses/Success" },
           "404": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/entries/{entryId}/revival-requests:
+    parameters:
+      [
+        { $ref: "#/components/parameters/EntryId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: requestEntryRevival
+      tags: [Entries]
+      requestBody: { $ref: "#/components/requestBodies/EntryRevivalRequest" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          "429": { $ref: "#/components/responses/RateLimited" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/entries/{entryId}/appeals:
+    parameters:
+      [
+        { $ref: "#/components/parameters/EntryId" },
+        { $ref: "#/components/parameters/IdempotencyKey" },
+      ]
+    post:
+      operationId: submitEntryAppeal
+      tags: [Entries]
+      requestBody: { $ref: "#/components/requestBodies/EntryAppeal" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          "429": { $ref: "#/components/responses/RateLimited" },
           default: { $ref: "#/components/responses/Error" },
         }
   /api/v1/entries/{entryId}/vote:
@@ -702,6 +757,104 @@ paths:
           "403": { $ref: "#/components/responses/Error" },
           "409": { $ref: "#/components/responses/Error" },
           "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/moderation/revival-requests:
+    get:
+      operationId: listEntryRevivalRequests
+      tags: [Moderation]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          "403": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/moderation/revival-requests/{requestId}/accept:
+    parameters:
+      - { name: requestId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { $ref: "#/components/parameters/IdempotencyKey" }
+    post:
+      operationId: acceptEntryRevivalRequest
+      tags: [Moderation]
+      requestBody: { $ref: "#/components/requestBodies/EntryReviewDecision" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/moderation/revival-requests/{requestId}/reject:
+    parameters:
+      - { name: requestId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { $ref: "#/components/parameters/IdempotencyKey" }
+    post:
+      operationId: rejectEntryRevivalRequest
+      tags: [Moderation]
+      requestBody: { $ref: "#/components/requestBodies/EntryReviewDecision" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/moderation/appeals:
+    get:
+      operationId: listEntryAppeals
+      tags: [Moderation]
+      security: [{ sessionCookie: [] }]
+      parameters:
+        [{ $ref: "#/components/parameters/Page" }, { $ref: "#/components/parameters/PageSize" }]
+      responses:
+        {
+          "200": { $ref: "#/components/responses/List" },
+          "403": { $ref: "#/components/responses/Error" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/moderation/appeals/{appealId}/accept:
+    parameters:
+      - { name: appealId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { $ref: "#/components/parameters/IdempotencyKey" }
+    post:
+      operationId: acceptEntryAppeal
+      tags: [Moderation]
+      requestBody: { $ref: "#/components/requestBodies/EntryReviewDecision" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
+          default: { $ref: "#/components/responses/Error" },
+        }
+  /api/v1/moderation/appeals/{appealId}/reject:
+    parameters:
+      - { name: appealId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { $ref: "#/components/parameters/IdempotencyKey" }
+    post:
+      operationId: rejectEntryAppeal
+      tags: [Moderation]
+      requestBody: { $ref: "#/components/requestBodies/EntryReviewDecision" }
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "403": { $ref: "#/components/responses/Error" },
+          "404": { $ref: "#/components/responses/Error" },
+          "409": { $ref: "#/components/responses/Error" },
+          "413": { $ref: "#/components/responses/PayloadTooLarge" },
+          "422": { $ref: "#/components/responses/ValidationError" },
           default: { $ref: "#/components/responses/Error" },
         }
 
@@ -2470,6 +2623,31 @@ components:
       additionalProperties: false
       required: [body]
       properties: { body: { type: string, minLength: 10, maxLength: 10000 } }
+    EntryRevivalRequestInput:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body:
+          {
+            type: string,
+            minLength: 10,
+            maxLength: 10000,
+            description: Somut olarak düzeltilmiş entry sürümü; moderasyon tartışması içeremez,
+          }
+    EntryAppealInput:
+      type: object
+      additionalProperties: false
+      required: [correction, defense]
+      properties:
+        correction: { type: string, minLength: 10, maxLength: 1000 }
+        defense: { type: string, minLength: 20, maxLength: 2000 }
+    EntryReviewDecisionInput:
+      type: object
+      additionalProperties: false
+      required: [rationale]
+      properties:
+        rationale: { type: string, minLength: 10, maxLength: 1000 }
     VoteInput:
       type: object
       additionalProperties: false
@@ -3529,6 +3707,28 @@ components:
         required: true,
         content:
           { application/json: { schema: { $ref: "#/components/schemas/EntryCreateInput" } } },
+      }
+    EntryRevivalRequest:
+      {
+        required: true,
+        content:
+          {
+            application/json: { schema: { $ref: "#/components/schemas/EntryRevivalRequestInput" } },
+          },
+      }
+    EntryAppeal:
+      {
+        required: true,
+        content:
+          { application/json: { schema: { $ref: "#/components/schemas/EntryAppealInput" } } },
+      }
+    EntryReviewDecision:
+      {
+        required: true,
+        content:
+          {
+            application/json: { schema: { $ref: "#/components/schemas/EntryReviewDecisionInput" } },
+          },
       }
     Vote:
       {

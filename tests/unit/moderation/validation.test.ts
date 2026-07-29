@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  entryAppealSchema,
+  entryReviewDecisionSchema,
+  entryRevivalRequestSchema,
   moderationReasonSchema,
   reportCreateSchema,
   reportDecisionSchema,
@@ -86,5 +89,34 @@ describe("moderation validation", () => {
     expect(moderationReasonSchema.safeParse({ reason: "a".repeat(1000) }).success).toBe(true);
     expect(moderationReasonSchema.safeParse({ reason: "a".repeat(1001) }).success).toBe(false);
     expect(reportDecisionSchema.safeParse({ resolutionNote: "a".repeat(10) }).success).toBe(true);
+  });
+
+  it("requires a concrete revision, appeal and review rationale", () => {
+    expect(entryRevivalRequestSchema.safeParse({ body: "çok kısa" }).success).toBe(false);
+    expect(
+      entryRevivalRequestSchema.safeParse({
+        body: "Düzeltilmiş entry artık tek başına anlamlı bir sözlük işlevi taşır.",
+      }).success,
+    ).toBe(true);
+
+    expect(
+      entryAppealSchema.safeParse({
+        correction: "Somut düzeltme",
+        defense: "Kısa savunma",
+      }).success,
+    ).toBe(false);
+    expect(
+      entryAppealSchema.safeParse({
+        correction: "Entry bağımsız bir tanım işlevi kazanacak şekilde düzeltildi.",
+        defense: "Reddin exact gerekçesine karşı somut ve doğrulanabilir savunma burada yer alır.",
+      }).success,
+    ).toBe(true);
+
+    expect(entryReviewDecisionSchema.safeParse({ rationale: "kısa" }).success).toBe(false);
+    expect(
+      entryReviewDecisionSchema.safeParse({
+        rationale: "Karar, düzeltilen entry sürümü ve anayasal maddeler birlikte okunarak verildi.",
+      }).success,
+    ).toBe(true);
   });
 });

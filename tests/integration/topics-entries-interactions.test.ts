@@ -75,6 +75,15 @@ import {
 } from "@/modules/moderation/application/actions";
 import { authorizeModerationCommand } from "@/modules/moderation/application/authorization";
 import {
+  decideEntryAppeal,
+  decideEntryRevival,
+  listAppealQueue,
+  listOwnEntryTrash,
+  listRevivalQueue,
+  requestEntryRevival,
+  submitEntryAppeal,
+} from "@/modules/moderation/application/trash-appeal";
+import {
   createReport,
   decideReport,
   getModerationReport,
@@ -130,7 +139,7 @@ async function grantGammazCapability(userId: string, grantedById = userId) {
 
 async function grantReviewCapability(
   userId: string,
-  capability: "FORMAT_MODERATOR" | "LEGAL_REVIEWER",
+  capability: "FORMAT_MODERATOR" | "LEGAL_REVIEWER" | "APPEAL_DECIDER",
   grantedById = userId,
 ) {
   return integrationDatabase.userModerationCapability.create({
@@ -3714,6 +3723,297 @@ describe("reports and moderation with PostgreSQL", () => {
     expect(
       await integrationDatabase.outboxEvent.count({ where: { eventType: "user.deactivated" } }),
     ).toBe(1);
+  });
+});
+
+describe("entry trash, revival and appeal with PostgreSQL", () => {
+  it("keeps an author-deleted entry in trash, queues its revision and restores it by immutable decision", async () => {
+    const author = await createUser("trash_revival_author");
+    const decider = await createUser("trash_revival_decider");
+    await grantReviewCapability(decider.id, "APPEAL_DECIDER");
+    const created = await createTopic(author.id, "Canlandırılacak Entry");
+    const originalBody = created.entry.body;
+
+    await deleteEntry(integrationDatabase, actor(author.id), created.entry.id);
+    const trash = await listOwnEntryTrash(integrationDatabase, author.id, {
+      skip: 0,
+      take: 20,
+    });
+    expect(trash).toMatchObject({
+      totalItems: 1,
+      items: [
+        {
+          entryId: created.entry.id,
+          source: "AUTHOR_DELETE",
+          sourceReason: "Yazar tarafından silindi.",
+          closedAt: null,
+          entry: { status: "DELETED" },
+        },
+      ],
+    });
+
+    const revisedBody =
+      "Canlandırılan entry, başlığındaki kavramı bağımsız ve somut bir sözlük tanımıyla açıklar.";
+    const request = await requestEntryRevival(
+      integrationDatabase,
+      actor(author.id),
+      created.entry.id,
+      { body: revisedBody },
+    );
+    const revision = await integrationDatabase.entryRevision.findUniqueOrThrow({
+      where: { id: request.previousRevisionId },
+    });
+    expect(revision).toMatchObject({
+      entryId: created.entry.id,
+      editedById: author.id,
+      body: originalBody,
+    });
+    await expect(
+      integrationDatabase.entryRevision.update({
+        where: { id: revision.id },
+        data: { body: "Immutable geçmiş değiştirilemez." },
+      }),
+    ).rejects.toThrow(/append-only/);
+
+    await expect(
+      listRevivalQueue(integrationDatabase, actor(decider.id), { skip: 0, take: 20 }),
+    ).resolves.toMatchObject({
+      totalItems: 1,
+      items: [{ id: request.id, submittedBody: revisedBody }],
+    });
+    const decision = await decideEntryRevival(
+      integrationDatabase,
+      actor(decider.id),
+      request.id,
+      "ACCEPTED",
+      { rationale: "Düzeltilmiş sürüm bağımsız sözlük işlevi taşıdığı için kabul edildi." },
+    );
+    expect(decision).toMatchObject({
+      outcome: "ACCEPTED",
+      constitutionalArticles: [37, 38, 41],
+    });
+    await expect(
+      integrationDatabase.entryRevivalDecision.update({
+        where: { id: decision.id },
+        data: { rationale: "Karar geçmişi sonradan değiştirilemez." },
+      }),
+    ).rejects.toThrow(/append-only/);
+    await expect(
+      integrationDatabase.entry.findUniqueOrThrow({ where: { id: created.entry.id } }),
+    ).resolves.toMatchObject({
+      body: revisedBody,
+      status: "ACTIVE",
+      deletedAt: null,
+      hiddenAt: null,
+    });
+    await expect(
+      integrationDatabase.entryTrashCase.findFirstOrThrow({
+        where: { entryId: created.entry.id },
+      }),
+    ).resolves.toMatchObject({ closedAt: expect.any(Date) });
+    await expectExactTopicCounter(created.topic.id);
+    expect(
+      await integrationDatabase.outboxEvent.count({
+        where: {
+          eventType: { in: ["entry.revival_requested", "entry.revival_decided"] },
+        },
+      }),
+    ).toBe(2);
+  });
+
+  it("requires an independent capable human, rejects entry-meta revisions and preserves a concrete appeal", async () => {
+    const author = await createUser("trash_appeal_author");
+    const decider = await createUser("trash_appeal_decider");
+    const appealDecider = await createUser("trash_appeal_second_decider");
+    const created = await createTopic(author.id, "İtiraz Edilecek Entry");
+    await deleteEntry(integrationDatabase, actor(author.id), created.entry.id);
+
+    await expect(
+      requestEntryRevival(integrationDatabase, actor(author.id), created.entry.id, {
+        body: "Bu entry moderatör haksız yere sildiği için canlandırma talebiyle geri açılmalıdır.",
+      }),
+    ).rejects.toMatchObject({ code: "REVIVAL_MODERATION_META", status: 422 });
+    expect(await integrationDatabase.entryRevision.count()).toBe(0);
+    expect(await integrationDatabase.entryRevivalRequest.count()).toBe(0);
+
+    const revisedBody =
+      "İtiraz, bir kararın somut gerekçe ve yeni kanıtlarla yeniden incelenmesini isteyen başvurudur.";
+    const request = await requestEntryRevival(
+      integrationDatabase,
+      actor(author.id),
+      created.entry.id,
+      { body: revisedBody },
+    );
+    await expect(
+      decideEntryRevival(integrationDatabase, actor(decider.id), request.id, "REJECTED", {
+        rationale: "Yetkisiz kullanıcı karar veremez; bu çağrı reddedilmelidir.",
+      }),
+    ).rejects.toMatchObject({ code: "MODERATION_CAPABILITY_REQUIRED", status: 403 });
+
+    await grantReviewCapability(author.id, "APPEAL_DECIDER");
+    await expect(
+      decideEntryRevival(integrationDatabase, actor(author.id), request.id, "REJECTED", {
+        rationale: "Yazar kendi canlandırma isteği hakkında karar veremez.",
+      }),
+    ).rejects.toMatchObject({ code: "MODERATION_CONFLICT_OF_INTEREST", status: 403 });
+    await grantReviewCapability(decider.id, "APPEAL_DECIDER");
+    await integrationDatabase.entry.update({
+      where: { id: created.entry.id },
+      data: { body: `${revisedBody} Sonradan değiştirildi.` },
+    });
+    await expect(
+      integrationDatabase.entryRevivalDecision.create({
+        data: {
+          requestId: request.id,
+          deciderId: decider.id,
+          outcome: "REJECTED",
+          constitutionalArticles: [37, 38, 41],
+          rationale: "Exact sürüm değiştiği için bu doğrudan karar reddedilmelidir.",
+        },
+      }),
+    ).rejects.toThrow(/revival decision requires an open trash case/);
+    await integrationDatabase.entry.update({
+      where: { id: created.entry.id },
+      data: { body: revisedBody },
+    });
+    await decideEntryRevival(integrationDatabase, actor(decider.id), request.id, "REJECTED", {
+      rationale: "Düzeltmenin bağımsız işlevi henüz yeterince açık bulunmadı.",
+    });
+
+    const appeal = await submitEntryAppeal(
+      integrationDatabase,
+      actor(author.id),
+      created.entry.id,
+      {
+        correction: "Kavramın kapsamı ve bağımsız sözlük işlevi daha somut biçimde açıklandı.",
+        defense:
+          "Reddedilen exact sürüm, başlığın kavramını tanımlar ve moderasyon tartışması içermez.",
+      },
+    );
+    expect(appeal).toMatchObject({
+      entryId: created.entry.id,
+      topicId: created.topic.id,
+      appellantId: author.id,
+      revivalRequestId: request.id,
+      bodySnapshot: revisedBody,
+      moderationReason: "Yazar tarafından silindi.",
+    });
+    await expect(
+      listAppealQueue(integrationDatabase, actor(decider.id), { skip: 0, take: 20 }),
+    ).resolves.toMatchObject({
+      totalItems: 1,
+      items: [{ id: appeal.id, bodySnapshot: revisedBody }],
+    });
+
+    await grantReviewCapability(appealDecider.id, "APPEAL_DECIDER");
+    await integrationDatabase.entry.update({
+      where: { id: created.entry.id },
+      data: { body: `${revisedBody} İtirazdan sonra değiştirildi.` },
+    });
+    await expect(
+      integrationDatabase.entryAppealDecision.create({
+        data: {
+          appealId: appeal.id,
+          deciderId: appealDecider.id,
+          outcome: "ACCEPTED",
+          constitutionalArticles: [39, 40, 41, 42],
+          rationale: "Exact sürüm değiştiği için bu doğrudan karar reddedilmelidir.",
+        },
+      }),
+    ).rejects.toThrow(/appeal decision requires an open trash case/);
+    await integrationDatabase.entry.update({
+      where: { id: created.entry.id },
+      data: { body: revisedBody },
+    });
+    const appealDecision = await decideEntryAppeal(
+      integrationDatabase,
+      actor(appealDecider.id),
+      appeal.id,
+      "ACCEPTED",
+      { rationale: "Somut düzeltme ve exact savunma birlikte yeterli bulundu." },
+    );
+    expect(appealDecision).toMatchObject({
+      outcome: "ACCEPTED",
+      constitutionalArticles: [39, 40, 41, 42],
+    });
+    await expect(
+      integrationDatabase.entryAppeal.update({
+        where: { id: appeal.id },
+        data: { defense: "İtiraz geçmişi sonradan değiştirilemez." },
+      }),
+    ).rejects.toThrow(/append-only/);
+    await expect(
+      integrationDatabase.entry.findUniqueOrThrow({ where: { id: created.entry.id } }),
+    ).resolves.toMatchObject({ status: "ACTIVE", body: revisedBody });
+    await expectExactTopicCounter(created.topic.id);
+  });
+
+  it("links a constitutional hide reason to trash and closes the case on direct restore without profile penalty", async () => {
+    const reporter = await createUser("trash_hide_reporter");
+    const moderator = await createUser("trash_hide_moderator");
+    const author = await createUser("trash_hide_author");
+    await Promise.all([
+      grantGammazCapability(reporter.id),
+      grantReviewCapability(moderator.id, "FORMAT_MODERATOR"),
+    ]);
+    const created = await createTopic(author.id, "Gizlenen Entry");
+    const deletedReference = await createEntry(
+      integrationDatabase,
+      actor(author.id),
+      created.topic.id,
+      { body: "Bu entry yalnız silinmiş bkz hedefi lifecycle kanıtı için oluşturulmuştur." },
+    );
+    await deleteEntry(integrationDatabase, actor(author.id), deletedReference.id);
+    const report = await createReport(integrationDatabase, actor(reporter.id), {
+      targetType: "ENTRY",
+      targetId: created.entry.id,
+      reason: "GAMMAZ_9_DELETED_BKZ_TARGET",
+      details: "Entry, artık silinmiş bir bkz hedefini fiziksel kanıt gibi kullanıyor.",
+      evidence: { referenceEntryPublicId: deletedReference.publicId },
+    });
+    const decided = await decideReport(
+      integrationDatabase,
+      actor(moderator.id),
+      report.id,
+      "ACCEPTED",
+      {
+        resolutionNote: "Silinmiş bkz hedefi entry sahibine profil cezası yazılmadan ayrıştırıldı.",
+      },
+    );
+    const reason = "Silinmiş bkz hedefi nedeniyle entry geçici olarak gizlendi.";
+    await setEntryVisibility(integrationDatabase, actor(moderator.id), created.entry.id, true, {
+      reason,
+      sourceReportId: report.id,
+    });
+    const trashCase = await integrationDatabase.entryTrashCase.findFirstOrThrow({
+      where: { entryId: created.entry.id, closedAt: null },
+      include: { sourceAction: true },
+    });
+    expect(trashCase).toMatchObject({
+      source: "MODERATION_HIDE",
+      sourceReason: reason,
+      sourceAction: {
+        decisionId: decided.decision.id,
+        actionType: "ENTRY_HIDDEN",
+        targetId: created.entry.id,
+      },
+    });
+    await expect(
+      integrationDatabase.user.findUniqueOrThrow({ where: { id: author.id } }),
+    ).resolves.toMatchObject({ status: "ACTIVE", role: "USER" });
+    expect(
+      await integrationDatabase.userModerationCapability.count({ where: { userId: author.id } }),
+    ).toBe(0);
+
+    await setEntryVisibility(integrationDatabase, actor(moderator.id), created.entry.id, false, {
+      reason: "Entry doğrudan geri açılırken açık çöp vakası da atomik kapatılıyor.",
+    });
+    await expect(
+      integrationDatabase.entryTrashCase.findUniqueOrThrow({ where: { id: trashCase.id } }),
+    ).resolves.toMatchObject({ closedAt: expect.any(Date) });
+    await expect(
+      integrationDatabase.entry.findUniqueOrThrow({ where: { id: created.entry.id } }),
+    ).resolves.toMatchObject({ status: "ACTIVE", hiddenAt: null });
   });
 });
 

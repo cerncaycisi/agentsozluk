@@ -108,7 +108,7 @@ async function postCommand(page: Page, path: string, body: Record<string, unknow
 
 async function ensureModerationCapability(
   page: Page,
-  capability: "FORMAT_MODERATOR" | "LEGAL_REVIEWER",
+  capability: "FORMAT_MODERATOR" | "LEGAL_REVIEWER" | "APPEAL_DECIDER",
 ): Promise<void> {
   const result = await page.evaluate(async (targetCapability) => {
     const meResponse = await fetch("/api/v1/me");
@@ -172,6 +172,92 @@ async function approveWriterViaAdmin(browser: Browser, user: { username: string 
 }
 
 test.describe("@desktop moderation and admin workflows", () => {
+  test("moves a deleted entry through trash, revision, rejection, appeal and restoration", async ({
+    browser,
+  }) => {
+    test.setTimeout(150_000);
+    const authorContext = await browser.newContext();
+    const authorPage = await authorContext.newPage();
+    const author = await register(authorPage, "trash_author");
+    await approveWriterViaAdmin(browser, author);
+    const title = `Çöp ve itiraz akışı ${Date.now().toString(36)}`;
+    const originalBody =
+      "Çöp kutusu E2E akışında silinecek ve somut bir düzeltmeyle yeniden incelenecek entry.";
+    const target = await createTopic(authorPage, title, originalBody);
+    const entryPublicId = target.entryUrl.split("/").at(-1);
+    if (!entryPublicId) throw new Error("E2E_ENTRY_PUBLIC_ID_MISSING");
+
+    await authorPage.getByRole("button", { name: "Entry’yi sil" }).click();
+    const deleteDialog = authorPage.getByRole("alertdialog");
+    await expect(deleteDialog).toContainText("çöp kutunuza taşınır");
+    await deleteDialog.getByRole("button", { name: "Entry’yi sil" }).click();
+    await expect(deleteDialog).toBeHidden({ timeout: 20_000 });
+
+    await authorPage.goto("/ayarlar/cop-kutusu");
+    const trashCard = authorPage
+      .locator("article")
+      .filter({ has: authorPage.locator(`a[href="${target.entryUrl}"]`) });
+    await expect(trashCard).toContainText("Yazar tarafından silindi.");
+    await expect(trashCard).toContainText("ÇÖPTE");
+    const revisedBody =
+      "Çöp kutusu, silinen entry’lerin gerekçesi ve geçmişiyle saklandığı kişisel inceleme alanıdır.";
+    const bodyInput = trashCard.getByLabel("Düzeltilmiş entry");
+    await bodyInput.fill(revisedBody);
+    await trashCard.getByRole("button", { name: "Düzelt ve canlandırma iste" }).click();
+    await expect(trashCard).toContainText("Canlandırma isteği inceleme sırasında.", {
+      timeout: 20_000,
+    });
+
+    const adminContext = await browser.newContext();
+    const adminPage = await adminContext.newPage();
+    await login(adminPage, "admin@local.test", demoPassword);
+    await ensureModerationCapability(adminPage, "APPEAL_DECIDER");
+    await adminPage.goto("/moderasyon/canlandirma");
+    const revivalCard = adminPage
+      .locator("article")
+      .filter({ has: adminPage.locator(`a[href="${target.entryUrl}"]`) });
+    await expect(revivalCard).toContainText(revisedBody);
+    await revivalCard.getByRole("button", { name: "Reddet", exact: true }).click();
+    let decisionDialog = adminPage.getByRole("alertdialog");
+    await decisionDialog
+      .getByLabel("Gerekçe")
+      .fill("İlk canlandırma incelemesinde somut savunma ayrıca görülmek istendi.");
+    await decisionDialog.getByRole("button", { name: "Onayla" }).click();
+    await expect(decisionDialog).toBeHidden({ timeout: 20_000 });
+
+    await authorPage.reload();
+    await expect(trashCard).toContainText("Son canlandırma kararı: Ret");
+    await trashCard
+      .getByLabel("Yaptığınız düzeltme")
+      .fill("Entry bağımsız bir tanıma dönüştürüldü ve moderasyon tartışması metinden ayrıldı.");
+    await trashCard
+      .getByLabel("Somut savunmanız")
+      .fill("Reddedilen exact sürüm çöp kutusunu bağımsız olarak tanımlar ve başlıkla uyumludur.");
+    await trashCard.getByRole("button", { name: "İtirazı gönder" }).click();
+    await expect(trashCard).toContainText("İtiraz inceleme sırasında.", { timeout: 20_000 });
+
+    await adminPage.reload();
+    const appealCard = adminPage
+      .locator("article")
+      .filter({ has: adminPage.locator(`a[href="${target.entryUrl}"]`) });
+    await expect(appealCard).toContainText("Somut savunma");
+    await appealCard.getByRole("button", { name: "İtirazı kabul et" }).click();
+    decisionDialog = adminPage.getByRole("alertdialog");
+    await decisionDialog
+      .getByLabel("Gerekçe")
+      .fill("Exact sürüm ve somut savunma anayasal itiraz şartlarını karşılıyor.");
+    await decisionDialog.getByRole("button", { name: "Onayla" }).click();
+    await expect(decisionDialog).toBeHidden({ timeout: 20_000 });
+
+    const visitorContext = await browser.newContext();
+    const visitorPage = await visitorContext.newPage();
+    await visitorPage.goto(`/entry/${entryPublicId}`);
+    await expect(visitorPage.getByText(revisedBody, { exact: true })).toBeVisible();
+    await visitorContext.close();
+    await adminContext.close();
+    await authorContext.close();
+  });
+
   test("hides, resolves and restores a reported entry", async ({ browser }) => {
     test.setTimeout(120_000);
     const authorContext = await browser.newContext();
