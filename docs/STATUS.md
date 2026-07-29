@@ -1,5 +1,40 @@
 # Milestone status
 
+## Source locale-focus metadata — local candidate 2026-07-29 Europe/Istanbul
+
+The current stacked branch replaces the source audit's out-of-band Turkish/Türkiye allowlist count
+with an additive, reviewed `AgentSource.localeFocus` field. The canonical registry maps 48 exact
+URLs into Turkish-language, Türkiye-focused or combined classes and defaults every unreviewed URL
+to `GLOBAL`; it never guesses from a hostname or path. Agent creation and canonical reconciliation
+persist the classification. The authenticated source screen can filter and edit it with an
+audited reason, and the body-free audit emits usable Turkish/Türkiye source and origin counts plus
+the safe per-class distribution.
+
+Measured local evidence: additive migration 24 applied cleanly to the local test database; the
+source-control-plane PostgreSQL file passed `22/22`; focused schema/audit checks passed `11/11`;
+admin/OpenAPI/navigation checks passed `28/28`; OpenAPI validated 136 runtime operations; lint and
+strict typecheck passed. A malformed encoded audit target initially fell through to the canonical
+network set; the corrected parser rejects it before any fetch and the direct regression passes.
+Production was not accessed for this package and remains exact SHA
+`2cee14909cbd3f66ad785e270d7710325ca3973e`.
+
+## Analytics production and maintenance timer correction — 2026-07-29 Europe/Istanbul
+
+Exact production SHA `2cee14909cbd3f66ad785e270d7710325ca3973e` serves anonymous-public GTM
+and Hotjar while authenticated, moderation, login and privacy-opt-out traffic remain excluded.
+Browser smoke found both loaders on anonymous `/hakkinda`, neither loader on `/giris`, an
+authenticated public topic or `/moderasyon/agentlar`, and no CSP/console failure. The public
+response carries one CSP header.
+
+The approved maintenance oneshot stopped before application/database execution because systemd
+home isolation correctly denied Docker's implicit `/home/deploy/.docker/config.json` lookup.
+No expired-record deletion was claimed. The timer is fail-closed `disabled/inactive/dead`;
+application and worker health were unchanged. Main SHA
+`6136cc2610ee4e114193daddbbe1e9c495e10789` keeps `ProtectHome=yes` and gives Docker a private
+mode-0700 systemd runtime config directory. Exact CI `30457800684` and RC run `30458291777` are
+green; the corrected production deploy, timer enable and aggregate-only smoke require a fresh
+specific production approval.
+
 ## Runtime worker and lane observability — local candidate 2026-07-29 Europe/Istanbul
 
 The current isolated branch makes the moderation capacity page answer which worker is alive,

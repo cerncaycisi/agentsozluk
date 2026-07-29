@@ -205,6 +205,13 @@ enum AgentSourceStatus {
   BLOCKED
 }
 
+enum AgentSourceLocaleFocus {
+  GLOBAL
+  TURKISH_LANGUAGE
+  TURKEY_FOCUSED
+  TURKISH_LANGUAGE_AND_TURKEY_FOCUSED
+}
+
 enum PersonaChangeOrigin {
   INITIAL
   ADMIN
@@ -1034,31 +1041,33 @@ model AgentAction {
 }
 
 model AgentSource {
-  id                  String            @id @default(uuid()) @db.Uuid
-  agentProfileId      String            @db.Uuid
-  url                 String            @db.Text
-  normalizedDomain    String            @db.VarChar(253)
-  sourceType          String            @db.VarChar(64)
+  id                  String                 @id @default(uuid()) @db.Uuid
+  agentProfileId      String                 @db.Uuid
+  url                 String                 @db.Text
+  normalizedDomain    String                 @db.VarChar(253)
+  sourceType          String                 @db.VarChar(64)
   status              AgentSourceStatus
+  localeFocus         AgentSourceLocaleFocus @default(GLOBAL)
   topics              Json
   trustScore          Float
   interestScore       Float
   noveltyScore        Float
   usefulnessScore     Float
-  adminPinned         Boolean           @default(false)
-  adminBlocked        Boolean           @default(false)
-  discoveredFrom      String?           @db.Text
-  addedByOrigin       String            @db.VarChar(64)
-  lastFetchedAt       DateTime?         @db.Timestamptz(3)
-  lastUsefulAt        DateTime?         @db.Timestamptz(3)
-  consecutiveFailures Int               @default(0)
-  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
-  agentProfile        AgentProfile      @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
+  adminPinned         Boolean                @default(false)
+  adminBlocked        Boolean                @default(false)
+  discoveredFrom      String?                @db.Text
+  addedByOrigin       String                 @db.VarChar(64)
+  lastFetchedAt       DateTime?              @db.Timestamptz(3)
+  lastUsefulAt        DateTime?              @db.Timestamptz(3)
+  consecutiveFailures Int                    @default(0)
+  createdAt           DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime               @updatedAt @db.Timestamptz(3)
+  agentProfile        AgentProfile           @relation(fields: [agentProfileId], references: [id], onDelete: Restrict)
   items               AgentSourceItem[]
 
   @@unique([agentProfileId, url])
   @@index([agentProfileId, status, normalizedDomain])
+  @@index([localeFocus, status])
   @@map("agent_sources")
 }
 

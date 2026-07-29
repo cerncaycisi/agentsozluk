@@ -1292,6 +1292,13 @@ paths:
               type: string,
               enum: [SEED, DISCOVERED, PROBATION, TRUSTED, DORMANT, REJECTED, BLOCKED],
             }
+        - name: localeFocus
+          in: query
+          schema:
+            {
+              type: string,
+              enum: [GLOBAL, TURKISH_LANGUAGE, TURKEY_FOCUSED, TURKISH_LANGUAGE_AND_TURKEY_FOCUSED],
+            }
         - name: adminPinned
           in: query
           schema: { type: boolean }
@@ -3170,6 +3177,11 @@ components:
         adminBlocked: { type: boolean }
         status:
           { type: string, enum: [SEED, DISCOVERED, PROBATION, TRUSTED, DORMANT, REJECTED, BLOCKED] }
+        localeFocus:
+          {
+            type: string,
+            enum: [GLOBAL, TURKISH_LANGUAGE, TURKEY_FOCUSED, TURKISH_LANGUAGE_AND_TURKEY_FOCUSED],
+          }
         trustScore: { type: number, minimum: 0, maximum: 1 }
         interestScore: { type: number, minimum: 0, maximum: 1 }
         noveltyScore: { type: number, minimum: 0, maximum: 1 }

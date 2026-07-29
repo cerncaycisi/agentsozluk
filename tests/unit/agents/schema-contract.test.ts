@@ -12,6 +12,10 @@ const modelKnowledgeMigration = readFileSync(
   path.join(root, "prisma/migrations/20260724190000_add_model_knowledge_provenance/migration.sql"),
   "utf8",
 );
+const sourceLocaleMigration = readFileSync(
+  path.join(root, "prisma/migrations/20260729210000_add_source_locale_focus/migration.sql"),
+  "utf8",
+);
 
 describe("Milestone 2 agent database contract", () => {
   it("declares every required runtime enum", () => {
@@ -24,6 +28,7 @@ describe("Milestone 2 agent database contract", () => {
       "AgentActionType",
       "AgentActionStatus",
       "AgentSourceStatus",
+      "AgentSourceLocaleFocus",
       "PersonaChangeOrigin",
       "ScheduleSlotStatus",
       "QuotaMode",
@@ -42,6 +47,15 @@ describe("Milestone 2 agent database contract", () => {
     expect(modelKnowledgeMigration).toContain(
       `ALTER TYPE "EvidenceProvenance" ADD VALUE IF NOT EXISTS 'MODEL_KNOWLEDGE'`,
     );
+  });
+
+  it("stores reviewed source locale focus as additive safe metadata", () => {
+    expect(sourceLocaleMigration).toContain('CREATE TYPE "AgentSourceLocaleFocus"');
+    expect(sourceLocaleMigration).toContain(
+      'ADD COLUMN "localeFocus" "AgentSourceLocaleFocus" NOT NULL DEFAULT \'GLOBAL\'',
+    );
+    expect(sourceLocaleMigration).toContain('CREATE INDEX "agent_sources_localeFocus_status_idx"');
+    expect(schema).toContain("localeFocus");
   });
 
   it("declares the control-plane, runtime, memory and provenance models", () => {

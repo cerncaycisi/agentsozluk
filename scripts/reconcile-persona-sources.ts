@@ -11,6 +11,7 @@ import {
   uniqueVerifiedSourcePool,
 } from "@/modules/agents/personas/source-assignment";
 import { seedPersonaPackSchema, seedPersonaSchema } from "@/modules/agents/personas/schema";
+import { reviewedSourceLocaleFocus } from "@/modules/agents/personas/source-locale-metadata";
 import { appendRuntimeEvent, lockAgentProfile } from "@/modules/agents/repository/control-plane";
 import { appendAuditLog } from "@/modules/audit";
 import { resolveOperatorAdmin } from "./agent-operator";
@@ -28,6 +29,7 @@ function sourceSnapshot(source: {
   url: string;
   status: string;
   sourceType: string;
+  localeFocus: string;
   adminPinned: boolean;
   adminBlocked: boolean;
   consecutiveFailures: number;
@@ -36,6 +38,7 @@ function sourceSnapshot(source: {
     urlHash: sha256(source.url),
     status: source.status,
     sourceType: source.sourceType,
+    localeFocus: source.localeFocus,
     adminPinned: source.adminPinned,
     adminBlocked: source.adminBlocked,
     consecutiveFailures: source.consecutiveFailures,
@@ -147,6 +150,7 @@ async function main(): Promise<void> {
               normalizedDomain: new URL(source.url).hostname.toLowerCase(),
               sourceType: source.sourceType,
               status: source.status,
+              localeFocus: reviewedSourceLocaleFocus(source.url),
               topics: source.topics,
               trustScore: source.status === "TRUSTED" ? 0.8 : 0.5,
               interestScore: source.weight,
@@ -159,6 +163,7 @@ async function main(): Promise<void> {
             update: {
               normalizedDomain: new URL(source.url).hostname.toLowerCase(),
               sourceType: source.sourceType,
+              localeFocus: reviewedSourceLocaleFocus(source.url),
               topics: source.topics,
               interestScore: source.weight,
               adminPinned: source.pinned,

@@ -239,11 +239,20 @@ export const agentSourceStatuses = [
 ] as const;
 export type AgentSourceStatusValue = (typeof agentSourceStatuses)[number];
 
+export const agentSourceLocaleFocusValues = [
+  "GLOBAL",
+  "TURKISH_LANGUAGE",
+  "TURKEY_FOCUSED",
+  "TURKISH_LANGUAGE_AND_TURKEY_FOCUSED",
+] as const;
+export type AgentSourceLocaleFocusValue = (typeof agentSourceLocaleFocusValues)[number];
+
 export const agentSourceAdminUpdateSchema = z
   .object({
     adminPinned: z.boolean().optional(),
     adminBlocked: z.boolean().optional(),
     status: z.enum(agentSourceStatuses).optional(),
+    localeFocus: z.enum(agentSourceLocaleFocusValues).optional(),
     trustScore: z.number().min(0).max(1).optional(),
     interestScore: z.number().min(0).max(1).optional(),
     noveltyScore: z.number().min(0).max(1).optional(),

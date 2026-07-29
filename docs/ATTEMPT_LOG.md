@@ -3447,3 +3447,27 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   product regression; do not add a second worker heartbeat service when the roster ACK already
   supplies a fresh authenticated liveness channel; and do not expose boot UUIDs, raw prompts,
   credentials or private reasoning in the moderation UI.
+
+## 2026-07-29 — explicit source locale-focus metadata local candidate
+
+- Scope: replace the production source-health report's separate reviewed Turkish/Türkiye count
+  with one additive safe field carried by source creation, reconciliation, administration and
+  body-free audit output. No production connection, source fetch, deployment or external write
+  occurred.
+- Implementation: additive migration 24 adds `AgentSourceLocaleFocus` and
+  `AgentSource.localeFocus`, defaulting unknown sources to `GLOBAL`. The reviewed registry
+  classifies 48 exact canonical URLs as Turkish-language, Türkiye-focused or both; it performs no
+  hostname/path language inference. The source admin API/UI supports filtering and reasoned
+  updates, while audit summaries report usable focused source/origin counts and per-class totals.
+  Canonical reconciliation persists the reviewed value for both new and existing assignments.
+- Verification: migration 24 applied cleanly to the local test database. The source control-plane
+  PostgreSQL file passed `22/22`; focused schema/audit tests passed `11/11`;
+  admin/OpenAPI/navigation checks passed `28/28`; OpenAPI validated 136 runtime operations; ESLint
+  and strict typecheck passed.
+- Corrected attempt: encoded `{}` input was no longer accepted as a URL array but initially fell
+  through to the default canonical target set, causing an unintended local read-only source audit.
+  The run was interrupted; the parser now routes every provided encoded value through strict
+  target validation and fails closed before reader construction. The direct regression passes.
+- Do not repeat: an explicitly provided malformed or empty-shape audit payload must never silently
+  select the canonical network target set; do not derive locale focus from URL spelling and do not
+  count assignment metadata as fresh source usability without a successful fetch.

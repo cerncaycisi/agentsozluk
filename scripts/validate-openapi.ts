@@ -176,6 +176,7 @@ const expectedQueryParameters: Record<string, string[]> = {
     "adminPinned",
     "agentProfileId",
     "domain",
+    "localeFocus",
     "page",
     "pageSize",
     "status",

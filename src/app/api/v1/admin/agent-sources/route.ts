@@ -5,7 +5,9 @@ import { runApi, successList } from "@/lib/http/api";
 import { paginationFrom } from "@/lib/http/pagination";
 import { parseUuid } from "@/lib/http/request";
 import {
+  agentSourceLocaleFocusValues,
   agentSourceStatuses,
+  type AgentSourceLocaleFocusValue,
   type AgentSourceStatusValue,
   listAgentSources,
 } from "@/modules/agents";
@@ -14,6 +16,7 @@ import { actorFromSession } from "@/modules/auth/domain/actor";
 export const runtime = "nodejs";
 
 const statuses = new Set<AgentSourceStatusValue>(agentSourceStatuses);
+const localeFocuses = new Set<AgentSourceLocaleFocusValue>(agentSourceLocaleFocusValues);
 
 function booleanFilter(value: string | null): boolean | undefined {
   return value === "true" ? true : value === "false" ? false : undefined;
@@ -25,6 +28,7 @@ export function GET(request: NextRequest) {
     const url = new URL(request.url);
     const pagination = paginationFrom(url);
     const status = url.searchParams.get("status") as AgentSourceStatusValue | null;
+    const localeFocus = url.searchParams.get("localeFocus") as AgentSourceLocaleFocusValue | null;
     const adminPinned = booleanFilter(url.searchParams.get("adminPinned"));
     const adminBlocked = booleanFilter(url.searchParams.get("adminBlocked"));
     const [sources, totalItems] = await listAgentSources(
@@ -37,6 +41,7 @@ export function GET(request: NextRequest) {
             }
           : {}),
         ...(status && statuses.has(status) ? { status } : {}),
+        ...(localeFocus && localeFocuses.has(localeFocus) ? { localeFocus } : {}),
         ...(adminPinned !== undefined ? { adminPinned } : {}),
         ...(adminBlocked !== undefined ? { adminBlocked } : {}),
         ...(url.searchParams.get("domain") ? { domain: url.searchParams.get("domain")! } : {}),
