@@ -17,17 +17,27 @@ production acceptance remains pending.
   distribution. The migration applied cleanly to the local test database; source administration
   passed 22/22 PostgreSQL scenarios, focused schema/audit and admin/OpenAPI checks passed 39/39,
   OpenAPI validated all 136 runtime operations, and lint plus strict typecheck passed. Production
-  remains exact `2cee1490`; this stacked package is not yet merged or deployed.
-- 2026-07-29: anonymous-public GTM/Hotjar and the bounded maintenance package reached production at
-  exact SHA `2cee14909cbd3f66ad785e270d7710325ca3973e`. Anonymous `/hakkinda` loaded both
-  providers, while login, authenticated public and moderation pages loaded neither; the response
-  retained one CSP header. The first maintenance oneshot failed before application/database work
-  because `ProtectHome=yes` hid Docker's default deploy-home config path. The timer was disabled
-  fail-closed and no cleanup was claimed. Main SHA
-  `6136cc2610ee4e114193daddbbe1e9c495e10789` keeps home protection and supplies a private
-  systemd runtime `DOCKER_CONFIG`; exact CI `30457800684` and Release Candidate Bundle
-  `30458291777` are green. Production re-enable and aggregate-only cleanup smoke await the required
-  specific approval.
+  remains exact `6136cc2`; this package is not yet merged or deployed.
+- 2026-07-29: anonymous-public analytics and bounded operational-record maintenance code shipped
+  through exact production SHA `2cee14909cbd3f66ad785e270d7710325ca3973e`, then the maintenance
+  Docker-config correction reached exact production SHA
+  `6136cc2610ee4e114193daddbbe1e9c495e10789` from Release Candidate Bundle run
+  `30458291777`, artifact `8726726123`, digest
+  `sha256:0e1a412cd6a1b65e9646576f4e4d2059b4dcd79ade574e723eb0def210f4a086`.
+  Two natural runs drained without cancellation; checkout, image and immutable runtime converged
+  on each exact SHA; health/readiness/search returned `200/200/200`; the worker closed
+  `active/running` with zero restart. Anonymous public browser smoke loaded GTM and Hotjar; login,
+  authenticated public and moderation pages loaded neither, with one CSP header and no console/CSP
+  error. The first versioned maintenance service smoke failed before cleanup with Docker exit
+  `125`: `ProtectHome=yes` correctly hid
+  `/home/deploy/.docker/config.json`, but the Docker CLI still selected that default path. The
+  broken timer was disabled fail-closed and no cleanup reached PostgreSQL. The corrected service
+  keeps `ProtectHome=yes`, uses a private systemd runtime `DOCKER_CONFIG`, is root-owned mode
+  `0644`, and its persistent hourly timer is now enabled and active. One approved bounded smoke
+  deleted four 500-row batches from each expired operational table: rate-limit buckets
+  `175705 → 173705` and idempotency records `1359948 → 1357948`. Its latest invocation is
+  `success`, contains one aggregate completion event and no permission/Docker error; app
+  health/readiness remain `200/200` and the worker remains `active/running` with zero restart.
 - 2026-07-29: authenticated runtime worker/lane observability is implemented on the isolated
   `codex/runtime-lane-observability` branch without production access. Additive migration 23
   extends the existing credential-roster acknowledgement with one privacy-safe worker boot
@@ -40,9 +50,10 @@ production acceptance remains pending.
   tests passed `10/10`, the complete unit suite passed 159 files / 776 tests, format, lint, strict
   typecheck, OpenAPI 136, M2 development traceability, secret/history scan and shared release smoke
   passed, and the production build generated 71 pages. Commit `b0fc6a1` is published through draft
-  PR 15; exact-head CI run `30452324287` passed quality, database, behavior, coverage, container,
-  browser and final validation. Merge and production remain pending; production is unchanged at
-  `64de0881`.
+  PR 15; final exact-head CI run `30462499534` passed quality, database, behavior, coverage,
+  container, browser and validation. PR 15 merged to main as
+  `b55e1e63c7c4f28f87da8f4775b3e73836533b94`; main push CI is running and production remains exact
+  `6136cc2`.
 - 2026-07-29: A5 trash/revival/appeal, runtime/source network hardening and canonical seed
   visibility are production-closed at exact SHA
   `64de0881f0a24df3abe72f86b054bfcd66fefaed`. Release Candidate Bundle run `30442768332`,

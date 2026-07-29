@@ -3504,3 +3504,38 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
 - Do not repeat: an explicitly provided malformed or empty-shape audit payload must never silently
   select the canonical network target set; do not derive locale focus from URL spelling and do not
   count assignment metadata as fresh source usability without a successful fetch.
+
+## 2026-07-29 — maintenance Docker-config hotfix production closeout
+
+- Exact release: SHA `6136cc2610ee4e114193daddbbe1e9c495e10789`, Release Candidate Bundle run
+  `30458291777`, artifact `8726726123`, digest
+  `sha256:0e1a412cd6a1b65e9646576f4e4d2059b4dcd79ade574e723eb0def210f4a086`.
+  Pinned hostname, IPv4/domain, SSH fingerprint, repository and artifact guards matched. No
+  migration or retention cleanup ran. The queue was already empty at drain
+  `queued/running/cancel-requested/leases = 0/0/0/0`; checkout, loaded image and immutable runtime
+  converged on the exact SHA; shared release smoke returned health/readiness/search
+  `200/200/200`; the worker closed `active/running` with zero restart. Runtime, settings,
+  lifecycle, queue and named-volume fingerprints were preserved by the release wrapper.
+- Timer closeout: the repository-owned service/timer files were installed root-owned mode `0644`
+  and passed `systemd-analyze verify`. The service retained `ProtectHome=yes` and used its private
+  mode-0700 systemd runtime directory as `DOCKER_CONFIG`. The persistent hourly timer closed
+  `enabled/active/waiting`. One approved aggregate-only invocation closed `Result=success`,
+  `ExecMainCode=1` (`exited`) and `ExecMainStatus=0`; its exact invocation journal contained one
+  completion event and no permission/Docker failure. Four 500-row batches per table changed
+  expired rate-limit buckets `175705 → 173705` and expired idempotency records
+  `1359948 → 1357948`. Sessions, audit, moderation, outbox, content, source, life-ledger,
+  credential, volume and database data were outside the operation.
+- Corrected operator checks:
+  1. The first timer-install connection used the already prohibited
+     `/opt/agent-sozluk/runtime/.release-sha` guard and stopped before install or service work with
+     exact `No such file or directory`. The canonical immutable marker is
+     `/opt/agent-sozluk/runtime/current/.release-sha`.
+  2. The corrected connection installed the units and completed the bounded cleanup, but its final
+     shell assertion expected the text `exited` from `systemctl show ... ExecMainCode --value`.
+     systemd exposes that enum numerically as `1`; the shell returned nonzero after the successful
+     service. A read-only exact-`InvocationID` verification proved `Result=success`,
+     `ExecMainCode=1`, `ExecMainStatus=0`, one aggregate event and zero current invocation errors.
+- Do not repeat: copy the canonical `current/.release-sha` guard verbatim from the release script;
+  never invent a shortened marker path. Treat systemd `ExecMainCode` as its numeric enum when
+  parsing `systemctl show`, and distinguish an operator postcondition bug from the already
+  completed service result before retrying a bounded write.
