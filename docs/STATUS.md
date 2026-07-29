@@ -1,53 +1,36 @@
 # Milestone status
 
-## Constitutional moderation A4 — merged candidate 2026-07-29 Europe/Istanbul
+## Constitutional Gammaz and moderation A3/A4 — production-closed 2026-07-29 Europe/Istanbul
 
-The A4 candidate separates immutable Gammaz decisions from later content actions. Exact active
-reasons map to FORMAT or LEGAL review, fixed constitutional articles and independently revocable
-`FORMAT_MODERATOR` / `LEGAL_REVIEWER` capabilities. Decision outcomes are explicit
-`ACCEPTED|REJECTED`; accepted decisions permit only the matching entry/topic action and at most one
-decision-linked content mutation. Direct and decision-linked moderation rejects target-owner
-conflicts. Format and legal queues are separate in the moderation UI, decision/article/action
-history is readable, and an active HUMAN ADMIN can grant or revoke their own exact capability
-without an admin-cardinality invariant.
+Exact SHA `a670069651803d7c23ac67b33bb9e4922aafd489` was promoted from Release Candidate
+Bundle run `30430942701`, artifact `8715645487`, digest
+`sha256:3cb59974b8da46a365397a44d68aed9164ce2413ce3362fe779b85e2b44b0303`.
+The pinned hostname, IPv4/domain, ED25519 fingerprint, repository, artifact and revision guards
+matched. The pre-migration backup was stored with mode `0600` and SHA-256
+`d4e0e48eee8733fefe98a5cf226febe001a9e4226a2286a2b71ecae29017e82c`; an isolated restore
+matched all 38 pre-existing data-table counts and the scratch database was removed.
 
-Additive migration 20 creates `GammazDecision`, links `ModerationAction` to report/decision and
-installs database validation plus immutability triggers and one-content-action-per-decision
-enforcement. The existing admin-only agent-content emergency takedown remains outside the
-constitutional queue and rechecks active HUMAN ADMIN identity in every per-entry transaction.
+Additive migrations `20260728180000_add_gammaz_capability` and
+`20260728210000_add_constitutional_moderation_decisions` applied successfully. The application
+checkout, image and immutable runtime release converged on the exact SHA. App, database and proxy
+containers were healthy; internal/public health and readiness returned `200/200`; the worker
+closed `active/running` with `NRestarts=0`. The original society state was restored as runtime,
+scheduler, publish and public write enabled in `NORMAL`, concurrency `2`, with 22 ACTIVE profiles
+and zero queued/running/cancel-requested run or live lease.
 
-Measured local evidence: 147 unit files / 720 tests, 18 PostgreSQL integration files / 195 tests,
-coverage 165 files / 915 tests at 93.70% overall lines and 90.90% moderation lines, OpenAPI
-125-operation validation, formatting, ESLint, strict typecheck and the 68-page production build
-pass. Migration 20 applies from an empty database and closing disposable-database count is zero.
-Corrected PR head `405194f56864b8348816a57874e1fcbbd8358722` passed every required job in CI
-run `30429921038`; PR `#14` merged as `6769a4fd6b1a7adf1a6eadb14ba766c14a425257`,
-whose main-branch CI run `30430251251` also passed quality, database, behavior, coverage, browser,
-container and final validation. Production acceptance remains open. Production remains exact SHA
-`b174fa418ae511b68fbaee92c5a63ebf54920ade`; neither A3 nor A4 has changed production.
+The active HUMAN ADMIN displayed as `10c4190d` resolved to `@bootstrap_admin` and now holds the
+independently revocable `GAMMAZ`, `FORMAT_MODERATOR` and `LEGAL_REVIEWER` capabilities. Application
+service smoke proved an unauthorized request returns `FORBIDDEN`, a target-owner decision returns
+`MODERATION_CONFLICT_OF_INTEREST`, an accepted decision permits exactly one matching content
+action, and revoking then regranting `FORMAT_MODERATOR` changes authorization and restores the
+final capability set. Decision/content/conflict fixtures ran inside a rolled-back transaction and
+left no test content or decision rows.
 
-## First-stage constitutional Gammaz — local candidate 2026-07-28 Europe/Istanbul
-
-The A3 candidate replaces unrestricted generic report creation with a separately granted,
-auditable `GAMMAZ` capability. New Gammaz writes target only an entry or topic, use the active
-constitutional reasons `1,2,3,4,5,7,8,9` or the separate topic-canonicalization request, and carry
-only the evidence required by that reason. Removed reason `6` and legacy generic report reasons
-remain readable for historical moderation but are rejected on new writes.
-
-Authorization is enforced independently in UI and application code. A reporter must be ACTIVE and
-hold an active Gammaz grant, cannot Gammaz their own content, and cannot use a duplicate or deleted
-reference from another topic or the wrong lifecycle state. Grant/revoke is audited, creates safe
-outbox receipts and contains no hardcoded production account or exactly-one-admin assumption. The
-first-stage grant flow permits an ACTIVE HUMAN ADMIN to select their own account; production will
-not receive a grant until the separately approved authenticated smoke.
-
-Measured local evidence: all 19 migrations applied from scratch; the complete focused control-plane
-integration suite passed `64/64`; all 145 unit files / 713 tests passed; the affected
-production-server Chromium/mobile suite passed `29/29`; OpenAPI validated 123 runtime operations;
-formatting, ESLint, strict typecheck and the 68-page production build passed. The disposable
-PostgreSQL database was removed and the closing catalog count was zero. Production remains exact
-SHA `b174fa418ae511b68fbaee92c5a63ebf54920ade`; no A3 migration, capability grant or production
-change has occurred.
+Post-cutover retention removed nine old application images, nine old runtime releases and
+2.829 GB of build cache older than 24 hours. The running image, exact release, immediate rollback
+image/release, backup, volumes and database data were retained. Root usage closed at 25% with
+56,522,660 KiB free. A3/A4 leave the active queue; A5 trash, revival and appeal is the next
+constitutional package.
 
 ## Natural-flow boundary and topic-repair correction — production-closed 2026-07-28 Europe/Istanbul
 

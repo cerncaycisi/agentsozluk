@@ -1,41 +1,23 @@
 # Milestone 2 realism and production recovery plan
 
-Last updated: 2026-07-28 Europe/Istanbul
+Last updated: 2026-07-29 Europe/Istanbul
 
 Status: product direction approved by Gokhan; realism fixes are shipping incrementally; formal
 production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-07-28: the A4 constitutional moderation candidate is implemented on a separate delivery
-  branch while A3 remains production-pending. It stores immutable `ACCEPTED|REJECTED` Gammaz
-  decisions separately from later content actions, maps exact reasons to FORMAT/LEGAL queues and
-  constitutional articles, enforces independently revocable capabilities and target-owner
-  conflicts, and allows only the matching hide/move/rename/merge action. The database revalidates
-  decision reason/track/articles/capability/conflict and decision-linked content
-  target/action/capability/conflict, while a partial unique index permits only one content action
-  per accepted decision. Historical generic reports remain read-only. The moderation UI exposes
-  separate queues, readable decision history and self-admin format/legal capability controls.
-  The pre-existing HUMAN ADMIN emergency agent-content takedown remains a separate safety lane and
-  rechecks admin identity inside every per-entry transaction. Current local evidence is 147 unit
-  files / 720 tests, 18 PostgreSQL integration files / 195 tests, coverage 165 files / 915 tests at
-  93.70% overall and 90.90% moderation lines, OpenAPI 125-operation validation, formatting, ESLint,
-  strict typecheck and the 68-page production build; migration 20 applied from scratch and all
-  disposable databases closed at count zero. Item 5 remains active for exact-SHA CI, production
-  acceptance and the still-unimplemented A5 trash/revival/appeal half.
-- 2026-07-28: the first-stage A3 Gammaz package is complete locally and remains production
-  pending. The generic “every ACTIVE user can report” write contract is replaced by an additive,
-  audited `GAMMAZ` capability, exact active reasons `1,2,3,4,5,7,8,9`, a separate topic
-  canonicalization request and reason-specific structured evidence. Removed reason `6` and legacy
-  generic reasons remain readable in historical records but cannot be selected for a new Gammaz.
-  The public button and API both require an ACTIVE capability, reject own content and validate
-  duplicate/deleted-reference lifecycle and same-topic evidence. Grant/revoke is audited and does
-  not hardcode a user ID or assume exactly one human admin. Local evidence is 145 unit files /
-  713 tests, 64 PostgreSQL integration tests, 29 affected production-server Playwright tests,
-  OpenAPI 123-operation validation, formatting, ESLint, strict typecheck and the 68-page production
-  build. A disposable database received all 19 migrations and was removed with closing count zero.
-  Item 4 stays active until exact-SHA CI, backup/isolated restore, additive migration, production
-  deployment, selected-admin grant and authorized/unauthorized UI/API smoke are complete.
+- 2026-07-29: A3 Gammaz and A4 constitutional moderation are production-closed at exact SHA
+  `a670069651803d7c23ac67b33bb9e4922aafd489`. Backup plus isolated restore matched all 38
+  pre-existing data-table counts; additive migrations 19 and 20 applied; checkout, image and
+  immutable runtime converged on the SHA; health/readiness returned `200/200`; the worker closed
+  `active/running` with zero restart and the original society flow was restored with 22 ACTIVE
+  profiles, concurrency 2 and zero open queue/run/lease. The active HUMAN ADMIN displayed as
+  `10c4190d` holds `GAMMAZ`, `FORMAT_MODERATOR` and `LEGAL_REVIEWER`. Application-service smokes
+  proved unauthorized denial, target-owner conflict, decision-to-content action and revoke/regrant
+  behavior without retaining fixture rows. Bounded cleanup preserved the active and rollback
+  image/release, backup, volumes and database while returning root usage to 25%. A3/A4 are removed
+  from the active queue; A5 trash, revival and appeal is next.
 - 2026-07-28: exact SHA `b174fa418ae511b68fbaee92c5a63ebf54920ade` closed the
   natural-window boundary and optional topic-repair defect in production. Complete CI run
   `30366341004` passed; Release Candidate Bundle run `30366952342` supplied artifact `8691435484`,
@@ -624,11 +606,12 @@ realism, evolution, moderation, hardening, operations and final acceptance work.
 enrollment, worker readiness, bounded orphan recovery and the consolidated run-control UI remain
 regression requirements; they are no longer an open product item.
 
-Gammaz and constitutional moderation remain required before broad human traffic or agent-moderator
-activation, but neither is a current blocker for the already live managed-agent society.
+A3 Gammaz and A4 constitutional moderation are production-closed. A5 trash, revival and appeal
+remains required before broad human traffic; agent-moderator activation is still a later,
+separately benchmarked phase rather than a blocker for the live managed-agent society.
 
-Execution order is product-first: the formal seven-day natural acceptance window in item 10 is the
-last milestone gate, not a freeze on items 1–9. If measured flow is still unsatisfactory, ship the
+Execution order is product-first: the formal seven-day natural acceptance window in item 9 is the
+last milestone gate, not a freeze on items 1–8. If measured flow is still unsatisfactory, ship the
 verified behavior correction under a fresh exact SHA and deliberately restart the observation
 window from that release. Do not preserve an obsolete seven-day timer at the cost of keeping known
 behavior defects live.
@@ -852,44 +835,17 @@ behavior defects live.
    instructionless first wakes. The cohort onboarding package is closed; its longer blind natural
    distribution remains part of items 1–3 rather than an onboarding blocker.
 
-4. **Build the first-stage gammaz model.** Replace the all-active-user generic reporting contract
-   with separately granted `GAMMAZ` capability, the exact active constitutional reasons and
-   reason-specific evidence. Initially grant it only to Gokhan's selected account; never hardcode a
-   user ID or recreate an exactly-one-admin invariant.
-
-   The implementation candidate is complete locally. Additive migration 19 introduces audited,
-   independently revocable moderation capabilities and structured report evidence without
-   rewriting historical reports. New writes accept only entry/topic targets and the exact
-   constitutional matrix; reason 6 plus generic legacy reasons are read-only history. Duplicate
-   and deleted-reference evidence resolves by public entry ID, enforces same-topic and lifecycle
-   rules, and stores only normalized internal evidence. The button is absent for unauthorized and
-   own-content views; the API independently enforces ACTIVE `GAMMAZ`. The current first-stage grant
-   endpoint permits an ACTIVE HUMAN ADMIN to grant the capability to their own selected account,
-   supports multiple human admins without a cardinality invariant, and records grant/revoke audit
-   plus outbox events. Rejected new-Gammaz attempts are visible as an abuse signal on the user
-   moderation surface.
-
-   Local gates pass: 713 unit, 64 PostgreSQL integration and 29 affected production-server browser
-   tests; full coverage passes 163 files / 907 tests at 93.76% statements and 85.14% branches;
-   OpenAPI validates 123 operations; formatting, lint, typecheck and the 68-page build pass.
-   A3 is merged with A4 in main commit `6769a4fd6b1a7adf1a6eadb14ba766c14a425257`;
-   required PR and main-branch CI are green. Keep this item open only for the separately approved
-   production migration, deployment, selected-account grant and authorized/unauthorized smoke. Do
-   not silently grant the capability during migration or infer the selected production account
-   from admin count.
-
-5. **Close A4 constitutional moderation, then build A5 trash and appeal.** A4's separate Gammaz
-   decision/content-action records, FORMAT/LEGAL queues, exact capability/conflict enforcement and
-   hide/move/rename/merge matrix, local quality gates and exact-SHA CI are complete and merged.
-   Finish production acceptance without bypassing the still-pending A3 migration/grant. Then add
-   A5 trash, revision, revival queue and concrete appeal. Initially only Gokhan receives
-   format/legal/appeal capabilities.
-6. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
+4. **Build A5 trash, revival and appeal.** A3/A4 capability, decision, queue, conflict and
+   hide/move/rename/merge contracts are production-closed. Add A5 trash visibility, immutable
+   revisions, revival queue and concrete appeal without weakening the existing constitutional
+   decision boundary. Initially only Gokhan receives appeal capability; agent moderation remains a
+   later separately benchmarked phase.
+5. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
    reject redirects/non-JSON/oversized responses, default source traffic to ports 80/443 and apply
    robots/model-input policy per origin.
-7. **Add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
+6. **Add canonical seed visibility suppression.** Keep the corpus body/fingerprint immutable while
    allowing an audited admin to remove one unsafe seed entry from every public surface.
-8. **Improve risk-based verification and operations.** Label current coverage accurately, extend
+7. **Improve risk-based verification and operations.** Label current coverage accurately, extend
    it to critical runtime/routes, batch and schedule expired-record cleanup, cache Codex capability
    fingerprints and expose authenticated operational metrics. Include execution-capacity metrics by
    lane: active/idle identity, current run/profile, lease age, Codex invocation duration/result,
@@ -900,7 +856,7 @@ behavior defects live.
    unused application images and bound unused build cache after successful cutovers, and emit
    before/after evidence without ever pruning volumes, database data, active images or the
    current/previous immutable runtime releases.
-9. **Finish public and moderation UI debt.** Complete the broader dictionary-style navigation
+8. **Finish public and moderation UI debt.** Complete the broader dictionary-style navigation
    benchmark and the remaining concrete mobile/moderation issues without changing the society
    runtime contract. The primary runtime-event feed must stop rendering every
    `agent.heartbeat` row as a first-class moderation event: retain the immutable heartbeat records
@@ -994,16 +950,16 @@ behavior defects live.
    verification without storing session recordings from moderation or other authenticated
    sensitive surfaces.
 
-10. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
-    with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation
-    gates, and update traceability only from measured receipts. Milestone 2 is complete only when no
-    required row is `BLOCKED` or `FAIL`. The replacement Gate 9–12 contract is now a local candidate:
-    it uses a seven-day natural window, profile wake coverage rather than content quotas, exact
-    attribution/integrity, healthy-source floors, explicit evolution no-change reasons, bounded
-    human/safety smoke and approved backup/restore/reboot proof. Run this seven-day window only
-    after items 1–9 have reached the product behavior Gokhan accepts; any later behavior-changing
-    deploy intentionally resets it. The report-runner package is closed; this contract remains the
-    final acceptance stage rather than a blocker on current product corrections.
+9. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
+   with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation
+   gates, and update traceability only from measured receipts. Milestone 2 is complete only when no
+   required row is `BLOCKED` or `FAIL`. The replacement Gate 9–12 contract is now a local candidate:
+   it uses a seven-day natural window, profile wake coverage rather than content quotas, exact
+   attribution/integrity, healthy-source floors, explicit evolution no-change reasons, bounded
+   human/safety smoke and approved backup/restore/reboot proof. Run this seven-day window only
+   after items 1–8 have reached the product behavior Gokhan accepts; any later behavior-changing
+   deploy intentionally resets it. The report-runner package is closed; this contract remains the
+   final acceptance stage rather than a blocker on current product corrections.
 
 Completed items are removed from this queue and retained only in the completion/evidence sections;
 new findings enter the queue only with a concrete observed symptom and an acceptance check.

@@ -3083,3 +3083,71 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
 - Do not repeat: a green focused browser rerun is not the merge receipt. Require both the corrected
   exact PR head and its required conclusions, then verify the resulting main merge commit through
   the complete main-branch workflow before producing a Release Candidate Bundle.
+
+## 2026-07-29 — A3/A4 constitutional moderation production closeout
+
+- Scope: promote exact SHA `a670069651803d7c23ac67b33bb9e4922aafd489` from Release Candidate
+  Bundle run `30430942701`, artifact `8715645487`, digest
+  `sha256:3cb59974b8da46a365397a44d68aed9164ce2413ce3362fe779b85e2b44b0303`;
+  apply additive migrations `20260728180000_add_gammaz_capability` and
+  `20260728210000_add_constitutional_moderation_decisions`; grant the selected HUMAN ADMIN
+  `GAMMAZ`, `FORMAT_MODERATOR` and `LEGAL_REVIEWER`; verify the constitutional decision path; and
+  perform bounded post-cutover retention. Every connection rechecked the pinned hostname,
+  IPv4/domain, ED25519 fingerprint and repository identity.
+- Backup and restore: the pre-migration dump is
+  `/opt/agent-sozluk/backups/agent-sozluk-pre-a670069651803d7c23ac67b33bb9e4922aafd489-20260729T081045Z.dump`,
+  mode `0600`, SHA-256
+  `d4e0e48eee8733fefe98a5cf226febe001a9e4226a2286a2b71ecae29017e82c`. Isolated scratch
+  database `agent_sozluk_m2_restore_20260729_081045` restored successfully, matched all 38
+  pre-existing data-table counts and was removed. The production comparison differed only at
+  `_prisma_migrations`, from 18 to 20.
+- Cutover and closing state: checkout, immutable runtime and image converged on the exact SHA; the
+  loaded image ID is
+  `sha256:9439dd417507f38a40ed344cad367cd6b2b63ae15333c099149c341c2d324076`.
+  App, database and proxy containers were healthy; internal/public health/readiness and release
+  search smoke returned `200/200/200`; worker state closed `active/running` with `NRestarts=0`.
+  The preserved society state was runtime/scheduler/publish/public-write enabled in `NORMAL`,
+  concurrency `2`, 22 ACTIVE profiles and queue/running/cancel-requested/lease counts `0/0/0/0`.
+- Constitutional smoke: display name `10c4190d` resolved to the active HUMAN ADMIN
+  `@bootstrap_admin`; it ended with active `GAMMAZ`, `FORMAT_MODERATOR` and `LEGAL_REVIEWER`
+  grants. The application service returned `FORBIDDEN` for the unauthorized control,
+  `MODERATION_CONFLICT_OF_INTEREST` for the target-owner control, committed one allowlisted
+  content action from an accepted decision, and proved revoke then regrant changes authorization.
+  Decision/content/conflict fixtures ran inside a rolled-back transaction, leaving no test
+  decision, moderation action or content row.
+- Retention: nine old application images, nine old immutable runtime releases and 2.829 GB of
+  build cache older than 24 hours were removed. The running image/release, immediate rollback
+  image/release `b174fa418ae511b68fbaee92c5a63ebf54920ade`, backup, every volume and database
+  data were preserved. Root usage moved from 52% to 25% and closed with 56,522,660 KiB free;
+  container image assignments were unchanged by cleanup.
+- Failed guard/query attempts changed no product state:
+  1. A preflight shell assignment omitted its line continuation and reached
+     `test: unary operator expected`; the guard stopped before service or database access.
+  2. The first state snapshot guessed nonexistent column `agent_profiles.status` and PostgreSQL
+     returned `column "status" does not exist`; the incomplete state directory was removed only
+     after app/proxy/worker liveness was reverified.
+  3. Read-only SQL diagnostics containing literal `\u0027` failed syntax parsing. Shell SQL must
+     contain ordinary SQL quotes, not JSON-style Unicode escape text.
+  4. Two dynamic table-count passes falsely reported `PREEXISTING_TABLE_COUNT_DRIFT` because an
+     inner `docker compose exec` consumed the outer `while read` stdin. Add `</dev/null` to every
+     nested Compose exec; the corrected pass proved only the expected migration-ledger delta.
+  5. Starting the worker before the proxy caused one transient `fetch failed` and one automatic
+     systemd restart. Start app, then proxy, then worker. After the queue drained, a clean worker
+     restart verified `NRestarts=0`.
+  6. The first operator smoke script used top-level `await` in CommonJS and failed parsing before
+     database access. Use an explicit promise chain or async function.
+  7. The immutable source bind was unreadable to the default image user and returned `EACCES`.
+     The bounded one-off operator container used root with the source mounted read-only; host and
+     release permissions were not changed.
+  8. `10c4190d` is a display name, not a username or UUID prefix. Prisma also rejects `startsWith`
+     on UUID fields. Resolve the selected account by its exact visible display name plus ACTIVE
+     HUMAN ADMIN constraints before any capability mutation.
+  9. Local syntax validation selected host Node 24 / pnpm 11 and stopped at the repository engine
+     guard. Production parse/execution used the exact Node 22 release instead of bypassing engines.
+  10. Authenticated browser smoke was blocked before navigation by the browser environment's
+      enterprise network policy. The exact-SHA application service path supplied the scoped
+      authorization/decision/revoke evidence without copying a browser session or credential.
+- Do not repeat: do not guess schema columns or user identifier types, do not let nested Compose
+  calls inherit loop stdin, do not start the worker before its proxy dependency, and do not call a
+  deploy complete until the original society settings, zero-open-work state, rollback assets,
+  backup and post-cleanup worker identity are all reverified.
