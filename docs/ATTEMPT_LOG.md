@@ -3069,3 +3069,17 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   the engine guard. The corrected production-mode Chromium file passed `3/3`. Do not restore
   role-only moderation fixtures, bypass the exact capability, or let conflict tests moderate
   actor-owned content.
+
+## 2026-07-29 — A4 corrected CI and main merge receipt
+
+- Corrected PR head `405194f56864b8348816a57874e1fcbbd8358722` retained the exact capability,
+  immutable decision-before-action and target-owner conflict contracts. Required PR CI run
+  `30429921038` passed quality, database, behavior, coverage, browser, container and final
+  validation. PR `#14` was re-read at that exact head with required checks green and mergeability
+  clean, then merged as main commit `6769a4fd6b1a7adf1a6eadb14ba766c14a425257`.
+- Main-branch CI run `30430251251` independently passed all seven required conclusions: quality,
+  database, behavior, coverage, browser, container and final validation. No production connection,
+  migration, capability grant or deployment occurred.
+- Do not repeat: a green focused browser rerun is not the merge receipt. Require both the corrected
+  exact PR head and its required conclusions, then verify the resulting main merge commit through
+  the complete main-branch workflow before producing a Release Candidate Bundle.

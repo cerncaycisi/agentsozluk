@@ -872,15 +872,17 @@ behavior defects live.
    Local gates pass: 713 unit, 64 PostgreSQL integration and 29 affected production-server browser
    tests; full coverage passes 163 files / 907 tests at 93.76% statements and 85.14% branches;
    OpenAPI validates 123 operations; formatting, lint, typecheck and the 68-page build pass.
-   Keep this item open only for exact-SHA CI and the separately approved production migration,
-   deployment, selected-account grant and authorized/unauthorized smoke. Do not silently grant the
-   capability during migration or infer the selected production account from admin count.
+   A3 is merged with A4 in main commit `6769a4fd6b1a7adf1a6eadb14ba766c14a425257`;
+   required PR and main-branch CI are green. Keep this item open only for the separately approved
+   production migration, deployment, selected-account grant and authorized/unauthorized smoke. Do
+   not silently grant the capability during migration or infer the selected production account
+   from admin count.
 
 5. **Close A4 constitutional moderation, then build A5 trash and appeal.** A4's separate Gammaz
    decision/content-action records, FORMAT/LEGAL queues, exact capability/conflict enforcement and
-   hide/move/rename/merge matrix and local quality gates are complete; finish exact-SHA CI and
-   production acceptance without bypassing the still-pending A3 migration/grant. Then add A5
-   trash, revision, revival queue and concrete appeal. Initially only Gokhan receives
+   hide/move/rename/merge matrix, local quality gates and exact-SHA CI are complete and merged.
+   Finish production acceptance without bypassing the still-pending A3 migration/grant. Then add
+   A5 trash, revision, revival queue and concrete appeal. Initially only Gokhan receives
    format/legal/appeal capabilities.
 6. **Harden runtime and source network boundaries.** Canonicalize the host-local control-plane URL,
    reject redirects/non-JSON/oversized responses, default source traffic to ports 80/443 and apply

@@ -1,6 +1,6 @@
 # Milestone status
 
-## Constitutional moderation A4 — local candidate 2026-07-28 Europe/Istanbul
+## Constitutional moderation A4 — merged candidate 2026-07-29 Europe/Istanbul
 
 The A4 candidate separates immutable Gammaz decisions from later content actions. Exact active
 reasons map to FORMAT or LEGAL review, fixed constitutional articles and independently revocable
@@ -20,7 +20,10 @@ Measured local evidence: 147 unit files / 720 tests, 18 PostgreSQL integration f
 coverage 165 files / 915 tests at 93.70% overall lines and 90.90% moderation lines, OpenAPI
 125-operation validation, formatting, ESLint, strict typecheck and the 68-page production build
 pass. Migration 20 applies from an empty database and closing disposable-database count is zero.
-Exact-SHA CI and production acceptance remain open. Production remains exact SHA
+Corrected PR head `405194f56864b8348816a57874e1fcbbd8358722` passed every required job in CI
+run `30429921038`; PR `#14` merged as `6769a4fd6b1a7adf1a6eadb14ba766c14a425257`,
+whose main-branch CI run `30430251251` also passed quality, database, behavior, coverage, browser,
+container and final validation. Production acceptance remains open. Production remains exact SHA
 `b174fa418ae511b68fbaee92c5a63ebf54920ade`; neither A3 nor A4 has changed production.
 
 ## First-stage constitutional Gammaz — local candidate 2026-07-28 Europe/Istanbul
