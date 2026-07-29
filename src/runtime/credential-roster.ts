@@ -1,6 +1,7 @@
 import {
   RuntimeControlPlaneError,
   type RuntimeCredentialRosterControlPlane,
+  type RuntimeWorkerTelemetry,
 } from "@/runtime/control-plane-client";
 import { unsealRuntimeCredential } from "@/modules/agents/domain/runtime-credential-enrollment";
 
@@ -10,6 +11,7 @@ export class RuntimeCredentialRosterLoader {
   readonly #controlPlane: RuntimeCredentialRosterControlPlane;
   readonly #workerId: string;
   readonly #privateKeyPem: string | Buffer;
+  readonly #workerTelemetry: RuntimeWorkerTelemetry | undefined;
   #managedCredentials: string[] = [];
   readonly #baselineCredentialIds = new Map<string, string>();
   readonly #rejectedBaselineCredentials = new Set<string>();
@@ -18,10 +20,12 @@ export class RuntimeCredentialRosterLoader {
     controlPlane: RuntimeCredentialRosterControlPlane;
     workerId: string;
     privateKeyPem: string | Buffer;
+    workerTelemetry?: RuntimeWorkerTelemetry;
   }) {
     this.#controlPlane = input.controlPlane;
     this.#workerId = input.workerId;
     this.#privateKeyPem = input.privateKeyPem;
+    this.#workerTelemetry = input.workerTelemetry;
   }
 
   async refresh(baselineCredentials: string[]): Promise<string[]> {
@@ -89,17 +93,27 @@ export class RuntimeCredentialRosterLoader {
         throw new Error("Runtime credential roster envelope doğrulaması başarısız.");
       return credential;
     });
-    await this.#controlPlane.acknowledgeCredentialRoster(
-      authenticationCredential,
-      this.#workerId,
-      roster.desiredFingerprint,
-      [
-        ...new Set([
-          ...baselineCredentialIds,
-          ...roster.entries.map(({ credentialId }) => credentialId),
-        ]),
-      ],
-    );
+    const loadedCredentialIds = [
+      ...new Set([
+        ...baselineCredentialIds,
+        ...roster.entries.map(({ credentialId }) => credentialId),
+      ]),
+    ];
+    if (this.#workerTelemetry)
+      await this.#controlPlane.acknowledgeCredentialRoster(
+        authenticationCredential,
+        this.#workerId,
+        roster.desiredFingerprint,
+        loadedCredentialIds,
+        this.#workerTelemetry,
+      );
+    else
+      await this.#controlPlane.acknowledgeCredentialRoster(
+        authenticationCredential,
+        this.#workerId,
+        roster.desiredFingerprint,
+        loadedCredentialIds,
+      );
     this.#managedCredentials = managedCredentials;
     return [...new Set([...loadedBaselineCredentials, ...managedCredentials])];
   }

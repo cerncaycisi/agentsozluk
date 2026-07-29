@@ -55,6 +55,13 @@ describe("runtime credential enrollment", () => {
     const baselineCredentialId = randomUUID();
     const baselineProfileId = randomUUID();
     const desiredFingerprint = "f".repeat(64);
+    const workerTelemetry = {
+      bootId: randomUUID(),
+      processingLanes: 2,
+      codexVersion: "codex-cli 0.150.0",
+      promptProfileHash: "a".repeat(64),
+      startedAt: "2026-07-29T12:00:00.000Z",
+    };
     const plane: RuntimeCredentialRosterControlPlane = {
       credentialRoster: vi.fn().mockResolvedValue({
         workerId: "worker-a",
@@ -84,6 +91,7 @@ describe("runtime credential enrollment", () => {
       controlPlane: plane,
       workerId: "worker-a",
       privateKeyPem: keys.privateKeyPem,
+      workerTelemetry,
     });
 
     await expect(loader.refresh([baseline])).resolves.toEqual([baseline, enrolled]);
@@ -95,6 +103,7 @@ describe("runtime credential enrollment", () => {
       "worker-a",
       desiredFingerprint,
       [baselineCredentialId, credentialId],
+      workerTelemetry,
     );
   });
 

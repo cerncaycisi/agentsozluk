@@ -114,6 +114,16 @@ const runtimeCredentialRosterSyncResponseSchema = z.object({
   desiredFingerprint: z.string().regex(/^[a-f0-9]{64}$/u),
   loadedCredentialCount: z.number().int().nonnegative(),
   syncedAt: z.union([z.iso.datetime(), z.date()]),
+  workerTelemetry: z
+    .object({
+      bootId: z.string().uuid(),
+      processingLanes: z.number().int().min(1).max(2),
+      codexVersion: z.string().nullable(),
+      promptProfileHash: z.string().nullable(),
+      startedAt: z.union([z.iso.datetime(), z.date()]).nullable(),
+      restartCount: z.number().int().nonnegative(),
+    })
+    .nullable(),
 });
 
 export type RuntimeLease = z.infer<typeof leaseResponseSchema>;
@@ -121,6 +131,14 @@ export type RuntimeContext = z.infer<typeof contextResponseSchema>;
 export type RuntimeExecution = z.infer<typeof actionsResponseSchema>;
 export type RuntimeStochasticTickResult = z.infer<typeof stochasticTickResponseSchema>;
 export type RuntimeCredentialRoster = z.infer<typeof runtimeCredentialRosterResponseSchema>;
+
+export interface RuntimeWorkerTelemetry {
+  bootId: string;
+  processingLanes: number;
+  codexVersion: string;
+  promptProfileHash: string;
+  startedAt: string;
+}
 
 export interface RuntimeLifeEventsBatch {
   observations: unknown[];
@@ -150,6 +168,7 @@ export interface RuntimeCredentialRosterControlPlane {
     workerId: string,
     desiredFingerprint: string,
     loadedCredentialIds: string[],
+    workerTelemetry?: RuntimeWorkerTelemetry,
   ): Promise<void>;
 }
 
@@ -461,6 +480,7 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
     workerId: string,
     desiredFingerprint: string,
     loadedCredentialIds: string[],
+    workerTelemetry?: RuntimeWorkerTelemetry,
   ): Promise<void> {
     const idempotencyKey = randomUUID();
     runtimeCredentialRosterSyncResponseSchema.parse(
@@ -468,7 +488,12 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
         credential,
         "POST",
         "/api/v1/internal/agent-runtime/credentials/sync",
-        { workerId, desiredFingerprint, loadedCredentialIds },
+        {
+          workerId,
+          desiredFingerprint,
+          loadedCredentialIds,
+          ...(workerTelemetry ? { workerTelemetry } : {}),
+        },
         undefined,
         undefined,
         { idempotencyKey, retryTransportFailureOnce: true },

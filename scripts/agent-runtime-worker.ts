@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { CodexCliProvider } from "../src/runtime/codex-cli-provider";
 import { RuntimeControlPlaneHttpClient } from "../src/runtime/control-plane-client";
@@ -11,6 +12,7 @@ import {
   DEFAULT_STOCHASTIC_TICK_MAXIMUM_MS,
   DEFAULT_STOCHASTIC_TICK_MINIMUM_MS,
   MAX_RUNTIME_PROCESSING_LANES,
+  RUNTIME_PROMPT_PROFILE_HASH,
 } from "../src/runtime/worker";
 import { SafeSourceReader } from "../src/runtime/source-reader";
 
@@ -57,6 +59,8 @@ const workerEnvironmentSchema = z
   .passthrough();
 
 async function main(): Promise<void> {
+  const workerStartedAt = new Date();
+  const workerBootId = randomUUID();
   const environment = workerEnvironmentSchema.parse(process.env);
   const { credentialFile, credentials } = await loadRuntimeCredentialFile(
     environment.AGENT_RUNTIME_CREDENTIAL_FILE,
@@ -83,6 +87,13 @@ async function main(): Promise<void> {
             environment.AGENT_RUNTIME_CREDENTIAL_FILE,
           )
         ).privateKeyPem,
+        workerTelemetry: {
+          bootId: workerBootId,
+          processingLanes: environment.AGENT_RUNTIME_PROCESSING_LANES,
+          codexVersion: capability.version,
+          promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+          startedAt: workerStartedAt.toISOString(),
+        },
       })
     : null;
   const worker = new AgentRuntimeWorker({

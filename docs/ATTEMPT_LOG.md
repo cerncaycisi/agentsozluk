@@ -3414,6 +3414,40 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   immutable evidence or user/content history, and never invoke the Codex fallback pnpm shim for
   this repository when the native Node 22/Corepack pnpm 10 toolchain is available.
 
+## 2026-07-29 — runtime worker and lane observability local candidate
+
+- Scope: reuse the existing credential-roster acknowledgement as the safe worker heartbeat and
+  expose authenticated execution-capacity evidence in `/moderasyon/agent-kapasite`. Additive
+  migration 23 records one worker boot UUID, configured lane count, Codex version, prompt
+  fingerprint, start time and restart count. Live lease/run records provide active/idle capacity
+  slots, writer, phase and lease age; terminal run metadata provides queue wait, Codex duration,
+  result, timeout and safe error code. No prompt, credential, content body, memory/belief text or
+  private reasoning is selected or displayed. No production connection or mutation occurred.
+- Verification: all 23 migrations applied in a unique allowlisted scratch database; the
+  onboarding/worker telemetry integration file passed `4/4` and the scratch database was removed.
+  Focused runtime-enrollment/capacity/UI checks passed `10/10`; the complete unit suite passed
+  159 files / 776 tests. Format, ESLint, strict typecheck, OpenAPI 136, M2 development
+  traceability, repository/history secret scan, shared release smoke, diff hygiene and the
+  71-page production build passed.
+- GitHub evidence: commit `b0fc6a188baa706887e9d5d3927e571d98b12189` is published through
+  draft PR 15. Exact-head CI run `30452324287` passed quality, database, behavior, coverage,
+  container, browser and the final validate gate. The GitHub-hosted Node 20 action deprecation
+  annotations were warnings on third-party action runtimes, not application-engine failures.
+- Corrected attempts:
+  1. The first focused command resolved the Codex fallback pnpm shim, which launched bundled Node
+     24.14.0/pnpm 11.9.0 and stopped at `ERR_PNPM_UNSUPPORTED_ENGINE` before any test. The exact
+     repository-native Homebrew Node 22.23.1 plus Corepack pnpm 10.34.5 command passed `10/10`.
+  2. The first PostgreSQL fixture supplied a terminal run `leaseOwner` without the matching lease
+     expiry and was rejected by `agent_runs_lease_check`. This was an invalid fixture, not product
+     behavior. Supplying the complete existing lease tuple made the integration rerun pass `4/4`.
+  3. Review found one application-layer direct Prisma delegate read before final verification.
+     The read now goes through the existing runtime-credential repository helper; architecture
+     boundaries were preserved rather than weakening a test.
+- Do not repeat: do not treat the fallback toolchain engine stop or an invalid lease fixture as a
+  product regression; do not add a second worker heartbeat service when the roster ACK already
+  supplies a fresh authenticated liveness channel; and do not expose boot UUIDs, raw prompts,
+  credentials or private reasoning in the moderation UI.
+
 ## 2026-07-29 — analytics deploy and maintenance Docker-config correction
 
 - Exact release: SHA `2cee14909cbd3f66ad785e270d7710325ca3973e`, Release Candidate Bundle run

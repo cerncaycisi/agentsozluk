@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { AgentCapabilityMeasurementForm } from "@/components/agents/agent-capability-measurement-form";
 import { RuntimeControlForm } from "@/components/agents/agent-admin-forms";
 import { GlobalRunControlForm } from "@/components/agents/global-run-control-form";
@@ -17,11 +18,17 @@ export const metadata: Metadata = {
 };
 
 function duration(value: number | null | undefined): string {
-  return value === null || value === undefined ? "Bilinmiyor" : `${(value / 60_000).toFixed(1)} dk`;
+  if (value === null || value === undefined) return "Bilinmiyor";
+  if (value < 60_000) return `${Math.round(value / 1000)} sn`;
+  return `${(value / 60_000).toFixed(1)} dk`;
 }
 
 function ratio(value: number | null): string {
   return value === null ? "Bilinmiyor" : `%${(value * 100).toFixed(1)}`;
+}
+
+function shortFingerprint(value: string | null | undefined): string {
+  return value ? `${value.slice(0, 12)}…` : "Bilinmiyor";
 }
 
 const capacityStatusLabels = {
@@ -86,6 +93,162 @@ export default async function AgentCapacityPage() {
           publicWriteEnabled={capacity.publishEnabled && capacity.publicWriteEnabled}
           runtimeOperatingMode={capacity.runtimeOperatingMode}
         />
+      </section>
+
+      <section className="surface-card mt-5 p-5" aria-labelledby="worker-lanes-title">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 id="worker-lanes-title" className="text-lg font-black">
+              Codex worker ve çalışma lane’leri
+            </h2>
+            <p className="mt-1 text-sm text-muted">
+              Worker’ın kendi roster heartbeat’i ile gerçek lease/run kayıtlarının güvenli özeti.
+            </p>
+          </div>
+          <span
+            className={`rounded-full border px-3 py-1 text-sm font-black ${
+              capacity.operational.worker?.online ? "text-success" : "text-destructive"
+            }`}
+          >
+            {capacity.operational.worker?.online ? "Worker çevrimiçi" : "Worker görünmüyor"}
+          </span>
+        </div>
+
+        <dl className="mt-4 grid gap-4 border-t pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <Row
+            label="Worker kimliği"
+            value={capacity.operational.worker?.workerId ?? "Henüz raporlanmadı"}
+          />
+          <Row
+            label="Son heartbeat"
+            value={
+              capacity.operational.worker
+                ? `${formatIstanbulTimestamp(capacity.operational.worker.lastSeenAt, {
+                    includeSeconds: true,
+                  })} · ${duration(capacity.operational.worker.lastSeenAgeMs)} önce`
+                : "—"
+            }
+          />
+          <Row
+            label="Worker başlangıcı"
+            value={
+              capacity.operational.worker?.startedAt
+                ? formatIstanbulTimestamp(capacity.operational.worker.startedAt, {
+                    includeSeconds: true,
+                  })
+                : "—"
+            }
+          />
+          <Row
+            label="Tespit edilen restart"
+            value={String(capacity.operational.worker?.restartCount ?? 0)}
+          />
+          <Row
+            label="Worker lane bildirimi"
+            value={String(
+              capacity.operational.worker?.processingLanes ??
+                capacity.operational.executionSlots.length,
+            )}
+          />
+          <Row
+            label="Codex sürümü"
+            value={capacity.operational.worker?.codexVersion ?? "Bilinmiyor"}
+          />
+          <Row
+            label="Prompt fingerprint"
+            value={shortFingerprint(capacity.operational.worker?.promptProfileHash)}
+          />
+          <Row label="Son 1 saatte timeout" value={String(capacity.operational.timeoutCount1h)} />
+        </dl>
+
+        <div className="mt-5 grid gap-3 lg:grid-cols-2">
+          {capacity.operational.executionSlots.map((slot) => (
+            <article
+              key={slot.slot}
+              className={`rounded-2xl border p-4 ${
+                slot.status === "ACTIVE" ? "border-primary/50 bg-primary/5" : "bg-page"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-black">Lane {slot.slot}</h3>
+                <span className="text-xs font-black">
+                  {slot.status === "ACTIVE" ? "ÇALIŞIYOR" : "BOŞ"}
+                </span>
+              </div>
+              {slot.runId ? (
+                <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                  <Row
+                    label="Yazar"
+                    value={`${slot.displayName ?? slot.username ?? "Bilinmiyor"}${
+                      slot.username ? ` (@${slot.username})` : ""
+                    }`}
+                  />
+                  <Row label="Aşama" value={slot.phase ?? slot.runStatus ?? "Başlıyor"} />
+                  <Row label="Run türü" value={slot.runType ?? "—"} />
+                  <Row label="Lease yaşı" value={duration(slot.leaseAgeMs)} />
+                  <Row label="Heartbeat yaşı" value={duration(slot.heartbeatAgeMs)} />
+                  <Row label="Lease kalan" value={duration(slot.leaseRemainingMs)} />
+                  <div className="sm:col-span-2">
+                    <Link
+                      href={`/moderasyon/agentlar/calisma/${slot.runId}`}
+                      className="font-bold text-primary hover:underline"
+                    >
+                      Run ayrıntısını aç
+                    </Link>
+                  </div>
+                </dl>
+              ) : (
+                <p className="mt-3 text-sm text-muted">
+                  Bu kapasite slotunda şu an lease edilmiş run yok.
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+
+        <details className="mt-5 rounded-2xl border p-4">
+          <summary className="cursor-pointer font-black">Son Codex çalışma sonuçları</summary>
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-[760px] text-left text-sm">
+              <thead>
+                <tr className="border-b text-muted">
+                  <th className="px-2 py-2">Yazar</th>
+                  <th className="px-2 py-2">Sonuç</th>
+                  <th className="px-2 py-2">Codex süresi</th>
+                  <th className="px-2 py-2">Kuyruk bekleme</th>
+                  <th className="px-2 py-2">Bitiş</th>
+                  <th className="px-2 py-2">Güvenli kod</th>
+                </tr>
+              </thead>
+              <tbody>
+                {capacity.operational.recentExecutions.map((run) => (
+                  <tr key={run.runId} className="border-b last:border-0">
+                    <td className="px-2 py-3">
+                      <Link
+                        href={`/moderasyon/agentlar/calisma/${run.runId}`}
+                        className="font-bold text-primary hover:underline"
+                      >
+                        {run.displayName ?? run.username}
+                      </Link>
+                    </td>
+                    <td className="px-2 py-3">{run.runStatus}</td>
+                    <td className="px-2 py-3">{duration(run.codexDurationMs)}</td>
+                    <td className="px-2 py-3">{duration(run.queueWaitMs)}</td>
+                    <td className="px-2 py-3">
+                      {run.finishedAt
+                        ? formatIstanbulTimestamp(run.finishedAt, { includeSeconds: true })
+                        : "—"}
+                    </td>
+                    <td className="px-2 py-3">{run.errorCode ?? "Yok"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {capacity.operational.recentExecutions.length === 0 ? (
+              <p className="py-4 text-sm text-muted">Henüz terminal run yok.</p>
+            ) : null}
+          </div>
+        </details>
       </section>
 
       <AgentCapabilityMeasurementForm />

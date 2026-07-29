@@ -3321,6 +3321,16 @@ components:
           type: array
           maxItems: 100
           items: { type: string, format: uuid }
+        workerTelemetry:
+          type: object
+          additionalProperties: false
+          required: [bootId, processingLanes, codexVersion, promptProfileHash, startedAt]
+          properties:
+            bootId: { type: string, format: uuid }
+            processingLanes: { type: integer, minimum: 1, maximum: 2 }
+            codexVersion: { type: string, minLength: 1, maxLength: 200 }
+            promptProfileHash: { type: string, pattern: "^[a-f0-9]{64}$" }
+            startedAt: { type: string, format: date-time }
     RuntimeHeartbeatInput:
       type: object
       additionalProperties: false

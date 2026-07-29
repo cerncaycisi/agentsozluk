@@ -6,6 +6,21 @@ import {
 } from "@/modules/agents/domain/circuit-breaker";
 import { runtimeFingerprint } from "@/modules/agents/domain/capacity";
 
+function safeMetadataNumber(metadata: Prisma.JsonValue | null, key: string): number | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const value = metadata[key];
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function safeRuntimePhase(metadata: Prisma.JsonValue): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const value = metadata.runtimeStatus;
+  return typeof value === "string" &&
+    ["STARTING", "READING", "THINKING", "VALIDATING", "EXECUTING", "REFLECTING"].includes(value)
+    ? value
+    : null;
+}
+
 export function getLatestRuntimeCapability(transaction: Prisma.TransactionClient) {
   return transaction.agentRuntimeCapability.findFirst({
     orderBy: [{ measuredAt: "desc" }, { id: "desc" }],
@@ -282,50 +297,160 @@ export async function getRuntimeOperationalMetrics(
   });
   const breakerCutoff =
     breakerReset && breakerReset.createdAt > errorCutoff ? breakerReset.createdAt : errorCutoff;
-  const [terminalRuns, latestTerminalRuns, recentCandidates, queue, activeRuns, busyWindowEntries] =
-    await Promise.all([
-      transaction.agentRun.findMany({
-        where: {
-          finishedAt: { gte: breakerCutoff, lte: input.now },
-          runStatus: { in: ["SUCCEEDED", "PARTIAL", "FAILED", "TIMED_OUT"] },
+  const [
+    terminalRuns,
+    latestTerminalRuns,
+    recentCandidates,
+    queue,
+    activeRuns,
+    recentExecutions,
+    timeoutCount1h,
+    workerSync,
+    busyWindowEntries,
+  ] = await Promise.all([
+    transaction.agentRun.findMany({
+      where: {
+        finishedAt: { gte: breakerCutoff, lte: input.now },
+        runStatus: { in: ["SUCCEEDED", "PARTIAL", "FAILED", "TIMED_OUT"] },
+      },
+      select: { runStatus: true },
+    }),
+    transaction.agentRun.findMany({
+      where: {
+        finishedAt: {
+          not: null,
+          lte: input.now,
+          ...(breakerReset ? { gt: breakerReset.createdAt } : {}),
         },
-        select: { runStatus: true },
-      }),
-      transaction.agentRun.findMany({
-        where: {
-          finishedAt: {
-            not: null,
-            lte: input.now,
-            ...(breakerReset ? { gt: breakerReset.createdAt } : {}),
+        runStatus: { in: ["SUCCEEDED", "PARTIAL", "FAILED", "TIMED_OUT"] },
+      },
+      orderBy: [{ finishedAt: "desc" }, { id: "desc" }],
+      take: input.config.consecutiveCodexFailures,
+      select: { runStatus: true, errorCode: true },
+    }),
+    transaction.agentAction.findMany({
+      where: {
+        actionType: { in: ["CREATE_ENTRY", "CREATE_TOPIC_WITH_ENTRY", "EDIT_OWN_ENTRY"] },
+        ...(breakerReset ? { createdAt: { gt: breakerReset.createdAt } } : {}),
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: input.config.duplicateWindowSize,
+      select: { rejectionCode: true },
+    }),
+    eligibleQueueMetrics(transaction, input.now),
+    transaction.agentRun.findMany({
+      where: { runStatus: { in: ["RUNNING", "CANCEL_REQUESTED"] } },
+      orderBy: [{ startedAt: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        runType: true,
+        runStatus: true,
+        createdAt: true,
+        startedAt: true,
+        heartbeatAt: true,
+        leaseOwner: true,
+        leaseExpiresAt: true,
+        agentProfile: {
+          select: {
+            id: true,
+            user: { select: { username: true, displayName: true } },
           },
-          runStatus: { in: ["SUCCEEDED", "PARTIAL", "FAILED", "TIMED_OUT"] },
         },
-        orderBy: [{ finishedAt: "desc" }, { id: "desc" }],
-        take: input.config.consecutiveCodexFailures,
-        select: { runStatus: true, errorCode: true },
-      }),
-      transaction.agentAction.findMany({
-        where: {
-          actionType: { in: ["CREATE_ENTRY", "CREATE_TOPIC_WITH_ENTRY", "EDIT_OWN_ENTRY"] },
-          ...(breakerReset ? { createdAt: { gt: breakerReset.createdAt } } : {}),
+      },
+    }),
+    transaction.agentRun.findMany({
+      where: {
+        finishedAt: { not: null, lte: input.now },
+        runStatus: { in: ["SUCCEEDED", "PARTIAL", "FAILED", "TIMED_OUT", "CANCELLED"] },
+      },
+      orderBy: [{ finishedAt: "desc" }, { id: "desc" }],
+      take: 10,
+      select: {
+        id: true,
+        runType: true,
+        runStatus: true,
+        createdAt: true,
+        startedAt: true,
+        finishedAt: true,
+        leaseOwner: true,
+        usageMetadata: true,
+        errorCode: true,
+        agentProfile: {
+          select: {
+            id: true,
+            user: { select: { username: true, displayName: true } },
+          },
         },
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take: input.config.duplicateWindowSize,
-        select: { rejectionCode: true },
-      }),
-      eligibleQueueMetrics(transaction, input.now),
-      transaction.agentRun.findMany({
-        where: { runStatus: { in: ["RUNNING", "CANCEL_REQUESTED"] } },
-        orderBy: [{ startedAt: "asc" }, { id: "asc" }],
-        select: { startedAt: true },
-      }),
-      Promise.all(
-        utilizationWindows.map(
-          async ({ minutes, cutoff }) =>
-            [minutes, await busyDurationMs(transaction, input.now, cutoff)] as const,
-        ),
+      },
+    }),
+    transaction.agentRun.count({
+      where: {
+        finishedAt: { gte: cutoff1h, lte: input.now },
+        runStatus: "TIMED_OUT",
+      },
+    }),
+    transaction.agentRuntimeCredentialSync.findUnique({
+      where: { id: "global" },
+      select: {
+        workerId: true,
+        workerBootId: true,
+        processingLanes: true,
+        codexVersion: true,
+        promptProfileHash: true,
+        workerStartedAt: true,
+        workerRestartCount: true,
+        syncedAt: true,
+      },
+    }),
+    Promise.all(
+      utilizationWindows.map(
+        async ({ minutes, cutoff }) =>
+          [minutes, await busyDurationMs(transaction, input.now, cutoff)] as const,
       ),
-    ]);
+    ),
+  ]);
+  const activePhases = await Promise.all(
+    activeRuns.map(async ({ id }) => {
+      const heartbeat = await transaction.agentRuntimeEvent.findFirst({
+        where: { runId: id, eventType: "agent.heartbeat" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: { metadata: true },
+      });
+      return [id, heartbeat ? safeRuntimePhase(heartbeat.metadata) : null] as const;
+    }),
+  );
+  const phaseByRunId = new Map(activePhases);
+  const processingLanes = Math.max(
+    1,
+    Math.min(2, workerSync?.processingLanes ?? input.concurrency),
+  );
+  const executionSlots = Array.from({ length: processingLanes }, (_, index) => {
+    const run = activeRuns[index] ?? null;
+    return {
+      slot: index + 1,
+      status: run ? ("ACTIVE" as const) : ("IDLE" as const),
+      workerId: run?.leaseOwner ?? workerSync?.workerId ?? null,
+      runId: run?.id ?? null,
+      runType: run?.runType ?? null,
+      runStatus: run?.runStatus ?? null,
+      agentProfileId: run?.agentProfile.id ?? null,
+      username: run?.agentProfile.user.username ?? null,
+      displayName: run?.agentProfile.user.displayName ?? null,
+      phase: run ? (phaseByRunId.get(run.id) ?? null) : null,
+      startedAt: run?.startedAt ?? null,
+      heartbeatAt: run?.heartbeatAt ?? null,
+      leaseExpiresAt: run?.leaseExpiresAt ?? null,
+      leaseAgeMs: run?.startedAt
+        ? Math.max(0, input.now.getTime() - run.startedAt.getTime())
+        : null,
+      heartbeatAgeMs: run?.heartbeatAt
+        ? Math.max(0, input.now.getTime() - run.heartbeatAt.getTime())
+        : null,
+      leaseRemainingMs: run?.leaseExpiresAt
+        ? Math.max(0, run.leaseExpiresAt.getTime() - input.now.getTime())
+        : null,
+    };
+  });
   const busyByWindowMinutes = new Map(busyWindowEntries);
   const denominator = (minutes: number) => minutes * 60_000 * input.concurrency;
   const utilization = (minutes: number) =>
@@ -348,5 +473,36 @@ export async function getRuntimeOperationalMetrics(
     activeRunStartedAts: activeRuns.flatMap(({ startedAt }) => (startedAt ? [startedAt] : [])),
     oldestQueuedAt: queue.oldestAt,
     longestActiveStartedAt: activeRuns[0]?.startedAt ?? null,
+    worker: workerSync
+      ? {
+          workerId: workerSync.workerId,
+          online: input.now.getTime() - workerSync.syncedAt.getTime() <= 120_000,
+          bootId: workerSync.workerBootId,
+          processingLanes: workerSync.processingLanes,
+          codexVersion: workerSync.codexVersion,
+          promptProfileHash: workerSync.promptProfileHash,
+          startedAt: workerSync.workerStartedAt,
+          restartCount: workerSync.workerRestartCount,
+          lastSeenAt: workerSync.syncedAt,
+          lastSeenAgeMs: Math.max(0, input.now.getTime() - workerSync.syncedAt.getTime()),
+        }
+      : null,
+    executionSlots,
+    timeoutCount1h,
+    recentExecutions: recentExecutions.map((run) => ({
+      runId: run.id,
+      runType: run.runType,
+      runStatus: run.runStatus,
+      workerId: run.leaseOwner,
+      agentProfileId: run.agentProfile.id,
+      username: run.agentProfile.user.username,
+      displayName: run.agentProfile.user.displayName,
+      queueWaitMs: run.startedAt
+        ? Math.max(0, run.startedAt.getTime() - run.createdAt.getTime())
+        : null,
+      codexDurationMs: safeMetadataNumber(run.usageMetadata, "durationMs"),
+      finishedAt: run.finishedAt,
+      errorCode: run.errorCode,
+    })),
   };
 }

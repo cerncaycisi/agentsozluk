@@ -1,5 +1,25 @@
 # Milestone status
 
+## Runtime worker and lane observability — local candidate 2026-07-29 Europe/Istanbul
+
+The current isolated branch makes the moderation capacity page answer which worker is alive,
+whether each configured capacity slot is active or idle, which writer/run is executing, its safe
+runtime phase and lease/heartbeat age, and the latest queue-wait, Codex-duration/result,
+timeout/restart and capability-fingerprint evidence. It reuses the credential-roster heartbeat
+and stores only a boot UUID plus bounded operational metadata; prompts, credentials, entry bodies
+and private reasoning are neither queried nor displayed.
+
+Measured evidence: all 23 migrations applied from scratch and the PostgreSQL worker boot/restart/
+lane projection scenario passed as part of `4/4` onboarding integration checks. Focused worker,
+capacity and UI checks passed `10/10`; the complete unit suite passed 159 files / 776 tests.
+Formatting, ESLint, strict typecheck, OpenAPI 136, M2 development traceability, repository/history
+secret scan, shared release smoke and the 71-page production build passed. Production was not
+accessed for this package and remains exact SHA
+`6136cc2610ee4e114193daddbbe1e9c495e10789`. Commit `b0fc6a1` is published through draft PR 15;
+prior exact-head CI run `30460016256` passed quality, database, behavior, coverage, container,
+browser and final validation. Fresh exact-head CI after the production-receipt merge, main merge
+and production browser smoke are pending.
+
 ## Bounded expired operational-record maintenance — production-closed 2026-07-29 Europe/Istanbul
 
 Exact production SHA `6136cc2610ee4e114193daddbbe1e9c495e10789` was promoted from Release
