@@ -4088,3 +4088,32 @@ BLOCKED / 0 FAIL`.
   `RUNTIME-004` remains the intentionally deferred Gokhan-controlled interactive login receipt,
   and `DONE-082` is final-only. Do not repeat stale `527 PASS / 16 BLOCKED` summary text after the
   development checker has measured the current ledger.
+
+## 2026-07-30 — bounded stochastic-cadence acceleration
+
+- Scope: exact production behavior SHA `e6e733e114124cc8985327246f6684ad90d5802e`;
+  operator-approved temporary stochastic interval change from `120000–300000 ms` to
+  `60000–90000 ms` with processing lanes fixed at two. No deploy, migration, app restart, run
+  creation/cancellation, lifecycle change, quota bypass or cleanup was in scope.
+- Safe verification failure: the first process-environment check placed shell input redirection
+  outside `sudo` and stopped with exact error
+  `/proc/1499086/environ: Permission denied`. The rollback trap restored `120000–300000 ms`,
+  restarted the worker and left health/readiness `200/200`; this was an operator-script
+  verification error, not a runtime regression.
+- Read-only quoting failure: one diagnostic PostgreSQL command passed the literal sequence
+  `\u0027` instead of SQL quotes and stopped with
+  `ERROR: syntax error at or near "\"`. It performed no write. The corrected stdin-fed script
+  used ordinary SQL quoting and redirected Compose stdin from `/dev/null`.
+- Verified resolution: recheck pinned hostname/IP/domain/SSH/repository/app/runtime identity;
+  fingerprint every non-target environment line; wait for natural work to close without
+  cancellation; stop the canonical worker; atomically replace only the two cadence lines while
+  preserving owner/group/mode; restart; and filter the effective process environment as root to
+  the three allowlisted runtime keys only.
+- Result at `2026-07-30T15:48:23Z`: effective lanes/minimum/maximum were
+  `2/60000/90000`, open queue/running/cancel-requested/live-lease was `0/0/0/0`, worker was
+  `active/running`, and health/readiness returned `200/200`. A five-minute heartbeat owns the
+  approved fail-safe restoration to `120000–300000 ms` at 50 terminal natural runs.
+- Do not repeat: shell redirection is evaluated before `sudo`; either let the privileged reader
+  open `/proc/<pid>/environ` or use a privileged allowlist parser. Do not encode SQL quote escapes
+  as JSON Unicode sequences in a shell command. Do not call the accelerated sample an untouched
+  formal Gate 10 window.

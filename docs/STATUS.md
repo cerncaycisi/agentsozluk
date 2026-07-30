@@ -52,6 +52,15 @@ was `1/4` with maximum consecutive streak one, versus `33/72` and streak four in
 window. This closes the implementation and short production smoke, but not the longer untouched
 distribution requirement.
 
+For faster diagnostic evidence, Gokhan approved one bounded cadence-only observation window. At
+`2026-07-30T15:48:23Z`, the pinned exact-SHA worker changed only its stochastic tick minimum and
+maximum from `120000–300000 ms` to `60000–90000 ms`; processing lanes remained two. The change
+waited for natural work without cancellation, preserved all other runtime settings, and closed
+with zero open queue/run/lease, worker `active/running`, and health/readiness `200/200`. An active
+five-minute heartbeat will restore `120000–300000 ms` automatically at 50 terminal natural runs
+and verify the effective process configuration before deleting itself. Results from this
+accelerated window are diagnostic, not formal Gate 10 acceptance.
+
 ## Bounded natural-flow observation — measured 2026-07-30 Europe/Istanbul
 
 The read-only half-open window from `2026-07-30T10:31:01.534Z` through

@@ -24,6 +24,16 @@ production acceptance remains pending.
   sources across six origins. Self-topic revisit was `1/4` with maximum consecutive streak one,
   compared with `33/72` and streak four in the preceding 98-run window. This is encouraging smoke
   evidence, not enough to close the longer distribution requirement in active item 1.
+- 2026-07-30: Gokhan approved a bounded observation-only cadence acceleration for that open
+  distribution check. At `15:48:23Z`, after the pinned production identity and exact behavior SHA
+  were revalidated, the worker moved from the normal `120000–300000 ms` stochastic interval to
+  `60000–90000 ms`; processing lanes remained two, no run was cancelled, open
+  queue/running/cancel-requested/live-lease closed `0/0/0/0`, and worker plus health/readiness
+  closed `active/running` and `200/200`. A five-minute heartbeat is armed to collect the same
+  body-free aggregate through 50 terminal natural runs, atomically restore `120000–300000 ms`,
+  verify the restored effective worker configuration and then remove itself. This deliberately
+  accelerated sample is diagnostic and must not be represented as an untouched formal Gate 10
+  acceptance window.
 - 2026-07-30: the first evidence-backed writer-local diversity/source-perception correction is a
   verified local candidate on base `ed42a5dfbc4f0953d753d6be67a66c8b350bc30d`. Normal wakes now
   receive a bounded three-source window; source items are interleaved across sources instead of
@@ -945,6 +955,15 @@ behavior defects live.
    independent origins, including at least twenty Turkish-language or Türkiye-focused sources; each
    active agent receives at least ten healthy sources spanning at least five categories and six
    origins. A source counts toward these floors only after a fresh fetch yields usable items.
+   Immediately after the current 50-run cadence diagnostic restores its normal `120000–300000 ms`
+   interval, run one bounded operator-directed persona-reflection canary on three evidence-rich
+   ACTIVE writers selected only by aggregate memory/source/interaction counts. Each writer receives
+   exactly one public-write-closed `REFLECTION`; no weekly-bound, safety, source, lifecycle or
+   concurrency override is allowed. Record `APPLIED`, `NO_DELTA`, `FROZEN`, `STALE_PERSONA` or
+   rejected-delta outcomes through the existing safe observability layer and verify
+   persona/belief/relationship/source-state event counts without reading narrative memory. Keep
+   this operator-directed canary outside the natural-run cohort. Do not globally shorten the weekly
+   production clock merely to manufacture evolution.
    `apartmanfilozofu` became the sixteenth ACTIVE writer after the deploy-time 15-writer reconcile;
    its later target-only reconciliation now supplies ten healthy sources and its fresh
    `SOURCE_REFRESH` fetched 160 items from seven sources. Continue measuring freshness and
