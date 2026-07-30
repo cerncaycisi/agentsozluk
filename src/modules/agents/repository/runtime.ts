@@ -1606,7 +1606,12 @@ async function listRuntimePerceptionSources(
             ...(discovery ? { id: { not: discovery.id } } : {}),
           },
           select: perceptionSourceSelect(input.now),
-          orderBy: [{ adminPinned: "desc" }, { trustScore: "desc" }],
+          orderBy: [
+            { adminPinned: "desc" },
+            { lastFetchedAt: { sort: "asc", nulls: "first" } },
+            { trustScore: "desc" },
+            { id: "asc" },
+          ],
           take: primaryLimit,
         })
       : [];

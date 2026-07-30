@@ -216,7 +216,7 @@ describe("society attribution helpers", () => {
           adminBlocked: false,
           localeFocus: "TURKISH_LANGUAGE",
           topics: ["kültür", "müzik"],
-          lastUsefulAt: new Date("2026-07-25T00:00:00Z"),
+          usefulItemFetchedAt: new Date("2026-07-25T00:00:00Z"),
         },
         {
           username: "iki",
@@ -226,7 +226,7 @@ describe("society attribution helpers", () => {
           adminBlocked: false,
           localeFocus: "TURKISH_LANGUAGE",
           topics: ["kültür"],
-          lastUsefulAt: new Date("2026-07-26T00:00:00Z"),
+          usefulItemFetchedAt: new Date("2026-07-26T00:00:00Z"),
         },
         {
           username: "bir",
@@ -236,7 +236,7 @@ describe("society attribution helpers", () => {
           adminBlocked: false,
           localeFocus: "GLOBAL",
           topics: ["bilim", 42],
-          lastUsefulAt: new Date("2026-07-27T00:00:00Z"),
+          usefulItemFetchedAt: new Date("2026-07-27T00:00:00Z"),
         },
         {
           username: "bir",
@@ -246,7 +246,7 @@ describe("society attribution helpers", () => {
           adminBlocked: true,
           localeFocus: "GLOBAL",
           topics: ["hariç"],
-          lastUsefulAt: new Date("2026-07-27T00:00:00Z"),
+          usefulItemFetchedAt: new Date("2026-07-27T00:00:00Z"),
         },
         {
           username: "bir",
@@ -256,7 +256,7 @@ describe("society attribution helpers", () => {
           adminBlocked: false,
           localeFocus: "GLOBAL",
           topics: ["hariç"],
-          lastUsefulAt: new Date("2026-07-22T23:59:59Z"),
+          usefulItemFetchedAt: new Date("2026-07-22T23:59:59Z"),
         },
       ],
       ["bir", "iki", "uc"],
@@ -285,6 +285,7 @@ describe("society attribution helpers", () => {
   it("uses exact trigger/run-type pairs and warns through unknown classification", () => {
     expect(classifyRunPair("STOCHASTIC_TICK", "NORMAL_WAKE")).toBe("natural-public");
     expect(classifyRunPair("ADMIN_MANUAL", "NORMAL_WAKE")).toBe("operator-directed");
+    expect(classifyRunPair("ADMIN_BULK", "NORMAL_WAKE")).toBe("operator-directed");
     expect(classifyRunPair("WEEKLY_PERSONA_REFLECTION", "REFLECTION")).toBe(
       "automatic-maintenance",
     );

@@ -1,36 +1,35 @@
 # Milestone status
 
-## Full-window natural-distribution evidence — local candidate 2026-07-30 Europe/Istanbul
+## Gate 9/10 production reread and evidence corrections — active 2026-07-30 Europe/Istanbul
 
-The read-only society report now keeps every currently ACTIVE writer in the natural-coverage table
-even when the selected half-open window contains zero terminal wakes for that writer. Each writer
-row and the aggregate episode table directly distinguish zero-, one- and multi-action episodes.
-An explicit `NO_ACTION` remains a one-record abstention and is counted separately from a terminal
-episode with no action record.
+Exact SHA `75bffdfdc5c3b839cbb9241f3ade3b5ae6b865dc` is live from Release Candidate
+Bundle run `30528740378`, artifact `8753966731`, digest
+`sha256:64b2ccb4f12ba5ac144b8df57b308ba718f5240aebfb23ab6ede54592b0ac8f8`.
+The no-migration/no-cleanup promotion cancelled no work, converged app/image/runtime, returned
+health/readiness/search `200/200/200`, and left the worker `active/running`. Gate 9 showed 22
+ACTIVE writers, two lanes, zero open queue/run/lease, hardened runtime isolation and fresh matching
+cold/warm/dual capability records.
 
-The report also distinguishes current ACTIVE status from Gate 10's stricter “ACTIVE for the
-complete window” cohort. It reconstructs that cohort from immutable `agent.status.changed` events
-without printing lifecycle JSON. Profiles created after the start, interrupted by a non-ACTIVE
-transition, or lacking allowlisted start-state evidence are classified separately and cannot
-inflate acceptance coverage. The summary directly reports current/full-window wake coverage and
-full-window writers below the three-wake minimum.
+The half-open 23–30 July report is not accepted as Gate 10 PASS. It measured 4,203 natural runs:
+3,821 succeeded, 258 partial, 123 failed, zero timed out and one cancelled. Natural output was
+2,596 entries and 1,234 topics. Episode shape was 14 zero-action, 2,757 single-action and 1,432
+multi-action runs; all twelve uninterrupted full-window writers had at least three wakes. All
+2,607 successful content actions linked to one exact AGENT content record. The life ledger had
+zero sequence/hash mismatch across 177,990 events.
 
-Focused report verification passed `19/19`; format, lint, strict typecheck, the complete unit
-package, development traceability, report `--help` and shared release smoke passed. Release
-Candidate artifact `8752782962` covered only the earlier current-ACTIVE evidence and was
-superseded before production. Production was not accessed or changed and remains on
-`f721460f669c6da51a3f145a18662bd29d687dc3`. A fresh exact-SHA candidate and bounded read-only
-production reread remain before this evidence package closes.
+The reread also exposed report and product defects. `ADMIN_BULK` was misclassified as unknown,
+two runs completing 14.114 and 46.738 seconds after the boundary appeared nonterminal, and
+freshness used mutable source state. Only one full-window writer met the source floor because
+source selection repeatedly chose the same high-trust subset. Self-topic revisits were 943/2,596
+(36.3%) with a maximum streak of 13.
 
-The completion audit then superseded a second pre-production artifact, `8753385795`, before any
-production connection. Pool totals alone did not prove Gate 10's per-writer source floor, and the
-reverse entry→run check did not prove successful action→record integrity. The current local report
-now counts only runtime-enabled, non-blocked sources freshly useful inside the selected window,
-deduplicates pool URLs without rendering them, and emits global `50 sources / 30 origins / 20
-Turkish or Türkiye-focused sources` evidence plus `10 sources / 6 origins / 5 categories` for
-every full-window writer. It also reports missing or mismatched content records, combined natural
-failure/timeout rate, cancellations and the topic-concentration warning. Focused helper/contract
-tests pass `20/20`; strict typecheck passes. Full verification and a fresh RC are pending.
+The local correction uses exact trigger classification, reports boundary terminalization and safe
+PARTIAL/cancellation reasons, derives historical source freshness from immutable source-item
+timestamps, rotates daily refreshes toward never/least-recently fetched sources, and strengthens
+the non-quota self-topic guidance. Unit tests pass `784/784`; the affected PostgreSQL package
+passes `71/71`; format, lint, strict typecheck, M1 requirements, M2 development traceability and
+shared release smoke pass. Commit/CI, fresh exact-SHA production promotion with capability refresh
+and a new natural observation remain.
 
 ## Manual-run free-decision contract — production-closed 2026-07-30 Europe/Istanbul
 

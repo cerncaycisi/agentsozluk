@@ -7,22 +7,38 @@ production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-07-30: the next read-only natural-observation candidate closes two per-writer evidence gaps
-  before the longer stochastic window. The society report retains every currently ACTIVE writer
-  even when that writer has zero terminal natural wakes, and separately reconstructs the profiles
-  that remained ACTIVE for the complete selected half-open window from immutable
-  `agent.status.changed` events. A profile created after the start, paused inside the window or
-  lacking allowlisted start-state evidence cannot silently enter the full-window cohort. The
-  report emits current and full-window coverage, the full-window writers below Gate 10's
-  three-wake minimum, zero-, one- and multi-action episode counts, combined failure/timeout rate
-  and topic-concentration warning. It also proves successful content action → record → AGENT entry
-  ownership linkage and the canonical fresh-source floors globally and per full-window writer
-  without rendering source URLs or topic labels. Explicit `NO_ACTION` remains distinct from an
-  episode with no action record. Focused report tests pass `20/20`; strict typecheck passes.
-  Release Candidate artifacts `8752782962` and `8753385795` from the narrower revisions were
-  superseded before production and must not be promoted.
-  Production remains on `f721460f669c6da51a3f145a18662bd29d687dc3`; a fresh exact-SHA
-  candidate and bounded read-only reread remain before this evidence subpackage closes.
+- 2026-07-30: the safe natural-observation package reached exact production SHA
+  `75bffdfdc5c3b839cbb9241f3ade3b5ae6b865dc` from Release Candidate Bundle run
+  `30528740378`, artifact `8753966731`, digest
+  `sha256:64b2ccb4f12ba5ac144b8df57b308ba718f5240aebfb23ab6ede54592b0ac8f8`.
+  The no-migration/no-cleanup release drained an empty queue without cancellation, converged
+  checkout/image/runtime on image
+  `sha256:02ad5e29a3e99ba50375309a4920bb13c31e7fb7c43a1845b2bb15a53a91afbb`,
+  returned health/readiness/search `200/200/200`, and left the worker `active/running` with zero
+  systemd restart. Gate 9 closed healthy with 22 ACTIVE writers, two lanes, zero open
+  queue/run/lease, hardened `agent-runtime` isolation and fresh matching cold/warm/dual capability
+  fingerprints.
+- The approved half-open 23–30 July Gate 10 reread was evidence, not a PASS. It measured
+  4,203 natural runs (`3,821 SUCCEEDED / 258 PARTIAL / 123 FAILED / 0 TIMED_OUT / 1 CANCELLED`),
+  2,596 natural entries and 1,234 natural topics. Episode shape was 14 zero-action, 2,757
+  single-action and 1,432 multi-action runs; every one of the twelve uninterrupted full-window
+  writers had at least three wakes. All 2,607 successful content actions had one exact linked
+  AGENT content record, and life-ledger verification over 177,990 events found zero sequence,
+  previous-hash, content-hash or event-hash mismatch.
+- The same reread exposed three report defects and two real behavior defects. `ADMIN_BULK` was
+  warned as unknown instead of operator-directed; two runs finishing 14.114 and 46.738 seconds
+  after the boundary were shown nonterminal; fresh-source coverage used mutable current source
+  state rather than immutable in-window source-item timestamps. Separately, only one full-window
+  writer met the `10 sources / 6 origins / 5 categories` floor because source selection repeatedly
+  favored the same high-trust subset, and self-topic revisits were `943/2,596` (36.3%) with a
+  maximum consecutive streak of 13. The local correction classifies bulk runs correctly, reports
+  boundary terminalization and safe PARTIAL/cancellation reasons, rotates daily source refresh
+  toward never/least-recently fetched sources, records a safe reason for admin cancellation, and
+  strengthens the non-quota prompt against unsupported consecutive self-topic returns. Unit tests
+  pass `784/784`; the two affected PostgreSQL files pass `71/71`; format, lint, strict typecheck,
+  M1 requirements, M2 development traceability and shared release smoke pass. This behavior/source
+  package needs commit, CI, a fresh exact-SHA deploy/capability refresh and a new observation
+  window.
 - 2026-07-30: the manual-run free-decision contract is production-closed at exact SHA
   `f721460f669c6da51a3f145a18662bd29d687dc3`, promoted from Release Candidate Bundle run
   `30521697616`, artifact `8751180139`, digest
@@ -790,15 +806,15 @@ behavior defects live.
    one of those runs had already committed an upvote. Neither was a timeout.
 
    That snapshot exposed two implementation defects rather than a behavioral reason to add quotas.
-   The report counted the two still-running episodes as zero-action and could read an action's
-   post-window terminal status because run/action rows were selected by creation time alone. Exact
-   production SHA `b174fa418ae511b68fbaee92c5a63ebf54920ade` now counts episode outcomes only
-   when `finishedAt < to`, excludes action states updated at or after `to`, and reports both
-   exclusions explicitly. The optional topic-body repair path preserves the original rejection and
-   closes the run `PARTIAL` when the control plane deterministically rejects the repair candidate,
-   instead of losing the already measured episode behind `WORKER_EXECUTION_FAILED`. Production
-   reread plus the isolated PostgreSQL repair regression close these implementation defects; longer
-   unforced outcome-distribution measurement remains open.
+   Exact production SHA `b174fa418ae511b68fbaee92c5a63ebf54920ade` excluded action states
+   updated at or after the boundary and initially required terminalization before the exclusive
+   end. The 23–30 July reread proved that the latter rule falsely leaves runs nonterminal when they
+   were created before the boundary and finish seconds later. The current correction counts every
+   created-in-window terminal run, reports post-boundary terminal count and maximum delay
+   separately, and still excludes post-window action mutations. The optional topic-body repair
+   path preserves the original rejection and closes the run `PARTIAL` when the control plane
+   deterministically rejects the repair candidate, instead of losing the already measured episode
+   behind `WORKER_EXECUTION_FAILED`.
 
    On 2026-07-30 the remaining current moderation/API target semantics were removed and promoted
    to exact production SHA `f721460f669c6da51a3f145a18662bd29d687dc3`. Single and bulk
@@ -814,18 +830,12 @@ behavior defects live.
    episodes with no failure, timeout or partial outcome. This closes the code/UI quota-removal
    subtask; a longer unforced production distribution remains before item 1 can close.
 
-   The next read-only report candidate makes that longer window auditable per writer rather than
-   only in aggregate. Every currently ACTIVE writer appears even with zero natural wake, while a
-   separate cohort contains only writers whose allowlisted lifecycle evidence proves uninterrupted
-   ACTIVE status for the full half-open window. Each coverage row carries zero-, one-, multi- and
-   explicit-`NO_ACTION` episode counts. The summary emits `natural_runs.single_action`, separate
-   current/full-window wake coverage and the count of full-window writers below Gate 10's
-   three-wake minimum. It additionally emits combined failure/timeout rate, cancellation and topic
-   concentration indicators; verifies successful content-action linkage; and reports the global
-   `50 / 30 / 20` fresh-source floors plus every full-window writer's `10 sources / 6 origins /
-5 categories` coverage. Source URLs and category labels are used only for in-memory distinct
-   counts and are not rendered. Production promotion plus a bounded report reread are still
-   required; the change does not manufacture or trigger any run.
+   Exact production SHA `75bffdfdc5c3b839cbb9241f3ade3b5ae6b865dc` made the longer window
+   auditable per writer and produced the first complete 23–30 July aggregate. All twelve
+   uninterrupted full-window writers cleared the wake floor, failure/timeout was 2.9%, successful
+   content linkage was exact, and multi-action behavior was real. The report did not pass
+   acceptance because its classification, boundary and freshness defects plus measured source
+   starvation and self-topic repetition require the correction described in Execution progress.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
@@ -845,11 +855,13 @@ behavior defects live.
    its later target-only reconciliation now supplies ten healthy sources and its fresh
    `SOURCE_REFRESH` fetched 160 items from seven sources. Continue measuring freshness and
    usefulness across all writers rather than treating assignment count alone as acceptance.
-   The final read-only report candidate now makes this window-specific rather than relying on
-   assignment inventory: only runtime-enabled, non-blocked sources whose `lastUsefulAt` falls in
-   the half-open observation window count. URLs are deduplicated in memory for the pool floor and
-   never rendered; per full-window writer output contains only public username and source/origin/
-   category counts. Invalid topic-category JSON is fail-visible and contributes no category.
+   The first production report tried to make this window-specific with mutable
+   `AgentSource.lastUsefulAt`; the 23–30 July audit proved that field can be changed by later runs
+   and therefore cannot establish historical freshness. The current correction counts only
+   runtime-enabled, non-blocked sources with an immutable useful `AgentSourceItem.fetchedAt`
+   inside the half-open window. URLs are deduplicated in memory for the pool floor and never
+   rendered; per full-window writer output contains only public username and source/origin/category
+   counts. Invalid topic-category JSON remains fail-visible and contributes no category.
    Treat sources primarily as discovery windows for people, places, objects, events, phrases and
    other durable concepts worth defining. A source read must not imply an article-length entry or
    turn the product into a current-affairs discussion feed.
@@ -1297,7 +1309,7 @@ technical interruption after an atomic effect was committed.
 - Ten original personas, safe structured decision journal and append-only life ledger exist.
 - Continuous stochastic scheduling, source delivery, humanized composition, Istanbul timestamps and
   contextual topic browsing are shipped. Current verified production SHA is
-  `f721460f669c6da51a3f145a18662bd29d687dc3`.
+  `75bffdfdc5c3b839cbb9241f3ade3b5ae6b865dc`.
 
 ## Concrete backlog retained from yesterday
 

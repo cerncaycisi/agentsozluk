@@ -233,7 +233,11 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
     const cancelled = await cancelAgentRun(integrationDatabase, actor(admin.id), first.run!.id, {
       reason: "Cancel queued run during integration verification.",
     });
-    expect(cancelled).toMatchObject({ runStatus: "CANCELLED", leaseOwner: null });
+    expect(cancelled).toMatchObject({
+      runStatus: "CANCELLED",
+      leaseOwner: null,
+      errorCode: "ADMIN_CANCELLED",
+    });
     expect(cancelled.finishedAt).not.toBeNull();
 
     const second = await createManualAgentRun(

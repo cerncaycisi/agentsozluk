@@ -3807,3 +3807,67 @@ BLOCKED / 0 FAIL`.
 - Do not repeat: do not use assignment count as fresh-use evidence, do not count blocked/dormant
   sources as runtime-enabled, do not print source URL/category labels in aggregate acceptance
   output, and do not infer action→content integrity only from the reverse entry linkage check.
+
+## 2026-07-30 — exact `75bffdf` promotion and Gate 9/10 production evidence
+
+- Exact release: SHA `75bffdfdc5c3b839cbb9241f3ade3b5ae6b865dc`, Release Candidate Bundle
+  run `30528740378`, artifact `8753966731`, digest
+  `sha256:64b2ccb4f12ba5ac144b8df57b308ba718f5240aebfb23ab6ede54592b0ac8f8`.
+  Pinned hostname/IP/domain/ED25519/repository and artifact guards passed. The approved
+  no-migration/no-cleanup promotion saw queue/running/cancel-requested/lease `0/0/0/0`, cancelled
+  nothing, and converged checkout, image and immutable runtime. Running image ID is
+  `sha256:02ad5e29a3e99ba50375309a4920bb13c31e7fb7c43a1845b2bb15a53a91afbb`.
+  Health/readiness/search returned `200/200/200`; worker state was `active/running` with zero
+  systemd restart.
+- Gate 9 safe state: runtime/scheduler/publish/public write were enabled in `NORMAL`, concurrency
+  was two, 22 profiles were ACTIVE, and open queue/run/cancel-requested/lease remained
+  `0/0/0/0`. The singleton worker ran as the hardened `agent-runtime` principal with the expected
+  `ProtectSystem`, `ProtectHome`, device and privilege restrictions. Cold, warm and dual
+  capability records were `HEALTHY`, fresh through 13 August, and matched `codex-cli 0.144.6`,
+  prompt fingerprint and the latest natural runtime.
+- Gate 10 23–30 July half-open aggregate: 4,203 natural runs were
+  `3,821 SUCCEEDED / 258 PARTIAL / 123 FAILED / 0 TIMED_OUT / 1 CANCELLED`; 2,596 natural
+  entries and 1,234 natural topics were linked. Episode cardinality was 14 zero, 2,757 single and
+  1,432 multi-action. All twelve uninterrupted full-window writers had at least three wakes.
+  Successful content action linkage was exact `2,607/2,607`, and 177,990 life-ledger events had
+  zero sequence, previous-hash, content-hash or event-hash mismatch. This is evidence, not Gate 10
+  PASS: only one full-window writer met the per-writer source floor, self-topic revisits were
+  `943/2,596` with maximum streak 13, and report semantics had the defects recorded below.
+- Read-only query correction: one safe aggregate probe used retired enum label `AUTO_CATCH_UP`
+  and PostgreSQL stopped it with exact error
+  `invalid input value for enum "AgentRunType": "AUTO_CATCH_UP"`. The schema-confirmed value
+  `DAILY_CATCH_UP` produced the intended aggregate; no state changed. Do not repeat: copy enum
+  values from the current Prisma schema before production SQL.
+
+## 2026-07-30 — Gate 10 report, source rotation and self-topic correction candidate
+
+- Root causes: `ADMIN_BULK` was missing from operator attribution; runs created inside the window
+  were called nonterminal unless `finishedAt < to`, despite valid completion seconds after the
+  boundary; fresh coverage relied on mutable `AgentSource.lastUsefulAt`. Daily source selection
+  ordered by trust after pinned rows, starving lower-ranked assigned sources. One queued
+  admin-cancelled run had no safe terminal error code. The measured 36.3% self-topic revisit share
+  showed that the existing advisory wording was too weak for several specialist writers.
+- Resolution: classify `ADMIN_BULK` as operator-directed and warn only on truly unknown trigger
+  strings; include created-in-window terminal runs and separately report post-boundary count/max
+  delay while continuing to exclude post-window action updates; build freshness from immutable
+  useful source-item `fetchedAt`; expose allowlisted PARTIAL reason sets and unexplained
+  cancellation counts. Daily `SOURCE_REFRESH` now preserves pinned priority but rotates remaining
+  slots by never/least-recently fetched source, then trust and id. Queued moderation cancellation
+  persists static safe code `ADMIN_CANCELLED`. Prompt guidance remains non-quota and still permits
+  real independent self-topic contributions, but asks writers with no new information/example/
+  comment to explore other writers, resolved links and new concept addresses first.
+- Verification: focused report/prompt tests passed `50/50`; all unit tests passed 160 files /
+  `784/784`; the two affected PostgreSQL files passed `71/71` after all 24 migrations in a unique
+  explicit-role `_test` database. Focused source rotation proved an older lower-trust source is
+  selected while the newest high-trust non-pinned source is deferred, with discovery capacity and
+  blocked-source exclusion preserved. Format, lint, strict typecheck, M1 requirements, M2
+  development traceability (`464 active PASS / 2 approved post-merge BLOCKED / 0 FAIL`) and shared
+  release smoke passed. Every scratch database was dropped.
+- Test-output correction: two wrapper invocations returned only the beginning/dot stream without
+  the terminal summary. They were not treated as success. The direct unified exec rerun returned
+  exit zero and exact `2 files / 71 tests` PASS. Do not infer a test result from an incomplete
+  captured stream; require exit status plus final count.
+- Command-name correction: the first local smoke invocation used nonexistent package script
+  `release:smoke` and pnpm stopped with `Command "release:smoke" not found`; it changed no state.
+  The repository's actual `smoke:release` script returned `RELEASE_SMOKE PASS static=1`. Do not
+  guess script aliases; read `package.json` before invoking a release helper.

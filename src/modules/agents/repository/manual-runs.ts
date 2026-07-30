@@ -135,6 +135,8 @@ export async function cancelAgentRunRecord(
           runStatus: "CANCELLED",
           cancelRequestedAt: now,
           finishedAt: now,
+          errorCode: "ADMIN_CANCELLED",
+          errorSummary: "Queued run was cancelled through the moderation control plane.",
           leaseOwner: null,
           leaseToken: null,
           leaseExpiresAt: null,

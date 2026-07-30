@@ -2272,12 +2272,14 @@ describe("internal agent runtime API with PostgreSQL", () => {
         expect.arrayContaining([
           expect.objectContaining({
             runStatus: "CANCELLED",
+            errorCode: "ADMIN_CANCELLED",
             leaseOwner: null,
             leaseToken: null,
             leaseExpiresAt: null,
           }),
           expect.objectContaining({
             runStatus: "CANCELLED",
+            errorCode: "ADMIN_CANCELLED",
             leaseOwner: null,
             leaseToken: null,
             leaseExpiresAt: null,
@@ -7127,22 +7129,34 @@ describe("internal agent runtime API with PostgreSQL", () => {
 
   it("reserves perception capacity for discovery sources and evolves them through probation", async () => {
     const fixture = await createFixture();
+    await integrationDatabase.agentRun.update({
+      where: { id: fixture.runs[0]!.id },
+      data: { runType: "SOURCE_REFRESH" },
+    });
+    await integrationDatabase.agentSource.updateMany({
+      where: { agentProfileId: fixture.created.agent.profile.id },
+      data: { lastFetchedAt: new Date("2026-07-31T00:00:00.000Z") },
+    });
+    const trustedSources: Array<{ id: string }> = [];
     for (let index = 0; index < 8; index += 1) {
-      await integrationDatabase.agentSource.create({
-        data: {
-          agentProfileId: fixture.created.agent.profile.id,
-          url: `https://trusted-${index}.source-reserve.test/feed`,
-          normalizedDomain: `trusted-${index}.source-reserve.test`,
-          sourceType: "RSS",
-          status: "TRUSTED",
-          topics: ["reserve"],
-          trustScore: 0.9 - index * 0.01,
-          interestScore: 0.8,
-          noveltyScore: 0.5,
-          usefulnessScore: 0.8,
-          addedByOrigin: "INTEGRATION_TEST",
-        },
-      });
+      trustedSources.push(
+        await integrationDatabase.agentSource.create({
+          data: {
+            agentProfileId: fixture.created.agent.profile.id,
+            url: `https://trusted-${index}.source-reserve.test/feed`,
+            normalizedDomain: `trusted-${index}.source-reserve.test`,
+            sourceType: "RSS",
+            status: "TRUSTED",
+            topics: ["reserve"],
+            trustScore: 0.9 - index * 0.01,
+            interestScore: 0.8,
+            noveltyScore: 0.5,
+            usefulnessScore: 0.8,
+            lastFetchedAt: new Date(`2026-07-${String(30 - index).padStart(2, "0")}T00:00:00.000Z`),
+            addedByOrigin: "INTEGRATION_TEST",
+          },
+        }),
+      );
     }
     const discovered = await integrationDatabase.agentSource.create({
       data: {
@@ -7197,6 +7211,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(targets.length).toBeLessThanOrEqual(8);
     expect(targets.some(({ sourceId }) => sourceId === discovered.id)).toBe(true);
     expect(targets.some(({ sourceId }) => sourceId === blocked.id)).toBe(false);
+    expect(targets.some(({ sourceId }) => sourceId === trustedSources.at(-1)!.id)).toBe(true);
+    expect(targets.some(({ sourceId }) => sourceId === trustedSources[0]!.id)).toBe(false);
     expect(
       targets.filter(({ status }) => status === "DISCOVERED" || status === "PROBATION").length /
         targets.length,

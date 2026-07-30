@@ -474,7 +474,8 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("CREATE_TOPIC_WITH_ENTRY önerisini sunucu kanonik başlık aramasıyla");
     expect(prompt).toContain("akademik özet şablonlarını mekanik biçimde tekrarlama");
     expect(prompt).toContain("Source okumak public action zorunluluğu doğurmaz");
-    expect(prompt).toContain("aynı başlığa peş peşe dönmeden önce");
+    expect(prompt).toContain("bağımsız yeni bilgi, örnek veya yorumun yokken");
+    expect(prompt).toContain("aynı başlığa peş peşe dönüş yalnız");
     expect(prompt).toContain("kalıcı persona değişimi tekrarlanan kanıt");
     expect(prompt).toContain("doğal adres çoğu zaman bir ila üç kelimedir");
     expect(prompt).toContain("Tanım, gözlem, örnek, yorum, alıntı ve bkz");

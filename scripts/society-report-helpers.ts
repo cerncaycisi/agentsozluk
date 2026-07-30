@@ -202,7 +202,7 @@ interface FreshSourceInput {
   adminBlocked: boolean;
   localeFocus: string;
   topics: unknown;
-  lastUsefulAt: Date | null;
+  usefulItemFetchedAt: Date | null;
 }
 
 export interface FreshSourceCoverage {
@@ -253,9 +253,9 @@ export function summarizeFreshSourceCoverage(
     if (
       source.adminBlocked ||
       !RUNTIME_ENABLED_SOURCE_STATUSES.has(source.status) ||
-      !source.lastUsefulAt ||
-      source.lastUsefulAt < window.from ||
-      source.lastUsefulAt >= window.to
+      !source.usefulItemFetchedAt ||
+      source.usefulItemFetchedAt < window.from ||
+      source.usefulItemFetchedAt >= window.to
     ) {
       continue;
     }
@@ -406,7 +406,8 @@ export function formatRatio(numerator: number, denominator: number): string {
 }
 
 export function classifyRunPair(trigger: string, runType: string): RunClass {
-  if (trigger === "ADMIN_MANUAL" || trigger === "ADMIN_RETRY") return "operator-directed";
+  if (trigger === "ADMIN_MANUAL" || trigger === "ADMIN_RETRY" || trigger === "ADMIN_BULK")
+    return "operator-directed";
   if (trigger === "STOCHASTIC_TICK" && runType === "NORMAL_WAKE") return "natural-public";
   if (
     (trigger === "NIGHTLY_MEMORY_CONSOLIDATION" && runType === "REFLECTION") ||

@@ -95,6 +95,9 @@ counts and public usernames only; it never prints bodies, prompts, instructions 
 Source URLs and topic labels are used only for in-memory distinct counts and are never rendered.
 Current ACTIVE profiles remain in per-writer coverage even when they have zero natural wakes.
 Lifecycle evidence separately reports profiles that stayed ACTIVE for the complete selected window.
+Fresh-source coverage is derived from immutable source-item fetchedAt timestamps inside the window,
+not from mutable current source-state timestamps. Runs created inside the window may terminalize
+after its exclusive end; those runs are counted as terminal and their boundary delay is reported.
 `;
 }
 
@@ -338,6 +341,7 @@ async function main(): Promise<void> {
         where: { fetchedAt: { gte: window.from, lt: window.to } },
         select: {
           sourceId: true,
+          fetchedAt: true,
           source: {
             select: {
               agentProfileId: true,
@@ -606,6 +610,13 @@ async function main(): Promise<void> {
         .filter(([, status]) => status === "FULL_WINDOW_ACTIVE")
         .map(([username]) => username),
     );
+    const usefulItemFetchedAtBySource = new Map<string, Date>();
+    for (const item of sourceItems) {
+      const current = usefulItemFetchedAtBySource.get(item.sourceId);
+      if (!current || item.fetchedAt > current) {
+        usefulItemFetchedAtBySource.set(item.sourceId, item.fetchedAt);
+      }
+    }
     const freshSourceCoverage = summarizeFreshSourceCoverage(
       sources.map((source) => ({
         username: source.agentProfile.user.username,
@@ -615,7 +626,7 @@ async function main(): Promise<void> {
         adminBlocked: source.adminBlocked,
         localeFocus: source.localeFocus,
         topics: source.topics,
-        lastUsefulAt: source.lastUsefulAt,
+        usefulItemFetchedAt: usefulItemFetchedAtBySource.get(source.id) ?? null,
       })),
       [...fullWindowActiveUsernames],
       window,
@@ -641,8 +652,7 @@ async function main(): Promise<void> {
     const epochFrom = new Date(EPOCH_2_FROM).getTime();
     const epochTo = new Date(EPOCH_2_TO).getTime();
     const terminalRuns = runs.filter(
-      (run) =>
-        isTerminalRunStatus(run.runStatus) && run.finishedAt !== null && run.finishedAt < window.to,
+      (run) => isTerminalRunStatus(run.runStatus) && run.finishedAt !== null,
     );
     const terminalRunIds = new Set(terminalRuns.map(({ id }) => id));
     const windowActions = actions.filter(({ updatedAt }) => updatedAt < window.to);
@@ -674,7 +684,7 @@ async function main(): Promise<void> {
     for (const run of runs) {
       const runClass = classifyRunPair(run.trigger, run.runType);
       const inEpoch2 = run.createdAt.getTime() >= epochFrom && run.createdAt.getTime() < epochTo;
-      if (inEpoch2 && (runClass === "operator-directed" || runClass === "unknown")) {
+      if (inEpoch2 && runClass === "unknown") {
         warnings.push(`${run.trigger} + ${run.runType} classified as ${runClass}`);
       }
       if (runClass === "natural-public" && terminalRunIds.has(run.id)) {
@@ -743,9 +753,38 @@ async function main(): Promise<void> {
       (run) => classifyRunPair(run.trigger, run.runType) === "natural-public",
     );
     const terminalNaturalRuns = naturalRuns.filter((run) => terminalRunIds.has(run.id));
+    const terminalizedAfterWindow = terminalNaturalRuns.filter(
+      ({ finishedAt }) => finishedAt !== null && finishedAt >= window.to,
+    );
+    const maximumTerminalizationDelaySeconds = Math.max(
+      0,
+      ...terminalizedAfterWindow.map(({ finishedAt }) =>
+        Math.ceil((finishedAt!.getTime() - window.to.getTime()) / 1000),
+      ),
+    );
     const nonterminalNaturalRuns = naturalRuns.length - terminalNaturalRuns.length;
     const naturalRunStatusCounts = new Map<string, number>();
     for (const run of terminalNaturalRuns) increment(naturalRunStatusCounts, run.runStatus);
+    const partialRunReasonCounts = new Map<string, number>();
+    let partialRunsWithoutSafeReason = 0;
+    let cancelledRunsWithoutSafeReason = 0;
+    for (const run of terminalNaturalRuns) {
+      if (run.runStatus === "PARTIAL") {
+        const codes = [
+          ...new Set(
+            [
+              run.errorCode,
+              ...(actionsByRun.get(run.id) ?? []).map(({ rejectionCode }) => rejectionCode),
+            ].filter((code): code is string => Boolean(code)),
+          ),
+        ].sort();
+        if (codes.length === 0) partialRunsWithoutSafeReason += 1;
+        increment(partialRunReasonCounts, codes.length === 0 ? "UNEXPLAINED" : codes.join("+"));
+      }
+      if (run.runStatus === "CANCELLED" && !run.errorCode) {
+        cancelledRunsWithoutSafeReason += 1;
+      }
+    }
     const failedOrTimedOutNaturalRuns =
       (naturalRunStatusCounts.get("FAILED") ?? 0) + (naturalRunStatusCounts.get("TIMED_OUT") ?? 0);
     const episodeDistributionByAgent = distributeEpisodeActions(
@@ -974,6 +1013,14 @@ async function main(): Promise<void> {
         ],
       ),
       "",
+      "NATURAL PARTIAL SAFE REASONS",
+      renderTable(
+        ["safeCodeSet", "runs"],
+        [...partialRunReasonCounts.entries()]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([safeCodeSet, count]) => [safeCodeSet, String(count)]),
+      ),
+      "",
       "LIFECYCLE WINDOW COHORT",
       renderTable(
         ["username", "currentLifecycle", "windowStatus"],
@@ -1194,11 +1241,15 @@ async function main(): Promise<void> {
       `actions_updated_after_window_excluded=${actionsUpdatedAfterWindow}`,
       `natural_runs=${terminalNaturalRuns.length}`,
       `natural_runs.nonterminal=${nonterminalNaturalRuns}`,
+      `natural_runs.terminalized_after_window=${terminalizedAfterWindow.length}`,
+      `natural_runs.terminalized_after_window_max_delay_seconds=${maximumTerminalizationDelaySeconds}`,
       `natural_runs.succeeded=${naturalRunStatusCounts.get("SUCCEEDED") ?? 0}`,
       `natural_runs.partial=${naturalRunStatusCounts.get("PARTIAL") ?? 0}`,
       `natural_runs.failed=${naturalRunStatusCounts.get("FAILED") ?? 0}`,
       `natural_runs.timed_out=${naturalRunStatusCounts.get("TIMED_OUT") ?? 0}`,
       `natural_runs.cancelled=${naturalRunStatusCounts.get("CANCELLED") ?? 0}`,
+      `natural_runs.partial_without_safe_reason=${partialRunsWithoutSafeReason}`,
+      `natural_runs.cancelled_without_safe_reason=${cancelledRunsWithoutSafeReason}`,
       `natural_runs.failed_or_timed_out_rate=${formatRatio(
         failedOrTimedOutNaturalRuns,
         terminalNaturalRuns.length,

@@ -60,6 +60,7 @@ describe("society observation report contracts", () => {
     for (const section of [
       "ACTION MATRIX",
       "NATURAL EPISODE OUTCOMES",
+      "NATURAL PARTIAL SAFE REASONS",
       "LIFECYCLE WINDOW COHORT",
       "NATURAL COVERAGE BY AGENT",
       "NATURAL SELF-TOPIC REVISITS BY AGENT",
@@ -95,6 +96,10 @@ describe("society observation report contracts", () => {
     expect(baseline).toContain("natural_runs.single_action=");
     expect(baseline).toContain("natural_runs.failed_or_timed_out_rate=");
     expect(baseline).toContain("natural_runs.cancelled=");
+    expect(baseline).toContain("natural_runs.partial_without_safe_reason=");
+    expect(baseline).toContain("natural_runs.cancelled_without_safe_reason=");
+    expect(baseline).toContain("natural_runs.terminalized_after_window=");
+    expect(baseline).toContain("natural_runs.terminalized_after_window_max_delay_seconds=");
     expect(baseline).toContain("coverage.singleActionRuns");
     expect(baseline).toContain("coverage.multiActionRuns");
     expect(baseline).toContain("coverageByAgent.set(username, emptyAgentCoverage())");
@@ -120,7 +125,8 @@ describe("society observation report contracts", () => {
     expect(baseline).toContain("successful_content_actions_with_exact_record=");
     expect(baseline).toContain("successful_content_actions_without_record=");
     expect(baseline).toContain("successful_content_actions_with_invalid_record_linkage=");
-    expect(baseline).toContain("run.finishedAt < window.to");
+    expect(baseline).toContain("finishedAt >= window.to");
+    expect(baseline).toContain("item.fetchedAt");
     expect(baseline).toContain("updatedAt < window.to");
     expect(baseline).toContain("actions_updated_after_window_excluded=");
   });
