@@ -12,9 +12,10 @@ describe("manual run form contract", () => {
     render(<ManualAgentRunForm agentId="00000000-0000-4000-8000-000000000101" />);
 
     expect(screen.queryByText(/target miss etkisi/iu)).not.toBeInTheDocument();
+    expect(screen.queryByText(/entry üst sınırı/iu)).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "ENTRY_BURST" })).not.toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "DAILY_CATCH_UP" })).not.toBeInTheDocument();
-    expect(() =>
-      manualAgentRunSchema.parse({ runType: "DAILY_CATCH_UP", entryTarget: 0 }),
-    ).toThrow();
+    expect(() => manualAgentRunSchema.parse({ runType: "DAILY_CATCH_UP" })).toThrow();
+    expect(() => manualAgentRunSchema.parse({ runType: "NORMAL_WAKE", entryTarget: 3 })).toThrow();
   });
 });

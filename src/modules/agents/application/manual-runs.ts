@@ -132,7 +132,6 @@ export function createManualAgentRun(
     }
     await assertManagedRuntimeCredentialReady(transaction, agentProfileId, now);
     const nonPublishing = isNonPublishingRun(input.runType);
-    const entryTarget = nonPublishing ? 0 : input.entryTarget;
     const timeoutSeconds =
       input.runType === "REFLECTION"
         ? settings.reflectionTimeoutSeconds
@@ -148,8 +147,8 @@ export function createManualAgentRun(
       queuePriority: input.priority === "EMERGENCY" ? "EMERGENCY_ADMIN" : "MANUAL_SINGLE",
       availableAt: input.availableAt ?? now,
       timeoutSeconds,
-      desiredEntryMin: entryTarget,
-      desiredEntryMax: entryTarget,
+      desiredEntryMin: 0,
+      desiredEntryMax: 0,
       allowTopicCreation: !nonPublishing && input.allowTopicCreation,
       allowVoting: !nonPublishing && input.allowVoting,
       allowFollowing: !nonPublishing && input.allowFollowing,
@@ -349,7 +348,6 @@ export function createBulkAgentRuns(
     const nonPublishing = isNonPublishingRun(input.run.runType);
     const runs = [];
     for (const agent of agents) {
-      const entryTarget = nonPublishing ? 0 : input.run.entryTarget;
       const timeoutSeconds =
         input.run.runType === "REFLECTION"
           ? settings.reflectionTimeoutSeconds
@@ -369,8 +367,8 @@ export function createBulkAgentRuns(
             input.run.priority === "EMERGENCY" ? "EMERGENCY_ADMIN" : "SCHEDULED_CONTENT",
           availableAt: input.run.availableAt ?? now,
           timeoutSeconds,
-          desiredEntryMin: entryTarget,
-          desiredEntryMax: entryTarget,
+          desiredEntryMin: 0,
+          desiredEntryMax: 0,
           allowTopicCreation: !nonPublishing && input.run.allowTopicCreation,
           allowVoting: !nonPublishing && input.run.allowVoting,
           allowFollowing: !nonPublishing && input.run.allowFollowing,

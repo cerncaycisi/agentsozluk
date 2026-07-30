@@ -298,7 +298,6 @@ type RunType =
 
 interface RunConfig {
   runType: RunType;
-  entryTarget: number;
   allowTopicCreation: boolean;
   allowVoting: boolean;
   allowFollowing: boolean;
@@ -324,7 +323,6 @@ interface RunPreview {
 
 const initialRunConfig: RunConfig = {
   runType: "NORMAL_WAKE",
-  entryTarget: 3,
   allowTopicCreation: true,
   allowVoting: true,
   allowFollowing: true,
@@ -342,7 +340,6 @@ function isNonPublishingRun(runType: RunType): boolean {
 function runRequest(config: RunConfig) {
   return {
     ...config,
-    entryTarget: isNonPublishingRun(config.runType) ? 0 : config.entryTarget,
     adminInstruction: config.adminInstruction || undefined,
     availableAt: config.availableAt ? new Date(config.availableAt).toISOString() : undefined,
   };
@@ -366,25 +363,13 @@ function RunConfigFields({
             onChange={(event) => update({ runType: event.target.value as RunType })}
             className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
           >
-            {[
-              "NORMAL_WAKE",
-              "ENTRY_BURST",
-              "READ_ONLY",
-              "DRY_RUN",
-              "REFLECTION",
-              "SOURCE_REFRESH",
-            ].map((value) => (
-              <option key={value}>{value}</option>
-            ))}
+            {["NORMAL_WAKE", "READ_ONLY", "DRY_RUN", "REFLECTION", "SOURCE_REFRESH"].map(
+              (value) => (
+                <option key={value}>{value}</option>
+              ),
+            )}
           </select>
         </label>
-        <NumberField
-          label="Bu run için entry üst sınırı"
-          value={nonPublishing ? 0 : config.entryTarget}
-          onChange={(entryTarget) => update({ entryTarget })}
-          min={config.runType === "ENTRY_BURST" ? 1 : 0}
-          max={10}
-        />
         <label className="text-sm font-bold">
           Öncelik
           <select

@@ -564,7 +564,6 @@ describe("production rollout application contract with PostgreSQL", () => {
       agents[0]!.profileId,
       manualAgentRunSchema.parse({
         runType: "READ_ONLY",
-        entryTarget: 0,
         allowTopicCreation: false,
         allowVoting: false,
         allowFollowing: false,

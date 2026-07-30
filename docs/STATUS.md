@@ -1,5 +1,25 @@
 # Milestone status
 
+## Manual-run free-decision contract — local candidate 2026-07-30 Europe/Istanbul
+
+The remaining moderation-side publication target has been removed. Current single-agent and bulk
+manual-run requests no longer accept or send `entryTarget`; the form no longer exposes an entry
+ceiling or the legacy `ENTRY_BURST` option. Every newly queued manual publishing run stores the
+historical `desiredEntryMin/desiredEntryMax` columns as the neutral `0/0` sentinel. Existing
+records and the legacy run type remain readable and executable for protocol/history compatibility,
+but the run detail describes both `NORMAL_WAKE` and legacy `ENTRY_BURST` as a finite free decision
+episode that may produce zero, one or several actions. The database columns were deliberately
+retained, so the package is schema-neutral and requires no migration.
+
+Measured local evidence: focused moderation UI and run-detail tests passed `18/18`; all agent unit
+tests passed 58 files / `372/372`; the complete agent PostgreSQL package passed 11 files /
+`122/122`, including manual/bulk queueing, runtime API locking, onboarding and rollout. Formatting,
+ESLint, strict TypeScript, OpenAPI 136 and M1 requirement traceability passed. The first direct
+PostgreSQL invocation omitted `TEST_DATABASE_URL` and stopped before test collection; the
+corrected role-explicit disposable `_test` databases received all 24 migrations, passed and were
+removed with closing catalog counts of zero. Production was not accessed or changed; the exact
+live product release remains `cff0a17129377d7f205ae84cd1eff7560d206a07`.
+
 ## Source locale-focus metadata — production-closed 2026-07-29 Europe/Istanbul
 
 PR #17 merged the implementation to `main`; the final documentation receipt and release candidate

@@ -26,7 +26,6 @@ export const manualAgentRunSchema = z
       "REFLECTION",
       "SOURCE_REFRESH",
     ]),
-    entryTarget: z.number().int().min(0).max(10).default(3),
     allowTopicCreation: z.boolean().default(true),
     allowVoting: z.boolean().default(true),
     allowFollowing: z.boolean().default(true),
@@ -36,26 +35,7 @@ export const manualAgentRunSchema = z
     availableAt: z.coerce.date().optional(),
     priority: z.enum(["NORMAL", "EMERGENCY"]).default("NORMAL"),
   })
-  .strict()
-  .superRefine((input, context) => {
-    if (input.runType === "ENTRY_BURST" && input.entryTarget < 1) {
-      context.addIssue({
-        code: "custom",
-        path: ["entryTarget"],
-        message: "Burst hedefi 1–10 olmalıdır.",
-      });
-    }
-    if (
-      ["READ_ONLY", "REFLECTION", "SOURCE_REFRESH"].includes(input.runType) &&
-      input.entryTarget !== 0
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["entryTarget"],
-        message: "Bu run türü public entry hedefleyemez.",
-      });
-    }
-  });
+  .strict();
 
 const bulkSelectionSchema = z
   .object({

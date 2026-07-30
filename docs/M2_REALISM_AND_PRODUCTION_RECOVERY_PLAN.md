@@ -766,6 +766,16 @@ behavior defects live.
    reread plus the isolated PostgreSQL repair regression close these implementation defects; longer
    unforced outcome-distribution measurement remains open.
 
+   On 2026-07-30 the remaining current moderation/API target semantics were removed in a
+   schema-neutral local candidate. Single and bulk manual-run forms no longer expose or send an
+   entry ceiling, new manual runs persist the historical target columns as the neutral `0/0`
+   sentinel, and the legacy `ENTRY_BURST` type is hidden from the current form while remaining
+   readable/executable for old records and protocol compatibility. Run detail and prompt guidance
+   treat both publishing run types as finite free decisions with zero, one or several actions.
+   Focused UI/detail `18/18`, all agent unit `372/372` and the complete agent PostgreSQL package
+   `122/122` passed. This closes the code/UI quota-removal subtask; exact-SHA promotion, capability
+   refresh and a longer unforced production distribution remain before item 1 can close.
+
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
    belief, relationship and bounded persona changes. The canonical package and all-writer

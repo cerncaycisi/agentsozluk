@@ -94,7 +94,7 @@ describe("agent admin UX contracts", () => {
           method: "POST",
           body: expect.objectContaining({
             agentIds: [agentId],
-            run: expect.objectContaining({ runType: "DRY_RUN", entryTarget: 0 }),
+            run: expect.objectContaining({ runType: "DRY_RUN" }),
           }),
         }),
       ),
@@ -105,10 +105,12 @@ describe("agent admin UX contracts", () => {
         2,
         `/api/v1/admin/agents/${agentId}/runs`,
         expect.objectContaining({
-          body: expect.objectContaining({ runType: "DRY_RUN", entryTarget: 0 }),
+          body: expect.objectContaining({ runType: "DRY_RUN" }),
         }),
       ),
     );
+    expect(mocks.apiRequest.mock.calls[0]?.[1]?.body.run).not.toHaveProperty("entryTarget");
+    expect(mocks.apiRequest.mock.calls[1]?.[1]?.body).not.toHaveProperty("entryTarget");
   });
 
   it("keeps full JSON out of the default edit surface and sends structured persona/profile fields", async () => {

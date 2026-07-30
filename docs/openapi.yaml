@@ -3059,7 +3059,6 @@ components:
         runType:
           type: string
           enum: [NORMAL_WAKE, ENTRY_BURST, READ_ONLY, DRY_RUN, REFLECTION, SOURCE_REFRESH]
-        entryTarget: { type: integer, minimum: 0, maximum: 10, default: 3 }
         allowTopicCreation: { type: boolean, default: true }
         allowVoting: { type: boolean, default: true }
         allowFollowing: { type: boolean, default: true }

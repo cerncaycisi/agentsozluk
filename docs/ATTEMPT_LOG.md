@@ -3663,3 +3663,28 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   4. One final read-only state query over-escaped quoted PostgreSQL identifiers and stopped with
      `syntax error at or near "\"`. Separate stdin-fed aggregate queries returned the closing
      state. Keep complex PostgreSQL smoke SQL out of nested SSH quoting.
+
+## 2026-07-30 — manual-run free-decision contract local candidate
+
+- Environment: local repository on exact base
+  `60f78545e7501296ad802770b49ca25a33efd668`; production and public endpoints were not accessed.
+  Scope was limited to removing the retired entry-target behavior from current single/bulk
+  moderation requests while retaining historical database fields and records.
+- Implementation: `entryTarget` was removed from the strict admin request schema, OpenAPI and all
+  current moderation forms. New manual and bulk runs always store `desiredEntryMin=0` and
+  `desiredEntryMax=0`; the legacy `ENTRY_BURST` input remains protocol-compatible but is no longer
+  offered by the form. Run detail and prompt guidance identify publishing runs as finite free
+  decisions that may choose zero, one or several actions.
+- Environment false start: the first direct PostgreSQL invocation omitted `TEST_DATABASE_URL` and
+  all four files stopped before collection with exact error
+  `Integration tests requires TEST_DATABASE_URL.` This was not a product assertion. Do not repeat:
+  every direct integration command must use the role-explicit, allowlisted disposable `_test`
+  database flow already recorded in this ledger.
+- Verified resolution: Homebrew PostgreSQL `16.14` reported verified local role
+  `gokhannihalgul`; unique database `agentsz_free_decision_20260730a_test` received all 24
+  migrations. The first focused subset passed four files / `80/80`; the complete agent PostgreSQL
+  package then passed 11 files / `122/122`. Cleanup traps dropped both scratch databases and their
+  closing catalog counts were zero. Focused UI/detail tests passed `18/18`; all agent unit tests
+  passed 58 files / `372/372`; formatting, ESLint, strict typecheck, OpenAPI 136 and M1
+  requirements passed. No production write, deploy, migration, restart, run mutation or public
+  request occurred.

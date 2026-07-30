@@ -85,7 +85,6 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
       created.agent.profile.id,
       manualAgentRunSchema.parse({
         runType: "NORMAL_WAKE",
-        entryTarget: 3,
         priority: "EMERGENCY",
         adminInstruction: "Focus on current public platform context only.",
       }),
@@ -93,8 +92,8 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
     expect(normal.run).toMatchObject({
       runStatus: "QUEUED",
       queuePriority: "EMERGENCY_ADMIN",
-      desiredEntryMin: 3,
-      desiredEntryMax: 3,
+      desiredEntryMin: 0,
+      desiredEntryMax: 0,
       saturationOverride: false,
       dailyMaximumOverride: false,
     });
@@ -105,7 +104,6 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
       created.agent.profile.id,
       manualAgentRunSchema.parse({
         runType: "ENTRY_BURST",
-        entryTarget: 3,
         priority: "NORMAL",
       }),
     );
@@ -113,8 +111,8 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
       runType: "ENTRY_BURST",
       runStatus: "QUEUED",
       queuePriority: "MANUAL_SINGLE",
-      desiredEntryMin: 3,
-      desiredEntryMax: 3,
+      desiredEntryMin: 0,
+      desiredEntryMax: 0,
     });
 
     const readOnly = await createManualAgentRun(
@@ -123,7 +121,6 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
       created.agent.profile.id,
       manualAgentRunSchema.parse({
         runType: "READ_ONLY",
-        entryTarget: 0,
         allowTopicCreation: true,
         allowVoting: true,
         allowFollowing: true,
@@ -150,7 +147,6 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
     const agents = await Promise.all([0, 1].map((index) => createActiveAgent(admin.id, index)));
     const run = {
       runType: "NORMAL_WAKE" as const,
-      entryTarget: 2,
       allowTopicCreation: true,
       allowVoting: true,
       allowFollowing: true,
@@ -232,7 +228,7 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
       integrationDatabase,
       actor(admin.id),
       created.agent.profile.id,
-      manualAgentRunSchema.parse({ runType: "NORMAL_WAKE", entryTarget: 2 }),
+      manualAgentRunSchema.parse({ runType: "NORMAL_WAKE" }),
     );
     const cancelled = await cancelAgentRun(integrationDatabase, actor(admin.id), first.run!.id, {
       reason: "Cancel queued run during integration verification.",
@@ -244,7 +240,7 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
       integrationDatabase,
       actor(admin.id),
       created.agent.profile.id,
-      manualAgentRunSchema.parse({ runType: "NORMAL_WAKE", entryTarget: 2 }),
+      manualAgentRunSchema.parse({ runType: "NORMAL_WAKE" }),
     );
     await integrationDatabase.agentRun.update({
       where: { id: second.run!.id },

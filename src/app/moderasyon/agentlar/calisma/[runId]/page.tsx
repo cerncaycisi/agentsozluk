@@ -79,14 +79,9 @@ const runStatusLabels: Record<string, string> = {
 const humanRunType = (runType: string) => runTypeLabels[runType] ?? runType;
 const humanRunStatus = (runStatus: string) => runStatusLabels[runStatus] ?? runStatus;
 
-function decisionMode(run: {
-  runType: string;
-  desiredEntryMin: number;
-  desiredEntryMax: number;
-}): string {
-  if (run.runType === "ENTRY_BURST")
-    return `Manuel entry hedefi: ${run.desiredEntryMin}–${run.desiredEntryMax}`;
-  if (run.runType === "NORMAL_WAKE") return "Serbest: 0, 1 veya birden fazla aksiyon";
+function decisionMode(run: { runType: string }): string {
+  if (["NORMAL_WAKE", "ENTRY_BURST"].includes(run.runType))
+    return "Serbest: 0, 1 veya birden fazla aksiyon";
   return "Public entry hedefi yok";
 }
 

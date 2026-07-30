@@ -2015,7 +2015,6 @@ describe("internal agent runtime API with PostgreSQL", () => {
       allActive: true,
       run: {
         runType: "NORMAL_WAKE",
-        entryTarget: 2,
         allowTopicCreation: true,
         allowVoting: true,
         allowFollowing: true,
@@ -2099,7 +2098,6 @@ describe("internal agent runtime API with PostgreSQL", () => {
       agentIds: [agentProfileId],
       run: {
         runType: "NORMAL_WAKE",
-        entryTarget: 2,
         allowTopicCreation: true,
         allowVoting: true,
         allowFollowing: true,

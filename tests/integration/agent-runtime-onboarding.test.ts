@@ -502,7 +502,7 @@ describe("runtime onboarding and orphan queue recovery with PostgreSQL", () => {
         bulkAgentRunPreviewSchema.parse({
           allActive: false,
           agentIds: agents.map(({ agent }) => agent.profile.id),
-          run: { runType: "NORMAL_WAKE", entryTarget: 1, priority: "NORMAL" },
+          run: { runType: "NORMAL_WAKE", priority: "NORMAL" },
         }),
         now,
       ),
@@ -524,7 +524,7 @@ describe("runtime onboarding and orphan queue recovery with PostgreSQL", () => {
         bulkAgentRunPreviewSchema.parse({
           allActive: false,
           agentIds: agents.map(({ agent }) => agent.profile.id),
-          run: { runType: "NORMAL_WAKE", entryTarget: 1, priority: "NORMAL" },
+          run: { runType: "NORMAL_WAKE", priority: "NORMAL" },
         }),
         now,
       ),
@@ -535,7 +535,7 @@ describe("runtime onboarding and orphan queue recovery with PostgreSQL", () => {
       { ...actor, requestId: randomUUID() },
       bulkAgentRunSchema.parse({
         agentIds: agents.map(({ agent }) => agent.profile.id),
-        run: { runType: "NORMAL_WAKE", entryTarget: 1, priority: "NORMAL" },
+        run: { runType: "NORMAL_WAKE", priority: "NORMAL" },
         confirmation: "RUN_SELECTED_AGENTS",
       }),
       now,

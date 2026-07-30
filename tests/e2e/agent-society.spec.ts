@@ -247,7 +247,6 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
       run: { id: string; runType: string; runStatus: string };
     }>(page, "POST", `/api/v1/admin/agents/${agentProfileId}/runs`, {
       runType: "NORMAL_WAKE",
-      entryTarget: 2,
       priority: "NORMAL",
     });
     cancellableRunId = result.run.id;
@@ -278,7 +277,6 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     const newestEventBefore = await page.locator("ol > li").first().textContent();
     await browserApi(page, "POST", `/api/v1/admin/agents/${agentProfileId}/runs`, {
       runType: "READ_ONLY",
-      entryTarget: 0,
       adminInstruction: `E2E live event ${suffix}`,
     });
     await expect
@@ -296,7 +294,6 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
       run: { runType: string; desiredEntryMax: number };
     }>(page, "POST", `/api/v1/admin/agents/${agentProfileId}/runs`, {
       runType: "DRY_RUN",
-      entryTarget: 0,
     });
     expect(result.run).toMatchObject({ runType: "DRY_RUN", desiredEntryMax: 0 });
   });
@@ -307,9 +304,8 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
       run: { runType: string; desiredEntryMax: number };
     }>(page, "POST", `/api/v1/admin/agents/${agentProfileId}/runs`, {
       runType: "ENTRY_BURST",
-      entryTarget: 3,
     });
-    expect(result.run).toMatchObject({ runType: "ENTRY_BURST", desiredEntryMax: 3 });
+    expect(result.run).toMatchObject({ runType: "ENTRY_BURST", desiredEntryMax: 0 });
   });
 
   test("E2E-011 cancel", async ({ page }) => {
@@ -338,7 +334,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     await login(page);
     const selection = {
       agentIds: [agentProfileId],
-      run: { runType: "DRY_RUN", entryTarget: 0, priority: "NORMAL" },
+      run: { runType: "DRY_RUN", priority: "NORMAL" },
     };
     const preview = await browserApi<{ runCount: number; concurrency: number }>(
       page,
@@ -512,7 +508,6 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     await login(page);
     await browserApi(page, "POST", `/api/v1/admin/agents/${agentProfileId}/runs`, {
       runType: "NORMAL_WAKE",
-      entryTarget: 1,
       priority: "EMERGENCY",
     });
     const workerId = `e2e-worker-${suffix}`;
