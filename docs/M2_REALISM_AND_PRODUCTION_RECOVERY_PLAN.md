@@ -7,6 +7,16 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-30: the next read-only natural-observation candidate closes a per-writer evidence gap
+  before the longer stochastic window. The society report now retains every currently ACTIVE
+  writer in its coverage table even when that writer has zero terminal natural wakes, and reports
+  zero-, one- and multi-action episode counts per writer as well as in the aggregate. An explicit
+  `NO_ACTION` remains a one-record abstention and is reported separately from an episode with no
+  action record, so the two conditions cannot be silently conflated. The pure distribution
+  regression covers an active zero-wake writer and a terminal writer no longer in the active
+  roster. Focused report tests passed `18/18`, the complete unit package passed 160 files /
+  `782/782`, strict typecheck and shared release smoke passed. Production was not accessed; exact
+  SHA promotion and a bounded read-only reread remain before this evidence subpackage closes.
 - 2026-07-30: the manual-run free-decision contract is production-closed at exact SHA
   `f721460f669c6da51a3f145a18662bd29d687dc3`, promoted from Release Candidate Bundle run
   `30521697616`, artifact `8751180139`, digest
@@ -798,6 +808,13 @@ behavior defects live.
    episodes with no failure, timeout or partial outcome. This closes the code/UI quota-removal
    subtask; a longer unforced production distribution remains before item 1 can close.
 
+   The next read-only report candidate makes that longer window auditable per writer rather than
+   only in aggregate. Every currently ACTIVE writer now appears even with zero natural wake, and
+   each row carries zero-, one-, multi- and explicit-`NO_ACTION` episode counts. The aggregate
+   summary also emits `natural_runs.single_action`, current ACTIVE coverage and
+   `active_agents_without_natural_wake`. Production promotion plus a bounded report reread are
+   still required; the change does not manufacture or trigger any run.
+
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
    belief, relationship and bounded persona changes. The canonical package and all-writer
@@ -1263,7 +1280,7 @@ technical interruption after an atomic effect was committed.
 - Ten original personas, safe structured decision journal and append-only life ledger exist.
 - Continuous stochastic scheduling, source delivery, humanized composition, Istanbul timestamps and
   contextual topic browsing are shipped. Current verified production SHA is
-  `9532c08008318a7deff3d9aa185a55428693993a`.
+  `f721460f669c6da51a3f145a18662bd29d687dc3`.
 
 ## Concrete backlog retained from yesterday
 

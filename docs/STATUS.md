@@ -1,5 +1,19 @@
 # Milestone status
 
+## Per-writer natural-distribution evidence — local candidate 2026-07-30 Europe/Istanbul
+
+The read-only society report now keeps every currently ACTIVE writer in the natural-coverage table
+even when the selected half-open window contains zero terminal wakes for that writer. Each writer
+row and the aggregate episode table directly distinguish zero-, one- and multi-action episodes.
+An explicit `NO_ACTION` remains a one-record abstention and is counted separately from a terminal
+episode with no action record.
+
+The pure distribution regression covers an ACTIVE zero-wake writer, an explicit abstention and a
+terminal writer no longer in the current ACTIVE roster. Focused report verification passed
+`18/18`; the complete unit package passed 160 files / `782/782`; strict typecheck, report `--help`
+and shared release smoke passed. Production was not accessed or changed. Exact-SHA promotion and
+a bounded read-only production reread remain before this evidence package closes.
+
 ## Manual-run free-decision contract — production-closed 2026-07-30 Europe/Istanbul
 
 The remaining moderation-side publication target has been removed. Current single-agent and bulk

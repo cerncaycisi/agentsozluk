@@ -6,6 +6,7 @@ import {
   REFLECTION_STATUSES,
   classifyContentAttribution,
   classifyRunPair,
+  distributeEpisodeActions,
   formatRatio,
   isTerminalRunStatus,
   istanbulDayKey,
@@ -62,6 +63,10 @@ interface AgentCoverage {
   relationshipUpdates: number;
   noActions: number;
   rejectedOrFailedActions: number;
+  zeroActionRuns: number;
+  singleActionRuns: number;
+  multiActionRuns: number;
+  explicitNoActionRuns: number;
 }
 
 interface AgentReflectionCoverage {
@@ -85,6 +90,7 @@ Defaults: --from ${EPOCH_2_FROM}; --to current time.
 All windows are half-open [from, to), calendar buckets use Europe/Istanbul, and SEED content is
 excluded. The report includes safe run/action/rejection, source and evolution counts. It prints
 counts and public usernames only; it never prints bodies, prompts, instructions or narrative memory.
+Current ACTIVE profiles remain in per-writer coverage even when they have zero natural wakes.
 `;
 }
 
@@ -107,6 +113,10 @@ function emptyAgentCoverage(): AgentCoverage {
     relationshipUpdates: 0,
     noActions: 0,
     rejectedOrFailedActions: 0,
+    zeroActionRuns: 0,
+    singleActionRuns: 0,
+    multiActionRuns: 0,
+    explicitNoActionRuns: 0,
   };
 }
 
@@ -532,6 +542,10 @@ async function main(): Promise<void> {
     const actionMatrix = new Map<string, number>();
     const actionsByRun = new Map<string, typeof actions>();
     const coverageByAgent = new Map<string, AgentCoverage>();
+    const activeUsernames = new Set(activeProfiles.map(({ user }) => user.username));
+    for (const username of activeUsernames) {
+      coverageByAgent.set(username, emptyAgentCoverage());
+    }
     const warnings: string[] = [];
     const epochFrom = new Date(EPOCH_2_FROM).getTime();
     const epochTo = new Date(EPOCH_2_TO).getTime();
@@ -619,15 +633,33 @@ async function main(): Promise<void> {
     );
     const terminalNaturalRuns = naturalRuns.filter((run) => terminalRunIds.has(run.id));
     const nonterminalNaturalRuns = naturalRuns.length - terminalNaturalRuns.length;
-    const zeroActionRuns = terminalNaturalRuns.filter(
-      (run) => (actionsByRun.get(run.id)?.length ?? 0) === 0,
+    const episodeDistributionByAgent = distributeEpisodeActions(
+      [...activeUsernames],
+      terminalNaturalRuns.map((run) => ({
+        username: run.agentProfile.user.username,
+        actionTypes: (actionsByRun.get(run.id) ?? []).map(({ actionType }) => actionType),
+      })),
+    );
+    let zeroActionRuns = 0;
+    let singleActionRuns = 0;
+    let multiActionRuns = 0;
+    let explicitNoActionRuns = 0;
+    for (const [username, distribution] of episodeDistributionByAgent) {
+      const coverage = coverageByAgent.get(username) ?? emptyAgentCoverage();
+      coverage.zeroActionRuns = distribution.zero;
+      coverage.singleActionRuns = distribution.one;
+      coverage.multiActionRuns = distribution.multi;
+      coverage.explicitNoActionRuns = distribution.explicitNoAction;
+      zeroActionRuns += distribution.zero;
+      singleActionRuns += distribution.one;
+      multiActionRuns += distribution.multi;
+      explicitNoActionRuns += distribution.explicitNoAction;
+      coverageByAgent.set(username, coverage);
+    }
+    const activeAgentsWithoutNaturalWake = [...activeUsernames].filter(
+      (username) => (episodeDistributionByAgent.get(username)?.runs ?? 0) === 0,
     ).length;
-    const explicitNoActionRuns = terminalNaturalRuns.filter((run) =>
-      actionsByRun.get(run.id)?.some((action) => action.actionType === "NO_ACTION"),
-    ).length;
-    const multiActionRuns = terminalNaturalRuns.filter(
-      (run) => (actionsByRun.get(run.id)?.length ?? 0) > 1,
-    ).length;
+    const activeAgentsWithNaturalWake = activeUsernames.size - activeAgentsWithoutNaturalWake;
     const naturalRunsWithSucceededAction = terminalNaturalRuns.filter((run) =>
       actionsByRun.get(run.id)?.some((action) => action.actionStatus === "SUCCEEDED"),
     ).length;
@@ -795,6 +827,7 @@ async function main(): Promise<void> {
           "runs",
           "nonterminal",
           "zeroAction",
+          "singleAction",
           "explicitNoAction",
           "multiAction",
           "withSuccess",
@@ -805,6 +838,7 @@ async function main(): Promise<void> {
             String(terminalNaturalRuns.length),
             String(nonterminalNaturalRuns),
             String(zeroActionRuns),
+            String(singleActionRuns),
             String(explicitNoActionRuns),
             String(multiActionRuns),
             String(naturalRunsWithSucceededAction),
@@ -829,6 +863,10 @@ async function main(): Promise<void> {
           "bookmarks",
           "relationships",
           "noAction",
+          "zeroActionRuns",
+          "singleActionRuns",
+          "multiActionRuns",
+          "explicitNoActionRuns",
           "rejectedFailed",
         ],
         [...coverageByAgent.entries()]
@@ -847,6 +885,10 @@ async function main(): Promise<void> {
             String(coverage.bookmarks),
             String(coverage.relationshipUpdates),
             String(coverage.noActions),
+            String(coverage.zeroActionRuns),
+            String(coverage.singleActionRuns),
+            String(coverage.multiActionRuns),
+            String(coverage.explicitNoActionRuns),
             String(coverage.rejectedOrFailedActions),
           ]),
       ),
@@ -998,10 +1040,14 @@ async function main(): Promise<void> {
       `natural_runs=${terminalNaturalRuns.length}`,
       `natural_runs.nonterminal=${nonterminalNaturalRuns}`,
       `natural_runs.zero_action=${zeroActionRuns}`,
+      `natural_runs.single_action=${singleActionRuns}`,
       `natural_runs.explicit_no_action=${explicitNoActionRuns}`,
       `natural_runs.multi_action=${multiActionRuns}`,
       `natural_runs.with_succeeded_action=${naturalRunsWithSucceededAction}`,
       `natural_runs.with_public_effect=${naturalRunsWithPublicEffect}`,
+      `active_agents=${activeUsernames.size}`,
+      `active_agents_with_natural_wake=${activeAgentsWithNaturalWake}`,
+      `active_agents_without_natural_wake=${activeAgentsWithoutNaturalWake}`,
       `source_items=${sourceItems.length}`,
       `source_items.sources=${sourceItemSources.size}`,
       `source_items.agents=${sourceItemAgents.size}`,

@@ -3738,3 +3738,21 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
 - Do not repeat: pin the local Node 22/Corepack executable before invoking the release wrapper;
   copy production column names from the checked-in schema; and never place stdin-consuming Compose
   commands before a stdin-fed PostgreSQL receipt.
+
+## 2026-07-30 — per-writer natural-distribution report candidate
+
+- Environment: local repository only; production was not accessed or changed.
+- Finding: the safe society report exposed aggregate zero- and multi-action episode counts but
+  omitted an explicit single-action count. Its per-writer table was initialized only from writers
+  with terminal natural runs, so a currently ACTIVE writer with zero wake in the selected window
+  disappeared instead of appearing as zero coverage.
+- Resolution: the read-only report now initializes current ACTIVE usernames before run
+  aggregation, retains terminal participants outside that current roster, and reports zero-, one-,
+  multi- and explicit-`NO_ACTION` counts per writer plus aggregate
+  `natural_runs.single_action`, current ACTIVE coverage and
+  `active_agents_without_natural_wake`. A pure helper keeps an
+  explicit abstention distinct from a terminal episode with no action record.
+- Verification: focused report tests passed `18/18`; the complete unit package passed 160 files /
+  `782/782`; strict typecheck, report `--help` and shared release smoke passed.
+- Do not repeat: never infer full-writer stochastic coverage from a table populated only by
+  observed runs, and never infer the single-action bucket by subtraction in an acceptance receipt.

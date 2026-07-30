@@ -84,6 +84,13 @@ describe("society observation report contracts", () => {
       expect(baseline).toContain(reason);
     }
     expect(baseline).toContain("active_agents_without_persona_reflection=");
+    expect(baseline).toContain("active_agents_without_natural_wake=");
+    expect(baseline).toContain("active_agents_with_natural_wake=");
+    expect(baseline).toContain("natural_runs.single_action=");
+    expect(baseline).toContain("coverage.singleActionRuns");
+    expect(baseline).toContain("coverage.multiActionRuns");
+    expect(baseline).toContain("coverageByAgent.set(username, emptyAgentCoverage())");
+    expect(baseline).toContain("distributeEpisodeActions");
     expect(baseline).toContain("reflection_runs.persona_evolution=");
     expect(baseline).toContain("reflection_runs.memory_consolidation=");
     expect(baseline).toContain("dictionary_links.traversed=");

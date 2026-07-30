@@ -75,6 +75,51 @@ export function isTerminalRunStatus(value: string): boolean {
   return TERMINAL_RUN_STATUSES.has(value);
 }
 
+export type EpisodeActionCardinality = "ZERO" | "ONE" | "MULTI";
+
+export function classifyEpisodeActions(actionTypes: readonly string[]): {
+  cardinality: EpisodeActionCardinality;
+  explicitNoAction: boolean;
+} {
+  return {
+    cardinality: actionTypes.length === 0 ? "ZERO" : actionTypes.length === 1 ? "ONE" : "MULTI",
+    explicitNoAction: actionTypes.includes("NO_ACTION"),
+  };
+}
+
+export interface EpisodeActionDistribution {
+  runs: number;
+  zero: number;
+  one: number;
+  multi: number;
+  explicitNoAction: number;
+}
+
+function emptyEpisodeActionDistribution(): EpisodeActionDistribution {
+  return { runs: 0, zero: 0, one: 0, multi: 0, explicitNoAction: 0 };
+}
+
+export function distributeEpisodeActions(
+  activeUsernames: readonly string[],
+  episodes: readonly { username: string; actionTypes: readonly string[] }[],
+): Map<string, EpisodeActionDistribution> {
+  const distributions = new Map<string, EpisodeActionDistribution>();
+  for (const username of activeUsernames) {
+    distributions.set(username, emptyEpisodeActionDistribution());
+  }
+  for (const episode of episodes) {
+    const distribution = distributions.get(episode.username) ?? emptyEpisodeActionDistribution();
+    const classification = classifyEpisodeActions(episode.actionTypes);
+    distribution.runs += 1;
+    if (classification.cardinality === "ZERO") distribution.zero += 1;
+    else if (classification.cardinality === "ONE") distribution.one += 1;
+    else distribution.multi += 1;
+    if (classification.explicitNoAction) distribution.explicitNoAction += 1;
+    distributions.set(episode.username, distribution);
+  }
+  return distributions;
+}
+
 export type ContentAttribution =
   | "natural-agent"
   | "operator-directed-agent"

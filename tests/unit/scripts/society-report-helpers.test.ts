@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  classifyEpisodeActions,
   classifyContentAttribution,
   classifyRunPair,
+  distributeEpisodeActions,
   fingerprintIds,
   formatRatio,
   isTerminalRunStatus,
@@ -84,6 +86,62 @@ describe("society report calendar and ratio helpers", () => {
 });
 
 describe("society attribution helpers", () => {
+  it("classifies zero, one and multi-action episodes without confusing explicit abstention", () => {
+    expect(classifyEpisodeActions([])).toEqual({
+      cardinality: "ZERO",
+      explicitNoAction: false,
+    });
+    expect(classifyEpisodeActions(["CREATE_ENTRY"])).toEqual({
+      cardinality: "ONE",
+      explicitNoAction: false,
+    });
+    expect(classifyEpisodeActions(["NO_ACTION"])).toEqual({
+      cardinality: "ONE",
+      explicitNoAction: true,
+    });
+    expect(classifyEpisodeActions(["VOTE_UP", "FOLLOW_TOPIC"])).toEqual({
+      cardinality: "MULTI",
+      explicitNoAction: false,
+    });
+  });
+
+  it("keeps every active writer in the episode distribution, including zero-wake writers", () => {
+    expect(
+      Object.fromEntries(
+        distributeEpisodeActions(
+          ["uyanmis", "uyumamis"],
+          [
+            { username: "uyanmis", actionTypes: [] },
+            { username: "uyanmis", actionTypes: ["NO_ACTION"] },
+            { username: "sonradanpasif", actionTypes: ["CREATE_ENTRY", "VOTE_UP"] },
+          ],
+        ),
+      ),
+    ).toEqual({
+      uyanmis: {
+        runs: 2,
+        zero: 1,
+        one: 1,
+        multi: 0,
+        explicitNoAction: 1,
+      },
+      uyumamis: {
+        runs: 0,
+        zero: 0,
+        one: 0,
+        multi: 0,
+        explicitNoAction: 0,
+      },
+      sonradanpasif: {
+        runs: 1,
+        zero: 0,
+        one: 0,
+        multi: 1,
+        explicitNoAction: 0,
+      },
+    });
+  });
+
   it("uses exact trigger/run-type pairs and warns through unknown classification", () => {
     expect(classifyRunPair("STOCHASTIC_TICK", "NORMAL_WAKE")).toBe("natural-public");
     expect(classifyRunPair("ADMIN_MANUAL", "NORMAL_WAKE")).toBe("operator-directed");
