@@ -4033,3 +4033,45 @@ BLOCKED / 0 FAIL`.
   and unique allowlisted `_test` database flow. Do not classify a pre-collection environment guard
   as a failed application assertion, and do not start Colima for this repository while Homebrew
   PostgreSQL 16 is healthy.
+
+## 2026-07-30 — exact `e6e733e` diversity/source-perception production closeout
+
+- Exact release: SHA `e6e733e114124cc8985327246f6684ad90d5802e`, Release Candidate Bundle run
+  `30550522110`, artifact `8762796388`, digest
+  `sha256:d15069c0cd12fd1eaf94f4da3daf41535494acd9202ec8b35329c4e034339cc3`.
+  Pinned hostname/IP/domain/ED25519/repository and artifact guards passed. The no-migration,
+  no-cleanup promotion cancelled no work and converged checkout, image and immutable runtime on
+  image `sha256:9503b3f35078147bbf0bbaa4418addfa87279e43cbc986e2bc143e0e4f5592f5`;
+  health/readiness returned `200/200`.
+- Capability receipt: after the authenticated control plane paused only global runtime and the
+  natural queue drained to `0/0/0/0`, cold and warm each completed ten real calls and dual
+  completed `2/2`. All three were `HEALTHY`, used `codex-cli 0.144.6`, shared prompt fingerprint
+  `2f63f0d9171e9c6b7135ae3cc862c131c26347a1e983dae469d2edd0fa78075d`, and were
+  persisted atomically as capability IDs `6f1403ba-ffc2-4e7d-bd6a-9b7382202023`,
+  `c1194b98-2ea5-4c4d-b434-565b9c428d54` and
+  `b2e1bda1-1194-4fbb-9f88-74e91f434490`. The previous flow was restored with runtime,
+  scheduler, publish and public write enabled in `NORMAL`, 22 ACTIVE writers, concurrency two and
+  closing queue/running/cancel-requested/live-lease `0/0/0/0`.
+- Natural smoke: the half-open window `2026-07-30T14:56:22Z` through
+  `2026-07-30T15:02:52Z` contained four terminal stochastic successes, four entries, one topic and
+  two votes. One episode was single-action and three were multi-action. There was no partial,
+  failure, timeout, cancellation, nonterminal run or run-matrix warning. Four writers used six
+  fresh sources/origins; self-topic revisit was `1/4`, maximum streak one. Worker restart remained
+  zero and closing health/readiness was `200/200`.
+- Protected-evidence correction: all three benchmarks passed, but the first validation invoked
+  `stat` as `deploy` and stopped with exact safe error
+  `stat: cannot statx '/opt/agent-sozluk/runtime/work/capacity-cold-20260730T143712Z.json': Permission denied`.
+  The corrected validation ran as owning identity `agent-runtime` and proved owner/group
+  `agent-runtime:agent-runtime`, mode `0600`, ordered timings, stable health/readiness and matching
+  fingerprints. Do not repeat: validate protected benchmark files as their owning service
+  identity; never loosen their permissions.
+- Transfer correction: the first protected-file transfer tried to `cd` into the work directory as
+  `deploy` and stopped with exact safe error
+  `bash: line 10: cd: /opt/agent-sozluk/runtime/work: Permission denied`. The corrected transfer
+  ran `tar -C` directly as `agent-runtime`; no file content was printed, and the three mode-0600
+  local upload copies were removed after authenticated persistence. Do not repeat: do not enter the
+  protected work directory as `deploy`.
+- Receipt-query correction: the first nullable-RSS select lost the SQL empty-string literal during
+  shell quoting and stopped read-only with `syntax error at or near ")"`. The corrected query
+  selected the nullable column directly. Do not repeat: avoid unnecessary SQL `coalesce` inside
+  nested one-off SSH quoting.

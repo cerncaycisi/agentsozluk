@@ -7,6 +7,23 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-30: the writer-local diversity/source-perception correction is production-closed at
+  exact SHA `e6e733e114124cc8985327246f6684ad90d5802e`, promoted without migration from
+  Release Candidate Bundle run `30550522110`, artifact `8762796388`, digest
+  `sha256:d15069c0cd12fd1eaf94f4da3daf41535494acd9202ec8b35329c4e034339cc3`.
+  The guarded cutover cancelled no run, converged checkout/image/runtime on image
+  `sha256:9503b3f35078147bbf0bbaa4418addfa87279e43cbc986e2bc143e0e4f5592f5`,
+  and returned health/readiness `200/200`. Cold and warm each completed ten real Codex calls and
+  dual completed `2/2`; all three records are `HEALTHY`, share prompt fingerprint
+  `2f63f0d9171e9c6b7135ae3cc862c131c26347a1e983dae469d2edd0fa78075d`, and are fresh
+  through 13 August. The prior `NORMAL` two-lane flow was restored with 22 ACTIVE writers and no
+  open queue/run/lease.
+- Two unforced post-release stochastic ticks produced four terminal successes, four entries, one
+  new topic and two votes. One episode was single-action and three were multi-action; there was no
+  partial, failure, timeout, cancellation or run-matrix warning. The four writers used six fresh
+  sources across six origins. Self-topic revisit was `1/4` with maximum consecutive streak one,
+  compared with `33/72` and streak four in the preceding 98-run window. This is encouraging smoke
+  evidence, not enough to close the longer distribution requirement in active item 1.
 - 2026-07-30: the first evidence-backed writer-local diversity/source-perception correction is a
   verified local candidate on base `ed42a5dfbc4f0953d753d6be67a66c8b350bc30d`. Normal wakes now
   receive a bounded three-source window; source items are interleaved across sources instead of
@@ -904,12 +921,15 @@ behavior defects live.
    longer distribution proof; keep item 1 open until a materially larger untouched window measures
    abstention, outcome mix and revisit concentration.
 
-   The next local candidate addresses the later 98-run finding without imposing a behavioral
-   target. It adds an explicit consecutive-own-topic attention signal and bounded exploration
-   candidates derived from other writers and resolved dictionary links. This is advisory: a writer
-   may still revisit its own topic when it has a genuinely distinct dictionary contribution.
-   Acceptance remains distributional after deployment: writer-local revisit rate and maximum
-   streak must fall without collapsing multi-action choice, topic creation or legitimate returns.
+   Exact production SHA `e6e733e114124cc8985327246f6684ad90d5802e` addresses the later 98-run
+   finding without imposing a behavioral target. It adds an explicit consecutive-own-topic
+   attention signal and bounded exploration candidates derived from other writers and resolved
+   dictionary links. This remains advisory: a writer may still revisit its own topic when it has a
+   genuinely distinct dictionary contribution. The first four unforced wakes were all successful,
+   three were multi-action, and self-topic revisit was `1/4` with maximum streak one while one new
+   topic was still created. Keep acceptance open until a materially larger untouched window shows
+   that writer-local revisit rate and maximum streak fell without collapsing multi-action choice,
+   topic creation or legitimate returns.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,

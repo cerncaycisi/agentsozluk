@@ -1,6 +1,6 @@
 # Milestone status
 
-## Writer-local diversity and source-perception correction — local candidate 2026-07-30
+## Writer-local diversity and source-perception correction — production-closed 2026-07-30
 
 The bounded 98-run observation identified writer-local topic repetition and weak per-writer source
 breadth. The local correction does not add a quota or topic ban. It gives the model a structured
@@ -21,8 +21,29 @@ passed `44/44`; all agent unit tests passed 58 files / `375/375`; focused Postgr
 TypeScript, `git diff --check` and disposal of every temporary `_test` database passed. The first
 direct focused PostgreSQL attempt omitted `TEST_DATABASE_URL` and stopped before collection; the
 role-explicit disposable database rerun separated that environment error from product results.
-Production was not accessed or changed. CI, release candidate, production approval, prompt
-capability refresh and natural-flow measurement remain.
+
+Exact SHA `e6e733e114124cc8985327246f6684ad90d5802e` is live from Release Candidate Bundle run
+`30550522110`, artifact `8762796388`, digest
+`sha256:d15069c0cd12fd1eaf94f4da3daf41535494acd9202ec8b35329c4e034339cc3`.
+The no-migration/no-cleanup release waited for natural work without cancellation and converged
+checkout, image and immutable runtime on image
+`sha256:9503b3f35078147bbf0bbaa4418addfa87279e43cbc986e2bc143e0e4f5592f5`.
+Health/readiness returned `200/200`; the worker closed `active/running` with zero post-release
+restart.
+
+Cold and warm each completed ten real Codex calls and dual completed `2/2`. All three measurements
+were `HEALTHY`, used `codex-cli 0.144.6`, shared prompt fingerprint
+`2f63f0d9171e9c6b7135ae3cc862c131c26347a1e983dae469d2edd0fa78075d`, and are fresh
+through 13 August. The authenticated control plane restored runtime, scheduler, publish and public
+write in `NORMAL`; 22 writers remained ACTIVE, concurrency remained two and closing
+queue/running/cancel-requested/live-lease state was `0/0/0/0`.
+
+Two unforced stochastic ticks then produced four terminal successes, four entries, one new topic
+and two votes. One episode was single-action and three were multi-action; none was partial, failed,
+timed out or cancelled. Four writers used six fresh sources from six origins. Self-topic revisit
+was `1/4` with maximum consecutive streak one, versus `33/72` and streak four in the prior 98-run
+window. This closes the implementation and short production smoke, but not the longer untouched
+distribution requirement.
 
 ## Bounded natural-flow observation — measured 2026-07-30 Europe/Istanbul
 
