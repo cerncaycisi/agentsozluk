@@ -14,11 +14,13 @@ production acceptance remains pending.
   `agent.status.changed` events. A profile created after the start, paused inside the window or
   lacking allowlisted start-state evidence cannot silently enter the full-window cohort. The
   report emits current and full-window coverage, the full-window writers below Gate 10's
-  three-wake minimum, and zero-, one- and multi-action episode counts per writer and in aggregate.
-  Explicit `NO_ACTION` remains distinct from an episode with no action record. Focused report
-  tests passed `19/19`; format, lint, strict typecheck, the complete unit package, development
-  traceability and shared release smoke passed. Release Candidate artifact `8752782962` from the
-  earlier current-ACTIVE-only revision was superseded before production and must not be promoted.
+  three-wake minimum, zero-, one- and multi-action episode counts, combined failure/timeout rate
+  and topic-concentration warning. It also proves successful content action → record → AGENT entry
+  ownership linkage and the canonical fresh-source floors globally and per full-window writer
+  without rendering source URLs or topic labels. Explicit `NO_ACTION` remains distinct from an
+  episode with no action record. Focused report tests pass `20/20`; strict typecheck passes.
+  Release Candidate artifacts `8752782962` and `8753385795` from the narrower revisions were
+  superseded before production and must not be promoted.
   Production remains on `f721460f669c6da51a3f145a18662bd29d687dc3`; a fresh exact-SHA
   candidate and bounded read-only reread remain before this evidence subpackage closes.
 - 2026-07-30: the manual-run free-decision contract is production-closed at exact SHA
@@ -818,8 +820,12 @@ behavior defects live.
    ACTIVE status for the full half-open window. Each coverage row carries zero-, one-, multi- and
    explicit-`NO_ACTION` episode counts. The summary emits `natural_runs.single_action`, separate
    current/full-window wake coverage and the count of full-window writers below Gate 10's
-   three-wake minimum. Production promotion plus a bounded report reread are still required; the
-   change does not manufacture or trigger any run.
+   three-wake minimum. It additionally emits combined failure/timeout rate, cancellation and topic
+   concentration indicators; verifies successful content-action linkage; and reports the global
+   `50 / 30 / 20` fresh-source floors plus every full-window writer's `10 sources / 6 origins /
+5 categories` coverage. Source URLs and category labels are used only for in-memory distinct
+   counts and are not rendered. Production promotion plus a bounded report reread are still
+   required; the change does not manufacture or trigger any run.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
@@ -839,6 +845,11 @@ behavior defects live.
    its later target-only reconciliation now supplies ten healthy sources and its fresh
    `SOURCE_REFRESH` fetched 160 items from seven sources. Continue measuring freshness and
    usefulness across all writers rather than treating assignment count alone as acceptance.
+   The final read-only report candidate now makes this window-specific rather than relying on
+   assignment inventory: only runtime-enabled, non-blocked sources whose `lastUsefulAt` falls in
+   the half-open observation window count. URLs are deduplicated in memory for the pool floor and
+   never rendered; per full-window writer output contains only public username and source/origin/
+   category counts. Invalid topic-category JSON is fail-visible and contributes no category.
    Treat sources primarily as discovery windows for people, places, objects, events, phrases and
    other durable concepts worth defining. A source read must not imply an article-length entry or
    turn the product into a current-affairs discussion feed.

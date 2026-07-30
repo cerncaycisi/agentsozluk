@@ -14,6 +14,7 @@ import {
   parseReflectionStatus,
   parseWindowArguments,
   ratio,
+  summarizeFreshSourceCoverage,
 } from "../../../scripts/society-report-helpers";
 
 describe("society report window parsing", () => {
@@ -197,6 +198,87 @@ describe("society attribution helpers", () => {
       paused: "INTERRUPTED",
       late: "NOT_ACTIVE_AT_START",
       unknown: "UNPROVEN_AT_START",
+    });
+  });
+
+  it("counts only freshly useful runtime-enabled source coverage without exposing URLs", () => {
+    const window = {
+      from: new Date("2026-07-23T00:00:00Z"),
+      to: new Date("2026-07-30T00:00:00Z"),
+    };
+    const summary = summarizeFreshSourceCoverage(
+      [
+        {
+          username: "bir",
+          url: "https://one.example/feed",
+          normalizedDomain: "one.example",
+          status: "TRUSTED",
+          adminBlocked: false,
+          localeFocus: "TURKISH_LANGUAGE",
+          topics: ["kültür", "müzik"],
+          lastUsefulAt: new Date("2026-07-25T00:00:00Z"),
+        },
+        {
+          username: "iki",
+          url: "https://one.example/feed",
+          normalizedDomain: "one.example",
+          status: "SEED",
+          adminBlocked: false,
+          localeFocus: "TURKISH_LANGUAGE",
+          topics: ["kültür"],
+          lastUsefulAt: new Date("2026-07-26T00:00:00Z"),
+        },
+        {
+          username: "bir",
+          url: "https://two.example/feed",
+          normalizedDomain: "two.example",
+          status: "PROBATION",
+          adminBlocked: false,
+          localeFocus: "GLOBAL",
+          topics: ["bilim", 42],
+          lastUsefulAt: new Date("2026-07-27T00:00:00Z"),
+        },
+        {
+          username: "bir",
+          url: "https://blocked.example/feed",
+          normalizedDomain: "blocked.example",
+          status: "TRUSTED",
+          adminBlocked: true,
+          localeFocus: "GLOBAL",
+          topics: ["hariç"],
+          lastUsefulAt: new Date("2026-07-27T00:00:00Z"),
+        },
+        {
+          username: "bir",
+          url: "https://stale.example/feed",
+          normalizedDomain: "stale.example",
+          status: "TRUSTED",
+          adminBlocked: false,
+          localeFocus: "GLOBAL",
+          topics: ["hariç"],
+          lastUsefulAt: new Date("2026-07-22T23:59:59Z"),
+        },
+      ],
+      ["bir", "iki", "uc"],
+      window,
+    );
+
+    expect({
+      poolSources: summary.poolSources,
+      poolOrigins: summary.poolOrigins,
+      poolTurkish: summary.poolTurkishOrTurkeyFocusedSources,
+      invalidTopicPayloads: summary.invalidTopicPayloads,
+      byAgent: Object.fromEntries(summary.byAgent),
+    }).toEqual({
+      poolSources: 2,
+      poolOrigins: 2,
+      poolTurkish: 1,
+      invalidTopicPayloads: 1,
+      byAgent: {
+        bir: { sources: 2, origins: 2, categories: 2 },
+        iki: { sources: 1, origins: 1, categories: 1 },
+        uc: { sources: 0, origins: 0, categories: 0 },
+      },
     });
   });
 

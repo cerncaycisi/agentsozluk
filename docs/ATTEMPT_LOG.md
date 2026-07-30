@@ -3781,3 +3781,29 @@ BLOCKED / 0 FAIL`.
 - Do not repeat: never substitute “currently ACTIVE” for “ACTIVE for the complete observation
   window,” never infer an unproven lifecycle start state, and never promote an RC after a stricter
   acceptance audit has superseded its evidence semantics.
+
+## 2026-07-30 — Gate 10 source-floor and content-linkage report correction
+
+- Environment: local repository only; production and public endpoints were not accessed. CI run
+  `30526957460` and Release Candidate run `30527330877` were green for exact SHA
+  `8e9ac65b18223382a3c58a9671b67c396807a30f`, but artifact `8753385795` was superseded before
+  production when the completion audit found narrower evidence semantics.
+- Finding: pool-level source item/source/origin totals could not prove Gate 10's per-full-window
+  writer minimum of ten freshly useful sources, six origins and five topic categories. The report
+  also checked agent entry → run linkage but did not directly prove every successful create-entry
+  action had its exact content record and AGENT-authored entry.
+- Resolution: source coverage now counts only non-blocked runtime-enabled
+  `SEED/DISCOVERED/PROBATION/TRUSTED` rows whose `lastUsefulAt` is inside the half-open window.
+  Exact URLs and topic labels are used only for in-memory distinct counts and are never rendered.
+  The report emits the global fresh `50 sources / 30 origins / 20 Turkish or Türkiye-focused`
+  evidence, each full-window writer's source/origin/category counts and below-floor counts, while
+  invalid category JSON remains fail-visible. Successful `CREATE_ENTRY` and
+  `CREATE_TOPIC_WITH_ENTRY` actions now expose missing/mismatched record totals without selecting
+  entry bodies. Natural failed-plus-timeout rate, cancellation count and the 75% topic
+  concentration review warning are direct scalars.
+- Verification at receipt time: focused helper/contract tests passed `20/20`; strict typecheck
+  passed. Complete unit/format/lint/development-traceability/release verification and a new exact
+  RC remain before production.
+- Do not repeat: do not use assignment count as fresh-use evidence, do not count blocked/dormant
+  sources as runtime-enabled, do not print source URL/category labels in aggregate acceptance
+  output, and do not infer action→content integrity only from the reverse entry linkage check.

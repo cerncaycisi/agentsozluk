@@ -22,6 +22,16 @@ superseded before production. Production was not accessed or changed and remains
 `f721460f669c6da51a3f145a18662bd29d687dc3`. A fresh exact-SHA candidate and bounded read-only
 production reread remain before this evidence package closes.
 
+The completion audit then superseded a second pre-production artifact, `8753385795`, before any
+production connection. Pool totals alone did not prove Gate 10's per-writer source floor, and the
+reverse entry→run check did not prove successful action→record integrity. The current local report
+now counts only runtime-enabled, non-blocked sources freshly useful inside the selected window,
+deduplicates pool URLs without rendering them, and emits global `50 sources / 30 origins / 20
+Turkish or Türkiye-focused sources` evidence plus `10 sources / 6 origins / 5 categories` for
+every full-window writer. It also reports missing or mismatched content records, combined natural
+failure/timeout rate, cancellations and the topic-concentration warning. Focused helper/contract
+tests pass `20/20`; strict typecheck passes. Full verification and a fresh RC are pending.
+
 ## Manual-run free-decision contract — production-closed 2026-07-30 Europe/Istanbul
 
 The remaining moderation-side publication target has been removed. Current single-agent and bulk

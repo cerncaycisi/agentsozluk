@@ -17,6 +17,7 @@ import {
   parseWindowArguments,
   reflectionPurpose,
   renderTable,
+  summarizeFreshSourceCoverage,
   type ContentAttribution,
   type ReflectionStatus,
   type RunClass,
@@ -91,6 +92,7 @@ Defaults: --from ${EPOCH_2_FROM}; --to current time.
 All windows are half-open [from, to), calendar buckets use Europe/Istanbul, and SEED content is
 excluded. The report includes safe run/action/rejection, source and evolution counts. It prints
 counts and public usernames only; it never prints bodies, prompts, instructions or narrative memory.
+Source URLs and topic labels are used only for in-memory distinct counts and are never rendered.
 Current ACTIVE profiles remain in per-writer coverage even when they have zero natural wakes.
 Lifecycle evidence separately reports profiles that stayed ACTIVE for the complete selected window.
 `;
@@ -300,23 +302,36 @@ async function main(): Promise<void> {
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         select: {
           runId: true,
+          agentProfileId: true,
           actionType: true,
           actionStatus: true,
           rejectionCode: true,
           updatedAt: true,
           run: { select: { trigger: true, runType: true } },
-          agentProfile: { select: { user: { select: { username: true } } } },
+          agentProfile: { select: { user: { select: { id: true, username: true } } } },
+          contentRecord: {
+            select: {
+              runId: true,
+              agentProfileId: true,
+              entry: { select: { authorId: true, origin: true } },
+            },
+          },
         },
       }),
       database.agentSource.findMany({
         select: {
           id: true,
           agentProfileId: true,
+          url: true,
           status: true,
+          adminBlocked: true,
+          localeFocus: true,
+          topics: true,
           normalizedDomain: true,
           lastFetchedAt: true,
           lastUsefulAt: true,
           consecutiveFailures: true,
+          agentProfile: { select: { user: { select: { username: true } } } },
         },
       }),
       database.agentSourceItem.findMany({
@@ -591,6 +606,33 @@ async function main(): Promise<void> {
         .filter(([, status]) => status === "FULL_WINDOW_ACTIVE")
         .map(([username]) => username),
     );
+    const freshSourceCoverage = summarizeFreshSourceCoverage(
+      sources.map((source) => ({
+        username: source.agentProfile.user.username,
+        url: source.url,
+        normalizedDomain: source.normalizedDomain,
+        status: source.status,
+        adminBlocked: source.adminBlocked,
+        localeFocus: source.localeFocus,
+        topics: source.topics,
+        lastUsefulAt: source.lastUsefulAt,
+      })),
+      [...fullWindowActiveUsernames],
+      window,
+    );
+    const fullWindowAgentsBelowSourceFloor = [...freshSourceCoverage.byAgent.values()].filter(
+      ({ sources: sourceCount }) => sourceCount < 10,
+    ).length;
+    const fullWindowAgentsBelowOriginFloor = [...freshSourceCoverage.byAgent.values()].filter(
+      ({ origins }) => origins < 6,
+    ).length;
+    const fullWindowAgentsBelowCategoryFloor = [...freshSourceCoverage.byAgent.values()].filter(
+      ({ categories }) => categories < 5,
+    ).length;
+    const fullWindowAgentsMeetingSourceFloor = [...freshSourceCoverage.byAgent.values()].filter(
+      ({ sources: sourceCount, origins, categories }) =>
+        sourceCount >= 10 && origins >= 6 && categories >= 5,
+    ).length;
     const coverageCohort = new Set([...currentActiveUsernames, ...fullWindowActiveUsernames]);
     for (const username of coverageCohort) {
       coverageByAgent.set(username, emptyAgentCoverage());
@@ -605,6 +647,26 @@ async function main(): Promise<void> {
     const terminalRunIds = new Set(terminalRuns.map(({ id }) => id));
     const windowActions = actions.filter(({ updatedAt }) => updatedAt < window.to);
     const actionsUpdatedAfterWindow = actions.length - windowActions.length;
+    const successfulContentActions = windowActions.filter(
+      (action) =>
+        action.actionStatus === "SUCCEEDED" &&
+        (action.actionType === "CREATE_ENTRY" || action.actionType === "CREATE_TOPIC_WITH_ENTRY"),
+    );
+    const successfulContentActionsWithoutRecord = successfulContentActions.filter(
+      ({ contentRecord }) => contentRecord === null,
+    ).length;
+    const successfulContentActionsWithInvalidRecordLinkage = successfulContentActions.filter(
+      (action) =>
+        action.contentRecord !== null &&
+        (action.contentRecord.runId !== action.runId ||
+          action.contentRecord.agentProfileId !== action.agentProfileId ||
+          action.contentRecord.entry.authorId !== action.agentProfile.user.id ||
+          action.contentRecord.entry.origin !== "AGENT"),
+    ).length;
+    const successfulContentActionsWithExactRecord =
+      successfulContentActions.length -
+      successfulContentActionsWithoutRecord -
+      successfulContentActionsWithInvalidRecordLinkage;
     for (const run of terminalRuns) {
       const key = `${run.trigger}|${run.runType}|${run.runStatus}|${run.errorCode ?? "-"}`;
       increment(runMatrix, key);
@@ -682,6 +744,10 @@ async function main(): Promise<void> {
     );
     const terminalNaturalRuns = naturalRuns.filter((run) => terminalRunIds.has(run.id));
     const nonterminalNaturalRuns = naturalRuns.length - terminalNaturalRuns.length;
+    const naturalRunStatusCounts = new Map<string, number>();
+    for (const run of terminalNaturalRuns) increment(naturalRunStatusCounts, run.runStatus);
+    const failedOrTimedOutNaturalRuns =
+      (naturalRunStatusCounts.get("FAILED") ?? 0) + (naturalRunStatusCounts.get("TIMED_OUT") ?? 0);
     const episodeDistributionByAgent = distributeEpisodeActions(
       [...coverageCohort],
       terminalNaturalRuns.map((run) => ({
@@ -733,6 +799,9 @@ async function main(): Promise<void> {
     const topicConcentration = new Map<string, number>();
     for (const entry of naturalEntries) increment(topicConcentration, entry.topicId);
     const rankedTopicCounts = [...topicConcentration.values()].sort((left, right) => right - left);
+    const topTopicEntryCount = rankedTopicCounts[0] ?? 0;
+    const topicConcentrationReviewWarning =
+      naturalEntries.length >= 20 && topTopicEntryCount / naturalEntries.length > 0.75;
 
     const sourceStatusCounts = new Map<
       string,
@@ -995,6 +1064,20 @@ async function main(): Promise<void> {
           ]),
       ),
       "",
+      "FULL-WINDOW FRESH SOURCE COVERAGE",
+      renderTable(
+        ["username", "sources", "origins", "categories", "meetsFloor"],
+        [...freshSourceCoverage.byAgent.entries()].map(([username, coverage]) => [
+          username,
+          String(coverage.sources),
+          String(coverage.origins),
+          String(coverage.categories),
+          coverage.sources >= 10 && coverage.origins >= 6 && coverage.categories >= 5
+            ? "yes"
+            : "no",
+        ]),
+      ),
+      "",
       "SOURCE EVENTS",
       renderTable(
         ["eventType", "count"],
@@ -1100,6 +1183,10 @@ async function main(): Promise<void> {
       `votes_created=${votes.length}`,
       `natural_entries_with_vote=${formatRatio(naturalEntriesWithVote, naturalEntries.length)}`,
       `agent_content_without_run_linkage=${agentContentWithoutRun}`,
+      `successful_content_actions=${successfulContentActions.length}`,
+      `successful_content_actions_with_exact_record=${successfulContentActionsWithExactRecord}`,
+      `successful_content_actions_without_record=${successfulContentActionsWithoutRecord}`,
+      `successful_content_actions_with_invalid_record_linkage=${successfulContentActionsWithInvalidRecordLinkage}`,
       `natural_content_inside_operator_windows=${naturalInsideOperatorWindow}`,
       `operator_runs_with_content=${operatorRunsWithContent}`,
       `operator_runs_without_content=${operatorRuns.length - operatorRunsWithContent}`,
@@ -1107,6 +1194,15 @@ async function main(): Promise<void> {
       `actions_updated_after_window_excluded=${actionsUpdatedAfterWindow}`,
       `natural_runs=${terminalNaturalRuns.length}`,
       `natural_runs.nonterminal=${nonterminalNaturalRuns}`,
+      `natural_runs.succeeded=${naturalRunStatusCounts.get("SUCCEEDED") ?? 0}`,
+      `natural_runs.partial=${naturalRunStatusCounts.get("PARTIAL") ?? 0}`,
+      `natural_runs.failed=${naturalRunStatusCounts.get("FAILED") ?? 0}`,
+      `natural_runs.timed_out=${naturalRunStatusCounts.get("TIMED_OUT") ?? 0}`,
+      `natural_runs.cancelled=${naturalRunStatusCounts.get("CANCELLED") ?? 0}`,
+      `natural_runs.failed_or_timed_out_rate=${formatRatio(
+        failedOrTimedOutNaturalRuns,
+        terminalNaturalRuns.length,
+      )}`,
       `natural_runs.zero_action=${zeroActionRuns}`,
       `natural_runs.single_action=${singleActionRuns}`,
       `natural_runs.explicit_no_action=${explicitNoActionRuns}`,
@@ -1130,6 +1226,16 @@ async function main(): Promise<void> {
       `source_items.sources=${sourceItemSources.size}`,
       `source_items.agents=${sourceItemAgents.size}`,
       `source_items.origins=${sourceItemOrigins.size}`,
+      `fresh_enabled_sources=${freshSourceCoverage.poolSources}`,
+      `fresh_enabled_source_origins=${freshSourceCoverage.poolOrigins}`,
+      `fresh_enabled_turkish_or_turkey_focused_sources=${freshSourceCoverage.poolTurkishOrTurkeyFocusedSources}`,
+      `fresh_enabled_sources.invalid_topic_payloads=${freshSourceCoverage.invalidTopicPayloads}`,
+      `full_window_active_agents_meeting_source_floor=${fullWindowAgentsMeetingSourceFloor}`,
+      `full_window_active_agents_below_source_floor=${fullWindowAgentsBelowSourceFloor}`,
+      `full_window_active_agents_below_origin_floor=${fullWindowAgentsBelowOriginFloor}`,
+      `full_window_active_agents_below_category_floor=${fullWindowAgentsBelowCategoryFloor}`,
+      `natural_entries.top_topic_share=${formatRatio(topTopicEntryCount, naturalEntries.length)}`,
+      `topic_concentration_review_warning=${topicConcentrationReviewWarning ? "yes" : "no"}`,
       `memory_episodes=${memoryEpisodes.length}`,
       `beliefs.formed=${beliefsFormed}`,
       `beliefs.updated=${beliefsUpdated}`,

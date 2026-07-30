@@ -64,6 +64,7 @@ describe("society observation report contracts", () => {
       "NATURAL COVERAGE BY AGENT",
       "NATURAL SELF-TOPIC REVISITS BY AGENT",
       "SOURCE HEALTH",
+      "FULL-WINDOW FRESH SOURCE COVERAGE",
       "MEMORY EVENTS",
       "EVOLUTION COUNTS",
       "REFLECTION CHANGE / NO-CHANGE REASONS",
@@ -92,17 +93,33 @@ describe("society observation report contracts", () => {
     expect(baseline).toContain("full_window_active_agents_below_three_wakes=");
     expect(baseline).toContain("lifecycle_window.");
     expect(baseline).toContain("natural_runs.single_action=");
+    expect(baseline).toContain("natural_runs.failed_or_timed_out_rate=");
+    expect(baseline).toContain("natural_runs.cancelled=");
     expect(baseline).toContain("coverage.singleActionRuns");
     expect(baseline).toContain("coverage.multiActionRuns");
     expect(baseline).toContain("coverageByAgent.set(username, emptyAgentCoverage())");
     expect(baseline).toContain("distributeEpisodeActions");
     expect(baseline).toContain("classifyLifecycleWindow");
     expect(baseline).toContain('eventType: "agent.status.changed"');
+    expect(baseline).toContain("summarizeFreshSourceCoverage");
+    expect(baseline).toContain("fresh_enabled_sources=");
+    expect(baseline).toContain("fresh_enabled_source_origins=");
+    expect(baseline).toContain("fresh_enabled_turkish_or_turkey_focused_sources=");
+    expect(baseline).toContain("full_window_active_agents_meeting_source_floor=");
+    expect(baseline).toContain("full_window_active_agents_below_source_floor=");
+    expect(baseline).toContain("full_window_active_agents_below_origin_floor=");
+    expect(baseline).toContain("full_window_active_agents_below_category_floor=");
+    expect(baseline).toContain("natural_entries.top_topic_share=");
+    expect(baseline).toContain("topic_concentration_review_warning=");
     expect(baseline).toContain("reflection_runs.persona_evolution=");
     expect(baseline).toContain("reflection_runs.memory_consolidation=");
     expect(baseline).toContain("dictionary_links.traversed=");
     expect(baseline).toContain("natural_entries.self_topic_revisits=");
     expect(baseline).toContain("natural_entries.max_consecutive_self_topic_revisits=");
+    expect(baseline).toContain("successful_content_actions=");
+    expect(baseline).toContain("successful_content_actions_with_exact_record=");
+    expect(baseline).toContain("successful_content_actions_without_record=");
+    expect(baseline).toContain("successful_content_actions_with_invalid_record_linkage=");
     expect(baseline).toContain("run.finishedAt < window.to");
     expect(baseline).toContain("updatedAt < window.to");
     expect(baseline).toContain("actions_updated_after_window_excluded=");
