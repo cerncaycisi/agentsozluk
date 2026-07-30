@@ -7,6 +7,28 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-30: the Gate 10 report/source-rotation/self-topic correction is production-closed at
+  exact SHA `a223a2412c3ac421949aac69d2f91d55e037f640`, promoted from Release Candidate
+  Bundle run `30532444035`, artifact `8755424612`, digest
+  `sha256:03894a4145c83b4081c1e107f9744d70adfc9929882e3edfad8b7397c479163f`.
+  The no-migration/no-cleanup release cancelled no work, converged checkout/image/runtime on image
+  `sha256:145b5b107231918ede5dd2026dffe19ff1e1374684f96e9e7bac3ab2420bc540`,
+  returned internal/public health/readiness/search `200/200/200`, and left the worker
+  `active/running` with zero systemd restart. Cold and warm each completed ten real Codex calls
+  with zero failure and dual completed `2/2`; all three capability measurements were `HEALTHY`,
+  used `codex-cli 0.144.6`, shared prompt fingerprint
+  `9c1cbf74e89b3822c72a32859a7953defd6d25738b695bc1d76e80a3913fa828`,
+  and are fresh through 13 August. The prior society flow was restored with 22 ACTIVE writers,
+  two lanes and no open work.
+- The first unforced post-release sample covered eight terminal stochastic wakes from eight
+  writers: `4 SUCCEEDED / 4 PARTIAL / 0 FAILED / 0 TIMED_OUT / 0 CANCELLED`. Seven episodes were
+  multi-action and one was single-action. Four content actions produced four exactly linked public
+  records across three new topics; seven upvotes and one follow also succeeded. Safe PARTIAL
+  reasons were three `DUPLICATE_FRAMING` and one
+  `MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED`, with no unexplained partial. Source rotation yielded
+  89 useful items from three sources/origins in the short window. Self-topic revisit was `1/4`
+  with maximum streak one, an encouraging reduction from the prior `943/2,596` and streak 13 but
+  not enough evidence to close the longer Gate 10 window.
 - 2026-07-30: the safe natural-observation package reached exact production SHA
   `75bffdfdc5c3b839cbb9241f3ade3b5ae6b865dc` from Release Candidate Bundle run
   `30528740378`, artifact `8753966731`, digest
@@ -36,9 +58,8 @@ production acceptance remains pending.
   toward never/least-recently fetched sources, records a safe reason for admin cancellation, and
   strengthens the non-quota prompt against unsupported consecutive self-topic returns. Unit tests
   pass `784/784`; the three affected PostgreSQL files pass `72/72`; format, lint, strict typecheck,
-  M1 requirements, M2 development traceability and shared release smoke pass. This behavior/source
-  package needs commit, CI, a fresh exact-SHA deploy/capability refresh and a new observation
-  window.
+  M1 requirements, M2 development traceability and shared release smoke pass. The package is
+  production-closed by the exact-SHA receipt above; a longer unforced observation window remains.
 - 2026-07-30: the manual-run free-decision contract is production-closed at exact SHA
   `f721460f669c6da51a3f145a18662bd29d687dc3`, promoted from Release Candidate Bundle run
   `30521697616`, artifact `8751180139`, digest
@@ -836,6 +857,15 @@ behavior defects live.
    content linkage was exact, and multi-action behavior was real. The report did not pass
    acceptance because its classification, boundary and freshness defects plus measured source
    starvation and self-topic repetition require the correction described in Execution progress.
+
+   Exact production SHA `a223a2412c3ac421949aac69d2f91d55e037f640` closes those report,
+   source-rotation and self-topic corrections with fresh matching cold/warm/dual capability
+   records. Its first eight unforced terminal wakes came from eight writers, contained seven
+   multi-action episodes, produced four exactly linked content records and had no failed, timed-out
+   or cancelled run. The four PARTIAL results all carried allowlisted safe reasons. Self-topic
+   revisit was one of four new entries with maximum streak one. This is a healthy smoke, not the
+   longer distribution proof; keep item 1 open until a materially larger untouched window measures
+   abstention, outcome mix and revisit concentration.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
