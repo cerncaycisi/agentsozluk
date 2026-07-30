@@ -31,7 +31,9 @@ Restart=on-failure
 RestartSec=5s
 KillSignal=SIGTERM
 KillMode=mixed
-TimeoutStopSec=45s
+# A manual run may legally consume 1200 seconds. Let the main worker finish
+# its in-flight runOnce and final control-plane write before systemd escalates.
+TimeoutStopSec=21min
 SendSIGKILL=yes
 FinalKillSignal=SIGKILL
 

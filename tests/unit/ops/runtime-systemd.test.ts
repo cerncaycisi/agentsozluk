@@ -112,7 +112,7 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
       "RestartSec=5s",
       "KillSignal=SIGTERM",
       "KillMode=mixed",
-      "TimeoutStopSec=45s",
+      "TimeoutStopSec=21min",
       "SendSIGKILL=yes",
       "MemoryHigh=1536M",
       "MemoryMax=2048M",
@@ -128,6 +128,9 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
     ]) {
       expect(service, directive).toContain(directive);
     }
+    expect(service).toContain("A manual run may legally consume 1200 seconds.");
+    expect(service).toContain("finish");
+    expect(service).toContain("in-flight runOnce");
   });
 
   it("keeps the EnvironmentFile non-secret and points at isolated runtime state", () => {
