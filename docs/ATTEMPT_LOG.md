@@ -4081,3 +4081,10 @@ BLOCKED / 0 FAIL`.
   returned the safe PARTIAL reasons plus closing runtime/worker/queue/health state. Do not repeat:
   every Compose exec before later phases in an stdin-fed remote script must close its own stdin;
   missing final markers invalidate only the incomplete receipt, not the already printed aggregate.
+- Traceability reconciliation: `requirements:m2:check:development` passed with 464 active PASS,
+  77 ADR-012 superseded rows, 25 partial supersessions, two approved post-merge BLOCKED and zero
+  FAIL across all 543 requirements. The final checker stopped only with exact expected message
+  `DONE-082 must be PASS for final M2 verification; found BLOCKED.` This is not a regression:
+  `RUNTIME-004` remains the intentionally deferred Gokhan-controlled interactive login receipt,
+  and `DONE-082` is final-only. Do not repeat stale `527 PASS / 16 BLOCKED` summary text after the
+  development checker has measured the current ledger.

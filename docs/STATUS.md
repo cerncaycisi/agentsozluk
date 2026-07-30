@@ -1355,44 +1355,46 @@ state is `active/running` with zero restarts and health/readiness are `200/200`.
 
 ## Milestone 2 historical verification baseline — 2026-07-20 Europe/Istanbul
 
-The following results were measured from the current candidate tree in an isolated Node.js 22 and
-PostgreSQL 16 environment. Production evidence is intentionally not carried forward to a new
-candidate until the exact committed revision is deployed and the rollout gates are rerun.
+Rows through the operations-contract check preserve the isolated Node.js 22/PostgreSQL 16
+checkpoint measured on 20 July; they are historical rather than current-suite counts. The final
+three operational rows are the current 30 July production/traceability summary. Production
+evidence is never carried forward to an undeployed behavior revision.
 
-| Check                              | Result  | Measured evidence                                                                |
-| ---------------------------------- | ------- | -------------------------------------------------------------------------------- |
-| Formatting                         | PASS    | Whole current-tree format check completed                                        |
-| ESLint                             | PASS    | Whole current-tree lint completed                                                |
-| TypeScript                         | PASS    | Strict typecheck completed                                                       |
-| Clean migrations                   | PASS    | All 15 migrations applied from an empty PostgreSQL 16 database                   |
-| Canonical seed                     | PASS    | Two idempotent runs retained 12 users, 30 topics and 180 ACTIVE seed entries     |
-| Counter consistency                | PASS    | Entry mismatches 0; topic mismatches 0                                           |
-| Unit tests                         | PASS    | 110 files, 552 tests                                                             |
-| PostgreSQL integration tests       | PASS    | 15 files, 197 tests                                                              |
-| Lib/module coverage                | PASS    | 125 files, 749 tests; statements/lines 93.75%; branches 85.37%; functions 95.36% |
-| Full-day simulation                | PASS    | 1/1 in 42.34 seconds; 150–200 safe-entry gate passed                             |
-| Next.js production build           | PASS    | 62 static pages generated                                                        |
-| Full Playwright E2E                | PASS    | 50/50 across desktop and mobile in 2.2 minutes                                   |
-| Agent Society Playwright E2E       | PASS    | 24/24 in 56.4 seconds                                                            |
-| M1 regression                      | PASS    | Migration, seed, tests, coverage, build, E2E, requirements and Compose config    |
-| Agent unit/integration             | PASS    | 303/303 agent unit and 131/131 agent integration tests                           |
-| Life-ledger and rollout contracts  | PASS    | Local reconstruction/export and Gate 9–12 evidence-contract tests passed         |
-| Writer approval lifecycle          | PASS    | Registration-to-admin-approval-to-publish integration and E2E passed             |
-| Random root and mobile drawer      | PASS    | Root redirect, no-topic fallback and close-on-topic-selection tests passed       |
-| OpenAPI/runtime alignment          | PASS    | 116 operations aligned                                                           |
-| Persona verification               | PASS    | 10 personas, 45 pairwise comparisons                                             |
-| Public metadata scan               | PASS    | 14 surfaces, 21 private fields scanned                                           |
-| Repository and history secret scan | PASS    | Current repository and reachable Git history passed                              |
-| GitHub Actions storage hygiene     | PASS    | Cleared to 0/0; main-only cache, PR restore-only, artifacts retained one day     |
-| Operations contract tests          | PASS    | Production runbook and systemd contracts: 20/20                                  |
-| Exact production revision          | PASS    | Main/app/runtime exact `43b5302`; CI and guarded deploy receipt recorded         |
-| Production rollout gates           | PENDING | Gates 1–12 must be captured against the new exact deployed revision              |
-| M2 traceability                    | OPEN    | 527 PASS, 16 approved production-gated BLOCKED, 0 FAIL (543 total)               |
+| Check                              | Result | Measured evidence                                                                 |
+| ---------------------------------- | ------ | --------------------------------------------------------------------------------- |
+| Formatting                         | PASS   | Whole current-tree format check completed                                         |
+| ESLint                             | PASS   | Whole current-tree lint completed                                                 |
+| TypeScript                         | PASS   | Strict typecheck completed                                                        |
+| Clean migrations                   | PASS   | All 15 migrations applied from an empty PostgreSQL 16 database                    |
+| Canonical seed                     | PASS   | Two idempotent runs retained 12 users, 30 topics and 180 ACTIVE seed entries      |
+| Counter consistency                | PASS   | Entry mismatches 0; topic mismatches 0                                            |
+| Unit tests                         | PASS   | 110 files, 552 tests                                                              |
+| PostgreSQL integration tests       | PASS   | 15 files, 197 tests                                                               |
+| Lib/module coverage                | PASS   | 125 files, 749 tests; statements/lines 93.75%; branches 85.37%; functions 95.36%  |
+| Full-day simulation                | PASS   | 1/1 in 42.34 seconds; 150–200 safe-entry gate passed                              |
+| Next.js production build           | PASS   | 62 static pages generated                                                         |
+| Full Playwright E2E                | PASS   | 50/50 across desktop and mobile in 2.2 minutes                                    |
+| Agent Society Playwright E2E       | PASS   | 24/24 in 56.4 seconds                                                             |
+| M1 regression                      | PASS   | Migration, seed, tests, coverage, build, E2E, requirements and Compose config     |
+| Agent unit/integration             | PASS   | 303/303 agent unit and 131/131 agent integration tests                            |
+| Life-ledger and rollout contracts  | PASS   | Local reconstruction/export and Gate 9–12 evidence-contract tests passed          |
+| Writer approval lifecycle          | PASS   | Registration-to-admin-approval-to-publish integration and E2E passed              |
+| Random root and mobile drawer      | PASS   | Root redirect, no-topic fallback and close-on-topic-selection tests passed        |
+| OpenAPI/runtime alignment          | PASS   | 116 operations aligned                                                            |
+| Persona verification               | PASS   | 10 personas, 45 pairwise comparisons                                              |
+| Public metadata scan               | PASS   | 14 surfaces, 21 private fields scanned                                            |
+| Repository and history secret scan | PASS   | Current repository and reachable Git history passed                               |
+| GitHub Actions storage hygiene     | PASS   | Cleared to 0/0; main-only cache, PR restore-only, artifacts retained one day      |
+| Operations contract tests          | PASS   | Production runbook and systemd contracts: 20/20                                   |
+| Exact production revision          | PASS   | App/image/runtime exact `e6e733e`; guarded deploy and capability receipt recorded |
+| Production rollout gates           | OPEN   | Natural distribution evidence plus final interactive-login closure remain         |
+| M2 traceability                    | OPEN   | 464 active PASS, 77 superseded, 25 partial supersessions, 2 BLOCKED, 0 FAIL       |
 
-No locally provable FAIL rows remain. The 16 BLOCKED rows require the new exact candidate to pass
-the production identity, runtime, backup/migration, Day 0 rollout, two-hour observation,
-ten-agent escalation, scheduled-run, final-smoke and reboot/resume evidence gates.
-Requirement-level evidence is tracked in [`M2_TRACEABILITY.md`](M2_TRACEABILITY.md).
+No locally provable FAIL row remains. Development traceability passes all 543 rows with only two
+approved blockers: `RUNTIME-004` requires the separately deferred Gokhan-controlled interactive
+Codex login receipt, and final-only `DONE-082` closes after that row passes and the final
+`requirements:m2:check` reports 543 PASS. Requirement-level evidence is tracked in
+[`M2_TRACEABILITY.md`](M2_TRACEABILITY.md).
 
 Milestone 2 design/operations documents:
 
