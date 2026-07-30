@@ -60,6 +60,7 @@ describe("society observation report contracts", () => {
     for (const section of [
       "ACTION MATRIX",
       "NATURAL EPISODE OUTCOMES",
+      "LIFECYCLE WINDOW COHORT",
       "NATURAL COVERAGE BY AGENT",
       "NATURAL SELF-TOPIC REVISITS BY AGENT",
       "SOURCE HEALTH",
@@ -84,13 +85,19 @@ describe("society observation report contracts", () => {
       expect(baseline).toContain(reason);
     }
     expect(baseline).toContain("active_agents_without_persona_reflection=");
-    expect(baseline).toContain("active_agents_without_natural_wake=");
-    expect(baseline).toContain("active_agents_with_natural_wake=");
+    expect(baseline).toContain("current_active_agents_without_natural_wake=");
+    expect(baseline).toContain("current_active_agents_with_natural_wake=");
+    expect(baseline).toContain("full_window_active_agents_without_natural_wake=");
+    expect(baseline).toContain("full_window_active_agents_with_natural_wake=");
+    expect(baseline).toContain("full_window_active_agents_below_three_wakes=");
+    expect(baseline).toContain("lifecycle_window.");
     expect(baseline).toContain("natural_runs.single_action=");
     expect(baseline).toContain("coverage.singleActionRuns");
     expect(baseline).toContain("coverage.multiActionRuns");
     expect(baseline).toContain("coverageByAgent.set(username, emptyAgentCoverage())");
     expect(baseline).toContain("distributeEpisodeActions");
+    expect(baseline).toContain("classifyLifecycleWindow");
+    expect(baseline).toContain('eventType: "agent.status.changed"');
     expect(baseline).toContain("reflection_runs.persona_evolution=");
     expect(baseline).toContain("reflection_runs.memory_consolidation=");
     expect(baseline).toContain("dictionary_links.traversed=");

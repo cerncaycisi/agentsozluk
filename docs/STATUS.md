@@ -1,6 +1,6 @@
 # Milestone status
 
-## Per-writer natural-distribution evidence — local candidate 2026-07-30 Europe/Istanbul
+## Full-window natural-distribution evidence — local candidate 2026-07-30 Europe/Istanbul
 
 The read-only society report now keeps every currently ACTIVE writer in the natural-coverage table
 even when the selected half-open window contains zero terminal wakes for that writer. Each writer
@@ -8,11 +8,19 @@ row and the aggregate episode table directly distinguish zero-, one- and multi-a
 An explicit `NO_ACTION` remains a one-record abstention and is counted separately from a terminal
 episode with no action record.
 
-The pure distribution regression covers an ACTIVE zero-wake writer, an explicit abstention and a
-terminal writer no longer in the current ACTIVE roster. Focused report verification passed
-`18/18`; the complete unit package passed 160 files / `782/782`; strict typecheck, report `--help`
-and shared release smoke passed. Production was not accessed or changed. Exact-SHA promotion and
-a bounded read-only production reread remain before this evidence package closes.
+The report also distinguishes current ACTIVE status from Gate 10's stricter “ACTIVE for the
+complete window” cohort. It reconstructs that cohort from immutable `agent.status.changed` events
+without printing lifecycle JSON. Profiles created after the start, interrupted by a non-ACTIVE
+transition, or lacking allowlisted start-state evidence are classified separately and cannot
+inflate acceptance coverage. The summary directly reports current/full-window wake coverage and
+full-window writers below the three-wake minimum.
+
+Focused report verification passed `19/19`; format, lint, strict typecheck, the complete unit
+package, development traceability, report `--help` and shared release smoke passed. Release
+Candidate artifact `8752782962` covered only the earlier current-ACTIVE evidence and was
+superseded before production. Production was not accessed or changed and remains on
+`f721460f669c6da51a3f145a18662bd29d687dc3`. A fresh exact-SHA candidate and bounded read-only
+production reread remain before this evidence package closes.
 
 ## Manual-run free-decision contract — production-closed 2026-07-30 Europe/Istanbul
 

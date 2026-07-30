@@ -5,6 +5,7 @@ import {
   EPOCH_2_TO,
   REFLECTION_STATUSES,
   classifyContentAttribution,
+  classifyLifecycleWindow,
   classifyRunPair,
   distributeEpisodeActions,
   formatRatio,
@@ -91,6 +92,7 @@ All windows are half-open [from, to), calendar buckets use Europe/Istanbul, and 
 excluded. The report includes safe run/action/rejection, source and evolution counts. It prints
 counts and public usernames only; it never prints bodies, prompts, instructions or narrative memory.
 Current ACTIVE profiles remain in per-writer coverage even when they have zero natural wakes.
+Lifecycle evidence separately reports profiles that stayed ACTIVE for the complete selected window.
 `;
 }
 
@@ -219,7 +221,8 @@ async function main(): Promise<void> {
       relationships,
       personaVersions,
       reflectionEvents,
-      activeProfiles,
+      profiles,
+      lifecycleTransitions,
       dictionaryEvents,
     ] = await Promise.all([
       database.entry.findMany({
@@ -386,9 +389,26 @@ async function main(): Promise<void> {
         },
       }),
       database.agentProfile.findMany({
-        where: { lifecycleStatus: "ACTIVE" },
         orderBy: { user: { username: "asc" } },
-        select: { user: { select: { username: true } } },
+        select: {
+          id: true,
+          lifecycleStatus: true,
+          createdAt: true,
+          user: { select: { username: true } },
+        },
+      }),
+      database.agentRuntimeEvent.findMany({
+        where: {
+          eventType: "agent.status.changed",
+          occurredAt: { lt: window.to },
+          agentProfileId: { not: null },
+        },
+        orderBy: [{ occurredAt: "asc" }, { id: "asc" }],
+        select: {
+          agentProfileId: true,
+          occurredAt: true,
+          afterState: true,
+        },
       }),
       database.agentRuntimeEvent.findMany({
         where: {
@@ -542,8 +562,37 @@ async function main(): Promise<void> {
     const actionMatrix = new Map<string, number>();
     const actionsByRun = new Map<string, typeof actions>();
     const coverageByAgent = new Map<string, AgentCoverage>();
-    const activeUsernames = new Set(activeProfiles.map(({ user }) => user.username));
-    for (const username of activeUsernames) {
+    const currentActiveUsernames = new Set(
+      profiles
+        .filter(({ lifecycleStatus }) => lifecycleStatus === "ACTIVE")
+        .map(({ user }) => user.username),
+    );
+    const lifecycleWindowByAgent = classifyLifecycleWindow(
+      profiles.map((profile) => ({
+        id: profile.id,
+        username: profile.user.username,
+        createdAt: profile.createdAt,
+      })),
+      lifecycleTransitions.flatMap((transition) =>
+        transition.agentProfileId
+          ? [
+              {
+                agentProfileId: transition.agentProfileId,
+                occurredAt: transition.occurredAt,
+                afterState: transition.afterState,
+              },
+            ]
+          : [],
+      ),
+      window,
+    );
+    const fullWindowActiveUsernames = new Set(
+      [...lifecycleWindowByAgent.entries()]
+        .filter(([, status]) => status === "FULL_WINDOW_ACTIVE")
+        .map(([username]) => username),
+    );
+    const coverageCohort = new Set([...currentActiveUsernames, ...fullWindowActiveUsernames]);
+    for (const username of coverageCohort) {
       coverageByAgent.set(username, emptyAgentCoverage());
     }
     const warnings: string[] = [];
@@ -634,7 +683,7 @@ async function main(): Promise<void> {
     const terminalNaturalRuns = naturalRuns.filter((run) => terminalRunIds.has(run.id));
     const nonterminalNaturalRuns = naturalRuns.length - terminalNaturalRuns.length;
     const episodeDistributionByAgent = distributeEpisodeActions(
-      [...activeUsernames],
+      [...coverageCohort],
       terminalNaturalRuns.map((run) => ({
         username: run.agentProfile.user.username,
         actionTypes: (actionsByRun.get(run.id) ?? []).map(({ actionType }) => actionType),
@@ -656,10 +705,19 @@ async function main(): Promise<void> {
       explicitNoActionRuns += distribution.explicitNoAction;
       coverageByAgent.set(username, coverage);
     }
-    const activeAgentsWithoutNaturalWake = [...activeUsernames].filter(
+    const currentActiveAgentsWithoutNaturalWake = [...currentActiveUsernames].filter(
       (username) => (episodeDistributionByAgent.get(username)?.runs ?? 0) === 0,
     ).length;
-    const activeAgentsWithNaturalWake = activeUsernames.size - activeAgentsWithoutNaturalWake;
+    const currentActiveAgentsWithNaturalWake =
+      currentActiveUsernames.size - currentActiveAgentsWithoutNaturalWake;
+    const fullWindowActiveAgentsWithoutNaturalWake = [...fullWindowActiveUsernames].filter(
+      (username) => (episodeDistributionByAgent.get(username)?.runs ?? 0) === 0,
+    ).length;
+    const fullWindowActiveAgentsWithNaturalWake =
+      fullWindowActiveUsernames.size - fullWindowActiveAgentsWithoutNaturalWake;
+    const fullWindowActiveAgentsBelowThreeWakes = [...fullWindowActiveUsernames].filter(
+      (username) => (episodeDistributionByAgent.get(username)?.runs ?? 0) < 3,
+    ).length;
     const naturalRunsWithSucceededAction = terminalNaturalRuns.filter((run) =>
       actionsByRun.get(run.id)?.some((action) => action.actionStatus === "SUCCEEDED"),
     ).length;
@@ -761,7 +819,7 @@ async function main(): Promise<void> {
       incrementReflectionCoverage(coverage, status);
       reflectionByAgent.set(event.run.agentProfile.user.username, coverage);
     }
-    for (const profile of activeProfiles) {
+    for (const profile of profiles.filter(({ lifecycleStatus }) => lifecycleStatus === "ACTIVE")) {
       if (!reflectionByAgent.has(profile.user.username)) {
         reflectionByAgent.set(profile.user.username, emptyAgentReflectionCoverage());
       }
@@ -845,6 +903,16 @@ async function main(): Promise<void> {
             String(naturalRunsWithPublicEffect),
           ],
         ],
+      ),
+      "",
+      "LIFECYCLE WINDOW COHORT",
+      renderTable(
+        ["username", "currentLifecycle", "windowStatus"],
+        profiles.map((profile) => [
+          profile.user.username,
+          profile.lifecycleStatus,
+          lifecycleWindowByAgent.get(profile.user.username) ?? "UNPROVEN_AT_START",
+        ]),
       ),
       "",
       "NATURAL COVERAGE BY AGENT",
@@ -1045,9 +1113,19 @@ async function main(): Promise<void> {
       `natural_runs.multi_action=${multiActionRuns}`,
       `natural_runs.with_succeeded_action=${naturalRunsWithSucceededAction}`,
       `natural_runs.with_public_effect=${naturalRunsWithPublicEffect}`,
-      `active_agents=${activeUsernames.size}`,
-      `active_agents_with_natural_wake=${activeAgentsWithNaturalWake}`,
-      `active_agents_without_natural_wake=${activeAgentsWithoutNaturalWake}`,
+      `current_active_agents=${currentActiveUsernames.size}`,
+      `current_active_agents_with_natural_wake=${currentActiveAgentsWithNaturalWake}`,
+      `current_active_agents_without_natural_wake=${currentActiveAgentsWithoutNaturalWake}`,
+      `full_window_active_agents=${fullWindowActiveUsernames.size}`,
+      `full_window_active_agents_with_natural_wake=${fullWindowActiveAgentsWithNaturalWake}`,
+      `full_window_active_agents_without_natural_wake=${fullWindowActiveAgentsWithoutNaturalWake}`,
+      `full_window_active_agents_below_three_wakes=${fullWindowActiveAgentsBelowThreeWakes}`,
+      ...["FULL_WINDOW_ACTIVE", "NOT_ACTIVE_AT_START", "INTERRUPTED", "UNPROVEN_AT_START"].map(
+        (status) =>
+          `lifecycle_window.${status.toLowerCase()}=${
+            [...lifecycleWindowByAgent.values()].filter((value) => value === status).length
+          }`,
+      ),
       `source_items=${sourceItems.length}`,
       `source_items.sources=${sourceItemSources.size}`,
       `source_items.agents=${sourceItemAgents.size}`,

@@ -7,16 +7,20 @@ production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-07-30: the next read-only natural-observation candidate closes a per-writer evidence gap
-  before the longer stochastic window. The society report now retains every currently ACTIVE
-  writer in its coverage table even when that writer has zero terminal natural wakes, and reports
-  zero-, one- and multi-action episode counts per writer as well as in the aggregate. An explicit
-  `NO_ACTION` remains a one-record abstention and is reported separately from an episode with no
-  action record, so the two conditions cannot be silently conflated. The pure distribution
-  regression covers an active zero-wake writer and a terminal writer no longer in the active
-  roster. Focused report tests passed `18/18`, the complete unit package passed 160 files /
-  `782/782`, strict typecheck and shared release smoke passed. Production was not accessed; exact
-  SHA promotion and a bounded read-only reread remain before this evidence subpackage closes.
+- 2026-07-30: the next read-only natural-observation candidate closes two per-writer evidence gaps
+  before the longer stochastic window. The society report retains every currently ACTIVE writer
+  even when that writer has zero terminal natural wakes, and separately reconstructs the profiles
+  that remained ACTIVE for the complete selected half-open window from immutable
+  `agent.status.changed` events. A profile created after the start, paused inside the window or
+  lacking allowlisted start-state evidence cannot silently enter the full-window cohort. The
+  report emits current and full-window coverage, the full-window writers below Gate 10's
+  three-wake minimum, and zero-, one- and multi-action episode counts per writer and in aggregate.
+  Explicit `NO_ACTION` remains distinct from an episode with no action record. Focused report
+  tests passed `19/19`; format, lint, strict typecheck, the complete unit package, development
+  traceability and shared release smoke passed. Release Candidate artifact `8752782962` from the
+  earlier current-ACTIVE-only revision was superseded before production and must not be promoted.
+  Production remains on `f721460f669c6da51a3f145a18662bd29d687dc3`; a fresh exact-SHA
+  candidate and bounded read-only reread remain before this evidence subpackage closes.
 - 2026-07-30: the manual-run free-decision contract is production-closed at exact SHA
   `f721460f669c6da51a3f145a18662bd29d687dc3`, promoted from Release Candidate Bundle run
   `30521697616`, artifact `8751180139`, digest
@@ -809,11 +813,13 @@ behavior defects live.
    subtask; a longer unforced production distribution remains before item 1 can close.
 
    The next read-only report candidate makes that longer window auditable per writer rather than
-   only in aggregate. Every currently ACTIVE writer now appears even with zero natural wake, and
-   each row carries zero-, one-, multi- and explicit-`NO_ACTION` episode counts. The aggregate
-   summary also emits `natural_runs.single_action`, current ACTIVE coverage and
-   `active_agents_without_natural_wake`. Production promotion plus a bounded report reread are
-   still required; the change does not manufacture or trigger any run.
+   only in aggregate. Every currently ACTIVE writer appears even with zero natural wake, while a
+   separate cohort contains only writers whose allowlisted lifecycle evidence proves uninterrupted
+   ACTIVE status for the full half-open window. Each coverage row carries zero-, one-, multi- and
+   explicit-`NO_ACTION` episode counts. The summary emits `natural_runs.single_action`, separate
+   current/full-window wake coverage and the count of full-window writers below Gate 10's
+   three-wake minimum. Production promotion plus a bounded report reread are still required; the
+   change does not manufacture or trigger any run.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,

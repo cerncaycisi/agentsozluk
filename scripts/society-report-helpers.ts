@@ -120,6 +120,73 @@ export function distributeEpisodeActions(
   return distributions;
 }
 
+export type LifecycleWindowStatus =
+  | "FULL_WINDOW_ACTIVE"
+  | "NOT_ACTIVE_AT_START"
+  | "INTERRUPTED"
+  | "UNPROVEN_AT_START";
+
+interface LifecycleTransition {
+  agentProfileId: string;
+  occurredAt: Date;
+  afterState: unknown;
+}
+
+const AGENT_LIFECYCLE_STATUSES = new Set(["DRAFT", "PAUSED", "ACTIVE", "SUSPENDED", "RETIRED"]);
+
+function lifecycleStatusFromState(state: unknown): string | null {
+  if (!state || typeof state !== "object" || Array.isArray(state)) return null;
+  const status = (state as Record<string, unknown>).lifecycleStatus;
+  return typeof status === "string" && AGENT_LIFECYCLE_STATUSES.has(status) ? status : null;
+}
+
+export function classifyLifecycleWindow(
+  profiles: readonly { id: string; username: string; createdAt: Date }[],
+  transitions: readonly LifecycleTransition[],
+  window: ObservationWindow,
+): Map<string, LifecycleWindowStatus> {
+  const transitionsByProfile = new Map<string, LifecycleTransition[]>();
+  for (const transition of transitions) {
+    const profileTransitions = transitionsByProfile.get(transition.agentProfileId) ?? [];
+    transitionsByProfile.set(transition.agentProfileId, [...profileTransitions, transition]);
+  }
+
+  const results = new Map<string, LifecycleWindowStatus>();
+  for (const profile of profiles) {
+    if (profile.createdAt > window.from) {
+      results.set(profile.username, "NOT_ACTIVE_AT_START");
+      continue;
+    }
+    let statusAtStart: string | null = null;
+    let interrupted = false;
+    const profileTransitions = [...(transitionsByProfile.get(profile.id) ?? [])].sort(
+      (left, right) => left.occurredAt.getTime() - right.occurredAt.getTime(),
+    );
+    for (const transition of profileTransitions) {
+      const transitionStatus = lifecycleStatusFromState(transition.afterState);
+      if (transition.occurredAt <= window.from) statusAtStart = transitionStatus;
+      if (
+        transition.occurredAt > window.from &&
+        transition.occurredAt < window.to &&
+        transitionStatus !== "ACTIVE"
+      ) {
+        interrupted = true;
+      }
+    }
+    results.set(
+      profile.username,
+      statusAtStart !== "ACTIVE"
+        ? statusAtStart === null
+          ? "UNPROVEN_AT_START"
+          : "NOT_ACTIVE_AT_START"
+        : interrupted
+          ? "INTERRUPTED"
+          : "FULL_WINDOW_ACTIVE",
+    );
+  }
+  return results;
+}
+
 export type ContentAttribution =
   | "natural-agent"
   | "operator-directed-agent"

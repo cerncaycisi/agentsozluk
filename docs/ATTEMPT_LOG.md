@@ -3756,3 +3756,28 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   `782/782`; strict typecheck, report `--help` and shared release smoke passed.
 - Do not repeat: never infer full-writer stochastic coverage from a table populated only by
   observed runs, and never infer the single-action bucket by subtraction in an acceptance receipt.
+
+## 2026-07-30 — full-window lifecycle cohort correction
+
+- Environment: local repository only; production and public endpoints were not accessed. Release
+  Candidate run `30525755145`, artifact `8752782962` completed for the preceding
+  current-ACTIVE-only report revision but was superseded before promotion.
+- Finding: Gate 10 requires at least three terminal natural wakes for every profile that remained
+  ACTIVE for the complete seven-day window. Current lifecycle status cannot prove that condition:
+  it includes profiles activated late and does not reveal a pause/resume inside the window.
+- Resolution: the read-only report now reconstructs lifecycle-window membership from immutable
+  `agent.status.changed` events using only profile id, creation time, event time and an allowlisted
+  lifecycle status from `afterState`. It separately reports current ACTIVE and uninterrupted
+  full-window ACTIVE wake coverage, full-window writers below three wakes, and fail-safe
+  `NOT_ACTIVE_AT_START`, `INTERRUPTED` and `UNPROVEN_AT_START` classifications. Raw lifecycle JSON
+  is never rendered.
+- Verification: focused helper/contract tests passed `19/19`; formatting, ESLint, strict
+  typecheck, the complete unit package, M2 development traceability, report `--help` and shared
+  release smoke passed. A broad raw `vitest run` additionally reached the intentionally incomplete
+  final-acceptance assertion and stopped with exact message
+  `DONE-082 must be PASS for final acceptance`; development traceability remained
+  `464 active PASS / 77 ADR-012 superseded / 25 partial supersessions / 2 approved post-merge
+BLOCKED / 0 FAIL`.
+- Do not repeat: never substitute “currently ACTIVE” for “ACTIVE for the complete observation
+  window,” never infer an unproven lifecycle start state, and never promote an RC after a stricter
+  acceptance audit has superseded its evidence semantics.

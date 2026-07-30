@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyEpisodeActions,
   classifyContentAttribution,
+  classifyLifecycleWindow,
   classifyRunPair,
   distributeEpisodeActions,
   fingerprintIds,
@@ -139,6 +140,63 @@ describe("society attribution helpers", () => {
         multi: 1,
         explicitNoAction: 0,
       },
+    });
+  });
+
+  it("proves only uninterrupted full-window ACTIVE lifecycle coverage", () => {
+    const from = new Date("2026-07-30T00:00:00Z");
+    const to = new Date("2026-07-31T00:00:00Z");
+    const profiles = [
+      { id: "full", username: "full", createdAt: new Date("2026-07-20T00:00:00Z") },
+      { id: "paused", username: "paused", createdAt: new Date("2026-07-20T00:00:00Z") },
+      { id: "late", username: "late", createdAt: new Date("2026-07-30T01:00:00Z") },
+      { id: "unknown", username: "unknown", createdAt: new Date("2026-07-20T00:00:00Z") },
+    ];
+
+    expect(
+      Object.fromEntries(
+        classifyLifecycleWindow(
+          profiles,
+          [
+            {
+              agentProfileId: "full",
+              occurredAt: from,
+              afterState: { lifecycleStatus: "ACTIVE" },
+            },
+            {
+              agentProfileId: "full",
+              occurredAt: new Date("2026-07-31T01:00:00Z"),
+              afterState: { lifecycleStatus: "PAUSED" },
+            },
+            {
+              agentProfileId: "paused",
+              occurredAt: new Date("2026-07-29T00:00:00Z"),
+              afterState: { lifecycleStatus: "ACTIVE" },
+            },
+            {
+              agentProfileId: "paused",
+              occurredAt: new Date("2026-07-30T12:00:00Z"),
+              afterState: { lifecycleStatus: "PAUSED" },
+            },
+            {
+              agentProfileId: "paused",
+              occurredAt: new Date("2026-07-30T13:00:00Z"),
+              afterState: { lifecycleStatus: "ACTIVE" },
+            },
+            {
+              agentProfileId: "unknown",
+              occurredAt: new Date("2026-07-29T00:00:00Z"),
+              afterState: { lifecycleStatus: "not-allowlisted" },
+            },
+          ],
+          { from, to },
+        ),
+      ),
+    ).toEqual({
+      full: "FULL_WINDOW_ACTIVE",
+      paused: "INTERRUPTED",
+      late: "NOT_ACTIVE_AT_START",
+      unknown: "UNPROVEN_AT_START",
     });
   });
 
