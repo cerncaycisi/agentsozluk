@@ -4149,3 +4149,28 @@ BLOCKED / 0 FAIL`.
   tests pass. Persona verification passes 10/10 plus 45/45; format, ESLint, strict typecheck, diff
   hygiene and dry-run no-op behavior pass. Production was not accessed or changed for this
   candidate.
+
+## 2026-07-30 — runtime graceful-stop budget mismatch
+
+- Scope: operator-approved restoration of the temporary `60000–90000 ms` stochastic cadence on
+  exact production behavior SHA `e6e733e114124cc8985327246f6684ad90d5802e`. No run was cancelled
+  and no cadence file change passed the zero-open-run guard.
+- Exact safe failure: the first corrected restore attempt printed
+  `CADENCE_RESTORE_WORKER_STOPPED` and exited before `CADENCE_RESTORE_CONFIG_SWITCHED`; the
+  immediate read-only receipt showed two `RUNNING` rows with two live leases, while the EXIT
+  fail-safe left the worker `active/running`, `NRestarts=0`, cadence `2/60000/90000` and
+  health/readiness `200/200`. A later drain watcher lost SSH with
+  `Connection reset by peer`; its fail-safe again left production unchanged and healthy.
+- Root cause: `scripts/agent-runtime-worker.ts` stops scheduling after `SIGTERM` but deliberately
+  awaits the in-flight `runOnce`. Legal scheduled run deadlines reach 600 seconds and manual run
+  deadlines reach 1200 seconds, while the versioned systemd unit allowed only
+  `TimeoutStopSec=45s`. Host shutdown could therefore escalate before a valid run completed and
+  leave its lease visible until normal expiry/finalization.
+- Verified local correction: the versioned unit now budgets `TimeoutStopSec=21min`, covering the
+  1200-second maximum plus terminal-write margin; unit verification pins the policy and runtime
+  documentation explains the contract. Production cadence restoration remains pending the next
+  approved maintenance drain and must not be reported complete before effective process
+  environment plus zero-open-run evidence.
+- Do not repeat: never assume `systemctl stop` proves application-level drain. Compare the host
+  stop budget with the longest legal run deadline, require the stage marker after the config
+  switch, and verify both database run/lease counts and the effective worker environment.
