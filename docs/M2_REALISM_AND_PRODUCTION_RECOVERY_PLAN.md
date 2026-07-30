@@ -35,7 +35,7 @@ production acceptance remains pending.
   boundary terminalization and safe PARTIAL/cancellation reasons, rotates daily source refresh
   toward never/least-recently fetched sources, records a safe reason for admin cancellation, and
   strengthens the non-quota prompt against unsupported consecutive self-topic returns. Unit tests
-  pass `784/784`; the two affected PostgreSQL files pass `71/71`; format, lint, strict typecheck,
+  pass `784/784`; the three affected PostgreSQL files pass `72/72`; format, lint, strict typecheck,
   M1 requirements, M2 development traceability and shared release smoke pass. This behavior/source
   package needs commit, CI, a fresh exact-SHA deploy/capability refresh and a new observation
   window.

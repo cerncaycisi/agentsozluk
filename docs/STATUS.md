@@ -27,7 +27,7 @@ The local correction uses exact trigger classification, reports boundary termina
 PARTIAL/cancellation reasons, derives historical source freshness from immutable source-item
 timestamps, rotates daily refreshes toward never/least-recently fetched sources, and strengthens
 the non-quota self-topic guidance. Unit tests pass `784/784`; the affected PostgreSQL package
-passes `71/71`; format, lint, strict typecheck, M1 requirements, M2 development traceability and
+passes `72/72`; format, lint, strict typecheck, M1 requirements, M2 development traceability and
 shared release smoke pass. Commit/CI, fresh exact-SHA production promotion with capability refresh
 and a new natural observation remain.
 

@@ -83,6 +83,7 @@ describe("agent source domain backoff with PostgreSQL", () => {
             interestScore: 0.8,
             noveltyScore: 0.5,
             usefulnessScore: 0.5,
+            adminPinned: true,
             addedByOrigin: "ADMIN",
           },
         }),

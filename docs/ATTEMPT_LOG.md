@@ -3857,7 +3857,7 @@ BLOCKED / 0 FAIL`.
   real independent self-topic contributions, but asks writers with no new information/example/
   comment to explore other writers, resolved links and new concept addresses first.
 - Verification: focused report/prompt tests passed `50/50`; all unit tests passed 160 files /
-  `784/784`; the two affected PostgreSQL files passed `71/71` after all 24 migrations in a unique
+  `784/784`; the three affected PostgreSQL files passed `72/72` after all 24 migrations in a unique
   explicit-role `_test` database. Focused source rotation proved an older lower-trust source is
   selected while the newest high-trust non-pinned source is deferred, with discovery capacity and
   blocked-source exclusion preserved. Format, lint, strict typecheck, M1 requirements, M2
@@ -3871,3 +3871,12 @@ BLOCKED / 0 FAIL`.
   `release:smoke` and pnpm stopped with `Command "release:smoke" not found`; it changed no state.
   The repository's actual `smoke:release` script returned `RELEASE_SMOKE PASS static=1`. Do not
   guess script aliases; read `package.json` before invoking a release helper.
+- CI run `30531743389` then exposed one stale domain-backoff fixture. The fixture added two
+  already-failed sources beside ten never-read canonical sources and assumed the failed pair would
+  still appear inside an eight-source perception slice. Least-recently-read rotation correctly
+  selected the never-read rows, so the assertion saw `[]` rather than the expected two domain
+  health projections. This was not a loss of domain backoff state: persistence assertions before
+  the context slice still proved both rows at failure count two. The corrected fixture pins the
+  two sources whose domain projection it is explicitly testing; source-rotation tests separately
+  prove the non-pinned order. Do not encode an obsolete global trust ordering into a domain-health
+  test.
