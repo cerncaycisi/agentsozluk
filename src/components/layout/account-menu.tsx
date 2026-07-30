@@ -1,7 +1,7 @@
 "use client";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, CircleUserRound } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { navigateDocument } from "@/lib/browser/document-navigation";
@@ -29,11 +29,12 @@ export function AccountMenu({
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
-          className="inline-flex min-h-10 max-w-40 items-center gap-1 rounded-xl border bg-page px-3 text-sm font-semibold text-primary"
+          className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border bg-page text-sm font-semibold text-primary sm:h-10 sm:w-auto sm:max-w-40 sm:gap-1 sm:px-3"
           aria-label="Hesap menüsünü aç"
         >
-          <span className="truncate">{viewer.displayName}</span>
-          <ChevronDown aria-hidden="true" size={16} />
+          <CircleUserRound aria-hidden="true" size={19} className="sm:hidden" />
+          <span className="hidden truncate sm:inline">{viewer.displayName}</span>
+          <ChevronDown aria-hidden="true" size={16} className="hidden sm:block" />
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>

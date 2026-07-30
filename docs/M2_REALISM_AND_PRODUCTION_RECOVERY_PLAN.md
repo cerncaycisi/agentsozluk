@@ -1231,6 +1231,17 @@ behavior defects live.
    console/CSP error. Keep these boundaries as regression requirements rather than an active queue
    item.
 
+   The 2026-07-30 mobile-navigation candidate removes the remaining measured horizontal overflow
+   from authenticated moderation pages. Both navigation sections now keep their labels fixed and
+   wrap every workspace link inside the available width instead of exposing two independent
+   horizontal scrollers. The global account trigger is a compact icon-only control below `sm` and
+   retains the current display-name control from `sm` upward, so long names no longer widen the
+   document. At a real 375 px browser viewport, `/moderasyon/agentlar` changed from 405 px document
+   width and three overflowing descendants to exact 375 px width and zero overflowing descendant;
+   the 1265 px desktop viewport also remained exact-width with the named account control. Focused
+   layout tests pass `9/9`; format, lint and strict typecheck pass. Production deployment and
+   authenticated mobile smoke remain before this measured subpackage closes.
+
 9. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
    with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation
    gates, and update traceability only from measured receipts. Milestone 2 is complete only when no

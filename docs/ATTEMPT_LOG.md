@@ -3929,3 +3929,25 @@ BLOCKED / 0 FAIL`.
   the complete receipt. Do not repeat: an exit-zero wrapper is not complete evidence when expected
   phase markers are missing, and stdin-consuming Compose commands must not precede stdin-fed
   receipt phases.
+
+## 2026-07-30 — mobile moderation navigation candidate
+
+- Environment: isolated local PostgreSQL database `agent_sozluk_ui_test_20260730_01`, local Next.js
+  dev server and in-app browser only. Production was not accessed or changed for this UI package.
+- Measured defect: at a 375 px browser viewport, authenticated `/moderasyon/agentlar` had a 405 px
+  document width. The two navigation rows were 343 px viewports over 870 px and 724 px content, and
+  the 160 px account trigger ended at x=405. The page exposed three horizontal overflow sources
+  and clipped workspace links.
+- Resolution: moderation navigation uses fixed section labels plus wrapping link groups with no
+  horizontal scroller. The account trigger becomes a 40 px icon-only accessible control below
+  `sm`, retaining the display name and dropdown chevron from `sm` upward. The same 375 px check now
+  reports document width 375, both navigation rows `clientWidth=scrollWidth=343`, account trigger
+  x=245–285 and zero overflowing descendant. Desktop at 1265 px remains exact-width with the named
+  160 px trigger.
+- Verification: focused layout tests passed `9/9`; Prettier, ESLint, strict typecheck and
+  `git diff --check` passed.
+- Local command correction: `pnpm dev -- --port 3010` expanded to
+  `next dev --hostname 0.0.0.0 -- --port 3010`, and Next stopped with exact safe error
+  `Invalid project directory provided, no such directory: /Volumes/GB/ai-projects/agentsz/--port`.
+  The direct command `pnpm exec next dev --hostname 0.0.0.0 --port 3010` started normally. Do not
+  insert a second `--` when the package script already fixes the Next command prefix.

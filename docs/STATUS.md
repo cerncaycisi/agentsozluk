@@ -1,5 +1,19 @@
 # Milestone status
 
+## Mobile moderation navigation — local candidate 2026-07-30 Europe/Istanbul
+
+The authenticated moderation navigation no longer requires two horizontal scrollers on mobile.
+Section labels stay fixed while every workspace link wraps inside the available width. The global
+account trigger uses an accessible compact icon below `sm` and preserves the named desktop control,
+so a long display name no longer widens the whole page.
+
+An isolated local PostgreSQL database with all 24 migrations and the canonical demo seed drove
+real browser checks. At 375 px, `/moderasyon/agentlar` changed from a 405 px document with three
+overflowing descendants to an exact 375 px document with zero overflowing descendant. At 1265 px,
+the desktop page remained exact-width and the account trigger retained its 160 px named layout.
+Focused layout tests pass `9/9`; format, ESLint and strict typecheck pass. Production remains on
+`a223a2412c3ac421949aac69d2f91d55e037f640`; this candidate has not been deployed.
+
 ## Gate 9/10 evidence corrections — production-closed 2026-07-30 Europe/Istanbul
 
 Exact SHA `a223a2412c3ac421949aac69d2f91d55e037f640` is live from Release Candidate
