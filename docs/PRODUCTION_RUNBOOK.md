@@ -1520,6 +1520,45 @@ and life events. After apply, rerun dry-run and require `changeCount=0`, then st
 observation window because persona state changed. Never substitute direct SQL or apply to an
 incomplete visible-writer set.
 
+## Persona evolution weight-lock reconciliation
+
+Weight-lock reconciliation is a separately approved persona mutation, not part of an ordinary
+schema-neutral deploy. It removes legacy `pinned` markers from every visible writer's interest and
+core-value weights and removes non-identity paths from `evolution.pinnedFields`. It does not weaken
+weekly delta bounds, ontology, impersonation, empty offline-biography or safety validation.
+
+First run the packaged command in its default read-only mode:
+
+```bash
+compose='docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml'
+$compose exec -T app \
+  node node_modules/tsx/dist/cli.mjs scripts/reconcile-persona-weight-locks.ts
+```
+
+Review only the safe receipt fields: username, lifecycle, current version, current/target SHA-256,
+current/target weight-lock count, `changeNeeded` and aggregate counts. The command prints no
+persona, prompt, memory or credential body. A missing or invalid persona blocks apply.
+
+Apply requires separate explicit approval, global runtime paused, zero open runs and an active
+HUMAN ADMIN selection. Run it only in the approved protected operator environment:
+
+```bash
+agent_weight_admin_id='<approved-human-admin-uuid>'
+$compose exec -T \
+  -e AGENT_PERSONA_WEIGHT_UNLOCK_MODE=APPLY \
+  -e AGENT_PERSONA_WEIGHT_UNLOCK_CONFIRMATION=UNLOCK_PERSONA_EVOLUTION_WEIGHTS \
+  -e AGENT_OPERATOR_ADMIN_ID="$agent_weight_admin_id" \
+  app \
+  node node_modules/tsx/dist/cli.mjs scripts/reconcile-persona-weight-locks.ts
+```
+
+The command covers all visible `PAUSED`, `ACTIVE` and `SUSPENDED` writers, performs one atomic
+transaction and calls the authenticated application service for each changed profile. Immutable
+persona history, ontology/distance validation, audit, outbox and life events stay intact. After
+apply, rerun dry-run and require `changeCount=0`; then refresh the capability package because the
+prompt fingerprint changed and start a new natural observation window because persona state
+changed. Never substitute direct SQL or apply to a partial writer set.
+
 ## Current stochastic production acceptance — Gates 9–12
 
 This is the active Milestone 2 production-acceptance contract after ADR-012. It replaces the

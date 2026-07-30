@@ -93,7 +93,7 @@ export const seedPersonaSchema = z
       personaEnabled: z.boolean(),
       sourceEnabled: z.boolean(),
       weeklyBounds: weeklyBoundsSchema,
-      pinnedFields: z.array(z.string().min(2).max(120)).min(3).max(20),
+      pinnedFields: z.array(z.string().min(2).max(120)).min(2).max(20),
       forbiddenDirections: z.array(z.string().min(5).max(200)).min(3).max(12),
     }),
     relationshipTendencies: z.object({

@@ -9,7 +9,7 @@ export function renderPersonaPrompt(persona: SeedPersona): string {
     .map(({ key, weight }) => `${key}: ${weight.toFixed(2)}`);
   const values = [...persona.coreValues]
     .sort((left, right) => right.weight - left.weight)
-    .map(({ key, weight, pinned }) => `${key}: ${weight.toFixed(2)}${pinned ? " (sabit)" : ""}`);
+    .map(({ key, weight }) => `${key}: ${weight.toFixed(2)}`);
 
   return [
     "# Public identity",

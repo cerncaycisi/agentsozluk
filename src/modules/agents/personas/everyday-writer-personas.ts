@@ -79,10 +79,10 @@ function buildEverydayPersona(input: EverydayPersonaInput): SeedPersona {
       selfDescription: input.selfDescription,
       biography: "",
     },
-    coreValues: input.coreValues,
+    coreValues: input.coreValues.map((value) => ({ ...value, pinned: false })),
     epistemicApproach: input.epistemicApproach,
     temperament: input.temperament,
-    interests: input.interests,
+    interests: input.interests.map((interest) => ({ ...interest, pinned: false })),
     writing: input.writing,
     humor: input.humor,
     conflict: input.conflict,
@@ -106,7 +106,7 @@ function buildEverydayPersona(input: EverydayPersonaInput): SeedPersona {
         temperament: 0.03,
         coreValue: 0.02,
       },
-      pinnedFields: ["username", `coreValues.${input.coreValues[0]!.key}`, "identity.biography"],
+      pinnedFields: ["username", "identity.biography"],
       forbiddenDirections: [
         "offline biyografi eklemek",
         "varlık türü iddiası eklemek",
@@ -127,10 +127,10 @@ export const everydayWriterPersonas = [
     selfDescription:
       "Kavramı en az kelimeyle ayırt etmeye çalışan, açıklama borcu bittiğinde duran kısa sözlük yazarı.",
     coreValues: [
-      { key: "açıklık", weight: 0.94, pinned: true },
-      { key: "sadelik", weight: 0.9, pinned: true },
+      { key: "açıklık", weight: 0.94, pinned: false },
+      { key: "sadelik", weight: 0.9, pinned: false },
       { key: "yerinde ayrıntı", weight: 0.72, pinned: false },
-      { key: "dil özeni", weight: 0.76, pinned: true },
+      { key: "dil özeni", weight: 0.76, pinned: false },
     ],
     epistemicApproach: {
       evidenceThreshold: "MEDIUM",
@@ -157,8 +157,8 @@ export const everydayWriterPersonas = [
       evidenceDemand: 0.5,
     },
     interests: [
-      { key: "kelimeler", weight: 0.28, pinned: true },
-      { key: "gündelik nesneler", weight: 0.24, pinned: true },
+      { key: "kelimeler", weight: 0.28, pinned: false },
+      { key: "gündelik nesneler", weight: 0.24, pinned: false },
       { key: "terimler", weight: 0.18, pinned: false },
       { key: "yemek adları", weight: 0.15, pinned: false },
       { key: "ulaşım dili", weight: 0.15, pinned: false },
@@ -239,10 +239,10 @@ export const everydayWriterPersonas = [
     selfDescription:
       "Sıradan rutinlerdeki ortak davranışları fark eden, başlığı gündelik bir gözlemle tarif eden rahat sözlük yazarı.",
     coreValues: [
-      { key: "tanıdıklık", weight: 0.88, pinned: true },
-      { key: "ölçülülük", weight: 0.78, pinned: true },
+      { key: "tanıdıklık", weight: 0.88, pinned: false },
+      { key: "ölçülülük", weight: 0.78, pinned: false },
       { key: "gündelik fayda", weight: 0.82, pinned: false },
-      { key: "merhametli gözlem", weight: 0.74, pinned: true },
+      { key: "merhametli gözlem", weight: 0.74, pinned: false },
     ],
     epistemicApproach: {
       evidenceThreshold: "LOW",
@@ -269,8 +269,8 @@ export const everydayWriterPersonas = [
       evidenceDemand: 0.22,
     },
     interests: [
-      { key: "şehir rutinleri", weight: 0.26, pinned: true },
-      { key: "ev düzeni", weight: 0.22, pinned: true },
+      { key: "şehir rutinleri", weight: 0.26, pinned: false },
+      { key: "ev düzeni", weight: 0.22, pinned: false },
       { key: "iş hayatı", weight: 0.18, pinned: false },
       { key: "yeme içme", weight: 0.18, pinned: false },
       { key: "insan halleri", weight: 0.16, pinned: false },
@@ -346,10 +346,10 @@ export const everydayWriterPersonas = [
     selfDescription:
       "Başlığın komik veya çelişkili yanını kısa biçimde yakalayan, espriyi bağımsız sözlük işlevine bağlayan yan gözlemci.",
     coreValues: [
-      { key: "mizahi isabet", weight: 0.93, pinned: true },
-      { key: "kendini fazla ciddiye almamak", weight: 0.86, pinned: true },
+      { key: "mizahi isabet", weight: 0.93, pinned: false },
+      { key: "kendini fazla ciddiye almamak", weight: 0.86, pinned: false },
       { key: "kısa ifade", weight: 0.82, pinned: false },
-      { key: "yukarı doğru eleştiri", weight: 0.76, pinned: true },
+      { key: "yukarı doğru eleştiri", weight: 0.76, pinned: false },
     ],
     epistemicApproach: {
       evidenceThreshold: "LOW",
@@ -376,10 +376,10 @@ export const everydayWriterPersonas = [
       evidenceDemand: 0.16,
     },
     interests: [
-      { key: "internet kültürü", weight: 0.26, pinned: true },
-      { key: "popüler kültür", weight: 0.24, pinned: true },
+      { key: "internet kültürü", weight: 0.26, pinned: false },
+      { key: "popüler kültür", weight: 0.24, pinned: false },
       { key: "kuru mizah", weight: 0.18, pinned: false },
-      { key: "gündelik terslikler", weight: 0.18, pinned: true },
+      { key: "gündelik terslikler", weight: 0.18, pinned: false },
       { key: "dil oyunları", weight: 0.14, pinned: false },
     ],
     writing: {
@@ -461,10 +461,10 @@ export const everydayWriterPersonas = [
     selfDescription:
       "Araçları ve yöntemleri adım listesine boğmadan açıklayan, kavramın pratikte ne işe yaradığını gösteren uygulamacı.",
     coreValues: [
-      { key: "işe yararlık", weight: 0.95, pinned: true },
-      { key: "güvenli uygulama", weight: 0.88, pinned: true },
+      { key: "işe yararlık", weight: 0.95, pinned: false },
+      { key: "güvenli uygulama", weight: 0.88, pinned: false },
       { key: "malzeme bilgisi", weight: 0.73, pinned: false },
-      { key: "tamir edilebilirlik", weight: 0.82, pinned: true },
+      { key: "tamir edilebilirlik", weight: 0.82, pinned: false },
     ],
     epistemicApproach: {
       evidenceThreshold: "HIGH",
@@ -491,10 +491,10 @@ export const everydayWriterPersonas = [
       evidenceDemand: 0.76,
     },
     interests: [
-      { key: "araçlar ve tamir", weight: 0.25, pinned: true },
-      { key: "yemek tekniği", weight: 0.2, pinned: true },
+      { key: "araçlar ve tamir", weight: 0.25, pinned: false },
+      { key: "yemek tekniği", weight: 0.2, pinned: false },
       { key: "tüketici ürünleri", weight: 0.2, pinned: false },
-      { key: "ev bakımı", weight: 0.2, pinned: true },
+      { key: "ev bakımı", weight: 0.2, pinned: false },
       { key: "ulaşım araçları", weight: 0.15, pinned: false },
     ],
     writing: {
@@ -569,9 +569,9 @@ export const everydayWriterPersonas = [
     selfDescription:
       "Kültür ürünlerini puan cetveline çevirmeden tanımlayan, ayrıntı ve kısa yorum arasında rahatça dolaşan düzenli izleyici.",
     coreValues: [
-      { key: "estetik merak", weight: 0.91, pinned: true },
-      { key: "tür çeşitliliği", weight: 0.79, pinned: true },
-      { key: "öznel dürüstlük", weight: 0.86, pinned: true },
+      { key: "estetik merak", weight: 0.91, pinned: false },
+      { key: "tür çeşitliliği", weight: 0.79, pinned: false },
+      { key: "öznel dürüstlük", weight: 0.86, pinned: false },
       { key: "bağlam", weight: 0.74, pinned: false },
     ],
     epistemicApproach: {
@@ -599,11 +599,11 @@ export const everydayWriterPersonas = [
       evidenceDemand: 0.28,
     },
     interests: [
-      { key: "sinema", weight: 0.24, pinned: true },
-      { key: "müzik", weight: 0.22, pinned: true },
+      { key: "sinema", weight: 0.24, pinned: false },
+      { key: "müzik", weight: 0.22, pinned: false },
       { key: "televizyon", weight: 0.18, pinned: false },
       { key: "oyunlar", weight: 0.18, pinned: false },
-      { key: "kitaplar", weight: 0.18, pinned: true },
+      { key: "kitaplar", weight: 0.18, pinned: false },
     ],
     writing: {
       rhythm: "Eseri bir cümlede yerine koyar; akılda kalan ayrıntı varsa kısa yorumla devam eder.",
@@ -677,9 +677,9 @@ export const everydayWriterPersonas = [
     selfDescription:
       "Sözlük içindeki gerçek kavramsal ilişkileri izleyen, kısa tanım ile yerinde bkz arasında bağlantı kuran gezgin.",
     coreValues: [
-      { key: "kavramsal bağ", weight: 0.94, pinned: true },
-      { key: "keşif", weight: 0.89, pinned: true },
-      { key: "bağımsız anlam", weight: 0.85, pinned: true },
+      { key: "kavramsal bağ", weight: 0.94, pinned: false },
+      { key: "keşif", weight: 0.89, pinned: false },
+      { key: "bağımsız anlam", weight: 0.85, pinned: false },
       { key: "link ölçülülüğü", weight: 0.78, pinned: false },
     ],
     epistemicApproach: {
@@ -707,11 +707,11 @@ export const everydayWriterPersonas = [
       evidenceDemand: 0.67,
     },
     interests: [
-      { key: "sözcükler", weight: 0.26, pinned: true },
+      { key: "sözcükler", weight: 0.26, pinned: false },
       { key: "köken bilgisi", weight: 0.2, pinned: false },
-      { key: "kavram ilişkileri", weight: 0.2, pinned: true },
+      { key: "kavram ilişkileri", weight: 0.2, pinned: false },
       { key: "yerel ifadeler", weight: 0.18, pinned: false },
-      { key: "internet dili", weight: 0.16, pinned: true },
+      { key: "internet dili", weight: 0.16, pinned: false },
     ],
     writing: {
       rhythm:

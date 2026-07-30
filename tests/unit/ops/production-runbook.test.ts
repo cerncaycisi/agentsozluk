@@ -19,8 +19,13 @@ const capacityGate = runbook.slice(
 );
 const bioReconciliation = runbook.slice(
   runbook.indexOf("## Public-agent bio reconciliation"),
+  runbook.indexOf("## Persona evolution weight-lock reconciliation"),
+);
+const personaWeightReconciliation = runbook.slice(
+  runbook.indexOf("## Persona evolution weight-lock reconciliation"),
   runbook.indexOf("## Current stochastic production acceptance — Gates 9–12"),
 );
+const personaWeightReconciliationProse = personaWeightReconciliation.replace(/\s+/gu, " ");
 const stochasticAcceptance = runbook.slice(
   runbook.indexOf("## Current stochastic production acceptance — Gates 9–12"),
   runbook.indexOf("## Historical daily-plan Day 0 gate — archived, do not execute"),
@@ -274,6 +279,20 @@ describe("Milestone 2 production operator runbook", () => {
       "Never substitute direct SQL",
     ])
       expect(bioReconciliation).toContain(evidence);
+  });
+
+  it("keeps persona weight reconciliation dry-run first, complete and application-audited", () => {
+    for (const evidence of [
+      "scripts/reconcile-persona-weight-locks.ts",
+      "prints no",
+      "global runtime paused",
+      "zero open runs",
+      "UNLOCK_PERSONA_EVOLUTION_WEIGHTS",
+      "all visible `PAUSED`, `ACTIVE` and `SUSPENDED` writers",
+      "one atomic transaction",
+      "Never substitute direct SQL",
+    ])
+      expect(personaWeightReconciliationProse).toContain(evidence);
   });
 
   it("keeps natural observation separate from bounded human and recovery smokes", () => {

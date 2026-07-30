@@ -47,6 +47,7 @@ import {
   MAXIMUM_STOCHASTIC_TICK_DELAY_MS,
   MINIMUM_STOCHASTIC_TICK_DELAY_MS,
 } from "@/modules/agents/domain/stochastic-scheduler";
+import { seedPersonaSchema, type SeedPersona } from "@/modules/agents/personas/schema";
 
 export { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
 
@@ -170,6 +171,46 @@ function isMemoryConsolidationRun(context: RuntimeContext): boolean {
 
 function isPersonaReflectionRun(context: RuntimeContext): boolean {
   return context.run.runType === "REFLECTION" && !isMemoryConsolidationRun(context);
+}
+
+function reflectionPersona(context: RuntimeContext): SeedPersona | null {
+  if (!isPersonaReflectionRun(context) || !context.persona.document) return null;
+  const parsed = seedPersonaSchema.safeParse(context.persona.document);
+  return parsed.success ? parsed.data : null;
+}
+
+function mutablePersonaKeys(
+  persona: SeedPersona,
+  collection: "interests" | "coreValues",
+): string[] {
+  return persona[collection].map(({ key }) => key);
+}
+
+function mutableTemperamentKeys(persona: SeedPersona): string[] {
+  return Object.keys(persona.temperament);
+}
+
+function reflectionEvolutionPolicy(context: RuntimeContext): string[] {
+  const persona = reflectionPersona(context);
+  if (!persona)
+    return [
+      "# Server-validated evolution target contract",
+      "Persona mutable-target projection kullanılamıyor. Güvenli sonuç olarak reflectionDelta=null üret.",
+    ];
+  const mutableInterests = mutablePersonaKeys(persona, "interests");
+  const mutableCoreValues = mutablePersonaKeys(persona, "coreValues");
+  const mutableTemperament = mutableTemperamentKeys(persona);
+  return [
+    "# Server-validated evolution target contract",
+    `mutableInterestKeys=${JSON.stringify(mutableInterests)}`,
+    `mutableCoreValueKeys=${JSON.stringify(mutableCoreValues)}`,
+    `mutableTemperamentKeys=${JSON.stringify(mutableTemperament)}`,
+    `weeklyBounds=${JSON.stringify(persona.evolution.weeklyBounds)}`,
+    "interestDeltas yalnız mutableInterestKeys kullanmalı; delta toplamı tam 0 olmalı ve tek interest'i yalnız başına değiştirmemeli.",
+    "coreValueDeltas yalnız mutableCoreValueKeys, temperamentDeltas yalnız mutableTemperamentKeys kullanmalı. Bu ağırlıkların hiçbiri sabit değildir; değişiklik yine haftalık bound içinde ve kanıtlı olmalıdır.",
+    "Kullanıcı adı, identity.biography alanının boş kalması, güvenlik sınırları ve ontology değiştirilemez.",
+    "Kanıt bu allowlist içinde anlamlı, küçük ve dengeli bir değişimi desteklemiyorsa reflectionDelta=null üret.",
+  ];
 }
 
 function serializeUntrustedContext(value: Record<string, unknown>): string {
@@ -369,7 +410,11 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
       ? [runtimePromptScaffold.maintenanceHeading, ...runtimePromptScaffold.maintenanceInstructions]
       : []),
     ...(isPersonaReflectionRun(context)
-      ? [runtimePromptScaffold.reflectionHeading, ...runtimePromptScaffold.reflectionInstructions]
+      ? [
+          runtimePromptScaffold.reflectionHeading,
+          ...runtimePromptScaffold.reflectionInstructions,
+          ...reflectionEvolutionPolicy(context),
+        ]
       : []),
     ...(context.run.adminInstruction
       ? [runtimePromptScaffold.adminHeading, context.run.adminInstruction]
@@ -390,10 +435,59 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
   ].join("\n");
 }
 
-function runtimeOutputJsonSchema(context: RuntimeContext): Record<string, unknown> {
-  return context.run.runType === "REFLECTION"
-    ? runtimeDecisionJsonSchema
-    : runtimeNormalDecisionWireJsonSchema;
+function objectRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function restrictDeltaKey(
+  properties: Record<string, unknown>,
+  collection: string,
+  key: string,
+  values: string[],
+): void {
+  const arraySchema = objectRecord(properties[collection]);
+  const items = objectRecord(arraySchema?.items);
+  const itemProperties = objectRecord(items?.properties);
+  const keySchema = objectRecord(itemProperties?.[key]);
+  if (!arraySchema || !keySchema) throw new Error("RUNTIME_REFLECTION_SCHEMA_SHAPE_INVALID");
+  if (values.length === 0) {
+    arraySchema.maxItems = 0;
+    return;
+  }
+  keySchema.enum = values;
+  delete keySchema.minLength;
+  delete keySchema.maxLength;
+}
+
+export function runtimeOutputJsonSchema(context: RuntimeContext): Record<string, unknown> {
+  if (context.run.runType !== "REFLECTION") return runtimeNormalDecisionWireJsonSchema;
+  const persona = reflectionPersona(context);
+  if (!persona) return runtimeDecisionJsonSchema;
+  const schema = structuredClone(runtimeDecisionJsonSchema);
+  const rootProperties = objectRecord(schema.properties);
+  const reflectionDelta = objectRecord(rootProperties?.reflectionDelta);
+  const alternatives = Array.isArray(reflectionDelta?.anyOf) ? reflectionDelta.anyOf : [];
+  const deltaSchema = alternatives
+    .map(objectRecord)
+    .find((candidate) => candidate?.type === "object");
+  const deltaProperties = objectRecord(deltaSchema?.properties);
+  if (!deltaProperties) throw new Error("RUNTIME_REFLECTION_SCHEMA_SHAPE_INVALID");
+  restrictDeltaKey(
+    deltaProperties,
+    "interestDeltas",
+    "key",
+    mutablePersonaKeys(persona, "interests"),
+  );
+  restrictDeltaKey(
+    deltaProperties,
+    "coreValueDeltas",
+    "key",
+    mutablePersonaKeys(persona, "coreValues"),
+  );
+  restrictDeltaKey(deltaProperties, "temperamentDeltas", "key", mutableTemperamentKeys(persona));
+  return schema;
 }
 
 function parseDecisionForContext(context: RuntimeContext, output: unknown) {

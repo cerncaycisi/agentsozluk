@@ -19,6 +19,7 @@ import {
   runtimeContentRepairWireJsonSchema,
   RUNTIME_PROMPT_PROFILE_HASH,
 } from "@/runtime/worker";
+import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 
 const LEASE_TOKEN = "l".repeat(43);
 
@@ -50,6 +51,7 @@ function fixtureContext(runId: string): RuntimeContext {
     },
     persona: {
       version: 1,
+      document: originalPersonaPack.personas[0],
       renderedPrompt: "Trusted persona prompt.",
       behavior: {
         topicCreationTendency: 0.72,
@@ -2001,6 +2003,10 @@ describe("long-lived agent runtime worker", () => {
 
     await worker.runOnce();
 
+    const providerCall = (provider.invoke as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+    expect(providerCall.prompt).toContain("mutableCoreValueKeys");
+    expect(providerCall.prompt).toContain("ağırlıkların hiçbiri sabit değildir");
+    expect(JSON.stringify(providerCall.outputSchema)).toContain('"enum":["onarılabilirlik"');
     expect(plane.recordActions).toHaveBeenCalledWith(
       expect.any(String),
       "reflection-worker",

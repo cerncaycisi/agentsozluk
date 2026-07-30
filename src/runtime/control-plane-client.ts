@@ -40,6 +40,7 @@ const contextResponseSchema = z.object({
   }),
   persona: z.object({
     version: z.number().int().positive(),
+    document: z.unknown().optional(),
     renderedPrompt: z.string(),
     behavior: z
       .object({

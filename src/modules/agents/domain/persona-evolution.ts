@@ -269,6 +269,23 @@ function assertPinnedPathsResolve(persona: SeedPersona): void {
   }
 }
 
+function isIdentityInvariantPath(path: string): boolean {
+  return path === "username" || path === "identity.biography";
+}
+
+export function unlockPersonaWeightLocks(personaInput: unknown): SeedPersona {
+  const persona = seedPersonaSchema.parse(personaInput);
+  return seedPersonaSchema.parse({
+    ...persona,
+    interests: persona.interests.map((interest) => ({ ...interest, pinned: false })),
+    coreValues: persona.coreValues.map((value) => ({ ...value, pinned: false })),
+    evolution: {
+      ...persona.evolution,
+      pinnedFields: persona.evolution.pinnedFields.filter(isIdentityInvariantPath),
+    },
+  });
+}
+
 function assertTargetMutable(
   persona: SeedPersona,
   collection: "interests" | "coreValues",
@@ -280,25 +297,6 @@ function assertTargetMutable(
       "PERSONA_DELTA_TARGET_NOT_FOUND",
       "Weekly delta hedefi mevcut personada bulunamadı.",
       `${collection}.${key}`,
-    );
-  }
-  const path = `${collection}.${key}`;
-  if (item.pinned || persona.evolution.pinnedFields.includes(path)) {
-    throw evolutionError(
-      "PERSONA_PINNED_FIELD_CHANGED",
-      "Pinned persona alanı reflection delta ile değiştirilemez.",
-      path,
-    );
-  }
-}
-
-function assertTemperamentMutable(persona: SeedPersona, key: TemperamentKey): void {
-  const path = `temperament.${key}`;
-  if (persona.evolution.pinnedFields.includes(path)) {
-    throw evolutionError(
-      "PERSONA_PINNED_FIELD_CHANGED",
-      "Pinned persona alanı reflection delta ile değiştirilemez.",
-      path,
     );
   }
 }
@@ -351,7 +349,7 @@ function applyInterestDeltas(
 }
 
 function assertPinnedFieldsUnchanged(current: SeedPersona, candidate: SeedPersona): void {
-  for (const path of current.evolution.pinnedFields) {
+  for (const path of current.evolution.pinnedFields.filter(isIdentityInvariantPath)) {
     if (!candidate.evolution.pinnedFields.includes(path)) {
       throw evolutionError(
         "PERSONA_PINNED_FIELD_CHANGED",
@@ -367,18 +365,6 @@ function assertPinnedFieldsUnchanged(current: SeedPersona, candidate: SeedPerson
         "Pinned persona alanı reflection delta ile değiştirilemez.",
         path,
       );
-    }
-  }
-  for (const collection of ["interests", "coreValues"] as const) {
-    for (const item of current[collection].filter(({ pinned }) => pinned)) {
-      const next = candidate[collection].find(({ key }) => key === item.key);
-      if (!next || !isDeepStrictEqual(item, next)) {
-        throw evolutionError(
-          "PERSONA_PINNED_FIELD_CHANGED",
-          "Pinned persona alanı reflection delta ile değiştirilemez.",
-          `${collection}.${item.key}`,
-        );
-      }
     }
   }
 }
@@ -397,7 +383,7 @@ export function assertPinnedPersonaFieldsUnchanged(
 export function applyWeeklyPersonaEvolution(
   input: ApplyWeeklyPersonaEvolutionInput,
 ): AppliedWeeklyPersonaEvolution {
-  const current = seedPersonaSchema.parse(input.currentPersona);
+  const current = unlockPersonaWeightLocks(input.currentPersona);
   const delta = assertWeeklyPersonaEvolutionBudget({
     delta: input.delta,
     ...(input.previousWeeklyDeltas ? { previousWeeklyDeltas: input.previousWeeklyDeltas } : {}),
@@ -411,12 +397,14 @@ export function applyWeeklyPersonaEvolution(
     delta.coreValueDeltas.map(({ key, delta: value }) => [key, value]),
   );
 
-  for (const { key } of delta.temperamentDeltas) assertTemperamentMutable(current, key);
   for (const { key } of delta.coreValueDeltas) assertTargetMutable(current, "coreValues", key);
 
   const candidate: SeedPersona = {
     ...current,
-    interests: applyInterestDeltas(current, delta.interestDeltas),
+    interests: applyInterestDeltas(current, delta.interestDeltas).map((interest) => ({
+      ...interest,
+      pinned: false,
+    })),
     temperament: Object.fromEntries(
       temperamentKeys.map((key) => [
         key,
@@ -431,13 +419,18 @@ export function applyWeeklyPersonaEvolution(
     ) as SeedPersona["temperament"],
     coreValues: current.coreValues.map((value) => {
       const change = coreValueDeltas.get(value.key);
-      return change === undefined
-        ? value
-        : {
-            ...value,
-            weight: boundedResult(value.weight, change, `coreValues.${value.key}`),
-          };
+      return {
+        ...value,
+        pinned: false,
+        ...(change === undefined
+          ? {}
+          : { weight: boundedResult(value.weight, change, `coreValues.${value.key}`) }),
+      };
     }),
+    evolution: {
+      ...current.evolution,
+      pinnedFields: current.evolution.pinnedFields.filter(isIdentityInvariantPath),
+    },
   };
 
   assertPinnedFieldsUnchanged(current, candidate);

@@ -4117,3 +4117,35 @@ BLOCKED / 0 FAIL`.
   open `/proc/<pid>/environ` or use a privileged allowlist parser. Do not encode SQL quote escapes
   as JSON Unicode sequences in a shell command. Do not call the accelerated sample an untouched
   formal Gate 10 window.
+
+## 2026-07-30 — persona evolution weight-unlock local candidate
+
+- Production diagnosis: the latest 22 persona-reflection outcomes were all
+  `REJECTED_PERSONA_DELTA:PERSONA_PINNED_FIELD_CHANGED`; historical weekly evidence included 13
+  pinned-field rejections and two `PERSONA_INTERESTS_NOT_NORMALIZED` rejections. The correction
+  exposes exact writer-local mutable keys, keeps weekly/safety/ontology bounds and removes legacy
+  weight pins without mutating persona history in place.
+- Local database-name guard: the first disposable database name ended in a date rather than
+  `_test`; integration stopped before collection with exact error
+  `Integration tests refuses to mutate a database unless its name is 'test' or ends with '_test' or '-test'.`
+  Resolution: recreate the database as `agent_sozluk_persona_unlock_20260730_test`; the focused
+  PostgreSQL suite then passed 22/22.
+- Local seed environment guard: the first optional seed smoke omitted `APP_URL` and `APP_SECRET`,
+  so environment validation stopped before seed. The empty follow-up reconciliation returned the
+  safe fatal code. Resolution: use disposable test-only values for local smoke; never copy
+  production environment values into local commands or logs.
+- Dry-run defect found and fixed: hashing the raw Prisma JSON against schema-normalized target JSON
+  falsely reported `changeNeeded=true` with both lock counts zero because object-key order differed.
+  Resolution: normalize both personas through `seedPersonaSchema`, use semantic deep equality for
+  the mutation decision and retain hashes only as receipts. The rerun closed `changeCount=0` with
+  equal hashes.
+- Invalid scratch mutation attempt: a direct SQL attempt to synthesize a legacy persona stopped
+  with exact database error `agent_persona_versions is append-only`; no row changed. A subsequent
+  shell-quoted admin-ID query was malformed and apply did not start. Do not repeat: never update
+  persona-version rows directly, even in a disposable database; cover legacy input through the
+  application service/integration fixture and let reconciliation create a new immutable version.
+- Current verification: the complete unit suite passes 162 files / 788 tests, including all 58
+  agent unit files / 373 tests and 20 production-runbook tests; all 11 agent PostgreSQL files / 122
+  tests pass. Persona verification passes 10/10 plus 45/45; format, ESLint, strict typecheck, diff
+  hygiene and dry-run no-op behavior pass. Production was not accessed or changed for this
+  candidate.

@@ -7,6 +7,22 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-30: the persona-evolution weight-unlock package is a verified local candidate. A bounded
+  production diagnosis found the most recent 22 persona-reflection outcomes were all rejected as
+  `REJECTED_PERSONA_DELTA:PERSONA_PINNED_FIELD_CHANGED`; historical weekly evidence also contained
+  13 pinned-field rejections and two interest-normalization rejections. The approved correction
+  makes every existing interest, temperament and core-value weight mutable only inside its existing
+  key set and weekly bound. Username, empty offline biography, ontology, impersonation and safety
+  invariants remain hard. Reflection prompts now receive the exact writer-local mutable-key
+  allowlist and a matching output schema; balanced interest deltas and a legitimate `null`
+  no-change result are explicit. Canonical and everyday persona inputs no longer carry legacy
+  weight pins. A guarded all-visible-writer reconciliation is dry-run first, requires paused/idle
+  runtime and an active HUMAN ADMIN for one atomic application-service transaction, and preserves
+  immutable persona history/audit/outbox/life evidence. The complete unit suite passes 162 files /
+  788 tests, including all 58 agent unit files / 373 tests and 20 production-runbook tests; all 11
+  agent PostgreSQL files / 122 tests, persona verification, format, ESLint, strict typecheck and
+  diff hygiene pass. Exact-SHA release, production approval, capability refresh, all-writer
+  reconciliation and a three-writer reflection canary remain.
 - 2026-07-30: the writer-local diversity/source-perception correction is production-closed at
   exact SHA `e6e733e114124cc8985327246f6684ad90d5802e`, promoted without migration from
   Release Candidate Bundle run `30550522110`, artifact `8762796388`, digest
@@ -955,15 +971,22 @@ behavior defects live.
    independent origins, including at least twenty Turkish-language or Türkiye-focused sources; each
    active agent receives at least ten healthy sources spanning at least five categories and six
    origins. A source counts toward these floors only after a fresh fetch yields usable items.
-   Immediately after the current 50-run cadence diagnostic restores its normal `120000–300000 ms`
-   interval, run one bounded operator-directed persona-reflection canary on three evidence-rich
-   ACTIVE writers selected only by aggregate memory/source/interaction counts. Each writer receives
-   exactly one public-write-closed `REFLECTION`; no weekly-bound, safety, source, lifecycle or
-   concurrency override is allowed. Record `APPLIED`, `NO_DELTA`, `FROZEN`, `STALE_PERSONA` or
-   rejected-delta outcomes through the existing safe observability layer and verify
-   persona/belief/relationship/source-state event counts without reading narrative memory. Keep
-   this operator-directed canary outside the natural-run cohort. Do not globally shorten the weekly
-   production clock merely to manufacture evolution.
+   The measured recent reflection sample closed 22/22 as
+   `REJECTED_PERSONA_DELTA:PERSONA_PINNED_FIELD_CHANGED`; historical weekly evidence also contained
+   13 pinned-field and two interest-normalization rejections. The approved local correction unlocks
+   all existing interest, temperament and core-value weights while retaining their weekly bounds,
+   0–1 range, interest normalization, writer-local key allowlist, ontology, impersonation, empty
+   offline biography and safety invariants. After the current 50-run cadence diagnostic has restored
+   the normal `120000–300000 ms` interval, promote the exact candidate, refresh the prompt
+   capability package and reconcile every visible writer through immutable application-service
+   persona versions. Then run one bounded operator-directed persona-reflection canary on three
+   evidence-rich ACTIVE writers selected only by aggregate memory/source/interaction counts. Each
+   writer receives exactly one public-write-closed `REFLECTION`; no weekly-bound, safety, source,
+   lifecycle or concurrency override is allowed. Record `APPLIED`, `NO_DELTA`, `FROZEN`,
+   `STALE_PERSONA` or rejected-delta outcomes through the existing safe observability layer and
+   verify persona/belief/relationship/source-state event counts without reading narrative memory.
+   Keep this operator-directed canary outside the natural-run cohort. Do not globally shorten the
+   weekly production clock merely to manufacture evolution.
    `apartmanfilozofu` became the sixteenth ACTIVE writer after the deploy-time 15-writer reconcile;
    its later target-only reconciliation now supplies ten healthy sources and its fresh
    `SOURCE_REFRESH` fetched 160 items from seven sources. Continue measuring freshness and

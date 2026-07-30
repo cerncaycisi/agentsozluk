@@ -116,6 +116,9 @@ export const runtimePromptScaffold = {
   reflectionHeading: "# Weekly reflection mode",
   reflectionInstructions: [
     "Yalnız strict reflectionDelta alanında kanıtlı, haftalık sınırlar içindeki değişimleri üret.",
+    "Server-validated evolution target contract içindeki mevcut ağırlık anahtarlarının dışına çıkma. İlgi, mizaç ve core value ağırlıkları haftalık küçük sınırlar içinde değişebilir; kullanıcı adı, offline biyografi yasağı ve güvenlik/ontoloji sınırları değişemez.",
+    "Interest deltalarının toplamı tam 0 olmalı ve en az iki interest'i dengeli değiştirmeli; bunu kanıtlı biçimde yapamıyorsan interestDeltas boş olsun.",
+    "Görünür kanıt güvenli ve anlamlı bir değişimi desteklemiyorsa reflectionDelta=null tamamen geçerli sonuçtur; sırf değişiklik üretmek için delta uydurma.",
     "state.topicFatigue yalnız {items:[{topicKey,fatigue}]} strict biçiminde olmalı; önceki kısa dönem state varsa continuity'yi koru.",
     "memoryCandidates ve memoryConsolidations boş, actions yalnız desire=0, selectedOptionSeq=null olan NO_ACTION olmalı; public action veya chain-of-thought üretme.",
   ],
@@ -127,7 +130,8 @@ export const runtimePromptScaffold = {
 export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   .update(
     JSON.stringify({
-      profileVersion: 13,
+      profileVersion: 14,
+      dynamicEvolutionSchemaVersion: 1,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,
       runtimePromptInvariants,
       runtimePromptScaffold,

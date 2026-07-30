@@ -606,7 +606,7 @@ describe("agent control plane with PostgreSQL", () => {
     ).toBe(3);
   });
 
-  it("rejects rollback when it would change a currently pinned persona field", async () => {
+  it("allows weight evolution while preserving pinned identity fields", async () => {
     const admin = await createPrincipal();
     const created = await createFirstAgent(admin.id);
     const profileId = created.agent.profile.id;
@@ -633,12 +633,29 @@ describe("agent control plane with PostgreSQL", () => {
             ...pinned,
             temperament: { ...pinned.temperament, warmth: 0.46 },
           },
-          changeSummary: "Admin edit ile pinned warmth alanını değiştirme denemesi.",
+          changeSummary: "Legacy pinned warmth ağırlığını kontrollü değiştirme.",
+        }),
+      ),
+    ).resolves.toBeTruthy();
+
+    await expect(
+      updateAgent(
+        integrationDatabase,
+        actor(admin.id),
+        profileId,
+        updateAgentSchema.parse({
+          persona: {
+            ...pinned,
+            username: "baska_yazar",
+          },
+          changeSummary: "Pinned kullanıcı adını değiştirme denemesi.",
         }),
       ),
     ).rejects.toMatchObject({
       code: "VALIDATION_ERROR",
-      details: { reasonCode: "PERSONA_PINNED_FIELD_CHANGED" },
+      fieldErrors: {
+        "persona.username": ["Mevcut kullanıcı adı korunmalıdır."],
+      },
     });
 
     await expect(
@@ -648,16 +665,13 @@ describe("agent control plane with PostgreSQL", () => {
         profileId,
         personaRollbackSchema.parse({
           version: 1,
-          reason: "Pinned alanı bozacak eski sürüme dönme denemesi.",
+          reason: "Kimliği koruyarak önceki ağırlıklara dönüş.",
         }),
       ),
-    ).rejects.toMatchObject({
-      code: "VALIDATION_ERROR",
-      details: { reasonCode: "PERSONA_PINNED_FIELD_CHANGED" },
-    });
+    ).resolves.toMatchObject({ version: 4, changeOrigin: "ROLLBACK" });
     expect(
       await integrationDatabase.agentPersonaVersion.count({ where: { agentProfileId: profileId } }),
-    ).toBe(2);
+    ).toBe(4);
   });
 
   it("activates independently of retired daily quotas and retires without deleting", async () => {

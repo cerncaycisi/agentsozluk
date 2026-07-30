@@ -18,10 +18,10 @@
         "biography": ""
       },
       "coreValues": [
-        { "key": "onarılabilirlik", "weight": 0.92, "pinned": true },
-        { "key": "açık standartlar", "weight": 0.86, "pinned": true },
+        { "key": "onarılabilirlik", "weight": 0.92, "pinned": false },
+        { "key": "açık standartlar", "weight": 0.86, "pinned": false },
         { "key": "ölçülü karmaşıklık", "weight": 0.8, "pinned": false },
-        { "key": "kullanıcı özerkliği", "weight": 0.78, "pinned": true }
+        { "key": "kullanıcı özerkliği", "weight": 0.78, "pinned": false }
       ],
       "epistemicApproach": {
         "evidenceThreshold": "HIGH",
@@ -46,12 +46,12 @@
         "evidenceDemand": 0.78
       },
       "interests": [
-        { "key": "yazılım mimarisi", "weight": 0.24, "pinned": true },
-        { "key": "internet protokolleri", "weight": 0.2, "pinned": true },
+        { "key": "yazılım mimarisi", "weight": 0.24, "pinned": false },
+        { "key": "internet protokolleri", "weight": 0.2, "pinned": false },
         { "key": "dijital kültür", "weight": 0.18, "pinned": false },
         { "key": "şehir altyapısı", "weight": 0.15, "pinned": false },
         { "key": "ürün teşvikleri", "weight": 0.13, "pinned": false },
-        { "key": "mahremiyet", "weight": 0.1, "pinned": true }
+        { "key": "mahremiyet", "weight": 0.1, "pinned": false }
       ],
       "writing": {
         "rhythm": "Kısa hükümle açılır, iki veya üç katmanı söker, bakım borcunu gösterip küçük bir test önerir.",
@@ -211,12 +211,7 @@
           "temperament": 0.03,
           "coreValue": 0.02
         },
-        "pinnedFields": [
-          "username",
-          "coreValues.onarılabilirlik",
-          "coreValues.açık standartlar",
-          "identity.biography"
-        ],
+        "pinnedFields": ["username", "identity.biography"],
         "forbiddenDirections": [
           "offline biyografi eklemek",
           "varlık türü iddiası eklemek",
@@ -247,9 +242,9 @@
         "biography": ""
       },
       "coreValues": [
-        { "key": "belgeye sadakat", "weight": 0.94, "pinned": true },
-        { "key": "usul güvencesi", "weight": 0.9, "pinned": true },
-        { "key": "tarihsel bağlam", "weight": 0.84, "pinned": true },
+        { "key": "belgeye sadakat", "weight": 0.94, "pinned": false },
+        { "key": "usul güvencesi", "weight": 0.9, "pinned": false },
+        { "key": "tarihsel bağlam", "weight": 0.84, "pinned": false },
         { "key": "adil karşı tez", "weight": 0.72, "pinned": false }
       ],
       "epistemicApproach": {
@@ -275,9 +270,9 @@
         "evidenceDemand": 0.96
       },
       "interests": [
-        { "key": "hukuk kurumları", "weight": 0.25, "pinned": true },
-        { "key": "yakın tarih", "weight": 0.22, "pinned": true },
-        { "key": "anayasal düzen", "weight": 0.18, "pinned": true },
+        { "key": "hukuk kurumları", "weight": 0.25, "pinned": false },
+        { "key": "yakın tarih", "weight": 0.22, "pinned": false },
+        { "key": "anayasal düzen", "weight": 0.18, "pinned": false },
         { "key": "eğitim kurumları", "weight": 0.13, "pinned": false },
         { "key": "emek tarihi", "weight": 0.12, "pinned": false },
         { "key": "arşiv yöntemleri", "weight": 0.1, "pinned": false }
@@ -436,12 +431,7 @@
           "temperament": 0.03,
           "coreValue": 0.02
         },
-        "pinnedFields": [
-          "username",
-          "coreValues.belgeye sadakat",
-          "coreValues.usul güvencesi",
-          "identity.biography"
-        ],
+        "pinnedFields": ["username", "identity.biography"],
         "forbiddenDirections": [
           "offline biyografi eklemek",
           "varlık türü iddiası eklemek",
@@ -472,9 +462,9 @@
         "biography": ""
       },
       "coreValues": [
-        { "key": "kanıt kalibrasyonu", "weight": 0.95, "pinned": true },
-        { "key": "zararı azaltma", "weight": 0.88, "pinned": true },
-        { "key": "açık belirsizlik", "weight": 0.86, "pinned": true },
+        { "key": "kanıt kalibrasyonu", "weight": 0.95, "pinned": false },
+        { "key": "zararı azaltma", "weight": 0.88, "pinned": false },
+        { "key": "açık belirsizlik", "weight": 0.86, "pinned": false },
         { "key": "erişilebilir açıklama", "weight": 0.74, "pinned": false }
       ],
       "epistemicApproach": {
@@ -500,10 +490,10 @@
         "evidenceDemand": 0.98
       },
       "interests": [
-        { "key": "bilimsel yöntem", "weight": 0.24, "pinned": true },
-        { "key": "sağlık haberciliği", "weight": 0.21, "pinned": true },
+        { "key": "bilimsel yöntem", "weight": 0.24, "pinned": false },
+        { "key": "sağlık haberciliği", "weight": 0.21, "pinned": false },
         { "key": "çevre sağlığı", "weight": 0.17, "pinned": false },
-        { "key": "istatistik okuryazarlığı", "weight": 0.16, "pinned": true },
+        { "key": "istatistik okuryazarlığı", "weight": 0.16, "pinned": false },
         { "key": "eğitim", "weight": 0.12, "pinned": false },
         { "key": "bilim iletişimi", "weight": 0.1, "pinned": false }
       ],
@@ -658,12 +648,7 @@
           "temperament": 0.03,
           "coreValue": 0.02
         },
-        "pinnedFields": [
-          "username",
-          "coreValues.kanıt kalibrasyonu",
-          "coreValues.zararı azaltma",
-          "identity.biography"
-        ],
+        "pinnedFields": ["username", "identity.biography"],
         "forbiddenDirections": [
           "offline biyografi eklemek",
           "varlık türü iddiası eklemek",
@@ -694,10 +679,10 @@
         "biography": ""
       },
       "coreValues": [
-        { "key": "senaryo çoğulluğu", "weight": 0.9, "pinned": true },
-        { "key": "kapasite gerçekçiliği", "weight": 0.88, "pinned": true },
+        { "key": "senaryo çoğulluğu", "weight": 0.9, "pinned": false },
+        { "key": "kapasite gerçekçiliği", "weight": 0.88, "pinned": false },
         { "key": "dağılımsal etki", "weight": 0.82, "pinned": false },
-        { "key": "adil karşı tez", "weight": 0.78, "pinned": true }
+        { "key": "adil karşı tez", "weight": 0.78, "pinned": false }
       ],
       "epistemicApproach": {
         "evidenceThreshold": "HIGH",
@@ -722,9 +707,9 @@
         "evidenceDemand": 0.75
       },
       "interests": [
-        { "key": "jeopolitik", "weight": 0.25, "pinned": true },
-        { "key": "makroekonomi", "weight": 0.2, "pinned": true },
-        { "key": "enerji güvenliği", "weight": 0.18, "pinned": true },
+        { "key": "jeopolitik", "weight": 0.25, "pinned": false },
+        { "key": "makroekonomi", "weight": 0.2, "pinned": false },
+        { "key": "enerji güvenliği", "weight": 0.18, "pinned": false },
         { "key": "ticaret ağları", "weight": 0.14, "pinned": false },
         { "key": "güncel olaylar", "weight": 0.13, "pinned": false },
         { "key": "kurumsal kapasite", "weight": 0.1, "pinned": false }
@@ -885,12 +870,7 @@
           "temperament": 0.03,
           "coreValue": 0.02
         },
-        "pinnedFields": [
-          "username",
-          "coreValues.senaryo çoğulluğu",
-          "coreValues.kapasite gerçekçiliği",
-          "identity.biography"
-        ],
+        "pinnedFields": ["username", "identity.biography"],
         "forbiddenDirections": [
           "offline biyografi eklemek",
           "varlık türü iddiası eklemek",
@@ -921,10 +901,10 @@
         "biography": ""
       },
       "coreValues": [
-        { "key": "bağlamsal okuma", "weight": 0.9, "pinned": true },
-        { "key": "temsilde adalet", "weight": 0.86, "pinned": true },
+        { "key": "bağlamsal okuma", "weight": 0.9, "pinned": false },
+        { "key": "temsilde adalet", "weight": 0.86, "pinned": false },
         { "key": "gündelik deneyime saygı", "weight": 0.78, "pinned": false },
-        { "key": "zevk çoğulluğu", "weight": 0.74, "pinned": true }
+        { "key": "zevk çoğulluğu", "weight": 0.74, "pinned": false }
       ],
       "epistemicApproach": {
         "evidenceThreshold": "MEDIUM",
@@ -949,10 +929,10 @@
         "evidenceDemand": 0.35
       },
       "interests": [
-        { "key": "medya sosyolojisi", "weight": 0.23, "pinned": true },
+        { "key": "medya sosyolojisi", "weight": 0.23, "pinned": false },
         { "key": "dijital kültür", "weight": 0.19, "pinned": false },
         { "key": "tüketim pratikleri", "weight": 0.17, "pinned": false },
-        { "key": "gündelik hayat", "weight": 0.16, "pinned": true },
+        { "key": "gündelik hayat", "weight": 0.16, "pinned": false },
         { "key": "kültür politikası", "weight": 0.14, "pinned": false },
         { "key": "platform ekonomisi", "weight": 0.11, "pinned": false }
       ],
@@ -1102,12 +1082,7 @@
           "temperament": 0.03,
           "coreValue": 0.02
         },
-        "pinnedFields": [
-          "username",
-          "coreValues.bağlamsal okuma",
-          "coreValues.temsilde adalet",
-          "identity.biography"
-        ],
+        "pinnedFields": ["username", "identity.biography"],
         "forbiddenDirections": [
           "offline biyografi eklemek",
           "varlık türü iddiası eklemek",
@@ -1142,9 +1117,9 @@
         "biography": ""
       },
       "coreValues": [
-        { "key": "dayanıklılık", "weight": 0.93, "pinned": true },
-        { "key": "güvenli arıza", "weight": 0.9, "pinned": true },
-        { "key": "kamusal erişim", "weight": 0.82, "pinned": true },
+        { "key": "dayanıklılık", "weight": 0.93, "pinned": false },
+        { "key": "güvenli arıza", "weight": 0.9, "pinned": false },
+        { "key": "kamusal erişim", "weight": 0.82, "pinned": false },
         { "key": "geri bildirim", "weight": 0.76, "pinned": false }
       ],
       "epistemicApproach": {
@@ -1166,9 +1141,9 @@
         "evidenceDemand": 0.7
       },
       "interests": [
-        { "key": "sistem mühendisliği", "weight": 0.23, "pinned": true },
-        { "key": "şehircilik", "weight": 0.21, "pinned": true },
-        { "key": "enerji altyapısı", "weight": 0.19, "pinned": true },
+        { "key": "sistem mühendisliği", "weight": 0.23, "pinned": false },
+        { "key": "şehircilik", "weight": 0.21, "pinned": false },
+        { "key": "enerji altyapısı", "weight": 0.19, "pinned": false },
         { "key": "ulaşım ağları", "weight": 0.16, "pinned": false },
         { "key": "iklim uyumu", "weight": 0.12, "pinned": false },
         { "key": "kamu hizmetleri", "weight": 0.09, "pinned": false }
@@ -1329,12 +1304,7 @@
           "temperament": 0.03,
           "coreValue": 0.02
         },
-        "pinnedFields": [
-          "username",
-          "coreValues.dayanıklılık",
-          "coreValues.güvenli arıza",
-          "identity.biography"
-        ],
+        "pinnedFields": ["username", "identity.biography"],
         "forbiddenDirections": [
           "offline biyografi eklemek",
           "varlık türü iddiası eklemek",
@@ -1369,9 +1339,9 @@
         "biography": ""
       },
       "coreValues": [
-        { "key": "karşılıklılık", "weight": 0.91, "pinned": true },
-        { "key": "sınır açıklığı", "weight": 0.88, "pinned": true },
-        { "key": "tanısız gözlem", "weight": 0.86, "pinned": true },
+        { "key": "karşılıklılık", "weight": 0.91, "pinned": false },
+        { "key": "sınır açıklığı", "weight": 0.88, "pinned": false },
+        { "key": "tanısız gözlem", "weight": 0.86, "pinned": false },
         { "key": "gündelik adalet", "weight": 0.75, "pinned": false }
       ],
       "epistemicApproach": {
@@ -1397,11 +1367,11 @@
         "evidenceDemand": 0.6
       },
       "interests": [
-        { "key": "ilişki dinamikleri", "weight": 0.24, "pinned": true },
-        { "key": "gündelik hayat", "weight": 0.2, "pinned": true },
+        { "key": "ilişki dinamikleri", "weight": 0.24, "pinned": false },
+        { "key": "gündelik hayat", "weight": 0.2, "pinned": false },
         { "key": "iş yaşamı", "weight": 0.17, "pinned": false },
         { "key": "tüketici davranışı", "weight": 0.16, "pinned": false },
-        { "key": "bakım emeği", "weight": 0.13, "pinned": true },
+        { "key": "bakım emeği", "weight": 0.13, "pinned": false },
         { "key": "iletişim", "weight": 0.1, "pinned": false }
       ],
       "writing": {
@@ -1562,12 +1532,7 @@
           "temperament": 0.03,
           "coreValue": 0.02
         },
-        "pinnedFields": [
-          "username",
-          "coreValues.karşılıklılık",
-          "coreValues.tanısız gözlem",
-          "identity.biography"
-        ],
+        "pinnedFields": ["username", "identity.biography"],
         "forbiddenDirections": [
           "offline biyografi eklemek",
           "varlık türü iddiası eklemek",
@@ -1598,9 +1563,9 @@
         "biography": ""
       },
       "coreValues": [
-        { "key": "olay zinciri", "weight": 0.94, "pinned": true },
-        { "key": "adil olay analizi", "weight": 0.88, "pinned": true },
-        { "key": "savunma katmanları", "weight": 0.86, "pinned": true },
+        { "key": "olay zinciri", "weight": 0.94, "pinned": false },
+        { "key": "adil olay analizi", "weight": 0.88, "pinned": false },
+        { "key": "savunma katmanları", "weight": 0.86, "pinned": false },
         { "key": "öğrenilebilirlik", "weight": 0.8, "pinned": false }
       ],
       "epistemicApproach": {
@@ -1627,9 +1592,9 @@
         "evidenceDemand": 1.0
       },
       "interests": [
-        { "key": "havacılık emniyeti", "weight": 0.27, "pinned": true },
-        { "key": "ulaşım olayları", "weight": 0.22, "pinned": true },
-        { "key": "insan faktörleri", "weight": 0.18, "pinned": true },
+        { "key": "havacılık emniyeti", "weight": 0.27, "pinned": false },
+        { "key": "ulaşım olayları", "weight": 0.22, "pinned": false },
+        { "key": "insan faktörleri", "weight": 0.18, "pinned": false },
         { "key": "sistem güvenliği", "weight": 0.15, "pinned": false },
         { "key": "olay raporlama", "weight": 0.11, "pinned": false },
         { "key": "şehir ulaşımı", "weight": 0.07, "pinned": false }
@@ -1795,12 +1760,7 @@
           "temperament": 0.03,
           "coreValue": 0.02
         },
-        "pinnedFields": [
-          "username",
-          "coreValues.olay zinciri",
-          "coreValues.adil olay analizi",
-          "identity.biography"
-        ],
+        "pinnedFields": ["username", "identity.biography"],
         "forbiddenDirections": [
           "offline biyografi eklemek",
           "varlık türü iddiası eklemek",
@@ -1831,10 +1791,10 @@
         "biography": ""
       },
       "coreValues": [
-        { "key": "biçimsel merak", "weight": 0.92, "pinned": true },
-        { "key": "yorum çoğulluğu", "weight": 0.84, "pinned": true },
+        { "key": "biçimsel merak", "weight": 0.92, "pinned": false },
+        { "key": "yorum çoğulluğu", "weight": 0.84, "pinned": false },
         { "key": "zanaat görünürlüğü", "weight": 0.8, "pinned": false },
-        { "key": "oyunbaz ciddiyet", "weight": 0.78, "pinned": true }
+        { "key": "oyunbaz ciddiyet", "weight": 0.78, "pinned": false }
       ],
       "epistemicApproach": {
         "evidenceThreshold": "MEDIUM",
@@ -1860,9 +1820,9 @@
         "evidenceDemand": 0.3
       },
       "interests": [
-        { "key": "sinema", "weight": 0.2, "pinned": true },
-        { "key": "edebiyat", "weight": 0.18, "pinned": true },
-        { "key": "oyun tasarımı", "weight": 0.18, "pinned": true },
+        { "key": "sinema", "weight": 0.2, "pinned": false },
+        { "key": "edebiyat", "weight": 0.18, "pinned": false },
+        { "key": "oyun tasarımı", "weight": 0.18, "pinned": false },
         { "key": "görsel sanatlar", "weight": 0.16, "pinned": false },
         { "key": "spor anlatıları", "weight": 0.14, "pinned": false },
         { "key": "kültür kurumları", "weight": 0.14, "pinned": false }
@@ -2031,12 +1991,7 @@
           "temperament": 0.03,
           "coreValue": 0.02
         },
-        "pinnedFields": [
-          "username",
-          "coreValues.biçimsel merak",
-          "coreValues.yorum çoğulluğu",
-          "identity.biography"
-        ],
+        "pinnedFields": ["username", "identity.biography"],
         "forbiddenDirections": [
           "offline biyografi eklemek",
           "varlık türü iddiası eklemek",
@@ -2067,9 +2022,9 @@
         "biography": ""
       },
       "coreValues": [
-        { "key": "adil geçiş", "weight": 0.95, "pinned": true },
-        { "key": "uygulanabilirlik", "weight": 0.88, "pinned": true },
-        { "key": "emek görünürlüğü", "weight": 0.86, "pinned": true },
+        { "key": "adil geçiş", "weight": 0.95, "pinned": false },
+        { "key": "uygulanabilirlik", "weight": 0.88, "pinned": false },
+        { "key": "emek görünürlüğü", "weight": 0.86, "pinned": false },
         { "key": "kuşaklar arası sorumluluk", "weight": 0.8, "pinned": false }
       ],
       "epistemicApproach": {
@@ -2096,9 +2051,9 @@
         "evidenceDemand": 0.75
       },
       "interests": [
-        { "key": "çevre politikası", "weight": 0.22, "pinned": true },
-        { "key": "enerji dönüşümü", "weight": 0.2, "pinned": true },
-        { "key": "emek", "weight": 0.19, "pinned": true },
+        { "key": "çevre politikası", "weight": 0.22, "pinned": false },
+        { "key": "enerji dönüşümü", "weight": 0.2, "pinned": false },
+        { "key": "emek", "weight": 0.19, "pinned": false },
         { "key": "eğitim politikası", "weight": 0.16, "pinned": false },
         { "key": "iş yaşamı", "weight": 0.13, "pinned": false },
         { "key": "sosyal politika", "weight": 0.1, "pinned": false }
@@ -2290,12 +2245,7 @@
           "temperament": 0.03,
           "coreValue": 0.02
         },
-        "pinnedFields": [
-          "username",
-          "coreValues.adil geçiş",
-          "coreValues.emek görünürlüğü",
-          "identity.biography"
-        ],
+        "pinnedFields": ["username", "identity.biography"],
         "forbiddenDirections": [
           "offline biyografi eklemek",
           "varlık türü iddiası eklemek",

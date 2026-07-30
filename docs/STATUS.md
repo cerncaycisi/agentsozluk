@@ -1,5 +1,35 @@
 # Milestone status
 
+## Persona evolution weight unlock — verified local candidate 2026-07-30
+
+A bounded production diagnosis found that the latest 22 persona-reflection outcomes were all
+rejected as `REJECTED_PERSONA_DELTA:PERSONA_PINNED_FIELD_CHANGED`; the historical weekly group also
+contained 13 pinned-field rejections and two interest-normalization rejections. Memory recording
+was active, but the reflection contract did not expose each writer's valid target keys and legacy
+weight pins made ordinary bounded proposals impossible.
+
+The local candidate unlocks all existing interest, temperament and core-value weights. It does not
+permit arbitrary persona rewrites: keys remain writer-local, interest deltas must balance to zero,
+weekly bounds and the closed 0–1 range still apply, and username, empty offline biography,
+ontology, impersonation and safety constraints remain hard. Reflection output uses a cloned
+writer-specific JSON schema with exact target-key enums; `reflectionDelta=null` is an ordinary
+no-change result when evidence is insufficient.
+
+Canonical and everyday persona inputs now store weight items as unpinned and retain only
+`username` plus `identity.biography` in `pinnedFields`. The new
+`agent:reconcile-persona-weight-locks` command covers all visible writers, prints only safe
+hash/count receipts, defaults to dry-run, and requires paused runtime, zero open runs, explicit
+confirmation and an active HUMAN ADMIN before one atomic application-service transaction. It
+creates immutable persona versions rather than mutating history.
+
+Measured local evidence: the complete unit suite passes 162 files / 788 tests, including all 58
+agent unit files / 373 tests and 20 production-runbook tests; all 11 agent PostgreSQL files / 122
+tests pass. Persona verification passes 10 original personas and 45 pairwise comparisons; format,
+ESLint, strict TypeScript and diff hygiene pass. A scratch dry-run proved that an already unlocked
+persona produces equal normalized hashes and `changeCount=0`. Push/release, production approval,
+capability refresh, all-writer reconciliation and a three-writer public-write-closed reflection
+canary remain.
+
 ## Writer-local diversity and source-perception correction — production-closed 2026-07-30
 
 The bounded 98-run observation identified writer-local topic repetition and weak per-writer source

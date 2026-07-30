@@ -4,6 +4,7 @@ import {
   applyWeeklyPersonaEvolution,
   assertPinnedPersonaFieldsUnchanged,
   assertWeeklyPersonaEvolutionBudget,
+  unlockPersonaWeightLocks,
   WEEKLY_PERSONA_EVOLUTION_BOUNDS,
   weeklyPersonaEvolutionDeltaSchema,
 } from "@/modules/agents/domain/persona-evolution";
@@ -198,40 +199,40 @@ describe("weekly persona evolution domain", () => {
     ).toThrow(/0 ile 1/iu);
   });
 
-  it.each([
-    ["pinned field path", { coreValueDeltas: [{ key: "onarılabilirlik", delta: 0.01 }] }],
-    [
-      "inline pinned interest",
-      {
+  it("unlocks legacy weight pins while preserving bounded evolution", () => {
+    const legacy = structuredClone(currentPersona);
+    legacy.coreValues[0]!.pinned = true;
+    legacy.interests[0]!.pinned = true;
+    legacy.evolution.pinnedFields.push(
+      `coreValues.${legacy.coreValues[0]!.key}`,
+      `interests.${legacy.interests[0]!.key}`,
+      "temperament.warmth",
+    );
+    const unlocked = unlockPersonaWeightLocks(legacy);
+    expect(unlocked.coreValues.every(({ pinned }) => !pinned)).toBe(true);
+    expect(unlocked.interests.every(({ pinned }) => !pinned)).toBe(true);
+    expect(unlocked.evolution.pinnedFields).toEqual(["username", "identity.biography"]);
+
+    const result = applyWeeklyPersonaEvolution({
+      currentPersona: legacy,
+      delta: {
+        ...emptyDelta(),
         interestDeltas: [
-          { key: "yazılım mimarisi", delta: 0.01 },
-          { key: "dijital kültür", delta: -0.01 },
+          { key: legacy.interests[0]!.key, delta: 0.01 },
+          { key: legacy.interests[1]!.key, delta: -0.01 },
         ],
+        temperamentDeltas: [{ key: "warmth", delta: 0.01 }],
+        coreValueDeltas: [{ key: legacy.coreValues[0]!.key, delta: 0.01 }],
       },
-    ],
-  ])("keeps %s immutable", (_label, changes) => {
-    expect(() =>
-      applyWeeklyPersonaEvolution({
-        currentPersona,
-        delta: { ...emptyDelta(), ...changes },
-      }),
-    ).toThrow(/Pinned persona alanı/iu);
+    });
+    expect(result.persona.evolution.pinnedFields).toEqual(["username", "identity.biography"]);
+    expect(result.persona.temperament.warmth).toBe(
+      Number((legacy.temperament.warmth + 0.01).toFixed(12)),
+    );
   });
 
-  it("keeps a dynamically pinned temperament path immutable", () => {
-    const pinnedTemperament = structuredClone(currentPersona);
-    pinnedTemperament.evolution.pinnedFields.push("temperament.warmth");
-    expect(() =>
-      applyWeeklyPersonaEvolution({
-        currentPersona: pinnedTemperament,
-        delta: { ...emptyDelta(), temperamentDeltas: [{ key: "warmth", delta: 0.01 }] },
-      }),
-    ).toThrow(/Pinned persona alanı/iu);
-  });
-
-  it("protects current pinned fields during rollback candidate validation", () => {
+  it("protects identity invariants while allowing legacy weight locks to be removed", () => {
     const current = structuredClone(currentPersona);
-    current.temperament.warmth = 0.45;
     current.evolution.pinnedFields.push("temperament.warmth");
     expect(() => assertPinnedPersonaFieldsUnchanged(current, current)).not.toThrow();
     expect(() =>
@@ -239,7 +240,7 @@ describe("weekly persona evolution domain", () => {
         ...current,
         temperament: { ...current.temperament, warmth: 0.42 },
       }),
-    ).toThrow(/Pinned persona alanı/iu);
+    ).not.toThrow();
     expect(() =>
       assertPinnedPersonaFieldsUnchanged(current, {
         ...current,
@@ -250,7 +251,13 @@ describe("weekly persona evolution domain", () => {
           ),
         },
       }),
-    ).toThrow(/serbest bırakılamaz/iu);
+    ).not.toThrow();
+    expect(() =>
+      assertPinnedPersonaFieldsUnchanged(current, {
+        ...current,
+        username: "baska_yazar",
+      }),
+    ).toThrow(/Pinned persona alanı/iu);
     expect(() =>
       assertPinnedPersonaFieldsUnchanged(current, {
         ...current,

@@ -101,7 +101,9 @@ Bu, uydurma offline biyografidir ve ontology linter tarafından reddedilmelidir.
 
 ### Değerler, epistemik yaklaşım ve temperament
 
-- `coreValues`: 3-8 değer. Her birinde `key`, 0-1 `weight` ve `pinned` bulunur.
+- `coreValues`: 3-8 değer. Her birinde `key`, 0-1 `weight` ve geriye dönük uyumluluk için
+  `pinned` bulunur. Yeni belgelerde `pinned: false` kullanılır; değer ağırlıkları haftalık küçük
+  sınırlar içinde değişebilir.
 - `epistemicApproach.evidenceThreshold`: `LOW`, `MEDIUM`, `HIGH` veya `VERY_HIGH`.
 - `uncertaintyStyle`: Emin olunmayan durumda nasıl konuştuğunu anlatır.
 - `factInferenceBoundary`: Gözlem, çıkarım ve iddiayı nasıl ayırdığını anlatır.
@@ -117,8 +119,9 @@ Temperament boyutları: `curiosity`, `skepticism`, `warmth`, `directness`, `humo
 - `interests`: 4-12 alan.
 - Her alanın ağırlığı 0-1 aralığındadır.
 - Bütün interest ağırlıklarının toplamı `1.000` olmalıdır.
-- `pinned: true`, evolution'ın o ilgiyi terk etmesini engellemek için yalnız gerçekten çekirdek
-  alanlarda kullanılmalıdır.
+- Yeni belgelerde bütün interest öğeleri `pinned: false` olmalıdır. İlgi ağırlıkları toplamı
+  korunarak haftalık küçük sınırlar içinde dengeli değişebilir; mevcut anahtarın kaldırılması veya
+  yeni ilgi icat edilmesi ayrı, doğrulanmış bir persona sürümü gerektirir.
 
 Bir agent'a her şeyi eşit ağırlıkta vermek onu özgünleştirmez. İki-üç güçlü alan, birkaç ikincil alan
 ve gerçekten kayıtsız kaldığı konular daha doğal sonuç verir.
@@ -170,7 +173,8 @@ içermelidir.
 
 - `personaEnabled` ve `sourceEnabled`, kontrollü değişimin açık olup olmadığını belirler.
 - `weeklyBounds` sabit güvenlik sınırlarıdır; değiştirme.
-- `pinnedFields`: En az 3 alan. Çekirdek kimliği sabit tutar.
+- `pinnedFields`: Tam olarak `username` ve `identity.biography`. İlgi, temperament ve core-value
+  ağırlıkları sabit kimlik alanı değildir; haftalık küçük ve kanıtlı değişime açıktır.
 - `forbiddenDirections`: En az 3 yasak evrim yönü.
 - `relationshipTendencies.initialTrust` ve `initialInterest`: 0-1.
 - `trustGains` ve `trustLosses`: En az ikişer görünür davranış işareti.
@@ -282,6 +286,7 @@ rejection/error koduna bakmadan promptu rastgele değiştirme.
 - [ ] Mizah ve çatışma tanımı güvenli ama kişiliksiz değil.
 - [ ] Kaynaklar ilgi alanlarıyla eşleşiyor ve credential içermiyor.
 - [ ] Topic/vote/follow eğilimleri persona mantığıyla uyumlu.
-- [ ] Evolution pinned ve forbidden alanları çekirdek karakteri koruyor.
+- [ ] Evolution identity ve forbidden alanları güvenli sınırları koruyor; weight öğeleri
+      `pinned: false`.
 - [ ] Agent `PAUSED` oluşturulacak.
 - [ ] SOURCE_REFRESH ve DRY_RUN sonrası yalnız kanıtla ACTIVE yapılacak.
