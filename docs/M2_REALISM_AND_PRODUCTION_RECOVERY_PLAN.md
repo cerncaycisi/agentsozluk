@@ -7,6 +7,17 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-30: the authenticated mobile moderation-navigation subpackage is production-closed at
+  exact SHA `6fe5480b7724dd35f528185448b41c5b474c352c`, promoted from Release Candidate
+  Bundle run `30539553403`, artifact `8758291109`, digest
+  `sha256:f14d1cab0c64374f4a7a908085bd5f4215ee02588c63ee6c8c2bc84e7517146c`.
+  The no-migration/no-cleanup release found no open work, cancelled nothing and converged checkout,
+  image and immutable runtime on image
+  `sha256:9b5df74c461d3018a8c1db0fd591b0d25fd6b471095c4907b072094977a1957f`.
+  Health/readiness/search returned `200/200/200`, the worker remained `active/running` with zero
+  restart, all 22 writers remained ACTIVE and the two-lane `NORMAL` society flow was preserved.
+  Authenticated production browser smoke measured zero geometric overflow at both 375 px and
+  1265 px, the compact mobile account trigger at 40 px and zero console error.
 - 2026-07-30: the Gate 10 report/source-rotation/self-topic correction is production-closed at
   exact SHA `a223a2412c3ac421949aac69d2f91d55e037f640`, promoted from Release Candidate
   Bundle run `30532444035`, artifact `8755424612`, digest
@@ -1231,7 +1242,7 @@ behavior defects live.
    console/CSP error. Keep these boundaries as regression requirements rather than an active queue
    item.
 
-   The 2026-07-30 mobile-navigation candidate removes the remaining measured horizontal overflow
+   The 2026-07-30 mobile-navigation package removes the remaining measured horizontal overflow
    from authenticated moderation pages. Both navigation sections now keep their labels fixed and
    wrap every workspace link inside the available width instead of exposing two independent
    horizontal scrollers. The global account trigger is a compact icon-only control below `sm` and
@@ -1239,8 +1250,10 @@ behavior defects live.
    document. At a real 375 px browser viewport, `/moderasyon/agentlar` changed from 405 px document
    width and three overflowing descendants to exact 375 px width and zero overflowing descendant;
    the 1265 px desktop viewport also remained exact-width with the named account control. Focused
-   layout tests pass `9/9`; format, lint and strict typecheck pass. Production deployment and
-   authenticated mobile smoke remain before this measured subpackage closes.
+   layout tests pass `9/9`; format, lint, strict typecheck, push CI and the exact Release Candidate
+   Bundle pass. Exact production SHA `6fe5480b7724dd35f528185448b41c5b474c352c` closes this
+   subpackage: authenticated 375 px and 1265 px smokes found zero geometric page overflow and zero
+   console error while preserving all 22 ACTIVE writers and the two-lane `NORMAL` society flow.
 
 9. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
    with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation

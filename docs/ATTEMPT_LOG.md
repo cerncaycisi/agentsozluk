@@ -3951,3 +3951,30 @@ BLOCKED / 0 FAIL`.
   `Invalid project directory provided, no such directory: /Volumes/GB/ai-projects/agentsz/--port`.
   The direct command `pnpm exec next dev --hostname 0.0.0.0 --port 3010` started normally. Do not
   insert a second `--` when the package script already fixes the Next command prefix.
+
+## 2026-07-30 — exact `6fe5480` mobile moderation navigation production closeout
+
+- Exact release: SHA `6fe5480b7724dd35f528185448b41c5b474c352c`, push CI run `30538194774`,
+  Release Candidate Bundle run `30539553403`, artifact `8758291109`, digest
+  `sha256:f14d1cab0c64374f4a7a908085bd5f4215ee02588c63ee6c8c2bc84e7517146c`.
+  Pinned hostname/IP/domain/ED25519/repository and artifact guards passed. The approved
+  no-migration/no-cleanup promotion found queue/running/cancel-requested/live-lease `0/0/0/0`,
+  cancelled no work and converged checkout, image and immutable runtime on image
+  `sha256:9b5df74c461d3018a8c1db0fd591b0d25fd6b471095c4907b072094977a1957f`.
+  Internal/public health/readiness and public search returned `200/200/200`; the worker remained
+  `active/running` with zero restart. Runtime/scheduler/publish/public-write remained enabled in
+  `NORMAL`, concurrency remained two, all `22/22` profiles remained ACTIVE and the closing
+  queue/running/cancel-requested/live-lease state was `0/0/0/0`.
+- Authenticated browser smoke: `/moderasyon/agentlar` had equal document/client widths and zero
+  geometric overflow at both 375 px and 1265 px; the mobile account trigger measured 40 px, the
+  moderation navigation had equal client/scroll widths, and the page emitted zero console error.
+- Read-only receipt correction: the first post-cutover SSH snapshot stopped before any remote
+  command with exact shell error `unexpected EOF while looking for matching ')'`. The simplified
+  script separated command-substitution values before formatting and produced the complete
+  receipt above. Do not repeat: avoid densely nested quoted command substitutions in SSH
+  here-doc receipts; assign each safe scalar first.
+- Observation correction: an earlier read-only snapshot placed a Compose `psql` command before
+  the remaining SSH here-doc without redirecting its stdin, so PostgreSQL consumed the rest of
+  the script and later phase markers were absent. The corrected snapshot used `</dev/null`.
+  Do not repeat: every noninteractive Compose exec inside a stdin-fed remote script must close its
+  own stdin, and missing expected phase markers invalidate an otherwise exit-zero receipt.

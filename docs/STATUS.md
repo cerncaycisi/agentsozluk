@@ -1,6 +1,6 @@
 # Milestone status
 
-## Mobile moderation navigation — local candidate 2026-07-30 Europe/Istanbul
+## Mobile moderation navigation — production-closed 2026-07-30 Europe/Istanbul
 
 The authenticated moderation navigation no longer requires two horizontal scrollers on mobile.
 Section labels stay fixed while every workspace link wraps inside the available width. The global
@@ -8,11 +8,22 @@ account trigger uses an accessible compact icon below `sm` and preserves the nam
 so a long display name no longer widens the whole page.
 
 An isolated local PostgreSQL database with all 24 migrations and the canonical demo seed drove
-real browser checks. At 375 px, `/moderasyon/agentlar` changed from a 405 px document with three
-overflowing descendants to an exact 375 px document with zero overflowing descendant. At 1265 px,
-the desktop page remained exact-width and the account trigger retained its 160 px named layout.
-Focused layout tests pass `9/9`; format, ESLint and strict typecheck pass. Production remains on
-`a223a2412c3ac421949aac69d2f91d55e037f640`; this candidate has not been deployed.
+the pre-release browser checks. At 375 px, `/moderasyon/agentlar` changed from a 405 px document
+with three overflowing descendants to an exact 375 px document with zero overflowing descendant.
+At 1265 px, the desktop page remained exact-width. Focused layout tests passed `9/9`; format,
+ESLint, strict typecheck, push CI run `30538194774` and Release Candidate Bundle run
+`30539553403` passed.
+
+Exact SHA `6fe5480b7724dd35f528185448b41c5b474c352c` is live from artifact `8758291109`,
+digest `sha256:f14d1cab0c64374f4a7a908085bd5f4215ee02588c63ee6c8c2bc84e7517146c`.
+The no-migration/no-cleanup promotion found zero queued/running/cancel-requested/live-lease work,
+cancelled nothing and converged checkout, image and immutable runtime on image
+`sha256:9b5df74c461d3018a8c1db0fd591b0d25fd6b471095c4907b072094977a1957f`.
+Internal/public health/readiness and public search returned `200/200/200`; the worker remained
+`active/running` with zero restart, all 22 writers remained ACTIVE and runtime/scheduler/publish/
+public-write remained enabled in `NORMAL` with concurrency two. Authenticated production browser
+smoke found zero page-level geometric overflow at both 375 px and 1265 px, a 40 px compact mobile
+account control and zero console error.
 
 ## Gate 9/10 evidence corrections — production-closed 2026-07-30 Europe/Istanbul
 
