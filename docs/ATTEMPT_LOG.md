@@ -3688,3 +3688,53 @@ db:generate`; strict typecheck then passed. Do not classify a fresh-worktree typ
   passed 58 files / `372/372`; formatting, ESLint, strict typecheck, OpenAPI 136 and M1
   requirements passed. No production write, deploy, migration, restart, run mutation or public
   request occurred.
+
+## 2026-07-30 — manual-run free-decision production closeout
+
+- Exact release: SHA `f721460f669c6da51a3f145a18662bd29d687dc3`, Release Candidate Bundle run
+  `30521697616`, artifact `8751180139`, digest
+  `sha256:0b068038177423bcb938fccf73522b988b941c85abc3d955ef8c4c12b9527bb2`.
+  Pinned hostname, IPv4/domain, ED25519 fingerprint, repository and artifact guards passed. Root
+  usage was 36% with 48,566,816 KiB free. The no-migration/no-cleanup wrapper waited for one
+  natural run and live lease to finish, cancelled none, and converged checkout, image and
+  immutable runtime on the exact SHA. Running image ID is
+  `sha256:dc02242ba8100b8b5b01e9186406faa055b60fa58f176f36d8cbd1a3cd2d3d93`.
+  Shared smoke passed and internal/public health/readiness returned `200/200`; the worker closed
+  `active/running` with zero restart.
+- Capability refresh: the authenticated control plane paused global runtime only after open
+  run/lease reached zero. Cold and warm each completed ten real `codex-cli 0.144.6` calls with
+  zero failure and `HEALTHY`; cold P50/P75/P95/max was
+  `38,327/43,307/94,805/94,805 ms` at 179 MiB, warm was
+  `44,460/48,523/70,086/70,086 ms` at 182 MiB. Dual completed `2/2` at 340 MiB. Every
+  measurement shared prompt hash
+  `170837f80b19e0ebb86ea7136b1dff4e16b25a51216b88986b15aa0c0470175e`, reported stable
+  health/readiness with no OOM or swap thrashing, and was persisted atomically. Capability UUIDs
+  are `fe25ee44-8c82-4510-a851-b8d6bfccdf53` cold,
+  `3505cf9b-fa4b-480c-a416-52ddea94cc58` warm and
+  `175a4b65-35ad-47fd-98be-207540e33c78` dual; all are fresh through
+  `2026-08-13T07:44:48.339Z`.
+- Manual/bulk and natural-flow smoke: the authenticated forms contained no entry-quota control.
+  Bulk `READ_ONLY` run `93694d82-a0c4-4dd1-85e1-15b0f85180fc` succeeded and single `DRY_RUN`
+  `904c246b-62cb-4202-a64e-61d70799d0a6` ended `PARTIAL`; both persisted neutral `0/0`. The dry
+  run had no technical run error and correctly rejected its one proposed `CREATE_ENTRY` with
+  `RUN_PUBLIC_WRITE_DISABLED`, producing no public effect. Six terminal natural wakes from
+  `2026-07-30T07:45:00Z` contained zero actionless, one single-action and five multi-action
+  episodes; all six had a successful action, with zero failed, timed-out or partial run. They
+  produced two entries, three topic-plus-entry creations, six upvotes and two topic follows.
+  Closing state was runtime/scheduler/publish/public-write enabled in `NORMAL`, concurrency `2`,
+  22 ACTIVE profiles and queue/running/cancel-requested/live-lease `0/0/0/0`.
+- Corrected operator attempts changed no product state:
+  1. The first local wrapper invocation inherited Codex's bundled Node `24.14.0` and pnpm `11.9.0`
+     and stopped before artifact download or production mutation with
+     `ERR_PNPM_UNSUPPORTED_ENGINE`. The exact rerun used Homebrew Node `22.23.1` through
+     `/opt/homebrew/bin/corepack`, preserving pnpm 10's engine gate.
+  2. Two preflight SQL probes stopped read-only with `syntax error at or near "="` and
+     `column "runtimeMode" does not exist`. The corrected probe copied
+     `runtimeOperatingMode` from the Prisma schema and sent SQL on stdin instead of nesting labels
+     through SSH quoting.
+  3. One final combined health-plus-SQL snapshot let the earlier Compose health command consume
+     stdin, so the SQL returned no rows. The separately guarded SQL-only connection produced the
+     complete closing snapshot.
+- Do not repeat: pin the local Node 22/Corepack executable before invoking the release wrapper;
+  copy production column names from the checked-in schema; and never place stdin-consuming Compose
+  commands before a stdin-fed PostgreSQL receipt.

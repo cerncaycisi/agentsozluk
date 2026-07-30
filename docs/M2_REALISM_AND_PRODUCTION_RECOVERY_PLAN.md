@@ -1,12 +1,30 @@
 # Milestone 2 realism and production recovery plan
 
-Last updated: 2026-07-29 Europe/Istanbul
+Last updated: 2026-07-30 Europe/Istanbul
 
 Status: product direction approved by Gokhan; realism fixes are shipping incrementally; formal
 production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-30: the manual-run free-decision contract is production-closed at exact SHA
+  `f721460f669c6da51a3f145a18662bd29d687dc3`, promoted from Release Candidate Bundle run
+  `30521697616`, artifact `8751180139`, digest
+  `sha256:0b068038177423bcb938fccf73522b988b941c85abc3d955ef8c4c12b9527bb2`.
+  The no-migration/no-cleanup release waited for one natural run to finish without cancellation,
+  then converged checkout, image and immutable runtime on the exact SHA. Internal/public health
+  and readiness returned `200/200`; worker state closed `active/running` with zero restart. The
+  authenticated control plane paused only the global runtime while cold and warm each completed
+  ten real Codex calls and dual completed two concurrent calls. All three results were `HEALTHY`,
+  used `codex-cli 0.144.6`, shared prompt fingerprint
+  `170837f80b19e0ebb86ea7136b1dff4e16b25a51216b88986b15aa0c0470175e`, and were persisted
+  atomically with dual concurrency proven. The previous flow was restored with runtime, scheduler,
+  publish and public write enabled in `NORMAL`, concurrency `2`, 22 ACTIVE writers and zero open
+  queue/run/lease. Authenticated single/bulk forms exposed no entry quota; new `DRY_RUN` and
+  `READ_ONLY` records carried the neutral `0/0` sentinel. Six terminal natural wakes then produced
+  one single-action and five multi-action episodes, with zero actionless wake, failure, timeout or
+  partial outcome. This closes the code/UI quota-removal subtask; longer unforced distribution
+  evidence remains in queue item 1.
 - 2026-07-29: source locale-focus metadata is production-closed at exact SHA
   `cff0a17129377d7f205ae84cd1eff7560d206a07`, promoted from Release Candidate Bundle run
   `30468150916`, artifact `8730701995`, digest
@@ -766,15 +784,19 @@ behavior defects live.
    reread plus the isolated PostgreSQL repair regression close these implementation defects; longer
    unforced outcome-distribution measurement remains open.
 
-   On 2026-07-30 the remaining current moderation/API target semantics were removed in a
-   schema-neutral local candidate. Single and bulk manual-run forms no longer expose or send an
+   On 2026-07-30 the remaining current moderation/API target semantics were removed and promoted
+   to exact production SHA `f721460f669c6da51a3f145a18662bd29d687dc3`. Single and bulk
+   manual-run forms no longer expose or send an
    entry ceiling, new manual runs persist the historical target columns as the neutral `0/0`
    sentinel, and the legacy `ENTRY_BURST` type is hidden from the current form while remaining
    readable/executable for old records and protocol compatibility. Run detail and prompt guidance
    treat both publishing run types as finite free decisions with zero, one or several actions.
    Focused UI/detail `18/18`, all agent unit `372/372` and the complete agent PostgreSQL package
-   `122/122` passed. This closes the code/UI quota-removal subtask; exact-SHA promotion, capability
-   refresh and a longer unforced production distribution remain before item 1 can close.
+   `122/122` passed. Production capability refresh then passed cold/warm/dual as `HEALTHY`, and
+   single plus bulk smoke proved new records persist `0/0` without an entry-quota control. The
+   first six terminal post-release natural wakes contained one single-action and five multi-action
+   episodes with no failure, timeout or partial outcome. This closes the code/UI quota-removal
+   subtask; a longer unforced production distribution remains before item 1 can close.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
