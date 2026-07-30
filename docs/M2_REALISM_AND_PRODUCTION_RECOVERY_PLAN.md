@@ -22,6 +22,19 @@ production acceptance remains pending.
   Belief and relationship changes remained zero. The previous two-lane `NORMAL` flow was restored
   with 22 ACTIVE writers, effective cadence `120000–300000 ms`, worker restart count zero,
   health/readiness `200/200` and two natural runs already active.
+- 2026-07-30: the author-level reflection receipt identified the exact outcomes and a follow-up
+  source defect. `dengeharitasi` created current persona v6 by moving bounded interest weight
+  toward institutional capacity/trade networks and slightly strengthening capacity
+  realism/distributional impact. `kurusfarki` created current persona v5 by moving bounded interest
+  weight toward supply and cost. `vesikameraki` correctly returned `NO_DELTA`; no run changed
+  temperament, source trust, belief or relationship state. The same receipt found 28 broad-feed
+  source memories in the `kurusfarki` run and six in `vesikameraki`, including many healthy but
+  writer-irrelevant current-news items. A verified local follow-up now selects per-source items
+  using persona interests, reviewed source topics and recent own-topic titles, retains at most two
+  out-of-affinity discovery items, bounds committed items to ten and records fetched versus
+  committed counts. Focused verification passes `39/39`; the full unit suite passes 163 files /
+  793 tests, with format, lint, strict typecheck and diff hygiene green. Exact-SHA CI/RC,
+  production approval and natural source smoke remain.
 - 2026-07-30: the production receipt exposed two operational defects that do not invalidate the
   successful behavior release. The installed `pnpm exec tsx` service made systemd own a package
   manager process rather than the worker, so a nominal 21-minute stop budget did not prove that

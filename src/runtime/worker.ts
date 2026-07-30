@@ -26,6 +26,7 @@ import {
   MAX_SOURCE_READ_TIMEOUT_MS,
   type SafeSourceReader,
 } from "@/runtime/source-reader";
+import { selectSourceReadItemsForPersona } from "@/runtime/source-relevance";
 import { RuntimeRunDeadline } from "@/runtime/run-deadline";
 import {
   duplicateRepairCandidateIsSafe,
@@ -770,6 +771,7 @@ export class AgentRuntimeWorker {
       }
     };
     let providerResult: RuntimeProviderResult | null = null;
+    let sourceItemsFetched = 0;
     let sourceReads = 0;
     let sourceTargetsAttempted = 0;
     try {
@@ -793,6 +795,7 @@ export class AgentRuntimeWorker {
             z.object({
               sourceId: z.string().uuid(),
               url: z.string().url(),
+              topics: z.array(z.string()).catch([]),
             }),
           )
           .catch([])
@@ -800,6 +803,15 @@ export class AgentRuntimeWorker {
         const selectedTargets = targets.slice(
           0,
           sourceFetchTargetLimit(context.run.runType, context.run.sourceFetchLimit),
+        );
+        const parsedSourcePersona = context.persona.document
+          ? seedPersonaSchema.safeParse(context.persona.document)
+          : null;
+        const recentTopicTitles = recordArray(context.perception.ownRecentEntries).flatMap(
+          (entry) => {
+            const title = nestedStringField(entry, "topic", "title");
+            return title ? [title] : [];
+          },
         );
         sourceTargetsAttempted = selectedTargets.length;
         for (const target of selectedTargets) {
@@ -814,9 +826,15 @@ export class AgentRuntimeWorker {
             deadline.requestOptions(),
           );
           try {
-            const items = await this.#options.sourceReader.read(target.url, {
+            const fetchedItems = await this.#options.sourceReader.read(target.url, {
               signal: deadline.signal,
               timeoutMs: Math.min(MAX_SOURCE_READ_TIMEOUT_MS, deadline.remainingMs()),
+            });
+            sourceItemsFetched += fetchedItems.length;
+            const items = selectSourceReadItemsForPersona(fetchedItems, {
+              persona: parsedSourcePersona?.success ? parsedSourcePersona.data : null,
+              sourceTopics: target.topics,
+              recentTopicTitles,
             });
             deadline.throwIfStopped();
             if (items.length === 0) {
@@ -1147,6 +1165,7 @@ export class AgentRuntimeWorker {
             publishedEntries: measured.publishedEntries,
             createdTopics: measured.createdTopics,
             votes: measured.votes,
+            sourceItemsFetched,
             sourceReads,
           },
           ...(sourceRefreshErrorCode

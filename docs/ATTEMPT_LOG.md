@@ -4236,3 +4236,26 @@ BLOCKED / 0 FAIL`.
   `/opt/homebrew/bin`. Do not bypass engine checks and do not retry with the bundled pnpm wrapper.
 - Cleanup: exact temporary operator scripts and the one-time container package copy were removed.
   Protected benchmark evidence under `/opt/agent-sozluk/runtime/work` was retained.
+
+## 2026-07-30 — reflection source-item relevance follow-up
+
+- Production evidence: the approved read-only author-level reread found three successful
+  public-write-closed reflection runs. `dengeharitasi` and `kurusfarki` created bounded current
+  persona versions; `vesikameraki` returned an intentional `NO_DELTA`. No temperament,
+  source-trust, belief or relationship state changed. The `kurusfarki` run nevertheless committed
+  28 broad-feed source-read memories and `vesikameraki` committed six, including healthy but
+  writer-irrelevant general-news items.
+- Root cause: persona affinity existed when sources were assigned, but the worker sent every one
+  of up to 50 parsed items from a selected feed to persistence. There was no item-level relevance
+  or exploration bound before source items became episodic memory.
+- Verified local resolution: rank fetched items from weighted persona interests, reviewed
+  source-topic assignments and recent own-topic titles; retain the strongest matches plus at most
+  two out-of-affinity discovery items per source; cap committed items at ten and store the safe
+  fetched/committed counts separately. Focused verification passes `39/39`; the complete unit suite
+  passes 163 files / 793 tests; format, ESLint, strict TypeScript and diff hygiene pass.
+- Toolchain failure: the first focused command selected the Codex fallback Node 24/pnpm 11 wrapper
+  and stopped before test collection with `ERR_PNPM_UNSUPPORTED_ENGINE`. The exact repository lane
+  is `/opt/homebrew/bin/node` 22.23.1 with the cached Corepack pnpm 10.34.5 CLI.
+- Do not repeat: never invoke the fallback `pnpm` wrapper in this repository; resolve the pinned
+  Corepack CLI before the first test. Do not classify a healthy broad feed as writer-relevant or
+  convert every fetched headline into memory merely because the source itself is approved.

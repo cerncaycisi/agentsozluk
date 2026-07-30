@@ -359,6 +359,7 @@ const performanceMetricsSchema = z
     publishedEntries: z.number().int().min(0).max(100).default(0),
     createdTopics: z.number().int().min(0).max(20).default(0),
     votes: z.number().int().min(0).max(500).default(0),
+    sourceItemsFetched: z.number().int().min(0).max(10_000).default(0),
     sourceReads: z.number().int().min(0).max(1000).default(0),
   })
   .strict();

@@ -256,6 +256,75 @@ describe("long-lived agent runtime worker", () => {
     },
   );
 
+  it("records only bounded exploratory items from an out-of-affinity broad feed", async () => {
+    const runId = randomUUID();
+    const sourceId = randomUUID();
+    const plane = controlPlane(runId);
+    const context = fixtureContext(runId);
+    plane.context = vi.fn().mockResolvedValue({
+      ...context,
+      perception: {
+        ...context.perception,
+        sourceFetchTargets: [
+          {
+            sourceId,
+            url: "https://sports.example/feed.xml",
+            topics: ["spor"],
+          },
+        ],
+      },
+    });
+    const sourceReader = {
+      read: vi.fn().mockResolvedValue(
+        Array.from({ length: 28 }, (_, index) => ({
+          canonicalUrl: `https://sports.example/match-${index}`,
+          title: `Hazırlık maçının sonucu ${index}`,
+          publishedAt: null,
+          safeText: `Takımlar hazırlık maçında karşılaştı ve karşılaşma ${index} sona erdi.`,
+          contentHash: String(index).padStart(64, "0"),
+        })),
+      ),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "source-item-relevance-worker",
+      credentials: [`agt_${"r".repeat(43)}`],
+      controlPlane: plane,
+      provider: noActionProvider(),
+      sourceReader,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+    expect(plane.recordSourceResult).toHaveBeenCalledWith(
+      expect.any(String),
+      "source-item-relevance-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({
+        sourceId,
+        items: expect.arrayContaining([
+          expect.objectContaining({ title: "Hazırlık maçının sonucu 0" }),
+          expect.objectContaining({ title: "Hazırlık maçının sonucu 1" }),
+        ]),
+      }),
+      expect.any(Object),
+    );
+    const recordedInput = vi.mocked(plane.recordSourceResult).mock.calls[0]?.[4];
+    expect(recordedInput && "items" in recordedInput ? recordedInput.items : []).toHaveLength(2);
+    expect(plane.complete).toHaveBeenCalledWith(
+      expect.any(String),
+      "source-item-relevance-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({
+        performanceMetrics: expect.objectContaining({
+          sourceItemsFetched: 28,
+          sourceReads: 2,
+        }),
+      }),
+      expect.any(Object),
+    );
+  });
+
   it("marks an all-unusable source refresh PARTIAL with a safe aggregate code", async () => {
     const runId = randomUUID();
     const plane = controlPlane(runId);

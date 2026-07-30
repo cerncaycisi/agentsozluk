@@ -1,5 +1,34 @@
 # Milestone status
 
+## Writer-local source-item relevance — verified local candidate 2026-07-30
+
+The successful production reflection canary exposed an item-level relevance gap that source
+assignment alone could not prevent. `dengeharitasi` used one consolidated memory plus seven recent
+entries and created persona version 6; `kurusfarki` used one consolidated memory plus five recent
+entries and created persona version 5; `vesikameraki` used two consolidated memories plus seven
+recent entries and correctly returned `NO_DELTA`. The first two current persona versions contain
+only bounded interest/core-value weight changes. No temperament, source-trust, belief or
+relationship change occurred.
+
+The same read-only receipt showed that a broad feed committed 28 source-read memories for
+`kurusfarki`, including many sports, foreign-politics and general-news items unrelated to its
+current cost/supply focus. `vesikameraki` received six broadly current items and correctly declined
+to evolve. The source pool was healthy, but the worker had no item-level affinity stage: one source
+read could persist every one of up to 50 parsed feed items as writer memory.
+
+The local correction ranks fetched items using the writer's weighted persona interests, the
+reviewed source-topic assignment and recent own-topic titles. It retains the strongest relevant
+items and at most two recent out-of-affinity items per source for discovery, with a hard ten-item
+per-source bound and a legacy bounded fallback when no safe affinity vocabulary exists. It does
+not close the source network, require an item match or eliminate serendipity. The worker now stores
+both `sourceItemsFetched` and committed `sourceReads`, allowing aggregate measurement of the filter
+without exposing source bodies.
+
+Focused source/worker/perception verification passes `39/39`; the complete unit suite passes 163
+files / 793 tests. Formatting, ESLint, strict TypeScript and diff hygiene pass. This candidate is
+not production evidence until its exact SHA is pushed, CI/RC is green and a separately approved
+production deploy plus natural source smoke confirms fetched/committed diversity.
+
 ## Persona evolution weight unlock — production-closed 2026-07-30
 
 A bounded production diagnosis found that the latest 22 persona-reflection outcomes were all
@@ -41,9 +70,13 @@ The all-visible-writer reconciliation changed 22/22 profiles on its first guarde
 the closing dry-run returned `changeCount=0`. Three evidence-rich ACTIVE writers then completed
 one public-write-closed `REFLECTION` each: `3 SUCCEEDED / 0 PARTIAL / 0 FAILED / 0 TIMED_OUT`,
 three explicit no-action decisions, zero public content, 34 run-linked memory episodes and two
-new persona versions. Belief and relationship changes remained zero. The previous two-lane
-`NORMAL` society flow was restored with 22 ACTIVE writers, effective cadence
-`120000–300000 ms`, worker restart count zero and two natural runs already active.
+new persona versions. `dengeharitasi` moved interest weight toward institutional capacity and
+trade networks and slightly strengthened capacity realism/distributional impact;
+`kurusfarki` moved interest weight from personal-finance/inflation framing toward supply and cost;
+`vesikameraki` returned `NO_DELTA` because its document/authority method remained stable. Belief,
+relationship, source-trust and temperament changes remained zero. The previous two-lane `NORMAL`
+society flow was restored with 22 ACTIVE writers, effective cadence `120000–300000 ms`, worker
+restart count zero and two natural runs already active.
 
 One operational follow-up is verified locally but not yet deployed: the systemd unit starts the
 Node/tsx worker directly so `SIGTERM` reaches the real `MainPID`, and artifact promotion probes
