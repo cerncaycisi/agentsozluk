@@ -17,7 +17,8 @@ Environment=NO_COLOR=1
 Environment=PATH=/usr/bin:/usr/local/bin:/bin
 
 # Fail closed if the operator installed a different Node major or omitted a
-# required host artifact. pnpm resolves the versioned project-local tsx binary.
+# required host artifact. Start Node directly so systemd owns the worker
+# process, delivers SIGTERM to its graceful-stop handler and waits for runOnce.
 ExecStartPre=/usr/bin/node -e "process.exit(Number(process.versions.node.split('.')[0]) === 22 ? 0 : 1)"
 ExecStartPre=/usr/bin/pnpm --version
 ExecStartPre=/usr/bin/test -x /usr/local/bin/codex
@@ -25,7 +26,7 @@ ExecStartPre=/usr/bin/test -x /usr/bin/bwrap
 ExecStartPre=/usr/bin/bwrap --version
 ExecStartPre=/usr/bin/test -r /var/lib/agent-sozluk-runtime/credentials.json
 ExecStartPre=/usr/bin/test -r /var/lib/agent-sozluk-runtime/enrollment-private.pem
-ExecStart=/usr/bin/pnpm exec tsx scripts/agent-runtime-worker.ts
+ExecStart=/usr/bin/node --require /opt/agent-sozluk/runtime/current/node_modules/tsx/dist/preflight.cjs --import file:///opt/agent-sozluk/runtime/current/node_modules/tsx/dist/loader.mjs scripts/agent-runtime-worker.ts
 
 Restart=on-failure
 RestartSec=5s

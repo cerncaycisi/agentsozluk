@@ -1,6 +1,6 @@
 # Milestone status
 
-## Persona evolution weight unlock — verified local candidate 2026-07-30
+## Persona evolution weight unlock — production-closed 2026-07-30
 
 A bounded production diagnosis found that the latest 22 persona-reflection outcomes were all
 rejected as `REJECTED_PERSONA_DELTA:PERSONA_PINNED_FIELD_CHANGED`; the historical weekly group also
@@ -26,9 +26,30 @@ Measured local evidence: the complete unit suite passes 162 files / 788 tests, i
 agent unit files / 373 tests and 20 production-runbook tests; all 11 agent PostgreSQL files / 122
 tests pass. Persona verification passes 10 original personas and 45 pairwise comparisons; format,
 ESLint, strict TypeScript and diff hygiene pass. A scratch dry-run proved that an already unlocked
-persona produces equal normalized hashes and `changeCount=0`. Push/release, production approval,
-capability refresh, all-writer reconciliation and a three-writer public-write-closed reflection
-canary remain.
+persona produces equal normalized hashes and `changeCount=0`.
+
+Exact SHA `84239dc281b40cce98ef1c0afa30fee2d4f21f82` is now live. Checkout, image and
+immutable runtime converge on image
+`sha256:f9b81df037fc77de08f0a9ed390ff99f748f8f231c6c6e36c629743a7f82c650`;
+health/readiness is `200/200`. Cold and warm each completed ten real Codex calls and dual completed
+`2/2`; all three results are `HEALTHY` with shared safe prompt fingerprint
+`3fc69a98a95b3119d522c0ea8182accd51a325573afd29fefd415166192c80a4`.
+The package was persisted atomically through the application service under the active HUMAN ADMIN
+account, without transferring cookies or credentials.
+
+The all-visible-writer reconciliation changed 22/22 profiles on its first guarded application and
+the closing dry-run returned `changeCount=0`. Three evidence-rich ACTIVE writers then completed
+one public-write-closed `REFLECTION` each: `3 SUCCEEDED / 0 PARTIAL / 0 FAILED / 0 TIMED_OUT`,
+three explicit no-action decisions, zero public content, 34 run-linked memory episodes and two
+new persona versions. Belief and relationship changes remained zero. The previous two-lane
+`NORMAL` society flow was restored with 22 ACTIVE writers, effective cadence
+`120000–300000 ms`, worker restart count zero and two natural runs already active.
+
+One operational follow-up is verified locally but not yet deployed: the systemd unit starts the
+Node/tsx worker directly so `SIGTERM` reaches the real `MainPID`, and artifact promotion probes
+existing exact receipts before transferring image/runtime archives. Focused operations tests pass
+`43/43`; format, ESLint and strict TypeScript pass. This follow-up requires its own exact-SHA
+production approval before changing the live unit.
 
 ## Writer-local diversity and source-perception correction — production-closed 2026-07-30
 

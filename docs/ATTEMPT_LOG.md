@@ -4174,3 +4174,65 @@ BLOCKED / 0 FAIL`.
 - Do not repeat: never assume `systemctl stop` proves application-level drain. Compare the host
   stop budget with the longest legal run deadline, require the stage marker after the config
   switch, and verify both database run/lease counts and the effective worker environment.
+
+## 2026-07-30 — exact SHA 84239dc persona unlock and operational follow-up
+
+- Production result: exact SHA `84239dc281b40cce98ef1c0afa30fee2d4f21f82` converged app,
+  image and immutable runtime on image
+  `sha256:f9b81df037fc77de08f0a9ed390ff99f748f8f231c6c6e36c629743a7f82c650`.
+  Health/readiness closed `200/200`. The release reused the already staged exact image/runtime
+  and cancelled no run.
+- Capability evidence: cold and warm completed ten real Codex calls each; dual completed `2/2`.
+  All three records were `HEALTHY` with shared safe prompt fingerprint
+  `3fc69a98a95b3119d522c0ea8182accd51a325573afd29fefd415166192c80a4`.
+  The in-app browser was blocked before connection by the local browser policy, so no alternate
+  host was used. The exact protected package was instead persisted through the production
+  application service under the active HUMAN ADMIN identity; no cookie, CSRF, credential or
+  environment value entered shell output.
+- Persona and reflection result: guarded reconciliation changed 22 visible profiles and the
+  closing dry-run returned `changeCount=0`. Three evidence-rich ACTIVE profiles completed one
+  public-write-closed reflection each: `3 SUCCEEDED`, zero partial/failure/timeout, three
+  `NO_ACTION/SKIPPED` actions, zero public content, 34 run-linked memory episodes and two persona
+  versions. Belief and relationship changes were zero. The previous two-lane `NORMAL` flow,
+  22 ACTIVE writers and effective `120000–300000 ms` cadence were restored; worker restart count
+  remained zero and two natural runs were active at the closing snapshot.
+- Reused-artifact delay: the installer correctly printed `RELEASE_ARTIFACT_IMAGE_REUSED`, but only
+  after the wrapper had decompressed and streamed the complete 901 MiB image to stdin. Root cause:
+  reuse detection lived inside the consuming remote command. Verified local resolution adds
+  receipt-validated `image-probe` and `runtime-probe` modes and skips both streams when the exact
+  artifact is already present. Focused operations tests pass `43/43`; format, lint and strict
+  typecheck pass. Do not repeat: probe the verified remote receipt before opening a large archive
+  pipeline.
+- Graceful-stop ownership: `TimeoutStopSec=21min` alone was insufficient because systemd
+  `MainPID` was `/usr/bin/pnpm exec tsx`, not the Node worker. A stop could return while
+  application-level runs and leases remained active. The verified local unit now invokes Node
+  directly with the project-local tsx preflight/loader, making the graceful worker the real
+  `MainPID`. Do not repeat: verify both `MainPID` command identity and database run/lease drain;
+  a generous timeout around a package-manager wrapper is not proof of graceful completion.
+  A read-only production prerequisite probe under `agent-runtime` loaded the exact direct
+  preflight/loader command successfully; the unit itself remains unchanged until a new exact-SHA
+  deployment is approved.
+- Release-operation directory mismatch: the first remote cutover stopped with
+  `RELEASE_FAIL code=UNEXPECTED line=124 status=1`. Root cause was an exact-SHA
+  `.release-op-*` directory retained from an earlier settings fingerprint while audited scheduler
+  maintenance changed the settings version. Removing only that stale exact operation directory
+  and recapturing the guarded state allowed the release to pass. Do not repeat: a reused exact-SHA
+  operation directory must either match the current pre-state receipt or be removed before a
+  fresh operation; never treat it as a reusable release receipt.
+- Protected-file validation: the first benchmark check ran `stat` as `deploy` and returned
+  `Permission denied`; the correct check used the owning `agent-runtime` identity without
+  loosening mode `0600`. A temporary application script also failed because it was copied mode
+  `0600`; the corrected ephemeral copy was root-owned mode `0444`. Do not repeat: validate
+  protected runtime evidence as its owner and make only the exact ephemeral script readable to the
+  container process.
+- Runtime readiness ordering: the first reflection enqueue attempt stopped atomically with
+  `AGENT_RUNTIME_NOT_READY / ROSTER_SYNC_STALE`; no run was created. Starting the worker while
+  public writes remained closed refreshed the roster. The three runs then stayed queued while the
+  global runtime flag was false, so runtime was enabled with public write still closed until they
+  terminalized, after which the original full flow was restored. Do not repeat: roster readiness
+  and execution permission are separate gates; prove both before queueing a bounded canary.
+- Verification shell: the default Codex wrapper selected Node 24/pnpm 11 and stopped at the engine
+  guard. The verified local path is Node `22.23.1` plus Corepack pnpm `10.34.5` under
+  `/opt/homebrew/bin`. Do not bypass engine checks and do not retry with the bundled pnpm wrapper.
+- Cleanup: exact temporary operator scripts and the one-time container package copy were removed.
+  Protected benchmark evidence under `/opt/agent-sozluk/runtime/work` was retained.

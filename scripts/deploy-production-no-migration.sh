@@ -357,22 +357,43 @@ ssh "${ssh_options[@]}" deploy@"$expected_ip" \
    test -z \"\$(git -C /opt/agent-sozluk/app status --porcelain=v1 --untracked-files=all)\""
 
 if test "$build_on_host" = 0; then
-  zstd -q --decompress --stdout "$image_archive" |
-    ssh "${ssh_options[@]}" deploy@"$expected_ip" \
-      "set -euo pipefail
-       test \"\$(hostname)\" = '$expected_host' || exit 91
-       test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
-       test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
-       test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
-       exec '$remote_artifact_installer' image '$candidate_sha' '$artifact_image_config_digest' '$artifact_runtime_abi' '$artifact_image_tar_sha256'"
-  zstd -q --decompress --stdout "$runtime_archive" |
-    ssh "${ssh_options[@]}" deploy@"$expected_ip" \
-      "set -euo pipefail
-       test \"\$(hostname)\" = '$expected_host' || exit 91
-       test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
-       test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
-       test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
-       exec '$remote_artifact_installer' runtime '$candidate_sha' '$artifact_image_config_digest' '$artifact_runtime_abi' '$artifact_image_tar_sha256'"
+  remote_artifact_command="set -euo pipefail
+   test \"\$(hostname)\" = '$expected_host' || exit 91
+   test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
+   test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
+   test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93"
+
+  image_reused=0
+  if ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+      "$remote_artifact_command
+       exec '$remote_artifact_installer' image-probe '$candidate_sha' '$artifact_image_config_digest' '$artifact_runtime_abi' '$artifact_image_tar_sha256'"; then
+    image_reused=1
+  else
+    probe_status=$?
+    test "$probe_status" = 42 || exit "$probe_status"
+  fi
+  if test "$image_reused" = 0; then
+    zstd -q --decompress --stdout "$image_archive" |
+      ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+        "$remote_artifact_command
+         exec '$remote_artifact_installer' image '$candidate_sha' '$artifact_image_config_digest' '$artifact_runtime_abi' '$artifact_image_tar_sha256'"
+  fi
+
+  runtime_reused=0
+  if ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+      "$remote_artifact_command
+       exec '$remote_artifact_installer' runtime-probe '$candidate_sha' '$artifact_image_config_digest' '$artifact_runtime_abi' '$artifact_image_tar_sha256'"; then
+    runtime_reused=1
+  else
+    probe_status=$?
+    test "$probe_status" = 42 || exit "$probe_status"
+  fi
+  if test "$runtime_reused" = 0; then
+    zstd -q --decompress --stdout "$runtime_archive" |
+      ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+        "$remote_artifact_command
+         exec '$remote_artifact_installer' runtime '$candidate_sha' '$artifact_image_config_digest' '$artifact_runtime_abi' '$artifact_image_tar_sha256'"
+  fi
 fi
 
 trap - EXIT INT TERM HUP

@@ -301,6 +301,18 @@ describe("build-once exact-SHA release artifacts", () => {
     expect(verifier).toContain("imageTarSha256");
     expect(wrapper).toContain("IMAGE_TAR_HASH_MISMATCH");
     expect(installer).toContain("RELEASE_ARTIFACT_RUNTIME_READY");
+    expect(installer).toContain("image-probe");
+    expect(installer).toContain("runtime-probe");
+    expect(installer).toContain("RELEASE_ARTIFACT_IMAGE_MISSING");
+    expect(installer).toContain("RELEASE_ARTIFACT_RUNTIME_MISSING");
+    expect(wrapper).toContain("image-probe");
+    expect(wrapper).toContain("runtime-probe");
+    expect(wrapper.indexOf("image-probe")).toBeLessThan(
+      wrapper.lastIndexOf('zstd -q --decompress --stdout "$image_archive" |'),
+    );
+    expect(wrapper.indexOf("runtime-probe")).toBeLessThan(
+      wrapper.lastIndexOf('zstd -q --decompress --stdout "$runtime_archive" |'),
+    );
     expect(installer).toContain("sudo mv -T");
     expect(installer).not.toContain("systemctl");
     expect(installer).not.toContain("docker compose");

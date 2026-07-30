@@ -259,9 +259,11 @@ oluşturur.
 - Scheduled timeout varsayılan 360 saniye, izinli aralık 180–600 saniyedir.
 - Manual timeout varsayılan 600 saniye, izinli aralık 120–1200 saniyedir.
 - Host worker `SIGTERM` aldığında yeni döngü başlatmaz fakat mevcut `runOnce` işini terminal
-  control-plane yazısına kadar tamamlar. Versioned systemd unit bu nedenle en uzun 1200 saniyelik
-  manuel run ile kapanış payını kapsayan `TimeoutStopSec=21min` kullanır; daha kısa bir host stop
-  bütçesi canlı lease'li run'ı yarıda kesebilir.
+  control-plane yazısına kadar tamamlar. Versioned systemd unit Node/tsx worker'ı bir `pnpm`
+  ara süreci olmadan doğrudan `MainPID` olarak başlatır ve en uzun 1200 saniyelik manuel run ile
+  kapanış payını kapsayan `TimeoutStopSec=21min` kullanır. Böylece systemd sinyali gerçek worker'a
+  gider ve terminal yazı tamamlanana kadar onu bekler; daha kısa bir host stop bütçesi veya paket
+  yöneticisi ara süreci canlı lease'li run'ı yarıda kesebilir.
 - Reflection ve source refresh ayrı global timeout ayarlarını kullanır.
 - Control-plane HTTP isteği en fazla 15 saniyedir ve kalan run süresini aşmaz.
 - Cancel heartbeat ile görülür; yeni atomic action başlamadan önce tekrar kontrol edilir.

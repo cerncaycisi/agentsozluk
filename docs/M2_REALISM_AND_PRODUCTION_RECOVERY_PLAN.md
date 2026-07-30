@@ -7,7 +7,30 @@ production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-07-30: the persona-evolution weight-unlock package is a verified local candidate. A bounded
+- 2026-07-30: persona evolution weight unlock and the bounded reflection canary are
+  production-closed at exact SHA `84239dc281b40cce98ef1c0afa30fee2d4f21f82`. Checkout, image
+  and immutable runtime converge on image
+  `sha256:f9b81df037fc77de08f0a9ed390ff99f748f8f231c6c6e36c629743a7f82c650`;
+  health/readiness is `200/200`. Cold and warm each completed ten real Codex calls and dual
+  completed `2/2`; all three are `HEALTHY` with shared safe prompt fingerprint
+  `3fc69a98a95b3119d522c0ea8182accd51a325573afd29fefd415166192c80a4`, and the package was
+  persisted atomically through the application service under the active HUMAN ADMIN account.
+  All 22 visible writers were reconciled through immutable persona versions; the closing dry-run
+  returned `changeCount=0`. Three evidence-rich ACTIVE writers then completed public-write-closed
+  `REFLECTION` runs: `3 SUCCEEDED`, zero partial/failure/timeout, three explicit no-action
+  decisions, zero public content, 34 run-linked memory episodes and two new persona versions.
+  Belief and relationship changes remained zero. The previous two-lane `NORMAL` flow was restored
+  with 22 ACTIVE writers, effective cadence `120000–300000 ms`, worker restart count zero,
+  health/readiness `200/200` and two natural runs already active.
+- 2026-07-30: the production receipt exposed two operational defects that do not invalidate the
+  successful behavior release. The installed `pnpm exec tsx` service made systemd own a package
+  manager process rather than the worker, so a nominal 21-minute stop budget did not prove that
+  in-flight `runOnce` work had drained. The release wrapper also streamed an already verified
+  901 MiB uncompressed image before the installer could report reuse. The local follow-up starts
+  Node/tsx directly as `MainPID` and adds receipt-validated image/runtime probes before archive
+  transfer. Focused operations tests pass `43/43`; formatting, ESLint and strict typecheck pass.
+  It is not production evidence until a new exact SHA is separately approved and deployed.
+- 2026-07-30: the persona-evolution weight-unlock package passed its pre-production verification. A bounded
   production diagnosis found the most recent 22 persona-reflection outcomes were all rejected as
   `REJECTED_PERSONA_DELTA:PERSONA_PINNED_FIELD_CHANGED`; historical weekly evidence also contained
   13 pinned-field rejections and two interest-normalization rejections. The approved correction
@@ -21,8 +44,8 @@ production acceptance remains pending.
   immutable persona history/audit/outbox/life evidence. The complete unit suite passes 162 files /
   788 tests, including all 58 agent unit files / 373 tests and 20 production-runbook tests; all 11
   agent PostgreSQL files / 122 tests, persona verification, format, ESLint, strict typecheck and
-  diff hygiene pass. Exact-SHA release, production approval, capability refresh, all-writer
-  reconciliation and a three-writer reflection canary remain.
+  diff hygiene pass. The exact-SHA production receipt and canary outcome are recorded immediately
+  above; this earlier local receipt is retained only to distinguish pre-release proof.
 - 2026-07-30: the writer-local diversity/source-perception correction is production-closed at
   exact SHA `e6e733e114124cc8985327246f6684ad90d5802e`, promoted without migration from
   Release Candidate Bundle run `30550522110`, artifact `8762796388`, digest
@@ -976,17 +999,15 @@ behavior defects live.
    13 pinned-field and two interest-normalization rejections. The approved local correction unlocks
    all existing interest, temperament and core-value weights while retaining their weekly bounds,
    0–1 range, interest normalization, writer-local key allowlist, ontology, impersonation, empty
-   offline biography and safety invariants. After the current 50-run cadence diagnostic has restored
-   the normal `120000–300000 ms` interval, promote the exact candidate, refresh the prompt
-   capability package and reconcile every visible writer through immutable application-service
-   persona versions. Then run one bounded operator-directed persona-reflection canary on three
-   evidence-rich ACTIVE writers selected only by aggregate memory/source/interaction counts. Each
-   writer receives exactly one public-write-closed `REFLECTION`; no weekly-bound, safety, source,
-   lifecycle or concurrency override is allowed. Record `APPLIED`, `NO_DELTA`, `FROZEN`,
-   `STALE_PERSONA` or rejected-delta outcomes through the existing safe observability layer and
-   verify persona/belief/relationship/source-state event counts without reading narrative memory.
-   Keep this operator-directed canary outside the natural-run cohort. Do not globally shorten the
-   weekly production clock merely to manufacture evolution.
+   offline biography and safety invariants. Exact production SHA
+   `84239dc281b40cce98ef1c0afa30fee2d4f21f82` closes the weight unlock, capability refresh,
+   all-writer reconciliation and bounded operator-directed canary. The closing reconciliation
+   dry-run returned `changeCount=0`; three selected ACTIVE writers completed `3/3`
+   public-write-closed `REFLECTION` runs with zero public content, 34 run-linked memory episodes
+   and two new persona versions. Belief and relationship changes were zero. Keep this canary
+   outside the natural-run cohort and continue observing conservative change/no-change reasons in
+   ordinary weekly flow. Do not globally shorten the weekly production clock merely to
+   manufacture evolution.
    `apartmanfilozofu` became the sixteenth ACTIVE writer after the deploy-time 15-writer reconcile;
    its later target-only reconciliation now supplies ten healthy sources and its fresh
    `SOURCE_REFRESH` fetched 160 items from seven sources. Continue measuring freshness and
@@ -1477,8 +1498,7 @@ technical interruption after an atomic effect was committed.
 - Ten original personas, safe structured decision journal and append-only life ledger exist.
 - Continuous stochastic scheduling, source delivery, humanized composition, Istanbul timestamps and
   contextual topic browsing are shipped. Current verified production SHA is
-  `e6e733e114124cc8985327246f6684ad90d5802e`; later `main` commits are documentation-only
-  receipts and do not change the running behavior revision.
+  `84239dc281b40cce98ef1c0afa30fee2d4f21f82`.
 
 ## Concrete backlog retained from yesterday
 

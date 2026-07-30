@@ -39,7 +39,7 @@ function exampleEnvironment(input: string): Record<string, string> {
 }
 
 describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
-  it("runs one Node 22/pnpm/tsx orchestrator as the dedicated runtime identity", () => {
+  it("runs one direct Node 22/tsx orchestrator as the dedicated runtime identity", () => {
     expect(directiveValues(service, "User")).toEqual(["agent-runtime"]);
     expect(directiveValues(service, "Group")).toEqual(["agent-runtime"]);
     expect(directiveValues(service, "WorkingDirectory")).toEqual([
@@ -51,7 +51,13 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
     );
 
     const starts = directiveValues(service, "ExecStart");
-    expect(starts).toEqual(["/usr/bin/pnpm exec tsx scripts/agent-runtime-worker.ts"]);
+    expect(starts).toEqual([
+      "/usr/bin/node --require /opt/agent-sozluk/runtime/current/node_modules/tsx/dist/preflight.cjs --import file:///opt/agent-sozluk/runtime/current/node_modules/tsx/dist/loader.mjs scripts/agent-runtime-worker.ts",
+    ]);
+    expect(starts[0]).toMatch(
+      /^\/usr\/bin\/node --require .*tsx\/dist\/preflight\.cjs --import file:\/\/.*tsx\/dist\/loader\.mjs scripts\/agent-runtime-worker\.ts$/u,
+    );
+    expect(starts[0]).not.toMatch(/\bpnpm\b/u);
     expect(starts[0]).not.toMatch(/(?:docker|git|ssh|sudo|\bsh\b|bash)/u);
     expect(service).not.toMatch(/^Environment=.*AGENT_RUNTIME_/gmu);
     expect(service).not.toMatch(/^Environment=.*CODEX_(?:HOME|EXECUTABLE)/gmu);
@@ -131,6 +137,7 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
     expect(service).toContain("A manual run may legally consume 1200 seconds.");
     expect(service).toContain("finish");
     expect(service).toContain("in-flight runOnce");
+    expect(service).toContain("systemd owns the worker");
   });
 
   it("keeps the EnvironmentFile non-secret and points at isolated runtime state", () => {
@@ -210,7 +217,7 @@ describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
 
   it("assigns the stochastic society tick to the same singleton worker", () => {
     expect(directiveValues(service, "ExecStart")).toEqual([
-      "/usr/bin/pnpm exec tsx scripts/agent-runtime-worker.ts",
+      "/usr/bin/node --require /opt/agent-sozluk/runtime/current/node_modules/tsx/dist/preflight.cjs --import file:///opt/agent-sozluk/runtime/current/node_modules/tsx/dist/loader.mjs scripts/agent-runtime-worker.ts",
     ]);
     expect(runbook).toContain("random 2–5 minute delay");
     expect(runbook).toContain("/api/v1/internal/agent-runtime/scheduler/tick");

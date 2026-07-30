@@ -20,7 +20,8 @@ candidate_image="agent-sozluk:$candidate_sha"
 receipt_root="$runtime_root/artifact-receipts"
 image_receipt="$receipt_root/$candidate_sha.env"
 
-[[ "$mode" == image || "$mode" == runtime ]] || {
+[[ "$mode" == image || "$mode" == runtime ||
+   "$mode" == image-probe || "$mode" == runtime-probe ]] || {
   printf 'RELEASE_ARTIFACT_INSTALL_FAIL code=INVALID_MODE\n' >&2
   exit 90
 }
@@ -79,6 +80,47 @@ assert_image_receipt() {
   )" = "$candidate_sha"
   printf '%s\n' "$loaded_image_id"
 }
+
+release="$runtime_root/releases/$candidate_sha"
+assert_runtime_release() {
+  test -d "$release"
+  test ! -L "$release"
+  test "$(cat "$release/.release-sha")" = "$candidate_sha"
+  test "$(cat "$release/.release-app-image-config-digest")" = \
+    "$image_config_digest"
+  test "$(cat "$release/.release-node-abi")" = "$runtime_abi"
+  test -z "$(find "$release" -xdev ! -user root -print -quit)"
+  test -z "$(
+    find "$release" -xdev \( -type f -o -type d \) -perm /022 -print -quit
+  )"
+}
+
+if test "$mode" = image-probe; then
+  if ! docker image inspect "$candidate_image" >/dev/null 2>&1; then
+    test ! -e "$image_receipt" || {
+      printf 'RELEASE_ARTIFACT_INSTALL_FAIL code=IMAGE_RECEIPT_WITHOUT_IMAGE\n' >&2
+      exit 96
+    }
+    printf 'RELEASE_ARTIFACT_IMAGE_MISSING sha=%s\n' "$candidate_sha"
+    exit 42
+  fi
+  loaded_image_id="$(assert_image_receipt)"
+  printf 'RELEASE_ARTIFACT_IMAGE_REUSED sha=%s config_digest=%s loaded_image_id=%s\n' \
+    "$candidate_sha" "$image_config_digest" "$loaded_image_id"
+  exit 0
+fi
+
+if test "$mode" = runtime-probe; then
+  loaded_image_id="$(assert_image_receipt)"
+  if test ! -e "$release"; then
+    printf 'RELEASE_ARTIFACT_RUNTIME_MISSING sha=%s\n' "$candidate_sha"
+    exit 42
+  fi
+  assert_runtime_release
+  printf 'RELEASE_ARTIFACT_RUNTIME_REUSED sha=%s config_digest=%s loaded_image_id=%s\n' \
+    "$candidate_sha" "$image_config_digest" "$loaded_image_id"
+  exit 0
+fi
 
 if test "$mode" = image; then
   if docker image inspect "$candidate_image" >/dev/null 2>&1; then
@@ -159,7 +201,6 @@ if test "$mode" = image; then
 fi
 
 loaded_image_id="$(assert_image_receipt)"
-release="$runtime_root/releases/$candidate_sha"
 runtime_stage="$(
   mktemp -d "$runtime_root/.release-staging/artifact-$candidate_sha.XXXXXXXX"
 )"
@@ -240,10 +281,7 @@ NODE
 )
 
 if test -d "$release"; then
-  test "$(cat "$release/.release-sha")" = "$candidate_sha"
-  test "$(cat "$release/.release-app-image-config-digest")" = \
-    "$image_config_digest"
-  test "$(cat "$release/.release-node-abi")" = "$runtime_abi"
+  assert_runtime_release
   trap - EXIT INT TERM HUP
   find "$runtime_stage" -xdev -depth -delete
   printf 'RELEASE_ARTIFACT_RUNTIME_REUSED sha=%s config_digest=%s loaded_image_id=%s\n' \
