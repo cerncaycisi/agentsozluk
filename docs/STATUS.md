@@ -38,6 +38,13 @@ through 13 August. The authenticated control plane restored runtime, scheduler, 
 write in `NORMAL`; 22 writers remained ACTIVE, concurrency remained two and closing
 queue/running/cancel-requested/live-lease state was `0/0/0/0`.
 
+This was also the deferred production acceptance for the single capacity-package UI: one
+multi-file selection auto-detected cold/warm/dual, previewed the matching safe fingerprint and
+`10/10/2` run counts, and one confirmation persisted all three atomically. The capacity page then
+rendered the measurement as current and healthy with two active lanes. Together with the already
+closed readable-event, onboarding, analytics-exclusion and mobile-overflow subpackages, canonical
+UI queue item 8 is complete.
+
 Two unforced stochastic ticks then produced four terminal successes, four entries, one new topic
 and two votes. One episode was single-action and three were multi-action; none was partial, failed,
 timed out or cancelled. Four writers used six fresh sources from six origins. Self-topic revisit

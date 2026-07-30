@@ -4075,3 +4075,9 @@ BLOCKED / 0 FAIL`.
   shell quoting and stopped read-only with `syntax error at or near ")"`. The corrected query
   selected the nullable column directly. Do not repeat: avoid unnecessary SQL `coalesce` inside
   nested one-off SSH quoting.
+- Longer-observation wrapper correction: the first follow-up report produced its complete
+  aggregate but omitted the planned final state marker because Compose exec consumed the remaining
+  stdin-fed SSH script. The corrected command redirected the report runner from `/dev/null` and
+  returned the safe PARTIAL reasons plus closing runtime/worker/queue/health state. Do not repeat:
+  every Compose exec before later phases in an stdin-fed remote script must close its own stdin;
+  missing final markers invalidate only the incomplete receipt, not the already printed aggregate.

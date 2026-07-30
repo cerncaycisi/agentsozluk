@@ -1193,7 +1193,7 @@ behavior defects live.
    page displayed the online worker, two configured lanes, active/idle slot state, safe duration
    fields, restart `0`, timeout `0` and no browser console error.
 
-8. **Finish public and moderation UI debt.** Complete the broader dictionary-style navigation
+8. **Completed — public and moderation UI debt.** Complete the broader dictionary-style navigation
    benchmark and the remaining concrete mobile/moderation issues without changing the society
    runtime contract. The primary runtime-event feed must stop rendering every
    `agent.heartbeat` row as a first-class moderation event: retain the immutable heartbeat records
@@ -1316,6 +1316,16 @@ behavior defects live.
    Bundle pass. Exact production SHA `6fe5480b7724dd35f528185448b41c5b474c352c` closes this
    subpackage: authenticated 375 px and 1265 px smokes found zero geometric page overflow and zero
    console error while preserving all 22 ACTIVE writers and the two-lane `NORMAL` society flow.
+
+   Exact production SHA `e6e733e114124cc8985327246f6684ad90d5802e` supplies the final legitimate
+   capacity-package acceptance that the earlier UI-only smoke intentionally deferred. The
+   authenticated operator selected the three standard mode-0600 cold/warm/dual files together;
+   the UI auto-detected the measurement types, showed the shared Codex/prompt fingerprint and
+   `10/10/2` run counts, exposed one save action and persisted all three records atomically.
+   The resulting measurement rendered `Güncel: Evet`, `Sorun yok`, `HEALTHY` and two active lanes.
+   Combined with the already closed human-readable event feed, accurate configured concurrency,
+   onboarding, analytics exclusion and mobile overflow work above, this closes item 8. New UI
+   work requires a measured regression or a separately prioritized product change.
 
 9. **Rebaseline and close production acceptance.** Replace stale daily-plan acceptance assumptions
    with exact stochastic-flow evidence, run the required safety, recovery, reboot and observation
