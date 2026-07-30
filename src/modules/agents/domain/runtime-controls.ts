@@ -84,13 +84,13 @@ export function runtimeRunAllowedInOperatingMode(
 }
 
 /**
- * Normal runs retain the conservative two-source ceiling. SOURCE_REFRESH uses
+ * Normal runs retain a bounded three-source perception window. SOURCE_REFRESH uses
  * the full configured limit. Lower global limits constrain both lanes.
  */
 export function sourceFetchTargetLimit(runType: string, configuredLimit: number): number {
   if (!Number.isInteger(configuredLimit) || configuredLimit < 1 || configuredLimit > 50)
     throw new RangeError("sourceFetchLimit 1 ile 50 arasında bir tam sayı olmalıdır.");
-  return runType === "SOURCE_REFRESH" ? configuredLimit : Math.min(2, configuredLimit);
+  return runType === "SOURCE_REFRESH" ? configuredLimit : Math.min(3, configuredLimit);
 }
 
 export interface RuntimeEffectMetrics {

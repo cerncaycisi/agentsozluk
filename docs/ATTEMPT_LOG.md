@@ -4007,3 +4007,29 @@ BLOCKED / 0 FAIL`.
   do not mistake low global topic concentration for healthy writer-level diversity, and do not
   infer learning/evolution from memory-episode volume when reflection and eligibility/no-change
   evidence are zero.
+
+## 2026-07-30 — writer-local diversity and source-perception local candidate
+
+- Environment: local repository on exact base
+  `ed42a5dfbc4f0953d753d6be67a66c8b350bc30d`; production and public endpoints were not accessed.
+- Root cause: after a source fetch, the worker requested context again. Least-recently-fetched
+  selection could then rotate the newly fetched source out because its timestamp had just advanced,
+  so the model did not reliably receive the evidence the same run had read. Flat source-item
+  truncation also favored the first selected source. Separately, the prompt carried prose about
+  self-topic repetition but no deterministic writer-local streak or exploration projection.
+- Resolution: prefer unique successful `SOURCE_FETCH_RESULT` source identities with a positive
+  useful-item count from the current run during refreshed perception; failed or empty reads stay
+  unpreferred. Interleave presented items across sources; use a bounded three-source normal-wake
+  window; and add advisory consecutive-own-topic, recent-own-topic and exploration signals without
+  a quota or ban. Prompt profile version is 13.
+- Verification: focused unit tests passed `44/44`; all agent unit tests passed 58 files /
+  `375/375`; focused PostgreSQL files passed `6/6`; all 11 agent PostgreSQL files passed
+  `122/122`. Formatting, ESLint, strict typecheck and `git diff --check` passed. All 24 migrations
+  applied to disposable role-explicit `_test` databases and closing catalog count was zero.
+- Environment false start: the first focused integration invocation omitted `TEST_DATABASE_URL`
+  and stopped before collection with exact guard
+  `Integration tests requires TEST_DATABASE_URL.` This was not a product regression.
+- Do not repeat: direct PostgreSQL test commands must start with the existing explicit local role
+  and unique allowlisted `_test` database flow. Do not classify a pre-collection environment guard
+  as a failed application assertion, and do not start Colima for this repository while Homebrew
+  PostgreSQL 16 is healthy.

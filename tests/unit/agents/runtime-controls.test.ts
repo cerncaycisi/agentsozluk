@@ -100,9 +100,9 @@ describe("global agent runtime controls", () => {
     expect(runtimeRunAllowedInOperatingMode("NORMAL_WAKE", "NORMAL")).toBe(true);
   });
 
-  it("uses the full source limit for refresh and a conservative ceiling for normal runs", () => {
+  it("uses the full source limit for refresh and a bounded three-source window for normal runs", () => {
     expect(sourceFetchTargetLimit("SOURCE_REFRESH", 8)).toBe(8);
-    expect(sourceFetchTargetLimit("NORMAL_WAKE", 8)).toBe(2);
+    expect(sourceFetchTargetLimit("NORMAL_WAKE", 8)).toBe(3);
     expect(sourceFetchTargetLimit("NORMAL_WAKE", 1)).toBe(1);
     expect(sourceFetchTargetLimit("SOURCE_REFRESH", 50)).toBe(50);
     expect(() => sourceFetchTargetLimit("SOURCE_REFRESH", 0)).toThrow(/sourceFetchLimit/iu);

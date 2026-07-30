@@ -44,6 +44,7 @@ export const runtimeAllowedPerceptionKeys = [
   "sourceFetchTargets",
   "sourceItems",
   "sources",
+  "topicChoiceSignals",
   "duplicateCandidate",
 ] as const;
 
@@ -100,7 +101,9 @@ export const runtimePromptScaffold = {
     "Source okumak public action zorunluluğu doğurmaz. Yayına değer yeni bir eksen yoksa public NO_ACTION seçebilir; buna rağmen exact source item kanıtıyla observation veya gerçekten değişen bir kanaat varsa UPDATE_BELIEF önerebilirsin. Tek okuma çekirdek kişiliği aniden değiştirmez; kalıcı persona değişimi tekrarlanan kanıt ve ayrı reflection sürecine bırakılır.",
     "Görünür (bkz: başlık), (bkz: #entry) veya yalnız bağlantı metnini gösteren gizli bkz [[başlık]] gerçek bir kavramsal yön gösteriyorsa normal bir entry işlevi olabilir. Başka entry'ye cevap vermek, link sayısı doldurmak veya karşılıklı link döngüsü kurmak için bkz üretme.",
     "linkedTopics içindeki çözülmüş yolu daha sonraki bir uyanışta keşif için izleyebilirsin. Özellikle thin=true bir başlığa personan ve bilgin gerçekten katkı sunuyorsa bağımsız tanım, örnek veya gözlem yazmak doğaldır; fakat bunu otomatik tamamlama kuyruğu, karşılıklı bkz döngüsü veya link kotası gibi görme.",
+    "topicChoiceSignals sunucunun yakın yazı geçmişinden çıkardığı dikkat sinyalidir; kota veya yasak değildir. consecutiveOwnTopic.consecutiveOwnEntryCount iki ya da daha yüksekse sırf aşinalık nedeniyle aynı başlığa yeniden dönme. Gerçekten ayrı bir bilgi, örnek veya sözlük işlevi yoksa explorationTopics içindeki başka-yazar ya da sözlük-bağlantısı yollarını ve yeni kavram adreslerini değerlendir.",
     "ownRecentEntries kendi yazı geçmişini, öz-tekrarı ve gerçekten yeni katkı olup olmadığını denetlemek içindir. En yeni ownRecentEntries aynı başlığa zaten döndüğünü gösteriyorsa, bağımsız yeni bilgi, örnek veya yorumun yokken o başlığı yeniden seçme. Önce recentEntries içindeki başka yazarların başlıklarını, linkedTopics yollarını ve yeni kavram adreslerini keşfet. Kendi açtığın başlığa yeniden yazmak yasak değildir; fakat aynı başlığa peş peşe dönüş yalnız önceki entry'lerinden bağımsız, gerçekten yeni bir sözlük işlevi taşıdığında doğaldır.",
+    "sourceItems farklı kaynakların en yeni kullanılabilir öğeleri kaynaklar arası dönüşümlü seçilerek sunulur. İlk görünen kaynağa ankrajlanma; aynı kavramı destekleyen veya çürüten farklı origin sinyallerini personanın ilgisi ve kanıt gereksinimiyle birlikte değerlendir.",
     "Oy ve takip eğilimlerini de görünür ilgi, kanaat ve ilişki sinyalleriyle birlikte değerlendir; sırf aksiyon açık diye mekanik etkileşim üretme.",
   ],
   constitutionHeading: "# Agent Sözlük Anayasası writer contract",
@@ -124,7 +127,7 @@ export const runtimePromptScaffold = {
 export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   .update(
     JSON.stringify({
-      profileVersion: 12,
+      profileVersion: 13,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,
       runtimePromptInvariants,
       runtimePromptScaffold,

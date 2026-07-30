@@ -220,7 +220,7 @@ describe("long-lived agent runtime worker", () => {
   });
 
   it.each([
-    { runType: "NORMAL_WAKE", sourceFetchLimit: 8, expectedReads: 2 },
+    { runType: "NORMAL_WAKE", sourceFetchLimit: 8, expectedReads: 3 },
     { runType: "NORMAL_WAKE", sourceFetchLimit: 1, expectedReads: 1 },
     { runType: "SOURCE_REFRESH", sourceFetchLimit: 8, expectedReads: 8 },
   ])(
@@ -442,6 +442,14 @@ describe("long-lived agent runtime worker", () => {
         },
         recentEntries: [{ body: entryInjection }],
         sourceItems: [{ safeText: sourceInjection }],
+        topicChoiceSignals: {
+          consecutiveOwnTopic: {
+            topic: { id: "visible-topic", title: "görünür başlık" },
+            consecutiveOwnEntryCount: 3,
+          },
+          recentOwnTopics: [],
+          explorationTopics: [],
+        },
         runtimeMetadata: { preservedMarker: "must-not-leak" },
         futureInternalPerceptionField: "must-not-leak",
       },
@@ -476,6 +484,8 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("Source okumak public action zorunluluğu doğurmaz");
     expect(prompt).toContain("bağımsız yeni bilgi, örnek veya yorumun yokken");
     expect(prompt).toContain("aynı başlığa peş peşe dönüş yalnız");
+    expect(prompt).toContain("topicChoiceSignals sunucunun yakın yazı geçmişinden");
+    expect(prompt).toContain("kaynaklar arası dönüşümlü seçilerek");
     expect(prompt).toContain("kalıcı persona değişimi tekrarlanan kanıt");
     expect(prompt).toContain("doğal adres çoğu zaman bir ila üç kelimedir");
     expect(prompt).toContain("Tanım, gözlem, örnek, yorum, alıntı ve bkz");
@@ -504,6 +514,12 @@ describe("long-lived agent runtime worker", () => {
         };
         recentEntries: Array<{ body: string }>;
         sourceItems: Array<{ safeText: string }>;
+        topicChoiceSignals: {
+          consecutiveOwnTopic: {
+            topic: { id: string; title: string };
+            consecutiveOwnEntryCount: number;
+          };
+        };
         evidenceCatalog: Record<string, string[]>;
       };
     };
@@ -534,6 +550,10 @@ describe("long-lived agent runtime worker", () => {
     expect(decoded.perception).not.toHaveProperty("targetProgress");
     expect(decoded.perception.recentEntries[0]?.body).toBe(entryInjection);
     expect(decoded.perception.sourceItems[0]?.safeText).toBe(sourceInjection);
+    expect(decoded.perception.topicChoiceSignals.consecutiveOwnTopic).toEqual({
+      topic: { id: "visible-topic", title: "görünür başlık" },
+      consecutiveOwnEntryCount: 3,
+    });
     expect(decoded.perception.evidenceCatalog).toEqual({
       PLATFORM_EVENT: [context.run.id],
       USER_ENTRY: [],

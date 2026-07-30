@@ -133,6 +133,7 @@ describe("agent memory lifecycle with PostgreSQL", () => {
       getRuntimePerceptionRecords(transaction, {
         agentProfileId: created.agent.profile.id,
         agentUserId: created.agent.user.id,
+        runId: randomUUID(),
         now: new Date(),
         includeSources: false,
         sourceFetchLimit: 8,
@@ -175,6 +176,7 @@ describe("agent memory lifecycle with PostgreSQL", () => {
       getRuntimePerceptionRecords(transaction, {
         agentProfileId: profileId,
         agentUserId: userId,
+        runId: randomUUID(),
         now: new Date(),
         includeSources: false,
         sourceFetchLimit: 8,

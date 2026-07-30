@@ -1584,18 +1584,48 @@ const perceptionSourceSelect = (now: Date) =>
 
 async function listRuntimePerceptionSources(
   transaction: Prisma.TransactionClient,
-  input: { agentProfileId: string; now: Date; sourceFetchLimit: number },
+  input: {
+    agentProfileId: string;
+    now: Date;
+    sourceFetchLimit: number;
+    preferredSourceIds: string[];
+  },
 ) {
-  const discovery = await transaction.agentSource.findFirst({
-    where: {
-      agentProfileId: input.agentProfileId,
-      status: { in: ["DISCOVERED", "PROBATION"] },
-      adminBlocked: false,
-    },
-    select: perceptionSourceSelect(input.now),
-    orderBy: [{ adminPinned: "desc" }, { interestScore: "desc" }, { updatedAt: "asc" }],
-  });
-  const primaryLimit = input.sourceFetchLimit - (discovery ? 1 : 0);
+  const preferredUnordered =
+    input.preferredSourceIds.length > 0
+      ? await transaction.agentSource.findMany({
+          where: {
+            id: { in: input.preferredSourceIds },
+            agentProfileId: input.agentProfileId,
+            status: { in: ["SEED", "PROBATION", "TRUSTED", "DISCOVERED"] },
+            adminBlocked: false,
+          },
+          select: perceptionSourceSelect(input.now),
+        })
+      : [];
+  const preferredById = new Map(preferredUnordered.map((source) => [source.id, source]));
+  const preferred = input.preferredSourceIds
+    .flatMap((sourceId) => {
+      const source = preferredById.get(sourceId);
+      return source ? [source] : [];
+    })
+    .slice(0, input.sourceFetchLimit);
+  const preferredIds = preferred.map(({ id }) => id);
+  const remainingLimit = input.sourceFetchLimit - preferred.length;
+  const discovery =
+    remainingLimit > 0
+      ? await transaction.agentSource.findFirst({
+          where: {
+            agentProfileId: input.agentProfileId,
+            status: { in: ["DISCOVERED", "PROBATION"] },
+            adminBlocked: false,
+            ...(preferredIds.length > 0 ? { id: { notIn: preferredIds } } : {}),
+          },
+          select: perceptionSourceSelect(input.now),
+          orderBy: [{ adminPinned: "desc" }, { interestScore: "desc" }, { updatedAt: "asc" }],
+        })
+      : null;
+  const primaryLimit = remainingLimit - (discovery ? 1 : 0);
   const primary =
     primaryLimit > 0
       ? await transaction.agentSource.findMany({
@@ -1603,7 +1633,14 @@ async function listRuntimePerceptionSources(
             agentProfileId: input.agentProfileId,
             status: { in: ["SEED", "PROBATION", "TRUSTED", "DISCOVERED"] },
             adminBlocked: false,
-            ...(discovery ? { id: { not: discovery.id } } : {}),
+            ...(preferredIds.length > 0 || discovery
+              ? {
+                  id: {
+                    ...(preferredIds.length > 0 ? { notIn: preferredIds } : {}),
+                    ...(discovery ? { not: discovery.id } : {}),
+                  },
+                }
+              : {}),
           },
           select: perceptionSourceSelect(input.now),
           orderBy: [
@@ -1615,7 +1652,7 @@ async function listRuntimePerceptionSources(
           take: primaryLimit,
         })
       : [];
-  const selected = discovery ? [...primary, discovery] : primary;
+  const selected = discovery ? [...preferred, ...primary, discovery] : [...preferred, ...primary];
   if (selected.length === 0) return [];
   const domainRecords = await transaction.agentSource.findMany({
     where: {
@@ -1651,6 +1688,49 @@ async function listRuntimePerceptionSources(
       domainLastAttemptAt: domainHealth?.lastAttemptAt ?? source.lastFetchedAt,
     };
   });
+}
+
+function successfulSourceIdFromRuntimeEvent(input: {
+  subject: Prisma.JsonValue | null;
+  afterState: Prisma.JsonValue | null;
+}): string | null {
+  const { subject, afterState } = input;
+  if (!subject || Array.isArray(subject) || typeof subject !== "object") return null;
+  if (!afterState || Array.isArray(afterState) || typeof afterState !== "object") return null;
+  const type = subject.type;
+  const id = subject.id;
+  const errorCode = afterState.errorCode;
+  const itemCount = afterState.itemCount;
+  return type === "SOURCE" &&
+    typeof id === "string" &&
+    errorCode === null &&
+    typeof itemCount === "number" &&
+    itemCount > 0
+    ? id
+    : null;
+}
+
+async function listCurrentRunUsefulSourceIds(
+  transaction: Prisma.TransactionClient,
+  input: { agentProfileId: string; runId: string },
+): Promise<string[]> {
+  const results = await transaction.agentRuntimeEvent.findMany({
+    where: {
+      agentProfileId: input.agentProfileId,
+      runId: input.runId,
+      eventType: "SOURCE_FETCH_RESULT",
+    },
+    select: { subject: true, afterState: true },
+    orderBy: { id: "asc" },
+  });
+  return [
+    ...new Set(
+      results.flatMap((result) => {
+        const sourceId = successfulSourceIdFromRuntimeEvent(result);
+        return sourceId ? [sourceId] : [];
+      }),
+    ),
+  ];
 }
 
 async function listRuntimePerceptionLinkedTopics(
@@ -1798,6 +1878,7 @@ export async function getRuntimePerceptionRecords(
   input: {
     agentProfileId: string;
     agentUserId: string;
+    runId: string;
     now: Date;
     includeSources: boolean;
     sourceFetchLimit: number;
@@ -1814,6 +1895,12 @@ export async function getRuntimePerceptionRecords(
       ),
     ),
   ];
+  const preferredSourceIds = input.includeSources
+    ? await listCurrentRunUsefulSourceIds(transaction, {
+        agentProfileId: input.agentProfileId,
+        runId: input.runId,
+      })
+    : [];
   const [
     topicFollows,
     userFollows,
@@ -1928,6 +2015,7 @@ export async function getRuntimePerceptionRecords(
           agentProfileId: input.agentProfileId,
           now: input.now,
           sourceFetchLimit: input.sourceFetchLimit,
+          preferredSourceIds,
         })
       : Promise.resolve([]),
     transaction.agentRuntimeState.findUniqueOrThrow({

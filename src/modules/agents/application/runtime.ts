@@ -80,7 +80,12 @@ import {
   istanbulWeekWindow,
 } from "@/modules/agents/domain/source-evolution";
 import { seedPersonaSchema } from "@/modules/agents/personas/schema";
-import { selectPerceptionEntries, truncateUntrustedText } from "@/modules/agents/domain/perception";
+import {
+  buildTopicChoiceSignals,
+  selectDiverseSourceItems,
+  selectPerceptionEntries,
+  truncateUntrustedText,
+} from "@/modules/agents/domain/perception";
 import {
   runtimeFastStateSchema,
   type RuntimeActionsInput,
@@ -195,8 +200,8 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     topicEntryCountLast30Minutes: recentTopicCounts.get(entry.topic.id) ?? 0,
     saturated: (recentTopicCounts.get(entry.topic.id) ?? 0) >= 15,
   }));
-  const sourceItems = records.sources
-    .flatMap((source) =>
+  const sourceItems = selectDiverseSourceItems(
+    records.sources.map((source) =>
       source.items.map((item) => ({
         sourceId: source.id,
         sourceDomain: source.normalizedDomain,
@@ -210,8 +215,22 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
         publishedAt: item.publishedAt?.toISOString() ?? null,
         fetchedAt: item.fetchedAt.toISOString(),
       })),
-    )
-    .slice(0, 10);
+    ),
+    10,
+  );
+  const ownRecentEntries = records.ownEntries.slice(0, 8).map((entry) => ({
+    ...entry,
+    body: truncateUntrustedText(entry.body, 600),
+    createdAt: entry.createdAt.toISOString(),
+  }));
+  const linkedTopics = records.linkedTopics.slice(0, 8).map((linkedTopic) => ({
+    ...linkedTopic,
+    recentEntries: linkedTopic.recentEntries.map((entry) => ({
+      ...entry,
+      body: truncateUntrustedText(entry.body, 500),
+      createdAt: entry.createdAt.toISOString(),
+    })),
+  }));
   const { runtimeMetadata } = records.state;
   const snapshot = {
     observedAt: now.toISOString(),
@@ -222,22 +241,13 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       linkedTopics: 8,
       linkedTopicEntries: 2,
       sourceItems: 10,
+      topicExploration: 8,
     },
     previousFastState: previousRuntimeFastState(runtimeMetadata),
     recentEntries: selectedEntries,
-    linkedTopics: records.linkedTopics.slice(0, 8).map((linkedTopic) => ({
-      ...linkedTopic,
-      recentEntries: linkedTopic.recentEntries.map((entry) => ({
-        ...entry,
-        body: truncateUntrustedText(entry.body, 500),
-        createdAt: entry.createdAt.toISOString(),
-      })),
-    })),
-    ownRecentEntries: records.ownEntries.slice(0, 8).map((entry) => ({
-      ...entry,
-      body: truncateUntrustedText(entry.body, 600),
-      createdAt: entry.createdAt.toISOString(),
-    })),
+    linkedTopics,
+    ownRecentEntries,
+    topicChoiceSignals: buildTopicChoiceSignals(ownRecentEntries, selectedEntries, linkedTopics, 8),
     memories: records.memories.slice(0, 10).map((memory) => ({
       ...memory,
       summary: truncateUntrustedText(memory.summary, 700),
@@ -1335,6 +1345,7 @@ export function getRuntimeRunContext(
       const perceptionRecords = await getRuntimePerceptionRecords(transaction, {
         agentProfileId: principal.agentProfileId,
         agentUserId: run.agentProfile.user.id,
+        runId,
         now,
         sourceFetchLimit: sourceFetchTargetLimit(run.runType, settings.sourceFetchLimit),
         includeSources:

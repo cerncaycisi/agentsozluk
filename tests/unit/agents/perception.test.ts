@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { selectPerceptionEntries, truncateUntrustedText } from "@/modules/agents";
+import {
+  buildTopicChoiceSignals,
+  selectDiverseSourceItems,
+  selectPerceptionEntries,
+  truncateUntrustedText,
+} from "@/modules/agents";
 
 const now = new Date("2026-07-17T12:00:00.000Z");
 
@@ -42,5 +47,58 @@ describe("runtime perception selection", () => {
     expect(truncateUntrustedText("  talimat\n  gibi   görünen veri  ", 21)).toBe(
       "talimat gibi görünen…",
     );
+  });
+
+  it("interleaves source items instead of exhausting the first source", () => {
+    expect(selectDiverseSourceItems([["a1", "a2", "a3"], ["b1", "b2"], ["c1"]], 5)).toEqual([
+      "a1",
+      "b1",
+      "c1",
+      "a2",
+      "b2",
+    ]);
+  });
+
+  it("surfaces repeated own-topic pressure and diverse exploration candidates", () => {
+    const repeatedTopic = { id: "own-topic", title: "aynı başlık" };
+    const otherTopic = { id: "other-topic", title: "başka yazarın başlığı" };
+    const linkedTopic = { id: "linked-topic", title: "sözlük bağlantısı" };
+    const signals = buildTopicChoiceSignals(
+      [
+        { topic: repeatedTopic, createdAt: "2026-07-17T11:50:00.000Z" },
+        { topic: repeatedTopic, createdAt: "2026-07-17T11:40:00.000Z" },
+        { topic: { id: "older-own", title: "eski başlık" }, createdAt: now },
+      ],
+      [
+        { topic: repeatedTopic, createdAt: now },
+        { topic: otherTopic, createdAt: now },
+      ],
+      [
+        { topic: linkedTopic, thin: true },
+        { topic: otherTopic, thin: false },
+      ],
+      8,
+    );
+
+    expect(signals.consecutiveOwnTopic).toEqual({
+      topic: repeatedTopic,
+      consecutiveOwnEntryCount: 2,
+    });
+    expect(signals.explorationTopics).toEqual([
+      { topic: otherTopic, signal: "OTHER_WRITER" },
+      { topic: linkedTopic, signal: "DICTIONARY_LINK", thin: true },
+    ]);
+    expect(signals.recentOwnTopics).toEqual([
+      {
+        topic: repeatedTopic,
+        recentEntryCount: 2,
+        lastWrittenAt: "2026-07-17T11:50:00.000Z",
+      },
+      {
+        topic: { id: "older-own", title: "eski başlık" },
+        recentEntryCount: 1,
+        lastWrittenAt: now.toISOString(),
+      },
+    ]);
   });
 });

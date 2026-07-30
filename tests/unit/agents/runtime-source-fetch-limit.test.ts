@@ -16,6 +16,7 @@ function transactionMock() {
     agentMemoryEpisode: { findMany: vi.fn().mockResolvedValue([]) },
     agentBelief: { findMany: vi.fn().mockResolvedValue([]) },
     agentRelationship: { findMany: vi.fn().mockResolvedValue([]) },
+    agentRuntimeEvent: { findMany: vi.fn().mockResolvedValue([]) },
     agentSource: {
       findFirst: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue([]),
@@ -38,6 +39,7 @@ function transactionMock() {
 const input = {
   agentProfileId: randomUUID(),
   agentUserId: randomUUID(),
+  runId: randomUUID(),
   now: new Date("2026-07-18T12:00:00.000Z"),
   includeSources: true,
 };
@@ -91,6 +93,78 @@ describe("runtime source fetch target selection", () => {
     expect(transaction.agentSource.findMany).toHaveBeenCalledTimes(1);
     expect(transaction.agentSource.findMany).toHaveBeenCalledWith(
       expect.not.objectContaining({ take: expect.any(Number) }),
+    );
+  });
+
+  it("keeps sources already read in the current run at the front of refreshed perception", async () => {
+    const transaction = transactionMock();
+    const firstSourceId = randomUUID();
+    const secondSourceId = randomUUID();
+    transaction.agentRuntimeEvent.findMany.mockResolvedValue([
+      {
+        subject: { type: "SOURCE", id: secondSourceId },
+        afterState: { errorCode: null, itemCount: 2 },
+      },
+      {
+        subject: { type: "SOURCE", id: firstSourceId },
+        afterState: { errorCode: null, itemCount: 1 },
+      },
+      {
+        subject: { type: "SOURCE", id: secondSourceId },
+        afterState: { errorCode: null, itemCount: 2 },
+      },
+      {
+        subject: { type: "SOURCE", id: randomUUID() },
+        afterState: { errorCode: "SOURCE_HTTP_404", itemCount: 0 },
+      },
+      {
+        subject: { type: "TOPIC", id: randomUUID() },
+        afterState: { errorCode: null, itemCount: 1 },
+      },
+    ]);
+    transaction.agentSource.findMany
+      .mockResolvedValueOnce([
+        {
+          id: firstSourceId,
+          normalizedDomain: "first.example",
+          consecutiveFailures: 0,
+          lastFetchedAt: input.now,
+          items: [],
+        },
+        {
+          id: secondSourceId,
+          normalizedDomain: "second.example",
+          consecutiveFailures: 0,
+          lastFetchedAt: input.now,
+          items: [],
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          normalizedDomain: "first.example",
+          consecutiveFailures: 0,
+          lastFetchedAt: input.now,
+        },
+        {
+          normalizedDomain: "second.example",
+          consecutiveFailures: 0,
+          lastFetchedAt: input.now,
+        },
+      ]);
+
+    const records = await getRuntimePerceptionRecords(
+      transaction as unknown as Prisma.TransactionClient,
+      { ...input, sourceFetchLimit: 2 },
+    );
+
+    expect(records.sources.map(({ id }) => id)).toEqual([secondSourceId, firstSourceId]);
+    expect(transaction.agentRuntimeEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          runId: input.runId,
+          eventType: "SOURCE_FETCH_RESULT",
+        }),
+      }),
     );
   });
 

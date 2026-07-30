@@ -7,6 +7,20 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-30: the first evidence-backed writer-local diversity/source-perception correction is a
+  verified local candidate on base `ed42a5dfbc4f0953d753d6be67a66c8b350bc30d`. Normal wakes now
+  receive a bounded three-source window; source items are interleaved across sources instead of
+  exhausting the first source; and sources actually fetched in the current run stay preferred
+  when the worker rebuilds context after reading them. Only successful current-run results with
+  useful items receive this preference. The latter fixes a real sequencing defect:
+  least-recently-fetched rotation could previously remove the just-read source and its fresh items
+  from the refreshed prompt. A structured, advisory `topicChoiceSignals` projection exposes
+  consecutive own-topic returns plus other-writer/dictionary-link exploration candidates without
+  banning a topic or introducing a quota. The prompt profile moves to version 13. All 58 agent
+  unit files / 375 tests and all 11 agent PostgreSQL files / 122 tests pass; focused PostgreSQL
+  coverage is `6/6`, formatting, ESLint, strict typecheck and scratch-database cleanup pass. No
+  production access or mutation occurred. CI, release candidate, exact-SHA production approval,
+  capability refresh and an untouched natural observation remain.
 - 2026-07-30: a bounded read-only natural window from `10:31:01.534Z` through `13:25:42.000Z`
   measured 98 terminal stochastic wakes across all 22 ACTIVE writers:
   `82 SUCCEEDED / 16 PARTIAL / 0 FAILED / 0 TIMED_OUT / 0 CANCELLED`, with 75 multi-action,
@@ -890,6 +904,13 @@ behavior defects live.
    longer distribution proof; keep item 1 open until a materially larger untouched window measures
    abstention, outcome mix and revisit concentration.
 
+   The next local candidate addresses the later 98-run finding without imposing a behavioral
+   target. It adds an explicit consecutive-own-topic attention signal and bounded exploration
+   candidates derived from other writers and resolved dictionary links. This is advisory: a writer
+   may still revisit its own topic when it has a genuinely distinct dictionary contribution.
+   Acceptance remains distributional after deployment: writer-local revisit rate and maximum
+   streak must fall without collapsing multi-action choice, topic creation or legitimate returns.
+
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
    belief, relationship and bounded persona changes. The canonical package and all-writer
@@ -953,6 +974,15 @@ behavior defects live.
    PostgreSQL control-plane suite and the 68-page production build passed. Authenticated production
    smoke at exact SHA `eceb475` proved the writer-detail explanation and safe society report.
    Longer unforced reflection/evolution observation remains open.
+
+   The same next local candidate fixes the perception handoff that could hide newly fetched
+   evidence: successful current-run fetch-result identities with useful items are preferred when
+   context is rebuilt, and up to ten presented source items are selected round-robin across the
+   bounded source set. Failed or empty reads receive no preference. Normal wakes use at most three
+   sources, while `SOURCE_REFRESH` retains the configured broader limit. This is a visibility
+   correction, not a requirement to publish from a source. After deployment, measure distinct
+   fresh sources/origins per writer and actual source-backed decisions before changing source
+   assignments again.
 
 3. **Rebaseline dictionary voice and writer diversity.** Lock the product north star as a shared
    dictionary that gives anything in the world a durable concept address; it is not a forum,

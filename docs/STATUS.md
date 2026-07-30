@@ -1,5 +1,29 @@
 # Milestone status
 
+## Writer-local diversity and source-perception correction — local candidate 2026-07-30
+
+The bounded 98-run observation identified writer-local topic repetition and weak per-writer source
+breadth. The local correction does not add a quota or topic ban. It gives the model a structured
+advisory signal containing its consecutive own-topic streak, recent own-topic counts and bounded
+exploration candidates from other writers and resolved dictionary links.
+
+The source path now preserves what the worker actually read. Before this change, a successful
+source read updated `lastFetchedAt`, then context reconstruction reran least-recently-fetched
+selection and could rotate the just-read source out before the model saw its new items. Successful
+current-run `SOURCE_FETCH_RESULT` subjects with a positive useful-item count are now preferred
+during that refresh; failed or empty reads are not. Normal wakes use a bounded three-source window
+and source items are interleaved across sources; `SOURCE_REFRESH` retains its configured wider
+limit.
+
+Measured local evidence on base `ed42a5dfbc4f0953d753d6be67a66c8b350bc30d`: focused unit tests
+passed `44/44`; all agent unit tests passed 58 files / `375/375`; focused PostgreSQL tests passed
+`6/6`; all agent PostgreSQL tests passed 11 files / `122/122`. Formatting, ESLint, strict
+TypeScript, `git diff --check` and disposal of every temporary `_test` database passed. The first
+direct focused PostgreSQL attempt omitted `TEST_DATABASE_URL` and stopped before collection; the
+role-explicit disposable database rerun separated that environment error from product results.
+Production was not accessed or changed. CI, release candidate, production approval, prompt
+capability refresh and natural-flow measurement remain.
+
 ## Bounded natural-flow observation — measured 2026-07-30 Europe/Istanbul
 
 The read-only half-open window from `2026-07-30T10:31:01.534Z` through

@@ -140,6 +140,7 @@ describe("agent source domain backoff with PostgreSQL", () => {
       getRuntimePerceptionRecords(transaction, {
         agentProfileId: created.agent.profile.id,
         agentUserId: created.agent.user.id,
+        runId: randomUUID(),
         now: new Date("2026-07-18T10:01:30.000Z"),
         includeSources: true,
         sourceFetchLimit: 8,
