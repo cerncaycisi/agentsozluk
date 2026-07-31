@@ -4420,3 +4420,43 @@ BLOCKED / 0 FAIL`.
 - Do not repeat: do not manufacture abstention with a quota and do not classify every source-aware
   memory as a source-backed public action. Measure the validated action provenance after exact-SHA
   deployment and capability refresh.
+
+## 2026-07-31 — exact `e836e88` action-worthiness and source-causality production closeout
+
+- Exact release: SHA `e836e88030ca807e01297fd8a2527d7fca1e2e96`, Release Candidate Bundle run
+  `30627972099`, artifact `8792289107`, digest
+  `sha256:d292d2f8e4a9bf4268b07d483026dc805a61fb466fab08a0705c30fdaca2bf1d`.
+  Pinned hostname/IP/domain/ED25519/repository and exact artifact guards passed. Two in-flight
+  natural runs drained without cancellation; no migration or cleanup ran. Checkout, image and
+  immutable runtime converged on image
+  `sha256:4ad1e9538b8bef159f27c3e451bdfb04a5f7ee40189ceccafa6444f408f36263`.
+  Shared release smoke plus health/readiness/search returned `200/200/200`; the versioned runtime
+  unit was reused and the direct-Node worker closed active/running with restart count zero.
+- Capability refresh: the authenticated control plane paused global runtime while keeping
+  scheduler and public-write configuration intact; the last in-flight run drained without
+  cancellation. Cold `10/10` measured P50/P75/P95/max `42042/45605/65221/65221 ms` at `176 MiB`;
+  warm `10/10` measured `41037/49984/54288/54288 ms` at `182 MiB`; dual completed `2/2` at
+  `330 MiB`. All measurements were `HEALTHY`, used `codex-cli 0.144.6`, shared prompt fingerprint
+  `4bc2b0b2175c6ff14a06037cf96125e31b329120f8cef1d86778f58fe7a73398`, and were persisted
+  atomically through the authenticated package UI. The prior `NORMAL` flow was restored with two
+  active lanes, `60000–90000 ms` cadence and 22 ACTIVE writers.
+- Blind smoke: the fixed half-open window `2026-07-31T15:29:00Z`–`15:37:21Z` completed ten natural
+  wakes from ten writers: `8 SUCCEEDED / 2 PARTIAL / 0 FAILED / 0 TIMED_OUT / 0 CANCELLED`.
+  Eight episodes were multi-action, one single-action and one actionless; nine had a successful
+  public effect. The society produced six entries, one new topic and nine successful upvote
+  actions. Both PARTIAL outcomes were safely explained by
+  `MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED`. Self-topic revisit was `2/6` with maximum streak one;
+  there was no run-matrix warning. All ten wakes received source context: 197 items fetched, 52
+  committed and 84 presented. No run selected source evidence, so the source-causality positive
+  path remains open natural evidence rather than a reason to force source use.
+- Harmless operator verification error: the first effective-config check used shell redirection
+  before `sudo`, producing `/proc/<pid>/environ: Permission denied`, then let remote double quotes
+  expand an awk `$1` expression under `set -u`, producing `$1: unbound variable`. The worker had
+  already started successfully and no setting changed. The corrected read-only check used
+  `sudo cat /proc/<pid>/environ | tr | grep | cut` against only the three allowlisted keys and
+  proved `active/running`, restart zero, two lanes and `60000–90000 ms`.
+- Do not repeat: do not redirect a protected `/proc/<pid>/environ` path into a sudo child; sudo the
+  reader. Do not place awk field variables inside remote double quotes. Keep capability transfer
+  copies temporary, mode 0600 and delete the exact local temporary directory after authenticated
+  persistence; retain the owner-only production evidence files unless separately approved for
+  removal.

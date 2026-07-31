@@ -7,6 +7,24 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-31: prompt-profile v15 is production-closed at exact SHA
+  `e836e88030ca807e01297fd8a2527d7fca1e2e96`, Release Candidate Bundle run `30627972099`,
+  artifact `8792289107`, digest
+  `sha256:d292d2f8e4a9bf4268b07d483026dc805a61fb466fab08a0705c30fdaca2bf1d`.
+  Two in-flight natural runs drained without cancellation; checkout, image and immutable runtime
+  converged on image `sha256:4ad1e9538b8bef159f27c3e451bdfb04a5f7ee40189ceccafa6444f408f36263`.
+  No migration or cleanup ran. Shared release smoke and health/readiness/search closed
+  `200/200/200`, with the direct-Node worker active/running and restart count zero. The
+  authenticated control plane then paused only global runtime, cold and warm each completed ten
+  real Codex calls, and dual completed `2/2`; all three were `HEALTHY` with shared prompt
+  fingerprint `4bc2b0b2175c6ff14a06037cf96125e31b329120f8cef1d86778f58fe7a73398` and were
+  persisted atomically. The prior `NORMAL` two-lane `60000–90000 ms` flow was restored. A fixed
+  `15:29:00Z`–`15:37:21Z` blind window then completed ten natural wakes from ten writers:
+  `8 SUCCEEDED / 2 PARTIAL / 0 hard failure`, eight multi-action, one single-action and one empty
+  action list. This is the first measured natural actionless wake after the previous 56/56
+  action-producing diagnostic. All ten wakes received source items—197 fetched, 52 committed and
+  84 presented—but none selected source evidence, so the positive source-causality path remains a
+  longer natural observation rather than a quota or forced test.
 - 2026-07-31: the accelerated 56-run receipt produced a schema-neutral prompt-profile v15 local
   candidate. Zero of 56 wakes abstained despite the existing no-quota language, so the normal-wake
   contract now begins with an explicit action-worthiness gate: waking is not an instruction to
@@ -18,8 +36,8 @@ production acceptance remains pending.
   provenance on the action; independent stable knowledge may still use `MODEL_KNOWLEDGE`. Neither
   correction adds an abstention/source quota or random suppression. Focused prompt/output/report
   verification passes `60/60`; all 59 agent unit files / 378 tests, formatting, ESLint, strict
-  TypeScript and diff hygiene pass. CI, exact-SHA deployment, capability refresh and a blind
-  natural comparison remain.
+  TypeScript and diff hygiene pass. The exact-SHA deployment, capability refresh and first blind
+  natural comparison are closed immediately above.
 - 2026-07-31: Gokhan made the bounded diagnostic cadence the current production operating
   cadence at exact SHA `ad08e10ab859391590ea143b200652c7b7994f10`. Pinned production identity,
   checkout and immutable-runtime guards passed. One in-flight natural run drained through the
@@ -1086,9 +1104,13 @@ behavior defects live.
    failure and self-topic revisit `13/44` with maximum streak two. The self-topic correction and
    multi-action distribution are therefore behaviorally supported. Item 1 remains open only for
    the still-degenerate zero-abstention result and the two recurring safe rejection families. The
-   verified prompt-profile v15 candidate adds a first-class action-worthiness gate without
-   imposing an abstention rate. Deploy it under a fresh fingerprint and compare a blind natural
-   window; do not reopen the self-topic package without a measured regression.
+   production prompt-profile v15 adds a first-class action-worthiness gate without imposing an
+   abstention rate. Its first fixed blind window produced one empty action list in ten terminal
+   natural wakes, versus zero in the preceding 56-wake diagnostic, while retaining eight
+   multi-action episodes and zero hard failure. Treat this as a successful smoke of the free
+   decision path, not an accepted target rate; keep item 1 open for a longer untouched distribution
+   and the recurring direct-quote rejection family. Do not reopen the self-topic package without a
+   measured regression.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
@@ -1185,10 +1207,12 @@ behavior defects live.
    confirmed broad perception—761 fetched, 198 committed and 444 presented—but only five runs
    referenced 13 items and no successful action retained source-backed provenance. Code inspection
    showed no provenance was lost between decision and persistence: those references occurred only
-   on observations or memory candidates. The verified prompt-profile v15 candidate now preserves
-   exact source provenance when a source materially causes a public action, while allowing
-   genuinely independent stable knowledge to remain `MODEL_KNOWLEDGE`. Compare it on a blind
-   natural window before lowering cooldowns, changing assignments or adding any source quota.
+   on observations or memory candidates. Exact production SHA `e836e88030ca807e01297fd8a2527d7fca1e2e96`
+   now preserves exact source provenance when a source materially causes a public action, while
+   allowing genuinely independent stable knowledge to remain `MODEL_KNOWLEDGE`. Its first ten-wake
+   blind window presented 84 source items but selected no source evidence; the positive path is
+   therefore still unobserved rather than failed. Continue natural observation before lowering
+   cooldowns, changing assignments or adding any source quota.
 
 3. **Rebaseline dictionary voice and writer diversity.** Lock the product north star as a shared
    dictionary that gives anything in the world a durable concept address; it is not a forum,
