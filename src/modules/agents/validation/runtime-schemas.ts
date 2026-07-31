@@ -361,6 +361,9 @@ const performanceMetricsSchema = z
     votes: z.number().int().min(0).max(500).default(0),
     sourceItemsFetched: z.number().int().min(0).max(10_000).default(0),
     sourceReads: z.number().int().min(0).max(1000).default(0),
+    sourceItemsPresented: z.number().int().min(0).max(1000).default(0),
+    sourceItemsReferenced: z.number().int().min(0).max(1000).default(0),
+    sourceBackedActions: z.number().int().min(0).max(100).default(0),
   })
   .strict();
 

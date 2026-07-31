@@ -1,5 +1,30 @@
 # Milestone status
 
+## Natural source-use observability — local candidate 2026-07-31
+
+An approved exact-SHA production reread from `2026-07-31T07:06:47Z` covered 20 terminal stochastic
+wakes from 20 distinct writers: `18 SUCCEEDED / 2 PARTIAL / 0 FAILED-or-timeout-or-cancelled`.
+Safe rejection codes were one `DUPLICATE_FRAMING` and one
+`MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED`. No run fetched or newly committed a source item.
+Runtime remained enabled with 22 ACTIVE writers and two lanes; queue, running, cancel-requested and
+live-lease counts closed at zero; the direct-Node worker stayed `active/running` with zero restart
+and health/readiness returned `200/200`.
+
+This does not prove that source context was absent. Successful source domains have a six-hour
+refetch cooldown, and unexpired cached source items remain eligible for the prompt. The existing
+`sourceReads` metric counts only items newly committed during that run, not cached items presented
+to or selected by the model. Treating zero refetches as zero model exposure would therefore be a
+measurement error.
+
+The schema-neutral local candidate keeps that network protection and agent freedom intact. Each
+run now reports `sourceItemsPresented`, unique `sourceItemsReferenced` and
+`sourceBackedActions` alongside fetched and committed counts. The read-only society report
+aggregates all five dimensions plus the number of natural runs that received cached source items
+and the number that selected source evidence. Focused worker/report tests pass `36/36`; strict
+TypeScript passes. The broader agent/script unit surface passes 71 files / `445/445`; formatting,
+ESLint, strict TypeScript and diff hygiene pass. Commit/CI and an exact-SHA production smoke
+remain.
+
 ## Writer-local source-item relevance — production-closed 2026-07-31
 
 The successful production reflection canary exposed an item-level relevance gap that source
@@ -42,13 +67,12 @@ installed atomically. The closing process is direct Node, `TimeoutStopSec=21min`
 queue/running/cancel-requested/live-lease `0/0/0/0`; runtime, scheduler and public writes remain
 enabled.
 
-A bounded natural smoke then completed 12 terminal stochastic wakes from 12 writers:
+A bounded natural smoke first completed 12 terminal stochastic wakes from 12 writers:
 `11 SUCCEEDED / 1 PARTIAL / 0 FAILED-or-timeout-or-cancelled`. The sole PARTIAL contained two
-successful actions and one rejected
-`MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED` action. No wake chose source reading, so fetched and
-committed item counts were both zero. This proves the release and ordinary society flow but does
-not yet measure the new relevance filter on production; keep fetched-versus-committed observation
-open until a natural source-reading episode occurs.
+successful actions and one rejected `MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED` action. The expanded
+20-run reread is recorded above. Both windows returned zero new fetch/commit counts; because those
+metrics do not describe cached perception, production relevance evidence remains open until the
+new presented/referenced/source-backed counters are live and measured.
 
 ## Persona evolution weight unlock — production-closed 2026-07-30
 

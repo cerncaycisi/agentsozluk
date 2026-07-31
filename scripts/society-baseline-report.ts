@@ -105,6 +105,14 @@ function increment(values: Map<string, number>, key: string): void {
   values.set(key, (values.get(key) ?? 0) + 1);
 }
 
+function reportedPerformanceMetric(value: unknown, key: string): number {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return 0;
+  const reported = (value as Record<string, unknown>).reported;
+  if (!reported || typeof reported !== "object" || Array.isArray(reported)) return 0;
+  const metric = (reported as Record<string, unknown>)[key];
+  return typeof metric === "number" && Number.isFinite(metric) && metric >= 0 ? metric : 0;
+}
+
 function emptyAgentCoverage(): AgentCoverage {
   return {
     runs: 0,
@@ -296,6 +304,7 @@ async function main(): Promise<void> {
           runStatus: true,
           errorCode: true,
           finishedAt: true,
+          performanceMetrics: true,
           agentProfile: { select: { user: { select: { username: true } } } },
           _count: { select: { contentRecords: true } },
         },
@@ -765,6 +774,33 @@ async function main(): Promise<void> {
     const nonterminalNaturalRuns = naturalRuns.length - terminalNaturalRuns.length;
     const naturalRunStatusCounts = new Map<string, number>();
     for (const run of terminalNaturalRuns) increment(naturalRunStatusCounts, run.runStatus);
+    const naturalSourceItemsFetched = terminalNaturalRuns.reduce(
+      (sum, run) => sum + reportedPerformanceMetric(run.performanceMetrics, "sourceItemsFetched"),
+      0,
+    );
+    const naturalSourceReads = terminalNaturalRuns.reduce(
+      (sum, run) => sum + reportedPerformanceMetric(run.performanceMetrics, "sourceReads"),
+      0,
+    );
+    const naturalSourceItemsPresented = terminalNaturalRuns.reduce(
+      (sum, run) => sum + reportedPerformanceMetric(run.performanceMetrics, "sourceItemsPresented"),
+      0,
+    );
+    const naturalSourceItemsReferenced = terminalNaturalRuns.reduce(
+      (sum, run) =>
+        sum + reportedPerformanceMetric(run.performanceMetrics, "sourceItemsReferenced"),
+      0,
+    );
+    const naturalSourceBackedActions = terminalNaturalRuns.reduce(
+      (sum, run) => sum + reportedPerformanceMetric(run.performanceMetrics, "sourceBackedActions"),
+      0,
+    );
+    const naturalRunsWithSourceItemsPresented = terminalNaturalRuns.filter(
+      (run) => reportedPerformanceMetric(run.performanceMetrics, "sourceItemsPresented") > 0,
+    ).length;
+    const naturalRunsWithSourceEvidence = terminalNaturalRuns.filter(
+      (run) => reportedPerformanceMetric(run.performanceMetrics, "sourceItemsReferenced") > 0,
+    ).length;
     const partialRunReasonCounts = new Map<string, number>();
     let partialRunsWithoutSafeReason = 0;
     let cancelledRunsWithoutSafeReason = 0;
@@ -1260,6 +1296,13 @@ async function main(): Promise<void> {
       `natural_runs.multi_action=${multiActionRuns}`,
       `natural_runs.with_succeeded_action=${naturalRunsWithSucceededAction}`,
       `natural_runs.with_public_effect=${naturalRunsWithPublicEffect}`,
+      `natural_sources.items_fetched=${naturalSourceItemsFetched}`,
+      `natural_sources.items_committed=${naturalSourceReads}`,
+      `natural_sources.items_presented=${naturalSourceItemsPresented}`,
+      `natural_sources.items_referenced=${naturalSourceItemsReferenced}`,
+      `natural_sources.source_backed_actions=${naturalSourceBackedActions}`,
+      `natural_sources.runs_with_items_presented=${naturalRunsWithSourceItemsPresented}`,
+      `natural_sources.runs_with_source_evidence=${naturalRunsWithSourceEvidence}`,
       `current_active_agents=${currentActiveUsernames.size}`,
       `current_active_agents_with_natural_wake=${currentActiveAgentsWithNaturalWake}`,
       `current_active_agents_without_natural_wake=${currentActiveAgentsWithoutNaturalWake}`,

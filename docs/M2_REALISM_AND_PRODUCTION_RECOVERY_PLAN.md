@@ -7,6 +7,20 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-31: the approved post-release source-relevance reread covered 20 terminal natural wakes
+  from 20 distinct writers at exact production SHA
+  `5474cb4e8cb7451c0d4bf28a28a7bf5eccb91e44`: `18 SUCCEEDED / 2 PARTIAL / 0 hard
+failure`. Safe rejection counts were one `DUPLICATE_FRAMING` and one
+  `MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED`; worker state remained direct Node,
+  `active/running`, restart count zero, queue/running/cancel-requested/live-lease
+  `0/0/0/0`, and health/readiness `200/200`. Fetched and newly committed source-item counts were
+  both zero. Code review separated this from source visibility: successful source domains have a
+  six-hour refetch cooldown, while cached unexpired `sourceItems` remain in perception; the
+  existing `sourceReads` metric counts newly committed items rather than cached items presented to
+  the model. A schema-neutral local candidate now records cached items presented, unique source
+  evidence referenced and source-backed actions separately, and renders those aggregates in the
+  read-only society report. This closes the measurement ambiguity without forcing source use or
+  weakening the network cooldown; production verification of the new metrics remains open.
 - 2026-07-31: writer-local source-item relevance and the direct-Node worker ownership correction
   are production-closed at exact SHA `5474cb4e8cb7451c0d4bf28a28a7bf5eccb91e44`, Release
   Candidate Bundle run `30610502100`, artifact `8785392915`, digest
@@ -1103,7 +1117,11 @@ behavior defects live.
    sources, while `SOURCE_REFRESH` retains the configured broader limit. This is a visibility
    correction, not a requirement to publish from a source. After deployment, measure distinct
    fresh sources/origins per writer and actual source-backed decisions before changing source
-   assignments again.
+   assignments again. The first 20-run reread reported zero network fetches, but that field cannot
+   distinguish a refetch cooldown from cached source perception. The verified local follow-up adds
+   explicit presented/referenced/source-backed-action counters to the same safe run receipt and
+   read-only aggregate report; use those fields for the next production decision rather than
+   lowering cooldowns or adding a source quota.
 
 3. **Rebaseline dictionary voice and writer diversity.** Lock the product north star as a shared
    dictionary that gives anything in the world a durable concept address; it is not a forum,

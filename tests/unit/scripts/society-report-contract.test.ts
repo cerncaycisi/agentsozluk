@@ -125,6 +125,14 @@ describe("society observation report contracts", () => {
     expect(baseline).toContain("successful_content_actions_with_exact_record=");
     expect(baseline).toContain("successful_content_actions_without_record=");
     expect(baseline).toContain("successful_content_actions_with_invalid_record_linkage=");
+    expect(baseline).toContain("performanceMetrics: true");
+    expect(baseline).toContain("natural_sources.items_fetched=");
+    expect(baseline).toContain("natural_sources.items_committed=");
+    expect(baseline).toContain("natural_sources.items_presented=");
+    expect(baseline).toContain("natural_sources.items_referenced=");
+    expect(baseline).toContain("natural_sources.source_backed_actions=");
+    expect(baseline).toContain("natural_sources.runs_with_items_presented=");
+    expect(baseline).toContain("natural_sources.runs_with_source_evidence=");
     expect(baseline).toContain("finishedAt >= window.to");
     expect(baseline).toContain("item.fetchedAt");
     expect(baseline).toContain("updatedAt < window.to");

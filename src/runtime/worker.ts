@@ -308,6 +308,40 @@ function runtimeDecisionUsesCatalog(
   });
 }
 
+const runtimeSourceEvidenceTypes = new Set([
+  "TRUSTED_SOURCE",
+  "PROBATION_SOURCE",
+  "MULTIPLE_SOURCES",
+]);
+
+function runtimeSourceEvidenceUsage(decision: RuntimeDecision): {
+  sourceItemsReferenced: number;
+  sourceBackedActions: number;
+} {
+  const referencedIds = new Set<string>();
+  let sourceBackedActions = 0;
+  const collect = (candidate: {
+    provenance?: RuntimeDecision["actions"][number]["provenance"];
+  }) => {
+    if (!candidate.provenance || !runtimeSourceEvidenceTypes.has(candidate.provenance.evidenceType))
+      return false;
+    for (const evidenceId of candidate.provenance.evidenceIds) referencedIds.add(evidenceId);
+    return true;
+  };
+  for (const action of decision.actions) {
+    if (action.actionType !== "NO_ACTION" && collect(action)) sourceBackedActions += 1;
+  }
+  for (const candidate of [
+    ...decision.observations,
+    ...decision.memoryCandidates,
+    ...decision.beliefDeltas,
+    ...decision.relationshipDeltas,
+    ...decision.sourceProposals,
+  ])
+    collect(candidate);
+  return { sourceItemsReferenced: referencedIds.size, sourceBackedActions };
+}
+
 function buildContentRepairPrompt(
   originalAction: RuntimeDecision["actions"][number],
   rejectionCode: string,
@@ -774,6 +808,9 @@ export class AgentRuntimeWorker {
     let sourceItemsFetched = 0;
     let sourceReads = 0;
     let sourceTargetsAttempted = 0;
+    let sourceItemsPresented = 0;
+    let sourceItemsReferenced = 0;
+    let sourceBackedActions = 0;
     try {
       await enterPhase("STARTING");
       let context = await this.#options.controlPlane.context(
@@ -880,6 +917,7 @@ export class AgentRuntimeWorker {
           );
       }
       await enterPhase("THINKING");
+      sourceItemsPresented = recordArray(context.perception.sourceItems).length;
       const prompt = buildRuntimePrompt(context);
       const outputSchema = runtimeOutputJsonSchema(context);
       providerResult = await invokeCodex({
@@ -926,6 +964,7 @@ export class AgentRuntimeWorker {
       if (!parsedDecision.success) throw parsedDecision.error;
       if (!decision || !runtimeDecisionUsesCatalog(decision, evidenceCatalog))
         throw new Error("RUNTIME_PROVENANCE_CATALOG_INVALID");
+      ({ sourceItemsReferenced, sourceBackedActions } = runtimeSourceEvidenceUsage(decision));
       const consolidationRun = isMemoryConsolidationRun(context);
       const personaReflectionRun = isPersonaReflectionRun(context);
       await this.#options.controlPlane.recordActions(
@@ -1167,6 +1206,9 @@ export class AgentRuntimeWorker {
             votes: measured.votes,
             sourceItemsFetched,
             sourceReads,
+            sourceItemsPresented,
+            sourceItemsReferenced,
+            sourceBackedActions,
           },
           ...(sourceRefreshErrorCode
             ? {

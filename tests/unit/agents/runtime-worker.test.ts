@@ -1154,7 +1154,14 @@ describe("long-lived agent runtime worker", () => {
       "source-grounding-repair-worker",
       runId,
       LEASE_TOKEN,
-      expect.objectContaining({ outcome: "SUCCEEDED" }),
+      expect.objectContaining({
+        outcome: "SUCCEEDED",
+        performanceMetrics: expect.objectContaining({
+          sourceItemsPresented: 2,
+          sourceItemsReferenced: 1,
+          sourceBackedActions: 1,
+        }),
+      }),
       expect.any(Object),
     );
   });

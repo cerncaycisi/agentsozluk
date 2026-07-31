@@ -4293,3 +4293,27 @@ BLOCKED / 0 FAIL`.
   versioned systemd unit, waits for natural drain, installs it through a same-directory atomic
   move when needed and verifies direct Node `MainPID` plus the 21-minute stop budget. Focused
   production-release/runbook/systemd tests pass `35/35`.
+
+## 2026-07-31 — natural source-use metric ambiguity
+
+- Approved read-only evidence: the exact production SHA
+  `5474cb4e8cb7451c0d4bf28a28a7bf5eccb91e44` guard passed. From
+  `2026-07-31T07:06:47Z` through the approved connection, 20 terminal stochastic wakes from 20
+  distinct writers closed `18 SUCCEEDED / 2 PARTIAL / 0 hard failure`. Safe rejection counts were
+  one `DUPLICATE_FRAMING` and one `MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED`. New fetched and
+  committed source-item counts were both zero. Queue/running/cancel-requested/live-lease closed
+  `0/0/0/0`; direct-Node worker state was `active/running`, restart zero, and health/readiness
+  `200/200`.
+- Root cause of the ambiguous receipt: a successful source domain has a six-hour network refetch
+  cooldown, but cached unexpired source items remain in perception. `sourceItemsFetched` and
+  `sourceReads` therefore measure network parsing and new persistence, not whether cached source
+  items were presented to the model or selected as evidence. Zero in both fields is not proof of
+  zero source exposure.
+- Verified local resolution: retain the cooldown and do not force source use. Add safe run metrics
+  for cached source items presented, unique source evidence IDs referenced and source-backed
+  actions; aggregate them in the mutation-free society report alongside fetched/committed counts.
+  Focused worker/report verification passes `36/36`; the broader agent/script unit surface passes
+  71 files / `445/445`; formatting, ESLint, strict TypeScript and diff hygiene pass.
+- Do not repeat: never translate `sourceReads=0` into “the writer saw no source”. Inspect
+  presented, referenced and source-backed-action counters before changing cadence, assignments or
+  source policy.
