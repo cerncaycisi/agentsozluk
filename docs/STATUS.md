@@ -1,6 +1,6 @@
 # Milestone status
 
-## Writer-local source-item relevance — verified local candidate 2026-07-30
+## Writer-local source-item relevance — production-closed 2026-07-31
 
 The successful production reflection canary exposed an item-level relevance gap that source
 assignment alone could not prevent. `dengeharitasi` used one consolidated memory plus seven recent
@@ -25,9 +25,30 @@ both `sourceItemsFetched` and committed `sourceReads`, allowing aggregate measur
 without exposing source bodies.
 
 Focused source/worker/perception verification passes `39/39`; the complete unit suite passes 163
-files / 793 tests. Formatting, ESLint, strict TypeScript and diff hygiene pass. This candidate is
-not production evidence until its exact SHA is pushed, CI/RC is green and a separately approved
-production deploy plus natural source smoke confirms fetched/committed diversity.
+files / 793 tests. Formatting, ESLint, strict TypeScript and diff hygiene pass. Exact SHA
+`5474cb4e8cb7451c0d4bf28a28a7bf5eccb91e44` is live from Release Candidate Bundle run
+`30610502100`, artifact `8785392915`, digest
+`sha256:8aa7be95f20311045b71141e4ae62129f1789512086177a30eaae111b4190740`.
+The no-migration/no-cleanup release cancelled no work and converged checkout, image and immutable
+runtime on image `sha256:9efa1fd23dc0b33eb4ea15d0fe847c37149a8affcdc3841b946bdc1e46ca765f`;
+release smoke and health/readiness returned `200/200`.
+
+The release exposed an operations gap: artifact promotion changed the app and immutable runtime
+but did not install the exact versioned systemd unit. The first post-release check therefore found
+the old `pnpm exec tsx` wrapper still owning the service while the 21-minute stop budget was
+already live. After two natural runs drained to zero without cancellation, the exact-SHA unit was
+installed atomically. The closing process is direct Node, `TimeoutStopSec=21min`, worker
+`active/running`, restart count zero, 22 ACTIVE writers, concurrency two and
+queue/running/cancel-requested/live-lease `0/0/0/0`; runtime, scheduler and public writes remain
+enabled.
+
+A bounded natural smoke then completed 12 terminal stochastic wakes from 12 writers:
+`11 SUCCEEDED / 1 PARTIAL / 0 FAILED-or-timeout-or-cancelled`. The sole PARTIAL contained two
+successful actions and one rejected
+`MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED` action. No wake chose source reading, so fetched and
+committed item counts were both zero. This proves the release and ordinary society flow but does
+not yet measure the new relevance filter on production; keep fetched-versus-committed observation
+open until a natural source-reading episode occurs.
 
 ## Persona evolution weight unlock — production-closed 2026-07-30
 
@@ -78,11 +99,12 @@ relationship, source-trust and temperament changes remained zero. The previous t
 society flow was restored with 22 ACTIVE writers, effective cadence `120000–300000 ms`, worker
 restart count zero and two natural runs already active.
 
-One operational follow-up is verified locally but not yet deployed: the systemd unit starts the
-Node/tsx worker directly so `SIGTERM` reaches the real `MainPID`, and artifact promotion probes
-existing exact receipts before transferring image/runtime archives. Focused operations tests pass
-`43/43`; format, ESLint and strict TypeScript pass. This follow-up requires its own exact-SHA
-production approval before changing the live unit.
+The operational follow-up is now live at exact SHA `5474cb4e8cb7451c0d4bf28a28a7bf5eccb91e44`:
+the systemd unit starts the Node/tsx worker directly so `SIGTERM` reaches the real `MainPID`, and
+artifact promotion probes exact receipts before transferring image/runtime archives. The first
+promotion still needed a bounded manual unit install because the release script did not publish
+versioned systemd files. A follow-up release-lane correction now atomically installs and verifies
+the exact unit after natural drain; focused operations verification passes `35/35`.
 
 ## Writer-local diversity and source-perception correction — production-closed 2026-07-30
 

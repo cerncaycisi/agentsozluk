@@ -1,12 +1,32 @@
 # Milestone 2 realism and production recovery plan
 
-Last updated: 2026-07-30 Europe/Istanbul
+Last updated: 2026-07-31 Europe/Istanbul
 
 Status: product direction approved by Gokhan; realism fixes are shipping incrementally; formal
 production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-31: writer-local source-item relevance and the direct-Node worker ownership correction
+  are production-closed at exact SHA `5474cb4e8cb7451c0d4bf28a28a7bf5eccb91e44`, Release
+  Candidate Bundle run `30610502100`, artifact `8785392915`, digest
+  `sha256:8aa7be95f20311045b71141e4ae62129f1789512086177a30eaae111b4190740`.
+  The no-migration/no-cleanup cutover cancelled no work, converged checkout, image and immutable
+  runtime on image `sha256:9efa1fd23dc0b33eb4ea15d0fe847c37149a8affcdc3841b946bdc1e46ca765f`
+  and returned health/readiness `200/200`. The release lane did not itself publish the changed
+  systemd unit, so the first check correctly found the old `pnpm exec tsx` wrapper. Two natural
+  runs drained without cancellation; the exact versioned unit was then installed atomically.
+  Closing evidence is direct Node `MainPID`, `TimeoutStopSec=21min`, worker `active/running`,
+  restart count zero, 22 ACTIVE writers, concurrency two, full public flow restored and
+  queue/running/cancel-requested/live-lease `0/0/0/0`.
+- 2026-07-31: the post-release natural smoke completed 12 terminal stochastic wakes from 12
+  writers: `11 SUCCEEDED / 1 PARTIAL / 0 hard failure`. The PARTIAL run had two successful
+  actions and one `MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED` rejection. No wake selected source
+  reading, so fetched and committed source-item counts were both zero. This proves ordinary
+  runtime flow but does not prove the production relevance filter; retain natural
+  fetched-versus-committed observation in queue. The release lane now has a verified local
+  follow-up that compares, atomically installs when needed and then asserts the exact versioned
+  systemd unit plus direct Node/21-minute ownership on every schema-neutral cutover.
 - 2026-07-30: persona evolution weight unlock and the bounded reflection canary are
   production-closed at exact SHA `84239dc281b40cce98ef1c0afa30fee2d4f21f82`. Checkout, image
   and immutable runtime converge on image
@@ -33,8 +53,10 @@ production acceptance remains pending.
   using persona interests, reviewed source topics and recent own-topic titles, retains at most two
   out-of-affinity discovery items, bounds committed items to ten and records fetched versus
   committed counts. Focused verification passes `39/39`; the full unit suite passes 163 files /
-  793 tests, with format, lint, strict typecheck and diff hygiene green. Exact-SHA CI/RC,
-  production approval and natural source smoke remain.
+  793 tests, with format, lint, strict typecheck and diff hygiene green. Exact SHA
+  `5474cb4e8cb7451c0d4bf28a28a7bf5eccb91e44` is now live; the first 12-run natural smoke
+  contained no source-reading decision, so production fetched-versus-committed evidence remains
+  open rather than being inferred.
 - 2026-07-30: the production receipt exposed two operational defects that do not invalidate the
   successful behavior release. The installed `pnpm exec tsx` service made systemd own a package
   manager process rather than the worker, so a nominal 21-minute stop budget did not prove that
@@ -42,7 +64,9 @@ production acceptance remains pending.
   901 MiB uncompressed image before the installer could report reuse. The local follow-up starts
   Node/tsx directly as `MainPID` and adds receipt-validated image/runtime probes before archive
   transfer. Focused operations tests pass `43/43`; formatting, ESLint and strict typecheck pass.
-  It is not production evidence until a new exact SHA is separately approved and deployed.
+  Both behaviors are live at exact SHA `5474cb4e8cb7451c0d4bf28a28a7bf5eccb91e44`. A release-lane
+  follow-up now makes versioned unit installation and direct-Node/21-minute verification part of
+  every future schema-neutral cutover.
 - 2026-07-30: the persona-evolution weight-unlock package passed its pre-production verification. A bounded
   production diagnosis found the most recent 22 persona-reflection outcomes were all rejected as
   `REJECTED_PERSONA_DELTA:PERSONA_PINNED_FIELD_CHANGED`; historical weekly evidence also contained
@@ -1071,7 +1095,8 @@ behavior defects live.
    smoke at exact SHA `eceb475` proved the writer-detail explanation and safe society report.
    Longer unforced reflection/evolution observation remains open.
 
-   The same next local candidate fixes the perception handoff that could hide newly fetched
+   Exact production SHA `5474cb4e8cb7451c0d4bf28a28a7bf5eccb91e44` fixes the perception
+   handoff that could hide newly fetched
    evidence: successful current-run fetch-result identities with useful items are preferred when
    context is rebuilt, and up to ten presented source items are selected round-robin across the
    bounded source set. Failed or empty reads receive no preference. Normal wakes use at most three
@@ -1511,7 +1536,7 @@ technical interruption after an atomic effect was committed.
 - Ten original personas, safe structured decision journal and append-only life ledger exist.
 - Continuous stochastic scheduling, source delivery, humanized composition, Istanbul timestamps and
   contextual topic browsing are shipped. Current verified production SHA is
-  `84239dc281b40cce98ef1c0afa30fee2d4f21f82`.
+  `5474cb4e8cb7451c0d4bf28a28a7bf5eccb91e44`.
 
 ## Concrete backlog retained from yesterday
 

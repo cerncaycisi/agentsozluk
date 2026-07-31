@@ -19,6 +19,8 @@ state_dir="$runtime_root/.release-op-$candidate_sha"
 candidate_image="agent-sozluk:$candidate_sha"
 override="$state_dir/no-migration-compose.yaml"
 artifact_image_receipt="$runtime_root/artifact-receipts/$candidate_sha.env"
+runtime_unit_source="$app_root/deploy/systemd/agent-sozluk-runtime.service"
+runtime_unit_target=/etc/systemd/system/agent-sozluk-runtime.service
 
 [[ "$candidate_sha" =~ ^[0-9a-f]{40}$ ]] || {
   printf 'RELEASE_FAIL code=INVALID_SHA\n' >&2
@@ -118,6 +120,80 @@ wait_for_no_active_work() {
   done
   printf 'RELEASE_FAIL code=RUN_DRAIN_TIMEOUT\n' >&2
   return 1
+}
+
+install_runtime_unit() {
+  local counts queued running cancel_requested leases
+  local source_hash target_hash worker_state unit_stage
+  test -f "$runtime_unit_source"
+  test ! -L "$runtime_unit_source"
+  source_hash="$(sha256sum "$runtime_unit_source" | cut -d ' ' -f 1)"
+  target_hash=''
+  if sudo test -f "$runtime_unit_target" &&
+     ! sudo test -L "$runtime_unit_target"; then
+    target_hash="$(
+      sudo sha256sum "$runtime_unit_target" |
+        cut -d ' ' -f 1
+    )"
+  fi
+  if test "$target_hash" = "$source_hash"; then
+    printf 'RELEASE_RUNTIME_UNIT_REUSED sha256=%s\n' "$source_hash"
+    return
+  fi
+
+  worker_state="$(
+    systemctl show agent-sozluk-runtime.service -p ActiveState --value
+  )"
+  if test "$worker_state" = active; then
+    wait_for_no_active_work
+    sudo systemctl stop agent-sozluk-runtime.service
+  fi
+  test "$(
+    systemctl show agent-sozluk-runtime.service -p ActiveState --value
+  )" = inactive
+  counts="$(run_counts)"
+  IFS='|' read -r queued running cancel_requested leases <<<"$counts"
+  test "$running" = 0
+  test "$cancel_requested" = 0
+  test "$leases" = 0
+
+  unit_stage="$(
+    sudo mktemp /etc/systemd/system/.agent-sozluk-runtime.service.XXXXXXXX
+  )"
+  if ! sudo install -o root -g root -m 0644 "$runtime_unit_source" "$unit_stage"; then
+    sudo rm -f "$unit_stage"
+    return 1
+  fi
+  if ! sudo mv -f "$unit_stage" "$runtime_unit_target"; then
+    sudo rm -f "$unit_stage"
+    return 1
+  fi
+  sudo systemctl daemon-reload
+  test "$(
+    sudo sha256sum "$runtime_unit_target" |
+      cut -d ' ' -f 1
+  )" = "$source_hash"
+  printf 'RELEASE_RUNTIME_UNIT_READY sha256=%s\n' "$source_hash"
+}
+
+assert_runtime_unit() {
+  local source_hash target_hash main_pid main_args
+  source_hash="$(sha256sum "$runtime_unit_source" | cut -d ' ' -f 1)"
+  target_hash="$(
+    sudo sha256sum "$runtime_unit_target" |
+      cut -d ' ' -f 1
+  )"
+  test "$target_hash" = "$source_hash"
+  test "$(
+    systemctl show agent-sozluk-runtime.service -p TimeoutStopUSec --value
+  )" = 21min
+  main_pid="$(
+    systemctl show agent-sozluk-runtime.service -p MainPID --value
+  )"
+  [[ "$main_pid" =~ ^[1-9][0-9]*$ ]]
+  main_args="$(ps -p "$main_pid" -o args=)"
+  test "$main_args" = \
+    '/usr/bin/node --require /opt/agent-sozluk/runtime/current/node_modules/tsx/dist/preflight.cjs --import file:///opt/agent-sozluk/runtime/current/node_modules/tsx/dist/loader.mjs scripts/agent-runtime-worker.ts'
 }
 
 assert_state_fingerprints() {
@@ -423,6 +499,7 @@ NODE
   fi
   test "$(cat "$runtime_root/current/.release-sha")" = "$candidate_sha"
 
+  install_runtime_unit
   sudo systemctl start agent-sozluk-runtime.service
   for _ in $(seq 1 30); do
     if test "$(
@@ -438,6 +515,7 @@ NODE
   test "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" = active
   test "$(systemctl show agent-sozluk-runtime.service -p SubState --value)" = running
   test "$(systemctl show agent-sozluk-runtime.service -p NRestarts --value)" = 0
+  assert_runtime_unit
   find "$state_dir" -maxdepth 1 -type f -name 'no-migration-compose.yaml' -delete
 }
 
@@ -457,6 +535,7 @@ verify_release() {
   test "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" = active
   test "$(systemctl show agent-sozluk-runtime.service -p SubState --value)" = running
   test "$(systemctl show agent-sozluk-runtime.service -p NRestarts --value)" = 0
+  assert_runtime_unit
   volume_hash="$(
     docker volume ls -q |
       LC_ALL=C sort |

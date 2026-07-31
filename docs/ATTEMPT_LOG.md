@@ -4259,3 +4259,37 @@ BLOCKED / 0 FAIL`.
 - Do not repeat: never invoke the fallback `pnpm` wrapper in this repository; resolve the pinned
   Corepack CLI before the first test. Do not classify a healthy broad feed as writer-relevant or
   convert every fetched headline into memory merely because the source itself is approved.
+
+## 2026-07-31 — exact `5474cb4` source relevance and direct-Node production closeout
+
+- Exact release: SHA `5474cb4e8cb7451c0d4bf28a28a7bf5eccb91e44`, Release Candidate Bundle
+  run `30610502100`, artifact `8785392915`, digest
+  `sha256:8aa7be95f20311045b71141e4ae62129f1789512086177a30eaae111b4190740`.
+  Pinned hostname/IP/domain/ED25519/repository guards passed. The no-migration/no-cleanup
+  promotion cancelled no work, converged checkout, image and immutable runtime on image
+  `sha256:9efa1fd23dc0b33eb4ea15d0fe847c37149a8affcdc3841b946bdc1e46ca765f`,
+  and closed release smoke plus health/readiness at `200/200`.
+- Systemd gap: the first exact post-release check found `MainPID` command
+  `node /usr/bin/pnpm exec tsx scripts/agent-runtime-worker.ts`. The 21-minute stop budget was
+  live, but the versioned direct-Node unit had not been installed by artifact promotion. Two
+  natural runs were allowed to finish; drain reached queued/running/cancel-requested/live-lease
+  `0/0/0/0`. The exact checkout unit hash was then installed atomically, daemon state reloaded and
+  the worker restarted without run cancellation. Closing evidence is direct Node `MainPID`,
+  `TimeoutStopSec=21min`, `active/running`, restart count zero, preserved settings/lifecycle,
+  22 ACTIVE writers, concurrency two and health/readiness `200/200`.
+- Guard-query false start: the first unit-switch guard used snake_case Prisma field names and
+  stopped before service or file mutation with exact PostgreSQL error
+  `column "runtime_enabled" does not exist`. The corrected query used the schema's quoted
+  camelCase columns. Do not repeat: mapped table names do not imply mapped field names; derive
+  one-off production guard identifiers from `prisma/schema.prisma`.
+- Natural smoke: 12 post-switch terminal stochastic wakes from 12 writers closed
+  `11 SUCCEEDED / 1 PARTIAL / 0 FAILED-or-timeout-or-cancelled`; the sole PARTIAL contained two
+  successful actions and one `MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED` rejection. Final
+  queue/running/cancel-requested/live-lease was `0/0/0/0`. None of the 12 wakes selected source
+  reading, so fetched and committed counts were both zero. Do not claim the item relevance filter
+  production-proven from this window; retain observation until a natural source-reading episode
+  produces aggregate fetched-versus-committed evidence.
+- Release-lane resolution: the local schema-neutral cutover script now compares the exact
+  versioned systemd unit, waits for natural drain, installs it through a same-directory atomic
+  move when needed and verifies direct Node `MainPID` plus the 21-minute stop budget. Focused
+  production-release/runbook/systemd tests pass `35/35`.

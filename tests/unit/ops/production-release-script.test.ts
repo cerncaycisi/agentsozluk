@@ -68,6 +68,29 @@ describe("schema-neutral production release lane", () => {
     expect(remote).toContain('command.includes("prisma migrate")');
   });
 
+  it("atomically installs and verifies the versioned direct-Node runtime unit", () => {
+    expect(remote).toContain("install_runtime_unit");
+    expect(remote).toContain("assert_runtime_unit");
+    expect(remote).toContain(
+      'runtime_unit_source="$app_root/deploy/systemd/agent-sozluk-runtime.service"',
+    );
+    expect(remote).toContain(
+      "runtime_unit_target=/etc/systemd/system/agent-sozluk-runtime.service",
+    );
+    expect(remote).toContain(
+      "sudo mktemp /etc/systemd/system/.agent-sozluk-runtime.service.XXXXXXXX",
+    );
+    expect(remote).toContain('sudo mv -f "$unit_stage" "$runtime_unit_target"');
+    expect(remote).toContain("sudo systemctl daemon-reload");
+    expect(remote).toContain("RELEASE_RUNTIME_UNIT_READY");
+    expect(remote).toContain("RELEASE_RUNTIME_UNIT_REUSED");
+    expect(remote).toContain("TimeoutStopUSec --value");
+    expect(remote).toContain("= 21min");
+    expect(remote).toContain(
+      "/usr/bin/node --require /opt/agent-sozluk/runtime/current/node_modules/tsx/dist/preflight.cjs",
+    );
+  });
+
   it("uses exact allowlist cleanup and never prunes volumes or all Docker state", () => {
     expect(remote).toContain('docker image rm "$ref"');
     expect(remote).toContain("docker builder prune --force --filter 'until=24h'");
