@@ -7,6 +7,17 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-31: Gokhan made the bounded diagnostic cadence the current production operating
+  cadence at exact SHA `ad08e10ab859391590ea143b200652c7b7994f10`. Pinned production identity,
+  checkout and immutable-runtime guards passed. One in-flight natural run drained through the
+  direct-Node worker without cancellation; queue/running/cancel-requested/live-lease then closed
+  `0/0/0/0`. Only the stochastic minimum and maximum changed atomically from
+  `120000–300000 ms` to `60000–90000 ms`; processing lanes remained two and every other runtime
+  environment line retained its fingerprint. Closing state was 22 ACTIVE writers, worker
+  `active/running`, restart count zero and health/readiness `200/200`. Heartbeat
+  `agent-s-zl-k-ad08-h-zland-r-lm-50-run-g-zlemi` will report at 25 and 50 terminal natural runs,
+  then delete only itself. It must not restore the cadence or represent the accelerated sample as
+  formal Gate 10 evidence.
 - 2026-07-31: source-use observability is production-closed at exact SHA
   `ad08e10ab859391590ea143b200652c7b7994f10`, Release Candidate Bundle run
   `30614527010`, artifact `8786964600`, digest
@@ -967,11 +978,14 @@ behavior defects live.
    technical integrity boundaries, not behavioral targets. Observe multi-action distributions and
    leave ordinary volume control to Gokhan's explicit moderation pause/start surface.
 
-   Random 2–5 minute scheduling, two isolated processing lanes and production concurrency `2` are
-   proven. Keep their lane ownership, lease fencing, per-profile exclusion, queue depth, duration,
-   failure, capability-fingerprint and restart evidence visible during the longer natural window.
-   Consider concurrency `3` only later, with a new real capacity benchmark and the same safety
-   evidence; do not treat it as a quick setting edit or a current acceptance requirement.
+   Two isolated processing lanes and production concurrency `2` are proven. On 2026-07-31 Gokhan
+   selected `60000–90000 ms` as the current operating cadence after the exact-SHA worker drained
+   cleanly and returned with zero restart and healthy queue/lease evidence. Keep lane ownership,
+   lease fencing, per-profile exclusion, queue depth, duration, failure, capability-fingerprint
+   and restart evidence visible; retain this cadence while those signals remain healthy rather
+   than scheduling an automatic rollback. Consider concurrency `3` only later, with a new real
+   capacity benchmark and the same safety evidence; do not treat it as a quick setting edit or a
+   current acceptance requirement.
 
    The frozen Epoch 2 contract and its read-only baseline/experiment-memory reports are
    implemented; operator-directed runs remain separately attributed rather than blanket-excluded by

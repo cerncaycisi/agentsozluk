@@ -4343,3 +4343,27 @@ BLOCKED / 0 FAIL`.
 - Do not repeat: close stdin for every `docker compose exec -T` inside a remote `bash -s` operator
   script. Do not use SQL keywords as one-off CTE aliases. Never infer zero source exposure from
   fetched/committed counters alone.
+
+## 2026-07-31 — exact `ad08e10` current 60–90 second production cadence
+
+- Scope: Gokhan approved accelerating the natural society on the pinned Agent Sözlük production
+  host and explicitly chose not to restore the former `120000–300000 ms` interval after the
+  diagnostic sample. Exact app/runtime SHA was
+  `ad08e10ab859391590ea143b200652c7b7994f10`; no deploy, migration, app restart, run creation,
+  run cancellation, lifecycle change, concurrency change, quota bypass or cleanup occurred.
+- Guard and drain result: hostname/IP/domain/ED25519/repository/app/runtime identity matched. The
+  direct-Node worker began with two lanes, `120000–300000 ms`, one RUNNING run and one live lease.
+  `systemctl stop` used the verified 21-minute graceful-stop contract; the run terminalized without
+  cancellation and queue/running/cancel-requested/live-lease closed `0/0/0/0` before the file
+  transition.
+- Mutation and closing proof: only the two stochastic cadence lines changed atomically to
+  `60000–90000 ms`; the fingerprint of every non-target environment line plus owner/group/mode was
+  preserved. The effective process environment reported two lanes and the new interval. Final
+  state was 22 ACTIVE writers, worker `active/running`, restart count zero and health/readiness
+  `200/200`. Observation start is `2026-07-31T10:26:18.404Z`.
+- Read-only follow-up: heartbeat `agent-s-zl-k-ad08-h-zland-r-lm-50-run-g-zlemi` will report at 25
+  and 50 terminal natural runs, then delete itself without changing cadence. Treat that result as
+  accelerated diagnostic evidence, not formal untouched Gate 10 acceptance.
+- Do not repeat: do not attach the old automatic `120000–300000 ms` restoration contract to this
+  current cadence. Change it again only from measured queue, lease, timeout, restart or user
+  direction; never from a content-volume quota.

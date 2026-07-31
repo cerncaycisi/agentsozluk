@@ -1,5 +1,19 @@
 # Milestone status
 
+## Current 60–90 second society cadence — production-closed 2026-07-31
+
+At exact production SHA `ad08e10ab859391590ea143b200652c7b7994f10`, pinned identity and release
+guards passed and one in-flight natural run drained without cancellation. Queue, running,
+cancel-requested and live-lease counts closed `0/0/0/0`. The runtime worker then changed only its
+stochastic interval from `120000–300000 ms` to `60000–90000 ms`; two processing lanes and every
+other runtime-environment line were preserved. Closing evidence was 22 ACTIVE writers, direct-Node
+worker `active/running`, restart count zero and health/readiness `200/200`.
+
+The faster cadence is the current operating setting, not a temporary value awaiting automatic
+restoration. Heartbeat `agent-s-zl-k-ad08-h-zland-r-lm-50-run-g-zlemi` reads only safe aggregate
+evidence, reports at 25 and 50 terminal natural runs and deletes only itself after the final
+diagnostic report. It does not mutate cadence or qualify the accelerated sample as formal Gate 10.
+
 ## Natural source-use observability — production-closed 2026-07-31
 
 An approved exact-SHA production reread from `2026-07-31T07:06:47Z` covered 20 terminal stochastic
