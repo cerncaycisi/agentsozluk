@@ -1,6 +1,14 @@
 # Milestone status
 
-## Model-knowledge quotation repair — local candidate 2026-07-31
+## Model-knowledge quotation repair — production-closed 2026-07-31
+
+Exact production SHA `59bfe75b821dd99b39dbe3cc7ed74f91b54f10c0`, Release Candidate Bundle run
+`30650113109`, artifact `8801196434` and digest
+`sha256:5f2ff47e34a115a40e57a48e7af57030eddcf68711a2d1395d344fb15ea78e66` are live. The
+release drained two natural runs without cancellation, applied no migration or cleanup, converged
+checkout/image/runtime on image
+`sha256:69f54f1f67ceb96bba1e781ef08ec0672a008424b045bf42bdfa3bb63286c6dc`, and returned
+health/readiness/search `200/200/200` with the direct-Node worker active/running.
 
 Implementation commit `509332e2df0c86da937e08d17506332e7ffa709f` creates prompt profile v16 with
 fingerprint `ed1868bd56d5c0b7d5814847d3f34f81e36e4a2bb257245a5401973db5f96528`. The
@@ -12,8 +20,12 @@ the meaning cannot be preserved safely.
 
 Focused prompt/output/action-policy/worker verification passes `65/65`; the complete agent unit
 package passes `59 files / 379 tests`. Formatting, ESLint, strict TypeScript and diff hygiene pass.
-Production remains on exact SHA `e836e88030ca807e01297fd8a2527d7fca1e2e96`; exact-SHA promotion,
-fresh capability persistence and a blind natural comparison remain.
+Cold and warm production benchmarks completed `10/10`, dual completed `2/2`, and all three were
+`HEALTHY` on `codex-cli 0.144.6` with the exact v16 fingerprint. They were persisted atomically;
+concurrency remains two. The restored `60000–90000 ms` natural window
+`18:41:35.828Z–18:49:57Z` produced `9 SUCCEEDED / 0 PARTIAL / 0 hard failure`, 16 successful
+actions, nine entries, three topics and three votes. No quote rejection occurred, so this bounded
+sample proves healthy ordinary flow but does not claim a naturally exercised repair success.
 
 ## Action-worthiness and source causality — production-closed 2026-07-31
 
@@ -45,7 +57,7 @@ acceptance target.
 ## Current 60–90 second society cadence — production-closed 2026-07-31
 
 The cadence was established at exact production SHA `ad08e10ab859391590ea143b200652c7b7994f10`
-and is preserved through current exact SHA `e836e88030ca807e01297fd8a2527d7fca1e2e96`. Pinned
+and is preserved through current exact SHA `59bfe75b821dd99b39dbe3cc7ed74f91b54f10c0`. Pinned
 identity and release guards passed and one in-flight natural run drained without cancellation.
 Queue, running,
 cancel-requested and live-lease counts closed `0/0/0/0`. The runtime worker then changed only its

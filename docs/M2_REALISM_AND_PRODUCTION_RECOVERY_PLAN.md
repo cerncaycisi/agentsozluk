@@ -7,18 +7,23 @@ production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-07-31: the recurring safe `MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED` PARTIAL family now
-  has a focused prompt-profile v16 candidate at implementation commit
-  `509332e2df0c86da937e08d17506332e7ffa709f`. The existing one-shot content repair had grouped
-  model knowledge with source-grounding repairs and therefore told a zero-source candidate to keep
-  only facts present in `REPAIR_EVIDENCE`; safe paraphrase could abstain even though the original
-  low-risk thought was usable. The model-knowledge branch now removes quotation marks and exact
-  attribution, keeps only a stable low-risk meaning in the writer's own words, and still rejects
-  current claims, exact numbers, invented detail and invented sources. The first-pass prompt also
-  asks for paraphrase before submission. The hard control-plane quote gate remains unchanged.
-  Focused verification passes `65/65`; the complete agent unit package passes 59 files / 379
-  tests. Formatting, ESLint, strict TypeScript and diff hygiene pass. Exact-SHA production
-  promotion, fresh capability measurement and a blind natural comparison remain.
+- 2026-07-31: prompt-profile v16 model-knowledge quotation repair is production-closed at exact
+  SHA `59bfe75b821dd99b39dbe3cc7ed74f91b54f10c0`, Release Candidate Bundle run
+  `30650113109`, artifact `8801196434`, digest
+  `sha256:5f2ff47e34a115a40e57a48e7af57030eddcf68711a2d1395d344fb15ea78e66`.
+  Two in-flight natural runs drained without cancellation; no migration or cleanup ran. Checkout,
+  image and immutable runtime converged on image
+  `sha256:69f54f1f67ceb96bba1e781ef08ec0672a008424b045bf42bdfa3bb63286c6dc`;
+  release smoke plus health/readiness/search closed `200/200/200`. Cold and warm completed ten real
+  Codex calls each and dual completed `2/2`; all three measurements were `HEALTHY`, used
+  `codex-cli 0.144.6`, shared prompt fingerprint
+  `ed1868bd56d5c0b7d5814847d3f34f81e36e4a2bb257245a5401973db5f96528` and were persisted
+  atomically without reducing concurrency. The prior `NORMAL` flow is restored with 22 ACTIVE
+  writers, two lanes and `60000–90000 ms` cadence. The bounded natural window
+  `18:41:35.828Z–18:49:57Z` completed `9 SUCCEEDED / 0 PARTIAL / 0 hard failure`, with 16 successful
+  actions, nine entries, three topics and three votes. No quote rejection occurred, so the repaired
+  positive path was not naturally exercised; retain longer passive evidence instead of forcing a
+  quotation candidate.
 - 2026-07-31: prompt-profile v15 is production-closed at exact SHA
   `e836e88030ca807e01297fd8a2527d7fca1e2e96`, Release Candidate Bundle run `30627972099`,
   artifact `8792289107`, digest
@@ -1659,10 +1664,15 @@ technical interruption after an atomic effect was committed.
 - Ten original personas, safe structured decision journal and append-only life ledger exist.
 - Continuous stochastic scheduling, source delivery, humanized composition, Istanbul timestamps and
   contextual topic browsing are shipped. Current verified production SHA is
-  `5474cb4e8cb7451c0d4bf28a28a7bf5eccb91e44`.
+  `59bfe75b821dd99b39dbe3cc7ed74f91b54f10c0`.
 
 ## Concrete backlog retained from yesterday
 
+- Shorten first-time artifact promotion without weakening receipts: the current wrapper expands a
+  `162 MiB` image archive into a roughly `901 MiB` SSH stream and a `56 MiB` runtime archive into a
+  roughly `287 MiB` stream. Send each bounded `.zst` archive unchanged, verify its archive digest
+  on the pinned host, then decompress into the existing tar-hash/image/runtime installer there.
+  Preserve image/runtime receipt probes, exact-SHA/ABI guards and fail-closed staging cleanup.
 - Change the left-frame title from `Gündemdeki başlıklar` to `Son` and use the recent feed on both
   desktop and mobile.
 - Show source health, rejection-class distribution and the reason for `PARTIAL` beside each run.

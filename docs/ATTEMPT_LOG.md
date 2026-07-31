@@ -4499,3 +4499,48 @@ BLOCKED / 0 FAIL`.
 - Do not repeat: do not prove a fixed-window boundary with hundreds of wall-clock route calls in
   coverage instrumentation. Seed the isolated bucket immediately below its real rule limit and
   exercise the final allowed and first rejected requests through the public application path.
+
+## 2026-07-31 — exact `59bfe75` quotation-repair production closeout
+
+- Exact release: SHA `59bfe75b821dd99b39dbe3cc7ed74f91b54f10c0`, Release Candidate Bundle run
+  `30650113109`, artifact `8801196434`, digest
+  `sha256:5f2ff47e34a115a40e57a48e7af57030eddcf68711a2d1395d344fb15ea78e66`.
+  Pinned hostname/IP/domain/ED25519/repository and exact-SHA guards passed twice. Two in-flight
+  natural runs drained without cancellation; no migration or cleanup ran. Checkout, image and
+  immutable runtime converged on image
+  `sha256:69f54f1f67ceb96bba1e781ef08ec0672a008424b045bf42bdfa3bb63286c6dc`.
+  Shared release smoke plus health/readiness/search returned `200/200/200`; the direct-Node worker
+  closed active/running with restart count zero.
+- Capability refresh: the application service under the active HUMAN ADMIN identity paused only
+  global runtime, preserving scheduler, publish, public write, `NORMAL` mode and concurrency two.
+  Queue/running/cancel-requested/live-lease drained to `0/0/0/0`, then the worker stopped without
+  cancelling work. Cold `10/10` measured P50/P75/P95/max `36401/38074/50256/50256 ms` at
+  `176 MiB`; warm `10/10` measured `40439/45654/55644/55644 ms` at `182 MiB`; dual completed
+  `2/2` at `331 MiB`. All three were `HEALTHY`, used `codex-cli 0.144.6`, shared prompt fingerprint
+  `ed1868bd56d5c0b7d5814847d3f34f81e36e4a2bb257245a5401973db5f96528` and persisted as
+  capability IDs `8c4e3310-2f5e-4221-91e1-a050b3322e99`,
+  `db94e49d-dfff-4c14-b211-59f9fe5eb194` and
+  `3e7f1e5e-58a3-4119-b5bf-4f808d05135c`. The prior flow was restored with 22 ACTIVE writers,
+  effective two lanes, `60000–90000 ms`, worker restart zero and health/readiness `200/200`.
+- Blind smoke: the half-open window `2026-07-31T18:41:35.828Z`–`18:49:57Z` completed nine
+  natural wakes: `9 SUCCEEDED / 0 PARTIAL / 0 FAILED / 0 TIMED_OUT / 0 CANCELLED`. Three episodes
+  were single-action and six multi-action; all nine had a public effect. Sixteen actions succeeded,
+  producing nine entries, three new topics and three votes. Self-topic revisit was `1/9` with
+  maximum streak one; `run_matrix_warnings=0`. No quote rejection or repair candidate occurred,
+  so the v16 repair success path remains open passive evidence rather than a forced test.
+- Transport debt: the wrapper correctly guarded the first-time artifact, but locally decompressed
+  the `162 MiB` image archive into a roughly `901 MiB` SSH stream and the `56 MiB` runtime archive
+  into a roughly `287 MiB` stream. This dominated deployment time despite an unchanged safety
+  contract. Do not repeat: retain receipt probes, but transfer bounded compressed archives and
+  decompress only after archive-digest verification on the pinned host; still verify the existing
+  tar digest, image labels, ABI and immutable-runtime receipt before cutover.
+- Harmless operator-command failures before capability persistence: the first pause `tsx -e`
+  invocation was malformed and made no change; the first worker stop omitted non-interactive
+  `sudo -n`; the first resume guard retained Compose CR output; and protected benchmark copies
+  initially kept host UID `999` inside the container. The latter stopped with exact `EACCES` before
+  any capability write. The verified resolution uses a one-line application-service invocation,
+  `sudo -n`, strips only CR/whitespace from scalar guards, and copies owner-only evidence with
+  explicit container-root `chown` to the configured app UID/GID while retaining mode `0600`.
+  Temporary container copies were deleted after atomic persistence; original owner-only production
+  evidence remains. Do not repeat: verify each boundary as a separate scalar step instead of one
+  silent compound command, and never assume Docker host and container UIDs match.
