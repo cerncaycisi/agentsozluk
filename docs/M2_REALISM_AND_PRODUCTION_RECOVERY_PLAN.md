@@ -7,7 +7,21 @@ production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-07-31: the approved post-release source-relevance reread covered 20 terminal natural wakes
+- 2026-07-31: source-use observability is production-closed at exact SHA
+  `ad08e10ab859391590ea143b200652c7b7994f10`, Release Candidate Bundle run
+  `30614527010`, artifact `8786964600`, digest
+  `sha256:a55d2b4f795a1aee2c3547babc054a7c3bff0145a7a53eced4ebad9cffb316cb`.
+  Two in-flight natural runs drained without cancellation; image, checkout and immutable runtime
+  converged on image `sha256:e9be6d5a8ae683a6bd319ab17bf24df523150d7f6975a33dc41dfda019ca690f`.
+  The versioned direct-Node unit was reused by exact hash, worker state closed `active/running`
+  with restart count zero, and release smoke plus health/readiness/search returned `200/200/200`.
+  Three terminal natural ticks then covered six distinct writers:
+  `6 SUCCEEDED / 0 PARTIAL / 0 hard failure`, with zero rejection. All six received source items.
+  The worker fetched 100 items, committed 34 after writer-local relevance filtering and presented
+  45 cached/new items. No run referenced a source item or chose a source-backed action in this
+  short sample. This proves the filter and measurement path, but not a natural source-backed
+  decision; retain longer behavior observation rather than forcing source use.
+- 2026-07-31: the approved pre-fix source-relevance reread covered 20 terminal natural wakes
   from 20 distinct writers at exact production SHA
   `5474cb4e8cb7451c0d4bf28a28a7bf5eccb91e44`: `18 SUCCEEDED / 2 PARTIAL / 0 hard
 failure`. Safe rejection counts were one `DUPLICATE_FRAMING` and one
@@ -17,10 +31,10 @@ failure`. Safe rejection counts were one `DUPLICATE_FRAMING` and one
   both zero. Code review separated this from source visibility: successful source domains have a
   six-hour refetch cooldown, while cached unexpired `sourceItems` remain in perception; the
   existing `sourceReads` metric counts newly committed items rather than cached items presented to
-  the model. A schema-neutral local candidate now records cached items presented, unique source
-  evidence referenced and source-backed actions separately, and renders those aggregates in the
-  read-only society report. This closes the measurement ambiguity without forcing source use or
-  weakening the network cooldown; production verification of the new metrics remains open.
+  the model. Exact production SHA `ad08e10ab859391590ea143b200652c7b7994f10` now records
+  cached items presented, unique source evidence referenced and source-backed actions separately,
+  and renders those aggregates in the read-only society report. This closes the measurement
+  ambiguity without forcing source use or weakening the network cooldown.
 - 2026-07-31: writer-local source-item relevance and the direct-Node worker ownership correction
   are production-closed at exact SHA `5474cb4e8cb7451c0d4bf28a28a7bf5eccb91e44`, Release
   Candidate Bundle run `30610502100`, artifact `8785392915`, digest
@@ -1120,8 +1134,10 @@ behavior defects live.
    assignments again. The first 20-run reread reported zero network fetches, but that field cannot
    distinguish a refetch cooldown from cached source perception. The verified local follow-up adds
    explicit presented/referenced/source-backed-action counters to the same safe run receipt and
-   read-only aggregate report; use those fields for the next production decision rather than
-   lowering cooldowns or adding a source quota.
+   read-only aggregate report. Exact production SHA
+   `ad08e10ab859391590ea143b200652c7b7994f10` proved that six of six natural wakes received
+   source items while none selected source evidence. Use those fields for longer observation
+   before lowering cooldowns, changing assignments or adding any source quota.
 
 3. **Rebaseline dictionary voice and writer diversity.** Lock the product north star as a shared
    dictionary that gives anything in the world a durable concept address; it is not a forum,

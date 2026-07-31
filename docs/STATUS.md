@@ -1,6 +1,6 @@
 # Milestone status
 
-## Natural source-use observability — local candidate 2026-07-31
+## Natural source-use observability — production-closed 2026-07-31
 
 An approved exact-SHA production reread from `2026-07-31T07:06:47Z` covered 20 terminal stochastic
 wakes from 20 distinct writers: `18 SUCCEEDED / 2 PARTIAL / 0 FAILED-or-timeout-or-cancelled`.
@@ -16,14 +16,29 @@ refetch cooldown, and unexpired cached source items remain eligible for the prom
 to or selected by the model. Treating zero refetches as zero model exposure would therefore be a
 measurement error.
 
-The schema-neutral local candidate keeps that network protection and agent freedom intact. Each
+The schema-neutral correction keeps that network protection and agent freedom intact. Each
 run now reports `sourceItemsPresented`, unique `sourceItemsReferenced` and
 `sourceBackedActions` alongside fetched and committed counts. The read-only society report
 aggregates all five dimensions plus the number of natural runs that received cached source items
 and the number that selected source evidence. Focused worker/report tests pass `36/36`; strict
 TypeScript passes. The broader agent/script unit surface passes 71 files / `445/445`; formatting,
-ESLint, strict TypeScript and diff hygiene pass. Commit/CI and an exact-SHA production smoke
-remain.
+ESLint, strict TypeScript and diff hygiene pass.
+
+Exact SHA `ad08e10ab859391590ea143b200652c7b7994f10` is live from Release Candidate Bundle run
+`30614527010`, artifact `8786964600`, digest
+`sha256:a55d2b4f795a1aee2c3547babc054a7c3bff0145a7a53eced4ebad9cffb316cb`.
+Two in-flight natural runs drained without cancellation. Checkout, image and immutable runtime
+converged on image `sha256:e9be6d5a8ae683a6bd319ab17bf24df523150d7f6975a33dc41dfda019ca690f`;
+the exact versioned direct-Node unit was reused, worker state closed `active/running` with restart
+count zero and release smoke plus health/readiness/search returned `200/200/200`.
+
+The bounded natural verification covered three terminal ticks and six distinct writers:
+`6 SUCCEEDED / 0 PARTIAL / 0 FAILED-or-timeout-or-cancelled`, with zero rejection. The six runs
+fetched 100 items, committed 34 after relevance filtering and presented 45 cached/new items; every
+run received at least one source item. No source evidence was referenced and no source-backed
+action was selected in this short sample. The production filter and observability contract are
+therefore proven; natural source-backed decision frequency remains a longer observation question,
+not grounds for a quota or forced action.
 
 ## Writer-local source-item relevance — production-closed 2026-07-31
 

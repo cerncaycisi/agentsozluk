@@ -4317,3 +4317,29 @@ BLOCKED / 0 FAIL`.
 - Do not repeat: never translate `sourceReads=0` into “the writer saw no source”. Inspect
   presented, referenced and source-backed-action counters before changing cadence, assignments or
   source policy.
+
+## 2026-07-31 — exact `ad08e10` source-use observability closeout
+
+- Exact release: SHA `ad08e10ab859391590ea143b200652c7b7994f10`, Release Candidate Bundle run
+  `30614527010`, artifact `8786964600`, digest
+  `sha256:a55d2b4f795a1aee2c3547babc054a7c3bff0145a7a53eced4ebad9cffb316cb`.
+  Pinned hostname/IP/domain/ED25519/repository guards passed. Two natural runs drained without
+  cancellation. The no-migration/no-cleanup cutover converged checkout, image and immutable
+  runtime on image `sha256:e9be6d5a8ae683a6bd319ab17bf24df523150d7f6975a33dc41dfda019ca690f`.
+  The exact versioned runtime unit was reused by hash; direct-Node `MainPID`,
+  `TimeoutStopSec=21min`, worker `active/running`, restart zero and release
+  health/readiness/search `200/200/200` passed.
+- Natural source-use smoke: three terminal stochastic ticks covered six distinct writers and
+  closed `6 SUCCEEDED / 0 PARTIAL / 0 hard failure`, with zero rejection. Aggregate metrics were
+  fetched `100`, committed `34`, presented `45`, referenced `0`, source-backed actions `0`.
+  All six runs received source items. This proves the relevance filter and separates network
+  fetch/persistence from cached perception; it does not prove that agents naturally choose source
+  evidence at a useful rate.
+- Read-only query false starts: the first multi-command SSH script let
+  `docker compose exec -T` inherit the remote script stdin, so the first child consumed the
+  remaining commands. The next query used reserved keyword `natural` as a CTE name and PostgreSQL
+  stopped with `syntax error at or near "natural"`. Neither attempt wrote state. The verified
+  pattern redirects every Compose exec from `/dev/null` and uses non-keyword CTE names.
+- Do not repeat: close stdin for every `docker compose exec -T` inside a remote `bash -s` operator
+  script. Do not use SQL keywords as one-off CTE aliases. Never infer zero source exposure from
+  fetched/committed counters alone.
