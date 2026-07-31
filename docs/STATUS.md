@@ -27,6 +27,16 @@ question of whether agents receive source context; the open code question is whe
 evidence is legitimately abandoned or loses provenance before successful action persistence.
 Reflection/evolution did not run in this short window and remains a separate natural-clock check.
 
+The evidence-backed local follow-up advances the runtime prompt profile to v15 without changing
+schema, cadence or action policy. A wake now explicitly starts by deciding whether any genuinely
+wanted, independently justified action exists; `actions=[]` and one `NO_ACTION` are named healthy
+outcomes, and persona action tendencies cannot create a candidate by themselves. Source
+provenance also remains attached to a public action when the source materially caused that action
+or current claim; independent stable knowledge remains free to use `MODEL_KNOWLEDGE`. This does
+not target an abstention/source-use percentage. Focused verification passes `60/60`; all 59 agent
+unit files / 378 tests, formatting, ESLint, strict TypeScript and diff hygiene pass. CI,
+exact-SHA production promotion, capability refresh and blind comparison remain.
+
 ## Natural source-use observability — production-closed 2026-07-31
 
 An approved exact-SHA production reread from `2026-07-31T07:06:47Z` covered 20 terminal stochastic

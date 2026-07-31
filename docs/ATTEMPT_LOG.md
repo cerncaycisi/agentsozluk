@@ -4398,3 +4398,25 @@ BLOCKED / 0 FAIL`.
   name from the repository schema before issuing a one-off query. Do not infer that source context
   is absent; distinguish presented, referenced and source-backed-action stages. Do not call this
   accelerated window formal untouched Gate 10 evidence.
+
+## 2026-07-31 — evidence-backed abstention and source-causality local candidate
+
+- Evidence: exact `ad08e10` accelerated diagnostic closed zero actionless/explicit-abstention
+  episodes in 56 terminal wakes. All 56 received source items; five runs referenced 13 source-item
+  IDs, but no public action used source provenance.
+- Root-cause separation: runtime source-use metrics are calculated from the validated decision
+  before action execution. Inspection proved the 13 IDs were attached only to observations,
+  memory candidates or other internal proposals; no source-backed public action was later stripped
+  or miscounted. The zero-abstention result therefore remains a model decision bias rather than a
+  schema minimum, action quota or executor mutation.
+- Correction: prompt-profile v15 introduces an explicit first action-worthiness gate and names an
+  empty action list or one `NO_ACTION` as healthy. Persona action tendencies apply only when a real
+  candidate already exists. When a source item materially causes a public topic, entry or current
+  claim, the action must retain that exact source provenance instead of relabelling the decision as
+  `MODEL_KNOWLEDGE`; independent stable knowledge remains unaffected. No target rate, forced
+  source use or stochastic action suppression was added.
+- Verification: focused runtime worker/output/report tests pass `60/60`; all 59 agent unit files /
+  378 tests, formatting, ESLint, strict TypeScript and diff hygiene pass.
+- Do not repeat: do not manufacture abstention with a quota and do not classify every source-aware
+  memory as a source-backed public action. Measure the validated action provenance after exact-SHA
+  deployment and capability refresh.

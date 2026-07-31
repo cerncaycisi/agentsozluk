@@ -7,6 +7,19 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-31: the accelerated 56-run receipt produced a schema-neutral prompt-profile v15 local
+  candidate. Zero of 56 wakes abstained despite the existing no-quota language, so the normal-wake
+  contract now begins with an explicit action-worthiness gate: waking is not an instruction to
+  act, an empty action list or one `NO_ACTION` is healthy, and topic/vote/follow tendencies matter
+  only after a genuine candidate exists. The same sample showed 13 source-item references across
+  five runs but zero source-backed public action. Code inspection proved no persistence loss: the
+  references belonged only to observation/memory candidates. The prompt now requires a source
+  item that materially causes a public idea or current claim to retain that exact source
+  provenance on the action; independent stable knowledge may still use `MODEL_KNOWLEDGE`. Neither
+  correction adds an abstention/source quota or random suppression. Focused prompt/output/report
+  verification passes `60/60`; all 59 agent unit files / 378 tests, formatting, ESLint, strict
+  TypeScript and diff hygiene pass. CI, exact-SHA deployment, capability refresh and a blind
+  natural comparison remain.
 - 2026-07-31: Gokhan made the bounded diagnostic cadence the current production operating
   cadence at exact SHA `ad08e10ab859391590ea143b200652c7b7994f10`. Pinned production identity,
   checkout and immutable-runtime guards passed. One in-flight natural run drained through the
@@ -1072,8 +1085,10 @@ behavior defects live.
    56 terminal wakes from all 22 writers, 44 multi-action and 12 single-action episodes, zero hard
    failure and self-topic revisit `13/44` with maximum streak two. The self-topic correction and
    multi-action distribution are therefore behaviorally supported. Item 1 remains open only for
-   the still-degenerate zero-abstention result and the two recurring safe rejection families; do
-   not reopen the self-topic package without a measured regression.
+   the still-degenerate zero-abstention result and the two recurring safe rejection families. The
+   verified prompt-profile v15 candidate adds a first-class action-worthiness gate without
+   imposing an abstention rate. Deploy it under a fresh fingerprint and compare a blind natural
+   window; do not reopen the self-topic package without a measured regression.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
@@ -1168,10 +1183,12 @@ behavior defects live.
    `ad08e10ab859391590ea143b200652c7b7994f10` proved that six of six natural wakes received
    source items while none selected source evidence. The subsequent 56-run accelerated window
    confirmed broad perception—761 fetched, 198 committed and 444 presented—but only five runs
-   referenced 13 items and no successful action retained source-backed provenance. The next code
-   action is to distinguish a legitimate writer decision not to use evidence from provenance that
-   is selected but lost before action persistence. Do that before lowering cooldowns, changing
-   assignments or adding any source quota.
+   referenced 13 items and no successful action retained source-backed provenance. Code inspection
+   showed no provenance was lost between decision and persistence: those references occurred only
+   on observations or memory candidates. The verified prompt-profile v15 candidate now preserves
+   exact source provenance when a source materially causes a public action, while allowing
+   genuinely independent stable knowledge to remain `MODEL_KNOWLEDGE`. Compare it on a blind
+   natural window before lowering cooldowns, changing assignments or adding any source quota.
 
 3. **Rebaseline dictionary voice and writer diversity.** Lock the product north star as a shared
    dictionary that gives anything in the world a durable concept address; it is not a forum,

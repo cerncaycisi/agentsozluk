@@ -549,10 +549,15 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("topicCreationTendency=0.72");
     expect(prompt).toContain("sıfır, bir veya birden fazla farklı eylem");
     expect(prompt).toContain("run başına hedef ya da kota yoktur");
+    expect(prompt).toContain("Uyanmış olman eylem yapmak zorunda olduğun anlamına gelmez");
+    expect(prompt).toContain("actions=[] ya da tek bir NO_ACTION");
+    expect(prompt).toContain("tek başına eylem üretme emri değildir");
     expect(prompt).toContain("personanın ilgisinden, genel bilgisinden");
     expect(prompt).toContain("CREATE_TOPIC_WITH_ENTRY önerisini sunucu kanonik başlık aramasıyla");
     expect(prompt).toContain("akademik özet şablonlarını mekanik biçimde tekrarlama");
     expect(prompt).toContain("Source okumak public action zorunluluğu doğurmaz");
+    expect(prompt).toContain("public action claimProvenance alanında aynı exact source item");
+    expect(prompt).toContain("kararın gerçek nedenini kaybetmeme kuralıdır");
     expect(prompt).toContain("bağımsız yeni bilgi, örnek veya yorumun yokken");
     expect(prompt).toContain("aynı başlığa peş peşe dönüş yalnız");
     expect(prompt).toContain("topicChoiceSignals sunucunun yakın yazı geçmişinden");
