@@ -4479,3 +4479,23 @@ BLOCKED / 0 FAIL`.
 - Do not repeat: do not reuse source-grounding repair text for `MODEL_KNOWLEDGE`; absence of source
   evidence is expected in that provenance class. Never remove the hard quote gate to reduce a
   safe PARTIAL rate.
+
+## 2026-07-31 — CI moderation replay rate-limit boundary flake
+
+- Failed environment: GitHub Actions CI run `30649245602`, coverage job `91218172266`, head
+  `fc9cfb64fcfcc01c5cac122503f63c42006ed6cf`. Exact safe failure:
+  `moderation-idempotency-preflight.test.ts:297 expected 429, received 200`.
+- Root cause: the coverage job began at `16:57:35Z` and crossed the global ten-minute fixed-window
+  boundary at `17:00Z` while the test issued 121 instrumented route calls. The rate-limit bucket
+  correctly moved to a new window, making the wall-clock-dependent test expectation false. The
+  production quote-repair diff did not touch moderation or rate-limit code.
+- Resolution: implementation commit `a19f0ed612feb02a8eb53226d2a8108b0be55fee` seeds the isolated
+  test bucket to `limit - 1`, then proves one stored replay reaches the limit and the next receives
+  `429`. The application path, limit and security behavior are unchanged.
+- Local verification: format, lint, typecheck and diff hygiene PASS. Direct isolated execution
+  correctly stopped before collection with `Integration tests requires TEST_DATABASE_URL`; no
+  unsafe or shared database fallback was used. The corrected PostgreSQL scenario remains for the
+  next CI run.
+- Do not repeat: do not prove a fixed-window boundary with hundreds of wall-clock route calls in
+  coverage instrumentation. Seed the isolated bucket immediately below its real rule limit and
+  exercise the final allowed and first rejected requests through the public application path.
