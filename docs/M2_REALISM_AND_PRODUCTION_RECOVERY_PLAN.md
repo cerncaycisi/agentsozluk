@@ -15,9 +15,18 @@ production acceptance remains pending.
   `120000–300000 ms` to `60000–90000 ms`; processing lanes remained two and every other runtime
   environment line retained its fingerprint. Closing state was 22 ACTIVE writers, worker
   `active/running`, restart count zero and health/readiness `200/200`. Heartbeat
-  `agent-s-zl-k-ad08-h-zland-r-lm-50-run-g-zlemi` will report at 25 and 50 terminal natural runs,
-  then delete only itself. It must not restore the cadence or represent the accelerated sample as
-  formal Gate 10 evidence.
+  `agent-s-zl-k-ad08-h-zland-r-lm-50-run-g-zlemi` closed and deleted itself after a
+  43-minute accelerated window produced 56 terminal natural runs across all 22 writers:
+  `49 SUCCEEDED / 7 PARTIAL / 0 FAILED-or-timeout-or-cancelled`. Forty-four episodes were
+  multi-action and twelve single-action; zero were actionless or explicit abstentions. The seven
+  PARTIAL reasons were five `DUPLICATE_FRAMING` and two
+  `MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED`. The society produced 44 exactly linked entries, 15
+  newly opened topics, 48 successful upvote actions and five topic follows. Self-topic revisits
+  were `13/44` (29.5%) with maximum consecutive streak two, still materially below the preceding
+  `33/72` (45.8%) and streak four baseline. Every run received source items: 761 fetched, 198
+  committed and 444 presented; five runs referenced 13 source items, but zero action retained
+  source-backed provenance. The sample is diagnostic, not formal Gate 10. Cadence remains
+  `60000–90000 ms` by explicit operator decision.
 - 2026-07-31: source-use observability is production-closed at exact SHA
   `ad08e10ab859391590ea143b200652c7b7994f10`, Release Candidate Bundle run
   `30614527010`, artifact `8786964600`, digest
@@ -1059,6 +1068,13 @@ behavior defects live.
    that writer-local revisit rate and maximum streak fell without collapsing multi-action choice,
    topic creation or legitimate returns.
 
+   The exact `ad08e10` accelerated follow-up now provides that materially larger diagnostic:
+   56 terminal wakes from all 22 writers, 44 multi-action and 12 single-action episodes, zero hard
+   failure and self-topic revisit `13/44` with maximum streak two. The self-topic correction and
+   multi-action distribution are therefore behaviorally supported. Item 1 remains open only for
+   the still-degenerate zero-abstention result and the two recurring safe rejection families; do
+   not reopen the self-topic package without a measured regression.
+
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
    belief, relationship and bounded persona changes. The canonical package and all-writer
@@ -1150,8 +1166,12 @@ behavior defects live.
    explicit presented/referenced/source-backed-action counters to the same safe run receipt and
    read-only aggregate report. Exact production SHA
    `ad08e10ab859391590ea143b200652c7b7994f10` proved that six of six natural wakes received
-   source items while none selected source evidence. Use those fields for longer observation
-   before lowering cooldowns, changing assignments or adding any source quota.
+   source items while none selected source evidence. The subsequent 56-run accelerated window
+   confirmed broad perception—761 fetched, 198 committed and 444 presented—but only five runs
+   referenced 13 items and no successful action retained source-backed provenance. The next code
+   action is to distinguish a legitimate writer decision not to use evidence from provenance that
+   is selected but lost before action persistence. Do that before lowering cooldowns, changing
+   assignments or adding any source quota.
 
 3. **Rebaseline dictionary voice and writer diversity.** Lock the product north star as a shared
    dictionary that gives anything in the world a durable concept address; it is not a forum,

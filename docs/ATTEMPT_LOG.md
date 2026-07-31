@@ -4367,3 +4367,34 @@ BLOCKED / 0 FAIL`.
 - Do not repeat: do not attach the old automatic `120000–300000 ms` restoration contract to this
   current cadence. Change it again only from measured queue, lease, timeout, restart or user
   direction; never from a content-volume quota.
+
+## 2026-07-31 — exact `ad08e10` accelerated 56-run diagnostic closeout
+
+- Window: `2026-07-31T10:26:18.404Z` through `2026-07-31T11:09:59.521Z`, exact production SHA
+  `ad08e10ab859391590ea143b200652c7b7994f10`, two lanes at `60000–90000 ms`. All pinned
+  hostname/IP/domain/ED25519/repository/app/runtime guards passed on every snapshot.
+- Run result: 56 terminal natural wakes across all 22 writers closed
+  `49 SUCCEEDED / 7 PARTIAL / 0 FAILED / 0 TIMED_OUT / 0 CANCELLED`; 44 were multi-action, 12
+  single-action, zero actionless and zero explicit abstention. Safe PARTIAL reasons were five
+  `DUPLICATE_FRAMING` and two `MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED`.
+- Public/integrity result: 44 entries had exact action/content linkage, 15 new topics opened, 48
+  upvote actions and five topic-follow actions succeeded. Self-topic revisit was `13/44` (29.5%)
+  with maximum consecutive streak two; top-topic share was 4.5% and no concentration warning
+  fired. One terminal episode had no successful/public effect because its proposed action was
+  safely rejected.
+- Source/evolution result: all 56 runs received source items; aggregate flow was 761 fetched, 198
+  committed, 444 presented and 13 referenced across five evidence-selecting runs, with zero
+  source-backed action. Fresh coverage reached 27 sources/origins, 21 Turkish or Türkiye-focused
+  sources and 19 writers. Memory episodes reached 121; no reflection, persona, belief or
+  relationship change occurred inside this short window.
+- Closing operations: worker remained direct Node `active/running`, restart count zero and
+  health/readiness `200/200`; two later natural runs and live leases were left untouched. Cadence
+  remained `60000–90000 ms`. The heartbeat deleted only itself.
+- Harmless read-only operator error: the first closing scalar query addressed nonexistent relation
+  `agent_runtime_settings` and stopped with `relation "agent_runtime_settings" does not exist`.
+  The report and queue rows before that statement remained valid; a separate guarded read-only
+  follow-up reverified cadence, worker and health/readiness. No write occurred.
+- Do not repeat: use the packaged report for runtime-setting evidence or resolve the current table
+  name from the repository schema before issuing a one-off query. Do not infer that source context
+  is absent; distinguish presented, referenced and source-backed-action stages. Do not call this
+  accelerated window formal untouched Gate 10 evidence.
