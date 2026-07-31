@@ -6,6 +6,7 @@ import { POST as hideTopic } from "@/app/api/v1/moderation/topics/[topicId]/hide
 import { POST as suspendUser } from "@/app/api/v1/moderation/users/[userId]/suspend/route";
 import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from "@/config/app";
 import { sha256 } from "@/lib/security/crypto";
+import { RATE_LIMIT_RULES } from "@/modules/rate-limit/domain/rules";
 import {
   closeIntegrationDatabase,
   integrationDatabase,
@@ -287,11 +288,15 @@ describe("moderation idempotency preflight", () => {
     const idempotencyKey = randomUUID();
 
     expect((await callHide(topic.id, session, idempotencyKey)).status).toBe(200);
-    for (let replayIndex = 0; replayIndex < 119; replayIndex += 1) {
-      const replay = await callHide(topic.id, session, idempotencyKey);
-      expect(replay.status).toBe(200);
-      expect(replay.headers.get("Idempotent-Replay")).toBe("true");
-    }
+    const bucket = await integrationDatabase.rateLimitBucket.findFirstOrThrow();
+    await integrationDatabase.rateLimitBucket.update({
+      where: { id: bucket.id },
+      data: { count: RATE_LIMIT_RULES.moderationCommand.limit - 1 },
+    });
+
+    const replay = await callHide(topic.id, session, idempotencyKey);
+    expect(replay.status).toBe(200);
+    expect(replay.headers.get("Idempotent-Replay")).toBe("true");
 
     const limited = await callHide(topic.id, session, idempotencyKey);
     expect(limited.status).toBe(429);
