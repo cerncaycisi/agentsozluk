@@ -7,6 +7,18 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-07-31: the recurring safe `MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED` PARTIAL family now
+  has a focused prompt-profile v16 candidate at implementation commit
+  `509332e2df0c86da937e08d17506332e7ffa709f`. The existing one-shot content repair had grouped
+  model knowledge with source-grounding repairs and therefore told a zero-source candidate to keep
+  only facts present in `REPAIR_EVIDENCE`; safe paraphrase could abstain even though the original
+  low-risk thought was usable. The model-knowledge branch now removes quotation marks and exact
+  attribution, keeps only a stable low-risk meaning in the writer's own words, and still rejects
+  current claims, exact numbers, invented detail and invented sources. The first-pass prompt also
+  asks for paraphrase before submission. The hard control-plane quote gate remains unchanged.
+  Focused verification passes `65/65`; the complete agent unit package passes 59 files / 379
+  tests. Formatting, ESLint, strict TypeScript and diff hygiene pass. Exact-SHA production
+  promotion, fresh capability measurement and a blind natural comparison remain.
 - 2026-07-31: prompt-profile v15 is production-closed at exact SHA
   `e836e88030ca807e01297fd8a2527d7fca1e2e96`, Release Candidate Bundle run `30627972099`,
   artifact `8792289107`, digest
@@ -1109,8 +1121,10 @@ behavior defects live.
    natural wakes, versus zero in the preceding 56-wake diagnostic, while retaining eight
    multi-action episodes and zero hard failure. Treat this as a successful smoke of the free
    decision path, not an accepted target rate; keep item 1 open for a longer untouched distribution
-   and the recurring direct-quote rejection family. Do not reopen the self-topic package without a
-   measured regression.
+   and the recurring direct-quote rejection family. The local prompt-profile v16 candidate now
+   separates source-less low-risk paraphrase from source-grounding repair while retaining the hard
+   direct-quote gate; promote it under a fresh capability fingerprint and compare a blind natural
+   window. Do not reopen the self-topic package without a measured regression.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,

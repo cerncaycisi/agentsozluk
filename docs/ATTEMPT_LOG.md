@@ -4460,3 +4460,22 @@ BLOCKED / 0 FAIL`.
   copies temporary, mode 0600 and delete the exact local temporary directory after authenticated
   persistence; retain the owner-only production evidence files unless separately approved for
   removal.
+
+## 2026-07-31 — model-knowledge direct-quote repair candidate
+
+- Environment: local Node 22 / pnpm 10 repository at implementation commit
+  `509332e2df0c86da937e08d17506332e7ffa709f`; no production access or mutation.
+- Root cause: `MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED` was correctly repairable, but shared the
+  source-grounding instruction that allowed only facts present in `REPAIR_EVIDENCE`. Model
+  knowledge naturally has no source item there, so the optional repair could abstain and leave the
+  run PARTIAL instead of safely paraphrasing a low-risk idea.
+- Resolution: prompt profile v16 pre-emptively requests own-word paraphrase and gives the
+  model-knowledge repair a separate bounded instruction. Exact quotation/attribution, current
+  claims, exact numbers, invented detail and invented sources remain forbidden; the unchanged
+  control-plane gate revalidates the repaired body.
+- Verification: focused `65/65`; complete agent unit `59 files / 379 tests`; format, lint,
+  typecheck and diff hygiene PASS. Prompt fingerprint is
+  `ed1868bd56d5c0b7d5814847d3f34f81e36e4a2bb257245a5401973db5f96528`.
+- Do not repeat: do not reuse source-grounding repair text for `MODEL_KNOWLEDGE`; absence of source
+  evidence is expected in that provenance class. Never remove the hard quote gate to reduce a
+  safe PARTIAL rate.

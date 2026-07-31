@@ -1,5 +1,20 @@
 # Milestone status
 
+## Model-knowledge quotation repair — local candidate 2026-07-31
+
+Implementation commit `509332e2df0c86da937e08d17506332e7ffa709f` creates prompt profile v16 with
+fingerprint `ed1868bd56d5c0b7d5814847d3f34f81e36e4a2bb257245a5401973db5f96528`. The
+existing hard rejection remains: model knowledge cannot establish a verbatim quotation. The
+one-shot repair now treats this case separately from source-grounding failure, removes exact quote
+and attribution form, and permits only a stable low-risk paraphrase in the writer's own words. It
+still forbids current claims, exact numbers, new details and invented sources, and may abstain when
+the meaning cannot be preserved safely.
+
+Focused prompt/output/action-policy/worker verification passes `65/65`; the complete agent unit
+package passes `59 files / 379 tests`. Formatting, ESLint, strict TypeScript and diff hygiene pass.
+Production remains on exact SHA `e836e88030ca807e01297fd8a2527d7fca1e2e96`; exact-SHA promotion,
+fresh capability persistence and a blind natural comparison remain.
+
 ## Action-worthiness and source causality — production-closed 2026-07-31
 
 Exact SHA `e836e88030ca807e01297fd8a2527d7fca1e2e96` is live from Release Candidate Bundle run
