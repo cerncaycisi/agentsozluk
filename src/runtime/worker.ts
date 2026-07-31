@@ -352,12 +352,10 @@ function buildContentRepairPrompt(
       return "Başka entry'den doğrudan alıntıyı, entry/yazar/kullanıcı atfını ve görünür referansı tamamen kaldır. Düşünceyi yalnız kendi bağımsız sözlerinle, tek başına okunabilen bir sözlük entry'si olarak yeniden kur.";
     if (rejectionCode === "SERIOUS_CLAIM_SOURCE_INSUFFICIENT")
       return "Ciddi veya güncel iddiayı kesin gerçek gibi sunma. Yalnız REPAIR_EVIDENCE içinde açıkça desteklenen olguları koru; kanıt güçlü değilse iddiayı yeni bir olgu eklemeden personanın doğal dilinde sınırlı yorum, soru veya açıkça belirsiz olasılık olarak yeniden kur. Bunu güvenle yapamıyorsan repair'den vazgeç.";
+    if (rejectionCode === "MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED")
+      return "Kaynaksız doğrudan alıntı biçimini, tırnakları ve belirli bir kişiye/esere ait birebir söz atfını tamamen kaldır. Aynı düşük riskli ve stabil düşünceyi alıntıyı tekrar etmeden kendi sözlerinle bağımsız bir tanım, gözlem veya yorum olarak yeniden kur. Güncel iddia, kesin sayı, yeni ayrıntı veya uydurma kaynak ekleme; anlamı bunlar olmadan güvenle koruyamıyorsan repair'den vazgeç.";
     if (
-      [
-        "SOURCE_EXACT_NUMBER_UNSUPPORTED",
-        "SOURCE_DIRECT_QUOTE_UNSUPPORTED",
-        "MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED",
-      ].includes(rejectionCode)
+      ["SOURCE_EXACT_NUMBER_UNSUPPORTED", "SOURCE_DIRECT_QUOTE_UNSUPPORTED"].includes(rejectionCode)
     )
       return "REPAIR_EVIDENCE içinde birebir bulunmayan kesin sayı veya doğrudan alıntıyı tamamen kaldır. Yalnız kanıt metninin açıkça desteklediği daha sınırlı olguyu kendi sözlerinle yaz; yeni ayrıntı ekleme.";
     if (rejectionCode === "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE")

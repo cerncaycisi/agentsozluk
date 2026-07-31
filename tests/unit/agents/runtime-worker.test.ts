@@ -877,6 +877,13 @@ describe("long-lived agent runtime worker", () => {
       repairedRejectionCode: null,
       expectedOutcome: "SUCCEEDED",
     },
+    {
+      label: "MODEL_KNOWLEDGE direct quotation",
+      firstRejectionCode: "MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED",
+      repairedStatus: "SUCCEEDED",
+      repairedRejectionCode: null,
+      expectedOutcome: "SUCCEEDED",
+    },
   ])(
     "submits one body-only reconsideration after $label",
     async ({ firstRejectionCode, repairedStatus, repairedRejectionCode, expectedOutcome }) => {
@@ -1048,6 +1055,15 @@ describe("long-lived agent runtime worker", () => {
         expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
           "Ciddi veya güncel iddiayı kesin gerçek gibi sunma.",
         );
+      if (firstRejectionCode === "MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED") {
+        const repairPrompt = (provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0]
+          .prompt as string;
+        expect(repairPrompt).toContain("Kaynaksız doğrudan alıntı biçimini");
+        expect(repairPrompt).toContain("kendi sözlerinle bağımsız bir tanım, gözlem veya yorum");
+        expect(repairPrompt).not.toContain(
+          "REPAIR_EVIDENCE içinde birebir bulunmayan kesin sayı veya doğrudan alıntıyı tamamen kaldır.",
+        );
+      }
     },
   );
 
