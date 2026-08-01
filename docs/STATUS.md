@@ -1,5 +1,26 @@
 # Milestone status
 
+## Risk-based runtime coverage and report boundary — local-closed 2026-08-01
+
+Exact implementation SHA `273f81241ae78b2de2b7be58a8790d61a561c10e` expands the measured
+coverage surface from libraries/modules to the complete host runtime and the critical
+health/readiness, society pause/resume, lease, scheduler tick, heartbeat and terminal run route
+adapters. Runtime now has explicit `85/85/85/75` statement/line/function/branch floors; every
+selected route adapter requires 100% line coverage. The full PostgreSQL-backed coverage run passed
+`184 files / 1008 tests` at `92.72%` statements/lines, `84.09%` branches and `94.45%` functions.
+Runtime measured `88.37%` statements/lines, `77.41%` branches and `90.52%` functions; all selected
+routes measured 100% lines. Whole-tree formatting, ESLint, strict TypeScript and diff hygiene pass.
+
+The same package fixes a report-only boundary defect. Gate 10 cohorts runs by
+`AgentRun.createdAt` and permits those in-window runs to finish during the documented grace period,
+but the old action query discarded linked actions created or updated after the exclusive `to`
+boundary. A real `PARTIAL` could therefore appear as `UNEXPLAINED`. The report now retains every
+final linked action for the in-window run cohort and separately counts post-boundary action
+creation/update; content-by-day remains independently bounded by content creation time. The
+provider deadline test now uses a deterministic clock, removing a coverage-only 25 ms setup race
+without increasing the production timeout or weakening its assertion. Production was not accessed
+or changed; deployment and the packaged report smoke remain pending.
+
 ## Reflection evidence chain — production-closed 2026-08-01
 
 Exact implementation SHA `8202f5618fdec5206d127fd60a9e463fc18d7b7a` closes the missing causal

@@ -1515,6 +1515,23 @@ behavior defects live.
    page displayed the online worker, two configured lanes, active/idle slot state, safe duration
    fields, restart `0`, timeout `0` and no browser console error.
 
+   The risk-based coverage/reporting subpackage is local-closed at exact implementation SHA
+   `273f81241ae78b2de2b7be58a8790d61a561c10e`. Coverage now includes every host runtime file plus
+   health/readiness and the critical pause, resume, lease, scheduler tick, heartbeat, execute,
+   complete and fail route adapters. The runtime group has explicit `85/85/85/75`
+   statement/line/function/branch floors and the selected route adapters require 100% lines. A
+   full PostgreSQL-backed run passed `184 files / 1008 tests` at `92.72%` statements/lines,
+   `84.09%` branches and `94.45%` functions; runtime alone measured `88.37%` statements/lines,
+   `77.41%` branches and `90.52%` functions, while every selected route measured 100% lines.
+   The same package fixes the society report's terminalization-grace boundary: run outcomes are
+   selected by in-window `AgentRun.createdAt`, so a final linked rejection created or updated after
+   the exclusive observation boundary still explains its `PARTIAL` run instead of appearing as
+   `UNEXPLAINED`. Content-by-day remains bounded by content creation time. The Codex provider's
+   absolute-deadline regression now controls its clock deterministically and passes under coverage
+   load instead of spending a real 25 ms budget on instrumented filesystem setup. Production has
+   not been accessed for this subpackage; promote it with the next exact-SHA release before calling
+   the reporting correction production-closed.
+
 8. **Completed — public and moderation UI debt.** Complete the broader dictionary-style navigation
    benchmark and the remaining concrete mobile/moderation issues without changing the society
    runtime contract. The primary runtime-event feed must stop rendering every

@@ -4717,3 +4717,34 @@ BLOCKED / 0 FAIL`.
   natural flow or add/use a dedicated documented runtime-only control. Final state intentionally
   restored the original flow: runtime/scheduler/public-write enabled, mode `NORMAL`, 22 `ACTIVE`,
   concurrency 2 and queue zero at the closing authenticated snapshot.
+
+## 2026-08-01 — risk-based runtime coverage and report-boundary local closeout
+
+- Scope: repository-only verification/reporting work at exact implementation SHA
+  `273f81241ae78b2de2b7be58a8790d61a561c10e`. Production and public endpoints were not accessed;
+  no deploy, migration, restart, run or setting change occurred.
+- Report defect: the society report correctly selected runs by in-window `AgentRun.createdAt` and
+  waited terminalization grace, but selected actions by their own creation time and then excluded
+  actions updated after the exclusive window end. A linked post-boundary rejection could therefore
+  leave a real `PARTIAL` classified as `UNEXPLAINED`. Resolution: select actions through the
+  in-window run relation, retain their final status after grace and expose safe counts for actions
+  created/updated after the boundary. Keep content-day attribution independently bounded by the
+  content timestamp. Do not repeat: a grace-period run cohort and a content-by-day cohort are
+  different time semantics and must not share an action timestamp filter.
+- Coverage-only deadline failure: the original provider test spent a real 25 ms absolute deadline
+  on instrumented filesystem setup, so a full coverage run could time out before spawning all
+  three inspection children. Resolution: fake only the clock and timeout APIs after fixture setup,
+  wait on real event-loop turns for the three children, then advance the exact 25 ms deadline and
+  assert all three receive `SIGTERM`. The production timeout remains unchanged. Do not repeat:
+  micro-deadline tests must not depend on host/coverage setup latency.
+- Diagnostic environment stop: an initial integration coverage command omitted
+  `TEST_DATABASE_URL` and failed before its suite with exact error
+  `Integration tests requires TEST_DATABASE_URL.` The existing local PostgreSQL 16 listener and
+  role `gokhannihalgul` were then verified; the canonical allowlisted `agent_sozluk_test` database
+  was used. This was an invocation error, not a product failure. Do not repeat: pass the verified
+  local test URL explicitly for any direct integration/coverage invocation.
+- Coverage result: complete host runtime plus ten critical route adapters entered the configured
+  coverage surface. Full PostgreSQL-backed coverage passed `184 files / 1008 tests` at `92.72%`
+  statements/lines, `84.09%` branches and `94.45%` functions. Runtime measured `88.37%`
+  statements/lines, `77.41%` branches and `90.52%` functions; all selected routes measured 100%
+  lines. Formatting, ESLint, strict TypeScript and diff hygiene also passed.
