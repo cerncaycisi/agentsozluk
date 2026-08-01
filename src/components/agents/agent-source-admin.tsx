@@ -51,6 +51,35 @@ function errorMessage(error: unknown): string {
   return error instanceof ClientApiError ? error.message : "Source güncellenemedi.";
 }
 
+function timestamp(value: string | null): string {
+  if (!value) return "Henüz yok";
+  return new Intl.DateTimeFormat("tr-TR", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "Europe/Istanbul",
+  }).format(new Date(value));
+}
+
+function sourceHealth(source: AgentSourceAdminRow): { label: string; tone: string } {
+  if (source.adminBlocked || source.status === "BLOCKED")
+    return { label: "Engelli", tone: "border-destructive/40 bg-destructive/10 text-destructive" };
+  if (source.consecutiveFailures >= 3)
+    return {
+      label: `Kritik · ${source.consecutiveFailures} ardışık hata`,
+      tone: "border-destructive/40 bg-destructive/10 text-destructive",
+    };
+  if (source.consecutiveFailures > 0)
+    return {
+      label: `Sorunlu · ${source.consecutiveFailures} ardışık hata`,
+      tone: "border-warning/40 bg-warning/10 text-ink",
+    };
+  if (source.lastUsefulAt)
+    return { label: "Sağlıklı · faydalı öğe üretti", tone: "border-success/40 bg-success/10" };
+  if (source.lastFetchedAt)
+    return { label: "Erişildi · faydalı öğe yok", tone: "border-warning/40 bg-warning/10" };
+  return { label: "Henüz denenmedi", tone: "bg-page text-muted" };
+}
+
 export function AgentSourceAdmin({ rows }: { rows: AgentSourceAdminRow[] }) {
   return (
     <div className="space-y-4">
@@ -78,6 +107,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
+  const health = sourceHealth(source);
 
   async function update(body: Record<string, unknown>, message: string) {
     setPending(true);
@@ -118,6 +148,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
           <p className="mt-1 text-xs font-bold">{sourceLocaleFocusLabels[source.localeFocus]}</p>
         </div>
         <div className="flex gap-2 text-xs font-bold">
+          <span className={`rounded-lg border px-2 py-1 ${health.tone}`}>{health.label}</span>
           {source.adminPinned ? (
             <span className="rounded-lg border px-2 py-1">SABİTLENMİŞ</span>
           ) : null}
@@ -126,6 +157,20 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
           ) : null}
         </div>
       </div>
+      <dl className="mt-4 grid gap-3 rounded-xl bg-page p-3 text-xs sm:grid-cols-3">
+        <div>
+          <dt className="font-bold text-muted">Son erişim</dt>
+          <dd className="mt-1">{timestamp(source.lastFetchedAt)}</dd>
+        </div>
+        <div>
+          <dt className="font-bold text-muted">Son faydalı öğe</dt>
+          <dd className="mt-1">{timestamp(source.lastUsefulAt)}</dd>
+        </div>
+        <div>
+          <dt className="font-bold text-muted">Sağlık sinyali</dt>
+          <dd className="mt-1">{health.label}</dd>
+        </div>
+      </dl>
       <div className="mt-5 grid gap-3 sm:grid-cols-4">
         <label className="text-sm font-bold">
           Durum

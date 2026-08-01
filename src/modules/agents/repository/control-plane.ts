@@ -409,7 +409,30 @@ export function findAgentDetailRecord(
         },
       },
       sources: { orderBy: [{ adminPinned: "desc" }, { trustScore: "desc" }], take: 100 },
-      runs: { orderBy: { createdAt: "desc" }, take: 50 },
+      runs: {
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        select: {
+          id: true,
+          runType: true,
+          runStatus: true,
+          attempts: true,
+          createdAt: true,
+          errorCode: true,
+          errorSummary: true,
+          safeRunSummary: true,
+          actions: {
+            orderBy: { sequence: "asc" },
+            select: {
+              id: true,
+              actionType: true,
+              actionStatus: true,
+              rejectionCode: true,
+              rejectionReason: true,
+            },
+          },
+        },
+      },
       actions: {
         orderBy: { createdAt: "desc" },
         take: 200,
