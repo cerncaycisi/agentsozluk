@@ -7,6 +7,21 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-08-01: item 2 has a local reflection-evidence candidate at exact implementation SHA
+  `8202f5618fdec5206d127fd60a9e463fc18d7b7a`. New weekly persona deltas carry
+  exact frozen-perception evidence IDs; the worker and application validate the same set, and every
+  applied persona, belief, relationship or source-state event retains the causal IDs. Missing or
+  unseen evidence becomes safe `REJECTED_PERSONA_DELTA` rather than an unauditable change. Writer
+  detail and the read-only society report show safe reason plus linked-evidence and source
+  presented/referenced counts without reading narrative memory, source text, prompts or private
+  reasoning. Focused unit checks pass `70/70`, all agent unit tests pass `382/382`, the two affected
+  PostgreSQL suites pass `92/92`, and formatting, ESLint, strict TypeScript plus diff hygiene pass.
+  Production was not accessed; exact-SHA promotion and a natural weekly reflection smoke remain.
+- 2026-08-01: durable server-direct artifact transport merged through PR 20 at exact main SHA
+  `75fd1e421e8efd2c2eed35df72935a4558caf7ab`; push CI run `30714135661` passed all seven jobs.
+  Production remains on `bcb55f52a461359bd3712c486c32301686c27501`; promote the wrapper with the
+  next ordinary application release rather than creating a release only for transport code.
+
 - 2026-08-01: source/run observability is production-closed at exact merged SHA
   `bcb55f52a461359bd3712c486c32301686c27501`, from implementation SHA
   `edaf215ec7678694c15bd3d3c3d0a0e579989d8f`. Source cards now classify
@@ -1276,6 +1291,14 @@ behavior defects live.
    blind window presented 84 source items but selected no source evidence; the positive path is
    therefore still unobserved rather than failed. Continue natural observation before lowering
    cooldowns, changing assignments or adding any source quota.
+
+   The current local candidate adds the missing reconstructable provenance for future weekly
+   evolution. A non-null reflection proposal must cite exact IDs from the frozen perception
+   catalog; both the worker and server validate the link, and each resulting change event retains
+   the same evidence IDs. Moderation writer detail and the safe society report expose only the
+   safe change reason, distinct evidence count and source-presented/referenced counts. This closes
+   the code-side causal-chain gap after promotion; item 2 still needs a natural weekly reflection
+   that exercises the positive path and the remaining per-writer fresh-source floor evidence.
 
 3. **Rebaseline dictionary voice and writer diversity.** Lock the product north star as a shared
    dictionary that gives anything in the world a durable concept address; it is not a forum,
