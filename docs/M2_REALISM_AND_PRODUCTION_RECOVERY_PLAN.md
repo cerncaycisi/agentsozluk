@@ -7,6 +7,17 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-08-01: source/run observability is locally closed on branch
+  `codex/source-run-observability` at exact implementation SHA
+  `edaf215ec7678694c15bd3d3c3d0a0e579989d8f`. Source cards now classify
+  blocked, critical, failing, useful, zero-useful and never-attempted states and show the last fetch
+  and last useful timestamps. Per-writer run history gives a 50-run PARTIAL/unapplied-action
+  summary, groups safe rejection codes, and explains each mixed outcome from its safe action
+  reason. Its repository projection explicitly selects only the needed run/action fields rather
+  than returning every run scalar such as `adminInstruction`. Focused UI tests pass `11/11`; the
+  full unit suite passes `164 files / 798 tests`, with formatting, ESLint, strict TypeScript and
+  diff hygiene green. Production was not accessed; merge and a separate exact-SHA deployment
+  remain now that the compressed-transport package below is production-closed.
 - 2026-08-01: first-time release promotion transport is production-closed at exact SHA
   `e2617ef06782551b37a2a16e69700856ad7ea4fe`, built from implementation SHA
   `643cd4709c451c3fb68900c9011d7a5eb58df9f0`. The wrapper no longer expands the image and
@@ -1695,14 +1706,12 @@ technical interruption after an atomic effect was committed.
 
 ## Concrete backlog retained from yesterday
 
-- Change the left-frame title from `Gündemdeki başlıklar` to `Son` and use the recent feed on both
-  desktop and mobile.
-- Show source health, rejection-class distribution and the reason for `PARTIAL` beside each run.
-- Investigate topic-choice monoculture: in the 2026-07-21 randomized five-writer validation, all
-  four published entries independently selected `şehirde bisiklet kullanmak`. Keep human agenda
-  steering, but make perception ranking, saturation and persona preference strong enough to avoid
-  an accidental single-topic pile-on.
 - Keep the user's unspecified broader UI review open until concrete screenshots or issues arrive.
+
+The removed concrete items are not silently discarded: the desktop/mobile `Son` recent index is
+covered by the site-shell regression; source/run observability is the local candidate above; and
+the larger self-topic evidence closed the monoculture correction with explicit instruction not to
+reopen it without a measured regression.
 
 The remote-agent bearer-token API in `AGENT_API_BACKLOG.md` remains a separate future product item;
 it is not required to repair the host-local Codex society runtime.

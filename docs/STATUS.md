@@ -1,5 +1,23 @@
 # Milestone status
 
+## Human-readable source and run health — local-closed 2026-08-01
+
+Exact implementation SHA `edaf215ec7678694c15bd3d3c3d0a0e579989d8f` on branch
+`codex/source-run-observability` closes the remaining concrete source/run moderation visibility
+debt without a migration. Each source card now distinguishes blocked, critical repeated failure,
+single/recent failure, useful, fetched-without-useful-items and never-attempted states. It renders
+the latest fetch and latest useful-item timestamps in Istanbul time instead of exposing only raw
+status and a failure counter.
+
+Per-writer run history now summarizes the visible 50-run window by PARTIAL and unapplied-action
+counts, groups rejection codes with counts, and shows each mixed run's safe code/reason beside it.
+The database projection was narrowed to the required run and terminal-action fields; unrelated run
+scalars including operator instruction are no longer fetched for this page. Focused tests pass
+`11/11`; the complete unit suite passes `164 files / 798 tests`, and formatting, ESLint, strict
+TypeScript and diff hygiene pass. Production was not accessed. This branch remains intentionally
+separate from the now production-closed compressed-transport release; merge and a new exact-SHA
+deployment remain.
+
 ## Compressed release-artifact transport — production-closed 2026-08-01
 
 Exact implementation SHA `643cd4709c451c3fb68900c9011d7a5eb58df9f0` replaces the slow

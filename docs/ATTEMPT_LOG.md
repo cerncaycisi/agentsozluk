@@ -4597,3 +4597,19 @@ BLOCKED / 0 FAIL`.
   revalidated the API metadata and every internal receipt. Do not put a persistent GitHub token on
   production. A future direct-fetch lane may pass a short-lived redirect only through a
   non-logging channel and must preserve all current digest/size checks.
+
+## 2026-08-01 — source/run observability local closeout
+
+- Exact implementation SHA `edaf215ec7678694c15bd3d3c3d0a0e579989d8f` on branch
+  `codex/source-run-observability` adds human-readable source freshness/failure states and a
+  per-writer 50-run PARTIAL/rejection distribution. The run-history repository projection now
+  allowlists only the scalar and terminal-action fields rendered by the page, so unrelated fields
+  such as operator instruction are not fetched.
+- Verification: focused source/run UI tests passed `11/11`; the complete unit suite passed
+  `164 files / 798 tests`; formatting, ESLint, strict typecheck and `git diff --check` passed. One
+  first-pass test expected a zero-padded Turkish day (`01.08`) while the real `Intl` output was
+  `1.08`; the UI was correct and the deterministic fixture expectation was corrected. No product
+  behavior or production state changed during that failed assertion.
+- Production was not accessed. Do not repeat: do not infer source health from assignment/status
+  alone, do not make operators reconstruct PARTIAL from UUID-only events, and do not select every
+  run scalar for a summary page that needs only safe terminal fields.
