@@ -300,12 +300,28 @@ function runtimeDecisionUsesCatalog(
   const allowed = Object.fromEntries(
     runtimeEvidenceTypes.map((evidenceType) => [evidenceType, new Set(catalog[evidenceType])]),
   ) as Record<RuntimeEvidenceType, Set<string>>;
-  return decision.actions.every((action) => {
-    if (action.actionType === "NO_ACTION" || !action.provenance) return true;
-    return action.provenance.evidenceIds.every((id) =>
-      allowed[action.provenance!.evidenceType].has(id),
+  const provenanceUsesCatalog = (candidate: {
+    provenance?: RuntimeDecision["actions"][number]["provenance"];
+  }) =>
+    !candidate.provenance ||
+    candidate.provenance.evidenceIds.every((id) =>
+      allowed[candidate.provenance!.evidenceType].has(id),
     );
-  });
+  const candidates = [
+    ...decision.actions.filter(({ actionType }) => actionType !== "NO_ACTION"),
+    ...decision.observations,
+    ...decision.memoryCandidates,
+    ...decision.beliefDeltas,
+    ...decision.relationshipDeltas,
+    ...decision.sourceProposals,
+  ];
+  if (!candidates.every(provenanceUsesCatalog)) return false;
+  if (!decision.reflectionDelta) return true;
+  const allAllowed = new Set(runtimeEvidenceTypes.flatMap((type) => [...allowed[type]]));
+  return (
+    decision.reflectionDelta.evidenceIds.length > 0 &&
+    decision.reflectionDelta.evidenceIds.every((id) => allAllowed.has(id))
+  );
 }
 
 const runtimeSourceEvidenceTypes = new Set([
@@ -314,7 +330,10 @@ const runtimeSourceEvidenceTypes = new Set([
   "MULTIPLE_SOURCES",
 ]);
 
-function runtimeSourceEvidenceUsage(decision: RuntimeDecision): {
+function runtimeSourceEvidenceUsage(
+  decision: RuntimeDecision,
+  catalog: RuntimeEvidenceCatalog,
+): {
   sourceItemsReferenced: number;
   sourceBackedActions: number;
 } {
@@ -339,6 +358,13 @@ function runtimeSourceEvidenceUsage(decision: RuntimeDecision): {
     ...decision.sourceProposals,
   ])
     collect(candidate);
+  const sourceEvidenceIds = new Set([
+    ...catalog.TRUSTED_SOURCE,
+    ...catalog.PROBATION_SOURCE,
+    ...catalog.MULTIPLE_SOURCES,
+  ]);
+  for (const evidenceId of decision.reflectionDelta?.evidenceIds ?? [])
+    if (sourceEvidenceIds.has(evidenceId)) referencedIds.add(evidenceId);
   return { sourceItemsReferenced: referencedIds.size, sourceBackedActions };
 }
 
@@ -962,7 +988,10 @@ export class AgentRuntimeWorker {
       if (!parsedDecision.success) throw parsedDecision.error;
       if (!decision || !runtimeDecisionUsesCatalog(decision, evidenceCatalog))
         throw new Error("RUNTIME_PROVENANCE_CATALOG_INVALID");
-      ({ sourceItemsReferenced, sourceBackedActions } = runtimeSourceEvidenceUsage(decision));
+      ({ sourceItemsReferenced, sourceBackedActions } = runtimeSourceEvidenceUsage(
+        decision,
+        evidenceCatalog,
+      ));
       const consolidationRun = isMemoryConsolidationRun(context);
       const personaReflectionRun = isPersonaReflectionRun(context);
       await this.#options.controlPlane.recordActions(

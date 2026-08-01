@@ -1,5 +1,24 @@
 # Milestone status
 
+## Reflection evidence chain — local-closed 2026-08-01
+
+Exact implementation SHA `8202f5618fdec5206d127fd60a9e463fc18d7b7a` closes the missing causal
+link between a weekly reflection decision and the persisted persona/belief/relationship/source
+changes it produces. Every new non-null
+`reflectionDelta` must now carry one to twenty exact evidence UUIDs from the frozen perception
+catalog. The worker validates those identifiers before execution and the application rechecks them
+against the persisted snapshot; missing or unobserved evidence closes the run `PARTIAL` with
+`REJECTED_PERSONA_DELTA` and a safe reason code. Applied evidence ids are copied to every resulting
+change event and the persona validation report, while old validation reports remain readable.
+
+The authenticated writer detail now shows the persisted safe change reason, distinct linked
+evidence count and source items presented/referenced for each reflection without selecting raw
+prompt, memory, source text or private reasoning. The read-only society report exposes the same
+evidence/source aggregates per writer and in its scalar summary. Focused unit checks passed `70/70`,
+the complete agent unit package passed `60 files / 382 tests`, and two real PostgreSQL suites passed
+`92/92` after all 24 migrations. Formatting, ESLint, strict TypeScript and diff hygiene pass. No
+production connection, migration, run or settings change was made for this candidate.
+
 ## Human-readable source and run health — production-closed 2026-08-01
 
 Exact implementation SHA `edaf215ec7678694c15bd3d3c3d0a0e579989d8f`, merged production SHA
@@ -37,7 +56,9 @@ exact byte count and digest, rejects unsafe ZIP paths/symlinks/special files, th
 manifest/archive/image/runtime/ABI receipt chain before cutover. Focused release-artifact tests pass
 `10/10`; shell syntax, formatting, ESLint, strict TypeScript and diff hygiene pass. The underlying
 server-direct flow is production-proven by the source/run deployment above; this durable wrapper
-revision itself has not yet been promoted and does not change application behavior.
+revision was merged to `main` as `75fd1e421e8efd2c2eed35df72935a4558caf7ab`; main CI run
+`30714135661` passed all seven jobs. It has not yet been promoted to production and does not change
+application behavior.
 
 ## Compressed release-artifact transport — production-closed 2026-08-01
 

@@ -35,6 +35,12 @@ describe("agent evolution summary", () => {
               label: "Değişiklik uygulandı",
               explanation: "Kontrollü değişiklik uygulandı.",
               tone: "positive",
+              safeChangeReason: "Görünür kanıtlar küçük bir değişimi destekledi.",
+              evidence: {
+                linkedEvidenceCount: 2,
+                sourceItemsPresented: 4,
+                sourceItemsReferenced: 1,
+              },
               changes: { persona: 1, belief: 2, relationship: 0, source: 1 },
             },
             {
@@ -50,6 +56,12 @@ describe("agent evolution summary", () => {
               label: "Persona değişimi beklenmiyordu",
               explanation: "Bu çalışma yalnız hafızayı toparladı.",
               tone: "neutral",
+              safeChangeReason: null,
+              evidence: {
+                linkedEvidenceCount: 0,
+                sourceItemsPresented: 0,
+                sourceItemsReferenced: 0,
+              },
               changes: { persona: 0, belief: 0, relationship: 0, source: 0 },
             },
           ],
@@ -62,6 +74,10 @@ describe("agent evolution summary", () => {
     expect(html).toContain("persona sürümü 1");
     expect(html).toContain("kanaat 2");
     expect(html).toContain("kaynak güveni 1");
+    expect(html).toContain("Güvenli değişim nedeni:");
+    expect(html).toContain("2 bağlantılı kayıt");
+    expect(html).toContain("4 kaynak item sunuldu");
+    expect(html).toContain("1 kaynak item referanslandı");
     expect(html).toContain("Persona değişimi beklenmiyordu");
     expect(html).toContain("Kalıcı state değişikliği kaydedilmedi.");
     expect(html).toContain("/moderasyon/agentlar/calisma/00000000-0000-4000-8000-000000000101");

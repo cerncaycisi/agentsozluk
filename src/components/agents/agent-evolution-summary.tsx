@@ -18,6 +18,12 @@ interface EvolutionOutcome {
   label: string;
   explanation: string;
   tone: "positive" | "neutral" | "warning";
+  safeChangeReason: string | null;
+  evidence: {
+    linkedEvidenceCount: number;
+    sourceItemsPresented: number;
+    sourceItemsReferenced: number;
+  };
   changes: {
     persona: number;
     belief: number;
@@ -95,6 +101,17 @@ export function AgentEvolutionSummary({
                   </Link>
                 </div>
                 <p className="mt-3">{outcome.explanation}</p>
+                {outcome.safeChangeReason ? (
+                  <p className="mt-2">
+                    <span className="font-bold">Güvenli değişim nedeni:</span>{" "}
+                    {outcome.safeChangeReason}
+                  </p>
+                ) : null}
+                <p className="mt-2 text-muted">
+                  Kanıt zinciri: {outcome.evidence.linkedEvidenceCount} bağlantılı kayıt ·{" "}
+                  {outcome.evidence.sourceItemsPresented} kaynak item sunuldu ·{" "}
+                  {outcome.evidence.sourceItemsReferenced} kaynak item referanslandı
+                </p>
                 {changed.length > 0 ? (
                   <p className="mt-2 font-bold">
                     Gerçek değişim:{" "}

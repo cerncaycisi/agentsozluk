@@ -2026,6 +2026,7 @@ describe("long-lived agent runtime worker", () => {
     });
     const reflectionDelta = {
       safeSummary: "Haftalık görünür kanıtlar merak düzeyinde küçük bir değişimi destekliyor.",
+      evidenceIds: [runId],
       interestDeltas: [],
       sourceTrustDeltas: [],
       relationshipTrustDeltas: [],

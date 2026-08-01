@@ -120,6 +120,20 @@ function settingsValueEqual(left: unknown, right: unknown): boolean {
   return false;
 }
 
+function safePerformanceCount(value: unknown, key: string): number {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return 0;
+  const record = value as Record<string, unknown>;
+  const reported = record.reported;
+  const metrics =
+    reported && typeof reported === "object" && !Array.isArray(reported)
+      ? (reported as Record<string, unknown>)
+      : record;
+  const candidate = metrics[key];
+  return typeof candidate === "number" && Number.isSafeInteger(candidate) && candidate >= 0
+    ? candidate
+    : 0;
+}
+
 export function listAgentSources(
   client: DatabaseExecutor,
   actor: ActorContext,
@@ -702,8 +716,21 @@ export async function getAgentDetail(
     if (!agent) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
     const evolutionOutcomes = evolutionRuns.map((run) => {
       const completion = run.runtimeEvents.find(({ eventType }) => eventType === "run.completed");
+      const personaChange = run.runtimeEvents.find(
+        ({ eventType }) => eventType === "PERSONA_CHANGED",
+      );
       const status = parseReflectionStatus(completion?.metadata);
       const copy = describeReflectionOutcome({ trigger: run.trigger, status });
+      const changeEvents = run.runtimeEvents.filter(({ eventType }) =>
+        [
+          "PERSONA_CHANGED",
+          "BELIEF_CHANGED",
+          "RELATIONSHIP_CHANGED",
+          "SOURCE_STATE_CHANGED",
+        ].includes(eventType),
+      );
+      const linkedEvidenceCount = new Set(changeEvents.flatMap(({ evidenceIds }) => evidenceIds))
+        .size;
       const eventCount = (eventType: string) =>
         run.runtimeEvents.filter((event) => event.eventType === eventType).length;
       return {
@@ -715,6 +742,18 @@ export async function getAgentDetail(
         finishedAt: run.finishedAt,
         status,
         ...copy,
+        safeChangeReason: personaChange?.safeMessage ?? null,
+        evidence: {
+          linkedEvidenceCount,
+          sourceItemsPresented: safePerformanceCount(
+            run.performanceMetrics,
+            "sourceItemsPresented",
+          ),
+          sourceItemsReferenced: safePerformanceCount(
+            run.performanceMetrics,
+            "sourceItemsReferenced",
+          ),
+        },
         changes: {
           persona: eventCount("PERSONA_CHANGED"),
           belief: eventCount("BELIEF_CHANGED"),

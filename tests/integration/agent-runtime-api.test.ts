@@ -3429,6 +3429,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
     const firstDelta = {
       safeSummary:
         "Haftalık görünür dijital kayıtlar küçük ve sınırlandırılmış state değişimlerini destekliyor.",
+      evidenceIds: [runId],
       interestDeltas: [],
       sourceTrustDeltas: [{ sourceId: source.id, delta: sourceDirection * 0.05 }],
       relationshipTrustDeltas: [{ targetUserId: fixture.admin.id, delta: 0.04 }],
@@ -3575,6 +3576,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       orderBy: { agentSequence: "asc" },
     });
     expect(reflectionLife).toHaveLength(4);
+    expect(reflectionLife.every(({ evidenceIds }) => evidenceIds.includes(runId))).toBe(true);
     expect(reflectionLife).toEqual([
       expect.objectContaining({
         eventType: "SOURCE_STATE_CHANGED",
@@ -3684,6 +3686,80 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ).toBe(2);
   });
 
+  it.each([
+    ["REFLECTION_EVIDENCE_REQUIRED", undefined],
+    ["REFLECTION_EVIDENCE_NOT_OBSERVED", [randomUUID()]],
+  ] as const)("rejects an unlinked persona delta with %s", async (reasonCode, evidenceIds) => {
+    const fixture = await createFixture();
+    await updateGlobalSettings(integrationDatabase, adminActor(fixture.admin.id), {
+      schedulerEnabled: false,
+    });
+    await integrationDatabase.agentRun.update({
+      where: { id: fixture.runs[0]!.id },
+      data: {
+        runType: "REFLECTION",
+        queuePriority: "MANUAL_SINGLE",
+        trigger: "WEEKLY_PERSONA_REFLECTION",
+        desiredEntryMin: 0,
+        desiredEntryMax: 0,
+        allowTopicCreation: false,
+        allowVoting: false,
+        allowFollowing: false,
+        allowSourceReading: false,
+      },
+    });
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = `reflection-evidence-${reasonCode.toLowerCase()}`;
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    const reflectionDelta = {
+      safeSummary: "Kanıt zinciri olmayan persona değişikliği güvenli biçimde reddedilmelidir.",
+      ...(evidenceIds ? { evidenceIds: [...evidenceIds] } : {}),
+      interestDeltas: [],
+      sourceTrustDeltas: [],
+      relationshipTrustDeltas: [],
+      beliefConfidenceDeltas: [],
+      temperamentDeltas: [{ key: "warmth" as const, delta: 0.01 }],
+      coreValueDeltas: [],
+    };
+    const completion = await completeRuntimeRun(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeCompleteSchema.parse({
+        workerId,
+        outcome: "SUCCEEDED",
+        state: completedRuntimeFastState,
+        reflectionDelta,
+        safeRunSummary: {
+          operationSummary: "Reflection provenance doğrulaması çalıştı.",
+          observedItemIds: [],
+          proposedActionCount: 0,
+          completedActionCount: 0,
+          rejectedActionCount: 0,
+          shortRationale: "Persona delta yalnız donmuş perception kanıtına dayanabilir.",
+        },
+        usageMetadata: { durationMs: 100, provider: "codex-cli" },
+        performanceMetrics: {},
+      }),
+    );
+    expect(completion).toMatchObject({
+      runStatus: "PARTIAL",
+      reflection: { status: "REJECTED_PERSONA_DELTA", reasonCode },
+    });
+    await expect(
+      integrationDatabase.agentPersonaVersion.count({
+        where: { agentProfileId: fixture.created.agent.profile.id },
+      }),
+    ).resolves.toBe(1);
+  });
+
   it("shares one Istanbul-week source score budget between admin and reflection writes", async () => {
     const fixture = await createFixture();
     await updateGlobalSettings(integrationDatabase, adminActor(fixture.admin.id), {
@@ -3742,6 +3818,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
         reflectionDelta: {
           safeSummary:
             "Görünür source için önerilen küçük trust değişimi ortak haftalık budget ile sınanır.",
+          evidenceIds: [runId],
           interestDeltas: [],
           sourceTrustDeltas: [{ sourceId: source.id, delta: sourceDirection * 0.05 }],
           relationshipTrustDeltas: [],
@@ -3832,6 +3909,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
         reflectionDelta: {
           safeSummary:
             "Görünür source trust değişimi önce reflection kanalından ortak haftalık budgeta yazılır.",
+          evidenceIds: [runId],
           interestDeltas: [],
           sourceTrustDeltas: [{ sourceId: source.id, delta: sourceDirection * 0.06 }],
           relationshipTrustDeltas: [],
@@ -3934,6 +4012,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
           state: completedRuntimeFastState,
           reflectionDelta: {
             safeSummary: "Frozen evolution bu geçerli deltayı uygulamadan bırakmalıdır.",
+            evidenceIds: [leased.run!.id],
             interestDeltas: [],
             sourceTrustDeltas: [],
             relationshipTrustDeltas: [],

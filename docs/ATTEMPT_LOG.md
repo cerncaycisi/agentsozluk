@@ -4655,3 +4655,33 @@ BLOCKED / 0 FAIL`.
   pnpm `10.34.5` lane then passed focused release-artifact tests `10/10`, shell syntax, formatting,
   ESLint, strict TypeScript and diff hygiene. Do not invoke bare `pnpm` in this workspace when the
   desktop runtime has prepended its bundled toolchain; pin `/opt/homebrew/bin` and Corepack.
+
+## 2026-08-01 — reflection evidence-chain local candidate
+
+- Scope: repository-only item-2 work from exact main SHA
+  `75fd1e421e8efd2c2eed35df72935a4558caf7ab`. No production/public endpoint, deploy, migration,
+  run, restart or setting mutation occurred.
+- Exact implementation SHA: `8202f5618fdec5206d127fd60a9e463fc18d7b7a`.
+- Root cause: reflection outcome and change counts were visible, but the non-null weekly
+  `reflectionDelta` carried no durable evidence-id set. Target visibility checks prevented invented
+  target IDs, yet the later operator could not reconstruct which frozen observations caused the
+  atomic persona/belief/relationship/source change bundle.
+- Resolution: require exact frozen-catalog evidence IDs on every new non-null reflection delta;
+  validate them in both worker and application; copy them to every resulting change event and the
+  persona validation report; expose only safe reason, linked-evidence count and source
+  presented/referenced counts in authenticated UI and read-only aggregate reporting. Legacy stored
+  validation reports parse with an empty compatibility default but cannot create a new unlinked
+  change.
+- First focused run returned `2 failed / 61 passed`: the old worker fixture omitted the newly
+  required evidence field and the component fixture omitted the new evidence summary. The worker
+  correctly failed before recording actions, proving the contract was fail-closed. Updating only
+  those fixtures produced focused `70/70` PASS.
+- Local Docker contexts `default`, `ayakizi` and `m1build` were already `Broken`; none was started,
+  reset or downloaded. The existing Homebrew PostgreSQL `16.14` listener was healthy. A uniquely
+  named allowlisted `_test` database received all 24 migrations, the affected integration suites
+  passed `92/92`, and the database was dropped with closing catalog count zero.
+- Final verification: all agent unit tests `60 files / 382 tests`, formatting, ESLint, strict
+  TypeScript and `git diff --check` PASS.
+- Do not repeat: do not treat a target's presence in perception as proof of causal support; persist
+  and validate the actual selected evidence IDs. Do not restart broken Colima profiles while the
+  existing local PostgreSQL 16 lane supplies the required isolated integration evidence.
