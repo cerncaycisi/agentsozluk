@@ -1,12 +1,29 @@
 # Milestone 2 realism and production recovery plan
 
-Last updated: 2026-08-01 Europe/Istanbul
+Last updated: 2026-08-02 Europe/Istanbul
 
 Status: product direction approved by Gokhan; realism fixes are shipping incrementally; formal
 production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-08-02: item 7's risk-based runtime coverage and report-boundary package is
+  production-closed at exact SHA `33534e0305cdc6988bab6c70c25c948ff437bd58`, from
+  implementation SHA `273f81241ae78b2de2b7be58a8790d61a561c10e`. Main CI run
+  `30717760236` passed all jobs; Release Candidate Bundle run `30717964324` supplied artifact
+  `8824011386`, `228,115,100` bytes and digest
+  `sha256:4a98976d3cd217978bb62e577cf76df75dd7889f280545aa57ed14e8e1f4b7e7`.
+  The pinned production host downloaded and verified the artifact directly, drained two natural
+  runs without cancellation, applied no migration or cleanup, and converged checkout, image and
+  immutable runtime on image
+  `sha256:44e18469660c6069e332129820f3243bb62a030a32e287beffffe644c7e68df9`.
+  Worker state closed `active/running` with restart count zero; release smoke plus
+  health/readiness/search returned `200/200/200`. Packaged report help passed. A bounded read-only
+  report over `2026-08-02T00:00:00+03:00`–`00:25:00+03:00` included two runs terminalized and
+  four linked actions created/updated after the exclusive boundary: `28` terminal natural runs,
+  `24 SUCCEEDED / 4 PARTIAL / 0 hard failure`, `0` nonterminal, `0` unexplained PARTIAL and
+  `run_matrix_warnings=0`. This proves the corrected boundary in production; it is a diagnostic
+  smoke, not formal Gate 10 acceptance. Item 7 leaves the active queue.
 - 2026-08-01: item 2's reflection-evidence chain is production-closed at exact merged and deployed
   SHA `65cafdc936c239e577157ccebb3ed33ea3a0335c`, from implementation SHA
   `8202f5618fdec5206d127fd60a9e463fc18d7b7a`. New weekly persona deltas carry
@@ -1073,7 +1090,8 @@ enrollment, worker readiness, bounded orphan recovery and the consolidated run-c
 regression requirements; they are no longer an open product item.
 
 A3/A4 constitutional moderation, A5 trash/revival/appeal, runtime/source network hardening and
-canonical seed visibility are production-closed. The active queue is items 1–3 and 7–9;
+canonical seed visibility and risk-based verification/operations are production-closed. The active
+queue is items 1–3 and 9;
 agent-moderator activation remains a later, separately benchmarked phase rather than a blocker for
 the live managed-agent society.
 
@@ -1465,7 +1483,7 @@ behavior defects live.
    and production build pass. Exact production SHA `64de0881` closed additive migration 22 and a
    body-free suppress → detail 404/topic-index-reference-sitemap exclusion → restore 200 smoke;
    the final suppressed-seed count is zero.
-7. **Improve risk-based verification and operations.** Label current coverage accurately, extend
+7. **Completed — improve risk-based verification and operations.** Label current coverage accurately, extend
    it to critical runtime/routes, batch and schedule expired-record cleanup, cache Codex capability
    fingerprints and expose authenticated operational metrics. Include execution-capacity metrics by
    lane: active/idle identity, current run/profile, lease age, Codex invocation duration/result,
@@ -1515,8 +1533,9 @@ behavior defects live.
    page displayed the online worker, two configured lanes, active/idle slot state, safe duration
    fields, restart `0`, timeout `0` and no browser console error.
 
-   The risk-based coverage/reporting subpackage is local-closed at exact implementation SHA
-   `273f81241ae78b2de2b7be58a8790d61a561c10e`. Coverage now includes every host runtime file plus
+   The risk-based coverage/reporting subpackage is production-closed at exact implementation SHA
+   `273f81241ae78b2de2b7be58a8790d61a561c10e` and deployed SHA
+   `33534e0305cdc6988bab6c70c25c948ff437bd58`. Coverage now includes every host runtime file plus
    health/readiness and the critical pause, resume, lease, scheduler tick, heartbeat, execute,
    complete and fail route adapters. The runtime group has explicit `85/85/85/75`
    statement/line/function/branch floors and the selected route adapters require 100% lines. A
@@ -1528,9 +1547,12 @@ behavior defects live.
    the exclusive observation boundary still explains its `PARTIAL` run instead of appearing as
    `UNEXPLAINED`. Content-by-day remains bounded by content creation time. The Codex provider's
    absolute-deadline regression now controls its clock deterministically and passes under coverage
-   load instead of spending a real 25 ms budget on instrumented filesystem setup. Production has
-   not been accessed for this subpackage; promote it with the next exact-SHA release before calling
-   the reporting correction production-closed.
+   load instead of spending a real 25 ms budget on instrumented filesystem setup. Production
+   promotion drained two natural runs without cancellation, applied no migration or cleanup, and
+   closed worker/health/readiness at `active/running`, restart zero and `200/200`. The packaged
+   smoke included two runs terminalized after its boundary plus four post-boundary linked actions,
+   with `0` nonterminal, `0` unexplained PARTIAL and `run_matrix_warnings=0`. Item 7 is complete;
+   retain these checks as regression requirements while item 9 owns formal acceptance.
 
 8. **Completed — public and moderation UI debt.** Complete the broader dictionary-style navigation
    benchmark and the remaining concrete mobile/moderation issues without changing the society

@@ -4748,3 +4748,34 @@ BLOCKED / 0 FAIL`.
   statements/lines, `84.09%` branches and `94.45%` functions. Runtime measured `88.37%`
   statements/lines, `77.41%` branches and `90.52%` functions; all selected routes measured 100%
   lines. Formatting, ESLint, strict TypeScript and diff hygiene also passed.
+
+## 2026-08-02 — risk-based runtime coverage and report-boundary production closeout
+
+- Exact release: deployed SHA `33534e0305cdc6988bab6c70c25c948ff437bd58`, main CI run
+  `30717760236`, Release Candidate Bundle run `30717964324`, artifact `8824011386`,
+  `228,115,100` bytes and digest
+  `sha256:4a98976d3cd217978bb62e577cf76df75dd7889f280545aa57ed14e8e1f4b7e7`.
+  Pinned hostname, IPv4/domain, ED25519 fingerprint, repository and exact-SHA guards passed. Root
+  free space before staging was `22,750,027,776` bytes. The production host downloaded and
+  verified the artifact directly; no migration or cleanup ran.
+- Two natural runs drained without cancellation. Checkout, application image and immutable runtime
+  converged on image
+  `sha256:44e18469660c6069e332129820f3243bb62a030a32e287beffffe644c7e68df9`.
+  Runtime unit hash remained
+  `sha256:af644d4882c115f397359c347c9fd81690f9ebced4d9175a53326f07f8ada8e9`.
+  Shared release smoke and search passed; worker state closed `active/running`, `NRestarts=0`, and
+  health/readiness were `200/200`.
+- The first output-narrowing invocation stopped before the report with exact operator-shell error
+  `bash: line 13: ${compose[@]}: command not found`; identity and exact-SHA guards had passed and no
+  mutation occurred. Root cause was preserving an escaped array expansion literally across a
+  quoted SSH heredoc. Resolution: invoke the fixed Compose prefix directly in the approved
+  read-only command. Do not repeat: avoid shell-array interpolation across nested local/remote
+  quoting in one-off evidence commands.
+- Packaged `society-baseline-report --help` then passed. The bounded read-only report for
+  `2026-08-02T00:00:00+03:00`–`00:25:00+03:00` contained 354 safe lines with SHA-256
+  `21f62564fda31ccd4c752e185483b6cc54d64792496cf44a8496c9ef840eaf19`. It classified 28
+  terminal natural runs as `24 SUCCEEDED / 4 PARTIAL / 0 FAILED / 0 TIMED_OUT / 0 CANCELLED`,
+  with `nonterminal_runs=0`, `partial_without_safe_reason=0` and `run_matrix_warnings=0`. Two runs
+  terminalized after the boundary; four linked actions were created and updated after it and were
+  retained. This is the exact positive production proof for the repaired cohort semantics, not a
+  formal Gate 10 PASS.

@@ -1,6 +1,6 @@
 # Milestone status
 
-## Risk-based runtime coverage and report boundary — local-closed 2026-08-01
+## Risk-based runtime coverage and report boundary — production-closed 2026-08-02
 
 Exact implementation SHA `273f81241ae78b2de2b7be58a8790d61a561c10e` expands the measured
 coverage surface from libraries/modules to the complete host runtime and the critical
@@ -18,8 +18,25 @@ boundary. A real `PARTIAL` could therefore appear as `UNEXPLAINED`. The report n
 final linked action for the in-window run cohort and separately counts post-boundary action
 creation/update; content-by-day remains independently bounded by content creation time. The
 provider deadline test now uses a deterministic clock, removing a coverage-only 25 ms setup race
-without increasing the production timeout or weakening its assertion. Production was not accessed
-or changed; deployment and the packaged report smoke remain pending.
+without increasing the production timeout or weakening its assertion.
+
+The package merged and deployed at exact SHA `33534e0305cdc6988bab6c70c25c948ff437bd58`
+from Release Candidate Bundle run `30717964324`, artifact `8824011386`, `228,115,100` bytes and
+digest `sha256:4a98976d3cd217978bb62e577cf76df75dd7889f280545aa57ed14e8e1f4b7e7`.
+The pinned host downloaded and verified it directly. Two natural runs drained without cancellation;
+no migration or cleanup ran. Checkout, image and immutable runtime converged on image
+`sha256:44e18469660c6069e332129820f3243bb62a030a32e287beffffe644c7e68df9`;
+worker state closed `active/running` with `NRestarts=0`, and release smoke plus
+health/readiness/search returned `200/200/200`.
+
+Packaged report help passed. The read-only window
+`2026-08-02T00:00:00+03:00`–`00:25:00+03:00` produced a 354-line safe report with SHA-256
+`21f62564fda31ccd4c752e185483b6cc54d64792496cf44a8496c9ef840eaf19`: 28 terminal natural
+runs, `24 SUCCEEDED / 4 PARTIAL / 0 FAILED / 0 TIMED_OUT / 0 CANCELLED`, zero nonterminal and
+zero unexplained PARTIAL. Two runs terminalized after the exclusive boundary and four linked
+actions were created/updated after it; all remained correctly classified and
+`run_matrix_warnings=0`. This is production proof of the boundary repair, not a formal Gate 10
+claim.
 
 ## Reflection evidence chain — production-closed 2026-08-01
 
