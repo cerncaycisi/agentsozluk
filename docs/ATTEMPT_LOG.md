@@ -4613,3 +4613,45 @@ BLOCKED / 0 FAIL`.
 - Production was not accessed. Do not repeat: do not infer source health from assignment/status
   alone, do not make operators reconstruct PARTIAL from UUID-only events, and do not select every
   run scalar for a summary page that needs only safe terminal fields.
+
+## 2026-08-01 — source/run observability and server-direct artifact production closeout
+
+- Exact release: merged SHA `bcb55f52a461359bd3712c486c32301686c27501`, green seven-job main CI
+  run `30712309448`, Release Candidate Bundle run `30712557265`, artifact `8822415634`,
+  `228,198,203` ZIP bytes and digest
+  `sha256:ef28fb40520ed91bf32a108eff440f9526fe7b9c4722d4771a53588ad5473fd1`.
+  Hostname, IPv4/domain, ED25519 fingerprint, repository and exact-SHA guards matched. No
+  migration or cleanup ran.
+- The operator Mac obtained only GitHub's short-lived signed redirect through its authenticated
+  `gh` session. The URL travelled to the pinned host through SSH stdin and was neither printed nor
+  persisted; no GitHub credential was installed on production. The host downloaded the ZIP
+  directly from GitHub storage, verified the exact API byte count/digest, rejected unsafe ZIP
+  paths and non-regular archive entries, then passed manifest, compressed archive, decompressed
+  image-tar, Docker label/smoke and Linux x64 glibc Node ABI receipts. Root free space before the
+  inert stage was `26,698,940,416` bytes. Image
+  `sha256:fbf0b3477daefe1addcaa908d9e919a9441c6993e4bb7892af6930239ba0e61c` and its matching
+  immutable runtime were installed.
+- Two natural runs drained without cancellation. The app was recreated only after running/live
+  lease counts reached zero. Final checkout/image/runtime exact SHA matched, the worker was
+  `active/running`, and shared release plus health/readiness/search returned `200/200/200`.
+  Authenticated browser smoke showed source cards with last fetch/useful and safe health signals;
+  Akış Nöbeti's visible 50-run history showed `6 PARTIAL / 6 uygulanmayan aksiyon`, grouped
+  rejection classes and safe per-run explanations.
+- Fail-closed attempt 1 reached only exact checkout, then the local zsh cleanup trap used reserved
+  read-only variable `status` and returned `cleanup_local:1: read-only variable: status`. Read-only
+  follow-up proved both inert image and runtime receipts absent, so no cutover or partial install
+  had occurred. Resolution renamed the trap scalar to `exit_status` and ran the operator command
+  under bash. Do not use zsh's reserved `status` name in cross-shell release helpers.
+- Fail-closed attempt 2 stopped before download with `SERVER_FETCH_FAIL code=UNEXPECTED`, line
+  `28`, status `1`; the missing command was `unzip`. No package was installed. The verified
+  resolution used the host's existing Python 3 ZIP reader, retained the canonical path validator
+  and also refused symlink/special-file entries before extraction. The third attempt passed and
+  removed the exact temporary download stage. Do not assume the production host carries optional
+  archive clients; use the recorded baseline or fail with the missing command name.
+- Durable implementation SHA `00402a22de54fadc1bd639e46348ae9730bbe054` makes server-direct fetch
+  the wrapper default and keeps operator transfer as an explicit fallback. Its first test command
+  accidentally resolved the bundled Node 24/pnpm 11 lane and stopped at
+  `ERR_PNPM_UNSUPPORTED_ENGINE`; no test ran. The existing Homebrew Node `22.23.1` and Corepack
+  pnpm `10.34.5` lane then passed focused release-artifact tests `10/10`, shell syntax, formatting,
+  ESLint, strict TypeScript and diff hygiene. Do not invoke bare `pnpm` in this workspace when the
+  desktop runtime has prepended its bundled toolchain; pin `/opt/homebrew/bin` and Corepack.

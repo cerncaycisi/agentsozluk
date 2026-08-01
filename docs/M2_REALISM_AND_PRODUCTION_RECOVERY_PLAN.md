@@ -7,8 +7,8 @@ production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-08-01: source/run observability is locally closed on branch
-  `codex/source-run-observability` at exact implementation SHA
+- 2026-08-01: source/run observability is production-closed at exact merged SHA
+  `bcb55f52a461359bd3712c486c32301686c27501`, from implementation SHA
   `edaf215ec7678694c15bd3d3c3d0a0e579989d8f`. Source cards now classify
   blocked, critical, failing, useful, zero-useful and never-attempted states and show the last fetch
   and last useful timestamps. Per-writer run history gives a 50-run PARTIAL/unapplied-action
@@ -16,8 +16,16 @@ production acceptance remains pending.
   reason. Its repository projection explicitly selects only the needed run/action fields rather
   than returning every run scalar such as `adminInstruction`. Focused UI tests pass `11/11`; the
   full unit suite passes `164 files / 798 tests`, with formatting, ESLint, strict TypeScript and
-  diff hygiene green. Production was not accessed; merge and a separate exact-SHA deployment
-  remain now that the compressed-transport package below is production-closed.
+  diff hygiene green. Main CI run `30712309448` closed all seven jobs green. Release Candidate
+  Bundle run `30712557265`, artifact `8822415634`, `228,198,203` ZIP bytes and digest
+  `sha256:ef28fb40520ed91bf32a108eff440f9526fe7b9c4722d4771a53588ad5473fd1`
+  were downloaded directly by the pinned production host and passed every ZIP/archive/image/runtime
+  receipt. Two natural runs drained without cancellation; no migration or cleanup ran. Checkout,
+  image and runtime converged on image
+  `sha256:fbf0b3477daefe1addcaa908d9e919a9441c6993e4bb7892af6930239ba0e61c`, the worker closed
+  `active/running`, and health/readiness/search returned `200/200/200`. Authenticated smoke proved
+  source freshness/usefulness/failure signals and Akış Nöbeti's 50-run summary with 6 PARTIAL,
+  6 unapplied actions and grouped safe reasons.
 - 2026-08-01: first-time release promotion transport is production-closed at exact SHA
   `e2617ef06782551b37a2a16e69700856ad7ea4fe`, built from implementation SHA
   `643cd4709c451c3fb68900c9011d7a5eb58df9f0`. The wrapper no longer expands the image and
@@ -1174,6 +1182,13 @@ behavior defects live.
    independent origins, including at least twenty Turkish-language or Türkiye-focused sources; each
    active agent receives at least ten healthy sources spanning at least five categories and six
    origins. A source counts toward these floors only after a fresh fetch yields usable items.
+   The human-readable observability prerequisite is production-closed at exact SHA `bcb55f52`.
+   Source cards distinguish blocked, repeated/recent failure, useful, fetched-without-useful and
+   never-attempted states with last fetch/useful timestamps. Per-writer history summarizes the
+   visible 50-run PARTIAL/unapplied-action distribution and explains safe rejection classes without
+   fetching operator instruction. Authenticated smoke proved both surfaces. Keep item 2 open for
+   the remaining fresh-source floors and causal memory/belief/relationship/persona evidence; do not
+   reopen this UI subpackage without a measured regression.
    The measured recent reflection sample closed 22/22 as
    `REJECTED_PERSONA_DELTA:PERSONA_PINNED_FIELD_CHANGED`; historical weekly evidence also contained
    13 pinned-field and two interest-normalization rejections. The approved local correction unlocks
@@ -1425,14 +1440,17 @@ behavior defects live.
    before/after evidence without ever pruning volumes, database data, active images or the
    current/previous immutable runtime releases.
 
-   The compressed first-time artifact transport is production-proven, but its control path still
-   downloads the protected Actions artifact to the operator Mac before uploading the verified
-   archives to production. A later bounded release-lane improvement may obtain the short-lived
-   GitHub redirect locally and let only the already pinned host fetch that one artifact directly.
-   It must keep the current API metadata and ZIP/archive digest receipts, never install a
-   persistent GitHub token on production, never print or retain the signed URL, and fail closed
-   before installation if the URL expires or any byte count/digest differs. This is an operations
-   latency improvement, not a Milestone 2 behavior blocker.
+   Server-direct artifact transport is production-proven by exact SHA `bcb55f52`: the operator
+   obtained only a short-lived GitHub redirect and the pinned host downloaded artifact
+   `8822415634` directly, matched all `228,198,203` ZIP bytes and GitHub's digest, rejected unsafe
+   archive types/paths and then passed the existing image/runtime receipts. No artifact byte crossed
+   the operator Mac. Exact implementation SHA `00402a22de54fadc1bd639e46348ae9730bbe054`
+   makes this the wrapper default and retains `--operator-transfer` only as an explicit fallback.
+   No persistent GitHub token is installed on production; the signed URL travels through stdin,
+   never argv or logs, and temporary header/download stages are removed. Focused tests pass
+   `10/10`; shell syntax, formatting, ESLint, strict TypeScript and diff hygiene pass. Promote this
+   non-behavioral wrapper revision with the next ordinary exact-SHA application release rather than
+   generating a release solely for the operator-side improvement.
 
    The bounded expired-record subpackage is now a local candidate. Each invocation deletes at most
    four ordered 500-row batches from `rate_limit_buckets` and `idempotency_records`, using

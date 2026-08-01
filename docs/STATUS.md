@@ -1,22 +1,43 @@
 # Milestone status
 
-## Human-readable source and run health — local-closed 2026-08-01
+## Human-readable source and run health — production-closed 2026-08-01
 
-Exact implementation SHA `edaf215ec7678694c15bd3d3c3d0a0e579989d8f` on branch
-`codex/source-run-observability` closes the remaining concrete source/run moderation visibility
-debt without a migration. Each source card now distinguishes blocked, critical repeated failure,
-single/recent failure, useful, fetched-without-useful-items and never-attempted states. It renders
-the latest fetch and latest useful-item timestamps in Istanbul time instead of exposing only raw
-status and a failure counter.
+Exact implementation SHA `edaf215ec7678694c15bd3d3c3d0a0e579989d8f`, merged production SHA
+`bcb55f52a461359bd3712c486c32301686c27501`, closes the remaining concrete source/run
+moderation visibility debt without a migration. Each source card now distinguishes blocked,
+critical repeated failure, single/recent failure, useful, fetched-without-useful-items and
+never-attempted states. It renders the latest fetch and latest useful-item timestamps in Istanbul
+time instead of exposing only raw status and a failure counter.
 
 Per-writer run history now summarizes the visible 50-run window by PARTIAL and unapplied-action
 counts, groups rejection codes with counts, and shows each mixed run's safe code/reason beside it.
 The database projection was narrowed to the required run and terminal-action fields; unrelated run
-scalars including operator instruction are no longer fetched for this page. Focused tests pass
-`11/11`; the complete unit suite passes `164 files / 798 tests`, and formatting, ESLint, strict
-TypeScript and diff hygiene pass. Production was not accessed. This branch remains intentionally
-separate from the now production-closed compressed-transport release; merge and a new exact-SHA
-deployment remain.
+scalars including operator instruction are no longer fetched for this page. Focused tests passed
+`11/11`; the complete unit suite passed `164 files / 798 tests`, and formatting, ESLint, strict
+TypeScript and diff hygiene passed. Main CI run `30712309448` closed all seven jobs green. Release
+Candidate Bundle run `30712557265` supplied artifact `8822415634`, `228,198,203` ZIP bytes and
+digest `sha256:ef28fb40520ed91bf32a108eff440f9526fe7b9c4722d4771a53588ad5473fd1`.
+The server downloaded and verified that artifact directly from GitHub, then installed image
+`sha256:fbf0b3477daefe1addcaa908d9e919a9441c6993e4bb7892af6930239ba0e61c` and the matching
+Linux x64 glibc runtime. Two natural runs drained without cancellation; no migration or cleanup
+ran. Final worker state was `active/running`, and health/readiness/search returned `200/200/200`.
+Authenticated browser smoke showed source freshness/usefulness/failure signals and Akış Nöbeti's
+50-run distribution with `6 PARTIAL / 6 uygulanmayan aksiyon`, grouped safe rejection codes and
+per-run explanations.
+
+## Server-direct release artifact transport — local-closed 2026-08-01
+
+Exact implementation SHA `00402a22de54fadc1bd639e46348ae9730bbe054` makes the production server
+the default artifact download endpoint; `--operator-transfer` remains an explicit fallback. The
+wrapper obtains a short-lived GitHub redirect through the authenticated local `gh` session and
+passes it only through SSH stdin. No token is installed on production, the signed URL is absent
+from argv/logs and temporary header/download stages are deleted. The pinned host validates the
+redirect host, requires at least 8 GiB root headroom, downloads the bounded ZIP, verifies GitHub's
+exact byte count and digest, rejects unsafe ZIP paths/symlinks/special files, then reuses the full
+manifest/archive/image/runtime/ABI receipt chain before cutover. Focused release-artifact tests pass
+`10/10`; shell syntax, formatting, ESLint, strict TypeScript and diff hygiene pass. The underlying
+server-direct flow is production-proven by the source/run deployment above; this durable wrapper
+revision itself has not yet been promoted and does not change application behavior.
 
 ## Compressed release-artifact transport — production-closed 2026-08-01
 
@@ -99,7 +120,7 @@ acceptance target.
 ## Current 60–90 second society cadence — production-closed 2026-07-31
 
 The cadence was established at exact production SHA `ad08e10ab859391590ea143b200652c7b7994f10`
-and is preserved through current exact SHA `59bfe75b821dd99b39dbe3cc7ed74f91b54f10c0`. Pinned
+and is preserved through current exact SHA `bcb55f52a461359bd3712c486c32301686c27501`. Pinned
 identity and release guards passed and one in-flight natural run drained without cancellation.
 Queue, running,
 cancel-requested and live-lease counts closed `0/0/0/0`. The runtime worker then changed only its
