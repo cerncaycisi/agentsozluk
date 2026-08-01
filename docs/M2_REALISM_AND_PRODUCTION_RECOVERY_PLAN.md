@@ -7,16 +7,24 @@ production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-08-01: first-time release promotion transport is locally closed at exact implementation
-  SHA `643cd4709c451c3fb68900c9011d7a5eb58df9f0`. The wrapper no longer expands the image and
+- 2026-08-01: first-time release promotion transport is production-closed at exact SHA
+  `e2617ef06782551b37a2a16e69700856ad7ea4fe`, built from implementation SHA
+  `643cd4709c451c3fb68900c9011d7a5eb58df9f0`. The wrapper no longer expands the image and
   runtime `.zst` archives before SSH. It transports each already bounded archive unchanged and
   passes the verifier-derived archive byte count and SHA-256 to the pinned-host installer. The
   installer caps the incoming stream, verifies exact bytes, archive digest and zstd integrity
   before decompression, then retains the existing image-tar digest, image label/smoke, runtime ABI,
   ownership, symlink and immutable-release checks. Exact staging cleanup remains fail-closed.
   Focused release-artifact tests pass `9/9`; the complete unit suite, formatting, ESLint, strict
-  TypeScript, shell syntax and diff hygiene pass. Production was not accessed; the next deployment
-  must prove the host `zstd` preflight and measure compressed transfer/cutover time.
+  TypeScript, shell syntax and diff hygiene pass. Release Candidate Bundle run `30693019076`,
+  artifact `8816406043` and ZIP digest
+  `sha256:ed02f84699eb701c8b0a29173a79992a028fe702d93ab9f1759accfd320681cf`
+  supplied a `228,062,913`-byte internal payload. The production installer accepted the
+  `169,656,846`-byte compressed image archive and matching runtime archive, proved host zstd plus
+  every existing image/runtime receipt, drained two natural runs without cancellation and applied
+  no migration or cleanup. Checkout, image and immutable runtime converged on image
+  `sha256:99f8d611798265d9f1633000ca0d4437b6012c95d7d734529be55267f072da8e`;
+  worker state closed `active/running` and health/readiness/search returned `200/200/200`.
 - 2026-07-31: prompt-profile v16 model-knowledge quotation repair is production-closed at exact
   SHA `59bfe75b821dd99b39dbe3cc7ed74f91b54f10c0`, Release Candidate Bundle run
   `30650113109`, artifact `8801196434`, digest
@@ -1405,6 +1413,15 @@ behavior defects live.
    unused application images and bound unused build cache after successful cutovers, and emit
    before/after evidence without ever pruning volumes, database data, active images or the
    current/previous immutable runtime releases.
+
+   The compressed first-time artifact transport is production-proven, but its control path still
+   downloads the protected Actions artifact to the operator Mac before uploading the verified
+   archives to production. A later bounded release-lane improvement may obtain the short-lived
+   GitHub redirect locally and let only the already pinned host fetch that one artifact directly.
+   It must keep the current API metadata and ZIP/archive digest receipts, never install a
+   persistent GitHub token on production, never print or retain the signed URL, and fail closed
+   before installation if the URL expires or any byte count/digest differs. This is an operations
+   latency improvement, not a Milestone 2 behavior blocker.
 
    The bounded expired-record subpackage is now a local candidate. Each invocation deletes at most
    four ordered 500-row batches from `rate_limit_buckets` and `idempotency_records`, using

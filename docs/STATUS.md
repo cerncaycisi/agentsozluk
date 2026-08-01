@@ -1,6 +1,6 @@
 # Milestone status
 
-## Compressed release-artifact transport — local-closed 2026-08-01
+## Compressed release-artifact transport — production-closed 2026-08-01
 
 Exact implementation SHA `643cd4709c451c3fb68900c9011d7a5eb58df9f0` replaces the slow
 first-time artifact path without weakening its receipts. The release wrapper now sends the bounded
@@ -12,10 +12,17 @@ release smoke, runtime ABI, ownership/mode, symlink and immutable-release valida
 temporary staging is removed on both success and failure.
 
 Focused release-artifact verification passes `9/9`; the complete unit suite, formatting, ESLint,
-strict TypeScript, shell syntax and diff hygiene pass. This is not yet a production receipt:
-production was not accessed, remains on exact SHA
-`59bfe75b821dd99b39dbe3cc7ed74f91b54f10c0`, and the next specifically approved cutover must
-verify the host zstd preflight and measure actual compressed transfer time.
+strict TypeScript, shell syntax and diff hygiene pass. Exact production SHA
+`e2617ef06782551b37a2a16e69700856ad7ea4fe` was promoted from Release Candidate Bundle run
+`30693019076`, artifact `8816406043`, ZIP digest
+`sha256:ed02f84699eb701c8b0a29173a79992a028fe702d93ab9f1759accfd320681cf`.
+The wrapper transferred the `169,656,846`-byte image archive and matching runtime archive in their
+already compressed form; the combined internal payload was `228,062,913` bytes instead of the
+former roughly `1.19 GiB` decompressed SSH stream. Host byte/digest/zstd, image-tar, image label,
+runtime ABI and immutable-release checks passed. Two natural runs drained without cancellation;
+no migration or cleanup ran. Checkout, image and runtime converged on image
+`sha256:99f8d611798265d9f1633000ca0d4437b6012c95d7d734529be55267f072da8e`, the worker closed
+`active/running`, and health/readiness/search returned `200/200/200`.
 
 ## Model-knowledge quotation repair — production-closed 2026-07-31
 

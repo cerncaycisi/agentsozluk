@@ -4563,3 +4563,37 @@ BLOCKED / 0 FAIL`.
   network transport, never trust a locally supplied compressed stream without rechecking its
   manifest-derived byte count and digest on the pinned host, and do not pass shell files to
   Prettier without an explicit supported parser.
+
+## 2026-08-01 — compressed artifact promotion production closeout
+
+- Exact release: SHA `e2617ef06782551b37a2a16e69700856ad7ea4fe`, Release Candidate Bundle run
+  `30693019076`, artifact `8816406043`, ZIP digest
+  `sha256:ed02f84699eb701c8b0a29173a79992a028fe702d93ab9f1759accfd320681cf`.
+  Complete push CI run `30692798655` was green. Pinned domain, hostname, ED25519 fingerprint,
+  repository and exact-SHA guards passed. No migration or cleanup ran.
+- Artifact receipt: GitHub reported `228,064,260` ZIP bytes and the verified internal bundle
+  reported `228,062,913` bytes. The installer received the `169,656,846`-byte image `.zst` and
+  matching runtime `.zst` unchanged, then rechecked exact byte counts, compressed digests and zstd
+  integrity on the host before decompression. Existing image-tar, image label, release smoke,
+  runtime ABI, ownership/mode and immutable-release checks all passed. This replaces the preceding
+  roughly `1.19 GiB` decompressed SSH stream with the bounded compressed payload.
+- Cutover result: two natural runs and their leases drained without cancellation. The app was
+  recreated only after queue/running/cancel-requested/live-lease reached `0/0/0/0`. Checkout,
+  image and immutable runtime converged on image
+  `sha256:99f8d611798265d9f1633000ca0d4437b6012c95d7d734529be55267f072da8e`.
+  The versioned direct-Node runtime unit was reused by exact hash; final worker state was
+  `active/running`, and shared release plus health/readiness/search closed `200/200/200`.
+- Fail-closed local preflight: the first wrapper invocation stopped before SSH because
+  `/private/tmp/agent-sozluk-known_hosts` did not exist. Rebuilding it with `ssh-keyscan` produced
+  one ED25519 key plus a comment line; an initial ad-hoc `wc -l = 1` check was therefore too
+  strict. No production command ran in either stop. The corrected check counts parsed ED25519 keys
+  through `ssh-keygen`, requires exactly one, verifies the pinned fingerprint, then installs the
+  mode-0600 temporary file. Do not treat ssh-keyscan comment lines as keys and never weaken strict
+  host checking to bypass a missing temporary file.
+- Slow artifact CDN: the authenticated public-repository Actions endpoint returned `401` without
+  credentials and delivered a single connection unusually slowly. A bounded local range download
+  retained only completed chunks, reassembled exactly `228,064,260` bytes and matched GitHub's
+  independent ZIP digest before the repository verifier accepted it. The official wrapper then
+  revalidated the API metadata and every internal receipt. Do not put a persistent GitHub token on
+  production. A future direct-fetch lane may pass a short-lived redirect only through a
+  non-logging channel and must preserve all current digest/size checks.
