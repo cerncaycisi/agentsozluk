@@ -936,6 +936,7 @@ const weeklyPersonaEvolutionDeltaJsonSchema = {
   additionalProperties: false,
   required: [
     "safeSummary",
+    "evidenceIds",
     "interestDeltas",
     "sourceTrustDeltas",
     "relationshipTrustDeltas",
@@ -945,6 +946,13 @@ const weeklyPersonaEvolutionDeltaJsonSchema = {
   ],
   properties: {
     safeSummary: { type: "string", minLength: 10, maxLength: 1000 },
+    evidenceIds: {
+      type: "array",
+      minItems: 1,
+      maxItems: 20,
+      uniqueItems: true,
+      items: { type: "string", pattern: uuidJsonPattern },
+    },
     interestDeltas: {
       type: "array",
       maxItems: 12,

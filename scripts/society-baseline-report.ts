@@ -82,6 +82,9 @@ interface AgentReflectionCoverage {
   stalePersona: number;
   rejectedPersonaDelta: number;
   unknown: number;
+  linkedEvidence: number;
+  sourceItemsPresented: number;
+  sourceItemsReferenced: number;
 }
 
 function help(): string {
@@ -147,6 +150,9 @@ function emptyAgentReflectionCoverage(): AgentReflectionCoverage {
     stalePersona: 0,
     rejectedPersonaDelta: 0,
     unknown: 0,
+    linkedEvidence: 0,
+    sourceItemsPresented: 0,
+    sourceItemsReferenced: 0,
   };
 }
 
@@ -234,6 +240,7 @@ async function main(): Promise<void> {
       relationships,
       personaVersions,
       reflectionEvents,
+      reflectionChangeEvents,
       profiles,
       lifecycleTransitions,
       dictionaryEvents,
@@ -411,10 +418,26 @@ async function main(): Promise<void> {
               runType: true,
               runStatus: true,
               errorCode: true,
+              performanceMetrics: true,
               agentProfile: { select: { user: { select: { username: true } } } },
             },
           },
         },
+      }),
+      database.agentRuntimeEvent.findMany({
+        where: {
+          occurredAt: { gte: window.from, lt: window.to },
+          eventType: {
+            in: [
+              "PERSONA_CHANGED",
+              "BELIEF_CHANGED",
+              "RELATIONSHIP_CHANGED",
+              "SOURCE_STATE_CHANGED",
+            ],
+          },
+          run: { runType: "REFLECTION", agentProfile: { lifecycleStatus: "ACTIVE" } },
+        },
+        select: { runId: true, evidenceIds: true },
       }),
       database.agentProfile.findMany({
         orderBy: { user: { username: "asc" } },
@@ -939,6 +962,13 @@ async function main(): Promise<void> {
     const reflectionPurposeCounts = new Map<string, number>();
     const reflectionFailureCodes = new Map<string, number>();
     const reflectionByAgent = new Map<string, AgentReflectionCoverage>();
+    const reflectionEvidenceByRun = new Map<string, Set<string>>();
+    for (const event of reflectionChangeEvents) {
+      if (!event.runId) continue;
+      const ids = reflectionEvidenceByRun.get(event.runId) ?? new Set<string>();
+      for (const evidenceId of event.evidenceIds) ids.add(evidenceId);
+      reflectionEvidenceByRun.set(event.runId, ids);
+    }
     const seenReflectionRuns = new Set<string>();
     for (const event of reflectionEvents) {
       if (!event.run || !event.runId || seenReflectionRuns.has(event.runId)) continue;
@@ -960,6 +990,15 @@ async function main(): Promise<void> {
       coverage.runs += 1;
       if (event.run.runStatus === "PARTIAL") coverage.partial += 1;
       if (["FAILED", "CANCELLED", "TIMED_OUT"].includes(event.run.runStatus)) coverage.failed += 1;
+      coverage.linkedEvidence += reflectionEvidenceByRun.get(event.runId)?.size ?? 0;
+      coverage.sourceItemsPresented += reportedPerformanceMetric(
+        event.run.performanceMetrics,
+        "sourceItemsPresented",
+      );
+      coverage.sourceItemsReferenced += reportedPerformanceMetric(
+        event.run.performanceMetrics,
+        "sourceItemsReferenced",
+      );
       incrementReflectionCoverage(coverage, status);
       reflectionByAgent.set(event.run.agentProfile.user.username, coverage);
     }
@@ -1213,6 +1252,9 @@ async function main(): Promise<void> {
           "stalePersona",
           "rejectedDelta",
           "unknown",
+          "linkedEvidence",
+          "sourcePresented",
+          "sourceReferenced",
         ],
         [...reflectionByAgent.entries()]
           .sort(([left], [right]) => left.localeCompare(right))
@@ -1228,6 +1270,9 @@ async function main(): Promise<void> {
             String(coverage.stalePersona),
             String(coverage.rejectedPersonaDelta),
             String(coverage.unknown),
+            String(coverage.linkedEvidence),
+            String(coverage.sourceItemsPresented),
+            String(coverage.sourceItemsReferenced),
           ]),
       ),
       "",
@@ -1346,6 +1391,9 @@ async function main(): Promise<void> {
         ),
       ),
       `active_agents_without_persona_reflection=${activeAgentsWithoutReflection}`,
+      `reflection_change_evidence_ids=${[...reflectionByAgent.values()].reduce((sum, coverage) => sum + coverage.linkedEvidence, 0)}`,
+      `reflection_sources.items_presented=${[...reflectionByAgent.values()].reduce((sum, coverage) => sum + coverage.sourceItemsPresented, 0)}`,
+      `reflection_sources.items_referenced=${[...reflectionByAgent.values()].reduce((sum, coverage) => sum + coverage.sourceItemsReferenced, 0)}`,
       `dictionary_links.traversed=${dictionaryEvents.length}`,
       `run_matrix_warnings=${warnings.length}`,
       ...[...new Set(warnings)].map((warning) => `WARNING ${warning}`),

@@ -375,6 +375,15 @@ async function applyRuntimeReflectionDelta(
       422,
       "Memory consolidation run'ı persona reflection delta uygulayamaz.",
     );
+  if (input.delta.evidenceIds.length === 0)
+    throw new AppError(
+      "VALIDATION_ERROR",
+      422,
+      "Persona reflection delta donmuş perception içinden en az bir kanıta bağlanmalıdır.",
+      undefined,
+      undefined,
+      { reasonCode: "REFLECTION_EVIDENCE_REQUIRED" },
+    );
   if (input.outcome !== "SUCCEEDED") return { status: "PARTIAL_RUN" as const };
   if (!input.globalEvolutionEnabled || !input.run.agentProfile.personaEvolutionEnabled)
     return { status: "FROZEN" as const };
@@ -430,6 +439,17 @@ async function applyRuntimeReflectionDelta(
   });
 
   const observedIds = collectSnapshotIds(input.run.perceptionSummary);
+  observedIds.add(input.run.id);
+  const unseenEvidenceId = input.delta.evidenceIds.find((id) => !observedIds.has(id));
+  if (unseenEvidenceId)
+    throw new AppError(
+      "VALIDATION_ERROR",
+      422,
+      "Persona reflection delta yalnız donmuş perception içinde görülen kanıtlara bağlanabilir.",
+      undefined,
+      undefined,
+      { reasonCode: "REFLECTION_EVIDENCE_NOT_OBSERVED" },
+    );
   const observedBeliefs = observedBeliefTopicKeys(input.run.perceptionSummary);
   const unseenSource = applied.delta.sourceTrustDeltas.find(
     ({ sourceId }) => !observedIds.has(sourceId),
@@ -540,6 +560,7 @@ async function applyRuntimeReflectionDelta(
       eventType: "SOURCE_STATE_CHANGED",
       subject: { type: "SOURCE", id: source.id },
       safeMessage: "Weekly reflection source trust state'ini kontrollü sınırlar içinde değiştirdi.",
+      evidenceIds: applied.delta.evidenceIds,
       before: { trustScore: source.previousTrustScore },
       after: { trustScore: source.trustScore },
       metadata: { origin: "REFLECTION", reason: applied.delta.safeSummary },
@@ -557,6 +578,7 @@ async function applyRuntimeReflectionDelta(
       },
       safeMessage:
         "Weekly reflection relationship trust state'ini kontrollü sınırlar içinde değiştirdi.",
+      evidenceIds: applied.delta.evidenceIds,
       confidence: relationship.trust,
       before: { trust: relationship.previousTrust },
       after: { trust: relationship.trust },
@@ -571,6 +593,7 @@ async function applyRuntimeReflectionDelta(
       subject: { type: "BELIEF", topicKey: belief.topicKey },
       safeMessage:
         "Weekly reflection belief confidence state'ini kontrollü sınırlar içinde değiştirdi.",
+      evidenceIds: applied.delta.evidenceIds,
       confidence: belief.confidence,
       before: { confidence: belief.previousConfidence, version: belief.version },
       after: { confidence: belief.confidence, version: belief.version + 1 },
@@ -654,6 +677,7 @@ async function applyRuntimeReflectionDelta(
     eventType: "PERSONA_CHANGED",
     subject: { type: "PERSONA", id: version.id },
     safeMessage: applied.delta.safeSummary,
+    evidenceIds: applied.delta.evidenceIds,
     before: {
       personaVersionId: input.run.personaVersion.id,
       version: input.run.personaVersion.version,

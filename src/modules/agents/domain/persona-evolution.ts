@@ -22,6 +22,12 @@ export const WEEKLY_PERSONA_EVOLUTION_BOUNDS = {
 
 const boundedDelta = (bound: number) => z.number().finite().min(-bound).max(bound);
 
+const evolutionEvidenceIdsSchema = z
+  .array(z.string().uuid())
+  .max(20)
+  .default([])
+  .transform((values) => [...new Set(values)]);
+
 const interestDeltaSchema = z
   .object({
     key: z.string().trim().min(2).max(100),
@@ -85,6 +91,10 @@ function addDuplicateIssue(values: string[], path: string, context: z.Refinement
 export const weeklyPersonaEvolutionDeltaSchema = z
   .object({
     safeSummary: z.string().trim().min(10).max(1000),
+    // Empty is accepted only for persisted pre-provenance validation reports. New runtime
+    // reflection proposals are rejected by the application service unless at least one frozen
+    // perception evidence id is present.
+    evidenceIds: evolutionEvidenceIdsSchema,
     interestDeltas: z.array(interestDeltaSchema).max(12),
     sourceTrustDeltas: z.array(sourceTrustDeltaSchema).max(20),
     relationshipTrustDeltas: z.array(relationshipTrustDeltaSchema).max(20),
@@ -163,7 +173,10 @@ function evolutionError(reasonCode: string, message: string, field: string): App
   });
 }
 
-type DeltaCollectionName = Exclude<keyof WeeklyPersonaEvolutionDelta, "safeSummary">;
+type DeltaCollectionName = Exclude<
+  keyof WeeklyPersonaEvolutionDelta,
+  "safeSummary" | "evidenceIds"
+>;
 
 const weeklyDeltaCollections = [
   { field: "interestDeltas", target: "key", bound: WEEKLY_PERSONA_EVOLUTION_BOUNDS.interest },

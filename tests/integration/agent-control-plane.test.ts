@@ -109,6 +109,9 @@ describe("agent control plane with PostgreSQL", () => {
         timeoutSeconds: 600,
         desiredEntryMin: 0,
         desiredEntryMax: 0,
+        performanceMetrics: {
+          reported: { sourceItemsPresented: 7, sourceItemsReferenced: 2 },
+        },
         createdAt: new Date("2026-07-28T08:00:00.000Z"),
         finishedAt: new Date("2026-07-28T08:01:00.000Z"),
       },
@@ -144,6 +147,7 @@ describe("agent control plane with PostgreSQL", () => {
           runId: weekly.id,
           eventType: "PERSONA_CHANGED",
           safeMessage: "Persona değişti.",
+          evidenceIds: [weekly.id],
           metadata: { origin: "REFLECTION" },
           occurredAt: weekly.finishedAt!,
         },
@@ -152,6 +156,7 @@ describe("agent control plane with PostgreSQL", () => {
           runId: weekly.id,
           eventType: "BELIEF_CHANGED",
           safeMessage: "Kanaat değişti.",
+          evidenceIds: [weekly.id],
           metadata: { origin: "REFLECTION" },
           occurredAt: weekly.finishedAt!,
         },
@@ -176,6 +181,12 @@ describe("agent control plane with PostgreSQL", () => {
           runId: weekly.id,
           status: "APPLIED",
           purpose: "PERSONA_EVOLUTION",
+          safeChangeReason: "Persona değişti.",
+          evidence: {
+            linkedEvidenceCount: 1,
+            sourceItemsPresented: 7,
+            sourceItemsReferenced: 2,
+          },
           changes: { persona: 1, belief: 1, relationship: 0, source: 0 },
         },
         {

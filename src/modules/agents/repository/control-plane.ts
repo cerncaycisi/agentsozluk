@@ -500,6 +500,7 @@ export function listAgentEvolutionRunsRecord(
       trigger: true,
       runStatus: true,
       errorCode: true,
+      performanceMetrics: true,
       createdAt: true,
       finishedAt: true,
       runtimeEvents: {
@@ -517,6 +518,8 @@ export function listAgentEvolutionRunsRecord(
         orderBy: [{ occurredAt: "asc" }, { id: "asc" }],
         select: {
           eventType: true,
+          safeMessage: true,
+          evidenceIds: true,
           metadata: true,
           occurredAt: true,
         },
