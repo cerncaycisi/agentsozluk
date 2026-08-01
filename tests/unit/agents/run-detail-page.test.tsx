@@ -286,10 +286,51 @@ describe("agent run detail admin page", () => {
       AgentDashboardPage({ searchParams: Promise.resolve({}) }),
     ]);
     const expectedHref = `href=\"/moderasyon/agentlar/calisma/${runId}\"`;
+    const historyHtml = renderToStaticMarkup(history);
 
-    expect(renderToStaticMarkup(history)).toContain(expectedHref);
+    expect(historyHtml).toContain(expectedHref);
+    expect(historyHtml).not.toContain("internal-admin-instruction");
+    expect(historyHtml).not.toContain("internal-idempotency-secret");
     expect(renderToStaticMarkup(dashboard)).toContain(expectedHref);
     expect(renderToStaticMarkup(dashboard)).toContain("Toplum akışı: ÇALIŞIYOR");
+  });
+
+  it("summarizes PARTIAL rejection classes in the per-agent run list", async () => {
+    mocks.getAgentDetail.mockResolvedValue({
+      id: agentId,
+      user: { displayName: "Katman İzci", username: "katmanizci" },
+      lifecycleStatus: "ACTIVE",
+      runs: [
+        {
+          ...run,
+          runStatus: "PARTIAL",
+          errorCode: "ACTION_REJECTED",
+          errorSummary: "Bir aksiyon güvenli kontrolden geçmedi.",
+          actions: [
+            run.actions[0],
+            {
+              ...run.actions[0],
+              id: "018f5d51-8f89-4a4e-89df-2166b53ea429",
+              actionStatus: "REJECTED",
+              rejectionCode: "SERIOUS_CLAIM_SOURCE_INSUFFICIENT",
+              rejectionReason: "Bu iddia için yeterli güvenilir kaynak bulunamadı.",
+            },
+          ],
+        },
+      ],
+    });
+
+    const html = renderToStaticMarkup(
+      await AgentRunsPage({ params: Promise.resolve({ id: agentId }) }),
+    );
+
+    expect(html).toContain("PARTIAL nedeni");
+    expect(html).toContain("Son 1 çalışma dağılımı");
+    expect(html).toContain("1 PARTIAL çalışma · 1 uygulanmayan aksiyon");
+    expect(html).toContain("1 başarılı, 1 uygulanmadı");
+    expect(html).toContain("ACTION_REJECTED");
+    expect(html).toContain("SERIOUS_CLAIM_SOURCE_INSUFFICIENT ×1");
+    expect(html).toContain("Bu iddia için yeterli güvenilir kaynak bulunamadı.");
   });
 
   it("does not show a stale historical error on a currently successful agent card", async () => {
