@@ -12,6 +12,7 @@ const pathFromRoot = (...parts: string[]) => path.join(root, ...parts);
 const assemblerPath = pathFromRoot("scripts/assemble-runtime-release.sh");
 const builderPath = pathFromRoot("scripts/build-release-bundle.sh");
 const installerPath = pathFromRoot("scripts/install-release-artifact-remote.sh");
+const githubInstallerPath = pathFromRoot("scripts/install-release-artifact-from-github-remote.sh");
 const archivePathValidatorPath = pathFromRoot("scripts/validate-release-archive-paths.awk");
 const verifierPath = pathFromRoot("scripts/verify-release-bundle.mjs");
 const wrapperPath = pathFromRoot("scripts/deploy-production-no-migration.sh");
@@ -19,6 +20,7 @@ const remotePath = pathFromRoot("scripts/production-release-remote.sh");
 const assembler = readFileSync(assemblerPath, "utf8");
 const builder = readFileSync(builderPath, "utf8");
 const installer = readFileSync(installerPath, "utf8");
+const githubInstaller = readFileSync(githubInstallerPath, "utf8");
 const archivePathValidator = readFileSync(archivePathValidatorPath, "utf8");
 const verifier = readFileSync(verifierPath, "utf8");
 const wrapper = readFileSync(wrapperPath, "utf8");
@@ -101,7 +103,14 @@ function sha256(value: Buffer) {
 
 describe("build-once exact-SHA release artifacts", () => {
   it("keeps every release artifact entrypoint syntax-valid", () => {
-    for (const script of [assemblerPath, builderPath, installerPath, wrapperPath, remotePath]) {
+    for (const script of [
+      assemblerPath,
+      builderPath,
+      installerPath,
+      githubInstallerPath,
+      wrapperPath,
+      remotePath,
+    ]) {
       expect(() => execFileSync("bash", ["-n", script])).not.toThrow();
     }
     expect(() => execFileSync(process.execPath, ["--check", verifierPath])).not.toThrow();
@@ -339,9 +348,36 @@ describe("build-once exact-SHA release artifacts", () => {
     expect(remote).not.toContain("/usr/bin/pnpm install --prod --frozen-lockfile");
   });
 
+  it("defaults to server-side GitHub artifact fetch without persisting credentials", () => {
+    expect(wrapper).toContain("artifact_transport=server-fetch");
+    expect(wrapper).toContain("--server-fetch");
+    expect(wrapper).toContain("--operator-transfer");
+    expect(wrapper).toContain("gh auth token");
+    expect(wrapper).toContain("max-redirs = 0");
+    expect(wrapper).toContain("ARTIFACT_REDIRECT_MISSING");
+    expect(wrapper).toContain("install-release-artifact-from-github-remote.sh");
+    expect(wrapper).toContain("printf '%s\\n' \"$signed_url\"");
+    expect(wrapper).not.toContain("Authorization: Bearer $signed_url");
+
+    expect(githubInstaller).toContain("curl --config -");
+    expect(githubInstaller).toContain("ARTIFACT_DOWNLOAD_FAILED");
+    expect(githubInstaller).toContain("ARTIFACT_SIZE_MISMATCH");
+    expect(githubInstaller).toContain("ARTIFACT_DIGEST_MISMATCH");
+    expect(githubInstaller).toContain("ARTIFACT_ZIP_PATH_INVALID");
+    expect(githubInstaller).not.toContain("stat.S_IFLNK");
+    expect(githubInstaller).toContain("file_type not in (0, stat.S_IFREG, stat.S_IFDIR)");
+    expect(githubInstaller).toContain("verify-release-bundle.mjs");
+    expect(githubInstaller).toContain("image-probe");
+    expect(githubInstaller).toContain("runtime-probe");
+    expect(githubInstaller).not.toContain("Authorization:");
+    expect(githubInstaller).not.toContain("gh auth token");
+    expect(githubInstaller).not.toMatch(/\bcurl[^\n]*\$signed_url/u);
+  });
+
   it("retains no secret material and removes only the exact successful local download", () => {
     expect(verifier).not.toMatch(/\b(?:token|password|cookie|secret)\b/iu);
     expect(installer).not.toMatch(/\b(?:token|password|cookie|secret)\b/iu);
+    expect(githubInstaller).not.toMatch(/\b(?:cookie|secret)\b/iu);
     expect(wrapper).not.toContain("source manifest.env");
     expect(wrapper).toContain('test "$artifact_dir" = "$expected_artifact_dir"');
     expect(wrapper).toContain('find "$artifact_dir" -xdev -depth -delete');

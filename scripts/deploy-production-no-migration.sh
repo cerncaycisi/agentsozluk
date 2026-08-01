@@ -15,13 +15,17 @@ cleanup=no-cleanup
 artifact_run=''
 build_on_host=0
 keep_artifact=0
+artifact_transport=server-fetch
 
 usage() {
   printf '%s\n' \
     'Usage:' \
     '  AGENT_SOZLUK_PRODUCTION_APPROVED_SHA=<40-char-sha> \' \
     '    pnpm release:production:no-migration \' \
-    '      --sha <40-char-sha> --artifact-run <run-id> --execute [--cleanup] [--keep-artifact]' \
+    '      --sha <40-char-sha> --artifact-run <run-id> --execute [--cleanup]' \
+    '' \
+    'The default artifact path passes a short-lived GitHub redirect to the pinned server; the' \
+    'artifact never transits the operator Mac. Use --operator-transfer only as an explicit fallback.' \
     '' \
     'Fallback only when the exact approval explicitly permits a production-host build:' \
     '  ... --sha <40-char-sha> --build-on-host --execute [--cleanup]' \
@@ -58,6 +62,14 @@ while (($# > 0)); do
       ;;
     --keep-artifact)
       keep_artifact=1
+      shift
+      ;;
+    --server-fetch)
+      artifact_transport=server-fetch
+      shift
+      ;;
+    --operator-transfer)
+      artifact_transport=operator-transfer
       shift
       ;;
     --help)
@@ -98,6 +110,10 @@ else
     printf 'RELEASE_WRAPPER_FAIL code=ARTIFACT_RUN_REQUIRED\n' >&2
     exit 90
   }
+  if test "$artifact_transport" = server-fetch && test "$keep_artifact" = 1; then
+    printf 'RELEASE_WRAPPER_FAIL code=SERVER_FETCH_KEEP_UNSUPPORTED\n' >&2
+    exit 90
+  fi
 fi
 
 root="$(git rev-parse --show-toplevel)"
@@ -107,17 +123,24 @@ test "$(git -C "$root" rev-parse HEAD)" = "$candidate_sha"
 test -z "$(git -C "$root" status --porcelain=v1 --untracked-files=all)"
 bash -n "$root/scripts/production-release-remote.sh"
 bash -n "$root/scripts/install-release-artifact-remote.sh"
+bash -n "$root/scripts/install-release-artifact-from-github-remote.sh"
 
 artifact_dir=''
 artifact_receipt=''
 artifact_download_stage=''
+redirect_header_stage=''
 cleanup_download_stage() {
   local exit_status=$?
   trap - EXIT
   set +e
+  unset github_token signed_url
   if test -n "${artifact_download_stage:-}" &&
      test -d "$artifact_download_stage"; then
     find "$artifact_download_stage" -xdev -depth -delete
+  fi
+  if test -n "${redirect_header_stage:-}" &&
+     test -d "$redirect_header_stage"; then
+    find "$redirect_header_stage" -xdev -depth -delete
   fi
   exit "$exit_status"
 }
@@ -126,10 +149,13 @@ trap 'exit 130' INT
 trap 'exit 143' TERM HUP
 if test "$build_on_host" = 0; then
   command -v gh >/dev/null
-  command -v zstd >/dev/null
   command -v node >/dev/null
-  command -v shasum >/dev/null
-  command -v unzip >/dev/null
+  command -v curl >/dev/null
+  if test "$artifact_transport" = operator-transfer; then
+    command -v zstd >/dev/null
+    command -v shasum >/dev/null
+    command -v unzip >/dev/null
+  fi
   successful_ci="$(
     CANDIDATE_SHA="$candidate_sha" gh run list \
       --repo cerncaycisi/agentsozluk \
@@ -217,6 +243,7 @@ NODE
     ARTIFACT_METADATA="$artifact_metadata" \
       node -p 'JSON.parse(process.env.ARTIFACT_METADATA).size'
   )"
+  if test "$artifact_transport" = operator-transfer; then
   artifact_root=/Volumes/GB/agent-sozluk-release-artifacts
   artifact_dir="$artifact_root/$candidate_sha/run-$artifact_run"
   test ! -L "$artifact_root"
@@ -314,6 +341,7 @@ NODE
     printf 'RELEASE_WRAPPER_FAIL code=IMAGE_TAR_HASH_MISMATCH\n' >&2
     exit 90
   }
+  fi
 fi
 
 expected_ip=46.225.20.177
@@ -324,6 +352,7 @@ known_hosts=/private/tmp/agent-sozluk-known_hosts
 identity=/Users/gokhannihalgul/.ssh/id_ed25519
 remote_script="/opt/agent-sozluk/runtime/.operator-release-$candidate_sha.sh"
 remote_artifact_installer="/opt/agent-sozluk/runtime/.operator-artifact-$candidate_sha.sh"
+remote_github_fetcher="/opt/agent-sozluk/runtime/.operator-github-fetch-$candidate_sha.sh"
 domain_ipv4="$(dig +short A agentsozluk.com)"
 test "$domain_ipv4" = "$expected_ip"
 known_host_fingerprint="$(
@@ -359,6 +388,16 @@ if test "$build_on_host" = 0; then
      install -m 0700 /dev/stdin '$remote_artifact_installer'
      bash -n '$remote_artifact_installer'" \
     <"$root/scripts/install-release-artifact-remote.sh"
+  if test "$artifact_transport" = server-fetch; then
+    ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+      "set -euo pipefail
+       test \"\$(hostname)\" = '$expected_host' || exit 91
+       test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
+       test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
+       install -m 0700 /dev/stdin '$remote_github_fetcher'
+       bash -n '$remote_github_fetcher'" \
+      <"$root/scripts/install-release-artifact-from-github-remote.sh"
+  fi
 fi
 
 ssh "${ssh_options[@]}" deploy@"$expected_ip" \
@@ -379,6 +418,44 @@ if test "$build_on_host" = 0; then
    test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
    test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93"
 
+  if test "$artifact_transport" = server-fetch; then
+    redirect_header_stage="$(
+      mktemp -d "/private/tmp/agent-sozluk-artifact-redirect-$candidate_sha.XXXXXXXX"
+    )"
+    redirect_header_file="$redirect_header_stage/headers"
+    install -m 0600 /dev/null "$redirect_header_file"
+    github_token="$(gh auth token)"
+    redirect_status="$({
+      printf 'url = "https://api.github.com/repos/cerncaycisi/agentsozluk/actions/artifacts/%s/zip"\n' \
+        "$artifact_id"
+      printf 'header = "Accept: application/vnd.github+json"\n'
+      printf 'header = "X-GitHub-Api-Version: 2022-11-28"\n'
+      printf 'header = "Authorization: Bearer %s"\n' "$github_token"
+      printf '%s\n' 'silent' 'show-error' 'max-redirs = 0'
+    } | curl --config - --dump-header "$redirect_header_file" \
+      --output /dev/null --write-out '%{http_code}')"
+    unset github_token
+    test "$redirect_status" = 302 || {
+      printf 'RELEASE_WRAPPER_FAIL code=ARTIFACT_REDIRECT_MISSING\n' >&2
+      exit 90
+    }
+    signed_url="$(
+      HEADER_FILE="$redirect_header_file" node -e '
+        const fs = require("node:fs");
+        const value = fs.readFileSync(process.env.HEADER_FILE, "utf8");
+        const matches = [...value.matchAll(/^location:\s*(\S+)\s*$/gimu)];
+        if (matches.length !== 1) process.exit(90);
+        process.stdout.write(matches[0][1]);
+      '
+    )"
+    find "$redirect_header_stage" -xdev -depth -delete
+    redirect_header_stage=''
+    printf '%s\n' "$signed_url" |
+      ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+        "$remote_artifact_command
+         exec '$remote_github_fetcher' '$candidate_sha' '$artifact_id' '$artifact_zip_size' '$artifact_digest'"
+    unset signed_url
+  else
   image_reused=0
   if ssh "${ssh_options[@]}" deploy@"$expected_ip" \
       "$remote_artifact_command
@@ -410,6 +487,7 @@ if test "$build_on_host" = 0; then
        exec '$remote_artifact_installer' runtime '$candidate_sha' '$artifact_image_config_digest' '$artifact_runtime_abi' '$artifact_image_tar_sha256' '$artifact_runtime_archive_sha256' '$artifact_runtime_archive_bytes'" \
       <"$runtime_archive"
   fi
+  fi
 fi
 
 trap - EXIT INT TERM HUP
@@ -420,7 +498,19 @@ ssh -tt "${ssh_options[@]}" deploy@"$expected_ip" \
    test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
    exec '$remote_script' '$candidate_sha' '$cleanup'"
 
-if test "$build_on_host" = 0 && test "$keep_artifact" = 0; then
+if test "$build_on_host" = 0 && test "$artifact_transport" = server-fetch; then
+  ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+    "set -euo pipefail
+     test \"\$(hostname)\" = '$expected_host' || exit 91
+     test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
+     test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
+     test -f '$remote_github_fetcher'
+     find '$remote_github_fetcher' -xdev -delete"
+fi
+
+if test "$build_on_host" = 0 &&
+   test "$artifact_transport" = operator-transfer &&
+   test "$keep_artifact" = 0; then
   expected_artifact_dir="/Volumes/GB/agent-sozluk-release-artifacts/$candidate_sha/run-$artifact_run"
   test "$artifact_dir" = "$expected_artifact_dir"
   test -d "$artifact_dir"
