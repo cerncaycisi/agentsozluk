@@ -31,6 +31,7 @@ function hangingChild(killSignals: NodeJS.Signals[]): ChildProcessWithoutNullStr
 }
 
 afterEach(async () => {
+  vi.useRealTimers();
   await Promise.all(
     temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
   );
@@ -58,24 +59,25 @@ describe("Codex CLI provider absolute deadline", () => {
       workRoot: path.join(root, "work"),
       spawnProcess,
     });
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
 
-    await expect(
-      provider.invoke({
-        runId: "00000000-0000-4000-8000-000000000001",
-        prompt: "deadline test",
-        outputSchema: { type: "object" },
-        timeoutMs: 25,
-        debugRetentionHours: 0,
-      }),
-    ).rejects.toBeInstanceOf(RuntimeProviderTimeoutError);
+    const invocation = provider.invoke({
+      runId: "00000000-0000-4000-8000-000000000001",
+      prompt: "deadline test",
+      outputSchema: { type: "object" },
+      timeoutMs: 25,
+      debugRetentionHours: 0,
+    });
+    const rejection = expect(invocation).rejects.toBeInstanceOf(RuntimeProviderTimeoutError);
+
+    for (let turn = 0; turn < 100 && spawnMock.mock.calls.length < 3; turn += 1) {
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
 
     expect(spawnProcess).toHaveBeenCalledTimes(3);
-    // Promise.all rejects as soon as the first inspection reaches the shared
-    // deadline. The sibling timeout callbacks are already armed, but a busy CI
-    // event loop may observe their SIGTERM calls on the next turn.
-    await vi.waitFor(() => {
-      expect(killSignals).toEqual(["SIGTERM", "SIGTERM", "SIGTERM"]);
-    });
+    await vi.advanceTimersByTimeAsync(25);
+    await rejection;
+    expect(killSignals).toEqual(["SIGTERM", "SIGTERM", "SIGTERM"]);
     for (const [command, rawArguments, rawOptions] of spawnMock.mock.calls) {
       const arguments_ = rawArguments as readonly string[];
       const options = rawOptions as {

@@ -138,8 +138,9 @@ describe("society observation report contracts", () => {
     expect(baseline).toContain("natural_sources.runs_with_source_evidence=");
     expect(baseline).toContain("finishedAt >= window.to");
     expect(baseline).toContain("item.fetchedAt");
-    expect(baseline).toContain("updatedAt < window.to");
-    expect(baseline).toContain("actions_updated_after_window_excluded=");
+    expect(baseline).toContain("selectRunCohortActions(actions, window)");
+    expect(baseline).toContain("actions_created_after_window_included=");
+    expect(baseline).toContain("actions_updated_after_window_included=");
   });
 
   it("packages both read-only reports and their helper in the production image", () => {

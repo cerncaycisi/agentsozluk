@@ -17,6 +17,30 @@ export interface ObservationWindow {
   to: Date;
 }
 
+interface RunCohortAction {
+  createdAt: Date;
+  updatedAt: Date;
+  run: { createdAt: Date };
+}
+
+export function selectRunCohortActions<T extends RunCohortAction>(
+  actions: readonly T[],
+  window: ObservationWindow,
+): {
+  actions: T[];
+  createdAfterWindow: number;
+  updatedAfterWindow: number;
+} {
+  const included = actions.filter(
+    ({ run }) => run.createdAt >= window.from && run.createdAt < window.to,
+  );
+  return {
+    actions: included,
+    createdAfterWindow: included.filter(({ createdAt }) => createdAt >= window.to).length,
+    updatedAfterWindow: included.filter(({ updatedAt }) => updatedAt >= window.to).length,
+  };
+}
+
 export interface OperatorWindow extends ObservationWindow {
   bucket: ExperimentBucket;
   fingerprint: string;

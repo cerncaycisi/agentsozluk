@@ -17,6 +17,7 @@ import {
   parseWindowArguments,
   reflectionPurpose,
   renderTable,
+  selectRunCohortActions,
   summarizeFreshSourceCoverage,
   type ContentAttribution,
   type ReflectionStatus,
@@ -100,7 +101,8 @@ Current ACTIVE profiles remain in per-writer coverage even when they have zero n
 Lifecycle evidence separately reports profiles that stayed ACTIVE for the complete selected window.
 Fresh-source coverage is derived from immutable source-item fetchedAt timestamps inside the window,
 not from mutable current source-state timestamps. Runs created inside the window may terminalize
-after its exclusive end; those runs are counted as terminal and their boundary delay is reported.
+after its exclusive end; those runs and their final linked actions are counted after the documented
+grace period, and their boundary delay is reported.
 `;
 }
 
@@ -317,16 +319,19 @@ async function main(): Promise<void> {
         },
       }),
       database.agentAction.findMany({
-        where: { createdAt: { gte: window.from, lt: window.to } },
+        // Gate 10 cohorts runs by run.createdAt and then waits through terminalization grace.
+        // A rejection committed after `to` still explains a PARTIAL run created before `to`.
+        where: { run: { createdAt: { gte: window.from, lt: window.to } } },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         select: {
           runId: true,
           agentProfileId: true,
+          createdAt: true,
           actionType: true,
           actionStatus: true,
           rejectionCode: true,
           updatedAt: true,
-          run: { select: { trigger: true, runType: true } },
+          run: { select: { createdAt: true, trigger: true, runType: true } },
           agentProfile: { select: { user: { select: { id: true, username: true } } } },
           contentRecord: {
             select: {
@@ -687,8 +692,8 @@ async function main(): Promise<void> {
       (run) => isTerminalRunStatus(run.runStatus) && run.finishedAt !== null,
     );
     const terminalRunIds = new Set(terminalRuns.map(({ id }) => id));
-    const windowActions = actions.filter(({ updatedAt }) => updatedAt < window.to);
-    const actionsUpdatedAfterWindow = actions.length - windowActions.length;
+    const actionCohort = selectRunCohortActions(actions, window);
+    const windowActions = actionCohort.actions;
     const successfulContentActions = windowActions.filter(
       (action) =>
         action.actionStatus === "SUCCEEDED" &&
@@ -1319,7 +1324,8 @@ async function main(): Promise<void> {
       `operator_runs_with_content=${operatorRunsWithContent}`,
       `operator_runs_without_content=${operatorRuns.length - operatorRunsWithContent}`,
       `nonterminal_runs=${runs.length - terminalRuns.length}`,
-      `actions_updated_after_window_excluded=${actionsUpdatedAfterWindow}`,
+      `actions_created_after_window_included=${actionCohort.createdAfterWindow}`,
+      `actions_updated_after_window_included=${actionCohort.updatedAfterWindow}`,
       `natural_runs=${terminalNaturalRuns.length}`,
       `natural_runs.nonterminal=${nonterminalNaturalRuns}`,
       `natural_runs.terminalized_after_window=${terminalizedAfterWindow.length}`,

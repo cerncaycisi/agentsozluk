@@ -1621,6 +1621,11 @@ m2_compose=(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-s
 The command is read-only. Preserve its safe output or a SHA-256 plus the reviewed scalar matrix
 under the approved evidence policy. Acceptance requires:
 
+Runs are selected by `AgentRun.createdAt` in the half-open observation window. After the required
+terminalization grace, every final action linked to that run remains part of its run outcome even
+when the action was created or updated after the exclusive `to` boundary. Content-by-day tables
+remain independently bounded by the content object's own creation timestamp.
+
 1. every exact `STOCHASTIC_TICK` + `NORMAL_WAKE` run is classified as natural public work;
    maintenance and `ADMIN_MANUAL`/`ADMIN_RETRY` remain separate, and `run_matrix_warnings=0`;
 2. every profile that was `ACTIVE` for the full window has at least three terminal natural wakes;

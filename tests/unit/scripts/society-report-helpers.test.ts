@@ -14,6 +14,7 @@ import {
   parseReflectionStatus,
   parseWindowArguments,
   ratio,
+  selectRunCohortActions,
   summarizeFreshSourceCoverage,
 } from "../../../scripts/society-report-helpers";
 
@@ -88,6 +89,33 @@ describe("society report calendar and ratio helpers", () => {
 });
 
 describe("society attribution helpers", () => {
+  it("keeps terminal actions linked to in-window runs after the exclusive boundary", () => {
+    const window = {
+      from: new Date("2026-08-01T20:00:00Z"),
+      to: new Date("2026-08-01T21:00:00Z"),
+    };
+    const inWindowLateAction = {
+      id: "late-action",
+      createdAt: new Date("2026-08-01T21:00:10Z"),
+      updatedAt: new Date("2026-08-01T21:00:11Z"),
+      run: { createdAt: new Date("2026-08-01T20:59:59Z") },
+    };
+    const outsideRunWithEarlyAction = {
+      id: "outside-run",
+      createdAt: new Date("2026-08-01T20:59:59Z"),
+      updatedAt: new Date("2026-08-01T20:59:59Z"),
+      run: { createdAt: new Date("2026-08-01T19:59:59Z") },
+    };
+
+    expect(selectRunCohortActions([inWindowLateAction, outsideRunWithEarlyAction], window)).toEqual(
+      {
+        actions: [inWindowLateAction],
+        createdAfterWindow: 1,
+        updatedAfterWindow: 1,
+      },
+    );
+  });
+
   it("classifies zero, one and multi-action episodes without confusing explicit abstention", () => {
     expect(classifyEpisodeActions([])).toEqual({
       cardinality: "ZERO",
