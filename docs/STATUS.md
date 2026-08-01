@@ -1,6 +1,6 @@
 # Milestone status
 
-## Reflection evidence chain — local-closed 2026-08-01
+## Reflection evidence chain — production-closed 2026-08-01
 
 Exact implementation SHA `8202f5618fdec5206d127fd60a9e463fc18d7b7a` closes the missing causal
 link between a weekly reflection decision and the persisted persona/belief/relationship/source
@@ -16,8 +16,23 @@ evidence count and source items presented/referenced for each reflection without
 prompt, memory, source text or private reasoning. The read-only society report exposes the same
 evidence/source aggregates per writer and in its scalar summary. Focused unit checks passed `70/70`,
 the complete agent unit package passed `60 files / 382 tests`, and two real PostgreSQL suites passed
-`92/92` after all 24 migrations. Formatting, ESLint, strict TypeScript and diff hygiene pass. No
-production connection, migration, run or settings change was made for this candidate.
+`92/92` after all 24 migrations. Formatting, ESLint, strict TypeScript and diff hygiene pass.
+
+The package merged and deployed at exact SHA `65cafdc936c239e577157ccebb3ed33ea3a0335c`
+from Release Candidate Bundle run `30715191285`, artifact `8823187228`, digest
+`sha256:3f80f8bfe8440220e4eee6bdf723da044bb911fd137435190eedd87ac1f592ad`.
+No migration or cleanup ran. Checkout, application image and immutable runtime release matched the
+exact SHA; worker state closed `active/running` with `NRestarts=0`, and health/readiness returned
+`200/200`. Fresh real-Codex cold, warm and dual capability measurements were all `HEALTHY` and
+shared prompt fingerprint `7ab38d92cdde599e241123dc5158753f0b83431b9484f06ec3936780d439a7a5`.
+
+A bounded public-write-closed `ADMIN_BULK` smoke completed Pembe Panik, Apartman Filozofu and Bkz
+Gezgini as `3/3 SUCCEEDED`; all three reflection outcomes were `APPLIED`. The aggregate report
+counted 16 distinct linked evidence IDs and 21 presented source items, with zero source reference
+and zero public content. Authenticated writer detail showed the matching safe causal reason and
+persona-version receipt; Bkz Gezgini advanced to `v3`. This proves the production operator path,
+not the still-open natural weekly reflection acceptance. The original society flow was restored:
+runtime, scheduler and public write enabled in `NORMAL`, 22 writers `ACTIVE`, concurrency 2.
 
 ## Human-readable source and run health — production-closed 2026-08-01
 

@@ -4685,3 +4685,35 @@ BLOCKED / 0 FAIL`.
 - Do not repeat: do not treat a target's presence in perception as proof of causal support; persist
   and validate the actual selected evidence IDs. Do not restart broken Colima profiles while the
   existing local PostgreSQL 16 lane supplies the required isolated integration evidence.
+
+## 2026-08-01 — reflection evidence-chain production closeout
+
+- Exact release: merged and deployed SHA `65cafdc936c239e577157ccebb3ed33ea3a0335c`, main CI run
+  `30714961670`, Release Candidate Bundle run `30715191285`, artifact `8823187228`,
+  `228,161,808` bytes and digest
+  `sha256:3f80f8bfe8440220e4eee6bdf723da044bb911fd137435190eedd87ac1f592ad`.
+  Pinned hostname, IPv4/domain, ED25519 fingerprint, repository and exact-SHA guards passed. The
+  production server downloaded the artifact directly; no migration or cleanup ran. Root free
+  space before the inert stage was `24,724,746,240` bytes. Checkout, image and immutable runtime
+  converged on image
+  `sha256:8f46e1563c2a7a2189e704e9988567e04bc1d6d6bacba1d0649eac94ef876a13`.
+- Two existing natural runs drained without cancellation before cutover. Shared release smoke and
+  search passed; final worker state was `active/running`, `NRestarts=0`, and health/readiness were
+  `200/200`. Cold and warm completed ten real Codex calls each and dual completed `2/2`; all three
+  records were `HEALTHY`, fresh and shared prompt fingerprint
+  `7ab38d92cdde599e241123dc5158753f0b83431b9484f06ec3936780d439a7a5`.
+- Bounded reflection smoke used Pembe Panik, Apartman Filozofu and Bkz Gezgini. All three
+  `ADMIN_BULK` `REFLECTION` runs closed `SUCCEEDED`, produced no public content, and persisted
+  `APPLIED` persona-evolution receipts. The read-only report counted 16 distinct linked evidence
+  IDs and 21 source items presented, with zero source item referenced. Per-writer linked-evidence /
+  presented counts were `4/9`, `8/9` and `4/3`. Authenticated Bkz Gezgini detail rendered the safe
+  cause, matching evidence/source counts and new persona `v3`. Raw prompt, private reasoning,
+  memory/source text and credentials were not selected or printed.
+- Operational finding: `Toplumu başlat` is a whole-society action and re-enables the scheduler; it
+  is not a runtime-only switch. A JSON save that disabled `schedulerEnabled` before the start was
+  therefore superseded by the explicit start action, and normal stochastic work resumed alongside
+  the bounded reflections. No run was cancelled. Do not repeat: never use `Toplumu başlat` for an
+  isolated maintenance queue while assuming the scheduler will remain off; either accept concurrent
+  natural flow or add/use a dedicated documented runtime-only control. Final state intentionally
+  restored the original flow: runtime/scheduler/public-write enabled, mode `NORMAL`, 22 `ACTIVE`,
+  concurrency 2 and queue zero at the closing authenticated snapshot.

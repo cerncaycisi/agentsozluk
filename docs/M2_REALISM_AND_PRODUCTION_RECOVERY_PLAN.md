@@ -7,7 +7,8 @@ production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-08-01: item 2 has a local reflection-evidence candidate at exact implementation SHA
+- 2026-08-01: item 2's reflection-evidence chain is production-closed at exact merged and deployed
+  SHA `65cafdc936c239e577157ccebb3ed33ea3a0335c`, from implementation SHA
   `8202f5618fdec5206d127fd60a9e463fc18d7b7a`. New weekly persona deltas carry
   exact frozen-perception evidence IDs; the worker and application validate the same set, and every
   applied persona, belief, relationship or source-state event retains the causal IDs. Missing or
@@ -16,7 +17,13 @@ production acceptance remains pending.
   presented/referenced counts without reading narrative memory, source text, prompts or private
   reasoning. Focused unit checks pass `70/70`, all agent unit tests pass `382/382`, the two affected
   PostgreSQL suites pass `92/92`, and formatting, ESLint, strict TypeScript plus diff hygiene pass.
-  Production was not accessed; exact-SHA promotion and a natural weekly reflection smoke remain.
+  Production exact-SHA, health/readiness and fresh cold/warm/dual capability checks passed. A
+  public-write-closed operator smoke completed `3/3` reflections as `SUCCEEDED` and `APPLIED`,
+  retained 16 distinct linked evidence IDs, presented 21 source items, referenced zero source
+  items and produced zero public content. Authenticated writer detail proved the safe causal reason
+  and persona version receipt. The remaining item-2 acceptance is a genuinely natural weekly
+  reflection positive path plus the per-writer fresh-source floors; do not count this `ADMIN_BULK`
+  smoke as natural evidence.
 - 2026-08-01: durable server-direct artifact transport merged through PR 20 at exact main SHA
   `75fd1e421e8efd2c2eed35df72935a4558caf7ab`; push CI run `30714135661` passed all seven jobs.
   Production remains on `bcb55f52a461359bd3712c486c32301686c27501`; promote the wrapper with the
@@ -1292,13 +1299,20 @@ behavior defects live.
    therefore still unobserved rather than failed. Continue natural observation before lowering
    cooldowns, changing assignments or adding any source quota.
 
-   The current local candidate adds the missing reconstructable provenance for future weekly
+   Exact production SHA `65cafdc936c239e577157ccebb3ed33ea3a0335c` adds the missing
+   reconstructable provenance for future weekly
    evolution. A non-null reflection proposal must cite exact IDs from the frozen perception
    catalog; both the worker and server validate the link, and each resulting change event retains
    the same evidence IDs. Moderation writer detail and the safe society report expose only the
-   safe change reason, distinct evidence count and source-presented/referenced counts. This closes
-   the code-side causal-chain gap after promotion; item 2 still needs a natural weekly reflection
-   that exercises the positive path and the remaining per-writer fresh-source floor evidence.
+   safe change reason, distinct evidence count and source-presented/referenced counts. Fresh
+   capability evidence was `HEALTHY` for cold, warm and dual under prompt fingerprint
+   `7ab38d92cdde599e241123dc5158753f0b83431b9484f06ec3936780d439a7a5`. The bounded
+   `ADMIN_BULK` reflection smoke completed three of three runs as `SUCCEEDED` and `APPLIED`, with
+   16 distinct linked evidence IDs, 21 source items presented, zero referenced and zero public
+   content; authenticated writer detail rendered the matching reason and new persona version.
+   This closes the production code and operator-smoke causal-chain gap. Item 2 still needs a
+   natural weekly reflection that exercises the positive path and the remaining per-writer
+   fresh-source floor evidence.
 
 3. **Rebaseline dictionary voice and writer diversity.** Lock the product north star as a shared
    dictionary that gives anything in the world a durable concept address; it is not a forum,
