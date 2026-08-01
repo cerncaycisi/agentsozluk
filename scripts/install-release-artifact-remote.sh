@@ -14,6 +14,8 @@ candidate_sha="${2:-}"
 image_config_digest="${3:-}"
 runtime_abi="${4:-}"
 image_tar_sha256="${5:-}"
+archive_sha256="${6:-}"
+archive_bytes="${7:-}"
 app_root=/opt/agent-sozluk/app
 runtime_root=/opt/agent-sozluk/runtime
 candidate_image="agent-sozluk:$candidate_sha"
@@ -41,6 +43,21 @@ test "$runtime_abi" = linux-x64-glibc-node-abi-127 || {
   printf 'RELEASE_ARTIFACT_INSTALL_FAIL code=INVALID_IMAGE_TAR_HASH\n' >&2
   exit 90
 }
+if [[ "$mode" == image || "$mode" == runtime ]]; then
+  [[ "$archive_sha256" =~ ^[0-9a-f]{64}$ ]] || {
+    printf 'RELEASE_ARTIFACT_INSTALL_FAIL code=INVALID_ARCHIVE_HASH\n' >&2
+    exit 90
+  }
+  [[ "$archive_bytes" =~ ^[1-9][0-9]*$ ]] &&
+    ((archive_bytes <= 251658240)) || {
+    printf 'RELEASE_ARTIFACT_INSTALL_FAIL code=INVALID_ARCHIVE_SIZE\n' >&2
+    exit 90
+  }
+  command -v zstd >/dev/null || {
+    printf 'RELEASE_ARTIFACT_INSTALL_FAIL code=ZSTD_MISSING\n' >&2
+    exit 94
+  }
+fi
 test "$(hostname)" = agent-sozluk-prod || exit 91
 test "$(git -C "$app_root" remote get-url origin)" = \
   https://github.com/cerncaycisi/agentsozluk.git || exit 92
@@ -95,6 +112,23 @@ assert_runtime_release() {
   )"
 }
 
+receive_archive() {
+  local archive_stage="$1"
+  head -c "$((archive_bytes + 1))" >"$archive_stage"
+  test "$(wc -c <"$archive_stage" | tr -d ' ')" = "$archive_bytes" || {
+    printf 'RELEASE_ARTIFACT_INSTALL_FAIL code=ARCHIVE_SIZE_MISMATCH\n' >&2
+    exit 96
+  }
+  test "$(sha256sum "$archive_stage" | cut -d ' ' -f 1)" = "$archive_sha256" || {
+    printf 'RELEASE_ARTIFACT_INSTALL_FAIL code=ARCHIVE_HASH_MISMATCH\n' >&2
+    exit 96
+  }
+  zstd -q --test "$archive_stage" || {
+    printf 'RELEASE_ARTIFACT_INSTALL_FAIL code=ARCHIVE_ZSTD_INVALID\n' >&2
+    exit 96
+  }
+}
+
 if test "$mode" = image-probe; then
   if ! docker image inspect "$candidate_image" >/dev/null 2>&1; then
     test ! -e "$image_receipt" || {
@@ -141,6 +175,7 @@ if test "$mode" = image; then
   )"
   stream_fifo="$stream_stage/image.tar"
   stream_hash="$stream_stage/image.tar.sha256"
+  archive_stage="$stream_stage/app-image.tar.zst"
   receipt_stage="$stream_stage/receipt.env"
   cleanup_image_stream() {
     local exit_status=$?
@@ -152,10 +187,11 @@ if test "$mode" = image; then
     exit "$exit_status"
   }
   trap cleanup_image_stream EXIT INT TERM HUP
+  receive_archive "$archive_stage"
   mkfifo -m 0600 "$stream_fifo"
   sha256sum <"$stream_fifo" | cut -d ' ' -f 1 >"$stream_hash" &
   checksum_pid=$!
-  load_output="$(tee "$stream_fifo" | docker load)"
+  load_output="$(zstd -q --decompress --stdout "$archive_stage" | tee "$stream_fifo" | docker load)"
   wait "$checksum_pid"
   test "$(cat "$stream_hash")" = "$image_tar_sha256" || {
     if docker image inspect "$candidate_image" >/dev/null 2>&1 &&
@@ -201,6 +237,7 @@ if test "$mode" = image; then
 fi
 
 loaded_image_id="$(assert_image_receipt)"
+runtime_archive_stage="$runtime_root/.release-staging/runtime-$candidate_sha.$$.tar.zst"
 runtime_stage="$(
   mktemp -d "$runtime_root/.release-staging/artifact-$candidate_sha.XXXXXXXX"
 )"
@@ -216,12 +253,20 @@ cleanup() {
   if test -d "$runtime_stage"; then
     find "$runtime_stage" -xdev -depth -delete
   fi
+  if test -f "${runtime_archive_stage:-}"; then
+    find "$runtime_archive_stage" -xdev -delete
+  fi
   exit "$exit_status"
 }
 trap cleanup EXIT INT TERM HUP
 
-tar --extract --file=- --directory="$runtime_stage" \
+test ! -e "$runtime_archive_stage"
+test ! -L "$runtime_archive_stage"
+receive_archive "$runtime_archive_stage"
+zstd -q --decompress --stdout "$runtime_archive_stage" |
+  tar --extract --file=- --directory="$runtime_stage" \
   --no-same-owner --no-same-permissions
+find "$runtime_archive_stage" -xdev -delete
 test "$(cat "$runtime_stage/.release-sha")" = "$candidate_sha"
 test "$(cat "$runtime_stage/.release-app-image-config-digest")" = \
   "$image_config_digest" || {

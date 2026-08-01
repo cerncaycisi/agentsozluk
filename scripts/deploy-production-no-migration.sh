@@ -272,6 +272,22 @@ NODE
     ARTIFACT_RECEIPT="$artifact_receipt" \
       node -p 'JSON.parse(process.env.ARTIFACT_RECEIPT).imageTarSha256'
   )"
+  artifact_image_archive_sha256="$(
+    ARTIFACT_RECEIPT="$artifact_receipt" \
+      node -p 'JSON.parse(process.env.ARTIFACT_RECEIPT).imageArchiveSha256'
+  )"
+  artifact_image_archive_bytes="$(
+    ARTIFACT_RECEIPT="$artifact_receipt" \
+      node -p 'JSON.parse(process.env.ARTIFACT_RECEIPT).imageArchiveBytes'
+  )"
+  artifact_runtime_archive_sha256="$(
+    ARTIFACT_RECEIPT="$artifact_receipt" \
+      node -p 'JSON.parse(process.env.ARTIFACT_RECEIPT).runtimeArchiveSha256'
+  )"
+  artifact_runtime_archive_bytes="$(
+    ARTIFACT_RECEIPT="$artifact_receipt" \
+      node -p 'JSON.parse(process.env.ARTIFACT_RECEIPT).runtimeArchiveBytes'
+  )"
   artifact_runtime_abi="$(
     ARTIFACT_RECEIPT="$artifact_receipt" \
       node -p 'JSON.parse(process.env.ARTIFACT_RECEIPT).runtimeAbi'
@@ -373,10 +389,10 @@ if test "$build_on_host" = 0; then
     test "$probe_status" = 42 || exit "$probe_status"
   fi
   if test "$image_reused" = 0; then
-    zstd -q --decompress --stdout "$image_archive" |
-      ssh "${ssh_options[@]}" deploy@"$expected_ip" \
-        "$remote_artifact_command
-         exec '$remote_artifact_installer' image '$candidate_sha' '$artifact_image_config_digest' '$artifact_runtime_abi' '$artifact_image_tar_sha256'"
+    ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+      "$remote_artifact_command
+       exec '$remote_artifact_installer' image '$candidate_sha' '$artifact_image_config_digest' '$artifact_runtime_abi' '$artifact_image_tar_sha256' '$artifact_image_archive_sha256' '$artifact_image_archive_bytes'" \
+      <"$image_archive"
   fi
 
   runtime_reused=0
@@ -389,10 +405,10 @@ if test "$build_on_host" = 0; then
     test "$probe_status" = 42 || exit "$probe_status"
   fi
   if test "$runtime_reused" = 0; then
-    zstd -q --decompress --stdout "$runtime_archive" |
-      ssh "${ssh_options[@]}" deploy@"$expected_ip" \
-        "$remote_artifact_command
-         exec '$remote_artifact_installer' runtime '$candidate_sha' '$artifact_image_config_digest' '$artifact_runtime_abi' '$artifact_image_tar_sha256'"
+    ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+      "$remote_artifact_command
+       exec '$remote_artifact_installer' runtime '$candidate_sha' '$artifact_image_config_digest' '$artifact_runtime_abi' '$artifact_image_tar_sha256' '$artifact_runtime_archive_sha256' '$artifact_runtime_archive_bytes'" \
+      <"$runtime_archive"
   fi
 fi
 

@@ -116,10 +116,14 @@ if (checksumText !== expectedChecksumText) fail("CHECKSUM_RECEIPT_MISMATCH");
 
 process.stdout.write(
   JSON.stringify({
+    imageArchiveBytes: imageSize,
+    imageArchiveSha256: value("image_sha256"),
     imageConfigDigest: value("image_config_digest"),
     imagePath,
     imageTarSha256: value("image_tar_sha256"),
     runtimeAbi: value("runtime_abi"),
+    runtimeArchiveBytes: runtimeSize,
+    runtimeArchiveSha256: value("runtime_sha256"),
     runtimePath,
     sourceSha: candidateSha,
     totalBytes: imageSize + runtimeSize,

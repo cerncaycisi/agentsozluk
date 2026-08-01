@@ -245,16 +245,24 @@ describe("build-once exact-SHA release artifacts", () => {
           encoding: "utf8",
         }),
       ) as {
+        imageArchiveBytes: number;
+        imageArchiveSha256: string;
         imageConfigDigest: string;
         imageTarSha256: string;
         sourceSha: string;
         totalBytes: number;
+        runtimeArchiveBytes: number;
+        runtimeArchiveSha256: string;
       };
       expect(receipt).toEqual(
         expect.objectContaining({
           imageConfigDigest,
+          imageArchiveBytes: image.length,
+          imageArchiveSha256: imageHash,
           imageTarSha256: imageTarHash,
           sourceSha: candidateSha,
+          runtimeArchiveBytes: runtime.length,
+          runtimeArchiveSha256: runtimeHash,
           totalBytes: image.length + runtime.length,
         }),
       );
@@ -307,11 +315,19 @@ describe("build-once exact-SHA release artifacts", () => {
     expect(installer).toContain("RELEASE_ARTIFACT_RUNTIME_MISSING");
     expect(wrapper).toContain("image-probe");
     expect(wrapper).toContain("runtime-probe");
-    expect(wrapper.indexOf("image-probe")).toBeLessThan(
-      wrapper.lastIndexOf('zstd -q --decompress --stdout "$image_archive" |'),
+    expect(wrapper).toContain("imageArchiveSha256");
+    expect(wrapper).toContain("runtimeArchiveSha256");
+    expect(wrapper).toContain('<"$image_archive"');
+    expect(wrapper).toContain('<"$runtime_archive"');
+    expect(wrapper).not.toMatch(
+      /zstd[^\n]*--decompress[^\n]*"\$(?:image|runtime)_archive"\s*\|\s*ssh/su,
     );
-    expect(wrapper.indexOf("runtime-probe")).toBeLessThan(
-      wrapper.lastIndexOf('zstd -q --decompress --stdout "$runtime_archive" |'),
+    expect(installer).toContain("ARCHIVE_HASH_MISMATCH");
+    expect(installer).toContain("ARCHIVE_SIZE_MISMATCH");
+    expect(installer).toContain('head -c "$((archive_bytes + 1))"');
+    expect(installer).toContain('receive_archive "$archive_stage"');
+    expect(installer).toContain(
+      'zstd -q --decompress --stdout "$archive_stage" | tee "$stream_fifo" | docker load',
     );
     expect(installer).toContain("sudo mv -T");
     expect(installer).not.toContain("systemctl");
