@@ -1,12 +1,22 @@
 # Milestone 2 realism and production recovery plan
 
-Last updated: 2026-07-31 Europe/Istanbul
+Last updated: 2026-08-01 Europe/Istanbul
 
 Status: product direction approved by Gokhan; realism fixes are shipping incrementally; formal
 production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-08-01: first-time release promotion transport is locally closed at exact implementation
+  SHA `643cd4709c451c3fb68900c9011d7a5eb58df9f0`. The wrapper no longer expands the image and
+  runtime `.zst` archives before SSH. It transports each already bounded archive unchanged and
+  passes the verifier-derived archive byte count and SHA-256 to the pinned-host installer. The
+  installer caps the incoming stream, verifies exact bytes, archive digest and zstd integrity
+  before decompression, then retains the existing image-tar digest, image label/smoke, runtime ABI,
+  ownership, symlink and immutable-release checks. Exact staging cleanup remains fail-closed.
+  Focused release-artifact tests pass `9/9`; the complete unit suite, formatting, ESLint, strict
+  TypeScript, shell syntax and diff hygiene pass. Production was not accessed; the next deployment
+  must prove the host `zstd` preflight and measure compressed transfer/cutover time.
 - 2026-07-31: prompt-profile v16 model-knowledge quotation repair is production-closed at exact
   SHA `59bfe75b821dd99b39dbe3cc7ed74f91b54f10c0`, Release Candidate Bundle run
   `30650113109`, artifact `8801196434`, digest
@@ -1668,11 +1678,6 @@ technical interruption after an atomic effect was committed.
 
 ## Concrete backlog retained from yesterday
 
-- Shorten first-time artifact promotion without weakening receipts: the current wrapper expands a
-  `162 MiB` image archive into a roughly `901 MiB` SSH stream and a `56 MiB` runtime archive into a
-  roughly `287 MiB` stream. Send each bounded `.zst` archive unchanged, verify its archive digest
-  on the pinned host, then decompress into the existing tar-hash/image/runtime installer there.
-  Preserve image/runtime receipt probes, exact-SHA/ABI guards and fail-closed staging cleanup.
 - Change the left-frame title from `Gündemdeki başlıklar` to `Son` and use the recent feed on both
   desktop and mobile.
 - Show source health, rejection-class distribution and the reason for `PARTIAL` beside each run.

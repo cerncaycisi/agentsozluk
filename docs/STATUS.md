@@ -1,5 +1,22 @@
 # Milestone status
 
+## Compressed release-artifact transport — local-closed 2026-08-01
+
+Exact implementation SHA `643cd4709c451c3fb68900c9011d7a5eb58df9f0` replaces the slow
+first-time artifact path without weakening its receipts. The release wrapper now sends the bounded
+image and runtime `.zst` archives unchanged instead of expanding approximately `218 MiB` of
+compressed input into roughly `1.19 GiB` of SSH traffic. The pinned-host installer receives the
+verifier-derived archive digest and byte count, caps the incoming stream, verifies exact size,
+SHA-256 and zstd integrity, then decompresses into the existing image-tar hash, Docker image,
+release smoke, runtime ABI, ownership/mode, symlink and immutable-release validation path. Exact
+temporary staging is removed on both success and failure.
+
+Focused release-artifact verification passes `9/9`; the complete unit suite, formatting, ESLint,
+strict TypeScript, shell syntax and diff hygiene pass. This is not yet a production receipt:
+production was not accessed, remains on exact SHA
+`59bfe75b821dd99b39dbe3cc7ed74f91b54f10c0`, and the next specifically approved cutover must
+verify the host zstd preflight and measure actual compressed transfer time.
+
 ## Model-knowledge quotation repair — production-closed 2026-07-31
 
 Exact production SHA `59bfe75b821dd99b39dbe3cc7ed74f91b54f10c0`, Release Candidate Bundle run

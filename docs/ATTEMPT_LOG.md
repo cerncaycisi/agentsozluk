@@ -4544,3 +4544,22 @@ BLOCKED / 0 FAIL`.
   Temporary container copies were deleted after atomic persistence; original owner-only production
   evidence remains. Do not repeat: verify each boundary as a separate scalar step instead of one
   silent compound command, and never assume Docker host and container UIDs match.
+
+## 2026-08-01 — compressed first-time artifact promotion local closeout
+
+- Exact implementation SHA `643cd4709c451c3fb68900c9011d7a5eb58df9f0` removes local
+  decompression from the SSH transport path. The bundle verifier now returns the already validated
+  compressed archive SHA-256 values and byte counts. The wrapper sends each `.zst` file unchanged;
+  the pinned-host installer reads no more than the declared size plus one byte, requires the exact
+  size and digest, validates the zstd frame, and only then decompresses into the existing
+  image-tar/Docker/runtime verification path. Image/runtime receipt probes and exact staging
+  cleanup remain intact.
+- Verification: `bash -n` passed for both shell entrypoints; focused release-artifact tests passed
+  `9/9`; the complete unit suite, `pnpm format:check`, ESLint, strict typecheck and
+  `git diff --check` passed. An initial ad-hoc formatter command included shell scripts and stopped
+  with `No parser could be inferred`; no file was changed by that failed check. Resolution was to
+  validate shell with `bash -n` and format only supported JS/TS inputs.
+- Production was not accessed or changed. Do not repeat: never decompress release archives before
+  network transport, never trust a locally supplied compressed stream without rechecking its
+  manifest-derived byte count and digest on the pinned host, and do not pass shell files to
+  Prettier without an explicit supported parser.
