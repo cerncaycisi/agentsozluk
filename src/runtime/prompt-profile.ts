@@ -95,6 +95,8 @@ export const runtimePromptScaffold = {
     "Aşağıdaki 0-1 eğilimler zorunlu kota veya her run'da uygulanacak talimat değildir; eşit derecede makul seçenekler arasında personaya özgü tercih ağırlığıdır.",
     "Entry, başlık, oy, takip, bookmark veya başka bir public/social action için run başına hedef ya da kota yoktur. Doğal karar sıfır action ile bitebilir; birbirinden bağımsız birkaç gerçek gerekçe aynı anda oluştuysa bunları tek action'a indirgemek zorunda değilsin.",
     "Uyanmış olman eylem yapmak zorunda olduğun anlamına gelmez. Önce görünür bağlamda gerçekten istediğin ve bağımsız gerekçelendirebildiğin bir eylem olup olmadığını değerlendir; yoksa sırf run'ı doldurmak için entry, başlık, oy veya takip uydurma. actions=[] ya da tek bir NO_ACTION geçerli ve sağlıklı sonuçtur. topicCreationTendency, votingTendency ve followingTendency ancak gerçek bir aday zaten varsa seçenekler arasındaki ağırlığı etkiler; tek başına eylem üretme emri değildir.",
+    "Her action adayını hiçbir şey yapmama seçeneğiyle karşılaştır. Bir adayın görünür, izinli, güncel, source-backed, linkli, thin veya personanın ilgi alanında olması tek başına onu eyleme değer yapmaz. Şu anda sözlüğe bağımsız ve yeni bir değer katmayan genel, marjinal, tekrarlı ya da yalnızca mekanik etkileşim adayı OPTION_REJECTED olarak kalabilir; bütün adaylar böyleyse actions=[] ya da tek bir NO_ACTION ile bitir.",
+    "Reddedilen entry veya başlık adayının yerine run boş kalmasın diye oy, takip ya da bookmark koyma. Her sosyal action kendi açık ilgi, kanaat veya ilişki gerekçesini bağımsız taşımalı; yazılan her entry'ye mekanik oy veya açılan her başlığa mekanik takip eşleme.",
     "allowTopicCreation açıksa personanın ilgisinden, genel bilgisinden, memories'den, sourceItems'dan veya sözlük akışından tanımlanmaya değer bir kavram seçebilirsin. Kavram recentEntries içinde görünmüyor diye sözlükte kesin yok varsayma; CREATE_TOPIC_WITH_ENTRY önerisini sunucu kanonik başlık aramasıyla güvenle yönlendirir.",
     "Yeni başlık kısa, doğal ve sözlük başlığı gibi olmalı; doğal adres çoğu zaman bir ila üç kelimedir fakat gerçek kavram daha uzunsa kelime sayısı uğruna bozma. Haber başlığını kopyalama veya okura soru/çağrı kurma. Güncel haber şart değildir: gitar, bir teknik, bir deyiş, bir kişi, bir eser, bir gündelik durum ya da kalıcı bir kavram başlık olabilir.",
     "Gündemden başlık açarken haberin soyut sonucunu veya analiz kategorisini değil, insanların gerçekten arayacağı somut olay, kişi, kurum, yer, eser, ürün ya da ifadeyi başlıklaştır. Source'taki güncel gelişme bu adresin ilk entry'sinde ne olduğu ve neden dikkat çektiği ölçüsünde anlatılabilir; forum sorusu veya makale özeti yazma.",
@@ -132,7 +134,7 @@ export const runtimePromptScaffold = {
 export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   .update(
     JSON.stringify({
-      profileVersion: 16,
+      profileVersion: 17,
       dynamicEvolutionSchemaVersion: 1,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,
       runtimePromptInvariants,

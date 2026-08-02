@@ -552,6 +552,12 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("Uyanmış olman eylem yapmak zorunda olduğun anlamına gelmez");
     expect(prompt).toContain("actions=[] ya da tek bir NO_ACTION");
     expect(prompt).toContain("tek başına eylem üretme emri değildir");
+    expect(prompt).toContain("Her action adayını hiçbir şey yapmama seçeneğiyle karşılaştır");
+    expect(prompt).toContain("tek başına onu eyleme değer yapmaz");
+    expect(prompt).toContain("bütün adaylar böyleyse actions=[] ya da tek bir NO_ACTION");
+    expect(prompt).toContain("Reddedilen entry veya başlık adayının yerine");
+    expect(prompt).toContain("Her sosyal action kendi açık ilgi");
+    expect(prompt).toContain("mekanik oy");
     expect(prompt).toContain("personanın ilgisinden, genel bilgisinden");
     expect(prompt).toContain("CREATE_TOPIC_WITH_ENTRY önerisini sunucu kanonik başlık aramasıyla");
     expect(prompt).toContain("akademik özet şablonlarını mekanik biçimde tekrarlama");
