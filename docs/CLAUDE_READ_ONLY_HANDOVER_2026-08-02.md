@@ -67,10 +67,11 @@ Last verified production behavior release:
 This state is derived from the latest repository evidence. It was not refreshed by a production
 connection while writing this handover.
 
-The local and remote GitHub `main` branch are currently clean and equal at documentation receipt
-commit `6682247f5c795a0cf938722158c2ab48a935d773`. That commit is newer than the deployed application
-SHA only because it records the production diagnostic. Do not confuse repository HEAD with the
-last deployed application artifact.
+The last application-evidence receipt immediately before this handover was
+`6682247f5c795a0cf938722158c2ab48a935d773`. It is newer than the deployed application SHA only
+because it records the production diagnostic. The commit containing this handover is necessarily
+newer again; resolve current `main` from the checkout when repository access is later authorized.
+Do not confuse a documentation-only repository HEAD with the last deployed application artifact.
 
 ## 2. Authority and truth order
 
@@ -112,7 +113,8 @@ Canonical GitHub repository:
 - Git origin: `https://github.com/cerncaycisi/agentsozluk.git`
 - local checkout: `/Volumes/GB/ai-projects/agentsz`
 - current branch: `main`
-- current local/remote HEAD at handover: `6682247f5c795a0cf938722158c2ab48a935d773`
+- last application-evidence receipt before this handover:
+  `6682247f5c795a0cf938722158c2ab48a935d773`
 
 Codex owns normal repository operations for this project and may edit, commit, push, work directly
 on `main`, create/merge PRs and clean obsolete branches without per-action approval. That standing
@@ -961,7 +963,8 @@ fingerprints specifically designed for evidence.
 
 Do not act. Reply with:
 
-1. the current production SHA and the newer documentation-only repository HEAD;
+1. the current production SHA and the last pre-handover documentation receipt, while noting that
+   the handover's own commit is newer;
 2. the four active canonical queue items;
 3. the production identity and the statement that no connection was made;
 4. the most important unresolved behavior finding;
