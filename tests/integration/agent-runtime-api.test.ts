@@ -3378,9 +3378,24 @@ describe("internal agent runtime API with PostgreSQL", () => {
       },
     });
     const source = await integrationDatabase.agentSource.findFirstOrThrow({
-      where: { agentProfileId: fixture.created.agent.profile.id, adminBlocked: false },
+      where: {
+        agentProfileId: fixture.created.agent.profile.id,
+        adminBlocked: false,
+        status: "SEED",
+      },
     });
     const sourceDirection = source.trustScore <= 0.9 ? 1 : -1;
+    const sourceItem = await integrationDatabase.agentSourceItem.create({
+      data: {
+        sourceId: source.id,
+        canonicalUrl: `https://${source.normalizedDomain}/reflection-evidence`,
+        title: "Reflection integration source item",
+        fetchedAt: new Date(),
+        contentHash: randomUUID().replaceAll("-", "").padEnd(64, "0"),
+        safeText: "Frozen perception source item reflection evidence.",
+        topics: ["reflection"],
+      },
+    });
     const relationship = await integrationDatabase.agentRelationship.create({
       data: {
         agentProfileId: fixture.created.agent.profile.id,
@@ -3420,6 +3435,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(context.perception.sources).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: source.id })]),
     );
+    expect(context.perception.sourceItems).toEqual(
+      expect.arrayContaining([expect.objectContaining({ itemId: sourceItem.id })]),
+    );
     expect(context.perception.relationships).toEqual(
       expect.arrayContaining([expect.objectContaining({ targetUserId: fixture.admin.id })]),
     );
@@ -3429,7 +3447,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
     const firstDelta = {
       safeSummary:
         "Haftalık görünür dijital kayıtlar küçük ve sınırlandırılmış state değişimlerini destekliyor.",
-      evidenceIds: [runId],
+      evidenceIds: [runId, sourceItem.id],
       interestDeltas: [],
       sourceTrustDeltas: [{ sourceId: source.id, delta: sourceDirection * 0.05 }],
       relationshipTrustDeltas: [{ targetUserId: fixture.admin.id, delta: 0.04 }],
@@ -7204,6 +7222,76 @@ describe("internal agent runtime API with PostgreSQL", () => {
         { take: 10 },
       ),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("does not promote a freshly migrated probation source from historical items", async () => {
+    const fixture = await createFixture();
+    const probationStartedAt = new Date("2026-08-01T00:00:00.000Z");
+    const source = await integrationDatabase.agentSource.create({
+      data: {
+        agentProfileId: fixture.created.agent.profile.id,
+        url: "https://migrated-probation.source-evidence.test/feed",
+        normalizedDomain: "migrated-probation.source-evidence.test",
+        sourceType: "RSS",
+        status: "PROBATION",
+        probationStartedAt,
+        topics: ["evidence"],
+        trustScore: 0.5,
+        interestScore: 0.5,
+        noveltyScore: 0.5,
+        usefulnessScore: 0.5,
+        addedByOrigin: "INTEGRATION_TEST",
+      },
+    });
+    await integrationDatabase.agentSourceItem.createMany({
+      data: Array.from({ length: 10 }, (_, index) => ({
+        sourceId: source.id,
+        canonicalUrl: `https://migrated-probation.source-evidence.test/historical-${index}`,
+        title: `Historical source item ${index}`,
+        fetchedAt: new Date("2026-07-31T23:00:00.000Z"),
+        contentHash: String(index).repeat(64),
+        safeText: `Historical source evidence ${index}.`,
+        topics: ["evidence"],
+        expiresAt: new Date("2026-08-10T00:00:00.000Z"),
+      })),
+    });
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const workerId = "migrated-probation-worker";
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const attemptId = randomUUID();
+    await recordRuntimeSourceAttempt(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeSourceAttemptSchema.parse({ workerId, attemptId, sourceId: source.id }),
+    );
+    await recordRuntimeSourceResult(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeSourceResultSchema.parse({
+        workerId,
+        attemptId,
+        sourceId: source.id,
+        items: [
+          {
+            canonicalUrl: "https://migrated-probation.source-evidence.test/fresh",
+            title: "Fresh source item",
+            contentHash: "f".repeat(64),
+            safeText: "Freshly observed source evidence.",
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      integrationDatabase.agentSource.findUniqueOrThrow({ where: { id: source.id } }),
+    ).resolves.toMatchObject({ status: "PROBATION", probationStartedAt });
   });
 
   it("reserves perception capacity for discovery sources and evolves them through probation", async () => {

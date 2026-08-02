@@ -1,5 +1,27 @@
 # Milestone status
 
+## Source evidence chain — local candidate 2026-08-02
+
+The item-2 source-evidence-chain package is implemented locally on the re-verified `main` base
+`248a0c3079e21b56c5234f347d27fefb5dee85e6`; production and PostgreSQL were not accessed. One
+canonical source-status contract now drives presentation, citation, discovery, probation entry,
+runtime result handling, worker provenance and the existing per-writer fresh-source aggregation.
+Non-blocked `SEED` sources enter `PROBATION`, while `PROBATION → TRUSTED` counts only items observed
+at or after the additive `probationStartedAt` timestamp. The migration predicate is exactly
+`status = 'SEED' AND adminBlocked = false`, so the approved pre-state receipt remains 227 `SEED`,
+23 `BLOCKED` and 2 `TRUSTED`; the migration was written but not applied.
+
+The worker/server reflection contract now derives admissible IDs from the frozen perception snapshot
+through one shared tested function. This widens only `reflectionDelta`; action provenance remains
+typed and catalog-based. Focused package tests passed `69/69`; the full unit package passed `167
+files / 814 tests`; OpenAPI passed `136` operations; M1 requirements passed `3/3`; development M2
+traceability passed `464 active PASS / 77 superseded / 25 partial supersessions / 2 approved
+BLOCKED`; Prisma validation, formatting, ESLint and strict TypeScript passed. Final
+`requirements:m2:check` remains blocked by the pre-existing `DONE-082 must be PASS for final M2
+verification; found BLOCKED.` PostgreSQL integration, `verify:m2`, migration execution, production
+release and post-release measurement remain pending explicit authorization. No source-use quota,
+TRUSTED mass promotion or item-3 work was added.
+
 ## Two-stage action-worthiness — production diagnostic 2026-08-02
 
 Exact production SHA `f090389195bf42b7fcc5638fa6bd7f2db84669f9` was promoted from Release

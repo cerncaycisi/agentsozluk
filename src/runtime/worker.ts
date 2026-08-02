@@ -33,6 +33,8 @@ import {
   isRepairableContentRejectionCode,
 } from "@/modules/agents/domain/action-policy";
 import { sourceFetchTargetLimit } from "@/modules/agents/domain/runtime-controls";
+import { deriveRuntimePerceptionEvidence } from "@/modules/agents/domain/runtime-evidence";
+import { runtimeSourceEvidenceTypeForStatus } from "@/modules/agents/domain/source-status";
 import { runtimeFastStateSchema } from "@/modules/agents/validation/runtime-schemas";
 import {
   RUNTIME_PROMPT_PROFILE_HASH,
@@ -272,12 +274,14 @@ function runtimeEvidenceCatalog(context: RuntimeContext): RuntimeEvidenceCatalog
   ];
   const sourceItems = recordArray(perception.sourceItems);
   const trustedSourceIds = sourceItems.flatMap((item) =>
-    item.sourceStatus === "TRUSTED" && stringField(item, "itemId")
+    runtimeSourceEvidenceTypeForStatus(stringField(item, "sourceStatus") ?? "") ===
+      "TRUSTED_SOURCE" && stringField(item, "itemId")
       ? [stringField(item, "itemId")!]
       : [],
   );
   const probationSourceIds = sourceItems.flatMap((item) =>
-    item.sourceStatus === "PROBATION" && stringField(item, "itemId")
+    runtimeSourceEvidenceTypeForStatus(stringField(item, "sourceStatus") ?? "") ===
+      "PROBATION_SOURCE" && stringField(item, "itemId")
       ? [stringField(item, "itemId")!]
       : [],
   );
@@ -302,6 +306,7 @@ function runtimeEvidenceCatalog(context: RuntimeContext): RuntimeEvidenceCatalog
 function runtimeDecisionUsesCatalog(
   decision: RuntimeDecision,
   catalog: RuntimeEvidenceCatalog,
+  perceptionEvidenceIds: ReadonlySet<string>,
 ): boolean {
   const allowed = Object.fromEntries(
     runtimeEvidenceTypes.map((evidenceType) => [evidenceType, new Set(catalog[evidenceType])]),
@@ -323,10 +328,9 @@ function runtimeDecisionUsesCatalog(
   ];
   if (!candidates.every(provenanceUsesCatalog)) return false;
   if (!decision.reflectionDelta) return true;
-  const allAllowed = new Set(runtimeEvidenceTypes.flatMap((type) => [...allowed[type]]));
   return (
     decision.reflectionDelta.evidenceIds.length > 0 &&
-    decision.reflectionDelta.evidenceIds.every((id) => allAllowed.has(id))
+    decision.reflectionDelta.evidenceIds.every((id) => perceptionEvidenceIds.has(id))
   );
 }
 
@@ -338,7 +342,7 @@ const runtimeSourceEvidenceTypes = new Set([
 
 function runtimeSourceEvidenceUsage(
   decision: RuntimeDecision,
-  catalog: RuntimeEvidenceCatalog,
+  sourceItemIds: ReadonlySet<string>,
 ): {
   sourceItemsReferenced: number;
   sourceBackedActions: number;
@@ -364,13 +368,8 @@ function runtimeSourceEvidenceUsage(
     ...decision.sourceProposals,
   ])
     collect(candidate);
-  const sourceEvidenceIds = new Set([
-    ...catalog.TRUSTED_SOURCE,
-    ...catalog.PROBATION_SOURCE,
-    ...catalog.MULTIPLE_SOURCES,
-  ]);
   for (const evidenceId of decision.reflectionDelta?.evidenceIds ?? [])
-    if (sourceEvidenceIds.has(evidenceId)) referencedIds.add(evidenceId);
+    if (sourceItemIds.has(evidenceId)) referencedIds.add(evidenceId);
   return { sourceItemsReferenced: referencedIds.size, sourceBackedActions };
 }
 
@@ -1015,10 +1014,14 @@ export class AgentRuntimeWorker {
         ? normalizedDecision(parsedDecision.data, { reflectionOnly })
         : null;
       const evidenceCatalog = runtimeEvidenceCatalog(context);
+      const perceptionEvidence = deriveRuntimePerceptionEvidence(context.perception, [
+        context.run.id,
+      ]);
+      const perceptionEvidenceIds = new Set(perceptionEvidence.ids);
       if (
         !parsedDecision.success ||
         !decision ||
-        !runtimeDecisionUsesCatalog(decision, evidenceCatalog)
+        !runtimeDecisionUsesCatalog(decision, evidenceCatalog, perceptionEvidenceIds)
       ) {
         const remainingMs = deadline.remainingMs();
         if (remainingMs < 1000) throw new RuntimeProviderTimeoutError();
@@ -1041,7 +1044,10 @@ export class AgentRuntimeWorker {
         deadline.throwIfStopped();
       }
       if (!parsedDecision.success) throw parsedDecision.error;
-      if (!decision || !runtimeDecisionUsesCatalog(decision, evidenceCatalog))
+      if (
+        !decision ||
+        !runtimeDecisionUsesCatalog(decision, evidenceCatalog, perceptionEvidenceIds)
+      )
         throw new Error("RUNTIME_PROVENANCE_CATALOG_INVALID");
       const actionWorthinessCandidateSequences = decision.actions
         .filter(({ actionType }) => actionType !== "NO_ACTION")
@@ -1088,7 +1094,7 @@ export class AgentRuntimeWorker {
       }
       ({ sourceItemsReferenced, sourceBackedActions } = runtimeSourceEvidenceUsage(
         decision,
-        evidenceCatalog,
+        new Set(perceptionEvidence.sourceItemIds),
       ));
       const consolidationRun = isMemoryConsolidationRun(context);
       const personaReflectionRun = isPersonaReflectionRun(context);

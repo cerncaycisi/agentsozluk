@@ -75,6 +75,7 @@ import {
   sourceFetchTargetLimit,
   terminalizeInterruptedRuntimeRun,
 } from "@/modules/agents/domain/runtime-controls";
+import { deriveRuntimePerceptionEvidence } from "@/modules/agents/domain/runtime-evidence";
 import {
   assertSourceScoreWeeklyBudget,
   istanbulWeekWindow,
@@ -309,14 +310,6 @@ function runNotFound(): AppError {
   return new AppError("AGENT_RUN_NOT_FOUND", 404, "Runtime run bulunamadı.");
 }
 
-function collectSnapshotIds(value: unknown, target = new Set<string>()): Set<string> {
-  if (typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/iu.test(value)) target.add(value);
-  else if (Array.isArray(value)) for (const item of value) collectSnapshotIds(item, target);
-  else if (value && typeof value === "object")
-    for (const item of Object.values(value)) collectSnapshotIds(item, target);
-  return target;
-}
-
 function weeklyDeltaFromValidationReport(report: unknown): unknown | null {
   if (!report || typeof report !== "object" || Array.isArray(report)) return null;
   const record = report as Record<string, unknown>;
@@ -438,8 +431,9 @@ async function applyRuntimeReflectionDelta(
     ),
   });
 
-  const observedIds = collectSnapshotIds(input.run.perceptionSummary);
-  observedIds.add(input.run.id);
+  const observedIds = new Set(
+    deriveRuntimePerceptionEvidence(input.run.perceptionSummary, [input.run.id]).ids,
+  );
   const unseenEvidenceId = input.delta.evidenceIds.find((id) => !observedIds.has(id));
   if (unseenEvidenceId)
     throw new AppError(
@@ -1379,7 +1373,7 @@ export function getRuntimeRunContext(
       await storeRuntimePerceptionSummary(transaction, runId, builtPerception);
       perception = builtPerception;
     }
-    const presentedIds = [...collectSnapshotIds(perception)].slice(0, 200);
+    const presentedIds = deriveRuntimePerceptionEvidence(perception, [runId]).ids.slice(0, 200);
     const contextHash = sha256(canonicalLifeEventJson(perception));
     await appendRuntimeEvent(transaction, {
       agentProfileId: principal.agentProfileId,
@@ -1631,7 +1625,7 @@ export function recordRuntimeMemories(
         422,
         "Runtime memory yazımı yalnız izinli consolidation run'larında yapılabilir.",
       );
-    const observedIds = collectSnapshotIds(run.perceptionSummary);
+    const observedIds = new Set(deriveRuntimePerceptionEvidence(run.perceptionSummary).ids);
     let count = 0;
     for (const memory of input.memories) {
       if (memory.sourceMemoryIds.some((id) => !observedIds.has(id)))

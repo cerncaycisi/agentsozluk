@@ -6,6 +6,14 @@ import {
   runtimeRunAllowedInOperatingMode,
   type RuntimeOperatingMode,
 } from "@/modules/agents/domain/runtime-controls";
+import {
+  runtimeDiscoverySourceStatuses,
+  runtimePresentableSourceStatuses,
+  runtimeResultRecordableSourceStatuses,
+  runtimeSourceStatusesForEvidenceType,
+  runtimeSourceEvidenceTypeForStatus,
+  isRuntimeProbationEntrySourceStatus,
+} from "@/modules/agents/domain/source-status";
 import { collectEntryReferenceCandidates } from "@/modules/entries/domain/renderer";
 import {
   publiclyVisibleEntrySql,
@@ -874,12 +882,7 @@ export async function validateRuntimeProvenanceEvidence(
     });
     return { valid: memories === uniqueIds.length, independentSources: 0, sourceEvidenceTexts: [] };
   }
-  const expectedStatuses =
-    input.evidenceType === "TRUSTED_SOURCE"
-      ? ["TRUSTED" as const]
-      : input.evidenceType === "PROBATION_SOURCE"
-        ? ["PROBATION" as const]
-        : (["TRUSTED", "PROBATION"] as const);
+  const expectedStatuses = runtimeSourceStatusesForEvidenceType(input.evidenceType);
   const items = await transaction.agentSourceItem.findMany({
     where: {
       id: { in: uniqueIds },
@@ -1319,7 +1322,7 @@ export function findRuntimeSourceForWrite(
       id: input.sourceId,
       agentProfileId: input.agentProfileId,
       adminBlocked: false,
-      status: { in: ["SEED", "DISCOVERED", "PROBATION", "TRUSTED", "DORMANT"] },
+      status: { in: [...runtimeResultRecordableSourceStatuses] },
     },
     select: { id: true, status: true, topics: true },
   });
@@ -1332,6 +1335,7 @@ const runtimeSourceStateSelect = {
   consecutiveFailures: true,
   lastFetchedAt: true,
   lastUsefulAt: true,
+  probationStartedAt: true,
 } as const satisfies Prisma.AgentSourceSelect;
 
 type RuntimeSourceStateSnapshot = Prisma.AgentSourceGetPayload<{
@@ -1353,6 +1357,7 @@ function sourceStateSnapshot(
     consecutiveFailures: source.consecutiveFailures,
     lastFetchedAt: source.lastFetchedAt,
     lastUsefulAt: source.lastUsefulAt,
+    probationStartedAt: source.probationStartedAt,
   };
 }
 
@@ -1364,7 +1369,8 @@ function sourceStateChanged(
     before.status !== after.status ||
     before.consecutiveFailures !== after.consecutiveFailures ||
     before.lastFetchedAt?.getTime() !== after.lastFetchedAt?.getTime() ||
-    before.lastUsefulAt?.getTime() !== after.lastUsefulAt?.getTime()
+    before.lastUsefulAt?.getTime() !== after.lastUsefulAt?.getTime() ||
+    before.probationStartedAt?.getTime() !== after.probationStartedAt?.getTime()
   );
 }
 
@@ -1457,20 +1463,34 @@ export async function storeRuntimeSourceResult(
       });
       storedItems.push({ ...item, sourceItemId: storedItem.id });
     }
-    const usefulItems = await transaction.agentSourceItem.count({
-      where: { sourceId: input.sourceId },
-    });
     const currentSource = await transaction.agentSource.findUniqueOrThrow({
       where: { id: input.sourceId },
-      select: { status: true, adminBlocked: true },
+      select: { status: true, adminBlocked: true, probationStartedAt: true },
     });
+    const probationStartedAt = isRuntimeProbationEntrySourceStatus(currentSource.status)
+      ? input.now
+      : currentSource.status === "PROBATION"
+        ? (currentSource.probationStartedAt ?? input.now)
+        : null;
+    const usefulItemsAfterProbation = probationStartedAt
+      ? await transaction.agentSourceItem.count({
+          where: {
+            sourceId: input.sourceId,
+            fetchedAt: { gte: probationStartedAt },
+          },
+        })
+      : 0;
     const evolvedStatus = currentSource.adminBlocked
       ? currentSource.status
-      : currentSource.status === "DISCOVERED"
+      : isRuntimeProbationEntrySourceStatus(currentSource.status)
         ? "PROBATION"
-        : currentSource.status === "PROBATION" && usefulItems >= 3
+        : currentSource.status === "PROBATION" && usefulItemsAfterProbation >= 3
           ? "TRUSTED"
           : currentSource.status;
+    const shouldStampProbationStart =
+      (isRuntimeProbationEntrySourceStatus(currentSource.status) ||
+        currentSource.status === "PROBATION") &&
+      !currentSource.probationStartedAt;
     const updatedSource = await transaction.agentSource.update({
       where: { id: input.sourceId },
       data: {
@@ -1478,6 +1498,9 @@ export async function storeRuntimeSourceResult(
         lastFetchedAt: input.now,
         ...(input.items.length > 0 ? { lastUsefulAt: input.now } : {}),
         ...(evolvedStatus !== currentSource.status ? { status: evolvedStatus } : {}),
+        ...(shouldStampProbationStart
+          ? { probationStartedAt: probationStartedAt ?? input.now }
+          : {}),
       },
       select: { status: true },
     });
@@ -1492,13 +1515,12 @@ export async function storeRuntimeSourceResult(
         select: { id: true },
         orderBy: { createdAt: "asc" },
       });
+      const provenance = runtimeSourceEvidenceTypeForStatus(updatedSource.status);
+      if (!provenance) continue;
       const learned = {
         summary: sourceMemorySummary(item),
         salience: 0.5,
-        provenance:
-          updatedSource.status === "TRUSTED"
-            ? ("TRUSTED_SOURCE" as const)
-            : ("PROBATION_SOURCE" as const),
+        provenance,
         evidence: {
           sourceId: input.sourceId,
           sourceItemId: item.sourceItemId,
@@ -1597,7 +1619,7 @@ async function listRuntimePerceptionSources(
           where: {
             id: { in: input.preferredSourceIds },
             agentProfileId: input.agentProfileId,
-            status: { in: ["SEED", "PROBATION", "TRUSTED", "DISCOVERED"] },
+            status: { in: [...runtimePresentableSourceStatuses] },
             adminBlocked: false,
           },
           select: perceptionSourceSelect(input.now),
@@ -1617,7 +1639,7 @@ async function listRuntimePerceptionSources(
       ? await transaction.agentSource.findFirst({
           where: {
             agentProfileId: input.agentProfileId,
-            status: { in: ["DISCOVERED", "PROBATION"] },
+            status: { in: [...runtimeDiscoverySourceStatuses] },
             adminBlocked: false,
             ...(preferredIds.length > 0 ? { id: { notIn: preferredIds } } : {}),
           },
@@ -1631,7 +1653,7 @@ async function listRuntimePerceptionSources(
       ? await transaction.agentSource.findMany({
           where: {
             agentProfileId: input.agentProfileId,
-            status: { in: ["SEED", "PROBATION", "TRUSTED", "DISCOVERED"] },
+            status: { in: [...runtimePresentableSourceStatuses] },
             adminBlocked: false,
             ...(preferredIds.length > 0 || discovery
               ? {

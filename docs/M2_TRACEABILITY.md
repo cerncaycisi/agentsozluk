@@ -8,6 +8,17 @@ operational policy ADR-012 supersedes its daily-target/plan/catch-up behavior. T
 which rows are fully historical and which retain an active remainder; do not use a superseded row
 as a current production runbook or infer current behavior from its historical `PASS` label.
 
+## 2026-08-02 item-2 source-evidence-chain addendum
+
+This package reconciles into the existing evolution, runtime provenance and source-evolution rows;
+it creates no parallel requirement IDs or queue. The local implementation evidence is the canonical
+source-status contract, the additive probation-window migration, the shared frozen-perception
+evidence derivation, and the typed action-provenance guard. Focused package tests passed `69/69`,
+the full unit package passed `167 files / 814 tests`, OpenAPI passed `136` operations, and Prisma,
+formatting, ESLint and strict TypeScript passed. PostgreSQL integration and `verify:m2` were not run
+because the user explicitly prohibited all server/database connections. The final M2 checker remains
+blocked by its pre-existing `DONE-082` final-gate requirement rather than by a new traceability row.
+
 | Requirement      | Implementation                                                                                                                                                                                                                                                                        | Test or validation                                                                                                                                                                                                                                                                                                                                                 | Status  |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
 | ACT-001          | Runtime `performAction` delegates entry/topic/vote/follow/bookmark mutations to the existing V1 module application services                                                                                                                                                           | `agent-runtime-api.test.ts`: executes a proposed entry through the V1 service                                                                                                                                                                                                                                                                                      | PASS    |

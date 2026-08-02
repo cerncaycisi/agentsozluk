@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { runtimeSourceStatusContract } from "@/modules/agents/domain/source-status";
 
 const root = process.cwd();
 const schema = readFileSync(path.join(root, "prisma/schema.prisma"), "utf8");
@@ -14,6 +15,10 @@ const modelKnowledgeMigration = readFileSync(
 );
 const sourceLocaleMigration = readFileSync(
   path.join(root, "prisma/migrations/20260729210000_add_source_locale_focus/migration.sql"),
+  "utf8",
+);
+const sourceProbationMigration = readFileSync(
+  path.join(root, "prisma/migrations/20260802120000_add_source_probation_window/migration.sql"),
   "utf8",
 );
 
@@ -56,6 +61,30 @@ describe("Milestone 2 agent database contract", () => {
     );
     expect(sourceLocaleMigration).toContain('CREATE INDEX "agent_sources_localeFocus_status_idx"');
     expect(schema).toContain("localeFocus");
+  });
+
+  it("keeps one canonical runtime source-status contract and bounds probation promotion", () => {
+    expect(runtimeSourceStatusContract.presentable).toEqual([
+      "SEED",
+      "DISCOVERED",
+      "PROBATION",
+      "TRUSTED",
+    ]);
+    expect(runtimeSourceStatusContract.citable).toEqual(["PROBATION", "TRUSTED"]);
+    expect(runtimeSourceStatusContract.discovery).toEqual(["DISCOVERED", "PROBATION"]);
+    expect(runtimeSourceStatusContract.resultRecordable).toEqual([
+      "SEED",
+      "DISCOVERED",
+      "PROBATION",
+      "TRUSTED",
+      "DORMANT",
+    ]);
+    expect(schema).toContain("probationStartedAt");
+    expect(sourceProbationMigration).toContain('ADD COLUMN "probationStartedAt" TIMESTAMPTZ(3)');
+    expect(sourceProbationMigration).toMatch(
+      /SET\s+"status"\s*=\s*'PROBATION',[\s\S]*"probationStartedAt"\s*=\s*CURRENT_TIMESTAMP[\s\S]*WHERE\s+"status"\s*=\s*'SEED'[\s\S]*"adminBlocked"\s*=\s*false/u,
+    );
+    expect(sourceProbationMigration).not.toContain("'TRUSTED'");
   });
 
   it("declares the control-plane, runtime, memory and provenance models", () => {

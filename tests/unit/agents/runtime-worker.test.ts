@@ -2105,6 +2105,166 @@ describe("long-lived agent runtime worker", () => {
     );
   });
 
+  it("admits a presented SEED source item for reflection and counts the source reference", async () => {
+    const runId = randomUUID();
+    const sourceItemId = randomUUID();
+    const plane = controlPlane(runId);
+    const context = fixtureContext(runId);
+    plane.context = vi.fn().mockResolvedValue({
+      ...context,
+      run: {
+        ...context.run,
+        runType: "REFLECTION",
+        trigger: "WEEKLY_PERSONA_REFLECTION",
+        allowTopicCreation: false,
+        allowVoting: false,
+        allowFollowing: false,
+        allowSourceReading: false,
+        publishEnabled: false,
+      },
+      perception: {
+        ...context.perception,
+        sourceItems: [
+          {
+            itemId: sourceItemId,
+            sourceStatus: "SEED",
+            title: "Sunulan kaynak kanıtı",
+            safeText: "Sunulan kaynak maddesi yalnızca sınırlı bir değişimi destekliyor.",
+            summary: null,
+          },
+        ],
+      },
+    });
+    const reflectionDelta = {
+      safeSummary: "Sunulan kaynak kanıtı merak düzeyinde küçük bir değişimi destekliyor.",
+      evidenceIds: [sourceItemId],
+      interestDeltas: [],
+      sourceTrustDeltas: [],
+      relationshipTrustDeltas: [],
+      beliefConfidenceDeltas: [],
+      temperamentDeltas: [{ key: "curiosity", delta: 0.01 }],
+      coreValueDeltas: [],
+    };
+    const provider: RuntimeProvider = {
+      inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
+      invoke: vi.fn().mockResolvedValue({
+        provider: "codex-cli",
+        version: "test",
+        durationMs: 5,
+        output: {
+          state: { curiosity: 0.4, confidence: 0.6, topicFatigue: { items: [] } },
+          observations: [],
+          actions: [],
+          beliefDeltas: [],
+          relationshipDeltas: [],
+          sourceProposals: [],
+          reflectionDelta,
+          memoryConsolidations: [],
+          memoryCandidates: [],
+          safeRunSummary: {
+            operationSummary: "Source-backed reflection structured delta üretti.",
+            observedItemIds: [sourceItemId],
+            shortRationale: "Reflection evidence snapshot içinden seçildi.",
+          },
+        },
+      }),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "seed-reflection-worker",
+      credentials: [`agt_${"s".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(provider.invoke).toHaveBeenCalledTimes(1);
+    expect(plane.complete).toHaveBeenCalledWith(
+      expect.any(String),
+      "seed-reflection-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({
+        reflectionDelta,
+        performanceMetrics: expect.objectContaining({
+          sourceItemsReferenced: 1,
+          sourceBackedActions: 0,
+        }),
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it("keeps action provenance catalog-typed when reflection admission sees a SEED item", async () => {
+    const runId = randomUUID();
+    const topicId = randomUUID();
+    const sourceItemId = randomUUID();
+    const plane = controlPlane(runId);
+    const context = fixtureContext(runId);
+    plane.context = vi.fn().mockResolvedValue({
+      ...context,
+      perception: {
+        ...context.perception,
+        recentEntries: [],
+        sourceItems: [{ itemId: sourceItemId, sourceStatus: "SEED" }],
+      },
+    });
+    const provider: RuntimeProvider = {
+      inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 1,
+          output: canonicalNormalOutput("Seed source action provenance geçersiz.", {
+            actions: [
+              {
+                type: "CREATE_ENTRY",
+                targetId: topicId,
+                body: "Bu action citable source catalog eşleşmesi olmadan yürümemeli.",
+                desire: 0.7,
+                safeReason: "Seed item reflection için görünür olsa da action provenance değildir.",
+                claimProvenance: [
+                  {
+                    provenance: "PROBATION_SOURCE",
+                    evidenceIds: [sourceItemId],
+                    shortRationale: "Typed action provenance yanlışlıkla genişletildi.",
+                  },
+                ],
+              },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 1,
+          output: canonicalNormalOutput("Geçersiz action yerine abstention seçildi."),
+        }),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "seed-action-provenance-worker",
+      credentials: [`agt_${"t".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(provider.invoke).toHaveBeenCalledTimes(2);
+    expect(plane.recordActions).toHaveBeenCalledWith(
+      expect.any(String),
+      "seed-action-provenance-worker",
+      runId,
+      LEASE_TOKEN,
+      [expect.objectContaining({ actionType: "NO_ACTION" })],
+      expect.any(Object),
+      expect.any(Object),
+    );
+    expect(plane.complete).toHaveBeenCalledTimes(1);
+  });
+
   it("passes weekly reflection delta without normalizing public state actions", async () => {
     const runId = randomUUID();
     const evidenceId = randomUUID();

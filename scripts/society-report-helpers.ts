@@ -6,6 +6,7 @@ export {
   type ReflectionPurpose,
   type ReflectionStatus,
 } from "@/modules/agents/domain/evolution-observability";
+import { runtimePresentableSourceStatuses } from "@/modules/agents/domain/source-status";
 
 export const EPOCH_2_FROM = "2026-07-23T00:00:00+03:00";
 export const EPOCH_2_TO = "2026-07-30T00:00:00+03:00";
@@ -211,7 +212,7 @@ export function classifyLifecycleWindow(
   return results;
 }
 
-const RUNTIME_ENABLED_SOURCE_STATUSES = new Set(["SEED", "DISCOVERED", "PROBATION", "TRUSTED"]);
+const RUNTIME_ENABLED_SOURCE_STATUSES = new Set<string>(runtimePresentableSourceStatuses);
 const TURKISH_OR_TURKEY_FOCUSED = new Set([
   "TURKISH_LANGUAGE",
   "TURKEY_FOCUSED",

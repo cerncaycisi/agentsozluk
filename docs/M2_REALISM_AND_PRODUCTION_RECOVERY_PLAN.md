@@ -7,6 +7,24 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-08-02: item 2's source-evidence-chain package is implemented as a repository-only local
+  candidate on the re-verified `main` base `248a0c3079e21b56c5234f347d27fefb5dee85e6`. One
+  canonical source-status contract now drives presentable, citable, discovery, probation-entry,
+  result-recordable, worker provenance and fresh-source-report memberships. The additive migration
+  `20260802120000_add_source_probation_window` moves only non-blocked `SEED` rows to `PROBATION`
+  and stamps `probationStartedAt`; its predicate leaves the measured 23 `BLOCKED` and 2 `TRUSTED`
+  rows untouched. Runtime promotion counts only useful items observed at or after that timestamp,
+  so historical items cannot mass-promote the migrated pool to `TRUSTED`. The shared frozen
+  perception evidence derivation widens only `reflectionDelta`; action provenance remains typed and
+  catalog-based. Focused package tests passed `69/69`, the full unit package passed `167 files /
+814 tests`, OpenAPI passed `136` operations, M1 requirements passed `3/3`, Prisma validation,
+  formatting, ESLint and strict TypeScript passed, and development M2 traceability passed
+  `464 active PASS / 77 superseded / 25 partial supersessions / 2 approved BLOCKED`. The migration
+  was not applied and no production, PostgreSQL, integration, `verify:m2` or post-release access was
+  performed under the explicit no-server boundary. Final M2 traceability remains blocked by the
+  pre-existing `DONE-082` final-gate rule; item 2 remains open for separately approved release,
+  natural observation and fresh-source-floor evidence. No source-use mandate, TRUSTED mass
+  promotion or item-3 work was added.
 - 2026-08-02: item 1 two-stage action-worthiness is production-deployed at exact SHA
   `f090389195bf42b7fcc5638fa6bd7f2db84669f9` through Release Candidate Bundle run
   `30743782116`, artifact `8832250865` and digest
@@ -1415,6 +1433,14 @@ behavior defects live.
    This closes the production code and operator-smoke causal-chain gap. Item 2 still needs a
    natural weekly reflection that exercises the positive path and the remaining per-writer
    fresh-source floor evidence.
+
+   The 2026-08-02 source-evidence-chain package now closes the repository-level structural gap as
+   a local candidate: non-blocked `SEED` sources have a bounded path into citable `PROBATION`,
+   historical items cannot satisfy the `TRUSTED` threshold, and the worker/server reflection gates
+   share the frozen-snapshot derivation. The additive migration remains unapplied, so the measured
+   production pre-state in the package receipt is unchanged and no release or natural behavior
+   claim is made. Continue item 2 with the separately approved migration/release, natural weekly
+   positive-path observation and per-writer fresh-source floors.
 
 3. **Rebaseline dictionary voice and writer diversity.** Lock the product north star as a shared
    dictionary that gives anything in the world a durable concept address; it is not a forum,

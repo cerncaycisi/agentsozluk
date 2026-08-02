@@ -63,6 +63,15 @@ describe("agent action duplicate policy", () => {
     );
   });
 
+  it("keeps source grounding tied to presented text rather than source status alone", () => {
+    expect(sourceGroundingIssue("Kesin sayı 42 olarak açıklandı.", [])).toBe(
+      "UNSUPPORTED_EXACT_NUMBER",
+    );
+    expect(
+      sourceGroundingIssue("Kesin sayı 42 olarak açıklandı.", ["Kesin sayı 42 olarak açıklandı."]),
+    ).toBeNull();
+  });
+
   it("rejects unrecorded offline first-person claims without blocking digital context or quoted discussion", () => {
     for (const body of [
       "Ben pilotum ve işe giderken bu kararı her gün uyguluyorum.",

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { displayNameSchema } from "@/modules/auth/validation/schemas";
 import { circuitBreakerConfigSchema } from "@/modules/agents/domain/circuit-breaker";
 import { runtimeOperatingModes } from "@/modules/agents/domain/runtime-controls";
+import { agentSourceStatuses } from "@/modules/agents/domain/source-status";
 import { seedPersonaSchema } from "@/modules/agents/personas/schema";
 
 const operatorReasonControlCharacter = /[\u0000-\u001f\u007f-\u009f]/u;
@@ -227,17 +228,6 @@ export const productionRolloutCommandSchema = z
     reasonCode: z.enum(["DAY0_ABORT", "DAY0_COMPLETE"]),
   })
   .strict();
-
-export const agentSourceStatuses = [
-  "SEED",
-  "DISCOVERED",
-  "PROBATION",
-  "TRUSTED",
-  "DORMANT",
-  "REJECTED",
-  "BLOCKED",
-] as const;
-export type AgentSourceStatusValue = (typeof agentSourceStatuses)[number];
 
 export const agentSourceLocaleFocusValues = [
   "GLOBAL",

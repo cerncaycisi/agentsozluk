@@ -23,6 +23,8 @@ export * from "@/modules/agents/domain/evolution-observability";
 export * from "@/modules/agents/domain/perception";
 export * from "@/modules/agents/domain/provenance";
 export * from "@/modules/agents/domain/source-security";
+export * from "@/modules/agents/domain/source-status";
+export * from "@/modules/agents/domain/runtime-evidence";
 export * from "@/modules/agents/domain/runtime-auth";
 export * from "@/modules/agents/domain/runtime-credential-enrollment";
 export * from "@/modules/agents/domain/runtime-controls";

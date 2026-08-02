@@ -15,6 +15,7 @@ import {
   reconciledSourceLocaleFocus,
   reviewedSourceLocaleFocus,
 } from "@/modules/agents/personas/source-locale-metadata";
+import { isRuntimeCitableSourceStatus } from "@/modules/agents/domain/source-status";
 import { appendRuntimeEvent, lockAgentProfile } from "@/modules/agents/repository/control-plane";
 import { appendAuditLog } from "@/modules/audit";
 import { resolveOperatorAdmin } from "./agent-operator";
@@ -172,7 +173,7 @@ async function main(): Promise<void> {
               adminPinned: source.pinned,
               adminBlocked: false,
               status:
-                before && ["TRUSTED", "PROBATION"].includes(before.status)
+                before && isRuntimeCitableSourceStatus(before.status)
                   ? before.status
                   : source.status,
               consecutiveFailures: 0,

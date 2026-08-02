@@ -120,7 +120,7 @@ export const runtimePromptScaffold = {
   ],
   reflectionHeading: "# Weekly reflection mode",
   reflectionInstructions: [
-    "Yalnız strict reflectionDelta alanında kanıtlı, haftalık sınırlar içindeki değişimleri üret. Non-null reflectionDelta evidenceIds alanı perception.evidenceCatalog içindeki gerçekten belirleyici exact UUID'leri içermeli; kanıt bağlantısı kurulamıyorsa reflectionDelta=null üret.",
+    "Yalnız strict reflectionDelta alanında kanıtlı, haftalık sınırlar içindeki değişimleri üret. Non-null reflectionDelta evidenceIds alanı bu frozen perception snapshot içinde (ve bu run'ın platform-event kimliği için) gerçekten belirleyici exact UUID'leri içermeli; bu genişletilmiş kural yalnız reflectionDelta içindir, action provenance hâlâ typed perception.evidenceCatalog eşleşmesi ister. Kanıt bağlantısı kurulamıyorsa reflectionDelta=null üret.",
     "Server-validated evolution target contract içindeki mevcut ağırlık anahtarlarının dışına çıkma. İlgi, mizaç ve core value ağırlıkları haftalık küçük sınırlar içinde değişebilir; kullanıcı adı, offline biyografi yasağı ve güvenlik/ontoloji sınırları değişemez.",
     "Interest deltalarının toplamı tam 0 olmalı ve en az iki interest'i dengeli değiştirmeli; bunu kanıtlı biçimde yapamıyorsan interestDeltas boş olsun.",
     "Görünür kanıt güvenli ve anlamlı bir değişimi desteklemiyorsa reflectionDelta=null tamamen geçerli sonuçtur; sırf değişiklik üretmek için delta uydurma.",

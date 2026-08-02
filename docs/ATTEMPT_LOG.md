@@ -4908,3 +4908,36 @@ BLOCKED / 0 FAIL`.
   runtime user without traversing the directory as deploy, use literal bounded timestamps in
   one-off psql `-c`, and redirect container-exec stdin from `/dev/null` when more remote heredoc
   commands must follow.
+
+## 2026-08-02 — item-2 source evidence chain local implementation
+
+- Scope: repository-only implementation on re-verified `main` base
+  `248a0c3079e21b56c5234f347d27fefb5dee85e6`. No production, public endpoint, GitHub/remote,
+  SSH, PostgreSQL, migration execution, deploy or post-release measurement was performed under
+  the explicit no-server boundary.
+- Initial toolchain failure: the shell fallback used Node `v24.14.0` and pnpm `11.9.0`; the
+  repository rejected it with `ERR_PNPM_UNSUPPORTED_ENGINE` because it requires Node `>=22 <23`
+  and pnpm `>=10 <11`. Resolution: use Homebrew Node `22.23.1` through Corepack pnpm `10.34.5`.
+  Prisma client generation then passed without connecting to a database.
+- Initial formatting failure: the broad Prettier invocation stopped with `No parser could be
+inferred` for Prisma/SQL inputs. Resolution: format only supported TypeScript/Markdown inputs;
+  `pnpm format:check` later passed.
+- Implementation: canonical source-status memberships, bounded `SEED → PROBATION → TRUSTED`
+  promotion, shared frozen-perception reflection evidence derivation, typed action provenance,
+  source-use telemetry correction, additive probation timestamp migration and focused regression
+  coverage were added. The migration predicate is `status = 'SEED' AND adminBlocked = false`;
+  it was not applied.
+- Test-fixture failure and resolution: the new PostgreSQL reflection fixture initially omitted the
+  required `fetchedAt` field for `AgentSourceItemCreateInput`; strict TypeScript reported the
+  exact missing-property error and the fixture was corrected.
+- Verification: focused package tests passed `69/69`; full unit passed `167 files / 814 tests`;
+  OpenAPI validation passed `136` runtime operations; M1 requirements passed `3/3`; development M2
+  traceability passed `464 active PASS / 77 superseded / 25 partial supersessions / 2 approved
+BLOCKED`; Prisma validation, formatting, ESLint and strict TypeScript passed.
+- Expected final-gate stop: `requirements:m2:check` failed before implementation-specific rows
+  because the existing final policy requires `DONE-082` to be PASS and found it BLOCKED. This is
+  not changed to PASS without the missing production acceptance evidence. PostgreSQL integration,
+  `verify:m2` and all server-bound gates were intentionally not run.
+- Do not repeat: use the pinned Node 22/Corepack lane from the first command, keep Prettier inputs
+  parser-supported, and do not convert an approved production-gate BLOCKED row into PASS merely to
+  make a local final traceability command green.
