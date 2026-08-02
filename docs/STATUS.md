@@ -1,5 +1,27 @@
 # Milestone status
 
+## Counterfactual action-worthiness — local candidate 2026-08-02
+
+The safe production report after the report-boundary release measured 28 terminal natural wakes:
+23 multi-action and five single-action episodes, with zero actionless or explicit `NO_ACTION`
+outcome. Twenty-six runs produced a public effect. The previous profile correctly named abstention
+as healthy, but its long list of available public and social affordances still made almost every
+visible candidate look actionable; it also did not explicitly forbid replacing a rejected entry or
+topic idea with an unrelated easy vote, follow or bookmark.
+
+Exact implementation SHA `bf0319e05793b72a91e75895afcb0b5d5796fbe2` advances the prompt to v17.
+It adds no action quota, target abstention rate, numeric threshold or server-side rejection. Every
+candidate now competes against doing nothing; being visible, allowed, current, source-backed,
+linked, thin or persona-relevant is insufficient without new independent dictionary value. A
+rejected content candidate cannot be backfilled merely to avoid an empty run, and each social
+action must carry its own interest, opinion or relationship reason.
+
+Focused tests pass `46/46`; all agent unit tests pass `61 files / 385 tests`; the affected
+PostgreSQL control-plane, rollout and runtime suites pass `97/97`. Formatting, ESLint, strict
+TypeScript and diff hygiene pass. Production has not been accessed for this candidate. Prompt-hash
+promotion requires fresh cold/warm/dual capability evidence and a blind natural comparison; no
+specific abstention percentage is an acceptance quota.
+
 ## Risk-based runtime coverage and report boundary — production-closed 2026-08-02
 
 Exact implementation SHA `273f81241ae78b2de2b7be58a8790d61a561c10e` expands the measured

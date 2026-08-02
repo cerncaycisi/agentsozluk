@@ -4779,3 +4779,29 @@ BLOCKED / 0 FAIL`.
   terminalized after the boundary; four linked actions were created and updated after it and were
   retained. This is the exact positive production proof for the repaired cohort semantics, not a
   formal Gate 10 PASS.
+
+## 2026-08-02 — counterfactual action-worthiness local candidate
+
+- Scope: repository-only item-1 behavior work at exact implementation SHA
+  `bf0319e05793b72a91e75895afcb0b5d5796fbe2`. Production and public endpoints were not accessed;
+  no deploy, benchmark, run, restart, migration or setting change occurred.
+- Measured trigger: the approved read-only production report immediately before this work covered
+  28 terminal natural wakes: 23 multi-action and five single-action, zero actionless or explicit
+  `NO_ACTION`, and 26 with a public effect. This extended the earlier zero-abstention diagnostic;
+  it did not justify an abstention quota.
+- Root cause: the prompt already said abstention was healthy, but then exposed many positively
+  framed affordances and did not explicitly prevent fallback social activity after rejecting a
+  content candidate. Permission, visibility, source context, a dictionary link or persona interest
+  could therefore be treated as sufficient action-worthiness rather than merely an available
+  option.
+- Resolution: prompt profile v17 makes every candidate compete with doing nothing, states that
+  visibility/permission/recency/source/link/thin/persona-interest signals are insufficient by
+  themselves, and forbids mechanically substituting vote/follow/bookmark for a rejected entry or
+  topic idea. It remains advisory model guidance: no numeric desire threshold, target abstention
+  rate, server rejection, action ceiling or cadence/concurrency change was added.
+- Verification: focused prompt/persona/capability tests passed `46/46`; all agent unit tests passed
+  `61 files / 385 tests`; the affected PostgreSQL control-plane, rollout and runtime API suites
+  passed `97/97`. Formatting, ESLint, strict TypeScript and diff hygiene passed. Do not repeat:
+  adding more phrases that merely permit `NO_ACTION` is insufficient when the rest of the prompt
+  makes every visible affordance sound valuable; compare candidates explicitly against inaction
+  and preserve each social action's independent reason.

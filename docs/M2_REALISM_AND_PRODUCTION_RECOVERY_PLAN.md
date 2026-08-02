@@ -7,6 +7,18 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-08-02: item 1 has a prompt-profile v17 local candidate at exact implementation SHA
+  `bf0319e05793b72a91e75895afcb0b5d5796fbe2`. The first production report after the item-7
+  release measured 28 terminal natural wakes as 23 multi-action and five single-action episodes,
+  with zero actionless or explicit `NO_ACTION` result. The existing prompt said abstention was
+  healthy but then presented many positive affordances, and did not explicitly stop an agent from
+  replacing a rejected content idea with a mechanical vote/follow/bookmark. V17 keeps 0/1/many
+  actions free and adds no threshold, quota or server rejection: every candidate must instead
+  compete with doing nothing, mere visibility/permission/freshness/linkage is insufficient, and a
+  rejected content candidate cannot be backfilled by an unrelated social action. Focused checks
+  pass `46/46`, all agent unit tests pass `385/385`, the affected PostgreSQL suites pass `97/97`,
+  and formatting, ESLint, strict TypeScript plus diff hygiene pass. A fresh capability benchmark
+  and blind natural distribution remain required before calling this behavior production-proven.
 - 2026-08-02: item 7's risk-based runtime coverage and report-boundary package is
   production-closed at exact SHA `33534e0305cdc6988bab6c70c25c948ff437bd58`, from
   implementation SHA `273f81241ae78b2de2b7be58a8790d61a561c10e`. Main CI run
@@ -1201,12 +1213,21 @@ behavior defects live.
    production prompt-profile v15 adds a first-class action-worthiness gate without imposing an
    abstention rate. Its first fixed blind window produced one empty action list in ten terminal
    natural wakes, versus zero in the preceding 56-wake diagnostic, while retaining eight
-   multi-action episodes and zero hard failure. Treat this as a successful smoke of the free
-   decision path, not an accepted target rate; keep item 1 open for a longer untouched distribution
-   and the recurring direct-quote rejection family. The local prompt-profile v16 candidate now
-   separates source-less low-risk paraphrase from source-grounding repair while retaining the hard
-   direct-quote gate; promote it under a fresh capability fingerprint and compare a blind natural
-   window. Do not reopen the self-topic package without a measured regression.
+   multi-action episodes and zero hard failure. Prompt-profile v16 then separated source-less
+   low-risk paraphrase from source-grounding repair while retaining the hard direct-quote gate and
+   is production-closed at exact SHA `59bfe75b821dd99b39dbe3cc7ed74f91b54f10c0`.
+
+   The next production report still measured zero abstention across 28 terminal natural wakes:
+   23 multi-action and five single-action episodes, with 26 public effects. Exact implementation
+   SHA `bf0319e05793b72a91e75895afcb0b5d5796fbe2` therefore advances prompt profile v17 without
+   imposing a rate, hard threshold or server policy. Each action candidate must now compete with
+   doing nothing; visibility, permission, recency, source support, a dictionary link, thin-topic
+   status or persona interest is not enough by itself. A rejected content candidate cannot be
+   replaced merely to fill the run with a vote, follow or bookmark, and every social action needs
+   its own real reason. Keep item 1 open for a fresh capability benchmark and a blind natural
+   comparison; success means a non-degenerate free distribution without collapsing legitimate
+   multi-action behavior, not hitting a prescribed abstention percentage. Do not reopen the
+   self-topic package without a measured regression.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
