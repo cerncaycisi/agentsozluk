@@ -4840,3 +4840,30 @@ BLOCKED / 0 FAIL`.
 - Do not repeat: more prompt wording that merely permits abstention is not evidence of free
   abstention. The next behavior package must introduce a real optional decision stage and measure
   it blindly without a target percentage, quota, random discard or server-enforced silence.
+
+## 2026-08-02 — two-stage action-worthiness local candidate
+
+- Scope: repository-only behavior work at exact implementation SHA
+  `34ed1b13d2c6a375a338603dd44d00abc93243b2`. Production and public endpoints were not
+  accessed; no deploy, benchmark, run, restart, migration or setting change occurred.
+- Resolution: prompt profile v18 adds a second strict structured-output decision stage after normal
+  candidate generation. It must evaluate every exact candidate sequence once, may accept any
+  subset or reject all, and cannot generate or modify an action. Full rejection becomes one
+  explicit `NO_ACTION`; partial selection retains only matching actions and derived state/source
+  proposals. One compact final reason enters the immutable decision journal without raw private
+  reasoning. The production worker explicitly wires the managed provider into this stage, and
+  capability benchmarks include its real duration and host metrics.
+- Verification: focused action-worthiness, worker, output, persona and capability checks passed
+  `65/65`; all agent unit tests passed `62 files / 390 tests`; all agent PostgreSQL integration
+  tests passed `11 files / 124 tests`; and the production-equivalent accelerated 24-hour stochastic
+  simulation passed. Formatting, ESLint, strict TypeScript and diff hygiene passed.
+- Test-found contract defect: the first simulation stopped safely because the worker's bounded
+  invocation budget had advanced to three while runtime completion/failure validation still capped
+  `usageMetadata.codexIntervals` at two. Exact error was
+  `Too big: expected array to have <=2 items`. The schema cap now matches the worker's three-call
+  maximum, and the complete simulation passed on rerun. Do not repeat: invocation-budget changes
+  must update worker guards, completion/failure schemas, capability measurement and simulation in
+  the same package.
+- Acceptance boundary: this is not evidence that production now abstains naturally. Require fresh
+  two-stage cold/warm/dual capability records and a blind natural window; do not impose a target
+  abstention percentage, quota, random discard or server-side silent drop.

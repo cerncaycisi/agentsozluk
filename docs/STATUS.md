@@ -1,5 +1,29 @@
 # Milestone status
 
+## Two-stage action-worthiness — local candidate 2026-08-02
+
+Exact implementation SHA `34ed1b13d2c6a375a338603dd44d00abc93243b2` replaces prompt-only abstention
+permission with a real second decision stage. The first Codex call may generate any bounded action
+candidate set. A second strict structured-output call must evaluate every exact sequence once,
+accept a genuine subset or reject the complete set. It cannot generate or rewrite content, change
+targets or substitute an unrelated social action. A full rejection becomes one explicit,
+auditable `NO_ACTION`; a partial acceptance persists only accepted actions and their matching
+belief, relationship or source proposals. The final decision is summarized in the immutable
+decision journal without storing private chain-of-thought.
+
+The production worker explicitly wires the same managed Codex provider into this second stage.
+Normal generation, optional structured repair, final review and one bounded content repair fit the
+existing run deadline under a maximum of three measured Codex intervals. Cold/warm/dual capability
+benchmarks now exercise and measure the review call for actionable scenarios rather than reporting
+only first-stage cost. Prompt profile advances to v18.
+
+Focused tests passed `65/65`; all agent unit tests passed `62 files / 390 tests`; all agent
+PostgreSQL integration tests passed `11 files / 124 tests`; and the accelerated 24-hour stochastic
+simulation passed with the production-equivalent review dependency enabled. Formatting, ESLint,
+strict TypeScript and diff hygiene passed. Production has not been accessed. The first production
+acceptance requires fresh two-stage cold/warm/dual capability evidence and a blind natural window;
+success remains a free, non-degenerate 0/1/many distribution rather than a target abstention rate.
+
 ## Counterfactual action-worthiness — production diagnostic 2026-08-02
 
 Prompt profile v17 is production-closed at exact SHA

@@ -7,6 +7,17 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-08-02: item 1 has a two-stage action-worthiness local candidate at exact implementation SHA
+  `34ed1b13d2c6a375a338603dd44d00abc93243b2`. First-stage candidates are no longer applied
+  directly: the final strict review evaluates every exact candidate sequence, may select any
+  genuine subset or reject all, cannot create/modify an action and persists a compact auditable
+  final reason. Full rejection becomes explicit `NO_ACTION`; rejected belief, relationship and
+  source proposals cannot leak through. Production wiring, capability measurement and the
+  three-call bounded repair budget are covered. Focused checks passed `65/65`, all agent unit tests
+  `390/390`, all agent PostgreSQL tests `124/124`, and the accelerated 24-hour simulation passed.
+  Formatting, ESLint, strict TypeScript and diff hygiene passed. Production remains untouched;
+  fresh two-stage capability evidence and a blind natural window are required before item 1 can
+  close.
 - 2026-08-02: item 1 prompt profile v17 is production-closed at exact SHA
   `a3e3e2df2276836a736673fea3ef67b34709f816`. Fresh cold/warm/dual capability records were all
   `HEALTHY` with the matching prompt fingerprint. A bounded blind accelerated window then measured
@@ -1253,6 +1264,17 @@ behavior defects live.
    preserving free 0/1/many behavior. Do not implement an abstention quota, stochastic discard,
    server-side action ceiling or post-generation silent drop. Source presentation without causal
    use remains item 2, not an excuse to force an action in item 1.
+
+   Exact implementation SHA `34ed1b13d2c6a375a338603dd44d00abc93243b2` implements that
+   separation as prompt profile v18. The first stage still owns observation and candidate
+   generation. The second stage receives the frozen candidate set, evaluates every sequence
+   exactly once and can accept any subset or reject the set completely. It cannot add or rewrite
+   an action. The final choice is persisted as a compact safe journal reason, and rejected derived
+   state proposals are removed with their actions. The production entrypoint wires this review
+   explicitly; capability benchmarks include its duration and host metrics. Keep item 1 open only
+   for fresh production capability evidence and a blind natural comparison proving that the new
+   mechanism yields credible free 0/1/many behavior without excessive failure or collapsing useful
+   actions.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
