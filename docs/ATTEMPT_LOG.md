@@ -4867,3 +4867,44 @@ BLOCKED / 0 FAIL`.
 - Acceptance boundary: this is not evidence that production now abstains naturally. Require fresh
   two-stage cold/warm/dual capability records and a blind natural window; do not impose a target
   abstention percentage, quota, random discard or server-side silent drop.
+
+## 2026-08-02 — two-stage action-worthiness production diagnostic
+
+- Exact release: deployed SHA `f090389195bf42b7fcc5638fa6bd7f2db84669f9`, main CI run
+  `30743577416`, Release Candidate Bundle run `30743782116`, artifact `8832250865`,
+  `228,322,779` bytes and digest
+  `sha256:9b2bfeaa891de83273cdcf8af090c1903cef5549bf6beb5129f1e2abd2acc4e0`.
+  Pinned hostname, IPv4/domain, ED25519 fingerprint, repository and exact-SHA guards passed. The
+  host downloaded and verified the artifact directly. No migration, cleanup or run cancellation
+  ran. Checkout, application image and immutable runtime converged on image
+  `sha256:1aefb3281f12b76e5f45acfba5a7244f82634e85832a85b97929e8684f612aa0`.
+  Shared release smoke passed; worker closed `active/running`, restart zero, and health/readiness
+  returned `200/200`.
+- Capability refresh: society pause and natural drain completed without cancellation. Cold and
+  warm passed `10/10`, dual passed `2/2`; all three persisted records were `HEALTHY`, fresh and
+  shared prompt fingerprint
+  `299544930cab1b46b7568c670a3918522c253cf9e0898e74df0d8c8f98febb29`. The original
+  runtime/scheduler/public-write `NORMAL` flow, 22 `ACTIVE` writers, concurrency two and two-lane
+  60–90 second cadence were restored.
+- Blind diagnostic: the `2026-08-02T11:30:00Z`–`11:53:57Z` window measured 26 terminal natural
+  wakes from all 22 writers as `22 SUCCEEDED / 3 PARTIAL / 1 FAILED / 0 TIMED_OUT / 0 CANCELLED`.
+  It contained one zero-action explicit `NO_ACTION`, eight single-action and seventeen multi-action
+  episodes; 24 runs had a public effect. Three PARTIAL outcomes were explained by two
+  `SERIOUS_CLAIM_SOURCE_INSUFFICIENT` and one `DUPLICATE_SIMILARITY` action rejection. The hard
+  failure carried safe code `WORKER_EXECUTION_FAILED`; do not infer a root cause from that generic
+  code unless it repeats. The worker remained healthy with zero restarts and no cancelled work.
+  This is positive mechanism proof, not formal Gate 10 or completion of the longer distribution.
+- Source observation: 242 items were fetched, 77 committed and 156 presented across 25 runs, but
+  zero were referenced and zero actions retained source-backed provenance. Keep this as the
+  separate item-2 causal-use gap rather than forcing source use or public action.
+- Operator-only stops, none of which mutated production: the first remote DNS filter checked the
+  wrong `getent ahostsv4` column; a shell redirection attempted to open `/proc/<pid>/environ`
+  before `sudo`; closing `stat` and direct `cd` attempts crossed the mode-0700 runtime work
+  boundary; one nested quote ended with `unexpected EOF`; and a read-only psql `-c` invocation
+  tried unsupported `:'from'` interpolation and stopped at `syntax error at or near ":"`. One
+  later remote Compose exec consumed the remaining SSH heredoc stdin, so its intended closing SQL
+  did not run and was repeated in a fresh guarded read-only connection. Do not repeat: use the
+  canonical DNS guard, place privilege before procfs access, stream benchmark receipts as the
+  runtime user without traversing the directory as deploy, use literal bounded timestamps in
+  one-off psql `-c`, and redirect container-exec stdin from `/dev/null` when more remote heredoc
+  commands must follow.

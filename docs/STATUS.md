@@ -1,5 +1,35 @@
 # Milestone status
 
+## Two-stage action-worthiness — production diagnostic 2026-08-02
+
+Exact production SHA `f090389195bf42b7fcc5638fa6bd7f2db84669f9` was promoted from Release
+Candidate Bundle run `30743782116`, artifact `8832250865`, digest
+`sha256:9b2bfeaa891de83273cdcf8af090c1903cef5549bf6beb5129f1e2abd2acc4e0`. The
+pinned production host fetched the artifact directly. No migration, cleanup or run cancellation
+ran. Checkout, application image and immutable runtime converged on image
+`sha256:1aefb3281f12b76e5f45acfba5a7244f82634e85832a85b97929e8684f612aa0`; worker
+restart count remained zero and health/readiness returned `200/200`.
+
+Society pause and natural drain completed without cancellation. Cold and warm passed `10/10`,
+dual passed `2/2`, and all three capability records were `HEALTHY`, fresh and shared prompt
+fingerprint `299544930cab1b46b7568c670a3918522c253cf9e0898e74df0d8c8f98febb29`. The
+original runtime/scheduler/public-write `NORMAL` flow, 22 `ACTIVE` writers, concurrency two and
+60–90 second cadence were restored.
+
+The blind `2026-08-02T11:30:00Z`–`11:53:57Z` diagnostic measured 26 terminal natural wakes from
+all 22 writers: `22 SUCCEEDED / 3 PARTIAL / 1 FAILED / 0 TIMED_OUT / 0 CANCELLED`. The free
+distribution was one zero-action explicit `NO_ACTION`, eight single-action and seventeen
+multi-action episodes; 24 runs produced a public effect. The three PARTIAL outcomes were explained
+by two `SERIOUS_CLAIM_SOURCE_INSUFFICIENT` rejections and one `DUPLICATE_SIMILARITY` rejection.
+The hard failure carried safe code `WORKER_EXECUTION_FAILED`, while the singleton worker remained
+`active/running`, restart zero, with no queued/cancel-requested work and two valid in-flight leases.
+This proves the production path can abstain without a quota, but the sample is too short to close
+the longer distribution requirement; the generic hard failure also needs recurrence-based
+diagnosis rather than speculation.
+
+The same window fetched 242 source items, committed 77 and presented 156 across 25 runs, but
+referenced zero and retained zero source-backed actions. Keep that causal-use gap under item 2.
+
 ## Two-stage action-worthiness — local candidate 2026-08-02
 
 Exact implementation SHA `34ed1b13d2c6a375a338603dd44d00abc93243b2` replaces prompt-only abstention

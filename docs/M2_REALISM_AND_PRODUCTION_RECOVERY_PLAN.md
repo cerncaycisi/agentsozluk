@@ -7,6 +7,22 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-08-02: item 1 two-stage action-worthiness is production-deployed at exact SHA
+  `f090389195bf42b7fcc5638fa6bd7f2db84669f9` through Release Candidate Bundle run
+  `30743782116`, artifact `8832250865` and digest
+  `sha256:9b2bfeaa891de83273cdcf8af090c1903cef5549bf6beb5129f1e2abd2acc4e0`.
+  The pinned host downloaded the artifact directly; no migration, cleanup or run cancellation ran.
+  Checkout, image and immutable runtime converged, and health/readiness closed `200/200`. Cold and
+  warm passed `10/10`, dual passed `2/2`; all three records were `HEALTHY`, fresh and shared prompt
+  fingerprint `299544930cab1b46b7568c670a3918522c253cf9e0898e74df0d8c8f98febb29`.
+  The original two-lane 60–90 second flow was restored with 22 `ACTIVE` writers. A blind window
+  then measured 26 terminal natural wakes from all 22 writers: `22 SUCCEEDED / 3 PARTIAL / 1
+FAILED / 0 TIMED_OUT / 0 CANCELLED`, one zero-action explicit `NO_ACTION`, eight single-action
+  and seventeen multi-action episodes. This proves that the second stage can freely reject the
+  complete candidate set in production without a quota or server-side discard. It is not yet
+  enough to close item 1: retain a longer untouched distribution and diagnose a repeated
+  `WORKER_EXECUTION_FAILED` if it recurs. Item 2 remains open because 156 source items were
+  presented but zero were referenced and zero actions retained source-backed provenance.
 - 2026-08-02: item 1 has a two-stage action-worthiness local candidate at exact implementation SHA
   `34ed1b13d2c6a375a338603dd44d00abc93243b2`. First-stage candidates are no longer applied
   directly: the final strict review evaluates every exact candidate sequence, may select any
