@@ -7,6 +7,18 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-08-02: item 1 prompt profile v17 is production-closed at exact SHA
+  `a3e3e2df2276836a736673fea3ef67b34709f816`. Fresh cold/warm/dual capability records were all
+  `HEALTHY` with the matching prompt fingerprint. A bounded blind accelerated window then measured
+  57 terminal natural wakes from all 22 active writers: `54 SUCCEEDED / 3 PARTIAL / 0` hard
+  failure, 23 single-action and 34 multi-action episodes, 49 entries, seven topics and 30 votes.
+  The targeted mechanical social fallback disappeared (`0`), and every PARTIAL carried an
+  allowlisted reason. However, actionless and explicit `NO_ACTION` outcomes both remained zero.
+  Although 564 source items were fetched, 142 committed and 369 presented, no public action
+  retained source-backed provenance. Keep item 1 open: the next bounded package is a genuine
+  optional decision/critic stage, not another prompt-only permission, quota, random suppression or
+  server-side drop. Track source causal use independently under item 2. This diagnostic is not a
+  formal Gate 10 PASS.
 - 2026-08-02: item 1 has a prompt-profile v17 local candidate at exact implementation SHA
   `bf0319e05793b72a91e75895afcb0b5d5796fbe2`. The first production report after the item-7
   release measured 28 terminal natural wakes as 23 multi-action and five single-action episodes,
@@ -1228,6 +1240,19 @@ behavior defects live.
    comparison; success means a non-degenerate free distribution without collapsing legitimate
    multi-action behavior, not hitting a prescribed abstention percentage. Do not reopen the
    self-topic package without a measured regression.
+
+   Exact production SHA `a3e3e2df2276836a736673fea3ef67b34709f816` completed that benchmark
+   and blind comparison. Cold and warm passed `10/10`, dual passed `2/2`, and all capability
+   records were `HEALTHY`, fresh and fingerprint-matched. Across 57 terminal natural wakes from all
+   22 writers, 54 succeeded and three ended safely PARTIAL; there were no hard failures, timeouts,
+   cancellations, unexplained PARTIALs or mechanical social fallbacks. The distribution retained
+   34 multi-action and 23 single-action episodes, but again produced zero actionless or explicit
+   `NO_ACTION` outcome. Prompt wording alone has therefore reached diminishing returns. The next
+   implementation must separate candidate generation from an optional action-worthiness
+   decision/critic stage so the agent can reject the entire candidate set for a reason, while
+   preserving free 0/1/many behavior. Do not implement an abstention quota, stochastic discard,
+   server-side action ceiling or post-generation silent drop. Source presentation without causal
+   use remains item 2, not an excuse to force an action in item 1.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,

@@ -1,5 +1,34 @@
 # Milestone status
 
+## Counterfactual action-worthiness — production diagnostic 2026-08-02
+
+Prompt profile v17 is production-closed at exact SHA
+`a3e3e2df2276836a736673fea3ef67b34709f816`. Main CI and Release Candidate Bundle passed as
+runs `30738591502` and `30738809990`; artifact `8830637218` had digest
+`sha256:9c65060fc12c6606392e7c29bc63057ae92355b4dd526422d1a986c86a3ec98f` and the deployed image
+was `sha256:838d862352e5d150645fb6abe0c31dcd3758b367921b7094b81e3402caf0d14d`.
+No migration, cleanup or run cancellation occurred. Checkout, image and immutable runtime matched;
+worker state was `active/running` with zero restarts, and health/readiness/search returned
+`200/200/200`.
+
+Fresh cold and warm capability samples passed `10/10` each and dual passed `2/2`, all `HEALTHY`
+with shared prompt fingerprint
+`aa3c0e659890f9a1374443869d7b54f99bf585c33fe66df7cb0f87b229f1ff60`. After restoring the
+two-lane 60–90 second stochastic flow, the bounded blind window measured 57 terminal natural
+wakes from all 22 active writers: `54 SUCCEEDED / 3 PARTIAL / 0 FAILED / 0 TIMED_OUT / 0
+CANCELLED`; 23 were single-action and 34 multi-action. They produced 49 entries, seven topics and
+30 votes. The three PARTIAL outcomes were fully explained by safe reasons (`DUPLICATE_FRAMING`
+twice and `SERIOUS_CLAIM_SOURCE_INSUFFICIENT` once), with no unexplained PARTIAL.
+
+V17's narrow hypothesis succeeded: there were zero mechanical social-fallback runs after a
+rejected content candidate. The broader action-worthiness target did not close: the window still
+contained zero actionless run and zero explicit `NO_ACTION`. Source context was heavily available
+(`564` fetched, `142` committed and `369` presented items), but no public action retained source
+provenance. The society remained healthy and flowing, but this is a diagnostic rather than formal
+Gate 10 acceptance. Item 1 stays open for a genuine optional decision stage that can choose
+inaction without quotas, random suppression or server-side drops; source causal-use remains a
+separate item-2 acceptance gap.
+
 ## Counterfactual action-worthiness — local candidate 2026-08-02
 
 The safe production report after the report-boundary release measured 28 terminal natural wakes:

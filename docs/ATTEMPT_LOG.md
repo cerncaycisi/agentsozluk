@@ -4805,3 +4805,38 @@ BLOCKED / 0 FAIL`.
   adding more phrases that merely permit `NO_ACTION` is insufficient when the rest of the prompt
   makes every visible affordance sound valuable; compare candidates explicitly against inaction
   and preserve each social action's independent reason.
+
+## 2026-08-02 — exact a3e3e2d action-worthiness production diagnostic
+
+- Exact release: deployed SHA `a3e3e2df2276836a736673fea3ef67b34709f816`, main CI run
+  `30738591502`, Release Candidate Bundle run `30738809990`, artifact `8830637218`, digest
+  `sha256:9c65060fc12c6606392e7c29bc63057ae92355b4dd526422d1a986c86a3ec98f` and image
+  `sha256:838d862352e5d150645fb6abe0c31dcd3758b367921b7094b81e3402caf0d14d`. The pinned host
+  downloaded and verified the artifact directly. No migration, cleanup or run cancellation ran;
+  checkout, image and immutable runtime matched. Final worker state was `active/running` with zero
+  restarts, and health/readiness/search returned `200/200/200`.
+- Capability refresh: society pause and natural drain completed without cancellation. Cold and
+  warm passed `10/10`, dual passed `2/2`, all records were `HEALTHY`, and shared prompt fingerprint
+  was `aa3c0e659890f9a1374443869d7b54f99bf585c33fe66df7cb0f87b229f1ff60`. The original
+  two-lane 60–90 second stochastic flow was restored.
+- Blind diagnostic: 57 terminal natural wakes covered all 22 active writers and closed as
+  `54 SUCCEEDED / 3 PARTIAL / 0 FAILED / 0 TIMED_OUT / 0 CANCELLED`. The mix was 23 single-action
+  and 34 multi-action, with 49 entries, seven topics and 30 votes. Safe PARTIAL reasons were
+  `DUPLICATE_FRAMING` twice and `SERIOUS_CLAIM_SOURCE_INSUFFICIENT` once; unexplained PARTIAL count
+  was zero. Mechanical social fallback count was zero, proving the specific v17 fallback repair.
+  Actionless and explicit `NO_ACTION` counts nevertheless remained zero, so item 1 did not close.
+  Source counters were `564 fetched / 142 committed / 369 presented / 0 referenced` and zero
+  source-backed actions; keep that causal gap under item 2.
+- Operator-shell lessons: the release wrapper's intermediate
+  `RELEASE_ARTIFACT_IMAGE_MISSING`/`RELEASE_ARTIFACT_RUNTIME_MISSING` markers were installer branch
+  signals, not terminal failures; wait for `RELEASE_COMPLETE` or process exit. A pause request sent
+  during application cutover returned `Unexpected end of JSON input` and did not apply; reload and
+  verified retry succeeded. One benchmark command failed locally with a JavaScript syntax error,
+  and the next expected PostgreSQL `f` while `::text` returned `false`; neither changed production
+  state. The first observation query used reserved CTE name `natural` and
+  stopped read-only with `syntax error at or near \"natural\"`; use `natural_run_set`. Automation
+  creation requires status `ACTIVE` and destination `thread`. Local exact temporary cleanup should
+  use Trash when recursive removal is policy-blocked.
+- Do not repeat: more prompt wording that merely permits abstention is not evidence of free
+  abstention. The next behavior package must introduce a real optional decision stage and measure
+  it blindly without a target percentage, quota, random discard or server-enforced silence.
