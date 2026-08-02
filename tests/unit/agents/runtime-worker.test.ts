@@ -8,12 +8,14 @@ import {
 import type { RuntimeProvider } from "@/runtime/provider";
 import { RuntimeProviderCancelledError } from "@/runtime/provider";
 import {
+  parseRuntimeDecisionOutput,
   runtimeDecisionJsonSchema,
   runtimeNormalDecisionWireJsonSchema,
   runtimeNormalWireFieldNames,
 } from "@/runtime/output";
 import {
   AgentRuntimeWorker,
+  buildActionWorthinessPrompt,
   buildRuntimePrompt,
   DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS,
   runtimeContentRepairWireJsonSchema,
@@ -183,6 +185,98 @@ function noActionProvider(): RuntimeProvider {
 describe("long-lived agent runtime worker", () => {
   it("uses a production heartbeat interval below the fifteen-second ceiling", () => {
     expect(DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS).toBeLessThanOrEqual(15_000);
+  });
+
+  it("uses a second bounded provider stage that may reject every generated candidate", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const topicId = randomUUID();
+    const candidateOutput = canonicalNormalOutput("Bir entry adayı üretildi.", {
+      actions: [
+        {
+          type: "CREATE_ENTRY",
+          targetId: topicId,
+          body: "Gitar, tel titreşimini gövdede büyüten bir çalgıdır.",
+          desire: 0.62,
+          safeReason: "Kavram için bağımsız bir tanım adayı var.",
+          claimProvenance: [],
+        },
+      ],
+    });
+    const parsedCandidate = parseRuntimeDecisionOutput(candidateOutput);
+    if (!parsedCandidate.success) throw parsedCandidate.error;
+    const reviewPrompt = buildActionWorthinessPrompt(fixtureContext(runId), parsedCandidate.data);
+    expect(reviewPrompt).toContain("# Final action-worthiness decision");
+    expect(reviewPrompt).toContain("Gitar, tel titreşimini gövdede büyüten bir çalgıdır.");
+    expect(reviewPrompt).not.toContain("Görünür kanıta dayanan action seçeneği seçildi.");
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockResolvedValue({
+        provider: "codex-cli",
+        version: "test",
+        durationMs: 5,
+        output: candidateOutput,
+      }),
+    };
+    const actionWorthinessProvider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockResolvedValue({
+        provider: "codex-cli",
+        version: "test",
+        durationMs: 3,
+        output: {
+          verdict: "NO_ACTION",
+          confidence: 0.79,
+          evaluations: [
+            {
+              sequence: 1,
+              decision: "REJECT",
+              safeReason: "Tanım görünür bağlama yeni bir değer eklemiyor.",
+            },
+          ],
+          selectedSequences: [],
+          safeReason: "Bu turda bağımsız değer taşıyan bir action yok.",
+        },
+      }),
+    };
+    plane.executeActions = vi.fn().mockImplementation(async (_a, _b, _c, _d, sequences) => ({
+      actions: sequences.map((sequence: number) => ({
+        id: randomUUID(),
+        sequence,
+        actionType: "NO_ACTION",
+        actionStatus: "SKIPPED",
+        rejectionCode: null,
+      })),
+    }));
+    const worker = new AgentRuntimeWorker({
+      workerId: "action-worthiness-worker",
+      credentials: [`agt_${"w".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      actionWorthinessProvider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+    expect(provider.invoke).toHaveBeenCalledTimes(1);
+    expect(actionWorthinessProvider.invoke).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId,
+        prompt: expect.stringContaining("# Final action-worthiness decision"),
+      }),
+    );
+    expect(plane.recordActions).toHaveBeenCalledWith(
+      expect.any(String),
+      "action-worthiness-worker",
+      runId,
+      LEASE_TOKEN,
+      [expect.objectContaining({ sequence: 2, actionType: "NO_ACTION" })],
+      expect.objectContaining({
+        decisionJournal: expect.arrayContaining([
+          expect.objectContaining({ kind: "OPTION_REJECTED" }),
+        ]),
+      }),
+      expect.any(Object),
+    );
   });
 
   it("keeps the idle poll timer referenced until shutdown", async () => {

@@ -476,3 +476,42 @@ export class FakeCodexProvider implements RuntimeProvider {
     };
   }
 }
+
+interface WorthinessPromptContext {
+  candidates: Array<{ sequence: number }>;
+}
+
+function parseWorthinessPromptContext(prompt: string): WorthinessPromptContext {
+  const startMarker = "<UNTRUSTED_CANDIDATES>\n";
+  const endMarker = "\n</UNTRUSTED_CANDIDATES>";
+  const start = prompt.indexOf(startMarker);
+  const end = prompt.indexOf(endMarker, start + startMarker.length);
+  if (start < 0 || end < 0) throw new Error("SIMULATION_WORTHINESS_CONTEXT_MISSING");
+  return JSON.parse(prompt.slice(start + startMarker.length, end)) as WorthinessPromptContext;
+}
+
+export class FakeActionWorthinessProvider implements RuntimeProvider {
+  async inspect() {
+    return { version: "fake-action-worthiness-1", supportsStructuredOutput: true };
+  }
+
+  async invoke(request: RuntimeProviderRequest) {
+    const { candidates } = parseWorthinessPromptContext(request.prompt);
+    return {
+      provider: "codex-cli" as const,
+      version: "fake-action-worthiness-1",
+      durationMs: 500,
+      output: {
+        verdict: "ACT",
+        confidence: 0.8,
+        evaluations: candidates.map(({ sequence }) => ({
+          sequence,
+          decision: "ACCEPT" as const,
+          safeReason: "Simülasyon adayı bağımsız test değeri taşıyor.",
+        })),
+        selectedSequences: candidates.map(({ sequence }) => sequence),
+        safeReason: "Simülasyondaki bağımsız adaylar uygulanmaya değer.",
+      },
+    };
+  }
+}

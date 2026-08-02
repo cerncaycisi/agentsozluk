@@ -7,8 +7,16 @@ import { seedPersonaPackSchema } from "@/modules/agents/personas/schema";
 import type { RuntimeContext } from "@/runtime/control-plane-client";
 import { parseRuntimeDecisionOutput, runtimeNormalDecisionWireJsonSchema } from "@/runtime/output";
 import type { RuntimeProvider, RuntimeProviderResult } from "@/runtime/provider";
-import { buildRuntimePrompt, RUNTIME_STRUCTURED_REPAIR_INSTRUCTION } from "@/runtime/worker";
+import {
+  buildActionWorthinessPrompt,
+  buildRuntimePrompt,
+  RUNTIME_STRUCTURED_REPAIR_INSTRUCTION,
+} from "@/runtime/worker";
 import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
+import {
+  parseRuntimeActionWorthinessVerdict,
+  runtimeActionWorthinessVerdictJsonSchema,
+} from "@/runtime/action-worthiness";
 
 const AVAILABLE_CONTENT_MINUTES = 960;
 const CAPACITY_RESERVE_FACTOR = 0.75;
@@ -68,6 +76,36 @@ export async function invokeWithStructuredRepair(
     prompt: `${request.prompt}\n\n${RUNTIME_STRUCTURED_REPAIR_INSTRUCTION}`,
   });
   return combineSequentialResults(first, repaired);
+}
+
+async function invokeBenchmarkDecision(
+  provider: RuntimeProvider,
+  context: RuntimeContext,
+  timeoutMs: number,
+): Promise<RuntimeProviderResult> {
+  const decisionResult = await invokeWithStructuredRepair(provider, {
+    runId: context.run.id,
+    prompt: buildRuntimePrompt(context),
+    outputSchema: runtimeNormalDecisionWireJsonSchema,
+    timeoutMs,
+  });
+  const parsed = parseRuntimeDecisionOutput(decisionResult.output);
+  if (!parsed.success) return decisionResult;
+  const candidateSequences = parsed.data.actions
+    .filter(({ actionType }) => actionType !== "NO_ACTION")
+    .map(({ sequence }) => sequence);
+  if (candidateSequences.length === 0) return decisionResult;
+  const reviewResult = await provider.invoke({
+    runId: context.run.id,
+    prompt: buildActionWorthinessPrompt(context, parsed.data),
+    outputSchema: runtimeActionWorthinessVerdictJsonSchema,
+    timeoutMs: Math.max(1, timeoutMs - decisionResult.durationMs),
+  });
+  parseRuntimeActionWorthinessVerdict(reviewResult.output, candidateSequences);
+  return {
+    ...combineSequentialResults(decisionResult, reviewResult),
+    output: decisionResult.output,
+  };
 }
 
 interface Scenario {
@@ -445,12 +483,7 @@ export async function runCapacityBenchmark(
     const context = benchmarkContext(scenario, index);
     try {
       const { value: result, probes } = await withRuntimeProbes(
-        invokeWithStructuredRepair(provider, {
-          runId: context.run.id,
-          prompt: buildRuntimePrompt(context),
-          outputSchema: runtimeNormalDecisionWireJsonSchema,
-          timeoutMs: options.timeoutMs ?? benchmarkTimeoutMs(),
-        }),
+        invokeBenchmarkDecision(provider, context, options.timeoutMs ?? benchmarkTimeoutMs()),
         fetchImplementation,
         endpoint,
       );
@@ -519,12 +552,7 @@ export async function runConcurrencyCapabilityTest(
   const { value: settled, probes: measuredProbes } = await withRuntimeProbes(
     Promise.allSettled(
       contexts.map((context) =>
-        invokeWithStructuredRepair(provider, {
-          runId: context.run.id,
-          prompt: buildRuntimePrompt(context),
-          outputSchema: runtimeNormalDecisionWireJsonSchema,
-          timeoutMs: options.timeoutMs ?? benchmarkTimeoutMs(),
-        }),
+        invokeBenchmarkDecision(provider, context, options.timeoutMs ?? benchmarkTimeoutMs()),
       ),
     ),
     fetchImplementation,

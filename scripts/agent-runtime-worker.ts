@@ -106,6 +106,7 @@ async function main(): Promise<void> {
     controlPlane,
     stochasticScheduling: { controlPlane },
     provider,
+    actionWorthinessProvider: provider,
     sourceReader: new SafeSourceReader(),
     pollIntervalMs: environment.AGENT_RUNTIME_POLL_MS,
     processingLanes: environment.AGENT_RUNTIME_PROCESSING_LANES,

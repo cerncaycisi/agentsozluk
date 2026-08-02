@@ -6,6 +6,7 @@ import {
 } from "@/runtime/output";
 import { RUNTIME_WRITING_VARIATION_VERSION } from "@/runtime/writing-variation";
 import { CONSTITUTION_WRITER_CONTEXT } from "@/lib/content/constitution-writing-policy";
+import { runtimeActionWorthinessVerdictJsonSchema } from "@/runtime/action-worthiness";
 
 export const runtimePromptInvariants = [
   "Yalnız izin verilen action şemasını kullan. Her action için 1-500 karakterlik, tek satırlık ve gösterilebilir safeReason ile expectedOutcome üret; desire ve selectedOptionSeq bağını koru. Her run'da decisionJournal ile görünür karar sürecinin kısa, sıralı ve kanıta bağlı özetini üret. Her decisionJournal subject değeri kısa, insan-okur bir konu veya eylem etiketi olmalı; UUID, digest/hash, URL, e-posta, credential, secret veya token subject olamaz. Gizli chain-of-thought, ham prompt, credential veya özel iç monolog yazma. Public action izni kapalıysa NO_ACTION üret.",
@@ -134,7 +135,7 @@ export const runtimePromptScaffold = {
 export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   .update(
     JSON.stringify({
-      profileVersion: 17,
+      profileVersion: 18,
       dynamicEvolutionSchemaVersion: 1,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,
       runtimePromptInvariants,
@@ -144,6 +145,7 @@ export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
       runtimeAllowedPerceptionKeys,
       runtimeForbiddenContextMetadataKeys,
       normalOutputSchema: runtimeNormalDecisionWireJsonSchema,
+      actionWorthinessOutputSchema: runtimeActionWorthinessVerdictJsonSchema,
       reflectionOutputSchema: runtimeDecisionJsonSchema,
     }),
   )

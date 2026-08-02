@@ -17,7 +17,11 @@ import {
   integrationDatabase,
   resetIntegrationDatabase,
 } from "../integration/database";
-import { FakeCodexProvider, InProcessRuntimeControlPlane } from "./runtime-harness";
+import {
+  FakeActionWorthinessProvider,
+  FakeCodexProvider,
+  InProcessRuntimeControlPlane,
+} from "./runtime-harness";
 
 async function createAdmin() {
   const suffix = randomUUID().replaceAll("-", "");
@@ -109,6 +113,7 @@ describe("accelerated 24-hour stochastic agent society simulation", () => {
       credentials: createdAgents.map(({ credential }) => credential),
       controlPlane: new InProcessRuntimeControlPlane(integrationDatabase),
       provider: new FakeCodexProvider(),
+      actionWorthinessProvider: new FakeActionWorthinessProvider(),
       heartbeatIntervalMs: 60_000,
       pollIntervalMs: 1000,
     });

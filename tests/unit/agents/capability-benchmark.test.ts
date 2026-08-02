@@ -57,6 +57,47 @@ function result(durationMs: number): RuntimeProviderResult {
   };
 }
 
+function candidateOutput() {
+  return {
+    ...output(),
+    decisionJournal: [
+      {
+        seq: 1,
+        kind: "OPTION_SELECTED",
+        subject: "gitar",
+        summary: "Bağımsız bir entry adayı ilk aşamada seçildi.",
+        confidence: 0.7,
+        evidenceIds: [],
+        causedBySeqs: [],
+      },
+    ],
+    actions: [
+      {
+        type: "CREATE_ENTRY",
+        targetId: "00000000-0000-4000-8000-000000000100",
+        body: "Gitar, tel titreşimini gövdede büyüten bir çalgıdır.",
+        desire: 0.7,
+        expectedOutcome: "Başlığa bağımsız bir tanım eklenir.",
+        selectedOptionSeq: 1,
+        safeReason: "Kavrama yeni bir tanım eklenebilir.",
+        claimProvenance: [],
+      },
+    ],
+  };
+}
+
+function worthinessOutput() {
+  return {
+    verdict: "ACT",
+    confidence: 0.8,
+    evaluations: [
+      { sequence: 1, decision: "ACCEPT", safeReason: "Aday bağımsız sözlük değeri taşıyor." },
+    ],
+    selectedSequences: [1],
+    safeReason: "Entry adayı uygulanmaya değer.",
+  };
+}
+
 const healthyFetch = vi.fn<typeof fetch>().mockImplementation(async () =>
   Promise.resolve(
     new Response(JSON.stringify({ ok: true }), {
@@ -169,6 +210,44 @@ describe("Codex capability benchmark harness", () => {
       oomDetected: false,
       healthStable: true,
       readinessStable: true,
+    });
+  });
+
+  it("measures the final action-worthiness call as part of every actionable scenario", async () => {
+    const provider: RuntimeProvider = {
+      inspect: vi
+        .fn()
+        .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
+      invoke: vi.fn().mockImplementation(async ({ prompt }) => ({
+        ...result(prompt.includes("# Final action-worthiness decision") ? 500 : 1000),
+        output: prompt.includes("# Final action-worthiness decision")
+          ? worthinessOutput()
+          : candidateOutput(),
+      })),
+    };
+
+    const measurement = await runCapacityBenchmark(provider, {
+      baseUrl: "http://127.0.0.1:3000",
+      fetchImplementation: healthyFetch,
+      plannedContentRuns: 70,
+    });
+
+    expect(provider.invoke).toHaveBeenCalledTimes(20);
+    expect(
+      vi
+        .mocked(provider.invoke)
+        .mock.calls.filter(([request]) =>
+          request.prompt.includes("# Final action-worthiness decision"),
+        ),
+    ).toHaveLength(10);
+    expect(measurement).toMatchObject({
+      p50DurationMs: 1500,
+      p75DurationMs: 1500,
+      p95DurationMs: 1500,
+      maxDurationMs: 1500,
+      successfulActionCount: 10,
+      proposedEntryActionCount: 10,
+      failureRate: 0,
     });
   });
 

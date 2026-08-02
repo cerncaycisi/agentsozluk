@@ -344,7 +344,7 @@ const usageMetadataSchema = z
       .string()
       .regex(/^[a-f0-9]{64}$/u)
       .optional(),
-    codexIntervals: z.array(codexIntervalSchema).min(1).max(2).optional(),
+    codexIntervals: z.array(codexIntervalSchema).min(1).max(3).optional(),
     processPeakRssMb: z.number().min(0).max(65_536).optional(),
     systemPeakMemoryMb: z.number().min(0).max(65_536).optional(),
     availableMemoryMb: z.number().min(0).max(65_536).optional(),
