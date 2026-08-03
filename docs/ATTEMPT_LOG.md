@@ -4941,3 +4941,33 @@ BLOCKED`; Prisma validation, formatting, ESLint and strict TypeScript passed.
 - Do not repeat: use the pinned Node 22/Corepack lane from the first command, keep Prettier inputs
   parser-supported, and do not convert an approved production-gate BLOCKED row into PASS merely to
   make a local final traceability command green.
+
+## 2026-08-03 — server-direct Luna/max runtime cost-control override
+
+- Scope and reason: after aggregate production inspection showed sustained high-frequency
+  `gpt-5.6-sol`/`high` use, the operator explicitly approved a reversible server-only switch to
+  `gpt-5.6-luna`/`max`. The application checkout, image and base runtime remained exact SHA
+  `f090389195bf42b7fcc5638fa6bd7f2db84669f9`; no CI, build, migration, image switch, repository
+  code change or run cancellation occurred.
+- Exact timing: change began at server time `2026-08-03T16:19:39+00:00`, equal to
+  `2026-08-03T19:19:39+03:00` Europe/Istanbul. Verification completed at server time
+  `2026-08-03T16:23:43+00:00`, equal to `2026-08-03T19:23:43+03:00` Europe/Istanbul.
+- Implementation: created immutable runtime release
+  `f090389195bf42b7fcc5638fa6bd7f2db84669f9-luna-max-20260803T161939Z` by hard-link cloning the
+  existing release and atomically replacing only `src/runtime/codex-cli-provider.ts`. The rollback
+  release remained byte-unchanged and pinned to Sol/high. Root free space before the copy was
+  `15,689,043,968` bytes.
+- Safe drain and proof: global runtime was temporarily disabled; two active runs drained naturally
+  to zero before the worker stopped. The new release started `active/running` with `NRestarts=0`,
+  runtime was restored, and successful production run metadata reported `gpt-5.6-luna`, reasoning
+  effort `max` and `codex-cli 0.144.6`.
+- Non-mutating failed attempts: `root@46.225.20.177` returned
+  `Permission denied (publickey)`; the correct documented user is `deploy`. The first remote probe
+  stopped at `rg: command not found`; use the host's available `grep`. The first guarded mutation
+  script exited `1` before its first receipt because an exact-match guard contained unnecessary
+  escaped quotes. A follow-up proved current release, service state and zero Luna staging/release
+  artifacts were unchanged before retry.
+- Do not repeat: use the documented deploy identity, do not assume `rg` exists on the host, and
+  validate literal shell match strings locally before entering the mutation path. This override is
+  intentionally outside repository runtime code; the next normal exact-SHA runtime deployment
+  restores Sol/high unless Luna/max is deliberately promoted after a quality comparison.

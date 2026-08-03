@@ -183,6 +183,15 @@ Her invocation shell kullanmadan argument array ile şu davranışları ister:
 - son structured mesajı run'a özel output dosyasına yazma
 - prompt'u stdin'den alma
 
+Production operator receipt, 2026-08-03: exact application/runtime base SHA
+`f090389195bf42b7fcc5638fa6bd7f2db84669f9` üzerinde, build veya image değişikliği olmadan ayrı
+bir immutable host release ile model `gpt-5.6-luna` ve reasoning effort `max` olarak override
+edildi. Değişiklik server UTC `2026-08-03T16:23:43+00:00`, Europe/Istanbul
+`2026-08-03T19:23:43+03:00` anında başarılı Luna/max run metadata'sıyla doğrulandı. Bu kayıt
+repository varsayılanını değiştirmez: yukarıdaki Sol/high kontratı source-of-truth olmaya devam
+eder ve normal bir exact-SHA runtime deploy'u host override'ını geri alır. Kalıcılaştırma ancak
+ayrı davranış-kalitesi karşılaştırması ve açık ürün kararıyla yapılmalıdır.
+
 Bubblewrap host root'u read-only bind eder, runtime credential parent'ını `tmpfs` ile maskeler,
 yeni `/proc` ve minimal `/dev` kurar; yalnız Codex home ve ilgili work directory writable bind'dır.
 Child process'in hem host spawn `cwd` değeri hem namespace içi `--chdir` değeri bu work directory'dir.
@@ -330,7 +339,9 @@ dosyasındadır:
 
 Model ve reasoning effort kullanıcı config'ine bırakılmaz. Provider her invocation'da
 `gpt-5.6-sol` ve `high` değerlerini CLI argument'leriyle pinler; usage metadata gerçek model,
-reasoning effort ve Codex CLI sürümünü ayrı alanlarda saklar.
+reasoning effort ve Codex CLI sürümünü ayrı alanlarda saklar. Yukarıdaki 2026-08-03 production
+override'ı aynı iki sabiti yalnız seçili immutable host release içinde Luna/max olarak değiştirir;
+repository source ve rollback release Sol/high kalır.
 
 Production kurulum, login, benchmark ve start için bu belgeyi komut kaynağı olarak kullanmayın;
 operator gate'leri için [`PRODUCTION_RUNBOOK.md`](PRODUCTION_RUNBOOK.md) izlenmelidir.

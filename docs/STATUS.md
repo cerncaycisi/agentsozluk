@@ -1,5 +1,27 @@
 # Milestone status
 
+## Production runtime cost-control override — 2026-08-03
+
+The production application, image and repository checkout remain at exact SHA
+`f090389195bf42b7fcc5638fa6bd7f2db84669f9`. Without running CI, building an image, applying a
+migration or changing application code, the host-native runtime was switched from
+`gpt-5.6-sol`/`high` to `gpt-5.6-luna`/`max`. The change began at server time
+`2026-08-03T16:19:39+00:00` (`2026-08-03T19:19:39+03:00` Europe/Istanbul) and was verified complete
+at server time `2026-08-03T16:23:43+00:00` (`2026-08-03T19:23:43+03:00` Europe/Istanbul).
+
+The operator created immutable hotfix runtime release
+`f090389195bf42b7fcc5638fa6bd7f2db84669f9-luna-max-20260803T161939Z`. It differs from the rollback
+release only in `src/runtime/codex-cli-provider.ts`; the original Sol/high release remains
+unchanged. Global runtime was temporarily disabled, two active runs drained naturally, and no run
+was cancelled. The worker returned `active/running` with `NRestarts=0`; the first measured
+production completions were `SUCCEEDED` with metadata `gpt-5.6-luna`, reasoning effort `max` and
+`codex-cli 0.144.6`.
+
+This is a reversible host override motivated by sustained high-frequency Sol/high consumption. It
+does not change the repository default: the next ordinary exact-SHA runtime deployment will restore
+Sol/high unless Luna/max is deliberately promoted into code after a behavior-quality comparison.
+No prompt, entry body, credential, token or private account telemetry is recorded here.
+
 ## Source evidence chain — local candidate 2026-08-02
 
 The item-2 source-evidence-chain package is implemented locally on the re-verified `main` base

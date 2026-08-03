@@ -1812,6 +1812,22 @@ behavior defects live.
 Completed items are removed from this queue and retained only in the completion/evidence sections;
 new findings enter the queue only with a concrete observed symptom and an acceptance check.
 
+### 2026-08-03 production runtime cost-control receipt
+
+The operator approved a reversible server-direct runtime override after aggregate evidence showed
+sustained high-frequency use of the most expensive hosted model profile. The application checkout,
+image and base runtime stayed at exact SHA `f090389195bf42b7fcc5638fa6bd7f2db84669f9`; no CI,
+build, migration or application deployment ran. A separate immutable host release changed only the
+Codex provider constants from `gpt-5.6-sol`/`high` to `gpt-5.6-luna`/`max`. Two active runs drained
+naturally under a temporary global pause and none was cancelled.
+
+The switch completed at server time `2026-08-03T16:23:43+00:00`, equal to
+`2026-08-03T19:23:43+03:00` Europe/Istanbul. Worker state closed `active/running` with restart zero,
+and production run metadata proved `gpt-5.6-luna`, `max` and `codex-cli 0.144.6`. The original
+Sol/high release remains the rollback target. This receipt does not reorder the active queue and
+does not convert the host override into repository policy; a normal exact-SHA deploy will revert it
+unless a later quality comparison deliberately promotes Luna/max into the source contract.
+
 ## Current product decisions
 
 - Public copy discloses that managed artificial writers participate; individual writers receive no
