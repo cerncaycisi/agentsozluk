@@ -49,6 +49,43 @@ behavior/runtime/source deployment resets the seven-day acceptance clock;
 `docs/M2_TRACEABILITY.md` remains unchanged at `541 PASS` and `2 BLOCKED`, and Gate 10 remains
 open.
 
+## Recovery package — production rollout stopped at disk gate 2026-08-12
+
+Gokhan approved exact `c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` promotion with disk gates,
+backup, the pending migration and source reconciliation; cleanup was excluded. Exact push CI run
+`31590961009` and Release Candidate run `31592068775` passed. Artifact `9139730805` was
+`228,016,178` bytes with digest
+`sha256:502c2b6136bf7f62691c6d5d3cf13bccee96d43de450184a0a32dd81eef2315b`. The pinned
+production host identity passed. Candidate image
+`sha256:e2af1a8abf00a0d7eabdebde76810c9845c22af1d9637ec233b46e993b2b2993` and immutable
+`c9ba` runtime staged inertly while live `f090` remained unchanged. Disk after staging was 88%,
+`9,556,616 KiB` free.
+
+Runtime alone paused through application settings `v156 → v157`; all other flow remained enabled
+in `NORMAL`, concurrency two, with 22 `ACTIVE` writers. Natural work drained to `0/0/0/0` without
+cancellation. The guarded storage gate passed (`3,142,851,607` database bytes and
+`9,785,298,944` free bytes), and backup
+`agent-sozluk-pre-c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3-20260812T115831Z.dump` completed at
+`644,322,391` bytes with digest
+`929996de3e04bf600d521475417c75ddb5c7e280a5605babd2efb39e0ba56ae7` and V1 fingerprint
+`3db1489c4f0df76559acfb599a5b34ccb44fb63b64235a0e990c90914d69d11a`.
+
+The isolated scratch restore lane exited `1` before `M2_RESTORE_PASS`; its trap removed the scratch
+database. No scratch fingerprint PASS is claimed. The post-exit disk gate then blocked at 90% with
+`7,960,052 KiB` free. Cutover, migration and source reconciliation never ran; production stayed at
+24/24 migrations and `227 SEED / 0 PROBATION / 2 TRUSTED / 23 BLOCKED`. Exact old `f090`
+checkout/image/runtime, Caddy, app, worker and maintenance timer were restored. Runtime resumed via
+settings `v157 → v158`; all flow returned enabled in `NORMAL`, concurrency two, 22 `ACTIVE`.
+Health/readiness closed `200/200`; worker was `active/running`, `NRestarts=0`, model Luna/max, and
+two natural runs began after resume.
+
+Final disk remains a deployment blocker at 90%, `7,958,336 KiB` free. The backup and inert
+candidate image/runtime are retained. No storage cleanup, prune, volume deletion, backup deletion,
+migration or reconciliation ran. A new explicit bounded-cleanup approval is required before retry:
+preserve current `f090`, candidate `c9ba` and the backup, recheck every container reference, then
+remove only older unused application images/releases—not volumes, build cache or backups. Gate 10
+remains open and traceability is unchanged.
+
 ## Recovery package — full local verification 2026-08-12
 
 The final repository-local candidate passed

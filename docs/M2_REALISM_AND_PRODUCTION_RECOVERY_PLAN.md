@@ -70,6 +70,47 @@ production acceptance remains pending.
 - No production access, deploy, migration, source reconciliation, restart, pause or cleanup was
   performed for the merge receipt. Formal Gate 10 remains open; M2 traceability remains `541 PASS`
   and `2 BLOCKED` until its production-gated evidence exists.
+- 2026-08-12: Gokhan approved exact `c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` production
+  promotion including disk gates, backup, the one pending migration and source reconciliation;
+  broad cleanup was explicitly excluded. Exact push CI run `31590961009` and Release Candidate
+  run `31592068775` were green. Artifact `9139730805` was `228,016,178` bytes with digest
+  `sha256:502c2b6136bf7f62691c6d5d3cf13bccee96d43de450184a0a32dd81eef2315b`. The pinned
+  `agent-sozluk-prod` identity (`46.225.20.177`, matching DNS, fingerprint
+  `SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI` and exact origin) passed. Candidate
+  image `sha256:e2af1a8abf00a0d7eabdebde76810c9845c22af1d9637ec233b46e993b2b2993` and
+  immutable `c9ba` runtime staged inertly while live `f090` remained unchanged; disk then measured
+  88% with `9,556,616 KiB` free.
+- The application control plane paused only runtime at settings `v156 → v157`; scheduler,
+  publishing and public write stayed enabled in `NORMAL`, concurrency remained two and all 22
+  writers stayed `ACTIVE`. Natural work drained to queue/run/cancel-requested/live-lease
+  `0/0/0/0` without cancellation. The maintenance timer, worker, Caddy and app were stopped for the
+  guarded database lane; worker `NRestarts` was zero, PostgreSQL was healthy and open transactions
+  were zero. The storage gate passed with database size `3,142,851,607` bytes and
+  `9,785,298,944` bytes free on the backup/database filesystem. Backup
+  `agent-sozluk-pre-c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3-20260812T115831Z.dump`
+  completed at `644,322,391` bytes, digest
+  `929996de3e04bf600d521475417c75ddb5c7e280a5605babd2efb39e0ba56ae7`, with V1
+  fingerprint `3db1489c4f0df76559acfb599a5b34ccb44fb63b64235a0e990c90914d69d11a`.
+- The isolated scratch restore lane exited `1` before `M2_RESTORE_PASS`; its cleanup trap removed
+  the scratch database. No scratch fingerprint PASS is claimed. The post-exit hard disk gate found
+  90% usage and only `7,960,052 KiB` free, below the required 8 GiB and at the 90% blocker. The
+  cutover, migration and source reconciliation therefore never ran: production remained 24/24
+  migrations and `227 SEED / 0 PROBATION / 2 TRUSTED / 23 BLOCKED`. Exact old checkout, image and
+  runtime `f090` were restored; Caddy, app, worker and maintenance timer returned. Application
+  control resumed runtime at `v157 → v158` with all flow enabled, `NORMAL`, concurrency two and 22
+  `ACTIVE`. Final health/readiness were `200/200`; worker was `active/running`, `NRestarts=0`, and
+  two natural runs started after resume. Live image stayed
+  `sha256:1aefb3281f12b76e5f45acfba5a7244f82634e85832a85b97929e8684f612aa0`, immutable
+  runtime stayed `f090389195bf42b7fcc5638fa6bd7f2db84669f9-luna-max-20260803T161939Z`, and
+  model remained Luna/max.
+- Final disk was still blocked at 90% with `7,958,336 KiB` free. Docker reported 25 images / three
+  active, `38.56 GB` total and `35.77 GB` reclaimable; three active volumes used `4.242 GB`; build
+  cache was `2.295 GB` with `35.76 MB` reclaimable. The verified backup plus inert candidate image
+  and runtime were retained. No prune, volume deletion, backup deletion or broad cleanup ran. A
+  new explicit bounded-cleanup approval is now required before retry: retain current `f090`,
+  candidate `c9ba` and the backup; after rechecking all container references, remove only older
+  unused application images/releases—never volumes, build cache or backups. Gate 10 and
+  traceability remain unchanged.
 
 - 2026-08-02: item 2's source-evidence-chain package is implemented as a repository-only local
   candidate on the re-verified `main` base `248a0c3079e21b56c5234f347d27fefb5dee85e6`. One

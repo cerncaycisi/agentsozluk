@@ -5077,3 +5077,64 @@ supersessions`, two approved post-merge `BLOCKED`, `0 FAIL` and `543 total`. The
   occurred. Specific production approval and an exact production release are still required.
   Formal Gate 10 remains open, and `docs/M2_TRACEABILITY.md` remains unchanged at `541 PASS` and
   `2 BLOCKED`.
+
+## 2026-08-12 — exact c9ba production rollout stopped at post-restore disk gate
+
+- Approval and exclusions: Gokhan approved exact
+  `c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` deployment including disk gate, backup, the pending
+  migration and source reconciliation. Cleanup/prune was explicitly excluded.
+- Release identity: exact push CI run `31590961009` passed; Release Candidate run `31592068775`
+  completed `SUCCESS`; artifact `9139730805` was `228,016,178` bytes with digest
+  `sha256:502c2b6136bf7f62691c6d5d3cf13bccee96d43de450184a0a32dd81eef2315b`. Pinned
+  host checks passed for `agent-sozluk-prod`, `46.225.20.177`, matching DNS, fingerprint
+  `SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI` and exact origin.
+- Inert stage: candidate image ID
+  `sha256:e2af1a8abf00a0d7eabdebde76810c9845c22af1d9637ec233b46e993b2b2993` and immutable
+  `c9ba` runtime staged successfully without changing the live `f090` application/image/runtime.
+  Disk after stage was 88% with `9,556,616 KiB` free.
+- Drain/freeze: application control changed settings `v156 → v157`, disabling only runtime; other
+  flow stayed enabled in `NORMAL`, concurrency two, with 22 `ACTIVE` writers. Natural work drained
+  to queue/run/cancel-requested/live-lease `0/0/0/0` with no cancellation. The maintenance timer,
+  worker, Caddy and app stopped; worker `NRestarts=0`. PostgreSQL was healthy and open transaction
+  count was zero.
+- Storage/backup: database size was `3,142,851,607` bytes and backup/database filesystem free space
+  was `9,785,298,944` bytes, so the pre-backup storage gate passed. Backup safe basename was
+  `agent-sozluk-pre-c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3-20260812T115831Z.dump`; it
+  completed at `644,322,391` bytes, SHA-256
+  `929996de3e04bf600d521475417c75ddb5c7e280a5605babd2efb39e0ba56ae7`, with V1
+  fingerprint `3db1489c4f0df76559acfb599a5b34ccb44fb63b64235a0e990c90914d69d11a`.
+- Fail-closed stop: the isolated scratch restore lane exited `1` before emitting
+  `M2_RESTORE_PASS`; its cleanup trap removed the scratch database. No restored V1 fingerprint or
+  migration smoke PASS is claimed. The next exact disk check found 90% root usage and
+  `7,960,052 KiB` free, below 8 GiB and at the documented 90% hard blocker. Cutover, migration and
+  source reconciliation did not run. Database state remained 24/24 applied migrations and
+  `227 SEED / 0 PROBATION / 2 TRUSTED / 23 BLOCKED`.
+- Recovery: exact old checkout/image/runtime `f090` was restored with Caddy, app, worker and
+  maintenance timer. Application control changed settings `v157 → v158`, restoring all flow
+  enabled in `NORMAL`, concurrency two and 22 `ACTIVE`. Final image ID was
+  `sha256:1aefb3281f12b76e5f45acfba5a7244f82634e85832a85b97929e8684f612aa0`, runtime
+  `f090389195bf42b7fcc5638fa6bd7f2db84669f9-luna-max-20260803T161939Z`, model Luna/max,
+  health/readiness `200/200`, worker `active/running`, `NRestarts=0`; two natural runs started after
+  resume.
+- Closing storage: disk remained at 90% with `7,958,336 KiB` free. Docker reported 25 images / three
+  active, `38.56 GB` total and `35.77 GB` reclaimable; three active volumes used `4.242 GB`; build
+  cache was `2.295 GB` with `35.76 MB` reclaimable. The backup plus candidate image/runtime remain
+  retained. No storage cleanup, prune, volume deletion, build-cache removal or backup deletion ran.
+- Safe operator stops before the guarded path: one command stopped on `awk` field `$4` as an
+  unbound shell variable; another stopped on Docker template escaping; a schema probe first used
+  nonexistent `maxConcurrentRuns` and was corrected to `codexConcurrency`; an old-image index
+  helper export was undefined and the direct module import was used; two local quoted checks ended
+  with safe `unexpected EOF`; and the scratch restore lane itself exited `1`. None mutated
+  production beyond the separately recorded successful stage, flow pause/drain/freeze and recovery
+  actions. Do not repeat: validate nested quoting locally, use the schema's current field names,
+  import non-exported helpers through the documented direct module, and treat absence of
+  `M2_RESTORE_PASS` as a hard stop without inferring fingerprint success.
+- Exact transient hygiene: four c9-specific operator helper files—`.operator-artifact`,
+  `.operator-final-check`, `.operator-github-fetch` and `.operator-migration`—were removed and the
+  bounded removal returned exit `0`. Candidate image/runtime receipts and the verified backup were
+  preserved. This was not broad cleanup and removed no image, runtime release, volume, build cache
+  or backup.
+- Next authorization: a new explicit bounded-cleanup approval is required. Preserve current `f090`,
+  candidate `c9ba` and the verified backup; recheck every container reference; delete only older
+  unused application images/releases. Do not remove volumes, build cache or backups. Gate 10 and
+  traceability remain unchanged.
