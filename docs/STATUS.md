@@ -31,14 +31,23 @@ for an existing topic opened by the same writer and were canonicalized to it; on
 515 runs with `121 FAILED + 14 TIMED_OUT`, a 26.21% hard-failure/timeout share; its failures were
 still hidden behind generic worker execution coding and require a separate diagnosis.
 
-Current recovery work is repository-local candidate code, not production evidence. Its bounded
-scope is to preserve Luna/max as the source contract, replace generic worker failure reporting with
-stage-specific safe codes, replace production-proven zero-yield canonical sources with healthy
-redundancy while preserving administrative reliability state, and expose writer-opened topics so
-exact-title proposals are transparently evaluated as existing-topic entries before the critic. It
-has now passed the complete local development gate. It still needs an exact committed revision,
-normal CI and specific production approval. Any behavior/runtime/source deployment resets the
-seven-day acceptance clock; `docs/M2_TRACEABILITY.md` remains unchanged and Gate 10 remains open.
+The recovery package is now merged and CI-verified repository code, not production evidence. Its
+bounded scope preserves Luna/max as the source contract, replaces generic worker failure reporting
+with stage-specific safe codes, replaces production-proven zero-yield canonical sources with
+healthy redundancy while preserving administrative reliability state, and exposes writer-opened
+topics so exact-title proposals are transparently evaluated as existing-topic entries before the
+critic. It passed the complete local development gate, then PR `#22` merged exact head
+`e0c43e70cb271eaa1a90c68e18156a26cfe886c5` over base
+`fcb03ab47402ef06295622b5b67ca4f2f63b1b9f` as merge commit
+`bafb4c4ff5cbfac7a6329a410e2930661b06b34f` at `2026-08-12T11:07:09Z`. All seven PR-head checks—
+`quality`, `behavior`, `database`, `coverage`, `browser`, `container` and `validate`—returned
+`SUCCESS`. Independent post-merge `main` push CI run `31590429952` then completed on exact head
+`bafb4c4ff5cbfac7a6329a410e2930661b06b34f` with the same seven jobs all `SUCCESS`. The
+pre-receipt reconciliation found local `main` and `origin/main` at `bafb4c4` with a clean tree. It
+still requires specific production approval and an exact production release. Any
+behavior/runtime/source deployment resets the seven-day acceptance clock;
+`docs/M2_TRACEABILITY.md` remains unchanged at `541 PASS` and `2 BLOCKED`, and Gate 10 remains
+open.
 
 ## Recovery package — full local verification 2026-08-12
 
@@ -82,10 +91,12 @@ production completions were `SUCCEEDED` with metadata `gpt-5.6-luna`, reasoning 
 
 This began as a reversible host override motivated by sustained high-frequency Sol/high
 consumption. On 2026-08-12 Gokhan explicitly chose to retain Luna/max because Sol/high is too
-expensive at the current cadence. The repository promotion is still only a local candidate, so an
-ordinary release must explicitly guard against silently restoring Sol/high until that candidate is
-verified and deployed. Sol/high remains an explicit rollback/comparison option. No prompt, entry
-body, credential, token or private account telemetry is recorded here.
+expensive at the current cadence. PR `#22` has now merged the repository promotion; its PR-head
+checks and post-merge `main` push CI run `31590429952` both passed all seven jobs. It has not been
+deployed. An ordinary release must explicitly guard against silently restoring Sol/high until that
+exact revision receives specific production approval and is released. Sol/high remains an explicit
+rollback/comparison option. No prompt, entry body, credential, token or private account telemetry
+is recorded here.
 
 ## Source evidence chain — local candidate 2026-08-02
 

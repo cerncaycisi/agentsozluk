@@ -5054,6 +5054,26 @@ BLOCKED`; Prisma validation, formatting, ESLint and strict TypeScript passed.
   OpenAPI validated 136 operations, persona verification passed 10 profiles / 45 pairs,
   metadata-leak verification covered 14 surfaces / 21 fields, and the secret scan passed.
 - Development traceability: exact result was `464 PASS`, `77 superseded`, `25 partial
-supersessions`, `2 approved post-merge BLOCKED`, `0 FAIL` and `543 total`. The two
+supersessions`, two approved post-merge `BLOCKED`, `0 FAIL` and `543 total`. The two
   production-gated rows remain intentionally blocked and `docs/M2_TRACEABILITY.md` was not edited.
   This clean local result does not authorize CI, merge, production access or deployment by itself.
+
+## 2026-08-12 — recovery package PR 22 merge and CI receipt
+
+- Repository identity: PR `#22` used exact head
+  `e0c43e70cb271eaa1a90c68e18156a26cfe886c5` and base
+  `fcb03ab47402ef06295622b5b67ca4f2f63b1b9f`. It merged at `2026-08-12T11:07:09Z` as exact merge
+  commit `bafb4c4ff5cbfac7a6329a410e2930661b06b34f`.
+- PR-head CI result: all seven required checks returned `SUCCESS`: `quality`, `behavior`,
+  `database`, `coverage`, `browser`, `container` and `validate`.
+- Post-merge main CI result: push run `31590429952` executed exact head
+  `bafb4c4ff5cbfac7a6329a410e2930661b06b34f`; all seven jobs (`quality`, `behavior`, `database`,
+  `coverage`, `browser`, `container`, `validate`) returned `SUCCESS`. Local `main` and `origin/main`
+  matched
+  `bafb4c4ff5cbfac7a6329a410e2930661b06b34f`; the working tree was clean before this documentation
+  receipt.
+- Boundary: this closes exact repository merge and CI verification only. No production access,
+  deploy, migration, source reconciliation, restart, pause, cleanup or other production mutation
+  occurred. Specific production approval and an exact production release are still required.
+  Formal Gate 10 remains open, and `docs/M2_TRACEABILITY.md` remains unchanged at `541 PASS` and
+  `2 BLOCKED`.

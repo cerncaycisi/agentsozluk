@@ -34,16 +34,23 @@ production acceptance remains pending.
   contained 515 runs with `121 FAILED + 14 TIMED_OUT` (26.21% hard failure/timeout); it must be
   diagnosed as a distinct post-window incident and not folded into the seven-day acceptance
   sample.
-- The current repository recovery work is a local candidate only. It preserves the operator's
+- The repository recovery package preserves the operator's
   cost decision by making Luna/max the repository source contract, introduces stage-specific safe
   worker failures instead of the generic `WORKER_EXECUTION_FAILED`, replaces production-proven
   zero-yield canonical sources while preserving administrative reliability state, and exposes a
   bounded writer-opened-topic catalog so an exact visible-title proposal can be evaluated
-  transparently as `CREATE_ENTRY` before the critic. None of those changes is production evidence.
-  The complete local development gate passed after the final review correction; exact revision,
-  normal CI and specific production approval still precede any deployment. A normal release must
-  not silently reset the active Luna/max runtime to Sol/high; Sol/high remains an explicit
-  rollback/comparison option, not the default recovery direction.
+  transparently as `CREATE_ENTRY` before the critic. PR `#22` merged exact head
+  `e0c43e70cb271eaa1a90c68e18156a26cfe886c5` over base
+  `fcb03ab47402ef06295622b5b67ca4f2f63b1b9f` as merge commit
+  `bafb4c4ff5cbfac7a6329a410e2930661b06b34f` at `2026-08-12T11:07:09Z`; all seven PR-head checks
+  (`quality`, `behavior`, `database`, `coverage`, `browser`, `container`, `validate`) returned
+  `SUCCESS`. Independent post-merge `main` push CI run `31590429952` then completed on exact head
+  `bafb4c4ff5cbfac7a6329a410e2930661b06b34f` with the same seven jobs all `SUCCESS`. The
+  pre-receipt reconciliation found local `main` and `origin/main` on that merge commit with a clean
+  tree. This is merged/CI-verified repository evidence, not production evidence. Specific
+  production approval and an exact production release still precede any deployment. A normal
+  release must not silently reset the active Luna/max runtime to Sol/high; Sol/high remains an
+  explicit rollback/comparison option, not the default recovery direction.
 - The final repository-local recovery candidate passed
   `TEST_DATABASE_URL=postgresql://<redacted>@127.0.0.1:5432/agent_sozluk_test E2E_APP_URL=http://127.0.0.1:3100 pnpm verify:m2:development`
   with exit `0`. The gate covered
@@ -52,13 +59,17 @@ production acceptance remains pending.
   M1 requirements `811/811`, 63 agent-unit files, agent integration `11 files / 125 tests`, the
   accelerated simulation `1/1` in `51.049s`, agent E2E `24/24`, OpenAPI `136` operations, persona
   verification `10/45`, metadata-leak checks across 14 surfaces / 21 fields and the secret scan.
-  Development traceability remained `464 PASS`, `77 superseded`, `25 partial supersessions`, `2
-approved post-merge BLOCKED`, `0 FAIL` and `543 total`; no status was promoted without production
-  evidence. An earlier full-verify process was deliberately stopped with `SIGINT` and exit `130`
+  Development traceability remained `464 PASS`, `77 superseded`, `25 partial supersessions`, two
+  approved post-merge `BLOCKED`, `0 FAIL` and `543 total`; no status was promoted without
+  production evidence. An earlier full-verify process was deliberately stopped with `SIGINT` and
+  exit `130`
   while the final P2 admin-to-profile-to-settings lock correction was reviewed; it was not a
   regression result. The stale local test database first raised Prisma `P2022`; only
   `agent_sozluk_test` was reset and all 25 migrations were reapplied. Production remained
   untouched.
+- No production access, deploy, migration, source reconciliation, restart, pause or cleanup was
+  performed for the merge receipt. Formal Gate 10 remains open; M2 traceability remains `541 PASS`
+  and `2 BLOCKED` until its production-gated evidence exists.
 
 - 2026-08-02: item 2's source-evidence-chain package is implemented as a repository-only local
   candidate on the re-verified `main` base `248a0c3079e21b56c5234f347d27fefb5dee85e6`. One
@@ -1915,10 +1926,11 @@ The switch completed at server time `2026-08-03T16:23:43+00:00`, equal to
 and production run metadata proved `gpt-5.6-luna`, `max` and `codex-cli 0.144.6`. The original
 Sol/high release remains the rollback target. This receipt does not reorder the active queue. On
 2026-08-12 Gokhan explicitly retained Luna/max because Sol/high is too expensive for the sustained
-production cadence. The current local recovery candidate promotes Luna/max into the repository
-source contract, but is not yet production proof. Until that exact candidate is verified and
-deployed, every ordinary release must guard against silently resetting the active host runtime to
-Sol/high; Sol/high remains an explicit rollback or comparison option only.
+production cadence. PR `#22` has now merged the Luna/max source contract; its PR-head checks and
+post-merge `main` push CI run `31590429952` both passed all seven jobs. This is not yet production
+proof. Until that exact revision is deployed with specific approval, every ordinary release must
+guard against silently resetting the active host runtime to Sol/high; Sol/high remains an explicit
+rollback or comparison option only.
 
 ## Current product decisions
 
