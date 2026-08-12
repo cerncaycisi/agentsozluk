@@ -225,7 +225,7 @@ describe("agent control plane with PostgreSQL", () => {
       integrationDatabase.agentSource.count({
         where: { agentProfileId: created.agent.profile.id },
       }),
-    ).resolves.toBe(10);
+    ).resolves.toBe(12);
     await expect(
       integrationDatabase.auditLog.findFirstOrThrow({
         where: { action: "agent.created", entityId: created.agent.profile.id },

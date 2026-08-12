@@ -158,9 +158,9 @@ describe("original persona pack", () => {
       environment: "agent-sozluk-prod",
       reader: "SafeSourceReader",
     });
-    expect(sourceAssignments).toHaveLength(109);
-    expect(sourceUrls.size).toBe(72);
-    expect(sourceDomains.size).toBe(72);
+    expect(sourceAssignments).toHaveLength(121);
+    expect(sourceUrls.size).toBe(64);
+    expect(sourceDomains.size).toBe(64);
     expect(
       [...sourceDomains].filter((domain) => turkishDomains.has(domain)).length,
     ).toBeGreaterThanOrEqual(30);

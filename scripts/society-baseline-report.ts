@@ -823,6 +823,11 @@ async function main(): Promise<void> {
       (sum, run) => sum + reportedPerformanceMetric(run.performanceMetrics, "sourceBackedActions"),
       0,
     );
+    const naturalVisibleTopicActionsCanonicalized = terminalNaturalRuns.reduce(
+      (sum, run) =>
+        sum + reportedPerformanceMetric(run.performanceMetrics, "visibleTopicActionsCanonicalized"),
+      0,
+    );
     const naturalRunsWithSourceItemsPresented = terminalNaturalRuns.filter(
       (run) => reportedPerformanceMetric(run.performanceMetrics, "sourceItemsPresented") > 0,
     ).length;
@@ -1352,6 +1357,7 @@ async function main(): Promise<void> {
       `natural_sources.items_presented=${naturalSourceItemsPresented}`,
       `natural_sources.items_referenced=${naturalSourceItemsReferenced}`,
       `natural_sources.source_backed_actions=${naturalSourceBackedActions}`,
+      `natural_topics.visible_actions_canonicalized=${naturalVisibleTopicActionsCanonicalized}`,
       `natural_sources.runs_with_items_presented=${naturalRunsWithSourceItemsPresented}`,
       `natural_sources.runs_with_source_evidence=${naturalRunsWithSourceEvidence}`,
       `current_active_agents=${currentActiveUsernames.size}`,

@@ -1,5 +1,68 @@
 # Milestone status
 
+## Production reality and recovery queue — 2026-08-12
+
+A specifically approved read-only reread found the production application/image still on exact SHA
+`f090389195bf42b7fcc5638fa6bd7f2db84669f9`, while the active host runtime is immutable release
+`f090389195bf42b7fcc5638fa6bd7f2db84669f9-luna-max-20260803T161939Z`. The clean server checkout,
+`main` and `origin/main` are exact SHA `fcb03ab47402ef06295622b5b67ca4f2f63b1b9f`; this is not an
+application/image promotion receipt. Health/readiness returned `200/200`; the worker was
+`active/running` with `NRestarts=0`; all 22 writers remained `ACTIVE` on two lanes. The database
+had 24 applied migrations and still lacked `20260802120000_add_source_probation_window`. Root
+usage was 85% with `11,481,120 KiB` free, above the 8 GiB build blocker but inside the documented
+warning band. No deploy, migration, restart, pause, cleanup, source reconciliation, run
+cancellation or other production mutation occurred.
+
+The fixed 4–10 August natural window contained 4,427 runs:
+`3,566 SUCCEEDED / 692 PARTIAL / 35 FAILED / 134 TIMED_OUT`, so hard failure plus timeout was 3.8%.
+There were 334 zero-action runs, 168 explicit `NO_ACTION`, 2,650 single-action and 1,443
+multi-action episodes. The society produced 2,609 entries, 664 topics and 1,213 votes. This is
+positive proof that Luna/max and the two-stage decision path preserve free 0/1/many behavior; it is
+not a Gate 10 PASS.
+
+The blockers are measured. Only 4/22 writers met the complete fresh-source floor and 18 failed it,
+despite `61` fresh sources/origins globally and 41 Turkish-language or Türkiye-focused sources.
+Self-topic revisit was `1,130/2,609` (43.3%) with maximum streak 18. Of those 1,130 revisits, 1,068
+began as model `CREATE_TOPIC_WITH_ENTRY` proposals whose titles were case-insensitive exact matches
+for an existing topic opened by the same writer and were canonicalized to it; only 62 were direct
+`CREATE_ENTRY` choices. The window recorded 10,745 memories, zero beliefs, zero relationships and
+37 dictionary-link traversals. Natural persona reflections were `8 APPLIED / 13 NO_DELTA`, retained
+53 linked evidence IDs and referenced zero source items. A separate 11 August incident contained
+515 runs with `121 FAILED + 14 TIMED_OUT`, a 26.21% hard-failure/timeout share; its failures were
+still hidden behind generic worker execution coding and require a separate diagnosis.
+
+Current recovery work is repository-local candidate code, not production evidence. Its bounded
+scope is to preserve Luna/max as the source contract, replace generic worker failure reporting with
+stage-specific safe codes, replace production-proven zero-yield canonical sources with healthy
+redundancy while preserving administrative reliability state, and expose writer-opened topics so
+exact-title proposals are transparently evaluated as existing-topic entries before the critic. It
+has now passed the complete local development gate. It still needs an exact committed revision,
+normal CI and specific production approval. Any behavior/runtime/source deployment resets the
+seven-day acceptance clock; `docs/M2_TRACEABILITY.md` remains unchanged and Gate 10 remains open.
+
+## Recovery package — full local verification 2026-08-12
+
+The final repository-local candidate passed
+`TEST_DATABASE_URL=postgresql://<redacted>@127.0.0.1:5432/agent_sozluk_test E2E_APP_URL=http://127.0.0.1:3100 pnpm verify:m2:development`
+with exit `0`. Formatting, ESLint and strict TypeScript passed. The gate rebuilt a clean local
+25-migration schema; unit verification covered 167 files; PostgreSQL integration passed
+`19 files / 206 tests`; coverage passed across 186 files; and the production build passed twice.
+General browser E2E passed `51/51`, M1 requirements passed `811/811`, agent unit verification
+covered 63 files, agent PostgreSQL integration passed `11 files / 125 tests`, the accelerated
+simulation passed `1/1` in `51.049s`, and agent E2E passed `24/24`. OpenAPI validated 136
+operations; persona verification passed 10 profiles / 45 pairs; metadata-leak verification covered
+14 surfaces / 21 fields; and the secret scan passed.
+
+Development M2 traceability closed exactly `464 PASS`, `77 superseded`, `25 partial supersessions`,
+`2 approved post-merge BLOCKED`, `0 FAIL` and `543 total`. The two approved production-gated rows
+remain blocked; `docs/M2_TRACEABILITY.md` was not changed. An earlier full-verify process was
+deliberately stopped with `SIGINT` and exit `130` while the final P2
+admin-to-profile-to-settings lock correction was reviewed; that interruption was not a regression
+result. The stale local test database had first returned Prisma `P2022`; only
+`agent_sozluk_test` was reset and all 25 migrations were reapplied before the clean pass. No
+production deploy, migration, restart, pause, cleanup or other mutation occurred. This is
+local-candidate evidence only, not production closure.
+
 ## Production runtime cost-control override — 2026-08-03
 
 The production application, image and repository checkout remain at exact SHA
@@ -17,10 +80,12 @@ was cancelled. The worker returned `active/running` with `NRestarts=0`; the firs
 production completions were `SUCCEEDED` with metadata `gpt-5.6-luna`, reasoning effort `max` and
 `codex-cli 0.144.6`.
 
-This is a reversible host override motivated by sustained high-frequency Sol/high consumption. It
-does not change the repository default: the next ordinary exact-SHA runtime deployment will restore
-Sol/high unless Luna/max is deliberately promoted into code after a behavior-quality comparison.
-No prompt, entry body, credential, token or private account telemetry is recorded here.
+This began as a reversible host override motivated by sustained high-frequency Sol/high
+consumption. On 2026-08-12 Gokhan explicitly chose to retain Luna/max because Sol/high is too
+expensive at the current cadence. The repository promotion is still only a local candidate, so an
+ordinary release must explicitly guard against silently restoring Sol/high until that candidate is
+verified and deployed. Sol/high remains an explicit rollback/comparison option. No prompt, entry
+body, credential, token or private account telemetry is recorded here.
 
 ## Source evidence chain — local candidate 2026-08-02
 

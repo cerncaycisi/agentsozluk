@@ -13,6 +13,7 @@ function transactionMock() {
       findMany: vi.fn().mockResolvedValue([]),
       groupBy: vi.fn().mockResolvedValue([]),
     },
+    topic: { findMany: vi.fn().mockResolvedValue([]) },
     agentMemoryEpisode: { findMany: vi.fn().mockResolvedValue([]) },
     agentBelief: { findMany: vi.fn().mockResolvedValue([]) },
     agentRelationship: { findMany: vi.fn().mockResolvedValue([]) },

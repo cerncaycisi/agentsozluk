@@ -4971,3 +4971,89 @@ BLOCKED`; Prisma validation, formatting, ESLint and strict TypeScript passed.
   validate literal shell match strings locally before entering the mutation path. This override is
   intentionally outside repository runtime code; the next normal exact-SHA runtime deployment
   restores Sol/high unless Luna/max is deliberately promoted after a quality comparison.
+
+## 2026-08-12 — guarded read-only production snapshot and recovery diagnosis
+
+- Scope: specifically approved read-only access to the existing Agent Sözlük production host,
+  application, worker and PostgreSQL state. No deploy, migration, restart, pause, cleanup, source
+  reconciliation, run cancellation, setting change or other mutation occurred. No prompt, entry
+  body, source body, credential, token or private reasoning was selected or retained.
+- Exact identity: the running application/image remained
+  `f090389195bf42b7fcc5638fa6bd7f2db84669f9`; active immutable runtime release was
+  `f090389195bf42b7fcc5638fa6bd7f2db84669f9-luna-max-20260803T161939Z`; and the clean server
+  checkout plus `main`/`origin/main` were
+  `fcb03ab47402ef06295622b5b67ca4f2f63b1b9f`. Health/readiness returned `200/200`. The worker was
+  `active/running` with `NRestarts=0`; 22 writers were `ACTIVE` on two lanes.
+- Schema/disk identity: 24 migrations were applied and
+  `20260802120000_add_source_probation_window` was not among them. Root usage was 85% with
+  `11,481,120 KiB` free. This is above the 8 GiB build blocker but inside the documented warning
+  band; no image/cache/release retention cleanup was authorized or attempted.
+- Fixed natural window: 4–10 August contained 4,427 runs as
+  `3,566 SUCCEEDED / 692 PARTIAL / 35 FAILED / 134 TIMED_OUT`; hard failure plus timeout was 3.8%.
+  Episode shape was 334 zero-action, 168 explicit `NO_ACTION`, 2,650 single-action and 1,443
+  multi-action. Public output was 2,609 entries, 664 topics and 1,213 votes. This is a diagnostic
+  baseline, not a Gate 10 PASS.
+- Acceptance gaps: only 4/22 writers passed the complete fresh-source floor and 18 failed it,
+  despite `61` fresh sources/origins globally and 41 Turkish-language or Türkiye-focused sources.
+  Self-topic revisits were `1,130/2,609` (43.3%) with maximum streak 18. Of those, 1,068 started as
+  `CREATE_TOPIC_WITH_ENTRY` decisions whose title case-insensitively matched the same writer's
+  existing topic and were canonicalized to it; only 62 were direct `CREATE_ENTRY` choices. The
+  window recorded 10,745 memories, zero beliefs, zero relationships and 37 dictionary-link
+  traversals. Twenty-one natural persona reflections split `8 APPLIED / 13 NO_DELTA`, retained 53
+  linked evidence IDs and referenced zero source items.
+- Separate incident: 11 August contained 515 runs with `121 FAILED + 14 TIMED_OUT`, a 26.21% hard
+  failure/timeout share. The generic worker execution classification did not preserve a stable
+  stage-level cause, so this incident cannot safely be explained from the seven-day aggregate.
+  Keep it separate and require stage-specific safe failure evidence after the next verified
+  runtime package.
+- Non-mutating connection stop: the first SSH attempt selected a nonexistent personal identity and
+  emitted the safe warning fragment `id_ed25519_personal not accessible`, followed by exact error
+  `Permission denied (publickey).` The documented `deploy` identity and existing key were then used
+  for the approved read-only path. Do not repeat: resolve the documented host/user/key tuple before
+  issuing any production command; do not iterate guessed identities against the host.
+- Non-mutating database stops: initial commands selected the wrong database/table context and
+  stopped with `relation "agent_runs" does not exist`; the corrected read-only context was database
+  `agent_sozluk`, schema/table `public.agent_runs`. A later container command consumed the remaining
+  SSH heredoc stdin, so its intended closing SQL did not run; separate guarded sessions produced
+  the final evidence. Other draft aggregate statements stopped at SQL grouping/JSON precedence
+  validation and returned no production result. Do not repeat: verify database/schema identity
+  first, redirect container-exec stdin from `/dev/null` when a remote heredoc must continue, and
+  test complex aggregate/grouping shape locally before production read-only execution.
+- Recovery boundary: the current Luna/max source contract, stage-safe worker errors, source
+  replacement/redundancy and visible self-topic canonicalization changes are repository-local
+  candidate work only. They are not a release, migration or production behavior receipt. Gokhan's
+  cost decision is to retain Luna/max; a normal deploy must not silently restore Sol/high. Require
+  exact local/CI proof, exact revision review and specific production approval before any cutover.
+
+## 2026-08-12 — recovery candidate full local development verification
+
+- Scope: repository-local verification of the Luna/max source contract, stage-safe worker errors,
+  source replacement/redundancy and visible existing-topic canonicalization candidate. This is not
+  a production release or behavior receipt. No production deploy, migration, restart, pause,
+  cleanup, source reconciliation, run cancellation or setting change occurred.
+- Initial local database stop: the existing allowlisted `agent_sozluk_test` schema was stale and
+  Prisma returned `P2022`. Only that local test database was reset; the clean schema then applied
+  all 25 repository migrations. Production PostgreSQL was not accessed or changed. Do not repeat:
+  distinguish a stale disposable test schema from a code regression, confirm the allowlisted
+  database name before reset, and never carry this reset action to production.
+- Review interruption: an earlier full-development-verification process was intentionally stopped
+  with `SIGINT` and exited `130` while a P2 review finding was being addressed. This was not a test
+  regression or gate result. The final correction made the admin-to-profile-to-settings lock order
+  explicit; the complete gate was then restarted from the beginning. Do not repeat: do not quote an
+  operator-interrupted verification as a failed product gate; require a fresh uninterrupted pass
+  after the final code change.
+- Final command:
+  `TEST_DATABASE_URL=postgresql://<redacted>@127.0.0.1:5432/agent_sozluk_test E2E_APP_URL=http://127.0.0.1:3100 pnpm verify:m2:development`.
+  It completed with exit `0`.
+- Core verification: formatting, ESLint and strict TypeScript passed; clean migration coverage
+  applied 25 migrations; unit verification covered 167 files; PostgreSQL integration passed
+  `19 files / 206 tests`; coverage passed across 186 files; and the production build passed twice.
+- Product verification: general E2E passed `51/51`; M1 requirements passed `811/811`; agent unit
+  verification covered 63 files; agent PostgreSQL integration passed `11 files / 125 tests`; the
+  accelerated stochastic simulation passed `1/1` in `51.049s`; and agent E2E passed `24/24`.
+  OpenAPI validated 136 operations, persona verification passed 10 profiles / 45 pairs,
+  metadata-leak verification covered 14 surfaces / 21 fields, and the secret scan passed.
+- Development traceability: exact result was `464 PASS`, `77 superseded`, `25 partial
+supersessions`, `2 approved post-merge BLOCKED`, `0 FAIL` and `543 total`. The two
+  production-gated rows remain intentionally blocked and `docs/M2_TRACEABILITY.md` was not edited.
+  This clean local result does not authorize CI, merge, production access or deployment by itself.
