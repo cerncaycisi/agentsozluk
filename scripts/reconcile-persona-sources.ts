@@ -3,10 +3,11 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { getDatabase } from "@/lib/db/client";
 import { sha256 } from "@/lib/security/crypto";
-import { updateAgent } from "@/modules/agents";
+import { requireAgentAdminInTransaction, updateAgent } from "@/modules/agents";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import {
   assignVerifiedSources,
+  reconciledCanonicalAdminPinned,
   sourceTopicMappings,
   uniqueVerifiedSourcePool,
 } from "@/modules/agents/personas/source-assignment";
@@ -15,8 +16,11 @@ import {
   reconciledSourceLocaleFocus,
   reviewedSourceLocaleFocus,
 } from "@/modules/agents/personas/source-locale-metadata";
-import { isRuntimeCitableSourceStatus } from "@/modules/agents/domain/source-status";
-import { appendRuntimeEvent, lockAgentProfile } from "@/modules/agents/repository/control-plane";
+import {
+  appendRuntimeEvent,
+  lockAgentProfile,
+  lockAgentSettings,
+} from "@/modules/agents/repository/control-plane";
 import { appendAuditLog } from "@/modules/audit";
 import { resolveOperatorAdmin } from "./agent-operator";
 
@@ -75,7 +79,6 @@ async function main(): Promise<void> {
         select: {
           id: true,
           user: { select: { username: true } },
-          currentPersonaVersion: { select: { persona: true } },
         },
       }),
     ]);
@@ -93,16 +96,10 @@ async function main(): Promise<void> {
 
     const targets = profiles
       .map((profile) => {
-        if (!profile.currentPersonaVersion)
-          throw new Error(`SOURCE_RECONCILE_PERSONA_MISSING username=${profile.user.username}`);
-        const currentPersona = seedPersonaSchema.parse(profile.currentPersonaVersion.persona);
         const canonical = canonicalByUsername.get(profile.user.username);
-        const sources = canonical?.sources ?? assignVerifiedSources(currentPersona, verifiedPool);
         return {
           profile,
-          currentPersona,
-          sources,
-          sourceTopicMappings: canonical?.sourceTopicMappings ?? sourceTopicMappings(sources),
+          canonical,
           assignmentKind: canonical ? "CANONICAL" : "ACTIVE_IMPORTED",
         };
       })
@@ -113,28 +110,60 @@ async function main(): Promise<void> {
     let sourcesBlocked = 0;
 
     for (const target of targets) {
-      const { assignmentKind, currentPersona, profile, sources } = target;
-      const personaNeedsUpdate =
-        JSON.stringify(currentPersona.sources) !== JSON.stringify(sources) ||
-        JSON.stringify(currentPersona.sourceTopicMappings) !==
-          JSON.stringify(target.sourceTopicMappings);
-      if (personaNeedsUpdate) {
-        await updateAgent(database, { ...actor, requestId: randomUUID() }, profile.id, {
-          persona: {
-            ...currentPersona,
-            sources,
-            sourceTopicMappings: target.sourceTopicMappings,
-          },
-          changeSummary:
-            assignmentKind === "CANONICAL"
-              ? "Verified and diversified canonical source pack refresh."
-              : "Verified source pool top-up for an active imported writer.",
-        });
-        personaVersionsCreated += 1;
-      }
-
+      const { assignmentKind, canonical, profile } = target;
       const result = await database.$transaction(async (transaction) => {
+        await requireAgentAdminInTransaction(transaction, actor);
         await lockAgentProfile(transaction, profile.id);
+        await lockAgentSettings(transaction);
+        const currentSettings = await transaction.agentGlobalSettings.findUniqueOrThrow({
+          where: { id: "global" },
+          select: { runtimeEnabled: true },
+        });
+        const currentOpenRunCount = await transaction.agentRun.count({
+          where: { runStatus: { notIn: [...terminalRunStatuses] } },
+        });
+        if (currentSettings.runtimeEnabled || currentOpenRunCount > 0)
+          throw new Error(
+            `SOURCE_RECONCILE_REQUIRES_IDLE_RUNTIME runtimeEnabled=${currentSettings.runtimeEnabled} openRuns=${currentOpenRunCount}`,
+          );
+        const currentProfile = await transaction.agentProfile.findUniqueOrThrow({
+          where: { id: profile.id },
+          select: {
+            lifecycleStatus: true,
+            user: { select: { username: true } },
+            currentPersonaVersion: { select: { persona: true } },
+          },
+        });
+        if (currentProfile.user.username !== profile.user.username)
+          throw new Error(`SOURCE_RECONCILE_USERNAME_CHANGED profile=${profile.id}`);
+        if (!canonical && currentProfile.lifecycleStatus !== "ACTIVE")
+          throw new Error(
+            `SOURCE_RECONCILE_IMPORTED_PROFILE_NOT_ACTIVE username=${profile.user.username}`,
+          );
+        if (!currentProfile.currentPersonaVersion)
+          throw new Error(`SOURCE_RECONCILE_PERSONA_MISSING username=${profile.user.username}`);
+        const currentPersona = seedPersonaSchema.parse(
+          currentProfile.currentPersonaVersion.persona,
+        );
+        const sources = canonical?.sources ?? assignVerifiedSources(currentPersona, verifiedPool);
+        const targetSourceTopicMappings =
+          canonical?.sourceTopicMappings ?? sourceTopicMappings(sources);
+        const personaNeedsUpdate =
+          JSON.stringify(currentPersona.sources) !== JSON.stringify(sources) ||
+          JSON.stringify(currentPersona.sourceTopicMappings) !==
+            JSON.stringify(targetSourceTopicMappings);
+        if (personaNeedsUpdate)
+          await updateAgent(transaction, { ...actor, requestId: randomUUID() }, profile.id, {
+            persona: {
+              ...currentPersona,
+              sources,
+              sourceTopicMappings: targetSourceTopicMappings,
+            },
+            changeSummary:
+              assignmentKind === "CANONICAL"
+                ? "Verified and diversified canonical source pack refresh."
+                : "Verified source pool top-up for an active imported writer.",
+          });
         const existing = await transaction.agentSource.findMany({
           where: { agentProfileId: profile.id },
         });
@@ -170,14 +199,7 @@ async function main(): Promise<void> {
               localeFocus: reconciledSourceLocaleFocus(before?.localeFocus, source.url),
               topics: source.topics,
               interestScore: source.weight,
-              adminPinned: source.pinned,
-              adminBlocked: false,
-              status:
-                before && isRuntimeCitableSourceStatus(before.status)
-                  ? before.status
-                  : source.status,
-              consecutiveFailures: 0,
-              lastFetchedAt: null,
+              adminPinned: reconciledCanonicalAdminPinned(before, source.pinned),
             },
           });
           if (before) updated += 1;
@@ -237,8 +259,9 @@ async function main(): Promise<void> {
             targetCount: sources.length,
           },
         });
-        return { created, updated, blocked };
+        return { created, updated, blocked, personaVersionsCreated: personaNeedsUpdate ? 1 : 0 };
       });
+      personaVersionsCreated += result.personaVersionsCreated;
       sourcesCreated += result.created;
       sourcesUpdated += result.updated;
       sourcesBlocked += result.blocked;

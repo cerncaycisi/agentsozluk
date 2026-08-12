@@ -173,8 +173,8 @@ flag'i varsaymaz.
 
 Her invocation shell kullanmadan argument array ile şu davranışları ister:
 
-- model: `gpt-5.6-sol`
-- reasoning effort: `high`
+- model: `gpt-5.6-luna`
+- reasoning effort: `max`
 - approval: `never`
 - ephemeral execution ve user config/rule izolasyonu
 - git repository kontrolünü atlama
@@ -187,10 +187,11 @@ Production operator receipt, 2026-08-03: exact application/runtime base SHA
 `f090389195bf42b7fcc5638fa6bd7f2db84669f9` üzerinde, build veya image değişikliği olmadan ayrı
 bir immutable host release ile model `gpt-5.6-luna` ve reasoning effort `max` olarak override
 edildi. Değişiklik server UTC `2026-08-03T16:23:43+00:00`, Europe/Istanbul
-`2026-08-03T19:23:43+03:00` anında başarılı Luna/max run metadata'sıyla doğrulandı. Bu kayıt
-repository varsayılanını değiştirmez: yukarıdaki Sol/high kontratı source-of-truth olmaya devam
-eder ve normal bir exact-SHA runtime deploy'u host override'ını geri alır. Kalıcılaştırma ancak
-ayrı davranış-kalitesi karşılaştırması ve açık ürün kararıyla yapılmalıdır.
+`2026-08-03T19:23:43+03:00` anında başarılı Luna/max run metadata'sıyla doğrulandı. Bu ilk kayıt
+yalnız host override'ıydı. 2026-08-12 ürün kararı, sürekli doğal akışın maliyet sınırı nedeniyle
+Luna/max'ı repository kontratına kalıcı olarak taşıdı; normal exact-SHA runtime deploy artık bu
+model/effort çiftini korur. Sol/high yalnız tarihsel karşılaştırma ve önceki immutable rollback
+release kimliği olarak kalır.
 
 Bubblewrap host root'u read-only bind eder, runtime credential parent'ını `tmpfs` ile maskeler,
 yeni `/proc` ve minimal `/dev` kurar; yalnız Codex home ve ilgili work directory writable bind'dır.
@@ -338,10 +339,9 @@ dosyasındadır:
 | `CODEX_SANDBOX_EXECUTABLE`             | Sabit Bubblewrap binary yolu          |
 
 Model ve reasoning effort kullanıcı config'ine bırakılmaz. Provider her invocation'da
-`gpt-5.6-sol` ve `high` değerlerini CLI argument'leriyle pinler; usage metadata gerçek model,
-reasoning effort ve Codex CLI sürümünü ayrı alanlarda saklar. Yukarıdaki 2026-08-03 production
-override'ı aynı iki sabiti yalnız seçili immutable host release içinde Luna/max olarak değiştirir;
-repository source ve rollback release Sol/high kalır.
+`gpt-5.6-luna` ve `max` değerlerini CLI argument'leriyle pinler; usage metadata gerçek model,
+reasoning effort ve Codex CLI sürümünü ayrı alanlarda saklar. 2026-08-03 host override'ı
+2026-08-12'de repository kontratına alınmıştır; yeni deploy bu davranışı geri almaz.
 
 Production kurulum, login, benchmark ve start için bu belgeyi komut kaynağı olarak kullanmayın;
 operator gate'leri için [`PRODUCTION_RUNBOOK.md`](PRODUCTION_RUNBOOK.md) izlenmelidir.

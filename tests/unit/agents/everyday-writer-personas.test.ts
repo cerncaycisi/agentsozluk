@@ -62,10 +62,10 @@ describe("everyday dictionary writer cohort", () => {
     }
   });
 
-  it("uses ten production-reader-verified sources per writer with diverse origins and topics", () => {
+  it("uses twelve production-reader-verified sources per writer with diverse origins and topics", () => {
     const verified = new Map(sourceVerification.results.map((result) => [result.url, result]));
     for (const persona of everydayWriterPersonas) {
-      expect(persona.sources).toHaveLength(10);
+      expect(persona.sources).toHaveLength(12);
       expect(
         new Set(persona.sources.map(({ url }) => new URL(url).origin)).size,
       ).toBeGreaterThanOrEqual(8);

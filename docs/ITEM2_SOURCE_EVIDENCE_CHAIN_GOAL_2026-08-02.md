@@ -75,7 +75,7 @@ Item 2's second open half has the same root cause. Two different contracts gover
 
 - Before this package, `src/runtime/worker.ts:330-334` required every `reflectionDelta.evidenceIds`
   value to be in the union of the evidence catalog, and `src/runtime/worker.ts:1049-1051` hard-threw
-  `RUNTIME_PROVENANCE_CATALOG_INVALID` otherwise;
+  `CODEX_DECISION_PROVENANCE_INVALID` otherwise;
 - `src/modules/agents/application/runtime.ts:434-446` accepts any ID present in the frozen
   perception snapshot, which does include `SEED` item IDs because they were presented.
 

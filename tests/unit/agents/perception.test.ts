@@ -61,6 +61,7 @@ describe("runtime perception selection", () => {
 
   it("surfaces repeated own-topic pressure and diverse exploration candidates", () => {
     const repeatedTopic = { id: "own-topic", title: "aynı başlık" };
+    const writerOpenedTopic = { id: "writer-opened-topic", title: "başkasının sonradan yazdığı" };
     const otherTopic = { id: "other-topic", title: "başka yazarın başlığı" };
     const linkedTopic = { id: "linked-topic", title: "sözlük bağlantısı" };
     const signals = buildTopicChoiceSignals(
@@ -70,7 +71,8 @@ describe("runtime perception selection", () => {
         { topic: { id: "older-own", title: "eski başlık" }, createdAt: now },
       ],
       [
-        { topic: repeatedTopic, createdAt: now },
+        { topic: repeatedTopic, createdAt: now, topicOpenedByCurrentWriter: true },
+        { topic: writerOpenedTopic, createdAt: now, topicOpenedByCurrentWriter: true },
         { topic: otherTopic, createdAt: now },
       ],
       [

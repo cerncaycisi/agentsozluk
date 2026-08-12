@@ -1903,6 +1903,7 @@ export async function getRuntimePerceptionRecords(
     runId: string;
     now: Date;
     includeSources: boolean;
+    includeWriterOpenedTopics?: boolean;
     sourceFetchLimit: number;
   },
 ) {
@@ -1928,6 +1929,7 @@ export async function getRuntimePerceptionRecords(
     userFollows,
     entries,
     ownEntries,
+    writerOpenedTopics,
     memories,
     beliefs,
     relationships,
@@ -1983,6 +1985,14 @@ export async function getRuntimePerceptionRecords(
       orderBy: { createdAt: "desc" },
       take: 10,
     }),
+    input.includeWriterOpenedTopics
+      ? transaction.topic.findMany({
+          where: { createdById: input.agentUserId, status: "ACTIVE" },
+          select: { id: true, title: true },
+          orderBy: [{ lastEntryAt: "desc" }, { createdAt: "desc" }],
+          take: 50,
+        })
+      : Promise.resolve([]),
     transaction.agentMemoryEpisode.findMany({
       where: { agentProfileId: input.agentProfileId, invalidatedAt: null },
       select: {
@@ -2075,6 +2085,7 @@ export async function getRuntimePerceptionRecords(
     followedUserIds: userFollows.map(({ followedId }) => followedId),
     entries,
     ownEntries,
+    writerOpenedTopics,
     memories,
     beliefs,
     relationships,

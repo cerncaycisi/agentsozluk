@@ -5,30 +5,50 @@
   "productionSha": "7b5f6b82750655651c00550529da05f1fd560cf4",
   "reader": "SafeSourceReader",
   "results": [
-    { "url": "https://acikbilim.com/feed/", "status": "USABLE", "observedItemCount": 50 },
-    { "url": "https://aeon.co/feed.rss", "status": "USABLE", "observedItemCount": 20 },
-    { "url": "https://altyazi.net/feed/", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://argonotlar.com/feed/", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://artdogistanbul.com/feed/", "status": "USABLE", "observedItemCount": 12 },
     {
-      "url": "https://asrs.arc.nasa.gov/publications/callback.html",
+      "url": "https://acikbilim.com/feed/",
       "status": "USABLE",
-      "observedItemCount": 1
+      "observedItemCount": 50
     },
-    { "url": "https://bantmag.com/feed/", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://bianet.org/bianet.rss", "status": "USABLE", "observedItemCount": 50 },
-    { "url": "https://bilimakademisi.org/feed/", "status": "USABLE", "observedItemCount": 10 },
     {
-      "url": "https://bilimgenc.tubitak.gov.tr/rss.xml",
+      "url": "https://aeon.co/feed.rss",
+      "status": "USABLE",
+      "observedItemCount": 20
+    },
+    {
+      "url": "https://altyazi.net/feed/",
       "status": "USABLE",
       "observedItemCount": 10
     },
-    { "url": "https://blog.mozilla.org/en/feed/", "status": "USABLE", "observedItemCount": 20 },
-    { "url": "https://cazkolik.com/rss.xml", "status": "USABLE", "observedItemCount": 50 },
     {
-      "url": "https://cleancities.energy.gov/news-events/rss",
+      "url": "https://argonotlar.com/feed/",
       "status": "USABLE",
-      "observedItemCount": 1
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://artdogistanbul.com/feed/",
+      "status": "USABLE",
+      "observedItemCount": 12
+    },
+    {
+      "url": "https://bantmag.com/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://bianet.org/bianet.rss",
+      "status": "USABLE",
+      "observedItemCount": 50
+    },
+    {
+      "url": "https://bilimakademisi.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://blog.mozilla.org/en/feed/",
+      "status": "USABLE",
+      "observedItemCount": 20
     },
     {
       "url": "https://climate.nasa.gov/feeds/news/",
@@ -40,88 +60,216 @@
       "status": "USABLE",
       "observedItemCount": 26
     },
-    { "url": "https://disk.org.tr/feed/", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://evrimagaci.org/rss.xml", "status": "USABLE", "observedItemCount": 30 },
-    { "url": "https://fayn.press/feed/", "status": "USABLE", "observedItemCount": 15 },
+    {
+      "url": "https://disk.org.tr/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://evrimagaci.org/rss.xml",
+      "status": "USABLE",
+      "observedItemCount": 30
+    },
+    {
+      "url": "https://fayn.press/feed/",
+      "status": "USABLE",
+      "observedItemCount": 15
+    },
     {
       "url": "https://feeds.bbci.co.uk/turkce/rss.xml",
       "status": "USABLE",
       "observedItemCount": 24
     },
-    { "url": "https://fikirturu.com/feed/", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://flightsafety.org/feed/", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://haber.aero/feed/", "status": "USABLE", "observedItemCount": 10 },
+    {
+      "url": "https://fikirturu.com/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://flightsafety.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://haber.aero/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
     {
       "url": "https://hudoc.echr.coe.int/app/transform/rss?length=20&library=echrengpress&query=contentsitename%3AECHR+AND+doctype%3DPR&rankingModelId=11111111-0000-0000-0000-000000000000&sort=kpdate+Descending&start=0",
       "status": "USABLE",
       "observedItemCount": 20
     },
-    { "url": "https://ifade.org.tr/engelliweb/feed/", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://journo.com.tr/feed", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://kantan.news/feed", "status": "USABLE", "observedItemCount": 1 },
-    { "url": "https://manifold.press/rss", "status": "USABLE", "observedItemCount": 20 },
-    { "url": "https://medyascope.tv/feed/", "status": "USABLE", "observedItemCount": 12 },
+    {
+      "url": "https://ifade.org.tr/engelliweb/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://journo.com.tr/feed",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://manifold.press/rss",
+      "status": "USABLE",
+      "observedItemCount": 20
+    },
+    {
+      "url": "https://medyascope.tv/feed/",
+      "status": "USABLE",
+      "observedItemCount": 12
+    },
     {
       "url": "https://news.un.org/feed/subscribe/en/news/all/rss.xml",
       "status": "USABLE",
       "observedItemCount": 30
     },
-    { "url": "https://sanatatak.com/feed/", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://sarkac.org/feed/", "status": "USABLE", "observedItemCount": 50 },
-    { "url": "https://simpleflying.com/feed/", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://skybrary.aero/rss.xml", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://t24.com.tr/rss", "status": "USABLE", "observedItemCount": 1 },
-    { "url": "https://teyit.org/feed", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://theplosblog.plos.org/feed/", "status": "USABLE", "observedItemCount": 12 },
-    { "url": "https://tr.euronews.com/rss", "status": "USABLE", "observedItemCount": 50 },
+    {
+      "url": "https://sanatatak.com/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://sarkac.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 50
+    },
+    {
+      "url": "https://simpleflying.com/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://skybrary.aero/rss.xml",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://teyit.org/feed",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://theplosblog.plos.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 12
+    },
+    {
+      "url": "https://tr.euronews.com/rss",
+      "status": "USABLE",
+      "observedItemCount": 50
+    },
     {
       "url": "https://turkiye.un.org/tr/stories/rss.xml",
       "status": "USABLE",
       "observedItemCount": 25
     },
-    { "url": "https://vesaire.press/feed/", "status": "USABLE", "observedItemCount": 18 },
+    {
+      "url": "https://vesaire.press/feed/",
+      "status": "USABLE",
+      "observedItemCount": 18
+    },
     {
       "url": "https://www.aa.com.tr/tr/rss/default?cat=guncel",
       "status": "USABLE",
       "observedItemCount": 24
     },
-    { "url": "https://www.agos.com.tr/rss", "status": "USABLE", "observedItemCount": 50 },
-    { "url": "https://www.arkitera.com/feed/", "status": "USABLE", "observedItemCount": 50 },
-    { "url": "https://www.artforum.com/feed/", "status": "USABLE", "observedItemCount": 12 },
+    {
+      "url": "https://www.agos.com.tr/rss",
+      "status": "USABLE",
+      "observedItemCount": 50
+    },
+    {
+      "url": "https://www.arkitera.com/feed/",
+      "status": "USABLE",
+      "observedItemCount": 50
+    },
+    {
+      "url": "https://www.artforum.com/feed/",
+      "status": "USABLE",
+      "observedItemCount": 12
+    },
     {
       "url": "https://www.birbabaindie.com/feed/",
       "status": "USABLE",
       "observedItemCount": 15
     },
-    { "url": "https://www.bloomberght.com/rss", "status": "USABLE", "observedItemCount": 11 },
-    { "url": "https://www.carbonbrief.org/feed/", "status": "USABLE", "observedItemCount": 12 },
-    { "url": "https://www.cochrane.org/news/rss", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://www.dunya.com/rss?dunya", "status": "USABLE", "observedItemCount": 25 },
-    { "url": "https://www.ekonomim.com/export/rss", "status": "USABLE", "observedItemCount": 50 },
+    {
+      "url": "https://www.bloomberght.com/rss",
+      "status": "USABLE",
+      "observedItemCount": 11
+    },
+    {
+      "url": "https://www.carbonbrief.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 12
+    },
+    {
+      "url": "https://www.cochrane.org/news/rss",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://www.dunya.com/rss?dunya",
+      "status": "USABLE",
+      "observedItemCount": 25
+    },
+    {
+      "url": "https://www.ekonomim.com/export/rss",
+      "status": "USABLE",
+      "observedItemCount": 50
+    },
     {
       "url": "https://www.evrensel.net/rss/haber.xml",
       "status": "USABLE",
       "observedItemCount": 50
     },
-    { "url": "https://www.havayolu101.com/feed/", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://www.iklimhaber.org/feed/", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://www.ipcc.ch/feed/", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://www.itdp.org/feed/", "status": "USABLE", "observedItemCount": 9 },
-    { "url": "https://www.k24kitap.org/rss", "status": "USABLE", "observedItemCount": 1 },
-    { "url": "https://www.log.com.tr/feed/", "status": "USABLE", "observedItemCount": 10 },
-    { "url": "https://www.lojiport.com/feed/", "status": "USABLE", "observedItemCount": 18 },
-    { "url": "https://www.mindful.org/feed/", "status": "USABLE", "observedItemCount": 10 },
+    {
+      "url": "https://www.havayolu101.com/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://www.iklimhaber.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://www.ipcc.ch/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://www.itdp.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 9
+    },
+    {
+      "url": "https://www.log.com.tr/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
+    {
+      "url": "https://www.lojiport.com/feed/",
+      "status": "USABLE",
+      "observedItemCount": 18
+    },
+    {
+      "url": "https://www.mindful.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    },
     {
       "url": "https://www.newslabturkey.org/feed/",
       "status": "USABLE",
       "observedItemCount": 12
     },
     {
-      "url": "https://www.ntsb.gov/feeds/Pages/default.aspx",
+      "url": "https://www.ntv.com.tr/teknoloji.rss",
       "status": "USABLE",
-      "observedItemCount": 1
+      "observedItemCount": 20
     },
-    { "url": "https://www.ntv.com.tr/teknoloji.rss", "status": "USABLE", "observedItemCount": 20 },
     {
       "url": "https://www.osha.gov/news/newsreleases.xml",
       "status": "USABLE",
@@ -132,7 +280,11 @@
       "status": "USABLE",
       "observedItemCount": 50
     },
-    { "url": "https://www.sivilsayfalar.org/feed/", "status": "USABLE", "observedItemCount": 9 },
+    {
+      "url": "https://www.sivilsayfalar.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 9
+    },
     {
       "url": "https://www.smartcitiesdive.com/feeds/news/",
       "status": "USABLE",
@@ -148,18 +300,97 @@
       "status": "USABLE",
       "observedItemCount": 50
     },
-    { "url": "https://www.tmmob.org.tr/rss.xml", "status": "USABLE", "observedItemCount": 5 },
+    {
+      "url": "https://www.tmmob.org.tr/rss.xml",
+      "status": "USABLE",
+      "observedItemCount": 5
+    },
     {
       "url": "https://www.trthaber.com/sondakika.rss",
       "status": "USABLE",
       "observedItemCount": 50
     },
-    { "url": "https://www.w3.org/blog/feed/", "status": "USABLE", "observedItemCount": 25 },
+    {
+      "url": "https://www.w3.org/blog/feed/",
+      "status": "USABLE",
+      "observedItemCount": 25
+    },
     {
       "url": "https://www.who.int/rss-feeds/news-english.xml",
       "status": "USABLE",
       "observedItemCount": 25
     },
-    { "url": "https://yesilgazete.org/feed/", "status": "USABLE", "observedItemCount": 10 }
-  ]
+    {
+      "url": "https://yesilgazete.org/feed/",
+      "status": "USABLE",
+      "observedItemCount": 10
+    }
+  ],
+  "excludedResults": [
+    {
+      "url": "https://www.k24kitap.org/rss",
+      "status": "EXCLUDED",
+      "safeReason": "ZERO_USEFUL_RESULT_IN_RECONCILIATION_WINDOW",
+      "observedResultCount": 57,
+      "observedUsefulResultCount": 0
+    },
+    {
+      "url": "https://t24.com.tr/rss",
+      "status": "EXCLUDED",
+      "safeReason": "ZERO_USEFUL_RESULT_IN_RECONCILIATION_WINDOW",
+      "observedResultCount": 48,
+      "observedUsefulResultCount": 0
+    },
+    {
+      "url": "https://kantan.news/feed",
+      "status": "EXCLUDED",
+      "safeReason": "ZERO_USEFUL_RESULT_IN_RECONCILIATION_WINDOW",
+      "observedResultCount": 47,
+      "observedUsefulResultCount": 0
+    },
+    {
+      "url": "https://bilimgenc.tubitak.gov.tr/rss.xml",
+      "status": "EXCLUDED",
+      "safeReason": "ZERO_USEFUL_RESULT_IN_RECONCILIATION_WINDOW",
+      "observedResultCount": 38,
+      "observedUsefulResultCount": 0
+    },
+    {
+      "url": "https://cazkolik.com/rss.xml",
+      "status": "EXCLUDED",
+      "safeReason": "ZERO_USEFUL_RESULT_IN_RECONCILIATION_WINDOW",
+      "observedResultCount": 37,
+      "observedUsefulResultCount": 0
+    },
+    {
+      "url": "https://cleancities.energy.gov/news-events/rss",
+      "status": "EXCLUDED",
+      "safeReason": "ZERO_USEFUL_RESULT_IN_RECONCILIATION_WINDOW",
+      "observedResultCount": 29,
+      "observedUsefulResultCount": 0
+    },
+    {
+      "url": "https://asrs.arc.nasa.gov/publications/callback.html",
+      "status": "EXCLUDED",
+      "safeReason": "ZERO_USEFUL_RESULT_IN_RECONCILIATION_WINDOW",
+      "observedResultCount": 9,
+      "observedUsefulResultCount": 0
+    },
+    {
+      "url": "https://www.ntsb.gov/feeds/Pages/default.aspx",
+      "status": "EXCLUDED",
+      "safeReason": "ZERO_USEFUL_RESULT_IN_RECONCILIATION_WINDOW",
+      "observedResultCount": 9,
+      "observedUsefulResultCount": 0
+    }
+  ],
+  "reconciledAt": "2026-08-12T15:40:00+03:00",
+  "reconciliationWindow": {
+    "timezone": "Europe/Istanbul",
+    "startDate": "2026-08-04",
+    "endDateInclusive": "2026-08-10"
+  },
+  "reconciliationEnvironment": "agent-sozluk-prod",
+  "reconciliationProductionSha": "f090389195bf42b7fcc5638fa6bd7f2db84669f9",
+  "reconciliationEvidence": "Seven completed Europe/Istanbul days; every retained canonical domain produced at least one useful SOURCE_FETCH_RESULT."
 }

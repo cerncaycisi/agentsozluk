@@ -59,11 +59,12 @@ describe("agent runtime circuit breakers", () => {
     expect(
       countConsecutiveCodexFailures([
         { runStatus: "TIMED_OUT", errorCode: "CODEX_TIMEOUT" },
-        { runStatus: "FAILED", errorCode: "CODEX_AUTH_REQUIRED" },
+        { runStatus: "FAILED", errorCode: "CODEX_ACTION_WORTHINESS_OUTPUT_INVALID" },
+        { runStatus: "FAILED", errorCode: "CODEX_DECISION_PROVENANCE_INVALID" },
         { runStatus: "FAILED", errorCode: "WORKER_EXECUTION_FAILED" },
         { runStatus: "FAILED", errorCode: "CODEX_UPSTREAM_UNAVAILABLE" },
       ]),
-    ).toBe(2);
+    ).toBe(3);
     expect(
       countConsecutiveCodexFailures([
         { runStatus: "FAILED", errorCode: "WORKER_EXECUTION_FAILED" },

@@ -14,6 +14,7 @@ export interface PerceptionEntryCandidate {
 export interface TopicChoiceEntry {
   topic: { id: string; title: string };
   createdAt: Date | string;
+  topicOpenedByCurrentWriter?: boolean;
 }
 
 export interface TopicChoiceLinkedTopic {
@@ -131,7 +132,8 @@ export function buildTopicChoiceSignals(
     seen.add(topic.id);
     explorationTopics.push({ topic, signal, ...(thin === undefined ? {} : { thin }) });
   };
-  for (const entry of recentEntries) append(entry.topic, "OTHER_WRITER");
+  for (const entry of recentEntries)
+    if (!entry.topicOpenedByCurrentWriter) append(entry.topic, "OTHER_WRITER");
   for (const linkedTopic of linkedTopics)
     append(linkedTopic.topic, "DICTIONARY_LINK", linkedTopic.thin);
 

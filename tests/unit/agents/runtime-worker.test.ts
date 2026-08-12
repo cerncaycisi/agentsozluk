@@ -6,7 +6,7 @@ import {
   type RuntimeControlPlane,
 } from "@/runtime/control-plane-client";
 import type { RuntimeProvider } from "@/runtime/provider";
-import { RuntimeProviderCancelledError } from "@/runtime/provider";
+import { RuntimeProviderCancelledError, RuntimeProviderTimeoutError } from "@/runtime/provider";
 import {
   parseRuntimeDecisionOutput,
   runtimeDecisionJsonSchema,
@@ -274,6 +274,111 @@ describe("long-lived agent runtime worker", () => {
         decisionJournal: expect.arrayContaining([
           expect.objectContaining({ kind: "OPTION_REJECTED" }),
         ]),
+      }),
+      expect.any(Object),
+    );
+  });
+
+  it("lets the critic evaluate the actual CREATE_ENTRY when a proposed title matches a visible topic", async () => {
+    const runId = randomUUID();
+    const topicId = randomUUID();
+    const plane = controlPlane(runId);
+    const context = fixtureContext(runId);
+    context.perception.writerOpenedTopics = [
+      {
+        id: topicId,
+        title: "gitar",
+      },
+    ];
+    plane.context = vi.fn().mockResolvedValue(context);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockResolvedValue({
+        provider: "codex-cli",
+        version: "test",
+        durationMs: 5,
+        output: canonicalNormalOutput("Görünür başlık için katkı adayı üretildi.", {
+          actions: [
+            {
+              type: "CREATE_TOPIC_WITH_ENTRY",
+              title: "GİTAR",
+              body: "Gitar, tel titreşimini gövdede büyüten bir çalgıdır.",
+              desire: 0.62,
+              safeReason: "Kavram için bağımsız bir tanım adayı var.",
+              claimProvenance: [],
+            },
+          ],
+        }),
+      }),
+    };
+    const actionWorthinessProvider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockResolvedValue({
+        provider: "codex-cli",
+        version: "test",
+        durationMs: 3,
+        output: {
+          verdict: "ACT",
+          confidence: 0.84,
+          evaluations: [
+            {
+              sequence: 1,
+              decision: "ACCEPT",
+              safeReason: "Mevcut başlığa bağımsız ve yeni bir tanım ekliyor.",
+            },
+          ],
+          selectedSequences: [1],
+          safeReason: "Exact mevcut başlıktaki katkı eyleme değer.",
+        },
+      }),
+    };
+    plane.executeActions = vi.fn().mockResolvedValue({
+      actions: [
+        {
+          id: randomUUID(),
+          sequence: 1,
+          actionType: "CREATE_ENTRY",
+          actionStatus: "SUCCEEDED",
+          rejectionCode: null,
+        },
+      ],
+    });
+    const worker = new AgentRuntimeWorker({
+      workerId: "visible-topic-canonicalization-worker",
+      credentials: [`agt_${"v".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      actionWorthinessProvider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    const reviewRequest = vi.mocked(actionWorthinessProvider.invoke).mock.calls[0]?.[0];
+    expect(reviewRequest?.prompt).toContain('"actionType":"CREATE_ENTRY"');
+    expect(reviewRequest?.prompt).not.toContain('"actionType":"CREATE_TOPIC_WITH_ENTRY"');
+    expect(plane.recordActions).toHaveBeenCalledWith(
+      expect.any(String),
+      "visible-topic-canonicalization-worker",
+      runId,
+      LEASE_TOKEN,
+      [
+        expect.objectContaining({
+          actionType: "CREATE_ENTRY",
+          targetType: "TOPIC",
+          targetId: topicId,
+          input: { topicId, body: "Gitar, tel titreşimini gövdede büyüten bir çalgıdır." },
+        }),
+      ],
+      expect.any(Object),
+      expect.any(Object),
+    );
+    expect(plane.complete).toHaveBeenCalledWith(
+      expect.any(String),
+      "visible-topic-canonicalization-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({
+        performanceMetrics: expect.objectContaining({ visibleTopicActionsCanonicalized: 1 }),
       }),
       expect.any(Object),
     );
@@ -653,7 +758,9 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("Her sosyal action kendi açık ilgi");
     expect(prompt).toContain("mekanik oy");
     expect(prompt).toContain("personanın ilgisinden, genel bilgisinden");
-    expect(prompt).toContain("CREATE_TOPIC_WITH_ENTRY önerisini sunucu kanonik başlık aramasıyla");
+    expect(prompt).toContain(
+      "CREATE_TOPIC_WITH_ENTRY önerdiğinde sunucu aynı veya kanonik/alias başlığı",
+    );
     expect(prompt).toContain("akademik özet şablonlarını mekanik biçimde tekrarlama");
     expect(prompt).toContain("Source okumak public action zorunluluğu doğurmaz");
     expect(prompt).toContain("public action claimProvenance alanında aynı exact source item");
@@ -1691,6 +1798,55 @@ describe("long-lived agent runtime worker", () => {
     );
   });
 
+  it("does not classify a control-plane record deadline as a Codex timeout", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    plane.recordActions = vi
+      .fn()
+      .mockRejectedValue(new RuntimeControlPlaneError("AGENT_RUN_DEADLINE_EXCEEDED"));
+    const worker = new AgentRuntimeWorker({
+      workerId: "record-deadline-worker",
+      credentials: [`agt_${"d".repeat(43)}`],
+      controlPlane: plane,
+      provider: noActionProvider(),
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(plane.fail).toHaveBeenCalledWith(
+      expect.any(String),
+      "record-deadline-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({ outcome: "TIMED_OUT", errorCode: "RUNTIME_TIMEOUT" }),
+    );
+  });
+
+  it("classifies a provider timeout as a Codex timeout", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockRejectedValue(new RuntimeProviderTimeoutError()),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "provider-timeout-worker",
+      credentials: [`agt_${"t".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(plane.fail).toHaveBeenCalledWith(
+      expect.any(String),
+      "provider-timeout-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({ outcome: "TIMED_OUT", errorCode: "CODEX_TIMEOUT" }),
+    );
+  });
+
   it("fails closed when provider output does not match the runtime schema", async () => {
     const runId = randomUUID();
     const plane = controlPlane(runId);
@@ -1719,7 +1875,7 @@ describe("long-lived agent runtime worker", () => {
       LEASE_TOKEN,
       expect.objectContaining({
         outcome: "FAILED",
-        errorCode: "WORKER_EXECUTION_FAILED",
+        errorCode: "CODEX_DECISION_OUTPUT_INVALID",
         usageMetadata: expect.objectContaining({
           codexIntervals: [
             expect.objectContaining({ startedAt: expect.any(String) }),
@@ -1727,6 +1883,168 @@ describe("long-lived agent runtime worker", () => {
           ],
         }),
       }),
+    );
+  });
+
+  it("classifies an initial Codex invocation failure without persisting raw error detail", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockRejectedValue(new Error("RAW_PROVIDER_DETAIL_MUST_NOT_PERSIST")),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "decision-provider-failure-worker",
+      credentials: [`agt_${"p".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(plane.fail).toHaveBeenCalledWith(
+      expect.any(String),
+      "decision-provider-failure-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({ outcome: "FAILED", errorCode: "CODEX_DECISION_FAILED" }),
+    );
+    expect(JSON.stringify(vi.mocked(plane.fail).mock.calls[0]?.[4])).not.toContain(
+      "RAW_PROVIDER_DETAIL_MUST_NOT_PERSIST",
+    );
+  });
+
+  it("distinguishes a failed Codex schema-repair invocation from invalid repaired output", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 1,
+          output: { actions: [{ actionType: "MODERATE_USER" }] },
+        })
+        .mockRejectedValueOnce(new Error("RAW_REPAIR_DETAIL_MUST_NOT_PERSIST")),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "decision-repair-failure-worker",
+      credentials: [`agt_${"r".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(provider.invoke).toHaveBeenCalledTimes(2);
+    expect(plane.fail).toHaveBeenCalledWith(
+      expect.any(String),
+      "decision-repair-failure-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({ outcome: "FAILED", errorCode: "CODEX_DECISION_REPAIR_FAILED" }),
+    );
+  });
+
+  it.each([
+    {
+      caseName: "provider failure",
+      expectedCode: "CODEX_ACTION_WORTHINESS_FAILED",
+      worthinessResult: null,
+    },
+    {
+      caseName: "invalid output",
+      expectedCode: "CODEX_ACTION_WORTHINESS_OUTPUT_INVALID",
+      worthinessResult: {
+        provider: "codex-cli" as const,
+        version: "test",
+        durationMs: 1,
+        output: { verdict: "NO_ACTION" },
+      },
+    },
+  ])(
+    "classifies action-worthiness $caseName independently from candidate generation",
+    async ({ expectedCode, worthinessResult }) => {
+      const runId = randomUUID();
+      const plane = controlPlane(runId);
+      const topicId = randomUUID();
+      const provider: RuntimeProvider = {
+        inspect: vi.fn(),
+        invoke: vi.fn().mockResolvedValue({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 1,
+          output: canonicalNormalOutput("Action-worthiness adayı üretildi.", {
+            actions: [
+              {
+                type: "CREATE_ENTRY",
+                targetId: topicId,
+                body: "Gitar, tel titreşimini gövdede büyüten bir çalgıdır.",
+                desire: 0.62,
+                safeReason: "Kavram için bağımsız bir tanım adayı var.",
+                claimProvenance: [],
+              },
+            ],
+          }),
+        }),
+      };
+      const actionWorthinessProvider: RuntimeProvider = {
+        inspect: vi.fn(),
+        invoke: worthinessResult
+          ? vi.fn().mockResolvedValue(worthinessResult)
+          : vi.fn().mockRejectedValue(new Error("RAW_WORTHINESS_DETAIL_MUST_NOT_PERSIST")),
+      };
+      const worker = new AgentRuntimeWorker({
+        workerId: "worthiness-failure-worker",
+        credentials: [`agt_${"w".repeat(43)}`],
+        controlPlane: plane,
+        provider,
+        actionWorthinessProvider,
+      });
+
+      await expect(worker.runOnce()).resolves.toBe(1);
+
+      expect(plane.recordActions).not.toHaveBeenCalled();
+      expect(plane.fail).toHaveBeenCalledWith(
+        expect.any(String),
+        "worthiness-failure-worker",
+        runId,
+        LEASE_TOKEN,
+        expect.objectContaining({ outcome: "FAILED", errorCode: expectedCode }),
+      );
+    },
+  );
+
+  it.each([
+    { stage: "heartbeat", expectedCode: "CONTROL_PLANE_HEARTBEAT_FAILED" },
+    { stage: "context", expectedCode: "CONTROL_PLANE_CONTEXT_FAILED" },
+    { stage: "action-record", expectedCode: "CONTROL_PLANE_ACTION_RECORD_FAILED" },
+  ] as const)("classifies a $stage control-plane failure", async ({ stage, expectedCode }) => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    if (stage === "heartbeat")
+      plane.heartbeat = vi.fn().mockRejectedValue(new Error("RAW_HEARTBEAT_DETAIL"));
+    if (stage === "context")
+      plane.context = vi.fn().mockRejectedValue(new Error("RAW_CONTEXT_DETAIL"));
+    if (stage === "action-record")
+      plane.recordActions = vi.fn().mockRejectedValue(new Error("RAW_ACTION_RECORD_DETAIL"));
+    const worker = new AgentRuntimeWorker({
+      workerId: `control-plane-${stage}-worker`,
+      credentials: [`agt_${"c".repeat(43)}`],
+      controlPlane: plane,
+      provider: noActionProvider(),
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(plane.fail).toHaveBeenCalledWith(
+      expect.any(String),
+      `control-plane-${stage}-worker`,
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({ outcome: "FAILED", errorCode: expectedCode }),
     );
   });
 
@@ -1997,7 +2315,7 @@ describe("long-lived agent runtime worker", () => {
       "normal-memory-worker",
       runId,
       LEASE_TOKEN,
-      expect.objectContaining({ outcome: "FAILED", errorCode: "WORKER_EXECUTION_FAILED" }),
+      expect.objectContaining({ outcome: "FAILED", errorCode: "CODEX_DECISION_OUTPUT_INVALID" }),
     );
   });
 

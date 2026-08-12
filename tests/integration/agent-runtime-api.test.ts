@@ -2999,6 +2999,20 @@ describe("internal agent runtime API with PostgreSQL", () => {
       where: { id: hiddenTopic.topic.id },
       data: { status: "HIDDEN" },
     });
+    const writerOpenedTopic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      writePrincipal.actor,
+      {
+        title: "runtime writer opened topic",
+        entryBody: "WRITER_OPENED_FIRST_ENTRY yalnız ownRecentEntries içinde görünmelidir.",
+      },
+    );
+    const otherWriterEntryOnWriterTopic = await createEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      writerOpenedTopic.topic.id,
+      { body: "OTHER_WRITER_ON_WRITER_TOPIC başlığın yaratıcısını değiştirmez." },
+    );
     const ownPerceptionEntry = await createEntry(
       integrationDatabase,
       writePrincipal.actor,
@@ -3036,6 +3050,36 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(context.perception.ownRecentEntries).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: ownPerceptionEntry.id })]),
     );
+    expect(context.perception.writerOpenedTopics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: writerOpenedTopic.topic.id,
+          title: writerOpenedTopic.topic.title,
+        }),
+      ]),
+    );
+    expect(context.perception.recentEntries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: otherWriterEntryOnWriterTopic.id,
+          topicOpenedByCurrentWriter: true,
+        }),
+      ]),
+    );
+    expect(
+      (
+        context.perception.topicChoiceSignals as {
+          explorationTopics: Array<{ topic: { id: string } }>;
+        }
+      ).explorationTopics,
+    ).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          topic: expect.objectContaining({ id: writerOpenedTopic.topic.id }),
+        }),
+      ]),
+    );
+    expect(JSON.stringify(context.perception)).not.toMatch(/createdById|authorId/iu);
     expect(context.perception.linkedTopics).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

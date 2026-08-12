@@ -186,6 +186,22 @@
           "status": "SEED",
           "weight": 0.58,
           "pinned": false
+        },
+        {
+          "url": "https://www.arkitera.com/feed/",
+          "sourceType": "RSS",
+          "topics": ["şehircilik", "yapılı çevre"],
+          "status": "SEED",
+          "weight": 0.56,
+          "pinned": false
+        },
+        {
+          "url": "https://manifold.press/rss",
+          "sourceType": "RSS",
+          "topics": ["tasarım", "mimarlık", "kültür"],
+          "status": "SEED",
+          "weight": 0.54,
+          "pinned": false
         }
       ],
       "sourceTopicMappings": {
@@ -198,7 +214,9 @@
         "euronews-turkce": ["teknoloji", "Avrupa gündemi"],
         "evrim-agaci": ["bilim iletişimi", "teknoloji"],
         "sivil-sayfalar": ["dijital haklar", "sivil toplum"],
-        "un-turkiye": ["sürdürülebilir kalkınma", "kurumlar"]
+        "un-turkiye": ["sürdürülebilir kalkınma", "kurumlar"],
+        "arkitera": ["şehircilik", "yapılı çevre"],
+        "manifold": ["tasarım", "mimarlık", "kültür"]
       },
       "evolution": {
         "personaEnabled": true,
@@ -400,11 +418,27 @@
           "pinned": false
         },
         {
-          "url": "https://www.k24kitap.org/rss",
+          "url": "https://disk.org.tr/feed/",
           "sourceType": "RSS",
-          "topics": ["yakın tarih", "arşiv yöntemleri"],
+          "topics": ["emek", "adil geçiş"],
           "status": "SEED",
           "weight": 0.58,
+          "pinned": false
+        },
+        {
+          "url": "https://dergipark.org.tr/tr/pub/tdfd/rss/lastissue/tr",
+          "sourceType": "RSS",
+          "topics": ["bilimsel araştırma", "eğitim"],
+          "status": "SEED",
+          "weight": 0.56,
+          "pinned": false
+        },
+        {
+          "url": "https://ifade.org.tr/engelliweb/feed/",
+          "sourceType": "RSS",
+          "topics": ["dijital haklar", "sosyal politika"],
+          "status": "SEED",
+          "weight": 0.54,
           "pinned": false
         }
       ],
@@ -418,7 +452,9 @@
         "bbc-turkce": ["yakın tarih", "güncel olaylar"],
         "sivil-sayfalar": ["haklar", "sivil toplum"],
         "euronews-turkce": ["Avrupa kurumları", "güncel olaylar"],
-        "k24": ["yakın tarih", "arşiv yöntemleri"]
+        "disk": ["emek", "adil geçiş"],
+        "dergipark-tdfd": ["bilimsel araştırma", "eğitim"],
+        "ifade": ["dijital haklar", "sosyal politika"]
       },
       "evolution": {
         "personaEnabled": true,
@@ -561,14 +597,6 @@
           "pinned": true
         },
         {
-          "url": "https://bilimgenc.tubitak.gov.tr/rss.xml",
-          "sourceType": "RSS",
-          "topics": ["bilim iletişimi", "eğitim"],
-          "status": "SEED",
-          "weight": 0.82,
-          "pinned": false
-        },
-        {
           "url": "https://theplosblog.plos.org/feed/",
           "sourceType": "RSS",
           "topics": ["bilimsel yöntem", "araştırma"],
@@ -623,19 +651,45 @@
           "status": "SEED",
           "weight": 0.58,
           "pinned": false
+        },
+        {
+          "url": "https://acikbilim.com/feed/",
+          "sourceType": "RSS",
+          "topics": ["bilim iletişimi", "eğitim"],
+          "status": "SEED",
+          "weight": 0.56,
+          "pinned": false
+        },
+        {
+          "url": "https://sarkac.org/feed/",
+          "sourceType": "RSS",
+          "topics": ["bilim politikası", "iklim bilimi"],
+          "status": "SEED",
+          "weight": 0.54,
+          "pinned": false
+        },
+        {
+          "url": "https://dergipark.org.tr/tr/pub/tdfd/rss/lastissue/tr",
+          "sourceType": "RSS",
+          "topics": ["bilimsel araştırma", "eğitim"],
+          "status": "SEED",
+          "weight": 0.52,
+          "pinned": false
         }
       ],
       "sourceTopicMappings": {
         "cochrane": ["kanıt kalibrasyonu", "sağlık"],
         "who": ["sağlık haberciliği", "çevre sağlığı"],
-        "bilim-genc": ["bilim iletişimi", "eğitim"],
         "plos": ["bilimsel yöntem", "araştırma"],
         "teyit": ["istatistik okuryazarlığı", "bilgi doğrulama"],
         "evrim-agaci": ["bilim iletişimi", "araştırma"],
         "un-turkiye": ["çevre sağlığı", "sürdürülebilir kalkınma"],
         "iklim-haber": ["çevre sağlığı", "iklim bilimi"],
         "bbc-turkce": ["sağlık haberciliği", "bilim iletişimi"],
-        "euronews-turkce": ["sağlık haberciliği", "istatistik okuryazarlığı"]
+        "euronews-turkce": ["sağlık haberciliği", "istatistik okuryazarlığı"],
+        "acik-bilim": ["bilim iletişimi", "eğitim"],
+        "sarkac": ["bilim politikası", "iklim bilimi"],
+        "dergipark-tdfd": ["bilimsel araştırma", "eğitim"]
       },
       "evolution": {
         "personaEnabled": true,
@@ -791,22 +845,6 @@
           "pinned": false
         },
         {
-          "url": "https://t24.com.tr/rss",
-          "sourceType": "RSS",
-          "topics": ["güncel olaylar", "makroekonomi"],
-          "status": "SEED",
-          "weight": 0.7,
-          "pinned": false
-        },
-        {
-          "url": "https://kantan.news/feed",
-          "sourceType": "RSS",
-          "topics": ["küresel gündem", "ticaret ağları"],
-          "status": "SEED",
-          "weight": 0.68,
-          "pinned": false
-        },
-        {
           "url": "https://turkiye.un.org/tr/stories/rss.xml",
           "sourceType": "RSS",
           "topics": ["Türkiye gündemi", "uluslararası kurumlar"],
@@ -845,19 +883,53 @@
           "status": "SEED",
           "weight": 0.58,
           "pinned": false
+        },
+        {
+          "url": "https://www.dunya.com/rss?dunya",
+          "sourceType": "RSS",
+          "topics": ["ulaşım ekonomisi", "lojistik"],
+          "status": "SEED",
+          "weight": 0.56,
+          "pinned": false
+        },
+        {
+          "url": "https://www.ekonomim.com/export/rss",
+          "sourceType": "RSS",
+          "topics": ["altyapı ekonomisi", "lojistik"],
+          "status": "SEED",
+          "weight": 0.54,
+          "pinned": false
+        },
+        {
+          "url": "https://www.carbonbrief.org/feed/",
+          "sourceType": "RSS",
+          "topics": ["enerji dönüşümü", "iklim"],
+          "status": "SEED",
+          "weight": 0.52,
+          "pinned": false
+        },
+        {
+          "url": "https://www.bloomberght.com/rss",
+          "sourceType": "RSS",
+          "topics": ["ulaşım ekonomisi", "havacılık"],
+          "status": "SEED",
+          "weight": 0.5,
+          "pinned": false
         }
       ],
       "sourceTopicMappings": {
         "un-news": ["güncel olaylar", "jeopolitik"],
         "aa": ["Türkiye gündemi", "jeopolitik"],
         "trt-haber": ["güncel olaylar", "kurumsal kapasite"],
-        "t24": ["güncel olaylar", "makroekonomi"],
-        "kantan": ["küresel gündem", "ticaret ağları"],
         "un-turkiye": ["Türkiye gündemi", "uluslararası kurumlar"],
         "bbc-turkce": ["küresel gündem", "jeopolitik"],
         "euronews-turkce": ["Avrupa gündemi", "jeopolitik"],
         "sivil-sayfalar": ["sivil toplum", "kurumsal kapasite"],
-        "iklim-haber": ["iklim politikası", "ticaret ağları"]
+        "iklim-haber": ["iklim politikası", "ticaret ağları"],
+        "dunya": ["ulaşım ekonomisi", "lojistik"],
+        "ekonomim": ["altyapı ekonomisi", "lojistik"],
+        "carbon-brief": ["enerji dönüşümü", "iklim"],
+        "bloomberg-ht": ["ulaşım ekonomisi", "havacılık"]
       },
       "evolution": {
         "personaEnabled": true,
@@ -1051,11 +1123,27 @@
           "pinned": false
         },
         {
-          "url": "https://www.k24kitap.org/rss",
+          "url": "https://bantmag.com/feed/",
           "sourceType": "RSS",
-          "topics": ["kültür politikası", "eleştiri"],
+          "topics": ["sinema", "müzik", "kültür"],
           "status": "SEED",
           "weight": 0.58,
+          "pinned": false
+        },
+        {
+          "url": "https://www.sosyalbilimler.org/feed/",
+          "sourceType": "RSS",
+          "topics": ["gündelik hayat", "ilişki dinamikleri"],
+          "status": "SEED",
+          "weight": 0.56,
+          "pinned": false
+        },
+        {
+          "url": "https://www.agos.com.tr/rss",
+          "sourceType": "RSS",
+          "topics": ["toplumsal hafıza", "gündelik hayat"],
+          "status": "SEED",
+          "weight": 0.54,
           "pinned": false
         }
       ],
@@ -1069,7 +1157,9 @@
         "euronews-turkce": ["medya sosyolojisi", "güncel medya"],
         "sivil-sayfalar": ["sivil toplum", "medya"],
         "un-turkiye": ["kurum iletişimi", "güncel medya"],
-        "k24": ["kültür politikası", "eleştiri"]
+        "bantmag": ["sinema", "müzik", "kültür"],
+        "sosyal-bilimler": ["gündelik hayat", "ilişki dinamikleri"],
+        "agos": ["toplumsal hafıza", "gündelik hayat"]
       },
       "evolution": {
         "personaEnabled": true,
@@ -1224,14 +1314,6 @@
           "pinned": false
         },
         {
-          "url": "https://cleancities.energy.gov/news-events/rss",
-          "sourceType": "RSS",
-          "topics": ["enerji altyapısı", "ulaşım ağları"],
-          "status": "SEED",
-          "weight": 0.74,
-          "pinned": false
-        },
-        {
           "url": "https://www.carbonbrief.org/feed/",
           "sourceType": "RSS",
           "topics": ["iklim uyumu", "enerji altyapısı"],
@@ -1278,6 +1360,22 @@
           "status": "SEED",
           "weight": 0.6,
           "pinned": false
+        },
+        {
+          "url": "https://climate.nasa.gov/feeds/news/",
+          "sourceType": "RSS",
+          "topics": ["iklim bilimi", "çevre politikası"],
+          "status": "SEED",
+          "weight": 0.58,
+          "pinned": false
+        },
+        {
+          "url": "https://www.ipcc.ch/feed/",
+          "sourceType": "RSS",
+          "topics": ["çevre politikası", "iklim"],
+          "status": "SEED",
+          "weight": 0.56,
+          "pinned": false
         }
       ],
       "sourceTopicMappings": {
@@ -1285,13 +1383,14 @@
         "itdp": ["ulaşım ağları", "şehircilik"],
         "strong-towns": ["şehir altyapısı", "kamu hizmetleri"],
         "arkitera": ["şehircilik", "yapılı çevre"],
-        "clean-cities": ["enerji altyapısı", "ulaşım ağları"],
         "carbon-brief": ["iklim uyumu", "enerji altyapısı"],
         "manifold": ["yapılı çevre", "şehircilik"],
         "yesil-gazete": ["iklim uyumu", "kamu hizmetleri"],
         "tmmob": ["mühendislik", "şehir altyapısı"],
         "lojiport": ["ulaşım ağları", "lojistik"],
-        "ekonomim": ["altyapı ekonomisi", "lojistik"]
+        "ekonomim": ["altyapı ekonomisi", "lojistik"],
+        "nasa-climate": ["iklim bilimi", "çevre politikası"],
+        "ipcc": ["çevre politikası", "iklim"]
       },
       "evolution": {
         "personaEnabled": true,
@@ -1436,14 +1535,6 @@
           "pinned": true
         },
         {
-          "url": "https://t24.com.tr/rss",
-          "sourceType": "RSS",
-          "topics": ["iş yaşamı", "gündelik hayat"],
-          "status": "SEED",
-          "weight": 0.7,
-          "pinned": false
-        },
-        {
           "url": "https://www.mindful.org/feed/",
           "sourceType": "RSS",
           "topics": ["iletişim", "ilişki dinamikleri"],
@@ -1506,12 +1597,27 @@
           "status": "SEED",
           "weight": 0.58,
           "pinned": false
+        },
+        {
+          "url": "https://www.sivilsayfalar.org/feed/",
+          "sourceType": "RSS",
+          "topics": ["sivil toplum", "medya"],
+          "status": "SEED",
+          "weight": 0.56,
+          "pinned": false
+        },
+        {
+          "url": "https://turkiye.un.org/tr/stories/rss.xml",
+          "sourceType": "RSS",
+          "topics": ["kurum iletişimi", "güncel medya"],
+          "status": "SEED",
+          "weight": 0.54,
+          "pinned": false
         }
       ],
       "sourceTopicMappings": {
         "bianet": ["gündelik hayat", "bakım emeği"],
         "fayn": ["ilişki dinamikleri", "gündelik hayat"],
-        "t24": ["iş yaşamı", "gündelik hayat"],
         "mindful": ["iletişim", "ilişki dinamikleri"],
         "aeon": ["gündelik hayat", "ilişki dinamikleri"],
         "osha": ["iş yaşamı", "bakım emeği"],
@@ -1519,7 +1625,9 @@
         "disk": ["emek", "iş yaşamı"],
         "evrensel": ["emek", "gündelik hayat"],
         "vesaire": ["gündelik kültür", "iletişim"],
-        "agos": ["toplumsal hafıza", "gündelik hayat"]
+        "agos": ["toplumsal hafıza", "gündelik hayat"],
+        "sivil-sayfalar": ["sivil toplum", "medya"],
+        "un-turkiye": ["kurum iletişimi", "güncel medya"]
       },
       "evolution": {
         "personaEnabled": true,
@@ -1648,22 +1756,6 @@
       "dislikedBehaviors": ["erken suçlama", "mağdur görüntüsü yaymak", "raporda olmayan alıntı"],
       "sources": [
         {
-          "url": "https://www.ntsb.gov/feeds/Pages/default.aspx",
-          "sourceType": "HTML",
-          "topics": ["ulaşım olayları", "olay raporlama"],
-          "status": "SEED",
-          "weight": 0.94,
-          "pinned": true
-        },
-        {
-          "url": "https://asrs.arc.nasa.gov/publications/callback.html",
-          "sourceType": "HTML",
-          "topics": ["insan faktörleri", "havacılık emniyeti"],
-          "status": "SEED",
-          "weight": 0.92,
-          "pinned": true
-        },
-        {
           "url": "https://flightsafety.org/feed/",
           "sourceType": "RSS",
           "topics": ["havacılık emniyeti", "sistem güvenliği"],
@@ -1734,11 +1826,33 @@
           "status": "SEED",
           "weight": 0.58,
           "pinned": false
+        },
+        {
+          "url": "https://www.itdp.org/feed/",
+          "sourceType": "RSS",
+          "topics": ["ulaşım ağları", "şehircilik"],
+          "status": "SEED",
+          "weight": 0.56,
+          "pinned": false
+        },
+        {
+          "url": "https://www.smartcitiesdive.com/feeds/news/",
+          "sourceType": "RSS",
+          "topics": ["şehircilik", "kamu hizmetleri"],
+          "status": "SEED",
+          "weight": 0.54,
+          "pinned": false
+        },
+        {
+          "url": "https://www.arkitera.com/feed/",
+          "sourceType": "RSS",
+          "topics": ["şehircilik", "yapılı çevre"],
+          "status": "SEED",
+          "weight": 0.52,
+          "pinned": false
         }
       ],
       "sourceTopicMappings": {
-        "ntsb": ["ulaşım olayları", "olay raporlama"],
-        "asrs": ["insan faktörleri", "havacılık emniyeti"],
         "flight-safety-foundation": ["havacılık emniyeti", "sistem güvenliği"],
         "skybrary": ["insan faktörleri", "sistem güvenliği"],
         "simple-flying": ["havacılık", "ulaşım olayları"],
@@ -1747,7 +1861,10 @@
         "havayolu-101": ["havacılık", "Türkiye ulaşım gündemi"],
         "lojiport": ["lojistik", "ulaşım sistemleri"],
         "dunya": ["ulaşım ekonomisi", "lojistik"],
-        "bloomberg-ht": ["ulaşım ekonomisi", "havacılık"]
+        "bloomberg-ht": ["ulaşım ekonomisi", "havacılık"],
+        "itdp": ["ulaşım ağları", "şehircilik"],
+        "smart-cities-dive": ["şehircilik", "kamu hizmetleri"],
+        "arkitera": ["şehircilik", "yapılı çevre"]
       },
       "evolution": {
         "personaEnabled": true,
@@ -1878,14 +1995,6 @@
           "pinned": true
         },
         {
-          "url": "https://www.k24kitap.org/rss",
-          "sourceType": "RSS",
-          "topics": ["edebiyat", "kültür kurumları"],
-          "status": "SEED",
-          "weight": 0.84,
-          "pinned": true
-        },
-        {
           "url": "https://www.artforum.com/feed/",
           "sourceType": "RSS",
           "topics": ["görsel sanatlar", "kültür kurumları"],
@@ -1934,14 +2043,6 @@
           "pinned": false
         },
         {
-          "url": "https://cazkolik.com/rss.xml",
-          "sourceType": "RSS",
-          "topics": ["müzik", "eleştiri"],
-          "status": "SEED",
-          "weight": 0.66,
-          "pinned": false
-        },
-        {
           "url": "https://www.birbabaindie.com/feed/",
           "sourceType": "RSS",
           "topics": ["müzik", "bağımsız kültür"],
@@ -1964,21 +2065,37 @@
           "status": "SEED",
           "weight": 0.6,
           "pinned": false
+        },
+        {
+          "url": "https://www.newslabturkey.org/feed/",
+          "sourceType": "RSS",
+          "topics": ["medya sosyolojisi", "platform ekonomisi"],
+          "status": "SEED",
+          "weight": 0.58,
+          "pinned": false
+        },
+        {
+          "url": "https://fayn.press/feed/",
+          "sourceType": "RSS",
+          "topics": ["ilişki dinamikleri", "gündelik hayat"],
+          "status": "SEED",
+          "weight": 0.56,
+          "pinned": false
         }
       ],
       "sourceTopicMappings": {
         "bantmag": ["sinema", "müzik", "kültür"],
-        "k24": ["edebiyat", "kültür kurumları"],
         "artforum": ["görsel sanatlar", "kültür kurumları"],
         "sanatatak": ["görsel sanatlar", "kültür politikası"],
         "argonotlar": ["görsel sanatlar", "eleştiri"],
         "manifold": ["tasarım", "mimarlık", "kültür"],
         "altyazi": ["sinema", "eleştiri"],
         "artdog-istanbul": ["görsel sanatlar", "kültür kurumları"],
-        "cazkolik": ["müzik", "eleştiri"],
         "bir-baba-indie": ["müzik", "bağımsız kültür"],
         "fikir-turu": ["kültür", "eleştiri"],
-        "vesaire": ["gündelik kültür", "eleştiri"]
+        "vesaire": ["gündelik kültür", "eleştiri"],
+        "newslab-turkey": ["medya sosyolojisi", "platform ekonomisi"],
+        "fayn": ["ilişki dinamikleri", "gündelik hayat"]
       },
       "evolution": {
         "personaEnabled": true,
@@ -2146,14 +2263,6 @@
           "pinned": false
         },
         {
-          "url": "https://cleancities.energy.gov/news-events/rss",
-          "sourceType": "RSS",
-          "topics": ["enerji dönüşümü", "ulaşım"],
-          "status": "SEED",
-          "weight": 0.7,
-          "pinned": false
-        },
-        {
           "url": "https://acikbilim.com/feed/",
           "sourceType": "RSS",
           "topics": ["bilim iletişimi", "eğitim"],
@@ -2224,7 +2333,6 @@
         "nasa-climate": ["iklim bilimi", "çevre politikası"],
         "osha": ["emek", "iş yaşamı"],
         "bianet": ["emek", "sosyal politika"],
-        "clean-cities": ["enerji dönüşümü", "ulaşım"],
         "acik-bilim": ["bilim iletişimi", "eğitim"],
         "bilim-akademisi": ["bilim politikası", "eğitim"],
         "sarkac": ["bilim politikası", "iklim bilimi"],

@@ -29,8 +29,8 @@ describe("Codex CLI provider security contract", () => {
     expect(source).toContain('this.#inspectCommand(["--help"]');
     expect(source).toContain('this.#inspectCommand(["exec", "--help"]');
     expect(source).toMatch(/const args = \[\s*"--ask-for-approval",\s*"never"/u);
-    expect(source).toContain('AGENT_RUNTIME_CODEX_MODEL = "gpt-5.6-sol"');
-    expect(source).toContain('AGENT_RUNTIME_CODEX_REASONING_EFFORT = "high"');
+    expect(source).toContain('AGENT_RUNTIME_CODEX_MODEL = "gpt-5.6-luna"');
+    expect(source).toContain('AGENT_RUNTIME_CODEX_REASONING_EFFORT = "max"');
     expect(source).toContain('`model_reasoning_effort="${AGENT_RUNTIME_CODEX_REASONING_EFFORT}"`');
   });
 

@@ -184,6 +184,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
   const persona = seedPersonaSchema.parse(run.personaVersion.persona);
   const followedTopics = new Set(records.followedTopicIds);
   const followedUsers = new Set(records.followedUserIds);
+  const writerOpenedTopicIds = new Set(records.writerOpenedTopics.map(({ id }) => id));
   const recentTopicCounts = new Map(
     records.recentTopicCounts.map(({ topicId, _count }) => [topicId, _count._all]),
   );
@@ -198,6 +199,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     ...entry,
     body: truncateUntrustedText(entry.body, 800),
     createdAt: entry.createdAt.toISOString(),
+    topicOpenedByCurrentWriter: writerOpenedTopicIds.has(entry.topic.id),
     topicEntryCountLast30Minutes: recentTopicCounts.get(entry.topic.id) ?? 0,
     saturated: (recentTopicCounts.get(entry.topic.id) ?? 0) >= 15,
   }));
@@ -223,7 +225,9 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     ...entry,
     body: truncateUntrustedText(entry.body, 600),
     createdAt: entry.createdAt.toISOString(),
+    topicOpenedByCurrentWriter: writerOpenedTopicIds.has(entry.topic.id),
   }));
+  const writerOpenedTopics = records.writerOpenedTopics.map(({ id, title }) => ({ id, title }));
   const linkedTopics = records.linkedTopics.slice(0, 8).map((linkedTopic) => ({
     ...linkedTopic,
     recentEntries: linkedTopic.recentEntries.map((entry) => ({
@@ -239,6 +243,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       maximumBytes: 65_536,
       recentEntries: 24,
       ownEntries: 8,
+      writerOpenedTopics: 50,
       linkedTopics: 8,
       linkedTopicEntries: 2,
       sourceItems: 10,
@@ -248,6 +253,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     recentEntries: selectedEntries,
     linkedTopics,
     ownRecentEntries,
+    writerOpenedTopics,
     topicChoiceSignals: buildTopicChoiceSignals(ownRecentEntries, selectedEntries, linkedTopics, 8),
     memories: records.memories.slice(0, 10).map((memory) => ({
       ...memory,
@@ -296,7 +302,10 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     })),
   };
   while (Buffer.byteLength(JSON.stringify(snapshot), "utf8") > 65_536) {
-    if (snapshot.sourceItems.length > 0) snapshot.sourceItems.pop();
+    if (snapshot.writerOpenedTopics.length > 8) snapshot.writerOpenedTopics.pop();
+    else if (snapshot.sourceItems.length > 4) snapshot.sourceItems.pop();
+    else if (snapshot.writerOpenedTopics.length > 0) snapshot.writerOpenedTopics.pop();
+    else if (snapshot.sourceItems.length > 0) snapshot.sourceItems.pop();
     else if (snapshot.linkedTopics.length > 0) snapshot.linkedTopics.pop();
     else if (snapshot.recentEntries.length > 8) snapshot.recentEntries.pop();
     else if (snapshot.memories.length > 4) snapshot.memories.pop();
@@ -1368,6 +1377,8 @@ export function getRuntimeRunContext(
         sourceFetchLimit: sourceFetchTargetLimit(run.runType, settings.sourceFetchLimit),
         includeSources:
           run.runType === "REFLECTION" || (run.allowSourceReading && settings.sourceReadingEnabled),
+        includeWriterOpenedTopics:
+          publicWriteEnabled && ["NORMAL_WAKE", "ENTRY_BURST"].includes(run.runType),
       });
       const builtPerception = boundedPerceptionSnapshot(run, perceptionRecords, now);
       await storeRuntimePerceptionSummary(transaction, runId, builtPerception);

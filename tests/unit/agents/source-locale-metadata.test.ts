@@ -20,8 +20,8 @@ describe("reviewed source locale metadata", () => {
   it("keeps the reviewed Turkish or Türkiye-focused floor explicit", () => {
     const reviewed = reviewedTurkishOrTurkeyFocusedSourceUrls();
 
-    expect(reviewed).toHaveLength(48);
-    expect(new Set(reviewed).size).toBe(48);
+    expect(reviewed).toHaveLength(43);
+    expect(new Set(reviewed).size).toBe(43);
     expect(reviewed).toEqual([...reviewed].sort());
     expect(reviewed.every((url) => canonicalUrls.has(url))).toBe(true);
     expect(reviewed.every((url) => isTurkishOrTurkeyFocused(reviewedSourceLocaleFocus(url)))).toBe(
@@ -30,7 +30,7 @@ describe("reviewed source locale metadata", () => {
   });
 
   it("classifies exact reviewed URLs without guessing from host names", () => {
-    expect(reviewedSourceLocaleFocus("https://t24.com.tr/rss")).toBe("TURKISH_LANGUAGE");
+    expect(reviewedSourceLocaleFocus("https://t24.com.tr/rss")).toBe("GLOBAL");
     expect(reviewedSourceLocaleFocus("https://www.newslabturkey.org/feed/")).toBe("TURKEY_FOCUSED");
     expect(reviewedSourceLocaleFocus("https://turkiye.un.org/tr/stories/rss.xml")).toBe(
       "TURKISH_LANGUAGE_AND_TURKEY_FOCUSED",
@@ -42,6 +42,6 @@ describe("reviewed source locale metadata", () => {
     expect(reconciledSourceLocaleFocus("TURKEY_FOCUSED", "https://t24.com.tr/rss")).toBe(
       "TURKEY_FOCUSED",
     );
-    expect(reconciledSourceLocaleFocus(null, "https://t24.com.tr/rss")).toBe("TURKISH_LANGUAGE");
+    expect(reconciledSourceLocaleFocus(null, "https://t24.com.tr/rss")).toBe("GLOBAL");
   });
 });

@@ -51,6 +51,7 @@ import {
   MINIMUM_STOCHASTIC_TICK_DELAY_MS,
 } from "@/modules/agents/domain/stochastic-scheduler";
 import { seedPersonaSchema, type SeedPersona } from "@/modules/agents/personas/schema";
+import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import {
   applyRuntimeActionWorthinessVerdict,
   parseRuntimeActionWorthinessVerdict,
@@ -130,6 +131,79 @@ const memoryConsolidationTriggers = new Set([
   "NIGHTLY_MEMORY_CONSOLIDATION",
   "ADMIN_MEMORY_RECONSOLIDATE",
 ]);
+
+const runtimeWorkerFailures = {
+  starting: {
+    errorCode: "RUNTIME_START_FAILED",
+    errorSummary: "Runtime worker run başlatma aşamasını güvenli biçimde tamamlayamadı.",
+  },
+  heartbeat: {
+    errorCode: "CONTROL_PLANE_HEARTBEAT_FAILED",
+    errorSummary: "Runtime heartbeat control plane'e guvenli bicimde kaydedilemedi.",
+  },
+  context: {
+    errorCode: "CONTROL_PLANE_CONTEXT_FAILED",
+    errorSummary: "Runtime context control plane'den güvenli biçimde alınamadı.",
+  },
+  sourceContext: {
+    errorCode: "RUNTIME_SOURCE_CONTEXT_INVALID",
+    errorSummary: "Runtime source okuma bağlamını güvenli biçimde hazırlayamadı.",
+  },
+  sourceRecord: {
+    errorCode: "CONTROL_PLANE_SOURCE_RECORD_FAILED",
+    errorSummary: "Runtime source sonucunu control plane'e güvenli biçimde kaydedemedi.",
+  },
+  decisionPreparation: {
+    errorCode: "RUNTIME_DECISION_PREPARATION_FAILED",
+    errorSummary: "Runtime karar çağrısını güvenli biçimde hazırlayamadı.",
+  },
+  decisionProvider: {
+    errorCode: "CODEX_DECISION_FAILED",
+    errorSummary: "İlk Codex karar çağrısı güvenli biçimde tamamlanamadı.",
+  },
+  decisionRepairProvider: {
+    errorCode: "CODEX_DECISION_REPAIR_FAILED",
+    errorSummary: "Codex karar onarım çağrısı güvenli biçimde tamamlanamadı.",
+  },
+  decisionOutput: {
+    errorCode: "CODEX_DECISION_OUTPUT_INVALID",
+    errorSummary: "Codex karar çıktısı güvenli structured-output doğrulamasını geçemedi.",
+  },
+  provenanceCatalog: {
+    errorCode: "CODEX_DECISION_PROVENANCE_INVALID",
+    errorSummary: "Runtime karar kanıtlarını güvenli perception kataloğuna bağlayamadı.",
+  },
+  actionWorthinessProvider: {
+    errorCode: "CODEX_ACTION_WORTHINESS_FAILED",
+    errorSummary: "Codex action-worthiness çağrısı güvenli biçimde tamamlanamadı.",
+  },
+  actionWorthinessOutput: {
+    errorCode: "CODEX_ACTION_WORTHINESS_OUTPUT_INVALID",
+    errorSummary: "Action-worthiness çıktısı güvenli structured-output doğrulamasını geçemedi.",
+  },
+  actionRecord: {
+    errorCode: "CONTROL_PLANE_ACTION_RECORD_FAILED",
+    errorSummary: "Runtime action adaylarını control plane'e güvenli biçimde kaydedemedi.",
+  },
+  actionExecution: {
+    errorCode: "CONTROL_PLANE_ACTION_EXECUTION_FAILED",
+    errorSummary: "Runtime action yürütme aşamasını güvenli biçimde tamamlayamadı.",
+  },
+  contentRepairControlPlane: {
+    errorCode: "CONTENT_REPAIR_CONTROL_PLANE_FAILED",
+    errorSummary: "Content repair sonucu control plane'de güvenli biçimde işlenemedi.",
+  },
+  memoryRecord: {
+    errorCode: "CONTROL_PLANE_MEMORY_RECORD_FAILED",
+    errorSummary: "Runtime memory sonucunu control plane'e güvenli biçimde kaydedemedi.",
+  },
+  completion: {
+    errorCode: "CONTROL_PLANE_RUN_COMPLETION_FAILED",
+    errorSummary: "Runtime run sonucunu control plane'de güvenli biçimde kapatamadı.",
+  },
+} as const;
+
+type RuntimeWorkerFailure = (typeof runtimeWorkerFailures)[keyof typeof runtimeWorkerFailures];
 
 const allowedPerceptionKeys = new Set<string>(runtimeAllowedPerceptionKeys);
 const forbiddenContextMetadataKeys = new Set<string>(runtimeForbiddenContextMetadataKeys);
@@ -263,6 +337,7 @@ function nestedStringField(value: Record<string, unknown>, parent: string, key: 
 
 function runtimeEvidenceCatalog(context: RuntimeContext): RuntimeEvidenceCatalog {
   const perception = context.perception;
+  const writerOpenedTopics = recordArray(perception.writerOpenedTopics);
   const linkedTopics = recordArray(perception.linkedTopics);
   const linkedTopicEntries = linkedTopics.flatMap((linkedTopic) =>
     recordArray(linkedTopic.recentEntries),
@@ -289,6 +364,7 @@ function runtimeEvidenceCatalog(context: RuntimeContext): RuntimeEvidenceCatalog
   return {
     PLATFORM_EVENT: unique([
       context.run.id,
+      ...writerOpenedTopics.map((topic) => stringField(topic, "id")),
       ...recentEntries.map((entry) => nestedStringField(entry, "topic", "id")),
       ...linkedTopics.map((linkedTopic) => nestedStringField(linkedTopic, "topic", "id")),
     ]),
@@ -701,6 +777,54 @@ function normalizedDecision(
   };
 }
 
+function visibleTopicCatalog(perception: Record<string, unknown>) {
+  const directTopics = recordArray(perception.writerOpenedTopics);
+  const nestedTopics = [
+    ...recordArray(perception.recentEntries),
+    ...recordArray(perception.ownRecentEntries),
+    ...recordArray(perception.linkedTopics),
+  ].flatMap((record) => {
+    const topic = record.topic;
+    return topic && typeof topic === "object" && !Array.isArray(topic)
+      ? [topic as Record<string, unknown>]
+      : [];
+  });
+  const byNormalizedTitle = new Map<string, { id: string; title: string }>();
+  for (const topic of [...directTopics, ...nestedTopics]) {
+    const id = stringField(topic, "id");
+    const title = stringField(topic, "title");
+    if (id && title) byNormalizedTitle.set(normalizeTopicTitle(title), { id, title });
+  }
+  return byNormalizedTitle;
+}
+
+function canonicalizeVisibleTopicActions(
+  decision: RuntimeDecision,
+  perception: Record<string, unknown>,
+): { decision: RuntimeDecision; count: number } {
+  const catalog = visibleTopicCatalog(perception);
+  let count = 0;
+  const actions = decision.actions.map((action) => {
+    if (action.actionType !== "CREATE_TOPIC_WITH_ENTRY") return action;
+    const title = typeof action.input.title === "string" ? action.input.title : null;
+    const body = typeof action.input.body === "string" ? action.input.body : null;
+    const topic = title ? catalog.get(normalizeTopicTitle(title)) : null;
+    if (!topic || !body) return action;
+    count += 1;
+    return {
+      ...action,
+      actionType: "CREATE_ENTRY" as const,
+      targetType: "TOPIC",
+      targetId: topic.id,
+      input: { topicId: topic.id, body },
+      expectedOutcome: "Mevcut kanonik başlıkta bağımsız bir entry yayımlanması bekleniyor.",
+    };
+  });
+  return count === 0
+    ? { decision, count }
+    : { decision: runtimeDecisionSchema.parse({ ...decision, actions }), count };
+}
+
 function actionForControlPlane(
   action: RuntimeDecision["actions"][number] & { repairOfSequence?: number },
 ): Record<string, unknown> {
@@ -830,6 +954,7 @@ export class AgentRuntimeWorker {
     const leaseToken = lease.run.leaseToken;
     const deadline = new RuntimeRunDeadline(lease.run.startedAt, lease.run.timeoutSeconds);
     let runtimeStatus = "STARTING";
+    let currentFailure: RuntimeWorkerFailure = runtimeWorkerFailures.starting;
     let heartbeatInFlight: Promise<void> | null = null;
     const heartbeat = (): Promise<void> => {
       if (heartbeatInFlight) return heartbeatInFlight;
@@ -847,6 +972,7 @@ export class AgentRuntimeWorker {
           if (cancelRequested) deadline.requestCancel();
         })
         .catch((error: unknown) => {
+          currentFailure = runtimeWorkerFailures.heartbeat;
           deadline.recordFailure(error);
         })
         .finally(() => {
@@ -865,6 +991,7 @@ export class AgentRuntimeWorker {
     );
     heartbeatTimer.unref();
     const codexIntervals: Array<{ startedAt: string; finishedAt: string; durationMs: number }> = [];
+    const codexInvocationErrors = new Set<unknown>();
     const invokeCodex = async (
       request: Parameters<RuntimeProvider["invoke"]>[0],
       provider: RuntimeProvider = this.#options.provider,
@@ -872,7 +999,12 @@ export class AgentRuntimeWorker {
       if (codexIntervals.length >= 3) throw new Error("CODEX_INVOCATION_LIMIT_EXCEEDED");
       const startedAt = new Date();
       try {
-        return await provider.invoke(request);
+        const result = await provider.invoke(request);
+        deadline.throwIfStopped();
+        return result;
+      } catch (error) {
+        codexInvocationErrors.add(error);
+        throw error;
       } finally {
         const finishedAt = new Date();
         codexIntervals.push({
@@ -889,8 +1021,11 @@ export class AgentRuntimeWorker {
     let sourceItemsPresented = 0;
     let sourceItemsReferenced = 0;
     let sourceBackedActions = 0;
+    let visibleTopicActionsCanonicalized = 0;
     try {
+      currentFailure = runtimeWorkerFailures.starting;
       await enterPhase("STARTING");
+      currentFailure = runtimeWorkerFailures.context;
       let context = await this.#options.controlPlane.context(
         credential,
         this.#options.workerId,
@@ -904,6 +1039,7 @@ export class AgentRuntimeWorker {
         deadline.throwIfStopped();
       }
       if (context.run.allowSourceReading && this.#options.sourceReader) {
+        currentFailure = runtimeWorkerFailures.sourceContext;
         await enterPhase("READING");
         const targets = z
           .array(
@@ -932,6 +1068,7 @@ export class AgentRuntimeWorker {
         for (const target of selectedTargets) {
           deadline.throwIfStopped();
           const attemptId = crypto.randomUUID();
+          currentFailure = runtimeWorkerFailures.sourceRecord;
           await this.#options.controlPlane.recordSourceAttempt(
             credential,
             this.#options.workerId,
@@ -946,6 +1083,7 @@ export class AgentRuntimeWorker {
               timeoutMs: Math.min(MAX_SOURCE_READ_TIMEOUT_MS, deadline.remainingMs()),
             });
             sourceItemsFetched += fetchedItems.length;
+            currentFailure = runtimeWorkerFailures.sourceContext;
             const items = selectSourceReadItemsForPersona(fetchedItems, {
               persona: parsedSourcePersona?.success ? parsedSourcePersona.data : null,
               sourceTopics: target.topics,
@@ -953,6 +1091,7 @@ export class AgentRuntimeWorker {
             });
             deadline.throwIfStopped();
             if (items.length === 0) {
+              currentFailure = runtimeWorkerFailures.sourceRecord;
               await this.#options.controlPlane.recordSourceResult(
                 credential,
                 this.#options.workerId,
@@ -963,6 +1102,7 @@ export class AgentRuntimeWorker {
               );
               continue;
             }
+            currentFailure = runtimeWorkerFailures.sourceRecord;
             await this.#options.controlPlane.recordSourceResult(
               credential,
               this.#options.workerId,
@@ -975,6 +1115,7 @@ export class AgentRuntimeWorker {
           } catch (error) {
             deadline.throwIfStopped();
             const errorCode = classifySourceReadError(error);
+            currentFailure = runtimeWorkerFailures.sourceRecord;
             await this.#options.controlPlane.recordSourceResult(
               credential,
               this.#options.workerId,
@@ -985,7 +1126,8 @@ export class AgentRuntimeWorker {
             );
           }
         }
-        if (selectedTargets.length > 0)
+        if (selectedTargets.length > 0) {
+          currentFailure = runtimeWorkerFailures.context;
           context = await this.#options.controlPlane.context(
             credential,
             this.#options.workerId,
@@ -993,11 +1135,14 @@ export class AgentRuntimeWorker {
             leaseToken,
             deadline.requestOptions(),
           );
+        }
       }
+      currentFailure = runtimeWorkerFailures.decisionPreparation;
       await enterPhase("THINKING");
       sourceItemsPresented = recordArray(context.perception.sourceItems).length;
       const prompt = buildRuntimePrompt(context);
       const outputSchema = runtimeOutputJsonSchema(context);
+      currentFailure = runtimeWorkerFailures.decisionProvider;
       providerResult = await invokeCodex({
         runId,
         prompt,
@@ -1007,12 +1152,15 @@ export class AgentRuntimeWorker {
         signal: deadline.signal,
       });
       deadline.throwIfStopped();
+      currentFailure = runtimeWorkerFailures.decisionOutput;
       await enterPhase("VALIDATING");
       let parsedDecision = parseDecisionForContext(context, providerResult.output);
       const reflectionOnly = context.run.runType === "REFLECTION";
       let decision = parsedDecision.success
         ? normalizedDecision(parsedDecision.data, { reflectionOnly })
         : null;
+      if (parsedDecision.success && decision)
+        currentFailure = runtimeWorkerFailures.provenanceCatalog;
       const evidenceCatalog = runtimeEvidenceCatalog(context);
       const perceptionEvidence = deriveRuntimePerceptionEvidence(context.perception, [
         context.run.id,
@@ -1025,6 +1173,7 @@ export class AgentRuntimeWorker {
       ) {
         const remainingMs = deadline.remainingMs();
         if (remainingMs < 1000) throw new RuntimeProviderTimeoutError();
+        currentFailure = runtimeWorkerFailures.decisionRepairProvider;
         const repairResult = await invokeCodex({
           runId,
           prompt: `${prompt}\n\n${RUNTIME_STRUCTURED_REPAIR_INSTRUCTION}`,
@@ -1037,6 +1186,7 @@ export class AgentRuntimeWorker {
           ...repairResult,
           durationMs: providerResult.durationMs + repairResult.durationMs,
         };
+        currentFailure = runtimeWorkerFailures.decisionOutput;
         parsedDecision = parseDecisionForContext(context, providerResult.output);
         decision = parsedDecision.success
           ? normalizedDecision(parsedDecision.data, { reflectionOnly })
@@ -1044,11 +1194,22 @@ export class AgentRuntimeWorker {
         deadline.throwIfStopped();
       }
       if (!parsedDecision.success) throw parsedDecision.error;
+      currentFailure = runtimeWorkerFailures.provenanceCatalog;
       if (
         !decision ||
         !runtimeDecisionUsesCatalog(decision, evidenceCatalog, perceptionEvidenceIds)
       )
-        throw new Error("RUNTIME_PROVENANCE_CATALOG_INVALID");
+        throw new Error("CODEX_DECISION_PROVENANCE_INVALID");
+      ({ decision, count: visibleTopicActionsCanonicalized } = canonicalizeVisibleTopicActions(
+        decision,
+        context.perception,
+      ));
+      if (visibleTopicActionsCanonicalized > 0)
+        this.#options.onSafeEvent?.({
+          level: "info",
+          code: "VISIBLE_TOPIC_ACTION_CANONICALIZED",
+          runId,
+        });
       const actionWorthinessCandidateSequences = decision.actions
         .filter(({ actionType }) => actionType !== "NO_ACTION")
         .map(({ sequence }) => sequence);
@@ -1057,6 +1218,7 @@ export class AgentRuntimeWorker {
         this.#options.actionWorthinessProvider &&
         actionWorthinessCandidateSequences.length > 0
       ) {
+        currentFailure = runtimeWorkerFailures.actionWorthinessProvider;
         await enterPhase("THINKING");
         const actionWorthinessResult = await invokeCodex(
           {
@@ -1074,6 +1236,7 @@ export class AgentRuntimeWorker {
           durationMs: providerResult.durationMs + actionWorthinessResult.durationMs,
         };
         deadline.throwIfStopped();
+        currentFailure = runtimeWorkerFailures.actionWorthinessOutput;
         await enterPhase("VALIDATING");
         try {
           decision = applyRuntimeActionWorthinessVerdict(
@@ -1086,7 +1249,7 @@ export class AgentRuntimeWorker {
         } catch (error) {
           this.#options.onSafeEvent?.({
             level: "error",
-            code: "ACTION_WORTHINESS_OUTPUT_INVALID",
+            code: "CODEX_ACTION_WORTHINESS_OUTPUT_INVALID",
             runId,
           });
           throw error;
@@ -1098,6 +1261,7 @@ export class AgentRuntimeWorker {
       ));
       const consolidationRun = isMemoryConsolidationRun(context);
       const personaReflectionRun = isPersonaReflectionRun(context);
+      currentFailure = runtimeWorkerFailures.actionRecord;
       await this.#options.controlPlane.recordActions(
         credential,
         this.#options.workerId,
@@ -1107,12 +1271,14 @@ export class AgentRuntimeWorker {
         lifeEventsForDecision(decision),
         deadline.requestOptions(),
       );
+      currentFailure = runtimeWorkerFailures.actionExecution;
       await enterPhase("EXECUTING");
       const executedActions: RuntimeExecution["actions"] = [];
       let contentRepairAttempted = false;
       const successfullyRepairedSequences = new Set<number>();
       let nextSequence = Math.max(0, ...decision.actions.map(({ sequence }) => sequence)) + 1;
       for (const originalAction of decision.actions) {
+        currentFailure = runtimeWorkerFailures.actionExecution;
         await heartbeat();
         deadline.throwIfStopped();
         const execution = await this.#options.controlPlane.executeActions(
@@ -1193,6 +1359,7 @@ export class AgentRuntimeWorker {
               } else {
                 nextSequence += 1;
                 try {
+                  currentFailure = runtimeWorkerFailures.contentRepairControlPlane;
                   await this.#options.controlPlane.recordActions(
                     credential,
                     this.#options.workerId,
@@ -1214,6 +1381,7 @@ export class AgentRuntimeWorker {
                     },
                     deadline.requestOptions(),
                   );
+                  currentFailure = runtimeWorkerFailures.contentRepairControlPlane;
                   await enterPhase("EXECUTING");
                   const repairedExecution = await this.#options.controlPlane.executeActions(
                     credential,
@@ -1280,6 +1448,7 @@ export class AgentRuntimeWorker {
       };
       const measured = measuredExecution(execution);
       if (consolidationRun && decision.memoryConsolidations.length > 0) {
+        currentFailure = runtimeWorkerFailures.memoryRecord;
         await enterPhase("REFLECTING");
         await this.#options.controlPlane.recordMemories(
           credential,
@@ -1299,6 +1468,7 @@ export class AgentRuntimeWorker {
           : null;
       const completionOutcome =
         measured.rejected.length > 0 || sourceRefreshErrorCode ? "PARTIAL" : "SUCCEEDED";
+      currentFailure = runtimeWorkerFailures.completion;
       await this.#options.controlPlane.complete(
         credential,
         this.#options.workerId,
@@ -1340,6 +1510,7 @@ export class AgentRuntimeWorker {
             sourceItemsPresented,
             sourceItemsReferenced,
             sourceBackedActions,
+            visibleTopicActionsCanonicalized,
           },
           ...(sourceRefreshErrorCode
             ? {
@@ -1356,7 +1527,7 @@ export class AgentRuntimeWorker {
       return true;
     } catch (rawError) {
       const error = deadline.normalizeError(rawError);
-      const timeoutOccurredInCodex = ["THINKING", "VALIDATING"].includes(runtimeStatus);
+      const timeoutOccurredInCodex = codexInvocationErrors.has(rawError);
       const failure =
         error instanceof RuntimeProviderCancelledError
           ? {
@@ -1374,8 +1545,7 @@ export class AgentRuntimeWorker {
               }
             : {
                 outcome: "FAILED",
-                errorCode: "WORKER_EXECUTION_FAILED",
-                errorSummary: "Runtime worker run'ı güvenli biçimde tamamlayamadı.",
+                ...currentFailure,
               };
       const failureUsage =
         codexIntervals.length > 0

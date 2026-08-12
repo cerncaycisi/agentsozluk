@@ -3,6 +3,15 @@ import type { SeedPersona } from "./schema";
 
 export type PersonaSource = SeedPersona["sources"][number];
 
+export const VERIFIED_SOURCE_REDUNDANCY = 2;
+
+export function reconciledCanonicalAdminPinned(
+  current: { adminBlocked: boolean; status: string } | null,
+  canonicalPinned: boolean,
+): boolean {
+  return current?.adminBlocked || current?.status === "BLOCKED" ? false : canonicalPinned;
+}
+
 function normalizedTopic(value: string): string {
   return value
     .normalize("NFKD")
@@ -48,7 +57,7 @@ export function assignVerifiedSources(
   });
   const retainedUrls = new Set(retained.map(({ url }) => url));
   const affinityTopics = sourceAffinityTopics(persona);
-  const targetCount = Math.min(20, Math.max(minimum, retained.length));
+  const targetCount = Math.min(20, Math.max(minimum + VERIFIED_SOURCE_REDUNDANCY, retained.length));
   const candidates = verifiedPool
     .filter(({ url }) => !retainedUrls.has(url))
     .map((source) => ({

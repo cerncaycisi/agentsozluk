@@ -20,8 +20,8 @@ interface CodexCliProviderOptions {
   spawnProcess?: typeof spawn;
 }
 
-export const AGENT_RUNTIME_CODEX_MODEL = "gpt-5.6-sol";
-export const AGENT_RUNTIME_CODEX_REASONING_EFFORT = "high" as const;
+export const AGENT_RUNTIME_CODEX_MODEL = "gpt-5.6-luna";
+export const AGENT_RUNTIME_CODEX_REASONING_EFFORT = "max" as const;
 
 export const RETAINED_RUNTIME_WORK_FILES = ["output.json", "output.schema.json"] as const;
 const maximumActiveRunAndCleanupGraceMs = 25 * 60 * 1000;
