@@ -5138,3 +5138,132 @@ supersessions`, two approved post-merge `BLOCKED`, `0 FAIL` and `543 total`. The
   candidate `c9ba` and the verified backup; recheck every container reference; delete only older
   unused application images/releases. Do not remove volumes, build cache or backups. Gate 10 and
   traceability remain unchanged.
+
+## 2026-08-12 — bounded cleanup, exact c9 cutover and fail-closed capacity stop
+
+- Approval and identity: after the earlier disk-gate recovery, Gokhan explicitly approved removal
+  of old unused Agent Sözlük images and runtime releases and continuation of the exact
+  `c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` rollout. Each production mutation path revalidated
+  hostname `agent-sozluk-prod`, address `46.225.20.177`, the pinned ED25519 host fingerprint, exact
+  repository origin and the Agent Sözlük application/runtime paths. No other repository, service,
+  volume or database was placed in scope.
+- Bounded cleanup: exact current/rollback/candidate container and runtime references were resolved
+  before deletion. The cleanup removed 20 old unused 40-hex Agent Sözlük application images and 20
+  matching old immutable runtime releases plus their matching receipts. It reclaimed
+  `38,416,520 KiB` (about 36.6 GiB). The live `f090` Luna release, the immediate `a3` rollback, c9
+  candidate, verified backups, all named volumes and all build cache were preserved. Root usage
+  returned to 40%, with `45,780,044 KiB` free at the final paused-state close; active
+  application/database identity, worker pause and queue state were unchanged by cleanup.
+- Cleanup operator stop: the first closing assertion counted intentionally retained
+  `.defective-*` diagnostic paths as removable releases and stopped despite the intended bounded
+  deletion having completed. A separate exact protected/removable inventory proved the cleanup
+  result and preservation set. Do not repeat: classify preserved defective diagnostic paths
+  separately from 40-hex production releases before asserting the closing count; never broaden a
+  count mismatch into volume, cache, backup or blanket Docker prune.
+- Fresh Gate 7: backup
+  `/opt/agent-sozluk/backups/agent-sozluk-pre-c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3-20260812T125346Z.dump`
+  completed at `644,804,518` bytes, mode `0600`, with SHA-256
+  `07507534c61b5c558822821135b3738bffa94bd5dec1bcd8bb1090be4b44ff90`. The receipt directory is
+  `/opt/agent-sozluk/backups/m2-c9-retry-20260812T125346Z`. Fresh V1 counts SHA-256 was
+  `553bf7a82f7574d51f41e758fbfb100c27f742d5d2b4869cb4fbbe780a78162c`; canonical V1
+  fingerprint was `117acbed5802ea793d601e6a87687a79eb41046d21d8a875464da078d8b938f5`.
+  Isolated restore load, restored counts/fingerprint equality, scratch drop and zero scratch
+  catalog rows all passed.
+- Gate 7 operator stop: the first restore receipt validator expected 11 lines although the exact
+  receipt contract emitted ten. The corrected validator checked the named fields rather than an
+  invented line count and passed without repeating the backup. Do not repeat: validate required
+  receipt keys and values, not an undocumented total-line assertion.
+- Gate 8 migration: the exact c9 application entrypoint was the sole executor of migration
+  `20260802120000_add_source_probation_window`; migration SQL SHA-256 was
+  `dbd9e11f74e8d42abb15dcddd6c1c2976598d40291d1c3a70e4b2cb291ff0c9b`. The ledger closed
+  at 25/25, with exactly one successful row for the new migration and no rollback marker. The
+  pre-reconciliation source state was exact:
+  `252 total / 0 SEED / 227 PROBATION / 2 TRUSTED / 23 BLOCKED`. Exact pre-transition source IDs
+  and control state were retained in the Gate 7 receipt directory.
+- Approved one-row smoke cleanup: the release smoke's anonymous `/api/v1/search` request created
+  exactly one already-expired `search.visitor` rate-limit bucket. That made the V1 count differ by
+  one while its content fingerprint remained otherwise stable. Gokhan explicitly approved removal
+  of that exact smoke-created row. A guarded atomic predicate deleted exactly one row and verified
+  zero matching row remained; V1 counts and fingerprint returned to the fresh Gate 7 hashes above.
+  This approval did not cover any other rate-limit, application or user row. Do not repeat the
+  release smoke between a frozen V1 count and its equality assertion unless this bounded transient
+  is either excluded by contract or separately measured.
+- Gate 8 close: health/readiness returned `200/200`; the application was loopback-only during the
+  migration, Caddy was stopped, worker was inactive and global runtime was false. Migration count,
+  exact source IDs and both V1 hashes matched. No old no-migration wrapper was used because a
+  24-to-25 transition and the suffixed old runtime path violate that wrapper's assumptions.
+- Source reconciliation: the exact c9 reconciler committed all 22 per-profile transactions between
+  `2026-08-12T14:12:45.245000Z` and `2026-08-12T14:12:49.028000Z`. It reconciled 10 canonical and
+  12 imported profiles, created 65 sources, updated 200 and blocked 29. It created 22 current ADMIN
+  persona versions and 294 `SOURCE_STATE_CHANGED` events. Closing state was
+  `52 BLOCKED / 65 SEED / 1 TRUSTED / 199 PROBATION`, 317 total; `22/22` ACTIVE writers met the
+  assignment floor; 265 persona-source links had zero missing targets. Durable receipt
+  `/opt/agent-sozluk/backups/m2-c9-retry-20260812T125346Z/source-reconcile-receipt.env` is
+  root-owned mode `0600`.
+- Reconciliation operator stop: the wrapper exited after all 22 successful commits because it
+  asserted the old TRUSTED count must remain two. The one prior TRUSTED source removed from the
+  replacement package correctly became BLOCKED, so the intended final count is one. Independent
+  audit, persona pointers, links, event counts and state hashes closed the operation. Do not rerun
+  reconciliation to repair the wrapper result: it would duplicate persona/audit/event history.
+  Test post-reconcile expectations against package membership and transitions, not a stale absolute
+  TRUSTED count.
+- Cutover: application image and immutable runtime converged on exact c9; image ID is
+  `sha256:e2af1a8abf00a0d7eabdebde76810c9845c22af1d9637ec233b46e993b2b2993`. The runtime
+  symlink moved atomically from
+  `f090389195bf42b7fcc5638fa6bd7f2db84669f9-luna-max-20260803T161939Z` to c9 after ABI,
+  ownership, dependency, provider and installed-unit hashes passed. The provider is
+  `gpt-5.6-luna` / `max`, `codex-cli 0.144.6`, prompt fingerprint
+  `c2cf3b36fb67a035412f7aeaaca8484d2658ccd8a8051977feb9a04b3217605a`. Caddy started only
+  after the runtime switch; public and internal health/readiness returned `200/200`. Worker,
+  maintenance timer and global runtime deliberately remained inactive/false.
+- Cutover-script review stop: pre-execution review found that an error after starting Caddy could
+  have left it active despite a failed final assertion. The script was corrected with a fail-close
+  trap before transfer or execution. Do not execute the earlier script digest and do not report a
+  paused service boundary without a closing service reread.
+- Structured runtime status PASS: the exact c9 status probe completed in `71,241 ms`, reported RSS
+  `166.84 MiB`, available memory `2,179.27 MiB`, structured output support, stable application and
+  database checks, and the exact Luna/max/version/prompt identity. This establishes runtime
+  compatibility only; it does not replace capacity evidence.
+- Capacity stamp `20260812T151448Z`: cold ran ten benchmarks with failure rate `0.20`; duration
+  p50/p75/p95/max was `135462/248898/277836/277836 ms`, RSS was about `191 MiB`, and available
+  memory was about `2,142 MiB`. It recorded eight successful actions, including six proposed
+  entries, system peak memory `1,672 MiB`, swap-in `0.0078 MiB`, swap-out zero and load `0.76`.
+  Warm ran ten with failure rate `0.30`; duration p50/p75/p95/max was
+  `141076/291196/352894/352894 ms`, RSS was about `190 MiB`, and available memory was about
+  `2,122 MiB`. It recorded eight successful actions, including five proposed entries, system peak
+  memory `1,692 MiB`, swap-in `0.03125 MiB`, swap-out zero and load `1.03`. Both retained stable
+  health/readiness/app/database checks and zero publication. They had zero thrown invocation
+  failure; the `0.20` and `0.30` rates are exactly two and three final structured-decision parse
+  failures after repair. The exact Zod paths were discarded because the aggregate did not retain
+  failure reasons.
+- Dual capacity detail: dual inherited the warm benchmark aggregate, reported RSS about `169 MiB`,
+  system peak memory `1,740 MiB`, available memory about `2,075 MiB`, zero swap and load `0.98`, but
+  succeeded only `1/2`. Its raw `oomDetected=true` value is the benchmark's generic
+  incomplete-dual flag when fewer than two results return; there is no kernel/cgroup OOM evidence.
+  The rejected dual result's exact cause was discarded and cannot be reconstructed from the
+  retained aggregate.
+- Fail-closed result: strict validation rejected the cold package first because its failure rate
+  was nonzero; warm and dual independently also fail the required zero-failure/two-process
+  contract. The three evidence files remain mode `0600` under the runtime work directory. None was
+  persisted. Database capability count remained 46 and the new prompt fingerprint had zero
+  records. Do not relabel `capacityStatus=HEALTHY` inside the raw cold/warm documents as acceptance:
+  the release validator's stricter zero-failure and dual `2/2` contract is authoritative.
+- Current safe state: exact c9 application/runtime is live behind healthy Caddy; application and
+  PostgreSQL are healthy and health/readiness return `200/200`. Settings version is 159, global
+  runtime is false, other flows are enabled in `NORMAL`, configured concurrency is two, all 22
+  writers remain `ACTIVE`, and open run/live-lease counts are zero. Worker and timer are inactive.
+  Migration count is 25; source state and all-writer assignment floor remain as verified above.
+  Root usage is 40% with `45,780,044 KiB` free. The site is public, but agent production is paused.
+  No failed capability package was persisted and society was not resumed.
+- Continuation boundary: do not repeat migration, the approved one-row cleanup or source
+  reconciliation. Do not start the worker or resume global runtime until a fresh accepted
+  capability package or a separately approved capacity policy exists. This behavior/runtime/source
+  rollout resets the seven-day acceptance clock; Gate 10 remains open and
+  `docs/M2_TRACEABILITY.md` remains unchanged at `541 PASS / 2 BLOCKED`.
+- Concurrency and diagnostic boundary: settings still carry `codexConcurrency=2`, and
+  scheduler/runtime consume the configured value directly even if a capacity projection renders
+  effective concurrency one. Never treat “start worker” as a single-lane canary. A one-lane option
+  requires an explicitly approved two-to-one application settings mutation plus fresh matching
+  capability evidence. Before rerunning, add bounded safe scenario/stage/error-code telemetry for
+  structured-parse and dual-result failures; do not retain raw prompt, model output or private
+  reasoning.

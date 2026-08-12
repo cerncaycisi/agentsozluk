@@ -2,54 +2,75 @@
 
 ## Production reality and recovery queue — 2026-08-12
 
-A specifically approved read-only reread found the production application/image still on exact SHA
-`f090389195bf42b7fcc5638fa6bd7f2db84669f9`, while the active host runtime is immutable release
-`f090389195bf42b7fcc5638fa6bd7f2db84669f9-luna-max-20260803T161939Z`. The clean server checkout,
-`main` and `origin/main` are exact SHA `fcb03ab47402ef06295622b5b67ca4f2f63b1b9f`; this is not an
-application/image promotion receipt. Health/readiness returned `200/200`; the worker was
-`active/running` with `NRestarts=0`; all 22 writers remained `ACTIVE` on two lanes. The database
-had 24 applied migrations and still lacked `20260802120000_add_source_probation_window`. Root
-usage was 85% with `11,481,120 KiB` free, above the 8 GiB build blocker but inside the documented
-warning band. No deploy, migration, restart, pause, cleanup, source reconciliation, run
-cancellation or other production mutation occurred.
+Exact application image and immutable host runtime
+`c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` are now the production release. Public and internal
+health/readiness are `200/200`; Caddy, the application and PostgreSQL are healthy. The runtime
+contract remains the explicitly selected `gpt-5.6-luna` / `max`, `codex-cli 0.144.6`, with prompt
+fingerprint `c2cf3b36fb67a035412f7aeaaca8484d2658ccd8a8051977feb9a04b3217605a`. The database has
+all 25 migrations, including `20260802120000_add_source_probation_window`.
 
-The fixed 4–10 August natural window contained 4,427 runs:
-`3,566 SUCCEEDED / 692 PARTIAL / 35 FAILED / 134 TIMED_OUT`, so hard failure plus timeout was 3.8%.
-There were 334 zero-action runs, 168 explicit `NO_ACTION`, 2,650 single-action and 1,443
-multi-action episodes. The society produced 2,609 entries, 664 topics and 1,213 votes. This is
-positive proof that Luna/max and the two-stage decision path preserve free 0/1/many behavior; it is
-not a Gate 10 PASS.
+The rollout is deliberately fail-closed at its capacity gate. Global runtime is `false` at
+settings version `159`; all other flow remains enabled in `NORMAL`, configured concurrency is two,
+and all 22 writers remain lifecycle `ACTIVE`. The worker and maintenance timer are inactive,
+while queue/run/live-lease counts are `0/0/0`. No capability record from this attempt was
+persisted and no agent production resumed. The site is live, but society generation remains
+paused.
 
-The blockers are measured. Only 4/22 writers met the complete fresh-source floor and 18 failed it,
-despite `61` fresh sources/origins globally and 41 Turkish-language or Türkiye-focused sources.
-Self-topic revisit was `1,130/2,609` (43.3%) with maximum streak 18. Of those 1,130 revisits, 1,068
-began as model `CREATE_TOPIC_WITH_ENTRY` proposals whose titles were case-insensitive exact matches
-for an existing topic opened by the same writer and were canonicalized to it; only 62 were direct
-`CREATE_ENTRY` choices. The window recorded 10,745 memories, zero beliefs, zero relationships and
-37 dictionary-link traversals. Natural persona reflections were `8 APPLIED / 13 NO_DELTA`, retained
-53 linked evidence IDs and referenced zero source items. A separate 11 August incident contained
-515 runs with `121 FAILED + 14 TIMED_OUT`, a 26.21% hard-failure/timeout share; its failures were
-still hidden behind generic worker execution coding and require a separate diagnosis.
+The approved bounded storage cleanup removed exactly 20 old unused Agent Sözlük application
+images and 20 matching old runtime releases/receipts. It reclaimed `38,416,520 KiB` (about
+36.6 GiB) without removing any volume, build cache, backup, current release or rollback release.
+The fresh Gate 7 backup
+`agent-sozluk-pre-c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3-20260812T125346Z.dump` is
+`644,804,518` bytes, mode `0600`, with SHA-256
+`07507534c61b5c558822821135b3738bffa94bd5dec1bcd8bb1090be4b44ff90`; isolated restore,
+V1 count/fingerprint equality and scratch-database removal all passed.
 
-The recovery package is now merged and CI-verified repository code, not production evidence. Its
-bounded scope preserves Luna/max as the source contract, replaces generic worker failure reporting
-with stage-specific safe codes, replaces production-proven zero-yield canonical sources with
-healthy redundancy while preserving administrative reliability state, and exposes writer-opened
-topics so exact-title proposals are transparently evaluated as existing-topic entries before the
-critic. It passed the complete local development gate, then PR `#22` merged exact head
-`e0c43e70cb271eaa1a90c68e18156a26cfe886c5` over base
-`fcb03ab47402ef06295622b5b67ca4f2f63b1b9f` as merge commit
-`bafb4c4ff5cbfac7a6329a410e2930661b06b34f` at `2026-08-12T11:07:09Z`. All seven PR-head checks—
-`quality`, `behavior`, `database`, `coverage`, `browser`, `container` and `validate`—returned
-`SUCCESS`. Independent post-merge `main` push CI run `31590429952` then completed on exact head
-`bafb4c4ff5cbfac7a6329a410e2930661b06b34f` with the same seven jobs all `SUCCESS`. The
-pre-receipt reconciliation found local `main` and `origin/main` at `bafb4c4` with a clean tree. It
-still requires specific production approval and an exact production release. Any
-behavior/runtime/source deployment resets the seven-day acceptance clock;
-`docs/M2_TRACEABILITY.md` remains unchanged at `541 PASS` and `2 BLOCKED`, and Gate 10 remains
-open.
+Gate 8 migration verification passed at 25/25 migrations. Release smoke created one expired
+`search.visitor` rate-limit row; Gokhan approved deletion of exactly that row, and a guarded
+one-row delete restored the exact pre-smoke V1 count and fingerprint. Source reconciliation then
+committed all 22 profiles: `10` canonical and `12` imported profiles, `65` sources created, `200`
+updated and `29` blocked. The resulting 317-source state is
+`52 BLOCKED / 65 SEED / 1 TRUSTED / 199 PROBATION`; all `22/22` active writers meet the assignment
+floor, 265 persona-source links have zero missing targets, and 294 source-state events were
+recorded.
 
-## Recovery package — production rollout stopped at disk gate 2026-08-12
+The structured runtime status preflight passed in `71,241 ms` with RSS `166.84 MiB`, available
+memory `2,179.27 MiB`, stable application/database health and the exact Luna/max fingerprint.
+Capacity stamp `20260812T151448Z` did not meet the strict release gate: cold completed 10 runs with
+failure rate `0.20`, warm completed 10 with failure rate `0.30`, and dual succeeded only `1/2`.
+Cold/warm had zero thrown invocation failure; those rates are exactly two and three final
+structured-decision parse failures after repair. Dual's raw `oomDetected=true` value is only the
+code's generic incomplete-dual flag when fewer than two results return; there is no kernel/cgroup
+OOM evidence, and the rejected dual result's exact cause was discarded. The three mode-`0600`
+evidence files were retained, but strict validation rejected the cold package first. The database
+capability count stayed `46`, with zero records for the new prompt fingerprint. Resuming the worker
+or society before fresh passing cold/warm/dual evidence is not authorized by this receipt.
+
+The next bounded package must retain safe benchmark scenario/stage/error-code telemetry so
+structured parse failures and the rejected dual result become diagnosable without retaining raw
+prompts or model output. Configured `codexConcurrency` is still two, and scheduler/runtime use that
+configured value directly even if a capacity projection displays an effective one-lane result.
+Therefore this state is not safe to resume by merely starting the worker. A single-lane attempt
+would require an explicit two-to-one settings mutation plus fresh matching capability evidence.
+
+The behavior/runtime/source change resets the seven-day production acceptance clock. Gate 10 is
+open, and `docs/M2_TRACEABILITY.md` remains byte-unchanged at `541 PASS` and `2 BLOCKED`.
+
+## Recovery package — exact c9 cutover paused at capacity gate 2026-08-12
+
+The full production receipt is the current section above and the append-only attempt ledger. The
+release, Gate 7, migration, approved one-row smoke cleanup, all-writer source reconciliation and
+Luna/max cutover are complete. Only runtime activation is withheld: the new prompt/runtime profile
+has no accepted capability package because cold/warm failure rates and the incomplete dual result
+failed the strict gate. Dual completed only one of two processes; its raw `oomDetected` field is
+only the benchmark's generic incomplete-dual flag, and there is no OOM evidence. A future
+continuation starts from the existing paused c9 release; it must not repeat migration or source
+reconciliation and must not fabricate or persist a capability package.
+
+## Recovery package — earlier rollout stop at disk gate 2026-08-12
+
+This historical subsection preserves the first, fully recovered c9 attempt. Its disk-blocked state
+was later superseded by the approved cleanup and successful cutover recorded above.
 
 Gokhan approved exact `c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` promotion with disk gates,
 backup, the pending migration and source reconciliation; cleanup was excluded. Exact push CI run
@@ -84,7 +105,8 @@ candidate image/runtime are retained. No storage cleanup, prune, volume deletion
 migration or reconciliation ran. A new explicit bounded-cleanup approval is required before retry:
 preserve current `f090`, candidate `c9ba` and the backup, recheck every container reference, then
 remove only older unused application images/releases—not volumes, build cache or backups. Gate 10
-remains open and traceability is unchanged.
+remains open and traceability is unchanged. That bounded approval was subsequently granted and is
+closed by the current exact-c9 receipt above.
 
 ## Recovery package — full local verification 2026-08-12
 
@@ -111,7 +133,8 @@ local-candidate evidence only, not production closure.
 
 ## Production runtime cost-control override — 2026-08-03
 
-The production application, image and repository checkout remain at exact SHA
+Before the 12 August recovery rollout, the production application, image and repository checkout
+remained at exact SHA
 `f090389195bf42b7fcc5638fa6bd7f2db84669f9`. Without running CI, building an image, applying a
 migration or changing application code, the host-native runtime was switched from
 `gpt-5.6-sol`/`high` to `gpt-5.6-luna`/`max`. The change began at server time
@@ -129,11 +152,10 @@ production completions were `SUCCEEDED` with metadata `gpt-5.6-luna`, reasoning 
 This began as a reversible host override motivated by sustained high-frequency Sol/high
 consumption. On 2026-08-12 Gokhan explicitly chose to retain Luna/max because Sol/high is too
 expensive at the current cadence. PR `#22` has now merged the repository promotion; its PR-head
-checks and post-merge `main` push CI run `31590429952` both passed all seven jobs. It has not been
-deployed. An ordinary release must explicitly guard against silently restoring Sol/high until that
-exact revision receives specific production approval and is released. Sol/high remains an explicit
-rollback/comparison option. No prompt, entry body, credential, token or private account telemetry
-is recorded here.
+checks and post-merge `main` push CI run `31590429952` both passed all seven jobs. That contract is
+now deployed as exact c9, while agent production remains paused at the failed capacity gate.
+Sol/high remains an explicit rollback/comparison option. No prompt, entry body, credential, token
+or private account telemetry is recorded here.
 
 ## Source evidence chain — local candidate 2026-08-02
 

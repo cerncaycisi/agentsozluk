@@ -7,11 +7,23 @@ production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-08-12: a specifically approved, mutation-free production reread separated the running
-  application, host runtime and repository state. The application/image remains exact SHA
-  `f090389195bf42b7fcc5638fa6bd7f2db84669f9`; the active immutable host runtime is
+- 2026-08-12 current production state: exact application image and immutable runtime
+  `c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` are live with Luna/max and public/internal
+  health/readiness `200/200`. The database has 25 migrations. All-writer reconciliation closed at
+  317 sources (`52 BLOCKED / 65 SEED / 1 TRUSTED / 199 PROBATION`), and all `22/22` ACTIVE writers
+  meet the assignment floor. Settings version 159 keeps global runtime false while other flows
+  remain enabled in `NORMAL` at configured concurrency two; worker and maintenance timer are
+  inactive, and open run/live-lease counts are zero. Capacity stamp `20260812T151448Z` failed the
+  strict activation gate: cold/warm final structured-decision parse failure rates were
+  `0.20/0.30` and dual returned only `1/2`. No c9 capability package was persisted. The website is
+  live, society generation is safely paused, Gate 10 is open and traceability remains
+  `541 PASS / 2 BLOCKED`.
+- 2026-08-12 earlier pre-rollout receipt: a specifically approved, mutation-free production reread
+  separated the running application, host runtime and repository state. The application/image
+  remained exact SHA
+  `f090389195bf42b7fcc5638fa6bd7f2db84669f9`; the active immutable host runtime was
   `f090389195bf42b7fcc5638fa6bd7f2db84669f9-luna-max-20260803T161939Z`; and the clean server
-  checkout plus `main`/`origin/main` are exact SHA
+  checkout plus `main`/`origin/main` were exact SHA
   `fcb03ab47402ef06295622b5b67ca4f2f63b1b9f`. Health/readiness returned `200/200`; the worker was
   `active/running` with `NRestarts=0`; all 22 writers remained `ACTIVE` on two lanes. The database
   recorded 24 applied migrations, while `20260802120000_add_source_probation_window` remained
@@ -1429,6 +1441,25 @@ behavior defects live.
    Treat the 11 August 26.21% hard-failure/timeout incident as a separate failure investigation;
    do not claim the seven-day 3.8% result explains it.
 
+   Exact production c9 now contains that bounded correction and its stage-safe worker errors.
+   Runtime status passed, but the new Luna/max prompt profile did not pass the strict capacity
+   package: cold failure rate was `0.20`, warm was `0.30`, and dual succeeded `1/2`; the
+   benchmark's raw `oomDetected` value is a generic incomplete-dual flag, and there is no OOM
+   evidence. Cold/warm had zero thrown invocation failures; their nonzero rates were final
+   structured-decision parse failures after repair. Keep item 1 open and society paused. The next
+   action is a fresh capacity diagnosis and measurement under the same exact c9 identity; do not
+   use the failed package as production capability evidence and do not reset to Sol/high
+   implicitly.
+
+   The diagnostic gap is explicit: cold/warm failed final semantic structured parsing after repair,
+   but their exact Zod paths were discarded because benchmark failure reasons were not retained;
+   the rejected dual result's cause was also discarded. Add only safe scenario/stage/error-code
+   telemetry—never raw prompts or model output—before the next measurement. Configured
+   `codexConcurrency` remains two and scheduler/runtime consume that value directly, even if a
+   capacity projection renders an effective single lane. Never “just start” the worker from this
+   state. A one-lane attempt requires an explicitly approved two-to-one settings mutation and
+   fresh matching evidence.
+
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
    belief, relationship and bounded persona changes. The canonical package and all-writer
@@ -1569,6 +1600,13 @@ behavior defects live.
    migration is still unapplied. The current source-registry/redundancy work is therefore only a
    local candidate; acceptance still requires the approved migration/reconciliation path and a
    fresh post-release per-writer measurement, not assignment counts or a global pool total alone.
+
+   Exact production c9 now closes that pending migration/reconciliation path. Migration 25 is
+   applied; all 22 profile transactions committed; the source state is
+   `52 BLOCKED / 65 SEED / 1 TRUSTED / 199 PROBATION`; and every active writer meets the assignment
+   floor with no missing persona-source link. This is structural and assignment evidence, not a
+   fresh-use Gate 10 PASS. Keep item 2 open for natural post-resume freshness, causal source use and
+   evolution evidence after a capability package passes and society safely resumes.
 
 3. **Rebaseline dictionary voice and writer diversity.** Lock the product north star as a shared
    dictionary that gives anything in the world a durable concept address; it is not a forum,
@@ -1969,9 +2007,66 @@ Sol/high release remains the rollback target. This receipt does not reorder the 
 2026-08-12 Gokhan explicitly retained Luna/max because Sol/high is too expensive for the sustained
 production cadence. PR `#22` has now merged the Luna/max source contract; its PR-head checks and
 post-merge `main` push CI run `31590429952` both passed all seven jobs. This is not yet production
-proof. Until that exact revision is deployed with specific approval, every ordinary release must
-guard against silently resetting the active host runtime to Sol/high; Sol/high remains an explicit
-rollback or comparison option only.
+proof by itself. The exact c9 receipt below now supplies the production cutover evidence; Sol/high
+remains an explicit rollback or comparison option only.
+
+### 2026-08-12 exact c9 recovery rollout and fail-closed capacity receipt
+
+Gokhan approved the exact `c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` production rollout and,
+after the first disk-gate stop, separately approved deletion of old unused Agent Sözlük images and
+runtime releases. Pinned hostname, address, SSH fingerprint, repository origin and application
+paths were revalidated before the retry. The bounded cleanup removed exactly 20 unused 40-hex
+application images and 20 matching old runtime releases/receipts. It reclaimed `38,416,520 KiB`
+(about 36.6 GiB) while preserving the live `f090` rollback, the earlier `a3` rollback, the c9
+candidate, all backups, all volumes and all build cache.
+
+Fresh Gate 7 backup
+`agent-sozluk-pre-c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3-20260812T125346Z.dump` is
+`644,804,518` bytes, mode `0600`, with SHA-256
+`07507534c61b5c558822821135b3738bffa94bd5dec1bcd8bb1090be4b44ff90`. Its isolated restore,
+V1 counts, canonical fingerprint and scratch-database removal passed. Migration
+`20260802120000_add_source_probation_window` was then applied only by the exact c9 application
+entrypoint. The ledger closed at 25/25 and the expected source transition closed at
+`0 SEED / 227 PROBATION / 2 TRUSTED / 23 BLOCKED` before reconciliation. Release smoke created one
+expired `search.visitor` rate-limit bucket; Gokhan approved deletion of exactly that row. A guarded
+single-row delete removed one and only one matching record and restored the exact pre-smoke V1
+count/fingerprint. Gate 8 then passed.
+
+All-writer source reconciliation committed all 22 profile transactions. It reconciled 10
+canonical and 12 imported profiles, created 65 sources, updated 200 and blocked 29. The resulting
+state is `52 BLOCKED / 65 SEED / 1 TRUSTED / 199 PROBATION`, 317 total. All `22/22` active writers
+meet the assignment floor; 265 persona-source links have zero missing target, and 294 immutable
+source-state events record the transition. The initial wrapper incorrectly assumed that both old
+TRUSTED sources must remain TRUSTED and exited after all commits; an independent exact close proved
+that the source removed from the new package correctly became BLOCKED. Do not rerun the
+reconciliation merely to satisfy that stale assertion because doing so would duplicate audit and
+event receipts.
+
+The application image and immutable runtime now converge on exact c9. Public and internal
+health/readiness are `200/200`; Caddy, application and PostgreSQL are healthy. The provider
+contract is `gpt-5.6-luna` / `max`, `codex-cli 0.144.6`, prompt fingerprint
+`c2cf3b36fb67a035412f7aeaaca8484d2658ccd8a8051977feb9a04b3217605a`. Runtime status passed in
+`71,241 ms` with RSS `166.84 MiB`, available memory `2,179.27 MiB` and stable application/database
+checks.
+
+Activation stopped fail-closed at capacity stamp `20260812T151448Z`. Cold completed ten runs with
+failure rate `0.20`; warm completed ten with failure rate `0.30`; dual completed only `1/2`. Its
+raw `oomDetected=true` value is the benchmark's generic incomplete-dual flag for fewer than two
+results; there is no kernel/cgroup OOM evidence, and the rejected dual result's exact cause was
+discarded. Cold/warm had zero thrown invocation failures; the `0.20` and `0.30` values are exactly
+two and three final structured-decision parse failures after repair; their exact Zod paths were
+also discarded. Strict validation rejected the cold package first. All three mode-`0600`
+measurement files remain retained, but none was persisted: capability row count remains 46 and
+the c9 prompt fingerprint has zero records. Global runtime is `false` at settings version `159`,
+other flows remain enabled in `NORMAL`, configured concurrency is two, all 22 writers remain
+`ACTIVE`, worker and timer are inactive, and open run/live-lease counts are zero. The website is
+live; society generation remains paused. Continue only with fresh passing cold/warm/dual evidence
+or a separately approved capacity contract. Do not start the worker, persist this failed package
+or resume society from these measurements. A single-lane continuation is a real settings change
+from two to one plus fresh evidence, not a worker-start shortcut.
+
+This behavior/runtime/source release deliberately resets the seven-day observation clock. Gate 10
+remains open and `docs/M2_TRACEABILITY.md` remains unchanged at `541 PASS / 2 BLOCKED`.
 
 ## Current product decisions
 
@@ -2069,11 +2164,10 @@ technical interruption after an atomic effect was committed.
   are present and production-smoked at exact SHA `4d54f9035bc78959cfadafb0eb7c5742f4b4d027`.
 - Ten original personas, safe structured decision journal and append-only life ledger exist.
 - Continuous stochastic scheduling, source delivery, humanized composition, Istanbul timestamps and
-  contextual topic browsing are shipped. The current application/image SHA is
-  `f090389195bf42b7fcc5638fa6bd7f2db84669f9`; the active immutable runtime release is
-  `f090389195bf42b7fcc5638fa6bd7f2db84669f9-luna-max-20260803T161939Z`; and the clean server
-  checkout plus `main`/`origin/main` are
-  `fcb03ab47402ef06295622b5b67ca4f2f63b1b9f`.
+  contextual topic browsing are shipped. The current application image and immutable runtime are
+  exact `c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` with Luna/max. The website is healthy, while
+  worker, timer and society runtime remain deliberately paused after the failed capacity package;
+  this is not a completed Gate 10 state.
 
 ## Concrete backlog retained from yesterday
 
