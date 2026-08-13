@@ -7,8 +7,19 @@ production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-08-13 repository-local capacity correction: the candidate based on exact main
-  `42e0debfcda8ae73688248ce7d076b5c819a4d21` closes the deterministic
+- 2026-08-13 repository delivery: PR `#24` merged exact implementation head
+  `90de0b4ee779cd7109c3456a07f356c1faf9cb2a` over base
+  `42e0debfcda8ae73688248ce7d076b5c819a4d21` as merge commit
+  `9409157db49a1736ff371c61aa09a05630179be8` at `2026-08-13T12:54:23Z`. PR-head CI run
+  `31701826270` and independent merge-SHA main push CI run `31702276409` each completed all seven
+  jobs (`quality`, `behavior`, `database`, `coverage`, `browser`, `container`, `validate`) with
+  `SUCCESS`. This closes repository delivery only. No production access, deploy, benchmark,
+  capability persistence, settings mutation, worker/timer start or society resume occurred;
+  production remains exact 9454 and paused. An exact release-candidate artifact and separately
+  approved pause-preserving production deploy plus fresh strict cold/warm/dual PASS remain open.
+- 2026-08-13 capacity correction implementation: exact PR head
+  `90de0b4ee779cd7109c3456a07f356c1faf9cb2a`, based on
+  `42e0debfcda8ae73688248ce7d076b5c819a4d21`, closes the deterministic
   `topicFatigue` contract mismatch without weakening the gate. Wire
   `state.topicFatigue.items[].topicKey` and the adapted internal map now share one safe-key schema;
   normal, reflection and single-repair instructions require a short human-readable topic label and
@@ -25,8 +36,8 @@ production acceptance remains pending.
   M1 regression/coverage, two builds, `51/51` general E2E, `64 files / 421` agent unit tests, `11
 files / 125` agent PostgreSQL tests, `1/1` simulation, `24/24` agent E2E and all OpenAPI, persona,
   metadata, secret and development-traceability checks. The first invocation stopped at exact
-  guard error `verify:m2 requires TEST_DATABASE_URL.` One mixed-snapshot run was interrupted with exit
-  `130` after an edit landed during coverage; the passing receipt came from a stable tree with no
+  guard error `verify:m2 requires TEST_DATABASE_URL.` One mixed-snapshot run was interrupted with
+  exit `130` after an edit landed during coverage; the passing receipt came from a stable tree with no
   concurrent edits. Production was not accessed or changed: exact 9454 remains live and paused,
   Gate 10 remains open and traceability remains `541 PASS / 2 BLOCKED` until an exact release and
   fresh strict cold/warm/dual PASS exist.

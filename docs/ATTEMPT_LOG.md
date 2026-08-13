@@ -5522,3 +5522,23 @@ approved post-merge BLOCKED / 0 FAIL / 543 total`.
   requirement ID. Production remains exact 9454 with global runtime false, worker/timer/maintenance
   inactive and society generation paused. Gate 10 remains open and traceability remains
   `541 PASS / 2 BLOCKED`.
+
+## 2026-08-13 — topic-fatigue capacity correction repository delivery
+
+- Exact repository chain: PR `#24` merged implementation head
+  `90de0b4ee779cd7109c3456a07f356c1faf9cb2a` over base
+  `42e0debfcda8ae73688248ce7d076b5c819a4d21` as merge commit
+  `9409157db49a1736ff371c61aa09a05630179be8` at `2026-08-13T12:54:23Z`.
+- PR-head CI run `31701826270` and independent merge-SHA main push CI run `31702276409` each
+  completed `quality`, `behavior`, `database`, `coverage`, `browser`, `container` and `validate`
+  with `SUCCESS`. The Node 20 action-deprecation annotations were warnings from GitHub-hosted action
+  internals, not failed product checks.
+- Scope boundary: this receipt closes repository delivery only. No production server or public
+  endpoint was accessed; no deploy, benchmark, capability persistence, settings mutation,
+  worker/timer start or society resume occurred. Exact production 9454 remains paused, its failed
+  benchmark remains historical evidence, Gate 10 remains open and traceability remains
+  `541 PASS / 2 BLOCKED`.
+- Next gate: build one exact release-candidate artifact from the final repository head, then obtain
+  specific approval for a pause-preserving production deploy and fresh strict cold/warm/dual
+  benchmark. Do not resume society generation even if that benchmark passes without a separate
+  final approval.

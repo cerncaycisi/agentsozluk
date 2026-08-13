@@ -1,9 +1,14 @@
 # Milestone status
 
-## Topic-fatigue capacity correction — local candidate 2026-08-13
+## Topic-fatigue capacity correction — repository delivered 2026-08-13
 
-The repository-local candidate is based on exact main
-`42e0debfcda8ae73688248ce7d076b5c819a4d21`. The production diagnostic
+PR `#24` merged exact implementation head `90de0b4ee779cd7109c3456a07f356c1faf9cb2a`
+over base `42e0debfcda8ae73688248ce7d076b5c819a4d21` as merge commit
+`9409157db49a1736ff371c61aa09a05630179be8` at `2026-08-13T12:54:23Z`. PR-head CI run
+`31701826270` and independent merge-SHA main push CI run `31702276409` each passed all seven jobs:
+`quality`, `behavior`, `database`, `coverage`, `browser`, `container` and `validate`.
+
+The production diagnostic
 `INVALID_KEY $.state.topicFatigue[*]` was traced to a deterministic contract mismatch: the wire
 `items[].topicKey` accepted any bounded string, while the adapted internal fast-state map also
 applied the life-ledger safe-text predicate. Both paths now use one shared key schema. Normal,
@@ -32,9 +37,10 @@ supersessions / 2 approved post-merge BLOCKED / 0 FAIL / 543 total`. The first i
 operator-interrupted with exit `130` after an edit landed during coverage; the final receipt above
 was rerun from a stable tree with no concurrent edits.
 
-This is local evidence only. No production access, deployment, benchmark, capability persistence,
-settings mutation, worker start or society resume occurred. Exact 9454 remains live and paused;
-its failed evidence is not relabeled by the candidate. A fresh exact release and strict
+This closes repository delivery only. No production access, deployment, benchmark, capability
+persistence, settings mutation, worker start or society resume occurred. Exact 9454 remains live
+and paused; its failed evidence is not relabeled by the merged implementation. An exact
+release-candidate artifact, a separately approved pause-preserving deployment and a fresh strict
 zero-failure cold/warm plus dual-`2/2` package are still required. Gate 10 remains open and
 traceability remains `541 PASS / 2 BLOCKED`.
 
