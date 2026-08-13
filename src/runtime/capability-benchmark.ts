@@ -341,13 +341,37 @@ function fixedUuid(index: number): string {
 }
 
 function benchmarkContext(scenario: Scenario, index: number): RuntimeContext {
-  const entries = Array.from({ length: scenario.denseContext ? 24 : 3 }, (_, entryIndex) => ({
-    id: fixedUuid(1000 + index * 100 + entryIndex),
-    topicId: fixedUuid(100 + (entryIndex % 4)),
-    body: `Gözlem ${entryIndex + 1}: bakım maliyeti, kullanıcı etkisi ve doğrulanabilir ölçüm ayrıştırılmalı.`,
-    score: entryIndex % 5,
-    author: { username: `yazar_${entryIndex % 5}` },
-  }));
+  const benchmarkTopicTitles = [
+    "kapasite rezervi",
+    "bakım maliyeti",
+    "kullanıcı etkisi",
+    "doğrulanabilir ölçüm",
+  ] as const;
+  const entries = Array.from({ length: scenario.denseContext ? 24 : 3 }, (_, entryIndex) => {
+    const topicIndex = entryIndex % benchmarkTopicTitles.length;
+    return {
+      id: fixedUuid(1000 + index * 100 + entryIndex),
+      body: `Gözlem ${entryIndex + 1}: bakım maliyeti, kullanıcı etkisi ve doğrulanabilir ölçüm ayrıştırılmalı.`,
+      createdAt: "2026-07-18T11:00:00.000Z",
+      score: entryIndex % 5,
+      topic: {
+        id: fixedUuid(100 + index * 10 + topicIndex),
+        title: benchmarkTopicTitles[topicIndex],
+      },
+      author: {
+        id: fixedUuid(5000 + index * 10 + (entryIndex % 5)),
+        username: `yazar_${entryIndex % 5}`,
+        displayName: `Yazar ${entryIndex % 5}`,
+      },
+      followedTopic: false,
+      followedAuthor: false,
+      topicOpenedByCurrentWriter: false,
+      topicEntryCountLast30Minutes: entryIndex % 3,
+      saturated: false,
+    };
+  });
+  const sourceId = fixedUuid(8000 + index);
+  const sourceItemId = fixedUuid(9000 + index);
   const firstPersona = benchmarkPersonas[0]!;
   const personaPrompt = renderPersonaPrompt(firstPersona);
   const longPersonaPrompt = scenario.longPersona
@@ -393,15 +417,43 @@ function benchmarkContext(scenario: Scenario, index: number): RuntimeContext {
     },
     perception: {
       observedAt: "2026-07-18T12:00:00.000Z",
+      previousFastState: {
+        curiosity: 0.45,
+        confidence: 0.65,
+        topicFatigue: { "bakım maliyeti": 0.2 },
+      },
       recentEntries: entries,
-      sources: scenario.includeSources
+      sourceItems: scenario.includeSources
         ? [
             {
-              id: fixedUuid(9000 + index),
-              status: "TRUSTED",
+              sourceId,
+              sourceDomain: "benchmark.example",
+              sourceStatus: "TRUSTED",
+              sourceTrustScore: 0.9,
+              itemId: sourceItemId,
+              canonicalUrl: `https://benchmark.example/items/${index + 1}`,
               title: "Ölçümlü sistemlerde kapasite rezervi",
               safeText:
                 "UNTRUSTED_CONTENT: kapasite iddiası p75 süre, bellek rezervi ve hata oranıyla birlikte sınanmalıdır.",
+              summary:
+                "Kapasite iddiası süre, bellek rezervi ve hata oranıyla birlikte değerlendirilir.",
+              publishedAt: "2026-07-18T10:00:00.000Z",
+              fetchedAt: "2026-07-18T11:30:00.000Z",
+            },
+          ]
+        : [],
+      sources: scenario.includeSources
+        ? [
+            {
+              id: sourceId,
+              sourceType: "RSS",
+              status: "TRUSTED",
+              trustScore: 0.9,
+              interestScore: 0.8,
+              topics: ["kapasite", "güvenilirlik"],
+              lastFetchedAt: "2026-07-18T11:30:00.000Z",
+              domainConsecutiveFailures: 0,
+              domainLastAttemptAt: "2026-07-18T11:30:00.000Z",
             },
           ]
         : [],

@@ -7,6 +7,29 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-08-13 repository-local capacity correction: the candidate based on exact main
+  `42e0debfcda8ae73688248ce7d076b5c819a4d21` closes the deterministic
+  `topicFatigue` contract mismatch without weakening the gate. Wire
+  `state.topicFatigue.items[].topicKey` and the adapted internal map now share one safe-key schema;
+  normal, reflection and single-repair instructions require a short human-readable topic label and
+  reject UUID/hash/URL/e-mail/credential-like keys. The repair contract is included in prompt
+  profile v20 fingerprint
+  `9725451a26afd710f80f717e9a0ba7c7042feb3e8c202ee0a743d864de04ea55`.
+  Representative benchmark context now uses the production-shaped nested topic/author,
+  `previousFastState`, `sourceItems` and evidence catalog contract. Provider termination telemetry
+  adds only closed signal and nonzero-without-stderr codes; unknown non-empty stderr remains the
+  generic safe code and no retry was added. There is no capability-gate, API or database-schema
+  change. Focused verification passed `8 files / 116 tests`; independent correctness and security
+  reviews returned GO. A fresh, uninterrupted `verify:m2:development` with the explicit local test
+  database passed with exit `0`: formatting, lint, typecheck, clean 25-migration database, complete
+  M1 regression/coverage, two builds, `51/51` general E2E, `64 files / 421` agent unit tests, `11
+files / 125` agent PostgreSQL tests, `1/1` simulation, `24/24` agent E2E and all OpenAPI, persona,
+  metadata, secret and development-traceability checks. The first invocation stopped at exact
+  guard error `verify:m2 requires TEST_DATABASE_URL.` One mixed-snapshot run was interrupted with exit
+  `130` after an edit landed during coverage; the passing receipt came from a stable tree with no
+  concurrent edits. Production was not accessed or changed: exact 9454 remains live and paused,
+  Gate 10 remains open and traceability remains `541 PASS / 2 BLOCKED` until an exact release and
+  fresh strict cold/warm/dual PASS exist.
 - 2026-08-13 current production state: exact application image and immutable runtime
   `9454e10defd1eeae54f9250a6fe826df6bb94f54` are live; the application image ID is
   `sha256:3dcfedd1c3a4e31a2fb507e6ba540c88fb4e8a9cc21fb0e76b5f9efdfca5a197`. Exact c9
@@ -1530,6 +1553,15 @@ superseded / 25 partial supersessions / 2 approved post-merge BLOCKED / 0 FAIL /
    the measured structured-output/provider-execution failures and then obtain a fresh strict
    cold/warm/dual PASS; do not weaken validation, persist these raw `HEALTHY` aggregates or resume
    from them.
+
+   The repository-local v20 candidate addresses the deterministic part of that diagnosis. The wire
+   and internal `topicFatigue` key validators can no longer disagree, the prompt and one repair
+   state the same human-topic rule, and the benchmark no longer presents a UUID-only synthetic
+   topic shape that the real worker does not use. The two historical `CODEX_EXEC_FAILED` events are
+   not retrospectively relabeled: their raw causes were not retained. New signal/no-stderr codes
+   improve only future bounded diagnosis, with no scenario-specific retry, timeout expansion or
+   acceptance-gate change. Item 1 therefore remains open through repository delivery, exact
+   pause-preserving deployment and a fresh zero-failure cold/warm plus dual-`2/2` package.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,

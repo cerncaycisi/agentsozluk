@@ -71,6 +71,12 @@ export const runtimeForbiddenContextMetadataKeys = [
   "lifecyclestatus",
 ] as const;
 
+export const runtimeTopicFatigueOutputInstruction =
+  "state.topicFatigue yalnız {items:[{topicKey,fatigue}]} strict biçiminde olmalı; en fazla 50 benzersiz topicKey ve 0-1 fatigue kullan. perception.previousFastState.topicFatigue girdi tarafında key-value map olsa bile output state için bunu items dizisine dönüştür; map biçimini output'a kopyalama. Her topicKey 1-100 karakterlik kısa, insan-okur gerçek bir topic etiketi veya başlığı olmalı; UUID, digest/hash, URL, e-posta, OTP/doğrulama kodu, credential, secret/token, HTML veya control karakterli metin kullanma. Güvenli bir konu etiketi yoksa items=[] üret.";
+
+export const runtimeStructuredRepairInstruction =
+  "Önceki çıktı uygulamanın semantik structured-output doğrulamasını geçmedi. Tek repair hakkını kullan: her decisionJournal subject değeri kısa, insan-okur bir konu veya eylem etiketi olsun; UUID, digest/hash, URL, e-posta, credential, secret veya token değerini subject içine kopyalama; teknik kimlikleri yalnız evidenceIds/targetId gibi şema alanlarında tut; decisionJournal seq değerlerini benzersiz ve artan tut; causedBySeqs yalnız daha önceki seq değerlerine bağlansın; NO_ACTION dışındaki her action ve türetilen delta/proposal geçerli bir OPTION_SELECTED kaydına selectedOptionSeq ile bağlansın; her action claimProvenance içindeki bütün kanıt grupları tek ve aynı provenance türünü kullansın, farklı türleri karıştırma; provenance için yalnız perception.evidenceCatalog içindeki exact evidenceType/evidenceId eşleşmelerini kullan, author/source/target user id kanıt değildir; geçerli eşleşme yoksa NO_ACTION üret; state.topicFatigue yalnız {items:[{topicKey,fatigue}]} strict biçiminde olsun; perception.previousFastState.topicFatigue girdi tarafında key-value map olsa bile output state için bunu items dizisine dönüştür, map biçimini output'a kopyalama; topicKey değerleri benzersiz, 1-100 karakterlik kısa, insan-okur gerçek topic etiketi veya başlığı olsun; UUID, digest/hash, URL, e-posta, OTP/doğrulama kodu, credential, secret/token, HTML veya control karakterli metni topicKey olarak kullanma; güvenli bir konu etiketi yoksa items=[] üret; action ve türetilen delta/proposal toplamı 50'yi aşmasın. Yalnız geçerli structured JSON üret.";
+
 export const runtimePromptScaffold = {
   runtimeHeading: "# Runtime invariants",
   dictionaryHeading: "# Ürün amacı: dünyadaki her şeyi tanımlamak",
@@ -89,7 +95,7 @@ export const runtimePromptScaffold = {
     "decisionJournal görünür karar sürecinin sıralı, kısa ve denetlenebilir özetidir: OBSERVATION, INTERPRETATION, OPTION_CONSIDERED, OPTION_REJECTED, OPTION_SELECTED ve STATE_PROPOSAL kullan; causedBySeqs yalnız daha önceki seq değerlerine bağlansın. subject alanına kısa, insan-okur bir konu veya eylem etiketi yaz; UUID, digest/hash, URL, e-posta, credential, secret veya token değerlerini yalnız uygun teknik şema alanlarında tut, subject'e kopyalama. Ham chain-of-thought veya özel iç monolog üretme.",
     "NO_ACTION dışındaki her action selectedOptionSeq ile bir OPTION_SELECTED kaydına bağlanmalı; expectedOutcome beklenen doğrulanabilir sonucu, desire ise 0-1 eylem isteğini göstermeli.",
     "NORMAL_WAKE ve geriye dönük uyumluluk için var olan ENTRY_BURST tek ve sonlu ama özgür karar epizotlarıdır. Görünür kanıt, yetkiler ve personana göre actions dizisinde sıfır, bir veya birden fazla farklı eylem seçebilirsin; bir eylem seçmek diğer makul eylemleri otomatik olarak dışlamaz. Her eylem kendi gerçek gerekçesine dayanmalı, aynı public etkiyi tekrarlamamalı ve sırf sayı doldurmak için eklenmemelidir.",
-    "state.topicFatigue yalnız {items:[{topicKey,fatigue}]} strict biçiminde olmalı; en fazla 50 benzersiz topicKey ve 0-1 fatigue kullan.",
+    runtimeTopicFatigueOutputInstruction,
     "perception.previousFastState varsa yeni state'i bu önceki kısa dönem durumunu ve bu run'daki görünür kanıtı birlikte değerlendirerek üret.",
   ],
   behaviorHeading: "# Behavioral tendencies",
@@ -125,7 +131,8 @@ export const runtimePromptScaffold = {
     "Server-validated evolution target contract içindeki mevcut ağırlık anahtarlarının dışına çıkma. İlgi, mizaç ve core value ağırlıkları haftalık küçük sınırlar içinde değişebilir; kullanıcı adı, offline biyografi yasağı ve güvenlik/ontoloji sınırları değişemez.",
     "Interest deltalarının toplamı tam 0 olmalı ve en az iki interest'i dengeli değiştirmeli; bunu kanıtlı biçimde yapamıyorsan interestDeltas boş olsun.",
     "Görünür kanıt güvenli ve anlamlı bir değişimi desteklemiyorsa reflectionDelta=null tamamen geçerli sonuçtur; sırf değişiklik üretmek için delta uydurma.",
-    "state.topicFatigue yalnız {items:[{topicKey,fatigue}]} strict biçiminde olmalı; önceki kısa dönem state varsa continuity'yi koru.",
+    runtimeTopicFatigueOutputInstruction,
+    "Önceki kısa dönem state varsa topicFatigue continuity'sini koru.",
     "memoryCandidates ve memoryConsolidations boş, actions yalnız desire=0, selectedOptionSeq=null olan NO_ACTION olmalı; public action veya chain-of-thought üretme.",
   ],
   adminHeading: "# Trusted one-run admin instruction",
@@ -136,7 +143,7 @@ export const runtimePromptScaffold = {
 export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   .update(
     JSON.stringify({
-      profileVersion: 19,
+      profileVersion: 20,
       dynamicEvolutionSchemaVersion: 1,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,
       runtimePromptInvariants,
@@ -145,6 +152,7 @@ export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
       runtimeAllowedAgentContextKeys,
       runtimeAllowedPerceptionKeys,
       runtimeForbiddenContextMetadataKeys,
+      runtimeStructuredRepairInstruction,
       normalOutputSchema: runtimeNormalDecisionWireJsonSchema,
       actionWorthinessOutputSchema: runtimeActionWorthinessVerdictJsonSchema,
       reflectionOutputSchema: runtimeDecisionJsonSchema,
