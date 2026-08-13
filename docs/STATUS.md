@@ -96,10 +96,17 @@ the same allowlisted diagnostic path fields; both direct schema parsing and the 
 on dynamic dotted fields. The corrected focused package passed `6 files / 69 tests`, and the final
 review returned GO with no remaining P0/P1.
 
-The candidate is based on exact `e7754d03531141c9b311e471b0e099f426f39751` but is not a
-production release. No production access, deploy, real Codex benchmark, capability persistence,
-settings change, worker start or society resume occurred. Production remains on the paused c9
-state above; Gate 10 stays open and traceability stays `541 PASS / 2 BLOCKED`.
+Repository delivery is complete. PR `#23` merged exact implementation head
+`add57e9ab515c1edfd1284e94746ec9453599d72` over base
+`e7754d03531141c9b311e471b0e099f426f39751` as merge commit
+`a647108af2fde0d377134917149b0b701f7380b6` at `2026-08-13T08:34:59Z`. PR-head CI run
+`31682220467` and independent post-merge main CI run `31682697878` each passed all seven jobs:
+`quality`, `behavior`, `database`, `coverage`, `browser`, `container` and `validate`.
+
+The main-merged package is not a production release. No production access, deploy, real Codex
+benchmark, capability persistence, settings change, worker start or society resume occurred.
+Production remains on the paused c9 state above; Gate 10 stays open and traceability stays
+`541 PASS / 2 BLOCKED`.
 
 ## Recovery package — exact c9 cutover paused at capacity gate 2026-08-12
 

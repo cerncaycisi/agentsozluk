@@ -5345,3 +5345,26 @@ post-merge BLOCKED / 0 FAIL / 543 total`.
 - Acceptance boundary: this local package creates no new requirement ID and closes no production
   gate. `RUNTIME-004` and final-only `DONE-082` remain BLOCKED; Gate 10 remains open; M2 status
   remains `541 PASS / 2 BLOCKED`.
+
+## 2026-08-13 — safe capacity diagnostics repository delivery
+
+- Exact repository chain: PR `#23` merged implementation head
+  `add57e9ab515c1edfd1284e94746ec9453599d72` over base
+  `e7754d03531141c9b311e471b0e099f426f39751` as merge commit
+  `a647108af2fde0d377134917149b0b701f7380b6` at `2026-08-13T08:34:59Z`.
+- PR-head CI run `31682220467` passed all seven jobs: `quality`, `behavior`, `database`, `coverage`,
+  `browser`, `container` and final `validate`. Immediately before merge, GitHub reported the exact
+  head/base pair above, `MERGEABLE`, no pending or failed check and the PR was no longer draft.
+- Independent post-merge main push CI run `31682697878` then passed the same seven jobs on exact
+  merge SHA `a647108af2fde0d377134917149b0b701f7380b6`. `origin/main` resolved to that SHA after a fresh
+  fetch. GitHub's Node 20 deprecation annotations applied to action dependencies and were not
+  product or test failures.
+- Boundary: this receipt closes GitHub repository delivery only. No production connection, public
+  endpoint request, deploy, image/runtime build or transfer, real Codex benchmark, capability
+  persistence, settings mutation, worker/timer start or society resume occurred. Production
+  remains paused at the previously measured exact c9 release; Gate 10 remains open and M2 status
+  remains `541 PASS / 2 BLOCKED`.
+- Do not repeat: do not treat a green main CI or merged diagnostics implementation as production
+  capability evidence. A production rollout and a fresh cold/warm/dual benchmark remain separate,
+  explicitly approved actions; the worker and society stay paused until that exact-release package
+  passes the unchanged gate.
