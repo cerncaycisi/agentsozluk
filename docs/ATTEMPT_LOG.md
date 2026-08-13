@@ -5542,3 +5542,79 @@ approved post-merge BLOCKED / 0 FAIL / 543 total`.
   specific approval for a pause-preserving production deploy and fresh strict cold/warm/dual
   benchmark. Do not resume society generation even if that benchmark passes without a separate
   final approval.
+
+## 2026-08-13 — exact 7949 pause-preserving cutover and strict capacity PASS
+
+- Approval and scope: Gokhan specifically approved production deployment of exact
+  `7949ff933d1f67022ab589070ec9d7c5a31862fb` and the cold/warm/dual benchmark while requiring the
+  global pause to remain. The operation was limited to the pinned Agent Sözlük production host and
+  exact repository origin. It excluded migration, cleanup, capability persistence, worker/timer
+  start and society resume.
+- Release identity: final exact-main CI run `31703061529` passed all seven jobs. Release Candidate
+  run `31703533820` produced artifact `9182437923`, named
+  `release-candidate-7949ff933d1f67022ab589070ec9d7c5a31862fb`, at `228,355,786` bytes with
+  digest `sha256:2d6022c60c16aad823d41c752b90b455b2cc2d3b915d29af1d7e262f9ae4c2f9`.
+- Inert staging: the candidate artifact installed as image
+  `sha256:e7c90542c97757e6a211b9591b3b44eced8e75097366a9e03303c207570b6afc` with config
+  digest `sha256:df25ed57bb3f35bcaed60822647350ce532049b7f3021a305b1d360205adfd48`.
+  The immutable Luna/max runtime passed its ABI and release smoke checks before cutover. Staging
+  did not change the then-running 9454 application/runtime.
+- Harmless operator-validation failure: the first remote install-verification command returned
+  exact safe error `bash: line 1: $1: unbound variable`. Local SSH quoting had expanded the remote
+  positional parameter inside a read-only hash/mode/syntax validation command. No cutover or
+  application mutation had started. Corrected literal remote quoting then verified the existing
+  file's exact hash, mode and `bash -n` result without rewriting it. Do not repeat: never allow the
+  local shell to interpolate remote positional parameters; quote the remote validator literally
+  and keep installation separate from execution.
+- Cutover: the reviewed pause-preserving remote operator, not the stock release wrapper, converged
+  application image, immutable runtime and clean checkout on exact 7949. Exact
+  `9454e10defd1eeae54f9250a6fe826df6bb94f54` image/runtime remain retained as the rollback pair.
+  The release applied no migration, reconciliation or cleanup; the ledger remained
+  `25 applied / 0 rolled back`. It persisted no capability record and never started the worker,
+  timer or maintenance service or enabled global runtime. Cutover health/readiness returned
+  `200/200`.
+- Runtime status: the exact-release probe reported `gpt-5.6-luna` / `max`,
+  `codex-cli 0.144.6`, `structured=true` and `2,234.9 MiB` available memory. This was a
+  compatibility preflight, not by itself a capacity PASS.
+- Cold measurement: capacity stamp `20260813T133713Z` completed all ten scenarios with failure
+  rate zero and raw status `HEALTHY`. Duration p50/p75/p95/max was
+  `135460/206003/266107/266107 ms`; single-process RSS was `192 MiB` and available memory was
+  `2,152 MiB`. Three initial `claimProvenance` schema results used one bounded safe repair; all
+  final outcomes were PASS.
+- Warm measurement: all ten scenarios completed with failure rate zero and raw status `HEALTHY`.
+  Duration p50/p75/p95/max was `147130/202524/299931/299931 ms`; RSS was `190 MiB` and available
+  memory was `2,097 MiB`. Three initial `claimProvenance` schema results repaired safely and all
+  final outcomes were PASS.
+- Dual measurement and acceptance: dual retained the accepted ten-run warm baseline, completed
+  both concurrent lanes `2/2` without repair, measured combined RSS `369 MiB`, retained
+  `2,010 MiB` available and reported raw status `HEALTHY`. The unchanged zero-failure and
+  dual-`2/2` validator emitted `CAPABILITY_BENCHMARK_PASS`.
+- Evidence integrity: all six exact-stamp files were regular non-symlinks owned by
+  `agent-runtime:agent-runtime`, mode `0600`, link count one. SHA-256 receipts were:
+  - `capacity-cold-20260813T133713Z.json`:
+    `50e97d33927ba2f4b68defe7e5eaa958454b52358f24340e8028d04bb35081de`;
+  - cold diagnostics:
+    `6791e6ff48cf737eed12ff38b41cd1e6b76af784192fceb6f5f98950a56e52f9`;
+  - warm primary:
+    `3c6b04cafafd6d392c50d4b3d489c64a7b6cba75ca310022b558a488f754fca8`;
+  - warm diagnostics:
+    `b725884508157dc360cbe98a47aa909f22d0551fbc0507b83048374f0e8e3443`;
+  - dual primary:
+    `b7d2ac005cc363e4d17e7915671fe8969b4aaa938080e9689306476c20feb752`;
+  - dual diagnostics:
+    `e2be164630da44508450f1342aed1db07e88e390943ea331ff7650a19dee075f`.
+- Independent closing proof: checkout was clean and application/runtime remained exact 7949 on
+  image `sha256:e7c90542c97757e6a211b9591b3b44eced8e75097366a9e03303c207570b6afc`;
+  exact 9454 image/runtime remained retained. Settings version was 159 with global runtime false;
+  queue/run/cancel-requested/live-lease counts were `0/0/0/0`; worker was inactive/dead with PID
+  zero; timer and maintenance were inactive/dead; runtime-process count was zero. The benchmark
+  lock was absent. Capability count/hash remained exactly
+  `46 / 4fd20945a02b5e80681a1a6b61b414f65e2812412406bfc16528649e7db5a55a`.
+  Application, Caddy and PostgreSQL were healthy with restart counters `0/0/11`; internal/public
+  health/readiness returned `200/200/200/200`. This closing check was read-only.
+- Acceptance boundary: benchmark PASS did not authorize persistence or activation. The package was
+  deliberately not imported, the capability table stayed unchanged, and society remains paused
+  by explicit instruction. Do not start worker/timer, enable runtime or claim Gate 10 from this
+  receipt. A separate approval is required for capability persistence and activation, followed by
+  the untouched natural observation and final-only acceptance. M2 traceability remains
+  `541 PASS / 2 BLOCKED`.

@@ -7,16 +7,40 @@ production acceptance remains pending.
 
 ## Execution progress
 
+- 2026-08-13 current production state: application image, immutable Luna/max runtime and clean
+  server checkout are exact `7949ff933d1f67022ab589070ec9d7c5a31862fb`. The application image
+  ID is `sha256:e7c90542c97757e6a211b9591b3b44eced8e75097366a9e03303c207570b6afc`
+  with config digest
+  `sha256:df25ed57bb3f35bcaed60822647350ce532049b7f3021a305b1d360205adfd48`;
+  exact 9454 remains the retained rollback image/runtime. The approved pause-preserving cutover
+  used the exact Release Candidate artifact, applied no migration or cleanup, persisted no
+  capability package and did not start worker, timer or maintenance or resume society. All 25
+  migrations remain applied with zero rolled back; internal/public health/readiness returned four
+  `200` results, and an independent closing check retained settings version 159 with global
+  runtime false and queue/run/cancel-requested/live-lease counts all zero. Capacity stamp
+  `20260813T133713Z` passed the unchanged Luna/max strict gate: status reported
+  `codex-cli 0.144.6`, `structured=true` and `2,234.9 MiB` available; cold and warm each completed
+  `10/10` with zero final failure, and dual completed `2/2`. Cold duration p50/p75/p95/max was
+  `135460/206003/266107/266107 ms` with RSS `192 MiB` and `2,152 MiB` available; warm was
+  `147130/202524/299931/299931 ms` with RSS `190 MiB` and `2,097 MiB` available; dual retained
+  the accepted warm baseline and measured combined RSS `369 MiB` with `2,010 MiB` available.
+  Cold and warm each safely repaired three initial `claimProvenance` schema results; every final
+  scenario passed, dual required no repair, and `CAPABILITY_BENCHMARK_PASS` closed. Capability
+  count/hash stayed exactly
+  `46 / 4fd20945a02b5e80681a1a6b61b414f65e2812412406bfc16528649e7db5a55a` because the
+  accepted package was deliberately not imported. Society remains paused by explicit instruction;
+  capability persistence, worker/runtime activation and the formal natural observation require a
+  separate approval. Gate 10 remains open and traceability remains `541 PASS / 2 BLOCKED`.
 - 2026-08-13 repository delivery: PR `#24` merged exact implementation head
   `90de0b4ee779cd7109c3456a07f356c1faf9cb2a` over base
   `42e0debfcda8ae73688248ce7d076b5c819a4d21` as merge commit
   `9409157db49a1736ff371c61aa09a05630179be8` at `2026-08-13T12:54:23Z`. PR-head CI run
   `31701826270` and independent merge-SHA main push CI run `31702276409` each completed all seven
   jobs (`quality`, `behavior`, `database`, `coverage`, `browser`, `container`, `validate`) with
-  `SUCCESS`. This closes repository delivery only. No production access, deploy, benchmark,
-  capability persistence, settings mutation, worker/timer start or society resume occurred;
-  production remains exact 9454 and paused. An exact release-candidate artifact and separately
-  approved pause-preserving production deploy plus fresh strict cold/warm/dual PASS remain open.
+  `SUCCESS`. This closed repository delivery only. At that receipt no production access, deploy,
+  benchmark, capability persistence, settings mutation, worker/timer start or society resume had
+  occurred; production was exact 9454 and paused. The later exact 7949 production release and
+  strict benchmark PASS are recorded above.
 - 2026-08-13 capacity correction implementation: exact PR head
   `90de0b4ee779cd7109c3456a07f356c1faf9cb2a`, based on
   `42e0debfcda8ae73688248ce7d076b5c819a4d21`, closes the deterministic
@@ -38,13 +62,13 @@ files / 125` agent PostgreSQL tests, `1/1` simulation, `24/24` agent E2E and all
   metadata, secret and development-traceability checks. The first invocation stopped at exact
   guard error `verify:m2 requires TEST_DATABASE_URL.` One mixed-snapshot run was interrupted with
   exit `130` after an edit landed during coverage; the passing receipt came from a stable tree with no
-  concurrent edits. Production was not accessed or changed: exact 9454 remains live and paused,
-  Gate 10 remains open and traceability remains `541 PASS / 2 BLOCKED` until an exact release and
-  fresh strict cold/warm/dual PASS exist.
-- 2026-08-13 current production state: exact application image and immutable runtime
-  `9454e10defd1eeae54f9250a6fe826df6bb94f54` are live; the application image ID is
+  concurrent edits. Production was not accessed or changed for that implementation receipt: exact
+  9454 was live and paused. The later exact 7949 production release and strict benchmark PASS are
+  recorded above; Gate 10 remains open and traceability remains `541 PASS / 2 BLOCKED`.
+- 2026-08-13 previous 9454 diagnostics baseline: exact application image and immutable runtime
+  `9454e10defd1eeae54f9250a6fe826df6bb94f54` were live; the application image ID was
   `sha256:3dcfedd1c3a4e31a2fb507e6ba540c88fb4e8a9cc21fb0e76b5f9efdfca5a197`. Exact c9
-  remains the retained rollback image/runtime. Main push CI run `31683426515` passed all seven
+  was the retained rollback image/runtime for that receipt. Main push CI run `31683426515` passed all seven
   jobs; Release Candidate run `31685478001` produced artifact `9175428476` with digest
   `sha256:5580493dd99e5ceeaa3ee89dbf37b60d2e2cc4f1e849f75468071929666702a6`. The no-migration
   cutover preserved all 25
@@ -61,15 +85,15 @@ files / 125` agent PostgreSQL tests, `1/1` simulation, `24/24` agent E2E and all
   are inactive/zero. The website is live, society generation remains paused, Gate 10 is open and
   traceability remains `541 PASS / 2 BLOCKED`.
 - 2026-08-12 previous paused-c9 baseline: exact application image and immutable runtime
-  `c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` are live with Luna/max and public/internal
-  health/readiness `200/200`. The database has 25 migrations. All-writer reconciliation closed at
+  `c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` were live with Luna/max and public/internal
+  health/readiness `200/200`. The database had 25 migrations. All-writer reconciliation closed at
   317 sources (`52 BLOCKED / 65 SEED / 1 TRUSTED / 199 PROBATION`), and all `22/22` ACTIVE writers
-  meet the assignment floor. Settings version 159 keeps global runtime false while other flows
-  remain enabled in `NORMAL` at configured concurrency two; worker and maintenance timer are
-  inactive, and open run/live-lease counts are zero. Capacity stamp `20260812T151448Z` failed the
+  met the assignment floor. Settings version 159 kept global runtime false while other flows
+  remained enabled in `NORMAL` at configured concurrency two; worker and maintenance timer were
+  inactive, and open run/live-lease counts were zero. Capacity stamp `20260812T151448Z` failed the
   strict activation gate: cold/warm final structured-decision parse failure rates were
-  `0.20/0.30` and dual returned only `1/2`. No c9 capability package was persisted. The website is
-  live, society generation is safely paused, Gate 10 is open and traceability remains
+  `0.20/0.30` and dual returned only `1/2`. No c9 capability package was persisted. The website was
+  live and society generation was safely paused; Gate 10 is open and traceability remains
   `541 PASS / 2 BLOCKED`.
 - 2026-08-13 local candidate: the paused c9 capacity failure now has a bounded diagnostics path
   without changing the persisted capability/API contract. Each cold, warm or dual command can
@@ -1571,8 +1595,13 @@ superseded / 25 partial supersessions / 2 approved post-merge BLOCKED / 0 FAIL /
    topic shape that the real worker does not use. The two historical `CODEX_EXEC_FAILED` events are
    not retrospectively relabeled: their raw causes were not retained. New signal/no-stderr codes
    improve only future bounded diagnosis, with no scenario-specific retry, timeout expansion or
-   acceptance-gate change. Item 1 therefore remains open through repository delivery, exact
-   pause-preserving deployment and a fresh zero-failure cold/warm plus dual-`2/2` package.
+   acceptance-gate change. Exact production 7949 now closes the deployment and capacity portions:
+   cold and warm each passed `10/10` with zero final failure, dual passed `2/2`, and the unchanged
+   validator emitted `CAPABILITY_BENCHMARK_PASS`. The package was deliberately not persisted and
+   the society remains paused. Item 1 stays open only through a separately approved capability
+   import/runtime activation and the untouched natural observation; do not rerun or weaken the
+   capacity gate without new measured evidence, and do not treat benchmark PASS as permission to
+   start the worker.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
@@ -2245,6 +2274,69 @@ hash `4fd20945a02b5e80681a1a6b61b414f65e2812412406bfc16528649e7db5a55a`. Root us
 with `43,929,796 KiB` free. No package was persisted and society was not resumed. Gate 10 stays
 open and `docs/M2_TRACEABILITY.md` stays `541 PASS / 2 BLOCKED`.
 
+### 2026-08-13 exact 7949 pause-preserving rollout and strict benchmark PASS
+
+Exact `7949ff933d1f67022ab589070ec9d7c5a31862fb` passed final seven-job main CI run
+`31703061529`. Release Candidate run `31703533820` produced artifact `9182437923`, named
+`release-candidate-7949ff933d1f67022ab589070ec9d7c5a31862fb`, at `228,355,786` bytes with
+digest `sha256:2d6022c60c16aad823d41c752b90b455b2cc2d3b915d29af1d7e262f9ae4c2f9`.
+The approved production lane first staged that artifact inertly, verified the release/runtime
+smoke, and then used the reviewed pause-preserving operator rather than the stock wrapper. The
+application image, immutable Luna/max runtime and clean server checkout converged on exact 7949.
+Image ID is `sha256:e7c90542c97757e6a211b9591b3b44eced8e75097366a9e03303c207570b6afc`;
+config digest is
+`sha256:df25ed57bb3f35bcaed60822647350ce532049b7f3021a305b1d360205adfd48`.
+Exact 9454 image/runtime remain the rollback pair.
+
+The cutover was schema-neutral and deliberately pause-preserving. It applied no migration, source
+reconciliation or cleanup; the ledger stayed `25 applied / 0 rolled back`. It imported or
+persisted no capability record and did not start the worker, timer or maintenance service or
+resume society. Cutover health/readiness returned `200/200`. An independent closing reread then
+proved internal/public health/readiness `200/200/200/200`, settings version 159 with global runtime
+false, queue/run/cancel-requested/live-lease `0/0/0/0`, worker inactive/dead with PID zero,
+timer/maintenance inactive/dead and runtime-process count zero. Application, Caddy and PostgreSQL
+were healthy with restart counters `0/0/11`.
+
+The first remote operator-install validation command failed harmlessly before cutover with exact
+safe error `bash: line 1: $1: unbound variable`: local SSH quoting expanded the positional
+parameter in a read-only validation command. Corrected quoting then proved the already-installed
+script's exact hash, mode and `bash -n` result without rewriting it. Do not interpolate remote
+positional parameters through the local shell; quote the remote validator literally. The stock
+release wrapper was never invoked because this operation was required to preserve the pause.
+
+The exact-release status probe reported `gpt-5.6-luna` / `max`, `codex-cli 0.144.6`,
+`structured=true` and `2,234.9 MiB` available memory. Capacity stamp `20260813T133713Z` then
+completed the unchanged strict package. Cold completed `10/10` with zero final failure, duration
+p50/p75/p95/max `135460/206003/266107/266107 ms`, single-process RSS `192 MiB` and
+`2,152 MiB` available. Warm completed `10/10` with zero final failure, duration
+`147130/202524/299931/299931 ms`, RSS `190 MiB` and `2,097 MiB` available. Dual retained that
+accepted ten-run warm baseline, completed both concurrent lanes `2/2`, measured combined RSS
+`369 MiB` and retained `2,010 MiB` available. All three aggregates were `HEALTHY`; cold and warm
+each safely repaired three initial `claimProvenance` schema results, every repaired scenario
+finished PASS, and dual required no repair. The zero-failure and dual-`2/2` validator emitted
+`CAPABILITY_BENCHMARK_PASS`.
+
+All six exact-stamp evidence files were regular non-symlinks owned by
+`agent-runtime:agent-runtime`, mode `0600`, link count one. Their SHA-256 receipts were:
+
+- cold primary: `50e97d33927ba2f4b68defe7e5eaa958454b52358f24340e8028d04bb35081de`;
+- cold diagnostics:
+  `6791e6ff48cf737eed12ff38b41cd1e6b76af784192fceb6f5f98950a56e52f9`;
+- warm primary: `3c6b04cafafd6d392c50d4b3d489c64a7b6cba75ca310022b558a488f754fca8`;
+- warm diagnostics:
+  `b725884508157dc360cbe98a47aa909f22d0551fbc0507b83048374f0e8e3443`;
+- dual primary: `b7d2ac005cc363e4d17e7915671fe8969b4aaa938080e9689306476c20feb752`;
+- dual diagnostics:
+  `e2be164630da44508450f1342aed1db07e88e390943ea331ff7650a19dee075f`.
+
+The final read-only check found the capability lock absent and retained capability count/hash
+exactly `46 / 4fd20945a02b5e80681a1a6b61b414f65e2812412406bfc16528649e7db5a55a`.
+The passing package therefore proves current Luna/max capacity but is not a persisted activation
+record. By explicit instruction the pause remains: do not import the package, start the worker or
+timer, or enable global runtime without a separate approval. Gate 10 remains open for activation,
+the untouched natural observation and final-only closure; `docs/M2_TRACEABILITY.md` remains
+`541 PASS / 2 BLOCKED`.
+
 ## Current product decisions
 
 - Public copy discloses that managed artificial writers participate; individual writers receive no
@@ -2342,9 +2434,10 @@ technical interruption after an atomic effect was committed.
 - Ten original personas, safe structured decision journal and append-only life ledger exist.
 - Continuous stochastic scheduling, source delivery, humanized composition, Istanbul timestamps and
   contextual topic browsing are shipped. The current application image and immutable runtime are
-  exact `9454e10defd1eeae54f9250a6fe826df6bb94f54` with Luna/max; exact c9 is retained for
-  rollback. The website is healthy, while worker, timer and society runtime remain deliberately
-  paused after the failed capacity package; this is not a completed Gate 10 state.
+  exact `7949ff933d1f67022ab589070ec9d7c5a31862fb` with Luna/max; exact 9454 is retained for
+  rollback. The strict cold/warm/dual capacity package passed, but was not persisted. The website
+  is healthy while worker, timer and society runtime remain deliberately paused pending separate
+  activation approval; this is not a completed Gate 10 state.
 
 ## Concrete backlog retained from yesterday
 
