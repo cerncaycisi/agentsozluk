@@ -6,7 +6,11 @@ import {
   type RuntimeControlPlane,
 } from "@/runtime/control-plane-client";
 import type { RuntimeProvider } from "@/runtime/provider";
-import { RuntimeProviderCancelledError, RuntimeProviderTimeoutError } from "@/runtime/provider";
+import {
+  RuntimeProviderCancelledError,
+  RuntimeProviderExecutionError,
+  RuntimeProviderTimeoutError,
+} from "@/runtime/provider";
 import {
   parseRuntimeDecisionOutput,
   runtimeDecisionJsonSchema,
@@ -1911,6 +1915,36 @@ describe("long-lived agent runtime worker", () => {
     );
     expect(JSON.stringify(vi.mocked(plane.fail).mock.calls[0]?.[4])).not.toContain(
       "RAW_PROVIDER_DETAIL_MUST_NOT_PERSIST",
+    );
+  });
+
+  it("keeps a typed provider execution failure inside the current stage-safe worker code", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockRejectedValue(new RuntimeProviderExecutionError("CODEX_UPSTREAM_UNAVAILABLE")),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "typed-provider-failure-worker",
+      credentials: [`agt_${"v".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(plane.fail).toHaveBeenCalledWith(
+      expect.any(String),
+      "typed-provider-failure-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({ outcome: "FAILED", errorCode: "CODEX_DECISION_FAILED" }),
+    );
+    expect(JSON.stringify(vi.mocked(plane.fail).mock.calls[0]?.[4])).not.toContain(
+      "CODEX_UPSTREAM_UNAVAILABLE",
     );
   });
 

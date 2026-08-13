@@ -1371,7 +1371,13 @@ m2_capacity_stamp=YYYYMMDDTHHMMSSZ
 m2_capacity_cold=/opt/agent-sozluk/runtime/work/capacity-cold-$m2_capacity_stamp.json
 m2_capacity_warm=/opt/agent-sozluk/runtime/work/capacity-warm-$m2_capacity_stamp.json
 m2_capacity_dual=/opt/agent-sozluk/runtime/work/capacity-dual-$m2_capacity_stamp.json
+m2_capacity_cold_diagnostics=/opt/agent-sozluk/runtime/work/capacity-cold-$m2_capacity_stamp.diagnostics.json
+m2_capacity_warm_diagnostics=/opt/agent-sozluk/runtime/work/capacity-warm-$m2_capacity_stamp.diagnostics.json
+m2_capacity_dual_diagnostics=/opt/agent-sozluk/runtime/work/capacity-dual-$m2_capacity_stamp.diagnostics.json
 test ! -e "$m2_capacity_cold" && test ! -e "$m2_capacity_warm" && test ! -e "$m2_capacity_dual"
+test ! -e "$m2_capacity_cold_diagnostics" && \
+  test ! -e "$m2_capacity_warm_diagnostics" && \
+  test ! -e "$m2_capacity_dual_diagnostics"
 
 sudo -u agent-runtime env \
   HOME=/opt/agent-sozluk/runtime/codex-home \
@@ -1383,6 +1389,7 @@ sudo -u agent-runtime env \
   AGENT_RUNTIME_BENCHMARK_TIMEOUT_MS=600000 \
   AGENT_RUNTIME_PLANNED_CONTENT_RUNS=70 \
   AGENT_RUNTIME_CAPABILITY_OUTPUT="$m2_capacity_cold" \
+  AGENT_RUNTIME_CAPABILITY_DIAGNOSTICS_OUTPUT="$m2_capacity_cold_diagnostics" \
   CODEX_EXECUTABLE=/usr/local/bin/codex \
   CODEX_SANDBOX_EXECUTABLE=/usr/bin/bwrap \
   PATH=/usr/bin:/usr/local/bin:/bin \
@@ -1398,6 +1405,7 @@ sudo -u agent-runtime env \
   AGENT_RUNTIME_BENCHMARK_TIMEOUT_MS=600000 \
   AGENT_RUNTIME_PLANNED_CONTENT_RUNS=70 \
   AGENT_RUNTIME_CAPABILITY_OUTPUT="$m2_capacity_warm" \
+  AGENT_RUNTIME_CAPABILITY_DIAGNOSTICS_OUTPUT="$m2_capacity_warm_diagnostics" \
   CODEX_EXECUTABLE=/usr/local/bin/codex \
   CODEX_SANDBOX_EXECUTABLE=/usr/bin/bwrap \
   PATH=/usr/bin:/usr/local/bin:/bin \
@@ -1414,24 +1422,39 @@ sudo -u agent-runtime env \
   AGENT_RUNTIME_PLANNED_CONTENT_RUNS=70 \
   AGENT_RUNTIME_CAPACITY_INPUT="$m2_capacity_warm" \
   AGENT_RUNTIME_CAPABILITY_OUTPUT="$m2_capacity_dual" \
+  AGENT_RUNTIME_CAPABILITY_DIAGNOSTICS_OUTPUT="$m2_capacity_dual_diagnostics" \
   CODEX_EXECUTABLE=/usr/local/bin/codex \
   CODEX_SANDBOX_EXECUTABLE=/usr/bin/bwrap \
   PATH=/usr/bin:/usr/local/bin:/bin \
   /usr/bin/pnpm --dir /opt/agent-sozluk/runtime/current agent:concurrency-test
 
-stat -c '%U:%G %a' "$m2_capacity_cold" "$m2_capacity_warm" "$m2_capacity_dual"
+stat -c '%U:%G %a' \
+  "$m2_capacity_cold" "$m2_capacity_warm" "$m2_capacity_dual" \
+  "$m2_capacity_cold_diagnostics" "$m2_capacity_warm_diagnostics" \
+  "$m2_capacity_dual_diagnostics"
 ```
 
-All three files must report `agent-runtime:agent-runtime 600`. Validate them locally on the host and
-print only the non-secret summary. Cold and warm measurements must each contain at least 10 runs,
-ordered positive p50/p75/p95/max values and positive single-process RSS. The dual result must retain
-the warm sample count and fingerprint, measure positive dual RSS, complete exactly two dual runs,
-and report stable health/readiness with no OOM or swap thrashing:
+All six files must report `agent-runtime:agent-runtime 600`. The three diagnostics files are strict
+sidecars; never upload or persist them as capability inputs. If a benchmark command stops, its
+sidecar may still exist with a fixed terminal code and bounded safe failure classification. Inspect
+that file, keep society paused and fix the measured cause; never bypass the failed gate or copy raw
+provider/model text into a receipt.
+
+Validate all files locally on the host and print only the non-secret summary. Cold and warm
+measurements must each contain at least 10 runs, zero failure rate, ordered positive
+p50/p75/p95/max values and positive single-process RSS. The dual result must retain the warm sample
+count and fingerprint, have zero failure rate, measure positive dual RSS, complete exactly two dual
+runs, and report stable health/readiness with no explicit OOM or swap thrashing. An incomplete dual
+result is represented by `dualRunSuccessCount`; it is not OOM evidence:
 
 ```bash
-/usr/bin/node - "$m2_capacity_cold" "$m2_capacity_warm" "$m2_capacity_dual" <<'NODE'
+/usr/bin/node - \
+  "$m2_capacity_cold" "$m2_capacity_warm" "$m2_capacity_dual" \
+  "$m2_capacity_cold_diagnostics" "$m2_capacity_warm_diagnostics" \
+  "$m2_capacity_dual_diagnostics" <<'NODE'
 const fs = require("node:fs");
-const [cold, warm, dual] = process.argv.slice(2).map((file) => JSON.parse(fs.readFileSync(file, "utf8")));
+const files = process.argv.slice(2).map((file) => JSON.parse(fs.readFileSync(file, "utf8")));
+const [cold, warm, dual, coldDiagnostics, warmDiagnostics, dualDiagnostics] = files;
 for (const [label, value] of [["cold", cold], ["warm", warm]]) {
   const ordered = value.p50DurationMs > 0 && value.p50DurationMs <= value.p75DurationMs &&
     value.p75DurationMs <= value.p95DurationMs && value.p95DurationMs <= value.maxDurationMs;
@@ -1440,12 +1463,145 @@ for (const [label, value] of [["cold", cold], ["warm", warm]]) {
       !value.healthStable || !value.readinessStable)
     throw new Error(`${label} single-process benchmark is incomplete`);
 }
-if (dual.benchmarkRunCount < 10 || dual.dualRunSuccessCount !== 2 ||
+if (dual.benchmarkRunCount < 10 || dual.failureRate !== 0 || dual.dualRunSuccessCount !== 2 ||
     !(dual.dualProcessPeakRssMb > 0) || dual.oomDetected || dual.swapThrashingDetected ||
     !dual.healthStable || !dual.readinessStable ||
     cold.codexVersion !== warm.codexVersion || cold.promptProfileHash !== warm.promptProfileHash ||
     dual.codexVersion !== warm.codexVersion || dual.promptProfileHash !== warm.promptProfileHash)
   throw new Error("dual-process benchmark is incomplete or fingerprint-mismatched");
+
+const exactKeys = (value, keys) =>
+  value && typeof value === "object" && !Array.isArray(value) &&
+  Object.keys(value).sort().join("|") === [...keys].sort().join("|");
+const scenarios = new Set([
+  "short-topic-context", "dense-topic-context", "external-source-context",
+  "two-entry-target", "three-entry-target", "duplicate-retry", "read-only",
+  "normal-wake", "source-free", "long-persona-context",
+]);
+const stages = new Set(["DECISION_PRIMARY", "DECISION_REPAIR", "ACTION_WORTHINESS"]);
+const outcomes = new Set(["PASS", "SCHEMA_INVALID", "PROVIDER_FAILED"]);
+const safeCodes = new Set([
+  "OK", "CODEX_TIMEOUT", "CODEX_CANCELLED", "CODEX_ARGUMENT_UNSUPPORTED",
+  "CODEX_AUTH_REQUIRED", "CODEX_SCHEMA_MISSING_REQUIRED",
+  "CODEX_SCHEMA_ADDITIONAL_PROPERTIES", "CODEX_SCHEMA_FORMAT_UNSUPPORTED",
+  "CODEX_SCHEMA_UNSUPPORTED", "CODEX_RATE_LIMITED", "CODEX_UPSTREAM_UNAVAILABLE",
+  "CODEX_EXEC_FAILED", "CODEX_OUTPUT_INVALID", "CODEX_DECISION_OUTPUT_INVALID",
+  "CODEX_ACTION_WORTHINESS_OUTPUT_INVALID", "ACTION_WORTHINESS_CANDIDATE_SET_MISMATCH",
+  "BENCHMARK_STAGE_FAILED",
+]);
+const providerFailureCodes = new Set([
+  "CODEX_TIMEOUT", "CODEX_CANCELLED", "CODEX_ARGUMENT_UNSUPPORTED", "CODEX_AUTH_REQUIRED",
+  "CODEX_SCHEMA_MISSING_REQUIRED", "CODEX_SCHEMA_ADDITIONAL_PROPERTIES",
+  "CODEX_SCHEMA_FORMAT_UNSUPPORTED", "CODEX_SCHEMA_UNSUPPORTED", "CODEX_RATE_LIMITED",
+  "CODEX_UPSTREAM_UNAVAILABLE", "CODEX_EXEC_FAILED", "CODEX_OUTPUT_INVALID",
+  "BENCHMARK_STAGE_FAILED",
+]);
+const schemaFailureCodes = new Set([
+  "CODEX_DECISION_OUTPUT_INVALID", "CODEX_ACTION_WORTHINESS_OUTPUT_INVALID",
+  "ACTION_WORTHINESS_CANDIDATE_SET_MISMATCH",
+]);
+const issueCodes = new Set([
+  "INVALID_TYPE", "TOO_BIG", "TOO_SMALL", "INVALID_FORMAT", "NOT_MULTIPLE_OF",
+  "UNRECOGNIZED_KEYS", "INVALID_UNION", "INVALID_KEY", "INVALID_ELEMENT",
+  "INVALID_VALUE", "CUSTOM",
+]);
+const safePath = /^\$(?:(?:\.[A-Za-z][A-Za-z0-9_]{0,63})|(?:\[(?:\d{1,4}|\*)\]))*$/u;
+const safePathFields = new Set([
+  "actions", "beliefDeltas", "body", "causedBySeqs", "claimProvenance", "confidence",
+  "curiosity", "decision", "decisionJournal", "desire", "disagreement", "evaluations",
+  "evidenceIds", "evidenceSummary", "expectedOutcome", "familiarity", "fatigue", "interest",
+  "items", "kind", "memoryCandidates", "observations", "provenance", "relationshipDeltas",
+  "safeReason", "safeSummary", "salience", "selectedOptionSeq", "selectedSequences", "seq",
+  "sequence", "shortRationale", "sourceProposals", "sourceType", "state", "statement",
+  "subject", "subjectId", "subjectType", "summary", "targetId", "title", "topicFatigue",
+  "topicKey", "topics", "trust", "type", "url", "userId", "verdict",
+]);
+const safeDiagnosticPath = (value) =>
+  typeof value === "string" && value.length <= 160 && safePath.test(value) &&
+  [...value.matchAll(/\.([A-Za-z][A-Za-z0-9_]*)/gu)]
+    .every(([, field]) => safePathFields.has(field));
+function validateDiagnostics(label, value, mode, count) {
+  if (!exactKeys(value, ["version", "mode", "terminalCode", "scenarios"]) ||
+      value.version !== 1 || value.mode !== mode ||
+      value.terminalCode !== "BENCHMARK_COMPLETED" ||
+      !Array.isArray(value.scenarios) || value.scenarios.length !== count)
+    throw new Error(`${label} diagnostics envelope is incomplete`);
+  const seenScenarios = new Set();
+  const seenLanes = new Set();
+  for (const scenario of value.scenarios) {
+    if (!exactKeys(scenario, ["scenario", "lane", "finalStatus", "repairAttempted", "stages"]) ||
+        !scenarios.has(scenario.scenario) || !["PASS", "FAIL"].includes(scenario.finalStatus) ||
+        typeof scenario.repairAttempted !== "boolean" ||
+        (mode === "capacity" ? scenario.lane !== null : ![1, 2].includes(scenario.lane)) ||
+        !Array.isArray(scenario.stages) || scenario.stages.length < 1 || scenario.stages.length > 3)
+      throw new Error(`${label} diagnostics scenario is invalid`);
+    if (seenScenarios.has(scenario.scenario) ||
+        (scenario.lane !== null && seenLanes.has(scenario.lane)))
+      throw new Error(`${label} diagnostics scenario/lane is not unique`);
+    seenScenarios.add(scenario.scenario);
+    if (scenario.lane !== null) seenLanes.add(scenario.lane);
+    const stageNames = scenario.stages.map(({ stage }) => stage);
+    const repairIndex = stageNames.indexOf("DECISION_REPAIR");
+    const worthinessIndex = stageNames.indexOf("ACTION_WORTHINESS");
+    if (stageNames[0] !== "DECISION_PRIMARY" || new Set(stageNames).size !== stageNames.length)
+      throw new Error(`${label} diagnostics stage order is invalid`);
+    if (scenario.repairAttempted !== (repairIndex >= 0) ||
+        (repairIndex >= 0 &&
+          (repairIndex !== 1 || scenario.stages[0].outcome !== "SCHEMA_INVALID")))
+      throw new Error(`${label} diagnostics repair contract is invalid`);
+    if (worthinessIndex >= 0 &&
+        (worthinessIndex !== scenario.stages.length - 1 ||
+          scenario.stages[repairIndex >= 0 ? repairIndex : 0].outcome !== "PASS"))
+      throw new Error(`${label} diagnostics action-worthiness order is invalid`);
+    for (const stage of scenario.stages) {
+      if (!exactKeys(stage, ["stage", "outcome", "safeCode", "issues"]) ||
+          !stages.has(stage.stage) || !outcomes.has(stage.outcome) ||
+          !safeCodes.has(stage.safeCode) || !Array.isArray(stage.issues) || stage.issues.length > 8)
+        throw new Error(`${label} diagnostics stage is invalid`);
+      const semanticOutcome =
+        (stage.outcome === "PASS" && stage.safeCode === "OK" && stage.issues.length === 0) ||
+        (stage.outcome === "PROVIDER_FAILED" && providerFailureCodes.has(stage.safeCode) &&
+          stage.issues.length === 0) ||
+        (stage.outcome === "SCHEMA_INVALID" && schemaFailureCodes.has(stage.safeCode));
+      const semanticStage = stage.outcome !== "SCHEMA_INVALID" ||
+        (stage.stage === "ACTION_WORTHINESS"
+          ? stage.safeCode !== "CODEX_DECISION_OUTPUT_INVALID"
+          : stage.safeCode === "CODEX_DECISION_OUTPUT_INVALID");
+      if (!semanticOutcome || !semanticStage)
+        throw new Error(`${label} diagnostics outcome/code contract is invalid`);
+      for (const issue of stage.issues)
+        if (!exactKeys(issue, ["code", "path"]) || !issueCodes.has(issue.code) ||
+            !safeDiagnosticPath(issue.path))
+          throw new Error(`${label} diagnostics issue is invalid`);
+    }
+    const repairSucceeded = repairIndex >= 0 &&
+      scenario.stages[repairIndex].outcome === "PASS";
+    const unresolvedFailure = scenario.stages.some(({ stage, outcome }) =>
+      outcome !== "PASS" &&
+      !(stage === "DECISION_PRIMARY" && outcome === "SCHEMA_INVALID" && repairSucceeded));
+    const expectedFinalStatus = !unresolvedFailure &&
+      scenario.stages.at(-1).outcome === "PASS" ? "PASS" : "FAIL";
+    if (scenario.finalStatus !== expectedFinalStatus)
+      throw new Error(`${label} diagnostics final status is invalid`);
+  }
+  return value.scenarios.map(({ scenario, lane, finalStatus, repairAttempted, stages }) => ({
+    scenario,
+    lane,
+    finalStatus,
+    repairAttempted,
+    stages: stages.map(({ stage, outcome, safeCode, issues }) => ({
+      stage,
+      outcome,
+      safeCode,
+      issues,
+    })),
+  }));
+}
+const safeDiagnostics = {
+  cold: validateDiagnostics("cold", coldDiagnostics, "capacity", 10),
+  warm: validateDiagnostics("warm", warmDiagnostics, "capacity", 10),
+  dual: validateDiagnostics("dual", dualDiagnostics, "concurrency", 2),
+};
 for (const [label, value] of [["cold", cold], ["warm", warm], ["dual", dual]])
   console.log(label, JSON.stringify({
     runCount: value.benchmarkRunCount,
@@ -1458,6 +1614,7 @@ for (const [label, value] of [["cold", cold], ["warm", warm], ["dual", dual]])
     dualSuccess: value.dualRunSuccessCount,
     status: value.capacityStatus,
   }));
+console.log("safeDiagnostics", JSON.stringify(safeDiagnostics));
 NODE
 ```
 
@@ -1481,9 +1638,11 @@ m2_compose=(docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-s
 
 Record the three capability UUIDs, CLI version and prompt-profile hash, cold/warm/dual sample counts,
 p50/p75/p95/max, RSS, health/readiness stability, capacity status and persistence timestamps. Do not
-record raw prompts, model output, credentials or environment values. After persistence is proved,
-either retain the three mode-0600 JSON files under the approved evidence-retention policy or obtain
-explicit approval to remove only those exact paths.
+record raw prompts, model output, credentials or environment values. Record only the validated safe
+diagnostics summary beside those aggregates; diagnostics never receive a capability UUID and never
+enter the UI/API/database. After persistence is proved, either retain the six mode-0600 JSON files
+under the approved evidence-retention policy or obtain explicit approval to remove only those exact
+paths.
 
 ## Public-agent bio reconciliation
 

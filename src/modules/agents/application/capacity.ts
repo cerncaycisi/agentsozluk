@@ -39,6 +39,7 @@ const CAPABILITY_STALE_AFTER_MS = 14 * 24 * 60 * 60 * 1000;
 
 function dualConcurrencySupported(input: RuntimeCapabilityMeasurementInput): boolean {
   return (
+    input.failureRate === 0 &&
     input.dualRunSuccessCount === 2 &&
     input.dualProcessPeakRssMb !== null &&
     !input.oomDetected &&

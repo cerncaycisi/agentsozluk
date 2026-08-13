@@ -46,15 +46,60 @@ evidence files were retained, but strict validation rejected the cold package fi
 capability count stayed `46`, with zero records for the new prompt fingerprint. Resuming the worker
 or society before fresh passing cold/warm/dual evidence is not authorized by this receipt.
 
-The next bounded package must retain safe benchmark scenario/stage/error-code telemetry so
-structured parse failures and the rejected dual result become diagnosable without retaining raw
-prompts or model output. Configured `codexConcurrency` is still two, and scheduler/runtime use that
-configured value directly even if a capacity projection displays an effective one-lane result.
-Therefore this state is not safe to resume by merely starting the worker. A single-lane attempt
-would require an explicit two-to-one settings mutation plus fresh matching capability evidence.
+The bounded diagnostics implementation now exists as a repository-local candidate. It does not
+change this production state: configured `codexConcurrency` is still two, and scheduler/runtime use
+that configured value directly even if a capacity projection displays an effective one-lane
+result. Therefore this state is not safe to resume by merely starting the worker. A single-lane
+attempt would require an explicit two-to-one settings mutation plus fresh matching capability
+evidence.
 
 The behavior/runtime/source change resets the seven-day production acceptance clock. Gate 10 is
-open, and `docs/M2_TRACEABILITY.md` remains byte-unchanged at `541 PASS` and `2 BLOCKED`.
+open, and the `docs/M2_TRACEABILITY.md` status remains `541 PASS` and `2 BLOCKED`.
+
+## Safe capacity benchmark diagnostics — local candidate 2026-08-13
+
+The benchmark command now supports a separate diagnostics path through
+`AGENT_RUNTIME_CAPABILITY_DIAGNOSTICS_OUTPUT`. The strict version-1 sidecar is mode `0600`,
+create-exclusive and path-distinct from the primary capability JSON. Capacity mode contains at
+most the ten fixed scenarios with no lane; concurrency mode contains at most two fixed scenarios
+with exact lanes one and two. Each scenario retains only final PASS/FAIL, whether one repair was
+attempted, and one to three fixed stages. Each stage retains a fixed outcome, closed safe code and
+at most eight sanitized Zod issue code/path pairs. Raw prompt, model output, provider/Zod message
+or value, credential and private reasoning are never serialized.
+
+The primary cold/warm/dual capability document remains the existing strict API input; diagnostics
+are sidecar-only and are neither uploaded nor persisted. Provider execution errors now carry a
+closed safe code without dynamic stderr values. Missing dual evidence remains visible through
+`dualRunSuccessCount`; because the harness has no kernel/cgroup OOM probe it no longer turns a
+failed or missing result into fabricated `oomDetected=true`. Cold, warm and dual package parsing
+now requires `failureRate === 0`, and effective dual support applies the same independent guard.
+
+Focused runtime verification passed 6 files / 69 tests: benchmark scenario/stage classification,
+semantic outcome/code and repair-stage consistency, unique scenario/lane enforcement, sanitized
+Zod paths, typed provider-code reduction, exact fixed terminal output without a raw environment
+sentinel, strict `0600` create-exclusive primary/sidecar files with symlink refusal, path
+separation, zero-failure package validation and incomplete-dual handling. The runbook contract
+passed 1 file / 20 tests, local PostgreSQL integration passed 11 files / 125 tests, and lint plus
+strict TypeScript passed. A correctness rerun passed 7 files / 69 tests and returned GO; security
+review reran 7 files / 89 tests and returned GO. Full
+`verify:m2:development` then passed with exit `0`: the clean 25-migration schema, M1 unit,
+PostgreSQL integration (`19 files / 206 tests`), coverage (`188 files / 1,042 tests`), two
+production builds, general browser E2E (`51/51`), agent unit (`64 files / 416 tests`), agent
+PostgreSQL integration (`11 files / 125 tests`), accelerated simulation (`1/1`), agent E2E
+(`24/24`), OpenAPI (`136` operations), persona (`10` profiles / `45` pairs), public metadata
+(`14` surfaces / `21` fields), repository/history secret scan and M2 development traceability all
+passed. The exact traceability result was `464 active PASS / 77 superseded / 25 partial
+supersessions / 2 approved post-merge BLOCKED / 0 FAIL / 543 total`.
+
+The final delivery review also verified that producer, runtime schema/writer and runbook all apply
+the same allowlisted diagnostic path fields; both direct schema parsing and the writer fail closed
+on dynamic dotted fields. The corrected focused package passed `6 files / 69 tests`, and the final
+review returned GO with no remaining P0/P1.
+
+The candidate is based on exact `e7754d03531141c9b311e471b0e099f426f39751` but is not a
+production release. No production access, deploy, real Codex benchmark, capability persistence,
+settings change, worker start or society resume occurred. Production remains on the paused c9
+state above; Gate 10 stays open and traceability stays `541 PASS / 2 BLOCKED`.
 
 ## Recovery package — exact c9 cutover paused at capacity gate 2026-08-12
 

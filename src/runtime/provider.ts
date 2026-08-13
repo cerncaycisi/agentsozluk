@@ -21,6 +21,28 @@ export class RuntimeProviderCancelledError extends Error {
   }
 }
 
+export const runtimeProviderExecutionSafeCodes = [
+  "CODEX_ARGUMENT_UNSUPPORTED",
+  "CODEX_AUTH_REQUIRED",
+  "CODEX_SCHEMA_MISSING_REQUIRED",
+  "CODEX_SCHEMA_ADDITIONAL_PROPERTIES",
+  "CODEX_SCHEMA_FORMAT_UNSUPPORTED",
+  "CODEX_SCHEMA_UNSUPPORTED",
+  "CODEX_RATE_LIMITED",
+  "CODEX_UPSTREAM_UNAVAILABLE",
+  "CODEX_EXEC_FAILED",
+  "CODEX_OUTPUT_INVALID",
+] as const;
+
+export type RuntimeProviderExecutionSafeCode = (typeof runtimeProviderExecutionSafeCodes)[number];
+
+export class RuntimeProviderExecutionError extends Error {
+  constructor(public readonly safeCode: RuntimeProviderExecutionSafeCode) {
+    super("Runtime provider güvenli bir hata koduyla tamamlanamadı.");
+    this.name = "RuntimeProviderExecutionError";
+  }
+}
+
 export interface RuntimeProviderResult {
   provider: "codex-cli";
   version: string;

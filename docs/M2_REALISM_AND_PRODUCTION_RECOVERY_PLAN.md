@@ -1,6 +1,6 @@
 # Milestone 2 realism and production recovery plan
 
-Last updated: 2026-08-12 Europe/Istanbul
+Last updated: 2026-08-13 Europe/Istanbul
 
 Status: product direction approved by Gokhan; realism fixes are shipping incrementally; formal
 production acceptance remains pending.
@@ -18,6 +18,29 @@ production acceptance remains pending.
   `0.20/0.30` and dual returned only `1/2`. No c9 capability package was persisted. The website is
   live, society generation is safely paused, Gate 10 is open and traceability remains
   `541 PASS / 2 BLOCKED`.
+- 2026-08-13 local candidate: the paused c9 capacity failure now has a bounded diagnostics path
+  without changing the persisted capability/API contract. Each cold, warm or dual command can
+  write a separate version-1, mode-`0600`, create-exclusive sidecar containing only the fixed
+  scenario, lane, stage, outcome, safe code, repair flag and bounded sanitized Zod code/path. The
+  primary capability JSON stays byte-shape compatible and is the only file eligible for later
+  package persistence. Provider stderr is reduced to a closed safe-code enum; raw prompt, model
+  output, provider message, Zod message/value, credential and private reasoning are absent. An
+  incomplete dual result remains `dualRunSuccessCount < 2` and no longer fabricates OOM evidence.
+  The capability package now rejects nonzero failure rate for cold, warm or dual before any write,
+  and effective dual support independently requires zero failure rate. Focused runtime verification
+  passed 6 files / 69 tests; the runbook contract passed 1 file / 20 tests, local PostgreSQL
+  integration passed 11 files / 125 tests, and lint plus strict TypeScript passed. Correctness and
+  security reviews returned GO. Full `verify:m2:development` passed with exit `0`, including the
+  clean 25-migration schema, `19 files / 206` M1 PostgreSQL tests, `188 files / 1,042` coverage
+  tests, two production builds, `51/51` general E2E, `64 files / 416` agent unit tests, `11 files /
+125` agent PostgreSQL tests, `1/1` simulation, `24/24` agent E2E, OpenAPI, persona, metadata and
+  repository/history secret checks. Development traceability closed at `464 active PASS / 77
+  superseded / 25 partial supersessions / 2 approved post-merge BLOCKED / 0 FAIL / 543 total`.
+  Final review additionally proved that producer, runtime schema/writer and runbook share the exact
+  diagnostic path-field allowlist; the corrected focused package passed 6 files / 69 tests and the
+  reviewer returned GO with no remaining P0/P1.
+  This was repository-local only: no production access, deploy, benchmark, capability
+  persistence, settings change, worker start or society resume occurred.
 - 2026-08-12 earlier pre-rollout receipt: a specifically approved, mutation-free production reread
   separated the running application, host runtime and repository state. The application/image
   remained exact SHA
@@ -1451,14 +1474,21 @@ behavior defects live.
    use the failed package as production capability evidence and do not reset to Sol/high
    implicitly.
 
-   The diagnostic gap is explicit: cold/warm failed final semantic structured parsing after repair,
-   but their exact Zod paths were discarded because benchmark failure reasons were not retained;
-   the rejected dual result's cause was also discarded. Add only safe scenario/stage/error-code
-   telemetry—never raw prompts or model output—before the next measurement. Configured
-   `codexConcurrency` remains two and scheduler/runtime consume that value directly, even if a
-   capacity projection renders an effective single lane. Never “just start” the worker from this
-   state. A one-lane attempt requires an explicitly approved two-to-one settings mutation and
-   fresh matching evidence.
+   The repository-local candidate closes only that diagnostic implementation gap. It records a
+   strict sidecar of fixed scenario/lane/stage/outcome/safe-code values and at most eight sanitized
+   Zod code/path pairs per stage; raw prompts, model output and dynamic error text never enter the
+   sidecar or terminal output. The primary capability input and database schema are unchanged.
+   Missing dual results are no longer mislabeled as OOM, while nonzero cold/warm/dual failure rate
+   now blocks package validation and dual support. Focused runtime verification passed 6 files / 69
+   tests; the runbook contract passed 1 file / 20 tests, local PostgreSQL integration passed 11
+   files / 125 tests, and lint plus strict TypeScript passed. Full `verify:m2:development` passed
+   with exit `0`, including `24/24` agent E2E and development traceability at `464 active PASS / 77
+superseded / 25 partial supersessions / 2 approved post-merge BLOCKED / 0 FAIL / 543 total`.
+   Production still runs the earlier c9 artifact and remains paused; a fresh exact-release
+   cold/warm/dual benchmark is still required. Configured `codexConcurrency` remains two and
+   scheduler/runtime consume that value directly, even if a capacity projection renders an
+   effective single lane. Never “just start” the worker from this state. A one-lane attempt requires
+   an explicitly approved two-to-one settings mutation and fresh matching evidence.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
@@ -2065,8 +2095,13 @@ or a separately approved capacity contract. Do not start the worker, persist thi
 or resume society from these measurements. A single-lane continuation is a real settings change
 from two to one plus fresh evidence, not a worker-start shortcut.
 
+The 2026-08-13 safe-diagnostics implementation is a repository-local candidate only. It cannot
+reconstruct the discarded reasons in these historical files and is not present in the running c9
+release. No production connection, benchmark, capability persistence, settings mutation, worker
+start or society resume occurred for that candidate.
+
 This behavior/runtime/source release deliberately resets the seven-day observation clock. Gate 10
-remains open and `docs/M2_TRACEABILITY.md` remains unchanged at `541 PASS / 2 BLOCKED`.
+remains open and the `docs/M2_TRACEABILITY.md` status remains `541 PASS / 2 BLOCKED`.
 
 ## Current product decisions
 

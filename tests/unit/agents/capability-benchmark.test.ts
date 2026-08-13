@@ -5,7 +5,12 @@ import {
   runCapacityBenchmark,
   runConcurrencyCapabilityTest,
 } from "@/runtime/capability-benchmark";
-import type { RuntimeProvider, RuntimeProviderResult } from "@/runtime/provider";
+import { createCapabilityBenchmarkDiagnosticCollector } from "@/runtime/capability-diagnostics";
+import {
+  type RuntimeProvider,
+  RuntimeProviderExecutionError,
+  type RuntimeProviderResult,
+} from "@/runtime/provider";
 
 function output() {
   return {
@@ -98,6 +103,45 @@ function worthinessOutput() {
   };
 }
 
+function invalidDecisionOutput(rawSecret = "RAW_MODEL_VALUE_MUST_NOT_LEAK") {
+  return {
+    ...output(),
+    state: { ...output().state, curiosity: rawSecret },
+  };
+}
+
+function baselineMeasurement(): RuntimeCapabilityMeasurementInput {
+  return {
+    codexVersion: "codex-cli 1.2.3",
+    promptProfileHash: "a".repeat(64),
+    benchmarkRunCount: 10,
+    p50DurationMs: 5000,
+    p75DurationMs: 8000,
+    p95DurationMs: 10_000,
+    maxDurationMs: 10_000,
+    successfulActionCount: 10,
+    proposedEntryActionCount: 0,
+    publishedEntries: 0,
+    failureRate: 0,
+    duplicateRetryRate: 0,
+    singleProcessPeakRssMb: 100,
+    dualProcessPeakRssMb: null,
+    systemPeakMemoryMb: 2048,
+    availableMemoryMb: 1600,
+    swapInMb: 0,
+    swapOutMb: 0,
+    loadAverage1m: 0.5,
+    dualRunSuccessCount: 0,
+    oomDetected: false,
+    swapThrashingDetected: false,
+    healthStable: true,
+    readinessStable: true,
+    appLatencyImpact: { baselineP95Ms: 10, measuredP95Ms: 10, stable: true },
+    databaseLatencyImpact: { baselineP95Ms: 10, measuredP95Ms: 10, stable: true },
+    capacityStatus: "HEALTHY",
+  };
+}
+
 const healthyFetch = vi.fn<typeof fetch>().mockImplementation(async () =>
   Promise.resolve(
     new Response(JSON.stringify({ ok: true }), {
@@ -166,35 +210,7 @@ describe("Codex capability benchmark harness", () => {
         return result(5000);
       }),
     };
-    const baseline: RuntimeCapabilityMeasurementInput = {
-      codexVersion: "codex-cli 1.2.3",
-      promptProfileHash: "a".repeat(64),
-      benchmarkRunCount: 10,
-      p50DurationMs: 5000,
-      p75DurationMs: 8000,
-      p95DurationMs: 10_000,
-      maxDurationMs: 10_000,
-      successfulActionCount: 10,
-      proposedEntryActionCount: 0,
-      publishedEntries: 0,
-      failureRate: 0,
-      duplicateRetryRate: 0,
-      singleProcessPeakRssMb: 100,
-      dualProcessPeakRssMb: null,
-      systemPeakMemoryMb: 2048,
-      availableMemoryMb: 1600,
-      swapInMb: 0,
-      swapOutMb: 0,
-      loadAverage1m: 0.5,
-      dualRunSuccessCount: 0,
-      oomDetected: false,
-      swapThrashingDetected: false,
-      healthStable: true,
-      readinessStable: true,
-      appLatencyImpact: { baselineP95Ms: 10, measuredP95Ms: 10, stable: true },
-      databaseLatencyImpact: { baselineP95Ms: 10, measuredP95Ms: 10, stable: true },
-      capacityStatus: "HEALTHY",
-    };
+    const baseline = baselineMeasurement();
     const measurement = await runConcurrencyCapabilityTest(
       provider,
       { baseUrl: "http://127.0.0.1:3000", fetchImplementation: healthyFetch },
@@ -305,5 +321,174 @@ describe("Codex capability benchmark harness", () => {
       healthStable: true,
       readinessStable: true,
     });
+  });
+
+  it("records bounded schema paths when decision repair remains invalid", async () => {
+    const rawSecret = "RAW_MODEL_VALUE_MUST_NOT_LEAK";
+    const diagnostics = createCapabilityBenchmarkDiagnosticCollector("capacity");
+    const provider: RuntimeProvider = {
+      inspect: vi
+        .fn()
+        .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
+      invoke: vi
+        .fn()
+        .mockResolvedValue({ ...result(1000), output: invalidDecisionOutput(rawSecret) }),
+    };
+
+    const measurement = await runCapacityBenchmark(provider, {
+      baseUrl: "http://127.0.0.1:3000",
+      fetchImplementation: healthyFetch,
+      diagnosticSink: diagnostics.record,
+    });
+    const document = diagnostics.document("BENCHMARK_COMPLETED");
+
+    expect(measurement).toMatchObject({ failureRate: 1, oomDetected: false });
+    expect(provider.invoke).toHaveBeenCalledTimes(20);
+    expect(document.scenarios).toHaveLength(10);
+    expect(document.scenarios[0]).toMatchObject({
+      scenario: "short-topic-context",
+      lane: null,
+      finalStatus: "FAIL",
+      repairAttempted: true,
+      stages: [
+        {
+          stage: "DECISION_PRIMARY",
+          outcome: "SCHEMA_INVALID",
+          safeCode: "CODEX_DECISION_OUTPUT_INVALID",
+          issues: expect.arrayContaining([{ code: "INVALID_TYPE", path: "$.state.curiosity" }]),
+        },
+        {
+          stage: "DECISION_REPAIR",
+          outcome: "SCHEMA_INVALID",
+          safeCode: "CODEX_DECISION_OUTPUT_INVALID",
+          issues: expect.arrayContaining([{ code: "INVALID_TYPE", path: "$.state.curiosity" }]),
+        },
+      ],
+    });
+    expect(JSON.stringify(document)).not.toContain(rawSecret);
+  });
+
+  it("classifies action-worthiness candidate mismatch without retaining output", async () => {
+    const diagnostics = createCapabilityBenchmarkDiagnosticCollector("capacity");
+    const mismatchedWorthiness = {
+      ...worthinessOutput(),
+      evaluations: [
+        { sequence: 2, decision: "ACCEPT", safeReason: "RAW_WORTHINESS_MUST_NOT_LEAK" },
+      ],
+      selectedSequences: [2],
+    };
+    const provider: RuntimeProvider = {
+      inspect: vi
+        .fn()
+        .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
+      invoke: vi.fn().mockImplementation(async ({ prompt }) => ({
+        ...result(1000),
+        output: prompt.includes("# Final action-worthiness decision")
+          ? mismatchedWorthiness
+          : candidateOutput(),
+      })),
+    };
+
+    await expect(
+      runCapacityBenchmark(provider, {
+        baseUrl: "http://127.0.0.1:3000",
+        fetchImplementation: healthyFetch,
+        diagnosticSink: diagnostics.record,
+      }),
+    ).rejects.toThrow("CAPABILITY_BENCHMARK_EXHAUSTED");
+    const document = diagnostics.document("BENCHMARK_EXHAUSTED");
+
+    expect(document.scenarios).toHaveLength(10);
+    expect(document.scenarios[0]?.stages.at(-1)).toEqual({
+      stage: "ACTION_WORTHINESS",
+      outcome: "SCHEMA_INVALID",
+      safeCode: "ACTION_WORTHINESS_CANDIDATE_SET_MISMATCH",
+      issues: [],
+    });
+    expect(JSON.stringify(document)).not.toContain("RAW_WORTHINESS_MUST_NOT_LEAK");
+  });
+
+  it("keeps exact dual lane failure code without fabricating an OOM", async () => {
+    let invocation = 0;
+    const diagnostics = createCapabilityBenchmarkDiagnosticCollector("concurrency");
+    const provider: RuntimeProvider = {
+      inspect: vi
+        .fn()
+        .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
+      invoke: vi.fn().mockImplementation(async () => {
+        invocation += 1;
+        if (invocation === 2) throw new RuntimeProviderExecutionError("CODEX_RATE_LIMITED");
+        return result(5000);
+      }),
+    };
+
+    const measurement = await runConcurrencyCapabilityTest(
+      provider,
+      {
+        baseUrl: "http://127.0.0.1:3000",
+        fetchImplementation: healthyFetch,
+        diagnosticSink: diagnostics.record,
+      },
+      baselineMeasurement(),
+    );
+    const document = diagnostics.document("BENCHMARK_COMPLETED");
+
+    expect(measurement).toMatchObject({
+      dualRunSuccessCount: 1,
+      dualProcessPeakRssMb: 100,
+      oomDetected: false,
+    });
+    expect(document.scenarios).toEqual([
+      expect.objectContaining({ lane: 1, finalStatus: "PASS" }),
+      expect.objectContaining({
+        lane: 2,
+        finalStatus: "FAIL",
+        stages: [
+          {
+            stage: "DECISION_PRIMARY",
+            outcome: "PROVIDER_FAILED",
+            safeCode: "CODEX_RATE_LIMITED",
+            issues: [],
+          },
+        ],
+      }),
+    ]);
+  });
+
+  it("fails exhausted dual evidence while retaining both bounded lane diagnostics", async () => {
+    const diagnostics = createCapabilityBenchmarkDiagnosticCollector("concurrency");
+    const provider: RuntimeProvider = {
+      inspect: vi
+        .fn()
+        .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
+      invoke: vi
+        .fn()
+        .mockRejectedValue(new RuntimeProviderExecutionError("CODEX_UPSTREAM_UNAVAILABLE")),
+    };
+
+    await expect(
+      runConcurrencyCapabilityTest(
+        provider,
+        {
+          baseUrl: "http://127.0.0.1:3000",
+          fetchImplementation: healthyFetch,
+          diagnosticSink: diagnostics.record,
+        },
+        baselineMeasurement(),
+      ),
+    ).rejects.toThrow("CAPABILITY_BENCHMARK_EXHAUSTED");
+
+    expect(diagnostics.document("BENCHMARK_EXHAUSTED").scenarios).toEqual([
+      expect.objectContaining({
+        lane: 1,
+        finalStatus: "FAIL",
+        stages: [expect.objectContaining({ safeCode: "CODEX_UPSTREAM_UNAVAILABLE" })],
+      }),
+      expect.objectContaining({
+        lane: 2,
+        finalStatus: "FAIL",
+        stages: [expect.objectContaining({ safeCode: "CODEX_UPSTREAM_UNAVAILABLE" })],
+      }),
+    ]);
   });
 });

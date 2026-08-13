@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { monitorHostProcess } from "@/runtime/host-metrics";
-import { sanitizeRetainedRuntimeOutput } from "@/runtime/codex-cli-provider";
+import { safeCodexFailure, sanitizeRetainedRuntimeOutput } from "@/runtime/codex-cli-provider";
 
 describe("Codex CLI provider security contract", () => {
   const source = readFileSync("src/runtime/codex-cli-provider.ts", "utf8");
@@ -134,5 +134,18 @@ describe("Codex CLI provider security contract", () => {
     expect(serialized).not.toMatch(
       /RAW_OBSERVATION|RAW_MEMORY_CANDIDATE|RAW_DECISION_JOURNAL|topicFatigue/iu,
     );
+  });
+
+  it("maps raw CLI stderr to a closed safe code without retaining dynamic values", () => {
+    const rawSecret = "RAW_PROPERTY_SECRET_MUST_NOT_LEAK";
+
+    expect(safeCodexFailure(`Invalid schema: Missing '${rawSecret}'`)).toBe(
+      "CODEX_SCHEMA_MISSING_REQUIRED",
+    );
+    expect(safeCodexFailure("429 rate limit exceeded")).toBe("CODEX_RATE_LIMITED");
+    expect(safeCodexFailure("unclassified private provider detail")).toBe("CODEX_EXEC_FAILED");
+    expect(
+      JSON.stringify(safeCodexFailure(`Invalid schema: Missing '${rawSecret}'`)),
+    ).not.toContain(rawSecret);
   });
 });
