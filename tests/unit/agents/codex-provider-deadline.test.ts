@@ -42,9 +42,16 @@ describe("Codex CLI provider absolute deadline", () => {
     const root = await mkdtemp(path.join(tmpdir(), "agent-sozluk-provider-deadline-"));
     temporaryRoots.push(root);
     const killSignals: NodeJS.Signals[] = [];
+    let inspectionStartedResolve: (() => void) | undefined;
+    const inspectionStarted = new Promise<void>((resolve) => {
+      inspectionStartedResolve = resolve;
+    });
+    let inspectionProcessCount = 0;
     const spawnMock = vi.fn(
       (...spawnArguments: [command: string, arguments_?: readonly string[], options?: unknown]) => {
         void spawnArguments;
+        inspectionProcessCount += 1;
+        if (inspectionProcessCount === 3) inspectionStartedResolve?.();
         return hangingChild(killSignals);
       },
     );
@@ -70,10 +77,7 @@ describe("Codex CLI provider absolute deadline", () => {
     });
     const rejection = expect(invocation).rejects.toBeInstanceOf(RuntimeProviderTimeoutError);
 
-    for (let turn = 0; turn < 100 && spawnMock.mock.calls.length < 3; turn += 1) {
-      await new Promise<void>((resolve) => setImmediate(resolve));
-    }
-
+    await inspectionStarted;
     expect(spawnProcess).toHaveBeenCalledTimes(3);
     await vi.advanceTimersByTimeAsync(25);
     await rejection;

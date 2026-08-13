@@ -5618,3 +5618,56 @@ approved post-merge BLOCKED / 0 FAIL / 543 total`.
   receipt. A separate approval is required for capability persistence and activation, followed by
   the untouched natural observation and final-only acceptance. M2 traceability remains
   `541 PASS / 2 BLOCKED`.
+
+## 2026-08-13 — exact 7949 activation fail-close and local memory-provenance repair
+
+- Production scope and final state: the separately approved activation was limited to exact
+  `7949ff933d1f67022ab589070ec9d7c5a31862fb`. The application remained healthy. The second
+  activation interval used settings version 162; the operator then failed closed safely at
+  settings version 163 with global runtime false. Fifteen
+  `SOURCE_REFRESH` / `DAILY_SOURCE_REFRESH` runs remain queued and preserved, while running-run and
+  live-lease counts are both zero. No queued run was cancelled or retried, and production was not
+  resumed.
+- Exact runtime evidence: version 162 produced 15 `NIGHTLY_MEMORY_CONSOLIDATION` memory requests.
+  Thirteen succeeded; two returned HTTP `422` with safe response code `VALIDATION_ERROR` and the
+  worker closed those runs as `CONTROL_PLANE_MEMORY_RECORD_FAILED`. No natural `NORMAL_WAKE` was
+  observed before the safe pause. Do not classify this as successful activation or Gate 10
+  evidence.
+- Root cause: the worker's structured-decision provenance check validated actions, observations,
+  memory candidates, beliefs, relationships and source proposals against the presented evidence
+  catalog but omitted `memoryConsolidations[].sourceMemoryIds`. A syntactically valid UUID absent
+  from the run's `AGENT_MEMORY` catalog could therefore reach the control plane, whose independent
+  active-owner/snapshot validation correctly rejected it. No failed request created a memory
+  consolidation write.
+- Adjacent retry defect: `createRetryRunRecord` always assigned `ADMIN_RETRY`. Retrying a nightly
+  memory-consolidation reflection through that path would preserve `runType=REFLECTION` but skip the
+  worker's consolidation trigger semantics. Do not generically retry either failed production run.
+- Local repair: the current branch validates every consolidation `sourceMemoryIds` member against
+  the presented `AGENT_MEMORY` set. An invalid first decision uses the existing single repair; a
+  still-invalid repaired decision fails before recording with
+  `CODEX_DECISION_PROVENANCE_INVALID`. Retries whose parent is a `REFLECTION` triggered by either
+  `NIGHTLY_MEMORY_CONSOLIDATION` or `ADMIN_MEMORY_RECONSOLIDATE` now use
+  `ADMIN_MEMORY_RECONSOLIDATE`; all other retry semantics remain unchanged. Unit and PostgreSQL
+  integration coverage proves the repaired-success, fail-before-write and both retry-origin paths.
+- First full verification failure: the initial Node 22 / pnpm 10
+  `verify:m2:development` run reached coverage and stopped at safe test evidence
+  `spawnProcess expected 3, got 0`; premature temporary-root cleanup then produced `ENOENT`. The
+  provider-deadline test had polled at most 100 arbitrary `setImmediate` scheduling turns and could
+  race under coverage instrumentation. This was a test synchronization defect, not product
+  runtime evidence. The same test passed in isolated normal and coverage modes.
+- Deterministic resolution: replace scheduling-turn polling with a promise signalled by the exact
+  third inspection-process spawn, then await that boundary before advancing fake timers or cleaning
+  the temporary root. Do not repeat: never use an arbitrary count of event-loop turns to prove an
+  asynchronous subprocess has started; await the exact lifecycle signal the assertion requires.
+- Final local verification: the second complete `verify:m2:development` run passed on Node 22 and
+  pnpm 10. It covered `843` unit tests, `208` M1 PostgreSQL integration tests, `188 files / 1,051`
+  coverage tests with lines `93%`, branches `84.13%`, functions `94.67%` and statements `93%`, `64
+files / 423` agent unit tests, `11 files / 127` agent PostgreSQL integration tests, `1/1`
+  simulation, `51/51` M1 browser tests, `24/24` agent E2E, `136` OpenAPI operations and `10/45`
+  persona verification. Development traceability remained `464 active PASS / 77 superseded / 25
+partial supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
+- Delivery boundary and next gate: this repair receipt is local-only. It is not merged, released or
+  deployed. Exact production 7949 remains paused and the 15 queued source-refresh runs remain
+  preserved. The next bounded path is exact-SHA PR, green CI, Release Candidate, no-migration
+  deploy and controlled recovery that observes both zero hard memory-recording failure and a
+  natural `NORMAL_WAKE`. Do not cancel or generically retry the backlog, and do not resume exact 7949. Gate 10 remains open and `docs/M2_TRACEABILITY.md` remains `541 PASS / 2 BLOCKED`.

@@ -403,6 +403,12 @@ function runtimeDecisionUsesCatalog(
     ...decision.sourceProposals,
   ];
   if (!candidates.every(provenanceUsesCatalog)) return false;
+  if (
+    !decision.memoryConsolidations.every(({ sourceMemoryIds }) =>
+      sourceMemoryIds.every((id) => allowed.AGENT_MEMORY.has(id)),
+    )
+  )
+    return false;
   if (!decision.reflectionDelta) return true;
   return (
     decision.reflectionDelta.evidenceIds.length > 0 &&

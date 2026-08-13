@@ -7,7 +7,29 @@ production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-08-13 current production state: application image, immutable Luna/max runtime and clean
+- 2026-08-13 current production and local repair state: application image, immutable Luna/max
+  runtime and server checkout remain exact `7949ff933d1f67022ab589070ec9d7c5a31862fb`; the website
+  remained healthy while the separately approved activation failed closed. The second activation
+  interval at settings version 162 produced 13 successful and two failed
+  `NIGHTLY_MEMORY_CONSOLIDATION` memory requests. Both failures returned HTTP `422`
+  `VALIDATION_ERROR` and closed the runs as `CONTROL_PLANE_MEMORY_RECORD_FAILED`; no natural
+  `NORMAL_WAKE` was observed. The operator safely returned the control plane to settings version
+  163 with global runtime false. Fifteen `SOURCE_REFRESH` / `DAILY_SOURCE_REFRESH` runs remain
+  queued and preserved, with zero running run and zero live lease; no queued work was cancelled or
+  retried and production was not resumed. Root cause is a worker validation gap: the structured
+  decision catalog guard omitted `memoryConsolidations[].sourceMemoryIds` from the presented
+  `AGENT_MEMORY` check. The generic manual retry path would also have changed a consolidation
+  reflection into `ADMIN_RETRY`, losing its consolidation execution semantics. The current local
+  branch adds the missing catalog validation, preserves eligible retries as
+  `ADMIN_MEMORY_RECONSOLIDATE`, and replaces a deadline test's arbitrary scheduling-turn polling
+  with an exact third-spawn signal. The second complete Node 22 / pnpm 10
+  `verify:m2:development` passed after that deterministic test correction. This fix is local-only:
+  it is not merged, released or deployed. The next bounded action is an exact-SHA PR/CI/Release
+  Candidate/deploy followed by controlled recovery that preserves the 15-run backlog and requires
+  both zero hard memory-recording failure and a natural `NORMAL_WAKE` before acceptance. Do not
+  cancel or generically retry the preserved runs, and do not resume exact 7949. Gate 10 remains
+  open and traceability remains `541 PASS / 2 BLOCKED`.
+- 2026-08-13 prior deployment and benchmark state: application image, immutable Luna/max runtime and clean
   server checkout are exact `7949ff933d1f67022ab589070ec9d7c5a31862fb`. The application image
   ID is `sha256:e7c90542c97757e6a211b9591b3b44eced8e75097366a9e03303c207570b6afc`
   with config digest
@@ -28,9 +50,9 @@ production acceptance remains pending.
   scenario passed, dual required no repair, and `CAPABILITY_BENCHMARK_PASS` closed. Capability
   count/hash stayed exactly
   `46 / 4fd20945a02b5e80681a1a6b61b414f65e2812412406bfc16528649e7db5a55a` because the
-  accepted package was deliberately not imported. Society remains paused by explicit instruction;
-  capability persistence, worker/runtime activation and the formal natural observation require a
-  separate approval. Gate 10 remains open and traceability remains `541 PASS / 2 BLOCKED`.
+  accepted package was deliberately not imported at that receipt. The later approved activation
+  attempt and current fail-closed state are recorded above. Gate 10 remains open and traceability
+  remains `541 PASS / 2 BLOCKED`.
 - 2026-08-13 repository delivery: PR `#24` merged exact implementation head
   `90de0b4ee779cd7109c3456a07f356c1faf9cb2a` over base
   `42e0debfcda8ae73688248ce7d076b5c819a4d21` as merge commit
@@ -1597,11 +1619,20 @@ superseded / 25 partial supersessions / 2 approved post-merge BLOCKED / 0 FAIL /
    improve only future bounded diagnosis, with no scenario-specific retry, timeout expansion or
    acceptance-gate change. Exact production 7949 now closes the deployment and capacity portions:
    cold and warm each passed `10/10` with zero final failure, dual passed `2/2`, and the unchanged
-   validator emitted `CAPABILITY_BENCHMARK_PASS`. The package was deliberately not persisted and
-   the society remains paused. Item 1 stays open only through a separately approved capability
-   import/runtime activation and the untouched natural observation; do not rerun or weaken the
-   capacity gate without new measured evidence, and do not treat benchmark PASS as permission to
-   start the worker.
+   validator emitted `CAPABILITY_BENCHMARK_PASS`. The package was deliberately not persisted at
+   that benchmark receipt. A later separately approved activation reached settings version 162,
+   but no natural `NORMAL_WAKE` occurred and two of 15 nightly memory-consolidation requests failed
+   with HTTP `422` `VALIDATION_ERROR` / `CONTROL_PLANE_MEMORY_RECORD_FAILED`. The fail-closed
+   operator returned production to settings version 163 with global runtime false, zero running
+   run and zero live lease while preserving all 15 queued
+   `SOURCE_REFRESH` / `DAILY_SOURCE_REFRESH` runs. The local repair now validates every
+   `memoryConsolidations[].sourceMemoryIds` value against the presented `AGENT_MEMORY` catalog and
+   maps eligible consolidation retries to `ADMIN_MEMORY_RECONSOLIDATE` instead of the generic
+   `ADMIN_RETRY`; full development verification passed, but this code is not merged or deployed.
+   Item 1 stays open through exact-SHA repository delivery, a new no-migration production release,
+   backlog-preserving controlled recovery and an untouched natural observation. Do not cancel or
+   generically retry the preserved backlog, do not resume exact 7949 and do not weaken the capacity
+   gate.
 
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
@@ -2435,9 +2466,11 @@ technical interruption after an atomic effect was committed.
 - Continuous stochastic scheduling, source delivery, humanized composition, Istanbul timestamps and
   contextual topic browsing are shipped. The current application image and immutable runtime are
   exact `7949ff933d1f67022ab589070ec9d7c5a31862fb` with Luna/max; exact 9454 is retained for
-  rollback. The strict cold/warm/dual capacity package passed, but was not persisted. The website
-  is healthy while worker, timer and society runtime remain deliberately paused pending separate
-  activation approval; this is not a completed Gate 10 state.
+  rollback. The strict cold/warm/dual capacity package passed. The later activation exposed a
+  memory-consolidation provenance defect and failed closed at settings version 163. The website is
+  healthy, society runtime is paused, zero run/lease is active and the 15 queued source-refresh
+  runs remain preserved. The verified repair is still local-only; this is not a completed Gate 10
+  state.
 
 ## Concrete backlog retained from yesterday
 

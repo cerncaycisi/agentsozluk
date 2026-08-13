@@ -1,5 +1,52 @@
 # Milestone status
 
+## Memory-consolidation activation fail-close and local repair — 2026-08-13
+
+Production application, immutable Luna/max runtime and server checkout remain exact
+`7949ff933d1f67022ab589070ec9d7c5a31862fb`, and the website remained healthy throughout the
+separately approved activation attempt. The second activation interval ran at settings version 162. It produced 15 `NIGHTLY_MEMORY_CONSOLIDATION` memory requests: 13 succeeded and two returned
+HTTP `422` `VALIDATION_ERROR`, closing those runs as `CONTROL_PLANE_MEMORY_RECORD_FAILED`. No
+natural `NORMAL_WAKE` occurred. The operator safely failed closed to settings version 163 with
+global runtime false. Fifteen `SOURCE_REFRESH` / `DAILY_SOURCE_REFRESH` runs remain queued and
+preserved, with zero running run and zero live lease. No queued run was cancelled or retried, and
+production was not resumed.
+
+The two failed requests were deterministic contract failures, not transient application or
+database health failures. The worker checked action, observation, memory-candidate, belief,
+relationship and source-proposal provenance against the presented evidence catalog, but omitted
+`memoryConsolidations[].sourceMemoryIds` from the `AGENT_MEMORY` allowlist check. A model-valid UUID
+could therefore reach the control plane without having been presented in the run snapshot, where
+the stricter active-owner validation correctly rejected it. The generic manual retry path also
+mapped every failed run to `ADMIN_RETRY`; using it for these reflection runs would lose the
+memory-consolidation execution path.
+
+The current local branch adds the missing memory-consolidation catalog guard. An unseen source
+memory now receives the existing single structured repair and, if still absent, fails before any
+memory write as `CODEX_DECISION_PROVENANCE_INVALID`. Eligible retries of
+`NIGHTLY_MEMORY_CONSOLIDATION` or `ADMIN_MEMORY_RECONSOLIDATE` reflection runs now retain the exact
+`ADMIN_MEMORY_RECONSOLIDATE` trigger, while ordinary retries remain `ADMIN_RETRY`. Focused tests
+cover repair, fail-before-write and both trigger origins. The provider-deadline coverage test no
+longer polls up to 100 arbitrary `setImmediate` turns; it awaits an exact signal when the third
+inspection subprocess is spawned.
+
+The first complete `verify:m2:development` attempt reached coverage and failed on the test race
+with safe evidence `spawnProcess expected 3, got 0`; premature temporary-directory cleanup then
+produced `ENOENT`. The same test passed in isolated normal and coverage modes. After replacing the
+scheduling-turn poll with the deterministic third-spawn signal, the second complete run passed on
+Node 22 and pnpm 10: `843` unit tests, `208` M1 PostgreSQL integration tests, coverage across `188`
+files / `1,051` tests at lines `93%`, branches `84.13%`, functions `94.67%` and statements `93%`,
+`64 files / 423` agent unit tests, `11 files / 127` agent integration tests, `1/1` simulation,
+`51/51` M1 browser tests, `24/24` agent E2E, `136` OpenAPI operations and `10/45` persona
+verification. Development traceability remained `464 active PASS / 77 superseded / 25 partial
+supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
+
+This receipt is local-only. The repair is not merged, released or deployed; exact production 7949
+remains paused. The open path is a new exact-SHA PR, green CI, Release Candidate, no-migration
+deploy and controlled recovery that preserves the 15 queued source-refresh runs. Do not cancel or
+generically retry those runs, and do not resume exact 7949. Acceptance still requires zero hard
+memory-recording failure and a natural `NORMAL_WAKE`. Gate 10 remains open and
+`docs/M2_TRACEABILITY.md` remains `541 PASS / 2 BLOCKED`.
+
 ## Topic-fatigue capacity correction — production benchmark PASS, society paused 2026-08-13
 
 Production application image, immutable Luna/max runtime and clean server checkout are exact
