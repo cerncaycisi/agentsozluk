@@ -52,8 +52,34 @@ Capability input şu sınıfları içerir:
 | Çıktı kalitesi  | structured/action sayısı, failure rate, duplicate retry rate    |
 | Bellek/host     | single/dual peak RSS, system peak, available memory, swap, load |
 | Uygulama etkisi | health/readiness baseline ve measured p95, stable flag          |
-| Dual capability | iki run success count, OOM/swap-thrash ve stability sonuçları   |
+| Dual capability | iki run success count, explicit OOM/swap-thrash ve stability    |
 | Sınıflandırma   | `UNKNOWN`, `HEALTHY`, `AT_RISK`, `DEGRADED` veya `OVERLOADED`   |
+
+Primary capability JSON, admin API ve `AgentRuntimeCapability` persistence sözleşmesi bu alanlarla
+sınırlıdır. Operatör teşhisi primary ölçüme eklenmez. İsteğe bağlı
+`AGENT_RUNTIME_CAPABILITY_DIAGNOSTICS_OUTPUT`, ayrı bir version-1 sidecar üretir:
+
+- `capacity` mode en fazla on allowlisted scenario taşır ve `lane=null`dır;
+- `concurrency` mode en fazla iki scenario taşır ve lane tam olarak `1` veya `2`dir;
+- her scenario yalnız `finalStatus`, `repairAttempted` ve en fazla üç fixed stage taşır; scenario
+  ve concurrency lane değerleri tekildir, repair flag ile repair stage birebir tutarlıdır;
+- stage yalnız `DECISION_PRIMARY`, `DECISION_REPAIR` veya `ACTION_WORTHINESS`; outcome yalnız
+  `PASS`, `SCHEMA_INVALID` veya `PROVIDER_FAILED`; outcome, stage, issue ve closed safe code
+  kombinasyonu semantik olarak tutarlı olmalıdır;
+- schema issue yalnız bounded Zod code ve sanitize edilmiş JSON path'tir; stage başına en fazla
+  sekiz issue, path başına en fazla 160 karakter saklanır.
+
+Sidecar raw prompt, model output, action body, provider stderr/message, Zod message/value,
+credential, token veya private reasoning içermez. Primary ve sidecar path'leri farklı, absolute,
+normalized ve önceden yok olmalıdır. İkisi de create-exclusive mode `0600` yazılır; mevcut dosya
+ve symlink hedefleri fail-closed reddedilir. Sidecar capacity-package UI/API'ına yüklenmez ve
+database'e persist edilmez.
+
+`failureRate`, provider invocation failure ile final structured-output parse failure'ını birlikte
+ölçer. Cold, warm ve dual paketinin her birinde değer tam sıfır değilse bütün package server-side
+validation'da reddedilir. `dualRunSuccessCount < 2` eksik dual kanıttır; OOM kanıtı değildir. Bu
+harness kernel/cgroup OOM probe'u toplamadığı için yalnız başarısız/eksik sonuçtan
+`oomDetected=true` üretmez. Alan ancak ayrı, gerçek bir OOM sinyali ölçülürse true olabilir.
 
 `POST /api/v1/admin/agent-runtime/benchmark` en az 10 run'lık ölçümü; concurrency endpoint'i buna
 ek olarak non-null dual-process RSS değerini ister. Her iki endpoint de HUMAN ADMIN, CSRF,
@@ -119,6 +145,7 @@ Bu örnek yalnız formül açıklamasıdır; production p75 veya günlük run co
 Concurrency 2 ancak aşağıdaki koşulların tamamıyla effective olur:
 
 - Capability fresh ve current Codex major + prompt hash ile eşleşiyor.
+- Cold, warm ve dual measurement'ların her birinde `failureRate === 0`.
 - `dualRunSuccessCount === 2`.
 - `dualProcessPeakRssMb` ölçülmüş.
 - OOM yok, swap thrashing yok.
@@ -218,6 +245,8 @@ pnpm agent:status
 Tek-process 10-senaryo benchmark:
 
 ```sh
+AGENT_RUNTIME_CAPABILITY_OUTPUT=/absolute/path/to/capacity.json \
+AGENT_RUNTIME_CAPABILITY_DIAGNOSTICS_OUTPUT=/absolute/path/to/capacity.diagnostics.json \
 pnpm agent:capacity
 ```
 
@@ -225,6 +254,8 @@ Dual-process gate, önceki capacity JSON dosyasını girdi olarak ister:
 
 ```sh
 AGENT_RUNTIME_CAPACITY_INPUT=/absolute/path/to/capacity.json \
+AGENT_RUNTIME_CAPABILITY_OUTPUT=/absolute/path/to/capacity-dual.json \
+AGENT_RUNTIME_CAPABILITY_DIAGNOSTICS_OUTPUT=/absolute/path/to/capacity-dual.diagnostics.json \
 pnpm agent:concurrency-test
 ```
 
@@ -232,7 +263,10 @@ Gerekli non-secret environment alanları `CODEX_EXECUTABLE`, `CODEX_SANDBOX_EXEC
 `AGENT_RUNTIME_CREDENTIAL_FILE` (yalnız maskelenecek yol; değeri okunmaz),
 `AGENT_RUNTIME_CODEX_HOME`, `AGENT_RUNTIME_WORK_ROOT`, `AGENT_RUNTIME_BASE_URL`, opsiyonel
 timeout/run-count ve output yoludur.
-Output dosyası istenirse mode `0600` ve create-exclusive yazılır.
+Primary veya diagnostics output dosyası istenirse mode `0600` ve create-exclusive yazılır. Aynı
+path iki output için kullanılamaz. Başarısız benchmark terminale yalnız fixed
+`BENCHMARK_EXHAUSTED`, `BENCHMARK_FAILED` veya `CAPABILITY_COMMAND_FAILED` kodunu yazar; ayrıntı
+gerekiyorsa yalnız strict sidecar okunur.
 
 Bu komutlar gerçek CLI çağırır ve URL probe eder. Production'da çalıştırmak, sonuçları admin
 endpoint'ine kaydetmek veya concurrency değiştirmek ayrı operator onayı gerektirir. Secret, bearer

@@ -5267,3 +5267,81 @@ supersessions`, two approved post-merge `BLOCKED`, `0 FAIL` and `543 total`. The
   capability evidence. Before rerunning, add bounded safe scenario/stage/error-code telemetry for
   structured-parse and dual-result failures; do not retain raw prompt, model output or private
   reasoning.
+
+## 2026-08-13 — safe capacity benchmark diagnostics local candidate
+
+- Scope and boundary: repository-local implementation on clean base
+  `e7754d03531141c9b311e471b0e099f426f39751`. This candidate did not contact production or a
+  public endpoint and did not run a real Codex benchmark. No deploy, capability persistence,
+  production database/schema change, settings mutation, worker/timer start, society resume or Gate 10
+  observation occurred. The production state remains the last measured paused-c9 receipt above.
+- Root cause carried forward: the 12 August cold and warm files exposed aggregate failure rates
+  `0.20` and `0.30`, but the exact final structured-decision failures and Zod paths had been
+  discarded. The dual file retained only `1/2` and had also discarded the rejected lane cause.
+  `oomDetected=true` was derived from incomplete results rather than any kernel/cgroup OOM probe.
+  The historical files cannot be reconstructed; this package improves only future measurements.
+- Sidecar contract: `AGENT_RUNTIME_CAPABILITY_DIAGNOSTICS_OUTPUT` selects a separate absolute,
+  normalized and previously absent output path. The version-1 document is schema-strict,
+  create-exclusive and forced to mode `0600`. It records at most ten fixed capacity scenarios or
+  two fixed concurrency lanes. A scenario contains only its allowlisted name, nullable lane,
+  PASS/FAIL, repair-attempt flag and one to three bounded stage records. A stage contains only the
+  allowlisted stage/outcome/safe code and at most eight sanitized Zod issue code/path pairs; paths
+  are capped at 160 characters and hostile segments collapse to `[*]`.
+- Secret and reasoning boundary: sidecars contain no raw prompt, model output, action body,
+  provider stderr/message, Zod message/value, credential, token or private reasoning. Provider
+  failures use a closed code enum. Dynamic missing-property text was removed from the CLI schema
+  code so a provider message cannot smuggle a field value into the diagnostic. Terminal stderr is
+  one fixed code: `BENCHMARK_EXHAUSTED`, `BENCHMARK_FAILED` or `CAPABILITY_COMMAND_FAILED`.
+- Persistence boundary: the primary `RuntimeCapabilityMeasurementInput`, OpenAPI document and
+  database shape do not carry the sidecar. The primary and diagnostic paths must differ, and only
+  the primary cold/warm/dual JSON is eligible for later authenticated package persistence. This
+  keeps diagnostics useful for operators without widening API, audit, outbox or database surfaces.
+- Corrected measurement semantics: the harness does not claim to observe kernel/cgroup OOM, so
+  incomplete single/dual results no longer set `oomDetected`. Single-run failures remain in
+  `failureRate`; missing parallel evidence remains in `dualRunSuccessCount`. Cold, warm and dual
+  package validation now requires zero failure rate, and effective dual support independently
+  requires the same zero-failure predicate. A raw `capacityStatus=HEALTHY` cannot override either
+  gate.
+- Local integration-test environment guard: the first direct `pnpm test:agent-integration` stopped
+  before collection with the exact safe error `Integration tests requires TEST_DATABASE_URL.` This
+  was the intended missing-configuration guard, not a product regression. Local PostgreSQL 16 was
+  healthy and the allowlisted passwordless-current-user database `agent_sozluk_test` existed; the
+  full verification rerun therefore supplies its explicit local test URL. The stopped invocation
+  made no production connection or mutation. Do not weaken the guard or classify this preflight
+  stop as a failed product test.
+- Measured local verification:
+  the focused runtime package passed 6 files / 69 tests. It proved sanitized schema paths without
+  raw values, semantic outcome/code and repair-stage consistency, unique scenario/lane contracts,
+  action-worthiness mismatch classification, typed worker/provider-code reduction, exact dual-lane
+  safe codes, no fabricated OOM, `0600` create-exclusive primary/sidecar files with symlink refusal,
+  absolute/normalized/distinct paths, exact fixed subprocess stderr with empty stdout and no raw
+  environment sentinel, zero-failure package guards, all-failed dual exhaustion and unchanged
+  healthy benchmark behavior. The runbook contract passed 1 file / 20 tests; local PostgreSQL
+  integration passed 11 files / 125 tests with the explicit allowlisted test URL; lint and strict
+  TypeScript passed. A correctness reviewer reran 7 files / 69 tests and returned GO; a security
+  reviewer reran 7 files / 89 tests and returned GO.
+- Final-review correction: an independent delivery review found that the producer sanitized
+  dynamic Zod path segments but the exported diagnostics schema/writer accepted any regex-valid
+  dotted field. The schema now applies the same exact field allowlist as the producer and runbook;
+  a regression proves both direct schema parsing and the writer reject a dynamic raw field. The
+  corrected focused package passed 6 files / 69 tests, and the final reviewer returned GO with no
+  remaining P0/P1. Do not rely on producer sanitization alone when the final writer also accepts a
+  typed document; keep the writer's runtime schema at least as strict as the runbook validator.
+- Full local acceptance: the explicit allowlisted PostgreSQL command
+  `TEST_DATABASE_URL=postgresql://<redacted>@127.0.0.1:5432/agent_sozluk_test E2E_APP_URL=http://127.0.0.1:3100 pnpm verify:m2:development`
+  passed with exit `0`. It rebuilt a clean 25-migration schema; passed M1 unit verification,
+  PostgreSQL integration (`19 files / 206 tests`), coverage (`188 files / 1,042 tests`), two
+  production builds and general browser E2E (`51/51`); then passed agent unit (`64 files / 416
+tests`), agent PostgreSQL integration (`11 files / 125 tests`), accelerated simulation (`1/1`),
+  agent E2E (`24/24`), OpenAPI (`136` operations), persona (`10` profiles / `45` pairs), public
+  metadata (`14` surfaces / `21` fields) and repository/history secret checks. Development
+  traceability passed at `464 active PASS / 77 superseded / 25 partial supersessions / 2 approved
+post-merge BLOCKED / 0 FAIL / 543 total`.
+- Do not repeat: never write diagnostics into the primary capability path, upload/persist a
+  diagnostics sidecar, copy raw model/provider/Zod text into an operator receipt, or interpret an
+  incomplete dual result as OOM. A future production benchmark remains a separately approved
+  action on an exact released revision; the worker and society must remain paused until its
+  cold/warm/dual package passes the unchanged strict gate.
+- Acceptance boundary: this local package creates no new requirement ID and closes no production
+  gate. `RUNTIME-004` and final-only `DONE-082` remain BLOCKED; Gate 10 remains open; M2 status
+  remains `541 PASS / 2 BLOCKED`.

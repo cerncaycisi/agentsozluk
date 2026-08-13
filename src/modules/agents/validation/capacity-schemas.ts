@@ -72,6 +72,18 @@ export const runtimeCapabilityPackageSchema = z
   })
   .strict()
   .superRefine(({ cold, warm, dual }, context) => {
+    for (const [kind, measurement] of [
+      ["cold", cold],
+      ["warm", warm],
+      ["dual", dual],
+    ] as const) {
+      if (measurement.failureRate !== 0)
+        context.addIssue({
+          code: "custom",
+          path: [kind, "failureRate"],
+          message: "Capability paketi sıfır benchmark failure rate gerektirir.",
+        });
+    }
     if (dual.dualRunSuccessCount !== 2) {
       context.addIssue({
         code: "custom",

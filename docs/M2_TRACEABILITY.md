@@ -8,6 +8,35 @@ operational policy ADR-012 supersedes its daily-target/plan/catch-up behavior. T
 which rows are fully historical and which retain an active remainder; do not use a superseded row
 as a current production runbook or infer current behavior from its historical `PASS` label.
 
+## 2026-08-13 safe capability benchmark diagnostics addendum
+
+This local-only package reconciles into existing `DONE-037`, `RUNTIME-023`, `RUNTIME-024` and
+`SEC-014`; it creates no parallel requirement ID or queue. A strict version-1 sidecar records only
+bounded scenario, lane, stage, semantic outcome, closed safe code, repair flag and sanitized Zod
+issue code/path metadata. It excludes raw prompt/output, provider or Zod messages/values,
+credentials and private reasoning. Both output paths are absolute, normalized and distinct; the
+sidecar and primary JSON are create-exclusive mode `0600`, with symlink targets refused. The
+primary API/database document remains unchanged and the sidecar is never uploaded or persisted.
+Cold, warm and dual packages require zero failure rate; an incomplete dual run is represented by
+its success count, not fabricated as kernel/cgroup OOM evidence.
+
+Focused runtime verification passed `6 files / 69 tests`. The runbook contract passed `1 file / 20
+tests`; local PostgreSQL integration passed `11 files / 125 tests`; lint and strict TypeScript also
+passed. A correctness review reran `7 files / 69 tests` and returned GO; a security review reran `7
+files / 89 tests` and returned GO. Full `verify:m2:development` passed with exit `0`, including the
+clean 25-migration schema, M1 unit/integration/coverage/build/browser gates, `64 files / 416` agent
+unit tests, `11 files / 125` agent PostgreSQL tests, `1/1` simulation, `24/24` agent E2E and the
+OpenAPI/persona/metadata/secret gates. Development traceability reported `464 active PASS / 77
+superseded / 25 partial supersessions / 2 approved post-merge BLOCKED / 0 FAIL / 543 total`.
+Final delivery review also proved that producer, runtime schema/writer and runbook share the same
+allowlisted diagnostic path fields; the corrected focused package passed `6 files / 69 tests`, and
+the reviewer returned GO with no remaining P0/P1.
+
+No production access, deploy, real Codex benchmark, capability persistence, settings mutation or
+worker/society resume occurred, so this adds no production evidence to `DONE-038` or `CONC-001`.
+`RUNTIME-004` and final-only `DONE-082` remain BLOCKED, Gate 10 remains open and the traceability
+status remains `541 PASS / 2 BLOCKED`.
+
 ## 2026-08-02 item-2 source-evidence-chain addendum
 
 This package reconciles into the existing evolution, runtime provenance and source-evolution rows;

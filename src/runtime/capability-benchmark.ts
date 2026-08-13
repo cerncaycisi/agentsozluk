@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { ZodError } from "zod";
 import type { RuntimeCapabilityMeasurementInput } from "@/modules/agents/validation/capacity-schemas";
 import { runtimeCapabilityMeasurementSchema } from "@/modules/agents/validation/capacity-schemas";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
@@ -17,6 +18,13 @@ import {
   parseRuntimeActionWorthinessVerdict,
   runtimeActionWorthinessVerdictJsonSchema,
 } from "@/runtime/action-worthiness";
+import {
+  type CapabilityBenchmarkScenarioDiagnostic,
+  type CapabilityBenchmarkStageDiagnostic,
+  safeBenchmarkProviderCode,
+  safeBenchmarkZodIssues,
+} from "@/runtime/capability-diagnostics";
+import type { capacityBenchmarkScenarioNames } from "@/runtime/capability-diagnostics";
 
 const AVAILABLE_CONTENT_MINUTES = 960;
 const CAPACITY_RESERVE_FACTOR = 0.75;
@@ -27,6 +35,7 @@ export interface CapabilityBenchmarkOptions {
   timeoutMs?: number;
   plannedContentRuns?: number;
   fetchImplementation?: typeof fetch;
+  diagnosticSink?: (diagnostic: CapabilityBenchmarkScenarioDiagnostic) => void;
 }
 
 interface ProbeResult {
@@ -67,41 +76,155 @@ function combineSequentialResults(
 export async function invokeWithStructuredRepair(
   provider: RuntimeProvider,
   request: Parameters<RuntimeProvider["invoke"]>[0],
+  diagnostics?: ScenarioDiagnosticRecorder,
 ): Promise<RuntimeProviderResult> {
-  const first = await provider.invoke(request);
-  if (parseRuntimeDecisionOutput(first.output).success) return first;
-  const repaired = await provider.invoke({
-    ...request,
-    timeoutMs: Math.max(1, request.timeoutMs - first.durationMs),
-    prompt: `${request.prompt}\n\n${RUNTIME_STRUCTURED_REPAIR_INSTRUCTION}`,
-  });
+  let first: RuntimeProviderResult;
+  try {
+    first = await provider.invoke(request);
+  } catch (error) {
+    diagnostics?.providerFailure("DECISION_PRIMARY", error);
+    throw error;
+  }
+  const firstParsed = parseRuntimeDecisionOutput(first.output);
+  if (firstParsed.success) {
+    diagnostics?.pass("DECISION_PRIMARY");
+    return first;
+  }
+  diagnostics?.schemaFailure(
+    "DECISION_PRIMARY",
+    "CODEX_DECISION_OUTPUT_INVALID",
+    firstParsed.error,
+  );
+  diagnostics?.markRepairAttempted();
+  let repaired: RuntimeProviderResult;
+  try {
+    repaired = await provider.invoke({
+      ...request,
+      timeoutMs: Math.max(1, request.timeoutMs - first.durationMs),
+      prompt: `${request.prompt}\n\n${RUNTIME_STRUCTURED_REPAIR_INSTRUCTION}`,
+    });
+  } catch (error) {
+    diagnostics?.providerFailure("DECISION_REPAIR", error);
+    throw error;
+  }
+  const repairedParsed = parseRuntimeDecisionOutput(repaired.output);
+  if (repairedParsed.success) diagnostics?.pass("DECISION_REPAIR");
+  else
+    diagnostics?.schemaFailure(
+      "DECISION_REPAIR",
+      "CODEX_DECISION_OUTPUT_INVALID",
+      repairedParsed.error,
+    );
   return combineSequentialResults(first, repaired);
+}
+
+type DiagnosticStage = CapabilityBenchmarkStageDiagnostic["stage"];
+
+interface ScenarioDiagnosticRecorder {
+  pass(stage: DiagnosticStage): void;
+  providerFailure(stage: DiagnosticStage, error: unknown): void;
+  schemaFailure(
+    stage: DiagnosticStage,
+    safeCode: CapabilityBenchmarkStageDiagnostic["safeCode"],
+    error?: ZodError,
+  ): void;
+  markRepairAttempted(): void;
+  finish(finalStatus: CapabilityBenchmarkScenarioDiagnostic["finalStatus"]): void;
+}
+
+function scenarioDiagnosticRecorder(
+  scenario: Scenario["name"],
+  lane: CapabilityBenchmarkScenarioDiagnostic["lane"],
+  sink: CapabilityBenchmarkOptions["diagnosticSink"],
+): ScenarioDiagnosticRecorder {
+  const stages: CapabilityBenchmarkStageDiagnostic[] = [];
+  let repairAttempted = false;
+  let finished = false;
+  return {
+    pass(stage) {
+      stages.push({ stage, outcome: "PASS", safeCode: "OK", issues: [] });
+    },
+    providerFailure(stage, error) {
+      stages.push({
+        stage,
+        outcome: "PROVIDER_FAILED",
+        safeCode: safeBenchmarkProviderCode(error),
+        issues: [],
+      });
+    },
+    schemaFailure(stage, safeCode, error) {
+      stages.push({
+        stage,
+        outcome: "SCHEMA_INVALID",
+        safeCode,
+        issues: error ? safeBenchmarkZodIssues(error) : [],
+      });
+    },
+    markRepairAttempted() {
+      repairAttempted = true;
+    },
+    finish(finalStatus) {
+      if (finished) return;
+      finished = true;
+      if (stages.length === 0)
+        stages.push({
+          stage: "DECISION_PRIMARY",
+          outcome: "PROVIDER_FAILED",
+          safeCode: "BENCHMARK_STAGE_FAILED",
+          issues: [],
+        });
+      sink?.({ scenario, lane, finalStatus, repairAttempted, stages });
+    },
+  };
 }
 
 async function invokeBenchmarkDecision(
   provider: RuntimeProvider,
   context: RuntimeContext,
   timeoutMs: number,
+  diagnostics?: ScenarioDiagnosticRecorder,
 ): Promise<RuntimeProviderResult> {
-  const decisionResult = await invokeWithStructuredRepair(provider, {
-    runId: context.run.id,
-    prompt: buildRuntimePrompt(context),
-    outputSchema: runtimeNormalDecisionWireJsonSchema,
-    timeoutMs,
-  });
+  const decisionResult = await invokeWithStructuredRepair(
+    provider,
+    {
+      runId: context.run.id,
+      prompt: buildRuntimePrompt(context),
+      outputSchema: runtimeNormalDecisionWireJsonSchema,
+      timeoutMs,
+    },
+    diagnostics,
+  );
   const parsed = parseRuntimeDecisionOutput(decisionResult.output);
   if (!parsed.success) return decisionResult;
   const candidateSequences = parsed.data.actions
     .filter(({ actionType }) => actionType !== "NO_ACTION")
     .map(({ sequence }) => sequence);
   if (candidateSequences.length === 0) return decisionResult;
-  const reviewResult = await provider.invoke({
-    runId: context.run.id,
-    prompt: buildActionWorthinessPrompt(context, parsed.data),
-    outputSchema: runtimeActionWorthinessVerdictJsonSchema,
-    timeoutMs: Math.max(1, timeoutMs - decisionResult.durationMs),
-  });
-  parseRuntimeActionWorthinessVerdict(reviewResult.output, candidateSequences);
+  let reviewResult: RuntimeProviderResult;
+  try {
+    reviewResult = await provider.invoke({
+      runId: context.run.id,
+      prompt: buildActionWorthinessPrompt(context, parsed.data),
+      outputSchema: runtimeActionWorthinessVerdictJsonSchema,
+      timeoutMs: Math.max(1, timeoutMs - decisionResult.durationMs),
+    });
+  } catch (error) {
+    diagnostics?.providerFailure("ACTION_WORTHINESS", error);
+    throw error;
+  }
+  try {
+    parseRuntimeActionWorthinessVerdict(reviewResult.output, candidateSequences);
+    diagnostics?.pass("ACTION_WORTHINESS");
+  } catch (error) {
+    diagnostics?.schemaFailure(
+      "ACTION_WORTHINESS",
+      error instanceof Error && error.message === "ACTION_WORTHINESS_CANDIDATE_SET_MISMATCH"
+        ? "ACTION_WORTHINESS_CANDIDATE_SET_MISMATCH"
+        : "CODEX_ACTION_WORTHINESS_OUTPUT_INVALID",
+      error instanceof ZodError ? error : undefined,
+    );
+    throw error;
+  }
   return {
     ...combineSequentialResults(decisionResult, reviewResult),
     output: decisionResult.output,
@@ -109,7 +232,7 @@ async function invokeBenchmarkDecision(
 }
 
 interface Scenario {
-  name: string;
+  name: (typeof capacityBenchmarkScenarioNames)[number];
   runType: string;
   desiredEntryMin: number;
   desiredEntryMax: number;
@@ -423,10 +546,15 @@ function aggregateHostMetrics(results: RuntimeProviderResult[]) {
       1,
       ...metrics.map(({ systemPeakMemoryMb }) => Math.ceil(systemPeakMemoryMb)),
     ),
-    availableMemoryMb: Math.max(
-      0,
-      Math.floor(Math.min(...metrics.map(({ availableMemoryMb }) => availableMemoryMb), 65_536)),
-    ),
+    availableMemoryMb:
+      metrics.length === 0
+        ? 0
+        : Math.max(
+            0,
+            Math.floor(
+              Math.min(...metrics.map(({ availableMemoryMb }) => availableMemoryMb), 65_536),
+            ),
+          ),
     swapInMb: Math.min(
       65_536,
       metrics.reduce((sum, item) => sum + item.swapInMb, 0),
@@ -478,30 +606,30 @@ export async function runCapacityBenchmark(
   const measuredHealth: ProbeResult[] = [];
   const measuredReady: ProbeResult[] = [];
   let failureCount = 0;
-  const failureReasons = new Map<string, number>();
   for (const [index, scenario] of CAPACITY_BENCHMARK_SCENARIOS.entries()) {
     const context = benchmarkContext(scenario, index);
+    const diagnostics = scenarioDiagnosticRecorder(scenario.name, null, options.diagnosticSink);
     try {
       const { value: result, probes } = await withRuntimeProbes(
-        invokeBenchmarkDecision(provider, context, options.timeoutMs ?? benchmarkTimeoutMs()),
+        invokeBenchmarkDecision(
+          provider,
+          context,
+          options.timeoutMs ?? benchmarkTimeoutMs(),
+          diagnostics,
+        ),
         fetchImplementation,
         endpoint,
       );
       results.push(result);
       measuredHealth.push(...probes.health);
       measuredReady.push(...probes.ready);
-    } catch (error) {
+      diagnostics.finish(parseRuntimeDecisionOutput(result.output).success ? "PASS" : "FAIL");
+    } catch {
       failureCount += 1;
-      const reason = error instanceof Error ? error.message : "CODEX_BENCHMARK_FAILED";
-      failureReasons.set(reason, (failureReasons.get(reason) ?? 0) + 1);
+      diagnostics.finish("FAIL");
     }
   }
-  if (results.length === 0)
-    throw new Error(
-      `Codex CLI benchmark run’larının tamamı başarısız: ${[...failureReasons.entries()]
-        .map(([reason, count]) => `${reason} (${count})`)
-        .join(", ")}`,
-    );
+  if (results.length === 0) throw new Error("CAPABILITY_BENCHMARK_EXHAUSTED");
   const durations = results.map(({ durationMs }) => Math.max(1, Math.round(durationMs)));
   const candidate = candidateMetrics(results);
   const host = aggregateHostMetrics(results);
@@ -528,7 +656,9 @@ export async function runCapacityBenchmark(
     ...host,
     dualProcessPeakRssMb: null,
     dualRunSuccessCount: 0,
-    oomDetected: failureCount > 0,
+    // No kernel/cgroup OOM signal is collected by this harness. Scenario failures
+    // remain explicit in failureRate and the bounded diagnostics sidecar.
+    oomDetected: false,
     swapThrashingDetected: host.swapInMb > 256 || host.swapOutMb > 256,
     healthStable: appLatencyImpact.stable,
     readinessStable: databaseLatencyImpact.stable,
@@ -551,9 +681,27 @@ export async function runConcurrencyCapabilityTest(
   const contexts = scenarios.map((scenario, index) => benchmarkContext(scenario, index + 20));
   const { value: settled, probes: measuredProbes } = await withRuntimeProbes(
     Promise.allSettled(
-      contexts.map((context) =>
-        invokeBenchmarkDecision(provider, context, options.timeoutMs ?? benchmarkTimeoutMs()),
-      ),
+      contexts.map(async (context, index) => {
+        const scenario = scenarios[index]!;
+        const diagnostics = scenarioDiagnosticRecorder(
+          scenario.name,
+          index === 0 ? 1 : 2,
+          options.diagnosticSink,
+        );
+        try {
+          const result = await invokeBenchmarkDecision(
+            provider,
+            context,
+            options.timeoutMs ?? benchmarkTimeoutMs(),
+            diagnostics,
+          );
+          diagnostics.finish(parseRuntimeDecisionOutput(result.output).success ? "PASS" : "FAIL");
+          return result;
+        } catch (error) {
+          diagnostics.finish("FAIL");
+          throw error;
+        }
+      }),
     ),
     fetchImplementation,
     endpoint,
@@ -563,6 +711,7 @@ export async function runConcurrencyCapabilityTest(
       ? [item.value]
       : [],
   );
+  if (results.length === 0) throw new Error("CAPABILITY_BENCHMARK_EXHAUSTED");
   const host = aggregateHostMetrics(results);
   const appLatencyImpact = latencyImpact(baselineProbes.health, measuredProbes.health);
   const databaseLatencyImpact = latencyImpact(baselineProbes.ready, measuredProbes.ready);
@@ -583,7 +732,9 @@ export async function runConcurrencyCapabilityTest(
     swapOutMb: host.swapOutMb,
     loadAverage1m: host.loadAverage1m,
     dualRunSuccessCount: results.length,
-    oomDetected: results.length < 2,
+    // Incomplete dual evidence is represented by dualRunSuccessCount. It is not
+    // equivalent to a measured kernel/cgroup OOM event.
+    oomDetected: false,
     swapThrashingDetected: host.swapInMb > 256 || host.swapOutMb > 256,
     healthStable: appLatencyImpact.stable,
     readinessStable: databaseLatencyImpact.stable,

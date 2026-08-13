@@ -7,7 +7,12 @@ import type {
   RuntimeProviderRequest,
   RuntimeProviderResult,
 } from "@/runtime/provider";
-import { RuntimeProviderCancelledError, RuntimeProviderTimeoutError } from "@/runtime/provider";
+import {
+  RuntimeProviderCancelledError,
+  RuntimeProviderExecutionError,
+  type RuntimeProviderExecutionSafeCode,
+  RuntimeProviderTimeoutError,
+} from "@/runtime/provider";
 import { monitorHostProcess } from "@/runtime/host-metrics";
 import { parseRuntimeDecisionOutput } from "@/runtime/output";
 
@@ -246,14 +251,14 @@ function collect(
   });
 }
 
-function safeCodexFailure(stderr: string): string {
+export function safeCodexFailure(stderr: string): RuntimeProviderExecutionSafeCode {
   if (/unexpected argument|unknown option|unrecognized option/iu.test(stderr))
     return "CODEX_ARGUMENT_UNSUPPORTED";
   if (/not logged in|login required|authentication required|unauthorized/iu.test(stderr))
     return "CODEX_AUTH_REQUIRED";
   if (/schema.{0,160}(invalid|unsupported)|invalid.{0,160}schema/iu.test(stderr)) {
     const missingProperty = stderr.match(/Missing ['"]([A-Za-z0-9_]{1,64})['"]/iu)?.[1];
-    if (missingProperty) return `CODEX_SCHEMA_MISSING_REQUIRED_${missingProperty.toUpperCase()}`;
+    if (missingProperty) return "CODEX_SCHEMA_MISSING_REQUIRED";
     if (/additionalProperties/iu.test(stderr)) return "CODEX_SCHEMA_ADDITIONAL_PROPERTIES";
     if (/format.{0,80}(unsupported|invalid)/iu.test(stderr))
       return "CODEX_SCHEMA_FORMAT_UNSUPPORTED";
@@ -447,12 +452,9 @@ export class CodexCliProvider implements RuntimeProvider {
       if (result.cancelled) throw new RuntimeProviderCancelledError();
       if (result.timedOut) throw new RuntimeProviderTimeoutError();
       if (result.exitCode !== 0) {
-        retainedErrorCode = safeCodexFailure(result.stderr);
-        throw new AppError(
-          "INTERNAL_ERROR",
-          500,
-          `Codex CLI run güvenli biçimde tamamlanamadı: ${retainedErrorCode}.`,
-        );
+        const safeCode = safeCodexFailure(result.stderr);
+        retainedErrorCode = safeCode;
+        throw new RuntimeProviderExecutionError(safeCode);
       }
       let output: unknown;
       try {
@@ -460,11 +462,7 @@ export class CodexCliProvider implements RuntimeProvider {
         retainedOutput = output;
       } catch {
         retainedErrorCode = "CODEX_OUTPUT_INVALID";
-        throw new AppError(
-          "INTERNAL_ERROR",
-          500,
-          "Codex CLI structured output dosyası geçersiz: CODEX_OUTPUT_INVALID.",
-        );
+        throw new RuntimeProviderExecutionError("CODEX_OUTPUT_INVALID");
       }
       return {
         provider: "codex-cli",

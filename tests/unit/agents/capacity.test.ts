@@ -194,5 +194,13 @@ describe("agent runtime capacity", () => {
         dual: { ...valid.dual, dualRunSuccessCount: 1 },
       }),
     ).toThrow(/dual/iu);
+    for (const kind of ["cold", "warm", "dual"] as const) {
+      expect(() =>
+        runtimeCapabilityPackageSchema.parse({
+          ...valid,
+          [kind]: { ...valid[kind], failureRate: 0.1 },
+        }),
+      ).toThrow(/failure rate/iu);
+    }
   });
 });
