@@ -1,6 +1,64 @@
 # Milestone status
 
-## Production reality and recovery queue — 2026-08-12
+## Production reality and capacity diagnosis — 2026-08-13
+
+Exact application image and immutable runtime
+`9454e10defd1eeae54f9250a6fe826df6bb94f54` are the current production release. Application image
+ID is `sha256:3dcfedd1c3a4e31a2fb507e6ba540c88fb4e8a9cc21fb0e76b5f9efdfca5a197`; exact
+`c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` image/runtime remain retained for rollback. Main push
+CI run `31683426515` passed all seven jobs. Release Candidate run `31685478001` produced artifact
+`9175428476` with digest
+`sha256:5580493dd99e5ceeaa3ee89dbf37b60d2e2cc4f1e849f75468071929666702a6`.
+
+The pause-preserving cutover applied no migration, reconciliation or cleanup. Migration count
+remains 25; source state remains `317 total / 52 BLOCKED / 65 SEED / 1 TRUSTED / 199 PROBATION`;
+all `22/22` writers retain their source assignment floor. The first cutover invocation stopped
+before mutation because mawk returned safe error fragments `awk: cmd. line:6:         if (` and
+`awk: cmd. line:6:             ^ unexpected newline or end of string`. Exact c9, global runtime false,
+paused services and HTTP `200` remained unchanged. The replacement numeric-EUID guard
+`$1 == runtime_uid { count++ }` returned zero on the live host, passed review and the retry cut over
+successfully. Public/internal health/readiness closed `200/200`; Caddy, application and PostgreSQL
+are healthy. Worker, timer and maintenance never started.
+
+The exact-release runtime status probe passed with `structured=true`, `gpt-5.6-luna` / `max`,
+`codex-cli 0.144.6`, duration `101,100 ms`, RSS `180.9609375 MiB` and available memory
+`2,149.19140625 MiB`. Capacity stamp `20260813T095507Z` produced all six expected primary and safe
+diagnostics documents as regular, single-link, `agent-runtime`-owned mode-`0600` files. Strict
+validation stopped at cold with exact error `cold benchmark result is not healthy and complete`.
+The root-owned mode-`0700` lock and all evidence remain retained; `CAPABILITY_BENCHMARK_PASS` is
+absent. No capability package was imported or persisted.
+
+Cold ran ten scenarios with failure rate `0.50`. Duration p50/p75/p95/max was
+`165178/169031/251388/251388 ms`; RSS was `190 MiB`, system peak memory `1,650 MiB`, available
+memory `2,164 MiB`, swap was zero, and both OOM and swap-thrash flags were false. Dense reasoning,
+two-entry and three-entry remained schema-invalid after repair with `INVALID_KEY` at
+`$.state.topicFatigue[*]`. Duplicate-retry failed decision primary with `CODEX_EXEC_FAILED`;
+normal-wake passed decision then failed action-worthiness with `CODEX_EXEC_FAILED`.
+
+Warm ran ten with failure rate `0.30`. Duration p50/p75/p95/max was
+`133869/179376/275746/275746 ms`; RSS was `190 MiB`, system peak memory `1,621 MiB`, available
+memory `2,193 MiB`, swap-in was `0.00390625 MiB`, swap-out was zero, and stability/OOM checks
+passed. Its three failures were the same repaired `topicFatigue` invalid key. Duplicate-retry and
+read-only initially reported `CUSTOM` at `$.actions[0].claimProvenance`, then repaired and passed.
+
+Dual inherited warm failure rate `0.30` and succeeded only `1/2`. It measured RSS `193 MiB`, system
+peak memory `1,682 MiB`, available memory `2,132 MiB`, zero swap, stable health/readiness and
+`oomDetected=false`. Lane one repeated the repaired dense-reasoning `topicFatigue` failure; lane two
+initially reported the same three-entry invalid key and passed repair plus action-worthiness. Raw
+`capacityStatus=HEALTHY` in all three aggregates is not acceptance: the strict zero-failure and
+dual-`2/2` package contract is authoritative. The measured failure is structured-output/schema
+correctness plus provider execution, not host memory, OOM, health or readiness.
+
+Closing control state is exactly `159|f|t|t|t|NORMAL|2|22|0|0|0|0|25`; global runtime remained
+false throughout. Worker, timer and maintenance are inactive, runtime-process count is zero, and
+four internal/public health/readiness requests returned `200`. Capability count remains `46` with
+full-row hash `4fd20945a02b5e80681a1a6b61b414f65e2812412406bfc16528649e7db5a55a`. Root usage is 42%
+with `43,929,796 KiB` free. Docker reports 6 images / 3 active / `7.346 GB`, with `4.879 GB`
+reclaimable; 3 volumes / 3 active / `4.245 GB`; and `2.295 GB` build cache. No cleanup ran. The
+site is live, but society generation remains paused. Gate 10 is open and
+`docs/M2_TRACEABILITY.md` remains `541 PASS / 2 BLOCKED`.
+
+## Previous paused-c9 production baseline — 2026-08-12
 
 Exact application image and immutable host runtime
 `c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` are now the production release. Public and internal

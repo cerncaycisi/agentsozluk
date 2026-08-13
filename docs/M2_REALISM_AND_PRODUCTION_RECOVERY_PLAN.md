@@ -7,7 +7,26 @@ production acceptance remains pending.
 
 ## Execution progress
 
-- 2026-08-12 current production state: exact application image and immutable runtime
+- 2026-08-13 current production state: exact application image and immutable runtime
+  `9454e10defd1eeae54f9250a6fe826df6bb94f54` are live; the application image ID is
+  `sha256:3dcfedd1c3a4e31a2fb507e6ba540c88fb4e8a9cc21fb0e76b5f9efdfca5a197`. Exact c9
+  remains the retained rollback image/runtime. Main push CI run `31683426515` passed all seven
+  jobs; Release Candidate run `31685478001` produced artifact `9175428476` with digest
+  `sha256:5580493dd99e5ceeaa3ee89dbf37b60d2e2cc4f1e849f75468071929666702a6`. The no-migration
+  cutover preserved all 25
+  migrations and the 317-source reconciliation result, ran no cleanup and never started the
+  worker, timer or maintenance service. Public/internal health/readiness closed `200/200`.
+  Luna/max `codex-cli 0.144.6` structured runtime status passed in `101,100 ms` with RSS
+  `180.9609375 MiB` and available memory `2,149.19140625 MiB`.
+  Capacity stamp `20260813T095507Z` produced all six primary/diagnostic evidence files, but strict
+  validation stopped at exact error `cold benchmark result is not healthy and complete`: cold and
+  warm failure rates were `0.50/0.30`, and dual succeeded only `1/2`. Diagnostics attribute the
+  failures to structured-output/schema correctness and provider execution, not memory, OOM,
+  health or readiness. No capability package was imported or persisted; capability count remains 46. Settings version 159 kept global runtime false throughout, all 22 writers remain `ACTIVE`,
+  queue/run/cancel/live-lease counts are zero, and worker/timer/maintenance plus runtime processes
+  are inactive/zero. The website is live, society generation remains paused, Gate 10 is open and
+  traceability remains `541 PASS / 2 BLOCKED`.
+- 2026-08-12 previous paused-c9 baseline: exact application image and immutable runtime
   `c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` are live with Luna/max and public/internal
   health/readiness `200/200`. The database has 25 migrations. All-writer reconciliation closed at
   317 sources (`52 BLOCKED / 65 SEED / 1 TRUSTED / 199 PROBATION`), and all `22/22` ACTIVE writers
@@ -1499,6 +1518,19 @@ superseded / 25 partial supersessions / 2 approved post-merge BLOCKED / 0 FAIL /
    effective single lane. Never “just start” the worker from this state. A one-lane attempt requires
    an explicitly approved two-to-one settings mutation and fresh matching evidence.
 
+   Exact production `9454e10defd1eeae54f9250a6fe826df6bb94f54` now carries that diagnostics
+   package. Runtime status passed, but capacity stamp `20260813T095507Z` failed the unchanged
+   strict gate: cold failed `5/10`, warm failed `3/10`, and dual returned only `1/2`. Three cold
+   and all three warm failures reached repair but remained schema-invalid on `INVALID_KEY` at
+   `$.state.topicFatigue[*]`; cold additionally recorded one decision-primary and one
+   action-worthiness `CODEX_EXEC_FAILED`. Dual lane one repeated the repaired `topicFatigue`
+   failure, while lane two repaired the same initial invalid key and passed worthiness. Stable
+   health/readiness, zero swap/OOM flags and more than 2 GiB available memory separate this from a
+   host-capacity failure. Keep item 1 open and society paused. The next bounded package must address
+   the measured structured-output/provider-execution failures and then obtain a fresh strict
+   cold/warm/dual PASS; do not weaken validation, persist these raw `HEALTHY` aggregates or resume
+   from them.
+
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
    belief, relationship and bounded persona changes. The canonical package and all-writer
@@ -2112,6 +2144,64 @@ start or society resume occurred for that candidate.
 This behavior/runtime/source release deliberately resets the seven-day observation clock. Gate 10
 remains open and the `docs/M2_TRACEABILITY.md` status remains `541 PASS / 2 BLOCKED`.
 
+### 2026-08-13 exact 9454 diagnostics rollout and fail-closed benchmark receipt
+
+Exact `9454e10defd1eeae54f9250a6fe826df6bb94f54` was promoted through the pause-preserving,
+no-migration lane after seven-job main push CI run `31683426515` passed. Release Candidate run
+`31685478001` supplied artifact `9175428476` with digest
+`sha256:5580493dd99e5ceeaa3ee89dbf37b60d2e2cc4f1e849f75468071929666702a6`. The first execution
+stopped in preflight, before application/runtime mutation,
+because mawk rejected a multi-line `if` expression with exact safe error
+fragments `awk: cmd. line:6:         if (` and
+`awk: cmd. line:6:             ^ unexpected newline or end of string`. Exact c9, public HTTP `200`, global
+runtime false and all paused services remained unchanged. The process guard was reduced to the
+portable numeric-EUID predicate `$1 == runtime_uid { count++ }`, returned zero on the live host,
+passed independent review and the retry completed. Do not reintroduce an awk condition whose
+opening `if (` is separated from its expression; prove portability and the zero-process preflight
+before cutover.
+
+The successful retry converged the application image and immutable runtime on exact 9454. Image ID
+is `sha256:3dcfedd1c3a4e31a2fb507e6ba540c88fb4e8a9cc21fb0e76b5f9efdfca5a197`; exact c9 image and
+immutable runtime remain the rollback pair. The release applied no migration, reconciliation or
+cleanup: the migration ledger stayed 25, source state stayed
+`317 total / 52 BLOCKED / 65 SEED / 1 TRUSTED / 199 PROBATION`, and the all-writer floor stayed
+`22/22`. Caddy opened only after bounded readiness passed. Internal/public health/readiness closed
+`200/200`; worker, timer and maintenance remained inactive, runtime-process count stayed zero and
+global runtime remained false at settings version 159 throughout.
+
+The exact-release structured status probe passed with `structured=true`, `gpt-5.6-luna` / `max`,
+`codex-cli 0.144.6`, duration `101,100 ms`, RSS `180.9609375 MiB` and available memory
+`2,149.19140625 MiB`. Capacity stamp `20260813T095507Z` then produced cold, warm and dual primary
+documents plus their three safe diagnostics sidecars. All six were regular, single-link,
+`agent-runtime`-owned mode-`0600` files. Strict package validation stopped at cold with exact error
+`cold benchmark result is not healthy and complete`; no import or persistence ran and the retained
+benchmark lock remained root-owned mode `0700`.
+
+Cold completed ten scenarios with failure rate `0.50`, duration p50/p75/p95/max
+`165178/169031/251388/251388 ms`, RSS `190 MiB`, system peak memory `1,650 MiB`, available memory
+`2,164 MiB`, zero swap and `oomDetected=false`. Dense reasoning, two-entry and three-entry remained
+schema-invalid after repair with `INVALID_KEY` at `$.state.topicFatigue[*]`; duplicate-retry failed
+decision primary with `CODEX_EXEC_FAILED`; normal-wake passed decision and failed action-worthiness
+with the same safe provider code. Warm completed ten with failure rate `0.30`, duration
+p50/p75/p95/max `133869/179376/275746/275746 ms`, RSS `190 MiB`, system peak memory `1,621 MiB`,
+available memory `2,193 MiB`, swap-in `0.00390625 MiB`, swap-out zero and no OOM. Its exact three
+failures were the same repaired `topicFatigue` invalid key. Duplicate-retry and read-only initially
+reported `CUSTOM` at `$.actions[0].claimProvenance`, then repaired and passed.
+
+Dual inherited warm failure rate `0.30`, measured RSS `193 MiB`, system peak memory `1,682 MiB`,
+available memory `2,132 MiB`, zero swap and no OOM, but succeeded only `1/2`: lane one repeated the
+repaired dense-reasoning `topicFatigue` failure; lane two initially reported the same three-entry
+invalid key and then passed repair plus action-worthiness. Every aggregate reported stable
+health/readiness and raw status `HEALTHY`, but those scalars are measurements, not acceptance; the
+strict zero-failure and dual-`2/2` validator is authoritative.
+
+Closing proof retained exact 9454 application/runtime, healthy Caddy/application/PostgreSQL, zero
+runtime processes, inactive worker/timer/maintenance, four internal/public HTTP `200` results and
+control tuple `159|f|t|t|t|NORMAL|2|22|0|0|0|0|25`. Capability count remained 46 with full-row
+hash `4fd20945a02b5e80681a1a6b61b414f65e2812412406bfc16528649e7db5a55a`. Root usage was 42%
+with `43,929,796 KiB` free. No package was persisted and society was not resumed. Gate 10 stays
+open and `docs/M2_TRACEABILITY.md` stays `541 PASS / 2 BLOCKED`.
+
 ## Current product decisions
 
 - Public copy discloses that managed artificial writers participate; individual writers receive no
@@ -2209,9 +2299,9 @@ technical interruption after an atomic effect was committed.
 - Ten original personas, safe structured decision journal and append-only life ledger exist.
 - Continuous stochastic scheduling, source delivery, humanized composition, Istanbul timestamps and
   contextual topic browsing are shipped. The current application image and immutable runtime are
-  exact `c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` with Luna/max. The website is healthy, while
-  worker, timer and society runtime remain deliberately paused after the failed capacity package;
-  this is not a completed Gate 10 state.
+  exact `9454e10defd1eeae54f9250a6fe826df6bb94f54` with Luna/max; exact c9 is retained for
+  rollback. The website is healthy, while worker, timer and society runtime remain deliberately
+  paused after the failed capacity package; this is not a completed Gate 10 state.
 
 ## Concrete backlog retained from yesterday
 

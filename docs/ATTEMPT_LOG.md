@@ -5368,3 +5368,94 @@ post-merge BLOCKED / 0 FAIL / 543 total`.
   capability evidence. A production rollout and a fresh cold/warm/dual benchmark remain separate,
   explicitly approved actions; the worker and society stay paused until that exact-release package
   passes the unchanged gate.
+
+## 2026-08-13 — exact 9454 pause-preserving cutover and diagnosed capacity stop
+
+- Release identity: exact candidate was
+  `9454e10defd1eeae54f9250a6fe826df6bb94f54`. Main push CI run `31683426515` passed all seven jobs.
+  Release Candidate run `31685478001` produced artifact `9175428476` with digest
+  `sha256:5580493dd99e5ceeaa3ee89dbf37b60d2e2cc4f1e849f75468071929666702a6`.
+  The successful cutover installed application image
+  `sha256:3dcfedd1c3a4e31a2fb507e6ba540c88fb4e8a9cc21fb0e76b5f9efdfca5a197` and the exact 9454
+  immutable runtime. Exact `c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` image/runtime remain the
+  verified rollback pair.
+- First cutover stop: the initial pause-preserving remote preflight failed before any
+  application/runtime mutation with exact safe stderr
+  fragments `awk: cmd. line:6:         if (` and
+  `awk: cmd. line:6:             ^ unexpected newline or end of string`. The host mawk parser rejected a
+  multi-line `if (` condition. A closing reread proved exact c9 application/runtime, public HTTP
+  `200`, global runtime false, inactive worker/timer/maintenance and zero runtime processes were
+  unchanged. This was an operator-script portability failure, not a product or release failure.
+- Verified resolution: the process guard was reduced to the POSIX-portable numeric-EUID predicate
+  `$1 == runtime_uid { count++ }`. The live probe returned zero; the outer and generated scripts
+  passed syntax/hash checks and independent correctness review, and the retry passed. Do not
+  repeat: never assume a locally accepted multi-line awk conditional parses under production mawk.
+  Keep the numeric UID comparison simple, syntax-check the generated script and run its read-only
+  zero-process preflight before mutation.
+- Cutover boundary: the retry ran through the no-migration, no-cleanup lane. It applied no database
+  migration, source reconciliation, rate-limit cleanup, image cleanup, runtime cleanup, volume
+  cleanup or build-cache cleanup. Migration count stayed 25 and source state stayed
+  `317 total / 52 BLOCKED / 65 SEED / 1 TRUSTED / 199 PROBATION`, with the `22/22` writer
+  assignment floor intact. Caddy opened only after bounded readiness passed. The worker,
+  maintenance timer and maintenance service never started; global runtime remained false rather
+  than being newly paused.
+- Runtime status PASS: the exact 9454 status probe reported `structured=true`,
+  `gpt-5.6-luna` / `max`, `codex-cli 0.144.6`, duration `101,100 ms`, RSS
+  `180.9609375 MiB` and available memory `2,149.19140625 MiB`. Application and database stability
+  checks passed. This proves exact-release runtime compatibility, not capacity acceptance.
+- Evidence contract: capacity stamp `20260813T095507Z` produced all six expected files. Each was a
+  regular, single-link, `agent-runtime`-owned mode-`0600` file. SHA-256 receipts were:
+  - cold primary:
+    `5e02780ca964bc625fb668c980a69b33ce3480eb6d25e96f3e13984ea308f6a1`;
+  - cold diagnostics:
+    `5de1438362959f6a49afe3eebd614de0218ae97a888acfb48033bb2c81ef5c80`;
+  - warm primary:
+    `1501a6d4d18bf04261d3c6fa230bd262b2058f817cebb30cf09366eb2941c2e8`;
+  - warm diagnostics:
+    `ec040f94c428dbf83b527a01ef2c44b431c3d66eae899a5bb34af50174d91fd3`;
+  - dual primary:
+    `f10d9ca1411932cd87fe09079ba3a1a430a5e1af6d00ee022f42e53a4f908997`;
+  - dual diagnostics:
+    `5e587e013ecc8d2d490843eddbd268d5b2a9d56a9dda004004bf8fdb0adaf5cf`.
+- Cold measurement: ten scenarios completed with failure rate `0.50`; duration p50/p75/p95/max
+  was `165178/169031/251388/251388 ms`. RSS was `190 MiB`, system peak memory `1,650 MiB`,
+  available memory `2,164 MiB`, swap-in/out were zero, and `oomDetected=false` plus
+  `swapThrashingDetected=false`. Health/readiness were stable and the raw aggregate status was
+  `HEALTHY`. Five failures were retained safely: dense reasoning, two-entry and three-entry
+  remained schema-invalid after repair with `INVALID_KEY` at `$.state.topicFatigue[*]`;
+  duplicate-retry failed `DECISION_PRIMARY` with `CODEX_EXEC_FAILED`; normal-wake passed decision
+  and failed `ACTION_WORTHINESS` with `CODEX_EXEC_FAILED`.
+- Warm measurement: ten scenarios completed with failure rate `0.30`; duration p50/p75/p95/max
+  was `133869/179376/275746/275746 ms`. RSS was `190 MiB`, system peak memory `1,621 MiB`,
+  available memory `2,193 MiB`, swap-in was `0.00390625 MiB`, swap-out was zero, and OOM/stability
+  checks passed with raw status `HEALTHY`. The exact three failures were dense reasoning,
+  two-entry and three-entry remaining schema-invalid after repair with `INVALID_KEY` at
+  `$.state.topicFatigue[*]`. Duplicate-retry and read-only initially reported `CUSTOM` at
+  `$.actions[0].claimProvenance`, but repair passed; they are not counted as failures.
+- Dual measurement: dual inherited warm failure rate `0.30` and succeeded only `1/2`. It measured
+  RSS `193 MiB`, system peak memory `1,682 MiB`, available memory `2,132 MiB`, zero swap,
+  `oomDetected=false`, stable health/readiness and raw status `HEALTHY`. Lane one dense reasoning
+  failed on the same repaired `topicFatigue` invalid key. Lane two three-entry first reported the
+  same invalid key, then repair and action-worthiness passed.
+- Strict validation and diagnosis: package validation stopped at exact safe error
+  `cold benchmark result is not healthy and complete`. Warm and dual scalar fields are retained
+  measurements only; validation did not accept them after the cold stop. `CAPABILITY_BENCHMARK_PASS`
+  was absent, the root-owned mode-`0700` lock remained, and no import or capability persistence
+  ran. The evidence separates this failure from host capacity: all health/readiness checks were
+  stable, more than 2 GiB remained available, swap was zero/negligible, and every OOM flag was
+  false. The measured causes are structured-output/schema correctness and provider execution.
+- Closing proof: application/runtime remained exact 9454; Caddy, application and PostgreSQL were
+  healthy with restart counters `0/0/11`. Internal/public health/readiness returned
+  `200|200|200|200`. Exact control receipt was
+  `159|f|t|t|t|NORMAL|2|22|0|0|0|0|25`; worker, timer and maintenance were inactive and runtime
+  process count was zero. Source receipt was `317|52|65|1|199`. Capability count remained 46 with
+  full-row hash `4fd20945a02b5e80681a1a6b61b414f65e2812412406bfc16528649e7db5a55a`.
+  Root usage was 42% with `43,929,796 KiB` free. Docker reported 6 images / 3 active /
+  `7.346 GB`, of which `4.879 GB` was reclaimable; 3 volumes / 3 active / `4.245 GB`; and
+  `2.295 GB` build cache. No cleanup ran and exact c9 rollback remained retained.
+- Continuation boundary: do not persist the raw `HEALTHY` aggregates, weaken the strict
+  zero-failure/dual-`2/2` gate, start the worker, or resume global runtime. Correct the measured
+  `topicFatigue` schema-output and provider-execution failures in a bounded package, deploy a fresh
+  exact revision and rerun cold/warm/dual. A one-lane attempt still requires an explicit
+  concurrency-two-to-one settings mutation plus matching evidence. Gate 10 remains open and
+  `docs/M2_TRACEABILITY.md` remains unchanged at `541 PASS / 2 BLOCKED`.
