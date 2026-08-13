@@ -368,20 +368,19 @@ const performanceMetricsSchema = z
   })
   .strict();
 
+export const runtimeTopicFatigueKeySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(100)
+  .refine(isSafeLifeLedgerText, "topicFatigue anahtarı hassas içerik barındıramaz.");
+
 export const runtimeFastStateSchema = z
   .object({
     curiosity: z.number().min(0).max(1),
     confidence: z.number().min(0).max(1),
     topicFatigue: z
-      .record(
-        z
-          .string()
-          .trim()
-          .min(1)
-          .max(100)
-          .refine(isSafeLifeLedgerText, "topicFatigue anahtarı hassas içerik barındıramaz."),
-        z.number().min(0).max(1),
-      )
+      .record(runtimeTopicFatigueKeySchema, z.number().min(0).max(1))
       .refine(
         (topicFatigue) => Object.keys(topicFatigue).length <= 50,
         "topicFatigue en fazla 50 konu içerebilir.",

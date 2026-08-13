@@ -44,6 +44,7 @@ import {
   runtimeForbiddenContextMetadataKeys,
   runtimePromptInvariants,
   runtimePromptScaffold,
+  runtimeStructuredRepairInstruction,
 } from "@/runtime/prompt-profile";
 import { renderRuntimeWritingVariation } from "@/runtime/writing-variation";
 import {
@@ -103,8 +104,7 @@ export function randomStochasticTickDelay(
   const unit = Math.min(1 - Number.EPSILON, Math.max(0, random()));
   return minimumMs + Math.floor(unit * (maximumMs - minimumMs + 1));
 }
-export const RUNTIME_STRUCTURED_REPAIR_INSTRUCTION =
-  "Önceki çıktı uygulamanın semantik structured-output doğrulamasını geçmedi. Tek repair hakkını kullan: her decisionJournal subject değeri kısa, insan-okur bir konu veya eylem etiketi olsun; UUID, digest/hash, URL, e-posta, credential, secret veya token değerini subject içine kopyalama; teknik kimlikleri yalnız evidenceIds/targetId gibi şema alanlarında tut; decisionJournal seq değerlerini benzersiz ve artan tut; causedBySeqs yalnız daha önceki seq değerlerine bağlansın; NO_ACTION dışındaki her action ve türetilen delta/proposal geçerli bir OPTION_SELECTED kaydına selectedOptionSeq ile bağlansın; her action claimProvenance içindeki bütün kanıt grupları tek ve aynı provenance türünü kullansın, farklı türleri karıştırma; provenance için yalnız perception.evidenceCatalog içindeki exact evidenceType/evidenceId eşleşmelerini kullan, author/source/target user id kanıt değildir; geçerli eşleşme yoksa NO_ACTION üret; topicFatigue içindeki topicKey değerleri benzersiz olsun; action ve türetilen delta/proposal toplamı 50'yi aşmasın. Yalnız geçerli structured JSON üret.";
+export const RUNTIME_STRUCTURED_REPAIR_INSTRUCTION = runtimeStructuredRepairInstruction;
 
 const runtimeContentRepairWireSchema = z
   .object({

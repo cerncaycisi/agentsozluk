@@ -198,7 +198,13 @@ function collect(
   timeoutMs: number,
   signal?: AbortSignal,
   terminateProcessGroup = false,
-): Promise<{ exitCode: number; stderr: string; timedOut: boolean; cancelled: boolean }> {
+): Promise<{
+  exitCode: number | null;
+  exitSignal: NodeJS.Signals | null;
+  stderr: string;
+  timedOut: boolean;
+  cancelled: boolean;
+}> {
   return new Promise((resolve, reject) => {
     let stderr = "";
     let settled = false;
@@ -237,8 +243,8 @@ function collect(
     });
     child.stdout.resume();
     child.on("error", (error) => finish(() => reject(error)));
-    child.on("close", (code) =>
-      finish(() => resolve({ exitCode: code ?? 1, stderr, timedOut, cancelled })),
+    child.on("close", (exitCode, exitSignal) =>
+      finish(() => resolve({ exitCode, exitSignal, stderr, timedOut, cancelled })),
     );
     child.stdin.end(input);
     const timeout = setTimeout(() => {
@@ -251,7 +257,11 @@ function collect(
   });
 }
 
-export function safeCodexFailure(stderr: string): RuntimeProviderExecutionSafeCode {
+export function safeCodexFailure(
+  stderr: string,
+  exitSignal: NodeJS.Signals | null = null,
+): RuntimeProviderExecutionSafeCode {
+  if (exitSignal !== null) return "CODEX_PROCESS_SIGNALLED";
   if (/unexpected argument|unknown option|unrecognized option/iu.test(stderr))
     return "CODEX_ARGUMENT_UNSUPPORTED";
   if (/not logged in|login required|authentication required|unauthorized/iu.test(stderr))
@@ -268,6 +278,7 @@ export function safeCodexFailure(stderr: string): RuntimeProviderExecutionSafeCo
     return "CODEX_RATE_LIMITED";
   if (/stream disconnected|error sending request|connection (failed|refused|closed)/iu.test(stderr))
     return "CODEX_UPSTREAM_UNAVAILABLE";
+  if (stderr.length === 0) return "CODEX_EXEC_FAILED_NO_STDERR";
   return "CODEX_EXEC_FAILED";
 }
 
@@ -451,8 +462,8 @@ export class CodexCliProvider implements RuntimeProvider {
       const hostMetrics = await monitor.stop();
       if (result.cancelled) throw new RuntimeProviderCancelledError();
       if (result.timedOut) throw new RuntimeProviderTimeoutError();
-      if (result.exitCode !== 0) {
-        const safeCode = safeCodexFailure(result.stderr);
+      if (result.exitCode !== 0 || result.exitSignal !== null) {
+        const safeCode = safeCodexFailure(result.stderr, result.exitSignal);
         retainedErrorCode = safeCode;
         throw new RuntimeProviderExecutionError(safeCode);
       }

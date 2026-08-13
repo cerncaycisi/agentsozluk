@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { z, ZodError } from "zod";
 import {
+  capabilityBenchmarkStageDiagnosticSchema,
   capabilityBenchmarkDiagnosticsSchema,
   createCapabilityBenchmarkDiagnosticCollector,
   safeBenchmarkZodIssues,
@@ -19,6 +20,32 @@ afterEach(async () => {
 });
 
 describe("capacity benchmark safe diagnostics", () => {
+  it("accepts only the closed provider termination safe codes", () => {
+    for (const safeCode of ["CODEX_PROCESS_SIGNALLED", "CODEX_EXEC_FAILED_NO_STDERR"] as const) {
+      expect(
+        capabilityBenchmarkStageDiagnosticSchema.parse({
+          stage: "DECISION_PRIMARY",
+          outcome: "PROVIDER_FAILED",
+          safeCode,
+          issues: [],
+        }),
+      ).toEqual({
+        stage: "DECISION_PRIMARY",
+        outcome: "PROVIDER_FAILED",
+        safeCode,
+        issues: [],
+      });
+    }
+    expect(() =>
+      capabilityBenchmarkStageDiagnosticSchema.parse({
+        stage: "DECISION_PRIMARY",
+        outcome: "PROVIDER_FAILED",
+        safeCode: "RAW_DYNAMIC_PROCESS_FAILURE",
+        issues: [],
+      }),
+    ).toThrow();
+  });
+
   it("retains only bounded Zod codes and sanitized paths", () => {
     const rawSecret = "RAW_SECRET_VALUE_MUST_NOT_LEAK";
     const parsed = z

@@ -38,6 +38,14 @@ adapter üzerinden çalıştırır:
 9. source-free
 10. uzun persona context
 
+Benchmark verisi sentetiktir, fakat worker'ın production perception biçimini korur: recent entry
+topic ve author alanları nested kimlik+görünür başlık taşır; `previousFastState.topicFatigue`
+server'ın flat kısa-dönem map biçimindedir; okunmuş kaynak kanıtı `sourceItems` içinde exact
+`itemId`, source status ve güvenli metinle gelir. Prompt'taki evidence catalog bu exact topic,
+entry ve source-item kimliklerinden worker'ın normal koduyla türetilir. UUID-only top-level
+`topicId` veya kaynak metnini yalnız metadata `sources` listesine koyan bir fixture temsilî
+capacity kanıtı değildir.
+
 Ölçüm öncesi ve sırasında loopback/HTTPS application `/api/health` ile `/api/ready` probe'ları
 alınır. CLI harness candidate action üretir ama application action executor'ını çalıştırmaz;
 dolayısıyla benchmark output'undaki `publishedEntries` değeri `0`dır. Gerçek yayın verimi runtime
@@ -74,6 +82,21 @@ credential, token veya private reasoning içermez. Primary ve sidecar path'leri 
 normalized ve önceden yok olmalıdır. İkisi de create-exclusive mode `0600` yazılır; mevcut dosya
 ve symlink hedefleri fail-closed reddedilir. Sidecar capacity-package UI/API'ına yüklenmez ve
 database'e persist edilmez.
+
+Normal ve reflection structured output'unda `state.topicFatigue` yalnız
+`{items:[{topicKey,fatigue}]}` biçimindedir. `topicKey`, wire ve internal fast-state için aynı
+şemayla doğrulanır: 1–100 karakterlik insan-okur gerçek topic etiketi olmalı; UUID, digest/hash,
+URL, e-posta, OTP/doğrulama kodu, credential, secret/token, HTML veya control karakterli metin
+olamaz. Güvenli bir etiket yoksa model `items=[]` üretir. Önceki flat fast-state map'i continuity
+input'udur; model onu wire output map'i olarak kopyalamaz. Aynı kural tek structured-repair
+instruction'ında bulunur ve repair metni prompt fingerprint'ine dahildir. Sunucu unsafe key'i
+sessizce düşürmez veya dönüştürmez; output fail-closed kalır.
+
+Provider execution teşhisi kapalı safe code'larla sınırlıdır. Gerçek bir child-process signal
+`CODEX_PROCESS_SIGNALLED`, nonzero exit ve boş stderr `CODEX_EXEC_FAILED_NO_STDERR`, bilinmeyen
+non-empty stderr ise `CODEX_EXEC_FAILED` olur. Raw stderr, signal veya exit code sidecar'a ya da
+database'e girmez. Bu sınıflandırma retry başlatmaz, timeout'u büyütmez ve geçmiş generic
+failure'ları yeni bir nedene dönüştürmez.
 
 `failureRate`, provider invocation failure ile final structured-output parse failure'ını birlikte
 ölçer. Cold, warm ve dual paketinin her birinde değer tam sıfır değilse bütün package server-side

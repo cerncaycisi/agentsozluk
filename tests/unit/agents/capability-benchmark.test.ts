@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { RuntimeCapabilityMeasurementInput } from "@/modules/agents";
 import {
   CAPACITY_BENCHMARK_SCENARIOS,
+  capacityBenchmarkRequest,
   runCapacityBenchmark,
   runConcurrencyCapabilityTest,
 } from "@/runtime/capability-benchmark";
@@ -195,6 +196,64 @@ describe("Codex capability benchmark harness", () => {
     });
   });
 
+  it("projects representative benchmark context with production-shaped topics and source items", () => {
+    const decodeContext = (index: number) => {
+      const prompt = capacityBenchmarkRequest(index).request.prompt;
+      const opening = "<UNTRUSTED_CONTENT>\n";
+      const closing = "\n</UNTRUSTED_CONTENT>";
+      const start = prompt.indexOf(opening);
+      const end = prompt.indexOf(closing, start + opening.length);
+      expect(start).toBeGreaterThanOrEqual(0);
+      expect(end).toBeGreaterThan(start);
+      return JSON.parse(prompt.slice(start + opening.length, end)) as {
+        perception: {
+          previousFastState: { topicFatigue: Record<string, number> };
+          recentEntries: Array<Record<string, unknown>>;
+          sourceItems: Array<Record<string, unknown>>;
+          evidenceCatalog: Record<string, string[]>;
+        };
+      };
+    };
+
+    const dense = decodeContext(1);
+    const entry = dense.perception.recentEntries[0]!;
+    expect(entry).not.toHaveProperty("topicId");
+    expect(entry).toMatchObject({
+      createdAt: "2026-07-18T11:00:00.000Z",
+      topic: { id: expect.any(String), title: expect.any(String) },
+      author: {
+        id: expect.any(String),
+        username: expect.any(String),
+        displayName: expect.any(String),
+      },
+      followedTopic: false,
+      followedAuthor: false,
+      topicOpenedByCurrentWriter: false,
+      saturated: false,
+    });
+    const topicId = (entry.topic as { id: string }).id;
+    expect(dense.perception.evidenceCatalog.PLATFORM_EVENT).toContain(topicId);
+    expect(dense.perception.evidenceCatalog.USER_ENTRY).toContain(entry.id);
+    expect(dense.perception.previousFastState.topicFatigue).toEqual({ "bakım maliyeti": 0.2 });
+
+    const sourced = decodeContext(2);
+    const sourceItem = sourced.perception.sourceItems[0]!;
+    expect(sourceItem).toMatchObject({
+      sourceId: expect.any(String),
+      sourceDomain: "benchmark.example",
+      sourceStatus: "TRUSTED",
+      sourceTrustScore: 0.9,
+      itemId: expect.any(String),
+      canonicalUrl: "https://benchmark.example/items/3",
+      title: expect.any(String),
+      safeText: expect.any(String),
+      summary: expect.any(String),
+      publishedAt: "2026-07-18T10:00:00.000Z",
+      fetchedAt: "2026-07-18T11:30:00.000Z",
+    });
+    expect(sourced.perception.evidenceCatalog.TRUSTED_SOURCE).toContain(sourceItem.itemId);
+  });
+
   it("runs exactly two representative calls in parallel and merges them with the baseline", async () => {
     let active = 0;
     let peakActive = 0;
@@ -321,6 +380,69 @@ describe("Codex capability benchmark harness", () => {
       healthStable: true,
       readinessStable: true,
     });
+  });
+
+  it("repairs an unsafe topic-fatigue identifier with the bounded human-topic contract", async () => {
+    const unsafeTopicKey = "00000000-0000-4000-8000-000000000099";
+    const diagnostics = createCapabilityBenchmarkDiagnosticCollector("capacity");
+    let invocation = 0;
+    const provider: RuntimeProvider = {
+      inspect: vi
+        .fn()
+        .mockResolvedValue({ version: "codex-cli 1.2.3", supportsStructuredOutput: true }),
+      invoke: vi.fn().mockImplementation(async () => {
+        invocation += 1;
+        return {
+          ...result(1000),
+          output:
+            invocation % 2 === 1
+              ? {
+                  ...output(),
+                  state: {
+                    ...output().state,
+                    topicFatigue: { items: [{ topicKey: unsafeTopicKey, fatigue: 0.5 }] },
+                  },
+                }
+              : output(),
+        };
+      }),
+    };
+
+    const measurement = await runCapacityBenchmark(provider, {
+      baseUrl: "http://127.0.0.1:3000",
+      fetchImplementation: healthyFetch,
+      diagnosticSink: diagnostics.record,
+    });
+    const document = diagnostics.document("BENCHMARK_COMPLETED");
+
+    expect(measurement.failureRate).toBe(0);
+    expect(provider.invoke).toHaveBeenCalledTimes(20);
+    expect(document.scenarios).toHaveLength(10);
+    expect(document.scenarios[0]).toMatchObject({
+      finalStatus: "PASS",
+      repairAttempted: true,
+      stages: [
+        {
+          stage: "DECISION_PRIMARY",
+          outcome: "SCHEMA_INVALID",
+          safeCode: "CODEX_DECISION_OUTPUT_INVALID",
+          issues: [
+            {
+              code: "CUSTOM",
+              path: "$.state.topicFatigue.items[0].topicKey",
+            },
+          ],
+        },
+        { stage: "DECISION_REPAIR", outcome: "PASS", safeCode: "OK", issues: [] },
+      ],
+    });
+    expect(JSON.stringify(document)).not.toContain(unsafeTopicKey);
+    expect(vi.mocked(provider.invoke).mock.calls[1]?.[0].prompt).toContain(
+      "topicKey değerleri benzersiz, 1-100 karakterlik kısa, insan-okur gerçek topic etiketi",
+    );
+    expect(vi.mocked(provider.invoke).mock.calls[1]?.[0].prompt).toContain(
+      "güvenli bir konu etiketi yoksa items=[] üret",
+    );
   });
 
   it("records bounded schema paths when decision repair remains invalid", async () => {

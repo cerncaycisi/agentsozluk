@@ -739,6 +739,13 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("# Canonical normal-run output");
     expect(prompt).toContain(runtimeNormalWireFieldNames.join(", "));
     expect(prompt).toContain("sequence, actionType, input, provenance veya safeRunSummary");
+    expect(prompt).toContain(
+      "Her topicKey 1-100 karakterlik kısa, insan-okur gerçek bir topic etiketi veya başlığı olmalı",
+    );
+    expect(prompt).toContain("Güvenli bir konu etiketi yoksa items=[] üret");
+    expect(prompt).toContain(
+      "previousFastState.topicFatigue girdi tarafında key-value map olsa bile output state için bunu items dizisine dönüştür",
+    );
     expect(prompt).toContain("USER_ENTRY doğrulanmış factual source değildir");
     expect(prompt).toContain("MODEL_KNOWLEDGE yalnız stabil, düşük riskli genel bilgi");
     expect(prompt).toContain("# Ürün amacı: dünyadaki her şeyi tanımlamak");
@@ -850,6 +857,18 @@ describe("long-lived agent runtime worker", () => {
       MULTIPLE_SOURCES: [],
       AGENT_MEMORY: [],
     });
+
+    const reflectionPrompt = buildRuntimePrompt({
+      ...context,
+      run: { ...context.run, runType: "REFLECTION", trigger: "WEEKLY_REFLECTION" },
+    });
+    expect(reflectionPrompt).toContain(
+      "Her topicKey 1-100 karakterlik kısa, insan-okur gerçek bir topic etiketi veya başlığı olmalı",
+    );
+    expect(reflectionPrompt).toContain("Güvenli bir konu etiketi yoksa items=[] üret");
+    expect(RUNTIME_PROMPT_PROFILE_HASH).not.toBe(
+      "c2cf3b36fb67a035412f7aeaaca8484d2658ccd8a8051977feb9a04b3217605a",
+    );
   });
 
   it("keeps empty or unrelated topic context from becoming an orphan continuation license", () => {
@@ -2130,6 +2149,15 @@ describe("long-lived agent runtime worker", () => {
         "claimProvenance içindeki bütün kanıt grupları tek ve aynı provenance türünü kullansın",
       ),
     });
+    expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
+      "topicKey değerleri benzersiz, 1-100 karakterlik kısa, insan-okur gerçek topic etiketi",
+    );
+    expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
+      "güvenli bir konu etiketi yoksa items=[] üret",
+    );
+    expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
+      "previousFastState.topicFatigue girdi tarafında key-value map olsa bile output state için bunu items dizisine dönüştür",
+    );
     expect(plane.recordActions).toHaveBeenCalledTimes(1);
     expect(plane.complete).toHaveBeenCalledWith(
       expect.any(String),

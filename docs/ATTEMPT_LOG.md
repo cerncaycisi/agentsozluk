@@ -5459,3 +5459,66 @@ post-merge BLOCKED / 0 FAIL / 543 total`.
   exact revision and rerun cold/warm/dual. A one-lane attempt still requires an explicit
   concurrency-two-to-one settings mutation plus matching evidence. Gate 10 remains open and
   `docs/M2_TRACEABILITY.md` remains unchanged at `541 PASS / 2 BLOCKED`.
+
+## 2026-08-13 — topic-fatigue schema parity and representative benchmark local candidate
+
+- Starting point: the repository-local candidate is based on exact main
+  `42e0debfcda8ae73688248ce7d076b5c819a4d21`. It follows the exact 9454 production capacity
+  receipt above; no production connection, public endpoint request or mutation occurred in this
+  package.
+- Root cause: wire `state.topicFatigue.items[].topicKey` previously enforced only trim/length,
+  then adapted the items into an internal record whose key schema additionally applied
+  `isSafeLifeLedgerText`. A UUID, digest, URL or other unsafe technical identifier could therefore
+  pass the provider-facing wire parser and fail only during the second internal parse, producing
+  the safely retained `INVALID_KEY $.state.topicFatigue[*]`. The benchmark fixture amplified this
+  mismatch by exposing recent-entry topic identity as a top-level UUID without the nested
+  human-readable topic title used by real worker perception; it also omitted production-shaped
+  previous fast state and source-item evidence.
+- Verified correction: one exported topic-fatigue key schema now protects both wire and internal
+  state. Normal, reflection and one-repair instructions share the short human-readable topic-label
+  rule and explicitly reject UUID, digest/hash, URL, e-mail, OTP, credential, secret/token, HTML
+  and control-character keys. Invalid values remain fail-closed; they are not normalized, dropped
+  or converted after model output. The repair contract participates in prompt profile v20 hash
+  `9725451a26afd710f80f717e9a0ba7c7042feb3e8c202ee0a743d864de04ea55`.
+- Representative fixture correction: benchmark recent entries now use production-shaped nested
+  topic and author objects with visible titles, a safe flat `previousFastState`, real
+  `sourceItems` fields and evidence-catalog IDs derived by the same worker code. Scenario names,
+  run counts, zero-failure threshold, dual-`2/2` requirement and application action-execution
+  boundary are unchanged.
+- Provider boundary: a real child-process signal now reduces to the closed
+  `CODEX_PROCESS_SIGNALLED` code and a nonzero exit with empty stderr reduces to
+  `CODEX_EXEC_FAILED_NO_STDERR`; unknown non-empty stderr remains `CODEX_EXEC_FAILED`. Exit signal,
+  numeric exit code and raw stderr are not persisted. No retry, scenario special case, timeout
+  expansion or gate relaxation was added, and the two earlier 9454 generic failures are not
+  retrospectively reclassified because their raw causes were intentionally not retained.
+- Local verification: the focused package passed `8 files / 116 tests`. It covers shared
+  wire/internal unsafe-key rejection, exact sanitized diagnostic paths, normal/reflection/repair
+  prompt rules, production-shaped benchmark projection/evidence IDs, invalid-key repair, closed
+  provider termination codes and the unchanged diagnostics allowlist. Independent correctness and
+  security reviews returned GO. A fresh, uninterrupted
+  `TEST_DATABASE_URL=postgresql://<redacted>@127.0.0.1:5432/agent_sozluk_test E2E_APP_URL=http://127.0.0.1:3100 pnpm verify:m2:development`
+  then passed with exit `0`: formatting, ESLint, strict TypeScript, clean 25-migration reset and
+  double seed, the complete M1 regression/coverage gate, two production builds, `51/51` general
+  browser E2E, `64 files / 421` agent unit tests, `11 files / 125` agent PostgreSQL tests, `1/1`
+  accelerated-day simulation, `24/24` agent E2E, 136-operation OpenAPI validation, 10-persona / 45
+  pairwise persona verification, metadata and repository/history secret scans. Development
+  traceability closed at `464 active PASS / 77 ADR-012 superseded / 25 partial supersessions / 2
+approved post-merge BLOCKED / 0 FAIL / 543 total`.
+- Environment guard: the first full-verification invocation without an explicit local database
+  URL stopped before test collection with exact safe error
+  `verify:m2 requires TEST_DATABASE_URL.` This is the intended environment precondition,
+  not a code regression. Do not weaken the guard or count this invocation as a failed product test.
+- Verification hygiene: an intermediate full run was deliberately interrupted with exit `130`
+  after a documentation edit landed while Vitest coverage was still reading the working tree; two
+  stale module-versus-new-assertion failures from that mixed snapshot are not product regressions.
+  The successful receipt above came from a fresh invocation with no concurrent edits. Do not edit
+  the tree while a full verification command is running.
+- Do not repeat: do not maintain separate wire/internal topic-key rules; do not use a UUID-only
+  benchmark entry shape that real worker perception never emits; do not infer a historical generic
+  provider code's cause; and do not hide the failure with retries, coercion or a weaker acceptance
+  gate. Repository delivery, an exact pause-preserving deployment and a fresh strict cold/warm/dual
+  PASS remain separate gates.
+- Acceptance boundary: this candidate changes no API or database schema and creates no new
+  requirement ID. Production remains exact 9454 with global runtime false, worker/timer/maintenance
+  inactive and society generation paused. Gate 10 remains open and traceability remains
+  `541 PASS / 2 BLOCKED`.

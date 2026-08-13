@@ -9,6 +9,7 @@ import {
   runtimeNormalDecisionWireSchema,
   runtimeNormalWireFieldNames,
 } from "@/runtime/output";
+import { safeBenchmarkZodIssues } from "@/runtime/capability-diagnostics";
 
 function assertStrictObjects(value: unknown): void {
   if (!value || typeof value !== "object" || Array.isArray(value)) return;
@@ -184,6 +185,57 @@ describe("runtime structured output wire contract", () => {
         }).success,
       ).toBe(false);
     assertStrictObjects(runtimeDecisionJsonSchema);
+  });
+
+  it("rejects unsafe topic-fatigue keys before adapting the wire state", () => {
+    const unsafeTopicKeys = [
+      "00000000-0000-4000-8000-000000000099",
+      "a".repeat(40),
+      "b".repeat(64),
+      "https://example.com/topic",
+      "writer@example.com",
+      "123456",
+      "AbCdEfGhIjKlMnOpQrStUv12",
+      "<strong>topic</strong>",
+      "topic\ncontrol",
+    ];
+    for (const topicKey of unsafeTopicKeys) {
+      const parsed = runtimeNormalDecisionWireSchema.safeParse({
+        ...canonical,
+        state: {
+          ...canonical.state,
+          topicFatigue: { items: [{ topicKey, fatigue: 0.5 }] },
+        },
+      });
+      expect(parsed.success, topicKey).toBe(false);
+    }
+
+    const unsafeUuid = unsafeTopicKeys[0]!;
+    const parsed = parseRuntimeDecisionOutput({
+      ...canonical,
+      state: {
+        ...canonical.state,
+        topicFatigue: { items: [{ topicKey: unsafeUuid, fatigue: 0.5 }] },
+      },
+    });
+    expect(parsed.success).toBe(false);
+    if (parsed.success) throw new Error("Unsafe topicKey beklenmedik biçimde kabul edildi.");
+    const safeIssues = safeBenchmarkZodIssues(parsed.error);
+    expect(safeIssues).toContainEqual({
+      code: "CUSTOM",
+      path: "$.state.topicFatigue.items[0].topicKey",
+    });
+    expect(JSON.stringify(safeIssues)).not.toContain(unsafeUuid);
+
+    const safeTopicKey = "ölçülebilir kapasite";
+    const adapted = adaptRuntimeNormalDecisionWire({
+      ...canonical,
+      state: {
+        ...canonical.state,
+        topicFatigue: { items: [{ topicKey: safeTopicKey, fatigue: 0.5 }] },
+      },
+    });
+    expect(adapted.state.topicFatigue).toEqual({ [safeTopicKey]: 0.5 });
   });
 
   it("requires one coherent action provenance group instead of inventing MULTIPLE_SOURCES", () => {

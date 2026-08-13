@@ -1,5 +1,43 @@
 # Milestone status
 
+## Topic-fatigue capacity correction — local candidate 2026-08-13
+
+The repository-local candidate is based on exact main
+`42e0debfcda8ae73688248ce7d076b5c819a4d21`. The production diagnostic
+`INVALID_KEY $.state.topicFatigue[*]` was traced to a deterministic contract mismatch: the wire
+`items[].topicKey` accepted any bounded string, while the adapted internal fast-state map also
+applied the life-ledger safe-text predicate. Both paths now use one shared key schema. Normal,
+reflection and single-repair instructions require a short human-readable topic label and forbid
+UUID, digest/hash, URL, e-mail, OTP, credential, secret/token, HTML and control-character keys;
+unsafe output still fails closed rather than being dropped or coerced.
+
+The repair wording is now part of prompt profile v20 fingerprint
+`9725451a26afd710f80f717e9a0ba7c7042feb3e8c202ee0a743d864de04ea55`.
+The benchmark fixture now mirrors the real worker's nested topic/author entries, flat
+`previousFastState`, source-item IDs/statuses and derived evidence catalog instead of presenting a
+top-level UUID-only topic shape. Provider failures remain non-retrying: a real process signal maps
+to `CODEX_PROCESS_SIGNALLED`, a nonzero exit with empty stderr maps to
+`CODEX_EXEC_FAILED_NO_STDERR`, and unknown non-empty stderr stays `CODEX_EXEC_FAILED`. Raw process
+details are not persisted. The capability gate, API and database schema are unchanged.
+
+Focused verification passed `8 files / 116 tests`; independent correctness and security reviews
+returned GO. A fresh, uninterrupted `verify:m2:development` with the explicit allowlisted local
+PostgreSQL test URL passed with exit `0`, including formatting, ESLint, strict TypeScript, the clean
+25-migration database, complete M1 regression/coverage, two production builds, `51/51` general E2E,
+`64 files / 421` agent unit tests, `11 files / 125` agent PostgreSQL tests, `1/1` simulation,
+`24/24` agent E2E, 136-operation OpenAPI, persona, metadata and repository/history secret checks.
+Development traceability closed at `464 active PASS / 77 ADR-012 superseded / 25 partial
+supersessions / 2 approved post-merge BLOCKED / 0 FAIL / 543 total`. The first invocation without
+`TEST_DATABASE_URL` stopped at the intended environment guard. A later mixed-snapshot run was
+operator-interrupted with exit `130` after an edit landed during coverage; the final receipt above
+was rerun from a stable tree with no concurrent edits.
+
+This is local evidence only. No production access, deployment, benchmark, capability persistence,
+settings mutation, worker start or society resume occurred. Exact 9454 remains live and paused;
+its failed evidence is not relabeled by the candidate. A fresh exact release and strict
+zero-failure cold/warm plus dual-`2/2` package are still required. Gate 10 remains open and
+traceability remains `541 PASS / 2 BLOCKED`.
+
 ## Production reality and capacity diagnosis — 2026-08-13
 
 Exact application image and immutable runtime

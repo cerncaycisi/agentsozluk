@@ -4,6 +4,7 @@ import {
   runtimeFastStateSchema,
   runtimeMemoryConsolidationSchema,
   runtimeProvenanceSchema,
+  runtimeTopicFatigueKeySchema,
 } from "@/modules/agents/validation/runtime-schemas";
 import { weeklyPersonaEvolutionDeltaSchema } from "@/modules/agents/domain/persona-evolution";
 import { temperamentKeys } from "@/modules/agents/personas/schema";
@@ -94,7 +95,7 @@ const wireTopicFatigueSchema = z
       .array(
         z
           .object({
-            topicKey: z.string().trim().min(1).max(100),
+            topicKey: runtimeTopicFatigueKeySchema,
             fatigue: z.number().min(0).max(1),
           })
           .strict(),
