@@ -77,6 +77,11 @@ export const runtimeTopicFatigueOutputInstruction =
 export const runtimeStructuredRepairInstruction =
   "Önceki çıktı uygulamanın semantik structured-output doğrulamasını geçmedi. Tek repair hakkını kullan: her decisionJournal subject değeri kısa, insan-okur bir konu veya eylem etiketi olsun; UUID, digest/hash, URL, e-posta, credential, secret veya token değerini subject içine kopyalama; teknik kimlikleri yalnız evidenceIds/targetId gibi şema alanlarında tut; decisionJournal seq değerlerini benzersiz ve artan tut; causedBySeqs yalnız daha önceki seq değerlerine bağlansın; NO_ACTION dışındaki her action ve türetilen delta/proposal geçerli bir OPTION_SELECTED kaydına selectedOptionSeq ile bağlansın; her action claimProvenance içindeki bütün kanıt grupları tek ve aynı provenance türünü kullansın, farklı türleri karıştırma; provenance için yalnız perception.evidenceCatalog içindeki exact evidenceType/evidenceId eşleşmelerini kullan, author/source/target user id kanıt değildir; geçerli eşleşme yoksa NO_ACTION üret; state.topicFatigue yalnız {items:[{topicKey,fatigue}]} strict biçiminde olsun; perception.previousFastState.topicFatigue girdi tarafında key-value map olsa bile output state için bunu items dizisine dönüştür, map biçimini output'a kopyalama; topicKey değerleri benzersiz, 1-100 karakterlik kısa, insan-okur gerçek topic etiketi veya başlığı olsun; UUID, digest/hash, URL, e-posta, OTP/doğrulama kodu, credential, secret/token, HTML veya control karakterli metni topicKey olarak kullanma; güvenli bir konu etiketi yoksa items=[] üret; action ve türetilen delta/proposal toplamı 50'yi aşmasın. Yalnız geçerli structured JSON üret.";
 
+export const runtimeMemoryConsolidationRepairInstruction =
+  "Memory consolidation repair için memoryConsolidations.sourceMemoryIds içindeki her kimliği yalnız ve exact olarak perception.evidenceCatalog.AGENT_MEMORY dizisindeki UUID'lerden seç; bu katalogda olmayan görünmeyen veya uydurulan bir memory kimliğini kullanma. Geçerli kaynak memory kimliği yoksa memoryConsolidations=[] üret.";
+
+export const runtimeMemoryConsolidationSchemaVersion = 1;
+
 export const runtimePromptScaffold = {
   runtimeHeading: "# Runtime invariants",
   dictionaryHeading: "# Ürün amacı: dünyadaki her şeyi tanımlamak",
@@ -122,7 +127,7 @@ export const runtimePromptScaffold = {
   constitutionInstructions: [...CONSTITUTION_WRITER_CONTEXT],
   maintenanceHeading: "# Maintenance mode",
   maintenanceInstructions: [
-    "Yalnız perception içindeki aktif memory episode kimliklerini memoryConsolidations.sourceMemoryIds ile birleştir.",
+    runtimeMemoryConsolidationRepairInstruction,
     "memoryCandidates boş, reflectionDelta null ve actions yalnız desire=0, selectedOptionSeq=null olan NO_ACTION olmalı; yeni olgu, yapılmamış action veya chain-of-thought üretme.",
   ],
   reflectionHeading: "# Weekly reflection mode",
@@ -143,8 +148,9 @@ export const runtimePromptScaffold = {
 export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   .update(
     JSON.stringify({
-      profileVersion: 20,
+      profileVersion: 21,
       dynamicEvolutionSchemaVersion: 1,
+      dynamicMemoryConsolidationSchemaVersion: runtimeMemoryConsolidationSchemaVersion,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,
       runtimePromptInvariants,
       runtimePromptScaffold,
@@ -153,6 +159,7 @@ export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
       runtimeAllowedPerceptionKeys,
       runtimeForbiddenContextMetadataKeys,
       runtimeStructuredRepairInstruction,
+      runtimeMemoryConsolidationRepairInstruction,
       normalOutputSchema: runtimeNormalDecisionWireJsonSchema,
       actionWorthinessOutputSchema: runtimeActionWorthinessVerdictJsonSchema,
       reflectionOutputSchema: runtimeDecisionJsonSchema,

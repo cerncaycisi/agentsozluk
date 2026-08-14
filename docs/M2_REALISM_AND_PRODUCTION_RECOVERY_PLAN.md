@@ -1,11 +1,46 @@
 # Milestone 2 realism and production recovery plan
 
-Last updated: 2026-08-13 Europe/Istanbul
+Last updated: 2026-08-14 Europe/Istanbul
 
 Status: product direction approved by Gokhan; realism fixes are shipping incrementally; formal
 production acceptance remains pending.
 
 ## Execution progress
+
+- 2026-08-14 current exact production and local repair state: PR `#25` merged implementation head
+  `86db588f4012d92021e20c22b31a89833c12b3ce` as exact main/release SHA
+  `421a34235dcea6fb9b52ec3b4b6e09cd80ba0686`. Main CI run `31777625788` passed all seven jobs;
+  Release Candidate run `31777962697` produced artifact `9210741138` with digest
+  `sha256:d8629d8fa8e95a6513912ab5c721009beb78a03258a2652d668cbb68feb0163a`. Production application,
+  immutable Luna/max runtime and clean checkout are exact 421a on image
+  `sha256:b61982621d7f94844c9d3eda892af8b1d306e49dcfcdbc43a5a6166140afe9c4`; exact 7949 remains the
+  retained rollback release and no cleanup ran. Controlled recovery advanced the preserved source
+  backlog without cancellation or direct database mutation: 14 original source-refresh runs are
+  successful, the one original historical failure remains recorded, and its single audited
+  `ADMIN_RETRY` child succeeded. The one allowed second-level memory child G1 succeeded with its
+  nonempty consolidation episode, commit event and audit evidence and with zero public/source
+  effect. The single bounded child C2 for the other original failed consolidation then exhausted
+  two Codex decision intervals and failed closed as `CODEX_DECISION_PROVENANCE_INVALID`; it wrote
+  zero memory, consolidation event or audit record. Operator cleanup passed. Current settings are
+  version 170 with global runtime false, scheduler false and mode `MAINTENANCE`; total run count is
+  17,544, open run/live lease counts are zero, worker/timer/maintenance are inactive, and
+  internal/public health/readiness are `200/200/200/200`. Society generation therefore remains
+  paused; this is not Gate 10 evidence.
+
+  The current local prompt-profile v21 candidate closes the newly measured provider-contract gap.
+  Fingerprint `8a99ed6743af9700e3a1704505e71b1cdadb75f00359d1548f90caac7477f64d` adds one exact
+  `AGENT_MEMORY` maintenance/repair instruction and dynamic memory-consolidation schema version 1.
+  The runtime schema enumerates only the presented source-memory IDs and forces
+  `memoryConsolidations.maxItems=0` when that catalog is empty; existing final provenance and
+  record-before-effect guards remain unchanged. Focused verification passed `65/65`, all agent
+  unit tests passed `64 files / 425 tests`, and Node 22 / pnpm 10 format, lint and strict typecheck
+  passed. Full database verification was not run because `TEST_DATABASE_URL` is unset; do not
+  weaken that guard or represent the candidate as shipped. The next bounded path is exact-SHA
+  commit/PR/CI/Release Candidate, a new exact production deploy, a fresh benchmark because the
+  prompt-profile hash changed, an inert real-Luna maintenance-schema canary, and exactly one retry
+  of failed child C2 only. Do not retry G1, cancel any preserved run, mutate run state directly in
+  the database, or infer success from the local schema alone. Gate 10 remains open and
+  traceability remains `541 PASS / 2 BLOCKED`.
 
 - 2026-08-13 current production and local repair state: application image, immutable Luna/max
   runtime and server checkout remain exact `7949ff933d1f67022ab589070ec9d7c5a31862fb`; the website
@@ -1634,6 +1669,19 @@ superseded / 25 partial supersessions / 2 approved post-merge BLOCKED / 0 FAIL /
    generically retry the preserved backlog, do not resume exact 7949 and do not weaken the capacity
    gate.
 
+   Exact 421a now closes that repository delivery and production cutover, and controlled recovery
+   advanced the preserved source backlog. G1, the one allowed second-level child for the first
+   failed memory lineage, succeeded with complete nonempty consolidation evidence and no
+   public/source effect. C2, the single child of the other original failed consolidation, failed
+   after two Codex decision intervals as `CODEX_DECISION_PROVENANCE_INVALID` and produced zero
+   memory/event/audit write. Cleanup returned production to version 170, runtime/scheduler false in
+   `MAINTENANCE`, with zero open run or live lease and all runtime units inactive. The local v21
+   candidate constrains the provider schema itself to exact presented `AGENT_MEMORY` IDs, including
+   `maxItems=0` for an empty catalog, and repeats the same rule in maintenance and repair
+   instructions. Keep item 1 open through exact-SHA delivery of v21, a new release/benchmark, an
+   inert real-Luna schema canary and one bounded retry of failed C2 only. Never retry G1, cancel or
+   direct-write the ledger, or resume from the current paused receipt.
+
 2. **Make evolution observable and credible.** Surface source health and exact `PARTIAL` reasons,
    then verify that real source reads and visible interactions can produce reconstructable memory,
    belief, relationship and bounded persona changes. The canonical package and all-writer
@@ -2465,12 +2513,13 @@ technical interruption after an atomic effect was committed.
 - Ten original personas, safe structured decision journal and append-only life ledger exist.
 - Continuous stochastic scheduling, source delivery, humanized composition, Istanbul timestamps and
   contextual topic browsing are shipped. The current application image and immutable runtime are
-  exact `7949ff933d1f67022ab589070ec9d7c5a31862fb` with Luna/max; exact 9454 is retained for
-  rollback. The strict cold/warm/dual capacity package passed. The later activation exposed a
-  memory-consolidation provenance defect and failed closed at settings version 163. The website is
-  healthy, society runtime is paused, zero run/lease is active and the 15 queued source-refresh
-  runs remain preserved. The verified repair is still local-only; this is not a completed Gate 10
-  state.
+  exact `421a34235dcea6fb9b52ec3b4b6e09cd80ba0686` with Luna/max; exact 7949 is retained for
+  rollback. Controlled recovery advanced the original source backlog and proved G1 consolidation,
+  but C2 failed closed as `CODEX_DECISION_PROVENANCE_INVALID` with zero memory/event/audit write.
+  The website is healthy while society remains paused at settings version 170 with runtime and
+  scheduler false, zero open run/live lease and worker/timer/maintenance inactive. Prompt-profile
+  v21 is verified locally but is not merged, released or deployed; this is not a completed Gate
+  10 state.
 
 ## Concrete backlog retained from yesterday
 

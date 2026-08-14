@@ -23,7 +23,10 @@ import {
   buildRuntimePrompt,
   DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS,
   runtimeContentRepairWireJsonSchema,
+  runtimeOutputJsonSchema,
+  RUNTIME_MEMORY_CONSOLIDATION_REPAIR_INSTRUCTION,
   RUNTIME_PROMPT_PROFILE_HASH,
+  RUNTIME_STRUCTURED_REPAIR_INSTRUCTION,
 } from "@/runtime/worker";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 
@@ -195,6 +198,53 @@ function memoryConsolidationOutput(sourceMemoryId: string) {
       operationSummary: "Memory consolidation güvenli lineage ile tamamlandı.",
       observedItemIds: [sourceMemoryId],
       shortRationale: "Yalnız perception içinde sunulan aktif memory kaydı kullanıldı.",
+    },
+  };
+}
+
+function memoryConsolidationSchemaView(schema: Record<string, unknown>) {
+  const root = schema as {
+    properties?: {
+      memoryConsolidations?: {
+        maxItems?: number;
+        items?: {
+          properties?: {
+            sourceMemoryIds?: {
+              maxItems?: number;
+              items?: { enum?: string[]; pattern?: string };
+            };
+          };
+        };
+      };
+    };
+  };
+  const consolidations = root.properties?.memoryConsolidations;
+  const sourceMemoryIds = consolidations?.items?.properties?.sourceMemoryIds;
+  const sourceMemoryId = sourceMemoryIds?.items;
+  if (!consolidations || !sourceMemoryIds || !sourceMemoryId)
+    throw new Error("TEST_MEMORY_CONSOLIDATION_SCHEMA_SHAPE_INVALID");
+  return { consolidations, sourceMemoryIds, sourceMemoryId };
+}
+
+function memoryConsolidationContext(
+  trigger: "ADMIN_MEMORY_RECONSOLIDATE" | "NIGHTLY_MEMORY_CONSOLIDATION",
+  memoryIds: string[],
+): RuntimeContext {
+  const context = fixtureContext(randomUUID());
+  return {
+    ...context,
+    run: {
+      ...context.run,
+      runType: "REFLECTION",
+      trigger,
+      allowTopicCreation: false,
+      allowVoting: false,
+      allowFollowing: false,
+      allowSourceReading: false,
+      publishEnabled: false,
+    },
+    perception: {
+      memories: memoryIds.map((id) => ({ id, summary: `Canonical source memory ${id}.` })),
     },
   };
 }
@@ -891,8 +941,9 @@ describe("long-lived agent runtime worker", () => {
       "Her topicKey 1-100 karakterlik kısa, insan-okur gerçek bir topic etiketi veya başlığı olmalı",
     );
     expect(reflectionPrompt).toContain("Güvenli bir konu etiketi yoksa items=[] üret");
+    expect(RUNTIME_PROMPT_PROFILE_HASH).toMatch(/^[a-f0-9]{64}$/u);
     expect(RUNTIME_PROMPT_PROFILE_HASH).not.toBe(
-      "c2cf3b36fb67a035412f7aeaaca8484d2658ccd8a8051977feb9a04b3217605a",
+      "9725451a26afd710f80f717e9a0ba7c7042feb3e8c202ee0a743d864de04ea55",
     );
   });
 
@@ -2264,6 +2315,9 @@ describe("long-lived agent runtime worker", () => {
     expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
       "perception.evidenceCatalog",
     );
+    expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).not.toContain(
+      RUNTIME_MEMORY_CONSOLIDATION_REPAIR_INSTRUCTION,
+    );
     expect(plane.recordActions).toHaveBeenCalledWith(
       expect.any(String),
       "provenance-catalog-worker",
@@ -2406,6 +2460,53 @@ describe("long-lived agent runtime worker", () => {
     );
   });
 
+  it("constrains ADMIN and NIGHTLY consolidation schemas without base mutation or cross-context leak", () => {
+    const adminMemoryIds = Array.from(
+      { length: 21 },
+      (_, index) => `00000000-0000-4000-8000-${String(index + 301).padStart(12, "0")}`,
+    );
+    const nightlyMemoryIds = ["00000000-0000-4000-8000-000000000401"];
+    const unseenMemoryId = "00000000-0000-4000-8000-000000000999";
+    const baseSnapshot = structuredClone(runtimeDecisionJsonSchema);
+
+    const adminSchema = runtimeOutputJsonSchema(
+      memoryConsolidationContext("ADMIN_MEMORY_RECONSOLIDATE", adminMemoryIds),
+    );
+    const adminView = memoryConsolidationSchemaView(adminSchema);
+    expect(adminSchema).not.toBe(runtimeDecisionJsonSchema);
+    expect(adminView.sourceMemoryIds.maxItems).toBe(20);
+    expect(adminView.sourceMemoryId.enum).toEqual(adminMemoryIds);
+    expect(adminView.sourceMemoryId.enum).not.toContain(unseenMemoryId);
+    expect(adminView.sourceMemoryId.pattern).toBeUndefined();
+
+    const nightlySchema = runtimeOutputJsonSchema(
+      memoryConsolidationContext("NIGHTLY_MEMORY_CONSOLIDATION", nightlyMemoryIds),
+    );
+    const nightlyView = memoryConsolidationSchemaView(nightlySchema);
+    expect(nightlySchema).not.toBe(adminSchema);
+    expect(nightlyView.sourceMemoryIds.maxItems).toBe(1);
+    expect(nightlyView.sourceMemoryId.enum).toEqual(nightlyMemoryIds);
+    expect(nightlyView.sourceMemoryId.enum).not.toContain(unseenMemoryId);
+    expect(nightlyView.sourceMemoryId.pattern).toBeUndefined();
+
+    expect(adminView.sourceMemoryId.enum).toEqual(adminMemoryIds);
+    expect(runtimeDecisionJsonSchema).toEqual(baseSnapshot);
+    expect(
+      memoryConsolidationSchemaView(runtimeDecisionJsonSchema).sourceMemoryId.pattern,
+    ).toBeDefined();
+  });
+
+  it("forces an empty memory catalog to emit no consolidation objects", () => {
+    const baseSnapshot = structuredClone(runtimeDecisionJsonSchema);
+    const schema = runtimeOutputJsonSchema(
+      memoryConsolidationContext("NIGHTLY_MEMORY_CONSOLIDATION", []),
+    );
+
+    expect(schema).not.toBe(runtimeDecisionJsonSchema);
+    expect(memoryConsolidationSchemaView(schema).consolidations.maxItems).toBe(0);
+    expect(runtimeDecisionJsonSchema).toEqual(baseSnapshot);
+  });
+
   it("runs admin memory reconsolidation as consolidation-only maintenance", async () => {
     const runId = randomUUID();
     const sourceMemoryId = randomUUID();
@@ -2503,17 +2604,20 @@ describe("long-lived agent runtime worker", () => {
       expect.any(Object),
     );
     expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].prompt).toContain(
-      "memoryConsolidations.sourceMemoryIds",
+      "memoryConsolidations.sourceMemoryIds içindeki her kimliği yalnız ve exact olarak perception.evidenceCatalog.AGENT_MEMORY",
     );
-    expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].outputSchema).toBe(
-      runtimeDecisionJsonSchema,
-    );
+    const outputSchema = (provider.invoke as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
+      .outputSchema;
+    expect(outputSchema).not.toBe(runtimeDecisionJsonSchema);
+    expect(memoryConsolidationSchemaView(outputSchema).sourceMemoryId.enum).toEqual([
+      sourceMemoryId,
+    ]);
   });
 
-  it("repairs memory consolidation lineage that is absent from the presented catalog", async () => {
+  it("repairs an unsafe first memory lineage with the exact presented catalog id", async () => {
     const runId = randomUUID();
-    const presentedMemoryId = randomUUID();
-    const unseenMemoryId = randomUUID();
+    const presentedMemoryId = "00000000-0000-4000-8000-000000000101";
+    const unseenMemoryId = "00000000-0000-4000-8000-000000000102";
     const plane = controlPlane(runId);
     const context = fixtureContext(runId);
     plane.context = vi.fn().mockResolvedValue({
@@ -2559,8 +2663,39 @@ describe("long-lived agent runtime worker", () => {
     await expect(worker.runOnce()).resolves.toBe(1);
 
     expect(provider.invoke).toHaveBeenCalledTimes(2);
+    expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].prompt).toContain(
+      "memoryConsolidations.sourceMemoryIds içindeki her kimliği yalnız ve exact olarak perception.evidenceCatalog.AGENT_MEMORY",
+    );
     expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
-      "perception.evidenceCatalog",
+      "memoryConsolidations.sourceMemoryIds içindeki her kimliği yalnız ve exact olarak perception.evidenceCatalog.AGENT_MEMORY",
+    );
+    expect(RUNTIME_MEMORY_CONSOLIDATION_REPAIR_INSTRUCTION).toContain(
+      "memoryConsolidations.sourceMemoryIds içindeki her kimliği yalnız ve exact olarak perception.evidenceCatalog.AGENT_MEMORY",
+    );
+    expect(
+      (provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt.endsWith(
+        RUNTIME_MEMORY_CONSOLIDATION_REPAIR_INSTRUCTION,
+      ),
+    ).toBe(true);
+    expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
+      RUNTIME_STRUCTURED_REPAIR_INSTRUCTION,
+    );
+    expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
+      presentedMemoryId,
+    );
+    expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).not.toContain(
+      unseenMemoryId,
+    );
+    const primarySchema = (provider.invoke as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]
+      .outputSchema;
+    const repairSchema = (provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0]
+      .outputSchema;
+    expect(repairSchema).toBe(primarySchema);
+    expect(memoryConsolidationSchemaView(primarySchema).sourceMemoryId.enum).toEqual([
+      presentedMemoryId,
+    ]);
+    expect(memoryConsolidationSchemaView(primarySchema).sourceMemoryId.enum).not.toContain(
+      unseenMemoryId,
     );
     expect(plane.recordMemories).toHaveBeenCalledTimes(1);
     expect(plane.recordMemories).toHaveBeenCalledWith(
@@ -2575,9 +2710,11 @@ describe("long-lived agent runtime worker", () => {
     expect(plane.fail).not.toHaveBeenCalled();
   });
 
-  it("fails before recording when repaired memory lineage is still absent from the catalog", async () => {
+  it("fails before recording when both primary and repaired memory lineage stay unsafe", async () => {
     const runId = randomUUID();
-    const presentedMemoryId = randomUUID();
+    const presentedMemoryId = "00000000-0000-4000-8000-000000000201";
+    const firstUnseenMemoryId = "00000000-0000-4000-8000-000000000202";
+    const repairedUnseenMemoryId = "00000000-0000-4000-8000-000000000203";
     const plane = controlPlane(runId);
     const context = fixtureContext(runId);
     plane.context = vi.fn().mockResolvedValue({
@@ -2604,13 +2741,13 @@ describe("long-lived agent runtime worker", () => {
           provider: "codex-cli",
           version: "test",
           durationMs: 5,
-          output: memoryConsolidationOutput(randomUUID()),
+          output: memoryConsolidationOutput(firstUnseenMemoryId),
         })
         .mockResolvedValueOnce({
           provider: "codex-cli",
           version: "test",
           durationMs: 5,
-          output: memoryConsolidationOutput(randomUUID()),
+          output: memoryConsolidationOutput(repairedUnseenMemoryId),
         }),
     };
     const worker = new AgentRuntimeWorker({
@@ -2623,6 +2760,14 @@ describe("long-lived agent runtime worker", () => {
     await expect(worker.runOnce()).resolves.toBe(1);
 
     expect(provider.invoke).toHaveBeenCalledTimes(2);
+    expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
+      "memoryConsolidations.sourceMemoryIds içindeki her kimliği yalnız ve exact olarak perception.evidenceCatalog.AGENT_MEMORY",
+    );
+    expect(
+      (provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt.endsWith(
+        RUNTIME_MEMORY_CONSOLIDATION_REPAIR_INSTRUCTION,
+      ),
+    ).toBe(true);
     expect(plane.recordActions).not.toHaveBeenCalled();
     expect(plane.recordMemories).not.toHaveBeenCalled();
     expect(plane.complete).not.toHaveBeenCalled();

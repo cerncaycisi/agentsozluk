@@ -44,6 +44,7 @@ import {
   runtimeForbiddenContextMetadataKeys,
   runtimePromptInvariants,
   runtimePromptScaffold,
+  runtimeMemoryConsolidationRepairInstruction,
   runtimeStructuredRepairInstruction,
 } from "@/runtime/prompt-profile";
 import { renderRuntimeWritingVariation } from "@/runtime/writing-variation";
@@ -105,6 +106,8 @@ export function randomStochasticTickDelay(
   return minimumMs + Math.floor(unit * (maximumMs - minimumMs + 1));
 }
 export const RUNTIME_STRUCTURED_REPAIR_INSTRUCTION = runtimeStructuredRepairInstruction;
+export const RUNTIME_MEMORY_CONSOLIDATION_REPAIR_INSTRUCTION =
+  runtimeMemoryConsolidationRepairInstruction;
 
 const runtimeContentRepairWireSchema = z
   .object({
@@ -655,12 +658,40 @@ function restrictDeltaKey(
   delete keySchema.maxLength;
 }
 
+function restrictMemoryConsolidationSourceIds(
+  properties: Record<string, unknown>,
+  sourceMemoryIds: string[],
+): void {
+  const consolidations = objectRecord(properties.memoryConsolidations);
+  const consolidation = objectRecord(consolidations?.items);
+  const consolidationProperties = objectRecord(consolidation?.properties);
+  const sourceIds = objectRecord(consolidationProperties?.sourceMemoryIds);
+  const sourceId = objectRecord(sourceIds?.items);
+  if (!consolidations || !sourceIds || !sourceId)
+    throw new Error("RUNTIME_MEMORY_CONSOLIDATION_SCHEMA_SHAPE_INVALID");
+  if (sourceMemoryIds.length === 0) {
+    consolidations.maxItems = 0;
+    return;
+  }
+  sourceIds.maxItems = Math.min(20, sourceMemoryIds.length);
+  sourceId.enum = sourceMemoryIds;
+  delete sourceId.pattern;
+}
+
 export function runtimeOutputJsonSchema(context: RuntimeContext): Record<string, unknown> {
   if (context.run.runType !== "REFLECTION") return runtimeNormalDecisionWireJsonSchema;
+  const consolidationRun = isMemoryConsolidationRun(context);
   const persona = reflectionPersona(context);
-  if (!persona) return runtimeDecisionJsonSchema;
+  if (!consolidationRun && !persona) return runtimeDecisionJsonSchema;
   const schema = structuredClone(runtimeDecisionJsonSchema);
   const rootProperties = objectRecord(schema.properties);
+  if (!rootProperties) throw new Error("RUNTIME_REFLECTION_SCHEMA_SHAPE_INVALID");
+  if (consolidationRun)
+    restrictMemoryConsolidationSourceIds(
+      rootProperties,
+      runtimeEvidenceCatalog(context).AGENT_MEMORY,
+    );
+  if (!persona) return schema;
   const reflectionDelta = objectRecord(rootProperties?.reflectionDelta);
   const alternatives = Array.isArray(reflectionDelta?.anyOf) ? reflectionDelta.anyOf : [];
   const deltaSchema = alternatives
@@ -1180,9 +1211,15 @@ export class AgentRuntimeWorker {
         const remainingMs = deadline.remainingMs();
         if (remainingMs < 1000) throw new RuntimeProviderTimeoutError();
         currentFailure = runtimeWorkerFailures.decisionRepairProvider;
+        const repairInstruction = [
+          RUNTIME_STRUCTURED_REPAIR_INSTRUCTION,
+          ...(isMemoryConsolidationRun(context)
+            ? [RUNTIME_MEMORY_CONSOLIDATION_REPAIR_INSTRUCTION]
+            : []),
+        ].join("\n");
         const repairResult = await invokeCodex({
           runId,
-          prompt: `${prompt}\n\n${RUNTIME_STRUCTURED_REPAIR_INSTRUCTION}`,
+          prompt: `${prompt}\n\n${repairInstruction}`,
           outputSchema,
           timeoutMs: remainingMs,
           debugRetentionHours: context.run.debugRetentionHours,
