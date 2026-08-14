@@ -5671,3 +5671,57 @@ partial supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
   preserved. The next bounded path is exact-SHA PR, green CI, Release Candidate, no-migration
   deploy and controlled recovery that observes both zero hard memory-recording failure and a
   natural `NORMAL_WAKE`. Do not cancel or generically retry the backlog, and do not resume exact 7949. Gate 10 remains open and `docs/M2_TRACEABILITY.md` remains `541 PASS / 2 BLOCKED`.
+
+## 2026-08-14 — exact 421a deployment and bounded recovery fail-close
+
+- Delivery identity: PR `#25` merged exact implementation head
+  `86db588f4012d92021e20c22b31a89833c12b3ce` as main/release SHA
+  `421a34235dcea6fb9b52ec3b4b6e09cd80ba0686`. Main CI run `31777625788` passed all seven jobs;
+  Release Candidate run `31777962697` produced artifact `9210741138` with digest
+  `sha256:d8629d8fa8e95a6513912ab5c721009beb78a03258a2652d668cbb68feb0163a`.
+- Exact deployed identity: application, immutable Luna/max runtime and checkout converged on 421a;
+  application image ID is
+  `sha256:b61982621d7f94844c9d3eda892af8b1d306e49dcfcdbc43a5a6166140afe9c4`. Exact 7949 remains the
+  previous rollback release. No image/runtime cleanup ran.
+- Source recovery evidence: the preserved source backlog advanced without cancellation or direct
+  database write. Fourteen original refresh runs are successful, the one original historical
+  failure remains preserved, and its exactly one audited `ADMIN_RETRY` child succeeded.
+- Memory lineage G1: the one allowed second-level memory child succeeded and recorded its nonempty
+  memory-consolidation episode, commit event and audit evidence. It created no public/source effect.
+- Memory lineage C2 failure: the one bounded child for the other original failed consolidation
+  exhausted two Codex decision intervals and closed with exact safe code
+  `CODEX_DECISION_PROVENANCE_INVALID`. It produced zero memory, memory-consolidation event and
+  consolidation audit record. This is a provider-contract failure, not a successful empty
+  consolidation.
+- Fail-close proof: operator cleanup passed and left settings version 170 with global runtime false,
+  scheduler false and mode `MAINTENANCE`. Total run count is 17,544; open run and live lease counts
+  are zero; worker/timer/maintenance are inactive. Internal/public health/readiness returned
+  `200/200/200/200`.
+- Do not repeat: do not infer full recovery from source drainage or G1 success; do not treat a
+  schema-valid UUID as presented `AGENT_MEMORY`; do not retry G1, cancel a preserved run, directly
+  mutate the run ledger or start society from this receipt. Gate 10 remains open and traceability
+  remains `541 PASS / 2 BLOCKED`.
+
+## 2026-08-14 — local prompt-profile v21 memory-schema candidate
+
+- Root cause refinement: final application provenance validation correctly rejected C2, but the
+  provider's reflection output schema still allowed any UUID-shaped source memory. Prompt wording
+  alone did not force the model to choose only the exact `AGENT_MEMORY` catalog it was shown.
+- Candidate: prompt profile v21 has fingerprint
+  `8a99ed6743af9700e3a1704505e71b1cdadb75f00359d1548f90caac7477f64d`. Maintenance and the one
+  structured repair now repeat one exact instruction: every consolidation source ID must come from
+  the presented `AGENT_MEMORY` catalog, otherwise emit no consolidation. Dynamic
+  memory-consolidation schema version 1 also constrains `sourceMemoryIds.items.enum` to those exact
+  IDs and forces `memoryConsolidations.maxItems=0` when the catalog is empty. Existing final
+  provenance and record-before-effect guards remain unchanged.
+- Local verification: focused memory-schema/repair coverage passed `65/65`; all agent unit tests
+  passed `64 files / 425 tests`. Node 22.23.1 with pnpm 10.34.5 passed formatting, ESLint and strict
+  TypeScript. Full database verification was not run because the required `TEST_DATABASE_URL` is
+  unset; do not weaken or bypass that environment guard.
+- Delivery boundary: this repository candidate is not production evidence. Next run the
+  exact-SHA commit/PR/CI/Release Candidate chain, deploy the new exact artifact, rerun the strict
+  benchmark because the prompt fingerprint changed, and use an inert real-Luna maintenance-schema
+  canary before exactly one bounded retry of failed C2 only.
+- Do not repeat: do not retry G1, add a generic retry, cancel lineage, direct-write PostgreSQL or
+  equate local enum coverage with a provider PASS. Preserve all historical receipts and stop after
+  any C2 deviation.

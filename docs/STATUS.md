@@ -1,5 +1,47 @@
 # Milestone status
 
+## Exact 421a recovery fail-close and prompt-profile v21 local candidate — 2026-08-14
+
+PR `#25` merged implementation head `86db588f4012d92021e20c22b31a89833c12b3ce` as exact
+main/release SHA `421a34235dcea6fb9b52ec3b4b6e09cd80ba0686`. Main CI run `31777625788` passed
+all seven jobs. Release Candidate run `31777962697` produced artifact `9210741138` with digest
+`sha256:d8629d8fa8e95a6513912ab5c721009beb78a03258a2652d668cbb68feb0163a`. Production
+application, immutable Luna/max runtime and checkout are exact 421a on image
+`sha256:b61982621d7f94844c9d3eda892af8b1d306e49dcfcdbc43a5a6166140afe9c4`; exact 7949 remains
+the rollback release. No cleanup ran.
+
+Controlled recovery preserved history and advanced the source work without cancellation or direct
+database mutation. Fourteen original source-refresh runs are successful, one original historical
+failure remains recorded, and its one audited `ADMIN_RETRY` child succeeded. The allowed
+second-level memory child G1 succeeded with a nonempty consolidation episode, commit event and
+audit evidence and with zero public/source effect. The one bounded child C2 for the other original
+failed memory consolidation then exhausted two Codex decision intervals and failed as
+`CODEX_DECISION_PROVENANCE_INVALID`. C2 wrote zero memory, memory-consolidation event or audit
+record. The reviewed operator's fail-close cleanup passed; no further retry ran.
+
+Current production settings are version 170 with global runtime false, scheduler false and mode
+`MAINTENANCE`. Total run count is 17,544; open run and live lease counts are zero.
+Worker, timer and maintenance units are inactive. Internal/public health/readiness remain
+`200/200/200/200`. The site is healthy, but society generation is paused and this receipt is not a
+natural observation or Gate 10 PASS.
+
+The current repository candidate advances prompt profile to v21 with fingerprint
+`8a99ed6743af9700e3a1704505e71b1cdadb75f00359d1548f90caac7477f64d`. It adds the exact
+`AGENT_MEMORY` rule to both maintenance and repair instructions and uses dynamic
+memory-consolidation schema version 1: `sourceMemoryIds` is restricted to an enum of IDs actually
+presented to the provider, while an empty memory catalog forces
+`memoryConsolidations.maxItems=0`. Existing final provenance validation and zero-write-before-pass
+guards remain in place.
+
+Focused verification passed `65/65`; the full agent unit package passed `64 files / 425 tests`.
+Node 22 / pnpm 10 formatting, lint and strict TypeScript checks passed. Full database verification
+was not run because `TEST_DATABASE_URL` is unset. The candidate is not yet merged,
+released or deployed. Next is exact-SHA commit/PR/CI/Release Candidate, a new exact deploy, a fresh
+benchmark required by the prompt-profile hash, an inert real-Luna maintenance-schema canary and
+exactly one bounded retry of failed child C2. Do not retry G1, cancel preserved history, mutate run
+state directly in PostgreSQL or infer success before those gates. Gate 10 remains open and
+`docs/M2_TRACEABILITY.md` remains `541 PASS / 2 BLOCKED`.
+
 ## Memory-consolidation activation fail-close and local repair — 2026-08-13
 
 Production application, immutable Luna/max runtime and server checkout remain exact
