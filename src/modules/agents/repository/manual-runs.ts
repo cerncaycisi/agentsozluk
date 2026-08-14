@@ -159,13 +159,18 @@ export function createRetryRunRecord(
     requestId: string;
   },
 ) {
+  const trigger =
+    input.run.runType === "REFLECTION" &&
+    ["NIGHTLY_MEMORY_CONSOLIDATION", "ADMIN_MEMORY_RECONSOLIDATE"].includes(input.run.trigger)
+      ? "ADMIN_MEMORY_RECONSOLIDATE"
+      : "ADMIN_RETRY";
   return transaction.agentRun.create({
     omit: { leaseToken: true },
     data: {
       agentProfileId: input.run.agentProfileId,
       runType: input.run.runType,
       queuePriority: "MANUAL_SINGLE",
-      trigger: "ADMIN_RETRY",
+      trigger,
       requestedById: input.requestedById,
       parentRunId: input.run.id,
       personaVersionId: input.run.personaVersionId,

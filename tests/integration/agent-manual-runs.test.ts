@@ -300,4 +300,51 @@ describe("continuous-flow manual runs with PostgreSQL", () => {
       }),
     });
   });
+
+  it.each(["NIGHTLY_MEMORY_CONSOLIDATION", "ADMIN_MEMORY_RECONSOLIDATE"])(
+    "preserves memory-consolidation semantics when retrying a %s reflection",
+    async (parentTrigger) => {
+      const admin = await createAdmin();
+      const created = await createActiveAgent(admin.id, 0);
+      const parent = await createManualAgentRun(
+        integrationDatabase,
+        actor(admin.id),
+        created.agent.profile.id,
+        manualAgentRunSchema.parse({ runType: "REFLECTION" }),
+      );
+      await integrationDatabase.agentRun.update({
+        where: { id: parent.run!.id },
+        data: {
+          trigger: parentTrigger,
+          runStatus: "FAILED",
+          finishedAt: new Date(),
+          errorCode: "CONTROL_PLANE_MEMORY_RECORD_FAILED",
+          errorSummary: "Synthetic memory-consolidation failure for retry verification.",
+        },
+      });
+
+      const retry = await retryAgentRun(integrationDatabase, actor(admin.id), parent.run!.id, {
+        reason: "Retry memory consolidation without changing its runtime semantics.",
+      });
+
+      expect(retry).toMatchObject({
+        parentRunId: parent.run!.id,
+        runType: "REFLECTION",
+        runStatus: "QUEUED",
+        trigger: "ADMIN_MEMORY_RECONSOLIDATE",
+        queuePriority: "MANUAL_SINGLE",
+      });
+      await expect(
+        integrationDatabase.outboxEvent.findFirstOrThrow({
+          where: { eventType: "agent.run.queued", aggregateId: retry.id },
+        }),
+      ).resolves.toMatchObject({
+        payload: expect.objectContaining({
+          runId: retry.id,
+          parentRunId: parent.run!.id,
+          trigger: "ADMIN_MEMORY_RECONSOLIDATE",
+        }),
+      });
+    },
+  );
 });

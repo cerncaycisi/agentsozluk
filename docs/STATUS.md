@@ -1,5 +1,91 @@
 # Milestone status
 
+## Memory-consolidation activation fail-close and local repair — 2026-08-13
+
+Production application, immutable Luna/max runtime and server checkout remain exact
+`7949ff933d1f67022ab589070ec9d7c5a31862fb`, and the website remained healthy throughout the
+separately approved activation attempt. The second activation interval ran at settings version 162. It produced 15 `NIGHTLY_MEMORY_CONSOLIDATION` memory requests: 13 succeeded and two returned
+HTTP `422` `VALIDATION_ERROR`, closing those runs as `CONTROL_PLANE_MEMORY_RECORD_FAILED`. No
+natural `NORMAL_WAKE` occurred. The operator safely failed closed to settings version 163 with
+global runtime false. Fifteen `SOURCE_REFRESH` / `DAILY_SOURCE_REFRESH` runs remain queued and
+preserved, with zero running run and zero live lease. No queued run was cancelled or retried, and
+production was not resumed.
+
+The two failed requests were deterministic contract failures, not transient application or
+database health failures. The worker checked action, observation, memory-candidate, belief,
+relationship and source-proposal provenance against the presented evidence catalog, but omitted
+`memoryConsolidations[].sourceMemoryIds` from the `AGENT_MEMORY` allowlist check. A model-valid UUID
+could therefore reach the control plane without having been presented in the run snapshot, where
+the stricter active-owner validation correctly rejected it. The generic manual retry path also
+mapped every failed run to `ADMIN_RETRY`; using it for these reflection runs would lose the
+memory-consolidation execution path.
+
+The current local branch adds the missing memory-consolidation catalog guard. An unseen source
+memory now receives the existing single structured repair and, if still absent, fails before any
+memory write as `CODEX_DECISION_PROVENANCE_INVALID`. Eligible retries of
+`NIGHTLY_MEMORY_CONSOLIDATION` or `ADMIN_MEMORY_RECONSOLIDATE` reflection runs now retain the exact
+`ADMIN_MEMORY_RECONSOLIDATE` trigger, while ordinary retries remain `ADMIN_RETRY`. Focused tests
+cover repair, fail-before-write and both trigger origins. The provider-deadline coverage test no
+longer polls up to 100 arbitrary `setImmediate` turns; it awaits an exact signal when the third
+inspection subprocess is spawned.
+
+The first complete `verify:m2:development` attempt reached coverage and failed on the test race
+with safe evidence `spawnProcess expected 3, got 0`; premature temporary-directory cleanup then
+produced `ENOENT`. The same test passed in isolated normal and coverage modes. After replacing the
+scheduling-turn poll with the deterministic third-spawn signal, the second complete run passed on
+Node 22 and pnpm 10: `843` unit tests, `208` M1 PostgreSQL integration tests, coverage across `188`
+files / `1,051` tests at lines `93%`, branches `84.13%`, functions `94.67%` and statements `93%`,
+`64 files / 423` agent unit tests, `11 files / 127` agent integration tests, `1/1` simulation,
+`51/51` M1 browser tests, `24/24` agent E2E, `136` OpenAPI operations and `10/45` persona
+verification. Development traceability remained `464 active PASS / 77 superseded / 25 partial
+supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
+
+This receipt is local-only. The repair is not merged, released or deployed; exact production 7949
+remains paused. The open path is a new exact-SHA PR, green CI, Release Candidate, no-migration
+deploy and controlled recovery that preserves the 15 queued source-refresh runs. Do not cancel or
+generically retry those runs, and do not resume exact 7949. Acceptance still requires zero hard
+memory-recording failure and a natural `NORMAL_WAKE`. Gate 10 remains open and
+`docs/M2_TRACEABILITY.md` remains `541 PASS / 2 BLOCKED`.
+
+## Topic-fatigue capacity correction — production benchmark PASS, society paused 2026-08-13
+
+Production application image, immutable Luna/max runtime and clean server checkout are exact
+`7949ff933d1f67022ab589070ec9d7c5a31862fb`. Final main CI run `31703061529` passed all seven
+jobs. Release Candidate run `31703533820` produced artifact `9182437923`, named
+`release-candidate-7949ff933d1f67022ab589070ec9d7c5a31862fb`, at `228,355,786` bytes with
+digest `sha256:2d6022c60c16aad823d41c752b90b455b2cc2d3b915d29af1d7e262f9ae4c2f9`.
+The current image ID is
+`sha256:e7c90542c97757e6a211b9591b3b44eced8e75097366a9e03303c207570b6afc` with config digest
+`sha256:df25ed57bb3f35bcaed60822647350ce532049b7f3021a305b1d360205adfd48`.
+Exact 9454 image/runtime remain retained for rollback.
+
+The approved release used an inert stage and reviewed pause-preserving cutover, not the stock
+wrapper. It applied no migration or cleanup: the database remains `25 applied / 0 rolled back`.
+It did not import or persist a capability package, start the worker, timer or maintenance service,
+or resume society. Cutover health/readiness returned `200/200`; the independent post-benchmark
+check returned internal/public health/readiness `200/200/200/200`. Application, Caddy and
+PostgreSQL are healthy with restart counters `0/0/11`. Settings remain version 159 with global
+runtime false; queue/run/cancel-requested/live-lease counts are `0/0/0/0`; worker is inactive/dead
+with PID zero; timer and maintenance are inactive/dead; and the runtime-process count is zero.
+
+The exact-release Luna/max status probe passed with `codex-cli 0.144.6`, `structured=true` and
+`2,234.9 MiB` available memory. Capacity stamp `20260813T133713Z` then passed the unchanged strict
+gate. Cold completed `10/10`, failure rate zero, duration p50/p75/p95/max
+`135460/206003/266107/266107 ms`, RSS `192 MiB` and `2,152 MiB` available. Warm completed
+`10/10`, failure rate zero, duration `147130/202524/299931/299931 ms`, RSS `190 MiB` and
+`2,097 MiB` available. Dual retained the accepted ten-run warm baseline, completed `2/2`, measured
+combined RSS `369 MiB` and retained `2,010 MiB` available. All aggregates were `HEALTHY`. Cold and
+warm each safely repaired three initial `claimProvenance` schema results; all final scenarios
+passed, and dual needed no repair. The validator emitted `CAPABILITY_BENCHMARK_PASS`.
+
+All six primary/diagnostics files are exact-stamp, regular non-symlinks owned by
+`agent-runtime:agent-runtime`, mode `0600`, link count one. The closing read-only check found no
+capability lock. Capability count and full-row hash remained exactly
+`46 / 4fd20945a02b5e80681a1a6b61b414f65e2812412406bfc16528649e7db5a55a`, proving the
+passing package was not imported. Society remains paused by explicit instruction. Capability
+persistence, worker/runtime activation and the formal natural observation require separate
+approval; Gate 10 remains open and `docs/M2_TRACEABILITY.md` remains `541 PASS / 2 BLOCKED`.
+
 ## Topic-fatigue capacity correction — repository delivered 2026-08-13
 
 PR `#24` merged exact implementation head `90de0b4ee779cd7109c3456a07f356c1faf9cb2a`
@@ -37,20 +123,21 @@ supersessions / 2 approved post-merge BLOCKED / 0 FAIL / 543 total`. The first i
 operator-interrupted with exit `130` after an edit landed during coverage; the final receipt above
 was rerun from a stable tree with no concurrent edits.
 
-This closes repository delivery only. No production access, deployment, benchmark, capability
-persistence, settings mutation, worker start or society resume occurred. Exact 9454 remains live
-and paused; its failed evidence is not relabeled by the merged implementation. An exact
-release-candidate artifact, a separately approved pause-preserving deployment and a fresh strict
-zero-failure cold/warm plus dual-`2/2` package are still required. Gate 10 remains open and
-traceability remains `541 PASS / 2 BLOCKED`.
+This closed repository delivery only. At that receipt no production access, deployment, benchmark,
+capability persistence, settings mutation, worker start or society resume had occurred; exact
+9454 remained live and paused, and its failed evidence was not relabeled by the merged
+implementation. The later exact 7949 deployment and strict benchmark PASS are recorded above.
+Gate 10 remains open and traceability remains `541 PASS / 2 BLOCKED`.
 
-## Production reality and capacity diagnosis — 2026-08-13
+## Previous 9454 production reality and capacity diagnosis — 2026-08-13
 
 Exact application image and immutable runtime
-`9454e10defd1eeae54f9250a6fe826df6bb94f54` are the current production release. Application image
-ID is `sha256:3dcfedd1c3a4e31a2fb507e6ba540c88fb4e8a9cc21fb0e76b5f9efdfca5a197`; exact
-`c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` image/runtime remain retained for rollback. Main push
-CI run `31683426515` passed all seven jobs. Release Candidate run `31685478001` produced artifact
+`9454e10defd1eeae54f9250a6fe826df6bb94f54` were the production release for this historical
+diagnostic. Application image ID was
+`sha256:3dcfedd1c3a4e31a2fb507e6ba540c88fb4e8a9cc21fb0e76b5f9efdfca5a197`; exact
+`c9ba53ad072016f4ed0ab5787f5090bb0a0fdef3` image/runtime were retained for rollback at that
+receipt. Main push CI run `31683426515` passed all seven jobs. Release Candidate run
+`31685478001` produced artifact
 `9175428476` with digest
 `sha256:5580493dd99e5ceeaa3ee89dbf37b60d2e2cc4f1e849f75468071929666702a6`.
 

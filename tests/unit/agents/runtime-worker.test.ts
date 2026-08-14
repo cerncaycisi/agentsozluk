@@ -174,6 +174,31 @@ function legacyExtendedNormalOutput(safeSummary = "Legacy extended normal output
   };
 }
 
+function memoryConsolidationOutput(sourceMemoryId: string) {
+  return {
+    state: { curiosity: 0.4, confidence: 0.6, topicFatigue: { items: [] } },
+    observations: [],
+    actions: [],
+    beliefDeltas: [],
+    relationshipDeltas: [],
+    sourceProposals: [],
+    reflectionDelta: null,
+    memoryConsolidations: [
+      {
+        sourceMemoryIds: [sourceMemoryId],
+        summary: "Sunulan aktif memory kaydı güvenli bir consolidation özetine dönüştürüldü.",
+        salience: 0.7,
+      },
+    ],
+    memoryCandidates: [],
+    safeRunSummary: {
+      operationSummary: "Memory consolidation güvenli lineage ile tamamlandı.",
+      observedItemIds: [sourceMemoryId],
+      shortRationale: "Yalnız perception içinde sunulan aktif memory kaydı kullanıldı.",
+    },
+  };
+}
+
 function noActionProvider(): RuntimeProvider {
   return {
     inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
@@ -2482,6 +2507,134 @@ describe("long-lived agent runtime worker", () => {
     );
     expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[0]?.[0].outputSchema).toBe(
       runtimeDecisionJsonSchema,
+    );
+  });
+
+  it("repairs memory consolidation lineage that is absent from the presented catalog", async () => {
+    const runId = randomUUID();
+    const presentedMemoryId = randomUUID();
+    const unseenMemoryId = randomUUID();
+    const plane = controlPlane(runId);
+    const context = fixtureContext(runId);
+    plane.context = vi.fn().mockResolvedValue({
+      ...context,
+      run: {
+        ...context.run,
+        runType: "REFLECTION",
+        trigger: "NIGHTLY_MEMORY_CONSOLIDATION",
+        allowTopicCreation: false,
+        allowVoting: false,
+        allowFollowing: false,
+        allowSourceReading: false,
+        publishEnabled: false,
+      },
+      perception: {
+        memories: [{ id: presentedMemoryId, summary: "Canonical source memory." }],
+      },
+    });
+    const provider: RuntimeProvider = {
+      inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 5,
+          output: memoryConsolidationOutput(unseenMemoryId),
+        })
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 5,
+          output: memoryConsolidationOutput(presentedMemoryId),
+        }),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "memory-lineage-repair-worker",
+      credentials: [`agt_${"m".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(provider.invoke).toHaveBeenCalledTimes(2);
+    expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
+      "perception.evidenceCatalog",
+    );
+    expect(plane.recordMemories).toHaveBeenCalledTimes(1);
+    expect(plane.recordMemories).toHaveBeenCalledWith(
+      expect.any(String),
+      "memory-lineage-repair-worker",
+      runId,
+      LEASE_TOKEN,
+      [expect.objectContaining({ sourceMemoryIds: [presentedMemoryId] })],
+      expect.any(Object),
+    );
+    expect(plane.complete).toHaveBeenCalledTimes(1);
+    expect(plane.fail).not.toHaveBeenCalled();
+  });
+
+  it("fails before recording when repaired memory lineage is still absent from the catalog", async () => {
+    const runId = randomUUID();
+    const presentedMemoryId = randomUUID();
+    const plane = controlPlane(runId);
+    const context = fixtureContext(runId);
+    plane.context = vi.fn().mockResolvedValue({
+      ...context,
+      run: {
+        ...context.run,
+        runType: "REFLECTION",
+        trigger: "NIGHTLY_MEMORY_CONSOLIDATION",
+        allowTopicCreation: false,
+        allowVoting: false,
+        allowFollowing: false,
+        allowSourceReading: false,
+        publishEnabled: false,
+      },
+      perception: {
+        memories: [{ id: presentedMemoryId, summary: "Canonical source memory." }],
+      },
+    });
+    const provider: RuntimeProvider = {
+      inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 5,
+          output: memoryConsolidationOutput(randomUUID()),
+        })
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 5,
+          output: memoryConsolidationOutput(randomUUID()),
+        }),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "memory-lineage-rejected-worker",
+      credentials: [`agt_${"n".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(provider.invoke).toHaveBeenCalledTimes(2);
+    expect(plane.recordActions).not.toHaveBeenCalled();
+    expect(plane.recordMemories).not.toHaveBeenCalled();
+    expect(plane.complete).not.toHaveBeenCalled();
+    expect(plane.fail).toHaveBeenCalledWith(
+      expect.any(String),
+      "memory-lineage-rejected-worker",
+      runId,
+      LEASE_TOKEN,
+      expect.objectContaining({
+        outcome: "FAILED",
+        errorCode: "CODEX_DECISION_PROVENANCE_INVALID",
+      }),
     );
   });
 
