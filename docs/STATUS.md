@@ -15,7 +15,12 @@ health/readiness `200/200` kaldı. Exact hedef, operatör ve snapshot hash'leri
 nick'in birlikte gösterildiği ve profil URL'lerinin eski kullanıcı adını taşıdığı görüldü. Bu sosyal
 medya tipi çift kimlik sözlük benchmark'ına uymadığı için public model düzeltildi: tek görünen kimlik
 nick, kanonik profil yolu nick slug'ı, eski kullanıcı adı yolu ise kalıcı yönlendirmedir. İç username
-değişmedi; entry ve credential ilişkileri korunur.
+değişmedi; entry ve credential ilişkileri korunur. Düzeltme exact release
+`effdd05c465e3784c0f360cc0d7722b711b5e7ca` olarak production'a alındı. Yeni örnek profil yolu
+`/yazar/salidan-kalma` `200`, eski `/yazar/akisnobeti` yolu `308` ve kanonik konum döndürdü; yeni
+sayfada eski `@akisnobeti` etiketi bulunmadı. App healthy, runtime ve bakım timer'ı active/enabled,
+settings `190|true|true|true|true|NORMAL` kaldı. Salt-okunur son hedef karşılaştırması `22/22`
+exact eşleşme ve `0` uyumsuzluk verdi.
 
 Sıradaki aktif paket W2'dir: mevcut 22 yazarın persona içeriğini karikatürlükten çıkaran yeni
 değişmez persona sürümleri. W1 yalnızca public kimlik katmanını düzeltti; ortak yazım davranışını

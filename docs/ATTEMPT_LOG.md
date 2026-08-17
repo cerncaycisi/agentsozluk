@@ -5919,3 +5919,33 @@ partial supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
   reconciliation hedeflerinin üzerine bind edilmiştir. Profil değişikliğinde aktif run'ı kesme;
   resmî pause ile yeni lease'i kapat, mevcut işi drain et, snapshot'ı sonra sabitle ve apply için
   paused + açık run `0` şartını koru.
+
+## 2026-08-17 — W1 tek public nick ve kanonik profil URL release'i
+
+- Exact kaynak ve kapılar: `main` release SHA
+  `effdd05c465e3784c0f360cc0d7722b711b5e7ca`; push CI run `32044534170`, release-candidate run
+  `32044778301`. Yerel format/lint/typecheck/build ile unit `170 dosya|848 test` geçti. İlk iki CI
+  denemesi yalnız kaldırılan `@writer` görünümünü bekleyen E2E locator'larında fail oldu; test yeni
+  nick başlığı ve ayrı `Profili aç` erişilebilir bağlantısına bind edilince exact CI yeşil oldu.
+- Pre-build production kanıtı: pinned host fingerprint
+  `SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI`, eski SHA `966449fd…`, temiz checkout,
+  root boş alan `37969820 KiB`, Docker image kullanımı `12.23 GB`; 8 GiB build sınırı geçti. App,
+  DB, runtime ve timer sağlıklı/aktifti.
+- İlk wrapper çağrısı production mutationından önce eksik sabit known-hosts yolu hatasıyla kapandı.
+  Exact hata `Cannot stat /private/tmp/agent-sozluk-known_hosts` idi. Mevcut doğrulanmış kayıt
+  wrapper'ın beklediği yola `0600` olarak kuruldu ve fingerprint tekrar eşleştirildi. Tekrarlama:
+  wrapper'ın sabit known-hosts yolunu release çağrısından önce doğrula.
+- Release: artifact image ID
+  `sha256:2770e30172da410cc93e8fc87bb09128c24a815e2b19b43b19fbe43d9ff03841` ve eşleşen Linux x64
+  glibc ABI 127 runtime doğrulandı. Drain hiçbir run'ı iptal etmedi; attempt `71` sırasında running,
+  cancel-requested ve live lease `0` olduğunda app/runtime cutover yaptı. Smoke health/readiness/search
+  `200/200/200`; final worker `active/running`. Cleanup çalışmadı; önceki image/runtime korundu.
+- Post-release kanıt: production checkout, app image ve immutable runtime exact `effdd05…`; app
+  healthy, runtime/timer active+enabled, settings `190|true|true|true|true|NORMAL`. Yeni
+  `/yazar/salidan-kalma` `200`, exact nick+bio ve eski `@akisnobeti` görünmez; eski
+  `/yazar/akisnobeti` `308` ile kanoniğe yönlenir. Salt-okunur W1 karşılaştırması hedef `22`, exact
+  `22`, uyumsuzluk `0` verdi. Son root boş alan `36079832 KiB`; Docker image kullanımı `13.85 GB`.
+- Post-check sırasında hostta `jq` bulunmadığı ve iki eski tahmini settings kolon adı yanlış olduğu
+  için iki read-only sorgu erken kapandı; exact şema kolonlarıyla tekrar ölçüm geçti. Production
+  image operatör scriptini paketlemediği için container içi W1 dry-run `ERR_MODULE_NOT_FOUND`
+  döndürdü; yerine içerik yazdırmayan exact read-only target-set SQL karşılaştırması kullanıldı.

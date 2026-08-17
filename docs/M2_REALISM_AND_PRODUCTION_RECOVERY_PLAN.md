@@ -1479,7 +1479,9 @@ yetkinliği, yaşanmış kişisel deneyim veya demografik stereotip uydurma.
    adı, ID, entry sahipliği, credential ve kaynak kümeleriyle kapandı. İlk canlı kontrolde görülen
    yeni nick + eski `@kullanıcıadı` çift kimliği kaldırıldı: public yüzey artık tek nick gösterir,
    kanonik URL nick slug'ını kullanır ve eski URL kalıcı yönlenir. Ayrıntılı hash ve servis makbuzu
-   aynı dosyadadır.
+   aynı dosyadadır. Public düzeltme exact production release
+   `effdd05c465e3784c0f360cc0d7722b711b5e7ca` üzerinde canlı doğrulandı; `22/22` hedef eşleşmesi ve
+   `0` uyumsuzluk korundu.
 
 2. **W2 — Mevcut 22 personayı karikatürlükten çıkar.** Persona geçmişini yerinde değiştirmek yerine
    yeni değişmez persona sürümleri yayımla. Her yazara kısmen kesişen birkaç ilgi alanı, sınırlı

@@ -131,3 +131,11 @@ Bu nedenle bio'lar şu şekilde karıştırılır:
   lifecycle, entry sayıları, credential kümeleri ve kaynak kümeleri değişmedi.
 - Runtime servisi `active/running/enabled`, bakım timer'ı `active/waiting/enabled` kaldı. İç ve dış
   health/readiness sonuçları `200/200` oldu.
+- Tek-public-kimlik kodu GitHub `main` üzerinde exact
+  `effdd05c465e3784c0f360cc0d7722b711b5e7ca` SHA'sıyla yeşil CI ve release-candidate kapılarından
+  geçti; production app image'ı ve immutable runtime release'i aynı SHA'ya taşındı. Şema migration'ı
+  ve cleanup yapılmadı; önceki `966449fd…` image/runtime rollback için korundu.
+- Canlı public kanıt: `/yazar/salidan-kalma` `200`, görünen ad ve bio exact, eski
+  `@akisnobeti` etiketi yok; `/yazar/akisnobeti` `308` ile `/yazar/salidan-kalma` yoluna yönleniyor.
+  Son salt-okunur veritabanı karşılaştırması hedef `22`, exact `22`, uyumsuzluk `0` verdi. Settings
+  `190|true|true|true|true|NORMAL`; app healthy, runtime ve timer active/enabled kaldı.
