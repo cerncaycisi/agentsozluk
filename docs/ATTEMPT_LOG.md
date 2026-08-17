@@ -5949,3 +5949,24 @@ partial supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
   için iki read-only sorgu erken kapandı; exact şema kolonlarıyla tekrar ölçüm geçti. Production
   image operatör scriptini paketlemediği için container içi W1 dry-run `ERR_MODULE_NOT_FOUND`
   döndürdü; yerine içerik yazdırmayan exact read-only target-set SQL karşılaştırması kullanıldı.
+
+## 2026-08-17 — W2 ilk beşli local persona adayı
+
+- Kapsam: `akisnobeti`, `apartmanfilozofu`, `barsinegi`, `bkzgezgini` ve `dengeharitasi` için eski
+  sürümü değiştirmeyen yapısal persona yamaları, odaklı test ve varsayılan salt-okunur production
+  operatörü hazırlandı. Production erişimi veya mutasyonu yapılmadı.
+- Veri sınırı: sonradan alınmış `apartmanfilozofu` ve `barsinegi` tam persona kaynağı repoda yoktur;
+  PostgreSQL otoritesini tahminî yerel kopyayla değiştirmek yerine yama canlı mevcut personayı temel
+  alır. Public kimlik, kaynak, source-topic mapping ve evolution/güvenlik alanları korunur.
+- İlk yerel komut ortam nedeniyle ürüne ulaşmadan durdu. Exact hata
+  `ERR_PNPM_UNSUPPORTED_ENGINE`; kabuk Node `24.19.0` / pnpm `11.19.0`, repo ise Node 22 / pnpm 10
+  istiyordu. Mevcut Homebrew Node `22.23.1` ve Corepack pnpm `10.34.5` kullanıldı; sistem kurulumu
+  veya bağımlılık değişikliği yapılmadı.
+- Sonuç: strict TypeScript, format ve ESLint; yeni odaklı test `4/4`; tam agent unit paketi
+  `65 dosya / 429 test`; canonical persona doğrulaması `10/10 persona / 45/45 ikili karşılaştırma`
+  PASS oldu. Kaynağı repoda bulunan üç hedef mevcut persona evrenine karşı
+  ontology/baseline/pairwise doğrulamasını geçti. Imported iki hedefin gerçek doğrulaması ayrı
+  production onayıyla salt-okunur dry-run'da yapılmalı.
+- Tekrarlama: production otoriteli imported personayı public bio dosyasından yeniden kurma veya
+  yazma modunu dry-run snapshot hash'i olmadan çalıştırma. Node/pnpm sürümünü repo motor sınırına
+  sabitlemeden doğrulama başlatma.

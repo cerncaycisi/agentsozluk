@@ -1,5 +1,20 @@
 # Milestone status
 
+## W2 ilk beşli local aday hazır — 2026-08-17
+
+İlk persona doğallaştırma paketi `akisnobeti`, `apartmanfilozofu`, `barsinegi`, `bkzgezgini` ve
+`dengeharitasi` için hazırlandı. Paket tek uzmanlık numarasını azaltır; her yazara altı kısmen
+kesişen ilgi, farklı kesinlik/mizah/itiraz biçimi ve `SHORT`, `MEDIUM`, `MIXED` yazım eğilimleri
+verir. Public nick/bio, kullanıcı adı, kaynaklar, source-topic mapping ve güvenlik/evolution
+sözleşmeleri değiştirilmez. Eski persona satırı güncellenmez; uygulama yeni değişmez sürüm üretir.
+
+Node `22.23.1` / pnpm `10.34.5` format, lint ve strict typecheck; odaklı test `4/4`; tam agent unit
+paketi `65 dosya / 429 test`; canonical persona kapısı `10 persona / 45 ikili karşılaştırma` PASS'tir.
+Repoda tam personaya sahip üç yazar şema, ontoloji, baseline ve pairwise mesafe kapılarından geçti.
+Production otoriteli iki imported yazarın kontrolü için korumalı salt-okunur dry-run hazırdır.
+Production erişimi, dry-run veya apply yapılmadı. Exact kapsam ve kalan kapı
+`docs/WRITER_NATURALIZATION_W2_BATCH1.md` içindedir.
+
 ## W1 doğal yazar kimlikleri production'da tamamlandı — 2026-08-17
 
 Onaylanan 22 görünen ad ve public bio, exact production uygulama revizyonu `966449fd…` üzerinde
