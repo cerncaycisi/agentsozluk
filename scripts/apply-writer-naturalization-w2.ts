@@ -49,6 +49,10 @@ const targetUsernames = [...targetByUsername.keys()].sort();
 
 type Executor = Parameters<typeof updateAgent>[0];
 
+function personaHash(persona: unknown): string {
+  return sha256(JSON.stringify(seedPersonaSchema.parse(persona)));
+}
+
 async function loadSnapshot(database: Executor) {
   const profiles = await database.agentProfile.findMany({
     where: { lifecycleStatus: "ACTIVE" },
@@ -108,7 +112,7 @@ async function loadSnapshot(database: Executor) {
     lifecycleStatus: profile.lifecycleStatus,
     personaVersionId: profile.currentPersonaVersion!.id,
     personaVersion: profile.currentPersonaVersion!.version,
-    personaHash: sha256(JSON.stringify(profile.currentPersonaVersion!.persona)),
+    personaHash: personaHash(profile.currentPersonaVersion!.persona),
     entryCount: profile.user._count.entries,
     credentialHash: sha256(JSON.stringify(profile.credentials)),
     sourceHash: sha256(JSON.stringify(profile.sources)),
@@ -222,11 +226,11 @@ async function main(): Promise<void> {
               username: profile.user.username,
               profileId: profile.id,
               currentPersonaVersion: profile.currentPersonaVersion!.version,
-              currentPersonaHash: sha256(JSON.stringify(profile.currentPersonaVersion!.persona)),
-              targetPersonaHash: sha256(JSON.stringify(candidate.persona)),
+              currentPersonaHash: personaHash(profile.currentPersonaVersion!.persona),
+              targetPersonaHash: personaHash(candidate.persona),
               changeNeeded:
-                sha256(JSON.stringify(profile.currentPersonaVersion!.persona)) !==
-                sha256(JSON.stringify(candidate.persona)),
+                personaHash(profile.currentPersonaVersion!.persona) !==
+                personaHash(candidate.persona),
               renderedPromptHash: candidate.renderedPromptHash,
               validationReport: candidate.validationReport,
             };
@@ -260,8 +264,8 @@ async function main(): Promise<void> {
       if (
         snapshot.targets.some(
           (profile) =>
-            sha256(JSON.stringify(profile.currentPersonaVersion!.persona)) ===
-            sha256(JSON.stringify(candidates.get(profile.user.username)!.persona)),
+            personaHash(profile.currentPersonaVersion!.persona) ===
+            personaHash(candidates.get(profile.user.username)!.persona),
         )
       ) {
         throw new Error("WRITER_W2_ALREADY_APPLIED");
@@ -303,8 +307,8 @@ async function main(): Promise<void> {
             beforeProfile.currentPersonaVersion!.id ||
           afterProfile.currentPersonaVersion!.version !==
             beforeProfile.currentPersonaVersion!.version + 1 ||
-          sha256(JSON.stringify(afterProfile.currentPersonaVersion!.persona)) !==
-            sha256(JSON.stringify(candidates.get(beforeProfile.user.username)!.persona))
+          personaHash(afterProfile.currentPersonaVersion!.persona) !==
+            personaHash(candidates.get(beforeProfile.user.username)!.persona)
         ) {
           throw new Error(`WRITER_W2_POST_APPLY_INVALID username=${beforeProfile.user.username}`);
         }
@@ -344,8 +348,8 @@ async function main(): Promise<void> {
     if (flow.settings.runtimeEnabled) throw new Error("WRITER_W2_ALREADY_RUNNING");
     for (const profile of snapshot.targets) {
       if (
-        sha256(JSON.stringify(profile.currentPersonaVersion!.persona)) !==
-        sha256(JSON.stringify(candidates.get(profile.user.username)!.persona))
+        personaHash(profile.currentPersonaVersion!.persona) !==
+        personaHash(candidates.get(profile.user.username)!.persona)
       ) {
         throw new Error(`WRITER_W2_RESUME_TARGET_INVALID username=${profile.user.username}`);
       }
