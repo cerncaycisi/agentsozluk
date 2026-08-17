@@ -1,6 +1,6 @@
 # W2 yazar doğallaştırma
 
-Durum: local aday hazır; production'a uygulanmadı.
+Durum: production'da tamamlandı — 2026-08-17.
 
 İş sırasının tek sahibi `docs/M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md` dosyasıdır. Bu belge W2
 22-yazar paketinin kapsamını ve ölçülmüş local sonucunu kaydeder.
@@ -69,7 +69,7 @@ Apply sonrası her yeni sürümün `previousVersionId` bağı, sürüm artışı
 `22 audit / 22 outbox` makbuzu doğrulanır. User/profile ID, username, public nick/bio, entry sayısı,
 credential ve kaynak kümesindeki her fark işlemi başarısız sayar.
 
-## Local doğrulama
+## Doğrulama
 
 - Node `22.23.1` ve pnpm `10.34.5` ile strict TypeScript kontrolü geçti.
 - Yeni odaklı Vitest dosyası `4/4` geçti.
@@ -81,12 +81,35 @@ credential ve kaynak kümesindeki her fark işlemi başarısız sayar.
 - Kaynak, source-topic mapping, evolution/güvenlik alanları ve public kimlik alanlarının aday
   oluşturulurken değişmediği test edildi.
 
-Altı imported yazarın (`apartmanfilozofu`, `barsinegi`, `iztakvimi`, `kadrajatesi`, `kurusfarki`,
-`pembepanik`) tam doğrulaması ancak production'daki mevcut persona sürümünü salt okunur yükleyen
-`DRY_RUN` ile yapılabilir. Bu belge production erişimi veya uygulama onayı değildir.
+Altı imported yazar (`apartmanfilozofu`, `barsinegi`, `iztakvimi`, `kadrajatesi`, `kurusfarki`,
+`pembepanik`) dahil production otoriteli `22/22` mevcut persona salt-okunur `DRY_RUN` içinde sıralı
+şema, ontoloji, baseline ve ikili çeşitlilik kontrolünden geçti.
 
-## Kalan kapı
+## Production sonucu
 
-Sıradaki tek adım, ayrı production erişim onayıyla exact revision üzerinde `DRY_RUN` çalıştırmaktır.
-Sonuç 22 hedefte geçerli, snapshot sabit ve profil dışı drift sıfırsa kullanıcıya somut hash/mesafe
-özeti sunulur. `PAUSE → APPLY → RESUME` ayrıca onaylanmadan çalıştırılmaz.
+Gökhan'ın açık onayıyla korumalı `PAUSE → APPLY → RESUME` akışı production'da çalıştırıldı. Operatör
+kaynağı exact `4896bc097137ba8c7ae6559020903b85ba0cc173` revizyonuna ve yeşil CI run
+`32056314235` sonucuna bağlıydı; W2 hedeflerinin production çeşitlilik düzeltmesi için önceki exact
+CI run `32055089681` de tamamen yeşildi. Deploy, migration, uygulama restart'ı veya doğrudan SQL
+yazımı yapılmadı.
+
+Resmî toplum kontrol servisi settings'i `190 → 191` ilerleterek yeni lease'i kapattı; mevcut iki run
+iptal edilmeden tamamlandı. Açık run `0` iken apply snapshot SHA
+`37b1cc79f0e089ab60d0aefa70789219fa6d99826d8e0fde275c7b56979e98c0` olarak sabitlendi. Tek
+transaction `22/22` yeni değişmez persona sürümünü yayımladı. İlk post-commit kontrol, PostgreSQL
+`jsonb` anahtar sırasını ham `JSON.stringify` byte sırasıyla karşılaştırdığı için yanlış negatif
+`WRITER_W2_POST_APPLY_INVALID` verdi; transaction geri alınmamıştı. Salt-okunur makbuz `22` hedef
+persona, `22` audit, `22` outbox ve eşleşmeyen request `0` sonucuyla verinin eksiksiz olduğunu
+kanıtladı. Operatör hash'i şemadan geçen kanonik persona üzerinden hesaplayacak şekilde düzeltildi;
+yeniden uygulama yapılmadı.
+
+Düzeltilmiş son `DRY_RUN` snapshot SHA
+`257272589da57c2e2eb6a7c1ff9bff7dc1239f221340e99e41954742935d92c2` üzerinde `22/22` hedef,
+değişiklik gereken `0` ve persona hash uyumsuzluğu `0` verdi. Resmî `RESUME` settings'i
+`192|true|true|true|true|NORMAL` yaptı. Runtime `active/running/enabled`, bakım timer'ı
+`active/waiting/enabled`; iç ve dış health/readiness `200/200` kaldı. Resume sonrasında worker iki
+yeni run aldı. Container ve host staging alanındaki yalnız üç geçici operasyon dosyası exact hash
+doğrulamasından sonra kaldırıldı ve kalıntı `0` olarak doğrulandı.
+
+W2 tamamlandı. Sıradaki bağımsız paket W3'tür: tekdüze sentetik entry giriş kalıbını prompt/runtime
+katmanında kaldırmak.

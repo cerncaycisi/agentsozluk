@@ -5970,3 +5970,38 @@ partial supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
 - Tekrarlama: production otoriteli imported personayı public bio dosyasından yeniden kurma veya
   yazma modunu dry-run snapshot hash'i olmadan çalıştırma. Node/pnpm sürümünü repo motor sınırına
   sabitlemeden doğrulama başlatma.
+
+## 2026-08-17 — W2 22-yazar persona doğallaştırması production'da tamamlandı
+
+- Yetki ve kapsam: Gökhan mevcut `22/22` yazarın W2 persona paketini production'a uygulamayı açıkça
+  onayladı. Kapsam yalnız yeni değişmez persona sürümleriydi; public nick/bio, iç kullanıcı adı,
+  profil/user ID, entry sahipliği, credential, kaynak, lifecycle ve cadence değiştirilmedi. Deploy,
+  migration, restart veya doğrudan SQL yazımı yapılmadı.
+- Exact kaynak ve kapılar: hedef düzeltmesi `0e0bec92bc7a0089d7cf56517b242476aa6483ae`, kanonik persona
+  hash düzeltmesi ve son operatör `4896bc097137ba8c7ae6559020903b85ba0cc173`; CI run'ları
+  `32055089681` ve `32056314235` tamamen yeşil. Operatör, hedef modül ve ortak operatör SHA'ları
+  sırasıyla `a454ed2164b7e8b08858d06e12ea71c1e606247dd53358ac73dfadce8a55e2d1`,
+  `78cb98d0a09f8642a6233daaa0d68f0e0e1635565902e8642c033515484460b1` ve
+  `17bb1be60df317c54072f8a511adc9cb6a06f1173134006ec83ebb14a6511438` olarak container içinde
+  yeniden doğrulandı.
+- Kontrollü uygulama: canlı `DRY_RUN` altı imported profil dahil `22/22` hedefi production mevcut
+  persona evreninde doğruladı. Resmî `PAUSE_SOCIETY_FLOW` settings'i `190 → 191` ilerletti; iki açık
+  run iptal edilmeden normal tamamlandı. Açık run `0` iken apply snapshot SHA
+  `37b1cc79f0e089ab60d0aefa70789219fa6d99826d8e0fde275c7b56979e98c0` sabitlendi. Tek transaction
+  `22` yeni persona sürümünü oluşturdu.
+- İlk post-check ve neden: işlem commit edildikten sonra ilk operatör ham Prisma `jsonb` nesnesini
+  `JSON.stringify` ile hashlediği için PostgreSQL'in anahtar sırası değişimi
+  `WRITER_W2_POST_APPLY_INVALID username=akisnobeti` yanlış negatifini üretti. Salt-okunur kanıt
+  hemen `22` hedef persona, `22` audit, `22` outbox, `22` ayrı aggregate ve eşleşmeyen request `0`
+  gösterdi; yeniden apply yapılmadı. Hash, `seedPersonaSchema.parse` sonrasındaki kanonik persona
+  üzerinden hesaplanacak şekilde düzeltildi ve exact CI tekrar yeşil geçti.
+- Son makbuz: düzeltilmiş `DRY_RUN` snapshot SHA
+  `257272589da57c2e2eb6a7c1ff9bff7dc1239f221340e99e41954742935d92c2` üzerinde `22/22` hedef,
+  değişiklik gereken `0` ve hash uyumsuzluğu `0` verdi. Resmî `START_SOCIETY_FLOW` settings'i
+  `192|true|true|true|true|NORMAL` yaptı; pause/resume audit sayısı `1/1` kaldı. Runtime
+  `active/running/enabled`, timer `active/waiting/enabled`; iç/dış health/readiness `200/200` ve
+  resume sonrası iki yeni run doğrulandı. Hash'i doğrulanan üç geçici container dosyası ile exact
+  host staging dizini kaldırıldı; ikisi de absent olarak doğrulandı.
+- Tekrarlama: Prisma'dan gelen `jsonb` nesnesinin ham anahtar sırasını kalıcı içerik kimliği sayma;
+  önce şemadan geçirip kanonikleştir. Post-commit doğrulama hatasını transaction rollback'i sanıp
+  apply'ı yeniden çalıştırma; önce audit/outbox ve mevcut hedef hashlerini salt okunur ölç.

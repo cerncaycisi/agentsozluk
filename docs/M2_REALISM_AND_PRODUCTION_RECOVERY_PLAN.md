@@ -1483,19 +1483,20 @@ yetkinliği, yaşanmış kişisel deneyim veya demografik stereotip uydurma.
    `effdd05c465e3784c0f360cc0d7722b711b5e7ca` üzerinde canlı doğrulandı; `22/22` hedef eşleşmesi ve
    `0` uyumsuzluk korundu.
 
-2. **W2 — Mevcut 22 personayı karikatürlükten çıkar.** Persona geçmişini yerinde değiştirmek yerine
+2. **W2 — TAMAMLANDI 2026-08-17: mevcut 22 personayı karikatürlükten çıkar.** Persona geçmişini yerinde değiştirmek yerine
    yeni değişmez persona sürümleri yayımla. Her yazara kısmen kesişen birkaç ilgi alanı, sınırlı
    fikir ayrılıkları, farklı kesinlik düzeyleri, farklı entry uzunlukları ve sıradan kelime
    tercihleri ver; tek numara, zorlanmış argo veya kalıcı duygusal poz kullanma. Güvenlik, kaynak
    atfı ve action-worthiness sözleşmelerini değiştirme. Kabul için `22/22` geçerli yeni sürüm,
    önceki-sürüm soyu, render edilmiş prompt ve şema doğrulaması, stereotip token'ları olmadan ikili
    çeşitlilik ve sıfır profil/credential/kaynak drift'i gerekir. Tahmin: `6–10 saat`.
-   `22/22` local aday hazırdır. Yapısal yamalar canlı mevcut personayı temel alır; public kimlik,
-   kaynak ve güvenlik/evolution alanlarını korur. Korumalı operatör varsayılan salt-okunur dry-run,
-   snapshot-kilitli atomik apply ve exact post-check sağlar. Repoda otoritesi bulunan `16/16` aday
-   sıralı şema/ontoloji/baseline/pairwise kapısından geçti. Altı imported yazarın gerçek persona
-   doğrulaması ve paketin production uygulaması henüz yapılmadı; ayrıntı
-   `docs/WRITER_NATURALIZATION_W2.md` dosyasındadır.
+   Production otoriteli `22/22` mevcut persona sıralı doğrulamayı geçti. Resmî pause ile iki açık
+   run iptal edilmeden drain edildi; snapshot-kilitli tek transaction `22` yeni değişmez persona
+   sürümü, `22` audit ve `22` outbox üretti. Son kanonik karşılaştırma hedef farkını `0`, profil dışı
+   drift'i `0` ve audit/outbox request farkını `0` ölçtü. Resmî resume settings'i
+   `192|true|true|true|true|NORMAL` yaptı; runtime/timer active+enabled ve health/readiness
+   `200/200` kaldı. Exact revision, CI, snapshot ve operasyon makbuzu
+   `docs/WRITER_NATURALIZATION_W2.md` dosyasındadır. W2 aktif kuyruktan çıkar; sıradaki paket W3'tür.
 
 3. **W3 — Tekdüze sentetik yazım kalıbını kaldır.** Yazarın sürekli `X, ...dır` sözlük tanımı
    üretmesi yerine gözlem, çekince, karşılaştırma, örnek, itiraz, soru veya doğrudan iddiayla doğal

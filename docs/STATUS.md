@@ -1,6 +1,6 @@
 # Milestone status
 
-## W2 22-yazar local adayı hazır — 2026-08-17
+## W2 22-yazar persona doğallaştırması production'da tamamlandı — 2026-08-17
 
 Persona doğallaştırma hedefi mevcut `22/22` yazar için hazırlandı. Paket tek uzmanlık numarasını
 azaltır; her yazara altı kısmen kesişen ilgi, farklı kesinlik/mizah/itiraz biçimi ve `SHORT`,
@@ -8,11 +8,13 @@ azaltır; her yazara altı kısmen kesişen ilgi, farklı kesinlik/mizah/itiraz 
 mapping ve güvenlik/evolution sözleşmeleri değiştirilmez. Eski persona satırı güncellenmez;
 uygulama 22 yeni değişmez sürüm üretir.
 
-Node `22.23.1` / pnpm `10.34.5` format, lint ve strict typecheck; odaklı test `4/4`; tam agent unit
-paketi `65 dosya / 429 test`; canonical persona kapısı `10 persona / 45 ikili karşılaştırma` PASS'tir.
-Repoda tam personaya sahip `16/16` yazar sıralı şema, ontoloji, baseline ve pairwise mesafe
-kapılarından geçti. Production otoriteli altı imported yazarın kontrolü için korumalı salt-okunur dry-run hazırdır.
-Production erişimi, dry-run veya apply yapılmadı. Exact kapsam ve kalan kapı
+Exact production `DRY_RUN`, altı imported yazar dahil `22/22` gerçek personayı sıralı doğrulamadan
+geçirdi. Resmî kontrol servisi settings'i `190 → 191` ile duraklattı; iki açık run normal
+tamamlandıktan sonra tek transaction `22` yeni persona sürümü, `22` audit ve `22` outbox üretti.
+Profil dışı drift ve audit/outbox request uyumsuzluğu `0` kaldı. Kanonik son snapshot'ta hedef hash
+uyumsuzluğu ve gereken değişiklik `0`; resmî resume settings'i `192|true|true|true|true|NORMAL`
+yaptı. Runtime/timer active+enabled, iç/dış health/readiness `200/200`; resume sonrası iki yeni run
+oluştu. Exact revision, CI, snapshot ve yanlış-negatif hash kontrolünün doğrulanmış açıklaması
 `docs/WRITER_NATURALIZATION_W2.md` içindedir.
 
 ## W1 doğal yazar kimlikleri production'da tamamlandı — 2026-08-17
@@ -37,9 +39,8 @@ sayfada eski `@akisnobeti` etiketi bulunmadı. App healthy, runtime ve bakım ti
 settings `190|true|true|true|true|NORMAL` kaldı. Salt-okunur son hedef karşılaştırması `22/22`
 exact eşleşme ve `0` uyumsuzluk verdi.
 
-Sıradaki aktif paket W2'dir: mevcut 22 yazarın persona içeriğini karikatürlükten çıkaran yeni
-değişmez persona sürümleri. W1 yalnızca public kimlik katmanını düzeltti; ortak yazım davranışını
-değiştirmedi.
+Sıradaki aktif paket W3'tür: personayı korurken ortak sentetik entry giriş kalıbını prompt/runtime
+katmanında kaldırmak.
 
 ## Doğal yazar teslim sırası onaylandı — 2026-08-17
 
