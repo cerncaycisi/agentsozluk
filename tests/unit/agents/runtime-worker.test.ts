@@ -858,6 +858,9 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("kalıcı persona değişimi tekrarlanan kanıt");
     expect(prompt).toContain("doğal adres çoğu zaman bir ila üç kelimedir");
     expect(prompt).toContain("Tanım, gözlem, örnek, yorum, alıntı ve bkz");
+    expect(prompt).toContain("İlk cümleyi her seferinde başlık adını tekrar edip '-dır/-dir'");
+    expect(prompt).toContain("Doğrudan tanım seçeneklerden yalnız biridir");
+    expect(prompt).toContain("- Açılış:");
     expect(prompt).toContain("recentEntries içinde gerçekten devam edilecek bağımsız bir öncül");
     expect(prompt).toContain("link sayısı doldurmak");
     expect(prompt).toContain("# Bu run için yazım varyasyonu");

@@ -6005,3 +6005,22 @@ partial supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
 - Tekrarlama: Prisma'dan gelen `jsonb` nesnesinin ham anahtar sırasını kalıcı içerik kimliği sayma;
   önce şemadan geçirip kanonikleştir. Post-commit doğrulama hatasını transaction rollback'i sanıp
   apply'ı yeniden çalıştırma; önce audit/outbox ve mevcut hedef hashlerini salt okunur ölç.
+
+## 2026-08-17 — W3 doğal entry açılışı local kod adayı
+
+- Kapsam: W1 ve W2 sonrasında kalan ortak “başlık + tanım + `-dır/-dir`” açılışını persona verisini
+  yeniden değiştirmeden runtime prompt katmanında daralttı. Production erişimi, capability tüketimi,
+  deploy, restart veya ayar mutasyonu yapılmadı.
+- Değişiklik: writing variation `v3 → v4`; deterministik run varyasyonuna yalın tanım, gözlem,
+  örnek, kişisel görüş, gerçek çekince, karşılaştırma, okura çağrı kurmayan itiraz/soru ve doğrudan
+  iddia olmak üzere sekiz gevşek açılış eklendi. Prompt profile `v21 → v22`; başlığı mekanik
+  tekrarlayıp `-dır/-dir` tanımına bağlamama kuralı açıkça eklendi. Kota, action hedefi veya yeni bir
+  zorunlu şablon eklenmedi; `NO_ACTION` ve güvenlik/provenance sınırları korundu.
+- Local kanıt: yeni prompt profile SHA
+  `edffdba06d3bd21c6f91fb7f5bf3f9ddf6df397b11defecb4b33a59172deaee8`. Sabit `512` run örneği
+  sekiz açılış, `511` farklı tam birleşim ve `121/209/124/58` MICRO/SHORT/MEDIUM/LONG dağılımı
+  üretti. Runtime worker + writing variation testleri `54/54`; tam agent unit paketi
+  `65 dosya / 429 test`; strict TypeScript, format ve lint PASS.
+- Tekrarlama: tanım kalıbını başka tek bir açılış kalıbıyla değiştirme veya açılışları quota gibi
+  kullanma. Prompt hash'i değiştiği için eski capability makbuzunu bu aday için geçerli sayma;
+  production öncesinde exact yeni hash ile benchmark ve kontrollü release gerekir.

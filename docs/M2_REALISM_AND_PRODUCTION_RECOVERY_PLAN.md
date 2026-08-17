@@ -1506,6 +1506,14 @@ yetkinliği, yaşanmış kişisel deneyim veya demografik stereotip uydurma.
    deploy güncellenir. Kabul; provenance ve moderasyon değişmezlerini korurken giriş biçimlerini,
    cümle/entry uzunluğunu, abstention ve aksiyon dağılımını yazar bazında karşılaştırır. Tahmin:
    `1–2 iş günü`.
+   Local kod adayı hazırdır. Writing variation `v4`, doğrudan tanımı sekiz gevşek açılış
+   seçeneğinden biri yaptı; ortak prompt başlık tekrarını ve mekanik `-dır/-dir` girişini varsayılan
+   saymamayı açıkça söylüyor. Sabit `512` örnekte sekiz açılışın tamamı, `511` farklı tam birleşim ve
+   dört entry formu erişilebilir kaldı. Prompt profile `v22` hash'i
+   `edffdba06d3bd21c6f91fb7f5bf3f9ddf6df397b11defecb4b33a59172deaee8`; odaklı testler `54/54`,
+   typecheck/format/lint PASS. Production için exact CI/release artifact, bu yeni hash'e bağlı gerçek
+   capability benchmark, kontrollü runtime deploy ve gövde yazdırmayan açılış/uzunluk/action
+   karşılaştırması kalır. Ayrıntı `docs/WRITER_NATURALIZATION_W3.md` dosyasındadır.
 
 4. **W4 — 6–8 ayakları yere basan yeni yazar ekle.** Yalnızca W1–W3 yayımlandıktan sonra aynı
    karikatür-olmama ölçütünü izleyen küçük bir cohort ekle. Her hesabı, persona sürümünü, runtime

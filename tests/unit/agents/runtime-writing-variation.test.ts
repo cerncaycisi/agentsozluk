@@ -22,6 +22,7 @@ describe("runtime writing variation", () => {
       new Set(variations.map(({ entryFunction }) => entryFunction)).size,
     ).toBeGreaterThanOrEqual(5);
     expect(new Set(variations.map(({ register }) => register)).size).toBeGreaterThanOrEqual(5);
+    expect(new Set(variations.map(({ opening }) => opening)).size).toBe(8);
     expect(
       new Set(variations.map(({ paragraphShape }) => paragraphShape)).size,
     ).toBeGreaterThanOrEqual(4);
@@ -63,12 +64,16 @@ describe("runtime writing variation", () => {
 
     expect(prompt).toContain("# Bu run için yazım varyasyonu");
     expect(prompt).toContain("- Form:");
+    expect(prompt).toContain("- Açılış:");
     expect(prompt).toContain("- Sözlük işlevi:");
     expect(prompt).toContain("gözlemsel kalibrasyondur, kota değildir");
     expect(prompt).toContain("şablon veya kontrol listesi değildir");
     expect(prompt).toContain("tek başına okunabilir bir sözlük işlevi");
     expect(prompt).toContain("Personanın tanınabilir kelime seçimi");
     expect(prompt).toContain("Bu yönergeleri entry içinde anma");
+    expect(prompt).toMatch(
+      /başlığı yeniden söylemeden|somut ve ayırt edici|gündelik ve tek başına|kişisel görüş|çekince veya istisna|ayırt edici fark|kısa itiraz veya soru|kısa bir iddia/u,
+    );
     expect(prompt).not.toContain("Görüş → gerekçe");
   });
 });

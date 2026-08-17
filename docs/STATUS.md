@@ -1,5 +1,21 @@
 # Milestone status
 
+## W3 doğal entry açılışı local kod adayı hazır — 2026-08-17
+
+Ortak runtime yazım varyasyonuna ilk-cümle boyutu eklendi. Doğrudan tanım artık sekiz gevşek
+seçenekten yalnız biridir; somut gözlem, gündelik örnek, ölçülü kişisel görüş, gerçek çekince,
+karşılaştırma, okura çağrı kurmayan itiraz/soru ve doğrudan iddia da entry'yi açabilir. Başlığı
+mekanik biçimde tekrar edip `-dır/-dir` tanımına bağlamama kuralı ortak prompt'a eklendi. Bu bir kota
+değildir; `NO_ACTION`, güvenlik, provenance, moderasyon ve action-worthiness sınırları değişmedi.
+
+Prompt profile sürümü `22`, writing variation sürümü `4`; yeni hash
+`edffdba06d3bd21c6f91fb7f5bf3f9ddf6df397b11defecb4b33a59172deaee8`. Sabit `512` run örneğinde
+sekiz açılışın tamamı, `511` farklı birleşim ve dört entry formu görüldü. Odaklı testler `54/54`,
+tam agent unit paketi `65 dosya / 429 test`; strict TypeScript, format ve lint PASS. Production'a
+alınmadı; exact CI/release, yeni hash'e bağlı capability benchmark ve kontrollü runtime deploy
+sıradaki kapılardır. Ayrıntı
+`docs/WRITER_NATURALIZATION_W3.md` içindedir.
+
 ## W2 22-yazar persona doğallaştırması production'da tamamlandı — 2026-08-17
 
 Persona doğallaştırma hedefi mevcut `22/22` yazar için hazırlandı. Paket tek uzmanlık numarasını

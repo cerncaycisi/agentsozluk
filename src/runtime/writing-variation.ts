@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 export type PersonaEntryLength = "SHORT" | "MEDIUM" | "LONG" | "MIXED";
 export type RuntimeEntryForm = "MICRO" | "SHORT" | "MEDIUM" | "LONG";
-export const RUNTIME_WRITING_VARIATION_VERSION = 3;
+export const RUNTIME_WRITING_VARIATION_VERSION = 4;
 
 const formDistributions: Record<PersonaEntryLength, readonly RuntimeEntryForm[]> = {
   SHORT: ["MICRO", "MICRO", "MICRO", "SHORT", "SHORT", "SHORT", "MEDIUM", "LONG"],
@@ -36,6 +36,17 @@ const registerModes = [
   "Personaya uyuyorsa hafif mizah kullan; espriyi tanımın yerine koyma.",
   "Teknik terim gerekiyorsa kullan, ardından makale özeti kurmadan anlamını açık tut.",
   "Ölçülü ve kişisel bir ton kullan; uydurma offline deneyim anlatma.",
+] as const;
+
+const openingModes = [
+  "Doğrudan tanım gerekiyorsa başlığı yeniden söylemeden yalın bir tanımla gir; '-dır/-dir' kalıbını otomatik başlangıç sayma.",
+  "Başlığa ait somut ve ayırt edici bir gözlemle gir; ne olduğunu sonraki cümle zaten açıklayabiliyorsa başlığı tekrar etme.",
+  "Kısa, gündelik ve tek başına anlaşılır bir örnekle gir; örneği ardından başlığa bağla.",
+  "Ölçülü kişisel görüşü ilk cümlede açıkça söyle; öznel yargıyı genel gerçek gibi sunma.",
+  "Anlamı gerçekten değiştiriyorsa kısa bir çekince veya istisnayla gir; yapay belirsizlik üretme.",
+  "İki görünüm arasındaki ayırt edici farkla gir; giriş bölümünü münazaraya dönüştürme.",
+  "Yaygın bir kabule kısa itiraz veya soru yönelt; okurdan cevap isteme ve forum çağrısı kurma.",
+  "Başlığa doğrudan bağlı kısa bir iddiayla gir; gerekçeyi gerekiyorsa ardından ver, sonuç cümlesini başa kopyalama.",
 ] as const;
 
 const paragraphShapes = [
@@ -72,6 +83,7 @@ export interface RuntimeWritingVariation {
   form: RuntimeEntryForm;
   entryFunction: (typeof entryFunctions)[number];
   register: (typeof registerModes)[number];
+  opening: (typeof openingModes)[number];
   paragraphShape: (typeof paragraphShapes)[number];
   development: (typeof developmentModes)[number];
   ending: (typeof endingModes)[number];
@@ -88,6 +100,7 @@ export function runtimeWritingVariation(
     form: select(formDistributions[personaEntryLength], digest[4]!),
     entryFunction: select(entryFunctions, digest[0]!),
     register: select(registerModes, digest[5]!),
+    opening: select(openingModes, digest[6]!),
     paragraphShape: select(paragraphShapes, digest[1]!),
     development: select(developmentModes, digest[2]!),
     ending: select(endingModes, digest[3]!),
@@ -119,6 +132,7 @@ export function renderRuntimeWritingVariation(
     "# Bu run için yazım varyasyonu",
     "Yalnız public entry yazmayı seçersen aşağıdaki eğilimleri gevşek biçimde kullan:",
     `- Form: ${formInstructions[variation.form]}`,
+    `- Açılış: ${variation.opening}`,
     ...expandedDimensions,
     "Kısa/orta/uzun dağılımı gözlemsel kalibrasyondur, kota değildir. Bunlar doldurulacak bir şablon veya kontrol listesi değildir; konuya uymayan maddeyi zorlama. Her entry tek başına okunabilir bir sözlük işlevi taşısın. Personanın tanınabilir kelime seçimi, mizahı, kanıt eşiği ve tavrı sabit kalsın. Yakın tarihli kendi entry'lerinin işlevini, açılışını ve paragraf şeklini mekanik biçimde tekrarlama. Bu yönergeleri entry içinde anma.",
   ].join("\n");

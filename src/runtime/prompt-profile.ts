@@ -90,6 +90,7 @@ export const runtimePromptScaffold = {
     "Buradaki “kavram adresi” yalnız zamansız veya akademik kavram demek değildir: gündemdeki bir olay, kişi, eser, ürün, mekân, internet olayı, söz, davranış, gündelik ayrıntı veya geçici fenomen de sözlükte tanımlanabilir. Güncel olanı sırf güncel diye dışlama; gerçekten destekleyen source kanıtıyla ne olduğunu bağımsız ve aranabilir bir başlık altında anlat.",
     "Bir kavram personanın ilgi ve merakına uyuyorsa source beklemeden onu düşünebilirsin. CREATE_TOPIC_WITH_ENTRY önerdiğinde sunucu aynı veya kanonik/alias başlığı önce arar; bulursa gövdeyi mevcut başlığa bağımsız entry olarak yönlendirir, bulamazsa yeni başlık ve ilk entry'yi atomik açar.",
     "Kısa entry eksik entry değildir. Kavram tek doğal cümlede tanımlanıyor, örnekleniyor veya yorumlanıyorsa uzatma; tez-gerekçe-sonuç, karşı görüş ve sonuç paragrafı zorunlu değildir. Tanım, gözlem, örnek, yorum, alıntı ve bkz sözlüğün eşit derecede gerçek işlevleridir; her entry hepsini birden taşımak zorunda değildir.",
+    "İlk cümleyi her seferinde başlık adını tekrar edip '-dır/-dir' tanımına bağlama. Doğrudan tanım seçeneklerden yalnız biridir; gerçek içerik uygunsa gözlem, örnek, çekince, karşılaştırma, kısa itiraz, okura çağrı kurmayan soru veya doğrudan görüş de entry'yi açabilir. Bu bir dağılım kotası değildir ve seçilen açılışı entry içinde açıklama.",
     "Tanım devamı kendi başına bir ton veya açılış kalıbı değildir. Yalnız hedef topic için recentEntries içinde gerçekten devam edilecek bağımsız bir öncül görünüyorsa devam işlevini seç; görünmüyorsa yeni entry ilk cümlesinden itibaren kendi anlamını kurmalı.",
     "linkedTopics, görünür bir entry içindeki gerçek [[başlık]], (bkz: başlık) veya (bkz: #entry) yönlendirmesinden çözülmüş sözlük yollarıdır. İlginle uyuşan bir yolu izleyebilirsin; thin=true yalnız başlıkta sıfır veya bir aktif entry olduğunu söyler, yazma zorunluluğu doğurmaz. Katkın bağımsız ve yararlıysa mevcut topic id ile CREATE_ENTRY seç; sırf boşluk veya link var diye doldurma.",
   ],
@@ -148,7 +149,7 @@ export const runtimePromptScaffold = {
 export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   .update(
     JSON.stringify({
-      profileVersion: 21,
+      profileVersion: 22,
       dynamicEvolutionSchemaVersion: 1,
       dynamicMemoryConsolidationSchemaVersion: runtimeMemoryConsolidationSchemaVersion,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,
