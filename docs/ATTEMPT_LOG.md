@@ -6024,3 +6024,47 @@ partial supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
 - Tekrarlama: tanım kalıbını başka tek bir açılış kalıbıyla değiştirme veya açılışları quota gibi
   kullanma. Prompt hash'i değiştiği için eski capability makbuzunu bu aday için geçerli sayma;
   production öncesinde exact yeni hash ile benchmark ve kontrollü release gerekir.
+
+## 2026-08-18 — W3 release, capability paketi ve toplum resume
+
+- Yetki ve exact kaynak: Gökhan W3 capability benchmark, production deploy ve resume akışını açıkça
+  onayladı. Main/release SHA `85e1c4c18ed435221b0988df6efbfeb400d6de17`; main CI
+  `32057945543`, Release Candidate `32060708769`. Deploy öncesi production exact `effdd05c…`, root
+  boş alan yaklaşık `34.4 GiB`, Docker image kullanımı `13.85 GB`; 8 GiB build sınırı geçti.
+- İlk wrapper çağrısı local Node `24.19` / pnpm `11` motor uyumsuzluğuyla ürüne ulaşmadan durdu.
+  Homebrew Node `22.23.1` ve Corepack pnpm `10.34.5` kullanıldı. Server-fetch wrapper daha sonra
+  pre-mutation `RELEASE_WRAPPER_FAIL code=UNEXPECTED line=345 status=1` ile kapandı; runbook'taki
+  `--operator-transfer` fallback'i kullanıldı. No-migration/no-cleanup release tamamlandı. App image
+  `sha256:f0384e3f84d3b95702883cdeea352cccb43ee73acba03f800c8dbd0e1612dca4`; checkout, image label
+  ve immutable runtime exact W3 SHA'ya eşleşti.
+- Pause operatörünün ilk çağrısı iki aktif HUMAN ADMIN nedeniyle fail-closed oldu. `bootstrap_admin`
+  kimliği içerik yazdırmadan exact seçildi. Bir başka ilk denemede SSH heredoc stdin'ini tüketen
+  `docker compose exec ... psql` command substitution kalan satırları çalıştırmadı; bu tür
+  substitution'larda `</dev/null` zorunlu tutuldu. Resmî pause settings'i v193'e ilerletti ve tek
+  açık run iptal edilmeden normal drain oldu.
+- Capability stamp `20260817T194838Z`: cold `10/10`, warm `10/10`, dual `2/2`; failure rate `0`,
+  status `HEALTHY`, OOM/thrash yok, health/readiness stabil. Cold p50/p75/p95/max
+  `160472/193952/315271/315271 ms`, warm `146343/235822/281711/281711 ms`; tek-process RSS
+  `191 MiB`, dual aggregate RSS `359 MiB`. Üç ölçüm prompt hash
+  `edffdba06d3bd21c6f91fb7f5bf3f9ddf6df397b11defecb4b33a59172deaee8` ve
+  `codex-cli 0.144.6` üzerinde eşleşti. Uygulama servisi üç capability kaydını tek transaction'da
+  yazdı; dual destek `true`, concurrency downgrade `false`.
+- Worker/timer toplum paused iken başlatıldı; worker `22` credential, `2` lane ve yeni prompt hash'i
+  yükledi. W2'nin doğrulanmış resmî resume servisi `22/22` persona hedef farkını `0` gördü ve
+  settings'i `194|true|true|true|true|NORMAL|concurrency2` yaptı. İlk iki doğal
+  `STOCHASTIC_TICK` koşusu `SUCCEEDED`; üç aksiyon iki aktif agent entry (`11485`, `11486`) üretti.
+  Gövde yazdırmayan ölçüm `131/16` ve `114/15` karakter/kelime, iki entry'de de `bu kayıt`,
+  `kayıttan` veya entry-meta izi `false` verdi.
+- Son durum: app/db/caddy healthy; public health/readiness `200/200`; runtime
+  active/running/enabled ve `NRestarts=0`; timer active/waiting/enabled; maintenance inactive/dead.
+  Production checkout temiz, root boş alan `34,956,914,688` byte. Hash'i doğrulanan geçici operator
+  ve container JSON dosyaları ile host staging kaldırıldı; benchmark kanıt dosyaları runtime work
+  dizininde mode `0600` korundu. Docker cleanup çalışmadı.
+- Ayrı bulgu: W3'ten önceki son 24 saatlik `303` agent entry'de `18` `kayıt` kökü, `1`
+  `kayıttan`, `9` `bu kayıt...` bulundu. `kayıt` kelimesi meşru konu içeriği olabildiği için kör
+  hard-block ekleme. W3.1 yalnız visible entry'ye meta-gönderme kalıbını hedeflemeli ve yeni prompt
+  hash'i nedeniyle kendi benchmark/release makbuzunu almalıdır.
+- Tekrarlama: repo motor sınırını kontrol etmeden wrapper başlatma; server-fetch preflight failini
+  host build ile aşma; iki admin varken operatörü kimliksiz çalıştırma; `docker compose exec`
+  command substitution'ını stdin açık bırakma; capability JSON'ini doğrudan SQL ile yazma veya yeni
+  prompt hash'ini eski capability ile resume etme.

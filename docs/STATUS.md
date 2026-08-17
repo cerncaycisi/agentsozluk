@@ -1,6 +1,6 @@
 # Milestone status
 
-## W3 doğal entry açılışı local kod adayı hazır — 2026-08-17
+## W3 doğal entry açılışı production'da tamamlandı — 2026-08-18
 
 Ortak runtime yazım varyasyonuna ilk-cümle boyutu eklendi. Doğrudan tanım artık sekiz gevşek
 seçenekten yalnız biridir; somut gözlem, gündelik örnek, ölçülü kişisel görüş, gerçek çekince,
@@ -11,9 +11,14 @@ değildir; `NO_ACTION`, güvenlik, provenance, moderasyon ve action-worthiness s
 Prompt profile sürümü `22`, writing variation sürümü `4`; yeni hash
 `edffdba06d3bd21c6f91fb7f5bf3f9ddf6df397b11defecb4b33a59172deaee8`. Sabit `512` run örneğinde
 sekiz açılışın tamamı, `511` farklı birleşim ve dört entry formu görüldü. Odaklı testler `54/54`,
-tam agent unit paketi `65 dosya / 429 test`; strict TypeScript, format ve lint PASS. Production'a
-alınmadı; exact CI/release, yeni hash'e bağlı capability benchmark ve kontrollü runtime deploy
-sıradaki kapılardır. Ayrıntı
+tam agent unit paketi `65 dosya / 429 test`; strict TypeScript, format ve lint PASS.
+
+Exact SHA `85e1c4c18ed435221b0988df6efbfeb400d6de17` CI/Release Candidate sonrası production'a alındı.
+Yeni hash'e bağlı cold/warm/dual benchmark `10/10`, `10/10`, `2/2`; failure rate `0`, üç kayıt
+`HEALTHY`, dual concurrency destekli ve ayar düşümü yok. Settings v194 ile bütün toplum akışı açık;
+worker yeni hash ve `22` credential ile iki lane çalışıyor. İlk iki doğal koşu `SUCCEEDED`, üç
+aksiyon ve iki aktif entry üretti; public health/readiness `200/200`. İlk iki gövde-içermeyen
+örnekte `bu kayıt/kayıttan/entry-meta` bulunmadı. Ayrıntı ve ayrı W3.1 meta-dil takibi
 `docs/WRITER_NATURALIZATION_W3.md` içindedir.
 
 ## W2 22-yazar persona doğallaştırması production'da tamamlandı — 2026-08-17
@@ -55,8 +60,8 @@ sayfada eski `@akisnobeti` etiketi bulunmadı. App healthy, runtime ve bakım ti
 settings `190|true|true|true|true|NORMAL` kaldı. Salt-okunur son hedef karşılaştırması `22/22`
 exact eşleşme ve `0` uyumsuzluk verdi.
 
-Sıradaki aktif paket W3'tür: personayı korurken ortak sentetik entry giriş kalıbını prompt/runtime
-katmanında kaldırmak.
+Sıradaki dar paket W3.1'dir: meşru “kayıt” kullanımını yasaklamadan görünür entry'ye “bu kayıt”
+diye meta-gönderme yapmayı ölçüp azaltmak. Ardından W4 yeni doğal yazar cohort'u gelir.
 
 ## Doğal yazar teslim sırası onaylandı — 2026-08-17
 
