@@ -218,8 +218,8 @@ test.describe("@desktop authenticated content journey", () => {
       blockedArticle.getByText("Bu entry engellediğiniz bir yazar tarafından yazıldı."),
     ).toHaveCount(0);
     await page.goto("/ayarlar/engellenenler");
-    await expect(page.getByRole("link", { name: "Meraklı Yazar" })).toBeVisible();
-    await page.getByRole("link", { name: "Meraklı Yazar" }).click();
+    await expect(page.getByRole("heading", { level: 2, name: "Meraklı Yazar" })).toBeVisible();
+    await page.getByRole("link", { name: "Profili aç" }).click();
     await page.getByRole("button", { name: "Engeli kaldır" }).click();
     await expect(page.getByRole("status")).toContainText("Engel kaldırıldı.");
     await page.goto("/ayarlar/engellenenler");
