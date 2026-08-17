@@ -8,19 +8,19 @@ import { assertPinnedPersonaFieldsUnchanged } from "@/modules/agents/domain/pers
 import { validatePersonaCandidate } from "@/modules/agents/domain/persona-validation";
 import { seedPersonaSchema } from "@/modules/agents/personas/schema";
 import {
-  applyWriterNaturalizationW2Batch1Target,
-  writerNaturalizationW2Batch1Targets,
-} from "@/modules/agents/personas/writer-naturalization-w2-batch1";
+  applyWriterNaturalizationW2Target,
+  writerNaturalizationW2Targets,
+} from "@/modules/agents/personas/writer-naturalization-w2";
 import { resolveOperatorAdmin } from "./agent-operator";
 
-const confirmation = "APPLY_WRITER_NATURALIZATION_W2_BATCH1";
+const confirmation = "APPLY_WRITER_NATURALIZATION_W2";
 const terminalRunStatuses = ["SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED", "TIMED_OUT"] as const;
 
 const environmentSchema = z
   .object({
-    AGENT_WRITER_W2_BATCH1_MODE: z.enum(["DRY_RUN", "PAUSE", "APPLY", "RESUME"]).default("DRY_RUN"),
-    AGENT_WRITER_W2_BATCH1_CONFIRMATION: z.string().optional(),
-    AGENT_WRITER_W2_BATCH1_EXPECTED_SNAPSHOT_HASH: z
+    AGENT_WRITER_W2_MODE: z.enum(["DRY_RUN", "PAUSE", "APPLY", "RESUME"]).default("DRY_RUN"),
+    AGENT_WRITER_W2_CONFIRMATION: z.string().optional(),
+    AGENT_WRITER_W2_EXPECTED_SNAPSHOT_HASH: z
       .string()
       .regex(/^[a-f0-9]{64}$/u)
       .optional(),
@@ -29,21 +29,21 @@ const environmentSchema = z
   .passthrough()
   .superRefine((environment, context) => {
     if (
-      environment.AGENT_WRITER_W2_BATCH1_MODE !== "DRY_RUN" &&
-      environment.AGENT_WRITER_W2_BATCH1_CONFIRMATION !== confirmation
+      environment.AGENT_WRITER_W2_MODE !== "DRY_RUN" &&
+      environment.AGENT_WRITER_W2_CONFIRMATION !== confirmation
     ) {
-      context.addIssue({ code: "custom", message: "WRITER_W2_BATCH1_CONFIRMATION_REQUIRED" });
+      context.addIssue({ code: "custom", message: "WRITER_W2_CONFIRMATION_REQUIRED" });
     }
     if (
-      environment.AGENT_WRITER_W2_BATCH1_MODE === "APPLY" &&
-      !environment.AGENT_WRITER_W2_BATCH1_EXPECTED_SNAPSHOT_HASH
+      environment.AGENT_WRITER_W2_MODE === "APPLY" &&
+      !environment.AGENT_WRITER_W2_EXPECTED_SNAPSHOT_HASH
     ) {
-      context.addIssue({ code: "custom", message: "WRITER_W2_BATCH1_SNAPSHOT_HASH_REQUIRED" });
+      context.addIssue({ code: "custom", message: "WRITER_W2_SNAPSHOT_HASH_REQUIRED" });
     }
   });
 
-const targetByUsername = new Map<string, (typeof writerNaturalizationW2Batch1Targets)[number]>(
-  writerNaturalizationW2Batch1Targets.map((target) => [target.username, target]),
+const targetByUsername = new Map<string, (typeof writerNaturalizationW2Targets)[number]>(
+  writerNaturalizationW2Targets.map((target) => [target.username, target]),
 );
 const targetUsernames = [...targetByUsername.keys()].sort();
 
@@ -79,19 +79,25 @@ async function loadSnapshot(database: Executor) {
     orderBy: { user: { username: "asc" } },
   });
   if (profiles.length !== 22) {
-    throw new Error(`WRITER_W2_BATCH1_ACTIVE_COUNT_INVALID count=${profiles.length}`);
+    throw new Error(`WRITER_W2_ACTIVE_COUNT_INVALID count=${profiles.length}`);
   }
   for (const profile of profiles) {
     if (!profile.currentPersonaVersion) {
-      throw new Error(`WRITER_W2_BATCH1_PERSONA_MISSING username=${profile.user.username}`);
+      throw new Error(`WRITER_W2_PERSONA_MISSING username=${profile.user.username}`);
     }
   }
   const targets = profiles.filter(({ user }) => targetByUsername.has(user.username));
   if (
-    targets.length !== writerNaturalizationW2Batch1Targets.length ||
+    targets.length !== writerNaturalizationW2Targets.length ||
     JSON.stringify(targets.map(({ user }) => user.username)) !== JSON.stringify(targetUsernames)
   ) {
-    throw new Error("WRITER_W2_BATCH1_USERNAME_SET_INVALID");
+    throw new Error("WRITER_W2_USERNAME_SET_INVALID");
+  }
+  for (const profile of targets) {
+    const target = targetByUsername.get(profile.user.username)!;
+    if (profile.user.displayName !== target.publicNick) {
+      throw new Error(`WRITER_W2_PUBLIC_NICK_DRIFT username=${profile.user.username}`);
+    }
   }
   const safeSnapshot = profiles.map((profile) => ({
     profileId: profile.id,
@@ -134,7 +140,7 @@ async function loadFlow(database: Executor) {
 }
 
 function assertSnapshot(expected: string | undefined, actual: string) {
-  if (!expected || expected !== actual) throw new Error("WRITER_W2_BATCH1_SNAPSHOT_DRIFT");
+  if (!expected || expected !== actual) throw new Error("WRITER_W2_SNAPSHOT_DRIFT");
 }
 
 function prepareCandidates(snapshot: Awaited<ReturnType<typeof loadSnapshot>>) {
@@ -152,10 +158,10 @@ function prepareCandidates(snapshot: Awaited<ReturnType<typeof loadSnapshot>>) {
       validationReport: ReturnType<typeof validatePersonaCandidate>["report"];
     }
   >();
-  for (const target of writerNaturalizationW2Batch1Targets) {
+  for (const target of writerNaturalizationW2Targets) {
     const current = universe.get(target.username);
-    if (!current) throw new Error(`WRITER_W2_BATCH1_PERSONA_MISSING username=${target.username}`);
-    const candidate = applyWriterNaturalizationW2Batch1Target(current, target);
+    if (!current) throw new Error(`WRITER_W2_PERSONA_MISSING username=${target.username}`);
+    const candidate = applyWriterNaturalizationW2Target(current, target);
     assertPinnedPersonaFieldsUnchanged(current, candidate);
     const validated = validatePersonaCandidate(
       candidate,
@@ -189,7 +195,7 @@ function assertUnchangedProfile(
     JSON.stringify(before.credentials) !== JSON.stringify(after.credentials) ||
     JSON.stringify(before.sources) !== JSON.stringify(after.sources)
   ) {
-    throw new Error(`WRITER_W2_BATCH1_PROFILE_DRIFT username=${before.user.username}`);
+    throw new Error(`WRITER_W2_PROFILE_DRIFT username=${before.user.username}`);
   }
 }
 
@@ -201,10 +207,10 @@ async function main(): Promise<void> {
     const flow = await loadFlow(database);
     const candidates = prepareCandidates(snapshot);
 
-    if (environment.AGENT_WRITER_W2_BATCH1_MODE === "DRY_RUN") {
+    if (environment.AGENT_WRITER_W2_MODE === "DRY_RUN") {
       process.stdout.write(
         `${JSON.stringify({
-          event: "WRITER_W2_BATCH1_DRY_RUN",
+          event: "WRITER_W2_DRY_RUN",
           snapshotHash: snapshot.snapshotHash,
           profileCount: snapshot.profiles.length,
           targetCount: snapshot.targets.length,
@@ -231,17 +237,17 @@ async function main(): Promise<void> {
     }
 
     const actor = await resolveOperatorAdmin(database, environment.AGENT_OPERATOR_ADMIN_ID);
-    if (environment.AGENT_WRITER_W2_BATCH1_MODE === "PAUSE") {
-      if (!flow.settings.runtimeEnabled) throw new Error("WRITER_W2_BATCH1_ALREADY_PAUSED");
+    if (environment.AGENT_WRITER_W2_MODE === "PAUSE") {
+      if (!flow.settings.runtimeEnabled) throw new Error("WRITER_W2_ALREADY_PAUSED");
       const updated = await setSocietyFlowEnabled(
         database,
         { ...actor, requestId: randomUUID() },
         false,
-        { reason: "W2 ilk beş persona sürümünü atomik yayımlamak için kısa duraklama." },
+        { reason: "W2 22 persona sürümünü atomik yayımlamak için kısa duraklama." },
       );
       process.stdout.write(
         `${JSON.stringify({
-          event: "WRITER_W2_BATCH1_PAUSED",
+          event: "WRITER_W2_PAUSED",
           settingsVersion: updated.settingsVersion,
           drainingOpenRunCount: (await loadFlow(database)).openRunCount,
         })}\n`,
@@ -249,11 +255,8 @@ async function main(): Promise<void> {
       return;
     }
 
-    if (environment.AGENT_WRITER_W2_BATCH1_MODE === "APPLY") {
-      assertSnapshot(
-        environment.AGENT_WRITER_W2_BATCH1_EXPECTED_SNAPSHOT_HASH,
-        snapshot.snapshotHash,
-      );
+    if (environment.AGENT_WRITER_W2_MODE === "APPLY") {
+      assertSnapshot(environment.AGENT_WRITER_W2_EXPECTED_SNAPSHOT_HASH, snapshot.snapshotHash);
       if (
         snapshot.targets.some(
           (profile) =>
@@ -261,11 +264,11 @@ async function main(): Promise<void> {
             sha256(JSON.stringify(candidates.get(profile.user.username)!.persona)),
         )
       ) {
-        throw new Error("WRITER_W2_BATCH1_ALREADY_APPLIED");
+        throw new Error("WRITER_W2_ALREADY_APPLIED");
       }
       if (flow.settings.runtimeEnabled || flow.openRunCount !== 0) {
         throw new Error(
-          `WRITER_W2_BATCH1_APPLY_REQUIRES_PAUSE runtimeEnabled=${flow.settings.runtimeEnabled} openRuns=${flow.openRunCount}`,
+          `WRITER_W2_APPLY_REQUIRES_PAUSE runtimeEnabled=${flow.settings.runtimeEnabled} openRuns=${flow.openRunCount}`,
         );
       }
       const requestIds: string[] = [];
@@ -273,7 +276,7 @@ async function main(): Promise<void> {
         async (transaction) => {
           const lockedSnapshot = await loadSnapshot(transaction);
           assertSnapshot(
-            environment.AGENT_WRITER_W2_BATCH1_EXPECTED_SNAPSHOT_HASH,
+            environment.AGENT_WRITER_W2_EXPECTED_SNAPSHOT_HASH,
             lockedSnapshot.snapshotHash,
           );
           const lockedCandidates = prepareCandidates(lockedSnapshot);
@@ -303,9 +306,7 @@ async function main(): Promise<void> {
           sha256(JSON.stringify(afterProfile.currentPersonaVersion!.persona)) !==
             sha256(JSON.stringify(candidates.get(beforeProfile.user.username)!.persona))
         ) {
-          throw new Error(
-            `WRITER_W2_BATCH1_POST_APPLY_INVALID username=${beforeProfile.user.username}`,
-          );
+          throw new Error(`WRITER_W2_POST_APPLY_INVALID username=${beforeProfile.user.username}`);
         }
       }
       const [auditCount, outboxCount] = await Promise.all([
@@ -316,15 +317,20 @@ async function main(): Promise<void> {
           where: { requestId: { in: requestIds }, eventType: "agent.persona.versioned" },
         }),
       ]);
-      if (requestIds.length !== 5 || auditCount !== 5 || outboxCount !== 5) {
+      const expectedCount = writerNaturalizationW2Targets.length;
+      if (
+        requestIds.length !== expectedCount ||
+        auditCount !== expectedCount ||
+        outboxCount !== expectedCount
+      ) {
         throw new Error(
-          `WRITER_W2_BATCH1_RECEIPT_INVALID requests=${requestIds.length} audits=${auditCount} outbox=${outboxCount}`,
+          `WRITER_W2_RECEIPT_INVALID requests=${requestIds.length} audits=${auditCount} outbox=${outboxCount}`,
         );
       }
       process.stdout.write(
         `${JSON.stringify({
-          event: "WRITER_W2_BATCH1_APPLIED",
-          targetCount: 5,
+          event: "WRITER_W2_APPLIED",
+          targetCount: writerNaturalizationW2Targets.length,
           auditCount,
           outboxCount,
           beforeSnapshotHash: snapshot.snapshotHash,
@@ -335,26 +341,26 @@ async function main(): Promise<void> {
       return;
     }
 
-    if (flow.settings.runtimeEnabled) throw new Error("WRITER_W2_BATCH1_ALREADY_RUNNING");
+    if (flow.settings.runtimeEnabled) throw new Error("WRITER_W2_ALREADY_RUNNING");
     for (const profile of snapshot.targets) {
       if (
         sha256(JSON.stringify(profile.currentPersonaVersion!.persona)) !==
         sha256(JSON.stringify(candidates.get(profile.user.username)!.persona))
       ) {
-        throw new Error(`WRITER_W2_BATCH1_RESUME_TARGET_INVALID username=${profile.user.username}`);
+        throw new Error(`WRITER_W2_RESUME_TARGET_INVALID username=${profile.user.username}`);
       }
     }
     const updated = await setSocietyFlowEnabled(
       database,
       { ...actor, requestId: randomUUID() },
       true,
-      { reason: "W2 ilk beş persona sürümü doğrulandı; toplum akışını açma." },
+      { reason: "W2 22 persona sürümü doğrulandı; toplum akışını açma." },
     );
     process.stdout.write(
       `${JSON.stringify({
-        event: "WRITER_W2_BATCH1_RESUMED",
+        event: "WRITER_W2_RESUMED",
         settingsVersion: updated.settingsVersion,
-        targetCount: 5,
+        targetCount: writerNaturalizationW2Targets.length,
       })}\n`,
     );
   } finally {
@@ -364,9 +370,9 @@ async function main(): Promise<void> {
 
 void main().catch((error: unknown) => {
   const message =
-    error instanceof Error && /^WRITER_W2_BATCH1_[A-Z0-9_]+(?: .+)?$/u.test(error.message)
+    error instanceof Error && /^WRITER_W2_[A-Z0-9_]+(?: .+)?$/u.test(error.message)
       ? error.message
-      : "WRITER_W2_BATCH1_FATAL";
+      : "WRITER_W2_FATAL";
   process.stderr.write(`${message}\n`);
   process.exitCode = 1;
 });

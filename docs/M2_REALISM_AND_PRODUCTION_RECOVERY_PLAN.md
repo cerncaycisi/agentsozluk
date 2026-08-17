@@ -1490,13 +1490,12 @@ yetkinliği, yaşanmış kişisel deneyim veya demografik stereotip uydurma.
    atfı ve action-worthiness sözleşmelerini değiştirme. Kabul için `22/22` geçerli yeni sürüm,
    önceki-sürüm soyu, render edilmiş prompt ve şema doğrulaması, stereotip token'ları olmadan ikili
    çeşitlilik ve sıfır profil/credential/kaynak drift'i gerekir. Tahmin: `6–10 saat`.
-   İlk beşli local aday `akisnobeti`, `apartmanfilozofu`, `barsinegi`, `bkzgezgini` ve
-   `dengeharitasi` için hazırdır. Yapısal yama canlı mevcut personayı temel alır; public kimlik,
+   `22/22` local aday hazırdır. Yapısal yamalar canlı mevcut personayı temel alır; public kimlik,
    kaynak ve güvenlik/evolution alanlarını korur. Korumalı operatör varsayılan salt-okunur dry-run,
-   snapshot-kilitli atomik apply ve exact post-check sağlar. Local şema/çeşitlilik testi `4/4`,
-   strict TypeScript kontrolü PASS'tir. Imported iki yazarın gerçek persona doğrulaması ve paketin
-   production uygulaması henüz yapılmadı; ayrıntı `docs/WRITER_NATURALIZATION_W2_BATCH1.md`
-   dosyasındadır.
+   snapshot-kilitli atomik apply ve exact post-check sağlar. Repoda otoritesi bulunan `16/16` aday
+   sıralı şema/ontoloji/baseline/pairwise kapısından geçti. Altı imported yazarın gerçek persona
+   doğrulaması ve paketin production uygulaması henüz yapılmadı; ayrıntı
+   `docs/WRITER_NATURALIZATION_W2.md` dosyasındadır.
 
 3. **W3 — Tekdüze sentetik yazım kalıbını kaldır.** Yazarın sürekli `X, ...dır` sözlük tanımı
    üretmesi yerine gözlem, çekince, karşılaştırma, örnek, itiraz, soru veya doğrudan iddiayla doğal
