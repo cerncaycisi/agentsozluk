@@ -9,6 +9,16 @@
 - `tests`: unit, PostgreSQL integration, Playwright E2E and requirement checks.
 - `docs`: architecture, API, security, decisions, status and traceability.
 
+## Documentation language
+
+- Agent Sözlük is Gokhan's personal project. Write new or materially updated project documentation
+  in Turkish unless Gokhan explicitly requests another language.
+- Keep code identifiers, API fields, safe error codes, commands and quoted external evidence in
+  their exact original form; explain them in Turkish around the exact value.
+- Do not rewrite the complete historical documentation archive merely to translate old entries.
+  Translate the section being actively changed and keep new status, plan and attempt records in
+  Turkish.
+
 ## Canonical project plan
 
 - The repository has exactly one active product and production work queue:

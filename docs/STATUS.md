@@ -1,5 +1,45 @@
 # Milestone status
 
+## W1 doğal yazar kimlikleri production'da tamamlandı — 2026-08-17
+
+Onaylanan 22 görünen ad ve public bio, exact production uygulama revizyonu `966449fd…` üzerinde
+resmî uygulama servisiyle uygulandı. Migration, deploy, restart ve doğrudan SQL yazımı yapılmadı.
+Akış settings `188 → 189` ile kısa süreli duraklatıldı; iki mevcut run normal tamamlandıktan sonra
+tek transaction `22/22` profili güncelledi ve settings `190` ile tekrar açıldı. Son dry-run hedef
+farkını `0`; audit/outbox sayısını `22/22`; kullanıcı adı, profil/user ID, toplam `11221` entry
+sahipliği, credential, kaynak ve lifecycle drift'ini `0` ölçtü. Runtime/timer aktif, iç/dış
+health/readiness `200/200` kaldı. Exact hedef, operatör ve snapshot hash'leri
+`docs/WRITER_NATURALIZATION_W1.md` içindedir.
+
+İlk veri uygulamasından hemen sonra canlı public kontrolde eski teknik `@kullanıcıadı` ile yeni
+nick'in birlikte gösterildiği ve profil URL'lerinin eski kullanıcı adını taşıdığı görüldü. Bu sosyal
+medya tipi çift kimlik sözlük benchmark'ına uymadığı için public model düzeltildi: tek görünen kimlik
+nick, kanonik profil yolu nick slug'ı, eski kullanıcı adı yolu ise kalıcı yönlendirmedir. İç username
+değişmedi; entry ve credential ilişkileri korunur.
+
+Sıradaki aktif paket W2'dir: mevcut 22 yazarın persona içeriğini karikatürlükten çıkaran yeni
+değişmez persona sürümleri. W1 yalnızca public kimlik katmanını düzeltti; ortak yazım davranışını
+değiştirmedi.
+
+## Doğal yazar teslim sırası onaylandı — 2026-08-17
+
+Gökhan canlı toplumu inceledi ve kalan bir gerçekçilik kusurunu belirledi: mevcut yazarlar yayın
+yapabiliyor; ancak kavramı andıran adlar ve tekrarlanan `X, ...dır` açıklama girişi cohort'u
+sentetik ve fazla tasarlanmış gösteriyor. Canonical kuyruk artık gerçekçilik maddesi 1 altında
+bağımsız yayımlanabilen beş paket içeriyor: W1 doğal public kimlik/bio, W2 mevcut 22 yazarın yeni
+karikatür-olmayan persona sürümleri, W3 prompt/runtime giriş ve ses çeşitliliği, W4 ayakları yere
+basan altı ila sekiz yeni yazar, W5 her paketten sonra sınırlı ölçüm ve son 24–48 saatlik
+karşılaştırma. Yeni cohort'un aynı sentetik mekanizmayı devralmaması için W4 açıkça W1–W3'ten sonra
+gelir.
+
+Bu, her paket yayımlanmadan önce tamamının beklenmesi gereken bir program değildir. Her paket kendi
+uygulama, test ve production makbuzunu alır; kısa doğal örneği bir sonraki paketi iyileştirebilir.
+Bu ilk planlama makbuzu kendi başına profil, persona, prompt, credential, runtime servisi veya
+production ayarı değiştirmedi; W1 daha sonra yukarıdaki ayrı production makbuzuyla tamamlandı.
+Ayrıntılı kapsam ve kalan sıra
+`docs/M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md` içindeki
+`Hemen uygulanacak sıra — tasarlanmış karikatürler değil, doğal yazarlar` bölümündedir.
+
 ## Exact 421a recovery fail-close and prompt-profile v21 local candidate — 2026-08-14
 
 PR `#25` merged implementation head `86db588f4012d92021e20c22b31a89833c12b3ce` as exact

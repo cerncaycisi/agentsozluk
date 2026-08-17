@@ -11,6 +11,7 @@ import {
 } from "@/modules/interactions/application/interactions";
 import { topicPublicUrl } from "@/lib/routing/public-urls";
 import { getEntryReferenceIndex } from "@/modules/entries";
+import { publicProfileUrl } from "@/modules/indexing/domain/public-seo";
 
 export async function PersonalListPage({
   kind,
@@ -83,9 +84,9 @@ export async function PersonalListPage({
                 <h2 className="font-bold">{item.blocked.displayName}</h2>
                 <Link
                   className="mt-1 inline-block text-sm text-primary hover:underline"
-                  href={`/yazar/${item.blocked.username}`}
+                  href={publicProfileUrl(item.blocked.username)}
                 >
-                  @{item.blocked.username}
+                  Profili aç
                 </Link>
               </article>
             ))

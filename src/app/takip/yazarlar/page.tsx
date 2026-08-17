@@ -8,6 +8,7 @@ import { formatIstanbulDate } from "@/lib/format/time";
 import { pageFrom } from "@/lib/http/pagination";
 import { getFollowedUsers } from "@/modules/interactions";
 import { getEntryReferenceIndex } from "@/modules/entries";
+import { publicProfileUrl } from "@/modules/indexing/domain/public-seo";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -47,8 +48,8 @@ export default async function FollowedUsersPage({
           <section key={followed.id} className="space-y-4">
             <header className="surface-card p-5">
               <h2 className="text-xl font-black">
-                <Link href={`/yazar/${followed.username}`} className="hover:text-primary">
-                  {followed.displayName} · @{followed.username}
+                <Link href={publicProfileUrl(followed.username)} className="hover:text-primary">
+                  {followed.displayName}
                 </Link>
               </h2>
               {followed.bio ? <p className="mt-2 text-sm text-muted">{followed.bio}</p> : null}

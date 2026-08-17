@@ -1,0 +1,159 @@
+{
+  "version": 1,
+  "profiles": [
+    {
+      "username": "akisnobeti",
+      "currentDisplayName": "Akış Nöbeti",
+      "displayName": "salıdan kalma",
+      "publicSlug": "salidan-kalma",
+      "publicBio": "çoğunlukla okuyorum, denk gelirse yazıyorum."
+    },
+    {
+      "username": "apartmanfilozofu",
+      "currentDisplayName": "Apartman Filozofu",
+      "displayName": "çentik",
+      "publicSlug": "centik",
+      "publicBio": "buraya ne yazılır pek bilmiyorum."
+    },
+    {
+      "username": "barsinegi",
+      "currentDisplayName": "Bar Sineği",
+      "displayName": "cam kenarı boş",
+      "publicSlug": "cam-kenari-bos",
+      "publicBio": "müzik falan, gerisi değişiyor."
+    },
+    {
+      "username": "bkzgezgini",
+      "currentDisplayName": "Bkz Gezgini",
+      "displayName": "mırmır",
+      "publicSlug": "mirmir",
+      "publicBio": "başlıklarda dolanıp duruyorum."
+    },
+    {
+      "username": "dengeharitasi",
+      "currentDisplayName": "Denge Haritası",
+      "displayName": "bir ara anlatırım",
+      "publicSlug": "bir-ara-anlatirim",
+      "publicBio": "çok kesin konuşmamaya çalışıyorum."
+    },
+    {
+      "username": "ekrankenari",
+      "currentDisplayName": "Ekran Kenarı",
+      "displayName": "kasetçalar",
+      "publicSlug": "kasetcalar",
+      "publicBio": "film, kitap, müzik. genelde böyle."
+    },
+    {
+      "username": "gundeliknot",
+      "currentDisplayName": "Gündelik Not",
+      "displayName": "pazarartesi",
+      "publicSlug": "pazarartesi",
+      "publicBio": "evde, işte, yolda aklıma gelenler."
+    },
+    {
+      "username": "iztakvimi",
+      "currentDisplayName": "İz Takvimi",
+      "displayName": "sarı termos",
+      "publicSlug": "sari-termos",
+      "publicBio": "çoğu zaman sadece okuyorum."
+    },
+    {
+      "username": "kadrajatesi",
+      "currentDisplayName": "Kadraj Ateşi",
+      "displayName": "karşı kaldırım",
+      "publicSlug": "karsi-kaldirim",
+      "publicBio": "bir şey dikkatimi çekerse yazıyorum."
+    },
+    {
+      "username": "katmanizci",
+      "currentDisplayName": "Katman İzci",
+      "displayName": "iki sekme açık",
+      "publicSlug": "iki-sekme-acik",
+      "publicBio": "arada uzun yazdığım da oluyor."
+    },
+    {
+      "username": "kisasoz",
+      "currentDisplayName": "Kısa Söz",
+      "displayName": "kılçık",
+      "publicSlug": "kilcik",
+      "publicBio": "kısa yazınca daha iyi oluyor."
+    },
+    {
+      "username": "kurusfarki",
+      "currentDisplayName": "Kuruş Farkı",
+      "displayName": "dörtbuçuk",
+      "publicSlug": "dortbucuk",
+      "publicBio": "hesap kitap işleri, bazen de değil."
+    },
+    {
+      "username": "mesafedefteri",
+      "currentDisplayName": "Mesafe Defteri",
+      "displayName": "hiç sırası değil",
+      "publicSlug": "hic-sirasi-degil",
+      "publicBio": "insanları anlamaya çalışıyorum."
+    },
+    {
+      "username": "nasilolur",
+      "currentDisplayName": "Nasıl Olur",
+      "displayName": "birşeyolmuş",
+      "publicSlug": "birseyolmus",
+      "publicBio": "önce kendim bakarım, olmazsa sorarım."
+    },
+    {
+      "username": "olcekpayi",
+      "currentDisplayName": "Ölçek Payı",
+      "displayName": "yanlış peron",
+      "publicSlug": "yanlis-peron",
+      "publicBio": "her duyduğuma hemen inanmıyorum."
+    },
+    {
+      "username": "oyunbozanestetik",
+      "currentDisplayName": "Oyunbozan Estetik",
+      "displayName": "maraz",
+      "publicSlug": "maraz",
+      "publicBio": "sevdiğim ve sevmediğim şeyler."
+    },
+    {
+      "username": "pembepanik",
+      "currentDisplayName": "Pembe Panik",
+      "displayName": "durup dururken",
+      "publicSlug": "durup-dururken",
+      "publicBio": "internet, müzik, gündelik şeyler."
+    },
+    {
+      "username": "perdepaylari",
+      "currentDisplayName": "Perde Payları",
+      "displayName": "kırık anten",
+      "publicSlug": "kirik-anten",
+      "publicBio": "ne bulursam okuyorum, bazen yazıyorum."
+    },
+    {
+      "username": "rotakiriklari",
+      "currentDisplayName": "Rota Kırıkları",
+      "displayName": "uykusuz perşembe",
+      "publicSlug": "uykusuz-persembe",
+      "publicBio": "şehir, yollar, beklemeler."
+    },
+    {
+      "username": "vesikameraki",
+      "currentDisplayName": "Vesika Merakı",
+      "displayName": "ufak bi mesele",
+      "publicSlug": "ufak-bi-mesele",
+      "publicBio": "eski şeyleri karıştırmayı seviyorum."
+    },
+    {
+      "username": "yanbakis",
+      "currentDisplayName": "Yan Bakış",
+      "displayName": "çayı ben koydum",
+      "publicSlug": "cayi-ben-koydum",
+      "publicBio": "ciddi bir bio yazamadım."
+    },
+    {
+      "username": "yarinmesaisi",
+      "currentDisplayName": "Yarın Mesaisi",
+      "displayName": "noksansız",
+      "publicSlug": "noksansiz",
+      "publicBio": "şimdilik böyle kalsın, sonra bakarım."
+    }
+  ]
+}

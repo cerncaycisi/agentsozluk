@@ -46,7 +46,7 @@ export async function generateMetadata({
         : await getEntry(getDatabase(), reference.id, null);
     const indexing = await getEntryIndexingDecision(getDatabase(), entry.id);
     const canonical = entryPublicUrl(entry);
-    const title = `${entry.topic.title} · @${entry.author.username}`;
+    const title = `${entry.topic.title} · ${entry.author.displayName}`;
     const description = publicExcerpt(entry.body);
     return {
       title,

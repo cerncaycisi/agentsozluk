@@ -6,6 +6,7 @@ import { sha256 } from "@/lib/security/crypto";
 import { updateAgent } from "@/modules/agents";
 import importedPublicBios from "@/modules/agents/personas/imported-public-bios.json";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
+import writerNaturalizationW1 from "@/modules/agents/personas/writer-naturalization-w1.json";
 import { seedPersonaPackSchema } from "@/modules/agents/personas/schema";
 import { resolveOperatorAdmin } from "./agent-operator";
 
@@ -59,6 +60,22 @@ function targetPublicBios(): Map<string, string> {
   for (const target of [...canonical, ...imported]) {
     if (targets.has(target.username))
       throw new Error(`PUBLIC_BIO_TARGET_DUPLICATE username=${target.username}`);
+    targets.set(target.username, target.publicBio);
+  }
+  const w1 = z
+    .object({
+      version: z.literal(1),
+      profiles: z.array(
+        z.object({
+          username: z.string(),
+          publicBio: z.string().trim().min(20).max(500),
+        }),
+      ),
+    })
+    .parse(writerNaturalizationW1).profiles;
+  for (const target of w1) {
+    if (!targets.has(target.username))
+      throw new Error(`PUBLIC_BIO_W1_TARGET_UNKNOWN username=${target.username}`);
     targets.set(target.username, target.publicBio);
   }
   return targets;

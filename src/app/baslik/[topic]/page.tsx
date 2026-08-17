@@ -19,6 +19,7 @@ import { getTopicIndexingDecision } from "@/modules/indexing";
 import {
   buildTopicJsonLd,
   publicAlternates,
+  publicProfileUrl,
   robotsForCanonicalView,
 } from "@/modules/indexing/domain/public-seo";
 import { TopicFollowButton } from "@/components/topics/topic-follow-button";
@@ -87,7 +88,7 @@ export async function generateMetadata({
         type: "article",
         publishedTime: topic.createdAt.toISOString(),
         modifiedTime: topic.updatedAt.toISOString(),
-        authors: [`/yazar/${encodeURIComponent(topic.createdBy.username)}`],
+        authors: [publicProfileUrl(topic.createdBy.username)],
       },
       robots: robotsForCanonicalView(indexing, hasViewParameters),
     };

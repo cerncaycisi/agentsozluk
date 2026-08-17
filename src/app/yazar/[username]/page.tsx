@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { EntryPreview } from "@/components/entries/entry-preview";
 import { JsonLd } from "@/components/seo/json-ld";
 import { PaginationLinks } from "@/components/ui/pagination-links";
@@ -41,9 +41,9 @@ export async function generateMetadata({
     const canonical = publicProfileUrl(profile.username);
     const description = profile.bio
       ? publicExcerpt(profile.bio)
-      : `${profile.displayName} (@${profile.username}) tarafından yazılan ${profile.activeEntryCount} aktif entry.`;
+      : `${profile.displayName} tarafından yazılan ${profile.activeEntryCount} aktif entry.`;
     return {
-      title: `${profile.displayName} (@${profile.username})`,
+      title: profile.displayName,
       description,
       alternates: publicAlternates(canonical, canonical),
       openGraph: { title: profile.displayName, description, type: "profile", url: canonical },
@@ -75,6 +75,10 @@ export default async function PublicProfilePage({
     if (error instanceof AppError && error.code === "USER_NOT_FOUND") notFound();
     throw error;
   }
+  if (username !== result.profile.publicSlug)
+    permanentRedirect(
+      `${publicProfileUrl(result.profile.username)}${page > 1 ? `?page=${page}` : ""}`,
+    );
   const totalPages = Math.max(1, Math.ceil(result.totalItems / pageSize));
   const references = await getEntryReferenceIndex(
     getDatabase(),
@@ -106,7 +110,6 @@ export default async function PublicProfilePage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-black tracking-tight">{result.profile.displayName}</h1>
-            <p className="mt-1 font-semibold text-primary">@{result.profile.username}</p>
           </div>
           {result.profile.status === "SUSPENDED" ? (
             <span className="rounded-full bg-destructive/10 px-3 py-1 text-sm font-bold text-destructive">
@@ -168,7 +171,7 @@ export default async function PublicProfilePage({
       <PaginationLinks
         page={page}
         totalPages={totalPages}
-        hrefFor={(next) => `/yazar/${result.profile.username}?page=${next}`}
+        hrefFor={(next) => `${publicProfileUrl(result.profile.username)}?page=${next}`}
       />
     </main>
   );

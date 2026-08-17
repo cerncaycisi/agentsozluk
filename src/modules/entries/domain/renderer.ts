@@ -1,5 +1,6 @@
 import { linkifyit, type Match } from "linkify-it";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
+import { publicProfileUrl } from "@/modules/indexing/domain/public-seo";
 
 export type EntryToken =
   | { type: "text"; text: string }
@@ -122,7 +123,7 @@ export function tokenizeEntryBody(body: string, references: ReferenceIndex = {})
         tokens.push({
           type: "user",
           text: reference[0],
-          href: `/yazar/${parsed.username}`,
+          href: publicProfileUrl(parsed.username),
         });
       } else appendText(tokens, reference[0]);
       position = reference.index + reference[0].length;

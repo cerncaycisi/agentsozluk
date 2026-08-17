@@ -6,6 +6,7 @@ import {
   buildWebsiteJsonLd,
   publicAlternates,
   publicExcerpt,
+  publicProfileUrl,
   robotsForCanonicalView,
   safeSerializeJsonLd,
 } from "@/modules/indexing/domain/public-seo";
@@ -48,6 +49,11 @@ describe("public SEO metadata", () => {
         "application/atom+xml": "/baslik/ornek--1/atom.xml",
       },
     });
+  });
+
+  it("publishes the approved nickname slug without exposing the internal writer username", () => {
+    expect(publicProfileUrl("akisnobeti")).toBe("/yazar/salidan-kalma");
+    expect(publicProfileUrl("ornek_yazar")).toBe("/yazar/ornek_yazar");
   });
 
   it("serializes JSON-LD without allowing a script boundary injection", () => {

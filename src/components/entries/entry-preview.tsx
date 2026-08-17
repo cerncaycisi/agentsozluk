@@ -5,6 +5,7 @@ import { EntryActions } from "@/components/entries/entry-actions";
 import { formatIstanbulTimestamp } from "@/lib/format/time";
 import { entryPublicUrl, topicPublicUrl } from "@/lib/routing/public-urls";
 import type { ReferenceIndex } from "@/modules/entries";
+import { publicProfileUrl } from "@/modules/indexing/domain/public-seo";
 
 export interface EntryPreviewItem {
   id: string;
@@ -80,10 +81,10 @@ export function EntryPreview({
         </span>
         <span>
           <Link
-            href={`/yazar/${entry.author.username}`}
+            href={publicProfileUrl(entry.author.username)}
             className="font-semibold text-primary hover:underline"
           >
-            {entry.author.displayName} · @{entry.author.username}
+            {entry.author.displayName}
           </Link>
         </span>
       </footer>

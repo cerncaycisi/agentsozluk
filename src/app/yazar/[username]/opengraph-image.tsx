@@ -19,7 +19,7 @@ export default async function ProfileOpenGraphImage({
       take: 1,
     });
     return createPublicOgImage({
-      eyebrow: `@${result.profile.username}`,
+      eyebrow: "yazar",
       title: result.profile.displayName,
       subtitle: `${result.profile.activeEntryCount} aktif entry`,
     });

@@ -103,7 +103,7 @@ export async function profileFeedResponse(
 
   const profile = result.profile;
   const canonicalPath = publicProfileUrl(profile.username);
-  if (username !== profile.username)
+  if (username !== profile.publicSlug)
     return redirectResponse(`${canonicalPath}/${fileName(format)}`);
 
   const generatedAt = new Date();

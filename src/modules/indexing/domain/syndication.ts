@@ -158,7 +158,7 @@ export function profileSyndicationFeed(
 ): SyndicationFeed {
   const homePath = publicProfileUrl(profile.username);
   return {
-    title: `${profile.displayName} (@${profile.username}) · ${APP_NAME}`,
+    title: `${profile.displayName} · ${APP_NAME}`,
     description: `${profile.displayName} tarafından yayımlanan son indexlenebilir entry’ler.`,
     homePath,
     rssPath: `${homePath}/feed.xml`,

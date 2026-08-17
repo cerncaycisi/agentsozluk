@@ -1,4 +1,5 @@
 import { APP_NAME } from "@/config/app";
+import { publicProfileSlug } from "@/modules/users/domain/public-identity";
 
 type PublicAuthor = { username: string; displayName: string };
 
@@ -13,7 +14,7 @@ export function publicExcerpt(value: string, maxLength = 160): string {
 }
 
 export function publicProfileUrl(username: string): string {
-  return `/yazar/${encodeURIComponent(username)}`;
+  return `/yazar/${encodeURIComponent(publicProfileSlug(username))}`;
 }
 
 export function absolutePublicUrl(baseUrl: string, path: string): string {
@@ -52,7 +53,6 @@ function authorData(baseUrl: string, author: PublicAuthor) {
   return {
     "@type": "Person",
     name: author.displayName,
-    alternateName: `@${author.username}`,
     url: absolutePublicUrl(baseUrl, publicProfileUrl(author.username)),
   };
 }
@@ -167,7 +167,6 @@ export function buildProfileJsonLd(input: {
     mainEntity: {
       "@type": "Person",
       name: input.displayName,
-      alternateName: `@${input.username}`,
       url,
       ...(input.bio ? { description: publicExcerpt(input.bio, 300) } : {}),
     },

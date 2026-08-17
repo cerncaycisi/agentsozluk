@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { escapeLikePattern } from "@/modules/search/domain/normalization";
+import { publicProfileUrl } from "@/modules/indexing/domain/public-seo";
 
 export interface SearchRow {
   type: "topic" | "entry" | "user";
@@ -232,8 +233,11 @@ export async function searchRecords(
           type: row.type,
           id: row.id,
           title: row.title,
-          snippet: row.snippet,
-          url: row.url,
+          snippet: row.type === "user" ? "yazar profili" : row.snippet,
+          url:
+            row.type === "user" && row.url.startsWith("/yazar/")
+              ? publicProfileUrl(row.url.slice("/yazar/".length))
+              : row.url,
           rank: row.rank,
         },
       ];

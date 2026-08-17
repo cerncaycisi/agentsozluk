@@ -17,7 +17,7 @@ export default async function EntryOpenGraphImage({ params }: { params: Promise<
         ? await getEntryByPublicId(getDatabase(), reference.publicId, null)
         : await getEntry(getDatabase(), reference.id, null);
     return createPublicOgImage({
-      eyebrow: `@${entry.author.username} tarafından yazıldı`,
+      eyebrow: `${entry.author.displayName} tarafından yazıldı`,
       title: entry.topic.title,
       subtitle: "entry",
     });

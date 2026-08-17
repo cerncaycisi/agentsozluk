@@ -3,6 +3,10 @@ import { AppError } from "@/lib/http/errors";
 import { findPublicProfile, listPublicProfileEntries } from "@/modules/users/repository/profiles";
 import { withEditedIndicator } from "@/modules/entries/domain/entry";
 import { publicProfileQuerySchema } from "@/modules/users/validation/schemas";
+import {
+  publicProfileSlug,
+  resolvePublicProfileUsername,
+} from "@/modules/users/domain/public-identity";
 
 export async function getPublicProfile(
   client: DatabaseClient,
@@ -10,7 +14,10 @@ export async function getPublicProfile(
 ) {
   const query = publicProfileQuerySchema.parse(input);
   return client.$transaction(async (transaction) => {
-    const profile = await findPublicProfile(transaction, query.username);
+    const profile = await findPublicProfile(
+      transaction,
+      resolvePublicProfileUsername(query.username),
+    );
     if (!profile) throw new AppError("USER_NOT_FOUND", 404, "Kullanıcı bulunamadı.");
     const [entries, totalItems] = await listPublicProfileEntries(transaction, {
       userId: profile.id,
@@ -22,6 +29,7 @@ export async function getPublicProfile(
         id: profile.id,
         status: profile.status,
         username: profile.username,
+        publicSlug: publicProfileSlug(profile.username),
         displayName: profile.displayName,
         bio: profile.bio,
         createdAt: profile.createdAt,
