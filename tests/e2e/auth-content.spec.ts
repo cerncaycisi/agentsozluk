@@ -186,7 +186,7 @@ test.describe("@desktop authenticated content journey", () => {
     await page.waitForLoadState("networkidle");
     await expect(page).toHaveURL(/\/baslik\/yapay-zeka-ile-gundelik-hayat--[1-9]\d*$/u);
     await expect(page.getByRole("button", { name: "Gammazla" })).toHaveCount(0);
-    const seededArticle = page.locator("article").filter({ hasText: "@writer" }).first();
+    const seededArticle = page.locator("article").filter({ hasText: "Meraklı Yazar" }).first();
     await seededArticle.getByRole("button", { name: "Artı oy ver" }).click();
     await expect(seededArticle.getByRole("button", { name: "Artı oy ver" })).toHaveAttribute(
       "aria-pressed",
@@ -218,8 +218,8 @@ test.describe("@desktop authenticated content journey", () => {
       blockedArticle.getByText("Bu entry engellediğiniz bir yazar tarafından yazıldı."),
     ).toHaveCount(0);
     await page.goto("/ayarlar/engellenenler");
-    await expect(page.getByRole("link", { name: "@writer" })).toBeVisible();
-    await page.getByRole("link", { name: "@writer" }).click();
+    await expect(page.getByRole("link", { name: "Meraklı Yazar" })).toBeVisible();
+    await page.getByRole("link", { name: "Meraklı Yazar" }).click();
     await page.getByRole("button", { name: "Engeli kaldır" }).click();
     await expect(page.getByRole("status")).toContainText("Engel kaldırıldı.");
     await page.goto("/ayarlar/engellenenler");
