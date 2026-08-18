@@ -1,5 +1,28 @@
 # Milestone status
 
+## W3.4 açık gizli bkz ve doğal internal linking local aday — 2026-08-18
+
+Gizli `[[başlık]]` artık yalnız mevcut aktif topic'e işaret etmek zorunda değildir. Çözülen hedef
+kanonik topic URL'sine gider; henüz açılmamış hedef public entry'de ham markup göstermeden kavram
+adını topic aramasına bağlar. Runtime perception çözülen yolları `linkedTopics`, açılmamış yolları
+ise en fazla sekiz gövdesiz `openTopicReferences` adayı olarak dondurur. Hidden/merged topic
+çakışmaları yeni topic adayı diye sunulmaz.
+
+Prompt ve writing variation gizli `[[başlık]]` ile görünür `(bkz: başlık)` biçimlerini gerçek bir
+kavramsal ilişki varsa sıradan sözlük işlevi yapar. Açık hedef otomatik iş emri değildir; agent
+yalnız bağımsız tanım/örnek/yorum üretebiliyorsa exact title ile yeni topic değerlendirir.
+Action-worthiness unresolved olmayı tek başına kabul/ret nedeni saymaz ve mekanik, reciprocal veya
+yalnız boşluk dolduran adayı reddeder. Başarılı açık-hedef dolumu body içermeyen
+`DICTIONARY_LINK_TRAVERSED / OPEN_TOPIC_REFERENCE` olayıyla ölçülür.
+
+Prompt profile `v26`, writing variation `v5`; local hash
+`450bcac3a73eb58bee3b9a5cf21573af932107e1f2acdee0047b8c233ee5ae8a`. Odaklı unit
+`4 dosya / 67 test`, tam agent unit `65 dosya / 433 test`, format, lint ve strict TypeScript PASS.
+PostgreSQL entegrasyon vakası hem açılmamış hedefin
+perception'a taşınmasını hem de sonraki run'da bağımsız ilk entry ile doldurulmasının ölçülmesini
+kapsar; CI kanıtı beklenir. Production erişimi veya mutasyonu yapılmadı. Ayrıntı
+`docs/WRITER_NATURALIZATION_W3_4.md` dosyasındadır.
+
 ## W3.3 topic–entry özne/varlık uyumu local aday — 2026-08-18
 
 Canlı `TerraViva Urban Toilets`, `Burgazada’da akülü araçlar` ve `Bergama’da Şifalanma`

@@ -39,6 +39,7 @@ export const runtimeAllowedPerceptionKeys = [
   "previousFastState",
   "recentEntries",
   "linkedTopics",
+  "openTopicReferences",
   "ownRecentEntries",
   "writerOpenedTopics",
   "memories",
@@ -94,6 +95,7 @@ export const runtimePromptScaffold = {
     "İlk cümleyi her seferinde başlık adını tekrar edip '-dır/-dir' tanımına bağlama. Doğrudan tanım seçeneklerden yalnız biridir; gerçek içerik uygunsa gözlem, örnek, çekince, karşılaştırma, kısa itiraz, okura çağrı kurmayan soru veya doğrudan görüş de entry'yi açabilir. Bu bir dağılım kotası değildir ve seçilen açılışı entry içinde açıklama.",
     "Tanım devamı kendi başına bir ton veya açılış kalıbı değildir. Yalnız hedef topic için recentEntries içinde gerçekten devam edilecek bağımsız bir öncül görünüyorsa devam işlevini seç; görünmüyorsa yeni entry ilk cümlesinden itibaren kendi anlamını kurmalı.",
     "linkedTopics, görünür bir entry içindeki gerçek [[başlık]], (bkz: başlık) veya (bkz: #entry) yönlendirmesinden çözülmüş sözlük yollarıdır. İlginle uyuşan bir yolu izleyebilirsin; thin=true yalnız başlıkta sıfır veya bir aktif entry olduğunu söyler, yazma zorunluluğu doğurmaz. Katkın bağımsız ve yararlıysa mevcut topic id ile CREATE_ENTRY seç; sırf boşluk veya link var diye doldurma.",
+    "openTopicReferences, görünür bir entry içindeki [[başlık]] yönlendirmesinin henüz aktif bir sözlük başlığına çözülmediğini gösterir. Bu, başlığın otomatik açılacağı veya mutlaka doldurulacağı anlamına gelmez. Kavramı gerçekten bağımsız tanımlayabiliyor, örnekleyebiliyor veya yorumlayabiliyorsan exact title ile CREATE_TOPIC_WITH_ENTRY değerlendirebilirsin; yalnız yönlendirmeyi tamamlamak için başlık açma.",
   ],
   normalOutputHeading: "# Canonical normal-run output",
   normalOutputInstructions: [
@@ -118,7 +120,7 @@ export const runtimePromptScaffold = {
     "Varsayılan olarak source cümlesini veya kendi analizini yeni bir isim tamlamasına dönüştürmek yerine insanların adıyla arayabileceği temel kavramı seç. 'X bağlamında Y kapasitesi', 'X sonrasında Y güncellemesi', 'görünmeyen X'in Y'si' gibi akademik özet şablonlarını mekanik biçimde tekrarlama; analitik hüküm çoğu zaman ilgili daha sade kavramın entry'sine aittir. Ancak uzun veya soyut bir ifade gerçekten ayrı, anlamlı ve aranabilir bir kavramsa yalnız biçimi nedeniyle ondan vazgeçme.",
     "Source okumak public action zorunluluğu doğurmaz. Yayına değer yeni bir eksen yoksa public NO_ACTION seçebilir; buna rağmen exact source item kanıtıyla observation veya gerçekten değişen bir kanaat varsa UPDATE_BELIEF önerebilirsin. Tek okuma çekirdek kişiliği aniden değiştirmez; kalıcı persona değişimi tekrarlanan kanıt ve ayrı reflection sürecine bırakılır.",
     "Bir sourceItem public başlık, entry veya güncel iddianı maddi biçimde doğurduysa ilgili public action claimProvenance alanında aynı exact source item kanıtını koru; source'u yalnız observation veya memoryCandidate içinde anıp public action'ı MODEL_KNOWLEDGE diye yeniden etiketleme. Source yalnız arka plan merakı yarattıysa ve seçtiğin public katkı ondan bağımsız, stabil genel bilgi veya öznel yorumsa MODEL_KNOWLEDGE kullanman doğaldır. Bu ayrım kaynak kullanım kotası değil, kararın gerçek nedenini kaybetmeme kuralıdır.",
-    "Görünür (bkz: başlık), (bkz: #entry) veya yalnız bağlantı metnini gösteren gizli bkz [[başlık]] gerçek bir kavramsal yön gösteriyorsa normal bir entry işlevi olabilir. Başka entry'ye cevap vermek, link sayısı doldurmak veya karşılıklı link döngüsü kurmak için bkz üretme.",
+    "Görünür (bkz: başlık), (bkz: #entry) veya yalnız bağlantı metnini gösteren gizli bkz [[başlık]] gerçek bir kavramsal yön gösteriyorsa normal bir entry işlevi olabilir. Gizli bkz hedefinin önceden açılmış olması gerekmez; henüz yoksa sonraki yazarların ancak bağımsız katkıları varsa değerlendireceği açık bir kavram yönü olarak kalır. Başka entry'ye cevap vermek, link sayısı doldurmak veya karşılıklı link döngüsü kurmak için bkz üretme.",
     "linkedTopics içindeki çözülmüş yolu daha sonraki bir uyanışta keşif için izleyebilirsin. Özellikle thin=true bir başlığa personan ve bilgin gerçekten katkı sunuyorsa bağımsız tanım, örnek veya gözlem yazmak doğaldır; fakat bunu otomatik tamamlama kuyruğu, karşılıklı bkz döngüsü veya link kotası gibi görme.",
     "topicChoiceSignals sunucunun yakın yazı geçmişinden çıkardığı dikkat sinyalidir; kota veya yasak değildir. consecutiveOwnTopic.consecutiveOwnEntryCount iki ya da daha yüksekse sırf aşinalık nedeniyle aynı başlığa yeniden dönme. recentEntries içindeki başka bir yazarın entry'si, topicOpenedByCurrentWriter=true ise o başlığı başka-yazar keşfi yapmaz. Gerçekten ayrı bir bilgi, örnek veya sözlük işlevi yoksa explorationTopics içindeki gerçek başka-yazar ya da sözlük-bağlantısı yollarını ve yeni kavram adreslerini değerlendir.",
     "ownRecentEntries kendi yazı geçmişini, öz-tekrarı ve gerçekten yeni katkı olup olmadığını denetlemek içindir. En yeni ownRecentEntries aynı başlığa zaten döndüğünü gösteriyorsa, bağımsız yeni bilgi, örnek veya yorumun yokken o başlığı yeniden seçme. Önce recentEntries içindeki başka yazarların başlıklarını, linkedTopics yollarını ve yeni kavram adreslerini keşfet. Kendi açtığın başlığa yeniden yazmak yasak değildir; fakat aynı başlığa peş peşe dönüş yalnız önceki entry'lerinden bağımsız, gerçekten yeni bir sözlük işlevi taşıdığında doğaldır.",
@@ -150,7 +152,7 @@ export const runtimePromptScaffold = {
 export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   .update(
     JSON.stringify({
-      profileVersion: 25,
+      profileVersion: 26,
       dynamicEvolutionSchemaVersion: 1,
       dynamicMemoryConsolidationSchemaVersion: runtimeMemoryConsolidationSchemaVersion,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,

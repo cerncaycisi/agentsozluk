@@ -71,6 +71,13 @@ describe("runtime writing variation", () => {
     expect(prompt).toContain("tek başına okunabilir bir sözlük işlevi");
     expect(prompt).toContain("Personanın tanınabilir kelime seçimi");
     expect(prompt).toContain("Bu yönergeleri entry içinde anma");
+    expect(
+      Array.from({ length: 128 }, (_, index) =>
+        renderRuntimeWritingVariation(
+          `00000000-0000-4000-8000-${index.toString().padStart(12, "0")}`,
+        ),
+      ).join("\n"),
+    ).toMatch(/gizli \[\[başlık\]\]|görünür \(bkz: başlık\)/u);
     expect(prompt).toMatch(
       /başlığı yeniden söylemeden|somut ve ayırt edici|gündelik ve tek başına|kişisel görüş|çekince veya istisna|ayırt edici fark|kısa itiraz veya soru|kısa bir iddia/u,
     );

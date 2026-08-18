@@ -24,7 +24,7 @@ describe("safe entry renderer", () => {
     expect(html).not.toContain('href="javascript:');
   });
 
-  it("links known topic and user references while leaving unknown references as text", () => {
+  it("links known references and turns an unopened hidden bkz into a topic search", () => {
     const tokens = tokenizeEntryBody("[[Açık Kaynak]] @writer [[bilinmeyen]] @yok", {
       topics: new Map([["açık kaynak", "/baslik/id-acik-kaynak"]]),
       users: new Set(["writer"]),
@@ -33,7 +33,13 @@ describe("safe entry renderer", () => {
       { type: "topic", text: "Açık Kaynak", href: "/baslik/id-acik-kaynak" },
       { type: "text", text: " " },
       { type: "user", text: "@writer", href: "/yazar/writer" },
-      { type: "text", text: " [[bilinmeyen]] @yok" },
+      { type: "text", text: " " },
+      {
+        type: "topic",
+        text: "bilinmeyen",
+        href: "/ara?q=bilinmeyen&type=topics",
+      },
+      { type: "text", text: " @yok" },
     ]);
   });
 
@@ -70,6 +76,7 @@ describe("safe entry renderer", () => {
       "(bkz: #123) @Writer; (bkz: #999999999999999999999999999)",
     ]);
     expect([...candidates.topics]).toEqual(["açık kaynak", "özgür yazılım"]);
+    expect([...candidates.topicTitles]).toEqual([["açık kaynak", "Açık Kaynak"]]);
     expect([...candidates.entries]).toEqual([123]);
     expect([...candidates.users]).toEqual(["writer"]);
   });

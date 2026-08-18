@@ -800,6 +800,13 @@ describe("long-lived agent runtime worker", () => {
           recentOwnTopics: [],
           explorationTopics: [],
         },
+        openTopicReferences: [
+          {
+            title: "henüz açılmamış kavram",
+            normalizedTitle: "henüz açılmamış kavram",
+            discoveredFromEntryIds: [randomUUID()],
+          },
+        ],
         runtimeMetadata: { preservedMarker: "must-not-leak" },
         futureInternalPerceptionField: "must-not-leak",
       },
@@ -864,6 +871,8 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("- Açılış:");
     expect(prompt).toContain("recentEntries içinde gerçekten devam edilecek bağımsız bir öncül");
     expect(prompt).toContain("link sayısı doldurmak");
+    expect(prompt).toContain("hedefinin önceden açılmış olması gerekmez");
+    expect(prompt).toContain("openTopicReferences");
     expect(prompt).toContain("# Bu run için yazım varyasyonu");
     expect(prompt).toContain("gözlemsel kalibrasyondur, kota değildir");
     expect(prompt).toContain("şablon veya kontrol listesi değildir");
@@ -894,6 +903,7 @@ describe("long-lived agent runtime worker", () => {
             consecutiveOwnEntryCount: number;
           };
         };
+        openTopicReferences: Array<{ title: string; normalizedTitle: string }>;
         evidenceCatalog: Record<string, string[]>;
       };
     };
@@ -928,6 +938,12 @@ describe("long-lived agent runtime worker", () => {
       topic: { id: "visible-topic", title: "görünür başlık" },
       consecutiveOwnEntryCount: 3,
     });
+    expect(decoded.perception.openTopicReferences).toEqual([
+      expect.objectContaining({
+        title: "henüz açılmamış kavram",
+        normalizedTitle: "henüz açılmamış kavram",
+      }),
+    ]);
     expect(decoded.perception.evidenceCatalog).toEqual({
       PLATFORM_EVENT: [context.run.id],
       USER_ENTRY: [],

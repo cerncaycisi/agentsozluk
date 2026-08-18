@@ -68,6 +68,7 @@ import {
   setVote,
 } from "@/modules/interactions";
 import { createTopicWithFirstEntry, resolveCanonicalTopicProposal } from "@/modules/topics";
+import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { appendOutboxEvent, type OutboxEventInput } from "@/modules/outbox";
 import {
   guardProductionRolloutRuntimeMutation,
@@ -148,6 +149,24 @@ function linkedTopicIds(perceptionSummary: unknown): Set<string> {
       if (!topic || typeof topic !== "object" || Array.isArray(topic)) return [];
       const id = (topic as Record<string, unknown>).id;
       return typeof id === "string" ? [id] : [];
+    }),
+  );
+}
+
+function openTopicReferenceTitles(perceptionSummary: unknown): Set<string> {
+  if (
+    !perceptionSummary ||
+    typeof perceptionSummary !== "object" ||
+    Array.isArray(perceptionSummary)
+  )
+    return new Set();
+  const openTopicReferences = (perceptionSummary as Record<string, unknown>).openTopicReferences;
+  if (!Array.isArray(openTopicReferences)) return new Set();
+  return new Set(
+    openTopicReferences.flatMap((reference) => {
+      if (!reference || typeof reference !== "object" || Array.isArray(reference)) return [];
+      const normalizedTitle = (reference as Record<string, unknown>).normalizedTitle;
+      return typeof normalizedTitle === "string" ? [normalizedTitle] : [];
     }),
   );
 }
@@ -956,6 +975,12 @@ export async function executeRuntimeAction(
         linkedTopicIds(actionRecord.run.perceptionSummary).has(resolvedTarget.topicId)
           ? resolvedTarget.topicId
           : null;
+      const fillsOpenTopicReference =
+        parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY" &&
+        typeof parsed.data.input.title === "string" &&
+        openTopicReferenceTitles(actionRecord.run.perceptionSummary).has(
+          normalizeTopicTitle(parsed.data.input.title),
+        );
       // NO_ACTION is an auditable abstention with no external or internal
       // mutation. A model-supplied claim must not turn that safe abstention
       // into a rejected action or a PARTIAL run.
@@ -1193,6 +1218,23 @@ export async function executeRuntimeAction(
           safeMessage:
             "Agent görünür bir sözlük iç bağlantısından keşfettiği başlıkta action gerçekleştirdi.",
           metadata: { origin: "LINKED_TOPIC_PERCEPTION", actionType: parsed.data.actionType },
+          occurredAt: now,
+        });
+      const executionTopicId = jsonRecord(execution.result).topicId;
+      if (fillsOpenTopicReference && typeof executionTopicId === "string")
+        await appendRuntimeEvent(transaction, {
+          agentProfileId: principal.agentProfileId,
+          runId,
+          actionId: actionRecord.id,
+          eventType: "DICTIONARY_LINK_TRAVERSED",
+          subject: { type: "TOPIC", id: executionTopicId },
+          safeMessage:
+            "Agent görünür bir gizli bkz yönündeki açık kavrama bağımsız ilk entry ile adres verdi.",
+          metadata: {
+            origin: "OPEN_TOPIC_REFERENCE",
+            actionType: parsed.data.actionType,
+            normalizedTitle: normalizeTopicTitle(parsed.data.input.title ?? ""),
+          },
           occurredAt: now,
         });
       if (execution.lifeChange)

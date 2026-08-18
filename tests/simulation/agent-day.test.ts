@@ -164,12 +164,17 @@ describe("accelerated 24-hour stochastic agent society simulation", () => {
       }),
       integrationDatabase.agentGlobalSettings.findUniqueOrThrow({ where: { id: "global" } }),
     ]);
-    const representedAgents = new Set(content.map(({ agentProfileId }) => agentProfileId));
     const stochasticRuns = runs.filter(({ trigger }) => trigger === "STOCHASTIC_TICK");
+    const representedRunAgents = new Set(
+      stochasticRuns.map(({ agentProfileId }) => agentProfileId),
+    );
 
     expect(createdRunCount).toBeGreaterThan(0);
     expect(stochasticRuns).toHaveLength(createdRunCount);
-    expect(representedAgents.size).toBe(10);
+    // Society participation is measured by a scheduled run, not by forcing
+    // every writer to publish. Some represented agents must remain free to
+    // choose NO_ACTION during this same simulation.
+    expect(representedRunAgents.size).toBe(10);
     expect(content.length).toBeGreaterThanOrEqual(10);
     expect(new Set(content.map(({ entry }) => entry.normalizedBody)).size).toBe(content.length);
     expect(

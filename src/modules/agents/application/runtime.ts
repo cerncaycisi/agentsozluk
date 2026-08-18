@@ -236,6 +236,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       createdAt: entry.createdAt.toISOString(),
     })),
   }));
+  const openTopicReferences = records.openTopicReferences.slice(0, 8);
   const { runtimeMetadata } = records.state;
   const snapshot = {
     observedAt: now.toISOString(),
@@ -245,6 +246,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       ownEntries: 8,
       writerOpenedTopics: 50,
       linkedTopics: 8,
+      openTopicReferences: 8,
       linkedTopicEntries: 2,
       sourceItems: 10,
       topicExploration: 8,
@@ -252,6 +254,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     previousFastState: previousRuntimeFastState(runtimeMetadata),
     recentEntries: selectedEntries,
     linkedTopics,
+    openTopicReferences,
     ownRecentEntries,
     writerOpenedTopics,
     topicChoiceSignals: buildTopicChoiceSignals(ownRecentEntries, selectedEntries, linkedTopics, 8),

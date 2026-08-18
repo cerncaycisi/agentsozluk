@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 export type PersonaEntryLength = "SHORT" | "MEDIUM" | "LONG" | "MIXED";
 export type RuntimeEntryForm = "MICRO" | "SHORT" | "MEDIUM" | "LONG";
-export const RUNTIME_WRITING_VARIATION_VERSION = 4;
+export const RUNTIME_WRITING_VARIATION_VERSION = 5;
 
 const formDistributions: Record<PersonaEntryLength, readonly RuntimeEntryForm[]> = {
   SHORT: ["MICRO", "MICRO", "MICRO", "SHORT", "SHORT", "SHORT", "MEDIUM", "LONG"],
@@ -25,7 +25,7 @@ const entryFunctions = [
   "Gözlem: başlığa ait ayırt edici ve tek başına anlaşılır bir özelliği gündelik dille kaydet.",
   "Örnek: başlığın neye benzediğini veya nerede karşımıza çıktığını tek başına anlaşılır bir örnekle göster.",
   "Yorum: öznel ama başlığa doğrudan bağlı bir değerlendirme yap; bunu genel gerçek gibi sunma.",
-  "Kavramsal bağlantı: gerçekten açıklayıcı bir ilişki varsa görünür (bkz: başlık) kullan; sırf link üretmek için ekleme.",
+  "Kavramsal bağlantı: gerçekten açıklayıcı bir ilişki varsa gizli [[başlık]] veya görünür (bkz: başlık) kullan; hedef henüz açılmamış olabilir, sırf link üretmek için ekleme.",
   "Kaynaklı güncelleme: güncel kişi, olay, eser, ürün veya kurum için önce adresin ne olduğunu anlat, sonra yalnız kanıtın taşıdığı ayrıntıyı ekle.",
 ] as const;
 
@@ -69,7 +69,7 @@ const developmentModes = [
 const endingModes = [
   "Söylenecek şey bittiyse sonuç cümlesi eklemeden dur.",
   "Tek cümlelik ölçülü bir kişisel yargıyla bitir.",
-  "Gerçekten yardımcıysa ilişkili kavrama tek bir bkz ile bitir.",
+  "Gerçekten yardımcıysa ilişkili kavrama tek bir gizli [[başlık]] veya görünür (bkz: başlık) ile bitir.",
   "Belirsizlik veya istisna anlamı değiştiriyorsa onu kısa son ayrıntı yap.",
   "Başlığı akılda tutan somut bir ayrıntıyla bitir; başı özetleme.",
   "Soru, çağrı, ders veya tartışma daveti eklemeden bitir.",

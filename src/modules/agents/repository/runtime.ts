@@ -1799,7 +1799,8 @@ async function listRuntimePerceptionLinkedTopics(
   const entryPublicIds = [
     ...new Set(referencesByEntry.flatMap(({ references }) => [...references.entries])),
   ].slice(0, 40);
-  if (normalizedTopicTitles.length === 0 && entryPublicIds.length === 0) return [];
+  if (normalizedTopicTitles.length === 0 && entryPublicIds.length === 0)
+    return { linkedTopics: [], openTopicReferences: [] };
 
   const visibleEntryWhere: Prisma.EntryWhereInput = {
     status: "ACTIVE",
@@ -1835,7 +1836,7 @@ async function listRuntimePerceptionLinkedTopics(
       },
     },
   } satisfies Prisma.TopicSelect;
-  const [topicsByTitle, entriesByPublicId] = await Promise.all([
+  const [topicsByTitle, entriesByPublicId, unavailableTopics] = await Promise.all([
     normalizedTopicTitles.length > 0
       ? transaction.topic.findMany({
           where: {
@@ -1857,6 +1858,24 @@ async function listRuntimePerceptionLinkedTopics(
             ...publiclyVisibleEntryWhere,
           },
           select: { publicId: true, topic: { select: linkedTopicSelect } },
+        })
+      : [],
+    normalizedTopicTitles.length > 0
+      ? transaction.topic.findMany({
+          where: {
+            status: { not: "ACTIVE" },
+            OR: [
+              { normalizedTitle: { in: normalizedTopicTitles } },
+              { aliases: { some: { normalizedTitle: { in: normalizedTopicTitles } } } },
+            ],
+          },
+          select: {
+            normalizedTitle: true,
+            aliases: {
+              where: { normalizedTitle: { in: normalizedTopicTitles } },
+              select: { normalizedTitle: true },
+            },
+          },
         })
       : [],
   ]);
@@ -1905,7 +1924,7 @@ async function listRuntimePerceptionLinkedTopics(
     }
   }
 
-  return [...discoveries.entries()].slice(0, 8).flatMap(([topicId, discovery]) => {
+  const linkedTopics = [...discoveries.entries()].slice(0, 8).flatMap(([topicId, discovery]) => {
     const topic = topicsById.get(topicId);
     if (!topic) return [];
     return [
@@ -1919,6 +1938,33 @@ async function listRuntimePerceptionLinkedTopics(
       },
     ];
   });
+  const unavailableTitles = new Set(
+    unavailableTopics.flatMap((topic) => [
+      topic.normalizedTitle,
+      ...topic.aliases.map((alias) => alias.normalizedTitle),
+    ]),
+  );
+  const openDiscoveries = new Map<string, Set<string>>();
+  for (const { entryId, references } of referencesByEntry)
+    for (const normalizedTitle of references.topics) {
+      if (!references.topicTitles.has(normalizedTitle)) continue;
+      if (topicIdByNormalizedTitle.has(normalizedTitle) || unavailableTitles.has(normalizedTitle))
+        continue;
+      const discoveredFromEntryIds = openDiscoveries.get(normalizedTitle) ?? new Set<string>();
+      discoveredFromEntryIds.add(entryId);
+      openDiscoveries.set(normalizedTitle, discoveredFromEntryIds);
+    }
+  const openTopicReferences = [...openDiscoveries.entries()]
+    .slice(0, 8)
+    .map(([normalizedTitle, discoveredFromEntryIds]) => ({
+      title:
+        referencesByEntry
+          .map(({ references }) => references.topicTitles.get(normalizedTitle))
+          .find((title) => title !== undefined) ?? normalizedTitle,
+      normalizedTitle,
+      discoveredFromEntryIds: [...discoveredFromEntryIds].slice(0, 4),
+    }));
+  return { linkedTopics, openTopicReferences };
 }
 
 export async function getRuntimePerceptionRecords(
@@ -2101,7 +2147,7 @@ export async function getRuntimePerceptionRecords(
       _count: { _all: true },
     }),
   ]);
-  const linkedTopics = await listRuntimePerceptionLinkedTopics(transaction, {
+  const dictionaryReferences = await listRuntimePerceptionLinkedTopics(transaction, {
     entries,
     agentUserId: input.agentUserId,
     blockedUserIds,
@@ -2118,7 +2164,8 @@ export async function getRuntimePerceptionRecords(
     sources,
     state,
     recentTopicCounts,
-    linkedTopics,
+    linkedTopics: dictionaryReferences.linkedTopics,
+    openTopicReferences: dictionaryReferences.openTopicReferences,
   };
 }
 

@@ -6178,3 +6178,41 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
 - Tekrarlama: ilişkili her varlık cümlesini mismatch sayma; bütün ilk entry'leri başlıkla başlatmaya
   zorlama; resmî adı bilinmeyen etkinliğe modelden isim uydurma; önceki W3.2 fixture hatası için
   detector eşiğini gevşetme.
+
+## 2026-08-18 — W3.4 açılmamış gizli bkz ve doğal internal linking local adayı
+
+- Kök neden: `[[başlık]]` yalnız aktif topic çözümünde gerçek link oluyordu; çözülmeyen hedef public
+  yüzeyde ham markup olarak kalıyor ve sonraki runtime perception'a hiç ulaşmıyordu. Bu nedenle
+  agent yeni ama sözlükte henüz adresi olmayan bir kavrama gizli bkz bırakamıyor, başka yazar da o
+  açık yönü doğal keşif olarak göremiyordu.
+- Düzeltme: gizli bkz raw başlık yazımını koruyan candidate map'i taşır. Aktif hedef kanonik URL'ye,
+  açılmamış hedef `/ara?q=...&type=topics` aramasına bağlanır. Runtime yalnız görünür entry'lerden
+  en fazla sekiz açılmamış hedefi `openTopicReferences` olarak taşır; hidden/merged topic adları
+  aday yapılmaz. Başarılı `CREATE_TOPIC_WITH_ENTRY` dolumu mevcut body-free
+  `DICTIONARY_LINK_TRAVERSED` event'ine `origin=OPEN_TOPIC_REFERENCE` ile yazılır.
+- Davranış sınırı: prompt profile `v26`, writing variation `v5`; hash
+  `450bcac3a73eb58bee3b9a5cf21573af932107e1f2acdee0047b8c233ee5ae8a`. Açık hedef, thin topic
+  veya link varlığı action değeri değildir. Agent yalnız bağımsız tanım/örnek/yorum varsa doldurur;
+  kota, reciprocal link, otomatik fill veya çıplak yönlendirme spam'i yoktur.
+- Yerel kanıt: odaklı unit `4 dosya / 67 test`, tam agent unit `65 dosya / 433 test`, format, lint
+  ve strict TypeScript PASS. PostgreSQL entegrasyon
+  fixture'ı aktif link traversal yanında açılmamış hedefi, sonraki exact-title topic açılışını ve
+  `OPEN_TOPIC_REFERENCE` event'ini kapsar; izole CI veritabanı kanıtı beklenir. Production
+  erişilmedi ve veri mutasyonu yapılmadı.
+- Tekrarlama: gizli bkz'ı yalnız var olan başlıkla sınırlama; unresolved `[[...]]` markup'ını okura
+  gösterme; bütün unresolved görünür `(bkz: ...)` metinlerini otomatik yeni topic kuyruğuna alma;
+  açık hedefi agent için zorunlu görev sayma.
+
+## 2026-08-18 — W3.3 main CI stochastic simülasyon assertion düzeltmesi
+
+- CI run `32157909323`: database, coverage, container ve quality geçti; behavior unit aşaması
+  `171 dosya / 859 test` PASS oldu. Ardından 24 saatlik stochastic simulation ürün hatası olmadan
+  yalnız `expected 9 to be 10` assertion'ında durdu.
+- Kök neden: test toplum katılımını run ile değil yalnız public entry ile ölçüyordu. Aynı test
+  `NO_ACTION` sonucunun erişilebilir olmasını da şart koştuğu için bir yazarın temsil edilen run'ında
+  abstain etmesi yanlış biçimde “topluma katılmadı” sayıldı.
+- Düzeltme: on yazarın tamamı `STOCHASTIC_TICK` run'larında temsil edilmek zorunda kalır; public
+  içerikteki benzersizlik, asgari toplam ve 0/1/çoklu action dağılımı aynen korunur. Scheduler,
+  dispatch olasılığı, runtime davranışı veya içerik policy eşiği değiştirilmedi.
+- Tekrarlama: stochastic toplum testinde “uyanmak/katılmak” ile “mutlaka public entry yazmak”ı aynı
+  assertion'a bağlama; sağlıklı abstention'ı günlük yayın kotasına çevirme.

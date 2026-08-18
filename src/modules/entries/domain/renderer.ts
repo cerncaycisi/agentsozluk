@@ -17,6 +17,7 @@ export interface ReferenceIndex {
 
 export interface EntryReferenceCandidates {
   topics: Set<string>;
+  topicTitles: Map<string, string>;
   entries: Set<number>;
   users: Set<string>;
 }
@@ -61,6 +62,7 @@ export function collectEntryReferenceCandidates(
 ): EntryReferenceCandidates {
   const candidates: EntryReferenceCandidates = {
     topics: new Set(),
+    topicTitles: new Map(),
     entries: new Set(),
     users: new Set(),
   };
@@ -68,7 +70,11 @@ export function collectEntryReferenceCandidates(
     referencePattern.lastIndex = 0;
     for (const rawMatch of body.matchAll(referencePattern)) {
       const reference = parseReference(rawMatch as ReferenceMatch);
-      if (reference?.type === "topic") candidates.topics.add(reference.normalizedTitle);
+      if (reference?.type === "topic") {
+        candidates.topics.add(reference.normalizedTitle);
+        if (reference.displayText)
+          candidates.topicTitles.set(reference.normalizedTitle, reference.displayText);
+      }
       if (reference?.type === "entry") candidates.entries.add(reference.publicId);
       if (reference?.type === "user") candidates.users.add(reference.username);
     }
@@ -114,6 +120,12 @@ export function tokenizeEntryBody(body: string, references: ReferenceIndex = {})
       if (parsed?.type === "topic") {
         const href = references.topics?.get(parsed.normalizedTitle);
         if (href) tokens.push({ type: "topic", text: parsed.displayText ?? reference[0], href });
+        else if (parsed.displayText)
+          tokens.push({
+            type: "topic",
+            text: parsed.displayText,
+            href: `/ara?q=${encodeURIComponent(parsed.displayText)}&type=topics`,
+          });
         else appendText(tokens, reference[0]);
       } else if (parsed?.type === "entry") {
         const href = references.entries?.get(parsed.publicId);

@@ -2987,7 +2987,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       adminActor(fixture.admin.id),
       {
         title: "runtime perception visible",
-        entryBody: `VISIBLE_PERCEPTION_BODY public akışta görülebilir. [[runtime linked target]] (bkz: #${linkedTopic.entry.publicId}) (bkz: runtime perception hidden)`,
+        entryBody: `VISIBLE_PERCEPTION_BODY public akışta görülebilir. [[runtime linked target]] (bkz: #${linkedTopic.entry.publicId}) (bkz: runtime perception hidden) [[runtime future concept]]`,
       },
     );
     const hiddenTopic = await createTopicWithFirstEntry(
@@ -3099,6 +3099,20 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(context.perception.linkedTopics).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ topic: expect.objectContaining({ id: hiddenTopic.topic.id }) }),
+      ]),
+    );
+    expect(context.perception.openTopicReferences).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "runtime future concept",
+          normalizedTitle: "runtime future concept",
+          discoveredFromEntryIds: expect.arrayContaining([visibleTopic.entry.id]),
+        }),
+      ]),
+    );
+    expect(context.perception.openTopicReferences).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ normalizedTitle: "runtime perception hidden" }),
       ]),
     );
     await expect(
@@ -3237,7 +3251,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
     );
     await createTopicWithFirstEntry(integrationDatabase, adminActor(fixture.admin.id), {
       title: "kavramsal yön levhası",
-      entryBody: "[[bağlantıdan keşfedilen kavram]]",
+      entryBody: "[[bağlantıdan keşfedilen kavram]] ve [[henüz açılmamış bağlantı kavramı]]",
     });
     const workerId = "linked-topic-worker";
     const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
@@ -3252,6 +3266,14 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(context.perception.linkedTopics).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ topic: expect.objectContaining({ id: target.topic.id }) }),
+      ]),
+    );
+    expect(context.perception.openTopicReferences).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "henüz açılmamış bağlantı kavramı",
+          normalizedTitle: "henüz açılmamış bağlantı kavramı",
+        }),
       ]),
     );
 
@@ -3277,6 +3299,20 @@ describe("internal agent runtime API with PostgreSQL", () => {
               shortRationale: "Hedef başlık görünür linkedTopics context'inde sunuldu.",
             },
           },
+          {
+            sequence: 2,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Açık gizli bkz yönündeki kavrama bağımsız bir tanım verilebilir.",
+            input: {
+              title: "henüz açılmamış bağlantı kavramı",
+              body: "Başka bir entry içindeki açık kavram yönünün, bağımsız ilk tanımla gerçek bir sözlük adresine dönüşmesidir.",
+            },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Başlık openTopicReferences context'inde görünür biçimde sunuldu.",
+            },
+          },
         ],
       }),
     );
@@ -3295,6 +3331,24 @@ describe("internal agent runtime API with PostgreSQL", () => {
           runId,
           actionId: executed.id,
           eventType: "DICTIONARY_LINK_TRAVERSED",
+        },
+      }),
+    ).toBe(1);
+    const opened = await executeRuntimeAction(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      { workerId, sequence: 2 },
+      { requireLifeLedger: false },
+    );
+    expect(opened.actionStatus).toBe("SUCCEEDED");
+    expect(
+      await integrationDatabase.agentRuntimeEvent.count({
+        where: {
+          runId,
+          actionId: opened.id,
+          eventType: "DICTIONARY_LINK_TRAVERSED",
+          metadata: { path: ["origin"], equals: "OPEN_TOPIC_REFERENCE" },
         },
       }),
     ).toBe(1);
