@@ -276,7 +276,7 @@ async function createReconstructionRun(input: {
       safeReason: "Own public state kontrollü bir topic ve entry ile oluşturuluyor.",
       input: {
         title: "reconstruction boundary public state",
-        body: "Bu entry yalnız canonical reconstruction doğrulaması için oluşturuldu.",
+        body: "Canonical reconstruction sınırı, yeniden kurulan durum için sabit bir başlangıç noktasıdır.",
       },
       provenance,
     },

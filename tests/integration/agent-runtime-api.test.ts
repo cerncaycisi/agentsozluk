@@ -4585,7 +4585,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
             safeReason: "Target üzerindeki kanonik topic write-lock politikasından geçmelidir.",
             targetType: "TOPIC",
             targetId: lockedTopic.topic.id,
-            input: { body: "Kilitli kanonik topic için bu entry yayınlanmamalıdır." },
+            input: { body: "Kilitli kanonik topic hakkında bağımsız bir görüş yayınlanmamalıdır." },
             provenance,
           },
         ],

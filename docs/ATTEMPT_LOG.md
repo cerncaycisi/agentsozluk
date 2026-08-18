@@ -6087,6 +6087,10 @@ partial supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
   sözleşmesinde çalıştırır. Yerel odaklı entegrasyon çağrısı ürün koduna ulaşmadan exact
   `Integration tests requires TEST_DATABASE_URL.` ile kapandı; test veritabanı tahmin edilmedi veya
   oluşturulmadı. Bu vaka CI'ın PostgreSQL entegrasyon hattında çalıştırılmalıdır.
+- İlk main CI run `32152427729`, yeni detector'ın iki eski entegrasyon fixture'ındaki kasıt dışı
+  “bu entry” meta-cümlesini doğru biçimde reddetmesi nedeniyle coverage hattında kapandı. Beklenen
+  daha sonraki write-lock ve life-ledger policy'lerini tekrar ölçebilmek için fixture gövdeleri
+  bağımsız kavram cümlelerine çevrildi; detector veya gerçek ürün beklentisi gevşetilmedi.
 - Ayrı salt-okunur canlı bulgu: `/baslik/anbean--3455` içindeki üç entry aynı İstanbul merkezli iki
   kişilik proje ve ilk albüm `Kontrast` bilgisini tekrar ediyor; son iki metin “müzikal dünyaya
   açılan ilk kapı” hükmünün yakın paraphrase'i. W3.2 olarak sıraya eklendi. Tekrarlama: bunu W3.1
