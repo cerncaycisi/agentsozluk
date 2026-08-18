@@ -7,7 +7,8 @@ export interface ConstitutionalWritingIssue {
     | "CONSTITUTION_TOPIC_DIRECT_ADDRESS"
     | "CONSTITUTION_TOPIC_QUESTION_ANSWER"
     | "CONSTITUTION_TOPIC_NEWS_HEADLINE"
-    | "CONSTITUTION_TOPIC_FIRST_ENTRY_DEPENDENT";
+    | "CONSTITUTION_TOPIC_FIRST_ENTRY_DEPENDENT"
+    | "CONSTITUTION_TOPIC_SUBJECT_MISMATCH";
   article: 14 | 15 | 27 | 30 | 31 | 32 | 36;
   reason: string;
 }
@@ -153,6 +154,58 @@ function firstEntryFramesQuestionAsConcept(body: string): boolean {
   );
 }
 
+function comparableTopicText(value: string): string {
+  return value
+    .normalize("NFKC")
+    .toLocaleLowerCase("tr-TR")
+    .replaceAll(/[’'\-–—]/gu, " ")
+    .replaceAll(/[^\p{L}\p{N}\s]/gu, " ")
+    .replaceAll(/\s+/gu, " ")
+    .trim();
+}
+
+function firstEntrySubjectMismatch(title: string, body: string): boolean {
+  const normalizedTitle = comparableTopicText(title);
+  const firstClause = comparableTopicText(body.split(/[;.!?…]/u, 1)[0] ?? body).slice(0, 300);
+  if (!normalizedTitle || !firstClause || firstClause.startsWith(normalizedTitle)) return false;
+
+  const competitionProject =
+    firstClause.includes(normalizedTitle) &&
+    /(?:yarışma|yarışması)\s+için\s+.{0,100}(?:tasarla|sunul|geliştir|üret).{0,100}(?:proje|tasarım|eser)/u.test(
+      firstClause,
+    );
+  if (competitionProject) return true;
+
+  const commaSubject = comparableTopicText(body.split(",", 1)[0] ?? "");
+  const differentNamedWorkOrProduct =
+    commaSubject.length >= 2 &&
+    commaSubject.length <= 100 &&
+    !commaSubject.includes(normalizedTitle) &&
+    firstClause.includes(normalizedTitle) &&
+    /(?:roman|kitap|film|albüm|şarkı|proje|tasarım|ürün|telefon|uygulama)\p{L}{0,8}$/u.test(
+      firstClause,
+    );
+  if (differentNamedWorkOrProduct) return true;
+
+  const locative = /^(.{2,50})\s+(?:da|de)\s+(.+)$/u.exec(normalizedTitle);
+  if (!locative?.[1]) return false;
+  const location = locative[1];
+  const omittedEventAction =
+    /(?:toplatıl|toplan|yasaklan|kaldırıl|iptal\s+edil|durdurul|açıl|kapan|tahliye\s+edil)/u.test(
+      firstClause,
+    ) &&
+    !/(?:toplatıl|toplan|yasaklan|kaldırıl|iptal|durdurul|açıl|kapan|tahliye)/u.test(
+      normalizedTitle,
+    );
+  if (omittedEventAction) return true;
+
+  return (
+    firstClause.includes(location) &&
+    /(?:festival|festivali|kermes|kermesi)/u.test(firstClause) &&
+    !/(?:festival|kermes)/u.test(normalizedTitle)
+  );
+}
+
 export function constitutionalTopicCreationIssue(
   title: string,
   firstEntryBody: string,
@@ -182,6 +235,13 @@ export function constitutionalTopicCreationIssue(
       article: 36,
       reason:
         "Anayasa Madde 36: İlk entry önceki bir zemine dayanamaz; kendi başına tanım, örnek, alıntı veya anlamlı bkz işlevi taşımalıdır.",
+    };
+  if (firstEntrySubjectMismatch(title, firstEntryBody))
+    return {
+      code: "CONSTITUTION_TOPIC_SUBJECT_MISMATCH",
+      article: 27,
+      reason:
+        "Anayasa Madde 27: İlk entry başlığın gösterdiği varlığı veya olayı tanımlamalıdır; ilişkili proje, eser, ürün ya da eksik adlandırılmış alt olay başlığın öznesi yerine geçemez.",
     };
   return null;
 }

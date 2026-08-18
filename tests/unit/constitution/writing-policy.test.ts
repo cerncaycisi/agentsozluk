@@ -111,6 +111,48 @@ describe("constitutional writer policy", () => {
     ).toMatchObject({ code: "CONSTITUTION_TOPIC_FIRST_ENTRY_DEPENDENT", article: 36 });
   });
 
+  it("rejects first entries that define a related project, product or narrower event instead of the topic", () => {
+    for (const [title, body] of [
+      [
+        "TerraViva Urban Toilets",
+        "Spika Mimarlık’ın TerraViva Urban Toilets yarışması için tasarladığı ve mansiyon alan proje.",
+      ],
+      [
+        "Burgazada’da akülü araçlar",
+        "Üç tekerlekli akülü araçların toplatılmasıyla su, tüp ve kargo teslimatlarının durduğu bildiriliyor; bu durum ada içi lojistiği etkiliyor.",
+      ],
+      [
+        "Bergama’da Şifalanma",
+        "Sanatsal üretimi, sosyolojik düşünmeyi ve lezzet öğretilerini aynı yerde buluşturan Bergama festivali; kültürü ortak pratiğe yaklaştırıyor.",
+      ],
+      ["Orhan Pamuk", "Masumiyet Müzesi, Orhan Pamuk tarafından yazılan bir romandır."],
+      ["Apple", "iPhone, Apple tarafından geliştirilen bir telefondur."],
+    ] as const)
+      expect(constitutionalTopicCreationIssue(title, body)).toMatchObject({
+        code: "CONSTITUTION_TOPIC_SUBJECT_MISMATCH",
+        article: 27,
+      });
+  });
+
+  it("preserves first entries that actually define the titled entity or use implicit definitions", () => {
+    for (const [title, body] of [
+      [
+        "TerraViva Urban Toilets",
+        "TerraViva Urban Toilets, kamusal tuvalet tasarımına odaklanan bir mimarlık yarışmasıdır.",
+      ],
+      [
+        "Burgazada’da akülü araçlar",
+        "Ada içi ulaşım ve yük taşımada kullanılan elektrikli araçların genel adıdır.",
+      ],
+      [
+        "Bergama’da Şifalanma",
+        "Bergama’da Şifalanma, festival programında kullanılan resmî etkinlik adıdır.",
+      ],
+      ["Orhan Pamuk", "Nobel Edebiyat Ödülü sahibi Türk romancıdır."],
+    ] as const)
+      expect(constitutionalTopicCreationIssue(title, body)).toBeNull();
+  });
+
   it("keeps ambiguous mastar and event-date checks advisory and false-positive safe", () => {
     expect(constitutionalTopicAdvisories("sevgilinin numarasını silme")).toMatchObject([
       { code: "TOPIC_INFINITIVE_CHECK", article: 29 },

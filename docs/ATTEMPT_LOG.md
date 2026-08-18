@@ -6126,3 +6126,55 @@ partial supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
 - Tekrarlama: sistem Node/pnpm hattını kullanma; ortak topic adını semantic duplicate kanıtı sayma;
   farklı görüşleri kör threshold ile reddetme; gizli bkz için zaten var olan renderer'ı yeniden
   yazma.
+
+## 2026-08-18 — Agent moderasyon kararının davranış geri bildirimi olarak eksikliği
+
+- Salt yerel inceleme: agent entry görünürlük işlemleri exact gerekçeyi mevcut
+  `ModerationAction`, audit/outbox ve çöp kutusu kayıtlarında tutuyor; topic görünürlük/rename/merge
+  işlemleri de immutable moderasyon geçmişi üretiyor. Production erişimi veya mutasyonu yapılmadı.
+- Eksik zincir: karar agent profile/run/action provenance'ına geri bağlanıp sonraki runtime karar
+  bağlamına aktarılmıyor. Bu nedenle adminin bir agent içeriğini gerekçeyle gizlemesi bugün agent'a
+  davranışsal düzeltme sinyali vermiyor.
+- Karar: W3.5 olarak yapılandırılmış davranış sebebi + kısa editör notu, gövdesiz immutable agent
+  yaşam olayı, yalnız son aktif geri bildirimlerin runtime'a taşınması ve restore halinde ayrı
+  superseding olay tasarlanacak. Kör ceza puanı, kalıcı sicil skoru, otomatik persona değişimi veya
+  başka yazarları etkileyen topic-geneli ceza kullanılmayacak.
+- Tekrarlama: mevcut audit geçmişini ikinci kez modelleme; serbest metin notunu prompt'a sınırsız
+  aktarma; restore edilmiş kararı aktif ceza gibi tutma; topic gizlenince topic'e entry yazmış tüm
+  agent'ları cezalandırma.
+
+## 2026-08-18 — Dış etki temelli agent ve toplum evrimi ürün yönü
+
+- Gökhan'ın kişisel başarı önceliği netleştirildi: en değerli entry doğrulanmış LLM/referral trafiği
+  getiren, ikinci en değerli entry organik arama trafiği getirendir. Site içi oy, bookmark, okunma ve
+  moderasyon sonucu yardımcı kalite/fraud sinyali olarak kalır.
+- Mevcut repo haftalık persona ve source evolution içeriyor; public GA/Hotjar yükleyicileri de var.
+  Ancak privacy-safe entry attribution'ı ile bu dış sinyalleri persona, cadence, roster veya yeni
+  yazar doğumuna bağlayan durable bir reward hattı yoktur.
+- W6 olarak sıraya alındı: gecikmeli ve asgari örnekli dış-etki ödülü, W3.5 moderasyon geri
+  bildirimiyle kalite eşiği, açıklanabilir küçük evolution delta'ları, talep/kapsama açığından doğal
+  yeni yazar adayları ve düşük katkıda kademeli PAUSED denemesi. Ölçüm yoksa `NO_CHANGE`; tek trafik
+  sıçramasıyla persona/cadence değişimi veya otomatik kalıcı tasfiye yok.
+- Tekrarlama: ham pageview'ı başarı sayma; LLM ve organiği aynı ağırlıkta eritme; bot/sentetik/kendi
+  trafiğini ödüllendirme; trafik uğruna clickbait/duplicate üretimi teşvik etme; W5 baz çizgisi
+  olmadan toplum kadrosunu otomatik değiştirme.
+
+## 2026-08-18 — W3.3 topic–entry özne/varlık uyumu local adayı
+
+- Kapsam: `TerraViva Urban Toilets` yarışma→`Field Care Node` projesi, `Burgazada’da akülü
+araçlar` genel başlık→toplatılma olayı ve `Bergama’da Şifalanma` tema→adı belirtilmeyen festival
+  canlı sınıfları. Production erişimi veya mutasyonu yapılmadı.
+- Değişiklik: prompt profile `v24 → v25`; action-worthiness ve server-side
+  `CONSTITUTION_TOPIC_SUBJECT_MISMATCH` aynı kanonik varlık/olay sınırını uygular. Prompt hash
+  `e8f1882d17a13e78ed151c89475f896b7fe519a0a52523d68def46087089410f`.
+- Yerel kanıt: odaklı unit `3 dosya / 74 test`, tam agent unit `65 dosya / 433 test` PASS. Doğru
+  `Field Care Node`, başlığın kendisini tanımlayan ve örtük kişi tanımı karşı örnekleri geçti.
+- W3.2 CI run `32156356927` database/coverage hatasının kökü detector değil fixture idi: test yalnız
+  ilk farklı insan entry'sini kurup canlıdaki ikinci paraphrase'i tekrar ettirmeye çalışıyordu.
+  Fixture gerçekten tekrar edilen başka-yazar gövdesiyle eşlendi; policy threshold değiştirilmedi.
+- Yeni PostgreSQL odaklı test yerelde ürün koduna ulaşmadan exact `User was denied access on the
+database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; yeni main CI izole
+  PostgreSQL hattı yetkili kanıt olacaktır.
+- Tekrarlama: ilişkili her varlık cümlesini mismatch sayma; bütün ilk entry'leri başlıkla başlatmaya
+  zorlama; resmî adı bilinmeyen etkinliğe modelden isim uydurma; önceki W3.2 fixture hatası için
+  detector eşiğini gevşetme.

@@ -4319,7 +4319,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       {
         title: "anbean",
         entryBody:
-          "anbean, İstanbul merkezli bir müzik ikilisidir; ilk albümü Kontrast, grubun adına rağmen zamanı tek tek değil, topluca düşündürüyor.",
+          "İstanbul merkezli iki kişilik alternatif müzik projesi; ilk albümü Kontrast, ikilinin birlikte kurduğu ses alanına açılan ilk kapı gibi duruyor.",
       },
     );
     const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
@@ -4571,18 +4571,66 @@ describe("internal agent runtime API with PostgreSQL", () => {
               evidenceIds: [randomUUID()],
             },
           },
+          {
+            sequence: 5,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Yarışma başlığı katılımcı projeyi özne yapmamalıdır.",
+            input: {
+              title: "TerraViva Urban Toilets",
+              body: "Spika Mimarlık’ın TerraViva Urban Toilets yarışması için tasarladığı ve mansiyon alan proje.",
+            },
+            provenance,
+          },
+          {
+            sequence: 6,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Genel yer ve araç başlığı belirli toplatma olayını gizlememelidir.",
+            input: {
+              title: "Burgazada’da akülü araçlar",
+              body: "Üç tekerlekli akülü araçların toplatılmasıyla su, tüp ve kargo teslimatlarının durduğu bildiriliyor.",
+            },
+            provenance,
+          },
+          {
+            sequence: 7,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Tema ifadesi kanonik festival adının yerine geçmemelidir.",
+            input: {
+              title: "Bergama’da Şifalanma",
+              body: "Sanatsal üretimi, sosyolojik düşünmeyi ve lezzet öğretilerini aynı yerde buluşturan Bergama festivali.",
+            },
+            provenance,
+          },
+          {
+            sequence: 8,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Projenin kendi kanonik topic ve ilk entry çifti kabul edilmelidir.",
+            input: {
+              title: "Field Care Node",
+              body: "Field Care Node, Spika Mimarlık tarafından Urban Toilets yarışması için tasarlanan ve mansiyon alan projedir.",
+            },
+            provenance,
+          },
         ],
       }),
     );
-    const [canonicalRouted, questionRejected, firstEntryRejected, forgedKnowledgeRejected] =
-      await Promise.all(
-        [1, 2, 3, 4].map((sequence) =>
-          executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
-            workerId,
-            sequence,
-          }),
-        ),
-      );
+    const [
+      canonicalRouted,
+      questionRejected,
+      firstEntryRejected,
+      forgedKnowledgeRejected,
+      competitionProjectRejected,
+      omittedEventRejected,
+      themeEventRejected,
+      canonicalProjectAccepted,
+    ] = await Promise.all(
+      [1, 2, 3, 4, 5, 6, 7, 8].map((sequence) =>
+        executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+          workerId,
+          sequence,
+        }),
+      ),
+    );
     expect(canonicalRouted).toMatchObject({
       actionStatus: "SUCCEEDED",
       rejectionCode: null,
@@ -4603,10 +4651,23 @@ describe("internal agent runtime API with PostgreSQL", () => {
       actionStatus: "REJECTED",
       rejectionCode: "PROVENANCE_INVALID",
     });
-    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(1);
-    expect(await integrationDatabase.topic.findMany({ select: { id: true } })).toEqual([
-      { id: canonical.topic.id },
-    ]);
+    for (const rejected of [competitionProjectRejected, omittedEventRejected, themeEventRejected])
+      expect(rejected).toMatchObject({
+        actionStatus: "REJECTED",
+        rejectionCode: "CONSTITUTION_TOPIC_SUBJECT_MISMATCH",
+      });
+    expect(canonicalProjectAccepted).toMatchObject({
+      actionStatus: "SUCCEEDED",
+      rejectionCode: null,
+      result: { topicResolution: "CREATED" },
+    });
+    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(2);
+    expect(
+      await integrationDatabase.topic.findMany({
+        orderBy: { title: "asc" },
+        select: { title: true },
+      }),
+    ).toEqual([{ title: "Elma" }, { title: "Field Care Node" }]);
   });
 
   it("rejects ambiguous CREATE_ENTRY targets and uses one canonical topic for policy and write", async () => {

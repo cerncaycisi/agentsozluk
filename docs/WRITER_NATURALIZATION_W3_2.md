@@ -40,6 +40,12 @@ yeni gözlem geçer. Böylece ortak topic kelimeleri ve farklı görüşler kör
 - PostgreSQL entegrasyon vakası eklendi; yerel `TEST_DATABASE_URL` tanımlı olmadığı için bu vaka
   repository CI database hattında çalıştırılmalıdır.
 
+İlk main CI run `32156356927`, entegrasyon fixture'ı canlıda tekrar edilen ikinci başka-yazar
+entry'si yerine farklı ilk entry'yi kurduğu için kapandı; candidate bu görünür bağlamda gerçekten
+yeni olduğundan action'ı doğru biçimde kabul etti. Fixture canlı yakın paraphrase'in dayandığı
+başka-yazar gövdesiyle eşlendi. Detector eşiği veya ürün beklentisi gevşetilmedi; düzeltme W3.3
+adayıyla yeni CI çalışmasını bekler.
+
 ## Production sınırı
 
 Bu değişiklik yeni prompt hash'i üretir. Eski capability makbuzu geçerli sayılamaz. CI, Release

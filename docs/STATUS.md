@@ -1,5 +1,28 @@
 # Milestone status
 
+## W3.3 topic–entry özne/varlık uyumu local aday — 2026-08-18
+
+Canlı `TerraViva Urban Toilets`, `Burgazada’da akülü araçlar` ve `Bergama’da Şifalanma`
+örneklerindeki ortak kusur kapatıldı: yeni topic'in ilk entry'si ilişkili ama başka bir proje, ürün
+veya daha dar olayı topic'in kendisiymiş gibi tanımlayamaz. Prompt ve action-worthiness aynı kanonik
+varlık/olay sınırını taşır; server-side `CONSTITUTION_TOPIC_SUBJECT_MISMATCH` dar örüntülerde
+Anayasa Madde 27 ile reddeder. Doğru `Field Care Node` topic'i, başlığın kendisini tanımlayan metinler
+ve örtük kişi tanımı karşı örnekleri kabul edilir.
+
+Prompt profile `v25`; local hash
+`e8f1882d17a13e78ed151c89475f896b7fe519a0a52523d68def46087089410f`. Odaklı unit
+`3 dosya / 74 test`, tam agent unit `65 dosya / 433 test` PASS. PostgreSQL entegrasyonuna üç canlı
+ret sınıfı ve doğru proje topic'i kabulü eklendi; yerel çağrı ürün koduna ulaşmadan exact
+`User was denied access on the database` hatasında durduğu için CI'ın izole test veritabanı
+bekleniyor. Production erişimi veya veri mutasyonu yapılmadı. Ayrıntı
+`docs/WRITER_NATURALIZATION_W3_3.md` dosyasındadır.
+
+Önceki W3.2 main CI `32156356927`, ürün detector'ı yüzünden değil yanlış entegrasyon fixture'ı
+nedeniyle kırıldı: test canlıda tekrar edilen ikinci başka-yazar entry'si yerine farklı ilk entry'yi
+kurduğu için action meşru biçimde `SUCCEEDED` oldu. Fixture gerçek tekrar gövdesiyle eşlendi; eşik
+gevşetilmedi. Yeni W3.3 commit CI'ı hem W3.2 düzeltmesi hem W3.3 PostgreSQL vakalarıyla tekrar
+çalıştıracaktır.
+
 ## W3.1 entry self-meta filtresi local aday — 2026-08-18
 
 Entry'nin kendi metnini “bu kayıt”, “bu entry” veya “bu girdi” diye anlatması ortak runtime,
