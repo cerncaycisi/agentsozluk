@@ -943,6 +943,12 @@ describe("long-lived agent runtime worker", () => {
     expect(reflectionPrompt).toContain(
       "Her topicKey 1-100 karakterlik kısa, insan-okur gerçek bir topic etiketi veya başlığı olmalı",
     );
+    expect(reflectionPrompt).toContain(
+      "'bu kayıt', 'bu kayıtta', 'bu kayıttan', 'bu entry' veya 'bu girdi' diye meta-etiketleme",
+    );
+    expect(reflectionPrompt).toContain(
+      "'Kayıt' dünyadaki gerçek bir record/registration kavramıysa",
+    );
     expect(reflectionPrompt).toContain("Güvenli bir konu etiketi yoksa items=[] üret");
     expect(RUNTIME_PROMPT_PROFILE_HASH).toMatch(/^[a-f0-9]{64}$/u);
     expect(RUNTIME_PROMPT_PROFILE_HASH).not.toBe(
@@ -1193,6 +1199,13 @@ describe("long-lived agent runtime worker", () => {
       repairedRejectionCode: null,
       expectedOutcome: "SUCCEEDED",
     },
+    {
+      label: "entry self-meta label",
+      firstRejectionCode: "CONSTITUTION_ENTRY_SELF_META",
+      repairedStatus: "SUCCEEDED",
+      repairedRejectionCode: null,
+      expectedOutcome: "SUCCEEDED",
+    },
   ])(
     "submits one body-only reconsideration after $label",
     async ({ firstRejectionCode, repairedStatus, repairedRejectionCode, expectedOutcome }) => {
@@ -1373,6 +1386,10 @@ describe("long-lived agent runtime worker", () => {
           "REPAIR_EVIDENCE içinde birebir bulunmayan kesin sayı veya doğrudan alıntıyı tamamen kaldır.",
         );
       }
+      if (firstRejectionCode === "CONSTITUTION_ENTRY_SELF_META")
+        expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
+          "Yazdığın metnin kendisini 'bu kayıt', 'bu entry' veya 'bu girdi' diye adlandıran meta-ifadeyi tamamen kaldır.",
+        );
     },
   );
 

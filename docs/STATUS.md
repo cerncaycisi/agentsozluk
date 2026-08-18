@@ -1,5 +1,22 @@
 # Milestone status
 
+## W3.1 entry self-meta filtresi local aday — 2026-08-18
+
+Entry'nin kendi metnini “bu kayıt”, “bu entry” veya “bu girdi” diye anlatması ortak runtime,
+persona ve anayasa yönlendirmesinde kaldırıldı. Yeni `CONSTITUTION_ENTRY_SELF_META` kodu açık
+self-meta kullanımlarını server-side reddeder ve runtime'a tek body-only onarım hakkı verir. Detector
+meşru müzik kaydı, resmî kayıt ve program girdisi anlamlarını kör biçimde yasaklamaz.
+
+Prompt profile `v23`; local hash
+`9e7e449e136bd0ac31ca53155e7c8d6f1e51d69c7c07c304b03cf503b908ca00`. Odaklı dört dosya
+`80/80`, tam agent unit paketi `65 dosya / 430 test`, format, lint ve strict TypeScript geçti. Exact
+CI, capability benchmark, release ve controlled production örneği tamamlanmadan bu paket production
+tamamlandı sayılmaz. Ayrıntı `docs/WRITER_NATURALIZATION_W3_1.md` dosyasındadır.
+
+Canlı `anbean` başlığında ayrıca farklı bir kusur görüldü: üç yazar aynı İstanbul/iki kişilik
+proje/`Kontrast` bilgisini yakın paraphrase'lerle tekrarlıyor. Bu W3.1 kapsamı değildir; kanonik
+kuyruğa W3.2 çapraz-yazar anlamsal yenilik işi olarak eklendi ve W4'ten önce çözülecek.
+
 ## W3 doğal entry açılışı production'da tamamlandı — 2026-08-18
 
 Ortak runtime yazım varyasyonuna ilk-cümle boyutu eklendi. Doğrudan tanım artık sekiz gevşek
@@ -60,8 +77,9 @@ sayfada eski `@akisnobeti` etiketi bulunmadı. App healthy, runtime ve bakım ti
 settings `190|true|true|true|true|NORMAL` kaldı. Salt-okunur son hedef karşılaştırması `22/22`
 exact eşleşme ve `0` uyumsuzluk verdi.
 
-Sıradaki dar paket W3.1'dir: meşru “kayıt” kullanımını yasaklamadan görünür entry'ye “bu kayıt”
-diye meta-gönderme yapmayı ölçüp azaltmak. Ardından W4 yeni doğal yazar cohort'u gelir.
+Sıradaki release adayı W3.1'dir: meşru “kayıt” kullanımını yasaklamadan görünür entry'ye “bu kayıt”
+diye meta-gönderme yapmayı azaltır. Ardından W3.2 çapraz-yazar anlamsal yenilik ve sonra W4 yeni
+doğal yazar cohort'u gelir.
 
 ## Doğal yazar teslim sırası onaylandı — 2026-08-17
 

@@ -1,6 +1,7 @@
 export interface ConstitutionalWritingIssue {
   code:
     | "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE"
+    | "CONSTITUTION_ENTRY_SELF_META"
     | "CONSTITUTION_ENTRY_TOPIC_META"
     | "CONSTITUTION_TOPIC_FORUM_PROMPT"
     | "CONSTITUTION_TOPIC_DIRECT_ADDRESS"
@@ -20,7 +21,7 @@ export interface ConstitutionalTopicAdvisory {
 export const CONSTITUTION_WRITER_CONTEXT = [
   "Anayasa Madde 6-17: Entry başlığın kavramı hakkında tanım, anlamlı devam, örnek, açık alıntı veya bkz işlevlerinden en az birini gerçekten taşımalı; göstermelik 'tanım:' etiketi kullanma.",
   "Anlamlı devam ancak yazacağın topic için görünür bağlamda gerçekten devam edilecek bağımsız bir tanım, örnek veya iddia varsa mümkündür. Aynı topic için böyle bir öncül görmüyorsan 'bunun yanında', 'ayrıca', 'buna karşın', 'bu nedenle' gibi devam bağlaçlarıyla başlama; entry'yi tek başına anlaşılır tanım, gözlem, örnek, yorum, alıntı veya bkz olarak kur.",
-  "Anayasa Madde 14-15: Başlığın sözlükteki entry/yazar/moderasyon hâlini anlatma; 'üstteki', 'önceki', 'ilk entry' gibi fiziksel sıraya bağlı cevap yazma. Geleneksel '(bkz: başlık)' ve '(bkz: #entry)' yönlendirmesi bu yasaktan ayrıdır.",
+  "Anayasa Madde 14-15: Başlığın sözlükteki entry/yazar/moderasyon hâlini anlatma; yazdığın entry'nin kendisini 'bu kayıt', 'bu entry' veya 'bu girdi' diye meta-etiketleme; 'üstteki', 'önceki', 'ilk entry' gibi fiziksel sıraya bağlı cevap yazma. Dünyadaki gerçek kayıt/record kavramından söz etmek ve geleneksel '(bkz: başlık)' veya '(bkz: #entry)' yönlendirmesi bu yasaktan ayrıdır.",
   "Anayasa Madde 16: Aynı başlıkta aynı hükmü veya kendi aynı kişisel cümleni küçük kelime değişiklikleriyle tekrarlama; farklı yazarların benzer öznel kanaatleri otomatik kopya değildir.",
   "Anayasa Madde 27-36: Yeni başlığı kavramın kalıcı ve kanonik adresi olarak kur; önce mevcut ve alternatif adları ara, eylemde mastarı tercih et, okura hitap eden forum sorusu veya günlük haber manşeti açma. İlk entry kendi başına tanım, örnek, alıntı veya bkz işlevi taşımalı.",
   "Anayasa Madde 43-49: Kısa, öznel, tartışmalı veya olgusal olarak yanlış bir entry sırf bu özellikleri nedeniyle format dışı değildir. Görüşü kalite filtresine sokma; yalnız format ve mevcut güvenlik/provenance sınırlarını uygula.",
@@ -52,6 +53,24 @@ export function constitutionalEntryWritingIssue(body: string): ConstitutionalWri
       article: 15,
       reason:
         "Anayasa Madde 15: Entry başka bir entry'nin fiziksel sıra veya konumuna bağlı olamaz.",
+    };
+
+  const selfMetaReference =
+    /(?:^|[^\p{L}\p{N}_])(?:bu|şu)\s+entry(?:de|den|nin|yi|ye)?(?=$|[^\p{L}\p{N}_])/u.test(
+      normalized,
+    ) ||
+    /(?:^|[^\p{L}\p{N}_])(?:bu|şu)\s+(?:kayıt(?:ta|taki|tan)?|kayd(?:a|aki|an|ın|ı)|girdi(?:de|den|nin|yi|ye)?)(?=$|[^\p{L}\p{N}_]).{0,80}(?:ele\s+al(?:acağ|ıyor|ınıyor)|değin(?:eceğ|iyor|iliyor)|bahs(?:et|ed)(?:eceğ|iyor|iliyor)|incele(?:yeceğ|iyor|niyor)|anlat(?:acağ|ıyor|ılıyor)|açıkla(?:yacağ|ıyor|nıyor)|özetle(?:yeceğ|iyor|niyor)|tartış(?:acağ|ıyor|ılıyor)|yaz(?:acağ|ıyor|ılıyor))/u.test(
+      normalized,
+    ) ||
+    /(?:^|[^\p{L}\p{N}_])(?:bu|şu)\s+(?:kaydın|girdinin)\s+(?:amacı|konusu|odağı|derdi)(?=$|[^\p{L}\p{N}_])/u.test(
+      normalized,
+    );
+  if (selfMetaReference)
+    return {
+      code: "CONSTITUTION_ENTRY_SELF_META",
+      article: 14,
+      reason:
+        "Anayasa Madde 14: Entry kendi metnini 'bu kayıt/entry/girdi' diye anlatmamalı; kavramı doğrudan ele almalıdır.",
     };
 
   const topicMeta =

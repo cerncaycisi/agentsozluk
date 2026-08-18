@@ -43,6 +43,27 @@ describe("constitutional writer policy", () => {
       expect(constitutionalEntryWritingIssue(legal)).toBeNull();
   });
 
+  it("rejects explicit self-meta record labels without banning real-world records", () => {
+    for (const selfMeta of [
+      "Bu kayıtta kavramın gündelik etkilerini ele alacağım.",
+      "Bu kaydın amacı meseleyi kısaca açıklamak.",
+      "Bu entry oldukça kısa bir tanım sunuyor.",
+      "Şu girdide konunun istisnalarından bahsediliyor.",
+    ])
+      expect(constitutionalEntryWritingIssue(selfMeta)).toMatchObject({
+        code: "CONSTITUTION_ENTRY_SELF_META",
+        article: 14,
+      });
+
+    for (const realRecord of [
+      "Bu kayıt, 1970'lerde yapılmış bir caz stüdyo kaydıdır.",
+      "Bu kayıtta gitarın dip gürültüsü duyuluyor.",
+      "Nüfus müdürlüğündeki bu kaydın tarihi eksik.",
+      "Bu girdi, işlevin dönüş değerini değiştiriyor.",
+    ])
+      expect(constitutionalEntryWritingIssue(realRecord)).toBeNull();
+  });
+
   it("rejects explicit forum-call topic titles without guessing at ambiguous language", () => {
     expect(constitutionalTopicWritingIssue("sizce en iyi işletim sistemi hangisi")).toMatchObject({
       code: "CONSTITUTION_TOPIC_FORUM_PROMPT",

@@ -4308,7 +4308,20 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(storedRepair.validationResult).toMatchObject({ repairOfSequence: 2 });
   });
 
-  it("accepts one body-only repair after a constitutional physical-reference rejection", async () => {
+  it.each([
+    {
+      label: "physical reference",
+      body: "Üstteki entry yanlış; bu yüzden aynı görüşe katılmıyorum.",
+      safeReason: "Fiziksel referans policy tarafından denetlenmelidir.",
+      rejectionCode: "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE",
+    },
+    {
+      label: "entry self-meta label",
+      body: "Bu kayıtta yaklaşımın neden sorunlu olduğunu ele alacağım.",
+      safeReason: "Entry self-meta etiketi policy tarafından denetlenmelidir.",
+      rejectionCode: "CONSTITUTION_ENTRY_SELF_META",
+    },
+  ])("accepts one body-only repair after a constitutional $label rejection", async (testCase) => {
     const fixture = await createFixture();
     const topic = await createTopicWithFirstEntry(
       integrationDatabase,
@@ -4341,12 +4354,12 @@ describe("internal agent runtime API with PostgreSQL", () => {
           {
             sequence: 1,
             actionType: "CREATE_ENTRY",
-            safeReason: "Fiziksel referans policy tarafından denetlenmelidir.",
+            safeReason: testCase.safeReason,
             targetType: "TOPIC",
             targetId: topic.topic.id,
             input: {
               topicId: topic.topic.id,
-              body: "Üstteki entry yanlış; bu yüzden aynı görüşe katılmıyorum.",
+              body: testCase.body,
             },
             provenance,
           },
@@ -4359,7 +4372,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
     expect(rejected).toMatchObject({
       actionStatus: "REJECTED",
-      rejectionCode: "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE",
+      rejectionCode: testCase.rejectionCode,
     });
 
     await recordRuntimeActions(

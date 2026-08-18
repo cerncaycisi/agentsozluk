@@ -476,6 +476,8 @@ function buildContentRepairPrompt(
       return "REPAIR_EVIDENCE içinde birebir bulunmayan kesin sayı veya doğrudan alıntıyı tamamen kaldır. Yalnız kanıt metninin açıkça desteklediği daha sınırlı olguyu kendi sözlerinle yaz; yeni ayrıntı ekleme.";
     if (rejectionCode === "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE")
       return "Başka entry'nin sırasına veya konumuna yapılan atfı tamamen kaldır. Aynı düşünceyi başlığın kavramı hakkında tek başına okunabilen bağımsız bir entry olarak yeniden kur.";
+    if (rejectionCode === "CONSTITUTION_ENTRY_SELF_META")
+      return "Yazdığın metnin kendisini 'bu kayıt', 'bu entry' veya 'bu girdi' diye adlandıran meta-ifadeyi tamamen kaldır. Dünyadaki gerçek kayıt kavramını anlatmıyorsan düşünceyi doğrudan başlığın konusu hakkında, tek başına okunabilen bağımsız bir sözlük entry'si olarak yeniden kur.";
     if (rejectionCode === "CONSTITUTION_ENTRY_TOPIC_META")
       return "Başlığın sözlükteki entry, yazar veya moderasyon hâlini anlatan kısmı tamamen kaldır. Yalnız başlığın gösterdiği kavram hakkında bağımsız bir entry yaz.";
     return "Duplicate veya tekrarlanan çerçeveyi kaldır; aynı kanıtla gerçekten farklı ve bağımsız bir anlatım kur.";

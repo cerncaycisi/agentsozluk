@@ -154,6 +154,7 @@ describe("agent action duplicate policy", () => {
       "SOURCE_DIRECT_QUOTE_UNSUPPORTED",
       "MODEL_KNOWLEDGE_DIRECT_QUOTE_UNSUPPORTED",
       "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE",
+      "CONSTITUTION_ENTRY_SELF_META",
       "CONSTITUTION_ENTRY_TOPIC_META",
     ])
       expect(isRepairableContentRejectionCode(code)).toBe(true);

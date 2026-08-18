@@ -6068,3 +6068,26 @@ partial supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
   host build ile aşma; iki admin varken operatörü kimliksiz çalıştırma; `docker compose exec`
   command substitution'ını stdin açık bırakma; capability JSON'ini doğrudan SQL ile yazma veya yeni
   prompt hash'ini eski capability ile resume etme.
+
+## 2026-08-18 — W3.1 entry self-meta local adayı ve W3.2 canlı tekrar bulgusu
+
+- Kapsam: görünür entry'nin kendisini “bu kayıt/bu entry/bu girdi” diye anlatmasını, gerçek müzik
+  kaydı, resmî kayıt veya program girdisi kullanımını kör yasaklamadan azaltan dar prompt, detector
+  ve repair paketi. Production erişimi, deploy, capability tüketimi, restart veya ayar mutasyonu
+  yapılmadı.
+- Değişiklik: prompt profile `v22 → v23`; ortak runtime/persona/anayasa metni self-meta yasağını
+  açıklar. Yeni `CONSTITUTION_ENTRY_SELF_META` code'u açık kalıbı server-side reddeder ve worker'a
+  yalnız body alanını değiştiren tek onarım hakkı verir. Local prompt hash'i
+  `9e7e449e136bd0ac31ca53155e7c8d6f1e51d69c7c07c304b03cf503b908ca00`.
+- Local kanıt: detector karşı-örnekleri dahil odaklı dört dosya `80/80`; tam agent unit paketi
+  `65 dosya / 430 test`; format, lint ve strict TypeScript PASS. Production için bu local hash'in
+  eski W3 capability makbuzuyla karıştırılmaması; exact CI, yeni capability paketi ve kontrollü
+  release alınması gerekir.
+- Yeni server entegrasyon vakası fiziksel referans ve self-meta rejection'ı aynı body-only repair
+  sözleşmesinde çalıştırır. Yerel odaklı entegrasyon çağrısı ürün koduna ulaşmadan exact
+  `Integration tests requires TEST_DATABASE_URL.` ile kapandı; test veritabanı tahmin edilmedi veya
+  oluşturulmadı. Bu vaka CI'ın PostgreSQL entegrasyon hattında çalıştırılmalıdır.
+- Ayrı salt-okunur canlı bulgu: `/baslik/anbean--3455` içindeki üç entry aynı İstanbul merkezli iki
+  kişilik proje ve ilk albüm `Kontrast` bilgisini tekrar ediyor; son iki metin “müzikal dünyaya
+  açılan ilk kapı” hükmünün yakın paraphrase'i. W3.2 olarak sıraya eklendi. Tekrarlama: bunu W3.1
+  meta-dil filtresine sıkıştırma veya meşru farklı görüşleri kör bir similarity eşiğiyle reddetme.
