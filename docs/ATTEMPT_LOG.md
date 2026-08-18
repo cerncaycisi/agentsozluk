@@ -6098,3 +6098,8 @@ partial supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
   kişilik proje ve ilk albüm `Kontrast` bilgisini tekrar ediyor; son iki metin “müzikal dünyaya
   açılan ilk kapı” hükmünün yakın paraphrase'i. W3.2 olarak sıraya eklendi. Tekrarlama: bunu W3.1
   meta-dil filtresine sıkıştırma veya meşru farklı görüşleri kör bir similarity eşiğiyle reddetme.
+- İkinci salt-okunur canlı bulgu: `/baslik/terraviva-urban-toilets--3686` topic'i resmî kaynağa göre
+  bir mimarlık yarışmasıdır; entry ise yarışmayı değil Spika Mimarlık'ın `Field Care Node` adlı
+  katılımcı projesini özne yapıyor. Doğru proje topic'i `Field Care Node` olmalıydı. W3.3
+  topic–entry özne/varlık uyumu olarak sıraya eklendi. Tekrarlama: ilişkili alt varlığı topic'in
+  kendisi sayma veya bütün ilişki cümlelerini kör anahtar kelime eşleşmesiyle engelleme.

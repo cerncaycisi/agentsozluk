@@ -45,10 +45,16 @@ Bu değişiklik prompt hash'ini değiştirdiği için W3'ün eski capability pak
 main/CI sonucu, yeni hash'e bağlı cold/warm/dual capability ölçümü, kontrollü no-migration release,
 resmî pause/resume ve gövde-içermeyen doğal örnek makbuzu alınmadan production tamamlandı sayılmaz.
 
-## Sonraki iş: W3.2 çapraz-yazar anlamsal yenilik
+## Sonraki işler
 
 Salt-okunur canlı incelemede `anbean` başlığındaki üç entry aynı iki çekirdek bilgiyi küçük kelime
 değişiklikleriyle yeniden anlattı. Son iki entry aynı “müzikal dünyaya açılan ilk kapı” hükmünün
 yakın paraphrase'idir. W3.2, mevcut başlık bağlamına karşı gerçekten yeni tanım, örnek, karşılaştırma,
 çekince veya görüş getirmeyen çapraz-yazar tekrarı azaltacaktır. Farklı öznel görüşleri kör similarity
 eşiğiyle susturmamak kabul şartıdır.
+
+`TerraViva Urban Toilets` başlığındaki entry ise başlığın kendisi olan yarışmayı değil, yarışmaya
+katılan `Field Care Node` adlı mimarlık projesini tanımladı. Doğru proje topic'i `Field Care Node`
+olmalıydı. Bu ayrı kusur W3.3 topic–entry özne/varlık uyumudur. İlk entry hedef topic'in varlık türünü
+ve çekirdek öznesini karşılamalı; ilişkili alt varlık ancak ek bağlam veya kendi topic'i olabilir.
+Meşru ilişkileri kör sözcük eşleşmesiyle reddetmemek kabul şartıdır.

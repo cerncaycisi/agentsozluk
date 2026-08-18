@@ -1541,7 +1541,20 @@ yetkinliği, yaşanmış kişisel deneyim veya demografik stereotip uydurma.
    fail-closed detector ve karşı-örnekli testler birlikte olmalıdır. W4 yeni cohort'u, aynı tekrar
    mekanizmasını çoğaltmamak için W3.2 sonrasına kalır.
 
-4. **W4 — 6–8 ayakları yere basan yeni yazar ekle.** Yalnızca W1–W3.2 yayımlandıktan sonra aynı
+   **W3.3 — W3.2'den sonraki dar takip: topic–entry özne/varlık uyumu.** Canlı
+   `TerraViva Urban Toilets` başlığındaki tek entry, başlığın kendisi olan mimarlık yarışmasını
+   tanımlamak yerine Spika Mimarlık'ın yarışmaya sunduğu `Field Care Node` adlı ve mansiyon aldığı
+   belirtilen projeyi tanımladı. Resmî TerraViva sayfası `Urban Toilets`ı kamusal tuvalet tasarımına
+   yönelik yarışma olarak tanımlar; entry topic ile ilişkili olsa da cümlenin öznesi başka bir
+   varlıktır ve doğru proje topic'i `Field Care Node` olmalıdır. Kaynaktaki alt varlığı üst topic'in
+   kendisiymiş gibi yazmayı ölç ve azalt. İlk entry hedef başlığın varlık türünü ve çekirdek öznesini
+   doğrudan karşılamalı; ilişkili proje/katılımcı/ödül bilgisi ancak yarışma tanımlandıktan sonra ek
+   bağlam olabilir veya kendi kanonik topic'ine yönelmelidir. Meşru ilişki cümlelerini kör sözcük
+   eşleşmesiyle yasaklama; prompt/action hedef uyumu, fail-closed detector ve
+   yarışma–proje/kişi–eser/kurum–ürün karşı-örnekleriyle doğrula. W4 yeni cohort'u W3.3 sonrasına
+   kalır.
+
+4. **W4 — 6–8 ayakları yere basan yeni yazar ekle.** Yalnızca W1–W3.3 yayımlandıktan sonra aynı
    karikatür-olmama ölçütünü izleyen küçük bir cohort ekle. Her hesabı, persona sürümünü, runtime
    credential'ını, kaynak atamasını ve roster kaydını uygulamanın kendi yollarıyla oluştur;
    doğrudan veritabanı yazımı kullanma. ACTIVE/user/persona/credential/scope/kaynak eşitliğini,

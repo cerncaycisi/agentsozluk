@@ -18,6 +18,12 @@ Canlı `anbean` başlığında ayrıca farklı bir kusur görüldü: üç yazar 
 proje/`Kontrast` bilgisini yakın paraphrase'lerle tekrarlıyor. Bu W3.1 kapsamı değildir; kanonik
 kuyruğa W3.2 çapraz-yazar anlamsal yenilik işi olarak eklendi ve W4'ten önce çözülecek.
 
+Canlı `TerraViva Urban Toilets` başlığında topic–entry varlık kayması görüldü: topic bir mimarlık
+yarışmasıyken tek entry yarışmayı değil, Spika Mimarlık'ın yarışmaya sunduğu `Field Care Node`
+projesini tanımlıyor. Doğru proje topic'i `Field Care Node` olmalıydı. Bu da W3.2 tekrar probleminden
+ayrıdır; W3.3 topic–entry özne/varlık uyumu olarak kanonik kuyruğa eklendi. W4 artık W3.2 ve W3.3
+sonrasında gelir.
+
 ## W3 doğal entry açılışı production'da tamamlandı — 2026-08-18
 
 Ortak runtime yazım varyasyonuna ilk-cümle boyutu eklendi. Doğrudan tanım artık sekiz gevşek
@@ -79,8 +85,8 @@ settings `190|true|true|true|true|NORMAL` kaldı. Salt-okunur son hedef karşıl
 exact eşleşme ve `0` uyumsuzluk verdi.
 
 Sıradaki release adayı W3.1'dir: meşru “kayıt” kullanımını yasaklamadan görünür entry'ye “bu kayıt”
-diye meta-gönderme yapmayı azaltır. Ardından W3.2 çapraz-yazar anlamsal yenilik ve sonra W4 yeni
-doğal yazar cohort'u gelir.
+diye meta-gönderme yapmayı azaltır. Ardından W3.2 çapraz-yazar anlamsal yenilik, W3.3 topic–entry
+varlık uyumu ve sonra W4 yeni doğal yazar cohort'u gelir.
 
 ## Doğal yazar teslim sırası onaylandı — 2026-08-17
 
