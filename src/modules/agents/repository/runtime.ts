@@ -804,6 +804,32 @@ export async function getRuntimeRecentAgentEntryBodies(
   return records.map(({ entry }) => entry.body);
 }
 
+export async function getRuntimeTopicNoveltyContext(
+  transaction: Prisma.TransactionClient,
+  input: { topicId: string; authorId: string; excludeEntryId?: string },
+): Promise<{ title: string; otherAuthorBodies: string[] } | null> {
+  const topic = await transaction.topic.findFirst({
+    where: { id: input.topicId, status: "ACTIVE" },
+    select: {
+      title: true,
+      entries: {
+        where: {
+          status: "ACTIVE",
+          ...publiclyVisibleEntryWhere,
+          authorId: { not: input.authorId },
+          ...(input.excludeEntryId ? { id: { not: input.excludeEntryId } } : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+        select: { body: true },
+      },
+    },
+  });
+  return topic
+    ? { title: topic.title, otherAuthorBodies: topic.entries.map(({ body }) => body) }
+    : null;
+}
+
 export async function validateRuntimeProvenanceEvidence(
   transaction: Prisma.TransactionClient,
   input: {

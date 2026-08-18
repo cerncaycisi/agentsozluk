@@ -2567,3 +2567,20 @@ Fresh pre-migration backup:
 - GitHub Actions run `29579755838` completed successfully in 6 minutes 59 seconds; migrations,
   format, lint, typecheck, unit, integration, coverage, OpenAPI, requirements, production build,
   Playwright E2E, Docker image and Compose config all passed.
+
+## W3.2 çapraz-yazar anlamsal yenilik — local aday 2026-08-18 Europe/Istanbul
+
+Canlı `anbean` örneğindeki aynı çekirdek hükmün farklı yazarlarca yeniden paketlenmesi için
+repository-local W3.2 adayı hazırlandı. Prompt profile `v24` ve server-side
+`TOPIC_SEMANTIC_REPETITION`, topic başlığının ortak kelimelerini duplicate kanıtı saymadan tek bir
+başka-yazar entry'sindeki çekirdek kavram örtüşmesini denetler. Gerçekten farklı öznel görüş ve
+karşılaştırma karşı-örnekleri geçer; reddedilen body yalnız bir dar repair alabilir.
+
+Prompt hash `73a7a0d9a340d230dc0b53e0dddb6cdd2256eeed1834566199f93f4810ee3821`; odaklı dört dosya
+`83/83`, agent unit paketi `65 dosya / 433 test`, format, lint ve strict TypeScript PASS. Yerel
+`TEST_DATABASE_URL` tanımlı olmadığı için yeni PostgreSQL entegrasyon vakası CI database hattını
+bekler. Production erişimi, deploy, capability tüketimi veya runtime ayarı yapılmadı.
+
+Gizli bkz teknik olarak zaten `[[başlık]]` biçiminde render ve runtime perception tarafından
+destekleniyor. Canlı eksik, kullanımın doğal üretimde erişilemez kalmasıdır; bu davranış W3.4 olarak
+W3.3 sonrasına, link kotası veya reciprocal spam eklenmeden sıraya alındı.

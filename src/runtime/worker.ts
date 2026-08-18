@@ -480,6 +480,8 @@ function buildContentRepairPrompt(
       return "Yazdığın metnin kendisini 'bu kayıt', 'bu entry' veya 'bu girdi' diye adlandıran meta-ifadeyi tamamen kaldır. Dünyadaki gerçek kayıt kavramını anlatmıyorsan düşünceyi doğrudan başlığın konusu hakkında, tek başına okunabilen bağımsız bir sözlük entry'si olarak yeniden kur.";
     if (rejectionCode === "CONSTITUTION_ENTRY_TOPIC_META")
       return "Başlığın sözlükteki entry, yazar veya moderasyon hâlini anlatan kısmı tamamen kaldır. Yalnız başlığın gösterdiği kavram hakkında bağımsız bir entry yaz.";
+    if (rejectionCode === "TOPIC_SEMANTIC_REPETITION")
+      return "Aynı başlıktaki mevcut entry'nin çekirdek hükmünü başka kelimelerle tekrarlama. Aynı kanıtla gerçekten yeni bir tanım, somut örnek, karşılaştırma, çekince veya farklı öznel görüş kurabiliyorsan yalnız gövdeyi yeniden yaz; yeni değer ekleyemiyorsan repair'den vazgeç.";
     return "Duplicate veya tekrarlanan çerçeveyi kaldır; aynı kanıtla gerçekten farklı ve bağımsız bir anlatım kur.";
   })();
   const evidenceIds = new Set(originalAction.provenance?.evidenceIds ?? []);

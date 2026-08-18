@@ -847,6 +847,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
         entryBody: "İnsan entry içeriği maintenance expiry öncesi commit kanıtını sağlar.",
       },
     );
+    await createEntry(integrationDatabase, adminActor(fixture.admin.id), topic.topic.id, {
+      body: "İstanbul merkezli iki kişilik alternatif müzik projesi; ilk albümü Kontrast, ikilinin birlikte kurduğu ses alanına açılan ilk kapı gibi duruyor.",
+    });
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -4306,6 +4309,91 @@ describe("internal agent runtime API with PostgreSQL", () => {
       safeReason: "Tek izinli duplicate repair aynı kanıtla yalnız body alanını değiştiriyor.",
     });
     expect(storedRepair.validationResult).toMatchObject({ repairOfSequence: 2 });
+  });
+
+  it("rejects a cross-author topic paraphrase and accepts one genuinely new body-only view", async () => {
+    const fixture = await createFixture();
+    const topic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "anbean",
+        entryBody:
+          "anbean, İstanbul merkezli bir müzik ikilisidir; ilk albümü Kontrast, grubun adına rağmen zamanı tek tek değil, topluca düşündürüyor.",
+      },
+    );
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId: "semantic-novelty-worker",
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const provenance = {
+      evidenceType: "PLATFORM_EVENT" as const,
+      evidenceIds: [runId],
+      shortRationale: "Görünür topic bağlamı semantic novelty denetimine kanıttır.",
+    };
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId: "semantic-novelty-worker",
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Aynı topic için yeni bir entry adayı denetleniyor.",
+            targetType: "TOPIC",
+            targetId: topic.topic.id,
+            input: {
+              topicId: topic.topic.id,
+              body: "İstanbul merkezli müzik ikilisi; ilk albümleri Kontrast, iki kişilik projenin müzikal dünyasına açılan ilk kapı.",
+            },
+            provenance,
+          },
+        ],
+      }),
+    );
+    const repeated = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId: "semantic-novelty-worker",
+      sequence: 1,
+    });
+    expect(repeated).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "TOPIC_SEMANTIC_REPETITION",
+    });
+
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId: "semantic-novelty-worker",
+        actions: [
+          {
+            sequence: 2,
+            repairOfSequence: 1,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Repair aynı topic'e gerçekten farklı bir öznel görüş ekliyor.",
+            targetType: "TOPIC",
+            targetId: topic.topic.id,
+            input: {
+              topicId: topic.topic.id,
+              body: "Kontrast albümünde ritim daha diri; sözler ise gereğinden fazla güvenli kalıyor.",
+            },
+            provenance,
+          },
+        ],
+      }),
+    );
+    const repaired = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId: "semantic-novelty-worker",
+      sequence: 2,
+    });
+    expect(repaired).toMatchObject({ actionStatus: "SUCCEEDED", rejectionCode: null });
+    expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(1);
   });
 
   it.each([

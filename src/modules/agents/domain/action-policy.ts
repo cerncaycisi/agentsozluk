@@ -3,6 +3,7 @@ import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
 export const repairableContentRejectionCodes = new Set([
   "DUPLICATE_SIMILARITY",
   "DUPLICATE_FRAMING",
+  "TOPIC_SEMANTIC_REPETITION",
   "USER_ENTRY_HIGH_RISK_REPRODUCTION",
   "SERIOUS_CLAIM_SOURCE_INSUFFICIENT",
   "SOURCE_EXACT_NUMBER_UNSUPPORTED",
@@ -43,6 +44,94 @@ export function maximumEntrySimilarity(candidate: string, previousBodies: string
     (maximum, body) => Math.max(maximum, entrySimilarity(candidate, body)),
     0,
   );
+}
+
+const semanticStopWords = new Set([
+  "ama",
+  "ancak",
+  "bir",
+  "bu",
+  "da",
+  "de",
+  "daha",
+  "gibi",
+  "ile",
+  "ise",
+  "için",
+  "kadar",
+  "ki",
+  "ve",
+  "veya",
+  "şu",
+]);
+
+function semanticStem(value: string): string {
+  const token = value.replaceAll(/[’'][\p{L}]+$/gu, "");
+  for (const [prefix, stem] of [
+    ["albüm", "albüm"],
+    ["alternatif", "alternatif"],
+    ["merkez", "merkez"],
+    ["müzik", "müzik"],
+    ["proje", "proje"],
+    ["ikili", "ikili"],
+    ["kişi", "kişi"],
+  ] as const)
+    if (token.startsWith(prefix)) return stem;
+  if (token.length < 6) return token;
+  return token.replace(
+    /(?:larımız|lerimiz|larınız|leriniz|larının|lerinin|ları|leri|lar|ler|ımız|imiz|umuz|ümüz|ınız|iniz|unuz|ünüz|sının|sinin|sunun|sünün|ının|inin|unun|ünün|dan|den|dır|dir|dur|dür|tır|tir|tur|tür)$/u,
+    "",
+  );
+}
+
+function semanticConcepts(value: string, ignored: ReadonlySet<string>): Set<string> {
+  return new Set(
+    normalizeEntrySearchText(value)
+      .normalize("NFKC")
+      .replaceAll(/[^\p{L}\p{N}’'\s]/gu, " ")
+      .split(/\s+/u)
+      .map(semanticStem)
+      .filter((token) => token.length > 1 && !ignored.has(token) && !semanticStopWords.has(token)),
+  );
+}
+
+export interface TopicSemanticRepetition {
+  matchedBody: string;
+  sharedConceptCount: number;
+  candidateCoverage: number;
+  previousCoverage: number;
+}
+
+/**
+ * Catches a narrow class of cross-author paraphrases without treating a shared topic title or
+ * genuinely different subjective vocabulary as a duplicate. This is deliberately stricter than
+ * lexical equality only when most of the candidate's content concepts already occur together in
+ * one existing entry.
+ */
+export function topicSemanticRepetition(
+  candidate: string,
+  topicTitle: string,
+  previousBodies: string[],
+): TopicSemanticRepetition | null {
+  const ignored = semanticConcepts(topicTitle, new Set());
+  const candidateConcepts = semanticConcepts(candidate, ignored);
+  if (candidateConcepts.size < 4) return null;
+
+  for (const body of previousBodies) {
+    const previousConcepts = semanticConcepts(body, ignored);
+    if (previousConcepts.size < 4) continue;
+    let sharedConceptCount = 0;
+    for (const concept of candidateConcepts)
+      if (previousConcepts.has(concept)) sharedConceptCount += 1;
+    const candidateCoverage = sharedConceptCount / candidateConcepts.size;
+    const previousCoverage = sharedConceptCount / previousConcepts.size;
+    const shortRestatement = sharedConceptCount >= 4 && candidateCoverage >= 0.7;
+    const broadRestatement =
+      sharedConceptCount >= 5 && candidateCoverage >= 0.58 && previousCoverage >= 0.4;
+    if (shortRestatement || broadRestatement)
+      return { matchedBody: body, sharedConceptCount, candidateCoverage, previousCoverage };
+  }
+  return null;
 }
 
 const framingTokenCount = 5;

@@ -1206,6 +1206,13 @@ describe("long-lived agent runtime worker", () => {
       repairedRejectionCode: null,
       expectedOutcome: "SUCCEEDED",
     },
+    {
+      label: "cross-author semantic repetition",
+      firstRejectionCode: "TOPIC_SEMANTIC_REPETITION",
+      repairedStatus: "SUCCEEDED",
+      repairedRejectionCode: null,
+      expectedOutcome: "SUCCEEDED",
+    },
   ])(
     "submits one body-only reconsideration after $label",
     async ({ firstRejectionCode, repairedStatus, repairedRejectionCode, expectedOutcome }) => {
@@ -1389,6 +1396,10 @@ describe("long-lived agent runtime worker", () => {
       if (firstRejectionCode === "CONSTITUTION_ENTRY_SELF_META")
         expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
           "Yazdığın metnin kendisini 'bu kayıt', 'bu entry' veya 'bu girdi' diye adlandıran meta-ifadeyi tamamen kaldır.",
+        );
+      if (firstRejectionCode === "TOPIC_SEMANTIC_REPETITION")
+        expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].prompt).toContain(
+          "gerçekten yeni bir tanım, somut örnek, karşılaştırma, çekince veya farklı öznel görüş",
         );
     },
   );

@@ -6103,3 +6103,26 @@ partial supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
   katılımcı projesini özne yapıyor. Doğru proje topic'i `Field Care Node` olmalıydı. W3.3
   topic–entry özne/varlık uyumu olarak sıraya eklendi. Tekrarlama: ilişkili alt varlığı topic'in
   kendisi sayma veya bütün ilişki cümlelerini kör anahtar kelime eşleşmesiyle engelleme.
+
+## 2026-08-18 — W3.2 çapraz-yazar semantic novelty local adayı
+
+- Kapsam: canlı `anbean` başlığındaki yakın paraphrase'i, farklı öznel görüşleri kör duplicate
+  saymadan azaltan prompt + server policy + tek body-only repair. Production erişimi veya mutasyonu
+  yapılmadı.
+- İlk deneme yanlış shell toolchain'iyle ürün koduna ulaşmadan exact
+  `[ERR_PNPM_UNSUPPORTED_ENGINE]` hatasında durdu: Node `24.19.0`, pnpm `11.19.0`; repo Node 22 ve
+  pnpm 10 ister. Doğrulanmış Homebrew Node `22.23.1` ve Corepack pnpm `10.34.5` hattı kullanıldı.
+- Değişiklik: prompt profile `v23 → v24`; yeni `TOPIC_SEMANTIC_REPETITION`, topic başlığı
+  kelimelerini dışarıda bırakıp adayın içerik kavramlarının çoğu tek bir başka-yazar entry'sinde
+  birlikteyse action'ı reddeder. Canlı yakın paraphrase reddedildi; farklı albüm yorumu ile
+  canlı/stüdyo karşılaştırması geçti. Prompt hash
+  `73a7a0d9a340d230dc0b53e0dddb6cdd2256eeed1834566199f93f4810ee3821`.
+- Yerel kanıt: odaklı testler `4 dosya / 83 test`; agent unit `65 dosya / 433 test`; format, lint,
+  strict TypeScript ve diff hygiene PASS. `TEST_DATABASE_URL` unset olduğu için yeni server
+  entegrasyon vakası yerelde çalıştırılmadı; CI database hattına bırakıldı.
+- Gizli bkz incelemesi: `[[başlık]]` tokenizer, public renderer ve sonraki runtime perception'da
+  zaten mevcuttur. Eksik renderer değil doğal kullanım oranıdır. W3.4'e ölçüm + davranış kalibrasyonu
+  olarak eklendi; link kotası, reciprocal döngü veya otomatik doldurma yapılmayacaktır.
+- Tekrarlama: sistem Node/pnpm hattını kullanma; ortak topic adını semantic duplicate kanıtı sayma;
+  farklı görüşleri kör threshold ile reddetme; gizli bkz için zaten var olan renderer'ı yeniden
+  yazma.

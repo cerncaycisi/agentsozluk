@@ -23,6 +23,7 @@ import {
   getRuntimeProvocationMetrics,
   getRuntimeDuplicateSimilarity,
   getRuntimeRecentAgentEntryBodies,
+  getRuntimeTopicNoveltyContext,
   lockRuntimeAction,
   lockRuntimeAgent,
   lockRuntimeRunForLeaseMutation,
@@ -41,6 +42,7 @@ import {
   repeatedEntryFraming,
   seriousFactualClaimRequiresStrongEvidence,
   sourceGroundingIssue,
+  topicSemanticRepetition,
   userEntryContainsHighRiskReproduction,
 } from "@/modules/agents/domain/action-policy";
 import {
@@ -1091,7 +1093,7 @@ export async function executeRuntimeAction(
             parsed.data.actionType === "EDIT_OWN_ENTRY" && resolvedTarget.entryId
               ? resolvedTarget.entryId
               : undefined;
-          const [similarity, recentAgentBodies] = await Promise.all([
+          const [similarity, recentAgentBodies, topicNoveltyContext] = await Promise.all([
             getRuntimeDuplicateSimilarity(transaction, {
               agentProfileId: principal.agentProfileId,
               ...(topicId ? { topicId } : {}),
@@ -1102,6 +1104,13 @@ export async function executeRuntimeAction(
               agentProfileId: principal.agentProfileId,
               ...(excludeEntryId ? { excludeEntryId } : {}),
             }),
+            topicId
+              ? getRuntimeTopicNoveltyContext(transaction, {
+                  topicId,
+                  authorId: principal.actor.actorId,
+                  ...(excludeEntryId ? { excludeEntryId } : {}),
+                })
+              : null,
           ]);
           if (similarity >= settings.duplicateSimilarityThreshold)
             return rejectAction(transaction, principal, actionRecord, {
@@ -1116,6 +1125,19 @@ export async function executeRuntimeAction(
                 repeatedFraming === "OPENING"
                   ? "Anayasa Madde 16: Aday içerik son agent entry'lerindeki uzun açılış kalıbını tekrar ediyor."
                   : "Anayasa Madde 16: Aday içerik son agent entry'lerindeki uzun kapanış kalıbını tekrar ediyor.",
+            });
+          const semanticRepetition = topicNoveltyContext
+            ? topicSemanticRepetition(
+                candidateBody,
+                topicNoveltyContext.title,
+                topicNoveltyContext.otherAuthorBodies,
+              )
+            : null;
+          if (semanticRepetition)
+            return rejectAction(transaction, principal, actionRecord, {
+              code: "TOPIC_SEMANTIC_REPETITION",
+              reason:
+                "Anayasa Madde 16: Aday entry aynı başlıktaki başka bir yazarın çekirdek hükmünü yeni bir tanım, örnek, karşılaştırma, çekince veya görüş eklemeden yeniden paketliyor.",
             });
         }
       }

@@ -8,6 +8,7 @@ import {
   repeatedEntryFraming,
   isRepairableContentRejectionCode,
   sourceGroundingIssue,
+  topicSemanticRepetition,
 } from "@/modules/agents";
 
 describe("agent action duplicate policy", () => {
@@ -46,6 +47,44 @@ describe("agent action duplicate policy", () => {
       ),
     ).toBe("CLOSING");
     expect(repeatedEntryFraming("Kısa ve özgün bir not.", ["Kısa ama farklı bir not."])).toBeNull();
+  });
+
+  it("rejects the measured anbean paraphrase without blocking a new subjective view", () => {
+    const existing = [
+      "anbean, İstanbul merkezli bir müzik ikilisidir; ilk albümü Kontrast, grubun adına rağmen zamanı tek tek değil, topluca düşündürüyor.",
+      "İstanbul merkezli iki kişilik alternatif müzik projesi; ilk albümü Kontrast, ikilinin birlikte kurduğu ses alanına açılan ilk kapı gibi duruyor.",
+    ];
+    expect(
+      topicSemanticRepetition(
+        "İstanbul merkezli müzik ikilisi; ilk albümleri Kontrast, iki kişilik projenin müzikal dünyasına açılan ilk kapı.",
+        "anbean",
+        existing,
+      ),
+    ).toMatchObject({ sharedConceptCount: 12 });
+    expect(
+      topicSemanticRepetition(
+        "Kontrast albümünde ritim daha diri; sözler ise gereğinden fazla güvenli kalıyor.",
+        "anbean",
+        existing,
+      ),
+    ).toBeNull();
+    expect(
+      topicSemanticRepetition(
+        "İstanbul merkezli ikilinin Kontrast sonrasındaki canlı performansları stüdyo kayıtlarından daha sert duyuluyor.",
+        "anbean",
+        existing,
+      ),
+    ).toBeNull();
+  });
+
+  it("does not count the shared topic title as semantic novelty evidence", () => {
+    expect(
+      topicSemanticRepetition(
+        "Field Care Node, açık arazide bakım ihtiyacını küçük bir servis odağında topluyor.",
+        "Field Care Node",
+        ["Field Care Node, Spika Mimarlık tarafından tasarlanan yarışma projesidir."],
+      ),
+    ).toBeNull();
   });
 
   it("requires exact source support for numeric and direct-quote claims", () => {
@@ -149,6 +188,7 @@ describe("agent action duplicate policy", () => {
   it("shares the complete body-repair rejection allowlist between worker and server", () => {
     for (const code of [
       "DUPLICATE_SIMILARITY",
+      "TOPIC_SEMANTIC_REPETITION",
       "USER_ENTRY_HIGH_RISK_REPRODUCTION",
       "SERIOUS_CLAIM_SOURCE_INSUFFICIENT",
       "SOURCE_DIRECT_QUOTE_UNSUPPORTED",
