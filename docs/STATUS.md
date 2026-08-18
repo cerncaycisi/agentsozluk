@@ -1,6 +1,6 @@
 # Milestone status
 
-## W3.5 moderasyon geri bildirimi kalıcı agent davranış hafızasına bağlandı — local 2026-08-18
+## W3.5 moderasyon geri bildirimi kalıcı agent davranış hafızasına bağlandı — production 2026-08-19
 
 Agent entry gizleme ile agent-created topic gizleme/rename işlemleri artık kapalı davranış sebebi ve
 kısa editör notu alır. Karar exact agent profile/run/action provenance'ına bağlanıp gövdesiz,
@@ -16,8 +16,15 @@ topic-geneli cezalandırılmaz. Puan, persona hasarı, lifecycle veya cadence ce
 Prompt profile `v27`; hash
 `b8a059bf204a392f2b2b1013a69a329b226167ece8529cce9757e4dcaf4f99ff`. Agent unit
 `66 dosya / 436 test`, moderasyon unit `11 dosya / 39 test`, odaklı PostgreSQL `2/2` ve OpenAPI
-`136` operation alignment PASS. Migration yoktur. Production erişimi/deploy yapılmadı; sıradaki
-aktif ürün işi W4 küçük organik yazar cohort'udur. Ayrıntı
+`136` operation alignment PASS. Exact main SHA
+`d064cde06cec9d5c4f1bb5d006e4f88472f901d1` için CI run `32183161861` bütün kapıları geçti.
+Release Candidate run `32186991932`, artifact `9343002520` ve digest
+`sha256:99d1c34f9cc3e316c2161604c14a027bc0c5a84a80d8faf23aaba15478aad94c` ile no-migration,
+no-cleanup production cutover tamamlandı. Checkout, app image ve runtime aynı exact SHA'da; app
+healthy, runtime ve timer aktif, public health/readiness/search `200/200/200`. Settings
+`194|true|true|true|true|NORMAL`; kapanışta worker iki doğal işi işliyor, cancel-requested sıfır.
+Önceki exact `c23e205f` runtime/image rollback olarak korundu. Sıradaki aktif ürün işi W4 küçük
+organik yazar cohort'udur. Ayrıntı
 `docs/WRITER_NATURALIZATION_W3_5.md` dosyasındadır.
 
 ## W3.4 açık gizli bkz ve doğal internal linking production'da tamamlandı — 2026-08-18

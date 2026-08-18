@@ -6308,3 +6308,35 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
   Corepack shim'iyle aynı Playwright senaryosu `1/1` PASS (`37.6s`, toplam `56.2s`).
 - Tekrarlama: zorunlu moderasyon form alanı eklendiğinde yalnız component unit testlerini değil,
   rapor kabulü üzerinden gerçek submit yapan Playwright akışını da aynı değişiklikte güncelle.
+
+## 2026-08-19 — exact d064 W3.5 no-migration production deploy
+
+- Yetki ve kapsam: Gökhan exact W3.5 main adayı için “Et” diyerek Agent Sözlük production uygulama
+  deploy'unu açıkça onayladı. Migration, toplum ayarı, timeout, doğrudan veritabanı yazımı, cleanup
+  veya ayrı bir recovery kapsamda değildi.
+- Release kimliği: exact SHA `d064cde06cec9d5c4f1bb5d006e4f88472f901d1`; main CI run
+  `32183161861` bütün kapıları geçti. Release Candidate run `32186991932`, artifact `9343002520`,
+  `229988488` byte ve digest
+  `sha256:99d1c34f9cc3e316c2161604c14a027bc0c5a84a80d8faf23aaba15478aad94c` ile başarılı oldu.
+- Cutover: server-fetch artifact yolu pinned `agent-sozluk-prod` host/origin/SHA kapılarını geçti.
+  Build/disk kapısında boş alan `32923619328` byte idi. Exact image ID
+  `sha256:500f53385767859a3f3ebbf7f1548681e264185fa6605c27f0ba32e2c62c16ce`; checkout, image label
+  ve immutable runtime exact d064'e birleşti. Drain aktif işleri iptal etmedi: sayaç iki running/two
+  live lease'ten bire, 23. kontrolde sıfıra doğal indi; bütün kontrollerde cancel-requested sıfırdı.
+  Migration ve cleanup çalışmadı.
+- Kapanış kanıtı: checkout temiz; app image ve runtime exact d064; runtime service
+  `active|running|0`, maintenance timer `active|enabled`, maintenance service `inactive`. İç public
+  health/readiness/search `200|200|200`; release wrapper ayrıca public smoke'u
+  `health=200 ready=200 search=200` ile geçti. Settings `194|true|true|true|true|NORMAL`; run sayacı
+  `QUEUED|RUNNING|CANCEL_REQUESTED|LIVE_LEASE` için `0|2|0|2`. Root filesystem `%60` kullanım ve
+  `30237952 KiB` boş alanla kapandı. Önceki exact
+  `c23e205f30f861d1a1f3df5be974d07edc7d6c13` runtime ve image
+  `sha256:72f55f946b08e96adf5c17fe02f8dfcb20832c0960b72aef8206fbccff7e5bec` rollback olarak
+  doğrulandı.
+- Salt-okunur kapanış betiğinin ilk yerel kurulumu sunucu bağlantısından önce JavaScript komut
+  metninde `SyntaxError: Invalid or unexpected token`, ikinci kurulumu zsh'de
+  `parse error near ')'` ile durdu; canlıya ulaşmadı. İlk çalışan SSH betiğinde psql stdin'i kalan
+  betik satırlarını tükettiği için yalnız ilk ölçümler çıktı; sorgulara `</dev/null` eklenince bütün
+  kapanış ölçümleri tek geçişte tamamlandı. Tekrarlama: SSH stdin'inden çalıştırılan betikte
+  interaktif olmayan psql çağrılarının stdin'ini açıkça `/dev/null`a bağla; kapanış için tarihsel
+  env/sütun/endpoint adlarını tahmin etme.
