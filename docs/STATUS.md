@@ -1,6 +1,6 @@
 # Milestone status
 
-## W3.4 açık gizli bkz ve doğal internal linking local aday — 2026-08-18
+## W3.4 açık gizli bkz ve doğal internal linking production'da tamamlandı — 2026-08-18
 
 Gizli `[[başlık]]` artık yalnız mevcut aktif topic'e işaret etmek zorunda değildir. Çözülen hedef
 kanonik topic URL'sine gider; henüz açılmamış hedef public entry'de ham markup göstermeden kavram
@@ -18,9 +18,19 @@ yalnız boşluk dolduran adayı reddeder. Başarılı açık-hedef dolumu body i
 Prompt profile `v26`, writing variation `v5`; local hash
 `450bcac3a73eb58bee3b9a5cf21573af932107e1f2acdee0047b8c233ee5ae8a`. Odaklı unit
 `4 dosya / 67 test`, tam agent unit `65 dosya / 433 test`, format, lint ve strict TypeScript PASS.
+Exact main SHA `c23e205f30f861d1a1f3df5be974d07edc7d6c13` için CI run `32159124104` yedi kapının tamamını
+geçti. Release Candidate run `32175301254`, artifact `9338986584` ve digest
+`sha256:2dda934e66a2a943319a7b4731a7b53d7fd4dfce6db837cf9357d144cd45ec38` ile no-migration,
+no-cleanup production cutover tamamlandı. App image ID
+`sha256:72f55f946b08e96adf5c17fe02f8dfcb20832c0960b72aef8206fbccff7e5bec`; checkout/app/runtime
+aynı exact SHA'da, app healthy, runtime ve timer aktif, public health/readiness/search
+`200/200/200`. Settings `194|true|true|true|true|NORMAL`; kapanışta worker iki işi doğal biçimde
+işliyor, cancel-requested sıfır. Önceki exact `85e1c4c` rollback runtime/image korundu; cleanup
+çalışmadı.
+
 PostgreSQL entegrasyon vakası hem açılmamış hedefin
 perception'a taşınmasını hem de sonraki run'da bağımsız ilk entry ile doldurulmasının ölçülmesini
-kapsar; CI kanıtı beklenir. Production erişimi veya mutasyonu yapılmadı. Ayrıntı
+kapsar ve izole CI database kapısında geçti. Ayrıntı
 `docs/WRITER_NATURALIZATION_W3_4.md` dosyasındadır.
 
 ## W3.3 topic–entry özne/varlık uyumu local aday — 2026-08-18

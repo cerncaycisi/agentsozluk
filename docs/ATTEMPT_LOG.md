@@ -6216,3 +6216,35 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
   dispatch olasılığı, runtime davranışı veya içerik policy eşiği değiştirilmedi.
 - Tekrarlama: stochastic toplum testinde “uyanmak/katılmak” ile “mutlaka public entry yazmak”ı aynı
   assertion'a bağlama; sağlıklı abstention'ı günlük yayın kotasına çevirme.
+
+## 2026-08-18 — exact c23e W3.4 no-migration production deploy
+
+- Yetki ve kapsam: Gökhan exact W3.4 main adayı için “deploy et” diyerek Agent Sözlük production
+  uygulama deploy'unu açıkça onayladı. Toplum ayarı, timeout, migration, doğrudan veritabanı yazımı,
+  cleanup veya ayrı bir recovery/activation kapsamda değildi.
+- Release kimliği: exact SHA `c23e205f30f861d1a1f3df5be974d07edc7d6c13`; main CI run
+  `32159124104` yedi kapının tamamını geçti. Release Candidate run `32175301254`, artifact
+  `9338986584`, `229873512` byte ve digest
+  `sha256:2dda934e66a2a943319a7b4731a7b53d7fd4dfce6db837cf9357d144cd45ec38` ile başarılı oldu.
+- Cutover: server-fetch artifact yolu pinned `agent-sozluk-prod` host/origin/SHA kapılarını geçti.
+  Artifact kurulumu öncesi boş alan `34865799168` byte idi. Exact image ID
+  `sha256:72f55f946b08e96adf5c17fe02f8dfcb20832c0960b72aef8206fbccff7e5bec`; app checkout, image
+  label ve runtime exact c23e'ye birleşti. Drain mevcut işleri iptal etmedi: aktif işler doğal
+  kapanırken iki yeni iş kuyrukta korundu; cutover sonrası worker bunları işlemeye devam etti.
+  Migration ve cleanup çalışmadı.
+- Kapanış kanıtı: checkout temiz; app `healthy`; runtime service ve maintenance timer `active`,
+  maintenance service `inactive`, runtime `NRestarts=0`. Public `/api/health`, `/api/ready` ve
+  `/api/v1/search` `200/200/200` döndü. Settings `194|true|true|true|true|NORMAL`; run sayacı
+  `QUEUED|RUNNING|CANCEL_REQUESTED|LIVE_LEASE` için `0|2|0|2`. Root filesystem `%58` kullanım ve
+  `32152992 KiB` boş alanla kapandı. Önceki exact
+  `85e1c4c18ed435221b0988df6efbfeb400d6de17` runtime ve image
+  `sha256:f0384e3f84d3b95702883cdeea352cccb43ee73acba03f800c8dbd0e1612dca4` rollback olarak
+  doğrulandı.
+- Zararsız kapanış sorgusu hataları: ilk salt-okunur komut yanlış
+  `/opt/agent-sozluk/runtime/.env.production` yolunda exact `couldn't find env file` ile durdu;
+  doğru yol `/opt/agent-sozluk/app/.env`. İkinci sorgu eski `runtimePublishEnabled` sütununda
+  `column does not exist`, eski `/api/v1/health` ve `/api/v1/readiness` yollarında `404` aldı.
+  Doğru alanlar `runtimeEnabled`, `publishEnabled`, `publicWriteEnabled`, `schedulerEnabled`,
+  `runtimeOperatingMode`; doğru yollar `/api/health` ve `/api/ready`. Bu denemeler değişiklik
+  yapmadı. Tekrarlama: kapanış sorgusunda tarihsel env/sütun/endpoint adlarını tahmin etme; exact
+  release scripti ve güncel Prisma şemasını kullan.
