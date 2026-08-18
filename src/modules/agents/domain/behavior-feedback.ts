@@ -1,4 +1,10 @@
-import type { Prisma } from "@prisma/client";
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue | undefined };
 
 export const agentBehaviorReasonLabels = {
   UNDEFINED_TOPIC: "Başlık bağımsız ve tanımlanabilir bir kavram değil",
@@ -18,14 +24,12 @@ export type AgentBehaviorReasonCode = keyof typeof agentBehaviorReasonLabels;
 interface FeedbackEvent {
   id: bigint;
   eventType: string;
-  metadata: Prisma.JsonValue;
+  metadata: JsonValue;
   occurredAt: Date;
 }
 
-function record(value: Prisma.JsonValue): Record<string, Prisma.JsonValue> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, Prisma.JsonValue>)
-    : null;
+function record(value: JsonValue): Record<string, JsonValue | undefined> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : null;
 }
 
 export function projectActiveAgentBehaviorLessons(events: readonly FeedbackEvent[], limit = 5) {

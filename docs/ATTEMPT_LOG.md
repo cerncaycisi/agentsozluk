@@ -6279,3 +6279,15 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
 - Tekrarlama: feedback'i yalnız son 100 olay penceresinden çıkarma; topic'e sonradan yazan agent'ı
   creator sanma; visibility restore ile bağımsız rename dersini silme; editor notunu içerik gövdesi
   veya ceza puanı gibi kullanma; human content'i agent yaşam geçmişine yazma.
+
+## 2026-08-18 — W3.5 main CI domain sınırı düzeltmesi
+
+- Main CI run `32181224600` içindeki `behavior` işi, tam unit paketi sonunda yalnız
+  `tests/unit/architecture/module-boundaries.test.ts` kontrolünde durdu. Exact ihlal
+  `src/modules/agents/domain/behavior-feedback.ts` dosyasının JSON metadata tipi için
+  `@prisma/client` import etmesiydi; ürün davranışı veya PostgreSQL sorgusu başarısız olmadı.
+- Düzeltme: Prisma'ya eşdeğer recursive JSON tipi domain katmanında tanımlandı; Prisma importu
+  repository/data-access sınırının dışından kaldırıldı. Hedef mimari+projection testleri `6/6`, tam
+  unit paketi `172 dosya / 863 test`, format, lint ve typecheck PASS.
+- Tekrarlama: domain/application kodunda yalnız tip kolaylığı için bile Prisma import etme; veri
+  erişiminden dönen JSON'u domain-native structural type ile kabul et.
