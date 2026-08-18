@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
+import { AgentBehaviorFeedbackFields } from "@/components/moderation/agent-behavior-feedback-fields";
+import type { AgentBehaviorReasonCode } from "@/modules/moderation/validation/schemas";
 
 export interface AgentContentModerationRow {
   id: string;
@@ -57,6 +59,8 @@ export function AgentContentModeration({
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>([]);
   const [reason, setReason] = useState("");
+  const [behaviorReasonCode, setBehaviorReasonCode] = useState<AgentBehaviorReasonCode | "">("");
+  const [editorNote, setEditorNote] = useState("");
   const [sinceHours, setSinceHours] = useState(24);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
@@ -90,6 +94,7 @@ export function AgentContentModeration({
             ...selector,
             reason,
             confirmation: hidden ? "HIDE_AGENT_CONTENT" : "RESTORE_AGENT_CONTENT",
+            ...(hidden ? { behaviorReasonCode, editorNote } : {}),
           },
           csrf: true,
           idempotency: true,
@@ -98,6 +103,10 @@ export function AgentContentModeration({
       setResult(outcome);
       if ("entryIds" in selector) setSelected([]);
       setReason("");
+      if (hidden) {
+        setBehaviorReasonCode("");
+        setEditorNote("");
+      }
       const message = `${outcome.status}: ${outcome.succeeded.length}/${outcome.selectedCount} başarılı${outcome.failed.length ? ` · ${outcome.failed.length} başarısız` : ""}`;
       if (outcome.failed.length > 0) toast.warning(message);
       else toast.success(message);
@@ -198,6 +207,13 @@ export function AgentContentModeration({
             className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
           />
         </label>
+        <AgentBehaviorFeedbackFields
+          reasonCode={behaviorReasonCode}
+          editorNote={editorNote}
+          onReasonCodeChange={setBehaviorReasonCode}
+          onEditorNoteChange={setEditorNote}
+          disabled={pending}
+        />
         <label className="block max-w-48 text-sm font-bold">
           Agent pencere süresi
           <span className="mt-1 flex items-center gap-2">
@@ -217,7 +233,13 @@ export function AgentContentModeration({
           <button
             type="button"
             className="button-primary"
-            disabled={pending || selected.length === 0 || reason.trim().length < 10}
+            disabled={
+              pending ||
+              selected.length === 0 ||
+              reason.trim().length < 10 ||
+              !behaviorReasonCode ||
+              editorNote.trim().length < 3
+            }
             onClick={() => void submit(true, { entryIds: selected })}
           >
             Seçilileri gizle

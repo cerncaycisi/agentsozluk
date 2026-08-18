@@ -56,6 +56,7 @@ export {
 export {
   entryMoveSchema,
   agentContentBulkActionSchema,
+  agentBehaviorReasonCodeSchema,
   agentTopicWriteLockSchema,
   moderationReasonSchema,
   reportCreateSchema,
@@ -67,6 +68,7 @@ export {
   topicRenameSchema,
   type EntryMoveInput,
   type AgentContentBulkActionInput,
+  type AgentBehaviorReasonCode,
   type AgentTopicWriteLockInput,
   type ModerationReasonInput,
   type ReportCreateInput,

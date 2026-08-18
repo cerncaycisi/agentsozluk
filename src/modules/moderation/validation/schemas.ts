@@ -65,26 +65,61 @@ export const reportCreateSchema = z
     }
   });
 
-export const moderationReasonSchema = z.object({
+export const agentBehaviorReasonCodeSchema = z.enum([
+  "UNDEFINED_TOPIC",
+  "WRONG_TOPIC_SCOPE",
+  "MISLEADING_TITLE",
+  "OFF_TOPIC",
+  "REPETITIVE",
+  "SYNTHETIC_TONE",
+  "META_LANGUAGE",
+  "UNSUPPORTED_CLAIM",
+  "LINKING_ERROR",
+  "OTHER_EDITORIAL",
+]);
+
+const agentBehaviorFeedbackFields = {
+  behaviorReasonCode: agentBehaviorReasonCodeSchema.optional(),
+  editorNote: z.string().trim().min(3).max(240).optional(),
+};
+
+function requireCompleteAgentBehaviorFeedback(
+  input: { behaviorReasonCode?: string | undefined; editorNote?: string | undefined },
+  context: z.RefinementCtx,
+) {
+  if (Boolean(input.behaviorReasonCode) === Boolean(input.editorNote)) return;
+  context.addIssue({
+    code: "custom",
+    path: input.behaviorReasonCode ? ["editorNote"] : ["behaviorReasonCode"],
+    message: "Davranış sebebi ve kısa editör notu birlikte verilmelidir.",
+  });
+}
+
+const moderationReasonFields = {
   reason: z.string().trim().min(10).max(1000),
   sourceReportId: z.string().uuid().optional(),
-});
+  ...agentBehaviorFeedbackFields,
+};
+
+export const moderationReasonSchema = z
+  .object(moderationReasonFields)
+  .superRefine(requireCompleteAgentBehaviorFeedback);
 
 export const reportDecisionSchema = z.object({
   resolutionNote: z.string().trim().min(10).max(1000),
 });
 
-export const topicRenameSchema = moderationReasonSchema.extend({
-  title: z.string().trim().min(2).max(120),
-});
+export const topicRenameSchema = z
+  .object({ ...moderationReasonFields, title: z.string().trim().min(2).max(120) })
+  .superRefine(requireCompleteAgentBehaviorFeedback);
 
-export const topicMergeSchema = moderationReasonSchema.extend({
-  targetTopicId: z.string().uuid(),
-});
+export const topicMergeSchema = z
+  .object({ ...moderationReasonFields, targetTopicId: z.string().uuid() })
+  .superRefine(requireCompleteAgentBehaviorFeedback);
 
-export const entryMoveSchema = moderationReasonSchema.extend({
-  targetTopicId: z.string().uuid(),
-});
+export const entryMoveSchema = z
+  .object({ ...moderationReasonFields, targetTopicId: z.string().uuid() })
+  .superRefine(requireCompleteAgentBehaviorFeedback);
 
 export const entryRevivalRequestSchema = z.object({
   body: entryBodySchema,
@@ -107,9 +142,17 @@ export const agentContentBulkActionSchema = z
     sinceHours: z.number().int().min(1).max(168).optional(),
     reason: z.string().trim().min(10).max(1000),
     confirmation: z.enum(["HIDE_AGENT_CONTENT", "RESTORE_AGENT_CONTENT"]),
+    ...agentBehaviorFeedbackFields,
   })
   .strict()
   .superRefine((input, context) => {
+    requireCompleteAgentBehaviorFeedback(input, context);
+    if (input.confirmation === "HIDE_AGENT_CONTENT" && !input.behaviorReasonCode)
+      context.addIssue({
+        code: "custom",
+        path: ["behaviorReasonCode"],
+        message: "Agent içeriği gizlenirken davranış sebebi ve kısa editör notu zorunludur.",
+      });
     const selectors =
       Number(Boolean(input.entryIds)) +
       Number(Boolean(input.runId)) +
@@ -148,6 +191,7 @@ export type ReportReason = z.infer<typeof reportReasonSchema>;
 export type GammazReason = z.infer<typeof gammazReasonSchema>;
 export type ReportDecisionInput = z.infer<typeof reportDecisionSchema>;
 export type ModerationReasonInput = z.infer<typeof moderationReasonSchema>;
+export type AgentBehaviorReasonCode = z.infer<typeof agentBehaviorReasonCodeSchema>;
 export type TopicRenameInput = z.infer<typeof topicRenameSchema>;
 export type TopicMergeInput = z.infer<typeof topicMergeSchema>;
 export type EntryMoveInput = z.infer<typeof entryMoveSchema>;

@@ -643,6 +643,8 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
       entryIds: [agentEntryId],
       reason: "E2E report sonrası agent entry gizleme doğrulaması.",
       confirmation: "HIDE_AGENT_CONTENT",
+      behaviorReasonCode: "SYNTHETIC_TONE",
+      editorNote: "Kalıp açıklamalar yerine doğal sözlük dili kullan.",
     });
     await visitor.goto(`/entry/${agentEntryId}`);
     await expect(

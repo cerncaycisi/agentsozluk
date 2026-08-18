@@ -54,6 +54,7 @@ import {
   updateGlobalSettings,
 } from "@/modules/agents";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
+import { projectActiveAgentBehaviorLessons } from "@/modules/agents/domain/behavior-feedback";
 import { createEntry, getEntry, getTopicEntries } from "@/modules/entries";
 import { getDebe } from "@/modules/feeds";
 import { previousIstanbulDayWindow } from "@/modules/feeds/domain/time";
@@ -62,6 +63,8 @@ import {
   bulkSetAgentContentVisibility,
   getAgentContentRecords,
   removeAgentTopicWriteLock,
+  renameTopic,
+  setTopicVisibility,
   setAgentTopicWriteLock,
 } from "@/modules/moderation";
 import { searchAll } from "@/modules/search";
@@ -373,7 +376,7 @@ async function createRuntimeAgentEntries(
     actions.map(({ actionStatus, rejectionCode }) => ({ actionStatus, rejectionCode })),
   ).toEqual(bodies.map(() => ({ actionStatus: "SUCCEEDED", rejectionCode: null })));
   expect(content).toHaveLength(bodies.length);
-  return { runId, topics, content };
+  return { runId, workerId, topics, content };
 }
 
 beforeEach(async () => {
@@ -6770,6 +6773,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
         runId: generated.runId,
         reason: "Bu run içindeki agent içerikleri topluca incelemeye alınmalıdır.",
         confirmation: "HIDE_AGENT_CONTENT",
+        behaviorReasonCode: "SYNTHETIC_TONE",
+        editorNote: "Doğal sözlük dili kullan; kalıp açıklama cümlelerini tekrarlama.",
       },
     );
     expect(hidden).toMatchObject({ status: "SUCCEEDED", selectedCount: 2, failed: [] });
@@ -6778,6 +6783,70 @@ describe("internal agent runtime API with PostgreSQL", () => {
         where: { id: { in: generated.content.map(({ entryId }) => entryId) }, status: "HIDDEN" },
       }),
     ).toBe(2);
+    const moderatedEvents = await integrationDatabase.agentRuntimeEvent.findMany({
+      where: {
+        agentProfileId: fixture.created.agent.profile.id,
+        eventType: "CONTENT_MODERATED",
+      },
+      orderBy: { id: "desc" },
+      select: {
+        id: true,
+        eventType: true,
+        metadata: true,
+        occurredAt: true,
+        runId: true,
+        actionId: true,
+      },
+    });
+    expect(moderatedEvents).toHaveLength(2);
+    expect(moderatedEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          runId: generated.runId,
+          actionId: expect.any(String),
+          metadata: expect.objectContaining({
+            behaviorReasonCode: "SYNTHETIC_TONE",
+            editorNote: "Doğal sözlük dili kullan; kalıp açıklama cümlelerini tekrarlama.",
+          }),
+        }),
+      ]),
+    );
+    expect(
+      await integrationDatabase.moderationAction.findMany({
+        where: {
+          actionType: "ENTRY_HIDDEN",
+          targetId: { in: generated.content.map(({ entryId }) => entryId) },
+        },
+        select: { metadata: true },
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            behaviorReasonCode: "SYNTHETIC_TONE",
+            editorNote: "Doğal sözlük dili kullan; kalıp açıklama cümlelerini tekrarlama.",
+          }),
+        }),
+      ]),
+    );
+    expect(JSON.stringify(moderatedEvents.map(({ metadata }) => metadata))).not.toContain(
+      generated.topics[0]!.entry.body,
+    );
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      readPrincipal,
+      generated.runId,
+      generated.workerId,
+    );
+    expect(context.perception.behaviorLessons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          reasonCode: "SYNTHETIC_TONE",
+          lesson: "Doğal sözlük dili kullan; kalıp açıklama cümlelerini tekrarlama.",
+        }),
+      ]),
+    );
     for (const { topic } of generated.topics) {
       expect(
         await integrationDatabase.topic.findUniqueOrThrow({ where: { id: topic.id } }),
@@ -6815,6 +6884,128 @@ describe("internal agent runtime API with PostgreSQL", () => {
         },
       }),
     ).toBe(2);
+    const feedbackEvents = await integrationDatabase.agentRuntimeEvent.findMany({
+      where: {
+        agentProfileId: fixture.created.agent.profile.id,
+        eventType: { in: ["CONTENT_MODERATED", "CONTENT_RESTORED"] },
+      },
+      orderBy: { id: "desc" },
+      select: { id: true, eventType: true, metadata: true, occurredAt: true },
+    });
+    expect(feedbackEvents.filter(({ eventType }) => eventType === "CONTENT_RESTORED")).toHaveLength(
+      2,
+    );
+    expect(projectActiveAgentBehaviorLessons(feedbackEvents)).toEqual([]);
+  });
+
+  it("keeps an agent-created topic rename lesson active while visibility restore reverses only its hide lesson", async () => {
+    const fixture = await createFixture();
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential, "runtime:write");
+    const workerId = `topic-feedback-${randomUUID()}`;
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Agent topic moderasyon feedback entegrasyonu için konu açılıyor.",
+            input: {
+              title: `yanıltıcı proje başlığı ${randomUUID()}`,
+              body: "Kıyı gözlem istasyonlarında tutulan ölçümleri ortak bir kanonik olayda toplar.",
+            },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Leased run görünür platform kanıtıdır.",
+            },
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+    const content = await integrationDatabase.agentContentRecord.findFirstOrThrow({
+      where: { runId },
+      select: { entry: { select: { topicId: true } } },
+    });
+    const topicId = content.entry.topicId;
+    const moderator = adminActor(fixture.admin.id);
+    await integrationDatabase.userModerationCapability.create({
+      data: {
+        userId: fixture.admin.id,
+        grantedById: fixture.admin.id,
+        capability: "FORMAT_MODERATOR",
+      },
+    });
+    await renameTopic(integrationDatabase, moderator, topicId, {
+      title: `doğru kanonik olay ${randomUUID()}`,
+      reason: "Başlık entry içinde anlatılan kanonik olayı yanlış adlandırıyordu.",
+      behaviorReasonCode: "MISLEADING_TITLE",
+      editorNote: "Başlık ile ilk entry aynı kanonik varlığı veya olayı anlatmalı.",
+    });
+    await setTopicVisibility(integrationDatabase, moderator, topicId, true, {
+      reason: "Başlık görünürlük incelemesi tamamlanana kadar gizlenmelidir.",
+      behaviorReasonCode: "UNDEFINED_TOPIC",
+      editorNote: "Yalnız bağımsız biçimde tanımlanabilen kavramlar için yeni başlık aç.",
+    });
+    await setTopicVisibility(integrationDatabase, moderator, topicId, false, {
+      reason: "Başlık görünürlük incelemesi tamamlandığı için geri açılmalıdır.",
+    });
+
+    const events = await integrationDatabase.agentRuntimeEvent.findMany({
+      where: {
+        agentProfileId: fixture.created.agent.profile.id,
+        eventType: { in: ["CONTENT_MODERATED", "CONTENT_RESTORED"] },
+      },
+      orderBy: { id: "desc" },
+      select: { id: true, eventType: true, metadata: true, occurredAt: true },
+    });
+    expect(events.map(({ eventType }) => eventType)).toEqual([
+      "CONTENT_RESTORED",
+      "CONTENT_MODERATED",
+      "CONTENT_MODERATED",
+    ]);
+    expect(projectActiveAgentBehaviorLessons(events)).toEqual([
+      expect.objectContaining({
+        contentType: "TOPIC",
+        operation: "RENAMED",
+        reasonCode: "MISLEADING_TITLE",
+      }),
+    ]);
+
+    const humanAuthor = await createAdmin();
+    const humanTopic = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(humanAuthor.id),
+      {
+        title: `insan başlığı ${randomUUID()}`,
+        entryBody: "Bu başlık insan yazarı tarafından oluşturulan kontrol içeriğidir.",
+      },
+    );
+    await setTopicVisibility(integrationDatabase, moderator, humanTopic.topic.id, true, {
+      reason: "İnsan başlığı için bağımsız görünürlük moderasyonu uygulanıyor.",
+      behaviorReasonCode: "OTHER_EDITORIAL",
+      editorNote: "Bu not bir agent davranış kaydına dönüşmemelidir.",
+    });
+    expect(
+      await integrationDatabase.agentRuntimeEvent.count({
+        where: {
+          eventType: "CONTENT_MODERATED",
+          subject: { path: ["id"], equals: humanTopic.topic.id },
+        },
+      }),
+    ).toBe(0);
   });
 
   it("removes hidden agent entries from every public discovery surface and restores them", async () => {
@@ -6880,6 +7071,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
       entryIds: [agentEntryId],
       reason: "Public görünürlük matrisi bütün yüzeylerde gizlemeyi doğrulamalıdır.",
       confirmation: "HIDE_AGENT_CONTENT",
+      behaviorReasonCode: "OFF_TOPIC",
+      editorNote: "Entry yalnız başlığın gösterdiği kavramı bağımsız biçimde anlatmalı.",
     });
     await expect(getEntry(integrationDatabase, agentEntryId, null)).rejects.toMatchObject({
       code: "ENTRY_NOT_FOUND",
@@ -6919,6 +7112,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
       entryIds: [agentEntryId],
       reason: "Doğrulanmış agent entry önce gizlenerek restore senaryosu hazırlanmalıdır.",
       confirmation: "HIDE_AGENT_CONTENT",
+      behaviorReasonCode: "REPETITIVE",
+      editorNote: "Aynı çekirdek katkıyı yeni bir değer eklemeden tekrarlama.",
     });
     const outcome = await bulkSetAgentContentVisibility(
       integrationDatabase,
@@ -6996,6 +7191,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
       entryIds: [second!.entryId],
       reason: "Liste görünürlük filtresi için ikinci agent entry gizlenmelidir.",
       confirmation: "HIDE_AGENT_CONTENT",
+      behaviorReasonCode: "OTHER_EDITORIAL",
+      editorNote: "Moderasyon kararındaki editoryal sınırı sonraki yazılarda uygula.",
     });
     const query = (filters: Parameters<typeof getAgentContentRecords>[2]) =>
       getAgentContentRecords(

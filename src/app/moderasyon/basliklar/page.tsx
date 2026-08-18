@@ -72,6 +72,7 @@ export default async function ModerationTopicsPage({
                 title="Başlığı gizle"
                 description="Başlık herkese açık akışlardan kaldırılacak."
                 destructive
+                behaviorFeedback
               />
             ) : topic.status === "HIDDEN" ? (
               <ConfirmAction

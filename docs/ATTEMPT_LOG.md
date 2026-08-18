@@ -6248,3 +6248,34 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
   `runtimeOperatingMode`; doğru yollar `/api/health` ve `/api/ready`. Bu denemeler değişiklik
   yapmadı. Tekrarlama: kapanış sorgusunda tarihsel env/sütun/endpoint adlarını tahmin etme; exact
   release scripti ve güncel Prisma şemasını kullan.
+
+## 2026-08-18 — W3.5 moderasyon geri bildirimi kalıcı agent davranış hafızası local adayı
+
+- Kök neden: entry/topic moderasyon gerekçesi `ModerationAction`, audit/outbox ve trash geçmişinde
+  kalıyor; exact agent profile/run/action provenance'ına bağlanıp sonraki runtime perception'a
+  taşınmıyordu. Bir agent aynı editoryal hata örüntüsünü moderasyon kararından öğrenemiyordu.
+- Düzeltme: on kapalı `behaviorReasonCode` ve en fazla 240 karakterlik güvenli `editorNote`
+  eklendi. Agent entry attribution'ı `AgentContentRecord`; topic attribution'ı exact topic creator
+  profile'ın başarılı `CREATE_TOPIC_WITH_ENTRY` kaydıyla çözülür. `CONTENT_MODERATED` ve
+  `CONTENT_RESTORED` mevcut immutable life ledger'a gövdesiz yazılır.
+- Kalıcılık: DB projection'ı arbitrary son-N pencereye dayanmaz; her `feedbackKey` için en son
+  immutable olayı seçer, restore edilmiş sinyalleri çıkarır ve en yeni beş aktif dersi her yeni
+  perception snapshot'ına ekler. Prompt dersi tek run'lık uyarı değil içselleştirilmiş editoryal
+  sınır sayar; public metinde moderasyonu anlatmayı veya notu kopyalamayı yasaklar.
+- İlk odaklı PostgreSQL çağrısı ürün koduna ulaşmadan exact
+  `Integration tests requires TEST_DATABASE_URL.` ile durdu. Mevcut local PostgreSQL 16 listener ve
+  allowlisted passwordless `agent_sozluk_test` DB doğrulandı; aynı iki test explicit safe URL ile
+  çalıştırıldı. Sonraki fixture düzeltmeleri: BigInt içeren event dizisini kör `JSON.stringify`
+  etme kaldırıldı; topic body fixture'ındaki yasak self-meta cümlesi doğal kavram cümlesine çevrildi;
+  moderator capability ve conflict-of-interest için ayrı human author kuruldu. Ürün eşiği
+  gevşetilmedi.
+- İlk tam agent unit koşusu üç eski repository mock'unda exact
+  `transaction.$queryRaw is not a function` ile durdu. Gerçek PG16 sorgusu zaten geçiyordu; mock'a
+  yalnız boş salt-okunur projection sonucu eklendi. Tekrarda agent unit `66 dosya / 436 test`,
+  moderasyon unit `11 dosya / 39 test`, odaklı PG16 `2/2` ve OpenAPI `136` operation PASS.
+- Prompt profile `v27`, hash
+  `b8a059bf204a392f2b2b1013a69a329b226167ece8529cce9757e4dcaf4f99ff`. Migration, production
+  erişimi, deploy, capability tüketimi veya runtime ayar mutasyonu yapılmadı.
+- Tekrarlama: feedback'i yalnız son 100 olay penceresinden çıkarma; topic'e sonradan yazan agent'ı
+  creator sanma; visibility restore ile bağımsız rename dersini silme; editor notunu içerik gövdesi
+  veya ceza puanı gibi kullanma; human content'i agent yaşam geçmişine yazma.

@@ -4,6 +4,8 @@ import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
+import { AgentBehaviorFeedbackFields } from "@/components/moderation/agent-behavior-feedback-fields";
+import type { AgentBehaviorReasonCode } from "@/modules/moderation/validation/schemas";
 
 export function ConfirmAction({
   endpoint,
@@ -12,6 +14,7 @@ export function ConfirmAction({
   description,
   fieldName = "reason",
   destructive = false,
+  behaviorFeedback = false,
 }: {
   endpoint: string;
   label: string;
@@ -19,10 +22,13 @@ export function ConfirmAction({
   description: string;
   fieldName?: "reason" | "resolutionNote" | "rationale";
   destructive?: boolean;
+  behaviorFeedback?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [behaviorReasonCode, setBehaviorReasonCode] = useState<AgentBehaviorReasonCode | "">("");
+  const [editorNote, setEditorNote] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const submit = async (event: React.FormEvent) => {
@@ -32,12 +38,17 @@ export function ConfirmAction({
     try {
       await apiRequest(endpoint, {
         method: "POST",
-        body: { [fieldName]: reason },
+        body: {
+          [fieldName]: reason,
+          ...(behaviorFeedback ? { behaviorReasonCode, editorNote } : {}),
+        },
         csrf: true,
         idempotency: true,
       });
       setOpen(false);
       setReason("");
+      setBehaviorReasonCode("");
+      setEditorNote("");
       router.refresh();
     } catch (submitError) {
       setError(
@@ -85,6 +96,15 @@ export function ConfirmAction({
                 className="min-h-28 w-full rounded-xl border bg-page p-3"
               />
             </div>
+            {behaviorFeedback ? (
+              <AgentBehaviorFeedbackFields
+                reasonCode={behaviorReasonCode}
+                editorNote={editorNote}
+                onReasonCodeChange={setBehaviorReasonCode}
+                onEditorNoteChange={setEditorNote}
+                disabled={pending}
+              />
+            ) : null}
             {error ? (
               <p id={`error-${endpoint}`} role="alert" className="text-sm text-destructive">
                 {error}
@@ -98,7 +118,11 @@ export function ConfirmAction({
               </AlertDialog.Cancel>
               <button
                 type="submit"
-                disabled={pending || reason.trim().length < 10}
+                disabled={
+                  pending ||
+                  reason.trim().length < 10 ||
+                  (behaviorFeedback && (!behaviorReasonCode || editorNote.trim().length < 3))
+                }
                 className={destructive ? "button-primary bg-destructive" : "button-primary"}
               >
                 {pending ? "İşleniyor…" : "Onayla"}

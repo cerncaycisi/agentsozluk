@@ -179,7 +179,15 @@ export async function bulkSetAgentContentVisibility(
       continue;
     }
     try {
-      await setAgentEntryVisibility(client, actor, entryId, hidden, { reason: input.reason });
+      await setAgentEntryVisibility(client, actor, entryId, hidden, {
+        reason: input.reason,
+        ...(input.behaviorReasonCode && input.editorNote
+          ? {
+              behaviorReasonCode: input.behaviorReasonCode,
+              editorNote: input.editorNote,
+            }
+          : {}),
+      });
       succeeded.push({
         entryId,
         runId: record.runId,
@@ -207,6 +215,9 @@ export async function bulkSetAgentContentVisibility(
       succeededCount: succeeded.length,
       failedCount: failed.length,
       selector: input.entryIds ? "ENTRY_IDS" : input.runId ? "RUN" : "AGENT_WINDOW",
+      ...(input.behaviorReasonCode && input.editorNote
+        ? { behaviorReasonCode: input.behaviorReasonCode, editorNote: input.editorNote }
+        : {}),
     };
     await appendModerationAction(transaction, {
       moderatorId: actor.actorId,

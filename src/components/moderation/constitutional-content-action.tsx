@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import type { ConstitutionalContentAction } from "@/modules/moderation/domain/constitutional-moderation";
+import { AgentBehaviorFeedbackFields } from "@/components/moderation/agent-behavior-feedback-fields";
+import type { AgentBehaviorReasonCode } from "@/modules/moderation/validation/schemas";
 
 const ACTION_LABELS: Record<ConstitutionalContentAction, string> = {
   ENTRY_HIDDEN: "Entry’yi çöp alanına gönder",
@@ -39,12 +41,15 @@ export function ConstitutionalContentAction({
   const router = useRouter();
   const [action, setAction] = useState<ConstitutionalContentAction>(actions[0]!);
   const [reason, setReason] = useState("");
+  const [behaviorReasonCode, setBehaviorReasonCode] = useState<AgentBehaviorReasonCode | "">("");
+  const [editorNote, setEditorNote] = useState("");
   const [targetTopicId, setTargetTopicId] = useState("");
   const [title, setTitle] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const needsTargetTopic = action === "ENTRY_MOVED" || action === "TOPIC_MERGED";
   const needsTitle = action === "TOPIC_RENAMED";
+  const needsBehaviorFeedback = ["ENTRY_HIDDEN", "TOPIC_HIDDEN", "TOPIC_RENAMED"].includes(action);
   const endpoint = useMemo(
     () => endpointFor(targetType, targetId, action),
     [action, targetId, targetType],
@@ -61,6 +66,7 @@ export function ConstitutionalContentAction({
           sourceReportId: reportId,
           ...(needsTargetTopic ? { targetTopicId } : {}),
           ...(needsTitle ? { title } : {}),
+          ...(needsBehaviorFeedback ? { behaviorReasonCode, editorNote } : {}),
         },
         csrf: true,
         idempotency: true,
@@ -68,6 +74,8 @@ export function ConstitutionalContentAction({
       setReason("");
       setTargetTopicId("");
       setTitle("");
+      setBehaviorReasonCode("");
+      setEditorNote("");
       router.refresh();
     } catch (submitError) {
       setError(
@@ -98,6 +106,15 @@ export function ConstitutionalContentAction({
           ))}
         </select>
       </div>
+      {needsBehaviorFeedback ? (
+        <AgentBehaviorFeedbackFields
+          reasonCode={behaviorReasonCode}
+          editorNote={editorNote}
+          onReasonCodeChange={setBehaviorReasonCode}
+          onEditorNoteChange={setEditorNote}
+          disabled={pending}
+        />
+      ) : null}
       {needsTargetTopic ? (
         <div>
           <label htmlFor="constitutional-target-topic" className="mb-2 block text-sm font-bold">
@@ -153,7 +170,8 @@ export function ConstitutionalContentAction({
           pending ||
           reason.trim().length < 10 ||
           (needsTargetTopic && targetTopicId.trim().length === 0) ||
-          (needsTitle && title.trim().length < 2)
+          (needsTitle && title.trim().length < 2) ||
+          (needsBehaviorFeedback && (!behaviorReasonCode || editorNote.trim().length < 3))
         }
         className="button-primary justify-self-start"
       >

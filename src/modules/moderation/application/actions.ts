@@ -52,6 +52,13 @@ import {
   closeOpenTrashCaseForEntry,
   openModerationHiddenTrashCase,
 } from "@/modules/moderation/application/trash-appeal";
+import { appendAgentBehaviorFeedback } from "@/modules/moderation/application/agent-behavior-feedback";
+
+function agentBehaviorMetadata(input: ModerationReasonInput) {
+  return input.behaviorReasonCode && input.editorNote
+    ? { behaviorReasonCode: input.behaviorReasonCode, editorNote: input.editorNote }
+    : {};
+}
 
 async function recordAction(
   transaction: TransactionClient,
@@ -241,7 +248,15 @@ async function setEntryVisibilityWithAuthorization(
       reason: input.reason,
       before: { status: entry.status },
       after: { status: updated.status },
-      metadata: { topicId: entry.topicId },
+      metadata: { topicId: entry.topicId, ...agentBehaviorMetadata(input) },
+    });
+    await appendAgentBehaviorFeedback(transaction, {
+      targetType: "ENTRY",
+      targetId: entryId,
+      operation: hidden ? "HIDDEN" : "RESTORED",
+      moderationActionId: action.id,
+      reasonInput: input,
+      occurredAt: action.createdAt,
     });
     if (hidden) {
       await openModerationHiddenTrashCase(transaction, {
@@ -316,7 +331,7 @@ export async function setTopicVisibility(
     const updated = await setTopicStatus(transaction, topicId, hidden);
     if (!updated)
       throw new AppError("TOPIC_HIDDEN", 409, "Başlığın durumu eşzamanlı olarak değişti.");
-    await recordAction(transaction, actor, {
+    const action = await recordAction(transaction, actor, {
       ...relation,
       actionType: hidden ? "TOPIC_HIDDEN" : "TOPIC_RESTORED",
       eventType: hidden ? "topic.hidden" : "topic.restored",
@@ -325,6 +340,15 @@ export async function setTopicVisibility(
       reason: input.reason,
       before: { status: topic.status },
       after: { status: updated.status },
+      metadata: agentBehaviorMetadata(input),
+    });
+    await appendAgentBehaviorFeedback(transaction, {
+      targetType: "TOPIC",
+      targetId: topicId,
+      operation: hidden ? "HIDDEN" : "RESTORED",
+      moderationActionId: action.id,
+      reasonInput: input,
+      occurredAt: action.createdAt,
     });
     return updated;
   });
@@ -357,7 +381,7 @@ export async function renameTopic(
       normalizedTitle,
       slug: createTopicSlug(title),
     });
-    await recordAction(transaction, actor, {
+    const action = await recordAction(transaction, actor, {
       ...relation,
       actionType: "TOPIC_RENAMED",
       eventType: "topic.renamed",
@@ -374,7 +398,15 @@ export async function renameTopic(
         normalizedTitle: updated.normalizedTitle,
         slug: updated.slug,
       },
-      metadata: { previousTitle: topic.title, title },
+      metadata: { previousTitle: topic.title, title, ...agentBehaviorMetadata(input) },
+    });
+    await appendAgentBehaviorFeedback(transaction, {
+      targetType: "TOPIC",
+      targetId: topicId,
+      operation: "RENAMED",
+      moderationActionId: action.id,
+      reasonInput: input,
+      occurredAt: action.createdAt,
     });
     return updated;
   });

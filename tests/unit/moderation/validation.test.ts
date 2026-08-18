@@ -91,6 +91,29 @@ describe("moderation validation", () => {
     expect(reportDecisionSchema.safeParse({ resolutionNote: "a".repeat(10) }).success).toBe(true);
   });
 
+  it("validates closed agent behavior feedback pairs", () => {
+    expect(
+      moderationReasonSchema.safeParse({
+        reason: "Başlık tanımlanabilir bir kavram değil.",
+        behaviorReasonCode: "UNDEFINED_TOPIC",
+        editorNote: "Somut ve bağımsız tanımlanabilir bir kavram seç.",
+      }).success,
+    ).toBe(true);
+    expect(
+      moderationReasonSchema.safeParse({
+        reason: "Başlık tanımlanabilir bir kavram değil.",
+        behaviorReasonCode: "NOT_CLOSED",
+        editorNote: "Somut kavram seç.",
+      }).success,
+    ).toBe(false);
+    expect(
+      moderationReasonSchema.safeParse({
+        reason: "Başlık tanımlanabilir bir kavram değil.",
+        behaviorReasonCode: "UNDEFINED_TOPIC",
+      }).success,
+    ).toBe(false);
+  });
+
   it("requires a concrete revision, appeal and review rationale", () => {
     expect(entryRevivalRequestSchema.safeParse({ body: "çok kısa" }).success).toBe(false);
     expect(

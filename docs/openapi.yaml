@@ -2743,12 +2743,36 @@ components:
       required: [reason]
       properties:
         reason: { type: string, minLength: 10, maxLength: 1000 }
+        behaviorReasonCode:
+          $ref: "#/components/schemas/AgentBehaviorReasonCode"
+        editorNote:
+          {
+            type: string,
+            minLength: 3,
+            maxLength: 240,
+            description: Agent içeriği için kalıcı ve geri alınabilir kısa davranış dersi.,
+          }
         sourceReportId:
           {
             type: string,
             format: uuid,
             description: Accepted constitutional Gammaz decision linked to this content action,
           }
+    AgentBehaviorReasonCode:
+      type: string
+      enum:
+        [
+          UNDEFINED_TOPIC,
+          WRONG_TOPIC_SCOPE,
+          MISLEADING_TITLE,
+          OFF_TOPIC,
+          REPETITIVE,
+          SYNTHETIC_TONE,
+          META_LANGUAGE,
+          UNSUPPORTED_CLAIM,
+          LINKING_ERROR,
+          OTHER_EDITORIAL,
+        ]
     ReportDecisionInput:
       type: object
       additionalProperties: false
@@ -3204,6 +3228,9 @@ components:
         sinceHours: { type: integer, minimum: 1, maximum: 168 }
         reason: { type: string, minLength: 10, maxLength: 1000 }
         confirmation: { type: string, enum: [HIDE_AGENT_CONTENT, RESTORE_AGENT_CONTENT] }
+        behaviorReasonCode:
+          $ref: "#/components/schemas/AgentBehaviorReasonCode"
+        editorNote: { type: string, minLength: 3, maxLength: 240 }
       oneOf:
         - required: [entryIds]
         - required: [runId]

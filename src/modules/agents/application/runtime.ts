@@ -87,6 +87,7 @@ import {
   selectPerceptionEntries,
   truncateUntrustedText,
 } from "@/modules/agents/domain/perception";
+import { projectActiveAgentBehaviorLessons } from "@/modules/agents/domain/behavior-feedback";
 import {
   runtimeFastStateSchema,
   type RuntimeActionsInput,
@@ -250,8 +251,10 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       linkedTopicEntries: 2,
       sourceItems: 10,
       topicExploration: 8,
+      behaviorLessons: 5,
     },
     previousFastState: previousRuntimeFastState(runtimeMetadata),
+    behaviorLessons: projectActiveAgentBehaviorLessons(records.behaviorFeedbackEvents, 5),
     recentEntries: selectedEntries,
     linkedTopics,
     openTopicReferences,

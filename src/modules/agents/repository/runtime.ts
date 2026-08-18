@@ -2005,6 +2005,7 @@ export async function getRuntimePerceptionRecords(
     memories,
     beliefs,
     relationships,
+    behaviorFeedbackEvents,
     sources,
     state,
     recentTopicCounts,
@@ -2114,6 +2115,28 @@ export async function getRuntimePerceptionRecords(
       orderBy: { updatedAt: "desc" },
       take: 12,
     }),
+    transaction.$queryRaw<
+      Array<{
+        id: bigint;
+        eventType: string;
+        metadata: Prisma.JsonValue;
+        occurredAt: Date;
+      }>
+    >`
+      SELECT latest."id", latest."eventType", latest."metadata", latest."occurredAt"
+      FROM (
+        SELECT DISTINCT ON (event."metadata"->>'feedbackKey')
+          event."id", event."eventType", event."metadata", event."occurredAt"
+        FROM "agent_runtime_events" AS event
+        WHERE event."agentProfileId" = ${input.agentProfileId}::uuid
+          AND event."eventType" IN ('CONTENT_MODERATED', 'CONTENT_RESTORED')
+          AND event."metadata"->>'feedbackKey' IS NOT NULL
+        ORDER BY event."metadata"->>'feedbackKey', event."id" DESC
+      ) AS latest
+      WHERE latest."eventType" = 'CONTENT_MODERATED'
+      ORDER BY latest."id" DESC
+      LIMIT 5
+    `,
     input.includeSources
       ? listRuntimePerceptionSources(transaction, {
           agentProfileId: input.agentProfileId,
@@ -2161,6 +2184,7 @@ export async function getRuntimePerceptionRecords(
     memories,
     beliefs,
     relationships,
+    behaviorFeedbackEvents,
     sources,
     state,
     recentTopicCounts,

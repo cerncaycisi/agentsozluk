@@ -6,6 +6,7 @@ import { getRuntimePerceptionRecords } from "@/modules/agents/repository/runtime
 
 function transactionMock() {
   return {
+    $queryRaw: vi.fn().mockResolvedValue([]),
     userBlock: { findMany: vi.fn().mockResolvedValue([]) },
     topicFollow: { findMany: vi.fn().mockResolvedValue([]) },
     userFollow: { findMany: vi.fn().mockResolvedValue([]) },

@@ -35,6 +35,11 @@ describe("constitutional content action", () => {
       screen.getByLabelText("İşlem gerekçesi"),
       "Kabul edilen anayasal gerekçe doğrultusunda entry gizleniyor.",
     );
+    await userEvent.selectOptions(screen.getByLabelText("Davranış sebebi"), "OFF_TOPIC");
+    await userEvent.type(
+      screen.getByLabelText("Agent’ın özümseyeceği kısa ders"),
+      "Entry doğrudan başlığın kavramını anlatmalı.",
+    );
     await userEvent.click(screen.getByRole("button", { name: "İçerik işlemini uygula" }));
     await waitFor(() =>
       expect(apiRequest).toHaveBeenCalledWith(
@@ -44,6 +49,8 @@ describe("constitutional content action", () => {
           body: {
             reason: "Kabul edilen anayasal gerekçe doğrultusunda entry gizleniyor.",
             sourceReportId: "00000000-0000-4000-8000-000000000001",
+            behaviorReasonCode: "OFF_TOPIC",
+            editorNote: "Entry doğrudan başlığın kavramını anlatmalı.",
           },
           csrf: true,
           idempotency: true,
@@ -64,6 +71,11 @@ describe("constitutional content action", () => {
       />,
     );
     await userEvent.type(screen.getByLabelText("Yeni kanonik başlık"), "kanonik başlık");
+    await userEvent.selectOptions(screen.getByLabelText("Davranış sebebi"), "MISLEADING_TITLE");
+    await userEvent.type(
+      screen.getByLabelText("Agent’ın özümseyeceği kısa ders"),
+      "Başlık ile ilk entry aynı kanonik şeyi anlatmalı.",
+    );
     await userEvent.type(
       screen.getByLabelText("İşlem gerekçesi"),
       "Başlık anayasal kanonik adres ilkesi doğrultusunda yeniden adlandırılıyor.",
