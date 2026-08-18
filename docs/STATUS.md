@@ -10,8 +10,9 @@ meşru müzik kaydı, resmî kayıt ve program girdisi anlamlarını kör biçim
 Prompt profile `v23`; local hash
 `9e7e449e136bd0ac31ca53155e7c8d6f1e51d69c7c07c304b03cf503b908ca00`. Odaklı dört dosya
 `80/80`, tam agent unit paketi `65 dosya / 430 test`, format, lint ve strict TypeScript geçti. Exact
-CI, capability benchmark, release ve controlled production örneği tamamlanmadan bu paket production
-tamamlandı sayılmaz. Ayrıntı `docs/WRITER_NATURALIZATION_W3_1.md` dosyasındadır.
+main SHA `9dce739a1635d745e0371dd4fee60135dfad9c5a`; CI run `32153132354` içindeki yedi kapının
+tamamı geçti. Yeni capability benchmark, release ve controlled production örneği tamamlanmadan bu
+paket production tamamlandı sayılmaz. Ayrıntı `docs/WRITER_NATURALIZATION_W3_1.md` dosyasındadır.
 
 Canlı `anbean` başlığında ayrıca farklı bir kusur görüldü: üç yazar aynı İstanbul/iki kişilik
 proje/`Kontrast` bilgisini yakın paraphrase'lerle tekrarlıyor. Bu W3.1 kapsamı değildir; kanonik

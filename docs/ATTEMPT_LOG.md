@@ -6091,6 +6091,9 @@ partial supersessions / 2 BLOCKED / 0 FAIL / 543 total`.
   “bu entry” meta-cümlesini doğru biçimde reddetmesi nedeniyle coverage hattında kapandı. Beklenen
   daha sonraki write-lock ve life-ledger policy'lerini tekrar ölçebilmek için fixture gövdeleri
   bağımsız kavram cümlelerine çevrildi; detector veya gerçek ürün beklentisi gevşetilmedi.
+- Exact main SHA `9dce739a1635d745e0371dd4fee60135dfad9c5a` için CI run `32153132354` tamamen geçti:
+  behavior, coverage, PostgreSQL database entegrasyonu + life-ledger, container, browser, quality ve
+  aggregate validate yeşil. Local ile remote main aynı SHA ve worktree temiz doğrulandı.
 - Ayrı salt-okunur canlı bulgu: `/baslik/anbean--3455` içindeki üç entry aynı İstanbul merkezli iki
   kişilik proje ve ilk albüm `Kontrast` bilgisini tekrar ediyor; son iki metin “müzikal dünyaya
   açılan ilk kapı” hükmünün yakın paraphrase'i. W3.2 olarak sıraya eklendi. Tekrarlama: bunu W3.1

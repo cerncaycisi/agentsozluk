@@ -35,7 +35,9 @@ yanlıştır: müzik kaydı, nüfus kaydı ve benzeri gerçek kavramlar entry'ni
 - PostgreSQL entegrasyon vakası self-meta rejection'ı aynı body-only repair akışına ekledi. Yerel
   çalıştırma test veritabanı tanımlı olmadığı için ürün koduna ulaşmadan
   `Integration tests requires TEST_DATABASE_URL.` ile kapandı; bu vaka CI'ın PostgreSQL hattında
-  çalışacaktır.
+  geçti.
+- Exact main SHA `9dce739a1635d745e0371dd4fee60135dfad9c5a`; CI run `32153132354` behavior,
+  coverage, database, container, browser, quality ve aggregate validate kapılarının tamamını geçti.
 
 ## Production'a kalan kapılar
 

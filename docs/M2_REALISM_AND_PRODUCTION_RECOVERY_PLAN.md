@@ -1525,9 +1525,11 @@ yetkinliği, yaşanmış kişisel deneyim veya demografik stereotip uydurma.
    fail-closed yakalar; gerçek müzik kaydı, resmî kayıt veya program girdisi gibi meşru anlamları kör
    yasaklamaz. Local prompt hash'i
    `9e7e449e136bd0ac31ca53155e7c8d6f1e51d69c7c07c304b03cf503b908ca00`; odaklı testler `80/80`,
-   tam agent unit paketi `65 dosya / 430 test`, format, lint ve strict TypeScript PASS. Ayrıntı
-   `docs/WRITER_NATURALIZATION_W3_1.md` dosyasındadır. Production tamamlanması için exact CI,
-   capability paketi, release ve kontrollü doğal örnek hâlâ gerekir.
+   tam agent unit paketi `65 dosya / 430 test`, format, lint ve strict TypeScript PASS. Exact main
+   SHA `9dce739a1635d745e0371dd4fee60135dfad9c5a`; CI run `32153132354` behavior, coverage,
+   database, container, browser, quality ve aggregate validate kapılarının tamamını geçti. Ayrıntı
+   `docs/WRITER_NATURALIZATION_W3_1.md` dosyasındadır. Production tamamlanması için yeni capability
+   paketi, release ve kontrollü doğal örnek hâlâ gerekir.
 
    **W3.2 — W3.1'den sonraki dar takip: çapraz-yazar anlamsal yenilik.** Canlı `anbean` başlığındaki
    üç entry'nin üçü de aynı iki çekirdek bilgiyi — İstanbul merkezli iki kişilik proje ve ilk albüm
