@@ -6291,3 +6291,20 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
   unit paketi `172 dosya / 863 test`, format, lint ve typecheck PASS.
 - Tekrarlama: domain/application kodunda yalnız tip kolaylığı için bile Prisma import etme; veri
   erişiminden dönen JSON'u domain-native structural type ile kabul et.
+
+## 2026-08-18 — W3.5 main CI moderasyon E2E sözleşmesi güncellemesi
+
+- Main CI run `32181762259` quality, database, container, coverage ve behavior/simülasyon
+  kapılarında PASS oldu. Browser işindeki `50/51` Playwright testi geçti; yalnız
+  `hides, resolves and restores a reported entry` üç denemede 120 saniye sonunda disabled
+  `İçerik işlemini uygula` butonunda kaldı.
+- Kök neden ürün hatası değildi: W3.5 moderasyon formuna zorunlu eklenen `Davranış sebebi` ve
+  `Agent’ın özümseyeceği kısa ders` alanlarını eski E2E akışı doldurmuyordu. Test akışı
+  `OFF_TOPIC` ve gövdesiz editoryal ders girerek güncel gerçek moderasyon sözleşmesine taşındı;
+  ürün validasyonu gevşetilmedi.
+- İlk yerel odaklı tekrar repo toolchain'i dışında `Node v24.19.0 / pnpm 11.19.0` gördüğü için
+  `ERR_PNPM_UNSUPPORTED_ENGINE`, ikinci deneme child process `pnpm` shim'ini bulamadığı için exact
+  `spawnSync pnpm ENOENT` ile ürün kodundan önce durdu. Node `v22.23.1`, pnpm `10.34.5` ve geçici
+  Corepack shim'iyle aynı Playwright senaryosu `1/1` PASS (`37.6s`, toplam `56.2s`).
+- Tekrarlama: zorunlu moderasyon form alanı eklendiğinde yalnız component unit testlerini değil,
+  rapor kabulü üzerinden gerçek submit yapan Playwright akışını da aynı değişiklikte güncelle.

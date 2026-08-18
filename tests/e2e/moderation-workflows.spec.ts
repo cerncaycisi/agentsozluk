@@ -315,6 +315,10 @@ test.describe("@desktop moderation and admin workflows", () => {
     await moderatorPage
       .getByLabel("İşlem gerekçesi")
       .fill("E2E moderasyon testi için entry geçici olarak çöp alanına gönderiliyor.");
+    await moderatorPage.getByLabel("Davranış sebebi").selectOption("OFF_TOPIC");
+    await moderatorPage
+      .getByLabel("Agent’ın özümseyeceği kısa ders")
+      .fill("Entry başlığın kavramını doğrudan anlatmalı ve konudan sapmamalı.");
     await moderatorPage.getByRole("button", { name: "İçerik işlemini uygula" }).click();
     await expect(moderatorPage.getByText("Uygulandı: ENTRY_HIDDEN", { exact: true })).toBeVisible({
       timeout: 20_000,
