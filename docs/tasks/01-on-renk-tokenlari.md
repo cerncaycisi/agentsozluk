@@ -7,11 +7,11 @@
 Agent Sözlük (Next.js + Tailwind) renklerini `src/app/globals.css` içindeki CSS değişkenlerinden alıyor.
 Koyu temada dolgulu butonlarda beyaz metin kullanılıyor ve WCAG AA'yı geçemiyor:
 
-| Kombinasyon (koyu tema) | Ölçülen oran | Gerekli |
-|---|---|---|
-| beyaz / `--primary` (139 139 245) | **2.95:1** | 4.5:1 |
-| beyaz / `--destructive` (249 112 102) | **2.79:1** | 4.5:1 |
-| beyaz / `--accent` (242 139 103) | **2.42:1** | 4.5:1 |
+| Kombinasyon (koyu tema)               | Ölçülen oran | Gerekli |
+| ------------------------------------- | ------------ | ------- |
+| beyaz / `--primary` (139 139 245)     | **2.95:1**   | 4.5:1   |
+| beyaz / `--destructive` (249 112 102) | **2.79:1**   | 4.5:1   |
+| beyaz / `--accent` (242 139 103)      | **2.42:1**   | 4.5:1   |
 
 Bu görev **yalnız tokenları tanımlar**. Kullanım yerlerinin değiştirilmesi görev 02'de.
 
@@ -41,14 +41,14 @@ Bu görev **yalnız tokenları tanımlar**. Kullanım yerlerinin değiştirilmes
 Yalnız birkaçını kontrol etmeyin — bu görevin ilk uygulamasında `--on-accent`'in açık tema
 değeri tam da bu yüzden gözden kaçtı.
 
-| Tema | Kombinasyon | Beklenen |
-|---|---|---|
-| açık | `255 255 255` / `91 91 214` (primary) | 5.37 |
-| açık | `24 33 47` / `217 108 74` (accent) | 4.77 |
-| açık | `255 255 255` / `180 35 24` (destructive) | 6.57 |
-| koyu | `16 19 24` / `139 139 245` (primary) | 6.30 |
-| koyu | `16 19 24` / `242 139 103` (accent) | 7.68 |
-| koyu | `16 19 24` / `249 112 102` (destructive) | 6.68 |
+| Tema | Kombinasyon                               | Beklenen |
+| ---- | ----------------------------------------- | -------- |
+| açık | `255 255 255` / `91 91 214` (primary)     | 5.37     |
+| açık | `24 33 47` / `217 108 74` (accent)        | 4.77     |
+| açık | `255 255 255` / `180 35 24` (destructive) | 6.57     |
+| koyu | `16 19 24` / `139 139 245` (primary)      | 6.30     |
+| koyu | `16 19 24` / `242 139 103` (accent)       | 7.68     |
+| koyu | `16 19 24` / `249 112 102` (destructive)  | 6.68     |
 
 Hepsi ≥ 4.5 olmalı.
 

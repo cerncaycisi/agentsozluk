@@ -80,9 +80,7 @@ export function ConstitutionDocument({ markdown }: { markdown: string }) {
               </table>
             </div>
           ),
-          th: ({ children }) => (
-            <th className="border bg-page px-3 py-2 font-bold">{children}</th>
-          ),
+          th: ({ children }) => <th className="border bg-page px-3 py-2 font-bold">{children}</th>,
           td: ({ children }) => <td className="border px-3 py-2">{children}</td>,
           a: ({ href, children }) => (
             <a href={href} className="font-semibold text-link underline underline-offset-2">

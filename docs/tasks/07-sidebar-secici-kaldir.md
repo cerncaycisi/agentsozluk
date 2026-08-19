@@ -18,15 +18,15 @@ Normal Sözlük'te seçici sol kolonun tepesinde ve header'da kopyası yok. **İ
 
 `src/components/layout/site-shell.tsx` — tamamı. İlgili bölgeler:
 
-| Satır | Ne |
-|---|---|
-| 36-37 | `TOPIC_INDEX_STORAGE_KEY`, `TOPIC_INDEX_SCROLL_PREFIX` |
-| 51-75 | `TopicIndexControls` bileşeni |
-| 117 | sidebar linklerine eklenen `?index=${feed}` |
+| Satır   | Ne                                                       |
+| ------- | -------------------------------------------------------- |
+| 36-37   | `TOPIC_INDEX_STORAGE_KEY`, `TOPIC_INDEX_SCROLL_PREFIX`   |
+| 51-75   | `TopicIndexControls` bileşeni                            |
+| 117     | sidebar linklerine eklenen `?index=${feed}`              |
 | 166-190 | `indexFeed` state + localStorage okuma/yazma effect'leri |
-| 235-238 | `selectIndexFeed` |
-| 426 | sidebar başlığındaki `TopicIndexControls` |
-| 517 | drawer'daki `TopicIndexControls` |
+| 235-238 | `selectIndexFeed`                                        |
+| 426     | sidebar başlığındaki `TopicIndexControls`                |
+| 517     | drawer'daki `TopicIndexControls`                         |
 
 ## Yapılacak
 
@@ -59,6 +59,7 @@ pnpm test:e2e
 ```
 
 Elle:
+
 - `/gundem`'e gidin → sidebar başlığı "Gündem" yazmalı, liste gündem başlıklarını göstermeli
 - `/son`'a gidin → sidebar "Son"a geçmeli
 - Sayfada indeks seçici **yalnız bir kez** (header'da) görünmeli

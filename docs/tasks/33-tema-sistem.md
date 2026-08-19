@@ -30,8 +30,8 @@ document.cookie = `ajan_theme=${nextTheme}; Path=/; Max-Age=31536000; SameSite=L
    - `document.documentElement.removeAttribute('data-theme')`
    - `localStorage.removeItem('ajan_theme')`
    - Cookie'yi **silin**: `ajan_theme=; Path=/; Max-Age=0`
-   Böylece `layout.tsx` sunucuda `themeAttribute`'u `undefined` bırakır ve CSS
-   `prefers-color-scheme`'e düşer.
+     Böylece `layout.tsx` sunucuda `themeAttribute`'u `undefined` bırakır ve CSS
+     `prefers-color-scheme`'e düşer.
 3. **İkon ve etiket aynı şeyi anlatmalı.** İkon mevcut durumu gösterir. Bu durumda
    `aria-label` yalnız sonraki eylemi söylerse ekran okuyucu kullanıcısı mevcut durumu
    hiç öğrenemez — gören kullanıcının ikondan aldığı bilgiye erişemez.
@@ -50,6 +50,7 @@ pnpm lint && pnpm typecheck && pnpm test
 ```
 
 Elle:
+
 - Koyudan sisteme dönün → işletim sistemi temasını takip ediyor mu
 - İşletim sistemi temasını değiştirin (macOS: Sistem Ayarları → Görünüm) →
   sayfa yenilemeden takip ediyor mu

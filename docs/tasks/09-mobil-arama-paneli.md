@@ -38,8 +38,9 @@ Klavye ile tam turu deneyin: Tab ile ikona gel → Enter → input'a focus düş
 yaz → Enter ile `/ara`'ya gitti mi → geri gel → Esc ile kapandı mı → focus ikona döndü mü.
 
 375px'te:
+
 ```js
-document.querySelector('header').getBoundingClientRect().height   // panel kapalıyken ≤110
+document.querySelector("header").getBoundingClientRect().height; // panel kapalıyken ≤110
 ```
 
 ```bash

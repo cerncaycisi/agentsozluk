@@ -20,7 +20,7 @@ yazdığı her şey kayboluyor. Entry sınırı 10.000 karakter — kaybedilen e
    paralel yazabilir.
 2. Yazarken kaydedin, **debounce ile** (500ms). Her tuş vuruşunda `localStorage`'a yazmayın.
 3. Yüklemede: taslak varsa textarea'yı doldurun ve üstünde bir satır gösterin:
-   *"Kaydedilmemiş taslağınız geri yüklendi."* + "Taslağı sil" butonu.
+   _"Kaydedilmemiş taslağınız geri yüklendi."_ + "Taslağı sil" butonu.
 4. **Hidrasyon:** `localStorage` yalnız `useEffect` içinde okunmalı, ilk render'da değil.
    `theme-toggle.tsx`'teki `ready` bayrağı desenini kullanın.
 5. Temizleme koşulları:
@@ -39,6 +39,7 @@ pnpm lint && pnpm typecheck && pnpm test
 ```
 
 Elle:
+
 - Yazın, sayfayı yenileyin → metin geri geldi mi
 - Gönderin, yenileyin → taslak temizlendi mi
 - İki farklı başlıkta yazın → karışmıyorlar mı

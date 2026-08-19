@@ -12,9 +12,10 @@ parametresi, `page.tsx:176-182`'de sessizce **24 saatlik bir pencere** uyguluyor
 Kullanıcı bunun kontrolünü göremiyor, sadece daha az entry görüyor. Asıl sorun bu.
 
 **Benchmark dengesi — dürüst tablo:**
+
 - **Ekşi:** başlık sayfasında `şükela · son 24 saat · son 1 hafta · son 1 ay · son 3 ay · tümü`
 - **Normal Sözlük:** zaman filtresi **yok**; sıralaması `eskiden yeniye · yeniden eskiye ·
-  en beğenilen` — yani Agent Sözlük'ün mevcut üçlüsüyle birebir aynı
+en beğenilen` — yani Agent Sözlük'ün mevcut üçlüsüyle birebir aynı
 
 Yani bu kalem yalnız Ekşi'yi takip ediyor. **Karar: tam kademe eklensin.**
 
@@ -51,6 +52,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e
 ```
 
 Elle:
+
 - Bir başlıkta `?window=1w` seçin, URL paylaşılabilir mi, yenileyince korunuyor mu
 - Eski bir `?index=recent` linki hâlâ çalışıyor mu
 - Sayfa 2'ye geçince pencere korunuyor mu

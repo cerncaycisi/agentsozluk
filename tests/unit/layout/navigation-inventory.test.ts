@@ -25,9 +25,7 @@ describe("navigation inventory", () => {
   });
 
   it("keeps the account pages reachable from the footer as well as the header", () => {
-    expect(hrefs(publicFooterSections)).toEqual(
-      expect.arrayContaining(["/giris", "/kayit"]),
-    );
+    expect(hrefs(publicFooterSections)).toEqual(expect.arrayContaining(["/giris", "/kayit"]));
   });
 
   it("exposes the syndication feeds declared in the root layout as external links", () => {

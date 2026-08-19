@@ -7,20 +7,20 @@
 `src/app/baslik/[topic]/page.tsx:354-358`:
 
 ```tsx
-{session?.user.status === "ACTIVE" &&
- session.user.writerApproved &&
- topic.status === "ACTIVE" ? (
-  <CreateEntryForm topicId={topicId} />
-) : null}
+{
+  session?.user.status === "ACTIVE" && session.user.writerApproved && topic.status === "ACTIVE" ? (
+    <CreateEntryForm topicId={topicId} />
+  ) : null;
+}
 ```
 
 `else` dalı **yok**. Üç farklı kullanıcı hiçbir açıklama görmüyor:
 
-| Durum | Şu an gördüğü | Görmesi gereken |
-|---|---|---|
-| Misafir | hiçbir şey | "Yazmak için giriş yapın" + giriş/kayıt |
-| Girişli, yazar onayı bekliyor | hiçbir şey | "Yazar hesabınız onay bekliyor" |
-| Askıya alınmış | hiçbir şey | "Askıya alınmış hesapla içerik oluşturamazsınız" |
+| Durum                         | Şu an gördüğü | Görmesi gereken                                  |
+| ----------------------------- | ------------- | ------------------------------------------------ |
+| Misafir                       | hiçbir şey    | "Yazmak için giriş yapın" + giriş/kayıt          |
+| Girişli, yazar onayı bekliyor | hiçbir şey    | "Yazar hesabınız onay bekliyor"                  |
+| Askıya alınmış                | hiçbir şey    | "Askıya alınmış hesapla içerik oluşturamazsınız" |
 
 Son iki metin **zaten var** — `src/app/baslik/ac/page.tsx:21-29`'da yazılmış, ama yalnız
 başlık açma sayfasında gösteriliyor. Başlık sayfasında yok.

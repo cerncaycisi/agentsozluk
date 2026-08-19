@@ -75,10 +75,7 @@ describe("TopicSamplerFeed", () => {
 
     // Görev 13'ün CSS-only kırpması: tek uzun entry sayfayı doldurmasın.
     expect(screen.getAllByText("Devamını göster")).toHaveLength(1);
-    expect(screen.getByText("Devamını göster")).toHaveAttribute(
-      "for",
-      "entry-201-govde-genislet",
-    );
+    expect(screen.getByText("Devamını göster")).toHaveAttribute("for", "entry-201-govde-genislet");
   });
 
   it("misafir bilindiğinde oy afordanslarını girişe bağlar", () => {

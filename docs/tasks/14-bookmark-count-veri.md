@@ -41,6 +41,7 @@ Bu görev **yalnız veri katmanı** — UI değişikliği görev 16'da.
    | **`users/repository/profiles.ts`** | `/yazar/[username]` |
 
    Doğrulama:
+
    ```bash
    grep -rn "_count: { select:" src/modules/
    ```
@@ -48,6 +49,7 @@ Bu görev **yalnız veri katmanı** — UI değişikliği görev 16'da.
    `withEditedIndicator` `_count`'u tamamen düşürüyor (`Omit<T, "_count">`), o yüzden
    sayacı taşıyan yeni bir helper gerekiyor. `withEditedIndicator`'ı **değiştirmeyin** —
    mevcut birim testi ve mutasyon yolları ona bağlı.
+
 3. `EntryPreviewItem` tipine `_count?: { revisions?: number; bookmarks?: number }` şeklinde
    ekleyin — mevcut `revisions` kullanımını kırmayın.
 4. Silinmiş/gizlenmiş entry'lerin favorileri **sayılır, filtre uygulanmaz**. Gerekçe:

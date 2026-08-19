@@ -244,11 +244,9 @@ describe("composer taslak saklama", () => {
   });
 
   it("kota dolduğunda sessizce düşer, yazmayı engellemez", () => {
-    const setItem = vi
-      .spyOn(Storage.prototype, "setItem")
-      .mockImplementation((): never => {
-        throw new DOMException("kota doldu", "QuotaExceededError");
-      });
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation((): never => {
+      throw new DOMException("kota doldu", "QuotaExceededError");
+    });
 
     try {
       const composer = renderComposer();

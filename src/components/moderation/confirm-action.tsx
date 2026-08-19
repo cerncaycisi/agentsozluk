@@ -124,7 +124,9 @@ export function ConfirmAction({
                   (behaviorFeedback && (!behaviorReasonCode || editorNote.trim().length < 3))
                 }
                 className={
-                  destructive ? "button-primary bg-destructive text-on-destructive" : "button-primary"
+                  destructive
+                    ? "button-primary bg-destructive text-on-destructive"
+                    : "button-primary"
                 }
               >
                 {pending ? "İşleniyor…" : "Onayla"}

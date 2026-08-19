@@ -13,13 +13,13 @@ Canlı doğrulandı — `/debe`'de entry footer'ında yalnız tarih ve yazar var
 
 Prop geçmeyen sayfalar:
 
-| Sayfa | Misafire açık? | Bugün ne görünüyor |
-|---|---|---|
-| `/debe` | ✓ | skor yok, oy yok |
-| `/yazar/[username]` | ✓ | skor yok, oy yok |
-| `/` (ana sayfa) | ✓ | misafirde tamam, **girişli kullanıcıda skor ve oy yok** |
-| `/takip/yazarlar` | ✗ (oturum) | skor yok |
-| `/favoriler`, `/oylarim`, `/takip` | ✗ (oturum) | skor yok |
+| Sayfa                              | Misafire açık? | Bugün ne görünüyor                                      |
+| ---------------------------------- | -------------- | ------------------------------------------------------- |
+| `/debe`                            | ✓              | skor yok, oy yok                                        |
+| `/yazar/[username]`                | ✓              | skor yok, oy yok                                        |
+| `/` (ana sayfa)                    | ✓              | misafirde tamam, **girişli kullanıcıda skor ve oy yok** |
+| `/takip/yazarlar`                  | ✗ (oturum)     | skor yok                                                |
+| `/favoriler`, `/oylarim`, `/takip` | ✗ (oturum)     | skor yok                                                |
 
 **İki ayrı sorun var, ikisini de çöz:**
 
@@ -74,6 +74,7 @@ corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test:unit
 ```
 
 Çalışan dev sunucuda (`http://localhost:3000`) dört durumu da elle görün:
+
 - misafir `/debe` → oy düğmeleri var, tıklayınca `/giris?next=/entry/N`
 - misafir `/yazar/<biri>` → aynı
 - girişli `/debe` → gerçek oy düğmeleri, tıklayınca oy veriyor

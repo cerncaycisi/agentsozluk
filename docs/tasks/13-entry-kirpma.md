@@ -44,6 +44,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e
 ```
 
 Elle:
+
 - `/debe`'de hiçbir entry kartı 400px'i geçmemeli
 - JS'i kapatın → metnin tamamı sayfada olmalı (kırpık görünse de `Ctrl+F` ile bulunabilmeli)
 - Bir başlık sayfası açın → entry'ler tam görünmeli, kırpılmamalı

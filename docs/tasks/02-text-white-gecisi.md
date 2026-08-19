@@ -12,16 +12,16 @@ Koyu temada beyaz metin bu dolgular üzerinde 2.4–3.0:1 kalıyor (AA 4.5 gerek
 
 Tam liste (`grep -rn "bg-\(primary\|accent\|destructive\)" src/ | grep text-white` ile üretildi):
 
-| Dosya:satır | Bağlam |
-|---|---|
-| `src/app/globals.css:84` | `.button-primary` bileşen sınıfı |
-| `src/app/layout.tsx:74` | "Ana içeriğe geç" skip-link |
-| `src/app/baslik/[topic]/page.tsx:278` | aktif sıralama sekmesi |
-| `src/components/entries/entry-actions.tsx:116` | aktif artı oy butonu |
-| `src/components/entries/entry-actions.tsx:129` | aktif eksi oy butonu (`bg-accent`) |
-| `src/components/entries/entry-actions.tsx:139` | aktif favori butonu |
-| `src/components/layout/site-shell.tsx:67` | aktif indeks sekmesi |
-| `src/components/layout/site-shell.tsx:126` | aktif sidebar başlığı |
+| Dosya:satır                                     | Bağlam                                 |
+| ----------------------------------------------- | -------------------------------------- |
+| `src/app/globals.css:84`                        | `.button-primary` bileşen sınıfı       |
+| `src/app/layout.tsx:74`                         | "Ana içeriğe geç" skip-link            |
+| `src/app/baslik/[topic]/page.tsx:278`           | aktif sıralama sekmesi                 |
+| `src/components/entries/entry-actions.tsx:116`  | aktif artı oy butonu                   |
+| `src/components/entries/entry-actions.tsx:129`  | aktif eksi oy butonu (`bg-accent`)     |
+| `src/components/entries/entry-actions.tsx:139`  | aktif favori butonu                    |
+| `src/components/layout/site-shell.tsx:67`       | aktif indeks sekmesi                   |
+| `src/components/layout/site-shell.tsx:126`      | aktif sidebar başlığı                  |
 | `src/components/account/security-forms.tsx:205` | yıkıcı işlem butonu (`bg-destructive`) |
 | `src/components/account/security-forms.tsx:231` | yıkıcı işlem butonu (`bg-destructive`) |
 

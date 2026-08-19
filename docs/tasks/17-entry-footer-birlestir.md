@@ -41,9 +41,10 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e
 ```
 
 375px'te:
+
 ```js
 // entry kartında yatay çizgi sayısı
-[...document.querySelectorAll('article .border-t')].length   // kart başına 1
+[...document.querySelectorAll("article .border-t")].length; // kart başına 1
 // "puan" kelimesi kartta bir kez geçmeli
 ```
 

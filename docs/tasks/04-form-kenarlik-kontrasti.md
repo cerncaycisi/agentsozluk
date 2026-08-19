@@ -7,8 +7,8 @@
 `globals.css`'te `* { border-color: rgb(var(--border)); }` ile tüm kenarlıklar tek bir tokendan geliyor.
 Ölçülen kontrast:
 
-| | oran |
-|---|---|
+|                                 | oran   |
+| ------------------------------- | ------ |
 | `--border` / `--surface` (açık) | 1.36:1 |
 | `--border` / `--surface` (koyu) | 1.40:1 |
 
@@ -35,7 +35,7 @@ başlayıp bittiğini görmesi gerekiyor. Şu an input'lar zeminden neredeyse ay
               print(f"{p}:{t[:m.start()].count(chr(10))+1}")
   EOF
   ```
-  Bu tarama sonrası kalan 16 ham kontrolün **hepsi `src/app/moderasyon/**` altındadır** ve
+  Bu tarama sonrası kalan 16 ham kontrolün **hepsi `src/app/moderasyon/**` altındadır\*\* ve
   plan gereği kapsam dışıdır. Genel yüzeyde kalan yok.
 
 ## Yapılacak
@@ -48,6 +48,7 @@ başlayıp bittiğini görmesi gerekiyor. Şu an input'lar zeminden neredeyse ay
    **Sınırlayıcı çift her temada farklı:** açık temada `--page` (247 247 242) daha zor,
    koyu temada `--surface` (25 30 39) daha zor. Input'lar `bg-page` kullanıyor ama kart
    içinde surface'a komşu olabiliyor — ikisini birden ≥3 tutun, yalnız birine bakmayın.
+
 2. `@layer components` içine:
    ```css
    .field-border {
@@ -64,6 +65,7 @@ başlayıp bittiğini görmesi gerekiyor. Şu an input'lar zeminden neredeyse ay
 ## Doğrulama
 
 Kontrast hesabı — ikisi de ≥ 3.0 olmalı:
+
 - açık tema `--border-strong` / `--surface` (255 255 255)
 - koyu tema `--border-strong` / `--surface` (25 30 39)
 

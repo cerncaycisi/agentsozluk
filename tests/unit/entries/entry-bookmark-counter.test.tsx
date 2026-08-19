@@ -95,7 +95,7 @@ describe("favori sayacı gösterimi", () => {
     expect(counter?.className).toBe("sr-only");
   });
 
-  it("sayaç `aria-live=\"polite\"` ile duyurulur", () => {
+  it('sayaç `aria-live="polite"` ile duyurulur', () => {
     render(signedIn({ initialBookmarkCount: 3 }));
 
     expect(bookmarkCounter()).toHaveAttribute("aria-live", "polite");
@@ -146,7 +146,7 @@ describe("favori sayacının kart üstünden beslenmesi", () => {
 
     expect(bookmarkCounter()).toHaveTextContent("9 favori");
     // Misafirde sayı değişmiyor; duyurulacak bir güncelleme de yok.
-    expect(container.querySelector('[aria-live]')).toBeNull();
+    expect(container.querySelector("[aria-live]")).toBeNull();
   });
 
   it("misafirde sıfır sayı gizlenir", () => {

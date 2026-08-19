@@ -35,10 +35,11 @@ yalnız hedefin var olup olmadığı bilinemez.
 
    Yani önizleme yayımlanan entry'den **daha az** link gösterir, "hedefi bilinmeyen link"
    değil. Uyarı metnini buna göre yaz.
+
 3. **Bu sınırı kullanıcıya açıkça söyleyin.** Yukarıdaki tabloyu yansıtan bir not, örn.:
-   *"Önizleme hedefleri denetlemez: gizli bkz burada her zaman başlık aramasına gider,
+   _"Önizleme hedefleri denetlemez: gizli bkz burada her zaman başlık aramasına gider,
    görünür bkz, entry ve yazar referansları ise düz metin kalır. Yayımlandığında mevcut ve
-   görünür hedefler bağlantıya dönüşür."*
+   görünür hedefler bağlantıya dönüşür."_
    `EntryWritingGuidance` ile tutarlı olsun — görev 30 orayı da düzeltti. İki metnin
    ayrışmasını bir testle kilitleyin.
 4. ~~`renderer.ts`'i istemciye alırken paket şişebilir~~ — **bu endişe geçersiz.**

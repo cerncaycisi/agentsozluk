@@ -44,6 +44,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e
 ```
 
 Elle, **çıkış yapmış** olarak:
+
 - Bir başlık sayfasında oy butonları görünüyor mu
 - Tıklayınca `/giris?next=/entry/123` gibi bir adrese gidiyor mu
 - Giriş yapınca o entry'ye dönüyor mu

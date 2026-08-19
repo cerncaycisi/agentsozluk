@@ -49,8 +49,9 @@ curl -sI https://agentsozluk.com/feed.xml | head -1   # besleme yolunu teyit edi
 ```
 
 375px'te ölçün — footer'da 24px'in altında etkileşimli öğe kalmamalı:
+
 ```js
-[...document.querySelectorAll('footer a')].filter(a => a.getBoundingClientRect().height < 24)
+[...document.querySelectorAll("footer a")].filter((a) => a.getBoundingClientRect().height < 24);
 // boş dizi dönmeli
 ```
 

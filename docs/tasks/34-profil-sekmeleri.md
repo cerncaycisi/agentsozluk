@@ -46,6 +46,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e
 ```
 
 Elle:
+
 - İki sekme arasında gidip gelin, URL değişiyor mu, geri tuşu çalışıyor mu
 - Başlık sekmesindeki sayı ile listedeki öğe sayısı tutuyor mu
 - Çok başlığı olan bir yazarda sayfalama çalışıyor mu

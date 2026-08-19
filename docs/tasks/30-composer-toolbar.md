@@ -7,12 +7,12 @@
 Sözlük, entry gövdesinde dört özel sözdizimi destekliyor
 (`src/modules/entries/domain/renderer.ts`, `referencePattern`):
 
-| Sözdizimi | Anlamı |
-|---|---|
-| `[[başlık adı]]` | gizli bkz — yalnız başlık adı görünür |
-| `(bkz: başlık adı)` | görünür bkz |
-| `(bkz: #123)` | entry referansı |
-| `@kullaniciadi` | yazar referansı |
+| Sözdizimi           | Anlamı                                |
+| ------------------- | ------------------------------------- |
+| `[[başlık adı]]`    | gizli bkz — yalnız başlık adı görünür |
+| `(bkz: başlık adı)` | görünür bkz                           |
+| `(bkz: #123)`       | entry referansı                       |
+| `@kullaniciadi`     | yazar referansı                       |
 
 Bunların hiçbiri için **ekleme butonu yok**. Kullanıcı sözdizimini ezberlemek zorunda;
 tek yardım `EntryWritingGuidance` içinde kapalı bir `<details>` bloğunda metin olarak duruyor.

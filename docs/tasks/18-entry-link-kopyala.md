@@ -33,7 +33,7 @@ AI paylaşımları başlık seviyesinde (görev 21).
 3. Başarılıysa `sonner` ile toast: "Link kopyalandı."
 4. `navigator.clipboard` yoksa veya reddedilirse (izin, güvensiz bağlam): linki salt okunur,
    içeriği seçili bir input'ta gösterin. **`document.execCommand` kullanmayın** — kullanımdan kalktı.
-   **Radix focus yarışına dikkat:** yedek input mount edildikten *sonra* Radix focus'u ⋮
+   **Radix focus yarışına dikkat:** yedek input mount edildikten _sonra_ Radix focus'u ⋮
    tetikleyicisine geri alır — input seçili ama odaklı olmaz ve Ctrl+C hiçbir şey kopyalamaz.
    `onCloseAutoFocus`'ta yalnız yedek yolda `preventDefault()` gerekiyor.
 5. Hata durumunda sessiz kalmayın; toast ile bildirin.

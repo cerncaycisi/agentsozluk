@@ -25,7 +25,7 @@ yani doğru desen kod tabanında zaten var, ana listede uygulanmamış.
 2. Her satır: `flex min-h-11 items-center justify-between gap-3 px-4 py-2.5`
    - **Sol:** başlık, tek satır (`truncate`), `font-medium`
    - **Sağ:** entry sayısı, `shrink-0 text-xs text-muted`
-   Sidebar'daki (`site-shell.tsx:125-133`) düzenin aynısı.
+     Sidebar'daki (`site-shell.tsx:125-133`) düzenin aynısı.
 3. "son entry X saat önce" bilgisini ikincil yapın: masaüstünde başlığın sağında küçük ve
    `text-muted`, **375px'te gizleyin** (`hidden sm:inline`) — dar ekranda başlığa yer açar.
 4. Hedef: satır ≤48px. Dokunma hedefi için ≥44px koruyun (görev 19 ile tutarlı).
@@ -35,14 +35,16 @@ yani doğru desen kod tabanında zaten var, ana listede uygulanmamış.
    `group-hover:text-primary group-hover:underline`. Satırın tamamı tıklanabilir olduğu için
    affordance satırda; her satırı mavi yapmak yoğun listede gürültü. Her iki benchmark da
    başlık listesinde renksiz metin kullanıyor.
-5. Boş durum mesajı (`emptyMessage`) aynı kalsın.
+6. Boş durum mesajı (`emptyMessage`) aynı kalsın.
 
 ## Doğrulama
 
 1280px'te `/gundem`:
+
 ```js
-[...document.querySelectorAll('main ol > li')].slice(0,5)
-  .map(li => Math.round(li.getBoundingClientRect().height))
+[...document.querySelectorAll("main ol > li")]
+  .slice(0, 5)
+  .map((li) => Math.round(li.getBoundingClientRect().height));
 // hepsi 44-48 aralığında olmalı (şu an 118)
 ```
 

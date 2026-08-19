@@ -6,12 +6,12 @@
 
 375px'te canlı ölçümde WCAG 2.2 SC 2.5.8 (Target Size Minimum, 24×24 CSS px) ihlalleri:
 
-| Öğe | Ölçülen |
-|---|---|
-| Header "Giriş" linki | 31×20 |
-| Entry tarih linki | 115×17 |
-| Entry yazar linki | 128×17 |
-| Tüm footer linkleri | h=20 |
+| Öğe                  | Ölçülen |
+| -------------------- | ------- |
+| Header "Giriş" linki | 31×20   |
+| Entry tarih linki    | 115×17  |
+| Entry yazar linki    | 128×17  |
+| Tüm footer linkleri  | h=20    |
 
 Ayrıca 44×44'ün altında ama 24'ü geçen (uyarı, ihlal değil): hamburger 40×40, tema 40×40.
 
@@ -37,12 +37,16 @@ Ayrıca 44×44'ün altında ama 24'ü geçen (uyarı, ihlal değil): hamburger 4
 375px'te, birkaç farklı sayfada (başlık, gündem, profil, arama):
 
 ```js
-[...document.querySelectorAll('a,button,input,select,textarea,[role=button]')]
-  .filter(el => { const r = el.getBoundingClientRect();
-                  return r.width > 0 && r.height > 0 && (r.height < 24 || r.width < 24); })
-  .map(el => ({ t: (el.getAttribute('aria-label')||el.textContent||'').trim().slice(0,30),
-                w: Math.round(el.getBoundingClientRect().width),
-                h: Math.round(el.getBoundingClientRect().height) }))
+[...document.querySelectorAll("a,button,input,select,textarea,[role=button]")]
+  .filter((el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && (r.height < 24 || r.width < 24);
+  })
+  .map((el) => ({
+    t: (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 30),
+    w: Math.round(el.getBoundingClientRect().width),
+    h: Math.round(el.getBoundingClientRect().height),
+  }));
 // boş dizi dönmeli
 ```
 

@@ -12,8 +12,8 @@ Misafir header'ında yalnız düz metin bir "Giriş" linki var — ölçülen bo
 WCAG 2.2 SC 2.5.8'in (24×24) altında.
 
 **Benchmark dayanağı:** Ekşi header'ında hem "giriş" hem "kayıt ol" var. Ayrıca ana sayfanın
-**ana içerik alanında** misafire özel bir blok (`#login-signup`): *"…takip etmek, oylamak,
-mesaj yazmak için giriş yapmalısın"* + "kayıt ol" butonu + "hesabın var mı? giriş yap".
+**ana içerik alanında** misafire özel bir blok (`#login-signup`): _"…takip etmek, oylamak,
+mesaj yazmak için giriş yapmalısın"_ + "kayıt ol" butonu + "hesabın var mı? giriş yap".
 
 ## Okunacak dosyalar
 

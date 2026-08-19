@@ -8,11 +8,13 @@ Sitede hiçbir yerde arama önerisi yok — ne header'da ne `/ara` sayfasında. 
 bu, keşfin ana etkileşimi.
 
 **Benchmark:** Ekşi'nin `/autocomplete/query?q=pen` uç noktası canlıda test edildi, 200 dönüyor:
+
 ```json
 {"Titles":["pen","pentagram","penguen","pena","marine le pen", ...],
  "Query":"pen",
  "Nicks":["pen","pen red","pena"]}
 ```
+
 Yani **hem başlık hem yazar** önerisi. Normal Sözlük de aynı işi yapıyor
 (placeholder: "başlık ya da @yazar ara...").
 
@@ -34,8 +36,7 @@ Bu görev **yalnız API**. Arayüz görev 27'de.
    `q.length < 2` ise boş sonuç dönün (hata değil).
 3. Çıktı:
    ```json
-   { "topics": [{ "title": "...", "url": "..." }],
-     "users":  [{ "username": "...", "url": "..." }] }
+   { "topics": [{ "title": "...", "url": "..." }], "users": [{ "username": "...", "url": "..." }] }
    ```
    Her biri en fazla **8** öğe.
 4. Mevcut `searchAll` mantığını yeniden kullanın — **yeni bir arama motoru yazmayın**.
@@ -58,10 +59,12 @@ pnpm test:unit && pnpm test:integration
 ```
 
 Elle:
+
 ```bash
 curl -s 'http://localhost:3000/api/v1/search/suggest?q=ya' | jq
 curl -s 'http://localhost:3000/api/v1/search/suggest?q=a'  | jq   # boş sonuç
 ```
+
 Hızlı ardışık istek atıp 429 aldığınızı doğrulayın.
 
 ## Bitti kriteri

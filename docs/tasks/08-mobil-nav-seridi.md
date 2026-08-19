@@ -9,6 +9,7 @@
 `/yeni`, `/debe` sayfalarına mobilden tek erişim yolu footer.
 
 **Benchmark dayanağı (375px'te ikisi de ölçüldü):** Hiçbiri ana navigasyonu hamburger'a saklamıyor.
+
 - **Ekşi:** satır 2 = `gündem · debe · kanallar · giriş · kayıt ol` yatay metin şeridi
 - **Normal Sözlük:** satır 2 = `akış · gündem · konular` tam genişlik sekmeler, ~48px yükseklik
 
@@ -38,22 +39,22 @@
 375px'te ölçün (DevTools veya headless):
 
 ```js
-document.querySelector('header').getBoundingClientRect().height   // ≤ 110
+document.querySelector("header").getBoundingClientRect().height; // ≤ 110
 ```
 
 **"İlk entry ≤250px" diye bir kriter koymayın — ulaşılamaz.** Bu görev header'a bir satır
-*ekliyor*; içeriğin aynı anda 87px yukarı çıkmasını istemek kendi içinde çelişkili.
+_ekliyor_; içeriğin aynı anda 87px yukarı çıkmasını istemek kendi içinde çelişkili.
 375px'te başlık sayfasının ölçülen dökümü:
 
-| | px |
-|---|---|
-| site header | 65 (bu görevden sonra 102) |
-| `page-main py-10` | 40 |
-| "N entry · son 24 saat" + `mt-2` | 28 |
-| `h1` + `mt-5` | 56 |
-| başlık içi arama formu + `mt-4` | 62 |
-| sıralama nav'ı (375px'te 2 satıra sarıyor) | 58 |
-| `header mb-7` | 28 |
+|                                            | px                         |
+| ------------------------------------------ | -------------------------- |
+| site header                                | 65 (bu görevden sonra 102) |
+| `page-main py-10`                          | 40                         |
+| "N entry · son 24 saat" + `mt-2`           | 28                         |
+| `h1` + `mt-5`                              | 56                         |
+| başlık içi arama formu + `mt-4`            | 62                         |
+| sıralama nav'ı (375px'te 2 satıra sarıyor) | 58                         |
+| `header mb-7`                              | 28                         |
 
 Site header sıfır olsa bile ilk entry 272px'te başlar. Asıl kazanç sıralama şeridinin
 sarmasını önlemekte (görev 20) ve başlık içi arama formunu sadeleştirmekte.

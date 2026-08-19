@@ -7,7 +7,9 @@
 `src/app/page.tsx` şu an sadece bir yönlendirme:
 
 ```tsx
-export default function HomePage(): never { redirect("/rastgele"); }
+export default function HomePage(): never {
+  redirect("/rastgele");
+}
 ```
 
 `/rastgele` de rastgele bir başlığa 302 atıyor. İlk ziyaretçi oryantasyonsuz bir başlıkta
@@ -23,6 +25,7 @@ bloklarının tekrarı. Düz başlık listesi değil, kronolojik akış da deği
   Gösterilen entry'ler eski tarihli ve yenilemede değişmiyor → seçilmiş/önbelleklenmiş örneklem
 
 **Kararlar:**
+
 - Blok sayısı: **10** (Ekşi 8, Normal Sözlük 20 kullanıyor; ikisinin arası)
 - Temsilci entry: **en yüksek puanlı**
 
