@@ -44,7 +44,7 @@ function selectSources(urls: string[]): SeedPersona["sources"] {
   });
 }
 
-type EverydayPersonaInput = Pick<
+export type EverydayPersonaInput = Pick<
   SeedPersona,
   | "username"
   | "displayName"
@@ -68,7 +68,7 @@ type EverydayPersonaInput = Pick<
   sourceUrls: string[];
 };
 
-function buildEverydayPersona(input: EverydayPersonaInput): SeedPersona {
+export function buildEverydayPersona(input: EverydayPersonaInput): SeedPersona {
   const sources = selectSources(input.sourceUrls);
   return seedPersonaSchema.parse({
     schemaVersion: 1,

@@ -93,7 +93,18 @@ describe("W2 yazar doğallaştırma paketi", () => {
   });
 
   it("repoda bulunan 16 mevcut personaya şema ve çeşitlilik kurallarını bozmadan sırayla uygulanır", () => {
-    const universe = new Map(agentPersonaTemplates.map((persona) => [persona.username, persona]));
+    const historicalTemplateUsernames = new Set<string>(
+      writerNaturalizationW2Targets
+        .map(({ username }) => username)
+        .filter((username) =>
+          agentPersonaTemplates.some((persona) => persona.username === username),
+        ),
+    );
+    const universe = new Map(
+      agentPersonaTemplates
+        .filter((persona) => historicalTemplateUsernames.has(persona.username))
+        .map((persona) => [persona.username, persona]),
+    );
     let validatedCount = 0;
     for (const target of writerNaturalizationW2Targets) {
       const current = universe.get(target.username);

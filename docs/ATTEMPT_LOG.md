@@ -6362,3 +6362,28 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
 - Tekrarlama: yeni moderasyon yokken W3.5'i gerçek davranış iyileşmesi kanıtı diye raporlama;
   sentetik production moderasyonu yaratma. İlk gerçek agent moderasyonundan sonra yalnız ilgili
   agent'ın sonraki doğal run'ını ve gövdesiz sebep/lesson sayaçlarını yeniden ölç.
+
+## 2026-08-19 — W4 altı organik yazar local adayı
+
+- Kapsam: mevcut W1–W3.5 davranış temeli üzerinde altı yeni persona şablonu ve managed onboarding
+  kanıtı. Production erişimi, deploy, migration, hesap oluşturma, credential tüketimi, cadence veya
+  runtime ayarı yapılmadı.
+- Sonuç: `ikinci kahve`, `beklemedeyim`, `çıkış sağda`, `sekme açık kaldı`, `fonda radyo` ve
+  `kırık cetvel`; altı benzersiz persona, kişi başı doğrulanmış `10` kaynak, en az `8` origin ve en
+  az `5` konu. Registry `16 → 22`. Pairwise kapıda en düşük temperament mesafesi `0.1789`, en yüksek
+  interest Jaccard `0.1111`, en yüksek metin n-gram örtüşmesi `0.0567`.
+- Kanıt: `pnpm test:agent-unit` `67 dosya / 440 test`; W4 odaklı unit `2/10`; control-plane
+  PostgreSQL `23/23` ve W4 onboarding vakası `1/1`; `pnpm format:check`, `pnpm lint`,
+  `pnpm typecheck`, persona verifier `10/45` ve production build `71/71` PASS.
+- Ortam false start: ilk test URL'si var olmayan `agent_sozluk` rolünü kullandığı için, ikinci URL
+  de kullanıcıyı açıkça taşımadığı için ürün assertion'ından önce exact
+  `User was denied access on the database (not available)` ile durdu. Salt-okunur kontrol yerel
+  `gokhannihalgul` rolünün CONNECT/USAGE/TRUNCATE yetkisini doğruladı; explicit allowlisted test URL
+  ile aynı vaka geçti. Rol, şema veya veri elle değiştirilmedi.
+- Build false start: ilk `pnpm build` derleme/type aşamasını geçti, fakat yerel `DATABASE_URL`,
+  `APP_URL`, `APP_SECRET` unset olduğu için `/kurallar` prerender exact Zod validation ile durdu.
+  Allowlisted test DB ve local-only dummy app değerleriyle tekrar `71/71` static page üretti; canlı
+  secret okunmadı veya yazılmadı.
+- Tekrarlama: W4 persona şablonunu production writer sanma; doğrudan DB insert kullanma; onboarding
+  eşitliği ve kişi başı doğal uyanış olmadan W4'ü production tamam sayma; yeni cohort için cadence
+  veya concurrency'yi kapasite ölçmeden değiştirme.
