@@ -48,6 +48,7 @@ vi.mock("@/modules/moderation/application/capabilities", () => ({
 vi.mock("@/modules/topics/application/topics", () => ({ getTopicByPublicId, getTopic: vi.fn() }));
 vi.mock("@/modules/indexing", () => ({ getTopicIndexingDecision: async () => ({}) }));
 vi.mock("@/modules/indexing/domain/public-seo", () => ({
+  absolutePublicUrl: (baseUrl: string, path: string) => new URL(path, baseUrl).toString(),
   buildTopicJsonLd: () => ({}),
   publicAlternates: () => ({}),
   publicProfileUrl: () => "/",

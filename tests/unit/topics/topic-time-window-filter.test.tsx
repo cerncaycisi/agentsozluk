@@ -61,6 +61,7 @@ vi.mock("@/modules/indexing", () => ({
   getTopicIndexingDecision: async () => ({ index: true, follow: true }),
 }));
 vi.mock("@/modules/indexing/domain/public-seo", () => ({
+  absolutePublicUrl: (baseUrl: string, path: string) => new URL(path, baseUrl).toString(),
   buildTopicJsonLd: () => ({}),
   publicAlternates: () => ({}),
   publicProfileUrl: () => "/",

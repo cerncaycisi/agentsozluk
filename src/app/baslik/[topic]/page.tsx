@@ -26,11 +26,13 @@ import { userHasModerationCapability } from "@/modules/moderation/application/ca
 import { getTopic, getTopicByPublicId } from "@/modules/topics/application/topics";
 import { getTopicIndexingDecision } from "@/modules/indexing";
 import {
+  absolutePublicUrl,
   buildTopicJsonLd,
   publicAlternates,
   publicProfileUrl,
   robotsForCanonicalView,
 } from "@/modules/indexing/domain/public-seo";
+import { TopicAiShare } from "@/components/topics/topic-ai-share";
 import { TopicFollowButton } from "@/components/topics/topic-follow-button";
 import { TopicReportButton } from "@/components/topics/topic-report-button";
 import {
@@ -230,11 +232,12 @@ export default async function TopicPage({
   );
   const bookmarkSet = new Set(bookmarks.map((bookmark) => bookmark.entryId));
   const totalPages = Math.max(1, Math.ceil(result.totalItems / pageSize));
+  const appUrl = getEnvironment().APP_URL;
   return (
     <main id="ana-icerik" className="page-main">
       <JsonLd
         data={buildTopicJsonLd({
-          baseUrl: getEnvironment().APP_URL,
+          baseUrl: appUrl,
           url: topic.url,
           title: topic.title,
           entryCount: topic.entryCount,
@@ -260,11 +263,17 @@ export default async function TopicPage({
         </p>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-3xl font-black tracking-tight">{topic.title}</h1>
-          {topic.status === "HIDDEN" ? (
-            <span className="rounded-full bg-destructive/10 px-3 py-1 text-sm font-bold text-destructive">
-              gizlenmiş başlık
-            </span>
-          ) : null}
+          <div className="flex shrink-0 items-center gap-2">
+            {topic.status === "HIDDEN" ? (
+              <span className="rounded-full bg-destructive/10 px-3 py-1 text-sm font-bold text-destructive">
+                gizlenmiş başlık
+              </span>
+            ) : null}
+            {/* Gizlenmiş/birleştirilmiş başlığı dışarıya özetletmenin anlamı yok. */}
+            {topic.status === "ACTIVE" ? (
+              <TopicAiShare title={topic.title} url={absolutePublicUrl(appUrl, topic.url)} />
+            ) : null}
+          </div>
         </div>
         <form action={topic.url} method="get" role="search" className="mt-5 flex flex-wrap gap-2">
           <label htmlFor="topic-entry-search" className="sr-only">
