@@ -32,8 +32,11 @@ document.cookie = `ajan_theme=${nextTheme}; Path=/; Max-Age=31536000; SameSite=L
    - Cookie'yi **silin**: `ajan_theme=; Path=/; Max-Age=0`
    Böylece `layout.tsx` sunucuda `themeAttribute`'u `undefined` bırakır ve CSS
    `prefers-color-scheme`'e düşer.
-3. `aria-label` üç duruma göre değişsin ve **bir sonraki** durumu söylesin
-   (örn. sistemdeyken "Açık temaya geç").
+3. **İkon ve etiket aynı şeyi anlatmalı.** İkon mevcut durumu gösterir. Bu durumda
+   `aria-label` yalnız sonraki eylemi söylerse ekran okuyucu kullanıcısı mevcut durumu
+   hiç öğrenemez — gören kullanıcının ikondan aldığı bilgiye erişemez.
+   Etiket **ikisini birden** söylesin:
+   `"Tema: koyu. Sistem temaya geçmek için etkinleştirin."`
 4. İkon üç durumu ayırt etsin — `lucide-react`'te `Sun`, `Moon` zaten kullanılıyor;
    sistem için `MonitorSmartphone` veya `SunMoon` uygun.
 5. `ready` bayrağı deseni korunsun — hidrasyon uyuşmazlığını o önlüyor.
@@ -59,7 +62,7 @@ Elle:
 - [ ] "Sistem"de cookie ve localStorage temizleniyor
 - [ ] İşletim sistemi teması değişince sayfa yenilemeden takip ediyor
 - [ ] Sayfa yüklenirken tema flaşı yok
-- [ ] `aria-label` bir sonraki durumu doğru söylüyor
+- [ ] `aria-label` hem mevcut durumu hem sonraki eylemi söylüyor; ikonla çelişmiyor
 
 ## Dokunmayın
 
