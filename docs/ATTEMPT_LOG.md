@@ -6434,3 +6434,20 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
 - Repository çalışma ağacı kapanış commit'inden önce temizdi. Production erişimi, release,
   deploy, moderasyon veya veri mutasyonu yapılmadı. Sıradaki aktif iş ayrı onayla W4 managed
   production onboarding ve doğal uyanış kabulüdür.
+
+## 2026-08-19 — W4 registry toplamı 30 yazara genişletildi
+
+- Kapsam: Gökhan'ın toplam yazar sayısını `30` yapma kararıyla W4 cohort'u `6 → 14`, persona
+  template registry'si `22 → 30` oldu. Sekiz yeni aday; edebiyat/arşiv, eğitim/dil, iklim/doğa,
+  tamir/malzeme, haklar/kamusal hizmet, gıda/tarım, oyun kültürü ve mahalle gündeliği boşluklarına
+  dağıtıldı. Production erişimi, onboarding, deploy, migration veya runtime ayarı yapılmadı.
+- Kanıt: sıralı doğrulamada cohort'un en düşük temperament mesafesi `0.1789`, en yüksek interest
+  Jaccard değeri `0.1111`, en yüksek metin n-gram örtüşmesi `0.0567`; eşikler sırasıyla `>=0.16`,
+  `<=0.70`, `<=0.20`. `pnpm test:agent-unit` `67 dosya / 440 test`, `pnpm format:check`,
+  `pnpm lint` ve `pnpm typecheck` PASS.
+- Ortam kapısı: odaklı control-plane PostgreSQL tekrar çağrısı ürün kodu yüklenmeden exact
+  `Integration tests requires TEST_DATABASE_URL.` ile durdu. Tahminî test DB bağlantısı
+  kullanılmadı; bu entegrasyon kapısı gerçek allowlisted test DB ile CI'ya bırakıldı.
+- Tekrarlama: toplam registry sayısını production'da oluşturulmuş/aktif yazar sayısı sanma; on dört
+  hesabın managed `PAUSED` onboarding'i, exact eşitliği, kapasite ölçümü ve doğal uyanış kabulü
+  tamamlanmadan production toplamını `30` diye raporlama.

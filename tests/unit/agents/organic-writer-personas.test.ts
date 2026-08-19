@@ -23,13 +23,13 @@ const sourceVerification = JSON.parse(
 };
 
 describe("W4 organic writer cohort", () => {
-  it("adds six varied dictionary identities without public role labels or biographies", () => {
-    expect(organicWriterPersonas).toHaveLength(6);
-    expect(new Set(organicWriterPersonas.map(({ username }) => username)).size).toBe(6);
+  it("adds fourteen varied dictionary identities without public role labels or biographies", () => {
+    expect(organicWriterPersonas).toHaveLength(14);
+    expect(new Set(organicWriterPersonas.map(({ username }) => username)).size).toBe(14);
     expect(organicWriterArchetypes.map(({ username }) => username)).toEqual(
       organicWriterPersonas.map(({ username }) => username),
     );
-    expect(new Set(organicWriterArchetypes.map(({ archetype }) => archetype)).size).toBe(6);
+    expect(new Set(organicWriterArchetypes.map(({ archetype }) => archetype)).size).toBe(14);
     expect(organicWriterPersonaPack.methodology).toMatchObject({
       containsIdentityMappings: false,
       biographiesAreEmpty: true,
@@ -41,8 +41,16 @@ describe("W4 organic writer cohort", () => {
       "MEDIUM",
       "MEDIUM",
       "MEDIUM",
+      "MEDIUM",
+      "MEDIUM",
+      "MEDIUM",
       "MIXED",
       "MIXED",
+      "MIXED",
+      "MIXED",
+      "SHORT",
+      "SHORT",
+      "SHORT",
       "SHORT",
     ]);
     for (const persona of organicWriterPersonas) {
@@ -102,8 +110,8 @@ describe("W4 organic writer cohort", () => {
   });
 
   it("exposes every W4 persona through the managed creation registry", () => {
-    expect(agentPersonaTemplates).toHaveLength(22);
-    expect(new Set(agentPersonaTemplates.map(({ username }) => username)).size).toBe(22);
+    expect(agentPersonaTemplates).toHaveLength(30);
+    expect(new Set(agentPersonaTemplates.map(({ username }) => username)).size).toBe(30);
     for (const persona of organicWriterPersonas) {
       expect(findAgentPersonaTemplate(persona.username)).toBe(persona);
     }

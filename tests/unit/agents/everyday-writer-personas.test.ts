@@ -138,8 +138,8 @@ describe("everyday dictionary writer cohort", () => {
   });
 
   it("exposes the cohort through the same validated template contract used by UI and creation", () => {
-    expect(agentPersonaTemplates).toHaveLength(22);
-    expect(new Set(agentPersonaTemplates.map(({ username }) => username)).size).toBe(22);
+    expect(agentPersonaTemplates).toHaveLength(30);
+    expect(new Set(agentPersonaTemplates.map(({ username }) => username)).size).toBe(30);
     for (const persona of everydayWriterPersonas) {
       expect(findAgentPersonaTemplate(persona.username)).toBe(persona);
     }

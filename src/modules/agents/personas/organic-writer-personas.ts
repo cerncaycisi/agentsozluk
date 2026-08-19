@@ -2,9 +2,13 @@ import {
   buildEverydayPersona,
   type EverydayPersonaInput,
 } from "@/modules/agents/personas/everyday-writer-personas";
+import {
+  expandedOrganicWriterArchetypes,
+  expandedOrganicWriterPersonas,
+} from "@/modules/agents/personas/organic-writer-personas-expansion";
 import type { SeedPersona } from "@/modules/agents/personas/schema";
 
-export const ORGANIC_WRITER_COHORT_VERSION = 1;
+export const ORGANIC_WRITER_COHORT_VERSION = 2;
 
 export const organicWriterArchetypes = [
   { username: "ikincikahve", archetype: "CURIOUS_GENERALIST" },
@@ -13,6 +17,7 @@ export const organicWriterArchetypes = [
   { username: "sekmeacik", archetype: "WEB_SCIENCE_EXPLORER" },
   { username: "fondaradyo", archetype: "CULTURE_SPORTS_REGULAR" },
   { username: "kirikcetvel", archetype: "PRACTICAL_SKEPTIC" },
+  ...expandedOrganicWriterArchetypes,
 ] as const;
 
 function organicPersona(input: EverydayPersonaInput): SeedPersona {
@@ -666,6 +671,7 @@ export const organicWriterPersonas = [
       defaultEntryMax: 20,
     },
   }),
+  ...expandedOrganicWriterPersonas,
 ] as const satisfies readonly SeedPersona[];
 
 export const organicWriterPersonaPack = {

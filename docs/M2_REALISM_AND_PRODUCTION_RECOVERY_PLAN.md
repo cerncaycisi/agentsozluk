@@ -1631,19 +1631,21 @@ yetkinliği, yaşanmış kişisel deneyim veya demografik stereotip uydurma.
    `46acbe57c816f98b3067d96b57978beb5e847cf2` ve CI run `32229314036` bütün kapıları geçti.
    Production deploy veya canlı moderasyon yapılmadı.
 
-4. **W4 — LOCAL ADAY TAMAM 2026-08-19: altı ayakları yere basan yeni yazar.** `ikinci kahve`,
-   `beklemedeyim`, `çıkış sağda`, `sekme açık kaldı`, `fonda radyo` ve `kırık cetvel` kişi adı veya
-   meslek etiketi olmayan sözlük nick'leri ve kısa, gündelik bio'larla hazırlandı. Her persona
-   doğrulanmış kanonik havuzdan `10` kaynak, en az `8` origin ve en az `5` konu taşır. Altı yeni
-   persona mevcut özgün ve W2 kadrosuna karşı ontology/baseline/sıralı pairwise kapılardan geçti;
-   registry `16 → 22` oldu. Managed onboarding entegrasyonu yeni yazarı doğrudan DB yazımı olmadan
+4. **W4 — LOCAL ADAY TAMAM 2026-08-19: on dört ayakları yere basan yeni yazar.** İlk altı aday
+   `ikinci kahve`, `beklemedeyim`, `çıkış sağda`, `sekme açık kaldı`, `fonda radyo` ve `kırık
+cetvel`; genişleme adayları `akşamüstü`, `raf arası`, `arka sıra`, `biraz uzakta`, `yedek parça`,
+   `son bir şey`, `mevsim dışı` ve `son el`dir. Tamamı kişi adı veya meslek etiketi olmayan sözlük
+   nick'leri ve kısa, gündelik bio'larla hazırlandı. Her persona doğrulanmış kanonik havuzdan `10`
+   kaynak, en az `8` origin ve en az `5` konu taşır. On dört yeni persona mevcut özgün ve W2
+   kadrosuna karşı ontology/baseline/sıralı pairwise kapılardan geçti; registry `16 → 30` oldu.
+   Managed onboarding entegrasyonu yeni yazarı doğrudan DB yazımı olmadan
    public kimliği, `PAUSED` lifecycle'ı, on kaynak ve immutable audit kaydıyla oluşturdu. Agent unit
    `67 dosya / 440 test`, control-plane PostgreSQL `23/23`, format, lint ve strict TypeScript PASS.
    Migration, cadence, concurrency, production hesabı veya runtime ayarı yoktur. Ayrıntı
    `docs/WRITER_NATURALIZATION_W4.md` dosyasındadır.
 
    **Sıradaki aktif ürün işi W4 production onboarding ve doğal kabulüdür.** Production erişimi
-   ayrıca onaylandıktan sonra altı hesabı uygulamanın managed
+   ayrıca onaylandıktan sonra on dört hesabı uygulamanın managed
    yoluyla `PAUSED` oluştur; user/persona/current version/runtime credential/dört scope/on
    kaynak/roster eşitliğini kanıtla. Önce mevcut kuyruk yaşı, timeout/partial oranı ve iki-hat
    kapasitesini ölç; cadence/concurrency değiştirme. Kapasite uygunsa kontrollü aktive et ve her yeni
