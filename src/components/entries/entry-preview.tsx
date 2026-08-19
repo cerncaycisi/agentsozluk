@@ -22,15 +22,35 @@ export interface EntryPreviewItem {
   blockedByViewer?: boolean;
 }
 
+/**
+ * Akış bağlamlarında gövde 6 satırda (6 × `leading-7` = 10.5rem = 168px) kırpılır.
+ * Kırpma yalnızca görseldir: metnin tamamı DOM'da kalır, yalnızca CSS ile gizlenir.
+ * Eşikler sunucuda hesaplanır; istemcide ölçüm yapılmaz (hidrasyon uyuşmazlığı riski).
+ * 820px'lik içerik genişliğinde bir satır ~99 karakter aldığı için 6 satır ≈ 600 karaktere denk gelir.
+ */
+const COLLAPSE_CHARACTER_THRESHOLD = 600;
+const COLLAPSE_LINE_THRESHOLD = 6;
+
+export function entryBodyNeedsCollapse(body: string): boolean {
+  return (
+    body.length > COLLAPSE_CHARACTER_THRESHOLD || body.split("\n").length > COLLAPSE_LINE_THRESHOLD
+  );
+}
+
+const collapseToggleBaseClass =
+  "mt-3 min-h-11 items-center rounded-xl text-sm font-bold text-primary hover:underline peer-focus-visible:outline peer-focus-visible:outline-[3px] peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary";
+
 export function EntryPreview({
   entry,
   actions,
   references,
   showTopicTitle = true,
+  collapsible = false,
 }: {
   entry: EntryPreviewItem;
   showTopicTitle?: boolean;
   references?: ReferenceIndex;
+  collapsible?: boolean;
   actions?: {
     vote: -1 | 1 | null;
     bookmarked: boolean;
@@ -41,6 +61,8 @@ export function EntryPreview({
 }) {
   const edited = entry.edited ?? (entry._count?.revisions ?? 0) > 0;
   const formattedCreatedAt = formatIstanbulTimestamp(entry.createdAt);
+  const collapsed = collapsible && !entry.blockedByViewer && entryBodyNeedsCollapse(entry.body);
+  const collapseToggleId = `entry-${entry.publicId}-govde-genislet`;
   return (
     <article id={`entry-${entry.publicId}`} className="surface-card scroll-mt-24 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -57,13 +79,34 @@ export function EntryPreview({
           </span>
         ) : null}
       </div>
-      <div className="mt-4">
-        {entry.blockedByViewer ? (
-          <BlockedEntryBody body={entry.body} />
-        ) : (
-          <EntryBody body={entry.body} {...(references ? { references } : {})} />
-        )}
-      </div>
+      {collapsed ? (
+        <div className="relative mt-4">
+          <input type="checkbox" id={collapseToggleId} className="peer sr-only" />
+          <div className="relative max-h-[10.5rem] overflow-hidden after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:block after:h-16 after:bg-gradient-to-t after:from-surface after:content-[''] peer-checked:max-h-none peer-checked:after:hidden">
+            <EntryBody body={entry.body} {...(references ? { references } : {})} />
+          </div>
+          <label
+            htmlFor={collapseToggleId}
+            className={`inline-flex cursor-pointer ${collapseToggleBaseClass} peer-checked:hidden`}
+          >
+            Devamını göster
+          </label>
+          <label
+            htmlFor={collapseToggleId}
+            className={`hidden cursor-pointer ${collapseToggleBaseClass} peer-checked:inline-flex`}
+          >
+            Daha az göster
+          </label>
+        </div>
+      ) : (
+        <div className="mt-4">
+          {entry.blockedByViewer ? (
+            <BlockedEntryBody body={entry.body} />
+          ) : (
+            <EntryBody body={entry.body} {...(references ? { references } : {})} />
+          )}
+        </div>
+      )}
       <footer className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-sm text-muted">
         <span>{entry.score} puan</span>
         <span>

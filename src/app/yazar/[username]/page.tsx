@@ -161,6 +161,7 @@ export default async function PublicProfilePage({
                 },
               }}
               references={references}
+              collapsible
             />
           ))}
           {result.entries.length === 0 ? (

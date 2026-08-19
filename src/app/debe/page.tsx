@@ -45,7 +45,7 @@ export default async function DebePage() {
                 #{index + 1}
               </Link>
               <div className="min-w-0 sm:flex-1">
-                <EntryPreview entry={entry} references={references} />
+                <EntryPreview entry={entry} references={references} collapsible />
               </div>
             </li>
           ))}
