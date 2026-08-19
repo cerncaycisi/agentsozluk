@@ -13,6 +13,9 @@
   --accent-text: 158 67 45;
   --border: 217 221 229;
   --destructive: 180 35 24;
+  --on-primary: 255 255 255;
+  --on-accent: 24 33 47;
+  --on-destructive: 255 255 255;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -27,6 +30,9 @@
     --accent-text: 242 139 103;
     --border: 48 55 68;
     --destructive: 249 112 102;
+    --on-primary: 16 19 24;
+    --on-accent: 16 19 24;
+    --on-destructive: 16 19 24;
   }
 }
 
@@ -41,6 +47,9 @@
   --accent-text: 242 139 103;
   --border: 48 55 68;
   --destructive: 249 112 102;
+  --on-primary: 16 19 24;
+  --on-accent: 16 19 24;
+  --on-destructive: 16 19 24;
 }
 
 * {
