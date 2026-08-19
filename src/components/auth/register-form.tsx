@@ -38,7 +38,11 @@ export function RegisterForm() {
 
   if (registeredPending)
     return (
-      <div className="space-y-4 rounded-xl border bg-surface p-5" role="status">
+      <div
+        className="space-y-4 rounded-xl border bg-surface p-5"
+        role="status"
+        aria-label="Kayıt sonucu"
+      >
         <h2 className="text-xl font-black">Kaydın alındı</h2>
         <p className="leading-7 text-muted">
           Yazar hesabın admin onayına gönderildi. Onay verilene kadar başlık açamaz ve entry

@@ -39,7 +39,7 @@ test.describe("@desktop authenticated content journey", () => {
     await page.getByRole("checkbox", { name: /Topluluk kurallarını/u }).check();
     await page.getByRole("button", { name: "Hesap oluştur" }).click();
 
-    const registrationStatus = page.getByRole("status");
+    const registrationStatus = page.getByRole("status", { name: "Kayıt sonucu" });
     await expect(
       registrationStatus.getByRole("heading", { level: 2, name: "Kaydın alındı" }),
     ).toBeVisible({ timeout: 20_000 });
@@ -101,7 +101,9 @@ test.describe("@desktop authenticated content journey", () => {
 
     await page.getByLabel("Yeni entry").fill(secondEntry);
     await page.getByRole("button", { name: "Entry ekle" }).click();
-    await expect(page.getByRole("status")).toContainText("Entry eklendi.");
+    await expect(page.getByRole("status", { name: "Kayıt sonucu" })).toContainText(
+      "Entry eklendi.",
+    );
 
     const secondArticle = page.locator("article").filter({ hasText: secondEntry });
     await expect(secondArticle).toHaveCount(1);
@@ -232,7 +234,9 @@ test.describe("@desktop authenticated content journey", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Meraklı Yazar" })).toBeVisible();
     await page.getByRole("link", { name: "Profili aç" }).click();
     await page.getByRole("button", { name: "Engeli kaldır" }).click();
-    await expect(page.getByRole("status")).toContainText("Engel kaldırıldı.");
+    await expect(page.getByRole("status", { name: "Kayıt sonucu" })).toContainText(
+      "Engel kaldırıldı.",
+    );
     await page.goto("/ayarlar/engellenenler");
     await expect(page.getByText("Bu listede henüz kayıt yok.", { exact: true })).toBeVisible();
 
@@ -259,7 +263,9 @@ test.describe("@desktop authenticated content journey", () => {
     await page.goto("/ayarlar/oturumlar");
     const secondarySession = page.locator("li").filter({ hasText: "AgentSozluk-E2E-Secondary" });
     await secondarySession.getByRole("button", { name: "Erişimi kaldır" }).click();
-    await expect(page.getByRole("status")).toContainText("Oturum kapatıldı.");
+    await expect(page.getByRole("status", { name: "Kayıt sonucu" })).toContainText(
+      "Oturum kapatıldı.",
+    );
     await secondaryContext.close();
 
     const updatedDisplayName = `${displayName} Güncel`;
@@ -267,7 +273,9 @@ test.describe("@desktop authenticated content journey", () => {
     await page.getByLabel("Görünen ad").fill(updatedDisplayName);
     await page.getByLabel("Hakkında").fill("E2E profil güncelleme doğrulaması.");
     await page.getByRole("button", { name: "Profili kaydet" }).click();
-    await expect(page.getByRole("status")).toContainText("Profiliniz güncellendi.");
+    await expect(page.getByRole("status", { name: "Kayıt sonucu" })).toContainText(
+      "Profiliniz güncellendi.",
+    );
 
     const newPassword = "E2eYeniParola67890";
     await page.goto("/ayarlar/guvenlik");
@@ -309,7 +317,9 @@ test.describe("@mobile mobile content journey", () => {
     );
     await page.getByLabel("Yeni entry").fill(body);
     await page.getByRole("button", { name: "Entry ekle" }).click();
-    await expect(page.getByRole("status")).toContainText("Entry eklendi.");
+    await expect(page.getByRole("status", { name: "Kayıt sonucu" })).toContainText(
+      "Entry eklendi.",
+    );
     await expect(page.getByText(body, { exact: true })).toBeVisible({ timeout: 20_000 });
   });
 });

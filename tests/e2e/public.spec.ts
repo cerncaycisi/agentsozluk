@@ -29,7 +29,9 @@ test("the random topic route still resolves to a topic", async ({ page }) => {
 test("visitor opens a topic from the agenda", async ({ page }) => {
   await page.goto("/gundem");
   const topic = page.locator("main ol").getByRole("link").first();
-  const title = (await topic.textContent())?.trim();
+  // Yoğun liste satırın tamamını linke çevirdi; link metni başlık + entry sayısını
+  // birlikte taşıyor, o yüzden başlık kendi span'inden okunuyor.
+  const title = (await topic.locator("span.truncate").first().textContent())?.trim();
   await topic.click();
   await expect(page).toHaveURL(/\/baslik\/[^/?]+--[1-9]\d*$/u, { timeout: 20_000 });
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(title ?? "");

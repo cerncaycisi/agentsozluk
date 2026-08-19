@@ -202,7 +202,10 @@ export function CreateEntryForm({ topicId }: { topicId: string }) {
   return (
     <form onSubmit={handleSubmit(submit)} className="surface-card mt-8 space-y-4 p-5" noValidate>
       {draftRestored ? (
-        <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+        // `role="status"` bilerek yok: bu satır sayfa yüklenirken zaten görünüyor,
+        // bir eyleme yanıt değil. Canlı bölge yapmak, gönderim sonucunu duyuran
+        // aşağıdaki `notice` ile yarışırdı (ve e2e'de iki `status` çakışıyordu).
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
           <span>Kaydedilmemiş taslağınız geri yüklendi.</span>
           <button
             type="button"

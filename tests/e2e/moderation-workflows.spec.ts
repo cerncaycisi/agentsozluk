@@ -33,7 +33,7 @@ async function register(page: Page, label: string) {
   await page.getByLabel("Şifre tekrarı").fill(password);
   await page.getByRole("checkbox", { name: /Topluluk kurallarını/u }).check();
   await page.getByRole("button", { name: "Hesap oluştur" }).click();
-  const registrationStatus = page.getByRole("status");
+  const registrationStatus = page.getByRole("status", { name: "Kayıt sonucu" });
   await expect(
     registrationStatus.getByRole("heading", { level: 2, name: "Kaydın alındı" }),
   ).toBeVisible({ timeout: 20_000 });
