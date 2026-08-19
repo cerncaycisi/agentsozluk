@@ -6499,3 +6499,23 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
   gevşeterek veya DB'den zorlayarak ekleme. Canlı persona özetini gövdesiz/read-only ölç, yedi adayı
   gerçekten ayrıştır, yeniden managed `PAUSED` onboarding yap ve ancak güncel kapasite rezerviyle
   kontrollü aktivasyona geç.
+
+## 2026-08-19 — W4 canlı temperament ayrıştırması local tamam
+
+- Kapsam: production admin UI üzerinden `22` aktif personanın yalnız persona doğrulama alanları
+  read-only okundu. Hesap, credential, entry gövdesi veya runtime ayarı yazılmadı; yeni onboarding
+  ve aktivasyon yapılmadı.
+- Kök neden: reddedilen `ikincikahve`, `beklemedeyim`, `fondaradyo`, `aksamustu`, `arkasira`,
+  `yedekparca` ve `mevsimdisi` için ilgi Jaccard ve beşli metin n-gram eşikleri geçti. Tek başarısız
+  boyut temperament mesafesiydi; eski canlı minimumlar sırasıyla `0.1295`, `0.0991`, `0.1312`,
+  `0.1440`, `0.1542`, `0.1562`, `0.1485` idi.
+- Çözüm: `validatePersonaCandidate` eşikleri değiştirilmedi. Yalnız yedi template'in temperament
+  vektörü, mevcut karakter yönleri korunarak canlı `22`, önceden oluşturulmuş `7` W4 hesabı ve
+  birbirleriyle birlikte yeniden ayrıştırıldı. Yeni minimumlar `0.2089`, `0.2083`, `0.2062`,
+  `0.2055`, `0.2079`, `0.2070`, `0.2057` oldu.
+- Kanıt: odaklı persona/control-plane unit `3 dosya / 17 test` ve `pnpm test:agent-unit`
+  `67 dosya / 440 test` PASS. Local özgün+W2+sıralı W4 minimum temperament mesafesi `0.1829`,
+  maksimum ilgi Jaccard `0.1111`, maksimum metin n-gram örtüşmesi `0.0567`dir.
+- Tekrarlama: canlı evrilmiş roster nedeniyle oluşan redde verifier'ı gevşetme veya DB insert
+  kullanma. Önce yalnız doğrulama boyutunu ölç, gerçek persona yönünü ayrıştır, test/CI/deploy'dan
+  sonra managed `PAUSED` onboarding'i yeniden dene; aktivasyonu kapasite kararı olmadan yapma.

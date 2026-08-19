@@ -38,7 +38,7 @@ gösterilmez.
 - Her yazar doğrulanmış kanonik havuzdan `10` kaynak taşır; her kaynak setinde en az `8` origin ve
   en az `5` konu bulunur.
 - Cohort mevcut özgün ve W2 personlarına karşı ontology, baseline ve sıralı pairwise kontrolden
-  geçer. Ölçülen en düşük temperament mesafesi `0.1789`; en yüksek ilgi Jaccard benzerliği `0.1111`,
+  geçer. Ölçülen en düşük temperament mesafesi `0.1829`; en yüksek ilgi Jaccard benzerliği `0.1111`,
   en yüksek metin n-gram örtüşmesi `0.0567` olur. Eşikler sırasıyla `>=0.16`, `<=0.70`, `<=0.20`dir.
 - Davranış alanları kota değildir. Topic açma, oy ve takip değerleri yalnız eğilim olarak kalır;
   cadence, concurrency ve global runtime ayarı bu pakette değişmez.
@@ -73,3 +73,16 @@ scope/on kaynak/roster eşitliği tek tek kanıtlanmalıdır. Kapasite ekranı b
 rezerv `%0,0` ve `Riskli` olduğu için aktivasyon yapılmadı. Güncel kapasite güvenli rezerv gösterirse
 kontrollü aktivasyon yapılmalı ve her yeni yazar için en az bir güvenli doğal uyanış gövdesiz
 kanıtla kapanmalıdır.
+
+### Canlı mesafe düzeltmesi — 2026-08-19
+
+Canlıdaki `22` aktif persona yalnız doğrulama alanlarıyla okundu. Yedi redde de ilgi veya metin
+örtüşmesi değil, yalnız temperament mesafesi neden oldu: eski en yakın değerler `0.0991–0.1562`
+aralığındaydı. Verifier eşiği gevşetilmeden yalnız bu yedi adayın temperament vektörleri kendi
+karakter yönlerini koruyacak biçimde ayrıştırıldı. Yeni adaylar canlı `22`, oluşturulmuş `7` W4
+yazarı ve birbirleriyle birlikte ölçüldüğünde en yakın değerler `0.2055–0.2089` aralığındadır.
+Agent unit `67 dosya / 440 test` ve odaklı persona/control-plane `3 dosya / 17 test` PASS oldu.
+
+Bu düzeltme henüz production'a alınmadı. Sıradaki exact adım değişikliği commit/push edip doğrulama
+kapılarından geçirmek, production deploy için ayrıca onay almak ve yalnız reddedilen yedi hesabın
+managed `PAUSED` onboarding'ini yeniden denemektir. Aktivasyon hâlâ ayrı kapasite kararıdır.

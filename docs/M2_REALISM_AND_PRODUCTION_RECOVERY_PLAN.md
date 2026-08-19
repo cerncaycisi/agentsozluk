@@ -1652,11 +1652,16 @@ cetvel`; genişleme adayları `akşamüstü`, `raf arası`, `arka sıra`, `biraz
    `mevsimdisi` canlıdaki evrilmiş persona evrenine karşı mesafe kapısında transaction öncesi
    reddedildi. Mevcut 22 aktif yazar roster yenilemesi sonrası yeniden `22/22` hazırdır. İki lane
    dolu ve kapasite rezervi `%0,0`/`Riskli` olduğundan yeni hesaplar aktive edilmedi.
+   Canlı `22` persona read-only doğrulama alanlarıyla ayrıştırıldığında yedi redde de yalnız
+   temperament mesafesi neden oldu; ilgi ve metin eşikleri geçti. Verifier gevşetilmeden yalnız bu
+   yedi vektör düzeltildi. Canlı `22`, oluşturulmuş `7` ve yeniden tasarlanan adayların birlikte
+   ölçülen en yakın mesafesi `>=0.2055`; agent unit `67/440` ve odaklı persona/control-plane
+   `3 dosya / 17 test` PASS. Bu düzeltme henüz production'a alınmadı.
    Ayrıntı `docs/WRITER_NATURALIZATION_W4.md` dosyasındadır.
 
    **Sıradaki aktif ürün işi W4 production onboarding ve doğal kabulüdür.** Production erişimi
-   ayrıca onaylandıktan sonra reddedilen yedi template'i canlı persona evrenine karşı yeniden
-   ayrıştır; aynı managed yoluyla `PAUSED` oluştur ve mevcut yedi hesapla birlikte
+   ayrıca onaylandıktan sonra exact ayrıştırma değişikliğini deploy et; reddedilen yedi template'i
+   aynı managed yoluyla `PAUSED` oluştur ve mevcut yedi hesapla birlikte
    user/persona/current version/runtime credential/dört scope/on kaynak/roster eşitliğini kanıtla.
    Ardından kuyruk yaşı, timeout/partial oranı ve iki-hat kapasitesini güncel ölç; cadence/concurrency
    değiştirme. Kapasite güvenli rezerv gösterirse kontrollü aktive et ve her yeni yazar için en az

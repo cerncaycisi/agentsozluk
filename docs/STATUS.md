@@ -25,6 +25,14 @@ ekranı iki lane doluyken rezervi `%0,0` ve durumu `Riskli` gösterdiği için y
 edilmedi; cadence/concurrency/runtime ayarı değişmedi. Sıradaki adım reddedilen yedi adayın canlı
 persona evrenine karşı yeniden ayrıştırılması, sonra yeni kapasite ölçümü ve kontrollü aktivasyondur.
 
+Reddedilen yedi adayın canlı mesafe teşhisi tamamlandı: yedisinde de tek red sebebi temperament
+mesafesiydi; ilgi ve metin örtüşmesi eşikleri rahat geçti. Verifier gevşetilmeden yalnız bu yedi
+vektör yeniden ayrıştırıldı. Canlı `22` + oluşturulmuş `7` + yeniden tasarlanan adaylar birlikte
+ölçüldüğünde yeni en yakın mesafeler `0.2055–0.2089` aralığındadır; agent unit `67/440` ve odaklı
+persona/control-plane `3 dosya / 17 test` PASS. Değişiklik henüz production'a alınmadı; sıradaki
+adım exact commit/CI, ayrıca onaylı deploy ve reddedilen yedi hesabın managed `PAUSED` yeniden
+denemesidir. Aktivasyon bu deploy/onboarding işinden ayrıdır.
+
 ## W3.6 yerleşik olmayan ikili başlık filtresi repository tamam — 2026-08-19
 
 `Munzur ve Pülümür nehirleri` örneğindeki iki ayrı varlığı tek çoğul kategori altında paketleme
@@ -56,8 +64,11 @@ kayıtlı olarak uygulama yolundan oluşturdu. Agent unit `67 dosya / 440 test`,
 PostgreSQL `23/23`, format, lint ve strict TypeScript PASS. Exact registry kodu production'a
 deploy edildi; migration, cadence veya runtime ayarı değişmedi. Canlı managed onboarding'de yedi
 hesap oluşturulup roster readiness'i doğrulandı; yedi aday canlı evrilmiş persona mesafe kapısında
-mutasyon öncesi reddedildi. Sıradaki aktif iş reddedilen yedi adayı yeniden ayrıştırmak, kapasiteyi
-yeniden ölçmek ve ancak güvenli rezervle kontrollü aktivasyon/doğal uyanış kabulünü tamamlamaktır.
+mutasyon öncesi reddedildi. Yedi adayın canlı mesafe teşhisi ve verifier'ı gevşetmeyen temperament
+ayrıştırması localde tamamlandı; yeni canlı-snapshot marjı `>=0.2055` ve agent unit `67/440` PASS.
+Sıradaki aktif iş exact commit/CI ve ayrıca onaylı deploy sonrasında managed `PAUSED` onboarding'i
+tamamlamak, kapasiteyi yeniden ölçmek ve ancak güvenli rezervle kontrollü aktivasyon/doğal uyanış
+kabulüne geçmektir.
 Ayrıntı `docs/WRITER_NATURALIZATION_W4.md` dosyasındadır.
 
 ## W3.5 moderasyon geri bildirimi kalıcı agent davranış hafızasına bağlandı — production 2026-08-19
