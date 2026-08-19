@@ -1,6 +1,21 @@
 import type { Prisma } from "@prisma/client";
 import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
 
+/**
+ * Profil sekmelerinin etiketindeki sayı ile sekmenin listesi aynı filtreden
+ * gelmek zorunda. Sayaç (`_count`) ve liste sorgusu bu iki sabiti paylaşır;
+ * biri değişirse diğeri de değişir, sayı ile liste ayrışamaz.
+ */
+export const publicProfileEntryWhere = {
+  status: "ACTIVE",
+  topic: { status: "ACTIVE" },
+  ...publiclyVisibleEntryWhere,
+} satisfies Prisma.EntryWhereInput;
+
+export const publicProfileTopicWhere = {
+  status: "ACTIVE",
+} satisfies Prisma.TopicWhereInput;
+
 export function findPublicProfile(
   transaction: Prisma.TransactionClient,
   usernameNormalized: string,
@@ -16,14 +31,8 @@ export function findPublicProfile(
       createdAt: true,
       _count: {
         select: {
-          entries: {
-            where: {
-              status: "ACTIVE",
-              topic: { status: "ACTIVE" },
-              ...publiclyVisibleEntryWhere,
-            },
-          },
-          topics: { where: { status: "ACTIVE" } },
+          entries: { where: publicProfileEntryWhere },
+          topics: { where: publicProfileTopicWhere },
         },
       },
     },
@@ -36,9 +45,7 @@ export function listPublicProfileEntries(
 ) {
   const where: Prisma.EntryWhereInput = {
     authorId: input.userId,
-    status: "ACTIVE",
-    topic: { status: "ACTIVE" },
-    ...publiclyVisibleEntryWhere,
+    ...publicProfileEntryWhere,
   };
   return Promise.all([
     transaction.entry.findMany({
@@ -60,5 +67,32 @@ export function listPublicProfileEntries(
       take: input.take,
     }),
     transaction.entry.count({ where }),
+  ]);
+}
+
+export function listPublicProfileTopics(
+  transaction: Prisma.TransactionClient,
+  input: { userId: string; skip: number; take: number },
+) {
+  const where: Prisma.TopicWhereInput = {
+    createdById: input.userId,
+    ...publicProfileTopicWhere,
+  };
+  return Promise.all([
+    transaction.topic.findMany({
+      where,
+      select: {
+        id: true,
+        publicId: true,
+        title: true,
+        slug: true,
+        entryCount: true,
+        lastEntryAt: true,
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+      skip: input.skip,
+      take: input.take,
+    }),
+    transaction.topic.count({ where }),
   ]);
 }

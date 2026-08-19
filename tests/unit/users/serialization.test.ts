@@ -44,9 +44,21 @@ describe("safe user serialization", () => {
       username: "user",
       skip: 0,
       take: 20,
+      tab: "entries",
     });
     expect(
       publicProfileQuerySchema.safeParse({ username: "user", skip: -1, take: 20 }).success,
+    ).toBe(false);
+  });
+
+  it("accepts only the two shipped profile tabs", () => {
+    expect(
+      publicProfileQuerySchema.parse({ username: "user", skip: 0, take: 20, tab: "topics" }).tab,
+    ).toBe("topics");
+    // Favoriler sekmesi bilerek yok: gizlilik kararı alınmadı.
+    expect(
+      publicProfileQuerySchema.safeParse({ username: "user", skip: 0, take: 20, tab: "favorites" })
+        .success,
     ).toBe(false);
   });
 });

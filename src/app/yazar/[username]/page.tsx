@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { EntryPreview } from "@/components/entries/entry-preview";
 import { JsonLd } from "@/components/seo/json-ld";
+import { TopicList } from "@/components/topics/topic-list";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { getDatabase } from "@/lib/db/client";
 import { getEnvironment } from "@/config/env";
@@ -24,14 +26,37 @@ import { getEntryReferenceIndex } from "@/modules/entries";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Sekmeler sunucu tarafında, URL üzerinden çözülür: paylaşılan bağlantı doğru
+ * sekmeyi açar, geri tuşu tarayıcı geçmişinden çalışır ve JS kapalıyken de
+ * gezinilir. `entryler` varsayılan olduğu için URL'de taşınmaz.
+ */
+type ProfileTabParameter = "entryler" | "basliklar";
+
+function profileTabFrom(value: string | undefined): ProfileTabParameter {
+  return value === "basliklar" ? "basliklar" : "entryler";
+}
+
+function profileUrlWithQuery(
+  baseUrl: string,
+  input: { tab: ProfileTabParameter; page?: number },
+): string {
+  const parameters = new URLSearchParams();
+  if (input.tab !== "entryler") parameters.set("tab", input.tab);
+  if (input.page && input.page > 1) parameters.set("page", String(input.page));
+  const query = parameters.toString();
+  return query ? `${baseUrl}?${query}` : baseUrl;
+}
+
 export async function generateMetadata({
   params,
   searchParams,
 }: {
   params: Promise<{ username: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; tab?: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
+  const query = await searchParams;
   try {
     const [indexing, result] = await Promise.all([
       getProfileIndexingDecision(getDatabase(), username),
@@ -47,7 +72,7 @@ export async function generateMetadata({
       description,
       alternates: publicAlternates(canonical, canonical),
       openGraph: { title: profile.displayName, description, type: "profile", url: canonical },
-      robots: robotsForCanonicalView(indexing, Boolean((await searchParams).page)),
+      robots: robotsForCanonicalView(indexing, Boolean(query.page || query.tab)),
     };
   } catch {
     return { title: "Yazar bulunamadı", robots: { index: false, follow: false } };
@@ -59,10 +84,12 @@ export default async function PublicProfilePage({
   searchParams,
 }: {
   params: Promise<{ username: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; tab?: string }>;
 }) {
   const { username } = await params;
-  const page = pageFrom((await searchParams).page);
+  const query = await searchParams;
+  const page = pageFrom(query.page);
+  const tabParameter = profileTabFrom(query.tab);
   const pageSize = 20;
   let result;
   try {
@@ -70,16 +97,32 @@ export default async function PublicProfilePage({
       username,
       skip: (page - 1) * pageSize,
       take: pageSize,
+      tab: tabParameter === "basliklar" ? "topics" : "entries",
     });
   } catch (error) {
     if (error instanceof AppError && error.code === "USER_NOT_FOUND") notFound();
     throw error;
   }
+  const profileUrl = publicProfileUrl(result.profile.username);
   if (username !== result.profile.publicSlug)
-    permanentRedirect(
-      `${publicProfileUrl(result.profile.username)}${page > 1 ? `?page=${page}` : ""}`,
-    );
+    permanentRedirect(profileUrlWithQuery(profileUrl, { tab: tabParameter, page }));
   const totalPages = Math.max(1, Math.ceil(result.totalItems / pageSize));
+  const tabs = [
+    {
+      value: "entryler",
+      label: `Entry’ler (${result.profile.activeEntryCount})`,
+      heading: "Entry’ler",
+    },
+    {
+      value: "basliklar",
+      label: `Açtığı başlıklar (${result.profile.openedActiveTopicCount})`,
+      heading: "Açtığı başlıklar",
+    },
+  ] as const satisfies ReadonlyArray<{
+    value: ProfileTabParameter;
+    label: string;
+    heading: string;
+  }>;
   const references = await getEntryReferenceIndex(
     getDatabase(),
     result.entries.map((entry) => entry.body),
@@ -144,35 +187,58 @@ export default async function PublicProfilePage({
           />
         ) : null}
       </header>
-      <section aria-labelledby="son-entryler" className="mt-10">
-        <h2 id="son-entryler" className="text-2xl font-black">
-          Son entry’ler
+      <nav aria-label="Profil sekmeleri" className="mt-8 flex flex-wrap gap-2">
+        {tabs.map((item) => (
+          <Link
+            key={item.value}
+            href={profileUrlWithQuery(profileUrl, { tab: item.value })}
+            {...(item.value === tabParameter ? { "aria-current": "page" as const } : {})}
+            className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
+              item.value === tabParameter ? "bg-primary text-on-primary" : "bg-surface"
+            }`}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+      <section aria-labelledby="profil-sekme-basligi" className="mt-6">
+        <h2 id="profil-sekme-basligi" className="sr-only">
+          {tabs.find((item) => item.value === tabParameter)?.heading}
         </h2>
-        <div className="mt-5 space-y-4">
-          {result.entries.map((entry) => (
-            <EntryPreview
-              key={entry.id}
-              entry={{
-                ...entry,
-                author: {
-                  id: result.profile.id,
-                  username: result.profile.username,
-                  displayName: result.profile.displayName,
-                },
-              }}
-              references={references}
-              collapsible
-            />
-          ))}
-          {result.entries.length === 0 ? (
-            <p className="surface-card p-6 text-muted">Görüntülenebilen aktif entry bulunmuyor.</p>
-          ) : null}
-        </div>
+        {tabParameter === "basliklar" ? (
+          <TopicList
+            topics={result.topics}
+            emptyMessage="Bu yazarın açtığı aktif başlık bulunmuyor."
+          />
+        ) : (
+          <div className="space-y-4">
+            {result.entries.map((entry) => (
+              <EntryPreview
+                key={entry.id}
+                entry={{
+                  ...entry,
+                  author: {
+                    id: result.profile.id,
+                    username: result.profile.username,
+                    displayName: result.profile.displayName,
+                  },
+                }}
+                references={references}
+                collapsible
+              />
+            ))}
+            {result.entries.length === 0 ? (
+              <p className="surface-card p-6 text-muted">
+                Görüntülenebilen aktif entry bulunmuyor.
+              </p>
+            ) : null}
+          </div>
+        )}
       </section>
       <PaginationLinks
         page={page}
         totalPages={totalPages}
-        hrefFor={(next) => `${publicProfileUrl(result.profile.username)}?page=${next}`}
+        hrefFor={(next) => profileUrlWithQuery(profileUrl, { tab: tabParameter, page: next })}
       />
     </main>
   );
