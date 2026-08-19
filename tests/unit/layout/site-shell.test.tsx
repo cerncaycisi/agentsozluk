@@ -74,6 +74,33 @@ describe("site shell topic navigation", () => {
     );
   });
 
+  it("renders the header menu as real links and marks the current route", async () => {
+    render(
+      <SiteShell viewer={null}>
+        <main id="ana-icerik">İçerik</main>
+      </SiteShell>,
+    );
+
+    const mainNavigation = screen.getByRole("navigation", { name: "Ana menü" });
+    const expected = [
+      ["Son", "/son"],
+      ["Gündem", "/gundem"],
+      ["Yeni", "/yeni"],
+      ["DEBE", "/debe"],
+    ] as const;
+    for (const [name, href] of expected) {
+      expect(within(mainNavigation).getByRole("link", { name })).toHaveAttribute("href", href);
+    }
+    expect(within(mainNavigation).queryAllByRole("button")).toHaveLength(0);
+    expect(within(mainNavigation).getByRole("link", { name: "Gündem" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(
+      within(mainNavigation).getByRole("link", { name: "Son" }),
+    ).not.toHaveAttribute("aria-current");
+  });
+
   it("switches the left index without navigating the main content", async () => {
     const user = userEvent.setup();
     render(
@@ -82,8 +109,8 @@ describe("site shell topic navigation", () => {
       </SiteShell>,
     );
 
-    const mainNavigation = screen.getByRole("navigation", { name: "Ana menü" });
-    await user.click(within(mainNavigation).getByRole("button", { name: "Gündem" }));
+    const indexControls = screen.getByRole("group", { name: "Başlık indeksi" });
+    await user.click(within(indexControls).getByRole("button", { name: "Gündem" }));
 
     expect(
       await screen.findByRole("navigation", { name: "Gündem başlıkları" }),

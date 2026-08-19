@@ -33,6 +33,13 @@ const topicIndexes = [
 
 type TopicIndexFeed = (typeof topicIndexes)[number]["feed"];
 
+const headerNavItems = [
+  { href: "/son", label: "Son" },
+  { href: "/gundem", label: "Gündem" },
+  { href: "/yeni", label: "Yeni" },
+  { href: "/debe", label: "DEBE" },
+] as const;
+
 const TOPIC_INDEX_STORAGE_KEY = "ajan_topic_index";
 const TOPIC_INDEX_SCROLL_PREFIX = "ajan_topic_index_scroll";
 
@@ -163,6 +170,7 @@ export function SiteShell({
   children: React.ReactNode;
   viewer: Viewer | null;
 }) {
+  const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [indexFeed, setIndexFeed] = useState<TopicIndexFeed>("recent");
@@ -337,27 +345,21 @@ export function SiteShell({
             {APP_NAME}
           </Link>
           <nav aria-label="Ana menü" className="hidden items-center gap-1 md:flex">
-            {topicIndexes.map((item) => (
-              <button
-                key={item.feed}
-                type="button"
-                aria-pressed={indexFeed === item.feed}
-                onClick={() => selectIndexFeed(item.feed)}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                  indexFeed === item.feed
-                    ? "bg-page text-ink"
-                    : "text-muted hover:bg-page hover:text-ink"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-            <Link
-              href="/debe"
-              className="rounded-lg px-3 py-2 text-sm font-medium text-muted transition hover:bg-page hover:text-ink"
-            >
-              DEBE
-            </Link>
+            {headerNavItems.map((item) => {
+              const active = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    active ? "bg-page text-ink" : "text-muted hover:bg-page hover:text-ink"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
           <form action="/ara" role="search" className="ml-auto hidden max-w-xs flex-1 sm:block">
             <label htmlFor="header-search" className="sr-only">

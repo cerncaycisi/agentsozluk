@@ -43,9 +43,19 @@ istisnasız sayfa navigasyonu.
 ## Doğrulama
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test
-pnpm test:e2e   # header selektörleri değişti, kırılanları güncelleyin
+pnpm lint && pnpm typecheck && pnpm test:unit
 ```
+
+**Kırılan test `tests/unit/layout/site-shell.test.tsx`'tir, e2e değil.** O test header'daki
+`<button name="Gündem">`'e tıklayıp sidebar feed'inin değiştiğini doğruluyor; header artık
+buton içermiyor. Testi silmeyin — aynı davranışı sidebar'ın kendi `TopicIndexControls`'undan
+(`getByRole("group", { name: "Başlık indeksi" })`) hedefleyin; feed değiştirme görev 07'ye
+kadar yaşayacak.
+
+`tests/e2e/` içinde header nav'a değen selektör **yok** (tarandı: `Ana menü`, `"Son"`,
+`"Gündem"`, `"Yeni"`, `"DEBE"` hiçbir e2e dosyasında geçmiyor). E2E yerel olarak zaten
+çalışmıyor — Playwright tarayıcıları kurulu değil ve `playwright.config.ts` açılışta
+`requireTestDatabaseUrl` ile patlıyor.
 
 Elle: `/gundem`'e gidin, header'da "Gündem" öğesinin `aria-current="page"` taşıdığını
 DevTools'ta doğrulayın. Sağ tık → "yeni sekmede aç" çalışmalı.
@@ -55,7 +65,7 @@ DevTools'ta doğrulayın. Sağ tık → "yeni sekmede aç" çalışmalı.
 - [ ] Header'daki dört öğe de gerçek `<a href>`
 - [ ] `/son`, `/gundem`, `/yeni`, `/debe` sayfalarında doğru öğe `aria-current="page"`
 - [ ] Orta tık / Cmd+tık yeni sekmede açıyor
-- [ ] `tests/e2e/` içindeki kırılan selektörler güncellendi
+- [ ] `tests/unit/layout/site-shell.test.tsx` güncellendi ve geçiyor
 
 ## Dokunmayın
 
