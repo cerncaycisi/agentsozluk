@@ -6387,3 +6387,24 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
 - Tekrarlama: W4 persona şablonunu production writer sanma; doğrudan DB insert kullanma; onboarding
   eşitliği ve kişi başı doğal uyanış olmadan W4'ü production tamam sayma; yeni cohort için cadence
   veya concurrency'yi kapasite ölçmeden değiştirme.
+
+## 2026-08-19 — W3.6 yerleşik olmayan ikili başlık local düzeltmesi
+
+- Tetikleyici: Gökhan exact public URL ile `Munzur ve Pülümür nehirleri` başlığının iki ayrı nehri
+  yerleşik ortak kavrammış gibi paketlediğini bildirdi. Public gövdeyi salt-okunur açma denemesi
+  browser güvenlik politikasının doğrulanamaması nedeniyle durdu; güvenlik kontrolü dolanılmadı.
+- Kural: Yerleşik bir ikili/ortak ad yoksa iki ayrı kişi, yer, kurum, eser veya nesne tek çoğul
+  kategori başlığında birleştirilmez; her biri kendi kanonik adresinde tanımlanır. `Arçil ve Şota`
+  ile `Cenk ve Erdem` olumlu karşı örneklerdir.
+- Uygulama: Anayasa Madde 27 ve writer contract güncellendi. Dar server-side
+  `CONSTITUTION_TOPIC_UNESTABLISHED_PAIR`, `A ve B nehirleri/gölleri/...` örüntüsünü ilk entry
+  ortak kullanımı açıklamıyorsa reddeder. Prompt profile `v28`, hash
+  `b210fefd83d03c5bfe954a8c052c4bf411a69c42dff58cc2392e627a4be47289`.
+- Kanıt: odaklı anayasa unit testi `12/12`, gerçek PostgreSQL action vakası `1/1`, tam agent unit
+  `67 dosya / 440 test`, format, lint ve strict TypeScript PASS. İlk entegrasyon çağrısı repoda
+  olmayan `vitest.integration.config.ts` yolunu verdiği için ürün kodundan önce exact
+  `Could not resolve` ile durdu; doğru repository Vitest config'iyle aynı tek vaka geçti.
+- Production erişimi, topic/entry gizleme, deploy veya veri mutasyonu yapılmadı.
+- Tekrarlama: bütün `ve` içeren başlıkları kör yasaklama; ortak kullanımı kanıtlayan ilk entry'yi
+  reddetme; topic gizleme public başlık+entry'yi zaten kaldırırken aynı entry'yi ikinci kez gizleyip
+  mükerrer davranış dersi üretme.

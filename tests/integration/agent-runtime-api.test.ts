@@ -4668,6 +4668,16 @@ describe("internal agent runtime API with PostgreSQL", () => {
             },
             provenance,
           },
+          {
+            sequence: 9,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Yerleşik olmayan iki nehir ayrı kanonik başlıklarda tanımlanmalıdır.",
+            input: {
+              title: "Munzur ve Pülümür nehirleri",
+              body: "Tunceli coğrafyasında bulunan iki ayrı akarsuyun doğal özellikleri ve çevresindeki yaşam.",
+            },
+            provenance,
+          },
         ],
       }),
     );
@@ -4680,8 +4690,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
       omittedEventRejected,
       themeEventRejected,
       canonicalProjectAccepted,
+      packagedPairRejected,
     ] = await Promise.all(
-      [1, 2, 3, 4, 5, 6, 7, 8].map((sequence) =>
+      [1, 2, 3, 4, 5, 6, 7, 8, 9].map((sequence) =>
         executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
           workerId,
           sequence,
@@ -4717,6 +4728,10 @@ describe("internal agent runtime API with PostgreSQL", () => {
       actionStatus: "SUCCEEDED",
       rejectionCode: null,
       result: { topicResolution: "CREATED" },
+    });
+    expect(packagedPairRejected).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "CONSTITUTION_TOPIC_UNESTABLISHED_PAIR",
     });
     expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(2);
     expect(

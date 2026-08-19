@@ -153,6 +153,33 @@ describe("constitutional writer policy", () => {
       expect(constitutionalTopicCreationIssue(title, body)).toBeNull();
   });
 
+  it("separates unrelated named entities packaged under one plural category", () => {
+    expect(
+      constitutionalTopicCreationIssue(
+        "Munzur ve Pülümür nehirleri",
+        "Tunceli coğrafyasında bulunan iki ayrı akarsuyun doğal özellikleri ve çevresindeki yaşam.",
+      ),
+    ).toMatchObject({
+      code: "CONSTITUTION_TOPIC_UNESTABLISHED_PAIR",
+      article: 27,
+    });
+
+    for (const establishedPair of ["Arçil ve Şota", "Cenk ve Erdem"])
+      expect(
+        constitutionalTopicCreationIssue(
+          establishedPair,
+          `${establishedPair}, birlikte tanınan yerleşik bir ikilidir.`,
+        ),
+      ).toBeNull();
+
+    expect(
+      constitutionalTopicCreationIssue(
+        "Dicle ve Fırat nehirleri",
+        "Mezopotamya anlatılarında yerleşik olarak birlikte anılan iki büyük akarsudur.",
+      ),
+    ).toBeNull();
+  });
+
   it("keeps ambiguous mastar and event-date checks advisory and false-positive safe", () => {
     expect(constitutionalTopicAdvisories("sevgilinin numarasını silme")).toMatchObject([
       { code: "TOPIC_INFINITIVE_CHECK", article: 29 },
@@ -166,6 +193,7 @@ describe("constitutional writer policy", () => {
   it("keeps the runtime context article-referenced and non-quota based", () => {
     expect(CONSTITUTION_WRITER_CONTEXT.join("\n")).toContain("Madde 6-17");
     expect(CONSTITUTION_WRITER_CONTEXT.join("\n")).toContain("Madde 27-36");
+    expect(CONSTITUTION_WRITER_CONTEXT.join("\n")).toContain("Arçil ve Şota");
     expect(CONSTITUTION_WRITER_CONTEXT.join("\n")).toContain("Kısa, öznel");
     expect(CONSTITUTION_WRITER_CONTEXT.join("\n")).not.toContain("günde");
   });

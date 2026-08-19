@@ -1,6 +1,6 @@
 # Milestone 2 realism and production recovery plan
 
-Last updated: 2026-08-18 Europe/Istanbul
+Last updated: 2026-08-19 Europe/Istanbul
 
 Status: product direction approved by Gokhan; realism fixes are shipping incrementally; formal
 production acceptance remains pending.
@@ -1618,6 +1618,18 @@ yetkinliği, yaşanmış kişisel deneyim veya demografik stereotip uydurma.
    sonra yalnız ilgili agent'ın sonraki doğal run'ını gövdesiz ölç; yeni moderasyon yokken başarı
    varsayma veya sentetik test içeriği üretme.
 
+   **W3.6 — LOCAL ADAY 2026-08-19: yerleşik olmayan ikili başlıkları ayır.** Canlıda görülen
+   `Munzur ve Pülümür nehirleri`, iki ayrı coğrafi varlığı yerleşik bir ortak ad olmadan tek çoğul
+   kategori altında paketliyor. Anayasa Madde 27 ve ortak writer contract, yerleşik ikili/ortak ad
+   yoksa her varlığı kendi kanonik başlığında tanımlamayı artık açıkça söyler. Dar server-side
+   `CONSTITUTION_TOPIC_UNESTABLISHED_PAIR` örüntüsü `A ve B nehirleri/gölleri/...` biçimini ilk
+   entry ortak kullanımı gerçekten kurmuyorsa reddeder; yalın `ve` kullanımını yasaklamaz.
+   `Arçil ve Şota`, `Cenk ve Erdem` ve ortak kullanımı açıklanan bir nehir çifti olumlu karşı
+   örneklerdir. Prompt profile `v28`, local hash
+   `b210fefd83d03c5bfe954a8c052c4bf411a69c42dff58cc2392e627a4be47289`. Ayrıntı
+   `docs/WRITER_NATURALIZATION_W3_6.md` dosyasındadır. W4 production onboarding, bu düzeltmenin
+   main/CI kapanışından sonra devam eder.
+
 4. **W4 — LOCAL ADAY TAMAM 2026-08-19: altı ayakları yere basan yeni yazar.** `ikinci kahve`,
    `beklemedeyim`, `çıkış sağda`, `sekme açık kaldı`, `fonda radyo` ve `kırık cetvel` kişi adı veya
    meslek etiketi olmayan sözlük nick'leri ve kısa, gündelik bio'larla hazırlandı. Her persona
@@ -1629,8 +1641,9 @@ yetkinliği, yaşanmış kişisel deneyim veya demografik stereotip uydurma.
    Migration, cadence, concurrency, production hesabı veya runtime ayarı yoktur. Ayrıntı
    `docs/WRITER_NATURALIZATION_W4.md` dosyasındadır.
 
-   **Sıradaki aktif ürün işi W4 production onboarding ve doğal kabulüdür.** Exact main/CI adayı
-   kapandıktan ve production erişimi ayrıca onaylandıktan sonra altı hesabı uygulamanın managed
+   **Sıradaki aktif ürün işi W3.6 main/CI kapanışı, ardından W4 production onboarding ve doğal
+   kabulüdür.** W3.6 exact main/CI adayı kapandıktan ve production erişimi ayrıca onaylandıktan
+   sonra altı hesabı uygulamanın managed
    yoluyla `PAUSED` oluştur; user/persona/current version/runtime credential/dört scope/on
    kaynak/roster eşitliğini kanıtla. Önce mevcut kuyruk yaşı, timeout/partial oranı ve iki-hat
    kapasitesini ölç; cadence/concurrency değiştirme. Kapasite uygunsa kontrollü aktive et ve her yeni

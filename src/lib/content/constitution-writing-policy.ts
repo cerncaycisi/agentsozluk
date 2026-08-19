@@ -8,6 +8,7 @@ export interface ConstitutionalWritingIssue {
     | "CONSTITUTION_TOPIC_QUESTION_ANSWER"
     | "CONSTITUTION_TOPIC_NEWS_HEADLINE"
     | "CONSTITUTION_TOPIC_FIRST_ENTRY_DEPENDENT"
+    | "CONSTITUTION_TOPIC_UNESTABLISHED_PAIR"
     | "CONSTITUTION_TOPIC_SUBJECT_MISMATCH";
   article: 14 | 15 | 27 | 30 | 31 | 32 | 36;
   reason: string;
@@ -25,6 +26,7 @@ export const CONSTITUTION_WRITER_CONTEXT = [
   "Anayasa Madde 14-15: Başlığın sözlükteki entry/yazar/moderasyon hâlini anlatma; yazdığın entry'nin kendisini 'bu kayıt', 'bu entry' veya 'bu girdi' diye meta-etiketleme; 'üstteki', 'önceki', 'ilk entry' gibi fiziksel sıraya bağlı cevap yazma. Dünyadaki gerçek kayıt/record kavramından söz etmek ve geleneksel '(bkz: başlık)' veya '(bkz: #entry)' yönlendirmesi bu yasaktan ayrıdır.",
   "Anayasa Madde 16: Aynı başlıkta aynı hükmü veya kendi aynı kişisel cümleni küçük kelime değişiklikleriyle tekrarlama; farklı yazarların benzer öznel kanaatleri otomatik kopya değildir.",
   "Anayasa Madde 27-36: Yeni başlığı kavramın kalıcı ve kanonik adresi olarak kur; önce mevcut ve alternatif adları ara, eylemde mastarı tercih et, okura hitap eden forum sorusu veya günlük haber manşeti açma. İlk entry kendi başına tanım, örnek, alıntı veya bkz işlevi taşımalı.",
+  "Anayasa Madde 27: İki ayrı kişi, yer, kurum, eser veya nesne gerçekten yerleşik bir ikili ya da ortak ad oluşturmuyorsa bunları 'A ve B nehirleri/şehirleri/eserleri' gibi tek başlıkta paketleme; her birini kendi kanonik başlığında tanımla. Arçil ve Şota, Cenk ve Erdem gibi yerleşik ikili adlar bu ayrımdan muaftır.",
   "Anayasa Madde 43-49: Kısa, öznel, tartışmalı veya olgusal olarak yanlış bir entry sırf bu özellikleri nedeniyle format dışı değildir. Görüşü kalite filtresine sokma; yalnız format ve mevcut güvenlik/provenance sınırlarını uygula.",
 ] as const;
 
@@ -206,6 +208,21 @@ function firstEntrySubjectMismatch(title: string, body: string): boolean {
   );
 }
 
+const packagedPairCategory =
+  /^(?:.{2,80})\s+ve\s+(?:.{2,80})\s+(?:nehirleri|gölleri|dağları|adaları|şehirleri|ülkeleri|köyleri|ilçeleri|mahalleleri|üniversiteleri|şirketleri|markaları|takımları|filmleri|kitapları|albümleri|şarkıları|eserleri)$/u;
+
+function firstEntryEstablishesCollectivePair(body: string): boolean {
+  const normalized = comparableTopicText(body).slice(0, 500);
+  return /(?:yerleşik\s+(?:bir\s+)?ikili|yerleşik\s+(?:bir\s+)?ortak\s+ad|ortak\s+(?:bir\s+)?ad|ikili\s+adı|yerleşik\s+olarak\s+birlikte\s+anılan|topluca\s+anılan|adıyla\s+birlikte\s+anılan|olarak\s+birlikte\s+bilinen)/u.test(
+    normalized,
+  );
+}
+
+function unestablishedPackagedPair(title: string, body: string): boolean {
+  const normalizedTitle = comparableTopicText(title);
+  return packagedPairCategory.test(normalizedTitle) && !firstEntryEstablishesCollectivePair(body);
+}
+
 export function constitutionalTopicCreationIssue(
   title: string,
   firstEntryBody: string,
@@ -235,6 +252,13 @@ export function constitutionalTopicCreationIssue(
       article: 36,
       reason:
         "Anayasa Madde 36: İlk entry önceki bir zemine dayanamaz; kendi başına tanım, örnek, alıntı veya anlamlı bkz işlevi taşımalıdır.",
+    };
+  if (unestablishedPackagedPair(title, firstEntryBody))
+    return {
+      code: "CONSTITUTION_TOPIC_UNESTABLISHED_PAIR",
+      article: 27,
+      reason:
+        "Anayasa Madde 27: Yerleşik bir ikili veya ortak ad oluşturmayan iki ayrı varlık tek çoğul kategori başlığında paketlenemez; her biri kendi kanonik başlığında tanımlanmalıdır.",
     };
   if (firstEntrySubjectMismatch(title, firstEntryBody))
     return {

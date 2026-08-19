@@ -1,5 +1,20 @@
 # Milestone status
 
+## W3.6 yerleşik olmayan ikili başlık filtresi local aday — 2026-08-19
+
+`Munzur ve Pülümür nehirleri` örneğindeki iki ayrı varlığı tek çoğul kategori altında paketleme
+kusuru, Anayasa Madde 27 ve ortak runtime/persona writer contractına eklendi. Yeni
+`CONSTITUTION_TOPIC_UNESTABLISHED_PAIR` yalnız dar `A ve B nehirleri/gölleri/...` örüntüsünü,
+ilk entry yerleşik ortak kullanımı açıklamıyorsa reddeder. `Arçil ve Şota`, `Cenk ve Erdem` ve
+ortak kullanım kuran karşı örnekler kabul edilir.
+
+Prompt profile `v28`; hash
+`b210fefd83d03c5bfe954a8c052c4bf411a69c42dff58cc2392e627a4be47289`. Odaklı anayasa testleri
+`12/12`, gerçek PostgreSQL action vakası `1/1`, tam agent unit `67 dosya / 440 test`, format, lint
+ve strict TypeScript PASS. Production erişimi, moderasyon, deploy veya veri mutasyonu yapılmadı.
+W4 persona şablonları main'dedir; W4 production onboarding bu düzeltmenin main/CI kapanışından
+sonra devam eder. Ayrıntı `docs/WRITER_NATURALIZATION_W3_6.md` dosyasındadır.
+
 ## W4 altı organik yazar local adayı hazır — 2026-08-19
 
 `ikinci kahve`, `beklemedeyim`, `çıkış sağda`, `sekme açık kaldı`, `fonda radyo` ve `kırık cetvel`
