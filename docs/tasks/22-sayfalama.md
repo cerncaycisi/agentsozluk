@@ -10,8 +10,13 @@
 **Benchmark:** Ekşi'de `.pager` bir `<select>` — canlıda incelenen başlıkta
 `data-pagecount="104"` ve 104 seçenek. Tek etkileşimle herhangi bir sayfaya gidiliyor.
 
-Bileşen dört yerde kullanılıyor: başlık, arama, DEBE olmayan feed'ler, yazar profili.
-Hepsi `hrefFor(page)` ile kendi URL'sini üretiyor — bu sözleşmeyi koruyun.
+Bileşen **17 dosyada, 18 yerde** kullanılıyor (6'sı genel yüzey, 11'i moderasyon).
+Hepsi `hrefFor(page)` ile kendi URL'sini üretiyor ve şekiller birbirinden farklı
+(`?page=`, `/ara?q=…&type=…&page=`, `topicUrlWithQuery(...)`) — bu sözleşmeyi koruyun.
+
+Bu sayı `<select>` yaklaşımını pratikte eler: `hrefFor` bir string URL döndürdüğü için
+18 farklı sorgu şeklinden form `action`'ı ve gizli alanları güvenilir biçimde türetmek
+sözleşmeyi kırmadan mümkün değil. **Numaralı link yaklaşımını seçin.**
 
 ## Okunacak dosyalar
 
@@ -32,7 +37,13 @@ Hepsi `hrefFor(page)` ile kendi URL'sini üretiyor — bu sözleşmeyi koruyun.
    form'un `action` ve gizli alanlarını ondan türetin.
    Numaralı link yaklaşımı bu sorunu tamamen ortadan kaldırır — tercih sebebi.
 5. Mobilde taşmasın: 375px'te numaralar sarmasın, gerekirse gösterilen numara sayısını azaltın.
+   "İlk"/"Son" metin linklerini mobilde gizlemek kabul edilebilir — `1` ve `104` numaraları
+   aynı işi görüyor. "Önceki/Sonraki" ok simgesine inebilir, ama `aria-label` tam metni korumalı.
 6. Her sayfa hedefi ≥24px (görev 19 ile tutarlı).
+7. **Aktif sayfa link olmasın** — `<span aria-current="page">` kullanın. Bulunduğu sayfaya
+   link vermek ekran okuyucuda gereksiz gürültü.
+8. **"İlk"/"Son" yalnız bir yere götürdüklerinde render edilsin** — sayfa 1'deyken "İlk"
+   gösterilmemeli.
 
 ## Doğrulama
 
@@ -48,7 +59,7 @@ son sayfaya tek etkileşimle gidin. JS'i kapatıp tekrar deneyin.
 - [ ] Çok sayfalı bir listede herhangi bir sayfaya tek etkileşimle gidiliyor
 - [ ] JS kapalıyken de çalışıyor
 - [ ] 375px'te sarmıyor
-- [ ] Dört kullanım yerinin hepsinde doğru URL üretiliyor (`hrefFor` sözleşmesi korundu)
+- [ ] 18 kullanım yerinin hepsinde doğru URL üretiliyor (`hrefFor` sözleşmesi korundu)
 - [ ] Aktif sayfa `aria-current="page"` taşıyor
 
 ## Dokunmayın
