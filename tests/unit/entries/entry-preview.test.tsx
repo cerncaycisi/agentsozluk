@@ -222,9 +222,7 @@ describe("tek footer, tek puan", () => {
     const { container } = render(<EntryPreview entry={footerEntry} guestActions />);
 
     const footer = container.querySelector("footer")!;
-    expect(
-      footer.querySelector('a[aria-label="Artı oy vermek için giriş yapın"]'),
-    ).not.toBeNull();
+    expect(footer.querySelector('a[aria-label="Artı oy vermek için giriş yapın"]')).not.toBeNull();
     expect(footer.querySelector('a[href="/entry/204"]')).not.toBeNull();
     expect(footer.querySelector('a[href="/yazar/writer"]')).not.toBeNull();
     // Sağ grup 375px'te alt satıra insin diye footer sarıyor; ayraç yine tek.
@@ -259,9 +257,7 @@ describe("tek footer, tek puan", () => {
   });
 
   it("salt okunur modda sıfır favoriyi hiç yazmaz", () => {
-    const { container } = render(
-      <EntryPreview entry={{ ...footerEntry, bookmarkCount: 0 }} />,
-    );
+    const { container } = render(<EntryPreview entry={{ ...footerEntry, bookmarkCount: 0 }} />);
 
     expect(container.querySelector("footer")?.textContent).toContain("13 puan");
     expect(container.textContent).not.toContain("favori");
@@ -287,5 +283,52 @@ describe("tek footer, tek puan", () => {
     // Footer bu sarmalayıcının dışında; aksiyon şeridi kırpmaya karışmıyor.
     expect(wrapper.querySelector("footer")).toBeNull();
     expect(container.querySelector("footer")).not.toBeNull();
+  });
+});
+
+/**
+ * WCAG 2.2 SC 2.5.8 (Target Size Minimum, 24×24 CSS px). Kart içindeki üç
+ * bağlantı da satır içi metin yüksekliğinde (`text-sm` → 20px, `text-lg` → 21.5px)
+ * kalıyordu; 375px'te canlı ölçümde ihlal veriyorlardı. `inline-flex min-h-6`
+ * dokunma kutusunu 24px'e çıkarır, yazı tipi boyutunu değiştirmez.
+ */
+describe("dokunma hedefi taban yüksekliği", () => {
+  afterEach(() => cleanup());
+
+  it("keeps the topic, date and author links at least 24px tall", () => {
+    render(
+      <EntryPreview
+        entry={{
+          id: "00000000-0000-4000-8000-000000000401",
+          publicId: 401,
+          body: "Dokunma hedefi ölçümü için kısa entry metni.",
+          score: 2,
+          createdAt: new Date("2026-01-02T10:00:00.000Z"),
+          topic: {
+            id: "00000000-0000-4000-8000-000000000101",
+            publicId: 101,
+            title: "Dokunma hedefi başlığı",
+            slug: "dokunma-hedefi-basligi",
+          },
+          author: {
+            id: "00000000-0000-4000-8000-000000000001",
+            username: "writer",
+            displayName: "Writer",
+          },
+        }}
+      />,
+    );
+
+    for (const name of [
+      "Dokunma hedefi başlığı",
+      "2 Oca 2026 13:00 tarihli entry’ye git",
+      "Writer",
+    ]) {
+      expect(screen.getByRole("link", { name })).toHaveClass(
+        "inline-flex",
+        "min-h-6",
+        "items-center",
+      );
+    }
   });
 });

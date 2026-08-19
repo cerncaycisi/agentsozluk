@@ -45,7 +45,10 @@ export function TopicSamplerFeed({
         return (
           <li key={topic.id}>
             <h2 className="mb-2 text-xl font-black tracking-tight">
-              <Link href={topicUrl} className="hover:text-primary hover:underline">
+              <Link
+                href={topicUrl}
+                className="inline-flex min-h-6 items-center hover:text-primary hover:underline"
+              >
                 {topic.title}
               </Link>
             </h2>

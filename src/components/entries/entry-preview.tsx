@@ -136,7 +136,10 @@ export function EntryPreview({
       <div className="flex flex-wrap items-start justify-between gap-3">
         {showTopicTitle ? (
           <h2 className="text-lg font-bold">
-            <Link href={topicPublicUrl(entry.topic)} className="hover:text-primary">
+            <Link
+              href={topicPublicUrl(entry.topic)}
+              className="inline-flex min-h-6 items-center hover:text-primary"
+            >
               {entry.topic.title}
             </Link>
           </h2>
@@ -188,7 +191,7 @@ export function EntryPreview({
           <Link
             href={entryPublicUrl(entry)}
             aria-label={`${formattedCreatedAt} tarihli entry’ye git`}
-            className="hover:text-ink hover:underline"
+            className="inline-flex min-h-6 items-center hover:text-ink hover:underline"
           >
             {formattedCreatedAt}
           </Link>
@@ -200,7 +203,7 @@ export function EntryPreview({
           <span aria-hidden="true">·</span>
           <Link
             href={publicProfileUrl(entry.author.username)}
-            className="font-semibold text-primary hover:underline"
+            className="inline-flex min-h-6 items-center font-semibold text-primary hover:underline"
           >
             {entry.author.displayName}
           </Link>

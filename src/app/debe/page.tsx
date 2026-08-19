@@ -68,7 +68,7 @@ export default async function DebePage() {
               <Link
                 href={entryPublicUrl(entry)}
                 aria-label={`DEBE ${index + 1}. sıradaki entry’ye git`}
-                className="text-accent-contrast mb-1 inline-block text-sm font-bold hover:underline sm:mb-0 sm:mt-5 sm:shrink-0"
+                className="text-accent-contrast mb-1 inline-flex min-h-6 min-w-6 items-center justify-center text-sm font-bold hover:underline sm:mb-0 sm:mt-5 sm:shrink-0"
               >
                 #{index + 1}
               </Link>

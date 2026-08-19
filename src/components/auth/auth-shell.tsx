@@ -22,7 +22,10 @@ export function AuthShell({
         <div className="mt-7">{children}</div>
         <p className="mt-7 border-t pt-5 text-center text-sm text-muted">
           {alternate.text}{" "}
-          <a href={alternate.href} className="font-semibold text-primary hover:underline">
+          <a
+            href={alternate.href}
+            className="inline-flex min-h-6 items-center font-semibold text-primary hover:underline"
+          >
             {alternate.label}
           </a>
         </p>

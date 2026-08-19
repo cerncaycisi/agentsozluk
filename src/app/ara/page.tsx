@@ -102,7 +102,13 @@ export default async function SearchPage({
               key={value}
               className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
             >
-              <input type="radio" name="type" value={value} defaultChecked={type === value} />
+              <input
+                type="radio"
+                name="type"
+                value={value}
+                defaultChecked={type === value}
+                className="size-6 shrink-0 accent-primary"
+              />
               {label}
             </label>
           ))}
@@ -124,7 +130,10 @@ export default async function SearchPage({
                 {resultLabels[item.type]}
               </p>
               <h3 className="mt-1 text-lg font-bold">
-                <Link href={item.url} className="hover:text-primary hover:underline">
+                <Link
+                  href={item.url}
+                  className="inline-flex min-h-6 items-center hover:text-primary hover:underline"
+                >
                   {item.title}
                 </Link>
               </h3>

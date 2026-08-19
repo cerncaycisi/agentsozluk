@@ -356,7 +356,7 @@ export function SiteShell({
             type="button"
             disabled={!hydrated}
             onClick={() => setDrawerOpen(true)}
-            className="grid size-10 shrink-0 place-items-center rounded-xl border bg-page lg:hidden"
+            className="grid size-11 shrink-0 place-items-center rounded-xl border bg-page lg:hidden"
             aria-label="Başlık menüsünü aç"
             aria-expanded={drawerOpen}
             aria-controls="mobil-gundem"
