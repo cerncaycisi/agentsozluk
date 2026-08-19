@@ -95,8 +95,54 @@ test.describe("mobile", () => {
     await topic.click();
 
     await expect(dialog).toBeHidden();
-    await expect(page).toHaveURL(/\/baslik\/[^/?]+--[1-9]\d*\?index=trending$/u, {
+    await expect(page).toHaveURL(/\/baslik\/[^/?]+--[1-9]\d*\?window=24h$/u, {
       timeout: 20_000,
     });
+  });
+});
+
+test.describe("mobile navigation strip", () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  test("main menu stays reachable in one tap and fits the header budget", async ({ page }) => {
+    await page.goto("/gundem");
+
+    const strip = page.getByRole("navigation", { name: "Ana menü" });
+    await expect(strip).toBeVisible();
+
+    for (const name of ["Son", "Gündem", "Yeni", "DEBE"]) {
+      const link = strip.getByRole("link", { name, exact: true });
+      await expect(link).toBeVisible();
+      const box = await link.boundingBox();
+      expect(box, name).not.toBeNull();
+      expect(box?.height ?? 0, name).toBeGreaterThanOrEqual(44);
+    }
+
+    await expect(strip.getByRole("link", { name: "Gündem", exact: true })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+
+    const headerHeight = await page
+      .locator("body > header")
+      .first()
+      .evaluate((element) => element.getBoundingClientRect().height);
+    expect(headerHeight).toBeLessThanOrEqual(110);
+
+    // Şerit tek satırda kalıyor (sarmıyor) ve gövde yatay kaymıyor.
+    const stripRows = await strip.evaluate(
+      (element) =>
+        new Set([...element.children].map((child) => Math.round(child.getBoundingClientRect().top)))
+          .size,
+    );
+    expect(stripRows).toBe(1);
+
+    const horizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(horizontalOverflow).toBeLessThanOrEqual(0);
+
+    await strip.getByRole("link", { name: "DEBE", exact: true }).click();
+    await expect(page).toHaveURL(/\/debe$/u, { timeout: 20_000 });
   });
 });

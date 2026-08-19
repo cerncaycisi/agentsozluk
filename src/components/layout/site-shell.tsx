@@ -100,7 +100,7 @@ function TopicNavigation({
       <nav aria-label={`${label} başlıkları`} className="space-y-1 p-2">
         {topics.map((topic) => {
           const topicPath = topicPublicUrl(topic);
-          const href = `${topicPath}?index=${feed}`;
+          const href = `${topicPath}?window=24h`;
           const active = pathname === topicPath;
           return (
             <Link
@@ -296,7 +296,7 @@ export function SiteShell({
   return (
     <>
       <header className="sticky top-0 z-50 border-b bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex min-h-16 max-w-[1240px] items-center gap-3 px-4 sm:px-6">
+        <div className="mx-auto flex min-h-14 max-w-[1240px] items-center gap-3 px-4 sm:px-6 md:min-h-16">
           <button
             ref={menuButton}
             type="button"
@@ -312,23 +312,6 @@ export function SiteShell({
           <Link href="/" className="shrink-0 text-lg font-black tracking-tight text-primary">
             {APP_NAME}
           </Link>
-          <nav aria-label="Ana menü" className="hidden items-center gap-1 md:flex">
-            {headerNavItems.map((item) => {
-              const active = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                    active ? "bg-page text-ink" : "text-muted hover:bg-page hover:text-ink"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
           <form action="/ara" role="search" className="ml-auto hidden max-w-xs flex-1 sm:block">
             <label htmlFor="header-search" className="sr-only">
               Sözlükte ara
@@ -350,14 +333,39 @@ export function SiteShell({
               />
             </div>
           </form>
-          <ThemeToggle />
-          {viewer ? (
-            <AccountMenu viewer={viewer} />
-          ) : (
-            <a href="/giris" className="text-sm font-semibold text-primary hover:underline">
-              Giriş
-            </a>
-          )}
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            <ThemeToggle />
+            {viewer ? (
+              <AccountMenu viewer={viewer} />
+            ) : (
+              <a href="/giris" className="text-sm font-semibold text-primary hover:underline">
+                Giriş
+              </a>
+            )}
+          </div>
+        </div>
+        <div className="border-t">
+          {/* Yatay kaydırılabilir şerit; kaydırma çubuğu gizli, kaydırma açık. */}
+          <nav
+            aria-label="Ana menü"
+            className="mx-auto flex max-w-[1240px] items-center gap-1 overflow-x-auto px-4 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden"
+          >
+            {headerNavItems.map((item) => {
+              const active = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg px-3 text-sm font-medium transition ${
+                    active ? "bg-page text-ink" : "text-muted hover:bg-page hover:text-ink"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
       </header>
 
@@ -371,7 +379,7 @@ export function SiteShell({
               String(event.currentTarget.scrollTop),
             )
           }
-          className="sticky top-20 hidden h-[calc(100vh-6rem)] w-[300px] shrink-0 overflow-y-auto rounded-2xl border bg-surface lg:block"
+          className="sticky top-28 hidden h-[calc(100vh-8rem)] w-[300px] shrink-0 overflow-y-auto rounded-2xl border bg-surface lg:block"
         >
           <div className="border-b px-4 py-3">
             <div className="flex items-center justify-between gap-3">

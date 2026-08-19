@@ -69,7 +69,7 @@ describe("site shell topic navigation", () => {
 
     const topicNavigation = await screen.findByRole("navigation", { name: "Son başlıkları" });
     const topicLink = within(topicNavigation).getByRole("link", { name: /Son başlığı/u });
-    expect(topicLink).toHaveAttribute("href", "/baslik/son-basligi--123?index=recent");
+    expect(topicLink).toHaveAttribute("href", "/baslik/son-basligi--123?window=24h");
     expect(topicLink).toHaveTextContent("4");
     expect(topicLink).not.toHaveTextContent("31");
     expect(fetch).toHaveBeenCalledWith(
@@ -100,9 +100,42 @@ describe("site shell topic navigation", () => {
       "aria-current",
       "page",
     );
-    expect(
-      within(mainNavigation).getByRole("link", { name: "Son" }),
-    ).not.toHaveAttribute("aria-current");
+    expect(within(mainNavigation).getByRole("link", { name: "Son" })).not.toHaveAttribute(
+      "aria-current",
+    );
+  });
+
+  it("keeps the main menu as a horizontally scrolling strip at every width", async () => {
+    render(
+      <SiteShell viewer={null}>
+        <main id="ana-icerik">İçerik</main>
+      </SiteShell>,
+    );
+
+    const mainNavigation = screen.getByRole("navigation", { name: "Ana menü" });
+    const header = mainNavigation.closest("header");
+    expect(header).not.toBeNull();
+    expect(header).toHaveClass("sticky", "top-0");
+
+    // Şerit hiçbir kırılma noktasında gizlenmiyor (eski `hidden ... md:flex` kalktı).
+    const stripClasses = mainNavigation.className.split(/\s+/u);
+    expect(stripClasses).not.toContain("hidden");
+    expect(stripClasses.some((token) => /^(?:sm|md|lg|xl|2xl):(?:hidden|flex)$/u.test(token))).toBe(
+      false,
+    );
+
+    // Sarmıyor, yatay kayıyor, kaydırma çubuğu gizli.
+    expect(stripClasses).toContain("flex");
+    expect(stripClasses).toContain("overflow-x-auto");
+    expect(stripClasses).toContain("[scrollbar-width:none]");
+    expect(stripClasses).toContain("[&::-webkit-scrollbar]:hidden");
+
+    // Her öğe küçülmüyor ve en az 44px (min-h-11) dokunma yüksekliği taşıyor.
+    const items = within(mainNavigation).getAllByRole("link");
+    expect(items).toHaveLength(4);
+    for (const item of items) {
+      expect(item).toHaveClass("shrink-0", "min-h-11", "whitespace-nowrap");
+    }
   });
 
   it("derives the sidebar index from the route instead of an index selector", async () => {
@@ -187,7 +220,7 @@ describe("site shell topic navigation", () => {
 
     const dialog = screen.getByRole("dialog", { name: "Başlık menüsü" });
     const topicLink = await within(dialog).findByRole("link", { name: /Gündem başlığı/u });
-    expect(topicLink).toHaveAttribute("href", "/baslik/gündem-basligi--123?index=trending");
+    expect(topicLink).toHaveAttribute("href", "/baslik/gündem-basligi--123?window=24h");
     expect(within(dialog).queryByRole("group", { name: "Başlık indeksi" })).not.toBeInTheDocument();
     topicLink.addEventListener("click", (event) => event.preventDefault(), { once: true });
 

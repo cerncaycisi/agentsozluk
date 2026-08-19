@@ -39,8 +39,24 @@
 
 ```js
 document.querySelector('header').getBoundingClientRect().height   // ≤ 110
-document.querySelector('article')?.getBoundingClientRect().top    // ≤ 250 (şu an 337)
 ```
+
+**"İlk entry ≤250px" diye bir kriter koymayın — ulaşılamaz.** Bu görev header'a bir satır
+*ekliyor*; içeriğin aynı anda 87px yukarı çıkmasını istemek kendi içinde çelişkili.
+375px'te başlık sayfasının ölçülen dökümü:
+
+| | px |
+|---|---|
+| site header | 65 (bu görevden sonra 102) |
+| `page-main py-10` | 40 |
+| "N entry · son 24 saat" + `mt-2` | 28 |
+| `h1` + `mt-5` | 56 |
+| başlık içi arama formu + `mt-4` | 62 |
+| sıralama nav'ı (375px'te 2 satıra sarıyor) | 58 |
+| `header mb-7` | 28 |
+
+Site header sıfır olsa bile ilk entry 272px'te başlar. Asıl kazanç sıralama şeridinin
+sarmasını önlemekte (görev 20) ve başlık içi arama formunu sadeleştirmekte.
 
 ```bash
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e
@@ -49,7 +65,8 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e
 ## Bitti kriteri
 
 - [ ] 375px'te dört navigasyon öğesi de görünür ve **tek dokunuşla** erişilebilir
-- [ ] Header yüksekliği 375px'te ≤110px
+- [ ] Header yüksekliği 375px'te ≤110px (masaüstünde de; ölçülen 102/110)
+- [ ] `entry-preview.tsx`'teki `scroll-mt` header yüksekliğini aşıyor (`scroll-mt-28`)
 - [ ] Şerit yatay kayıyor, sarmıyor; sayfa gövdesi yatay kaymıyor
 - [ ] Her öğe ≥44px yükseklikte
 - [ ] `aria-current="page"` mobilde de doğru çalışıyor
