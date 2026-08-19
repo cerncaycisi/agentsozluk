@@ -31,6 +31,12 @@ export function buildSearchQuery(input: {
   type: "all" | "topics" | "entries" | "users";
   skip: number;
   take: number;
+  /**
+   * Öneri (autocomplete) modu. Yalnızca yazar filtresini daraltır: normal aramada
+   * askıya alınmış hesaplar erişilebilir profil oldukları için listelenir, öneri
+   * kutusunda yalnızca ACTIVE yazarlar önerilir. Varsayılan davranış değişmez.
+   */
+  suggest?: boolean;
 }): Prisma.Sql {
   const escapedQuery = escapeLikePattern(input.query);
   const queryContainsPattern = `%${escapedQuery}%`;
@@ -108,7 +114,7 @@ export function buildSearchQuery(input: {
         users."updatedAt" AS recency
       FROM users
       CROSS JOIN search_settings
-      WHERE users.status <> 'DEACTIVATED'
+      WHERE ${input.suggest === true ? Prisma.sql`users.status = 'ACTIVE'` : Prisma.sql`users.status <> 'DEACTIVATED'`}
         AND (
           immutable_unaccent(users."usernameNormalized") = immutable_unaccent(${input.query})
           OR immutable_unaccent(users."usernameNormalized") ILIKE immutable_unaccent(${queryPrefixPattern}) ESCAPE E'\\\\'
@@ -213,6 +219,7 @@ export async function searchRecords(
     type: "all" | "topics" | "entries" | "users";
     skip: number;
     take: number;
+    suggest?: boolean;
   },
 ): Promise<SearchPage> {
   const rows = await transaction.$queryRaw<SearchQueryRow[]>(buildSearchQuery(input));
