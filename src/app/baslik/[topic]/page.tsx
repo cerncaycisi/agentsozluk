@@ -252,7 +252,7 @@ export default async function TopicPage({
             defaultValue={entryQuery}
             maxLength={100}
             placeholder="Bu başlıktaki entry’lerde ara"
-            className="min-w-0 flex-1 rounded-xl border bg-page px-3 py-2"
+            className="min-w-0 flex-1 rounded-xl border field-border bg-page px-3 py-2"
           />
           <button type="submit" className="button-secondary">
             Başlıkta ara

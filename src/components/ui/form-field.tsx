@@ -21,7 +21,7 @@ export function FormField({
         {...props}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : hint ? hintId : undefined}
-        className="min-h-11 w-full rounded-xl border bg-page px-3.5 text-ink placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60"
+        className="min-h-11 w-full rounded-xl border field-border bg-page px-3.5 text-ink placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60"
       />
       {error ? (
         <p id={errorId} className="mt-1.5 text-sm text-destructive">
@@ -57,7 +57,7 @@ export function FormTextarea({
         {...props}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : hint ? hintId : undefined}
-        className="min-h-32 w-full resize-y rounded-xl border bg-page px-3.5 py-3 text-ink placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60"
+        className="min-h-32 w-full resize-y rounded-xl border field-border bg-page px-3.5 py-3 text-ink placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60"
       />
       {error ? (
         <p id={errorId} className="mt-1.5 text-sm text-destructive">

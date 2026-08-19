@@ -376,7 +376,7 @@ export function SiteShell({
                 minLength={2}
                 maxLength={100}
                 placeholder="Başlık, entry veya yazar ara"
-                className="min-h-10 w-full rounded-xl border bg-page pl-10 pr-4 text-sm placeholder:text-muted"
+                className="min-h-10 w-full rounded-xl border field-border bg-page pl-10 pr-4 text-sm placeholder:text-muted"
               />
             </div>
           </form>

@@ -224,7 +224,7 @@ export function EntryActions({
             minLength={10}
             maxLength={10000}
             disabled={pending}
-            className="min-h-36 w-full rounded-xl border bg-page p-3"
+            className="min-h-36 w-full rounded-xl border field-border bg-page p-3"
           />
           <div className="mt-3 flex gap-3">
             <button

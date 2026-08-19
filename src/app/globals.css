@@ -12,6 +12,7 @@
   --accent: 217 108 74;
   --accent-text: 158 67 45;
   --border: 217 221 229;
+  --border-strong: 130 138 154;
   --destructive: 180 35 24;
   --on-primary: 255 255 255;
   --on-accent: 24 33 47;
@@ -29,6 +30,7 @@
     --accent: 242 139 103;
     --accent-text: 242 139 103;
     --border: 48 55 68;
+    --border-strong: 100 110 128;
     --destructive: 249 112 102;
     --on-primary: 16 19 24;
     --on-accent: 16 19 24;
@@ -46,6 +48,7 @@
   --accent: 242 139 103;
   --accent-text: 242 139 103;
   --border: 48 55 68;
+  --border-strong: 100 110 128;
   --destructive: 249 112 102;
   --on-primary: 16 19 24;
   --on-accent: 16 19 24;
@@ -95,6 +98,10 @@ body {
 
   .button-secondary {
     @apply inline-flex min-h-11 items-center justify-center rounded-xl border bg-surface px-5 py-2.5 font-semibold text-ink transition hover:border-primary hover:text-primary;
+  }
+
+  .field-border {
+    border-color: rgb(var(--border-strong));
   }
 
   .text-accent-contrast {

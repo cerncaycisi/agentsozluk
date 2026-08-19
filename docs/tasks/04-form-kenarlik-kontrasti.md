@@ -20,17 +20,34 @@ başlayıp bittiğini görmesi gerekiyor. Şu an input'lar zeminden neredeyse ay
 
 - `src/app/globals.css` — token blokları ve `*` kenarlık kuralı
 - `src/components/ui/form-field.tsx` — `FormField` ve `FormTextarea`, ikisi de `rounded-xl border bg-page`
-- Doğrudan `border` sınıfı kullanan diğer form kontrolleri:
+- Doğrudan `border` sınıfı kullanan diğer form kontrolleri.
+  **Satır bazlı grep işe yaramaz** — JSX'te `className` çoğu zaman ayrı satırda, bu yüzden
+  `grep '<input' | grep 'border'` sıfır sonuç döndürür ve yanlışlıkla "başka yer yok"
+  sonucuna varmanıza yol açar. Çok satırlı eşleşme kullanın:
   ```bash
-  grep -rn '<input\|<textarea\|<select' src/ | grep -n 'border'
+  python3 - <<'EOF'
+  import re, pathlib
+  for p in pathlib.Path('src').rglob('*.tsx'):
+      t = p.read_text()
+      for m in re.finditer(r'<(input|textarea|select)\b[^>]*?>', t, re.S):
+          if 'className' in m.group(0) and re.search(r'\bborder\b', m.group(0)) \
+             and 'field-border' not in m.group(0):
+              print(f"{p}:{t[:m.start()].count(chr(10))+1}")
+  EOF
   ```
+  Bu tarama sonrası kalan 16 ham kontrolün **hepsi `src/app/moderasyon/**` altındadır** ve
+  plan gereği kapsam dışıdır. Genel yüzeyde kalan yok.
 
 ## Yapılacak
 
 1. `globals.css`'te üç tema bloğunun her birine `--border-strong` ekleyin.
-   Başlangıç önerisi — **hesaplayarak doğrulayın, körlemesine kopyalamayın**:
-   - açık: `148 156 170`
-   - koyu: `90 100 118`
+   Doğrulanmış değerler:
+   - açık: `130 138 154` → page 3.23:1, surface 3.47:1
+   - koyu: `100 110 128` → page 3.62:1, surface 3.25:1
+
+   **Sınırlayıcı çift her temada farklı:** açık temada `--page` (247 247 242) daha zor,
+   koyu temada `--surface` (25 30 39) daha zor. Input'lar `bg-page` kullanıyor ama kart
+   içinde surface'a komşu olabiliyor — ikisini birden ≥3 tutun, yalnız birine bakmayın.
 2. `@layer components` içine:
    ```css
    .field-border {
