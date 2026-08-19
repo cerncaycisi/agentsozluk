@@ -26,10 +26,16 @@ AI paylaşımları başlık seviyesinde (görev 21).
 1. Görev 17'de oluşturulan ⋮ menüsüne "Linki kopyala" öğesi ekleyin.
    Menü misafirde boşsa, bu öğe onu doldurur — yani ⋮ artık herkese görünür.
 2. Kopyalanacak değer entry'nin **mutlak** adresi olmalı (`https://…/entry/123`), göreli değil.
-   Base URL için `getEnvironment().APP_URL` veya `window.location.origin` kullanın.
+   Base URL için **`window.location.origin`** kullanın.
+   `getEnvironment().APP_URL` burada **çalışmaz**: `entry-actions.tsx` bir `"use client"`
+   bileşeni, `APP_URL`'in `NEXT_PUBLIC_` öneki yok, yani istemci paketinde bulunmuyor ve
+   `getEnvironment()` tüm sunucu şemasını parse ettiği için zod hatası fırlatır.
 3. Başarılıysa `sonner` ile toast: "Link kopyalandı."
 4. `navigator.clipboard` yoksa veya reddedilirse (izin, güvensiz bağlam): linki salt okunur,
    içeriği seçili bir input'ta gösterin. **`document.execCommand` kullanmayın** — kullanımdan kalktı.
+   **Radix focus yarışına dikkat:** yedek input mount edildikten *sonra* Radix focus'u ⋮
+   tetikleyicisine geri alır — input seçili ama odaklı olmaz ve Ctrl+C hiçbir şey kopyalamaz.
+   `onCloseAutoFocus`'ta yalnız yedek yolda `preventDefault()` gerekiyor.
 5. Hata durumunda sessiz kalmayın; toast ile bildirin.
 
 ## Doğrulama

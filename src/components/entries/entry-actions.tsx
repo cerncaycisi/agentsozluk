@@ -7,6 +7,7 @@ import {
   EllipsisVertical,
   Flag,
   History,
+  Link2,
   Pencil,
   ThumbsDown,
   ThumbsUp,
@@ -15,7 +16,8 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { FormTextarea } from "@/components/ui/form-field";
 import { GammazButton } from "@/components/moderation/gammaz-button";
@@ -52,9 +54,21 @@ const overflowItemClass =
  * `DropdownMenu.Item` geçmek yeterli.
  *
  * Menü hiç öğesi yokken render EDİLMEMELİ; boş bir ⋮ kullanıcıyı yanıltır.
- * Bu yüzden dolu olup olmadığına çağıran karar verir.
+ * "Linki kopyala" oturum gerektirmediği için menü artık her iki görünümde de
+ * en az bir öğe taşıyor; yine de doluluk kararı çağırana ait.
  */
-function EntryOverflowMenu({ children }: { children: ReactNode }) {
+function EntryOverflowMenu({
+  children,
+  onCloseAutoFocus,
+}: {
+  children: ReactNode;
+  /**
+   * Menü kapanırken Radix odağı ⋮ tetikleyicisine geri döndürür — klavye
+   * kullanıcısı için doğru varsayılan. Kapanışın açtığı bir alan varsa (pano
+   * yedeği kutusu) çağıran bu geri dönüşü `preventDefault()` ile iptal eder.
+   */
+  onCloseAutoFocus?: (event: Event) => void;
+}) {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
@@ -71,11 +85,116 @@ function EntryOverflowMenu({ children }: { children: ReactNode }) {
           align="end"
           sideOffset={8}
           className="z-[75] min-w-56 rounded-xl border bg-surface p-2 shadow-xl"
+          {...(onCloseAutoFocus ? { onCloseAutoFocus } : {})}
         >
           {children}
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
+  );
+}
+
+/**
+ * Paylaşılan adres MUTLAK olmalı — göreli bir `/entry/123` panodan başka bir
+ * uygulamaya yapıştırıldığında hiçbir yere gitmez.
+ *
+ * Temel adres tarayıcıdan alınıyor: sunucudaki `APP_URL` istemci paketine
+ * girmiyor (`NEXT_PUBLIC_` önekli değil, `getEnvironment()` yalnız sunucuda
+ * çalışır). Kullanıcı zaten uygulamanın kökeninden geldiği için `window.location.origin`
+ * pratikte `APP_URL` ile aynı değeri verir.
+ */
+function absoluteEntryUrl(entryPublicId: number): string {
+  const path = entryPublicUrl({ publicId: entryPublicId });
+  return typeof window === "undefined" ? path : new URL(path, window.location.origin).toString();
+}
+
+/**
+ * "Linki kopyala" davranışı. Pano API'si yoksa (güvensiz bağlam, eski tarayıcı)
+ * ya da izin reddedilirse tek bir çıkış yolu var: linki seçili bir kutuda göster.
+ * `document.execCommand("copy")` bilerek kullanılmıyor — kullanımdan kalktı.
+ *
+ * Hiçbir dalda sessiz kalınmıyor; başarı da başarısızlık da toast ile duyuruluyor.
+ */
+function useEntryLinkCopy(entryPublicId: number) {
+  const [fallbackUrl, setFallbackUrl] = useState<string>();
+  /**
+   * Yedek kutusu açıldığında odak oraya gitmeli, ⋮ tetikleyicisine değil: seçili
+   * metin ancak odaklı bir kutuda kopyalanabilir. Pano API'si hiç yokken hata
+   * menü kapanmadan önce (mikro görevde) biliniyor, bu yüzden Radix'in odak
+   * iadesini bu bayrakla iptal ediyoruz. İzin reddi geç gelirse iade zaten
+   * olup bitmiş olur; o durumda kutunun kendi `focus()` çağrısı yeterli.
+   */
+  const claimFocusForFallback = useRef(false);
+  const copyLink = async () => {
+    const url = absoluteEntryUrl(entryPublicId);
+    try {
+      const clipboard = typeof navigator === "undefined" ? undefined : navigator.clipboard;
+      if (!clipboard?.writeText) throw new Error("Pano API'si kullanılamıyor.");
+      await clipboard.writeText(url);
+      setFallbackUrl(undefined);
+      toast.success("Link kopyalandı.");
+    } catch {
+      claimFocusForFallback.current = true;
+      setFallbackUrl(url);
+      toast.error("Link panoya kopyalanamadı. Aşağıdaki kutudan elle kopyalayabilirsiniz.");
+    }
+  };
+  const handleCloseAutoFocus = (event: Event) => {
+    if (!claimFocusForFallback.current) return;
+    claimFocusForFallback.current = false;
+    event.preventDefault();
+  };
+  return { copyLink, fallbackUrl, handleCloseAutoFocus };
+}
+
+/** Menüdeki "Linki kopyala" öğesi; misafirde de oturumda da aynı. */
+function CopyEntryLinkItem({ onSelect }: { onSelect: () => void }) {
+  return (
+    <DropdownMenu.Item onSelect={() => onSelect()} className={overflowItemClass}>
+      <Link2 aria-hidden="true" size={16} />
+      Linki kopyala
+    </DropdownMenu.Item>
+  );
+}
+
+/**
+ * Pano yedeği: salt okunur, içeriği seçili bir kutu. Kullanıcı yalnız kopyalama
+ * kısayoluna basar.
+ *
+ * Odak iki kez alınıyor: menü kapanırken Radix odağı ⋮ tetikleyicisine geri
+ * döndürüyor, o geri dönüş bizim ilk odağımızdan sonraya düşebilir. Bir sonraki
+ * karede tekrarlamak yarışı çözüyor; ilk çağrı da kalıyor ki `requestAnimationFrame`
+ * hiç çalışmasa bile metin seçili olsun.
+ */
+function EntryLinkFallback({ entryPublicId, url }: { entryPublicId: number; url: string }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const inputId = `entry-${entryPublicId}-link-kopyala`;
+  useEffect(() => {
+    const node = inputRef.current;
+    if (!node) return;
+    node.focus();
+    node.select();
+    const frame = requestAnimationFrame(() => {
+      node.focus();
+      node.select();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  return (
+    <div className="w-full">
+      <label htmlFor={inputId} className="block text-sm text-muted">
+        Pano kullanılamadı; linki buradan kopyalayın
+      </label>
+      <input
+        ref={inputRef}
+        id={inputId}
+        type="text"
+        readOnly
+        value={url}
+        onFocus={(event) => event.currentTarget.select()}
+        className="mt-1 w-full rounded-lg border bg-page px-3 py-2 text-sm"
+      />
+    </div>
   );
 }
 
@@ -159,6 +278,9 @@ export function EntryActions(props: EntryActionsProps) {
  * girişe götüren birer bağlantıdırlar. Basılı bir durum olmadığı için `aria-pressed`
  * kullanılmaz; niyet `aria-label` ile anlatılır. Oturum gerektiren yönetim işlemleri
  * (düzenle, sil, sürümler, gammaz, yazarı engelle) burada hiç render edilmez.
+ *
+ * ⋮ menüsü misafirde de görünür: "Linki kopyala" oturum istemiyor ve menünün tek
+ * misafir öğesi o.
  */
 function GuestEntryActions({
   entryPublicId,
@@ -170,33 +292,40 @@ function GuestEntryActions({
   bookmarkCount: number;
 }) {
   const loginHref = `/giris?next=${encodeURIComponent(entryPublicUrl({ publicId: entryPublicId }))}`;
+  const { copyLink, fallbackUrl, handleCloseAutoFocus } = useEntryLinkCopy(entryPublicId);
   return (
-    <div className="flex items-center gap-2">
-      <Link
-        href={loginHref}
-        aria-label="Artı oy vermek için giriş yapın"
-        className={guestControlClass}
-      >
-        <ThumbsUp aria-hidden="true" size={17} />
-      </Link>
-      <ScoreCounter score={score} />
-      <Link
-        href={loginHref}
-        aria-label="Eksi oy vermek için giriş yapın"
-        className={guestControlClass}
-      >
-        <ThumbsDown aria-hidden="true" size={17} />
-      </Link>
-      <Link
-        href={loginHref}
-        aria-label="Favorilere eklemek için giriş yapın"
-        className={guestControlClass}
-      >
-        <Bookmark aria-hidden="true" size={17} />
-      </Link>
-      {/* Misafirde sayı değişmez; duyurulacak bir güncelleme yok, canlı bölge de yok. */}
-      <BookmarkCounter count={bookmarkCount} />
-    </div>
+    <>
+      <div className="flex items-center gap-2">
+        <Link
+          href={loginHref}
+          aria-label="Artı oy vermek için giriş yapın"
+          className={guestControlClass}
+        >
+          <ThumbsUp aria-hidden="true" size={17} />
+        </Link>
+        <ScoreCounter score={score} />
+        <Link
+          href={loginHref}
+          aria-label="Eksi oy vermek için giriş yapın"
+          className={guestControlClass}
+        >
+          <ThumbsDown aria-hidden="true" size={17} />
+        </Link>
+        <Link
+          href={loginHref}
+          aria-label="Favorilere eklemek için giriş yapın"
+          className={guestControlClass}
+        >
+          <Bookmark aria-hidden="true" size={17} />
+        </Link>
+        {/* Misafirde sayı değişmez; duyurulacak bir güncelleme yok, canlı bölge de yok. */}
+        <BookmarkCounter count={bookmarkCount} />
+        <EntryOverflowMenu onCloseAutoFocus={handleCloseAutoFocus}>
+          <CopyEntryLinkItem onSelect={() => void copyLink()} />
+        </EntryOverflowMenu>
+      </div>
+      {fallbackUrl ? <EntryLinkFallback entryPublicId={entryPublicId} url={fallbackUrl} /> : null}
+    </>
   );
 }
 
@@ -294,7 +423,12 @@ function SignedInEntryActions({
       setNotice(result.blocked ? "Yazar engellendi." : "Yazarın engeli kaldırıldı.");
       router.refresh();
     });
-  const hasOverflow = canEdit || canReport || canBlockAuthor;
+  const { copyLink, fallbackUrl, handleCloseAutoFocus } = useEntryLinkCopy(entryPublicId);
+  /**
+   * "Linki kopyala" her zaman var, dolayısıyla ⋮ artık koşulsuz render ediliyor.
+   * Ayraç yalnız yetkiye bağlı öğeler varken anlamlı.
+   */
+  const hasPrivilegedItems = canEdit || canReport || canBlockAuthor;
   return (
     <>
       <div className="flex items-center gap-2">
@@ -330,58 +464,59 @@ function SignedInEntryActions({
           <Bookmark aria-hidden="true" size={17} />
         </button>
         <BookmarkCounter count={bookmarkCount} live />
-        {hasOverflow ? (
-          <EntryOverflowMenu>
-            {canEdit ? (
+        <EntryOverflowMenu onCloseAutoFocus={handleCloseAutoFocus}>
+          <CopyEntryLinkItem onSelect={() => void copyLink()} />
+          {hasPrivilegedItems ? <DropdownMenu.Separator className="my-1 border-t" /> : null}
+          {canEdit ? (
+            <DropdownMenu.Item
+              disabled={pending}
+              onSelect={() => setEditing((value) => !value)}
+              className={overflowItemClass}
+            >
+              <Pencil aria-hidden="true" size={16} />
+              {editing ? "Düzenlemeyi kapat" : "Entry’yi düzenle"}
+            </DropdownMenu.Item>
+          ) : null}
+          {canEdit ? (
+            <DropdownMenu.Item asChild>
+              <Link href={`/entry/${entryPublicId}/revizyonlar`} className={overflowItemClass}>
+                <History aria-hidden="true" size={16} />
+                Sürümler
+              </Link>
+            </DropdownMenu.Item>
+          ) : null}
+          {canReport ? (
+            <DropdownMenu.Item onSelect={() => setGammazOpen(true)} className={overflowItemClass}>
+              <Flag aria-hidden="true" size={16} />
+              Entry’yi gammazla
+            </DropdownMenu.Item>
+          ) : null}
+          {canBlockAuthor ? (
+            <DropdownMenu.Item
+              disabled={pending}
+              onSelect={() => void toggleAuthorBlock()}
+              className={overflowItemClass}
+            >
+              <UserX aria-hidden="true" size={16} />
+              {authorBlocked ? "Yazarın engelini kaldır" : "Yazarı engelle"}
+            </DropdownMenu.Item>
+          ) : null}
+          {canEdit ? (
+            <>
+              <DropdownMenu.Separator className="my-1 border-t" />
               <DropdownMenu.Item
                 disabled={pending}
-                onSelect={() => setEditing((value) => !value)}
-                className={overflowItemClass}
+                onSelect={() => setDeleteOpen(true)}
+                className={`${overflowItemClass} text-destructive`}
               >
-                <Pencil aria-hidden="true" size={16} />
-                {editing ? "Düzenlemeyi kapat" : "Entry’yi düzenle"}
+                <Trash2 aria-hidden="true" size={16} />
+                Entry’yi sil
               </DropdownMenu.Item>
-            ) : null}
-            {canEdit ? (
-              <DropdownMenu.Item asChild>
-                <Link href={`/entry/${entryPublicId}/revizyonlar`} className={overflowItemClass}>
-                  <History aria-hidden="true" size={16} />
-                  Sürümler
-                </Link>
-              </DropdownMenu.Item>
-            ) : null}
-            {canReport ? (
-              <DropdownMenu.Item onSelect={() => setGammazOpen(true)} className={overflowItemClass}>
-                <Flag aria-hidden="true" size={16} />
-                Entry’yi gammazla
-              </DropdownMenu.Item>
-            ) : null}
-            {canBlockAuthor ? (
-              <DropdownMenu.Item
-                disabled={pending}
-                onSelect={() => void toggleAuthorBlock()}
-                className={overflowItemClass}
-              >
-                <UserX aria-hidden="true" size={16} />
-                {authorBlocked ? "Yazarın engelini kaldır" : "Yazarı engelle"}
-              </DropdownMenu.Item>
-            ) : null}
-            {canEdit ? (
-              <>
-                <DropdownMenu.Separator className="my-1 border-t" />
-                <DropdownMenu.Item
-                  disabled={pending}
-                  onSelect={() => setDeleteOpen(true)}
-                  className={`${overflowItemClass} text-destructive`}
-                >
-                  <Trash2 aria-hidden="true" size={16} />
-                  Entry’yi sil
-                </DropdownMenu.Item>
-              </>
-            ) : null}
-          </EntryOverflowMenu>
-        ) : null}
+            </>
+          ) : null}
+        </EntryOverflowMenu>
       </div>
+      {fallbackUrl ? <EntryLinkFallback entryPublicId={entryPublicId} url={fallbackUrl} /> : null}
       {/*
         Gammaz kipi menüden açılıyor: tetikleyici düğme yok, açıklık dışarıdan
         kontrol ediliyor. Kip kapalıyken bileşen hiç DOM üretmediği için sarmalayıcı

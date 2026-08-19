@@ -4,7 +4,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EntryActions } from "@/components/entries/entry-actions";
-import { selectEntryOverflowItem } from "./overflow-menu";
+import { openEntryOverflowMenu, selectEntryOverflowItem } from "./overflow-menu";
 
 const apiRequest = vi.hoisted(() => vi.fn());
 const refresh = vi.hoisted(() => vi.fn());
@@ -77,11 +77,16 @@ describe("aksiyon şeridi · görünür kalanlar", () => {
     expect(container.querySelector("div")?.className).not.toContain("flex-wrap");
   });
 
-  it("hiçbir ikincil işleme yetki yoksa ⋮ hiç render edilmez", () => {
+  it("hiçbir yetki yoksa bile ⋮ durur — 'Linki kopyala' oturum istemiyor", async () => {
     render(signedIn({ canEdit: false, canReport: false, canBlockAuthor: false }));
 
-    expect(screen.queryByRole("button", { name: "Diğer entry işlemleri" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Diğer entry işlemleri" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Artı oy ver" })).toBeVisible();
+
+    openEntryOverflowMenu();
+    expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual([
+      "Linki kopyala",
+    ]);
   });
 });
 
@@ -96,6 +101,7 @@ describe("⋮ menüsü · klavye", () => {
 
     const items = await screen.findAllByRole("menuitem");
     expect(items.map((item) => item.textContent)).toEqual([
+      "Linki kopyala",
       "Entry’yi düzenle",
       "Sürümler",
       "Entry’yi gammazla",
@@ -124,6 +130,7 @@ describe("⋮ menüsü · klavye", () => {
     await user.keyboard("{Enter}");
 
     expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual([
+      "Linki kopyala",
       "Entry’yi gammazla",
       "Yazarı engelle",
     ]);

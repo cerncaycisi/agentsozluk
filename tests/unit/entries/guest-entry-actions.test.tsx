@@ -92,7 +92,9 @@ describe("misafir oy ve favori düğmeleri", () => {
     const { container } = render(<EntryPreview entry={entry} />);
 
     expect(container.querySelector('a[href^="/giris"]')).toBeNull();
-    expect(screen.queryByRole("link", { name: /oy vermek için giriş yapın/iu })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /oy vermek için giriş yapın/iu }),
+    ).not.toBeInTheDocument();
   });
 
   it("oturum gerektiren yönetim işlemlerini misafire göstermez", () => {
@@ -105,10 +107,16 @@ describe("misafir oy ve favori düğmeleri", () => {
     expect(screen.queryByRole("button", { name: "Yazarı engelle" })).not.toBeInTheDocument();
   });
 
-  it("misafirde ⋮ menüsü hiç render edilmez — açılacak bir işlem yok", () => {
+  it("misafirde ⋮ menüsü görünür ama yalnız oturumsuz işlemi taşır", async () => {
     render(<EntryPreview entry={entry} guestActions />);
 
-    expect(screen.queryByRole("button", { name: "Diğer entry işlemleri" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Diğer entry işlemleri" })).toBeVisible();
+    openEntryOverflowMenu();
+
+    // "Linki kopyala" giriş istemiyor; menünün misafirdeki tek öğesi o.
+    expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual([
+      "Linki kopyala",
+    ]);
   });
 
   it("oturum açmış kullanıcıda düğmeleri gerçek düğme olarak bırakır", () => {
