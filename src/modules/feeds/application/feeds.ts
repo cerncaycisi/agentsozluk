@@ -14,7 +14,7 @@ import {
   listScoredTopics,
   listWindowedChronologicalTopics,
 } from "@/modules/feeds/repository/feeds";
-import { withEditedIndicator } from "@/modules/entries/domain/entry";
+import { withEntryCounters } from "@/modules/entries/domain/entry";
 import { topicPublicUrl } from "@/lib/routing/public-urls";
 
 export type { TopicFeed } from "@/modules/feeds/domain/feed";
@@ -84,7 +84,7 @@ export async function getTopicFeed(
 export async function getDebe(client: DatabaseClient, now = new Date()) {
   const window = previousIstanbulDayWindow(now);
   const entries = await client.$transaction((transaction) => listDebeEntries(transaction, window));
-  return entries.map(withEditedIndicator);
+  return entries.map(withEntryCounters);
 }
 
 export async function getRandomTopic(client: DatabaseClient, randomKey = Math.random()) {

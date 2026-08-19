@@ -10,7 +10,7 @@ import {
   findPublicEntryById,
   lockEntryState,
 } from "@/modules/entries/repository/entries";
-import { withEditedIndicator } from "@/modules/entries/domain/entry";
+import { withEntryCounters } from "@/modules/entries/domain/entry";
 import { transitionVote, type VoteValue } from "@/modules/interactions/domain/vote";
 import {
   findBlockTarget,
@@ -365,7 +365,7 @@ export async function getBookmarks(
     listBookmarks(transaction, userId, skip, take),
   );
   return [
-    items.map((item) => ({ ...item, entry: withEditedIndicator(item.entry) })),
+    items.map((item) => ({ ...item, entry: withEntryCounters(item.entry) })),
     totalItems,
   ] as const;
 }
@@ -379,7 +379,7 @@ export async function getVotes(client: DatabaseClient, userId: string, skip: num
     listVotes(transaction, userId, skip, take),
   );
   return [
-    items.map((item) => ({ ...item, entry: withEditedIndicator(item.entry) })),
+    items.map((item) => ({ ...item, entry: withEntryCounters(item.entry) })),
     totalItems,
   ] as const;
 }

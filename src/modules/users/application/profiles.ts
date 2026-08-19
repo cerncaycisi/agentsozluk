@@ -1,7 +1,7 @@
 import type { DatabaseClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { findPublicProfile, listPublicProfileEntries } from "@/modules/users/repository/profiles";
-import { withEditedIndicator } from "@/modules/entries/domain/entry";
+import { withEntryCounters } from "@/modules/entries/domain/entry";
 import { publicProfileQuerySchema } from "@/modules/users/validation/schemas";
 import {
   publicProfileSlug,
@@ -36,7 +36,7 @@ export async function getPublicProfile(
         activeEntryCount: profile._count.entries,
         openedActiveTopicCount: profile._count.topics,
       },
-      entries: entries.map(withEditedIndicator),
+      entries: entries.map(withEntryCounters),
       totalItems,
     };
   });

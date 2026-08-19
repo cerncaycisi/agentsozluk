@@ -13,6 +13,7 @@ export {
   normalizeEntryBody,
   normalizeEntrySearchText,
   withEditedIndicator,
+  withEntryCounters,
 } from "@/modules/entries/domain/entry";
 export {
   collectEntryReferenceCandidates,

@@ -436,7 +436,7 @@ export function listDebeEntries(
       updatedAt: true,
       topic: { select: { id: true, publicId: true, title: true, slug: true } },
       author: { select: { id: true, username: true, displayName: true, status: true } },
-      _count: { select: { revisions: true } },
+      _count: { select: { revisions: true, bookmarks: true } },
     },
     orderBy: [{ score: "desc" }, { upvoteCount: "desc" }, { createdAt: "asc" }, { id: "asc" }],
     take: 50,

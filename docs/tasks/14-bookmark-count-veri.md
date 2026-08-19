@@ -29,15 +29,35 @@ Bu görev **yalnız veri katmanı** — UI değişikliği görev 16'da.
    ```
    `revisions` zaten kullanılıyor (`EntryPreviewItem._count.revisions`) — aynı `_count`
    nesnesine ekleyin, ikinci bir sorgu açmayın.
-2. Etkilenecek fonksiyonlar — hepsini bulun, tahmin etmeyin:
+2. Etkilenecek select'ler — **beş modülde altı yer**, `src/modules/users/**` dahil
+   (kolayca gözden kaçıyor):
+   | Dosya | Ne besliyor |
+   |---|---|
+   | `entries/repository/entries.ts` → `entryDetailSelect` | `getEntry`, `getEntryByPublicId`, `getTopicEntries` |
+   | `feeds/repository/feeds.ts` → `listDebeEntries` | `getDebe` |
+   | `interactions/repository/interactions.ts` → `listUserFollows` | `/takip/yazarlar` |
+   | `interactions/repository/interactions.ts` → `listBookmarks` | `getBookmarks` |
+   | `interactions/repository/interactions.ts` → `listVotes` | `getVotes` |
+   | **`users/repository/profiles.ts`** | `/yazar/[username]` |
+
+   Doğrulama:
    ```bash
-   grep -rn "_count" src/modules/ | grep -i "revision\|entry"
+   grep -rn "_count: { select:" src/modules/
    ```
-   En az: `getTopicEntries`, `getDebe`, yazar profili entry sorgusu.
+
+   `withEditedIndicator` `_count`'u tamamen düşürüyor (`Omit<T, "_count">`), o yüzden
+   sayacı taşıyan yeni bir helper gerekiyor. `withEditedIndicator`'ı **değiştirmeyin** —
+   mevcut birim testi ve mutasyon yolları ona bağlı.
 3. `EntryPreviewItem` tipine `_count?: { revisions?: number; bookmarks?: number }` şeklinde
    ekleyin — mevcut `revisions` kullanımını kırmayın.
-4. Silinmiş/gizlenmiş entry'lerin favorileri sayılmalı mı? Mevcut `score` davranışıyla
-   tutarlı olun — `score` nasıl hesaplanıyorsa aynı filtreyi uygulayın.
+4. Silinmiş/gizlenmiş entry'lerin favorileri **sayılır, filtre uygulanmaz**. Gerekçe:
+   `recalculateCounters` (`entries/repository/recalculate.ts`) `score`'u `entry_votes`'tan
+   hiçbir filtre olmadan hesaplıyor — ne entry status'ü ne oy verenin durumu. İki sayaç
+   simetrik olmalı. Kullanıcı silindiğinde bookmark satırları da oy satırları gibi
+   temizleniyor, yani yaşam döngüleri de aynı.
+5. **Public API cevaplarına eklemeyin.** `serializePublicEntry` allowlist'i ve
+   `replayedPublicEntrySchema` bilinçli bir sınır; sayfalar application katmanını doğrudan
+   çağırıyor, UI için API'ye dokunmak gerekmiyor.
 
 ## Doğrulama
 

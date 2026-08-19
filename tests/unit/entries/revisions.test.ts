@@ -34,7 +34,7 @@ const entry = {
     displayName: "Revision Author",
     status: "ACTIVE",
   },
-  _count: { revisions: 3 },
+  _count: { revisions: 3, bookmarks: 0 },
 };
 
 function revisionDatabase(foundEntry: typeof entry | null) {

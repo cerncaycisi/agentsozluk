@@ -15,7 +15,8 @@ export interface EntryPreviewItem {
   createdAt: Date;
   status?: "ACTIVE" | "DELETED" | "HIDDEN";
   edited?: boolean;
-  _count?: { revisions: number };
+  bookmarkCount?: number;
+  _count?: { revisions?: number; bookmarks?: number };
   topic: { id: string; publicId: number; title: string; slug: string };
   author: { id: string; username: string; displayName: string };
   blockedByViewer?: boolean;
