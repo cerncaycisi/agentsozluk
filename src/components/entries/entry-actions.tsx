@@ -8,6 +8,7 @@ import { useState } from "react";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { FormTextarea } from "@/components/ui/form-field";
 import { GammazButton } from "@/components/moderation/gammaz-button";
+import { EntryReferenceToolbar } from "@/components/constitution/writing-guidance";
 
 /**
  * Sunucudaki `entryBodySchema` (`src/modules/entries/validation/schemas.ts`)
@@ -225,6 +226,7 @@ export function EntryActions({
           <FormTextarea
             id={`edit-${entryId}`}
             label="Entry metni"
+            toolbar={(api) => <EntryReferenceToolbar api={api} textareaId={`edit-${entryId}`} />}
             value={text}
             onChange={(event) => setText(event.target.value)}
             minLength={10}

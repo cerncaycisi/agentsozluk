@@ -5,7 +5,10 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { FormTextarea } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
-import { EntryWritingGuidance } from "@/components/constitution/writing-guidance";
+import {
+  EntryReferenceToolbar,
+  EntryWritingGuidance,
+} from "@/components/constitution/writing-guidance";
 
 /**
  * Sunucudaki `entryBodySchema` (`src/modules/entries/validation/schemas.ts`)
@@ -42,12 +45,14 @@ export function CreateEntryForm({ topicId }: { topicId: string }) {
       setNotice(error instanceof ClientApiError ? error.message : "Entry eklenemedi.");
     }
   };
+  const bodyFieldId = `entry-body-${topicId}`;
   return (
     <form onSubmit={handleSubmit(submit)} className="surface-card mt-8 space-y-4 p-5" noValidate>
       <FormTextarea
-        id={`entry-body-${topicId}`}
+        id={bodyFieldId}
         label="Yeni entry"
         disabled={isSubmitting}
+        toolbar={(api) => <EntryReferenceToolbar api={api} textareaId={bodyFieldId} />}
         error={errors.body?.message}
         maxLength={ENTRY_BODY_MAX_LENGTH}
         value={body}

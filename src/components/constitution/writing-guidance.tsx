@@ -1,8 +1,94 @@
+"use client";
+
 import Link from "next/link";
 import {
   constitutionalTopicAdvisories,
   constitutionalTopicCreationIssue,
 } from "@/lib/content/constitution-writing-policy";
+import type { TextareaToolbarApi } from "@/components/ui/form-field";
+
+/**
+ * Sözlüğün desteklediği dört bkz sözdizimi. Tek kaynak: hem composer araç
+ * çubuğunun butonları hem aşağıdaki açıklama listesi buradan üretilir.
+ *
+ * `before`/`after` çiftleri `src/modules/entries/domain/renderer.ts`
+ * içindeki `referencePattern` ile doğrulandı:
+ * `/\[\[([^\]\n]{2,100})\]\]|@([a-z0-9_]{3,30})|\(bkz:\s*([^\)\n]{1,100}?)\s*\)/giu`
+ * — `#123` biçimi ayrıca `parseReference` içinde `/^#([1-9]\d*)$/` ile ayrışır.
+ */
+export const entryReferenceActions = [
+  {
+    key: "hidden-topic",
+    label: "Gizli bkz",
+    ariaLabel: "Gizli bkz ekle: çift köşeli parantez",
+    description: "Gizli bkz (yalnız başlık adı görünür)",
+    syntax: "[[başlık adı]]",
+    before: "[[",
+    after: "]]",
+  },
+  {
+    key: "visible-topic",
+    label: "Bkz",
+    ariaLabel: "Görünür bkz ekle: bkz başlık adı",
+    description: "Görünür bkz",
+    syntax: "(bkz: başlık adı)",
+    before: "(bkz: ",
+    after: ")",
+  },
+  {
+    key: "entry",
+    label: "Entry",
+    ariaLabel: "Entry referansı ekle: bkz diyez numara",
+    description: "Entry",
+    syntax: "(bkz: #123)",
+    before: "(bkz: #",
+    after: ")",
+  },
+  {
+    key: "user",
+    label: "Yazar",
+    ariaLabel: "Yazar referansı ekle: et işareti kullanıcı adı",
+    description: "Yazar",
+    syntax: "@kullaniciadi",
+    before: "@",
+    after: "",
+  },
+] as const;
+
+/**
+ * Composer ve düzenleme textarea'sının üstündeki bkz şeridi.
+ * Butonlar `type="button"`: formu göndermezler. Şerit 375px'te sarmaz,
+ * yatay kayar.
+ */
+export function EntryReferenceToolbar({
+  api,
+  textareaId,
+}: {
+  api: TextareaToolbarApi;
+  textareaId?: string | undefined;
+}) {
+  return (
+    <div
+      role="toolbar"
+      aria-label="Bkz ekleme araçları"
+      aria-controls={textareaId}
+      className="mb-2 flex flex-nowrap gap-2 overflow-x-auto pb-1"
+    >
+      {entryReferenceActions.map((action) => (
+        <button
+          key={action.key}
+          type="button"
+          aria-label={action.ariaLabel}
+          title={action.syntax}
+          onClick={() => api.wrapSelection(action.before, action.after)}
+          className="min-h-11 shrink-0 whitespace-nowrap rounded-lg border bg-page px-3 text-sm font-semibold text-ink"
+        >
+          {action.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function GuidanceBox({ summary, children }: { summary: string; children: React.ReactNode }) {
   return (
@@ -22,20 +108,17 @@ export function EntryWritingGuidance() {
         entry” gibi değişebilen fiziksel sıraları anlatmayın.
       </p>
       <ul className="list-disc space-y-1 pl-5">
-        <li>
-          Gizli bkz (yalnız başlık adı görünür): <code>[[başlık adı]]</code>
-        </li>
-        <li>
-          Görünür bkz: <code>(bkz: başlık adı)</code>
-        </li>
-        <li>
-          Entry: <code>(bkz: #123)</code>
-        </li>
-        <li>
-          Yazar: <code>@kullaniciadi</code>
-        </li>
+        {entryReferenceActions.map((action) => (
+          <li key={action.key}>
+            {action.description}: <code>{action.syntax}</code>
+          </li>
+        ))}
       </ul>
-      <p>Yalnız mevcut ve görünür hedefler bağlantıya dönüşür; bilinmeyen hedef düz metin kalır.</p>
+      <p>
+        Bu dördü composer&apos;ın üstündeki bkz şeridinden tek tıkla eklenebilir. Mevcut ve görünür
+        hedefler bağlantıya dönüşür; açılmamış bir gizli bkz aynı adla başlık aramasına gider,
+        bilinmeyen bir görünür bkz, entry ya da yazar referansı düz metin kalır.
+      </p>
       <Link href="/kurallar#madde-50" className="font-semibold text-primary hover:underline">
         Anayasa Madde 50: entry karar testini aç
       </Link>
