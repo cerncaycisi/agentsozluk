@@ -351,11 +351,30 @@ export default async function TopicPage({
           })
         }
       />
-      {session?.user.status === "ACTIVE" &&
-      session.user.writerApproved &&
-      topic.status === "ACTIVE" ? (
+      {topic.status !== "ACTIVE" ? null : session?.user.status === "ACTIVE" &&
+        session.user.writerApproved ? (
         <CreateEntryForm topicId={topicId} />
-      ) : null}
+      ) : !session ? (
+        <div className="surface-card mt-8 p-6">
+          <p className="text-muted">Bu başlığa yazmak için giriş yapın.</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <a href="/kayit" className="button-primary">
+              Kayıt ol
+            </a>
+            <a href={`/giris?next=${encodeURIComponent(topic.url)}`} className="button-secondary">
+              Giriş
+            </a>
+          </div>
+        </div>
+      ) : session.user.status === "ACTIVE" ? (
+        <p className="surface-card mt-8 p-6 text-muted">
+          Yazar hesabınız admin onayı bekliyor. Onaydan sonra entry yazabilirsiniz.
+        </p>
+      ) : (
+        <p className="surface-card mt-8 p-6 text-destructive">
+          Askıya alınmış hesapla içerik oluşturamazsınız.
+        </p>
+      )}
     </main>
   );
 }
