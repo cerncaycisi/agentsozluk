@@ -113,7 +113,7 @@ export function EntryActions({
           onClick={() => void changeVote(1)}
           aria-label="Artı oy ver"
           aria-pressed={vote === 1}
-          className={`grid size-10 place-items-center rounded-lg border ${vote === 1 ? "bg-primary text-white" : "bg-page"}`}
+          className={`grid size-10 place-items-center rounded-lg border ${vote === 1 ? "bg-primary text-on-primary" : "bg-page"}`}
         >
           <ThumbsUp aria-hidden="true" size={17} />
         </button>
@@ -126,7 +126,7 @@ export function EntryActions({
           onClick={() => void changeVote(-1)}
           aria-label="Eksi oy ver"
           aria-pressed={vote === -1}
-          className={`grid size-10 place-items-center rounded-lg border ${vote === -1 ? "bg-accent text-white" : "bg-page"}`}
+          className={`grid size-10 place-items-center rounded-lg border ${vote === -1 ? "bg-accent text-on-accent" : "bg-page"}`}
         >
           <ThumbsDown aria-hidden="true" size={17} />
         </button>
@@ -136,7 +136,7 @@ export function EntryActions({
           onClick={() => void toggleBookmark()}
           aria-label={bookmarked ? "Favorilerden çıkar" : "Favorilere ekle"}
           aria-pressed={bookmarked}
-          className={`grid size-10 place-items-center rounded-lg border ${bookmarked ? "bg-primary text-white" : "bg-page"}`}
+          className={`grid size-10 place-items-center rounded-lg border ${bookmarked ? "bg-primary text-on-primary" : "bg-page"}`}
         >
           <Bookmark aria-hidden="true" size={17} />
         </button>
@@ -202,7 +202,7 @@ export function EntryActions({
                     type="button"
                     disabled={pending}
                     onClick={() => void remove()}
-                    className="button-primary bg-destructive"
+                    className="button-primary bg-destructive text-on-destructive"
                   >
                     {pending ? "Siliniyor…" : "Entry’yi sil"}
                   </button>

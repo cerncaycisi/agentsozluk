@@ -275,7 +275,7 @@ export default async function TopicPage({
                 index: topicIndex,
                 query: entryQuery || undefined,
               })}
-              className={`rounded-lg border px-3 py-2 text-sm font-semibold ${sort === value ? "bg-primary text-white" : "bg-surface"}`}
+              className={`rounded-lg border px-3 py-2 text-sm font-semibold ${sort === value ? "bg-primary text-on-primary" : "bg-surface"}`}
             >
               {value === "oldest"
                 ? "Eskiden yeniye"

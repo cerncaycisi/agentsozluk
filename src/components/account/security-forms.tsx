@@ -202,7 +202,7 @@ export function SecurityForms() {
           <AlertDialog.Trigger asChild>
             <button
               type="button"
-              className="inline-flex min-h-11 items-center rounded-xl bg-destructive px-5 py-2.5 font-semibold text-white"
+              className="inline-flex min-h-11 items-center rounded-xl bg-destructive px-5 py-2.5 font-semibold text-on-destructive"
             >
               Hesabı kapat
             </button>
@@ -228,7 +228,7 @@ export function SecurityForms() {
                     type="submit"
                     form="deactivation-form"
                     disabled={deactivationForm.formState.isSubmitting}
-                    className="inline-flex min-h-11 items-center rounded-xl bg-destructive px-5 py-2.5 font-semibold text-white disabled:opacity-50"
+                    className="inline-flex min-h-11 items-center rounded-xl bg-destructive px-5 py-2.5 font-semibold text-on-destructive disabled:opacity-50"
                   >
                     {deactivationForm.formState.isSubmitting
                       ? "Kapatılıyor…"

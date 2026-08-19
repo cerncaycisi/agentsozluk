@@ -27,6 +27,17 @@ Tam liste (`grep -rn "bg-\(primary\|accent\|destructive\)" src/ | grep text-whit
 
 Ayrıca `src/components/layout/site-shell.tsx:131` `text-white/80` kullanıyor.
 
+**Yukarıdaki grep'in kaçırdığı bir vaka var.** Metin rengi `.button-primary`'den geldiği için
+literal `text-white` içermeyen, ama dolgusu değiştirilmiş düğmeler. Bunları ayrıca arayın:
+
+```bash
+grep -rn 'button-primary[^"]*bg-' src/
+```
+
+Bilinen ikisi: `src/components/entries/entry-actions.tsx:205` ve
+`src/components/moderation/confirm-action.tsx:126` — ikisi de `button-primary bg-destructive`,
+ikisine de `text-on-destructive` eklenmeli.
+
 ## Yapılacak
 
 Her yerde zemine göre eşleştirin:
