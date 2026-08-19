@@ -18,6 +18,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("@/components/moderation/gammaz-button", () => ({ GammazButton: () => null }));
 vi.mock("@/components/constitution/writing-guidance", () => ({
   EntryWritingGuidance: () => null,
+  EntryReferenceToolbar: () => null,
 }));
 
 afterEach(() => {

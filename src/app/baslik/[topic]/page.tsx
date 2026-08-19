@@ -12,6 +12,15 @@ import { pageFrom } from "@/lib/http/pagination";
 import { entryPublicUrl, parseTopicRouteReference } from "@/lib/routing/public-urls";
 import { currentPageSession } from "@/lib/auth/server-session";
 import { getEntryReferenceIndex, getTopicEntries } from "@/modules/entries/application/entries";
+import {
+  DEFAULT_TOPIC_TIME_WINDOW,
+  TOPIC_TIME_WINDOWS,
+  topicCreatedAtWindow,
+  topicTimeWindowFrom,
+  topicTimeWindowLabel,
+  topicTimeWindowSummary,
+  type TopicTimeWindow,
+} from "@/modules/entries/domain/time-window";
 import { getViewerEntryStates } from "@/modules/interactions/application/interactions";
 import { userHasModerationCapability } from "@/modules/moderation/application/capabilities";
 import { getTopic, getTopicByPublicId } from "@/modules/topics/application/topics";
@@ -34,24 +43,29 @@ import {
 
 export const dynamic = "force-dynamic";
 
-type TopicIndexFeed = "recent" | "trending" | "new";
-
-function topicIndexFrom(value: string | undefined): TopicIndexFeed | undefined {
-  return value === "recent" || value === "trending" || value === "new" ? value : undefined;
+/**
+ * Eski sidebar linkleri `?index=recent|trending|new` üretiyordu ve bu parametre
+ * sessizce 24 saatlik bir pencere uyguluyordu. Pencere artık `?window=` ile
+ * açıkça taşınıyor; `?index=` yalnız geriye dönük uyumluluk için okunuyor ve
+ * `24h` penceresine eşleniyor. Üretilen hiçbir link artık `index` taşımaz.
+ */
+function isLegacyTopicIndex(value: string | undefined): boolean {
+  return value === "recent" || value === "trending" || value === "new";
 }
 
 function topicUrlWithQuery(
   baseUrl: string,
   input: {
     sort?: "oldest" | "newest" | "top";
-    index?: TopicIndexFeed | undefined;
+    window?: TopicTimeWindow | undefined;
     page?: number;
     query?: string | undefined;
   },
 ): string {
   const parameters = new URLSearchParams();
   if (input.sort) parameters.set("sort", input.sort);
-  if (input.index) parameters.set("index", input.index);
+  if (input.window && input.window !== DEFAULT_TOPIC_TIME_WINDOW)
+    parameters.set("window", input.window);
   if (input.page) parameters.set("page", String(input.page));
   if (input.query) parameters.set("q", input.query);
   const query = parameters.toString();
@@ -63,7 +77,13 @@ export async function generateMetadata({
   searchParams,
 }: {
   params: Promise<{ topic: string }>;
-  searchParams: Promise<{ page?: string; q?: string; sort?: string; index?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    q?: string;
+    sort?: string;
+    index?: string;
+    window?: string;
+  }>;
 }): Promise<Metadata> {
   const { topic: segment } = await params;
   const query = await searchParams;
@@ -76,7 +96,9 @@ export async function generateMetadata({
         : await getTopic(getDatabase(), reference.id, null);
     const indexing = await getTopicIndexingDecision(getDatabase(), topic.id);
     const description = `${topic.title} hakkında ${topic.entryCount} aktif entry. Görüşleri okuyun ve tartışmaya katılın.`;
-    const hasViewParameters = Boolean(query.page || query.q || query.sort || query.index);
+    const hasViewParameters = Boolean(
+      query.page || query.q || query.sort || query.index || query.window,
+    );
     return {
       title: topic.title,
       description,
@@ -102,7 +124,13 @@ export default async function TopicPage({
   searchParams,
 }: {
   params: Promise<{ topic: string }>;
-  searchParams: Promise<{ page?: string; q?: string; sort?: string; index?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    q?: string;
+    sort?: string;
+    index?: string;
+    window?: string;
+  }>;
 }) {
   const { topic: segment } = await params;
   const reference = parseTopicRouteReference(segment);
@@ -134,8 +162,12 @@ export default async function TopicPage({
   const query = await searchParams;
   const page = pageFrom(query.page);
   const sort = query.sort === "newest" || query.sort === "top" ? query.sort : "oldest";
-  const topicIndex = topicIndexFrom(query.index);
+  const timeWindow: TopicTimeWindow =
+    topicTimeWindowFrom(query.window) ??
+    (isLegacyTopicIndex(query.index) ? "24h" : DEFAULT_TOPIC_TIME_WINDOW);
+  const windowSummary = topicTimeWindowSummary(timeWindow);
   const now = new Date();
+  const createdAtWindow = topicCreatedAtWindow(timeWindow, now);
   const entryQuery = (query.q ?? "").normalize("NFKC").trim().slice(0, 100);
   if (reference.kind === "legacy" || segment !== `${topic.slug}--${topic.publicId}`) {
     permanentRedirect(
@@ -143,7 +175,7 @@ export default async function TopicPage({
         ...(query.sort === "oldest" || query.sort === "newest" || query.sort === "top"
           ? { sort }
           : {}),
-        ...(topicIndex ? { index: topicIndex } : {}),
+        ...(timeWindow === DEFAULT_TOPIC_TIME_WINDOW ? {} : { window: timeWindow }),
         ...(page > 1 ? { page } : {}),
         ...(entryQuery ? { query: entryQuery } : {}),
       }),
@@ -172,14 +204,7 @@ export default async function TopicPage({
       pageSize,
       skip: (page - 1) * pageSize,
       sort,
-      ...(topicIndex
-        ? {
-            createdAtWindow: {
-              start: new Date(now.getTime() - 24 * 60 * 60 * 1000),
-              end: now,
-            },
-          }
-        : {}),
+      ...(createdAtWindow ? { createdAtWindow } : {}),
       ...(entryQuery ? { query: entryQuery } : {}),
     });
   } catch (error) {
@@ -229,7 +254,9 @@ export default async function TopicPage({
       />
       <header className="mb-7">
         <p className="text-accent-contrast text-sm font-bold">
-          {topicIndex ? `${result.totalItems} entry · son 24 saat` : `${topic.entryCount} entry`}
+          {windowSummary
+            ? `${result.totalItems} entry · ${windowSummary}`
+            : `${topic.entryCount} entry`}
         </p>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-3xl font-black tracking-tight">{topic.title}</h1>
@@ -244,7 +271,9 @@ export default async function TopicPage({
             Başlık içinde ara
           </label>
           <input type="hidden" name="sort" value={sort} />
-          {topicIndex ? <input type="hidden" name="index" value={topicIndex} /> : null}
+          {timeWindow === DEFAULT_TOPIC_TIME_WINDOW ? null : (
+            <input type="hidden" name="window" value={timeWindow} />
+          )}
           <input
             id="topic-entry-search"
             name="q"
@@ -259,23 +288,27 @@ export default async function TopicPage({
           </button>
           {entryQuery ? (
             <a
-              href={topicUrlWithQuery(topic.url, { sort, index: topicIndex })}
+              href={topicUrlWithQuery(topic.url, { sort, window: timeWindow })}
               className="button-secondary"
             >
               Aramayı temizle
             </a>
           ) : null}
         </form>
-        <nav aria-label="Entry sıralaması" className="mt-4 flex gap-2">
+        <nav
+          aria-label="Entry sıralaması"
+          className="mt-4 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
           {(["oldest", "newest", "top"] as const).map((value) => (
             <a
               key={value}
               href={topicUrlWithQuery(topic.url, {
                 sort: value,
-                index: topicIndex,
+                window: timeWindow,
                 query: entryQuery || undefined,
               })}
-              className={`rounded-lg border px-3 py-2 text-sm font-semibold ${sort === value ? "bg-primary text-on-primary" : "bg-surface"}`}
+              aria-current={sort === value ? "page" : undefined}
+              className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-2 text-sm font-semibold ${sort === value ? "bg-primary text-on-primary" : "bg-surface"}`}
             >
               {value === "oldest"
                 ? "Eskiden yeniye"
@@ -285,11 +318,25 @@ export default async function TopicPage({
             </a>
           ))}
         </nav>
-        {topicIndex ? (
-          <a href={topic.url} className="mt-3 inline-block text-sm font-semibold text-primary">
-            Tüm entry’leri göster
-          </a>
-        ) : null}
+        <nav
+          aria-label="Zaman penceresi"
+          className="mt-2 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {TOPIC_TIME_WINDOWS.map((value) => (
+            <a
+              key={value}
+              href={topicUrlWithQuery(topic.url, {
+                sort,
+                window: value,
+                query: entryQuery || undefined,
+              })}
+              aria-current={timeWindow === value ? "page" : undefined}
+              className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-2 text-sm font-semibold ${timeWindow === value ? "bg-primary text-on-primary" : "bg-surface"}`}
+            >
+              {topicTimeWindowLabel(value)}
+            </a>
+          ))}
+        </nav>
         {session?.user.status === "ACTIVE" ? (
           <div className="mt-5 flex flex-wrap items-start gap-3">
             {topic.status === "ACTIVE" ? (
@@ -308,6 +355,7 @@ export default async function TopicPage({
             entry={entry}
             references={references}
             showTopicTitle={false}
+            guestActions={!session}
             {...(session?.user.status === "ACTIVE"
               ? {
                   actions: {
@@ -333,8 +381,8 @@ export default async function TopicPage({
           <p className="surface-card p-6 text-muted">
             {entryQuery
               ? "Bu aramayla eşleşen aktif entry yok."
-              : topicIndex
-                ? "Bu başlıkta son 24 saatte görüntülenebilen entry yok."
+              : windowSummary
+                ? `Bu başlıkta ${windowSummary} içinde görüntülenebilen entry yok.`
                 : "Bu başlıkta görüntülenebilen entry yok."}
           </p>
         ) : null}
@@ -345,7 +393,7 @@ export default async function TopicPage({
         hrefFor={(next) =>
           topicUrlWithQuery(topic.url, {
             sort,
-            index: topicIndex,
+            window: timeWindow,
             page: next,
             query: entryQuery || undefined,
           })

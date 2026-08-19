@@ -1,0 +1,295 @@
+// @vitest-environment jsdom
+
+import { cleanup, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+/**
+ * Başlık sayfasındaki zaman penceresi (`?window=`) şeridi.
+ *
+ * Pencere eskiden görünmez bir yan etkiydi: sidebar'ın ürettiği `?index=`
+ * parametresi sessizce 24 saat uyguluyordu. Artık kendi şeridi ve kendi URL
+ * parametresi var; `?index=` yalnız dışarıda paylaşılmış eski linkler için
+ * okunuyor.
+ */
+
+const currentPageSession = vi.hoisted(() => vi.fn());
+const getTopicByPublicId = vi.hoisted(() => vi.fn());
+const getTopicEntries = vi.hoisted(() => vi.fn());
+const robotsForCanonicalView = vi.hoisted(() =>
+  vi.fn((base: { index: boolean; follow: boolean }, hasViewParameters: boolean) => ({
+    index: base.index && !hasViewParameters,
+    follow: true,
+  })),
+);
+
+vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
+vi.mock("next/navigation", () => ({
+  notFound: () => {
+    throw new Error("notFound");
+  },
+  permanentRedirect: (url: string) => {
+    throw new Error(`redirect:${url}`);
+  },
+}));
+vi.mock("@/components/entries/create-entry-form", () => ({ CreateEntryForm: () => null }));
+vi.mock("@/components/entries/entry-preview", () => ({ EntryPreview: () => null }));
+vi.mock("@/components/seo/json-ld", () => ({ JsonLd: () => null }));
+vi.mock("@/components/ui/pagination-links", () => ({
+  PaginationLinks: ({ hrefFor }: { hrefFor: (page: number) => string }) => (
+    <a data-testid="sonraki-sayfa" href={hrefFor(2)}>
+      2
+    </a>
+  ),
+}));
+vi.mock("@/components/topics/topic-follow-button", () => ({ TopicFollowButton: () => null }));
+vi.mock("@/components/topics/topic-report-button", () => ({ TopicReportButton: () => null }));
+vi.mock("@/lib/db/client", () => ({ getDatabase: () => ({}) }));
+vi.mock("@/config/env", () => ({ getEnvironment: () => ({ APP_URL: "https://ornek.test" }) }));
+vi.mock("@/lib/auth/server-session", () => ({ currentPageSession }));
+vi.mock("@/modules/entries/application/entries", () => ({
+  getEntryReferenceIndex: async () => new Map(),
+  getTopicEntries,
+}));
+vi.mock("@/modules/interactions/application/interactions", () => ({
+  getViewerEntryStates: async () => [[], []],
+}));
+vi.mock("@/modules/moderation/application/capabilities", () => ({
+  userHasModerationCapability: async () => false,
+}));
+vi.mock("@/modules/topics/application/topics", () => ({ getTopicByPublicId, getTopic: vi.fn() }));
+vi.mock("@/modules/indexing", () => ({
+  getTopicIndexingDecision: async () => ({ index: true, follow: true }),
+}));
+vi.mock("@/modules/indexing/domain/public-seo", () => ({
+  buildTopicJsonLd: () => ({}),
+  publicAlternates: () => ({}),
+  publicProfileUrl: () => "/",
+  robotsForCanonicalView,
+}));
+vi.mock("@/modules/rate-limit/application/rate-limit", () => ({
+  enforceRateLimit: async () => undefined,
+  ipRateLimitIdentifier: () => "ip",
+  RATE_LIMIT_RULES: { searchAuthenticated: {}, searchVisitor: {} },
+  requestIp: () => "203.0.113.1",
+  userRateLimitIdentifier: () => "user",
+}));
+
+const SEGMENT = "test-baslik--42";
+const TOPIC_URL = "/baslik/test-baslik--42";
+
+const topicFixture = {
+  id: "00000000-0000-4000-8000-000000000001",
+  publicId: 42,
+  slug: "test-baslik",
+  title: "test başlık",
+  status: "ACTIVE" as const,
+  url: TOPIC_URL,
+  entryCount: 120,
+  createdAt: new Date(0),
+  updatedAt: new Date(0),
+  createdById: "00000000-0000-4000-8000-000000000002",
+  createdBy: { username: "ali" },
+  following: false,
+};
+
+type Query = { page?: string; q?: string; sort?: string; index?: string; window?: string };
+
+async function renderTopicPage(searchParams: Query) {
+  const { default: TopicPage } = await import("@/app/baslik/[topic]/page");
+  const element = await TopicPage({
+    params: Promise.resolve({ topic: SEGMENT }),
+    searchParams: Promise.resolve(searchParams),
+  });
+  render(element);
+}
+
+function windowStrip() {
+  return screen.getByRole("navigation", { name: "Zaman penceresi" });
+}
+
+function href(name: string | RegExp, strip: HTMLElement) {
+  return within(strip).getByRole("link", { name }).getAttribute("href");
+}
+
+beforeEach(() => {
+  getTopicByPublicId.mockResolvedValue(topicFixture);
+  currentPageSession.mockResolvedValue(null);
+  getTopicEntries.mockResolvedValue({ entries: [], totalItems: 7 });
+  robotsForCanonicalView.mockClear();
+});
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
+
+describe("başlık sayfası zaman penceresi şeridi", () => {
+  it("beş kademeyi sırasıyla gösterir ve URL şemasını üretir", async () => {
+    await renderTopicPage({});
+    const strip = windowStrip();
+    const links = within(strip).getAllByRole("link");
+
+    expect(links.map((link) => link.textContent)).toEqual([
+      "24 saat",
+      "1 hafta",
+      "1 ay",
+      "3 ay",
+      "tümü",
+    ]);
+    expect(href("24 saat", strip)).toBe(`${TOPIC_URL}?sort=oldest&window=24h`);
+    expect(href("1 hafta", strip)).toBe(`${TOPIC_URL}?sort=oldest&window=1w`);
+    expect(href("1 ay", strip)).toBe(`${TOPIC_URL}?sort=oldest&window=1m`);
+    expect(href("3 ay", strip)).toBe(`${TOPIC_URL}?sort=oldest&window=3m`);
+    expect(href("tümü", strip)).toBe(`${TOPIC_URL}?sort=oldest`);
+  });
+
+  it("varsayılan tümü kademesinde hiçbir pencere uygulamaz", async () => {
+    await renderTopicPage({});
+
+    expect(getTopicEntries.mock.calls[0]?.[1]).not.toHaveProperty("createdAtWindow");
+    expect(within(windowStrip()).getByRole("link", { name: "tümü" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByText("120 entry")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["24h", 1, "son 24 saat"],
+    ["1w", 7, "son 1 hafta"],
+    ["1m", 30, "son 1 ay"],
+    ["3m", 90, "son 3 ay"],
+  ] as const)("%s kademesi %s günlük aralığı sorguya taşır", async (value, days, summary) => {
+    await renderTopicPage({ window: value });
+
+    const createdAtWindow = getTopicEntries.mock.calls[0]?.[1]?.createdAtWindow as {
+      start: Date;
+      end: Date;
+    };
+    expect(createdAtWindow.end.getTime() - createdAtWindow.start.getTime()).toBe(
+      days * 24 * 60 * 60 * 1000,
+    );
+    expect(screen.getByText(`7 entry · ${summary}`)).toBeInTheDocument();
+  });
+
+  it("eski ?index= linklerini 24 saat penceresine eşler", async () => {
+    await renderTopicPage({ index: "recent" });
+
+    const createdAtWindow = getTopicEntries.mock.calls[0]?.[1]?.createdAtWindow as {
+      start: Date;
+      end: Date;
+    };
+    expect(createdAtWindow.end.getTime() - createdAtWindow.start.getTime()).toBe(
+      24 * 60 * 60 * 1000,
+    );
+    expect(within(windowStrip()).getByRole("link", { name: "24 saat" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByText("7 entry · son 24 saat")).toBeInTheDocument();
+  });
+
+  it("aynı anda gelen ?window= parametresi eski ?index='i ezer", async () => {
+    await renderTopicPage({ index: "trending", window: "1m" });
+
+    const createdAtWindow = getTopicEntries.mock.calls[0]?.[1]?.createdAtWindow as {
+      start: Date;
+      end: Date;
+    };
+    expect(createdAtWindow.end.getTime() - createdAtWindow.start.getTime()).toBe(
+      30 * 24 * 60 * 60 * 1000,
+    );
+  });
+
+  it("tanınmayan pencere değerinde tümü kademesine düşer", async () => {
+    await renderTopicPage({ window: "1y" });
+
+    expect(getTopicEntries.mock.calls[0]?.[1]).not.toHaveProperty("createdAtWindow");
+    expect(within(windowStrip()).getByRole("link", { name: "tümü" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  it("pencereyi sıralama, sayfalama ve arama arasında korur", async () => {
+    await renderTopicPage({ window: "1w", q: "deneme" });
+
+    const sortStrip = screen.getByRole("navigation", { name: "Entry sıralaması" });
+    expect(href("En yüksek puan", sortStrip)).toBe(`${TOPIC_URL}?sort=top&window=1w&q=deneme`);
+    expect(screen.getByTestId("sonraki-sayfa")).toHaveAttribute(
+      "href",
+      `${TOPIC_URL}?sort=oldest&window=1w&page=2&q=deneme`,
+    );
+    expect(screen.getByRole("link", { name: "Aramayı temizle" })).toHaveAttribute(
+      "href",
+      `${TOPIC_URL}?sort=oldest&window=1w`,
+    );
+
+    const search = screen.getByRole("search");
+    const hidden = search.querySelector('input[name="window"]');
+    expect(hidden).toHaveAttribute("value", "1w");
+  });
+
+  it("tümü kademesinde arama formuna gizli pencere alanı koymaz", async () => {
+    await renderTopicPage({});
+
+    expect(screen.getByRole("search").querySelector('input[name="window"]')).toBeNull();
+  });
+
+  it("pencere şeridi sıralama seçimini korur", async () => {
+    await renderTopicPage({ sort: "newest" });
+
+    expect(href("1 hafta", windowStrip())).toBe(`${TOPIC_URL}?sort=newest&window=1w`);
+  });
+
+  it("filtreli pencerede boş sonucu pencereyi söyleyerek anlatır", async () => {
+    getTopicEntries.mockResolvedValue({ entries: [], totalItems: 0 });
+    await renderTopicPage({ window: "3m" });
+
+    expect(
+      screen.getByText("Bu başlıkta son 3 ay içinde görüntülenebilen entry yok."),
+    ).toBeInTheDocument();
+  });
+
+  it("her iki şerit de yatay kayar, sarmaz", async () => {
+    await renderTopicPage({});
+
+    for (const name of ["Entry sıralaması", "Zaman penceresi"]) {
+      const strip = screen.getByRole("navigation", { name });
+      expect(strip.className).toContain("overflow-x-auto");
+      expect(strip.className).toContain("[scrollbar-width:none]");
+      expect(strip.className).toContain("[&::-webkit-scrollbar]:hidden");
+      expect(strip.className).not.toContain("flex-wrap");
+      for (const link of within(strip).getAllByRole("link")) {
+        expect(link.className).toContain("whitespace-nowrap");
+        expect(link.className).toContain("shrink-0");
+      }
+    }
+  });
+});
+
+describe("başlık sayfası zaman penceresi robots davranışı", () => {
+  async function robotsFlagFor(searchParams: Query) {
+    const { generateMetadata } = await import("@/app/baslik/[topic]/page");
+    await generateMetadata({
+      params: Promise.resolve({ topic: SEGMENT }),
+      searchParams: Promise.resolve(searchParams),
+    });
+    return robotsForCanonicalView.mock.calls.at(-1)?.[1];
+  }
+
+  it("filtresiz görünümü görünüm parametresi saymaz", async () => {
+    expect(await robotsFlagFor({})).toBe(false);
+  });
+
+  it.each(["24h", "1w", "1m", "3m", "all"])(
+    "?window=%s görünümünü görünüm parametresi olarak bildirir",
+    async (value) => {
+      expect(await robotsFlagFor({ window: value })).toBe(true);
+    },
+  );
+
+  it("eski ?index= görünümünü de görünüm parametresi olarak bildirir", async () => {
+    expect(await robotsFlagFor({ index: "recent" })).toBe(true);
+  });
+});

@@ -16,6 +16,15 @@ export {
   withEntryCounters,
 } from "@/modules/entries/domain/entry";
 export {
+  DEFAULT_TOPIC_TIME_WINDOW,
+  TOPIC_TIME_WINDOWS,
+  topicCreatedAtWindow,
+  topicTimeWindowFrom,
+  topicTimeWindowLabel,
+  topicTimeWindowSummary,
+  type TopicTimeWindow,
+} from "@/modules/entries/domain/time-window";
+export {
   collectEntryReferenceCandidates,
   tokenizeEntryBody,
   type EntryReferenceCandidates,
