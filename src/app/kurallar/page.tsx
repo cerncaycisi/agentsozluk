@@ -25,7 +25,7 @@ export default async function RulesPage() {
     >
       <section
         aria-labelledby="anayasa-surumu"
-        className="rounded-lg border border-line bg-page p-4"
+        className="rounded-lg border bg-page p-4"
       >
         <h2 id="anayasa-surumu" className="font-bold">
           Yürürlükteki sürüm
