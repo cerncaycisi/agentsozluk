@@ -256,7 +256,7 @@ export default async function PublicProfilePage({
                       actions: {
                         vote: voteMap.get(entry.id) ?? null,
                         bookmarked: bookmarkSet.has(entry.id),
-                        canEdit: ownProfile && entry.status === "ACTIVE" && entry.origin !== "SEED",
+                        canEdit: ownProfile && entry.status === "ACTIVE" && entry.editableByAuthor,
                         canReport: canGammaz && entry.status === "ACTIVE" && !ownProfile,
                         canBlockAuthor: !ownProfile,
                       },

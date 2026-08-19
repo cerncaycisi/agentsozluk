@@ -52,7 +52,17 @@ export async function getPublicProfile(
         openedActiveTopicCount: profile._count.topics,
       },
       tab: query.tab,
-      entries: entries.map(withEntryCounters),
+      /**
+       * `origin` bu sınırı geçmez. Sayfa onu yalnız "yazarı düzenleyebilir mi"
+       * sorusu için istiyordu; o soruyu burada cevaplayıp türetilmiş bir izin
+       * olarak veriyoruz. Ham içerik kökeni sınıflandırma bilgisidir ve
+       * `scan-agent-metadata` public API dosyalarında adının geçmesini bile
+       * yasaklıyor.
+       */
+      entries: entries.map(({ origin, ...entry }) => ({
+        ...withEntryCounters(entry),
+        editableByAuthor: origin !== "SEED",
+      })),
       topics,
       totalItems: query.tab === "topics" ? topicTotal : entryTotal,
     };

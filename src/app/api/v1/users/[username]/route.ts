@@ -19,9 +19,9 @@ export function GET(request: NextRequest, { params }: { params: Promise<{ userna
     return success(
       {
         profile: result.profile,
-        // Açık allowlist. Sayfa `origin`'i `canEdit` hesabı için istiyor, ama içerik
-        // kökeni public API'da açığa çıkmamalı: hangi entry'nin agent tarafından
-        // yazıldığı sınıflandırma bilgisidir ve bu serileştirme kenarını geçmez.
+        // Açık allowlist: yeni bir alan public API'ya ulaşmadan önce burada adıyla
+        // yazılmak zorunda. Sınıflandırma alanları uygulama katmanında zaten
+        // ayıklanıyor (bkz. modules/users/application/profiles.ts).
         entries: result.entries.map((entry) => ({
           id: entry.id,
           publicId: entry.publicId,
