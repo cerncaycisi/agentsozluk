@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { EntryBody } from "@/components/entries/entry-body";
 import { FormTextarea } from "@/components/ui/form-field";
@@ -32,6 +32,81 @@ const PREVIEW_REFERENCE_NOTE =
   "görünür bkz, entry ve yazar referansları ise düz metin kalır. Yayımlandığında " +
   "mevcut ve görünür hedefler bağlantıya dönüşür.";
 
+/**
+ * Taslak anahtarı başlık başına ayrılır: kullanıcı iki sekmede iki başlığa
+ * paralel yazabilsin diye. Önek `ajan_` — `ajan_theme` ile aynı ad alanı.
+ */
+const DRAFT_KEY_PREFIX = "ajan_draft:";
+
+/** Her tuş vuruşunda değil, yazma durduktan bu kadar sonra kaydedilir. */
+const DRAFT_SAVE_DEBOUNCE_MS = 500;
+
+/**
+ * Bundan eski taslak yüklenmez ve anahtarı silinir — yoksa terk edilmiş
+ * başlıkların taslakları `localStorage`'da birikir.
+ */
+const DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+interface StoredDraft {
+  body: string;
+  savedAt: number;
+}
+
+/**
+ * Taslak saklama bir kolaylık, kritik yol değil: özel modda `localStorage`
+ * erişimi *okumada bile* fırlatabilir, kota dolduğunda `setItem` fırlatır.
+ * Üç yardımcı da sessizce düşer; form her hâlükârda çalışmaya devam eder.
+ */
+function clearDraft(key: string): void {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Depolama yoksa silinecek bir şey de yok.
+  }
+}
+
+function readDraft(key: string): string | null {
+  let raw: string | null;
+  try {
+    raw = window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+  if (!raw) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    // Elle kurcalanmış ya da eski biçimli kayıt: at, bir daha uğraşma.
+    clearDraft(key);
+    return null;
+  }
+  const draft = parsed as Partial<StoredDraft> | null;
+  if (!draft || typeof draft.body !== "string" || typeof draft.savedAt !== "number") {
+    clearDraft(key);
+    return null;
+  }
+  if (!draft.body.trim()) {
+    clearDraft(key);
+    return null;
+  }
+  // İleri tarihli `savedAt` (saat kayması) bayat sayılmaz: fark negatif kalır.
+  if (Date.now() - draft.savedAt > DRAFT_MAX_AGE_MS) {
+    clearDraft(key);
+    return null;
+  }
+  return draft.body;
+}
+
+function writeDraft(key: string, body: string): void {
+  const draft: StoredDraft = { body, savedAt: Date.now() };
+  try {
+    window.localStorage.setItem(key, JSON.stringify(draft));
+  } catch {
+    // Kota dolu ya da depolama kapalı: taslak yok, form yine çalışıyor.
+  }
+}
+
 function ComposerPreview({ body }: { body: string }) {
   return (
     <div>
@@ -52,10 +127,60 @@ export function CreateEntryForm({ topicId }: { topicId: string }) {
     register,
     reset,
     watch,
+    setValue,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<{ body: string }>();
   const body = watch("body") ?? "";
+  const draftKey = `${DRAFT_KEY_PREFIX}${topicId}`;
+  // İlk render'da `false`; `localStorage` yalnız aşağıdaki efektte okunuyor, bu
+  // yüzden sunucu ve istemci ilk çıktıda birebir aynı — hidrasyon uyuşmazlığı
+  // olmuyor. (`site-shell.tsx`'teki `hydrated` bayrağının aynı deseni.)
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  // Depolamadaki metnin kopyası: aynı gövdeyi ikinci kez yazmayalım. Taslağı
+  // geri yükledikten sonra gereksiz bir `setItem` atmamızı da bu engelliyor —
+  // yoksa sayfa her açıldığında `savedAt` tazelenir ve taslak hiç bayatlamazdı.
+  const persistedBody = useRef("");
+
+  useEffect(() => {
+    const stored = readDraft(draftKey);
+    persistedBody.current = stored ?? "";
+    if (stored) {
+      setValue("body", stored);
+      setDraftRestored(true);
+    }
+    setDraftLoaded(true);
+  }, [draftKey, setValue]);
+
+  useEffect(() => {
+    // Yükleme bitmeden kaydetmeyelim: ilk render'ın boş gövdesi depodaki
+    // taslağın üstüne yazardı.
+    if (!draftLoaded) return;
+    if (body === persistedBody.current) return;
+    const timer = setTimeout(() => {
+      persistedBody.current = body;
+      if (body.trim()) {
+        writeDraft(draftKey, body);
+      } else {
+        clearDraft(draftKey);
+        setDraftRestored(false);
+      }
+    }, DRAFT_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [body, draftKey, draftLoaded]);
+
+  const forgetDraft = () => {
+    clearDraft(draftKey);
+    persistedBody.current = "";
+    setDraftRestored(false);
+  };
+
+  const discardDraft = () => {
+    forgetDraft();
+    setValue("body", "");
+  };
+
   const submit = async (input: { body: string }) => {
     setNotice(undefined);
     try {
@@ -66,6 +191,7 @@ export function CreateEntryForm({ topicId }: { topicId: string }) {
         idempotency: true,
       });
       reset();
+      forgetDraft();
       setNotice("Entry eklendi.");
       router.refresh();
     } catch (error) {
@@ -75,6 +201,18 @@ export function CreateEntryForm({ topicId }: { topicId: string }) {
   const bodyFieldId = `entry-body-${topicId}`;
   return (
     <form onSubmit={handleSubmit(submit)} className="surface-card mt-8 space-y-4 p-5" noValidate>
+      {draftRestored ? (
+        <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+          <span>Kaydedilmemiş taslağınız geri yüklendi.</span>
+          <button
+            type="button"
+            onClick={discardDraft}
+            className="inline-flex min-h-6 items-center font-semibold text-primary hover:underline"
+          >
+            Taslağı sil
+          </button>
+        </p>
+      ) : null}
       <FormTextarea
         id={bodyFieldId}
         label="Yeni entry"

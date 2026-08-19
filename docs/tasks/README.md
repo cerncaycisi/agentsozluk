@@ -68,6 +68,7 @@ Aynı dalgadaki görevler paralel verilebilir. Sonraki dalgaya geçmeden önceki
 | 32 | [Composer taslak saklama](32-composer-taslak.md) | P2-13 | S |
 | 33 | [Temada "Sistem" seçeneği](33-tema-sistem.md) | P2-20 | S |
 | 34 | [Yazar profili sekmeleri](34-profil-sekmeleri.md) | P2-18 | M |
+| 35 | [`/debe` ve `/yazar` akışlarında oy afordansı](35-akislarda-oy-afordansi.md) | — | M |
 
 > 28 numara bilerek boş bırakıldı.
 
@@ -89,6 +90,12 @@ kaymış olabilir. Numara tutmuyor diye "bu iş zaten yapılmış" sonucuna varm
 
 Aynı sebeple dosya listeleri de eksik olabilir: bir sonraki görev yeni bir kullanım yeri
 eklemiş olabilir. Kendi taramanızı yapın.
+
+**Daha kötüsü: referans gösterilen kod silinmiş olabilir.** Görev dosyaları birbirine
+"şu dosyadaki deseni izleyin" diye atıf yapıyor, ama kuyruktaki başka bir görev o deseni
+kaldırmış olabilir. Ölçülen örnek: görev 32, `site-shell.tsx`'teki `localStorage` desenini
+referans veriyordu; görev 07 o kodu tamamen sildi. Atıf yapılan kodun **hâlâ orada olduğunu**
+doğrulayın; yoksa aynı deseni taşıyan başka bir dosya bulun ve raporunuzda bildirin.
 
 ## Her görevde geçerli kurallar
 

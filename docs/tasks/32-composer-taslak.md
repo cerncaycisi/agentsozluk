@@ -10,8 +10,9 @@ yazdığı her şey kayboluyor. Entry sınırı 10.000 karakter — kaybedilen e
 ## Okunacak dosyalar
 
 - `src/components/entries/create-entry-form.tsx`
-- `src/components/layout/site-shell.tsx:182-190` — projedeki `localStorage` + `hydrated`
-  bayrağı deseni. **Aynısını izleyin**, hidrasyon uyuşmazlığını böyle önlüyorlar.
+- `src/components/ui/theme-toggle.tsx` — projedeki `localStorage` + hidrasyon bayrağı deseni
+  (anahtar `ajan_theme`, `ready` bayrağı `useEffect` içinde). **Aynısını izleyin.**
+  Not: `try/catch` orada da yok, onu bu görevde siz ekleyeceksiniz (madde 7).
 
 ## Yapılacak
 
@@ -21,7 +22,7 @@ yazdığı her şey kayboluyor. Entry sınırı 10.000 karakter — kaybedilen e
 3. Yüklemede: taslak varsa textarea'yı doldurun ve üstünde bir satır gösterin:
    *"Kaydedilmemiş taslağınız geri yüklendi."* + "Taslağı sil" butonu.
 4. **Hidrasyon:** `localStorage` yalnız `useEffect` içinde okunmalı, ilk render'da değil.
-   `site-shell.tsx:182-186`'daki `hydrated` bayrağı desenini kullanın.
+   `theme-toggle.tsx`'teki `ready` bayrağı desenini kullanın.
 5. Temizleme koşulları:
    - Entry başarıyla gönderildiğinde (`reset()` çağrısının yanında)
    - Kullanıcı "Taslağı sil" dediğinde
