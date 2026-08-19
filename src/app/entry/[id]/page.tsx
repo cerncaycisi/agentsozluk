@@ -125,6 +125,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
       <EntryPreview
         entry={entry}
         references={references}
+        guestActions={!session}
         {...(session?.user.status === "ACTIVE"
           ? {
               actions: {

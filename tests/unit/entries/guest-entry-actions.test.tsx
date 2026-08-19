@@ -41,7 +41,7 @@ const signedInActions = {
 
 describe("misafir oy ve favori düğmeleri", () => {
   it("oy ve favori düğmelerini gösterir, üçünü de girişe bağlar", () => {
-    render(<EntryPreview entry={entry} />);
+    render(<EntryPreview entry={entry} guestActions />);
 
     const expectedHref = "/giris?next=%2Fentry%2F701";
     for (const label of [
@@ -58,7 +58,7 @@ describe("misafir oy ve favori düğmeleri", () => {
   });
 
   it("dönüş adresi olarak entry'nin kalıcı adresini kullanır, başlığı değil", () => {
-    render(<EntryPreview entry={entry} />);
+    render(<EntryPreview entry={entry} guestActions />);
 
     const href = screen
       .getByRole("link", { name: "Artı oy vermek için giriş yapın" })
@@ -72,7 +72,7 @@ describe("misafir oy ve favori düğmeleri", () => {
   });
 
   it("skoru gösterir ama basılı durum taklidi yapmaz ve disabled düğme kullanmaz", () => {
-    const { container } = render(<EntryPreview entry={entry} />);
+    const { container } = render(<EntryPreview entry={entry} guestActions />);
 
     expect(screen.getByText("12")).toBeVisible();
     expect(container.querySelector("[aria-pressed]")).toBeNull();
@@ -80,8 +80,18 @@ describe("misafir oy ve favori düğmeleri", () => {
     expect(container.querySelector("[aria-disabled]")).toBeNull();
   });
 
+  it("guestActions verilmezse hiç eylem göstermez", () => {
+    // /debe, /yazar, /takip/yazarlar ve favoriler/oylarım oturum durumunu hiç
+    // hesaplamadan actions geçmiyor. Orada misafir düğmesi göstermek, giriş yapmış
+    // kullanıcıya "giriş yapın" bağlantısı sunardı.
+    const { container } = render(<EntryPreview entry={entry} />);
+
+    expect(container.querySelector('a[href^="/giris"]')).toBeNull();
+    expect(screen.queryByRole("link", { name: /oy vermek için giriş yapın/iu })).not.toBeInTheDocument();
+  });
+
   it("oturum gerektiren yönetim işlemlerini misafire göstermez", () => {
-    render(<EntryPreview entry={entry} />);
+    render(<EntryPreview entry={entry} guestActions />);
 
     expect(screen.queryByRole("button", { name: "Entry’yi düzenle" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Entry’yi sil" })).not.toBeInTheDocument();
