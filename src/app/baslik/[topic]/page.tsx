@@ -206,7 +206,7 @@ export default async function TopicPage({
   const bookmarkSet = new Set(bookmarks.map((bookmark) => bookmark.entryId));
   const totalPages = Math.max(1, Math.ceil(result.totalItems / pageSize));
   return (
-    <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
+    <main id="ana-icerik" className="page-main">
       <JsonLd
         data={buildTopicJsonLd({
           baseUrl: getEnvironment().APP_URL,

@@ -10,7 +10,7 @@ export function InformationPage({
   children: React.ReactNode;
 }) {
   return (
-    <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
+    <main id="ana-icerik" className="page-main">
       <header>
         <p className="text-accent-contrast text-sm font-bold uppercase tracking-widest">
           {eyebrow}

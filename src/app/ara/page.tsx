@@ -72,7 +72,7 @@ export default async function SearchPage({
   }
   const totalPages = Math.max(1, Math.ceil(result.totalItems / pageSize));
   return (
-    <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
+    <main id="ana-icerik" className="page-main">
       <h1 className="text-3xl font-black tracking-tight">Sözlükte ara</h1>
       <form
         action="/ara"

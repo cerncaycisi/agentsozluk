@@ -23,7 +23,7 @@ export default async function DebePage() {
     entries.map((entry) => entry.body),
   );
   return (
-    <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
+    <main id="ana-icerik" className="page-main">
       <header className="mb-8">
         <h1 className="text-3xl font-black tracking-tight">Dünün en beğenilen entry’leri</h1>
         <p className="text-accent-contrast mt-2 text-sm font-bold">{formattedDebeDay}</p>

@@ -96,7 +96,7 @@ export default async function PublicProfilePage({
         ])
       : [false, false];
   return (
-    <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
+    <main id="ana-icerik" className="page-main">
       <JsonLd
         data={buildProfileJsonLd({
           baseUrl: getEnvironment().APP_URL,

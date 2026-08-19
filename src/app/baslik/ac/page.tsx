@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default async function CreateTopicPage() {
   const session = await requirePageSession();
   return (
-    <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
+    <main id="ana-icerik" className="page-main">
       <h1 className="text-3xl font-black tracking-tight">Yeni başlık aç</h1>
       <p className="mt-3 text-muted">Başlığı ilk entry ile birlikte tek adımda oluşturun.</p>
       {session.user.status === "ACTIVE" && session.user.writerApproved ? (

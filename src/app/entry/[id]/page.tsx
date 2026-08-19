@@ -103,7 +103,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
   const bookmark = bookmarks[0];
   const topicAnchor = topicEntryAnchorUrl({ topic: entry.topic, entry });
   return (
-    <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
+    <main id="ana-icerik" className="page-main">
       <JsonLd
         data={buildEntryJsonLd({
           baseUrl: getEnvironment().APP_URL,

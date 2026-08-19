@@ -47,7 +47,7 @@ export async function PersonalListPage({
   );
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   return (
-    <main id="ana-icerik" className="mx-auto max-w-[820px] px-4 py-10 sm:px-6">
+    <main id="ana-icerik" className="page-main">
       <h1 className="text-3xl font-black tracking-tight">{title}</h1>
       <p className="mt-3 text-muted">{description}</p>
       <div className="mt-7 space-y-4">
