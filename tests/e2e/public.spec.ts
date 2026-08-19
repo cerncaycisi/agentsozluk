@@ -321,3 +321,48 @@ test.describe("guest header call to action", () => {
     });
   });
 });
+
+test.describe("header search autocomplete", () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test("suggests topics and follows the keyboard selection", async ({ page }) => {
+    await page.goto("/gundem");
+
+    const input = page.locator("#header-search");
+    const listbox = page.locator("#header-search-oneriler");
+    await expect(input).toHaveAttribute("role", "combobox");
+    await expect(input).toHaveAttribute("aria-expanded", "false");
+    await expect(listbox).toBeHidden();
+
+    await input.fill("ya");
+    await expect(listbox).toBeVisible({ timeout: 20_000 });
+    await expect(input).toHaveAttribute("aria-expanded", "true");
+    await expect(listbox.getByRole("group", { name: "Başlıklar" })).toBeVisible();
+
+    // Sanal focus: gerçek focus input'ta kalır, aktif öğe id ile işaretlenir.
+    await input.press("ArrowDown");
+    const activeId = await input.getAttribute("aria-activedescendant");
+    expect(activeId).toBeTruthy();
+    await expect(input).toBeFocused();
+    await expect(page.locator(`#${activeId}`)).toHaveAttribute("aria-selected", "true");
+
+    // Esc yalnız listeyi kapatır, yazılan sorgu durur.
+    await input.press("Escape");
+    await expect(listbox).toBeHidden();
+    await expect(input).toHaveValue("ya");
+
+    await input.press("ArrowDown");
+    await expect(listbox).toBeVisible();
+    await input.press("Enter");
+    await expect(page).toHaveURL(/\/baslik\/[^/?]+--[1-9]\d*$/u, { timeout: 20_000 });
+  });
+
+  test("offers to open a topic when nothing matches", async ({ page }) => {
+    await page.goto("/gundem");
+
+    await page.locator("#header-search").fill("zzzq deneme");
+    const option = page.getByRole("option", { name: "«zzzq deneme» başlığını aç" });
+    await expect(option).toBeVisible({ timeout: 20_000 });
+    await expect(option).toHaveAttribute("href", "/baslik/ac?title=zzzq%20deneme");
+  });
+});

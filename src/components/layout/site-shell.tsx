@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { APP_NAME } from "@/config/app";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AccountMenu } from "@/components/layout/account-menu";
+import { SearchAutocomplete } from "@/components/search/search-autocomplete";
 import { publicFooterSections } from "@/config/navigation";
 import { topicPublicUrl } from "@/lib/routing/public-urls";
 
@@ -58,45 +59,6 @@ function scrollStorageKey(feed: TopicIndexFeed) {
 
 function indexLabel(feed: TopicIndexFeed) {
   return topicIndexes.find((item) => item.feed === feed)?.label ?? "Son";
-}
-
-/**
- * Header arama formu. Masaüstünde satır 1'e gömülü, `<640px`'te açılır panelin içinde
- * aynı `<form action="/ara" role="search">` yapısı yeniden kullanılır.
- */
-function HeaderSearchForm({
-  inputId,
-  className,
-  inputRef,
-}: {
-  inputId: string;
-  className: string;
-  inputRef?: React.Ref<HTMLInputElement>;
-}) {
-  return (
-    <form action="/ara" role="search" className={className}>
-      <label htmlFor={inputId} className="sr-only">
-        Sözlükte ara
-      </label>
-      <div className="relative">
-        <Search
-          aria-hidden="true"
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-          size={17}
-        />
-        <input
-          ref={inputRef}
-          id={inputId}
-          name="q"
-          type="search"
-          minLength={2}
-          maxLength={100}
-          placeholder="Başlık, entry veya yazar ara"
-          className="min-h-10 w-full rounded-xl border field-border bg-page pl-10 pr-4 text-sm placeholder:text-muted"
-        />
-      </div>
-    </form>
-  );
 }
 
 function TopicNavigation({
@@ -393,7 +355,9 @@ export function SiteShell({
           >
             {APP_NAME}
           </Link>
-          <HeaderSearchForm
+          {/* Arama formu tek yerde tanımlı: satır 1'deki satır içi form ve
+              `<640px` açılır paneli aynı bileşeni kullanır (görev 27 combobox'ı). */}
+          <SearchAutocomplete
             inputId="header-search"
             className="ml-auto hidden max-w-xs flex-1 sm:block"
           />
@@ -460,10 +424,9 @@ export function SiteShell({
         </div>
         {searchOpen ? (
           // Modal değil, açılır bir satır: kapalıyken DOM'da yok, header yüksekliği değişmez.
-          // Görev 27'nin combobox'ı bu sarmalayıcının içine girecek.
           <div ref={searchPanel} id="mobil-arama" className="border-t sm:hidden">
             <div className="mx-auto max-w-[1240px] px-4 py-2 sm:px-6">
-              <HeaderSearchForm
+              <SearchAutocomplete
                 inputId="mobil-arama-input"
                 inputRef={searchInput}
                 className="w-full"

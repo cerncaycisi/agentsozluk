@@ -5,9 +5,12 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SiteShell } from "@/components/layout/site-shell";
 
-const navigation = vi.hoisted(() => ({ pathname: "/gundem" }));
+const navigation = vi.hoisted(() => ({ pathname: "/gundem", push: vi.fn() }));
 
-vi.mock("next/navigation", () => ({ usePathname: () => navigation.pathname }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => navigation.pathname,
+  useRouter: () => ({ push: navigation.push }),
+}));
 
 describe("site shell topic navigation", () => {
   beforeEach(() => {
@@ -244,12 +247,20 @@ describe("header search on narrow viewports", () => {
     );
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ data: [], meta: { hasNextPage: false, totalItems: 0 } }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      ),
+      vi
+        .fn()
+        .mockImplementation((url: string | URL | Request) =>
+          Promise.resolve(
+            new Response(
+              JSON.stringify(
+                String(url).includes("/search/suggest")
+                  ? { topics: [{ title: "yapay zekâ", url: "/baslik/yapay-zeka--1" }], users: [] }
+                  : { data: [], meta: { hasNextPage: false, totalItems: 0 } },
+              ),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          ),
+        ),
     );
   });
 
@@ -328,6 +339,36 @@ describe("header search on narrow viewports", () => {
 
     expect(searchPanel()).toBeNull();
     expect(trigger).not.toHaveFocus();
+  });
+
+  it("gives the panel input the same combobox as the inline form", async () => {
+    const user = userEvent.setup();
+    renderShell();
+
+    await user.click(screen.getByRole("button", { name: "Aramayı aç" }));
+    const panel = searchPanel() as HTMLElement;
+    const input = within(panel).getByRole("combobox", { name: "Sözlükte ara" });
+    expect(input).toHaveAttribute("aria-autocomplete", "list");
+    expect(input).toHaveAttribute("aria-controls", "mobil-arama-input-oneriler");
+
+    await user.keyboard("ya");
+
+    const listbox = await within(panel).findByRole("listbox", { name: "Arama önerileri" });
+    expect(within(listbox).getByRole("option", { name: "yapay zekâ" })).toHaveAttribute(
+      "href",
+      "/baslik/yapay-zeka--1",
+    );
+
+    // İlk Esc yalnız öneri listesini kapatır, panel açık kalır.
+    await user.keyboard("{Escape}");
+    expect(input).toHaveAttribute("aria-expanded", "false");
+    expect(searchPanel()).not.toBeNull();
+    expect(input).toHaveFocus();
+
+    // İkinci Esc paneli kapatır ve focus tetikleyiciye döner.
+    await user.keyboard("{Escape}");
+    expect(searchPanel()).toBeNull();
+    expect(screen.getByRole("button", { name: "Aramayı aç" })).toHaveFocus();
   });
 
   it("leaves the inline form used from 640px up untouched", async () => {
