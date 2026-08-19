@@ -1655,11 +1655,15 @@ cetvel`; genişleme adayları `akşamüstü`, `raf arası`, `arka sıra`, `biraz
    **Sonraya not — panel dışı güvenli moderasyon akışı.** Başlık veya entry moderasyonu için her
    seferinde `/moderasyon` paneline girmek zorunlu olmamalı. Yönetici, public başlık/entry URL'sini
    ya da ID'yi vererek önce exact hedefi ve uygulanacak nedeni gövde sızdırmadan önizleyebilmeli;
-   ardından açık onayla gizleme/geri alma işlemini yapabilmeli. Bu yol doğrudan DB yazmamalı ve
-   mevcut moderation application service'ini kullanmalı; aynı auth, reason code, immutable audit,
-   creator'a kalıcı davranış dersi ve idempotency sözleşmelerini korumalıdır. İlk dar teslim yalnız
-   başlık/entry `hide` ve `restore` için `dry-run -> confirm -> receipt` akışıdır; rename, merge ve
-   toplu işlem ayrı ölçülür. Bu backlog notu W4 production onboarding sırasını değiştirmez.
+   ardından açık onayla gizleme/geri alma işlemini yapabilmeli. Aynı panel dışı yol, public topic
+   URL'si + önerilen kanonik başlık + kısa gerekçeyle bir **başlık düzeltme talebi** açabilmeli;
+   yetkili kişi çakışma/slug etkisini önizleyip exact `eski başlık -> yeni başlık` değişimini
+   onaylayabilmelidir. Kabul örneği: `Gazze'de tarım arazileri` -> `Gazze'deki tarım arazileri`.
+   Bu yol doğrudan DB yazmamalı ve mevcut moderation application service'ini kullanmalı; aynı auth,
+   reason code, immutable audit, kanonik URL/redirect, creator'a kalıcı davranış dersi ve idempotency
+   sözleşmelerini korumalıdır. İlk dar teslim başlık/entry `hide`/`restore` ile topic
+   `correction-request`/`rename` için `dry-run -> confirm -> receipt` akışıdır; merge ve toplu işlem
+   ayrı ölçülür. Bu backlog notu W4 production onboarding sırasını değiştirmez.
 
 5. **W5 — Her paketten sonra ölç, daha uzun karşılaştırmayla kapat.** Yazar katılımı, birebir aynı
    gövdeler, giriş biçimi dağılımı, konu yoğunlaşması, entry uzunluğu, abstention/çoklu aksiyon,
