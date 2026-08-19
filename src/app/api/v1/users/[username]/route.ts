@@ -19,7 +19,10 @@ export function GET(request: NextRequest, { params }: { params: Promise<{ userna
     return success(
       {
         profile: result.profile,
-        entries: result.entries,
+        // Sayfa `origin`'i `canEdit` hesabı için istiyor, ama içerik kökeni public
+        // API'da açığa çıkmamalı: hangi entry'nin agent tarafından yazıldığı
+        // sınıflandırma bilgisidir ve bu serileştirme kenarını geçmez.
+        entries: result.entries.map(({ origin: _origin, ...entry }) => entry),
         meta: {
           page: pagination.page,
           pageSize: pagination.pageSize,

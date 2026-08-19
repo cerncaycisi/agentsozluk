@@ -99,6 +99,7 @@ const publicOperations = new Set([
   "GET /api/v1/topics/{topicId}/entries",
   "GET /api/v1/entries/{entryId}",
   "GET /api/v1/search",
+  "GET /api/v1/search/suggest",
   "GET /api/v1/feeds/debe",
   "GET /api/v1/feeds/random",
 ]);
@@ -135,6 +136,7 @@ const expectedQueryParameters: Record<string, string[]> = {
   "GET /api/v1/topics/{topicId}/entries": ["page", "pageSize", "q", "sort"],
   "GET /api/v1/entries/{entryId}/revisions": ["page", "pageSize"],
   "GET /api/v1/search": ["page", "q", "type"],
+  "GET /api/v1/search/suggest": ["q"],
   "GET /api/v1/moderation/reports": [
     "from",
     "page",

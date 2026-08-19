@@ -610,6 +610,22 @@ paths:
           "429": { $ref: "#/components/responses/RateLimited" },
           default: { $ref: "#/components/responses/Error" },
         }
+  /api/v1/search/suggest:
+    get:
+      operationId: searchSuggestions
+      tags: [Feeds]
+      security: []
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 100 }
+          description: Queries shorter than 2 characters return an empty payload without a database search or rate-limit spend.
+      responses:
+        {
+          "200": { $ref: "#/components/responses/Success" },
+          "429": { $ref: "#/components/responses/RateLimited" },
+          default: { $ref: "#/components/responses/Error" },
+        }
   /api/v1/feeds/debe:
     get:
       operationId: getDebeFeed

@@ -160,8 +160,15 @@ describe("search suggestion API with PostgreSQL", () => {
     await createTopic(writer.id, "kacis alakasiz baska baslik");
 
     const literalSuggestions = await searchSuggestions(integrationDatabase, { query: literal });
-    expect(literalSuggestions.topics).toHaveLength(1);
+    // `%` ve `_` joker değil, harfi harfine aranıyor: tam eşleşen başlık ilk sırada.
+    // Listede ikinci bir başlık da olabilir — sorgu pg_trgm benzerlik operatörünü
+    // (`%`) de kullanıyor ve "kacis" trigramlarını paylaşan başlıklar bulanık
+    // eşleşmeyle geliyor. `/ara` da aynısını döndürür; daraltan tek şey kaçış değil.
     expect(literalSuggestions.topics[0]?.title).toBe(`Yalnızca ${literal} içeren başlık`);
+
+    // Asıl joker kontrolü: tek başına `%` her şeyi getirmemeli.
+    const wildcardOnly = await searchSuggestions(integrationDatabase, { query: "%%" });
+    expect(wildcardOnly.topics).toHaveLength(0);
 
     await expect(
       searchSuggestions(integrationDatabase, { query: "k".repeat(140) }),
