@@ -1,4 +1,14 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
+
+/**
+ * Entry kartındaki ikincil işlemler (düzenle, sürümler, gammaz, yazarı engelle,
+ * sil) ⋮ menüsünde duruyor. Menü içeriği `body`'ye portal edildiği için öğeler
+ * kartın locator'ında değil, sayfa düzeyinde aranır.
+ */
+async function selectEntryAction(page: Page, article: Locator, name: string): Promise<void> {
+  await article.getByRole("button", { name: "Diğer entry işlemleri" }).click();
+  await page.getByRole("menuitem", { name }).click();
+}
 
 test.describe("@desktop authenticated content journey", () => {
   test("registers, receives admin writer approval, publishes and manages the account lifecycle", async ({
@@ -98,7 +108,7 @@ test.describe("@desktop authenticated content journey", () => {
     await secondArticle.getByRole("button", { name: "Favorilere ekle" }).click();
     await expect(secondArticle.getByRole("button", { name: "Favorilerden çıkar" })).toBeVisible();
 
-    await secondArticle.getByRole("button", { name: "Entry’yi düzenle" }).click();
+    await selectEntryAction(page, secondArticle, "Entry’yi düzenle");
     await secondArticle.getByLabel("Entry metni").fill(revisedEntry);
     await secondArticle.getByRole("button", { name: "Kaydet" }).click();
     await expect(page.getByText(revisedEntry, { exact: true })).toBeVisible();
@@ -118,7 +128,7 @@ test.describe("@desktop authenticated content journey", () => {
 
     await page.goto(topicUrl);
     const revisedTopicArticle = page.locator("article").filter({ hasText: revisedEntry });
-    await revisedTopicArticle.getByRole("link", { name: "Sürümler" }).click();
+    await selectEntryAction(page, revisedTopicArticle, "Sürümler");
     await expect(page.getByRole("heading", { level: 1, name: "Entry sürümleri" })).toBeVisible({
       timeout: 20_000,
     });
@@ -202,17 +212,18 @@ test.describe("@desktop authenticated content journey", () => {
       "aria-pressed",
       "false",
     );
-    await expect(seededArticle.getByRole("button", { name: "Entry’yi gammazla" })).toHaveCount(0);
-
-    await seededArticle.getByRole("button", { name: "Yazarı engelle" }).click();
+    // Kendi entry'sinde gammaz yok; menü açıkken de öğe listelenmemeli.
+    await seededArticle.getByRole("button", { name: "Diğer entry işlemleri" }).click();
+    await expect(page.getByRole("menuitem", { name: "Entry’yi gammazla" })).toHaveCount(0);
+    await page.getByRole("menuitem", { name: "Yazarı engelle" }).click();
     const blockedArticle = page
       .locator("article")
       .filter({ hasText: "Bu entry engellediğiniz bir yazar tarafından yazıldı." })
       .first();
     await expect(blockedArticle).toBeVisible();
-    await expect(
-      blockedArticle.getByRole("button", { name: "Yazarın engelini kaldır" }),
-    ).toBeVisible();
+    await blockedArticle.getByRole("button", { name: "Diğer entry işlemleri" }).click();
+    await expect(page.getByRole("menuitem", { name: "Yazarın engelini kaldır" })).toBeVisible();
+    await page.keyboard.press("Escape");
     await blockedArticle.getByRole("button", { name: "Entry’yi bir kez göster" }).click();
     await expect(
       blockedArticle.getByText("Bu entry engellediğiniz bir yazar tarafından yazıldı."),

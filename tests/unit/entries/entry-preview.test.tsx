@@ -2,8 +2,10 @@
 
 import { cleanup, render, screen } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { EntryPreview } from "@/components/entries/entry-preview";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 describe("entry card acceptance state", () => {
   it("exposes its anchor plus hidden and edited indicators", () => {
@@ -156,5 +158,113 @@ describe("akış kartlarında görsel kırpma", () => {
     expect(markup).toContain(longBody);
     expect(markup).not.toContain("<script");
     expect(markup).toContain('type="checkbox"');
+  });
+});
+
+describe("tek footer, tek puan", () => {
+  afterEach(() => cleanup());
+
+  const footerEntry = {
+    id: "00000000-0000-4000-8000-000000000204",
+    publicId: 204,
+    body: "Footer birleşimini gösteren entry metni.",
+    score: 13,
+    edited: true,
+    bookmarkCount: 3,
+    createdAt: new Date("2026-01-02T10:00:00.000Z"),
+    topic: {
+      id: "00000000-0000-4000-8000-000000000101",
+      publicId: 101,
+      title: "Footer başlığı",
+      slug: "footer-basligi",
+    },
+    author: {
+      id: "00000000-0000-4000-8000-000000000001",
+      username: "writer",
+      displayName: "Writer",
+    },
+  };
+
+  const signedInActions = {
+    vote: null,
+    bookmarked: false,
+    canEdit: true,
+    canReport: true,
+    canBlockAuthor: true,
+  } as const;
+
+  for (const [label, props, scoreMentions] of [
+    ["misafirde", { guestActions: true }, 1],
+    ["oturumluda", { actions: signedInActions }, 1],
+    // Aksiyon şeridi hiç yoksa puan da yok; footer yalnız metayı taşır.
+    ["aksiyonsuz listelerde", {}, 0],
+  ] as const) {
+    it(`${label} kart başına tek yatay ayraç bırakır`, () => {
+      const { container } = render(<EntryPreview entry={footerEntry} {...props} />);
+
+      const article = container.querySelector("article")!;
+      const rules = [...article.querySelectorAll('[class*="border-t"]')];
+      expect(rules).toHaveLength(1);
+      expect(rules[0]?.tagName).toBe("FOOTER");
+    });
+
+    it(`${label} puanı kartta en çok bir kez yazar`, () => {
+      const { container } = render(<EntryPreview entry={footerEntry} {...props} />);
+
+      const article = container.querySelector("article")!;
+      expect(article.textContent?.match(/puan/gu) ?? []).toHaveLength(scoreMentions);
+      // Eski "13 puan" metni footer'dan kalktı; tek kaynak aksiyon şeridindeki sayaç.
+      expect(article.textContent).not.toContain("13 puan13");
+    });
+  }
+
+  it("aksiyonları da meta grubunu da aynı footer'ın içinde tutar", () => {
+    const { container } = render(<EntryPreview entry={footerEntry} guestActions />);
+
+    const footer = container.querySelector("footer")!;
+    expect(
+      footer.querySelector('a[aria-label="Artı oy vermek için giriş yapın"]'),
+    ).not.toBeNull();
+    expect(footer.querySelector('a[href="/entry/204"]')).not.toBeNull();
+    expect(footer.querySelector('a[href="/yazar/writer"]')).not.toBeNull();
+    // Sağ grup 375px'te alt satıra insin diye footer sarıyor; ayraç yine tek.
+    expect(footer.className).toContain("flex-wrap");
+  });
+
+  it("meta grubunu tarih · düzenlendi · yazar sırasında tutar", () => {
+    render(<EntryPreview entry={footerEntry} guestActions />);
+
+    const meta = screen.getByLabelText("Entry düzenlendi").parentElement!;
+    expect(meta.textContent).toBe("2 Oca 2026 13:00· düzenlendi·Writer");
+    expect(meta.className).toContain("ml-auto");
+  });
+
+  it("aksiyonsuz listelerde puan hiç görünmez, kart yine tek ayraçlı kalır", () => {
+    const { container } = render(<EntryPreview entry={footerEntry} />);
+
+    expect(container.textContent).not.toContain("puan");
+    expect(container.querySelectorAll('[class*="border-t"]')).toHaveLength(1);
+  });
+
+  it("kırpma anahtarı gövde bloğunun içinde ve kırpılan kutunun HEMEN önünde kalır", () => {
+    // `peer-checked:` kardeş seçicisine dayanıyor: checkbox, kırpılan kutu ve
+    // etiketler aynı ebeveynde ve bu sırada durmazsa kırpma sessizce bozulur.
+    const { container } = render(
+      <EntryPreview
+        collapsible
+        guestActions
+        entry={{ ...footerEntry, body: "uzun entry gövdesi ".repeat(40).trim() }}
+      />,
+    );
+
+    const wrapper = container.querySelector("input[type=checkbox]")!.parentElement!;
+    const children = [...wrapper.children];
+    expect(children[0]).toHaveClass("peer");
+    expect(children[1]?.className).toContain("peer-checked:max-h-none");
+    expect(children[2]).toHaveTextContent("Devamını göster");
+    expect(children[3]).toHaveTextContent("Daha az göster");
+    // Footer bu sarmalayıcının dışında; aksiyon şeridi kırpmaya karışmıyor.
+    expect(wrapper.querySelector("footer")).toBeNull();
+    expect(container.querySelector("footer")).not.toBeNull();
   });
 });

@@ -19,15 +19,31 @@ export function GammazButton({
   targetType,
   targetId,
   compact = false,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   targetType: TargetType;
   targetId: string;
   compact?: boolean;
+  /**
+   * Dışarıdan kontrol kipi. Verildiğinde bileşen kendi tetikleyici düğmesini
+   * RENDER ETMEZ — kipi açan bir menü öğesi ya da başka bir denetim vardır
+   * (entry aksiyon şeridindeki ⋮ menüsü böyle kullanıyor). Verilmediğinde
+   * bileşen eskisi gibi kendi düğmesiyle çalışır.
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const id = useId();
   const reasons = reasonsForTarget(targetType);
   const initialReason = reasons[0]!;
-  const [open, setOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
   const [reason, setReason] = useState<GammazReason>(initialReason);
   const [details, setDetails] = useState("");
   const [entryPublicId, setEntryPublicId] = useState("");
@@ -86,23 +102,25 @@ export function GammazButton({
       (Number.isInteger(Number(entryPublicId)) && Number(entryPublicId) > 0)) &&
     (reason !== "TOPIC_CANONICALIZATION_REQUEST" || suggestedTitle.trim().length >= 2);
 
-  return (
-    <div>
+  const dialog = (
+    <>
       <AlertDialog.Root open={open} onOpenChange={setOpen}>
-        <AlertDialog.Trigger asChild>
-          <button
-            type="button"
-            className={
-              compact
-                ? "grid size-10 place-items-center rounded-lg border bg-page"
-                : "button-secondary inline-flex items-center gap-2"
-            }
-            aria-label={compact ? "Entry’yi gammazla" : undefined}
-          >
-            <Flag aria-hidden="true" size={17} />
-            {compact ? null : "Gammazla"}
-          </button>
-        </AlertDialog.Trigger>
+        {controlled ? null : (
+          <AlertDialog.Trigger asChild>
+            <button
+              type="button"
+              className={
+                compact
+                  ? "grid size-10 place-items-center rounded-lg border bg-page"
+                  : "button-secondary inline-flex items-center gap-2"
+              }
+              aria-label={compact ? "Entry’yi gammazla" : undefined}
+            >
+              <Flag aria-hidden="true" size={17} />
+              {compact ? null : "Gammazla"}
+            </button>
+          </AlertDialog.Trigger>
+        )}
         <AlertDialog.Portal>
           <AlertDialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
           <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[81] max-h-[90vh] w-[min(94vw,620px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border bg-surface p-6 shadow-2xl">
@@ -235,6 +253,9 @@ export function GammazButton({
           {notice}
         </p>
       ) : null}
-    </div>
+    </>
   );
+  // Kontrollü kipte sarmalayıcı yok: kip kapalı ve bildirim yokken bileşen hiç
+  // DOM üretmemeli ki çağıran esnek düzenlerde boş kutu taşımasın.
+  return controlled ? dialog : <div>{dialog}</div>;
 }

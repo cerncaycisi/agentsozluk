@@ -78,6 +78,29 @@ export function EntryPreview({
   const formattedCreatedAt = formatIstanbulTimestamp(entry.createdAt);
   const collapsed = collapsible && !entry.blockedByViewer && entryBodyNeedsCollapse(entry.body);
   const collapseToggleId = `entry-${entry.publicId}-govde-genislet`;
+  const actionsNode = actions ? (
+    <EntryActions
+      entryId={entry.id}
+      entryPublicId={entry.publicId}
+      body={entry.body}
+      initialScore={entry.score}
+      initialVote={actions.vote}
+      initialBookmarked={actions.bookmarked}
+      canEdit={actions.canEdit}
+      authorId={entry.author.id}
+      canReport={actions.canReport}
+      canBlockAuthor={actions.canBlockAuthor}
+      initialAuthorBlocked={Boolean(entry.blockedByViewer)}
+      initialBookmarkCount={bookmarkCount}
+    />
+  ) : guestActions ? (
+    <EntryActions
+      readOnly
+      entryPublicId={entry.publicId}
+      initialScore={entry.score}
+      initialBookmarkCount={bookmarkCount}
+    />
+  ) : null;
   return (
     <article id={`entry-${entry.publicId}`} className="surface-card scroll-mt-28 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -122,9 +145,16 @@ export function EntryPreview({
           )}
         </div>
       )}
-      <footer className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-sm text-muted">
-        <span>{entry.score} puan</span>
-        <span>
+      {/*
+        Kart başına TEK yatay ayraç: aksiyon şeridi de bu footer'ın içinde duruyor.
+        `EntryActions` bir fragment döndürüyor — düğme şeridi, düzenleme formu ve
+        bildirim doğrudan bu esnek kutunun çocukları oluyor; form ve bildirim
+        `w-full` ile kendi satırına iniyor.
+        375px'te düğme şeridi tek satırda kalır, meta grubu alt satıra iner.
+      */}
+      <footer className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t pt-4 text-sm text-muted">
+        {actionsNode}
+        <span className="ml-auto flex flex-wrap items-center gap-x-2">
           <Link
             href={entryPublicUrl(entry)}
             aria-label={`${formattedCreatedAt} tarihli entry’ye git`}
@@ -133,12 +163,11 @@ export function EntryPreview({
             {formattedCreatedAt}
           </Link>
           {edited ? (
-            <span className="ml-2 font-semibold" aria-label="Entry düzenlendi">
+            <span className="font-semibold" aria-label="Entry düzenlendi">
               · düzenlendi
             </span>
           ) : null}
-        </span>
-        <span>
+          <span aria-hidden="true">·</span>
           <Link
             href={publicProfileUrl(entry.author.username)}
             className="font-semibold text-primary hover:underline"
@@ -147,29 +176,6 @@ export function EntryPreview({
           </Link>
         </span>
       </footer>
-      {actions ? (
-        <EntryActions
-          entryId={entry.id}
-          entryPublicId={entry.publicId}
-          body={entry.body}
-          initialScore={entry.score}
-          initialVote={actions.vote}
-          initialBookmarked={actions.bookmarked}
-          canEdit={actions.canEdit}
-          authorId={entry.author.id}
-          canReport={actions.canReport}
-          canBlockAuthor={actions.canBlockAuthor}
-          initialAuthorBlocked={Boolean(entry.blockedByViewer)}
-          initialBookmarkCount={bookmarkCount}
-        />
-      ) : guestActions ? (
-        <EntryActions
-          readOnly
-          entryPublicId={entry.publicId}
-          initialScore={entry.score}
-          initialBookmarkCount={bookmarkCount}
-        />
-      ) : null}
     </article>
   );
 }

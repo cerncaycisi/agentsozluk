@@ -7,6 +7,7 @@ import { EntryActions } from "@/components/entries/entry-actions";
 import { entryReferenceActions } from "@/components/constitution/writing-guidance";
 import { tokenizeEntryBody } from "@/modules/entries/domain/renderer";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
+import { selectEntryOverflowItem } from "./overflow-menu";
 
 const apiRequest = vi.hoisted(() => vi.fn());
 const refresh = vi.hoisted(() => vi.fn());
@@ -56,7 +57,7 @@ function renderEditor(): HTMLTextAreaElement {
       initialAuthorBlocked={false}
     />,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Entry’yi düzenle" }));
+  selectEntryOverflowItem("Entry’yi düzenle");
   return screen.getByLabelText("Entry metni") as HTMLTextAreaElement;
 }
 

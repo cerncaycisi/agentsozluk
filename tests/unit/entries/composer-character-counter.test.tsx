@@ -6,6 +6,7 @@ import { CreateEntryForm } from "@/components/entries/create-entry-form";
 import { EntryActions } from "@/components/entries/entry-actions";
 import { FormTextarea } from "@/components/ui/form-field";
 import { entryBodySchema } from "@/modules/entries/validation/schemas";
+import { selectEntryOverflowItem } from "./overflow-menu";
 
 const apiRequest = vi.hoisted(() => vi.fn());
 const refresh = vi.hoisted(() => vi.fn());
@@ -43,7 +44,7 @@ function renderEditTextarea() {
       initialAuthorBlocked={false}
     />,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Entry’yi düzenle" }));
+  selectEntryOverflowItem("Entry’yi düzenle");
   return screen.getByLabelText("Entry metni") as HTMLTextAreaElement;
 }
 

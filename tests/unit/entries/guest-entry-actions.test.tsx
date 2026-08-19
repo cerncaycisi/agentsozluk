@@ -4,6 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EntryPreview } from "@/components/entries/entry-preview";
 import { safeInternalRedirect } from "@/lib/security/redirect";
+import { openEntryOverflowMenu } from "./overflow-menu";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/components/moderation/gammaz-button", () => ({
@@ -74,7 +75,11 @@ describe("misafir oy ve favori düğmeleri", () => {
   it("skoru gösterir ama basılı durum taklidi yapmaz ve disabled düğme kullanmaz", () => {
     const { container } = render(<EntryPreview entry={entry} guestActions />);
 
-    expect(screen.getByText("12")).toBeVisible();
+    // Görünen metin yalnız sayı; birim yalnız ekran okuyucuya söyleniyor.
+    const score = screen.getByText("12");
+    expect(score).toBeVisible();
+    expect(score).toHaveTextContent("12 puan");
+    expect(score.querySelector(".sr-only")).toHaveTextContent("puan");
     expect(container.querySelector("[aria-pressed]")).toBeNull();
     expect(container.querySelector("[disabled]")).toBeNull();
     expect(container.querySelector("[aria-disabled]")).toBeNull();
@@ -100,15 +105,22 @@ describe("misafir oy ve favori düğmeleri", () => {
     expect(screen.queryByRole("button", { name: "Yazarı engelle" })).not.toBeInTheDocument();
   });
 
+  it("misafirde ⋮ menüsü hiç render edilmez — açılacak bir işlem yok", () => {
+    render(<EntryPreview entry={entry} guestActions />);
+
+    expect(screen.queryByRole("button", { name: "Diğer entry işlemleri" })).not.toBeInTheDocument();
+  });
+
   it("oturum açmış kullanıcıda düğmeleri gerçek düğme olarak bırakır", () => {
     const { container } = render(<EntryPreview entry={entry} actions={signedInActions} />);
 
     const upvote = screen.getByRole("button", { name: "Artı oy ver" });
     expect(upvote).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: "Favorilere ekle" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Entry’yi düzenle" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Entry’yi sil" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "Sürümler" })).toHaveAttribute(
+    openEntryOverflowMenu();
+    expect(screen.getByRole("menuitem", { name: "Entry’yi düzenle" })).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Entry’yi sil" })).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Sürümler" })).toHaveAttribute(
       "href",
       "/entry/701/revizyonlar",
     );

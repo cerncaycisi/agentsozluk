@@ -1,10 +1,21 @@
 "use client";
 
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { Bookmark, Pencil, ThumbsDown, ThumbsUp, Trash2, UserX } from "lucide-react";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import {
+  Bookmark,
+  EllipsisVertical,
+  Flag,
+  History,
+  Pencil,
+  ThumbsDown,
+  ThumbsUp,
+  Trash2,
+  UserX,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { FormTextarea } from "@/components/ui/form-field";
 import { GammazButton } from "@/components/moderation/gammaz-button";
@@ -26,6 +37,61 @@ const guestControlClass = "grid size-10 place-items-center rounded-lg border bg-
 
 /** Skor sayacıyla aynı görsel dil; favori sayacı da aynı sütun genişliğini tutar. */
 const counterClass = "min-w-8 text-center text-sm font-bold";
+
+/**
+ * ⋮ menüsündeki öğelerin ortak görünümü. `account-menu.tsx` ile aynı dil;
+ * Radix klavye gezinirken DOM odağını öğeye taşıdığı için `focus:` yeterli.
+ */
+const overflowItemClass =
+  "flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm outline-none hover:bg-page focus:bg-page data-[disabled]:cursor-default data-[disabled]:opacity-50";
+
+/**
+ * Aksiyon şeridinin "diğer" menüsü. Şerit yalnız oy, skor ve favoriyi görünür
+ * tutar; kalabalık yapan ikincil işlemler buraya iner (375px'te şerit tek satırda
+ * kalsın diye). Öğeleri çağıran belirler — yeni bir işlem eklemek için buraya
+ * `DropdownMenu.Item` geçmek yeterli.
+ *
+ * Menü hiç öğesi yokken render EDİLMEMELİ; boş bir ⋮ kullanıcıyı yanıltır.
+ * Bu yüzden dolu olup olmadığına çağıran karar verir.
+ */
+function EntryOverflowMenu({ children }: { children: ReactNode }) {
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <button
+          type="button"
+          aria-label="Diğer entry işlemleri"
+          className="grid size-10 place-items-center rounded-lg border bg-page"
+        >
+          <EllipsisVertical aria-hidden="true" size={17} />
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          sideOffset={8}
+          className="z-[75] min-w-56 rounded-xl border bg-surface p-2 shadow-xl"
+        >
+          {children}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}
+
+/**
+ * Skor sayacı. Görünen metin yalnız sayı; birimi ("puan") yalnız ekran okuyucu
+ * duyar — aksi hâlde `aria-live` bölgesi oy değişiminde çıplak bir sayı okurdu.
+ * Kart genelinde puanın TEK kaynağı burası; footer'da ayrıca "N puan" yazmıyor.
+ */
+function ScoreCounter({ score, live = false }: { score: number; live?: boolean }) {
+  return (
+    <span {...(live ? { "aria-live": "polite" as const } : {})} className={counterClass}>
+      {score}
+      <span className="sr-only"> puan</span>
+    </span>
+  );
+}
 
 /**
  * Sıfır favori gösterilmez — sıfırlar entry'yi olumsuz gösterir ve gürültü yaratır.
@@ -105,33 +171,31 @@ function GuestEntryActions({
 }) {
   const loginHref = `/giris?next=${encodeURIComponent(entryPublicUrl({ publicId: entryPublicId }))}`;
   return (
-    <div className="mt-4 border-t pt-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Link
-          href={loginHref}
-          aria-label="Artı oy vermek için giriş yapın"
-          className={guestControlClass}
-        >
-          <ThumbsUp aria-hidden="true" size={17} />
-        </Link>
-        <span className="min-w-8 text-center text-sm font-bold">{score}</span>
-        <Link
-          href={loginHref}
-          aria-label="Eksi oy vermek için giriş yapın"
-          className={guestControlClass}
-        >
-          <ThumbsDown aria-hidden="true" size={17} />
-        </Link>
-        <Link
-          href={loginHref}
-          aria-label="Favorilere eklemek için giriş yapın"
-          className={guestControlClass}
-        >
-          <Bookmark aria-hidden="true" size={17} />
-        </Link>
-        {/* Misafirde sayı değişmez; duyurulacak bir güncelleme yok, canlı bölge de yok. */}
-        <BookmarkCounter count={bookmarkCount} />
-      </div>
+    <div className="flex items-center gap-2">
+      <Link
+        href={loginHref}
+        aria-label="Artı oy vermek için giriş yapın"
+        className={guestControlClass}
+      >
+        <ThumbsUp aria-hidden="true" size={17} />
+      </Link>
+      <ScoreCounter score={score} />
+      <Link
+        href={loginHref}
+        aria-label="Eksi oy vermek için giriş yapın"
+        className={guestControlClass}
+      >
+        <ThumbsDown aria-hidden="true" size={17} />
+      </Link>
+      <Link
+        href={loginHref}
+        aria-label="Favorilere eklemek için giriş yapın"
+        className={guestControlClass}
+      >
+        <Bookmark aria-hidden="true" size={17} />
+      </Link>
+      {/* Misafirde sayı değişmez; duyurulacak bir güncelleme yok, canlı bölge de yok. */}
+      <BookmarkCounter count={bookmarkCount} />
     </div>
   );
 }
@@ -157,6 +221,7 @@ function SignedInEntryActions({
   const [authorBlocked, setAuthorBlocked] = useState(initialAuthorBlocked);
   const [editing, setEditing] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [gammazOpen, setGammazOpen] = useState(false);
   const [text, setText] = useState(body);
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState<string>();
@@ -229,9 +294,10 @@ function SignedInEntryActions({
       setNotice(result.blocked ? "Yazar engellendi." : "Yazarın engeli kaldırıldı.");
       router.refresh();
     });
+  const hasOverflow = canEdit || canReport || canBlockAuthor;
   return (
-    <div className="mt-4 border-t pt-4">
-      <div className="flex flex-wrap items-center gap-2">
+    <>
+      <div className="flex items-center gap-2">
         <button
           type="button"
           disabled={pending}
@@ -242,9 +308,7 @@ function SignedInEntryActions({
         >
           <ThumbsUp aria-hidden="true" size={17} />
         </button>
-        <span aria-live="polite" className="min-w-8 text-center text-sm font-bold">
-          {score}
-        </span>
+        <ScoreCounter score={score} live />
         <button
           type="button"
           disabled={pending}
@@ -266,80 +330,104 @@ function SignedInEntryActions({
           <Bookmark aria-hidden="true" size={17} />
         </button>
         <BookmarkCounter count={bookmarkCount} live />
-        {canReport ? <GammazButton targetType="ENTRY" targetId={entryId} compact /> : null}
-        {canBlockAuthor ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => void toggleAuthorBlock()}
-            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${authorBlocked ? "border-destructive text-destructive" : "bg-page"}`}
-            aria-pressed={authorBlocked}
-          >
-            <UserX aria-hidden="true" size={17} />
-            {authorBlocked ? "Yazarın engelini kaldır" : "Yazarı engelle"}
-          </button>
-        ) : null}
-        {canEdit ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => setEditing((value) => !value)}
-            className="grid size-10 place-items-center rounded-lg border bg-page"
-            aria-label="Entry’yi düzenle"
-          >
-            <Pencil aria-hidden="true" size={17} />
-          </button>
-        ) : null}
-        {canEdit ? (
-          <Link
-            href={`/entry/${entryPublicId}/revizyonlar`}
-            className="rounded-lg border bg-page px-3 py-2 text-sm font-semibold"
-          >
-            Sürümler
-          </Link>
-        ) : null}
-        {canEdit ? (
-          <AlertDialog.Root open={deleteOpen} onOpenChange={setDeleteOpen}>
-            <AlertDialog.Trigger asChild>
-              <button
-                type="button"
+        {hasOverflow ? (
+          <EntryOverflowMenu>
+            {canEdit ? (
+              <DropdownMenu.Item
                 disabled={pending}
-                className="grid size-10 place-items-center rounded-lg border border-destructive text-destructive"
-                aria-label="Entry’yi sil"
+                onSelect={() => setEditing((value) => !value)}
+                className={overflowItemClass}
               >
-                <Trash2 aria-hidden="true" size={17} />
-              </button>
-            </AlertDialog.Trigger>
-            <AlertDialog.Portal>
-              <AlertDialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
-              <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[81] w-[min(92vw,480px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-surface p-6">
-                <AlertDialog.Title className="text-xl font-black">
-                  Entry silinsin mi?
-                </AlertDialog.Title>
-                <AlertDialog.Description className="mt-3 text-muted">
-                  Entry herkese açık görünümden kaldırılıp çöp kutunuza taşınır. Orada düzeltip
-                  canlandırma isteyebilirsiniz.
-                </AlertDialog.Description>
-                <div className="mt-6 flex justify-end gap-3">
-                  <AlertDialog.Cancel asChild>
-                    <button className="button-secondary">Vazgeç</button>
-                  </AlertDialog.Cancel>
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => void remove()}
-                    className="button-primary bg-destructive text-on-destructive"
-                  >
-                    {pending ? "Siliniyor…" : "Entry’yi sil"}
-                  </button>
-                </div>
-              </AlertDialog.Content>
-            </AlertDialog.Portal>
-          </AlertDialog.Root>
+                <Pencil aria-hidden="true" size={16} />
+                {editing ? "Düzenlemeyi kapat" : "Entry’yi düzenle"}
+              </DropdownMenu.Item>
+            ) : null}
+            {canEdit ? (
+              <DropdownMenu.Item asChild>
+                <Link href={`/entry/${entryPublicId}/revizyonlar`} className={overflowItemClass}>
+                  <History aria-hidden="true" size={16} />
+                  Sürümler
+                </Link>
+              </DropdownMenu.Item>
+            ) : null}
+            {canReport ? (
+              <DropdownMenu.Item onSelect={() => setGammazOpen(true)} className={overflowItemClass}>
+                <Flag aria-hidden="true" size={16} />
+                Entry’yi gammazla
+              </DropdownMenu.Item>
+            ) : null}
+            {canBlockAuthor ? (
+              <DropdownMenu.Item
+                disabled={pending}
+                onSelect={() => void toggleAuthorBlock()}
+                className={overflowItemClass}
+              >
+                <UserX aria-hidden="true" size={16} />
+                {authorBlocked ? "Yazarın engelini kaldır" : "Yazarı engelle"}
+              </DropdownMenu.Item>
+            ) : null}
+            {canEdit ? (
+              <>
+                <DropdownMenu.Separator className="my-1 border-t" />
+                <DropdownMenu.Item
+                  disabled={pending}
+                  onSelect={() => setDeleteOpen(true)}
+                  className={`${overflowItemClass} text-destructive`}
+                >
+                  <Trash2 aria-hidden="true" size={16} />
+                  Entry’yi sil
+                </DropdownMenu.Item>
+              </>
+            ) : null}
+          </EntryOverflowMenu>
         ) : null}
       </div>
+      {/*
+        Gammaz kipi menüden açılıyor: tetikleyici düğme yok, açıklık dışarıdan
+        kontrol ediliyor. Kip kapalıyken bileşen hiç DOM üretmediği için sarmalayıcı
+        `:empty` kalır ve gizlenir; yalnız sonuç bildirimi geldiğinde satır açılır.
+      */}
+      {canReport ? (
+        <div className="w-full empty:hidden">
+          <GammazButton
+            targetType="ENTRY"
+            targetId={entryId}
+            open={gammazOpen}
+            onOpenChange={setGammazOpen}
+          />
+        </div>
+      ) : null}
+      {canEdit ? (
+        <AlertDialog.Root open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <AlertDialog.Portal>
+            <AlertDialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
+            <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[81] w-[min(92vw,480px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-surface p-6">
+              <AlertDialog.Title className="text-xl font-black">
+                Entry silinsin mi?
+              </AlertDialog.Title>
+              <AlertDialog.Description className="mt-3 text-muted">
+                Entry herkese açık görünümden kaldırılıp çöp kutunuza taşınır. Orada düzeltip
+                canlandırma isteyebilirsiniz.
+              </AlertDialog.Description>
+              <div className="mt-6 flex justify-end gap-3">
+                <AlertDialog.Cancel asChild>
+                  <button className="button-secondary">Vazgeç</button>
+                </AlertDialog.Cancel>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => void remove()}
+                  className="button-primary bg-destructive text-on-destructive"
+                >
+                  {pending ? "Siliniyor…" : "Entry’yi sil"}
+                </button>
+              </div>
+            </AlertDialog.Content>
+          </AlertDialog.Portal>
+        </AlertDialog.Root>
+      ) : null}
       {editing ? (
-        <div className="mt-4">
+        <div className="w-full">
           <FormTextarea
             id={`edit-${entryId}`}
             label="Entry metni"
@@ -366,10 +454,10 @@ function SignedInEntryActions({
         </div>
       ) : null}
       {notice ? (
-        <p role="status" className="mt-3 text-sm text-muted">
+        <p role="status" className="w-full text-sm text-muted">
           {notice}
         </p>
       ) : null}
-    </div>
+    </>
   );
 }
