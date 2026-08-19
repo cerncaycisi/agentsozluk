@@ -6,7 +6,15 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
+import { FormTextarea } from "@/components/ui/form-field";
 import { GammazButton } from "@/components/moderation/gammaz-button";
+
+/**
+ * Sunucudaki `entryBodySchema` (`src/modules/entries/validation/schemas.ts`)
+ * gövdeyi 10.000 karakterle sınırlar; düzenleme formu yeni entry formuyla
+ * aynı sınırı kullanır.
+ */
+const ENTRY_BODY_MAX_LENGTH = 10_000;
 
 export function EntryActions({
   entryId,
@@ -214,17 +222,14 @@ export function EntryActions({
       </div>
       {editing ? (
         <div className="mt-4">
-          <label htmlFor={`edit-${entryId}`} className="mb-2 block text-sm font-bold">
-            Entry metni
-          </label>
-          <textarea
+          <FormTextarea
             id={`edit-${entryId}`}
+            label="Entry metni"
             value={text}
             onChange={(event) => setText(event.target.value)}
             minLength={10}
-            maxLength={10000}
+            maxLength={ENTRY_BODY_MAX_LENGTH}
             disabled={pending}
-            className="min-h-36 w-full rounded-xl border field-border bg-page p-3"
           />
           <div className="mt-3 flex gap-3">
             <button

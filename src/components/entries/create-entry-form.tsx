@@ -7,15 +7,25 @@ import { FormTextarea } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { EntryWritingGuidance } from "@/components/constitution/writing-guidance";
 
+/**
+ * Sunucudaki `entryBodySchema` (`src/modules/entries/validation/schemas.ts`)
+ * gövdeyi 10.000 karakterle sınırlar. İstemci yalnız o sınıra hizalanır;
+ * değer değişirse `tests/unit/entries/composer-character-counter.test.tsx`
+ * bu kopyayı yakalar.
+ */
+const ENTRY_BODY_MAX_LENGTH = 10_000;
+
 export function CreateEntryForm({ topicId }: { topicId: string }) {
   const router = useRouter();
   const [notice, setNotice] = useState<string>();
   const {
     register,
     reset,
+    watch,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<{ body: string }>();
+  const body = watch("body") ?? "";
   const submit = async (input: { body: string }) => {
     setNotice(undefined);
     try {
@@ -39,9 +49,15 @@ export function CreateEntryForm({ topicId }: { topicId: string }) {
         label="Yeni entry"
         disabled={isSubmitting}
         error={errors.body?.message}
+        maxLength={ENTRY_BODY_MAX_LENGTH}
+        value={body}
         {...register("body", {
           required: "Entry metni zorunludur.",
           minLength: { value: 10, message: "En az 10 karakter girin." },
+          maxLength: {
+            value: ENTRY_BODY_MAX_LENGTH,
+            message: "En fazla 10.000 karakter girin.",
+          },
         })}
       />
       <EntryWritingGuidance />
