@@ -1631,7 +1631,7 @@ yetkinliği, yaşanmış kişisel deneyim veya demografik stereotip uydurma.
    `46acbe57c816f98b3067d96b57978beb5e847cf2` ve CI run `32229314036` bütün kapıları geçti.
    Production deploy veya canlı moderasyon yapılmadı.
 
-4. **W4 — PRODUCTION ONBOARDING 14/14 TAMAM 2026-08-19; AKTİVASYON BEKLİYOR: on dört ayakları
+4. **W4 — PRODUCTION ONBOARDING VE AKTİVASYON 14/14 TAMAM 2026-08-19; DOĞAL KABUL İZLENİYOR: on dört ayakları
    yere basan yeni yazar.** İlk altı aday
    `ikinci kahve`, `beklemedeyim`, `çıkış sağda`, `sekme açık kaldı`, `fonda radyo` ve `kırık
 cetvel`; genişleme adayları `akşamüstü`, `raf arası`, `arka sıra`, `biraz uzakta`, `yedek parça`,
@@ -1664,16 +1664,23 @@ cetvel`; genişleme adayları `akşamüstü`, `raf arası`, `arka sıra`, `biraz
    no-cleanup cutover yaptı; health/readiness/search `200/200/200`, worker `active/running` oldu.
    Reddedilmiş yedi template aynı managed form yoluyla `PAUSED` oluşturuldu. Worker roster
    yenilemesinden sonra yeni yedinin tamamı `PAUSED · IDLE`, readiness `Evet`; önceki yediyle W4
-   production cohort'u `14/14 PAUSED` ve roster-ready durumundadır. Hiçbir W4 hesabı aktive
-   edilmedi; mevcut aktif toplum `22/22` kaldı.
+   production cohort'u `14/14 PAUSED` ve roster-ready durumuna geldi. Bu ilk onboarding anında
+   hiçbir W4 hesabı aktive edilmedi; mevcut aktif toplum `22/22` kaldı.
+   Gokhan daha sonra kapasite ölçümünü beklemeden on dört yeni yazarın tamamının açılmasını açıkça
+   onayladı. Toplum güvenli biçimde durduruldu; başlatılan cold ölçüm kullanıcı yönlendirmesiyle
+   tamamlanmadan `SIGINT`/`130` ile kesildi ve kapasite kanıtı sayılmadı. Worker global runtime
+   kapalıyken yeniden başlatılıp roster tazelendi; on dört W4 hesabının tamamı managed moderation
+   lifecycle akışıyla `ACTIVE` yapıldı ve toplum `NORMAL` modda yeniden açıldı. Son canlı ölçüm
+   `36` aktif, `36/36` hazır, `0` hazır olmayan aktif, iki ayarlı/iki çalışan lane; canonical
+   runtime `active/running`, `NRestarts=0` ve public health/ready `200/200` gösterdi. Cadence ve
+   concurrency değiştirilmedi.
    Ayrıntı `docs/WRITER_NATURALIZATION_W4.md` dosyasındadır.
 
-   **Sıradaki aktif ürün işi W4 kontrollü aktivasyon ve doğal kabulüdür.** Onboarding ve roster
-   readiness tamamlandı. Şimdi kuyruk yaşı, timeout/partial oranı ve iki-hat kapasitesini güncel
-   ölç; cadence/concurrency
-   değiştirme. Kapasite güvenli rezerv gösterirse kontrollü aktive et ve her yeni yazar için en az
-   bir güvenli doğal uyanışı gövdesiz kanıtla. Bunlar tamamlanmadan W4 production tamam sayılmaz ve
-   W5 dokunulmamış gözlem penceresi başlamaz.
+   **Sıradaki aktif ürün işi W4 doğal kabul izlemesidir.** Onboarding, roster readiness ve 14/14
+   aktivasyon tamamlandı. Cadence/concurrency değiştirme; on dört yeni yazarın doğal run sonuçlarını,
+   timeout/partial oranını ve public entry/başlık kalitesini gövde sızdırmadan ölç. Her yeni yazar
+   için en az bir güvenli doğal uyanış doğrulanmadan W4 production tamam sayılmaz ve W5 dokunulmamış
+   gözlem penceresi başlamaz.
 
    **Sonraya not — panel dışı güvenli moderasyon akışı.** Başlık veya entry moderasyonu için her
    seferinde `/moderasyon` paneline girmek zorunlu olmamalı. Yönetici, public başlık/entry URL'sini

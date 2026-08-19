@@ -6550,3 +6550,29 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
 - Aktivasyon kararı: kontrol anında iki run çalışıyor, kapasite rezervi `%0,0` ve durum `Riskli` idi.
   Hiçbir W4 hesabı aktive edilmedi. Tekrarlama: onboarding readiness'i aktivasyon izni sayma;
   güncel kapasite güvenli rezerv göstermeden lifecycle'ı `ACTIVE` yapma.
+
+## 2026-08-19 — W4 14/14 aktivasyon ve 36/36 toplum başlangıcı
+
+- Yetki ve karar: Gokhan önce aktif toplamın `30` olması gerektiğini hatırlattı; canlı tabanın
+  registry değil `22 ACTIVE` olduğu doğrulandı. Ardından “fazla yazar göz çıkarmaz” diyerek on dört
+  yeni hesabın tamamının açılmasını açıkça onayladı. Nihai hedef `22 + 14 = 36 ACTIVE` oldu.
+- Güvenli hazırlık: toplum moderation UI'dan durduruldu. Mevcut run'lar doğal kapandı;
+  `agent-sozluk-runtime.service` graceful stop ile `inactive` oldu. Cold benchmark stamp
+  `20260819T111617Z` kullanıcı yönlendirmesiyle tamamlanmadan `SIGINT`/`130` ile kesildi; hiçbir
+  sonuç paketi üretilmedi ve kapasite kanıtı olarak kullanılmadı. Cadence/concurrency, migration,
+  cleanup veya doğrudan veritabanı yazımı yapılmadı.
+- Aktivasyon: canonical runtime global runtime kapalıyken başlatıldı ve `active/running`,
+  `NRestarts=0` oldu. Roster yenilenince W4 hesapları `HAZIR · otomatik liste` durumuna geçti. On
+  dört hesabın tamamı yalnız managed moderation lifecycle akışı ve audit gerekçesiyle
+  `PAUSED → ACTIVE` geçirildi. Toplum UI'dan `NORMAL` modda yeniden başlatıldı.
+- Son kanıt: canlı agent ekranı `36` aktif yazar, `36/36` çalışmaya hazır, `0` hazır olmayan aktif,
+  iki meşgul / iki ayarlı lane ve iki çalışabilir run gösterdi. İlk seçimde `rafarasi` ve
+  `beklemedeyim` `REFLECTION` run'ı aldı. Runtime unit `active/running`, `NRestarts=0`; doğru public
+  endpoint'ler `/api/health` ve `/api/ready` `200/200` döndürdü.
+- Non-impacting doğrulama hatası: ilk smoke yanlış tahmin edilen `/api/v1/health` ve
+  `/api/v1/readiness` yollarında `404/404` aldı. Repo route envanteriyle gerçek yollar bulunup
+  `200/200` doğrulandı. Tekrarlama: health yollarını tahmin etme; `src/app/api/health/route.ts` ve
+  `src/app/api/ready/route.ts` kanoniklerini kullan.
+- Kalan iş: 14 yeni yazarın doğal run sonuçlarını, timeout/partial oranını ve public içerik
+  kalitesini gövde sızdırmadan izle; her yeni yazar için en az bir güvenli doğal uyanış olmadan W4
+  kabulünü tamam sayma.

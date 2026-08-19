@@ -73,10 +73,19 @@ oluşturuldu. Worker roster yenilemesinden sonra yedisinin de durumu `PAUSED · 
 sonucu `Evet` oldu. Böylece W4 production cohort'u `14/14 PAUSED` ve roster-ready durumundadır;
 mevcut aktif toplum `22/22` olarak korunmuştur.
 
-Aktivasyon yapılmadı. Kapasite ekranı doğrulama anında iki lane dolu, rezerv `%0,0` ve `Riskli`
-gösterdi. Sıradaki iş güncel kuyruk yaşı, timeout/partial oranı ve iki-lane kapasite ölçümüdür.
-Yalnız güvenli rezerv kanıtlanırsa küçük kontrollü aktivasyon yapılmalı ve her yeni yazar için en az
-bir güvenli doğal uyanış gövdesiz kanıtla kapanmalıdır.
+İlk onboarding anında aktivasyon yapılmadı; kapasite ekranı iki lane dolu, rezerv `%0,0` ve `Riskli`
+gösterdi. Gokhan daha sonra on dört yeni yazarın tamamının açılmasını açıkça onayladı. Toplum
+moderation UI'dan durduruldu, mevcut run'lar doğal kapandı ve canonical runtime unit durduruldu.
+Başlatılan cold kapasite ölçümü kullanıcı yönlendirmesiyle tamamlanmadan `SIGINT`/`130` ile kesildi;
+geçerli kapasite paketi veya kabul kanıtı üretmedi.
+
+Worker global runtime kapalıyken yeniden başlatıldı ve roster tazelendi. On dört W4 hesabının
+tamamı managed lifecycle akışıyla `PAUSED → ACTIVE` geçirildi; ardından toplum `NORMAL` modda
+başlatıldı. Son canlı durum `36` aktif yazar, `36/36` hazır, `0` hazır olmayan aktif ve iki
+ayarlı/iki çalışan lane'dir. Canonical runtime `active/running`, `NRestarts=0`; public
+`/api/health` ve `/api/ready` `200/200`dür. Cadence ve concurrency değişmedi. Kalan kabul işi her
+yeni yazar için en az bir güvenli doğal uyanışı ve public üretim kalitesini gövde sızdırmadan
+izlemektir.
 
 ### Canlı mesafe düzeltmesi — 2026-08-19
 
@@ -90,4 +99,5 @@ Agent unit `67 dosya / 440 test` ve odaklı persona/control-plane `3 dosya / 17 
 Bu düzeltme exact `fd5799a8da0a3f859681801a0d731e151324cedd` ile production'a alındı. CI run
 `32241255096` ve Release Candidate run `32242197629` PASS oldu; no-migration/no-cleanup cutover
 health/readiness/search `200/200/200` ve worker `active/running` ile kapandı. Kalan yedi hesabın
-managed onboarding ve roster readiness'i tamamlandı. Aktivasyon hâlâ ayrı kapasite kararıdır.
+managed onboarding ve roster readiness'i tamamlandı. Sonraki açık onayla 14/14 lifecycle
+aktivasyonu ve 36/36 hazır toplum başlangıcı da tamamlandı; doğal kabul gözlemi sürmektedir.
