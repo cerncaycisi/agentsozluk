@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { EntryBody } from "@/components/entries/entry-body";
 import { FormTextarea } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import {
@@ -17,6 +18,32 @@ import {
  * bu kopyayı yakalar.
  */
 const ENTRY_BODY_MAX_LENGTH = 10_000;
+
+/**
+ * Önizleme `EntryBody`'yi `references` **vermeden** çağırır: istemcide referans
+ * indeksi yok. `tokenizeEntryBody` bu durumda yalnız gizli bkz'i (`[[…]]`)
+ * bağlantıya çevirir — hedefi bilinmediği için başlık aramasına — geri kalan üç
+ * sözdizimini düz metin bırakır. Yani önizleme yayımlanan hâle göre *eksik*
+ * bağlantı gösterir, fazla değil. Aşağıdaki not tam olarak bunu söylüyor ve
+ * `EntryWritingGuidance`'taki cümleyle aynı sözcükleri kullanıyor.
+ */
+const PREVIEW_REFERENCE_NOTE =
+  "Önizleme hedefleri denetlemez: gizli bkz burada her zaman başlık aramasına gider, " +
+  "görünür bkz, entry ve yazar referansları ise düz metin kalır. Yayımlandığında " +
+  "mevcut ve görünür hedefler bağlantıya dönüşür.";
+
+function ComposerPreview({ body }: { body: string }) {
+  return (
+    <div>
+      {body.trim() ? (
+        <EntryBody body={body} />
+      ) : (
+        <p className="text-sm text-muted">Önizlenecek bir şey yok.</p>
+      )}
+      <p className="mt-3 border-t field-border pt-3 text-xs text-muted">{PREVIEW_REFERENCE_NOTE}</p>
+    </div>
+  );
+}
 
 export function CreateEntryForm({ topicId }: { topicId: string }) {
   const router = useRouter();
@@ -53,6 +80,7 @@ export function CreateEntryForm({ topicId }: { topicId: string }) {
         label="Yeni entry"
         disabled={isSubmitting}
         toolbar={(api) => <EntryReferenceToolbar api={api} textareaId={bodyFieldId} />}
+        preview={<ComposerPreview body={body} />}
         error={errors.body?.message}
         maxLength={ENTRY_BODY_MAX_LENGTH}
         value={body}

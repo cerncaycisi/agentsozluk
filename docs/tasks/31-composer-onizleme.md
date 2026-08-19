@@ -23,13 +23,28 @@ yalnız hedefin var olup olmadığı bilinemez.
    `role="tablist"` + `role="tab"` + `role="tabpanel"`, ok tuşlarıyla gezinme.
 2. Önizleme, `EntryBody`'yi mevcut metinle render etsin.
    `references` prop'u verilmeyecek — istemcide referans indeksi yok.
-3. **Bu sınırı kullanıcıya açıkça söyleyin.** Önizlemenin altında küçük bir not:
-   *"Önizlemede bkz bağlantılarının hedefi denetlenmez; yalnız var olan ve görünür hedefler
-   yayımlandığında bağlantıya dönüşür."*
-   Bu, `EntryWritingGuidance`'ta zaten yazan kuralın aynısı — orayla tutarlı ifade kullanın.
-4. `renderer.ts`'i **istemciye alırken** dikkat: `publicProfileUrl` ve `normalizeTopicTitle`
-   import ediyor. Bunlar sunucuya özgü bir şey çekiyorsa (env, db) önizleme paketi şişer
-   veya kırılır. Kontrol edin; gerekiyorsa tokenizer'ın saf kısmını ayrı bir modüle çıkarın.
+
+   **Bunun sonucu, ilk sanıldığından farklı.** `referans indeksi olmadan da linkler görünür`
+   iddiası dörtte üçü için YANLIŞ (`renderer.ts` okunarak doğrulandı):
+   | Sözdizimi | İndekssiz sonuç |
+   |---|---|
+   | `[[başlık]]` | `/ara?q=…&type=topics` linkine gider (`displayText` dalı) |
+   | `(bkz: başlık)` | düz metin (`appendText`) |
+   | `(bkz: #123)` | düz metin |
+   | `@yazar` | düz metin |
+
+   Yani önizleme yayımlanan entry'den **daha az** link gösterir, "hedefi bilinmeyen link"
+   değil. Uyarı metnini buna göre yaz.
+3. **Bu sınırı kullanıcıya açıkça söyleyin.** Yukarıdaki tabloyu yansıtan bir not, örn.:
+   *"Önizleme hedefleri denetlemez: gizli bkz burada her zaman başlık aramasına gider,
+   görünür bkz, entry ve yazar referansları ise düz metin kalır. Yayımlandığında mevcut ve
+   görünür hedefler bağlantıya dönüşür."*
+   `EntryWritingGuidance` ile tutarlı olsun — görev 30 orayı da düzeltti. İki metnin
+   ayrışmasını bir testle kilitleyin.
+4. ~~`renderer.ts`'i istemciye alırken paket şişebilir~~ — **bu endişe geçersiz.**
+   `blocked-entry-body.tsx` zaten `"use client"` ve `EntryBody`'yi import ediyor, yani
+   `renderer.ts` ve `linkify-it` `/baslik/[topic]` istemci paketinde hâlihazırda var.
+   Ölçülen fark: **+0,26 kB** (147 → 148 kB First Load JS). Tokenizer ayrımı gerekmiyor.
 5. Önizleme sekmesindeyken karakter sayacı (görev 29) görünmeye devam etsin.
 6. Boş metinde önizleme "Önizlenecek bir şey yok" desin.
 
@@ -39,9 +54,9 @@ yalnız hedefin var olup olmadığı bilinemez.
 pnpm lint && pnpm typecheck && pnpm test
 ```
 
-Elle: dört sözdizimini de içeren bir metin yazın, önizlemeye geçin, hepsinin doğru
-render edildiğini görün. Kaydedin, yayımlanan hâliyle önizlemeyi karşılaştırın —
-tek fark, var olmayan hedeflerin düz metin kalması olmalı.
+Elle: dört sözdizimini de içeren bir metin yazın, önizlemeye geçin. Yayımlanan hâliyle
+karşılaştırınca fark şu yönde olmalı: **var olan** hedefler önizlemede düz metin kalır
+(yayımlanınca linke döner). Var olmayan hedefler ikisinde de düz metin.
 
 Paket boyutunu kontrol edin: `pnpm build` çıktısında bu sayfanın JS boyutu
 belirgin şekilde arttıysa (>15kB) tokenizer'ı ayırın.
