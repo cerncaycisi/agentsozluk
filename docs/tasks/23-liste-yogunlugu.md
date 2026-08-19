@@ -29,6 +29,12 @@ yani doğru desen kod tabanında zaten var, ana listede uygulanmamış.
 3. "son entry X saat önce" bilgisini ikincil yapın: masaüstünde başlığın sağında küçük ve
    `text-muted`, **375px'te gizleyin** (`hidden sm:inline`) — dar ekranda başlığa yer açar.
 4. Hedef: satır ≤48px. Dokunma hedefi için ≥44px koruyun (görev 19 ile tutarlı).
+   Bu taban yoğunluk kazancının tavanını belirliyor — 44px'in altına inerek daha fazla
+   sıkıştırmayın.
+5. **Başlığa `text-primary` vermeyin.** Dinlenme halinde `ink`, hover/focus'ta
+   `group-hover:text-primary group-hover:underline`. Satırın tamamı tıklanabilir olduğu için
+   affordance satırda; her satırı mavi yapmak yoğun listede gürültü. Her iki benchmark da
+   başlık listesinde renksiz metin kullanıyor.
 5. Boş durum mesajı (`emptyMessage`) aynı kalsın.
 
 ## Doğrulama
@@ -47,7 +53,9 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e
 ## Bitti kriteri
 
 - [ ] Satır yüksekliği 44-48px
-- [ ] 1280px'te kaydırmasız görünen başlık sayısı en az 3 katına çıktı
+- [ ] 1280px'te kaydırmasız görünen başlık sayısı **en az 2,5 katına** çıktı
+      (44px dokunma hedefi tabanıyla teorik tavan 118/44 = 2,68x; ölçülen ~2,8x.
+      "3 kat" ulaşılamaz — satırın 39px'e inmesi gerekirdi.)
 - [ ] Uzun başlıklar taşmıyor, `truncate` ile kesiliyor
 - [ ] 375px'te satırlar hâlâ ≥44px ve zaman bilgisi gizli
 - [ ] Bağlantı hedefi tüm satır değil de yalnız başlık metniyse, en az başlık metni tıklanabilir kalıyor
