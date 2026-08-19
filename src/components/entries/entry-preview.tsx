@@ -46,11 +46,23 @@ export function EntryPreview({
   references,
   showTopicTitle = true,
   collapsible = false,
+  guestActions = false,
 }: {
   entry: EntryPreviewItem;
   showTopicTitle?: boolean;
   references?: ReferenceIndex;
   collapsible?: boolean;
+  /**
+   * Ziyaretçinin misafir OLDUĞU bilindiğinde `true` verin: oy/favori düğmeleri
+   * görünür ama girişe götüren birer bağlantı olur.
+   *
+   * Varsayılan `false`, çünkü `actions`'ın yokluğu "misafir" demek DEĞİL — bazı
+   * sayfalar (`/debe`, `/yazar/[username]`, `/takip/yazarlar`, favoriler/oylarım)
+   * oturum durumunu hiç hesaplamadan `actions` geçmiyor. Orada misafir düğmesi
+   * göstermek, giriş yapmış kullanıcıya "giriş yapın" bağlantısı sunardı.
+   */
+  guestActions?: boolean;
+  /** Yalnız oturum açmış ACTIVE kullanıcı için verilir. */
   actions?: {
     vote: -1 | 1 | null;
     bookmarked: boolean;
@@ -64,7 +76,7 @@ export function EntryPreview({
   const collapsed = collapsible && !entry.blockedByViewer && entryBodyNeedsCollapse(entry.body);
   const collapseToggleId = `entry-${entry.publicId}-govde-genislet`;
   return (
-    <article id={`entry-${entry.publicId}`} className="surface-card scroll-mt-24 p-5">
+    <article id={`entry-${entry.publicId}`} className="surface-card scroll-mt-28 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         {showTopicTitle ? (
           <h2 className="text-lg font-bold">
@@ -146,6 +158,8 @@ export function EntryPreview({
           canBlockAuthor={actions.canBlockAuthor}
           initialAuthorBlocked={Boolean(entry.blockedByViewer)}
         />
+      ) : guestActions ? (
+        <EntryActions readOnly entryPublicId={entry.publicId} initialScore={entry.score} />
       ) : null}
     </article>
   );

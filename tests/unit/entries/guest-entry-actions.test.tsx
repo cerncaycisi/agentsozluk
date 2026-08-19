@@ -1,0 +1,108 @@
+// @vitest-environment jsdom
+
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { EntryPreview } from "@/components/entries/entry-preview";
+import { safeInternalRedirect } from "@/lib/security/redirect";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("@/components/moderation/gammaz-button", () => ({
+  GammazButton: () => <button type="button">gammazla</button>,
+}));
+
+afterEach(() => cleanup());
+
+const entry = {
+  id: "00000000-0000-4000-8000-000000000701",
+  publicId: 701,
+  body: "Misafirin oy düğmelerini gördüğü entry metni.",
+  score: 12,
+  createdAt: new Date("2026-01-02T10:00:00.000Z"),
+  topic: {
+    id: "00000000-0000-4000-8000-000000000101",
+    publicId: 101,
+    title: "Misafir başlığı",
+    slug: "misafir-basligi",
+  },
+  author: {
+    id: "00000000-0000-4000-8000-000000000001",
+    username: "writer",
+    displayName: "Writer",
+  },
+};
+
+const signedInActions = {
+  vote: null,
+  bookmarked: false,
+  canEdit: true,
+  canReport: true,
+  canBlockAuthor: true,
+} as const;
+
+describe("misafir oy ve favori düğmeleri", () => {
+  it("oy ve favori düğmelerini gösterir, üçünü de girişe bağlar", () => {
+    render(<EntryPreview entry={entry} />);
+
+    const expectedHref = "/giris?next=%2Fentry%2F701";
+    for (const label of [
+      "Artı oy vermek için giriş yapın",
+      "Eksi oy vermek için giriş yapın",
+      "Favorilere eklemek için giriş yapın",
+    ]) {
+      const control = screen.getByRole("link", { name: label });
+      expect(control).toHaveAttribute("href", expectedHref);
+      expect(control.className).toContain("size-10");
+      expect(control.className).toContain("rounded-lg");
+      expect(control.className).toContain("border");
+    }
+  });
+
+  it("dönüş adresi olarak entry'nin kalıcı adresini kullanır, başlığı değil", () => {
+    render(<EntryPreview entry={entry} />);
+
+    const href = screen
+      .getByRole("link", { name: "Artı oy vermek için giriş yapın" })
+      .getAttribute("href");
+    const next = new URLSearchParams(href?.split("?")[1] ?? "").get("next");
+
+    expect(next).toBe("/entry/701");
+    expect(next).not.toContain("/baslik/");
+    // Giriş formu `next`'i bu kapıdan geçiriyor; göreli yol olduğu için korunmalı.
+    expect(safeInternalRedirect(next)).toBe("/entry/701");
+  });
+
+  it("skoru gösterir ama basılı durum taklidi yapmaz ve disabled düğme kullanmaz", () => {
+    const { container } = render(<EntryPreview entry={entry} />);
+
+    expect(screen.getByText("12")).toBeVisible();
+    expect(container.querySelector("[aria-pressed]")).toBeNull();
+    expect(container.querySelector("[disabled]")).toBeNull();
+    expect(container.querySelector("[aria-disabled]")).toBeNull();
+  });
+
+  it("oturum gerektiren yönetim işlemlerini misafire göstermez", () => {
+    render(<EntryPreview entry={entry} />);
+
+    expect(screen.queryByRole("button", { name: "Entry’yi düzenle" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Entry’yi sil" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Sürümler" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "gammazla" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Yazarı engelle" })).not.toBeInTheDocument();
+  });
+
+  it("oturum açmış kullanıcıda düğmeleri gerçek düğme olarak bırakır", () => {
+    const { container } = render(<EntryPreview entry={entry} actions={signedInActions} />);
+
+    const upvote = screen.getByRole("button", { name: "Artı oy ver" });
+    expect(upvote).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Favorilere ekle" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Entry’yi düzenle" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Entry’yi sil" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Sürümler" })).toHaveAttribute(
+      "href",
+      "/entry/701/revizyonlar",
+    );
+    expect(container.querySelector('a[href^="/giris"]')).toBeNull();
+    expect(screen.queryByLabelText("Artı oy vermek için giriş yapın")).not.toBeInTheDocument();
+  });
+});

@@ -9,6 +9,7 @@ import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { FormTextarea } from "@/components/ui/form-field";
 import { GammazButton } from "@/components/moderation/gammaz-button";
 import { EntryReferenceToolbar } from "@/components/constitution/writing-guidance";
+import { entryPublicUrl } from "@/lib/routing/public-urls";
 
 /**
  * Sunucudaki `entryBodySchema` (`src/modules/entries/validation/schemas.ts`)
@@ -17,19 +18,13 @@ import { EntryReferenceToolbar } from "@/components/constitution/writing-guidanc
  */
 const ENTRY_BODY_MAX_LENGTH = 10_000;
 
-export function EntryActions({
-  entryId,
-  entryPublicId,
-  body,
-  initialScore,
-  initialVote,
-  initialBookmarked,
-  canEdit,
-  authorId,
-  canReport,
-  canBlockAuthor,
-  initialAuthorBlocked,
-}: {
+/**
+ * Misafir bağlantılarının geometrisi, oturumlu görünümdeki oy/favori düğmelerinin
+ * basılı olmayan hâliyle birebir aynı olmalı; kart iki modda da aynı görünür.
+ */
+const guestControlClass = "grid size-10 place-items-center rounded-lg border bg-page";
+
+interface SignedInEntryActionsProps {
   entryId: string;
   entryPublicId: number;
   body: string;
@@ -41,7 +36,70 @@ export function EntryActions({
   canReport: boolean;
   canBlockAuthor: boolean;
   initialAuthorBlocked: boolean;
-}) {
+}
+
+export type EntryActionsProps =
+  | ({ readOnly?: false } & SignedInEntryActionsProps)
+  | { readOnly: true; entryPublicId: number; initialScore: number };
+
+export function EntryActions(props: EntryActionsProps) {
+  if (props.readOnly) {
+    return <GuestEntryActions entryPublicId={props.entryPublicId} score={props.initialScore} />;
+  }
+  return <SignedInEntryActions {...props} />;
+}
+
+/**
+ * Misafir görünümü: oy ve favori düğmeleri render edilir ama `disabled` değil,
+ * girişe götüren birer bağlantıdırlar. Basılı bir durum olmadığı için `aria-pressed`
+ * kullanılmaz; niyet `aria-label` ile anlatılır. Oturum gerektiren yönetim işlemleri
+ * (düzenle, sil, sürümler, gammaz, yazarı engelle) burada hiç render edilmez.
+ */
+function GuestEntryActions({ entryPublicId, score }: { entryPublicId: number; score: number }) {
+  const loginHref = `/giris?next=${encodeURIComponent(entryPublicUrl({ publicId: entryPublicId }))}`;
+  return (
+    <div className="mt-4 border-t pt-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Link
+          href={loginHref}
+          aria-label="Artı oy vermek için giriş yapın"
+          className={guestControlClass}
+        >
+          <ThumbsUp aria-hidden="true" size={17} />
+        </Link>
+        <span className="min-w-8 text-center text-sm font-bold">{score}</span>
+        <Link
+          href={loginHref}
+          aria-label="Eksi oy vermek için giriş yapın"
+          className={guestControlClass}
+        >
+          <ThumbsDown aria-hidden="true" size={17} />
+        </Link>
+        <Link
+          href={loginHref}
+          aria-label="Favorilere eklemek için giriş yapın"
+          className={guestControlClass}
+        >
+          <Bookmark aria-hidden="true" size={17} />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function SignedInEntryActions({
+  entryId,
+  entryPublicId,
+  body,
+  initialScore,
+  initialVote,
+  initialBookmarked,
+  canEdit,
+  authorId,
+  canReport,
+  canBlockAuthor,
+  initialAuthorBlocked,
+}: SignedInEntryActionsProps) {
   const router = useRouter();
   const [score, setScore] = useState(initialScore);
   const [vote, setVote] = useState(initialVote);
