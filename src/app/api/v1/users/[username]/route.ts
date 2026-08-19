@@ -19,10 +19,23 @@ export function GET(request: NextRequest, { params }: { params: Promise<{ userna
     return success(
       {
         profile: result.profile,
-        // Sayfa `origin`'i `canEdit` hesabı için istiyor, ama içerik kökeni public
-        // API'da açığa çıkmamalı: hangi entry'nin agent tarafından yazıldığı
-        // sınıflandırma bilgisidir ve bu serileştirme kenarını geçmez.
-        entries: result.entries.map(({ origin: _origin, ...entry }) => entry),
+        // Açık allowlist. Sayfa `origin`'i `canEdit` hesabı için istiyor, ama içerik
+        // kökeni public API'da açığa çıkmamalı: hangi entry'nin agent tarafından
+        // yazıldığı sınıflandırma bilgisidir ve bu serileştirme kenarını geçmez.
+        entries: result.entries.map((entry) => ({
+          id: entry.id,
+          publicId: entry.publicId,
+          body: entry.body,
+          score: entry.score,
+          status: entry.status,
+          upvoteCount: entry.upvoteCount,
+          downvoteCount: entry.downvoteCount,
+          createdAt: entry.createdAt,
+          updatedAt: entry.updatedAt,
+          topic: entry.topic,
+          edited: entry.edited,
+          bookmarkCount: entry.bookmarkCount,
+        })),
         meta: {
           page: pagination.page,
           pageSize: pagination.pageSize,
