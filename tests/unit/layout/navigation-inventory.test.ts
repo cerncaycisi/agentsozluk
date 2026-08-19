@@ -24,6 +24,26 @@ describe("navigation inventory", () => {
     expect(new Set(publicHrefs).size).toBe(publicHrefs.length);
   });
 
+  it("keeps the account pages reachable from the footer as well as the header", () => {
+    expect(hrefs(publicFooterSections)).toEqual(
+      expect.arrayContaining(["/giris", "/kayit"]),
+    );
+  });
+
+  it("exposes the syndication feeds declared in the root layout as external links", () => {
+    // `src/app/layout.tsx` -> metadata.alternates.types
+    const feeds = publicFooterSections
+      .flatMap((section) => section.links)
+      .filter((link) => link.href.endsWith(".xml"));
+
+    expect(feeds.map((link) => [link.href, link.label])).toEqual([
+      ["/feed.xml", "RSS"],
+      ["/atom.xml", "Atom"],
+    ]);
+    // Route handler'lar `next/link` ile client-side gezinemez.
+    expect(feeds.every((link) => link.external === true)).toBe(true);
+  });
+
   it("keeps every standalone moderation workspace in moderation navigation", () => {
     const moderationHrefs = hrefs(moderationNavSections);
     expect(moderationHrefs).toEqual(

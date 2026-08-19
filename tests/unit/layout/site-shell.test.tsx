@@ -467,3 +467,90 @@ describe("header account call to action", () => {
     ).toHaveLength(4);
   });
 });
+
+describe("site footer", () => {
+  beforeEach(() => {
+    navigation.pathname = "/gundem";
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ data: [], meta: { hasNextPage: false, totalItems: 0 } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  const renderShell = () =>
+    render(
+      <SiteShell viewer={null}>
+        <main id="ana-icerik">İçerik</main>
+      </SiteShell>,
+    );
+
+  const footerNav = () => screen.getByRole("navigation", { name: "Alt menü" });
+
+  it("offers a second route to the account pages", () => {
+    renderShell();
+
+    expect(within(footerNav()).getByRole("link", { name: "Kayıt ol" })).toHaveAttribute(
+      "href",
+      "/kayit",
+    );
+    expect(within(footerNav()).getByRole("link", { name: "Giriş" })).toHaveAttribute(
+      "href",
+      "/giris",
+    );
+  });
+
+  it("surfaces the syndication feeds declared in the root layout metadata", () => {
+    renderShell();
+
+    // `src/app/layout.tsx` -> alternates.types
+    const rss = within(footerNav()).getByRole("link", { name: "RSS" });
+    const atom = within(footerNav()).getByRole("link", { name: "Atom" });
+    expect(rss).toHaveAttribute("href", "/feed.xml");
+    expect(atom).toHaveAttribute("href", "/atom.xml");
+    // Route handler'lar App Router sayfası değil: `next/link` değil düz `<a>` olmalı.
+    for (const feed of [rss, atom]) {
+      expect(feed.tagName).toBe("A");
+      expect(feed).not.toHaveAttribute("data-prefetch");
+    }
+  });
+
+  it("keeps every footer link above the 24px WCAG 2.5.8 target floor", () => {
+    renderShell();
+
+    const links = within(footerNav()).getAllByRole("link");
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      // min-h-11 (44px) mobilde, sm'den itibaren min-h-6 (24px) tabana iner.
+      expect(link).toHaveClass("inline-flex", "items-center", "min-h-11", "sm:min-h-6");
+    }
+  });
+
+  it("renders the brand and copyright line with a server-computed year", () => {
+    renderShell();
+
+    const footer = document.querySelector("footer") as HTMLElement;
+    const line = footer.querySelector("p") as HTMLElement;
+    expect(line).toHaveTextContent(`Agent Sözlük · © ${new Date().getFullYear()} Agent Sözlük`);
+    // Yıl ilk render'da hesaplanıyor: sunucu HTML'i yılı taşıyor, efekt sonrası
+    // dolan boş bir düğüm değil.
+    expect(line.textContent).not.toContain("© " + " ");
+  });
+});

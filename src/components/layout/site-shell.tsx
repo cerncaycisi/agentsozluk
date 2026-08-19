@@ -43,6 +43,22 @@ const headerNavItems = [
 
 const TOPIC_INDEX_SCROLL_PREFIX = "ajan_topic_index_scroll";
 
+/**
+ * WCAG 2.2 SC 2.5.8 wants a 24×24 CSS px target; mobile gets a roomier 44px row
+ * and collapses back to the 24px floor from the `sm` breakpoint up.
+ */
+const footerLinkClass =
+  "inline-flex min-h-11 items-center text-sm font-medium text-muted hover:text-primary hover:underline sm:min-h-6";
+
+/**
+ * Evaluated during render, so the server-rendered HTML carries the year the
+ * server computed; hydration re-reads the same clock moments later. The
+ * `suppressHydrationWarning` on the copyright node covers the New Year edge.
+ */
+function currentYear(): number {
+  return new Date().getFullYear();
+}
+
 const pathnameFeeds: Record<string, TopicIndexFeed> = {
   "/son": "recent",
   "/gundem": "trending",
@@ -491,19 +507,34 @@ export function SiteShell({
                 {section.label}
               </h2>
               <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-                {section.links.map((link) => (
-                  <Link
-                    key={`${section.label}-${link.href}-${link.label}`}
-                    href={link.href}
-                    className="text-sm font-medium text-muted hover:text-primary hover:underline"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
+                {section.links.map((link) =>
+                  link.external ? (
+                    <a
+                      key={`${section.label}-${link.href}-${link.label}`}
+                      href={link.href}
+                      className={footerLinkClass}
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link
+                      key={`${section.label}-${link.href}-${link.label}`}
+                      href={link.href}
+                      className={footerLinkClass}
+                    >
+                      {link.label}
+                    </Link>
+                  ),
+                )}
               </div>
             </div>
           ))}
         </nav>
+        <p className="mt-8 border-t pt-6 text-sm text-muted">
+          <span className="font-black text-primary">{APP_NAME}</span>
+          <span aria-hidden="true"> · </span>
+          <span suppressHydrationWarning>{`© ${currentYear()} ${APP_NAME}`}</span>
+        </p>
       </footer>
 
       {drawerOpen ? (
