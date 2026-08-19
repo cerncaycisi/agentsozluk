@@ -60,6 +60,45 @@ function indexLabel(feed: TopicIndexFeed) {
   return topicIndexes.find((item) => item.feed === feed)?.label ?? "Son";
 }
 
+/**
+ * Header arama formu. Masaüstünde satır 1'e gömülü, `<640px`'te açılır panelin içinde
+ * aynı `<form action="/ara" role="search">` yapısı yeniden kullanılır.
+ */
+function HeaderSearchForm({
+  inputId,
+  className,
+  inputRef,
+}: {
+  inputId: string;
+  className: string;
+  inputRef?: React.Ref<HTMLInputElement>;
+}) {
+  return (
+    <form action="/ara" role="search" className={className}>
+      <label htmlFor={inputId} className="sr-only">
+        Sözlükte ara
+      </label>
+      <div className="relative">
+        <Search
+          aria-hidden="true"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+          size={17}
+        />
+        <input
+          ref={inputRef}
+          id={inputId}
+          name="q"
+          type="search"
+          minLength={2}
+          maxLength={100}
+          placeholder="Başlık, entry veya yazar ara"
+          className="min-h-10 w-full rounded-xl border field-border bg-page pl-10 pr-4 text-sm placeholder:text-muted"
+        />
+      </div>
+    </form>
+  );
+}
+
 function TopicNavigation({
   topics,
   loading,
@@ -151,6 +190,7 @@ export function SiteShell({
 }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const indexFeed = feedFromPathname(pathname);
   const [topics, setTopics] = useState<SidebarTopic[]>([]);
@@ -162,6 +202,10 @@ export function SiteShell({
   const [loadMoreError, setLoadMoreError] = useState(false);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const menuButton = useRef<HTMLButtonElement>(null);
+  const searchButton = useRef<HTMLButtonElement>(null);
+  const searchPanel = useRef<HTMLDivElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
+  const restoreSearchFocus = useRef(false);
   const drawer = useRef<HTMLElement>(null);
   const desktopSidebar = useRef<HTMLElement>(null);
   const loadMoreController = useRef<AbortController | null>(null);
@@ -262,6 +306,38 @@ export function SiteShell({
     [],
   );
 
+  // Panel modal değil: sayfa kaydırması kilitlenmez, focus hapsedilmez.
+  // Esc veya tetikleyiciye tekrar basınca focus büyüteç butonuna döner;
+  // dışarı tıklamada dönmez, çünkü focus zaten tıklanan öğeye gitmiştir.
+  const closeSearch = (restoreFocus: boolean) => {
+    restoreSearchFocus.current = restoreFocus;
+    setSearchOpen(false);
+  };
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const trigger = searchButton.current;
+    searchInput.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeSearch(true);
+    };
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (searchPanel.current?.contains(target) || trigger?.contains(target)) return;
+      closeSearch(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("mousedown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("mousedown", onPointerDown);
+      if (!restoreSearchFocus.current) return;
+      restoreSearchFocus.current = false;
+      trigger?.focus();
+    };
+  }, [searchOpen]);
+
   useEffect(() => {
     if (!drawerOpen) return;
     const previousOverflow = document.body.style.overflow;
@@ -312,28 +388,22 @@ export function SiteShell({
           <Link href="/" className="shrink-0 text-lg font-black tracking-tight text-primary">
             {APP_NAME}
           </Link>
-          <form action="/ara" role="search" className="ml-auto hidden max-w-xs flex-1 sm:block">
-            <label htmlFor="header-search" className="sr-only">
-              Sözlükte ara
-            </label>
-            <div className="relative">
-              <Search
-                aria-hidden="true"
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-                size={17}
-              />
-              <input
-                id="header-search"
-                name="q"
-                type="search"
-                minLength={2}
-                maxLength={100}
-                placeholder="Başlık, entry veya yazar ara"
-                className="min-h-10 w-full rounded-xl border field-border bg-page pl-10 pr-4 text-sm placeholder:text-muted"
-              />
-            </div>
-          </form>
+          <HeaderSearchForm
+            inputId="header-search"
+            className="ml-auto hidden max-w-xs flex-1 sm:block"
+          />
           <div className="ml-auto flex shrink-0 items-center gap-3">
+            <button
+              ref={searchButton}
+              type="button"
+              onClick={() => (searchOpen ? closeSearch(true) : setSearchOpen(true))}
+              className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-xl border bg-page sm:hidden"
+              aria-label="Aramayı aç"
+              aria-expanded={searchOpen}
+              aria-controls="mobil-arama"
+            >
+              <Search aria-hidden="true" size={19} />
+            </button>
             <ThemeToggle />
             {viewer ? (
               <AccountMenu viewer={viewer} />
@@ -367,6 +437,19 @@ export function SiteShell({
             })}
           </nav>
         </div>
+        {searchOpen ? (
+          // Modal değil, açılır bir satır: kapalıyken DOM'da yok, header yüksekliği değişmez.
+          // Görev 27'nin combobox'ı bu sarmalayıcının içine girecek.
+          <div ref={searchPanel} id="mobil-arama" className="border-t sm:hidden">
+            <div className="mx-auto max-w-[1240px] px-4 py-2 sm:px-6">
+              <HeaderSearchForm
+                inputId="mobil-arama-input"
+                inputRef={searchInput}
+                className="w-full"
+              />
+            </div>
+          </div>
+        ) : null}
       </header>
 
       <div className="mx-auto flex max-w-[1240px] items-start gap-6 px-0 lg:px-6">

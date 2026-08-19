@@ -230,3 +230,120 @@ describe("site shell topic navigation", () => {
     expect(screen.getByRole("link", { name: /Gündem başlığı/u })).toBeInTheDocument();
   });
 });
+
+describe("header search on narrow viewports", () => {
+  beforeEach(() => {
+    navigation.pathname = "/gundem";
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ data: [], meta: { hasNextPage: false, totalItems: 0 } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  const renderShell = () =>
+    render(
+      <SiteShell viewer={null}>
+        <main id="ana-icerik">İçerik</main>
+      </SiteShell>,
+    );
+
+  const searchPanel = () => document.getElementById("mobil-arama");
+
+  it("exposes a 44px search trigger that is hidden from 640px up", () => {
+    renderShell();
+
+    const trigger = screen.getByRole("button", { name: "Aramayı aç" });
+    expect(trigger).toHaveClass("min-h-11", "min-w-11", "sm:hidden");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger).toHaveAttribute("aria-controls", "mobil-arama");
+    // Kapalıyken panel DOM'da yok, dolayısıyla header yüksekliğine hiç katkı vermiyor.
+    expect(searchPanel()).toBeNull();
+  });
+
+  it("opens the panel in one tap, focuses the input and reuses the /ara form", async () => {
+    const user = userEvent.setup();
+    renderShell();
+
+    const trigger = screen.getByRole("button", { name: "Aramayı aç" });
+    await user.click(trigger);
+
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    const panel = searchPanel();
+    expect(panel).not.toBeNull();
+    expect(panel).toHaveClass("sm:hidden");
+
+    const input = within(panel as HTMLElement).getByLabelText("Sözlükte ara");
+    expect(input).toHaveFocus();
+    expect(input).toHaveAttribute("name", "q");
+    const form = input.closest("form");
+    expect(form).toHaveAttribute("action", "/ara");
+    expect(form).toHaveAttribute("role", "search");
+
+    // Açılır satır modal değil: sayfa kaydırması kilitlenmiyor.
+    expect(document.body.style.overflow).not.toBe("hidden");
+  });
+
+  it("closes on Escape and hands focus back to the trigger", async () => {
+    const user = userEvent.setup();
+    renderShell();
+
+    const trigger = screen.getByRole("button", { name: "Aramayı aç" });
+    await user.click(trigger);
+    expect(searchPanel()).not.toBeNull();
+
+    await user.keyboard("{Escape}");
+
+    expect(searchPanel()).toBeNull();
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger).toHaveFocus();
+  });
+
+  it("closes on an outside click without stealing focus back", async () => {
+    const user = userEvent.setup();
+    renderShell();
+
+    const trigger = screen.getByRole("button", { name: "Aramayı aç" });
+    await user.click(trigger);
+    expect(searchPanel()).not.toBeNull();
+
+    await user.click(screen.getByText("İçerik"));
+
+    expect(searchPanel()).toBeNull();
+    expect(trigger).not.toHaveFocus();
+  });
+
+  it("leaves the inline form used from 640px up untouched", async () => {
+    const user = userEvent.setup();
+    renderShell();
+
+    const inlineInput = document.getElementById("header-search");
+    expect(inlineInput).not.toBeNull();
+    expect(inlineInput).toHaveAttribute("name", "q");
+    const inlineForm = inlineInput?.closest("form");
+    expect(inlineForm).toHaveAttribute("action", "/ara");
+    expect(inlineForm).toHaveAttribute("role", "search");
+    expect(inlineForm).toHaveClass("ml-auto", "hidden", "max-w-xs", "flex-1", "sm:block");
+
+    // Panel açılınca da geniş ekran formu yerinde kalıyor.
+    await user.click(screen.getByRole("button", { name: "Aramayı aç" }));
+    expect(document.getElementById("header-search")).toBe(inlineInput);
+  });
+});

@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 test("root opens a random active topic", async ({ page }) => {
   await page.goto("/");
@@ -144,5 +144,92 @@ test.describe("mobile navigation strip", () => {
 
     await strip.getByRole("link", { name: "DEBE", exact: true }).click();
     await expect(page).toHaveURL(/\/debe$/u, { timeout: 20_000 });
+  });
+});
+
+test.describe("mobile header search", () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  const headerHeight = (page: Page) =>
+    page
+      .locator("body > header")
+      .first()
+      .evaluate((element) => element.getBoundingClientRect().height);
+
+  test("search is one tap away, keyboard reachable and stays inside the header budget", async ({
+    page,
+  }) => {
+    await page.goto("/gundem");
+
+    // Kapalı header bütçesi.
+    expect(await headerHeight(page)).toBeLessThanOrEqual(110);
+
+    const trigger = page.getByRole("button", { name: "Aramayı aç" });
+    await expect(trigger).toBeVisible();
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await expect(trigger).toHaveAttribute("aria-controls", "mobil-arama");
+    const triggerBox = await trigger.boundingBox();
+    expect(triggerBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+    expect(triggerBox?.width ?? 0).toBeGreaterThanOrEqual(44);
+
+    // Geniş ekran formu 375px'te görünmüyor; tek dokunuş paneli açıyor.
+    await expect(page.locator("#header-search")).toBeHidden();
+    await expect(page.locator("#mobil-arama")).toHaveCount(0);
+
+    await trigger.click();
+
+    const panel = page.locator("#mobil-arama");
+    await expect(panel).toBeVisible();
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+    const input = panel.locator("input[name='q']");
+    await expect(input).toBeFocused();
+    // Modal değil: sayfa kaydırması kilitlenmiyor.
+    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+
+    // Esc kapatıyor ve focus tetikleyiciye dönüyor.
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await expect(trigger).toBeFocused();
+    expect(await headerHeight(page)).toBeLessThanOrEqual(110);
+
+    // Klavye ile aç, yaz, Enter ile /ara'ya git.
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#mobil-arama")).toBeVisible();
+    await page.keyboard.type("teknoloji");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/ara\?q=teknoloji$/u, { timeout: 20_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "Sözlükte ara" })).toBeVisible();
+  });
+
+  test("an outside click closes the panel", async ({ page }) => {
+    await page.goto("/gundem");
+    await page.getByRole("button", { name: "Aramayı aç" }).click();
+    await expect(page.locator("#mobil-arama")).toBeVisible();
+
+    await page.getByRole("heading", { level: 1 }).click();
+
+    await expect(page.locator("#mobil-arama")).toHaveCount(0);
+  });
+});
+
+test.describe("wide header search", () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test("keeps the inline search form and hides the mobile trigger", async ({ page }) => {
+    await page.goto("/gundem");
+
+    await expect(page.locator("#header-search")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Aramayı aç" })).toBeHidden();
+
+    const height = await page
+      .locator("body > header")
+      .first()
+      .evaluate((element) => element.getBoundingClientRect().height);
+    expect(height).toBeLessThanOrEqual(110);
+
+    await page.locator("#header-search").fill("teknoloji");
+    await page.locator("#header-search").press("Enter");
+    await expect(page).toHaveURL(/\/ara\?q=teknoloji$/u, { timeout: 20_000 });
   });
 });
