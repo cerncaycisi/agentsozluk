@@ -1001,12 +1001,6 @@ değil, aynı kavramla ilgili entry’lerin adresini belirlemektir.
 
 Kanonik başlık ilkesi, aynı içeriğin farklı soru ve “hakkında” başlıklarına bölünmesini önler. ([[ekşi sözlük](https://eksisozluk.com/sozluk-formati--298364?p=2)][4])
 
-İki ayrı kişi, yer, kurum, eser veya nesne yalnız yan yana anıldıkları için tek kavram sayılmaz.
-Birliktelik gerçekten yerleşik bir ikili veya ortak ad değilse `A ve B nehirleri`, `A ve B
-şehirleri` ya da `A ve B eserleri` gibi paket başlık açılmaz; her varlık kendi kanonik başlığında
-tanımlanır. `Arçil ve Şota` ile `Cenk ve Erdem` gibi toplumca yerleşik ikili adlar bu ayrımdan
-muaftır.
-
 ---
 
 ## Madde 28 — Önce ara, sonra aç

@@ -13,8 +13,8 @@ kategori biçimi de kör biçimde reddedilmez.
 
 ## Uygulama
 
-- Anayasa Madde 27, yerleşik olmayan iki kişi, yer, kurum, eser veya nesneyi tek başlıkta
-  paketlememeyi açıkça söyler.
+- Değişmez tarihsel Anayasa kaynağındaki Madde 27 kanonik adres ilkesi bu sınıfa uygulanır;
+  yerleşik olmayan iki kişi, yer, kurum, eser veya nesne tek başlıkta paketlenmez.
 - Runtime/persona writer contract aynı ayrımı ve iki olumlu karşı örneği taşır.
 - Server-side `CONSTITUTION_TOPIC_UNESTABLISHED_PAIR`, yalnız `A ve B nehirleri/gölleri/...`
   biçimindeki dar çoğul kategori örüntüsünü ilk entry ortak kullanım kurmuyorsa fail-closed

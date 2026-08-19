@@ -6408,3 +6408,18 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
 - Tekrarlama: bütün `ve` içeren başlıkları kör yasaklama; ortak kullanımı kanıtlayan ilk entry'yi
   reddetme; topic gizleme public başlık+entry'yi zaten kaldırırken aynı entry'yi ikinci kez gizleyip
   mükerrer davranış dersi üretme.
+
+## 2026-08-19 — W3.6 ilk main CI tarihsel anayasa artefaktı düzeltmesi
+
+- Exact main SHA `6c56ac2a8a5760392de54a1710ed05e819fa874c` için CI run `32229033487` quality
+  kapısını geçti; behavior unit kapısı tarihsel anayasa dosyasının byte uzunluğu ve hash'i değiştiği
+  için `HISTORICAL_CONSTITUTION_HASH_MISMATCH` ile durdu. Yeni başlık detector'ı veya PostgreSQL
+  vakası başarısız olmadı.
+- Kök neden: kabul edilmiş tarihsel kanıt kaynağı `docs/AGENT_SOZLUK_ANAYASASI.md` yeni ürün kuralı
+  için doğrudan düzenlendi. Bu dosya public anayasanın değişmez üretim girdisidir.
+- Düzeltme: tarihsel kaynağa eklenen altı satır geri alındı. Madde 27'nin mevcut kanonik adres
+  ilkesi korunup yeni ayrım yalnız aktif Türkçe W3.6 receipt'i, runtime/persona writer contractı ve
+  server-side doğrulamada tutuldu. Ürün eşiği gevşetilmedi.
+- Tekrarlama: yeni ürün yorumunu tarihsel kanıt dosyasına yazma; aktif plan/status/receipt ve ürün
+  contractını güncelle, ardından `tests/unit/constitution/public-constitution.test.ts` kapısını
+  commit öncesi çalıştır.
