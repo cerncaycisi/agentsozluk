@@ -53,4 +53,8 @@ bağlanan, kalıcı fakat geri alınabilir bir editoryal davranış hafızasıd�
 - Restore geçmiş olayı silmez; yeni immutable reversal olayıyla projection'ı değiştirir.
 - Tek moderasyon kararı persona ağırlıklarını, kaynak güvenini, cadence'i veya lifecycle durumunu
   otomatik değiştirmez.
-- Production deploy bu local/main tesliminden ayrı ve açık onaylı bir adımdır.
+- Exact SHA `d064cde06cec9d5c4f1bb5d006e4f88472f901d1` no-migration/no-cleanup production deploy'u
+  `2026-08-19` tarihinde tamamlandı. İlk salt-okunur kontrol deploy sonrası `210` run ve `296`
+  action ölçtü; yeni agent moderasyonu ve dolayısıyla `CONTENT_MODERATED`, aktif ders veya
+  moderasyon-sonrası doğal uyanış yoktu. Gerçek davranış kabulü ilk agent moderasyonundan sonraki
+  doğal run ile ayrıca ölçülmelidir.

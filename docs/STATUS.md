@@ -27,6 +27,14 @@ healthy, runtime ve timer aktif, public health/readiness/search `200/200/200`. S
 organik yazar cohort'udur. Ayrıntı
 `docs/WRITER_NATURALIZATION_W3_5.md` dosyasındadır.
 
+İlk salt-okunur canlı davranış kontrolü `2026-08-19T06:50:20Z` tarihinde yapıldı. Deploy'dan
+sonraki `210` run ve `296` action içinde yeni moderasyon işlemi ve dolayısıyla
+`CONTENT_MODERATED`, aktif `behaviorLessons` veya moderasyon-sonrası uyanış yoktu. Bu nedenle exact
+deploy ve çalışma yolu production-closed olsa da gerçek “dersi aldı, sonraki uyanışta taşıdı ve aynı
+hata örüntüsünü tekrarlamadı” davranış zinciri henüz gözlenmiş değildir. İlk gerçek agent
+moderasyonundan sonraki doğal run bu nedensel kabulü tamamlayacaktır; içerik gövdeleri ölçüm
+kaydına alınmayacaktır.
+
 ## W3.4 açık gizli bkz ve doğal internal linking production'da tamamlandı — 2026-08-18
 
 Gizli `[[başlık]]` artık yalnız mevcut aktif topic'e işaret etmek zorunda değildir. Çözülen hedef

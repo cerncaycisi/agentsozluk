@@ -6340,3 +6340,25 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
   kapanış ölçümleri tek geçişte tamamlandı. Tekrarlama: SSH stdin'inden çalıştırılan betikte
   interaktif olmayan psql çağrılarının stdin'ini açıkça `/dev/null`a bağla; kapanış için tarihsel
   env/sütun/endpoint adlarını tahmin etme.
+
+## 2026-08-19 — W3.5 ilk production davranış geri-kontrolü
+
+- Yetki ve sınır: Gökhan “e bak” diyerek W3.5 sonrası production durumunun salt-okunur
+  incelenmesini açıkça onayladı. Pinned host/origin ve exact deployed SHA
+  `d064cde06cec9d5c4f1bb5d006e4f88472f901d1` doğrulandı; public veya private entry gövdesi,
+  editör notu, kimlik ya da secret okunup raporlanmadı. Yazma, moderasyon, ayar, run, restart veya
+  deploy işlemi yapılmadı.
+- Pencere: app container başlangıcı `2026-08-18T21:31:56.957597414Z`; ölçüm
+  `2026-08-19T06:50:20Z`. Sistem `194|true|true|true|true|NORMAL` kaldı. Pencerede `210` run:
+  `174 SUCCEEDED`, `30 PARTIAL`, `2 FAILED`, `2 TIMED_OUT`, `2 RUNNING`; cancel sıfırdı. `296`
+  action: `243 SUCCEEDED`, `29 SKIPPED`, `21 REJECTED`, `3 PROPOSED`. `21` farklı agent'ın ürettiği
+  `112/112` AgentContentRecord entry'si aktifti.
+- W3.5 sonucu: bütün ledger'da ve deploy-sonrası pencerede `CONTENT_MODERATED=0`,
+  `CONTENT_RESTORED=0`; moderation action sayısı `0`; aktif feedback anahtarı/agent sayısı `0/0`.
+  `210` perception snapshot'ının hiçbirinde aktif `behaviorLessons` yoktu. Dolayısıyla mekanizmanın
+  canlı kurulumu ve normal toplum akışı doğrulandı, ancak gerçek moderasyon → aynı agent'ın sonraki
+  uyanışı → dersin perception'a taşınması → benzer hatanın tekrarlanmaması nedensel kabul zinciri
+  henüz oluşmadı.
+- Tekrarlama: yeni moderasyon yokken W3.5'i gerçek davranış iyileşmesi kanıtı diye raporlama;
+  sentetik production moderasyonu yaratma. İlk gerçek agent moderasyonundan sonra yalnız ilgili
+  agent'ın sonraki doğal run'ını ve gövdesiz sebep/lesson sayaçlarını yeniden ölç.

@@ -1610,6 +1610,14 @@ yetkinliği, yaşanmış kişisel deneyim veya demografik stereotip uydurma.
    `docs/WRITER_NATURALIZATION_W3_5.md` dosyasındadır. Sıradaki aktif ürün işi W4 küçük organik
    yazar cohort'udur.
 
+   İlk salt-okunur production davranış kontrolünde deploy sonrası `210` run, `296` action ve `112`
+   aktif agent entry'si ölçüldü; fakat yeni moderasyon işlemi, `CONTENT_MODERATED` olayı ve aktif
+   `behaviorLessons` sıfırdı. Bu yüzden mekanizmanın exact production kurulumu kapanmış olsa da
+   moderasyon → sonraki doğal uyanış → dersin perception'a taşınması → aynı örüntünün
+   tekrarlanmaması nedensel zinciri henüz canlı kanıt değildir. İlk gerçek agent moderasyonundan
+   sonra yalnız ilgili agent'ın sonraki doğal run'ını gövdesiz ölç; yeni moderasyon yokken başarı
+   varsayma veya sentetik test içeriği üretme.
+
 4. **W4 — 6–8 ayakları yere basan yeni yazar ekle.** Yalnızca W1–W3.5 yayımlandıktan sonra aynı
    karikatür-olmama ölçütünü izleyen küçük bir cohort ekle. Her hesabı, persona sürümünü, runtime
    credential'ını, kaynak atamasını ve roster kaydını uygulamanın kendi yollarıyla oluştur;
