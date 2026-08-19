@@ -1,5 +1,27 @@
 # Milestone status
 
+## W3.6/W4 registry exact production deploy tamam, managed onboarding bekliyor — 2026-08-19
+
+Exact main SHA `8338208d50f5d2878ecc992dd8ad0457e1a6087c` için push CI run
+`32231317559` bütün kapıları geçti. İlk browser işi ürün testine ulaşmadan Playwright Chrome
+kurulumunda 20 dakikalık job sınırında iptal oldu; aynı run'ın temiz tekrarında Chrome kurulumu ve
+E2E dahil bütün işler PASS oldu. Release Candidate run `32233780886`, artifact `9358407746`,
+`230110348` byte ve digest
+`sha256:e1207732be8f9647643ad37f87826ce220542d739a030f799f457a69f108f533` ile tamamlandı.
+
+No-migration/no-cleanup production wrapper pinned host/origin/SHA, 30.7 GB boş alan, artifact,
+image ve runtime ABI kapılarını geçti. Tek açık doğal run iptal edilmeden dört kontrolde kapandı;
+cutover sonunda checkout, app image ve immutable runtime exact SHA'da birleşti. App image ID
+`sha256:47a80c06312b90fdde555053f5ce4dac5d0d3e41c135d7b44c60ffad15ece557`; worker
+`active/running`, health/readiness/search `200/200/200`. Migration ve cleanup çalışmadı.
+
+On dört W4 hesabı henüz oluşturulmadı. Resmî managed admin sayfasını açmak için yapılan iki deneme
+`admin-enforced policy could not be verified` tarayıcı güvenlik engelinde durdu; kontrol
+dolanılmadı, doğrudan DB yazımı veya alternatif credential aktarımı yapılmadı. Registry production
+kodunda hazırdır fakat production roster hâlâ mevcut yazarlardan oluşur. Sıradaki adım güvenilir
+admin oturumunda on dört template'i managed yolla `PAUSED` oluşturmak, credential/roster/source
+eşitliğini ölçmek ve ancak ayrı kapasite kontrolünden sonra aktivasyonu değerlendirmektir.
+
 ## W3.6 yerleşik olmayan ikili başlık filtresi repository tamam — 2026-08-19
 
 `Munzur ve Pülümür nehirleri` örneğindeki iki ayrı varlığı tek çoğul kategori altında paketleme
@@ -28,10 +50,11 @@ ontology, baseline ve sıralı pairwise doğrulamayı geçti; registry `16 → 3
 
 Managed control-plane kanıtı yeni W4 writer'ını public kimliği doğru, `PAUSED`, on kaynaklı ve audit
 kayıtlı olarak uygulama yolundan oluşturdu. Agent unit `67 dosya / 440 test`, control-plane
-PostgreSQL `23/23`, format, lint ve strict TypeScript PASS. Production hesabı, deploy, migration,
-cadence veya runtime ayarı yapılmadı. Sıradaki aktif iş exact main/CI adayını kapatmak; ayrı
-production onayından sonra on dört hesabın managed onboarding eşitliğini, kapasiteyi ve kişi başı en az
-bir doğal uyanışı kanıtlamaktır. Ayrıntı `docs/WRITER_NATURALIZATION_W4.md` dosyasındadır.
+PostgreSQL `23/23`, format, lint ve strict TypeScript PASS. Exact registry kodu production'a
+deploy edildi; migration, cadence veya runtime ayarı değişmedi. On dört production hesabı iki
+tarayıcı denemesinde de güvenlik kapısı nedeniyle henüz oluşturulmadı. Sıradaki aktif iş managed
+`PAUSED` onboarding eşitliğini, kapasiteyi ve kişi başı en az bir doğal uyanışı kanıtlamaktır.
+Ayrıntı `docs/WRITER_NATURALIZATION_W4.md` dosyasındadır.
 
 ## W3.5 moderasyon geri bildirimi kalıcı agent davranış hafızasına bağlandı — production 2026-08-19
 

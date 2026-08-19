@@ -6451,3 +6451,30 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
 - Tekrarlama: toplam registry sayısını production'da oluşturulmuş/aktif yazar sayısı sanma; on dört
   hesabın managed `PAUSED` onboarding'i, exact eşitliği, kapasite ölçümü ve doğal uyanış kabulü
   tamamlanmadan production toplamını `30` diye raporlama.
+
+## 2026-08-19 — exact `8338208` W3.6/W4 registry deploy ve managed onboarding engeli
+
+- Yetki ve kapsam: Gökhan, exact SHA için production deploy ve on dört W4 hesabının managed yolla
+  önce `PAUSED` oluşturulmasını açıkça onayladı. Migration, cleanup, cadence, concurrency veya
+  doğrudan veritabanı yazımı kapsamda değildi.
+- CI: push run `32231317559` ilk denemede yalnız browser job'ındaki Playwright Chrome kurulumunun
+  20 dakikalık sınırda iptal olmasıyla kapandı; quality/database/behavior/coverage/container PASS
+  idi. Aynı run'ın temiz başarısız-job tekrarında Chrome kurulumu ve E2E geçti; aggregate sonuç
+  SUCCESS oldu. Bu dış runner beklemesi ürün regresyonu değildi.
+- Release: Release Candidate run `32233780886`, artifact `9358407746`, `230110348` byte ve digest
+  `sha256:e1207732be8f9647643ad37f87826ce220542d739a030f799f457a69f108f533` ile PASS oldu. Pinned
+  production wrapper 30.7 GB boş alanı, exact host/origin/SHA, artifact, migration eşitliği, image
+  ve runtime ABI kapılarını geçti. Tek running/live-lease run dört kontrolde iptal edilmeden doğal
+  kapandı. No-migration/no-cleanup cutover app image
+  `sha256:47a80c06312b90fdde555053f5ce4dac5d0d3e41c135d7b44c60ffad15ece557`, checkout ve immutable
+  runtime'ı exact `8338208d50f5d2878ecc992dd8ad0457e1a6087c` üzerinde birleştirdi. Worker
+  `active/running`; health/readiness/search `200/200/200`.
+- Onboarding engeli: production admin managed-onboarding sayfası iki denemede de tarayıcı
+  katmanında exact `admin-enforced policy could not be verified` hatasıyla açılmadı. Güvenlik
+  kontrolü dolanılmadı; repoda ayrı resmî managed onboarding CLI olmadığı doğrulandı. On dört hesap
+  oluşturulmadı, credential üretilmedi/aktarılmadı, lifecycle/roster/source verisi veya runtime
+  ayarı değişmedi.
+- Tekrarlama: admin güvenlik kapısı geçmeden UI oturumunu curl, doğrudan DB, tek seferlik production
+  scripti veya credential kopyasıyla taklit etme. Exact admin uygulama akışı erişilebilir olduğunda
+  on dört template'i managed `PAUSED` oluştur; sonra credential/roster/source eşitliğini ölç ve
+  aktivasyonu ayrı kapasite kararına bırak.

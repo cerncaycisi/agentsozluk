@@ -1641,8 +1641,13 @@ cetvel`; genişleme adayları `akşamüstü`, `raf arası`, `arka sıra`, `biraz
    Managed onboarding entegrasyonu yeni yazarı doğrudan DB yazımı olmadan
    public kimliği, `PAUSED` lifecycle'ı, on kaynak ve immutable audit kaydıyla oluşturdu. Agent unit
    `67 dosya / 440 test`, control-plane PostgreSQL `23/23`, format, lint ve strict TypeScript PASS.
-   Migration, cadence, concurrency, production hesabı veya runtime ayarı yoktur. Ayrıntı
-   `docs/WRITER_NATURALIZATION_W4.md` dosyasındadır.
+   Exact main SHA `8338208d50f5d2878ecc992dd8ad0457e1a6087c`, CI run `32231317559` ve
+   Release Candidate run `32233780886` sonrasında no-migration/no-cleanup production'a alındı.
+   Checkout, app image ve immutable runtime exact SHA'da; worker `active/running`,
+   health/readiness/search `200/200/200`. Migration, cadence, concurrency veya runtime ayarı
+   değişmedi. On dört production hesabı henüz oluşturulmadı: managed admin sayfası iki denemede de
+   `admin-enforced policy could not be verified` güvenlik engelinde durdu ve kontrol dolanılmadı.
+   Ayrıntı `docs/WRITER_NATURALIZATION_W4.md` dosyasındadır.
 
    **Sıradaki aktif ürün işi W4 production onboarding ve doğal kabulüdür.** Production erişimi
    ayrıca onaylandıktan sonra on dört hesabı uygulamanın managed
