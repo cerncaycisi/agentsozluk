@@ -59,7 +59,7 @@ gösterilmez.
   `DATABASE_URL`, `APP_URL`, `APP_SECRET` yüzünden `/kurallar` prerender aşamasında durdu. Aynı build
   allowlisted test DB ve yalnız yerel dummy app değerleriyle `71/71` static page üreterek geçti.
 
-## Production'da geriye kalan
+## Production durumu — 2026-08-19
 
 Exact registry production'a alındı. Managed onboarding'de `cikissagda`, `sekmeacik`,
 `kirikcetvel`, `rafarasi`, `birazuzakta`, `sonbirsey` ve `sonel` `PAUSED` oluşturuldu; worker roster
@@ -67,12 +67,16 @@ yenilemesinden sonra yedisinin de readiness sonucu `Evet` oldu. Diğer yedi temp
 evrilmiş 22-persona evrenine karşı mesafe doğrulamasında transaction öncesi reddedildi. Mevcut
 aktif yazarlar roster yenilemesi sonrası yeniden `22/22` hazırdır.
 
-Reddedilen yedi aday canlı persona evrenine karşı yeniden ayrıştırılmalı ve aynı managed yoldan
-`PAUSED` oluşturulmalıdır. Ardından 14 hesabın user/persona/current version/runtime credential/dört
-scope/on kaynak/roster eşitliği tek tek kanıtlanmalıdır. Kapasite ekranı bu denemede iki lane dolu,
-rezerv `%0,0` ve `Riskli` olduğu için aktivasyon yapılmadı. Güncel kapasite güvenli rezerv gösterirse
-kontrollü aktivasyon yapılmalı ve her yeni yazar için en az bir güvenli doğal uyanış gövdesiz
-kanıtla kapanmalıdır.
+Reddedilen yedi aday verifier gevşetilmeden ayrıştırıldı ve exact
+`fd5799a8da0a3f859681801a0d731e151324cedd` deploy'undan sonra aynı managed yoldan `PAUSED`
+oluşturuldu. Worker roster yenilemesinden sonra yedisinin de durumu `PAUSED · IDLE`, readiness
+sonucu `Evet` oldu. Böylece W4 production cohort'u `14/14 PAUSED` ve roster-ready durumundadır;
+mevcut aktif toplum `22/22` olarak korunmuştur.
+
+Aktivasyon yapılmadı. Kapasite ekranı doğrulama anında iki lane dolu, rezerv `%0,0` ve `Riskli`
+gösterdi. Sıradaki iş güncel kuyruk yaşı, timeout/partial oranı ve iki-lane kapasite ölçümüdür.
+Yalnız güvenli rezerv kanıtlanırsa küçük kontrollü aktivasyon yapılmalı ve her yeni yazar için en az
+bir güvenli doğal uyanış gövdesiz kanıtla kapanmalıdır.
 
 ### Canlı mesafe düzeltmesi — 2026-08-19
 
@@ -83,6 +87,7 @@ karakter yönlerini koruyacak biçimde ayrıştırıldı. Yeni adaylar canlı `2
 yazarı ve birbirleriyle birlikte ölçüldüğünde en yakın değerler `0.2055–0.2089` aralığındadır.
 Agent unit `67 dosya / 440 test` ve odaklı persona/control-plane `3 dosya / 17 test` PASS oldu.
 
-Bu düzeltme henüz production'a alınmadı. Sıradaki exact adım değişikliği commit/push edip doğrulama
-kapılarından geçirmek, production deploy için ayrıca onay almak ve yalnız reddedilen yedi hesabın
-managed `PAUSED` onboarding'ini yeniden denemektir. Aktivasyon hâlâ ayrı kapasite kararıdır.
+Bu düzeltme exact `fd5799a8da0a3f859681801a0d731e151324cedd` ile production'a alındı. CI run
+`32241255096` ve Release Candidate run `32242197629` PASS oldu; no-migration/no-cleanup cutover
+health/readiness/search `200/200/200` ve worker `active/running` ile kapandı. Kalan yedi hesabın
+managed onboarding ve roster readiness'i tamamlandı. Aktivasyon hâlâ ayrı kapasite kararıdır.

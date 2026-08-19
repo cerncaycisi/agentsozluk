@@ -6519,3 +6519,34 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
 - Tekrarlama: canlı evrilmiş roster nedeniyle oluşan redde verifier'ı gevşetme veya DB insert
   kullanma. Önce yalnız doğrulama boyutunu ölç, gerçek persona yönünü ayrıştır, test/CI/deploy'dan
   sonra managed `PAUSED` onboarding'i yeniden dene; aktivasyonu kapasite kararı olmadan yapma.
+
+## 2026-08-19 — exact `fd5799a8` deploy ve W4 managed onboarding 14/14
+
+- Yetki ve kapsam: Gökhan exact `fd5799a8da0a3f859681801a0d731e151324cedd` production deploy'unu
+  ve yalnız daha önce reddedilen yedi W4 hesabının managed `PAUSED` onboarding'ini açıkça onayladı.
+  Migration, cleanup, cadence, concurrency, doğrudan DB yazımı veya aktivasyon kapsamda değildi.
+- GitHub kanıtı: CI run `32241255096` bütün altı işi ve browser/E2E kapısını geçti. Release
+  Candidate run `32242197629`, artifact `9361447761`, `230050999` byte ve digest
+  `sha256:7fbf991451bd36ef2874462e46d15ded33460567bb76b49540890a22c8129202` ile PASS oldu.
+- Local false start: ilk wrapper çağrısı production bağlantısından önce Codex fallback pnpm shim'inin
+  Node `24.19.0` / pnpm `11.19.0` kullanması nedeniyle exact `ERR_PNPM_UNSUPPORTED_ENGINE` ile
+  durdu. Global kurulum yapılmadı; mevcut `/opt/homebrew/bin/corepack` Node `22.23.1` ve pnpm
+  `10.34.5` kullandı. Tekrarlama: production wrapper'ı ortam PATH'ine bırakma; pinned Corepack
+  yolunu kullan.
+- Drain fail-close: ilk production wrapper koşusu active scheduler yeni run claim etmeye devam
+  ettiği için `80` kontrolde exact `RELEASE_FAIL code=RUN_DRAIN_TIMEOUT` ile durdu. Run iptali,
+  kill, app cutover veya ayar mutasyonu olmadı; eski container korundu. Canonical
+  `agent-sozluk-runtime.service` graceful stop edildi; SIGTERM handler mevcut `runOnce` işini doğal
+  tamamladı ve yeni claim'i kesti. Aynı artifact tekrarında drain `0/0/0/0` geçti.
+- Release sonucu: no-migration/no-cleanup cutover app image
+  `sha256:46a473278b1042b8b74c036604bf9bfee6e06eead8fc053f270af2eb57acc901`, checkout ve immutable
+  runtime'ı exact SHA'da birleştirdi. Worker `active/running`; health/readiness/search
+  `200/200/200`. Migration, cleanup, cadence, concurrency veya toplum ayarı değişmedi.
+- Onboarding sonucu: `ikincikahve`, `beklemedeyim`, `fondaradyo`, `aksamustu`, `arkasira`,
+  `yedekparca` ve `mevsimdisi` uygulamanın managed formundan `PAUSED` oluşturuldu. İlk sonuç
+  `CREDENTIAL_NOT_LOADED`, iki mevcut doğal run tamamlanana kadar `ROSTER_SYNC_STALE` idi. Worker
+  heartbeat yenilenince yedisinin tamamı `PAUSED · IDLE`, readiness `Evet` oldu. Önceki yediyle
+  production W4 cohort'u `14/14 PAUSED` ve roster-ready; mevcut aktif toplum `22/22` kaldı.
+- Aktivasyon kararı: kontrol anında iki run çalışıyor, kapasite rezervi `%0,0` ve durum `Riskli` idi.
+  Hiçbir W4 hesabı aktive edilmedi. Tekrarlama: onboarding readiness'i aktivasyon izni sayma;
+  güncel kapasite güvenli rezerv göstermeden lifecycle'ı `ACTIVE` yapma.

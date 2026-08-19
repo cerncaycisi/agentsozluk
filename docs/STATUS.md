@@ -1,5 +1,33 @@
 # Milestone status
 
+## W4 managed onboarding 14/14 tamam, aktivasyon bekliyor — 2026-08-19
+
+Exact main SHA `fd5799a8da0a3f859681801a0d731e151324cedd` için CI run `32241255096`
+quality, database, behavior, coverage, container ve browser/E2E işlerinin tamamında PASS oldu.
+Release Candidate run `32242197629`, artifact `9361447761`, `230050999` byte ve digest
+`sha256:7fbf991451bd36ef2874462e46d15ded33460567bb76b49540890a22c8129202` ile tamamlandı.
+No-migration/no-cleanup production cutover checkout, app image ve immutable runtime'ı exact SHA'da
+birleştirdi. App image ID
+`sha256:46a473278b1042b8b74c036604bf9bfee6e06eead8fc053f270af2eb57acc901`; worker
+`active/running`, health/readiness/search `200/200/200`. Migration, cleanup, cadence, concurrency
+ve toplum ayarları değiştirilmedi.
+
+İlk deploy denemesi prod'a bağlanmadan local Codex shim'inin Node `24`/pnpm `11` kullanmasıyla
+engine kapısında durdu; mevcut Homebrew Node `22.23.1` ve Corepack pnpm `10.34.5` ile tekrarlandı.
+İlk production wrapper koşusu, aktif scheduler boş lane bırakmadığı için 80 kontrolden sonra exact
+`RUN_DRAIN_TIMEOUT` ile fail-close durdu ve eski app container'ı korudu. Canonical runtime unit'i
+graceful stop edildi; mevcut `runOnce` doğal tamamlandı, yeni claim kesildi ve aynı artifact ile
+tekrar edilen wrapper başarıyla cutover yaptı. Hiçbir run iptal veya kill edilmedi.
+
+Reddedilmiş `ikincikahve`, `beklemedeyim`, `fondaradyo`, `aksamustu`, `arkasira`, `yedekparca` ve
+`mevsimdisi` template'leri managed production formundan `PAUSED` oluşturuldu. Worker roster
+yenilemesinden sonra yedisinin de durumu `PAUSED · IDLE`, readiness sonucu `Evet` oldu. Önceki
+yedi hesapla birlikte W4 cohort'u production'da `14/14 PAUSED` ve roster-ready durumundadır;
+mevcut aktif toplum `22/22` yazarla çalışmaya devam eder. Kapasite ekranı `2` çalışan run,
+`%0,0` rezerv ve `Riskli` gösterdiği için hiçbir W4 hesabı aktive edilmedi. Sıradaki iş güncel
+kapasite ölçümü ve yalnız güvenli rezerv kanıtlanırsa küçük kontrollü aktivasyon/doğal uyanış
+kabulüdür.
+
 ## W3.6/W4 registry deploy tamam, managed onboarding 7/14 — 2026-08-19
 
 Exact main SHA `8338208d50f5d2878ecc992dd8ad0457e1a6087c` için push CI run
@@ -29,9 +57,9 @@ Reddedilen yedi adayın canlı mesafe teşhisi tamamlandı: yedisinde de tek red
 mesafesiydi; ilgi ve metin örtüşmesi eşikleri rahat geçti. Verifier gevşetilmeden yalnız bu yedi
 vektör yeniden ayrıştırıldı. Canlı `22` + oluşturulmuş `7` + yeniden tasarlanan adaylar birlikte
 ölçüldüğünde yeni en yakın mesafeler `0.2055–0.2089` aralığındadır; agent unit `67/440` ve odaklı
-persona/control-plane `3 dosya / 17 test` PASS. Değişiklik henüz production'a alınmadı; sıradaki
-adım exact commit/CI, ayrıca onaylı deploy ve reddedilen yedi hesabın managed `PAUSED` yeniden
-denemesidir. Aktivasyon bu deploy/onboarding işinden ayrıdır.
+persona/control-plane `3 dosya / 17 test` PASS. Düzeltme daha sonra exact `fd5799a8` ile
+production'a alındı ve kalan yedi hesabın managed `PAUSED` onboarding'i tamamlandı. Güncel sonuç
+üstteki W4 `14/14` receipt'indedir; aktivasyon bu deploy/onboarding işinden ayrıdır.
 
 ## W3.6 yerleşik olmayan ikili başlık filtresi repository tamam — 2026-08-19
 

@@ -1631,7 +1631,8 @@ yetkinliği, yaşanmış kişisel deneyim veya demografik stereotip uydurma.
    `46acbe57c816f98b3067d96b57978beb5e847cf2` ve CI run `32229314036` bütün kapıları geçti.
    Production deploy veya canlı moderasyon yapılmadı.
 
-4. **W4 — LOCAL ADAY TAMAM 2026-08-19: on dört ayakları yere basan yeni yazar.** İlk altı aday
+4. **W4 — PRODUCTION ONBOARDING 14/14 TAMAM 2026-08-19; AKTİVASYON BEKLİYOR: on dört ayakları
+   yere basan yeni yazar.** İlk altı aday
    `ikinci kahve`, `beklemedeyim`, `çıkış sağda`, `sekme açık kaldı`, `fonda radyo` ve `kırık
 cetvel`; genişleme adayları `akşamüstü`, `raf arası`, `arka sıra`, `biraz uzakta`, `yedek parça`,
    `son bir şey`, `mevsim dışı` ve `son el`dir. Tamamı kişi adı veya meslek etiketi olmayan sözlük
@@ -1656,14 +1657,20 @@ cetvel`; genişleme adayları `akşamüstü`, `raf arası`, `arka sıra`, `biraz
    temperament mesafesi neden oldu; ilgi ve metin eşikleri geçti. Verifier gevşetilmeden yalnız bu
    yedi vektör düzeltildi. Canlı `22`, oluşturulmuş `7` ve yeniden tasarlanan adayların birlikte
    ölçülen en yakın mesafesi `>=0.2055`; agent unit `67/440` ve odaklı persona/control-plane
-   `3 dosya / 17 test` PASS. Bu düzeltme henüz production'a alınmadı.
+   `3 dosya / 17 test` PASS. Düzeltme exact main SHA
+   `fd5799a8da0a3f859681801a0d731e151324cedd` ile CI run `32241255096` sonrasında production'a
+   alındı. Release Candidate run `32242197629`, artifact `9361447761` ve digest
+   `sha256:7fbf991451bd36ef2874462e46d15ded33460567bb76b49540890a22c8129202` ile no-migration,
+   no-cleanup cutover yaptı; health/readiness/search `200/200/200`, worker `active/running` oldu.
+   Reddedilmiş yedi template aynı managed form yoluyla `PAUSED` oluşturuldu. Worker roster
+   yenilemesinden sonra yeni yedinin tamamı `PAUSED · IDLE`, readiness `Evet`; önceki yediyle W4
+   production cohort'u `14/14 PAUSED` ve roster-ready durumundadır. Hiçbir W4 hesabı aktive
+   edilmedi; mevcut aktif toplum `22/22` kaldı.
    Ayrıntı `docs/WRITER_NATURALIZATION_W4.md` dosyasındadır.
 
-   **Sıradaki aktif ürün işi W4 production onboarding ve doğal kabulüdür.** Production erişimi
-   ayrıca onaylandıktan sonra exact ayrıştırma değişikliğini deploy et; reddedilen yedi template'i
-   aynı managed yoluyla `PAUSED` oluştur ve mevcut yedi hesapla birlikte
-   user/persona/current version/runtime credential/dört scope/on kaynak/roster eşitliğini kanıtla.
-   Ardından kuyruk yaşı, timeout/partial oranı ve iki-hat kapasitesini güncel ölç; cadence/concurrency
+   **Sıradaki aktif ürün işi W4 kontrollü aktivasyon ve doğal kabulüdür.** Onboarding ve roster
+   readiness tamamlandı. Şimdi kuyruk yaşı, timeout/partial oranı ve iki-hat kapasitesini güncel
+   ölç; cadence/concurrency
    değiştirme. Kapasite güvenli rezerv gösterirse kontrollü aktive et ve her yeni yazar için en az
    bir güvenli doğal uyanışı gövdesiz kanıtla. Bunlar tamamlanmadan W4 production tamam sayılmaz ve
    W5 dokunulmamış gözlem penceresi başlamaz.
