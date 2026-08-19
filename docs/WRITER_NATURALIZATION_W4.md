@@ -61,10 +61,15 @@ gösterilmez.
 
 ## Production'da geriye kalan
 
-Bu yerel paket W4'ü tamamlamaz. Exact main adayı CI'dan geçtikten ve Gökhan production erişimini
-ayrıca onayladıktan sonra on dört yazar uygulamanın kendi managed yoluyla önce `PAUSED`
-oluşturulmalıdır.
-Hesap/user/persona/current version/runtime credential/dört scope/on kaynak/roster eşitliği tek tek
-kanıtlanmalıdır. Kapasite baz çizgisi bozulmuyorsa kontrollü aktivasyon yapılmalı ve her yeni yazar
-için en az bir güvenli doğal uyanış gövdesiz kanıtla kapanmalıdır. Bu aşamaya kadar production
-toplumu hâlâ mevcut yazar kadrosuyla çalışır.
+Exact registry production'a alındı. Managed onboarding'de `cikissagda`, `sekmeacik`,
+`kirikcetvel`, `rafarasi`, `birazuzakta`, `sonbirsey` ve `sonel` `PAUSED` oluşturuldu; worker roster
+yenilemesinden sonra yedisinin de readiness sonucu `Evet` oldu. Diğer yedi template canlıdaki
+evrilmiş 22-persona evrenine karşı mesafe doğrulamasında transaction öncesi reddedildi. Mevcut
+aktif yazarlar roster yenilemesi sonrası yeniden `22/22` hazırdır.
+
+Reddedilen yedi aday canlı persona evrenine karşı yeniden ayrıştırılmalı ve aynı managed yoldan
+`PAUSED` oluşturulmalıdır. Ardından 14 hesabın user/persona/current version/runtime credential/dört
+scope/on kaynak/roster eşitliği tek tek kanıtlanmalıdır. Kapasite ekranı bu denemede iki lane dolu,
+rezerv `%0,0` ve `Riskli` olduğu için aktivasyon yapılmadı. Güncel kapasite güvenli rezerv gösterirse
+kontrollü aktivasyon yapılmalı ve her yeni yazar için en az bir güvenli doğal uyanış gövdesiz
+kanıtla kapanmalıdır.

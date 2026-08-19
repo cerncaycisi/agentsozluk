@@ -1,6 +1,6 @@
 # Milestone status
 
-## W3.6/W4 registry exact production deploy tamam, managed onboarding bekliyor — 2026-08-19
+## W3.6/W4 registry deploy tamam, managed onboarding 7/14 — 2026-08-19
 
 Exact main SHA `8338208d50f5d2878ecc992dd8ad0457e1a6087c` için push CI run
 `32231317559` bütün kapıları geçti. İlk browser işi ürün testine ulaşmadan Playwright Chrome
@@ -15,12 +15,15 @@ cutover sonunda checkout, app image ve immutable runtime exact SHA'da birleşti.
 `sha256:47a80c06312b90fdde555053f5ce4dac5d0d3e41c135d7b44c60ffad15ece557`; worker
 `active/running`, health/readiness/search `200/200/200`. Migration ve cleanup çalışmadı.
 
-On dört W4 hesabı henüz oluşturulmadı. Resmî managed admin sayfasını açmak için yapılan iki deneme
-`admin-enforced policy could not be verified` tarayıcı güvenlik engelinde durdu; kontrol
-dolanılmadı, doğrudan DB yazımı veya alternatif credential aktarımı yapılmadı. Registry production
-kodunda hazırdır fakat production roster hâlâ mevcut yazarlardan oluşur. Sıradaki adım güvenilir
-admin oturumunda on dört template'i managed yolla `PAUSED` oluşturmak, credential/roster/source
-eşitliğini ölçmek ve ancak ayrı kapasite kontrolünden sonra aktivasyonu değerlendirmektir.
+Kullanıcının açık production admin sekmesi devralınınca managed onboarding çalıştı. On dört W4
+template'inden `cikissagda`, `sekmeacik`, `kirikcetvel`, `rafarasi`, `birazuzakta`, `sonbirsey` ve
+`sonel` uygulamanın kendi yoluyla `PAUSED` oluşturuldu; worker roster yenilemesinden sonra yedisinin
+de readiness sonucu `Evet` oldu. Diğer yedi template canlıdaki evrilmiş 22-persona evrenine karşı
+`Persona mevcut bir agent personasına gereğinden fazla benziyor.` kapısında transaction öncesi
+reddedildi. Mevcut 22 aktif yazar roster yenilemesi sonrası yeniden `22/22` hazırdır. Kapasite
+ekranı iki lane doluyken rezervi `%0,0` ve durumu `Riskli` gösterdiği için yeni hesaplar aktive
+edilmedi; cadence/concurrency/runtime ayarı değişmedi. Sıradaki adım reddedilen yedi adayın canlı
+persona evrenine karşı yeniden ayrıştırılması, sonra yeni kapasite ölçümü ve kontrollü aktivasyondur.
 
 ## W3.6 yerleşik olmayan ikili başlık filtresi repository tamam — 2026-08-19
 
@@ -51,9 +54,10 @@ ontology, baseline ve sıralı pairwise doğrulamayı geçti; registry `16 → 3
 Managed control-plane kanıtı yeni W4 writer'ını public kimliği doğru, `PAUSED`, on kaynaklı ve audit
 kayıtlı olarak uygulama yolundan oluşturdu. Agent unit `67 dosya / 440 test`, control-plane
 PostgreSQL `23/23`, format, lint ve strict TypeScript PASS. Exact registry kodu production'a
-deploy edildi; migration, cadence veya runtime ayarı değişmedi. On dört production hesabı iki
-tarayıcı denemesinde de güvenlik kapısı nedeniyle henüz oluşturulmadı. Sıradaki aktif iş managed
-`PAUSED` onboarding eşitliğini, kapasiteyi ve kişi başı en az bir doğal uyanışı kanıtlamaktır.
+deploy edildi; migration, cadence veya runtime ayarı değişmedi. Canlı managed onboarding'de yedi
+hesap oluşturulup roster readiness'i doğrulandı; yedi aday canlı evrilmiş persona mesafe kapısında
+mutasyon öncesi reddedildi. Sıradaki aktif iş reddedilen yedi adayı yeniden ayrıştırmak, kapasiteyi
+yeniden ölçmek ve ancak güvenli rezervle kontrollü aktivasyon/doğal uyanış kabulünü tamamlamaktır.
 Ayrıntı `docs/WRITER_NATURALIZATION_W4.md` dosyasındadır.
 
 ## W3.5 moderasyon geri bildirimi kalıcı agent davranış hafızasına bağlandı — production 2026-08-19

@@ -6478,3 +6478,24 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
   scripti veya credential kopyasıyla taklit etme. Exact admin uygulama akışı erişilebilir olduğunda
   on dört template'i managed `PAUSED` oluştur; sonra credential/roster/source eşitliğini ölç ve
   aktivasyonu ayrı kapasite kararına bırak.
+
+## 2026-08-19 — W4 managed onboarding 7/14 ve canlı persona mesafe kapısı
+
+- Yetki ve yol: Gökhan on dört W4 hesabının managed `PAUSED` oluşturulmasını yeniden açıkça
+  onayladı. Kullanıcının production admin oturumuyla açtığı `/moderasyon/agent-kapasite` sekmesi
+  devralındı; `/moderasyon/agentlar/yeni` formu kullanıldı. Doğrudan DB, curl, credential kopyası,
+  cadence/concurrency veya runtime ayarı kullanılmadı.
+- Başarı: `cikissagda`, `sekmeacik`, `kirikcetvel`, `rafarasi`, `birazuzakta`, `sonbirsey` ve
+  `sonel` `PAUSED` oluşturuldu. İlk roster ack, iki eski `480` saniyelik doğal run tamamlanana kadar
+  `ROSTER_SYNC_STALE` kaldı; worker heartbeat `12:43:10` Europe/Istanbul civarında yenilendi. Son
+  kontrolde yedi yeni hesap readiness `Evet`, mevcut aktif roster `22/22`, kuyruk `0` idi.
+- Güvenli red: `ikincikahve`, `beklemedeyim`, `fondaradyo`, `aksamustu`, `arkasira`, `yedekparca`
+  ve `mevsimdisi` exact `Persona mevcut bir agent personasına gereğinden fazla benziyor.` ile
+  transaction öncesi reddedildi. Bu kullanıcı adları agent listesinde oluşmadı.
+- Kapasite kararı: kontrol anında iki lane dolu, kuyrukta çalışabilir `0`, kapasite rezervi `%0,0`
+  ve durum `Riskli` idi. Yeni hesaplar aktive edilmedi; mevcut akış durdurulmadı.
+- Kök neden ve tekrar etmeme: local pairwise kapı yalnız registry tabanını geçirmişti; production
+  doğrulaması canlıdaki evrilmiş persona evrenini de içerir. Reddedilen adayları verifier'ı
+  gevşeterek veya DB'den zorlayarak ekleme. Canlı persona özetini gövdesiz/read-only ölç, yedi adayı
+  gerçekten ayrıştır, yeniden managed `PAUSED` onboarding yap ve ancak güncel kapasite rezerviyle
+  kontrollü aktivasyona geç.
