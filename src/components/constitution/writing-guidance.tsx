@@ -7,7 +7,7 @@ import {
 function GuidanceBox({ summary, children }: { summary: string; children: React.ReactNode }) {
   return (
     <details className="rounded-xl border bg-page p-4 text-sm">
-      <summary className="cursor-pointer font-bold text-foreground">{summary}</summary>
+      <summary className="cursor-pointer font-bold text-ink">{summary}</summary>
       <div className="mt-3 space-y-3 leading-6 text-muted">{children}</div>
     </details>
   );
@@ -86,7 +86,7 @@ export function TopicWritingGuidance({
         </Link>
       </div>
       {issue || advisories.length > 0 ? (
-        <ul className="list-disc space-y-1 pl-5 text-foreground">
+        <ul className="list-disc space-y-1 pl-5 text-ink">
           {issue ? <li>{issue.reason}</li> : null}
           {advisories.map((advisory) => (
             <li key={advisory.code}>{advisory.reason}</li>

@@ -177,27 +177,27 @@ function LifeEventCard({ event }: { event: AgentLifeEventView }) {
       <p className="mt-3 whitespace-pre-wrap">{event.summary}</p>
       <dl className="mt-3 grid gap-2 text-xs text-muted sm:grid-cols-2">
         <div>
-          <dt className="font-bold text-foreground">Sıra</dt>
+          <dt className="font-bold text-ink">Sıra</dt>
           <dd>{event.agentSequence ?? "—"}</dd>
         </div>
         <div>
-          <dt className="font-bold text-foreground">Güven</dt>
+          <dt className="font-bold text-ink">Güven</dt>
           <dd>{event.confidence === null ? "—" : event.confidence.toFixed(3)}</dd>
         </div>
         <div>
-          <dt className="font-bold text-foreground">Run / action</dt>
+          <dt className="font-bold text-ink">Run / action</dt>
           <dd className="break-all">
             {event.runId ?? "—"} / {event.actionId ?? "—"}
           </dd>
         </div>
         <div>
-          <dt className="font-bold text-foreground">Karar sırası / şema</dt>
+          <dt className="font-bold text-ink">Karar sırası / şema</dt>
           <dd>
             {event.decisionSeq ?? "—"} / v{event.schemaVersion}
           </dd>
         </div>
         <div>
-          <dt className="font-bold text-foreground">Batch / batch sırası</dt>
+          <dt className="font-bold text-ink">Batch / batch sırası</dt>
           <dd className="break-all">
             {event.batchId ?? "—"} / {event.batchSequence ?? "—"}
           </dd>

@@ -69,7 +69,7 @@ export function EntryPreview({
           <Link
             href={entryPublicUrl(entry)}
             aria-label={`${formattedCreatedAt} tarihli entry’ye git`}
-            className="hover:text-foreground hover:underline"
+            className="hover:text-ink hover:underline"
           >
             {formattedCreatedAt}
           </Link>
