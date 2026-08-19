@@ -3,6 +3,8 @@ import { AppError } from "@/lib/http/errors";
 import { currentIstanbulDayWindow, previousIstanbulDayWindow } from "@/modules/feeds/domain/time";
 import {
   boundedFeedWindow,
+  HOME_SAMPLER_BLOCK_COUNT,
+  homeSamplerTopicCandidateCount,
   TOPIC_FEED_MAX_ITEMS,
   topicFeedWindowStart,
   type TopicFeed,
@@ -12,6 +14,7 @@ import {
   listChronologicalTopics,
   listDebeEntries,
   listScoredTopics,
+  listTopEntryPerTopic,
   listWindowedChronologicalTopics,
 } from "@/modules/feeds/repository/feeds";
 import { withEntryCounters } from "@/modules/entries/domain/entry";
@@ -93,4 +96,81 @@ export async function getRandomTopic(client: DatabaseClient, randomKey = Math.ra
   );
   if (!topic) throw new AppError("TOPIC_NOT_FOUND", 404, "Rastgele başlık bulunamadı.");
   return { ...topic, url: topicPublicUrl(topic) };
+}
+
+export interface HomeSamplerEntry {
+  id: string;
+  publicId: number;
+  body: string;
+  score: number;
+  createdAt: Date;
+  edited: boolean;
+  bookmarkCount: number;
+  topic: { id: string; publicId: number; title: string; slug: string };
+  author: { id: string; username: string; displayName: string };
+}
+
+export interface HomeSamplerBlock {
+  topic: { id: string; publicId: number; title: string; slug: string; entryCount: number };
+  entry: HomeSamplerEntry;
+}
+
+/**
+ * Ana sayfa örneklemi: gündem sıralamasına göre ilk başlıklar ve her birinden tek
+ * bir temsilci entry (en yüksek puan, eşitlikte en yeni).
+ *
+ * Sorgu bütçesi **iki** ham sorgudur: biri başlıkları puanlar, diğeri `DISTINCT ON`
+ * ile başlık başına tek entry döndürür. Blok başına sorgu açılmaz.
+ */
+export async function getHomeSampler(
+  client: DatabaseClient,
+  input: { limit?: number; now?: Date } = {},
+): Promise<HomeSamplerBlock[]> {
+  const now = input.now ?? new Date();
+  const limit = input.limit ?? HOME_SAMPLER_BLOCK_COUNT;
+  if (limit <= 0) return [];
+  const windowStart = topicFeedWindowStart("trending", now);
+  return client.$transaction(async (transaction) => {
+    const { topics } = await listScoredTopics(transaction, {
+      windowStart,
+      now,
+      skip: 0,
+      take: homeSamplerTopicCandidateCount(limit),
+    });
+    const candidates = topics.filter((topic) => topic.entryCount > 0).slice(0, limit);
+    const rows = await listTopEntryPerTopic(transaction, {
+      topicIds: candidates.map((topic) => topic.id),
+    });
+    const entryByTopic = new Map(rows.map((row) => [row.topicId, row]));
+    return candidates.flatMap((topic) => {
+      const row = entryByTopic.get(topic.id);
+      if (!row) return [];
+      const publicTopic = {
+        id: topic.id,
+        publicId: topic.publicId,
+        title: topic.title,
+        slug: topic.slug,
+      };
+      return [
+        {
+          topic: { ...publicTopic, entryCount: topic.entryCount },
+          entry: {
+            id: row.id,
+            publicId: row.publicId,
+            body: row.body,
+            score: row.score,
+            createdAt: row.createdAt,
+            edited: row.revisionCount > 0,
+            bookmarkCount: row.bookmarkCount,
+            topic: publicTopic,
+            author: {
+              id: row.authorId,
+              username: row.authorUsername,
+              displayName: row.authorDisplayName,
+            },
+          },
+        },
+      ];
+    });
+  });
 }

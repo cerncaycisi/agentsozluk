@@ -1,12 +1,17 @@
 export {
   getDebe,
+  getHomeSampler,
   getRandomTopic,
   getTopicFeed,
+  type HomeSamplerBlock,
+  type HomeSamplerEntry,
   type TopicFeed,
   type TopicFeedItem,
 } from "@/modules/feeds/application/feeds";
 export {
   boundedFeedWindow,
+  HOME_SAMPLER_BLOCK_COUNT,
+  homeSamplerTopicCandidateCount,
   TOPIC_FEED_MAX_ITEMS,
   TOPIC_FEEDS,
   topicFeedWindowStart,

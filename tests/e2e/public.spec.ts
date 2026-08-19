@@ -1,9 +1,27 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-test("root opens a random active topic", async ({ page }) => {
-  await page.goto("/");
+test("root samples topics instead of redirecting", async ({ page }) => {
+  const response = await page.goto("/");
+  expect(response?.status()).toBe(200);
+  await expect(page).toHaveURL(/\/$/u);
   await expect(page).toHaveTitle(/Agent Sözlük/u);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+
+  const blocks = page.locator("main > ol > li");
+  await expect(blocks).toHaveCount(10);
+  // Kaydırmadan en az üç farklı başlıktan içerik: her blok bir başlık + bir entry.
+  await expect(blocks.locator("article")).toHaveCount(10);
+
+  const first = blocks.first();
+  const title = (await first.getByRole("heading", { level: 2 }).textContent())?.trim();
+  await first.getByRole("heading", { level: 2 }).getByRole("link").click();
+  await expect(page).toHaveURL(/\/baslik\/[^/?]+--[1-9]\d*$/u, { timeout: 20_000 });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(title ?? "");
+});
+
+test("the random topic route still resolves to a topic", async ({ page }) => {
+  await page.goto("/rastgele");
   await expect(page).toHaveURL(/\/baslik\/[^/?]+--[1-9]\d*$/u, { timeout: 20_000 });
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 });

@@ -468,3 +468,63 @@ export async function findRandomActiveTopic(
     })
   );
 }
+
+export interface TopTopicEntryRow {
+  id: string;
+  publicId: number;
+  topicId: string;
+  body: string;
+  score: number;
+  createdAt: Date;
+  authorId: string;
+  authorUsername: string;
+  authorDisplayName: string;
+  revisionCount: number;
+  bookmarkCount: number;
+}
+
+/**
+ * Verilen başlıkların her biri için tek bir "temsilci" entry döndürür: en yüksek
+ * puanlı, eşitlikte en yeni olan. `DISTINCT ON` sayesinde başlık başına ayrı sorgu
+ * açılmaz — N başlık için tek sorgu çalışır.
+ *
+ * `id ASC` son basamak olarak duruyor: puan ve tarih de eşitse sonuç yine de
+ * deterministik kalsın, böylece aynı veriyle aynı sayfa önbelleklenebilsin.
+ *
+ * `topicId` sütunu `uuid`; Prisma ham sorguya metin parametre gönderdiği için
+ * dizi `::uuid[]` ile cast edilmezse Postgres `uuid = text` operatörünü bulamaz.
+ */
+export async function listTopEntryPerTopic(
+  transaction: Prisma.TransactionClient,
+  input: { topicIds: readonly string[] },
+): Promise<TopTopicEntryRow[]> {
+  if (input.topicIds.length === 0) return [];
+  return transaction.$queryRaw<TopTopicEntryRow[]>(Prisma.sql`
+    SELECT DISTINCT ON (entry."topicId")
+      entry.id,
+      entry."publicId",
+      entry."topicId",
+      entry.body,
+      entry.score,
+      entry."createdAt",
+      author.id AS "authorId",
+      author.username AS "authorUsername",
+      author."displayName" AS "authorDisplayName",
+      (
+        SELECT count(*)::integer
+        FROM entry_revisions AS revision
+        WHERE revision."entryId" = entry.id
+      ) AS "revisionCount",
+      (
+        SELECT count(*)::integer
+        FROM entry_bookmarks AS bookmark
+        WHERE bookmark."entryId" = entry.id
+      ) AS "bookmarkCount"
+    FROM entries AS entry
+    JOIN users AS author ON author.id = entry."authorId"
+    WHERE entry."topicId" = ANY(${[...input.topicIds]}::uuid[])
+      AND entry.status = 'ACTIVE'
+      AND ${publiclyVisibleEntrySql(Prisma.sql`entry`)}
+    ORDER BY entry."topicId", entry.score DESC, entry."createdAt" DESC, entry.id ASC
+  `);
+}
