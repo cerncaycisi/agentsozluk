@@ -72,6 +72,9 @@ export function EntryPreview({
   };
 }) {
   const edited = entry.edited ?? (entry._count?.revisions ?? 0) > 0;
+  // `withEntryCounters`'tan geçen sorgular `bookmarkCount` veriyor; ham `_count`
+  // taşıyan yol da desteklensin diye `edited` ile aynı geri düşme zinciri kullanılıyor.
+  const bookmarkCount = entry.bookmarkCount ?? entry._count?.bookmarks ?? 0;
   const formattedCreatedAt = formatIstanbulTimestamp(entry.createdAt);
   const collapsed = collapsible && !entry.blockedByViewer && entryBodyNeedsCollapse(entry.body);
   const collapseToggleId = `entry-${entry.publicId}-govde-genislet`;
@@ -157,9 +160,15 @@ export function EntryPreview({
           canReport={actions.canReport}
           canBlockAuthor={actions.canBlockAuthor}
           initialAuthorBlocked={Boolean(entry.blockedByViewer)}
+          initialBookmarkCount={bookmarkCount}
         />
       ) : guestActions ? (
-        <EntryActions readOnly entryPublicId={entry.publicId} initialScore={entry.score} />
+        <EntryActions
+          readOnly
+          entryPublicId={entry.publicId}
+          initialScore={entry.score}
+          initialBookmarkCount={bookmarkCount}
+        />
       ) : null}
     </article>
   );

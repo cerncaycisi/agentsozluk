@@ -24,6 +24,32 @@ const ENTRY_BODY_MAX_LENGTH = 10_000;
  */
 const guestControlClass = "grid size-10 place-items-center rounded-lg border bg-page";
 
+/** Skor sayacıyla aynı görsel dil; favori sayacı da aynı sütun genişliğini tutar. */
+const counterClass = "min-w-8 text-center text-sm font-bold";
+
+/**
+ * Sıfır favori gösterilmez — sıfırlar entry'yi olumsuz gösterir ve gürültü yaratır.
+ * Sayaç yine de DOM'da kalır: canlı bölge, değişmeden ÖNCE var olmazsa ekran
+ * okuyucular ilk favorilemeyi (0 → 1) duyurmaz. Bu yüzden gizleme `sr-only` ile
+ * yapılır; `sr-only` mutlak konumlandığı için düğme şeridinde `gap` boşluğu da bırakmaz.
+ */
+function BookmarkCounter({ count, live = false }: { count: number; live?: boolean }) {
+  const visible = count > 0;
+  return (
+    <span
+      {...(live ? { "aria-live": "polite" as const } : {})}
+      className={visible ? counterClass : "sr-only"}
+    >
+      {visible ? (
+        <>
+          {count}
+          <span className="sr-only"> favori</span>
+        </>
+      ) : null}
+    </span>
+  );
+}
+
 interface SignedInEntryActionsProps {
   entryId: string;
   entryPublicId: number;
@@ -36,15 +62,28 @@ interface SignedInEntryActionsProps {
   canReport: boolean;
   canBlockAuthor: boolean;
   initialAuthorBlocked: boolean;
+  /** Sunucudan gelen favori sayısı; verilmezse sayaç hiç görünmez. */
+  initialBookmarkCount?: number;
 }
 
 export type EntryActionsProps =
   | ({ readOnly?: false } & SignedInEntryActionsProps)
-  | { readOnly: true; entryPublicId: number; initialScore: number };
+  | {
+      readOnly: true;
+      entryPublicId: number;
+      initialScore: number;
+      initialBookmarkCount?: number;
+    };
 
 export function EntryActions(props: EntryActionsProps) {
   if (props.readOnly) {
-    return <GuestEntryActions entryPublicId={props.entryPublicId} score={props.initialScore} />;
+    return (
+      <GuestEntryActions
+        entryPublicId={props.entryPublicId}
+        score={props.initialScore}
+        bookmarkCount={props.initialBookmarkCount ?? 0}
+      />
+    );
   }
   return <SignedInEntryActions {...props} />;
 }
@@ -55,7 +94,15 @@ export function EntryActions(props: EntryActionsProps) {
  * kullanılmaz; niyet `aria-label` ile anlatılır. Oturum gerektiren yönetim işlemleri
  * (düzenle, sil, sürümler, gammaz, yazarı engelle) burada hiç render edilmez.
  */
-function GuestEntryActions({ entryPublicId, score }: { entryPublicId: number; score: number }) {
+function GuestEntryActions({
+  entryPublicId,
+  score,
+  bookmarkCount,
+}: {
+  entryPublicId: number;
+  score: number;
+  bookmarkCount: number;
+}) {
   const loginHref = `/giris?next=${encodeURIComponent(entryPublicUrl({ publicId: entryPublicId }))}`;
   return (
     <div className="mt-4 border-t pt-4">
@@ -82,6 +129,8 @@ function GuestEntryActions({ entryPublicId, score }: { entryPublicId: number; sc
         >
           <Bookmark aria-hidden="true" size={17} />
         </Link>
+        {/* Misafirde sayı değişmez; duyurulacak bir güncelleme yok, canlı bölge de yok. */}
+        <BookmarkCounter count={bookmarkCount} />
       </div>
     </div>
   );
@@ -99,6 +148,7 @@ function SignedInEntryActions({
   canReport,
   canBlockAuthor,
   initialAuthorBlocked,
+  initialBookmarkCount = 0,
 }: SignedInEntryActionsProps) {
   const router = useRouter();
   const [score, setScore] = useState(initialScore);
@@ -110,6 +160,14 @@ function SignedInEntryActions({
   const [text, setText] = useState(body);
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState<string>();
+  /**
+   * Favori uçları yalnız `{ bookmarked }` döndürüyor, sayı döndürmüyor. Sayacı bu yüzden
+   * sunucudan gelen sayıya kendi oyumuzun farkını ekleyerek türetiyoruz. Fark hesabı
+   * (sayaç üstünde ++/-- yerine) uç noktanın idempotent olmasıyla uyumlu: aynı yönde
+   * ikinci bir istek sayıyı bir kez daha kaydırmaz.
+   */
+  const bookmarkCount =
+    initialBookmarkCount + (bookmarked === initialBookmarked ? 0 : bookmarked ? 1 : -1);
   const run = async (action: () => Promise<void>) => {
     setPending(true);
     setNotice(undefined);
@@ -207,6 +265,7 @@ function SignedInEntryActions({
         >
           <Bookmark aria-hidden="true" size={17} />
         </button>
+        <BookmarkCounter count={bookmarkCount} live />
         {canReport ? <GammazButton targetType="ENTRY" targetId={entryId} compact /> : null}
         {canBlockAuthor ? (
           <button
