@@ -5,10 +5,13 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SiteShell } from "@/components/layout/site-shell";
 
-vi.mock("next/navigation", () => ({ usePathname: () => "/gundem" }));
+const navigation = vi.hoisted(() => ({ pathname: "/gundem" }));
+
+vi.mock("next/navigation", () => ({ usePathname: () => navigation.pathname }));
 
 describe("site shell topic navigation", () => {
   beforeEach(() => {
+    navigation.pathname = "/gundem";
     window.localStorage.clear();
     window.sessionStorage.clear();
     vi.stubGlobal(
@@ -56,15 +59,16 @@ describe("site shell topic navigation", () => {
     vi.unstubAllGlobals();
   });
 
-  it("defaults to the 24-hour recent index and carries that context into topic links", async () => {
+  it("falls back to the 24-hour recent index on routes without an index feed", async () => {
+    navigation.pathname = "/";
     render(
       <SiteShell viewer={null}>
         <main id="ana-icerik">İçerik</main>
       </SiteShell>,
     );
 
-    const navigation = await screen.findByRole("navigation", { name: "Son başlıkları" });
-    const topicLink = within(navigation).getByRole("link", { name: /Son başlığı/u });
+    const topicNavigation = await screen.findByRole("navigation", { name: "Son başlıkları" });
+    const topicLink = within(topicNavigation).getByRole("link", { name: /Son başlığı/u });
     expect(topicLink).toHaveAttribute("href", "/baslik/son-basligi--123?index=recent");
     expect(topicLink).toHaveTextContent("4");
     expect(topicLink).not.toHaveTextContent("31");
@@ -101,30 +105,29 @@ describe("site shell topic navigation", () => {
     ).not.toHaveAttribute("aria-current");
   });
 
-  it("switches the left index without navigating the main content", async () => {
-    const user = userEvent.setup();
+  it("derives the sidebar index from the route instead of an index selector", async () => {
     render(
       <SiteShell viewer={null}>
         <main id="ana-icerik">İçerik</main>
       </SiteShell>,
     );
 
-    const indexControls = screen.getByRole("group", { name: "Başlık indeksi" });
-    await user.click(within(indexControls).getByRole("button", { name: "Gündem" }));
-
     expect(
       await screen.findByRole("navigation", { name: "Gündem başlıkları" }),
     ).toBeInTheDocument();
+    const sidebar = screen.getByRole("complementary", { name: "Başlık indeksi" });
+    expect(within(sidebar).getByRole("heading", { name: "Gündem" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Başlık indeksi" })).not.toBeInTheDocument();
     expect(screen.getByText("İçerik")).toBeInTheDocument();
     expect(fetch).toHaveBeenLastCalledWith(
       "/api/v1/topics?feed=trending&window=24h&page=1&pageSize=20",
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
-    expect(window.localStorage.getItem("ajan_topic_index")).toBe("trending");
+    expect(window.localStorage.getItem("ajan_topic_index")).toBeNull();
   });
 
-  it("restores the saved index and its scroll position", async () => {
-    window.localStorage.setItem("ajan_topic_index", "new");
+  it("keeps the scroll position of the index the route resolves to", async () => {
+    navigation.pathname = "/yeni";
     window.sessionStorage.setItem("ajan_topic_index_scroll:new", "175");
 
     render(
@@ -143,6 +146,7 @@ describe("site shell topic navigation", () => {
   });
 
   it("refreshes from the first page and appends the bounded continuation", async () => {
+    navigation.pathname = "/son";
     const user = userEvent.setup();
     render(
       <SiteShell viewer={null}>
@@ -182,13 +186,14 @@ describe("site shell topic navigation", () => {
     await user.click(trigger);
 
     const dialog = screen.getByRole("dialog", { name: "Başlık menüsü" });
-    const topicLink = await within(dialog).findByRole("link", { name: /Son başlığı/u });
-    expect(topicLink).toHaveAttribute("href", "/baslik/son-basligi--123?index=recent");
+    const topicLink = await within(dialog).findByRole("link", { name: /Gündem başlığı/u });
+    expect(topicLink).toHaveAttribute("href", "/baslik/gündem-basligi--123?index=trending");
+    expect(within(dialog).queryByRole("group", { name: "Başlık indeksi" })).not.toBeInTheDocument();
     topicLink.addEventListener("click", (event) => event.preventDefault(), { once: true });
 
     await user.click(topicLink);
 
     expect(screen.queryByRole("dialog", { name: "Başlık menüsü" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Son başlığı/u })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Gündem başlığı/u })).toBeInTheDocument();
   });
 });

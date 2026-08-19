@@ -40,11 +40,16 @@ const headerNavItems = [
   { href: "/debe", label: "DEBE" },
 ] as const;
 
-const TOPIC_INDEX_STORAGE_KEY = "ajan_topic_index";
 const TOPIC_INDEX_SCROLL_PREFIX = "ajan_topic_index_scroll";
 
-function isTopicIndexFeed(value: string | null): value is TopicIndexFeed {
-  return value === "recent" || value === "trending" || value === "new";
+const pathnameFeeds: Record<string, TopicIndexFeed> = {
+  "/son": "recent",
+  "/gundem": "trending",
+  "/yeni": "new",
+};
+
+function feedFromPathname(pathname: string | null): TopicIndexFeed {
+  return (pathname ? pathnameFeeds[pathname] : undefined) ?? "recent";
 }
 
 function scrollStorageKey(feed: TopicIndexFeed) {
@@ -53,32 +58,6 @@ function scrollStorageKey(feed: TopicIndexFeed) {
 
 function indexLabel(feed: TopicIndexFeed) {
   return topicIndexes.find((item) => item.feed === feed)?.label ?? "Son";
-}
-
-function TopicIndexControls({
-  feed,
-  onChange,
-}: {
-  feed: TopicIndexFeed;
-  onChange: (feed: TopicIndexFeed) => void;
-}) {
-  return (
-    <div className="flex gap-1" role="group" aria-label="Başlık indeksi">
-      {topicIndexes.map((item) => (
-        <button
-          key={item.feed}
-          type="button"
-          aria-pressed={feed === item.feed}
-          onClick={() => onChange(item.feed)}
-          className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${
-            feed === item.feed ? "bg-primary text-on-primary" : "text-muted hover:bg-page hover:text-ink"
-          }`}
-        >
-          {item.label}
-        </button>
-      ))}
-    </div>
-  );
 }
 
 function TopicNavigation({
@@ -173,7 +152,7 @@ export function SiteShell({
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const [indexFeed, setIndexFeed] = useState<TopicIndexFeed>("recent");
+  const indexFeed = feedFromPathname(pathname);
   const [topics, setTopics] = useState<SidebarTopic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -188,14 +167,8 @@ export function SiteShell({
   const loadMoreController = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    const savedFeed = window.localStorage.getItem(TOPIC_INDEX_STORAGE_KEY);
-    if (isTopicIndexFeed(savedFeed)) setIndexFeed(savedFeed);
     setHydrated(true);
   }, []);
-
-  useEffect(() => {
-    if (hydrated) window.localStorage.setItem(TOPIC_INDEX_STORAGE_KEY, indexFeed);
-  }, [hydrated, indexFeed]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -239,11 +212,6 @@ export function SiteShell({
     });
     return () => window.cancelAnimationFrame(frame);
   }, [drawerOpen, indexFeed, loading]);
-
-  const selectIndexFeed = (feed: TopicIndexFeed) => {
-    setIndexFeed(feed);
-    if (window.matchMedia("(max-width: 1023px)").matches) setDrawerOpen(true);
-  };
 
   const refreshIndex = () => {
     window.sessionStorage.setItem(scrollStorageKey(indexFeed), "0");
@@ -405,7 +373,7 @@ export function SiteShell({
           }
           className="sticky top-20 hidden h-[calc(100vh-6rem)] w-[300px] shrink-0 overflow-y-auto rounded-2xl border bg-surface lg:block"
         >
-          <div className="space-y-2 border-b px-4 py-3">
+          <div className="border-b px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-sm font-black">{indexLabel(indexFeed)}</h2>
               <div className="flex items-center gap-2">
@@ -425,7 +393,6 @@ export function SiteShell({
                 </button>
               </div>
             </div>
-            <TopicIndexControls feed={indexFeed} onChange={selectIndexFeed} />
           </div>
           <TopicNavigation
             topics={topics}
@@ -514,9 +481,6 @@ export function SiteShell({
               >
                 <X aria-hidden="true" size={19} />
               </button>
-            </div>
-            <div className="border-b p-3">
-              <TopicIndexControls feed={indexFeed} onChange={selectIndexFeed} />
             </div>
             <TopicNavigation
               topics={topics}

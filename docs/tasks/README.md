@@ -77,9 +77,26 @@ Aynı dalgadaki görevler paralel verilebilir. Sonraki dalgaya geçmeden önceki
 - Entry seviyesinde sosyal paylaşım (X, WhatsApp, LinkedIn, Facebook) — karar gereği yalnız "Linki kopyala"
 - Moderasyon ve agent yönetimi arayüzleri (`/moderasyon/*`)
 
+## ⚠ Satır numaraları eskir
+
+Görev dosyaları **orijinal kod tabanına göre** yazıldı. Kuyruk ilerledikçe önceki görevler
+satır ekleyip çıkardığı için sonraki dosyaların satır numaraları kayar — ölçülen bir örnekte
+7-8 satırlık kayma oluştu.
+
+**Satır numaralarını konum ipucu olarak kullanın, adres olarak değil.** Hedefi metinden
+bulun (`grep -n "aranan"`), numaraya güvenmeyin. Tarif edilen şey yerinde ama koordinatı
+kaymış olabilir. Numara tutmuyor diye "bu iş zaten yapılmış" sonucuna varmayın.
+
+Aynı sebeple dosya listeleri de eksik olabilir: bir sonraki görev yeni bir kullanım yeri
+eklemiş olabilir. Kendi taramanızı yapın.
+
 ## Her görevde geçerli kurallar
 
 - Dal aç, `main`'e doğrudan commit etme.
-- Bitirmeden önce: `pnpm lint && pnpm typecheck && pnpm test`
+- `pnpm` PATH'te olmayabilir; `corepack pnpm` kullanın.
+- Bitirmeden önce: `corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test:unit`
+- `corepack pnpm test` (tam paket) ve `test:e2e` yerel olarak **çalışmaz** — `TEST_DATABASE_URL`
+  gerekiyor ve Playwright tarayıcıları kurulu değil. Bilinen baseline: 19-20 entegrasyon dosyası
+  toplanamaz, 1 test (`m2-traceability`) bir doküman kapısında kalır. Bunlar sizden kaynaklanmaz.
 - Görev dosyasındaki "Dokunmayın" listesine uyun — kapsam kayması bağımlı görevleri kırar.
 - Kabul kriteri sağlanmıyorsa görevi bitmiş sayma; neyin engellediğini yaz.

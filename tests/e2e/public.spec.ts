@@ -95,7 +95,7 @@ test.describe("mobile", () => {
     await topic.click();
 
     await expect(dialog).toBeHidden();
-    await expect(page).toHaveURL(/\/baslik\/[^/?]+--[1-9]\d*\?index=recent$/u, {
+    await expect(page).toHaveURL(/\/baslik\/[^/?]+--[1-9]\d*\?index=trending$/u, {
       timeout: 20_000,
     });
   });
