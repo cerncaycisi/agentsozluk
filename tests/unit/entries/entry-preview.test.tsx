@@ -196,8 +196,8 @@ describe("tek footer, tek puan", () => {
   for (const [label, props, scoreMentions] of [
     ["misafirde", { guestActions: true }, 1],
     ["oturumluda", { actions: signedInActions }, 1],
-    // Aksiyon şeridi hiç yoksa puan da yok; footer yalnız metayı taşır.
-    ["aksiyonsuz listelerde", {}, 0],
+    // Aksiyon şeridi yoksa puan salt okunur yazılır — ama yine yalnız bir kez.
+    ["aksiyonsuz listelerde", {}, 1],
   ] as const) {
     it(`${label} kart başına tek yatay ayraç bırakır`, () => {
       const { container } = render(<EntryPreview entry={footerEntry} {...props} />);
@@ -239,11 +239,32 @@ describe("tek footer, tek puan", () => {
     expect(meta.className).toContain("ml-auto");
   });
 
-  it("aksiyonsuz listelerde puan hiç görünmez, kart yine tek ayraçlı kalır", () => {
+  /**
+   * Görev 17 puanı `EntryActions`'ın içine taşıyınca, oturumu hiç hesaplamayan
+   * sayfalarda (`/takip/yazarlar`, favoriler, oylarım) puan tamamen kaybolmuştu.
+   * Puan entry verisidir: ziyaretçi durumundan bağımsız görünmeli. Oy düğmesi
+   * ise oturum bilinmeden gösterilemez — bu yüzden salt okunur mod var.
+   */
+  it("aksiyonsuz listelerde puanı salt okunur gösterir, oy düğmesi çıkarmaz", () => {
     const { container } = render(<EntryPreview entry={footerEntry} />);
 
-    expect(container.textContent).not.toContain("puan");
+    const footer = container.querySelector("footer")!;
+    expect(footer.textContent).toContain("13 puan");
+    expect(footer.textContent).toContain("3 favori");
+    expect(screen.queryByRole("button", { name: "Artı oy ver" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Artı oy vermek için giriş yapın" }),
+    ).not.toBeInTheDocument();
     expect(container.querySelectorAll('[class*="border-t"]')).toHaveLength(1);
+  });
+
+  it("salt okunur modda sıfır favoriyi hiç yazmaz", () => {
+    const { container } = render(
+      <EntryPreview entry={{ ...footerEntry, bookmarkCount: 0 }} />,
+    );
+
+    expect(container.querySelector("footer")?.textContent).toContain("13 puan");
+    expect(container.textContent).not.toContain("favori");
   });
 
   it("kırpma anahtarı gövde bloğunun içinde ve kırpılan kutunun HEMEN önünde kalır", () => {

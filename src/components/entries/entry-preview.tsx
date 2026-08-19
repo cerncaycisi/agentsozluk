@@ -40,6 +40,39 @@ export function entryBodyNeedsCollapse(body: string): boolean {
 const collapseToggleBaseClass =
   "mt-3 min-h-11 items-center rounded-xl text-sm font-bold text-primary hover:underline peer-focus-visible:outline peer-focus-visible:outline-[3px] peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary";
 
+/** Oturum açmış ACTIVE kullanıcıya gösterilecek gerçek aksiyonların girdisi. */
+export interface EntryPreviewActions {
+  vote: -1 | 1 | null;
+  bookmarked: boolean;
+  canEdit: boolean;
+  canReport: boolean;
+  canBlockAuthor: boolean;
+}
+
+/**
+ * Salt okunur sayaçlar: skor entry verisidir, ziyaretçi durumuna bağlı değil.
+ * Ne `actions` ne `guestActions` verilmediğinde — yani sayfa oturumu hiç
+ * hesaplamadığında — kart yine de puanı göstermeli.
+ *
+ * `EntryActions` render EDİLMEDİĞİ dal bu; dolayısıyla görev 17'nin kaldırdığı
+ * "puan iki kez görünüyor" durumu geri gelmez. Aksiyon şeridindeki sayaçlar
+ * çıplak sayıyı düğmelerin arasına koyuyor; burada düğme olmadığı için sayı
+ * birimiyle birlikte yazılır, yoksa footer'da bağlamsız bir rakam kalırdı.
+ */
+function ReadOnlyEntryCounters({ score, bookmarkCount }: { score: number; bookmarkCount: number }) {
+  return (
+    <span className="flex flex-wrap items-center gap-x-2 font-semibold">
+      <span>{score} puan</span>
+      {bookmarkCount > 0 ? (
+        <>
+          <span aria-hidden="true">·</span>
+          <span>{bookmarkCount} favori</span>
+        </>
+      ) : null}
+    </span>
+  );
+}
+
 export function EntryPreview({
   entry,
   actions,
@@ -57,19 +90,14 @@ export function EntryPreview({
    * görünür ama girişe götüren birer bağlantı olur.
    *
    * Varsayılan `false`, çünkü `actions`'ın yokluğu "misafir" demek DEĞİL — bazı
-   * sayfalar (`/debe`, `/yazar/[username]`, `/takip/yazarlar`, favoriler/oylarım)
-   * oturum durumunu hiç hesaplamadan `actions` geçmiyor. Orada misafir düğmesi
-   * göstermek, giriş yapmış kullanıcıya "giriş yapın" bağlantısı sunardı.
+   * sayfalar (`/takip/yazarlar`, favoriler/oylarım) oturum durumunu hiç
+   * hesaplamadan `actions` geçmiyor. Orada misafir düğmesi göstermek, giriş
+   * yapmış kullanıcıya "giriş yapın" bağlantısı sunardı; onun yerine salt
+   * okunur sayaçlar (`ReadOnlyEntryCounters`) render edilir.
    */
   guestActions?: boolean;
   /** Yalnız oturum açmış ACTIVE kullanıcı için verilir. */
-  actions?: {
-    vote: -1 | 1 | null;
-    bookmarked: boolean;
-    canEdit: boolean;
-    canReport: boolean;
-    canBlockAuthor: boolean;
-  };
+  actions?: EntryPreviewActions;
 }) {
   const edited = entry.edited ?? (entry._count?.revisions ?? 0) > 0;
   // `withEntryCounters`'tan geçen sorgular `bookmarkCount` veriyor; ham `_count`
@@ -100,7 +128,9 @@ export function EntryPreview({
       initialScore={entry.score}
       initialBookmarkCount={bookmarkCount}
     />
-  ) : null;
+  ) : (
+    <ReadOnlyEntryCounters score={entry.score} bookmarkCount={bookmarkCount} />
+  );
   return (
     <article id={`entry-${entry.publicId}`} className="surface-card scroll-mt-28 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">

@@ -16,6 +16,7 @@ import {
   listScoredTopics,
   listTopEntryPerTopic,
   listWindowedChronologicalTopics,
+  type TopTopicEntryRow,
 } from "@/modules/feeds/repository/feeds";
 import { withEntryCounters } from "@/modules/entries/domain/entry";
 import { topicPublicUrl } from "@/lib/routing/public-urls";
@@ -106,6 +107,8 @@ export interface HomeSamplerEntry {
   createdAt: Date;
   edited: boolean;
   bookmarkCount: number;
+  /** `canEdit` hesabı için: SEED entry'leri yazarı da düzenleyemez. */
+  origin: TopTopicEntryRow["origin"];
   topic: { id: string; publicId: number; title: string; slug: string };
   author: { id: string; username: string; displayName: string };
 }
@@ -162,6 +165,7 @@ export async function getHomeSampler(
             createdAt: row.createdAt,
             edited: row.revisionCount > 0,
             bookmarkCount: row.bookmarkCount,
+            origin: row.origin,
             topic: publicTopic,
             author: {
               id: row.authorId,

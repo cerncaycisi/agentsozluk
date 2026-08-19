@@ -13,7 +13,12 @@ import { pageFrom } from "@/lib/http/pagination";
 import { getPublicProfile } from "@/modules/users/application/profiles";
 import { currentPageSession } from "@/lib/auth/server-session";
 import { ProfileActions } from "@/components/users/profile-actions";
-import { getBlockState, getUserFollowState } from "@/modules/interactions/application/interactions";
+import {
+  getBlockState,
+  getUserFollowState,
+  getViewerEntryStates,
+} from "@/modules/interactions/application/interactions";
+import { userHasModerationCapability } from "@/modules/moderation/application/capabilities";
 import { getProfileIndexingDecision } from "@/modules/indexing";
 import {
   buildProfileJsonLd,
@@ -123,21 +128,40 @@ export default async function PublicProfilePage({
     label: string;
     heading: string;
   }>;
-  const references = await getEntryReferenceIndex(
-    getDatabase(),
-    result.entries.map((entry) => entry.body),
-  );
   const session = await currentPageSession();
   const ownProfile = session?.userId === result.profile.id;
-  const [blocked, followed] =
+  /**
+   * Sabit sorgu bütçesi: referans indeksi + (oturumluysa) engel/takip durumu,
+   * sayfadaki TÜM entry id'leri için tek oy/favori sorgusu ve gammaz yetkisi.
+   * Profildeki bütün entry'ler aynı yazara ait olduğu için engel bilgisi tek
+   * `getBlockState` çağrısından geliyor — yazar başına sorgu yok.
+   */
+  const entryIds = result.entries.map((entry) => entry.id);
+  const database = getDatabase();
+  const [references, [blocked, followed], [votes, bookmarks], canGammaz] = await Promise.all([
+    getEntryReferenceIndex(
+      database,
+      result.entries.map((entry) => entry.body),
+    ),
     session && !ownProfile
-      ? await Promise.all([
-          getBlockState(getDatabase(), session.userId, result.profile.id),
-          getUserFollowState(getDatabase(), session.userId, result.profile.id).then(
+      ? Promise.all([
+          getBlockState(database, session.userId, result.profile.id),
+          getUserFollowState(database, session.userId, result.profile.id).then(
             (state) => state.followed,
           ),
         ])
-      : [false, false];
+      : Promise.resolve([false, false] as const),
+    session && entryIds.length > 0
+      ? getViewerEntryStates(database, session.userId, entryIds)
+      : Promise.resolve([[], []] as const),
+    session?.user.status === "ACTIVE"
+      ? userHasModerationCapability(database, session.userId, "GAMMAZ")
+      : Promise.resolve(false),
+  ]);
+  const voteMap = new Map(
+    votes.map((vote) => [vote.entryId, vote.value === 1 ? (1 as const) : (-1 as const)]),
+  );
+  const bookmarkSet = new Set(bookmarks.map((bookmark) => bookmark.entryId));
   return (
     <main id="ana-icerik" className="page-main">
       <JsonLd
@@ -217,6 +241,7 @@ export default async function PublicProfilePage({
                 key={entry.id}
                 entry={{
                   ...entry,
+                  blockedByViewer: blocked,
                   author: {
                     id: result.profile.id,
                     username: result.profile.username,
@@ -225,6 +250,19 @@ export default async function PublicProfilePage({
                 }}
                 references={references}
                 collapsible
+                guestActions={!session}
+                {...(session?.user.status === "ACTIVE"
+                  ? {
+                      actions: {
+                        vote: voteMap.get(entry.id) ?? null,
+                        bookmarked: bookmarkSet.has(entry.id),
+                        canEdit:
+                          ownProfile && entry.status === "ACTIVE" && entry.origin !== "SEED",
+                        canReport: canGammaz && entry.status === "ACTIVE" && !ownProfile,
+                        canBlockAuthor: !ownProfile,
+                      },
+                    }
+                  : {})}
               />
             ))}
             {result.entries.length === 0 ? (

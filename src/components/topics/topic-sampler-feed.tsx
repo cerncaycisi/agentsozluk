@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { EntryPreview } from "@/components/entries/entry-preview";
+import { EntryPreview, type EntryPreviewActions } from "@/components/entries/entry-preview";
 import { topicPublicUrl } from "@/lib/routing/public-urls";
 import type { HomeSamplerBlock } from "@/modules/feeds/application/feeds";
 import type { ReferenceIndex } from "@/modules/entries";
@@ -15,12 +15,25 @@ export function TopicSamplerFeed({
   blocks,
   references,
   guestActions = false,
+  actions,
+  blockedAuthorIds,
   emptyMessage,
 }: {
   blocks: readonly HomeSamplerBlock[];
   references?: ReferenceIndex;
   /** Ziyaretçinin misafir OLDUĞU biliniyorsa `true`. Bkz. `EntryPreview`. */
   guestActions?: boolean;
+  /**
+   * Oturum açmış ACTIVE kullanıcı için entry id'sine göre aksiyonlar. Sayfa
+   * hazırlar (tek sorguda), bileşen yalnız dağıtır — burada veri çekilmez.
+   */
+  actions?: ReadonlyMap<string, EntryPreviewActions>;
+  /**
+   * Ziyaretçinin engellediği yazarlar. `actions` verildiğinde bu ŞART: aksi hâlde
+   * engellenmiş yazarın entry'si maskesiz görünür ve yanında "engelle" düğmesi
+   * çıkar — engel zaten koyulmuşken.
+   */
+  blockedAuthorIds?: ReadonlySet<string>;
   emptyMessage: string;
 }) {
   if (blocks.length === 0) return <p className="surface-card p-6 text-muted">{emptyMessage}</p>;
@@ -28,6 +41,7 @@ export function TopicSamplerFeed({
     <ol className="space-y-8">
       {blocks.map(({ topic, entry }) => {
         const topicUrl = topicPublicUrl(topic);
+        const entryActions = actions?.get(entry.id);
         return (
           <li key={topic.id}>
             <h2 className="mb-2 text-xl font-black tracking-tight">
@@ -36,10 +50,14 @@ export function TopicSamplerFeed({
               </Link>
             </h2>
             <EntryPreview
-              entry={entry}
+              entry={{
+                ...entry,
+                blockedByViewer: blockedAuthorIds?.has(entry.author.id) ?? false,
+              }}
               showTopicTitle={false}
               collapsible
               guestActions={guestActions}
+              {...(entryActions ? { actions: entryActions } : {})}
               {...(references ? { references } : {})}
             />
             <p className="mt-2 text-sm text-muted">

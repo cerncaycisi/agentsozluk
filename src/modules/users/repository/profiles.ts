@@ -55,6 +55,8 @@ export function listPublicProfileEntries(
         publicId: true,
         body: true,
         score: true,
+        status: true,
+        origin: true,
         upvoteCount: true,
         downvoteCount: true,
         createdAt: true,

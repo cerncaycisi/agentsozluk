@@ -26,6 +26,7 @@ function block(index: number, body: string, entryCount = 7): HomeSamplerBlock {
       createdAt: new Date("2026-08-19T09:00:00.000Z"),
       edited: false,
       bookmarkCount: 0,
+      origin: "WEB",
       topic,
       author: {
         id: `00000000-0000-4000-8000-00000000030${index}`,
@@ -87,6 +88,74 @@ describe("TopicSamplerFeed", () => {
       "href",
       "/giris?next=%2Fentry%2F201",
     );
+  });
+
+  /**
+   * Girişli kullanıcı ana sayfada misafirden AZ şey görmemeli. Sayfa aksiyonları
+   * entry id'sine göre hazırlar; bileşen yalnız dağıtır.
+   */
+  it("girişli kullanıcıya gerçek oy düğmelerini verir", () => {
+    render(
+      <TopicSamplerFeed
+        blocks={[block(1, shortBody)]}
+        emptyMessage="boş"
+        actions={
+          new Map([
+            [
+              "00000000-0000-4000-8000-000000000201",
+              {
+                vote: 1 as const,
+                bookmarked: false,
+                canEdit: false,
+                canReport: false,
+                canBlockAuthor: true,
+              },
+            ],
+          ])
+        }
+        blockedAuthorIds={new Set<string>()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Artı oy ver" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(
+      screen.queryByRole("link", { name: "Artı oy vermek için giriş yapın" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("4")).toBeInTheDocument();
+  });
+
+  /**
+   * Tuzak: aksiyonlar verilip engel kümesi verilmezse engellenmiş yazarın entry'si
+   * maskesiz görünür ve yanında "engelle" düğmesi çıkardı — engel zaten koyulmuşken.
+   */
+  it("engellenmiş yazarın gövdesini maskeler ve engeli kaldırmayı sunar", () => {
+    render(
+      <TopicSamplerFeed
+        blocks={[block(1, shortBody)]}
+        emptyMessage="boş"
+        actions={
+          new Map([
+            [
+              "00000000-0000-4000-8000-000000000201",
+              {
+                vote: null,
+                bookmarked: false,
+                canEdit: false,
+                canReport: false,
+                canBlockAuthor: true,
+              },
+            ],
+          ])
+        }
+        blockedAuthorIds={new Set(["00000000-0000-4000-8000-000000000301"])}
+      />,
+    );
+
+    expect(screen.getByText("Bu entry engellediğiniz bir yazar tarafından yazıldı.")).toBeVisible();
+    expect(screen.queryByText(shortBody)).not.toBeInTheDocument();
   });
 
   it("blok yokken boş mesajını gösterir", () => {

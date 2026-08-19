@@ -289,6 +289,25 @@ export function findUserBlock(
   });
 }
 
+/**
+ * Bir akıştaki yazarlardan hangilerinin ziyaretçi tarafından engellendiğini tek
+ * sorguda döndürür. Yazar başına sorgu açılmaz — `entries` reposundaki aynı adlı
+ * yardımcının, `getTopicEntries` dışından da (akış sayfalarından) çağrılabilen
+ * karşılığı budur; `user_blocks` tablosu bu modülün sahipliğinde.
+ */
+export async function listBlockedAuthorIds(
+  transaction: Prisma.TransactionClient,
+  blockerId: string,
+  authorIds: readonly string[],
+): Promise<Set<string>> {
+  if (authorIds.length === 0) return new Set<string>();
+  const blocks = await transaction.userBlock.findMany({
+    where: { blockerId, blockedId: { in: [...authorIds] } },
+    select: { blockedId: true },
+  });
+  return new Set(blocks.map((block) => block.blockedId));
+}
+
 export function listViewerEntryStates(
   transaction: Prisma.TransactionClient,
   userId: string,

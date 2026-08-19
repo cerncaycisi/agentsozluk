@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, type $Enums } from "@prisma/client";
 import {
   publiclyVisibleEntrySql,
   publiclyVisibleEntryWhere,
@@ -430,6 +430,8 @@ export function listDebeEntries(
       publicId: true,
       body: true,
       score: true,
+      status: true,
+      origin: true,
       upvoteCount: true,
       downvoteCount: true,
       createdAt: true,
@@ -476,6 +478,7 @@ export interface TopTopicEntryRow {
   body: string;
   score: number;
   createdAt: Date;
+  origin: $Enums.ContentOrigin;
   authorId: string;
   authorUsername: string;
   authorDisplayName: string;
@@ -507,6 +510,7 @@ export async function listTopEntryPerTopic(
       entry.body,
       entry.score,
       entry."createdAt",
+      entry.origin,
       author.id AS "authorId",
       author.username AS "authorUsername",
       author."displayName" AS "authorDisplayName",

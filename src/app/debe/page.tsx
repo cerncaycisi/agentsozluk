@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EntryPreview } from "@/components/entries/entry-preview";
+import { currentPageSession } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
 import { formatIstanbulDate } from "@/lib/format/time";
 import { entryPublicUrl } from "@/lib/routing/public-urls";
@@ -8,6 +9,11 @@ import { getDebe } from "@/modules/feeds/application/feeds";
 import { previousIstanbulDayWindow } from "@/modules/feeds/domain/time";
 import { publicAlternates } from "@/modules/indexing/domain/public-seo";
 import { getEntryReferenceIndex } from "@/modules/entries";
+import {
+  getBlockedAuthorIds,
+  getViewerEntryStates,
+} from "@/modules/interactions/application/interactions";
+import { userHasModerationCapability } from "@/modules/moderation/application/capabilities";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "DEBE", alternates: publicAlternates("/debe") };
@@ -17,11 +23,33 @@ export default async function DebePage() {
   const now = new Date();
   const debeDay = previousIstanbulDayWindow(now).start;
   const formattedDebeDay = formatIstanbulDate(debeDay);
-  const entries = await getDebe(database, now);
-  const references = await getEntryReferenceIndex(
-    database,
-    entries.map((entry) => entry.body),
+  const [session, entries] = await Promise.all([currentPageSession(), getDebe(database, now)]);
+  /**
+   * Sayfa başına sabit sorgu bütçesi: entry listesi + referans indeksi + (oturumluysa)
+   * oy/favori durumları, engellenen yazarlar ve gammaz yetkisi. Hepsi sayfadaki bütün
+   * entry/yazar id'lerini tek seferde alır; entry başına sorgu açılmaz.
+   */
+  const entryIds = entries.map((entry) => entry.id);
+  const authorIds = [...new Set(entries.map((entry) => entry.author.id))];
+  const [references, [votes, bookmarks], blockedAuthorIds, canGammaz] = await Promise.all([
+    getEntryReferenceIndex(
+      database,
+      entries.map((entry) => entry.body),
+    ),
+    session && entryIds.length > 0
+      ? getViewerEntryStates(database, session.userId, entryIds)
+      : Promise.resolve([[], []] as const),
+    session
+      ? getBlockedAuthorIds(database, session.userId, authorIds)
+      : Promise.resolve(new Set<string>()),
+    session?.user.status === "ACTIVE"
+      ? userHasModerationCapability(database, session.userId, "GAMMAZ")
+      : Promise.resolve(false),
+  ]);
+  const voteMap = new Map(
+    votes.map((vote) => [vote.entryId, vote.value === 1 ? (1 as const) : (-1 as const)]),
   );
+  const bookmarkSet = new Set(bookmarks.map((bookmark) => bookmark.entryId));
   return (
     <main id="ana-icerik" className="page-main">
       <header className="mb-8">
@@ -45,7 +73,29 @@ export default async function DebePage() {
                 #{index + 1}
               </Link>
               <div className="min-w-0 sm:flex-1">
-                <EntryPreview entry={entry} references={references} collapsible />
+                <EntryPreview
+                  entry={{ ...entry, blockedByViewer: blockedAuthorIds.has(entry.author.id) }}
+                  references={references}
+                  collapsible
+                  guestActions={!session}
+                  {...(session?.user.status === "ACTIVE"
+                    ? {
+                        actions: {
+                          vote: voteMap.get(entry.id) ?? null,
+                          bookmarked: bookmarkSet.has(entry.id),
+                          canEdit:
+                            entry.author.id === session.userId &&
+                            entry.status === "ACTIVE" &&
+                            entry.origin !== "SEED",
+                          canReport:
+                            canGammaz &&
+                            entry.status === "ACTIVE" &&
+                            entry.author.id !== session.userId,
+                          canBlockAuthor: entry.author.id !== session.userId,
+                        },
+                      }
+                    : {})}
+                />
               </div>
             </li>
           ))}
