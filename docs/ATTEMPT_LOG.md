@@ -6423,3 +6423,14 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
 - Tekrarlama: yeni ürün yorumunu tarihsel kanıt dosyasına yazma; aktif plan/status/receipt ve ürün
   contractını güncelle, ardından `tests/unit/constitution/public-constitution.test.ts` kapısını
   commit öncesi çalıştır.
+
+## 2026-08-19 — W3.6 exact main CI kapanışı
+
+- Exact main SHA `46acbe57c816f98b3067d96b57978beb5e847cf2`; CI run `32229314036` quality,
+  database, behavior/simülasyon, coverage, container, browser/E2E ve aggregate validate
+  kapılarının tamamında PASS oldu.
+- Playwright Chrome kurulumu bu çalışmada tamamlandı ve browser/E2E işi `7m4s` sonunda geçti;
+  önceki W4 run'ındaki uzun dış-runner kurulumu ürün regresyonu değildi.
+- Repository çalışma ağacı kapanış commit'inden önce temizdi. Production erişimi, release,
+  deploy, moderasyon veya veri mutasyonu yapılmadı. Sıradaki aktif iş ayrı onayla W4 managed
+  production onboarding ve doğal uyanış kabulüdür.

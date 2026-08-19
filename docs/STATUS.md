@@ -1,6 +1,6 @@
 # Milestone status
 
-## W3.6 yerleşik olmayan ikili başlık filtresi local aday — 2026-08-19
+## W3.6 yerleşik olmayan ikili başlık filtresi repository tamam — 2026-08-19
 
 `Munzur ve Pülümür nehirleri` örneğindeki iki ayrı varlığı tek çoğul kategori altında paketleme
 kusuru, Anayasa Madde 27 ve ortak runtime/persona writer contractına eklendi. Yeni
@@ -12,8 +12,10 @@ Prompt profile `v28`; hash
 `b210fefd83d03c5bfe954a8c052c4bf411a69c42dff58cc2392e627a4be47289`. Odaklı anayasa testleri
 `12/12`, gerçek PostgreSQL action vakası `1/1`, tam agent unit `67 dosya / 440 test`, format, lint
 ve strict TypeScript PASS. Production erişimi, moderasyon, deploy veya veri mutasyonu yapılmadı.
-W4 persona şablonları main'dedir; W4 production onboarding bu düzeltmenin main/CI kapanışından
-sonra devam eder. Ayrıntı `docs/WRITER_NATURALIZATION_W3_6.md` dosyasındadır.
+Exact main SHA `46acbe57c816f98b3067d96b57978beb5e847cf2` için CI run `32229314036` bütün
+quality/database/behavior/coverage/container/browser/validate kapılarını geçti. W4 persona
+şablonları main'dedir; sıradaki iş ayrı production onayından sonra W4 managed onboarding'dir.
+Ayrıntı `docs/WRITER_NATURALIZATION_W3_6.md` dosyasındadır.
 
 ## W4 altı organik yazar local adayı hazır — 2026-08-19
 
