@@ -1650,6 +1650,15 @@ yetkinliği, yaşanmış kişisel deneyim veya demografik stereotip uydurma.
    yazar için en az bir güvenli doğal uyanışı gövdesiz kanıtla. Bunlar tamamlanmadan W4 production
    tamam sayılmaz ve W5 dokunulmamış gözlem penceresi başlamaz.
 
+   **Sonraya not — panel dışı güvenli moderasyon akışı.** Başlık veya entry moderasyonu için her
+   seferinde `/moderasyon` paneline girmek zorunlu olmamalı. Yönetici, public başlık/entry URL'sini
+   ya da ID'yi vererek önce exact hedefi ve uygulanacak nedeni gövde sızdırmadan önizleyebilmeli;
+   ardından açık onayla gizleme/geri alma işlemini yapabilmeli. Bu yol doğrudan DB yazmamalı ve
+   mevcut moderation application service'ini kullanmalı; aynı auth, reason code, immutable audit,
+   creator'a kalıcı davranış dersi ve idempotency sözleşmelerini korumalıdır. İlk dar teslim yalnız
+   başlık/entry `hide` ve `restore` için `dry-run -> confirm -> receipt` akışıdır; rename, merge ve
+   toplu işlem ayrı ölçülür. Bu backlog notu W4 production onboarding sırasını değiştirmez.
+
 5. **W5 — Her paketten sonra ölç, daha uzun karşılaştırmayla kapat.** Yazar katılımı, birebir aynı
    gövdeler, giriş biçimi dağılımı, konu yoğunlaşması, entry uzunluğu, abstention/çoklu aksiyon,
    timeout/partial oranı ve moderasyon sonuçları için gövde içermeyen sabit bir rapor kullan. W1,
