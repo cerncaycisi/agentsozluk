@@ -9,6 +9,7 @@ import {
   hasMeaningfulEntryChange,
   isCanonicalSeedEntry,
   withEditedIndicator,
+  withEntryCounters,
 } from "@/modules/entries/domain/entry";
 import {
   findVisibleEntryReferences,
@@ -264,7 +265,7 @@ async function getEntryRecord(
     );
     if (entry.topic.status === "HIDDEN" && !canInspectTopic)
       throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
-    const visibleEntry = withEditedIndicator(entry);
+    const visibleEntry = withEntryCounters(entry);
     if (entry.status === "HIDDEN" && !canInspectEntry(viewer, entry))
       throw new AppError("ENTRY_NOT_FOUND", 404, "Entry bulunamadı.");
     const presentedEntry =
@@ -369,7 +370,7 @@ export async function getTopicEntries(
       : new Set<string>();
     return {
       entries: entries.map((entry) => {
-        const visibleEntry = withEditedIndicator(entry);
+        const visibleEntry = withEntryCounters(entry);
         return entry.status === "DELETED" && !canInspectEntry(input.viewer, entry)
           ? {
               ...visibleEntry,

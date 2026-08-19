@@ -4,6 +4,7 @@ export {
   deleteFollow,
   deleteUserFollow,
   deleteUserFollowByUsername,
+  getBlockedAuthorIds,
   getBlocks,
   getBlockState,
   getBookmarks,

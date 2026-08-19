@@ -8,10 +8,22 @@ describe("server action architecture", () => {
       path.join(process.cwd(), "src", "app", "actions", "topics.ts"),
       "utf8",
     );
-    const page = await readFile(path.join(process.cwd(), "src", "app", "page.tsx"), "utf8");
+    const route = await readFile(
+      path.join(process.cwd(), "src", "app", "rastgele", "route.ts"),
+      "utf8",
+    );
 
     expect(action).toContain('"use server"');
     expect(action).toContain("getRandomTopic(getDatabase())");
-    expect(page).toContain('redirect("/rastgele")');
+    // `/rastgele` bir yol olarak kalıyor; ana sayfa artık ona yönlenmiyor.
+    expect(route).toContain("getRandomTopic(getDatabase())");
+  });
+
+  it("keeps the home page thin and delegates sampling to the feed application service", async () => {
+    const page = await readFile(path.join(process.cwd(), "src", "app", "page.tsx"), "utf8");
+
+    expect(page).toContain("getHomeSampler");
+    expect(page).not.toContain('redirect("/rastgele")');
+    expect(page).not.toMatch(/@\/modules\/[^"']+\/repository\//u);
   });
 });

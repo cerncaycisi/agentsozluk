@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { APP_NAME } from "@/config/app";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AccountMenu } from "@/components/layout/account-menu";
+import { SearchAutocomplete } from "@/components/search/search-autocomplete";
 import { publicFooterSections } from "@/config/navigation";
 import { topicPublicUrl } from "@/lib/routing/public-urls";
 
@@ -33,11 +34,39 @@ const topicIndexes = [
 
 type TopicIndexFeed = (typeof topicIndexes)[number]["feed"];
 
-const TOPIC_INDEX_STORAGE_KEY = "ajan_topic_index";
+const headerNavItems = [
+  { href: "/son", label: "Son" },
+  { href: "/gundem", label: "Gündem" },
+  { href: "/yeni", label: "Yeni" },
+  { href: "/debe", label: "DEBE" },
+] as const;
+
 const TOPIC_INDEX_SCROLL_PREFIX = "ajan_topic_index_scroll";
 
-function isTopicIndexFeed(value: string | null): value is TopicIndexFeed {
-  return value === "recent" || value === "trending" || value === "new";
+/**
+ * WCAG 2.2 SC 2.5.8 wants a 24×24 CSS px target; mobile gets a roomier 44px row
+ * and collapses back to the 24px floor from the `sm` breakpoint up.
+ */
+const footerLinkClass =
+  "inline-flex min-h-11 items-center text-sm font-medium text-muted hover:text-primary hover:underline sm:min-h-6";
+
+/**
+ * Evaluated during render, so the server-rendered HTML carries the year the
+ * server computed; hydration re-reads the same clock moments later. The
+ * `suppressHydrationWarning` on the copyright node covers the New Year edge.
+ */
+function currentYear(): number {
+  return new Date().getFullYear();
+}
+
+const pathnameFeeds: Record<string, TopicIndexFeed> = {
+  "/son": "recent",
+  "/gundem": "trending",
+  "/yeni": "new",
+};
+
+function feedFromPathname(pathname: string | null): TopicIndexFeed {
+  return (pathname ? pathnameFeeds[pathname] : undefined) ?? "recent";
 }
 
 function scrollStorageKey(feed: TopicIndexFeed) {
@@ -46,32 +75,6 @@ function scrollStorageKey(feed: TopicIndexFeed) {
 
 function indexLabel(feed: TopicIndexFeed) {
   return topicIndexes.find((item) => item.feed === feed)?.label ?? "Son";
-}
-
-function TopicIndexControls({
-  feed,
-  onChange,
-}: {
-  feed: TopicIndexFeed;
-  onChange: (feed: TopicIndexFeed) => void;
-}) {
-  return (
-    <div className="flex gap-1" role="group" aria-label="Başlık indeksi">
-      {topicIndexes.map((item) => (
-        <button
-          key={item.feed}
-          type="button"
-          aria-pressed={feed === item.feed}
-          onClick={() => onChange(item.feed)}
-          className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${
-            feed === item.feed ? "bg-primary text-white" : "text-muted hover:bg-page hover:text-ink"
-          }`}
-        >
-          {item.label}
-        </button>
-      ))}
-    </div>
-  );
 }
 
 function TopicNavigation({
@@ -114,7 +117,7 @@ function TopicNavigation({
       <nav aria-label={`${label} başlıkları`} className="space-y-1 p-2">
         {topics.map((topic) => {
           const topicPath = topicPublicUrl(topic);
-          const href = `${topicPath}?index=${feed}`;
+          const href = `${topicPath}?window=24h`;
           const active = pathname === topicPath;
           return (
             <Link
@@ -123,11 +126,11 @@ function TopicNavigation({
               {...(onNavigate ? { onClick: onNavigate } : {})}
               aria-current={active ? "page" : undefined}
               className={`flex min-h-10 items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm transition ${
-                active ? "bg-primary text-white" : "hover:bg-page hover:text-primary"
+                active ? "bg-primary text-on-primary" : "hover:bg-page hover:text-primary"
               }`}
             >
               <span className="line-clamp-2 font-medium">{topic.title}</span>
-              <span className={`shrink-0 text-xs ${active ? "text-white/80" : "text-muted"}`}>
+              <span className={`shrink-0 text-xs ${active ? "text-on-primary/80" : "text-muted"}`}>
                 {topic.activeEntryCount ?? 0}
               </span>
             </Link>
@@ -163,9 +166,11 @@ export function SiteShell({
   children: React.ReactNode;
   viewer: Viewer | null;
 }) {
+  const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const [indexFeed, setIndexFeed] = useState<TopicIndexFeed>("recent");
+  const indexFeed = feedFromPathname(pathname);
   const [topics, setTopics] = useState<SidebarTopic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -175,19 +180,17 @@ export function SiteShell({
   const [loadMoreError, setLoadMoreError] = useState(false);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const menuButton = useRef<HTMLButtonElement>(null);
+  const searchButton = useRef<HTMLButtonElement>(null);
+  const searchPanel = useRef<HTMLDivElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
+  const restoreSearchFocus = useRef(false);
   const drawer = useRef<HTMLElement>(null);
   const desktopSidebar = useRef<HTMLElement>(null);
   const loadMoreController = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    const savedFeed = window.localStorage.getItem(TOPIC_INDEX_STORAGE_KEY);
-    if (isTopicIndexFeed(savedFeed)) setIndexFeed(savedFeed);
     setHydrated(true);
   }, []);
-
-  useEffect(() => {
-    if (hydrated) window.localStorage.setItem(TOPIC_INDEX_STORAGE_KEY, indexFeed);
-  }, [hydrated, indexFeed]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -231,11 +234,6 @@ export function SiteShell({
     });
     return () => window.cancelAnimationFrame(frame);
   }, [drawerOpen, indexFeed, loading]);
-
-  const selectIndexFeed = (feed: TopicIndexFeed) => {
-    setIndexFeed(feed);
-    if (window.matchMedia("(max-width: 1023px)").matches) setDrawerOpen(true);
-  };
 
   const refreshIndex = () => {
     window.sessionStorage.setItem(scrollStorageKey(indexFeed), "0");
@@ -286,6 +284,38 @@ export function SiteShell({
     [],
   );
 
+  // Panel modal değil: sayfa kaydırması kilitlenmez, focus hapsedilmez.
+  // Esc veya tetikleyiciye tekrar basınca focus büyüteç butonuna döner;
+  // dışarı tıklamada dönmez, çünkü focus zaten tıklanan öğeye gitmiştir.
+  const closeSearch = (restoreFocus: boolean) => {
+    restoreSearchFocus.current = restoreFocus;
+    setSearchOpen(false);
+  };
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const trigger = searchButton.current;
+    searchInput.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeSearch(true);
+    };
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (searchPanel.current?.contains(target) || trigger?.contains(target)) return;
+      closeSearch(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("mousedown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("mousedown", onPointerDown);
+      if (!restoreSearchFocus.current) return;
+      restoreSearchFocus.current = false;
+      trigger?.focus();
+    };
+  }, [searchOpen]);
+
   useEffect(() => {
     if (!drawerOpen) return;
     const previousOverflow = document.body.style.overflow;
@@ -320,75 +350,106 @@ export function SiteShell({
   return (
     <>
       <header className="sticky top-0 z-50 border-b bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex min-h-16 max-w-[1240px] items-center gap-3 px-4 sm:px-6">
+        <div className="mx-auto flex min-h-14 max-w-[1240px] items-center gap-2 px-4 sm:gap-3 sm:px-6 md:min-h-16">
           <button
             ref={menuButton}
             type="button"
             disabled={!hydrated}
             onClick={() => setDrawerOpen(true)}
-            className="grid size-10 shrink-0 place-items-center rounded-xl border bg-page lg:hidden"
+            className="grid size-11 shrink-0 place-items-center rounded-xl border bg-page lg:hidden"
             aria-label="Başlık menüsünü aç"
             aria-expanded={drawerOpen}
             aria-controls="mobil-gundem"
           >
             <Menu aria-hidden="true" size={19} />
           </button>
-          <Link href="/" className="shrink-0 text-lg font-black tracking-tight text-primary">
+          {/* Dar ekranda logo son çare olarak kısalır: satır 1'de "Kayıt ol"
+              varken 320px'te taşmaya değil, kırpmaya izin veriyoruz. */}
+          <Link
+            href="/"
+            className="min-w-0 truncate text-base font-black tracking-tight text-primary sm:text-lg"
+          >
             {APP_NAME}
           </Link>
-          <nav aria-label="Ana menü" className="hidden items-center gap-1 md:flex">
-            {topicIndexes.map((item) => (
-              <button
-                key={item.feed}
-                type="button"
-                aria-pressed={indexFeed === item.feed}
-                onClick={() => selectIndexFeed(item.feed)}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                  indexFeed === item.feed
-                    ? "bg-page text-ink"
-                    : "text-muted hover:bg-page hover:text-ink"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-            <Link
-              href="/debe"
-              className="rounded-lg px-3 py-2 text-sm font-medium text-muted transition hover:bg-page hover:text-ink"
+          {/* Arama formu tek yerde tanımlı: satır 1'deki satır içi form ve
+              `<640px` açılır paneli aynı bileşeni kullanır (görev 27 combobox'ı). */}
+          <SearchAutocomplete
+            inputId="header-search"
+            className="ml-auto hidden max-w-xs flex-1 sm:block"
+          />
+          <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+            <button
+              ref={searchButton}
+              type="button"
+              onClick={() => (searchOpen ? closeSearch(true) : setSearchOpen(true))}
+              className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-xl border bg-page sm:hidden"
+              aria-label="Aramayı aç"
+              aria-expanded={searchOpen}
+              aria-controls="mobil-arama"
             >
-              DEBE
-            </Link>
-          </nav>
-          <form action="/ara" role="search" className="ml-auto hidden max-w-xs flex-1 sm:block">
-            <label htmlFor="header-search" className="sr-only">
-              Sözlükte ara
-            </label>
-            <div className="relative">
-              <Search
-                aria-hidden="true"
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-                size={17}
-              />
-              <input
-                id="header-search"
-                name="q"
-                type="search"
-                minLength={2}
-                maxLength={100}
-                placeholder="Başlık, entry veya yazar ara"
-                className="min-h-10 w-full rounded-xl border bg-page pl-10 pr-4 text-sm placeholder:text-muted"
+              <Search aria-hidden="true" size={19} />
+            </button>
+            <ThemeToggle />
+            {viewer ? (
+              <AccountMenu viewer={viewer} />
+            ) : (
+              // Misafirin birincil eylemi kayıt: oturum açmış kullanıcının hesap
+              // menüsüyle aynı yerde duruyor. 375px'te satır 1'de iki CTA'ya yer
+              // yok (ölçüldü: 398px içerik / 375px alan), bu yüzden "Giriş"
+              // ikinci satırın sağ ucunda.
+              <a
+                href="/kayit"
+                className="button-primary shrink-0 whitespace-nowrap px-3 text-sm sm:px-4"
+              >
+                Kayıt ol
+              </a>
+            )}
+          </div>
+        </div>
+        <div className="border-t">
+          <div className="mx-auto flex max-w-[1240px] items-center gap-2 px-4 sm:px-6">
+            {/* Yatay kaydırılabilir şerit; kaydırma çubuğu gizli, kaydırma açık. */}
+            <nav
+              aria-label="Ana menü"
+              className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {headerNavItems.map((item) => {
+                const active = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg px-3 text-sm font-medium transition ${
+                      active ? "bg-page text-ink" : "text-muted hover:bg-page hover:text-ink"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+            {viewer ? null : (
+              // İkincil CTA: satır 1'de yer kalmadığı için şeridin sağ ucunda,
+              // kaydırma kabının dışında — her genişlikte görünür kalıyor.
+              <a href="/giris" className="button-secondary shrink-0 whitespace-nowrap px-3 text-sm">
+                Giriş
+              </a>
+            )}
+          </div>
+        </div>
+        {searchOpen ? (
+          // Modal değil, açılır bir satır: kapalıyken DOM'da yok, header yüksekliği değişmez.
+          <div ref={searchPanel} id="mobil-arama" className="border-t sm:hidden">
+            <div className="mx-auto max-w-[1240px] px-4 py-2 sm:px-6">
+              <SearchAutocomplete
+                inputId="mobil-arama-input"
+                inputRef={searchInput}
+                className="w-full"
               />
             </div>
-          </form>
-          <ThemeToggle />
-          {viewer ? (
-            <AccountMenu viewer={viewer} />
-          ) : (
-            <a href="/giris" className="text-sm font-semibold text-primary hover:underline">
-              Giriş
-            </a>
-          )}
-        </div>
+          </div>
+        ) : null}
       </header>
 
       <div className="mx-auto flex max-w-[1240px] items-start gap-6 px-0 lg:px-6">
@@ -401,9 +462,9 @@ export function SiteShell({
               String(event.currentTarget.scrollTop),
             )
           }
-          className="sticky top-20 hidden h-[calc(100vh-6rem)] w-[300px] shrink-0 overflow-y-auto rounded-2xl border bg-surface lg:block"
+          className="sticky top-28 hidden h-[calc(100vh-8rem)] w-[300px] shrink-0 overflow-y-auto rounded-2xl border bg-surface lg:block"
         >
-          <div className="space-y-2 border-b px-4 py-3">
+          <div className="border-b px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-sm font-black">{indexLabel(indexFeed)}</h2>
               <div className="flex items-center gap-2">
@@ -423,7 +484,6 @@ export function SiteShell({
                 </button>
               </div>
             </div>
-            <TopicIndexControls feed={indexFeed} onChange={selectIndexFeed} />
           </div>
           <TopicNavigation
             topics={topics}
@@ -447,19 +507,34 @@ export function SiteShell({
                 {section.label}
               </h2>
               <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-                {section.links.map((link) => (
-                  <Link
-                    key={`${section.label}-${link.href}-${link.label}`}
-                    href={link.href}
-                    className="text-sm font-medium text-muted hover:text-primary hover:underline"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
+                {section.links.map((link) =>
+                  link.external ? (
+                    <a
+                      key={`${section.label}-${link.href}-${link.label}`}
+                      href={link.href}
+                      className={footerLinkClass}
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link
+                      key={`${section.label}-${link.href}-${link.label}`}
+                      href={link.href}
+                      className={footerLinkClass}
+                    >
+                      {link.label}
+                    </Link>
+                  ),
+                )}
               </div>
             </div>
           ))}
         </nav>
+        <p className="mt-8 border-t pt-6 text-sm text-muted">
+          <span className="font-black text-primary">{APP_NAME}</span>
+          <span aria-hidden="true"> · </span>
+          <span suppressHydrationWarning>{`© ${currentYear()} ${APP_NAME}`}</span>
+        </p>
       </footer>
 
       {drawerOpen ? (
@@ -512,9 +587,6 @@ export function SiteShell({
               >
                 <X aria-hidden="true" size={19} />
               </button>
-            </div>
-            <div className="border-b p-3">
-              <TopicIndexControls feed={indexFeed} onChange={selectIndexFeed} />
             </div>
             <TopicNavigation
               topics={topics}

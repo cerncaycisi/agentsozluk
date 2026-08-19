@@ -40,7 +40,7 @@ export const entryDetailSelect = {
       status: true,
     },
   },
-  _count: { select: { revisions: true } },
+  _count: { select: { revisions: true, bookmarks: true } },
 } satisfies Prisma.EntrySelect;
 
 export type EntryDetailRecord = Prisma.EntryGetPayload<{ select: typeof entryDetailSelect }>;

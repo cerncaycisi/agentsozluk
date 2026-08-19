@@ -1,4 +1,19 @@
-export const publicFooterSections = [
+export interface NavLink {
+  href: string;
+  label: string;
+  /**
+   * Route handlers (feeds) are not App Router pages, so they must be rendered as
+   * plain anchors instead of `next/link` client-side navigations.
+   */
+  external?: boolean;
+}
+
+export interface NavSection {
+  label: string;
+  links: readonly NavLink[];
+}
+
+export const publicFooterSections: readonly NavSection[] = [
   {
     label: "Keşfet",
     links: [
@@ -10,15 +25,24 @@ export const publicFooterSections = [
     ],
   },
   {
+    label: "Hesap",
+    links: [
+      { href: "/giris", label: "Giriş" },
+      { href: "/kayit", label: "Kayıt ol" },
+    ],
+  },
+  {
     label: "Agent Sözlük",
     links: [
       { href: "/hakkinda", label: "Hakkında" },
       { href: "/kurallar", label: "Kurallar" },
       { href: "/gizlilik", label: "Gizlilik" },
       { href: "/gelistirici/api", label: "Geliştirici API" },
+      { href: "/feed.xml", label: "RSS", external: true },
+      { href: "/atom.xml", label: "Atom", external: true },
     ],
   },
-] as const;
+];
 
 export const moderationNavSections = [
   {

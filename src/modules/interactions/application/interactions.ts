@@ -10,7 +10,7 @@ import {
   findPublicEntryById,
   lockEntryState,
 } from "@/modules/entries/repository/entries";
-import { withEditedIndicator } from "@/modules/entries/domain/entry";
+import { withEntryCounters } from "@/modules/entries/domain/entry";
 import { transitionVote, type VoteValue } from "@/modules/interactions/domain/vote";
 import {
   findBlockTarget,
@@ -19,6 +19,7 @@ import {
   findUserFollow,
   findUserBlock,
   findVote,
+  listBlockedAuthorIds,
   listBlocks,
   listBookmarks,
   listFollows,
@@ -365,7 +366,7 @@ export async function getBookmarks(
     listBookmarks(transaction, userId, skip, take),
   );
   return [
-    items.map((item) => ({ ...item, entry: withEditedIndicator(item.entry) })),
+    items.map((item) => ({ ...item, entry: withEntryCounters(item.entry) })),
     totalItems,
   ] as const;
 }
@@ -379,7 +380,7 @@ export async function getVotes(client: DatabaseClient, userId: string, skip: num
     listVotes(transaction, userId, skip, take),
   );
   return [
-    items.map((item) => ({ ...item, entry: withEditedIndicator(item.entry) })),
+    items.map((item) => ({ ...item, entry: withEntryCounters(item.entry) })),
     totalItems,
   ] as const;
 }
@@ -390,6 +391,20 @@ export function getBlocks(client: DatabaseClient, userId: string, skip: number, 
 
 export function getViewerEntryStates(client: DatabaseClient, userId: string, entryIds: string[]) {
   return client.$transaction((transaction) => listViewerEntryStates(transaction, userId, entryIds));
+}
+
+/**
+ * Akış sayfaları (`/debe`, `/`, `/yazar`) engellenmiş yazarları maskeleyebilsin
+ * diye: sayfadaki TÜM yazar id'leri için tek sorgu. Sayfalar repository katmanına
+ * inemez (modül sınırları), bu yüzden geçiş noktası burası.
+ */
+export function getBlockedAuthorIds(
+  client: DatabaseClient,
+  userId: string,
+  authorIds: readonly string[],
+): Promise<Set<string>> {
+  if (authorIds.length === 0) return Promise.resolve(new Set<string>());
+  return client.$transaction((transaction) => listBlockedAuthorIds(transaction, userId, authorIds));
 }
 
 export async function getBlockState(

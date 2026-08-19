@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { EntryPreview } from "@/components/entries/entry-preview";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 describe("entry card acceptance state", () => {
   it("exposes its anchor plus hidden and edited indicators", () => {
@@ -66,5 +69,266 @@ describe("entry card acceptance state", () => {
     );
 
     expect(screen.queryByRole("link", { name: "Tekrarlanmayan başlık" })).not.toBeInTheDocument();
+  });
+});
+
+describe("akış kartlarında görsel kırpma", () => {
+  afterEach(() => cleanup());
+
+  const longBody = "uzun entry gövdesi ".repeat(40).trim();
+  const shortBody = "kısa entry gövdesi.";
+
+  const baseEntry = {
+    id: "00000000-0000-4000-8000-000000000203",
+    publicId: 203,
+    score: 5,
+    createdAt: new Date("2026-01-02T10:00:00.000Z"),
+    topic: {
+      id: "00000000-0000-4000-8000-000000000101",
+      publicId: 101,
+      title: "Akış başlığı",
+      slug: "akis-basligi",
+    },
+    author: {
+      id: "00000000-0000-4000-8000-000000000001",
+      username: "writer",
+      displayName: "Writer",
+    },
+  };
+
+  it("keeps the whole body in the DOM while clipping it with CSS only", () => {
+    expect(longBody.length).toBeGreaterThan(600);
+    const { container } = render(
+      <EntryPreview collapsible entry={{ ...baseEntry, body: longBody }} />,
+    );
+
+    expect(container.textContent).toContain(longBody);
+    const clipped = container.querySelector(".overflow-hidden");
+    expect(clipped).not.toBeNull();
+    expect(clipped?.className).toContain("max-h-[10.5rem]");
+    expect(clipped?.className).toContain("after:from-surface");
+    expect(clipped?.className).toContain("peer-checked:max-h-none");
+    expect(clipped?.className).not.toContain("from-white");
+  });
+
+  it("offers a pure CSS expand toggle bound to the clipped body", () => {
+    const { container } = render(
+      <EntryPreview collapsible entry={{ ...baseEntry, body: longBody }} />,
+    );
+
+    const toggle = container.querySelector("input[type=checkbox]");
+    expect(toggle).toHaveClass("peer");
+    expect(toggle).toHaveAttribute("id", "entry-203-govde-genislet");
+    expect(screen.getByText("Devamını göster")).toHaveAttribute("for", "entry-203-govde-genislet");
+    expect(screen.getByText("Daha az göster")).toHaveAttribute("for", "entry-203-govde-genislet");
+  });
+
+  it("collapses bodies that stay short in characters but run over eight lines", () => {
+    const manyLines = Array.from({ length: 12 }, (_, index) => `satır ${index + 1}`).join("\n");
+    expect(manyLines.length).toBeLessThan(600);
+    const { container } = render(
+      <EntryPreview collapsible entry={{ ...baseEntry, body: manyLines }} />,
+    );
+
+    expect(container.querySelector(".overflow-hidden")).not.toBeNull();
+  });
+
+  it("leaves short bodies untouched, without mask or toggle", () => {
+    const { container } = render(
+      <EntryPreview collapsible entry={{ ...baseEntry, body: shortBody }} />,
+    );
+
+    expect(container.querySelector(".overflow-hidden")).toBeNull();
+    expect(container.querySelector("input[type=checkbox]")).toBeNull();
+    expect(screen.queryByText("Devamını göster")).not.toBeInTheDocument();
+  });
+
+  it("never clips when collapsible is not requested, as on topic pages", () => {
+    const { container } = render(<EntryPreview entry={{ ...baseEntry, body: longBody }} />);
+
+    expect(container.querySelector(".overflow-hidden")).toBeNull();
+    expect(screen.queryByText("Devamını göster")).not.toBeInTheDocument();
+    expect(container.textContent).toContain(longBody);
+  });
+  it("ships the entire body in the server markup, so it survives with JavaScript disabled", () => {
+    const markup = renderToStaticMarkup(
+      <EntryPreview collapsible entry={{ ...baseEntry, body: longBody }} />,
+    );
+
+    expect(markup).toContain(longBody);
+    expect(markup).not.toContain("<script");
+    expect(markup).toContain('type="checkbox"');
+  });
+});
+
+describe("tek footer, tek puan", () => {
+  afterEach(() => cleanup());
+
+  const footerEntry = {
+    id: "00000000-0000-4000-8000-000000000204",
+    publicId: 204,
+    body: "Footer birleşimini gösteren entry metni.",
+    score: 13,
+    edited: true,
+    bookmarkCount: 3,
+    createdAt: new Date("2026-01-02T10:00:00.000Z"),
+    topic: {
+      id: "00000000-0000-4000-8000-000000000101",
+      publicId: 101,
+      title: "Footer başlığı",
+      slug: "footer-basligi",
+    },
+    author: {
+      id: "00000000-0000-4000-8000-000000000001",
+      username: "writer",
+      displayName: "Writer",
+    },
+  };
+
+  const signedInActions = {
+    vote: null,
+    bookmarked: false,
+    canEdit: true,
+    canReport: true,
+    canBlockAuthor: true,
+  } as const;
+
+  for (const [label, props, scoreMentions] of [
+    ["misafirde", { guestActions: true }, 1],
+    ["oturumluda", { actions: signedInActions }, 1],
+    // Aksiyon şeridi yoksa puan salt okunur yazılır — ama yine yalnız bir kez.
+    ["aksiyonsuz listelerde", {}, 1],
+  ] as const) {
+    it(`${label} kart başına tek yatay ayraç bırakır`, () => {
+      const { container } = render(<EntryPreview entry={footerEntry} {...props} />);
+
+      const article = container.querySelector("article")!;
+      const rules = [...article.querySelectorAll('[class*="border-t"]')];
+      expect(rules).toHaveLength(1);
+      expect(rules[0]?.tagName).toBe("FOOTER");
+    });
+
+    it(`${label} puanı kartta en çok bir kez yazar`, () => {
+      const { container } = render(<EntryPreview entry={footerEntry} {...props} />);
+
+      const article = container.querySelector("article")!;
+      expect(article.textContent?.match(/puan/gu) ?? []).toHaveLength(scoreMentions);
+      // Eski "13 puan" metni footer'dan kalktı; tek kaynak aksiyon şeridindeki sayaç.
+      expect(article.textContent).not.toContain("13 puan13");
+    });
+  }
+
+  it("aksiyonları da meta grubunu da aynı footer'ın içinde tutar", () => {
+    const { container } = render(<EntryPreview entry={footerEntry} guestActions />);
+
+    const footer = container.querySelector("footer")!;
+    expect(footer.querySelector('a[aria-label="Artı oy vermek için giriş yapın"]')).not.toBeNull();
+    expect(footer.querySelector('a[href="/entry/204"]')).not.toBeNull();
+    expect(footer.querySelector('a[href="/yazar/writer"]')).not.toBeNull();
+    // Sağ grup 375px'te alt satıra insin diye footer sarıyor; ayraç yine tek.
+    expect(footer.className).toContain("flex-wrap");
+  });
+
+  it("meta grubunu tarih · düzenlendi · yazar sırasında tutar", () => {
+    render(<EntryPreview entry={footerEntry} guestActions />);
+
+    const meta = screen.getByLabelText("Entry düzenlendi").parentElement!;
+    expect(meta.textContent).toBe("2 Oca 2026 13:00· düzenlendi·Writer");
+    expect(meta.className).toContain("ml-auto");
+  });
+
+  /**
+   * Görev 17 puanı `EntryActions`'ın içine taşıyınca, oturumu hiç hesaplamayan
+   * sayfalarda (`/takip/yazarlar`, favoriler, oylarım) puan tamamen kaybolmuştu.
+   * Puan entry verisidir: ziyaretçi durumundan bağımsız görünmeli. Oy düğmesi
+   * ise oturum bilinmeden gösterilemez — bu yüzden salt okunur mod var.
+   */
+  it("aksiyonsuz listelerde puanı salt okunur gösterir, oy düğmesi çıkarmaz", () => {
+    const { container } = render(<EntryPreview entry={footerEntry} />);
+
+    const footer = container.querySelector("footer")!;
+    expect(footer.textContent).toContain("13 puan");
+    expect(footer.textContent).toContain("3 favori");
+    expect(screen.queryByRole("button", { name: "Artı oy ver" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Artı oy vermek için giriş yapın" }),
+    ).not.toBeInTheDocument();
+    expect(container.querySelectorAll('[class*="border-t"]')).toHaveLength(1);
+  });
+
+  it("salt okunur modda sıfır favoriyi hiç yazmaz", () => {
+    const { container } = render(<EntryPreview entry={{ ...footerEntry, bookmarkCount: 0 }} />);
+
+    expect(container.querySelector("footer")?.textContent).toContain("13 puan");
+    expect(container.textContent).not.toContain("favori");
+  });
+
+  it("kırpma anahtarı gövde bloğunun içinde ve kırpılan kutunun HEMEN önünde kalır", () => {
+    // `peer-checked:` kardeş seçicisine dayanıyor: checkbox, kırpılan kutu ve
+    // etiketler aynı ebeveynde ve bu sırada durmazsa kırpma sessizce bozulur.
+    const { container } = render(
+      <EntryPreview
+        collapsible
+        guestActions
+        entry={{ ...footerEntry, body: "uzun entry gövdesi ".repeat(40).trim() }}
+      />,
+    );
+
+    const wrapper = container.querySelector("input[type=checkbox]")!.parentElement!;
+    const children = [...wrapper.children];
+    expect(children[0]).toHaveClass("peer");
+    expect(children[1]?.className).toContain("peer-checked:max-h-none");
+    expect(children[2]).toHaveTextContent("Devamını göster");
+    expect(children[3]).toHaveTextContent("Daha az göster");
+    // Footer bu sarmalayıcının dışında; aksiyon şeridi kırpmaya karışmıyor.
+    expect(wrapper.querySelector("footer")).toBeNull();
+    expect(container.querySelector("footer")).not.toBeNull();
+  });
+});
+
+/**
+ * WCAG 2.2 SC 2.5.8 (Target Size Minimum, 24×24 CSS px). Kart içindeki üç
+ * bağlantı da satır içi metin yüksekliğinde (`text-sm` → 20px, `text-lg` → 21.5px)
+ * kalıyordu; 375px'te canlı ölçümde ihlal veriyorlardı. `inline-flex min-h-6`
+ * dokunma kutusunu 24px'e çıkarır, yazı tipi boyutunu değiştirmez.
+ */
+describe("dokunma hedefi taban yüksekliği", () => {
+  afterEach(() => cleanup());
+
+  it("keeps the topic, date and author links at least 24px tall", () => {
+    render(
+      <EntryPreview
+        entry={{
+          id: "00000000-0000-4000-8000-000000000401",
+          publicId: 401,
+          body: "Dokunma hedefi ölçümü için kısa entry metni.",
+          score: 2,
+          createdAt: new Date("2026-01-02T10:00:00.000Z"),
+          topic: {
+            id: "00000000-0000-4000-8000-000000000101",
+            publicId: 101,
+            title: "Dokunma hedefi başlığı",
+            slug: "dokunma-hedefi-basligi",
+          },
+          author: {
+            id: "00000000-0000-4000-8000-000000000001",
+            username: "writer",
+            displayName: "Writer",
+          },
+        }}
+      />,
+    );
+
+    for (const name of [
+      "Dokunma hedefi başlığı",
+      "2 Oca 2026 13:00 tarihli entry’ye git",
+      "Writer",
+    ]) {
+      expect(screen.getByRole("link", { name })).toHaveClass(
+        "inline-flex",
+        "min-h-6",
+        "items-center",
+      );
+    }
   });
 });

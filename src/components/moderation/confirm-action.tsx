@@ -123,7 +123,11 @@ export function ConfirmAction({
                   reason.trim().length < 10 ||
                   (behaviorFeedback && (!behaviorReasonCode || editorNote.trim().length < 3))
                 }
-                className={destructive ? "button-primary bg-destructive" : "button-primary"}
+                className={
+                  destructive
+                    ? "button-primary bg-destructive text-on-destructive"
+                    : "button-primary"
+                }
               >
                 {pending ? "İşleniyor…" : "Onayla"}
               </button>

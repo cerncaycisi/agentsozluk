@@ -1,26 +1,241 @@
 "use client";
 
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { Bookmark, Pencil, ThumbsDown, ThumbsUp, Trash2, UserX } from "lucide-react";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import {
+  Bookmark,
+  EllipsisVertical,
+  Flag,
+  History,
+  Link2,
+  Pencil,
+  ThumbsDown,
+  ThumbsUp,
+  Trash2,
+  UserX,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
+import { FormTextarea } from "@/components/ui/form-field";
 import { GammazButton } from "@/components/moderation/gammaz-button";
+import { EntryReferenceToolbar } from "@/components/constitution/writing-guidance";
+import { entryPublicUrl } from "@/lib/routing/public-urls";
 
-export function EntryActions({
-  entryId,
-  entryPublicId,
-  body,
-  initialScore,
-  initialVote,
-  initialBookmarked,
-  canEdit,
-  authorId,
-  canReport,
-  canBlockAuthor,
-  initialAuthorBlocked,
+/**
+ * Sunucudaki `entryBodySchema` (`src/modules/entries/validation/schemas.ts`)
+ * gövdeyi 10.000 karakterle sınırlar; düzenleme formu yeni entry formuyla
+ * aynı sınırı kullanır.
+ */
+const ENTRY_BODY_MAX_LENGTH = 10_000;
+
+/**
+ * Misafir bağlantılarının geometrisi, oturumlu görünümdeki oy/favori düğmelerinin
+ * basılı olmayan hâliyle birebir aynı olmalı; kart iki modda da aynı görünür.
+ */
+const guestControlClass = "grid size-10 place-items-center rounded-lg border bg-page";
+
+/** Skor sayacıyla aynı görsel dil; favori sayacı da aynı sütun genişliğini tutar. */
+const counterClass = "min-w-8 text-center text-sm font-bold";
+
+/**
+ * ⋮ menüsündeki öğelerin ortak görünümü. `account-menu.tsx` ile aynı dil;
+ * Radix klavye gezinirken DOM odağını öğeye taşıdığı için `focus:` yeterli.
+ */
+const overflowItemClass =
+  "flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm outline-none hover:bg-page focus:bg-page data-[disabled]:cursor-default data-[disabled]:opacity-50";
+
+/**
+ * Aksiyon şeridinin "diğer" menüsü. Şerit yalnız oy, skor ve favoriyi görünür
+ * tutar; kalabalık yapan ikincil işlemler buraya iner (375px'te şerit tek satırda
+ * kalsın diye). Öğeleri çağıran belirler — yeni bir işlem eklemek için buraya
+ * `DropdownMenu.Item` geçmek yeterli.
+ *
+ * Menü hiç öğesi yokken render EDİLMEMELİ; boş bir ⋮ kullanıcıyı yanıltır.
+ * "Linki kopyala" oturum gerektirmediği için menü artık her iki görünümde de
+ * en az bir öğe taşıyor; yine de doluluk kararı çağırana ait.
+ */
+function EntryOverflowMenu({
+  children,
+  onCloseAutoFocus,
 }: {
+  children: ReactNode;
+  /**
+   * Menü kapanırken Radix odağı ⋮ tetikleyicisine geri döndürür — klavye
+   * kullanıcısı için doğru varsayılan. Kapanışın açtığı bir alan varsa (pano
+   * yedeği kutusu) çağıran bu geri dönüşü `preventDefault()` ile iptal eder.
+   */
+  onCloseAutoFocus?: (event: Event) => void;
+}) {
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <button
+          type="button"
+          aria-label="Diğer entry işlemleri"
+          className="grid size-10 place-items-center rounded-lg border bg-page"
+        >
+          <EllipsisVertical aria-hidden="true" size={17} />
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          sideOffset={8}
+          className="z-[75] min-w-56 rounded-xl border bg-surface p-2 shadow-xl"
+          {...(onCloseAutoFocus ? { onCloseAutoFocus } : {})}
+        >
+          {children}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}
+
+/**
+ * Paylaşılan adres MUTLAK olmalı — göreli bir `/entry/123` panodan başka bir
+ * uygulamaya yapıştırıldığında hiçbir yere gitmez.
+ *
+ * Temel adres tarayıcıdan alınıyor: sunucudaki `APP_URL` istemci paketine
+ * girmiyor (`NEXT_PUBLIC_` önekli değil, `getEnvironment()` yalnız sunucuda
+ * çalışır). Kullanıcı zaten uygulamanın kökeninden geldiği için `window.location.origin`
+ * pratikte `APP_URL` ile aynı değeri verir.
+ */
+function absoluteEntryUrl(entryPublicId: number): string {
+  const path = entryPublicUrl({ publicId: entryPublicId });
+  return typeof window === "undefined" ? path : new URL(path, window.location.origin).toString();
+}
+
+/**
+ * "Linki kopyala" davranışı. Pano API'si yoksa (güvensiz bağlam, eski tarayıcı)
+ * ya da izin reddedilirse tek bir çıkış yolu var: linki seçili bir kutuda göster.
+ * `document.execCommand("copy")` bilerek kullanılmıyor — kullanımdan kalktı.
+ *
+ * Hiçbir dalda sessiz kalınmıyor; başarı da başarısızlık da toast ile duyuruluyor.
+ */
+function useEntryLinkCopy(entryPublicId: number) {
+  const [fallbackUrl, setFallbackUrl] = useState<string>();
+  /**
+   * Yedek kutusu açıldığında odak oraya gitmeli, ⋮ tetikleyicisine değil: seçili
+   * metin ancak odaklı bir kutuda kopyalanabilir. Pano API'si hiç yokken hata
+   * menü kapanmadan önce (mikro görevde) biliniyor, bu yüzden Radix'in odak
+   * iadesini bu bayrakla iptal ediyoruz. İzin reddi geç gelirse iade zaten
+   * olup bitmiş olur; o durumda kutunun kendi `focus()` çağrısı yeterli.
+   */
+  const claimFocusForFallback = useRef(false);
+  const copyLink = async () => {
+    const url = absoluteEntryUrl(entryPublicId);
+    try {
+      const clipboard = typeof navigator === "undefined" ? undefined : navigator.clipboard;
+      if (!clipboard?.writeText) throw new Error("Pano API'si kullanılamıyor.");
+      await clipboard.writeText(url);
+      setFallbackUrl(undefined);
+      toast.success("Link kopyalandı.");
+    } catch {
+      claimFocusForFallback.current = true;
+      setFallbackUrl(url);
+      toast.error("Link panoya kopyalanamadı. Aşağıdaki kutudan elle kopyalayabilirsiniz.");
+    }
+  };
+  const handleCloseAutoFocus = (event: Event) => {
+    if (!claimFocusForFallback.current) return;
+    claimFocusForFallback.current = false;
+    event.preventDefault();
+  };
+  return { copyLink, fallbackUrl, handleCloseAutoFocus };
+}
+
+/** Menüdeki "Linki kopyala" öğesi; misafirde de oturumda da aynı. */
+function CopyEntryLinkItem({ onSelect }: { onSelect: () => void }) {
+  return (
+    <DropdownMenu.Item onSelect={() => onSelect()} className={overflowItemClass}>
+      <Link2 aria-hidden="true" size={16} />
+      Linki kopyala
+    </DropdownMenu.Item>
+  );
+}
+
+/**
+ * Pano yedeği: salt okunur, içeriği seçili bir kutu. Kullanıcı yalnız kopyalama
+ * kısayoluna basar.
+ *
+ * Odak iki kez alınıyor: menü kapanırken Radix odağı ⋮ tetikleyicisine geri
+ * döndürüyor, o geri dönüş bizim ilk odağımızdan sonraya düşebilir. Bir sonraki
+ * karede tekrarlamak yarışı çözüyor; ilk çağrı da kalıyor ki `requestAnimationFrame`
+ * hiç çalışmasa bile metin seçili olsun.
+ */
+function EntryLinkFallback({ entryPublicId, url }: { entryPublicId: number; url: string }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const inputId = `entry-${entryPublicId}-link-kopyala`;
+  useEffect(() => {
+    const node = inputRef.current;
+    if (!node) return;
+    node.focus();
+    node.select();
+    const frame = requestAnimationFrame(() => {
+      node.focus();
+      node.select();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  return (
+    <div className="w-full">
+      <label htmlFor={inputId} className="block text-sm text-muted">
+        Pano kullanılamadı; linki buradan kopyalayın
+      </label>
+      <input
+        ref={inputRef}
+        id={inputId}
+        type="text"
+        readOnly
+        value={url}
+        onFocus={(event) => event.currentTarget.select()}
+        className="mt-1 w-full rounded-lg border bg-page px-3 py-2 text-sm"
+      />
+    </div>
+  );
+}
+
+/**
+ * Skor sayacı. Görünen metin yalnız sayı; birimi ("puan") yalnız ekran okuyucu
+ * duyar — aksi hâlde `aria-live` bölgesi oy değişiminde çıplak bir sayı okurdu.
+ * Kart genelinde puanın TEK kaynağı burası; footer'da ayrıca "N puan" yazmıyor.
+ */
+function ScoreCounter({ score, live = false }: { score: number; live?: boolean }) {
+  return (
+    <span {...(live ? { "aria-live": "polite" as const } : {})} className={counterClass}>
+      {score}
+      <span className="sr-only"> puan</span>
+    </span>
+  );
+}
+
+/**
+ * Sıfır favori gösterilmez — sıfırlar entry'yi olumsuz gösterir ve gürültü yaratır.
+ * Sayaç yine de DOM'da kalır: canlı bölge, değişmeden ÖNCE var olmazsa ekran
+ * okuyucular ilk favorilemeyi (0 → 1) duyurmaz. Bu yüzden gizleme `sr-only` ile
+ * yapılır; `sr-only` mutlak konumlandığı için düğme şeridinde `gap` boşluğu da bırakmaz.
+ */
+function BookmarkCounter({ count, live = false }: { count: number; live?: boolean }) {
+  const visible = count > 0;
+  return (
+    <span
+      {...(live ? { "aria-live": "polite" as const } : {})}
+      className={visible ? counterClass : "sr-only"}
+    >
+      {visible ? (
+        <>
+          {count}
+          <span className="sr-only"> favori</span>
+        </>
+      ) : null}
+    </span>
+  );
+}
+
+interface SignedInEntryActionsProps {
   entryId: string;
   entryPublicId: number;
   body: string;
@@ -32,7 +247,102 @@ export function EntryActions({
   canReport: boolean;
   canBlockAuthor: boolean;
   initialAuthorBlocked: boolean;
+  /** Sunucudan gelen favori sayısı; verilmezse sayaç hiç görünmez. */
+  initialBookmarkCount?: number;
+}
+
+export type EntryActionsProps =
+  | ({ readOnly?: false } & SignedInEntryActionsProps)
+  | {
+      readOnly: true;
+      entryPublicId: number;
+      initialScore: number;
+      initialBookmarkCount?: number;
+    };
+
+export function EntryActions(props: EntryActionsProps) {
+  if (props.readOnly) {
+    return (
+      <GuestEntryActions
+        entryPublicId={props.entryPublicId}
+        score={props.initialScore}
+        bookmarkCount={props.initialBookmarkCount ?? 0}
+      />
+    );
+  }
+  return <SignedInEntryActions {...props} />;
+}
+
+/**
+ * Misafir görünümü: oy ve favori düğmeleri render edilir ama `disabled` değil,
+ * girişe götüren birer bağlantıdırlar. Basılı bir durum olmadığı için `aria-pressed`
+ * kullanılmaz; niyet `aria-label` ile anlatılır. Oturum gerektiren yönetim işlemleri
+ * (düzenle, sil, sürümler, gammaz, yazarı engelle) burada hiç render edilmez.
+ *
+ * ⋮ menüsü misafirde de görünür: "Linki kopyala" oturum istemiyor ve menünün tek
+ * misafir öğesi o.
+ */
+function GuestEntryActions({
+  entryPublicId,
+  score,
+  bookmarkCount,
+}: {
+  entryPublicId: number;
+  score: number;
+  bookmarkCount: number;
 }) {
+  const loginHref = `/giris?next=${encodeURIComponent(entryPublicUrl({ publicId: entryPublicId }))}`;
+  const { copyLink, fallbackUrl, handleCloseAutoFocus } = useEntryLinkCopy(entryPublicId);
+  return (
+    <>
+      <div className="flex items-center gap-2">
+        <Link
+          href={loginHref}
+          aria-label="Artı oy vermek için giriş yapın"
+          className={guestControlClass}
+        >
+          <ThumbsUp aria-hidden="true" size={17} />
+        </Link>
+        <ScoreCounter score={score} />
+        <Link
+          href={loginHref}
+          aria-label="Eksi oy vermek için giriş yapın"
+          className={guestControlClass}
+        >
+          <ThumbsDown aria-hidden="true" size={17} />
+        </Link>
+        <Link
+          href={loginHref}
+          aria-label="Favorilere eklemek için giriş yapın"
+          className={guestControlClass}
+        >
+          <Bookmark aria-hidden="true" size={17} />
+        </Link>
+        {/* Misafirde sayı değişmez; duyurulacak bir güncelleme yok, canlı bölge de yok. */}
+        <BookmarkCounter count={bookmarkCount} />
+        <EntryOverflowMenu onCloseAutoFocus={handleCloseAutoFocus}>
+          <CopyEntryLinkItem onSelect={() => void copyLink()} />
+        </EntryOverflowMenu>
+      </div>
+      {fallbackUrl ? <EntryLinkFallback entryPublicId={entryPublicId} url={fallbackUrl} /> : null}
+    </>
+  );
+}
+
+function SignedInEntryActions({
+  entryId,
+  entryPublicId,
+  body,
+  initialScore,
+  initialVote,
+  initialBookmarked,
+  canEdit,
+  authorId,
+  canReport,
+  canBlockAuthor,
+  initialAuthorBlocked,
+  initialBookmarkCount = 0,
+}: SignedInEntryActionsProps) {
   const router = useRouter();
   const [score, setScore] = useState(initialScore);
   const [vote, setVote] = useState(initialVote);
@@ -40,9 +350,18 @@ export function EntryActions({
   const [authorBlocked, setAuthorBlocked] = useState(initialAuthorBlocked);
   const [editing, setEditing] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [gammazOpen, setGammazOpen] = useState(false);
   const [text, setText] = useState(body);
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState<string>();
+  /**
+   * Favori uçları yalnız `{ bookmarked }` döndürüyor, sayı döndürmüyor. Sayacı bu yüzden
+   * sunucudan gelen sayıya kendi oyumuzun farkını ekleyerek türetiyoruz. Fark hesabı
+   * (sayaç üstünde ++/-- yerine) uç noktanın idempotent olmasıyla uyumlu: aynı yönde
+   * ikinci bir istek sayıyı bir kez daha kaydırmaz.
+   */
+  const bookmarkCount =
+    initialBookmarkCount + (bookmarked === initialBookmarked ? 0 : bookmarked ? 1 : -1);
   const run = async (action: () => Promise<void>) => {
     setPending(true);
     setNotice(undefined);
@@ -104,29 +423,33 @@ export function EntryActions({
       setNotice(result.blocked ? "Yazar engellendi." : "Yazarın engeli kaldırıldı.");
       router.refresh();
     });
+  const { copyLink, fallbackUrl, handleCloseAutoFocus } = useEntryLinkCopy(entryPublicId);
+  /**
+   * "Linki kopyala" her zaman var, dolayısıyla ⋮ artık koşulsuz render ediliyor.
+   * Ayraç yalnız yetkiye bağlı öğeler varken anlamlı.
+   */
+  const hasPrivilegedItems = canEdit || canReport || canBlockAuthor;
   return (
-    <div className="mt-4 border-t pt-4">
-      <div className="flex flex-wrap items-center gap-2">
+    <>
+      <div className="flex items-center gap-2">
         <button
           type="button"
           disabled={pending}
           onClick={() => void changeVote(1)}
           aria-label="Artı oy ver"
           aria-pressed={vote === 1}
-          className={`grid size-10 place-items-center rounded-lg border ${vote === 1 ? "bg-primary text-white" : "bg-page"}`}
+          className={`grid size-10 place-items-center rounded-lg border ${vote === 1 ? "bg-primary text-on-primary" : "bg-page"}`}
         >
           <ThumbsUp aria-hidden="true" size={17} />
         </button>
-        <span aria-live="polite" className="min-w-8 text-center text-sm font-bold">
-          {score}
-        </span>
+        <ScoreCounter score={score} live />
         <button
           type="button"
           disabled={pending}
           onClick={() => void changeVote(-1)}
           aria-label="Eksi oy ver"
           aria-pressed={vote === -1}
-          className={`grid size-10 place-items-center rounded-lg border ${vote === -1 ? "bg-accent text-white" : "bg-page"}`}
+          className={`grid size-10 place-items-center rounded-lg border ${vote === -1 ? "bg-accent text-on-accent" : "bg-page"}`}
         >
           <ThumbsDown aria-hidden="true" size={17} />
         </button>
@@ -136,95 +459,119 @@ export function EntryActions({
           onClick={() => void toggleBookmark()}
           aria-label={bookmarked ? "Favorilerden çıkar" : "Favorilere ekle"}
           aria-pressed={bookmarked}
-          className={`grid size-10 place-items-center rounded-lg border ${bookmarked ? "bg-primary text-white" : "bg-page"}`}
+          className={`grid size-10 place-items-center rounded-lg border ${bookmarked ? "bg-primary text-on-primary" : "bg-page"}`}
         >
           <Bookmark aria-hidden="true" size={17} />
         </button>
-        {canReport ? <GammazButton targetType="ENTRY" targetId={entryId} compact /> : null}
-        {canBlockAuthor ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => void toggleAuthorBlock()}
-            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${authorBlocked ? "border-destructive text-destructive" : "bg-page"}`}
-            aria-pressed={authorBlocked}
-          >
-            <UserX aria-hidden="true" size={17} />
-            {authorBlocked ? "Yazarın engelini kaldır" : "Yazarı engelle"}
-          </button>
-        ) : null}
-        {canEdit ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => setEditing((value) => !value)}
-            className="grid size-10 place-items-center rounded-lg border bg-page"
-            aria-label="Entry’yi düzenle"
-          >
-            <Pencil aria-hidden="true" size={17} />
-          </button>
-        ) : null}
-        {canEdit ? (
-          <Link
-            href={`/entry/${entryPublicId}/revizyonlar`}
-            className="rounded-lg border bg-page px-3 py-2 text-sm font-semibold"
-          >
-            Sürümler
-          </Link>
-        ) : null}
-        {canEdit ? (
-          <AlertDialog.Root open={deleteOpen} onOpenChange={setDeleteOpen}>
-            <AlertDialog.Trigger asChild>
-              <button
-                type="button"
+        <BookmarkCounter count={bookmarkCount} live />
+        <EntryOverflowMenu onCloseAutoFocus={handleCloseAutoFocus}>
+          <CopyEntryLinkItem onSelect={() => void copyLink()} />
+          {hasPrivilegedItems ? <DropdownMenu.Separator className="my-1 border-t" /> : null}
+          {canEdit ? (
+            <DropdownMenu.Item
+              disabled={pending}
+              onSelect={() => setEditing((value) => !value)}
+              className={overflowItemClass}
+            >
+              <Pencil aria-hidden="true" size={16} />
+              {editing ? "Düzenlemeyi kapat" : "Entry’yi düzenle"}
+            </DropdownMenu.Item>
+          ) : null}
+          {canEdit ? (
+            <DropdownMenu.Item asChild>
+              <Link href={`/entry/${entryPublicId}/revizyonlar`} className={overflowItemClass}>
+                <History aria-hidden="true" size={16} />
+                Sürümler
+              </Link>
+            </DropdownMenu.Item>
+          ) : null}
+          {canReport ? (
+            <DropdownMenu.Item onSelect={() => setGammazOpen(true)} className={overflowItemClass}>
+              <Flag aria-hidden="true" size={16} />
+              Entry’yi gammazla
+            </DropdownMenu.Item>
+          ) : null}
+          {canBlockAuthor ? (
+            <DropdownMenu.Item
+              disabled={pending}
+              onSelect={() => void toggleAuthorBlock()}
+              className={overflowItemClass}
+            >
+              <UserX aria-hidden="true" size={16} />
+              {authorBlocked ? "Yazarın engelini kaldır" : "Yazarı engelle"}
+            </DropdownMenu.Item>
+          ) : null}
+          {canEdit ? (
+            <>
+              <DropdownMenu.Separator className="my-1 border-t" />
+              <DropdownMenu.Item
                 disabled={pending}
-                className="grid size-10 place-items-center rounded-lg border border-destructive text-destructive"
-                aria-label="Entry’yi sil"
+                onSelect={() => setDeleteOpen(true)}
+                className={`${overflowItemClass} text-destructive`}
               >
-                <Trash2 aria-hidden="true" size={17} />
-              </button>
-            </AlertDialog.Trigger>
-            <AlertDialog.Portal>
-              <AlertDialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
-              <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[81] w-[min(92vw,480px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-surface p-6">
-                <AlertDialog.Title className="text-xl font-black">
-                  Entry silinsin mi?
-                </AlertDialog.Title>
-                <AlertDialog.Description className="mt-3 text-muted">
-                  Entry herkese açık görünümden kaldırılıp çöp kutunuza taşınır. Orada düzeltip
-                  canlandırma isteyebilirsiniz.
-                </AlertDialog.Description>
-                <div className="mt-6 flex justify-end gap-3">
-                  <AlertDialog.Cancel asChild>
-                    <button className="button-secondary">Vazgeç</button>
-                  </AlertDialog.Cancel>
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => void remove()}
-                    className="button-primary bg-destructive"
-                  >
-                    {pending ? "Siliniyor…" : "Entry’yi sil"}
-                  </button>
-                </div>
-              </AlertDialog.Content>
-            </AlertDialog.Portal>
-          </AlertDialog.Root>
-        ) : null}
+                <Trash2 aria-hidden="true" size={16} />
+                Entry’yi sil
+              </DropdownMenu.Item>
+            </>
+          ) : null}
+        </EntryOverflowMenu>
       </div>
+      {fallbackUrl ? <EntryLinkFallback entryPublicId={entryPublicId} url={fallbackUrl} /> : null}
+      {/*
+        Gammaz kipi menüden açılıyor: tetikleyici düğme yok, açıklık dışarıdan
+        kontrol ediliyor. Kip kapalıyken bileşen hiç DOM üretmediği için sarmalayıcı
+        `:empty` kalır ve gizlenir; yalnız sonuç bildirimi geldiğinde satır açılır.
+      */}
+      {canReport ? (
+        <div className="w-full empty:hidden">
+          <GammazButton
+            targetType="ENTRY"
+            targetId={entryId}
+            open={gammazOpen}
+            onOpenChange={setGammazOpen}
+          />
+        </div>
+      ) : null}
+      {canEdit ? (
+        <AlertDialog.Root open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <AlertDialog.Portal>
+            <AlertDialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
+            <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[81] w-[min(92vw,480px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-surface p-6">
+              <AlertDialog.Title className="text-xl font-black">
+                Entry silinsin mi?
+              </AlertDialog.Title>
+              <AlertDialog.Description className="mt-3 text-muted">
+                Entry herkese açık görünümden kaldırılıp çöp kutunuza taşınır. Orada düzeltip
+                canlandırma isteyebilirsiniz.
+              </AlertDialog.Description>
+              <div className="mt-6 flex justify-end gap-3">
+                <AlertDialog.Cancel asChild>
+                  <button className="button-secondary">Vazgeç</button>
+                </AlertDialog.Cancel>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => void remove()}
+                  className="button-primary bg-destructive text-on-destructive"
+                >
+                  {pending ? "Siliniyor…" : "Entry’yi sil"}
+                </button>
+              </div>
+            </AlertDialog.Content>
+          </AlertDialog.Portal>
+        </AlertDialog.Root>
+      ) : null}
       {editing ? (
-        <div className="mt-4">
-          <label htmlFor={`edit-${entryId}`} className="mb-2 block text-sm font-bold">
-            Entry metni
-          </label>
-          <textarea
+        <div className="w-full">
+          <FormTextarea
             id={`edit-${entryId}`}
+            label="Entry metni"
+            toolbar={(api) => <EntryReferenceToolbar api={api} textareaId={`edit-${entryId}`} />}
             value={text}
             onChange={(event) => setText(event.target.value)}
             minLength={10}
-            maxLength={10000}
+            maxLength={ENTRY_BODY_MAX_LENGTH}
             disabled={pending}
-            className="min-h-36 w-full rounded-xl border bg-page p-3"
           />
           <div className="mt-3 flex gap-3">
             <button
@@ -242,10 +589,10 @@ export function EntryActions({
         </div>
       ) : null}
       {notice ? (
-        <p role="status" className="mt-3 text-sm text-muted">
+        <p role="status" className="w-full text-sm text-muted">
           {notice}
         </p>
       ) : null}
-    </div>
+    </>
   );
 }

@@ -44,7 +44,7 @@ function databaseReturning(status: "HIDDEN" | "DELETED"): DatabaseClient {
       displayName: "Entry Author",
       status: "ACTIVE",
     },
-    _count: { revisions: 0 },
+    _count: { revisions: 0, bookmarks: 0 },
   };
   const transaction = { entry: { findFirst: async () => entry } };
   return {

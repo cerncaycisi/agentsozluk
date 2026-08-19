@@ -101,7 +101,7 @@ export function RegisterForm() {
         <label className="flex items-start gap-3 text-sm leading-6">
           <input
             type="checkbox"
-            className="mt-1 size-4 accent-primary"
+            className="size-6 shrink-0 accent-primary"
             disabled={isSubmitting}
             {...register("termsAccepted")}
           />

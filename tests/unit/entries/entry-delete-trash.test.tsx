@@ -4,6 +4,7 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EntryActions } from "@/components/entries/entry-actions";
+import { selectEntryOverflowItem } from "./overflow-menu";
 
 const apiRequest = vi.hoisted(() => vi.fn());
 const refresh = vi.hoisted(() => vi.fn());
@@ -46,8 +47,9 @@ describe("entry deletion to trash", () => {
       />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Entry’yi sil" }));
-    const dialog = screen.getByRole("alertdialog");
+    // Silme artık ⋮ menüsünde; onay kipi menüden açılıyor.
+    selectEntryOverflowItem("Entry’yi sil");
+    const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveTextContent("çöp kutunuza taşınır");
     await userEvent.click(within(dialog).getByRole("button", { name: "Entry’yi sil" }));
 

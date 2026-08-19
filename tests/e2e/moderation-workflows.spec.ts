@@ -1,4 +1,14 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Locator, type Page } from "@playwright/test";
+
+/**
+ * Entry kartındaki ikincil işlemler (düzenle, sürümler, gammaz, yazarı engelle,
+ * sil) ⋮ menüsünde duruyor. Menü içeriği `body`'ye portal edildiği için öğeler
+ * kartın locator'ında değil, sayfa düzeyinde aranır.
+ */
+async function selectEntryAction(page: Page, article: Locator, name: string): Promise<void> {
+  await article.getByRole("button", { name: "Diğer entry işlemleri" }).click();
+  await page.getByRole("menuitem", { name }).click();
+}
 
 const demoPassword = process.env.DEMO_PASSWORD ?? "change-this-demo-password";
 let ipCounter = 20;
@@ -187,7 +197,11 @@ test.describe("@desktop moderation and admin workflows", () => {
     const entryPublicId = target.entryUrl.split("/").at(-1);
     if (!entryPublicId) throw new Error("E2E_ENTRY_PUBLIC_ID_MISSING");
 
-    await authorPage.getByRole("button", { name: "Entry’yi sil" }).click();
+    await selectEntryAction(
+      authorPage,
+      authorPage.locator("article").filter({ hasText: originalBody }).first(),
+      "Entry’yi sil",
+    );
     const deleteDialog = authorPage.getByRole("alertdialog");
     await expect(deleteDialog).toContainText("çöp kutunuza taşınır");
     await deleteDialog.getByRole("button", { name: "Entry’yi sil" }).click();
@@ -275,7 +289,7 @@ test.describe("@desktop moderation and admin workflows", () => {
     await ensureModerationCapability(reporterPage, "FORMAT_MODERATOR");
     await reporterPage.goto(target.topicUrl);
     const targetArticle = reporterPage.locator("article").filter({ hasText: body });
-    await targetArticle.getByRole("button", { name: "Entry’yi gammazla" }).click();
+    await selectEntryAction(reporterPage, targetArticle, "Entry’yi gammazla");
     const gammazDialog = reporterPage.getByRole("alertdialog");
     await gammazDialog
       .getByLabel("Somut açıklama")
