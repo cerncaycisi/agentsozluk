@@ -17,7 +17,9 @@ gösteriyor. DEBE bir **sıralama** — 1'den N'e. Hangi güne ait olduğu da ya
 ## Yapılacak
 
 1. `<div className="space-y-4">` → `<ol className="space-y-4">`, her entry bir `<li>`.
-2. Her karta sıra numarası rozeti: `#1`, `#2`, … Kartın sol üstünde,
+2. Her karta sıra numarası rozeti: `#1`, `#2`, … **375px'te rozeti kartın soluna koymayın** —
+   sol oluk kart genişliğini ~40px daraltır ve entry metin sütunu zaten dar (301px, ~38 karakter/satır).
+   Mobilde kartın üstünde, `sm:` ve üzerinde solda dursun. Renk:
    `text-accent-contrast text-sm font-bold` (bu sınıf projede kontrast için özel olarak var).
 3. Başlığa günü ekleyin: `getDebe`'nin hangi güne baktığını bulun ve `formatIstanbulDate` ile
    yazdırın — "Dünün en beğenilen entry'leri" başlığının altına "18 Ağustos 2026" gibi.
