@@ -372,7 +372,7 @@ export function SiteShell({
   return (
     <>
       <header className="sticky top-0 z-50 border-b bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex min-h-14 max-w-[1240px] items-center gap-3 px-4 sm:px-6 md:min-h-16">
+        <div className="mx-auto flex min-h-14 max-w-[1240px] items-center gap-2 px-4 sm:gap-3 sm:px-6 md:min-h-16">
           <button
             ref={menuButton}
             type="button"
@@ -385,14 +385,19 @@ export function SiteShell({
           >
             <Menu aria-hidden="true" size={19} />
           </button>
-          <Link href="/" className="shrink-0 text-lg font-black tracking-tight text-primary">
+          {/* Dar ekranda logo son çare olarak kısalır: satır 1'de "Kayıt ol"
+              varken 320px'te taşmaya değil, kırpmaya izin veriyoruz. */}
+          <Link
+            href="/"
+            className="min-w-0 truncate text-base font-black tracking-tight text-primary sm:text-lg"
+          >
             {APP_NAME}
           </Link>
           <HeaderSearchForm
             inputId="header-search"
             className="ml-auto hidden max-w-xs flex-1 sm:block"
           />
-          <div className="ml-auto flex shrink-0 items-center gap-3">
+          <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
             <button
               ref={searchButton}
               type="button"
@@ -408,34 +413,50 @@ export function SiteShell({
             {viewer ? (
               <AccountMenu viewer={viewer} />
             ) : (
-              <a href="/giris" className="text-sm font-semibold text-primary hover:underline">
-                Giriş
+              // Misafirin birincil eylemi kayıt: oturum açmış kullanıcının hesap
+              // menüsüyle aynı yerde duruyor. 375px'te satır 1'de iki CTA'ya yer
+              // yok (ölçüldü: 398px içerik / 375px alan), bu yüzden "Giriş"
+              // ikinci satırın sağ ucunda.
+              <a
+                href="/kayit"
+                className="button-primary shrink-0 whitespace-nowrap px-3 text-sm sm:px-4"
+              >
+                Kayıt ol
               </a>
             )}
           </div>
         </div>
         <div className="border-t">
-          {/* Yatay kaydırılabilir şerit; kaydırma çubuğu gizli, kaydırma açık. */}
-          <nav
-            aria-label="Ana menü"
-            className="mx-auto flex max-w-[1240px] items-center gap-1 overflow-x-auto px-4 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden"
-          >
-            {headerNavItems.map((item) => {
-              const active = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={`flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg px-3 text-sm font-medium transition ${
-                    active ? "bg-page text-ink" : "text-muted hover:bg-page hover:text-ink"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+          <div className="mx-auto flex max-w-[1240px] items-center gap-2 px-4 sm:px-6">
+            {/* Yatay kaydırılabilir şerit; kaydırma çubuğu gizli, kaydırma açık. */}
+            <nav
+              aria-label="Ana menü"
+              className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {headerNavItems.map((item) => {
+                const active = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg px-3 text-sm font-medium transition ${
+                      active ? "bg-page text-ink" : "text-muted hover:bg-page hover:text-ink"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+            {viewer ? null : (
+              // İkincil CTA: satır 1'de yer kalmadığı için şeridin sağ ucunda,
+              // kaydırma kabının dışında — her genişlikte görünür kalıyor.
+              <a href="/giris" className="button-secondary shrink-0 whitespace-nowrap px-3 text-sm">
+                Giriş
+              </a>
+            )}
+          </div>
         </div>
         {searchOpen ? (
           // Modal değil, açılır bir satır: kapalıyken DOM'da yok, header yüksekliği değişmez.

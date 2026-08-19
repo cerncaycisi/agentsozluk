@@ -347,3 +347,82 @@ describe("header search on narrow viewports", () => {
     expect(document.getElementById("header-search")).toBe(inlineInput);
   });
 });
+
+describe("header account call to action", () => {
+  beforeEach(() => {
+    navigation.pathname = "/gundem";
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ data: [], meta: { hasNextPage: false, totalItems: 0 } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  const renderShell = (viewer: Parameters<typeof SiteShell>[0]["viewer"]) =>
+    render(
+      <SiteShell viewer={viewer}>
+        <main id="ana-icerik">İçerik</main>
+      </SiteShell>,
+    );
+
+  const header = () => document.querySelector("header") as HTMLElement;
+
+  it("gives a guest one-tap routes to both /kayit and /giris", () => {
+    renderShell(null);
+
+    const signUp = within(header()).getByRole("link", { name: "Kayıt ol" });
+    const signIn = within(header()).getByRole("link", { name: "Giriş" });
+
+    expect(signUp).toHaveAttribute("href", "/kayit");
+    expect(signIn).toHaveAttribute("href", "/giris");
+    // `.button-primary` / `.button-secondary` min-h-11 taşıyor: iki CTA da ≥44px.
+    expect(signUp).toHaveClass("button-primary");
+    expect(signIn).toHaveClass("button-secondary");
+  });
+
+  it("puts the primary call to action where the account menu sits and keeps the strip intact", () => {
+    renderShell(null);
+
+    // Satır 1: hesap menüsüyle aynı yer (tema düğmesinin yanı).
+    const signUp = within(header()).getByRole("link", { name: "Kayıt ol" });
+    const row1 = header().firstElementChild as HTMLElement;
+    expect(row1.contains(signUp)).toBe(true);
+
+    // 375px'te satır 1'de iki CTA'ya yer yok: "Giriş" ikinci satırda,
+    // ama kaydırılan şeridin dışında, yani şerit hâlâ dört öğe.
+    const strip = screen.getByRole("navigation", { name: "Ana menü" });
+    const signIn = within(header()).getByRole("link", { name: "Giriş" });
+    expect(strip.contains(signIn)).toBe(false);
+    expect(within(strip).getAllByRole("link")).toHaveLength(4);
+    expect(strip.parentElement?.contains(signIn)).toBe(true);
+    expect(signIn).toHaveClass("shrink-0");
+  });
+
+  it("changes nothing for a signed-in reader", () => {
+    renderShell({ username: "deneme", displayName: "Deneme Yazar", role: "USER" });
+
+    expect(screen.getByRole("button", { name: "Hesap menüsünü aç" })).toBeInTheDocument();
+    expect(within(header()).queryByRole("link", { name: "Kayıt ol" })).toBeNull();
+    expect(within(header()).queryByRole("link", { name: "Giriş" })).toBeNull();
+    expect(
+      within(screen.getByRole("navigation", { name: "Ana menü" })).getAllByRole("link"),
+    ).toHaveLength(4);
+  });
+});

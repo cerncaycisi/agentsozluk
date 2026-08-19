@@ -251,3 +251,73 @@ test.describe("wide header search", () => {
     await expect(page).toHaveURL(/\/ara\?q=teknoloji$/u, { timeout: 20_000 });
   });
 });
+
+test.describe("guest header call to action", () => {
+  const ctaCheck = async (page: Page) => {
+    const header = page.locator("body > header").first();
+    const signUp = header.getByRole("link", { name: "Kayıt ol", exact: true });
+    const signIn = header.getByRole("link", { name: "Giriş", exact: true });
+
+    await expect(signUp).toBeVisible();
+    await expect(signIn).toBeVisible();
+    await expect(signUp).toHaveAttribute("href", "/kayit");
+    await expect(signIn).toHaveAttribute("href", "/giris");
+
+    // Dokunma hedefi: iki CTA da en az 44px yüksekliğinde.
+    for (const [name, cta] of [
+      ["Kayıt ol", signUp],
+      ["Giriş", signIn],
+    ] as const) {
+      const box = await cta.boundingBox();
+      expect(box, name).not.toBeNull();
+      expect(box?.height ?? 0, name).toBeGreaterThanOrEqual(44);
+    }
+
+    // İkinci CTA header bütçesini büyütmüyor ve gövde yatay kaymıyor.
+    expect(
+      await header.evaluate((element) => element.getBoundingClientRect().height),
+    ).toBeLessThanOrEqual(110);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      ),
+    ).toBeLessThanOrEqual(0);
+  };
+
+  test.describe("narrow", () => {
+    test.use({ viewport: { width: 375, height: 812 } });
+
+    test("keeps both routes one tap away without overflowing row one", async ({ page }) => {
+      await page.goto("/gundem");
+      await ctaCheck(page);
+
+      // Şerit CTA'ya rağmen dört öğesini de gösteriyor.
+      const strip = page.getByRole("navigation", { name: "Ana menü" });
+      await expect(strip.getByRole("link")).toHaveCount(4);
+
+      await page
+        .locator("body > header")
+        .first()
+        .getByRole("link", { name: "Kayıt ol", exact: true })
+        .click();
+      await expect(page).toHaveURL(/\/kayit$/u, { timeout: 20_000 });
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    });
+  });
+
+  test.describe("wide", () => {
+    test.use({ viewport: { width: 1280, height: 900 } });
+
+    test("shows both calls to action inside the 110px header", async ({ page }) => {
+      await page.goto("/son");
+      await ctaCheck(page);
+
+      await page
+        .locator("body > header")
+        .first()
+        .getByRole("link", { name: "Giriş", exact: true })
+        .click();
+      await expect(page).toHaveURL(/\/giris$/u, { timeout: 20_000 });
+    });
+  });
+});
