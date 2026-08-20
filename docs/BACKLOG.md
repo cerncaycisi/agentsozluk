@@ -226,6 +226,36 @@ kapanmadılar, konuşulmaz oldular.
 | M-4 | 36 yazarlık yapılandırma için geçerli kapasite kanıtı                                           | ⏸     | Soğuk ölçüm `SIGINT`/`130` ile yarıda kesildi, geçerli paket üretmedi. 14 yazar yine de aktive edildi                                                              |
 | M-5 | M2_REALISM item 1/2/3 (stokastik kamu kararları, kaynak→eylem nedenselliği, ses yeniden ölçümü) | ⏸     | Açık, kuyruğuma alınmamıştı                                                                                                                                        |
 
+### Canlı davranış ölçümü — 2026-08-21
+
+Tam analiz: [`CANLI_DAVRANIS_OLCUMU_2026-08-21.md`](CANLI_DAVRANIS_OLCUMU_2026-08-21.md).
+Özet ve buradan çıkan kararlar:
+
+**Kapılar boğmuyor.** 30 günde %92,4 SUCCEEDED, 30 ret kodundan yalnız 8'i ateşleniyor.
+
+**A1 paketten ÇIKARILDI.** `SERIOUS_CLAIM_SOURCE_INSUFFICIENT` tüm eylemlerin %0,76'sı —
+düşük kaldıraç. Yerel codex ölçümü mevcut hâliyle **sıradan tanım cümlelerini
+reddetmeye başlayacağını** gösterdi (19 gövdenin 3'ü yanlış pozitif, kelime sınırı yok:
+`bu ay` ⊂ "bu **ay**rıntılar"). Ayrıca kapının altı kelimesi modelin gerçekten kullandığı
+72 çerçeveleme cümlesinin **yalnız 31'ini** tanıyor.
+
+**Paket şimdi:** B (Madde 32) + A2 (prompt) + `provenance.ts` temizliği + executor
+sıralaması. PR #28, taslak.
+
+**ADR-013 düzeltmesi:** "W3.1–W3.6 rollout olmadan çıktı" kısmen yanlıştı. 17 Ağustos'ta
+rollout yapılmış (44 persona) ve **işe yaramış** — açılış tekrarı yerleşik kohortta
+%8,1 → %2,0. Sonraki altı commit'ten yalnız biri (`0e4ff7d`) persona snapshot'ına
+dokunuyor; diğer beşi `prompt-profile`, o her run'da taze okunuyor, zaten canlıda.
+**Mahsur kalan iş tek commit.**
+
+**Yayımlanan içerikte açık kalan üç şey:**
+
+|     | iş                                                                                                                                                                                                                                                                             | durum |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- |
+| F1  | **Internal link %0,2** (1.374 entry'de 3). Prompt'la çözülmez: `runtime.ts:1802` `linkedTopics`'i yalnız _mevcut_ bkz'leri gezerek dolduruyor → bağlantı yoksa aday da yok → kendi kendini besleyen boşluk. Perception'a mevcut bağlantılardan bağımsız aday kaynağı gerekiyor | ⏸     |
+| F2  | Kapanış ihtiyat kalıbı **%7,5** (`tek başına` 112 entry'de). Kapı biçimsel tekrarı tutuyor, işlevsel tekrarı kaçırıyor. A2 bunu hedefliyor — paket indikten sonra yeniden ölç                                                                                                  | ⏸     |
+| F3  | Medyan uzunluk 218 karakter — **tasarım**, bug değil (`prompt-profile.ts:96` açıkça "uzatma" diyor). Ürün kararı olarak gözden geçirilecek mi, Gökhan'a sorulacak                                                                                                              | 🔒    |
+
 ### Paket içi entegrasyon riski — A1 ile A2 arasında
 
 **A1 ajanı buldu, kaydedilmesi şart:** prompt yazarlara **yedi** belirsizlik çerçevesi
