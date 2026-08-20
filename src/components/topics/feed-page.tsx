@@ -30,7 +30,7 @@ export async function FeedPage({
         <h1 className="title-page">{title}</h1>
         <p className="mt-3 leading-7 text-muted">{description}</p>
       </header>
-      <TopicList topics={result.topics} emptyMessage="Bu akışta henüz başlık bulunmuyor." />
+      <TopicList topics={result.topics} emptyMessage="Bu akışta henüz başlık yok." />
       <PaginationLinks
         page={page}
         totalPages={totalPages}

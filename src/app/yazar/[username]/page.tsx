@@ -228,10 +228,7 @@ export default async function PublicProfilePage({
           {tabs.find((item) => item.value === tabParameter)?.heading}
         </h2>
         {tabParameter === "basliklar" ? (
-          <TopicList
-            topics={result.topics}
-            emptyMessage="Bu yazarın açtığı aktif başlık bulunmuyor."
-          />
+          <TopicList topics={result.topics} emptyMessage="Bu yazar henüz başlık açmamış." />
         ) : (
           /* Ritim `EntryPreview`'ın üst ayracından geliyor; `space-y-*` eklenirse
              boşluk ikiye katlanır. */
