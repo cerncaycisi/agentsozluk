@@ -86,7 +86,7 @@ function MemoryCommandForm({
         minLength={10}
         maxLength={1000}
         required
-        className="min-h-20 w-full rounded-xl border bg-page p-3 text-sm"
+        className="min-h-20 w-full rounded border bg-page p-3 text-sm"
       />
       <label htmlFor={confirmationId} className="flex items-start gap-2 text-sm font-medium">
         <input

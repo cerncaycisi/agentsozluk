@@ -158,7 +158,7 @@ export function AgentProfileEditor({
               maximum={12}
               onChange={(interests) => onChange({ ...persona, interests })}
             />
-            <fieldset className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2">
+            <fieldset className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
               <legend className="px-2 font-semibold">Epistemik yaklaşım</legend>
               <label className="text-sm font-medium">
                 Kanıt eşiği
@@ -174,7 +174,7 @@ export function AgentProfileEditor({
                       },
                     })
                   }
-                  className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+                  className="mt-1 min-h-11 w-full rounded border bg-page px-3"
                 >
                   {(["LOW", "MEDIUM", "HIGH", "VERY_HIGH"] as const).map((value) => (
                     <option key={value}>{value}</option>
@@ -219,7 +219,7 @@ export function AgentProfileEditor({
         ) : null}
 
         {activeTab === "TEMPERAMENT" ? (
-          <fieldset className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-3">
+          <fieldset className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2 lg:grid-cols-3">
             <legend className="px-2 font-semibold">Mizaç ağırlıkları</legend>
             {(Object.keys(temperamentLabels) as Array<keyof SeedPersona["temperament"]>).map(
               (key) => (
@@ -264,7 +264,7 @@ export function AgentProfileEditor({
                     },
                   })
                 }
-                className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+                className="mt-1 min-h-11 w-full rounded border bg-page px-3"
               >
                 {(["SHORT", "MEDIUM", "LONG", "MIXED"] as const).map((value) => (
                   <option key={value}>{value}</option>
@@ -389,7 +389,7 @@ export function AgentProfileEditor({
         ) : null}
 
         {activeTab === "ADVANCED" ? (
-          <div className="space-y-3 rounded-xl border p-4">
+          <div className="space-y-3 rounded-lg border p-4">
             <p className="text-sm text-muted">
               Tam Persona belgesi uzman kullanımı içindir. Structured alanlara dönmeden önce belgeyi
               uygulayın.
@@ -400,7 +400,7 @@ export function AgentProfileEditor({
                 value={advancedDocument}
                 onChange={(event) => onAdvancedDocumentChange(event.target.value)}
                 spellCheck={false}
-                className="mt-1 min-h-[32rem] w-full rounded-xl border bg-page p-3 font-mono text-xs"
+                className="mt-1 min-h-[32rem] w-full rounded border bg-page p-3 font-mono text-xs"
               />
             </label>
             {advancedError ? (
@@ -434,7 +434,7 @@ function WeightedListEditor({
   onChange: (values: SeedPersona["coreValues"]) => void;
 }) {
   return (
-    <fieldset className="space-y-3 rounded-xl border p-4">
+    <fieldset className="space-y-3 rounded-lg border p-4">
       <legend className="px-2 font-semibold">{title}</legend>
       {values.map((value, index) => (
         <div
@@ -507,10 +507,10 @@ function SourceListEditor({
   onChange: (sources: SeedPersona["sources"]) => void;
 }) {
   return (
-    <fieldset className="space-y-4 rounded-xl border p-4">
+    <fieldset className="space-y-4 rounded-lg border p-4">
       <legend className="px-2 font-semibold">Persona kaynakları</legend>
       {sources.map((source, index) => (
-        <div key={`source-${index}`} className="grid gap-3 rounded-xl bg-page p-4 sm:grid-cols-2">
+        <div key={`source-${index}`} className="grid gap-3 rounded-lg bg-page p-4 sm:grid-cols-2">
           <TextInput
             label={`Kaynak ${index + 1} URL`}
             value={source.url}
@@ -538,7 +538,7 @@ function SourceListEditor({
                   ),
                 )
               }
-              className="mt-1 min-h-11 w-full rounded-xl border bg-surface px-3"
+              className="mt-1 min-h-11 w-full rounded border bg-surface px-3"
             >
               {(["RSS", "ATOM", "HTML"] as const).map((value) => (
                 <option key={value}>{value}</option>
@@ -561,7 +561,7 @@ function SourceListEditor({
                   ),
                 )
               }
-              className="mt-1 min-h-11 w-full rounded-xl border bg-surface px-3"
+              className="mt-1 min-h-11 w-full rounded border bg-surface px-3"
             >
               <option value="SEED">SEED</option>
               <option value="TRUSTED">TRUSTED</option>
@@ -665,7 +665,7 @@ function TextInput({
         disabled={disabled}
         pattern={pattern}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3 disabled:opacity-70"
+        className="mt-1 min-h-11 w-full rounded border bg-page px-3 disabled:opacity-70"
       />
       {hint ? <span className="mt-1 block text-xs font-normal text-muted">{hint}</span> : null}
     </label>
@@ -689,7 +689,7 @@ function TextArea({
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 min-h-24 w-full rounded-xl border bg-page p-3"
+        className="mt-1 min-h-24 w-full rounded border bg-page p-3"
       />
       {hint ? <span className="mt-1 block text-xs font-normal text-muted">{hint}</span> : null}
     </label>
@@ -721,7 +721,7 @@ function NumberInput({
         max={max}
         step={step}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+        className="mt-1 min-h-11 w-full rounded border bg-page px-3"
       />
     </label>
   );

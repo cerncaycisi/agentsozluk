@@ -66,7 +66,7 @@ export function FormField({
         {...props}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : hint ? hintId : undefined}
-        className="min-h-11 w-full rounded-xl border field-border bg-page px-3.5 text-ink placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60"
+        className="min-h-11 w-full rounded border field-border bg-page px-3.5 text-ink placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60"
       />
       {error ? (
         <p id={errorId} className="mt-1.5 text-sm text-destructive">
@@ -212,7 +212,7 @@ export function FormTextarea({
         onChange={handleChange}
         aria-invalid={Boolean(error)}
         aria-describedby={describedBy || undefined}
-        className="min-h-32 w-full resize-y rounded-xl border field-border bg-page px-3.5 py-3 text-ink placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60"
+        className="min-h-32 w-full resize-y rounded border field-border bg-page px-3.5 py-3 text-ink placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60"
       />
     </>
   );
@@ -273,7 +273,7 @@ export function FormTextarea({
           // Panelde odaklanabilir öğe olmayabilir; klavye kullanıcısı yine de
           // içeriğe girip kaydırabilsin diye panelin kendisi odak alır.
           tabIndex={0}
-          className="min-h-32 rounded-xl border field-border bg-page px-3.5 py-3 text-ink"
+          className="min-h-32 rounded border field-border bg-page px-3.5 py-3 text-ink"
         >
           {/* Yalnız sekme açıkken render edilir: her tuş vuruşunda 10.000
               karaktere kadar metni boşuna token'lamayalım. */}

@@ -265,7 +265,7 @@ export default async function TopicPage({
           <h1 className="title-page">{topic.title}</h1>
           <div className="flex shrink-0 items-center gap-2">
             {topic.status === "HIDDEN" ? (
-              <span className="rounded-full bg-destructive/10 px-3 py-1 text-sm font-medium text-destructive">
+              <span className="rounded bg-destructive/10 px-3 py-1 text-sm font-medium text-destructive">
                 gizlenmiş başlık
               </span>
             ) : null}
@@ -290,7 +290,7 @@ export default async function TopicPage({
             defaultValue={entryQuery}
             maxLength={100}
             placeholder="Bu başlıktaki entry’lerde ara"
-            className="min-w-0 flex-1 rounded-xl border field-border bg-page px-3 py-2"
+            className="min-w-0 flex-1 rounded border field-border bg-page px-3 py-2"
           />
           <button type="submit" className="button-secondary">
             Başlıkta ara

@@ -87,7 +87,7 @@ export default async function AgentRunsPage({ params }: { params: Promise<{ id: 
         {rejectionClasses.size > 0 ? (
           <ul className="mt-3 flex flex-wrap gap-2" aria-label="Toplam reddetme sınıfları">
             {[...rejectionClasses.entries()].map(([code, count]) => (
-              <li key={code} className="rounded-md bg-page px-2 py-1 font-mono text-xs">
+              <li key={code} className="rounded bg-page px-2 py-1 font-mono text-xs">
                 {code} ×{count}
               </li>
             ))}
@@ -126,7 +126,7 @@ export default async function AgentRunsPage({ params }: { params: Promise<{ id: 
                   {outcome.classes.length > 0 ? (
                     <ul className="mt-2 flex flex-wrap gap-2" aria-label="Reddetme sınıfları">
                       {outcome.classes.map(([code, count]) => (
-                        <li key={code} className="rounded-md bg-page px-2 py-1 font-mono text-xs">
+                        <li key={code} className="rounded bg-page px-2 py-1 font-mono text-xs">
                           {code} ×{count}
                         </li>
                       ))}

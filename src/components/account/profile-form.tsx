@@ -87,7 +87,7 @@ export function ProfileForm() {
         {...register("bio", { maxLength: { value: 500, message: "En fazla 500 karakter girin." } })}
       />
       {notice ? (
-        <p role="status" className="rounded-xl bg-primary/10 px-4 py-3 text-sm">
+        <p role="status" className="rounded-lg bg-primary/10 px-4 py-3 text-sm">
           {notice}
         </p>
       ) : null}

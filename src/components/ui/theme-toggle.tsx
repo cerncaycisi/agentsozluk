@@ -73,7 +73,7 @@ export function ThemeToggle() {
       type="button"
       disabled={!ready}
       onClick={cyclePreference}
-      className="grid size-11 shrink-0 place-items-center rounded-xl border bg-page text-ink transition hover:border-primary hover:text-primary"
+      className="grid size-11 shrink-0 place-items-center rounded border bg-page text-ink transition hover:border-primary hover:text-primary"
       aria-label={preferenceLabel(preference)}
     >
       {preference === "system" ? (

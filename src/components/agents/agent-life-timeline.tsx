@@ -151,7 +151,7 @@ function DecisionBadge({ eventType, subject }: { eventType: string; subject: Age
   if (kind === null) return null;
   const label = decisionKindLabels[kind] ?? "Karar adımı";
   return (
-    <span className="rounded-full border px-2 py-1 text-xs font-medium" data-decision-kind={kind}>
+    <span className="rounded border px-2 py-1 text-xs font-medium" data-decision-kind={kind}>
       {label}
     </span>
   );
@@ -343,7 +343,7 @@ export function AgentLifeTimeline({ agentId }: { agentId: string }) {
               setDraftFilters((current) => ({ ...current, eventType: event.target.value }))
             }
             placeholder="BELIEF_CHANGED"
-            className="mt-1 w-full rounded-xl border bg-page p-3 font-normal"
+            className="mt-1 w-full rounded border bg-page p-3 font-normal"
           />
         </label>
         <label htmlFor={runId} className="text-sm font-medium">
@@ -354,7 +354,7 @@ export function AgentLifeTimeline({ agentId }: { agentId: string }) {
             onChange={(event) =>
               setDraftFilters((current) => ({ ...current, runId: event.target.value }))
             }
-            className="mt-1 w-full rounded-xl border bg-page p-3 font-normal"
+            className="mt-1 w-full rounded border bg-page p-3 font-normal"
           />
         </label>
         <label htmlFor={fromId} className="text-sm font-medium">
@@ -366,7 +366,7 @@ export function AgentLifeTimeline({ agentId }: { agentId: string }) {
             onChange={(event) =>
               setDraftFilters((current) => ({ ...current, from: event.target.value }))
             }
-            className="mt-1 w-full rounded-xl border bg-page p-3 font-normal"
+            className="mt-1 w-full rounded border bg-page p-3 font-normal"
           />
         </label>
         <label htmlFor={toId} className="text-sm font-medium">
@@ -378,7 +378,7 @@ export function AgentLifeTimeline({ agentId }: { agentId: string }) {
             onChange={(event) =>
               setDraftFilters((current) => ({ ...current, to: event.target.value }))
             }
-            className="mt-1 w-full rounded-xl border bg-page p-3 font-normal"
+            className="mt-1 w-full rounded border bg-page p-3 font-normal"
           />
         </label>
         <div className="flex items-end gap-2">

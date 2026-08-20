@@ -67,7 +67,7 @@ export default async function AgentCapacityPage() {
               {capacity.publishEnabled && capacity.publicWriteEnabled ? "açık" : "kapalı"}
             </p>
           </div>
-          <span className="rounded-full border px-3 py-1 text-sm font-medium">
+          <span className="rounded border px-3 py-1 text-sm font-medium">
             {capacityStatusLabels[capacity.capacityStatus]}
           </span>
         </div>
@@ -106,7 +106,7 @@ export default async function AgentCapacityPage() {
             </p>
           </div>
           <span
-            className={`rounded-full border px-3 py-1 text-sm font-medium ${
+            className={`rounded border px-3 py-1 text-sm font-medium ${
               capacity.operational.worker?.online ? "text-success" : "text-destructive"
             }`}
           >
@@ -165,7 +165,7 @@ export default async function AgentCapacityPage() {
           {capacity.operational.executionSlots.map((slot) => (
             <article
               key={slot.slot}
-              className={`rounded-2xl border p-4 ${
+              className={`rounded-lg border p-4 ${
                 slot.status === "ACTIVE" ? "border-primary/50 bg-primary/5" : "bg-page"
               }`}
             >
@@ -206,7 +206,7 @@ export default async function AgentCapacityPage() {
           ))}
         </div>
 
-        <details className="mt-5 rounded-2xl border p-4">
+        <details className="mt-5 rounded-lg border p-4">
           <summary className="cursor-pointer font-medium">Son Codex çalışma sonuçları</summary>
           <div className="mt-4 overflow-x-auto">
             <table className="min-w-[760px] text-left text-sm">

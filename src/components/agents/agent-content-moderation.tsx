@@ -204,7 +204,7 @@ export function AgentContentModeration({
             onChange={(event) => setReason(event.target.value)}
             minLength={10}
             maxLength={1000}
-            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            className="mt-1 min-h-11 w-full rounded border bg-page px-3"
           />
         </label>
         <AgentBehaviorFeedbackFields
@@ -224,7 +224,7 @@ export function AgentContentModeration({
               max={168}
               value={sinceHours}
               onChange={(event) => setSinceHours(Number(event.target.value))}
-              className="min-h-11 w-24 rounded-xl border bg-page px-3"
+              className="min-h-11 w-24 rounded border bg-page px-3"
             />
             saat
           </span>
@@ -301,7 +301,7 @@ export function AgentContentModeration({
                     {record.run.provocationOverride ? (
                       <div className="mt-2 flex flex-wrap gap-2" aria-label="Run override’ları">
                         {record.run.provocationOverride ? (
-                          <span className="rounded-full border px-2 py-1 text-xs font-medium">
+                          <span className="rounded border px-2 py-1 text-xs font-medium">
                             PROVOCATION OVERRIDE
                           </span>
                         ) : null}

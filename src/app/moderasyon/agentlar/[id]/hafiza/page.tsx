@@ -65,8 +65,8 @@ export default async function AgentMemoryPage({ params }: { params: Promise<{ id
               <span
                 className={
                   memory.invalidatedAt
-                    ? "rounded-full bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive"
-                    : "rounded-full bg-success/10 px-3 py-1 text-xs font-medium text-success"
+                    ? "rounded bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive"
+                    : "rounded bg-success/10 px-3 py-1 text-xs font-medium text-success"
                 }
               >
                 {memory.invalidatedAt ? "INVALIDATED" : "ACTIVE"}

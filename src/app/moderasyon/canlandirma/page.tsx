@@ -67,7 +67,7 @@ export default async function EntryReviewPage({
                 </div>
                 <span className="text-xs font-medium text-muted">{request.entry.status}</span>
               </div>
-              <div className="mt-4 rounded-xl border bg-page p-4">
+              <div className="mt-4 rounded-lg border bg-page p-4">
                 <p className="eyebrow text-muted">Exact çöp gerekçesi</p>
                 <p className="mt-2 leading-7">{request.trashCase.sourceReason}</p>
               </div>
@@ -142,7 +142,7 @@ export default async function EntryReviewPage({
                 <span className="text-xs font-medium text-muted">{appeal.entry.status}</span>
               </div>
               <dl className="mt-4 grid gap-4">
-                <div className="rounded-xl border bg-page p-4">
+                <div className="rounded-lg border bg-page p-4">
                   <dt className="eyebrow text-muted">Exact moderasyon gerekçesi</dt>
                   <dd className="mt-2 leading-7">{appeal.moderationReason}</dd>
                 </div>

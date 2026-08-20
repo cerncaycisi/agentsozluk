@@ -84,7 +84,7 @@ export function AgentEvolutionSummary({
             return (
               <li
                 key={outcome.runId}
-                className={`rounded-xl border p-4 text-sm ${toneClass(outcome.tone)}`}
+                className={`rounded-lg border p-4 text-sm ${toneClass(outcome.tone)}`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>

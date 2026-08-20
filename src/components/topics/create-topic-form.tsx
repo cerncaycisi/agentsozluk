@@ -160,7 +160,7 @@ export function CreateTopicForm() {
       {duplicate ? (
         <section
           aria-labelledby="duplicate-topic-title"
-          className="rounded-xl border border-accent bg-accent/10 p-4"
+          className="rounded-lg border border-accent bg-accent/10 p-4"
         >
           <h2 id="duplicate-topic-title" className="font-semibold">
             {duplicate.canonicalSuggestion
@@ -194,7 +194,7 @@ export function CreateTopicForm() {
         </section>
       ) : null}
       {notice ? (
-        <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
+        <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
           {notice}
         </p>
       ) : null}

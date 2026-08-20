@@ -49,7 +49,7 @@ export default async function ModerationTopicsPage({
           name="q"
           defaultValue={query}
           placeholder="Başlık ara"
-          className="min-h-11 min-w-0 flex-1 rounded-xl border bg-surface px-3"
+          className="min-h-11 min-w-0 flex-1 rounded border bg-surface px-3"
         />
         <button className="button-secondary">Ara</button>
       </form>

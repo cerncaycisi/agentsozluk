@@ -38,7 +38,7 @@ export function entryBodyNeedsCollapse(body: string): boolean {
 }
 
 const collapseToggleBaseClass =
-  "mt-3 min-h-11 items-center rounded-xl text-sm font-semibold text-primary hover:underline peer-focus-visible:outline peer-focus-visible:outline-[3px] peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary";
+  "mt-3 min-h-11 items-center rounded text-sm font-semibold text-primary hover:underline peer-focus-visible:outline peer-focus-visible:outline-[3px] peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary";
 
 /** Oturum açmış ACTIVE kullanıcıya gösterilecek gerçek aksiyonların girdisi. */
 export interface EntryPreviewActions {
@@ -165,7 +165,7 @@ export function EntryPreview({
             </h2>
           ) : null}
           {entry.status === "HIDDEN" ? (
-            <span className="rounded-full bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive">
+            <span className="rounded bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive">
               gizlenmiş entry
             </span>
           ) : null}

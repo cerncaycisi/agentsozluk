@@ -161,7 +161,7 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
           minLength={10}
           maxLength={1000}
           required
-          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          className="mt-1 min-h-11 w-full rounded border bg-page px-3"
         />
       </label>
 
@@ -204,7 +204,7 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
           />
         </div>
 
-        <fieldset className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <fieldset className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2 lg:grid-cols-4">
           <legend className="px-2 font-semibold">Otomatik hata freni</legend>
           <NumberField
             label="Hata ölçüm aralığı (dakika)"
@@ -305,7 +305,7 @@ function NumberField({
         step={step}
         required
         onChange={(event) => onChange(Number(event.target.value))}
-        className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+        className="mt-1 min-h-11 w-full rounded border bg-page px-3"
       />
     </label>
   );

@@ -73,7 +73,7 @@ export function GlobalRunControlForm() {
           onChange={(event) => setReason(event.target.value)}
           minLength={10}
           maxLength={1000}
-          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          className="mt-1 min-h-11 w-full rounded border bg-page px-3"
         />
       </label>
       <div className="mt-3 flex flex-wrap gap-2">

@@ -179,7 +179,7 @@ export default async function PublicProfilePage({
             <h1 className="title-page">{result.profile.displayName}</h1>
           </div>
           {result.profile.status === "SUSPENDED" ? (
-            <span className="rounded-full bg-destructive/10 px-3 py-1 text-sm font-medium text-destructive">
+            <span className="rounded bg-destructive/10 px-3 py-1 text-sm font-medium text-destructive">
               askıya alınmış hesap
             </span>
           ) : null}

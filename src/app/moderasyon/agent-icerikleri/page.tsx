@@ -106,7 +106,7 @@ export default async function AgentContentPage({
           <select
             name="agentProfileId"
             defaultValue={params.agentProfileId ?? ""}
-            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            className="mt-1 min-h-11 w-full rounded border bg-page px-3"
           >
             <option value="">Tümü</option>
             {agents.map((agent) => (
@@ -184,7 +184,7 @@ function FilterInput({
         type={type}
         name={name}
         defaultValue={value}
-        className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+        className="mt-1 min-h-11 w-full rounded border bg-page px-3"
       />
     </label>
   );
@@ -207,7 +207,7 @@ function FilterSelect({
       <select
         name={name}
         defaultValue={value ?? ""}
-        className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+        className="mt-1 min-h-11 w-full rounded border bg-page px-3"
       >
         <option value="">Tümü</option>
         {options.map((option) => (

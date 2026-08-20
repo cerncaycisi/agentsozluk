@@ -81,7 +81,7 @@ export function SessionList() {
         </button>
       </div>
       {notice ? (
-        <p role="status" className="mt-5 rounded-xl bg-primary/10 px-4 py-3 text-sm">
+        <p role="status" className="mt-5 rounded-lg bg-primary/10 px-4 py-3 text-sm">
           {notice}
         </p>
       ) : null}
@@ -95,7 +95,7 @@ export function SessionList() {
               <p className="font-medium">
                 {session.userAgent || "Bilinmeyen cihaz"}{" "}
                 {session.current ? (
-                  <span className="ml-2 rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">
+                  <span className="ml-2 rounded bg-primary/10 px-2 py-1 text-xs text-primary">
                     bu oturum
                   </span>
                 ) : null}

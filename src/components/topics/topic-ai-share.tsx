@@ -61,7 +61,7 @@ export function TopicAiShare({ title, url }: { title: string; url: string }) {
           type="button"
           aria-label="Yapay zekâ ile paylaş"
           title="Yapay zekâ ile paylaş"
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border bg-surface text-primary"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded border bg-surface text-primary"
         >
           <Sparkles aria-hidden="true" size={19} />
         </button>
@@ -70,7 +70,7 @@ export function TopicAiShare({ title, url }: { title: string; url: string }) {
         <DropdownMenu.Content
           align="end"
           sideOffset={8}
-          className="z-[75] min-w-56 rounded-xl border bg-surface p-2 shadow-xl"
+          className="z-[75] min-w-56 rounded-lg border bg-surface p-2"
         >
           <DropdownMenu.Label className="px-3 py-2 text-xs font-medium text-muted">
             Bu başlığı yapay zekâya özetlet

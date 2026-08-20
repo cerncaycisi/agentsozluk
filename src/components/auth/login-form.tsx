@@ -51,7 +51,7 @@ export function LoginForm() {
         {...register("password")}
       />
       {formError ? (
-        <p role="alert" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <p role="alert" className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {formError}
         </p>
       ) : null}

@@ -62,13 +62,13 @@ export default async function TrashPage({
                 </Link>{" "}
                 · {formatIstanbulDate(trashCase.openedAt)}
               </p>
-              <div className="mt-4 rounded-xl border bg-page p-4">
+              <div className="mt-4 rounded-lg border bg-page p-4">
                 <p className="eyebrow text-muted">Exact gerekçe</p>
                 <p className="mt-2 leading-7">{trashCase.sourceReason}</p>
               </div>
               <p className="mt-4 whitespace-pre-wrap leading-7">{trashCase.entry.body}</p>
               {latestRequest?.decision ? (
-                <div className="mt-4 rounded-xl border p-4 text-sm">
+                <div className="mt-4 rounded-lg border p-4 text-sm">
                   <p className="font-medium">
                     Son canlandırma kararı:{" "}
                     {latestRequest.decision.outcome === "ACCEPTED" ? "Kabul" : "Ret"}
@@ -77,7 +77,7 @@ export default async function TrashPage({
                 </div>
               ) : null}
               {appeal?.decision ? (
-                <div className="mt-4 rounded-xl border p-4 text-sm">
+                <div className="mt-4 rounded-lg border p-4 text-sm">
                   <p className="font-medium">
                     İtiraz kararı: {appeal.decision.outcome === "ACCEPTED" ? "Kabul" : "Ret"}
                   </p>

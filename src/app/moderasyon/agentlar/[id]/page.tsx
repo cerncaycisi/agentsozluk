@@ -149,7 +149,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           </Link>
         </div>
         {runtime?.currentRun ? (
-          <div className="mt-4 rounded-xl border p-4">
+          <div className="mt-4 rounded-lg border p-4">
             <Link
               href={`/moderasyon/agentlar/calisma/${runtime.currentRun.id}`}
               className="font-medium text-primary"

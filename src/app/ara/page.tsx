@@ -90,7 +90,7 @@ export default async function SearchPage({
             defaultValue={result.query}
             minLength={2}
             maxLength={100}
-            className="min-h-11 w-full rounded-xl border field-border bg-page px-4"
+            className="min-h-11 w-full rounded border field-border bg-page px-4"
           />
         </div>
         <button type="submit" className="button-primary self-end">

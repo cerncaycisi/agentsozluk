@@ -74,7 +74,7 @@ export function ConfirmAction({
       </AlertDialog.Trigger>
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
-        <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[81] w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-surface p-6 shadow-2xl">
+        <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[81] w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-surface p-6">
           <AlertDialog.Title className="title-section">{title}</AlertDialog.Title>
           <AlertDialog.Description className="mt-2 leading-7 text-muted">
             {description}
@@ -93,7 +93,7 @@ export function ConfirmAction({
                 required
                 disabled={pending}
                 aria-describedby={error ? `error-${endpoint}` : undefined}
-                className="min-h-28 w-full rounded-xl border bg-page p-3"
+                className="min-h-28 w-full rounded border bg-page p-3"
               />
             </div>
             {behaviorFeedback ? (

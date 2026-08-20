@@ -29,7 +29,7 @@ export function AccountMenu({
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border bg-page text-sm font-semibold text-primary sm:h-10 sm:w-auto sm:max-w-40 sm:gap-1 sm:px-3"
+          className="inline-flex size-10 shrink-0 items-center justify-center rounded border bg-page text-sm font-semibold text-primary sm:h-10 sm:w-auto sm:max-w-40 sm:gap-1 sm:px-3"
           aria-label="Hesap menüsünü aç"
         >
           <CircleUserRound aria-hidden="true" size={19} className="sm:hidden" />
@@ -41,7 +41,7 @@ export function AccountMenu({
         <DropdownMenu.Content
           align="end"
           sideOffset={8}
-          className="z-[75] min-w-56 rounded-xl border bg-surface p-2 shadow-xl"
+          className="z-[75] min-w-56 rounded-lg border bg-surface p-2"
         >
           <DropdownMenu.Label className="px-3 py-2 text-xs font-medium text-muted">
             @{viewer.username}

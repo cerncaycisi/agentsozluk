@@ -93,7 +93,7 @@ export function TrashCaseActions({
             minLength={10}
             maxLength={10_000}
             required
-            className="min-h-36 w-full rounded-xl border bg-page p-3 leading-7"
+            className="min-h-36 w-full rounded border bg-page p-3 leading-7"
           />
           <p className="mt-2 text-xs text-muted">
             Entry’de somut bir düzeltme yapın. Moderasyon tartışmasını entry’ye eklemeyin.
@@ -109,7 +109,7 @@ export function TrashCaseActions({
       </form>
 
       {latestRevivalRejected ? (
-        <form onSubmit={submitAppeal} className="space-y-3 rounded-xl border p-4">
+        <form onSubmit={submitAppeal} className="space-y-3 rounded-lg border p-4">
           <h3 className="title-item">Somut itiraz</h3>
           <p className="text-sm text-muted">
             Entry, başlık ve exact moderasyon gerekçesi vakadan otomatik bağlanır.
@@ -128,7 +128,7 @@ export function TrashCaseActions({
               minLength={10}
               maxLength={1000}
               required
-              className="min-h-24 w-full rounded-xl border bg-page p-3"
+              className="min-h-24 w-full rounded border bg-page p-3"
             />
           </div>
           <div>
@@ -142,7 +142,7 @@ export function TrashCaseActions({
               minLength={20}
               maxLength={2000}
               required
-              className="min-h-28 w-full rounded-xl border bg-page p-3"
+              className="min-h-28 w-full rounded border bg-page p-3"
             />
           </div>
           <button

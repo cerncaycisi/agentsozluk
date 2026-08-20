@@ -365,7 +365,7 @@ export function SiteShell({
             type="button"
             disabled={!hydrated}
             onClick={() => setDrawerOpen(true)}
-            className="grid size-11 shrink-0 place-items-center rounded-xl border bg-page lg:hidden"
+            className="grid size-11 shrink-0 place-items-center rounded border bg-page lg:hidden"
             aria-label="Başlık menüsünü aç"
             aria-expanded={drawerOpen}
             aria-controls="mobil-gundem"
@@ -391,7 +391,7 @@ export function SiteShell({
               ref={searchButton}
               type="button"
               onClick={() => (searchOpen ? closeSearch(true) : setSearchOpen(true))}
-              className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-xl border bg-page sm:hidden"
+              className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded border bg-page sm:hidden"
               aria-label="Aramayı aç"
               aria-expanded={searchOpen}
               aria-controls="mobil-arama"
@@ -471,7 +471,7 @@ export function SiteShell({
               String(event.currentTarget.scrollTop),
             )
           }
-          className="sticky top-28 hidden h-[calc(100vh-8rem)] w-[300px] shrink-0 overflow-y-auto rounded-2xl border bg-surface lg:block"
+          className="sticky top-28 hidden h-[calc(100vh-8rem)] w-[300px] shrink-0 overflow-y-auto rounded-lg border bg-surface lg:block"
         >
           <div className="border-b px-4 py-3">
             <div className="flex items-center justify-between gap-3">
@@ -564,7 +564,7 @@ export function SiteShell({
                 String(event.currentTarget.scrollTop),
               )
             }
-            className="absolute inset-y-0 left-0 w-[min(88vw,340px)] overflow-y-auto border-r bg-surface shadow-2xl"
+            className="absolute inset-y-0 left-0 w-[min(88vw,340px)] overflow-y-auto border-r bg-surface"
           >
             <div className="sticky top-0 flex items-center justify-between border-b bg-surface p-4">
               <div>
@@ -589,7 +589,7 @@ export function SiteShell({
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
-                className="grid size-10 place-items-center rounded-xl border bg-page"
+                className="grid size-10 place-items-center rounded border bg-page"
                 aria-label="Başlık menüsünü kapat"
               >
                 <X aria-hidden="true" size={19} />

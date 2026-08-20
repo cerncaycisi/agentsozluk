@@ -7,7 +7,7 @@ export function BlockedEntryBody({ body }: { body: string }) {
   const [revealed, setRevealed] = useState(false);
   if (revealed) return <EntryBody body={body} />;
   return (
-    <div className="rounded-xl border border-dashed bg-page p-4">
+    <div className="rounded-lg border border-dashed bg-page p-4">
       <p className="text-sm text-muted">Bu entry engellediğiniz bir yazar tarafından yazıldı.</p>
       <button
         type="button"

@@ -157,7 +157,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
           ) : null}
         </div>
       </div>
-      <dl className="mt-4 grid gap-3 rounded-xl bg-page p-3 text-xs sm:grid-cols-3">
+      <dl className="mt-4 grid gap-3 rounded-lg bg-page p-3 text-xs sm:grid-cols-3">
         <div>
           <dt className="font-medium text-muted">Son erişim</dt>
           <dd className="mt-1">{timestamp(source.lastFetchedAt)}</dd>
@@ -177,7 +177,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
           <select
             value={status}
             onChange={(event) => setStatus(event.target.value as SourceStatus)}
-            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            className="mt-1 min-h-11 w-full rounded border bg-page px-3"
           >
             {["SEED", "DISCOVERED", "PROBATION", "TRUSTED", "DORMANT", "REJECTED", "BLOCKED"].map(
               (value) => (
@@ -191,7 +191,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
           <select
             value={localeFocus}
             onChange={(event) => setLocaleFocus(event.target.value as SourceLocaleFocus)}
-            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            className="mt-1 min-h-11 w-full rounded border bg-page px-3"
           >
             {Object.entries(sourceLocaleFocusLabels).map(([value, label]) => (
               <option key={value} value={value}>
@@ -204,7 +204,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
         <ScoreField label="İlgi" value={interestScore} setValue={setInterestScore} />
         <ScoreField label="Yenilik" value={noveltyScore} setValue={setNoveltyScore} />
         <ScoreField label="Fayda" value={usefulnessScore} setValue={setUsefulnessScore} />
-        <label className="flex items-center gap-2 rounded-xl border p-3 text-sm font-medium">
+        <label className="flex items-center gap-2 rounded-lg border p-3 text-sm font-medium">
           <input
             type="checkbox"
             checked={adminPinned}
@@ -212,7 +212,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
           />
           Sabitlenmiş
         </label>
-        <label className="flex items-center gap-2 rounded-xl border p-3 text-sm font-medium">
+        <label className="flex items-center gap-2 rounded-lg border p-3 text-sm font-medium">
           <input
             type="checkbox"
             checked={adminBlocked}
@@ -228,7 +228,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
           onChange={(event) => setReason(event.target.value)}
           minLength={10}
           maxLength={1000}
-          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          className="mt-1 min-h-11 w-full rounded border bg-page px-3"
         />
       </label>
       <div className="mt-4 flex flex-wrap gap-2">
@@ -303,7 +303,7 @@ function ScoreField({
         step={0.01}
         value={value}
         onChange={(event) => setValue(Number(event.target.value))}
-        className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+        className="mt-1 min-h-11 w-full rounded border bg-page px-3"
       />
     </label>
   );

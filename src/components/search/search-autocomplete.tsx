@@ -256,7 +256,7 @@ export function SearchAutocomplete({
             if (options.length > 0) setOpen(true);
           }}
           onBlur={close}
-          className="min-h-10 w-full rounded-xl border field-border bg-page pl-10 pr-4 text-sm placeholder:text-muted"
+          className="min-h-10 w-full rounded border field-border bg-page pl-10 pr-4 text-sm placeholder:text-muted"
         />
         {enhanced ? (
           <div
@@ -265,7 +265,7 @@ export function SearchAutocomplete({
             role="listbox"
             aria-label="Arama önerileri"
             hidden={!expanded}
-            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-xl border bg-surface py-1 shadow-2xl"
+            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-lg border bg-surface py-1"
           >
             {topicOptions.length > 0 ? (
               <div role="group" aria-label="Başlıklar">

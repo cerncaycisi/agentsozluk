@@ -90,10 +90,10 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
             ) : null}
           </dl>
           {report.details ? (
-            <p className="mt-5 whitespace-pre-wrap rounded-xl bg-page p-4">{report.details}</p>
+            <p className="mt-5 whitespace-pre-wrap rounded-lg bg-page p-4">{report.details}</p>
           ) : null}
           {evidenceRows.length > 0 ? (
-            <dl className="mt-5 grid gap-3 rounded-xl bg-page p-4 text-sm sm:grid-cols-2">
+            <dl className="mt-5 grid gap-3 rounded-lg bg-page p-4 text-sm sm:grid-cols-2">
               {evidenceRows.map((row) => (
                 <div key={row.label}>
                   <dt className="text-muted">{row.label}</dt>
@@ -128,14 +128,14 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
                 </dd>
               </div>
             </dl>
-            <p className="mt-5 whitespace-pre-wrap rounded-xl bg-page p-4">
+            <p className="mt-5 whitespace-pre-wrap rounded-lg bg-page p-4">
               {report.decision.rationale}
             </p>
           </section>
         ) : null}
         <section className="surface-card p-6">
           <h2 className="title-section">Hedef önizleme</h2>
-          <pre className="mt-4 overflow-x-auto whitespace-pre-wrap rounded-xl bg-page p-4 text-sm">
+          <pre className="mt-4 overflow-x-auto whitespace-pre-wrap rounded-lg bg-page p-4 text-sm">
             {JSON.stringify(data.target, null, 2)}
           </pre>
         </section>
@@ -169,7 +169,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
               bir moderasyon kaydı olarak uygulanır.
             </p>
             {appliedContentAction ? (
-              <p className="mt-4 rounded-xl bg-page p-4 font-medium">
+              <p className="mt-4 rounded-lg bg-page p-4 font-medium">
                 Uygulandı: {appliedContentAction.actionType}
               </p>
             ) : isGammazReason(report.reason) &&
@@ -187,7 +187,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
           <h2 className="title-section">Geçmiş işlemler</h2>
           <ul className="mt-4 space-y-3">
             {data.moderationActions.map((action) => (
-              <li key={action.id} className="rounded-xl bg-page p-4">
+              <li key={action.id} className="rounded-lg bg-page p-4">
                 <strong>{action.actionType}</strong>
                 <p className="mt-1 text-sm text-muted">{action.reason}</p>
               </li>

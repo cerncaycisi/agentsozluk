@@ -63,7 +63,7 @@ export default async function ReportsPage({
           id="report-status"
           name="status"
           defaultValue={status}
-          className="min-h-11 rounded-xl border bg-surface px-3"
+          className="min-h-11 rounded border bg-surface px-3"
         >
           <option value="OPEN">Açık</option>
           <option value="RESOLVED">Çözüldü</option>
@@ -73,7 +73,7 @@ export default async function ReportsPage({
           Filtrele
         </button>
       </form>
-      <div className="hidden overflow-x-auto rounded-2xl border bg-surface md:block">
+      <div className="hidden overflow-x-auto rounded-lg border bg-surface md:block">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b">

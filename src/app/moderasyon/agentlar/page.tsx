@@ -182,7 +182,7 @@ export default async function AgentDashboardPage({
           <Metric label="Hazır olmayan aktif" value={String(unreadyActiveAgents.length)} />
         </dl>
         {unreadyActiveAgents.length > 0 ? (
-          <div className="mt-4 rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm">
+          <div className="mt-4 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
             <p className="font-medium">
               Bu agentlar çalışmaya hazır değil; manuel ve doğal seçim güvenli biçimde bekler:
             </p>
@@ -209,7 +209,7 @@ export default async function AgentDashboardPage({
             type="search"
             defaultValue={params.q ?? ""}
             placeholder="username, görünen ad veya bio"
-            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            className="mt-1 min-h-11 w-full rounded border bg-page px-3"
           />
         </label>
         <label className="text-sm font-medium">
@@ -217,7 +217,7 @@ export default async function AgentDashboardPage({
           <select
             name="lifecycle"
             defaultValue={lifecycle ?? ""}
-            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            className="mt-1 min-h-11 w-full rounded border bg-page px-3"
           >
             <option value="">Tümü</option>
             {lifecycleValues.map((value) => (
@@ -230,7 +230,7 @@ export default async function AgentDashboardPage({
           <select
             name="runtime"
             defaultValue={runtime ?? ""}
-            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            className="mt-1 min-h-11 w-full rounded border bg-page px-3"
           >
             <option value="">Tümü</option>
             {runtimeValues.map((value) => (
@@ -243,7 +243,7 @@ export default async function AgentDashboardPage({
           <select
             name="sort"
             defaultValue={sort}
-            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            className="mt-1 min-h-11 w-full rounded border bg-page px-3"
           >
             <option value="name">Ada göre</option>
             <option value="heartbeat">Son heartbeat</option>
@@ -330,7 +330,7 @@ export default async function AgentDashboardPage({
               />
               <Metric label="24h başarı" value={percentage(agent.successRate24h)} />
             </dl>
-            <details className="mt-4 rounded-xl border p-4 text-sm">
+            <details className="mt-4 rounded-lg border p-4 text-sm">
               <summary className="cursor-pointer font-medium">Teknik ayrıntılar</summary>
               <dl className="mt-4 grid gap-3 sm:grid-cols-3">
                 <Metric
@@ -403,7 +403,7 @@ export default async function AgentDashboardPage({
                 {agent.lastError}
               </p>
             ) : null}
-            <details className="mt-5 rounded-xl border p-4">
+            <details className="mt-5 rounded-lg border p-4">
               <summary className="cursor-pointer font-medium">
                 Çalıştırma ve durum işlemleri
               </summary>
@@ -427,7 +427,7 @@ export default async function AgentDashboardPage({
                   />
                 ) : null}
                 {agent.lifecycleStatus !== "RETIRED" ? (
-                  <details className="mt-4 rounded-xl border p-4">
+                  <details className="mt-4 rounded-lg border p-4">
                     <summary className="cursor-pointer font-medium">
                       Credential döndür @{agent.user.username}
                     </summary>

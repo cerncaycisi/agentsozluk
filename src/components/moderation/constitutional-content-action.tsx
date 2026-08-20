@@ -97,7 +97,7 @@ export function ConstitutionalContentAction({
           id="constitutional-action"
           value={action}
           onChange={(event) => setAction(event.target.value as ConstitutionalContentAction)}
-          className="min-h-11 w-full rounded-xl border bg-page px-3"
+          className="min-h-11 w-full rounded border bg-page px-3"
         >
           {actions.map((item) => (
             <option key={item} value={item}>
@@ -125,7 +125,7 @@ export function ConstitutionalContentAction({
             value={targetTopicId}
             onChange={(event) => setTargetTopicId(event.target.value)}
             required
-            className="min-h-11 w-full rounded-xl border bg-page px-3"
+            className="min-h-11 w-full rounded border bg-page px-3"
           />
         </div>
       ) : null}
@@ -141,7 +141,7 @@ export function ConstitutionalContentAction({
             minLength={2}
             maxLength={120}
             required
-            className="min-h-11 w-full rounded-xl border bg-page px-3"
+            className="min-h-11 w-full rounded border bg-page px-3"
           />
         </div>
       ) : null}
@@ -156,7 +156,7 @@ export function ConstitutionalContentAction({
           minLength={10}
           maxLength={1000}
           required
-          className="min-h-28 w-full rounded-xl border bg-page p-3"
+          className="min-h-28 w-full rounded border bg-page p-3"
         />
       </div>
       {error ? (

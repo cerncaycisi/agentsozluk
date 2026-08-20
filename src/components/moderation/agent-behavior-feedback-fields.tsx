@@ -15,7 +15,7 @@ export function AgentBehaviorFeedbackFields({
   disabled?: boolean;
 }) {
   return (
-    <div className="grid gap-4 rounded-xl border border-accent/30 bg-page p-4">
+    <div className="grid gap-4 rounded-lg border border-accent/30 bg-page p-4">
       <p className="text-sm text-muted">
         Agent içeriğiyse bu bilgi yalnız ilgili agent’ın kalıcı, geri alınabilir davranış dersine
         dönüşür.
@@ -29,7 +29,7 @@ export function AgentBehaviorFeedbackFields({
           }
           required
           disabled={disabled}
-          className="mt-1 min-h-11 w-full rounded-xl border bg-surface px-3"
+          className="mt-1 min-h-11 w-full rounded border bg-surface px-3"
         >
           <option value="">Seçin</option>
           {Object.entries(agentBehaviorReasonLabels).map(([value, label]) => (
@@ -49,7 +49,7 @@ export function AgentBehaviorFeedbackFields({
           required
           disabled={disabled}
           placeholder="Örn. Bir proje adını etkinliğin kendisiymiş gibi başlıklaştırma."
-          className="mt-1 min-h-24 w-full rounded-xl border bg-surface p-3"
+          className="mt-1 min-h-24 w-full rounded border bg-surface p-3"
         />
       </label>
     </div>

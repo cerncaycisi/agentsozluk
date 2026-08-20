@@ -75,7 +75,7 @@ export function AgentLifecycleForm({ agentId, current }: { agentId: string; curr
         <select
           value={status}
           onChange={(event) => setStatus(event.target.value as Lifecycle)}
-          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          className="mt-1 min-h-11 w-full rounded border bg-page px-3"
         >
           {transitions[current].map((value) => (
             <option key={value}>{value}</option>
@@ -90,7 +90,7 @@ export function AgentLifecycleForm({ agentId, current }: { agentId: string; curr
           minLength={10}
           maxLength={1000}
           required
-          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          className="mt-1 min-h-11 w-full rounded border bg-page px-3"
         />
       </label>
       <button disabled={pending || reason.trim().length < 10} className="button-primary self-end">
@@ -178,7 +178,7 @@ export function AgentLifecycleQuickAction({
                 minLength={10}
                 maxLength={1000}
                 required
-                className="mt-1 min-h-24 w-full rounded-xl border bg-page p-3"
+                className="mt-1 min-h-24 w-full rounded border bg-page p-3"
               />
             </label>
             {error ? (
@@ -251,7 +251,7 @@ export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
           minLength={10}
           maxLength={1000}
           required
-          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          className="mt-1 min-h-11 w-full rounded border bg-page px-3"
         />
       </label>
       {error ? (
@@ -260,7 +260,7 @@ export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
         </p>
       ) : null}
       {result ? (
-        <div className="rounded-xl border border-success/40 bg-success/10 p-4">
+        <div className="rounded-lg border border-success/40 bg-success/10 p-4">
           {result.runtimeEnrollmentManaged ? (
             <p className="text-sm font-medium">
               Yeni credential worker’a şifreli roster üzerinden otomatik aktarılacak. JSON veya
@@ -361,7 +361,7 @@ function RunConfigFields({
           <select
             value={config.runType}
             onChange={(event) => update({ runType: event.target.value as RunType })}
-            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            className="mt-1 min-h-11 w-full rounded border bg-page px-3"
           >
             {["NORMAL_WAKE", "READ_ONLY", "DRY_RUN", "REFLECTION", "SOURCE_REFRESH"].map(
               (value) => (
@@ -375,7 +375,7 @@ function RunConfigFields({
           <select
             value={config.priority}
             onChange={(event) => update({ priority: event.target.value as RunConfig["priority"] })}
-            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            className="mt-1 min-h-11 w-full rounded border bg-page px-3"
           >
             <option value="NORMAL">Normal</option>
             <option value="EMERGENCY">Acil</option>
@@ -387,7 +387,7 @@ function RunConfigFields({
             type="datetime-local"
             value={config.availableAt}
             onChange={(event) => update({ availableAt: event.target.value })}
-            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            className="mt-1 min-h-11 w-full rounded border bg-page px-3"
           />
         </label>
       </div>
@@ -418,7 +418,7 @@ function RunConfigFields({
           value={config.adminInstruction}
           onChange={(event) => update({ adminInstruction: event.target.value })}
           maxLength={1000}
-          className="mt-1 min-h-20 w-full rounded-xl border bg-page p-3"
+          className="mt-1 min-h-20 w-full rounded border bg-page p-3"
         />
       </label>
       {config.priority === "EMERGENCY" ? (
@@ -438,7 +438,7 @@ function PreviewCard({ preview }: { preview: RunPreview }) {
         )
       : "UNKNOWN";
   return (
-    <div className="rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm">
+    <div className="rounded-lg border border-accent/40 bg-accent/10 p-4 text-sm">
       <p className="font-medium">
         {preview.runCount} çalışma eklenecek · mevcut kuyruk {preview.existingQueueLength} ·
         eşzamanlılık {preview.concurrency}
@@ -713,7 +713,7 @@ export function BulkAgentRunForm({
         Tüm aktif agent’lar
       </label>
       {!allActive ? (
-        <fieldset className="grid max-h-52 gap-2 overflow-auto rounded-xl border p-3 sm:grid-cols-2">
+        <fieldset className="grid max-h-52 gap-2 overflow-auto rounded-lg border p-3 sm:grid-cols-2">
           <legend className="px-2 text-sm font-medium">Agent seçimi</legend>
           {agents.map((agent) => (
             <label key={agent.id} className="flex items-center gap-2 text-sm">
@@ -789,7 +789,7 @@ export function AgentRunCommands({ runId, status }: { runId: string; status: str
           onChange={(event) => setReason(event.target.value)}
           minLength={10}
           maxLength={1000}
-          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          className="mt-1 min-h-11 w-full rounded border bg-page px-3"
         />
       </label>
       <div className="mt-2 flex gap-2">
@@ -883,7 +883,7 @@ export function RuntimeControlForm({
             minLength={10}
             maxLength={1000}
             required
-            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            className="mt-1 min-h-11 w-full rounded border bg-page px-3"
           />
         </label>
         <button
@@ -1127,7 +1127,7 @@ export function AgentCreateForm({
                 replacePersona(selectedTemplate, "JSON");
               }
             }}
-            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            className="mt-1 min-h-11 w-full rounded border bg-page px-3"
           >
             <option value="CUSTOM">Sıfırdan</option>
             <option value="TEMPLATE">Persona şablonundan</option>
@@ -1149,7 +1149,7 @@ export function AgentCreateForm({
                   replacePersona(template, "JSON");
                 }
               }}
-              className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+              className="mt-1 min-h-11 w-full rounded border bg-page px-3"
             >
               {templates.map((template) => (
                 <option key={template.username} value={template.username}>
@@ -1166,7 +1166,7 @@ export function AgentCreateForm({
               <select
                 value={sourceAgentId}
                 onChange={(event) => setSourceAgentId(event.target.value)}
-                className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+                className="mt-1 min-h-11 w-full rounded border bg-page px-3"
               >
                 {existingAgents.map((agent) => (
                   <option key={agent.id} value={agent.id}>
@@ -1195,7 +1195,7 @@ export function AgentCreateForm({
                 setFormat(nextFormat);
                 replacePersona(persona, nextFormat);
               }}
-              className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+              className="mt-1 min-h-11 w-full rounded border bg-page px-3"
             >
               <option>JSON</option>
               <option>YAML</option>
@@ -1228,7 +1228,7 @@ export function AgentCreateForm({
         </p>
       ) : null}
       {created ? (
-        <div className="rounded-xl border border-success/40 bg-success/10 p-4">
+        <div className="rounded-lg border border-success/40 bg-success/10 p-4">
           <p className="font-medium">@{created.username} oluşturuldu.</p>
           {created.runtimeEnrollmentManaged ? (
             <>
@@ -1312,7 +1312,7 @@ function NumberField({
         max={max}
         step={step}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+        className="mt-1 min-h-11 w-full rounded border bg-page px-3"
       />
     </label>
   );
@@ -1349,14 +1349,14 @@ function AgentProfileSettingsFields({
           <select
             value={lifecycleStatus}
             onChange={(event) => onLifecycleChange(event.target.value as "DRAFT" | "PAUSED")}
-            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3 sm:max-w-xs"
+            className="mt-1 min-h-11 w-full rounded border bg-page px-3 sm:max-w-xs"
           >
             <option value="DRAFT">DRAFT</option>
             <option value="PAUSED">PAUSED</option>
           </select>
         </label>
       ) : null}
-      <fieldset className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-3">
+      <fieldset className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2 lg:grid-cols-3">
         <legend className="px-2 font-semibold">Aktif zaman profili</legend>
         {(Object.keys(settings.activeTimeProfile) as Array<keyof ActiveTimeProfile>).map((key) => (
           <NumberField
@@ -1385,7 +1385,7 @@ function AgentProfileSettingsFields({
         </p>
       </fieldset>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="flex items-center gap-3 rounded-xl border p-3 text-sm font-medium">
+        <label className="flex items-center gap-3 rounded-lg border p-3 text-sm font-medium">
           <input
             type="checkbox"
             checked={settings.personaEvolutionEnabled}
@@ -1395,7 +1395,7 @@ function AgentProfileSettingsFields({
           />
           Persona evolution açık
         </label>
-        <label className="flex items-center gap-3 rounded-xl border p-3 text-sm font-medium">
+        <label className="flex items-center gap-3 rounded-lg border p-3 text-sm font-medium">
           <input
             type="checkbox"
             checked={settings.sourceEvolutionEnabled}
@@ -1536,11 +1536,11 @@ export function AgentPersonaEditForm({
             minLength={10}
             maxLength={1000}
             required
-            className="mt-1 min-h-24 w-full rounded-xl border bg-page p-3"
+            className="mt-1 min-h-24 w-full rounded border bg-page p-3"
           />
         </label>
       ) : (
-        <p className="rounded-xl border p-3 text-sm text-muted">
+        <p className="rounded-lg border p-3 text-sm text-muted">
           Yalnız profil ayarları değişirse yeni PersonaVersion oluşturulmaz.
         </p>
       )}
@@ -1600,7 +1600,7 @@ export function PersonaRollbackForm({
         <select
           value={version}
           onChange={(event) => setVersion(Number(event.target.value))}
-          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          className="mt-1 min-h-11 w-full rounded border bg-page px-3"
         >
           {versions.map((value) => (
             <option key={value} value={value}>
@@ -1616,7 +1616,7 @@ export function PersonaRollbackForm({
           onChange={(event) => setReason(event.target.value)}
           minLength={10}
           required
-          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          className="mt-1 min-h-11 w-full rounded border bg-page px-3"
         />
       </label>
       <button disabled={reason.trim().length < 10} className="button-secondary self-end">
@@ -1707,7 +1707,7 @@ export function GlobalAgentSettingsForm({
         <select
           value={codexConcurrency}
           onChange={(event) => setCodexConcurrency(Number(event.target.value) as 1 | 2)}
-          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          className="mt-1 min-h-11 w-full rounded border bg-page px-3"
         >
           <option value={1}>1 · başlangıç baseline</option>
           <option
@@ -1733,7 +1733,7 @@ export function GlobalAgentSettingsForm({
         <textarea
           value={document}
           onChange={(event) => setDocument(event.target.value)}
-          className="mt-1 min-h-[32rem] w-full rounded-xl border bg-page p-3 font-mono text-xs"
+          className="mt-1 min-h-[32rem] w-full rounded border bg-page p-3 font-mono text-xs"
         />
       </label>
       <label className="block text-sm font-medium">
@@ -1744,7 +1744,7 @@ export function GlobalAgentSettingsForm({
           minLength={10}
           maxLength={1000}
           required
-          className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+          className="mt-1 min-h-11 w-full rounded border bg-page px-3"
         />
       </label>
       {message ? <p className="text-sm">{message}</p> : null}

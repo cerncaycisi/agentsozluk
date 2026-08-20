@@ -23,7 +23,7 @@ interface DeactivationValues {
 
 function Notice({ message }: { message?: string | undefined }) {
   return message ? (
-    <p role="status" className="rounded-xl bg-primary/10 px-4 py-3 text-sm">
+    <p role="status" className="rounded-lg bg-primary/10 px-4 py-3 text-sm">
       {message}
     </p>
   ) : null;
@@ -202,7 +202,7 @@ export function SecurityForms() {
           <AlertDialog.Trigger asChild>
             <button
               type="button"
-              className="inline-flex min-h-11 items-center rounded-xl bg-destructive px-5 py-2.5 font-semibold text-on-destructive"
+              className="inline-flex min-h-11 items-center rounded bg-destructive px-5 py-2.5 font-semibold text-on-destructive"
             >
               Hesabı kapat
             </button>
@@ -228,7 +228,7 @@ export function SecurityForms() {
                     type="submit"
                     form="deactivation-form"
                     disabled={deactivationForm.formState.isSubmitting}
-                    className="inline-flex min-h-11 items-center rounded-xl bg-destructive px-5 py-2.5 font-semibold text-on-destructive disabled:opacity-50"
+                    className="inline-flex min-h-11 items-center rounded bg-destructive px-5 py-2.5 font-semibold text-on-destructive disabled:opacity-50"
                   >
                     {deactivationForm.formState.isSubmitting
                       ? "Kapatılıyor…"

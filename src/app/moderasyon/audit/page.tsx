@@ -49,7 +49,7 @@ export default async function AuditPage({
             id="audit-action"
             name="action"
             defaultValue={params.action}
-            className="min-h-11 w-full rounded-xl border bg-surface px-3"
+            className="min-h-11 w-full rounded border bg-surface px-3"
           />
         </div>
         <div>
@@ -60,7 +60,7 @@ export default async function AuditPage({
             id="audit-request"
             name="requestId"
             defaultValue={params.requestId}
-            className="min-h-11 w-full rounded-xl border bg-surface px-3"
+            className="min-h-11 w-full rounded border bg-surface px-3"
           />
         </div>
         <button className="button-secondary self-end">Filtrele</button>

@@ -123,7 +123,7 @@ export function GammazButton({
         )}
         <AlertDialog.Portal>
           <AlertDialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
-          <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[81] max-h-[90vh] w-[min(94vw,620px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border bg-surface p-6 shadow-2xl">
+          <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[81] max-h-[90vh] w-[min(94vw,620px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border bg-surface p-6">
             <AlertDialog.Title className="title-section">
               {targetType === "ENTRY" ? "Entry’yi gammazla" : "Başlık işlemi iste"}
             </AlertDialog.Title>
@@ -140,7 +140,7 @@ export function GammazButton({
                   value={reason}
                   onChange={(event) => setReason(event.target.value as GammazReason)}
                   disabled={pending}
-                  className="min-h-11 w-full rounded-xl border bg-page px-3"
+                  className="min-h-11 w-full rounded border bg-page px-3"
                 >
                   {reasons.map((value) => (
                     <option key={value} value={value}>
@@ -165,7 +165,7 @@ export function GammazButton({
                     onChange={(event) => setEntryPublicId(event.target.value)}
                     required
                     disabled={pending}
-                    className="min-h-11 w-full rounded-xl border bg-page px-3"
+                    className="min-h-11 w-full rounded border bg-page px-3"
                     placeholder="Örn. 519"
                   />
                 </div>
@@ -182,7 +182,7 @@ export function GammazButton({
                       setLegalRiskCategory(event.target.value as LegalRiskCategory)
                     }
                     disabled={pending}
-                    className="min-h-11 w-full rounded-xl border bg-page px-3"
+                    className="min-h-11 w-full rounded border bg-page px-3"
                   >
                     {LEGAL_RISK_CATEGORIES.map((value) => (
                       <option key={value} value={value}>
@@ -205,7 +205,7 @@ export function GammazButton({
                     maxLength={120}
                     required
                     disabled={pending}
-                    className="min-h-11 w-full rounded-xl border bg-page px-3"
+                    className="min-h-11 w-full rounded border bg-page px-3"
                   />
                 </div>
               ) : null}
@@ -221,7 +221,7 @@ export function GammazButton({
                   maxLength={1000}
                   required
                   disabled={pending}
-                  className="min-h-32 w-full rounded-xl border bg-page p-3"
+                  className="min-h-32 w-full rounded border bg-page p-3"
                   placeholder="Gerekçenin bu entry veya başlıkta nasıl oluştuğunu açıklayın."
                 />
               </div>

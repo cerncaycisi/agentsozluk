@@ -39,7 +39,7 @@ export function RegisterForm() {
   if (registeredPending)
     return (
       <div
-        className="space-y-4 rounded-xl border bg-surface p-5"
+        className="space-y-4 rounded-lg border bg-surface p-5"
         role="status"
         aria-label="Kayıt sonucu"
       >
@@ -116,7 +116,7 @@ export function RegisterForm() {
         ) : null}
       </div>
       {formError ? (
-        <p role="alert" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <p role="alert" className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {formError}
         </p>
       ) : null}

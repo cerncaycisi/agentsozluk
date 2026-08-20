@@ -132,14 +132,14 @@ export function AgentCapabilityMeasurementForm() {
           accept="application/json,.json"
           multiple
           onChange={(event) => void select(Array.from(event.target.files ?? []))}
-          className="mt-1 block min-h-11 w-full rounded-xl border bg-page px-3 py-2"
+          className="mt-1 block min-h-11 w-full rounded border bg-page px-3 py-2"
         />
       </label>
       {selectedFiles.length > 0 ? (
         <p className="mt-2 text-xs text-muted">Seçilen: {selectedFiles.join(", ")}</p>
       ) : null}
       {measurementPackage ? (
-        <div className="mt-4 rounded-xl border border-success/40 bg-success/10 p-4 text-sm">
+        <div className="mt-4 rounded-lg border border-success/40 bg-success/10 p-4 text-sm">
           <p className="font-medium">Paket hazır — üç ölçümün fingerprint’i eşleşiyor.</p>
           <dl className="mt-3 grid gap-2 sm:grid-cols-2">
             <PreviewRow label="Codex" value={measurementPackage.dual.codexVersion} />

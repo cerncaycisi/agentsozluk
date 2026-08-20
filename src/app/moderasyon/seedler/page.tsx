@@ -45,7 +45,7 @@ export default async function SeedVisibilityPage({
             name="q"
             defaultValue={query}
             maxLength={120}
-            className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
+            className="mt-1 min-h-11 w-full rounded border bg-page px-3"
           />
         </label>
         <button className="button-secondary self-end">Ara</button>

@@ -53,7 +53,7 @@ export function TopicCanonicalSuggestions({ title }: { title: string }) {
   return (
     <section
       aria-labelledby="canonical-topic-suggestions-title"
-      className="rounded-xl border bg-page p-4 text-sm"
+      className="rounded-lg border bg-page p-4 text-sm"
     >
       <h2 id="canonical-topic-suggestions-title" className="font-semibold">
         Önce mevcut ve alternatif adları kontrol edin
