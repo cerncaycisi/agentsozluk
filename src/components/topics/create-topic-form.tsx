@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { FormField, FormTextarea } from "@/components/ui/form-field";
+import { EntryComposerField } from "@/components/entries/entry-composer-field";
+import { FormField } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { TopicWritingGuidance } from "@/components/constitution/writing-guidance";
 import { TopicCanonicalSuggestions } from "@/components/topics/topic-canonical-suggestions";
@@ -144,12 +145,12 @@ export function CreateTopicForm() {
           minLength: { value: 2, message: "En az 2 karakter girin." },
         })}
       />
-      <FormTextarea
+      <EntryComposerField
         id="topic-entry"
         label="İlk entry"
         disabled={isSubmitting}
         error={errors.entryBody?.message}
-        maxLength={10000}
+        value={entryBody}
         {...register("entryBody", {
           required: "İlk entry zorunludur.",
           minLength: { value: 10, message: "En az 10 karakter girin." },
@@ -168,7 +169,11 @@ export function CreateTopicForm() {
               : "Bu başlık zaten var"}
           </h2>
           <p className="mt-2 text-sm">
-            <Link href={duplicate.topic.url} className="font-semibold text-primary hover:underline">
+            {/* Cümlenin İÇİNDE bir bağlantı: `.link-strong`un `inline-flex` kutusu
+                burada satır sonunda bölünemez ve `min-h-6` satır yüksekliğini
+                şişirirdi. `inline` ile aile yalnız rengi ve durumları veriyor;
+                metin akışındaki bağlantı SC 2.5.8 hedef boyu istisnasına giriyor. */}
+            <Link href={duplicate.topic.url} className="link-strong inline font-semibold">
               {duplicate.topic.title}
             </Link>{" "}
             başlığına gidebilir veya yazdığınız ilk entry’yi bu başlığa gönderebilirsiniz.

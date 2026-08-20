@@ -3,34 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { EntryBody } from "@/components/entries/entry-body";
-import { FormTextarea } from "@/components/ui/form-field";
-import { apiRequest, ClientApiError } from "@/lib/http/client";
 import {
-  EntryReferenceToolbar,
-  EntryWritingGuidance,
-} from "@/components/constitution/writing-guidance";
-
-/**
- * Sunucudaki `entryBodySchema` (`src/modules/entries/validation/schemas.ts`)
- * gövdeyi 10.000 karakterle sınırlar. İstemci yalnız o sınıra hizalanır;
- * değer değişirse `tests/unit/entries/composer-character-counter.test.tsx`
- * bu kopyayı yakalar.
- */
-const ENTRY_BODY_MAX_LENGTH = 10_000;
-
-/**
- * Önizleme `EntryBody`'yi `references` **vermeden** çağırır: istemcide referans
- * indeksi yok. `tokenizeEntryBody` bu durumda yalnız gizli bkz'i (`[[…]]`)
- * bağlantıya çevirir — hedefi bilinmediği için başlık aramasına — geri kalan üç
- * sözdizimini düz metin bırakır. Yani önizleme yayımlanan hâle göre *eksik*
- * bağlantı gösterir, fazla değil. Aşağıdaki not tam olarak bunu söylüyor ve
- * `EntryWritingGuidance`'taki cümleyle aynı sözcükleri kullanıyor.
- */
-const PREVIEW_REFERENCE_NOTE =
-  "Önizleme hedefleri denetlemez: gizli bkz burada her zaman başlık aramasına gider, " +
-  "görünür bkz, entry ve yazar referansları ise düz metin kalır. Yayımlandığında " +
-  "mevcut ve görünür hedefler bağlantıya dönüşür.";
+  EntryComposerField,
+  ENTRY_BODY_MAX_LENGTH,
+} from "@/components/entries/entry-composer-field";
+import { apiRequest, ClientApiError } from "@/lib/http/client";
+import { EntryWritingGuidance } from "@/components/constitution/writing-guidance";
 
 /**
  * Taslak anahtarı başlık başına ayrılır: kullanıcı iki sekmede iki başlığa
@@ -105,19 +83,6 @@ function writeDraft(key: string, body: string): void {
   } catch {
     // Kota dolu ya da depolama kapalı: taslak yok, form yine çalışıyor.
   }
-}
-
-function ComposerPreview({ body }: { body: string }) {
-  return (
-    <div>
-      {body.trim() ? (
-        <EntryBody body={body} />
-      ) : (
-        <p className="text-sm text-muted">Önizlenecek bir şey yok.</p>
-      )}
-      <p className="mt-3 border-t field-border pt-3 text-xs text-muted">{PREVIEW_REFERENCE_NOTE}</p>
-    </div>
-  );
 }
 
 export function CreateEntryForm({ topicId }: { topicId: string }) {
@@ -200,30 +165,29 @@ export function CreateEntryForm({ topicId }: { topicId: string }) {
   };
   const bodyFieldId = `entry-body-${topicId}`;
   return (
-    <form onSubmit={handleSubmit(submit)} className="surface-card mt-8 space-y-4 p-6" noValidate>
+    // Kap dili: `surface-card` DEĞİL. Composer, üstündeki entry listesinin son
+    // satırı — o liste ritmini `EntryPreview`'un `border-t`'siyle kuruyor
+    // (bkz. `baslik/[topic]/page.tsx`: “Ritmi boşluk değil ayraç kuruyor”).
+    // Kenarlıklı kart aynı sütunda ikinci bir kap dili açıyordu. Kartın gittiği
+    // yerde okunabilirlik kaybı yok: textarea ve seçili sekme `field-border`
+    // (`--border-strong`) taşıyor, iki temada da zemine karşı ≥3:1.
+    <form onSubmit={handleSubmit(submit)} className="mt-8 space-y-4 border-t pt-8" noValidate>
       {draftRestored ? (
         // `role="status"` bilerek yok: bu satır sayfa yüklenirken zaten görünüyor,
         // bir eyleme yanıt değil. Canlı bölge yapmak, gönderim sonucunu duyuran
         // aşağıdaki `notice` ile yarışırdı (ve e2e'de iki `status` çakışıyordu).
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
           <span>Kaydedilmemiş taslağınız geri yüklendi.</span>
-          <button
-            type="button"
-            onClick={discardDraft}
-            className="inline-flex min-h-6 items-center font-semibold text-primary hover:underline"
-          >
+          <button type="button" onClick={discardDraft} className="link-strong font-semibold">
             Taslağı sil
           </button>
         </p>
       ) : null}
-      <FormTextarea
+      <EntryComposerField
         id={bodyFieldId}
         label="Yeni entry"
         disabled={isSubmitting}
-        toolbar={(api) => <EntryReferenceToolbar api={api} textareaId={bodyFieldId} />}
-        preview={<ComposerPreview body={body} />}
         error={errors.body?.message}
-        maxLength={ENTRY_BODY_MAX_LENGTH}
         value={body}
         {...register("body", {
           required: "Entry metni zorunludur.",
