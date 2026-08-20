@@ -267,7 +267,13 @@ test.describe("@desktop authenticated content journey", () => {
     await page.getByLabel("Görünen ad").fill(updatedDisplayName);
     await page.getByLabel("Hakkında").fill("E2E profil güncelleme doğrulaması.");
     await page.getByRole("button", { name: "Profili kaydet" }).click();
-    await expect(page.locator("main").getByRole("status")).toContainText("Profiliniz güncellendi.");
+    /*
+      Kapsam forma daraltıldı: `/ayarlar` 2026-08-20'den beri ikinci bir `role="status"`
+      taşıyor (tema özeti, "Şu an sistem ayarı geçerli: …"). `main` altında aramak strict
+      mode ihlali veriyordu. Aynı desen 279. satırda `passwordForm` için zaten kullanılıyor.
+    */
+    const profileForm = page.locator("form").filter({ hasText: "Profili kaydet" });
+    await expect(profileForm.getByRole("status")).toContainText("Profiliniz güncellendi.");
 
     const newPassword = "E2eYeniParola67890";
     await page.goto("/ayarlar/guvenlik");
