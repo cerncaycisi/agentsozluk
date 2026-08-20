@@ -78,6 +78,21 @@ vurgulamamaktır.
     mor kullanıyor. Sıralama değiştiren bir kontrol için birincil buton ağırlığı fazla — üstelik
     artık iki sıra var.
 
+### C-ek · Uygulama sırasında bulunanlar (denetimde yoktu)
+
+14. **Zemin ile yüzey aynı renk.** Açık temada `--page` 252/251/249, `--surface` 255/255/255 —
+    kontrast oranı **1.034**, yani ayırt edilemez. Sistem "kalkık kart / gömülü input" kuruyor
+    (kart `bg-surface`, input `bg-page`) ama açık temada bu ayrım hiç görünmüyor: 116 kart ve
+    kenar çubuğu, kendi zeminiyle aynı renkte beyaz kutular. Dokuz `hover:bg-page` durumu da
+    görünmez. Bu denetim tablosunda yalnız benchmark'ların zemini karşılaştırılmış;
+    "bu uygulamaya iki zemin gerekiyor mu" sorusu hiç sorulmamış. Koyu temada sorun yok.
+15. **Kenar çubuğu aktif satırı dolgulu birincil.** Filtre çipleri (bulgu 10) dolgudan çıkınca
+    oy düğmeleri dışında sayfada kalan tek dolgulu birincil yüzey bu oluyor — ve her sayfada
+    göz önünde. "Şu an buradasın", "bas bana" ağırlığıyla söylenmiş oluyor.
+16. **`rounded-full` bir istisna değil, üçüncü bir değer.** On kullanımın hepsi metin rozeti
+    (`px-3 py-1`), hiçbiri dairesel değil. "Yalnız gerçekten dairesel olanlarda kalır" kuralı
+    pratikte hiçbir şeyi korumuyordu.
+
 ### D · Kimlik (kimsenin sormadığı)
 
 11. **Görsel kimlik yok.** Logo yok, sadece kalın metin. Palet Tailwind varsayılanı
