@@ -520,13 +520,16 @@ NODE
 }
 
 #
-# `compose.production.yaml` app servisini `${APP_IMAGE:-agent-sozluk:production}` ile
-# tanımlıyor. `APP_IMAGE`'i yalnız bu script komut satırında geçiyor; systemd birimi
-# açılışta yalnız `--env-file` veriyor ve o dosyada `APP_IMAGE` yok. Yani `production`
-# etiketi mevcut değilse sunucu her yeniden başladığında compose var olmayan bir imajı
-# çekmeye çalışıyor, kimlik doğrulaması başarısız oluyor ve stack hiç açılmıyor.
+# `agent-sozluk.service` birimi açılışta `Environment=APP_IMAGE=agent-sozluk:production`
+# veriyor — birimin sözleşmesi bu etiket. Bu script ise stack'i kendi turunun SHA
+# etiketiyle (`agent-sozluk:$candidate_sha`) ayağa kaldırıyor ve `production` etiketini
+# hiç yönetmiyordu. Sonuç: birimin bağlı olduğu etiket sunucuda hiç var olmadı. Her
+# yeniden başlatmada compose var olmayan bir imajı çekmeye çalıştı, `DOCKER_CONFIG`
+# kayıtlı kimlik taşımadığı için yetki hatası aldı ve `ExecStart` açılıştan bir saniye
+# sonra 1 ile çıktı; stack hiç açılmadı.
+#
 # 2026-08-20'de `unattended-upgrades` reboot'undan sonra tam bu oldu: site 33 dakika
-# kapalı kaldı ve elle müdahaleyle geri geldi.
+# kapalı kaldı ve elle `APP_IMAGE` verilerek geri getirildi.
 #
 # Etiket YALNIZ `verify_release` geçtikten sonra taşınıyor. Böylece açılışta ayağa
 # kalkacak imaj her zaman bu turda doğrulanmış imaj oluyor; yarıda kalan bir release

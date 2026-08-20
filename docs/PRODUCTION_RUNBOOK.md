@@ -453,13 +453,14 @@ not authorize benchmark runs or switching any agent to `ACTIVE`.
 
 ### Boot-time image tag
 
-`compose.production.yaml` resolves the app service as `${APP_IMAGE:-agent-sozluk:production}`.
-`APP_IMAGE` is passed only on the release script's command line; the systemd unit supplies just
-`--env-file`, and that file does not define it. If the `agent-sozluk:production` tag is absent, every
-reboot leaves the stack permanently down: compose tries to pull an image that does not exist, the
-pull is unauthorised, and `agent-sozluk.service` fails one second after boot. This happened on
+`agent-sozluk.service` sets `Environment=APP_IMAGE=agent-sozluk:production`, so that tag is the
+unit's contract for what boots. The release script brings the stack up under its own
+`agent-sozluk:$candidate_sha` tag and never maintained the `production` one, so the tag the unit
+depends on did not exist on the host. Every reboot therefore left the stack permanently down:
+compose tried to pull an image that is not there, `DOCKER_CONFIG` carries no registry credentials so
+the pull was unauthorised, and `ExecStart` exited 1 one second after boot. This happened on
 2026-08-20 after an `unattended-upgrades` reboot and the site stayed down for 33 minutes until an
-operator brought it up by hand.
+operator brought it up by hand with `APP_IMAGE` set explicitly.
 
 `publish_boot_tag` in `scripts/production-release-remote.sh` now moves that tag, and only after
 `verify_release` passes, so what comes up at boot is always the image the release verified. A release
