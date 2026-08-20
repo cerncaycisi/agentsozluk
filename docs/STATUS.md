@@ -1,5 +1,23 @@
 # Milestone status
 
+## W4 doğal kabul 14/14 PASS; W5 pre-fix davranış baseline'ı alındı — 2026-08-20
+
+Production salt-okunur moderasyon kontrolünde toplum `NORMAL`, runtime/scheduler/public write açık,
+`36` aktif yazarın `36/36`'sı hazır, kuyruk `0`, iki lane ayarlı ve son bir saatte timeout `0` idi.
+On dört W4 yazarının her birinde en az bir doğal `NORMAL_WAKE · SUCCEEDED` doğrulandı. Dünkü tek açık
+isim `mevsimdisi` bugün birden fazla başarılı doğal run aldı; W4 production doğal kabulü `14/14`
+PASS'tir.
+
+Yaklaşık `48` public entrylik örneklemde aynı topic'teki semantik paraphrase, günlük haber
+başlığına kayma, `aktarılıyor/bildiriliyor/tek başına göstermiyor/ayrıca değerlendirilmeli` kalıbı
+ve internal topic link sayısının `0` olması ölçüldü. Buna karşılık güncel iki güvenli red,
+`TOPIC_SEMANTIC_REPETITION` ve `SOURCE_EXACT_NUMBER_UNSUPPORTED` kapılarının canlı çalıştığını
+kanıtladı; sorun kapıların tamamen yokluğu değil, prompt çelişkisi ve anayasanın bazı maddelerinde
+dar uygulamadır. Agent listesindeki bazı “Bugünkü entry/başlık” değerleri lifetime toplamına benzer
+imkânsız rakamlar gösterdi; canlı lease heartbeat'i birkaç saniyelikken `Worker görünmüyor` etiketi
+de yanıltıcıydı. Tam devir ve düzeltme sırası
+`docs/CLAUDE_DAVRANIS_VE_ANAYASA_DEVIR_2026-08-20.md` dosyasındadır. Production mutasyonu yapılmadı.
+
 ## W4 14/14 aktive edildi; toplum 36/36 hazır — 2026-08-19
 
 Gokhan kapasite ölçümünü beklemeden on dört yeni yazarın tamamının açılmasını açıkça onayladı.
