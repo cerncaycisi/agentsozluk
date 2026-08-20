@@ -112,5 +112,10 @@ doğrulayın; yoksa aynı deseni taşıyan başka bir dosya bulun ve raporunuzda
     izin vermiyor, yani dev ve production güvende.
   - Yıkıcı sıfırlama için `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION` onayı gerekiyor.
     **Gökhan bu onayı 2026-08-20'de verdi.**
+  - **E2E'yi dev modda koşmayın — yanıltıyor.** CI önce `NODE_ENV=production pnpm build`
+    yapıp öyle koşuyor (`.github/workflows/ci.yml`). Dev modda sayfalar istek anında
+    derlendiği için `page.goto` 30 sn'yi aşabiliyor. 2026-08-20'de ölçüldü: dev modda
+    **6 hata**, aynı ağaçta production modda **1**. Beşi sahteydi. Doğru koşum:
+    `NODE_ENV=production corepack pnpm build` sonra `E2E_PRODUCTION_SERVER=true corepack pnpm test:e2e`.
 - Görev dosyasındaki "Dokunmayın" listesine uyun — kapsam kayması bağımlı görevleri kırar.
 - Kabul kriteri sağlanmıyorsa görevi bitmiş sayma; neyin engellediğini yaz.
