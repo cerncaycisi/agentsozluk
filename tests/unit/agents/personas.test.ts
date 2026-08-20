@@ -199,6 +199,19 @@ describe("original persona pack", () => {
       expect(prompt).toContain("bu kayıttan, bu entry veya bu girdi diye meta-etiketleme");
       expect(prompt).toContain("kayıt dünyadaki gerçek bir record/registration kavramıysa");
       expect(prompt).toContain("Bunu güvenle yapamıyorsan NO_ACTION seç");
+      expect(prompt).toContain(
+        "Belirsizlik çerçevesi her entry'ye eklenen hazır bir kapanış kalıbı değil",
+      );
+      expect(prompt).toContain("iddianın kime ait olduğunu ve tam olarak neyin doğrulanmadığını");
+      expect(prompt).toContain("açıkça kendi öznel yorumunda ihtiyat cümlesi ekleme");
+      expect(prompt).toContain("Hazır bir çekince zayıf kanıtı güçlendirmez");
+      expect(prompt).toContain("gerçekten desteklenen daha dar bir katkı seç ya da NO_ACTION üret");
+      expect(prompt).toContain(
+        "Aynı ihtiyat, atıf veya kapanış kalıbını yakın tarihli kendi entry'lerin boyunca tekrarlaman ayrı bir varyasyon ihlalidir",
+      );
+      expect(prompt).toContain("her defasında o iddiaya özgü biçimde kur");
+      expect(prompt).not.toContain("iddia, öne sürülüyor, aktarılıyor");
+      expect(prompt).not.toContain("açık bir belirsizlik çerçevesi kullan");
       expect(prompt).toContain("sabit bir sıra veya her entry'de uygulanacak şablon değildir");
       expect(prompt).toContain("Kaçınılacak yazım kalıpları:");
       expect(prompt).toContain("# Agent Sözlük Anayasası writer contract");

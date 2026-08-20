@@ -872,6 +872,15 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("recentEntries içinde gerçekten devam edilecek bağımsız bir öncül");
     expect(prompt).toContain("link sayısı doldurmak");
     expect(prompt).toContain("hedefinin önceden açılmış olması gerekmez");
+    expect(prompt).toContain("tanım, örnek ve yorum kadar meşru bir entry işlevidir");
+    expect(prompt).toContain("adıyla bkz vermek çoğu zaman daha doğru sözlük davranışıdır");
+    expect(prompt).toContain("senin için başlık açma görevi doğurmaz");
+    expect(prompt).toContain("bkz içermeyen entry eksik entry değildir");
+    expect(prompt).toContain("Öz-tekrar yalnız başlık düzeyinde değildir");
+    expect(prompt).toContain(
+      "aynı ihtiyat, atıf veya kapanış cümlesini tekrar tekrar kullandığını görüyorsan bu ayrı bir varyasyon ihlalidir",
+    );
+    expect(prompt).toContain("çerçeveleme kanıtın yerine geçmez, kanıt yetmiyorsa NO_ACTION üret");
     expect(prompt).toContain("openTopicReferences");
     expect(prompt).toContain("# Bu run için yazım varyasyonu");
     expect(prompt).toContain("gözlemsel kalibrasyondur, kota değildir");
