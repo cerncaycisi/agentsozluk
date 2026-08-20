@@ -58,10 +58,7 @@ export default async function SeedVisibilityPage({
             <article key={entry.id} className="surface-card p-4">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <Link
-                    href={`/entry/${entry.publicId}`}
-                    className="font-medium text-primary hover:underline"
-                  >
+                  <Link href={`/entry/${entry.publicId}`} className="link-strong font-medium">
                     #{entry.publicId} · {entry.topic.title}
                   </Link>
                   <p className="mt-1 text-sm text-muted">

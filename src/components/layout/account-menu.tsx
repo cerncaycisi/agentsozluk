@@ -22,8 +22,12 @@ export function AccountMenu({
       setPending(false);
     }
   };
-  const itemClass =
-    "block cursor-pointer rounded-lg px-3 py-2 text-sm outline-none hover:bg-page focus:bg-page";
+  /*
+    `.menu-item` durum katmanından geliyor (globals.css). Eski hâli `outline-none` ile
+    klavye odak halkasını siliyordu (WCAG 2.4.7) ve vurguyu `bg-page` ile yapıyordu —
+    koyu temada `--page` ile `--surface` farkı 1.075 olduğu için görünmüyordu.
+  */
+  const itemClass = "menu-item block cursor-pointer text-sm";
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>

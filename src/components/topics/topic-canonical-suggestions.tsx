@@ -71,7 +71,7 @@ export function TopicCanonicalSuggestions({ title }: { title: string }) {
                   href={result.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-semibold text-primary hover:underline"
+                  className="link-strong font-semibold"
                 >
                   {result.title}
                 </Link>

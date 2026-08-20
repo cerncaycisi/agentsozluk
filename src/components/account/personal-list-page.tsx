@@ -92,7 +92,7 @@ export async function PersonalListPage({
               <article key={item.blocked.id} className="surface-card p-4">
                 <h2 className="title-item">{item.blocked.displayName}</h2>
                 <Link
-                  className="mt-1 inline-block text-sm text-primary hover:underline"
+                  className="link-strong mt-1 text-sm"
                   href={publicProfileUrl(item.blocked.username)}
                 >
                   Profili aç

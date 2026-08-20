@@ -81,7 +81,14 @@ export function EntryReferenceToolbar({
           aria-label={action.ariaLabel}
           title={action.syntax}
           onClick={() => api.wrapSelection(action.before, action.after)}
-          className="min-h-11 shrink-0 whitespace-nowrap rounded-lg border bg-page px-3 text-sm font-semibold text-ink"
+          /*
+            Sessiz buton ailesi + `field-border`. Kenarlık daha önce `--border` idi:
+            `bg-page` üstünde açık temada 1.22, koyu temada 1.38 — SC 1.4.11 eşiği 3.0.
+            Şeridin zemini sayfa zemininden ayrışmadığı için (page/surface 1.11 ve
+            1.075) kutuyu tanıtan TEK şey bu kenarlık; `--border-strong` ile 3.13 / 3.49.
+            Geometri (rounded-lg, px-3, text-sm, 44px hedef) olduğu gibi kalıyor.
+          */
+          className="button-secondary field-border min-h-11 shrink-0 whitespace-nowrap rounded-lg bg-page px-3 text-sm font-semibold text-ink"
         >
           {action.label}
         </button>
@@ -119,7 +126,7 @@ export function EntryWritingGuidance() {
         hedefler bağlantıya dönüşür; açılmamış bir gizli bkz aynı adla başlık aramasına gider,
         bilinmeyen bir görünür bkz, entry ya da yazar referansı düz metin kalır.
       </p>
-      <Link href="/kurallar#madde-50" className="font-semibold text-primary hover:underline">
+      <Link href="/kurallar#madde-50" className="link-strong font-semibold">
         Anayasa Madde 50: entry karar testini aç
       </Link>
     </GuidanceBox>
@@ -157,14 +164,14 @@ export function TopicWritingGuidance({
             href={`/ara?q=${encodeURIComponent(normalizedTitle)}&type=topics`}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-semibold text-primary hover:underline"
+            className="link-strong font-semibold"
           >
             “{normalizedTitle}” ve benzerlerini ara
           </Link>
         ) : (
           <span>Başlığı yazınca mevcut başlıklarda arama bağlantısı burada görünür.</span>
         )}
-        <Link href="/kurallar#madde-51" className="font-semibold text-primary hover:underline">
+        <Link href="/kurallar#madde-51" className="link-strong font-semibold">
           Anayasa Madde 51: başlık karar testini aç
         </Link>
       </div>

@@ -141,7 +141,7 @@ export function AgentRuntimeEvents({
               {event.agentProfileId && event.agentProfile ? (
                 <Link
                   href={`/moderasyon/agentlar/${event.agentProfileId}`}
-                  className="font-medium text-primary underline"
+                  className="link-strong font-medium underline"
                 >
                   {event.agentProfile.user.displayName} (@{event.agentProfile.user.username})
                 </Link>
@@ -151,7 +151,7 @@ export function AgentRuntimeEvents({
               {event.runId ? (
                 <Link
                   href={`/moderasyon/agentlar/calisma/${event.runId}`}
-                  className="font-medium text-primary underline"
+                  className="link-strong font-medium underline"
                 >
                   Çalışma detayını aç
                 </Link>

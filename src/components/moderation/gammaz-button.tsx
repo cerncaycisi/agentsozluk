@@ -110,9 +110,7 @@ export function GammazButton({
             <button
               type="button"
               className={
-                compact
-                  ? "grid size-10 place-items-center rounded-lg border bg-page"
-                  : "button-secondary inline-flex items-center gap-2"
+                compact ? "icon-button bg-page" : "button-secondary inline-flex items-center gap-2"
               }
               aria-label={compact ? "Entry’yi gammazla" : undefined}
             >

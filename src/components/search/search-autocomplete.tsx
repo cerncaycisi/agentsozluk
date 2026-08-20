@@ -198,8 +198,14 @@ export function SearchAutocomplete({
       aria-selected={index === activeIndex}
       tabIndex={-1}
       onClick={close}
-      className={`block truncate px-3 py-2 text-sm ${
-        index === activeIndex ? "bg-primary text-on-primary" : "text-ink hover:bg-page"
+      /*
+        Öneri satırı `.menu-item` ailesinden. `block`: satır `truncate` ile kısalıyor,
+        esnek kapta metin taşması kısalmazdı. `rounded-none`: liste kutusunun yatay
+        payı yok, satırlar kenardan kenara — seçili satırın `bg-primary` dolgusu da
+        bugün köşesiz. Eski `hover:bg-page` koyu temada görünmüyordu (fark 1.075).
+      */
+      className={`menu-item block truncate rounded-none ${
+        index === activeIndex ? "bg-primary text-on-primary" : "text-ink"
       }`}
     >
       {option.label}

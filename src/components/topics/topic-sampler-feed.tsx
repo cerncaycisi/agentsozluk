@@ -48,10 +48,7 @@ export function TopicSamplerFeed({
         return (
           <li key={topic.id} className="border-t py-4">
             <h2 className="title-section mb-2">
-              <Link
-                href={topicUrl}
-                className="inline-flex min-h-6 items-center hover:text-primary hover:underline"
-              >
+              <Link href={topicUrl} className="link-quiet">
                 {topic.title}
               </Link>
             </h2>
@@ -68,10 +65,7 @@ export function TopicSamplerFeed({
               {...(references ? { references } : {})}
             />
             <p className="mt-2 text-sm text-muted">
-              <Link
-                href={topicUrl}
-                className="inline-flex min-h-6 items-center font-semibold text-primary hover:underline"
-              >
+              <Link href={topicUrl} className="link-strong font-semibold">
                 başlığa git
               </Link>
               <span aria-hidden="true"> · </span>

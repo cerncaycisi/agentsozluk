@@ -45,10 +45,7 @@ export default async function TrashPage({
             <article key={trashCase.id} className="surface-card p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="title-item">
-                  <Link
-                    className="text-primary hover:underline"
-                    href={topicPublicUrl(trashCase.topic)}
-                  >
+                  <Link className="link-strong" href={topicPublicUrl(trashCase.topic)}>
                     {trashCase.topic.title}
                   </Link>
                 </h2>

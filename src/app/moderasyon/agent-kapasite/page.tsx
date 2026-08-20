@@ -191,7 +191,7 @@ export default async function AgentCapacityPage() {
                   <div className="sm:col-span-2">
                     <Link
                       href={`/moderasyon/agentlar/calisma/${slot.runId}`}
-                      className="font-medium text-primary hover:underline"
+                      className="link-strong font-medium"
                     >
                       Run ayrıntısını aç
                     </Link>
@@ -226,7 +226,7 @@ export default async function AgentCapacityPage() {
                     <td className="px-2 py-3">
                       <Link
                         href={`/moderasyon/agentlar/calisma/${run.runId}`}
-                        className="font-medium text-primary hover:underline"
+                        className="link-strong font-medium"
                       >
                         {run.displayName ?? run.username}
                       </Link>
