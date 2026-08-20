@@ -43,7 +43,7 @@ export function AccountMenu({
           sideOffset={8}
           className="z-[75] min-w-56 rounded-xl border bg-surface p-2 shadow-xl"
         >
-          <DropdownMenu.Label className="px-3 py-2 text-xs font-bold text-muted">
+          <DropdownMenu.Label className="px-3 py-2 text-xs font-medium text-muted">
             @{viewer.username}
           </DropdownMenu.Label>
           <DropdownMenu.Separator className="my-1 border-t" />

@@ -73,7 +73,7 @@ export default async function SearchPage({
   const totalPages = Math.max(1, Math.ceil(result.totalItems / pageSize));
   return (
     <main id="ana-icerik" className="page-main">
-      <h1 className="text-3xl font-black tracking-tight">Sözlükte ara</h1>
+      <h1 className="title-page">Sözlükte ara</h1>
       <form
         action="/ara"
         role="search"
@@ -116,7 +116,7 @@ export default async function SearchPage({
       </form>
 
       <section aria-labelledby="arama-sonuclari" className="mt-8">
-        <h2 id="arama-sonuclari" className="text-xl font-bold">
+        <h2 id="arama-sonuclari" className="title-section">
           {rateLimited
             ? "Arama sınırına ulaştınız; lütfen kısa süre sonra yeniden deneyin"
             : result.query.length < 2
@@ -126,10 +126,8 @@ export default async function SearchPage({
         <div className="mt-4 space-y-3">
           {result.results.map((item) => (
             <article key={`${item.type}-${item.id}`} className="surface-card p-5">
-              <p className="text-accent-contrast text-xs font-bold uppercase tracking-wide">
-                {resultLabels[item.type]}
-              </p>
-              <h3 className="mt-1 text-lg font-bold">
+              <p className="eyebrow">{resultLabels[item.type]}</p>
+              <h3 className="title-item mt-1">
                 <Link
                   href={item.url}
                   className="inline-flex min-h-6 items-center hover:text-primary hover:underline"

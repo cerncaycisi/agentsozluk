@@ -124,7 +124,7 @@ export function GammazButton({
         <AlertDialog.Portal>
           <AlertDialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
           <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[81] max-h-[90vh] w-[min(94vw,620px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border bg-surface p-6 shadow-2xl">
-            <AlertDialog.Title className="text-xl font-black">
+            <AlertDialog.Title className="title-section">
               {targetType === "ENTRY" ? "Entry’yi gammazla" : "Başlık işlemi iste"}
             </AlertDialog.Title>
             <AlertDialog.Description className="mt-2 leading-7 text-muted">
@@ -132,7 +132,7 @@ export function GammazButton({
             </AlertDialog.Description>
             <form onSubmit={submit} className="mt-5 space-y-4">
               <div>
-                <label htmlFor={`${id}-reason`} className="mb-2 block text-sm font-bold">
+                <label htmlFor={`${id}-reason`} className="mb-2 block text-sm font-medium">
                   Gerekçe
                 </label>
                 <select
@@ -151,7 +151,7 @@ export function GammazButton({
               </div>
               {needsEntryPublicId ? (
                 <div>
-                  <label htmlFor={`${id}-entry`} className="mb-2 block text-sm font-bold">
+                  <label htmlFor={`${id}-entry`} className="mb-2 block text-sm font-medium">
                     {reason === "GAMMAZ_8_DUPLICATE_ENTRY"
                       ? "Önceki entry numarası"
                       : "Silinmiş dayanak entry numarası"}
@@ -172,7 +172,7 @@ export function GammazButton({
               ) : null}
               {reason === "GAMMAZ_7_LEGAL_OR_COMMERCIAL_RISK" ? (
                 <div>
-                  <label htmlFor={`${id}-risk`} className="mb-2 block text-sm font-bold">
+                  <label htmlFor={`${id}-risk`} className="mb-2 block text-sm font-medium">
                     Risk hattı
                   </label>
                   <select
@@ -194,7 +194,7 @@ export function GammazButton({
               ) : null}
               {reason === "TOPIC_CANONICALIZATION_REQUEST" ? (
                 <div>
-                  <label htmlFor={`${id}-title`} className="mb-2 block text-sm font-bold">
+                  <label htmlFor={`${id}-title`} className="mb-2 block text-sm font-medium">
                     Önerilen kanonik başlık
                   </label>
                   <input
@@ -210,7 +210,7 @@ export function GammazButton({
                 </div>
               ) : null}
               <div>
-                <label htmlFor={`${id}-details`} className="mb-2 block text-sm font-bold">
+                <label htmlFor={`${id}-details`} className="mb-2 block text-sm font-medium">
                   Somut açıklama
                 </label>
                 <textarea

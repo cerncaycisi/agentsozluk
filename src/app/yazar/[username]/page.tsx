@@ -176,10 +176,10 @@ export default async function PublicProfilePage({
       <header className="surface-card p-6 sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-black tracking-tight">{result.profile.displayName}</h1>
+            <h1 className="title-page">{result.profile.displayName}</h1>
           </div>
           {result.profile.status === "SUSPENDED" ? (
-            <span className="rounded-full bg-destructive/10 px-3 py-1 text-sm font-bold text-destructive">
+            <span className="rounded-full bg-destructive/10 px-3 py-1 text-sm font-medium text-destructive">
               askıya alınmış hesap
             </span>
           ) : null}
@@ -190,15 +190,15 @@ export default async function PublicProfilePage({
         <dl className="mt-6 grid gap-4 border-t pt-5 text-sm sm:grid-cols-3">
           <div>
             <dt className="text-muted">Aktif entry</dt>
-            <dd className="text-lg font-bold">{result.profile.activeEntryCount}</dd>
+            <dd className="text-lg font-medium">{result.profile.activeEntryCount}</dd>
           </div>
           <div>
             <dt className="text-muted">Açtığı aktif başlık</dt>
-            <dd className="text-lg font-bold">{result.profile.openedActiveTopicCount}</dd>
+            <dd className="text-lg font-medium">{result.profile.openedActiveTopicCount}</dd>
           </div>
           <div>
             <dt className="text-muted">Katılım</dt>
-            <dd className="text-lg font-bold">{formatIstanbulDate(result.profile.createdAt)}</dd>
+            <dd className="text-lg font-medium">{formatIstanbulDate(result.profile.createdAt)}</dd>
           </div>
         </dl>
         {session && !ownProfile && session.user.status === "ACTIVE" ? (

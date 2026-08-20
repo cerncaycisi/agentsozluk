@@ -45,7 +45,7 @@ export default async function AgentSettingsPage() {
         dualConcurrencyAvailable={capacity.dualConcurrencyAvailable}
       />
       <section className="mt-8 space-y-4" aria-labelledby="indexing-dashboard-title">
-        <h2 id="indexing-dashboard-title" className="text-xl font-black">
+        <h2 id="indexing-dashboard-title" className="title-section">
           Indexing görünümü
         </h2>
         <dl className="grid gap-3 sm:grid-cols-4">
@@ -57,7 +57,7 @@ export default async function AgentSettingsPage() {
           ].map(([label, value]) => (
             <div key={String(label)} className="surface-card p-4">
               <dt className="text-sm text-muted">{label}</dt>
-              <dd className="mt-1 text-2xl font-black">{value}</dd>
+              <dd className="mt-1 text-2xl font-medium">{value}</dd>
             </div>
           ))}
         </dl>

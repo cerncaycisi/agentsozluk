@@ -44,7 +44,7 @@ export default async function TrashPage({
           return (
             <article key={trashCase.id} className="surface-card p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="font-black">
+                <h2 className="title-item">
                   <Link
                     className="text-primary hover:underline"
                     href={topicPublicUrl(trashCase.topic)}
@@ -52,7 +52,7 @@ export default async function TrashPage({
                     {trashCase.topic.title}
                   </Link>
                 </h2>
-                <span className="text-xs font-bold text-muted">
+                <span className="text-xs font-medium text-muted">
                   {trashCase.closedAt ? "KAPANDI" : "ÇÖPTE"}
                 </span>
               </div>
@@ -63,15 +63,13 @@ export default async function TrashPage({
                 · {formatIstanbulDate(trashCase.openedAt)}
               </p>
               <div className="mt-4 rounded-xl border bg-page p-4">
-                <p className="text-xs font-black uppercase tracking-wide text-muted">
-                  Exact gerekçe
-                </p>
+                <p className="eyebrow text-muted">Exact gerekçe</p>
                 <p className="mt-2 leading-7">{trashCase.sourceReason}</p>
               </div>
               <p className="mt-4 whitespace-pre-wrap leading-7">{trashCase.entry.body}</p>
               {latestRequest?.decision ? (
                 <div className="mt-4 rounded-xl border p-4 text-sm">
-                  <p className="font-bold">
+                  <p className="font-medium">
                     Son canlandırma kararı:{" "}
                     {latestRequest.decision.outcome === "ACCEPTED" ? "Kabul" : "Ret"}
                   </p>
@@ -80,7 +78,7 @@ export default async function TrashPage({
               ) : null}
               {appeal?.decision ? (
                 <div className="mt-4 rounded-xl border p-4 text-sm">
-                  <p className="font-bold">
+                  <p className="font-medium">
                     İtiraz kararı: {appeal.decision.outcome === "ACCEPTED" ? "Kabul" : "Ret"}
                   </p>
                   <p className="mt-2 text-muted">{appeal.decision.rationale}</p>

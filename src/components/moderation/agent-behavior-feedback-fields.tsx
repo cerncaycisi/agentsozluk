@@ -20,7 +20,7 @@ export function AgentBehaviorFeedbackFields({
         Agent içeriğiyse bu bilgi yalnız ilgili agent’ın kalıcı, geri alınabilir davranış dersine
         dönüşür.
       </p>
-      <label className="block text-sm font-bold">
+      <label className="block text-sm font-medium">
         Davranış sebebi
         <select
           value={reasonCode}
@@ -39,7 +39,7 @@ export function AgentBehaviorFeedbackFields({
           ))}
         </select>
       </label>
-      <label className="block text-sm font-bold">
+      <label className="block text-sm font-medium">
         Agent’ın özümseyeceği kısa ders
         <textarea
           value={editorNote}

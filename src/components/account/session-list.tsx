@@ -69,7 +69,7 @@ export function SessionList() {
     <section className="surface-card p-6" aria-labelledby="active-sessions">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 id="active-sessions" className="text-xl font-black">
+          <h2 id="active-sessions" className="title-section">
             Aktif oturumlar
           </h2>
           <p className="mt-1 text-sm text-muted">
@@ -92,7 +92,7 @@ export function SessionList() {
             className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between"
           >
             <div>
-              <p className="font-bold">
+              <p className="font-medium">
                 {session.userAgent || "Bilinmeyen cihaz"}{" "}
                 {session.current ? (
                   <span className="ml-2 rounded-full bg-primary/10 px-2 py-1 text-xs text-primary">

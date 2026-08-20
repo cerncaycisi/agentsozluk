@@ -70,7 +70,7 @@ export function AgentLifecycleForm({ agentId, current }: { agentId: string; curr
         }
       }}
     >
-      <label className="text-sm font-bold">
+      <label className="text-sm font-medium">
         Yeni durum
         <select
           value={status}
@@ -82,7 +82,7 @@ export function AgentLifecycleForm({ agentId, current }: { agentId: string; curr
           ))}
         </select>
       </label>
-      <label className="text-sm font-bold">
+      <label className="text-sm font-medium">
         Gerekçe
         <input
           value={reason}
@@ -139,7 +139,7 @@ export function AgentLifecycleQuickAction({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
         <Dialog.Content className="surface-card fixed left-1/2 top-1/2 z-[81] max-h-[90vh] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 overflow-auto p-6">
-          <Dialog.Title className="text-xl font-black">
+          <Dialog.Title className="title-section">
             @{username} lifecycle: {target}
           </Dialog.Title>
           <Dialog.Description className="mt-2 text-sm text-muted">
@@ -170,7 +170,7 @@ export function AgentLifecycleQuickAction({
               }
             }}
           >
-            <label className="block text-sm font-bold">
+            <label className="block text-sm font-medium">
               Lifecycle gerekçesi
               <textarea
                 value={reason}
@@ -243,7 +243,7 @@ export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
         Döndürme işlemi mevcut aktif credential’ları hemen iptal eder. Yeni değer yalnız bu yanıtta
         gösterilir.
       </p>
-      <label className="block text-sm font-bold">
+      <label className="block text-sm font-medium">
         Döndürme gerekçesi
         <input
           value={reason}
@@ -262,13 +262,13 @@ export function AgentCredentialRotateForm({ agentId }: { agentId: string }) {
       {result ? (
         <div className="rounded-xl border border-success/40 bg-success/10 p-4">
           {result.runtimeEnrollmentManaged ? (
-            <p className="text-sm font-bold">
+            <p className="text-sm font-medium">
               Yeni credential worker’a şifreli roster üzerinden otomatik aktarılacak. JSON veya
               terminal kopyalama gerekmez.
             </p>
           ) : result.credential ? (
             <>
-              <p className="text-sm font-bold">Yeni credential yalnız şimdi gösterilir:</p>
+              <p className="text-sm font-medium">Yeni credential yalnız şimdi gösterilir:</p>
               <code className="mt-2 block break-all rounded-lg bg-page p-3 text-xs">
                 {result.credential}
               </code>
@@ -356,7 +356,7 @@ function RunConfigFields({
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-4">
-        <label className="text-sm font-bold">
+        <label className="text-sm font-medium">
           Run türü
           <select
             value={config.runType}
@@ -370,7 +370,7 @@ function RunConfigFields({
             )}
           </select>
         </label>
-        <label className="text-sm font-bold">
+        <label className="text-sm font-medium">
           Öncelik
           <select
             value={config.priority}
@@ -381,7 +381,7 @@ function RunConfigFields({
             <option value="EMERGENCY">Acil</option>
           </select>
         </label>
-        <label className="text-sm font-bold">
+        <label className="text-sm font-medium">
           Başlangıç zamanı
           <input
             type="datetime-local"
@@ -401,7 +401,7 @@ function RunConfigFields({
             ["provocationOverride", "Provokasyon bekleme süresi istisnası"],
           ] as const
         ).map(([key, label]) => (
-          <label key={key} className="flex items-center gap-2 rounded-lg border p-3 font-bold">
+          <label key={key} className="flex items-center gap-2 rounded-lg border p-3 font-medium">
             <input
               type="checkbox"
               checked={nonPublishing && key !== "allowSourceReading" ? false : config[key]}
@@ -412,7 +412,7 @@ function RunConfigFields({
           </label>
         ))}
       </div>
-      <label className="block text-sm font-bold">
+      <label className="block text-sm font-medium">
         Kısa yönetici yönlendirmesi
         <textarea
           value={config.adminInstruction}
@@ -439,7 +439,7 @@ function PreviewCard({ preview }: { preview: RunPreview }) {
       : "UNKNOWN";
   return (
     <div className="rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm">
-      <p className="font-black">
+      <p className="font-medium">
         {preview.runCount} çalışma eklenecek · mevcut kuyruk {preview.existingQueueLength} ·
         eşzamanlılık {preview.concurrency}
       </p>
@@ -460,7 +460,7 @@ function PreviewCard({ preview }: { preview: RunPreview }) {
           : `${Math.round(preview.workerUtilization * 100)}%`}{" "}
         · sıra tahmini mevcut kuyruk ve çalışma süresinden hesaplanır
       </p>
-      <p className="mt-1 font-bold">
+      <p className="mt-1 font-medium">
         Bu değerler ölçüme dayalı tahmindir; kesin tamamlanma sözü değildir.
       </p>
     </div>
@@ -520,7 +520,7 @@ export function AgentQuickRunActions({ agentId, username }: { agentId: string; u
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
         <Dialog.Content className="surface-card fixed left-1/2 top-1/2 z-[81] max-h-[92vh] w-[min(96vw,1000px)] -translate-x-1/2 -translate-y-1/2 overflow-auto p-6">
-          <Dialog.Title className="text-xl font-black">@{username} agent çalıştır</Dialog.Title>
+          <Dialog.Title className="title-section">@{username} agent çalıştır</Dialog.Title>
           <Dialog.Description className="mt-2 text-sm text-muted">
             Queue değişmeden önce ölçümlü kapasite önizlemesi gösterilir ve ikinci onay istenir.
           </Dialog.Description>
@@ -628,7 +628,7 @@ export function ManualAgentRunForm({ agentId }: { agentId: string }) {
         }
       }}
     >
-      <h2 className="text-lg font-black">Şimdi çalıştır</h2>
+      <h2 className="title-section">Şimdi çalıştır</h2>
       <RunConfigFields config={config} update={update} />
       {preview ? <PreviewCard preview={preview} /> : null}
       {message ? <p className="text-sm">{message}</p> : null}
@@ -696,12 +696,12 @@ export function BulkAgentRunForm({
       }}
     >
       <div>
-        <h2 className="text-lg font-black">Toplu şimdi çalıştır</h2>
+        <h2 className="title-section">Toplu şimdi çalıştır</h2>
         <p className="mt-1 text-sm text-muted">
           Önizleme ve ikinci açık onay olmadan kuyruk değişmez.
         </p>
       </div>
-      <label className="flex items-center gap-2 text-sm font-bold">
+      <label className="flex items-center gap-2 text-sm font-medium">
         <input
           type="checkbox"
           checked={allActive}
@@ -714,7 +714,7 @@ export function BulkAgentRunForm({
       </label>
       {!allActive ? (
         <fieldset className="grid max-h-52 gap-2 overflow-auto rounded-xl border p-3 sm:grid-cols-2">
-          <legend className="px-2 text-sm font-bold">Agent seçimi</legend>
+          <legend className="px-2 text-sm font-medium">Agent seçimi</legend>
           {agents.map((agent) => (
             <label key={agent.id} className="flex items-center gap-2 text-sm">
               <input
@@ -782,7 +782,7 @@ export function AgentRunCommands({ runId, status }: { runId: string; status: str
   };
   return (
     <div className="mt-3 border-t pt-3">
-      <label className="block text-sm font-bold">
+      <label className="block text-sm font-medium">
         İşlem gerekçesi
         <input
           value={reason}
@@ -875,7 +875,7 @@ export function RuntimeControlForm({
           }
         }}
       >
-        <label className="text-sm font-bold">
+        <label className="text-sm font-medium">
           {societyFlowEnabled ? "Durdurma" : "Başlatma"} gerekçesi
           <input
             value={reason}
@@ -1115,7 +1115,7 @@ export function AgentCreateForm({
       }}
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="text-sm font-bold">
+        <label className="text-sm font-medium">
           Oluşturma yöntemi
           <select
             value={method}
@@ -1136,7 +1136,7 @@ export function AgentCreateForm({
           </select>
         </label>
         {method === "TEMPLATE" ? (
-          <label className="text-sm font-bold">
+          <label className="text-sm font-medium">
             Şablon
             <select
               value={templateUsername}
@@ -1161,7 +1161,7 @@ export function AgentCreateForm({
         ) : null}
         {method === "CLONE" ? (
           <div className="flex items-end gap-2">
-            <label className="flex-1 text-sm font-bold">
+            <label className="flex-1 text-sm font-medium">
               Kaynak agent
               <select
                 value={sourceAgentId}
@@ -1186,7 +1186,7 @@ export function AgentCreateForm({
           </div>
         ) : null}
         {method === "IMPORT" ? (
-          <label className="text-sm font-bold">
+          <label className="text-sm font-medium">
             Format
             <select
               value={format}
@@ -1229,10 +1229,10 @@ export function AgentCreateForm({
       ) : null}
       {created ? (
         <div className="rounded-xl border border-success/40 bg-success/10 p-4">
-          <p className="font-bold">@{created.username} oluşturuldu.</p>
+          <p className="font-medium">@{created.username} oluşturuldu.</p>
           {created.runtimeEnrollmentManaged ? (
             <>
-              <p className="mt-2 text-sm font-bold">
+              <p className="mt-2 text-sm font-medium">
                 1/3 oluşturuldu · 2/3 worker enrollment{" "}
                 {createdReadiness?.ready
                   ? "hazır"
@@ -1254,7 +1254,7 @@ export function AgentCreateForm({
                 </div>
               ) : null}
               {created.lifecycleStatus === "ACTIVE" ? (
-                <p className="mt-2 text-sm font-bold text-success">
+                <p className="mt-2 text-sm font-medium text-success">
                   Hazır: agent stochastic toplum akışınca seçilebilir ve force-run alabilir.
                 </p>
               ) : null}
@@ -1274,7 +1274,7 @@ export function AgentCreateForm({
           )}
           <a
             href={`/moderasyon/agentlar/${created.id}`}
-            className="mt-3 inline-block font-bold text-primary"
+            className="mt-3 inline-block font-medium text-primary"
           >
             Agent detayına git
           </a>
@@ -1303,7 +1303,7 @@ function NumberField({
   step?: number;
 }) {
   return (
-    <label className="text-sm font-bold">
+    <label className="text-sm font-medium">
       {label}
       <input
         type="number"
@@ -1336,7 +1336,7 @@ function AgentProfileSettingsFields({
   return (
     <section className="surface-card space-y-5 p-5" aria-labelledby="profile-settings-title">
       <div>
-        <h2 id="profile-settings-title" className="text-lg font-black">
+        <h2 id="profile-settings-title" className="title-section">
           Profil ve çalışma ayarları
         </h2>
         <p className="mt-1 text-sm text-muted">
@@ -1344,7 +1344,7 @@ function AgentProfileSettingsFields({
         </p>
       </div>
       {lifecycleStatus && onLifecycleChange ? (
-        <label className="block text-sm font-bold">
+        <label className="block text-sm font-medium">
           Başlangıç lifecycle durumu
           <select
             value={lifecycleStatus}
@@ -1357,7 +1357,7 @@ function AgentProfileSettingsFields({
         </label>
       ) : null}
       <fieldset className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-3">
-        <legend className="px-2 font-black">Aktif zaman profili</legend>
+        <legend className="px-2 font-semibold">Aktif zaman profili</legend>
         {(Object.keys(settings.activeTimeProfile) as Array<keyof ActiveTimeProfile>).map((key) => (
           <NumberField
             key={key}
@@ -1377,15 +1377,15 @@ function AgentProfileSettingsFields({
         <p
           className={
             Math.abs(activeTimeTotal - 1) <= 0.001
-              ? "self-end text-sm font-bold text-success"
-              : "self-end text-sm font-bold text-destructive"
+              ? "self-end text-sm font-medium text-success"
+              : "self-end text-sm font-medium text-destructive"
           }
         >
           Toplam: {activeTimeTotal.toFixed(3)} (1 olmalı)
         </p>
       </fieldset>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="flex items-center gap-3 rounded-xl border p-3 text-sm font-bold">
+        <label className="flex items-center gap-3 rounded-xl border p-3 text-sm font-medium">
           <input
             type="checkbox"
             checked={settings.personaEvolutionEnabled}
@@ -1395,7 +1395,7 @@ function AgentProfileSettingsFields({
           />
           Persona evolution açık
         </label>
-        <label className="flex items-center gap-3 rounded-xl border p-3 text-sm font-bold">
+        <label className="flex items-center gap-3 rounded-xl border p-3 text-sm font-medium">
           <input
             type="checkbox"
             checked={settings.sourceEvolutionEnabled}
@@ -1528,7 +1528,7 @@ export function AgentPersonaEditForm({
       />
       <AgentProfileSettingsFields settings={settings} onChange={setSettings} />
       {personaChanged ? (
-        <label className="block text-sm font-bold">
+        <label className="block text-sm font-medium">
           Persona değişiklik özeti
           <textarea
             value={changeSummary}
@@ -1595,7 +1595,7 @@ export function PersonaRollbackForm({
         }
       }}
     >
-      <label className="text-sm font-bold">
+      <label className="text-sm font-medium">
         Sürüm
         <select
           value={version}
@@ -1609,7 +1609,7 @@ export function PersonaRollbackForm({
           ))}
         </select>
       </label>
-      <label className="text-sm font-bold">
+      <label className="text-sm font-medium">
         Rollback gerekçesi
         <input
           value={reason}
@@ -1702,7 +1702,7 @@ export function GlobalAgentSettingsForm({
         }
       }}
     >
-      <label className="block text-sm font-bold">
+      <label className="block text-sm font-medium">
         Codex concurrency
         <select
           value={codexConcurrency}
@@ -1728,7 +1728,7 @@ export function GlobalAgentSettingsForm({
           </span>
         ) : null}
       </label>
-      <label className="block text-sm font-bold">
+      <label className="block text-sm font-medium">
         Global settings JSON
         <textarea
           value={document}
@@ -1736,7 +1736,7 @@ export function GlobalAgentSettingsForm({
           className="mt-1 min-h-[32rem] w-full rounded-xl border bg-page p-3 font-mono text-xs"
         />
       </label>
-      <label className="block text-sm font-bold">
+      <label className="block text-sm font-medium">
         Global ayar değişikliği gerekçesi
         <input
           value={changeReason}

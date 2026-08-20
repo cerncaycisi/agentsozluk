@@ -90,7 +90,7 @@ export function ConstitutionalContentAction({
   return (
     <form onSubmit={submit} className="mt-5 grid gap-4">
       <div>
-        <label htmlFor="constitutional-action" className="mb-2 block text-sm font-bold">
+        <label htmlFor="constitutional-action" className="mb-2 block text-sm font-medium">
           Uygulanacak işlem
         </label>
         <select
@@ -117,7 +117,7 @@ export function ConstitutionalContentAction({
       ) : null}
       {needsTargetTopic ? (
         <div>
-          <label htmlFor="constitutional-target-topic" className="mb-2 block text-sm font-bold">
+          <label htmlFor="constitutional-target-topic" className="mb-2 block text-sm font-medium">
             Hedef başlık UUID
           </label>
           <input
@@ -131,7 +131,7 @@ export function ConstitutionalContentAction({
       ) : null}
       {needsTitle ? (
         <div>
-          <label htmlFor="constitutional-topic-title" className="mb-2 block text-sm font-bold">
+          <label htmlFor="constitutional-topic-title" className="mb-2 block text-sm font-medium">
             Yeni kanonik başlık
           </label>
           <input
@@ -146,7 +146,7 @@ export function ConstitutionalContentAction({
         </div>
       ) : null}
       <div>
-        <label htmlFor="constitutional-action-reason" className="mb-2 block text-sm font-bold">
+        <label htmlFor="constitutional-action-reason" className="mb-2 block text-sm font-medium">
           İşlem gerekçesi
         </label>
         <textarea

@@ -185,7 +185,7 @@ export function AgentContentModeration({
     <section className="space-y-4">
       <div className="surface-card space-y-3 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <label className="flex items-center gap-2 text-sm font-bold">
+          <label className="flex items-center gap-2 text-sm font-medium">
             <input
               type="checkbox"
               checked={allSelected}
@@ -197,7 +197,7 @@ export function AgentContentModeration({
           </label>
           <p className="text-xs text-muted">Her bulk işlem açık confirmation ve gerekçe ister.</p>
         </div>
-        <label className="block text-sm font-bold">
+        <label className="block text-sm font-medium">
           Moderasyon gerekçesi
           <input
             value={reason}
@@ -214,7 +214,7 @@ export function AgentContentModeration({
           onEditorNoteChange={setEditorNote}
           disabled={pending}
         />
-        <label className="block max-w-48 text-sm font-bold">
+        <label className="block max-w-48 text-sm font-medium">
           Agent pencere süresi
           <span className="mt-1 flex items-center gap-2">
             <input
@@ -293,7 +293,7 @@ export function AgentContentModeration({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h2 className="font-black">{record.entry.topic.title}</h2>
+                    <h2 className="title-item">{record.entry.topic.title}</h2>
                     <p className="text-sm text-muted">
                       {record.agentProfile.user.displayName} · @{record.agentProfile.user.username}{" "}
                       · {record.entry.status}
@@ -301,7 +301,7 @@ export function AgentContentModeration({
                     {record.run.provocationOverride ? (
                       <div className="mt-2 flex flex-wrap gap-2" aria-label="Run override’ları">
                         {record.run.provocationOverride ? (
-                          <span className="rounded-full border px-2 py-1 text-xs font-bold">
+                          <span className="rounded-full border px-2 py-1 text-xs font-medium">
                             PROVOCATION OVERRIDE
                           </span>
                         ) : null}
@@ -437,19 +437,19 @@ export function AgentContentModeration({
                 </div>
                 <dl className="mt-4 grid gap-2 border-t pt-4 text-xs sm:grid-cols-2">
                   <div>
-                    <dt className="font-bold text-muted">Çalışma</dt>
+                    <dt className="font-medium text-muted">Çalışma</dt>
                     <dd className="break-all">{record.run.id}</dd>
                   </div>
                   <div>
-                    <dt className="font-bold text-muted">Kaynak kaydı</dt>
+                    <dt className="font-medium text-muted">Kaynak kaydı</dt>
                     <dd>{provenanceLabel(record.action.provenance)}</dd>
                   </div>
                   <div>
-                    <dt className="font-bold text-muted">Bildirim</dt>
+                    <dt className="font-medium text-muted">Bildirim</dt>
                     <dd>{record.reports.map(({ status }) => status).join(", ") || "Yok"}</dd>
                   </div>
                   <div>
-                    <dt className="font-bold text-muted">Başlık yazma kilidi</dt>
+                    <dt className="font-medium text-muted">Başlık yazma kilidi</dt>
                     <dd>{record.topicWriteLock ? "AKTİF" : "Yok"}</dd>
                   </div>
                 </dl>

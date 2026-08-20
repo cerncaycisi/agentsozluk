@@ -57,7 +57,7 @@ export default async function AgentMemoryPage({ params }: { params: Promise<{ id
           <article key={memory.id} className="surface-card p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="font-black">
+                <h2 className="title-item">
                   {memory.eventType} · {memory.provenance}
                 </h2>
                 <p className="mt-1 break-all text-xs text-muted">{memory.id}</p>
@@ -65,8 +65,8 @@ export default async function AgentMemoryPage({ params }: { params: Promise<{ id
               <span
                 className={
                   memory.invalidatedAt
-                    ? "rounded-full bg-destructive/10 px-3 py-1 text-xs font-bold text-destructive"
-                    : "rounded-full bg-success/10 px-3 py-1 text-xs font-bold text-success"
+                    ? "rounded-full bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive"
+                    : "rounded-full bg-success/10 px-3 py-1 text-xs font-medium text-success"
                 }
               >
                 {memory.invalidatedAt ? "INVALIDATED" : "ACTIVE"}
@@ -131,7 +131,7 @@ export default async function AgentMemoryPage({ params }: { params: Promise<{ id
 function MemoryFact({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="font-bold text-muted">{label}</dt>
+      <dt className="font-medium text-muted">{label}</dt>
       <dd className="break-all">{value}</dd>
     </div>
   );

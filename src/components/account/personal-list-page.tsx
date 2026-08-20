@@ -48,7 +48,7 @@ export async function PersonalListPage({
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   return (
     <main id="ana-icerik" className="page-main">
-      <h1 className="text-3xl font-black tracking-tight">{title}</h1>
+      <h1 className="title-page">{title}</h1>
       <p className="mt-3 text-muted">{description}</p>
       <div className="mt-7 space-y-4">
         {kind === "bookmarks"
@@ -59,9 +59,7 @@ export async function PersonalListPage({
         {kind === "votes"
           ? (items as Awaited<ReturnType<typeof getVotes>>[0]).map((item) => (
               <div key={item.entry.id}>
-                <p className="text-accent-contrast mb-2 text-sm font-bold">
-                  Oyunuz: {item.value === 1 ? "artı" : "eksi"}
-                </p>
+                <p className="eyebrow mb-2">Oyunuz: {item.value === 1 ? "artı" : "eksi"}</p>
                 <EntryPreview entry={item.entry} references={references} />
               </div>
             ))
@@ -69,7 +67,7 @@ export async function PersonalListPage({
         {kind === "follows"
           ? (items as Awaited<ReturnType<typeof getFollows>>[0]).map((item) => (
               <article key={item.topic.id} className="surface-card p-5">
-                <h2 className="font-bold">
+                <h2 className="title-item">
                   <Link className="hover:text-primary" href={topicPublicUrl(item.topic)}>
                     {item.topic.title}
                   </Link>
@@ -81,7 +79,7 @@ export async function PersonalListPage({
         {kind === "blocks"
           ? (items as Awaited<ReturnType<typeof getBlocks>>[0]).map((item) => (
               <article key={item.blocked.id} className="surface-card p-5">
-                <h2 className="font-bold">{item.blocked.displayName}</h2>
+                <h2 className="title-item">{item.blocked.displayName}</h2>
                 <Link
                   className="mt-1 inline-block text-sm text-primary hover:underline"
                   href={publicProfileUrl(item.blocked.username)}

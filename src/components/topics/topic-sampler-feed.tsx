@@ -38,13 +38,16 @@ export function TopicSamplerFeed({
 }) {
   if (blocks.length === 0) return <p className="surface-card p-6 text-muted">{emptyMessage}</p>;
   return (
-    <ol className="space-y-8">
+    /* Ayraç bloğun tamamını sarar: başlık + entry + "başlığa git" tek bir birim.
+       `EntryPreview` kendi çizgisini çizseydi başlıkla entry'sinin arasına düşerdi,
+       bu yüzden `divider={false}`. */
+    <ol>
       {blocks.map(({ topic, entry }) => {
         const topicUrl = topicPublicUrl(topic);
         const entryActions = actions?.get(entry.id);
         return (
-          <li key={topic.id}>
-            <h2 className="mb-2 text-xl font-black tracking-tight">
+          <li key={topic.id} className="border-t py-5">
+            <h2 className="title-section mb-2">
               <Link
                 href={topicUrl}
                 className="inline-flex min-h-6 items-center hover:text-primary hover:underline"
@@ -58,6 +61,7 @@ export function TopicSamplerFeed({
                 blockedByViewer: blockedAuthorIds?.has(entry.author.id) ?? false,
               }}
               showTopicTitle={false}
+              divider={false}
               collapsible
               guestActions={guestActions}
               {...(entryActions ? { actions: entryActions } : {})}

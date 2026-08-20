@@ -116,7 +116,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
           author: entry.author,
         })}
       />
-      <h1 className="mb-7 text-3xl font-black tracking-tight">Entry</h1>
+      <h1 className="title-page mb-7">Entry</h1>
       <p className="mb-4 text-sm text-muted">
         <Link href={topicAnchor} className="font-semibold text-primary hover:underline">
           {entry.topic.title} başlığında bu entry’ye git

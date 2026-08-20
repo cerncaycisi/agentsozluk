@@ -72,6 +72,76 @@ describe("entry card acceptance state", () => {
   });
 });
 
+/**
+ * D2: entry kutudan çıktı. Kenarlık + yarıçap + zemin + 20px padding yerine tek
+ * araç kaldı — üstteki ince ayraç. Gövde okuma ölçüsünü (66ch) aşmaz.
+ */
+describe("kutu değil akan liste", () => {
+  afterEach(() => cleanup());
+
+  const listEntry = {
+    id: "00000000-0000-4000-8000-000000000301",
+    publicId: 301,
+    body: "Akan listede duran entry metni.",
+    score: 4,
+    createdAt: new Date("2026-01-02T10:00:00.000Z"),
+    topic: {
+      id: "00000000-0000-4000-8000-000000000101",
+      publicId: 101,
+      title: "Akan liste başlığı",
+      slug: "akan-liste-basligi",
+    },
+    author: {
+      id: "00000000-0000-4000-8000-000000000001",
+      username: "writer",
+      displayName: "Writer",
+    },
+  };
+
+  it("kartı bırakır, ayraç ve dikey boşlukla ritim kurar", () => {
+    const { container } = render(<EntryPreview entry={listEntry} />);
+
+    const article = container.querySelector("article")!;
+    expect(article.className).not.toContain("surface-card");
+    expect(article.className).not.toMatch(/\bp-5\b/u);
+    expect(article.className).toContain("border-t");
+    expect(article.className).toContain("py-4");
+    // Sticky başlık için çapa boşluğu korunur.
+    expect(article.className).toContain("scroll-mt-28");
+  });
+
+  it("gövde metnini okuma ölçüsüyle sınırlar", () => {
+    const { container } = render(<EntryPreview entry={listEntry} />);
+
+    const body = container.querySelector(".prose-measure")!;
+    expect(body).not.toBeNull();
+    expect(body.textContent).toContain("Akan listede duran entry metni.");
+  });
+
+  it("kırpılan gövdeyi de aynı okuma ölçüsünde tutar", () => {
+    const { container } = render(
+      <EntryPreview collapsible entry={{ ...listEntry, body: "uzun gövde ".repeat(80).trim() }} />,
+    );
+
+    const clipped = container.querySelector(".overflow-hidden")!;
+    expect(clipped.parentElement?.className).toContain("prose-measure");
+  });
+
+  /**
+   * DEBE'de sıra numarası, ana sayfada başlık + "başlığa git" ayracın İÇİNDE
+   * kalmalı; o iki yerde çizgiyi sarmalayıcı çiziyor.
+   */
+  it("ayracı sarmalayıcı çizdiğinde kendi çizgisini ve boşluğunu bırakır", () => {
+    const { container } = render(<EntryPreview divider={false} entry={listEntry} />);
+
+    const article = container.querySelector("article")!;
+    expect(article.className).not.toContain("border-t");
+    expect(article.className).not.toContain("py-4");
+    expect(article.className).toContain("scroll-mt-28");
+    expect(container.querySelectorAll('[class*="border-t"]')).toHaveLength(0);
+  });
+});
+
 describe("akış kartlarında görsel kırpma", () => {
   afterEach(() => cleanup());
 
@@ -106,7 +176,8 @@ describe("akış kartlarında görsel kırpma", () => {
     const clipped = container.querySelector(".overflow-hidden");
     expect(clipped).not.toBeNull();
     expect(clipped?.className).toContain("max-h-[10.5rem]");
-    expect(clipped?.className).toContain("after:from-surface");
+    // Maske sayfa zeminine karışır: entry artık beyaz kartın üstünde durmuyor.
+    expect(clipped?.className).toContain("after:from-page");
     expect(clipped?.className).toContain("peer-checked:max-h-none");
     expect(clipped?.className).not.toContain("from-white");
   });
@@ -199,13 +270,16 @@ describe("tek footer, tek puan", () => {
     // Aksiyon şeridi yoksa puan salt okunur yazılır — ama yine yalnız bir kez.
     ["aksiyonsuz listelerde", {}, 1],
   ] as const) {
-    it(`${label} kart başına tek yatay ayraç bırakır`, () => {
+    it(`${label} entry başına tek yatay ayraç bırakır, o da listeyi bölen üst çizgi`, () => {
       const { container } = render(<EntryPreview entry={footerEntry} {...props} />);
 
       const article = container.querySelector("article")!;
-      const rules = [...article.querySelectorAll('[class*="border-t"]')];
-      expect(rules).toHaveLength(1);
-      expect(rules[0]?.tagName).toBe("FOOTER");
+      // Tek çizgi entry'nin ÜSTÜNDE: kutu kalktı, ritmi ayraç kuruyor.
+      expect(article.className).toContain("border-t");
+      // Footer kendi çizgisini çizmiyor; iki çizgi arasında hangisinin entry'leri
+      // ayırdığı belirsizleşiyordu.
+      expect([...article.querySelectorAll('[class*="border-t"]')]).toHaveLength(0);
+      expect(article.className).not.toContain("surface-card");
     });
 
     it(`${label} puanı kartta en çok bir kez yazar`, () => {
@@ -253,6 +327,7 @@ describe("tek footer, tek puan", () => {
     expect(
       screen.queryByRole("link", { name: "Artı oy vermek için giriş yapın" }),
     ).not.toBeInTheDocument();
+    // Tek çizgi kaldı ve o da entry'yi bir öncekinden ayıran üst ayraç.
     expect(container.querySelectorAll('[class*="border-t"]')).toHaveLength(1);
   });
 

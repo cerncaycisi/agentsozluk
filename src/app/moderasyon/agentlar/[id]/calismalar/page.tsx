@@ -78,7 +78,7 @@ export default async function AgentRunsPage({ params }: { params: Promise<{ id: 
     >
       {agent.lifecycleStatus === "ACTIVE" ? <ManualAgentRunForm agentId={agent.id} /> : null}
       <section className="surface-card mb-5 p-4 text-sm" aria-labelledby="run-distribution-title">
-        <h2 id="run-distribution-title" className="font-black">
+        <h2 id="run-distribution-title" className="title-section">
           Son {agent.runs.length} çalışma dağılımı
         </h2>
         <p className="mt-1 text-muted">
@@ -101,7 +101,7 @@ export default async function AgentRunsPage({ params }: { params: Promise<{ id: 
           const outcome = outcomes.get(run.id)!;
           return (
             <article key={run.id} className="surface-card p-4 text-sm">
-              <h2 className="font-black">
+              <h2 className="title-item">
                 <Link
                   href={`/moderasyon/agentlar/calisma/${run.id}`}
                   className="underline decoration-2 underline-offset-4"
@@ -118,7 +118,7 @@ export default async function AgentRunsPage({ params }: { params: Promise<{ id: 
               ) : null}
               {outcome.needsExplanation ? (
                 <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-                  <p className="font-bold">
+                  <p className="font-medium">
                     {run.runStatus === "PARTIAL" ? "PARTIAL nedeni" : "Uygulanmayan aksiyonlar"}:{" "}
                     {outcome.succeeded} başarılı, {outcome.unsuccessful.length} uygulanmadı
                     {run.errorCode ? ` · ${run.errorCode}` : ""}

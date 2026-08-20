@@ -83,7 +83,7 @@ export function TrashCaseActions({
     <div className="mt-5 space-y-6 border-t pt-5">
       <form onSubmit={submitRevival} className="space-y-3">
         <div>
-          <label htmlFor={`trash-body-${entryId}`} className="mb-2 block text-sm font-bold">
+          <label htmlFor={`trash-body-${entryId}`} className="mb-2 block text-sm font-medium">
             Düzeltilmiş entry
           </label>
           <textarea
@@ -110,14 +110,14 @@ export function TrashCaseActions({
 
       {latestRevivalRejected ? (
         <form onSubmit={submitAppeal} className="space-y-3 rounded-xl border p-4">
-          <h3 className="font-black">Somut itiraz</h3>
+          <h3 className="title-item">Somut itiraz</h3>
           <p className="text-sm text-muted">
             Entry, başlık ve exact moderasyon gerekçesi vakadan otomatik bağlanır.
           </p>
           <div>
             <label
               htmlFor={`appeal-correction-${entryId}`}
-              className="mb-2 block text-sm font-bold"
+              className="mb-2 block text-sm font-medium"
             >
               Yaptığınız düzeltme
             </label>
@@ -132,7 +132,7 @@ export function TrashCaseActions({
             />
           </div>
           <div>
-            <label htmlFor={`appeal-defense-${entryId}`} className="mb-2 block text-sm font-bold">
+            <label htmlFor={`appeal-defense-${entryId}`} className="mb-2 block text-sm font-medium">
               Somut savunmanız
             </label>
             <textarea

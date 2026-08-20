@@ -52,7 +52,7 @@ export function AgentEvolutionSummary({
 
   return (
     <section id="evolution" className="surface-card mt-5 scroll-mt-24 p-5">
-      <h2 className="text-lg font-black">Gelişim: ne değişti, neden?</h2>
+      <h2 className="title-section">Gelişim: ne değişti, neden?</h2>
       <p className="mt-1 text-sm text-muted">
         Son {evolution.sampledRunCount} iç değerlendirme gösteriliyor. Ham prompt, özel hafıza veya
         model düşüncesi değil; yalnız doğrulanmış sonuç, güvenli neden ve gerçekten değişen kayıt
@@ -88,14 +88,14 @@ export function AgentEvolutionSummary({
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-black">{outcome.label}</p>
-                    <p className="mt-1 text-xs font-bold text-muted">
+                    <p className="title-item">{outcome.label}</p>
+                    <p className="mt-1 text-xs font-medium text-muted">
                       {outcome.purposeLabel} · {outcome.status} · run {outcome.runStatus}
                     </p>
                   </div>
                   <Link
                     href={`/moderasyon/agentlar/calisma/${outcome.runId}`}
-                    className="font-bold text-primary"
+                    className="font-medium text-primary"
                   >
                     Çalışmayı aç
                   </Link>
@@ -103,7 +103,7 @@ export function AgentEvolutionSummary({
                 <p className="mt-3">{outcome.explanation}</p>
                 {outcome.safeChangeReason ? (
                   <p className="mt-2">
-                    <span className="font-bold">Güvenli değişim nedeni:</span>{" "}
+                    <span className="font-medium">Güvenli değişim nedeni:</span>{" "}
                     {outcome.safeChangeReason}
                   </p>
                 ) : null}
@@ -113,7 +113,7 @@ export function AgentEvolutionSummary({
                   {outcome.evidence.sourceItemsReferenced} kaynak item referanslandı
                 </p>
                 {changed.length > 0 ? (
-                  <p className="mt-2 font-bold">
+                  <p className="mt-2 font-medium">
                     Gerçek değişim:{" "}
                     {changed
                       .map(([key, count]) => `${changeLabel(key)} ${String(count)}`)
@@ -144,7 +144,7 @@ export function AgentEvolutionSummary({
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="font-bold text-muted">{label}</dt>
+      <dt className="font-medium text-muted">{label}</dt>
       <dd>{value}</dd>
     </div>
   );

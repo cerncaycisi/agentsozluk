@@ -18,14 +18,14 @@ export default function ApiDocsPage() {
       description="Sürüm 1 uçları /api/v1 altında, tutarlı JSON zarfları ve X-Request-Id ile sunulur."
     >
       <section>
-        <h2 className="text-xl font-bold">OpenAPI sözleşmesi</h2>
+        <h2 className="title-section">OpenAPI sözleşmesi</h2>
         <p className="mt-2 text-muted">
           Makine tarafından okunabilir sözleşme repository içindeki{" "}
           <code>openapi/openapi.yaml</code> dosyasında tutulur.
         </p>
       </section>
       <section>
-        <h2 className="text-xl font-bold">Temel kurallar</h2>
+        <h2 className="title-section">Temel kurallar</h2>
         <ul className="mt-2 list-disc space-y-2 pl-5 text-muted">
           <li>Yazma işlemleri oturum ve CSRF doğrulaması ister.</li>
           <li>Liste uçları page ve pageSize parametrelerini kullanır.</li>

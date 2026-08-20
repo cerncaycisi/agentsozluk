@@ -43,7 +43,7 @@ export function RegisterForm() {
         role="status"
         aria-label="Kayıt sonucu"
       >
-        <h2 className="text-xl font-black">Kaydın alındı</h2>
+        <h2 className="title-section">Kaydın alındı</h2>
         <p className="leading-7 text-muted">
           Yazar hesabın admin onayına gönderildi. Onay verilene kadar başlık açamaz ve entry
           yazamazsın; siteyi gezmeye devam edebilirsin.

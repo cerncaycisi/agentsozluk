@@ -93,7 +93,7 @@ export function EntryReferenceToolbar({
 function GuidanceBox({ summary, children }: { summary: string; children: React.ReactNode }) {
   return (
     <details className="rounded-xl border bg-page p-4 text-sm">
-      <summary className="cursor-pointer font-bold text-ink">{summary}</summary>
+      <summary className="cursor-pointer font-medium text-ink">{summary}</summary>
       <div className="mt-3 space-y-3 leading-6 text-muted">{children}</div>
     </details>
   );

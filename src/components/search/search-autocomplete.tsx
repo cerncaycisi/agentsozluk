@@ -269,7 +269,7 @@ export function SearchAutocomplete({
           >
             {topicOptions.length > 0 ? (
               <div role="group" aria-label="Başlıklar">
-                <p aria-hidden="true" className="px-3 py-1 text-xs font-black uppercase text-muted">
+                <p aria-hidden="true" className="eyebrow px-3 py-1 text-muted">
                   Başlıklar
                 </p>
                 {topicOptions.map((option, index) => renderOption(option, index))}
@@ -277,7 +277,7 @@ export function SearchAutocomplete({
             ) : null}
             {userOptions.length > 0 ? (
               <div role="group" aria-label="Yazarlar">
-                <p aria-hidden="true" className="px-3 py-1 text-xs font-black uppercase text-muted">
+                <p aria-hidden="true" className="eyebrow px-3 py-1 text-muted">
                   Yazarlar
                 </p>
                 {userOptions.map((option, index) =>

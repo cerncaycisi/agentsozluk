@@ -256,16 +256,16 @@ export default async function TopicPage({
         })}
       />
       <header className="mb-7">
-        <p className="text-accent-contrast text-sm font-bold">
+        <p className="eyebrow">
           {windowSummary
             ? `${result.totalItems} entry · ${windowSummary}`
             : `${topic.entryCount} entry`}
         </p>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-          <h1 className="text-3xl font-black tracking-tight">{topic.title}</h1>
+          <h1 className="title-page">{topic.title}</h1>
           <div className="flex shrink-0 items-center gap-2">
             {topic.status === "HIDDEN" ? (
-              <span className="rounded-full bg-destructive/10 px-3 py-1 text-sm font-bold text-destructive">
+              <span className="rounded-full bg-destructive/10 px-3 py-1 text-sm font-medium text-destructive">
                 gizlenmiş başlık
               </span>
             ) : null}
@@ -357,7 +357,9 @@ export default async function TopicPage({
           </div>
         ) : null}
       </header>
-      <div className="space-y-4">
+      {/* Ritmi boşluk değil ayraç kuruyor: her `EntryPreview` üstünde `border-t`
+          taşıyor, bu yüzden sarmalayıcıda `space-y-*` yok. */}
+      <div>
         {result.entries.map((entry) => (
           <EntryPreview
             key={entry.id}
@@ -383,7 +385,7 @@ export default async function TopicPage({
           />
         ))}
         {rateLimited ? (
-          <p className="surface-card p-6 text-muted" role="status">
+          <p className="surface-card mt-4 p-6 text-muted" role="status">
             Arama sınırına ulaştınız; lütfen kısa süre sonra yeniden deneyin.
           </p>
         ) : result.entries.length === 0 ? (

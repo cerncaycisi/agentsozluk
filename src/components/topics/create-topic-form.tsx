@@ -162,7 +162,7 @@ export function CreateTopicForm() {
           aria-labelledby="duplicate-topic-title"
           className="rounded-xl border border-accent bg-accent/10 p-4"
         >
-          <h2 id="duplicate-topic-title" className="font-bold">
+          <h2 id="duplicate-topic-title" className="font-semibold">
             {duplicate.canonicalSuggestion
               ? "Bu kavram için mevcut başlık öneriliyor"
               : "Bu başlık zaten var"}

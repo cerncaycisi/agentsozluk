@@ -151,7 +151,7 @@ function DecisionBadge({ eventType, subject }: { eventType: string; subject: Age
   if (kind === null) return null;
   const label = decisionKindLabels[kind] ?? "Karar adımı";
   return (
-    <span className="rounded-full border px-2 py-1 text-xs font-bold" data-decision-kind={kind}>
+    <span className="rounded-full border px-2 py-1 text-xs font-medium" data-decision-kind={kind}>
       {label}
     </span>
   );
@@ -167,7 +167,7 @@ function LifeEventCard({ event }: { event: AgentLifeEventView }) {
             <strong>{event.eventType}</strong>
             <DecisionBadge eventType={event.eventType} subject={event.subject} />
           </div>
-          {renderedSubject ? <p className="mt-1 break-all font-bold">{renderedSubject}</p> : null}
+          {renderedSubject ? <p className="mt-1 break-all font-medium">{renderedSubject}</p> : null}
         </div>
         <time className="text-xs text-muted" dateTime={event.occurredAt}>
           {formatIstanbulTimestamp(event.occurredAt, { includeSeconds: true })}
@@ -177,27 +177,27 @@ function LifeEventCard({ event }: { event: AgentLifeEventView }) {
       <p className="mt-3 whitespace-pre-wrap">{event.summary}</p>
       <dl className="mt-3 grid gap-2 text-xs text-muted sm:grid-cols-2">
         <div>
-          <dt className="font-bold text-ink">Sıra</dt>
+          <dt className="font-medium text-ink">Sıra</dt>
           <dd>{event.agentSequence ?? "—"}</dd>
         </div>
         <div>
-          <dt className="font-bold text-ink">Güven</dt>
+          <dt className="font-medium text-ink">Güven</dt>
           <dd>{event.confidence === null ? "—" : event.confidence.toFixed(3)}</dd>
         </div>
         <div>
-          <dt className="font-bold text-ink">Run / action</dt>
+          <dt className="font-medium text-ink">Run / action</dt>
           <dd className="break-all">
             {event.runId ?? "—"} / {event.actionId ?? "—"}
           </dd>
         </div>
         <div>
-          <dt className="font-bold text-ink">Karar sırası / şema</dt>
+          <dt className="font-medium text-ink">Karar sırası / şema</dt>
           <dd>
             {event.decisionSeq ?? "—"} / v{event.schemaVersion}
           </dd>
         </div>
         <div>
-          <dt className="font-bold text-ink">Batch / batch sırası</dt>
+          <dt className="font-medium text-ink">Batch / batch sırası</dt>
           <dd className="break-all">
             {event.batchId ?? "—"} / {event.batchSequence ?? "—"}
           </dd>
@@ -206,29 +206,29 @@ function LifeEventCard({ event }: { event: AgentLifeEventView }) {
 
       {event.evidenceIds.length > 0 ? (
         <section className="mt-3" aria-label="Kanıt bağlantıları">
-          <h3 className="text-xs font-black">Kanıtlar</h3>
+          <h3 className="text-xs font-semibold">Kanıtlar</h3>
           <p className="mt-1 break-all text-xs text-muted">{event.evidenceIds.join(" · ")}</p>
         </section>
       ) : null}
       {event.causedBy.length > 0 ? (
         <section className="mt-3" aria-label="Nedensel bağlantılar">
-          <h3 className="text-xs font-black">Buna yol açan olaylar</h3>
+          <h3 className="text-xs font-semibold">Buna yol açan olaylar</h3>
           <p className="mt-1 break-all text-xs text-muted">{event.causedBy.join(" · ")}</p>
         </section>
       ) : null}
 
       {event.before !== null || event.after !== null ? (
         <section className="mt-4" aria-label="Önce ve sonra">
-          <h3 className="font-black">Değişim</h3>
+          <h3 className="font-semibold">Değişim</h3>
           <div className="mt-2 grid gap-3 lg:grid-cols-2">
             <div>
-              <h4 className="text-xs font-black">Önce</h4>
+              <h4 className="text-xs font-semibold">Önce</h4>
               <pre className="mt-1 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-page p-3 text-xs">
                 {stringifySafe(event.before)}
               </pre>
             </div>
             <div>
-              <h4 className="text-xs font-black">Sonra</h4>
+              <h4 className="text-xs font-semibold">Sonra</h4>
               <pre className="mt-1 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-page p-3 text-xs">
                 {stringifySafe(event.after)}
               </pre>
@@ -243,7 +243,7 @@ function LifeEventCard({ event }: { event: AgentLifeEventView }) {
       ) : null}
 
       <details className="mt-4">
-        <summary className="cursor-pointer text-xs font-black">
+        <summary className="cursor-pointer text-xs font-medium">
           Bütünlük ve güvenli metadata
         </summary>
         <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-page p-3 text-xs">
@@ -316,7 +316,7 @@ export function AgentLifeTimeline({ agentId }: { agentId: string }) {
   return (
     <section>
       <div className="surface-card mb-5 p-4">
-        <h2 className="font-black">Ajanın beyan ettiği karar günlüğü</h2>
+        <h2 className="title-section">Ajanın beyan ettiği karar günlüğü</h2>
         <p className="mt-2 text-sm text-muted">
           Bu görünüm erişilemeyen ham model iç tokenlarını değil; ajanın açıkça beyan ettiği gözlem,
           seçenek, gerekçe ve durum değişimlerini, sunucu tarafından kaydedilen sonuçlarla birlikte
@@ -334,7 +334,7 @@ export function AgentLifeTimeline({ agentId }: { agentId: string }) {
           setFilters({ ...draftFilters });
         }}
       >
-        <label htmlFor={eventTypeId} className="text-sm font-bold">
+        <label htmlFor={eventTypeId} className="text-sm font-medium">
           Olay türü
           <input
             id={eventTypeId}
@@ -346,7 +346,7 @@ export function AgentLifeTimeline({ agentId }: { agentId: string }) {
             className="mt-1 w-full rounded-xl border bg-page p-3 font-normal"
           />
         </label>
-        <label htmlFor={runId} className="text-sm font-bold">
+        <label htmlFor={runId} className="text-sm font-medium">
           Run ID
           <input
             id={runId}
@@ -357,7 +357,7 @@ export function AgentLifeTimeline({ agentId }: { agentId: string }) {
             className="mt-1 w-full rounded-xl border bg-page p-3 font-normal"
           />
         </label>
-        <label htmlFor={fromId} className="text-sm font-bold">
+        <label htmlFor={fromId} className="text-sm font-medium">
           Başlangıç
           <input
             id={fromId}
@@ -369,7 +369,7 @@ export function AgentLifeTimeline({ agentId }: { agentId: string }) {
             className="mt-1 w-full rounded-xl border bg-page p-3 font-normal"
           />
         </label>
-        <label htmlFor={toId} className="text-sm font-bold">
+        <label htmlFor={toId} className="text-sm font-medium">
           Bitiş
           <input
             id={toId}
@@ -403,7 +403,7 @@ export function AgentLifeTimeline({ agentId }: { agentId: string }) {
       </form>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm font-bold" role="status">
+        <p className="text-sm font-medium" role="status">
           {loading ? "Hayat defteri yükleniyor…" : `${events.length} olay gösteriliyor`}
         </p>
         <a className="button-secondary" href={exportHref} download>

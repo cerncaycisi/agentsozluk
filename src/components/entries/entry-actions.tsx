@@ -38,7 +38,7 @@ const ENTRY_BODY_MAX_LENGTH = 10_000;
 const guestControlClass = "grid size-10 place-items-center rounded-lg border bg-page";
 
 /** Skor sayacıyla aynı görsel dil; favori sayacı da aynı sütun genişliğini tutar. */
-const counterClass = "min-w-8 text-center text-sm font-bold";
+const counterClass = "min-w-8 text-center text-sm font-medium";
 
 /**
  * ⋮ menüsündeki öğelerin ortak görünümü. `account-menu.tsx` ile aynı dil;
@@ -537,9 +537,7 @@ function SignedInEntryActions({
           <AlertDialog.Portal>
             <AlertDialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
             <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[81] w-[min(92vw,480px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-surface p-6">
-              <AlertDialog.Title className="text-xl font-black">
-                Entry silinsin mi?
-              </AlertDialog.Title>
+              <AlertDialog.Title className="title-section">Entry silinsin mi?</AlertDialog.Title>
               <AlertDialog.Description className="mt-3 text-muted">
                 Entry herkese açık görünümden kaldırılıp çöp kutunuza taşınır. Orada düzeltip
                 canlandırma isteyebilirsiniz.

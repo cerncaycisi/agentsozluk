@@ -39,7 +39,7 @@ export default async function SeedVisibilityPage({
       description="Kanonik seed gövdesini ve fingerprint’ini değiştirmeden, tek bir entry’yi bütün public yüzeylerden gizleyin veya geri açın."
     >
       <form className="surface-card mb-5 flex flex-wrap gap-3 p-4">
-        <label className="min-w-64 flex-1 text-sm font-bold">
+        <label className="min-w-64 flex-1 text-sm font-medium">
           Başlık, entry veya yazar ara
           <input
             name="q"
@@ -60,7 +60,7 @@ export default async function SeedVisibilityPage({
                 <div className="min-w-0">
                   <Link
                     href={`/entry/${entry.publicId}`}
-                    className="font-black text-primary hover:underline"
+                    className="font-medium text-primary hover:underline"
                   >
                     #{entry.publicId} · {entry.topic.title}
                   </Link>

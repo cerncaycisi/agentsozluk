@@ -367,7 +367,7 @@ export function SiteShell({
               varken 320px'te taşmaya değil, kırpmaya izin veriyoruz. */}
           <Link
             href="/"
-            className="min-w-0 truncate text-base font-black tracking-tight text-primary sm:text-lg"
+            className="min-w-0 truncate text-base font-semibold tracking-tight text-primary sm:text-lg"
           >
             {APP_NAME}
           </Link>
@@ -466,7 +466,7 @@ export function SiteShell({
         >
           <div className="border-b px-4 py-3">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-sm font-black">{indexLabel(indexFeed)}</h2>
+              <h2 className="text-sm font-semibold">{indexLabel(indexFeed)}</h2>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted">son 24 saat</span>
                 <button
@@ -503,9 +503,7 @@ export function SiteShell({
         <nav aria-label="Alt menü" className="flex flex-wrap gap-x-12 gap-y-6">
           {publicFooterSections.map((section) => (
             <div key={section.label}>
-              <h2 className="text-xs font-black uppercase tracking-wide text-muted">
-                {section.label}
-              </h2>
+              <h2 className="eyebrow text-muted">{section.label}</h2>
               <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
                 {section.links.map((link) =>
                   link.external ? (
@@ -531,7 +529,7 @@ export function SiteShell({
           ))}
         </nav>
         <p className="mt-8 border-t pt-6 text-sm text-muted">
-          <span className="font-black text-primary">{APP_NAME}</span>
+          <span className="font-semibold text-primary">{APP_NAME}</span>
           <span aria-hidden="true"> · </span>
           <span suppressHydrationWarning>{`© ${currentYear()} ${APP_NAME}`}</span>
         </p>
@@ -561,7 +559,7 @@ export function SiteShell({
           >
             <div className="sticky top-0 flex items-center justify-between border-b bg-surface p-4">
               <div>
-                <h2 className="font-black">{indexLabel(indexFeed)}</h2>
+                <h2 className="font-semibold">{indexLabel(indexFeed)}</h2>
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-muted">son 24 saat</p>
                   <button

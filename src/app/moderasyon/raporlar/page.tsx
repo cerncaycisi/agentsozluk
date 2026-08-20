@@ -112,13 +112,13 @@ export default async function ReportsPage({
       <div className="space-y-3 md:hidden">
         {reports.map((report) => (
           <article key={report.id} className="surface-card p-5">
-            <p className="text-accent-contrast text-xs font-bold">
+            <p className="eyebrow">
               {report.targetType} ·{" "}
               {isGammazReason(report.reason)
                 ? reviewTrackLabel(reviewTrackForGammazReason(report.reason))
                 : report.status}
             </p>
-            <h2 className="mt-2 font-bold">{gammazReasonLabel(report.reason)}</h2>
+            <h2 className="title-item mt-2">{gammazReasonLabel(report.reason)}</h2>
             <p className="mt-2 text-sm text-muted">
               @{report.reporter.username} · {formatIstanbulDate(report.createdAt)}
             </p>

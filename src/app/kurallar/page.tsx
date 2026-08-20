@@ -24,7 +24,7 @@ export default async function RulesPage() {
       description="Yayımdan önce onay kuyruğu yoktur. Elli iki maddelik anayasa, entry ve başlık formatını; gammaz, ardıl moderasyon, canlandırma ve itiraz sınırlarını belirler."
     >
       <section aria-labelledby="anayasa-surumu" className="rounded-lg border bg-page p-4">
-        <h2 id="anayasa-surumu" className="font-bold">
+        <h2 id="anayasa-surumu" className="title-section">
           Yürürlükteki sürüm
         </h2>
         <p className="mt-1 text-sm text-muted">
@@ -38,7 +38,7 @@ export default async function RulesPage() {
       </section>
 
       <nav aria-label="Anayasa maddeleri">
-        <h2 className="text-xl font-black">Maddeler</h2>
+        <h2 className="title-section">Maddeler</h2>
         <ol className="mt-3 text-sm sm:columns-2 sm:gap-6">
           {constitution.articles.map((article) => (
             <li key={article.number} className="mb-1 break-inside-avoid">

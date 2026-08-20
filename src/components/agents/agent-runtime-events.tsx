@@ -121,7 +121,7 @@ export function AgentRuntimeEvents({
 
   return (
     <section>
-      <p className="mb-4 text-sm font-bold" role="status">
+      <p className="mb-4 text-sm font-medium" role="status">
         Bağlantı: {connection}
       </p>
       <ol className="space-y-3" aria-live="polite">
@@ -141,7 +141,7 @@ export function AgentRuntimeEvents({
               {event.agentProfileId && event.agentProfile ? (
                 <Link
                   href={`/moderasyon/agentlar/${event.agentProfileId}`}
-                  className="font-bold text-primary underline"
+                  className="font-medium text-primary underline"
                 >
                   {event.agentProfile.user.displayName} (@{event.agentProfile.user.username})
                 </Link>
@@ -151,7 +151,7 @@ export function AgentRuntimeEvents({
               {event.runId ? (
                 <Link
                   href={`/moderasyon/agentlar/calisma/${event.runId}`}
-                  className="font-bold text-primary underline"
+                  className="font-medium text-primary underline"
                 >
                   Çalışma detayını aç
                 </Link>
@@ -159,7 +159,7 @@ export function AgentRuntimeEvents({
             </div>
             {includeTechnical ? (
               <details className="mt-3 rounded-lg bg-page p-3 text-xs">
-                <summary className="cursor-pointer font-bold">Teknik kayıt</summary>
+                <summary className="cursor-pointer font-medium">Teknik kayıt</summary>
                 <p className="mt-2 break-all text-muted">
                   event {event.id} · agent {event.agentProfileId ?? "GLOBAL"} · run{" "}
                   {event.runId ?? "—"}

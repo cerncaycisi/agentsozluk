@@ -60,7 +60,7 @@ export default async function ModerationTopicsPage({
             className="surface-card flex flex-wrap items-center justify-between gap-4 p-5"
           >
             <div>
-              <h2 className="font-bold">{topic.title}</h2>
+              <h2 className="title-item">{topic.title}</h2>
               <p className="mt-1 text-sm text-muted">
                 {topic.status} · {topic.entryCount} entry
               </p>

@@ -62,13 +62,16 @@ export default async function DebePage() {
       {entries.length === 0 ? (
         <p className="surface-card p-6 text-muted">Dün için pozitif puanlı entry bulunmuyor.</p>
       ) : (
-        <ol className="space-y-4">
+        /* Ayraç `li`'de, entry'de değil: sıra numarası çizginin solunda kalmalı,
+           yoksa çizgi numara sütununun sağından başlar. `EntryPreview` bu yüzden
+           `divider={false}` ile kendi çizgisini ve dikey boşluğunu bırakır. */
+        <ol>
           {entries.map((entry, index) => (
-            <li key={entry.id} className="sm:flex sm:items-start sm:gap-3">
+            <li key={entry.id} className="border-t py-4 sm:flex sm:items-start sm:gap-3">
               <Link
                 href={entryPublicUrl(entry)}
                 aria-label={`DEBE ${index + 1}. sıradaki entry’ye git`}
-                className="text-accent-contrast mb-1 inline-flex min-h-6 min-w-6 items-center justify-center text-sm font-bold hover:underline sm:mb-0 sm:mt-5 sm:shrink-0"
+                className="text-accent-contrast mb-1 inline-flex min-h-6 min-w-6 items-center justify-center text-sm font-bold hover:underline sm:mb-0 sm:shrink-0"
               >
                 #{index + 1}
               </Link>
@@ -76,6 +79,7 @@ export default async function DebePage() {
                 <EntryPreview
                   entry={{ ...entry, blockedByViewer: blockedAuthorIds.has(entry.author.id) }}
                   references={references}
+                  divider={false}
                   collapsible
                   guestActions={!session}
                   {...(session?.user.status === "ACTIVE"

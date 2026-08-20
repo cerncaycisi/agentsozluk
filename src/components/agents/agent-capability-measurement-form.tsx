@@ -117,7 +117,7 @@ export function AgentCapabilityMeasurementForm() {
 
   return (
     <section className="surface-card mt-5 p-5" aria-labelledby="capacity-package-title">
-      <h2 id="capacity-package-title" className="text-lg font-black">
+      <h2 id="capacity-package-title" className="title-section">
         Kapasite ölçüm paketi
       </h2>
       <p className="mt-2 text-sm text-muted">
@@ -125,7 +125,7 @@ export function AgentCapabilityMeasurementForm() {
         birlikte seçebilir veya <code>cold</code>, <code>warm</code> ve <code>dual</code> alanlarını
         içeren tek paket JSON yükleyebilirsiniz.
       </p>
-      <label className="mt-4 block text-sm font-bold">
+      <label className="mt-4 block text-sm font-medium">
         Ölçüm dosyaları
         <input
           type="file"
@@ -140,7 +140,7 @@ export function AgentCapabilityMeasurementForm() {
       ) : null}
       {measurementPackage ? (
         <div className="mt-4 rounded-xl border border-success/40 bg-success/10 p-4 text-sm">
-          <p className="font-black">Paket hazır — üç ölçümün fingerprint’i eşleşiyor.</p>
+          <p className="font-medium">Paket hazır — üç ölçümün fingerprint’i eşleşiyor.</p>
           <dl className="mt-3 grid gap-2 sm:grid-cols-2">
             <PreviewRow label="Codex" value={measurementPackage.dual.codexVersion} />
             <PreviewRow
@@ -176,7 +176,7 @@ export function AgentCapabilityMeasurementForm() {
           {error}
         </p>
       ) : null}
-      {notice ? <p className="mt-3 text-sm font-bold">{notice}</p> : null}
+      {notice ? <p className="mt-3 text-sm font-medium">{notice}</p> : null}
     </section>
   );
 }
@@ -184,7 +184,7 @@ export function AgentCapabilityMeasurementForm() {
 function PreviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="font-bold text-muted">{label}</dt>
+      <dt className="font-medium text-muted">{label}</dt>
       <dd>{value}</dd>
     </div>
   );

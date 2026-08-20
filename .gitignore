@@ -19,4 +19,7 @@ postgres-data/
 prisma/dev.db*
 *.tsbuildinfo
 .design-mockup/
-public/_design-*.html
+
+# tasarım mockup'ları — commit edilmez
+.design-mockup/
+public/_design-*

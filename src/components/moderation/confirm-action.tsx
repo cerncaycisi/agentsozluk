@@ -65,7 +65,7 @@ export function ConfirmAction({
           type="button"
           className={
             destructive
-              ? "inline-flex min-h-10 items-center rounded-lg border border-destructive px-3 py-2 text-sm font-bold text-destructive"
+              ? "inline-flex min-h-10 items-center rounded-lg border border-destructive px-3 py-2 text-sm font-medium text-destructive"
               : "button-secondary"
           }
         >
@@ -75,13 +75,13 @@ export function ConfirmAction({
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
         <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[81] w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-surface p-6 shadow-2xl">
-          <AlertDialog.Title className="text-xl font-black">{title}</AlertDialog.Title>
+          <AlertDialog.Title className="title-section">{title}</AlertDialog.Title>
           <AlertDialog.Description className="mt-2 leading-7 text-muted">
             {description}
           </AlertDialog.Description>
           <form onSubmit={submit} className="mt-5 space-y-4">
             <div>
-              <label htmlFor={`moderation-${endpoint}`} className="mb-2 block text-sm font-bold">
+              <label htmlFor={`moderation-${endpoint}`} className="mb-2 block text-sm font-medium">
                 Gerekçe
               </label>
               <textarea

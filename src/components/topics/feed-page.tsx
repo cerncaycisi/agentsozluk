@@ -27,7 +27,7 @@ export async function FeedPage({
   return (
     <main id="ana-icerik" className="page-main">
       <header className="mb-8">
-        <h1 className="text-3xl font-black tracking-tight">{title}</h1>
+        <h1 className="title-page">{title}</h1>
         <p className="mt-3 leading-7 text-muted">{description}</p>
       </header>
       <TopicList topics={result.topics} emptyMessage="Bu akışta henüz başlık bulunmuyor." />

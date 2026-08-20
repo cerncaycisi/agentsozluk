@@ -80,6 +80,7 @@ export function EntryPreview({
   showTopicTitle = true,
   collapsible = false,
   guestActions = false,
+  divider = true,
 }: {
   entry: EntryPreviewItem;
   showTopicTitle?: boolean;
@@ -96,6 +97,15 @@ export function EntryPreview({
    * okunur sayaçlar (`ReadOnlyEntryCounters`) render edilir.
    */
   guestActions?: boolean;
+  /**
+   * Akan listede her entry üstünde ince bir ayraç ve kendi dikey boşluğunu taşır;
+   * ritmi kutu değil bu çizgi kurar.
+   *
+   * Ayracı dışarıdaki sarmalayıcı çiziyorsa `false` verin — DEBE'de sıra numarası
+   * çizginin solunda kalmalı, ana sayfada ise ayraç başlık + entry + "başlığa git"
+   * bloğunun tamamını sarmalı. O durumda çizgiyi de dikey boşluğu da sarmalayıcı verir.
+   */
+  divider?: boolean;
   /** Yalnız oturum açmış ACTIVE kullanıcı için verilir. */
   actions?: EntryPreviewActions;
 }) {
@@ -131,29 +141,45 @@ export function EntryPreview({
   ) : (
     <ReadOnlyEntryCounters score={entry.score} bookmarkCount={bookmarkCount} />
   );
+  const showHeader = showTopicTitle || entry.status === "HIDDEN";
   return (
-    <article id={`entry-${entry.publicId}`} className="surface-card scroll-mt-28 p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        {showTopicTitle ? (
-          <h2 className="text-lg font-bold">
-            <Link
-              href={topicPublicUrl(entry.topic)}
-              className="inline-flex min-h-6 items-center hover:text-primary"
-            >
-              {entry.topic.title}
-            </Link>
-          </h2>
-        ) : null}
-        {entry.status === "HIDDEN" ? (
-          <span className="rounded-full bg-destructive/10 px-3 py-1 text-xs font-bold text-destructive">
-            gizlenmiş entry
-          </span>
-        ) : null}
-      </div>
+    /*
+      Kutu değil, akan liste. Kenarlık + yarıçap + zemin + 20px padding yerine tek
+      araç kaldı: üstteki ince ayraç. Sözlük okuma ürünü; her entry'yi çerçevelemek
+      okumayı böler ve yoğunluğu tavanlar.
+    */
+    <article
+      id={`entry-${entry.publicId}`}
+      className={`scroll-mt-28${divider ? " border-t py-4" : ""}`}
+    >
+      {showHeader ? (
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          {showTopicTitle ? (
+            <h2 className="text-lg font-bold">
+              <Link
+                href={topicPublicUrl(entry.topic)}
+                className="inline-flex min-h-6 items-center hover:text-primary"
+              >
+                {entry.topic.title}
+              </Link>
+            </h2>
+          ) : null}
+          {entry.status === "HIDDEN" ? (
+            <span className="rounded-full bg-destructive/10 px-3 py-1 text-xs font-bold text-destructive">
+              gizlenmiş entry
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {collapsed ? (
-        <div className="relative mt-4">
+        /*
+          KIRPMA: `peer` checkbox → kırpılan kutu → iki label; hepsi AYNI ebeveynde,
+          BU sırada. Kardeş seçicisi bozulursa kırpma sessizce çalışmaz.
+          Maske artık `from-page`: entry beyaz kartın üstünde değil, sayfa zemininde.
+        */
+        <div className="prose-measure relative">
           <input type="checkbox" id={collapseToggleId} className="peer sr-only" />
-          <div className="relative max-h-[10.5rem] overflow-hidden after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:block after:h-16 after:bg-gradient-to-t after:from-surface after:content-[''] peer-checked:max-h-none peer-checked:after:hidden">
+          <div className="relative max-h-[10.5rem] overflow-hidden after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:block after:h-16 after:bg-gradient-to-t after:from-page after:content-[''] peer-checked:max-h-none peer-checked:after:hidden">
             <EntryBody body={entry.body} {...(references ? { references } : {})} />
           </div>
           <label
@@ -170,7 +196,7 @@ export function EntryPreview({
           </label>
         </div>
       ) : (
-        <div className="mt-4">
+        <div className="prose-measure">
           {entry.blockedByViewer ? (
             <BlockedEntryBody body={entry.body} />
           ) : (
@@ -179,13 +205,16 @@ export function EntryPreview({
         </div>
       )}
       {/*
-        Kart başına TEK yatay ayraç: aksiyon şeridi de bu footer'ın içinde duruyor.
-        `EntryActions` bir fragment döndürüyor — düğme şeridi, düzenleme formu ve
-        bildirim doğrudan bu esnek kutunun çocukları oluyor; form ve bildirim
-        `w-full` ile kendi satırına iniyor.
+        Entry başına TEK yatay ayraç kalır ve o da listeyi bölen üstteki çizgidir;
+        footer artık kendi çizgisini çizmiyor — akan listede iki çizgi arasında
+        hangisinin entry'leri ayırdığı belirsizleşiyordu.
+
+        Aksiyon şeridi bu footer'ın içinde duruyor: `EntryActions` bir fragment
+        döndürüyor — düğme şeridi, düzenleme formu ve bildirim doğrudan bu esnek
+        kutunun çocukları oluyor; form ve bildirim `w-full` ile kendi satırına iniyor.
         375px'te düğme şeridi tek satırda kalır, meta grubu alt satıra iner.
       */}
-      <footer className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t pt-4 text-sm text-muted">
+      <footer className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 text-sm text-muted">
         {actionsNode}
         <span className="ml-auto flex flex-wrap items-center gap-x-2">
           <Link

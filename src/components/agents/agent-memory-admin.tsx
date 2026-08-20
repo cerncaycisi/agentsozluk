@@ -71,12 +71,12 @@ function MemoryCommandForm({
       }}
     >
       <div>
-        <h3 className={`text-sm font-black ${dangerous ? "text-destructive" : ""}`}>{title}</h3>
+        <h3 className={`text-sm font-semibold ${dangerous ? "text-destructive" : ""}`}>{title}</h3>
         <p id={descriptionId} className="mt-1 text-xs text-muted">
           {description}
         </p>
       </div>
-      <label htmlFor={inputId} className="block text-sm font-bold">
+      <label htmlFor={inputId} className="block text-sm font-medium">
         Gerekçe
       </label>
       <textarea
@@ -88,7 +88,7 @@ function MemoryCommandForm({
         required
         className="min-h-20 w-full rounded-xl border bg-page p-3 text-sm"
       />
-      <label htmlFor={confirmationId} className="flex items-start gap-2 text-sm font-bold">
+      <label htmlFor={confirmationId} className="flex items-start gap-2 text-sm font-medium">
         <input
           id={confirmationId}
           type="checkbox"
@@ -104,7 +104,7 @@ function MemoryCommandForm({
         disabled={pending || !confirmed || reason.trim().length < 10}
         className={
           dangerous
-            ? "inline-flex min-h-10 items-center rounded-lg border border-destructive px-3 py-2 text-sm font-bold text-destructive"
+            ? "inline-flex min-h-10 items-center rounded-lg border border-destructive px-3 py-2 text-sm font-medium text-destructive"
             : "button-secondary"
         }
       >
@@ -116,7 +116,7 @@ function MemoryCommandForm({
         </p>
       ) : null}
       {message ? (
-        <p role="status" className="text-sm font-bold text-success">
+        <p role="status" className="text-sm font-medium text-success">
           {message}
         </p>
       ) : null}

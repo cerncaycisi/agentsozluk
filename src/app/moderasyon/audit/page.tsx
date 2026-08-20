@@ -42,7 +42,7 @@ export default async function AuditPage({
     >
       <form className="mb-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
         <div>
-          <label htmlFor="audit-action" className="mb-1 block text-sm font-bold">
+          <label htmlFor="audit-action" className="mb-1 block text-sm font-medium">
             İşlem
           </label>
           <input
@@ -53,7 +53,7 @@ export default async function AuditPage({
           />
         </div>
         <div>
-          <label htmlFor="audit-request" className="mb-1 block text-sm font-bold">
+          <label htmlFor="audit-request" className="mb-1 block text-sm font-medium">
             Request ID
           </label>
           <input
@@ -69,7 +69,7 @@ export default async function AuditPage({
         {logs.map((log) => (
           <article key={log.id} className="surface-card p-5">
             <div className="flex flex-wrap justify-between gap-3">
-              <h2 className="font-bold">{log.action}</h2>
+              <h2 className="title-item">{log.action}</h2>
               <time className="text-sm text-muted">
                 {formatIstanbulTimestamp(log.createdAt, { includeSeconds: true })}
               </time>

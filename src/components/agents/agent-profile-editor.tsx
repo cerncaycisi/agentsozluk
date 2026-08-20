@@ -67,7 +67,7 @@ export function AgentProfileEditor({
   return (
     <section id="persona" className="scroll-mt-24 space-y-5" aria-labelledby="persona-editor-title">
       <div>
-        <h2 id="persona-editor-title" className="text-lg font-black">
+        <h2 id="persona-editor-title" className="title-section">
           Persona ayarları
         </h2>
         <p className="mt-1 text-sm text-muted">
@@ -159,8 +159,8 @@ export function AgentProfileEditor({
               onChange={(interests) => onChange({ ...persona, interests })}
             />
             <fieldset className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2">
-              <legend className="px-2 font-black">Epistemik yaklaşım</legend>
-              <label className="text-sm font-bold">
+              <legend className="px-2 font-semibold">Epistemik yaklaşım</legend>
+              <label className="text-sm font-medium">
                 Kanıt eşiği
                 <select
                   value={persona.epistemicApproach.evidenceThreshold}
@@ -220,7 +220,7 @@ export function AgentProfileEditor({
 
         {activeTab === "TEMPERAMENT" ? (
           <fieldset className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-3">
-            <legend className="px-2 font-black">Mizaç ağırlıkları</legend>
+            <legend className="px-2 font-semibold">Mizaç ağırlıkları</legend>
             {(Object.keys(temperamentLabels) as Array<keyof SeedPersona["temperament"]>).map(
               (key) => (
                 <NumberInput
@@ -251,7 +251,7 @@ export function AgentProfileEditor({
                 onChange({ ...persona, writing: { ...persona.writing, rhythm } })
               }
             />
-            <label className="text-sm font-bold">
+            <label className="text-sm font-medium">
               Entry uzunluğu
               <select
                 value={persona.writing.entryLength}
@@ -394,7 +394,7 @@ export function AgentProfileEditor({
               Tam Persona belgesi uzman kullanımı içindir. Structured alanlara dönmeden önce belgeyi
               uygulayın.
             </p>
-            <label className="block text-sm font-bold">
+            <label className="block text-sm font-medium">
               Persona JSON/YAML ({advancedFormat})
               <textarea
                 value={advancedDocument}
@@ -435,7 +435,7 @@ function WeightedListEditor({
 }) {
   return (
     <fieldset className="space-y-3 rounded-xl border p-4">
-      <legend className="px-2 font-black">{title}</legend>
+      <legend className="px-2 font-semibold">{title}</legend>
       {values.map((value, index) => (
         <div
           key={`${itemLabel}-${index}`}
@@ -462,7 +462,7 @@ function WeightedListEditor({
               )
             }
           />
-          <label className="flex items-center gap-2 self-end py-3 text-sm font-bold">
+          <label className="flex items-center gap-2 self-end py-3 text-sm font-medium">
             <input
               type="checkbox"
               checked={value.pinned}
@@ -508,7 +508,7 @@ function SourceListEditor({
 }) {
   return (
     <fieldset className="space-y-4 rounded-xl border p-4">
-      <legend className="px-2 font-black">Persona kaynakları</legend>
+      <legend className="px-2 font-semibold">Persona kaynakları</legend>
       {sources.map((source, index) => (
         <div key={`source-${index}`} className="grid gap-3 rounded-xl bg-page p-4 sm:grid-cols-2">
           <TextInput
@@ -521,7 +521,7 @@ function SourceListEditor({
               )
             }
           />
-          <label className="text-sm font-bold">
+          <label className="text-sm font-medium">
             Kaynak {index + 1} türü
             <select
               value={source.sourceType}
@@ -545,7 +545,7 @@ function SourceListEditor({
               ))}
             </select>
           </label>
-          <label className="text-sm font-bold">
+          <label className="text-sm font-medium">
             Kaynak {index + 1} durumu
             <select
               value={source.status}
@@ -590,7 +590,7 @@ function SourceListEditor({
               )
             }
           />
-          <label className="flex items-center gap-2 text-sm font-bold">
+          <label className="flex items-center gap-2 text-sm font-medium">
             <input
               type="checkbox"
               checked={source.pinned}
@@ -657,7 +657,7 @@ function TextInput({
   type?: string;
 }) {
   return (
-    <label className="text-sm font-bold">
+    <label className="text-sm font-medium">
       {label}
       <input
         type={type}
@@ -684,7 +684,7 @@ function TextArea({
   hint?: string;
 }) {
   return (
-    <label className="text-sm font-bold">
+    <label className="text-sm font-medium">
       {label}
       <textarea
         value={value}
@@ -712,7 +712,7 @@ function NumberInput({
   step: number;
 }) {
   return (
-    <label className="text-sm font-bold">
+    <label className="text-sm font-medium">
       {label}
       <input
         type="number"

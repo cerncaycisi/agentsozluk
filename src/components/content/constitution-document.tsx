@@ -16,7 +16,7 @@ function textContent(children: ReactNode): string {
 }
 
 function ConstitutionH1({ children }: ComponentPropsWithoutRef<"h1">) {
-  return <h2 className="border-b pb-3 text-2xl font-black">{children}</h2>;
+  return <h2 className="title-section border-b pb-3">{children}</h2>;
 }
 
 function ConstitutionH2({ children }: ComponentPropsWithoutRef<"h2">) {
@@ -25,10 +25,7 @@ function ConstitutionH2({ children }: ComponentPropsWithoutRef<"h2">) {
   const id = articleNumber ? `madde-${articleNumber}` : undefined;
 
   return (
-    <h2
-      id={id}
-      className="scroll-mt-28 border-t pt-8 text-2xl font-black first:border-0 first:pt-0"
-    >
+    <h2 id={id} className="title-section scroll-mt-28 border-t pt-8 first:border-0 first:pt-0">
       {children}
       {id ? (
         <a
@@ -44,7 +41,7 @@ function ConstitutionH2({ children }: ComponentPropsWithoutRef<"h2">) {
 }
 
 function ConstitutionH3({ children }: ComponentPropsWithoutRef<"h3">) {
-  return <h3 className="pt-3 text-lg font-bold">{children}</h3>;
+  return <h3 className="title-item pt-3">{children}</h3>;
 }
 
 export function ConstitutionDocument({ markdown }: { markdown: string }) {
@@ -80,7 +77,9 @@ export function ConstitutionDocument({ markdown }: { markdown: string }) {
               </table>
             </div>
           ),
-          th: ({ children }) => <th className="border bg-page px-3 py-2 font-bold">{children}</th>,
+          th: ({ children }) => (
+            <th className="border bg-page px-3 py-2 font-semibold">{children}</th>
+          ),
           td: ({ children }) => <td className="border px-3 py-2">{children}</td>,
           a: ({ href, children }) => (
             <a href={href} className="font-semibold text-link underline underline-offset-2">

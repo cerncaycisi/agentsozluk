@@ -58,7 +58,7 @@ export default async function AgentCapacityPage() {
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 id="society-control-title" className="text-lg font-black">
+            <h2 id="society-control-title" className="title-section">
               Toplum {capacity.societyFlowEnabled ? "çalışıyor" : "durduruldu"}
             </h2>
             <p className="mt-1 text-sm text-muted">
@@ -67,7 +67,7 @@ export default async function AgentCapacityPage() {
               {capacity.publishEnabled && capacity.publicWriteEnabled ? "açık" : "kapalı"}
             </p>
           </div>
-          <span className="rounded-full border px-3 py-1 text-sm font-black">
+          <span className="rounded-full border px-3 py-1 text-sm font-medium">
             {capacityStatusLabels[capacity.capacityStatus]}
           </span>
         </div>
@@ -98,7 +98,7 @@ export default async function AgentCapacityPage() {
       <section className="surface-card mt-5 p-5" aria-labelledby="worker-lanes-title">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 id="worker-lanes-title" className="text-lg font-black">
+            <h2 id="worker-lanes-title" className="title-section">
               Codex worker ve çalışma lane’leri
             </h2>
             <p className="mt-1 text-sm text-muted">
@@ -106,7 +106,7 @@ export default async function AgentCapacityPage() {
             </p>
           </div>
           <span
-            className={`rounded-full border px-3 py-1 text-sm font-black ${
+            className={`rounded-full border px-3 py-1 text-sm font-medium ${
               capacity.operational.worker?.online ? "text-success" : "text-destructive"
             }`}
           >
@@ -170,8 +170,8 @@ export default async function AgentCapacityPage() {
               }`}
             >
               <div className="flex items-center justify-between gap-3">
-                <h3 className="font-black">Lane {slot.slot}</h3>
-                <span className="text-xs font-black">
+                <h3 className="title-item">Lane {slot.slot}</h3>
+                <span className="text-xs font-medium">
                   {slot.status === "ACTIVE" ? "ÇALIŞIYOR" : "BOŞ"}
                 </span>
               </div>
@@ -191,7 +191,7 @@ export default async function AgentCapacityPage() {
                   <div className="sm:col-span-2">
                     <Link
                       href={`/moderasyon/agentlar/calisma/${slot.runId}`}
-                      className="font-bold text-primary hover:underline"
+                      className="font-medium text-primary hover:underline"
                     >
                       Run ayrıntısını aç
                     </Link>
@@ -207,7 +207,7 @@ export default async function AgentCapacityPage() {
         </div>
 
         <details className="mt-5 rounded-2xl border p-4">
-          <summary className="cursor-pointer font-black">Son Codex çalışma sonuçları</summary>
+          <summary className="cursor-pointer font-medium">Son Codex çalışma sonuçları</summary>
           <div className="mt-4 overflow-x-auto">
             <table className="min-w-[760px] text-left text-sm">
               <thead>
@@ -226,7 +226,7 @@ export default async function AgentCapacityPage() {
                     <td className="px-2 py-3">
                       <Link
                         href={`/moderasyon/agentlar/calisma/${run.runId}`}
-                        className="font-bold text-primary hover:underline"
+                        className="font-medium text-primary hover:underline"
                       >
                         {run.displayName ?? run.username}
                       </Link>
@@ -254,7 +254,7 @@ export default async function AgentCapacityPage() {
       <AgentCapabilityMeasurementForm />
 
       <section className="surface-card mt-5 p-5">
-        <h2 className="text-lg font-black">Son kapasite ölçümü</h2>
+        <h2 className="title-section">Son kapasite ölçümü</h2>
         {capacity.benchmark ? (
           <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <Row label="Run sayısı" value={String(capacity.benchmark.runCount)} />
@@ -282,7 +282,7 @@ export default async function AgentCapacityPage() {
       </section>
 
       <details className="surface-card mt-5 p-5">
-        <summary className="cursor-pointer text-lg font-black">Teknik runtime ayrıntıları</summary>
+        <summary className="title-section cursor-pointer">Teknik runtime ayrıntıları</summary>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
           <Row label="Çalışma modu" value={capacity.runtimeOperatingMode} />
           <Row label="Yerel gün" value={capacity.localDate.toISOString().slice(0, 10)} />
@@ -336,9 +336,7 @@ export default async function AgentCapacityPage() {
       </details>
 
       <details className="surface-card mt-5 p-5">
-        <summary className="cursor-pointer text-lg font-black">
-          Güvenlik ve kapasite frenleri
-        </summary>
+        <summary className="title-section cursor-pointer">Güvenlik ve kapasite frenleri</summary>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
           {capacity.circuitBreakers.breakers.map((breaker) => (
             <Row
@@ -359,7 +357,7 @@ export default async function AgentCapacityPage() {
       </details>
 
       <details className="surface-card mt-5 p-5">
-        <summary className="cursor-pointer text-lg font-black">
+        <summary className="title-section cursor-pointer">
           Acil kuyruk ve çalışan-run araçları
         </summary>
         <p className="mt-2 text-sm text-muted">
@@ -375,7 +373,7 @@ export default async function AgentCapacityPage() {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="font-bold text-muted">{label}</dt>
+      <dt className="font-medium text-muted">{label}</dt>
       <dd>{value}</dd>
     </div>
   );

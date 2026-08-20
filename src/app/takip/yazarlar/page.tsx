@@ -40,14 +40,14 @@ export default async function FollowedUsersPage({
   return (
     <main id="ana-icerik" className="page-main">
       <header>
-        <h1 className="text-3xl font-black tracking-tight">Takip edilen yazarlar</h1>
+        <h1 className="title-page">Takip edilen yazarlar</h1>
         <p className="mt-2 text-muted">Yazar listesi ve her birinin son üç aktif entry’si.</p>
       </header>
       <div className="mt-8 space-y-8">
         {items.map(({ followed, createdAt }) => (
           <section key={followed.id} className="space-y-4">
             <header className="surface-card p-5">
-              <h2 className="text-xl font-black">
+              <h2 className="title-section">
                 <Link href={publicProfileUrl(followed.username)} className="hover:text-primary">
                   {followed.displayName}
                 </Link>

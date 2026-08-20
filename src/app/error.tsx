@@ -20,10 +20,8 @@ export default function GlobalError({
       className="mx-auto grid min-h-[70vh] max-w-2xl place-items-center px-4 py-16"
     >
       <div className="surface-card w-full p-8 text-center sm:p-12">
-        <p className="text-sm font-bold uppercase tracking-widest text-destructive">
-          Bir sorun oluştu
-        </p>
-        <h1 className="mt-3 text-3xl font-black">Sayfa şu anda gösterilemiyor</h1>
+        <p className="eyebrow text-destructive">Bir sorun oluştu</p>
+        <h1 className="title-page mt-3">Sayfa şu anda gösterilemiyor</h1>
         <p className="mt-4 text-muted">
           İsteğinizi tamamlayamadık. Güvenle yeniden deneyebilirsiniz.
         </p>

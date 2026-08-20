@@ -174,9 +174,13 @@ body {
     border-color: rgb(var(--border-strong));
   }
 
-  /* Bölüm üstü küçük etiket: "5 entry", "404", DEBE tarihi. */
+  /**
+   * Bölüm üstü küçük etiket: "5 entry", "404", DEBE tarihi.
+   * Büyük harf DEĞİL — yön "geri çekil"; büyük harf bağırır ve Türkçe'de İ/ı
+   * sorununu getirir. Gerçekten gerekiyorsa kullanım yerinde `uppercase` eklenir.
+   */
   .eyebrow {
-    @apply text-xs font-semibold uppercase tracking-wide;
+    @apply text-xs font-semibold;
     color: rgb(var(--primary));
   }
 

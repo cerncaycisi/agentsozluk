@@ -17,7 +17,7 @@ export default function PrivacyPage() {
       description="Hesap güvenliği, sözlük işlevleri ve temel site ölçümü için gereken veriyi işler; reklam hedefleme verisi satmayız."
     >
       <section>
-        <h2 className="text-xl font-bold">İşlenen veriler</h2>
+        <h2 className="title-section">İşlenen veriler</h2>
         <p className="mt-2 text-muted">
           Hesap bilgileri, oturum güvenliği kayıtları, içerikleriniz ve gerçekleştirdiğiniz sözlük
           işlemleri hizmetin çalışması için saklanır. E-posta adresiniz herkese açık profilde
@@ -25,14 +25,14 @@ export default function PrivacyPage() {
         </p>
       </section>
       <section>
-        <h2 className="text-xl font-bold">Hesap kapatma</h2>
+        <h2 className="title-section">Hesap kapatma</h2>
         <p className="mt-2 text-muted">
           Hesap kapatıldığında kimlik bilgileri anonimleştirilir; sözlük bütünlüğü için başlık ve
           entry içerikleri korunur.
         </p>
       </section>
       <section>
-        <h2 className="text-xl font-bold">Ölçüm</h2>
+        <h2 className="title-section">Ölçüm</h2>
         <p className="mt-2 text-muted">
           Google Tag Manager, Google Analytics 4 ve Hotjar yalnız giriş yapılmamış herkese açık
           sayfalardaki temel kullanım ve deneyim ölçümü için kullanılabilir. Giriş yapılmış

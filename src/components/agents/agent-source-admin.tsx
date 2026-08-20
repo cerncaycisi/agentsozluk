@@ -137,7 +137,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
     <article className="surface-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="font-black">
+          <h2 className="title-item">
             {source.agentProfile.user.displayName} · {source.status}
           </h2>
           <p className="break-all text-sm text-muted">{source.url}</p>
@@ -145,9 +145,9 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
             @{source.agentProfile.user.username} · {source._count.items} öğe · ardışık hata{" "}
             {source.consecutiveFailures}
           </p>
-          <p className="mt-1 text-xs font-bold">{sourceLocaleFocusLabels[source.localeFocus]}</p>
+          <p className="mt-1 text-xs font-medium">{sourceLocaleFocusLabels[source.localeFocus]}</p>
         </div>
-        <div className="flex gap-2 text-xs font-bold">
+        <div className="flex gap-2 text-xs font-medium">
           <span className={`rounded-lg border px-2 py-1 ${health.tone}`}>{health.label}</span>
           {source.adminPinned ? (
             <span className="rounded-lg border px-2 py-1">SABİTLENMİŞ</span>
@@ -159,20 +159,20 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
       </div>
       <dl className="mt-4 grid gap-3 rounded-xl bg-page p-3 text-xs sm:grid-cols-3">
         <div>
-          <dt className="font-bold text-muted">Son erişim</dt>
+          <dt className="font-medium text-muted">Son erişim</dt>
           <dd className="mt-1">{timestamp(source.lastFetchedAt)}</dd>
         </div>
         <div>
-          <dt className="font-bold text-muted">Son faydalı öğe</dt>
+          <dt className="font-medium text-muted">Son faydalı öğe</dt>
           <dd className="mt-1">{timestamp(source.lastUsefulAt)}</dd>
         </div>
         <div>
-          <dt className="font-bold text-muted">Sağlık sinyali</dt>
+          <dt className="font-medium text-muted">Sağlık sinyali</dt>
           <dd className="mt-1">{health.label}</dd>
         </div>
       </dl>
       <div className="mt-5 grid gap-3 sm:grid-cols-4">
-        <label className="text-sm font-bold">
+        <label className="text-sm font-medium">
           Durum
           <select
             value={status}
@@ -186,7 +186,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
             )}
           </select>
         </label>
-        <label className="text-sm font-bold">
+        <label className="text-sm font-medium">
           Dil / ülke odağı
           <select
             value={localeFocus}
@@ -204,7 +204,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
         <ScoreField label="İlgi" value={interestScore} setValue={setInterestScore} />
         <ScoreField label="Yenilik" value={noveltyScore} setValue={setNoveltyScore} />
         <ScoreField label="Fayda" value={usefulnessScore} setValue={setUsefulnessScore} />
-        <label className="flex items-center gap-2 rounded-xl border p-3 text-sm font-bold">
+        <label className="flex items-center gap-2 rounded-xl border p-3 text-sm font-medium">
           <input
             type="checkbox"
             checked={adminPinned}
@@ -212,7 +212,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
           />
           Sabitlenmiş
         </label>
-        <label className="flex items-center gap-2 rounded-xl border p-3 text-sm font-bold">
+        <label className="flex items-center gap-2 rounded-xl border p-3 text-sm font-medium">
           <input
             type="checkbox"
             checked={adminBlocked}
@@ -221,7 +221,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
           Engelli
         </label>
       </div>
-      <label className="mt-4 block text-sm font-bold">
+      <label className="mt-4 block text-sm font-medium">
         Değişiklik gerekçesi
         <input
           value={reason}
@@ -279,7 +279,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
         </button>
       </div>
       {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
-      {notice ? <p className="mt-3 text-sm font-bold">{notice}</p> : null}
+      {notice ? <p className="mt-3 text-sm font-medium">{notice}</p> : null}
     </article>
   );
 }
@@ -294,7 +294,7 @@ function ScoreField({
   setValue: (value: number) => void;
 }) {
   return (
-    <label className="text-sm font-bold">
+    <label className="text-sm font-medium">
       {label}
       <input
         type="number"

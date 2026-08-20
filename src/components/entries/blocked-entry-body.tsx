@@ -12,7 +12,7 @@ export function BlockedEntryBody({ body }: { body: string }) {
       <button
         type="button"
         onClick={() => setRevealed(true)}
-        className="mt-3 text-sm font-bold text-primary hover:underline"
+        className="mt-3 text-sm font-medium text-primary hover:underline"
       >
         Entry’yi bir kez göster
       </button>

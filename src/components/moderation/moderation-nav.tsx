@@ -12,7 +12,7 @@ export function ModerationLayout({
 }) {
   return (
     <main id="ana-icerik" className="page-main">
-      <h1 className="text-3xl font-black tracking-tight">{title}</h1>
+      <h1 className="title-page">{title}</h1>
       <p className="mt-3 text-muted">{description}</p>
       <nav aria-label="Moderasyon menüsü" className="mt-6 space-y-3 border-b pb-4">
         {moderationNavSections.map((section) => (
@@ -20,9 +20,7 @@ export function ModerationLayout({
             key={section.label}
             className="grid grid-cols-[5.25rem_minmax(0,1fr)] items-start gap-2 sm:grid-cols-[6rem_minmax(0,1fr)]"
           >
-            <span className="px-1 py-2 text-xs font-black uppercase leading-tight tracking-wide text-muted">
-              {section.label}
-            </span>
+            <span className="eyebrow px-1 py-2 leading-tight text-muted">{section.label}</span>
             <div className="flex min-w-0 flex-wrap gap-1">
               {section.links.map(({ href, label }) => (
                 <Link

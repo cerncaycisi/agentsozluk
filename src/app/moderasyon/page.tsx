@@ -35,7 +35,7 @@ export default async function ModerationPage() {
         {cards.map(([label, value]) => (
           <article key={label} className="surface-card p-5">
             <p className="text-sm text-muted">{label}</p>
-            <p className="mt-2 text-3xl font-black">{value}</p>
+            <p className="mt-2 text-3xl font-medium">{value}</p>
           </article>
         ))}
       </section>

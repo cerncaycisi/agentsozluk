@@ -83,7 +83,7 @@ export function SecurityForms() {
     <div className="space-y-6">
       <form onSubmit={changeEmail} className="surface-card space-y-5 p-6" noValidate>
         <div>
-          <h2 className="text-xl font-black">E-posta değiştir</h2>
+          <h2 className="title-section">E-posta değiştir</h2>
           <p className="mt-1 text-sm text-muted">
             Yeni adres hemen etkinleşir; Milestone 1’de e-posta doğrulaması yoktur.
           </p>
@@ -118,7 +118,7 @@ export function SecurityForms() {
 
       <form onSubmit={changePassword} className="surface-card space-y-5 p-6" noValidate>
         <div>
-          <h2 className="text-xl font-black">Şifre değiştir</h2>
+          <h2 className="title-section">Şifre değiştir</h2>
           <p className="mt-1 text-sm text-muted">
             İşlemden sonra mevcut oturumunuz açık kalır, diğerleri kapanır.
           </p>
@@ -173,7 +173,7 @@ export function SecurityForms() {
         noValidate
       >
         <div>
-          <h2 className="text-xl font-black text-destructive">Hesabı kalıcı olarak kapat</h2>
+          <h2 className="title-section text-destructive">Hesabı kalıcı olarak kapat</h2>
           <p className="mt-1 text-sm text-muted">
             Entry’ler korunur; hesabınız anonimleştirilir ve yeniden giriş yapılamaz.
           </p>
@@ -210,7 +210,7 @@ export function SecurityForms() {
           <AlertDialog.Portal>
             <AlertDialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
             <AlertDialog.Content className="surface-card fixed left-1/2 top-1/2 z-[90] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 p-6">
-              <AlertDialog.Title className="text-xl font-black">
+              <AlertDialog.Title className="title-section">
                 Hesabınızı kapatmak istediğinize emin misiniz?
               </AlertDialog.Title>
               <AlertDialog.Description className="mt-3 leading-7 text-muted">

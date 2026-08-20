@@ -15,7 +15,7 @@ export function AuthShell({
       className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-lg place-items-center px-4 py-12"
     >
       <section className="surface-card w-full p-6 sm:p-9" aria-labelledby="auth-title">
-        <h1 id="auth-title" className="text-3xl font-black tracking-tight">
+        <h1 id="auth-title" className="title-page">
           {title}
         </h1>
         <p className="mt-2 leading-7 text-muted">{description}</p>

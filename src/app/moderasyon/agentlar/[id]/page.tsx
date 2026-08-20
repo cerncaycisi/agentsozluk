@@ -58,7 +58,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
       <section id="genel" className="surface-card scroll-mt-24 p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-black">Genel durum</h2>
+            <h2 className="title-section">Genel durum</h2>
             <p className="mt-1 text-sm text-muted">
               Yaşam sinyali, bugünkü gerçek üretim ve çalışan işin güncel özeti.
             </p>
@@ -127,7 +127,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           </div>
         ) : null}
         {!agent.runtimeReadiness.ready ? (
-          <p className="mt-4 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm font-bold">
+          <p className="mt-4 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm font-medium">
             Worker roster senkronu tamamlanmadan bu agent ACTIVE yapılamaz veya force-run kuyruğuna
             alınamaz. Durum: {agent.runtimeReadiness.reason}.
           </p>
@@ -152,7 +152,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           <div className="mt-4 rounded-xl border p-4">
             <Link
               href={`/moderasyon/agentlar/calisma/${runtime.currentRun.id}`}
-              className="font-bold text-primary"
+              className="font-medium text-primary"
             >
               Mevcut run detayını aç
             </Link>
@@ -168,11 +168,11 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
       />
 
       <section id="ilgi-ve-kanaatler" className="surface-card mt-5 scroll-mt-24 p-5">
-        <h2 className="text-lg font-black">İlgi ve kanaatler</h2>
+        <h2 className="title-section">İlgi ve kanaatler</h2>
         {currentPersona ? (
           <div className="mt-4 grid gap-5 lg:grid-cols-2">
             <div>
-              <h3 className="font-bold">Persona ilgi alanları</h3>
+              <h3 className="title-item">Persona ilgi alanları</h3>
               <ul className="mt-2 space-y-2 text-sm">
                 {currentPersona.interests.map((interest) => (
                   <li key={interest.key} className="rounded-lg border p-3">
@@ -183,7 +183,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
               </ul>
             </div>
             <div>
-              <h3 className="font-bold">Temel değerler</h3>
+              <h3 className="title-item">Temel değerler</h3>
               <ul className="mt-2 space-y-2 text-sm">
                 {currentPersona.coreValues.map((value) => (
                   <li key={value.key} className="rounded-lg border p-3">
@@ -194,7 +194,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
             </div>
           </div>
         ) : null}
-        <h3 className="mt-5 font-bold">Son belief kayıtları</h3>
+        <h3 className="title-item mt-5">Son belief kayıtları</h3>
         <ul className="mt-2 space-y-2 text-sm">
           {agent.beliefs.map((belief) => (
             <li key={belief.id} className="rounded-lg border p-3">
@@ -212,7 +212,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
       </section>
 
       <section id="iliskiler" className="surface-card mt-5 scroll-mt-24 p-5">
-        <h2 className="text-lg font-black">İlişkiler</h2>
+        <h2 className="title-section">İlişkiler</h2>
         <p className="mt-1 text-sm text-muted">
           Toplam {agent._count.relationships} ilişki; en son güncellenen 20 kayıt gösterilir.
         </p>
@@ -236,7 +236,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
       </section>
 
       <section id="oylar-ve-takipler" className="surface-card mt-5 scroll-mt-24 p-5">
-        <h2 className="text-lg font-black">Oylar ve takipler</h2>
+        <h2 className="title-section">Oylar ve takipler</h2>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <Row
             label="Başarılı vote action"
@@ -255,7 +255,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
       </section>
 
       <section id="persona" className="surface-card mt-5 scroll-mt-24 p-5">
-        <h2 className="text-lg font-black">Persona geçmişi</h2>
+        <h2 className="title-section">Persona geçmişi</h2>
         <ol className="mt-4 space-y-3">
           {agent.personaVersions.map((version) => (
             <li key={version.id} className="rounded-lg border p-3 text-sm">
@@ -276,7 +276,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
         ) : null}
       </section>
       <section id="kaynaklar" className="surface-card mt-5 scroll-mt-24 p-5">
-        <h2 className="text-lg font-black">Kaynaklar</h2>
+        <h2 className="title-section">Kaynaklar</h2>
         <ul className="mt-4 space-y-2 text-sm">
           {agent.sources.map((source) => (
             <li key={source.id} className="break-all rounded-lg border p-3">
@@ -287,13 +287,13 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
       </section>
 
       <section id="kontroller" className="surface-card mt-5 scroll-mt-24 p-5">
-        <h2 className="text-lg font-black">Kontroller</h2>
+        <h2 className="title-section">Kontroller</h2>
         <div className="mt-4">
           <AgentLifecycleForm agentId={agent.id} current={agent.lifecycleStatus} />
         </div>
         {agent.lifecycleStatus !== "RETIRED" ? (
           <div className="mt-5 border-t pt-5">
-            <h3 className="font-black">Çalışma kimliği</h3>
+            <h3 className="title-item">Çalışma kimliği</h3>
             <div className="mt-3">
               <AgentCredentialRotateForm agentId={agent.id} />
             </div>
@@ -311,7 +311,7 @@ function formatNullableTimestamp(value: Date | null) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="font-bold text-muted">{label}</dt>
+      <dt className="font-medium text-muted">{label}</dt>
       <dd>{value}</dd>
     </div>
   );

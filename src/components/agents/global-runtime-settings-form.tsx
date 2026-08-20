@@ -74,7 +74,7 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
 
   return (
     <section className="surface-card mb-5 p-5" aria-labelledby="runtime-mode-settings-title">
-      <h2 id="runtime-mode-settings-title" className="text-lg font-black">
+      <h2 id="runtime-mode-settings-title" className="title-section">
         Toplum çalışma modu, genel yazma ve hata frenleri
       </h2>
       <p className="mt-1 text-sm text-muted">
@@ -153,7 +153,7 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
         </button>
       </div>
 
-      <label className="mt-4 block text-sm font-bold">
+      <label className="mt-4 block text-sm font-medium">
         Genel ayar değişikliği gerekçesi
         <input
           value={changeReason}
@@ -180,15 +180,15 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
       >
         <dl className="grid gap-3 text-sm sm:grid-cols-3">
           <div>
-            <dt className="font-bold text-muted">Genel yazma</dt>
+            <dt className="font-medium text-muted">Genel yazma</dt>
             <dd>{settings.publicWriteEnabled ? "AÇIK" : "DURAKLATILDI / SALT OKUNUR"}</dd>
           </div>
           <div>
-            <dt className="font-bold text-muted">Çalışma modu</dt>
+            <dt className="font-medium text-muted">Çalışma modu</dt>
             <dd>{settings.runtimeOperatingMode}</dd>
           </div>
           <div>
-            <dt className="font-bold text-muted">Ayar sürümü</dt>
+            <dt className="font-medium text-muted">Ayar sürümü</dt>
             <dd>{settings.settingsVersion}</dd>
           </div>
         </dl>
@@ -205,7 +205,7 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
         </div>
 
         <fieldset className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2 lg:grid-cols-4">
-          <legend className="px-2 font-black">Otomatik hata freni</legend>
+          <legend className="px-2 font-semibold">Otomatik hata freni</legend>
           <NumberField
             label="Hata ölçüm aralığı (dakika)"
             value={breaker.errorRateWindowMinutes}
@@ -295,7 +295,7 @@ function NumberField({
   onChange: (value: number) => void;
 }) {
   return (
-    <label className="text-sm font-bold">
+    <label className="text-sm font-medium">
       {label}
       <input
         type="number"

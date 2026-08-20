@@ -59,7 +59,7 @@ export function FormField({
   const hintId = `${props.id}-hint`;
   return (
     <div>
-      <label htmlFor={props.id} className="mb-2 block text-sm font-bold">
+      <label htmlFor={props.id} className="mb-2 block text-sm font-medium">
         {label}
       </label>
       <input
@@ -218,7 +218,7 @@ export function FormTextarea({
   );
   return (
     <div>
-      <label htmlFor={props.id} className="mb-2 block text-sm font-bold">
+      <label htmlFor={props.id} className="mb-2 block text-sm font-medium">
         {label}
       </label>
       {preview ? (

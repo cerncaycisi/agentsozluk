@@ -55,7 +55,7 @@ export function TopicCanonicalSuggestions({ title }: { title: string }) {
       aria-labelledby="canonical-topic-suggestions-title"
       className="rounded-xl border bg-page p-4 text-sm"
     >
-      <h2 id="canonical-topic-suggestions-title" className="font-bold">
+      <h2 id="canonical-topic-suggestions-title" className="font-semibold">
         Önce mevcut ve alternatif adları kontrol edin
       </h2>
       <div aria-live="polite" className="mt-2">

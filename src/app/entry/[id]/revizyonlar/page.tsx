@@ -57,7 +57,7 @@ export default async function EntryRevisionsPage({
   }
   return (
     <main id="ana-icerik" className="page-main">
-      <h1 className="text-3xl font-black tracking-tight">Entry sürümleri</h1>
+      <h1 className="title-page">Entry sürümleri</h1>
       <p className="mt-3 text-muted">Düzenleme öncesindeki metinler en yeniden eskiye sıralanır.</p>
       <div className="mt-7 space-y-4">
         {result.revisions.map((revision) => (

@@ -70,7 +70,7 @@ export default async function ModerationUsersPage({
             <article key={user.id} className="surface-card p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <h2 className="font-bold">{user.displayName}</h2>
+                  <h2 className="title-item">{user.displayName}</h2>
                   <p className="mt-1 text-sm text-muted">
                     @{user.username} · {user.role} · {user.status}
                     {!user.writerApproved ? " · YAZAR ONAYI BEKLİYOR" : ""}

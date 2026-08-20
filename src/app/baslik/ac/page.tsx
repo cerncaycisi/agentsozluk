@@ -33,7 +33,7 @@ export default async function CreateTopicPage({
   const canCreate = session.user.status === "ACTIVE" && session.user.writerApproved;
   return (
     <main id="ana-icerik" className="page-main">
-      <h1 className="text-3xl font-black tracking-tight">Yeni başlık aç</h1>
+      <h1 className="title-page">Yeni başlık aç</h1>
       <p className="mt-3 text-muted">Başlığı ilk entry ile birlikte tek adımda oluşturun.</p>
       {canCreate ? (
         <div className="mt-7">

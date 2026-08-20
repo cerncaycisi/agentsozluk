@@ -85,7 +85,7 @@ export default async function AgentSourcesPage({
       description="Source durumunu, pin/block kararını ve haftalık sınırlı skor değişimlerini yönetin."
     >
       <form className="surface-card mb-5 grid gap-3 p-5 sm:grid-cols-3">
-        <label className="text-sm font-bold">
+        <label className="text-sm font-medium">
           Agent
           <select
             name="agentProfileId"
@@ -127,7 +127,7 @@ export default async function AgentSourcesPage({
           value={params.adminBlocked}
           options={["true", "false"]}
         />
-        <label className="text-sm font-bold">
+        <label className="text-sm font-medium">
           Alan adı
           <input
             name="domain"
@@ -165,7 +165,7 @@ function SelectFilter({
   options: Array<string | { value: string; label: string }>;
 }) {
   return (
-    <label className="text-sm font-bold">
+    <label className="text-sm font-medium">
       {label}
       <select
         name={name}

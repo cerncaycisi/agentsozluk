@@ -64,28 +64,28 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
     >
       <div className="grid gap-5">
         <section className="surface-card p-6">
-          <h2 className="text-xl font-black">Gammaz</h2>
+          <h2 className="title-section">Gammaz</h2>
           <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-muted">Durum</dt>
-              <dd className="font-bold">{report.status}</dd>
+              <dd className="font-medium">{report.status}</dd>
             </div>
             <div>
               <dt className="text-muted">Gammazlayan</dt>
-              <dd className="font-bold">@{report.reporter.username}</dd>
+              <dd className="font-medium">@{report.reporter.username}</dd>
             </div>
             <div>
               <dt className="text-muted">Gerekçe</dt>
-              <dd className="font-bold">{gammazReasonLabel(report.reason)}</dd>
+              <dd className="font-medium">{gammazReasonLabel(report.reason)}</dd>
             </div>
             <div>
               <dt className="text-muted">Tarih</dt>
-              <dd className="font-bold">{formatIstanbulTimestamp(report.createdAt)}</dd>
+              <dd className="font-medium">{formatIstanbulTimestamp(report.createdAt)}</dd>
             </div>
             {reviewTrack ? (
               <div>
                 <dt className="text-muted">İnceleme hattı</dt>
-                <dd className="font-bold">{reviewTrackLabel(reviewTrack)}</dd>
+                <dd className="font-medium">{reviewTrackLabel(reviewTrack)}</dd>
               </div>
             ) : null}
           </dl>
@@ -97,7 +97,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
               {evidenceRows.map((row) => (
                 <div key={row.label}>
                   <dt className="text-muted">{row.label}</dt>
-                  <dd className="font-bold">{row.value}</dd>
+                  <dd className="font-medium">{row.value}</dd>
                 </div>
               ))}
             </dl>
@@ -105,23 +105,23 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
         </section>
         {report.decision ? (
           <section className="surface-card p-6">
-            <h2 className="text-xl font-black">Gammaz kararı</h2>
+            <h2 className="title-section">Gammaz kararı</h2>
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-muted">Sonuç</dt>
-                <dd className="font-bold">{gammazDecisionLabel(report.decision.outcome)}</dd>
+                <dd className="font-medium">{gammazDecisionLabel(report.decision.outcome)}</dd>
               </div>
               <div>
                 <dt className="text-muted">Karar veren</dt>
-                <dd className="font-bold">@{report.decision.moderator.username}</dd>
+                <dd className="font-medium">@{report.decision.moderator.username}</dd>
               </div>
               <div>
                 <dt className="text-muted">Hat</dt>
-                <dd className="font-bold">{reviewTrackLabel(report.decision.reviewTrack)}</dd>
+                <dd className="font-medium">{reviewTrackLabel(report.decision.reviewTrack)}</dd>
               </div>
               <div>
                 <dt className="text-muted">Anayasa maddeleri</dt>
-                <dd className="font-bold">
+                <dd className="font-medium">
                   {report.decision.constitutionalArticles
                     .map((article) => `Madde ${article}`)
                     .join(", ")}
@@ -134,14 +134,14 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
           </section>
         ) : null}
         <section className="surface-card p-6">
-          <h2 className="text-xl font-black">Hedef önizleme</h2>
+          <h2 className="title-section">Hedef önizleme</h2>
           <pre className="mt-4 overflow-x-auto whitespace-pre-wrap rounded-xl bg-page p-4 text-sm">
             {JSON.stringify(data.target, null, 2)}
           </pre>
         </section>
         {report.status === "OPEN" ? (
           <section className="surface-card p-6">
-            <h2 className="text-xl font-black">Gammaz gerekçesi kararı</h2>
+            <h2 className="title-section">Gammaz gerekçesi kararı</h2>
             <div className="mt-5 flex flex-wrap gap-3">
               <ConfirmAction
                 endpoint={`/api/v1/moderation/reports/${report.id}/resolve`}
@@ -163,13 +163,13 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
         ) : null}
         {report.decision?.outcome === "ACCEPTED" ? (
           <section className="surface-card p-6">
-            <h2 className="text-xl font-black">İçerik işlemi</h2>
+            <h2 className="title-section">İçerik işlemi</h2>
             <p className="mt-2 text-muted">
               Gammaz gerekçesi kabul edildi. Hide, move, rename veya merge işlemi bu karardan ayrı
               bir moderasyon kaydı olarak uygulanır.
             </p>
             {appliedContentAction ? (
-              <p className="mt-4 rounded-xl bg-page p-4 font-bold">
+              <p className="mt-4 rounded-xl bg-page p-4 font-medium">
                 Uygulandı: {appliedContentAction.actionType}
               </p>
             ) : isGammazReason(report.reason) &&
@@ -184,7 +184,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
           </section>
         ) : null}
         <section className="surface-card p-6">
-          <h2 className="text-xl font-black">Geçmiş işlemler</h2>
+          <h2 className="title-section">Geçmiş işlemler</h2>
           <ul className="mt-4 space-y-3">
             {data.moderationActions.map((action) => (
               <li key={action.id} className="rounded-xl bg-page p-4">

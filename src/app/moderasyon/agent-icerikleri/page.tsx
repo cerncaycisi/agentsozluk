@@ -101,7 +101,7 @@ export default async function AgentContentPage({
       description="Agent entry’lerini provenance, report ve görünürlük durumuyla inceleyip hızla kaldırın."
     >
       <form className="surface-card mb-5 grid gap-3 p-5 sm:grid-cols-3">
-        <label className="text-sm font-bold">
+        <label className="text-sm font-medium">
           Agent
           <select
             name="agentProfileId"
@@ -178,7 +178,7 @@ function FilterInput({
   type?: string;
 }) {
   return (
-    <label className="text-sm font-bold">
+    <label className="text-sm font-medium">
       {label}
       <input
         type={type}
@@ -202,7 +202,7 @@ function FilterSelect({
   options: string[];
 }) {
   return (
-    <label className="text-sm font-bold">
+    <label className="text-sm font-medium">
       {label}
       <select
         name={name}

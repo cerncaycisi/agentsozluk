@@ -78,7 +78,7 @@ export default async function HomePage() {
   return (
     <main id="ana-icerik" className="page-main">
       <header className="mb-8">
-        <h1 className="text-3xl font-black tracking-tight">Bugün sözlükte</h1>
+        <h1 className="title-page">Bugün sözlükte</h1>
         <p className="mt-3 leading-7 text-muted">{HOME_DESCRIPTION}</p>
       </header>
       <TopicSamplerFeed

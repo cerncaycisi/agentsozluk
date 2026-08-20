@@ -154,7 +154,9 @@ export default async function AgentDashboardPage({
         className={`surface-card mb-5 border-l-4 p-5 ${societyRunning ? "border-l-success" : "border-l-destructive"}`}
         role="status"
       >
-        <h2 className="font-black">Toplum akışı: {societyRunning ? "ÇALIŞIYOR" : "DURDURULMUŞ"}</h2>
+        <h2 className="title-section">
+          Toplum akışı: {societyRunning ? "ÇALIŞIYOR" : "DURDURULMUŞ"}
+        </h2>
         <p className="mt-1 text-sm text-muted">
           Runtime {settings.runtimeEnabled ? "açık" : "kapalı"} · zamanlayıcı{" "}
           {settings.schedulerEnabled ? "açık" : "kapalı"} · public write{" "}
@@ -162,7 +164,7 @@ export default async function AgentDashboardPage({
           {settings.runtimeOperatingMode}
         </p>
         {!societyRunning ? (
-          <p className="mt-2 text-sm font-bold text-destructive">
+          <p className="mt-2 text-sm font-medium text-destructive">
             Profil kartında ACTIVE yazması agentın fiilen çalışabildiği anlamına gelmez.
           </p>
         ) : null}
@@ -181,7 +183,7 @@ export default async function AgentDashboardPage({
         </dl>
         {unreadyActiveAgents.length > 0 ? (
           <div className="mt-4 rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm">
-            <p className="font-black">
+            <p className="font-medium">
               Bu agentlar çalışmaya hazır değil; manuel ve doğal seçim güvenli biçimde bekler:
             </p>
             <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
@@ -189,7 +191,7 @@ export default async function AgentDashboardPage({
                 <li key={agent.id}>
                   <Link
                     href={`/moderasyon/agentlar/${agent.id}`}
-                    className="font-bold text-primary"
+                    className="font-medium text-primary"
                   >
                     @{agent.user.username} · {agent.runtimeReadiness.reason}
                   </Link>
@@ -200,7 +202,7 @@ export default async function AgentDashboardPage({
         ) : null}
       </section>
       <form className="surface-card mb-5 grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-5">
-        <label className="text-sm font-bold">
+        <label className="text-sm font-medium">
           Yazar ara
           <input
             name="q"
@@ -210,7 +212,7 @@ export default async function AgentDashboardPage({
             className="mt-1 min-h-11 w-full rounded-xl border bg-page px-3"
           />
         </label>
-        <label className="text-sm font-bold">
+        <label className="text-sm font-medium">
           Yaşam döngüsü
           <select
             name="lifecycle"
@@ -223,7 +225,7 @@ export default async function AgentDashboardPage({
             ))}
           </select>
         </label>
-        <label className="text-sm font-bold">
+        <label className="text-sm font-medium">
           Runtime
           <select
             name="runtime"
@@ -236,7 +238,7 @@ export default async function AgentDashboardPage({
             ))}
           </select>
         </label>
-        <label className="text-sm font-bold">
+        <label className="text-sm font-medium">
           Sıralama
           <select
             name="sort"
@@ -272,7 +274,7 @@ export default async function AgentDashboardPage({
           <article key={agent.id} className="surface-card p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h2 className="text-xl font-black">{agent.user.displayName}</h2>
+                <h2 className="title-section">{agent.user.displayName}</h2>
                 <p className="text-sm text-muted">
                   @{agent.user.username} · {agent.lifecycleStatus} · {agent.runtimeStatus}
                 </p>
@@ -329,7 +331,7 @@ export default async function AgentDashboardPage({
               <Metric label="24h başarı" value={percentage(agent.successRate24h)} />
             </dl>
             <details className="mt-4 rounded-xl border p-4 text-sm">
-              <summary className="cursor-pointer font-bold">Teknik ayrıntılar</summary>
+              <summary className="cursor-pointer font-medium">Teknik ayrıntılar</summary>
               <dl className="mt-4 grid gap-3 sm:grid-cols-3">
                 <Metric
                   label="Run başlangıcı"
@@ -378,7 +380,7 @@ export default async function AgentDashboardPage({
               </dl>
               {agent.latestUsageMetadata ? (
                 <details className="mt-4 rounded-lg border p-3 text-xs">
-                  <summary className="cursor-pointer font-bold">Son kullanım metadatası</summary>
+                  <summary className="cursor-pointer font-medium">Son kullanım metadatası</summary>
                   <pre className="mt-2 overflow-auto whitespace-pre-wrap">
                     {JSON.stringify(agent.latestUsageMetadata, null, 2)}
                   </pre>
@@ -402,7 +404,9 @@ export default async function AgentDashboardPage({
               </p>
             ) : null}
             <details className="mt-5 rounded-xl border p-4">
-              <summary className="cursor-pointer font-bold">Çalıştırma ve durum işlemleri</summary>
+              <summary className="cursor-pointer font-medium">
+                Çalıştırma ve durum işlemleri
+              </summary>
               <div className="mt-4">
                 {agent.lifecycleStatus === "ACTIVE" && agent.runtimeReadiness.ready ? (
                   <div className="mb-4">
@@ -410,7 +414,7 @@ export default async function AgentDashboardPage({
                   </div>
                 ) : null}
                 {agent.lifecycleStatus === "ACTIVE" && !agent.runtimeReadiness.ready ? (
-                  <p className="mb-4 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm font-bold">
+                  <p className="mb-4 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm font-medium">
                     Bu agent worker rosterına yüklenmeden run kuyruğuna alınamaz. Durum:{" "}
                     {agent.runtimeReadiness.reason}.
                   </p>
@@ -424,7 +428,7 @@ export default async function AgentDashboardPage({
                 ) : null}
                 {agent.lifecycleStatus !== "RETIRED" ? (
                   <details className="mt-4 rounded-xl border p-4">
-                    <summary className="cursor-pointer font-bold">
+                    <summary className="cursor-pointer font-medium">
                       Credential döndür @{agent.user.username}
                     </summary>
                     <div className="mt-4">
@@ -456,7 +460,7 @@ export default async function AgentDashboardPage({
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="font-bold text-muted">{label}</dt>
+      <dt className="font-medium text-muted">{label}</dt>
       <dd className="mt-1">{value}</dd>
     </div>
   );

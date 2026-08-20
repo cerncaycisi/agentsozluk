@@ -78,7 +78,7 @@ describe("favori sayacı gösterimi", () => {
     expect(counter?.className).toContain("min-w-8");
     expect(counter?.className).toContain("text-center");
     expect(counter?.className).toContain("text-sm");
-    expect(counter?.className).toContain("font-bold");
+    expect(counter?.className).toContain("font-medium");
     // Görünen metin yalnız sayı; birim yalnız ekran okuyucuya söylenir.
     expect(counter?.querySelector(".sr-only")).toHaveTextContent("favori");
   });

@@ -133,10 +133,10 @@ export default async function AgentRunDetailPage({
       <section className="surface-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-black">
+            <h2 className="title-section">
               {run.agentProfile.user.displayName} (@{run.agentProfile.user.username})
             </h2>
-            <p className="mt-1 text-sm font-bold">
+            <p className="mt-1 text-sm font-medium">
               {humanRunType(run.runType)} · {humanRunStatus(run.runStatus)}
             </p>
             <p className="mt-1 break-all text-xs text-muted">Çalışma kimliği: {run.id}</p>
@@ -163,11 +163,11 @@ export default async function AgentRunDetailPage({
           <Metric label="Provokasyon istisnası" value={boolean(run.provocationOverride)} />
           {run.parentRunId ? (
             <div>
-              <dt className="font-bold text-muted">Üst çalışma</dt>
+              <dt className="font-medium text-muted">Üst çalışma</dt>
               <dd className="mt-1 break-all">
                 <Link
                   href={`/moderasyon/agentlar/calisma/${run.parentRunId}`}
-                  className="font-bold underline"
+                  className="font-medium underline"
                 >
                   {run.parentRunId}
                 </Link>
@@ -186,7 +186,7 @@ export default async function AgentRunDetailPage({
       </section>
 
       <section className="surface-card mt-5 p-5" aria-labelledby="run-outcome-title">
-        <h2 id="run-outcome-title" className="text-lg font-black">
+        <h2 id="run-outcome-title" className="title-section">
           {run.runStatus === "PARTIAL" ? "Bu çalışma neden PARTIAL?" : "Bu çalışma ne yaptı?"}
         </h2>
         {run.runStatus === "PARTIAL" ? (
@@ -225,7 +225,7 @@ export default async function AgentRunDetailPage({
       </section>
 
       <section className="surface-card mt-5 p-5">
-        <h2 className="text-lg font-black">Güvenli çalışma çıktısı</h2>
+        <h2 className="title-section">Güvenli çalışma çıktısı</h2>
         <p className="mt-1 text-sm text-muted">
           Ham muhakeme ve perception snapshot gösterilmez; yalnız kalıcı güvenli özet ve ölçüm
           metadata’sı sunulur.
@@ -239,7 +239,7 @@ export default async function AgentRunDetailPage({
 
       <section className="surface-card mt-5 p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <h2 className="text-lg font-black">Olaylar</h2>
+          <h2 className="title-section">Olaylar</h2>
           <span className="text-sm text-muted">{run.events.length} kayıt</span>
         </div>
         <ol className="mt-4 space-y-3">
@@ -252,7 +252,7 @@ export default async function AgentRunDetailPage({
         ) : null}
         {heartbeatEvents.length > 0 ? (
           <details className="mt-4 rounded-lg border p-4">
-            <summary className="cursor-pointer font-bold">
+            <summary className="cursor-pointer font-medium">
               Teknik yaşam sinyali kayıtları ({heartbeatEvents.length})
             </summary>
             <ol className="mt-4 space-y-3">
@@ -266,7 +266,7 @@ export default async function AgentRunDetailPage({
 
       <section className="surface-card mt-5 p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <h2 className="text-lg font-black">Aksiyonlar</h2>
+          <h2 className="title-section">Aksiyonlar</h2>
           <span className="text-sm text-muted">{run.actions.length} kayıt</span>
         </div>
         <ol className="mt-4 space-y-4">
@@ -274,7 +274,7 @@ export default async function AgentRunDetailPage({
             <li key={action.id} className="rounded-lg border p-4 text-sm">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <h3 className="font-black">
+                  <h3 className="title-item">
                     #{action.sequence} · {humanAction(action.actionType)} ·{" "}
                     {humanActionStatus(action.actionStatus)}
                   </h3>
@@ -311,7 +311,7 @@ export default async function AgentRunDetailPage({
 
       <section className="surface-card mt-5 p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <h2 className="text-lg font-black">Üretilen entry’ler</h2>
+          <h2 className="title-section">Üretilen entry’ler</h2>
           <span className="text-sm text-muted">{run.contentRecords.length} kayıt</span>
         </div>
         <ul className="mt-4 space-y-2 text-sm">
@@ -320,7 +320,7 @@ export default async function AgentRunDetailPage({
               key={record.entryId}
               className="flex flex-wrap justify-between gap-3 rounded-lg border p-3"
             >
-              <Link href={entryPublicUrl(record.entry)} className="break-all font-bold underline">
+              <Link href={entryPublicUrl(record.entry)} className="break-all font-medium underline">
                 Entry {record.entryId}
               </Link>
               <time className="text-muted" dateTime={record.createdAt.toISOString()}>
@@ -368,7 +368,7 @@ function RunEventRow({
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="font-bold text-muted">{label}</dt>
+      <dt className="font-medium text-muted">{label}</dt>
       <dd className="mt-1 break-all">{value}</dd>
     </div>
   );
@@ -377,7 +377,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 function JsonPanel({ label, value }: { label: string; value: unknown }) {
   return (
     <div className="min-w-0 rounded-lg bg-page p-3 text-xs">
-      <h3 className="font-bold">{label}</h3>
+      <h3 className="font-semibold">{label}</h3>
       {value === null ? (
         <p className="mt-2 text-muted">Henüz kayıt yok.</p>
       ) : (
@@ -392,7 +392,7 @@ function JsonPanel({ label, value }: { label: string; value: unknown }) {
 function JsonDetails({ label, value }: { label: string; value: unknown }) {
   return (
     <details className="mt-3 rounded-lg bg-page p-3 text-xs">
-      <summary className="cursor-pointer font-bold">{label}</summary>
+      <summary className="cursor-pointer font-medium">{label}</summary>
       <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words">
         {JSON.stringify(value, null, 2)}
       </pre>

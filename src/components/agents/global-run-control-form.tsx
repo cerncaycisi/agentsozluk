@@ -59,14 +59,14 @@ export function GlobalRunControlForm() {
 
   return (
     <section className="mt-5 border-t pt-5" aria-labelledby="global-run-controls-title">
-      <h3 id="global-run-controls-title" className="font-black">
+      <h3 id="global-run-controls-title" className="title-item">
         Acil kuyruk işlemleri
       </h3>
       <p className="mt-1 text-sm text-muted">
         Kuyruk iptali yalnız henüz başlamamış yazma işlerini etkiler. Kontrollü durdurma, çalışan
         run’ın mevcut atomik adımını tamamlamasına izin verir.
       </p>
-      <label className="mt-3 block text-sm font-bold">
+      <label className="mt-3 block text-sm font-medium">
         İşlem gerekçesi
         <input
           value={reason}
