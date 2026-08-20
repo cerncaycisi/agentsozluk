@@ -93,12 +93,107 @@ export function constitutionalEntryWritingIssue(body: string): ConstitutionalWri
   return null;
 }
 
-export function constitutionalTopicWritingIssue(title: string): ConstitutionalWritingIssue | null {
-  const normalized = title
+// Madde 32'nin kendi testi: "haber sitesinin manşeti ertesi gün değişse bile bu
+// ifade bağımsız ve tanınabilir bir kavram adı olarak yaşayacak mı?" Yüzey
+// doğrulayıcısı bu testin yalnız iki dar ve deterministik ailesini uygular:
+// (1) haber bülteni öneki, (2) başlığı cümleye çeviren çekimli haber yüklemi.
+// Kalıcı olay, kanun, festival ve eser adları ad öbeğidir; ikisine de takılmaz.
+// "Bu ad öbeği kalıcı mı" kararı yüzey kuralının değil, Madde 28 arama ve
+// yönlendirme hattının işidir.
+const newsBulletinMarker =
+  /^(?:son dakika|flaş|şok|bomba iddia|dakika dakika|sıcak gelişme)(?=$|[^\p{L}\p{N}])/u;
+
+// Bülten öneki + tek kelime çoğu zaman gerçek bir tamlamadır: "son dakika golü",
+// "şok dalgası", "flaş bellek". Aşağıdaki kelimeler öneki manşete çevirir.
+const bulletinHeadlineNoun =
+  /^(?:gelişme|gelişmeler|iddia|iddialar|açıklama|itiraf|karar|görüntüler|anlar|sözler)(?=$|[^\p{L}\p{N}])/u;
+
+const newsReportPredicate = new RegExp(
+  `(?:^|[^\\p{L}\\p{N}_])(?:${[
+    // Edilgen haber yüklemleri: gövde + zaman eki. Ad öbekleri bu biçimi almaz.
+    `(?:${[
+      "yasaklan",
+      "iptal edil",
+      "ertelen",
+      "durdurul",
+      "kaldırıl",
+      "toplatıl",
+      "kapatıl",
+      "onaylan",
+      "imzalan",
+      "kabul edil",
+      "reddedil",
+      "açıklan",
+      "duyurul",
+      "yalanlan",
+      "ihraç edil",
+      "tahliye edil",
+      "gözaltına alın",
+      "görevden alın",
+      "görevden uzaklaştırıl",
+      "göreve atan",
+      "atan",
+      "tutuklan",
+      "serbest bırakıl",
+      "soruşturma başlatıl",
+      "ceza veril",
+      "zam yapıl",
+    ].join("|")})(?:d[ıiuü]|[ıiuü]yor|acak|ecek)(?:lar|ler)?`,
+    // Etken haber yüklemleri; her biri tam çekimli biçimiyle listelenir.
+    "(?:istifa|vefat|beraat|feragat) ed(?:iyor|ecek)",
+    "(?:istifa|vefat|beraat|feragat) etti(?:ler)?",
+    "hayatını kaybetti(?:ler)?",
+    "yaşamını yitirdi(?:ler)?",
+    "hüküm giydi(?:ler)?",
+    "ceza aldı(?:lar)?",
+    "dava açtı(?:lar)?",
+    "açıklama yaptı(?:lar)?",
+    "rekor kırdı(?:lar)?",
+    "şampiyon oldu(?:lar)?",
+    "transfer oldu(?:lar)?",
+    "elendi(?:ler)?",
+    "zam geldi",
+    // Olay adı + genel fiil ikilisi: belirsiz fiilleri yalnız olay adıyla
+    // birlikte manşet sayar ("çıktı" tek başına isim de olabilir).
+    "(?:yangın|deprem|patlama|kaza|kavga|çatışma|göçük|sel|çığ|arıza|kesinti) (?:çıktı|oldu|meydana geldi|yaşandı)",
+  ].join("|")})[\\s.!…]*$`,
+  "u",
+);
+
+function transientNewsHeadline(normalized: string): "BULLETIN" | "PREDICATE" | null {
+  // Çekimli yüklem önce sınanır: bülten önekinin ilk entry kaçış yolu, cümle
+  // hâline gelmiş bir başlığı kurtarmamalıdır.
+  if (newsReportPredicate.test(normalized)) return "PREDICATE";
+  const marker = newsBulletinMarker.exec(normalized);
+  if (!marker) return null;
+  const tail = normalized.slice(marker[0].length);
+  const rest = tail.replace(/^[\s:!.,–—-]+/u, "");
+  if (!rest) return null;
+  // İki nokta veya tire ile ayrılan devam her zaman bülten cümlesidir.
+  if (/^\s*[:!–—-]/u.test(tail)) return "BULLETIN";
+  if (bulletinHeadlineNoun.test(rest)) return "BULLETIN";
+  return rest.split(" ").filter(Boolean).length >= 2 ? "BULLETIN" : null;
+}
+
+// Bülten öneki bazen kavramın kendisidir: sözlük bir manşet klişesini de
+// tanımlayabilir. Madde 31'deki soru-başlığı ayrımıyla aynı mantık.
+function firstEntryFramesHeadlineAsConcept(body: string): boolean {
+  const normalized = body
     .normalize("NFKC")
     .toLocaleLowerCase("tr-TR")
     .replaceAll(/\s+/gu, " ")
     .trim();
+  return /(?:^|[^\p{L}\p{N}_])(?:manşet(?:i|in|ler|leri)?|klişe(?:si|leri)?|kalıp(?:lar)?|kalıbı|deyiş|söylem|gazetecilik|habercilik)(?=$|[^\p{L}\p{N}_])/u.test(
+    normalized,
+  );
+}
+
+function normalizedTopicTitleText(title: string): string {
+  return title.normalize("NFKC").toLocaleLowerCase("tr-TR").replaceAll(/\s+/gu, " ").trim();
+}
+
+export function constitutionalTopicWritingIssue(title: string): ConstitutionalWritingIssue | null {
+  const normalized = normalizedTopicTitleText(title);
   if (
     /^(?:arkadaşlar\s+)?(?:sizce|ne düşünüyorsunuz|fikriniz nedir|bilen(?:ler)? yazsın|hadi anlatın)(?=$|[^\p{L}\p{N}_])/u.test(
       normalized,
@@ -124,12 +219,15 @@ export function constitutionalTopicWritingIssue(title: string): ConstitutionalWr
       reason:
         "Anayasa Madde 30: Başlık okura doğrudan seslenmemeli; olayı genel ve şahıssız bir kavram olarak adlandırmalıdır.",
     };
-  if (/^(?:son dakika|flaş|şok)\s*:/u.test(normalized))
+  const headline = transientNewsHeadline(normalized);
+  if (headline)
     return {
       code: "CONSTITUTION_TOPIC_NEWS_HEADLINE",
       article: 32,
       reason:
-        "Anayasa Madde 32: Geçici haber manşeti yerine kişi, kurum veya kalıcı olay adı kullanılmalıdır.",
+        headline === "BULLETIN"
+          ? "Anayasa Madde 32: Haber bülteni önekiyle kurulan geçici manşet yerine kişi, kurum veya kalıcı olay adı kullanılmalıdır."
+          : "Anayasa Madde 32: Çekimli haber yüklemiyle biten başlık günlük manşet cümlesidir; kişi, kurum veya kalıcı olay adı kullanılmalıdır.",
     };
   return null;
 }
@@ -228,7 +326,15 @@ export function constitutionalTopicCreationIssue(
   firstEntryBody: string,
 ): ConstitutionalWritingIssue | null {
   const titleIssue = constitutionalTopicWritingIssue(title);
-  if (titleIssue) return titleIssue;
+  if (titleIssue) {
+    // Manşet kalıbının kendisi kavram olarak tanımlanıyorsa bülten öneki başlığı
+    // tek başına reddetmez. Çekimli haber yükleminde bu kaçış yolu yoktur.
+    const headlineFramedAsConcept =
+      titleIssue.code === "CONSTITUTION_TOPIC_NEWS_HEADLINE" &&
+      transientNewsHeadline(normalizedTopicTitleText(title)) === "BULLETIN" &&
+      firstEntryFramesHeadlineAsConcept(firstEntryBody);
+    if (!headlineFramedAsConcept) return titleIssue;
+  }
   const normalizedBody = firstEntryBody
     .normalize("NFKC")
     .toLocaleLowerCase("tr-TR")

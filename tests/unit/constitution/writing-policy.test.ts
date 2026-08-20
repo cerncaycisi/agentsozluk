@@ -111,6 +111,83 @@ describe("constitutional writer policy", () => {
     ).toMatchObject({ code: "CONSTITUTION_TOPIC_FIRST_ENTRY_DEPENDENT", article: 36 });
   });
 
+  it("applies the Madde 32 permanent-address test to headline sentences", () => {
+    for (const headline of [
+      "şok: takımın teknik direktörü istifa etti",
+      "son dakika: asgari ücrete zam geldi",
+      "son dakika ankarada yangın",
+      "şok gelişme",
+      "dakika dakika deprem anları",
+      "bakan görevden alındı",
+      "ünlü oyuncu hayatını kaybetti",
+      "İstanbul'da metro seferleri durduruldu",
+      "kitap toplatıldı",
+      "yüzü kapatan kıyafet yasağı iptal edildi",
+      "üç şüpheli gözaltına alındı",
+      "maç ertelendi",
+      "asgari ücrete zam yapılacak",
+      "sözleşme imzalanıyor",
+      "Ankara'da patlama oldu",
+      "belediye başkanı tutuklandı",
+    ])
+      expect(constitutionalTopicWritingIssue(headline)).toMatchObject({
+        code: "CONSTITUTION_TOPIC_NEWS_HEADLINE",
+        article: 32,
+      });
+  });
+
+  it("keeps permanent event, law, festival, work and compound titles out of the Madde 32 gate", () => {
+    for (const permanent of [
+      "2026 Dünya Kupası",
+      "İstanbul Sözleşmesi",
+      "Ayvalık Uluslararası Film Festivali",
+      "About Endlessness",
+      "Kanal İstanbul",
+      "1999 Gölcük depremi",
+      "Didim taşınmaz satışları",
+      "Orta Afrika Cumhuriyeti altın madeni göçüğü",
+      "Portekiz'de yüzü kapatan kıyafet yasağı",
+      "son dakika",
+      "son dakika golü",
+      "şok dalgası",
+      "şok terapisi",
+      "flaş bellek",
+      "şok mağazaları",
+      "istifa etmek",
+      "hayatını kaybetmek",
+      "görevden alınan bakan",
+      "Türk sanatı",
+      "sıkıntı",
+      "gecekondu",
+      "efendi",
+    ])
+      expect(constitutionalTopicWritingIssue(permanent)).toBeNull();
+  });
+
+  it("lets a first entry define a bulletin phrase as a concept but never a finite headline sentence", () => {
+    expect(
+      constitutionalTopicCreationIssue(
+        "son dakika",
+        "Haber bültenlerinde acil gelişmeyi duyurmak için kullanılan manşet kalıbıdır.",
+      ),
+    ).toBeNull();
+    expect(
+      constitutionalTopicCreationIssue(
+        "şok gelişme",
+        "Magazin haberciliğinde sıradan bir olayı büyütmek için kullanılan manşet klişesidir.",
+      ),
+    ).toBeNull();
+    expect(
+      constitutionalTopicCreationIssue("şok gelişme", "Bugün açıklanan istifa gelişmesidir."),
+    ).toMatchObject({ code: "CONSTITUTION_TOPIC_NEWS_HEADLINE", article: 32 });
+    expect(
+      constitutionalTopicCreationIssue(
+        "şok: bakan istifa etti",
+        "Gazetecilikte sık kullanılan bir manşet klişesidir.",
+      ),
+    ).toMatchObject({ code: "CONSTITUTION_TOPIC_NEWS_HEADLINE", article: 32 });
+  });
+
   it("rejects first entries that define a related project, product or narrower event instead of the topic", () => {
     for (const [title, body] of [
       [
