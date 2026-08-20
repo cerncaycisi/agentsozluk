@@ -27,7 +27,7 @@ _düzen_ hiç ele alınmadı. Süsleme kalkınca altındaki düz yerleşim ortay
 | P0.3 | Sol kolon: hover/aktif dili, scrollbar, yükseklik, genişlik | ✅                   | `components/layout/site-shell.tsx`                                      |
 | P0.4 | Moderasyon: çift gezinme, yanlış genişlik, alakasız sidebar | ✅                   | `components/moderation/**`, `config/navigation.ts`, `app/moderasyon/**` |
 | P0.5 | İki composer'ı eşitle                                       | ✅                   | `app/baslik/ac/page.tsx`, `components/entries/create-entry-form.tsx`    |
-| P0.6 | Etkileşim durumları: hover/focus/active/disabled sistemi    | ▶                    | `app/globals.css` (tek sahip), `entry-actions.tsx`, `entry-preview.tsx` |
+| P0.6 | Etkileşim durumları: hover/focus/active/disabled sistemi    | ✅                   | `app/globals.css` (tek sahip), `entry-actions.tsx`, `entry-preview.tsx` |
 
 **Çakışma kuralı:** `globals.css`'in tek sahibi P0.6. Diğerleri paylaşılan sınıf
 gerekirse Tailwind satır içi çözüp raporlar.
@@ -109,6 +109,33 @@ ortadan kaldırır.
 | P4  | Kimlik: marka işareti **ve** ton/dil birlikte                          | 🔒    | Yön seçildi. P0 inmeden başlanmayacak — kimlik iskeletin üstüne oturur                                                                                                                                                                                                                                                                                                                 |
 
 ---
+
+## Bağımsız inceleme — Codex `gpt-5.6-sol`, 2026-08-20
+
+P0 paketi (`main...design/p0-yerlesim`, 10 commit) farklı bir modele incelettirildi.
+Sebep: bütün kapılar zaten yeşildi (1122 birim, 218 entegrasyon, 71 E2E, build), yani
+soru "test kırık mı" değil, **"aynı kör noktayı paylaşmayan bir göz ne görür"** idi.
+
+**Cevap: iki şey, ve ikisini de kendi ajanlarım yapısal olarak kaçırdı.**
+
+| #      | bulgu                                                                                                                                                                                                                                                                                                                                                             | durum                |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| **C1** | **Yüksek — gammaz diyaloğu kapanınca odak geri dönmüyor.** `topic-overflow-menu.tsx:57` kontrollü diyalog açıyor, kontrollü kipte `gammaz-button.tsx:107` `AlertDialog.Trigger` üretmiyor, Radix boş `triggerRef`'e odaklanmaya çalışıyor. Escape/Vazgeç sonrası odak gövdeye düşüyor. **Bu dalın getirdiği gerileme** — eskiden gerçek `Trigger` vardı           | ⏸                    |
+| **C2** | **Orta — JS kapalıyken tema ayarları sonsuza kadar "yükleniyor".** `theme-settings.tsx:23` `ready` yalnız effect'ten geliyor; `:35` fieldset'i disabled tutuyor, `:71` yalan mesaj gösteriyor                                                                                                                                                                     | ⏸                    |
+| **C3** | **Orta — `forced-colors` kipinde seçili durum kayboluyor.** Durum katmanı hover/basılı işaretini yalnız gradient `background-image` ile kuruyor (`globals.css:270`, `:282`); zorunlu renk kipinde gradient bastırılınca oy verilmiş/verilmemiş düğme aynı görünüyor. `aria-pressed` ekran okuyucuyu kurtarıyor, görsel kullanıcıyı kurtarmıyor. **Axe yakalamaz** | ⏸                    |
+| C4     | Düşük — durum sistemi geçişi yarım: `theme-settings.tsx:44` hâlâ `hover:bg-page`, `account-menu.tsx:34` tetikleyici durumsuz, çıkış öğesinde native `disabled` ile CSS'in `[data-disabled]`'ı uyuşmuyor                                                                                                                                                           | ⏸ (S11/S12 ile aynı) |
+| C5     | Düşük — `background-image` gradient'i `transition` ile interpolate edilmiyor; örtü yumuşak değil ani geçiyor (`globals.css:214`). Bugün görsel ezilen bir kullanım yok                                                                                                                                                                                            | ⏸                    |
+| C6     | Düşük — ortak composer geçişi entry düzenleme yüzeyini dışarıda bırakmış (`entry-actions.tsx:565`), aynı iş için iki mekanizma                                                                                                                                                                                                                                    | ⏸ (S4 ile aynı)      |
+| C7     | Düşük — `preference.ts:25` `THEME_NAME` hiçbir yerde kullanılmıyor                                                                                                                                                                                                                                                                                                | ⏸                    |
+
+**Neden kaçırdık — kayda değer:**
+
+- **C1:** ajanlarım odak halkasının _görünür_ olduğunu 611 durakta doğruladı, ama odağın diyalog
+  kapanınca _geri döndüğünü_ hiç sormadı. Farklı soru, farklı test.
+- **C3:** `forced-colors` kipini kimse test etmedi ve axe da yakalamıyor.
+
+Codex'in temiz bulduğu yerler: URL sözleşmesi, GET form alanları, sıralama/zaman parametreleri,
+yetki koşulları, entry gönderim gövdeleri, yazdırma, iç içe interaktif öğeler.
 
 ## Akış 2 — Agent davranışı ve anayasa uyumu
 
@@ -198,6 +225,54 @@ kapanmadılar, konuşulmaz oldular.
 | M-3 | Gate 10/11/12 — tek davranış parmak iziyle 7 ardışık gün                                        | 🔒    | **Yapısal sorun:** her davranış release'i pencereyi bilerek sıfırlıyor. Son üç haftada W1, W2, W3, W3.5, W4, tasarım sistemi geçti. Bu tempoyla pencere hiç dolmaz |
 | M-4 | 36 yazarlık yapılandırma için geçerli kapasite kanıtı                                           | ⏸     | Soğuk ölçüm `SIGINT`/`130` ile yarıda kesildi, geçerli paket üretmedi. 14 yazar yine de aktive edildi                                                              |
 | M-5 | M2_REALISM item 1/2/3 (stokastik kamu kararları, kaynak→eylem nedenselliği, ses yeniden ölçümü) | ⏸     | Açık, kuyruğuma alınmamıştı                                                                                                                                        |
+
+### Paket içi entegrasyon riski — A1 ile A2 arasında
+
+**A1 ajanı buldu, kaydedilmesi şart:** prompt yazarlara **yedi** belirsizlik çerçevesi
+öğretiyordu (`kaynağa göre` dâhil), canlı kapı **altısını** tanıyor. Yani prompta harfiyen
+uyup `kaynağa göre` yazan yazar reddediliyordu — kurala uyan cezalandırılıyordu.
+
+A2 bu listeyi prompttan tamamen çıkardı, o yüzden uyuşmazlığın kendisi çözüldü. **Ama
+yerine yeni bir tane geldi:**
+
+- Prompt artık _"kendi cümlenin içinde kısa ve doğal biçimde göster"_ diyor, kelime
+  vermiyor.
+- Kapı hâlâ **altı belirli kelimeye** bakıyor.
+- Doğal çerçeveleme (ör. _"bunu iddia eden X"_) o altı kelimeden hiçbirini içermeyebilir.
+
+**Sonuç:** doğru davranan yazar yine reddedilebilir. Bu paket birleştirilirken **mutlaka
+uçtan uca test edilmeli** — A1 ve A2'nin ayrı ayrı doğru olması yetmiyor.
+
+Yumuşatıcı: üç ret kodu da `repairableContentRejectionCodes` içinde, yani agent bir
+onarım hakkı alıyor. Ama onarım da aynı kapıya çarparsa `NO_ACTION`'a düşer.
+
+**Karar gerekiyor:** kapı anahtar kelimeden mi çıkmalı, yoksa prompt kapının tanıdığı
+biçimi mi öğretmeli? İkincisi A2'nin çözdüğü sorunu geri getirir. Paket testinde ölçülecek.
+
+### Kesme çizgisi kararı — 2026-08-20
+
+Gökhan "bilmiyorum" dedi, karar bana bırakıldı. Plan zaten yedi günlük pencerenin
+**bir kez, en sonda** çalıştırılmasını söylüyor (`M2_REALISM` item 9: _"Run this
+seven-day window only after items 1–8 have reached the product behavior Gokhan
+accepts"_). Eksik olan pencere tasarımı değil, **"kabul edilebilir davranış"ın hiç
+tanımlanmamış olması** — o yüzden hiç başlamıyor.
+
+**Tanım — pencere şu yedi iş inip doğrulandığında başlar:**
+
+`A0` rollout mekanizması · `A0b` iki popülasyonun eşitlenmesi · `A1` kaçış kapısı ·
+`A2` prompt · `B` Madde 32 · `C` Madde 16 · `D` internal linking
+
+Bunlar **tek bir SHA altında** çıkar ve o release penceleyi başlatır.
+
+**Pencere boyunca kural:** yalnız UI ve belge işi. Davranış, runtime veya kaynak
+release'i yok — biri çıkarsa saat sıfırlanır ve bu bilinçli bir karar olmalı, kaza
+değil.
+
+**Pencereden önce kapatılması gerekenler:** `M-4` (36 yazarlık kapasite kanıtı —
+soğuk ölçüm yarıda kesilmişti, geçerli paket yok) ve `M-1` (Gökhan'ın eliyle
+`codex login`). İkincisi olmadan `M-2` de kapanmaz.
+
+**Sonuç:** M2 askıya alınmıyor, tarihi belirsiz de değil. Akış 2 bitince başlıyor.
 
 ## Akış 4 — Belge hijyeni
 
