@@ -39,6 +39,37 @@
   --on-primary: 255 255 255;
   --on-accent: 255 255 255;
   --on-destructive: 255 255 255;
+
+  /**
+   * DURUM KATMANI — hover / focus-visible / active / disabled
+   *
+   * Örtü rengi (`--state-tint`) her temada `--ink` ile aynı: zemin ne olursa olsun
+   * örtü onu METNİN yönüne kaydırır. Açık temada koyultur, koyu temada açar.
+   * Bu yüzden hover, `--page` ile `--surface` arasındaki farka HİÇ bel bağlamıyor —
+   * koyu temada o fark 1.075 ve gözle ayırt edilemiyor. Örtü koyu temada zemini
+   * 1.213 kaydırıyor; açık temada 1.153. Gölge yok, yalnız zemin tonu + kenarlık.
+   *
+   * Örtü `background-image` olarak biniyor, `background-color` DEĞİŞTİRMİYOR.
+   * Seçili oy düğmesi (`bg-primary`) ve favori (`bg-accent`) dolgusunu koruyor,
+   * hover onun ÜSTÜNE biniyor. Eski `.button-primary:hover { background: primary/0.9 }`
+   * bunu yapamıyordu: rengi zemine doğru seyreltiyor, `--on-primary` kontrastını
+   * 6.374'ten 5.253'e DÜŞÜRÜYORDU; üstelik `bg-destructive` gibi bir yardımcı
+   * sınıfla ezilen dolguyu hover'da geri primary'ye çeviriyordu (silme düğmesi).
+   *
+   * İki alfa ölçeği var, çünkü nötr bir örtü doygun bir dolgunun parlaklığını
+   * nötr bir zeminden DAHA AZ kaydırıyor (0.12'de page 1.243, primary 1.107):
+   *   notr  (0.08 / 0.14) — ikon buton, sessiz buton, çip, menü öğesi.
+   *                          Tavanı, örtülmüş zemin üstünde kalan RENKLİ metin
+   *                          belirledi: koyu temada `.chip-active` primary metni
+   *                          0.08'de 4.721, 0.10'da 4.450 — eşiğin altına düşüyor.
+   *   dolgu (0.12 / 0.20) — üstünde yalnız `--on-*` metin olan doygun dolgular.
+   *                          Orada örtü kontrastı DÜŞÜRMÜYOR, artırıyor: 6.374 → 7.056.
+   */
+  --state-tint: 43 47 54;
+  --overlay-hover: linear-gradient(rgb(var(--state-tint) / 0.08) 0 0);
+  --overlay-press: linear-gradient(rgb(var(--state-tint) / 0.14) 0 0);
+  --overlay-hover-fill: linear-gradient(rgb(var(--state-tint) / 0.12) 0 0);
+  --overlay-press-fill: linear-gradient(rgb(var(--state-tint) / 0.2) 0 0);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -56,6 +87,8 @@
     --on-primary: 20 23 28;
     --on-accent: 20 23 28;
     --on-destructive: 20 23 28;
+    /* Örtü rengi burada da `--ink`: koyu zeminde hover AÇARAK ayrışır. */
+    --state-tint: 232 234 237;
   }
 }
 
@@ -73,6 +106,8 @@
   --on-primary: 20 23 28;
   --on-accent: 20 23 28;
   --on-destructive: 20 23 28;
+  /* Örtü rengi burada da `--ink`: koyu zeminde hover AÇARAK ayrışır. */
+  --state-tint: 232 234 237;
 }
 
 * {
@@ -95,9 +130,36 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/**
+ * Klavye odağı — TEK kaynak. `:focus` değil `:focus-visible`: fareyle tıklayan
+ * halka görmez, Tab'la gezen görür (WCAG 2.4.7).
+ *
+ * Halka `--primary`; zeminlere göre ölçüldü (SC 1.4.11 eşiği 3.0):
+ *   açık: page 5.741 / surface 6.374 — hover örtüsü altındayken bile 4.620
+ *   koyu: page 6.903 / surface 6.424 — hover örtüsü altındayken bile 4.629
+ * `outline-offset` 2px olduğu için halka öğenin DIŞINDA, yani örtülmemiş
+ * zeminin üstünde duruyor; yukarıdaki en kötü değerler yine de eşiği geçiyor.
+ *
+ * Bileşen sınıfları bu kuralı EZMEZ; yalnız açılır menü öğesi `outline-offset`i
+ * içeri alır (halka menü kutusunun dışına taşmasın diye).
+ */
 :focus-visible {
   outline: 2px solid rgb(var(--primary));
   outline-offset: 2px;
+}
+
+/* Durum geçişleri renk/zemin ile sınırlı; hareket isteği kapalıysa hepsi düşer. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 ::selection {
@@ -123,39 +185,213 @@ body {
     @apply rounded-lg border bg-surface;
   }
 
+  /**
+   * ————— DURUM DİLBİLGİSİ —————
+   * Beş aile (dolu buton, sessiz buton, ikon buton, çip, bağlantı) aynı dört
+   * durumu aynı araçlarla anlatır. Araç seti: zemin tonu (`--overlay-*`),
+   * kenarlık gücü, metin rengi. Gölge YOK, boyut/konum değişimi YOK.
+   *
+   *   hover         zemine bir kademe örtü biner; zayıf kenarlık `--border-strong`e
+   *                 çıkar; sönük (`--muted`) metin `--ink`e çıkar.
+   *   focus-visible tek kural, yukarıdaki global `:focus-visible`. Bileşen ezmez.
+   *                 Hover ile BİRLİKTE görünebilir; ikisi farklı kanal.
+   *   active        örtü ikinci kademeye çıkar (`--overlay-press`). Üstünde renkli
+   *                 metin taşıyan ailelerde (çip-aktif) örtü hover kademesinde
+   *                 kalır ve basılma kenarlıkla anlatılır — metin kontrastı 4.5'in
+   *                 altına düşmesin diye.
+   *   disabled      %50 opaklık + `cursor: not-allowed` + hover/active örtüsü YOK.
+   *                 Hover kuralları `:not(:disabled)` ile korunuyor, aksi hâlde
+   *                 tıklanamayan bir düğme tıklanabilir gibi tepki verirdi.
+   *                 (WCAG 1.4.3/1.4.11 devre dışı kontrolleri kapsam dışı bırakır.)
+   */
+
+  /* Dolu buton. Örtü doygun dolgunun üstüne biner, dolguyu değiştirmez —
+     `bg-destructive` gibi bir yardımcı sınıfla ezilen renk hover'da da korunur. */
   .button-primary {
-    @apply inline-flex min-h-11 items-center justify-center rounded px-4 py-2 font-medium transition;
-    background: rgb(var(--primary));
+    @apply inline-flex min-h-11 items-center justify-center rounded px-4 py-2 font-medium;
+    background-color: rgb(var(--primary));
     color: rgb(var(--on-primary));
+    transition:
+      background-image 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease;
   }
-  .button-primary:hover {
-    background: rgb(var(--primary) / 0.9);
+  .button-primary:hover:not(:disabled) {
+    background-image: var(--overlay-hover-fill);
+  }
+  .button-primary:active:not(:disabled) {
+    background-image: var(--overlay-press-fill);
   }
   .button-primary:disabled {
     @apply cursor-not-allowed opacity-50;
   }
 
+  /* Sessiz buton. Kenarlığı durgunken zayıf (`--border`) — metin etiketi kontrolü
+     zaten tanıtıyor; hover'da `--border-strong`e çıkıyor (1.356 → 3.472). */
   .button-secondary {
-    @apply inline-flex min-h-11 items-center justify-center rounded border bg-surface px-4 py-2 font-medium text-ink transition;
+    @apply inline-flex min-h-11 items-center justify-center rounded border bg-surface px-4 py-2 font-medium text-ink;
+    transition:
+      background-image 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease;
   }
-  .button-secondary:hover {
+  .button-secondary:hover:not(:disabled) {
+    background-image: var(--overlay-hover);
     border-color: rgb(var(--border-strong));
+  }
+  .button-secondary:active:not(:disabled) {
+    background-image: var(--overlay-press);
+    border-color: rgb(var(--border-strong));
+  }
+  .button-secondary:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  /**
+   * İkon buton (oy, favori, ⋮). Etiketi yok — kontrolü tanıtan TEK şey kenarlık,
+   * bu yüzden durgunken bile `--border-strong` (page üstünde açık 3.127 / koyu
+   * 3.487; SC 1.4.11 eşiği 3.0). Eskiden `border` idi: 1.222 / 1.375, yani
+   * kutunun kendisi görünmüyordu.
+   *
+   * Dokunma hedefi 40×40 (SC 2.5.8 eşiği 24×24).
+   *
+   * Seçili hâl `aria-pressed="true"` ile işaretli ve dolgusu doygun; örtü orada
+   * dolgu ölçeğine geçiyor. Kurallar `:not(:disabled)` taşıdığı için özgüllükleri
+   * nötr kuralların üstünde (0,4,0 > 0,3,0) — sıraya bağlı değil.
+   */
+  .icon-button {
+    @apply grid size-10 shrink-0 place-items-center rounded border;
+    border-color: rgb(var(--border-strong));
+    transition:
+      background-image 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease;
+  }
+  .icon-button:hover:not(:disabled) {
+    background-image: var(--overlay-hover);
+  }
+  /* Sönük ikon hover'da `--ink`e çıkar (örtülü zemin üstünde 9.742 / 10.936).
+     Seçili düğme dışarıda bırakılıyor: orada renk `text-on-primary`/`text-on-accent`
+     yardımcı sınıfından geliyor ve bu kural onu ezmemeli. */
+  .icon-button:hover:not(:disabled):not([aria-pressed="true"]) {
+    color: rgb(var(--ink));
+  }
+  .icon-button:active:not(:disabled) {
+    background-image: var(--overlay-press);
+  }
+  .icon-button[aria-pressed="true"]:hover:not(:disabled) {
+    background-image: var(--overlay-hover-fill);
+  }
+  .icon-button[aria-pressed="true"]:active:not(:disabled) {
+    background-image: var(--overlay-press-fill);
+  }
+  .icon-button:disabled {
+    @apply cursor-not-allowed opacity-50;
   }
 
   /* Sıralama/pencere şeritleri. Aktif durum dolgulu değil — sıralama değiştiren
      bir kontrolün birincil buton ağırlığı taşımasına gerek yok. */
   .chip {
-    @apply inline-flex min-h-9 shrink-0 items-center rounded border px-3 text-sm text-muted transition;
-    background: rgb(var(--surface));
+    @apply inline-flex min-h-9 shrink-0 items-center rounded border px-3 text-sm text-muted;
+    background-color: rgb(var(--surface));
+    transition:
+      background-image 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease;
   }
-  .chip:hover {
+  .chip:hover:not(:disabled) {
     color: rgb(var(--ink));
+    background-image: var(--overlay-hover);
+    border-color: rgb(var(--border-strong));
+  }
+  .chip:active:not(:disabled) {
+    background-image: var(--overlay-press);
+  }
+  /* `topic-follow-button.tsx` bunu yerinde tekrarlıyordu; artık ailenin kendisinde. */
+  .chip:disabled {
+    @apply cursor-not-allowed opacity-50;
   }
   .chip-active {
     @apply font-medium;
     color: rgb(var(--primary));
     border-color: rgb(var(--primary) / 0.4);
-    background: rgb(var(--primary) / 0.06);
+    background-color: rgb(var(--primary) / 0.06);
+  }
+  /* Seçili çipte hover, seçili olma sinyalinin YERİNE geçmez: metin primary kalır,
+     kenarlık güçlenir. Basılma da örtüyü artırmıyor — primary metin koyu temada
+     0.08 örtüde 4.721, 0.14'te 3.942 olurdu. Kademe yerine kenarlık konuşuyor. */
+  .chip-active:hover:not(:disabled) {
+    color: rgb(var(--primary));
+    border-color: rgb(var(--primary) / 0.75);
+  }
+  .chip-active:active:not(:disabled) {
+    background-image: var(--overlay-hover);
+    border-color: rgb(var(--primary));
+  }
+
+  /**
+   * Açılır menü öğesi (⋮ menüsü, hesap menüsü). Radix DOM odağını öğeye taşır ve
+   * `data-highlighted` verir; vurgu her iki girdi kipinde de aynı örtüyle gösterilir.
+   * Odak HALKASI ise yalnız `:focus-visible`da çıkar — fareyle gezerken çıkmaz.
+   * Halka içeri alınıyor (`outline-offset: -2px`), yoksa menü kutusunun dışına taşar.
+   * Eski hâl `hover:bg-page focus:bg-page` idi: koyu temada page/surface farkı
+   * 1.075 olduğu için vurgu pratikte görünmüyordu.
+   */
+  .menu-item {
+    @apply flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm;
+    transition:
+      background-image 120ms ease,
+      color 120ms ease;
+  }
+  .menu-item:hover,
+  .menu-item[data-highlighted] {
+    background-image: var(--overlay-hover);
+  }
+  .menu-item:focus-visible {
+    outline: 2px solid rgb(var(--primary));
+    outline-offset: -2px;
+  }
+  .menu-item[data-disabled] {
+    @apply cursor-default opacity-50;
+    background-image: none;
+  }
+
+  /**
+   * Bağlantılar. Kutu değiller; durum rengi ve alt çizgiyle anlatılıyor.
+   * `min-h-6` = 24px, SC 2.5.8 dokunma hedefi eşiği.
+   *   .link-quiet  — akış içi sönük bağlantı (tarih, başlık adı). Hover'da `--ink`.
+   *   .link-strong — vurgulu bağlantı (yazar adı, "devamını göster"). Durgunken primary.
+   * Basılma ikisinde de alt çizginin kalınlaşmasıyla: renk kontrastına dokunmaz.
+   */
+  .link-quiet {
+    @apply inline-flex min-h-6 items-center;
+    transition:
+      color 120ms ease,
+      text-decoration-color 120ms ease;
+  }
+  .link-quiet:hover {
+    color: rgb(var(--ink));
+    text-decoration-line: underline;
+  }
+  .link-quiet:active {
+    color: rgb(var(--ink));
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+  }
+
+  .link-strong {
+    @apply inline-flex min-h-6 items-center;
+    color: rgb(var(--primary));
+    transition:
+      color 120ms ease,
+      text-decoration-color 120ms ease;
+  }
+  .link-strong:hover {
+    text-decoration-line: underline;
+  }
+  .link-strong:active {
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
   }
 
   /**
