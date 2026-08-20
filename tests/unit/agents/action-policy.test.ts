@@ -7,8 +7,10 @@ import {
   maximumEntrySimilarity,
   repeatedEntryFraming,
   isRepairableContentRejectionCode,
+  seriousFactualClaimRequiresStrongEvidence,
   sourceGroundingIssue,
   topicSemanticRepetition,
+  userEntryContainsHighRiskReproduction,
 } from "@/modules/agents";
 
 describe("agent action duplicate policy", () => {
@@ -77,6 +79,77 @@ describe("agent action duplicate policy", () => {
     ).toBeNull();
   });
 
+  it("compares three-concept candidates that the old minimum concept gate skipped", () => {
+    const previous = [
+      "şüpheli içeriğe eklenen küçük bir işaret; görünmesi davranış değişikliğini kanıtlamaz.",
+    ];
+    // Üç kavramın üçü de mevcut entry'de: yeni tanım, örnek, karşılaştırma, çekince veya görüş yok.
+    expect(
+      topicSemanticRepetition("eklenen işaret şüpheli.", "uyarı etiketi", previous),
+    ).toMatchObject({ sharedConceptCount: 3 });
+    // Aynı boydaki gerçekten yeni görüş kapıdan geçer.
+    expect(topicSemanticRepetition("etiket bence gereksiz.", "uyarı etiketi", previous)).toBeNull();
+  });
+
+  it("rejects reordered and ornate repackaging while keeping opposing or additive short entries", () => {
+    const uyariPrevious = [
+      "şüpheli içeriğe eklenen küçük bir işaret; görünmesi davranış değişikliğini kanıtlamaz.",
+    ];
+    // Sırası değiştirilmiş kısa yeniden söyleme.
+    expect(
+      topicSemanticRepetition(
+        "davranış değişikliğini kanıtlamaz; yalnızca görünmesi yeterli değildir.",
+        "uyarı etiketi",
+        uyariPrevious,
+      ),
+    ).toMatchObject({ sharedConceptCount: 4 });
+    // Karşı örnekler: aynı sözcüklerle kurulmuş karşıt hüküm ve yeni ölçüt önerisi.
+    expect(
+      topicSemanticRepetition(
+        "görünmesi davranış değişikliğini bence kanıtlar.",
+        "uyarı etiketi",
+        uyariPrevious,
+      ),
+    ).toBeNull();
+    expect(
+      topicSemanticRepetition(
+        "işaret görünmesi ancak davranış ölçüldüğünde anlam kazanır.",
+        "uyarı etiketi",
+        uyariPrevious,
+      ),
+    ).toBeNull();
+    expect(
+      topicSemanticRepetition(
+        "şüpheli içeriğe eklenen işaretin görünmesi, kullanıcıların o içeriği daha çok paylaşmasına yol açabiliyor; ters etki ayrı bir sorun.",
+        "uyarı etiketi",
+        uyariPrevious,
+      ),
+    ).toBeNull();
+
+    const bakimPrevious = [
+      "bakım borcu, ertelenen küçük onarımların zamanla büyük bir maliyet olarak geri dönmesidir; ekipler bunu çoğu zaman çok geç fark eder.",
+      "küçük onarımları ertelemek kısa vadede hız kazandırır, uzun vadede ekibin hızını düşürür.",
+    ];
+    // Süsleyerek uzatılmış yeniden paketleme: aday uzun, ama mevcut entry'nin kavramlarını geri getiriyor.
+    expect(
+      topicSemanticRepetition(
+        "aslına bakılırsa bakım borcu dediğimiz şey, ertelenen o küçük onarımların günün birinde hatırı sayılır bir maliyet olarak geri dönmesidir; ekipler bunu ne yazık ki hep çok geç fark eder.",
+        "bakım borcu",
+        bakimPrevious,
+      ),
+    ).toMatchObject({ sharedConceptCount: 13 });
+    // Karşı örnekler: farklı kişisel deneyim, yeni karşılaştırma, yeni çekince, yeni örnek ve
+    // aynı sözcükleri kullanan gerçek tamamlayıcı bilgi.
+    for (const body of [
+      "bir sprint boyunca yalnızca eski hataları kapattık; ürün tarafı bunu görünmez bir iş sandı.",
+      "teknik borç faiz öder; bakım borcu sessizce anaparayı büyütür.",
+      "her ertelenen onarım borç sayılmaz; bazıları bilinçli olarak hiç geri dönülmeyen bir yol ayrımıdır.",
+      "sertifika yenilemesini üç kez erteleyen bir ekip, dördüncü seferde bütün ödeme akışını durdurdu.",
+      "ertelenen küçük onarımların maliyeti yalnız paraya değil, işe alım süresine de yansıyor; bakım borcu yüksek olan ekipler kıdemli mühendisi altı ayda kaybediyor.",
+    ])
+      expect(topicSemanticRepetition(body, "bakım borcu", bakimPrevious)).toBeNull();
+  });
+
   it("does not count the shared topic title as semantic novelty evidence", () => {
     expect(
       topicSemanticRepetition(
@@ -85,6 +158,54 @@ describe("agent action duplicate policy", () => {
         ["Field Care Node, Spika Mimarlık tarafından tasarlanan yarışma projesidir."],
       ),
     ).toBeNull();
+  });
+
+  it("binds the uncertainty escape to the sentence that carries the claim", () => {
+    // Kaçış artık gövde çapında değil: başka bir cümledeki çerçeve iddiayı çerçevelemiş saymaz.
+    expect(
+      seriousFactualClaimRequiresStrongEvidence(
+        "Şirket bugün yeni bir fabrika açtığını açıkladı. Konunun ticari yönü hâlâ belirsiz.",
+      ),
+    ).toBe(true);
+    expect(
+      seriousFactualClaimRequiresStrongEvidence(
+        "Bu iddia bağımsız olarak doğrulanmadı. Yönetici bugün gözaltına alındı.",
+      ),
+    ).toBe(true);
+    // Aynı cümlede çerçevelenen iddia için kapı kapalı kalır.
+    expect(
+      seriousFactualClaimRequiresStrongEvidence(
+        "Şirketin bugün yeni bir fabrika açtığı iddiası dolaşıyor.",
+      ),
+    ).toBe(false);
+    expect(
+      seriousFactualClaimRequiresStrongEvidence(
+        "Ölçünün kendisi tartışmalı; sonuç hiçbir yerde teyit edilmedi ve bugün de değişmedi.",
+      ),
+    ).toBe(false);
+    // Ciddi veya güncel işaret hiç yoksa kapı zaten çalışmaz.
+    expect(
+      seriousFactualClaimRequiresStrongEvidence(
+        "Bu kavram, gündelik dilde farkına varılmadan kullanılan bir kısayoldur.",
+      ),
+    ).toBe(false);
+    // Satır sonu da cümle sınırıdır.
+    expect(
+      seriousFactualClaimRequiresStrongEvidence(
+        "Yönetici bugün açıkladı\nAyrıntılar belirsiz kalmaya devam ediyor",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps the severe-allegation frame in the allegation's own sentence", () => {
+    expect(
+      userEntryContainsHighRiskReproduction(
+        "Yönetici rüşvet aldı. Bu başlıkta pek çok iddia dolaşıyor.",
+      ),
+    ).toBe(true);
+    expect(
+      userEntryContainsHighRiskReproduction("Yönetici hakkındaki rüşvet iddiası doğrulanmadı."),
+    ).toBe(false);
   });
 
   it("requires exact source support for numeric and direct-quote claims", () => {

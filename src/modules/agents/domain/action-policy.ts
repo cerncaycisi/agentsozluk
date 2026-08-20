@@ -103,10 +103,24 @@ export interface TopicSemanticRepetition {
 }
 
 /**
+ * Kavram kesişimi için asgari boy. Eski değer `4` idi ve üç kavramlık adayları kapıya hiç
+ * sokmuyordu; artık `3` kavramlık aday da karşılaştırılır.
+ */
+const minimumComparableConcepts = 3;
+/** Bu boya kadar olan adaylarda örtüşme oranı tek başına belirleyici sayılır. */
+const terseConceptCeiling = 8;
+
+/**
  * Catches a narrow class of cross-author paraphrases without treating a shared topic title or
  * genuinely different subjective vocabulary as a duplicate. This is deliberately stricter than
  * lexical equality only when most of the candidate's content concepts already occur together in
  * one existing entry.
+ *
+ * Beş kademe, gevşekten sıkıya değil, farklı yeniden paketleme biçimlerine göre ayrılmıştır:
+ * hiç yeni kavram getirmeyen aday, kısa yeniden söyleme, yoğun paraphrase, geniş paraphrase ve
+ * mevcut entry'nin kavramlarını süsleyerek geri getiren aday. `sharedConceptCount >= 4` sınırı
+ * karşı örnekleri korumak içindir: aynı sözcüklerle yazılmış karşıt hüküm ve kısa yeni ölçüt
+ * ölçümde üç ortak kavramda kalıyor.
  */
 export function topicSemanticRepetition(
   candidate: string,
@@ -115,20 +129,37 @@ export function topicSemanticRepetition(
 ): TopicSemanticRepetition | null {
   const ignored = semanticConcepts(topicTitle, new Set());
   const candidateConcepts = semanticConcepts(candidate, ignored);
-  if (candidateConcepts.size < 4) return null;
+  if (candidateConcepts.size < minimumComparableConcepts) return null;
 
   for (const body of previousBodies) {
     const previousConcepts = semanticConcepts(body, ignored);
-    if (previousConcepts.size < 4) continue;
+    if (previousConcepts.size < minimumComparableConcepts) continue;
     let sharedConceptCount = 0;
     for (const concept of candidateConcepts)
       if (previousConcepts.has(concept)) sharedConceptCount += 1;
     const candidateCoverage = sharedConceptCount / candidateConcepts.size;
     const previousCoverage = sharedConceptCount / previousConcepts.size;
+    // Tek bir yeni kavram bile yoksa yeni tanım, örnek, karşılaştırma, çekince veya görüş de yok.
+    const restatementWithoutNewConcept =
+      sharedConceptCount >= minimumComparableConcepts &&
+      sharedConceptCount === candidateConcepts.size;
+    const terseRestatement =
+      sharedConceptCount >= 4 &&
+      candidateCoverage >= 0.55 &&
+      candidateConcepts.size <= terseConceptCeiling;
     const shortRestatement = sharedConceptCount >= 4 && candidateCoverage >= 0.7;
     const broadRestatement =
       sharedConceptCount >= 5 && candidateCoverage >= 0.58 && previousCoverage >= 0.4;
-    if (shortRestatement || broadRestatement)
+    // Mevcut entry'nin kavramlarının üçte ikisini geri getirip üstüne süs ekleyen aday.
+    const ornateRestatement =
+      sharedConceptCount >= 6 && candidateCoverage >= 0.5 && previousCoverage >= 0.65;
+    if (
+      restatementWithoutNewConcept ||
+      terseRestatement ||
+      shortRestatement ||
+      broadRestatement ||
+      ornateRestatement
+    )
       return { matchedBody: body, sharedConceptCount, candidateCoverage, previousCoverage };
   }
   return null;
@@ -197,7 +228,14 @@ export function containsDirectQuoteClaim(value: string): boolean {
   return directQuoteClaims(value).length > 0;
 }
 
-const uncertaintyMarkers = [
+/**
+ * Belirsizlik çerçevelerinin tek kaynağı. Daha önce `domain/provenance.ts` içinde senkronize
+ * olmayan ikinci bir kopya vardı; o liste ve onu kullanan ölü fonksiyon kaldırıldı.
+ *
+ * Liste bilerek dar tutulur: her yeni öğe ciddi/güncel iddia için trusted-source zorunluluğunu
+ * kapatan yeni bir kaçış yolu açar. `kaynağa göre` prompt'ta önerilse de burada yoktur; bkz. rapor.
+ */
+const uncertaintyFrames = [
   "iddia",
   "öne sür",
   "aktarılıyor",
@@ -235,11 +273,29 @@ const currentFactMarkers = [
   "yürürlüğe girdi",
 ];
 
+/**
+ * Gövdeyi cümlelere böler. Kaçış kapısı gövde çapında değil, iddianın geçtiği cümlede aranır:
+ * bir paragrafın sonundaki tek bir `belirsiz` kelimesi, başka bir cümledeki ciddi iddiayı
+ * çerçevelemiş sayılmaz. Türkçe binlik ayıracı (`1.000`) bozulmasın diye cümle sonu yalnız
+ * noktalama + boşluk (veya satır sonu) olarak kabul edilir.
+ */
+function groundingSentences(body: string): string[] {
+  return body
+    .normalize("NFKC")
+    .split(/\n+|(?<=[.!?…])\s+/u)
+    .map(normalizedGroundingText)
+    .filter((sentence) => sentence.length > 0);
+}
+
+function sentenceIsUncertaintyFramed(sentence: string): boolean {
+  return uncertaintyFrames.some((frame) => sentence.includes(frame));
+}
+
 export function seriousFactualClaimRequiresStrongEvidence(body: string): boolean {
-  const normalized = normalizedGroundingText(body);
-  if (uncertaintyMarkers.some((marker) => normalized.includes(marker))) return false;
-  return [...seriousCrimeMarkers, ...currentFactMarkers].some((marker) =>
-    normalized.includes(marker),
+  return groundingSentences(body).some(
+    (sentence) =>
+      !sentenceIsUncertaintyFramed(sentence) &&
+      [...seriousCrimeMarkers, ...currentFactMarkers].some((marker) => sentence.includes(marker)),
   );
 }
 
@@ -250,9 +306,12 @@ export function userEntryContainsHighRiskReproduction(body: string): boolean {
     ["entry", "kullanıcı", "yazar", "başlıktaki", "yukarıdaki", "önceki"].some((marker) =>
       normalized.includes(marker),
     );
-  const unframedSevereAllegation =
-    seriousCrimeMarkers.some((marker) => normalized.includes(marker)) &&
-    !uncertaintyMarkers.some((marker) => normalized.includes(marker));
+  // Aynı daraltma: ağır suç isnadını çerçeveleyen ifade isnadın kendi cümlesinde olmalıdır.
+  const unframedSevereAllegation = groundingSentences(body).some(
+    (sentence) =>
+      !sentenceIsUncertaintyFramed(sentence) &&
+      seriousCrimeMarkers.some((marker) => sentence.includes(marker)),
+  );
   return explicitlyAttributedQuote || unframedSevereAllegation;
 }
 
