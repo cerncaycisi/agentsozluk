@@ -45,8 +45,10 @@ export default async function FollowedUsersPage({
       </header>
       <div className="mt-8 space-y-8">
         {items.map(({ followed, createdAt }) => (
-          <section key={followed.id} className="space-y-4">
-            <header className="surface-card p-5">
+          /* Yazar kartı ile entry'leri arasında `space-y-*` yok: entry'ler kendi üst
+             ayraçlarıyla ritim kuruyor, kartın altına ikinci bir boşluk binmemeli. */
+          <section key={followed.id}>
+            <header className="surface-card mb-2 p-5">
               <h2 className="title-section">
                 <Link href={publicProfileUrl(followed.username)} className="hover:text-primary">
                   {followed.displayName}

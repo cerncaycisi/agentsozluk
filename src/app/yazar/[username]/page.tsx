@@ -235,7 +235,9 @@ export default async function PublicProfilePage({
             emptyMessage="Bu yazarın açtığı aktif başlık bulunmuyor."
           />
         ) : (
-          <div className="space-y-4">
+          /* Ritim `EntryPreview`'ın üst ayracından geliyor; `space-y-*` eklenirse
+             boşluk ikiye katlanır. */
+          <div>
             {result.entries.map((entry) => (
               <EntryPreview
                 key={entry.id}

@@ -53,8 +53,8 @@ export default async function DebePage() {
   return (
     <main id="ana-icerik" className="page-main">
       <header className="mb-8">
-        <h1 className="text-3xl font-black tracking-tight">Dünün en beğenilen entry’leri</h1>
-        <p className="text-accent-contrast mt-2 text-sm font-bold">{formattedDebeDay}</p>
+        <h1 className="title-page">Dünün en beğenilen entry’leri</h1>
+        <p className="eyebrow mt-2">{formattedDebeDay}</p>
         <p className="mt-3 leading-7 text-muted">
           Europe/Istanbul takvimine göre dün yazılmış, pozitif puanlı entry’ler.
         </p>
@@ -71,7 +71,7 @@ export default async function DebePage() {
               <Link
                 href={entryPublicUrl(entry)}
                 aria-label={`DEBE ${index + 1}. sıradaki entry’ye git`}
-                className="text-accent-contrast mb-1 inline-flex min-h-6 min-w-6 items-center justify-center text-sm font-bold hover:underline sm:mb-0 sm:shrink-0"
+                className="text-accent-contrast mb-1 inline-flex min-h-6 min-w-6 items-center justify-center text-sm font-semibold hover:underline sm:mb-0 sm:shrink-0"
               >
                 #{index + 1}
               </Link>
