@@ -37,6 +37,7 @@
     "agent:plan:regenerate": "tsx scripts/agent-plan.ts regenerate",
     "agent:recover-stochastic-runtime": "tsx scripts/recover-stochastic-runtime.ts",
     "agent:rollout": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/agent-rollout.ts",
+    "agent:rollout-prompts": "\"$npm_node_execpath\" node_modules/tsx/dist/cli.mjs scripts/rollout-persona-prompts.ts",
     "agent:seed": "tsx scripts/agent-seed.ts",
     "agent:status": "tsx scripts/agent-codex-status.ts",
     "agent:capacity": "tsx scripts/agent-capability.ts capacity",
