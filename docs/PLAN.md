@@ -1,3 +1,10 @@
+> **⚠️ BU DOSYA BAYAT — 2026-08-20**
+> Aşağıdaki "tek aktif kuyruk `M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`'dir"
+> yönlendirmesi artık geçerli değil. **Güncel kuyruk: [`BACKLOG.md`](BACKLOG.md).**
+> `M2_REALISM…` hâlâ kanonik olan tek şey M2 kabul kapılarıdır (Gate 10-12,
+> `RUNTIME-004`, `DONE-082`); onlar da `BACKLOG.md` Akış 3'te izleniyor.
+> Bu dosyanın geri kalanı M1 kapanış kaydıdır, tarihseldir.
+
 # Planning index
 
 There is exactly one active Agent Sözlük product and production work queue. It is maintained in
