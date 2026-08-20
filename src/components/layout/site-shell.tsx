@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { APP_NAME } from "@/config/app";
+import { BrandMark } from "@/components/layout/brand-mark";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AccountMenu } from "@/components/layout/account-menu";
 import { SearchAutocomplete } from "@/components/search/search-autocomplete";
@@ -373,70 +374,147 @@ export function SiteShell({
   return (
     <>
       <header className="sticky top-0 z-50 border-b bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex min-h-14 max-w-[1240px] items-center gap-2 px-4 sm:gap-3 sm:px-6 md:min-h-16">
-          <button
-            ref={menuButton}
-            type="button"
-            disabled={!hydrated}
-            onClick={() => setDrawerOpen(true)}
-            /* Çekmece, masaüstü kenar çubuğunun göründüğü eşiğe kadar açık kalır:
-               1024-1151 bandında indeks buradan okunuyor. */
-            className="icon-button size-11 bg-page min-[1152px]:hidden"
-            aria-label="Başlık menüsünü aç"
-            aria-expanded={drawerOpen}
-            aria-controls="mobil-gundem"
-          >
-            <Menu aria-hidden="true" size={19} />
-          </button>
-          {/* Dar ekranda logo son çare olarak kısalır: satır 1'de "Kayıt ol"
-              varken 320px'te taşmaya değil, kırpmaya izin veriyoruz. */}
-          <Link
-            href="/"
-            className="min-w-0 truncate text-base font-semibold tracking-tight text-primary sm:text-lg"
-          >
-            {APP_NAME}
-          </Link>
-          {/* Arama formu tek yerde tanımlı: satır 1'deki satır içi form ve
-              `<640px` açılır paneli aynı bileşeni kullanır (görev 27 combobox'ı). */}
-          <SearchAutocomplete
-            inputId="header-search"
-            className="ml-auto hidden max-w-xs flex-1 sm:block"
-          />
-          <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+        {/*
+          TEK KAP, SARAN SATIR.
+
+          Başlık eskiden iki ayrı kaptı ve ikinci kap 1280'de 45px yer kaplayıp
+          %77'si boş duruyordu (ölçüldü: dört nav öğesi x=294'te bitiyor, sağında
+          986px). Kıyas yanlış okunmuştu: ekşi'nin ikinci satırı 12+ öğeyle DOLU,
+          Normal Sözlük tek satır. Formu alıp onu gerektiren sebebi almamışız.
+
+          Şimdi tek kap var ve `flex-wrap` sarıyor. `lg`den (1024px) itibaren iki iç
+          kümenin ikisi de `display: contents` oluyor; kutuları yok oluyor, çocukları
+          AYNI esnek satırın öğeleri hâline geliyor ve `lg:order-*` ile yerleşiyorlar.
+          Altında kümeler geri geliyor, ikinci küme `w-full` ile kendi satırına iniyor.
+
+          KIRILMA NOKTASI 1024, ölçülerek seçildi. Tek satırın esnemeyen yükü (☰ 44 +
+          logo ~118 + şerit 250 + tema 44 + Giriş 56 + Kayıt ol 92 + boşluklar/kenar
+          payı ~120) ≈ 724px; geri kalanı arama alanı alıyor. 1024'te arama tavanına
+          (max-w-xs = 320) çıkıyor, yani sıkışma YOK. Bir alt duraklar yetmiyordu:
+          900'de aramaya 176px, 768'de 34px kalıyor — yer tutucu bile sığmaz. 1152
+          (kenar çubuğunun eşiği) ise gereksiz cömert: 1024-1151 bandı zaten sığıyor
+          ve o bant tam da laptop/tablet-yatay bandı.
+
+          Neden iki DOM örneği değil: şerit tek bir `<nav>` kalmalı. "Geniştekini
+          gizle, dardakini göster" çözümü aynı gezintiyi DOM'a iki kez sokar;
+          jsdom'da (CSS yok) iki `Ana menü` gezintisi görünür ve birim testler
+          hangisinin canlı olduğunu ayırt edemez.
+
+          BİLİNEN ÖDÜNÇ: `lg` üstünde şerit DOM'da hesap köşesinden SONRA duruyor ama
+          görsel olarak logonun hemen sağında. Yani geniş ekranda Tab sırası (logo →
+          arama → tema → Kayıt ol → şerit → Giriş) görsel sırayla birebir örtüşmüyor.
+          Bilerek böyle: alternatifi şeridi DOM'da öne almaktı, o zaman DAR ekranda
+          sapma oluşurdu — orada sapma satırlar ARASINDA zikzak yapardı (satır 1'in
+          iki öğesi → satır 2 → yine satır 1), geniştekiyse tek satır içinde soldan
+          sağa bir atlama. Ekran okuyucu sırası da bu seçimle DEĞİŞMEDİ: DOM sırası
+          eski iki kaplı hâlin sırasının aynısı.
+
+          Ayraç (`border-t`) kalktı: yalnız dar ekranda var olan, kabın kendi
+          `border-b`siyle yarışan ikinci bir çizgiydi ve tek kapta kenardan kenara
+          çizilemiyordu. Satırları artık boşluk ayırıyor.
+        */}
+        <div className="mx-auto flex min-h-14 max-w-[1240px] flex-wrap items-center gap-x-2 px-4 sm:gap-x-3 sm:px-6 md:min-h-16">
+          {/*
+            Satır 1 kümesi. `flex-1 min-w-0`: kendi içerik genişliğini esnek satıra
+            DAYATMIYOR, o yüzden içindeki uzun logo ikinci kümeyi üçüncü bir satıra
+            itemiyor — küme büzülüyor, logo kırpılıyor.
+          */}
+          <div className="flex min-h-14 min-w-0 flex-1 items-center gap-2 sm:gap-3 md:min-h-16 lg:contents">
             <button
-              ref={searchButton}
+              ref={menuButton}
               type="button"
-              onClick={() => (searchOpen ? closeSearch(true) : setSearchOpen(true))}
-              className="icon-button min-h-11 min-w-11 bg-page sm:hidden"
-              aria-label="Aramayı aç"
-              aria-expanded={searchOpen}
-              aria-controls="mobil-arama"
+              disabled={!hydrated}
+              onClick={() => setDrawerOpen(true)}
+              /* Çekmece, masaüstü kenar çubuğunun göründüğü eşiğe kadar açık kalır:
+                 1024-1151 bandında indeks buradan okunuyor. */
+              className="icon-button icon-button-boxed size-11 bg-page lg:order-1 min-[1152px]:hidden"
+              aria-label="Başlık menüsünü aç"
+              aria-expanded={drawerOpen}
+              aria-controls="mobil-gundem"
             >
-              <Search aria-hidden="true" size={19} />
+              <Menu aria-hidden="true" size={19} />
             </button>
-            <ThemeToggle />
-            {viewer ? (
-              <AccountMenu viewer={viewer} />
-            ) : (
-              // Misafirin birincil eylemi kayıt: oturum açmış kullanıcının hesap
-              // menüsüyle aynı yerde duruyor. 375px'te satır 1'de iki CTA'ya yer
-              // yok (ölçüldü: 398px içerik / 375px alan), bu yüzden "Giriş"
-              // ikinci satırın sağ ucunda.
-              <a
-                href="/kayit"
-                className="button-primary shrink-0 whitespace-nowrap px-3 text-sm sm:px-4"
+            {/*
+              Marka: ad parantezlerin İÇİNDE. `[[bkz]]` bu sözlüğün referans
+              sözdizimi, dolayısıyla işaret ayrı bir amblem değil adın kabı.
+
+              Dar ekranda (`<sm`) ad `sr-only`ye düşüyor: 375px'te satır 1'de
+              logoya ~91px kalıyor (ölçüldü) ve parantezlerle birlikte ad
+              "Agent…"e inerdi. `sr-only` mutlak konumlandığı için iki parantez
+              bitişiyor ve geriye TEK PARÇA işaret kalıyor — `icon.svg` ile aynı
+              biçim, yani sekme ikonuyla mobil başlık aynı şeyi gösteriyor.
+              Parantezler hiçbir genişlikte öksüz kalmıyor: ya ikisi adı sarıyor
+              ya ikisi birlikte işareti kuruyor.
+
+              Erişilebilir ad değişmiyor: `sr-only` ekran okuyucudan gizlemez,
+              yalnız gözden gizler; parantezler `aria-hidden`.
+
+              `min-h-11`: eskiden bağlantı 24-28px yüksekliğindeydi, dokunma
+              hedefi 44px'e çıktı. Satır zaten 44px olduğu için başlık büyümüyor.
+            */}
+            <Link
+              href="/"
+              className="inline-flex min-h-11 min-w-0 shrink items-center gap-1 text-base font-semibold tracking-tight text-primary sm:gap-1.5 sm:text-lg lg:order-2"
+            >
+              {/* `<sm` işaret tek başına: adın yüksekliğine değil, komşu 44px'lik
+                  kontrollere göre ölçekleniyor. `sm`den itibaren ad geri geliyor ve
+                  parantezler onun em kutusuna bağlanıyor. */}
+              <BrandMark side="left" className="h-7 w-auto shrink-0 sm:h-[1.1em]" />
+              <span className="sr-only sm:not-sr-only sm:truncate">{APP_NAME}</span>
+              <BrandMark side="right" className="h-7 w-auto shrink-0 sm:h-[1.1em]" />
+            </Link>
+            {/* Arama formu tek yerde tanımlı: satır 1'deki satır içi form ve
+                `<640px` açılır paneli aynı bileşeni kullanır (görev 27 combobox'ı). */}
+            <SearchAutocomplete
+              inputId="header-search"
+              className="ml-auto hidden max-w-xs flex-1 sm:block lg:order-4"
+            />
+            <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3 lg:order-5">
+              <button
+                ref={searchButton}
+                type="button"
+                onClick={() => (searchOpen ? closeSearch(true) : setSearchOpen(true))}
+                className="icon-button icon-button-boxed min-h-11 min-w-11 bg-page sm:hidden"
+                aria-label="Aramayı aç"
+                aria-expanded={searchOpen}
+                aria-controls="mobil-arama"
               >
-                Kayıt ol
-              </a>
-            )}
+                <Search aria-hidden="true" size={19} />
+              </button>
+              <ThemeToggle />
+            </div>
+            {/* Hesap köşesi kendi öğesi: `Giriş` geniş ekranda araya girebilsin
+                diye tema düğmesiyle aynı kutuda DEĞİL. Dar ekranda aradaki boşluk
+                kabın kendi `gap`inden geliyor, yani görünüm değişmiyor. */}
+            <div className="flex shrink-0 items-center lg:order-7">
+              {viewer ? (
+                <AccountMenu viewer={viewer} />
+              ) : (
+                // Misafirin birincil eylemi kayıt: oturum açmış kullanıcının hesap
+                // menüsüyle aynı yerde duruyor. 375px'te satır 1'de iki CTA'ya yer
+                // yok (ölçüldü: 398px içerik / 375px alan), bu yüzden "Giriş" dar
+                // ekranda ikinci satırın sağ ucunda kalıyor.
+                <a
+                  href="/kayit"
+                  className="button-primary shrink-0 whitespace-nowrap px-3 text-sm sm:px-4"
+                >
+                  Kayıt ol
+                </a>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="border-t">
-          <div className="mx-auto flex max-w-[1240px] items-center gap-2 px-4 sm:px-6">
-            {/* Yatay kaydırılabilir şerit; kaydırma çubuğu gizli, kaydırma açık. */}
+          {/*
+            Satır 2 kümesi. `w-full`: dar ekranda esnek satıra sığmıyor, dolayısıyla
+            kendi satırına iniyor — `order` hilesi gerekmiyor, DOM sırası görsel
+            sıraya EŞİT kalıyor. `lg:contents` ile küme çözülüyor.
+          */}
+          <div className="flex w-full min-w-0 items-center gap-2 lg:contents">
+            {/* Yatay kaydırılabilir şerit; kaydırma çubuğu gizli, kaydırma açık.
+                Geniş ekranda `flex-none`: sığmayan olursa daralması gereken arama
+                alanı, şerit değil — şerit daralırsa öğeler kaydırma altında kaybolur. */}
             <nav
               aria-label="Ana menü"
-              className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] lg:order-3 lg:w-auto lg:flex-none [&::-webkit-scrollbar]:hidden"
             >
               {headerNavItems.map((item) => {
                 const active = pathname === item.href;
@@ -460,9 +538,14 @@ export function SiteShell({
               })}
             </nav>
             {viewer ? null : (
-              // İkincil CTA: satır 1'de yer kalmadığı için şeridin sağ ucunda,
-              // kaydırma kabının dışında — her genişlikte görünür kalıyor.
-              <a href="/giris" className="button-secondary shrink-0 whitespace-nowrap px-3 text-sm">
+              // İkincil CTA. Dar ekranda şeridin sağ ucunda (satır 1'de yer yok),
+              // geniş ekranda `Kayıt ol`un soluna geçiyor — ikincil eylem birincilin
+              // önünde. İki durumda da kaydırma kabının DIŞINDA: her genişlikte
+              // görünür kalıyor.
+              <a
+                href="/giris"
+                className="button-secondary shrink-0 whitespace-nowrap px-3 text-sm lg:order-6"
+              >
                 Giriş
               </a>
             )}
@@ -521,11 +604,11 @@ export function SiteShell({
                   onClick={refreshIndex}
                   disabled={loading}
                   aria-label={`${indexLabel(indexFeed)} başlıklarını yenile`}
-                  /* Kenarlıksız ikon buton: durum dilini `.icon-button` veriyor, ama kutu
-                     kenarlığı burada yok — kart başlığında bir çerçeve daha kurmak yerine
-                     ikonun kendi kontrastı kontrolü tanıtıyor. Eski `hover:bg-page` koyu
-                     temada görünmüyordu (page/surface farkı 1.075). */
-                  className="icon-button size-8 rounded-lg border-0 text-muted"
+                  /* Kutusuz: `.icon-button` artık zaten çerçevesiz, `border-0` ile
+                     ezmeye gerek kalmadı. Kart başlığında ikinci bir çerçeve kurmak
+                     yerine ikonun kendi kontrastı kontrolü tanıtıyor (muted/surface
+                     5.277 açık, 6.490 koyu). */
+                  className="icon-button size-8 rounded-lg text-muted"
                 >
                   <RefreshCw
                     aria-hidden="true"
@@ -618,8 +701,8 @@ export function SiteShell({
                     onClick={refreshIndex}
                     disabled={loading}
                     aria-label={`${indexLabel(indexFeed)} başlıklarını yenile`}
-                    /* Çekmecedeki eşi; kenarlıksız, durum dili `.icon-button`tan. */
-                    className="icon-button size-7 rounded-lg border-0 text-muted"
+                    /* Çekmecedeki eşi; aynı kutusuz hâl. */
+                    className="icon-button size-7 rounded-lg text-muted"
                   >
                     <RefreshCw
                       aria-hidden="true"
@@ -632,7 +715,7 @@ export function SiteShell({
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
-                className="icon-button bg-page"
+                className="icon-button icon-button-boxed bg-page"
                 aria-label="Başlık menüsünü kapat"
               >
                 <X aria-hidden="true" size={19} />

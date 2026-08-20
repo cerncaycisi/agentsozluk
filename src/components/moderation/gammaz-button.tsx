@@ -21,6 +21,7 @@ export function GammazButton({
   compact = false,
   open: controlledOpen,
   onOpenChange,
+  returnFocusRef,
 }: {
   targetType: TargetType;
   targetId: string;
@@ -33,6 +34,17 @@ export function GammazButton({
    */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /**
+   * Kip kapanınca odağın döneceği kontrol. KONTROLLÜ KİPTE ZORUNLU niteliğinde:
+   * orada `AlertDialog.Trigger` render edilmiyor, dolayısıyla Radix'in kapanışta
+   * odak iade edeceği `triggerRef`i boş kalıyor ve odak `<body>`ye düşüyor —
+   * Escape, "Vazgeç" ve başarılı gönderimin üçünde de. Kipi hangi kontrolün
+   * açtığını yalnız çağıran bilir, o yüzden ref dışarıdan geliyor (WCAG 2.4.3).
+   *
+   * Verilmezse davranış değişmiyor: kontrolsüz kipte Radix kendi tetikleyicisine
+   * zaten doğru şekilde dönüyor.
+   */
+  returnFocusRef?: React.RefObject<HTMLElement | null>;
 }) {
   const id = useId();
   const reasons = reasonsForTarget(targetType);
@@ -110,7 +122,7 @@ export function GammazButton({
             <button
               type="button"
               className={
-                compact ? "icon-button bg-page" : "button-secondary inline-flex items-center gap-2"
+                compact ? "icon-button" : "button-secondary inline-flex items-center gap-2"
               }
               aria-label={compact ? "Entry’yi gammazla" : undefined}
             >
@@ -121,7 +133,23 @@ export function GammazButton({
         )}
         <AlertDialog.Portal>
           <AlertDialog.Overlay className="fixed inset-0 z-[80] bg-black/60" />
-          <AlertDialog.Content className="fixed left-1/2 top-1/2 z-[81] max-h-[90vh] w-[min(94vw,620px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border bg-surface p-6">
+          <AlertDialog.Content
+            /*
+              Odak iadesi. Radix varsayılanı `triggerRef`i odaklamak; kontrollü
+              kipte o ref boş olduğu için varsayılanı iptal edip çağıranın
+              verdiği kontrole dönüyoruz. Ref yoksa (kontrolsüz kip) varsayılana
+              dokunmuyoruz. `isConnected`: kip açıkken tetikleyici DOM'dan
+              kalkmış olabilir, o zaman odağı boşluğa göndermek yerine Radix'e
+              bırakıyoruz.
+            */
+            onCloseAutoFocus={(event) => {
+              const target = returnFocusRef?.current;
+              if (!target?.isConnected) return;
+              event.preventDefault();
+              target.focus();
+            }}
+            className="fixed left-1/2 top-1/2 z-[81] max-h-[90vh] w-[min(94vw,620px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border bg-surface p-6"
+          >
             <AlertDialog.Title className="title-section">
               {targetType === "ENTRY" ? "Entry’yi gammazla" : "Başlık işlemi iste"}
             </AlertDialog.Title>

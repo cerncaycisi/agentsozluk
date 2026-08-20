@@ -2,7 +2,7 @@
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { EllipsisVertical, Flag } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { TopicReportButton } from "@/components/topics/topic-report-button";
 import { TopicShareSubmenu } from "@/components/topics/topic-ai-share";
 
@@ -32,11 +32,18 @@ export function TopicOverflowMenu({
   canReport: boolean;
 }) {
   const [gammazOpen, setGammazOpen] = useState(false);
+  /*
+    Gammaz kipi kapanınca odak buraya dönmeli. Kontrollü kipte `GammazButton`
+    kendi `AlertDialog.Trigger`ını render etmediği için Radix'in odak iadesi
+    boşa düşüyordu (Escape / "Vazgeç" / başarılı gönderim: odak `<body>`).
+  */
+  const trigger = useRef<HTMLButtonElement>(null);
   return (
     <>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
           <button
+            ref={trigger}
             type="button"
             aria-label="Diğer başlık işlemleri"
             className="chip w-9 justify-center px-0 text-ink"
@@ -69,7 +76,12 @@ export function TopicOverflowMenu({
         başlık satırının yüksekliğine dokunmaz.
       */}
       {canReport ? (
-        <TopicReportButton topicId={topicId} open={gammazOpen} onOpenChange={setGammazOpen} />
+        <TopicReportButton
+          topicId={topicId}
+          open={gammazOpen}
+          onOpenChange={setGammazOpen}
+          returnFocusRef={trigger}
+        />
       ) : null}
     </>
   );
