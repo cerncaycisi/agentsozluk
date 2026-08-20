@@ -37,8 +37,14 @@ export function entryBodyNeedsCollapse(body: string): boolean {
   );
 }
 
+/**
+ * "Devamını göster" iki `<label>`, gerçek kontrol ise `sr-only` bir onay kutusu.
+ * Klavye odağı o kutuda olduğu için halkayı etikete `peer-focus-visible` taşıyor —
+ * kalınlık ve ofset global `:focus-visible` ile aynı (2px / 2px); daha önce 3px idi
+ * ve sayfadaki tek istisnaydı. Hover/active dili `.link-strong` üzerinden geliyor.
+ */
 const collapseToggleBaseClass =
-  "mt-3 min-h-11 items-center rounded text-sm font-semibold text-primary hover:underline peer-focus-visible:outline peer-focus-visible:outline-[3px] peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary";
+  "link-strong mt-3 min-h-11 rounded text-sm font-semibold peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary";
 
 /** Oturum açmış ACTIVE kullanıcıya gösterilecek gerçek aksiyonların girdisi. */
 export interface EntryPreviewActions {
@@ -156,10 +162,7 @@ export function EntryPreview({
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           {showTopicTitle ? (
             <h2 className="title-item">
-              <Link
-                href={topicPublicUrl(entry.topic)}
-                className="inline-flex min-h-6 items-center hover:text-primary"
-              >
+              <Link href={topicPublicUrl(entry.topic)} className="link-quiet">
                 {entry.topic.title}
               </Link>
             </h2>
@@ -220,7 +223,7 @@ export function EntryPreview({
           <Link
             href={entryPublicUrl(entry)}
             aria-label={`${formattedCreatedAt} tarihli entry’ye git`}
-            className="inline-flex min-h-6 items-center hover:text-ink hover:underline"
+            className="link-quiet"
           >
             {formattedCreatedAt}
           </Link>
@@ -232,7 +235,7 @@ export function EntryPreview({
           <span aria-hidden="true">·</span>
           <Link
             href={publicProfileUrl(entry.author.username)}
-            className="inline-flex min-h-6 items-center font-semibold text-primary hover:underline"
+            className="link-strong font-semibold"
           >
             {entry.author.displayName}
           </Link>

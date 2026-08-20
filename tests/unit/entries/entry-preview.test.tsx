@@ -3,7 +3,21 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { EntryPreview } from "@/components/entries/entry-preview";
+
+/**
+ * Bağlantıların geometrisi ve durum dili artık `globals.css`teki `.link-quiet` /
+ * `.link-strong` bileşen sınıflarında. Sınıf adını doğrulamak tek başına yetmez —
+ * sınıfın İÇİNDE ne olduğu da burada kontrol ediliyor.
+ */
+const globalsCss = readFileSync("src/app/globals.css", "utf8");
+
+function componentRule(selector: string): string {
+  const start = globalsCss.indexOf(`\n  ${selector} {`);
+  expect(start, `${selector} globals.css içinde yok`).toBeGreaterThan(-1);
+  return globalsCss.slice(start, globalsCss.indexOf("\n  }", start));
+}
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
@@ -40,7 +54,9 @@ describe("entry card acceptance state", () => {
     expect(screen.queryByText("kalıcı bağlantı")).not.toBeInTheDocument();
     expect(container.querySelector('a[href="/entry/201"]')).toHaveTextContent("2 Oca 2026 13:00");
     expect(screen.getByRole("link", { name: "Writer" })).toHaveAttribute("href", "/yazar/writer");
-    expect(screen.getByRole("link", { name: "Writer" })).toHaveClass("text-primary");
+    expect(screen.getByRole("link", { name: "Writer" })).toHaveClass("link-strong");
+    // Vurgulu bağlantı rengini `.link-strong` taşıyor; eskiden `text-primary` idi.
+    expect(componentRule(".link-strong")).toContain("color: rgb(var(--primary))");
   });
 
   it("can hide the topic title when the surrounding page already shows it", () => {
@@ -365,7 +381,8 @@ describe("tek footer, tek puan", () => {
  * WCAG 2.2 SC 2.5.8 (Target Size Minimum, 24×24 CSS px). Kart içindeki üç
  * bağlantı da satır içi metin yüksekliğinde (`text-sm` → 20px, `text-lg` → 21.5px)
  * kalıyordu; 375px'te canlı ölçümde ihlal veriyorlardı. `inline-flex min-h-6`
- * dokunma kutusunu 24px'e çıkarır, yazı tipi boyutunu değiştirmez.
+ * dokunma kutusunu 24px'e çıkarır, yazı tipi boyutunu değiştirmez. Bu üç yardımcı
+ * sınıf artık `.link-quiet` / `.link-strong` bileşen sınıflarının içinde duruyor.
  */
 describe("dokunma hedefi taban yüksekliği", () => {
   afterEach(() => cleanup());
@@ -399,11 +416,21 @@ describe("dokunma hedefi taban yüksekliği", () => {
       "2 Oca 2026 13:00 tarihli entry’ye git",
       "Writer",
     ]) {
-      expect(screen.getByRole("link", { name })).toHaveClass(
-        "inline-flex",
-        "min-h-6",
-        "items-center",
-      );
+      const link = screen.getByRole("link", { name });
+      expect(
+        link.classList.contains("link-quiet") || link.classList.contains("link-strong"),
+        `${name} bağlantısı durum dili sınıfı taşımıyor`,
+      ).toBe(true);
+    }
+    for (const selector of [".link-quiet", ".link-strong"]) {
+      expect(componentRule(selector)).toContain("@apply inline-flex min-h-6 items-center");
+    }
+  });
+
+  it("her bağlantı ailesine hover ve active durumu tanımlar", () => {
+    for (const selector of [".link-quiet", ".link-strong"]) {
+      expect(globalsCss).toContain(`${selector}:hover {`);
+      expect(globalsCss).toContain(`${selector}:active {`);
     }
   });
 });

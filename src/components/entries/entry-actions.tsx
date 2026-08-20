@@ -34,18 +34,23 @@ const ENTRY_BODY_MAX_LENGTH = 10_000;
 /**
  * Misafir bağlantılarının geometrisi, oturumlu görünümdeki oy/favori düğmelerinin
  * basılı olmayan hâliyle birebir aynı olmalı; kart iki modda da aynı görünür.
+ *
+ * `.icon-button` durum dilini (hover örtüsü, `--border-strong` kenarlık, klavye
+ * odağı) getiriyor; bağlantı olduğu için `disabled` dalı hiç devreye girmiyor.
  */
-const guestControlClass = "grid size-10 place-items-center rounded border bg-page";
+const guestControlClass = "icon-button bg-page";
 
 /** Skor sayacıyla aynı görsel dil; favori sayacı da aynı sütun genişliğini tutar. */
 const counterClass = "min-w-8 text-center text-sm font-medium";
 
 /**
- * ⋮ menüsündeki öğelerin ortak görünümü. `account-menu.tsx` ile aynı dil;
- * Radix klavye gezinirken DOM odağını öğeye taşıdığı için `focus:` yeterli.
+ * ⋮ menüsündeki öğelerin ortak görünümü — artık `globals.css`teki `.menu-item`.
+ * Vurgu `data-highlighted` ile (Radix hem fare hem klavye gezinmesinde veriyor),
+ * odak halkası yalnız `:focus-visible` ile geliyor. Eski hâl `hover:bg-page
+ * focus:bg-page` idi: koyu temada `--page`/`--surface` farkı 1.075 olduğu için
+ * vurgu görünmüyordu, ayrıca `outline-none` odak halkasını da siliyordu.
  */
-const overflowItemClass =
-  "flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm outline-none hover:bg-page focus:bg-page data-[disabled]:cursor-default data-[disabled]:opacity-50";
+const overflowItemClass = "menu-item";
 
 /**
  * Aksiyon şeridinin "diğer" menüsü. Şerit yalnız oy, skor ve favoriyi görünür
@@ -72,11 +77,7 @@ function EntryOverflowMenu({
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <button
-          type="button"
-          aria-label="Diğer entry işlemleri"
-          className="grid size-10 place-items-center rounded border bg-page"
-        >
+        <button type="button" aria-label="Diğer entry işlemleri" className="icon-button bg-page">
           <EllipsisVertical aria-hidden="true" size={17} />
         </button>
       </DropdownMenu.Trigger>
@@ -192,7 +193,7 @@ function EntryLinkFallback({ entryPublicId, url }: { entryPublicId: number; url:
         readOnly
         value={url}
         onFocus={(event) => event.currentTarget.select()}
-        className="mt-1 w-full rounded-lg border bg-page px-3 py-2 text-sm"
+        className="field-border mt-1 w-full rounded-lg border bg-page px-3 py-2 text-sm"
       />
     </div>
   );
@@ -438,7 +439,7 @@ function SignedInEntryActions({
           onClick={() => void changeVote(1)}
           aria-label="Artı oy ver"
           aria-pressed={vote === 1}
-          className={`grid size-10 place-items-center rounded border ${vote === 1 ? "bg-primary text-on-primary" : "bg-page"}`}
+          className={`icon-button ${vote === 1 ? "bg-primary text-on-primary" : "bg-page"}`}
         >
           <ThumbsUp aria-hidden="true" size={17} />
         </button>
@@ -449,7 +450,7 @@ function SignedInEntryActions({
           onClick={() => void changeVote(-1)}
           aria-label="Eksi oy ver"
           aria-pressed={vote === -1}
-          className={`grid size-10 place-items-center rounded border ${vote === -1 ? "bg-accent text-on-accent" : "bg-page"}`}
+          className={`icon-button ${vote === -1 ? "bg-accent text-on-accent" : "bg-page"}`}
         >
           <ThumbsDown aria-hidden="true" size={17} />
         </button>
@@ -459,7 +460,7 @@ function SignedInEntryActions({
           onClick={() => void toggleBookmark()}
           aria-label={bookmarked ? "Favorilerden çıkar" : "Favorilere ekle"}
           aria-pressed={bookmarked}
-          className={`grid size-10 place-items-center rounded border ${bookmarked ? "bg-primary text-on-primary" : "bg-page"}`}
+          className={`icon-button ${bookmarked ? "bg-primary text-on-primary" : "bg-page"}`}
         >
           <Bookmark aria-hidden="true" size={17} />
         </button>
@@ -544,7 +545,9 @@ function SignedInEntryActions({
               </AlertDialog.Description>
               <div className="mt-6 flex justify-end gap-3">
                 <AlertDialog.Cancel asChild>
-                  <button className="button-secondary">Vazgeç</button>
+                  <button type="button" className="button-secondary">
+                    Vazgeç
+                  </button>
                 </AlertDialog.Cancel>
                 <button
                   type="button"
