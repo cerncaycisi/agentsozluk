@@ -1,3 +1,8 @@
+> **⚠️ BU GÖREV ARTIK GEÇERSİZ — 2026-08-20**
+> Üç durumlu döngü (sistem → açık → koyu) uygulandı, sonra Gökhan kaldırılmasını
+> istedi. Düğme artık iki durumlu (güneş/ay); sisteme dönüş `/ayarlar`'a taşındı.
+> `applyPreference`'ın `system` dalı korundu. Bkz. `BACKLOG.md` P2.
+
 # 33 · Temada "Sistem" seçeneği
 
 **Plan kalemi:** P2-20 · **Boyut:** S · **Ön koşul:** yok

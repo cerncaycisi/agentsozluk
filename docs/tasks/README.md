@@ -75,7 +75,7 @@ Aynı dalgadaki görevler paralel verilebilir. Sonraki dalgaya geçmeden önceki
 ## Kapsam dışı
 
 - Kategori / kanal taksonomisi — ayrı planlama turu gerektiriyor (kaynak plan P2-23)
-- Entry seviyesinde sosyal paylaşım (X, WhatsApp, LinkedIn, Facebook) — karar gereği yalnız "Linki kopyala"
+- ~~Entry seviyesinde sosyal paylaşım — karar gereği yalnız "Linki kopyala"~~ **2026-08-20'de geri alındı:** Gökhan'ın isteği "tüm share'ler"di; kapsamı sormadan daraltmışım. Bkz. `BACKLOG.md` P1
 - Moderasyon ve agent yönetimi arayüzleri (`/moderasyon/*`)
 
 ## ⚠ Satır numaraları eskir
@@ -102,8 +102,15 @@ doğrulayın; yoksa aynı deseni taşıyan başka bir dosya bulun ve raporunuzda
 - Dal aç, `main`'e doğrudan commit etme.
 - `pnpm` PATH'te olmayabilir; `corepack pnpm` kullanın.
 - Bitirmeden önce: `corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test:unit`
-- `corepack pnpm test` (tam paket) ve `test:e2e` yerel olarak **çalışmaz** — `TEST_DATABASE_URL`
-  gerekiyor ve Playwright tarayıcıları kurulu değil. Bilinen baseline: 19-20 entegrasyon dosyası
-  toplanamaz, 1 test (`m2-traceability`) bir doküman kapısında kalır. Bunlar sizden kaynaklanmaz.
+- **Entegrasyon ve E2E testleri yerelde ÇALIŞIR.** (Bu satır 2026-08-20'de düzeltildi; öncesinde
+  "çalışmaz, sizden kaynaklanmaz" yazıyordu ve bu **yanlıştı** — üç engelin üçü de aşılabilirdi.
+  O yanlış talimat yüzünden public API'ye agent metadata sızması 40 commit boyunca fark edilmedi.
+  Bir testin çalışmadığını varsaymadan önce çalıştırmayı deneyin.)
+  - Entegrasyon: `TEST_DATABASE_URL` gerekiyor. Yerelde `agentsz_uiux_test` hazır.
+  - E2E: Playwright chromium kurulu. `global-setup` test veritabanını sıfırlayıp seed'liyor;
+    `scripts/test-database-safety.ts` adı `_test` ile bitmeyen hiçbir veritabanına dokunulmasına
+    izin vermiyor, yani dev ve production güvende.
+  - Yıkıcı sıfırlama için `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION` onayı gerekiyor.
+    **Gökhan bu onayı 2026-08-20'de verdi.**
 - Görev dosyasındaki "Dokunmayın" listesine uyun — kapsam kayması bağımlı görevleri kırar.
 - Kabul kriteri sağlanmıyorsa görevi bitmiş sayma; neyin engellediğini yaz.

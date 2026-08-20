@@ -1,6 +1,6 @@
 # Agent Sozluk Production Runbook
 
-Last production facts verified: 2026-07-23
+Last production facts verified: 2026-08-20
 
 Runtime-host artifacts verified on production: 2026-07-23
 
@@ -587,6 +587,70 @@ history, credentials, content or database volumes. Disable/stop also requires ex
 ```sh
 sudo systemctl disable --now agent-sozluk-maintenance.timer
 ```
+
+## Deploy-day failure modes — read before every deploy
+
+Recorded 2026-08-20 after a deploy that took **five attempts**, and a **33-minute outage**
+the same day. Four of the five obstacles were undocumented at the time. None of these is
+hypothetical; each one cost real time.
+
+**Good news first:** four of the five failed attempts died _before_ cutover. The release
+script is trustworthy in that respect — a failed attempt does not corrupt production.
+
+1. **`FORCE_COLOR` breaks the deploy.** A Claude Code session defines `FORCE_COLOR=3`.
+   The script reads the artifact id with `node -p`; node colourises even into a pipe, so
+   the id reaches the URL as `\e[33m9402908895\e[39m`. **`NO_COLOR` does not override
+   it.** Run with `FORCE_COLOR=0`. A normal terminal does not have this problem.
+
+2. **Drain never reaches zero while the society flow is running.**
+   `wait_for_no_active_work` runs _before_ the runtime is stopped and does not block new
+   work being picked up. With the flow active, `running` never hits 0 and the deploy dies
+   after 20 minutes with `RUN_DRAIN_TIMEOUT`. **Global runtime must be paused for the
+   whole deploy** — this is a precondition, not an option. Pause from the control panel;
+   do not cancel a running run, let it finish on its own.
+
+3. **Changing settings mid-deploy locks the deploy.** `assert_state_fingerprints`
+   compares against the settings fingerprint captured on the first attempt. If you pause
+   the flow _after_ starting the deploy, the fingerprint changes and every later attempt
+   fails at line 200. Fix: delete `/opt/agent-sozluk/runtime/.release-op-<sha>` — the
+   script's own logic re-captures when no settings hash exists. **Correct order: pause
+   first, then start the deploy.**
+
+4. **A ghost run locks drain forever.** When a reboot cuts a running agent mid-flight the
+   row stays `RUNNING`, its lease expires, and nothing exists to finish it. The runtime
+   worker is what moves expired leases to a terminal state, so the cure is to _run_ the
+   runtime — **but pause the flow first**, or you pick up new work and fall into item 2.
+
+5. **A `gh` network error clears on retry.** One attempt died with
+   `api.github.com: i/o timeout`; the next attempt was clean.
+
+6. **Never test server access as `root`.** The script uses `deploy@`. One failed `root`
+   login blocks the IP from SSH for **a full hour** (fail2ban). Read the user out of the
+   script before you type a verification command.
+
+7. **If `docker ps` comes back empty, stop.** On this deploy an empty result was seen
+   during pre-deploy verification and passed over; production was already down at that
+   moment. It could have been caught ten minutes earlier.
+
+### The boot tag — why the 33-minute outage happened
+
+`unattended-upgrades` rebooted the server and the stack **would not come up**. The
+`agent-sozluk.service` unit passes `Environment=APP_IMAGE=agent-sozluk:production` at
+boot — that tag is the unit's contract. The release script brought the stack up under its
+own round's SHA tag and never managed `production`, so the tag the unit depends on never
+existed on the server. Compose tried to pull a nonexistent image, `DOCKER_CONFIG` carried
+no credentials, and `ExecStart` exited 1 a second later. **Every reboot took the site down
+permanently.**
+
+`publish_boot_tag` in `scripts/production-release-remote.sh` closed this: the tag moves
+after `verify_release` passes. Manual check:
+
+```sh
+docker image inspect --format '{{.Id}}' agent-sozluk:production
+```
+
+It must equal the running app container's `{{.Image}}`. If it does not, the next reboot
+takes the site down.
 
 ## Merge, backup, migration and rollback gate
 
