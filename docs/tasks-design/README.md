@@ -13,8 +13,22 @@ Yön: **geleneğe yaslan — okunabilir sözlük**
 | Okuma sütunu | 760px sarmalayıcı, gövde `max-width: 66ch`                                                 |
 | Gövde        | 17px / 1.55                                                                                |
 | Ağırlık      | yalnız **400 / 500 / 600** — 700 ve 900 kalkıyor                                           |
+| Zemin        | sayfa `#f5f3ec`, yüzey beyaz — kart **kalkık**, input **gömülü**                           |
 | Yarıçap      | iki değer: `rounded` (4px) kontroller, `rounded-lg` (8px) yüzeyler                         |
 | Gölge        | **yok**                                                                                    |
+
+## Kuyruk dışında alınan kararlar
+
+- **Kenar çubuğunda aktiflik dolgu değil çizgi** (2026-08-20). D3 filtre şeritlerinin
+  dolgusunu kaldırınca sayfadaki tek dolgulu birincil yüzey kenar çubuğunun aktif satırı
+  kalmıştı. Şimdi solda 3px kiremit çizgi + kiremit metin; çizgi `before` ile çiziliyor,
+  gölge değil, satır da kaymıyor.
+- **Zemin ilişkisi gerçek oldu** (2026-08-20). Sistem "kalkık kart / gömülü input" kuruyordu
+  ama açık temada `--page` ile `--surface` arasındaki kontrast oranı **1.034** idi; kartlar
+  kendi zeminiyle aynı renkte beyaz kutular gibi duruyor, `hover:bg-page` hiç görünmüyordu.
+  Zemin `245 243 236`'ya indi (1.110). Aynı hamlede `--muted` 4.35'ten 4.75'e çıkarıldı
+  (eşik 4.5) ve `--border` koyulaştırıldı — D2'nin akan listesi o çizgiye bağlı.
+  Yirmi iki ön plan/zemin çifti iki temada da yeniden hesaplandı. Koyu temaya dokunulmadı.
 
 ## Temel katman (bitti)
 

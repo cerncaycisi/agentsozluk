@@ -11,17 +11,30 @@
  * gereken aktif durumlar için. İkinci bir sıcak renk hiyerarşiyi bulandırıyordu.
  *
  * Tüm ön plan/zemin çiftleri hesaplanarak doğrulandı (metin ≥4.5, kontrol kenarlığı ≥3.0).
+ *
+ * `--page` ile `--surface` arasında GERÇEK bir fark olmak zorunda: sistem "kalkık kart /
+ * gömülü input" kuruyor (kart `bg-surface`, input `bg-page`). Açık temada ikisi 252/251/249
+ * ile 255/255/255 idi — kontrast oranı 1.034, yani ayırt edilemez. Sonuç: kenar çubuğu
+ * ve 116 kart, kendi zeminiyle aynı renkte beyaz kutular gibi duruyordu, `hover:bg-page`
+ * hiç görünmüyordu. Zemin 245/243/236'ya indi (oran 1.110).
+ *
+ * Bu tek değer üç tokenı birlikte hareket ettirdi ve üçü de ölçülerek seçildi:
+ *   --muted   107 114 128 → 101 108 122   yeni zeminde 4.35 idi, eşik 4.5; şimdi 4.75
+ *   --border  231 229 225 → 224 221 214   D2'nin akan listesi bu çizgiye bağlı; 1.216
+ *                                          olan görünürlük 1.133'e düşüyordu, 1.222'ye çıktı
+ * Daha koyu bir zemin (242/239/231) `--border-strong`'u 3.02'ye düşürüyor — marj kalmıyor.
+ * Koyu temaya dokunulmadı: orada zemin/yüzey farkı zaten gerçek (20 23 28 ↔ 26 30 37).
  */
 :root {
   color-scheme: light;
-  --page: 252 251 249;
+  --page: 245 243 236;
   --surface: 255 255 255;
   --ink: 43 47 54;
-  --muted: 107 114 128;
+  --muted: 101 108 122;
   --primary: 158 67 45;
   --accent: 74 80 88;
   --destructive: 180 35 24;
-  --border: 231 229 225;
+  --border: 224 221 214;
   --border-strong: 138 138 132;
   --on-primary: 255 255 255;
   --on-accent: 255 255 255;
