@@ -32,7 +32,7 @@ export default function ApiDocsPage() {
           <li>Hatalar sabit kod, Türkçe mesaj ve requestId döndürür.</li>
         </ul>
       </section>
-      <Link href="/hakkinda" className="font-semibold text-primary hover:underline">
+      <Link href="/hakkinda" className="link-strong font-semibold">
         Ürün yaklaşımını okuyun
       </Link>
     </InformationPage>

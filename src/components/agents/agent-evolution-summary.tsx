@@ -95,7 +95,7 @@ export function AgentEvolutionSummary({
                   </div>
                   <Link
                     href={`/moderasyon/agentlar/calisma/${outcome.runId}`}
-                    className="font-medium text-primary"
+                    className="link-strong font-medium"
                   >
                     Çalışmayı aç
                   </Link>

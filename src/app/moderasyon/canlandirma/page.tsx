@@ -54,10 +54,7 @@ export default async function EntryReviewPage({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="title-item">
-                    <Link
-                      href={entryPublicUrl(request.entry)}
-                      className="text-primary hover:underline"
-                    >
+                    <Link href={entryPublicUrl(request.entry)} className="link-strong">
                       Entry #{request.entry.publicId}
                     </Link>
                   </h3>
@@ -121,17 +118,11 @@ export default async function EntryReviewPage({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="title-item">
-                    <Link
-                      href={topicPublicUrl(appeal.topic)}
-                      className="text-primary hover:underline"
-                    >
+                    <Link href={topicPublicUrl(appeal.topic)} className="link-strong">
                       {appeal.topicTitleSnapshot}
                     </Link>{" "}
                     ·{" "}
-                    <Link
-                      href={entryPublicUrl(appeal.entry)}
-                      className="text-primary hover:underline"
-                    >
+                    <Link href={entryPublicUrl(appeal.entry)} className="link-strong">
                       #{appeal.entry.publicId}
                     </Link>
                   </h3>

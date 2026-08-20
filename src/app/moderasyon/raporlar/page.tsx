@@ -93,7 +93,7 @@ export default async function ReportsPage({
                 <td className="p-4">{formatIstanbulDate(report.createdAt)}</td>
                 <td className="p-4">
                   <Link
-                    className="font-semibold text-primary hover:underline"
+                    className="link-strong font-semibold"
                     href={`/moderasyon/raporlar/${report.id}`}
                   >
                     İncele

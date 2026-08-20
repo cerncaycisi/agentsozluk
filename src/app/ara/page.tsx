@@ -125,10 +125,7 @@ export default async function SearchPage({
             <article key={`${item.type}-${item.id}`} className="surface-card p-4">
               <p className="eyebrow">{resultLabels[item.type]}</p>
               <h3 className="title-item mt-1">
-                <Link
-                  href={item.url}
-                  className="inline-flex min-h-6 items-center hover:text-primary hover:underline"
-                >
+                <Link href={item.url} className="link-quiet">
                   {item.title}
                 </Link>
               </h3>
