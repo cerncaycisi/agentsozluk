@@ -131,11 +131,25 @@ function TopicNavigation({
                 şeritleri dolgudan çıkınca sayfada tek dolgulu birincil yüzey burası
                 kalmıştı. Çizgi bir gölge DEĞİL, `before` ile çizilen bir kenar: hem
                 "gölge yok" kuralı bozulmuyor hem satır 3px kaymıyor.
+
+                Çizgi artık tek "konum" kanalı: her satırda hep duruyor, durgunken
+                zemini yok (varsayılan saydam — `before:bg-transparent` yazmak aynı
+                özgüllükteki `before:bg-primary`'yi bastırıyordu, ölçüldü). Renk
+                kesinliği söylüyor — imleç altındayken sessiz `--border-strong`,
+                aktifken kiremit. Böylece hover ile aktif aynı geometriyi konuşuyor;
+                yarıçap da iki durumda `rounded` kalıyor, satır şekil değiştirmiyor
+                (eskiden `rounded` → `rounded-r` diye kayıyordu).
+
+                Hover dolgusu (`hover:bg-page`) kalktı: geçici durumun kalıcı durumdan
+                daha ağır görünmesine yol açıyordu — üstelik koyu temada `--page` ile
+                `--surface` arası 1.075:1, yani dolgu orada zaten hiçbir şey söylemiyor.
+                `overflow-hidden`, 3px'lik çubuğu satırın kendi 4px yarıçapına kırpar;
+                odak halkası kendi `outline`'ı olduğu için kırpılmaz.
               */
-              className={`relative flex min-h-10 items-center justify-between gap-3 px-3 py-2 text-sm transition ${
+              className={`relative flex min-h-10 items-center justify-between gap-3 overflow-hidden rounded px-3 py-2 text-sm transition-colors before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:transition-colors before:content-[''] ${
                 active
-                  ? "rounded-r text-primary before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-primary before:content-['']"
-                  : "rounded hover:bg-page hover:text-primary"
+                  ? "text-primary before:bg-primary"
+                  : "hover:before:bg-[rgb(var(--border-strong))]"
               }`}
             >
               <span className="line-clamp-2 font-medium">{topic.title}</span>
@@ -365,7 +379,9 @@ export function SiteShell({
             type="button"
             disabled={!hydrated}
             onClick={() => setDrawerOpen(true)}
-            className="grid size-11 shrink-0 place-items-center rounded border bg-page lg:hidden"
+            /* Çekmece, masaüstü kenar çubuğunun göründüğü eşiğe kadar açık kalır:
+               1024-1151 bandında indeks buradan okunuyor. */
+            className="icon-button size-11 bg-page min-[1152px]:hidden"
             aria-label="Başlık menüsünü aç"
             aria-expanded={drawerOpen}
             aria-controls="mobil-gundem"
@@ -391,7 +407,7 @@ export function SiteShell({
               ref={searchButton}
               type="button"
               onClick={() => (searchOpen ? closeSearch(true) : setSearchOpen(true))}
-              className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded border bg-page sm:hidden"
+              className="icon-button min-h-11 min-w-11 bg-page sm:hidden"
               aria-label="Aramayı aç"
               aria-expanded={searchOpen}
               aria-controls="mobil-arama"
@@ -429,8 +445,13 @@ export function SiteShell({
                     key={item.href}
                     href={item.href}
                     aria-current={active ? "page" : undefined}
-                    className={`flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg px-3 text-sm font-medium transition ${
-                      active ? "bg-page text-primary" : "text-muted hover:bg-page hover:text-ink"
+                    /* Şerit öğesi `.menu-item` ailesinden: hover örtüsü koyu temada da
+                       görünüyor (eski `hover:bg-page` görünmüyordu) ve odak halkası
+                       içeri alındığı için yatay kaydırma kabı halkayı kırpmıyor.
+                       `w-auto`, ailenin `w-full`ünü geri alıyor — burası dikey bir
+                       menü değil, yan yana akan bir şerit. */
+                    className={`menu-item min-h-11 w-auto shrink-0 whitespace-nowrap font-medium ${
+                      active ? "bg-page text-primary" : "text-muted hover:text-ink"
                     }`}
                   >
                     {item.label}
@@ -471,7 +492,24 @@ export function SiteShell({
               String(event.currentTarget.scrollTop),
             )
           }
-          className="sticky top-28 hidden h-[calc(100vh-8rem)] w-[300px] shrink-0 overflow-y-auto rounded-lg border bg-surface lg:block"
+          /*
+            Yükseklik `h-` değil `max-h-`: besleme boşken ya da liste kısayken kutu
+            içeriğine göre kısalır, uzun listede eski tam boyu aşmaz.
+
+            Kaydırma çubuğu gizlenmiyor (uzun liste, kaydırılabilirlik görünmeli) ama
+            inceltilip tokena bağlanıyor. Renk `--border-strong`: `--border` koyu temada
+            yüzeye 1.3:1 kalıyor, görünmezdi; `--border-strong` iki temada da ~3:1.
+            Firefox `scrollbar-width/color`, WebKit `::-webkit-scrollbar*` ile ayrı ayrı.
+            Kural `globals.css`'e değil satır içine yazıldı: paylaşılan yardımcı sınıfa
+            dokunmuyoruz.
+
+            Genişlik `min-[1152px]` altında sabit 300px değil, hiç yok: 1024'te
+            300 + 24 boşluk + 48 kenar payı, okuma sütununu 760'tan 652'ye düşürüyordu.
+            192px'e daraltmak sütunu kurtarırdı ama başlık metnini yarıya indirip
+            indeksi işlevsiz bırakırdı; onun yerine indeks o bantta mobil çekmeceye
+            devrediliyor — erişim kaybolmuyor, ölçü bozulmuyor.
+          */
+          className="sticky top-28 hidden max-h-[calc(100vh-8rem)] w-[300px] shrink-0 overflow-y-auto rounded-lg border bg-surface [scrollbar-color:rgb(var(--border-strong))_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-[rgb(var(--border-strong))] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5 min-[1152px]:block"
         >
           <div className="border-b px-4 py-3">
             <div className="flex items-center justify-between gap-3">
@@ -483,7 +521,11 @@ export function SiteShell({
                   onClick={refreshIndex}
                   disabled={loading}
                   aria-label={`${indexLabel(indexFeed)} başlıklarını yenile`}
-                  className="grid size-8 place-items-center rounded-lg text-muted hover:bg-page hover:text-ink"
+                  /* Kenarlıksız ikon buton: durum dilini `.icon-button` veriyor, ama kutu
+                     kenarlığı burada yok — kart başlığında bir çerçeve daha kurmak yerine
+                     ikonun kendi kontrastı kontrolü tanıtıyor. Eski `hover:bg-page` koyu
+                     temada görünmüyordu (page/surface farkı 1.075). */
+                  className="icon-button size-8 rounded-lg border-0 text-muted"
                 >
                   <RefreshCw
                     aria-hidden="true"
@@ -545,7 +587,7 @@ export function SiteShell({
       </footer>
 
       {drawerOpen ? (
-        <div className="fixed inset-0 z-[70] lg:hidden">
+        <div className="fixed inset-0 z-[70] min-[1152px]:hidden">
           <button
             type="button"
             className="absolute inset-0 bg-black/55"
@@ -576,7 +618,8 @@ export function SiteShell({
                     onClick={refreshIndex}
                     disabled={loading}
                     aria-label={`${indexLabel(indexFeed)} başlıklarını yenile`}
-                    className="grid size-7 place-items-center rounded-lg text-muted hover:bg-page hover:text-ink"
+                    /* Çekmecedeki eşi; kenarlıksız, durum dili `.icon-button`tan. */
+                    className="icon-button size-7 rounded-lg border-0 text-muted"
                   >
                     <RefreshCw
                       aria-hidden="true"
@@ -589,7 +632,7 @@ export function SiteShell({
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
-                className="grid size-10 place-items-center rounded border bg-page"
+                className="icon-button bg-page"
                 aria-label="Başlık menüsünü kapat"
               >
                 <X aria-hidden="true" size={19} />
