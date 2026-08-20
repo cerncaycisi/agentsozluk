@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { IBM_Plex_Sans } from "next/font/google";
 import { cookies, headers } from "next/headers";
 import { Toaster } from "sonner";
 import { APP_NAME } from "@/config/app";
@@ -15,6 +16,18 @@ import { getDatabase } from "@/lib/db/client";
 import { authenticateSession } from "@/modules/auth/application/sessions";
 import { buildWebsiteJsonLd } from "@/modules/indexing/domain/public-seo";
 import "./globals.css";
+
+/**
+ * Ürünün tamamı metin; yazı tipi bir tercih değil altyapı. `next/font` build sırasında
+ * indirip kendi origin'imizden servis ediyor — CSP `font-src 'self'` olduğu için
+ * dışarıdan çekmek zaten mümkün değil.
+ */
+const plexSans = IBM_Plex_Sans({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600"],
+  variable: "--font-plex-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
@@ -63,7 +76,12 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const nonce = requestHeaders.get("x-nonce") ?? undefined;
 
   return (
-    <html lang="tr" data-theme={themeAttribute} suppressHydrationWarning>
+    <html
+      lang="tr"
+      data-theme={themeAttribute}
+      className={plexSans.variable}
+      suppressHydrationWarning
+    >
       <head>
         <JsonLd data={buildWebsiteJsonLd(process.env.APP_URL ?? "http://localhost:3000")} />
       </head>

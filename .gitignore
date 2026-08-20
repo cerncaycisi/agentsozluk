@@ -18,3 +18,5 @@ temp/
 postgres-data/
 prisma/dev.db*
 *.tsbuildinfo
+.design-mockup/
+public/_design-*.html

@@ -2,57 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Tasarım tokenları — bkz. docs/DESIGN_AUDIT_2026-08-20.md
+ *
+ * Kiremit (`--primary`) markanın rengi; link, aktif durum ve birincil eylemde görünür.
+ * Daha önce `--accent-text` adıyla yalnız küçük etiketlerde duruyordu, artık başrolde.
+ * `--accent` sıcak bir ton değil, nötr kurşuni: eksi oy gibi marka rengi taşımaması
+ * gereken aktif durumlar için. İkinci bir sıcak renk hiyerarşiyi bulandırıyordu.
+ *
+ * Tüm ön plan/zemin çiftleri hesaplanarak doğrulandı (metin ≥4.5, kontrol kenarlığı ≥3.0).
+ */
 :root {
   color-scheme: light;
-  --page: 247 247 242;
+  --page: 252 251 249;
   --surface: 255 255 255;
-  --ink: 24 33 47;
-  --muted: 102 112 133;
-  --primary: 91 91 214;
-  --accent: 217 108 74;
-  --accent-text: 158 67 45;
-  --border: 217 221 229;
-  --border-strong: 130 138 154;
+  --ink: 43 47 54;
+  --muted: 107 114 128;
+  --primary: 158 67 45;
+  --accent: 74 80 88;
   --destructive: 180 35 24;
+  --border: 231 229 225;
+  --border-strong: 138 138 132;
   --on-primary: 255 255 255;
-  --on-accent: 24 33 47;
+  --on-accent: 255 255 255;
   --on-destructive: 255 255 255;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --page: 16 19 24;
-    --surface: 25 30 39;
-    --ink: 243 244 246;
-    --muted: 169 177 190;
-    --primary: 139 139 245;
-    --accent: 242 139 103;
-    --accent-text: 242 139 103;
-    --border: 48 55 68;
-    --border-strong: 100 110 128;
+    --page: 20 23 28;
+    --surface: 26 30 37;
+    --ink: 232 234 237;
+    --muted: 154 162 174;
+    --primary: 224 139 106;
+    --accent: 154 162 174;
     --destructive: 249 112 102;
-    --on-primary: 16 19 24;
-    --on-accent: 16 19 24;
-    --on-destructive: 16 19 24;
+    --border: 44 49 58;
+    --border-strong: 102 110 122;
+    --on-primary: 20 23 28;
+    --on-accent: 20 23 28;
+    --on-destructive: 20 23 28;
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page: 16 19 24;
-  --surface: 25 30 39;
-  --ink: 243 244 246;
-  --muted: 169 177 190;
-  --primary: 139 139 245;
-  --accent: 242 139 103;
-  --accent-text: 242 139 103;
-  --border: 48 55 68;
-  --border-strong: 100 110 128;
+  --page: 20 23 28;
+  --surface: 26 30 37;
+  --ink: 232 234 237;
+  --muted: 154 162 174;
+  --primary: 224 139 106;
+  --accent: 154 162 174;
   --destructive: 249 112 102;
-  --on-primary: 16 19 24;
-  --on-accent: 16 19 24;
-  --on-destructive: 16 19 24;
+  --border: 44 49 58;
+  --border-strong: 102 110 122;
+  --on-primary: 20 23 28;
+  --on-accent: 20 23 28;
+  --on-destructive: 20 23 28;
 }
 
 * {
@@ -68,47 +75,113 @@ body {
   min-height: 100vh;
   background: rgb(var(--page));
   color: rgb(var(--ink));
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
+  font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.55;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 :focus-visible {
-  outline: 3px solid rgb(var(--primary));
-  outline-offset: 3px;
+  outline: 2px solid rgb(var(--primary));
+  outline-offset: 2px;
 }
 
 ::selection {
-  background: rgb(var(--primary) / 0.25);
+  background: rgb(var(--primary) / 0.18);
 }
 
 @layer components {
+  /* Okuma sütunu: gövde 17px'te ~66 karakter/satır. 45-75 aralığının ortası. */
   .page-main {
-    @apply mx-auto max-w-[820px] px-4 py-6 sm:px-6 sm:py-10;
+    @apply mx-auto max-w-[760px] px-4 py-6 sm:px-6 sm:py-10;
   }
 
+  /* Entry gövdesi hiçbir zaman okuma ölçüsünü aşmaz. */
+  .prose-measure {
+    max-width: 66ch;
+  }
+
+  /**
+   * Yüzey. Gölge yok: sözlük okuma ürünü, her entry'yi havaya kaldırmak gürültü.
+   * İki yarıçap var — küçük kontroller 4px, yüzeyler 8px.
+   */
   .surface-card {
-    @apply rounded-2xl border bg-surface shadow-sm;
+    @apply rounded-lg border bg-surface;
   }
 
   .button-primary {
-    @apply inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-2.5 font-semibold text-on-primary transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-11 items-center justify-center rounded px-4 py-2 font-medium transition;
+    background: rgb(var(--primary));
+    color: rgb(var(--on-primary));
+  }
+  .button-primary:hover {
+    background: rgb(var(--primary) / 0.9);
+  }
+  .button-primary:disabled {
+    @apply cursor-not-allowed opacity-50;
   }
 
   .button-secondary {
-    @apply inline-flex min-h-11 items-center justify-center rounded-xl border bg-surface px-5 py-2.5 font-semibold text-ink transition hover:border-primary hover:text-primary;
+    @apply inline-flex min-h-11 items-center justify-center rounded border bg-surface px-4 py-2 font-medium text-ink transition;
+  }
+  .button-secondary:hover {
+    border-color: rgb(var(--border-strong));
+  }
+
+  /* Sıralama/pencere şeritleri. Aktif durum dolgulu değil — sıralama değiştiren
+     bir kontrolün birincil buton ağırlığı taşımasına gerek yok. */
+  .chip {
+    @apply inline-flex min-h-9 shrink-0 items-center rounded border px-3 text-sm text-muted transition;
+    background: rgb(var(--surface));
+  }
+  .chip:hover {
+    color: rgb(var(--ink));
+  }
+  .chip-active {
+    @apply font-medium;
+    color: rgb(var(--primary));
+    border-color: rgb(var(--primary) / 0.4);
+    background: rgb(var(--primary) / 0.06);
+  }
+
+  /**
+   * Tipografik ölçek. Ağırlık yalnız 400 / 500 / 600 — 700 ve 900 kalktı.
+   * Ekşi'nin tüm başlık sayfasında 700 ağırlık dört öğede; hiyerarşi ağırlıkla
+   * değil boyut, renk ve boşlukla kuruluyor.
+   */
+  .title-page {
+    @apply text-[1.5rem] font-semibold leading-tight tracking-[-0.011em] sm:text-[1.6rem];
+  }
+
+  .title-section {
+    @apply text-[1.15rem] font-semibold leading-snug;
+  }
+
+  .title-item {
+    @apply font-medium leading-snug;
+  }
+
+  .text-small {
+    @apply text-sm leading-normal;
+  }
+
+  .text-micro {
+    @apply text-xs leading-normal;
   }
 
   .field-border {
     border-color: rgb(var(--border-strong));
   }
 
+  /* Bölüm üstü küçük etiket: "5 entry", "404", DEBE tarihi. */
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-wide;
+    color: rgb(var(--primary));
+  }
+
+  /* Geriye dönük ad; eyebrow ile aynı. Kullanım yerleri temizlenince kalkacak. */
   .text-accent-contrast {
-    color: rgb(var(--accent-text));
+    color: rgb(var(--primary));
   }
 }
