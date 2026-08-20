@@ -4678,6 +4678,16 @@ describe("internal agent runtime API with PostgreSQL", () => {
             },
             provenance,
           },
+          {
+            sequence: 10,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            safeReason: "Çekimli haber yüklemiyle biten manşet kalıcı kavram adresi değildir.",
+            input: {
+              title: "belediye başkanı görevden alındı",
+              body: "Kararın gerekçesi ve görevden alma sürecinin işleyişi.",
+            },
+            provenance,
+          },
         ],
       }),
     );
@@ -4691,8 +4701,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
       themeEventRejected,
       canonicalProjectAccepted,
       packagedPairRejected,
+      newsHeadlineRejected,
     ] = await Promise.all(
-      [1, 2, 3, 4, 5, 6, 7, 8, 9].map((sequence) =>
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((sequence) =>
         executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
           workerId,
           sequence,
@@ -4732,6 +4743,10 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(packagedPairRejected).toMatchObject({
       actionStatus: "REJECTED",
       rejectionCode: "CONSTITUTION_TOPIC_UNESTABLISHED_PAIR",
+    });
+    expect(newsHeadlineRejected).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "CONSTITUTION_TOPIC_NEWS_HEADLINE",
     });
     expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(2);
     expect(
