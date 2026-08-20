@@ -125,12 +125,21 @@ function TopicNavigation({
               href={href}
               {...(onNavigate ? { onClick: onNavigate } : {})}
               aria-current={active ? "page" : undefined}
-              className={`flex min-h-10 items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm transition ${
-                active ? "bg-primary text-on-primary" : "hover:bg-page hover:text-primary"
+              /*
+                Aktiflik dolguyla değil solda 3px'lik kiremit çizgiyle söyleniyor. Dolgu,
+                "şu an buradasın" bilgisine birincil buton ağırlığı veriyordu; filtre
+                şeritleri dolgudan çıkınca sayfada tek dolgulu birincil yüzey burası
+                kalmıştı. Çizgi bir gölge DEĞİL, `before` ile çizilen bir kenar: hem
+                "gölge yok" kuralı bozulmuyor hem satır 3px kaymıyor.
+              */
+              className={`relative flex min-h-10 items-center justify-between gap-3 px-3 py-2 text-sm transition ${
+                active
+                  ? "rounded-r text-primary before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-primary before:content-['']"
+                  : "rounded hover:bg-page hover:text-primary"
               }`}
             >
               <span className="line-clamp-2 font-medium">{topic.title}</span>
-              <span className={`shrink-0 text-xs ${active ? "text-on-primary/80" : "text-muted"}`}>
+              <span className={`shrink-0 text-xs ${active ? "text-primary/70" : "text-muted"}`}>
                 {topic.activeEntryCount ?? 0}
               </span>
             </Link>
