@@ -31,6 +31,54 @@ function shortFingerprint(value: string | null | undefined): string {
   return value ? `${value.slice(0, 12)}…` : "Bilinmiyor";
 }
 
+/* "ÇALIŞIYOR" yazan bir lane, lease'i düşmüş zombi run da olabilir; rozetin
+   üçüncü durumu ("roster bayat ama lease canlı") ancak lane başına lease
+   canlılığı görünürse doğrulanabilir. */
+function leaseState(slot: {
+  leaseRemainingMs: number | null;
+  heartbeatAgeMs: number | null;
+}): string {
+  if (slot.leaseRemainingMs === null) return "Lease yok";
+  if (slot.leaseRemainingMs <= 0) return "Süresi dolmuş · zombi run";
+  if (slot.heartbeatAgeMs === null) return "Lease canlı · heartbeat yok";
+  if (slot.heartbeatAgeMs > 120_000) return "Lease canlı · heartbeat bayat";
+  return "Canlı";
+}
+
+/*
+  Üç ayrı heartbeat vardı, tek rozet vardı. Roster sync 120 sn'yi aştığında,
+  lease canlı ve run ilerlerken bile ekran "Worker görünmüyor" diyordu; operatör
+  runtime öldü sanıp müdahale ediyordu. Durumlar artık ayrı: bayat roster ile
+  yok olan worker aynı şey değil, ve aradaki "roster bayat ama lease canlı" hâli
+  müdahale gerektirmeyen normal bir durum.
+*/
+const workerPresenceLabels = {
+  ONLINE: {
+    badge: "Worker çevrimiçi",
+    tone: "border-success/40 text-success",
+    explanation:
+      "Roster heartbeat’i 2 dakikadan taze. Worker kendini bildiriyor; lease ve run kayıtları için aşağıdaki lane’lere bakın.",
+  },
+  ROSTER_STALE_LEASE_ACTIVE: {
+    badge: "Roster heartbeat bayat · run canlı",
+    tone: "border-warning/40 text-warning",
+    explanation:
+      "Roster heartbeat’i 2 dakikadan eski, ama en az bir lane’de süresi dolmamış lease ve taze run heartbeat’i var: worker çalışıyor, bayat olan yalnız roster kanalı. Runtime’ı yeniden başlatmayın; roster senkronu kendi başına toparlanmazsa worker loglarına bakın.",
+  },
+  ROSTER_STALE_NO_LEASE: {
+    badge: "Worker görünmüyor",
+    tone: "border-destructive/40 text-destructive",
+    explanation:
+      "Roster heartbeat’i 2 dakikadan eski ve canlı lease yok: worker süreci gerçekten yok ya da takılmış. Aşağıdaki lane’lerde “ÇALIŞIYOR” görünen bir run varsa lease’i düşmüş zombi run demektir.",
+  },
+  NEVER_REPORTED: {
+    badge: "Worker hiç raporlamadı",
+    tone: "border-destructive/40 text-destructive",
+    explanation:
+      "Hiç roster senkron kaydı yok: worker bu ortamda bir kez bile bağlanmamış. Bu, ölmüş bir worker’dan farklı bir durumdur.",
+  },
+} as const;
+
 const capacityStatusLabels = {
   UNKNOWN: "Bilinmiyor",
   HEALTHY: "Sağlıklı",
@@ -107,12 +155,15 @@ export default async function AgentCapacityPage() {
           </div>
           <span
             className={`rounded border px-3 py-1 text-sm font-medium ${
-              capacity.operational.worker?.online ? "text-success" : "text-destructive"
+              workerPresenceLabels[capacity.operational.workerPresence].tone
             }`}
           >
-            {capacity.operational.worker?.online ? "Worker çevrimiçi" : "Worker görünmüyor"}
+            {workerPresenceLabels[capacity.operational.workerPresence].badge}
           </span>
         </div>
+        <p className="mt-3 rounded-lg border p-3 text-sm text-muted" role="status">
+          {workerPresenceLabels[capacity.operational.workerPresence].explanation}
+        </p>
 
         <dl className="mt-4 grid gap-4 border-t pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <Row
@@ -188,6 +239,7 @@ export default async function AgentCapacityPage() {
                   <Row label="Lease yaşı" value={duration(slot.leaseAgeMs)} />
                   <Row label="Heartbeat yaşı" value={duration(slot.heartbeatAgeMs)} />
                   <Row label="Lease kalan" value={duration(slot.leaseRemainingMs)} />
+                  <Row label="Lease durumu" value={leaseState(slot)} />
                   <div className="sm:col-span-2">
                     <Link
                       href={`/moderasyon/agentlar/calisma/${slot.runId}`}

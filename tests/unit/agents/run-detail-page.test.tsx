@@ -180,11 +180,21 @@ describe("agent run detail admin page", () => {
           runStatus: run.runStatus,
           startedAt: run.startedAt,
         },
+        todayWindow: {
+          start: new Date("2026-07-29T21:00:00.000Z"),
+          end: new Date("2026-07-30T21:00:00.000Z"),
+        },
         today: {
           publishedEntries: 1,
           createdTopics: 0,
           votes: 2,
           sourceReads: 1,
+        },
+        lifetime: {
+          publishedEntries: 576,
+          createdTopics: 498,
+          votes: 1_204,
+          sourceReads: 900,
         },
         queueLength: 0,
         nextRunAt: null,
@@ -348,11 +358,21 @@ describe("agent run detail admin page", () => {
         },
         lastHeartbeatAt: run.heartbeatAt,
         currentRun: null,
+        todayWindow: {
+          start: new Date("2026-07-29T21:00:00.000Z"),
+          end: new Date("2026-07-30T21:00:00.000Z"),
+        },
         today: {
           publishedEntries: 1,
           createdTopics: 0,
           votes: 2,
           sourceReads: 1,
+        },
+        lifetime: {
+          publishedEntries: 576,
+          createdTopics: 498,
+          votes: 1_204,
+          sourceReads: 900,
         },
         queueLength: 0,
         nextRunAt: null,

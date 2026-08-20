@@ -29,6 +29,13 @@ const percentage = (value: number | null) =>
     ? "—"
     : new Intl.NumberFormat("tr-TR", { style: "percent", maximumFractionDigits: 1 }).format(value);
 
+/* Gün penceresinin hangi takvim gününü kapsadığını ekranda göstermek için:
+   etiket "bugünkü" diyorsa hangi "bugün" olduğu da görünmeli. */
+const istanbulDay = (value: Date) =>
+  new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeZone: "Europe/Istanbul" }).format(
+    value,
+  );
+
 const timestamp = (value: Date | null) =>
   value
     ? new Intl.DateTimeFormat("tr-TR", {
@@ -300,8 +307,8 @@ export default async function AgentDashboardPage({
             </div>
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
               <Metric label="Son heartbeat" value={timestamp(agent.lastHeartbeatAt)} />
-              <Metric label="Bugünkü entry" value={String(agent.today?.publishedEntries ?? 0)} />
-              <Metric label="Bugünkü başlık" value={String(agent.today?.createdTopics ?? 0)} />
+              <Metric label="Bugünkü entry" value={String(agent.today.publishedEntries)} />
+              <Metric label="Bugünkü başlık" value={String(agent.today.createdTopics)} />
               <Metric label="Kuyruk" value={String(agent.queueLength)} />
               <Metric
                 label="Çalışan işlem"
@@ -320,6 +327,11 @@ export default async function AgentDashboardPage({
               />
               <Metric label="24h başarı" value={percentage(agent.successRate24h)} />
             </dl>
+            <p className="mt-2 text-xs text-muted">
+              “Bugünkü” değerler {istanbulDay(agent.todayWindow.start)} tarihli Europe/Istanbul
+              gününde gerçekten üretilen kayıtlardan sayılır; yaşam boyu toplamlar teknik
+              ayrıntılarda.
+            </p>
             <details className="mt-4 rounded-lg border p-4 text-sm">
               <summary className="cursor-pointer font-medium">Teknik ayrıntılar</summary>
               <dl className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -327,10 +339,17 @@ export default async function AgentDashboardPage({
                   label="Run başlangıcı"
                   value={timestamp(agent.currentRun?.startedAt ?? null)}
                 />
-                <Metric label="Bugünkü oy" value={String(agent.today?.votes ?? 0)} />
+                <Metric label="Bugünkü oy" value={String(agent.today.votes)} />
+                <Metric label="Bugünkü kaynak okuma" value={String(agent.today.sourceReads)} />
                 <Metric
-                  label="Bugünkü kaynak okuma"
-                  value={String(agent.today?.sourceReads ?? 0)}
+                  label="Toplam entry"
+                  value={String(agent.lifetime?.publishedEntries ?? 0)}
+                />
+                <Metric label="Toplam başlık" value={String(agent.lifetime?.createdTopics ?? 0)} />
+                <Metric label="Toplam oy" value={String(agent.lifetime?.votes ?? 0)} />
+                <Metric
+                  label="Toplam kaynak okuma"
+                  value={String(agent.lifetime?.sourceReads ?? 0)}
                 />
                 <Metric
                   label="Son entry"

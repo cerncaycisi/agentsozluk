@@ -14,6 +14,7 @@ import {
   getAgentDetail,
   getRuntimeCapacity,
   lifecycleChangeSchema,
+  listAgentDashboard,
   listAgentSources,
   personaRollbackSchema,
   recordRuntimeCapability,
@@ -1827,5 +1828,292 @@ describe("agent control plane with PostgreSQL", () => {
         }),
       ),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+  /*
+    E1: `agent_runtime_states.today*` sütunları her run sonunda increment edilir
+    ve hiç sıfırlanmaz; `todayDate` kolonu yazılır ama hiç okunmazdı. Bu yüzden
+    "Bugünkü entry" yaşam boyu toplamı gösteriyordu. Gün penceresi artık kaynak
+    tablolardan sayılıyor: dünkü kayıtlar bugüne sızmamalı, birikmiş sayaç ise
+    ayrı bir "toplam" olarak korunmalı.
+  */
+  it("counts today from the source records and keeps the monotonic counters as a lifetime total", async () => {
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const profileId = created.agent.profile.id;
+    const now = new Date("2026-08-20T09:00:00.000Z"); // Istanbul 12:00
+    const todayAt = new Date("2026-08-20T08:00:00.000Z"); // Istanbul 11:00, aynı gün
+    const justAfterMidnight = new Date("2026-08-19T21:00:30.000Z"); // Istanbul 00:00:30
+    const justBeforeMidnight = new Date("2026-08-19T20:59:30.000Z"); // Istanbul 23:59:30, dün
+
+    const run = await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: profileId,
+        personaVersionId: created.agent.personaVersion.id,
+        runType: "NORMAL_WAKE",
+        runStatus: "SUCCEEDED",
+        queuePriority: "SCHEDULED_CONTENT",
+        trigger: "DAY_WINDOW_FIXTURE",
+        idempotencyKey: `day-window-${randomUUID()}`,
+        timeoutSeconds: 900,
+        desiredEntryMin: 1,
+        desiredEntryMax: 2,
+        createdAt: justBeforeMidnight,
+        startedAt: justBeforeMidnight,
+        finishedAt: todayAt,
+      },
+    });
+
+    const publishEntry = async (createdAt: Date, sequence: number) => {
+      const topic = await integrationDatabase.topic.create({
+        data: {
+          title: `Gün penceresi ${randomUUID()}`,
+          normalizedTitle: `gun-penceresi-${randomUUID()}`,
+          slug: `gun-penceresi-${randomUUID()}`,
+          createdById: created.agent.user.id,
+          entryCount: 1,
+          lastEntryAt: createdAt,
+          createdAt,
+        },
+      });
+      const entry = await integrationDatabase.entry.create({
+        data: {
+          topicId: topic.id,
+          authorId: created.agent.user.id,
+          body: "Gün penceresi doğrulama entry'si.",
+          normalizedBody: "gun penceresi dogrulama entrysi",
+          origin: "AGENT",
+          status: "ACTIVE",
+          createdAt,
+        },
+      });
+      const action = await integrationDatabase.agentAction.create({
+        data: {
+          runId: run.id,
+          agentProfileId: profileId,
+          sequence,
+          actionType: "CREATE_TOPIC_WITH_ENTRY",
+          actionStatus: "SUCCEEDED",
+          targetType: "ENTRY",
+          targetId: entry.id,
+          input: { entryId: entry.id },
+          result: { entryId: entry.id },
+          createdAt,
+          updatedAt: createdAt,
+        },
+      });
+      await integrationDatabase.agentContentRecord.create({
+        data: {
+          entryId: entry.id,
+          agentProfileId: profileId,
+          runId: run.id,
+          actionId: action.id,
+          createdAt,
+        },
+      });
+    };
+
+    await publishEntry(justBeforeMidnight, 1); // dün
+    await publishEntry(justAfterMidnight, 2); // bugün, sınırın hemen içinde
+    await publishEntry(todayAt, 3); // bugün
+
+    await integrationDatabase.agentAction.createMany({
+      data: [
+        {
+          runId: run.id,
+          agentProfileId: profileId,
+          sequence: 4,
+          actionType: "VOTE_UP",
+          actionStatus: "SUCCEEDED",
+          input: {},
+          createdAt: todayAt,
+          updatedAt: todayAt,
+        },
+        {
+          runId: run.id,
+          agentProfileId: profileId,
+          sequence: 5,
+          actionType: "VOTE_UP",
+          actionStatus: "REJECTED",
+          input: {},
+          createdAt: todayAt,
+          updatedAt: todayAt,
+        },
+        {
+          runId: run.id,
+          agentProfileId: profileId,
+          sequence: 6,
+          actionType: "VOTE_DOWN",
+          actionStatus: "SUCCEEDED",
+          input: {},
+          createdAt: justBeforeMidnight,
+          updatedAt: justBeforeMidnight,
+        },
+      ],
+    });
+    await integrationDatabase.agentMemoryEpisode.createMany({
+      data: [
+        {
+          agentProfileId: profileId,
+          runId: run.id,
+          eventType: "SOURCE_READ",
+          summary: "Bugünkü kaynak okuması.",
+          salience: 0.5,
+          provenance: "TRUSTED_SOURCE",
+          evidence: {},
+          occurredAt: todayAt,
+        },
+        {
+          agentProfileId: profileId,
+          runId: run.id,
+          eventType: "SOURCE_READ",
+          summary: "Dünkü kaynak okuması.",
+          salience: 0.5,
+          provenance: "TRUSTED_SOURCE",
+          evidence: {},
+          occurredAt: justBeforeMidnight,
+        },
+        {
+          agentProfileId: profileId,
+          runId: run.id,
+          eventType: "ENTRY_PUBLISHED",
+          summary: "Kaynak okuması olmayan bugünkü olay.",
+          salience: 0.5,
+          provenance: "PLATFORM_EVENT",
+          evidence: {},
+          occurredAt: todayAt,
+        },
+      ],
+    });
+
+    // Canlıda görülen tablo: sayaçlar yaşam boyu birikmiş, sıfırlanmamış.
+    await integrationDatabase.agentRuntimeState.update({
+      where: { agentProfileId: profileId },
+      data: {
+        todayDate: new Date("2026-05-01T00:00:00.000Z"),
+        todayPublishedEntries: 576,
+        todayCreatedTopics: 498,
+        todayVotes: 1_204,
+        todaySourceReads: 900,
+      },
+    });
+
+    const [dashboard] = await listAgentDashboard(integrationDatabase, actor(admin.id), now);
+    expect(dashboard?.today).toEqual({
+      publishedEntries: 2,
+      createdTopics: 2,
+      votes: 1,
+      sourceReads: 1,
+    });
+    expect(dashboard?.lifetime).toEqual({
+      publishedEntries: 576,
+      createdTopics: 498,
+      votes: 1_204,
+      sourceReads: 900,
+    });
+    expect(dashboard?.todayWindow).toEqual({
+      start: new Date("2026-08-19T21:00:00.000Z"),
+      end: new Date("2026-08-20T21:00:00.000Z"),
+    });
+
+    const detail = await getAgentDetail(integrationDatabase, actor(admin.id), profileId, now);
+    expect(detail.today).toEqual(dashboard?.today);
+
+    // Ertesi gün: aynı veriyle pencere kayar, sayaç kaymaz.
+    const [tomorrow] = await listAgentDashboard(
+      integrationDatabase,
+      actor(admin.id),
+      new Date("2026-08-21T09:00:00.000Z"),
+    );
+    expect(tomorrow?.today).toEqual({
+      publishedEntries: 0,
+      createdTopics: 0,
+      votes: 0,
+      sourceReads: 0,
+    });
+    expect(tomorrow?.lifetime?.publishedEntries).toBe(576);
+  });
+
+  /*
+    E2: Roster heartbeat'i bayatlayınca ekran "Worker görünmüyor" diyordu; lease
+    canlı ve run ilerlerken bile. Üç durum artık `workerPresence` ile ayrışıyor.
+  */
+  it("separates a stale roster with a live lease from an absent worker", async () => {
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const now = new Date("2026-08-20T12:00:00.000Z");
+    const credential = await integrationDatabase.agentCredential.findFirstOrThrow({
+      where: { agentProfileId: created.agent.profile.id, revokedAt: null },
+    });
+    const config = circuitBreakerConfigSchema.parse(
+      (
+        await integrationDatabase.agentGlobalSettings.findUniqueOrThrow({
+          where: { id: "global" },
+          select: { circuitBreakerConfig: true },
+        })
+      ).circuitBreakerConfig as Record<string, unknown>,
+    );
+    const metrics = (rosterAgeMs: number) =>
+      inTransaction(integrationDatabase, (transaction) =>
+        getRuntimeOperationalMetrics(transaction, { now, concurrency: 1, config }),
+      ).then((operational) => ({ rosterAgeMs, operational }));
+    const syncRoster = (syncedAt: Date) =>
+      integrationDatabase.agentRuntimeCredentialSync.upsert({
+        where: { id: "global" },
+        update: { syncedAt, loadedCredentialIds: [credential.id] },
+        create: {
+          id: "global",
+          workerId: "agent-runtime-main",
+          workerBootId: randomUUID(),
+          processingLanes: 1,
+          desiredFingerprint: "a".repeat(64),
+          loadedCredentialIds: [credential.id],
+          syncedAt,
+        },
+      });
+
+    // 1) Hiç roster kaydı yok: "ölmüş worker" ile aynı şey değil.
+    expect((await metrics(0)).operational.workerPresence).toBe("NEVER_REPORTED");
+
+    // 2) Roster taze.
+    await syncRoster(new Date(now.getTime() - 30_000));
+    expect((await metrics(30_000)).operational.workerPresence).toBe("ONLINE");
+
+    // 3) Roster bayat, lease canlı: müdahale gerektirmeyen durum.
+    await syncRoster(new Date(now.getTime() - 5 * 60_000));
+    const run = await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: created.agent.profile.id,
+        personaVersionId: created.agent.personaVersion.id,
+        runType: "NORMAL_WAKE",
+        runStatus: "RUNNING",
+        queuePriority: "SCHEDULED_CONTENT",
+        trigger: "HEARTBEAT_STATE_FIXTURE",
+        idempotencyKey: `heartbeat-state-${randomUUID()}`,
+        timeoutSeconds: 900,
+        desiredEntryMin: 1,
+        desiredEntryMax: 2,
+        startedAt: new Date(now.getTime() - 4 * 60_000),
+        leaseOwner: "agent-runtime-main",
+        leaseExpiresAt: new Date(now.getTime() + 120_000),
+        heartbeatAt: new Date(now.getTime() - 8_000),
+      },
+    });
+    const staleRosterLiveLease = (await metrics(300_000)).operational;
+    expect(staleRosterLiveLease.workerPresence).toBe("ROSTER_STALE_LEASE_ACTIVE");
+    expect(staleRosterLiveLease.worker?.online).toBe(false);
+    expect(staleRosterLiveLease.executionSlots[0]?.leaseRemainingMs).toBe(120_000);
+
+    // 4) Roster bayat, lease düşmüş: run satırı hâlâ RUNNING olsa bile worker yok.
+    await integrationDatabase.agentRun.update({
+      where: { id: run.id },
+      data: {
+        leaseExpiresAt: new Date(now.getTime() - 60_000),
+        heartbeatAt: new Date(now.getTime() - 10 * 60_000),
+      },
+    });
+    const zombie = (await metrics(300_000)).operational;
+    expect(zombie.workerPresence).toBe("ROSTER_STALE_NO_LEASE");
+    expect(zombie.executionSlots[0]?.status).toBe("ACTIVE");
+    expect(zombie.executionSlots[0]?.leaseRemainingMs).toBe(0);
   });
 });

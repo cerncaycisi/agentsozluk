@@ -28,12 +28,14 @@ import {
   sourceScoreFields,
   type SourceScoreChange,
 } from "@/modules/agents/domain/source-evolution";
+import { currentIstanbulDayWindow } from "@/modules/feeds/domain/time";
 import { findAgentPersonaTemplate } from "@/modules/agents/personas/templates";
 import { seedPersonaSchema, type SeedPersona } from "@/modules/agents/personas/schema";
 import { reviewedSourceLocaleFocus } from "@/modules/agents/personas/source-locale-metadata";
 import {
   appendPersonaVersion,
   appendRuntimeEvent,
+  countAgentDailyActivityRecords,
   countRuntimeEventsRecord,
   countQueuedRuns,
   createAgentRecords,
@@ -132,6 +134,33 @@ function safePerformanceCount(value: unknown, key: string): number {
   return typeof candidate === "number" && Number.isSafeInteger(candidate) && candidate >= 0
     ? candidate
     : 0;
+}
+
+/**
+ * `performanceMetrics` sütunu `{ reported, measured }` sarmalıyla yazılır
+ * (bkz. `finishRuntimeRunRecord` çağrıları). Üst seviyeden `publishedEntries`
+ * okumak bu yüzden her zaman 0 verirdi; sunucu tarafında ölçülen `measured`
+ * dalı tek güvenilir kaynaktır.
+ */
+function measuredPerformanceCount(value: unknown, key: string): number {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return 0;
+  return jsonNumber((value as Record<string, unknown>).measured, key);
+}
+
+/** Gün penceresi sayımlarını agent başına tek bir okuma fonksiyonuna indirger. */
+function dailyActivityLookup(activity: Awaited<ReturnType<typeof countAgentDailyActivityRecords>>) {
+  const index = (rows: Array<{ agentProfileId: string; _count: { _all: number } }>) =>
+    new Map(rows.map((row) => [row.agentProfileId, row._count._all]));
+  const publishedEntries = index(activity.publishedEntries);
+  const createdTopics = index(activity.createdTopics);
+  const votes = index(activity.votes);
+  const sourceReads = index(activity.sourceReads);
+  return (agentProfileId: string) => ({
+    publishedEntries: publishedEntries.get(agentProfileId) ?? 0,
+    createdTopics: createdTopics.get(agentProfileId) ?? 0,
+    votes: votes.get(agentProfileId) ?? 0,
+    sourceReads: sourceReads.get(agentProfileId) ?? 0,
+  });
 }
 
 export function listAgentSources(
@@ -612,16 +641,22 @@ function agentProfileAuditSnapshot(profile: {
   };
 }
 
-export async function listAgentDashboard(client: DatabaseExecutor, actor: ActorContext) {
+export async function listAgentDashboard(
+  client: DatabaseExecutor,
+  actor: ActorContext,
+  now = new Date(),
+) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
-    const now = new Date();
-    const [records, queued, credentialSync] = await Promise.all([
+    const todayWindow = currentIstanbulDayWindow(now);
+    const [records, queued, credentialSync, dailyActivity] = await Promise.all([
       listAgentDashboardRecords(transaction),
       countQueuedRuns(transaction),
       getRuntimeCredentialSync(transaction),
+      countAgentDailyActivityRecords(transaction, { window: todayWindow }),
     ]);
     const queuedByAgent = new Map(queued.map((item) => [item.agentProfileId, item._count._all]));
+    const today = dailyActivityLookup(dailyActivity);
     return records.map((record) => {
       const completed = record.runs.filter(({ runStatus }) =>
         ["SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED", "TIMED_OUT"].includes(runStatus),
@@ -631,7 +666,7 @@ export async function listAgentDashboard(client: DatabaseExecutor, actor: ActorC
         startedAt && finishedAt ? [finishedAt.getTime() - startedAt.getTime()] : [],
       );
       const publishedEntries = record.runs.reduce(
-        (sum, run) => sum + jsonNumber(run.performanceMetrics, "publishedEntries"),
+        (sum, run) => sum + measuredPerformanceCount(run.performanceMetrics, "publishedEntries"),
         0,
       );
       const currentCredential = record.credentials[0] ?? null;
@@ -649,7 +684,9 @@ export async function listAgentDashboard(client: DatabaseExecutor, actor: ActorC
         runtimeStatus: record.runtimeState?.runtimeStatus ?? "IDLE",
         lastHeartbeatAt: record.runtimeState?.lastHeartbeatAt ?? null,
         currentRun: record.runtimeState?.currentRun ?? null,
-        today: record.runtimeState
+        todayWindow,
+        today: today(record.id),
+        lifetime: record.runtimeState
           ? {
               publishedEntries: record.runtimeState.todayPublishedEntries,
               createdTopics: record.runtimeState.todayCreatedTopics,
@@ -706,12 +743,15 @@ export async function getAgentDetail(
   client: DatabaseExecutor,
   actor: ActorContext,
   agentProfileId: string,
+  now = new Date(),
 ) {
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
-    const [agent, evolutionRuns] = await Promise.all([
+    const todayWindow = currentIstanbulDayWindow(now);
+    const [agent, evolutionRuns, dailyActivity] = await Promise.all([
       findAgentDetailRecord(transaction, agentProfileId),
       listAgentEvolutionRunsRecord(transaction, agentProfileId),
+      countAgentDailyActivityRecords(transaction, { window: todayWindow, agentProfileId }),
     ]);
     if (!agent) throw new AppError("AGENT_NOT_FOUND", 404, "Agent bulunamadı.");
     const evolutionOutcomes = evolutionRuns.map((run) => {
@@ -780,6 +820,8 @@ export async function getAgentDetail(
     ) as Record<ReflectionStatus, number>;
     return {
       ...agent,
+      todayWindow,
+      today: dailyActivityLookup(dailyActivity)(agentProfileId),
       evolution: {
         sampledRunCount: evolutionOutcomes.length,
         statusCounts,
