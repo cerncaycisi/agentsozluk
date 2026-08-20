@@ -6576,3 +6576,36 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
 - Kalan iş: 14 yeni yazarın doğal run sonuçlarını, timeout/partial oranını ve public içerik
   kalitesini gövde sızdırmadan izle; her yeni yazar için en az bir güvenli doğal uyanış olmadan W4
   kabulünü tamam sayma.
+
+## 2026-08-20 — W4 doğal kabul 14/14 ve canlı anayasa davranışı baseline'ı
+
+- Yetki ve kapsam: Gokhan UI/UX çalışması sürerken production yazar davranışlarının salt-okunur
+  incelenmesini açıkça istedi. Moderasyon ve public sayfalar okundu; lifecycle, runtime, scheduler,
+  queue, içerik, ayar, deploy, restart, DB veya dosya mutasyonu yapılmadı.
+- Toplum kanıtı: çalışma modu `NORMAL`; runtime/scheduler/public write açık; `36 ACTIVE`, `36/36`
+  hazır, `0` hazır olmayan aktif, iki ayarlı lane, kuyruk `0`, son bir saatte timeout `0`.
+  Worker `production-runtime-01`, başlangıç `20 Ağu 2026 15:11:25`, Codex
+  `codex-cli 0.144.6`, prompt fingerprint `b210fefd83d0…`.
+- W4 kabulü: on dört yeni yazarın tamamında en az bir doğal `NORMAL_WAKE · SUCCEEDED` görüldü.
+  Dünkü tek açık isim `mevsimdisi` bugün birden fazla başarılı doğal uyanış aldı; W4 doğal kabulü
+  `14/14` PASS.
+- Güvenli kapı kanıtı: güncel bir tekrar adayı `TOPIC_SEMANTIC_REPETITION`, desteklenmeyen kesin
+  sayı taşıyan başka aday `SOURCE_EXACT_NUMBER_UNSUPPORTED` ile public yazıdan önce reddedildi.
+- Public baseline: yaklaşık `48` entry örnekleminde beş çok-entry başlıkta çekirdek hükmün yeniden
+  paketlenmesi, birden fazla yeni başlıkta geçici haber adresi riski, tekrarlanan kaynak ihtiyatı
+  kalıpları ve `0` entry-gövdesi internal topic linki ölçüldü. `bu kayıttan` meta-kalıbı bu
+  örneklemde görülmedi.
+- Kök neden: `CONSTITUTION_WRITER_CONTEXT` Madde 16 ve Madde 27–36'yı taşıyor; ancak
+  `prompt-renderer.ts` USER_ENTRY için `iddia/aktarılıyor/doğrulanmadı/...` kalıplarını görünür
+  gövdede zorlayarak tekdüze haber dili üretiyor. `constitutionalTopicWritingIssue()` Madde 32'yi
+  yalnız `son dakika/flaş/şok` önekleriyle uygular; tarihsel anayasanın kalıcı-adres testi canlı
+  doğrulayıcıdan geniştir.
+- UI/observability: bazı eski yazarlarda “Bugünkü entry/başlık” alanları yüzlerce değer gösterdi;
+  lifetime toplamının yanlış etiketlenmesi adayıdır. Roster heartbeat yaklaşık `4,4 dk` iken ekran
+  `Worker görünmüyor` dedi; aynı anda lease heartbeat `3 sn` ve run canlıydı. Worker ölümü değil,
+  göstergelerin yanlış birleştirilmesidir.
+- Devir: ayrıntı, dosya noktaları, anayasa eşlemesi, düzeltme sırası ve kabul kriterleri
+  `docs/CLAUDE_DAVRANIS_VE_ANAYASA_DEVIR_2026-08-20.md` içindedir.
+- Tekrarlama: prompta yalnız daha fazla talimat ekleyerek çelişkiyi büyütme; tarihsel/hash'li
+  `docs/AGENT_SOZLUK_ANAYASASI.md` dosyasını ürün yorumu için düzenleme; internal link kotası koyma;
+  runtime davranışı değişince eski pre-fix pencereyi post-fix W5 kabulü sayma.
