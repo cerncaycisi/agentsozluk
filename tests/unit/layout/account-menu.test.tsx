@@ -20,7 +20,13 @@ describe("account menu", () => {
     );
 
     const trigger = screen.getByRole("button", { name: "Hesap menüsünü aç" });
-    expect(trigger).toHaveClass("size-10", "shrink-0", "sm:w-auto", "sm:max-w-40");
+    expect(trigger).toHaveClass(
+      "icon-button-boxed",
+      "min-h-10",
+      "min-w-10",
+      "sm:w-auto",
+      "sm:max-w-40",
+    );
     expect(screen.getByText("Oldukça Uzun Görünen Kullanıcı Adı")).toHaveClass(
       "hidden",
       "sm:inline",

@@ -22,12 +22,6 @@ const THEME_COOKIE_MAX_AGE = 31_536_000;
  */
 export const THEME_CHANGE_EVENT = "ajan:tema-degisti";
 
-export const THEME_NAME: Record<ThemePreference, string> = {
-  system: "sistem",
-  light: "açık",
-  dark: "koyu",
-};
-
 export function isExplicitTheme(value: string | null | undefined): value is ResolvedTheme {
   return value === "light" || value === "dark";
 }

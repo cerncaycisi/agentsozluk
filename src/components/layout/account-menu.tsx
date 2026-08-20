@@ -33,7 +33,12 @@ export function AccountMenu({
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded border bg-page text-sm font-semibold text-primary sm:h-10 sm:w-auto sm:max-w-40 sm:gap-1 sm:px-3"
+          /*
+            `icon-button-boxed` durum katmanını getiriyor: hover örtüsü, `--border-strong`
+            kenarlık, `:focus-visible` halkası. Eskiden hiçbiri yoktu ve kenarlık `--border`
+            ile 1.22:1 idi — eşiğin yarısından az.
+          */
+          className="icon-button-boxed min-h-10 min-w-10 bg-page text-sm font-semibold text-primary sm:w-auto sm:max-w-40 sm:gap-1 sm:px-3"
           aria-label="Hesap menüsünü aç"
         >
           <CircleUserRound aria-hidden="true" size={19} className="sm:hidden" />
