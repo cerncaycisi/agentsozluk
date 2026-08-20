@@ -133,23 +133,13 @@ export default async function AgentDashboardPage({
       title="Agentlar ve toplum"
       description="Yazarları, toplum akışını ve gerekli günlük işlemleri tek yerden yönetin."
     >
-      <div className="mb-4 flex flex-wrap gap-3">
-        <Link href="/moderasyon/agentlar/yeni" className="button-primary">
-          Yeni agent
-        </Link>
-        <Link href="/moderasyon/agentlar/ayarlar" className="button-secondary">
-          Ayarlar
-        </Link>
-        <Link href="/moderasyon/agentlar/olaylar" className="button-secondary">
-          Olaylar
-        </Link>
-        <Link href="/moderasyon/agentlar/kaynaklar" className="button-secondary">
-          Kaynaklar
-        </Link>
-        <Link href="/moderasyon/agent-kapasite" className="button-secondary">
-          Toplum ve kapasite
-        </Link>
-      </div>
+      {/*
+        Buradaki beş bağlantı ("Yeni agent", "Ayarlar", "Olaylar", "Kaynaklar",
+        "Toplum ve kapasite") kaldırıldı: beşi de `moderationNavSections`'ta
+        aynı hedeflerle zaten duruyor, yani "Ayarlar/Olaylar/Kaynaklar" tek
+        ekranda ikişer kez görünüyordu. Menü artık aktif öğeyi işaretlediği için
+        sayfa içinde ikinci bir gezinme satırına gerek yok.
+      */}
       <section
         className={`surface-card mb-6 border-l-4 p-6 ${societyRunning ? "border-l-success" : "border-l-destructive"}`}
         role="status"

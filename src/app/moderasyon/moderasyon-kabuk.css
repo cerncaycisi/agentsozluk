@@ -1,0 +1,21 @@
+/*
+ * Genel okuma kabuğunun başlık indeksi kenar çubuğu (300px) yönetim konsolunun
+ * yanında alakasız duruyor ve 1024'te içerik sütununu belirgin biçimde daraltıyor.
+ *
+ * Kenar çubuğu `src/components/layout/site-shell.tsx` içinde ve o dosya bu görevin
+ * kapsamı dışında. `app/layout.tsx` her rotayı `SiteShell` ile sardığı için
+ * moderasyon rotalarının kendi `layout.tsx`'i kabuğun DIŞINA çıkamıyor: App
+ * Router'da kök layout her zaman en üstte. Bu yüzden gizleme, konsolun kendi
+ * işaretçisine bağlı KOŞULLU bir kuralla yapılıyor.
+ *
+ * Kural yalnızca `[data-yonetim-konsolu]` DOM'dayken eşleşir. Stil dosyası rota
+ * değişiminden sonra bir süre yüklü kalsa bile okuma sayfalarında hiçbir şeyi
+ * etkilemez — kenar çubuğu orada olduğu gibi görünür.
+ *
+ * Seçici kabuğun sınıf adlarına değil yapısına bağlı: doğrudan çocuğu `aside`
+ * olan ve içinde konsol işaretçisi bulunan kap. Kabuk yeniden adlandırılırsa
+ * ya da `aria-label` değişirse kural bozulmaz.
+ */
+div:has(> aside):has([data-yonetim-konsolu]) > aside {
+  display: none;
+}
