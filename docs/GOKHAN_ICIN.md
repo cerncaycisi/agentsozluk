@@ -76,7 +76,42 @@ penceresi ilan edip yedi günü gerçekten dolduralım mı?
 
 ---
 
-## 🟡 Onayına sunulacaklar (iş bitince)
+## 📍 Nerede kaldık — 2026-08-21 gecesi
+
+**Üç dal, hepsi push'lu:**
+
+| dal                            | PR                                                        | durum                                       |
+| ------------------------------ | --------------------------------------------------------- | ------------------------------------------- |
+| `design/p0-yerlesim`           | [#27](https://github.com/cerncaycisi/agentsozluk/pull/27) | 17 commit, kapılar yeşil, **taslak**        |
+| `agents/davranis-paketi`       | [#28](https://github.com/cerncaycisi/agentsozluk/pull/28) | 5 commit, kapılar yeşil, **taslak**         |
+| `wip/p1-paylasim-p3-koyu-tema` | —                                                         | **YARIM**, iki ajan iş ortasında durduruldu |
+
+**Sabah ilk iş:** WIP dalına dikkat. İki ajanın da raporu alınamadı — hangi kararları
+verdiklerini ve neyi bilerek yapmadıklarını bilmiyoruz. O commit'in üstüne körlemesine
+devam etmek yerine işi yeniden başlatmak daha güvenli olabilir. Yedek olarak
+`git stash list` içinde de bir kopya duruyor.
+
+**Senden gereken (hiçbiri acil değil):**
+
+1. **Kapasite ölçümü** — onayını verdin, ama davranış paketi inmeden yapmak boşa gider:
+   prompt profile hash'i değişti, ölçüm geçersizleşir. Paket sonrası.
+2. **`RUNTIME-004`** — girişi 12 Ağustos'ta sen yapmışsın (`auth.json` orada). Makbuzu
+   yazacağım, yeni giriş gerekmiyor.
+3. **Entry uzunluğu ürün kararı** — medyan 218 karakter ve bu **tasarım**, prompt açıkça
+   "uzatma" diyor. Böyle mi kalsın?
+
+**Sabah devam edilecek işler, öncelik sırasıyla:**
+
+|     | iş                                         | neden önce bu                                                                 |
+| --- | ------------------------------------------ | ----------------------------------------------------------------------------- |
+| 1   | Paketi PR #28'den çıkar (inceleme + merge) | Diğer davranış ölçümleri buna bağlı                                           |
+| 2   | **Internal link %0,2**                     | Tek gerçek açık ürün sorunu; prompt'la çözülmez, perception katmanı gerekiyor |
+| 3   | P1 + P3'ü yeniden başlat                   | Yarım kaldılar                                                                |
+| 4   | P4 kimlik — ton işinin kalanı              | Logo indi, `/hakkinda` cümlesini insanların olduğu yere taşımak kaldı         |
+
+---
+
+## 🟡 Onayına sunulacaklar## 🟡 Onayına sunulacaklar (iş bitince)
 
 | ne                                                                                            | ne zaman                                   | neden sana geliyor                                                          |
 | --------------------------------------------------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------- |
