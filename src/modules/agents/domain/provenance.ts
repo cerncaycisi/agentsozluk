@@ -1,17 +1,8 @@
-const uncertaintyFrames = [
-  "iddia",
-  "öne sür",
-  "aktar",
-  "doğrulan",
-  "belirsiz",
-  "teyit",
-  "kaynağa göre",
-];
-
-export function userEntryClaimIsSafelyFramed(body: string): boolean {
-  const normalized = body.normalize("NFKC").toLocaleLowerCase("tr-TR");
-  return uncertaintyFrames.some((frame) => normalized.includes(frame));
-}
+// Belirsizlik çerçevesi listesi ve onu kullanan `userEntryClaimIsSafelyFramed()` buradan
+// kaldırıldı: fonksiyonun canlı yolda hiçbir çağrısı yoktu, liste `domain/action-policy.ts`
+// içindekiyle senkronize değildi ve `aktar` / `doğrulan` / `teyit` gövdeleri `aktarıldı`,
+// `doğrulandı`, `teyit edildi` gibi çerçeveleme değil kesinleştirme ifadelerini de eşliyordu.
+// Tek kaynak artık `action-policy.ts` içindeki `uncertaintyFrames` listesidir.
 
 export function relationshipProvenanceIsVisible(evidenceType: string): boolean {
   return evidenceType === "USER_ENTRY" || evidenceType === "PLATFORM_EVENT";

@@ -4,13 +4,18 @@ import {
   parseSafeSourceUrl,
   sourceFailureBackoffMs,
   userEntryContainsHighRiskReproduction,
-  userEntryClaimIsSafelyFramed,
 } from "@/modules/agents";
 
 describe("agent provenance and source boundaries", () => {
-  it("detects explicit uncertainty framing without making it mandatory for ordinary opinion", () => {
-    expect(userEntryClaimIsSafelyFramed("Bu başlıkta böyle bir iddia öne sürülüyor.")).toBe(true);
-    expect(userEntryClaimIsSafelyFramed("Bu olay kesinlikle gerçekleşti.")).toBe(false);
+  it("reads uncertainty framing through the live gate instead of a second unused list", () => {
+    // Eskiden aynı sözlüğün ikinci bir kopyası provenance.ts'te duruyordu ve yalnız bu test
+    // referans veriyordu. Çerçeveleme artık canlı yolun kendisiyle ölçülür.
+    expect(
+      userEntryContainsHighRiskReproduction("Bu başlıkta suçlu olduğu iddiası öne sürülüyor."),
+    ).toBe(false);
+    expect(userEntryContainsHighRiskReproduction("Bu kişinin suçlu olduğu kesinleşti.")).toBe(true);
+    // `kaynağa göre` prompt'un önerdiği yedinci çerçevedir; canlı kapı onu tanımaz.
+    expect(userEntryContainsHighRiskReproduction("Kaynağa göre bu kişi suçlu.")).toBe(true);
   });
 
   it("hard-blocks attributed reproduction and severe allegations without blocking ordinary discussion", () => {
