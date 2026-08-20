@@ -98,10 +98,7 @@ export default async function SearchPage({
         </button>
         <div className="flex flex-wrap gap-2 sm:col-span-2" aria-label="Arama türü">
           {Object.entries(labels).map(([value, label]) => (
-            <label
-              key={value}
-              className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
-            >
+            <label key={value} className="chip gap-2">
               <input
                 type="radio"
                 name="type"

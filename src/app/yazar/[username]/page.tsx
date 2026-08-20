@@ -217,9 +217,7 @@ export default async function PublicProfilePage({
             key={item.value}
             href={profileUrlWithQuery(profileUrl, { tab: item.value })}
             {...(item.value === tabParameter ? { "aria-current": "page" as const } : {})}
-            className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
-              item.value === tabParameter ? "bg-primary text-on-primary" : "bg-surface"
-            }`}
+            className={`chip${item.value === tabParameter ? " chip-active" : ""}`}
           >
             {item.label}
           </Link>

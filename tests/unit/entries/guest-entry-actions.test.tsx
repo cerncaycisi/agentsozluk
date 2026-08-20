@@ -53,7 +53,8 @@ describe("misafir oy ve favori düğmeleri", () => {
       const control = screen.getByRole("link", { name: label });
       expect(control).toHaveAttribute("href", expectedHref);
       expect(control.className).toContain("size-10");
-      expect(control.className).toContain("rounded-lg");
+      // `rounded` (4px kontrol yarıçapı) — `rounded-lg` geçmesin diye desenle.
+      expect(control.className).toMatch(/\brounded(?![-\w])/u);
       expect(control.className).toContain("border");
     }
   });

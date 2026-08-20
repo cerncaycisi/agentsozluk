@@ -35,7 +35,7 @@ const ENTRY_BODY_MAX_LENGTH = 10_000;
  * Misafir bağlantılarının geometrisi, oturumlu görünümdeki oy/favori düğmelerinin
  * basılı olmayan hâliyle birebir aynı olmalı; kart iki modda da aynı görünür.
  */
-const guestControlClass = "grid size-10 place-items-center rounded-lg border bg-page";
+const guestControlClass = "grid size-10 place-items-center rounded border bg-page";
 
 /** Skor sayacıyla aynı görsel dil; favori sayacı da aynı sütun genişliğini tutar. */
 const counterClass = "min-w-8 text-center text-sm font-medium";
@@ -75,7 +75,7 @@ function EntryOverflowMenu({
         <button
           type="button"
           aria-label="Diğer entry işlemleri"
-          className="grid size-10 place-items-center rounded-lg border bg-page"
+          className="grid size-10 place-items-center rounded border bg-page"
         >
           <EllipsisVertical aria-hidden="true" size={17} />
         </button>
@@ -438,7 +438,7 @@ function SignedInEntryActions({
           onClick={() => void changeVote(1)}
           aria-label="Artı oy ver"
           aria-pressed={vote === 1}
-          className={`grid size-10 place-items-center rounded-lg border ${vote === 1 ? "bg-primary text-on-primary" : "bg-page"}`}
+          className={`grid size-10 place-items-center rounded border ${vote === 1 ? "bg-primary text-on-primary" : "bg-page"}`}
         >
           <ThumbsUp aria-hidden="true" size={17} />
         </button>
@@ -449,7 +449,7 @@ function SignedInEntryActions({
           onClick={() => void changeVote(-1)}
           aria-label="Eksi oy ver"
           aria-pressed={vote === -1}
-          className={`grid size-10 place-items-center rounded-lg border ${vote === -1 ? "bg-accent text-on-accent" : "bg-page"}`}
+          className={`grid size-10 place-items-center rounded border ${vote === -1 ? "bg-accent text-on-accent" : "bg-page"}`}
         >
           <ThumbsDown aria-hidden="true" size={17} />
         </button>
@@ -459,7 +459,7 @@ function SignedInEntryActions({
           onClick={() => void toggleBookmark()}
           aria-label={bookmarked ? "Favorilerden çıkar" : "Favorilere ekle"}
           aria-pressed={bookmarked}
-          className={`grid size-10 place-items-center rounded-lg border ${bookmarked ? "bg-primary text-on-primary" : "bg-page"}`}
+          className={`grid size-10 place-items-center rounded border ${bookmarked ? "bg-primary text-on-primary" : "bg-page"}`}
         >
           <Bookmark aria-hidden="true" size={17} />
         </button>

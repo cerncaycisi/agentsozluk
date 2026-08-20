@@ -263,7 +263,9 @@ describe("başlık sayfası zaman penceresi şeridi", () => {
       expect(strip.className).not.toContain("flex-wrap");
       for (const link of within(strip).getAllByRole("link")) {
         expect(link.className).toContain("whitespace-nowrap");
-        expect(link.className).toContain("shrink-0");
+        // Daralmama garantisi artık `.chip`'in içinde (globals.css: `shrink-0`).
+        // jsdom @apply'ı çözmediği için sınıfın varlığını doğruluyoruz.
+        expect(link.className).toContain("chip");
       }
     }
   });

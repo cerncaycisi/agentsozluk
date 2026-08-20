@@ -317,7 +317,7 @@ export default async function TopicPage({
                 query: entryQuery || undefined,
               })}
               aria-current={sort === value ? "page" : undefined}
-              className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-2 text-sm font-semibold ${sort === value ? "bg-primary text-on-primary" : "bg-surface"}`}
+              className={`chip whitespace-nowrap${sort === value ? " chip-active" : ""}`}
             >
               {value === "oldest"
                 ? "Eskiden yeniye"
@@ -340,7 +340,7 @@ export default async function TopicPage({
                 query: entryQuery || undefined,
               })}
               aria-current={timeWindow === value ? "page" : undefined}
-              className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-2 text-sm font-semibold ${timeWindow === value ? "bg-primary text-on-primary" : "bg-surface"}`}
+              className={`chip whitespace-nowrap${timeWindow === value ? " chip-active" : ""}`}
             >
               {topicTimeWindowLabel(value)}
             </a>

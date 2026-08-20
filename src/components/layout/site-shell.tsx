@@ -421,7 +421,7 @@ export function SiteShell({
                     href={item.href}
                     aria-current={active ? "page" : undefined}
                     className={`flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg px-3 text-sm font-medium transition ${
-                      active ? "bg-page text-ink" : "text-muted hover:bg-page hover:text-ink"
+                      active ? "bg-page text-primary" : "text-muted hover:bg-page hover:text-ink"
                     }`}
                   >
                     {item.label}
