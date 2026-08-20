@@ -519,6 +519,27 @@ NODE
   find "$state_dir" -maxdepth 1 -type f -name 'no-migration-compose.yaml' -delete
 }
 
+#
+# `compose.production.yaml` app servisini `${APP_IMAGE:-agent-sozluk:production}` ile
+# tanımlıyor. `APP_IMAGE`'i yalnız bu script komut satırında geçiyor; systemd birimi
+# açılışta yalnız `--env-file` veriyor ve o dosyada `APP_IMAGE` yok. Yani `production`
+# etiketi mevcut değilse sunucu her yeniden başladığında compose var olmayan bir imajı
+# çekmeye çalışıyor, kimlik doğrulaması başarısız oluyor ve stack hiç açılmıyor.
+# 2026-08-20'de `unattended-upgrades` reboot'undan sonra tam bu oldu: site 33 dakika
+# kapalı kaldı ve elle müdahaleyle geri geldi.
+#
+# Etiket YALNIZ `verify_release` geçtikten sonra taşınıyor. Böylece açılışta ayağa
+# kalkacak imaj her zaman bu turda doğrulanmış imaj oluyor; yarıda kalan bir release
+# etiketi kıpırdatmıyor ve önceki sürüm açılışta geri gelmeye devam ediyor.
+publish_boot_tag() {
+  local image_id resolved
+  image_id="$(cat "$state_dir/candidate-image-id")"
+  docker tag "$image_id" agent-sozluk:production
+  resolved="$(docker image inspect --format '{{.Id}}' agent-sozluk:production)"
+  test "$resolved" = "$image_id"
+  printf 'RELEASE_BOOT_TAG PASS image_id=%s\n' "$image_id"
+}
+
 verify_release() {
   local image_id app_container volume_hash container_hash
   image_id="$(cat "$state_dir/candidate-image-id")"
@@ -658,6 +679,7 @@ build_candidate_image
 build_runtime_release
 cutover
 verify_release
+publish_boot_tag
 if test "$cleanup_requested" = cleanup; then cleanup_images; fi
 printf 'RELEASE_COMPLETE PASS sha=%s cleanup=%s\n' \
   "$candidate_sha" "$cleanup_requested"

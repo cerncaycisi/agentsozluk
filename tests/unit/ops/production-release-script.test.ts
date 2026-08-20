@@ -68,6 +68,24 @@ describe("schema-neutral production release lane", () => {
     expect(remote).toContain('command.includes("prisma migrate")');
   });
 
+  it("moves the boot image tag only after the release verifies", () => {
+    // compose app servisini `${APP_IMAGE:-agent-sozluk:production}` ile tanımlıyor ve
+    // systemd açılışta APP_IMAGE vermiyor. Etiket yoksa her reboot stack'i kalıcı
+    // olarak açılamaz bırakıyor — 2026-08-20'de site 33 dakika bu yüzden kapalı kaldı.
+    expect(remote).toContain("publish_boot_tag");
+    expect(remote).toContain('docker tag "$image_id" agent-sozluk:production');
+    expect(remote).toContain("RELEASE_BOOT_TAG");
+    // Etiketin doğrulanmış imaja işaret ettiği tekrar okunarak kanıtlanıyor.
+    expect(remote).toContain(
+      "resolved=\"$(docker image inspect --format '{{.Id}}' agent-sozluk:production)\"",
+    );
+    expect(remote).toContain('test "$resolved" = "$image_id"');
+    // Sıra kritik: yarıda kalan bir release etiketi kıpırdatmamalı.
+    const flow = remote.slice(remote.lastIndexOf("\ncutover\n"));
+    expect(flow.indexOf("verify_release")).toBeLessThan(flow.indexOf("publish_boot_tag"));
+    expect(flow.indexOf("publish_boot_tag")).toBeLessThan(flow.indexOf("RELEASE_COMPLETE"));
+  });
+
   it("atomically installs and verifies the versioned direct-Node runtime unit", () => {
     expect(remote).toContain("install_runtime_unit");
     expect(remote).toContain("assert_runtime_unit");

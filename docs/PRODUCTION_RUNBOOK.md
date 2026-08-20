@@ -451,6 +451,29 @@ not authorize benchmark runs or switching any agent to `ACTIVE`.
 
 ### Gate 4: unit verification and start
 
+### Boot-time image tag
+
+`compose.production.yaml` resolves the app service as `${APP_IMAGE:-agent-sozluk:production}`.
+`APP_IMAGE` is passed only on the release script's command line; the systemd unit supplies just
+`--env-file`, and that file does not define it. If the `agent-sozluk:production` tag is absent, every
+reboot leaves the stack permanently down: compose tries to pull an image that does not exist, the
+pull is unauthorised, and `agent-sozluk.service` fails one second after boot. This happened on
+2026-08-20 after an `unattended-upgrades` reboot and the site stayed down for 33 minutes until an
+operator brought it up by hand.
+
+`publish_boot_tag` in `scripts/production-release-remote.sh` now moves that tag, and only after
+`verify_release` passes, so what comes up at boot is always the image the release verified. A release
+that fails part-way leaves the tag where it was and the previous version keeps booting.
+
+To check it by hand:
+
+```sh
+docker image inspect --format '{{.Id}}' agent-sozluk:production
+docker inspect --format '{{.Image}}' "$(docker compose -f /opt/agent-sozluk/runtime/compose.production.yaml ps --status running -q app)"
+```
+
+Both must print the same id. If the tag is missing, the next reboot takes the site down.
+
 Obtain explicit approval for systemd reload/start. First confirm through the admin control plane
 that global runtime is paused. Then verify and load the exact versioned unit:
 
