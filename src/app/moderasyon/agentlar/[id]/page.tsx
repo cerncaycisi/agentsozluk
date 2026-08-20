@@ -15,7 +15,7 @@ import { AgentEvolutionSummary } from "@/components/agents/agent-evolution-summa
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { requireAgentAdminPage } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
-import { formatIstanbulTimestamp } from "@/lib/format/time";
+import { formatIstanbulDate, formatIstanbulTimestamp } from "@/lib/format/time";
 import { AppError } from "@/lib/http/errors";
 import { parseUuid } from "@/lib/http/request";
 import { getAgentDetail } from "@/modules/agents";
@@ -60,7 +60,9 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           <div>
             <h2 className="title-section">Genel durum</h2>
             <p className="mt-1 text-sm text-muted">
-              Yaşam sinyali, bugünkü gerçek üretim ve çalışan işin güncel özeti.
+              Yaşam sinyali, çalışan işin özeti ve iki ayrı pencere: “bugünkü” değerler{" "}
+              {istanbulDay(agent.todayWindow.start)} tarihli Europe/Istanbul gününde üretilen
+              kayıtlardan sayılır, “toplam” değerler agent kurulduğundan beri birikir.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -83,9 +85,12 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
             label="Sonraki çalışma"
             value={formatNullableTimestamp(runtime?.nextScheduledAt ?? null)}
           />
-          <Row label="Bugünkü entry" value={String(runtime?.todayPublishedEntries ?? 0)} />
-          <Row label="Bugünkü başlık" value={String(runtime?.todayCreatedTopics ?? 0)} />
-          <Row label="Bugünkü oy" value={String(runtime?.todayVotes ?? 0)} />
+          <Row label="Bugünkü entry" value={String(agent.today.publishedEntries)} />
+          <Row label="Bugünkü başlık" value={String(agent.today.createdTopics)} />
+          <Row label="Bugünkü oy" value={String(agent.today.votes)} />
+          <Row label="Toplam entry" value={String(runtime?.todayPublishedEntries ?? 0)} />
+          <Row label="Toplam başlık" value={String(runtime?.todayCreatedTopics ?? 0)} />
+          <Row label="Toplam oy" value={String(runtime?.todayVotes ?? 0)} />
           <Row
             label="Mevcut çalışma"
             value={
@@ -306,6 +311,11 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
 
 function formatNullableTimestamp(value: Date | null) {
   return value ? formatIstanbulTimestamp(value, { includeSeconds: true }) : "—";
+}
+
+/* "Bugünkü" etiketinin hangi takvim gününü kastettiği ekranda yazılı olmalı. */
+function istanbulDay(value: Date) {
+  return formatIstanbulDate(value);
 }
 
 function Row({ label, value }: { label: string; value: string }) {

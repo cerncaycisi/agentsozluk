@@ -29,11 +29,15 @@ vi.mock("@/modules/auth/domain/actor", () => ({ actorFromSession: mocks.actorFro
 
 import AgentCapacityPage from "@/app/moderasyon/agent-kapasite/page";
 
+type Capacity = Parameters<typeof mocks.getRuntimeCapacity.mockResolvedValue>[0];
+
 describe("agent capacity worker observability", () => {
+  let capacity: Capacity;
+
   beforeEach(() => {
     mocks.requireAgentAdminPage.mockResolvedValue({ userId: "admin" });
     mocks.actorFromSession.mockReturnValue({ actorId: "admin" });
-    mocks.getRuntimeCapacity.mockResolvedValue({
+    capacity = {
       localDate: new Date("2026-07-29T00:00:00.000Z"),
       runtimeEnabled: true,
       schedulerEnabled: true,
@@ -64,6 +68,7 @@ describe("agent capacity worker observability", () => {
         utilization2h: 0.4,
         oldestQueuedAt: new Date("2026-07-29T12:00:00.000Z"),
         longestActiveStartedAt: new Date("2026-07-29T12:00:00.000Z"),
+        workerPresence: "ONLINE",
         worker: {
           workerId: "agent-runtime-main",
           online: true,
@@ -131,7 +136,8 @@ describe("agent capacity worker observability", () => {
           },
         ],
       },
-    });
+    };
+    mocks.getRuntimeCapacity.mockResolvedValue(capacity);
   });
 
   it("renders live worker, active/idle lanes and safe recent execution evidence", async () => {
@@ -149,5 +155,61 @@ describe("agent capacity worker observability", () => {
     expect(html).toContain("BOŞ");
     expect(html).toContain("CODEX_TIMEOUT");
     expect(html).not.toContain("018f5d51-8f89-4a4e-89df-2166b53ea420");
+  });
+
+  /*
+    E2: Roster sync, run lease/heartbeat ve runtime state heartbeat'i ayrı
+    sinyaller. Rozet eskiden yalnız roster'a bakıyordu; lease canlıyken bile
+    "Worker görünmüyor" diyor, operatörü gereksiz müdahaleye itiyordu.
+  */
+  it("separates a stale roster with a live lease from a missing worker", async () => {
+    capacity.operational.workerPresence = "ROSTER_STALE_LEASE_ACTIVE";
+    capacity.operational.worker.online = false;
+    capacity.operational.worker.lastSeenAgeMs = 300_000;
+    capacity.operational.executionSlots[0].heartbeatAgeMs = 8_000;
+    capacity.operational.executionSlots[0].leaseRemainingMs = 42_000;
+
+    const html = renderToStaticMarkup(await AgentCapacityPage());
+
+    expect(html).toContain("Roster heartbeat bayat · run canlı");
+    expect(html).not.toContain("Worker görünmüyor");
+    expect(html).toContain("worker çalışıyor, bayat olan yalnız roster kanalı");
+    expect(html).toContain("Lease durumu");
+    expect(html).toContain("Canlı");
+  });
+
+  it("reports a genuinely absent worker and marks the zombie lane", async () => {
+    capacity.operational.workerPresence = "ROSTER_STALE_NO_LEASE";
+    capacity.operational.worker.online = false;
+    capacity.operational.worker.lastSeenAgeMs = 900_000;
+    capacity.operational.executionSlots[0].heartbeatAgeMs = 600_000;
+    capacity.operational.executionSlots[0].leaseRemainingMs = 0;
+
+    const html = renderToStaticMarkup(await AgentCapacityPage());
+
+    expect(html).toContain("Worker görünmüyor");
+    expect(html).not.toContain("Roster heartbeat bayat · run canlı");
+    expect(html).toContain("worker süreci gerçekten yok ya da takılmış");
+    expect(html).toContain("Süresi dolmuş · zombi run");
+  });
+
+  it("distinguishes a worker that never reported from one that died", async () => {
+    capacity.operational.workerPresence = "NEVER_REPORTED";
+    capacity.operational.worker = null;
+    capacity.operational.executionSlots = capacity.operational.executionSlots.map(
+      (slot: { slot: number }) => ({
+        ...slot,
+        status: "IDLE",
+        runId: null,
+        heartbeatAgeMs: null,
+        leaseRemainingMs: null,
+      }),
+    );
+
+    const html = renderToStaticMarkup(await AgentCapacityPage());
+
+    expect(html).toContain("Worker hiç raporlamadı");
+    expect(html).not.toContain("Worker görünmüyor");
+    expect(html).toContain("Henüz raporlanmadı");
   });
 });

@@ -6,6 +6,58 @@ import {
 } from "@/modules/agents/domain/circuit-breaker";
 import { runtimeFingerprint } from "@/modules/agents/domain/capacity";
 
+/**
+ * Roster heartbeat'i (`agent_runtime_credential_sync.syncedAt`) taze sayma eşiği.
+ * Kuyruk uygunluk sorgusu da aynı eşiği kullanır; ikisi ayrışırsa "çalışabilir
+ * kuyruk" ile "worker çevrimiçi" birbirini yalanlar.
+ */
+const ROSTER_HEARTBEAT_FRESH_MS = 120_000;
+
+/**
+ * Run heartbeat'i (`agent_runs.heartbeatAt`) taze sayma eşiği. Worker 10 sn'de
+ * bir heartbeat atar (`DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS`); roster ile aynı
+ * pencereyi kullanmak iki sinyali eşit koşullarda karşılaştırmayı sağlar.
+ */
+const RUN_HEARTBEAT_FRESH_MS = 120_000;
+
+/**
+ * Worker'ın görünürlüğü tek bir boolean değildir; üç bağımsız sinyal var:
+ * roster sync, run lease/heartbeat ve agent runtime state heartbeat'i. Ekranda
+ * hepsini "Worker görünmüyor"a indirmek operatörü yanıltıyordu: roster 120
+ * sn'yi aşınca, lease canlı ve run ilerlerken bile runtime ölmüş görünüyordu.
+ *
+ * - `ONLINE`: roster taze; başka sinyale bakmaya gerek yok.
+ * - `ROSTER_STALE_LEASE_ACTIVE`: roster bayat ama en az bir lane'de süresi
+ *   dolmamış lease ve taze run heartbeat'i var — iş sürüyor, bayat olan yalnız
+ *   roster kanalı. Müdahale gerekmez.
+ * - `ROSTER_STALE_NO_LEASE`: roster bayat ve canlı lease yok — worker gerçekten
+ *   yok ya da takılmış.
+ * - `NEVER_REPORTED`: roster kaydı hiç oluşmamış.
+ */
+export type WorkerPresence =
+  | "ONLINE"
+  | "ROSTER_STALE_LEASE_ACTIVE"
+  | "ROSTER_STALE_NO_LEASE"
+  | "NEVER_REPORTED";
+
+export function deriveWorkerPresence(input: {
+  rosterSyncedAt: Date | null;
+  now: Date;
+  slots: ReadonlyArray<{ leaseRemainingMs: number | null; heartbeatAgeMs: number | null }>;
+}): WorkerPresence {
+  if (!input.rosterSyncedAt) return "NEVER_REPORTED";
+  const rosterAgeMs = input.now.getTime() - input.rosterSyncedAt.getTime();
+  if (rosterAgeMs <= ROSTER_HEARTBEAT_FRESH_MS) return "ONLINE";
+  const leaseActive = input.slots.some(
+    ({ leaseRemainingMs, heartbeatAgeMs }) =>
+      leaseRemainingMs !== null &&
+      leaseRemainingMs > 0 &&
+      heartbeatAgeMs !== null &&
+      heartbeatAgeMs <= RUN_HEARTBEAT_FRESH_MS,
+  );
+  return leaseActive ? "ROSTER_STALE_LEASE_ACTIVE" : "ROSTER_STALE_NO_LEASE";
+}
+
 function safeMetadataNumber(metadata: Prisma.JsonValue | null, key: string): number | null {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
   const value = metadata[key];
@@ -259,7 +311,7 @@ async function eligibleQueueMetrics(transaction: Prisma.TransactionClient, now: 
           AND credential."runtimeEnrollmentCipher" IS NULL
         )
         OR (
-          sync."syncedAt" >= ${new Date(now.getTime() - 120_000)}
+          sync."syncedAt" >= ${new Date(now.getTime() - ROSTER_HEARTBEAT_FRESH_MS)}
           AND credential."id" = ANY(sync."loadedCredentialIds")
         )
       )
@@ -473,10 +525,15 @@ export async function getRuntimeOperationalMetrics(
     activeRunStartedAts: activeRuns.flatMap(({ startedAt }) => (startedAt ? [startedAt] : [])),
     oldestQueuedAt: queue.oldestAt,
     longestActiveStartedAt: activeRuns[0]?.startedAt ?? null,
+    workerPresence: deriveWorkerPresence({
+      rosterSyncedAt: workerSync?.syncedAt ?? null,
+      now: input.now,
+      slots: executionSlots,
+    }),
     worker: workerSync
       ? {
           workerId: workerSync.workerId,
-          online: input.now.getTime() - workerSync.syncedAt.getTime() <= 120_000,
+          online: input.now.getTime() - workerSync.syncedAt.getTime() <= ROSTER_HEARTBEAT_FRESH_MS,
           bootId: workerSync.workerBootId,
           processingLanes: workerSync.processingLanes,
           codexVersion: workerSync.codexVersion,

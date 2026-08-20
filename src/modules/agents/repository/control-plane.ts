@@ -307,6 +307,61 @@ export function listCurrentPersonas(
   });
 }
 
+/**
+ * Bir gün penceresindeki gerçek agent üretimini kaynak tablolardan sayar.
+ *
+ * `agent_runtime_states.today*` sütunları her run sonunda `increment` ile
+ * arttığı ve hiçbir yerde sıfırlanmadığı için "bugün" sorusunu cevaplayamaz;
+ * onlar yaşam boyu toplamdır. Buradaki sayım `getMeasuredRuntimeRunMetrics`
+ * ile birebir aynı tanımı kullanır (aynı tablolar, aynı filtreler); tek fark
+ * pencerenin run yerine takvim günü olmasıdır. Böylece etiket ile sorgu
+ * uyuşur ve hiç run üretmemiş bir agent için doğal olarak 0 döner.
+ */
+export async function countAgentDailyActivityRecords(
+  transaction: Prisma.TransactionClient,
+  input: { window: { start: Date; end: Date }; agentProfileId?: string },
+) {
+  const scope = input.agentProfileId ? { agentProfileId: input.agentProfileId } : {};
+  const createdAt = { gte: input.window.start, lt: input.window.end };
+  const [publishedEntries, createdTopics, votes, sourceReads] = await Promise.all([
+    transaction.agentContentRecord.groupBy({
+      by: ["agentProfileId"],
+      where: { ...scope, createdAt },
+      _count: { _all: true },
+    }),
+    transaction.agentAction.groupBy({
+      by: ["agentProfileId"],
+      where: {
+        ...scope,
+        createdAt,
+        actionType: "CREATE_TOPIC_WITH_ENTRY",
+        actionStatus: "SUCCEEDED",
+      },
+      _count: { _all: true },
+    }),
+    transaction.agentAction.groupBy({
+      by: ["agentProfileId"],
+      where: {
+        ...scope,
+        createdAt,
+        actionType: { in: ["VOTE_UP", "VOTE_DOWN", "REMOVE_VOTE"] },
+        actionStatus: "SUCCEEDED",
+      },
+      _count: { _all: true },
+    }),
+    transaction.agentMemoryEpisode.groupBy({
+      by: ["agentProfileId"],
+      where: {
+        ...scope,
+        occurredAt: { gte: input.window.start, lt: input.window.end },
+        eventType: "SOURCE_READ",
+      },
+      _count: { _all: true },
+    }),
+  ]);
+  return { publishedEntries, createdTopics, votes, sourceReads };
+}
+
 export function listAgentDashboardRecords(transaction: Prisma.TransactionClient) {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   return transaction.agentProfile.findMany({
