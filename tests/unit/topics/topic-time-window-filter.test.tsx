@@ -104,8 +104,20 @@ async function renderTopicPage(searchParams: Query) {
   render(element);
 }
 
+/**
+ * Pencere artık beş `chip`'lik bir şerit değil, bir `<details>` açılır menüsü —
+ * ama hâlâ `nav[aria-label="Zaman penceresi"]` altında ve hâlâ düz `<a href>`.
+ * jsdom `<details>` kapalıyken içeriği gizlemediği için testler menüyü açmadan
+ * da linkleri görebiliyor; açılış davranışı tarayıcıda doğrulandı.
+ */
 function windowStrip() {
   return screen.getByRole("navigation", { name: "Zaman penceresi" });
+}
+
+function windowTrigger() {
+  const summary = windowStrip().querySelector("summary");
+  if (!summary) throw new Error("Zaman penceresi tetikleyicisi yok");
+  return summary;
 }
 
 function href(name: string | RegExp, strip: HTMLElement) {
@@ -252,21 +264,33 @@ describe("başlık sayfası zaman penceresi şeridi", () => {
     ).toBeInTheDocument();
   });
 
-  it("her iki şerit de yatay kayar, sarmaz", async () => {
-    await renderTopicPage({});
+  it("tetikleyici seçili pencerenin kendisini yazar", async () => {
+    await renderTopicPage({ window: "24h" });
+    expect(windowTrigger().textContent).toBe("Zaman penceresi: son 24 saat");
 
-    for (const name of ["Entry sıralaması", "Zaman penceresi"]) {
-      const strip = screen.getByRole("navigation", { name });
-      expect(strip.className).toContain("overflow-x-auto");
-      expect(strip.className).toContain("[scrollbar-width:none]");
-      expect(strip.className).toContain("[&::-webkit-scrollbar]:hidden");
-      expect(strip.className).not.toContain("flex-wrap");
-      for (const link of within(strip).getAllByRole("link")) {
-        expect(link.className).toContain("whitespace-nowrap");
-        // Daralmama garantisi artık `.chip`'in içinde (globals.css: `shrink-0`).
-        // jsdom @apply'ı çözmediği için sınıfın varlığını doğruluyoruz.
-        expect(link.className).toContain("chip");
-      }
+    cleanup();
+    await renderTopicPage({});
+    // Varsayılan kademede de bilgi kaybolmuyor; yalnız adı değişiyor.
+    expect(windowTrigger().textContent).toBe("Zaman penceresi: tüm zamanlar");
+  });
+
+  it("pencere menüsü JS'siz de çalışsın diye `details`, Radix değil", async () => {
+    await renderTopicPage({});
+    const details = windowStrip().querySelector("details");
+    expect(details).not.toBeNull();
+    expect(details?.querySelector("summary")).not.toBeNull();
+    // Menü içeriği düz `<a href>`; hiçbir düğme yok.
+    expect(within(windowStrip()).queryAllByRole("button")).toHaveLength(0);
+  });
+
+  it("sıralama düz metin linkleri; dokunma hedefi 24px altına inmiyor", async () => {
+    await renderTopicPage({});
+    const strip = screen.getByRole("navigation", { name: "Entry sıralaması" });
+    for (const link of within(strip).getAllByRole("link")) {
+      expect(link.className).toContain("whitespace-nowrap");
+      // `chip` kutusu kalktı; yükseklik `min-h-9` (36px) ile korunuyor (SC 2.5.8).
+      expect(link.className).toContain("min-h-9");
+      expect(link.className).not.toContain("chip");
     }
   });
 });

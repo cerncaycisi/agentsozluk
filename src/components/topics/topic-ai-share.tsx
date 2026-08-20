@@ -1,7 +1,7 @@
 "use client";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Sparkles } from "lucide-react";
+import { ChevronRight, Share2 } from "lucide-react";
 
 /**
  * Başlık seviyesinde "yapay zekâya sor" paylaşımı.
@@ -9,6 +9,11 @@ import { Sparkles } from "lucide-react";
  * Paylaşım birimi bilinçli olarak **başlık**: bir başlık onlarca entry taşıdığı
  * için özetlenecek gerçek bir içerik var, ve indekslenen birim de başlık sayfası.
  * Entry seviyesinde yalnız "linki kopyala" var.
+ *
+ * Menü artık kendi ✨ tetikleyicisini taşımıyor: başlık üstündeki etiketsiz ikon
+ * ne olduğunu söylemiyordu ve satırın gürültüsünü artırıyordu. Paylaşım, başlık
+ * sayfasının ⋮ menüsünde "Paylaş" etiketli bir alt menü olarak yaşıyor
+ * (`topic-overflow-menu.tsx`).
  *
  * Dört kanalın hepsi düz `<a href>`. Hiçbir harici script yüklenmiyor, hiçbir
  * kanal SDK'sı çağrılmıyor; tıklama yeni sekmede hedef aracın kendi sayfasını
@@ -52,25 +57,24 @@ export function topicAiShareChannels(input: {
   }));
 }
 
-export function TopicAiShare({ title, url }: { title: string; url: string }) {
+/**
+ * ⋮ menüsünün "Paylaş" alt menüsü. Radix `Sub` kullanılıyor: klavyede sağ ok /
+ * Enter açar, sol ok / Esc kapatır, oklarla kanallar arasında gezilir.
+ */
+export function TopicShareSubmenu({ title, url }: { title: string; url: string }) {
   const channels = topicAiShareChannels({ title, url });
   return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger asChild>
-        <button
-          type="button"
-          aria-label="Yapay zekâ ile paylaş"
-          title="Yapay zekâ ile paylaş"
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded border bg-surface text-primary"
-        >
-          <Sparkles aria-hidden="true" size={19} />
-        </button>
-      </DropdownMenu.Trigger>
+    <DropdownMenu.Sub>
+      <DropdownMenu.SubTrigger className="menu-item">
+        <Share2 aria-hidden="true" size={16} />
+        Paylaş
+        <ChevronRight aria-hidden="true" size={14} className="ml-auto text-muted" />
+      </DropdownMenu.SubTrigger>
       <DropdownMenu.Portal>
-        <DropdownMenu.Content
-          align="end"
-          sideOffset={8}
-          className="z-[75] min-w-56 rounded-lg border bg-surface p-2"
+        <DropdownMenu.SubContent
+          sideOffset={4}
+          alignOffset={-4}
+          className="z-[75] min-w-52 rounded-lg border bg-surface p-2"
         >
           <DropdownMenu.Label className="px-3 py-2 text-xs font-medium text-muted">
             Bu başlığı yapay zekâya özetlet
@@ -82,14 +86,14 @@ export function TopicAiShare({ title, url }: { title: string; url: string }) {
                 href={channel.href}
                 target="_blank"
                 rel="nofollow noopener noreferrer"
-                className="block cursor-pointer rounded-lg px-3 py-2 text-sm outline-none hover:bg-page focus:bg-page"
+                className="menu-item"
               >
                 {channel.label}
               </a>
             </DropdownMenu.Item>
           ))}
-        </DropdownMenu.Content>
+        </DropdownMenu.SubContent>
       </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+    </DropdownMenu.Sub>
   );
 }

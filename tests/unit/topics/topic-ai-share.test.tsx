@@ -3,11 +3,8 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  TopicAiShare,
-  topicAiSharePrompt,
-  topicAiShareChannels,
-} from "@/components/topics/topic-ai-share";
+import { TopicOverflowMenu } from "@/components/topics/topic-overflow-menu";
+import { topicAiSharePrompt, topicAiShareChannels } from "@/components/topics/topic-ai-share";
 
 /**
  * Başlık seviyesindeki yapay zekâ paylaşımı.
@@ -69,16 +66,36 @@ describe("topic ai share prompt", () => {
   });
 });
 
-describe("topic ai share menu", () => {
+/**
+ * Paylaşım artık başlık satırındaki etiketsiz ✨ ikonu değil: ⋮ menüsünün
+ * "Paylaş" alt menüsü. Menünün kendisi `TopicOverflowMenu` içinde yaşadığı için
+ * bağlanış oradan doğrulanıyor.
+ */
+function renderMenu(canReport = false) {
+  return render(
+    <TopicOverflowMenu
+      title={TOPIC.title}
+      shareUrl={TOPIC.url}
+      topicId="00000000-0000-4000-8000-000000000001"
+      canReport={canReport}
+    />,
+  );
+}
+
+describe("başlık ⋮ menüsündeki paylaşım", () => {
   it("klavyeyle açılır, dört kanalı yeni sekmeye açan link olarak verir ve Esc kapatır", async () => {
     const user = userEvent.setup();
-    render(<TopicAiShare {...TOPIC} />);
+    renderMenu();
 
-    const trigger = screen.getByRole("button", { name: "Yapay zekâ ile paylaş" });
+    const trigger = screen.getByRole("button", { name: "Diğer başlık işlemleri" });
     trigger.focus();
     await user.keyboard("{Enter}");
 
-    const items = await screen.findAllByRole("menuitem");
+    // Menü açıldığında görünen tek öğe alt menü tetikleyicisi.
+    const shareTrigger = await screen.findByRole("menuitem", { name: "Paylaş" });
+    await user.keyboard("{ArrowRight}");
+
+    const items = (await screen.findAllByRole("menuitem")).filter((item) => item !== shareTrigger);
     expect(items.map((item) => item.textContent)).toEqual([
       "ChatGPT",
       "Claude",
@@ -89,15 +106,39 @@ describe("topic ai share menu", () => {
       expect(item.tagName).toBe("A");
       expect(item).toHaveAttribute("target", "_blank");
       expect(item).toHaveAttribute("rel", "nofollow noopener noreferrer");
+      const query = new URL(item.getAttribute("href") ?? "").searchParams;
+      expect(query.get("q") ?? query.get("text")).toBe(topicAiSharePrompt(TOPIC));
     }
 
+    await user.keyboard("{Escape}");
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("menuitem")).toBeNull();
     expect(trigger).toHaveFocus();
   });
 
+  it("gammaz yetkisi yokken menüde yalnız paylaşım vardır", async () => {
+    const user = userEvent.setup();
+    renderMenu(false);
+
+    await user.click(screen.getByRole("button", { name: "Diğer başlık işlemleri" }));
+    expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual([
+      "Paylaş",
+    ]);
+  });
+
+  it("gammaz yetkisi varken başlığı gammazlama öğesini de taşır", async () => {
+    const user = userEvent.setup();
+    renderMenu(true);
+
+    await user.click(screen.getByRole("button", { name: "Diğer başlık işlemleri" }));
+    expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual([
+      "Paylaş",
+      "Başlığı gammazla",
+    ]);
+  });
+
   it("harici script yüklemez", () => {
-    const { container } = render(<TopicAiShare {...TOPIC} />);
+    const { container } = renderMenu();
     expect(container.querySelector("script")).toBeNull();
     expect(document.querySelectorAll("script[src]")).toHaveLength(0);
   });
