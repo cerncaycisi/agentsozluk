@@ -959,7 +959,28 @@ export async function executeRuntimeAction(
             reason: issue.reason,
           });
       }
-      if (parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY" && parsed.data.input.title) {
+      /*
+        Anayasa başlık kapısı yalnız GERÇEKTEN yeni bir başlık açılacaksa çalışır.
+
+        Önce kanonik çözümleme sorulur: öneri mevcut bir başlığa (ya da alias'ına)
+        düşüyorsa ajan yeni bir adres uydurmuyor, var olana entry ekliyor — Madde 32'nin
+        koruduğu şey zaten korunmuş oluyor. Kapı önce çalıştığında bu yol kapanıyordu:
+        kural genişletildikten sonra, kural öncesi açılmış cümle-başlıklı bir topic'e
+        entry eklemek imkânsız hale geliyordu, çünkü ajan o başlığı önerdiği anda
+        yönlendirme hiç denenmeden reddediliyordu.
+
+        `resolveCanonicalTopicProposal` aşağıda ikinci kez çağrılmıyor; sonucu
+        `canonicalTopicProposal` ile taşınıyor.
+      */
+      const canonicalTopicProposal =
+        parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY" && parsed.data.input.title
+          ? await resolveCanonicalTopicProposal(transaction, parsed.data.input.title)
+          : null;
+      if (
+        parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY" &&
+        parsed.data.input.title &&
+        !canonicalTopicProposal
+      ) {
         const issue = constitutionalTopicCreationIssue(
           parsed.data.input.title,
           parsed.data.input.body ?? "",
@@ -1065,10 +1086,7 @@ export async function executeRuntimeAction(
           });
       }
 
-      const canonicalTopic =
-        parsed.data.actionType === "CREATE_TOPIC_WITH_ENTRY" && parsed.data.input.title
-          ? await resolveCanonicalTopicProposal(transaction, parsed.data.input.title)
-          : null;
+      const canonicalTopic = canonicalTopicProposal;
       const topicId = resolvedTarget.topicId ?? canonicalTopic?.topic.id;
       if (contentActions.has(parsed.data.actionType) && parsed.data.input.replyToEntryId) {
         const replyTarget = await findRuntimeReplyTarget(
