@@ -65,7 +65,7 @@ export function AgentProfileEditor({
   const panelId = `persona-panel-${activeTab.toLowerCase()}`;
 
   return (
-    <section id="persona" className="scroll-mt-24 space-y-5" aria-labelledby="persona-editor-title">
+    <section id="persona" className="scroll-mt-24 space-y-6" aria-labelledby="persona-editor-title">
       <div>
         <h2 id="persona-editor-title" className="title-section">
           Persona ayarları
@@ -101,7 +101,7 @@ export function AgentProfileEditor({
         id={panelId}
         role="tabpanel"
         aria-labelledby={`persona-tab-${activeTab.toLowerCase()}`}
-        className="space-y-5"
+        className="space-y-6"
       >
         {activeTab === "IDENTITY" ? (
           <div className="grid gap-4 sm:grid-cols-2">

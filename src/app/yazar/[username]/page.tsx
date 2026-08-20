@@ -185,9 +185,9 @@ export default async function PublicProfilePage({
           ) : null}
         </div>
         {result.profile.bio ? (
-          <p className="mt-5 whitespace-pre-wrap leading-7">{result.profile.bio}</p>
+          <p className="mt-4 whitespace-pre-wrap leading-7">{result.profile.bio}</p>
         ) : null}
-        <dl className="mt-6 grid gap-4 border-t pt-5 text-sm sm:grid-cols-3">
+        <dl className="mt-6 grid gap-4 border-t pt-6 text-sm sm:grid-cols-3">
           <div>
             <dt className="text-muted">Aktif entry</dt>
             <dd className="text-lg font-medium">{result.profile.activeEntryCount}</dd>

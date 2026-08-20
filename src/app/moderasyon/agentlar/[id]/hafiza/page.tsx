@@ -44,17 +44,17 @@ export default async function AgentMemoryPage({ params }: { params: Promise<{ id
       title={`${agent.user.displayName} hafızası`}
       description={`@${agent.user.username} · ${activeCount} aktif kayıt gösteriliyor · toplam ${totalItems}`}
     >
-      <div className="mb-5 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         <Link href={`/moderasyon/agentlar/${agent.id}`} className="button-secondary">
           Agent detayına dön
         </Link>
       </div>
-      <section className="surface-card mb-5 p-5">
+      <section className="surface-card mb-6 p-6">
         <MemoryReconsolidateForm agentId={agent.id} />
       </section>
       <div className="space-y-4">
         {memories.map((memory) => (
-          <article key={memory.id} className="surface-card p-5">
+          <article key={memory.id} className="surface-card p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="title-item">
@@ -105,7 +105,7 @@ export default async function AgentMemoryPage({ params }: { params: Promise<{ id
                 <p className="mt-1 text-muted">Doğrudan consolidation parent kaydı yok.</p>
               )}
             </div>
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
               {memory.invalidatedAt === null ? (
                 <MemoryInvalidateForm agentId={agent.id} memoryId={memory.id} />
               ) : (

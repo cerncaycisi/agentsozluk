@@ -55,7 +55,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
       description={`@${agent.user.username} · ${agent.lifecycleStatus} · ${agent.runtimeState?.runtimeStatus ?? "IDLE"}`}
     >
       <AgentDetailNavigation agentId={agent.id} />
-      <section id="genel" className="surface-card scroll-mt-24 p-5">
+      <section id="genel" className="surface-card scroll-mt-24 p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="title-section">Genel durum</h2>
@@ -72,7 +72,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
             </Link>
           </div>
         </div>
-        <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <Row label="Yaşam döngüsü" value={agent.lifecycleStatus} />
           <Row label="Çalışma durumu" value={runtime?.runtimeStatus ?? "IDLE"} />
           <Row
@@ -122,7 +122,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           <Row label="Kanaatler" value={String(agent._count.beliefs)} />
         </dl>
         {agent.lifecycleStatus === "ACTIVE" && agent.runtimeReadiness.ready ? (
-          <div className="mt-5 border-t pt-4">
+          <div className="mt-4 border-t pt-4">
             <AgentQuickRunActions agentId={agent.id} username={agent.user.username} />
           </div>
         ) : null}
@@ -167,10 +167,10 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
         evolution={agent.evolution}
       />
 
-      <section id="ilgi-ve-kanaatler" className="surface-card mt-5 scroll-mt-24 p-5">
+      <section id="ilgi-ve-kanaatler" className="surface-card mt-6 scroll-mt-24 p-6">
         <h2 className="title-section">İlgi ve kanaatler</h2>
         {currentPersona ? (
-          <div className="mt-4 grid gap-5 lg:grid-cols-2">
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <div>
               <h3 className="title-item">Persona ilgi alanları</h3>
               <ul className="mt-2 space-y-2 text-sm">
@@ -194,7 +194,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
             </div>
           </div>
         ) : null}
-        <h3 className="title-item mt-5">Son belief kayıtları</h3>
+        <h3 className="title-item mt-4">Son belief kayıtları</h3>
         <ul className="mt-2 space-y-2 text-sm">
           {agent.beliefs.map((belief) => (
             <li key={belief.id} className="rounded-lg border p-3">
@@ -211,7 +211,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
         ) : null}
       </section>
 
-      <section id="iliskiler" className="surface-card mt-5 scroll-mt-24 p-5">
+      <section id="iliskiler" className="surface-card mt-6 scroll-mt-24 p-6">
         <h2 className="title-section">İlişkiler</h2>
         <p className="mt-1 text-sm text-muted">
           Toplam {agent._count.relationships} ilişki; en son güncellenen 20 kayıt gösterilir.
@@ -235,7 +235,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
         ) : null}
       </section>
 
-      <section id="oylar-ve-takipler" className="surface-card mt-5 scroll-mt-24 p-5">
+      <section id="oylar-ve-takipler" className="surface-card mt-6 scroll-mt-24 p-6">
         <h2 className="title-section">Oylar ve takipler</h2>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <Row
@@ -254,7 +254,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
         </dl>
       </section>
 
-      <section id="persona" className="surface-card mt-5 scroll-mt-24 p-5">
+      <section id="persona" className="surface-card mt-6 scroll-mt-24 p-6">
         <h2 className="title-section">Persona geçmişi</h2>
         <ol className="mt-4 space-y-3">
           {agent.personaVersions.map((version) => (
@@ -267,7 +267,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           ))}
         </ol>
         {agent.personaVersions.length > 1 ? (
-          <div className="mt-5 border-t pt-4">
+          <div className="mt-4 border-t pt-4">
             <PersonaRollbackForm
               agentId={agent.id}
               versions={agent.personaVersions.slice(1).map(({ version }) => version)}
@@ -275,7 +275,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           </div>
         ) : null}
       </section>
-      <section id="kaynaklar" className="surface-card mt-5 scroll-mt-24 p-5">
+      <section id="kaynaklar" className="surface-card mt-6 scroll-mt-24 p-6">
         <h2 className="title-section">Kaynaklar</h2>
         <ul className="mt-4 space-y-2 text-sm">
           {agent.sources.map((source) => (
@@ -286,13 +286,13 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
         </ul>
       </section>
 
-      <section id="kontroller" className="surface-card mt-5 scroll-mt-24 p-5">
+      <section id="kontroller" className="surface-card mt-6 scroll-mt-24 p-6">
         <h2 className="title-section">Kontroller</h2>
         <div className="mt-4">
           <AgentLifecycleForm agentId={agent.id} current={agent.lifecycleStatus} />
         </div>
         {agent.lifecycleStatus !== "RETIRED" ? (
-          <div className="mt-5 border-t pt-5">
+          <div className="mt-4 border-t pt-6">
             <h3 className="title-item">Çalışma kimliği</h3>
             <div className="mt-3">
               <AgentCredentialRotateForm agentId={agent.id} />

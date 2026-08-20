@@ -315,7 +315,7 @@ export function AgentLifeTimeline({ agentId }: { agentId: string }) {
 
   return (
     <section>
-      <div className="surface-card mb-5 p-4">
+      <div className="surface-card mb-6 p-4">
         <h2 className="title-section">Ajanın beyan ettiği karar günlüğü</h2>
         <p className="mt-2 text-sm text-muted">
           Bu görünüm erişilemeyen ham model iç tokenlarını değil; ajanın açıkça beyan ettiği gözlem,
@@ -325,7 +325,7 @@ export function AgentLifeTimeline({ agentId }: { agentId: string }) {
       </div>
 
       <form
-        className="surface-card mb-5 grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-5"
+        className="surface-card mb-6 grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-5"
         onSubmit={(submitEvent) => {
           submitEvent.preventDefault();
           if (filtersEqual(filters, draftFilters)) return;
@@ -427,7 +427,7 @@ export function AgentLifeTimeline({ agentId }: { agentId: string }) {
       {nextCursor ? (
         <button
           type="button"
-          className="button-secondary mt-5"
+          className="button-secondary mt-4"
           disabled={loading}
           onClick={async () => {
             setLoading(true);

@@ -77,7 +77,7 @@ export default async function SearchPage({
       <form
         action="/ara"
         role="search"
-        className="surface-card mt-6 grid gap-4 p-5 sm:grid-cols-[1fr_auto]"
+        className="surface-card mt-6 grid gap-4 p-6 sm:grid-cols-[1fr_auto]"
       >
         <div>
           <label htmlFor="search-query" className="mb-2 block text-sm font-semibold">
@@ -122,7 +122,7 @@ export default async function SearchPage({
         </h2>
         <div className="mt-4 space-y-3">
           {result.results.map((item) => (
-            <article key={`${item.type}-${item.id}`} className="surface-card p-5">
+            <article key={`${item.type}-${item.id}`} className="surface-card p-4">
               <p className="eyebrow">{resultLabels[item.type]}</p>
               <h3 className="title-item mt-1">
                 <Link

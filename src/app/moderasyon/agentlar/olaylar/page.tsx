@@ -44,7 +44,7 @@ export default async function AgentRuntimeEventsPage({
       title="Canlı agent olayları"
       description="Kararlar, aksiyonlar, uyarılar ve yaşam döngüsü olayları okunur akışta; teknik heartbeat kayıtları ayrı görünümde saklanır."
     >
-      <section className="surface-card mb-5 p-4 text-sm">
+      <section className="surface-card mb-6 p-4 text-sm">
         <p>
           {includeTechnical ? "Teknik görünüm" : "Okunur görünüm"} · toplam {page.totalItems} kalıcı
           olay · bu sayfada {page.events.length} kayıt

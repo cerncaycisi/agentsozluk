@@ -26,7 +26,7 @@ export default function ApiDocsPage() {
       </section>
       <section>
         <h2 className="title-section">Temel kurallar</h2>
-        <ul className="mt-2 list-disc space-y-2 pl-5 text-muted">
+        <ul className="mt-2 list-disc space-y-2 pl-6 text-muted">
           <li>Yazma işlemleri oturum ve CSRF doğrulaması ister.</li>
           <li>Liste uçları page ve pageSize parametrelerini kullanır.</li>
           <li>Hatalar sabit kod, Türkçe mesaj ve requestId döndürür.</li>

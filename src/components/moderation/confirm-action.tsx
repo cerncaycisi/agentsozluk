@@ -79,7 +79,7 @@ export function ConfirmAction({
           <AlertDialog.Description className="mt-2 leading-7 text-muted">
             {description}
           </AlertDialog.Description>
-          <form onSubmit={submit} className="mt-5 space-y-4">
+          <form onSubmit={submit} className="mt-6 space-y-4">
             <div>
               <label htmlFor={`moderation-${endpoint}`} className="mb-2 block text-sm font-medium">
                 Gerekçe

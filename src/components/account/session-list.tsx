@@ -81,15 +81,15 @@ export function SessionList() {
         </button>
       </div>
       {notice ? (
-        <p role="status" className="mt-5 rounded-lg bg-primary/10 px-4 py-3 text-sm">
+        <p role="status" className="mt-4 rounded-lg bg-primary/10 px-4 py-3 text-sm">
           {notice}
         </p>
       ) : null}
-      <ul className="mt-5 divide-y">
+      <ul className="mt-4 divide-y">
         {sessions.map((session) => (
           <li
             key={session.id}
-            className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"
           >
             <div>
               <p className="font-medium">
@@ -117,7 +117,7 @@ export function SessionList() {
         ))}
       </ul>
       {sessions.length === 0 && !notice ? (
-        <p className="mt-5 text-muted">Aktif oturum bulunamadı.</p>
+        <p className="mt-4 text-muted">Aktif oturum bulunamadı.</p>
       ) : null}
     </section>
   );

@@ -25,7 +25,7 @@ export default function GlobalError({
         <p className="mt-4 text-muted">
           İsteğinizi tamamlayamadık. Güvenle yeniden deneyebilirsiniz.
         </p>
-        <button type="button" onClick={reset} className="button-primary mt-7">
+        <button type="button" onClick={reset} className="button-primary mt-6">
           Yeniden dene
         </button>
       </div>

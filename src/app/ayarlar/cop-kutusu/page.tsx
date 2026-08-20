@@ -34,7 +34,7 @@ export default async function TrashPage({
       title="Entry çöp kutusu"
       description="Silinen veya moderasyonla gizlenen entry’lerinizi, exact gerekçeyi ve karar geçmişini görün."
     >
-      <div className="space-y-5">
+      <div className="space-y-6">
         {result.items.map((trashCase) => {
           const openRequest = trashCase.revivalRequests.find(
             (request) => request.decision === null,
@@ -42,7 +42,7 @@ export default async function TrashPage({
           const latestRequest = trashCase.revivalRequests[0];
           const appeal = trashCase.appeals[0];
           return (
-            <article key={trashCase.id} className="surface-card p-5">
+            <article key={trashCase.id} className="surface-card p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="title-item">
                   <Link

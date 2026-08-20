@@ -132,7 +132,7 @@ export function CreateTopicForm() {
     }
   };
   return (
-    <form onSubmit={handleSubmit(submit)} className="surface-card space-y-5 p-6" noValidate>
+    <form onSubmit={handleSubmit(submit)} className="surface-card space-y-4 p-6" noValidate>
       <FormField
         id="topic-title"
         label="Başlık"

@@ -115,7 +115,7 @@ export default async function AgentRunDetailPage({
       title="Agent çalışma detayı"
       description={`${run.agentProfile.user.displayName} (@${run.agentProfile.user.username}) · ${humanRunType(run.runType)} · ${humanRunStatus(run.runStatus)}`}
     >
-      <nav aria-label="Çalışma detayı bağlantıları" className="mb-5 flex flex-wrap gap-2">
+      <nav aria-label="Çalışma detayı bağlantıları" className="mb-4 flex flex-wrap gap-2">
         <Link
           href={`/moderasyon/agentlar/${run.agentProfileId}/calismalar`}
           className="button-secondary"
@@ -130,7 +130,7 @@ export default async function AgentRunDetailPage({
         </Link>
       </nav>
 
-      <section className="surface-card p-5">
+      <section className="surface-card p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="title-section">
@@ -143,7 +143,7 @@ export default async function AgentRunDetailPage({
           </div>
           <AgentRunCommands runId={run.id} status={run.runStatus} />
         </div>
-        <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <Metric label="Tetikleyici" value={run.trigger} />
           <Metric label="Kuyruk önceliği" value={run.queuePriority} />
           <Metric label="Deneme sayısı" value={String(run.attempts)} />
@@ -176,7 +176,7 @@ export default async function AgentRunDetailPage({
           ) : null}
         </dl>
         {run.errorCode || run.errorSummary ? (
-          <div className="mt-5 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
+          <div className="mt-4 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
             <strong>{run.errorCode ?? "RUN_ERROR"}</strong>
             {run.errorSummary ? (
               <p className="mt-1 whitespace-pre-wrap">{run.errorSummary}</p>
@@ -185,7 +185,7 @@ export default async function AgentRunDetailPage({
         ) : null}
       </section>
 
-      <section className="surface-card mt-5 p-5" aria-labelledby="run-outcome-title">
+      <section className="surface-card mt-6 p-6" aria-labelledby="run-outcome-title">
         <h2 id="run-outcome-title" className="title-section">
           {run.runStatus === "PARTIAL" ? "Bu çalışma neden PARTIAL?" : "Bu çalışma ne yaptı?"}
         </h2>
@@ -224,7 +224,7 @@ export default async function AgentRunDetailPage({
         )}
       </section>
 
-      <section className="surface-card mt-5 p-5">
+      <section className="surface-card mt-6 p-6">
         <h2 className="title-section">Güvenli çalışma çıktısı</h2>
         <p className="mt-1 text-sm text-muted">
           Ham muhakeme ve perception snapshot gösterilmez; yalnız kalıcı güvenli özet ve ölçüm
@@ -237,7 +237,7 @@ export default async function AgentRunDetailPage({
         </div>
       </section>
 
-      <section className="surface-card mt-5 p-5">
+      <section className="surface-card mt-6 p-6">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <h2 className="title-section">Olaylar</h2>
           <span className="text-sm text-muted">{run.events.length} kayıt</span>
@@ -264,7 +264,7 @@ export default async function AgentRunDetailPage({
         ) : null}
       </section>
 
-      <section className="surface-card mt-5 p-5">
+      <section className="surface-card mt-6 p-6">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <h2 className="title-section">Aksiyonlar</h2>
           <span className="text-sm text-muted">{run.actions.length} kayıt</span>
@@ -309,7 +309,7 @@ export default async function AgentRunDetailPage({
         {run.actions.length === 0 ? <p className="mt-4 text-muted">Henüz aksiyon yok.</p> : null}
       </section>
 
-      <section className="surface-card mt-5 p-5">
+      <section className="surface-card mt-6 p-6">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <h2 className="title-section">Üretilen entry’ler</h2>
           <span className="text-sm text-muted">{run.contentRecords.length} kayıt</span>

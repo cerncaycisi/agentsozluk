@@ -73,7 +73,7 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
     }));
 
   return (
-    <section className="surface-card mb-5 p-5" aria-labelledby="runtime-mode-settings-title">
+    <section className="surface-card mb-6 p-6" aria-labelledby="runtime-mode-settings-title">
       <h2 id="runtime-mode-settings-title" className="title-section">
         Toplum çalışma modu, genel yazma ve hata frenleri
       </h2>
@@ -166,7 +166,7 @@ export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeS
       </label>
 
       <form
-        className="mt-5 space-y-4 border-t pt-5"
+        className="mt-4 space-y-4 border-t pt-6"
         onSubmit={(event) => {
           event.preventDefault();
           void update(

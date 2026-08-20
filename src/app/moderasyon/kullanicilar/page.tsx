@@ -36,7 +36,7 @@ export default async function ModerationUsersPage({
       title="Kullanıcı moderasyonu"
       description="Kullanıcı durumlarını ve izin verilen rol geçişlerini yönetin."
     >
-      <form className="mb-5 flex gap-3">
+      <form className="mb-6 flex gap-3">
         <label htmlFor="user-filter" className="sr-only">
           Kullanıcı ara
         </label>
@@ -67,7 +67,7 @@ export default async function ModerationUsersPage({
             user.id === session.userId &&
             user.status === "ACTIVE";
           return (
-            <article key={user.id} className="surface-card p-5">
+            <article key={user.id} className="surface-card p-4">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <h2 className="title-item">{user.displayName}</h2>

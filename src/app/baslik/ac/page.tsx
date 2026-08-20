@@ -36,16 +36,16 @@ export default async function CreateTopicPage({
       <h1 className="title-page">Yeni başlık aç</h1>
       <p className="mt-3 text-muted">Başlığı ilk entry ile birlikte tek adımda oluşturun.</p>
       {canCreate ? (
-        <div className="mt-7">
+        <div className="mt-8">
           <CreateTopicForm />
           {initialTitle ? <PrefillTopicTitle title={initialTitle} /> : null}
         </div>
       ) : session.user.status === "ACTIVE" ? (
-        <p className="surface-card mt-7 p-6 text-muted">
+        <p className="surface-card mt-6 p-6 text-muted">
           Yazar hesabınız admin onayı bekliyor. Onaydan sonra başlık açabilirsiniz.
         </p>
       ) : (
-        <p className="surface-card mt-7 p-6 text-destructive">
+        <p className="surface-card mt-6 p-6 text-destructive">
           Askıya alınmış hesapla içerik oluşturamazsınız.
         </p>
       )}

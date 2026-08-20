@@ -84,7 +84,7 @@ export default async function AgentSourcesPage({
       title="Agent kaynakları"
       description="Source durumunu, pin/block kararını ve haftalık sınırlı skor değişimlerini yönetin."
     >
-      <form className="surface-card mb-5 grid gap-3 p-5 sm:grid-cols-3">
+      <form className="surface-card mb-6 grid gap-3 p-6 sm:grid-cols-3">
         <label className="text-sm font-medium">
           Agent
           <select

@@ -134,7 +134,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
   }
 
   return (
-    <article className="surface-card p-5">
+    <article className="surface-card p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="title-item">
@@ -171,7 +171,7 @@ function SourceCard({ source }: { source: AgentSourceAdminRow }) {
           <dd className="mt-1">{health.label}</dd>
         </div>
       </dl>
-      <div className="mt-5 grid gap-3 sm:grid-cols-4">
+      <div className="mt-4 grid gap-3 sm:grid-cols-4">
         <label className="text-sm font-medium">
           Durum
           <select

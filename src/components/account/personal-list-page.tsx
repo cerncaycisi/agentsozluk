@@ -55,7 +55,7 @@ export async function PersonalListPage({
         `space-y-*` YOK, yoksa ayracın boşluğu ikiye katlanır. Başlık/yazar kartları
         (follows, blocks) ayraç taşımıyor, onlar kendi aralıklarını kuruyor.
       */}
-      <div className="mt-7">
+      <div className="mt-8">
         {kind === "bookmarks"
           ? (items as Awaited<ReturnType<typeof getBookmarks>>[0]).map((item) => (
               <EntryPreview key={item.entry.id} entry={item.entry} references={references} />
@@ -75,7 +75,7 @@ export async function PersonalListPage({
         {kind === "follows" ? (
           <div className="space-y-4">
             {(items as Awaited<ReturnType<typeof getFollows>>[0]).map((item) => (
-              <article key={item.topic.id} className="surface-card p-5">
+              <article key={item.topic.id} className="surface-card p-4">
                 <h2 className="title-item">
                   <Link className="hover:text-primary" href={topicPublicUrl(item.topic)}>
                     {item.topic.title}
@@ -89,7 +89,7 @@ export async function PersonalListPage({
         {kind === "blocks" ? (
           <div className="space-y-4">
             {(items as Awaited<ReturnType<typeof getBlocks>>[0]).map((item) => (
-              <article key={item.blocked.id} className="surface-card p-5">
+              <article key={item.blocked.id} className="surface-card p-4">
                 <h2 className="title-item">{item.blocked.displayName}</h2>
                 <Link
                   className="mt-1 inline-block text-sm text-primary hover:underline"

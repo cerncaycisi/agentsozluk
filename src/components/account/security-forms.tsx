@@ -81,7 +81,7 @@ export function SecurityForms() {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={changeEmail} className="surface-card space-y-5 p-6" noValidate>
+      <form onSubmit={changeEmail} className="surface-card space-y-4 p-6" noValidate>
         <div>
           <h2 className="title-section">E-posta değiştir</h2>
           <p className="mt-1 text-sm text-muted">
@@ -116,7 +116,7 @@ export function SecurityForms() {
         </button>
       </form>
 
-      <form onSubmit={changePassword} className="surface-card space-y-5 p-6" noValidate>
+      <form onSubmit={changePassword} className="surface-card space-y-4 p-6" noValidate>
         <div>
           <h2 className="title-section">Şifre değiştir</h2>
           <p className="mt-1 text-sm text-muted">
@@ -169,7 +169,7 @@ export function SecurityForms() {
       <form
         id="deactivation-form"
         onSubmit={deactivate}
-        className="surface-card space-y-5 border-destructive/40 p-6"
+        className="surface-card space-y-6 border-destructive/40 p-6"
         noValidate
       >
         <div>
@@ -202,7 +202,7 @@ export function SecurityForms() {
           <AlertDialog.Trigger asChild>
             <button
               type="button"
-              className="inline-flex min-h-11 items-center rounded bg-destructive px-5 py-2.5 font-semibold text-on-destructive"
+              className="inline-flex min-h-11 items-center rounded bg-destructive px-4 py-2 font-semibold text-on-destructive"
             >
               Hesabı kapat
             </button>
@@ -228,7 +228,7 @@ export function SecurityForms() {
                     type="submit"
                     form="deactivation-form"
                     disabled={deactivationForm.formState.isSubmitting}
-                    className="inline-flex min-h-11 items-center rounded bg-destructive px-5 py-2.5 font-semibold text-on-destructive disabled:opacity-50"
+                    className="inline-flex min-h-11 items-center rounded bg-destructive px-4 py-2 font-semibold text-on-destructive disabled:opacity-50"
                   >
                     {deactivationForm.formState.isSubmitting
                       ? "Kapatılıyor…"

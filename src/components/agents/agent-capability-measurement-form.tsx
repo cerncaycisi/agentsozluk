@@ -116,7 +116,7 @@ export function AgentCapabilityMeasurementForm() {
   }
 
   return (
-    <section className="surface-card mt-5 p-5" aria-labelledby="capacity-package-title">
+    <section className="surface-card mt-6 p-6" aria-labelledby="capacity-package-title">
       <h2 id="capacity-package-title" className="title-section">
         Kapasite ölçüm paketi
       </h2>

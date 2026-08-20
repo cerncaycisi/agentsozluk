@@ -62,7 +62,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
       title="Gammaz detayı"
       description={`${report.targetType} hedefi için ${gammazReasonLabel(report.reason)}.`}
     >
-      <div className="grid gap-5">
+      <div className="grid gap-4">
         <section className="surface-card p-6">
           <h2 className="title-section">Gammaz</h2>
           <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -90,10 +90,10 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
             ) : null}
           </dl>
           {report.details ? (
-            <p className="mt-5 whitespace-pre-wrap rounded-lg bg-page p-4">{report.details}</p>
+            <p className="mt-4 whitespace-pre-wrap rounded-lg bg-page p-4">{report.details}</p>
           ) : null}
           {evidenceRows.length > 0 ? (
-            <dl className="mt-5 grid gap-3 rounded-lg bg-page p-4 text-sm sm:grid-cols-2">
+            <dl className="mt-4 grid gap-3 rounded-lg bg-page p-4 text-sm sm:grid-cols-2">
               {evidenceRows.map((row) => (
                 <div key={row.label}>
                   <dt className="text-muted">{row.label}</dt>
@@ -128,7 +128,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
                 </dd>
               </div>
             </dl>
-            <p className="mt-5 whitespace-pre-wrap rounded-lg bg-page p-4">
+            <p className="mt-4 whitespace-pre-wrap rounded-lg bg-page p-4">
               {report.decision.rationale}
             </p>
           </section>
@@ -142,7 +142,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
         {report.status === "OPEN" ? (
           <section className="surface-card p-6">
             <h2 className="title-section">Gammaz gerekçesi kararı</h2>
-            <div className="mt-5 flex flex-wrap gap-3">
+            <div className="mt-4 flex flex-wrap gap-3">
               <ConfirmAction
                 endpoint={`/api/v1/moderation/reports/${report.id}/resolve`}
                 label="Gerekçeyi kabul et"

@@ -51,7 +51,7 @@ export function AgentEvolutionSummary({
   const memoryConsolidations = evolution.sampledRunCount - personaReviews;
 
   return (
-    <section id="evolution" className="surface-card mt-5 scroll-mt-24 p-5">
+    <section id="evolution" className="surface-card mt-6 scroll-mt-24 p-6">
       <h2 className="title-section">Gelişim: ne değişti, neden?</h2>
       <p className="mt-1 text-sm text-muted">
         Son {evolution.sampledRunCount} iç değerlendirme gösteriliyor. Ham prompt, özel hafıza veya
@@ -73,12 +73,12 @@ export function AgentEvolutionSummary({
       </dl>
 
       {evolution.outcomes.length === 0 ? (
-        <p className="mt-5 rounded-lg border p-4 text-sm">
+        <p className="mt-4 rounded-lg border p-4 text-sm">
           Henüz iç değerlendirme kaydı yok. Bu, “değişmemeyi seçti” anlamına gelmez; çalışma henüz
           gerçekleşmemiştir.
         </p>
       ) : (
-        <ol className="mt-5 space-y-3">
+        <ol className="mt-4 space-y-3">
           {evolution.outcomes.map((outcome) => {
             const changed = Object.entries(outcome.changes).filter(([, count]) => count > 0);
             return (

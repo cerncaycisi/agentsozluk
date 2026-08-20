@@ -42,7 +42,7 @@ export default async function ReportsPage({
       title="Gammazlar"
       description="Anayasal gammazları ve tarihsel bildirim kayıtlarını inceleyin."
     >
-      <nav aria-label="Moderasyon kuyruğu" className="mb-5 flex flex-wrap gap-2">
+      <nav aria-label="Moderasyon kuyruğu" className="mb-4 flex flex-wrap gap-2">
         {(["FORMAT", "LEGAL"] as const).map((item) => (
           <Link
             key={item}
@@ -54,7 +54,7 @@ export default async function ReportsPage({
           </Link>
         ))}
       </nav>
-      <form className="mb-5 flex gap-3">
+      <form className="mb-6 flex gap-3">
         <input type="hidden" name="track" value={track} />
         <label htmlFor="report-status" className="sr-only">
           Gammaz durumu
@@ -111,7 +111,7 @@ export default async function ReportsPage({
       </div>
       <div className="space-y-3 md:hidden">
         {reports.map((report) => (
-          <article key={report.id} className="surface-card p-5">
+          <article key={report.id} className="surface-card p-4">
             <p className="eyebrow">
               {report.targetType} ·{" "}
               {isGammazReason(report.reason)

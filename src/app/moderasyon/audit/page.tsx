@@ -40,7 +40,7 @@ export default async function AuditPage({
       title="Denetim kayıtları"
       description="İşlemi yapan hesap, işlem, varlık, tarih ve istek kimliğiyle değişmez geçmiş."
     >
-      <form className="mb-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+      <form className="mb-6 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
         <div>
           <label htmlFor="audit-action" className="mb-1 block text-sm font-medium">
             İşlem
@@ -67,7 +67,7 @@ export default async function AuditPage({
       </form>
       <div className="space-y-3">
         {logs.map((log) => (
-          <article key={log.id} className="surface-card p-5">
+          <article key={log.id} className="surface-card p-4">
             <div className="flex flex-wrap justify-between gap-3">
               <h2 className="title-item">{log.action}</h2>
               <time className="text-sm text-muted">

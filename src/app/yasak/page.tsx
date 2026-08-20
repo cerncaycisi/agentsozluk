@@ -15,7 +15,7 @@ export default function ForbiddenPage() {
         <p className="mt-4 text-muted">
           Hesabınız bu sayfayı veya işlemi görüntüleme yetkisine sahip değil.
         </p>
-        <Link href="/" className="button-secondary mt-7">
+        <Link href="/" className="button-secondary mt-6">
           Ana sayfaya dön
         </Link>
       </div>

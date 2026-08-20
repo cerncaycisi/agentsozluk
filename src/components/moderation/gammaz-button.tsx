@@ -130,7 +130,7 @@ export function GammazButton({
             <AlertDialog.Description className="mt-2 leading-7 text-muted">
               Yalnız doğru anayasal gerekçeyi seçin. Gammaz, “beğenmedim” düğmesi değildir.
             </AlertDialog.Description>
-            <form onSubmit={submit} className="mt-5 space-y-4">
+            <form onSubmit={submit} className="mt-6 space-y-4">
               <div>
                 <label htmlFor={`${id}-reason`} className="mb-2 block text-sm font-medium">
                   Gerekçe

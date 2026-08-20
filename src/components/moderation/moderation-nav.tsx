@@ -35,7 +35,7 @@ export function ModerationLayout({
           </div>
         ))}
       </nav>
-      <div className="mt-7">{children}</div>
+      <div className="mt-8">{children}</div>
     </main>
   );
 }

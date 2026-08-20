@@ -77,7 +77,7 @@ export default async function AgentRunsPage({ params }: { params: Promise<{ id: 
       description="Güvenli run özeti; özel muhakeme dökümü gösterilmez."
     >
       {agent.lifecycleStatus === "ACTIVE" ? <ManualAgentRunForm agentId={agent.id} /> : null}
-      <section className="surface-card mb-5 p-4 text-sm" aria-labelledby="run-distribution-title">
+      <section className="surface-card mb-6 p-4 text-sm" aria-labelledby="run-distribution-title">
         <h2 id="run-distribution-title" className="title-section">
           Son {agent.runs.length} çalışma dağılımı
         </h2>

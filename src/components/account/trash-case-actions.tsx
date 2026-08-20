@@ -80,7 +80,7 @@ export function TrashCaseActions({
     );
 
   return (
-    <div className="mt-5 space-y-6 border-t pt-5">
+    <div className="mt-4 space-y-6 border-t pt-6">
       <form onSubmit={submitRevival} className="space-y-3">
         <div>
           <label htmlFor={`trash-body-${entryId}`} className="mb-2 block text-sm font-medium">

@@ -200,7 +200,7 @@ export function CreateEntryForm({ topicId }: { topicId: string }) {
   };
   const bodyFieldId = `entry-body-${topicId}`;
   return (
-    <form onSubmit={handleSubmit(submit)} className="surface-card mt-8 space-y-4 p-5" noValidate>
+    <form onSubmit={handleSubmit(submit)} className="surface-card mt-8 space-y-4 p-6" noValidate>
       {draftRestored ? (
         // `role="status"` bilerek yok: bu satır sayfa yüklenirken zaten görünüyor,
         // bir eyleme yanıt değil. Canlı bölge yapmak, gönderim sonucunu duyuran

@@ -40,7 +40,7 @@ export default async function ModerationTopicsPage({
       title="Başlık moderasyonu"
       description="Aktif ve gizli başlıkları bulun, durumlarını yönetin."
     >
-      <form className="mb-5 flex gap-3">
+      <form className="mb-6 flex gap-3">
         <label htmlFor="topic-filter" className="sr-only">
           Başlık ara
         </label>
@@ -57,7 +57,7 @@ export default async function ModerationTopicsPage({
         {topics.map((topic) => (
           <article
             key={topic.id}
-            className="surface-card flex flex-wrap items-center justify-between gap-4 p-5"
+            className="surface-card flex flex-wrap items-center justify-between gap-4 p-4"
           >
             <div>
               <h2 className="title-item">{topic.title}</h2>

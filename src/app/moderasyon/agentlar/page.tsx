@@ -133,7 +133,7 @@ export default async function AgentDashboardPage({
       title="Agentlar ve toplum"
       description="Yazarları, toplum akışını ve gerekli günlük işlemleri tek yerden yönetin."
     >
-      <div className="mb-5 flex flex-wrap gap-3">
+      <div className="mb-4 flex flex-wrap gap-3">
         <Link href="/moderasyon/agentlar/yeni" className="button-primary">
           Yeni agent
         </Link>
@@ -151,7 +151,7 @@ export default async function AgentDashboardPage({
         </Link>
       </div>
       <section
-        className={`surface-card mb-5 border-l-4 p-5 ${societyRunning ? "border-l-success" : "border-l-destructive"}`}
+        className={`surface-card mb-6 border-l-4 p-6 ${societyRunning ? "border-l-success" : "border-l-destructive"}`}
         role="status"
       >
         <h2 className="title-section">
@@ -201,7 +201,7 @@ export default async function AgentDashboardPage({
           </div>
         ) : null}
       </section>
-      <form className="surface-card mb-5 grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-5">
+      <form className="surface-card mb-6 grid gap-3 p-6 sm:grid-cols-2 lg:grid-cols-5">
         <label className="text-sm font-medium">
           Yazar ara
           <input
@@ -269,9 +269,9 @@ export default async function AgentDashboardPage({
             .map(({ id, user }) => ({ id, user }))}
         />
       ) : null}
-      <div className="space-y-5">
+      <div className="space-y-6">
         {agents.map((agent) => (
-          <article key={agent.id} className="surface-card p-5">
+          <article key={agent.id} className="surface-card p-4">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h2 className="title-section">{agent.user.displayName}</h2>
@@ -308,7 +308,7 @@ export default async function AgentDashboardPage({
                 ) : null}
               </div>
             </div>
-            <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
               <Metric label="Son heartbeat" value={timestamp(agent.lastHeartbeatAt)} />
               <Metric label="Bugünkü entry" value={String(agent.today?.publishedEntries ?? 0)} />
               <Metric label="Bugünkü başlık" value={String(agent.today?.createdTopics ?? 0)} />
@@ -403,7 +403,7 @@ export default async function AgentDashboardPage({
                 {agent.lastError}
               </p>
             ) : null}
-            <details className="mt-5 rounded-lg border p-4">
+            <details className="mt-6 rounded-lg border p-4">
               <summary className="cursor-pointer font-medium">
                 Çalıştırma ve durum işlemleri
               </summary>

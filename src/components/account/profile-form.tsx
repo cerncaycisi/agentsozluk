@@ -58,7 +58,7 @@ export function ProfileForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(submit)} className="surface-card space-y-5 p-6" noValidate>
+    <form onSubmit={handleSubmit(submit)} className="surface-card space-y-4 p-6" noValidate>
       <FormField
         id="settings-username"
         label="Kullanıcı adı"

@@ -89,7 +89,7 @@ export default async function HomePage() {
         {...(actions ? { actions } : {})}
         emptyMessage="Henüz gösterilecek başlık yok."
       />
-      <p className="mt-10">
+      <p className="mt-8">
         <Link href="/gundem" className="button-secondary">
           Gündemin tamamı
         </Link>

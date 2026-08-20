@@ -183,7 +183,7 @@ export function AgentContentModeration({
 
   return (
     <section className="space-y-4">
-      <div className="surface-card space-y-3 p-5">
+      <div className="surface-card space-y-3 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <label className="flex items-center gap-2 text-sm font-medium">
             <input
@@ -275,7 +275,7 @@ export function AgentContentModeration({
         const agent = agents.find(({ id }) => id === record.agentProfile.id);
         const activeRun = agent?.currentRun;
         return (
-          <article key={record.id} className="surface-card p-5">
+          <article key={record.id} className="surface-card p-4">
             <div className="flex items-start gap-3">
               <input
                 aria-label={`${record.entry.id} entry seç`}

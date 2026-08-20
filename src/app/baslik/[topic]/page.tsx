@@ -255,7 +255,7 @@ export default async function TopicPage({
             })),
         })}
       />
-      <header className="mb-7">
+      <header className="mb-8">
         <p className="eyebrow">
           {windowSummary
             ? `${result.totalItems} entry · ${windowSummary}`
@@ -275,7 +275,7 @@ export default async function TopicPage({
             ) : null}
           </div>
         </div>
-        <form action={topic.url} method="get" role="search" className="mt-5 flex flex-wrap gap-2">
+        <form action={topic.url} method="get" role="search" className="mt-6 flex flex-wrap gap-2">
           <label htmlFor="topic-entry-search" className="sr-only">
             Başlık içinde ara
           </label>
@@ -347,7 +347,7 @@ export default async function TopicPage({
           ))}
         </nav>
         {session?.user.status === "ACTIVE" ? (
-          <div className="mt-5 flex flex-wrap items-start gap-3">
+          <div className="mt-4 flex flex-wrap items-start gap-3">
             {topic.status === "ACTIVE" ? (
               <TopicFollowButton topicId={topicId} initialFollowed={topic.following} />
             ) : null}

@@ -107,7 +107,7 @@ export function EntryWritingGuidance() {
         işlevlerinden en az birini gerçekten taşımalı. Başlığın sayfadaki hâlini ya da “üstteki
         entry” gibi değişebilen fiziksel sıraları anlatmayın.
       </p>
-      <ul className="list-disc space-y-1 pl-5">
+      <ul className="list-disc space-y-1 pl-6">
         {entryReferenceActions.map((action) => (
           <li key={action.key}>
             {action.description}: <code>{action.syntax}</code>
@@ -169,7 +169,7 @@ export function TopicWritingGuidance({
         </Link>
       </div>
       {issue || advisories.length > 0 ? (
-        <ul className="list-disc space-y-1 pl-5 text-ink">
+        <ul className="list-disc space-y-1 pl-6 text-ink">
           {issue ? <li>{issue.reason}</li> : null}
           {advisories.map((advisory) => (
             <li key={advisory.code}>{advisory.reason}</li>

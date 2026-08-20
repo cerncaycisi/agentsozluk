@@ -58,7 +58,7 @@ export function GlobalRunControlForm() {
   }
 
   return (
-    <section className="mt-5 border-t pt-5" aria-labelledby="global-run-controls-title">
+    <section className="mt-6 border-t pt-6" aria-labelledby="global-run-controls-title">
       <h3 id="global-run-controls-title" className="title-item">
         Acil kuyruk işlemleri
       </h3>

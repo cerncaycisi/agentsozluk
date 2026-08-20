@@ -146,7 +146,7 @@ export function AgentLifecycleQuickAction({
             Değişiklik yeni lease ve yazma davranışını etkiler; gerekçe audit kaydına eklenir.
           </Dialog.Description>
           <form
-            className="mt-5 space-y-4"
+            className="mt-4 space-y-4"
             onSubmit={async (event) => {
               event.preventDefault();
               setPending(true);
@@ -525,7 +525,7 @@ export function AgentQuickRunActions({ agentId, username }: { agentId: string; u
             Queue değişmeden önce ölçümlü kapasite önizlemesi gösterilir ve ikinci onay istenir.
           </Dialog.Description>
           <form
-            className="mt-5 space-y-4"
+            className="mt-4 space-y-4"
             onSubmit={async (event) => {
               event.preventDefault();
               setPending(true);
@@ -591,7 +591,7 @@ export function ManualAgentRunForm({ agentId }: { agentId: string }) {
   };
   return (
     <form
-      className="surface-card mb-5 space-y-4 p-5"
+      className="surface-card mb-6 space-y-4 p-6"
       onSubmit={async (event) => {
         event.preventDefault();
         setPending(true);
@@ -658,7 +658,7 @@ export function BulkAgentRunForm({
   const selection = allActive ? { allActive: true } : { agentIds: selected };
   return (
     <form
-      className="surface-card mb-5 space-y-4 p-5"
+      className="surface-card mb-6 space-y-4 p-6"
       onSubmit={async (event) => {
         event.preventDefault();
         setPending(true);
@@ -1061,7 +1061,7 @@ export function AgentCreateForm({
 
   return (
     <form
-      className="space-y-5"
+      className="space-y-6"
       onSubmit={async (event) => {
         event.preventDefault();
         setPending(true);
@@ -1334,7 +1334,7 @@ function AgentProfileSettingsFields({
     0,
   );
   return (
-    <section className="surface-card space-y-5 p-5" aria-labelledby="profile-settings-title">
+    <section className="surface-card space-y-6 p-6" aria-labelledby="profile-settings-title">
       <div>
         <h2 id="profile-settings-title" className="title-section">
           Profil ve çalışma ayarları

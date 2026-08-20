@@ -54,7 +54,7 @@ export function ProfileActions({
     }
   };
   return (
-    <div className="mt-5 flex flex-wrap items-center gap-3 border-t pt-5">
+    <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-6">
       <button
         type="button"
         className={followed ? "button-secondary" : "button-primary"}

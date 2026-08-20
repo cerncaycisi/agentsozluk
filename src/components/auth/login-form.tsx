@@ -30,7 +30,7 @@ export function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(submit)} className="space-y-5" noValidate>
+    <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
       <FormField
         id="login-email"
         type="email"

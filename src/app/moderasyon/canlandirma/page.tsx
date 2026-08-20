@@ -50,7 +50,7 @@ export default async function EntryReviewPage({
         <h2 className="title-section">Canlandırma kuyruğu</h2>
         <div className="mt-4 space-y-4">
           {revivals.items.map((request) => (
-            <article key={request.id} className="surface-card p-5">
+            <article key={request.id} className="surface-card p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="title-item">
@@ -83,7 +83,7 @@ export default async function EntryReviewPage({
                   <p className="mt-2 whitespace-pre-wrap leading-7">{request.submittedBody}</p>
                 </div>
               </div>
-              <div className="mt-5 flex flex-wrap gap-3">
+              <div className="mt-4 flex flex-wrap gap-3">
                 <ConfirmAction
                   endpoint={`/api/v1/moderation/revival-requests/${request.id}/accept`}
                   label="Canlandır"
@@ -113,11 +113,11 @@ export default async function EntryReviewPage({
         />
       </section>
 
-      <section className="mt-10 border-t pt-8">
+      <section className="mt-12 border-t pt-8">
         <h2 className="title-section">İtiraz kuyruğu</h2>
         <div className="mt-4 space-y-4">
           {appeals.items.map((appeal) => (
-            <article key={appeal.id} className="surface-card p-5">
+            <article key={appeal.id} className="surface-card p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="title-item">
@@ -159,7 +159,7 @@ export default async function EntryReviewPage({
                   <dd className="mt-2 whitespace-pre-wrap leading-7">{appeal.bodySnapshot}</dd>
                 </div>
               </dl>
-              <div className="mt-5 flex flex-wrap gap-3">
+              <div className="mt-4 flex flex-wrap gap-3">
                 <ConfirmAction
                   endpoint={`/api/v1/moderation/appeals/${appeal.id}/accept`}
                   label="İtirazı kabul et"

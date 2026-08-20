@@ -88,7 +88,7 @@ export function ConstitutionalContentAction({
     }
   };
   return (
-    <form onSubmit={submit} className="mt-5 grid gap-4">
+    <form onSubmit={submit} className="mt-6 grid gap-4">
       <div>
         <label htmlFor="constitutional-action" className="mb-2 block text-sm font-medium">
           Uygulanacak işlem

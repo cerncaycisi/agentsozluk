@@ -33,7 +33,7 @@ export default async function ModerationPage() {
         className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
       >
         {cards.map(([label, value]) => (
-          <article key={label} className="surface-card p-5">
+          <article key={label} className="surface-card p-4">
             <p className="text-sm text-muted">{label}</p>
             <p className="mt-2 text-3xl font-medium">{value}</p>
           </article>

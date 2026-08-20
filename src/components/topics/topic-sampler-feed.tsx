@@ -46,7 +46,7 @@ export function TopicSamplerFeed({
         const topicUrl = topicPublicUrl(topic);
         const entryActions = actions?.get(entry.id);
         return (
-          <li key={topic.id} className="border-t py-5">
+          <li key={topic.id} className="border-t py-4">
             <h2 className="title-section mb-2">
               <Link
                 href={topicUrl}

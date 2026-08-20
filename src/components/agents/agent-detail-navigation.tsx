@@ -22,7 +22,7 @@ export function AgentDetailNavigation({ agentId }: { agentId: string }) {
   ] as const;
 
   return (
-    <nav aria-label="Agent detay bölümleri" className="mb-5 overflow-x-auto">
+    <nav aria-label="Agent detay bölümleri" className="mb-4 overflow-x-auto">
       <ul className="flex min-w-max gap-2 border-b pb-3">
         {items.map(([label, href]) => (
           <li key={label}>

@@ -38,7 +38,7 @@ export default async function SeedVisibilityPage({
       title="Seed görünürlüğü"
       description="Kanonik seed gövdesini ve fingerprint’ini değiştirmeden, tek bir entry’yi bütün public yüzeylerden gizleyin veya geri açın."
     >
-      <form className="surface-card mb-5 flex flex-wrap gap-3 p-4">
+      <form className="surface-card mb-6 flex flex-wrap gap-3 p-4">
         <label className="min-w-64 flex-1 text-sm font-medium">
           Başlık, entry veya yazar ara
           <input
@@ -55,7 +55,7 @@ export default async function SeedVisibilityPage({
         {entries.map((entry) => {
           const suppressed = entry.seedVisibility?.suppressed ?? false;
           return (
-            <article key={entry.id} className="surface-card p-5">
+            <article key={entry.id} className="surface-card p-4">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
                   <Link

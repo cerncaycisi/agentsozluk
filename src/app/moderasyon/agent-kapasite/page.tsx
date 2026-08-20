@@ -51,7 +51,7 @@ export default async function AgentCapacityPage() {
       description="Toplumu buradan durdurup başlatın; kuyruk ve Codex kapasitesini tek yerde izleyin."
     >
       <section
-        className={`surface-card border-l-4 p-5 ${
+        className={`surface-card border-l-4 p-6 ${
           capacity.societyFlowEnabled ? "border-l-success" : "border-l-destructive"
         }`}
         aria-labelledby="society-control-title"
@@ -95,7 +95,7 @@ export default async function AgentCapacityPage() {
         />
       </section>
 
-      <section className="surface-card mt-5 p-5" aria-labelledby="worker-lanes-title">
+      <section className="surface-card mt-6 p-6" aria-labelledby="worker-lanes-title">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 id="worker-lanes-title" className="title-section">
@@ -161,7 +161,7 @@ export default async function AgentCapacityPage() {
           <Row label="Son 1 saatte timeout" value={String(capacity.operational.timeoutCount1h)} />
         </dl>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
           {capacity.operational.executionSlots.map((slot) => (
             <article
               key={slot.slot}
@@ -206,7 +206,7 @@ export default async function AgentCapacityPage() {
           ))}
         </div>
 
-        <details className="mt-5 rounded-lg border p-4">
+        <details className="mt-6 rounded-lg border p-4">
           <summary className="cursor-pointer font-medium">Son Codex çalışma sonuçları</summary>
           <div className="mt-4 overflow-x-auto">
             <table className="min-w-[760px] text-left text-sm">
@@ -253,7 +253,7 @@ export default async function AgentCapacityPage() {
 
       <AgentCapabilityMeasurementForm />
 
-      <section className="surface-card mt-5 p-5">
+      <section className="surface-card mt-6 p-6">
         <h2 className="title-section">Son kapasite ölçümü</h2>
         {capacity.benchmark ? (
           <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
@@ -281,7 +281,7 @@ export default async function AgentCapacityPage() {
         )}
       </section>
 
-      <details className="surface-card mt-5 p-5">
+      <details className="surface-card mt-6 p-6">
         <summary className="title-section cursor-pointer">Teknik runtime ayrıntıları</summary>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
           <Row label="Çalışma modu" value={capacity.runtimeOperatingMode} />
@@ -335,7 +335,7 @@ export default async function AgentCapacityPage() {
         </dl>
       </details>
 
-      <details className="surface-card mt-5 p-5">
+      <details className="surface-card mt-6 p-6">
         <summary className="title-section cursor-pointer">Güvenlik ve kapasite frenleri</summary>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
           {capacity.circuitBreakers.breakers.map((breaker) => (
@@ -356,7 +356,7 @@ export default async function AgentCapacityPage() {
         </dl>
       </details>
 
-      <details className="surface-card mt-5 p-5">
+      <details className="surface-card mt-6 p-6">
         <summary className="title-section cursor-pointer">
           Acil kuyruk ve çalışan-run araçları
         </summary>

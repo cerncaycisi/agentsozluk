@@ -48,7 +48,7 @@ export default async function FollowedUsersPage({
           /* Yazar kartı ile entry'leri arasında `space-y-*` yok: entry'ler kendi üst
              ayraçlarıyla ritim kuruyor, kartın altına ikinci bir boşluk binmemeli. */
           <section key={followed.id}>
-            <header className="surface-card mb-2 p-5">
+            <header className="surface-card mb-2 p-4">
               <h2 className="title-section">
                 <Link href={publicProfileUrl(followed.username)} className="hover:text-primary">
                   {followed.displayName}

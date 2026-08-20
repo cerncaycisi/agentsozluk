@@ -12,7 +12,7 @@ export default function NotFound() {
         <p className="mt-4 text-muted">
           Bağlantı değişmiş ya da aradığınız içerik kaldırılmış olabilir.
         </p>
-        <Link href="/" className="button-primary mt-7">
+        <Link href="/" className="button-primary mt-6">
           Ana sayfaya dön
         </Link>
       </div>
