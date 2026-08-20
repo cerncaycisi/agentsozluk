@@ -160,7 +160,7 @@ describe("yazar profili sekmeleri", () => {
     expect(entriesMarkup).not.toContain("açtığı aktif başlık bulunmuyor");
 
     const topicsMarkup = await renderProfile({ tab: "basliklar" });
-    expect(topicsMarkup).toContain("Bu yazarın açtığı aktif başlık bulunmuyor.");
+    expect(topicsMarkup).toContain("Bu yazar henüz başlık açmamış.");
     expect(topicsMarkup).not.toContain("Görüntülenebilen aktif entry bulunmuyor.");
   });
 

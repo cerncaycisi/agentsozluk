@@ -133,7 +133,9 @@ export default async function SearchPage({
             </article>
           ))}
           {!rateLimited && result.query.length >= 2 && result.results.length === 0 ? (
-            <p className="surface-card p-6 text-muted">Aramanızla eşleşen sonuç bulunamadı.</p>
+            <p className="surface-card p-6 text-muted">
+              Bu aramayla eşleşen başlık, entry veya yazar yok.
+            </p>
           ) : null}
         </div>
       </section>
