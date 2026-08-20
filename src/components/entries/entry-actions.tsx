@@ -32,13 +32,29 @@ import { entryPublicUrl } from "@/lib/routing/public-urls";
 const ENTRY_BODY_MAX_LENGTH = 10_000;
 
 /**
- * Misafir bağlantılarının geometrisi, oturumlu görünümdeki oy/favori düğmelerinin
- * basılı olmayan hâliyle birebir aynı olmalı; kart iki modda da aynı görünür.
+ * Aksiyon şeridinin basılı OLMAYAN kontrolü: çıplak `.icon-button`, kutu yok.
  *
- * `.icon-button` durum dilini (hover örtüsü, `--border-strong` kenarlık, klavye
- * odağı) getiriyor; bağlantı olduğu için `disabled` dalı hiç devreye girmiyor.
+ * `bg-page` da kalktı ve bu bir sadeleştirme değil, bir düzeltme: entry akan
+ * listede SAYFA zemininde duruyor (`entry-preview.tsx` — "kutu değil, akan
+ * liste"), yani `bg-page` düğmeye tam olarak arkasındaki rengi boyuyordu.
+ * Kenarlık kalkınca geriye hiçbir şey çizmeyen bir dolgu kalırdı.
+ *
+ * Ad bilerek nötr: aynı sınıfı hem misafirin giriş bağlantıları hem oturumlu
+ * görünümün basılı olmayan düğmeleri kullanıyor — şerit iki modda da birebir
+ * aynı görünmek zorunda. Durum dilini `.icon-button` getiriyor (hover örtüsü,
+ * ikonun `--ink`e çıkması, klavye odağı); misafirde öğe bağlantı olduğu için
+ * `disabled` dalı hiç devreye girmiyor.
  */
-const guestControlClass = "icon-button bg-page";
+const restingControlClass = "icon-button";
+
+/**
+ * Basılı oy/favori. Kutu kalktığı için DOLGU artık kontrolün tek sınırı; sayfa
+ * zeminine karşı ölçüldü (açık/koyu): primary 5.741 / 6.903, accent 7.332 /
+ * 6.974 — SC 1.4.11 eşiği 3.0. Dolgunun üstündeki ikon: 6.374 / 6.903 ve
+ * 8.141 / 6.974.
+ */
+const pressedPrimaryClass = "icon-button bg-primary text-on-primary";
+const pressedAccentClass = "icon-button bg-accent text-on-accent";
 
 /** Skor sayacıyla aynı görsel dil; favori sayacı da aynı sütun genişliğini tutar. */
 const counterClass = "min-w-8 text-center text-sm font-medium";
@@ -65,6 +81,7 @@ const overflowItemClass = "menu-item";
 function EntryOverflowMenu({
   children,
   onCloseAutoFocus,
+  triggerRef,
 }: {
   children: ReactNode;
   /**
@@ -73,11 +90,21 @@ function EntryOverflowMenu({
    * yedeği kutusu) çağıran bu geri dönüşü `preventDefault()` ile iptal eder.
    */
   onCloseAutoFocus?: (event: Event) => void;
+  /**
+   * Menüden AÇILAN bir kip kapandığında odağın döneceği yer de burasıdır; kip
+   * kendi tetikleyicisini render etmediği için ref'e dışarıdan ihtiyaç var.
+   */
+  triggerRef?: React.Ref<HTMLButtonElement>;
 }) {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <button type="button" aria-label="Diğer entry işlemleri" className="icon-button bg-page">
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-label="Diğer entry işlemleri"
+          className="icon-button"
+        >
           <EllipsisVertical aria-hidden="true" size={17} />
         </button>
       </DropdownMenu.Trigger>
@@ -300,7 +327,7 @@ function GuestEntryActions({
         <Link
           href={loginHref}
           aria-label="Artı oy vermek için giriş yapın"
-          className={guestControlClass}
+          className={restingControlClass}
         >
           <ThumbsUp aria-hidden="true" size={17} />
         </Link>
@@ -308,14 +335,14 @@ function GuestEntryActions({
         <Link
           href={loginHref}
           aria-label="Eksi oy vermek için giriş yapın"
-          className={guestControlClass}
+          className={restingControlClass}
         >
           <ThumbsDown aria-hidden="true" size={17} />
         </Link>
         <Link
           href={loginHref}
           aria-label="Favorilere eklemek için giriş yapın"
-          className={guestControlClass}
+          className={restingControlClass}
         >
           <Bookmark aria-hidden="true" size={17} />
         </Link>
@@ -425,6 +452,13 @@ function SignedInEntryActions({
       router.refresh();
     });
   const { copyLink, fallbackUrl, handleCloseAutoFocus } = useEntryLinkCopy(entryPublicId);
+  /*
+    Gammaz kipi ⋮ menüsünden açılıyor ve kontrollü kipte `GammazButton` kendi
+    `AlertDialog.Trigger`ını render etmiyor; Radix'in kapanıştaki odak iadesi o
+    yüzden boşa düşüyordu (Escape / "Vazgeç" / başarılı gönderim: odak `<body>`).
+    Dönülecek yeri menüyü açan kontrol biliyor, ref buradan geçiyor.
+  */
+  const overflowTrigger = useRef<HTMLButtonElement>(null);
   /**
    * "Linki kopyala" her zaman var, dolayısıyla ⋮ artık koşulsuz render ediliyor.
    * Ayraç yalnız yetkiye bağlı öğeler varken anlamlı.
@@ -439,7 +473,7 @@ function SignedInEntryActions({
           onClick={() => void changeVote(1)}
           aria-label="Artı oy ver"
           aria-pressed={vote === 1}
-          className={`icon-button ${vote === 1 ? "bg-primary text-on-primary" : "bg-page"}`}
+          className={vote === 1 ? pressedPrimaryClass : restingControlClass}
         >
           <ThumbsUp aria-hidden="true" size={17} />
         </button>
@@ -450,7 +484,7 @@ function SignedInEntryActions({
           onClick={() => void changeVote(-1)}
           aria-label="Eksi oy ver"
           aria-pressed={vote === -1}
-          className={`icon-button ${vote === -1 ? "bg-accent text-on-accent" : "bg-page"}`}
+          className={vote === -1 ? pressedAccentClass : restingControlClass}
         >
           <ThumbsDown aria-hidden="true" size={17} />
         </button>
@@ -460,12 +494,12 @@ function SignedInEntryActions({
           onClick={() => void toggleBookmark()}
           aria-label={bookmarked ? "Favorilerden çıkar" : "Favorilere ekle"}
           aria-pressed={bookmarked}
-          className={`icon-button ${bookmarked ? "bg-primary text-on-primary" : "bg-page"}`}
+          className={bookmarked ? pressedPrimaryClass : restingControlClass}
         >
           <Bookmark aria-hidden="true" size={17} />
         </button>
         <BookmarkCounter count={bookmarkCount} live />
-        <EntryOverflowMenu onCloseAutoFocus={handleCloseAutoFocus}>
+        <EntryOverflowMenu onCloseAutoFocus={handleCloseAutoFocus} triggerRef={overflowTrigger}>
           <CopyEntryLinkItem onSelect={() => void copyLink()} />
           {hasPrivilegedItems ? <DropdownMenu.Separator className="my-1 border-t" /> : null}
           {canEdit ? (
@@ -530,6 +564,7 @@ function SignedInEntryActions({
             targetId={entryId}
             open={gammazOpen}
             onOpenChange={setGammazOpen}
+            returnFocusRef={overflowTrigger}
           />
         </div>
       ) : null}

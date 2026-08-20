@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { EntryPreview } from "@/components/entries/entry-preview";
+import { EntryPreview, type EntryPreviewActions } from "@/components/entries/entry-preview";
 import { safeInternalRedirect } from "@/lib/security/redirect";
 import { openEntryOverflowMenu } from "./overflow-menu";
 
@@ -14,12 +14,14 @@ vi.mock("@/components/moderation/gammaz-button", () => ({
 
 afterEach(() => cleanup());
 
-function iconButtonRule(): string {
+function cssRule(selector: string): string {
   const css = readFileSync("src/app/globals.css", "utf8");
-  const start = css.indexOf("\n  .icon-button {");
-  expect(start, ".icon-button globals.css içinde yok").toBeGreaterThan(-1);
+  const start = css.indexOf(`\n  ${selector} {`);
+  expect(start, `${selector} globals.css içinde yok`).toBeGreaterThan(-1);
   return css.slice(start, css.indexOf("\n  }", start));
 }
+
+const iconButtonRule = () => cssRule(".icon-button");
 
 const entry = {
   id: "00000000-0000-4000-8000-000000000701",
@@ -40,13 +42,13 @@ const entry = {
   },
 };
 
-const signedInActions = {
+const signedInActions: EntryPreviewActions = {
   vote: null,
   bookmarked: false,
   canEdit: true,
   canReport: true,
   canBlockAuthor: true,
-} as const;
+};
 
 describe("misafir oy ve favori düğmeleri", () => {
   it("oy ve favori düğmelerini gösterir, üçünü de girişe bağlar", () => {
@@ -64,25 +66,114 @@ describe("misafir oy ve favori düğmeleri", () => {
     }
     // Geometri artık `globals.css`teki `.icon-button` içinde; orada doğrulanıyor.
     const rule = iconButtonRule();
+    // Kutu kalktı ama dokunma hedefi 40×40 kaldı (SC 2.5.8 eşiği 24×24).
     expect(rule).toContain("size-10");
     // `rounded` (4px kontrol yarıçapı) — `rounded-lg` geçmesin diye desenle.
     expect(rule).toMatch(/\brounded(?![-\w])/u);
-    expect(rule).toContain("border");
   });
 
   /**
-   * İkon butonun kenarlığı kontrolü tanıtan TEK görsel bilgi (etiketi yok), bu
-   * yüzden durgunken bile `--border-strong` olmak zorunda — `--border` ile oran
-   * page üstünde 1.222'ye düşüyor, WCAG SC 1.4.11 eşiği 3.0.
+   * Kontrolü tanıtan şey artık kenarlık değil İKONUN KENDİSİ: durgunken `--muted`,
+   * sayfa zemininde açık 4.753 / koyu 6.974 — WCAG SC 1.4.11 eşiği 3.0. SC 1.4.11
+   * "bir bileşeni TANIMLAMAK İÇİN GEREKEN" görsel bilgi için 3:1 istiyor, gereken
+   * bilginin kenarlık olmasını değil.
+   *
+   * Kutu artık ayrı bir varyant (`.icon-button-boxed`) ve yalnız kabukta kullanılıyor.
    */
-  it("ikon butonu güçlü kenarlıkla ve dört durumla tanımlar", () => {
-    expect(iconButtonRule()).toContain("border-color: rgb(var(--border-strong))");
+  it("ikon butonu çerçevesiz tanımlar; kutu ayrı bir varyanta taşındı", () => {
+    const rule = iconButtonRule();
+    // `@apply` listesinde kenarlık YOK (`border-color` yalnız geçiş listesinde geçer).
+    expect(rule).not.toMatch(/@apply[^;]*\bborder\b/u);
+    expect(rule).not.toContain("border-color: rgb(var(--border-strong))");
+
+    const boxed = cssRule(".icon-button-boxed");
+    expect(boxed).toMatch(/@apply[^;]*\bborder\b/u);
+    // Kabuktaki kutu hâlâ SC 1.4.11'i kenarlıkla karşılıyor: 3.127 / 3.487.
+    expect(boxed).toContain("border-color: rgb(var(--border-strong))");
+  });
+
+  it("dört durumu ve seçili dolgunun hover davranışını korur", () => {
     const css = readFileSync("src/app/globals.css", "utf8");
     expect(css).toContain(".icon-button:hover:not(:disabled) {");
     expect(css).toContain(".icon-button:active:not(:disabled) {");
     expect(css).toContain(".icon-button:disabled {");
+    // Kutu kalkınca durum katmanı tek başına konuşuyor; sönük ikon hover'da `--ink`e çıkar.
+    expect(css).toContain('.icon-button:hover:not(:disabled):not([aria-pressed="true"]) {');
     // Seçili (dolgulu) hâl hover'da yerini KAYBETMEZ: örtü dolgunun üstüne biner.
     expect(css).toContain('.icon-button[aria-pressed="true"]:hover:not(:disabled) {');
+  });
+
+  /**
+   * İçerik satırı ile kabuk arasındaki ayrım sözleşmenin kendisi: entry aksiyonları
+   * kutu varyantını ASLA almaz. Alsalardı iki-üç satırlık entry metninin yanında
+   * beş çerçeve metinden ağır çıkardı — bu turun çıkış noktası buydu.
+   */
+  it("içerik satırındaki ikon kontrollerine kutu varyantını vermez", () => {
+    const { container } = render(<EntryPreview entry={entry} actions={signedInActions} />);
+
+    const controls = [...container.querySelectorAll(".icon-button")];
+    expect(controls.length).toBeGreaterThanOrEqual(4);
+    for (const control of controls) {
+      expect(control.className).not.toContain("icon-button-boxed");
+    }
+  });
+
+  /**
+   * Kutu kalkınca seçili oyun/favorinin TEK sınırı doygun dolgu oluyor. Sayfa
+   * zeminine karşı ölçüldü: primary 5.741 (açık) / 6.903 (koyu), accent 7.332 /
+   * 6.974 — SC 1.4.11 eşiği 3.0. Dolgunun üstündeki ikon 6.374 / 6.903 ve
+   * 8.141 / 6.974.
+   */
+  it("seçili oy ve favoriyi kutu olmadan dolguyla anlatmayı sürdürür", () => {
+    const { container } = render(
+      <EntryPreview entry={entry} actions={{ ...signedInActions, vote: 1, bookmarked: true }} />,
+    );
+
+    const upvote = screen.getByRole("button", { name: "Artı oy ver" });
+    const bookmark = screen.getByRole("button", { name: "Favorilerden çıkar" });
+    for (const pressed of [upvote, bookmark]) {
+      expect(pressed).toHaveAttribute("aria-pressed", "true");
+      expect(pressed.className).toContain("bg-primary");
+      expect(pressed.className).toContain("text-on-primary");
+    }
+    // Basılı olmayan kontrolde dolgu YOK: `bg-page` de kalktı, çünkü entry akan
+    // listede zaten sayfa zemininde duruyor — hiçbir şey çizmeyen bir dolguydu.
+    const downvote = screen.getByRole("button", { name: "Eksi oy ver" });
+    expect(downvote.className).not.toMatch(/\bbg-/u);
+    expect(container.querySelector(".icon-button-boxed")).toBeNull();
+  });
+
+  /**
+   * Zorunlu renk kipinde (Windows yüksek kontrast) tarayıcı zemin/kenarlık/metin
+   * renklerini kullanıcı paletiyle eziyor: `bg-primary` dolgusu da `--overlay-*`
+   * gradyanı da yok sayılıyor. Kutu kalktıktan sonra basılı oy ile basılı olmayanı
+   * ayıran hiçbir GÖRSEL kanal kalmıyordu (`aria-pressed` yalnız ekran okuyucuyu
+   * kurtarıyor). Ölçüldü: emülasyonda basılı düğme `Highlight` dolgu + `HighlightText`
+   * ikon, basılı olmayan saydam zemin + `ButtonBorder` kenarlık.
+   */
+  it("zorunlu renk kipinde basılı durumu sistem renkleriyle yeniden kurar", () => {
+    const css = readFileSync("src/app/globals.css", "utf8");
+    const start = css.indexOf("@media (forced-colors: active) {");
+    expect(start, "forced-colors dalı globals.css içinde yok").toBeGreaterThan(-1);
+    const block = css.slice(start, css.indexOf("\n  }\n", start));
+
+    // Kutu bu kipte geri geliyor: incelik değil açık sınır okunuyor.
+    expect(block).toMatch(/\.icon-button \{\s*border: 1px solid ButtonBorder;/u);
+    // Basılı hâl sistem vurgu çiftiyle anlatılıyor (bu blokta sistem renkleri ezilmiyor).
+    expect(block).toContain('.icon-button[aria-pressed="true"]');
+    expect(block).toContain("background-color: Highlight;");
+    expect(block).toContain("color: HighlightText;");
+    // %50 opaklık bu kipte "devre dışı" demiyor.
+    expect(block).toContain("color: GrayText;");
+  });
+
+  it("eksi oyu marka rengiyle değil nötr `--accent` dolgusuyla işaretler", () => {
+    render(<EntryPreview entry={entry} actions={{ ...signedInActions, vote: -1 }} />);
+
+    const downvote = screen.getByRole("button", { name: "Eksi oy ver" });
+    expect(downvote).toHaveAttribute("aria-pressed", "true");
+    expect(downvote.className).toContain("bg-accent");
+    expect(downvote.className).toContain("text-on-accent");
   });
 
   it("dönüş adresi olarak entry'nin kalıcı adresini kullanır, başlığı değil", () => {

@@ -32,6 +32,20 @@ export function ThemeSettings() {
         dönmek için buradan seçin.
       </p>
 
+      {/*
+        `disabled` yalnız hidrasyona kadar sürer. JS kapalıysa `ready` hiç `true`
+        olmayacağı için burada kalıcı olarak devre dışı üç radyo ve hiç gerçeğe
+        dönmeyen bir "yükleniyor" mesajı kalıyordu. Tema tercihi tarayıcıda
+        tutuluyor, yani JS'siz gerçekten çalışmıyor — ama bunu susarak değil
+        `<noscript>` ile söylemek gerekiyor. Yalan söyleyen bir yükleme durumu,
+        dürüst bir "çalışmıyor"dan kötü.
+      */}
+      <noscript>
+        <p className="mt-4 text-sm text-muted">
+          Tema tercihi tarayıcıda saklandığı için JavaScript kapalıyken değiştirilemiyor. Site yine
+          de cihazınızın açık/koyu ayarını izler.
+        </p>
+      </noscript>
       <fieldset disabled={!ready} className="mt-4">
         <legend className="sr-only">Tema tercihi</legend>
         <div className="space-y-1">
@@ -68,13 +82,13 @@ export function ThemeSettings() {
       {/* Seçim değişince tek cümle değişir; her tuş vuruşunda değil, bu yüzden
           `polite` bölge gürültü yapmaz. Sisteme bağlıyken hangi temanın geçerli
           olduğunu da burası söyler — düğmenin ikonunu göremeyen kullanıcı için. */}
-      <p role="status" className="mt-3 text-sm text-muted">
-        {ready
-          ? preference === "system"
+      {ready ? (
+        <p role="status" className="mt-3 text-sm text-muted">
+          {preference === "system"
             ? `Şu an sistem ayarı geçerli: ${resolved === "dark" ? "koyu" : "açık"} tema.`
-            : `Şu an sizin seçiminiz geçerli: ${preference === "dark" ? "koyu" : "açık"} tema.`
-          : "Tema tercihi yükleniyor…"}
-      </p>
+            : `Şu an sizin seçiminiz geçerli: ${preference === "dark" ? "koyu" : "açık"} tema.`}
+        </p>
+      ) : null}
     </section>
   );
 }

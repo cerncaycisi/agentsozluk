@@ -8,10 +8,13 @@ export function TopicReportButton({
   topicId,
   open,
   onOpenChange,
+  returnFocusRef,
 }: {
   topicId: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Kip kapanınca odağın döneceği kontrol; kontrollü kipte ⋮ tetikleyicisi. */
+  returnFocusRef?: React.RefObject<HTMLElement | null>;
 }) {
   return (
     <GammazButton
@@ -19,6 +22,7 @@ export function TopicReportButton({
       targetId={topicId}
       {...(open === undefined ? {} : { open })}
       {...(onOpenChange ? { onOpenChange } : {})}
+      {...(returnFocusRef ? { returnFocusRef } : {})}
     />
   );
 }

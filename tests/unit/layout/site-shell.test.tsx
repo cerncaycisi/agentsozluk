@@ -441,17 +441,19 @@ describe("header account call to action", () => {
   it("puts the primary call to action where the account menu sits and keeps the strip intact", () => {
     renderShell(null);
 
-    // Satır 1: hesap menüsüyle aynı yer (tema düğmesinin yanı).
+    // Dar ekran kümesi ("satır 1"): hesap menüsüyle aynı yer, tema düğmesinin yanı.
     const signUp = within(header()).getByRole("link", { name: "Kayıt ol" });
-    const row1 = header().firstElementChild as HTMLElement;
-    expect(row1.contains(signUp)).toBe(true);
-
-    // 375px'te satır 1'de iki CTA'ya yer yok: "Giriş" ikinci satırda,
-    // ama kaydırılan şeridin dışında, yani şerit hâlâ dört öğe.
     const strip = screen.getByRole("navigation", { name: "Ana menü" });
+    const [row1, row2] = [...(header().firstElementChild as HTMLElement).children];
+    expect(row1?.contains(signUp)).toBe(true);
+    expect(row1?.contains(strip)).toBe(false);
+
+    // 375px'te satır 1'de iki CTA'ya yer yok: "Giriş" ikinci kümede,
+    // ama kaydırılan şeridin dışında, yani şerit hâlâ dört öğe.
     const signIn = within(header()).getByRole("link", { name: "Giriş" });
     expect(strip.contains(signIn)).toBe(false);
     expect(within(strip).getAllByRole("link")).toHaveLength(4);
+    expect(row2?.contains(signIn)).toBe(true);
     expect(strip.parentElement?.contains(signIn)).toBe(true);
     expect(signIn).toHaveClass("shrink-0");
   });
@@ -465,6 +467,158 @@ describe("header account call to action", () => {
     expect(
       within(screen.getByRole("navigation", { name: "Ana menü" })).getAllByRole("link"),
     ).toHaveLength(4);
+  });
+});
+
+/**
+ * Başlık geniş ekranda TEK satır. Eski hâlde ikinci kap 1280px'te 45px yer
+ * kaplıyor ve %77'si boş duruyordu (dört nav öğesi x=294'te bitiyor, sağında
+ * 986px). Ölçüldü: 110px → 65px (1024/1280/1440), dar ekranda 102 → 101.
+ *
+ * jsdom CSS uygulamıyor, dolayısıyla burada doğrulanan şey SÖZLEŞME: tek saran
+ * kap, `lg`den itibaren `display: contents`e dönen iki küme ve tek satırın
+ * `order` dizilimi. Piksel doğrulaması e2e'nin ve el ölçümünün işi.
+ */
+describe("wide header collapses to a single row", () => {
+  beforeEach(() => {
+    navigation.pathname = "/gundem";
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ data: [], meta: { hasNextPage: false, totalItems: 0 } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  const renderShell = (viewer: Parameters<typeof SiteShell>[0]["viewer"] = null) =>
+    render(
+      <SiteShell viewer={viewer}>
+        <main id="ana-icerik">İçerik</main>
+      </SiteShell>,
+    );
+
+  const header = () => document.querySelector("header") as HTMLElement;
+  const shell = () => header().firstElementChild as HTMLElement;
+  const orderOf = (element: Element) =>
+    Number(/(?:^|\s)lg:order-(\d+)(?:\s|$)/u.exec(element.className)?.[1] ?? Number.NaN);
+
+  it("uses one wrapping container whose two groups dissolve from lg up", () => {
+    renderShell();
+
+    expect(shell().className).toContain("flex-wrap");
+    const groups = [...shell().children];
+    expect(groups).toHaveLength(2);
+    for (const group of groups) {
+      // `display: contents` — çocuklar aynı esnek satırın öğesi oluyor.
+      expect(group.className).toContain("lg:contents");
+    }
+    // İkinci küme dar ekranda `w-full` ile kendi satırına iniyor; `order` hilesi
+    // gerekmiyor, yani DOM sırası dar ekranda görsel sıraya eşit kalıyor.
+    expect(groups[1]?.className).toContain("w-full");
+    expect(groups[1]?.contains(screen.getByRole("navigation", { name: "Ana menü" }))).toBe(true);
+    // Ayraç kalktı: iki satırı ayıran, kabın kendi `border-b`siyle yarışan çizgi yok.
+    expect(shell().className).not.toContain("border-t");
+    expect([...shell().children].some((child) => child.className.includes("border-t"))).toBe(false);
+  });
+
+  it("orders the single row as menu, logo, strip, search, theme, sign-in, account", () => {
+    renderShell();
+
+    const sequence = [
+      screen.getByRole("button", { name: "Başlık menüsünü aç" }),
+      within(header()).getByRole("link", { name: "Agent Sözlük" }),
+      screen.getByRole("navigation", { name: "Ana menü" }),
+      document.getElementById("header-search")?.closest("form") as HTMLElement,
+      screen.getByRole("button", { name: "Koyu tema" }).parentElement as HTMLElement,
+      within(header()).getByRole("link", { name: "Giriş" }),
+      within(header()).getByRole("link", { name: "Kayıt ol" }).parentElement as HTMLElement,
+    ];
+
+    const orders = sequence.map((element) => orderOf(element));
+    for (const order of orders) expect(Number.isNaN(order)).toBe(false);
+    // Kesin ARTAN: şerit logodan sonra, ikincil CTA birincilden önce.
+    expect(orders).toEqual([...orders].sort((a, b) => a - b));
+    expect(new Set(orders).size).toBe(orders.length);
+  });
+
+  it("keeps the strip at its intrinsic width on one row so the search field is what shrinks", () => {
+    renderShell();
+
+    const strip = screen.getByRole("navigation", { name: "Ana menü" });
+    // Dar ekranda şerit satırı doldurur (`flex-1`), geniş ekranda kendi genişliğinde
+    // kalır: sığmayan olursa daralması gereken arama alanı, şerit değil — şerit
+    // daralırsa öğeleri yatay kaydırmanın altında kaybolur.
+    expect(strip).toHaveClass("flex-1", "lg:flex-none", "lg:w-auto");
+    expect(document.getElementById("header-search")?.closest("form")).toHaveClass("flex-1");
+  });
+
+  /**
+   * Marka: ad köşeli parantezlerin İÇİNDE. `[[bkz]]` sözlüğün referans sözdizimi,
+   * dolayısıyla işaret ayrı bir amblem değil adın kabı.
+   */
+  it("wraps the wordmark in the bracket mark without changing the accessible name", () => {
+    renderShell();
+
+    // Erişilebilir ad değişmedi: parantezler duyurulmuyor.
+    const brand = within(header()).getByRole("link", { name: "Agent Sözlük" });
+    expect(brand).toHaveAttribute("href", "/");
+    const marks = [...brand.querySelectorAll("svg")];
+    expect(marks).toHaveLength(2);
+    for (const mark of marks) expect(mark).toHaveAttribute("aria-hidden", "true");
+
+    // Ad iki parantezin ARASINDA: sol işaret → ad → sağ işaret.
+    const children = [...brand.children];
+    expect(children.map((child) => child.tagName.toLowerCase())).toEqual(["svg", "span", "svg"]);
+    expect(children[1]).toHaveTextContent("Agent Sözlük");
+
+    // Dokunma hedefi: bağlantı eskiden 24-28px yüksekliğindeydi.
+    expect(brand).toHaveClass("min-h-11", "inline-flex", "items-center");
+  });
+
+  it("never leaves a bracket orphaned when the wordmark hides on narrow screens", () => {
+    renderShell();
+
+    const brand = within(header()).getByRole("link", { name: "Agent Sözlük" });
+    const label = brand.querySelector("span") as HTMLElement;
+    // `<sm`: ad gözden gizleniyor ama ekran okuyucuda kalıyor; iki parantez
+    // bitişip tek parça işareti kuruyor (`icon.svg` ile aynı biçim).
+    expect(label).toHaveClass("sr-only", "sm:not-sr-only");
+    // Parantezlerin ikisi de HER genişlikte render ediliyor — birinin gizlendiği
+    // bir kırılma noktası yok, yani "tek parantez" hâli oluşamaz.
+    for (const mark of brand.querySelectorAll("svg")) {
+      expect(mark.getAttribute("class") ?? "").not.toMatch(/(?:^|:)hidden\b/u);
+    }
+  });
+
+  it("boxes the shell icon buttons and leaves the sidebar refresh bare", () => {
+    renderShell();
+
+    // Kabuk: arama alanı ve dolu CTA ile aynı hizada duran kontroller kutulu.
+    for (const name of ["Başlık menüsünü aç", "Aramayı aç", "Koyu tema"]) {
+      expect(screen.getByRole("button", { name })).toHaveClass("icon-button-boxed");
+    }
+    // Kart başlığındaki yenile: ikinci bir çerçeve kurmuyor, `border-0` ile de
+    // ezmiyor — `.icon-button` artık zaten çerçevesiz.
+    const refresh = screen.getByRole("button", { name: "Gündem başlıklarını yenile" });
+    expect(refresh).toHaveClass("icon-button");
+    expect(refresh.className).not.toContain("icon-button-boxed");
+    expect(refresh.className).not.toContain("border-0");
   });
 });
 

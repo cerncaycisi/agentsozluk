@@ -248,24 +248,50 @@ body {
   }
 
   /**
-   * İkon buton (oy, favori, ⋮). Etiketi yok — kontrolü tanıtan TEK şey kenarlık,
-   * bu yüzden durgunken bile `--border-strong` (page üstünde açık 3.127 / koyu
-   * 3.487; SC 1.4.11 eşiği 3.0). Eskiden `border` idi: 1.222 / 1.375, yani
-   * kutunun kendisi görünmüyordu.
+   * İkon buton (oy, favori, ⋮, tema, çekmece). Etiketi yok; kontrolü tanıtan şey
+   * İKONUN KENDİSİ — durgunken `--muted`, ölçüldü: sayfa zemininde açık 4.753 /
+   * koyu 6.974, `--ink` devraldığında 12.104 / 14.903. SC 1.4.11 "bir bileşeni
+   * tanımlamak için GEREKEN görsel bilgi" için 3:1 istiyor; gereken bilginin
+   * kenarlık olması ŞART DEĞİL. Bu yüzden aile çerçevesiz: iki kıyas ürünü de
+   * (ekşi, Normal Sözlük) entry aksiyonlarını çıplak ikon veriyor, kutulu olan
+   * bizdik ve iki-üç satırlık entry metninin yanında beş kutu metinden ağır
+   * çıkıyordu.
    *
-   * Dokunma hedefi 40×40 (SC 2.5.8 eşiği 24×24).
+   * Çerçeve isteyen yer `.icon-button-boxed` ekler (aşağıda). Yön böyle: kutu
+   * İSTİSNA, çıplak ikon KURAL. Tersi de kurulabilirdi ama kullanım sayısı
+   * (8 çerçevesiz / 5 çerçeveli) ve daha önemlisi yer belirleyici: içerik
+   * satırındaki kontrol metnin yanında yaşıyor, kabuktaki kontrol arama alanı ve
+   * dolu CTA'nın yanında. Varsayılan, çoğunluğun DEĞİL, metnin yanındakinin
+   * ihtiyacı olmalı — akış içine çerçeve eklemek her seferinde bilinçli bir karar
+   * olsun diye.
+   *
+   * Dokunma hedefi 40×40 (SC 2.5.8 eşiği 24×24); kutu kalkarken küçülmedi.
    *
    * Seçili hâl `aria-pressed="true"` ile işaretli ve dolgusu doygun; örtü orada
    * dolgu ölçeğine geçiyor. Kurallar `:not(:disabled)` taşıdığı için özgüllükleri
    * nötr kuralların üstünde (0,4,0 > 0,3,0) — sıraya bağlı değil.
+   *
+   * Kutu kalkınca DOLGU, seçili kontrolün tek sınırı oluyor; sayfa zeminine karşı
+   * ölçüldü: primary açık 5.741 / koyu 6.903, accent 7.332 / 6.974 (eşik 3.0).
+   * Dolgunun üstündeki ikon: on-primary 6.374 / 6.903, on-accent 8.141 / 6.974.
    */
   .icon-button {
-    @apply grid size-10 shrink-0 place-items-center rounded border;
-    border-color: rgb(var(--border-strong));
+    @apply grid size-10 shrink-0 place-items-center rounded;
     transition:
       background-image 120ms ease,
       border-color 120ms ease,
       color 120ms ease;
+  }
+  /**
+   * Kutulu varyant — yalnız KABUKTA (başlık şeridi, çekmece). Orada ikon buton
+   * `field-border` taşıyan arama alanı, çerçeveli hesap düğmesi ve dolu CTA ile
+   * aynı satırda duruyor; çerçevesiz kalırsa aynı hizadaki kontroller arasında
+   * "tıklanır" görünmüyor. Kenarlık `--border-strong`: page üstünde açık 3.127 /
+   * koyu 3.487, surface üstünde 3.472 / 3.245 (SC 1.4.11 eşiği 3.0).
+   */
+  .icon-button-boxed {
+    @apply border;
+    border-color: rgb(var(--border-strong));
   }
   .icon-button:hover:not(:disabled) {
     background-image: var(--overlay-hover);
@@ -287,6 +313,36 @@ body {
   }
   .icon-button:disabled {
     @apply cursor-not-allowed opacity-50;
+  }
+
+  /**
+   * ZORUNLU RENK KİPİ (Windows yüksek kontrast — `forced-colors: active`).
+   *
+   * Orada tarayıcı zemin, kenarlık ve metin renklerini kullanıcının paletiyle
+   * eziyor: `bg-primary`/`bg-accent` dolgusu da `--overlay-*` gradyanı da yok
+   * sayılıyor. Kutu kalktıktan SONRA geriye basılı oyu basılı olmayandan ayıran
+   * hiçbir görsel kanal kalmıyordu; `aria-pressed` ekran okuyucuyu kurtarıyor
+   * ama yüksek kontrast kullanan GÖREN kullanıcı kalıcı durumu kaybediyordu
+   * (SC 1.4.11). Axe bunu yakalamıyor, ölçmek gerekiyor.
+   *
+   * Çözüm sistem renkleri: bu blokta yazılan `Highlight`/`ButtonBorder`/`GrayText`
+   * anahtar kelimeleri ezilmiyor, kullanıcının kendi paletinden geliyor. Kutu da
+   * burada geri geliyor — bu kipin dili incelik değil, açık sınır.
+   */
+  @media (forced-colors: active) {
+    .icon-button {
+      border: 1px solid ButtonBorder;
+    }
+    .icon-button[aria-pressed="true"] {
+      background-color: Highlight;
+      color: HighlightText;
+      border-color: Highlight;
+    }
+    /* %50 opaklık bu kipte "devre dışı" demiyor; `GrayText` diyor. */
+    .icon-button:disabled {
+      color: GrayText;
+      border-color: GrayText;
+    }
   }
 
   /* Sıralama/pencere şeritleri. Aktif durum dolgulu değil — sıralama değiştiren
@@ -343,7 +399,7 @@ body {
       background-image 120ms ease,
       color 120ms ease;
   }
-  .menu-item:hover,
+  .menu-item:hover:not(:disabled),
   .menu-item[data-highlighted] {
     background-image: var(--overlay-hover);
   }
@@ -351,7 +407,13 @@ body {
     outline: 2px solid rgb(var(--primary));
     outline-offset: -2px;
   }
-  .menu-item[data-disabled] {
+  /* Devre dışı öğenin İKİ kaynağı var ve ikisi de kapatılmalı: Radix'in kendi
+     `disabled` prop'u `data-disabled` bırakıyor, ama `asChild` ile geçilen native
+     `<button disabled>` (hesap menüsündeki "Çıkış yap", istek uçarken) Radix'e
+     görünmüyor — orada yalnız `:disabled` eşleşiyor. Eskiden o düğme bekleme
+     sırasında hâlâ işaretçi imleci ve hover örtüsü gösteriyordu. */
+  .menu-item[data-disabled],
+  .menu-item:disabled {
     @apply cursor-default opacity-50;
     background-image: none;
   }

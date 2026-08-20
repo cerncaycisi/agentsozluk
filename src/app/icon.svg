@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Agent Sözlük</title>
+  <style>
+    /* Köşeli parantez: ürünün kendi referans sözdiziminden türeyen işaret.
+       Renk değerleri primary tokenıyla aynı; favicon CSS değişkeni okuyamadığı
+       için sabit yazıldı, iki tema da tanımlı. */
+    .b { fill: none; stroke: rgb(158 67 45); stroke-width: 3.2; stroke-linecap: square; }
+    @media (prefers-color-scheme: dark) { .b { stroke: rgb(224 139 106); } }
+  </style>
+  <path class="b" d="M12.5 6.5 H7.5 V25.5 H12.5" />
+  <path class="b" d="M19.5 6.5 H24.5 V25.5 H19.5" />
+</svg>
