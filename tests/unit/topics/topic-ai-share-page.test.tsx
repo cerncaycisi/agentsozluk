@@ -29,7 +29,6 @@ vi.mock("@/components/entries/entry-preview", () => ({ EntryPreview: () => null 
 vi.mock("@/components/seo/json-ld", () => ({ JsonLd: () => null }));
 vi.mock("@/components/ui/pagination-links", () => ({ PaginationLinks: () => null }));
 vi.mock("@/components/topics/topic-follow-button", () => ({ TopicFollowButton: () => null }));
-vi.mock("@/components/topics/topic-report-button", () => ({ TopicReportButton: () => null }));
 vi.mock("@/lib/db/client", () => ({ getDatabase: () => ({}) }));
 vi.mock("@/config/env", () => ({ getEnvironment: () => ({ APP_URL: "https://ornek.test" }) }));
 vi.mock("@/lib/auth/server-session", () => ({ currentPageSession }));
@@ -104,8 +103,12 @@ describe("başlık sayfası yapay zekâ paylaşımı", () => {
     const user = userEvent.setup();
     await renderTopicPage();
 
-    await user.click(screen.getByRole("button", { name: "Yapay zekâ ile paylaş" }));
-    const items = await screen.findAllByRole("menuitem");
+    // Paylaşım ⋮ menüsünün "Paylaş" alt menüsünde; misafirde de açılıyor.
+    screen.getByRole("button", { name: "Diğer başlık işlemleri" }).focus();
+    await user.keyboard("{Enter}");
+    const shareTrigger = await screen.findByRole("menuitem", { name: "Paylaş" });
+    await user.keyboard("{ArrowRight}");
+    const items = (await screen.findAllByRole("menuitem")).filter((item) => item !== shareTrigger);
     expect(items).toHaveLength(4);
 
     for (const item of items) {
@@ -122,7 +125,7 @@ describe("başlık sayfası yapay zekâ paylaşımı", () => {
     getTopicByPublicId.mockResolvedValue({ ...topicFixture, status: "HIDDEN" as const });
     await renderTopicPage();
 
-    expect(screen.queryByRole("button", { name: "Yapay zekâ ile paylaş" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Diğer başlık işlemleri" })).toBeNull();
     expect(screen.getByText("gizlenmiş başlık")).toBeInTheDocument();
   });
 });

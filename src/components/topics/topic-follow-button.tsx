@@ -30,9 +30,14 @@ export function TopicFollowButton({
   };
   return (
     <div>
+      {/*
+        Takip ikincil bir eylem: sayfanın işi okumak, takip etmek değil. Bu yüzden
+        dolgulu birincil butondan sessiz, kenarlıklı ve satır yüksekliğinde
+        (36px) bir forma indi — başlıkla aynı hizada durur ama onunla yarışmaz.
+      */}
       <button
         type="button"
-        className={followed ? "button-secondary" : "button-primary"}
+        className="chip font-medium text-ink"
         onClick={() => void toggle()}
         disabled={pending}
       >

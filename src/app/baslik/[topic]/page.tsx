@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Search } from "lucide-react";
+import { Fragment } from "react";
 import { headers } from "next/headers";
 import { notFound, permanentRedirect } from "next/navigation";
 import { CreateEntryForm } from "@/components/entries/create-entry-form";
@@ -32,9 +34,9 @@ import {
   publicProfileUrl,
   robotsForCanonicalView,
 } from "@/modules/indexing/domain/public-seo";
-import { TopicAiShare } from "@/components/topics/topic-ai-share";
 import { TopicFollowButton } from "@/components/topics/topic-follow-button";
-import { TopicReportButton } from "@/components/topics/topic-report-button";
+import { TopicOverflowMenu } from "@/components/topics/topic-overflow-menu";
+import { TopicWindowMenu } from "@/components/topics/topic-window-menu";
 import {
   enforceRateLimit,
   ipRateLimitIdentifier,
@@ -255,13 +257,23 @@ export default async function TopicPage({
             })),
         })}
       />
-      <header className="mb-8">
+      {/*
+        Başlık bloğu iki satır: kimlik satırı (başlık + takip + ⋮) ve kontrol
+        satırı (sıralama + arama + pencere). Eskiden altı satırdı ve ilk entry
+        katlamanın altına düşüyordu; okuma ürününde başlıkla ilk cümle arasına
+        altı satırlık denetim koymanın karşılığı yok.
+
+        Kontrollerin hiçbiri JS'e bağlı değil: sıralama ve pencere düz `<a href>`,
+        arama `<form method="get">`. Pencere menüsü Radix değil `<details>` — JS
+        kapalıyken de açılır.
+      */}
+      <header className="mb-6">
         <p className="eyebrow">
           {windowSummary
             ? `${result.totalItems} entry · ${windowSummary}`
             : `${topic.entryCount} entry`}
         </p>
-        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <h1 className="title-page">{topic.title}</h1>
           <div className="flex shrink-0 items-center gap-2">
             {topic.status === "HIDDEN" ? (
@@ -269,93 +281,118 @@ export default async function TopicPage({
                 gizlenmiş başlık
               </span>
             ) : null}
+            {session?.user.status === "ACTIVE" && topic.status === "ACTIVE" ? (
+              <TopicFollowButton topicId={topicId} initialFollowed={topic.following} />
+            ) : null}
             {/* Gizlenmiş/birleştirilmiş başlığı dışarıya özetletmenin anlamı yok. */}
             {topic.status === "ACTIVE" ? (
-              <TopicAiShare title={topic.title} url={absolutePublicUrl(appUrl, topic.url)} />
+              <TopicOverflowMenu
+                title={topic.title}
+                shareUrl={absolutePublicUrl(appUrl, topic.url)}
+                topicId={topicId}
+                canReport={canGammaz && session?.userId !== topic.createdById}
+              />
             ) : null}
           </div>
         </div>
-        <form action={topic.url} method="get" role="search" className="mt-6 flex flex-wrap gap-2">
-          <label htmlFor="topic-entry-search" className="sr-only">
-            Başlık içinde ara
-          </label>
-          <input type="hidden" name="sort" value={sort} />
-          {timeWindow === DEFAULT_TOPIC_TIME_WINDOW ? null : (
-            <input type="hidden" name="window" value={timeWindow} />
-          )}
-          <input
-            id="topic-entry-search"
-            name="q"
-            type="search"
-            defaultValue={entryQuery}
-            maxLength={100}
-            placeholder="Bu başlıktaki entry’lerde ara"
-            className="min-w-0 flex-1 rounded border field-border bg-page px-3 py-2"
-          />
-          <button type="submit" className="button-secondary">
-            Başlıkta ara
-          </button>
-          {entryQuery ? (
-            <a
-              href={topicUrlWithQuery(topic.url, { sort, window: timeWindow })}
-              className="button-secondary"
-            >
-              Aramayı temizle
-            </a>
-          ) : null}
-        </form>
-        <nav
-          aria-label="Entry sıralaması"
-          className="mt-4 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {(["oldest", "newest", "top"] as const).map((value) => (
-            <a
-              key={value}
-              href={topicUrlWithQuery(topic.url, {
-                sort: value,
-                window: timeWindow,
-                query: entryQuery || undefined,
-              })}
-              aria-current={sort === value ? "page" : undefined}
-              className={`chip whitespace-nowrap${sort === value ? " chip-active" : ""}`}
-            >
-              {value === "oldest"
-                ? "Eskiden yeniye"
-                : value === "newest"
-                  ? "Yeniden eskiye"
-                  : "En yüksek puan"}
-            </a>
-          ))}
-        </nav>
-        <nav
-          aria-label="Zaman penceresi"
-          className="mt-2 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {TOPIC_TIME_WINDOWS.map((value) => (
-            <a
-              key={value}
-              href={topicUrlWithQuery(topic.url, {
-                sort,
-                window: value,
-                query: entryQuery || undefined,
-              })}
-              aria-current={timeWindow === value ? "page" : undefined}
-              className={`chip whitespace-nowrap${timeWindow === value ? " chip-active" : ""}`}
-            >
-              {topicTimeWindowLabel(value)}
-            </a>
-          ))}
-        </nav>
-        {session?.user.status === "ACTIVE" ? (
-          <div className="mt-4 flex flex-wrap items-start gap-3">
-            {topic.status === "ACTIVE" ? (
-              <TopicFollowButton topicId={topicId} initialFollowed={topic.following} />
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+          {/*
+            Sıralama en sık kullanılan kontrol; menüye kapanmıyor. `chip` yerine
+            düz metin linkleri: üç kutu yerine bir satır metin, aktif olan renkle
+            ayrılıyor. Dokunma hedefi `min-h-9` ile 36px kalıyor (SC 2.5.8).
+          */}
+          <nav
+            aria-label="Entry sıralaması"
+            className="flex flex-wrap items-center gap-x-2 text-sm"
+          >
+            {(["oldest", "newest", "top"] as const).map((value, index) => (
+              <Fragment key={value}>
+                {index > 0 ? (
+                  <span aria-hidden="true" className="text-muted">
+                    ·
+                  </span>
+                ) : null}
+                <a
+                  href={topicUrlWithQuery(topic.url, {
+                    sort: value,
+                    window: timeWindow,
+                    query: entryQuery || undefined,
+                  })}
+                  aria-current={sort === value ? "page" : undefined}
+                  className={`inline-flex min-h-9 items-center whitespace-nowrap ${
+                    sort === value ? "font-medium text-primary" : "text-muted hover:text-ink"
+                  }`}
+                >
+                  {value === "oldest"
+                    ? "Eskiden yeniye"
+                    : value === "newest"
+                      ? "Yeniden eskiye"
+                      : "En yüksek puan"}
+                </a>
+              </Fragment>
+            ))}
+          </nav>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <form action={topic.url} method="get" role="search" className="flex items-center gap-1">
+              <label htmlFor="topic-entry-search" className="sr-only">
+                Başlık içinde ara
+              </label>
+              <input type="hidden" name="sort" value={sort} />
+              {timeWindow === DEFAULT_TOPIC_TIME_WINDOW ? null : (
+                <input type="hidden" name="window" value={timeWindow} />
+              )}
+              <input
+                id="topic-entry-search"
+                name="q"
+                type="search"
+                defaultValue={entryQuery}
+                maxLength={100}
+                placeholder="başlıkta ara"
+                className="min-h-9 w-36 min-w-0 rounded border field-border bg-page px-3 text-sm sm:w-44"
+              />
+              {/*
+                Enter zaten gönderiyor; düğme dokunmalı kullanım ve görünür
+                gönderim işareti için var, etiketi ekran okuyucuya `aria-label`
+                ile veriliyor.
+              */}
+              <button
+                type="submit"
+                aria-label="Başlıkta ara"
+                className="chip w-9 justify-center px-0 text-ink"
+              >
+                <Search aria-hidden="true" size={16} />
+              </button>
+            </form>
+            {/*
+              Arama aktifken çıkış yolu görünür kalmalı: kullanıcı filtrelenmiş
+              listeye bakarken sebebini ve nasıl geri döneceğini görmeli.
+            */}
+            {entryQuery ? (
+              <a
+                href={topicUrlWithQuery(topic.url, { sort, window: timeWindow })}
+                className="inline-flex min-h-9 items-center whitespace-nowrap text-sm text-muted underline hover:text-ink"
+              >
+                Aramayı temizle
+              </a>
             ) : null}
-            {canGammaz && topic.status === "ACTIVE" && session.userId !== topic.createdById ? (
-              <TopicReportButton topicId={topicId} />
-            ) : null}
+            <nav aria-label="Zaman penceresi" className="shrink-0">
+              <TopicWindowMenu
+                triggerLabel={windowSummary ?? "tüm zamanlar"}
+                filtered={timeWindow !== DEFAULT_TOPIC_TIME_WINDOW}
+                options={TOPIC_TIME_WINDOWS.map((value) => ({
+                  value,
+                  label: topicTimeWindowLabel(value),
+                  href: topicUrlWithQuery(topic.url, {
+                    sort,
+                    window: value,
+                    query: entryQuery || undefined,
+                  }),
+                  current: timeWindow === value,
+                }))}
+              />
+            </nav>
           </div>
-        ) : null}
+        </div>
       </header>
       {/* Ritmi boşluk değil ayraç kuruyor: her `EntryPreview` üstünde `border-t`
           taşıyor, bu yüzden sarmalayıcıda `space-y-*` yok. */}
