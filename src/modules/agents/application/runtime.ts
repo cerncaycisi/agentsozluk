@@ -273,8 +273,17 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
   const followedTopics = [...records.followedTopics]
     .sort((left, right) => right.entryCount24h - left.entryCount24h)
     .slice(0, 8)
+    /*
+      Açık alan listesi, spread DEĞİL. Spread `lastEntryBody`'yi atmıyordu: ham gövde
+      kırpılmış kopyasının yanında snapshot'a gidiyordu. Canlıda görüldü — 52 run'ın
+      4'ünde. Üstelik kırpma döngüsü bu alanı görmüyor, yani bütçe aşılırsa taşmaya
+      sebep olan alana hiç dokunmadan hata fırlatırdı. Komşu `trendingTopics` map'i
+      bunu zaten doğru yapıyordu; iki alan, iki farklı sonuç.
+    */
     .map((topic) => ({
-      ...topic,
+      id: topic.id,
+      title: topic.title,
+      entryCount24h: topic.entryCount24h,
       openedByCurrentWriter: writerOpenedTopicIds.has(topic.id),
       lastEntry: topic.lastEntryBody ? truncateUntrustedText(topic.lastEntryBody, 260) : null,
     }));

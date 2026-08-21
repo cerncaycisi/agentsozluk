@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runtimeAllowedPerceptionKeys, runtimePromptScaffold } from "@/runtime/prompt-profile";
 import { runtimePerceptionMaximumBytes } from "@/modules/agents/application/runtime";
@@ -101,5 +103,46 @@ describe("takip edilen yazarın işi", () => {
     expect(t).toContain("cevap yazma yükümlülüğü doğurmaz");
     // Tekrarı açıkça dışlıyor — takip, aynı hükmü yeniden paketleme izni değil.
     expect(t).toContain("Aynı hükmü farklı kelimelerle tekrar etmek değildir");
+  });
+});
+
+/*
+  Bağımsız inceleme (21 Ağu) dört bulgu çıkardı, dördü de canlıda doğrulandı.
+  Bu testler dördünün de sessizce geri gelmesini engelliyor.
+*/
+describe("inceleme bulguları", () => {
+  it("yeni perception alanları kanıt kataloğunda", () => {
+    /*
+      Prompt bu alanları açıkça kullandırıyor ("karşı görüş yaz") ama katalogda
+      yoklardı: model o id'yi gösterince run CODEX_DECISION_PROVENANCE_INVALID ile
+      düşüyordu. Canlıda görüldü.
+    */
+    const kaynak = readFileSync(resolve(__dirname, "../../../src/runtime/worker.ts"), "utf8");
+    const katalog = kaynak.slice(
+      kaynak.indexOf("function runtimeEvidenceCatalog"),
+      kaynak.indexOf("function", kaynak.indexOf("function runtimeEvidenceCatalog") + 10),
+    );
+    for (const alan of ["trendingTopics", "newTopics", "followedTopics", "followedWriterEntries"])
+      expect(katalog).toContain(alan);
+  });
+
+  it("takip edilen başlık listesi kırpılmıyor", () => {
+    /*
+      Bu sorgu `followedTopicIds`'i de besliyor (+1,5 sıralama bonusu). Bir kez
+      `take: 40` konmuştu; canlıda 22 ajanın 9'u kırpılıyordu, en çoğu 135 takiple.
+    */
+    const kaynak = readFileSync(
+      resolve(__dirname, "../../../src/modules/agents/repository/runtime.ts"),
+      "utf8",
+    );
+    const sorgu = kaynak.slice(
+      kaynak.indexOf("transaction.topicFollow.findMany"),
+      kaynak.indexOf("transaction.userFollow.findMany"),
+    );
+    /*
+      İç `take`'ler meşru (entry önizlemesi 1 tane). Yasak olan DIŞ sorgunun
+      kırpılması — o da girintiden ayırt ediliyor: dış seviye altı boşluk.
+    */
+    expect(sorgu).not.toMatch(/^ {6}take:/mu);
   });
 });
