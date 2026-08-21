@@ -15,11 +15,17 @@ export const promptRolloutLifecycleStatuses = ["DRAFT", "PAUSED", "ACTIVE", "SUS
 export const defaultPromptRolloutReason =
   "Persona içeriği değişmeden güncel prompt şablonuyla yeniden render edildi.";
 
+/**
+ * Plan hash şeması sürümü. Hash'in kapsamı değiştiğinde artırılır; eski bir kuru çalıştırmadan
+ * kalan hash'in yeni script tarafından kabul edilmesi böyle engellenir.
+ */
+export const promptRolloutPlanHashVersion = 2;
+
 export const promptRolloutEnvironmentSchema = z
   .object({
     AGENT_PROMPT_ROLLOUT_MODE: z.enum(["DRY_RUN", "PAUSE", "APPLY", "RESUME"]).default("DRY_RUN"),
     AGENT_PROMPT_ROLLOUT_CONFIRMATION: z.string().optional(),
-    AGENT_PROMPT_ROLLOUT_EXPECTED_SNAPSHOT_HASH: z
+    AGENT_PROMPT_ROLLOUT_EXPECTED_PLAN_HASH: z
       .string()
       .regex(/^[a-f0-9]{64}$/u)
       .optional(),
@@ -39,12 +45,12 @@ export const promptRolloutEnvironmentSchema = z
       });
     if (
       environment.AGENT_PROMPT_ROLLOUT_MODE === "APPLY" &&
-      !environment.AGENT_PROMPT_ROLLOUT_EXPECTED_SNAPSHOT_HASH
+      !environment.AGENT_PROMPT_ROLLOUT_EXPECTED_PLAN_HASH
     )
       context.addIssue({
         code: "custom",
-        path: ["AGENT_PROMPT_ROLLOUT_EXPECTED_SNAPSHOT_HASH"],
-        message: "PROMPT_ROLLOUT_SNAPSHOT_HASH_REQUIRED",
+        path: ["AGENT_PROMPT_ROLLOUT_EXPECTED_PLAN_HASH"],
+        message: "PROMPT_ROLLOUT_PLAN_HASH_REQUIRED",
       });
   });
 
@@ -98,8 +104,12 @@ export interface PromptRolloutPlan {
   changeCount: number;
   personaDriftCount: number;
   validationFailureCount: number;
-  /** APPLY'ın beklediği durum parmak izi; kuru çalıştırma ile yazma arasındaki kaymayı yakalar. */
-  snapshotHash: string;
+  /**
+   * Uygulanacak planın parmak izi. Yalnız başlangıç DB durumunu değil, her persona için
+   * yazılacak prompt'un hash'ini de kapsar; böylece onay "şu prompt'u yaz" anlamına gelir.
+   * Kuru çalıştırma ile yazma arasında renderer değişirse hash tutmaz ve rollout durur.
+   */
+  planHash: string;
   /** Aynı şablondan render edilmiş görünen prompt kümeleri — "iki popülasyon" ölçüsü. */
   beforeTemplateGroups: PromptTemplateGroup[];
   afterTemplateGroups: PromptTemplateGroup[];
@@ -204,18 +214,24 @@ export function buildPromptRolloutPlan(
     personaDriftCount: receipts.filter(({ personaNormalizationDrift }) => personaNormalizationDrift)
       .length,
     validationFailureCount: receipts.filter(({ validation }) => validation !== "PASS").length,
-    snapshotHash: sha256(
-      JSON.stringify(
-        records.map((record) => ({
-          profileId: record.profileId,
-          username: record.username,
-          lifecycleStatus: record.lifecycleStatus,
-          personaVersionId: record.personaVersionId,
-          personaVersion: record.personaVersion,
-          storedPersonaHash: record.storedPersonaHash,
-          storedPromptHash: sha256(record.storedPrompt),
-        })),
-      ),
+    planHash: sha256(
+      JSON.stringify({
+        version: promptRolloutPlanHashVersion,
+        entries: records.map((record, index) => {
+          const receipt = receipts[index]!;
+          return {
+            profileId: record.profileId,
+            username: record.username,
+            lifecycleStatus: record.lifecycleStatus,
+            personaVersionId: record.personaVersionId,
+            personaVersion: record.personaVersion,
+            storedPersonaHash: record.storedPersonaHash,
+            storedPromptHash: receipt.storedPromptHash,
+            expectedPromptHash: receipt.expectedPromptHash,
+            changeNeeded: receipt.changeNeeded,
+          };
+        }),
+      }),
     ),
     beforeTemplateGroups: groupByTemplateSignature(
       receipts.map(({ username, storedTemplateSignature }) => ({
