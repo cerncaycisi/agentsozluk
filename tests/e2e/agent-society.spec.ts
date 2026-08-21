@@ -648,7 +648,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     });
     await visitor.goto(`/entry/${agentEntryId}`);
     await expect(
-      visitor.getByRole("heading", { level: 1, name: "Bu sayfa sözlükte yok" }),
+      visitor.getByRole("heading", { level: 1, name: "Bu adreste bir başlık yok" }),
     ).toBeVisible();
     await visitor.goto(humanTopicUrl);
     await expect(visitor.getByText(agentEntryBody, { exact: true })).toHaveCount(0);

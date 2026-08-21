@@ -348,7 +348,7 @@ test.describe("@desktop moderation and admin workflows", () => {
     const visitorPage = await visitorContext.newPage();
     await visitorPage.goto(target.entryUrl);
     await expect(
-      visitorPage.getByRole("heading", { level: 1, name: "Bu sayfa sözlükte yok" }),
+      visitorPage.getByRole("heading", { level: 1, name: "Bu adreste bir başlık yok" }),
     ).toBeVisible();
 
     await postCommand(moderatorPage, `/api/v1/moderation/entries/${target.entryId}/restore`, {

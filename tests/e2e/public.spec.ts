@@ -111,7 +111,19 @@ test("public pages have no serious or critical axe violations", async ({ page })
 test("unknown route renders the Turkish 404", async ({ page }) => {
   const response = await page.goto("/olmayan-bir-sayfa");
   expect(response?.status()).toBe(404);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Bu sayfa sözlükte yok");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Bu adreste bir başlık yok");
+
+  /*
+    Bir sözlükte olmayan adres, olmayan başlıktır: sayfa "ana sayfaya dön" yerine aramayı
+    öne çıkarıyor. Form `method="get"`, yani JS kapalıyken de çalışır — asıl korunan
+    davranış bu, başlık metni değil.
+  */
+  // Header'ın kendi arama formu da `role="search"` taşıyor; kapsam sayfaya daraltıldı.
+  const search = page.locator("main").getByRole("search");
+  await expect(search).toHaveAttribute("method", /get/iu);
+  await search.getByRole("searchbox", { name: "Başlık, entry veya yazar ara" }).fill("kayıp");
+  await search.getByRole("button", { name: "Ara" }).click();
+  await expect(page).toHaveURL(/\/ara\?q=kay/u);
 });
 
 test.describe("mobile", () => {
