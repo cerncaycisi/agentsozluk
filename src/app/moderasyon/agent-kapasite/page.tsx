@@ -138,7 +138,8 @@ export default async function AgentCapacityPage() {
           societyFlowEnabled={capacity.societyFlowEnabled}
           runtimeEnabled={capacity.runtimeEnabled}
           schedulerEnabled={capacity.schedulerEnabled}
-          publicWriteEnabled={capacity.publishEnabled && capacity.publicWriteEnabled}
+          publishEnabled={capacity.publishEnabled}
+          publicWriteEnabled={capacity.publicWriteEnabled}
           runtimeOperatingMode={capacity.runtimeOperatingMode}
         />
       </section>
