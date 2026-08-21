@@ -4,7 +4,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EntryActions } from "@/components/entries/entry-actions";
-import { openEntryOverflowMenu, selectEntryOverflowItem } from "./overflow-menu";
+import { selectEntryOverflowItem } from "./overflow-menu";
 
 const apiRequest = vi.hoisted(() => vi.fn());
 const refresh = vi.hoisted(() => vi.fn());
@@ -51,7 +51,7 @@ function signedIn(
 }
 
 describe("aksiyon şeridi · görünür kalanlar", () => {
-  it("şeritte yalnız oy, skor, oy, favori ve ⋮ durur", () => {
+  it("şeritte oy, skor, oy, favori, paylaşım ve ⋮ durur", () => {
     const { container } = render(signedIn());
 
     const strip = container.querySelector("div");
@@ -59,10 +59,12 @@ describe("aksiyon şeridi · görünür kalanlar", () => {
       button.getAttribute("aria-label"),
     );
 
+    // Paylaşım `⋮`'nin İÇİNDE değil, onun solunda kendi ikonunda.
     expect(stripButtons).toEqual([
       "Artı oy ver",
       "Eksi oy ver",
       "Favorilere ekle",
+      "Entry’yi paylaş",
       "Diğer entry işlemleri",
     ]);
     // İkincil işlemler menü açılmadan DOM'da bile değil.
@@ -77,16 +79,17 @@ describe("aksiyon şeridi · görünür kalanlar", () => {
     expect(container.querySelector("div")?.className).not.toContain("flex-wrap");
   });
 
-  it("hiçbir yetki yoksa bile ⋮ durur — 'Linki kopyala' oturum istemiyor", async () => {
+  /**
+   * Paylaşım kendi ikonuna geçtikten sonra `⋮`'de yetki istemeyen öğe kalmadı:
+   * menüde yalnız yazar/moderasyon işlemleri var. Yetkisiz görüntüleyicide boş
+   * bir `⋮` çizmek yerine hiç çizmiyoruz.
+   */
+  it("hiçbir yetki yokken ⋮ hiç çizilmez; paylaşım yine durur", () => {
     render(signedIn({ canEdit: false, canReport: false, canBlockAuthor: false }));
 
-    expect(screen.getByRole("button", { name: "Diğer entry işlemleri" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Diğer entry işlemleri" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Entry’yi paylaş" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Artı oy ver" })).toBeVisible();
-
-    openEntryOverflowMenu();
-    expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual([
-      "Linki kopyala",
-    ]);
   });
 });
 
@@ -100,8 +103,8 @@ describe("⋮ menüsü · klavye", () => {
     await user.keyboard("{Enter}");
 
     const items = await screen.findAllByRole("menuitem");
+    // Yalnız yazar ve moderasyon; paylaşım bu çekmecede DEĞİL.
     expect(items.map((item) => item.textContent)).toEqual([
-      "Linki kopyala",
       "Entry’yi düzenle",
       "Sürümler",
       "Entry’yi gammazla",
@@ -130,7 +133,6 @@ describe("⋮ menüsü · klavye", () => {
     await user.keyboard("{Enter}");
 
     expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual([
-      "Linki kopyala",
       "Entry’yi gammazla",
       "Yazarı engelle",
     ]);
