@@ -208,8 +208,10 @@ export function topicSemanticRepetition(
   return null;
 }
 
-const framingTokenCount = 5;
-const minimumFramingLength = 24;
+const openingTokenCount = 5;
+const minimumOpeningLength = 24;
+const minimumClosingAnchorLength = 10;
+const minimumFramingTokens = 5;
 
 function framingTokens(value: string): string[] {
   return normalizeEntrySearchText(value)
@@ -218,29 +220,188 @@ function framingTokens(value: string): string[] {
     .filter(Boolean);
 }
 
-function longEdgePattern(value: string, edge: "OPENING" | "CLOSING"): string | null {
+/*
+  Açılış kenarı, YAZARIN KENDİ geçmişine karşı: ilk beş kelime tam eşleşir.
+
+  Bu kolda beş kelime yeterli, çünkü yazarın kendi entry'leri farklı başlıklara dağılır;
+  aynı beş kelimelik girişin iki ayrı konuda tekrar etmesini "konu zaten oydu" diye
+  açıklayamazsın. Korpusta bu kol hiç tetiklenmedi (0/1507), yani maliyeti de yok.
+*/
+function openingPattern(value: string): string | null {
   const tokens = framingTokens(value);
-  if (tokens.length < framingTokenCount) return null;
-  const pattern =
-    edge === "OPENING"
-      ? tokens.slice(0, framingTokenCount).join(" ")
-      : tokens.slice(-framingTokenCount).join(" ");
-  return pattern.length >= minimumFramingLength ? pattern : null;
+  if (tokens.length < minimumFramingTokens) return null;
+  const pattern = tokens.slice(0, openingTokenCount).join(" ");
+  return pattern.length >= minimumOpeningLength ? pattern : null;
 }
 
+/*
+  Kapanış kenarı: sondan üçüncü ve ikinci kelime tam eşleşir, SON kelime serbesttir.
+
+  Eski kural son beş kelimeyi tam eşleştiriyordu ve kilitlenen kısım kalıbın kendisi
+  değil, ondan önceki değişken kelimelerdi. Ölçüm: "… tek başına göstermiyor / göstermez
+  / kanıtlamaz / kanıtlamıyor" ile biten 59 entry'nin sıfırı yakalanıyordu, çünkü
+  "tek başına"dan önceki iki kelime her seferinde farklıydı. Değişmez olan sondan 3. ve
+  2. kelime; kalıbın kilidi orada.
+
+  Son kelime neden tamamen serbest? Türkçe çekim tam orada oluyor (göstermez/göstermiyor)
+  ve bu depoda naif kök bulma daha önce patladığı için karakter öneki kıyaslaması denendi:
+  son kelimenin ilk dört harfini eşleştirmek aynı korpusta 22 gerçek tekrarı (fiil eş
+  anlamlısıyla değiştirilmiş aynı kalıp: "göstermiyor" ↔ "kanıtlamıyor") kaçırıyordu ve
+  karşılığında yalnız iki yanlış pozitifi kurtarıyordu. Serbest bırakmak daha iyi bir
+  takas; yanlış pozitif riski aşağıdaki çapa kuralıyla kapatılıyor.
+
+  Çapa kuralı: sondan ikinci kelime bir işlev kelimesi olamaz. Bu kural olmadan
+  "… taşıyan bir program" ile "… taşıyan bir kitap" aynı kalıp sayılıyordu; oysa orada
+  ortak olan şey bir çerçeve değil, Türkçe dilbilgisinin kendisi. Sondan ikinci kelime
+  işlev kelimesiyse pencerede gerçekten sabitlenen tek bir içerik kelimesi kalır ve iki
+  kelimelik "kalıp" bir cümle parçasına düşer. Ölçümde bu kural tam olarak o tek yanlış
+  pozitifi düşürdü ve hiçbir gerçek tekrarı kaçırmadı.
+*/
+function closingPattern(value: string): string | null {
+  const tokens = framingTokens(value);
+  if (tokens.length < minimumFramingTokens) return null;
+  const anchor = tokens.at(-2);
+  if (!anchor || semanticStopWords.has(anchor)) return null;
+  const pattern = tokens.slice(-3, -1).join(" ");
+  return pattern.length >= minimumClosingAnchorLength ? pattern : null;
+}
+
+const topicOpeningPrefixTokens = 9;
+
+/*
+  Açılış kenarı, AYNI BAŞLIKTAKİ BAŞKA YAZARLARA karşı: ortak açılış en az dokuz kelime
+  sürmeli.
+
+  Burada beş kelime ölçülerek yetersiz bulundu. Bu kolda iki yazar tanımı gereği aynı
+  şeyi yazıyor, o yüzden kısa örtüşmenin açıklaması çoğu zaman bir yazma tercihi değil,
+  konunun kendisi: "roy andersson un 2019 yapımı" (filmin kimliği), "fransız elektronik
+  müzisyen ve prodüktör" (kişinin mesleği), "gopher hole museum kanada daki" (tanımın
+  kendisi). Beş kelimede kapı 45 entry reddediyordu ve bunların kabaca otuzu bu sınıftandı.
+
+  Denenip ELENEN ayrım: "paylaşılan açılış, başlıkta geçmeyen en az N içerik kelimesi
+  taşısın" (özel ad ve sayılar elenerek). Ölçüm bunu reddetti, çünkü iki sınıf sözlüksel
+  olarak iç içe geçmiş durumda — aynı eşikte
+    "fransız elektronik müzisyen ve prodüktör"  (kimlik: adamın mesleği)
+    "havadaki genetik izleri toplayarak bir"    (çerçeve: yazma tercihi)
+  ikisi de üç içerik kelimesi taşıyor, ikisinde de özel ad ve başlık örtüşmesi yok.
+  Birini düşüren her eşik diğerini de düşürüyor.
+
+  Onun yerine sorunun kendisi değiştirildi: "aynı beş kelimelik çerçeve mi?" yerine
+  "aynı açılış cümlesi mi?". Dokuz kelime, "bunu söylemenin tek yolu buydu" savunmasının
+  tükendiği yer: bir şeyin adını koymak üç dört kelime alır, dokuz kelime artık cümledir.
+  Ölçümde 45 red 14'e indi; düşen 31'in tamamı kimlik açılışıydı ve kalan 14'ün her
+  birinde ilk cümle 9-15 kelime boyunca birebir aynı.
+*/
+function sharedOpeningPrefixLength(left: string, right: string): number {
+  const leftTokens = framingTokens(left);
+  const rightTokens = framingTokens(right);
+  let shared = 0;
+  while (
+    shared < leftTokens.length &&
+    shared < rightTokens.length &&
+    leftTokens[shared] === rightTokens[shared]
+  )
+    shared += 1;
+  return shared;
+}
+
+const framingEdgePattern = {
+  OPENING: openingPattern,
+  CLOSING: closingPattern,
+} as const;
+
+export type EntryFramingEdge = "OPENING" | "CLOSING";
+/** OWN: yazarın kendi son entry'leri. TOPIC: aynı başlıktaki başka yazarların entry'leri. */
+export type EntryFramingScope = "OWN" | "TOPIC";
+export type EntryFramingRepetition = {
+  edge: EntryFramingEdge;
+  scope: EntryFramingScope;
+  /** Reddetme gerekçesinde gösterilecek okunur kalıp; kapanışta son kelime de yazılır. */
+  quotedPattern: string;
+};
+
+/** Gerekçe metni kalıbı okunur biçimde göstersin: kapanışta serbest son kelime de görünür. */
+function quotedFramingPattern(candidate: string, edge: EntryFramingEdge): string {
+  const tokens = framingTokens(candidate);
+  return edge === "OPENING"
+    ? tokens.slice(0, openingTokenCount).join(" ")
+    : tokens.slice(-3).join(" ");
+}
+
+/**
+ * Aynı çerçeveyi tekrar eden adayı bulur.
+ *
+ * Kapsam kararı: kendi geçmişi ile aynı başlıktaki başka yazarlar AYNI eşiği kullanır.
+ * Başkasının cümlesini tekrarlamak için daha gevşek bir eşik denendi ve ölçümde kötü
+ * çıktı; ayrıca iki kapsam zaten simetrik değil — kendi geçmişi bütün başlıkları kapsar,
+ * başka yazarlar yalnız içinde bulunulan başlıkla sınırlıdır. Ayrımı ölçeğe değil,
+ * gerekçe metnine taşıdık: yazar hangi kapsamı tekrar ettiğini okuyabiliyor.
+ */
 export function repeatedEntryFraming(
   candidate: string,
-  previousBodies: string[],
-): "OPENING" | "CLOSING" | null {
+  ownRecentBodies: readonly string[],
+  topicOtherAuthorBodies: readonly string[] = [],
+): EntryFramingRepetition | null {
   for (const edge of ["OPENING", "CLOSING"] as const) {
-    const candidatePattern = longEdgePattern(candidate, edge);
-    if (
-      candidatePattern &&
-      previousBodies.some((body) => longEdgePattern(body, edge) === candidatePattern)
-    )
-      return edge;
+    const patternOf = framingEdgePattern[edge];
+    const candidatePattern = patternOf(candidate);
+    if (!candidatePattern) continue;
+    if (ownRecentBodies.some((body) => patternOf(body) === candidatePattern))
+      return { edge, scope: "OWN", quotedPattern: quotedFramingPattern(candidate, edge) };
+    // Açılışta başka yazar kolu daha uzun bir örtüşme ister; gerekçesi yukarıda.
+    if (edge === "CLOSING") {
+      if (topicOtherAuthorBodies.some((body) => patternOf(body) === candidatePattern))
+        return { edge, scope: "TOPIC", quotedPattern: quotedFramingPattern(candidate, edge) };
+      continue;
+    }
+    const sharedPrefix = topicOtherAuthorBodies.reduce(
+      (longest, body) =>
+        patternOf(body) === candidatePattern
+          ? Math.max(longest, sharedOpeningPrefixLength(candidate, body))
+          : longest,
+      0,
+    );
+    if (sharedPrefix >= topicOpeningPrefixTokens)
+      return {
+        edge,
+        scope: "TOPIC",
+        quotedPattern: framingTokens(candidate).slice(0, sharedPrefix).join(" "),
+      };
   }
   return null;
+}
+
+/**
+ * Adayın kendi kenar kalıpları. Onarım turu reddin gerekçe METNİNİ göremiyor (kontrol
+ * düzlemi yanıtı yalnız rejectionCode taşır), ama adayın gövdesini görüyor; hangi
+ * cümlelerin kalıp sayıldığını buradan yeniden hesaplayıp tırnak içinde gösterebilir.
+ * Hangi kenarın çarpıştığını bilemez, bu yüzden ikisini de döndürür.
+ */
+export function candidateFramingEdges(body: string): {
+  opening: string | null;
+  closing: string | null;
+} {
+  return {
+    opening: openingPattern(body) ? quotedFramingPattern(body, "OPENING") : null,
+    closing: closingPattern(body) ? quotedFramingPattern(body, "CLOSING") : null,
+  };
+}
+
+/**
+ * DUPLICATE_FRAMING gerekçesi. Metin hangi kalıbın tekrar edildiğini ve kalıbın kimden
+ * geldiğini söyler; repair turu bu gerekçeyi okuyup neyi değiştireceğini bilsin diye
+ * "tekrar ediyor" demekle yetinmez.
+ */
+export function repeatedEntryFramingReason({
+  edge,
+  scope,
+  quotedPattern,
+}: EntryFramingRepetition): string {
+  const source =
+    scope === "OWN" ? "kendi son entry'lerinden birinin" : "aynı başlıkta başka bir yazarın";
+  return edge === "OPENING"
+    ? `Anayasa Madde 16: Aday entry, ${source} “${quotedPattern}” açılış kalıbını birebir tekrar ediyor. Düşünceyi koru ama entry'yi bu kelimelerle açma; ilk cümleyi baştan, kendi bakışından kur.`
+    : `Anayasa Madde 16: Aday entry, ${source} “${quotedPattern}” kapanış kalıbını tekrar ediyor; son kelime değişse de kalıp aynı sayılır. Son cümleyi bu kalıba bağlamadan bitir.`;
 }
 
 function normalizedGroundingText(value: string): string {

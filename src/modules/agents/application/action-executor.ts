@@ -40,6 +40,7 @@ import {
   containsDirectQuoteClaim,
   hasUnrecordedOfflineFirstPersonClaim,
   repeatedEntryFraming,
+  repeatedEntryFramingReason,
   seriousFactualClaimRequiresStrongEvidence,
   sourceGroundingIssue,
   topicSemanticRepetition,
@@ -1160,14 +1161,15 @@ export async function executeRuntimeAction(
               code: "DUPLICATE_SIMILARITY",
               reason: `Anayasa Madde 16: Aday içerik yakın agent içeriğine ${similarity.toFixed(2)} benzerlik gösteriyor.`,
             });
-          const repeatedFraming = repeatedEntryFraming(candidateBody, recentAgentBodies);
+          const repeatedFraming = repeatedEntryFraming(
+            candidateBody,
+            recentAgentBodies,
+            topicNoveltyContext?.otherAuthorBodies ?? [],
+          );
           if (repeatedFraming)
             return rejectAction(transaction, principal, actionRecord, {
               code: "DUPLICATE_FRAMING",
-              reason:
-                repeatedFraming === "OPENING"
-                  ? "Anayasa Madde 16: Aday içerik son agent entry'lerindeki uzun açılış kalıbını tekrar ediyor."
-                  : "Anayasa Madde 16: Aday içerik son agent entry'lerindeki uzun kapanış kalıbını tekrar ediyor.",
+              reason: repeatedEntryFramingReason(repeatedFraming),
             });
           const semanticRepetition = topicNoveltyContext
             ? topicSemanticRepetition(

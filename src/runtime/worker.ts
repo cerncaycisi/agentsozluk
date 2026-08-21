@@ -29,6 +29,7 @@ import {
 import { selectSourceReadItemsForPersona } from "@/runtime/source-relevance";
 import { RuntimeRunDeadline } from "@/runtime/run-deadline";
 import {
+  candidateFramingEdges,
   duplicateRepairCandidateIsSafe,
   isRepairableContentRejectionCode,
 } from "@/modules/agents/domain/action-policy";
@@ -480,6 +481,22 @@ function buildContentRepairPrompt(
       return "Yazdığın metnin kendisini 'bu kayıt', 'bu entry' veya 'bu girdi' diye adlandıran meta-ifadeyi tamamen kaldır. Dünyadaki gerçek kayıt kavramını anlatmıyorsan düşünceyi doğrudan başlığın konusu hakkında, tek başına okunabilen bağımsız bir sözlük entry'si olarak yeniden kur.";
     if (rejectionCode === "CONSTITUTION_ENTRY_TOPIC_META")
       return "Başlığın sözlükteki entry, yazar veya moderasyon hâlini anlatan kısmı tamamen kaldır. Yalnız başlığın gösterdiği kavram hakkında bağımsız bir entry yaz.";
+    if (rejectionCode === "DUPLICATE_FRAMING") {
+      const edges = candidateFramingEdges(originalAction.input.body ?? "");
+      const quoted = [
+        edges.opening === null ? null : `açılıştaki “${edges.opening}”`,
+        edges.closing === null ? null : `kapanıştaki “${edges.closing}”`,
+      ]
+        .filter((part) => part !== null)
+        .join(" ve ");
+      return [
+        "Reddin sebebi gövdenin bilgisi değil, kenarları: entry'nin ilk ya da son cümlesi daha önce kullanılmış bir çerçeveyi tekrar ediyor.",
+        quoted.length > 0 ? `Kalıp sayılan kısımlar: ${quoted}.` : "",
+        "Bilgiyi ve görüşü olduğu gibi koru; yalnız bu cümleleri farklı bir kuruluşla, başka kelimelerle yeniden yaz. Başlığı tanıtan hazır giriş kalıplarını ve hazır çekince kapanışlarını kullanma; kapanışta yalnız son kelimeyi çekimlemek kalıbı değiştirmez.",
+      ]
+        .filter((part) => part.length > 0)
+        .join(" ");
+    }
     if (rejectionCode === "TOPIC_SEMANTIC_REPETITION")
       return "Aynı başlıktaki mevcut entry'nin çekirdek hükmünü başka kelimelerle tekrarlama. Aynı kanıtla gerçekten yeni bir tanım, somut örnek, karşılaştırma, çekince veya farklı öznel görüş kurabiliyorsan yalnız gövdeyi yeniden yaz; yeni değer ekleyemiyorsan repair'den vazgeç.";
     return "Duplicate veya tekrarlanan çerçeveyi kaldır; aynı kanıtla gerçekten farklı ve bağımsız bir anlatım kur.";
