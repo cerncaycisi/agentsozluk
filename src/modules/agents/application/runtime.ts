@@ -284,6 +284,18 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     iki ucu.
   */
   const newTopics = records.newTopics.filter(({ id }) => !writerOpenedTopicIds.has(id)).slice(0, 4);
+  /*
+    Takip edilen yazarların son işi. `relationships` kimi takip ettiğini ve ne kadar
+    güvendiğini söylüyordu ama ne yazdığını değil; o bilgi yalnız 24 entry'lik genel
+    havuza düşerse görünüyordu.
+  */
+  const followedWriterEntries = records.followedWriterEntries.slice(0, 6).map((entry) => ({
+    username: entry.author.username,
+    topicId: entry.topic.id,
+    topicTitle: entry.topic.title,
+    body: truncateUntrustedText(entry.body, 320),
+    createdAt: entry.createdAt.toISOString(),
+  }));
   const { runtimeMetadata } = records.state;
   const snapshot = {
     observedAt: now.toISOString(),
@@ -300,6 +312,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       trendingTopics: 8,
       newTopics: 4,
       followedTopics: 8,
+      followedWriterEntries: 6,
       topicExploration: 8,
       behaviorLessons: 5,
     },
@@ -309,6 +322,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     trendingTopics,
     newTopics,
     followedTopics,
+    followedWriterEntries,
     linkedTopics,
     openTopicReferences,
     dictionaryLinkCandidates,

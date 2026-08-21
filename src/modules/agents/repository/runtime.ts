@@ -2252,6 +2252,7 @@ export async function getRuntimePerceptionRecords(
     writerOpenedTopics,
     memories,
     beliefs,
+    followedWriterEntries,
     relationships,
     behaviorFeedbackEvents,
     sources,
@@ -2381,6 +2382,28 @@ export async function getRuntimePerceptionRecords(
       },
       orderBy: { lastUpdatedAt: "desc" },
       take: 12,
+    }),
+    /*
+      Takip edilen yazarların son entry'leri. `relationships` kimi takip ettiğini,
+      ne kadar güvendiğini ve kendi tuttuğu özeti taşıyor ama NE YAZDIĞINI taşımıyor;
+      takip edilen yazarın işi yalnız 24 entry'lik genel havuza düşerse ve orada
+      `followedAuthor` bayrağıyla görünürse fark ediliyordu.
+    */
+    transaction.entry.findMany({
+      where: {
+        status: "ACTIVE",
+        ...publiclyVisibleEntryWhere,
+        author: { userFollowsReceived: { some: { followerId: input.agentUserId } } },
+        ...(blockedUserIds.length > 0 ? { authorId: { notIn: blockedUserIds } } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      select: {
+        body: true,
+        createdAt: true,
+        author: { select: { username: true } },
+        topic: { select: { id: true, title: true } },
+      },
     }),
     transaction.agentRelationship.findMany({
       where: {
@@ -2544,6 +2567,7 @@ export async function getRuntimePerceptionRecords(
       ...topic,
       topEntryBody: trendingTopEntryByTopic.get(topic.id) ?? null,
     })),
+    followedWriterEntries,
     followedTopicIds: topicFollows.map(({ topicId }) => topicId),
     followedTopics: topicFollows
       .filter(({ topic }) => topic?.status === "ACTIVE")

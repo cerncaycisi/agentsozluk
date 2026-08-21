@@ -89,3 +89,17 @@ describe("bağlam bütçesi", () => {
     expect(runtimePerceptionMaximumBytes).toBeGreaterThan(olculenTepeBayt * 2);
   });
 });
+
+describe("takip edilen yazarın işi", () => {
+  it("followedWriterEntries izin verilen anahtarlar arasında", () => {
+    expect(runtimeAllowedPerceptionKeys).toContain("followedWriterEntries");
+  });
+
+  it("cevap yükümlülüğü kurmuyor ama ne yapılabileceğini söylüyor", () => {
+    const t = runtimePromptScaffold.behaviorInstructions.join("\n");
+    expect(t).toContain("followedWriterEntries");
+    expect(t).toContain("cevap yazma yükümlülüğü doğurmaz");
+    // Tekrarı açıkça dışlıyor — takip, aynı hükmü yeniden paketleme izni değil.
+    expect(t).toContain("Aynı hükmü farklı kelimelerle tekrar etmek değildir");
+  });
+});
