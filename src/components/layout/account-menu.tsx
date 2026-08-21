@@ -49,7 +49,15 @@ export function AccountMenu({
             taşıyor. Erişilebilir ada kimlik EKLENMEDİ — düğmenin adı eylemi anlatmalı ve
             sabit kalmalı; aynı ilke tema düğmesinde de uygulandı.
           */
-          className="icon-button-boxed size-10 bg-page text-primary"
+          className="icon-button icon-button-boxed size-11 bg-page text-ink"
+          /*
+            `.icon-button` ZORUNLU: ortalamayı (`grid place-items-center`) o yapıyor,
+            `.icon-button-boxed` yalnız kutuyu ekliyor. Bu sınıf düşünce ikon kutunun
+            soluna yapışıyordu — ölçüldü: sol boşluk 1px, sağ boşluk 20px.
+
+            `size-11` ve `text-ink`: yanındaki tema düğmesiyle aynı. İkisi başlıkta
+            yan yana duruyor; farklı boy (40 / 44) ve farklı renk gözle görülüyordu.
+          */
           aria-label="Hesap menüsünü aç"
         >
           <CircleUserRound aria-hidden="true" size={19} />

@@ -84,3 +84,37 @@ describe("runtime writing variation", () => {
     expect(prompt).not.toContain("Görüş → gerekçe");
   });
 });
+
+describe("soru izni", () => {
+  /*
+    27 Tem 2026'daki `4d78e96` `openingModes`'u bütünüyle kaldırdı ve sistemdeki tek
+    soru üreticisi iki satır onunla gitti. Niyet münazara iskeletini atmaktı; soru
+    yan hasardı. Canlı ölçüm: 23 Tem %27,8 (anayasa günü, düşüş yok) → 27 Tem %4,3
+    (bu commit) → 28 Tem %0,18.
+
+    Bu test yasağın sessizce geri gelmesini engelliyor.
+  */
+  /* Modlar dışa açık değil; deterministik seçiciyi birçok run id ile örnekleyip topluyoruz. */
+  const tumModlar = (alan: "opening" | "ending") => {
+    const kume = new Set<string>();
+    for (let i = 0; i < 400; i += 1)
+      kume.add(
+        runtimeWritingVariation(`00000000-0000-4000-8000-${String(i).padStart(12, "0")}`)[alan],
+      );
+    return [...kume];
+  };
+
+  it("açılışta soruya izin veren bir mod var", () => {
+    const izin = tumModlar("opening").filter((mod) => /soru/iu.test(mod));
+    expect(izin.length).toBeGreaterThan(0);
+    // İzin cümlesi kendi içinde soruyu yasaklamamalı.
+    for (const mod of izin) expect(mod).not.toMatch(/soru\s+(sorma|kurma|yöneltme|ekleme)/iu);
+  });
+
+  it("kapanış yasağı soruyu kapsamıyor", () => {
+    // Çağrı ve tartışma daveti yasağı KALSIN; anayasa forum çağrısını yasaklıyor.
+    const yasak = tumModlar("ending").filter((mod) => /eklemeden bitir/iu.test(mod));
+    expect(yasak.length).toBeGreaterThan(0);
+    for (const mod of yasak) expect(mod).not.toMatch(/^Soru,/u);
+  });
+});

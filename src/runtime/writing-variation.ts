@@ -2,7 +2,35 @@ import { createHash } from "node:crypto";
 
 export type PersonaEntryLength = "SHORT" | "MEDIUM" | "LONG" | "MIXED";
 export type RuntimeEntryForm = "MICRO" | "SHORT" | "MEDIUM" | "LONG";
-export const RUNTIME_WRITING_VARIATION_VERSION = 5;
+/*
+  Sürüm 6: soru izni geri getirildi.
+
+  27 Temmuz'daki `4d78e96` ("Calibrate dictionary-native writing") `openingModes`
+  dizisini bütünüyle kaldırdı ve `endingModes`'u baştan yazdı. Silinen listede
+  sistemdeki TEK soru üreticisi iki satır duruyordu. Niyet münazara iskeletini
+  atmaktı — ATTEMPT_LOG'da öyle yazıyor — soru yanlışlıkla onunla gitti.
+
+  Ölçüldü. Canlı günlük kırılım:
+    23 Tem %27,8   ← anayasa yürürlüğe girdiği gün, düşüş YOK
+    26 Tem  %8,3
+    27 Tem  %4,3   ← bu commit, 15:37
+    28 Tem  %0,18
+  Yani sebep anayasa değil, bu dosya. 200 bin run simülasyonu da uyuyor: v1'de
+  açık soru izni %30,3 iken ölçülen oran %9,7 (model izni kabaca üçte bir oranında
+  kullanıyor), v3'te izin %0 iken ölçülen %0.
+
+  17 Ağustos'ta `openingModes` geri geldi ama soru maddesi üç kez zayıflatılmıştı:
+  soru ikinci alternatifti ("itiraz veya soru"), koşul "doğal geliyorsa"dan
+  "yaygın bir kabule"ye daralmıştı ve aynı cümlede iki soru-yasağı vardı.
+
+  Şimdi: açılışta soru kendi maddesi, v1'in koşuluyla. Kapanıştaki "Soru, çağrı,
+  ders..." yasağından yalnız "Soru" çıkarıldı — çağrı ve tartışma daveti yasağı
+  duruyor, çünkü anayasa forum çağrısını gerçekten yasaklıyor. Gövdedeki soruyu
+  ise açıkça legal sayıyor (Madde 30-31 BAŞLIK hakkındadır).
+
+  Liste boyları korunuyor: madde eklenmedi, yerinde değiştirildi.
+*/
+export const RUNTIME_WRITING_VARIATION_VERSION = 6;
 
 const formDistributions: Record<PersonaEntryLength, readonly RuntimeEntryForm[]> = {
   SHORT: ["MICRO", "MICRO", "MICRO", "SHORT", "SHORT", "SHORT", "MEDIUM", "LONG"],
@@ -45,7 +73,7 @@ const openingModes = [
   "Ölçülü kişisel görüşü ilk cümlede açıkça söyle; öznel yargıyı genel gerçek gibi sunma.",
   "Anlamı gerçekten değiştiriyorsa kısa bir çekince veya istisnayla gir; yapay belirsizlik üretme.",
   "İki görünüm arasındaki ayırt edici farkla gir; giriş bölümünü münazaraya dönüştürme.",
-  "Yaygın bir kabule kısa itiraz veya soru yönelt; okurdan cevap isteme ve forum çağrısı kurma.",
+  "Doğal geliyorsa kavrama yönelmiş kısa bir soruyla gir; okurdan cevap isteme, retorik numaraya çevirme.",
   "Başlığa doğrudan bağlı kısa bir iddiayla gir; gerekçeyi gerekiyorsa ardından ver, sonuç cümlesini başa kopyalama.",
 ] as const;
 
@@ -72,7 +100,7 @@ const endingModes = [
   "Gerçekten yardımcıysa ilişkili kavrama tek bir gizli [[başlık]] veya görünür (bkz: başlık) ile bitir.",
   "Belirsizlik veya istisna anlamı değiştiriyorsa onu kısa son ayrıntı yap.",
   "Başlığı akılda tutan somut bir ayrıntıyla bitir; başı özetleme.",
-  "Soru, çağrı, ders veya tartışma daveti eklemeden bitir.",
+  "Çağrı, ders veya tartışma daveti eklemeden bitir.",
 ] as const;
 
 function select<T>(values: readonly T[], byte: number): T {
