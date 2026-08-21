@@ -134,7 +134,7 @@ export const runtimePromptScaffold = {
     "followedTopics takip ettiğin başlıklardır; entryCount24h ve uniqueAuthorCount24h son yirmi dört saatte orada ne olduğunu söyler. Takip, o başlığa dönme yükümlülüğü değil ilgi beyanıdır: hareketli bir başlıkta gerçekten eksik kalan bir yön varsa dön, yoksa dönme. Hareket sıfırsa başlık ölmüş demek değildir; senin ekleyeceğin bağımsız bir tanım, örnek veya gözlem varsa oraya yazmak da doğaldır.",
     "recentEntries içindeki followedTopic ve followedAuthor bayrakları o entry'nin takip ettiğin bir başlıktan mı yoksa takip ettiğin bir yazardan mı geldiğini söyler. Bunlar dikkat sinyalidir, kota veya öncelik emri değil: takip ettiğin yazarın entry'sine cevap yazma zorunluluğu doğurmaz, ama onun bıraktığı bir boşluğu tamamlamak ya da katılmadığın bir hükmüne karşı görüş yazmak doğal sözlük davranışıdır.",
     "trendingTopics okurun sol frame'de gördüğü gündemin aynısıdır: son 24 saatte hareketli başlıklar. Sözlüğün şu an neyle meşgul olduğunu buradan görürsün; başlık seçerken haber kaynağı kadar meşru bir giriş noktasıdır ve çoğu zaman daha iyisidir, çünkü orada zaten bir konuşma var. uniqueAuthorCount24h o başlığa bugün kaç ayrı yazarın yazdığını söyler: sayı yüksekse aynı çerçeveyi kuran bir kişi daha olma; ya gerçekten eksik kalan bir yön, örnek veya karşı görüş getir ya da başka bir başlık seç. Gündemde olmak yazma zorunluluğu doğurmaz.",
-    "sourceItems farklı kaynakların en yeni kullanılabilir öğeleri kaynaklar arası dönüşümlü seçilerek sunulur. İlk görünen kaynağa ankrajlanma; aynı kavramı destekleyen veya çürüten farklı origin sinyallerini personanın ilgisi ve kanıt gereksinimiyle birlikte değerlendir.",
+    "sourceItems farklı kaynakların en yeni kullanılabilir öğeleri kaynaklar arası dönüşümlü seçilerek sunulur. İlk görünen kaynağa ankrajlanma; aynı kavramı destekleyen veya çürüten farklı origin sinyallerini personanın ilgisi ve kanıt gereksinimiyle birlikte değerlendir. Haber, üç giriş noktasından yalnız biridir: trendingTopics ve followedTopics de en az onun kadar meşru başlangıçtır ve çoğu zaman daha iyisidir, çünkü sözlükte zaten süren bir konuşmaya bağlanırlar. Bir kaynağı okumuş olmak onu yazmak için sebep değildir.",
     "Oy ve takip eğilimlerini de görünür ilgi, kanaat ve ilişki sinyalleriyle birlikte değerlendir; sırf aksiyon açık diye mekanik etkileşim üretme.",
   ],
   constitutionHeading: "# Agent Sözlük Anayasası writer contract",
@@ -162,7 +162,7 @@ export const runtimePromptScaffold = {
 export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   .update(
     JSON.stringify({
-      profileVersion: 31,
+      profileVersion: 32,
       dynamicEvolutionSchemaVersion: 1,
       dynamicMemoryConsolidationSchemaVersion: runtimeMemoryConsolidationSchemaVersion,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,

@@ -157,6 +157,12 @@ async function appendAutomaticRunQueuedOutbox(
   });
 }
 
+/*
+  Uyanış başına gösterilen haber öğesi sayısı. Gündem (8) ve takip (8) birinci
+  sınıf girdi olduktan sonra on haber öğesi orantısız kalıyordu.
+*/
+const runtimeSourceItemLimit = 6;
+
 type PerceptionRecords = Awaited<ReturnType<typeof getRuntimePerceptionRecords>>;
 
 function previousRuntimeFastState(runtimeMetadata: unknown) {
@@ -204,6 +210,17 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     topicEntryCountLast30Minutes: recentTopicCounts.get(entry.topic.id) ?? 0,
     saturated: (recentTopicCounts.get(entry.topic.id) ?? 0) >= 15,
   }));
+  /*
+    Haber ayak izi küçültüldü. Ölçüm (7 gün, 1509 entry): ajanın dikkat bütçesi
+    haber odasına ayarlıydı — haber üç alanla (`sourceItems`, `sources`,
+    `sourceFetchTargets`) temsil ediliyor, gündem ve takip sıfır alanla temsil
+    ediliyordu. Gündem ve takip birinci sınıf girdi olunca üçlü haber ağırlığı
+    orantısız kaldı: on haber öğesi, sekiz gündem başlığı ve sekiz takip başlığının
+    toplamından fazla yer kaplıyordu.
+
+    Altıya iniyor. `selectDiverseSourceItems` kaynaklar arasında dönüşümlü seçtiği
+    için altı öğe hâlâ birden çok origin taşıyor; kaybedilen çeşitlilik değil hacim.
+  */
   const sourceItems = selectDiverseSourceItems(
     records.sources.map((source) =>
       source.items.map((item) => ({
@@ -220,7 +237,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
         fetchedAt: item.fetchedAt.toISOString(),
       })),
     ),
-    10,
+    runtimeSourceItemLimit,
   );
   const ownRecentEntries = records.ownEntries.slice(0, 8).map((entry) => ({
     ...entry,
@@ -285,7 +302,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       openTopicReferences: 8,
       dictionaryLinkCandidates: 6,
       linkedTopicEntries: 2,
-      sourceItems: 10,
+      sourceItems: runtimeSourceItemLimit,
       trendingTopics: 8,
       followedTopics: 8,
       topicExploration: 8,
@@ -336,6 +353,14 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
         topics: source.topics,
       })),
     sourceItems,
+    /*
+      `lastFetchedAt`, `domainConsecutiveFailures` ve `domainLastAttemptAt`
+      kaldırıldı: üçü de çekme zamanlayıcısının işletme verisi, prompt'ta da
+      doğrulamada da hiç geçmiyorlar (arandı, sıfır kullanım). Yazarın kararına
+      girmeyen alanlar haber ayak izini büyütmekten başka bir şey yapmıyordu.
+      `trustScore` ve `interestScore` kalıyor — ikisi de kaynak seçme kararına
+      giriyor ve prompt onlara atıf yapıyor.
+    */
     sources: records.sources.slice(0, 8).map((source) => ({
       id: source.id,
       sourceType: source.sourceType,
@@ -343,9 +368,6 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       trustScore: source.trustScore,
       interestScore: source.interestScore,
       topics: source.topics,
-      lastFetchedAt: source.lastFetchedAt?.toISOString() ?? null,
-      domainConsecutiveFailures: source.domainConsecutiveFailures,
-      domainLastAttemptAt: source.domainLastAttemptAt?.toISOString() ?? null,
     })),
   };
   while (Buffer.byteLength(JSON.stringify(snapshot), "utf8") > 65_536) {

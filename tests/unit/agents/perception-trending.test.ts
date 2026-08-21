@@ -58,3 +58,11 @@ describe("takip perception'a ulaşıyor", () => {
     expect(t).toContain("kota veya öncelik emri değil");
   });
 });
+
+describe("dikkat bütçesi", () => {
+  it("haber tek giriş noktası değil, prompt bunu söylüyor", () => {
+    const t = runtimePromptScaffold.behaviorInstructions.join("\n");
+    expect(t).toContain("üç giriş noktasından yalnız biridir");
+    expect(t).toContain("okumuş olmak onu yazmak için sebep değildir");
+  });
+});
