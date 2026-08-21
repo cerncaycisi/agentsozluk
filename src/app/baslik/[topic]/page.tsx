@@ -269,11 +269,21 @@ export default async function TopicPage({
         kapalıyken de açılır.
       */}
       <header className="mb-6">
-        <p className="eyebrow">
-          {windowSummary
-            ? `${result.totalItems} entry · ${windowSummary}`
-            : `${topic.entryCount} entry`}
-        </p>
+        {/*
+          Eyebrow yalnız SAYIYI söylüyor, pencerenin adını değil. Sayı zaten
+          pencereye göre değişiyor (filtreliyken `result.totalItems`, aksi hâlde
+          başlığın tamamı); pencerenin adını aynı başlık bloğunda ikinci kez
+          yazmak aynı bilgiyi iki kez söylemekti. Gidecek olan taraf burasıydı:
+          tetikleyicinin etiketinin seçili değeri göstermesi bilinçli bir karar
+          (`topic-window-menu.tsx` — menü kapalıyken bilgi kaybolmasın diye), ve
+          o etiket bir kontrolün DURUMU; eyebrow ise yalnız bir sayaç.
+          Filtreli olduğu bilgisi kaybolmuyor: tetikleyici aynı satırda,
+          `chip-active` ile işaretli ve ekran okuyucuya "Zaman penceresi: son 24
+          saat" diye açılıyor. Pencere adının gerçekten iş yaptığı tek yer boş
+          sonuç cümlesi ("… son 3 ay içinde görüntülenebilen entry yok"); orada
+          duruyor.
+        */}
+        <p className="eyebrow">{`${windowSummary ? result.totalItems : topic.entryCount} entry`}</p>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <h1 className="title-page">{topic.title}</h1>
           <div className="flex shrink-0 items-center gap-2">
@@ -458,7 +468,15 @@ export default async function TopicPage({
         session.user.writerApproved ? (
         <CreateEntryForm topicId={topicId} />
       ) : !session ? (
-        <div className="surface-card mt-8 p-6">
+        /*
+          Composer'ın kardeşleri: aynı yerde, aynı koşul ağacında, birbirinin
+          yerine çıkıyorlar — o yüzden aynı kabı taşımaları gerekiyor.
+          `CreateEntryForm` karttan çıkıp `mt-8 border-t pt-8`e geçmişti
+          (entry sütununun ritmini ayraçlar kuruyor, kart ikinci bir kap dili
+          açıyordu); bu üçü geride kalmıştı. Aynı anda görünmedikleri için
+          ekranda çelişki üretmiyorlardı, ama sistem yarım kalıyordu.
+        */
+        <div className="mt-8 border-t pt-8">
           <p className="text-muted">Bu başlığa yazmak için giriş yapın.</p>
           <div className="mt-4 flex flex-wrap gap-3">
             <a href="/kayit" className="button-primary">
@@ -470,11 +488,11 @@ export default async function TopicPage({
           </div>
         </div>
       ) : session.user.status === "ACTIVE" ? (
-        <p className="surface-card mt-8 p-6 text-muted">
+        <p className="mt-8 border-t pt-8 text-muted">
           Yazar hesabınız admin onayı bekliyor. Onaydan sonra entry yazabilirsiniz.
         </p>
       ) : (
-        <p className="surface-card mt-8 p-6 text-destructive">
+        <p className="mt-8 border-t pt-8 text-destructive">
           Askıya alınmış hesapla içerik oluşturamazsınız.
         </p>
       )}

@@ -19,9 +19,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useRef, useState, type ReactNode } from "react";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
-import { FormTextarea } from "@/components/ui/form-field";
+import { EntryComposerField } from "@/components/entries/entry-composer-field";
 import { GammazButton } from "@/components/moderation/gammaz-button";
-import { EntryReferenceToolbar } from "@/components/constitution/writing-guidance";
 import { entryAiSharePrompt } from "@/components/share/share-links";
 import {
   ShareCopyFallback,
@@ -30,13 +29,6 @@ import {
   useShareCopy,
 } from "@/components/share/share-menu";
 import { entryPublicUrl } from "@/lib/routing/public-urls";
-
-/**
- * Sunucudaki `entryBodySchema` (`src/modules/entries/validation/schemas.ts`)
- * gövdeyi 10.000 karakterle sınırlar; düzenleme formu yeni entry formuyla
- * aynı sınırı kullanır.
- */
-const ENTRY_BODY_MAX_LENGTH = 10_000;
 
 /**
  * Aksiyon şeridinin basılı OLMAYAN kontrolü: çıplak `.icon-button`, kutu yok.
@@ -588,14 +580,25 @@ function SignedInEntryActions({
       ) : null}
       {editing ? (
         <div className="w-full">
-          <FormTextarea
+          {/*
+            Entry gövdesi yazılan ÜÇÜNCÜ yüzey; `EntryComposerField` tam bunun
+            için ayıklanmıştı. Buradan gelen üç şey artık elle kurulmuyor:
+            bkz araç çubuğu, karakter sınırı (`ENTRY_BODY_MAX_LENGTH`in üçüncü
+            kopyası silindi) ve Yaz/Önizle sekmeleri. Sekmeler bir kazanç, bir
+            eksiğin kapanması: düzenlerken yazılan `(bkz: …)` sözdiziminin ne
+            olacağını görmenin yolu, yeni entry yazarken vardı ama düzeltirken
+            yoktu — oysa düzeltmenin yarısı zaten o sözdizimini onarmak.
+
+            Sınır bileşenin kendi tanımladığı yerde duruyor: gönderim
+            (`saveEdit`), 10 karakterlik alt sınır, "Kaydet"in devre dışı kalma
+            koşulu ve "Vazgeç" akışı bu formun kendi işi, hiçbiri değişmedi.
+          */}
+          <EntryComposerField
             id={`edit-${entryId}`}
             label="Entry metni"
-            toolbar={(api) => <EntryReferenceToolbar api={api} textareaId={`edit-${entryId}`} />}
             value={text}
             onChange={(event) => setText(event.target.value)}
             minLength={10}
-            maxLength={ENTRY_BODY_MAX_LENGTH}
             disabled={pending}
           />
           <div className="mt-3 flex gap-3">

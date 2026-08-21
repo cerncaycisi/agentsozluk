@@ -45,11 +45,28 @@ const headerNavItems = [
 const TOPIC_INDEX_SCROLL_PREFIX = "ajan_topic_index_scroll";
 
 /**
- * WCAG 2.2 SC 2.5.8 wants a 24×24 CSS px target; mobile gets a roomier 44px row
- * and collapses back to the 24px floor from the `sm` breakpoint up.
+ * Footer bağlantıları da `.link-quiet` ailesinden. Elle yazılmış hâl aynı şeyi
+ * kuruyordu (`inline-flex items-center`, hover'da alt çizgi) — tek gerçek fark
+ * hover renginin `--primary` olmasıydı, ve o fark bir hataydı:
+ *
+ *   Footer `--page` üstünde duruyor. Durgun `--muted` oradan 4.753 (açık) /
+ *   6.974 (koyu). Hover'da `--primary`'ye çıkmak açık temada 5.741'e yükseltiyor
+ *   ama KOYU temada 6.903'e DÜŞÜRÜYOR — yani hover, işaret vermesi gereken yerde
+ *   kontrastı zayıflatıyordu. `--ink` iki temada da yükseltiyor: 12.104 ve
+ *   14.903. Hover'ın anlamı "güçlen"; ölçüm de o yöne bakıyor.
+ *
+ * Anlam tarafı da aynı sonucu veriyor: bu sistemde `--primary` "marka/geçerli"
+ * demek — aktif sıralama linki, `.link-strong` ailesi, hemen altındaki telif
+ * satırında duran uygulama adı. Her footer linkini hover'da o dile sokmak, on
+ * beş bağlantıyı bir anlığına "seçili" gibi göstermek ve o satırdaki tek
+ * gerçekten markalı öğenin ayrımını silmek olurdu.
+ *
+ * Geometri artık sınıfın içinde (`@apply inline-flex min-h-6 items-center`,
+ * SC 2.5.8'in 24px tabanı). Mobildeki 44px'lik satır burada kalıyor: `min-h-11
+ * sm:min-h-6` utilities katmanında olduğu için components katmanındaki tabanı
+ * eziyor.
  */
-const footerLinkClass =
-  "inline-flex min-h-11 items-center text-sm font-medium text-muted hover:text-primary hover:underline sm:min-h-6";
+const footerLinkClass = "link-quiet min-h-11 text-sm font-medium text-muted sm:min-h-6";
 
 /**
  * Evaluated during render, so the server-rendered HTML carries the year the
