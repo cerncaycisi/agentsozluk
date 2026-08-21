@@ -87,13 +87,13 @@ describe("persona prompt rollout environment", () => {
     }
   });
 
-  it("requires a planned snapshot hash before applying, but not before pausing", () => {
+  it("requires a planned plan hash before applying, but not before pausing", () => {
     expect(() =>
       promptRolloutEnvironmentSchema.parse({
         AGENT_PROMPT_ROLLOUT_MODE: "APPLY",
         AGENT_PROMPT_ROLLOUT_CONFIRMATION: promptRolloutConfirmation,
       }),
-    ).toThrowError(/PROMPT_ROLLOUT_SNAPSHOT_HASH_REQUIRED/u);
+    ).toThrowError(/PROMPT_ROLLOUT_PLAN_HASH_REQUIRED/u);
     expect(
       promptRolloutEnvironmentSchema.parse({
         AGENT_PROMPT_ROLLOUT_MODE: "PAUSE",
@@ -104,7 +104,7 @@ describe("persona prompt rollout environment", () => {
       promptRolloutEnvironmentSchema.parse({
         AGENT_PROMPT_ROLLOUT_MODE: "APPLY",
         AGENT_PROMPT_ROLLOUT_CONFIRMATION: promptRolloutConfirmation,
-        AGENT_PROMPT_ROLLOUT_EXPECTED_SNAPSHOT_HASH: "not-a-hash",
+        AGENT_PROMPT_ROLLOUT_EXPECTED_PLAN_HASH: "not-a-hash",
       }),
     ).toThrowError();
   });
@@ -213,22 +213,44 @@ describe("persona prompt rollout plan", () => {
   it("hashes the observed state, so a plan cannot be applied to a drifted population", () => {
     const base = buildPromptRolloutPlan(splitPopulation);
 
-    expect(base.snapshotHash).toBe(buildPromptRolloutPlan([...splitPopulation]).snapshotHash);
-    expect(base.snapshotHash).not.toBe(
+    expect(base.planHash).toBe(buildPromptRolloutPlan([...splitPopulation]).planHash);
+    expect(base.planHash).not.toBe(
       buildPromptRolloutPlan(
         splitPopulation.map((entry, index) =>
           index === 0 ? { ...entry, personaVersion: entry.personaVersion + 1 } : entry,
         ),
-      ).snapshotHash,
+      ).planHash,
     );
-    // Renderer değişikliği planı değil, yalnız beklenen çıktıyı etkiler: snapshot depo durumudur.
-    expect(base.snapshotHash).toBe(
+  });
+
+  it("binds the prompt that will be written, not only the state that was read", () => {
+    const base = buildPromptRolloutPlan(splitPopulation);
+
+    // Onay ile yazma arasında renderer değişirse DB hiç kıpırdamasa bile hash tutmamalıdır;
+    // aksi hâlde operatörün gördüğü prompt yerine bir başkası 36 profile yazılırdı.
+    expect(base.planHash).not.toBe(
       buildPromptRolloutPlan(
         splitPopulation.map((entry) => ({
           ...entry,
-          expectedPrompt: `${entry.expectedPrompt}\nx`,
+          expectedPrompt: `${entry.expectedPrompt}\nHazır bir çekince zayıf kanıtı güçlendirmez.`,
         })),
-      ).snapshotHash,
+      ).planHash,
+    );
+    // Tek bir persona'nın hedef prompt'unun değişmesi de yeter.
+    expect(base.planHash).not.toBe(
+      buildPromptRolloutPlan(
+        splitPopulation.map((entry, index) =>
+          index === 0 ? { ...entry, expectedPrompt: `${entry.expectedPrompt}\nx` } : entry,
+        ),
+      ).planHash,
+    );
+  });
+
+  it("keeps the plan hash stable across the reason string, which carries a fresh rollout id", () => {
+    // changeSummary her çalıştırmada yeni bir uuid taşır; hash bundan etkilenirse APPLY
+    // hiçbir zaman kuru çalıştırmanın hash'ini doğrulayamazdı.
+    expect(buildPromptRolloutPlan(splitPopulation).planHash).toBe(
+      buildPromptRolloutPlan(splitPopulation.map((entry) => ({ ...entry }))).planHash,
     );
   });
 
