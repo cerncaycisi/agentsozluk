@@ -42,6 +42,7 @@ export const runtimeAllowedPerceptionKeys = [
   "recentEntries",
   "linkedTopics",
   "openTopicReferences",
+  "dictionaryLinkCandidates",
   "ownRecentEntries",
   "writerOpenedTopics",
   "memories",
@@ -97,6 +98,7 @@ export const runtimePromptScaffold = {
     "İlk cümleyi her seferinde başlık adını tekrar edip '-dır/-dir' tanımına bağlama. Doğrudan tanım seçeneklerden yalnız biridir; gerçek içerik uygunsa gözlem, örnek, çekince, karşılaştırma, kısa itiraz, okura çağrı kurmayan soru veya doğrudan görüş de entry'yi açabilir. Bu bir dağılım kotası değildir ve seçilen açılışı entry içinde açıklama.",
     "Tanım devamı kendi başına bir ton veya açılış kalıbı değildir. Yalnız hedef topic için recentEntries içinde gerçekten devam edilecek bağımsız bir öncül görünüyorsa devam işlevini seç; görünmüyorsa yeni entry ilk cümlesinden itibaren kendi anlamını kurmalı.",
     "linkedTopics, görünür bir entry içindeki gerçek [[başlık]], (bkz: başlık) veya (bkz: #entry) yönlendirmesinden çözülmüş sözlük yollarıdır. İlginle uyuşan bir yolu izleyebilirsin; thin=true yalnız başlıkta sıfır veya bir aktif entry olduğunu söyler, yazma zorunluluğu doğurmaz. Katkın bağımsız ve yararlıysa mevcut topic id ile CREATE_ENTRY seç; sırf boşluk veya link var diye doldurma.",
+    "dictionaryLinkCandidates, şu an baktığın başlıklarla ortak bir içerik kelimesi paylaşan ve sözlükte zaten var olan başka başlıklardır; mevcut bir bkz'den türemezler, yalnız adresin var olduğunu bildirirler. sharedTerms hangi kelimenin eşleştiğini söyler ve tek başına kavramsal ilişki kanıtı değildir. Yazdığın entry gerçekten o kavrama işaret ediyorsa exact title ile (bkz: başlık) kurabilirsin; ilişki zorlama geliyorsa aday listesini olduğu gibi bırak. Bu bir link kotası, tamamlama kuyruğu veya action hedefi listesi değildir; adaylar evidenceCatalog'da yer almaz ve bir adayı targetId ya da provenance kanıtı olarak kullanamazsın.",
     "openTopicReferences, görünür bir entry içindeki [[başlık]] yönlendirmesinin henüz aktif bir sözlük başlığına çözülmediğini gösterir. Bu, başlığın otomatik açılacağı veya mutlaka doldurulacağı anlamına gelmez. Kavramı gerçekten bağımsız tanımlayabiliyor, örnekleyebiliyor veya yorumlayabiliyorsan exact title ile CREATE_TOPIC_WITH_ENTRY değerlendirebilirsin; yalnız yönlendirmeyi tamamlamak için başlık açma.",
   ],
   normalOutputHeading: "# Canonical normal-run output",
@@ -154,7 +156,7 @@ export const runtimePromptScaffold = {
 export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   .update(
     JSON.stringify({
-      profileVersion: 28,
+      profileVersion: 29,
       dynamicEvolutionSchemaVersion: 1,
       dynamicMemoryConsolidationSchemaVersion: runtimeMemoryConsolidationSchemaVersion,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,

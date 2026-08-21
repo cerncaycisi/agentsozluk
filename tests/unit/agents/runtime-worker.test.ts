@@ -807,6 +807,9 @@ describe("long-lived agent runtime worker", () => {
             discoveredFromEntryIds: [randomUUID()],
           },
         ],
+        dictionaryLinkCandidates: [
+          { title: "komşu sözlük adresi", activeEntryCount: 4, sharedTerms: ["sözlü"] },
+        ],
         runtimeMetadata: { preservedMarker: "must-not-leak" },
         futureInternalPerceptionField: "must-not-leak",
       },
@@ -873,6 +876,8 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain("link sayısı doldurmak");
     expect(prompt).toContain("hedefinin önceden açılmış olması gerekmez");
     expect(prompt).toContain("openTopicReferences");
+    expect(prompt).toContain("dictionaryLinkCandidates, şu an baktığın başlıklarla ortak");
+    expect(prompt).toContain("Bu bir link kotası, tamamlama kuyruğu veya action hedefi listesi");
     expect(prompt).toContain("# Bu run için yazım varyasyonu");
     expect(prompt).toContain("gözlemsel kalibrasyondur, kota değildir");
     expect(prompt).toContain("şablon veya kontrol listesi değildir");
@@ -904,6 +909,11 @@ describe("long-lived agent runtime worker", () => {
           };
         };
         openTopicReferences: Array<{ title: string; normalizedTitle: string }>;
+        dictionaryLinkCandidates: Array<{
+          title: string;
+          activeEntryCount: number;
+          sharedTerms: string[];
+        }>;
         evidenceCatalog: Record<string, string[]>;
       };
     };
@@ -944,6 +954,10 @@ describe("long-lived agent runtime worker", () => {
         normalizedTitle: "henüz açılmamış kavram",
       }),
     ]);
+    expect(decoded.perception.dictionaryLinkCandidates).toEqual([
+      { title: "komşu sözlük adresi", activeEntryCount: 4, sharedTerms: ["sözlü"] },
+    ]);
+    // Aday listesi kanıt katalogunu genişletmez: adaylar action hedefi değildir.
     expect(decoded.perception.evidenceCatalog).toEqual({
       PLATFORM_EVENT: [context.run.id],
       USER_ENTRY: [],
