@@ -46,6 +46,9 @@ export function ThemeSettings() {
           de cihazınızın açık/koyu ayarını izler.
         </p>
       </noscript>
+      {/* Satır örtüsü `.state-layer` ile; eski `hover:bg-page` koyu temada
+          görünmüyordu (yüzey/zemin farkı 1.075'ti). `.menu-item` uymuyor: bu
+          etiket iki satırlı gövde metni taşıyor, o sınıf `text-sm` dayatıyor. */}
       <fieldset disabled={!ready} className="mt-4">
         <legend className="sr-only">Tema tercihi</legend>
         <div className="space-y-1">
@@ -55,7 +58,7 @@ export function ThemeSettings() {
               <label
                 key={option.value}
                 htmlFor={inputId}
-                className="flex min-h-11 cursor-pointer items-start gap-3 rounded px-2 py-2 hover:bg-page"
+                className="state-layer flex min-h-11 cursor-pointer items-start gap-3 rounded px-2 py-2"
               >
                 <input
                   id={inputId}

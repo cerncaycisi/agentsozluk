@@ -23,7 +23,16 @@
  *   --border  231 229 225 → 224 221 214   D2'nin akan listesi bu çizgiye bağlı; 1.216
  *                                          olan görünürlük 1.133'e düşüyordu, 1.222'ye çıktı
  * Daha koyu bir zemin (242/239/231) `--border-strong`'u 3.02'ye düşürüyor — marj kalmıyor.
- * Koyu temaya dokunulmadı: orada zemin/yüzey farkı zaten gerçek (20 23 28 ↔ 26 30 37).
+ * Koyu tema aynı kusuru taşıyordu ve ayrıca ayarlanmıştı; bkz. aşağıdaki koyu blok.
+ *
+ * `--success` / `--warning`: depoda 38 yerde `text-success`, `bg-warning/10`,
+ * `border-l-success` gibi sınıflar vardı ama palette KARŞILIĞI YOKTU — Tailwind
+ * bunları sessizce atıyordu, yani başarı mesajı nötr metinle aynı renkteydi.
+ * Ton açıları çakışmayacak biçimde seçildi: primary 12° (kiremit), destructive 4°,
+ * warning 50° (hardal — turuncu bir warning kiremitle karışırdı), success 157°.
+ * `--on-success` / `--on-warning` YOK, çünkü ihtiyaç yok: `bg-success`/`bg-warning`
+ * kullanımlarının HEPSİ `/10` tonlaması, üstlerindeki metin `--ink` ya da rengin
+ * kendisi. Kullanılmayan token eklemek yerine ölçülen kullanım karşılandı.
  */
 :root {
   color-scheme: light;
@@ -34,6 +43,8 @@
   --primary: 158 67 45;
   --accent: 74 80 88;
   --destructive: 180 35 24;
+  --success: 17 110 74;
+  --warning: 118 99 0;
   --border: 224 221 214;
   --border-strong: 138 138 132;
   --on-primary: 255 255 255;
@@ -45,9 +56,10 @@
    *
    * Örtü rengi (`--state-tint`) her temada `--ink` ile aynı: zemin ne olursa olsun
    * örtü onu METNİN yönüne kaydırır. Açık temada koyultur, koyu temada açar.
-   * Bu yüzden hover, `--page` ile `--surface` arasındaki farka HİÇ bel bağlamıyor —
-   * koyu temada o fark 1.075 ve gözle ayırt edilemiyor. Örtü koyu temada zemini
-   * 1.213 kaydırıyor; açık temada 1.153. Gölge yok, yalnız zemin tonu + kenarlık.
+   * Bu yüzden hover, `--page` ile `--surface` arasındaki farka HİÇ bel bağlamıyor;
+   * o fark koyu temada 1.075 iken (şimdi 1.118) örtü zaten tek başına çalışıyordu.
+   * Örtü koyu temada zemini 1.219 kaydırıyor; açık temada 1.153. Gölge yok,
+   * yalnız zemin tonu + kenarlık.
    *
    * Örtü `background-image` olarak biniyor, `background-color` DEĞİŞTİRMİYOR.
    * Seçili oy düğmesi (`bg-primary`) ve favori (`bg-accent`) dolgusunu koruyor,
@@ -58,10 +70,11 @@
    *
    * İki alfa ölçeği var, çünkü nötr bir örtü doygun bir dolgunun parlaklığını
    * nötr bir zeminden DAHA AZ kaydırıyor (0.12'de page 1.243, primary 1.107):
-   *   notr  (0.08 / 0.14) — ikon buton, sessiz buton, çip, menü öğesi.
+   *   notr  (0.08 / 0.14) — ikon buton, sessiz buton, çip, menü öğesi, içerik satırı.
    *                          Tavanı, örtülmüş zemin üstünde kalan RENKLİ metin
-   *                          belirledi: koyu temada `.chip-active` primary metni
-   *                          0.08'de 4.721, 0.10'da 4.450 — eşiğin altına düşüyor.
+   *                          belirledi: koyu temada seçili menü öğesinin primary
+   *                          metni 0.08'de 4.616, 0.10'da 4.36 — eşiğin altına düşüyor.
+   *                          Aynı sebeple `.chip-active` örtü ALMIYOR (aşağıda).
    *   dolgu (0.12 / 0.20) — üstünde yalnız `--on-*` metin olan doygun dolgular.
    *                          Orada örtü kontrastı DÜŞÜRMÜYOR, artırıyor: 6.374 → 7.056.
    */
@@ -72,21 +85,68 @@
   --overlay-press-fill: linear-gradient(rgb(var(--state-tint) / 0.2) 0 0);
 }
 
+/**
+ * KOYU TEMA — açık temadan çevrilmişti, ölçülmemişti. Dört değer ayarlandı.
+ * Değerler İKİ blokta birden yazılı (sistem koyu teması ve düğmeyle seçilen koyu
+ * tema); biri güncellenip diğeri unutulursa temalar ayrışır.
+ *
+ * 1) `--surface` 26 30 37 → 31 35 43. Yüzey/zemin oranı 1.075'ti, yani "kalkık
+ *    kart / gömülü alan" ayrımı gözle yoktu; açık temada aynı kusur 1.110'a
+ *    çıkarılarak düzeltilmişti, koyu atlanmıştı. Şimdi 1.118 (algısal adım
+ *    ΔL* 3.51 → 4.94; açık tema 4.18). `bg-page` taşıyan input/kod bloğu artık
+ *    kartın içinde gerçekten gömülü duruyor.
+ *
+ * 2) `--page` 20 23 28 → 22 25 31 ve `--primary` 224 139 106 → 218 135 103.
+ *    İkisi birlikte dolu birincil butonun ağırlığını düşürüyor. Ölçü: ekran ışık
+ *    YAYAR, bu yüzden koyu zeminde bir dolgu "mürekkep" değil "lamba"dır.
+ *    96×44 CTA, 1280×800 görünüm — sayfanın yaydığı toplam ışığın içindeki payı:
+ *      açık tema  %0.05  (alan payının 0.13 katı — buton ışığı AZALTIYOR)
+ *      koyu önce  %14.8  (alan payının 35.8 katı)
+ *      koyu sonra %12.3  (alan payının 29.8 katı)
+ *    Kalan fark yapısal, bkz. aşağıdaki TAVAN notu.
+ *
+ * 3) `--border` 44 49 58 → 46 51 60. Kenarlığın zemine karşı algısal adımı
+ *    açıkta 7.65, koyuda 12.56 idi — koyu kenarlık %64 daha ağır bir çizgiydi.
+ *    Yüzey kalkınca bütçe yeniden bölündü: kart dış çizgisi 12.56 → 12.42,
+ *    kart içi ayırıcı (divide-y) 9.05 → 7.48.
+ *
+ *    TAVAN — bu üçü aynı anda tam çözülemez, ispat: zemin neredeyse siyah
+ *    olduğu için kenarlık zeminden AÇIK olmak zorunda (zeminin 1.169 altında
+ *    hiçbir renk yok). Açık temada kenarlık zeminden KOYU, yani zemin kenarlıkla
+ *    yüzey arasında duruyor ve adımlar bölünüyor. Koyuda üçü de aynı yönde
+ *    dizildiği için ΔL*(kenarlık,zemin) = ΔL*(zemin,yüzey) + ΔL*(yüzey,kenarlık):
+ *    yüzeyi kaldırmak (1) kenarlığı zeminden UZAKLAŞTIRIYOR (3). Sıfır toplamlı.
+ *    Aynı kilit `--border-strong` için de geçerli ve WCAG'la sertleşiyor:
+ *    yüzeye karşı 3:1 zorunlu olduğundan zemine karşı en az 3.0 × 1.118 = 3.35
+ *    çıkıyor; açık temanın 3.127'si koyuda ERİŞİLEMEZ.
+ *
+ * 4) `--success` / `--warning` koyu karşılıkları; ton açıları açık temayla aynı
+ *    aileden (success 151°, warning 47°), parlaklıkları paletin diğer semantik
+ *    renkleriyle aynı bantta (zemine karşı 6.3–6.9; primary 6.41, destructive 6.32).
+ *
+ * `--on-*` üçlüsü `--page` ile birlikte hareket etti: bunlar "rampanın uç ucu"
+ * demek, koyuda en koyu değer hâlâ `--page`.
+ *
+ * Dokunulmayanlar: `--ink`, `--muted`, `--accent`, `--destructive`,
+ * `--border-strong`, `--state-tint`. Kiremit/somon kimliği korundu (ton 17°).
+ */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --page: 20 23 28;
-    --surface: 26 30 37;
+    --page: 22 25 31;
+    --surface: 31 35 43;
     --ink: 232 234 237;
     --muted: 154 162 174;
-    --primary: 224 139 106;
+    --primary: 218 135 103;
     --accent: 154 162 174;
     --destructive: 249 112 102;
-    --border: 44 49 58;
+    --success: 89 175 133;
+    --warning: 184 159 70;
+    --border: 46 51 60;
     --border-strong: 102 110 122;
-    --on-primary: 20 23 28;
-    --on-accent: 20 23 28;
-    --on-destructive: 20 23 28;
+    --on-primary: 22 25 31;
+    --on-accent: 22 25 31;
+    --on-destructive: 22 25 31;
     /* Örtü rengi burada da `--ink`: koyu zeminde hover AÇARAK ayrışır. */
     --state-tint: 232 234 237;
   }
@@ -94,18 +154,20 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page: 20 23 28;
-  --surface: 26 30 37;
+  --page: 22 25 31;
+  --surface: 31 35 43;
   --ink: 232 234 237;
   --muted: 154 162 174;
-  --primary: 224 139 106;
+  --primary: 218 135 103;
   --accent: 154 162 174;
   --destructive: 249 112 102;
-  --border: 44 49 58;
+  --success: 89 175 133;
+  --warning: 184 159 70;
+  --border: 46 51 60;
   --border-strong: 102 110 122;
-  --on-primary: 20 23 28;
-  --on-accent: 20 23 28;
-  --on-destructive: 20 23 28;
+  --on-primary: 22 25 31;
+  --on-accent: 22 25 31;
+  --on-destructive: 22 25 31;
   /* Örtü rengi burada da `--ink`: koyu zeminde hover AÇARAK ayrışır. */
   --state-tint: 232 234 237;
 }
@@ -311,6 +373,21 @@ body {
   .icon-button[aria-pressed="true"]:active:not(:disabled) {
     background-image: var(--overlay-press-fill);
   }
+  /**
+   * Basılı AMA dolgusuz. `aria-pressed` iki ayrı şeyin işareti olarak kullanılıyor:
+   * "seçili oy/favori" (doygun dolgu var) ve "geçiş düğmesi" (tema düğmesi, dolgu
+   * yok — WAI-ARIA APG geçiş kalıbı `aria-pressed` istiyor). Yukarıdaki iki kural
+   * ikisini ayıramadığı için tema düğmesi nötr 0.08 yerine dolgu ölçeğinden 0.12
+   * örtü alıyordu. Kontrast sorunu değil, tutarsızlık: yanındaki hesap düğmesiyle
+   * aynı satırda, aynı görünümde, farklı ağırlıkta tepki veriyordu.
+   * Özgüllük (0,5,0) yukarıdakinin (0,4,0) üstünde; sıraya bağlı değil.
+   */
+  .icon-button.icon-button-unfilled[aria-pressed="true"]:hover:not(:disabled) {
+    background-image: var(--overlay-hover);
+  }
+  .icon-button.icon-button-unfilled[aria-pressed="true"]:active:not(:disabled) {
+    background-image: var(--overlay-press);
+  }
   .icon-button:disabled {
     @apply cursor-not-allowed opacity-50;
   }
@@ -345,8 +422,24 @@ body {
     }
   }
 
-  /* Sıralama/pencere şeritleri. Aktif durum dolgulu değil — sıralama değiştiren
-     bir kontrolün birincil buton ağırlığı taşımasına gerek yok. */
+  /**
+   * Sıralama/pencere şeritleri. Aktif durum dolgulu değil — sıralama değiştiren
+   * bir kontrolün birincil buton ağırlığı taşımasına gerek yok.
+   *
+   * DURGUN KENARLIK NEDEN 3:1 DEĞİL: `.chip` metin etiketi taşıyor, tıpkı
+   * `.button-secondary` gibi; o ailede karar zaten verilmiş ve yazılmış —
+   * "metin etiketi kontrolü zaten tanıtıyor". `.icon-button` de aynı gerekçeyle
+   * çerçevesiz. SC 1.4.11 bir bileşeni tanımlamak için GEREKEN görsel bilgiye
+   * 3:1 istiyor; gereken bilgi burada etiket. Çipi tek başına 3:1'e çıkarmak
+   * sistemin dilbilgisini bozar ve koyu temada her kontrol şeridine 3.4:1'lik
+   * bir halka ekler — ölçülen kenarlık ağırlığı sorununu büyütür.
+   *
+   * ASIL AÇIK, SEÇİLİ DURUMDAYDI: `.chip-active`'in kenarlığı `primary/0.4` ile
+   * zemine karşı açık 1.715 / koyu 2.262 idi. SC 1.4.11 DURUM göstergesi için de
+   * 3:1 istiyor ve bu eşiğin altındaydı. Merdiven `primary/0.7`den başlıyor:
+   * her iki temada, hem sayfa zeminine hem çipin kendi tonlu dolgusuna karşı
+   * 3:1'in üstünde (en düşük değer açık tema, sayfa zemini, 3.058).
+   */
   .chip {
     @apply inline-flex min-h-9 shrink-0 items-center rounded border px-3 text-sm text-muted;
     background-color: rgb(var(--surface));
@@ -370,18 +463,24 @@ body {
   .chip-active {
     @apply font-medium;
     color: rgb(var(--primary));
-    border-color: rgb(var(--primary) / 0.4);
+    border-color: rgb(var(--primary) / 0.7);
     background-color: rgb(var(--primary) / 0.06);
   }
-  /* Seçili çipte hover, seçili olma sinyalinin YERİNE geçmez: metin primary kalır,
-     kenarlık güçlenir. Basılma da örtüyü artırmıyor — primary metin koyu temada
-     0.08 örtüde 4.721, 0.14'te 3.942 olurdu. Kademe yerine kenarlık konuşuyor. */
+  /**
+   * Seçili çipte hover, seçili olma sinyalinin YERİNE geçmez: metin primary kalır,
+   * kenarlık güçlenir. Bu ailede üç kademenin TAMAMI kenarlıkla anlatılıyor,
+   * örtüyle değil (0.7 → 0.85 → 1.0). Sebep ölçülü: çipin tonlu dolgusu üstünde
+   * duran primary metin koyu temada örtüsüz 5.246, nötr hover örtüsünde 4.200 —
+   * 4.5 eşiğinin altına düşerdi. Eskiden bu yalnız basılma için geçerliydi;
+   * yüzey kalkınca hover da aynı yere geldi.
+   */
   .chip-active:hover:not(:disabled) {
     color: rgb(var(--primary));
-    border-color: rgb(var(--primary) / 0.75);
+    background-image: none;
+    border-color: rgb(var(--primary) / 0.85);
   }
   .chip-active:active:not(:disabled) {
-    background-image: var(--overlay-hover);
+    background-image: none;
     border-color: rgb(var(--primary));
   }
 
@@ -416,6 +515,37 @@ body {
   .menu-item:disabled {
     @apply cursor-default opacity-50;
     background-image: none;
+  }
+
+  /**
+   * Akan içerik satırı — başlık listesi satırı, ayarlar sayfasındaki radyo
+   * etiketi. `.menu-item` bunlara UYMUYOR: o sınıf geometri ve tipografi de
+   * taşıyor (`text-sm px-3 py-2 rounded-lg w-full`), oysa bu satırlar 17px gövde
+   * metniyle akıyor ve kendi dolgularını kendileri kuruyor. Sınıfı almak için
+   * satırları küçültmek gerekirdi; sistem yerine içerik eğilirdi.
+   *
+   * Bu yüzden örtü geometriden ayrıldı: `.state-layer` YALNIZ durum katmanını
+   * verir — hover/basılma örtüsü ve geçişi. Boyut, yarıçap, dolgu, tipografi
+   * kullanım yerinde kalır. `.menu-item` da bunun üstüne kurulabilirdi ama Radix
+   * `data-highlighted`ı ve kendi devre dışı dalları var; ayrı bırakıldı.
+   *
+   * Depoda kalan son iki `hover:bg-page` buraya taşındı. O yardımcı sınıf koyu
+   * temada görünmüyordu: yüzey/zemin farkı 1.075 idi (şimdi 1.118 ama örtü zaten
+   * ondan bağımsız, 1.219 kaydırıyor).
+   *
+   * `:not(:disabled)` bağlantı ve etikette de eşleşir (o öğelerde `:disabled` hiç
+   * eşleşmez); kural yalnız gerçek `<button disabled>` üstünde susar.
+   */
+  .state-layer {
+    transition:
+      background-image 120ms ease,
+      color 120ms ease;
+  }
+  .state-layer:hover:not(:disabled) {
+    background-image: var(--overlay-hover);
+  }
+  .state-layer:active:not(:disabled) {
+    background-image: var(--overlay-press);
   }
 
   /**

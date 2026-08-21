@@ -14,6 +14,8 @@ const config: Config = {
         accent: "rgb(var(--accent) / <alpha-value>)",
         border: "rgb(var(--border) / <alpha-value>)",
         destructive: "rgb(var(--destructive) / <alpha-value>)",
+        success: "rgb(var(--success) / <alpha-value>)",
+        warning: "rgb(var(--warning) / <alpha-value>)",
         "on-primary": "rgb(var(--on-primary) / <alpha-value>)",
         "on-accent": "rgb(var(--on-accent) / <alpha-value>)",
         "on-destructive": "rgb(var(--on-destructive) / <alpha-value>)",

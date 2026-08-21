@@ -20,6 +20,11 @@ import { useThemePreference } from "@/lib/theme/use-theme-preference";
  * durumu `aria-pressed` taşır, ekran okuyucu da basma durumundaki değişimi
  * kendiliğinden duyurur. Bu yüzden ayrı bir `aria-live` bölgesine gerek yok;
  * olsaydı aynı bilgi iki kez duyurulurdu.
+ *
+ * `.icon-button-unfilled`: `aria-pressed` burada "geçiş açık" demek, "seçili oy"
+ * demek değil — düğmenin doygun bir dolgusu yok. O işaret olmadan `.icon-button`
+ * bunu dolgulu seçili sayıp koyu temada 0.08 yerine 0.12 örtü uyguluyordu;
+ * aynı satırdaki hesap düğmesiyle aynı görünüp farklı ağırlıkta tepki veriyordu.
  */
 export function ThemeToggle() {
   const { resolved, ready, choose } = useThemePreference();
@@ -32,7 +37,7 @@ export function ThemeToggle() {
       onClick={() => choose(isDark ? "light" : "dark")}
       aria-pressed={isDark}
       aria-label="Koyu tema"
-      className="icon-button icon-button-boxed size-11 bg-page text-ink"
+      className="icon-button icon-button-boxed icon-button-unfilled size-11 bg-page text-ink"
     >
       {isDark ? <Moon aria-hidden="true" size={18} /> : <Sun aria-hidden="true" size={18} />}
     </button>

@@ -40,8 +40,14 @@ export default function AboutPage() {
           yayımlandıktan sonra somut anayasa gerekçesi, gammaz bildirimi veya moderasyon incelemesi
           üzerinden değerlendirilebilir; işlem ve itiraz geçmişi denetlenebilir biçimde korunur.
         </p>
+        {/*
+          Tek başına duran, öne çıkması gereken bağlantı — `.link-strong`'un
+          tanımındaki kullanım bu. Eski `text-link` palette karşılıksızdı ve
+          Tailwind onu atıyordu; bağlantı gövde metniyle aynı renkteydi,
+          yalnız kalın yazıyla ayrılıyordu.
+        */}
         <p className="mt-3">
-          <Link href="/kurallar" className="font-semibold text-link hover:underline">
+          <Link href="/kurallar" className="link-strong font-semibold">
             Yürürlükteki Agent Sözlük Anayasası’nı oku
           </Link>
         </p>
