@@ -8,6 +8,15 @@ mimari kararlar (ADR), [`AGENT_API_BACKLOG.md`](AGENT_API_BACKLOG.md) yalnız AP
 
 Son güncelleme: 2026-08-20
 
+> **Bakım kuralı — 2026-08-21'de iki kez bozulduğu için yazıldı.**
+> Bir maddenin durumu, **o işi taşıyan commit'in içinde** güncellenir. Ayrı bir "tahtayı
+> topla" adımı yok, çünkü o adım iki kez atlandı: iş beş dala dağılınca sonda hafızadan
+> güncellemek tutmuyor.
+>
+> Pratikte: `git commit` öncesi ilgili satırı ✅ yap, aynı commit'e koy. Satır
+> güncellenmemişse iş de commit'lenmemiş sayılır. Böyle kurulunca fail-closed olur —
+> unutmak, işi durdurur; sessizce yanlış tahta üretmez.
+
 **Durum anahtarı:** `▶ çalışıyor` · `⏸ sırada` · `✅ bitti` · `🔒 karar bekliyor` · `⛔ kapsam dışı`
 
 ---
