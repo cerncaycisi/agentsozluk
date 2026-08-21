@@ -17,6 +17,16 @@ Son güncelleme: 2026-08-20
 > güncellenmemişse iş de commit'lenmemiş sayılır. Böyle kurulunca fail-closed olur —
 > unutmak, işi durdurur; sessizce yanlış tahta üretmez.
 
+> **Denetim kuralı — 21 Ağu'da tahta üçüncü kez bayatladığı için yazıldı.**
+> Bakım kuralı ("durum işi taşıyan commit'te güncellenir") yalnız **bundan sonrası**
+> için çalışıyor; kuraldan önceki commit'ler tahtayı güncellemeden geçmişti. C1, C2 ve
+> C3 dün gece `fcad8d2` ile kapanmış, tahtada üçü de "açık" duruyordu — üç iş boşuna
+> sıraya alınmıştı.
+>
+> Pratikte: bir maddeye başlamadan önce **iddiasını doğrula**. Madde dosya/satır
+> gösteriyorsa oraya bak; kod zaten düzelmişse maddeyi kanıtıyla kapat, işe başlama.
+> Maliyeti bir grep, alternatifi bitmiş işi yeniden yapmak.
+
 > **Ağaç kuralı — 2026-08-21'de iki kez ihlal edildiği için yazıldı.**
 > Paralel ajanlar çalışırken **`git add -A` ve `git checkout -B` YASAK.** Ajanlara ayrık
 > dosya sahipliği vermek yeterli değil: dosyalar ayrı olsa da **git ağacı ortak**. Birinci
@@ -144,15 +154,15 @@ soru "test kırık mı" değil, **"aynı kör noktayı paylaşmayan bir göz ne 
 
 **Cevap: iki şey, ve ikisini de kendi ajanlarım yapısal olarak kaçırdı.**
 
-| #      | bulgu                                                                                                                                                                                                                                                                                                                                                             | durum                    |
-| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| **C1** | **Yüksek — gammaz diyaloğu kapanınca odak geri dönmüyor.** `topic-overflow-menu.tsx:57` kontrollü diyalog açıyor, kontrollü kipte `gammaz-button.tsx:107` `AlertDialog.Trigger` üretmiyor, Radix boş `triggerRef`'e odaklanmaya çalışıyor. Escape/Vazgeç sonrası odak gövdeye düşüyor. **Bu dalın getirdiği gerileme** — eskiden gerçek `Trigger` vardı           | ⏸                        |
-| **C2** | **Orta — JS kapalıyken tema ayarları sonsuza kadar "yükleniyor".** `theme-settings.tsx:23` `ready` yalnız effect'ten geliyor; `:35` fieldset'i disabled tutuyor, `:71` yalan mesaj gösteriyor                                                                                                                                                                     | ⏸                        |
-| **C3** | **Orta — `forced-colors` kipinde seçili durum kayboluyor.** Durum katmanı hover/basılı işaretini yalnız gradient `background-image` ile kuruyor (`globals.css:270`, `:282`); zorunlu renk kipinde gradient bastırılınca oy verilmiş/verilmemiş düğme aynı görünüyor. `aria-pressed` ekran okuyucuyu kurtarıyor, görsel kullanıcıyı kurtarmıyor. **Axe yakalamaz** | ⏸                        |
-| C4     | Düşük — durum sistemi geçişi yarım: `theme-settings.tsx:44` hâlâ `hover:bg-page`, `account-menu.tsx:34` tetikleyici durumsuz, çıkış öğesinde native `disabled` ile CSS'in `[data-disabled]`'ı uyuşmuyor                                                                                                                                                           | ✅ (S11/S12 ile aynı)    |
-| C5     | Düşük — `background-image` gradient'i `transition` ile interpolate edilmiyor; örtü yumuşak değil ani geçiyor (`globals.css:214`). Bugün görsel ezilen bir kullanım yok                                                                                                                                                                                            | ✅                       |
-| C6     | Düşük — ortak composer geçişi entry düzenleme yüzeyini dışarıda bırakmış (`entry-actions.tsx:565`), aynı iş için iki mekanizma                                                                                                                                                                                                                                    | 🔄 ui/cila (S4 ile aynı) |
-| C7     | Düşük — `preference.ts:25` `THEME_NAME` hiçbir yerde kullanılmıyor                                                                                                                                                                                                                                                                                                | ✅                       |
+| #      | bulgu                                                                                                                                                                                                                                                                                                                       | durum                    |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| **C1** | **Bitmiş — tahta bayatmış.** `fcad8d2` (21 Ağu 00:27) `onCloseAutoFocus` ile kontrollü kipte odağı `returnFocusRef`e döndürüyor; `isConnected` kontrolü tetikleyici DOM'dan kalkmışsa Radix'e bırakıyor. **Dört test:** Escape, Vazgeç, başarılı gönderim, kontrolsüz kip (`gammaz-button.test.tsx:100-143`). 10 test yeşil | ✅                       |
+| **C2** | **Bitmiş — tahta bayatmış.** `fcad8d2` `<noscript>` ekledi. Gerekçe kodda yazılı: tema tercihi tarayıcıda tutuluyor, JS'siz gerçekten çalışmıyor — «yalan söyleyen bir yükleme durumu, dürüst bir _çalışmıyor_'dan kötü»                                                                                                    | ✅                       |
+| **C3** | **Bitmiş — tahta bayatmış.** `fcad8d2` `forced-colors: active` dalında sistem renklerine geçti (`Highlight`/`HighlightText`/`ButtonBorder`/`GrayText`); zorunlu renk kipinde gradient bastırılınca kaybolan seçili durum geri geldi, kutu da o kipte geri getirildi. Devre dışı için %50 opaklık yerine `GrayText`          | ✅                       |
+| C4     | Düşük — durum sistemi geçişi yarım: `theme-settings.tsx:44` hâlâ `hover:bg-page`, `account-menu.tsx:34` tetikleyici durumsuz, çıkış öğesinde native `disabled` ile CSS'in `[data-disabled]`'ı uyuşmuyor                                                                                                                     | ✅ (S11/S12 ile aynı)    |
+| C5     | Düşük — `background-image` gradient'i `transition` ile interpolate edilmiyor; örtü yumuşak değil ani geçiyor (`globals.css:214`). Bugün görsel ezilen bir kullanım yok                                                                                                                                                      | ✅                       |
+| C6     | Düşük — ortak composer geçişi entry düzenleme yüzeyini dışarıda bırakmış (`entry-actions.tsx:565`), aynı iş için iki mekanizma                                                                                                                                                                                              | 🔄 ui/cila (S4 ile aynı) |
+| C7     | Düşük — `preference.ts:25` `THEME_NAME` hiçbir yerde kullanılmıyor                                                                                                                                                                                                                                                          | ✅                       |
 
 **Neden kaçırdık — kayda değer:**
 
