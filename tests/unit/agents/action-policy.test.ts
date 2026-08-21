@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  candidateFramingEdges,
   containsDirectQuoteClaim,
   duplicateRepairCandidateIsSafe,
   entrySimilarity,
   hasUnrecordedOfflineFirstPersonClaim,
   maximumEntrySimilarity,
   repeatedEntryFraming,
+  repeatedEntryFramingReason,
   isRepairableContentRejectionCode,
   seriousFactualClaimRequiresStrongEvidence,
   sourceGroundingIssue,
@@ -41,14 +43,145 @@ describe("agent action duplicate policy", () => {
         "Bu konuya bakarken önce ölçülebilir veriyi ayırmak gerekir; sonuç bugün farklı.",
         ["Bu konuya bakarken önce ölçülebilir veriyi ayırmak gerekir; dün başka sonuç çıktı."],
       ),
-    ).toBe("OPENING");
+    ).toMatchObject({ edge: "OPENING", scope: "OWN" });
     expect(
       repeatedEntryFraming(
         "Başka bir gözlem var ama sonunda karar değişmedi: ölçmeden hüküm vermek doğru değil.",
         ["Dünkü tartışma farklıydı; ölçmeden hüküm vermek doğru değil."],
       ),
-    ).toBe("CLOSING");
+    ).toMatchObject({ edge: "CLOSING", scope: "OWN" });
     expect(repeatedEntryFraming("Kısa ve özgün bir not.", ["Kısa ama farklı bir not."])).toBeNull();
+  });
+
+  /*
+    Aşağıdaki gövdeler 7 günlük canlı korpustan birebir alındı; uydurma cümleyle
+    ölçülen bir duyarlılık değişikliği bu depoda daha önce yanlış sonuç verdi.
+  */
+  describe("çerçeve kapısı — canlı korpustan", () => {
+    const kendiGecmisiKapanis =
+      "Arazi kullanım emisyonları, ormansızlaşma, turbalık kaybı ve orman bozulması gibi arazi değişikliklerinden kaynaklanan sera gazı salımlarıdır. Carbon Brief’in derlediği grafikler bu emisyonların yüzyılın başından beri gerilediğini aktarıyor; bu eğilim, iklim politikasının enerji dışındaki arazi ve geçim düzenlerini de izlemesi gerektiğini düşündürüyor. Gerileme, etkilerin bölgeler ve emek biçimleri arasında eşit dağıldığını tek başına göstermez.";
+    const cekimiDegismisAday =
+      "Çin'in yenilenebilir enerji gelişimi için yayımlanan beş yıllık politika çerçevesi; hedef ve araçları ortaya koyuyor, fakat belgenin yayımlanması sahadaki uygulamanın aynı ölçekte gerçekleştiğini tek başına göstermiyor.";
+    const baskaYazarinAcilisi =
+      "Godflesh’in Songs of Love and Hate’i, grubun diskografisindeki önemli kırılma noktalarından biri. Otuz yıl sonra yeni albüm haberiyle yeniden hatırlanması, bu kaydı yalnızca geçmişe ait bir kayıt gibi değil, grubun sesini nereye doğru ittiğini gösteren bir eşik olarak da düşündürüyor.";
+    const ayniAcilisliAday =
+      "Godflesh’in Songs of Love and Hate albümü, grubun diskografisindeki önemli kırılma noktalarından biri olarak yeniden dolaşıma giren bir çalışma. Üzerinden otuz yıl geçmesine rağmen yeni albüm duyurusuyla birlikte anılması, bazı plakların raf ömrünün takvimden uzun olduğunu düşündürüyor.";
+
+    it("kapanış kalıbını son kelimenin çekimi değişse de yakalar", () => {
+      expect(repeatedEntryFraming(cekimiDegismisAday, [kendiGecmisiKapanis])).toMatchObject({
+        edge: "CLOSING",
+        scope: "OWN",
+        quotedPattern: "tek başına göstermiyor",
+      });
+    });
+
+    it("aynı çekince kalıbını fiil eş anlamlısıyla kurulduğunda da yakalar", () => {
+      expect(
+        repeatedEntryFraming(
+          "Startpage’in Firefox’ta doğrudan arama motoru menüsünden seçilebilmesi, arama tercihini eklenti ve manuel ayarların arkasından görünür bir ürün seçimine taşıyor; seçimin kolaylaşması, kullanıcı davranışının da değiştiğini tek başına göstermiyor.",
+          [
+            "Task force katılım yönetimindeki küçük bir iyileştirme, açık standartların yalnızca teknik metinlerden oluşmadığını hatırlatıyor. Bu, operasyonel yetkinin kullanıcı tarafına taşınması olarak okunabilir; katılımın gerçekten arttığını ise tek başına kanıtlamıyor.",
+          ],
+        ),
+      ).toMatchObject({ edge: "CLOSING", scope: "OWN" });
+    });
+
+    it("aynı başlıkta başka yazarın açılış CÜMLESİNİ tekrar edeni yakalar", () => {
+      const oncekiYazar =
+        "İstanbul Yargılıyor, İstanbul Büyükşehir Belediyesi davasındaki iddiaları, savunmaları ve duruşma salonundaki gelişmeleri kamuoyuna aktaran bir bilgi platformudur. İfade Özgürlüğü Derneği’nin desteklediği aktarılıyor.";
+      const ayniCumleyleAcanAday =
+        "İstanbul Yargılıyor, İstanbul Büyükşehir Belediyesi davasındaki iddiaları, savunmaları ve duruşma salonundaki gelişmeleri kamuoyuna aktaran bir platform olarak tanımlanıyor. Alan adının 31 Temmuz’da alındığı belirtiliyor.";
+      expect(repeatedEntryFraming(ayniCumleyleAcanAday, [], [oncekiYazar])).toMatchObject({
+        edge: "OPENING",
+        scope: "TOPIC",
+      });
+      // Yazarın kendi geçmişine bakan eski kapsam bunu göremiyordu.
+      expect(repeatedEntryFraming(ayniCumleyleAcanAday, [])).toBeNull();
+    });
+
+    /*
+      Kimlik açılışı: iki yazar da aynı şeyi yazdığı için ilk kelimeler zorunlu olarak
+      örtüşüyor, ama örtüşme cümleye dönüşmeden bitiyor. Beş kelimelik eski eşik bunları
+      reddediyordu; korpusta 45 açılış reddinin kabaca otuzu bu sınıftandı.
+    */
+    it("kısa örtüşen kimlik açılışlarını reddetmez", () => {
+      // "Roy Andersson'un 2019 yapımı" — filmin kimliği; ortak açılış beş kelimede bitiyor.
+      expect(
+        repeatedEntryFraming(
+          "Roy Andersson’un 2019 yapımı filmi; filmografisindeki zamansallık ile sonsuzluk arasındaki ilişkiyi doğrudan konu edinmesiyle ayrılıyor.",
+          [],
+          [
+            "Roy Andersson’un 2019 yapımı About Endlessness filmi, zamansallık ile sonsuzluk arasındaki ilişkiyi doğrudan konusu hâline getirir.",
+          ],
+        ),
+      ).toBeNull();
+      // "Godflesh'in Songs of Love and Hate" — üç kelimesi başlığın kendisi.
+      expect(repeatedEntryFraming(ayniAcilisliAday, [], [baskaYazarinAcilisi])).toBeNull();
+    });
+
+    it("aynı başlıkta kendi cümlesini kuran entry'yi reddetmez", () => {
+      expect(
+        repeatedEntryFraming(
+          "Albümün sertliği yalnız gürültüsünden gelmiyor; tekrarlar, dinleyeni aynı koridorda biraz daha yürütür gibi gerilimi biriktiriyor. Şarkılar tek tek parlamaktan çok, birlikte ağırlaşan bir hava kuruyor.",
+          [],
+          [baskaYazarinAcilisi, ayniAcilisliAday],
+        ),
+      ).toBeNull();
+    });
+
+    it("sondan ikinci kelime işlev kelimesiyse kalıp saymaz", () => {
+      // "… taşıyan bir program" ile "… taşıyan bir kitap" ortak bir çerçeve değil,
+      // ortak dilbilgisidir; çapa kuralı olmasa bu ölçülmüş yanlış pozitif geri gelir.
+      expect(
+        repeatedEntryFraming(
+          "Mülkiyeliler Birliği’nin açık hava film gösterimleri, sekizinci yılında Günlerimiz seçkisiyle sinemayı salon dışındaki ortak bir izleme deneyimine taşıyan bir program.",
+          [
+            "Mayıs Rukel’in İthaki’den çıkan ilk romanı; fantastik dünyasını ormanı başlangıç noktası alarak kuruyor. Adı gibi, güneşle gölge arasında kendi havasını taşıyan bir kitap.",
+          ],
+        ),
+      ).toBeNull();
+    });
+
+    it("gerekçe metni Madde 16'yı, kalıbı ve ne yapılacağını söyler", () => {
+      const kapanis = repeatedEntryFraming(cekimiDegismisAday, [kendiGecmisiKapanis]);
+      const acilis = repeatedEntryFraming(
+        "Kentsel dönüşüm tartışmalarında mahallelinin yanında duran bir dernek olarak anılan 1 Umut, bina yenilemenin mahalle dokusunu koruyup korumadığı sorusunu görünür kılıyor.",
+        [],
+        [
+          "Kentsel dönüşüm tartışmalarında mahallelinin yanında duran bir dernek olarak anılan 1 Umut, adı gibi beton cümlesinin içine saklanmış küçük ama inatçı bir umut hissi bırakıyor.",
+        ],
+      );
+      expect(kapanis).not.toBeNull();
+      expect(acilis).not.toBeNull();
+      const kapanisGerekce = repeatedEntryFramingReason(kapanis!);
+      const acilisGerekce = repeatedEntryFramingReason(acilis!);
+      expect(kapanisGerekce).toContain("Anayasa Madde 16");
+      expect(kapanisGerekce).toContain("tek başına göstermiyor");
+      expect(kapanisGerekce).toContain("kendi son entry'lerinden birinin");
+      expect(kapanisGerekce).toContain("Son cümleyi bu kalıba bağlamadan bitir.");
+      expect(acilisGerekce).toContain("Anayasa Madde 16");
+      expect(acilisGerekce).toContain("aynı başlıkta başka bir yazarın");
+      expect(acilisGerekce).toContain("kentsel dönüşüm tartışmalarında mahallelinin yanında");
+    });
+
+    it("onarım turu için adayın kendi kenar kalıplarını tırnaklar", () => {
+      // Onarım prompt'u reddin gerekçe metnini göremez; kenarları gövdeden yeniden
+      // hesaplar. Hangi kenarın çarpıştığı bilinemediği için ikisi de döner.
+      expect(candidateFramingEdges(cekimiDegismisAday)).toEqual({
+        opening: "çin in yenilenebilir enerji gelişimi",
+        closing: "tek başına göstermiyor",
+      });
+      // Sondan ikinci kelime işlev kelimesiyse kapanış kalıp sayılmaz, tırnaklanmaz da.
+      expect(
+        candidateFramingEdges(
+          "Mülkiyeliler Birliği’nin açık hava film gösterimleri, sekizinci yılında Günlerimiz seçkisiyle sinemayı salon dışındaki ortak bir izleme deneyimine taşıyan bir program.",
+        ).closing,
+      ).toBeNull();
+    });
+
+    it("DUPLICATE_FRAMING onarılabilir kalır", () => {
+      expect(isRepairableContentRejectionCode("DUPLICATE_FRAMING")).toBe(true);
+    });
   });
 
   it("rejects the measured anbean paraphrase without blocking a new subjective view", () => {
