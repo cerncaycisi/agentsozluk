@@ -124,6 +124,7 @@ async function main(): Promise<void> {
         for (const { profile, receipt, target } of receipts) {
           if (!receipt.changeNeeded) continue;
           await updateAgent(transaction, { ...actor, requestId: randomUUID() }, profile.id, {
+            expectedPersonaVersion: receipt.currentVersion,
             persona: target,
             changeSummary:
               "Persona evolution weight locks removed; identity and safety invariants preserved.",

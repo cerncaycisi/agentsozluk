@@ -124,8 +124,16 @@ export const createAgentSchema = profileOptionsSchema.extend({
   lifecycleStatus: z.enum(["DRAFT", "PAUSED"]).default("PAUSED"),
 });
 
+/*
+  `expectedPersonaVersion`, agent_global_settings.settingsVersion ile aynı CAS token'ıdır:
+  istemci gördüğü sürümü geri gönderir, mutasyon kilit altında karşılaştırır. Yeni kolon
+  gerekmez; persona sürüm numarası profil başına monoton artar ve her persona yazımında
+  değişir. Kalıcı ayar alanlarından biri değildir; bu yüzden aşağıdaki "en az bir alan
+  gönderin" sayımına dahil edilmez.
+*/
 export const updateAgentSchema = z
   .object({
+    expectedPersonaVersion: z.number().int().positive().optional(),
     displayName: displayNameSchema.optional(),
     publicBio: z.string().trim().min(20).max(500).optional(),
     persona: seedPersonaSchema.optional(),
@@ -147,7 +155,14 @@ export const updateAgentSchema = z
       message: "Persona kimliği değişikliği için güvenli değişiklik özeti zorunludur.",
     },
   )
-  .refine((input) => Object.keys(input).length > 0, { message: "En az bir alan gönderin." });
+  .refine((input) => !input.persona || input.expectedPersonaVersion !== undefined, {
+    path: ["expectedPersonaVersion"],
+    message: "Persona değişikliği için okunan persona sürümü zorunludur.",
+  })
+  .refine(
+    (input) => Object.keys(input).filter((key) => key !== "expectedPersonaVersion").length > 0,
+    { message: "En az bir alan gönderin." },
+  );
 
 export const lifecycleChangeSchema = z.object({
   status: z.enum(["DRAFT", "PAUSED", "ACTIVE", "SUSPENDED", "RETIRED"]),

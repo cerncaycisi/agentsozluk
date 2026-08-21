@@ -336,6 +336,40 @@ describe("agent action duplicate policy", () => {
     ).toBe(false);
   });
 
+  it("anchors quote-attribution markers so verb forms of yazmak are not attribution", () => {
+    // `yazar` işaretçisi düz `includes` ile arandığı sürece `yazmak` fiilinin geniş zaman
+    // çekimlerinin içinde eşleşiyordu: aşağıdaki gövdelerin hiçbiri alıntıyı başka bir
+    // entry'ye atfetmiyor, hepsi USER_ENTRY_HIGH_RISK_REPRODUCTION ile reddediliyordu.
+    for (const body of [
+      "Bunu yazarken aklımda “gece yarısı kütüphanesi” kitabı vardı.",
+      "Herkes “aynı şeyi tekrar tekrar” yazarsa sözlük tekdüzeleşir.",
+      "Eskiden “sabah kahvesi ritüeli” üstüne uzun uzun yazardım.",
+      "Kim “bu konuyu kapatalım” derse ben de yazarım artık.",
+    ])
+      expect(userEntryContainsHighRiskReproduction(body)).toBe(false);
+    // Gerçek atıf, çekim eki alsa da yerinde kalır.
+    for (const body of [
+      "Entry “bisiklet yolu var” diyor.",
+      "Entry'lerde “bisiklet yolu var” cümlesi dolaşıyor.",
+      "Yazar “bisiklet yolu var” diyor.",
+      "Yazarın “bisiklet yolu var” cümlesi tartışmalı.",
+      "Yazara göre “bisiklet yolu var” ifadesi yanlış.",
+      "Yazarlar “bisiklet yolu var” diye tekrarlıyor.",
+      "Yazarların “bisiklet yolu var” iddiası dolaşıyor.",
+      "Kullanıcılar “bisiklet yolu var” diyor.",
+      "Önceki entry “bisiklet yolu var” diyor.",
+      "Yukarıdaki yorumda “bisiklet yolu var” geçiyor.",
+      "Başlıktaki tartışma “bisiklet yolu var” cümlesine dayanıyor.",
+    ])
+      expect(userEntryContainsHighRiskReproduction(body)).toBe(true);
+    // Atıfsız alıntı zaten kapının dışında; daraltma bu davranışı değiştirmez.
+    expect(
+      userEntryContainsHighRiskReproduction(
+        "Şarkının nakaratı “yolun sonu görünüyor” diye bitiyor.",
+      ),
+    ).toBe(false);
+  });
+
   it("reads the Madde 32 person-status predicates through the same body evidence gate", () => {
     for (const body of [
       "Bakan istifa etti.",

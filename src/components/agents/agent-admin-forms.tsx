@@ -1471,9 +1471,13 @@ function AgentProfileSettingsFields({
 export function AgentPersonaEditForm({
   agentId,
   persona: rawPersona,
+  personaVersion,
   profile,
 }: {
   agentId: string;
+  // Form açıldığında okunan persona sürümü. PATCH ile geri gönderilir; araya giren bir
+  // düzenleme olduysa sunucu 409 döner ve bayat form içeriği sessizce yazılmaz.
+  personaVersion: number;
   persona: unknown;
   profile: {
     activeTimeProfile: unknown;
@@ -1525,6 +1529,7 @@ export function AgentPersonaEditForm({
           await apiRequest(`/api/v1/admin/agents/${agentId}`, {
             method: "PATCH",
             body: {
+              expectedPersonaVersion: personaVersion,
               ...profilePayload(settings),
               ...(effectivePersonaChanged
                 ? { persona: effectivePersona, changeSummary: changeSummary.trim() }

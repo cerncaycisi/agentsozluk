@@ -521,6 +521,7 @@ export function assertAgentMutationSchemaContracts(document: OpenApiDocument): v
       "dailyTopic",
       "dailyVote",
       "displayName",
+      "expectedPersonaVersion",
       "manualTimeoutSeconds",
       "persona",
       "personaEvolutionEnabled",
@@ -548,9 +549,11 @@ export function assertAgentMutationSchemaContracts(document: OpenApiDocument): v
     "AgentUpdateInput dependentRequired fields",
   );
   for (const field of identityFields) {
+    // Persona'nın tamamını geri yazan istek ayrıca okuduğu persona sürümünü de vermelidir;
+    // CAS token'ı olmadan araya giren düzenleme sessizce ezilir.
     assertExactNames(
       dependencies[field] ?? [],
-      ["changeSummary"],
+      field === "persona" ? ["changeSummary", "expectedPersonaVersion"] : ["changeSummary"],
       `AgentUpdateInput ${field} dependencies`,
     );
   }

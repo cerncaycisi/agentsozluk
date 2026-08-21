@@ -103,7 +103,7 @@ async function main(): Promise<void> {
         id: true,
         lifecycleStatus: true,
         user: { select: { username: true, bio: true } },
-        currentPersonaVersionId: true,
+        currentPersonaVersion: { select: { version: true } },
       },
       orderBy: { user: { username: "asc" } },
     });
@@ -114,7 +114,7 @@ async function main(): Promise<void> {
       throw new Error(`PUBLIC_BIO_TARGETS_MISSING usernames=${missing.join(",")}`);
 
     const receipts = profiles.map((profile) => {
-      if (!profile.currentPersonaVersionId)
+      if (!profile.currentPersonaVersion)
         throw new Error(`PUBLIC_BIO_PERSONA_MISSING username=${profile.user.username}`);
       const targetBio = targets.get(profile.user.username)!;
       return {
@@ -155,6 +155,7 @@ async function main(): Promise<void> {
         for (const { profile, receipt, targetBio } of receipts) {
           if (!receipt.changeNeeded) continue;
           await updateAgent(transaction, { ...actor, requestId: randomUUID() }, profile.id, {
+            expectedPersonaVersion: profile.currentPersonaVersion!.version,
             publicBio: targetBio,
             changeSummary: "Public bio rewritten in the writer's own everyday voice.",
           });

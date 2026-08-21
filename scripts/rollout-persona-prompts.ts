@@ -483,6 +483,7 @@ export async function main(options: PromptRolloutOptions = {}): Promise<void> {
             const requestId = randomUUID();
             requestIds.push(requestId);
             await updateAgent(transaction, { ...actor, requestId }, entry.record.profileId, {
+              expectedPersonaVersion: entry.record.personaVersion,
               persona: entry.persona,
               changeSummary,
             });

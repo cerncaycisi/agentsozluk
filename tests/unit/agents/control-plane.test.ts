@@ -1,3 +1,4 @@
+import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { AppError } from "@/lib/http/errors";
 import {
@@ -162,6 +163,56 @@ describe("agent control-plane domain", () => {
       }).success,
     ).toBe(true);
     expect(updateAgentSchema.safeParse({ scheduledTimeoutSeconds: 300 }).success).toBe(true);
+  });
+
+  it("requires the read persona version as a compare-and-set token for persona rewrites", () => {
+    const persona = originalPersonaPack.personas[0]!;
+    const changeSummary = "Persona ağırlıkları kontrollü olarak güncellendi.";
+    // Persona'nın tamamını geri yazan istek, okuduğu sürümü söylemek zorundadır.
+    const withoutToken = updateAgentSchema.safeParse({ persona, changeSummary });
+    expect(withoutToken.success).toBe(false);
+    expect(
+      withoutToken.success ? [] : withoutToken.error.issues.map(({ path }) => path.join(".")),
+    ).toContain("expectedPersonaVersion");
+    expect(
+      updateAgentSchema.safeParse({ persona, changeSummary, expectedPersonaVersion: 3 }).success,
+    ).toBe(true);
+    // Token bir sürüm numarasıdır: tarih, kesir ya da sıfır kabul edilmez.
+    for (const expectedPersonaVersion of [0, -1, 1.5])
+      expect(
+        updateAgentSchema.safeParse({ persona, changeSummary, expectedPersonaVersion }).success,
+      ).toBe(false);
+    // Token tek başına bir düzenleme değildir; "en az bir alan" koşulunu karşılamaz.
+    expect(updateAgentSchema.safeParse({ expectedPersonaVersion: 3 }).success).toBe(false);
+    // Kimlik alanları ve çalışma ayarları token'ı isteğe bağlı bırakır ama kabul eder.
+    expect(
+      updateAgentSchema.safeParse({
+        publicBio: "Yeni ve yeterince uzun bir halka açık agent biyografisi.",
+        changeSummary,
+        expectedPersonaVersion: 3,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("supplies the compare-and-set token at every operational updateAgent call site", () => {
+    // Koruma yalnız çağıran disiplinine bağlı kalmasın: toplu bakım scriptleri de
+    // okudukları persona sürümünü geri vermek zorundadır, aksi halde araya giren bir
+    // düzenlemeyi advisory kilit altında sessizce ezerler.
+    const callSites = readdirSync("scripts")
+      .filter((name) => name.endsWith(".ts"))
+      .flatMap((name) => {
+        const source = readFileSync(`scripts/${name}`, "utf8");
+        const sites: string[] = [];
+        for (
+          let index = source.indexOf("updateAgent(transaction");
+          index !== -1;
+          index = source.indexOf("updateAgent(transaction", index + 1)
+        )
+          sites.push(`${name}: ${source.slice(index, source.indexOf("});", index))}`);
+        return sites;
+      });
+    expect(callSites.length).toBeGreaterThan(0);
+    for (const site of callSites) expect(site).toContain("expectedPersonaVersion:");
   });
 
   it("redacts one-time credentials from durable idempotency responses", () => {

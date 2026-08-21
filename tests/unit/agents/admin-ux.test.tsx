@@ -116,7 +116,14 @@ describe("agent admin UX contracts", () => {
   it("keeps full JSON out of the default edit surface and sends structured persona/profile fields", async () => {
     mocks.apiRequest.mockResolvedValue({});
     const user = userEvent.setup();
-    render(<AgentPersonaEditForm agentId={agentId} persona={persona} profile={profile} />);
+    render(
+      <AgentPersonaEditForm
+        agentId={agentId}
+        persona={persona}
+        personaVersion={4}
+        profile={profile}
+      />,
+    );
 
     expect(screen.getByLabelText(/Kullanıcı adı/u)).toBeDisabled();
     expect(screen.queryByLabelText(/Persona JSON\/YAML/u)).not.toBeInTheDocument();
@@ -139,6 +146,9 @@ describe("agent admin UX contracts", () => {
         expect.objectContaining({
           method: "PATCH",
           body: expect.objectContaining({
+            // Form açılırken okunan sürüm CAS token'ı olarak geri gider; araya giren
+            // düzenleme olduysa sunucu 409 döner, bayat form sessizce yazılmaz.
+            expectedPersonaVersion: 4,
             persona: expect.objectContaining({
               username: persona.username,
               temperament: expect.objectContaining({ curiosity: 0.88 }),

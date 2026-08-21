@@ -91,6 +91,19 @@ async function createFirstAgent(adminId: string) {
   );
 }
 
+/**
+ * CAS token'ını sabit sayı olarak yazmak yerine her çağrıdan hemen önce okur: testin
+ * ölçtüğü şey "sürüm kaçtı" değil, "okunan sürümle yazmak geçer" davranışıdır.
+ */
+async function currentPersonaVersion(agentProfileId: string): Promise<number> {
+  const profile = await integrationDatabase.agentProfile.findUniqueOrThrow({
+    where: { id: agentProfileId },
+    select: { currentPersonaVersion: { select: { version: true } } },
+  });
+  if (!profile.currentPersonaVersion) throw new Error("PERSONA_VERSION_MISSING");
+  return profile.currentPersonaVersion.version;
+}
+
 beforeEach(resetIntegrationDatabase);
 afterAll(closeIntegrationDatabase);
 
@@ -493,7 +506,11 @@ describe("agent control plane with PostgreSQL", () => {
       integrationDatabase,
       actor(admin.id),
       profileId,
-      updateAgentSchema.parse({ persona: edited, changeSummary: "Public bio netleştirildi." }),
+      updateAgentSchema.parse({
+        expectedPersonaVersion: await currentPersonaVersion(profileId),
+        persona: edited,
+        changeSummary: "Public bio netleştirildi.",
+      }),
     );
     const afterEdit = await integrationDatabase.agentProfile.findUniqueOrThrow({
       where: { id: profileId },
@@ -587,6 +604,7 @@ describe("agent control plane with PostgreSQL", () => {
         actor(admin.id),
         created.agent.profile.id,
         updateAgentSchema.parse({
+          expectedPersonaVersion: await currentPersonaVersion(created.agent.profile.id),
           persona: unsafe,
           changeSummary: "Unsafe ontology delta test.",
         }),
@@ -654,6 +672,68 @@ describe("agent control plane with PostgreSQL", () => {
     ).toBe(3);
   });
 
+  it("rejects a stale persona edit instead of silently overwriting the concurrent one", async () => {
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const profileId = created.agent.profile.id;
+    const original = originalPersonaPack.personas[0]!;
+    // İki admin de formu aynı anda açtı: ikisi de aynı sürümü okudu.
+    const staleVersion = await currentPersonaVersion(profileId);
+
+    const winnerBio =
+      "Dijital altyapının görünmeyen varsayımlarını, bakım yükünü ve kullanıcı etkisini birlikte inceler.";
+    await updateAgent(
+      integrationDatabase,
+      actor(admin.id),
+      profileId,
+      updateAgentSchema.parse({
+        expectedPersonaVersion: staleVersion,
+        persona: { ...original, publicBio: winnerBio },
+        changeSummary: "İlk admin public bio metnini netleştirdi.",
+      }),
+    );
+
+    const loserBio =
+      "Dijital sistemlerin görünmeyen varsayımlarını, bakım maliyetini ve kullanıcı etkisini birlikte tartar.";
+    await expect(
+      updateAgent(
+        integrationDatabase,
+        actor(admin.id),
+        profileId,
+        updateAgentSchema.parse({
+          expectedPersonaVersion: staleVersion,
+          persona: { ...original, publicBio: loserBio },
+          changeSummary: "İkinci admin bayat formu kaydetmeye çalıştı.",
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "AGENT_PERSONA_VERSION_CONFLICT", status: 409 });
+
+    // İlk düzenleme ayakta; ikinci yazar yeni bir sürüm de üretmedi.
+    const after = await integrationDatabase.agentProfile.findUniqueOrThrow({
+      where: { id: profileId },
+      include: { currentPersonaVersion: true, user: true },
+    });
+    expect(after.user.bio).toBe(winnerBio);
+    expect(after.currentPersonaVersion?.version).toBe(staleVersion + 1);
+    expect(
+      await integrationDatabase.agentPersonaVersion.count({ where: { agentProfileId: profileId } }),
+    ).toBe(staleVersion + 1);
+
+    // Güncel sürüm okunduğunda aynı düzenleme geçer.
+    await expect(
+      updateAgent(
+        integrationDatabase,
+        actor(admin.id),
+        profileId,
+        updateAgentSchema.parse({
+          expectedPersonaVersion: await currentPersonaVersion(profileId),
+          persona: { ...original, publicBio: loserBio },
+          changeSummary: "İkinci admin güncel sürümü okuyup yeniden kaydetti.",
+        }),
+      ),
+    ).resolves.toMatchObject({ user: { bio: loserBio } });
+  });
+
   it("allows weight evolution while preserving pinned identity fields", async () => {
     const admin = await createPrincipal();
     const created = await createFirstAgent(admin.id);
@@ -666,6 +746,7 @@ describe("agent control plane with PostgreSQL", () => {
       actor(admin.id),
       profileId,
       updateAgentSchema.parse({
+        expectedPersonaVersion: await currentPersonaVersion(profileId),
         persona: pinned,
         changeSummary: "Warmth alanı değiştirilip sonraki rollbackler için sabitlendi.",
       }),
@@ -677,6 +758,7 @@ describe("agent control plane with PostgreSQL", () => {
         actor(admin.id),
         profileId,
         updateAgentSchema.parse({
+          expectedPersonaVersion: await currentPersonaVersion(profileId),
           persona: {
             ...pinned,
             temperament: { ...pinned.temperament, warmth: 0.46 },
@@ -692,6 +774,7 @@ describe("agent control plane with PostgreSQL", () => {
         actor(admin.id),
         profileId,
         updateAgentSchema.parse({
+          expectedPersonaVersion: await currentPersonaVersion(profileId),
           persona: {
             ...pinned,
             username: "baska_yazar",

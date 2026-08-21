@@ -38,6 +38,7 @@ export default async function AgentEditPage({ params }: { params: Promise<{ id: 
       <AgentPersonaEditForm
         agentId={agent.id}
         persona={agent.currentPersonaVersion.persona}
+        personaVersion={agent.currentPersonaVersion.version}
         profile={{
           activeTimeProfile: agent.activeTimeProfile,
           personaEvolutionEnabled: agent.personaEvolutionEnabled,

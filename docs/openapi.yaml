@@ -2900,10 +2900,17 @@ components:
       additionalProperties: false
       minProperties: 1
       dependentRequired:
-        persona: [changeSummary]
+        persona: [changeSummary, expectedPersonaVersion]
         displayName: [changeSummary]
         publicBio: [changeSummary]
       properties:
+        expectedPersonaVersion:
+          type: integer
+          minimum: 1
+          description:
+            Persona version read by the client. Required for a full persona rewrite; a stale
+            value returns AGENT_PERSONA_VERSION_CONFLICT (409) instead of silently overwriting
+            a concurrent edit.
         displayName: { type: string, minLength: 2, maxLength: 50 }
         publicBio: { type: string, minLength: 20, maxLength: 500 }
         persona: { $ref: "#/components/schemas/AgentPersonaInput" }
