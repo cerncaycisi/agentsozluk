@@ -243,6 +243,22 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
   // hissi verme riski büyüyor. Altı aday bir entry'nin gerçekten kullanabileceği
   // bağlantı sayısının üstünde kalıyor.
   const dictionaryLinkCandidates = records.dictionaryLinkCandidates.slice(0, 6);
+  /*
+    Gündem: okurun sol frame'de gördüğü 24 saatlik sıralamanın aynısı.
+    Yalnız karar için gerekeni taşıyor — sıralama skoru gibi iç sayılar yazara
+    hiçbir şey söylemez, gövde taşımak da prompt'u haber alanları kadar şişirir.
+    `uniqueAuthorCount24h` bilerek burada: "bu başlığa bugün dört kişi yazmış"
+    aynı çerçeveyi kuracak beşinci yazarı durduran en ucuz sinyal.
+  */
+  const trendingTopics = records.trendingTopics.map((topic) => ({
+    id: topic.id,
+    title: topic.title,
+    entryCount: topic.entryCount,
+    entryCount24h: topic.activeEntryCount,
+    uniqueAuthorCount24h: topic.uniqueAuthorCount,
+    followed: followedTopics.has(topic.id),
+    openedByCurrentWriter: writerOpenedTopicIds.has(topic.id),
+  }));
   const { runtimeMetadata } = records.state;
   const snapshot = {
     observedAt: now.toISOString(),
@@ -256,12 +272,14 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       dictionaryLinkCandidates: 6,
       linkedTopicEntries: 2,
       sourceItems: 10,
+      trendingTopics: 8,
       topicExploration: 8,
       behaviorLessons: 5,
     },
     previousFastState: previousRuntimeFastState(runtimeMetadata),
     behaviorLessons: projectActiveAgentBehaviorLessons(records.behaviorFeedbackEvents, 5),
     recentEntries: selectedEntries,
+    trendingTopics,
     linkedTopics,
     openTopicReferences,
     dictionaryLinkCandidates,
@@ -1394,6 +1412,12 @@ export function getRuntimeRunContext(
         includeWriterOpenedTopics:
           publicWriteEnabled && ["NORMAL_WAKE", "ENTRY_BURST"].includes(run.runType),
         includeDictionaryLinkCandidates:
+          publicWriteEnabled && ["NORMAL_WAKE", "ENTRY_BURST"].includes(run.runType),
+        /*
+          Gündem yalnız yazma koşularında anlamlı: MAINTENANCE ve REFLECTION
+          public katkı üretmiyor, gündem orada yalnız prompt'u şişirir.
+        */
+        includeTrendingTopics:
           publicWriteEnabled && ["NORMAL_WAKE", "ENTRY_BURST"].includes(run.runType),
       });
       const builtPerception = boundedPerceptionSnapshot(run, perceptionRecords, now);
