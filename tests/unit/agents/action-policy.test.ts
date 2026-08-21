@@ -160,6 +160,75 @@ describe("agent action duplicate policy", () => {
     ).toBeNull();
   });
 
+  it("keeps argument roles inside the concept set so a reversed proposition is not a repetition", () => {
+    // Kesme işaretiyle ayrılan hâl eki özel adın rolünü taşır. Ek atılırsa yön
+    // bilgisi kaybolur ve `minimumComparableConcepts=3` sınırında ters önerme
+    // tekrar sayılır.
+    const previous = ["Ali Ayşe'yi destekler."];
+    expect(
+      topicSemanticRepetition("Ali, Ayşe'yi destekler.", "işyeri dayanışması", previous),
+    ).toMatchObject({ sharedConceptCount: 3 });
+    expect(
+      topicSemanticRepetition("Ayşe Ali'yi destekler.", "işyeri dayanışması", previous),
+    ).toBeNull();
+  });
+
+  it("anchors grounding markers to word boundaries in both directions", () => {
+    // Fail-open: `iddia` alt-dizisi `iddialı` sıfatının içinde çerçeve sayılıyor,
+    // `dolandırıc` ağır işaretçisi olmasına rağmen iki sert kapı da açılıyordu.
+    expect(
+      seriousFactualClaimRequiresStrongEvidence("Bu iddialı yönetici dolandırıcılık yaptı."),
+    ).toBe(true);
+    expect(userEntryContainsHighRiskReproduction("Bu iddialı yönetici dolandırıcılık yaptı.")).toBe(
+      true,
+    );
+    // Yanlış pozitif: `bu ay` ve `gerçekleşti` başka kelimelerin içinde eşleşiyordu.
+    expect(
+      seriousFactualClaimRequiresStrongEvidence("Bu ayrıntılar kavramın sınırlarını gösteriyor."),
+    ).toBe(false);
+    expect(
+      seriousFactualClaimRequiresStrongEvidence(
+        "Değişimin nasıl gerçekleştiğini anlatan bir kavramdır.",
+      ),
+    ).toBe(false);
+    // Gerçek işaretçiler ve gerçek çerçeveler yerinde kalır.
+    expect(seriousFactualClaimRequiresStrongEvidence("Karar bu ay yürürlüğe girdi.")).toBe(true);
+    expect(seriousFactualClaimRequiresStrongEvidence("Rapor bu ayın sonunda yayımlandı.")).toBe(
+      true,
+    );
+    expect(
+      userEntryContainsHighRiskReproduction(
+        "Yöneticinin dolandırıcılık yaptığı iddiası doğrulanmadı.",
+      ),
+    ).toBe(false);
+  });
+
+  it("reads the Madde 32 person-status predicates through the same body evidence gate", () => {
+    for (const body of [
+      "Bakan istifa etti.",
+      "Ünlü oyuncu hayatını kaybetti.",
+      "Belediye başkanı görevden alındı.",
+      "Yönetici hüküm giydi.",
+      "Sanık serbest bırakıldı.",
+    ])
+      expect(seriousFactualClaimRequiresStrongEvidence(body)).toBe(true);
+    // Mastar ve sıfat-fiil haber yüklemi değildir; kavram anlatımı kapıya takılmaz.
+    for (const body of [
+      "İstifa etmek, kurumsal sorumluluğun en görünür biçimidir.",
+      "Görevden alınan yöneticinin hukuki durumu ayrı bir kavramdır.",
+    ])
+      expect(seriousFactualClaimRequiresStrongEvidence(body)).toBe(false);
+    /*
+      Sınır: idari/kurumsal yüklemler gövde kapısına girmez. Başlıkta manşet
+      sayılmalarının nedeni fiilin kendisi değil, başlığın tamamının o fiille
+      bitmesidir; gövdede aynı fiil sıradan Türkçe düzyazıdır. Gövdedeki güncellik
+      zaman zarfıyla ölçülür.
+    */
+    expect(seriousFactualClaimRequiresStrongEvidence("Bu uygulama 2019'da kapatıldı.")).toBe(false);
+    expect(seriousFactualClaimRequiresStrongEvidence("Oturum kapatıldı.")).toBe(false);
+    expect(seriousFactualClaimRequiresStrongEvidence("Bu uygulama bugün kapatıldı.")).toBe(true);
+  });
+
   it("binds the uncertainty escape to the sentence that carries the claim", () => {
     // Kaçış artık gövde çapında değil: başka bir cümledeki çerçeve iddiayı çerçevelemiş saymaz.
     expect(
