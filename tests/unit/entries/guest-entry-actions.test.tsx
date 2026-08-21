@@ -225,16 +225,13 @@ describe("misafir oy ve favori düğmeleri", () => {
     expect(screen.queryByRole("button", { name: "Yazarı engelle" })).not.toBeInTheDocument();
   });
 
-  it("misafirde ⋮ menüsü görünür ama yalnız oturumsuz işlemi taşır", async () => {
+  it("misafirde ⋮ yok ama paylaşım ikonu var", () => {
     render(<EntryPreview entry={entry} guestActions />);
 
-    expect(screen.getByRole("button", { name: "Diğer entry işlemleri" })).toBeVisible();
-    openEntryOverflowMenu();
-
-    // "Linki kopyala" giriş istemiyor; menünün misafirdeki tek öğesi o.
-    expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual([
-      "Linki kopyala",
-    ]);
+    // `⋮`'de kalan her şey yetki istiyor; boş bir menü yerine hiç menü yok.
+    expect(screen.queryByRole("button", { name: "Diğer entry işlemleri" })).toBeNull();
+    // Paylaşım oturum istemiyor ve artık kendi ikonunda.
+    expect(screen.getByRole("button", { name: "Entry’yi paylaş" })).toBeVisible();
   });
 
   it("oturum açmış kullanıcıda düğmeleri gerçek düğme olarak bırakır", () => {

@@ -7,9 +7,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 /**
  * Paylaş menüsünün başlık sayfasına bağlanışı.
  *
- * Buradaki tek iddia bileşenin kendi testinde kanıtlanamaz: sayfanın menüye
- * **mutlak** bir adres geçirdiği. `topic.url` göreli (`/baslik/...`) döner;
- * mutlaklaştırma `APP_URL` ile sayfada yapılır.
+ * Buradaki iddialar bileşenin kendi testinde kanıtlanamaz: sayfanın menüye
+ * **mutlak** bir adres geçirdiği (`topic.url` göreli `/baslik/...` döner;
+ * mutlaklaştırma `APP_URL` ile sayfada yapılır) ve paylaşımın artık `⋮`'den
+ * bağımsız yaşadığı — misafirde `⋮` hiç yokken paylaşım duruyor.
  */
 
 const currentPageSession = vi.hoisted(() => vi.fn());
@@ -98,21 +99,21 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("başlık sayfası yapay zekâ paylaşımı", () => {
-  it("misafire de görünür ve dört kanala mutlak adres taşır", async () => {
+describe("başlık sayfası paylaşımı", () => {
+  it("misafire de görünür ve dört yapay zekâ kanalına mutlak adres taşır", async () => {
     const user = userEvent.setup();
     await renderTopicPage();
 
-    // Paylaşım ⋮ menüsünün "Paylaş" alt menüsünde; misafirde de açılıyor.
-    screen.getByRole("button", { name: "Diğer başlık işlemleri" }).focus();
+    // Paylaşım kendi ikonunda; `⋮` misafirde hiç çizilmiyor (yalnız moderasyon).
+    expect(screen.queryByRole("button", { name: "Diğer başlık işlemleri" })).toBeNull();
+    screen.getByRole("button", { name: "Başlığı paylaş" }).focus();
     await user.keyboard("{Enter}");
-    const shareTrigger = await screen.findByRole("menuitem", { name: "Paylaş" });
-    await user.keyboard("{ArrowRight}");
-    const items = (await screen.findAllByRole("menuitem")).filter((item) => item !== shareTrigger);
-    expect(items).toHaveLength(4);
 
-    for (const item of items) {
-      const query = new URL(item.getAttribute("href") ?? "").searchParams;
+    const aiGroup = await screen.findByRole("group", { name: "Yapay zekâya sor" });
+    const channels = [...aiGroup.querySelectorAll("a")];
+    expect(channels).toHaveLength(4);
+    for (const channel of channels) {
+      const query = new URL(channel.getAttribute("href") ?? "").searchParams;
       const prompt = query.get("q") ?? query.get("text") ?? "";
       // Göreli `/baslik/...` değil, `APP_URL` ile mutlaklaştırılmış adres.
       expect(prompt).toContain("https://ornek.test/baslik/gunesamagi--7");
@@ -121,10 +122,28 @@ describe("başlık sayfası yapay zekâ paylaşımı", () => {
     }
   });
 
+  it("sosyal kanallara da aynı mutlak adresi verir", async () => {
+    const user = userEvent.setup();
+    await renderTopicPage();
+
+    screen.getByRole("button", { name: "Başlığı paylaş" }).focus();
+    await user.keyboard("{Enter}");
+
+    const socialGroup = await screen.findByRole("group", { name: "Sosyal ağlarda paylaş" });
+    const channels = [...socialGroup.querySelectorAll("a")];
+    expect(channels.map((channel) => channel.textContent)).toEqual(["X", "Facebook", "WhatsApp"]);
+    for (const channel of channels) {
+      const href = channel.getAttribute("href") ?? "";
+      expect(href).toContain(encodeURIComponent("https://ornek.test/baslik/gunesamagi--7"));
+      expect(decodeURIComponent(href)).not.toMatch(/=\/baslik\//u);
+    }
+  });
+
   it("gizlenmiş başlıkta paylaşımı hiç sunmaz", async () => {
     getTopicByPublicId.mockResolvedValue({ ...topicFixture, status: "HIDDEN" as const });
     await renderTopicPage();
 
+    expect(screen.queryByRole("button", { name: "Başlığı paylaş" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Diğer başlık işlemleri" })).toBeNull();
     expect(screen.getByText("gizlenmiş başlık")).toBeInTheDocument();
   });

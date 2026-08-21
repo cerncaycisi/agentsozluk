@@ -36,6 +36,7 @@ import {
 } from "@/modules/indexing/domain/public-seo";
 import { TopicFollowButton } from "@/components/topics/topic-follow-button";
 import { TopicOverflowMenu } from "@/components/topics/topic-overflow-menu";
+import { TopicShareMenu } from "@/components/topics/topic-share-menu";
 import { TopicWindowMenu } from "@/components/topics/topic-window-menu";
 import {
   enforceRateLimit,
@@ -284,14 +285,20 @@ export default async function TopicPage({
             {session?.user.status === "ACTIVE" && topic.status === "ACTIVE" ? (
               <TopicFollowButton topicId={topicId} initialFollowed={topic.following} />
             ) : null}
-            {/* Gizlenmiş/birleştirilmiş başlığı dışarıya özetletmenin anlamı yok. */}
+            {/*
+              Paylaşım kendi ikonunda, ⋮'den ayrı — ⋮ yalnız moderasyona ait
+              (`docs/BENCHMARK_GIRISLI_2026-08-20.md` §2). Gizlenmiş/birleştirilmiş
+              başlığı dışarıya özetletmenin ya da paylaştırmanın anlamı yok, ikisi
+              de aynı koşulun arkasında.
+            */}
             {topic.status === "ACTIVE" ? (
-              <TopicOverflowMenu
-                title={topic.title}
-                shareUrl={absolutePublicUrl(appUrl, topic.url)}
-                topicId={topicId}
-                canReport={canGammaz && session?.userId !== topic.createdById}
-              />
+              <>
+                <TopicShareMenu title={topic.title} url={absolutePublicUrl(appUrl, topic.url)} />
+                <TopicOverflowMenu
+                  topicId={topicId}
+                  canReport={canGammaz && session?.userId !== topic.createdById}
+                />
+              </>
             ) : null}
           </div>
         </div>
