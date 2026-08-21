@@ -1,9 +1,19 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from "node:fs";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SiteShell } from "@/components/layout/site-shell";
+
+const globalsCss = readFileSync("src/app/globals.css", "utf8");
+
+/** `globals.css`teki bir bileşen sınıfının gövdesi (bkz. entry-preview testi). */
+function componentRule(selector: string): string {
+  const start = globalsCss.indexOf(`\n  ${selector} {`);
+  if (start < 0) throw new Error(`${selector} kuralı yok`);
+  return globalsCss.slice(start, globalsCss.indexOf("\n  }", start));
+}
 
 const navigation = vi.hoisted(() => ({ pathname: "/gundem", push: vi.fn() }));
 
@@ -692,9 +702,29 @@ describe("site footer", () => {
     const links = within(footerNav()).getAllByRole("link");
     expect(links.length).toBeGreaterThan(0);
     for (const link of links) {
-      // min-h-11 (44px) mobilde, sm'den itibaren min-h-6 (24px) tabana iner.
-      expect(link).toHaveClass("inline-flex", "items-center", "min-h-11", "sm:min-h-6");
+      // Geometri ve durum dili artık `.link-quiet`in içinde; elle yazılmış
+      // kopya kalkınca burada aranacak şey de sınıfın kendisi oldu.
+      expect(link).toHaveClass("link-quiet");
+      // min-h-11 (44px) mobilde, sm'den itibaren sınıfın 24px tabanına iner.
+      expect(link).toHaveClass("min-h-11", "sm:min-h-6");
     }
+    expect(componentRule(".link-quiet")).toContain("@apply inline-flex min-h-6 items-center");
+  });
+
+  /**
+   * Karar kaydı: footer linkinin hover rengi `--primary` DEĞİL `--ink`.
+   * Footer `--page` üstünde; `--muted` → `--primary` geçişi koyu temada
+   * kontrastı 6.974'ten 6.903'e düşürüyordu, `--ink` ise 14.903'e çıkarıyor
+   * (açık temada 4.753 → 12.104). Ayrıca `--primary` bu sistemde
+   * "marka/geçerli" demek; hover onu söylememeli.
+   */
+  it("footer bağlantısı hover'da primary'ye değil ink'e çıkar", () => {
+    renderShell();
+
+    for (const link of within(footerNav()).getAllByRole("link")) {
+      expect(link.className).not.toContain("hover:text-primary");
+    }
+    expect(componentRule(".link-quiet:hover")).toContain("color: rgb(var(--ink))");
   });
 
   it("renders the brand and copyright line with a server-computed year", () => {

@@ -124,6 +124,13 @@ function href(name: string | RegExp, strip: HTMLElement) {
   return within(strip).getByRole("link", { name }).getAttribute("href");
 }
 
+/** Başlığın üstündeki sayaç satırı. */
+function eyebrow(): HTMLElement {
+  const node = document.querySelector("p.eyebrow");
+  if (!(node instanceof HTMLElement)) throw new Error("eyebrow yok");
+  return node;
+}
+
 beforeEach(() => {
   getTopicByPublicId.mockResolvedValue(topicFixture);
   currentPageSession.mockResolvedValue(null);
@@ -164,7 +171,10 @@ describe("başlık sayfası zaman penceresi şeridi", () => {
       "aria-current",
       "page",
     );
-    expect(screen.getByText("120 entry")).toBeInTheDocument();
+    // Filtresizken sayı başlığın tamamı; pencere adı yine yok, tetikleyici
+    // varsayılan kademede de kendi etiketini taşıyor.
+    expect(eyebrow()).toHaveTextContent("120 entry");
+    expect(windowTrigger().textContent).toBe("Zaman penceresi: tüm zamanlar");
   });
 
   it.each([
@@ -182,7 +192,12 @@ describe("başlık sayfası zaman penceresi şeridi", () => {
     expect(createdAtWindow.end.getTime() - createdAtWindow.start.getTime()).toBe(
       days * 24 * 60 * 60 * 1000,
     );
-    expect(screen.getByText(`7 entry · ${summary}`)).toBeInTheDocument();
+    // Pencerenin ADI eyebrow'da YAZMAZ: sayfada tam bir kez, pencere
+    // tetikleyicisinin etiketinde geçer (`page.tsx`teki S3 kararı). Eyebrow
+    // yalnız sayıyı taşır — ama sayı pencereye göre daralmış sayıdır.
+    expect(eyebrow()).toHaveTextContent("7 entry");
+    expect(eyebrow().textContent).not.toContain(summary);
+    expect(windowTrigger().textContent).toBe(`Zaman penceresi: ${summary}`);
   });
 
   it("eski ?index= linklerini 24 saat penceresine eşler", async () => {
@@ -199,7 +214,8 @@ describe("başlık sayfası zaman penceresi şeridi", () => {
       "aria-current",
       "page",
     );
-    expect(screen.getByText("7 entry · son 24 saat")).toBeInTheDocument();
+    expect(eyebrow()).toHaveTextContent("7 entry");
+    expect(windowTrigger().textContent).toBe("Zaman penceresi: son 24 saat");
   });
 
   it("aynı anda gelen ?window= parametresi eski ?index='i ezer", async () => {
