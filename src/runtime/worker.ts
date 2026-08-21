@@ -351,6 +351,24 @@ function runtimeEvidenceCatalog(context: RuntimeContext): RuntimeEvidenceCatalog
     ...recordArray(perception.ownRecentEntries),
     ...linkedTopicEntries,
   ];
+  /*
+    Bugün eklenen dört alan kanıt kataloğunda yoktu ve prompt onları açıkça
+    kullandırıyordu: "trendingTopics … başlık seçerken haber kaynağı kadar meşru",
+    "followedWriterEntries … katılmadığın bir hükmüne gerekçeli karşı görüş yazmak
+    doğal sözlük davranışıdır". Model o başlığı `PLATFORM_EVENT` diye gösterdiğinde
+    `runtimeDecisionUsesCatalog` false dönüyor, bir onarım turu yanıyor, ikinci kez
+    de düşerse `CODEX_DECISION_PROVENANCE_INVALID` ile TÜM run düşüyor. Canlıda
+    görüldü (21 Ağu 15:00'te iki, 19:00'da bir).
+
+    Sunucu tarafı bu id'leri zaten kabul ediyor (`topic.count` herhangi bir ACTIVE
+    başlığı geçerli sayıyor); kapı yalnız worker'daydı, yalnız modele karşı kapalıydı.
+  */
+  const offeredTopics = [
+    ...recordArray(perception.trendingTopics),
+    ...recordArray(perception.newTopics),
+    ...recordArray(perception.followedTopics),
+  ];
+  const followedWriterEntries = recordArray(perception.followedWriterEntries);
   const sourceItems = recordArray(perception.sourceItems);
   const trustedSourceIds = sourceItems.flatMap((item) =>
     runtimeSourceEvidenceTypeForStatus(stringField(item, "sourceStatus") ?? "") ===
@@ -369,6 +387,8 @@ function runtimeEvidenceCatalog(context: RuntimeContext): RuntimeEvidenceCatalog
     PLATFORM_EVENT: unique([
       context.run.id,
       ...writerOpenedTopics.map((topic) => stringField(topic, "id")),
+      ...offeredTopics.map((topic) => stringField(topic, "id")),
+      ...followedWriterEntries.map((entry) => stringField(entry, "topicId")),
       ...recentEntries.map((entry) => nestedStringField(entry, "topic", "id")),
       ...linkedTopics.map((linkedTopic) => nestedStringField(linkedTopic, "topic", "id")),
     ]),

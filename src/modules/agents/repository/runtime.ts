@@ -2269,10 +2269,17 @@ export async function getRuntimePerceptionRecords(
       24 saatlik hareket sayısı da taşınıyor: takip ettiği başlıkta ne olup bittiğini
       görmeden "oraya dönmeli miyim" kararı verilemiyor.
     */
+    /*
+      `take` YOK ve olmamalı. Bu sorgunun çıktısı iki yere gidiyor: yeni
+      `followedTopics` listesi (zaten 8'e kırpılıyor) ve `followedTopicIds`
+      (`selectPerceptionEntries`'te +1,5 sıralama bonusu, `trendingTopics[].followed`
+      bayrağı). Buraya bir kez `take: 40` konmuştu ve canlıda 22 ajanın 9'u
+      kırpılıyordu — en çok takip edeni 135 başlıkla 95'ini kaybediyordu. Yani
+      takibi birinci sınıf girdi yapan değişiklik, takip sinyalini zayıflatmıştı.
+    */
     transaction.topicFollow.findMany({
       where: { userId: input.agentUserId },
       orderBy: { createdAt: "desc" },
-      take: 40,
       select: {
         topicId: true,
         topic: {
@@ -2290,11 +2297,29 @@ export async function getRuntimePerceptionRecords(
               entry'lerini okuyan tek şey `getRuntimeTopicNoveltyContext`'ti ve o
               KAPIDA çalışıyor, yani yazdıktan sonra. Sıra "yaz, reddedilirse öğren"di.
             */
+            /*
+              Sayım ile önizleme AYRI. Eskiden tek bir `take: 6` ikisini birden
+              besliyordu ve `entryCount24h` matematiksel olarak 6'yı aşamıyordu —
+              otuz entry almış bir başlık "6" görünüyordu. Prompt bu sayıyı
+              `trendingTopics`'inkiyle aynı sinyal diye okutuyor, ama orası gerçek
+              `count(DISTINCT authorId)`.
+            */
+            _count: {
+              select: {
+                entries: {
+                  where: {
+                    status: "ACTIVE",
+                    ...publiclyVisibleEntryWhere,
+                    createdAt: { gte: new Date(input.now.getTime() - 24 * 60 * 60 * 1000) },
+                  },
+                },
+              },
+            },
             entries: {
               where: { status: "ACTIVE", ...publiclyVisibleEntryWhere },
               orderBy: { createdAt: "desc" },
-              take: 6,
-              select: { authorId: true, body: true, createdAt: true },
+              take: 1,
+              select: { body: true },
             },
           },
         },
@@ -2571,17 +2596,12 @@ export async function getRuntimePerceptionRecords(
     followedTopicIds: topicFollows.map(({ topicId }) => topicId),
     followedTopics: topicFollows
       .filter(({ topic }) => topic?.status === "ACTIVE")
-      .map(({ topic }) => {
-        const since = new Date(input.now.getTime() - 24 * 60 * 60 * 1000);
-        const recent = topic!.entries.filter(({ createdAt }) => createdAt >= since);
-        return {
-          id: topic!.id,
-          title: topic!.title,
-          entryCount24h: recent.length,
-          uniqueAuthorCount24h: new Set(recent.map(({ authorId }) => authorId)).size,
-          lastEntryBody: topic!.entries[0]?.body ?? null,
-        };
-      }),
+      .map(({ topic }) => ({
+        id: topic!.id,
+        title: topic!.title,
+        entryCount24h: topic!._count.entries,
+        lastEntryBody: topic!.entries[0]?.body ?? null,
+      })),
     followedUserIds: userFollows.map(({ followedId }) => followedId),
     entries,
     ownEntries,
