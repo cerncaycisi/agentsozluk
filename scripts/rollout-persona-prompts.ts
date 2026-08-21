@@ -6,6 +6,10 @@ import type { PrismaClient } from "@prisma/client";
 import { getDatabase } from "@/lib/db/client";
 import { AppError } from "@/lib/http/errors";
 import { sha256 } from "@/lib/security/crypto";
+import {
+  prepareOperatorCliEnvironment,
+  writeOperatorCliEnvironmentReport,
+} from "./operator-cli-environment";
 import { setGlobalRuntimeEnabled, updateAgent } from "@/modules/agents";
 import { validatePersonaCandidate } from "@/modules/agents/domain/persona-validation";
 import { renderPersonaPrompt } from "@/modules/agents/personas/prompt-renderer";
@@ -539,11 +543,26 @@ export async function main(options: PromptRolloutOptions = {}): Promise<void> {
 
 const entrypoint = process.argv[1];
 if (entrypoint && import.meta.url === pathToFileURL(path.resolve(entrypoint)).href)
-  void main().catch((error: unknown) => {
-    const message =
-      error instanceof Error && /^PROMPT_ROLLOUT_[A-Z0-9_]+(?: .+)?$/u.test(error.message)
-        ? error.message
-        : "PROMPT_ROLLOUT_FATAL";
-    process.stderr.write(`${message}\n`);
-    process.exitCode = 1;
-  });
+  void Promise.resolve()
+    .then(() => {
+      writeOperatorCliEnvironmentReport(prepareOperatorCliEnvironment());
+      return main();
+    })
+    .catch((error: unknown) => {
+      /*
+      Bilinen kodlar tek satır olarak geçer; bilinmeyen her hata da SEBEBİYLE birlikte
+      basılır. Eskiden hepsi çıplak `PROMPT_ROLLOUT_FATAL`'a düşüyordu ve teşhis
+      kayboluyordu — production'da üç deneme, hatanın "iki aktif admin var, birini seçin"
+      olduğunu anlamak için harcandı. Mesaj tek satıra sıkıştırılıyor, çünkü çok satırlı
+      çıktı çağıran tarafın kod ayrıştırmasını kaçırıyor.
+    */
+      const known =
+        error instanceof Error && /^PROMPT_ROLLOUT_[A-Z0-9_]+(?: .+)?$/u.test(error.message);
+      const detail =
+        error instanceof Error ? error.message : typeof error === "string" ? error : String(error);
+      const message = known
+        ? detail
+        : `PROMPT_ROLLOUT_FATAL cause=${detail.replaceAll(/\s+/gu, " ").trim().slice(0, 400)}`;
+      process.stderr.write(`${message}\n`);
+      process.exitCode = 1;
+    });

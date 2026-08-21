@@ -652,6 +652,93 @@ docker image inspect --format '{{.Id}}' agent-sozluk:production
 It must equal the running app container's `{{.Image}}`. If it does not, the next reboot
 takes the site down.
 
+## Operator scripts — how to invoke them so they can be diagnosed
+
+Recorded 2026-08-21 after a persona-prompt rollout that took **three attempts to
+diagnose**, none of which were the script's real problem. The fixes below are in the
+code now; this section says how to call the scripts and how to read what they tell you.
+
+Applies to `scripts/rollout-persona-prompts.ts`, `scripts/agent-rollout.ts` and
+`scripts/recover-stochastic-runtime.ts`, which share
+`scripts/operator-cli-environment.ts`.
+
+### The working directory must be the repository root
+
+Not "should" — **must**. These scripts import through the `@/` path alias, which `tsx`
+resolves against tsconfig relative to the current working directory. Invoked from
+anywhere else the process dies in module resolution with
+`Cannot find module '@/lib/db/client'`, _before_ any environment handling runs. The
+error names a module, so it reads like a broken install; it is not. It is the cwd.
+
+Inside the container this is satisfied by default (`WORKDIR /app`). From the host, `cd`
+to the repo root first.
+
+### Where the environment comes from, and who wins
+
+Three sources, in increasing precedence:
+
+1. The process environment (container `environment:`, or shell `export`).
+2. `.env` in the current working directory, via `dotenv/config`.
+3. `AGENT_OPERATOR_ENV_FILE=/abs/path/to.env` — **an explicit file wins over both.**
+
+Point 3 was a real trap. `process.loadEnvFile()` does **not** overwrite variables that
+are already set, so a stale `export DATABASE_URL=...` left in the deploy shell silently
+defeated the file the operator explicitly passed, and the script connected to the wrong
+host. Measured, not assumed: with `DATABASE_URL` already set, `loadEnvFile` leaves it
+untouched. The helper now deletes conflicting keys before loading, so the explicit file
+takes effect — and reports every key it overrode.
+
+### Read the two lines the scripts print before anything else
+
+    OPERATOR_ENV_LOADED APP_SECRET,APP_URL,DATABASE_URL,...
+    OPERATOR_ENV_OVERRODE_SHELL DATABASE_URL
+    OPERATOR_DB_HOST 172.19.0.5
+
+Key names only — **never values**. `DATABASE_URL` carries a password and these lines go
+to deploy logs. If `OPERATOR_ENV_OVERRODE_SHELL` names something you did not expect,
+stop: the shell and the file disagree about it.
+
+### `db:5432` does not resolve from the host
+
+That hostname only exists on the compose network. Running an operator script from the
+host, pass the container's address:
+
+```bash
+AGENT_DB_IP="$(docker inspect -f \
+  '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' agent-sozluk-db)"
+```
+
+`AGENT_DB_IP` rewrites only the hostname; credentials, port, database name and query
+string are preserved.
+
+### Two active admins — the error that hid behind `PROMPT_ROLLOUT_FATAL`
+
+`resolveOperatorAdmin` requires **exactly one** active `HUMAN` `ADMIN`. Production has
+**two** (`admin` and `bootstrap_admin`), so it throws
+`Tam bir aktif HUMAN ADMIN bulunamadı; AGENT_OPERATOR_ADMIN_ID belirtin.` — a perfectly
+clear message that the rollout script used to swallow, printing a bare
+`PROMPT_ROLLOUT_FATAL` instead. Unknown errors now surface as
+`PROMPT_ROLLOUT_FATAL cause=<reason>`; known `PROMPT_ROLLOUT_*` codes still print bare
+so callers can keep parsing them.
+
+The requirement is deliberate — refusing to guess which admin an audit entry is
+attributed to is correct. Pass the one you mean:
+
+```bash
+AGENT_OPERATOR_ADMIN_ID=fe5dbe26-...   # bootstrap_admin, 731 audit entries
+```
+
+**This condition is permanent**, not a one-off: as long as production carries two active
+admins, every operator script needs this variable. Confirm the id against the database
+before a write — do not copy it from this document without checking.
+
+### Fail-closed is real; a failed attempt writes nothing
+
+When the 2026-08-21 rollout hit the two-admin error it produced **zero** writes: no
+`AgentPersonaVersion` rows, no audit entries, no outbox rows. Verified in the database
+before retrying. So the correct response to a fatal is to _read the cause_, not to
+re-run and hope.
+
 ## Merge, backup, migration and rollback gate
 
 Everything in this section is an operator procedure, not evidence that it has run. Each production

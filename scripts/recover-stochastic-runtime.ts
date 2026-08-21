@@ -9,6 +9,10 @@ import {
 } from "@/modules/agents";
 import { retireAgentDailyPlanning } from "@/modules/agents/historical/daily-planning-recovery";
 import { resolveOperatorAdmin } from "./agent-operator";
+import {
+  prepareOperatorCliEnvironment,
+  writeOperatorCliEnvironmentReport,
+} from "./operator-cli-environment";
 
 const environmentSchema = z
   .object({
@@ -27,12 +31,7 @@ function parseArguments() {
 
 async function main(): Promise<void> {
   const { expectedAttemptId } = parseArguments();
-  if (process.env.AGENT_OPERATOR_ENV_FILE) process.loadEnvFile(process.env.AGENT_OPERATOR_ENV_FILE);
-  if (process.env.AGENT_DB_IP && process.env.DATABASE_URL) {
-    const databaseUrl = new URL(process.env.DATABASE_URL);
-    databaseUrl.hostname = process.env.AGENT_DB_IP;
-    process.env.DATABASE_URL = databaseUrl.toString();
-  }
+  writeOperatorCliEnvironmentReport(prepareOperatorCliEnvironment());
   const environment = environmentSchema.parse(process.env);
   const database = getDatabase();
   try {
