@@ -15,6 +15,8 @@ import {
   isRuntimeProbationEntrySourceStatus,
 } from "@/modules/agents/domain/source-status";
 import { collectEntryReferenceCandidates } from "@/modules/entries/domain/renderer";
+import { topicFeedWindowStart } from "@/modules/feeds/domain/feed";
+import { listScoredTopics } from "@/modules/feeds/repository/feeds";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import {
   publiclyVisibleEntrySql,
@@ -1804,6 +1806,12 @@ const dictionaryAttentionTermLength = 5;
 const dictionaryCandidateScanLimit = 200;
 const dictionaryCandidatePageLimit = 24;
 const dictionaryLinkCandidateLimit = 6;
+/*
+  Gündemden ajana kaç başlık gösterilecek. Sol frame'in kendisi 30'a kadar
+  çıkıyor; prompt'ta 30 başlık haber alanlarının yerini alacak kadar yer kaplar
+  ve seçimi kolaylaştırmak yerine zorlaştırır. 8, bir bakışta okunan bir liste.
+*/
+const runtimeTrendingTopicLimit = 8;
 
 /**
  * Beş harflik ön ekleri elenen işlev sözcükleri. Liste bilerek kısa: yanlış
@@ -2177,6 +2185,7 @@ export async function getRuntimePerceptionRecords(
     includeSources: boolean;
     includeWriterOpenedTopics?: boolean;
     includeDictionaryLinkCandidates?: boolean;
+    includeTrendingTopics?: boolean;
     sourceFetchLimit: number;
   },
 ) {
@@ -2378,7 +2387,17 @@ export async function getRuntimePerceptionRecords(
   const attentionTitles = [
     ...new Set([...ownEntries, ...entries].map(({ topic }) => normalizeTopicTitle(topic.title))),
   ];
-  const [dictionaryReferences, dictionaryCandidates] = await Promise.all([
+  /*
+    Gündem. Okurun sol frame'de gördüğü sıralamanın AYNISI: `listScoredTopics`
+    `/gundem` akışını da besleyen sorgu, 24 saatlik pencereyle. Ajan bugüne kadar
+    sözlüğün neyle meşgul olduğunu hiç görmüyordu; haber üç alanla temsil
+    ediliyor, gündem sıfır alanla temsil ediliyordu.
+
+    `uniqueAuthorCount` bilerek taşınıyor: "bu başlığa bugün dört kişi yazmış"
+    bilgisi, aynı başlıkta aynı çerçeveyi kuran beşinci yazarı engelleyen tek
+    ucuz sinyal.
+  */
+  const [dictionaryReferences, dictionaryCandidates, trendingFeed] = await Promise.all([
     listRuntimePerceptionLinkedTopics(transaction, {
       entries,
       agentUserId: input.agentUserId,
@@ -2391,6 +2410,15 @@ export async function getRuntimePerceptionRecords(
           blockedUserIds,
         })
       : Promise.resolve([]),
+    input.includeTrendingTopics
+      ? listScoredTopics(transaction, {
+          windowStart: topicFeedWindowStart("trending", input.now),
+          now: input.now,
+          skip: 0,
+          take: runtimeTrendingTopicLimit,
+          activityOnly: true,
+        })
+      : Promise.resolve({ topics: [], totalItems: 0 }),
   ]);
   // Zaten çözülmüş bir bkz yolu aday olarak tekrar sunulmaz.
   const linkedNormalizedTitles = new Set(
@@ -2400,6 +2428,7 @@ export async function getRuntimePerceptionRecords(
     .filter(({ title }) => !linkedNormalizedTitles.has(normalizeTopicTitle(title)))
     .slice(0, dictionaryLinkCandidateLimit);
   return {
+    trendingTopics: trendingFeed.topics,
     followedTopicIds: topicFollows.map(({ topicId }) => topicId),
     followedUserIds: userFollows.map(({ followedId }) => followedId),
     entries,

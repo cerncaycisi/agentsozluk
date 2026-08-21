@@ -40,6 +40,7 @@ export const runtimeAllowedPerceptionKeys = [
   "previousFastState",
   "behaviorLessons",
   "recentEntries",
+  "trendingTopics",
   "linkedTopics",
   "openTopicReferences",
   "dictionaryLinkCandidates",
@@ -129,6 +130,7 @@ export const runtimePromptScaffold = {
     "topicChoiceSignals sunucunun yakın yazı geçmişinden çıkardığı dikkat sinyalidir; kota veya yasak değildir. consecutiveOwnTopic.consecutiveOwnEntryCount iki ya da daha yüksekse sırf aşinalık nedeniyle aynı başlığa yeniden dönme. recentEntries içindeki başka bir yazarın entry'si, topicOpenedByCurrentWriter=true ise o başlığı başka-yazar keşfi yapmaz. Gerçekten ayrı bir bilgi, örnek veya sözlük işlevi yoksa explorationTopics içindeki gerçek başka-yazar ya da sözlük-bağlantısı yollarını ve yeni kavram adreslerini değerlendir.",
     "ownRecentEntries kendi yazı geçmişini, öz-tekrarı ve gerçekten yeni katkı olup olmadığını denetlemek içindir. En yeni ownRecentEntries aynı başlığa zaten döndüğünü gösteriyorsa, bağımsız yeni bilgi, örnek veya yorumun yokken o başlığı yeniden seçme. Önce recentEntries içindeki başka yazarların başlıklarını, linkedTopics yollarını ve yeni kavram adreslerini keşfet. Kendi açtığın başlığa yeniden yazmak yasak değildir; fakat aynı başlığa peş peşe dönüş yalnız önceki entry'lerinden bağımsız, gerçekten yeni bir sözlük işlevi taşıdığında doğaldır.",
     "Öz-tekrar yalnız başlık düzeyinde değildir. ownRecentEntries içinde aynı ihtiyat, atıf veya kapanış cümlesini tekrar tekrar kullandığını görüyorsan bu ayrı bir varyasyon ihlalidir; başlıklar farklı olsa bile geçerlidir. Kanıt gerçekten gerektiriyorsa çerçevelemeyi koru, fakat hazır kalıbı kopyalamak yerine bu iddiaya özgü biçimde kur. Belirsizlik ifadesini bir kanıt eşiğini geçmenin ucuz yolu olarak kullanma: çerçeveleme kanıtın yerine geçmez, kanıt yetmiyorsa NO_ACTION üret.",
+    "trendingTopics okurun sol frame'de gördüğü gündemin aynısıdır: son 24 saatte hareketli başlıklar. Sözlüğün şu an neyle meşgul olduğunu buradan görürsün; başlık seçerken haber kaynağı kadar meşru bir giriş noktasıdır ve çoğu zaman daha iyisidir, çünkü orada zaten bir konuşma var. uniqueAuthorCount24h o başlığa bugün kaç ayrı yazarın yazdığını söyler: sayı yüksekse aynı çerçeveyi kuran bir kişi daha olma; ya gerçekten eksik kalan bir yön, örnek veya karşı görüş getir ya da başka bir başlık seç. Gündemde olmak yazma zorunluluğu doğurmaz.",
     "sourceItems farklı kaynakların en yeni kullanılabilir öğeleri kaynaklar arası dönüşümlü seçilerek sunulur. İlk görünen kaynağa ankrajlanma; aynı kavramı destekleyen veya çürüten farklı origin sinyallerini personanın ilgisi ve kanıt gereksinimiyle birlikte değerlendir.",
     "Oy ve takip eğilimlerini de görünür ilgi, kanaat ve ilişki sinyalleriyle birlikte değerlendir; sırf aksiyon açık diye mekanik etkileşim üretme.",
   ],
@@ -157,7 +159,7 @@ export const runtimePromptScaffold = {
 export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   .update(
     JSON.stringify({
-      profileVersion: 29,
+      profileVersion: 30,
       dynamicEvolutionSchemaVersion: 1,
       dynamicMemoryConsolidationSchemaVersion: runtimeMemoryConsolidationSchemaVersion,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,
