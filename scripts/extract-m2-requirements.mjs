@@ -13,9 +13,22 @@ const requirements = [];
 const seen = new Set();
 const pattern = /\[([A-Z0-9-]+-\d{3})\]/gu;
 
+// Requirement ID'leri depo genelinde tekildir: Milestone 1 çıplak formu sahiplenir, çakışan
+// Milestone 2 ID'leri `M2-` ad alanını alır. Bkz. docs/TRACEABILITY.md "Requirement ID namespace".
+const milestoneOneIds = new Set(
+  JSON.parse(await readFile(path.resolve("docs/requirements.json"), "utf8")).requirements.map(
+    (requirement) => requirement.id,
+  ),
+);
+
+function namespacedId(rawId) {
+  if (rawId.startsWith("M2-")) return rawId;
+  return milestoneOneIds.has(rawId) ? `M2-${rawId}` : rawId;
+}
+
 for (const [index, line] of lines.entries()) {
   for (const match of line.matchAll(pattern)) {
-    const id = match[1];
+    const id = match[1] && namespacedId(match[1]);
     if (!id) continue;
     if (seen.has(id)) throw new Error(`Duplicate requirement: ${id}`);
     seen.add(id);

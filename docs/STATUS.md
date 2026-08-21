@@ -1977,7 +1977,7 @@ disposable PostgreSQL 16 database received all 18 migrations and the reconnect/h
 test passed `1/1`, proving that the readable query excludes heartbeat while the technical query
 returns it with safe writer identity. The scratch database was dropped and its absence verified.
 M2 development traceability reports `453` active PASS, `13` approved post-merge BLOCKED and zero
-FAIL; the final-only gate correctly remains red at `DONE-034` pending the required final acceptance
+FAIL; the final-only gate correctly remains red at `M2-DONE-034` pending the required final acceptance
 evidence. The human-readable event-feed subpackage is production-closed; the broader seven-day and
 Gates 9–12 acceptance work remains open.
 

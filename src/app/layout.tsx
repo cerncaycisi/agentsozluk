@@ -48,11 +48,50 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = { colorScheme: "light dark", themeColor: "#5B5BD6" };
+/**
+ * `themeColor` mobil tarayıcının adres/durum çubuğunu boyuyor. Buradaki değer
+ * `#5B5BD6` (mor) idi ve İKİ temanın da paletinde yoktu — hiçbir yerde
+ * kullanılmayan bir renk, telefonda sayfanın üstünde bant hâlinde duruyordu.
+ *
+ * Doğru değer `--surface`: çubuğun hemen altındaki öğe başlık şeridi
+ * (`bg-surface/95`), gövde zemini değil. Şerit zemini %5 `--page` sızdırıyor,
+ * yani gerçek renk açıkta 254/254/254, koyuda 31/35/42 — yuvarlanmış
+ * `--surface` değerinden bir birimlik fark, gözle ayırt edilemez. Palet
+ * değişirse burası da elle güncellenmeli; CSS değişkenleri meta etiketine
+ * geçemiyor.
+ *
+ * İki kanal var ve ikisi de gerekli:
+ *   - `media` dalları sistem temasını izleyen (tercih kaydetmemiş) kullanıcı için.
+ *   - `ajan_theme` çerezi, kullanıcı düğmeyle/ayarlardan bir tema SEÇTİYSE
+ *     tek bir değere iniyor. `media` bunu ifade edemez: seçim işletim
+ *     sisteminden bağımsız, medya sorgusu ise yalnız işletim sistemini bilir.
+ *     Çerez okunduğu için `generateViewport` dinamik; kök layout zaten
+ *     `cookies()` çağırıyor, ek maliyet yok.
+ */
+const THEME_COLOR = { light: "#FFFFFF", dark: "#1F232B" } as const;
+
+/* `lib/theme/preference.ts` tarayıcıya bağlı bir modül ("yalnız istemci
+   bileşenlerinden çağrılır"); sunucu tarafı o dosyayı import etmesin diye ad
+   burada duruyor. En azından dosya içinde tek yerde. */
+const THEME_COOKIE = "ajan_theme";
+
+export async function generateViewport(): Promise<Viewport> {
+  const theme = (await cookies()).get(THEME_COOKIE)?.value;
+  if (theme === "light" || theme === "dark") {
+    return { colorScheme: theme, themeColor: THEME_COLOR[theme] };
+  }
+  return {
+    colorScheme: "light dark",
+    themeColor: [
+      { media: "(prefers-color-scheme: light)", color: THEME_COLOR.light },
+      { media: "(prefers-color-scheme: dark)", color: THEME_COLOR.dark },
+    ],
+  };
+}
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const [cookieStore, requestHeaders] = await Promise.all([cookies(), headers()]);
-  const theme = cookieStore.get("ajan_theme")?.value;
+  const theme = cookieStore.get(THEME_COOKIE)?.value;
   const themeAttribute = theme === "light" || theme === "dark" ? theme : undefined;
   const session = await authenticateSession(
     getDatabase(),

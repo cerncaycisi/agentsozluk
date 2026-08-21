@@ -13,20 +13,21 @@ const root = process.cwd();
 const manifest = JSON.parse(
   readFileSync(path.join(root, "docs/m2-requirements.json"), "utf8"),
 ) as RequirementManifest;
+// `M2_DEVELOPMENT_BLOCKER_IDS` sıralıdır; namespace'li ID'ler çıplak `DONE-08x`'ten sonra gelir.
 const expectedBlockerIds = [
-  "DONE-034",
-  "DONE-037",
-  "DONE-038",
-  "DONE-072",
-  "DONE-073",
-  "DONE-074",
-  "DONE-075",
-  "DONE-076",
-  "DONE-077",
-  "DONE-078",
-  "DONE-079",
   "DONE-082",
   "DONE-084",
+  "M2-DONE-034",
+  "M2-DONE-037",
+  "M2-DONE-038",
+  "M2-DONE-072",
+  "M2-DONE-073",
+  "M2-DONE-074",
+  "M2-DONE-075",
+  "M2-DONE-076",
+  "M2-DONE-077",
+  "M2-DONE-078",
+  "M2-DONE-079",
   "RUNTIME-001",
   "RUNTIME-002",
   "RUNTIME-003",
@@ -68,7 +69,7 @@ describe("Milestone 2 staged traceability policy", () => {
   });
 
   it("allows only the explicit post-merge IDs to remain BLOCKED in development", () => {
-    const blockedId = "DONE-075";
+    const blockedId = "M2-DONE-075";
     expect(
       checkM2Traceability({
         manifest,
@@ -101,21 +102,21 @@ describe("Milestone 2 staged traceability policy", () => {
       checkM2Traceability({
         manifest,
         requirementsDocument: requirementsDocument(),
-        traceabilityDocument: traceabilityDocument(new Map([["DONE-075", "FAIL"]])),
+        traceabilityDocument: traceabilityDocument(new Map([["M2-DONE-075", "FAIL"]])),
         supersessions: noSupersessions,
         mode: "development",
       }),
-    ).toThrow("DONE-075 must not remain FAIL");
+    ).toThrow("M2-DONE-075 must not remain FAIL");
 
     expect(() =>
       checkM2Traceability({
         manifest,
         requirementsDocument: requirementsDocument(),
-        traceabilityDocument: traceabilityDocument(new Map([["DONE-075", "BLOCKED"]])),
+        traceabilityDocument: traceabilityDocument(new Map([["M2-DONE-075", "BLOCKED"]])),
         supersessions: noSupersessions,
         mode: "final",
       }),
-    ).toThrow("DONE-075 must be PASS for final M2 verification");
+    ).toThrow("M2-DONE-075 must be PASS for final M2 verification");
   });
 
   it("rejects placeholder evidence even when a row says PASS", () => {

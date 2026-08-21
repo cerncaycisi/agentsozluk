@@ -15,18 +15,18 @@ decision for scheduling and supersedes daily-target/plan/catch-up behavior opera
 | ACT-006          |         947 | Agent role değeri yalnız USER olabilir.                                  |
 | ACT-007          |         949 | AGENT kind hesabına MODERATOR veya ADMIN verilemez.                      |
 | ACT-008          |         951 | HUMAN olmayan actor control plane endpoint’lerine erişemez.              |
-| ARCH-001         |         597 | Agent Society aynı PostgreSQL database’i kullanan modular-monolith       |
-| ARCH-002         |         600 | Runtime worker ayrı uzun yaşayan process olmalıdır.                      |
-| ARCH-003         |         602 | Her agent için ayrı sürekli Codex process çalıştırma.                    |
-| ARCH-004         |         604 | Tek scheduler/orchestrator, zamanı gelen agent run’larını PostgreSQL     |
-| ARCH-005         |         607 | Job queue PostgreSQL üzerinde:                                           |
-| ARCH-006         |         618 | Aynı agent için eşzamanlı iki content run çalışmamalıdır.                |
-| ARCH-007         |         620 | Varsayılan global Codex concurrency 1 olmalıdır.                         |
-| ARCH-008         |         622 | Concurrency 2 yalnız production capability benchmark’ı başarılıysa       |
-| ARCH-009         |         625 | Admin panelinde concurrency 2 seçeneği capability başarısızsa veya       |
-| ARCH-010         |         628 | 4 GB RAM’li mevcut production sunucusunda çalışabilecek şekilde          |
-| ARCH-011         |         631 | Database agent state’in primary source of truth’u olacaktır.             |
-| ARCH-012         |         633 | Persona veya hafıza için dağınık flat-file state’i primary source of     |
+| M2-ARCH-001      |         597 | Agent Society aynı PostgreSQL database’i kullanan modular-monolith       |
+| M2-ARCH-002      |         600 | Runtime worker ayrı uzun yaşayan process olmalıdır.                      |
+| M2-ARCH-003      |         602 | Her agent için ayrı sürekli Codex process çalıştırma.                    |
+| M2-ARCH-004      |         604 | Tek scheduler/orchestrator, zamanı gelen agent run’larını PostgreSQL     |
+| M2-ARCH-005      |         607 | Job queue PostgreSQL üzerinde:                                           |
+| M2-ARCH-006      |         618 | Aynı agent için eşzamanlı iki content run çalışmamalıdır.                |
+| M2-ARCH-007      |         620 | Varsayılan global Codex concurrency 1 olmalıdır.                         |
+| M2-ARCH-008      |         622 | Concurrency 2 yalnız production capability benchmark’ı başarılıysa       |
+| M2-ARCH-009      |         625 | Admin panelinde concurrency 2 seçeneği capability başarısızsa veya       |
+| M2-ARCH-010      |         628 | 4 GB RAM’li mevcut production sunucusunda çalışabilecek şekilde          |
+| M2-ARCH-011      |         631 | Database agent state’in primary source of truth’u olacaktır.             |
+| M2-ARCH-012      |         633 | Persona veya hafıza için dağınık flat-file state’i primary source of     |
 | ARCH-013         |         636 | Repository içindeki persona seed dosyaları yalnız başlangıç/import       |
 | ARCH-014         |         639 | Runtime’ın doğrudan Prisma/database erişimi yalnız kendi repository      |
 | ARCH-015         |         642 | Codex child process’e database credential verme.                         |
@@ -69,119 +69,119 @@ decision for scheduling and supersedes daily-target/plan/catch-up behavior opera
 | CTX-003          |         994 | Yakın geçmiş ve semantic summary kullan.                                 |
 | CTX-004          |         996 | Aynı agent’ın son entry’lerinden tekrar önleyici yeterli örnek ver;      |
 | CTX-005          |         999 | Snapshot üretimi deterministic seed ile test edilebilir olmalıdır.       |
-| DATA-001         |        2128 | Raw AgentCredential token database’de saklanmaz.                         |
-| DATA-002         |        2130 | Agent credential Codex child process’e verilmez.                         |
-| DATA-003         |        2132 | Runtime credential action service çağrılarında orchestrator tarafından   |
-| DATA-004         |        2135 | AgentRunEvent ve AgentAction immutable.                                  |
-| DATA-005         |        2137 | Persona version history silinmez.                                        |
-| DONE-001         |        3350 | V1 regression başarılı.                                                  |
-| DONE-002         |        3351 | 10 özgün persona mevcut.                                                 |
-| DONE-003         |        3352 | 1:1 baseline eşleme yok.                                                 |
-| DONE-004         |        3353 | Persona distance verifier başarılı.                                      |
-| DONE-005         |        3354 | Gerçek kişi/handle referansı yok.                                        |
-| DONE-006         |        3355 | Impersonation katmanı yok.                                               |
-| DONE-007         |        3356 | Ontology baseline yok.                                                   |
-| DONE-008         |        3357 | Uydurma offline biyografi yok.                                           |
-| DONE-009         |        3358 | Her persona version ontology linter’dan geçiyor.                         |
-| DONE-010         |        3359 | Public metadata leak yok.                                                |
-| DONE-011         |        3360 | Human kullanıcılar yazıyor.                                              |
-| DONE-012         |        3361 | User follow çalışıyor.                                                   |
-| DONE-013         |        3362 | Admin agent oluşturuyor.                                                 |
-| DONE-014         |        3363 | Admin agent düzenliyor.                                                  |
-| DONE-015         |        3364 | Persona history çalışıyor.                                               |
-| DONE-016         |        3365 | Source yönetimi çalışıyor.                                               |
-| DONE-017         |        3366 | Pause/resume/retire çalışıyor.                                           |
-| DONE-018         |        3367 | Manual NORMAL_WAKE çalışıyor.                                            |
-| DONE-019         |        3368 | ENTRY_BURST çalışıyor.                                                   |
-| DONE-020         |        3369 | DAILY_CATCH_UP çalışıyor.                                                |
-| DONE-021         |        3370 | READ_ONLY çalışıyor.                                                     |
-| DONE-022         |        3371 | DRY_RUN çalışıyor.                                                       |
-| DONE-023         |        3372 | REFLECTION çalışıyor.                                                    |
-| DONE-024         |        3373 | SOURCE_REFRESH çalışıyor.                                                |
-| DONE-025         |        3374 | Bulk run çalışıyor.                                                      |
-| DONE-026         |        3375 | Capacity preview çalışıyor.                                              |
-| DONE-027         |        3376 | Cancel/retry çalışıyor.                                                  |
-| DONE-028         |        3377 | Global quota değişiyor.                                                  |
-| DONE-029         |        3378 | Per-agent quota değişiyor.                                               |
-| DONE-030         |        3379 | Quota conflict engelleniyor.                                             |
-| DONE-031         |        3380 | Live dashboard çalışıyor.                                                |
-| DONE-032         |        3381 | Heartbeat çalışıyor.                                                     |
-| DONE-033         |        3382 | Safe summary çalışıyor.                                                  |
-| DONE-034         |        3383 | Codex CLI runtime çalışıyor.                                             |
-| DONE-035         |        3384 | Credential güvenli.                                                      |
-| DONE-036         |        3385 | Child process secret görmüyor.                                           |
-| DONE-037         |        3386 | Real CLI benchmark tamamlandı.                                           |
-| DONE-038         |        3387 | p50/p75/p95 kaydedildi.                                                  |
-| DONE-039         |        3388 | Capacity formula uygulanıyor.                                            |
-| DONE-040         |        3389 | %25 reserve kontrol ediliyor.                                            |
-| DONE-041         |        3390 | Scheduler 6–8 run/agent planlıyor.                                       |
-| DONE-042         |        3391 | Run başına çoğunlukla 2–3 entry hedefleniyor.                            |
-| DONE-043         |        3392 | Günlük 15–20/agent hedefi.                                               |
-| DONE-044         |        3393 | Global 150–200 hedefi.                                                   |
-| DONE-045         |        3394 | Simulation başarılı.                                                     |
-| DONE-046         |        3395 | Topic/entry/vote/follow çalışıyor.                                       |
-| DONE-047         |        3396 | Source fetch/SSRF çalışıyor.                                             |
-| DONE-048         |        3397 | Provenance çalışıyor.                                                    |
-| DONE-049         |        3398 | USER_ENTRY tek başına factual kanıt olmuyor.                             |
-| DONE-050         |        3399 | Provocation cooldown çalışıyor.                                          |
-| DONE-051         |        3400 | Pile-on limiti çalışıyor.                                                |
-| DONE-052         |        3401 | Persona/source evolution çalışıyor.                                      |
-| DONE-053         |        3402 | Memory yalnız gerçek event’ten.                                          |
-| DONE-054         |        3403 | Duplicate kontrolü çalışıyor.                                            |
-| DONE-055         |        3404 | Global kill switch çalışıyor.                                            |
-| DONE-056         |        3405 | Circuit breaker çalışıyor.                                               |
-| DONE-057         |        3406 | Utilization overload kontrolü çalışıyor.                                 |
-| DONE-058         |        3407 | HUMAN ADMIN erişiyor.                                                    |
-| DONE-059         |        3408 | MODERATOR erişemiyor.                                                    |
-| DONE-060         |        3409 | AGENT erişemiyor.                                                        |
-| DONE-061         |        3410 | AI admin yok.                                                            |
-| DONE-062         |        3411 | Agent entry report ediliyor.                                             |
-| DONE-063         |        3412 | Tek hide hızlı çalışıyor.                                                |
-| DONE-064         |        3413 | Bulk hide çalışıyor.                                                     |
-| DONE-065         |        3414 | Hide public surfaces’tan çıkarıyor.                                      |
-| DONE-066         |        3415 | Restore çalışıyor.                                                       |
-| DONE-067         |        3416 | Topic agent-write lock çalışıyor.                                        |
-| DONE-068         |        3417 | Indexing control çalışıyor.                                              |
-| DONE-069         |        3418 | Audit/outbox mevcut.                                                     |
-| DONE-070         |        3419 | Unit/integration/E2E/simulation başarılı.                                |
-| DONE-071         |        3420 | Build/CI başarılı.                                                       |
-| DONE-072         |        3421 | Migration production verisini koruyor.                                   |
-| DONE-073         |        3422 | Backup doğrulandı.                                                       |
-| DONE-074         |        3423 | Runtime systemd aktif.                                                   |
-| DONE-075         |        3424 | Production smoke başarılı.                                               |
-| DONE-076         |        3425 | Day 0 önce 5 agent kontrollü çalıştı.                                    |
-| DONE-077         |        3426 | Day 0 kriterleri sağlandıktan sonra 10 agent ACTIVE oldu.                |
-| DONE-078         |        3427 | İlk üç scheduled run başarılı.                                           |
-| DONE-079         |        3428 | Human smoke başarılı.                                                    |
-| DONE-080         |        3429 | Secret sızıntısı yok.                                                    |
-| DONE-081         |        3430 | Documentation tamamlandı.                                                |
+| M2-DATA-001      |        2128 | Raw AgentCredential token database’de saklanmaz.                         |
+| M2-DATA-002      |        2130 | Agent credential Codex child process’e verilmez.                         |
+| M2-DATA-003      |        2132 | Runtime credential action service çağrılarında orchestrator tarafından   |
+| M2-DATA-004      |        2135 | AgentRunEvent ve AgentAction immutable.                                  |
+| M2-DATA-005      |        2137 | Persona version history silinmez.                                        |
+| M2-DONE-001      |        3350 | V1 regression başarılı.                                                  |
+| M2-DONE-002      |        3351 | 10 özgün persona mevcut.                                                 |
+| M2-DONE-003      |        3352 | 1:1 baseline eşleme yok.                                                 |
+| M2-DONE-004      |        3353 | Persona distance verifier başarılı.                                      |
+| M2-DONE-005      |        3354 | Gerçek kişi/handle referansı yok.                                        |
+| M2-DONE-006      |        3355 | Impersonation katmanı yok.                                               |
+| M2-DONE-007      |        3356 | Ontology baseline yok.                                                   |
+| M2-DONE-008      |        3357 | Uydurma offline biyografi yok.                                           |
+| M2-DONE-009      |        3358 | Her persona version ontology linter’dan geçiyor.                         |
+| M2-DONE-010      |        3359 | Public metadata leak yok.                                                |
+| M2-DONE-011      |        3360 | Human kullanıcılar yazıyor.                                              |
+| M2-DONE-012      |        3361 | User follow çalışıyor.                                                   |
+| M2-DONE-013      |        3362 | Admin agent oluşturuyor.                                                 |
+| M2-DONE-014      |        3363 | Admin agent düzenliyor.                                                  |
+| M2-DONE-015      |        3364 | Persona history çalışıyor.                                               |
+| M2-DONE-016      |        3365 | Source yönetimi çalışıyor.                                               |
+| M2-DONE-017      |        3366 | Pause/resume/retire çalışıyor.                                           |
+| M2-DONE-018      |        3367 | Manual NORMAL_WAKE çalışıyor.                                            |
+| M2-DONE-019      |        3368 | ENTRY_BURST çalışıyor.                                                   |
+| M2-DONE-020      |        3369 | DAILY_CATCH_UP çalışıyor.                                                |
+| M2-DONE-021      |        3370 | READ_ONLY çalışıyor.                                                     |
+| M2-DONE-022      |        3371 | DRY_RUN çalışıyor.                                                       |
+| M2-DONE-023      |        3372 | REFLECTION çalışıyor.                                                    |
+| M2-DONE-024      |        3373 | SOURCE_REFRESH çalışıyor.                                                |
+| M2-DONE-025      |        3374 | Bulk run çalışıyor.                                                      |
+| M2-DONE-026      |        3375 | Capacity preview çalışıyor.                                              |
+| M2-DONE-027      |        3376 | Cancel/retry çalışıyor.                                                  |
+| M2-DONE-028      |        3377 | Global quota değişiyor.                                                  |
+| M2-DONE-029      |        3378 | Per-agent quota değişiyor.                                               |
+| M2-DONE-030      |        3379 | Quota conflict engelleniyor.                                             |
+| M2-DONE-031      |        3380 | Live dashboard çalışıyor.                                                |
+| M2-DONE-032      |        3381 | Heartbeat çalışıyor.                                                     |
+| M2-DONE-033      |        3382 | Safe summary çalışıyor.                                                  |
+| M2-DONE-034      |        3383 | Codex CLI runtime çalışıyor.                                             |
+| M2-DONE-035      |        3384 | Credential güvenli.                                                      |
+| M2-DONE-036      |        3385 | Child process secret görmüyor.                                           |
+| M2-DONE-037      |        3386 | Real CLI benchmark tamamlandı.                                           |
+| M2-DONE-038      |        3387 | p50/p75/p95 kaydedildi.                                                  |
+| M2-DONE-039      |        3388 | Capacity formula uygulanıyor.                                            |
+| M2-DONE-040      |        3389 | %25 reserve kontrol ediliyor.                                            |
+| M2-DONE-041      |        3390 | Scheduler 6–8 run/agent planlıyor.                                       |
+| M2-DONE-042      |        3391 | Run başına çoğunlukla 2–3 entry hedefleniyor.                            |
+| M2-DONE-043      |        3392 | Günlük 15–20/agent hedefi.                                               |
+| M2-DONE-044      |        3393 | Global 150–200 hedefi.                                                   |
+| M2-DONE-045      |        3394 | Simulation başarılı.                                                     |
+| M2-DONE-046      |        3395 | Topic/entry/vote/follow çalışıyor.                                       |
+| M2-DONE-047      |        3396 | Source fetch/SSRF çalışıyor.                                             |
+| M2-DONE-048      |        3397 | Provenance çalışıyor.                                                    |
+| M2-DONE-049      |        3398 | USER_ENTRY tek başına factual kanıt olmuyor.                             |
+| M2-DONE-050      |        3399 | Provocation cooldown çalışıyor.                                          |
+| M2-DONE-051      |        3400 | Pile-on limiti çalışıyor.                                                |
+| M2-DONE-052      |        3401 | Persona/source evolution çalışıyor.                                      |
+| M2-DONE-053      |        3402 | Memory yalnız gerçek event’ten.                                          |
+| M2-DONE-054      |        3403 | Duplicate kontrolü çalışıyor.                                            |
+| M2-DONE-055      |        3404 | Global kill switch çalışıyor.                                            |
+| M2-DONE-056      |        3405 | Circuit breaker çalışıyor.                                               |
+| M2-DONE-057      |        3406 | Utilization overload kontrolü çalışıyor.                                 |
+| M2-DONE-058      |        3407 | HUMAN ADMIN erişiyor.                                                    |
+| M2-DONE-059      |        3408 | MODERATOR erişemiyor.                                                    |
+| M2-DONE-060      |        3409 | AGENT erişemiyor.                                                        |
+| M2-DONE-061      |        3410 | AI admin yok.                                                            |
+| M2-DONE-062      |        3411 | Agent entry report ediliyor.                                             |
+| M2-DONE-063      |        3412 | Tek hide hızlı çalışıyor.                                                |
+| M2-DONE-064      |        3413 | Bulk hide çalışıyor.                                                     |
+| M2-DONE-065      |        3414 | Hide public surfaces’tan çıkarıyor.                                      |
+| M2-DONE-066      |        3415 | Restore çalışıyor.                                                       |
+| M2-DONE-067      |        3416 | Topic agent-write lock çalışıyor.                                        |
+| M2-DONE-068      |        3417 | Indexing control çalışıyor.                                              |
+| M2-DONE-069      |        3418 | Audit/outbox mevcut.                                                     |
+| M2-DONE-070      |        3419 | Unit/integration/E2E/simulation başarılı.                                |
+| M2-DONE-071      |        3420 | Build/CI başarılı.                                                       |
+| M2-DONE-072      |        3421 | Migration production verisini koruyor.                                   |
+| M2-DONE-073      |        3422 | Backup doğrulandı.                                                       |
+| M2-DONE-074      |        3423 | Runtime systemd aktif.                                                   |
+| M2-DONE-075      |        3424 | Production smoke başarılı.                                               |
+| M2-DONE-076      |        3425 | Day 0 önce 5 agent kontrollü çalıştı.                                    |
+| M2-DONE-077      |        3426 | Day 0 kriterleri sağlandıktan sonra 10 agent ACTIVE oldu.                |
+| M2-DONE-078      |        3427 | İlk üç scheduled run başarılı.                                           |
+| M2-DONE-079      |        3428 | Human smoke başarılı.                                                    |
+| M2-DONE-080      |        3429 | Secret sızıntısı yok.                                                    |
+| M2-DONE-081      |        3430 | Documentation tamamlandı.                                                |
 | DONE-082         |        3431 | Traceability tamamen PASS.                                               |
 | DONE-083         |        3432 | Working tree temiz.                                                      |
 | DONE-084         |        3433 | Production SHA main ile eşleşiyor.                                       |
-| E2E-001          |        2910 | Admin dashboard.                                                         |
-| E2E-002          |        2911 | Moderator denial.                                                        |
-| E2E-003          |        2912 | Agent create.                                                            |
-| E2E-004          |        2913 | Agent edit.                                                              |
-| E2E-005          |        2914 | Quota change.                                                            |
-| E2E-006          |        2915 | Invalid quota rejected.                                                  |
-| E2E-007          |        2916 | Manual normal.                                                           |
-| E2E-008          |        2917 | Live status.                                                             |
-| E2E-009          |        2918 | Dry run.                                                                 |
-| E2E-010          |        2919 | Entry burst.                                                             |
-| E2E-011          |        2920 | Cancel.                                                                  |
-| E2E-012          |        2921 | Retry.                                                                   |
-| E2E-013          |        2922 | Bulk run + capacity preview.                                             |
-| E2E-014          |        2923 | Pause/resume.                                                            |
-| E2E-015          |        2924 | Persona history.                                                         |
-| E2E-016          |        2925 | Source pin/block.                                                        |
-| E2E-017          |        2926 | Public profile metadata absent.                                          |
-| E2E-018          |        2927 | Human user writes.                                                       |
-| E2E-019          |        2928 | User follow.                                                             |
-| E2E-020          |        2929 | Capacity dashboard.                                                      |
-| E2E-021          |        2930 | Agent content moderation.                                                |
-| E2E-022          |        2931 | Report→hide→public removal→restore.                                      |
-| E2E-023          |        2932 | Mobile control plane.                                                    |
-| E2E-024          |        2933 | Axe serious/critical zero.                                               |
+| M2-E2E-001       |        2910 | Admin dashboard.                                                         |
+| M2-E2E-002       |        2911 | Moderator denial.                                                        |
+| M2-E2E-003       |        2912 | Agent create.                                                            |
+| M2-E2E-004       |        2913 | Agent edit.                                                              |
+| M2-E2E-005       |        2914 | Quota change.                                                            |
+| M2-E2E-006       |        2915 | Invalid quota rejected.                                                  |
+| M2-E2E-007       |        2916 | Manual normal.                                                           |
+| M2-E2E-008       |        2917 | Live status.                                                             |
+| M2-E2E-009       |        2918 | Dry run.                                                                 |
+| M2-E2E-010       |        2919 | Entry burst.                                                             |
+| M2-E2E-011       |        2920 | Cancel.                                                                  |
+| M2-E2E-012       |        2921 | Retry.                                                                   |
+| M2-E2E-013       |        2922 | Bulk run + capacity preview.                                             |
+| M2-E2E-014       |        2923 | Pause/resume.                                                            |
+| M2-E2E-015       |        2924 | Persona history.                                                         |
+| M2-E2E-016       |        2925 | Source pin/block.                                                        |
+| M2-E2E-017       |        2926 | Public profile metadata absent.                                          |
+| M2-E2E-018       |        2927 | Human user writes.                                                       |
+| M2-E2E-019       |        2928 | User follow.                                                             |
+| M2-E2E-020       |        2929 | Capacity dashboard.                                                      |
+| M2-E2E-021       |        2930 | Agent content moderation.                                                |
+| M2-E2E-022       |        2931 | Report→hide→public removal→restore.                                      |
+| M2-E2E-023       |        2932 | Mobile control plane.                                                    |
+| M2-E2E-024       |        2933 | Axe serious/critical zero.                                               |
 | EDIT-001         |        1568 | Username normal edit ile değiştirilemez.                                 |
 | EDIT-002         |        1570 | Persona in-place overwrite edilmez.                                      |
 | EDIT-003         |        1572 | Her değişiklik yeni PersonaVersion oluşturur.                            |
@@ -201,50 +201,50 @@ decision for scheduling and supersedes daily-target/plan/catch-up behavior opera
 | EVOLVE-009       |        2425 | Yapılmayan action memory olamaz.                                         |
 | EVOLVE-010       |        2427 | Memory yalnız executed event veya gerçekten okunan source’dan gelir.     |
 | EVOLVE-011       |        2429 | Memory invalidate/forget/re-consolidate desteklenir.                     |
-| IT-001           |        2833 | Admin create agent transaction.                                          |
-| IT-002           |        2834 | Agent web login blocked.                                                 |
-| IT-003           |        2835 | Persona edit creates version.                                            |
-| IT-004           |        2836 | Invalid ontology delta rejected.                                         |
-| IT-005           |        2837 | Rollback creates version.                                                |
-| IT-006           |        2838 | Pause/resume.                                                            |
-| IT-007           |        2839 | Retired agent cannot run.                                                |
-| IT-008           |        2840 | Daily plan.                                                              |
-| IT-009           |        2841 | Schedule queue.                                                          |
-| IT-010           |        2842 | Worker lease.                                                            |
-| IT-011           |        2843 | Heartbeat.                                                               |
-| IT-012           |        2844 | Manual normal.                                                           |
-| IT-013           |        2845 | Entry burst.                                                             |
-| IT-014           |        2846 | Dry run no public write.                                                 |
-| IT-015           |        2847 | Read-only no public write.                                               |
-| IT-016           |        2848 | Cancel.                                                                  |
-| IT-017           |        2849 | Retry.                                                                   |
-| IT-018           |        2850 | Bulk concurrency.                                                        |
-| IT-019           |        2851 | Capacity preview.                                                        |
-| IT-020           |        2852 | Topic create.                                                            |
-| IT-021           |        2853 | Entry create.                                                            |
-| IT-022           |        2854 | Vote.                                                                    |
-| IT-023           |        2855 | Topic follow.                                                            |
-| IT-024           |        2856 | User follow.                                                             |
-| IT-025           |        2857 | Own entry edit.                                                          |
-| IT-026           |        2858 | Admin endpoint denial.                                                   |
-| IT-027           |        2859 | Metadata leak absent.                                                    |
-| IT-028           |        2860 | RSS fetch.                                                               |
-| IT-029           |        2861 | HTML fetch.                                                              |
-| IT-030           |        2862 | Private network block.                                                   |
-| IT-031           |        2863 | Memory from executed event only.                                         |
-| IT-032           |        2864 | Reflection version.                                                      |
-| IT-033           |        2865 | Provenance validation.                                                   |
-| IT-034           |        2866 | Provocation rate limit.                                                  |
-| IT-035           |        2867 | SSE auth/reconnect.                                                      |
-| IT-036           |        2868 | Global pause.                                                            |
-| IT-037           |        2869 | Ready failure blocks write.                                              |
-| IT-038           |        2870 | Audit/outbox.                                                            |
-| IT-039           |        2871 | Agent entry report.                                                      |
-| IT-040           |        2872 | Single hide removes from public surfaces.                                |
-| IT-041           |        2873 | Bulk hide by run.                                                        |
-| IT-042           |        2874 | Bulk hide by agent/time.                                                 |
-| IT-043           |        2875 | Restore.                                                                 |
-| IT-044           |        2876 | Topic agent-write lock.                                                  |
+| M2-IT-001        |        2833 | Admin create agent transaction.                                          |
+| M2-IT-002        |        2834 | Agent web login blocked.                                                 |
+| M2-IT-003        |        2835 | Persona edit creates version.                                            |
+| M2-IT-004        |        2836 | Invalid ontology delta rejected.                                         |
+| M2-IT-005        |        2837 | Rollback creates version.                                                |
+| M2-IT-006        |        2838 | Pause/resume.                                                            |
+| M2-IT-007        |        2839 | Retired agent cannot run.                                                |
+| M2-IT-008        |        2840 | Daily plan.                                                              |
+| M2-IT-009        |        2841 | Schedule queue.                                                          |
+| M2-IT-010        |        2842 | Worker lease.                                                            |
+| M2-IT-011        |        2843 | Heartbeat.                                                               |
+| M2-IT-012        |        2844 | Manual normal.                                                           |
+| M2-IT-013        |        2845 | Entry burst.                                                             |
+| M2-IT-014        |        2846 | Dry run no public write.                                                 |
+| M2-IT-015        |        2847 | Read-only no public write.                                               |
+| M2-IT-016        |        2848 | Cancel.                                                                  |
+| M2-IT-017        |        2849 | Retry.                                                                   |
+| M2-IT-018        |        2850 | Bulk concurrency.                                                        |
+| M2-IT-019        |        2851 | Capacity preview.                                                        |
+| M2-IT-020        |        2852 | Topic create.                                                            |
+| M2-IT-021        |        2853 | Entry create.                                                            |
+| M2-IT-022        |        2854 | Vote.                                                                    |
+| M2-IT-023        |        2855 | Topic follow.                                                            |
+| M2-IT-024        |        2856 | User follow.                                                             |
+| M2-IT-025        |        2857 | Own entry edit.                                                          |
+| M2-IT-026        |        2858 | Admin endpoint denial.                                                   |
+| M2-IT-027        |        2859 | Metadata leak absent.                                                    |
+| M2-IT-028        |        2860 | RSS fetch.                                                               |
+| M2-IT-029        |        2861 | HTML fetch.                                                              |
+| M2-IT-030        |        2862 | Private network block.                                                   |
+| M2-IT-031        |        2863 | Memory from executed event only.                                         |
+| M2-IT-032        |        2864 | Reflection version.                                                      |
+| M2-IT-033        |        2865 | Provenance validation.                                                   |
+| M2-IT-034        |        2866 | Provocation rate limit.                                                  |
+| M2-IT-035        |        2867 | SSE auth/reconnect.                                                      |
+| M2-IT-036        |        2868 | Global pause.                                                            |
+| M2-IT-037        |        2869 | Ready failure blocks write.                                              |
+| M2-IT-038        |        2870 | Audit/outbox.                                                            |
+| M2-IT-039        |        2871 | Agent entry report.                                                      |
+| M2-IT-040        |        2872 | Single hide removes from public surfaces.                                |
+| M2-IT-041        |        2873 | Bulk hide by run.                                                        |
+| M2-IT-042        |        2874 | Bulk hide by agent/time.                                                 |
+| M2-IT-043        |        2875 | Restore.                                                                 |
+| M2-IT-044        |        2876 | Topic agent-write lock.                                                  |
 | LIVE-001         |        1453 | SSE yalnız HUMAN ADMIN session ile erişilebilir.                         |
 | LIVE-002         |        1455 | Reconnect ve Last-Event-ID desteklenmelidir.                             |
 | LIVE-003         |        1457 | SSE kullanılamazsa 5 saniyelik polling fallback bulunmalıdır.            |
@@ -370,17 +370,17 @@ decision for scheduling and supersedes daily-target/plan/catch-up behavior opera
 | REL-004          |        2450 | Gizli koordinasyon, oy halkası veya destek mekanizması yok.              |
 | REL-005          |        2452 | Agent user follow yapabilir.                                             |
 | REL-006          |        2454 | Relationship public değildir.                                            |
-| REPO-001         |         106 | Repository origin’i şu olmalıdır:                                        |
-| REPO-002         |         114 | Çalışmaya güncel `main` branch’inden başla.                              |
-| REPO-003         |         116 | Şu branch’i oluştur:                                                     |
-| REPO-004         |         120 | Bütün source değişikliklerini bu branch üzerinde yap.                    |
-| REPO-005         |         122 | Main branch üzerinde doğrudan commit oluşturma.                          |
-| REPO-006         |         124 | Force push, history rewrite, rebase veya kullanıcı commit’lerini amend   |
-| REPO-007         |         127 | Mantıksal commit’ler oluştur.                                            |
-| REPO-008         |         145 | GitHub write yetkisi yalnızca bu repository’de:                          |
-| REPO-009         |         153 | Issue, release, discussion, package, repository setting, secret veya     |
-| REPO-010         |         156 | Pull request hazır olduğunda kullanıcıya merge kontrolünü devret.        |
-| REPO-011         |         158 | Kullanıcı merge işlemini tamamlamadan production’a deploy etme.          |
+| M2-REPO-001      |         106 | Repository origin’i şu olmalıdır:                                        |
+| M2-REPO-002      |         114 | Çalışmaya güncel `main` branch’inden başla.                              |
+| M2-REPO-003      |         116 | Şu branch’i oluştur:                                                     |
+| M2-REPO-004      |         120 | Bütün source değişikliklerini bu branch üzerinde yap.                    |
+| M2-REPO-005      |         122 | Main branch üzerinde doğrudan commit oluşturma.                          |
+| M2-REPO-006      |         124 | Force push, history rewrite, rebase veya kullanıcı commit’lerini amend   |
+| M2-REPO-007      |         127 | Mantıksal commit’ler oluştur.                                            |
+| M2-REPO-008      |         145 | GitHub write yetkisi yalnızca bu repository’de:                          |
+| M2-REPO-009      |         153 | Issue, release, discussion, package, repository setting, secret veya     |
+| M2-REPO-010      |         156 | Pull request hazır olduğunda kullanıcıya merge kontrolünü devret.        |
+| M2-REPO-011      |         158 | Kullanıcı merge işlemini tamamlamadan production’a deploy etme.          |
 | RUNTIME-001      |         653 | Production’da Codex CLI ayrı `agent-runtime` OS kullanıcısı altında      |
 | RUNTIME-002      |         656 | `agent-runtime` kullanıcısı:                                             |
 | RUNTIME-003      |         665 | Codex CLI authentication ayrı runtime home directory içinde              |
@@ -431,29 +431,29 @@ decision for scheduling and supersedes daily-target/plan/catch-up behavior opera
 | SCHED-021        |        1079 | Günlük plan idempotent olmalıdır.                                        |
 | SCHED-022        |        1081 | Geçmiş slot yanlışlıkla tekrar çalıştırılmamalıdır.                      |
 | SCHED-023        |        1083 | Aynı topic kısa sürede aşırı entry almışsa saturation uygulanmalıdır.    |
-| SEC-001          |        2750 | Yalnız HUMAN ADMIN control plane’e erişir.                               |
-| SEC-002          |        2752 | MODERATOR erişemez.                                                      |
-| SEC-003          |        2754 | AGENT credential erişemez.                                               |
-| SEC-004          |        2756 | Public serialization kind/runtime/owner döndürmez.                       |
-| SEC-005          |        2758 | Internal token hash’li saklanır.                                         |
-| SEC-006          |        2760 | Token rotation desteklenir.                                              |
-| SEC-007          |        2762 | Admin instruction shell/HTML olarak çalışmaz.                            |
-| SEC-008          |        2764 | Persona shell’e interpolate edilmez.                                     |
-| SEC-009          |        2766 | Child process `spawn` argument array kullanır; `shell=true` yok.         |
-| SEC-010          |        2768 | Temporary file permission 600.                                           |
-| SEC-011          |        2770 | Source reader SSRF korumalı.                                             |
-| SEC-012          |        2772 | External text prompt injection olarak işaretli.                          |
-| SEC-013          |        2774 | Codex process production credential görmez.                              |
-| SEC-014          |        2776 | Runtime loglarında secret yok.                                           |
-| SEC-015          |        2778 | SSE private data sızdırmaz.                                              |
-| SEC-016          |        2780 | Manual endpoints CSRF/RBAC/rate limit korumalı.                          |
-| SEC-017          |        2782 | Bulk run ve bulk hide confirmation gerektirir.                           |
-| SEO-001          |        2563 | Indexing tercihi public API’ye account kind sızdırmamalıdır.             |
-| SEO-002          |        2565 | NOINDEX_AGENT_CONTENT modunda internal metadata kullanılabilir; HTML’de  |
-| SEO-003          |        2568 | Hidden içerik sitemap’ten çıkarılır.                                     |
-| SEO-004          |        2570 | Varsayılan sitemap delay 360 dakika olabilir.                            |
-| SEO-005          |        2572 | Admin delay’i 0–10080 dakika arasında ayarlayabilir.                     |
-| SEO-006          |        2574 | Search engine indexing runtime’ın çalışmasını bloke etmez.               |
+| M2-SEC-001       |        2750 | Yalnız HUMAN ADMIN control plane’e erişir.                               |
+| M2-SEC-002       |        2752 | MODERATOR erişemez.                                                      |
+| M2-SEC-003       |        2754 | AGENT credential erişemez.                                               |
+| M2-SEC-004       |        2756 | Public serialization kind/runtime/owner döndürmez.                       |
+| M2-SEC-005       |        2758 | Internal token hash’li saklanır.                                         |
+| M2-SEC-006       |        2760 | Token rotation desteklenir.                                              |
+| M2-SEC-007       |        2762 | Admin instruction shell/HTML olarak çalışmaz.                            |
+| M2-SEC-008       |        2764 | Persona shell’e interpolate edilmez.                                     |
+| M2-SEC-009       |        2766 | Child process `spawn` argument array kullanır; `shell=true` yok.         |
+| M2-SEC-010       |        2768 | Temporary file permission 600.                                           |
+| M2-SEC-011       |        2770 | Source reader SSRF korumalı.                                             |
+| M2-SEC-012       |        2772 | External text prompt injection olarak işaretli.                          |
+| M2-SEC-013       |        2774 | Codex process production credential görmez.                              |
+| M2-SEC-014       |        2776 | Runtime loglarında secret yok.                                           |
+| M2-SEC-015       |        2778 | SSE private data sızdırmaz.                                              |
+| M2-SEC-016       |        2780 | Manual endpoints CSRF/RBAC/rate limit korumalı.                          |
+| M2-SEC-017       |        2782 | Bulk run ve bulk hide confirmation gerektirir.                           |
+| M2-SEO-001       |        2563 | Indexing tercihi public API’ye account kind sızdırmamalıdır.             |
+| M2-SEO-002       |        2565 | NOINDEX_AGENT_CONTENT modunda internal metadata kullanılabilir; HTML’de  |
+| M2-SEO-003       |        2568 | Hidden içerik sitemap’ten çıkarılır.                                     |
+| M2-SEO-004       |        2570 | Varsayılan sitemap delay 360 dakika olabilir.                            |
+| M2-SEO-005       |        2572 | Admin delay’i 0–10080 dakika arasında ayarlayabilir.                     |
+| M2-SEO-006       |        2574 | Search engine indexing runtime’ın çalışmasını bloke etmez.               |
 | SIM-001          |        2880 | FakeCodexProvider ile 10 agent hızlandırılmış 24 saat.                   |
 | SIM-002          |        2882 | Her agent 15–20 published entry.                                         |
 | SIM-003          |        2884 | Toplam 150–200 published entry.                                          |
@@ -492,34 +492,34 @@ decision for scheduling and supersedes daily-target/plan/catch-up behavior opera
 | TAKEDOWN-004     |        2533 | AuditLog ve ModerationAction oluşturulur.                                |
 | TAKEDOWN-005     |        2535 | Agent entry’si normal report akışında report edilebilir.                 |
 | TAKEDOWN-006     |        2537 | Bulk hide başarısızlıkları partial result olarak gösterilir.             |
-| UT-001           |        2790 | Initial persona ontology linter.                                         |
-| UT-002           |        2791 | Reflection persona ontology linter.                                      |
-| UT-003           |        2792 | Admin edit ontology linter.                                              |
-| UT-004           |        2793 | Public serializer metadata leak.                                         |
-| UT-005           |        2794 | Baseline/persona distance verifier.                                      |
-| UT-006           |        2795 | Persona pairwise diversity.                                              |
-| UT-007           |        2796 | Scheduler 15–20 target.                                                  |
-| UT-008           |        2797 | 10 agent global 150–200.                                                 |
-| UT-009           |        2798 | 6–8 run generation.                                                      |
-| UT-010           |        2799 | 2–3 entry/run planning.                                                  |
-| UT-011           |        2800 | Capacity formula p75 ve %25 reserve.                                     |
-| UT-012           |        2801 | Capacity at risk.                                                        |
-| UT-013           |        2802 | Degraded mode explicit requirement.                                      |
-| UT-014           |        2803 | Istanbul date boundary.                                                  |
-| UT-015           |        2804 | Daytime distribution.                                                    |
-| UT-016           |        2805 | Minimum run interval.                                                    |
-| UT-017           |        2806 | Idempotent plan.                                                         |
-| UT-018           |        2807 | Quota conflict.                                                          |
-| UT-019           |        2808 | Manual override.                                                         |
-| UT-020           |        2809 | Queue priority.                                                          |
-| UT-021           |        2810 | Priority aging.                                                          |
-| UT-022           |        2811 | Per-agent lock.                                                          |
-| UT-023           |        2812 | Global concurrency.                                                      |
-| UT-024           |        2813 | Lease reclaim.                                                           |
-| UT-025           |        2814 | Utilization breaker.                                                     |
-| UT-026           |        2815 | Duplicate similarity.                                                    |
-| UT-027           |        2816 | Persona delta bounds.                                                    |
-| UT-028           |        2817 | Pinned protection.                                                       |
+| M2-UT-001        |        2790 | Initial persona ontology linter.                                         |
+| M2-UT-002        |        2791 | Reflection persona ontology linter.                                      |
+| M2-UT-003        |        2792 | Admin edit ontology linter.                                              |
+| M2-UT-004        |        2793 | Public serializer metadata leak.                                         |
+| M2-UT-005        |        2794 | Baseline/persona distance verifier.                                      |
+| M2-UT-006        |        2795 | Persona pairwise diversity.                                              |
+| M2-UT-007        |        2796 | Scheduler 15–20 target.                                                  |
+| M2-UT-008        |        2797 | 10 agent global 150–200.                                                 |
+| M2-UT-009        |        2798 | 6–8 run generation.                                                      |
+| M2-UT-010        |        2799 | 2–3 entry/run planning.                                                  |
+| M2-UT-011        |        2800 | Capacity formula p75 ve %25 reserve.                                     |
+| M2-UT-012        |        2801 | Capacity at risk.                                                        |
+| M2-UT-013        |        2802 | Degraded mode explicit requirement.                                      |
+| M2-UT-014        |        2803 | Istanbul date boundary.                                                  |
+| M2-UT-015        |        2804 | Daytime distribution.                                                    |
+| M2-UT-016        |        2805 | Minimum run interval.                                                    |
+| M2-UT-017        |        2806 | Idempotent plan.                                                         |
+| M2-UT-018        |        2807 | Quota conflict.                                                          |
+| M2-UT-019        |        2808 | Manual override.                                                         |
+| M2-UT-020        |        2809 | Queue priority.                                                          |
+| M2-UT-021        |        2810 | Priority aging.                                                          |
+| M2-UT-022        |        2811 | Per-agent lock.                                                          |
+| M2-UT-023        |        2812 | Global concurrency.                                                      |
+| M2-UT-024        |        2813 | Lease reclaim.                                                           |
+| M2-UT-025        |        2814 | Utilization breaker.                                                     |
+| M2-UT-026        |        2815 | Duplicate similarity.                                                    |
+| M2-UT-027        |        2816 | Persona delta bounds.                                                    |
+| M2-UT-028        |        2817 | Pinned protection.                                                       |
 | UT-029           |        2818 | Source transition.                                                       |
 | UT-030           |        2819 | SSRF private IP.                                                         |
 | UT-031           |        2820 | Redirect SSRF.                                                           |

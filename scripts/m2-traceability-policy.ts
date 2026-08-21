@@ -46,49 +46,49 @@ export const M2_DEVELOPMENT_BLOCKERS = {
     rationale:
       "The real installed CLI structured-output mechanism is verified after the production login gate.",
   },
-  "DONE-034": {
+  "M2-DONE-034": {
     sourceLine: 3383,
     rationale:
       "A working real Codex CLI runtime needs the installed production runtime and operator login.",
   },
-  "DONE-037": {
+  "M2-DONE-037": {
     sourceLine: 3386,
     rationale: "The real CLI benchmark is explicitly scheduled after production Codex login.",
   },
-  "DONE-038": {
+  "M2-DONE-038": {
     sourceLine: 3387,
     rationale: "Production p50, p75, and p95 measurements come from the post-login benchmark.",
   },
-  "DONE-072": {
+  "M2-DONE-072": {
     sourceLine: 3421,
     rationale:
       "Production data preservation is closed by the post-merge backup, migration, and restore drill.",
   },
-  "DONE-073": {
+  "M2-DONE-073": {
     sourceLine: 3422,
     rationale: "Production backup and restore verification is a post-merge operator action.",
   },
-  "DONE-074": {
+  "M2-DONE-074": {
     sourceLine: 3423,
     rationale: "The systemd unit can be active only after production host installation.",
   },
-  "DONE-075": {
+  "M2-DONE-075": {
     sourceLine: 3424,
     rationale: "Production smoke runs only after the merged revision is deployed.",
   },
-  "DONE-076": {
+  "M2-DONE-076": {
     sourceLine: 3425,
     rationale: "The first five-agent Day 0 stage is a post-smoke production operation.",
   },
-  "DONE-077": {
+  "M2-DONE-077": {
     sourceLine: 3426,
     rationale: "Ten-agent activation follows the live Day 0 green criteria.",
   },
-  "DONE-078": {
+  "M2-DONE-078": {
     sourceLine: 3427,
     rationale: "The first three scheduled runs require the activated production runtime.",
   },
-  "DONE-079": {
+  "M2-DONE-079": {
     sourceLine: 3428,
     rationale: "Human smoke is verified against the deployed production application.",
   },

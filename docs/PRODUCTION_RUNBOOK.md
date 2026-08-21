@@ -101,7 +101,7 @@ docker compose --env-file /opt/agent-sozluk/app/.env \
 ## Runtime host installation readiness (operator-gated)
 
 This versioned unit is readiness evidence, not proof that the service is active. Do not mark
-`DONE-074`, deploy the artifact, create the OS user, install credentials, log Codex in, reload
+`M2-DONE-074`, deploy the artifact, create the OS user, install credentials, log Codex in, reload
 systemd, enable the unit, start it, or run an on-host probe until all required code is merged and
 Gokhan explicitly approves that exact production action. Approval for read-only reconnaissance does
 not authorize installation; installation approval does not authorize login, start, benchmark or
@@ -2373,7 +2373,7 @@ Observe the first three distinct `SCHEDULER_SLOT` runs after ten-agent activatio
 All three must queue, start and finish on `m2_day0_istanbul_date`, finish `SUCCEEDED`, stay within
 their timeout and quota, satisfy provenance, and leave no duplicate lease/action/content/outbox
 record. A partial, failed, timed-out, cancelled, duplicate, cross-date or missing-event run blocks
-`DONE-078`; do not substitute a manual run.
+`M2-DONE-078`; do not substitute a manual run.
 
 ### Gate 12: final evidence and rollback readiness
 
