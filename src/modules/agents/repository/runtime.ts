@@ -15,6 +15,7 @@ import {
   isRuntimeProbationEntrySourceStatus,
 } from "@/modules/agents/domain/source-status";
 import { collectEntryReferenceCandidates } from "@/modules/entries/domain/renderer";
+import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import {
   publiclyVisibleEntrySql,
   publiclyVisibleEntryWhere,
@@ -1781,6 +1782,205 @@ async function listCurrentRunUsefulSourceIds(
   ];
 }
 
+/**
+ * Sözlük bağlantı adayları — `linkedTopics`'ten bağımsız ikinci kaynak.
+ *
+ * `linkedTopics` yalnız görünür entry'lerde *zaten var olan* bkz'lerden türer;
+ * bağlantı yokken boş döner ve özellik kendini önyükleyemez. Buradaki kaynak
+ * mevcut bağlantıya hiç bakmaz: ajanın o an gördüğü başlıkların içerik
+ * kelimelerini alır ve sözlükte aynı kelime kökünü paylaşan başlıkları arar.
+ * Yani "şu an baktığın kavramın komşusu sözlükte zaten var".
+ *
+ * Neden ham `similarity()` değil: yerel 30 başlıkta ölçüldü, Türkçe çok
+ * kelimeli başlıklarda trigram benzerliği kavramsal değil biçimsel eşleşme
+ * üretiyor ("iyi bir kahvenin küçük sırları" ~ "küçük balkon bahçeleri",
+ * 0.186 — ortak olan yalnız "küçük" sıfatı). Kelime kökü eşleşmesi aynı
+ * veride çok daha az ve çok daha isabetli aday veriyor.
+ */
+const dictionaryAttentionTitleLimit = 24;
+const dictionaryAttentionTermLimit = 20;
+const dictionaryAttentionTermsPerTitle = 3;
+const dictionaryAttentionTermLength = 5;
+const dictionaryCandidateScanLimit = 200;
+const dictionaryCandidatePageLimit = 24;
+const dictionaryLinkCandidateLimit = 6;
+
+/**
+ * Beş harflik ön ekleri elenen işlev sözcükleri. Liste bilerek kısa: yanlış
+ * aday ucuz (ajan kullanmayabilir), eksik aday ise özelliğin hiç çalışmaması
+ * demek. Yalnız kavram taşımayan bağlaç/edat/yardımcı fiil kökleri var.
+ */
+const dictionaryAttentionStopPrefixes = new Set([
+  "ancak",
+  "ayrıc",
+  "bazen",
+  "başka",
+  "belki",
+  "birka",
+  "birli",
+  "birço",
+  "biçim",
+  "bütün",
+  "dolay",
+  "etmek",
+  "gerçe",
+  "hakkı",
+  "hangi",
+  "hemen",
+  "ilgil",
+  "kendi",
+  "konud",
+  "konus",
+  "mutla",
+  "nasıl",
+  "neden",
+  "olara",
+  "olmak",
+  "olmas",
+  "olmay",
+  "olduk",
+  "sadec",
+  "sonra",
+  "yalnı",
+  "yapma",
+  "yenid",
+  "önce",
+  "öncek",
+  "şekil",
+  "şimdi",
+  "üzeri",
+  "çünkü",
+]);
+
+/**
+ * Görünür başlıklardan dikkat terimleri çıkarır. Her başlıktan en uzun içerik
+ * kelimeleri alınır ve beş harfe kırpılır; Türkçe eklemeli olduğu için
+ * "çalışmanın" ve "çalışırken" aynı `çalış` terimine iner. Terimler başlıklar
+ * arasında round-robin toplanır ki bütçe ilk birkaç başlığa harcanmasın.
+ *
+ * Her terim hangi başlıklardan geldiğini taşır: bir aday yalnız kendi
+ * kelimesiyle eşleştiyse bu bir komşuluk değil, aynanın kendisidir ve elenir.
+ */
+export function dictionaryAttentionTerms(
+  normalizedTitles: readonly string[],
+): Array<{ term: string; sourceTitles: string[] }> {
+  const perTitle = normalizedTitles.slice(0, dictionaryAttentionTitleLimit).map((title) => ({
+    title,
+    prefixes: [...new Set(title.split(/[^\p{L}\p{N}]+/gu))]
+      .filter((word) => word.length >= dictionaryAttentionTermLength)
+      .sort((left, right) => right.length - left.length || left.localeCompare(right, "tr"))
+      .map((word) => word.slice(0, dictionaryAttentionTermLength))
+      .filter((prefix) => !dictionaryAttentionStopPrefixes.has(prefix))
+      .slice(0, dictionaryAttentionTermsPerTitle),
+  }));
+  const sourcesByTerm = new Map<string, Set<string>>();
+  const terms: string[] = [];
+  for (let rank = 0; rank < dictionaryAttentionTermsPerTitle; rank += 1)
+    for (const { title, prefixes } of perTitle) {
+      const prefix = prefixes[rank];
+      if (!prefix) continue;
+      const sources = sourcesByTerm.get(prefix);
+      if (sources) {
+        sources.add(title);
+        continue;
+      }
+      if (terms.length >= dictionaryAttentionTermLimit) continue;
+      sourcesByTerm.set(prefix, new Set([title]));
+      terms.push(prefix);
+    }
+  return terms.map((term) => ({ term, sourceTitles: [...sourcesByTerm.get(term)!] }));
+}
+
+/**
+ * Aday sorgusu tek round-trip. `MATERIALIZED` CTE bilerek: planner aksi hâlde
+ * dış `ORDER BY` indeksinden erken çıkmayı ucuz sanıp trigram GIN indeksini
+ * kullanmıyor. İç `LIMIT` de maliyet tavanı — çok geniş eşleşen bir terim
+ * bütün sözlüğü taratmasın.
+ *
+ * Görünür başlıklar aday havuzundan çıkarılmaz: `%0,2` sorununun büyük kısmı,
+ * ajanın akışta yan yana duran iki ilgili başlığı birbirine hiç bağlamaması.
+ * Eleme yalnız kendi kendine eşleşen adaya uygulanır.
+ */
+async function listRuntimeDictionaryLinkCandidates(
+  transaction: Prisma.TransactionClient,
+  input: {
+    attentionTitles: readonly string[];
+    agentUserId: string;
+    blockedUserIds: readonly string[];
+  },
+) {
+  const attentionTerms = dictionaryAttentionTerms(input.attentionTitles);
+  if (attentionTerms.length === 0) return [];
+  const terms = attentionTerms.map(({ term }) => term);
+  const termMatches = Prisma.join(
+    terms.map(
+      (term) =>
+        Prisma.sql`immutable_unaccent(topic."normalizedTitle") LIKE '%' || immutable_unaccent(${term}) || '%'`,
+    ),
+    " OR ",
+  );
+  const rows = await transaction.$queryRaw<
+    Array<{
+      title: string;
+      normalizedTitle: string;
+      activeEntryCount: number;
+      sharedTerms: string[];
+    }>
+  >(Prisma.sql`
+    WITH attention AS (
+      SELECT DISTINCT term, immutable_unaccent(term) AS "foldedTerm"
+      FROM unnest(${[...terms]}::text[]) AS term
+    ), matched AS MATERIALIZED (
+      SELECT topic."id", topic."title", topic."normalizedTitle",
+             immutable_unaccent(topic."normalizedTitle") AS "foldedTitle"
+      FROM "topics" AS topic
+      WHERE topic."status" = 'ACTIVE'
+        AND (${termMatches})
+      LIMIT ${dictionaryCandidateScanLimit}
+    ), readable AS (
+      SELECT matched."title", matched."normalizedTitle", matched."foldedTitle",
+             count(entry."id")::integer AS "activeEntryCount",
+             max(entry."createdAt") AS "lastEntryAt"
+      FROM matched
+      JOIN "entries" AS entry ON entry."topicId" = matched."id"
+        AND entry."status" = 'ACTIVE'
+        AND ${publiclyVisibleEntrySql(Prisma.sql`entry`)}
+        AND entry."authorId" <> ${input.agentUserId}::uuid
+        AND NOT (entry."authorId" = ANY(${[...input.blockedUserIds]}::uuid[]))
+      GROUP BY matched."title", matched."normalizedTitle", matched."foldedTitle"
+    ), scored AS (
+      SELECT readable."title", readable."normalizedTitle", readable."activeEntryCount",
+             readable."lastEntryAt",
+             ARRAY(
+               SELECT attention.term
+               FROM attention
+               WHERE readable."foldedTitle" LIKE '%' || attention."foldedTerm" || '%'
+               ORDER BY attention.term
+             ) AS "sharedTerms"
+      FROM readable
+    )
+    SELECT scored."title", scored."normalizedTitle", scored."activeEntryCount",
+           scored."sharedTerms"
+    FROM scored
+    ORDER BY cardinality(scored."sharedTerms") DESC,
+             scored."lastEntryAt" DESC NULLS LAST,
+             scored."title" ASC
+    LIMIT ${dictionaryCandidatePageLimit}
+  `);
+  const sourcesByTerm = new Map(
+    attentionTerms.map(({ term, sourceTitles }) => [term, sourceTitles]),
+  );
+  return rows.flatMap(({ title, normalizedTitle, activeEntryCount, sharedTerms }) => {
+    // Terim yalnız adayın kendi başlığından geliyorsa komşuluk yok.
+    const borrowedTerms = sharedTerms.filter((term) =>
+      (sourcesByTerm.get(term) ?? []).some((sourceTitle) => sourceTitle !== normalizedTitle),
+    );
+    return borrowedTerms.length === 0
+      ? []
+      : [{ title, activeEntryCount, sharedTerms: borrowedTerms }];
+  });
+}
+
 async function listRuntimePerceptionLinkedTopics(
   transaction: Prisma.TransactionClient,
   input: {
@@ -1976,6 +2176,7 @@ export async function getRuntimePerceptionRecords(
     now: Date;
     includeSources: boolean;
     includeWriterOpenedTopics?: boolean;
+    includeDictionaryLinkCandidates?: boolean;
     sourceFetchLimit: number;
   },
 ) {
@@ -2170,11 +2371,34 @@ export async function getRuntimePerceptionRecords(
       _count: { _all: true },
     }),
   ]);
-  const dictionaryReferences = await listRuntimePerceptionLinkedTopics(transaction, {
-    entries,
-    agentUserId: input.agentUserId,
-    blockedUserIds,
-  });
+  // Dikkat başlıkları: önce ajanın kendi son yazdıkları (bir sonraki entry'nin
+  // konusunu en iyi onlar haber verir), sonra akıştaki başka yazarların
+  // başlıkları. Sorgu yalnız public yazabilen run'larda çalışır; reflection ve
+  // maintenance run'ında bkz adayının karşılığı yok.
+  const attentionTitles = [
+    ...new Set([...ownEntries, ...entries].map(({ topic }) => normalizeTopicTitle(topic.title))),
+  ];
+  const [dictionaryReferences, dictionaryCandidates] = await Promise.all([
+    listRuntimePerceptionLinkedTopics(transaction, {
+      entries,
+      agentUserId: input.agentUserId,
+      blockedUserIds,
+    }),
+    input.includeDictionaryLinkCandidates
+      ? listRuntimeDictionaryLinkCandidates(transaction, {
+          attentionTitles,
+          agentUserId: input.agentUserId,
+          blockedUserIds,
+        })
+      : Promise.resolve([]),
+  ]);
+  // Zaten çözülmüş bir bkz yolu aday olarak tekrar sunulmaz.
+  const linkedNormalizedTitles = new Set(
+    dictionaryReferences.linkedTopics.map(({ topic }) => normalizeTopicTitle(topic.title)),
+  );
+  const dictionaryLinkCandidates = dictionaryCandidates
+    .filter(({ title }) => !linkedNormalizedTitles.has(normalizeTopicTitle(title)))
+    .slice(0, dictionaryLinkCandidateLimit);
   return {
     followedTopicIds: topicFollows.map(({ topicId }) => topicId),
     followedUserIds: userFollows.map(({ followedId }) => followedId),
@@ -2190,6 +2414,7 @@ export async function getRuntimePerceptionRecords(
     recentTopicCounts,
     linkedTopics: dictionaryReferences.linkedTopics,
     openTopicReferences: dictionaryReferences.openTopicReferences,
+    dictionaryLinkCandidates,
   };
 }
 

@@ -3118,6 +3118,32 @@ describe("internal agent runtime API with PostgreSQL", () => {
         expect.objectContaining({ normalizedTitle: "runtime perception hidden" }),
       ]),
     );
+    // Bağlantı adayları mevcut bkz'lerden değil, görünür başlıkların paylaştığı
+    // kelime kökünden türer; bu yüzden sözlükte hiç link yokken de doludurlar.
+    const dictionaryLinkCandidates = context.perception.dictionaryLinkCandidates as Array<{
+      title: string;
+      activeEntryCount: number;
+      sharedTerms: string[];
+    }>;
+    expect(dictionaryLinkCandidates.length).toBeGreaterThan(0);
+    expect(dictionaryLinkCandidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: writerOpenedTopic.topic.title,
+          sharedTerms: expect.arrayContaining(["runti"]),
+        }),
+      ]),
+    );
+    // Aday yalnız başlık taşır: id, gövde veya yazar sızmaz ve kanıt katalogu genişlemez.
+    for (const candidate of dictionaryLinkCandidates)
+      expect(Object.keys(candidate).sort()).toEqual(["activeEntryCount", "sharedTerms", "title"]);
+    // Askıya alınmış başlık ve zaten çözülmüş bkz yolu aday olarak sunulmaz.
+    expect(dictionaryLinkCandidates).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ title: hiddenTopic.topic.title }),
+        expect.objectContaining({ title: linkedTopic.topic.title }),
+      ]),
+    );
     await expect(
       recordRuntimeMemories(
         integrationDatabase,

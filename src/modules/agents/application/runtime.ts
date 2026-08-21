@@ -238,6 +238,11 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     })),
   }));
   const openTopicReferences = records.openTopicReferences.slice(0, 8);
+  // Aday listesi bilerek `linkedTopics`in yarısı kadar: yalnız başlık taşıyor,
+  // gövde/entry önizlemesi yok, ve öneri olduğu için uzunluk arttıkça kota
+  // hissi verme riski büyüyor. Altı aday bir entry'nin gerçekten kullanabileceği
+  // bağlantı sayısının üstünde kalıyor.
+  const dictionaryLinkCandidates = records.dictionaryLinkCandidates.slice(0, 6);
   const { runtimeMetadata } = records.state;
   const snapshot = {
     observedAt: now.toISOString(),
@@ -248,6 +253,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       writerOpenedTopics: 50,
       linkedTopics: 8,
       openTopicReferences: 8,
+      dictionaryLinkCandidates: 6,
       linkedTopicEntries: 2,
       sourceItems: 10,
       topicExploration: 8,
@@ -258,6 +264,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     recentEntries: selectedEntries,
     linkedTopics,
     openTopicReferences,
+    dictionaryLinkCandidates,
     ownRecentEntries,
     writerOpenedTopics,
     topicChoiceSignals: buildTopicChoiceSignals(ownRecentEntries, selectedEntries, linkedTopics, 8),
@@ -314,6 +321,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     else if (snapshot.sourceItems.length > 0) snapshot.sourceItems.pop();
     else if (snapshot.linkedTopics.length > 0) snapshot.linkedTopics.pop();
     else if (snapshot.recentEntries.length > 8) snapshot.recentEntries.pop();
+    else if (snapshot.dictionaryLinkCandidates.length > 0) snapshot.dictionaryLinkCandidates.pop();
     else if (snapshot.memories.length > 4) snapshot.memories.pop();
     else
       throw new AppError("INTERNAL_ERROR", 500, "Perception snapshot güvenli boyuta indirilemedi.");
@@ -1384,6 +1392,8 @@ export function getRuntimeRunContext(
         includeSources:
           run.runType === "REFLECTION" || (run.allowSourceReading && settings.sourceReadingEnabled),
         includeWriterOpenedTopics:
+          publicWriteEnabled && ["NORMAL_WAKE", "ENTRY_BURST"].includes(run.runType),
+        includeDictionaryLinkCandidates:
           publicWriteEnabled && ["NORMAL_WAKE", "ENTRY_BURST"].includes(run.runType),
       });
       const builtPerception = boundedPerceptionSnapshot(run, perceptionRecords, now);
