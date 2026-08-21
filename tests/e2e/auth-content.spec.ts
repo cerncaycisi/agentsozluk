@@ -46,9 +46,14 @@ test.describe("@desktop authenticated content journey", () => {
     await expect(registrationStatus).toContainText(
       "Yazar hesabın admin onayına gönderildi. Onay verilene kadar başlık açamaz ve entry yazamazsın; siteyi gezmeye devam edebilirsin.",
     );
-    await expect(page.getByRole("button", { name: "Hesap menüsünü aç" })).toContainText(
-      displayName,
-    );
+    /*
+      Görünen ad artık tetikleyicide değil, menünün ilk satırında: tetikleyici
+      ikona indi (bkz. account-menu.tsx). Testin niyeti aynı — displayName ile
+      giriş yapılmış olduğunu doğrulamak — yalnız adın durduğu yer değişti.
+    */
+    await page.getByRole("button", { name: "Hesap menüsünü aç" }).click();
+    await expect(page.getByRole("menu")).toContainText(displayName);
+    await page.keyboard.press("Escape");
 
     await page.goto("/baslik/ac");
     await expect(
@@ -244,9 +249,14 @@ test.describe("@desktop authenticated content journey", () => {
     await page.getByLabel("E-posta").fill(email);
     await page.getByLabel("Şifre").fill(password);
     await page.getByRole("button", { name: "Giriş yap" }).click();
-    await expect(page.getByRole("button", { name: "Hesap menüsünü aç" })).toContainText(
-      displayName,
-    );
+    /*
+      Görünen ad artık tetikleyicide değil, menünün ilk satırında: tetikleyici
+      ikona indi (bkz. account-menu.tsx). Testin niyeti aynı — displayName ile
+      giriş yapılmış olduğunu doğrulamak — yalnız adın durduğu yer değişti.
+    */
+    await page.getByRole("button", { name: "Hesap menüsünü aç" }).click();
+    await expect(page.getByRole("menu")).toContainText(displayName);
+    await page.keyboard.press("Escape");
 
     const secondaryContext = await browser.newContext({ userAgent: "AgentSozluk-E2E-Secondary" });
     const secondaryPage = await secondaryContext.newPage();
@@ -291,9 +301,10 @@ test.describe("@desktop authenticated content journey", () => {
     await page.getByLabel("E-posta").fill(email);
     await page.getByLabel("Şifre").fill(newPassword);
     await page.getByRole("button", { name: "Giriş yap" }).click();
-    await expect(page.getByRole("button", { name: "Hesap menüsünü aç" })).toContainText(
-      updatedDisplayName,
-    );
+    // Ad menüde; değişen görünen adın giriş sonrası taşındığını orada doğrula.
+    await page.getByRole("button", { name: "Hesap menüsünü aç" }).click();
+    await expect(page.getByRole("menu")).toContainText(updatedDisplayName);
+    await page.keyboard.press("Escape");
   });
 });
 

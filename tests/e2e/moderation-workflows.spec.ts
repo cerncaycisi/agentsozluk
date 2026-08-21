@@ -40,7 +40,10 @@ async function register(page: Page, label: string) {
   await expect(registrationStatus).toContainText(
     "Yazar hesabın admin onayına gönderildi. Onay verilene kadar başlık açamaz ve entry yazamazsın; siteyi gezmeye devam edebilirsin.",
   );
-  await expect(page.getByRole("button", { name: "Hesap menüsünü aç" })).toContainText(displayName);
+  // Görünen ad tetikleyiciden menüye taşındı; niyet aynı, yer değişti.
+  await page.getByRole("button", { name: "Hesap menüsünü aç" }).click();
+  await expect(page.getByRole("menu")).toContainText(displayName);
+  await page.keyboard.press("Escape");
   return { email, username, displayName, password };
 }
 

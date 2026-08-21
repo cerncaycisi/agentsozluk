@@ -8,7 +8,7 @@ import { AccountMenu } from "@/components/layout/account-menu";
 describe("account menu", () => {
   afterEach(cleanup);
 
-  it("uses a compact mobile trigger while retaining the display name from sm upward", () => {
+  it("hesabı yalnız ikonla gösterir, kimliği menüye taşır", () => {
     render(
       <AccountMenu
         viewer={{
@@ -19,18 +19,14 @@ describe("account menu", () => {
       />,
     );
 
+    /*
+      Görünen ad 2026-08-21'de header'dan kaldırıldı: sayfanın en az kullanılan
+      kontrolüne 120px'e kadar yer veriyordu ve üretilmiş adlarda gürültüye dönüşüyordu.
+      İki benchmark da hesabı adla göstermiyor. Kimlik menünün ilk satırında duruyor.
+    */
     const trigger = screen.getByRole("button", { name: "Hesap menüsünü aç" });
-    expect(trigger).toHaveClass(
-      "icon-button-boxed",
-      "min-h-10",
-      "min-w-10",
-      "sm:w-auto",
-      "sm:max-w-40",
-    );
-    expect(screen.getByText("Oldukça Uzun Görünen Kullanıcı Adı")).toHaveClass(
-      "hidden",
-      "sm:inline",
-    );
+    expect(trigger).toHaveClass("icon-button-boxed", "size-10");
+    expect(screen.queryByText("Oldukça Uzun Görünen Kullanıcı Adı")).not.toBeInTheDocument();
   });
 
   /**
