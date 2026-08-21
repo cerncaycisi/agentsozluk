@@ -397,7 +397,20 @@ test.describe("header search autocomplete", () => {
   test("offers to open a topic when nothing matches", async ({ page }) => {
     await page.goto("/gundem");
 
-    await page.locator("#header-search").fill("zzzq deneme");
+    /*
+      Hidrasyon bariyeri. `role="combobox"` yalnız `setEnhanced(true)` sonrası
+      ekleniyor (search-autocomplete.tsx: "combobox anlambilimi yalnız
+      hidrasyondan sonra açılır") — JS'siz sayfada input sıradan bir arama alanı.
+      Beklemeden `fill()` çağırırsak React'in kontrollü girdisi henüz bağlı
+      olmayabiliyor: yazı gidiyor, `query` state'i güncellenmiyor, dropdown hiç
+      oluşmuyor ve hata "element not found" diye çıkıyor. Bloktaki ilk test bu
+      bariyeri zaten taşıyor, bu test taşımıyordu; mobil emülasyonda hidrasyon
+      daha yavaş olduğu için orada tutuyordu.
+    */
+    const input = page.locator("#header-search");
+    await expect(input).toHaveAttribute("role", "combobox", { timeout: 20_000 });
+
+    await input.fill("zzzq deneme");
     const option = page.getByRole("option", { name: "«zzzq deneme» başlığını aç" });
     await expect(option).toBeVisible({ timeout: 20_000 });
     await expect(option).toHaveAttribute("href", "/baslik/ac?title=zzzq%20deneme");
