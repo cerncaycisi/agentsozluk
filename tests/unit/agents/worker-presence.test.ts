@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { deriveWorkerPresence } from "@/modules/agents/repository/capacity";
+import { ROSTER_HEARTBEAT_FRESH_MS } from "@/modules/agents/domain/stochastic-scheduler";
 
 const now = new Date("2026-08-20T12:00:00.000Z");
 const minutesAgo = (minutes: number) => new Date(now.getTime() - minutes * 60_000);
 
 const liveSlot = { leaseRemainingMs: 45_000, heartbeatAgeMs: 8_000 };
 const expiredSlot = { leaseRemainingMs: 0, heartbeatAgeMs: 600_000 };
+/* Eşik artık en uzun tick'ten türetiliyor; bayat örneği de ondan türetilmeli. */
+const staleRoster = new Date(now.getTime() - ROSTER_HEARTBEAT_FRESH_MS - 1);
 const emptySlot = { leaseRemainingMs: null, heartbeatAgeMs: null };
 
 /*
@@ -22,7 +25,7 @@ describe("deriveWorkerPresence", () => {
   });
 
   it("treats the roster boundary itself as fresh and one millisecond past it as stale", () => {
-    const boundary = new Date(now.getTime() - 120_000);
+    const boundary = new Date(now.getTime() - ROSTER_HEARTBEAT_FRESH_MS);
     expect(deriveWorkerPresence({ rosterSyncedAt: boundary, now, slots: [] })).toBe("ONLINE");
     expect(
       deriveWorkerPresence({ rosterSyncedAt: new Date(boundary.getTime() - 1), now, slots: [] }),
@@ -31,12 +34,12 @@ describe("deriveWorkerPresence", () => {
 
   it("keeps a stale roster with a live lease separate from a missing worker", () => {
     expect(
-      deriveWorkerPresence({ rosterSyncedAt: minutesAgo(5), now, slots: [emptySlot, liveSlot] }),
+      deriveWorkerPresence({ rosterSyncedAt: staleRoster, now, slots: [emptySlot, liveSlot] }),
     ).toBe("ROSTER_STALE_LEASE_ACTIVE");
   });
 
   it("does not call an expired lease alive even while the run row still says RUNNING", () => {
-    expect(deriveWorkerPresence({ rosterSyncedAt: minutesAgo(5), now, slots: [expiredSlot] })).toBe(
+    expect(deriveWorkerPresence({ rosterSyncedAt: staleRoster, now, slots: [expiredSlot] })).toBe(
       "ROSTER_STALE_NO_LEASE",
     );
   });
@@ -44,7 +47,7 @@ describe("deriveWorkerPresence", () => {
   it("does not call an unexpired lease alive when its heartbeat went stale", () => {
     expect(
       deriveWorkerPresence({
-        rosterSyncedAt: minutesAgo(5),
+        rosterSyncedAt: staleRoster,
         now,
         slots: [{ leaseRemainingMs: 240_000, heartbeatAgeMs: 121_000 }],
       }),

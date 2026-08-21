@@ -44,6 +44,7 @@ import {
 } from "@/modules/agents/repository/capacity";
 import { executeIdempotently } from "@/modules/idempotency/application/idempotency";
 import { RUNTIME_PROMPT_PROFILE_HASH } from "@/runtime/prompt-profile";
+import { ROSTER_HEARTBEAT_FRESH_MS } from "@/modules/agents/domain/stochastic-scheduler";
 import {
   closeIntegrationDatabase,
   integrationDatabase,
@@ -2079,7 +2080,8 @@ describe("agent control plane with PostgreSQL", () => {
     expect((await metrics(30_000)).operational.workerPresence).toBe("ONLINE");
 
     // 3) Roster bayat, lease canlı: müdahale gerektirmeyen durum.
-    await syncRoster(new Date(now.getTime() - 5 * 60_000));
+    // Eşik en uzun tick'ten türetiliyor; bayat örneği de ondan türetilmeli.
+    await syncRoster(new Date(now.getTime() - ROSTER_HEARTBEAT_FRESH_MS - 1_000));
     const run = await integrationDatabase.agentRun.create({
       data: {
         agentProfileId: created.agent.profile.id,

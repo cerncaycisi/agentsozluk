@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { ROSTER_HEARTBEAT_FRESH_MS } from "@/modules/agents/domain/stochastic-scheduler";
 
 const stochasticRunSelect = {
   id: true,
@@ -32,7 +33,7 @@ function profileCredentialReady(
   const credential = profile.credentials[0];
   if (!credential) return false;
   if (!sync) return credential.runtimeEnrollmentCipher === null;
-  if (now.getTime() - sync.syncedAt.getTime() > 120_000) return false;
+  if (now.getTime() - sync.syncedAt.getTime() > ROSTER_HEARTBEAT_FRESH_MS) return false;
   return sync.loadedCredentialIds.includes(credential.id);
 }
 

@@ -3,6 +3,24 @@ import { createHash } from "node:crypto";
 export const STOCHASTIC_TICK_IDEMPOTENCY_MS = 60_000;
 export const MINIMUM_STOCHASTIC_TICK_DELAY_MS = 2 * 60_000;
 export const MAXIMUM_STOCHASTIC_TICK_DELAY_MS = 5 * 60_000;
+
+/*
+  Roster heartbeat'ini taze sayma eşiği. Worker roster'ı tick başına yeniliyor ve
+  tick aralığı 2-5 dakika; eşik bu yüzden EN UZUN tick'i aşmak zorunda, yoksa
+  sağlıklı bir worker'ın rosteri her döngünün bir bölümünde "bayat" görünür.
+
+  Eskiden dört ayrı yerde `120_000` yazıyordu — en kısa tick'e eşit, en uzun
+  tick'in yarısından az. Sonucu canlıda görüldü: panel `0/36 hazır` gösteriyordu,
+  68 saniye sonra kendiliğinden düzeliyordu. Ve bu görüntüden ibaret değildi;
+  `assertManagedRuntimeCredentialReady` operatörün force-run'ını ve ACTIVE'e
+  almasını, `stochasticSchedulerEligible` da ajanın seçilmesini aynı bayrağa
+  bağlıyor.
+
+  Marj: en uzun tick + %40. Bir tick'in uzaması (yavaş codex çağrısı, kilit
+  beklemesi) yanlış alarm üretmemeli; buna karşılık gerçekten ölmüş bir worker
+  yedi dakikada fark edilmeli.
+*/
+export const ROSTER_HEARTBEAT_FRESH_MS = Math.round(MAXIMUM_STOCHASTIC_TICK_DELAY_MS * 1.4);
 export const MINIMUM_STOCHASTIC_AGENT_GAP_MS = 10 * 60_000;
 
 const activeWindows = [

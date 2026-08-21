@@ -18,6 +18,7 @@ import {
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 import { getStochasticSchedulerSnapshot } from "@/modules/agents/repository/stochastic-scheduler";
+import { ROSTER_HEARTBEAT_FRESH_MS } from "@/modules/agents/domain/stochastic-scheduler";
 import {
   closeIntegrationDatabase,
   integrationDatabase,
@@ -493,7 +494,7 @@ describe("runtime onboarding and orphan queue recovery with PostgreSQL", () => {
       );
     await integrationDatabase.agentRuntimeCredentialSync.update({
       where: { id: "global" },
-      data: { syncedAt: new Date(now.getTime() - 121_000) },
+      data: { syncedAt: new Date(now.getTime() - ROSTER_HEARTBEAT_FRESH_MS - 1_000) },
     });
     await expect(
       previewBulkAgentRun(
