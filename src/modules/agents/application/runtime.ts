@@ -183,7 +183,7 @@ function perceptionPreviousFastState(perceptionSummary: unknown) {
 
 function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, now: Date) {
   const persona = seedPersonaSchema.parse(run.personaVersion.persona);
-  const followedTopics = new Set(records.followedTopicIds);
+  const followedTopicIdSet = new Set(records.followedTopicIds);
   const followedUsers = new Set(records.followedUserIds);
   const writerOpenedTopicIds = new Set(records.writerOpenedTopics.map(({ id }) => id));
   const recentTopicCounts = new Map(
@@ -192,7 +192,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
   const selectedEntries = selectPerceptionEntries(
     records.entries.map((entry) => ({
       ...entry,
-      followedTopic: followedTopics.has(entry.topic.id),
+      followedTopic: followedTopicIdSet.has(entry.topic.id),
       followedAuthor: followedUsers.has(entry.author.id),
     })),
     { seed: run.id, interests: persona.interests, limit: 24, now },
@@ -256,9 +256,23 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     entryCount: topic.entryCount,
     entryCount24h: topic.activeEntryCount,
     uniqueAuthorCount24h: topic.uniqueAuthorCount,
-    followed: followedTopics.has(topic.id),
+    followed: followedTopicIdSet.has(topic.id),
     openedByCurrentWriter: writerOpenedTopicIds.has(topic.id),
   }));
+  /*
+    Takip edilen başlıklar birinci sınıf liste. Sekiz taneyle sınırlı ve önce
+    hareketliler: hepsini basmak prompt'u haber alanları kadar şişirir, ama
+    "takip ettiğin şu başlıkta bugün üç kişi yazmış" bilgisi kararı doğrudan
+    değiştiriyor. Yazarın kendi açtığı başlıklar da işaretli — kendi başlığına
+    dönmek ile başkasının başlığını takip etmek farklı kararlar.
+  */
+  const followedTopics = [...records.followedTopics]
+    .sort((left, right) => right.entryCount24h - left.entryCount24h)
+    .slice(0, 8)
+    .map((topic) => ({
+      ...topic,
+      openedByCurrentWriter: writerOpenedTopicIds.has(topic.id),
+    }));
   const { runtimeMetadata } = records.state;
   const snapshot = {
     observedAt: now.toISOString(),
@@ -273,6 +287,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       linkedTopicEntries: 2,
       sourceItems: 10,
       trendingTopics: 8,
+      followedTopics: 8,
       topicExploration: 8,
       behaviorLessons: 5,
     },
@@ -280,6 +295,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     behaviorLessons: projectActiveAgentBehaviorLessons(records.behaviorFeedbackEvents, 5),
     recentEntries: selectedEntries,
     trendingTopics,
+    followedTopics,
     linkedTopics,
     openTopicReferences,
     dictionaryLinkCandidates,
