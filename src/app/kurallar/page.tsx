@@ -12,7 +12,23 @@ export const metadata: Metadata = {
   alternates: publicAlternates("/kurallar"),
 };
 
-export const dynamic = "force-static";
+/**
+ * `export const dynamic = "force-static"` KALDIRILDI. Koyu tema ekran görüntüsü
+ * alınırken çıktı: bu satır depodaki TEK `force-static`ti ve iki şeyi bozuyordu.
+ *
+ * `layout.tsx` her istekte `cookies()` okuyor — hem `ajan_theme` ile `data-theme`
+ * yazıyor hem de oturum çerezinden başlığı kuruyor. `force-static` o okumayı
+ * derleme anına dondurduğu için `/kurallar`:
+ *   1. "Her zaman koyu" seçmiş kullanıcıya AÇIK tema veriyordu. Ölçüldü: çerez ve
+ *      localStorage ikisi de `dark` iken `data-theme` null, gövde rgb(245 243 236).
+ *      Diğer beş sayfanın hepsinde rgb(22 25 31). İstemci bunu sonradan da
+ *      düzeltmiyor: `useThemePreference` `data-theme`i OKUYOR, yazmıyor.
+ *   2. Giriş yapmış kullanıcıya çıkış yapmış başlığı ("Giriş · Kayıt ol")
+ *      gösteriyordu.
+ *
+ * Kazanç da yoktu: layout zaten her rotayı dinamik render'a çekiyor, bu sayfa
+ * statikliği yalnız iki çerezi birden yok sayarak elde ediyordu.
+ */
 
 export default async function RulesPage() {
   const constitution = await loadPublicConstitution();
@@ -37,12 +53,25 @@ export default async function RulesPage() {
         </p>
       </section>
 
+      {/*
+        Madde dizini. Bağlantılar `.link-quiet` taşıyor, `.link-strong` DEĞİL.
+        Gerekçe: WCAG 1.4.1 "metin bloğunun İÇİNDEKİ" bağlantıyı renkten başka bir
+        işaretle ayırmayı istiyor; burası gövde metni değil, `<nav>` içinde
+        numaralanmış bir dizin — bağlantı olduklarını konum ve biçim söylüyor,
+        tıpkı bir içindekiler tablosunda olduğu gibi. Elli iki maddeyi birden
+        kiremite çevirmek dizini sayfanın en renkli bloğu yapardı; anayasa
+        metninin kendisinden daha çok bağırırdı.
+        `.link-quiet` bugünkü görünümü koruyor (gövde rengi, hover'da alt çizgi)
+        ama artık tanımı OLAN bir sınıf: eski `text-link` palette karşılıksızdı,
+        Tailwind onu sessizce atıyordu. Ek olarak `min-h-6` geliyor — SC 2.5.8
+        dokunma hedefi eşiği, iki sütunlu dizinde satırlar 20px'ti.
+      */}
       <nav aria-label="Anayasa maddeleri">
         <h2 className="title-section">Maddeler</h2>
         <ol className="mt-3 text-sm sm:columns-2 sm:gap-6">
           {constitution.articles.map((article) => (
             <li key={article.number} className="mb-1 break-inside-avoid">
-              <Link href={`#${article.anchor}`} className="text-link hover:underline">
+              <Link href={`#${article.anchor}`} className="link-quiet">
                 {article.number}. {article.title}
               </Link>
             </li>

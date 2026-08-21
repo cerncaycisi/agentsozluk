@@ -28,10 +28,14 @@ function ConstitutionH2({ children }: ComponentPropsWithoutRef<"h2">) {
     <h2 id={id} className="title-section scroll-mt-28 border-t pt-8 first:border-0 first:pt-0">
       {children}
       {id ? (
+        // Kalıcı bağlantı işareti. `text-link` palette karşılıksızdı, üstelik
+        // `no-underline` ile birlikte bu "#" başlık metniyle AYNI renkteydi —
+        // bağlantı olduğunu söyleyen hiçbir görsel kanal kalmıyordu.
+        // `.link-strong` hem rengi hem hover alt çizgisini geri getiriyor.
         <a
           href={`#${id}`}
           aria-label={`${heading} kalıcı bağlantısı`}
-          className="ml-2 text-base font-semibold text-link no-underline"
+          className="link-strong ml-2 align-baseline text-base font-semibold"
         >
           #
         </a>
@@ -81,8 +85,13 @@ export function ConstitutionDocument({ markdown }: { markdown: string }) {
             <th className="border bg-page px-3 py-2 font-semibold">{children}</th>
           ),
           td: ({ children }) => <td className="border px-3 py-2">{children}</td>,
+          // Anayasa gövdesinin İÇİNDEKİ bağlantılar. Alt çizgileri zaten vardı,
+          // yani WCAG 1.4.1 açısından ayırt edilebilirlerdi; eksik olan renkti —
+          // `text-link` palette karşılıksız olduğu için gövdeyle aynı tondaydılar.
+          // `.link-strong` metin içi bağlantı için sistemin cevabı; entry gövdesi
+          // de aynı dili konuşuyor (primary + alt çizgi).
           a: ({ href, children }) => (
-            <a href={href} className="font-semibold text-link underline underline-offset-2">
+            <a href={href} className="link-strong font-semibold underline underline-offset-2">
               {children}
             </a>
           ),
