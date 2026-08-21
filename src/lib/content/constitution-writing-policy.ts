@@ -100,92 +100,251 @@ export function constitutionalEntryWritingIssue(body: string): ConstitutionalWri
 // Kalıcı olay, kanun, festival ve eser adları ad öbeğidir; ikisine de takılmaz.
 // "Bu ad öbeği kalıcı mı" kararı yüzey kuralının değil, Madde 28 arama ve
 // yönlendirme hattının işidir.
-const newsBulletinMarker =
-  /^(?:son dakika|flaş|şok|bomba iddia|dakika dakika|sıcak gelişme)(?=$|[^\p{L}\p{N}])/u;
+/*
+  Diakritiksiz yazım ("flas", "sok", "sicak gelisme") aynı bülten önekidir; kural
+  bunu ancak katlanmış bir kopya üzerinde görebilir. Katlama yalnız bülten öneki
+  taramasında ve önekin kuyruğunda kullanılır, başlığın kalanına dokunmaz.
+*/
+const turkishDiacriticFolding: Record<string, string> = {
+  â: "a",
+  î: "i",
+  û: "u",
+  ç: "c",
+  ğ: "g",
+  ı: "i",
+  ö: "o",
+  ş: "s",
+  ü: "u",
+};
+
+function foldTurkishDiacritics(value: string): string {
+  return value.replaceAll(
+    /[âîûçğıöşü]/gu,
+    (character) => turkishDiacriticFolding[character] ?? character,
+  );
+}
+
+/*
+  Bülten önekleri. `folded` alanı diakritiksiz yazımın karşılığıdır; `null` ise o
+  önek yalnız tam yazımıyla aranır. `şok` katlandığında `sok` olur ve bu gerçek
+  bir Türkçe fiil biçimidir ("sok bakalım"); katlanmış geçişe alınırsa sıradan
+  başlıkları manşet sayardı. Kaybedilen tek şey "sok: ..." yazımıdır.
+*/
+const bulletinMarkers = [
+  { key: "son dakika", direct: "son dakika", folded: "son dakika" },
+  { key: "flaş", direct: "flaş", folded: "flas" },
+  { key: "şok", direct: "şok", folded: null },
+  { key: "bomba iddia", direct: "bomba iddia", folded: "bomba iddia" },
+  { key: "dakika dakika", direct: "dakika dakika", folded: "dakika dakika" },
+  { key: "sıcak gelişme", direct: "sıcak gelişme", folded: "sicak gelisme" },
+] as const;
+
+function startsWithSeparateWord(value: string, word: string): boolean {
+  if (!value.startsWith(word)) return false;
+  const next = value.slice(word.length, word.length + 1);
+  return next === "" || !/[\p{L}\p{N}]/u.test(next);
+}
+
+function bulletinPrefix(normalized: string): { key: string; tail: string } | null {
+  const folded = foldTurkishDiacritics(normalized);
+  for (const marker of bulletinMarkers) {
+    if (startsWithSeparateWord(normalized, marker.direct))
+      return { key: marker.key, tail: normalized.slice(marker.direct.length) };
+    if (marker.folded && startsWithSeparateWord(folded, marker.folded))
+      return { key: marker.key, tail: folded.slice(marker.folded.length) };
+  }
+  return null;
+}
 
 // Bülten öneki + tek kelime çoğu zaman gerçek bir tamlamadır: "son dakika golü",
-// "şok dalgası", "flaş bellek". Aşağıdaki kelimeler öneki manşete çevirir.
+// "şok dalgası", "flaş bellek". Aşağıdaki kelimeler öneki manşete çevirir. Liste
+// diakritiksiz yazılır; kuyruk her zaman katlanmış biçimiyle sınanır.
 const bulletinHeadlineNoun =
-  /^(?:gelişme|gelişmeler|iddia|iddialar|açıklama|itiraf|karar|görüntüler|anlar|sözler)(?=$|[^\p{L}\p{N}])/u;
+  /^(?:gelisme|iddia|aciklama|itiraf|karar|goruntuler|anlar|sozler|deprem|yangin|patlama|kaza|kavga|catisma|gocuk|sel|cig|firtina|ariza|kesinti|saldiri|zam|istifa|transfer|olum|gozalti|tutuklama|operasyon)(?:ler|lar)?(?=$|[^\p{L}\p{N}])/u;
 
-const newsReportPredicate = new RegExp(
-  `(?:^|[^\\p{L}\\p{N}_])(?:${[
-    // Edilgen haber yüklemleri: gövde + zaman eki. Ad öbekleri bu biçimi almaz.
-    `(?:${[
-      "yasaklan",
-      "iptal edil",
-      "ertelen",
-      "durdurul",
-      "kaldırıl",
-      "toplatıl",
-      "kapatıl",
-      "onaylan",
-      "imzalan",
-      "kabul edil",
-      "reddedil",
-      "açıklan",
-      "duyurul",
-      "yalanlan",
-      "ihraç edil",
-      "tahliye edil",
-      "gözaltına alın",
-      "görevden alın",
-      "görevden uzaklaştırıl",
-      "göreve atan",
-      "atan",
-      "tutuklan",
-      "serbest bırakıl",
-      "soruşturma başlatıl",
-      "ceza veril",
-      "zam yapıl",
-    ].join("|")})(?:d[ıiuü]|[ıiuü]yor|acak|ecek)(?:lar|ler)?`,
-    // Etken haber yüklemleri; her biri tam çekimli biçimiyle listelenir.
-    "(?:istifa|vefat|beraat|feragat) ed(?:iyor|ecek)",
-    "(?:istifa|vefat|beraat|feragat) etti(?:ler)?",
-    "hayatını kaybetti(?:ler)?",
-    "yaşamını yitirdi(?:ler)?",
-    "hüküm giydi(?:ler)?",
-    "ceza aldı(?:lar)?",
-    "dava açtı(?:lar)?",
-    "açıklama yaptı(?:lar)?",
-    "rekor kırdı(?:lar)?",
-    "şampiyon oldu(?:lar)?",
-    "transfer oldu(?:lar)?",
-    "elendi(?:ler)?",
-    "zam geldi",
-    // Olay adı + genel fiil ikilisi: belirsiz fiilleri yalnız olay adıyla
-    // birlikte manşet sayar ("çıktı" tek başına isim de olabilir).
-    "(?:yangın|deprem|patlama|kaza|kavga|çatışma|göçük|sel|çığ|arıza|kesinti) (?:çıktı|oldu|meydana geldi|yaşandı)",
-  ].join("|")})[\\s.!…]*$`,
+/*
+  Bülten sözcüğü bazen sabit bir terkibin ilk parçasıdır ve orada manşet değil,
+  kavramın kendi adıdır: "flaş bellek veri kurtarma", "şok dalgası ölçümü". Kuyruk
+  kelime sayısına bakan kural bunları manşet sanıyordu. Yüzey kuralı "bu ad öbeği
+  yerleşik bir terkip mi" sorusunu ancak açık bir sözlükle yanıtlayabilir; sözlükte
+  olmayan terkibi kalıcı sayma kararı Madde 28 arama hattına aittir.
+*/
+const bulletinLexicalCompound: Record<string, RegExp> = {
+  şok: /^(?:dalga|terapi|magaza|emici|absorber|sogutma|dondurma|tedavi|jenerator|deneyi)/u,
+  flaş: /^(?:bellek|disk|isik|lamba|fotograf|kart|surucu)/u,
+  "son dakika": /^(?:gol|sayi|asist|penalti)/u,
+};
+
+// Bağlaçla devam eden kuyruk manşet cümlesi değil, iki öğeli ad öbeğidir:
+// "şok ve titreşim analizi".
+const bulletinPhraseConjunction = /^(?:ve|ile|veya|ya da)(?=$|[^\p{L}\p{N}])/u;
+
+/*
+  Çekimli haber yükleminin ek grubu. Naif bir ek kuralı değildir: gövdeler aşağıdaki
+  iki sözlükte tek tek sayılıdır, bu grup yalnız o gövdelerin bitmiş (-dı), sürüyor
+  (-ıyor), gelecek (-acak), duyulan geçmiş (-mış) ve olumsuz çekimlerini kapsar.
+  Mastar (-mak/-mek) ve sıfat-fiil (-an/-en) bilerek dışarıdadır; "istifa etmek" ve
+  "görevden alınan bakan" kalıcı kavram adlarıdır. `m` ile başlayan olumsuz kuyruklar
+  mastarı yutmaz, çünkü `m`den sonra ya `[ıiuü]` ya `[ae]d`, `[ae]m`, `[ae]y` gelir.
+*/
+const finiteNewsTense =
+  "(?:d[ıiuü]|t[ıiuü]|[ıiuü]yor|acak|ecek|m[ıiuü]ş|m[ae]d[ıiuü]|m[ıiuü]yor|m[ae]y[ae]c[ae]k|m[ae]m[ıiuü]ş)(?:lar|ler)?";
+
+/*
+  Madde 32 fiil sözlüğü. `harm` alanı fiilin GÖVDE güvenlik kapısına da girip
+  girmediğini söyler; başlık kapısı ikisini de kullanır.
+
+  - "PERSON_STATUS": öznesi bir kişi olan, o kişinin hukuki, mesleki veya hayati
+    durumundaki değişimi bildiren yüklem. Kaynaksız yazıldığında zarar doğrudan ve
+    kişiseldir — `seriousCrimeMarkers` listesinin koruduğu zarar sınıfının aynısı.
+  - "GENERIC": kurumsal ya da idari yüklem. Başlıkta manşet sayılmasının nedeni
+    fiilin kendisi değil, BAŞLIĞIN TAMAMININ o fiille bitmesidir; bu yapısal işaret
+    gövde içinde yoktur ve aynı fiil orada sıradan Türkçe düzyazıdır ("bu uygulama
+    2019'da kapatıldı", "oturum kapatıldı"). Gövdedeki güncellik zaten zaman
+    zarflarıyla ölçülür: "uygulama bugün kapatıldı" kapıya `bugün` ile takılır.
+
+  Ölçüm: sözlüğün tamamı gövde kapısına verildiğinde bu depodaki 7.698 metin
+  sabitinden 97'si `false → true` dönüyor ve büyük çoğunluğu "oturum kapatıldı",
+  "kabul edildi", "iptal edildi" gibi sıradan cümleler. PERSON_STATUS alt kümesiyle
+  bu sayı 12'ye iniyor ve hepsi gerçekten kişi durumu bildiren cümleler.
+*/
+type NewsVerbHarm = "PERSON_STATUS" | "GENERIC";
+
+// Edilgen haber yüklemleri: gövde + zaman eki. Ad öbekleri bu biçimi almaz.
+const passiveNewsVerbStems: ReadonlyArray<readonly [string, NewsVerbHarm]> = [
+  ["yasaklan", "GENERIC"],
+  ["iptal edil", "GENERIC"],
+  ["ertelen", "GENERIC"],
+  ["durdurul", "GENERIC"],
+  ["kaldırıl", "GENERIC"],
+  ["toplatıl", "GENERIC"],
+  ["kapatıl", "GENERIC"],
+  ["onaylan", "GENERIC"],
+  ["imzalan", "GENERIC"],
+  ["kabul edil", "GENERIC"],
+  ["reddedil", "GENERIC"],
+  ["açıklan", "GENERIC"],
+  ["duyurul", "GENERIC"],
+  ["yalanlan", "GENERIC"],
+  ["ihraç edil", "PERSON_STATUS"],
+  ["tahliye edil", "PERSON_STATUS"],
+  ["gözaltına alın", "PERSON_STATUS"],
+  ["görevden alın", "PERSON_STATUS"],
+  ["görevden uzaklaştırıl", "PERSON_STATUS"],
+  ["göreve atan", "PERSON_STATUS"],
+  // Çıplak `atan` gövdede "atanmış bir değer" gibi kullanımlara da açıktır;
+  // kişi ataması `göreve atan` ile ayrıca sayılıdır.
+  ["atan", "GENERIC"],
+  ["tutuklan", "PERSON_STATUS"],
+  ["serbest bırakıl", "PERSON_STATUS"],
+  ["soruşturma başlatıl", "PERSON_STATUS"],
+  ["ceza veril", "PERSON_STATUS"],
+  ["zam yapıl", "GENERIC"],
+];
+
+// Etken haber yüklemleri; her biri gövdesiyle listelenir. `e[td]` ünsüz
+// yumuşamasını karşılar: "etti" ~ "ediyor". Son satır olay adı + genel fiil
+// ikilisidir: belirsiz fiilleri yalnız olay adıyla birlikte manşet sayar.
+const activeNewsVerbStems: ReadonlyArray<readonly [string, NewsVerbHarm]> = [
+  ["(?:istifa|vefat|beraat|feragat) e[td]", "PERSON_STATUS"],
+  ["hayatını kaybe[td]", "PERSON_STATUS"],
+  ["yaşamını yitir", "PERSON_STATUS"],
+  ["hüküm giy", "PERSON_STATUS"],
+  ["ceza al", "PERSON_STATUS"],
+  ["dava aç", "PERSON_STATUS"],
+  ["açıklama yap", "GENERIC"],
+  ["rekor kır", "GENERIC"],
+  ["şampiyon ol", "GENERIC"],
+  ["transfer ol", "GENERIC"],
+  ["elen", "GENERIC"],
+  ["zam gel", "GENERIC"],
+  [
+    "(?:yangın|deprem|patlama|kaza|kavga|çatışma|göçük|sel|çığ|arıza|kesinti) (?:çık|ol|meydana gel|yaşan)",
+    "GENERIC",
+  ],
+];
+
+function newsPredicateSource(harm: NewsVerbHarm | "ALL"): string {
+  const verbs = [...passiveNewsVerbStems, ...activeNewsVerbStems]
+    .filter(([, verbHarm]) => harm === "ALL" || verbHarm === harm)
+    .map(([stem]) => stem)
+    .join("|");
+  return `(?:^|[^\\p{L}\\p{N}_])(?:${verbs})${finiteNewsTense}`;
+}
+
+// Başlık kapısı: yüklem başlığın sonunda olmalı, yoksa başlık cümle değildir.
+const newsReportPredicate = new RegExp(`${newsPredicateSource("ALL")}[\\s.!…]*$`, "u");
+
+// Gövde kapısı: aynı sözlüğün kişi durumu alt kümesi, cümle içinde serbest
+// konumda. `action-policy.ts` buradan okur; iki kapı ayrı liste tutarsa
+// "Bakan istifa etti." başlıkta manşet sayılıp gövdede hiçbir işaretçiye
+// takılmıyor ve USER_ENTRY provenance ile yayımlanıyordu.
+const personStatusNewsPredicate = new RegExp(
+  `${newsPredicateSource("PERSON_STATUS")}(?![\\p{L}])`,
   "u",
 );
+
+/**
+ * Madde 32 fiil sözlüğünün kişi durumu alt kümesi, cümle içi arama için. Başlık
+ * kapısıyla tek kaynaktan beslenir; bkz. `NewsVerbHarm` yorumu.
+ */
+export function containsPersonStatusNewsPredicate(text: string): boolean {
+  return personStatusNewsPredicate.test(text.normalize("NFKC").toLocaleLowerCase("tr-TR"));
+}
 
 function transientNewsHeadline(normalized: string): "BULLETIN" | "PREDICATE" | null {
   // Çekimli yüklem önce sınanır: bülten önekinin ilk entry kaçış yolu, cümle
   // hâline gelmiş bir başlığı kurtarmamalıdır.
   if (newsReportPredicate.test(normalized)) return "PREDICATE";
-  const marker = newsBulletinMarker.exec(normalized);
-  if (!marker) return null;
-  const tail = normalized.slice(marker[0].length);
-  const rest = tail.replace(/^[\s:!.,–—-]+/u, "");
+  const prefix = bulletinPrefix(normalized);
+  if (!prefix) return null;
+  const rest = foldTurkishDiacritics(prefix.tail.replace(/^[\s:!.,–—-]+/u, ""));
   if (!rest) return null;
+  // Sabit terkip veya bağlaçlı ad öbeği: bülten sözcüğü manşet kurmuyor.
+  if (bulletinLexicalCompound[prefix.key]?.test(rest)) return null;
+  if (bulletinPhraseConjunction.test(rest)) return null;
   // İki nokta veya tire ile ayrılan devam her zaman bülten cümlesidir.
-  if (/^\s*[:!–—-]/u.test(tail)) return "BULLETIN";
+  if (/^\s*[:!–—-]/u.test(prefix.tail)) return "BULLETIN";
   if (bulletinHeadlineNoun.test(rest)) return "BULLETIN";
   return rest.split(" ").filter(Boolean).length >= 2 ? "BULLETIN" : null;
 }
 
-// Bülten öneki bazen kavramın kendisidir: sözlük bir manşet klişesini de
-// tanımlayabilir. Madde 31'deki soru-başlığı ayrımıyla aynı mantık.
+/*
+  Bülten öneki bazen kavramın kendisidir: sözlük bir manşet klişesini de
+  tanımlayabilir. Ama istisnayı açan şey entry'nin herhangi bir yerinde geçen
+  "söylem" ya da "manşet" sözcüğü değil, entry'nin YÜKLEMİNİN o dilsel kategori
+  olmasıdır. Eski kural gövde çapında arıyordu ve gerçek bir manşet başlığı,
+  gövdesinde tesadüfen "manşet" geçtiği için fail-open geçiyordu.
+
+  Yüklem iki biçimde kurulur: bildirme ekiyle ("manşet kalıbıdır") ya da ad
+  cümlesinin son sözcüğü olarak ("... bir manşet kalıbı."). İkisi de yüzeyden
+  görülebilir; "bu entry gerçekten kalıbı mı tanımlıyor" sorusunun geri kalanı
+  yüzey kuralının değil, Madde 6-17 içerik değerlendirmesinin işidir.
+*/
+const metalinguisticCategoryNoun = "(?:manşet|klişe|kalıp|kalıb|deyiş|deyim|söylem|tabir)";
+
+const metalinguisticCopulaPredicate = new RegExp(
+  `(?:^|[^\\p{L}\\p{N}_])${metalinguisticCategoryNoun}(?:ler|lar)?(?:i|ı|u|ü|si|sı|su|sü)?[dt][ıiuü]r(?=$|[^\\p{L}\\p{N}_])`,
+  "u",
+);
+
+const metalinguisticNominalHead = new RegExp(
+  `(?:^|[^\\p{L}\\p{N}_])${metalinguisticCategoryNoun}\\p{L}{0,6}$`,
+  "u",
+);
+
 function firstEntryFramesHeadlineAsConcept(body: string): boolean {
   const normalized = body
     .normalize("NFKC")
     .toLocaleLowerCase("tr-TR")
     .replaceAll(/\s+/gu, " ")
     .trim();
-  return /(?:^|[^\p{L}\p{N}_])(?:manşet(?:i|in|ler|leri)?|klişe(?:si|leri)?|kalıp(?:lar)?|kalıbı|deyiş|söylem|gazetecilik|habercilik)(?=$|[^\p{L}\p{N}_])/u.test(
-    normalized,
+  if (metalinguisticCopulaPredicate.test(normalized)) return true;
+  const firstSentence = (normalized.split(/(?<=[.!?…])\s+/u, 1)[0] ?? normalized).replace(
+    /[.!?…\s]+$/u,
+    "",
   );
+  return metalinguisticNominalHead.test(firstSentence);
 }
 
 function normalizedTopicTitleText(title: string): string {

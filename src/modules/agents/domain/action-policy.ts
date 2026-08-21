@@ -1,3 +1,4 @@
+import { containsPersonStatusNewsPredicate } from "@/lib/content/constitution-writing-policy";
 import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
 
 export const repairableContentRejectionCodes = new Set([
@@ -65,8 +66,34 @@ const semanticStopWords = new Set([
   "şu",
 ]);
 
-function semanticStem(value: string): string {
-  const token = value.replaceAll(/[’'][\p{L}]+$/gu, "");
+/*
+  Kesme işaretiyle ayrılan hâl eki özel adın cümledeki rolünü taşır: `ayşe'yi`
+  nesnedir, `ayşe` özne olabilir. Ek tümüyle atıldığında `ali ayşe'yi destekler` ile
+  `ayşe ali'yi destekler` aynı kavram kümesine düşüyor ve ters önerme "hiç yeni
+  kavram getirmeyen aday" sayılıp reddediliyordu.
+
+  Ortak adlarda bu bilgi zaten korunuyor: aşağıdaki gövdeleme listesinde belirtme ve
+  yönelme ekleri yok, yani `işaret` ile `işareti` farklı kavramlar olarak kalıyor.
+  Açık yalnız kesmeli özel adlardaydı. Hâl eki artık kavrama etiket olarak eklenir;
+  çoğul, iyelik ve bildirme ekleri rol taşımadığı için atılmaya devam eder.
+*/
+const properNounCaseSuffixes: ReadonlyArray<readonly [RegExp, string]> = [
+  [/^(?:n[ıiuü]n|[ıiuü]n)$/u, "ilgi"],
+  [/^(?:y[ıiuü]|[ıiuü])$/u, "belirtme"],
+  [/^(?:y[ae]|[ae])$/u, "yönelme"],
+  [/^(?:nd[ae]|d[ae]|t[ae])$/u, "bulunma"],
+  [/^(?:nd[ae]n|d[ae]n|t[ae]n)$/u, "ayrılma"],
+  [/^(?:yl[ae]|l[ae])$/u, "vasıta"],
+];
+
+const conceptRoleSeparator = "\u00b7";
+
+function conceptBase(concept: string): string {
+  const separator = concept.indexOf(conceptRoleSeparator);
+  return separator === -1 ? concept : concept.slice(0, separator);
+}
+
+function stemWithoutRole(token: string): string {
   for (const [prefix, stem] of [
     ["albüm", "albüm"],
     ["alternatif", "alternatif"],
@@ -84,14 +111,30 @@ function semanticStem(value: string): string {
   );
 }
 
-function semanticConcepts(value: string, ignored: ReadonlySet<string>): Set<string> {
+function semanticStem(value: string): string {
+  const apostropheSuffix = /[’']([\p{L}]+)$/u.exec(value);
+  const suffix = apostropheSuffix?.[1];
+  const token = apostropheSuffix ? value.slice(0, apostropheSuffix.index) : value;
+  const role = suffix
+    ? (properNounCaseSuffixes.find(([pattern]) => pattern.test(suffix))?.[1] ?? null)
+    : null;
+  const stem = stemWithoutRole(token);
+  return role ? `${stem}${conceptRoleSeparator}${role}` : stem;
+}
+
+function semanticConcepts(value: string, ignoredBases: ReadonlySet<string>): Set<string> {
   return new Set(
     normalizeEntrySearchText(value)
       .normalize("NFKC")
       .replaceAll(/[^\p{L}\p{N}’'\s]/gu, " ")
       .split(/\s+/u)
       .map(semanticStem)
-      .filter((token) => token.length > 1 && !ignored.has(token) && !semanticStopWords.has(token)),
+      .filter((concept) => {
+        // Başlık kavramları rolünden bağımsız yok sayılır; aksi hâlde başlıktaki
+        // adın farklı hâli yenilik kanıtı gibi sayılırdı.
+        const base = conceptBase(concept);
+        return base.length > 1 && !ignoredBases.has(base) && !semanticStopWords.has(base);
+      }),
   );
 }
 
@@ -127,7 +170,7 @@ export function topicSemanticRepetition(
   topicTitle: string,
   previousBodies: string[],
 ): TopicSemanticRepetition | null {
-  const ignored = semanticConcepts(topicTitle, new Set());
+  const ignored = new Set([...semanticConcepts(topicTitle, new Set())].map(conceptBase));
   const candidateConcepts = semanticConcepts(candidate, ignored);
   if (candidateConcepts.size < minimumComparableConcepts) return null;
 
@@ -228,50 +271,114 @@ export function containsDirectQuoteClaim(value: string): boolean {
   return directQuoteClaims(value).length > 0;
 }
 
+type GroundingMarker = readonly [text: string, tail: string | "DERIVED"];
+
+/*
+  Eskiden bu üç liste düz `String.includes` ile aranıyordu ve alt-dizi eşleşmesi iki
+  yönde birden hata üretiyordu:
+
+  - fail-open: `iddia` çerçevesi `iddialı` sıfatının içinde eşleşiyor, cümledeki
+    `dolandırıc` ağır işaretçisine rağmen hem strong-source hem USER_ENTRY kapısı
+    atlanıyordu;
+  - yanlış pozitif: `bu ay` işaretçisi "bu ayrıntılar", `gerçekleşti` işaretçisi
+    "gerçekleştiğini" içinde eşleşip zararsız gövdeyi reddediyordu.
+
+  Artık her işaretçi sol kelime sınırına çapalanır ve kendi kuyruğunu taşır. Kuyruk
+  naif bir ek kuralı değildir; iki kapalı biçimden biridir:
+
+  - "DERIVED": gövdeyle başlayan her türev kabul edilir (`dolandırıc` →
+    `dolandırıcılık`, `terör` → `terörist`). Yalnız kapıyı KAPATAN işaretçilerde
+    kullanılır, çünkü fazla eşleşmek fail-closed yöndedir.
+  - açık ek listesi: yalnız sayılan çekim ekleri kabul edilir, sonrasında harf
+    gelemez. Kapıyı AÇAN belirsizlik çerçevelerinde ve alt-dizi kazası ölçülmüş
+    işaretçilerde kullanılır.
+*/
+function groundingMarkerPattern([text, tail]: GroundingMarker): RegExp {
+  return new RegExp(
+    `(?<![\\p{L}\\p{N}])${text}${tail === "DERIVED" ? "" : `${tail}(?![\\p{L}])`}`,
+    "u",
+  );
+}
+
 /**
  * Belirsizlik çerçevelerinin tek kaynağı. Daha önce `domain/provenance.ts` içinde senkronize
  * olmayan ikinci bir kopya vardı; o liste ve onu kullanan ölü fonksiyon kaldırıldı.
  *
  * Liste bilerek dar tutulur: her yeni öğe ciddi/güncel iddia için trusted-source zorunluluğunu
  * kapatan yeni bir kaçış yolu açar. `kaynağa göre` prompt'ta önerilse de burada yoktur; bkz. rapor.
+ * Ekler de bilerek sayılıdır: `iddia` çekimlenir ("iddiası", "iddiaya") ama `iddialı`
+ * türemiş bir sıfattır ve çerçeve değildir.
  */
-const uncertaintyFrames = [
-  "iddia",
-  "öne sür",
-  "aktarılıyor",
-  "doğrulanmadı",
-  "teyit edilmedi",
-  "belirsiz",
+const uncertaintyFrames: readonly GroundingMarker[] = [
+  ["iddia", "(?:lar)?(?:ı|sı|ları|sının|larının|sına|sını|sıyla|ya|yı|da|dan|nın|dır)?"],
+  ["öne sür", "DERIVED"],
+  ["aktarılıyor", ""],
+  ["doğrulanmadı", "(?:ğı|ğını)?"],
+  ["teyit edilmedi", "(?:ği|ğini)?"],
+  ["belirsiz", "(?:dir|lik|liği|liğini|likler)?"],
 ];
-const seriousCrimeMarkers = [
-  "cinayet",
-  "tecavüz",
-  "cinsel saldırı",
-  "dolandırıc",
-  "hırsız",
-  "rüşvet",
-  "terör",
-  "kaçakç",
-  "suçlu",
-  "tutuklandı",
-  "gözaltına alındı",
-  "mahkûm",
-  "mahkum",
+
+const seriousCrimeMarkers: readonly GroundingMarker[] = [
+  ["cinayet", "DERIVED"],
+  ["tecavüz", "DERIVED"],
+  ["cinsel saldırı", "DERIVED"],
+  ["dolandırıc", "DERIVED"],
+  ["hırsız", "DERIVED"],
+  ["rüşvet", "DERIVED"],
+  ["terör", "DERIVED"],
+  ["kaçakç", "DERIVED"],
+  ["suçlu", "DERIVED"],
+  ["tutuklandı", "DERIVED"],
+  ["gözaltına alındı", "DERIVED"],
+  ["mahkûm", "DERIVED"],
+  ["mahkum", "DERIVED"],
 ];
-const currentFactMarkers = [
-  "bugün",
-  "şu anda",
-  "son dakika",
-  "bu hafta",
-  "bu ay",
-  "açıkladı",
-  "gerçekleşti",
-  "yayımlandı",
-  "yayınlandı",
-  "arttı",
-  "azaldı",
-  "yürürlüğe girdi",
+
+/*
+  Güncel olgu işaretçileri. Zaman zarfları türevleriyle birlikte alınır ("bugünkü"
+  de bugündür); bitmiş fiil biçimleri ise yalnız kendi çekimleriyle sayılır, çünkü
+  `gerçekleşti` gövdesi "gerçekleştiğini" gibi ad-fiillerin içinde de geçiyor ve
+  ölçümde bu yanlış pozitif üretiyordu. Ad-fiilleşmiş biçim bir haber cümlesinin
+  yüklemi değildir.
+*/
+const currentFactMarkers: readonly GroundingMarker[] = [
+  ["bugün", "DERIVED"],
+  ["şu anda", "(?:ki)?"],
+  ["son dakika", "DERIVED"],
+  ["bu hafta", "(?:ki|nın|da|dan)?"],
+  ["bu ay", "(?:ın|ında|a|da|dan)?"],
+  ["açıkladı", "(?:lar)?"],
+  ["gerçekleşti", "(?:ler)?"],
+  ["yayımlandı", "(?:lar)?"],
+  ["yayınlandı", "(?:lar)?"],
+  ["arttı", "(?:lar)?"],
+  ["azaldı", "(?:lar)?"],
+  ["yürürlüğe girdi", "(?:ler)?"],
 ];
+
+const uncertaintyFramePatterns = uncertaintyFrames.map(groundingMarkerPattern);
+const seriousCrimePatterns = seriousCrimeMarkers.map(groundingMarkerPattern);
+const currentFactPatterns = currentFactMarkers.map(groundingMarkerPattern);
+
+/*
+  Madde 32'nin kişi durumu yüklemleri güncel ve ciddi olgu iddiasının ta kendisidir;
+  başlık kapısıyla aynı sözlükten okunur. İki liste ayrı tutulduğunda "Bakan istifa
+  etti." gövdesi başlık kapısında manşet sayılıyor, gövde kapısında hiçbir işaretçiye
+  takılmıyordu: USER_ENTRY provenance ile iki sert kapı da açık kalıyordu.
+
+  Sözlüğün idari/kurumsal yarısı (`GENERIC`) bilerek dışarıda; gerekçesi ve ölçümü
+  `constitution-writing-policy.ts` içindeki `NewsVerbHarm` yorumunda.
+*/
+function sentenceStatesCurrentFact(sentence: string): boolean {
+  return (
+    currentFactPatterns.some((pattern) => pattern.test(sentence)) ||
+    containsPersonStatusNewsPredicate(sentence)
+  );
+}
+
+function sentenceContainsSeriousCrimeMarker(sentence: string): boolean {
+  return seriousCrimePatterns.some((pattern) => pattern.test(sentence));
+}
 
 /**
  * Gövdeyi cümlelere böler. Kaçış kapısı gövde çapında değil, iddianın geçtiği cümlede aranır:
@@ -288,14 +395,14 @@ function groundingSentences(body: string): string[] {
 }
 
 function sentenceIsUncertaintyFramed(sentence: string): boolean {
-  return uncertaintyFrames.some((frame) => sentence.includes(frame));
+  return uncertaintyFramePatterns.some((pattern) => pattern.test(sentence));
 }
 
 export function seriousFactualClaimRequiresStrongEvidence(body: string): boolean {
   return groundingSentences(body).some(
     (sentence) =>
       !sentenceIsUncertaintyFramed(sentence) &&
-      [...seriousCrimeMarkers, ...currentFactMarkers].some((marker) => sentence.includes(marker)),
+      (sentenceContainsSeriousCrimeMarker(sentence) || sentenceStatesCurrentFact(sentence)),
   );
 }
 
@@ -309,8 +416,7 @@ export function userEntryContainsHighRiskReproduction(body: string): boolean {
   // Aynı daraltma: ağır suç isnadını çerçeveleyen ifade isnadın kendi cümlesinde olmalıdır.
   const unframedSevereAllegation = groundingSentences(body).some(
     (sentence) =>
-      !sentenceIsUncertaintyFramed(sentence) &&
-      seriousCrimeMarkers.some((marker) => sentence.includes(marker)),
+      !sentenceIsUncertaintyFramed(sentence) && sentenceContainsSeriousCrimeMarker(sentence),
   );
   return explicitlyAttributedQuote || unframedSevereAllegation;
 }

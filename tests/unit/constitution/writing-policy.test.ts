@@ -6,6 +6,58 @@ import {
   constitutionalTopicCreationIssue,
   constitutionalTopicWritingIssue,
 } from "@/lib/content/constitution-writing-policy";
+import { seriousFactualClaimRequiresStrongEvidence } from "@/modules/agents";
+
+/*
+  Madde 32 doğru/yanlış tablosu. Manşet ailesi ikiye ayrılır: (1) haber bülteni
+  öneki, (2) çekimli haber yüklemi. İki aile ayrı gerekçe metni üretir, bu yüzden
+  tabloda ayrı tutulur.
+*/
+const bulletinHeadlines = [
+  "son dakika ankarada yangın",
+  "şok gelişme",
+  "dakika dakika deprem anları",
+  // Bülten öneki + tek kelimelik olay adı.
+  "son dakika deprem",
+  "flaş transfer",
+  // Diakritiksiz yazım katlanarak yakalanır.
+  "flas: kritik aciklama",
+];
+
+/*
+  Çekimli haber yüklemi ailesi ikiye ayrılır. `PERSON_STATUS` yüklemleri bir kişinin
+  hukuki, mesleki veya hayati durumunu bildirir ve gövde güvenlik kapısına da girer.
+  `GENERIC` yüklemleri idari/kurumsal fiillerdir: başlıkta manşet sayılmalarının
+  nedeni başlığın tamamının o fiille bitmesidir, gövde içinde aynı fiil sıradan
+  düzyazıdır. Sınırın gerekçesi ve ölçümü `constitution-writing-policy.ts`
+  içindeki `NewsVerbHarm` yorumunda.
+*/
+const personStatusPredicateHeadlines = [
+  "şok: takımın teknik direktörü istifa etti",
+  "bakan görevden alındı",
+  "ünlü oyuncu hayatını kaybetti",
+  "üç şüpheli gözaltına alındı",
+  "belediye başkanı tutuklandı",
+  // Duyulan geçmiş ve olumsuz çekim de bitmiş haber yüklemidir.
+  "bakan görevden alınmış",
+  "bakan istifa etmedi",
+];
+
+const genericPredicateHeadlines = [
+  "son dakika: asgari ücrete zam geldi",
+  "İstanbul'da metro seferleri durduruldu",
+  "kitap toplatıldı",
+  "yüzü kapatan kıyafet yasağı iptal edildi",
+  "maç ertelendi",
+  "asgari ücrete zam yapılacak",
+  "sözleşme imzalanıyor",
+  "Ankara'da patlama oldu",
+  "asgari ücrete zam gelmedi",
+  "Ankara'da deprem olmuş",
+  "sözleşme imzalanmadı",
+];
+
+const predicateHeadlines = [...personStatusPredicateHeadlines, ...genericPredicateHeadlines];
 
 describe("constitutional writer policy", () => {
   it("requires a visible antecedent before treating an entry as a meaningful continuation", () => {
@@ -112,28 +164,38 @@ describe("constitutional writer policy", () => {
   });
 
   it("applies the Madde 32 permanent-address test to headline sentences", () => {
-    for (const headline of [
-      "şok: takımın teknik direktörü istifa etti",
-      "son dakika: asgari ücrete zam geldi",
-      "son dakika ankarada yangın",
-      "şok gelişme",
-      "dakika dakika deprem anları",
-      "bakan görevden alındı",
-      "ünlü oyuncu hayatını kaybetti",
-      "İstanbul'da metro seferleri durduruldu",
-      "kitap toplatıldı",
-      "yüzü kapatan kıyafet yasağı iptal edildi",
-      "üç şüpheli gözaltına alındı",
-      "maç ertelendi",
-      "asgari ücrete zam yapılacak",
-      "sözleşme imzalanıyor",
-      "Ankara'da patlama oldu",
-      "belediye başkanı tutuklandı",
-    ])
+    for (const headline of bulletinHeadlines)
       expect(constitutionalTopicWritingIssue(headline)).toMatchObject({
         code: "CONSTITUTION_TOPIC_NEWS_HEADLINE",
         article: 32,
+        reason: expect.stringContaining("Haber bülteni önekiyle") as unknown as string,
       });
+    for (const headline of predicateHeadlines)
+      expect(constitutionalTopicWritingIssue(headline)).toMatchObject({
+        code: "CONSTITUTION_TOPIC_NEWS_HEADLINE",
+        article: 32,
+        reason: expect.stringContaining("Çekimli haber yüklemiyle") as unknown as string,
+      });
+  });
+
+  it("keeps the Madde 32 person-status predicates synchronised with the body evidence gate", () => {
+    // Başlık kapısı ile gövde kapısı aynı fiil sözlüğünü paylaşır. Ayrışırlarsa
+    // manşet cümlesi başlıkta reddedilip gövdede serbest kalır: fail-open.
+    for (const headline of personStatusPredicateHeadlines)
+      expect(seriousFactualClaimRequiresStrongEvidence(`${headline}.`)).toBe(true);
+    /*
+      İdari yüklemler bilerek gövde kapısının dışında; oradaki güncellik ölçüsü
+      zaman zarfıdır, fiilin kendisi değil. "son dakika" ile başlayan başlık gövde
+      kapısında da zaman zarfı taşıdığı için bu alt kümenin dışında tutulur.
+    */
+    for (const headline of genericPredicateHeadlines.filter(
+      (title) => !title.startsWith("son dakika"),
+    ))
+      expect(seriousFactualClaimRequiresStrongEvidence(`${headline}.`)).toBe(false);
+    expect(seriousFactualClaimRequiresStrongEvidence("Son dakika: asgari ücrete zam geldi.")).toBe(
+      true,
+    );
+    expect(seriousFactualClaimRequiresStrongEvidence("Maç bugün ertelendi.")).toBe(true);
   });
 
   it("keeps permanent event, law, festival, work and compound titles out of the Madde 32 gate", () => {
@@ -156,6 +218,19 @@ describe("constitutional writer policy", () => {
       "istifa etmek",
       "hayatını kaybetmek",
       "görevden alınan bakan",
+      // Bülten sözcüğünün sabit terkibin parçası olduğu adlar ve bağlaçlı ad öbeği.
+      "şok ve titreşim analizi",
+      "flaş bellek veri kurtarma",
+      "flaş bellek sürücüsü",
+      "şok dalgası ölçümü",
+      "son dakika golüyle gelen galibiyet",
+      // Mastar ve sıfat-fiil haber yüklemi değildir.
+      "şampiyon olmak",
+      "ceza almak",
+      "rekor kırmak",
+      "transfer olmak",
+      "görevden alınmış bakan",
+      "deprem sigortası",
       "Türk sanatı",
       "sıkıntı",
       "gecekondu",
@@ -177,6 +252,13 @@ describe("constitutional writer policy", () => {
         "Magazin haberciliğinde sıradan bir olayı büyütmek için kullanılan manşet klişesidir.",
       ),
     ).toBeNull();
+    // Ad cümlesi: yüklem yine metalinguistik kategorinin kendisi.
+    expect(
+      constitutionalTopicCreationIssue(
+        "son dakika",
+        "Televizyon haberciliğinde acil gelişmeyi duyurmak için kullanılan bir manşet kalıbı.",
+      ),
+    ).toBeNull();
     expect(
       constitutionalTopicCreationIssue("şok gelişme", "Bugün açıklanan istifa gelişmesidir."),
     ).toMatchObject({ code: "CONSTITUTION_TOPIC_NEWS_HEADLINE", article: 32 });
@@ -184,6 +266,23 @@ describe("constitutional writer policy", () => {
       constitutionalTopicCreationIssue(
         "şok: bakan istifa etti",
         "Gazetecilikte sık kullanılan bir manşet klişesidir.",
+      ),
+    ).toMatchObject({ code: "CONSTITUTION_TOPIC_NEWS_HEADLINE", article: 32 });
+  });
+
+  it("opens the bulletin exception only when the entry's own predicate is the headline pattern", () => {
+    // Gövdede tesadüfen geçen dilbilim sözcüğü istisnayı açmamalı: gerçek manşet
+    // başlığı bu yoldan fail-open geçiyordu.
+    expect(
+      constitutionalTopicCreationIssue(
+        "son dakika ankara'da yangın",
+        "Yangın, kent güvenliği tartışmasını manşet düzeyinin ötesine taşıyan olaydır.",
+      ),
+    ).toMatchObject({ code: "CONSTITUTION_TOPIC_NEWS_HEADLINE", article: 32 });
+    expect(
+      constitutionalTopicCreationIssue(
+        "son dakika deprem",
+        "Deprem, yapı stoğuna dair söylem kadar denetim pratiğini de sorgulatan olaydır.",
       ),
     ).toMatchObject({ code: "CONSTITUTION_TOPIC_NEWS_HEADLINE", article: 32 });
   });
