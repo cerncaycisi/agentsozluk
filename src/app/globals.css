@@ -50,6 +50,14 @@
   --on-primary: 255 255 255;
   --on-accent: 255 255 255;
   --on-destructive: 255 255 255;
+  /**
+   * DOLU BİRİNCİL BUTON — `--primary`den AYRI token. Açık temada ikisi aynı
+   * değer; ayrımın sebebi koyu temada, bkz. aşağıdaki koyu blok. Burada ayrı
+   * yazılmasının tek nedeni butonun hangi tokenı okuduğunun tek yerde belli
+   * olması: `--primary` değişirse buton kendiliğinden peşinden gitmesin.
+   */
+  --primary-fill: 158 67 45;
+  --on-primary-fill: 255 255 255;
 
   /**
    * DURUM KATMANI — hover / focus-visible / active / disabled
@@ -76,7 +84,14 @@
    *                          metni 0.08'de 4.616, 0.10'da 4.36 — eşiğin altına düşüyor.
    *                          Aynı sebeple `.chip-active` örtü ALMIYOR (aşağıda).
    *   dolgu (0.12 / 0.20) — üstünde yalnız `--on-*` metin olan doygun dolgular.
-   *                          Orada örtü kontrastı DÜŞÜRMÜYOR, artırıyor: 6.374 → 7.056.
+   *                          Örtü, dolgunun metinden UZAK yönüne düşüyorsa
+   *                          kontrastı artırır: 6.374 → 7.056 (açık tema),
+   *                          6.903 → 7.585 (koyu temadaki parlak `bg-primary`).
+   *                          `--primary-fill` bunun İSTİSNASI: o dolgu koyu
+   *                          temada da koyu, örtü onu metne yaklaştırıyor ve
+   *                          kontrast 6.808 → 4.608'e iniyor. Eşiğin üstünde
+   *                          kalıyor ama dolgunun ne kadar koyulaşabileceğinin
+   *                          sınırını bu çiziyor; ölçüm 5. maddede.
    */
   --state-tint: 43 47 54;
   --overlay-hover: linear-gradient(rgb(var(--state-tint) / 0.08) 0 0);
@@ -86,7 +101,8 @@
 }
 
 /**
- * KOYU TEMA — açık temadan çevrilmişti, ölçülmemişti. Dört değer ayarlandı.
+ * KOYU TEMA — açık temadan çevrilmişti, ölçülmemişti. Önce dört değer ayarlandı,
+ * sonra dolu birincil buton kendi tokenına ayrıldı (5. madde).
  * Değerler İKİ blokta birden yazılı (sistem koyu teması ve düğmeyle seçilen koyu
  * tema); biri güncellenip diğeri unutulursa temalar ayrışır.
  *
@@ -124,8 +140,72 @@
  *    aileden (success 151°, warning 47°), parlaklıkları paletin diğer semantik
  *    renkleriyle aynı bantta (zemine karşı 6.3–6.9; primary 6.41, destructive 6.32).
  *
+ * 5) `--primary-fill: 145 69 39` — DOLU BİRİNCİL BUTONUN AYRI TOKENI (2026-08-21).
+ *    Yukarıdaki (2) maddesi tavana çarpmıştı ve tavan yapısaldı: `--primary` aynı
+ *    anda iki iş yapıyor. Biri koyu zeminde OKUNAN METİN (link, eyebrow, çip
+ *    metni, odak halkası) — orada 4.5:1 için yüksek luminans ŞART, alt sınırı
+ *    çipin tonlu dolgusu üstündeki primary metin çiziyor (5.246). Öteki, 80×44
+ *    piksellik DOLGU — orada aynı yüksek luminans doğrudan yayılan ışık. Tek
+ *    token iki işi yapamaz; ayrılınca ikisi de serbest kalıyor.
+ *
+ *    Dolgu artık AÇIK TEMANIN DEYİMİYLE aynı: derin kiremit + beyaz metin.
+ *    Açık temanın dolgusu L* 40.4, bu 38.6 — aynı derinlik bandı, ton 17°
+ *    (koyu temanın somon tonu; `--primary` ile aynı aile).
+ *
+ *      metin (beyaz) / dolgu                  7.09→6.81   (eşik 4.5)
+ *      metin / dolgu + dolgu hover (.12)      6.81→5.39   (eşik 4.5)
+ *      metin / dolgu + dolgu basma (.20)      6.81→4.61   (eşik 4.5) ← BAĞLAYICI
+ *      dolgu ↔ dolgu + hover örtüsü           1.263       (eşik 1.05)
+ *      dolgu ↔ dolgu + basma örtüsü           1.478       (eşik 1.08)
+ *
+ *    Basma örtüsü BAĞLAYICI ve yönü ters: koyu temada örtü AÇIYOR, dolgu ise
+ *    artık koyu, yani örtü metne YAKLAŞIYOR ve kontrastı düşürüyor. Bu, nötr
+ *    yüzeylerin davranışının aynısı (ink/page 14.605 → 11.978); parlak dolgular
+ *    için yazılmış "örtü kontrastı ARTIRIR" cümlesi bu dolgu için geçerli değil.
+ *    Dolgu bundan daha açık olamaz: 153 73 41'de basma 4.35'e düşüyordu.
+ *
+ *    DOLGU/ZEMİN SINIRI, bilinçli olarak 3:1 DEĞİL: dolgu/page 2.586,
+ *    dolgu/surface 2.313. SC 1.4.11 bir bileşeni TANIMLAMAK için gereken görsel
+ *    bilgiye 3:1 istiyor; burada tanımlayan şey metin etiketi — bu depoda aynı
+ *    gerekçe `.button-secondary` (durgun kenarlık 1.356) ve `.chip` için zaten
+ *    yazılı; `.icon-button`ın kutusu da aynı gerekçeyle kaldırılmıştı.
+ *
+ *    Alternatif YOK, ispat: dolguyu page'e karşı 3:1'e çıkarmak 158 78 46
+ *    gerektiriyor, orada basma örtüsü altındaki beyaz metin 4.12'ye — METİN
+ *    eşiğinin ALTINA — düşüyor; surface'e karşı 3:1 daha da açık bir dolgu
+ *    istiyor ve metin daha da bozuluyor. İki eşik aynı anda tutulamıyor,
+ *    WCAG'ın zorunlu tuttuğu taraf metin. Kenarlık eklemek üçüncü bir yol
+ *    olurdu ama bu denetimin yönü tersi: `.icon-button` kutusunu, `.chip` ve
+ *    `.button-secondary` 3:1 halkasını tam da "etiket zaten tanıtıyor"
+ *    gerekçesiyle taşımıyor. CTA'ya halka takmak sistemin diline aykırı.
+ *
+ *    ÖLÇÜM — gerçek ekran görüntüsünün piksel luminansı (1280×800, üretim
+ *    derlemesi, CTA kutusu / tüm görünüm). "önce" ve "sonra" AYNI derlemeden:
+ *    "önce" kipinde iki token eski değerine sabitlendi, DOM birebir aynı.
+ *      ziyaretçi, başlık şeridindeki 80×44 CTA (alan payı %0.344)
+ *        /giris       koyu %4.872 → %2.696   (14.17× → 7.84×)
+ *        ana sayfa    koyu %4.673 → %2.133   (13.59× → 6.21×)
+ *        /ayarlar     koyu %5.193 → %2.377   (15.11× → 6.92×)
+ *        açık tema    %0.058 (0.17×) — üç sayfada da BİT BİT AYNI kaldı
+ *      girişli, 414×44 "Giriş yap"  koyu %28.572 → %12.462 (16.06× → 7.01×)
+ *      girişli, 135×44 "Profili kaydet" koyu %5.655 → %3.848 (15.32× → 10.42×)
+ *
+ *    Tahmin %1.9 idi, çıkan %2.1–2.7. Fark BEYAZ ETİKETTEN geliyor ve tahmin
+ *    onu saymamıştı: dolgu koyulaşırken metin koyudan (Y 0.008) beyaza (Y 1.0)
+ *    döndü. Ölçülen buton ortalaması 0.139, oysa çıplak dolgu 0.104 — kutunun
+ *    yaydığı ışığın dörtte biri artık harflerin. Etiket daha da kısılamaz:
+ *    beyaz zaten en açık değer ve basma örtüsü altında marj 4.608–4.5 = 0.108.
+ *    Kısa etiketli geniş butonda kazanç en yüksek (%56), metnin alanı kapladığı
+ *    dar butonda en düşük (%32).
+ *
+ *    Dolgu KÜÇÜLMEDİ, yalnız `.button-primary` ailesini kapsıyor. `bg-primary`
+ *    ile boyanan öteki yerler (seçili oy, sayfalama, otomatik tamamlama satırı)
+ *    parlak `--primary`de kaldı: onlar EYLEM değil DURUM göstergesi, küçükler ve
+ *    fark edilmeleri gerekiyor; ölçülen ışık sorunu 80×44'lük CTA'daydı.
+ *
  * `--on-*` üçlüsü `--page` ile birlikte hareket etti: bunlar "rampanın uç ucu"
- * demek, koyuda en koyu değer hâlâ `--page`.
+ * demek, koyuda en koyu değer hâlâ `--page`. `--on-primary-fill` bu üçlüye
+ * KATILMIYOR: dolgu koyulaştığı için üstündeki metin her iki temada da beyaz.
  *
  * Dokunulmayanlar: `--ink`, `--muted`, `--accent`, `--destructive`,
  * `--border-strong`, `--state-tint`. Kiremit/somon kimliği korundu (ton 17°).
@@ -138,6 +218,7 @@
     --ink: 232 234 237;
     --muted: 154 162 174;
     --primary: 218 135 103;
+    --primary-fill: 145 69 39;
     --accent: 154 162 174;
     --destructive: 249 112 102;
     --success: 89 175 133;
@@ -145,6 +226,7 @@
     --border: 46 51 60;
     --border-strong: 102 110 122;
     --on-primary: 22 25 31;
+    --on-primary-fill: 255 255 255;
     --on-accent: 22 25 31;
     --on-destructive: 22 25 31;
     /* Örtü rengi burada da `--ink`: koyu zeminde hover AÇARAK ayrışır. */
@@ -159,6 +241,7 @@
   --ink: 232 234 237;
   --muted: 154 162 174;
   --primary: 218 135 103;
+  --primary-fill: 145 69 39;
   --accent: 154 162 174;
   --destructive: 249 112 102;
   --success: 89 175 133;
@@ -166,6 +249,7 @@
   --border: 46 51 60;
   --border-strong: 102 110 122;
   --on-primary: 22 25 31;
+  --on-primary-fill: 255 255 255;
   --on-accent: 22 25 31;
   --on-destructive: 22 25 31;
   /* Örtü rengi burada da `--ink`: koyu zeminde hover AÇARAK ayrışır. */
@@ -268,11 +352,16 @@ body {
    */
 
   /* Dolu buton. Örtü doygun dolgunun üstüne biner, dolguyu değiştirmez —
-     `bg-destructive` gibi bir yardımcı sınıfla ezilen renk hover'da da korunur. */
+     `bg-destructive` gibi bir yardımcı sınıfla ezilen renk hover'da da korunur.
+
+     Dolgu `--primary` DEĞİL `--primary-fill`: ikisi açık temada aynı değer, koyu
+     temada ayrışıyor. Gerekçesi ve ölçülen bütün çiftleri koyu tema bloğunun
+     5. maddesinde. `--on-primary` değil `--on-primary-fill` de aynı sebeple:
+     dolgu her iki temada koyu, üstündeki metin her iki temada beyaz. */
   .button-primary {
     @apply inline-flex min-h-11 items-center justify-center rounded px-4 py-2 font-medium;
-    background-color: rgb(var(--primary));
-    color: rgb(var(--on-primary));
+    background-color: rgb(var(--primary-fill));
+    color: rgb(var(--on-primary-fill));
     transition:
       background-image 120ms ease,
       border-color 120ms ease,

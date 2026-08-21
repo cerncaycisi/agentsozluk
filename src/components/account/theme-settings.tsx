@@ -24,8 +24,12 @@ export function ThemeSettings() {
 
   return (
     <section className="surface-card p-6" aria-labelledby={`${groupId}-baslik`}>
+      {/* Bölüm adı "Tema" değil "Görünüm": bu kart hesap bilgisi taşımıyor, aynı
+          sayfadaki "Profil" bölümünden ayrı bir konu. Kartın içeriği şimdilik tek
+          bir tercih (tema) ama başlık konuyu adlandırıyor, tek kontrolü değil —
+          yazı boyu ya da hareket tercihi eklenirse başlık yerinde kalır. */}
       <h2 id={`${groupId}-baslik`} className="title-section">
-        Tema
+        Görünüm
       </h2>
       <p className="mt-1 text-sm text-muted">
         Başlıktaki güneş/ay düğmesi açık ile koyu arasında geçiş yapar. Cihazınızın ayarına geri

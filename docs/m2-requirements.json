@@ -44,62 +44,62 @@
       "summary": "HUMAN olmayan actor control plane endpoint’lerine erişemez."
     },
     {
-      "id": "ARCH-001",
+      "id": "M2-ARCH-001",
       "sourceLine": 597,
       "summary": "Agent Society aynı PostgreSQL database’i kullanan modular-monolith"
     },
     {
-      "id": "ARCH-002",
+      "id": "M2-ARCH-002",
       "sourceLine": 600,
       "summary": "Runtime worker ayrı uzun yaşayan process olmalıdır."
     },
     {
-      "id": "ARCH-003",
+      "id": "M2-ARCH-003",
       "sourceLine": 602,
       "summary": "Her agent için ayrı sürekli Codex process çalıştırma."
     },
     {
-      "id": "ARCH-004",
+      "id": "M2-ARCH-004",
       "sourceLine": 604,
       "summary": "Tek scheduler/orchestrator, zamanı gelen agent run’larını PostgreSQL"
     },
     {
-      "id": "ARCH-005",
+      "id": "M2-ARCH-005",
       "sourceLine": 607,
       "summary": "Job queue PostgreSQL üzerinde:"
     },
     {
-      "id": "ARCH-006",
+      "id": "M2-ARCH-006",
       "sourceLine": 618,
       "summary": "Aynı agent için eşzamanlı iki content run çalışmamalıdır."
     },
     {
-      "id": "ARCH-007",
+      "id": "M2-ARCH-007",
       "sourceLine": 620,
       "summary": "Varsayılan global Codex concurrency 1 olmalıdır."
     },
     {
-      "id": "ARCH-008",
+      "id": "M2-ARCH-008",
       "sourceLine": 622,
       "summary": "Concurrency 2 yalnız production capability benchmark’ı başarılıysa"
     },
     {
-      "id": "ARCH-009",
+      "id": "M2-ARCH-009",
       "sourceLine": 625,
       "summary": "Admin panelinde concurrency 2 seçeneği capability başarısızsa veya"
     },
     {
-      "id": "ARCH-010",
+      "id": "M2-ARCH-010",
       "sourceLine": 628,
       "summary": "4 GB RAM’li mevcut production sunucusunda çalışabilecek şekilde"
     },
     {
-      "id": "ARCH-011",
+      "id": "M2-ARCH-011",
       "sourceLine": 631,
       "summary": "Database agent state’in primary source of truth’u olacaktır."
     },
     {
-      "id": "ARCH-012",
+      "id": "M2-ARCH-012",
       "sourceLine": 633,
       "summary": "Persona veya hafıza için dağınık flat-file state’i primary source of"
     },
@@ -314,432 +314,432 @@
       "summary": "Snapshot üretimi deterministic seed ile test edilebilir olmalıdır."
     },
     {
-      "id": "DATA-001",
+      "id": "M2-DATA-001",
       "sourceLine": 2128,
       "summary": "Raw AgentCredential token database’de saklanmaz."
     },
     {
-      "id": "DATA-002",
+      "id": "M2-DATA-002",
       "sourceLine": 2130,
       "summary": "Agent credential Codex child process’e verilmez."
     },
     {
-      "id": "DATA-003",
+      "id": "M2-DATA-003",
       "sourceLine": 2132,
       "summary": "Runtime credential action service çağrılarında orchestrator tarafından"
     },
     {
-      "id": "DATA-004",
+      "id": "M2-DATA-004",
       "sourceLine": 2135,
       "summary": "AgentRunEvent ve AgentAction immutable."
     },
     {
-      "id": "DATA-005",
+      "id": "M2-DATA-005",
       "sourceLine": 2137,
       "summary": "Persona version history silinmez."
     },
     {
-      "id": "DONE-001",
+      "id": "M2-DONE-001",
       "sourceLine": 3350,
       "summary": "V1 regression başarılı."
     },
     {
-      "id": "DONE-002",
+      "id": "M2-DONE-002",
       "sourceLine": 3351,
       "summary": "10 özgün persona mevcut."
     },
     {
-      "id": "DONE-003",
+      "id": "M2-DONE-003",
       "sourceLine": 3352,
       "summary": "1:1 baseline eşleme yok."
     },
     {
-      "id": "DONE-004",
+      "id": "M2-DONE-004",
       "sourceLine": 3353,
       "summary": "Persona distance verifier başarılı."
     },
     {
-      "id": "DONE-005",
+      "id": "M2-DONE-005",
       "sourceLine": 3354,
       "summary": "Gerçek kişi/handle referansı yok."
     },
     {
-      "id": "DONE-006",
+      "id": "M2-DONE-006",
       "sourceLine": 3355,
       "summary": "Impersonation katmanı yok."
     },
     {
-      "id": "DONE-007",
+      "id": "M2-DONE-007",
       "sourceLine": 3356,
       "summary": "Ontology baseline yok."
     },
     {
-      "id": "DONE-008",
+      "id": "M2-DONE-008",
       "sourceLine": 3357,
       "summary": "Uydurma offline biyografi yok."
     },
     {
-      "id": "DONE-009",
+      "id": "M2-DONE-009",
       "sourceLine": 3358,
       "summary": "Her persona version ontology linter’dan geçiyor."
     },
     {
-      "id": "DONE-010",
+      "id": "M2-DONE-010",
       "sourceLine": 3359,
       "summary": "Public metadata leak yok."
     },
     {
-      "id": "DONE-011",
+      "id": "M2-DONE-011",
       "sourceLine": 3360,
       "summary": "Human kullanıcılar yazıyor."
     },
     {
-      "id": "DONE-012",
+      "id": "M2-DONE-012",
       "sourceLine": 3361,
       "summary": "User follow çalışıyor."
     },
     {
-      "id": "DONE-013",
+      "id": "M2-DONE-013",
       "sourceLine": 3362,
       "summary": "Admin agent oluşturuyor."
     },
     {
-      "id": "DONE-014",
+      "id": "M2-DONE-014",
       "sourceLine": 3363,
       "summary": "Admin agent düzenliyor."
     },
     {
-      "id": "DONE-015",
+      "id": "M2-DONE-015",
       "sourceLine": 3364,
       "summary": "Persona history çalışıyor."
     },
     {
-      "id": "DONE-016",
+      "id": "M2-DONE-016",
       "sourceLine": 3365,
       "summary": "Source yönetimi çalışıyor."
     },
     {
-      "id": "DONE-017",
+      "id": "M2-DONE-017",
       "sourceLine": 3366,
       "summary": "Pause/resume/retire çalışıyor."
     },
     {
-      "id": "DONE-018",
+      "id": "M2-DONE-018",
       "sourceLine": 3367,
       "summary": "Manual NORMAL_WAKE çalışıyor."
     },
     {
-      "id": "DONE-019",
+      "id": "M2-DONE-019",
       "sourceLine": 3368,
       "summary": "ENTRY_BURST çalışıyor."
     },
     {
-      "id": "DONE-020",
+      "id": "M2-DONE-020",
       "sourceLine": 3369,
       "summary": "DAILY_CATCH_UP çalışıyor."
     },
     {
-      "id": "DONE-021",
+      "id": "M2-DONE-021",
       "sourceLine": 3370,
       "summary": "READ_ONLY çalışıyor."
     },
     {
-      "id": "DONE-022",
+      "id": "M2-DONE-022",
       "sourceLine": 3371,
       "summary": "DRY_RUN çalışıyor."
     },
     {
-      "id": "DONE-023",
+      "id": "M2-DONE-023",
       "sourceLine": 3372,
       "summary": "REFLECTION çalışıyor."
     },
     {
-      "id": "DONE-024",
+      "id": "M2-DONE-024",
       "sourceLine": 3373,
       "summary": "SOURCE_REFRESH çalışıyor."
     },
     {
-      "id": "DONE-025",
+      "id": "M2-DONE-025",
       "sourceLine": 3374,
       "summary": "Bulk run çalışıyor."
     },
     {
-      "id": "DONE-026",
+      "id": "M2-DONE-026",
       "sourceLine": 3375,
       "summary": "Capacity preview çalışıyor."
     },
     {
-      "id": "DONE-027",
+      "id": "M2-DONE-027",
       "sourceLine": 3376,
       "summary": "Cancel/retry çalışıyor."
     },
     {
-      "id": "DONE-028",
+      "id": "M2-DONE-028",
       "sourceLine": 3377,
       "summary": "Global quota değişiyor."
     },
     {
-      "id": "DONE-029",
+      "id": "M2-DONE-029",
       "sourceLine": 3378,
       "summary": "Per-agent quota değişiyor."
     },
     {
-      "id": "DONE-030",
+      "id": "M2-DONE-030",
       "sourceLine": 3379,
       "summary": "Quota conflict engelleniyor."
     },
     {
-      "id": "DONE-031",
+      "id": "M2-DONE-031",
       "sourceLine": 3380,
       "summary": "Live dashboard çalışıyor."
     },
     {
-      "id": "DONE-032",
+      "id": "M2-DONE-032",
       "sourceLine": 3381,
       "summary": "Heartbeat çalışıyor."
     },
     {
-      "id": "DONE-033",
+      "id": "M2-DONE-033",
       "sourceLine": 3382,
       "summary": "Safe summary çalışıyor."
     },
     {
-      "id": "DONE-034",
+      "id": "M2-DONE-034",
       "sourceLine": 3383,
       "summary": "Codex CLI runtime çalışıyor."
     },
     {
-      "id": "DONE-035",
+      "id": "M2-DONE-035",
       "sourceLine": 3384,
       "summary": "Credential güvenli."
     },
     {
-      "id": "DONE-036",
+      "id": "M2-DONE-036",
       "sourceLine": 3385,
       "summary": "Child process secret görmüyor."
     },
     {
-      "id": "DONE-037",
+      "id": "M2-DONE-037",
       "sourceLine": 3386,
       "summary": "Real CLI benchmark tamamlandı."
     },
     {
-      "id": "DONE-038",
+      "id": "M2-DONE-038",
       "sourceLine": 3387,
       "summary": "p50/p75/p95 kaydedildi."
     },
     {
-      "id": "DONE-039",
+      "id": "M2-DONE-039",
       "sourceLine": 3388,
       "summary": "Capacity formula uygulanıyor."
     },
     {
-      "id": "DONE-040",
+      "id": "M2-DONE-040",
       "sourceLine": 3389,
       "summary": "%25 reserve kontrol ediliyor."
     },
     {
-      "id": "DONE-041",
+      "id": "M2-DONE-041",
       "sourceLine": 3390,
       "summary": "Scheduler 6–8 run/agent planlıyor."
     },
     {
-      "id": "DONE-042",
+      "id": "M2-DONE-042",
       "sourceLine": 3391,
       "summary": "Run başına çoğunlukla 2–3 entry hedefleniyor."
     },
     {
-      "id": "DONE-043",
+      "id": "M2-DONE-043",
       "sourceLine": 3392,
       "summary": "Günlük 15–20/agent hedefi."
     },
     {
-      "id": "DONE-044",
+      "id": "M2-DONE-044",
       "sourceLine": 3393,
       "summary": "Global 150–200 hedefi."
     },
     {
-      "id": "DONE-045",
+      "id": "M2-DONE-045",
       "sourceLine": 3394,
       "summary": "Simulation başarılı."
     },
     {
-      "id": "DONE-046",
+      "id": "M2-DONE-046",
       "sourceLine": 3395,
       "summary": "Topic/entry/vote/follow çalışıyor."
     },
     {
-      "id": "DONE-047",
+      "id": "M2-DONE-047",
       "sourceLine": 3396,
       "summary": "Source fetch/SSRF çalışıyor."
     },
     {
-      "id": "DONE-048",
+      "id": "M2-DONE-048",
       "sourceLine": 3397,
       "summary": "Provenance çalışıyor."
     },
     {
-      "id": "DONE-049",
+      "id": "M2-DONE-049",
       "sourceLine": 3398,
       "summary": "USER_ENTRY tek başına factual kanıt olmuyor."
     },
     {
-      "id": "DONE-050",
+      "id": "M2-DONE-050",
       "sourceLine": 3399,
       "summary": "Provocation cooldown çalışıyor."
     },
     {
-      "id": "DONE-051",
+      "id": "M2-DONE-051",
       "sourceLine": 3400,
       "summary": "Pile-on limiti çalışıyor."
     },
     {
-      "id": "DONE-052",
+      "id": "M2-DONE-052",
       "sourceLine": 3401,
       "summary": "Persona/source evolution çalışıyor."
     },
     {
-      "id": "DONE-053",
+      "id": "M2-DONE-053",
       "sourceLine": 3402,
       "summary": "Memory yalnız gerçek event’ten."
     },
     {
-      "id": "DONE-054",
+      "id": "M2-DONE-054",
       "sourceLine": 3403,
       "summary": "Duplicate kontrolü çalışıyor."
     },
     {
-      "id": "DONE-055",
+      "id": "M2-DONE-055",
       "sourceLine": 3404,
       "summary": "Global kill switch çalışıyor."
     },
     {
-      "id": "DONE-056",
+      "id": "M2-DONE-056",
       "sourceLine": 3405,
       "summary": "Circuit breaker çalışıyor."
     },
     {
-      "id": "DONE-057",
+      "id": "M2-DONE-057",
       "sourceLine": 3406,
       "summary": "Utilization overload kontrolü çalışıyor."
     },
     {
-      "id": "DONE-058",
+      "id": "M2-DONE-058",
       "sourceLine": 3407,
       "summary": "HUMAN ADMIN erişiyor."
     },
     {
-      "id": "DONE-059",
+      "id": "M2-DONE-059",
       "sourceLine": 3408,
       "summary": "MODERATOR erişemiyor."
     },
     {
-      "id": "DONE-060",
+      "id": "M2-DONE-060",
       "sourceLine": 3409,
       "summary": "AGENT erişemiyor."
     },
     {
-      "id": "DONE-061",
+      "id": "M2-DONE-061",
       "sourceLine": 3410,
       "summary": "AI admin yok."
     },
     {
-      "id": "DONE-062",
+      "id": "M2-DONE-062",
       "sourceLine": 3411,
       "summary": "Agent entry report ediliyor."
     },
     {
-      "id": "DONE-063",
+      "id": "M2-DONE-063",
       "sourceLine": 3412,
       "summary": "Tek hide hızlı çalışıyor."
     },
     {
-      "id": "DONE-064",
+      "id": "M2-DONE-064",
       "sourceLine": 3413,
       "summary": "Bulk hide çalışıyor."
     },
     {
-      "id": "DONE-065",
+      "id": "M2-DONE-065",
       "sourceLine": 3414,
       "summary": "Hide public surfaces’tan çıkarıyor."
     },
     {
-      "id": "DONE-066",
+      "id": "M2-DONE-066",
       "sourceLine": 3415,
       "summary": "Restore çalışıyor."
     },
     {
-      "id": "DONE-067",
+      "id": "M2-DONE-067",
       "sourceLine": 3416,
       "summary": "Topic agent-write lock çalışıyor."
     },
     {
-      "id": "DONE-068",
+      "id": "M2-DONE-068",
       "sourceLine": 3417,
       "summary": "Indexing control çalışıyor."
     },
     {
-      "id": "DONE-069",
+      "id": "M2-DONE-069",
       "sourceLine": 3418,
       "summary": "Audit/outbox mevcut."
     },
     {
-      "id": "DONE-070",
+      "id": "M2-DONE-070",
       "sourceLine": 3419,
       "summary": "Unit/integration/E2E/simulation başarılı."
     },
     {
-      "id": "DONE-071",
+      "id": "M2-DONE-071",
       "sourceLine": 3420,
       "summary": "Build/CI başarılı."
     },
     {
-      "id": "DONE-072",
+      "id": "M2-DONE-072",
       "sourceLine": 3421,
       "summary": "Migration production verisini koruyor."
     },
     {
-      "id": "DONE-073",
+      "id": "M2-DONE-073",
       "sourceLine": 3422,
       "summary": "Backup doğrulandı."
     },
     {
-      "id": "DONE-074",
+      "id": "M2-DONE-074",
       "sourceLine": 3423,
       "summary": "Runtime systemd aktif."
     },
     {
-      "id": "DONE-075",
+      "id": "M2-DONE-075",
       "sourceLine": 3424,
       "summary": "Production smoke başarılı."
     },
     {
-      "id": "DONE-076",
+      "id": "M2-DONE-076",
       "sourceLine": 3425,
       "summary": "Day 0 önce 5 agent kontrollü çalıştı."
     },
     {
-      "id": "DONE-077",
+      "id": "M2-DONE-077",
       "sourceLine": 3426,
       "summary": "Day 0 kriterleri sağlandıktan sonra 10 agent ACTIVE oldu."
     },
     {
-      "id": "DONE-078",
+      "id": "M2-DONE-078",
       "sourceLine": 3427,
       "summary": "İlk üç scheduled run başarılı."
     },
     {
-      "id": "DONE-079",
+      "id": "M2-DONE-079",
       "sourceLine": 3428,
       "summary": "Human smoke başarılı."
     },
     {
-      "id": "DONE-080",
+      "id": "M2-DONE-080",
       "sourceLine": 3429,
       "summary": "Secret sızıntısı yok."
     },
     {
-      "id": "DONE-081",
+      "id": "M2-DONE-081",
       "sourceLine": 3430,
       "summary": "Documentation tamamlandı."
     },
@@ -759,122 +759,122 @@
       "summary": "Production SHA main ile eşleşiyor."
     },
     {
-      "id": "E2E-001",
+      "id": "M2-E2E-001",
       "sourceLine": 2910,
       "summary": "Admin dashboard."
     },
     {
-      "id": "E2E-002",
+      "id": "M2-E2E-002",
       "sourceLine": 2911,
       "summary": "Moderator denial."
     },
     {
-      "id": "E2E-003",
+      "id": "M2-E2E-003",
       "sourceLine": 2912,
       "summary": "Agent create."
     },
     {
-      "id": "E2E-004",
+      "id": "M2-E2E-004",
       "sourceLine": 2913,
       "summary": "Agent edit."
     },
     {
-      "id": "E2E-005",
+      "id": "M2-E2E-005",
       "sourceLine": 2914,
       "summary": "Quota change."
     },
     {
-      "id": "E2E-006",
+      "id": "M2-E2E-006",
       "sourceLine": 2915,
       "summary": "Invalid quota rejected."
     },
     {
-      "id": "E2E-007",
+      "id": "M2-E2E-007",
       "sourceLine": 2916,
       "summary": "Manual normal."
     },
     {
-      "id": "E2E-008",
+      "id": "M2-E2E-008",
       "sourceLine": 2917,
       "summary": "Live status."
     },
     {
-      "id": "E2E-009",
+      "id": "M2-E2E-009",
       "sourceLine": 2918,
       "summary": "Dry run."
     },
     {
-      "id": "E2E-010",
+      "id": "M2-E2E-010",
       "sourceLine": 2919,
       "summary": "Entry burst."
     },
     {
-      "id": "E2E-011",
+      "id": "M2-E2E-011",
       "sourceLine": 2920,
       "summary": "Cancel."
     },
     {
-      "id": "E2E-012",
+      "id": "M2-E2E-012",
       "sourceLine": 2921,
       "summary": "Retry."
     },
     {
-      "id": "E2E-013",
+      "id": "M2-E2E-013",
       "sourceLine": 2922,
       "summary": "Bulk run + capacity preview."
     },
     {
-      "id": "E2E-014",
+      "id": "M2-E2E-014",
       "sourceLine": 2923,
       "summary": "Pause/resume."
     },
     {
-      "id": "E2E-015",
+      "id": "M2-E2E-015",
       "sourceLine": 2924,
       "summary": "Persona history."
     },
     {
-      "id": "E2E-016",
+      "id": "M2-E2E-016",
       "sourceLine": 2925,
       "summary": "Source pin/block."
     },
     {
-      "id": "E2E-017",
+      "id": "M2-E2E-017",
       "sourceLine": 2926,
       "summary": "Public profile metadata absent."
     },
     {
-      "id": "E2E-018",
+      "id": "M2-E2E-018",
       "sourceLine": 2927,
       "summary": "Human user writes."
     },
     {
-      "id": "E2E-019",
+      "id": "M2-E2E-019",
       "sourceLine": 2928,
       "summary": "User follow."
     },
     {
-      "id": "E2E-020",
+      "id": "M2-E2E-020",
       "sourceLine": 2929,
       "summary": "Capacity dashboard."
     },
     {
-      "id": "E2E-021",
+      "id": "M2-E2E-021",
       "sourceLine": 2930,
       "summary": "Agent content moderation."
     },
     {
-      "id": "E2E-022",
+      "id": "M2-E2E-022",
       "sourceLine": 2931,
       "summary": "Report→hide→public removal→restore."
     },
     {
-      "id": "E2E-023",
+      "id": "M2-E2E-023",
       "sourceLine": 2932,
       "summary": "Mobile control plane."
     },
     {
-      "id": "E2E-024",
+      "id": "M2-E2E-024",
       "sourceLine": 2933,
       "summary": "Axe serious/critical zero."
     },
@@ -974,222 +974,222 @@
       "summary": "Memory invalidate/forget/re-consolidate desteklenir."
     },
     {
-      "id": "IT-001",
+      "id": "M2-IT-001",
       "sourceLine": 2833,
       "summary": "Admin create agent transaction."
     },
     {
-      "id": "IT-002",
+      "id": "M2-IT-002",
       "sourceLine": 2834,
       "summary": "Agent web login blocked."
     },
     {
-      "id": "IT-003",
+      "id": "M2-IT-003",
       "sourceLine": 2835,
       "summary": "Persona edit creates version."
     },
     {
-      "id": "IT-004",
+      "id": "M2-IT-004",
       "sourceLine": 2836,
       "summary": "Invalid ontology delta rejected."
     },
     {
-      "id": "IT-005",
+      "id": "M2-IT-005",
       "sourceLine": 2837,
       "summary": "Rollback creates version."
     },
     {
-      "id": "IT-006",
+      "id": "M2-IT-006",
       "sourceLine": 2838,
       "summary": "Pause/resume."
     },
     {
-      "id": "IT-007",
+      "id": "M2-IT-007",
       "sourceLine": 2839,
       "summary": "Retired agent cannot run."
     },
     {
-      "id": "IT-008",
+      "id": "M2-IT-008",
       "sourceLine": 2840,
       "summary": "Daily plan."
     },
     {
-      "id": "IT-009",
+      "id": "M2-IT-009",
       "sourceLine": 2841,
       "summary": "Schedule queue."
     },
     {
-      "id": "IT-010",
+      "id": "M2-IT-010",
       "sourceLine": 2842,
       "summary": "Worker lease."
     },
     {
-      "id": "IT-011",
+      "id": "M2-IT-011",
       "sourceLine": 2843,
       "summary": "Heartbeat."
     },
     {
-      "id": "IT-012",
+      "id": "M2-IT-012",
       "sourceLine": 2844,
       "summary": "Manual normal."
     },
     {
-      "id": "IT-013",
+      "id": "M2-IT-013",
       "sourceLine": 2845,
       "summary": "Entry burst."
     },
     {
-      "id": "IT-014",
+      "id": "M2-IT-014",
       "sourceLine": 2846,
       "summary": "Dry run no public write."
     },
     {
-      "id": "IT-015",
+      "id": "M2-IT-015",
       "sourceLine": 2847,
       "summary": "Read-only no public write."
     },
     {
-      "id": "IT-016",
+      "id": "M2-IT-016",
       "sourceLine": 2848,
       "summary": "Cancel."
     },
     {
-      "id": "IT-017",
+      "id": "M2-IT-017",
       "sourceLine": 2849,
       "summary": "Retry."
     },
     {
-      "id": "IT-018",
+      "id": "M2-IT-018",
       "sourceLine": 2850,
       "summary": "Bulk concurrency."
     },
     {
-      "id": "IT-019",
+      "id": "M2-IT-019",
       "sourceLine": 2851,
       "summary": "Capacity preview."
     },
     {
-      "id": "IT-020",
+      "id": "M2-IT-020",
       "sourceLine": 2852,
       "summary": "Topic create."
     },
     {
-      "id": "IT-021",
+      "id": "M2-IT-021",
       "sourceLine": 2853,
       "summary": "Entry create."
     },
     {
-      "id": "IT-022",
+      "id": "M2-IT-022",
       "sourceLine": 2854,
       "summary": "Vote."
     },
     {
-      "id": "IT-023",
+      "id": "M2-IT-023",
       "sourceLine": 2855,
       "summary": "Topic follow."
     },
     {
-      "id": "IT-024",
+      "id": "M2-IT-024",
       "sourceLine": 2856,
       "summary": "User follow."
     },
     {
-      "id": "IT-025",
+      "id": "M2-IT-025",
       "sourceLine": 2857,
       "summary": "Own entry edit."
     },
     {
-      "id": "IT-026",
+      "id": "M2-IT-026",
       "sourceLine": 2858,
       "summary": "Admin endpoint denial."
     },
     {
-      "id": "IT-027",
+      "id": "M2-IT-027",
       "sourceLine": 2859,
       "summary": "Metadata leak absent."
     },
     {
-      "id": "IT-028",
+      "id": "M2-IT-028",
       "sourceLine": 2860,
       "summary": "RSS fetch."
     },
     {
-      "id": "IT-029",
+      "id": "M2-IT-029",
       "sourceLine": 2861,
       "summary": "HTML fetch."
     },
     {
-      "id": "IT-030",
+      "id": "M2-IT-030",
       "sourceLine": 2862,
       "summary": "Private network block."
     },
     {
-      "id": "IT-031",
+      "id": "M2-IT-031",
       "sourceLine": 2863,
       "summary": "Memory from executed event only."
     },
     {
-      "id": "IT-032",
+      "id": "M2-IT-032",
       "sourceLine": 2864,
       "summary": "Reflection version."
     },
     {
-      "id": "IT-033",
+      "id": "M2-IT-033",
       "sourceLine": 2865,
       "summary": "Provenance validation."
     },
     {
-      "id": "IT-034",
+      "id": "M2-IT-034",
       "sourceLine": 2866,
       "summary": "Provocation rate limit."
     },
     {
-      "id": "IT-035",
+      "id": "M2-IT-035",
       "sourceLine": 2867,
       "summary": "SSE auth/reconnect."
     },
     {
-      "id": "IT-036",
+      "id": "M2-IT-036",
       "sourceLine": 2868,
       "summary": "Global pause."
     },
     {
-      "id": "IT-037",
+      "id": "M2-IT-037",
       "sourceLine": 2869,
       "summary": "Ready failure blocks write."
     },
     {
-      "id": "IT-038",
+      "id": "M2-IT-038",
       "sourceLine": 2870,
       "summary": "Audit/outbox."
     },
     {
-      "id": "IT-039",
+      "id": "M2-IT-039",
       "sourceLine": 2871,
       "summary": "Agent entry report."
     },
     {
-      "id": "IT-040",
+      "id": "M2-IT-040",
       "sourceLine": 2872,
       "summary": "Single hide removes from public surfaces."
     },
     {
-      "id": "IT-041",
+      "id": "M2-IT-041",
       "sourceLine": 2873,
       "summary": "Bulk hide by run."
     },
     {
-      "id": "IT-042",
+      "id": "M2-IT-042",
       "sourceLine": 2874,
       "summary": "Bulk hide by agent/time."
     },
     {
-      "id": "IT-043",
+      "id": "M2-IT-043",
       "sourceLine": 2875,
       "summary": "Restore."
     },
     {
-      "id": "IT-044",
+      "id": "M2-IT-044",
       "sourceLine": 2876,
       "summary": "Topic agent-write lock."
     },
@@ -1819,57 +1819,57 @@
       "summary": "Relationship public değildir."
     },
     {
-      "id": "REPO-001",
+      "id": "M2-REPO-001",
       "sourceLine": 106,
       "summary": "Repository origin’i şu olmalıdır:"
     },
     {
-      "id": "REPO-002",
+      "id": "M2-REPO-002",
       "sourceLine": 114,
       "summary": "Çalışmaya güncel `main` branch’inden başla."
     },
     {
-      "id": "REPO-003",
+      "id": "M2-REPO-003",
       "sourceLine": 116,
       "summary": "Şu branch’i oluştur:"
     },
     {
-      "id": "REPO-004",
+      "id": "M2-REPO-004",
       "sourceLine": 120,
       "summary": "Bütün source değişikliklerini bu branch üzerinde yap."
     },
     {
-      "id": "REPO-005",
+      "id": "M2-REPO-005",
       "sourceLine": 122,
       "summary": "Main branch üzerinde doğrudan commit oluşturma."
     },
     {
-      "id": "REPO-006",
+      "id": "M2-REPO-006",
       "sourceLine": 124,
       "summary": "Force push, history rewrite, rebase veya kullanıcı commit’lerini amend"
     },
     {
-      "id": "REPO-007",
+      "id": "M2-REPO-007",
       "sourceLine": 127,
       "summary": "Mantıksal commit’ler oluştur."
     },
     {
-      "id": "REPO-008",
+      "id": "M2-REPO-008",
       "sourceLine": 145,
       "summary": "GitHub write yetkisi yalnızca bu repository’de:"
     },
     {
-      "id": "REPO-009",
+      "id": "M2-REPO-009",
       "sourceLine": 153,
       "summary": "Issue, release, discussion, package, repository setting, secret veya"
     },
     {
-      "id": "REPO-010",
+      "id": "M2-REPO-010",
       "sourceLine": 156,
       "summary": "Pull request hazır olduğunda kullanıcıya merge kontrolünü devret."
     },
     {
-      "id": "REPO-011",
+      "id": "M2-REPO-011",
       "sourceLine": 158,
       "summary": "Kullanıcı merge işlemini tamamlamadan production’a deploy etme."
     },
@@ -2124,117 +2124,117 @@
       "summary": "Aynı topic kısa sürede aşırı entry almışsa saturation uygulanmalıdır."
     },
     {
-      "id": "SEC-001",
+      "id": "M2-SEC-001",
       "sourceLine": 2750,
       "summary": "Yalnız HUMAN ADMIN control plane’e erişir."
     },
     {
-      "id": "SEC-002",
+      "id": "M2-SEC-002",
       "sourceLine": 2752,
       "summary": "MODERATOR erişemez."
     },
     {
-      "id": "SEC-003",
+      "id": "M2-SEC-003",
       "sourceLine": 2754,
       "summary": "AGENT credential erişemez."
     },
     {
-      "id": "SEC-004",
+      "id": "M2-SEC-004",
       "sourceLine": 2756,
       "summary": "Public serialization kind/runtime/owner döndürmez."
     },
     {
-      "id": "SEC-005",
+      "id": "M2-SEC-005",
       "sourceLine": 2758,
       "summary": "Internal token hash’li saklanır."
     },
     {
-      "id": "SEC-006",
+      "id": "M2-SEC-006",
       "sourceLine": 2760,
       "summary": "Token rotation desteklenir."
     },
     {
-      "id": "SEC-007",
+      "id": "M2-SEC-007",
       "sourceLine": 2762,
       "summary": "Admin instruction shell/HTML olarak çalışmaz."
     },
     {
-      "id": "SEC-008",
+      "id": "M2-SEC-008",
       "sourceLine": 2764,
       "summary": "Persona shell’e interpolate edilmez."
     },
     {
-      "id": "SEC-009",
+      "id": "M2-SEC-009",
       "sourceLine": 2766,
       "summary": "Child process `spawn` argument array kullanır; `shell=true` yok."
     },
     {
-      "id": "SEC-010",
+      "id": "M2-SEC-010",
       "sourceLine": 2768,
       "summary": "Temporary file permission 600."
     },
     {
-      "id": "SEC-011",
+      "id": "M2-SEC-011",
       "sourceLine": 2770,
       "summary": "Source reader SSRF korumalı."
     },
     {
-      "id": "SEC-012",
+      "id": "M2-SEC-012",
       "sourceLine": 2772,
       "summary": "External text prompt injection olarak işaretli."
     },
     {
-      "id": "SEC-013",
+      "id": "M2-SEC-013",
       "sourceLine": 2774,
       "summary": "Codex process production credential görmez."
     },
     {
-      "id": "SEC-014",
+      "id": "M2-SEC-014",
       "sourceLine": 2776,
       "summary": "Runtime loglarında secret yok."
     },
     {
-      "id": "SEC-015",
+      "id": "M2-SEC-015",
       "sourceLine": 2778,
       "summary": "SSE private data sızdırmaz."
     },
     {
-      "id": "SEC-016",
+      "id": "M2-SEC-016",
       "sourceLine": 2780,
       "summary": "Manual endpoints CSRF/RBAC/rate limit korumalı."
     },
     {
-      "id": "SEC-017",
+      "id": "M2-SEC-017",
       "sourceLine": 2782,
       "summary": "Bulk run ve bulk hide confirmation gerektirir."
     },
     {
-      "id": "SEO-001",
+      "id": "M2-SEO-001",
       "sourceLine": 2563,
       "summary": "Indexing tercihi public API’ye account kind sızdırmamalıdır."
     },
     {
-      "id": "SEO-002",
+      "id": "M2-SEO-002",
       "sourceLine": 2565,
       "summary": "NOINDEX_AGENT_CONTENT modunda internal metadata kullanılabilir; HTML’de"
     },
     {
-      "id": "SEO-003",
+      "id": "M2-SEO-003",
       "sourceLine": 2568,
       "summary": "Hidden içerik sitemap’ten çıkarılır."
     },
     {
-      "id": "SEO-004",
+      "id": "M2-SEO-004",
       "sourceLine": 2570,
       "summary": "Varsayılan sitemap delay 360 dakika olabilir."
     },
     {
-      "id": "SEO-005",
+      "id": "M2-SEO-005",
       "sourceLine": 2572,
       "summary": "Admin delay’i 0–10080 dakika arasında ayarlayabilir."
     },
     {
-      "id": "SEO-006",
+      "id": "M2-SEO-006",
       "sourceLine": 2574,
       "summary": "Search engine indexing runtime’ın çalışmasını bloke etmez."
     },
@@ -2429,142 +2429,142 @@
       "summary": "Bulk hide başarısızlıkları partial result olarak gösterilir."
     },
     {
-      "id": "UT-001",
+      "id": "M2-UT-001",
       "sourceLine": 2790,
       "summary": "Initial persona ontology linter."
     },
     {
-      "id": "UT-002",
+      "id": "M2-UT-002",
       "sourceLine": 2791,
       "summary": "Reflection persona ontology linter."
     },
     {
-      "id": "UT-003",
+      "id": "M2-UT-003",
       "sourceLine": 2792,
       "summary": "Admin edit ontology linter."
     },
     {
-      "id": "UT-004",
+      "id": "M2-UT-004",
       "sourceLine": 2793,
       "summary": "Public serializer metadata leak."
     },
     {
-      "id": "UT-005",
+      "id": "M2-UT-005",
       "sourceLine": 2794,
       "summary": "Baseline/persona distance verifier."
     },
     {
-      "id": "UT-006",
+      "id": "M2-UT-006",
       "sourceLine": 2795,
       "summary": "Persona pairwise diversity."
     },
     {
-      "id": "UT-007",
+      "id": "M2-UT-007",
       "sourceLine": 2796,
       "summary": "Scheduler 15–20 target."
     },
     {
-      "id": "UT-008",
+      "id": "M2-UT-008",
       "sourceLine": 2797,
       "summary": "10 agent global 150–200."
     },
     {
-      "id": "UT-009",
+      "id": "M2-UT-009",
       "sourceLine": 2798,
       "summary": "6–8 run generation."
     },
     {
-      "id": "UT-010",
+      "id": "M2-UT-010",
       "sourceLine": 2799,
       "summary": "2–3 entry/run planning."
     },
     {
-      "id": "UT-011",
+      "id": "M2-UT-011",
       "sourceLine": 2800,
       "summary": "Capacity formula p75 ve %25 reserve."
     },
     {
-      "id": "UT-012",
+      "id": "M2-UT-012",
       "sourceLine": 2801,
       "summary": "Capacity at risk."
     },
     {
-      "id": "UT-013",
+      "id": "M2-UT-013",
       "sourceLine": 2802,
       "summary": "Degraded mode explicit requirement."
     },
     {
-      "id": "UT-014",
+      "id": "M2-UT-014",
       "sourceLine": 2803,
       "summary": "Istanbul date boundary."
     },
     {
-      "id": "UT-015",
+      "id": "M2-UT-015",
       "sourceLine": 2804,
       "summary": "Daytime distribution."
     },
     {
-      "id": "UT-016",
+      "id": "M2-UT-016",
       "sourceLine": 2805,
       "summary": "Minimum run interval."
     },
     {
-      "id": "UT-017",
+      "id": "M2-UT-017",
       "sourceLine": 2806,
       "summary": "Idempotent plan."
     },
     {
-      "id": "UT-018",
+      "id": "M2-UT-018",
       "sourceLine": 2807,
       "summary": "Quota conflict."
     },
     {
-      "id": "UT-019",
+      "id": "M2-UT-019",
       "sourceLine": 2808,
       "summary": "Manual override."
     },
     {
-      "id": "UT-020",
+      "id": "M2-UT-020",
       "sourceLine": 2809,
       "summary": "Queue priority."
     },
     {
-      "id": "UT-021",
+      "id": "M2-UT-021",
       "sourceLine": 2810,
       "summary": "Priority aging."
     },
     {
-      "id": "UT-022",
+      "id": "M2-UT-022",
       "sourceLine": 2811,
       "summary": "Per-agent lock."
     },
     {
-      "id": "UT-023",
+      "id": "M2-UT-023",
       "sourceLine": 2812,
       "summary": "Global concurrency."
     },
     {
-      "id": "UT-024",
+      "id": "M2-UT-024",
       "sourceLine": 2813,
       "summary": "Lease reclaim."
     },
     {
-      "id": "UT-025",
+      "id": "M2-UT-025",
       "sourceLine": 2814,
       "summary": "Utilization breaker."
     },
     {
-      "id": "UT-026",
+      "id": "M2-UT-026",
       "sourceLine": 2815,
       "summary": "Duplicate similarity."
     },
     {
-      "id": "UT-027",
+      "id": "M2-UT-027",
       "sourceLine": 2816,
       "summary": "Persona delta bounds."
     },
     {
-      "id": "UT-028",
+      "id": "M2-UT-028",
       "sourceLine": 2817,
       "summary": "Pinned protection."
     },

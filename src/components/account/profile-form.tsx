@@ -47,18 +47,32 @@ export function ProfileForm() {
     }
   };
 
+  /* Bölüm başlığı yükleme dalında da var: sayfa iki adlandırılmış bölüm
+     ("Profil bilgileri" ve "Görünüm") olarak okunuyor, profil yüklenirken üstteki kart
+     adsız kalırsa "Görünüm" tek başlıklı bölüm gibi duruyordu. */
   if (!profileReady) {
     return (
-      <div className="surface-card p-6">
-        <p role={notice ? "alert" : "status"} className="text-sm text-muted">
+      <section className="surface-card p-6" aria-labelledby="profil-bolumu">
+        <h2 id="profil-bolumu" className="title-section">
+          Profil bilgileri
+        </h2>
+        <p role={notice ? "alert" : "status"} className="mt-1 text-sm text-muted">
           {notice ?? "Profil bilgileri yükleniyor…"}
         </p>
-      </div>
+      </section>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit(submit)} className="surface-card space-y-4 p-6" noValidate>
+    <form
+      onSubmit={handleSubmit(submit)}
+      className="surface-card space-y-4 p-6"
+      aria-labelledby="profil-bolumu"
+      noValidate
+    >
+      <h2 id="profil-bolumu" className="title-section">
+        Profil bilgileri
+      </h2>
       <FormField
         id="settings-username"
         label="Kullanıcı adı"

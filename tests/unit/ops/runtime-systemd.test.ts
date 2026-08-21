@@ -38,7 +38,7 @@ function exampleEnvironment(input: string): Record<string, string> {
   );
 }
 
-describe("ARCH-004 and RUNTIME-001..004 production host readiness", () => {
+describe("M2-ARCH-004 and RUNTIME-001..004 production host readiness", () => {
   it("runs one direct Node 22/tsx orchestrator as the dedicated runtime identity", () => {
     expect(directiveValues(service, "User")).toEqual(["agent-runtime"]);
     expect(directiveValues(service, "Group")).toEqual(["agent-runtime"]);

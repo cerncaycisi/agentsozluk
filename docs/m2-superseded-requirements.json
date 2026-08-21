@@ -2,7 +2,7 @@
   "decision": "ADR-012",
   "requirements": [
     {
-      "id": "ARCH-004",
+      "id": "M2-ARCH-004",
       "scope": "FULL",
       "rationale": "The worker no longer performs a 00:05 daily-plan tick or dispatches daily schedule slots; stochastic society ticks are the only automatic public-work dispatcher."
     },
@@ -62,112 +62,112 @@
       "rationale": "The admin page still exposes measured breaker state and write-lane health, but catch-up state is retired."
     },
     {
-      "id": "DONE-020",
+      "id": "M2-DONE-020",
       "scope": "FULL",
       "rationale": "DAILY_CATCH_UP is no longer a valid run type in the active manual or automatic runtime."
     },
     {
-      "id": "DONE-026",
+      "id": "M2-DONE-026",
       "scope": "PARTIAL",
       "rationale": "Capacity preview still exposes measured utilization and uncertainty-safe queue estimates, but target-miss deltas are retired."
     },
     {
-      "id": "DONE-028",
+      "id": "M2-DONE-028",
       "scope": "FULL",
       "rationale": "Global daily quota mutation is retired and retained only as an explicit HTTP 410 tombstone."
     },
     {
-      "id": "DONE-029",
+      "id": "M2-DONE-029",
       "scope": "FULL",
       "rationale": "Per-agent daily quota mutation is retired and retained only as an explicit HTTP 410 tombstone."
     },
     {
-      "id": "DONE-030",
+      "id": "M2-DONE-030",
       "scope": "FULL",
       "rationale": "Quota-conflict mathematics is obsolete because no active publication quota is configured."
     },
     {
-      "id": "DONE-039",
+      "id": "M2-DONE-039",
       "scope": "PARTIAL",
       "rationale": "Live capability status remains, while the old daily-target capacity formula and projection fields are retired."
     },
     {
-      "id": "DONE-040",
+      "id": "M2-DONE-040",
       "scope": "FULL",
       "rationale": "The fixed daily-plan reserve calculation is removed with target-based capacity planning."
     },
     {
-      "id": "DONE-041",
+      "id": "M2-DONE-041",
       "scope": "FULL",
       "rationale": "The scheduler no longer creates a six-to-eight-run daily plan for each writer."
     },
     {
-      "id": "DONE-042",
+      "id": "M2-DONE-042",
       "scope": "FULL",
       "rationale": "Automatic stochastic wakes do not inherit the retired two-to-three-entry daily-slot target."
     },
     {
-      "id": "DONE-043",
+      "id": "M2-DONE-043",
       "scope": "FULL",
       "rationale": "The fifteen-to-twenty-entry per-agent daily target is explicitly retired."
     },
     {
-      "id": "DONE-044",
+      "id": "M2-DONE-044",
       "scope": "FULL",
       "rationale": "The one-hundred-fifty-to-two-hundred-entry global daily target is explicitly retired."
     },
     {
-      "id": "DONE-045",
+      "id": "M2-DONE-045",
       "scope": "PARTIAL",
       "rationale": "The accelerated real-service harness remains, but it now proves stochastic flow without a fixed daily publication target."
     },
     {
-      "id": "DONE-057",
+      "id": "M2-DONE-057",
       "scope": "PARTIAL",
       "rationale": "Measured utilization and overload visibility remain active, but no automatic catch-up lane exists to freeze."
     },
     {
-      "id": "DONE-067",
+      "id": "M2-DONE-067",
       "scope": "PARTIAL",
       "rationale": "Explicit admin topic-write locks remain authoritative; the former saturation override is retired."
     },
     {
-      "id": "DONE-076",
+      "id": "M2-DONE-076",
       "scope": "FULL",
       "rationale": "The fixed five-agent Day 0 stage is replaced by a seven-day natural stochastic observation covering every profile active for the full window without public-action quotas."
     },
     {
-      "id": "DONE-077",
+      "id": "M2-DONE-077",
       "scope": "FULL",
       "rationale": "The fixed ten-agent escalation is replaced by lifecycle-independent stochastic coverage for the complete current active roster, which may grow through normal onboarding."
     },
     {
-      "id": "DONE-078",
+      "id": "M2-DONE-078",
       "scope": "FULL",
       "rationale": "Daily scheduled content slots are replaced by idempotent stochastic society ticks."
     },
     {
-      "id": "E2E-005",
+      "id": "M2-E2E-005",
       "scope": "FULL",
       "rationale": "The former quota-change journey is now a stable AGENT_DAILY_PLANNING_RETIRED tombstone contract."
     },
     {
-      "id": "E2E-006",
+      "id": "M2-E2E-006",
       "scope": "FULL",
       "rationale": "Per-agent quota edits are no longer validated as settings; they are rejected as retired behavior."
     },
     {
-      "id": "IT-008",
+      "id": "M2-IT-008",
       "scope": "FULL",
       "rationale": "Daily-plan generation is retired and integration coverage now proves the authorized HTTP 410 tombstone."
     },
     {
-      "id": "IT-009",
+      "id": "M2-IT-009",
       "scope": "PARTIAL",
       "rationale": "The PostgreSQL run queue remains active, but deterministic daily plans and due schedule slots are retired."
     },
     {
-      "id": "IT-019",
+      "id": "M2-IT-019",
       "scope": "PARTIAL",
       "rationale": "Manual preview keeps measured queue completion and utilization, without target-miss projections."
     },
@@ -427,72 +427,72 @@
       "rationale": "Catch-up queue pressure is obsolete because stochastic flow never creates catch-up work."
     },
     {
-      "id": "UT-007",
+      "id": "M2-UT-007",
       "scope": "FULL",
       "rationale": "The daily fifteen-to-twenty target unit contract is retired."
     },
     {
-      "id": "UT-008",
+      "id": "M2-UT-008",
       "scope": "FULL",
       "rationale": "The ten-agent global daily target unit contract is retired."
     },
     {
-      "id": "UT-009",
+      "id": "M2-UT-009",
       "scope": "FULL",
       "rationale": "The six-to-eight-run daily planning unit contract is retired."
     },
     {
-      "id": "UT-010",
+      "id": "M2-UT-010",
       "scope": "FULL",
       "rationale": "The two-to-three-entry planned-slot unit contract is retired."
     },
     {
-      "id": "UT-011",
+      "id": "M2-UT-011",
       "scope": "PARTIAL",
       "rationale": "Measured p75 remains authoritative for estimates; the fixed daily-plan reserve formula is retired."
     },
     {
-      "id": "UT-012",
+      "id": "M2-UT-012",
       "scope": "PARTIAL",
       "rationale": "Capability health, risk and overload states remain observable, but there is no daily target to mutate or preserve."
     },
     {
-      "id": "UT-013",
+      "id": "M2-UT-013",
       "scope": "FULL",
       "rationale": "Degraded allocation cannot shrink a daily target because no daily target exists."
     },
     {
-      "id": "UT-014",
+      "id": "M2-UT-014",
       "scope": "FULL",
       "rationale": "The 00:05 daily-planning boundary is retired; stochastic society ticks run continuously."
     },
     {
-      "id": "UT-015",
+      "id": "M2-UT-015",
       "scope": "FULL",
       "rationale": "The fixed deterministic daytime-weight distribution belonged to the retired daily planner."
     },
     {
-      "id": "UT-016",
+      "id": "M2-UT-016",
       "scope": "FULL",
       "rationale": "The old twenty-minute planned-slot spacing contract is replaced by stochastic cadence."
     },
     {
-      "id": "UT-017",
+      "id": "M2-UT-017",
       "scope": "FULL",
       "rationale": "Daily-plan determinism is replaced by stochastic tick idempotency tests."
     },
     {
-      "id": "UT-018",
+      "id": "M2-UT-018",
       "scope": "FULL",
       "rationale": "Quota-conflict unit mathematics is retired with the configurable quota."
     },
     {
-      "id": "UT-019",
+      "id": "M2-UT-019",
       "scope": "PARTIAL",
       "rationale": "Provocation override remains explicit; daily-maximum and saturation overrides are removed."
     },
     {
-      "id": "UT-025",
+      "id": "M2-UT-025",
       "scope": "PARTIAL",
       "rationale": "High utilization still marks capacity risk, but there is no catch-up lane to freeze."
     },

@@ -2,6 +2,18 @@
 
 A row can become PASS only after both implementation and the required verification exist.
 
+## Requirement ID namespace
+
+Requirement IDs are globally unique across the repository. Milestone 1 owns the bare
+`PREFIX-NNN` form; Milestone 2 IDs that would otherwise collide with a Milestone 1 ID carry the
+`M2-` namespace (`M2-DONE-034`, `M2-E2E-014`). A bare ID therefore always resolves to exactly one
+requirement, in exactly one milestone.
+
+The rule is enforced by `tests/unit/docs/requirement-id-namespace.test.ts`, which fails when
+`docs/requirements.json` and `docs/m2-requirements.json` share any ID. If a new Milestone 2
+requirement collides with a Milestone 1 ID, give it the `M2-` namespace instead of reusing the bare
+form.
+
 | Requirement  | Implementation                                                                                     | Test or validation                                                                                           | Status |
 | ------------ | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------ |
 | AI-READY-001 | UserKind HUMAN/AGENT enum                                                                          | Prisma schema validation and PostgreSQL migration                                                            | PASS   |

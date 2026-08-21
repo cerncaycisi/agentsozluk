@@ -129,19 +129,19 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe.serial("@desktop Milestone 2 agent society", () => {
-  test("E2E-001 admin dashboard", async ({ page }) => {
+  test("M2-E2E-001 admin dashboard", async ({ page }) => {
     await login(page);
     await page.goto("/moderasyon/agentlar");
     await expect(page.getByRole("heading", { level: 1, name: "Agentlar ve toplum" })).toBeVisible();
   });
 
-  test("E2E-002 moderator denial", async ({ page }) => {
+  test("M2-E2E-002 moderator denial", async ({ page }) => {
     await login(page, "moderator@local.test");
     const denied = await browserApi<Envelope>(page, "GET", "/api/v1/admin/agents", undefined, 403);
     expect(denied.error?.code).toBe("FORBIDDEN");
   });
 
-  test("E2E-003 agent create", async ({ page, request }, testInfo) => {
+  test("M2-E2E-003 agent create", async ({ page, request }, testInfo) => {
     await login(page);
     const basePersona =
       originalPersonaPack.personas[testInfo.retry % originalPersonaPack.personas.length]!;
@@ -187,7 +187,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     });
   });
 
-  test("E2E-004 agent edit", async ({ page }) => {
+  test("M2-E2E-004 agent edit", async ({ page }) => {
     await login(page);
     const updated = await browserApi<{ user: { displayName: string } }>(
       page,
@@ -201,7 +201,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     expect(updated.user.displayName).toBe(`E2E Agent ${suffix}`);
   });
 
-  test("E2E-005 global daily planning is retired", async ({ page }) => {
+  test("M2-E2E-005 global daily planning is retired", async ({ page }) => {
     await login(page);
     const settings = await browserApi<{ settingsVersion: number }>(
       page,
@@ -224,7 +224,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     expect(retired.error?.code).toBe("AGENT_DAILY_PLANNING_RETIRED");
   });
 
-  test("E2E-006 per-agent daily planning is retired", async ({ page }) => {
+  test("M2-E2E-006 per-agent daily planning is retired", async ({ page }) => {
     await login(page);
     const retired = await browserApi<Envelope>(
       page,
@@ -236,7 +236,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     expect(retired.error?.code).toBe("AGENT_DAILY_PLANNING_RETIRED");
   });
 
-  test("E2E-007 manual normal", async ({ page }) => {
+  test("M2-E2E-007 manual normal", async ({ page }) => {
     await login(page);
     await browserApi(page, "POST", `/api/v1/admin/agents/${agentProfileId}/lifecycle`, {
       status: "ACTIVE",
@@ -256,7 +256,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     });
   });
 
-  test("E2E-008 live status", async ({ page }) => {
+  test("M2-E2E-008 live status", async ({ page }) => {
     await login(page);
     const health = await browserApi<{ runtimeEnabled: boolean }>(
       page,
@@ -288,7 +288,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     await expect(page).toHaveURL(/\/moderasyon\/agentlar\/olaylar$/u);
   });
 
-  test("E2E-009 dry run", async ({ page }) => {
+  test("M2-E2E-009 dry run", async ({ page }) => {
     await login(page);
     const result = await browserApi<{
       run: { runType: string; desiredEntryMax: number };
@@ -298,7 +298,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     expect(result.run).toMatchObject({ runType: "DRY_RUN", desiredEntryMax: 0 });
   });
 
-  test("E2E-010 entry burst", async ({ page }) => {
+  test("M2-E2E-010 entry burst", async ({ page }) => {
     await login(page);
     const result = await browserApi<{
       run: { runType: string; desiredEntryMax: number };
@@ -308,7 +308,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     expect(result.run).toMatchObject({ runType: "ENTRY_BURST", desiredEntryMax: 0 });
   });
 
-  test("E2E-011 cancel", async ({ page }) => {
+  test("M2-E2E-011 cancel", async ({ page }) => {
     await login(page);
     const cancelled = await browserApi<{ runStatus: string }>(
       page,
@@ -319,7 +319,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     expect(cancelled.runStatus).toBe("CANCELLED");
   });
 
-  test("E2E-012 retry", async ({ page }) => {
+  test("M2-E2E-012 retry", async ({ page }) => {
     await login(page);
     const retry = await browserApi<{ parentRunId: string; runStatus: string }>(
       page,
@@ -330,7 +330,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     expect(retry).toMatchObject({ parentRunId: cancellableRunId, runStatus: "QUEUED" });
   });
 
-  test("E2E-013 bulk run and capacity preview", async ({ page }) => {
+  test("M2-E2E-013 bulk run and capacity preview", async ({ page }) => {
     await login(page);
     const selection = {
       agentIds: [agentProfileId],
@@ -352,7 +352,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     expect(queued.count).toBe(1);
   });
 
-  test("E2E-014 pause and resume", async ({ page }) => {
+  test("M2-E2E-014 pause and resume", async ({ page }) => {
     await login(page);
     let societyPaused = false;
     let agentPaused = false;
@@ -413,7 +413,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     }
   });
 
-  test("E2E-015 persona history", async ({ page }) => {
+  test("M2-E2E-015 persona history", async ({ page }) => {
     await login(page);
     const detail = await browserApi<{
       personaVersions: Array<{ version: number }>;
@@ -428,7 +428,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     expect(rolled.version).toBeGreaterThan(1);
   });
 
-  test("E2E-016 source pin and block", async ({ page }) => {
+  test("M2-E2E-016 source pin and block", async ({ page }) => {
     await login(page);
     const sources = await browserApi<Array<{ id: string }>>(
       page,
@@ -456,7 +456,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     expect(blocked).toMatchObject({ adminPinned: false, adminBlocked: true });
   });
 
-  test("E2E-017 public profile metadata absent", async ({ page }) => {
+  test("M2-E2E-017 public profile metadata absent", async ({ page }) => {
     await page.goto(`/yazar/${agentUsername}`);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     const html = await page.content();
@@ -465,7 +465,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     expect(html).not.toContain("runtimeStatus");
   });
 
-  test("E2E-018 human user writes", async ({ page }) => {
+  test("M2-E2E-018 human user writes", async ({ page }) => {
     await login(page, "writer@local.test");
     await page.goto("/baslik/ac");
     const title = `Agent society human flow ${suffix}`;
@@ -485,7 +485,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     expect(humanTopicId).toMatch(/^[0-9a-f-]{36}$/u);
   });
 
-  test("E2E-019 user follow", async ({ page }) => {
+  test("M2-E2E-019 user follow", async ({ page }) => {
     await login(page, "writer@local.test");
     await page.goto(`/yazar/${agentUsername}`);
     await page.getByRole("button", { name: "Yazarı takip et", exact: true }).click();
@@ -494,7 +494,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     });
   });
 
-  test("E2E-020 capacity dashboard", async ({ page }) => {
+  test("M2-E2E-020 capacity dashboard", async ({ page }) => {
     await login(page);
     await page.goto("/moderasyon/agent-kapasite");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -504,7 +504,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     await expect(page.getByText("Gerçek utilization · 1 saat", { exact: true })).toBeVisible();
   });
 
-  test("E2E-021 agent content moderation", async ({ page, request }) => {
+  test("M2-E2E-021 agent content moderation", async ({ page, request }) => {
     await login(page);
     await browserApi(page, "POST", `/api/v1/admin/agents/${agentProfileId}/runs`, {
       runType: "NORMAL_WAKE",
@@ -590,7 +590,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     await expect(page.getByText(agentEntryBody, { exact: true })).toBeVisible();
   });
 
-  test("E2E-022 report hide public removal and restore", async ({ page }) => {
+  test("M2-E2E-022 report hide public removal and restore", async ({ page }) => {
     await login(page, "admin@local.test");
     await browserApi(
       page,
@@ -697,7 +697,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     await visitorContext.close();
   });
 
-  test("E2E-024 axe serious critical zero", async ({ page }) => {
+  test("M2-E2E-024 axe serious critical zero", async ({ page }) => {
     await login(page);
     for (const path of [
       "/moderasyon/agentlar",
@@ -717,7 +717,7 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
   });
 });
 
-test("@mobile E2E-023 mobile control plane", async ({ page }) => {
+test("@mobile M2-E2E-023 mobile control plane", async ({ page }) => {
   await login(page);
   await page.goto("/moderasyon/agentlar");
   await expect(page.getByRole("heading", { level: 1, name: "Agentlar ve toplum" })).toBeVisible();
