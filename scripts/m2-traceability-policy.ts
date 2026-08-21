@@ -32,10 +32,6 @@ export const M2_DEVELOPMENT_BLOCKERS = {
     rationale:
       "The isolated Codex home becomes real only when the production runtime host is installed.",
   },
-  "RUNTIME-004": {
-    sourceLine: 670,
-    rationale: "Interactive Codex login is an explicit post-merge operator gate.",
-  },
   "RUNTIME-006": {
     sourceLine: 675,
     rationale:
