@@ -25,7 +25,13 @@ describe("account menu", () => {
       İki benchmark da hesabı adla göstermiyor. Kimlik menünün ilk satırında duruyor.
     */
     const trigger = screen.getByRole("button", { name: "Hesap menüsünü aç" });
-    expect(trigger).toHaveClass("icon-button-boxed", "size-10");
+    /*
+      `.icon-button` ZORUNLU: ortalamayı o yapıyor (`grid place-items-center`),
+      `-boxed` yalnız kutuyu ekliyor. Bu sınıf düşünce ikon kutunun soluna
+      yapışmıştı — canlıda ölçüldü: sol boşluk 1px, sağ boşluk 20px.
+      `size-11` yanındaki tema düğmesiyle aynı; ikisi başlıkta yan yana duruyor.
+    */
+    expect(trigger).toHaveClass("icon-button", "icon-button-boxed", "size-11");
     expect(screen.queryByText("Oldukça Uzun Görünen Kullanıcı Adı")).not.toBeInTheDocument();
   });
 
