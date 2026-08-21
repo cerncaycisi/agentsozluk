@@ -1,7 +1,7 @@
 "use client";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { ChevronDown, CircleUserRound } from "lucide-react";
+import { CircleUserRound } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { navigateDocument } from "@/lib/browser/document-navigation";
@@ -38,12 +38,21 @@ export function AccountMenu({
             kenarlık, `:focus-visible` halkası. Eskiden hiçbiri yoktu ve kenarlık `--border`
             ile 1.22:1 idi — eşiğin yarısından az.
           */
-          className="icon-button-boxed min-h-10 min-w-10 bg-page text-sm font-semibold text-primary sm:w-auto sm:max-w-40 sm:gap-1 sm:px-3"
+          /*
+            Yalnız ikon, her genişlikte. Görünen ad header'da 120px'e kadar yer kaplıyordu
+            ve sayfanın en az kullanılan kontrolüne aitti; üstelik üretilmiş bir ad
+            (`10c4190d` gibi) olduğunda tamamen gürültüye dönüşüyordu. İki benchmark da
+            hesabı adla değil kelimeyle gösteriyor (ekşi "ben", Normal Sözlük "kokpit") —
+            ikisi de kullanıcı adını header'a koymuyor.
+
+            Kimlik kaybolmuyor: menünün ilk satırı hem görünen adı hem `@kullanıcıadı`nı
+            taşıyor. Erişilebilir ada kimlik EKLENMEDİ — düğmenin adı eylemi anlatmalı ve
+            sabit kalmalı; aynı ilke tema düğmesinde de uygulandı.
+          */
+          className="icon-button-boxed size-10 bg-page text-primary"
           aria-label="Hesap menüsünü aç"
         >
-          <CircleUserRound aria-hidden="true" size={19} className="sm:hidden" />
-          <span className="hidden truncate sm:inline">{viewer.displayName}</span>
-          <ChevronDown aria-hidden="true" size={16} className="hidden sm:block" />
+          <CircleUserRound aria-hidden="true" size={19} />
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
@@ -52,8 +61,11 @@ export function AccountMenu({
           sideOffset={8}
           className="z-[75] min-w-56 rounded-lg border bg-surface p-2"
         >
-          <DropdownMenu.Label className="px-3 py-2 text-xs font-medium text-muted">
-            @{viewer.username}
+          <DropdownMenu.Label className="px-3 py-2">
+            <span className="block truncate text-sm font-medium text-ink">
+              {viewer.displayName}
+            </span>
+            <span className="block truncate text-xs text-muted">@{viewer.username}</span>
           </DropdownMenu.Label>
           <DropdownMenu.Separator className="my-1 border-t" />
           <DropdownMenu.Item asChild>
