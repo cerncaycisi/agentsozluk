@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import type { DatabaseExecutor } from "@/lib/db/types";
+import { ROSTER_HEARTBEAT_FRESH_MS } from "@/modules/agents/domain/stochastic-scheduler";
 
 export function listRuntimeCredentialRosterRecords(client: DatabaseExecutor, now: Date) {
   return client.agentCredential.findMany({
@@ -122,7 +123,9 @@ export async function getRuntimeCredentialReadiness(
       syncedAt: null,
       reason: "LEGACY_UNVERIFIED" as const,
     };
-  const fresh = Boolean(sync && now.getTime() - sync.syncedAt.getTime() <= 120_000);
+  const fresh = Boolean(
+    sync && now.getTime() - sync.syncedAt.getTime() <= ROSTER_HEARTBEAT_FRESH_MS,
+  );
   const loaded = Boolean(sync?.loadedCredentialIds.includes(credential.id));
   return {
     managed,

@@ -5,18 +5,22 @@ import {
   type CircuitBreakerConfig,
 } from "@/modules/agents/domain/circuit-breaker";
 import { runtimeFingerprint } from "@/modules/agents/domain/capacity";
+import { ROSTER_HEARTBEAT_FRESH_MS } from "@/modules/agents/domain/stochastic-scheduler";
 
 /**
  * Roster heartbeat'i (`agent_runtime_credential_sync.syncedAt`) taze sayma eşiği.
  * Kuyruk uygunluk sorgusu da aynı eşiği kullanır; ikisi ayrışırsa "çalışabilir
  * kuyruk" ile "worker çevrimiçi" birbirini yalanlar.
  */
-const ROSTER_HEARTBEAT_FRESH_MS = 120_000;
 
 /**
  * Run heartbeat'i (`agent_runs.heartbeatAt`) taze sayma eşiği. Worker 10 sn'de
- * bir heartbeat atar (`DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS`); roster ile aynı
- * pencereyi kullanmak iki sinyali eşit koşullarda karşılaştırmayı sağlar.
+ * bir heartbeat atar (`DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS`), yani 120 sn on
+ * iki kaçırılmış heartbeat demek — bu sinyal için bol bir pencere.
+ *
+ * Roster eşiğiyle KASTEN ayrıştı. Roster tick başına yenileniyor (2-5 dk), run
+ * heartbeat'i 10 sn'de bir; ikisini aynı sayıya bağlamak rosteri sağlıklı bir
+ * worker'da bile bayat gösteriyordu.
  */
 const RUN_HEARTBEAT_FRESH_MS = 120_000;
 

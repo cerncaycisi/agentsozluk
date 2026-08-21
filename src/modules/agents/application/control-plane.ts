@@ -94,6 +94,7 @@ import {
   parseProductionRolloutAttemptMetadata,
 } from "@/modules/agents/application/rollout-guard";
 import { assertProductionRolloutCompletionEvidence } from "@/modules/agents/application/production-rollout-proof";
+import { ROSTER_HEARTBEAT_FRESH_MS } from "@/modules/agents/domain/stochastic-scheduler";
 
 const GLOBAL_SETTINGS_AGGREGATE_ID = "00000000-0000-4000-8000-000000000001";
 const RETIRED_DAILY_PLANNING_FIELD_NAMES = [
@@ -672,7 +673,8 @@ export async function listAgentDashboard(
       const currentCredential = record.credentials[0] ?? null;
       const managedCredential = Boolean(currentCredential?.runtimeEnrollmentCipher);
       const rosterFresh = Boolean(
-        credentialSync && now.getTime() - credentialSync.syncedAt.getTime() <= 120_000,
+        credentialSync &&
+        now.getTime() - credentialSync.syncedAt.getTime() <= ROSTER_HEARTBEAT_FRESH_MS,
       );
       const credentialLoaded = Boolean(
         currentCredential && credentialSync?.loadedCredentialIds.includes(currentCredential.id),
