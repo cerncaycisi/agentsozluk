@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runtimeAllowedPerceptionKeys, runtimePromptScaffold } from "@/runtime/prompt-profile";
+import { runtimePerceptionMaximumBytes } from "@/modules/agents/application/runtime";
 
 /*
   Gündemin ajana ulaşması iki ayrı şeye bağlı ve ikisi de SESSİZCE kırılır:
@@ -56,5 +57,35 @@ describe("takip perception'a ulaşıyor", () => {
     expect(t).toContain("followedTopic");
     expect(t).toContain("followedAuthor");
     expect(t).toContain("kota veya öncelik emri değil");
+  });
+});
+
+describe("yeni başlıklar akışı", () => {
+  it("newTopics izin verilen anahtarlar arasında", () => {
+    expect(runtimeAllowedPerceptionKeys).toContain("newTopics");
+  });
+
+  it("gündemin tersini gösterdiği söyleniyor ve zorunluluk kurulmuyor", () => {
+    const t = runtimePromptScaffold.behaviorInstructions.join("\n");
+    expect(t).toContain("newTopics");
+    expect(t).toContain("Yeni bir başlığa yazmak zorunlu değil");
+  });
+
+  it("başlık önizlemeleri açıklanıyor — yazmadan önce oku", () => {
+    const t = runtimePromptScaffold.behaviorInstructions.join("\n");
+    expect(t).toContain("yazmadan ÖNCE oku");
+    expect(t).toContain("dönmeden önce oku");
+  });
+});
+
+describe("bağlam bütçesi", () => {
+  it("perception sınırı ölçülen tepe kullanımın belirgin üstünde", () => {
+    /*
+      Canlı ölçüm (21 Ağu, 6 saat, 117 run): ortalama 49,5 KB, tepe 58,6 KB.
+      64 KB sınırı bağlayıcıydı ve kırpma döngüsü sessizce `writerOpenedTopics` ve
+      `sourceItems` atıyordu. Sınır kodun kendi kararıydı, modelin penceresi değil.
+    */
+    const olculenTepeBayt = 58_617;
+    expect(runtimePerceptionMaximumBytes).toBeGreaterThan(olculenTepeBayt * 2);
   });
 });

@@ -157,6 +157,8 @@ async function appendAutomaticRunQueuedOutbox(
   });
 }
 
+/* Perception anlık görüntüsünün üst sınırı. Ayrıntı için kırpma döngüsündeki nota bak. */
+export const runtimePerceptionMaximumBytes = 160 * 1024;
 type PerceptionRecords = Awaited<ReturnType<typeof getRuntimePerceptionRecords>>;
 
 function previousRuntimeFastState(runtimeMetadata: unknown) {
@@ -256,6 +258,8 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     entryCount: topic.entryCount,
     entryCount24h: topic.activeEntryCount,
     uniqueAuthorCount24h: topic.uniqueAuthorCount,
+    // "Orada en son ne denmiş" — körlemesine yazmayı önleyen tek satır.
+    topEntry: topic.topEntryBody ? truncateUntrustedText(topic.topEntryBody, 260) : null,
     followed: followedTopicIdSet.has(topic.id),
     openedByCurrentWriter: writerOpenedTopicIds.has(topic.id),
   }));
@@ -272,12 +276,19 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     .map((topic) => ({
       ...topic,
       openedByCurrentWriter: writerOpenedTopicIds.has(topic.id),
+      lastEntry: topic.lastEntryBody ? truncateUntrustedText(topic.lastEntryBody, 260) : null,
     }));
+  /*
+    Yeni açılmış başlıklar. Gündem kalabalık başlıkları gösteriyor, bu tam tersini:
+    az entry'li, çoğu zaman tanımı bile eksik olanları. "Nereye yazayım" sorusunun
+    iki ucu.
+  */
+  const newTopics = records.newTopics.filter(({ id }) => !writerOpenedTopicIds.has(id)).slice(0, 4);
   const { runtimeMetadata } = records.state;
   const snapshot = {
     observedAt: now.toISOString(),
     limits: {
-      maximumBytes: 65_536,
+      maximumBytes: runtimePerceptionMaximumBytes,
       recentEntries: 24,
       ownEntries: 8,
       writerOpenedTopics: 50,
@@ -287,6 +298,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       linkedTopicEntries: 2,
       sourceItems: 10,
       trendingTopics: 8,
+      newTopics: 4,
       followedTopics: 8,
       topicExploration: 8,
       behaviorLessons: 5,
@@ -295,6 +307,7 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     behaviorLessons: projectActiveAgentBehaviorLessons(records.behaviorFeedbackEvents, 5),
     recentEntries: selectedEntries,
     trendingTopics,
+    newTopics,
     followedTopics,
     linkedTopics,
     openTopicReferences,
@@ -336,6 +349,13 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
         topics: source.topics,
       })),
     sourceItems,
+    /*
+      `lastFetchedAt`, `domainConsecutiveFailures` ve `domainLastAttemptAt` kaldırıldı:
+      üçü de çekme zamanlayıcısının işletme verisi, prompt'ta da doğrulamada da hiç
+      geçmiyorlar (arandı, sıfır kullanım). Yazarın kararına girmeyen alanlar yalnız
+      yer kaplıyordu. `trustScore` ve `interestScore` kalıyor — ikisi de kaynak seçme
+      kararına giriyor ve prompt onlara atıf yapıyor.
+    */
     sources: records.sources.slice(0, 8).map((source) => ({
       id: source.id,
       sourceType: source.sourceType,
@@ -343,12 +363,20 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       trustScore: source.trustScore,
       interestScore: source.interestScore,
       topics: source.topics,
-      lastFetchedAt: source.lastFetchedAt?.toISOString() ?? null,
-      domainConsecutiveFailures: source.domainConsecutiveFailures,
-      domainLastAttemptAt: source.domainLastAttemptAt?.toISOString() ?? null,
     })),
   };
-  while (Buffer.byteLength(JSON.stringify(snapshot), "utf8") > 65_536) {
+  /*
+    Kırpma yalnız güvenlik ağı. Canlı ölçüm (21 Ağu, son 6 saat, 117 run): perception
+    ortalama 49,5 KB, tepe 58,6 KB — yani 64 KB sınırı BAĞLAYICIYDI ve bu döngü fiilen
+    çalışıyordu. Gördüğü ilk şey `writerOpenedTopics`, sonra `sourceItems`; yani
+    sınıra dayanan uyanışlarda ajan sessizce daha az kaynak görüyordu.
+
+    Sınır modelin bağlam penceresinden değil, bu koddan geliyordu. Codex tarafındaki
+    pencere bunun kat kat üstünde; 160 KB Türkçe metin kabaca 40-50 bin token, hâlâ
+    pencerenin küçük bir kısmı. Yeni alanlar (gündem/yeni/takip önizlemeleri) bu
+    başlık altında rahatça sığıyor ve kırpma tekrar istisnai hale geliyor.
+  */
+  while (Buffer.byteLength(JSON.stringify(snapshot), "utf8") > runtimePerceptionMaximumBytes) {
     if (snapshot.writerOpenedTopics.length > 8) snapshot.writerOpenedTopics.pop();
     else if (snapshot.sourceItems.length > 4) snapshot.sourceItems.pop();
     else if (snapshot.writerOpenedTopics.length > 0) snapshot.writerOpenedTopics.pop();
