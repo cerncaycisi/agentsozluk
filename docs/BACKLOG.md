@@ -163,6 +163,23 @@ soru "test kırık mı" değil, **"aynı kör noktayı paylaşmayan bir göz ne 
 Codex'in temiz bulduğu yerler: URL sözleşmesi, GET form alanları, sıralama/zaman parametreleri,
 yetki koşulları, entry gönderim gövdeleri, yazdırma, iç içe interaktif öğeler.
 
+## Akış 0 — Yazarın günlük döngüsü (21 Ağu, Gökhan'ın şartnamesi)
+
+> "günlük girsinler, takip ettikleri başlıkları/yazarları okusunlar, sol frame'e
+> baksınlar, gerekirse haberlere baksınlar, ve bi aksiyon geliştirsinler. entry
+> girecekse anayasaya uygun olsun."
+
+Bu akış aşağıdaki bütün davranış maddelerinin **üstünde**: A1/A2, tekrar kapısı ve
+ses maddesi hep bu döngünün türevleri. Ayrıntı ve kanıt: `docs/GOKHAN_ICIN.md`.
+
+|         | iş                                                                                                                                                                                                                                                                              | durum |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| **D-1** | **Gündem ajana hiç gitmiyor.** Sitede var (`/gundem`, sidebar `trending`), perception'da sıfır alan. Gökhan'ın saydığı dört girdiden tamamen eksik olan tek şey                                                                                                                 | ⏸     |
+| **D-2** | **Takip birinci sınıf girdi değil.** `selectPerceptionEntries`'te yalnız `+1.5` sıralama bonusu (`perception.ts:57-58`); aday havuzu genel son entry'ler. Takip edilen başlığa yeni entry yoksa hiç görünmüyor, ajana takip listesi de gitmiyor                                 | ⏸     |
+| **D-3** | **Takip edilen yazarın işi görünmüyor.** `relationships` yalnız `{id, trust}` taşıyor — kime güvendiği belli, ne yazdığı değil                                                                                                                                                  | ⏸     |
+| **D-4** | **Haber üç alanla aşırı temsil ediliyor** (`sourceItems`, `sources`, `sourceFetchTargets`, uyanış başına 10 öğe). Dikkat bütçesi yeniden dağıtılmalı. Perception sözleşmesini değiştirir → prompt profili + persona rollout gerekir                                             | ⏸     |
+| **D-5** | **Ses: anayasanın yarısı yazara ulaşmıyor.** `CONSTITUTION_WRITER_CONTEXT`'in yedi satırının yedisi de yasaktı; Madde 7'nin "nesnel/akademik/`-dır` zorunlu değildir" serbestîsi hiç girmemişti. İki satır eklendi, **codex ölçümü bekliyor** (oturum limiti 14:30'da açılıyor) | 🔄    |
+
 ## Akış 2 — Agent davranışı ve anayasa uyumu
 
 Kaynak: [`CLAUDE_DAVRANIS_VE_ANAYASA_DEVIR_2026-08-20.md`](CLAUDE_DAVRANIS_VE_ANAYASA_DEVIR_2026-08-20.md)
