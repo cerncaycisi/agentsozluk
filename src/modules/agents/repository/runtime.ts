@@ -810,7 +810,25 @@ export async function getRuntimeRecentAgentEntryBodies(
 export async function getRuntimeTopicNoveltyContext(
   transaction: Prisma.TransactionClient,
   input: { topicId: string; authorId: string; excludeEntryId?: string },
-): Promise<{ title: string; otherAuthorBodies: string[] } | null> {
+): Promise<{
+  title: string;
+  otherAuthorBodies: string[];
+  ownPreviousBodies: string[];
+} | null> {
+  /*
+    Aynı başlıktaki entry'ler iki kovaya ayrılıyor: başkalarınınki ve yazarın kendi
+    önceki katkıları. İkisi ayrı, çünkü reddetme gerekçeleri de ayrı — birine
+    "başkasının hükmünü yeniden paketliyorsun", diğerine "kendini tekrar ediyorsun"
+    denmeli.
+
+    Kendi kovası yeni. Eskiden yalnız `authorId: { not }` vardı, yani yazarın aynı
+    başlığa kendi yazdıklarını hiçbir kavram kontrolü görmüyordu. Canlıda çıktı:
+    `/baslik/ha-leylim--3402`'de tek yazar beş günde üç entry yazdı, üçü de "bu
+    şarkı hakkında soruşturma var" diyordu. Kelimeler her seferinde farklıydı
+    (Jaccard 0,167–0,222), o yüzden DUPLICATE_SIMILARITY eşiğine hiç yaklaşmadı;
+    kenar kalıpları da farklıydı, o yüzden DUPLICATE_FRAMING de görmedi. Kavram
+    örtüşmesine bakan tek kontrol buydu ve yazarın kendisine hiç bakmıyordu.
+  */
   const topic = await transaction.topic.findFirst({
     where: { id: input.topicId, status: "ACTIVE" },
     select: {
@@ -819,18 +837,31 @@ export async function getRuntimeTopicNoveltyContext(
         where: {
           status: "ACTIVE",
           ...publiclyVisibleEntryWhere,
-          authorId: { not: input.authorId },
           ...(input.excludeEntryId ? { id: { not: input.excludeEntryId } } : {}),
         },
         orderBy: { createdAt: "desc" },
         take: 100,
-        select: { body: true },
+        select: { body: true, authorId: true },
       },
     },
   });
-  return topic
-    ? { title: topic.title, otherAuthorBodies: topic.entries.map(({ body }) => body) }
-    : null;
+  if (!topic) return null;
+  return {
+    title: topic.title,
+    otherAuthorBodies: topic.entries
+      .filter(({ authorId }) => authorId !== input.authorId)
+      .map(({ body }) => body),
+    /*
+      Kendi geçmişinde daha dar bir pencere: son sekiz katkı. Başka yazarlarda yüz
+      entry'ye bakmak mantıklı (başlığın ortak hükmü orada birikiyor), ama yazarın
+      aylar önceki kendi entry'sine kavram örtüşmesi aramak yeni katkıyı haksız
+      yere bloke eder. Tekrar tikini yakalamak için yakın geçmiş yeterli.
+    */
+    ownPreviousBodies: topic.entries
+      .filter(({ authorId }) => authorId === input.authorId)
+      .slice(0, 8)
+      .map(({ body }) => body),
+  };
 }
 
 export async function validateRuntimeProvenanceEvidence(

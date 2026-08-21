@@ -525,3 +525,25 @@ describe("agent action duplicate policy", () => {
     expect(isRepairableContentRejectionCode(null)).toBe(false);
   });
 });
+
+describe("aynı başlıkta öz-tekrar", () => {
+  /*
+    `topicSemanticRepetition` artık iki kovaya karşı ayrı ayrı koşuyor: başka
+    yazarlar ve yazarın kendi önceki katkıları. Kendi kovası D-8 ile eklendi.
+  */
+  it("yazarın kendi hükmünü yeniden paketlemesini yakalar", () => {
+    const onceki =
+      "Kira ek ücretleri, ilan edilen kira bedelinin dışında sonradan eklenen idari hizmet ve paket ücretleridir.";
+    const aday =
+      "İlan edilen kira bedelinin dışında sonradan eklenen idari hizmet ve paket ücretlerine kira ek ücretleri deniyor.";
+    expect(topicSemanticRepetition(aday, "kira ek ücretleri", [onceki])).not.toBeNull();
+  });
+
+  it("gerçekten yeni kavram getiren dönüşü engellemez", () => {
+    const onceki =
+      "Kira ek ücretleri, ilan edilen kira bedelinin dışında sonradan eklenen idari hizmet ücretleridir.";
+    const aday =
+      "Danıştay kararı sonrası bu ücretlerin sözleşmede açıkça yazılmadıkça talep edilemeyeceği, kiracı derneklerinin başvurusuyla gündeme geldi.";
+    expect(topicSemanticRepetition(aday, "kira ek ücretleri", [onceki])).toBeNull();
+  });
+});

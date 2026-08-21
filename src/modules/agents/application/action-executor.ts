@@ -1171,6 +1171,24 @@ export async function executeRuntimeAction(
               code: "DUPLICATE_FRAMING",
               reason: repeatedEntryFramingReason(repeatedFraming),
             });
+          /*
+            Kendi geçmişi önce bakılıyor. İkisi de tetiklenebiliyorsa yazara daha
+            uygulanabilir olanı söylenmeli: kendi yazdığını tekrar ettiğini bilmek,
+            başkasının hükmüne benzediğini bilmekten daha net bir düzeltme veriyor.
+          */
+          const ownRepetition = topicNoveltyContext
+            ? topicSemanticRepetition(
+                candidateBody,
+                topicNoveltyContext.title,
+                topicNoveltyContext.ownPreviousBodies,
+              )
+            : null;
+          if (ownRepetition)
+            return rejectAction(transaction, principal, actionRecord, {
+              code: "TOPIC_SEMANTIC_REPETITION",
+              reason:
+                "Anayasa Madde 16: Aday entry, aynı başlıkta kendi daha önce yazdığın hükmü yeni bir tanım, örnek, karşılaştırma, çekince veya görüş eklemeden yeniden paketliyor. Aynı konuya dönmen yasak değil; fakat dönüş, önceki entry'lerinden bağımsız yeni bir katkı taşımalı. Kaynak güncellendi diye aynı hükmü yeniden yazma.",
+            });
           const semanticRepetition = topicNoveltyContext
             ? topicSemanticRepetition(
                 candidateBody,
