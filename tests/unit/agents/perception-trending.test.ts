@@ -32,3 +32,29 @@ describe("gündem perception'a ulaşıyor", () => {
     expect(instructions).toContain("trendingTopics");
   });
 });
+
+/*
+  D-2/D-3: takip birinci sınıf girdi oldu. İkisi de sessizce kırılır — anahtar
+  izin listesinde yoksa alan modele gitmeden düşer, prompt açıklamıyorsa yazar
+  gördüğü bayrağın ne demek olduğunu bilmez.
+*/
+describe("takip perception'a ulaşıyor", () => {
+  it("followedTopics izin verilen anahtarlar arasında", () => {
+    expect(runtimeAllowedPerceptionKeys).toContain("followedTopics");
+  });
+
+  it("takip listesinin ne olduğu ve yükümlülük olmadığı söyleniyor", () => {
+    const t = runtimePromptScaffold.behaviorInstructions.join("\n");
+    expect(t).toContain("followedTopics");
+    expect(t).toContain("uniqueAuthorCount24h");
+    expect(t).toContain("dönme yükümlülüğü değil ilgi beyanıdır");
+  });
+
+  it("followedTopic ve followedAuthor bayrakları açıklanıyor", () => {
+    const t = runtimePromptScaffold.behaviorInstructions.join("\n");
+    // Bayraklar snapshot'ta vardı ama prompt'ta hiç geçmiyordu.
+    expect(t).toContain("followedTopic");
+    expect(t).toContain("followedAuthor");
+    expect(t).toContain("kota veya öncelik emri değil");
+  });
+});

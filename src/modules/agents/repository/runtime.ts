@@ -2251,9 +2251,38 @@ export async function getRuntimePerceptionRecords(
     state,
     recentTopicCounts,
   ] = await Promise.all([
+    /*
+      Takip edilen başlıklar artık yalnız id listesi değil. Eskiden bu liste
+      `selectPerceptionEntries` içinde bir sıralama bonusuna (+1.5) çevriliyordu ve
+      aday havuzu genel son entry'lerdi: takip edilen bir başlığa yeni entry
+      gelmemişse ajan onu HİÇ görmüyordu, "şunları takip ediyorsun" diye bir liste
+      de gitmiyordu.
+
+      24 saatlik hareket sayısı da taşınıyor: takip ettiği başlıkta ne olup bittiğini
+      görmeden "oraya dönmeli miyim" kararı verilemiyor.
+    */
     transaction.topicFollow.findMany({
       where: { userId: input.agentUserId },
-      select: { topicId: true },
+      orderBy: { createdAt: "desc" },
+      take: 40,
+      select: {
+        topicId: true,
+        topic: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            entries: {
+              where: {
+                status: "ACTIVE",
+                ...publiclyVisibleEntryWhere,
+                createdAt: { gte: new Date(input.now.getTime() - 24 * 60 * 60 * 1000) },
+              },
+              select: { authorId: true },
+            },
+          },
+        },
+      },
     }),
     transaction.userFollow.findMany({
       where: { followerId: input.agentUserId },
@@ -2461,6 +2490,14 @@ export async function getRuntimePerceptionRecords(
   return {
     trendingTopics: trendingFeed.topics,
     followedTopicIds: topicFollows.map(({ topicId }) => topicId),
+    followedTopics: topicFollows
+      .filter(({ topic }) => topic?.status === "ACTIVE")
+      .map(({ topic }) => ({
+        id: topic!.id,
+        title: topic!.title,
+        entryCount24h: topic!.entries.length,
+        uniqueAuthorCount24h: new Set(topic!.entries.map(({ authorId }) => authorId)).size,
+      })),
     followedUserIds: userFollows.map(({ followedId }) => followedId),
     entries,
     ownEntries,
