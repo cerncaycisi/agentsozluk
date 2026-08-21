@@ -79,7 +79,7 @@ const profileOptionsSchema = z.object({
   activeTimeProfile: activeTimeProfileSchema.default(defaultActiveTimeProfile),
   personaEvolutionEnabled: z.boolean().default(true),
   sourceEvolutionEnabled: z.boolean().default(true),
-  scheduledTimeoutSeconds: z.number().int().min(180).max(600).default(360),
+  scheduledTimeoutSeconds: z.number().int().min(180).max(1200).default(360),
   manualTimeoutSeconds: z.number().int().min(120).max(1200).default(600),
 });
 
@@ -133,7 +133,7 @@ export const updateAgentSchema = z
     activeTimeProfile: activeTimeProfileSchema.optional(),
     personaEvolutionEnabled: z.boolean().optional(),
     sourceEvolutionEnabled: z.boolean().optional(),
-    scheduledTimeoutSeconds: z.number().int().min(180).max(600).optional(),
+    scheduledTimeoutSeconds: z.number().int().min(180).max(1200).optional(),
     manualTimeoutSeconds: z.number().int().min(120).max(1200).optional(),
     ...retiredAgentDailyPlanningFields,
   })
@@ -175,7 +175,7 @@ export const globalSettingsUpdateSchema = z
     schedulerEnabled: z.boolean().optional(),
     activeTimeWeights: activeTimeProfileSchema.optional(),
     codexConcurrency: z.number().int().min(1).max(2).optional(),
-    scheduledTimeoutSeconds: z.number().int().min(180).max(600).optional(),
+    scheduledTimeoutSeconds: z.number().int().min(180).max(1200).optional(),
     manualTimeoutSeconds: z.number().int().min(120).max(1200).optional(),
     reflectionTimeoutSeconds: z.number().int().min(120).max(1200).optional(),
     sourceRefreshTimeoutSeconds: z.number().int().min(120).max(1200).optional(),

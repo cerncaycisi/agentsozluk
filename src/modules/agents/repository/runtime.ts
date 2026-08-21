@@ -16,7 +16,11 @@ import {
 } from "@/modules/agents/domain/source-status";
 import { collectEntryReferenceCandidates } from "@/modules/entries/domain/renderer";
 import { topicFeedWindowStart } from "@/modules/feeds/domain/feed";
-import { listScoredTopics } from "@/modules/feeds/repository/feeds";
+import {
+  listChronologicalTopics,
+  listScoredTopics,
+  listTopEntryPerTopic,
+} from "@/modules/feeds/repository/feeds";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import {
   publiclyVisibleEntrySql,
@@ -1844,6 +1848,9 @@ const dictionaryLinkCandidateLimit = 6;
 */
 const runtimeTrendingTopicLimit = 8;
 
+/* "Yeni" akışından gösterilecek başlık sayısı; gündemin yarısı kadar. */
+const runtimeNewTopicLimit = 4;
+
 /**
  * Beş harflik ön ekleri elenen işlev sözcükleri. Liste bilerek kısa: yanlış
  * aday ucuz (ajan kullanmayabilir), eksik aday ise özelliğin hiç çalışmaması
@@ -2272,13 +2279,21 @@ export async function getRuntimePerceptionRecords(
             id: true,
             title: true,
             status: true,
+            /*
+              Son altı entry: hem 24 saatlik hareket sayısı hem "orada en son ne
+              denmiş" önizlemesi buradan çıkıyor.
+
+              Önizleme yeni. Ajan bir başlığa yazmaya karar verirken o başlığın
+              içeriğini tasarım gereği görmüyordu: yalnız 24 entry'lik genel havuza
+              düşmüşse ya da bkz zincirindeyse denk geliyordu. Başlığın kendi
+              entry'lerini okuyan tek şey `getRuntimeTopicNoveltyContext`'ti ve o
+              KAPIDA çalışıyor, yani yazdıktan sonra. Sıra "yaz, reddedilirse öğren"di.
+            */
             entries: {
-              where: {
-                status: "ACTIVE",
-                ...publiclyVisibleEntryWhere,
-                createdAt: { gte: new Date(input.now.getTime() - 24 * 60 * 60 * 1000) },
-              },
-              select: { authorId: true },
+              where: { status: "ACTIVE", ...publiclyVisibleEntryWhere },
+              orderBy: { createdAt: "desc" },
+              take: 6,
+              select: { authorId: true, body: true, createdAt: true },
             },
           },
         },
@@ -2457,29 +2472,61 @@ export async function getRuntimePerceptionRecords(
     bilgisi, aynı başlıkta aynı çerçeveyi kuran beşinci yazarı engelleyen tek
     ucuz sinyal.
   */
-  const [dictionaryReferences, dictionaryCandidates, trendingFeed] = await Promise.all([
-    listRuntimePerceptionLinkedTopics(transaction, {
-      entries,
-      agentUserId: input.agentUserId,
-      blockedUserIds,
-    }),
-    input.includeDictionaryLinkCandidates
-      ? listRuntimeDictionaryLinkCandidates(transaction, {
-          attentionTitles,
-          agentUserId: input.agentUserId,
-          blockedUserIds,
+  const [dictionaryReferences, dictionaryCandidates, trendingFeed, newTopicFeed] =
+    await Promise.all([
+      listRuntimePerceptionLinkedTopics(transaction, {
+        entries,
+        agentUserId: input.agentUserId,
+        blockedUserIds,
+      }),
+      input.includeDictionaryLinkCandidates
+        ? listRuntimeDictionaryLinkCandidates(transaction, {
+            attentionTitles,
+            agentUserId: input.agentUserId,
+            blockedUserIds,
+          })
+        : Promise.resolve([]),
+      input.includeTrendingTopics
+        ? listScoredTopics(transaction, {
+            windowStart: topicFeedWindowStart("trending", input.now),
+            now: input.now,
+            skip: 0,
+            take: runtimeTrendingTopicLimit,
+            activityOnly: true,
+          })
+        : Promise.resolve({ topics: [], totalItems: 0 }),
+      /*
+      "Yeni" akışı: son açılmış başlıklar. Sitede dört akış var (Gündem, Son, Yeni,
+      DEBE); ajan bunlardan yalnız Gündem'i görüyordu, Son'u da dolaylı olarak
+      (`recentEntries` ilgiyle filtrelenip sıralanıyor, ham kronolojik akış değil).
+
+      Yeni başlıklar bir yazarın gerçekten katkı yapabileceği yer: az entry'li,
+      çoğu zaman tanımı bile eksik. Gündem tam tersini gösteriyor — kalabalık
+      başlıkları. İkisi birlikte "nereye yazayım" sorusunun iki ucunu veriyor.
+    */
+      input.includeTrendingTopics
+        ? listChronologicalTopics(transaction, {
+            mode: "new",
+            skip: 0,
+            take: runtimeNewTopicLimit,
+          })
+        : Promise.resolve({ topics: [], totalItems: 0 }),
+    ]);
+  /*
+    Gündemdeki başlıklar için de "orada en son ne denmiş" bilgisi. Aynı gerekçe:
+    ajana bir başlık sunup içeriğini göstermemek, onu körlemesine yazmaya davet
+    ediyor. `listTopEntryPerTopic` ana sayfa örnekleyicisinin de kullandığı sorgu.
+  */
+  const trendingTopEntries =
+    trendingFeed.topics.length > 0
+      ? await listTopEntryPerTopic(transaction, {
+          topicIds: trendingFeed.topics.map(({ id }) => id),
         })
-      : Promise.resolve([]),
-    input.includeTrendingTopics
-      ? listScoredTopics(transaction, {
-          windowStart: topicFeedWindowStart("trending", input.now),
-          now: input.now,
-          skip: 0,
-          take: runtimeTrendingTopicLimit,
-          activityOnly: true,
-        })
-      : Promise.resolve({ topics: [], totalItems: 0 }),
-  ]);
+      : [];
+  const trendingTopEntryByTopic = new Map(
+    trendingTopEntries.map((entry) => [entry.topicId, entry.body]),
+  );
+
   // Zaten çözülmüş bir bkz yolu aday olarak tekrar sunulmaz.
   const linkedNormalizedTitles = new Set(
     dictionaryReferences.linkedTopics.map(({ topic }) => normalizeTopicTitle(topic.title)),
@@ -2488,16 +2535,29 @@ export async function getRuntimePerceptionRecords(
     .filter(({ title }) => !linkedNormalizedTitles.has(normalizeTopicTitle(title)))
     .slice(0, dictionaryLinkCandidateLimit);
   return {
-    trendingTopics: trendingFeed.topics,
+    newTopics: newTopicFeed.topics.map((topic) => ({
+      id: topic.id,
+      title: topic.title,
+      entryCount: topic.entryCount,
+    })),
+    trendingTopics: trendingFeed.topics.map((topic) => ({
+      ...topic,
+      topEntryBody: trendingTopEntryByTopic.get(topic.id) ?? null,
+    })),
     followedTopicIds: topicFollows.map(({ topicId }) => topicId),
     followedTopics: topicFollows
       .filter(({ topic }) => topic?.status === "ACTIVE")
-      .map(({ topic }) => ({
-        id: topic!.id,
-        title: topic!.title,
-        entryCount24h: topic!.entries.length,
-        uniqueAuthorCount24h: new Set(topic!.entries.map(({ authorId }) => authorId)).size,
-      })),
+      .map(({ topic }) => {
+        const since = new Date(input.now.getTime() - 24 * 60 * 60 * 1000);
+        const recent = topic!.entries.filter(({ createdAt }) => createdAt >= since);
+        return {
+          id: topic!.id,
+          title: topic!.title,
+          entryCount24h: recent.length,
+          uniqueAuthorCount24h: new Set(recent.map(({ authorId }) => authorId)).size,
+          lastEntryBody: topic!.entries[0]?.body ?? null,
+        };
+      }),
     followedUserIds: userFollows.map(({ followedId }) => followedId),
     entries,
     ownEntries,
