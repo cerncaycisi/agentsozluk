@@ -823,6 +823,7 @@ interface RuntimeControlFormProps {
   societyFlowEnabled: boolean;
   runtimeEnabled: boolean;
   schedulerEnabled: boolean;
+  publishEnabled: boolean;
   publicWriteEnabled: boolean;
   runtimeOperatingMode: "NORMAL" | "MAINTENANCE";
 }
@@ -831,6 +832,7 @@ export function RuntimeControlForm({
   societyFlowEnabled,
   runtimeEnabled,
   schedulerEnabled,
+  publishEnabled,
   publicWriteEnabled,
   runtimeOperatingMode,
 }: RuntimeControlFormProps) {
@@ -839,13 +841,55 @@ export function RuntimeControlForm({
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string>();
   const command = societyFlowEnabled ? "pause" : "resume";
+  /*
+    Toplum akışı beş kontrolün VE'si, ama duraklatma yalnız runtimeEnabled'ı kapatıyor.
+    Yani üçüncü bir durum var: runtime çalışıyor, bir kontrol kasten kapalı. Panel bunu
+    eskiden "durmuş" gibi gösteriyordu ve tek seçenek "Toplumu başlat"tı — operatör
+    durduğunu sandığı toplumu başlatırken kasten koyduğu kısıtı kaldırıyordu.
+    Kapalı olanları adıyla söylüyoruz; düğme de ne yapacağını söylüyor.
+  */
+  const closedControls = [
+    schedulerEnabled ? null : "scheduler",
+    publishEnabled ? null : "publish",
+    publicWriteEnabled ? null : "public write",
+  ].filter((control): control is string => control !== null);
+  // Çalışma modu bir anahtar değil; "kapalı" listesine karışırsa cümle yanlış oluyor.
+  const inMaintenance = runtimeOperatingMode !== "NORMAL";
+  const restricted =
+    !societyFlowEnabled && runtimeEnabled && (closedControls.length > 0 || inMaintenance);
+  const closedPhrase = closedControls.length > 0 ? `${closedControls.join(", ")} kapalı` : "";
+  const restrictionPhrase = inMaintenance
+    ? closedPhrase
+      ? `çalışma modu MAINTENANCE ve ${closedPhrase}`
+      : "çalışma modu MAINTENANCE"
+    : closedPhrase;
+  // Tek kısıt için tekil, birden fazlası için çoğul.
+  const restrictionCount = closedControls.length + (inMaintenance ? 1 : 0);
+  const restorePronoun = restrictionCount > 1 ? "bunları" : "bunu";
+  const actionLabel = societyFlowEnabled
+    ? "Toplumu durdur"
+    : restricted
+      ? "Kısıtlamaları kaldır"
+      : "Toplumu başlat";
+  // Düğme emir kipinde, gerekçe etiketi ad halinde — "Toplumu durdur gerekçesi" bozuk Türkçe.
+  const reasonLabel = societyFlowEnabled
+    ? "Durdurma gerekçesi"
+    : restricted
+      ? "Kısıtlamaları kaldırma gerekçesi"
+      : "Başlatma gerekçesi";
   return (
     <div className="mt-4 border-t pt-4">
       <p className="text-sm text-muted">
         Runtime {runtimeEnabled ? "açık" : "kapalı"} · scheduler{" "}
-        {schedulerEnabled ? "açık" : "kapalı"} · public write{" "}
-        {publicWriteEnabled ? "açık" : "kapalı"} · çalışma modu {runtimeOperatingMode}
+        {schedulerEnabled ? "açık" : "kapalı"} · publish {publishEnabled ? "açık" : "kapalı"} ·
+        public write {publicWriteEnabled ? "açık" : "kapalı"} · çalışma modu {runtimeOperatingMode}
       </p>
+      {restricted ? (
+        <p className="mt-2 text-sm font-medium text-ink">
+          Toplum durmuş değil, kısıtlı: runtime çalışıyor ama {restrictionPhrase}. «{actionLabel}»{" "}
+          {restorePronoun} açacak.
+        </p>
+      ) : null}
       <form
         className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]"
         onSubmit={async (event) => {
@@ -864,7 +908,7 @@ export function RuntimeControlForm({
               successMessage(
                 societyFlowEnabled
                   ? "Toplum durduruldu; çalışan run iptal edilmeden yeni lease ve public run üretimi kapatıldı."
-                  : "Toplum başlatıldı; runtime, scheduler, public write ve NORMAL mod açıldı. Worker en geç 60 saniyede yeniden deneyecek.",
+                  : "Runtime, scheduler, publish, public write ve NORMAL mod açıldı. Worker en geç 60 saniyede yeniden deneyecek.",
               ),
             );
             router.refresh();
@@ -876,7 +920,7 @@ export function RuntimeControlForm({
         }}
       >
         <label className="text-sm font-medium">
-          {societyFlowEnabled ? "Durdurma" : "Başlatma"} gerekçesi
+          {reasonLabel}
           <input
             value={reason}
             onChange={(event) => setReason(event.target.value)}
@@ -890,7 +934,7 @@ export function RuntimeControlForm({
           disabled={pending || reason.trim().length < 10}
           className={societyFlowEnabled ? "button-secondary self-end" : "button-primary self-end"}
         >
-          {pending ? "İşleniyor…" : societyFlowEnabled ? "Toplumu durdur" : "Toplumu başlat"}
+          {pending ? "İşleniyor…" : actionLabel}
         </button>
         {message ? <p className="text-sm sm:col-span-2">{message}</p> : null}
       </form>

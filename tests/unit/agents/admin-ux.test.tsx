@@ -228,24 +228,34 @@ describe("agent admin UX contracts", () => {
     expect(screen.queryByText(/Credential yalnız şimdi gösterilir/u)).not.toBeInTheDocument();
   });
 
-  it("offers a society start when any continuous-flow control is disabled", async () => {
+  it("kısıtlı toplumu 'durmuş' diye göstermez; kapalı kontrolleri adıyla söyler", async () => {
     mocks.apiRequest.mockResolvedValue({});
     const user = userEvent.setup();
+    /*
+      Runtime çalışıyor, iki kontrol kasten kapalı. Bu üçüncü bir durum: toplum durmuş
+      değil, kısıtlı. Panel eskiden bunu "Toplumu başlat" diye gösteriyordu ve operatör
+      durduğunu sandığı toplumu başlatırken kendi koyduğu kısıtı kaldırıyordu.
+    */
     render(
       <RuntimeControlForm
         societyFlowEnabled={false}
         runtimeEnabled
         schedulerEnabled={false}
-        publicWriteEnabled
+        publishEnabled
+        publicWriteEnabled={false}
         runtimeOperatingMode="NORMAL"
       />,
     );
 
+    expect(screen.getByText(/Toplum durmuş değil, kısıtlı/u)).toBeInTheDocument();
+    expect(screen.getByText(/scheduler, public write kapalı\./u)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Toplumu başlat" })).not.toBeInTheDocument();
+
     await user.type(
-      screen.getByLabelText("Başlatma gerekçesi"),
-      "Scheduler kapalı kaldığı için toplum akışını yeniden başlat.",
+      screen.getByLabelText("Kısıtlamaları kaldırma gerekçesi"),
+      "Scheduler ve public write kısıtlarını kaldırıp sürekli akışa dön.",
     );
-    await user.click(screen.getByRole("button", { name: "Toplumu başlat" }));
+    await user.click(screen.getByRole("button", { name: "Kısıtlamaları kaldır" }));
 
     await waitFor(() =>
       expect(mocks.apiRequest).toHaveBeenCalledWith(
@@ -256,6 +266,97 @@ describe("agent admin UX contracts", () => {
     expect(mocks.refresh).toHaveBeenCalledOnce();
   });
 
+  it("tek kısıt için tekil, birden fazlası için çoğul der", async () => {
+    /*
+      Birim testleri geçerken çıktı "public write kapalı … bunları açacak" diyordu.
+      Cümleyi gerçekten okuyunca çıktı; bir daha kaçmasın.
+    */
+    const { unmount } = render(
+      <RuntimeControlForm
+        societyFlowEnabled={false}
+        runtimeEnabled
+        schedulerEnabled
+        publishEnabled
+        publicWriteEnabled={false}
+        runtimeOperatingMode="NORMAL"
+      />,
+    );
+    expect(screen.getByText(/bunu açacak/u)).toBeInTheDocument();
+    expect(screen.queryByText(/bunları açacak/u)).not.toBeInTheDocument();
+    unmount();
+
+    render(
+      <RuntimeControlForm
+        societyFlowEnabled={false}
+        runtimeEnabled
+        schedulerEnabled={false}
+        publishEnabled
+        publicWriteEnabled={false}
+        runtimeOperatingMode="NORMAL"
+      />,
+    );
+    expect(screen.getByText(/bunları açacak/u)).toBeInTheDocument();
+  });
+
+  it("çalışma modunu 'kapalı' listesine karıştırmaz", async () => {
+    // Bir mod kapalı olmaz; MAINTENANCE'tadır. Anahtarlarla aynı cümlede sayılamaz.
+    render(
+      <RuntimeControlForm
+        societyFlowEnabled={false}
+        runtimeEnabled
+        schedulerEnabled={false}
+        publishEnabled
+        publicWriteEnabled
+        runtimeOperatingMode="MAINTENANCE"
+      />,
+    );
+    expect(screen.getByText(/çalışma modu MAINTENANCE ve scheduler kapalı\./u)).toBeInTheDocument();
+    expect(screen.queryByText(/çalışma modu \(MAINTENANCE\) kapalı/u)).not.toBeInTheDocument();
+  });
+
+  it("runtime kapalıyken gerçekten 'Toplumu başlat' der", async () => {
+    mocks.apiRequest.mockResolvedValue({});
+    render(
+      <RuntimeControlForm
+        societyFlowEnabled={false}
+        runtimeEnabled={false}
+        schedulerEnabled
+        publishEnabled
+        publicWriteEnabled
+        runtimeOperatingMode="NORMAL"
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Toplumu başlat" })).toBeInTheDocument();
+    expect(screen.queryByText(/kısıtlı/u)).not.toBeInTheDocument();
+  });
+
+  it("publish ile public write'ı ayrı gösterir", async () => {
+    /*
+      Çağrı yeri bu ikisini `publishEnabled && publicWriteEnabled` diye tek etikette
+      birleştiriyordu; operatör hangisinin kapalı olduğunu göremiyordu.
+    */
+    render(
+      <RuntimeControlForm
+        societyFlowEnabled={false}
+        runtimeEnabled
+        schedulerEnabled
+        publishEnabled={false}
+        publicWriteEnabled
+        runtimeOperatingMode="NORMAL"
+      />,
+    );
+
+    // Durum satırı ikisini ayrı gösterir…
+    expect(
+      screen.getByText(/scheduler açık · publish kapalı · public write açık/u),
+    ).toBeInTheDocument();
+    // …uyarı satırı da yalnız gerçekten kapalı olanı adlandırır.
+    expect(
+      screen.getByText(/kısıtlı: runtime çalışıyor ama publish kapalı\./u),
+    ).toBeInTheDocument();
+  });
+
   it("offers a society pause only while every continuous-flow control is enabled", async () => {
     mocks.apiRequest.mockResolvedValue({});
     const user = userEvent.setup();
@@ -264,6 +365,7 @@ describe("agent admin UX contracts", () => {
         societyFlowEnabled
         runtimeEnabled
         schedulerEnabled
+        publishEnabled
         publicWriteEnabled
         runtimeOperatingMode="NORMAL"
       />,

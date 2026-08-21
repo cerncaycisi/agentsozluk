@@ -8,6 +8,10 @@ import {
   productionRolloutStartSchema,
 } from "@/modules/agents/validation/schemas";
 import { productionRolloutCheckpointSchema } from "@/modules/agents/validation/production-rollout-schemas";
+import {
+  prepareOperatorCliEnvironment,
+  writeOperatorCliEnvironmentReport,
+} from "./operator-cli-environment";
 
 const environmentSchema = z
   .object({
@@ -120,12 +124,7 @@ async function main(): Promise<void> {
     ])
     .parse(process.argv[2]);
   assertLegacyRolloutModeIsSafeToRun(mode);
-  if (process.env.AGENT_OPERATOR_ENV_FILE) process.loadEnvFile(process.env.AGENT_OPERATOR_ENV_FILE);
-  if (process.env.AGENT_DB_IP && process.env.DATABASE_URL) {
-    const databaseUrl = new URL(process.env.DATABASE_URL);
-    databaseUrl.hostname = process.env.AGENT_DB_IP;
-    process.env.DATABASE_URL = databaseUrl.toString();
-  }
+  writeOperatorCliEnvironmentReport(prepareOperatorCliEnvironment());
   const environment = environmentSchema.parse(process.env);
   const [{ getDatabase }, agents, { resolveOperatorAdmin }] = await Promise.all([
     import("@/lib/db/client"),
