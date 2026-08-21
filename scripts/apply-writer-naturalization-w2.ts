@@ -289,6 +289,7 @@ async function main(): Promise<void> {
             const requestId = randomUUID();
             requestIds.push(requestId);
             await updateAgent(transaction, { ...actor, requestId }, profile.id, {
+              expectedPersonaVersion: profile.currentPersonaVersion!.version,
               persona: lockedCandidates.get(profile.user.username)!.persona,
               changeSummary: target.changeSummary,
             });

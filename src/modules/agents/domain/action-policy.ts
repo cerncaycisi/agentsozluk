@@ -567,13 +567,38 @@ export function seriousFactualClaimRequiresStrongEvidence(body: string): boolean
   );
 }
 
+/*
+  Alıntının başka bir entry'ye atfedildiğini gösteren işaretçiler. Bu liste de eskiden düz
+  `String.includes` ile aranıyordu ve grounding işaretçileriyle aynı alt-dizi kazasını
+  üretiyordu: `yazar` işaretçisi `yazmak` fiilinin geniş zaman çekimlerinin içinde
+  eşleşiyor ("bunu yazarken", "herkes böyle yazarsa", "uzun uzun yazardım"), hiçbir atıf
+  içermeyen gövde USER_ENTRY_HIGH_RISK_REPRODUCTION ile reddediliyordu.
+
+  Kuyruk sözleşmesi `groundingMarkerPattern` ile aynıdır:
+  - "DERIVED": Türkçede alt-dizi kazası ölçülmemiş işaretçiler. Bu kapı eşleşince KAPANIR,
+    yani fazla eşleşmek fail-closed yöndedir; türevleri serbest bırakmak güvenlidir.
+  - açık ek listesi: yalnız `yazar`. Sayılan isim çekimleri kabul edilir; `-ken`, `-sa`,
+    `-dı`, `-ım` fiil ekleri bilerek dışarıdadır. `yazarım` teorik olarak "benim yazarım"
+    iyeliği de olabilir ama fiil okuması baskın olduğu için listeye alınmadı.
+*/
+const quoteAttributionMarkers = [
+  ["entry", "DERIVED"],
+  ["kullanıcı", "DERIVED"],
+  ["başlıktaki", "DERIVED"],
+  ["yukarıdaki", "DERIVED"],
+  ["önceki", "DERIVED"],
+  ["yazar", "(?:lar)?(?:ı|ın|ının|ına|ını|ında|ından|a|da|dan|)"],
+] as const satisfies readonly GroundingMarker[];
+
+const quoteAttributionPatterns = quoteAttributionMarkers.map((marker) =>
+  groundingMarkerPattern(marker),
+);
+
 export function userEntryContainsHighRiskReproduction(body: string): boolean {
   const normalized = normalizedGroundingText(body);
   const explicitlyAttributedQuote =
     directQuoteClaims(body).length > 0 &&
-    ["entry", "kullanıcı", "yazar", "başlıktaki", "yukarıdaki", "önceki"].some((marker) =>
-      normalized.includes(marker),
-    );
+    quoteAttributionPatterns.some((pattern) => pattern.test(normalized));
   // Aynı daraltma: ağır suç isnadını çerçeveleyen ifade isnadın kendi cümlesinde olmalıdır.
   const unframedSevereAllegation = groundingSentences(body).some(
     (sentence) =>

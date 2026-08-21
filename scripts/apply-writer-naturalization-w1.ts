@@ -239,6 +239,7 @@ async function main(): Promise<void> {
             const requestId = randomUUID();
             requestIds.push(requestId);
             await updateAgent(transaction, { ...actor, requestId }, profile.id, {
+              expectedPersonaVersion: profile.currentPersonaVersion!.version,
               displayName: target.displayName,
               publicBio: target.publicBio,
               changeSummary: "W1 kapsamında onaylanan doğal görünen ad ve public bio güncellemesi.",

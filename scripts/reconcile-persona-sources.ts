@@ -131,7 +131,7 @@ async function main(): Promise<void> {
           select: {
             lifecycleStatus: true,
             user: { select: { username: true } },
-            currentPersonaVersion: { select: { persona: true } },
+            currentPersonaVersion: { select: { persona: true, version: true } },
           },
         });
         if (currentProfile.user.username !== profile.user.username)
@@ -154,6 +154,7 @@ async function main(): Promise<void> {
             JSON.stringify(targetSourceTopicMappings);
         if (personaNeedsUpdate)
           await updateAgent(transaction, { ...actor, requestId: randomUUID() }, profile.id, {
+            expectedPersonaVersion: currentProfile.currentPersonaVersion.version,
             persona: {
               ...currentPersona,
               sources,

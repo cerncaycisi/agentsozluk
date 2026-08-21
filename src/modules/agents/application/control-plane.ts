@@ -853,6 +853,24 @@ export async function updateAgent(
     if (current.lifecycleStatus === "RETIRED") {
       throw new AppError("AGENT_LIFECYCLE_INVALID", 409, "Emekli agent düzenlenemez.");
     }
+    /*
+      Kayıp güncelleme koruması. `lockAgentProfile` yalnız iki transaction'ı sıraya sokar;
+      bayat okuma ile gelen ikinci yazar kilidi düzgün alsa bile araya giren düzenlemeyi
+      sessizce ezer (admin formu detayı kilitsiz okur, dakikalarca açık kalır, sonra tüm
+      persona'yı geri gönderir). `updateGlobalSettings` içindeki settingsVersion CAS'ı ile
+      aynı desen: token mutasyon kilidi altında karşılaştırılır, uyuşmazlık 409 döner.
+      Persona sürüm numarası profil başına monotondur, bu yüzden yeni kolon gerekmez.
+    */
+    if (
+      input.expectedPersonaVersion !== undefined &&
+      input.expectedPersonaVersion !== current.currentPersonaVersion?.version
+    ) {
+      throw new AppError(
+        "AGENT_PERSONA_VERSION_CONFLICT",
+        409,
+        "Agent personası başka bir işlem tarafından değiştirildi; güncel durumu yükleyin.",
+      );
+    }
     if (
       RETIRED_DAILY_PLANNING_FIELD_NAMES.some(
         (field) => (input as Record<string, unknown>)[field] !== undefined,
@@ -862,6 +880,15 @@ export async function updateAgent(
         "AGENT_DAILY_PLANNING_RETIRED",
         410,
         "Agent günlük hedef ve quota ayarları kaldırıldı; stochastic toplum akışı hedefsiz çalışır.",
+      );
+    }
+    // Zod ile aynı zorunluluk; şemayı atlayan doğrudan çağrılar (scripts) da token vermelidir.
+    if (input.persona && input.expectedPersonaVersion === undefined) {
+      throw new AppError(
+        "VALIDATION_ERROR",
+        422,
+        "Persona değişikliği için okunan persona sürümü zorunludur.",
+        { expectedPersonaVersion: ["Okunan persona sürümü gönderilmelidir."] },
       );
     }
     const identityPatchRequested = input.displayName !== undefined || input.publicBio !== undefined;
@@ -974,7 +1001,7 @@ export async function updateAgent(
       after: afterProfile,
       metadata: {
         changedFields: Object.keys(input).filter(
-          (key) => key !== "persona" && key !== "changeSummary",
+          (key) => key !== "persona" && key !== "changeSummary" && key !== "expectedPersonaVersion",
         ),
         ...(personaVersion ? { personaVersion: personaVersion.version } : {}),
       },
