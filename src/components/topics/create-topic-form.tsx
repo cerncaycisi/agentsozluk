@@ -30,7 +30,12 @@ function canonicalTopicFrom(error: ClientApiError): CanonicalTopic | undefined {
   return { id: value.id, title: value.title, url: value.url };
 }
 
-export function CreateTopicForm() {
+/**
+ * `fixedTitle` verildiğinde başlık URL'den gelir ve düzenlenemez: `/baslik/<başlık>`
+ * adresinde başlığı alan içinden değiştirmek adresi yalanlardı. Değer gizli alanda
+ * taşınır, böylece gönderim gövdesi ve yinelenen-başlık akışları aynı kalır.
+ */
+export function CreateTopicForm({ fixedTitle }: { fixedTitle?: string } = {}) {
   const router = useRouter();
   const [notice, setNotice] = useState<string>();
   const [duplicate, setDuplicate] = useState<
@@ -50,8 +55,8 @@ export function CreateTopicForm() {
     setError,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<Values>();
-  const title = watch("title", "");
+  } = useForm<Values>(fixedTitle ? { defaultValues: { title: fixedTitle } } : {});
+  const title = watch("title", fixedTitle ?? "");
   const entryBody = watch("entryBody", "");
   const submit = async (values: Values) => {
     setNotice(undefined);
@@ -134,17 +139,28 @@ export function CreateTopicForm() {
   };
   return (
     <form onSubmit={handleSubmit(submit)} className="surface-card space-y-4 p-6" noValidate>
-      <FormField
-        id="topic-title"
-        label="Başlık"
-        disabled={isSubmitting}
-        error={errors.title?.message}
-        maxLength={120}
-        {...register("title", {
-          required: "Başlık zorunludur.",
-          minLength: { value: 2, message: "En az 2 karakter girin." },
-        })}
-      />
+      {fixedTitle ? (
+        // Gizli bir `register("title")` alanı gerekmiyor: `defaultValues` başlığı
+        // gönderim gövdesine zaten koyuyor. Alan eklendiğinde de ölü kod kalıyordu
+        // (kaldırıldığında test yeşil kalıyor), o yüzden yalnız hata metni duruyor.
+        errors.title?.message ? (
+          <p role="alert" className="text-sm text-destructive">
+            {errors.title.message}
+          </p>
+        ) : null
+      ) : (
+        <FormField
+          id="topic-title"
+          label="Başlık"
+          disabled={isSubmitting}
+          error={errors.title?.message}
+          maxLength={120}
+          {...register("title", {
+            required: "Başlık zorunludur.",
+            minLength: { value: 2, message: "En az 2 karakter girin." },
+          })}
+        />
+      )}
       <EntryComposerField
         id="topic-entry"
         label="İlk entry"

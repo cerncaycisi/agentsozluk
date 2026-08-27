@@ -24,7 +24,7 @@ describe("safe entry renderer", () => {
     expect(html).not.toContain('href="javascript:');
   });
 
-  it("links known references and turns an unopened hidden bkz into a topic search", () => {
+  it("links known references and points an unopened hidden bkz at the topic's own address", () => {
     const tokens = tokenizeEntryBody("[[Açık Kaynak]] @writer [[bilinmeyen]] @yok", {
       topics: new Map([["açık kaynak", "/baslik/id-acik-kaynak"]]),
       users: new Set(["writer"]),
@@ -37,7 +37,7 @@ describe("safe entry renderer", () => {
       {
         type: "topic",
         text: "bilinmeyen",
-        href: "/ara?q=bilinmeyen&type=topics",
+        href: "/baslik/bilinmeyen",
       },
       { type: "text", text: " @yok" },
     ]);

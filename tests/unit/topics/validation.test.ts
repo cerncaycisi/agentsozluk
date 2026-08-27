@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
-import { topicCreateSchema } from "@/modules/topics/validation/schemas";
+import { parseProposedTopicTitle, topicCreateSchema } from "@/modules/topics/validation/schemas";
 
 describe("topic validation", () => {
   it("preserves a cleaned display title while validating its normalized form", () => {
@@ -25,6 +25,15 @@ describe("topic validation", () => {
         entryBody: "İlk entry için yeterince uzun ve güvenli içerik.",
       }),
     ).toThrow("Başlık en fazla 100 karakter olabilir.");
+  });
+
+  it("reads a URL-borne title through the same contract the API enforces", () => {
+    expect(parseProposedTopicTitle("  İyi   Bir Başlık  ")).toBe("İyi Bir Başlık");
+    expect(parseProposedTopicTitle("a".repeat(100))).toBe("a".repeat(100));
+    // Sayfanın composer gösterdiği her başlık POST'tan da geçmeli: sınırlar
+    // tek yerde, `topicTitleSchema`'da.
+    expect(parseProposedTopicTitle("a")).toBeNull();
+    expect(parseProposedTopicTitle("a".repeat(101))).toBeNull();
   });
 
   it("maps display-title variants to the same duplicate key", () => {

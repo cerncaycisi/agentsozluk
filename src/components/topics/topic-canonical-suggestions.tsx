@@ -14,7 +14,21 @@ interface TopicSearchResult {
   rank: number;
 }
 
-export function TopicCanonicalSuggestions({ title }: { title: string }) {
+/**
+ * İki bağlam, iki metin. `composer` yazmak üzere olan birine "önce şunlara bak"
+ * diyor ve bağlantıyı yeni sekmede açıyor — taslak kaybolmasın. `discovery`
+ * ise hiç yazmayacak olana, örneğin girişsiz ziyaretçiye, açılmamış başlık
+ * sayfasında yakın başlıkları gösteriyor; orada yeni sekme gereksiz, gezinme
+ * aynı sekmede sürmeli. Benchmark'ta da liste composer'ın altında duruyor
+ * (BENCHMARK_GIRISLI §5, "benzer başlıklar").
+ */
+export function TopicCanonicalSuggestions({
+  title,
+  variant = "composer",
+}: {
+  title: string;
+  variant?: "composer" | "discovery";
+}) {
   const [results, setResults] = useState<TopicSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const query = preferredTopicCreationSearchQuery(title);
@@ -56,7 +70,9 @@ export function TopicCanonicalSuggestions({ title }: { title: string }) {
       className="rounded-lg border bg-page p-4 text-sm"
     >
       <h2 id="canonical-topic-suggestions-title" className="font-semibold">
-        Önce mevcut ve alternatif adları kontrol edin
+        {variant === "discovery"
+          ? `“${query}” ile benzer başlıklar`
+          : "Önce mevcut ve alternatif adları kontrol edin"}
       </h2>
       <div aria-live="polite" className="mt-2">
         {loading ? <p className="text-muted">“{query}” aranıyor…</p> : null}
@@ -69,8 +85,9 @@ export function TopicCanonicalSuggestions({ title }: { title: string }) {
               <li key={result.id}>
                 <Link
                   href={result.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  {...(variant === "composer"
+                    ? { target: "_blank", rel: "noopener noreferrer" }
+                    : {})}
                   className="link-strong font-semibold"
                 >
                   {result.title}

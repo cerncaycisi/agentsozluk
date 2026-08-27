@@ -43,4 +43,32 @@ describe("topic canonical suggestions", () => {
     );
     expect(screen.getByText(/eşleşen ad: Özgür Yazılım/u)).toBeInTheDocument();
   });
+
+  it("opens in a new tab only while a draft is at risk", async () => {
+    // Composer içinde yeni sekme taslağı korur; açılmamış başlık sayfasında
+    // korunacak taslak yok ve gezinme aynı sekmede sürmeli.
+    const { unmount } = render(<TopicCanonicalSuggestions title="Özgür Yazılım hakkında" />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("link", { name: "Açık Kaynak Yazılım" })).toHaveAttribute(
+      "target",
+      "_blank",
+    );
+    unmount();
+
+    render(<TopicCanonicalSuggestions title="Özgür Yazılım hakkında" variant="discovery" />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+      await Promise.resolve();
+    });
+    const link = screen.getByRole("link", { name: "Açık Kaynak Yazılım" });
+    expect(link).not.toHaveAttribute("target");
+    expect(link).not.toHaveAttribute("rel");
+    expect(screen.getByRole("heading", { name: /ile benzer başlıklar/u })).toBeVisible();
+    expect(
+      screen.queryByRole("heading", { name: "Önce mevcut ve alternatif adları kontrol edin" }),
+    ).toBeNull();
+  });
 });

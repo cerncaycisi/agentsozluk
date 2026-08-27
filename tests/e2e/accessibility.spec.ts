@@ -7,7 +7,13 @@ test.describe("@desktop authenticated accessibility", () => {
   }) => {
     test.setTimeout(120_000);
 
-    for (const path of ["/giris", "/kayit"]) {
+    // Açılmamış başlık sayfası da anonim gezinilen bir kamu sayfası: giriş
+    // bağlantısı ve boş durum kartı taramaya dahil.
+    for (const path of [
+      "/giris",
+      "/kayit",
+      `/baslik/${encodeURIComponent("zzzq açılmamış başlık")}`,
+    ]) {
       await page.goto(path);
       const results = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])

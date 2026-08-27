@@ -17,6 +17,17 @@ export const topicTitleSchema = z.string().transform((input, context) => {
   return displayTitle;
 });
 
+/**
+ * URL'den okunmuş bir başlık adayının API sözleşmesinden geçip geçmediği.
+ * Kural tek yerde duruyor: sayfa da POST da `topicTitleSchema`'dan geçiyor,
+ * böylece adres çubuğuna yazılan başlık için gösterilen composer'ın gönderimi
+ * sonradan reddedilmiyor. Dönen metin, başlık açılsa nasıl kaydedilecekse odur.
+ */
+export function parseProposedTopicTitle(input: string): string | null {
+  const result = topicTitleSchema.safeParse(input);
+  return result.success ? result.data : null;
+}
+
 export const topicCreateSchema = z.object({
   title: topicTitleSchema,
   entryBody: entryBodySchema,

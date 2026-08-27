@@ -6609,3 +6609,42 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
 - Tekrarlama: prompta yalnız daha fazla talimat ekleyerek çelişkiyi büyütme; tarihsel/hash'li
   `docs/AGENT_SOZLUK_ANAYASASI.md` dosyasını ürün yorumu için düzenleme; internal link kotası koyma;
   runtime davranışı değişince eski pre-fix pencereyi post-fix W5 kabulü sayma.
+
+## 2026-08-27 — CI havuzu, geri alınan kapı gevşetmesi ve kaybolan ajan işi
+
+### CI veritabanı bağlantı havuzu runner'ın çekirdek sayısına bağlıydı
+
+- Belirti: aynı entegrasyon süiti yerelde geçiyor, CI'da kilitleniyordu. Ürün kodunda fark yok;
+  fark **ortamdaydı**.
+- Kök neden: `connection_limit` depoda hiçbir yerde ayarlanmamıştı, yani Prisma varsayılanı
+  (`cpu×2+1`) yürürlükteydi — yerel makinede `17`, GitHub runner'ında `3`. Yarış senaryolarını
+  kuran testler aynı anda 4-5 bağlantı istiyor; `3` ile kilitlenme kesindi.
+- Bisection kanıtı: `connection_limit=3` → 14 test düşüyor, `4` → 1 test düşüyor, `5` → hepsi
+  geçiyor. Marjla birlikte `10`'a sabitlendi.
+- Çözüm: `289fe06`.
+- Tekrarlama: havuz boyutunu çalıştırma ortamının çekirdek sayısına bırakma. Yerelde geçip CI'da
+  kilitlenen bir süiti ürün regresyonu sanma; önce eşzamanlılık bütçesini karşılaştır.
+
+### Coverage kapısını `continue-on-error` ile susturma denemesi geri alındı
+
+- Yapılan: coverage raporu yüklenemeyince kapının düşmemesi için adıma `continue-on-error`
+  eklendi (`4434cb5`).
+- Neden tuttu: `tests/unit/scripts/m2-ci-gate.test.ts` bunu **iki yönden** birden yasaklıyor —
+  hiçbir CI adımı `continue-on-error` olamaz, ve coverage yüklemesi var olmak zorunda. Yani ne
+  bayrağı eklemek ne de adımı kaldırmak geçiyor.
+- Çözüm: `19c326d` ile tam geri alındı. Asıl sorun (artifact kotası) CI yapılandırmasını
+  gevşeterek değil, kota temizlenerek çözüldü.
+- Tekrarlama: yeşil olmayan bir kapıyı bayrakla susturmadan önce `m2-ci-gate` politikasını oku;
+  bu depo bazı gevşetmeleri bilerek yasaklıyor.
+
+### Scratchpad temizliği iki günlük commit'lenmemiş ajan işini yuttu
+
+- Kayıp: `/baslik` paketini taşıyan ajanın yedeği ve D-8 `TOPIC_DEFINITION_REPEATED` kapısı
+  (42 red / %86 isabet ölçülmüştü). İkisi de yalnız scratchpad'de duruyordu, commit'lenmemişti;
+  temizlikle birlikte gitti.
+- Kök neden: geçici dizini çalışma alanı gibi kullanmak. Bu, 21 Ağustos'ta kaydedilen "iki ajanı
+  aynı worktree'ye koyma" dersinin ikinci yarısı: ayrı worktree yetmiyor, **iş commit'lenmeli**.
+- Kural: worktree'ler artık scratchpad altında değil `/Volumes/GB/ai-projects/agentsz-*` altında
+  kuruluyor; ajan işi indiği anda commit'leniyor.
+- Tekrarlama: commit'lenmemiş ajan çıktısını gece boyunca geçici dizinde bırakma; bir ajanın
+  "yedeği var" demesi versiyon kontrolü sayılmaz.

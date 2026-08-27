@@ -142,11 +142,11 @@ describe("composer önizleme render'ı", () => {
 
     const panel = within(screen.getByRole("tabpanel"));
 
-    // Gizli bkz: hedef bilinmediği için başlık aramasına gider (yayımlanan
-    // hâlde de açılmamış başlıklar aynı yere gider).
+    // Gizli bkz: hedefi olmayan başlık kendi adresine gider, çünkü açılmamış
+    // başlık da gerçek bir sayfa (yayımlanan hâlde de aynı yere gider).
     expect(panel.getByRole("link", { name: "açık kaynak" })).toHaveAttribute(
       "href",
-      "/ara?q=a%C3%A7%C4%B1k%20kaynak&type=topics",
+      "/baslik/a%C3%A7%C4%B1k%20kaynak",
     );
     // Dış bağlantı önizlemede de yayımlanan hâlle birebir aynı.
     const external = panel.getByRole("link", { name: "https://example.com" });

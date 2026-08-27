@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Search } from "lucide-react";
 import { Fragment } from "react";
 import { headers } from "next/headers";
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { CreateEntryForm } from "@/components/entries/create-entry-form";
 import { EntryPreview } from "@/components/entries/entry-preview";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -11,7 +11,14 @@ import { getDatabase } from "@/lib/db/client";
 import { getEnvironment } from "@/config/env";
 import { AppError } from "@/lib/http/errors";
 import { pageFrom } from "@/lib/http/pagination";
-import { entryPublicUrl, parseTopicRouteReference } from "@/lib/routing/public-urls";
+import {
+  entryPublicUrl,
+  parseTopicRouteReference,
+  parseUnopenedTopicSegment,
+  unopenedTopicUrl,
+} from "@/lib/routing/public-urls";
+import { UnopenedTopicView } from "@/app/baslik/[topic]/unopened-topic-view";
+import { parseProposedTopicTitle } from "@/modules/topics/validation/schemas";
 import { currentPageSession } from "@/lib/auth/server-session";
 import { getEntryReferenceIndex, getTopicEntries } from "@/modules/entries/application/entries";
 import {
@@ -25,7 +32,11 @@ import {
 } from "@/modules/entries/domain/time-window";
 import { getViewerEntryStates } from "@/modules/interactions/application/interactions";
 import { userHasModerationCapability } from "@/modules/moderation/application/capabilities";
-import { getTopic, getTopicByPublicId } from "@/modules/topics/application/topics";
+import {
+  getTopic,
+  getTopicByPublicId,
+  resolveUnopenedTopicRoute,
+} from "@/modules/topics/application/topics";
 import { getTopicIndexingDecision } from "@/modules/indexing";
 import {
   absolutePublicUrl,
@@ -93,7 +104,17 @@ export async function generateMetadata({
   const { topic: segment } = await params;
   const query = await searchParams;
   const reference = parseTopicRouteReference(segment);
-  if (!reference) return { title: "Başlık bulunamadı", robots: { index: false, follow: false } };
+  if (!reference) {
+    // Açılmamış başlık sayfası indekslenmez: içerik yok ve aynı başlığın farklı
+    // yazımları ayrı adreslere düşebiliyor. Başlık adayı sayfanın kullandığı
+    // sözleşmeden geçiyor; geçmezse sayfa 404 verecek, başlığı burada yazmak
+    // olmayan bir sayfaya ad takmak olurdu.
+    const segmentTitle = parseUnopenedTopicSegment(segment);
+    const proposedTitle = segmentTitle ? parseProposedTopicTitle(segmentTitle) : null;
+    return proposedTitle
+      ? { title: proposedTitle, robots: { index: false, follow: false } }
+      : { title: "Başlık bulunamadı", robots: { index: false, follow: false } };
+  }
   try {
     const topic =
       reference.kind === "public"
@@ -139,11 +160,56 @@ export default async function TopicPage({
 }) {
   const { topic: segment } = await params;
   const reference = parseTopicRouteReference(segment);
-  if (!reference) notFound();
   const session = await currentPageSession();
   const viewer = session
     ? { userId: session.userId, role: session.user.role, status: session.user.status }
     : null;
+  if (!reference) {
+    const segmentTitle = parseUnopenedTopicSegment(segment);
+    if (!segmentTitle) notFound();
+    // Adres önce kanonikleşiyor, sorgudan önce: kanonik olmayan yazım
+    // veritabanına hiç dokunmasın. Karşılaştırma kodlanmış biçimler arasında —
+    // gelen segment ham, `segmentTitle` çözülmüş; çözülmüş metinle
+    // kıyaslansaydı her istek kendine yönlenirdi. Eşleme yalnız girdiden
+    // türüyor ve değişebilecek bir tarafı yok, o yüzden kalıcı.
+    if (segment !== encodeURIComponent(segmentTitle))
+      permanentRedirect(unopenedTopicUrl(segmentTitle));
+    // `/baslik/` altındaki her bilinmeyen adres bir indeksli sorgu artı bir
+    // render demek ve bu adres uzayının sınırı yok. Başlık içi aramayla aynı
+    // kural: ziyaretçi IP'siyle, giriş yapan kendi kimliğiyle sayılıyor.
+    const database = getDatabase();
+    let unopenedRateLimited = false;
+    try {
+      const requestHeaders = await headers();
+      await enforceRateLimit(
+        database,
+        session
+          ? userRateLimitIdentifier(session.userId)
+          : ipRateLimitIdentifier(requestIp({ headers: requestHeaders })),
+        session ? RATE_LIMIT_RULES.searchAuthenticated : RATE_LIMIT_RULES.searchVisitor,
+      );
+    } catch (error) {
+      if (!(error instanceof AppError) || error.code !== "RATE_LIMITED") throw error;
+      unopenedRateLimited = true;
+    }
+    // Sınıra takılınca başlığın durumu bilinmiyor: ne "açılmamış" demek ne de
+    // composer göstermek doğru olur. Sayfanın geri kalanı gibi bekleme
+    // mesajına düşülüyor.
+    if (unopenedRateLimited)
+      return (
+        <main id="ana-icerik" className="page-main">
+          <h1 className="title-page">{segmentTitle}</h1>
+          <p className="surface-card mt-6 p-6 text-muted" role="status">
+            Arama sınırına ulaştınız; lütfen kısa süre sonra yeniden deneyin.
+          </p>
+        </main>
+      );
+    const route = await resolveUnopenedTopicRoute(database, segmentTitle, viewer);
+    if (route.kind === "not-found") notFound();
+    // Kalıcı değil: başlık yeniden adlandırılabildiği için bu eşleme değişebilir.
+    if (route.kind === "existing") redirect(route.url);
+    return <UnopenedTopicView title={route.title} />;
+  }
   let topic;
   try {
     topic =

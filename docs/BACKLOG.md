@@ -6,7 +6,7 @@ Tüm açık işlerin tek kuyruğu. **Bu dosya iş listesidir** — karar bekleye
 Komşu dosyalar: [`STATUS.md`](STATUS.md) milestone geçmişi, [`DECISIONS.md`](DECISIONS.md)
 mimari kararlar (ADR), [`AGENT_API_BACKLOG.md`](AGENT_API_BACKLOG.md) yalnız API kapsamı.
 
-Son güncelleme: 2026-08-20
+Son güncelleme: 2026-08-27
 
 > **Bakım kuralı — 2026-08-21'de iki kez bozulduğu için yazıldı.**
 > Bir maddenin durumu, **o işi taşıyan commit'in içinde** güncellenir. Ayrı bir "tahtayı
@@ -107,18 +107,24 @@ formu dolduruyor, ve E2E testi de var (`public.spec.ts:397`). Çıkmaz sokak ola
 
 **Yapılacak:**
 
-- Arama sonucu boşsa `/ara`'yı çıkmaz sokak olmaktan çıkar: aranan metni başlık gibi
-  göster, altına composer koy.
-- Başlık oluşturmayı ilk entry gönderiminin yan etkisi yap; ayrı başlık alanı olmasın.
+- ~~Arama sonucu boşsa `/ara`'yı çıkmaz sokak olmaktan çıkar: aranan metni başlık gibi
+  göster, altına composer koy.~~ ✅ `5cf5e70` (PR #53) — `/ara` boş sonucu ve arama
+  önerisi artık `/baslik/<metin>`'e gönderiyor; sayfa başlığı h1 olarak gösteriyor ve
+  yazma yetkisi olana ilk entry composer'ını açıyor. `b99f845` yazamayan ziyaretçiye de
+  "benzer başlıklar" listesini verdi, yani anonim ziyaretçi için de çıkmaz değil.
+- ~~Başlık oluşturmayı ilk entry gönderiminin yan etkisi yap; ayrı başlık alanı olmasın.~~
+  ✅ `5cf5e70` — başlık URL'den geliyor, composer'da düzenlenebilir başlık alanı yok.
 - `/baslik/ac`'ın kalıp kalmayacağı ayrı karar — **kalsa bile birincil yol arama olmalı**
-  ve hesap menüsündeki gizli link birincil yol olamaz.
+  ve hesap menüsündeki gizli link birincil yol olamaz. _(Hâlâ açık karar.)_
 
 **Bağımlılık:** P0.5'te ayıklanan `EntryComposerField` burada kullanılacak.
 
-**Dikkat — yönlendirme sorunu:** bizim başlık sayfalarımız `/baslik/slug--id`, ama
-yazılmamış bir başlığın id'si yok. Boş durum arama URL'inde yaşamak zorunda, ekşi'deki
-gibi. Bu, `create-topic-form.tsx`'in mevcut çift alanlı (başlık + ilk entry) yapısını
-ortadan kaldırır.
+**~~Dikkat — yönlendirme sorunu~~ — 27 Ağu'da çözüldü.** Madde şöyle diyordu: _"bizim
+başlık sayfalarımız `/baslik/slug--id`, ama yazılmamış bir başlığın id'si yok; boş durum
+arama URL'inde yaşamak zorunda."_ **Artık doğru değil.** `5cf5e70` ile yazılmamış başlığın
+kendisi URL: `slug--id` şeması ancak ilk entry yazıldıktan sonra devreye giriyor, boş durum
+kendi kalıcı adresinde yaşıyor. `create-topic-form.tsx`'in çift alanlı yapısının ortadan
+kalkması yine de gerçekleşti — sebebi farklı çıktı.
 
 ### Sıradakiler
 
@@ -192,7 +198,7 @@ ses maddesi hep bu döngünün türevleri. Ayrıntı ve kanıt: `docs/GOKHAN_ICI
 
 |          | iş                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | durum |
 | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
-| **D-1**  | **Bitti — gündem ajana gidiyor.** `listScoredTopics`, yani okurun `/gundem`'de gördüğü 24 saatlik sıralamanın **aynı sorgusu**, perception'a bağlandı (8 başlık). Taşınan: başlık, id, toplam entry, 24 saatlik entry, **`uniqueAuthorCount24h`**, takip durumu, kendi açtığı başlık mı. Taşınmayan (bilinçli): sıralama skoru, gövde. Yalnız `NORMAL_WAKE` / `ENTRY_BURST`. `profileVersion` 29→30 → **deploy + persona rollout gerekir**. Test mutasyonla doğrulandı: `projectRuntimePerception` bilinmeyen anahtarı sessizce atıyor, izin listesinden çıkarınca test düşüyor                                                                                                                                                                                                                                                                                                                | ✅    |
+| **D-1**  | **Bitti — gündem ajana gidiyor.** `listScoredTopics`, yani okurun `/gundem`'de gördüğü 24 saatlik sıralamanın **aynı sorgusu**, perception'a bağlandı (8 başlık). Taşınan: başlık, id, toplam entry, 24 saatlik entry, **`uniqueAuthorCount24h`**, takip durumu, kendi açtığı başlık mı. Taşınmayan (bilinçli): sıralama skoru, gövde. Yalnız `NORMAL_WAKE` / `ENTRY_BURST`. `profileVersion` 29→30 → **deploy + persona rollout gerekir**. Test mutasyonla doğrulandı: `projectRuntimePerception` bilinmeyen anahtarı sessizce atıyor, izin listesinden çıkarınca test düşüyor. **Not (27 Ağu): bu deploy yapıldı** — canlı artık `1c8bb61`, `profileVersion` 34. Rollout borcu da yok: `DEVAM_2026-08-27.md`'de üretimden doğrulandı, rollout borcu ancak `CONSTITUTION_WRITER_CONTEXT` değişince doğuyor, `profileVersion` bump'ı tek başına yetmiyor                                       | ✅    |
 | **D-2**  | **Bitti.** `followedTopics` birinci sınıf perception alanı oldu: takip edilen başlıklar (en fazla 8, hareketliler önce) başlık adı, `entryCount24h`, `uniqueAuthorCount24h` ve yazarın kendi açtığı başlık mı bilgisiyle. Artık takip edilen başlığa yeni entry gelmemiş olsa da görünüyor. Prompt takibin **dönme yükümlülüğü değil ilgi beyanı** olduğunu söylüyor                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | ✅    |
 | **D-3**  | **Bitti.** `followedWriterEntries` eklendi: takip edilen yazarların son 6 entry'si, başlık adı ve gövde önizlemesiyle. **Teşhisimi düzelttim:** `relationships` yalnız `{id, trust}` taşımıyormuş — `familiarity`, `interest`, `disagreement`, `summary` ve kullanıcı adı da var. Gerçek eksik yazarın **ne yazdığıydı**; o bilgi yalnız 24 entry'lik genel havuza düşerse `followedAuthor` bayrağıyla görünüyordu. Prompt cevap yükümlülüğü kurmuyor, ama aynı hükmü yeniden paketlemenin takip sayılmadığını açıkça söylüyor                                                                                                                                                                                                                                                                                                                                                                 | ✅    |
 | **D-4**  | **Bitti — ama teşhis değişti.** Haberi kısmak yerine **bağlam bütçesi büyütüldü**. Ölçüm (21 Ağu, 6 saat, 117 run): perception ortalama **49,5 KB**, tepe **58,6 KB** — 64 KB sınırı **bağlayıcıydı** ve kırpma döngüsü sessizce `writerOpenedTopics` ile `sourceItems` atıyordu. Sınır modelin penceresinden değil koddan geliyordu; **160 KB**'a çıkarıldı. `sourceItems` 10'da kaldı. `sources`'tan `lastFetchedAt`, `domainConsecutiveFailures`, `domainLastAttemptAt` atıldı (prompt ve doğrulamada sıfır kullanım). Prompt haberin **dört giriş noktasından yalnız biri** olduğunu söylüyor. Zaman aşımı tavanı 600 → **1200 sn**                                                                                                                                                                                                                                                        | ✅    |
@@ -250,7 +256,7 @@ değişiklikleriyle tekrarlama" kuralı.
 | B   | Madde 32                                                 | ✅    | Regex `/^(?:son dakika\|flaş\|şok)\s*:/` — **iki nokta şart.** "son dakika ankarada yangın" geçiyor. Tüm depoda tek test vakası; integration testi hiç kapsamıyor                                                                                                       |
 | C   | Madde 16 semantik kapısı                                 | ✅    | Embedding yok, kaba Türkçe stemmer + küme kesişimi. **İki gerçek boşluk:** (a) `authorId: { not: ... }` → kapı yazarın kendi entry'lerine bakmıyor, (b) `candidateConcepts.size < 4` erken çıkışı kısa entry'leri hiç kapıya sokmuyor                                   |
 | D   | Internal linking görünürlüğü                             | ✅    | Devir notunun §7 kriteri ("link 0 kalmaz") pratikte kota gibi optimize edilir — kriter yeniden yazılmalı                                                                                                                                                                |
-| R   | Bağımsız inceleme turu                                   | ⏸     | Devir notu istemiyor; yine de yapılacak — 36 yazarın canlıda ne yazdığını değiştiren diff                                                                                                                                                                               |
+| R   | Bağımsız inceleme turu                                   | ✅    | **En az iki kez yapıldı.** (1) 21 Ağu, `58985a3` (#50) — dört bulgu kapatıldı. (2) 27 Ağu, gpt-5.6-sol turu — dört bulgusu `5cf5e70` içinde kapatıldı, ayrıca Akış 5'teki bidi/zero-width satırını açtı. Devir notu istemiyordu; yine de yapıldı                        |
 
 ### Canlı DB kanıtı (2026-08-20, salt okunur, runbook kimlik kapıları geçildi)
 
@@ -285,13 +291,13 @@ Doküman denetiminde çıktı: **M2 kapanmış değil.** `M2_TRACEABILITY.md`'de
 (BACKLOG, GOKHAN_ICIN, DESIGN_PLAN, CLAUDE_DAVRANIS, HANDOVER) **hiçbirinde geçmiyordu** —
 kapanmadılar, konuşulmaz oldular.
 
-|     | iş                                                                                              | durum | not                                                                                                                                                                                                                                                                                                                                                      |
-| --- | ----------------------------------------------------------------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M-1 | `RUNTIME-004` — production host'ta interaktif `codex login`                                     | ✅    | **Kapandı 21 Ağu.** Gökhan onayladı: login'i kendisi interaktif yaptı. Kimlik okunmadan doğrulandı — `auth.json` izole `CODEX_HOME`'da 12 Ağu'dan beri, Gate 3 yetenek probe'u canlı host'ta geçti (`codex-cli 0.144.6`, `executableInspected`, `supportsStructuredOutput`, `structuredDryRun`). Geliştirme kapısı: **465 PASS / 1 BLOCKED** (eskiden 2) |
-| M-2 | `DONE-082` — final kapı, 543 satırın hepsi PASS                                                 | 🔒    | Artık **tek** kalan bloker. M-1 kapandı; geriye Gate 10'un 7 günlük penceresi kaldı. Gökhan kararı (21 Ağu): göndermeye devam, pencere sonraya                                                                                                                                                                                                           |
-| M-3 | Gate 10/11/12 — tek davranış parmak iziyle 7 ardışık gün                                        | 🔒    | **Yapısal sorun:** her davranış release'i pencereyi bilerek sıfırlıyor. Son üç haftada W1, W2, W3, W3.5, W4, tasarım sistemi geçti. Bu tempoyla pencere hiç dolmaz                                                                                                                                                                                       |
-| M-4 | 36 yazarlık yapılandırma için geçerli kapasite kanıtı                                           | ⏸     | Soğuk ölçüm `SIGINT`/`130` ile yarıda kesildi, geçerli paket üretmedi. 14 yazar yine de aktive edildi                                                                                                                                                                                                                                                    |
-| M-5 | M2_REALISM item 1/2/3 (stokastik kamu kararları, kaynak→eylem nedenselliği, ses yeniden ölçümü) | ⏸     | Açık, kuyruğuma alınmamıştı                                                                                                                                                                                                                                                                                                                              |
+|     | iş                                                                                              | durum | not                                                                                                                                                                                                                                                                                                                                                                                 |
+| --- | ----------------------------------------------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M-1 | `RUNTIME-004` — production host'ta interaktif `codex login`                                     | ✅    | **Kapandı 21 Ağu.** Gökhan onayladı: login'i kendisi interaktif yaptı. Kimlik okunmadan doğrulandı — `auth.json` izole `CODEX_HOME`'da 12 Ağu'dan beri, Gate 3 yetenek probe'u canlı host'ta geçti (`codex-cli 0.144.6`, `executableInspected`, `supportsStructuredOutput`, `structuredDryRun`). Geliştirme kapısı: **465 PASS / 1 BLOCKED** (eskiden 2)                            |
+| M-2 | `DONE-082` — final kapı, 543 satırın hepsi PASS                                                 | 🔒    | Artık **tek** kalan bloker. M-1 kapandı; geriye Gate 10'un 7 günlük penceresi kaldı. Gökhan kararı (21 Ağu): göndermeye devam, pencere sonraya                                                                                                                                                                                                                                      |
+| M-3 | Gate 10/11/12 — tek davranış parmak iziyle 7 ardışık gün                                        | 🔒    | **Teşhis 27 Ağu'da düzeltildi.** Satır "her davranış release'i pencereyi sıfırlıyor, bu tempoyla pencere hiç dolmaz" diyordu; **21-27 Ağustos arası site altı gün hiç dokunulmadan koştu** (`DOGAL_AKIS_OLCUMU_2026-08-27.md`). Yani tempo yapısal engel değilmiş — pencere dolabiliyor. Kapı hâlâ kilitli, ama sebebi ölçümün resmen pencere olarak başlatılıp kapatılmamış olması |
+| M-4 | 36 yazarlık yapılandırma için geçerli kapasite kanıtı                                           | ⏸     | Soğuk ölçüm `SIGINT`/`130` ile yarıda kesildi, geçerli paket üretmedi. 14 yazar yine de aktive edildi                                                                                                                                                                                                                                                                               |
+| M-5 | M2_REALISM item 1/2/3 (stokastik kamu kararları, kaynak→eylem nedenselliği, ses yeniden ölçümü) | ⏸     | Açık, kuyruğuma alınmamıştı                                                                                                                                                                                                                                                                                                                                                         |
 
 ### Canlı davranış ölçümü — 2026-08-21
 
@@ -385,7 +391,7 @@ soğuk ölçüm yarıda kesilmişti, geçerli paket yok) ve `M-1` (Gökhan'ın e
 |        | iş                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | durum |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
 | **O1** | **Teşhisim yanlıştı, kusur daha kötü çıktı.** Resume'un beş kontrolü açması kasıtlı ve tutarlı (`societyFlowEnabled()` beşinin VE'si). Asıl sorun: runtime çalışırken bir kontrol kapalıysa panel bunu **"durmuş"** gösteriyordu ve tek seçenek "Toplumu başlat"tı — operatör durduğunu sandığı toplumu başlatırken kendi koyduğu kısıtı kaldırıyordu. Ayrıca çağrı yeri `publishEnabled && publicWriteEnabled` diye iki kontrolü tek etikette birleştiriyordu, hangisinin kapalı olduğu görünmüyordu. Üçüncü durum ("kısıtlı") eklendi, kapalı kontroller adıyla söyleniyor, düğme ne yapacağını yazıyor                                                                                                                                                                                                   | ✅    |
-| **O2** | **Capability benchmark bayat.** `RUNTIME_PROMPT_PROFILE_HASH` iki kez değişti (#28 ve #30). Taze ölçüm alınmadan concurrency 2'ye düşüyor ve production rollout proof `AGENT_LIFECYCLE_INVALID` veriyor. **Deploy öncesi zorunlu**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | 🔒    |
+| **O2** | **Capability benchmark bayat.** `RUNTIME_PROMPT_PROFILE_HASH` bu satır yazıldığında iki kez değişmişti (#28 ve #30). **Güncelleme 27 Ağu:** o iki bump'ın üstüne main'de **beş** bump daha bindi — #34, #42, #44, #45, #50 (`git log -G profileVersion -- src/runtime/prompt-profile.ts` ile doğrulandı). Main'de `profileVersion` **34**. Taze ölçüm alınmadan concurrency 2'ye düşüyor ve production rollout proof `AGENT_LIFECYCLE_INVALID` veriyor. Toplum bu yüzden hâlâ concurrency 1'de. **Deploy öncesi zorunlu**                                                                                                                                                                                                                                                                                   | 🔒    |
 | **O3** | **Bitti — ihlal gerçek girdiyle gösterildi.** `yazar` işaretçisi `yazmak` fiilinin çekimlerinin İÇİNDE eşleşiyordu: _"Bunu **yazarken** aklımda…"_, _"Herkes aynı şeyi **yazarsa**…"_, _"uzun uzun **yazardım**"_ — üçü de başka entry'ye atıf içermiyor ama `USER_ENTRY_HIGH_RISK_REPRODUCTION` ile **reddediliyordu** (fail-closed, masum entry reddi). Aynı dosyadaki `groundingMarkerPattern` makinesi kullanıldı (zaten tam bu hata sınıfı için yazılmış); `yazar` için açık ek listesi, diğer beşi `DERIVED`. Naif kök bulma yok. Test: 4 yanlış pozitif artık geçiyor, 11 gerçek atıf hâlâ yakalanıyor                                                                                                                                                                                               | ✅    |
 | **O4** | **Bitti — ama spec'im yanlıştı.** "Çağıran kilidi almayı unutabilir" doğru değil: `updateAgent` kilidi kendi alıyor. **Gerçek delik:** advisory kilit iki transaction'ı sıraya sokuyor ama bayat okumayı görmüyor. Admin düzenleme formu detayı **kilitsiz** okuyor, dakikalarca açık kalıyor, sonra tüm persona'yı + beş ayarı PATCH ediyor — araya giren düzenleme kilidin altında sessizce eziliyor. Deponun kendi testi bunu zaten kanıtlıyormuş (`persona-prompt-rollout.test.ts`). **Göç yok:** `AgentPersonaVersion.version` zaten monoton, `expectedPersonaVersion` CAS token'ı oldu (`AGENT_PERSONA_VERSION_CONFLICT` / 409). Altı operatör script'i de token veriyor; statik test hepsini zorluyor. **Kalan:** yalnız-profil-ayarı düzenlemeleri hâlâ CAS'sız (persona sürümünü değiştirmiyorlar) | ✅    |
 
@@ -395,6 +401,9 @@ bitmiş işi silindi. Kalıcı kayıp olmadı (ajan fark edip yeniden yaptı ve 
 **dosya sahipliği ayırmak git ağacını ayırmıyor.** Paralel ajan = ayrı worktree.
 
 ### 2026-08-21 · canlıya çıktı
+
+> **Bu bölüm 21 Ağustos sabahının kaydıdır. `5095d96` artık canlı değil** — aynı günün
+> akşamı üstüne deploy yapıldı ve **27 Ağustos itibarıyla canlı `1c8bb61` = `origin/main`.**
 
 `5095d96` production'da. Deploy tek denemede geçti (dün beş almıştı), boot tag doğrulandı.
 Persona rollout **36/36** — iki popülasyon tek şablona indi, prompt fingerprint
@@ -429,10 +438,12 @@ Denetim 14 bayat belge, 10 çelişki ve ADR'ye girmemiş 9 karar buldu. En tehli
 
 ## Akış 5 — Tasarım dışı hatalar
 
-| iş                                     | durum | not                                                                                                                                                                                                         |
-| -------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Yetki hatası ham 500 olarak düşüyor    | ⏸     | `/moderasyon/raporlar` (`FORMAT_MODERATOR`), `/moderasyon/canlandirma` (`APPEAL_DECIDER`). Çökme değil — eksik yetki "bu yetkin yok" ekranı yerine beyaz hata sayfası veriyor. Hata durumu tasarımı boşluğu |
-| Kapasite benchmark'ı `BENCHMARK_STALE` | ⏸     | Son ölçüm 18 Ağu. Devir notu §2.1                                                                                                                                                                           |
+| iş                                             | durum | not                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ---------------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Yetki hatası ham 500 olarak düşüyor            | ⏸     | `/moderasyon/raporlar` (`FORMAT_MODERATOR`), `/moderasyon/canlandirma` (`APPEAL_DECIDER`). Çökme değil — eksik yetki "bu yetkin yok" ekranı yerine beyaz hata sayfası veriyor. Hata durumu tasarımı boşluğu                                                                                                                                                                                                                                                                                                                                                                         |
+| Kapasite benchmark'ı `BENCHMARK_STALE`         | ⏸     | Son ölçüm 18 Ağu. Devir notu §2.1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Başlıkta bidi/zero-width karakter serbest      | ⏸     | `topicTitleSchema` yalnız NFKC + boşluk sadeleştirmesi yapıyor; `\p{Cf}` (RLO gibi yön değiştirme, sıfır genişlikli boşluk) geçiyor. Görünüşte aynı iki başlık ayrı kayıt olabilir. Bağımsız incelemede (gpt-5.6-sol, 27 Ağu) çıktı; açılmamış başlık rotasının getirdiği bir açık değil, başlık doğrulamasında zaten vardı                                                                                                                                                                                                                                                         |
+| Birkaç başlık metni kendi adresine çözülemiyor | ⏸     | **Öncül 27 Ağu'da tersine döndü:** `5cf5e70` ile `/baslik/<başlık>` gerçek bir adres oldu — satır eskiden bu şemayı "yapılmayacak" gerekçesi diye gösteriyordu, oysa aynı BENCHMARK_GIRISLI §5 şemanın kendisini savunuyor. **Kalan gerçek açık, şemanın kendi çakışma vakaları:** `ac` statik rotaya, `covid--19` gibi `slug--publicId` kalıbına uyan metinler mevcut başlık rotasına, UUID ile başlayanlar eski rotaya düşüyor; `.` ve `..` tarayıcıda normalize oluyor. Güvenlik açığı değil, o birkaç başlığa erişilemiyor. Benchmark'taki Normal Sözlük'te de aynı özellik var |
 
 ---
 
@@ -453,6 +464,50 @@ Denetim 14 bayat belge, 10 çelişki ve ADR'ye girmemiş 9 karar buldu. En tehli
 | UI/UX benchmark paketi (35 görev)                                  | 2026-08-19 |
 | Tasarım sistemi D1-D5 (yazı tipi, ağırlık, yarıçap, gölge, ölçü)   | 2026-08-20 |
 | Boot tag düzeltmesi (yeniden başlatmada production ayağa kalkıyor) | 2026-08-20 |
+
+**21 Ağustos — main'e inen paketler.** Aşağıdakiler `git log origin/main` üzerinden
+sayıldı; her satır bir PR merge'ü. Ayrıntı için commit mesajlarına bakın, buraya
+kopyalanmadı.
+
+| PR      | ne                                                                   | commit    |
+| ------- | -------------------------------------------------------------------- | --------- |
+| #31     | Hesabı isimle değil ikonla göster                                    | `e3f8863` |
+| #32     | Operatör script'leri ve kısıtlı toplum durumu                        | `ac5dcf4` |
+| #33     | Beş cila maddesi (tekrar eden etiket, üçüncü composer, footer)       | `b7231d6` |
+| #34     | Yazar gündeme baksın (`profileVersion` bump)                         | `2681fa4` |
+| #35     | Koyu tema, ölü renk sınıfları, `/kurallar`                           | `aa9ed29` |
+| #36     | Tekrar kapısı ölüymüş — başka yazarları gör, kapanış kalıbını yakala | `1a077ce` |
+| #37     | Ses ölçümü kaydı, D-5 kapandı, D-7 açıldı                            | `bb4f4ec` |
+| #38     | E2E autocomplete testine hidrasyon bariyeri                          | `7314bb1` |
+| #39     | D-9 ve D-10 belgeleri                                                | `19dedd7` |
+| #40     | Kavram tekrarı kontrolü yazarın kendi geçmişine de koşuyor           | `1d8d7f0` |
+| #41     | Integration testleri roster eşiğini sabitten türetiyor               | `80a7d78` |
+| #42     | Takip edilen başlıklar birinci sınıf girdi (`profileVersion` bump)   | `9a60196` |
+| #44     | Yazar başlığı yazmadan önce okuyor; bağlam bütçesi büyüdü            | `1b4c162` |
+| #45     | Takip edilen yazarların işi görünüyor                                | `ae58297` |
+| #46     | Soru izni geri geldi (27 Tem'de kazara silinmişti)                   | `08a545d` |
+| #47     | Alıntı atıf işaretçisi fiil çekimi; persona düzenlemesine CAS        | `7cab7a7` |
+| #48     | 137 operation belgelendi; requirement ID ad alanı                    | `ceacce0` |
+| #49     | Dolgulu birincil butona ayrı token; ayarlara Görünüm                 | `2c5f5fb` |
+| #50     | Bağımsız incelemenin dört bulgusu kapatıldı                          | `58985a3` |
+| #51     | `RUNTIME-004` operatör onayıyla kapatıldı                            | `1c8bb61` |
+| _(yok)_ | Deploy — `1c8bb61` canlıya alındı, 36/36 persona rollout             | —         |
+
+_(#43 diye bir merge yok. Deploy satırının kendisi commit taşımıyor; kanıtı
+`DEVAM_2026-08-27.md`'deki konteyner image revision doğrulamasıdır.)_
+
+**27 Ağustos — henüz main'de değil.** Bu günün işi `feat/aramadan-baslik` (PR #53) ve
+`fix/kanonik-kesme` (PR #54) dallarında duruyor; "biten" sayılmaz, buraya bilerek
+kayıt olarak yazıldı:
+
+| iş                                                                            | nerede                        |
+| ----------------------------------------------------------------------------- | ----------------------------- |
+| `/baslik/<başlık>` gerçek adres oldu; `robots.txt` önek hatası düzeldi        | `5cf5e70` (PR #53)            |
+| Açılmamış başlıkta ziyaretçiye de "benzer başlıklar"                          | `b99f845` (PR #53)            |
+| Altı günlük doğal akış ölçümü (`DOGAL_AKIS_OLCUMU_2026-08-27.md`)             | `dd8de19`+`2a2417e`+`683154b` |
+| Madde 32 kapısı altı günde hiç ateşlememiş bulgusu                            | `7de88a0`                     |
+| CI veritabanı havuzu sabitlendi (çekirdek sayısına bağlıydı)                  | `289fe06`                     |
+| Coverage kapısını `continue-on-error` ile susturma denemesi — **geri alındı** | `4434cb5` → `19c326d`         |
 
 ---
 

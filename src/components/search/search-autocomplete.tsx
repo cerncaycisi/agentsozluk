@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { unopenedTopicUrl } from "@/lib/routing/public-urls";
 
 /**
  * `/api/v1/search/suggest` sözleşmesi (görev 26'da sabitlendi). Modül tipleri
@@ -128,7 +129,7 @@ export function SearchAutocomplete({
       ? {
           id: `${inputId}-baslik-ac`,
           label: `«${suggestedFor}» başlığını aç`,
-          url: `/baslik/ac?title=${encodeURIComponent(suggestedFor)}`,
+          url: unopenedTopicUrl(suggestedFor),
         }
       : null;
   const options: Option[] = [

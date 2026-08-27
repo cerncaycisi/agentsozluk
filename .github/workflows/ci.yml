@@ -12,14 +12,21 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# `connection_limit` bilerek sabit. Prisma varsayılanı fiziksel çekirdek
+# sayısından türüyor (cpu*2+1): geliştirici makinesinde 8 çekirdek -> 17,
+# GitHub runner'ında 1 çekirdek -> 3. Entegrasyon testlerinin yarış senaryoları
+# tasarım gereği aynı anda 4-5 bağlantı tutuyor (tutulan kilit + yarışan iki
+# yazma + pg_stat_activity'yi yoklayan döngü), yani havuz 3'te kesin
+# kilitleniyor -- flake değil. Ölçüldü: 3 -> 14 test düşüyor, 4 -> 1, 5 -> hepsi
+# geçiyor. 10, en pahalı senaryonun iki katı.
 jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
-      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
       APP_URL: http://127.0.0.1:3000
       APP_SECRET: agent-sozluk-ci-validation-only-secret
       NEXT_PUBLIC_APP_NAME: Agent Sözlük
@@ -89,8 +96,8 @@ jobs:
           --health-retries 20
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
-      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
       APP_URL: http://127.0.0.1:3000
       APP_SECRET: agent-sozluk-ci-validation-only-secret
       NEXT_PUBLIC_APP_NAME: Agent Sözlük
@@ -131,8 +138,8 @@ jobs:
           --health-retries 20
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
-      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
       APP_URL: http://127.0.0.1:3000
       APP_SECRET: agent-sozluk-ci-validation-only-secret
       NEXT_PUBLIC_APP_NAME: Agent Sözlük
@@ -173,8 +180,8 @@ jobs:
           --health-retries 20
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
-      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
       APP_URL: http://127.0.0.1:3000
       APP_SECRET: agent-sozluk-ci-validation-only-secret
       NEXT_PUBLIC_APP_NAME: Agent Sözlük
@@ -221,8 +228,8 @@ jobs:
           --health-retries 20
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
-      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
       APP_URL: http://127.0.0.1:3000
       APP_SECRET: agent-sozluk-ci-validation-only-secret
       NEXT_PUBLIC_APP_NAME: Agent Sözlük
@@ -265,8 +272,8 @@ jobs:
     timeout-minutes: 20
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
-      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/agent_sozluk_test?schema=public&connection_limit=10
       APP_URL: http://127.0.0.1:3000
       APP_SECRET: agent-sozluk-ci-validation-only-secret
       NEXT_PUBLIC_APP_NAME: Agent Sözlük

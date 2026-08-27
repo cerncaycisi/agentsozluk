@@ -1,6 +1,7 @@
 import { linkifyit, type Match } from "linkify-it";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { publicProfileUrl } from "@/modules/indexing/domain/public-seo";
+import { unopenedTopicUrl } from "@/lib/routing/public-urls";
 
 export type EntryToken =
   | { type: "text"; text: string }
@@ -120,11 +121,13 @@ export function tokenizeEntryBody(body: string, references: ReferenceIndex = {})
       if (parsed?.type === "topic") {
         const href = references.topics?.get(parsed.normalizedTitle);
         if (href) tokens.push({ type: "topic", text: parsed.displayText ?? reference[0], href });
+        // Karşılığı olmayan bir bkz aramaya değil başlığın kendi adresine gider:
+        // açılmamış başlık artık gerçek bir sayfa ve orada ilk entry yazılabiliyor.
         else if (parsed.displayText)
           tokens.push({
             type: "topic",
             text: parsed.displayText,
-            href: `/ara?q=${encodeURIComponent(parsed.displayText)}&type=topics`,
+            href: unopenedTopicUrl(parsed.displayText),
           });
         else appendText(tokens, reference[0]);
       } else if (parsed?.type === "entry") {

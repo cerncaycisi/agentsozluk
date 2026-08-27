@@ -1,5 +1,13 @@
 import type { MetadataRoute } from "next";
 
+/**
+ * `Disallow` önek eşleşmesidir. `/baslik/ac` bu yüzden yalnız başlık açma
+ * sayfasını değil, "ac" ile başlayan her başlığı da kapatıyordu:
+ * `/baslik/acik-kaynak--12` ya da `açık kaynak`ın yüzde kodlanmış hâli olan
+ * `/baslik/ac%C4%B1k%20kaynak` gibi. RFC 9309'un `$` sonlandırıcısıyla eşleşme
+ * tam adrese bağlanıyor; sorgulu biçim için ayrı satır gerekiyor çünkü `$`
+ * sorgu dizesinden önce bitmez.
+ */
 const privatePaths = [
   "/ayarlar",
   "/moderasyon",
@@ -9,7 +17,8 @@ const privatePaths = [
   "/favoriler",
   "/takip",
   "/oylarim",
-  "/baslik/ac",
+  "/baslik/ac$",
+  "/baslik/ac?",
 ] as const;
 
 export default function robots(): MetadataRoute.Robots {
