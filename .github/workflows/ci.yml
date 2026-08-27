@@ -200,14 +200,8 @@ jobs:
       - name: Coverage
         run: pnpm test:coverage
 
-      # Tanı çıktısı, kapı değil. Bu adım artifact depolama kotası dolduğunda
-      # patlıyor ve eşiklerin hepsini geçmiş bir coverage koşusunu düşürüyordu
-      # (1523 test yeşil, kapsam %93,97, eşik 80/75). Kapının işi eşiği zorlamak;
-      # eşik `vitest --coverage`in kendisinde ve o hâlâ işi düşürüyor. Sürüm
-      # paketi yüklemesi bilerek bunun dışında: onu deploy tüketiyor.
       - name: Upload coverage
         if: always()
-        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: coverage
