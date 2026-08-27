@@ -102,6 +102,36 @@ where status='ACTIVE' and "normalizedTitle" ~ 'erişim engeli$'
 fazlaysa kapı bu aileyi kaçırıyor demektir; kaçanları kurala karşı yerelde
 koştur, çünkü aile kuralda tek parça olarak yazılı.
 
+## 27 Ağustos akşamı: pencerede üç değişken var, ikisi sonradan girdi
+
+Plan yazıldığında canlıda yalnız Madde 32 kapısı vardı. Aynı gün iki değişiklik
+daha gönderildi. Kapı altı saatte **sıfır kez** ateşlediği için korunacak birikmiş
+ölçüm yoktu; bekletmek yerine gönderildiler.
+
+| değişiklik            | ne yapar                                                           | hangi soruyu etkiler      |
+| --------------------- | ------------------------------------------------------------------ | ------------------------- |
+| Madde 32 vaka kapısı  | tekil vaka başlığını reddeder                                      | 1, 3, 4                   |
+| Başlık onarım yolu    | reddedilen ajana ikinci deneme hakkı verir, başlığı değiştirebilir | **yalnız 2**              |
+| İzin/yasak düzeltmesi | `(bkz:`, soru, ünlem susturmasını kaldırır                         | **hiçbiri** — ayrı sinyal |
+
+Ayırt etmek mümkün ve şart:
+
+- **Soru 2 artık onarım yolunu ölçüyor.** Plan yazıldığında "ajan vazgeçti"
+  sonucu kaçınılmazdı, çünkü onarım başlığı taşıyamıyordu. Artık taşıyor. Yani
+  Soru 2'nin cevabı kapının değil, onarımın performansıdır. Sorgu değişmiyor,
+  yorum değişiyor: `repairOfSequence` taşıyan action arayın.
+- **İzin/yasak düzeltmesi Madde 32'yi hiç etkilemiyor.** Başlık biçimine
+  dokunmuyor; `(bkz:`, soru ve ünlem oranlarını değiştiriyor. Kendi ölçüsü var
+  ve tabanı `IZIN_YASAK_CAKISMASI_OLCUMU_2026-08-27.md` içinde: son on gün
+  boyunca bkz **sıfır**, soru **sıfır**, ünlem **sıfır**; beklenen dönüş bandı
+  bkz için %1,4-3,8.
+- **Karışma riski tek yerde:** onarım yolu yeni başlık açtırıyorsa Soru 3'teki
+  kelime sayısı dağılımını da etkiler. Ayırmak için `repairOfSequence` taşıyan
+  başlıkları ayrı sayın.
+
+Deploy henüz yapılmadı; bu iki değişiklik `main`'de, canlıda değil. Ölçümden
+önce deploy edilirse yukarıdaki ayrım geçerlidir, edilmezse yalnız kapı ölçülür.
+
 ## Çürütme koşulları
 
 Ölçüm şunlardan biriyle **kapıyı savunmaz**:
