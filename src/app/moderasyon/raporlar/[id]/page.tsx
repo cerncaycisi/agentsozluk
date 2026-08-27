@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ConfirmAction } from "@/components/moderation/confirm-action";
 import { ConstitutionalContentAction } from "@/components/moderation/constitutional-content-action";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
@@ -42,6 +42,10 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
     );
   } catch (error) {
     if (error instanceof AppError && error.code === "REPORT_NOT_FOUND") notFound();
+    // Gammaz türüne göre ayrı yetenek isteniyor; yetkisi olmayan moderatör
+    // beyaz hata sayfası değil "yetkiniz yok" ekranı görmeli.
+    if (error instanceof AppError && error.code === "MODERATION_CAPABILITY_REQUIRED")
+      redirect("/yasak");
     throw error;
   }
   const { report } = data;

@@ -5,7 +5,7 @@ import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { PaginationLinks } from "@/components/ui/pagination-links";
 import { getDatabase } from "@/lib/db/client";
 import { formatIstanbulDate } from "@/lib/format/time";
-import { requireModerationPage } from "@/lib/auth/server-session";
+import { requireModerationPage, withModerationCapability } from "@/lib/auth/server-session";
 import { pageFrom } from "@/lib/http/pagination";
 import { actorFromSession } from "@/modules/auth/domain/actor";
 import { getModerationReports } from "@/modules/moderation/application/reports";
@@ -31,10 +31,13 @@ export default async function ReportsPage({
     params.status === "RESOLVED" || params.status === "REJECTED" ? params.status : "OPEN";
   const track = params.track === "LEGAL" ? "LEGAL" : "FORMAT";
   const pageSize = 20;
-  const [reports, totalItems] = await getModerationReports(
-    getDatabase(),
-    actorFromSession(session, randomUUID(), "WEB"),
-    { status, reviewTrack: track, skip: (page - 1) * pageSize, take: pageSize },
+  const [reports, totalItems] = await withModerationCapability(() =>
+    getModerationReports(getDatabase(), actorFromSession(session, randomUUID(), "WEB"), {
+      status,
+      reviewTrack: track,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
   );
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   return (

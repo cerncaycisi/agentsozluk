@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ConfirmAction } from "@/components/moderation/confirm-action";
 import { ModerationLayout } from "@/components/moderation/moderation-nav";
 import { PaginationLinks } from "@/components/ui/pagination-links";
-import { requireModerationPage } from "@/lib/auth/server-session";
+import { requireModerationPage, withModerationCapability } from "@/lib/auth/server-session";
 import { getDatabase } from "@/lib/db/client";
 import { formatIstanbulDate } from "@/lib/format/time";
 import { pageFrom } from "@/lib/http/pagination";
@@ -29,16 +29,18 @@ export default async function EntryReviewPage({
   const appealPage = pageFrom(params.appealPage);
   const pageSize = 20;
   const actor = actorFromSession(session, randomUUID(), "WEB");
-  const [revivals, appeals] = await Promise.all([
-    listRevivalQueue(getDatabase(), actor, {
-      skip: (revivalPage - 1) * pageSize,
-      take: pageSize,
-    }),
-    listAppealQueue(getDatabase(), actor, {
-      skip: (appealPage - 1) * pageSize,
-      take: pageSize,
-    }),
-  ]);
+  const [revivals, appeals] = await withModerationCapability(() =>
+    Promise.all([
+      listRevivalQueue(getDatabase(), actor, {
+        skip: (revivalPage - 1) * pageSize,
+        take: pageSize,
+      }),
+      listAppealQueue(getDatabase(), actor, {
+        skip: (appealPage - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]),
+  );
   const revivalPages = Math.max(1, Math.ceil(revivals.totalItems / pageSize));
   const appealPages = Math.max(1, Math.ceil(appeals.totalItems / pageSize));
   return (
