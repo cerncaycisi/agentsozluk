@@ -14,6 +14,29 @@ describe("topic normalization", () => {
     expect(normalizeTopicTitle("  Ａgent\r\n   Sözlük  ")).toBe("agent sözlük");
   });
 
+  /*
+    Görünmez biçim karakterleri kopya başlık üretiyordu: ekranda tek bir `Türkiye`
+    görünürken sözlükte iki ayrı adres olabiliyordu. Karşılaştırma anahtarından
+    atılıyor, görünen başlıktan değil.
+  */
+  it("collapses invisible format characters into the same comparison key", () => {
+    const cases: ReadonlyArray<readonly [string, string]> = [
+      ["Türkiye", "T\u200bürkiye"], // sıfır genişlikli boşluk
+      ["gürültü", "gürültü\u200d"], // ZWJ
+      ["mulligan", "mul\u00adligan"], // yumuşak tire
+      ["anbean", "\ufeffanbean"], // BOM
+      ["kritik yük", "kritik\u200c yük"], // ZWNJ
+    ];
+    for (const [plain, invisible] of cases)
+      expect(normalizeTopicTitle(invisible)).toBe(normalizeTopicTitle(plain));
+  });
+
+  it("keeps genuinely different titles apart after the invisible-character strip", () => {
+    expect(normalizeTopicTitle("t\u200bürkiye")).not.toBe(normalizeTopicTitle("türkçe"));
+    // Yalnız görünmezleri atıyor; anlamlı boşluk duruyor.
+    expect(normalizeTopicTitle("kritik\u200byük")).not.toBe(normalizeTopicTitle("kritik yük"));
+  });
+
   it("uses Turkish locale casing for İ, I, ı and i", () => {
     expect(normalizeTopicTitle("İ I ı i")).toBe("i ı ı i");
   });
