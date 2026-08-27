@@ -59,6 +59,81 @@ describe("topic normalization", () => {
     expect(preferredTopicCreationSearchQuery("Özgür yazılım nedir?")).toBe("Özgür yazılım");
   });
 
+  it("unifies proper-noun case suffixes that follow an apostrophe", () => {
+    const observedPairs = [
+      ["Kazakistan'da erken parlamento seçimleri", "Kazakistan erken parlamento seçimleri"],
+      ["Tahtakale'de leylek ölümleri", "Tahtakale leylek ölümleri"],
+      ["TURKA'nın yeni nesil araç muayene merkezi", "TURKA yeni nesil araç muayene merkezi"],
+      ["Oak Park'ta gazlı cihaz yasağı", "Oak Park gazlı cihaz yasağı"],
+    ] as const;
+    for (const [inflected, canonical] of observedPairs) {
+      expect(topicCanonicalSearchCandidates(inflected)).toContainEqual({
+        query: canonical,
+        normalizedQuery: normalizeTopicTitle(canonical),
+        reason: "APOSTROPHE_CASE_SUFFIX",
+      });
+      expect(preferredTopicCreationSearchQuery(inflected)).toBe(canonical);
+    }
+  });
+
+  it("accepts both apostrophe characters and keeps the rest of the title", () => {
+    expect(topicCanonicalSearchCandidates("Tahtakale’de leylek ölümleri")).toEqual([
+      {
+        query: "Tahtakale’de leylek ölümleri",
+        normalizedQuery: "tahtakale’de leylek ölümleri",
+        reason: "EXACT_TITLE",
+      },
+      {
+        query: "Tahtakale leylek ölümleri",
+        normalizedQuery: "tahtakale leylek ölümleri",
+        reason: "APOSTROPHE_CASE_SUFFIX",
+      },
+    ]);
+    expect(preferredTopicCreationSearchQuery("Türkiye'den Almanya’ya göç")).toBe(
+      "Türkiye Almanya göç",
+    );
+  });
+
+  it("leaves a title without an apostrophe untouched", () => {
+    expect(topicCanonicalSearchCandidates("Kazakistan erken parlamento seçimleri")).toEqual([
+      {
+        query: "Kazakistan erken parlamento seçimleri",
+        normalizedQuery: "kazakistan erken parlamento seçimleri",
+        reason: "EXACT_TITLE",
+      },
+    ]);
+    expect(preferredTopicCreationSearchQuery("Moody's raporu")).toBe("Moody's raporu");
+  });
+
+  it("deliberately does not unify possessive or verbal-noun pairs", () => {
+    expect(topicCanonicalSearchCandidates("haberlerden kaçınmak").map((c) => c.reason)).toEqual([
+      "EXACT_TITLE",
+    ]);
+    expect(
+      topicCanonicalSearchCandidates("haberlerden kaçınmak").map((c) => c.normalizedQuery),
+    ).not.toContain(normalizeTopicTitle("haberlerden kaçınma"));
+    expect(preferredTopicCreationSearchQuery("haberlerden kaçınma")).toBe("haberlerden kaçınma");
+    expect(preferredTopicCreationSearchQuery("uçak taşıması")).toBe("uçak taşıması");
+  });
+
+  it("keeps the narrower about and question variants ahead of the case-suffix variant", () => {
+    expect(
+      topicCanonicalSearchCandidates("Kazakistan'da seçimler hakkında").map((c) => c.reason),
+    ).toEqual(["EXACT_TITLE", "ABOUT_SUFFIX", "APOSTROPHE_CASE_SUFFIX"]);
+    expect(preferredTopicCreationSearchQuery("Kazakistan'da seçimler hakkında")).toBe(
+      "Kazakistan'da seçimler",
+    );
+  });
+
+  it("does not let the case-suffix variant touch topic identity", () => {
+    expect(normalizeTopicTitle("Kazakistan'da erken parlamento seçimleri")).toBe(
+      "kazakistan'da erken parlamento seçimleri",
+    );
+    expect(createTopicSlug("Kazakistan'da erken parlamento seçimleri")).toBe(
+      "kazakistan-da-erken-parlamento-secimleri",
+    );
+  });
+
   it("does not rewrite ambiguous question-like concepts", () => {
     expect(topicCanonicalSearchCandidates("neden olmasın")).toEqual([
       { query: "neden olmasın", normalizedQuery: "neden olmasın", reason: "EXACT_TITLE" },
