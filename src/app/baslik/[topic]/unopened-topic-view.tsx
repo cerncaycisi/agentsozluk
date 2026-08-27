@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CreateTopicForm } from "@/components/topics/create-topic-form";
+import { TopicCanonicalSuggestions } from "@/components/topics/topic-canonical-suggestions";
 import { currentPageSession } from "@/lib/auth/server-session";
 import { unopenedTopicUrl } from "@/lib/routing/public-urls";
 
@@ -44,6 +45,14 @@ export async function UnopenedTopicView({ title }: { title: string }) {
         <p className="surface-card mt-6 p-6 text-destructive">
           Askıya alınmış hesapla içerik oluşturamazsınız.
         </p>
+      )}
+      {/* Composer varsa liste zaten formun içinde; iki kez göstermek yerine
+          yalnız yazamayan ziyaretçiye gösteriliyor. Aramanın çıkmaz olmaması
+          girişli kullanıcıya özel bir şey değil. */}
+      {canWrite ? null : (
+        <div className="mt-8">
+          <TopicCanonicalSuggestions title={title} variant="discovery" />
+        </div>
       )}
     </main>
   );
