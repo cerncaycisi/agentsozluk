@@ -224,6 +224,8 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     ),
     10,
   );
+  // Hafıza süzgeci için: bu koşuda gövdesi zaten görünen source item kimlikleri.
+  const visibleSourceItemIds = new Set(sourceItems.map((item) => item.itemId));
   const ownRecentEntries = records.ownEntries.slice(0, 8).map((entry) => ({
     ...entry,
     body: truncateUntrustedText(entry.body, 600),
@@ -338,11 +340,34 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
     ownRecentEntries,
     writerOpenedTopics,
     topicChoiceSignals: buildTopicChoiceSignals(ownRecentEntries, selectedEntries, linkedTopics, 8),
-    memories: records.memories.slice(0, 10).map((memory) => ({
-      ...memory,
-      summary: truncateUntrustedText(memory.summary, 700),
-      occurredAt: memory.occurredAt.toISOString(),
-    })),
+    /*
+      Aynı haber metnini ajana iki kez verme.
+
+      Ölçüldü (27 Ağu): okunan her source item için 1500 karaktere kadar gövde
+      taşıyan bir AGENT_MEMORY yazılıyor ve o da perception'a giriyor. Aynı
+      koşuda öğe zaten `sourceItems` içindeyken hafıza kaydı onun kopyasıdır.
+      Bütçe olarak haber ~26k karakter tutuyordu (10 sourceItem + 10 memory),
+      sözlüğün kendisi (gündem + yeni + takip) ~4k — altı katı.
+
+      Bu, yeni başlıkların %90,6'sının haber tetikli olmasının doğrudan sebebi
+      değil ama dikkat bütçesinin haber odasına ayarlı olmasının ölçülebilir
+      kısmı. Hafıza SİLİNMİYOR; yalnız kaynağı hâlihazırda görünürken
+      perception'da tekrar edilmiyor. Öğe sourceItems'tan düştüğünde hafıza
+      yine görünür, yani uzun dönem hatırlama korunuyor.
+    */
+    memories: records.memories
+      .filter((memory) => {
+        const evidence = memory.evidence;
+        if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) return true;
+        const sourceItemId = (evidence as Record<string, unknown>).sourceItemId;
+        return typeof sourceItemId !== "string" || !visibleSourceItemIds.has(sourceItemId);
+      })
+      .slice(0, 10)
+      .map((memory) => ({
+        ...memory,
+        summary: truncateUntrustedText(memory.summary, 700),
+        occurredAt: memory.occurredAt.toISOString(),
+      })),
     beliefs: records.beliefs.slice(0, 10).map((belief) => ({
       ...belief,
       statement: truncateUntrustedText(belief.statement, 700),
