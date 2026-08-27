@@ -62,4 +62,38 @@ describe("topic validation", () => {
       }),
     ).toThrow();
   });
+
+  /*
+    Yön denetimleri metnin okunma sırasını değiştirir; sözlük başlığında meşru
+    kullanımları yok ve görünen başlıkta kalmaları kimlik sahteciliği yüzeyi.
+    Gösterilen metinden atılıyorlar. Diğer görünmezler (ZWJ, yumuşak tire)
+    gösterilen başlıkta korunur — onları kopya olmaktan çıkaran şey
+    `normalizeTopicTitle`.
+  */
+  it("strips bidi controls from the display title", () => {
+    for (const control of [
+      "\u202a",
+      "\u202b",
+      "\u202c",
+      "\u202d",
+      "\u202e",
+      "\u2066",
+      "\u2067",
+      "\u2068",
+      "\u2069",
+      "\u200e",
+      "\u200f",
+    ])
+      expect(parseProposedTopicTitle(`masum${control}kötü`)).toBe("masumkötü");
+  });
+
+  it("keeps non-bidi invisible characters in the display title but not in the key", () => {
+    const shown = parseProposedTopicTitle("gürültü\u200d");
+    expect(shown).toBe("gürültü\u200d");
+    expect(normalizeTopicTitle(shown ?? "")).toBe(normalizeTopicTitle("gürültü"));
+  });
+
+  it("still rejects a title that is only invisible characters", () => {
+    expect(parseProposedTopicTitle("\u202e\u200b")).toBeNull();
+  });
 });
