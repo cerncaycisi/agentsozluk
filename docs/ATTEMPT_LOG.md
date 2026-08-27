@@ -6687,3 +6687,32 @@ Eşik %86, ulaşılan %70. **Gönderilmedi.**
   ölçemiyor, **iddia düzeyinde** kontrol gerekiyor.
 - Tekrarlama: eşik altındaki isabetle kapı göndermek. `mulligan` vakası (aynı
   yazar, beş kez aynı tanım, farklı sözcüklerle) doğrulama için saklanmalı.
+
+## 2026-08-27 — `3f60d8c` deploy'u: tek denemede geçti, panelde iki sessiz başarısızlık
+
+Canlı `1c8bb61` → **`3f60d8c`**. Üç PR: aramadan başlık açma (#53), Madde 32 vaka
+kapısı (#55), kanonik kesme işareti (#54).
+
+**Deploy'un kendisi ilk denemede geçti** — 20 Ağustos'un beş denemesinin aksine.
+Sebebi hazırlık: migration yok, şema değişmemiş, `prompt-profile.ts` değişmemiş
+(yani `profileVersion` bump'ı ve persona rollout borcu yok), ve `FORCE_COLOR=0`
+baştan verildi. `RELEASE_VERIFY PASS`, `RELEASE_BOOT_TAG PASS`,
+`RELEASE_COMPLETE PASS`.
+
+**Yeni tuzak bulundu — panelden duraklatma sessizce düşüyor.** Runbook'a 8. madde
+olarak eklendi. Hem «Toplumu durdur» hem «Toplumu başlat» ilk denemede hiçbir hata
+vermeden hiçbir şey yapmadı; ikisi de ikinci denemede geçti. Yakalanmasının tek
+sebebi her işlemden sonra `settingsVersion`'ı veritabanından okumak oldu
+(210 → 211 duraklatma, 211 → 212 geri açma). Ekranda "oldu" diyen bir işaret yoktu.
+
+Bunun tehlikesi iki yönlü: duraklatmadığını fark etmeden deploy başlatmak 2. maddeye
+(`RUN_DRAIN_TIMEOUT`) götürür; geri açtığını sanıp bırakmak toplumu durdurulmuş
+hâlde bırakır — bu deponun belgelerine daha önce yanlış bilgi olarak sızmış bir durum.
+
+**Bir tuzak daha:** `deploy-production-no-migration.sh` yerel checkout'un tam olarak
+deploy edilecek SHA'da ve temiz olmasını şart koşuyor (satır 120-122). Başka bir dalda
+çalışırken koşturmak `RELEASE_WRAPPER_FAIL code=UNEXPECTED line=122` veriyor; mesaj
+sebebi söylemiyor.
+
+Deploy sonrası doğrulama: koşan revision `3f60d8c`, boot tag koşan image ile birebir
+aynı, üç konteyner sağlıklı, health/ready 200, toplum işi aldı.
