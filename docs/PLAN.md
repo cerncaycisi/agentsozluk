@@ -1,8 +1,11 @@
 > **⚠️ BU DOSYA BAYAT — 2026-08-20**
 > Aşağıdaki "tek aktif kuyruk `M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`'dir"
 > yönlendirmesi artık geçerli değil. **Güncel kuyruk: [`BACKLOG.md`](BACKLOG.md).**
-> `M2_REALISM…` hâlâ kanonik olan tek şey M2 kabul kapılarıdır (Gate 10-12,
-> `RUNTIME-004`, `DONE-082`); onlar da `BACKLOG.md` Akış 3'te izleniyor.
+> `M2_REALISM…` hâlâ kanonik olan tek şey M2 kabul kapılarıdır; onlar da
+> `BACKLOG.md` Akış 3'te izleniyor. **2026-08-27 düzeltmesi:** bu satır
+> `RUNTIME-004`'ü de kanonik açık kapı sayıyordu — o kapı 21 Ağustos'ta
+> operatör onayıyla kapandı (`1c8bb61`). Geriye yalnız **`DONE-082`** ve
+> **Gate 10'un 7 günlük gözlem penceresi** kaldı.
 > Bu dosyanın geri kalanı M1 kapanış kaydıdır, tarihseldir.
 
 # Planning index

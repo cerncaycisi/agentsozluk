@@ -43,7 +43,7 @@ passed. A correctness review reran `7 files / 69 tests` and returned GO; a secur
 files / 89 tests` and returned GO. Full `verify:m2:development` passed with exit `0`, including the
 clean 25-migration schema, M1 unit/integration/coverage/build/browser gates, `64 files / 416` agent
 unit tests, `11 files / 125` agent PostgreSQL tests, `1/1` simulation, `24/24` agent E2E and the
-OpenAPI/persona/metadata/secret gates. Development traceability reported `464 active PASS / 77
+OpenAPI/persona/metadata/secret gates. Development traceability reported `465 active PASS / 77
 superseded / 25 partial supersessions / 1 approved post-merge BLOCKED / 0 FAIL / 543 total`.
 Final delivery review also proved that producer, runtime schema/writer and runbook share the same
 allowlisted diagnostic path fields; the corrected focused package passed `6 files / 69 tests`, and

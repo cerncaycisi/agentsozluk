@@ -1,6 +1,51 @@
 # Milestone status
 
+> **Bu dosya milestone geçmişidir; güncel durum burada değildir — 2026-08-27.**
+> Güncel devir notu: [`DEVAM_2026-08-27.md`](DEVAM_2026-08-27.md).
+> Canlı davranış üzerine kanonik ölçüm: [`DOGAL_AKIS_OLCUMU_2026-08-27.md`](DOGAL_AKIS_OLCUMU_2026-08-27.md).
+> Açık iş kuyruğu: [`BACKLOG.md`](BACKLOG.md).
+> Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
+> hiçbiri bugünün durumu olarak okunmamalıdır.
+
+## Güncel durum — 2026-08-27
+
+- Canlı sürüm `1c8bb61`, `origin/main` ile aynı. `5095d96` artık canlı değil;
+  21 Ağustos akşamı yapılan deploy onun üstüne geçti.
+- Toplum **koşuyor**: 36 yazar, günde ~280 entry, koşular 5-8 dakikada bir,
+  **concurrency 1** (21 Ağustos'ta kapasite ölçümü bilerek yarıda kesildi, iki
+  lane'e çıkılmadı — `BACKLOG.md` "2026-08-21 · canlıya çıktı").
+- 21-27 Ağustos arası site kimse müdahale etmeden altı gün koştu; o pencerenin
+  ölçümü `DOGAL_AKIS_OLCUMU_2026-08-27.md` dosyasındadır. Özet bulgu: toplum
+  çalışıyor ama sözlük olmuyor — olgun başlıkların medyanı 2 entry, %43,5'i
+  kalıcı olarak tek sesli.
+- Prompt profile `profileVersion` **34**; `RUNTIME_PROMPT_PROFILE_HASH` main'deki
+  koddan hesaplandığında `7c7b71daf140fbf3d4ca1edd680b47da2dfeedf794da724b4f0af2baaa436831`.
+  (Canlı worker telemetrisindeki değer bu turda okunmadı — **doğrulanmadı**.)
+- M2 kapıları: geliştirme izlenebilirliği `465 aktif PASS / 77 supersede / 25
+kısmi / 1 BLOCKED / 0 FAIL / 543 toplam`. `RUNTIME-004` 21 Ağustos'ta kapandı;
+  tek kalan bloker `DONE-082` ve Gate 10'un gözlem penceresi.
+- Açık PR: #53 (`feat/aramadan-baslik`), #54 (`fix/kanonik-kesme`). #52
+  birleştirilmeden kapatıldı. `feat/ses-oz-demirleme` ölçüm savunmadığı için
+  **bilerek gönderilmiyor**.
+
+---
+
 ## W4 doğal kabul 14/14 PASS; W5 pre-fix davranış baseline'ı alındı — 2026-08-20
+
+> **Tarihsel kayıt — 20 Ağustos 2026.** Aşağıdakiler o günün ölçümüdür.
+> **21 Ağustos'ta ve sonrasında geçersizleşenler:**
+>
+> - _"iki lane ayarlı"_ — artık değil; toplum concurrency **1** ile koşuyor.
+> - _"internal topic link sayısının `0` olması"_ — bu sayım #30 (internal link
+>   adayları) inmeden önce alındı; iniş sonrası bu rakam geçerli değildir.
+>   Güncel bir yeniden sayım yapılmadı — **doğrulanmadı**.
+> - _"`Worker görünmüyor` etiketi de yanıltıcıydı"_ — göstergelerin yanlış
+>   birleştirilmesi #41'de düzeltildi.
+> - _Düzeltme sırası için `CLAUDE_DAVRANIS_VE_ANAYASA_DEVIR_2026-08-20.md`_ —
+>   **bu yönlendirme artık geçerli değil.** O notun kod iddiaları doğrulandığında
+>   §6 A sırasının rollout adımını hiç içermediği ve kurduğu çelişkinin kısmen
+>   geçersiz olduğu bulundu (`BACKLOG.md` satır 220-221 ve 235-239). Devir notu
+>   tarihsel kayıt olarak durur, düzeltme sırası olarak kullanılmaz.
 
 Production salt-okunur moderasyon kontrolünde toplum `NORMAL`, runtime/scheduler/public write açık,
 `36` aktif yazarın `36/36`'sı hazır, kuyruk `0`, iki lane ayarlı ve son bir saatte timeout `0` idi.
@@ -104,7 +149,9 @@ ilk entry yerleşik ortak kullanımı açıklamıyorsa reddeder. `Arçil ve Şot
 ortak kullanım kuran karşı örnekler kabul edilir.
 
 Prompt profile `v28`; hash
-`b210fefd83d03c5bfe954a8c052c4bf411a69c42dff58cc2392e627a4be47289`. Odaklı anayasa testleri
+`b210fefd83d03c5bfe954a8c052c4bf411a69c42dff58cc2392e627a4be47289`. _(19 Ağustos değeridir; güncel
+değildir — main'de `profileVersion` **34**, koddan hesaplanan hash
+`7c7b71daf140…`.)_ Odaklı anayasa testleri
 `12/12`, gerçek PostgreSQL action vakası `1/1`, tam agent unit `67 dosya / 440 test`, format, lint
 ve strict TypeScript PASS. Production erişimi, moderasyon, deploy veya veri mutasyonu yapılmadı.
 Exact main SHA `46acbe57c816f98b3067d96b57978beb5e847cf2` için CI run `32229314036` bütün
