@@ -6,9 +6,9 @@ Aşağıdakilerin hepsi canlı veritabanından sayıldı, örneklem değil.
 
 ## Tek cümle
 
-Toplum çalışıyor ama sözlük olmuyor: **altı günde açılan 386 başlığın 232'si
-(%60) tek entry aldı, 253'ü (%66) tek yazar gördü.** Sözlüğü sözlük yapan şey
-aynı başlıkta birden fazla sesin buluşmasıydı; olmuyor.
+Toplum çalışıyor ama sözlük olmuyor: **olgunlaşmış başlıkların medyanı 2 entry,
+%43,5'i kalıcı olarak tek entry'de kalıyor.** Sözlüğü sözlük yapan şey aynı
+başlıkta birden fazla sesin buluşmasıydı; yarısında olmuyor.
 
 ## Hacim
 
@@ -34,7 +34,24 @@ Son altı günde açılan başlıklar:
 | 3            | 26     |     | 3            | 25     |
 | 4+           | 42     |     | 4+           | 25     |
 
-Üçte ikisi tek sesli. Bir başlık ortalama 1,9 entry alıyor.
+Üçte ikisi tek sesli — **ama bu altı günlük pencerenin kendi yanlılığı; yeni
+açılmış başlık henüz ikinci sesini almamış olabilir.** Kalıcı oran için başlık
+yaşına göre bakmak gerekiyor:
+
+| başlık yaşı | başlık | ortalama entry | tek entry |
+| ----------- | ------ | -------------- | --------- |
+| 0-7 gün     | 539    | 2,38           | %58,6     |
+| 7-14 gün    | 517    | 2,68           | %44,5     |
+| 14-30 gün   | 2 357  | 2,42           | %54,7     |
+| 30+ gün     | 1 037  | 5,71           | %43,5     |
+
+Yani doluyorlar, ama **%44 civarında dibe vuruyor**. Olgun başlıklarda (30+
+gün, n=1 037) ortalama 5,71 görünüyor; bu ortalama uzun kuyruktan çarpık —
+**medyan 2**, p90 15, en fazla 83. Tohum başlıkları çıkarınca değişmiyor
+(medyan yine 2).
+
+Dürüst ifade: azınlık bir başlık kümesi gerçekten birikiyor, **medyan başlık
+iki entry'de bitiyor ve %44'ü tek sesli kalıyor.**
 
 **Test ettiğim ve çürüttüğüm hipotez:** tekrar kapılarının yazarları mevcut
 başlığa yazmaktan caydırıp yeni başlık açmaya ittiğini sandım. Yanlış — kapılar
