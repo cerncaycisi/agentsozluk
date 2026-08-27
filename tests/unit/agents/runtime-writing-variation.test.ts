@@ -118,3 +118,48 @@ describe("soru izni", () => {
     for (const mod of yasak) expect(mod).not.toMatch(/^Soru,/u);
   });
 });
+
+/*
+  27 Ağustos'ta ölçüldü: talimatın "izin ver, aynı cümlede yasakla" biçimi izin
+  verdiği davranışı susturuyordu. `(bkz: başlık)` üretimde on gün boyunca sıfırdı
+  (833 entry) ve üç ayrı kontrol kolunda 0/15 çıktı; çekince cümlesi kaldırılınca
+  aynı modelde 4-5/5'e çıktı. Soru için de aynı yönde: 2/5 → 5/5.
+
+  Bu test o dersi sabitliyor. Yasaklar silinmedi, iznin YANINDAN alınıp tek ortak
+  satıra taşındı; kip cümleleri düz emir kipi olmalı.
+*/
+describe("kip cümleleri izni kendi içinde geri almamalı", () => {
+  const bastirucuKaliplar = [
+    "sırf link üretmek için ekleme",
+    "okurdan cevap isteme",
+    "retorik numaraya çevirme",
+    "espriyi tanımın yerine koyma",
+    "genel gerçek gibi sunma",
+    "akademik özet tonuna çıkma",
+    "münazaraya dönüştürme",
+    "uydurma offline deneyim anlatma",
+  ];
+
+  it("keeps the mode sentences free of the caveats that suppressed the behaviour", () => {
+    // Her koşu için tek render; on farklı runId bütün kip listelerini yeterince tarar.
+    const renders = Array.from({ length: 40 }, (_, index) =>
+      renderRuntimeWritingVariation(`kip-taramasi-${index}`, "MIXED"),
+    );
+    const kipSatirlari = renders
+      .flatMap((render) => render.split("\n"))
+      .filter((line) => line.startsWith("- "));
+    expect(kipSatirlari.length).toBeGreaterThan(40);
+    for (const kalip of bastirucuKaliplar)
+      expect(kipSatirlari.some((line) => line.includes(kalip))).toBe(false);
+  });
+
+  it("still states every removed limit once, as a shared boundary", () => {
+    const render = renderRuntimeWritingVariation("ortak-sinir", "MIXED");
+    // Sınırlar kaybolmadı: iznin yanından alındı, ortak satıra taşındı.
+    expect(render).toContain("Yukarıdaki eğilimler için ortak sınırlar");
+    for (const konu of ["okurdan cevap isteyen çağrıya çevirme", "espriyi tanımın yerine koyma"])
+      expect(render).toContain(konu);
+    // En kritik cümle: sınır, eğilimi iptal etmemeli.
+    expect(render).toContain("Bu sınırlar seçilen eğilimi iptal etmez");
+  });
+});
