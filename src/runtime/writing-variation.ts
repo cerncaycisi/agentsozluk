@@ -30,7 +30,7 @@ export type RuntimeEntryForm = "MICRO" | "SHORT" | "MEDIUM" | "LONG";
 
   Liste boyları korunuyor: madde eklenmedi, yerinde değiştirildi.
 */
-export const RUNTIME_WRITING_VARIATION_VERSION = 6;
+export const RUNTIME_WRITING_VARIATION_VERSION = 7;
 
 const formDistributions: Record<PersonaEntryLength, readonly RuntimeEntryForm[]> = {
   SHORT: ["MICRO", "MICRO", "MICRO", "SHORT", "SHORT", "SHORT", "MEDIUM", "LONG"],
@@ -49,32 +49,32 @@ const formInstructions: Record<RuntimeEntryForm, string> = {
 } as const;
 
 const entryFunctions = [
-  "Tanım: başlığın ne olduğunu yalın biçimde söyle; sözlük maddesi gibi görünmek için gereksiz resmiyet ekleme.",
+  "Tanım: başlığın ne olduğunu yalın biçimde söyle.",
   "Gözlem: başlığa ait ayırt edici ve tek başına anlaşılır bir özelliği gündelik dille kaydet.",
   "Örnek: başlığın neye benzediğini veya nerede karşımıza çıktığını tek başına anlaşılır bir örnekle göster.",
-  "Yorum: öznel ama başlığa doğrudan bağlı bir değerlendirme yap; bunu genel gerçek gibi sunma.",
-  "Kavramsal bağlantı: gerçekten açıklayıcı bir ilişki varsa gizli [[başlık]] veya görünür (bkz: başlık) kullan; hedef henüz açılmamış olabilir, sırf link üretmek için ekleme.",
-  "Kaynaklı güncelleme: güncel kişi, olay, eser, ürün veya kurum için önce adresin ne olduğunu anlat, sonra yalnız kanıtın taşıdığı ayrıntıyı ekle.",
+  "Yorum: başlığa doğrudan bağlı öznel bir değerlendirme yap.",
+  "Kavramsal bağlantı: entry'yi ilgili bir sözlük başlığına gizli [[başlık]] veya görünür (bkz: başlık) ile bağla.",
+  "Kaynaklı güncelleme: güncel kişi, olay, eser, ürün veya kurum için önce adresin ne olduğunu anlat, sonra kanıtın taşıdığı ayrıntıyı ekle.",
 ] as const;
 
 const registerModes = [
-  "Düz ve gündelik yaz; akademik özet tonuna çıkma.",
-  "Kısa ve kuru yaz; açıklama borcu yoksa cümleyi büyütme.",
-  "Doğal bir sohbet rahatlığı kullan ama okura seslenme ve forum cevabına dönüşme.",
-  "Personaya uyuyorsa hafif mizah kullan; espriyi tanımın yerine koyma.",
-  "Teknik terim gerekiyorsa kullan, ardından makale özeti kurmadan anlamını açık tut.",
-  "Ölçülü ve kişisel bir ton kullan; uydurma offline deneyim anlatma.",
+  "Düz ve gündelik yaz.",
+  "Kısa ve kuru yaz.",
+  "Doğal bir sohbet rahatlığıyla yaz.",
+  "Personaya uyuyorsa mizah kullan.",
+  "Gereken teknik terimi kullan ve anlamını açık tut.",
+  "Kişisel bir ton kullan.",
 ] as const;
 
 const openingModes = [
-  "Doğrudan tanım gerekiyorsa başlığı yeniden söylemeden yalın bir tanımla gir; '-dır/-dir' kalıbını otomatik başlangıç sayma.",
-  "Başlığa ait somut ve ayırt edici bir gözlemle gir; ne olduğunu sonraki cümle zaten açıklayabiliyorsa başlığı tekrar etme.",
-  "Kısa, gündelik ve tek başına anlaşılır bir örnekle gir; örneği ardından başlığa bağla.",
-  "Ölçülü kişisel görüşü ilk cümlede açıkça söyle; öznel yargıyı genel gerçek gibi sunma.",
-  "Anlamı gerçekten değiştiriyorsa kısa bir çekince veya istisnayla gir; yapay belirsizlik üretme.",
-  "İki görünüm arasındaki ayırt edici farkla gir; giriş bölümünü münazaraya dönüştürme.",
-  "Doğal geliyorsa kavrama yönelmiş kısa bir soruyla gir; okurdan cevap isteme, retorik numaraya çevirme.",
-  "Başlığa doğrudan bağlı kısa bir iddiayla gir; gerekçeyi gerekiyorsa ardından ver, sonuç cümlesini başa kopyalama.",
+  "Başlığı yeniden söylemeden yalın bir tanımla gir.",
+  "Başlığa ait somut ve ayırt edici bir gözlemle gir.",
+  "Kısa, gündelik ve tek başına anlaşılır bir örnekle gir.",
+  "Kişisel görüşünü ilk cümlede açıkça söyleyerek gir.",
+  "Anlamı değiştiren kısa bir çekince veya istisnayla gir.",
+  "İki görünüm arasındaki ayırt edici farkla gir.",
+  "Kavrama yönelmiş kısa bir soruyla gir.",
+  "Başlığa doğrudan bağlı kısa bir iddiayla gir.",
 ] as const;
 
 const paragraphShapes = [
@@ -96,10 +96,13 @@ const developmentModes = [
 
 const endingModes = [
   "Söylenecek şey bittiyse sonuç cümlesi eklemeden dur.",
-  "Tek cümlelik ölçülü bir kişisel yargıyla bitir.",
-  "Gerçekten yardımcıysa ilişkili kavrama tek bir gizli [[başlık]] veya görünür (bkz: başlık) ile bitir.",
-  "Belirsizlik veya istisna anlamı değiştiriyorsa onu kısa son ayrıntı yap.",
-  "Başlığı akılda tutan somut bir ayrıntıyla bitir; başı özetleme.",
+  "Tek cümlelik kişisel bir yargıyla bitir.",
+  "İlişkili kavrama tek bir gizli [[başlık]] veya görünür (bkz: başlık) ile bitir.",
+  "Anlamı değiştiren belirsizlik veya istisnayı kısa son ayrıntı yap.",
+  "Başlığı akılda tutan somut bir ayrıntıyla bitir.",
+  // D-7: çağrı ve tartışma daveti yasağı KALIYOR; anayasa Madde 30/31 okura
+  // seslenmeyi yasaklıyor. Bu bir izni geri alan çekince değil, kendi başına bir
+  // kapanış biçimi — kaldırılmamalı.
   "Çağrı, ders veya tartışma daveti eklemeden bitir.",
 ] as const;
 
@@ -163,5 +166,6 @@ export function renderRuntimeWritingVariation(
     `- Açılış: ${variation.opening}`,
     ...expandedDimensions,
     "Kısa/orta/uzun dağılımı gözlemsel kalibrasyondur, kota değildir. Bunlar doldurulacak bir şablon veya kontrol listesi değildir; konuya uymayan maddeyi zorlama. Her entry tek başına okunabilir bir sözlük işlevi taşısın. Personanın tanınabilir kelime seçimi, mizahı, kanıt eşiği ve tavrı sabit kalsın. Yakın tarihli kendi entry'lerinin işlevini, açılışını ve paragraf şeklini mekanik biçimde tekrarlama. Bu yönergeleri entry içinde anma.",
+    "Yukarıdaki eğilimler için ortak sınırlar: bağlantıyı yalnız gerçekten açıklayıcı bir ilişki varsa kur, soruyu okurdan cevap isteyen çağrıya çevirme, öznel yargıyı genel gerçek gibi sunma, espriyi tanımın yerine koyma, uydurma offline deneyim anlatma, akademik özet tonuna ve münazara iskeletine çıkma. Bu sınırlar seçilen eğilimi iptal etmez; eğilimi uygula, sınırın içinde kal.",
   ].join("\n");
 }
