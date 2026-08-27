@@ -360,12 +360,35 @@ const protectedEventHead =
   burada da geçerli; afet adını yüzeyden tekil vakadan ayırmanın yolu yok.
 */
 const transientIncidentHead =
-  /(?:erişim engeli|çarpması|yangını|patlaması|arızası|kesintisi|ölümleri|ölümü|yaralanması|boğulması|saldırısı|çatışması|soruşturması|gözaltısı|tutuklanması|istifası|iflası|rekoru)$/u;
+  /(?:^|[^\p{L}\p{N}_])(?:erişim engeli|çarpması|yangını|ölümleri|yaralanması|boğulması|soruşturması|gözaltısı|tutuklanması|istifası|iflası|rekoru)$/u;
 
-function transientIncidentTitle(normalized: string): boolean {
+/*
+  Sözlüğün tamamı (4 456 başlık) taranınca iki kusur çıktı ve ikisi de yalnız o
+  taramada görünür oldu — 531 başlıklık yeni-başlık örnekleminde yoktular.
+
+  BİRİNCİSİ, KELİME SINIRI. `ölümleri` deseni `bölümleri`nin içinde eşleşiyordu;
+  `iş bölümü`, `şişe bölümü`, `hobi olarak okunabilecek üniversite bölümleri`
+  reddediliyordu. Desen artık önek sınırıyla başlıyor.
+
+  İKİNCİSİ VE ASIL OLANI: vaka adlarının çoğu kalıcı soyut kavram da kurar.
+  `yazarın ölümü`, `ortak neden arızası`, `yetki çatışması`, `ücret kesintisi`,
+  `tomurcuk patlaması`, `nüfus patlaması` — hepsi meşru sözlük başlığı, hiçbiri
+  manşet değil. `patlaması`, `kesintisi`, `arızası`, `çatışması` ve tekil `ölümü`
+  bu yüzden listeden çıkarıldı.
+
+  Kalanları güvenli kılan şey ayrı bir şart: TEKİL VAKA HER ZAMAN ÖZEL ADA BAĞLI.
+  `Tahtakale`, `Söke`, `TEVA`, `Guarulhos`, `American Airlines` — üretimdeki
+  ihlallerin hepsinde adlandırılmış bir varlık var. Soyut kavramda yok. Özel ad
+  şartı hem kalan yanlış pozitifleri kapatıyor hem de maddenin çaresiyle aynı
+  şeye bakıyor: reddedilen başlığın gideceği adres o özel addır.
+*/
+const properNounToken = /(?:^|\s)(?:\p{Lu}[\p{L}\p{N}]*|\p{Lu}{2,})(?=$|[\s'’])/u;
+
+function transientIncidentTitle(rawTitle: string, normalized: string): boolean {
   if (normalized.split(" ").filter(Boolean).length < 2) return false;
   if (protectedEventHead.test(normalized)) return false;
-  return transientIncidentHead.test(normalized);
+  if (!transientIncidentHead.test(normalized)) return false;
+  return properNounToken.test(rawTitle.normalize("NFKC").trim());
 }
 
 /*
@@ -483,7 +506,7 @@ export function constitutionalTopicWritingIssue(title: string): ConstitutionalWr
           ? "Anayasa Madde 32: Haber bülteni önekiyle kurulan geçici manşet yerine kişi, kurum veya kalıcı olay adı kullanılmalıdır."
           : "Anayasa Madde 32: Çekimli haber yüklemiyle biten başlık günlük manşet cümlesidir; kişi, kurum veya kalıcı olay adı kullanılmalıdır.",
     };
-  if (transientIncidentTitle(normalized)) {
+  if (transientIncidentTitle(title, normalized)) {
     const address = suggestedCanonicalAddress(title);
     return {
       code: "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT",

@@ -82,6 +82,42 @@ Aynı içtihat burada da geçerli — `Soma maden kazası` ve `1999 Gölcük dep
 yıllar sonra da tanınabilir. Yüzeyden afet adını tekil vakadan ayırmanın yolu
 yok. Kuralın bu tarafı bilerek kapatıldı; yeni kural o testi kırmıyor.
 
+## Üçüncü daraltma: sözlüğün tamamı tarandı
+
+`962f9e9`'in koyduğu usul — kuralı yalnız hedef örnekleme değil **deponun
+tamamına** karşı koşturmak — iki kusur yakaladı. İkisi de 531 başlıklık
+yeni-başlık örnekleminde **görünmüyordu**; yalnız 4 456 başlığın tamamı
+tarandığında çıktılar.
+
+**1. Kelime sınırı yoktu.** `ölümleri` deseni `bölümleri`nin içinde eşleşiyordu:
+`iş bölümü`, `şişe bölümü`, `hobi olarak okunabilecek üniversite bölümleri`
+reddediliyordu. Desen artık önek sınırıyla başlıyor.
+
+**2. Vaka adlarının çoğu kalıcı soyut kavram da kurar.** Bu daha ciddiydi:
+
+| yanlış reddedilen     | ne olduğu                        |
+| --------------------- | -------------------------------- |
+| `yazarın ölümü`       | Barthes'ın kavramı               |
+| `ortak neden arızası` | güvenilirlik mühendisliği terimi |
+| `yetki çatışması`     | hukuk terimi                     |
+| `ücret kesintisi`     | çalışma hukuku kavramı           |
+| `tomurcuk patlaması`  | botanik terimi                   |
+
+`patlaması`, `kesintisi`, `arızası`, `çatışması` ve tekil `ölümü` listeden
+çıkarıldı. Kalanlar için ek bir şart kondu ve asıl ayrımı o yapıyor:
+
+> **Tekil vaka her zaman özel ada bağlıdır.**
+
+`Tahtakale`, `Söke`, `TEVA`, `Guarulhos`, `American Airlines` — üretimdeki
+ihlallerin hepsinde adlandırılmış bir varlık var; soyut kavramda yok. Şart hem
+kalan yanlış pozitifleri kapatıyor hem de maddenin çaresiyle aynı şeye bakıyor:
+reddedilen başlığın gideceği adres zaten o özel addır.
+
+Tarama sonrası tüm sözlükte **26 başlık (%0,58)** ateşliyor ve hepsi özel ada
+bağlı tekil vaka. Tarama ayrıca ailenin gerçek boyutunu gösterdi:
+`Rojin Kabaiş` ×3, `Furkan Hareketi` ×4, `Mabel Matiz` ×2, `TEVA` ×2,
+`Tahtakale` ×2 — aynı olayın ayrı ayrı başlıkları.
+
 ## Kalan kural ve isabeti
 
 18 başlık / 531 = **%3,4**. Codex'le mutabakat **16/18 (%89)**; kalan iki

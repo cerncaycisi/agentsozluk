@@ -236,6 +236,34 @@ describe("constitutional writer policy", () => {
   });
 
   /*
+    Sözlüğün tamamı (4 456 başlık) taranınca çıkan iki kusurun regresyonu; ikisi de
+    531 başlıklık yeni-başlık örnekleminde görünmüyordu.
+
+    (1) Kelime sınırı: `ölümleri` deseni `bölümleri`nin içinde eşleşiyordu.
+    (2) Vaka adlarının çoğu kalıcı soyut kavram da kurar. Onları ayıran şart özel
+        addır — tekil vaka her zaman adlandırılmış bir varlığa bağlı.
+  */
+  it("keeps abstract concepts that share an incident head noun", () => {
+    for (const title of [
+      // `ölümleri` ⊄ `bölümleri`
+      "iş bölümü",
+      "şişe bölümü",
+      "hobi olarak okunabilecek üniversite bölümleri",
+      // Vaka adı + soyut niteleyen: özel ad yok, kavram kalıcı.
+      "yazarın ölümü",
+      "ortak neden arızası",
+      "yetki çatışması",
+      "ücret kesintisi",
+      "nüfus patlaması",
+      "güneş çarpması",
+      "orman yangını",
+      "dünya rekoru",
+      "disiplin soruşturması",
+    ])
+      expect(constitutionalTopicWritingIssue(title)).toBeNull();
+  });
+
+  /*
     Madde 32 yalnız reddetmiyor, adresi de söylüyor. Ölçüme göre `canonicalOverride`
     altı günde sıfır kez kullanılmış çünkü ajana hiç somut alternatif çıkmıyor.
     Adres apostroflu hâl ekinden okunur; apostrof şartı olmadan `Meta AI` → `Me`+`ta`
