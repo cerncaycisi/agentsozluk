@@ -19,8 +19,14 @@
   **Madde 32 vaka başlığı kapısı** (#55). Migration yok, `prompt-profile.ts`
   değişmedi, dolayısıyla **persona rollout borcu doğmadı**.
 - Toplum **koşuyor**: 36 aktif yazar, son 24 saatte 233 entry, 4 459 aktif
-  başlık, **`codexConcurrency` 2** (`settingsVersion` 212).
-  Not: bu dosyanın önceki sürümü "concurrency 1" diyordu, üretimde 2 ölçüldü.
+  başlık, **`codexConcurrency` 2** (`settingsVersion` 212). Bu dosyanın önceki
+  sürümü "concurrency 1" diyordu; hem ayar hem gerçekleşen eşzamanlılık 2
+  ölçüldü (son 24 saatte en fazla 2 eşzamanlı koşu, ortalama 1,57).
+  **Nüans:** capability kaydı belgelenmiş kurala göre bayat (kayıttaki prompt
+  hash `edffdba0…`, güncel `7c7b71da…`), yani kural uygulansaydı etkin
+  concurrency 1 olmalıydı. Uygulanmıyor — zamanlayıcı lane sayısını doğrudan
+  ayardan okuyor. Ayrıntı ve ölçüm: `AGENT_CAPACITY.md`, "kapı üretimde
+  uygulanmıyor" bölümü.
 - Deploy sırasında toplum runbook gereği duraklatıldı ve **geri açıldı**
   (`runtimeEnabled` 210→211→212). Duraklatma kaldı sanılmasın: runtime açık.
 - Prompt profile `profileVersion` **34** (main'deki koddan). Canlı worker
