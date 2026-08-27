@@ -6648,3 +6648,42 @@ database` hatasında durdu. Yerel kullanıcı/şema yetkisi değiştirilmedi; ye
   kuruluyor; ajan işi indiği anda commit'leniyor.
 - Tekrarlama: commit'lenmemiş ajan çıktısını gece boyunca geçici dizinde bırakma; bir ajanın
   "yedeği var" demesi versiyon kontrolü sayılmaz.
+
+## 2026-08-27 — D-8'i yeniden yazma denemesi: dört mekanizma, isabet eşiğin altında
+
+Kayıp D-8 `TOPIC_DEFINITION_REPEATED` kapısı yeniden yazılmaya çalışıldı ve
+**gönderilmedi**. Kayıt, aynı yolun ikinci kez yürünmemesi için.
+
+**Kod gerçekten kurtarılamaz.** Tüm nesne veritabanı tarandı
+(`git cat-file --batch-all-objects`, dangling dahil), `git stash list`,
+`git fsck --lost-found`, tüm yerel ve uzak ref'ler: identifier'ı içeren 11 blob
+var, **11'i de markdown**. `scratchpad/wt-d8b` hiç commit üretmediği için git'e
+hiç girmemiş. `origin/agents/d8-oz-tekrar` farklı bir iş (kısmi çözüm, `1d8d7f0`
+ile main'de).
+
+**Tasarım şartnamesi sağlam:** `docs/DEVAM_2026-08-22.md` §3 — mekanizma "tanım
+yuvasını ikinci kez açmak", hedef 42 red (%2,8) / **%86 isabet**, ve kritik not:
+sözlüksel örtüşme ekseni ölçülüp **elenmiş** (IDF denemesi işi kötüleştirmiş).
+
+**Bugünkü ölçüm** (üretim, 14 gün, 568 grup, 1 590 entry; aynı yazar aynı başlıkta
+2+ entry):
+
+| deneme                                          | sonuç                                                               |
+| ----------------------------------------------- | ------------------------------------------------------------------- |
+| Sözcük örtüşmesi (kaba gövdeleme + Jaccard)     | Ayıramıyor — `mulligan` 0,290, meşru grupların %18'iyle aynı bantta |
+| Yapısal tanım-yuvası (ilk yan cümle ad yüklemi) | %42,3'te ateşliyor — hedefin 15 katı                                |
+| Yapı + örtüşme, doğru hacimde (43 red)          | **isabet %69,8** (bağımsız hakem, kör değerlendirme)                |
+| + "yeni somut içerik" süzgeci                   | %70,3 — dört gerçek vaka kaybına karşılık, işe yaramadı             |
+| Örtüşmeyi yalnız tanım çekirdeğinde ölçmek      | %70 platosu; %80'e ancak 10 redde çıkıyor                           |
+
+Eşik %86, ulaşılan %70. **Gönderilmedi.**
+
+- Doğrulanan: sözlüksel eksenin kapalı olduğu bulgusu bağımsız olarak yeniden
+  üretildi. Kayıp kapının bu tespiti doğruydu; bir daha denenmemeli.
+- Teşhis: "tanım yuvası"nın bu yeniden kurgusu (ilk yan cümlenin ad yüklemiyle
+  bitmesi) orijinalinden kaba. Orijinal kurgu belgede tarif edilmemiş, yalnız
+  adlandırılmış.
+- Sıradaki denemenin başlangıç noktası `BACKLOG.md:201`: kavram örtüşmesi
+  ölçemiyor, **iddia düzeyinde** kontrol gerekiyor.
+- Tekrarlama: eşik altındaki isabetle kapı göndermek. `mulligan` vakası (aynı
+  yazar, beş kez aynı tanım, farklı sözcüklerle) doğrulama için saklanmalı.
