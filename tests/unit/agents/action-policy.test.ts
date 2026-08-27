@@ -9,6 +9,8 @@ import {
   repeatedEntryFraming,
   repeatedEntryFramingReason,
   isRepairableContentRejectionCode,
+  isTitleRepairableContentRejectionCode,
+  titleRepairCandidateIsSafe,
   seriousFactualClaimRequiresStrongEvidence,
   sourceGroundingIssue,
   topicSemanticRepetition,
@@ -579,5 +581,93 @@ describe("aynı başlıkta öz-tekrar", () => {
     const aday =
       "Danıştay kararı sonrası bu ücretlerin sözleşmede açıkça yazılmadıkça talep edilemeyeceği, kiracı derneklerinin başvurusuyla gündeme geldi.";
     expect(topicSemanticRepetition(aday, "kira ek ücretleri", [onceki])).toBeNull();
+  });
+
+  /*
+    Başlık onarımı: Madde 32 vaka kapısı gövdeye değil BAŞLIĞA itiraz ediyor.
+    Aynı başlıkla yapılan gövde onarımı tanımı gereği yeniden reddedilir, o
+    yüzden onarımın başlığı taşıyabilmesi gerekiyor.
+  */
+  it("accepts a title repair that changes only the title and body", () => {
+    const original = {
+      sequence: 3,
+      actionType: "CREATE_TOPIC_WITH_ENTRY",
+      targetType: undefined,
+      targetId: undefined,
+      provenance: { evidenceType: "TRUSTED_SOURCE", evidenceIds: ["a"] },
+      input: { title: "Tahtakale'de leylek ölümleri", body: "Kuşların toplu ölümüne dair gözlem." },
+    };
+    const repaired = {
+      ...original,
+      sequence: 9,
+      repairOfSequence: 3,
+      input: { title: "Tahtakale", body: "Kuşların toplu ölümüne dair gözlem." },
+    };
+    expect(titleRepairCandidateIsSafe(original, repaired)).toBe(true);
+    // Gövdenin aynı kalması serbest — geniş adres altında çoğu gövde geçerli.
+    expect(isTitleRepairableContentRejectionCode("CONSTITUTION_TOPIC_TRANSIENT_INCIDENT")).toBe(
+      true,
+    );
+    expect(isTitleRepairableContentRejectionCode("DUPLICATE_FRAMING")).toBe(false);
+  });
+
+  it("refuses a title repair that does not actually change the title", () => {
+    const original = {
+      sequence: 3,
+      actionType: "CREATE_TOPIC_WITH_ENTRY",
+      provenance: { evidenceType: "TRUSTED_SOURCE", evidenceIds: ["a"] },
+      input: { title: "Hopa seli", body: "Gövde." },
+    };
+    expect(
+      titleRepairCandidateIsSafe(original, {
+        ...original,
+        sequence: 9,
+        repairOfSequence: 3,
+        input: { title: "  hopa   seli ", body: "Başka gövde." },
+      }),
+    ).toBe(false);
+  });
+
+  /*
+    Onarım yeni bir eylem icat edemez; yalnız reddedilen eylemin adresini
+    düzeltebilir. Bu üç kontrol gövde onarımındakiyle aynı sıkılıkta.
+  */
+  it("refuses a title repair that changes target, provenance or action type", () => {
+    const original = {
+      sequence: 3,
+      actionType: "CREATE_TOPIC_WITH_ENTRY",
+      targetId: undefined,
+      provenance: { evidenceType: "TRUSTED_SOURCE", evidenceIds: ["a"] },
+      input: { title: "Söke'de araç yangını", body: "Gövde." },
+    };
+    const base = {
+      ...original,
+      sequence: 9,
+      repairOfSequence: 3,
+      input: { title: "Söke", body: "Gövde." },
+    };
+    expect(titleRepairCandidateIsSafe(original, base)).toBe(true);
+    expect(titleRepairCandidateIsSafe(original, { ...base, actionType: "CREATE_ENTRY" })).toBe(
+      false,
+    );
+    expect(
+      titleRepairCandidateIsSafe(original, {
+        ...base,
+        targetId: "00000000-0000-4000-8000-000000000003",
+      }),
+    ).toBe(false);
+    expect(
+      titleRepairCandidateIsSafe(original, {
+        ...base,
+        provenance: { evidenceType: "MODEL_KNOWLEDGE", evidenceIds: [] },
+      }),
+    ).toBe(false);
+    // CREATE_ENTRY'nin başlığı yok; başlık onarımı yalnız topic açmaya açık.
+    expect(
+      titleRepairCandidateIsSafe(
+        { ...original, actionType: "CREATE_ENTRY" },
+        { ...base, actionType: "CREATE_ENTRY" },
+      ),
+    ).toBe(false);
   });
 });
