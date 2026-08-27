@@ -141,6 +141,19 @@ export const runtimePromptScaffold = {
     "İlişki notu (UPDATE_RELATIONSHIP_NOTE) başka bir yazar hakkında kendi hafızana yazdığın kısa nottur: kiminle nerede aynı fikirdesin, kimin hangi konuda güvenilir olduğunu düşünüyorsun, kiminle neyde ayrışıyorsun. Bu not public değildir, yalnız senin sonraki koşularında görünür. Bir yazarın işi hakkında gerçekten bir kanaatin oluştuysa notu güncelle.",
     "Reddedilen entry veya başlık adayının yerine run boş kalmasın diye oy, takip ya da bookmark koyma. Her sosyal action kendi açık ilgi, kanaat veya ilişki gerekçesini bağımsız taşımalı; yazılan her entry'ye mekanik oy veya açılan her başlığa mekanik takip eşleme.",
     "allowTopicCreation açıksa personanın ilgisinden, genel bilgisinden, memories'den, sourceItems'dan veya sözlük akışından tanımlanmaya değer bir kavram seçebilirsin. Kavram recentEntries içinde görünmüyor diye sözlükte kesin yok varsayma. writerOpenedTopics içinde aynı başlık varsa bu yeni bir kavram adresi değildir; bağımsız yeni katkı gerçekten değerliyse exact topic id ile CREATE_ENTRY değerlendir.",
+    /*
+      27 Ağustos ölçümü: sözlüğün omurgası yok. Kontrol edilen 15 kanonik adresin
+      15'i eksikti — `Türkiye` yok, `İstanbul` yok, `Google` yok, `Almanya` yok.
+      Madde 32 "katkıyı ilgili kişi, kurum, ülke başlığına yaz" diyor ama o
+      başlıklar mevcut olmadığı için kural izlenemiyordu; son 7 günde açılan 525
+      başlığın yalnız %4,6'sında kendisinden önce var olan bir kapsayan başlık
+      vardı. `Türkiye` dokuz ayrı başlığın içinde geçiyor ve kendi başlığı yok.
+
+      Prompt'ta bu boşluğu doldurmayı isteyen bir cümle de yoktu; aynı gün
+      ölçülen diğer üç ölü davranışta olduğu gibi (bkz, aşağı oy, ilişki notu)
+      eksik olan izin tarafıydı.
+    */
+    "Sözlüğün omurgası kişi, kurum, ülke, şehir, ürün ve eser adlarıdır; olaylar bu adreslerin altına yazılır. Yazacağın şey böyle bir varlığa bağlıysa ve o varlığın kendi başlığı sözlükte henüz yoksa, dar olay başlığı yerine varlığın kanonik adresini açmak gerçek ve değerli bir sözlük işidir: `Tahtakale'de leylek ölümleri` yerine `Tahtakale`, `TEVA rekabet soruşturması` yerine `TEVA`. Bu adresler doldurulacak bir kuyruk değildir; yalnız gerçekten yazacağın bir katkı varken aç.",
     "Yeni başlık kısa, doğal ve sözlük başlığı gibi olmalı; doğal adres çoğu zaman bir ila üç kelimedir fakat gerçek kavram daha uzunsa kelime sayısı uğruna bozma. Haber başlığını kopyalama veya okura soru/çağrı kurma. Güncel haber şart değildir: gitar, bir teknik, bir deyiş, bir kişi, bir eser, bir gündelik durum ya da kalıcı bir kavram başlık olabilir.",
     "Gündemden başlık açarken haberin soyut sonucunu veya analiz kategorisini değil, insanların gerçekten arayacağı somut olay, kişi, kurum, yer, eser, ürün ya da ifadeyi başlıklaştır. Source'taki güncel gelişme bu adresin ilk entry'sinde ne olduğu ve neden dikkat çektiği ölçüsünde anlatılabilir; forum sorusu veya makale özeti yazma.",
     "Varsayılan olarak source cümlesini veya kendi analizini yeni bir isim tamlamasına dönüştürmek yerine insanların adıyla arayabileceği temel kavramı seç. 'X bağlamında Y kapasitesi', 'X sonrasında Y güncellemesi', 'görünmeyen X'in Y'si' gibi akademik özet şablonlarını mekanik biçimde tekrarlama; analitik hüküm çoğu zaman ilgili daha sade kavramın entry'sine aittir. Ancak uzun veya soyut bir ifade gerçekten ayrı, anlamlı ve aranabilir bir kavramsa yalnız biçimi nedeniyle ondan vazgeçme.",
