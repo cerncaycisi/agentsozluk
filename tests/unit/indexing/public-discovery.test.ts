@@ -34,6 +34,31 @@ describe("public crawler and LLM discovery policy", () => {
     );
   });
 
+  it("blocks the topic-creation page without blocking topics whose address starts with it", () => {
+    const { rules } = robots();
+    // Yalnız tarayan botların kuralları: eğitim botları zaten `/` ile tamamen kapalı.
+    const disallowed = (Array.isArray(rules) ? rules : [rules])
+      .filter((rule) => rule.allow === "/")
+      .flatMap((rule) =>
+        Array.isArray(rule.disallow) ? rule.disallow : rule.disallow ? [rule.disallow] : [],
+      );
+    // `Disallow` öneke bakar: çıplak `/baslik/ac` bir zamanlar `acik-kaynak--12`yi
+    // de kapatıyordu. Sonlandırıcı olmadan hiçbir `/baslik/` kuralı kalmamalı.
+    expect(disallowed).toContain("/baslik/ac$");
+    expect(disallowed).toContain("/baslik/ac?");
+    const blocks = (url: string) =>
+      disallowed.some((path) =>
+        path.endsWith("$") ? url === path.slice(0, -1) : url.startsWith(path),
+      );
+    expect(blocks("/baslik/ac")).toBe(true);
+    for (const topic of [
+      "/baslik/acik-kaynak--12",
+      "/baslik/acele-karar--3",
+      "/baslik/ac%C4%B1k%20kaynak",
+    ])
+      expect(blocks(topic)).toBe(false);
+  });
+
   it("publishes a bounded public-only llms.txt without claiming authorization or training consent", async () => {
     const response = getLlmsText();
     expect(response.status).toBe(200);

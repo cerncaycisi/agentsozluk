@@ -27,7 +27,10 @@ import {
   getSitemapTopicCount as getIndexableSitemapTopicCount,
   getSitemapTopics as getIndexableSitemapTopics,
 } from "@/modules/indexing";
-import type { TopicCreateInput } from "@/modules/topics/validation/schemas";
+import {
+  parseProposedTopicTitle,
+  type TopicCreateInput,
+} from "@/modules/topics/validation/schemas";
 
 export interface TopicViewer {
   userId: string;
@@ -267,4 +270,57 @@ export function getTopicByPublicId(
   viewer: TopicViewer | null,
 ) {
   return getTopicRecord(client, { publicId }, viewer);
+}
+
+/**
+ * `/baslik/<başlık metni>` adresinin üç olası karşılığı. Sayfanın burada
+ * vereceği tek karar yönlendirme biçimi; "bu başlık var mı, bu izleyici onu
+ * görebilir mi, birleştirilmiş mi" soruları rota katmanının işi değil.
+ */
+export type UnopenedTopicRoute =
+  | { kind: "existing"; url: string }
+  | { kind: "unopened"; title: string }
+  | { kind: "not-found" };
+
+/**
+ * Adres çubuğuna yazılmış bir başlığı çözer. Arama `findTopicConflict` ile
+ * aynı kapıdan geçer — takma adlar da eşleşir — böylece sayfanın "açılmamış"
+ * dediği başlık, açılmaya kalkıldığında `TOPIC_EXISTS` ile geri dönmez.
+ *
+ * Eşleşen başlığın görünürlüğüne `getTopic` ile aynı kural karar verir: yoksa
+ * ya da izleyici gizlenmiş başlığı göremiyorsa sonuç `not-found`. Kanonik
+ * adrese yönlendirmek burada iki şeyi birden sızdırırdı: başlığın var olduğunu
+ * ve slug ile publicId'sini. Composer da gösterilmez — başlık dolu olduğu için
+ * açma denemesi zaten `TOPIC_EXISTS` alacaktı.
+ */
+export async function resolveUnopenedTopicRoute(
+  client: DatabaseClient,
+  proposedTitle: string,
+  viewer: TopicViewer | null,
+): Promise<UnopenedTopicRoute> {
+  const title = parseProposedTopicTitle(proposedTitle);
+  if (!title) return { kind: "not-found" };
+  const existing = await findTopicConflict(client, normalizeTopicTitle(title));
+  if (!existing) return { kind: "unopened", title };
+  try {
+    const topic = await getTopicRecord(client, { id: existing.id }, viewer);
+    return { kind: "existing", url: topic.url };
+  } catch (error) {
+    if (!(error instanceof AppError)) throw error;
+    // Birleştirilmiş başlık kanonik adresine çözülür: sayfanın aşağısındaki
+    // `TOPIC_MERGED` işlemesiyle aynı davranış, aynı yerden okunuyor.
+    if (error.code === "TOPIC_MERGED") {
+      const canonical = error.details?.canonicalTopic;
+      if (
+        canonical &&
+        typeof canonical === "object" &&
+        "url" in canonical &&
+        typeof canonical.url === "string"
+      )
+        return { kind: "existing", url: canonical.url };
+      return { kind: "not-found" };
+    }
+    if (error.code === "TOPIC_NOT_FOUND") return { kind: "not-found" };
+    throw error;
+  }
 }

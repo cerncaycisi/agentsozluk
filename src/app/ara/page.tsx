@@ -6,6 +6,7 @@ import { getDatabase } from "@/lib/db/client";
 import { AppError } from "@/lib/http/errors";
 import { pageFrom } from "@/lib/http/pagination";
 import { PaginationLinks } from "@/components/ui/pagination-links";
+import { unopenedTopicUrl } from "@/lib/routing/public-urls";
 import {
   enforceRateLimit,
   ipRateLimitIdentifier,
@@ -133,9 +134,13 @@ export default async function SearchPage({
             </article>
           ))}
           {!rateLimited && result.query.length >= 2 && result.results.length === 0 ? (
-            <p className="surface-card p-6 text-muted">
-              Bu aramayla eşleşen başlık, entry veya yazar yok.
-            </p>
+            <div className="surface-card p-6">
+              <p className="text-muted">Bu aramayla eşleşen başlık, entry veya yazar yok.</p>
+              {/* Arama çıkmaza girmesin: aranan metin zaten açılmamış başlığın adresi. */}
+              <Link href={unopenedTopicUrl(result.query)} className="button-primary mt-4">
+                «{result.query}» başlığını aç
+              </Link>
+            </div>
           ) : null}
         </div>
       </section>

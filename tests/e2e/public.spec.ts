@@ -126,6 +126,60 @@ test("unknown route renders the Turkish 404", async ({ page }) => {
   await expect(page).toHaveURL(/\/ara\?q=kay/u);
 });
 
+/*
+  Açılmamış başlık: `/baslik/<başlık metni>` artık gerçek bir adres, 404 değil.
+  Seed'de bulunmadığı garanti olan bir metin seçiliyor; "zzzq" hiçbir seed
+  başlığında, entry'sinde ya da kullanıcı adında geçmiyor.
+*/
+const unopenedTitle = "zzzq açılmamış başlık";
+const unopenedPath = `/baslik/${encodeURIComponent(unopenedTitle)}`;
+
+test("an unwritten title is already a real address", async ({ page }) => {
+  const response = await page.goto(unopenedPath);
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(unopenedTitle);
+  await expect(page.getByText("Bu başlık henüz açılmamış.")).toBeVisible();
+
+  // İçeriği olmayan sayfa indekslenmemeli; aynı başlığın farklı yazımları
+  // ayrı adreslere düşebiliyor.
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/u);
+
+  // Giriş dönüşü açılmamış başlığın kendisine işaret ediyor: kullanıcı giriş
+  // yaptıktan sonra aramaya değil, yazacağı başlığa dönüyor.
+  await expect(page.getByRole("link", { name: "giriş yapın" })).toHaveAttribute(
+    "href",
+    `/giris?next=${encodeURIComponent(unopenedPath)}`,
+  );
+});
+
+test("the search empty state opens the missing title", async ({ page }) => {
+  await page.goto("/ara?q=zzzq+deneme");
+  await expect(page.getByRole("heading", { level: 1, name: "Sözlükte ara" })).toBeVisible();
+
+  // Arama çıkmaza girmiyor: aranan metin zaten açılmamış başlığın adresi.
+  const open = page.getByRole("link", { name: "«zzzq deneme» başlığını aç" });
+  await expect(open).toHaveAttribute("href", "/baslik/zzzq%20deneme");
+  await open.click();
+  await expect(page).toHaveURL(/\/baslik\/zzzq%20deneme$/u, { timeout: 20_000 });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("zzzq deneme");
+});
+
+test("a segment that cannot be a title still renders the Turkish 404", async ({ page }) => {
+  // 120 karakterlik başlık sınırının üstü: bu segment bir başlık olarak okunamaz,
+  // dolayısıyla açılmamış başlık sayfası değil 404 dönüyor.
+  const response = await page.goto(`/baslik/${"cok-uzun-baslik-".repeat(10)}`);
+  expect(response?.status()).toBe(404);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Bu adreste bir başlık yok");
+});
+
+test("an existing title redirects to the canonical topic address", async ({ page }) => {
+  // Seed'de garanti duran başlık (prisma/seed/index.ts: `topicTitles`).
+  const seededTitle = "açık kaynak kültürü";
+  await page.goto(`/baslik/${encodeURIComponent(seededTitle)}`);
+  await expect(page).toHaveURL(/\/baslik\/acik-kaynak-kulturu--[1-9]\d*$/u, { timeout: 20_000 });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(seededTitle);
+});
+
 test.describe("mobile", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
@@ -413,6 +467,6 @@ test.describe("header search autocomplete", () => {
     await input.fill("zzzq deneme");
     const option = page.getByRole("option", { name: "«zzzq deneme» başlığını aç" });
     await expect(option).toBeVisible({ timeout: 20_000 });
-    await expect(option).toHaveAttribute("href", "/baslik/ac?title=zzzq%20deneme");
+    await expect(option).toHaveAttribute("href", "/baslik/zzzq%20deneme");
   });
 });

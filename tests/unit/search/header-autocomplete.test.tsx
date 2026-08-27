@@ -211,14 +211,14 @@ describe("header search autocomplete", () => {
     await user.keyboard("zzzq");
 
     const option = await screen.findByRole("option", { name: "«zzzq» başlığını aç" });
-    expect(option).toHaveAttribute("href", "/baslik/ac?title=zzzq");
+    expect(option).toHaveAttribute("href", "/baslik/zzzq");
     expect(screen.queryByRole("group")).toBeNull();
     expect(screen.getByRole("status")).toHaveTextContent(
       "Eşleşen başlık veya yazar yok; yeni başlık açabilirsiniz.",
     );
 
     await user.keyboard("{ArrowDown}{Enter}");
-    expect(navigation.push).toHaveBeenCalledWith("/baslik/ac?title=zzzq");
+    expect(navigation.push).toHaveBeenCalledWith("/baslik/zzzq");
   });
 
   it("percent-encodes the proposed title", async () => {
@@ -230,10 +230,7 @@ describe("header search autocomplete", () => {
     await user.keyboard("açık kaynak & co");
 
     const option = await screen.findByRole("option", { name: /başlığını aç/u });
-    expect(option).toHaveAttribute(
-      "href",
-      `/baslik/ac?title=${encodeURIComponent("açık kaynak & co")}`,
-    );
+    expect(option).toHaveAttribute("href", `/baslik/${encodeURIComponent("açık kaynak & co")}`);
   });
 
   it("falls silent on a rate limited response instead of showing an error", async () => {
