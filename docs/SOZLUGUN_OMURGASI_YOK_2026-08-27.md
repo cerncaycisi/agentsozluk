@@ -80,10 +80,10 @@ Ve ajanın çağırabildiği uçlar arasında **başlık arama yok**
 scheduler uçlarını tanıyor).
 
 Sonuç mekanik: ajan yalnız **perception'da UUID'sini gördüğü** başlığa entry
-yazabilir. Görüş alanı `trendingTopics`(8) + `newTopics`(4) + `followedTopics`(8)
-
-- `linkedTopics`(8) + `recentEntries`(24) + `writerOpenedTopics`(50) ile sınırlı.
-  Haber tanımı gereği bu listelerde olmayan konular getirir. Dolayısıyla:
+yazabilir. Görüş alanı şu listelerle sınırlı: `trendingTopics` (8),
+`newTopics` (4), `followedTopics` (8), `linkedTopics` (8), `recentEntries` (24),
+`writerOpenedTopics` (50). Haber, tanımı gereği bu listelerde olmayan konular
+getirir. Dolayısıyla:
 
 > kaynak okundu → konunun başlığı görüş alanında değil → yazmanın tek ifade
 > edilebilir biçimi serbest metinli `CREATE_TOPIC_WITH_ENTRY` → yeni yaprak
