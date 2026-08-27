@@ -1,5 +1,6 @@
 import { containsPersonStatusNewsPredicate } from "@/lib/content/constitution-writing-policy";
 import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
+import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 
 export const repairableContentRejectionCodes = new Set([
   "DUPLICATE_SIMILARITY",
@@ -13,7 +14,31 @@ export const repairableContentRejectionCodes = new Set([
   "CONSTITUTION_ENTRY_PHYSICAL_REFERENCE",
   "CONSTITUTION_ENTRY_SELF_META",
   "CONSTITUTION_ENTRY_TOPIC_META",
+  "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT",
 ]);
+
+/*
+  Onarımın gövde yerine BAŞLIĞI değiştirmesi gereken redler.
+
+  Listedeki diğer bütün kodlar gövde hatasıdır ve onarım gövdeyi yeniden yazar.
+  Madde 32 vaka kapısı ise gövdeye değil başlığa itiraz ediyor: "Tahtakale'de
+  leylek ölümleri" reddedildiğinde gövde kusursuz olabilir, kusurlu olan adres.
+  Aynı başlıkla yapılan bir gövde onarımı bu yüzden tanımı gereği yeniden
+  reddedilir — bir koşu ve bir Codex çağrısı boşa gider.
+
+  Ölçüldü (27 Ağu, `gpt-5.6-luna`, reasoning=max — üretimin modeli): red
+  gerekçesi verilen altı vakanın altısında da model önerilen geniş adresi üretti
+  (`Tahtakale`, `Söke`, `TEVA`, `Mabel Matiz`, `Guarulhos`, `Trabzon
+  Havalimanı`) ve altısı da kapıdan geçti. Eksik olan modelin yeteneği değil,
+  onarımın başlığı taşıyamamasıydı.
+*/
+export const titleRepairableContentRejectionCodes = new Set([
+  "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT",
+]);
+
+export function isTitleRepairableContentRejectionCode(code: string | null | undefined): boolean {
+  return typeof code === "string" && titleRepairableContentRejectionCodes.has(code);
+}
 
 export function isRepairableContentRejectionCode(code: string | null | undefined): boolean {
   return typeof code === "string" && repairableContentRejectionCodes.has(code);
@@ -689,4 +714,63 @@ export function duplicateRepairCandidateIsSafe(
   delete originalInput.body;
   delete candidateInput.body;
   return stableJson(candidateInput) === stableJson(originalInput);
+}
+
+/*
+  Başlık onarımının güvenlik kontrolü. `duplicateRepairCandidateIsSafe` gövde
+  dışındaki HER alanın birebir aynı kalmasını şart koşuyor; başlık onarımı tam
+  olarak o şartı bozmak zorunda. Mevcut kontrolü gevşetmek yerine ayrı bir
+  fonksiyon yazıldı — gövde onarımlarının garantisi olduğu gibi duruyor.
+
+  Farklar yalnız iki tanesi:
+  - `title` DEĞİŞMEK ZORUNDA (aynı başlıkla onarım anlamsız, yeniden reddedilir).
+  - `body` aynı kalabilir; geniş adres altında aynı gövde çoğu zaman geçerlidir.
+
+  Değişmeyenler kasten aynı: action türü, hedef ve provenance. Onarım yeni bir
+  eylem icat edemez, yalnız reddedilen eylemin adresini düzeltebilir.
+
+  Onarılan başlığın kapıdan geçip geçmediği burada SINANMIYOR; sunucu zaten
+  yeniden sınıyor. Kötü bir onarım kaydedilerek reddedilsin ki "ajan onarımı
+  beceremedi" ölçülebilsin. Döngü riski yok: onarım tek atışlık.
+*/
+export function titleRepairCandidateIsSafe(
+  original: RepairActionCandidate,
+  candidate: RepairActionCandidate,
+): boolean {
+  if (
+    original.actionType !== "CREATE_TOPIC_WITH_ENTRY" ||
+    candidate.repairOfSequence !== original.sequence ||
+    candidate.sequence <= original.sequence ||
+    candidate.actionType !== original.actionType ||
+    candidate.targetType !== original.targetType ||
+    candidate.targetId !== original.targetId ||
+    stableJson(candidate.provenance) !== stableJson(original.provenance)
+  )
+    return false;
+  const originalTitle = original.input.title;
+  const candidateTitle = candidate.input.title;
+  /*
+    Başlık karşılaştırması başlığın KENDİ normalleştiricisiyle yapılır,
+    `normalizeEntrySearchText` ile değil: ikincisi iç boşlukları sadeleştirmiyor,
+    yani `Hopa seli` ile `hopa   seli` ona göre farklı iki başlık. Ayrıca
+    `normalizeTopicTitle` görünmez biçim karakterlerini de atıyor, böylece
+    "aynı başlığı sıfır genişlikli boşlukla tekrar göndererek onarım süsü verme"
+    yolu kapalı kalıyor.
+  */
+  if (
+    typeof originalTitle !== "string" ||
+    typeof candidateTitle !== "string" ||
+    candidateTitle.trim().length === 0 ||
+    normalizeTopicTitle(candidateTitle) === normalizeTopicTitle(originalTitle)
+  )
+    return false;
+  const candidateBody = candidate.input.body;
+  if (typeof candidateBody !== "string" || candidateBody.trim().length === 0) return false;
+  const originalRest = { ...original.input };
+  const candidateRest = { ...candidate.input };
+  for (const key of ["title", "body"]) {
+    delete originalRest[key];
+    delete candidateRest[key];
+  }
+  return stableJson(candidateRest) === stableJson(originalRest);
 }
