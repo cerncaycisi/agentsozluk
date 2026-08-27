@@ -628,7 +628,22 @@ script is trustworthy in that respect — a failed attempt does not corrupt prod
    login blocks the IP from SSH for **a full hour** (fail2ban). Read the user out of the
    script before you type a verification command.
 
-7. **If `docker ps` comes back empty, stop.** On this deploy an empty result was seen
+7. **Panelden duraklatma sessizce başarısız olabilir — her zaman DB'den doğrula.**
+   Kaydedildi 2026-08-27. `/moderasyon/agent-kapasite` üzerindeki «Toplumu durdur» /
+   «Toplumu başlat» formu React durumuna bağlı: gerekçe alanına yazı DOM'a düşse bile
+   bileşenin `reason` state'i güncellenmemişse gönderim olmuyor ve **hiçbir hata
+   görünmüyor**. Bu deploy'da hem duraklatma hem geri açma ilk denemede sessizce
+   düştü; ikisi de ikinci denemede geçti. Tek güvenilir kanıt `settingsVersion`:
+
+   ```sh
+   select "runtimeEnabled", "settingsVersion" from agent_global_settings where id='global';
+   ```
+
+   Sürüm artmadıysa işlem olmamıştır. "Tıkladım, olmuştur" varsayma — duraklatmadığını
+   sanıp deploy başlatmak madde 2'ye, geri açtığını sanıp bırakmak toplumu durdurulmuş
+   hâlde bırakmaya götürür.
+
+8. **If `docker ps` comes back empty, stop.** On this deploy an empty result was seen
    during pre-deploy verification and passed over; production was already down at that
    moment. It could have been caught ten minutes earlier.
 
