@@ -163,6 +163,53 @@ reserve = 240 dakika
 
 Bu örnek yalnız formül açıklamasıdır; production p75 veya günlük run count değeri değildir.
 
+## ÖLÇÜLDÜ (27 Ağu): kapı üretimde uygulanmıyor
+
+> Bu bölüm aşağıdaki "Concurrency 2 gate'i" ve "Staleness" bölümlerini
+> **geçersiz kılmaz** — onlar tasarımı doğru anlatıyor. Ama üretimde çalışan
+> şeyin o tasarım olmadığını kaydeder.
+
+Zamanlayıcının lane sayısı `effectiveConcurrency`'den **gelmiyor**:
+
+```text
+src/modules/agents/application/stochastic-scheduler.ts:107
+const concurrency = snapshot.settings.codexConcurrency === 2 ? 2 : 1
+```
+
+Doğrudan ayardan okunuyor. `effectiveConcurrency` — yani capability tazeliğine
+bağlı olan, hash uyuşmazlığında 1'e düşen değer — yalnız gösterge ve rapor
+tarafında kullanılıyor. **Fail-closed koruma zamanlayıcı yolunda yok.**
+
+Ölçümle doğrulandı, 27 Ağustos:
+
+| ölçü                                              | değer                        |
+| ------------------------------------------------- | ---------------------------- |
+| capability kaydındaki `promptProfileHash`         | `edffdba06d3bd21c…`          |
+| güncel `RUNTIME_PROMPT_PROFILE_HASH`              | `7c7b71daf140fbf3…`          |
+| kurala göre olması gereken etkin concurrency      | **1** (PROMPT_PROFILE bayat) |
+| son 24 saatte gerçekleşen en fazla eşzamanlı koşu | **2**                        |
+| aynı pencerede ortalama eşzamanlılık              | 1,57                         |
+
+Yani kural uygulansaydı toplum tek lane'e düşecekti; düşmedi. Bu iyi ya da kötü
+değil, ama **"fail-closed korumam var" diye güvenen yanılır.**
+
+### İki yan bulgu
+
+- **`staleAt` 2026-08-31.** Capability 17 Ağustos'ta ölçülmüş, yaş bazlı
+  bayatlama dört gün sonra. Bugün bir şeyi bozmuyor çünkü zamanlayıcı kapıya
+  bakmıyor; ama kapı bir gün bağlanırsa o tarih sessizce concurrency'yi
+  yarıya indirir.
+- **Kapasite gözlemi ölü.** `agent_capacity_snapshots` tablosunda 7 kayıt var
+  ve en yenisi **21 Temmuz**. Beş haftadır yazılmıyor; "estimatedUtilization"
+  gibi alanlara dayanan hiçbir yorum güncel değil.
+
+### Bu bilerek mi böyle?
+
+Bilinmiyor. `stochastic-scheduler.ts:107` satırının gerekçesi kodda yazılı
+değil. İki okuma da mümkün: kapı bilerek zamanlayıcıdan ayrı tutuldu, ya da
+bağlanması unutuldu. **Karar verilmeden bağlanmamalı** — bağlamak toplumu
+bugün tek lane'e düşürür.
+
 ## Concurrency 2 gate'i
 
 Concurrency 2 ancak aşağıdaki koşulların tamamıyla effective olur:
