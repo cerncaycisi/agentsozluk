@@ -178,6 +178,133 @@ describe("constitutional writer policy", () => {
       });
   });
 
+  /*
+    Madde 32'nin üçüncü ailesi: ad öbeği biçimindeki manşet. Aşağıdaki başlıkların
+    hepsi 21-27 Ağustos üretiminden alındı; çekimli yüklem kuralı hiçbirini
+    görmüyordu ve altı gün boyunca kapı bir kez bile ateşlememişti.
+  */
+  it("rejects noun-phrase titles that name a single transient incident", () => {
+    for (const title of [
+      "Mabel Matiz’in Ha Leylim klibine erişim engeli",
+      "Zülfikarlar Holding haberlerine erişim engeli",
+      "Söke'de Mercedes-AMG EQE 53 yangını",
+      "Guarulhos’ta 737 MAX kanat çarpması",
+      "Tahtakale leylek ölümleri",
+      "TEVA soruşturması",
+      "Trabzon Havalimanı günlük uçuş trafiği rekoru",
+    ])
+      expect(constitutionalTopicWritingIssue(title)).toMatchObject({
+        code: "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT",
+        article: 32,
+      });
+  });
+
+  /*
+    Ayırt edici işaret bulunma hâli eki DEĞİL, başlığın son adıdır. Ölçüm: yalnız
+    `X'da <şey>` kuralı 531 başlığın 28'ini yakalıyor ama yarısı meşru kavram adı.
+    Bu başlıklar ertesi gün manşet değişse de yaşar.
+  */
+  it("keeps locative concept names that are not incidents", () => {
+    for (const title of [
+      "Türkiye'de elektrikli araç şarj ağı",
+      "Firefox'ta yerleşik VPN",
+      "Çin'de robotlaşma",
+      "YouTube’da büyümek",
+      "Android'de araç tutmasını önleme özelliği",
+      "Türkiye'de kamu AR-GE harcaması",
+    ])
+      expect(constitutionalTopicWritingIssue(title)).toBeNull();
+  });
+
+  /*
+    Anayasanın kendi koruduğu olay adları kapıya girmez: Madde 32 `dava`yı, Madde 33
+    `deprem / seçim / maç / konser`i açıkça meşru başlık sayıyor. İşçi eylemi ailesi
+    de dışarıda; gerekçesi `transientIncidentHead` yorumunda.
+  */
+  it("leaves constitution-protected event names and labour actions alone", () => {
+    for (const title of [
+      "Ergenekon davası",
+      "Kazakistan'da erken parlamento seçimleri",
+      "Marmara depremi",
+      "Doruk Maden direnişi",
+      "Melek Hotels Moda işçileri eylemi",
+      "Kurtuluş'ta hayvan hakları dayanışması",
+      // Tek kelimelik başlık iyelikli vaka biçimini almaz.
+      "gürültü",
+    ])
+      expect(constitutionalTopicWritingIssue(title)).toBeNull();
+  });
+
+  /*
+    Sözlüğün tamamı (4 456 başlık) taranınca çıkan iki kusurun regresyonu; ikisi de
+    531 başlıklık yeni-başlık örnekleminde görünmüyordu.
+
+    (1) Kelime sınırı: `ölümleri` deseni `bölümleri`nin içinde eşleşiyordu.
+    (2) Vaka adlarının çoğu kalıcı soyut kavram da kurar. Onları ayıran şart özel
+        addır — tekil vaka her zaman adlandırılmış bir varlığa bağlı.
+  */
+  it("keeps abstract concepts that share an incident head noun", () => {
+    for (const title of [
+      // `ölümleri` ⊄ `bölümleri`
+      "iş bölümü",
+      "şişe bölümü",
+      "hobi olarak okunabilecek üniversite bölümleri",
+      // Vaka adı + soyut niteleyen: özel ad yok, kavram kalıcı.
+      "yazarın ölümü",
+      "ortak neden arızası",
+      "yetki çatışması",
+      "ücret kesintisi",
+      "nüfus patlaması",
+      "güneş çarpması",
+      "orman yangını",
+      "dünya rekoru",
+      "disiplin soruşturması",
+    ])
+      expect(constitutionalTopicWritingIssue(title)).toBeNull();
+  });
+
+  /*
+    Madde 32 yalnız reddetmiyor, adresi de söylüyor. Ölçüme göre `canonicalOverride`
+    altı günde sıfır kez kullanılmış çünkü ajana hiç somut alternatif çıkmıyor.
+    Adres apostroflu hâl ekinden okunur; apostrof şartı olmadan `Meta AI` → `Me`+`ta`
+    diye bölünüyordu.
+  */
+  it("names the canonical address when the locative form carries it", () => {
+    expect(constitutionalTopicWritingIssue("Tahtakale'de leylek ölümleri")).toMatchObject({
+      reason: expect.stringContaining('"Tahtakale" başlığı altına') as unknown as string,
+    });
+    expect(constitutionalTopicWritingIssue("Söke'de Mercedes-AMG EQE 53 yangını")).toMatchObject({
+      reason: expect.stringContaining('"Söke" başlığı altına') as unknown as string,
+    });
+    // Adres okunamıyorsa gerekçe maddenin genel çare listesine düşer.
+    expect(constitutionalTopicWritingIssue("CaseHug erişim engeli")).toMatchObject({
+      reason: expect.stringContaining("ilgili kişi, kurum, ülke") as unknown as string,
+    });
+    // Apostrofsuz `ta`/`de` heceleri özel adı bölmemeli.
+    expect(constitutionalTopicWritingIssue("Meta AI")).toBeNull();
+    expect(constitutionalTopicWritingIssue("Toyota RAV4 Hybrid")).toBeNull();
+  });
+
+  /*
+    Yüzey kuralı tekil vakayı yerleşik olay adından ayıramaz: `Notre-Dame yangını`
+    yıllar sonra da tanınabilir. Ayıran şey ilk entry'nin olayı yerleşik olarak
+    konumlandırmasıdır — bülten önekindeki kaçış yolunun aynısı.
+  */
+  it("opens the incident exception only when the first entry establishes the event name", () => {
+    expect(
+      constitutionalTopicCreationIssue(
+        "Notre-Dame yangını",
+        "Katedralin çatısını yok eden ve restorasyon tartışmasının dönüm noktası olarak anılan olaydır.",
+      ),
+    ).toBeNull();
+    expect(
+      constitutionalTopicCreationIssue(
+        "Söke'de Mercedes-AMG EQE 53 yangını",
+        "Araç bugün park hâlindeyken alev aldı ve itfaiye müdahale etti.",
+      ),
+    ).toMatchObject({ code: "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT", article: 32 });
+  });
+
   it("keeps the Madde 32 person-status predicates synchronised with the body evidence gate", () => {
     // Başlık kapısı ile gövde kapısı aynı fiil sözlüğünü paylaşır. Ayrışırlarsa
     // manşet cümlesi başlıkta reddedilip gövdede serbest kalır: fail-open.

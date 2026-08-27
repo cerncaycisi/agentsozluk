@@ -7,6 +7,7 @@ export interface ConstitutionalWritingIssue {
     | "CONSTITUTION_TOPIC_DIRECT_ADDRESS"
     | "CONSTITUTION_TOPIC_QUESTION_ANSWER"
     | "CONSTITUTION_TOPIC_NEWS_HEADLINE"
+    | "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT"
     | "CONSTITUTION_TOPIC_FIRST_ENTRY_DEPENDENT"
     | "CONSTITUTION_TOPIC_UNESTABLISHED_PAIR"
     | "CONSTITUTION_TOPIC_SUBJECT_MISMATCH";
@@ -312,6 +313,121 @@ function transientNewsHeadline(normalized: string): "BULLETIN" | "PREDICATE" | n
 }
 
 /*
+  Madde 32'nin ikinci ailesi: çekimli yüklem taşımayan, ad öbeği biçiminde manşet.
+
+  Ölçüm (27 Ağu, üretimden 531 başlık / 7 gün): çekimli yüklem kuralı altı günde
+  BİR KEZ ateşlememişti, çünkü üretimdeki başlıklar cümle değil ad öbeği:
+  `Tahtakale'de leylek ölümleri`, `Çayırhan maden kazası`, `TEVA soruşturması`.
+
+  Ayırt edici işaretin ne OLMADIĞI da ölçüldü. İlk aday bulunma hâli ekiydi
+  (`X'da <şey>`); tek başına alındığında 531 başlığın 28'ini yakalıyor ama
+  yarısı meşru kavram adı: `Türkiye'de elektrikli araç şarj ağı`,
+  `Firefox'ta yerleşik VPN`, `Çin'de robotlaşma`, `YouTube'da büyümek`. Bunlar
+  ertesi gün manşet değişse de yaşar; reddedilmeleri Madde 27'ye aykırı olurdu.
+  Ayıran şey yer eki değil, BAŞLIĞIN SON ADI: `ölümleri` bir vakadır, `şarj ağı`
+  bir şeydir. Kural bu yüzden yalnız iyelikli vaka adına bakar; bulunma hâli
+  yalnızca önerilecek adresi okumak için kullanılır.
+
+  Anayasanın kendi koruduğu olay adları bu listeye ALINMAZ: Madde 32 `dava`yı,
+  Madde 33 `deprem / seçim / maç / konser`i açıkça meşru başlık sayıyor.
+*/
+const protectedEventHead =
+  /(?:davası|duruşması|depremi|seçimi|seçimleri|maçı|konseri|festivali|krizi|yasası|savaşı|devrimi|antlaşması)$/u;
+
+/*
+  Geçici vaka adları. Ortak özellikleri: tekil, tarihli, ertesi gün başka bir
+  vakayla yer değiştiren olaylar. Hepsi iyelik ekli, yani önlerinde mutlaka bir
+  niteleyen var (`Hopa seli`, `Çayırhan maden kazası`) — tek kelimelik başlık bu
+  biçimi almaz, kural zaten en az iki kelime arar.
+
+  `erişim engeli` listeye tek parça olarak girer: çıplak `engeli` `görme engeli`
+  gibi kalıcı kavramları da yutardı. Üretimde yedi günde DOKUZ ayrı `<kişi veya
+  kurum>'(n)a erişim engeli` başlığı açılmıştı; ailenin en kalabalığı bu.
+
+  İŞÇİ EYLEMİ AİLESİ BİLEREK DIŞARIDA (`direnişi`, `eylemi`, `grevi`, `mitingi`,
+  `yürüyüşü`, `protestosu`, `dayanışması`). Bağımsız bir hakem modeli 27 aday
+  başlığı kör değerlendirdiğinde dokuz itirazının beşi bu aileydi: adlı bir
+  şirkette süren direniş, manşet ertesi gün değişse de tanınabilir bir ad olarak
+  yaşıyor. Madde 32'nin çare listesi zaten `olay`ı meşru başlık sayıyor; adlandırılmış
+  bir emek mücadelesi o listeye giriyor. Kuralın kapsamı bu yüzden dar tutuldu:
+  tartışmalı aileyi içeri almaktansa gerçek ihlallerin bir kısmını kaçırmak yeğdir.
+
+  ADLANDIRILMIŞ DOĞAL AFET AİLESİ DE DIŞARIDA (`kazası`, `seli`, `çığı`, `fırtınası`,
+  `göçüğü`). `Soma maden kazası` ve `1999 Gölcük depremi` yıllar sonra da tanınabilir
+  kavram adlarıdır ve `962f9e9` bu ayrımı zaten kurmuştu: o commit `Orta Afrika
+  Cumhuriyeti altın madeni göçüğü`nü açıkça kalıcı olay adı sayıp test tablosuna
+  yazmış ve ilkeyi koymuştu — "recall traded for protecting names". Aynı içtihat
+  burada da geçerli; afet adını yüzeyden tekil vakadan ayırmanın yolu yok.
+*/
+const transientIncidentHead =
+  /(?:^|[^\p{L}\p{N}_])(?:erişim engeli|çarpması|yangını|ölümleri|yaralanması|boğulması|soruşturması|gözaltısı|tutuklanması|istifası|iflası|rekoru)$/u;
+
+/*
+  Sözlüğün tamamı (4 456 başlık) taranınca iki kusur çıktı ve ikisi de yalnız o
+  taramada görünür oldu — 531 başlıklık yeni-başlık örnekleminde yoktular.
+
+  BİRİNCİSİ, KELİME SINIRI. `ölümleri` deseni `bölümleri`nin içinde eşleşiyordu;
+  `iş bölümü`, `şişe bölümü`, `hobi olarak okunabilecek üniversite bölümleri`
+  reddediliyordu. Desen artık önek sınırıyla başlıyor.
+
+  İKİNCİSİ VE ASIL OLANI: vaka adlarının çoğu kalıcı soyut kavram da kurar.
+  `yazarın ölümü`, `ortak neden arızası`, `yetki çatışması`, `ücret kesintisi`,
+  `tomurcuk patlaması`, `nüfus patlaması` — hepsi meşru sözlük başlığı, hiçbiri
+  manşet değil. `patlaması`, `kesintisi`, `arızası`, `çatışması` ve tekil `ölümü`
+  bu yüzden listeden çıkarıldı.
+
+  Kalanları güvenli kılan şey ayrı bir şart: TEKİL VAKA HER ZAMAN ÖZEL ADA BAĞLI.
+  `Tahtakale`, `Söke`, `TEVA`, `Guarulhos`, `American Airlines` — üretimdeki
+  ihlallerin hepsinde adlandırılmış bir varlık var. Soyut kavramda yok. Özel ad
+  şartı hem kalan yanlış pozitifleri kapatıyor hem de maddenin çaresiyle aynı
+  şeye bakıyor: reddedilen başlığın gideceği adres o özel addır.
+*/
+const properNounToken = /(?:^|\s)(?:\p{Lu}[\p{L}\p{N}]*|\p{Lu}{2,})(?=$|[\s'’])/u;
+
+function transientIncidentTitle(rawTitle: string, normalized: string): boolean {
+  if (normalized.split(" ").filter(Boolean).length < 2) return false;
+  if (protectedEventHead.test(normalized)) return false;
+  if (!transientIncidentHead.test(normalized)) return false;
+  return properNounToken.test(rawTitle.normalize("NFKC").trim());
+}
+
+/*
+  Madde 32 yalnız "başlık açma" demiyor, nereye yazılacağını da söylüyor: ilgili
+  kişi, kurum, ülke, olay, dava, takım veya eser başlığı. Bulunma hâliyle kurulan
+  vaka başlığı o adresi zaten kendi içinde taşıyor — `Tahtakale'de leylek
+  ölümleri` için adres `Tahtakale`. Reddi adressiz bırakmamak önemli: ölçüme göre
+  `canonicalOverride` altı günde sıfır kez kullanılmış, çünkü ajana hiç somut
+  alternatif çıkmıyor.
+
+  Adres ham başlıktan okunur, normalleştirilmişten değil: özel adı sıradan
+  kelimeden ayıran şey büyük harf ve Türkçede özel ada gelen hâl eki apostrofla
+  yazılır. Apostrof şartı olmadan `Meta AI` → `Me`+`ta`, `Toyota RAV4` →
+  `Toyo`+`ta` diye bölünüyordu.
+*/
+const locativeProperNounAddress =
+  /^(\p{Lu}[\p{L}\p{N}.]*(?:\s+\p{Lu}[\p{L}\p{N}.]*){0,3})['’](?:d[ae]|t[ae])\s+\S/u;
+
+function suggestedCanonicalAddress(rawTitle: string): string | null {
+  return locativeProperNounAddress.exec(rawTitle.normalize("NFKC").trim())?.[1] ?? null;
+}
+
+/*
+  Vaka adı bazen kalıcı olay adının kendisidir: `Soma maden kazası` yıllar sonra
+  da tanınabilir bir kavram adıdır. Yüzey kuralı tekil vakayı yerleşik olandan
+  ayıramaz; ayıran şey ilk entry'nin o olayı YERLEŞİK olarak konumlandırmasıdır.
+  Bülten önekindeki kaçış yolunun aynısı, aynı gerekçeyle: karar yüzey kuralının
+  değil, Madde 6-17 içerik değerlendirmesinin işi.
+*/
+const establishedIncidentFraming =
+  /(?:olarak\s+anıl|adıyla\s+anıl|adıyla\s+bilin|olarak\s+bilin|tarihe\s+geç|yıl\s+dönümü|yıldönümü|dönüm\s+noktası|hafızasına\s+yerleş|simge(?:si|leşmiş)|literatüre\s+geç)/u;
+
+function firstEntryFramesIncidentAsEstablished(body: string): boolean {
+  return establishedIncidentFraming.test(
+    body.normalize("NFKC").toLocaleLowerCase("tr-TR").replaceAll(/\s+/gu, " "),
+  );
+}
+
+/*
   Bülten öneki bazen kavramın kendisidir: sözlük bir manşet klişesini de
   tanımlayabilir. Ama istisnayı açan şey entry'nin herhangi bir yerinde geçen
   "söylem" ya da "manşet" sözcüğü değil, entry'nin YÜKLEMİNİN o dilsel kategori
@@ -390,6 +506,16 @@ export function constitutionalTopicWritingIssue(title: string): ConstitutionalWr
           ? "Anayasa Madde 32: Haber bülteni önekiyle kurulan geçici manşet yerine kişi, kurum veya kalıcı olay adı kullanılmalıdır."
           : "Anayasa Madde 32: Çekimli haber yüklemiyle biten başlık günlük manşet cümlesidir; kişi, kurum veya kalıcı olay adı kullanılmalıdır.",
     };
+  if (transientIncidentTitle(title, normalized)) {
+    const address = suggestedCanonicalAddress(title);
+    return {
+      code: "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT",
+      article: 32,
+      reason: address
+        ? `Anayasa Madde 32: Tekil bir vakayı adlandıran başlık, manşet ertesi gün değiştiğinde kavram adı olarak yaşamaz. Katkıyı "${address}" başlığı altına yazın.`
+        : "Anayasa Madde 32: Tekil bir vakayı adlandıran başlık, manşet ertesi gün değiştiğinde kavram adı olarak yaşamaz; katkı ilgili kişi, kurum, ülke veya kalıcı olay başlığına yazılmalıdır.",
+    };
+  }
   return null;
 }
 
@@ -494,7 +620,12 @@ export function constitutionalTopicCreationIssue(
       titleIssue.code === "CONSTITUTION_TOPIC_NEWS_HEADLINE" &&
       transientNewsHeadline(normalizedTopicTitleText(title)) === "BULLETIN" &&
       firstEntryFramesHeadlineAsConcept(firstEntryBody);
-    if (!headlineFramedAsConcept) return titleIssue;
+    // Yerleşik olay adı kaçışı yalnız vaka ailesine açıktır; bülten öneki ve
+    // çekimli yüklem kendi kaçış yollarını yukarıda tüketti.
+    const incidentFramedAsEstablished =
+      titleIssue.code === "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT" &&
+      firstEntryFramesIncidentAsEstablished(firstEntryBody);
+    if (!headlineFramedAsConcept && !incidentFramedAsEstablished) return titleIssue;
   }
   const normalizedBody = firstEntryBody
     .normalize("NFKC")

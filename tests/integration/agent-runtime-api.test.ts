@@ -4714,6 +4714,18 @@ describe("internal agent runtime API with PostgreSQL", () => {
             },
             provenance,
           },
+          {
+            sequence: 11,
+            actionType: "CREATE_TOPIC_WITH_ENTRY",
+            // Ad öbeği biçiminde manşet: çekimli yüklem yok, kapı buna körken
+            // üretimde altı gün boyunca hiç ateşlememişti.
+            safeReason: "Tekil vakayı adlandıran başlık kalıcı kavram adresi değildir.",
+            input: {
+              title: "Tahtakale'de leylek ölümleri",
+              body: "Kuşların toplu ölümüne yol açan koşullar ve bölgedeki gözlemler.",
+            },
+            provenance,
+          },
         ],
       }),
     );
@@ -4728,8 +4740,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
       canonicalProjectAccepted,
       packagedPairRejected,
       newsHeadlineRejected,
+      transientIncidentRejected,
     ] = await Promise.all(
-      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((sequence) =>
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((sequence) =>
         executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
           workerId,
           sequence,
@@ -4773,6 +4786,14 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(newsHeadlineRejected).toMatchObject({
       actionStatus: "REJECTED",
       rejectionCode: "CONSTITUTION_TOPIC_NEWS_HEADLINE",
+    });
+    // Red yalnız reddetmemeli, Madde 32'nin çaresini de söylemeli: ölçüme göre
+    // `canonicalOverride` altı günde sıfır kez kullanılmış çünkü ajana somut
+    // alternatif hiç çıkmıyor.
+    expect(transientIncidentRejected).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT",
+      rejectionReason: expect.stringContaining('"Tahtakale" başlığı altına') as unknown as string,
     });
     expect(await integrationDatabase.agentContentRecord.count({ where: { runId } })).toBe(2);
     expect(

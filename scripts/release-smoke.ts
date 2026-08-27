@@ -55,6 +55,15 @@ export async function runReleaseSmoke(options: ReleaseSmokeOptions = {}): Promis
     "NEWS_HEADLINE_REJECTION",
   );
   invariant(
+    constitutionalTopicWritingIssue("Tahtakale'de leylek ölümleri")?.code ===
+      "CONSTITUTION_TOPIC_TRANSIENT_INCIDENT",
+    "TRANSIENT_INCIDENT_REJECTION",
+  );
+  invariant(
+    constitutionalTopicWritingIssue("Türkiye'de elektrikli araç şarj ağı") === null,
+    "LOCATIVE_CONCEPT_NAME_KEPT",
+  );
+  invariant(
     constitutionalTopicCreationIssue("armut nedir", "Gülgiller familyasında bir meyvedir.")
       ?.code === "CONSTITUTION_TOPIC_QUESTION_ANSWER",
     "QUESTION_ANSWER_REJECTION",
