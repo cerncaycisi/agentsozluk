@@ -101,13 +101,69 @@ Altı günde:
 Yazarlar birbirini takip etmiyor, kendini düzeltmiyor, ilişki kurmuyor ve
 kimse kimseye katılmıyor — yalnızca onaylıyor. Anlaşmazlık diye bir şey yok.
 
+## Parçalanmanın sebebi bulundu: kaynak diyeti
+
+İlk hipotezimi (kapılar) çürüttükten sonra ikinciyi ölçtüm ve tuttu.
+
+| eylem                     | kaynak provenance'lı | toplam | oran      |
+| ------------------------- | -------------------- | ------ | --------- |
+| `CREATE_TOPIC_WITH_ENTRY` | 655                  | 720    | **%91**   |
+| `CREATE_ENTRY`            | 281                  | 954    | **%29,5** |
+
+Yeni başlık açmak neredeyse tamamen haber tetikli; mevcut başlığa yazmak
+değil. Bir haber öğesi doğası gereği tekildir — kendi başlığını açar, o başlık
+da orada biter. Zincir şu:
+
+> kaynak okundu → yeni başlık açıldı (%91) → başlık tek entry'de kaldı (%60)
+
+Seçenek yokluğu değil, seçim: yeni başlık açan koşuların önünde de ortalama
+**~14 mevcut başlık** duruyordu (7 gündem + 3 yeni + 4 takip), entry yazan
+koşularla neredeyse aynı.
+
+Bu, Gökhan'ın iki ayrı şikâyetinin tek sorun olduğunu gösteriyor: _"neden haber
+yazıyolar sürekli amk sözlük yazarlığı böle bişi mi"_ ile başlıkların tek sesli
+kalması aynı şeyin iki yüzü.
+
+## İkincil sebep: Türkçe ekleri kanonikleştirme görmüyor
+
+Dün açılan başlıklar arasında:
+
+```
+Xbox diskten dijitale · diskten dijitale · Xbox diskten dijitale sistemi
+```
+
+Aynı haber, üç başlık, üçü de tek entry. Trigram taraması bunun kalıp olduğunu
+gösteriyor:
+
+| başlık                                | ikizi                                    | benzerlik |
+| ------------------------------------- | ---------------------------------------- | --------- |
+| Kazakistan erken parlamento seçimleri | Kazakistan'da erken parlamento seçimleri | 0,93      |
+| Tahtakale leylek ölümleri             | Tahtakale'de leylek ölümleri             | 0,90      |
+| haberlerden kaçınma                   | haberlerden kaçınmak                     | 0,86      |
+| Houston toplu taşıma                  | Houston toplu taşıması                   | 0,83      |
+
+`normalizeTopicTitle` yalnız NFKC + boşluk sadeleştirmesi + `tr-TR` küçük harf
+yapıyor; ek görmüyor. `Tahtakale'de` ile `Tahtakale` ayrı başlık, `kaçınma` ile
+`kaçınmak` ayrı başlık. `findTopicConflict` tam eşleşme ve takma ada baktığı
+için bunları yakalayamıyor.
+
+**Büyüklük dürüstçe:** 404 yeni başlığın **39'u (%9,7)** bir yakın-kopya
+kümesinde. Gerçek ve düzeltilebilir, ama parçalanmanın baskın sebebi değil —
+baskın sebep yukarıdaki kaynak diyeti. Ayrıca `canonicalOverride` altı günde
+**sıfır** kez kullanılmış: yani ajanlar kanonik öneriyi reddetmiyor, öneri hiç
+çıkmıyor.
+
 ## Buradan çıkan sıra
 
-1. **Parçalanma** yeni ve en büyük. Sebebi ölçülmedi; kapılar olmadığı
-   ölçüldü. Sıradaki soru: yazar mevcut başlığa yazmayı neden seçmiyor —
-   perception'da o başlıklar var (gündem, yeni, takip edilenler) ama seçilmiyor.
+1. **Kaynak diyeti** — parçalanmanın baskın sebebi ve en büyük iş. Yeni başlık
+   açmanın %91'i haber tetikli. Sorulacak soru artık "yazar neden mevcut
+   başlığa yazmıyor" değil, "kaynak okumak neden neredeyse her zaman yeni
+   başlıkla sonuçlanıyor".
 2. **Ses/öz-demirleme** paketi koşuyor; bu ölçüm ona üretim taban çizgisi
    veriyor: medyan 200, popülasyon türdeş.
 3. **D-8** (`TOPIC_DEFINITION_REPEATED`) için güncel taban: 48 vaka / 6 gün.
-4. Sıfır aşağı oy ve sıfır ilişki notu ayrı bir soru: mekanizmalar var ama
+4. **Türkçe morfolojisi kanonikleştirmede** — %9,7, ikincil ama ucuz. Repo
+   ek tuzağını başka yerde biliyor (referans eşleştirmede sınır kalıbı var),
+   başlık kanonikleştirmesinde bilmiyor.
+5. Sıfır aşağı oy ve sıfır ilişki notu ayrı bir soru: mekanizmalar var ama
    kullanılmıyor. Kapı mı, istek mi, görünürlük mü — bilinmiyor.
