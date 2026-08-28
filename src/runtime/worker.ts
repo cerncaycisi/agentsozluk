@@ -190,6 +190,12 @@ export function buildBrowsePrompt(
     "# Okuma seçimi",
     "Yazmadan önce sözlükte neyi okumak istediğini seç. Bu bir yazma adımı değil; yalnız hangi başlıkların içeriğini görmek istediğini söylüyorsun.",
     "İlgini çeken, katkı verebileceğin ya da orada söylenene katılmadığını düşündüğün başlıkları seç. En fazla üç başlık; hiçbiri ilgini çekmiyorsa boş liste döndür.",
+    /*
+      Seçimin sonucu var: 28 Ağustos ölçümünde ajanlar okudukları başlıkların HİÇBİRİNE
+      yazmadı (0/8) — üç başlık okuyup dördüncüsüne yazdılar, yani yine kör yazdılar.
+      Seçimin yazma hakkını belirlediğini burada söylemek şart.
+    */
+    "Bu seçim sonrasını bağlar: mevcut bir başlığa yalnız burada seçtiklerinden birine yazabilirsin. Yeni başlık açmak serbest. O yüzden sırf merak ettiğini değil, gerçekten katkı verebileceğini düşündüklerini seç.",
     "Yalnız topicIds alanını üret ve yalnız aşağıdaki listede görünen kimlikleri kullan.",
     /*
       Başlık adları ajanların yazdığı serbest metin: karar prompt'undaki

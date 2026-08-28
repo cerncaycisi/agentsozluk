@@ -3251,6 +3251,11 @@ describe("long-lived agent runtime worker", () => {
     expect(browseRequest?.prompt).toContain("# Okuma seçimi");
     // Persona olmadan seçim kişiselleşmez, faz da çağrı masrafından ibaret kalır.
     expect(browseRequest?.prompt).toContain("Trusted persona prompt.");
+    /*
+      28 Ağustos ölçümü: ajanlar okudukları başlıkların hiçbirine yazmadı (0/8).
+      Seçimin yazma hakkını belirlediğini prompt söylemezse faz saf maliyet.
+    */
+    expect(browseRequest?.prompt).toContain("yalnız burada seçtiklerinden birine");
     expect(browseRequest?.prompt).toContain("kuru fasulye");
     expect(browseRequest?.prompt).toContain("tahtakale");
     expect(plane.context).toHaveBeenCalledTimes(2);
