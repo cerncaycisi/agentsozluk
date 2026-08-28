@@ -46,6 +46,7 @@ import {
   lockRuntimeReflectionStateTargets,
   lockRuntimeRunForLeaseMutation,
   setRuntimeCurrentRun,
+  getRuntimeReadTopics,
   storeRuntimePerceptionSummary,
   validateRuntimeProvenanceEvidence,
   createRuntimeMemoryEpisode,
@@ -1475,6 +1476,13 @@ export function getRuntimeRunContext(
   runId: string,
   workerId: string,
   leaseToken: string,
+  /*
+    Ajanın okumak için seçtiği başlıklar. Boşsa davranış eskisiyle birebir aynı.
+    Dolu geldiğinde perception'a `readTopics` alanı eklenir ve dondurulmuş
+    anlık görüntü bu hâliyle saklanır — karar çağrısı seçilen başlıkların
+    gerçek entry'lerini görür.
+  */
+  readTopicIds: readonly string[] = [],
 ) {
   return inTransaction(client, async (transaction) => {
     await lockRuntimeAgent(transaction, principal.agentProfileId);
@@ -1520,6 +1528,31 @@ export function getRuntimeRunContext(
       const builtPerception = boundedPerceptionSnapshot(run, perceptionRecords, now);
       await storeRuntimePerceptionSummary(transaction, runId, builtPerception);
       perception = builtPerception;
+    }
+    if (readTopicIds.length > 0) {
+      const readTopics = await getRuntimeReadTopics(transaction, readTopicIds);
+      perception = {
+        ...perception,
+        readTopics: readTopics.map((topic) => ({
+          id: topic.id,
+          title: topic.title,
+          entryCount: topic.entryCount,
+          entries: topic.entries.map((entry) => ({
+            id: entry.id,
+            username: entry.authorUsername,
+            /*
+              Yazarın kendi entry'si işaretli: ajan kendi hükmüne karşı görüş
+              yazmasın, kendi cümlesini "eksik kalmış" diye tamamlamaya
+              kalkmasın. Önizlemelerde bu ayrım yok, burada olması şart çünkü
+              bu faz doğrudan yanıt yazdırmak için var.
+            */
+            mine: entry.authorId === run.agentProfile.user.id,
+            body: truncateUntrustedText(entry.body, 600),
+            createdAt: entry.createdAt.toISOString(),
+          })),
+        })),
+      };
+      await storeRuntimePerceptionSummary(transaction, runId, perception);
     }
     const presentedIds = deriveRuntimePerceptionEvidence(perception, [runId]).ids.slice(0, 200);
     const contextHash = sha256(canonicalLifeEventJson(perception));

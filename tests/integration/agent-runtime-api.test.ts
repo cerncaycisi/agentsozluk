@@ -100,6 +100,7 @@ function getRuntimeRunContext(
   principal: Parameters<typeof getRuntimeRunContextApplication>[1],
   runId: string,
   workerId: string,
+  readTopicIds: readonly string[] = [],
 ) {
   return getRuntimeRunContextApplication(
     client,
@@ -107,6 +108,7 @@ function getRuntimeRunContext(
     runId,
     workerId,
     leaseTokenForWorker(workerId),
+    readTopicIds,
   );
 }
 
@@ -3266,6 +3268,93 @@ describe("internal agent runtime API with PostgreSQL", () => {
       }),
     });
     expect(JSON.stringify(completedOutbox)).not.toContain(leased.run!.leaseToken);
+  });
+
+  /*
+    GEZİNME FAZI sunucu tarafı. Ajan hangi başlıkları okumak istediğini söyler,
+    sunucu onların gerçek entry'lerini dondurulmuş perception'a koyar.
+
+    Burada test edilen üç şey ayrı ayrı yanabilir: tanım entry'sinin altı
+    entry'yi geçen başlıklarda düşmesi, ajanın kendi entry'sinin kendisininmiş
+    gibi işaretlenmemesi ve perception'ın diske yeniden yazılmaması.
+  */
+  it("fills the frozen perception with the entries the agent asked to read", async () => {
+    const fixture = await createFixture();
+    const workerId = "browse-read-worker";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const target = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: "okunmak için seçilen başlık",
+        entryBody: "TANIM_ENTRYSI: başlığın ne olduğunu söyleyen ilk entry.",
+      },
+    );
+    // Tanım + yedi entry: `take: 6` tek başına tanımı düşürürdü.
+    for (let index = 0; index < 7; index += 1)
+      await createEntry(integrationDatabase, adminActor(fixture.admin.id), target.topic.id, {
+        body: `SONRAKI_ENTRY_${index}: başlıkta süren konuşmanın bir halkası.`,
+      });
+    const ownEntry = await createEntry(integrationDatabase, writePrincipal.actor, target.topic.id, {
+      body: "KENDI_ENTRYM: ajanın bu başlıkta daha önce yazdığı hüküm.",
+    });
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+
+    const before = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    expect(before.perception.readTopics).toBeUndefined();
+
+    const after = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId, [
+      target.topic.id,
+    ]);
+    const readTopics = after.perception.readTopics as
+      | {
+          id: string;
+          title: string;
+          entryCount: number;
+          entries: { id: string; username: string; mine: boolean; body: string }[];
+        }[]
+      | undefined;
+    expect(readTopics).toHaveLength(1);
+    const readTopic = readTopics?.[0];
+    if (!readTopic) throw new Error("TEST_READ_TOPIC_MISSING");
+    const bodies = readTopic.entries.map((entry) => entry.body);
+    expect(bodies[0]).toContain("TANIM_ENTRYSI");
+    expect(bodies.at(-1)).toContain("KENDI_ENTRYM");
+    expect(readTopic.entries.filter((entry) => entry.mine).map((entry) => entry.id)).toEqual([
+      ownEntry.id,
+    ]);
+    // Dondurulmuş anlık görüntü diske yazılmalı, yoksa karar çağrısı
+    // okunanları görmeden koşar ve fazın maliyeti boşa gider.
+    const stored = await integrationDatabase.agentRun.findUniqueOrThrow({
+      where: { id: runId },
+      select: { perceptionSummary: true },
+    });
+    expect(JSON.stringify(stored.perceptionSummary)).toContain("TANIM_ENTRYSI");
+  });
+
+  it("ignores read requests for topic ids the agent never saw as real topics", async () => {
+    const fixture = await createFixture();
+    const workerId = "browse-unknown-worker";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      readPrincipal,
+      leased.run!.id,
+      workerId,
+      [randomUUID()],
+    );
+    expect(context.perception.readTopics).toEqual([]);
   });
 
   it("records a successful later-wake action on a resolved dictionary link", async () => {

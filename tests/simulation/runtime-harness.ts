@@ -57,13 +57,21 @@ export class InProcessRuntimeControlPlane implements RuntimeControlPlane {
     );
   }
 
-  async context(credential: string, workerId: string, runId: string, leaseToken: string) {
+  async context(
+    credential: string,
+    workerId: string,
+    runId: string,
+    leaseToken: string,
+    _options?: unknown,
+    readTopicIds: readonly string[] = [],
+  ) {
     return getRuntimeRunContext(
       this.#database,
       await principal(this.#database, credential, "runtime:read"),
       runId,
       workerId,
       leaseToken,
+      readTopicIds,
     );
   }
 
@@ -249,6 +257,22 @@ export class FakeCodexProvider implements RuntimeProvider {
   }
 
   async invoke(request: RuntimeProviderRequest) {
+    /*
+      Gezinme fazı: karar prompt'undan önce gelir ve başka bir şekil taşır.
+      Sahte ajan gerçek ajan gibi davranıp menüden ilk iki başlığı seçiyor;
+      böylece simülasyon `readTopics` yolunu da gerçekten koşuyor.
+    */
+    if (request.prompt.includes("# Okuma seçimi")) {
+      const menu = parsePromptContext(request.prompt) as unknown as {
+        topics?: { id: string }[];
+      };
+      return {
+        provider: "codex-cli" as const,
+        version: "fake-codex-simulation-1",
+        durationMs: 1,
+        output: { topicIds: (menu.topics ?? []).slice(0, 2).map((topic) => topic.id) },
+      };
+    }
     const context = parsePromptContext(request.prompt);
     const username = context.agent.username;
     const invocation = this.#invocations.get(username) ?? 0;

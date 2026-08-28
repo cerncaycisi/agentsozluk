@@ -416,11 +416,17 @@ export function findRuntimeOwnedRun(
 export function storeRuntimePerceptionSummary(
   transaction: Prisma.TransactionClient,
   runId: string,
-  perceptionSummary: Prisma.InputJsonValue,
+  /*
+    Çağıran katman ya `boundedPerceptionSnapshot` çıktısını ya da dondurulmuş
+    JSON sütunundan okunmuş düz bir nesneyi verir; ikisi de JSON güvenli ama
+    Prisma'nın `InputJsonValue` tipi kendiliğinden daralmıyor. Daraltmayı
+    burada yapıyoruz, çünkü Prisma tipleri repository katmanına ait.
+  */
+  perceptionSummary: Prisma.InputJsonValue | Record<string, unknown>,
 ) {
   return transaction.agentRun.update({
     where: { id: runId },
-    data: { perceptionSummary },
+    data: { perceptionSummary: perceptionSummary as Prisma.InputJsonObject },
   });
 }
 
@@ -2211,6 +2217,92 @@ async function listRuntimePerceptionLinkedTopics(
       discoveredFromEntryIds: [...discoveredFromEntryIds].slice(0, 4),
     }));
   return { linkedTopics, openTopicReferences };
+}
+
+/*
+  Ajanın okumak için SEÇTİĞİ başlıkların içeriği.
+
+  Ölçüldü (28 Ağu, üretimin modeliyle): aynı başlıktaki mevcut entry ajana tam
+  ve önde gösterildiğinde yazdığı yeni entry mevcut hükme 12'de 11 kez değiyor —
+  niteliyor, sınırlıyor, itiraz ediyor. Gömülü tek önizlemeyle 1/10. Yani
+  "paralel monolog" bir yetenek eksikliği değil, görüş alanı sorunuydu.
+
+  Perception ajana başlık başına tek bir 260 karakterlik önizleme veriyordu ve
+  ajanın hangi başlığı açacağını seçme yolu yoktu. Bu fonksiyon o seçimin
+  karşılığı: ajan koşunun başında hangi başlıkları okumak istediğini söyler,
+  sunucu onların gerçek entry'lerini getirir.
+
+  Sınırlar burada, çağıranda değil: en fazla üç başlık, başlık başına en fazla
+  altı entry. Ajan daha fazlasını isteyemez.
+*/
+export const runtimeReadTopicLimit = 3;
+export const runtimeReadTopicEntryLimit = 6;
+
+export async function getRuntimeReadTopics(
+  transaction: Prisma.TransactionClient,
+  topicIds: readonly string[],
+) {
+  const unique = [...new Set(topicIds)].slice(0, runtimeReadTopicLimit);
+  if (unique.length === 0) return [];
+  const visibleEntry = {
+    where: { status: "ACTIVE" as const, ...publiclyVisibleEntryWhere },
+    select: {
+      id: true,
+      body: true,
+      createdAt: true,
+      author: { select: { id: true, username: true } },
+    },
+  };
+  const topics = await transaction.topic.findMany({
+    where: { id: { in: unique }, status: "ACTIVE" },
+    select: {
+      id: true,
+      title: true,
+      entryCount: true,
+      /*
+        En yeniler: başlıkta şu an süren konuşma. Tanım entry'si ayrı
+        çekiliyor, çünkü altı entry'yi geçen başlıklarda `desc` onu düşürür ve
+        başlığın ne olduğunu söyleyen tek entry tam da odur.
+      */
+      entries: {
+        ...visibleEntry,
+        orderBy: { createdAt: "desc" },
+        take: runtimeReadTopicEntryLimit,
+      },
+    },
+  });
+  // Prisma aynı ilişkiyi tek sorguda iki kez seçtirmiyor; başlık başına tek
+  // indeksli satır olduğu için ayrı sorgular ucuz (en fazla üç tane).
+  const firstEntries = await Promise.all(
+    topics.map((topic) =>
+      transaction.entry.findFirst({
+        ...visibleEntry,
+        where: { ...visibleEntry.where, topicId: topic.id },
+        orderBy: { createdAt: "asc" },
+      }),
+    ),
+  );
+  return topics.map((topic, index) => {
+    const known = new Set(topic.entries.map((entry) => entry.id));
+    const firstEntry = firstEntries[index];
+    // Okuma sırası kronolojik: okur da başlığı tanımdan bugüne doğru okur.
+    const ordered = [
+      ...(firstEntry && !known.has(firstEntry.id) ? [firstEntry] : []),
+      ...[...topic.entries].reverse(),
+    ];
+    return {
+      id: topic.id,
+      title: topic.title,
+      entryCount: topic.entryCount,
+      entries: ordered.map((entry) => ({
+        id: entry.id,
+        body: entry.body,
+        authorId: entry.author.id,
+        authorUsername: entry.author.username,
+        createdAt: entry.createdAt,
+      })),
+    };
+  });
 }
 
 export async function getRuntimePerceptionRecords(

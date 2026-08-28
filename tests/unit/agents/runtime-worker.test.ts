@@ -3176,4 +3176,168 @@ describe("long-lived agent runtime worker", () => {
       expect.objectContaining({ outcome: "CANCELLED", errorCode: "WORKER_CANCELLED" }),
     );
   });
+  /*
+    GEZİNME FAZI — ajan yazmadan önce ne okuyacağını kendi seçer.
+
+    Kırılganlık burada iki yerde: (1) seçilen kimlikler menü dışına taşarsa
+    sunucuya ajanın hiç görmediği bir başlık gider, (2) faz düşerse koşunun
+    tamamı düşer. İkisi de ayrı ayrı test ediliyor.
+  */
+  function browsableContext(runId: string, topicIds: string[]): RuntimeContext {
+    const context = fixtureContext(runId);
+    return {
+      ...context,
+      perception: {
+        ...context.perception,
+        trendingTopics: [
+          { id: topicIds[0], title: "kuru fasulye", topEntry: { body: "Kısa önizleme." } },
+        ],
+        newTopics: [{ id: topicIds[1], title: "tahtakale" }],
+      },
+    };
+  }
+
+  it("lets the agent choose which topics to read and only forwards visible topic ids", async () => {
+    const runId = randomUUID();
+    const [visibleTopic, otherVisibleTopic] = [randomUUID(), randomUUID()];
+    const unseenTopic = randomUUID();
+    const plane = controlPlane(runId);
+    plane.context = vi
+      .fn()
+      .mockResolvedValue(browsableContext(runId, [visibleTopic, otherVisibleTopic]));
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 5,
+          // Biri menüde, biri değil: ikincisi sunucuya asla gitmemeli.
+          output: { topicIds: [visibleTopic, unseenTopic] },
+        })
+        .mockResolvedValue({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 5,
+          output: canonicalNormalOutput("Okunan başlıktan sonra karar verildi."),
+        }),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "browse-worker",
+      credentials: [`agt_${"b".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    const browseRequest = vi.mocked(provider.invoke).mock.calls[0]?.[0];
+    expect(browseRequest?.prompt).toContain("# Okuma seçimi");
+    // Persona olmadan seçim kişiselleşmez, faz da çağrı masrafından ibaret kalır.
+    expect(browseRequest?.prompt).toContain("Trusted persona prompt.");
+    expect(browseRequest?.prompt).toContain("kuru fasulye");
+    expect(browseRequest?.prompt).toContain("tahtakale");
+    expect(plane.context).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(plane.context).mock.calls[1]?.[5]).toEqual([visibleTopic]);
+  });
+
+  it("does not refetch context when the agent asks to read nothing", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    plane.context = vi
+      .fn()
+      .mockResolvedValue(browsableContext(runId, [randomUUID(), randomUUID()]));
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 5,
+          output: { topicIds: [] },
+        })
+        .mockResolvedValue({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 5,
+          output: canonicalNormalOutput("Okumak istenen başlık yok."),
+        }),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "browse-empty-worker",
+      credentials: [`agt_${"e".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+    expect(plane.context).toHaveBeenCalledTimes(1);
+  });
+
+  it("completes the run when the browse phase fails instead of failing the whole wake", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    plane.context = vi
+      .fn()
+      .mockResolvedValue(browsableContext(runId, [randomUUID(), randomUUID()]));
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockRejectedValueOnce(new RuntimeProviderExecutionError("CODEX_OUTPUT_INVALID"))
+        .mockResolvedValue({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 5,
+          output: canonicalNormalOutput("Gezinme düştü, koşu devam etti."),
+        }),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "browse-failure-worker",
+      credentials: [`agt_${"f".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+    expect(plane.complete).toHaveBeenCalled();
+    expect(plane.fail).not.toHaveBeenCalled();
+  });
+
+  it("puts entries read during the browse phase into the citable evidence catalog", () => {
+    const runId = randomUUID();
+    const topicId = randomUUID();
+    const entryId = randomUUID();
+    const context = fixtureContext(runId);
+    const prompt = buildRuntimePrompt({
+      ...context,
+      perception: {
+        ...context.perception,
+        readTopics: [
+          {
+            id: topicId,
+            title: "kuru fasulye",
+            entryCount: 4,
+            entries: [
+              {
+                id: entryId,
+                body: "Okunan tam entry metni.",
+                createdAt: "2026-08-28T09:00:00.000Z",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    /*
+      Katalogda olmazlarsa modelin okuduğu entry'yi kaynak göstermesi
+      `CODEX_DECISION_PROVENANCE_INVALID` ile tüm koşuyu düşürür — fazın amacı
+      tam da o entry'ye yanıt yazdırmak olduğu için bu yol kesin yanar.
+    */
+    expect(prompt).toContain(`"USER_ENTRY":["${entryId}"]`);
+    expect(prompt).toContain(`"${topicId}"`);
+    expect(prompt).toContain("Okunan tam entry metni.");
+  });
 });

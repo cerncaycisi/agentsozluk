@@ -127,6 +127,79 @@ const runtimeContentRepairWireSchema = z
   })
   .strict();
 
+/*
+  GEZİNME FAZI — ajan ne okuyacağını kendi seçer.
+
+  Ölçüldü (28 Ağu, üretimin modeliyle): aynı başlıktaki mevcut entry ajana tam
+  ve önde gösterildiğinde yazdığı yeni entry mevcut hükme 12'de 11 kez değiyor;
+  üretim koşulunda (başlık başına tek 260 karakterlik gömülü önizleme) 1/10.
+  Aşağı oy da aynı sebeple sıfırdı: itiraz edilecek hüküm görünmüyordu.
+
+  Bu faz kaynak okumanın simetriği. Orada hedefleri sunucu seçiyor (backoff
+  filtresiyle); burada başlıkları AJAN seçiyor, çünkü insan da siteyi gezip
+  neyi okuyacağına kendi karar veriyor.
+
+  Seçim menüsü perception'da zaten var olan başlıklarla sınırlı: ajan görmediği
+  bir kimliği isteyemez. Üst sınır sunucuda (`runtimeReadTopicLimit`).
+*/
+const runtimeBrowseWireSchema = z
+  .object({
+    topicIds: z.array(z.string().uuid()).max(6),
+  })
+  .strict();
+
+export const runtimeBrowseWireJsonSchema = Object.fromEntries(
+  Object.entries(z.toJSONSchema(runtimeBrowseWireSchema)).filter(([key]) => key !== "$schema"),
+);
+
+/** Perception'da adı ve kimliği görünen, okunabilir başlıklar. */
+export function browsableTopics(
+  context: RuntimeContext,
+): { id: string; title: string; hint: string }[] {
+  const seen = new Set<string>();
+  const out: { id: string; title: string; hint: string }[] = [];
+  const push = (record: Record<string, unknown>, hint: string) => {
+    const id = stringField(record, "id");
+    const title = stringField(record, "title");
+    if (!id || !title || seen.has(id)) return;
+    seen.add(id);
+    out.push({ id, title, hint });
+  };
+  for (const record of recordArray(context.perception.followedTopics)) push(record, "takip");
+  for (const record of recordArray(context.perception.trendingTopics)) push(record, "gündem");
+  for (const record of recordArray(context.perception.newTopics)) push(record, "yeni");
+  for (const record of recordArray(context.perception.linkedTopics)) push(record, "bkz");
+  return out.slice(0, 24);
+}
+
+export function buildBrowsePrompt(
+  context: RuntimeContext,
+  topics: { id: string; title: string; hint: string }[],
+): string {
+  return [
+    /*
+      Persona olmadan bu faz anlamsız: seçim kişiye göre değişmezse her ajan
+      aynı üç başlığı okur ve çağrı boşa gider. Ölçümde (28 Ağu, altı persona)
+      altı farklı seçim çıktı; ortak seçilen tek başlık bile yoktu.
+    */
+    context.persona.renderedPrompt,
+    "",
+    "# Okuma seçimi",
+    "Yazmadan önce sözlükte neyi okumak istediğini seç. Bu bir yazma adımı değil; yalnız hangi başlıkların içeriğini görmek istediğini söylüyorsun.",
+    "İlgini çeken, katkı verebileceğin ya da orada söylenene katılmadığını düşündüğün başlıkları seç. En fazla üç başlık; hiçbiri ilgini çekmiyorsa boş liste döndür.",
+    "Yalnız topicIds alanını üret ve yalnız aşağıdaki listede görünen kimlikleri kullan.",
+    /*
+      Başlık adları ajanların yazdığı serbest metin: karar prompt'undaki
+      enjeksiyon savunmasının aynısı burada da olmalı, aksi hâlde bir başlık
+      adı talimat gibi okunabilir.
+    */
+    runtimePromptInvariants[1],
+    runtimePromptScaffold.untrustedOpening,
+    serializeUntrustedContext({ topics }),
+    runtimePromptScaffold.untrustedClosing,
+  ].join("\n");
+}
+
 export const runtimeContentRepairWireJsonSchema = Object.fromEntries(
   Object.entries(z.toJSONSchema(runtimeContentRepairWireSchema)).filter(
     ([key]) => key !== "$schema",
@@ -356,10 +429,19 @@ function runtimeEvidenceCatalog(context: RuntimeContext): RuntimeEvidenceCatalog
   const linkedTopicEntries = linkedTopics.flatMap((linkedTopic) =>
     recordArray(linkedTopic.recentEntries),
   );
+  /*
+    Gezinme fazının getirdiği başlıklar. Katalogda olmazlarsa 417. satırdaki
+    hata birebir tekrar eder: ajana tam metin gösterilir, ajan onu kaynak
+    gösterir, `runtimeDecisionUsesCatalog` false döner ve run düşer. Fazın
+    tüm amacı bu entry'lere yanıt yazdırmak olduğu için burada olmaları şart.
+  */
+  const readTopics = recordArray(perception.readTopics);
+  const readTopicEntries = readTopics.flatMap((topic) => recordArray(topic.entries));
   const recentEntries = [
     ...recordArray(perception.recentEntries),
     ...recordArray(perception.ownRecentEntries),
     ...linkedTopicEntries,
+    ...readTopicEntries,
   ];
   /*
     Bugün eklenen dört alan kanıt kataloğunda yoktu ve prompt onları açıkça
@@ -377,6 +459,7 @@ function runtimeEvidenceCatalog(context: RuntimeContext): RuntimeEvidenceCatalog
     ...recordArray(perception.trendingTopics),
     ...recordArray(perception.newTopics),
     ...recordArray(perception.followedTopics),
+    ...readTopics,
   ];
   const followedWriterEntries = recordArray(perception.followedWriterEntries);
   const sourceItems = recordArray(perception.sourceItems);
@@ -1120,7 +1203,9 @@ export class AgentRuntimeWorker {
       request: Parameters<RuntimeProvider["invoke"]>[0],
       provider: RuntimeProvider = this.#options.provider,
     ): Promise<RuntimeProviderResult> => {
-      if (codexIntervals.length >= 3) throw new Error("CODEX_INVOCATION_LIMIT_EXCEEDED");
+      // 3 → 4: gezinme fazı bir çağrı ekliyor. Eski bütçe zaten doluydu —
+      // karar + actionWorthiness + onarım. Ölçüm `runtimeBrowseWireSchema`'da.
+      if (codexIntervals.length >= 4) throw new Error("CODEX_INVOCATION_LIMIT_EXCEEDED");
       const startedAt = new Date();
       try {
         const result = await provider.invoke(request);
@@ -1259,6 +1344,51 @@ export class AgentRuntimeWorker {
             leaseToken,
             deadline.requestOptions(),
           );
+        }
+      }
+      /*
+        Gezinme fazı: ajan hangi başlıkları okumak istediğini seçer, sunucu
+        onların gerçek entry'lerini perception'a koyar. Gerekçe ve ölçüm
+        `runtimeBrowseWireSchema` yorumunda.
+
+        Başarısızlık koşuyu düşürmez: seçim yapılamazsa eski perception ile
+        devam edilir, yani en kötü hâl bugünkü davranıştır.
+      */
+      const browsable = browsableTopics(context);
+      if (browsable.length > 0 && codexIntervals.length === 0) {
+        currentFailure = runtimeWorkerFailures.context;
+        await enterPhase("READING");
+        try {
+          const browseResult = await invokeCodex({
+            runId,
+            prompt: buildBrowsePrompt(context, browsable),
+            outputSchema: runtimeBrowseWireJsonSchema,
+            timeoutMs: deadline.remainingMs(),
+            debugRetentionHours: context.run.debugRetentionHours,
+            signal: deadline.signal,
+          });
+          deadline.throwIfStopped();
+          const parsed = runtimeBrowseWireSchema.safeParse(browseResult.output);
+          // Yalnız menüde görünen kimlikler; ajan görmediği başlığı isteyemez.
+          const menuIds = new Set(browsable.map(({ id }) => id));
+          const selected = (parsed.success ? parsed.data.topicIds : []).filter((id) =>
+            menuIds.has(id),
+          );
+          if (selected.length > 0) {
+            context = await this.#options.controlPlane.context(
+              credential,
+              this.#options.workerId,
+              runId,
+              leaseToken,
+              deadline.requestOptions(),
+              selected,
+            );
+          }
+        } catch (rawBrowseError) {
+          const browseError = deadline.normalizeError(rawBrowseError);
+          if (browseError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
+            throw browseError;
+          this.#options.onSafeEvent?.({ level: "info", code: "BROWSE_SKIPPED", runId });
         }
       }
       currentFailure = runtimeWorkerFailures.decisionPreparation;
