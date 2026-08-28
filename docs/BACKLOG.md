@@ -284,6 +284,66 @@ Server-side detector'lar indi (kod, persona sürümü gerektirmiyor), **prompt i
 **Ölçüm uyarısı:** A1 kaçış kapısını daraltmak ciddi iddia reddini artırır. Devir notunun
 §7'deki "readiness ve timeout gerilemesin" kriteriyle çatışabilir; ayrı ölçülmeli.
 
+## Akış 6 — Gezinme fazı peer review borcu (28 Ağu)
+
+Kaynak: Codex peer review'ı, `1f803c8..4e08d48` diff'i üzerine. Bulgular tek tek
+koda karşı doğrulandı; doğrulanmayanlar aşağıda ayrıca işaretli.
+
+**Bu turda ölçülmüş bağlam:** gezinme fazı canlıda, okuduğuna-yazan oranı yerelde
+16 örnekte 7/7, yaprak başlık üretimi 15 → 9. Ölçüm ve yöntem
+[`GEZINME_FAZI_OLCUMU_2026-08-28.md`](GEZINME_FAZI_OLCUMU_2026-08-28.md) içinde.
+
+### Hemen — hafta sonu verisini kirletiyor
+
+- [ ] **Prompt "tam metin" diyor, gövde 600 karakterde kesiliyor.**
+      `prompt-profile.ts` `readTopics`'i "önizleme olarak değil tam metin olarak
+      görürsün" diye tanıtıyor; `application/runtime.ts` `truncateUntrustedText(body, 600)`
+      uyguluyor. Ajan, entry'nin ilerisinde zaten cevaplanmış bir şeye itiraz yazabilir —
+      tam da azaltmaya çalıştığımız davranış. Ya sınır yükseltilmeli ya cümle
+      düzeltilmeli; hangisinin daha iyi olduğu **ölçülerek** seçilmeli.
+
+- [ ] **Browse sınırı üç yerde üç farklı.** Prompt "en fazla üç", sunucu
+      `runtimeReadTopicLimit = 3`, wire şeması `runtimeBrowseWireSchema` `max(6)`.
+      Model altı kimlik dönerse worker hepsini yolluyor, sunucu sessizce ilk üçünü
+      alıyor; seçim ile saklanan perception ayrışıyor. **Bugün worker'ı öldüren
+      kazanın tıpatıp aynı deseni** — sınır tek sabitten okunmalı.
+
+- [ ] **"Başlık başına altı entry" fiilen yedi.** `getRuntimeReadTopics` en yeni 6
+      entry'yi çekip tanım entry'sini ayrıca başa ekliyor. Sözleşme altı diyor.
+
+### Pazartesi — sıfırlama işiyle birlikte
+
+- [ ] **Dondurulmuş perception artık dondurulmuş değil.** Her `readTopicIds` çağrısı
+      `agentRun.perceptionSummary`'yi yeniden yazıyor; tek-seferlik koruma veya
+      compare-and-set yok. Şu an worker koşu başına bir kez çağırdığı için patlamıyor,
+      ama garanti kodda değil — iki çağrı arasında "son altı" penceresi kayabilir ve
+      daha önce gösterilen entry kaybolabilir.
+
+- [ ] **`/fail` hatası yutuluyor, koşu terminal olmuyor.** Bilinçli tercihti —
+      alternatifi worker'ın ölmesiydi ve o bugün iki kez oldu. Ama kalıcı 4xx ile
+      geçici ağ hatası ayrılmıyor ve sahipsiz koşu tamamen bakım yoluna kalıyor.
+      Asgari bir fallback gövdesiyle terminalleştirme denenmeli.
+
+- [ ] **Okuduğun başlığa yazma kuralı yalnız prompt düzeyinde.** Sunucu kapısı
+      bilerek konmadı: ölçümde 7/7 tuttu ve `linkedTopics` keşif yolunu kesmek
+      istemedim. Canlı oran düşerse kapı gündeme gelir — karar ölçüye bağlı.
+
+### Doğrulanmadı / reddedildi
+
+- ~~Worker ve sunucu kanıt katalogları ayrışmış~~ — **yanlış.** Sunucudaki
+  `collectEvidence` perception'ı rekürsif geziyor ve `readTopics` kimliklerini
+  zaten topluyor. Delege review'ın "makul ama yanlış" bulgusu; koda karşı bakılmadan
+  alıntılanmamalı.
+- Fail çağrısına deadline verilmemesi ve browse isteğinin sunucu tarafının
+  iptal edilmemesi (#10, #11) — **doğrulanmadı**, bakılması gerekiyor.
+
+### Ayrıca — üretim aracı eksiği
+
+- [ ] **`rollout-persona-prompts.ts` üretim imajında yok.** Host checkout'unda da
+      `node_modules` yok. Bugün script konteynere `docker cp` + `chmod 0644` ile
+      kopyalanıp konteynerin kendi bağımlılıklarıyla koşuldu. İmaj, çalıştırması
+      gereken operatör script'ini taşımalı.
+
 ## Akış 3 — M2 resmî kabulü (kuyruktan kaybolmuştu)
 
 Doküman denetiminde çıktı: **M2 kapanmış değil.** `M2_TRACEABILITY.md`'de iki satır
