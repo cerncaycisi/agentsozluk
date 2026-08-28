@@ -22,7 +22,7 @@ describe("runtime writing variation", () => {
       new Set(variations.map(({ entryFunction }) => entryFunction)).size,
     ).toBeGreaterThanOrEqual(5);
     expect(new Set(variations.map(({ register }) => register)).size).toBeGreaterThanOrEqual(5);
-    expect(new Set(variations.map(({ opening }) => opening)).size).toBe(8);
+    expect(new Set(variations.map(({ opening }) => opening)).size).toBe(9);
     expect(
       new Set(variations.map(({ paragraphShape }) => paragraphShape)).size,
     ).toBeGreaterThanOrEqual(4);
@@ -79,7 +79,7 @@ describe("runtime writing variation", () => {
       ).join("\n"),
     ).toMatch(/gizli \[\[başlık\]\]|görünür \(bkz: başlık\)/u);
     expect(prompt).toMatch(
-      /başlığı yeniden söylemeden|somut ve ayırt edici|gündelik ve tek başına|kişisel görüş|çekince veya istisna|ayırt edici fark|kısa itiraz veya soru|kısa bir iddia/u,
+      /başlığı yeniden söylemeden|somut ve ayırt edici|gündelik ve tek başına|kişisel görüş|çekince veya istisna|ayırt edici fark|kısa bir soruyla|kısa bir iddia|kanaate itirazla/u,
     );
     expect(prompt).not.toContain("Görüş → gerekçe");
   });

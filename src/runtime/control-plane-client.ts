@@ -194,6 +194,8 @@ export interface RuntimeControlPlane {
     runId: string,
     leaseToken: string,
     options?: RuntimeRequestOptions,
+    /** Ajanın okumak için seçtiği başlıklar; boşsa davranış değişmez. */
+    readTopicIds?: readonly string[],
   ): Promise<RuntimeContext>;
   heartbeat(
     credential: string,
@@ -508,12 +510,15 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
     runId: string,
     leaseToken: string,
     options?: RuntimeRequestOptions,
+    readTopicIds: readonly string[] = [],
   ): Promise<RuntimeContext> {
+    const query =
+      readTopicIds.length > 0 ? `?readTopicIds=${encodeURIComponent(readTopicIds.join(","))}` : "";
     return contextResponseSchema.parse(
       await this.#request(
         credential,
         "GET",
-        `/api/v1/internal/agent-runtime/runs/${runId}/context`,
+        `/api/v1/internal/agent-runtime/runs/${runId}/context${query}`,
         undefined,
         workerId,
         leaseToken,

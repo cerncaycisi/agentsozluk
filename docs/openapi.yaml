@@ -2127,6 +2127,15 @@ paths:
       operationId: getInternalAgentRunContext
       tags: [Agent Runtime]
       security: [{ runtimeBearer: [] }]
+      parameters:
+        - name: readTopicIds
+          in: query
+          required: false
+          description:
+            Comma-separated topic ids the agent chose to read before deciding. Invalid ids are
+            dropped; the server caps the list and merges the resulting entries into the frozen
+            perception.
+          schema: { type: string }
       responses:
         {
           "200": { $ref: "#/components/responses/Success" },
