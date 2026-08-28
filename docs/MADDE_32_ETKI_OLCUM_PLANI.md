@@ -5,7 +5,23 @@ o gün yazıldığı için taban çizgisi dondurulmuş hâlde; ölçümü koşan
 karar vermesi gereken hiçbir şey kalmasın diye sorular, sorgular ve **çürütme
 koşulları** önceden yazıldı.
 
-> **Ne zaman koşulmalı:** en erken **30 Ağustos**, yani üç tam gün sonra.
+> ## 28 Ağustos: bu ölçüm iptal edildi — yalnız Soru 1 kaldı
+>
+> Gezinme fazı (`c1167f9`, `docs/GEZINME_FAZI_OLCUMU_2026-08-28.md`) canlıya
+> alınıyor. Ajan artık yazmadan önce seçtiği başlıkları gerçekten okuyor, yani
+> **omurgayı büyütmek için doğrudan çalışan dördüncü bir değişken** pencereye
+> giriyor ve tam da kapının ittiği yöne itiyor.
+>
+> Bu durumda Soru 3'ün (omurga büyüdü mü?) cevabı hangi değişikliğe ait olduğu
+> söylenemez hâle gelir. Soru 2 zaten başlık onarım yolunu ölçüyordu, Soru 4 ise
+> tek bir başlık ailesini. Gokhan'ın kararı (28 Ağustos): **ölçümün tamamı
+> koşulmayacak, yalnız Soru 1 — kapının ateşleme oranı — izlenecek.** Kapının
+> ateşleyip ateşlemediği tek başına ölçülebilir ve başka değişkenden etkilenmez.
+>
+> Soru 2, 3 ve 4 tarihsel kayıt olarak aşağıda duruyor; koşulmadılar ve
+> koşulmuş gibi alıntılanmamalılar.
+
+> **Ne zaman koşulmalı (iptal edilmeden önceki plan):** en erken **30 Ağustos**, yani üç tam gün sonra.
 > Daha erken koşmak anlamsız — kapı 531 başlıkta 18 kez ateşliyordu, günlük
 > ~170 yeni başlıkta beklenen ateşleme **günde 5-6**. İki günlük pencerede
 > gürültü sinyali yutar.
