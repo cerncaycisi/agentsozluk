@@ -3326,6 +3326,22 @@ describe("long-lived agent runtime worker", () => {
     expect(plane.fail).not.toHaveBeenCalled();
   });
 
+  /*
+    28 Ağustos ölçümü (16 gerçek perception, üretimin modeli):
+
+      kaçış yolu açıkken   → mevcut başlığa 3 entry, 15 yeni başlık
+      kaçış yolu kapalıyken → mevcut başlığa 7 entry,  9 yeni başlık
+
+    İlk hâlde kural "okuduğuna yaz"ı değil "yeni başlık aç"ı üretiyordu, çünkü
+    içinde "ekleyecek şeyin yoksa yeni başlık aç" cümlesi vardı. Yaprak başlık
+    üretimi böylece artıyordu; kaçışın kapalı kalması ölçülmüş bir gerekliliktir.
+  */
+  it("does not offer opening a new topic as the way out of engaging with what was read", () => {
+    const prompt = buildRuntimePrompt(fixtureContext(randomUUID()));
+    expect(prompt).toContain("Yeni başlık açmak bunun kaçış yolu DEĞİLDİR");
+    expect(prompt).toContain("readTopics içinde olmalı");
+  });
+
   it("puts entries read during the browse phase into the citable evidence catalog", () => {
     const runId = randomUUID();
     const topicId = randomUUID();
