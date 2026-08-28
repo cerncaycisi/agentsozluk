@@ -28,7 +28,22 @@ import {
   RUNTIME_PROMPT_PROFILE_HASH,
   RUNTIME_STRUCTURED_REPAIR_INSTRUCTION,
 } from "@/runtime/worker";
+import {
+  runtimeCodexInvocationLimit,
+  usageMetadataSchema,
+} from "@/modules/agents/validation/runtime-schemas";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
+
+function usageWithIntervals(
+  codexIntervals: { startedAt: string; finishedAt: string; durationMs: number }[],
+) {
+  return {
+    durationMs: 42_000,
+    provider: "codex-cli" as const,
+    promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+    codexIntervals,
+  };
+}
 
 const LEASE_TOKEN = "l".repeat(43);
 
@@ -3339,5 +3354,45 @@ describe("long-lived agent runtime worker", () => {
     expect(prompt).toContain(`"USER_ENTRY":["${entryId}"]`);
     expect(prompt).toContain(`"${topicId}"`);
     expect(prompt).toContain("Okunan tam entry metni.");
+  });
+  /*
+    28 Ağustos: worker bütçesi 3'ten 4'e çıktı, wire şeması 3'te kaldı. Dört
+    çağrı kullanan koşunun `/fail` gövdesi 422 aldı ve worker SÜRECİ öldü.
+    Aşağıdaki iki test o kazanın iki ayrı halkasını da kapatıyor.
+  */
+  it("keeps the worker codex budget inside the wire contract for run metrics", () => {
+    const intervals = Array.from({ length: runtimeCodexInvocationLimit }, () => ({
+      startedAt: "2026-08-28T09:00:00.000Z",
+      finishedAt: "2026-08-28T09:00:10.000Z",
+      durationMs: 10_000,
+    }));
+    // Bütçe kadar aralık kabul edilmeli: koşu bunu üretebiliyor.
+    expect(() => usageMetadataSchema.parse(usageWithIntervals(intervals))).not.toThrow();
+    // Bütçenin üstü reddedilmeli: sözleşme gerçekten sınır koyuyor.
+    expect(() =>
+      usageMetadataSchema.parse(usageWithIntervals([...intervals, intervals[0]!])),
+    ).toThrow();
+  });
+
+  it("survives a control plane that rejects the failure report", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    plane.fail = vi.fn().mockRejectedValue(new RuntimeControlPlaneError("VALIDATION_ERROR"));
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockRejectedValue(new RuntimeProviderExecutionError("CODEX_OUTPUT_INVALID")),
+    };
+    const events: string[] = [];
+    const worker = new AgentRuntimeWorker({
+      workerId: "failure-report-worker",
+      credentials: [`agt_${"r".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      onSafeEvent: ({ code }) => events.push(code),
+    });
+
+    // Süreci öldürmek yerine koşuyu bitirip devam etmeli.
+    await expect(worker.runOnce()).resolves.toBe(1);
+    expect(events).toContain("RUN_FAILURE_REPORT_FAILED");
   });
 });

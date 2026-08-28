@@ -318,6 +318,14 @@ const safeRunSummarySchema = z
   })
   .strict();
 
+/*
+  Bir koşunun harcayabileceği Codex çağrısı sayısı. Worker bütçesi ile bu wire
+  sınırı AYNI sabitten okunmalı: 28 Ağustos'ta worker 3'ten 4'e çıkarıldı, şema
+  3'te kaldı, ve dört çağrı kullanan koşunun `/fail` gövdesi 422 ile reddedildi.
+  Worker bu hatayı yakalamadığı için süreç öldü — canlıda elli dakikada iki kez.
+*/
+export const runtimeCodexInvocationLimit = 4;
+
 const codexIntervalSchema = z
   .object({
     startedAt: z.iso.datetime(),
@@ -330,7 +338,7 @@ const codexIntervalSchema = z
     { message: "Codex interval bitişi başlangıçtan önce olamaz." },
   );
 
-const usageMetadataSchema = z
+export const usageMetadataSchema = z
   .object({
     inputTokens: z.number().int().min(0).optional(),
     outputTokens: z.number().int().min(0).optional(),
@@ -344,7 +352,7 @@ const usageMetadataSchema = z
       .string()
       .regex(/^[a-f0-9]{64}$/u)
       .optional(),
-    codexIntervals: z.array(codexIntervalSchema).min(1).max(3).optional(),
+    codexIntervals: z.array(codexIntervalSchema).min(1).max(runtimeCodexInvocationLimit).optional(),
     processPeakRssMb: z.number().min(0).max(65_536).optional(),
     systemPeakMemoryMb: z.number().min(0).max(65_536).optional(),
     availableMemoryMb: z.number().min(0).max(65_536).optional(),

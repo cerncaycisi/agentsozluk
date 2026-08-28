@@ -38,7 +38,10 @@ import {
 import { sourceFetchTargetLimit } from "@/modules/agents/domain/runtime-controls";
 import { deriveRuntimePerceptionEvidence } from "@/modules/agents/domain/runtime-evidence";
 import { runtimeSourceEvidenceTypeForStatus } from "@/modules/agents/domain/source-status";
-import { runtimeFastStateSchema } from "@/modules/agents/validation/runtime-schemas";
+import {
+  runtimeCodexInvocationLimit,
+  runtimeFastStateSchema,
+} from "@/modules/agents/validation/runtime-schemas";
 import {
   RUNTIME_PROMPT_PROFILE_HASH,
   runtimeAllowedAgentContextKeys,
@@ -1203,9 +1206,13 @@ export class AgentRuntimeWorker {
       request: Parameters<RuntimeProvider["invoke"]>[0],
       provider: RuntimeProvider = this.#options.provider,
     ): Promise<RuntimeProviderResult> => {
-      // 3 → 4: gezinme fazı bir çağrı ekliyor. Eski bütçe zaten doluydu —
-      // karar + actionWorthiness + onarım. Ölçüm `runtimeBrowseWireSchema`'da.
-      if (codexIntervals.length >= 4) throw new Error("CODEX_INVOCATION_LIMIT_EXCEEDED");
+      /*
+        Bütçe sunucu sözleşmesinden okunuyor. Sabit olarak yazmak 28 Ağustos'ta
+        worker'ı öldürdü: buradaki 4 ile şemadaki 3 ayrıştı, dört çağrı kullanan
+        koşunun `/fail` gövdesi 422 aldı ve süreç düştü.
+      */
+      if (codexIntervals.length >= runtimeCodexInvocationLimit)
+        throw new Error("CODEX_INVOCATION_LIMIT_EXCEEDED");
       const startedAt = new Date();
       try {
         const result = await provider.invoke(request);
@@ -1829,10 +1836,25 @@ export class AgentRuntimeWorker {
               ...(providerResult?.hostMetrics ?? {}),
             }
           : null;
-      await this.#options.controlPlane.fail(credential, this.#options.workerId, runId, leaseToken, {
-        ...failure,
-        ...(failureUsage ? { usageMetadata: failureUsage } : {}),
-      });
+      /*
+        Başarısızlığı bildirememek koşuyu bitirir, worker'ı değil. 28 Ağustos'ta
+        `/fail` tek bir geçersiz gövde yüzünden 422 döndü ve hata buradan dışarı
+        sızıp SÜRECİ öldürdü — tek bir koşunun kötü verisi tüm toplumun
+        worker'ını elli dakikada iki kez düşürdü. Bildirilemeyen koşu sahipsiz
+        kalır ve lease'i dolunca bakım yolu onu zaten toplar.
+      */
+      try {
+        await this.#options.controlPlane.fail(
+          credential,
+          this.#options.workerId,
+          runId,
+          leaseToken,
+          { ...failure, ...(failureUsage ? { usageMetadata: failureUsage } : {}) },
+        );
+      } catch (reportError) {
+        if (reportError instanceof RuntimeProviderCancelledError) throw reportError;
+        this.#options.onSafeEvent?.({ level: "error", code: "RUN_FAILURE_REPORT_FAILED", runId });
+      }
       this.#options.onSafeEvent?.({ level: "error", code: failure.errorCode, runId });
       return true;
     } finally {
