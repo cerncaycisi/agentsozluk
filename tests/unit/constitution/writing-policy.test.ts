@@ -493,6 +493,26 @@ describe("constitutional writer policy", () => {
     ]);
   });
 
+  /*
+    Paketleme kuralının ölçütü UZUNLUK DEĞİL, başlığın çekirdeğindeki şey sayısı.
+    Gokhan'ın kalibrasyonu (28 Ağu): "Bodrum … Fikir Projesi Yarışması",
+    "Sandisk … Flash Sürücü" ve "Türkiye … Araştırması" doğru başlıklar — uzun
+    olmalarına rağmen tek bir şeyi adlandırıyorlar. "Samsun … Hizmet Binası,
+    Kültür Merkezi ve Cami" yanlış: üç ayrı yapı.
+
+    Kapı bunu yakalayamıyor çünkü `packagedPairCategory` başlığın çoğul kategori
+    adıyla bitmesini şart koşuyor ve bu başlık `cami` ile bitiyor. Listeye
+    `cami`, `bina`, `merkez` eklemek kelime yasağına dönüşürdü; kural bu yüzden
+    prompt'ta. Üretimin modeliyle ölçüldü: dört örneğin dördü de doğru ayrıldı.
+  */
+  it("measures packaging by how many things the title names, not by its length", () => {
+    const context = CONSTITUTION_WRITER_CONTEXT.join("\n");
+    expect(context).toContain("Uzunluk ölçüt DEĞİLDİR");
+    expect(context).toContain("başlığın çekirdeğinde kaç şey var");
+    // Doğru sayılan uzun başlık da örnek olarak durmalı, yoksa kural uzunluğu cezalandırır.
+    expect(context).toContain("Fikir Projesi Yarışması");
+  });
+
   it("keeps the runtime context article-referenced and non-quota based", () => {
     expect(CONSTITUTION_WRITER_CONTEXT.join("\n")).toContain("Madde 6-17");
     expect(CONSTITUTION_WRITER_CONTEXT.join("\n")).toContain("Madde 27-36");
