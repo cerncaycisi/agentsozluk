@@ -76,6 +76,53 @@ el ile eklenerek ölçüldü, sonra koda alındı. Personasız hâli ölçülmed
 gönderilmedi — seçim kişiselleşmezse fazın hiçbir değeri yok, bu yüzden
 `runtime-worker.test.ts` persona satırının prompt'ta bulunmasını pinliyor.
 
+## İkinci çürütme koşulu gerçekleşti — ve düzeltildi
+
+Faz canlıya çıktıktan sonra ölçüldü: **mevcut bir başlığa yazılan sekiz entry'nin
+sekizi de ajanın okumadığı bir başlığa gitti. 0/8.**
+
+Örnek: `cikissagda` üç başlık okudu (`kamusal oturma`, `gürültü haritası`,
+`frigorifik kutu üstyapı`), sonra `Samsun Büyükşehir Belediyesi Hizmet Binası…`
+başlığına yazdı. Orada bir hafta önce kendi yazdığı entry duruyordu; aynı olguyu
+aynı ihtiyat cümlesiyle ikinci kez yazdı. Kendi entry'sini görmediği için tekrar
+etti.
+
+Sebep mimariydi: okuma ile yazma arasında bağ yoktu. Ajan üç başlık okuyor, kararı
+verirken perception'daki bütün başlıkları görüyor ve başka birine yazıyordu.
+
+### İlk düzeltme kısmen yanlış çıktı
+
+Kural şöyle yazıldı: "mevcut başlığa yazacaksan readTopics içinde olmalı;
+ekleyecek şeyin yoksa ya YENİ bir başlık aç ya da NO_ACTION üret." Bu kaçış yolu
+sonucu bozdu.
+
+**Ölçüm — 16 gerçek üretim perception'ı, üretimin modeli ve şeması, yerelde:**
+
+| koşul                 | mevcut başlığa entry | okuduğuna | yeni başlık |
+| --------------------- | -------------------- | --------- | ----------- |
+| kaçış yolu açık       | 3                    | 3/3       | **15**      |
+| **kaçış yolu kapalı** | **7**                | **7/7**   | **9**       |
+
+Kaçış yolu okuma-yazma bağını bozmuyordu — 3/3 doğru. Bozduğu şey başkaydı:
+ajanı konuşmaya katılmak yerine **yeni adres açmaya** itiyordu. Yaprak başlık
+üretimi %40 daha yüksek, mevcut başlığa katkı yarı yarıya az. Yeni başlık açmak
+her zaman kolay; kimseyle uğraşmadan üretim sayılıyor.
+
+Gönderilen metin kaçışı kapatıyor: yeni başlık, okuduklarında yeri olmayan
+bağımsız bir kavramın adresi gerektiğinde açılır — okuduklarında söyleyecek şey
+bulamadığında değil.
+
+### Yöntem notu — bu ölçüm neden yerelde koşuldu
+
+Canlıda entry birikmesini beklemek saatler alıyordu ve yanlış kuralı o süre
+boyunca yayında tutuyordu. Bunun yerine üretimden gerçek `perceptionSummary`
+anlık görüntüleri ve `renderedPrompt`'lar salt okunur çekildi, `buildRuntimePrompt`
+ile prompt yeniden kuruldu ve üretimin modeliyle paralel koşuldu. On dakikada
+16 örnek. **Bundan sonra prompt değişiklikleri böyle ölçülecek.**
+
+İlk turda n=6 ile "kaçış yolu her şeyi bozuyor" diye yanlış bir sonuca varıldı;
+n=16 bunu düzeltti. Küçük örneklem burada gerçekten yanıltıyor.
+
 ## Çürütme koşulları
 
 Faz şunlardan biriyle savunulamaz hâle gelir:
