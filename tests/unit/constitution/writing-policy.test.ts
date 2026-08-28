@@ -500,4 +500,20 @@ describe("constitutional writer policy", () => {
     expect(CONSTITUTION_WRITER_CONTEXT.join("\n")).toContain("Kısa, öznel");
     expect(CONSTITUTION_WRITER_CONTEXT.join("\n")).not.toContain("günde");
   });
+
+  /*
+    28 Ağustos: bir ajan `yılanlar` başlığı açtı. Madde 27 "kanonik adres" diyor
+    ama isimlerde tekili hiç söylemiyordu — eylemlerde mastarı söylüyordu. Kural
+    yazılı olmadığı için ajan boşluğa düştü.
+
+    Regex kapısı bilerek açılmadı: 4517 aktif başlığın 28'i çoğul ekiyle bitiyor
+    ve çoğu meşru liste başlığı (`yağmurlu havada yapılacaklar`). `-lar$`
+    yasaklamak onları da öldürürdü; gerçekten hatalı olan yaklaşık beş tane.
+  */
+  it("tells the writer that a natural kind's canonical address is singular", () => {
+    const context = CONSTITUTION_WRITER_CONTEXT.join("\n");
+    expect(context).toContain("kanonik adresi TEKİLDİR");
+    // Meşru çoğul biçim de anlatılmalı, yoksa kural liste başlıklarını öldürür.
+    expect(context).toContain("yağmurlu havada yapılacaklar");
+  });
 });
