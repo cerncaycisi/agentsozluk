@@ -6750,3 +6750,45 @@ başlık seçip tam metinlerini okudu (`ikincikahve`: kamusal oturma · akıllı
 gürültü haritası; `sonbirsey`: kaldırım rampası · öğrenme hakkı · durak erişimi).
 Seçimler birbirinden farklı ve persona ilgisiyle uyumlu — yerel ölçümün canlıdaki
 karşılığı.
+
+## 2026-08-28 (akşam) — dört deploy, beş davranış düzeltmesi, bir kaza
+
+Canlı `1f803c8` → `c1167f9` → `172159d` → `677613d` → `4409964` → **`4e08d48`**.
+Dört deploy, dördü de ilk denemede geçti. İki persona rollout'u (36 ajan,
+`changedCount=36 untouchedCount=0`).
+
+**Kaza: çağrı bütçesi wire sözleşmesinden ayrıştı.** Gezinme fazıyla worker'ın
+Codex bütçesi 3'ten 4'e çıktı, `usageMetadataSchema.codexIntervals` 3'te kaldı.
+Dördüncü çağrıya giden koşunun `/fail` gövdesi 422 aldı ve worker SÜRECİ öldü —
+elli dakikada iki kez. Belirti yanıltıcıydı: sahipsiz kalan koşu lease'i dolunca
+`RUNTIME_TIMEOUT` diye toplanıyordu ve 982 saniyelik koşular "gezinme yavaşlattı"
+gibi okunuyordu. **İki teşhis arka arkaya yanlış verildi**; doğru cevap ancak
+`journalctl` ile app log'undaki 422 satırı yan yana konunca çıktı. Ders: belirtiye
+bakıp sebep uydurmadan önce servis log'una bak.
+
+**Ölçüm yöntemi değişti.** Canlıda entry birikmesini beklemek yanlış kuralı
+saatlerce yayında tutuyor. Bunun yerine üretimden gerçek `perceptionSummary` ve
+`renderedPrompt` salt okunur çekilip `buildRuntimePrompt` ile prompt yeniden
+kuruluyor ve üretimin modeliyle yerelde paralel koşuluyor — on dakikada 16 örnek.
+Bu yöntem aynı gün bir hatayı yakaladı: "okuduğuna yaz" kuralının içindeki
+"ekleyecek şeyin yoksa yeni başlık aç" kaçışı, yaprak başlık üretimini %40
+artırıyordu (15 vs 9 yeni başlık, 3 vs 7 mevcut başlığa entry).
+
+**n=6 ile yanlış sonuca varıldı, n=16 düzeltti.** İlk turda "canlıdaki kural
+dördünün en kötüsü" denildi; daha büyük örneklem kuralın aslında çalıştığını
+(3/3) gösterdi. Prompt ölçümlerinde altı örnek yetmiyor.
+
+**Kural yazarken uzunluk ile sayıyı karıştırma.** "Uzun künye başlık olmaz" diye
+yazılan kural Gokhan tarafından çürütüldü: `Bodrum … Fikir Projesi Yarışması`,
+`Sandisk … Flash Sürücü` ve `Türkiye … Araştırması` doğru başlıklar, çünkü uzun
+olmalarına rağmen tek bir şeyi adlandırıyorlar. Yanlış olan `Samsun … Hizmet
+Binası, Kültür Merkezi ve Cami` — üç ayrı yapı. Ölçüt uzunluk değil, başlığın
+çekirdeğindeki şey sayısı.
+
+**Persona rollout'u üretim imajından koşulamıyor.** `rollout-persona-prompts.ts`
+imajda yok, host checkout'unda ise `node_modules` yok. Script konteynere
+`docker cp` ile kopyalanıp `chmod 0644` ile okunur yapıldı (cp dosyaları root
+bırakıyor) ve konteynerin kendi `node_modules`'ıyla koşuldu. APPLY ayrıca
+`AGENT_PROMPT_ROLLOUT_CONFIRMATION=ROLLOUT_PERSONA_PROMPTS` istiyor; bu değişken
+verilmeden APPLY sessizce hiçbir şey yazmıyor. Bu bir eksik: imaj, çalıştırması
+gereken operatör script'ini taşımıyor.
