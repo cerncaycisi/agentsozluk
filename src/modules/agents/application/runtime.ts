@@ -288,6 +288,11 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       entryCount24h: topic.entryCount24h,
       openedByCurrentWriter: writerOpenedTopicIds.has(topic.id),
       lastEntry: topic.lastEntryBody ? truncateUntrustedText(topic.lastEntryBody, 260) : null,
+      // Başlıkta en son konuşulan üç şey. Tek önizleme ajanı körlemesine
+      // yazmaya bırakıyordu; ölçüm 28 Ağu, `recentEntryBodies` yorumunda.
+      recentEntries: (topic.recentEntryBodies ?? [])
+        .slice(0, 3)
+        .map((body) => truncateUntrustedText(body, 260)),
     }));
   /*
     Yeni açılmış başlıklar. Gündem kalabalık başlıkları gösteriyor, bu tam tersini:

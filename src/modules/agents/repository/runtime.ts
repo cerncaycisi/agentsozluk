@@ -2315,10 +2315,28 @@ export async function getRuntimePerceptionRecords(
                 },
               },
             },
+            /*
+              Takip edilen başlıkta ÜÇ entry, bir değil.
+
+              Ölçüldü (28 Ağu, üretimin modeliyle): aynı başlıktaki mevcut entry
+              ajana doğrudan gösterildiğinde yazdığı yeni entry mevcut hükme
+              12'de 11 kez değiyor — niteliyor, sınırlıyor veya itiraz ediyor.
+              Yani "paralel monolog" bir yetenek eksikliği değil, GÖRÜNÜRLÜK
+              sorunu: üretimde ajan başlık başına yalnız tek bir 260 karakterlik
+              önizleme görüyordu ve o da büyük bir JSON'un içine gömülüydü.
+
+              Aynı gün aşağı oyun neden sıfır kaldığı da buraya çıkmıştı: model
+              açıkça yanlış bir entry gösterildiğinde 5/5 aşağı oy veriyor, ama
+              gerçek üretim entry'leriyle 1/10. İtiraz edilecek hüküm görünmüyor.
+
+              Bütçe aynı gün açıldı: okunan kaynağın hafıza kopyası perception'dan
+              çıkarılınca ~15k karakter boşaldı; buradaki artışın maliyeti sekiz
+              başlık × iki ek önizleme × 260 karakter ≈ 4k.
+            */
             entries: {
               where: { status: "ACTIVE", ...publiclyVisibleEntryWhere },
               orderBy: { createdAt: "desc" },
-              take: 1,
+              take: 3,
               select: { body: true },
             },
           },
@@ -2601,6 +2619,8 @@ export async function getRuntimePerceptionRecords(
         title: topic!.title,
         entryCount24h: topic!._count.entries,
         lastEntryBody: topic!.entries[0]?.body ?? null,
+        // Son üç entry; ajan başlığa yazmadan önce orada ne konuşulduğunu görsün.
+        recentEntryBodies: topic!.entries.map(({ body }) => body),
       })),
     followedUserIds: userFollows.map(({ followedId }) => followedId),
     entries,
