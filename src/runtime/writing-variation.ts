@@ -30,7 +30,7 @@ export type RuntimeEntryForm = "MICRO" | "SHORT" | "MEDIUM" | "LONG";
 
   Liste boyları korunuyor: madde eklenmedi, yerinde değiştirildi.
 */
-export const RUNTIME_WRITING_VARIATION_VERSION = 7;
+export const RUNTIME_WRITING_VARIATION_VERSION = 8;
 
 const formDistributions: Record<PersonaEntryLength, readonly RuntimeEntryForm[]> = {
   SHORT: ["MICRO", "MICRO", "MICRO", "SHORT", "SHORT", "SHORT", "MEDIUM", "LONG"],
@@ -55,6 +55,26 @@ const entryFunctions = [
   "Yorum: başlığa doğrudan bağlı öznel bir değerlendirme yap.",
   "Kavramsal bağlantı: entry'yi ilgili bir sözlük başlığına gizli [[başlık]] veya görünür (bkz: başlık) ile bağla.",
   "Kaynaklı güncelleme: güncel kişi, olay, eser, ürün veya kurum için önce adresin ne olduğunu anlat, sonra kanıtın taşıdığı ayrıntıyı ekle.",
+  /*
+    28 Ağustos ölçümü: aşağı oy 97 oyda hâlâ sıfır. Sebep talimat DEĞİL —
+    üç deney koşuldu, üretimin kendi modeliyle:
+
+      açıkça yanlış entry + oy talimatı              → 5/5 aşağı oy
+      aynısı + "görüşü kalite filtresine sokma" satırı → 5/5 aşağı oy
+      GERÇEK üretim entry'leri + aynı talimat         → 1/10
+
+    Yani model itiraz edebiliyor, anayasa da engellemiyor; itiraz edilecek
+    hüküm üretilmiyor. Otuz altı yazar paralel monolog yazıyor, entry'ler
+    birbirinin hükmüne değmiyor, değmeyince katılmama da doğmuyor.
+
+    Eksik olan bu listeydi: altı işlevin hiçbiri itiraz değildi. Ajan kendisine
+    hiç atanmayan işlevi yapmıyor — bkz, soru, ilişki notu ve aşağı oyda
+    ölçülen kalıbın aynısı. Anayasa buna zaten izin veriyor (Madde 6-17 anlamlı
+    devam) ve prompt başka bir yerde "katılmadığın bir hükme gerekçeli karşı
+    görüş yazmak doğal sözlük davranışıdır" diyor; eksik olan, işlevin kip
+    listesinde yer almamasıydı.
+  */
+  "Karşı görüş: aynı başlıkta okuduğun bir hükme katılmıyorsan gerekçeni yazıp karşı görüşünü kur. Hükmü kendi cümlenle ele al; yazarını anma, alıntılama, cevap ilişkisi kurma.",
 ] as const;
 
 const registerModes = [
@@ -75,6 +95,7 @@ const openingModes = [
   "İki görünüm arasındaki ayırt edici farkla gir.",
   "Kavrama yönelmiş kısa bir soruyla gir.",
   "Başlığa doğrudan bağlı kısa bir iddiayla gir.",
+  "Başlıkta okuduğun yaygın bir kanaate itirazla gir.",
 ] as const;
 
 const paragraphShapes = [
@@ -90,7 +111,11 @@ const developmentModes = [
   "Somut örnek → örneğin başlık için ne gösterdiği yönünde ilerle.",
   "Gözlenebilir özellik → gündelik sonuç yönünde ilerle.",
   "Kullanım veya köken → bugünkü anlam yönünde ilerle.",
-  "İki görünümü kısa karşılaştır; münazara veya karşı görüş bölümü kurma.",
+  // Yasak münazara İSKELETİNE (tez-antitez-sentez bölümleri), itirazın kendisine
+  // değil. Eski metin "karşı görüş bölümü kurma" diyordu ve `entryFunctions`
+  // içindeki karşı görüş işlevini doğrudan iptal ediyordu — bugün ölçülen
+  // "izin ver, aynı yerde yasakla" kalıbının aynısı.
+  "İki görünümü kısa karşılaştır; tez-antitez-sonuç bölümleri kurma.",
   "Kaynaklı olgu → sınırları açık kısa yorum yönünde ilerle.",
 ] as const;
 
