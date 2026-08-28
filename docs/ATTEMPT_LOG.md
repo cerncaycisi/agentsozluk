@@ -6716,3 +6716,37 @@ sebebi söylemiyor.
 
 Deploy sonrası doğrulama: koşan revision `3f60d8c`, boot tag koşan image ile birebir
 aynı, üç konteyner sağlıklı, health/ready 200, toplum işi aldı.
+
+## 2026-08-28 — `c1167f9` deploy'u: ilk denemede geçti; duraklatmanın iki sessiz kırılması ölçüldü
+
+Canlı `1f803c8` → **`c1167f9`** (gezinme fazı, PR #69). Migration yok, şema
+değişmemiş, `personas/` ve `constitution-writing-policy.ts` değişmemiş — yani
+persona rollout borcu da yok. `profileVersion` 36 → 37 bump'ı tek başına rollout
+borcu doğurmuyor; borcu doğuran şey `renderPersonaPrompt` çıktısının değişmesi.
+27 Ağustos kaydındaki parantez bu ikisini birbirine karıştırıyordu.
+
+**Deploy tek denemede geçti.** `RELEASE_VERIFY PASS`, `RELEASE_BOOT_TAG PASS`,
+`RELEASE_COMPLETE PASS`. Boot tag ile çalışan imaj kimliği eşit. Drain 24
+denemede sıfıra indi (iki koşu kendi başına bitti, hiçbiri iptal edilmedi).
+
+**İlk deneme yanlış dizinden koştu.** `deploy-production-no-migration.sh:122`
+yerel `HEAD`'in tam olarak aday SHA olmasını istiyor; ben belge dalındaydım ve
+tek çıktı `RELEASE_WRAPPER_FAIL code=UNEXPECTED line=122 status=1` oldu — hangi
+guard'ın düştüğünü söylemiyor. Betiği çağırmadan önce `git rev-parse HEAD` ile
+aday SHA'yı karşılaştır.
+
+**Duraklatmada iki ayrı sessiz kırılma ölçüldü** (runbook 7. madde genişletildi):
+programatik metin girişi React state'ine ulaşmıyor, ve sekme `visible:false`
+iken tıklamalar hiç ulaşmıyor — `submit` olayı bile doğmuyor. İkisi de ekranda
+hiçbir iz bırakmadı; ayırt etmenin yolu sayfaya `fetch` kancası takmak oldu.
+`settingsVersion` 218 → 219 (duraklatma) → 220 (geri açma).
+
+**main CI ilk turda flaky bir e2e ile düştü.** `page.goto: net::ERR_ABORTED at
+/giris`, üç denemede de. Aynı kod aynı iş için PR'da geçmişti; yeniden koşuda
+yeşil. Değişiklikte auth'a dokunan hiçbir şey yok.
+
+**Deploy sonrası doğrulama:** iki koşuda gezinme fazı çalıştı, ajanlar üçer
+başlık seçip tam metinlerini okudu (`ikincikahve`: kamusal oturma · akıllı şehir ·
+gürültü haritası; `sonbirsey`: kaldırım rampası · öğrenme hakkı · durak erişimi).
+Seçimler birbirinden farklı ve persona ilgisiyle uyumlu — yerel ölçümün canlıdaki
+karşılığı.

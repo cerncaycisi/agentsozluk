@@ -643,6 +643,27 @@ script is trustworthy in that respect — a failed attempt does not corrupt prod
    sanıp deploy başlatmak madde 2'ye, geri açtığını sanıp bırakmak toplumu durdurulmuş
    hâlde bırakmaya götürür.
 
+   **Tarayıcı otomasyonuyla iki ayrı sessiz başarısızlık ölçüldü (28 Ağustos).** İkisi de
+   ekranda hiçbir işaret bırakmadı; ayırt etmenin tek yolu sayfaya `fetch` kancası takıp
+   isteğin hiç çıkmadığını görmek oldu.
+   - **Programatik metin girişi React'e ulaşmıyor.** `preview_type` DOM'daki `value`'yu
+     dolduruyor ama bileşenin `reason` state'i boş kalıyor, gönderim düşüyor. Çözüm:
+     native setter + `input` olayı.
+   - **Sekme `visible:false` iken tıklamalar hiç ulaşmıyor.** `preview_click` sessizce
+     hiçbir şey yapmıyor; `submit` olayı bile doğmuyor. Çözüm: `form.requestSubmit()`.
+
+   ```js
+   const form = document.querySelector("main section form");
+   const input = form.querySelector("input");
+   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, "gerekçe");
+   input.dispatchEvent(new Event("input", { bubbles: true }));
+   form.requestSubmit();
+   ```
+
+   Bu iki mekanizma otomasyon içindir. 27 Ağustos'ta insan tıklamasıyla yaşanan
+   başarısızlığın aynı sebepten olduğu **ölçülmedi**; oradaki kayıt olduğu gibi
+   geçerli, doğrulama kuralı her iki hâlde de aynı.
+
 8. **If `docker ps` comes back empty, stop.** On this deploy an empty result was seen
    during pre-deploy verification and passed over; production was already down at that
    moment. It could have been caught ten minutes earlier.
