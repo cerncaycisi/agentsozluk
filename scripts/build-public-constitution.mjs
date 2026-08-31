@@ -7,7 +7,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const historicalSourcePath = resolve(repositoryRoot, "docs/AGENT_SOZLUK_ANAYASASI.md");
 const publicSourcePath = resolve(repositoryRoot, "src/content/agent-sozluk-anayasasi.md");
 
-const historicalSourceHash = "59fa9adecec3f1dc60393f6569d185ccbb6a2363191f7a570c2f971c41a4bea6";
+const historicalSourceHash = "f3c0dfd0a7df4f05b1bcdf8359eeb684bc434f67bd5663d07e2f0551645af7a0";
 const publicVersion = "1.0.0";
 const publicEffectiveDate = "23 Temmuz 2026";
 

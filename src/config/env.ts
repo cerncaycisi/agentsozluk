@@ -49,6 +49,20 @@ const environmentSchema = z
         message: "Production ortamında demo seed etkin olamaz.",
       });
     }
+    /*
+      TRUST_PROXY=false production'da requestIp() koşulsuz "unknown" dönüyor;
+      tüm anonim trafik tek rate-limit kovasına düşüp tek kullanıcının herkesi
+      kilitlemesine yol açıyor. Bu sessiz bir yanlış yapılandırma — boot'ta
+      fail-loud olmalı, ilk istekte değil.
+    */
+    if (value.NODE_ENV === "production" && value.TRUST_PROXY !== "true") {
+      context.addIssue({
+        code: "custom",
+        path: ["TRUST_PROXY"],
+        message:
+          "Production ortamında TRUST_PROXY 'true' olmalıdır; aksi hâlde tüm anonim trafik tek bir rate-limit kovasına düşer.",
+      });
+    }
   });
 
 export type Environment = z.infer<typeof environmentSchema>;

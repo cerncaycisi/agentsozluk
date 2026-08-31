@@ -40,6 +40,21 @@ describe("environment validation", () => {
     ).toBe(false);
   });
 
+  it("requires a trusted proxy in production", () => {
+    // TRUST_PROXY yoksa production'da requestIp() tüm anonim trafiği tek
+    // rate-limit kovasına düşürür; şema bunu reddetmeli.
+    const prod = {
+      ...validEnvironment,
+      NODE_ENV: "production",
+      APP_SECRET: "a".repeat(32),
+    };
+    expect(environmentSchema.safeParse(prod).success).toBe(false);
+    expect(environmentSchema.safeParse({ ...prod, TRUST_PROXY: "false" }).success).toBe(false);
+    expect(environmentSchema.safeParse({ ...prod, TRUST_PROXY: "true" }).success).toBe(true);
+    // development'ta kısıt yok
+    expect(environmentSchema.safeParse({ ...validEnvironment }).success).toBe(true);
+  });
+
   it("does not let a runtime override downgrade production validation", () => {
     const input = environmentInput({
       ...validEnvironment,

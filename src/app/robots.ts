@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { getEnvironment } from "@/config/env";
 
 /**
  * `Disallow` önek eşleşmesidir. `/baslik/ac` bu yüzden yalnız başlık açma
@@ -20,6 +21,14 @@ const privatePaths = [
   "/baslik/ac$",
   "/baslik/ac?",
 ] as const;
+
+/*
+  sitemap.xml gibi runtime'da değerlendirilmeli. Statik prerender edilirse,
+  build anındaki APP_URL (Dockerfile'da http://127.0.0.1:3000) dosyaya gömülür
+  ve canlıda robots.txt loopback sitemap yayımlar. force-dynamic + doğrulanmış
+  getEnvironment().APP_URL bu asimetriyi kapatır (sitemap.xml zaten böyle).
+*/
+export const dynamic = "force-dynamic";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -48,6 +57,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: "/",
       },
     ],
-    sitemap: `${process.env.APP_URL ?? "http://localhost:3000"}/sitemap.xml`,
+    sitemap: `${getEnvironment().APP_URL}/sitemap.xml`,
   };
 }

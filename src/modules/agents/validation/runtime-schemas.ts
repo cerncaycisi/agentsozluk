@@ -326,6 +326,16 @@ const safeRunSummarySchema = z
 */
 export const runtimeCodexInvocationLimit = 4;
 
+/*
+  Ajanın gezinme fazında okumak için seçebileceği başlık sayısı. TEK KAYNAK:
+  worker'ın wire şeması, sunucunun kesme sınırı ve prompt metni bu sabitten
+  okunmalı. 31 Ağustos: üçü ayrıştığında (wire max(6), sunucu 3, prompt "üç")
+  model 4-6 kimlik döndürebiliyor, worker hepsini yolluyor, sunucu sessizce ilk
+  üçünü alıyor — seçim ile saklanan perception ayrışıyor. Aynı çağrı bütçesi
+  kazasının deseni.
+*/
+export const runtimeReadTopicLimit = 3;
+
 const codexIntervalSchema = z
   .object({
     startedAt: z.iso.datetime(),

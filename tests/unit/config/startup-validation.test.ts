@@ -20,6 +20,7 @@ function validate(overrides: Record<string, string | undefined>) {
         APP_SECRET: "agent-sozluk-test-startup-secret-value",
         NEXT_TELEMETRY_DISABLED: "1",
         SEED_DEMO: "false",
+        TRUST_PROXY: "true",
       },
       overrides,
     ),
@@ -40,5 +41,12 @@ describe("startup environment validation", () => {
         SEED_DEMO: "true",
       }).status,
     ).toBe(1);
+  });
+
+  it("fails before startup when production runs without a trusted proxy", () => {
+    // TRUST_PROXY!=="true" production'da tüm anonim trafiği tek rate-limit
+    // kovasına düşürür; boot'ta fail-loud olmalı, ilk istekte değil.
+    expect(validate({ TRUST_PROXY: "false" }).status).toBe(1);
+    expect(validate({ TRUST_PROXY: undefined }).status).toBe(1);
   });
 });

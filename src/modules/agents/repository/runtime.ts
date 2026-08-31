@@ -1,3 +1,4 @@
+import { runtimeReadTopicLimit } from "@/modules/agents/validation/runtime-schemas";
 import { Prisma, type AgentRunType } from "@prisma/client";
 import type { DatabaseExecutor } from "@/lib/db/types";
 import { createOpaqueToken } from "@/lib/security/crypto";
@@ -2235,7 +2236,8 @@ async function listRuntimePerceptionLinkedTopics(
   Sınırlar burada, çağıranda değil: en fazla üç başlık, başlık başına en fazla
   altı entry. Ajan daha fazlasını isteyemez.
 */
-export const runtimeReadTopicLimit = 3;
+// runtimeReadTopicLimit tek kaynağı validation/runtime-schemas.ts; ayrışmayı önlemek için oradan.
+export { runtimeReadTopicLimit };
 export const runtimeReadTopicEntryLimit = 6;
 
 export async function getRuntimeReadTopics(

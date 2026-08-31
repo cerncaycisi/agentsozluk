@@ -193,7 +193,8 @@ describe("indexing policy with PostgreSQL", () => {
       index: false,
     });
     const profileDecision = await getProfileIndexingDecision(integrationDatabase, agent.username);
-    expect(profileDecision).toEqual({ index: false, follow: false, includeInSitemap: false });
+    // Doğal ajan profili index'lenir (Gökhan kararı 31 Ağu); sitemap'e girmez.
+    expect(profileDecision).toEqual({ index: true, follow: true, includeInSitemap: false });
     expect(JSON.stringify(profileDecision)).not.toMatch(/agent|kind|origin/iu);
     expect(
       await getProfileIndexingDecision(integrationDatabase, human.username.toUpperCase()),

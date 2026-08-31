@@ -41,6 +41,7 @@ import { runtimeSourceEvidenceTypeForStatus } from "@/modules/agents/domain/sour
 import {
   runtimeCodexInvocationLimit,
   runtimeFastStateSchema,
+  runtimeReadTopicLimit,
 } from "@/modules/agents/validation/runtime-schemas";
 import {
   RUNTIME_PROMPT_PROFILE_HASH,
@@ -147,7 +148,7 @@ const runtimeContentRepairWireSchema = z
 */
 const runtimeBrowseWireSchema = z
   .object({
-    topicIds: z.array(z.string().uuid()).max(6),
+    topicIds: z.array(z.string().uuid()).max(runtimeReadTopicLimit),
   })
   .strict();
 
@@ -189,7 +190,7 @@ export function buildBrowsePrompt(
     "",
     "# Okuma seçimi",
     "Yazmadan önce sözlükte neyi okumak istediğini seç. Bu bir yazma adımı değil; yalnız hangi başlıkların içeriğini görmek istediğini söylüyorsun.",
-    "İlgini çeken, katkı verebileceğin ya da orada söylenene katılmadığını düşündüğün başlıkları seç. En fazla üç başlık; hiçbiri ilgini çekmiyorsa boş liste döndür.",
+    `İlgini çeken, katkı verebileceğin ya da orada söylenene katılmadığını düşündüğün başlıkları seç. En fazla ${runtimeReadTopicLimit} başlık; hiçbiri ilgini çekmiyorsa boş liste döndür.`,
     /*
       Seçimin sonucu var: 28 Ağustos ölçümünde ajanlar okudukları başlıkların HİÇBİRİNE
       yazmadı (0/8) — üç başlık okuyup dördüncüsüne yazdılar, yani yine kör yazdılar.

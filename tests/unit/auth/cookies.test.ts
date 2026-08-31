@@ -9,6 +9,7 @@ afterEach(() => {
 describe("authentication cookies", () => {
   it("sets production session and CSRF cookies with their distinct security flags", async () => {
     vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("TRUST_PROXY", "true");
     vi.stubEnv("AGENT_SOZLUK_RUNTIME_ENV", "test");
     vi.resetModules();
     const { setAuthenticationCookies } = await import("@/lib/auth/cookies");
@@ -38,6 +39,7 @@ describe("authentication cookies", () => {
 
   it("expires both cookies when authentication is cleared", async () => {
     vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("TRUST_PROXY", "true");
     vi.resetModules();
     const { clearAuthenticationCookies } = await import("@/lib/auth/cookies");
     const response = NextResponse.json({ ok: true });
