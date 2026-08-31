@@ -186,6 +186,29 @@ export function findRuntimeSourceAttemptLifeEvent(
   });
 }
 
+/**
+ * Bir source fetch attempt'inin SONUCU zaten kaydedilmiş mi? recordRuntimeSourceResult
+ * idempotency'si için: worker başarılı sonucu yazıp response'u kaybederse (network),
+ * catch bloğu aynı attemptId ile bir de errorCode gönderebiliyor; bu, sağlıklı bir
+ * source'u yanlışlıkla backoff/demotion'a sokardı. Aynı attemptId için SOURCE_FETCH_RESULT
+ * varsa ikinci çağrı replay olarak ele alınır.
+ */
+export function findRuntimeSourceResultLifeEvent(
+  transaction: TransactionClient,
+  input: { agentProfileId: string; runId: string; sourceId: string; attemptId: string },
+) {
+  return transaction.agentRuntimeEvent.findFirst({
+    where: {
+      agentProfileId: input.agentProfileId,
+      runId: input.runId,
+      eventType: "SOURCE_FETCH_RESULT",
+      subject: { path: ["id"], equals: input.sourceId },
+      metadata: { path: ["attemptId"], equals: input.attemptId },
+    },
+    select: { id: true },
+  });
+}
+
 export function findAgentProfileForLifeLedger(
   transaction: TransactionClient,
   agentProfileId: string,

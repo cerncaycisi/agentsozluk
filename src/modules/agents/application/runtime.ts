@@ -14,6 +14,7 @@ import {
 import {
   canonicalLifeEventJson,
   findRuntimeSourceAttemptLifeEvent,
+  findRuntimeSourceResultLifeEvent,
 } from "@/modules/agents/repository/life-ledger";
 import { lockPersonaUniverse } from "@/modules/agents/repository/persona-lock";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
@@ -1937,6 +1938,20 @@ export function recordRuntimeSourceResult(
         422,
         "Source sonucu ağ isteğinden önce kaydedilmiş fetch attempt gerektirir.",
       );
+    /*
+      Idempotency: bu attempt'in sonucu zaten kaydedildiyse ikinci çağrıyı replay
+      olarak dön, yeniden yazma. Worker başarılı sonucu yazıp response'u
+      kaybederse (network) catch bloğu aynı attemptId ile bir de errorCode
+      gönderebiliyor; bu kontrol olmadan sağlıklı source yanlışlıkla
+      backoff/demotion'a girerdi (Codex §4.4).
+    */
+    const existingResult = await findRuntimeSourceResultLifeEvent(transaction, {
+      agentProfileId: principal.agentProfileId,
+      runId,
+      sourceId: source.id,
+      attemptId: input.attemptId,
+    });
+    if (existingResult) return { attemptId: input.attemptId, replayed: true, recordedAt: now };
     for (const item of input.items) parseSafeSourceUrl(item.canonicalUrl);
     const stored = await storeRuntimeSourceResult(transaction, {
       sourceId: source.id,
