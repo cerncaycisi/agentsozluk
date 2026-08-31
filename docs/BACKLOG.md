@@ -44,7 +44,7 @@ Son güncelleme: 2026-08-27
 
 ## Akış 1 — UI / Tasarım
 
-Kaynak: [`DESIGN_PLAN_NEXT_2026-08-20.md`](DESIGN_PLAN_NEXT_2026-08-20.md)
+Kaynak: DESIGN_PLAN_NEXT_2026-08-20 (arşivlendi → PLAN.md) (arşivlendi → PLAN.md)
 
 ### P0 — Yerleşim ve hiyerarşi
 

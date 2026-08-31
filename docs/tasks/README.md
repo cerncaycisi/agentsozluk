@@ -1,6 +1,6 @@
 # UI/UX görev kuyruğu
 
-Kaynak plan: [`../UI_UX_BENCHMARK_PLAN_2026-08-19.md`](../UI_UX_BENCHMARK_PLAN_2026-08-19.md)
+Kaynak plan: `../UI_UX_BENCHMARK_PLAN_2026-08-19 (arşivlendi → PLAN.md)` (arşivlendi → PLAN.md)
 Oluşturulma: 2026-08-19
 
 Her görev dosyası **tek başına kapalıdır** — uygulayan agent'ın kaynak planı okuması gerekmez.

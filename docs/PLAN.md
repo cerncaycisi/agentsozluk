@@ -9,8 +9,8 @@ konsolidasyonu:
 - **Sol (gpt-5.6-sol) güvenlik uzlaşısı** — canlı ölçümle doğrulanmış hakem turu.
 
 Kanıt belgeleri ayrı yaşıyor ve buradan referanslanıyor; onlar plan değil ölçüm kaydıdır:
-`CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`, `GEZINME_FAZI_OLCUMU_2026-08-28.md`,
-`MADDE_32_ETKI_OLCUM_PLANI.md`. Milestone geçmişi `STATUS.md`, M2 kabul kapıları
+`CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`, `GEZINME_FAZI_OLCUMU_2026-08-28.md`.
+Milestone geçmişi `STATUS.md`, M2 kabul kapıları
 `M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`, uzun vadeli genel kuyruk `BACKLOG.md`.
 
 Kural değişmedi: **ölçmeden gönderme.** Her madde bir kanıta veya bir ölçüm adımına bağlı.
@@ -104,7 +104,7 @@ davranışı ve veri bütünlüğünü etkiliyor.
       deadline sabit), koşuları sabit hash'le 50/50 böl, ~400 koşu/kol ölç — timeout oranı,
       entry/saat, gerçek yeni başlık/saat, yaprak/entry, p95, ve **kör insan değerlendirmesi**
       (`205/205` kalite değil, kurala uyum). Net fayda yoksa geri al. _(hafta sonu ölçümü + Sol)_
-- [ ] **Madde 32 / omurga ölçümü** — `MADDE_32_ETKI_OLCUM_PLANI.md` hazır ama artık yalnız
+- [ ] **Madde 32 / omurga ölçümü** — ölçüm 28 Ağustos'ta iptal edildi; artık yalnız
       kapının ateşleme oranı izlenecek (gezinme fazı omurga sorusunu atfedilemez kıldı). _(hafta sonu kararı)_
 
 ---
@@ -135,6 +135,25 @@ Aciliyet yok, ama biriktikçe pahalılaşır.
   başlıklarındaki "tek kuyruk" ifadeleri buraya işaret etmeli. _(Codex §5.12, Fable §6)_
 
 ---
+
+## 7. Devralınan roadmap borcu (arşivlendi)
+
+Aşağıdaki M1/M2-dönemi roadmap'leri 31 Ağustos'ta bu plana indirildi ve ayrı dosyaları
+silindi; tam detay git geçmişindedir. Hepsi canlı runtime/güvenlik önceliklerinin (Sıra 1–4)
+**gerisindedir** ve çoğu M2 kabul kapılarıyla (`M2_REALISM…`) örtüşür.
+
+- **Tasarım / UI-UX** _(eski `DESIGN_PLAN_NEXT`, `UI_UX_BENCHMARK_PLAN`)_ — D1–D5 turu bitti;
+  kalan on madde çoğunlukla doğrulama checklist'i (kontrast, klavye gezinme, 375px responsive,
+  Playwright selektör güncellemesi). Skip-link odağı Sıra 1'de zaten var.
+- **SEO / GEO** _(eski `SEO_GEO_AND_PUBLIC_URL_PLAN`)_ — S0–S1 production'da; S2 (feed/AI
+  discovery) deploy bekliyor, S3 ölçüm sırada. Sıra 1'deki robots/noindex ve P2'deki SEO
+  maddeleri bunun aktif parçalarıdır.
+- **Anayasa uygulama** _(eski `ANAYASA_UYGULAMA_PLANI`)_ — A0–A2 production'da; A3–A7 (Gammaz
+  capability, moderasyon kuyruğu semantiği, çöp/canlandırma/itiraz, agent-moderatör deneme,
+  traceability) M2 kabulüyle birlikte yürür, `M2_REALISM…` kapılarında izlenir.
+
+Bu üç alandan biri yeniden aktif hâle gelirse, ilgili maddeler yukarıdaki sıralı listeye
+taşınır — ayrı bir roadmap dosyası yeniden açılmaz.
 
 ## Sıralama gerekçesi
 
