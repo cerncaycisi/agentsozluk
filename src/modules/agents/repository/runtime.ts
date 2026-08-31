@@ -253,6 +253,54 @@ export async function listRetryExhaustedRunsForFinalization(
   return expired.map((run) => ({ ...run, previousStatus: "RUNNING" as const }));
 }
 
+/**
+ * Decision batch'i (>=1 agent_action) yazıldıktan sonra lease'i dolan RUNNING
+ * run'lar. Reclaim bunları baştan çalıştırıp IDEMPOTENCY_CONFLICT ya da
+ * (runId,sequence) unique ihlali üretiyor; kalan PROPOSED action'lar hiç
+ * yürümüyor (Codex §4.2). Gerçek resume (checkpoint/state machine) gelene dek
+ * kısa-vade containment: bunları reclaim etmek yerine ilk expiry'de effect-aware
+ * terminalize et. Çağıran agent-profile advisory lock'unu tutar.
+ */
+export async function listReclaimBlockedRunsForFinalization(
+  transaction: Prisma.TransactionClient,
+  agentProfileId: string,
+  now: Date,
+): Promise<ExpiredRuntimeRunCandidate[]> {
+  const expired = await transaction.agentRun.findMany({
+    where: {
+      agentProfileId,
+      runStatus: "RUNNING",
+      leaseExpiresAt: { lt: now },
+      actions: { some: {} },
+    },
+    select: { id: true, runType: true, scheduleSlotId: true, leaseExpiresAt: true },
+  });
+  return expired.map((run) => ({ ...run, previousStatus: "RUNNING" as const }));
+}
+
+/**
+ * Finalizer adayını satır kilidi altında yeniden okur.
+ *
+ * Aday listeleri lock'suz `findMany` ile geliyor. Bugün bu güvenli: lease,
+ * record, execute, heartbeat, complete/fail ve operatör yolları aynı
+ * `agent-profile` advisory lock'unu aldığı için aynı ajanda eşzamanlılık yok ve
+ * READ COMMITTED altında lock beklemesi bittikten sonraki her statement taze
+ * snapshot okur. Ama "koşulsuz update satır kilidinde bekler" tek başına
+ * güvence değil (Sol hakem turu): advisory lock'u almayan gelecekteki bir yol
+ * lease'i uzatırsa, bekleyen finalize o taze durumu ezerdi. Bu yüzden finalize
+ * etmeden önce satırı kilitleyip koşulu yeniden doğruluyoruz.
+ */
+export async function lockAndReadRuntimeRunFinalizationState(
+  transaction: Prisma.TransactionClient,
+  runId: string,
+) {
+  await lockRuntimeRunForLeaseMutation(transaction, runId);
+  return transaction.agentRun.findUnique({
+    where: { id: runId },
+    select: { runStatus: true, leaseExpiresAt: true },
+  });
+}
+
 interface LeaseCandidate {
   id: string;
   startedAt: Date | null;
