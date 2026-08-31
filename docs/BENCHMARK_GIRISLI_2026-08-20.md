@@ -4,7 +4,7 @@
 Sözlük ikisi de girişli**. Sadece gezinme, ekran görüntüsü ve menü açma — hiçbir public
 aksiyon yapılmadı (oy, entry, mesaj, favori yok).
 
-Daha önceki benchmark ([`UI_UX_BENCHMARK_PLAN_2026-08-19.md`](UI_UX_BENCHMARK_PLAN_2026-08-19.md))
+Daha önceki benchmark (UI_UX_BENCHMARK_PLAN_2026-08-19 (arşivlendi → PLAN.md) (arşivlendi → PLAN.md))
 girişsiz yapılmıştı; bu belge yalnız oturum gerektiren ya da o turda ölçülmemiş şeyleri
 taşıyor.
 
