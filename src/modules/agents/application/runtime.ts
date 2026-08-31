@@ -38,6 +38,7 @@ import {
   getRuntimeGlobalSettings,
   heartbeatRuntimeRunRecord,
   listExpiredCancellationRunsForFinalization,
+  listRetryExhaustedRunsForFinalization,
   listExpiredNonMaintenanceRunsForMaintenanceFinalization,
   listRuntimeActionsForRepairValidation,
   listRuntimeCurrentPersonas,
@@ -976,7 +977,10 @@ async function finalizeExpiredRuntimeRuns(
   transaction: TransactionClient,
   principal: RuntimePrincipal,
   runs: ExpiredRuntimeRunCandidate[],
-  reasonCode: "CANCEL_REQUESTED_LEASE_EXPIRED" | "MAINTENANCE_MODE_LEASE_EXPIRED",
+  reasonCode:
+    | "CANCEL_REQUESTED_LEASE_EXPIRED"
+    | "MAINTENANCE_MODE_LEASE_EXPIRED"
+    | "RETRY_BUDGET_EXHAUSTED",
   now: Date,
 ): Promise<void> {
   for (const run of runs) {
@@ -987,15 +991,21 @@ async function finalizeExpiredRuntimeRuns(
         ? terminal.outcome === "PARTIAL"
           ? "MAINTENANCE_MODE_EXPIRED_RUN_PARTIAL"
           : "MAINTENANCE_MODE_EXPIRED_RUN_CANCELLED"
-        : terminal.outcome === "PARTIAL"
-          ? "CANCEL_LEASE_EXPIRED_PARTIAL"
-          : "CANCEL_LEASE_EXPIRED";
+        : reasonCode === "RETRY_BUDGET_EXHAUSTED"
+          ? terminal.outcome === "PARTIAL"
+            ? "RETRY_BUDGET_EXHAUSTED_PARTIAL"
+            : "RETRY_BUDGET_EXHAUSTED"
+          : terminal.outcome === "PARTIAL"
+            ? "CANCEL_LEASE_EXPIRED_PARTIAL"
+            : "CANCEL_LEASE_EXPIRED";
     const errorSummary =
       terminal.outcome === "PARTIAL"
         ? "Lease expiry öncesinde commit edilen etkiler korunarak run kısmi tamamlandı."
         : reasonCode === "MAINTENANCE_MODE_LEASE_EXPIRED"
           ? "Bakım modunda lease süresi dolan non-maintenance run güvenli biçimde kapatıldı."
-          : "İptal istenen run lease süresi dolunca güvenli biçimde kapatıldı.";
+          : reasonCode === "RETRY_BUDGET_EXHAUSTED"
+            ? "Retry bütçesi tükenen ve lease'i dolan run güvenli biçimde kapatıldı; ajan yeniden uyanabilir."
+            : "İptal istenen run lease süresi dolunca güvenli biçimde kapatıldı.";
     await finishRuntimeRunRecord(transaction, {
       runId: run.id,
       agentProfileId: principal.agentProfileId,
@@ -1022,7 +1032,9 @@ async function finalizeExpiredRuntimeRuns(
       reason:
         reasonCode === "MAINTENANCE_MODE_LEASE_EXPIRED"
           ? "Bakım modunda süresi dolan non-maintenance run yeniden lease edilemez."
-          : "İptal istenen run lease süresi dolduktan sonra yeniden çalıştırılamaz.",
+          : reasonCode === "RETRY_BUDGET_EXHAUSTED"
+            ? "Retry bütçesi tükenen run terminal duruma taşındı; ajan yeniden uyanabilir."
+            : "İptal istenen run lease süresi dolduktan sonra yeniden çalıştırılamaz.",
       reasonCode,
       errorCode,
       runType: run.runType,
@@ -1313,6 +1325,27 @@ export async function leaseRuntimeRun(
       principal,
       expiredCancellations,
       "CANCEL_REQUESTED_LEASE_EXPIRED",
+      now,
+    );
+    /*
+      Retry bütçesi tükenmiş expired RUNNING run'lar claim tarafından artık
+      seçilemiyor ve NORMAL modda başka finalizer yok; sonsuza dek RUNNING
+      kalıp aynı ajanın yeni QUEUED run'ını kilitliyorlardı. Claim'den ÖNCE,
+      aynı advisory lock altında effect-aware terminalize et ki ajan yeniden
+      uyanabilsin. Bakım finalizer'ıyla aynı lock sırası (agent profile ->
+      settings) korunur.
+    */
+    const retryExhausted = await listRetryExhaustedRunsForFinalization(
+      transaction,
+      principal.agentProfileId,
+      now,
+      settings.maxRetryCount,
+    );
+    await finalizeExpiredRuntimeRuns(
+      transaction,
+      principal,
+      retryExhausted,
+      "RETRY_BUDGET_EXHAUSTED",
       now,
     );
     if (maintenanceMode) {
