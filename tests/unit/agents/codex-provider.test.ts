@@ -81,6 +81,12 @@ describe("Codex CLI provider security contract", () => {
     expect(source).toContain('AGENT_RUNTIME_CODEX_MODEL = "gpt-5.6-luna"');
     expect(source).toContain('AGENT_RUNTIME_CODEX_REASONING_EFFORT = "max"');
     expect(source).toContain('`model_reasoning_effort="${AGENT_RUNTIME_CODEX_REASONING_EFFORT}"`');
+    /*
+      Model shell/dosya okuma aracı KAPALI olmalı. 31 Ağustos ölçümü: araç
+      açıkken prompt injection ile auth.json 8'de 1 sızıyordu, kapalıyken 0/8.
+      Bu satır kaldırılırsa güvenlik açığı geri gelir; docs/CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md
+    */
+    expect(source).toContain('"features.shell_tool=false"');
   });
 
   it("allowlists child environment and never forwards database or deployment credentials", () => {

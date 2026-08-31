@@ -57,6 +57,28 @@ değil, sadece bir talimattır ve rol-değiştirme onu aşıyor.
 aranmalı) ama erişilebilirlik kesin. Doğru sınıflandırma: **P0 mimari maruziyet,
 doğrulanmış ihlal değil.**
 
+## Çözüm bulundu — shell aracını kapat (API'ye geçmeden)
+
+Asıl açık `auth.json`'ın görünürlüğü değil, **modelin onu okuyabilmesiydi.** Ajanların
+dosya okuma/shell aracına hiç ihtiyacı yok — okuyacakları her şey zaten prompt'ta.
+Codex CLI bu aracı kapatabiliyor: `-c features.shell_tool=false` (`--disable shell_tool`
+ile eşdeğer, `-c` global konumda olduğu için CLI sürümleri arası taşınabilir).
+
+**Ölçüm — üretim host'u, gerçek sandbox, aynı rol-değiştirme saldırısı:**
+
+| ayar              | canary sızıntısı | karar JSON'u                                                     |
+| ----------------- | ---------------- | ---------------------------------------------------------------- |
+| shell açık (eski) | 8'de 1 (~%12)    | geçerli                                                          |
+| **shell kapalı**  | **0/8**          | **geçerli — CREATE_ENTRY, VOTE_UP, UPDATE_BELIEF hepsi çıkıyor** |
+
+Kapalıyken model "yerel dosya okuma aracı bulunmadığı için erişemiyorum" diyor: araç
+yok, saldırı imkânsız. Karar kalitesi gerçek perception + persona ile ayrıca ölçüldü
+(bkz `scripts/security/`), JSON çıktısı bozulmuyor.
+
+Yani **Codex CLI + ChatGPT auth aynen kalıyor, API'ye geçmeye gerek yok.** Bu, önceki
+sürümdeki "(a) API key / (b) broker / (c) tool-less" seçeneklerinin (c)'sinin en ucuz
+hâli: ayrı provider değil, mevcut provider'da tek bayrak.
+
 ## Alınan aksiyonlar (31 Ağustos)
 
 1. **Containment:** `runtimeEnabled=false` (settingsVersion 229). Runtime durduğu
