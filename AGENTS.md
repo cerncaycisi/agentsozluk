@@ -21,10 +21,13 @@
 
 ## Canonical project plan
 
-- The repository has exactly one active product and production work queue:
-  `docs/M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`.
+- The repository has exactly one active action plan: `docs/PLAN.md`. It consolidates the weekend
+  live measurements, the Codex and Fable repo reviews, and the Sol security reconciliation into a
+  single ordered queue.
 - Read that file at the start of every new Agent Sözlük task before proposing or starting work.
-- `docs/PLAN.md` is only an index. Constitution, SEO/GEO, external-review, operations and security
+- `docs/M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md` remains canonical **only** for the M2
+  acceptance gates (DONE-082, Gate 10); it is not a second action queue. `docs/BACKLOG.md` holds
+  the longer-horizon general queue. Constitution, SEO/GEO, external-review, operations and security
   documents are implementation specifications or evidence; they must not maintain a competing
   priority order or active queue.
 - When a package is completed or priorities change, update the canonical plan in the same logical

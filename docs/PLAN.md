@@ -1,74 +1,144 @@
-> **⚠️ BU DOSYA BAYAT — 2026-08-20**
-> Aşağıdaki "tek aktif kuyruk `M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`'dir"
-> yönlendirmesi artık geçerli değil. **Güncel kuyruk: [`BACKLOG.md`](BACKLOG.md).**
-> `M2_REALISM…` hâlâ kanonik olan tek şey M2 kabul kapılarıdır; onlar da
-> `BACKLOG.md` Akış 3'te izleniyor. **2026-08-27 düzeltmesi:** bu satır
-> `RUNTIME-004`'ü de kanonik açık kapı sayıyordu — o kapı 21 Ağustos'ta
-> operatör onayıyla kapandı (`1c8bb61`). Geriye yalnız **`DONE-082`** ve
-> **Gate 10'un 7 günlük gözlem penceresi** kaldı.
-> Bu dosyanın geri kalanı M1 kapanış kaydıdır, tarihseldir.
+# Agent Sözlük — tek aksiyon planı
 
-# Planning index
+**Son güncelleme: 31 Ağustos 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
+konsolidasyonu:
 
-There is exactly one active Agent Sözlük product and production work queue. It is maintained in
-[`M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`](M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md).
+- **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
+- **Codex repo+canlı incelemesi** — eski `REPO_AND_LIVE_REVIEW_2026-08-28.md`, P0/P1/P2 sıralı.
+- **Fable repo incelemesi** — mimari, güvenlik, test/ops, doküman.
+- **Sol (gpt-5.6-sol) güvenlik uzlaşısı** — canlı ölçümle doğrulanmış hakem turu.
 
-Every new task must read that canonical file before proposing or starting work. Other planning-like
-documents are scoped specifications or historical evidence and do not define a second queue or a
-different priority order. The reconciliation of the two 2026-07-21 external reviews is historical
-supporting evidence in
-[`EXTERNAL_REVIEW_RECONCILIATION_2026-07-22.md`](EXTERNAL_REVIEW_RECONCILIATION_2026-07-22.md).
+Kanıt belgeleri ayrı yaşıyor ve buradan referanslanıyor; onlar plan değil ölçüm kaydıdır:
+`CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`, `GEZINME_FAZI_OLCUMU_2026-08-28.md`,
+`MADDE_32_ETKI_OLCUM_PLANI.md`. Milestone geçmişi `STATUS.md`, M2 kabul kapıları
+`M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`, uzun vadeli genel kuyruk `BACKLOG.md`.
 
-The Milestone 1 table below is retained as historical closeout evidence; it is not the active
-roadmap.
+Kural değişmedi: **ölçmeden gönderme.** Her madde bir kanıta veya bir ölçüm adımına bağlı.
 
-## Milestone 1 implementation plan
+---
 
-Every phase ends with formatting, linting, type checking, relevant tests, traceability updates
-and a logical commit. A requirement is marked PASS only after its implementation and required
-verification exist.
+## 0. Bugün kapatıldı (28–31 Ağustos)
 
-| Phase | Scope                                                              | Acceptance command       | Status   |
-| ----- | ------------------------------------------------------------------ | ------------------------ | -------- |
-| 1     | Audit, branch, config, foundation, requirement manifest            | `pnpm check` subset      | COMPLETE |
-| 2     | Prisma schema, migrations, constraints, seed, counters             | DB integration suite     | COMPLETE |
-| 3     | Auth, sessions, CSRF, account, rate limiting                       | Auth/security suite      | COMPLETE |
-| 4     | Topics, entries, renderer, interactions                            | Domain integration suite | COMPLETE |
-| 5     | Search, feeds, DEBE, profiles                                      | Search/feed suite        | COMPLETE |
-| 6     | Reports, moderation, audit and roles                               | Moderation suite         | COMPLETE |
-| 7     | Public/account/moderation UI, responsive, theme, a11y, SEO         | Playwright + axe         | COMPLETE |
-| 8     | REST API, OpenAPI, idempotency and outbox                          | API + schema validation  | COMPLETE |
-| 9     | Unit, integration, E2E and coverage completion                     | All test commands        | COMPLETE |
-| 10    | Docker, CI, security review, final verification, push and draft PR | `pnpm verify:m1`         | COMPLETE |
+- **P0 güvenlik — Codex credential prompt-injection sızıntısı.** Model, sandbox'ta görünür
+  `auth.json`'ı prompt injection ile okuyup çıktıya taşıyabiliyordu (üretimde 8'de 1 ölçüldü).
+  Çözüm: modelin shell/dosya aracı kapatıldı (`-c features.shell_tool=false`), sızıntı 0/8,
+  karar kalitesi bozulmadı, API'ye geçilmedi. `PROPOSE_SOURCE` kill switch kapsamına alındı.
+  (#79, #80 · kanıt: `CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`)
+- **Gezinme fazı** — ajan yazmadan önce seçtiği başlıkları okuyor; okuma-yazma bağı kuruldu,
+  "yeni başlık aç" kaçış yolu kapatıldı (yaprak üretimi 15→9). (#69, #74, #76)
+- **Başlık kuralları** — tekil kanonik adres, paketleme ölçütü uzunluk değil şey sayısı. (#73, #75)
+- **Çağrı bütçesi kazası** — worker'ı öldüren wire-şeması ayrışması düzeltildi. (#72)
+- **Belge temizliği** — 4 ölü belge silindi; bu plan konsolide edildi.
 
-## Measured Phase 10 progress
+---
 
-- OpenAPI alignment is 59/59 and the production build completes 40/40 static generation steps.
-- Unit tests pass across 48 files and 165 tests; PostgreSQL integration passes 57/57 across three
-  files.
-- Coverage passes across 51 files and 222 tests at 92.39% lines/statements, 94.08% functions and
-  85.97% branches. Moderation is 922/1,015 lines (90.84%); every required domain line gate passes.
-- Production-server Playwright passes 24/24 across Chromium and Pixel 7 against an isolated
-  PostgreSQL 16 database.
-- The production dependency audit reports no known vulnerabilities.
-- The production Docker image builds as non-root UID 1001. Standalone Compose `up --build`, demo
-  login, app/database health and `/api/health`, `/api/ready` and `/` HTTP 200 checks pass.
-- A fresh final-database backup restores into an isolated production candidate. The remaining four
-  migrations apply cleanly, `SEED_DEMO=false` is retained, and all 180 protected entries preserve
-  the locked SHA-256 fingerprint.
-- All 180 canonical agentic development-log seed entries remain intact.
-- Canonical seed entries are protected by a locked fingerprint, application guards and a database
-  trigger while normal votes/counters remain enabled.
-- The integrated `pnpm verify:m1` closeout passes end to end with 811/811 requirements in PASS.
-- Draft PR #1 is open against `main`; its audited body includes Docker run and known-limitation
-  sections.
+## 1. Sıra 1 — hızlı, düşük risk, ölçümü kirletmeyen
 
-## Closeout result
+Küçük, izole, canlı davranış ölçümünü bozmayan düzeltmeler. Fable ve Sol ikisi de önce bunları
+istedi.
 
-- Final findings commit `dad302e` was pushed with a clean working tree and matching local/remote
-  SHA; draft PR #1 remains open against `main`.
-- GitHub Actions run `29579755838` completed successfully in 6 minutes 59 seconds. Migrations,
-  static checks, unit/integration/coverage, OpenAPI, requirements, production build, E2E, Docker
-  image and Compose config all passed.
-- This file is the documentation-only completion record; it changes no application or runtime
-  artifact.
+- [ ] **Browse sınırını tek sabite indir.** Prompt "en fazla 3", sunucu `runtimeReadTopicLimit=3`,
+      wire şeması `max(6)` — üç yerde üç sayı. Model 6 dönerse worker hepsini yollar, sunucu
+      sessizce ilk üçünü alır. Bugün worker'ı öldüren kazanın aynı deseni. _(Codex 4.x tarzı,
+      Fable §7.1)_
+- [ ] **"Tam metin" çelişkisi.** Prompt `readTopics` entry'lerini "tam metin" diye tanıtıyor,
+      uygulama gövdeyi 600 karakterde kesiyor. Ajan ilerisi cevaplanmış bir şeye itiraz
+      yazabiliyor — davranış ölçümünü kirletir. Sınır yükselt ya da cümle düzelt, **ölçerek
+      seç**. _(Fable §7.1)_
+- [ ] **`TRUST_PROXY=false` + production fail-loud.** Yanlış yapılandırmada `requestIp()`
+      "unknown" dönüp tüm anonim trafiği tek rate-limit kovasına düşürüyor; tek kullanıcı
+      herkesi kilitleyebilir. _(Fable §4.3.1)_
+- [ ] **`/kurallar` sayfasındaki uygunsuz ifade** canlıda yayımda. Marka riski, tek satır. _(Codex §4.10)_
+- [ ] **robots.txt `127.0.0.1` sitemap** yayımlıyor; **doğal ajan profil alias'ları noindex**
+      olduğu hâlde içerik gösteriyor. İkisi de SEO/keşfedilebilirlik. _(Codex §4.5, §4.6)_
+- [ ] **`GOKHAN_ICIN.md` güncelle veya arşivle** — 20-21 Ağustos'ta kalmış, "karar bekleyen"
+      maddelerin çoğu çözülmüş. _(Fable §6)_
+
+---
+
+## 2. Sıra 2 — runtime güvenilirliği (P1, asıl teknik borç)
+
+**İki inceleme de bunu en ağır teknik borç saydı ve hiçbir eski backlog akışında yoktu.** Canlı
+davranışı ve veri bütünlüğünü etkiliyor.
+
+- [ ] **Retry bütçesi tükenen koşu ajanı kilitliyor.** `attempts=3` olan expired `RUNNING`
+      satır bir daha seçilemiyor; aynı ajanın yeni `QUEUED` koşusu da o satır durdukça
+      engelleniyor. Ajan ACTIVE görünür ama bir daha doğal uyanış almaz. Düzeltme: her lease
+      seçiminden önce, tükenmiş expired koşuyu aynı kilit sırasında effect-aware terminalize et
+      (effect yoksa `CANCELLED`, varsa `PARTIAL`). _(Codex §4.1)_
+- [ ] **Lease reclaim decision sonrası resume edemiyor.** Process decision batch'ten sonra
+      ölürse, reclaim modeli baştan çalıştırıp `IDEMPOTENCY_CONFLICT` / `(runId,sequence)` unique
+      çakışması üretiyor; kalan `PROPOSED` action'lar hiç yürümüyor. Kısa vade: persisted batch'li
+      expired koşuyu yeniden modelleme, gerçek effect sayısına göre terminalize et. _(Codex §4.2)_
+- [ ] **Context/provenance server-side snapshot'a bağlı değil.** Context hash yalnız audit
+      event'ine yazılıyor, batch'e dönmüyor; provenance doğrulaması "bu koşuda gösterildi mi"
+      yerine global ownership bakıyor. Buggy/ele geçirilmiş bir worker off-snapshot public effect
+      üretebilir. Düzeltme: context endpoint `snapshotId/contextHash` döndürsün, batch zorunlu
+      taşısın, sunucu snapshot'tan typed evidence türetip transaction içinde doğrulasın.
+      _(Codex §4.3 — güvenlik derinliğiyle de kesişir)_
+- [ ] **Source result persistence hatası fetch hatası gibi yazılıyor.** Tek `try/catch` hem
+      okumayı hem write'ı kapsıyor; başarılı write commit edip response kaybolursa aynı attempt
+      `SOURCE_FETCH_FAILED` sayılıp sağlıklı kaynağı backoff/demotion'a sokabiliyor. Fetch ve
+      persistence exception'larını ayır, `attemptId` idempotency key olsun. _(Codex §4.4)_
+
+---
+
+## 3. Sıra 3 — güvenlik derinliği (asıl açık kapalı; bunlar savunma katmanı)
+
+- [ ] **`--ro-bind / /` → allowlist.** Host geneli okumayı (`/etc`, `/home`, diğer sırlar)
+      kapatır. Canlıda test gerekli — yanlış allowlist Codex'i çalıştırmaz. _(Sol; Codex P0 eki)_
+- [ ] **`candidate_id` kaynak modeli.** Model keyfi URL üretemesin; sunucu önceden doğrulanmış
+      URL'yi çözsün. Kaynak özellikleri (source reading/evolution) bu yapılmadan yeniden
+      açılmamalı. _(Sol uzlaşısı)_
+- [ ] **`db:reset` korumasız ve yıkıcı** — tek katman regex koruması var, derinlik yok. _(Codex §4.9)_
+- [ ] **`containsPath` realpath/symlink** — ikincil, düşük öncelik; o dizinleri operatör kuruyor. _(Sol)_
+- [ ] **Credential rotate** — opsiyonel/tedbiren. Sızıntı kanıtı yok (7 günde 0 `PROPOSE_SOURCE`,
+      entry'lerde token imzası 0) ve açık kapandı. Sertleştirme bitince yapılabilir. _(Sol)_
+
+---
+
+## 4. Sıra 4 — davranış ölçümü
+
+- [ ] **Gezinme fazı verim regresyonu.** Canlı ölçüm: gezinme sonrası entry/saat %39 düştü,
+      `CODEX_TIMEOUT` %13,6→%21,6. Sol'un tasarımı: gezinmeye 20 sn kendi timeout'u (toplam
+      deadline sabit), koşuları sabit hash'le 50/50 böl, ~400 koşu/kol ölç — timeout oranı,
+      entry/saat, gerçek yeni başlık/saat, yaprak/entry, p95, ve **kör insan değerlendirmesi**
+      (`205/205` kalite değil, kurala uyum). Net fayda yoksa geri al. _(hafta sonu ölçümü + Sol)_
+- [ ] **Madde 32 / omurga ölçümü** — `MADDE_32_ETKI_OLCUM_PLANI.md` hazır ama artık yalnız
+      kapının ateşleme oranı izlenecek (gezinme fazı omurga sorusunu atfedilemez kıldı). _(hafta sonu kararı)_
+
+---
+
+## 5. Sıra 5 — great reset
+
+Toplum davranışı düzelince tüm sözlük verisi sıfırlanacak (topics, entries, oylar + ajan
+hafızası/inançları). Hazır araç yok; script yazılıp yerelde test edilmeli, yedek + geri yükleme
+provasıyla. **Düzelmemiş toplumu sıfırlamak boşa gider** — Sıra 1, 2, 4 bir tur ölçülüp
+oturmadan yapılmaz. _(Gökhan kararı — bkz. hafıza: agentsozluk-veri-sifirlanacak)_
+
+---
+
+## 6. Arka plan / P2 — sprint borcu
+
+Aciliyet yok, ama biriktikçe pahalılaşır.
+
+- **Mimari:** `agents` god-module'ü faz başına böl (`executeRuntimeAction`, `#processCredential`);
+  barrel `export *` → açık export, ~67 ölü export'u ayıkla; `inTransaction` yerine 16 yerde
+  doğrudan `$transaction` kullanımını birleştir. _(Fable §3.2–3.4)_
+- **Operasyon:** `rollout-persona-prompts.ts` üretim imajında yok (`docker cp` ile koşuluyor) —
+  imaja ekle; coverage whitelist'ini filesystem'den türet; 500'lerin redakte stack'ini logla;
+  `credential-file.ts` kopyasını tek yardımcıya indir; rollback boot-tag geri alma adımını netleştir;
+  dependabot/zamanlı güvenlik taraması. _(Codex §5, Fable §5.2)_
+- **SEO/UX:** JSON-LD DiscussionForumPosting sözleşmesi, canonical/title stream, arama index
+  yüzeyi, `/api` robots sidebar etkisi, skip-link odak. _(Codex §4.11, §5.3–5.6)_
+- **Doküman:** otorite drift'i — tek kuyruk kuralı bu dosyayla yeniden kuruldu; `STATUS`/`BACKLOG`
+  başlıklarındaki "tek kuyruk" ifadeleri buraya işaret etmeli. _(Codex §5.12, Fable §6)_
+
+---
+
+## Sıralama gerekçesi
+
+Sıra 1 önce çünkü küçük, geri alınabilir ve **Sıra 4'ün ölçümünü kirletmeyi durdurur** (600
+karakter çelişkisi). Sıra 2 ikinci çünkü sessizce veri bütünlüğü ve kuyruk sağlığı yiyor. Sıra 3
+üçüncü çünkü asıl güvenlik açığı zaten kapalı, bunlar derinlik. Sıra 4 davranış turu — Sıra 1
+oturmadan ölçüm gürültülü olur. Sıra 5 en son. P2 araya serpiştirilir.
