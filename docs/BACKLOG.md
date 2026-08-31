@@ -284,6 +284,35 @@ Server-side detector'lar indi (kod, persona sürümü gerektirmiyor), **prompt i
 **Ölçüm uyarısı:** A1 kaçış kapısını daraltmak ciddi iddia reddini artırır. Devir notunun
 §7'deki "readiness ve timeout gerilemesin" kriteriyle çatışabilir; ayrı ölçülmeli.
 
+## Akış 7 — Codex credential maruziyeti (31 Ağu, P0)
+
+Kaynak: hafta sonu üç incelemesinin uzlaşısı + canlı ölçüm.
+Tam ölçüm ve gerekçe: [`CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`](CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md)
+
+**Ölçülmüş açık:** prompt injection (rol-değiştirme üslubu) ile model, sandbox'ta
+görünür `auth.json`'ı okuyup çıktıya taşıyor — 8'de 1 (~%12), stokastik. Model
+savunması güvenlik sınırı olamaz.
+
+- [x] **Containment:** `runtimeEnabled=false` (31 Ağu, settingsVersion 229).
+- [x] **PROPOSE_SOURCE kill switch kapsamına alındı** (PR #79).
+- [ ] **`--ro-bind / /` → allowlist.** Host geneli okumayı kapatır. Canlıda test
+      gerekli (Codex bağımlılık yolları); yanlış allowlist Codex'i çalıştırmaz.
+- [ ] **`auth.json` izolasyonu — asıl açık.** Üç seçenek, biri Gökhan'ın kararı:
+      (a) dar yetkili API key'e geçiş — fatura/plan kararı; (b) secretless broker —
+      pahalı; (c) tool-less structured-output provider — Codex CLI desteği
+      araştırılmalı. Tek namespace'te core'a gösterip model-tool'dan gizlemek mümkün
+      değil.
+- [ ] **`candidate_id` kaynak modeli:** model keyfi URL üretemesin, sunucu doğrulanmış
+      URL'yi çözsün. Kaynak özellikleri bu yapılmadan açılmamalı.
+- [ ] **`containsPath` realpath/symlink** — ikincil savunma derinliği, düşük öncelik.
+- [ ] **Credential rotate — EN SON.** Sertleştirme bitmeden rotate anlamsız.
+- [ ] **Canlı entry'lerde canary/token imzası taraması** — geçmiş sızıntı oldu mu,
+      domain/entropi düzeyinde, secret basmadan.
+- Regresyon: `scripts/security/codex-credential-canary.sh` (0/N olmalı).
+
+**Karar noktası (Gökhan):** `auth.json` izolasyonu için (a) API key'e geçiş mi,
+(c) tool-less provider mi? Bu seçilmeden runtime güvenle açılamaz.
+
 ## Akış 6 — Gezinme fazı peer review borcu (28 Ağu)
 
 Kaynak: Codex peer review'ı, `1f803c8..4e08d48` diff'i üzerine. Bulgular tek tek

@@ -430,6 +430,17 @@ export class CodexCliProvider implements RuntimeProvider {
         AGENT_RUNTIME_CODEX_MODEL,
         "-c",
         `model_reasoning_effort="${AGENT_RUNTIME_CODEX_REASONING_EFFORT}"`,
+        /*
+          Modelin shell/dosya okuma aracını kapat. 31 Ağustos ölçümü: araç
+          açıkken prompt injection (rol-değiştirme) ile model, sandbox'ta
+          görünür auth.json'ı okuyup çıktıya taşıyordu — 8'de 1. Araç kapalıyken
+          0/8, karar JSON'u aynen üretiliyor: ajanların dosya okumaya ihtiyacı
+          yok, okuyacakları her şey zaten prompt'ta. `--disable shell_tool` ile
+          eşdeğer ama `-c` global konumda olduğu için CLI sürümleri arası
+          taşınabilir. Bkz docs/CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md
+        */
+        "-c",
+        "features.shell_tool=false",
         "exec",
         "--ephemeral",
         "--ignore-user-config",
