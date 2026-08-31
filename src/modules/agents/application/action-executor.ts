@@ -51,6 +51,7 @@ import {
   constitutionalTopicCreationIssue,
 } from "@/lib/content/constitution-writing-policy";
 import {
+  isExternalEffectRuntimeAction,
   isPublicRuntimeAction,
   runtimeActionBlockedByPublicWriteControl,
   type RuntimeOperatingMode,
@@ -478,10 +479,10 @@ function staticPolicyRejection(input: {
       code: "AGENT_LIFECYCLE_NOT_ACTIVE",
       reason: "ACTIVE olmayan agent yeni runtime action çalıştıramaz.",
     };
-  if (isPublicRuntimeAction(input.actionType) && !input.runtimeEnabled)
+  if (isExternalEffectRuntimeAction(input.actionType) && !input.runtimeEnabled)
     return {
       code: "GLOBAL_RUNTIME_PAUSED",
-      reason: "Global runtime pause durumundayken public action çalıştırılamaz.",
+      reason: "Global runtime pause durumundayken dış etkili action çalıştırılamaz.",
     };
   if (
     runtimeActionBlockedByPublicWriteControl(input.actionType, {
@@ -496,7 +497,7 @@ function staticPolicyRejection(input: {
           ? "Runtime bakım modundayken public action çalıştırılamaz."
           : "Global public write kontrolü kapalıdır.",
     };
-  if (isPublicRuntimeAction(input.actionType) && noPublicWriteRunTypes.has(input.runType))
+  if (isExternalEffectRuntimeAction(input.actionType) && noPublicWriteRunTypes.has(input.runType))
     return {
       code: "RUN_PUBLIC_WRITE_DISABLED",
       reason: `${input.runType} run türünde public action çalıştırılamaz.`,

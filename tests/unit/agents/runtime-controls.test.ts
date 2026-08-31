@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   productionRolloutAttemptDateMatches,
   publicRuntimeActionTypes,
+  isExternalEffectRuntimeAction,
+  isPublicRuntimeAction,
   runtimeActionBlockedByPublicWriteControl,
   runtimeRunAllowedInOperatingMode,
   societyFlowEnabled,
@@ -69,18 +71,43 @@ describe("global agent runtime controls", () => {
       ).toBe(false);
     }
 
-    for (const actionType of [
-      "NO_ACTION",
-      "PROPOSE_SOURCE",
-      "UPDATE_BELIEF",
-      "UPDATE_RELATIONSHIP_NOTE",
-    ])
+    for (const actionType of ["NO_ACTION", "UPDATE_BELIEF", "UPDATE_RELATIONSHIP_NOTE"])
       expect(
         runtimeActionBlockedByPublicWriteControl(actionType, {
           publicWriteEnabled: false,
           runtimeOperatingMode: "MAINTENANCE",
         }),
       ).toBe(false);
+  });
+
+  /*
+    PROPOSE_SOURCE bu testte "iç bakım aksiyonu" sayılıp ENGELLENMEMESİ
+    pinlenmişti; varsayım yanlıştı. Aksiyon public içerik yazmıyor ama modelin
+    ürettiği URL doğrudan PROBATION kaydına giriyor ve sonraki source-enabled
+    koşuda sunucu o adrese gerçek bir GET atıyor. Yani "public yazmayı kapat"
+    denildiğinde dışarı istek doğuran bu yol açık kalıyordu — kill switch'in
+    kapsamadığı bir dış etki kanalı.
+
+    Kapılar artık `isExternalEffectRuntimeAction` kullanıyor; metrikler
+    (`publicActionCount`) eski `isPublicRuntimeAction` tanımında kaldı, yoksa
+    üretim rollout kabul ölçütünün anlamı değişirdi.
+  */
+  it("blocks PROPOSE_SOURCE with the public write kill switch", () => {
+    for (const controls of [
+      { publicWriteEnabled: false, runtimeOperatingMode: "NORMAL" as const },
+      { publicWriteEnabled: true, runtimeOperatingMode: "MAINTENANCE" as const },
+      { publicWriteEnabled: false, runtimeOperatingMode: "MAINTENANCE" as const },
+    ])
+      expect(runtimeActionBlockedByPublicWriteControl("PROPOSE_SOURCE", controls)).toBe(true);
+    expect(
+      runtimeActionBlockedByPublicWriteControl("PROPOSE_SOURCE", {
+        publicWriteEnabled: true,
+        runtimeOperatingMode: "NORMAL",
+      }),
+    ).toBe(false);
+    // Kapı kümesi genişledi ama metrik kümesi genişlemedi.
+    expect(isExternalEffectRuntimeAction("PROPOSE_SOURCE")).toBe(true);
+    expect(isPublicRuntimeAction("PROPOSE_SOURCE")).toBe(false);
   });
 
   it("leases only reflection and source refresh runs in maintenance mode", () => {
