@@ -35,6 +35,27 @@ export const publicRuntimeActionTypes = [
 ] as const;
 
 const publicRuntimeActions = new Set<string>(publicRuntimeActionTypes);
+
+/*
+  Dışa etki üreten aksiyonlar: public yazanlar ARTI PROPOSE_SOURCE.
+
+  PROPOSE_SOURCE public içerik yazmıyor, bu yüzden `publicRuntimeActionTypes`
+  içinde değildi — ama modelin ürettiği URL doğrudan PROBATION kaydına giriyor
+  ve sonraki source-enabled koşuda sunucu o adrese gerçek bir GET atıyor. Yani
+  kill switch'in kapsamadığı bir dış etki kanalıydı: "public yazmayı kapat"
+  denildiğinde bu yol açık kalıyordu.
+
+  Ayrı küme, çünkü `isPublicRuntimeAction` aynı zamanda üretim rollout
+  metriklerini (`publicActionCount`, `provenanceBackedPublicActionCount`)
+  tanımlıyor; oraya PROPOSE_SOURCE eklemek M2 kabul ölçütünün anlamını
+  değiştirirdi. Kapılar bu kümeyi, metrikler eskisini kullanır.
+*/
+export const externalEffectRuntimeActionTypes = [
+  ...publicRuntimeActionTypes,
+  "PROPOSE_SOURCE",
+] as const;
+
+const externalEffectRuntimeActions = new Set<string>(externalEffectRuntimeActionTypes);
 const maintenanceRuntimeRunTypes = new Set(["REFLECTION", "SOURCE_REFRESH"]);
 
 export function istanbulCalendarDateKey(value: Date): string {
@@ -62,6 +83,11 @@ export function isPublicRuntimeAction(actionType: string): boolean {
   return publicRuntimeActions.has(actionType);
 }
 
+/** Kill switch kapsamı: public yazan her şey ve dışarı istek doğuran PROPOSE_SOURCE. */
+export function isExternalEffectRuntimeAction(actionType: string): boolean {
+  return externalEffectRuntimeActions.has(actionType);
+}
+
 export function runtimePublicWritesAllowed(input: {
   publicWriteEnabled: boolean;
   runtimeOperatingMode: RuntimeOperatingMode;
@@ -73,7 +99,7 @@ export function runtimeActionBlockedByPublicWriteControl(
   actionType: string,
   input: { publicWriteEnabled: boolean; runtimeOperatingMode: RuntimeOperatingMode },
 ): boolean {
-  return isPublicRuntimeAction(actionType) && !runtimePublicWritesAllowed(input);
+  return isExternalEffectRuntimeAction(actionType) && !runtimePublicWritesAllowed(input);
 }
 
 export function runtimeRunAllowedInOperatingMode(
