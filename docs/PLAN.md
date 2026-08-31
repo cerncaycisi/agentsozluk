@@ -61,22 +61,26 @@ istedi.
 **İki inceleme de bunu en ağır teknik borç saydı ve hiçbir eski backlog akışında yoktu.** Canlı
 davranışı ve veri bütünlüğünü etkiliyor.
 
-- [ ] **Retry bütçesi tükenen koşu ajanı kilitliyor.** `attempts=3` olan expired `RUNNING`
+- [x] **Retry bütçesi tükenen koşu ajanı kilitliyor.** — canlıda (PR #83, `45b97ab`). `attempts=3` olan expired `RUNNING`
       satır bir daha seçilemiyor; aynı ajanın yeni `QUEUED` koşusu da o satır durdukça
       engelleniyor. Ajan ACTIVE görünür ama bir daha doğal uyanış almaz. Düzeltme: her lease
       seçiminden önce, tükenmiş expired koşuyu aynı kilit sırasında effect-aware terminalize et
       (effect yoksa `CANCELLED`, varsa `PARTIAL`). _(Codex §4.1)_
-- [ ] **Lease reclaim decision sonrası resume edemiyor.** Process decision batch'ten sonra
+- [x] **Lease reclaim decision sonrası resume edemiyor.** — kısa-vade containment PR #85'te
+      (merge bekliyor). Gerçek resume (checkpoint/state machine) hâlâ açık borç. Process decision batch'ten sonra
       ölürse, reclaim modeli baştan çalıştırıp `IDEMPOTENCY_CONFLICT` / `(runId,sequence)` unique
       çakışması üretiyor; kalan `PROPOSED` action'lar hiç yürümüyor. Kısa vade: persisted batch'li
       expired koşuyu yeniden modelleme, gerçek effect sayısına göre terminalize et. _(Codex §4.2)_
+      Uygulamada çıkan ek bulgu (Sol): bakım modunda `REFLECTION`/`SOURCE_REFRESH` run'ları
+      maintenance finalizer'ının dışında ama claim'in içinde — containment her iki modda
+      koşmalıydı. Ayrıca finalizer adayları artık satır kilidi altında yeniden doğrulanıyor.
 - [ ] **Context/provenance server-side snapshot'a bağlı değil.** Context hash yalnız audit
       event'ine yazılıyor, batch'e dönmüyor; provenance doğrulaması "bu koşuda gösterildi mi"
       yerine global ownership bakıyor. Buggy/ele geçirilmiş bir worker off-snapshot public effect
       üretebilir. Düzeltme: context endpoint `snapshotId/contextHash` döndürsün, batch zorunlu
       taşısın, sunucu snapshot'tan typed evidence türetip transaction içinde doğrulasın.
       _(Codex §4.3 — güvenlik derinliğiyle de kesişir)_
-- [ ] **Source result persistence hatası fetch hatası gibi yazılıyor.** Tek `try/catch` hem
+- [x] **Source result persistence hatası fetch hatası gibi yazılıyor.** — canlıda (PR #84, `eb1aa4e`). Tek `try/catch` hem
       okumayı hem write'ı kapsıyor; başarılı write commit edip response kaybolursa aynı attempt
       `SOURCE_FETCH_FAILED` sayılıp sağlıklı kaynağı backoff/demotion'a sokabiliyor. Fetch ve
       persistence exception'larını ayır, `attemptId` idempotency key olsun. _(Codex §4.4)_

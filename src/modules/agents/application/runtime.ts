@@ -39,6 +39,8 @@ import {
   getRuntimeGlobalSettings,
   heartbeatRuntimeRunRecord,
   listExpiredCancellationRunsForFinalization,
+  lockAndReadRuntimeRunFinalizationState,
+  listReclaimBlockedRunsForFinalization,
   listRetryExhaustedRunsForFinalization,
   listExpiredNonMaintenanceRunsForMaintenanceFinalization,
   listRuntimeActionsForRepairValidation,
@@ -981,10 +983,20 @@ async function finalizeExpiredRuntimeRuns(
   reasonCode:
     | "CANCEL_REQUESTED_LEASE_EXPIRED"
     | "MAINTENANCE_MODE_LEASE_EXPIRED"
-    | "RETRY_BUDGET_EXHAUSTED",
+    | "RETRY_BUDGET_EXHAUSTED"
+    | "RECLAIM_BLOCKED_PERSISTED_BATCH",
   now: Date,
 ): Promise<void> {
   for (const run of runs) {
+    /*
+      Aday satırını kilitle ve seçim koşulunu yeniden doğrula. Aday listesi
+      lock'suz okundu; kilit altında durum ya da lease değiştiyse bu run artık
+      bizim değil, dokunmadan geç (Sol hakem turu, savunma katmanı).
+    */
+    const current = await lockAndReadRuntimeRunFinalizationState(transaction, run.id);
+    if (!current) continue;
+    if (current.runStatus !== run.previousStatus) continue;
+    if (!current.leaseExpiresAt || current.leaseExpiresAt >= now) continue;
     const measuredMetrics = await getMeasuredRuntimeRunMetrics(transaction, run.id);
     const terminal = terminalizeInterruptedRuntimeRun("CANCELLED", measuredMetrics);
     const errorCode =
@@ -996,9 +1008,13 @@ async function finalizeExpiredRuntimeRuns(
           ? terminal.outcome === "PARTIAL"
             ? "RETRY_BUDGET_EXHAUSTED_PARTIAL"
             : "RETRY_BUDGET_EXHAUSTED"
-          : terminal.outcome === "PARTIAL"
-            ? "CANCEL_LEASE_EXPIRED_PARTIAL"
-            : "CANCEL_LEASE_EXPIRED";
+          : reasonCode === "RECLAIM_BLOCKED_PERSISTED_BATCH"
+            ? terminal.outcome === "PARTIAL"
+              ? "RECLAIM_BLOCKED_PERSISTED_BATCH_PARTIAL"
+              : "RECLAIM_BLOCKED_PERSISTED_BATCH"
+            : terminal.outcome === "PARTIAL"
+              ? "CANCEL_LEASE_EXPIRED_PARTIAL"
+              : "CANCEL_LEASE_EXPIRED";
     const errorSummary =
       terminal.outcome === "PARTIAL"
         ? "Lease expiry öncesinde commit edilen etkiler korunarak run kısmi tamamlandı."
@@ -1006,7 +1022,9 @@ async function finalizeExpiredRuntimeRuns(
           ? "Bakım modunda lease süresi dolan non-maintenance run güvenli biçimde kapatıldı."
           : reasonCode === "RETRY_BUDGET_EXHAUSTED"
             ? "Retry bütçesi tükenen ve lease'i dolan run güvenli biçimde kapatıldı; ajan yeniden uyanabilir."
-            : "İptal istenen run lease süresi dolunca güvenli biçimde kapatıldı.";
+            : reasonCode === "RECLAIM_BLOCKED_PERSISTED_BATCH"
+              ? "Decision batch'i yazılmış expired run reclaim edilemez; çakışmayı önlemek için terminalize edildi."
+              : "İptal istenen run lease süresi dolunca güvenli biçimde kapatıldı.";
     await finishRuntimeRunRecord(transaction, {
       runId: run.id,
       agentProfileId: principal.agentProfileId,
@@ -1035,7 +1053,9 @@ async function finalizeExpiredRuntimeRuns(
           ? "Bakım modunda süresi dolan non-maintenance run yeniden lease edilemez."
           : reasonCode === "RETRY_BUDGET_EXHAUSTED"
             ? "Retry bütçesi tükenen run terminal duruma taşındı; ajan yeniden uyanabilir."
-            : "İptal istenen run lease süresi dolduktan sonra yeniden çalıştırılamaz.",
+            : reasonCode === "RECLAIM_BLOCKED_PERSISTED_BATCH"
+              ? "Decision batch'i yazılmış run reclaim edilemez; terminalize edildi, yürütülmemiş action'lar PROPOSED olarak terk edildi."
+              : "İptal istenen run lease süresi dolduktan sonra yeniden çalıştırılamaz.",
       reasonCode,
       errorCode,
       runType: run.runType,
@@ -1301,10 +1321,18 @@ export async function leaseRuntimeRun(
       };
     }
 
-    // Lock order is agent profile -> global settings everywhere that needs both.
-    // Reusing the settings aggregate's PostgreSQL advisory lock serializes the
-    // authoritative concurrency value with every global lease claim and with
-    // admin concurrency updates, without introducing an inverse lock order.
+    /*
+      Reusing the settings aggregate's PostgreSQL advisory lock serializes the
+      authoritative concurrency value with every global lease claim and with
+      admin concurrency updates.
+
+      Sıra burada agent profile -> settings -> run advisory -> run row; action
+      yolları ise agent profile -> run advisory -> run row -> settings alıyor.
+      Bu ters sıra deadlock üretmiyor (Sol hakem turu): aynı ajanın bütün
+      yolları ÖNCE agent-profile kilidinde serileşiyor, farklı ajanların run
+      kilitleri ayrık, dolayısıyla çevrim kurulamıyor. Yeni bir yol eklerken
+      agent-profile kilidini ilk sırada almak bu güvencenin şartıdır.
+    */
     await lockAgentSettings(transaction);
     const rolloutDate = await pauseExpiredProductionRollout(
       transaction,
@@ -1363,6 +1391,32 @@ export async function leaseRuntimeRun(
         now,
       );
     }
+    /*
+      Decision batch'i yazılmış expired run reclaim edilemez (baştan çalıştırma
+      aynı (runId, sequence) satırlarını yeniden yazmaya kalkar; kalan PROPOSED
+      action'lar hiç yürümez — Codex §4.2). Gerçek resume gelene dek kısa-vade
+      containment: ilk expiry'de effect-aware terminalize et.
+
+      HER İKİ MODDA çalışır (Sol hakem turu): bakım modunda maintenance
+      finalizer'ı REFLECTION/SOURCE_REFRESH run'larını dışarıda bırakıyor ama
+      claim tam o iki türü reclaim edebiliyor — ve worker REFLECTION için de
+      zorunlu NO_ACTION batch'i yazıyor. Yalnız NORMAL modda koşsaydı bakım
+      modunda aynı çakışma açık kalırdı. Kendinden önceki finalizer'lar
+      terminalize ettiği run'ı bu sorgu artık RUNNING görmez; çift finalize
+      olmaz.
+    */
+    const reclaimBlocked = await listReclaimBlockedRunsForFinalization(
+      transaction,
+      principal.agentProfileId,
+      now,
+    );
+    await finalizeExpiredRuntimeRuns(
+      transaction,
+      principal,
+      reclaimBlocked,
+      "RECLAIM_BLOCKED_PERSISTED_BATCH",
+      now,
+    );
     const concurrency = settings.codexConcurrency === 2 ? 2 : 1;
     const breakerConfig = circuitBreakerConfigSchema.parse(settings.circuitBreakerConfig);
     const operational = await getRuntimeOperationalMetrics(transaction, {

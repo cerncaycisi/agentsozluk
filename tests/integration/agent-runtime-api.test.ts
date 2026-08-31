@@ -693,6 +693,221 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(next.run!.id).not.toBe(stuckId);
   });
 
+  it("terminalizes a persisted-batch expired run instead of reclaiming it into a conflict", async () => {
+    /*
+      Codex §4.2 kısa-vade: decision batch'i (agent_action) yazılmış expired run
+      reclaim edilirse baştan çalışıp IDEMPOTENCY_CONFLICT / unique ihlali üretir.
+      Bunun yerine ilk expiry'de terminalize edilmeli, kalan PROPOSED action'lar
+      PROPOSED olarak terk edilmeli, ajan yeni run'a geçebilmeli. attempts retry sınırının
+      ALTINDA olsa bile (batch varlığı yeterli).
+    */
+    const fixture = await createFixture(2);
+    const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const first = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "worker-a",
+      leaseSeconds: 60,
+    });
+    const stuckId = first.run!.id;
+    const profileId = (
+      await integrationDatabase.agentRun.findUniqueOrThrow({
+        where: { id: stuckId },
+        select: { agentProfileId: true },
+      })
+    ).agentProfileId;
+    // Yazılmış batch: bir SUCCEEDED (effect) + bir PROPOSED (yürütülmemiş).
+    await integrationDatabase.agentAction.createMany({
+      data: [
+        {
+          runId: stuckId,
+          agentProfileId: profileId,
+          sequence: 1,
+          actionType: "CREATE_ENTRY",
+          actionStatus: "SUCCEEDED",
+          input: {},
+        },
+        {
+          runId: stuckId,
+          agentProfileId: profileId,
+          sequence: 2,
+          actionType: "VOTE_UP",
+          actionStatus: "PROPOSED",
+          input: {},
+        },
+      ],
+    });
+    // attempts=1 (retry sınırının altında), yalnız lease düştü.
+    await integrationDatabase.agentRun.update({
+      where: { id: stuckId },
+      data: { attempts: 1, leaseExpiresAt: new Date(Date.now() - 1000) },
+    });
+    const next = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "worker-b",
+      leaseSeconds: 60,
+    });
+    const finalized = await integrationDatabase.agentRun.findUniqueOrThrow({
+      where: { id: stuckId },
+    });
+    // Effect (SUCCEEDED action) var → PARTIAL, terminalize edildi.
+    expect(finalized.runStatus).toBe("PARTIAL");
+    expect(finalized.errorCode).toBe("RECLAIM_BLOCKED_PERSISTED_BATCH_PARTIAL");
+    // Yürütülmemiş action PROPOSED kalır (terminal run altında; execute edilmez).
+    // DB ile life ledger tutarlı kalsın diye kısa-vade'de SKIPPED'e çevrilmiyor.
+    const pending = await integrationDatabase.agentAction.findFirstOrThrow({
+      where: { runId: stuckId, sequence: 2 },
+    });
+    expect(pending.actionStatus).toBe("PROPOSED");
+    // Kalıcı audit kaydı action'ların gerçek durumunu söylemeli (Sol: metin
+    // "SKIPPED" derken satırlar PROPOSED kalıyordu).
+    const audit = await integrationDatabase.auditLog.findFirstOrThrow({
+      where: { action: "agent.run.expired_finalized", entityId: stuckId },
+    });
+    expect((audit.metadata as { reason: string }).reason).toContain("PROPOSED olarak terk edildi");
+    expect((audit.metadata as { reason: string }).reason).not.toContain("SKIPPED");
+    // Ajan yeni run'a geçebildi.
+    expect(next.run).not.toBeNull();
+    expect(next.run!.id).not.toBe(stuckId);
+  });
+
+  it("closes a proposed-only persisted batch as CANCELLED, not PARTIAL", async () => {
+    /*
+      Sol hakem turu: batch varlığı "reclaim edilemezliği" belirler, effect
+      varlığı ise PARTIAL/CANCELLED ayrımını. Hiçbir action yürümemişse dış etki
+      yoktur → CANCELLED.
+    */
+    const fixture = await createFixture(2);
+    const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const first = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "worker-a",
+      leaseSeconds: 60,
+    });
+    const stuckId = first.run!.id;
+    const profileId = (
+      await integrationDatabase.agentRun.findUniqueOrThrow({
+        where: { id: stuckId },
+        select: { agentProfileId: true },
+      })
+    ).agentProfileId;
+    await integrationDatabase.agentAction.create({
+      data: {
+        runId: stuckId,
+        agentProfileId: profileId,
+        sequence: 1,
+        actionType: "CREATE_ENTRY",
+        actionStatus: "PROPOSED",
+        input: {},
+      },
+    });
+    await integrationDatabase.agentRun.update({
+      where: { id: stuckId },
+      data: { leaseExpiresAt: new Date(Date.now() - 1000) },
+    });
+    const next = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "worker-b",
+      leaseSeconds: 60,
+    });
+    await expect(
+      integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: stuckId } }),
+    ).resolves.toMatchObject({
+      runStatus: "CANCELLED",
+      errorCode: "RECLAIM_BLOCKED_PERSISTED_BATCH",
+    });
+    expect(next.run!.id).not.toBe(stuckId);
+  });
+
+  it("contains a persisted-batch reflection run in maintenance mode too", async () => {
+    /*
+      Sol hakem turu (P1): bakım modunda maintenance finalizer'ı REFLECTION ve
+      SOURCE_REFRESH run'larını dışarıda bırakıyor, ama claim tam o iki türü
+      reclaim edebiliyor — ve worker REFLECTION için de zorunlu NO_ACTION batch'i
+      yazıyor. Containment yalnız NORMAL modda koşsaydı bu delik açık kalırdı.
+    */
+    const fixture = await createFixture(1);
+    const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const profileId = fixture.created.agent.profile.id;
+    const settings = await integrationDatabase.agentGlobalSettings.findUniqueOrThrow({
+      where: { id: "global" },
+      select: { settingsVersion: true },
+    });
+    await updateGlobalSettings(integrationDatabase, adminActor(fixture.admin.id), {
+      runtimeOperatingMode: "MAINTENANCE",
+      expectedSettingsVersion: settings.settingsVersion,
+      changeReason: "Maintenance-mode persisted batch containment verification.",
+    });
+    const reflection = await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: profileId,
+        runType: "REFLECTION",
+        queuePriority: "REFLECTION",
+        trigger: "MAINTENANCE_BATCH_CONTAINMENT_TEST",
+        requestedById: fixture.admin.id,
+        personaVersionId: fixture.created.agent.personaVersion.id,
+        idempotencyKey: randomUUID(),
+        availableAt: new Date(Date.now() - 1_000),
+        timeoutSeconds: 600,
+        desiredEntryMin: 0,
+        desiredEntryMax: 0,
+        allowTopicCreation: false,
+        allowVoting: false,
+        allowFollowing: false,
+      },
+    });
+    const leased = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "maintenance-batch-worker",
+      leaseSeconds: 60,
+    });
+    expect(leased.run!.id).toBe(reflection.id);
+    // Worker REFLECTION için de batch yazar (zorunlu NO_ACTION).
+    await integrationDatabase.agentAction.create({
+      data: {
+        runId: reflection.id,
+        agentProfileId: profileId,
+        sequence: 1,
+        actionType: "NO_ACTION",
+        actionStatus: "PROPOSED",
+        input: {},
+      },
+    });
+    await integrationDatabase.agentRun.update({
+      where: { id: reflection.id },
+      data: { leaseExpiresAt: new Date(Date.now() - 1000) },
+    });
+    const reclaim = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "maintenance-batch-reclaimer",
+      leaseSeconds: 60,
+    });
+    // Batch'li reflection run ASLA yeniden lease edilmez; terminalize edilir.
+    expect(reclaim.run?.id ?? null).not.toBe(reflection.id);
+    await expect(
+      integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: reflection.id } }),
+    ).resolves.toMatchObject({
+      runStatus: "CANCELLED",
+      errorCode: "RECLAIM_BLOCKED_PERSISTED_BATCH",
+    });
+  });
+
+  it("still reclaims a batchless expired run normally", async () => {
+    // Batch'i OLMAYAN expired run (worker Codex'e gitmeden çöktü) güvenle reclaim
+    // edilebilir — kısa-vade containment yalnız batch'li run'ı terminalize eder.
+    const fixture = await createFixture(1);
+    const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const first = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "worker-a",
+      leaseSeconds: 60,
+    });
+    const runId = first.run!.id;
+    await integrationDatabase.agentRun.update({
+      where: { id: runId },
+      data: { leaseExpiresAt: new Date(Date.now() - 1000) },
+    });
+    const reclaimed = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "worker-b",
+      leaseSeconds: 60,
+    });
+    expect(reclaimed.run).toMatchObject({ id: runId, attempts: 2 });
+    const row = await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: runId } });
+    expect(row.runStatus).toBe("RUNNING");
+  });
+
   it("keeps a run with committed effects PARTIAL when its retry budget is exhausted", async () => {
     // Sol peer review: effect'li retry-exhausted run CANCELLED değil PARTIAL olmalı.
     const fixture = await createFixture(2);
@@ -1337,8 +1552,21 @@ describe("internal agent runtime API with PostgreSQL", () => {
       ).resolves.toBe("pending");
       releaseReadiness();
       await expect(execution).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
-      await expect(reclaim).resolves.toMatchObject({
-        run: { id: runId, leaseToken: expect.not.stringMatching(originalToken) },
+      /*
+        §4.2: action commit olunca run'ın persisted batch'i var. Reclaim'i eylem
+        bitene dek bekleten şey (yukarıda "pending") önce agent-profile advisory
+        lock'u, ardından satır kilidi; eylem bittikten sonra
+        reclaim onu BAŞTAN çalıştırmak yerine terminalize eder (çakışmayı önler).
+        Terminalize RUNNING engelini kaldırdığı için claim ajanın SIRADAKİ queued
+        run'ını alır — ama asla bu run'ı değil.
+      */
+      const reclaimed = await reclaim;
+      expect(reclaimed.run?.id ?? null).not.toBe(runId);
+      await expect(
+        integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: runId } }),
+      ).resolves.toMatchObject({
+        runStatus: "PARTIAL",
+        errorCode: "RECLAIM_BLOCKED_PERSISTED_BATCH_PARTIAL",
       });
     } finally {
       releaseReadiness();
