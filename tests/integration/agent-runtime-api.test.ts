@@ -657,6 +657,108 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ).rejects.toMatchObject({ code: "AGENT_RUN_LEASE_INVALID" });
   });
 
+  it("terminalizes a retry-exhausted expired run so the agent can wake again", async () => {
+    /*
+      Codex §4.1: attempts > maxRetryCount olan expired RUNNING satır claim
+      tarafından seçilemiyor ve NORMAL modda finalizer yoktu; sonsuza dek RUNNING
+      kalıp aynı ajanın yeni QUEUED run'ını NOT EXISTS(RUNNING) ile kilitliyordu.
+      Düzeltme öncesi bu test'in son leaseRuntimeRun'ı QUEUE_EMPTY dönerdi.
+    */
+    const fixture = await createFixture(2);
+    const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const first = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "worker-a",
+      leaseSeconds: 60,
+    });
+    expect(first.run).not.toBeNull();
+    const stuckId = first.run!.id;
+    // Retry bütçesini tüket ve lease'i düşür (varsayılan maxRetryCount=2).
+    await integrationDatabase.agentRun.update({
+      where: { id: stuckId },
+      data: { attempts: 3, leaseExpiresAt: new Date(Date.now() - 1000) },
+    });
+    const next = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "worker-b",
+      leaseSeconds: 60,
+    });
+    // Asılı run effect-aware terminalize edildi (effect yok → CANCELLED).
+    const finalized = await integrationDatabase.agentRun.findUniqueOrThrow({
+      where: { id: stuckId },
+    });
+    expect(finalized.runStatus).toBe("CANCELLED");
+    expect(finalized.errorCode).toBe("RETRY_BUDGET_EXHAUSTED");
+    expect(finalized.finishedAt).not.toBeNull();
+    // Ajan yeniden uyanabildi: ikinci QUEUED run lease edildi.
+    expect(next.run).not.toBeNull();
+    expect(next.run!.id).not.toBe(stuckId);
+  });
+
+  it("keeps a run with committed effects PARTIAL when its retry budget is exhausted", async () => {
+    // Sol peer review: effect'li retry-exhausted run CANCELLED değil PARTIAL olmalı.
+    const fixture = await createFixture(2);
+    const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const first = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "worker-a",
+      leaseSeconds: 60,
+    });
+    const stuckId = first.run!.id;
+    // Commit edilmiş bir efekt: SUCCEEDED bir action → terminalize PARTIAL üretmeli.
+    await integrationDatabase.agentAction.create({
+      data: {
+        runId: stuckId,
+        agentProfileId: (
+          await integrationDatabase.agentRun.findUniqueOrThrow({
+            where: { id: stuckId },
+            select: { agentProfileId: true },
+          })
+        ).agentProfileId,
+        sequence: 1,
+        actionType: "CREATE_ENTRY",
+        actionStatus: "SUCCEEDED",
+        input: {},
+      },
+    });
+    await integrationDatabase.agentRun.update({
+      where: { id: stuckId },
+      data: { attempts: 3, leaseExpiresAt: new Date(Date.now() - 1000) },
+    });
+    const next = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "worker-b",
+      leaseSeconds: 60,
+    });
+    const finalized = await integrationDatabase.agentRun.findUniqueOrThrow({
+      where: { id: stuckId },
+    });
+    expect(finalized.runStatus).toBe("PARTIAL");
+    expect(finalized.errorCode).toBe("RETRY_BUDGET_EXHAUSTED_PARTIAL");
+    expect(next.run).not.toBeNull();
+    expect(next.run!.id).not.toBe(stuckId);
+  });
+
+  it("still reclaims an expired run at exactly the retry-count boundary", async () => {
+    // Sol peer review: attempts === maxRetryCount (2) HÂLÂ reclaim edilebilmeli;
+    // finalizer yalnız attempts > maxRetryCount olanı terminalize eder.
+    const fixture = await createFixture(1);
+    const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const first = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "worker-a",
+      leaseSeconds: 60,
+    });
+    const runId = first.run!.id;
+    await integrationDatabase.agentRun.update({
+      where: { id: runId },
+      data: { attempts: 2, leaseExpiresAt: new Date(Date.now() - 1000) },
+    });
+    const reclaimed = await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "worker-b",
+      leaseSeconds: 60,
+    });
+    // Terminalize DEĞİL, reclaim: aynı run, attempts 3'e çıktı, hâlâ RUNNING.
+    expect(reclaimed.run).toMatchObject({ id: runId, attempts: 3 });
+    const row = await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: runId } });
+    expect(row.runStatus).toBe("RUNNING");
+  });
+
   it("fences a stale same-worker generation on heartbeat and terminal completion", async () => {
     const fixture = await createFixture(2);
     const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");

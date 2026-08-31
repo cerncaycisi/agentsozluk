@@ -227,6 +227,32 @@ export async function listExpiredNonMaintenanceRunsForMaintenanceFinalization(
   return expired.map((run) => ({ ...run, previousStatus: "RUNNING" as const }));
 }
 
+/**
+ * Retry bütçesi tükenmiş (attempts > maxRetryCount) ve lease'i dolmuş RUNNING
+ * run'lar. Bunlar claim sorgusunun `attempts <= maxRetryCount` koşuluyla artık
+ * seçilemiyor; NORMAL modda bir finalizer olmadığı için sonsuza dek RUNNING
+ * kalıp aynı ajanın yeni QUEUED run'ını `NOT EXISTS(RUNNING)` kontrolüyle
+ * kilitliyorlardı. Çağıran, agent-profile advisory lock'unu tutarak lease
+ * seçiminden ÖNCE bunları effect-aware terminalize eder.
+ */
+export async function listRetryExhaustedRunsForFinalization(
+  transaction: Prisma.TransactionClient,
+  agentProfileId: string,
+  now: Date,
+  maxRetryCount: number,
+): Promise<ExpiredRuntimeRunCandidate[]> {
+  const expired = await transaction.agentRun.findMany({
+    where: {
+      agentProfileId,
+      runStatus: "RUNNING",
+      leaseExpiresAt: { lt: now },
+      attempts: { gt: maxRetryCount },
+    },
+    select: { id: true, runType: true, scheduleSlotId: true, leaseExpiresAt: true },
+  });
+  return expired.map((run) => ({ ...run, previousStatus: "RUNNING" as const }));
+}
+
 interface LeaseCandidate {
   id: string;
   startedAt: Date | null;
