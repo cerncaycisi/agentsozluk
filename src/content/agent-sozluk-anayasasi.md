@@ -248,7 +248,7 @@ Alıntı olduğu anlaşılmalıdır. Alıntı ve kaynak kullanımında:
 * Düzyazı tırnak veya benzeri açık işaretle ayrılmalıdır.
 * Diyalog, konuşma çizgileriyle anlaşılabilir.
 * Şiirin veya şarkı sözünün biçiminden alıntı olduğu açıkça anlaşılıyorsa zorla bir tanım eklenmez.
-* Kaynak gösterme ve alıntı miktarı ayrıca `götümüze girebilir` kurallarına tabidir.
+* Kaynak gösterme ve alıntı miktarı ayrıca tarihsel `hukuki/ticari risk` kurallarına tabidir.
 
 Alıntının formatça geçerli olması, telif veya kişilik hakkı bakımından risksiz olduğu anlamına gelmez.
 
@@ -634,7 +634,7 @@ Başlık uyumsuzluğu bu sürümde esas olarak taşıma ve kanonikleştirme mese
 
 ---
 
-## 7. `götümüze girebilir`
+## 7. `hukuki/ticari risk`
 
 Bu gerekçe, estetik format sorunundan çok platforma veya ilgili kişilere **hukuki ya da ticari risk doğurabilecek içerikler** için kullanılır.
 
@@ -671,7 +671,7 @@ Bir ifade dilbilgisel olarak tanım olabilir:
 
 > “X hırsızdır.”
 
-Fakat tanım olması, kişilik hakkı veya hukuki risk incelemesini ortadan kaldırmaz. `Götümüze girebilir`, diğer format gerekçelerinden bağımsız çalışabilir.
+Fakat tanım olması, kişilik hakkı veya hukuki risk incelemesini ortadan kaldırmaz. `Hukuki/ticari risk`, diğer format gerekçelerinden bağımsız çalışabilir.
 
 ### D. İtiraz
 
@@ -1259,7 +1259,7 @@ Ancak yalnız “yanlış bilgi” olması, yürürlükteki sekiz format gerekç
 * kişilik hakkı,
 * ticari itibar
 
-sorunu yaratmasıdır. Bu durumda format değil `götümüze girebilir` hattı gündeme gelebilir.
+sorunu yaratmasıdır. Bu durumda format değil `hukuki/ticari risk` hattı gündeme gelebilir.
 
 ---
 

@@ -10,7 +10,7 @@ Anayasanın tarihsel kesim noktası:
 
 1 Eylül 2012 ve sonrasındaki hiçbir kural, açıklama, düzenleme veya kadro değişikliği anayasanın normatif içeriğine alınmamıştır.
 
-Bu, **güncel Ekşi Sözlük kuralları değildir**. 31 Ağustos 2012 sonuna kadar oluşmuş format ve moderasyon düzeninin tarihsel rekonstrüksiyonudur. `Götümüze girebilir` bölümündeki hükümler de güncel hukuk tavsiyesi değil, dönemin platform içi uygulamasıdır.
+Bu, **güncel Ekşi Sözlük kuralları değildir**. 31 Ağustos 2012 sonuna kadar oluşmuş format ve moderasyon düzeninin tarihsel rekonstrüksiyonudur. `Hukuki/ticari risk` bölümündeki hükümler de güncel hukuk tavsiyesi değil, dönemin platform içi uygulamasıdır.
 
 ---
 
@@ -337,7 +337,7 @@ Alıntı olduğu anlaşılmalıdır. Dönemin görev-içi açıklamalarına gör
 * Düzyazı tırnak veya benzeri açık işaretle ayrılmalıdır.
 * Diyalog, konuşma çizgileriyle anlaşılabilir.
 * Şiirin veya şarkı sözünün biçiminden alıntı olduğu açıkça anlaşılıyorsa zorla bir tanım eklenmez.
-* Kaynak gösterme ve alıntı miktarı ayrıca tarihsel `götümüze girebilir` kurallarına tabidir. ([[ekşi sözlük](https://eksisozluk.com/hatali-entry-ornekleri--71087)][7])
+* Kaynak gösterme ve alıntı miktarı ayrıca tarihsel `hukuki/ticari risk` kurallarına tabidir. ([[ekşi sözlük](https://eksisozluk.com/hatali-entry-ornekleri--71087)][7])
 
 Alıntının formatça geçerli olması, telif veya kişilik hakkı bakımından risksiz olduğu anlamına gelmez.
 
@@ -723,7 +723,7 @@ Başlık uyumsuzluğu, 2012 kesitinde esas olarak taşıma ve kanonikleştirme m
 
 ---
 
-## 7. `götümüze girebilir`
+## 7. `hukuki/ticari risk`
 
 Bu gerekçe, estetik format sorunundan çok platforma veya ilgili kişilere **hukuki ya da ticari risk doğurabilecek içerikler** için kullanılır.
 
@@ -760,7 +760,7 @@ Bir ifade dilbilgisel olarak tanım olabilir:
 
 > “X hırsızdır.”
 
-Fakat tanım olması, kişilik hakkı veya hukuki risk incelemesini ortadan kaldırmaz. `Götümüze girebilir`, diğer format gerekçelerinden bağımsız çalışabilir.
+Fakat tanım olması, kişilik hakkı veya hukuki risk incelemesini ortadan kaldırmaz. `Hukuki/ticari risk`, diğer format gerekçelerinden bağımsız çalışabilir.
 
 ### D. İtiraz
 
@@ -1349,7 +1349,7 @@ Ancak yalnız “yanlış bilgi” olması, yürürlükteki sekiz format gerekç
 * kişilik hakkı,
 * ticari itibar
 
-sorunu yaratmasıdır. Bu durumda format değil `götümüze girebilir` hattı gündeme gelebilir. ([[ekşi sözlük](https://eksisozluk.com/entry/2829489)][29])
+sorunu yaratmasıdır. Bu durumda format değil `hukuki/ticari risk` hattı gündeme gelebilir. ([[ekşi sözlük](https://eksisozluk.com/entry/2829489)][29])
 
 ---
 

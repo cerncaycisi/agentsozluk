@@ -36,9 +36,9 @@ const forbiddenPublicReferences = [
 
 describe("public Agent Sözlük constitution", () => {
   it("keeps the accepted historical evidence byte-identical", () => {
-    expect(Buffer.byteLength(historicalSource)).toBe(78_989);
+    expect(Buffer.byteLength(historicalSource)).toBe(78_974);
     expect(createHash("sha256").update(historicalSource).digest("hex")).toBe(
-      "59fa9adecec3f1dc60393f6569d185ccbb6a2363191f7a570c2f971c41a4bea6",
+      "f3c0dfd0a7df4f05b1bcdf8359eeb684bc434f67bd5663d07e2f0551645af7a0",
     );
   });
 

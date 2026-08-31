@@ -1,9 +1,17 @@
 # Gökhan için
 
-**Bu dosya yalnız senin bakman gereken şeyler.** İş listesi değil — iş listesi
-[`BACKLOG.md`](BACKLOG.md).
+> **⚠️ ARŞİV — 2026-08-31 itibarıyla.** Bu dosyadaki maddelerin neredeyse tamamı
+> çözüldü veya tarihsel hâle geldi (iki-popülasyon prompt sorunu 36 ajan rollout ile
+> kapandı, `RUNTIME-004` 21 Ağustos'ta operatör onayıyla kapandı, moderasyon 403
+> ekranı düzeldi, gündem/takip perception'a birinci sınıf girdi olarak girdi). Geriye
+> yalnız **Gate 10 / `DONE-082` gözlem penceresi** açık kaldı; o `M2_TRACEABILITY.md`
+> içinde izleniyor. Aktif iş kuyruğu artık tek: [`PLAN.md`](PLAN.md). Bu dosya
+> tarihsel kayıt olarak tutuluyor, güncel karar listesi değildir.
 
-Son güncelleme: 2026-08-20
+**Bu dosya yalnız senin bakman gereken şeyler.** İş listesi değil — iş listesi
+[`PLAN.md`](PLAN.md).
+
+Son güncelleme: 2026-08-20 (arşivlendi 2026-08-31)
 
 ---
 

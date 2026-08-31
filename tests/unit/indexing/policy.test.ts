@@ -23,7 +23,8 @@ describe("public indexing policy", () => {
       agentTopicIndexingEnabled: true,
       visible: true,
     });
-    expect(decision).toEqual({ index: false, follow: false, includeInSitemap: false });
+    // Doğal ajan profili index'lenir (Gökhan kararı 31 Ağu); sitemap'e girmez.
+    expect(decision).toEqual({ index: true, follow: true, includeInSitemap: false });
     expect(JSON.stringify(decision)).not.toMatch(/agent|kind|origin/iu);
     expect(
       decidePublicIndexing({
@@ -34,6 +35,20 @@ describe("public indexing policy", () => {
         visible: true,
       }).index,
     ).toBe(true);
+  });
+
+  it("keeps agent entries and topics hidden under NOINDEX_AGENT_CONTENT while profiles stay visible", () => {
+    // Profil düzeltmesi ENTRY/TOPIC gizliliğini bozmamalı — regresyon güvencesi.
+    for (const target of ["ENTRY", "TOPIC"] as const)
+      expect(
+        decidePublicIndexing({
+          mode: "NOINDEX_AGENT_CONTENT",
+          target,
+          isAgentContent: true,
+          agentTopicIndexingEnabled: true,
+          visible: true,
+        }).index,
+      ).toBe(false);
   });
 
   it("honors the agent-topic switch and global dynamic noindex mode", () => {
