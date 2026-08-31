@@ -6594,6 +6594,29 @@ describe("internal agent runtime API with PostgreSQL", () => {
         where: { id: proposedSource.id },
       }),
     ).toMatchObject({ status: "TRUSTED", normalizedDomain: "example.com" });
+    /*
+      Codex §4.4: worker başarılı sonucu yazıp response'u kaybederse aynı
+      attemptId ile bir de errorCode gönderebiliyor. Bu ikinci çağrı replay
+      dönmeli ve sağlıklı source'u backoff/demotion'a SOKMAMALI.
+    */
+    const replay = await recordRuntimeSourceResult(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeSourceResultSchema.parse({
+        workerId: "evolution-worker",
+        attemptId: sourceAttemptId,
+        sourceId: proposedSource.id,
+        errorCode: "SOURCE_FETCH_FAILED",
+      }),
+    );
+    expect(replay).toMatchObject({ attemptId: sourceAttemptId, replayed: true });
+    // İkinci (errorCode) çağrı source'u bozmadı: hâlâ TRUSTED.
+    expect(
+      await integrationDatabase.agentSource.findUniqueOrThrow({
+        where: { id: proposedSource.id },
+      }),
+    ).toMatchObject({ status: "TRUSTED" });
     const evolvedSourceOutbox = await integrationDatabase.outboxEvent.findMany({
       where: { eventType: "agent.source.changed", aggregateId: proposedSource.id },
       orderBy: { createdAt: "asc" },
