@@ -3479,6 +3479,49 @@ describe("long-lived agent runtime worker", () => {
     expect(await armAttemptsContentRepair("BROWSE")).toBe(true);
   });
 
+  it("records why the decision repair fired", async () => {
+    /*
+      Karar onarımı koşuların ~%42'sinde tetikleniyor ve p50 144 sn yiyor —
+      koşu bütçesinin en büyük ikinci kalemi. Neden tetiklendiği hiçbir yere
+      yazılmadığı için hedeflenemiyordu: şema mı tutmadı, provenance mı kataloğa
+      uymadı? Üretimde yalnız onarım DA düştüğünde ipucu vardı
+      (`CODEX_DECISION_PROVENANCE_INVALID` 46 / şema 3) ve karar çıktısı
+      saklanmıyor.
+    */
+    const runId = runIdForArm("CONTROL");
+    const plane = controlPlane(runId);
+    const invoke = vi
+      .fn()
+      // Şemaya uymayan ilk karar: onarım SCHEMA nedeniyle tetiklenmeli.
+      .mockResolvedValueOnce({
+        provider: "codex-cli",
+        version: "test",
+        durationMs: 10,
+        output: { bozuk: true },
+      })
+      .mockResolvedValue({
+        provider: "codex-cli",
+        version: "test",
+        durationMs: 10,
+        output: canonicalNormalOutput("Onarım turundan sonra karar verildi."),
+      });
+    const worker = new AgentRuntimeWorker({
+      workerId: "repair-reason-worker",
+      credentials: [`agt_${"s".repeat(43)}`],
+      controlPlane: plane,
+      provider: {
+        inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
+        invoke,
+      },
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+    const usage = vi.mocked(plane.complete).mock.calls[0]?.[4]?.usageMetadata as
+      | { decisionRepair?: { reason?: string } }
+      | undefined;
+    expect(usage?.decisionRepair?.reason).toBe("SCHEMA");
+  });
+
   it("skips browsing when the decision reserve would be eaten", async () => {
     /*
       Sol hakem turu: `min(kalan, 20 sn)` yetmez. Kalan süre erimişken gezinme

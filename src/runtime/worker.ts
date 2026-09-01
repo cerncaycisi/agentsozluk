@@ -432,6 +432,56 @@ function runtimeEvidenceCatalog(context: RuntimeContext): RuntimeEvidenceCatalog
   return runtimeEvidenceCatalogFrom(context.perception, context.run.id);
 }
 
+/**
+ * Kataloğa uymayan kanıtın NEDENİNİ döndürür.
+ *
+ * Karar onarımı koşuların ~%42'sinde tetikleniyor ve tek başına 144 sn (p50)
+ * yiyor — gezinmenin 14 katı. Ama onarımın neden tetiklendiği hiçbir yere
+ * yazılmıyordu: şema mı tutmadı, provenance mı kataloğa uymadı, uymayan hangi
+ * kanıt türüydü? Üretim verisi yalnız onarım DA başarısız olduğunda ipucu
+ * veriyor (`CODEX_DECISION_PROVENANCE_INVALID` 46, şema 3) ve karar çıktısı
+ * saklanmıyor. Görünmeyen maliyet düzeltilemez.
+ *
+ * Kimlikler DEĞİL, yalnız kanıt TÜRLERİ toplanıyor: kimlikler modelin ürettiği
+ * güvenilmeyen girdi, tür ise sabit bir enum.
+ */
+function runtimeDecisionCatalogMisses(
+  decision: RuntimeDecision,
+  catalog: RuntimeEvidenceCatalog,
+  perceptionEvidenceIds: ReadonlySet<string>,
+): string[] {
+  const allowed = Object.fromEntries(
+    runtimeEvidenceTypes.map((evidenceType) => [evidenceType, new Set(catalog[evidenceType])]),
+  ) as Record<RuntimeEvidenceType, Set<string>>;
+  const misses = new Set<string>();
+  for (const candidate of [
+    ...decision.actions.filter(({ actionType }) => actionType !== "NO_ACTION"),
+    ...decision.observations,
+    ...decision.memoryCandidates,
+    ...decision.beliefDeltas,
+    ...decision.relationshipDeltas,
+    ...decision.sourceProposals,
+  ]) {
+    const provenance = candidate.provenance;
+    if (!provenance) continue;
+    if (!provenance.evidenceIds.every((id) => allowed[provenance.evidenceType].has(id)))
+      misses.add(provenance.evidenceType);
+  }
+  if (
+    !decision.memoryConsolidations.every(({ sourceMemoryIds }) =>
+      sourceMemoryIds.every((id) => allowed.AGENT_MEMORY.has(id)),
+    )
+  )
+    misses.add("MEMORY_CONSOLIDATION");
+  if (
+    decision.reflectionDelta &&
+    (decision.reflectionDelta.evidenceIds.length === 0 ||
+      !decision.reflectionDelta.evidenceIds.every((id) => perceptionEvidenceIds.has(id)))
+  )
+    misses.add("REFLECTION_DELTA");
+  return [...misses].sort();
+}
+
 function runtimeDecisionUsesCatalog(
   decision: RuntimeDecision,
   catalog: RuntimeEvidenceCatalog,
@@ -1184,6 +1234,8 @@ export class AgentRuntimeWorker {
       koşuyu düşürdü mü) görünmez yapardı.
     */
     let browseExperiment: RuntimeBrowseExperimentTelemetry | null = null;
+    let decisionRepair: { reason: "SCHEMA" | "CATALOG"; missedEvidenceTypes?: string[] } | null =
+      null;
     let sourceItemsFetched = 0;
     let sourceReads = 0;
     let sourceTargetsAttempted = 0;
@@ -1473,6 +1525,23 @@ export class AgentRuntimeWorker {
         !decision ||
         !runtimeDecisionUsesCatalog(decision, evidenceCatalog, perceptionEvidenceIds)
       ) {
+        /*
+          Onarımın NEDENİ kaydediliyor. Bu tur koşuların ~%42'sinde tetikleniyor
+          ve p50 144 sn yiyor — koşu bütçesinin en büyük ikinci kalemi. Neden
+          tetiklendiği hiçbir yere yazılmadığı için bugüne dek hedeflenemiyordu.
+        */
+        decisionRepair = {
+          reason: !parsedDecision.success || !decision ? "SCHEMA" : "CATALOG",
+          ...(parsedDecision.success && decision
+            ? {
+                missedEvidenceTypes: runtimeDecisionCatalogMisses(
+                  decision,
+                  evidenceCatalog,
+                  perceptionEvidenceIds,
+                ),
+              }
+            : {}),
+        };
         const remainingMs = deadline.remainingMs();
         if (remainingMs < 1000) throw new RuntimeProviderTimeoutError();
         currentFailure = runtimeWorkerFailures.decisionRepairProvider;
@@ -1823,6 +1892,7 @@ export class AgentRuntimeWorker {
             promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
             codexIntervals,
             ...(browseExperiment ? { browseExperiment } : {}),
+            ...(decisionRepair ? { decisionRepair } : {}),
             ...providerResult.hostMetrics,
           },
           performanceMetrics: {
@@ -1901,6 +1971,7 @@ export class AgentRuntimeWorker {
               */
               ...(codexIntervals.length > 0 ? { codexIntervals } : {}),
               ...(browseExperiment ? { browseExperiment } : {}),
+              ...(decisionRepair ? { decisionRepair } : {}),
               ...(providerResult?.hostMetrics ?? {}),
             }
           : null;

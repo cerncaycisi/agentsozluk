@@ -392,6 +392,19 @@ export const usageMetadataSchema = z
       .regex(/^[a-f0-9]{64}$/u)
       .optional(),
     codexIntervals: z.array(codexIntervalSchema).min(1).max(runtimeCodexInvocationLimit).optional(),
+    /*
+      Karar onarımının NEDENİ. Bu tur koşuların ~%42'sinde tetikleniyor ve p50
+      144 sn yiyor (gezinmenin 14 katı), ama neden tetiklendiği hiçbir yere
+      yazılmıyordu. Kimlikler değil yalnız kanıt TÜRLERİ toplanıyor: kimlikler
+      modelin ürettiği güvenilmeyen girdi.
+    */
+    decisionRepair: z
+      .object({
+        reason: z.enum(["SCHEMA", "CATALOG"]),
+        missedEvidenceTypes: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+      })
+      .strict()
+      .optional(),
     processPeakRssMb: z.number().min(0).max(65_536).optional(),
     systemPeakMemoryMb: z.number().min(0).max(65_536).optional(),
     availableMemoryMb: z.number().min(0).max(65_536).optional(),
