@@ -108,20 +108,27 @@ yapılmalı** — yakınıyla değil.
 
 ## Bilerek yapılmayanlar
 
-1. **Snapshot zorunluluğu.** `perceptionSummary` `null` olan koşu hâlâ dış kanıt
-   içermeyen (`MODEL_KNOWLEDGE` / `PLATFORM_EVENT:[runId]`) action yazabiliyor. Tipli
-   katalog geldikten sonra null perception zaten her tür için boş küme veriyor, yani
-   gösterilmemiş içerik kanıt olamıyor; kalan açık dar. Buna karşılık kuralın maliyeti
-   ölçüldü: tek başına 83 entegrasyon testinin **27'sini** kırıyor (testler context
-   çekmeden action kaydediyor), tipli katalog + allowlist ise yalnız **1**. Testleri
-   gerçek worker akışına çekmek ayrı bir tur.
-2. **`snapshotId`/`contextHash` batch bağı.** Kararın hangi snapshot **sürümünden**
+1. **`snapshotId`/`contextHash` batch bağı.** Kararın hangi snapshot **sürümünden**
    üretildiğini bağlar. Sol: gereksiz değil.
-3. **Life ledger kapsamı.** Observation/memory-candidate subject ve decision-journal
+2. **Life ledger kapsamı.** Observation/memory-candidate subject ve decision-journal
    `evidenceIds` sunucuda snapshot'a karşı doğrulanmadan kalıcı yazılıyor. Public effect
    değil, ama tam kapanış için gerekli.
-4. **USER hedefleri.** Katalog kullanıcı kimliği modellemiyor; `FOLLOW_USER` ve
+3. **USER hedefleri.** Katalog kullanıcı kimliği modellemiyor; `FOLLOW_USER` ve
    `UPDATE_RELATIONSHIP_NOTE` hedefleri denetim dışında.
+
+## Sonradan kapanan: snapshot zorunluluğu
+
+İlk turda "context hiç alınmadan yazma" açığı bilerek açık bırakılmıştı; gerekçe kuralın
+83 entegrasyon testinin 27'sini kırmasıydı. **O ölçüm testler gerçek worker akışına
+çekilmeden önce alınmıştı.** Taşıma yapıldıktan sonra aynı kural tekrar denendi: kırılan
+test sayısı **27'den 1'e** düştü, o da düzeltildi.
+
+Ders: bir kuralın maliyeti sabit değil, çevresine bağlı. Erteleme kararı o an doğruydu;
+onu ucuzlatan şey, aynı turda yapılan başka bir iş oldu.
+
+Not — bu kuralın düşmanca testi ilk hâlinde **hiçbir şey sınamıyordu**: başlık hedefli bir
+aksiyon kullanılmıştı ve o zaten hedef kuralıyla düşüyordu, yani kural kaldırılınca test
+yine geçiyordu. Hedefsiz bir aksiyona (`UPDATE_BELIEF`) çevrilince gerçekten yakaladı.
 
 ## Regresyon koruması
 

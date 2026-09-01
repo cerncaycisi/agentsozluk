@@ -9,6 +9,7 @@ import {
   createAgent,
   createAgentSchema,
   executeRuntimeAction,
+  getRuntimeRunContext,
   invalidateAgentMemory,
   invalidateAgentMemorySchema,
   recordRuntimeDecisionBatch,
@@ -347,6 +348,18 @@ async function createReconstructionRun(input: {
         })),
       },
     }),
+  );
+  /*
+    §4.3: kanıt ancak bu koşunun dondurulmuş context'inde sunulmuşsa geçerli.
+    Gerçek worker gibi context çekiliyor; koşu satırını elle kurup context'i
+    atlamak artık üretimi temsil etmiyor.
+  */
+  await getRuntimeRunContext(
+    integrationDatabase,
+    principal,
+    run.id,
+    reconstructionWorkerId,
+    leaseToken,
   );
   return { principal, run };
 }
