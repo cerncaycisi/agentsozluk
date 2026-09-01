@@ -36,8 +36,14 @@ import {
   titleRepairCandidateIsSafe,
 } from "@/modules/agents/domain/action-policy";
 import { sourceFetchTargetLimit } from "@/modules/agents/domain/runtime-controls";
+import { browsableTopicMenu, type BrowsableTopic } from "@/modules/agents/domain/runtime-browse";
+import {
+  runtimeEvidenceCatalogFrom,
+  runtimeEvidenceTypes,
+  type RuntimeEvidenceCatalog,
+  type RuntimeEvidenceType,
+} from "@/modules/agents/domain/runtime-evidence-catalog";
 import { deriveRuntimePerceptionEvidence } from "@/modules/agents/domain/runtime-evidence";
-import { runtimeSourceEvidenceTypeForStatus } from "@/modules/agents/domain/source-status";
 import {
   runtimeCodexInvocationLimit,
   runtimeFastStateSchema,
@@ -156,24 +162,15 @@ export const runtimeBrowseWireJsonSchema = Object.fromEntries(
   Object.entries(z.toJSONSchema(runtimeBrowseWireSchema)).filter(([key]) => key !== "$schema"),
 );
 
-/** Perception'da adı ve kimliği görünen, okunabilir başlıklar. */
-export function browsableTopics(
-  context: RuntimeContext,
-): { id: string; title: string; hint: string }[] {
-  const seen = new Set<string>();
-  const out: { id: string; title: string; hint: string }[] = [];
-  const push = (record: Record<string, unknown>, hint: string) => {
-    const id = stringField(record, "id");
-    const title = stringField(record, "title");
-    if (!id || !title || seen.has(id)) return;
-    seen.add(id);
-    out.push({ id, title, hint });
-  };
-  for (const record of recordArray(context.perception.followedTopics)) push(record, "takip");
-  for (const record of recordArray(context.perception.trendingTopics)) push(record, "gündem");
-  for (const record of recordArray(context.perception.newTopics)) push(record, "yeni");
-  for (const record of recordArray(context.perception.linkedTopics)) push(record, "bkz");
-  return out.slice(0, 24);
+/**
+ * Perception'da adı ve kimliği görünen, okunabilir başlıklar.
+ *
+ * Türetme `domain/runtime-browse.ts`'te: sunucu gelen `readTopicIds`'i AYNI
+ * menüye karşı süzüyor. İki taraf ayrışırsa ya meşru seçim sessizce düşer ya
+ * da allowlist delinir; bu yüzden tek kaynak.
+ */
+export function browsableTopics(context: RuntimeContext): BrowsableTopic[] {
+  return browsableTopicMenu(context.perception);
 }
 
 export function buildBrowsePrompt(
@@ -399,19 +396,6 @@ function serializeUntrustedContext(value: Record<string, unknown>): string {
   return serialized.replaceAll("<", "\\u003c").replaceAll(">", "\\u003e");
 }
 
-const runtimeEvidenceTypes = [
-  "PLATFORM_EVENT",
-  "USER_ENTRY",
-  "MODEL_KNOWLEDGE",
-  "TRUSTED_SOURCE",
-  "PROBATION_SOURCE",
-  "MULTIPLE_SOURCES",
-  "AGENT_MEMORY",
-] as const;
-
-type RuntimeEvidenceType = (typeof runtimeEvidenceTypes)[number];
-type RuntimeEvidenceCatalog = Record<RuntimeEvidenceType, string[]>;
-
 function recordArray(value: unknown): Array<Record<string, unknown>> {
   return Array.isArray(value)
     ? value.filter(
@@ -432,78 +416,13 @@ function nestedStringField(value: Record<string, unknown>, parent: string, key: 
     : null;
 }
 
+/**
+ * Türetme `domain/runtime-evidence-catalog.ts`'te: sunucu action provenance'ını
+ * AYNI tipli kataloğa karşı doğruluyor. İki taraf ayrışırsa modele gösterilen
+ * ile sunucunun kabul ettiği küme çelişir.
+ */
 function runtimeEvidenceCatalog(context: RuntimeContext): RuntimeEvidenceCatalog {
-  const perception = context.perception;
-  const writerOpenedTopics = recordArray(perception.writerOpenedTopics);
-  const linkedTopics = recordArray(perception.linkedTopics);
-  const linkedTopicEntries = linkedTopics.flatMap((linkedTopic) =>
-    recordArray(linkedTopic.recentEntries),
-  );
-  /*
-    Gezinme fazının getirdiği başlıklar. Katalogda olmazlarsa 417. satırdaki
-    hata birebir tekrar eder: ajana tam metin gösterilir, ajan onu kaynak
-    gösterir, `runtimeDecisionUsesCatalog` false döner ve run düşer. Fazın
-    tüm amacı bu entry'lere yanıt yazdırmak olduğu için burada olmaları şart.
-  */
-  const readTopics = recordArray(perception.readTopics);
-  const readTopicEntries = readTopics.flatMap((topic) => recordArray(topic.entries));
-  const recentEntries = [
-    ...recordArray(perception.recentEntries),
-    ...recordArray(perception.ownRecentEntries),
-    ...linkedTopicEntries,
-    ...readTopicEntries,
-  ];
-  /*
-    Bugün eklenen dört alan kanıt kataloğunda yoktu ve prompt onları açıkça
-    kullandırıyordu: "trendingTopics … başlık seçerken haber kaynağı kadar meşru",
-    "followedWriterEntries … katılmadığın bir hükmüne gerekçeli karşı görüş yazmak
-    doğal sözlük davranışıdır". Model o başlığı `PLATFORM_EVENT` diye gösterdiğinde
-    `runtimeDecisionUsesCatalog` false dönüyor, bir onarım turu yanıyor, ikinci kez
-    de düşerse `CODEX_DECISION_PROVENANCE_INVALID` ile TÜM run düşüyor. Canlıda
-    görüldü (21 Ağu 15:00'te iki, 19:00'da bir).
-
-    Sunucu tarafı bu id'leri zaten kabul ediyor (`topic.count` herhangi bir ACTIVE
-    başlığı geçerli sayıyor); kapı yalnız worker'daydı, yalnız modele karşı kapalıydı.
-  */
-  const offeredTopics = [
-    ...recordArray(perception.trendingTopics),
-    ...recordArray(perception.newTopics),
-    ...recordArray(perception.followedTopics),
-    ...readTopics,
-  ];
-  const followedWriterEntries = recordArray(perception.followedWriterEntries);
-  const sourceItems = recordArray(perception.sourceItems);
-  const trustedSourceIds = sourceItems.flatMap((item) =>
-    runtimeSourceEvidenceTypeForStatus(stringField(item, "sourceStatus") ?? "") ===
-      "TRUSTED_SOURCE" && stringField(item, "itemId")
-      ? [stringField(item, "itemId")!]
-      : [],
-  );
-  const probationSourceIds = sourceItems.flatMap((item) =>
-    runtimeSourceEvidenceTypeForStatus(stringField(item, "sourceStatus") ?? "") ===
-      "PROBATION_SOURCE" && stringField(item, "itemId")
-      ? [stringField(item, "itemId")!]
-      : [],
-  );
-  const unique = (values: Array<string | null>) => [...new Set(values.filter(Boolean) as string[])];
-  return {
-    PLATFORM_EVENT: unique([
-      context.run.id,
-      ...writerOpenedTopics.map((topic) => stringField(topic, "id")),
-      ...offeredTopics.map((topic) => stringField(topic, "id")),
-      ...followedWriterEntries.map((entry) => stringField(entry, "topicId")),
-      ...recentEntries.map((entry) => nestedStringField(entry, "topic", "id")),
-      ...linkedTopics.map((linkedTopic) => nestedStringField(linkedTopic, "topic", "id")),
-    ]),
-    USER_ENTRY: unique(recentEntries.map((entry) => stringField(entry, "id"))),
-    MODEL_KNOWLEDGE: unique([context.run.id]),
-    TRUSTED_SOURCE: unique(trustedSourceIds),
-    PROBATION_SOURCE: unique(probationSourceIds),
-    MULTIPLE_SOURCES: unique([...trustedSourceIds, ...probationSourceIds]),
-    AGENT_MEMORY: unique(
-      recordArray(perception.memories).map((memory) => stringField(memory, "id")),
-    ),
-  };
+  return runtimeEvidenceCatalogFrom(context.perception, context.run.id);
 }
 
 function runtimeDecisionUsesCatalog(

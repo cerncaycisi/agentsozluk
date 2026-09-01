@@ -333,6 +333,32 @@ async function createRuntimeAgentEntries(
     leaseSeconds: 60,
   });
   const runId = leased.run!.id;
+  /*
+    §4.3: provenance yalnız bu koşunun dondurulmuş snapshot'ında GÖSTERİLEN
+    kanıtı kabul ediyor. Gerçek worker gibi önce context'i çek. Kaynak kanıtı
+    isteniyorsa koşuyu kaynak okumaya aç ve ajanın kaynaklarını yalnız o
+    öğelerin kaynağına daralt — perception'ın 10 öğelik source penceresi
+    persona tohum kaynaklarıyla paylaşılıyor.
+  */
+  const citedSourceItemIds = sourceEvidenceIds.filter((id): id is string => typeof id === "string");
+  if (citedSourceItemIds.length > 0) {
+    await integrationDatabase.agentRun.update({
+      where: { id: runId },
+      data: { allowSourceReading: true },
+    });
+    const citedItems = await integrationDatabase.agentSourceItem.findMany({
+      where: { id: { in: citedSourceItemIds } },
+      select: { sourceId: true },
+    });
+    await integrationDatabase.agentSource.deleteMany({
+      where: {
+        agentProfileId: fixture.created.agent.profile.id,
+        id: { notIn: citedItems.map(({ sourceId }) => sourceId) },
+      },
+    });
+  }
+  const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+  await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
   await recordRuntimeActions(
     integrationDatabase,
     writePrincipal,
@@ -430,6 +456,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     const leaseToken = leaseTokenForWorker(workerId);
     await recordRuntimeActions(
       integrationDatabase,
@@ -1172,6 +1205,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
     await createEntry(integrationDatabase, adminActor(fixture.admin.id), topic.topic.id, {
       body: "İstanbul merkezli iki kişilik alternatif müzik projesi; ilk albümü Kontrast, ikilinin birlikte kurduğu ses alanına açılan ilk kapı gibi duruyor.",
     });
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(firstAgent.credential, "runtime:read"),
+      normalRunId,
+      "maintenance-active-normal",
+    );
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -1366,6 +1406,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
         entryBody: "İnsan entry içeriği graceful-stop expiry kanıtını sağlar.",
       },
     );
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -1489,6 +1536,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
         entryBody: "İnsan entry içeriği action reclaim yarışını doğrular.",
       },
     );
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -1591,6 +1645,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
         title: `public write settings fence ${randomUUID()}`,
         entryBody: "İnsan entry içeriği global public-write sıralamasını doğrular.",
       },
+    );
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
     );
     await recordRuntimeActions(
       integrationDatabase,
@@ -1721,6 +1782,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       },
     );
     const blockedBody = `Post-pause public action ${randomUUID()}.`;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -1844,6 +1912,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -1991,6 +2066,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       },
     );
     const blockedBody = `Post-lifecycle-pause action ${randomUUID()}.`;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -2123,6 +2205,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -2263,6 +2352,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
         title: `running cancel action race ${randomUUID()}`,
         entryBody: "İnsan entry içeriği admin cancel ve action sıralamasını doğrular.",
       },
+    );
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
     );
     await recordRuntimeActions(
       integrationDatabase,
@@ -2679,6 +2775,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
         title: `bulk graceful stop action ${randomUUID()}`,
         entryBody: "İnsan entry içeriği bulk graceful stop sıralamasını doğrular.",
       },
+    );
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(firstAgent!.credential, "runtime:read"),
+      firstRunId,
+      firstWorkerId,
     );
     await recordRuntimeActions(
       integrationDatabase,
@@ -3687,6 +3790,196 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(context.perception.readTopics).toEqual([]);
   });
 
+  it("keeps a real topic outside the browse menu out of the frozen snapshot", async () => {
+    /*
+      §4.3 asıl kaçış yolu: menü filtresi bugüne dek YALNIZ worker'daydı, yani
+      kapı sadece modele karşı kapalıydı. Ele geçirilmiş bir worker menüde hiç
+      görünmeyen, ama gerçek ve ACTIVE olan bir başlığın kimliğini gönderip o
+      entry'leri dondurulmuş perception'a sokabiliyordu — ve provenance
+      snapshot'a bağlı olduğu için bu, kanıt kümesini worker'ın kendi seçtiği
+      içerikle genişletmek demekti.
+
+      Perception önce donduruluyor, hedef başlık SONRA açılıyor: böylece
+      başlığın menüde olmadığı kesin.
+    */
+    const fixture = await createFixture();
+    const workerId = "browse-offmenu-worker";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    const offMenu = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: `menü dışı gerçek başlık ${randomUUID()}`,
+        entryBody: "Ajana hiç sunulmamış ama gerçek ve görünür bir insan entry'si.",
+      },
+    );
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      readPrincipal,
+      runId,
+      workerId,
+      [offMenu.topic.id],
+    );
+    expect(context.perception.readTopics).toEqual([]);
+    const stored = await integrationDatabase.agentRun.findUniqueOrThrow({
+      where: { id: runId },
+      select: { perceptionSummary: true },
+    });
+    expect(JSON.stringify(stored.perceptionSummary)).not.toContain(offMenu.entry.id);
+    // Sessiz düşürme yetmez: reddedilen istek kalıcı kayda geçmeli.
+    const rejection = await integrationDatabase.agentRuntimeEvent.findFirst({
+      where: {
+        runId,
+        eventType: "CONTEXT_PRESENTED",
+        metadata: { path: ["origin"], equals: "RUNTIME_BROWSE_ALLOWLIST" },
+      },
+    });
+    expect(
+      (rejection?.metadata as { rejectedReadTopicCount?: number })?.rejectedReadTopicCount,
+    ).toBe(1);
+  });
+
+  it("rejects provenance for a visible entry the run never presented", async () => {
+    /*
+      §4.3: kanıtın var ve görünür olması yetmez, bu koşunun snapshot'ında
+      GÖSTERİLMİŞ olmalı. Entry perception dondurulduktan sonra açılıyor, yani
+      ajan onu hiç görmedi.
+    */
+    const fixture = await createFixture();
+    const workerId = "offsnapshot-provenance-worker";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    /*
+      Hedef SUNULAN bir başlık, kanıt ise sunulmayan bir entry: böylece test
+      hedef kuralını değil, kanıt kuralını yalıtır.
+    */
+    const presented = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: `sunulan hedef başlık ${randomUUID()}`,
+        entryBody: "Bu başlık koşunun dondurulmuş görüntüsünde yer alıyor.",
+      },
+    );
+    const runId = leased.run!.id;
+    const context = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    expect(JSON.stringify(context.perception)).toContain(presented.topic.id);
+    const unseen = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: `gösterilmemiş kanıt başlığı ${randomUUID()}`,
+        entryBody: "Bu insan entry'si koşunun dondurulmuş görüntüsünde hiç yer almadı.",
+      },
+    );
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Kanıt görünür olsa da bu koşuda sunulmadı.",
+            targetType: "TOPIC",
+            targetId: presented.topic.id,
+            input: {
+              topicId: presented.topic.id,
+              body: `Gösterilmemiş kanıta dayanan katkı denemesi ${randomUUID()}.`,
+            },
+            provenance: {
+              evidenceType: "USER_ENTRY",
+              evidenceIds: [unseen.entry.id],
+              shortRationale: "Snapshot dışı entry kaynak gösterilmeye çalışılıyor.",
+            },
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "PROVENANCE_INVALID",
+    });
+  });
+
+  it("rejects a write to a topic the run never presented", async () => {
+    /*
+      Sol hakem turu: provenance snapshot'a bağlansa bile ACTION HEDEFİ bağlı
+      değildi. `MODEL_KNOWLEDGE:[runId]` provenance'ı her zaman geçerli olduğu
+      için, ele geçirilmiş bir worker ajana hiç gösterilmemiş herhangi bir
+      ACTIVE başlığa entry yazdırabiliyordu. Kanıt kapısı kapanmış ama hedef
+      kapısı açıktı.
+    */
+    const fixture = await createFixture();
+    const workerId = "offsnapshot-target-worker";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    const unseen = await createTopicWithFirstEntry(
+      integrationDatabase,
+      adminActor(fixture.admin.id),
+      {
+        title: `gösterilmemiş hedef başlık ${randomUUID()}`,
+        entryBody: "Bu başlık koşunun dondurulmuş görüntüsünde hiç yer almadı.",
+      },
+    );
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            safeReason: "Hedef bu koşuda sunulmadı; yalnız model bilgisine dayanıyor.",
+            targetType: "TOPIC",
+            targetId: unseen.topic.id,
+            input: {
+              topicId: unseen.topic.id,
+              body: `Gösterilmemiş başlığa yazma denemesi ${randomUUID()}.`,
+            },
+            provenance: {
+              evidenceType: "MODEL_KNOWLEDGE",
+              evidenceIds: [runId],
+              shortRationale: "Model bilgisi; dış kanıt yok.",
+            },
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "ACTION_TARGET_OFF_SNAPSHOT",
+    });
+    expect(await integrationDatabase.entry.count({ where: { topicId: unseen.topic.id } })).toBe(1);
+  });
+
   it("records a successful later-wake action on a resolved dictionary link", async () => {
     const fixture = await createFixture();
     const target = await createTopicWithFirstEntry(
@@ -4630,6 +4923,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      "action-worker",
+    );
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -4831,6 +5131,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      "semantic-novelty-worker",
+    );
     const provenance = {
       evidenceType: "PLATFORM_EVENT" as const,
       evidenceIds: [runId],
@@ -4929,6 +5236,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     const provenance = {
       evidenceType: "PLATFORM_EVENT" as const,
       evidenceIds: [runId],
@@ -5018,6 +5332,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     const provenance = {
       evidenceType: "MODEL_KNOWLEDGE" as const,
       evidenceIds: [runId],
@@ -5248,6 +5569,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     const provenance = {
       evidenceType: "PLATFORM_EVENT" as const,
       evidenceIds: [runId],
@@ -5375,6 +5703,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     const provenance = {
       evidenceType: "PLATFORM_EVENT" as const,
       evidenceIds: [runId],
@@ -5548,6 +5883,9 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: kanıt bu koşunun dondurulmuş snapshot'ında gösterilmiş olmalı.
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -5626,6 +5964,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -5693,6 +6038,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -5876,6 +6228,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -5931,6 +6290,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     const provenance = {
       evidenceType: "PLATFORM_EVENT" as const,
       evidenceIds: [runId],
@@ -6080,6 +6446,31 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    /*
+      §4.3: kanıt bu koşunun dondurulmuş snapshot'ında gösterilmiş olmalı.
+      Kaynak kanıtı ancak koşu kaynak okumaya açıkken perception'a giriyor —
+      üretimdeki sıra da bu.
+    */
+    await integrationDatabase.agentRun.update({
+      where: { id: runId },
+      data: { allowSourceReading: true },
+    });
+    /*
+      Persona paketiyle gelen tohum kaynaklar perception'daki 10 öğelik source
+      penceresini paylaşıyor ve testin kanıt öğelerini dışarı itebiliyor. Bu
+      testin konusu kaynak seçimi değil, içerik temellendirme kuralları; bu
+      yüzden ajanın yalnız bu üç kaynağı olsun.
+    */
+    await integrationDatabase.agentSource.deleteMany({
+      where: {
+        agentProfileId: fixture.created.agent.profile.id,
+        normalizedDomain: {
+          notIn: ["trusted-evidence.test", "probation-one.test", "probation-two.test"],
+        },
+      },
+    });
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
     const sourceProvenance = (
       evidenceType: "TRUSTED_SOURCE" | "PROBATION_SOURCE" | "MULTIPLE_SOURCES",
       evidenceIds: string[],
@@ -6271,6 +6662,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
         leaseSeconds: 60,
       });
       const runId = leased.run!.id;
+      // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+      await getRuntimeRunContext(
+        integrationDatabase,
+        await runtimePrincipal(fixture.credential, "runtime:read"),
+        runId,
+        workerId,
+      );
       await recordRuntimeActions(
         integrationDatabase,
         writePrincipal,
@@ -6461,6 +6859,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     await integrationDatabase.agentAction.createMany({
       data: [100, 101].map((sequence) => ({
         runId,
@@ -6574,6 +6979,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -6683,6 +7095,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    /*
+      §4.3: provenance yalnız bu koşunun dondurulmuş snapshot'ında GÖSTERİLEN
+      kanıtı kabul ediyor. Gerçek worker gibi önce context'i çek ki perception
+      donsun; kısayol (context'siz action kaydı) artık üretimi temsil etmiyor.
+    */
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, "evolution-worker");
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -7351,12 +7770,43 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(JSON.stringify(moderatedEvents.map(({ metadata }) => metadata))).not.toContain(
       generated.topics[0]!.entry.body,
     );
+    /*
+      Ders, entry gizlendiğinde doğuyor; o an önceki koşunun perception'ı çoktan
+      donmuştu. Üretimde ders SONRAKİ koşunun perception'ında görünür — testin
+      doğruladığı da bu. Bu yüzden önceki koşu kapatılıp yeni bir koşu açılıyor.
+    */
+    await integrationDatabase.agentRun.update({
+      where: { id: generated.runId },
+      data: { runStatus: "SUCCEEDED", finishedAt: new Date() },
+    });
+    const lessonRun = await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: fixture.created.agent.profile.id,
+        runType: "NORMAL_WAKE",
+        queuePriority: "MANUAL_SINGLE",
+        trigger: "INTEGRATION_TEST",
+        requestedById: fixture.admin.id,
+        personaVersionId: fixture.created.agent.personaVersion.id,
+        idempotencyKey: randomUUID(),
+        availableAt: new Date(Date.now() - 1_000),
+        timeoutSeconds: 600,
+        desiredEntryMin: 1,
+        desiredEntryMax: 1,
+      },
+    });
+    const lessonLeasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const lessonWorkerId = "behavior-lesson-worker";
+    const lessonLease = await leaseRuntimeRun(integrationDatabase, lessonLeasePrincipal, {
+      workerId: lessonWorkerId,
+      leaseSeconds: 60,
+    });
+    expect(lessonLease.run!.id).toBe(lessonRun.id);
     const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
     const context = await getRuntimeRunContext(
       integrationDatabase,
       readPrincipal,
-      generated.runId,
-      generated.workerId,
+      lessonRun.id,
+      lessonWorkerId,
     );
     expect(context.perception.behaviorLessons).toEqual(
       expect.arrayContaining([
@@ -7427,6 +7877,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     await recordRuntimeActions(
       integrationDatabase,
       writePrincipal,
@@ -7822,6 +8279,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
           leaseSeconds: 60,
         });
         const runId = leased.run!.id;
+        // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+        await getRuntimeRunContext(
+          integrationDatabase,
+          await runtimePrincipal(fixture.credential, "runtime:read"),
+          runId,
+          workers[index]!,
+        );
         const candidateBodies = [
           "Yoğun tartışmalar, farklı örnekler kısa ve açık gerekçelerle sunulduğunda daha okunabilir kalıyor.",
           "Bir başlığın uzunluğu tek başına değerini belirlemiyor; yeni bilgi ekleyen kısa notlar da akışı zenginleştiriyor.",
@@ -7940,6 +8404,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     const distinctBodies = [
       "Veritabanı bakım penceresi geri alma planı ve ölçülebilir kesinti bütçesi birlikte düşünülünce anlam kazanır.",
       "Şehir içi otobüs aktarması yalnız güzergâhla değil bekleme süresi ve erişilebilir durak tasarımıyla değerlendirilmelidir.",
@@ -8029,6 +8500,13 @@ describe("internal agent runtime API with PostgreSQL", () => {
       leaseSeconds: 60,
     });
     const runId = leased.run!.id;
+    // §4.3: action kaydından önce context sunulmalı — gerçek worker akışı.
+    await getRuntimeRunContext(
+      integrationDatabase,
+      await runtimePrincipal(fixture.credential, "runtime:read"),
+      runId,
+      workerId,
+    );
     const propose = (sequence: number, body: string) =>
       recordRuntimeActions(
         integrationDatabase,

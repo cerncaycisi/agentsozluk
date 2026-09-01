@@ -80,6 +80,7 @@ import {
   sourceFetchTargetLimit,
   terminalizeInterruptedRuntimeRun,
 } from "@/modules/agents/domain/runtime-controls";
+import { browsableTopicIds } from "@/modules/agents/domain/runtime-browse";
 import { deriveRuntimePerceptionEvidence } from "@/modules/agents/domain/runtime-evidence";
 import {
   assertSourceScoreWeeklyBudget,
@@ -1617,8 +1618,44 @@ export function getRuntimeRunContext(
       await storeRuntimePerceptionSummary(transaction, runId, builtPerception);
       perception = builtPerception;
     }
-    if (readTopicIds.length > 0) {
-      const readTopics = await getRuntimeReadTopics(transaction, readTopicIds);
+    /*
+      Gelen kimlikler AJANA GERÇEKTEN SUNULAN menüye karşı süzülüyor. Menü
+      filtresi bugüne dek yalnız worker'daydı; yani kapı sadece modele karşı
+      kapalıydı. Hatalı ya da ele geçirilmiş bir worker herhangi bir aktif
+      başlığın kimliğini gönderip o entry'leri dondurulmuş perception'a
+      sokabiliyordu — provenance snapshot'a bağlandığı için bu, kanıt kümesini
+      worker'ın kendi seçtiği içerikle genişletmek demekti (Sol hakem turu).
+      Menü türetmesi worker ile ortak: domain/runtime-browse.ts.
+    */
+    const browseMenu = browsableTopicIds(perception);
+    const allowedReadTopicIds = readTopicIds.filter((id) => browseMenu.has(id));
+    const rejectedReadTopicCount = readTopicIds.length - allowedReadTopicIds.length;
+    if (rejectedReadTopicCount > 0)
+      /*
+        Sessiz düşürme yetmez: menü dışı istek ya worker hatası ya da kötü
+        niyettir, ikisi de görünmeli. Kimlikler güvenilmeyen girdi olduğu için
+        yalnız sayı yazılıyor.
+      */
+      await appendRuntimeEvent(transaction, {
+        agentProfileId: principal.agentProfileId,
+        runId,
+        eventType: "CONTEXT_PRESENTED",
+        subject: { type: "RUN", id: runId },
+        safeMessage: "Menü dışı okuma isteği reddedildi; dondurulmuş context genişletilmedi.",
+        after: { rejectedReadTopicCount, requestedReadTopicCount: readTopicIds.length },
+        metadata: { origin: "RUNTIME_BROWSE_ALLOWLIST", rejectedReadTopicCount },
+        occurredAt: now,
+      });
+    /*
+      Boş sonuç mevcut okumayı SİLMEZ (Sol hakem turu): ikinci bir çağrı tümüyle
+      reddedilirse önceki geçerli `readTopics` `[]` ile ezilir, katalog daralır
+      ve daha önce kaydedilmiş bir action sonradan reddedilebilirdi. "Gezindi
+      ama hiçbiri geçerli değildi" ayrımını zaten red kaydı sağlıyor; snapshot
+      yalnız ilk gezinmede boş yazılır.
+    */
+    const alreadyReadTopics = Array.isArray((perception as Record<string, unknown>).readTopics);
+    if (readTopicIds.length > 0 && (allowedReadTopicIds.length > 0 || !alreadyReadTopics)) {
+      const readTopics = await getRuntimeReadTopics(transaction, allowedReadTopicIds);
       perception = {
         ...perception,
         readTopics: readTopics.map((topic) => ({
@@ -1908,6 +1945,7 @@ export function recordRuntimeMemories(
         runId,
         evidenceType: "AGENT_MEMORY",
         evidenceIds: memory.sourceMemoryIds,
+        perceptionSummary: run.perceptionSummary,
       });
       if (!evidence.valid)
         throw new AppError(

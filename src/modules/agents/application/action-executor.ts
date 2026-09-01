@@ -6,6 +6,8 @@ import type {
   TransactionClient,
 } from "@/lib/db/types";
 import { checkDatabaseReadiness } from "@/lib/db/readiness";
+import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
+import { getRuntimeRunProducedTargetIds } from "@/modules/agents/repository/runtime";
 import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
 import { appendRuntimeEvent, lockAgentSettings } from "@/modules/agents/repository/control-plane";
@@ -993,6 +995,36 @@ export async function executeRuntimeAction(
             reason: issue.reason,
           });
       }
+      /*
+        §4.3 (Sol hakem turu): kanıtı snapshot'a bağlamak yetmiyordu, ACTION
+        HEDEFİ bağlı değildi. `MODEL_KNOWLEDGE:[runId]` provenance'ı her zaman
+        geçerli olduğu için ele geçirilmiş bir worker, ajana hiç gösterilmemiş
+        herhangi bir ACTIVE başlığa entry yazdırabiliyordu — canlı davranışla
+        ayırt edilemeyen bir public effect.
+
+        Yalnız TOPIC ve ENTRY hedefleri denetleniyor: katalog kullanıcı kimliği
+        modellemiyor (USER hedefleri ayrı bir borç). Ölçüldü (1 Eylül 2026,
+        üretim, gerçek katalogla): başarıyla yürümüş 19 057 topic/entry
+        hedefinin tamamı snapshot içindeydi, 0 dışında.
+      */
+      const targetIdInSnapshot = resolvedTarget.topicId ?? resolvedTarget.entryId;
+      if (targetIdInSnapshot !== undefined) {
+        const catalog = runtimeEvidenceCatalogFrom(actionRecord.run.perceptionSummary, runId);
+        const presentedTargets = new Set([...catalog.PLATFORM_EVENT, ...catalog.USER_ENTRY]);
+        if (!presentedTargets.has(targetIdInSnapshot)) {
+          /*
+            Koşunun kendi ürettiği içerik de geçerli: ajan aynı koşuda yazdığı
+            entry'yi düzenlediğinde (EDIT_OWN_ENTRY) hedef snapshot'ta olamaz,
+            çünkü perception o entry doğmadan önce donmuştu.
+          */
+          const produced = await getRuntimeRunProducedTargetIds(transaction, runId);
+          if (!produced.has(targetIdInSnapshot))
+            return rejectAction(transaction, principal, actionRecord, {
+              code: "ACTION_TARGET_OFF_SNAPSHOT",
+              reason: "Action hedefi bu koşunun dondurulmuş context'inde ajana sunulmadı.",
+            });
+        }
+      }
       const traversedLinkedTopicId =
         resolvedTarget.topicId !== undefined &&
         linkedTopicIds(actionRecord.run.perceptionSummary).has(resolvedTarget.topicId)
@@ -1013,6 +1045,9 @@ export async function executeRuntimeAction(
           runId,
           evidenceType: parsed.data.provenance.evidenceType,
           evidenceIds: parsed.data.provenance.evidenceIds,
+          // §4.3: kanıt yalnız var olmakla yetmez, bu koşunun dondurulmuş
+          // snapshot'ında ajana gösterilmiş de olmalı.
+          perceptionSummary: actionRecord.run.perceptionSummary,
         });
         if (!evidence.valid)
           return rejectAction(transaction, principal, actionRecord, {

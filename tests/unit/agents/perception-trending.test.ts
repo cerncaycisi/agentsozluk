@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runtimeAllowedPerceptionKeys, runtimePromptScaffold } from "@/runtime/prompt-profile";
+import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
 import { runtimePerceptionMaximumBytes } from "@/modules/agents/application/runtime";
 
 /*
@@ -116,14 +117,25 @@ describe("inceleme bulguları", () => {
       Prompt bu alanları açıkça kullandırıyor ("karşı görüş yaz") ama katalogda
       yoklardı: model o id'yi gösterince run CODEX_DECISION_PROVENANCE_INVALID ile
       düşüyordu. Canlıda görüldü.
+
+      Eskiden worker.ts'in kaynak metni taranıyordu; katalog ortak modüle
+      taşındıktan (§4.3: sunucu da aynı kataloğu kullanıyor) sonra o dayanak
+      kalmadı. Metin yerine davranış pinleniyor — hem daha sağlam hem artık
+      sunucu tarafını da kapsıyor.
     */
-    const kaynak = readFileSync(resolve(__dirname, "../../../src/runtime/worker.ts"), "utf8");
-    const katalog = kaynak.slice(
-      kaynak.indexOf("function runtimeEvidenceCatalog"),
-      kaynak.indexOf("function", kaynak.indexOf("function runtimeEvidenceCatalog") + 10),
+    const runId = "00000000-0000-4000-8000-00000000cafe";
+    const kimlik = (ek: string) => `00000000-0000-4000-8000-0000000000${ek}`;
+    const katalog = runtimeEvidenceCatalogFrom(
+      {
+        trendingTopics: [{ id: kimlik("11") }],
+        newTopics: [{ id: kimlik("22") }],
+        followedTopics: [{ id: kimlik("33") }],
+        followedWriterEntries: [{ topicId: kimlik("44") }],
+      },
+      runId,
     );
-    for (const alan of ["trendingTopics", "newTopics", "followedTopics", "followedWriterEntries"])
-      expect(katalog).toContain(alan);
+    for (const beklenen of ["11", "22", "33", "44"])
+      expect(katalog.PLATFORM_EVENT).toContain(kimlik(beklenen));
   });
 
   it("takip edilen başlık listesi kırpılmıyor", () => {
