@@ -66,20 +66,35 @@ davranışı ve veri bütünlüğünü etkiliyor.
       engelleniyor. Ajan ACTIVE görünür ama bir daha doğal uyanış almaz. Düzeltme: her lease
       seçiminden önce, tükenmiş expired koşuyu aynı kilit sırasında effect-aware terminalize et
       (effect yoksa `CANCELLED`, varsa `PARTIAL`). _(Codex §4.1)_
-- [x] **Lease reclaim decision sonrası resume edemiyor.** — kısa-vade containment PR #85'te
-      (merge bekliyor). Gerçek resume (checkpoint/state machine) hâlâ açık borç. Process decision batch'ten sonra
+- [x] **Lease reclaim decision sonrası resume edemiyor.** — canlıda (PR #85, `02bb052`). Gerçek resume (checkpoint/state machine) hâlâ açık borç. Process decision batch'ten sonra
       ölürse, reclaim modeli baştan çalıştırıp `IDEMPOTENCY_CONFLICT` / `(runId,sequence)` unique
       çakışması üretiyor; kalan `PROPOSED` action'lar hiç yürümüyor. Kısa vade: persisted batch'li
       expired koşuyu yeniden modelleme, gerçek effect sayısına göre terminalize et. _(Codex §4.2)_
       Uygulamada çıkan ek bulgu (Sol): bakım modunda `REFLECTION`/`SOURCE_REFRESH` run'ları
       maintenance finalizer'ının dışında ama claim'in içinde — containment her iki modda
       koşmalıydı. Ayrıca finalizer adayları artık satır kilidi altında yeniden doğrulanıyor.
-- [ ] **Context/provenance server-side snapshot'a bağlı değil.** Context hash yalnız audit
-      event'ine yazılıyor, batch'e dönmüyor; provenance doğrulaması "bu koşuda gösterildi mi"
-      yerine global ownership bakıyor. Buggy/ele geçirilmiş bir worker off-snapshot public effect
-      üretebilir. Düzeltme: context endpoint `snapshotId/contextHash` döndürsün, batch zorunlu
-      taşısın, sunucu snapshot'tan typed evidence türetip transaction içinde doğrulasın.
-      _(Codex §4.3 — güvenlik derinliğiyle de kesişir)_
+- [~] **Context/provenance server-side snapshot'a bağlı değil.** _(Codex §4.3 — güvenlik
+  derinliğiyle de kesişir)_ Provenance doğrulaması "bu koşuda gösterildi mi" yerine global
+  ownership'e bakıyordu: hatalı ya da ele geçirilmiş bir worker, ajanın hiç görmediği bir
+  entry'yi kaynak gösterip off-snapshot public effect üretebilirdi.
+
+  Yapıldı (bkz `docs/SNAPSHOT_PROVENANCE_2026-09-01.md`): action provenance artık dondurulmuş
+  snapshot'tan türetilen **tipli** kataloğa karşı doğrulanıyor
+  (`domain/runtime-evidence-catalog.ts`, worker ile ortak); gezinme fazında `readTopicIds`
+  sunucuda menüye karşı süzülüyor (`domain/runtime-browse.ts`, worker ile ortak); action
+  **hedefi** de snapshot'a bağlandı. İkisi de Sol'un bulduğu gerçek kaçış yollarıydı —
+  gezinme menüsü yalnız worker'daydı, hedef ise hiç denetlenmiyordu (`MODEL_KNOWLEDGE`
+  provenance'ı her zaman geçerli olduğu için herhangi bir ACTIVE başlığa yazılabiliyordu).
+
+  Kalan borç, ayrı turlar: **(1) snapshot zorunluluğu** — `perceptionSummary` `null` olan koşu
+  hâlâ dış kanıt İÇERMEYEN (`MODEL_KNOWLEDGE`/`PLATFORM_EVENT:[runId]`) action yazabiliyor;
+  ölçüldü, tek başına bu kural 83 entegrasyon testinin 27'sini kırıyor (testler context
+  çekmeden action kaydediyor), tipli katalog + allowlist ise yalnız 1 test. **(2)
+  `snapshotId`/`contextHash` batch bağı** — kararın hangi snapshot sürümünden üretildiğini
+  bağlar. **(3) life ledger kapsamı (Sol)** — observation/memory-candidate subject ve
+  decision-journal `evidenceIds` sunucuda doğrulanmıyor; **(4) USER hedefleri** — katalog
+  kullanıcı kimliği modellemiyor.
+
 - [x] **Source result persistence hatası fetch hatası gibi yazılıyor.** — canlıda (PR #84, `eb1aa4e`). Tek `try/catch` hem
       okumayı hem write'ı kapsıyor; başarılı write commit edip response kaybolursa aynı attempt
       `SOURCE_FETCH_FAILED` sayılıp sağlıklı kaynağı backoff/demotion'a sokabiliyor. Fetch ve

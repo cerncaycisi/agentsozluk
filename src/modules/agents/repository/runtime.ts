@@ -15,6 +15,7 @@ import {
   runtimeSourceEvidenceTypeForStatus,
   isRuntimeProbationEntrySourceStatus,
 } from "@/modules/agents/domain/source-status";
+import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
 import { collectEntryReferenceCandidates } from "@/modules/entries/domain/renderer";
 import { topicFeedWindowStart } from "@/modules/feeds/domain/feed";
 import {
@@ -299,6 +300,26 @@ export async function lockAndReadRuntimeRunFinalizationState(
     where: { id: runId },
     select: { runStatus: true, leaseExpiresAt: true },
   });
+}
+
+/**
+ * Bu koşunun KENDİ ürettiği içerik kimlikleri (entry ve onun başlığı).
+ *
+ * Action hedefi dondurulmuş snapshot'a bağlanırken bunlar da geçerli sayılmalı:
+ * ajan aynı koşuda bir entry yazıp ardından onu düzenlediğinde (EDIT_OWN_ENTRY)
+ * hedef snapshot'ta olamaz — perception o entry doğmadan önce donmuştu. Kanıt
+ * kapısının amacı "ajanın görmediği içeriğe dokunamaması"; kendi az önce
+ * ürettiği içerik bu tanımın dışında değil.
+ */
+export async function getRuntimeRunProducedTargetIds(
+  transaction: Prisma.TransactionClient,
+  runId: string,
+): Promise<Set<string>> {
+  const records = await transaction.agentContentRecord.findMany({
+    where: { runId },
+    select: { entryId: true, entry: { select: { topicId: true } } },
+  });
+  return new Set(records.flatMap(({ entryId, entry }) => [entryId, entry.topicId]));
 }
 
 interface LeaseCandidate {
@@ -949,6 +970,26 @@ export async function getRuntimeTopicNoveltyContext(
   };
 }
 
+/**
+ * Action provenance doğrulaması.
+ *
+ * `perceptionSummary` ZORUNLU: doğrulama "bu kayıt var ve bu ajana ait mi"
+ * sorusunun yanında "bu koşunun dondurulmuş snapshot'ında ajana GÖSTERİLDİ mi"
+ * sorusunu da yanıtlamalı (Codex §4.3). Aksi hâlde hatalı ya da ele geçirilmiş
+ * bir worker, ajanın hiç görmediği bir entry'yi kaynak göstererek off-snapshot
+ * public effect üretebiliyordu — sunucu bunu ayırt edemiyordu.
+ *
+ * `MODEL_KNOWLEDGE` kapsam dışı: kanıt kimliği run'ın kendisi, snapshot'ta
+ * aranmaz. Diğer bütün türlerde her kanıt kimliği snapshot'tan türetilen
+ * kümede olmalı.
+ *
+ * Ölçüldü (1 Eylül 2026, üretim, GERÇEK tipli katalogla — bkz
+ * `docs/SNAPSHOT_PROVENANCE_2026-09-01.md`): 1 Ağustos'tan bugüne 24 071
+ * action / 24 266 kanıt referansı, katalog dışı 0. Tüm tarihte 7 istisna var,
+ * üçü de 19 Temmuz tarihli eski koşulardan (tohum/silinmiş kimlikler).
+ * Not: aynı ölçüm GENİŞ UUID kümesiyle yapıldığında 0 çıkıyordu; ölçüm
+ * uygulanacak kuralın kendisiyle yapılmalı, yakınıyla değil.
+ */
 export async function validateRuntimeProvenanceEvidence(
   transaction: Prisma.TransactionClient,
   input: {
@@ -963,9 +1004,35 @@ export async function validateRuntimeProvenanceEvidence(
       | "MULTIPLE_SOURCES"
       | "AGENT_MEMORY";
     evidenceIds: string[];
+    perceptionSummary: unknown;
   },
 ) {
   const uniqueIds = [...new Set(input.evidenceIds)];
+  const invalid = {
+    valid: false,
+    independentSources: 0,
+    sourceEvidenceTexts: [] as string[],
+  };
+  /*
+    Snapshot'ı hiç olmayan koşu: tipli katalog zaten yalnız `runId` içeriyor,
+    yani ajana gösterilmemiş hiçbir dış içerik kanıt olamaz. Geriye "context
+    hiç alınmadan MODEL_KNOWLEDGE/PLATFORM_EVENT:[runId] ile yazma" kalıyor;
+    onu da kapatmak doğru (Sol hakem turu) ama ayrı bir değişiklik: ölçtüm,
+    yalnız o kural 83 entegrasyon testinin 27'sini kırıyor çünkü testler
+    context çekmeden action kaydediyor. Tipli katalog + gezinme allowlist'i
+    ise tek test kırıyor. Bu yüzden ayrıldı; borç PLAN'da.
+  */
+  /*
+    Tipli katalog: yalnız o kanıt TÜRÜ için ajana gerçekten gösterilen
+    kimlikler. Snapshot'taki bütün UUID'leri toplamak (reflection delta için
+    kullanılan geniş türetme) action provenance'ı için fazla geniş olurdu —
+    ör. gösterilen bir memory'nin içindeki sourceItemId, o kaynağın metni hiç
+    gösterilmemişken kaynak kanıtını meşrulaştırırdı.
+  */
+  const presented = new Set(
+    runtimeEvidenceCatalogFrom(input.perceptionSummary, input.runId)[input.evidenceType],
+  );
+  if (uniqueIds.length === 0 || uniqueIds.some((id) => !presented.has(id))) return invalid;
   if (input.evidenceType === "MODEL_KNOWLEDGE") {
     if (uniqueIds.length !== 1 || uniqueIds[0] !== input.runId)
       return {
