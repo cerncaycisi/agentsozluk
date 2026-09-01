@@ -98,11 +98,13 @@ async function runtimeGet<T>(
   request: APIRequestContext,
   path: string,
   workerId: string,
+  leaseToken?: string,
 ): Promise<T> {
   const response = await request.get(path, {
     headers: {
       authorization: `Bearer ${runtimeCredential}`,
       "x-agent-worker-id": workerId,
+      ...(leaseToken ? { "x-agent-lease-token": leaseToken } : {}),
     },
   });
   const envelope = (await response.json()) as Envelope<T>;
@@ -518,6 +520,18 @@ test.describe.serial("@desktop Milestone 2 agent society", () => {
     );
     const runId = lease.run.id;
     const leaseToken = lease.run.leaseToken;
+    /*
+      §4.3: kanıt ve hedef ancak bu koşunun dondurulmuş context'inde SUNULMUŞSA
+      geçerli. Gerçek worker gibi önce context çekiliyor; kısayol (context'siz
+      action) artık üretimi temsil etmiyor.
+    */
+    const context = await runtimeGet<{ perception: Record<string, unknown> }>(
+      request,
+      `/api/v1/internal/agent-runtime/runs/${runId}/context`,
+      workerId,
+      leaseToken,
+    );
+    expect(JSON.stringify(context.perception)).toContain(humanTopicId);
     agentEntryBody = `Agent society E2E runtime entry ${suffix}; görünür topic bağlamına dayanan benzersiz içerik.`;
     await runtimeApi(request, `/api/v1/internal/agent-runtime/runs/${runId}/actions`, {
       workerId,
