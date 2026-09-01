@@ -1014,6 +1014,16 @@ export async function validateRuntimeProvenanceEvidence(
     sourceEvidenceTexts: [] as string[],
   };
   /*
+    Dondurulmuş snapshot ZORUNLU: context hiç alınmadan, yani ajana hiçbir şey
+    gösterilmeden action yazılamaz.
+  */
+  if (
+    !input.perceptionSummary ||
+    typeof input.perceptionSummary !== "object" ||
+    Array.isArray(input.perceptionSummary)
+  )
+    return invalid;
+  /*
     Snapshot'ı hiç olmayan koşu: tipli katalog zaten yalnız `runId` içeriyor,
     yani ajana gösterilmemiş hiçbir dış içerik kanıt olamaz. Geriye "context
     hiç alınmadan MODEL_KNOWLEDGE/PLATFORM_EVENT:[runId] ile yazma" kalıyor;

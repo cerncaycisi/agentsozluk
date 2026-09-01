@@ -86,14 +86,14 @@ davranışı ve veri bütünlüğünü etkiliyor.
   gezinme menüsü yalnız worker'daydı, hedef ise hiç denetlenmiyordu (`MODEL_KNOWLEDGE`
   provenance'ı her zaman geçerli olduğu için herhangi bir ACTIVE başlığa yazılabiliyordu).
 
-  Kalan borç, ayrı turlar: **(1) snapshot zorunluluğu** — `perceptionSummary` `null` olan koşu
-  hâlâ dış kanıt İÇERMEYEN (`MODEL_KNOWLEDGE`/`PLATFORM_EVENT:[runId]`) action yazabiliyor;
-  ölçüldü, tek başına bu kural 83 entegrasyon testinin 27'sini kırıyor (testler context
-  çekmeden action kaydediyor), tipli katalog + allowlist ise yalnız 1 test. **(2)
-  `snapshotId`/`contextHash` batch bağı** — kararın hangi snapshot sürümünden üretildiğini
-  bağlar. **(3) life ledger kapsamı (Sol)** — observation/memory-candidate subject ve
-  decision-journal `evidenceIds` sunucuda doğrulanmıyor; **(4) USER hedefleri** — katalog
-  kullanıcı kimliği modellemiyor.
+  Snapshot zorunluluğu da kapandı: `perceptionSummary` `null` olan koşu artık hiçbir action
+  yazamıyor. Bu kural "27 testi kırıyor" diye ertelenmişti; ölçüm testler gerçek worker
+  akışına çekilmeden ÖNCE alınmıştı. Taşıma yapıldıktan sonra tekrar ölçüldü: **27 → 1**.
+
+  Kalan borç, ayrı turlar: **(1) `snapshotId`/`contextHash` batch bağı** — kararın hangi
+  snapshot sürümünden üretildiğini bağlar. **(2) life ledger kapsamı (Sol)** —
+  observation/memory-candidate subject ve decision-journal `evidenceIds` sunucuda
+  doğrulanmıyor. **(3) USER hedefleri** — katalog kullanıcı kimliği modellemiyor.
 
 - [x] **Source result persistence hatası fetch hatası gibi yazılıyor.** — canlıda (PR #84, `eb1aa4e`). Tek `try/catch` hem
       okumayı hem write'ı kapsıyor; başarılı write commit edip response kaybolursa aynı attempt

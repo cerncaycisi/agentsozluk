@@ -3980,6 +3980,63 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(await integrationDatabase.entry.count({ where: { topicId: unseen.topic.id } })).toBe(1);
   });
 
+  it("rejects any action from a run that never had context presented", async () => {
+    /*
+      §4.3 son halka: tipli katalog snapshot'sız koşuda yalnız `runId` içeriyor,
+      yani dış içerik kanıt olamıyor. Geriye "context hiç alınmadan, ajana
+      hiçbir şey gösterilmeden yazma" kalıyordu — ajanın sözlüğü hiç görmeden
+      iş yapması. Artık dondurulmuş snapshot zorunlu.
+
+      Aksiyon bilerek HEDEFSİZ (`UPDATE_BELIEF`): hedefli bir aksiyon zaten
+      `ACTION_TARGET_OFF_SNAPSHOT` ile düşer ve test snapshot kuralını değil
+      hedef kuralını sınamış olurdu.
+    */
+    const fixture = await createFixture();
+    const workerId = "no-context-worker";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    // Bilerek context ÇEKİLMİYOR: perceptionSummary null kalır.
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "UPDATE_BELIEF",
+            safeReason: "Context görülmeden belief güncelleme denemesi.",
+            input: {
+              topicKey: "context-gorulmeden",
+              statement: "Bu hüküm hiçbir şey gösterilmeden üretildi.",
+              confidence: 0.7,
+              summary: "Snapshot'sız koşudan belief denemesi.",
+            },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Yalnız koşunun kendisi; dış kanıt yok.",
+            },
+          },
+        ],
+      }),
+    );
+    const executed = await executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
+      workerId,
+      sequence: 1,
+    });
+    expect(executed).toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "PROVENANCE_INVALID",
+    });
+  });
+
   it("records a successful later-wake action on a resolved dictionary link", async () => {
     const fixture = await createFixture();
     const target = await createTopicWithFirstEntry(
