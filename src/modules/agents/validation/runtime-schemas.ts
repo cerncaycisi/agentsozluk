@@ -324,7 +324,15 @@ const safeRunSummarySchema = z
   3'te kaldı, ve dört çağrı kullanan koşunun `/fail` gövdesi 422 ile reddedildi.
   Worker bu hatayı yakalamadığı için süreç öldü — canlıda elli dakikada iki kez.
 */
-export const runtimeCodexInvocationLimit = 4;
+/*
+  4 iken gezinme fazı sessiz bir KALİTE KAYBI üretiyordu (Sol hakem turu):
+  içerik onarım kapısı toplam çağrıyı sayıyor, gezinme bir slot yiyor ve
+  BROWSE kolundaki koşu — karar onarımı da olduysa — içerik onarım hakkını
+  CONTROL kolundan önce kaybediyordu. Aynı ihlal, gezinen ajanda düzeltilmeden
+  yayımlanıyordu. Limit gezinmeyi kapsayacak şekilde büyütüldü; onarım kapısı
+  ayrıca gezinme çağrısını saymıyor.
+*/
+export const runtimeCodexInvocationLimit = 5;
 
 /*
   Ajanın gezinme fazında okumak için seçebileceği başlık sayısı. TEK KAYNAK:
@@ -336,11 +344,32 @@ export const runtimeCodexInvocationLimit = 4;
 */
 export const runtimeReadTopicLimit = 3;
 
+/**
+ * Koşu başına 3-4 Codex çağrısı yapılıyor ve tek çağrının medyanı 101 sn
+ * (ölçüm: 1 Eylül 2026, üretim, 7 gün, n=8323 aralık). Faz etiketi olmadan
+ * 440 sn'lik karar süresinin hangi fazdan geldiği ölçülemiyordu; hangi fazın
+ * pahalı olduğu bilinmeden hiçbir iyileştirme hedeflenemez.
+ */
+export const runtimeCodexPhases = [
+  "BROWSE",
+  "DECISION",
+  "DECISION_REPAIR",
+  "ACTION_WORTHINESS",
+  "CONTENT_REPAIR",
+] as const;
+
+export type RuntimeCodexPhase = (typeof runtimeCodexPhases)[number];
+
 const codexIntervalSchema = z
   .object({
     startedAt: z.iso.datetime(),
     finishedAt: z.iso.datetime(),
     durationMs: z.number().int().min(0).max(86_400_000),
+    /*
+      İsteğe bağlı: eski koşuların kayıtları etiketsiz ve onları geçersiz
+      saymak `/complete` ile `/fail`i 422'ye düşürürdü.
+    */
+    phase: z.enum(runtimeCodexPhases).optional(),
   })
   .strict()
   .refine(
@@ -369,6 +398,44 @@ export const usageMetadataSchema = z
     swapInMb: z.number().min(0).max(65_536).optional(),
     swapOutMb: z.number().min(0).max(65_536).optional(),
     loadAverage1m: z.number().min(0).max(1000).optional(),
+    /*
+      Gezinme fazı 50/50 deneyinin kalıcı telemetrisi (Sıra 4).
+
+      Kolu yalnız runId hash'inden yeniden hesaplamak yetmiyor (Sol hakem
+      turu): hash ya da kod değişirse geçmiş kollar sessizce yeniden
+      tanımlanır, ve daha önemlisi ATANAN kol ile GERÇEKTEN UYGULANAN tedavi
+      ayırt edilemez. Intention-to-treat analizi ikisini de ister.
+    */
+    browseExperiment: z
+      .object({
+        version: z.number().int().min(1).max(1000),
+        arm: z.enum(["CONTROL", "BROWSE"]),
+        eligible: z.boolean(),
+        attempted: z.boolean(),
+        outcome: z.enum([
+          "NOT_ELIGIBLE",
+          "CONTROL",
+          "NO_MENU",
+          "NO_BUDGET",
+          "SELECTED",
+          "APPLIED",
+          "EMPTY_SELECTION",
+          "TIMEOUT",
+          "INVALID_OUTPUT",
+          "ERROR",
+        ]),
+        budgetMs: z.number().int().min(0).max(600_000),
+        durationMs: z.number().int().min(0).max(600_000).optional(),
+        remainingBeforeMs: z.number().int().min(0).max(3_600_000),
+        // Per-protocol analiz için: menü her iki kolda da ölçülmeli.
+        menuCount: z.number().int().min(0).max(1000).optional(),
+        selectedCount: z.number().int().min(0).max(100).optional(),
+        readTopicCount: z.number().int().min(0).max(100).optional(),
+        runBudgetMs: z.number().int().min(0).max(3_600_000).optional(),
+        decisionReserveMs: z.number().int().min(0).max(3_600_000).optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 

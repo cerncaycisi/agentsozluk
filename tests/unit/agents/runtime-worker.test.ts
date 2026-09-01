@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   RuntimeControlPlaneError,
   type RuntimeContext,
@@ -32,6 +32,11 @@ import {
   runtimeCodexInvocationLimit,
   usageMetadataSchema,
 } from "@/modules/agents/validation/runtime-schemas";
+import {
+  runtimeBrowseArmAssignment,
+  runtimeBrowseTimeoutMs,
+  runtimeDecisionReserveMs,
+} from "@/modules/agents/domain/runtime-browse-experiment";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
 
 function usageWithIntervals(
@@ -86,6 +91,19 @@ function fixtureContext(runId: string): RuntimeContext {
     },
     perception: { observedAt: "2026-07-17T12:00:00.000Z", recentEntries: [] },
   };
+}
+
+/*
+  Gezinme fazı artık 50/50 deneyinde: kol runId'den deterministik türüyor
+  (`domain/runtime-browse-experiment.ts`). Gezinmeyi sınayan testler kolu
+  sabitlemeli, yoksa koşunun yarısı sessizce CONTROL'e düşer ve test
+  "gezinme çağrılmadı" diye rastgele kırılır.
+*/
+function runIdForArm(arm: "CONTROL" | "BROWSE"): string {
+  for (;;) {
+    const candidate = randomUUID();
+    if (runtimeBrowseArmAssignment(candidate) === arm) return candidate;
+  }
 }
 
 function controlPlane(runId: string): RuntimeControlPlane {
@@ -277,6 +295,19 @@ function noActionProvider(): RuntimeProvider {
 }
 
 describe("long-lived agent runtime worker", () => {
+  /*
+    Deney bayrağı üretimde KAPALI doğuyor (bütçe tavanı ve telemetri açık,
+    50/50 bölme değil). Kol davranışını sınayan testler bayrağı açıkça açar,
+    yoksa `runtimeBrowseArm` her koşuya BROWSE der ve CONTROL kolu hiç
+    denenmez.
+  */
+  beforeEach(() => {
+    process.env.AGENT_BROWSE_EXPERIMENT = "1";
+  });
+  afterEach(() => {
+    delete process.env.AGENT_BROWSE_EXPERIMENT;
+  });
+
   it("uses a production heartbeat interval below the fifteen-second ceiling", () => {
     expect(DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS).toBeLessThanOrEqual(15_000);
   });
@@ -3213,7 +3244,8 @@ describe("long-lived agent runtime worker", () => {
   }
 
   it("lets the agent choose which topics to read and only forwards visible topic ids", async () => {
-    const runId = randomUUID();
+    // Gezinme kolunu sabitle: CONTROL kolunda faz hiç çalışmaz.
+    const runId = runIdForArm("BROWSE");
     const [visibleTopic, otherVisibleTopic] = [randomUUID(), randomUUID()];
     const unseenTopic = randomUUID();
     const plane = controlPlane(runId);
@@ -3248,6 +3280,14 @@ describe("long-lived agent runtime worker", () => {
     await expect(worker.runOnce()).resolves.toBe(1);
 
     const browseRequest = vi.mocked(provider.invoke).mock.calls[0]?.[0];
+    /*
+      Gezinme koşunun kalan BÜTÜN bütçesini alamaz. Eskiden alıyordu; takıldığında
+      karar çağrısına süre kalmıyor ve koşu hiçbir şey üretmeden düşüyordu.
+      Karar çağrısının bütçesi gezinmeninkinden belirgin biçimde büyük olmalı.
+    */
+    const decisionRequest = vi.mocked(provider.invoke).mock.calls[1]?.[0];
+    expect(browseRequest?.timeoutMs).toBeLessThanOrEqual(runtimeBrowseTimeoutMs);
+    expect(decisionRequest?.timeoutMs ?? 0).toBeGreaterThan(browseRequest?.timeoutMs ?? 0);
     expect(browseRequest?.prompt).toContain("# Okuma seçimi");
     // Persona olmadan seçim kişiselleşmez, faz da çağrı masrafından ibaret kalır.
     expect(browseRequest?.prompt).toContain("Trusted persona prompt.");
@@ -3263,7 +3303,8 @@ describe("long-lived agent runtime worker", () => {
   });
 
   it("does not refetch context when the agent asks to read nothing", async () => {
-    const runId = randomUUID();
+    // Gezinme kolunu sabitle: CONTROL kolunda faz hiç çalışmaz.
+    const runId = runIdForArm("BROWSE");
     const plane = controlPlane(runId);
     plane.context = vi
       .fn()
@@ -3296,8 +3337,230 @@ describe("long-lived agent runtime worker", () => {
     expect(plane.context).toHaveBeenCalledTimes(1);
   });
 
+  it("still runs the decision after the browse call times out", async () => {
+    /*
+      Regresyonun kalbi: gezinme koşunun KALAN BÜTÜN bütçesini alıyordu, takılınca
+      karar çağrısına hiç süre kalmıyor ve koşu hiçbir şey üretmeden düşüyordu.
+      Gezinme timeout'u artık koşuyu değil yalnız fazı bitirmeli.
+    */
+    const runId = runIdForArm("BROWSE");
+    const plane = controlPlane(runId);
+    plane.context = vi
+      .fn()
+      .mockResolvedValue(browsableContext(runId, [randomUUID(), randomUUID()]));
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi
+        .fn()
+        .mockRejectedValueOnce(new RuntimeProviderTimeoutError())
+        .mockResolvedValue({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 5,
+          output: canonicalNormalOutput("Gezinme zaman aşımına uğradı, karar yine verildi."),
+        }),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "browse-timeout-worker",
+      credentials: [`agt_${"t".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+    expect(plane.complete).toHaveBeenCalled();
+    expect(plane.fail).not.toHaveBeenCalled();
+    // Karar çağrısı gerçekten yapıldı: gezinme bütçeyi yutmadı.
+    expect(vi.mocked(provider.invoke)).toHaveBeenCalledTimes(2);
+    const usage = vi.mocked(plane.complete).mock.calls[0]?.[4]?.usageMetadata as
+      | { browseExperiment?: { outcome?: string; attempted?: boolean } }
+      | undefined;
+    expect(usage?.browseExperiment?.outcome).toBe("TIMEOUT");
+    expect(usage?.browseExperiment?.attempted).toBe(true);
+  });
+
+  it("leaves the content repair budget identical in both arms", async () => {
+    /*
+      Gezinme fazı sessiz bir KALİTE KAYBI üretiyordu: içerik onarım kapısı
+      TOPLAM Codex çağrısını sayıyordu, gezinme bir slot yiyordu ve BROWSE
+      kolundaki koşu — karar onarımı da olduysa — onarım hakkını CONTROL
+      kolundan önce kaybediyordu. Aynı kural ihlali gezinen ajanda
+      düzeltilmeden yayımlanıyordu.
+
+      Senaryo hatanın ISIRDIĞI yolu kuruyor: önce geçersiz karar (karar onarımı
+      bir çağrı daha yakar), sonra onarılabilir bir içerik reddi. CONTROL'de
+      içerik onarımı denenir; hata varken BROWSE'da denenmezdi.
+    */
+    const topicId = randomUUID();
+    const armAttemptsContentRepair = async (arm: "CONTROL" | "BROWSE") => {
+      const runId = runIdForArm(arm);
+      const plane = controlPlane(runId);
+      plane.context = vi
+        .fn()
+        .mockResolvedValue(browsableContext(runId, [randomUUID(), randomUUID()]));
+      plane.executeActions = vi.fn().mockResolvedValue({
+        actions: [
+          {
+            id: randomUUID(),
+            sequence: 1,
+            actionType: "CREATE_ENTRY",
+            actionStatus: "REJECTED",
+            rejectionCode: "USER_ENTRY_HIGH_RISK_REPRODUCTION",
+          },
+        ],
+      });
+      const decision = canonicalNormalOutput("Riskli entry adayı değerlendirildi.", {
+        actions: [
+          {
+            type: "CREATE_ENTRY",
+            targetId: topicId,
+            body: "Başlıktaki yazarın söylediği cümleyi aynen aktaran entry.",
+            desire: 0.8,
+            safeReason: "Görünür topic entry adayını destekliyor.",
+            claimProvenance: [
+              {
+                provenance: "PLATFORM_EVENT",
+                evidenceIds: [runId],
+                shortRationale: "Görünür runtime olayı entry adayını destekliyor.",
+              },
+            ],
+          },
+        ],
+      });
+      const invoke = vi.fn();
+      // BROWSE kolunda ilk çağrı gezinme; iki kolda da karar önce GEÇERSİZ gelir.
+      if (arm === "BROWSE")
+        invoke.mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 5,
+          output: { topicIds: [] },
+        });
+      invoke
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 10,
+          output: { bozuk: true },
+        })
+        .mockResolvedValueOnce({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 10,
+          output: decision,
+        })
+        .mockResolvedValue({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 8,
+          output: { canRepair: true, body: "Aynı olguyu kendi cümlemle aktaran yeni gövde." },
+        });
+      const worker = new AgentRuntimeWorker({
+        workerId: `repair-budget-${arm.toLowerCase()}`,
+        credentials: [`agt_${(arm === "CONTROL" ? "p" : "q").repeat(43)}`],
+        controlPlane: plane,
+        provider: {
+          inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
+          invoke,
+        },
+      });
+      await worker.runOnce();
+      const usage = (vi.mocked(plane.complete).mock.calls[0]?.[4] ??
+        vi.mocked(plane.fail).mock.calls[0]?.[4]) as
+        | { usageMetadata?: { codexIntervals?: Array<{ phase?: string }> } }
+        | undefined;
+      return (usage?.usageMetadata?.codexIntervals ?? []).some(
+        ({ phase }) => phase === "CONTENT_REPAIR",
+      );
+    };
+
+    // İçerik onarımı iki kolda da denenmeli; fark doğrudan kalite kaybıdır.
+    expect(await armAttemptsContentRepair("CONTROL")).toBe(true);
+    expect(await armAttemptsContentRepair("BROWSE")).toBe(true);
+  });
+
+  it("skips browsing when the decision reserve would be eaten", async () => {
+    /*
+      Sol hakem turu: `min(kalan, 20 sn)` yetmez. Kalan süre erimişken gezinme
+      yine hepsini alır ve karar aç kalır. Karara ayrılan rezervin altına
+      inildiğinde faz hiç denenmemeli.
+    */
+    const runId = runIdForArm("BROWSE");
+    const plane = controlPlane(runId);
+    plane.context = vi
+      .fn()
+      .mockResolvedValue(browsableContext(runId, [randomUUID(), randomUUID()]));
+    // Deadline lease'ten türüyor: rezervin altında bir koşu bütçesi ver.
+    plane.lease = vi.fn().mockResolvedValue({
+      run: {
+        id: runId,
+        timeoutSeconds: Math.floor(runtimeDecisionReserveMs / 1000) - 30,
+        startedAt: new Date().toISOString(),
+        leaseToken: LEASE_TOKEN,
+      },
+      reason: null,
+    });
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockResolvedValue({
+        provider: "codex-cli",
+        version: "test",
+        durationMs: 5,
+        output: canonicalNormalOutput("Bütçe yetmediği için gezinme atlandı."),
+      }),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "browse-noBudget-worker",
+      credentials: [`agt_${"n".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+    expect(vi.mocked(provider.invoke)).toHaveBeenCalledTimes(1);
+    const usage = vi.mocked(plane.complete).mock.calls[0]?.[4]?.usageMetadata as
+      | { browseExperiment?: { outcome?: string; attempted?: boolean } }
+      | undefined;
+    expect(usage?.browseExperiment?.outcome).toBe("NO_BUDGET");
+    expect(usage?.browseExperiment?.attempted).toBe(false);
+  });
+
+  it("does not call the provider twice in the control arm", async () => {
+    // CONTROL kolu faz öncesi davranış: tek Codex çağrısı, gezinme yok.
+    const runId = runIdForArm("CONTROL");
+    const plane = controlPlane(runId);
+    plane.context = vi
+      .fn()
+      .mockResolvedValue(browsableContext(runId, [randomUUID(), randomUUID()]));
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockResolvedValue({
+        provider: "codex-cli",
+        version: "test",
+        durationMs: 5,
+        output: canonicalNormalOutput("Kontrol kolunda gezinme yapılmadan karar verildi."),
+      }),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "browse-control-worker",
+      credentials: [`agt_${"c".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+    expect(vi.mocked(provider.invoke)).toHaveBeenCalledTimes(1);
+    expect(plane.context).toHaveBeenCalledTimes(1);
+    const usage = vi.mocked(plane.complete).mock.calls[0]?.[4]?.usageMetadata as
+      | { browseExperiment?: { arm?: string; outcome?: string } }
+      | undefined;
+    expect(usage?.browseExperiment?.arm).toBe("CONTROL");
+    expect(usage?.browseExperiment?.outcome).toBe("CONTROL");
+  });
+
   it("completes the run when the browse phase fails instead of failing the whole wake", async () => {
-    const runId = randomUUID();
+    // Gezinme kolunu sabitle: CONTROL kolunda faz hiç çalışmaz.
+    const runId = runIdForArm("BROWSE");
     const plane = controlPlane(runId);
     plane.context = vi
       .fn()
