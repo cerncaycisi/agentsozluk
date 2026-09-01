@@ -38,6 +38,12 @@ import {
 import { sourceFetchTargetLimit } from "@/modules/agents/domain/runtime-controls";
 import { browsableTopicMenu, type BrowsableTopic } from "@/modules/agents/domain/runtime-browse";
 import {
+  runtimeBrowseArm,
+  runtimeBrowseBudgetMs,
+  runtimeDecisionReserveMs,
+  type RuntimeBrowseExperimentTelemetry,
+} from "@/modules/agents/domain/runtime-browse-experiment";
+import {
   runtimeEvidenceCatalogFrom,
   runtimeEvidenceTypes,
   type RuntimeEvidenceCatalog,
@@ -48,6 +54,7 @@ import {
   runtimeCodexInvocationLimit,
   runtimeFastStateSchema,
   runtimeReadTopicLimit,
+  type RuntimeCodexPhase,
 } from "@/modules/agents/validation/runtime-schemas";
 import {
   RUNTIME_PROMPT_PROFILE_HASH,
@@ -1126,10 +1133,23 @@ export class AgentRuntimeWorker {
       this.#options.heartbeatIntervalMs ?? DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS,
     );
     heartbeatTimer.unref();
-    const codexIntervals: Array<{ startedAt: string; finishedAt: string; durationMs: number }> = [];
+    const codexIntervals: Array<{
+      startedAt: string;
+      finishedAt: string;
+      durationMs: number;
+      phase: RuntimeCodexPhase;
+    }> = [];
     const codexInvocationErrors = new Set<unknown>();
+    /*
+      Faz etiketi telemetri için: `codexIntervals` hangi çağrının hangi faz
+      olduğunu söylemiyordu, dolayısıyla 440 sn'lik karar süresinin nereye
+      gittiği ölçülemiyordu. Koşu başına 3-4 çağrı yapılıyor ve tek çağrının
+      medyanı 101 sn — hangi fazın pahalı olduğunu bilmeden hiçbir iyileştirme
+      hedeflenemez.
+    */
     const invokeCodex = async (
       request: Parameters<RuntimeProvider["invoke"]>[0],
+      phase: RuntimeCodexPhase,
       provider: RuntimeProvider = this.#options.provider,
     ): Promise<RuntimeProviderResult> => {
       /*
@@ -1153,10 +1173,17 @@ export class AgentRuntimeWorker {
           startedAt: startedAt.toISOString(),
           finishedAt: finishedAt.toISOString(),
           durationMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
+          phase,
         });
       }
     };
     let providerResult: RuntimeProviderResult | null = null;
+    /*
+      Deney telemetrisi hem başarı hem başarısızlık yolunda yazılmalı: koşu
+      düştüğünde kolu kaybetmek, tam da ölçmek istediğimiz vakayı (gezinme
+      koşuyu düşürdü mü) görünmez yapardı.
+    */
+    let browseExperiment: RuntimeBrowseExperimentTelemetry | null = null;
     let sourceItemsFetched = 0;
     let sourceReads = 0;
     let sourceTargetsAttempted = 0;
@@ -1287,26 +1314,86 @@ export class AgentRuntimeWorker {
         Başarısızlık koşuyu düşürmez: seçim yapılamazsa eski perception ile
         devam edilir, yani en kötü hâl bugünkü davranıştır.
       */
-      const browsable = browsableTopics(context);
-      if (browsable.length > 0 && codexIntervals.length === 0) {
+      /*
+        50/50 deney (Sıra 4). Uygunluk KOLDAN BAĞIMSIZ hesaplanıyor: yalnız
+        `NORMAL_WAKE` koşuları randomize ediliyor, çünkü ölçüm de o kapsamda
+        (`REFLECTION`/`SOURCE_REFRESH` public katkı üretmiyor). Kol runId'den
+        deterministik türüyor ama telemetri KALICI yazılıyor — atanan kol ile
+        gerçekten uygulanan tedavi ayrı şeyler.
+      */
+      const browseArm = runtimeBrowseArm(runId);
+      const browseEligible = context.run.runType === "NORMAL_WAKE" && codexIntervals.length === 0;
+      /*
+        Menü HER İKİ KOLDA da hesaplanıyor: per-protocol analizde "CONTROL
+        koşusunun menüsü olsaydı ne olurdu" sorusu ancak böyle cevaplanabilir
+        (Sol hakem turu). Yalnız BROWSE kolunda kullanılıyor.
+      */
+      const browseMenuCount = browseEligible ? browsableTopics(context).length : 0;
+      const browsable = browseEligible && browseArm === "BROWSE" ? browsableTopics(context) : [];
+      const browseRemainingBeforeMs = deadline.remainingMs();
+      const browseBudgetMs = runtimeBrowseBudgetMs(browseRemainingBeforeMs);
+      browseExperiment = {
+        version: 1,
+        arm: browseArm,
+        eligible: browseEligible,
+        attempted: false,
+        outcome: !browseEligible
+          ? "NOT_ELIGIBLE"
+          : browseArm === "CONTROL"
+            ? "CONTROL"
+            : browsable.length === 0
+              ? "NO_MENU"
+              : browseBudgetMs <= 0
+                ? "NO_BUDGET"
+                : "ERROR",
+        budgetMs: Math.max(0, browseBudgetMs),
+        remainingBeforeMs: browseRemainingBeforeMs,
+        menuCount: browseMenuCount,
+        runBudgetMs: lease.run.timeoutSeconds * 1000,
+        decisionReserveMs: runtimeDecisionReserveMs,
+      };
+      if (browsable.length > 0 && browseBudgetMs > 0) {
         currentFailure = runtimeWorkerFailures.context;
         await enterPhase("READING");
         try {
-          const browseResult = await invokeCodex({
-            runId,
-            prompt: buildBrowsePrompt(context, browsable),
-            outputSchema: runtimeBrowseWireJsonSchema,
-            timeoutMs: deadline.remainingMs(),
-            debugRetentionHours: context.run.debugRetentionHours,
-            signal: deadline.signal,
-          });
+          const browseResult = await invokeCodex(
+            {
+              runId,
+              prompt: buildBrowsePrompt(context, browsable),
+              outputSchema: runtimeBrowseWireJsonSchema,
+              /*
+              Gezinmenin KENDİ bütçesi: karar rezervi düşüldükten SONRA kalan
+              pay, en fazla `runtimeBrowseTimeoutMs`. Eskiden koşunun kalan
+              bütün bütçesi veriliyordu; gezinme takılınca karar çağrısına hiç
+              bütçe kalmıyor ve koşu hiçbir şey üretmeden düşüyordu.
+            */
+              timeoutMs: browseBudgetMs,
+              debugRetentionHours: context.run.debugRetentionHours,
+              signal: deadline.signal,
+            },
+            "BROWSE",
+          );
           deadline.throwIfStopped();
+          browseExperiment = {
+            ...browseExperiment,
+            attempted: true,
+            durationMs: browseResult.durationMs,
+          };
           const parsed = runtimeBrowseWireSchema.safeParse(browseResult.output);
           // Yalnız menüde görünen kimlikler; ajan görmediği başlığı isteyemez.
           const menuIds = new Set(browsable.map(({ id }) => id));
           const selected = (parsed.success ? parsed.data.topicIds : []).filter((id) =>
             menuIds.has(id),
           );
+          browseExperiment = {
+            ...browseExperiment,
+            selectedCount: selected.length,
+            outcome: !parsed.success
+              ? "INVALID_OUTPUT"
+              : selected.length > 0
+                ? "SELECTED"
+                : "EMPTY_SELECTION",
+          };
           if (selected.length > 0) {
             context = await this.#options.controlPlane.context(
               credential,
@@ -1316,12 +1403,37 @@ export class AgentRuntimeWorker {
               deadline.requestOptions(),
               selected,
             );
+            /*
+              Tedavi ancak context GERÇEKTEN yeniden çekilince uygulanmıştır.
+              `SELECTED`i ikinci context çağrısından önce yazmak, çağrı
+              düştüğünde koşuyu "tedavi almış" gösteriyordu (Sol hakem turu).
+            */
+            browseExperiment = {
+              ...browseExperiment,
+              outcome: "APPLIED",
+              readTopicCount: recordArray(context.perception.readTopics).length,
+            };
           }
         } catch (rawBrowseError) {
           const browseError = deadline.normalizeError(rawBrowseError);
           if (browseError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
             throw browseError;
-          this.#options.onSafeEvent?.({ level: "info", code: "BROWSE_SKIPPED", runId });
+          /*
+            Timeout ile diğer hataları ayır: tek bir `BROWSE_SKIPPED` kodu
+            deneyin en kritik sorusunu (tavan gerçekten ısırıyor mu) ölçülemez
+            hâle getiriyordu (Sol hakem turu).
+          */
+          const timedOut = browseError instanceof RuntimeProviderTimeoutError;
+          browseExperiment = {
+            ...browseExperiment,
+            attempted: true,
+            outcome: timedOut ? "TIMEOUT" : "ERROR",
+          };
+          this.#options.onSafeEvent?.({
+            level: "info",
+            code: timedOut ? "BROWSE_TIMEOUT" : "BROWSE_FAILED",
+            runId,
+          });
         }
       }
       currentFailure = runtimeWorkerFailures.decisionPreparation;
@@ -1330,14 +1442,17 @@ export class AgentRuntimeWorker {
       const prompt = buildRuntimePrompt(context);
       const outputSchema = runtimeOutputJsonSchema(context);
       currentFailure = runtimeWorkerFailures.decisionProvider;
-      providerResult = await invokeCodex({
-        runId,
-        prompt,
-        outputSchema,
-        timeoutMs: deadline.remainingMs(),
-        debugRetentionHours: context.run.debugRetentionHours,
-        signal: deadline.signal,
-      });
+      providerResult = await invokeCodex(
+        {
+          runId,
+          prompt,
+          outputSchema,
+          timeoutMs: deadline.remainingMs(),
+          debugRetentionHours: context.run.debugRetentionHours,
+          signal: deadline.signal,
+        },
+        "DECISION",
+      );
       deadline.throwIfStopped();
       currentFailure = runtimeWorkerFailures.decisionOutput;
       await enterPhase("VALIDATING");
@@ -1367,14 +1482,17 @@ export class AgentRuntimeWorker {
             ? [RUNTIME_MEMORY_CONSOLIDATION_REPAIR_INSTRUCTION]
             : []),
         ].join("\n");
-        const repairResult = await invokeCodex({
-          runId,
-          prompt: `${prompt}\n\n${repairInstruction}`,
-          outputSchema,
-          timeoutMs: remainingMs,
-          debugRetentionHours: context.run.debugRetentionHours,
-          signal: deadline.signal,
-        });
+        const repairResult = await invokeCodex(
+          {
+            runId,
+            prompt: `${prompt}\n\n${repairInstruction}`,
+            outputSchema,
+            timeoutMs: remainingMs,
+            debugRetentionHours: context.run.debugRetentionHours,
+            signal: deadline.signal,
+          },
+          "DECISION_REPAIR",
+        );
         providerResult = {
           ...repairResult,
           durationMs: providerResult.durationMs + repairResult.durationMs,
@@ -1422,6 +1540,7 @@ export class AgentRuntimeWorker {
             debugRetentionHours: context.run.debugRetentionHours,
             signal: deadline.signal,
           },
+          "ACTION_WORTHINESS",
           this.#options.actionWorthinessProvider,
         );
         providerResult = {
@@ -1488,23 +1607,33 @@ export class AgentRuntimeWorker {
           ({ actionStatus, rejectionCode }) =>
             actionStatus === "REJECTED" && isRepairableContentRejectionCode(rejectionCode),
         );
-        if (repairableRejection && !contentRepairAttempted && codexIntervals.length < 3) {
+        /*
+          Onarım bütçesi gezinmeyi SAYMAZ. Toplam çağrıyı saymak, gezinen
+          ajanın içerik onarım hakkını gezinmeyenden önce bitiriyordu: aynı
+          kural ihlali BROWSE kolunda düzeltilmeden yayımlanıyordu. Bu hem
+          kalite kaybı hem deney karıştırıcısıydı (Sol hakem turu).
+        */
+        const decisionPhaseCalls = codexIntervals.filter(({ phase }) => phase !== "BROWSE").length;
+        if (repairableRejection && !contentRepairAttempted && decisionPhaseCalls < 3) {
           contentRepairAttempted = true;
           await enterPhase("VALIDATING");
           let repairResult: RuntimeProviderResult | null = null;
           try {
-            repairResult = await invokeCodex({
-              runId,
-              prompt: buildContentRepairPrompt(
-                originalAction,
-                repairableRejection.rejectionCode ?? "",
-                context,
-              ),
-              outputSchema: runtimeContentRepairWireJsonSchema,
-              timeoutMs: deadline.remainingMs(),
-              debugRetentionHours: context.run.debugRetentionHours,
-              signal: deadline.signal,
-            });
+            repairResult = await invokeCodex(
+              {
+                runId,
+                prompt: buildContentRepairPrompt(
+                  originalAction,
+                  repairableRejection.rejectionCode ?? "",
+                  context,
+                ),
+                outputSchema: runtimeContentRepairWireJsonSchema,
+                timeoutMs: deadline.remainingMs(),
+                debugRetentionHours: context.run.debugRetentionHours,
+                signal: deadline.signal,
+              },
+              "CONTENT_REPAIR",
+            );
           } catch (rawRepairError) {
             const repairError = deadline.normalizeError(rawRepairError);
             if (repairError instanceof RuntimeProviderCancelledError || deadline.signal.aborted)
@@ -1693,6 +1822,7 @@ export class AgentRuntimeWorker {
               : {}),
             promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
             codexIntervals,
+            ...(browseExperiment ? { browseExperiment } : {}),
             ...providerResult.hostMetrics,
           },
           performanceMetrics: {
@@ -1741,8 +1871,13 @@ export class AgentRuntimeWorker {
                 outcome: "FAILED",
                 ...currentFailure,
               };
+      /*
+        Deney kaydı Codex hiç çağrılmamış olsa bile yazılmalı: gezinme bütçe
+        yokluğundan atlandıysa ya da koşu erken düştüyse de kolu bilmek
+        gerekiyor (ITT).
+      */
       const failureUsage =
-        codexIntervals.length > 0
+        codexIntervals.length > 0 || browseExperiment
           ? {
               durationMs:
                 providerResult?.durationMs ??
@@ -1758,7 +1893,14 @@ export class AgentRuntimeWorker {
                   }
                 : {}),
               promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
-              codexIntervals,
+              /*
+                Şema `codexIntervals` için `.min(1)` istiyor: boş dizi
+                göndermek 422 üretir. 28 Ağustos'ta tam bu sınıftan bir şema
+                kayması `/fail`i 422'ye düşürüp worker'ı öldürmüştü — gezinme
+                hiç çağrı yapmadan atlandığında buraya boş dizi gelebilir.
+              */
+              ...(codexIntervals.length > 0 ? { codexIntervals } : {}),
+              ...(browseExperiment ? { browseExperiment } : {}),
               ...(providerResult?.hostMetrics ?? {}),
             }
           : null;
