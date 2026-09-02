@@ -1234,8 +1234,11 @@ export class AgentRuntimeWorker {
       koşuyu düşürdü mü) görünmez yapardı.
     */
     let browseExperiment: RuntimeBrowseExperimentTelemetry | null = null;
-    let decisionRepair: { reason: "SCHEMA" | "CATALOG"; missedEvidenceTypes?: string[] } | null =
-      null;
+    let decisionRepair: {
+      reason: "SCHEMA" | "CATALOG";
+      missedEvidenceTypes?: string[];
+      schemaIssuePaths?: string[];
+    } | null = null;
     let sourceItemsFetched = 0;
     let sourceReads = 0;
     let sourceTargetsAttempted = 0;
@@ -1530,8 +1533,32 @@ export class AgentRuntimeWorker {
           ve p50 144 sn yiyor — koşu bütçesinin en büyük ikinci kalemi. Neden
           tetiklendiği hiçbir yere yazılmadığı için bugüne dek hedeflenemiyordu.
         */
+        /*
+          Şema hatasında HANGİ ALANIN takıldığı da kaydediliyor. Gece ölçümü
+          onarımların %95'inin şema kaynaklı olduğunu gösterdi (SCHEMA 76,
+          CATALOG 4) ama "SCHEMA" tek başına hedef göstermiyor.
+
+          Yalnız zod issue PATH'leri alınıyor: bunlar kendi şemamızın alan
+          adları. `message` ve alınan değer ALINMIYOR — onlar modelin ürettiği
+          içeriği kaydın içine taşırdı.
+        */
+        const schemaIssuePaths = !parsedDecision.success
+          ? [
+              ...new Set(
+                parsedDecision.error.issues.map(({ path }) =>
+                  path
+                    .map((segment) => (typeof segment === "number" ? "[]" : String(segment)))
+                    .join(".")
+                    .slice(0, 60),
+                ),
+              ),
+            ]
+              .sort()
+              .slice(0, 20)
+          : [];
         decisionRepair = {
           reason: !parsedDecision.success || !decision ? "SCHEMA" : "CATALOG",
+          ...(schemaIssuePaths.length > 0 ? { schemaIssuePaths } : {}),
           ...(parsedDecision.success && decision
             ? {
                 missedEvidenceTypes: runtimeDecisionCatalogMisses(
