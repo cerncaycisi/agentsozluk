@@ -6,7 +6,10 @@ import type {
   TransactionClient,
 } from "@/lib/db/types";
 import { checkDatabaseReadiness } from "@/lib/db/readiness";
-import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
+import {
+  runtimeEvidenceCatalogFrom,
+  runtimePresentedUserIds,
+} from "@/modules/agents/domain/runtime-evidence-catalog";
 import { getRuntimeRunProducedTargetIds } from "@/modules/agents/repository/runtime";
 import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
@@ -1007,6 +1010,20 @@ export async function executeRuntimeAction(
         üretim, gerçek katalogla): başarıyla yürümüş 19 057 topic/entry
         hedefinin tamamı snapshot içindeydi, 0 dışında.
       */
+      /*
+        USER hedefleri ayrı boyut: katalog kullanıcı kimliğini kanıt TÜRÜ
+        olarak modellemiyor (modellerse kullanıcı kimliği yanlışlıkla
+        `USER_ENTRY`/`PLATFORM_EVENT` kanıtı sayılırdı). Ölçüldü (2 Eylül,
+        üretim): başarıyla yürümüş 137 USER hedefinin tamamı sunulmuştu.
+      */
+      if (resolvedTarget.userId !== undefined) {
+        const presentedUsers = runtimePresentedUserIds(actionRecord.run.perceptionSummary);
+        if (!presentedUsers.has(resolvedTarget.userId))
+          return rejectAction(transaction, principal, actionRecord, {
+            code: "ACTION_TARGET_OFF_SNAPSHOT",
+            reason: "Action hedefi bu koşunun dondurulmuş context'inde ajana sunulmadı.",
+          });
+      }
       const targetIdInSnapshot = resolvedTarget.topicId ?? resolvedTarget.entryId;
       if (targetIdInSnapshot !== undefined) {
         const catalog = runtimeEvidenceCatalogFrom(actionRecord.run.perceptionSummary, runId);

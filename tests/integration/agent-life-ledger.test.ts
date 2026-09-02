@@ -16,6 +16,7 @@ import {
   runtimeDecisionBatchSchema,
   updateAgentSourceAdmin,
 } from "@/modules/agents";
+import { createTopicWithFirstEntry } from "@/modules/topics";
 import { appendRuntimeEvent } from "@/modules/agents/repository/control-plane";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
 import { runtimeLifeEventBatchSchema } from "@/modules/agents/validation/life-schemas";
@@ -350,10 +351,14 @@ async function createReconstructionRun(input: {
     }),
   );
   /*
-    §4.3: kanıt ancak bu koşunun dondurulmuş context'inde sunulmuşsa geçerli.
-    Gerçek worker gibi context çekiliyor; koşu satırını elle kurup context'i
-    atlamak artık üretimi temsil etmiyor.
+    §4.3: kanıt VE hedef ancak bu koşunun dondurulmuş context'inde sunulmuşsa
+    geçerli. Hedef kullanıcı ancak bir entry'nin yazarı olarak görünür, o yüzden
+    context'ten ÖNCE yazıyor. Gerçek worker akışı da bu.
   */
+  await createTopicWithFirstEntry(integrationDatabase, adminActor(input.targetUserId), {
+    title: `hedef kullanıcının başlığı ${randomUUID()}`,
+    entryBody: "Ajanın gördüğü, hedef kullanıcı tarafından yazılmış insan entry'si.",
+  });
   await getRuntimeRunContext(
     integrationDatabase,
     principal,
