@@ -4037,6 +4037,56 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
   });
 
+  it("rejects following a user the run never saw", async () => {
+    /*
+      §4.3 son kapsam: katalog kullanıcı kimliğini kanıt TÜRÜ olarak
+      modellemiyor, bu yüzden USER hedefleri denetim dışındaydı. Ele geçirilmiş
+      bir worker ajana hiç gösterilmemiş herhangi bir kullanıcıyı takip
+      ettirebilir ya da hakkında ilişki notu yazdırabilirdi.
+    */
+    const fixture = await createFixture();
+    const workerId = "unseen-user-worker";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    // Perception donduktan SONRA yazan kullanıcı: ajan onu hiç görmedi.
+    const unseenAuthor = await createAdmin();
+    await createTopicWithFirstEntry(integrationDatabase, adminActor(unseenAuthor.id), {
+      title: `gösterilmemiş yazarın başlığı ${randomUUID()}`,
+      entryBody: "Bu yazar koşunun dondurulmuş görüntüsünde hiç yer almadı.",
+    });
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "FOLLOW_USER",
+            safeReason: "Gösterilmemiş kullanıcıyı takip denemesi.",
+            targetType: "USER",
+            targetId: unseenAuthor.id,
+            input: { userId: unseenAuthor.id },
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "ACTION_TARGET_OFF_SNAPSHOT",
+    });
+  });
+
   it("records a successful later-wake action on a resolved dictionary link", async () => {
     const fixture = await createFixture();
     const target = await createTopicWithFirstEntry(
@@ -6016,6 +6066,15 @@ describe("internal agent runtime API with PostgreSQL", () => {
     const writePrincipal = await runtimePrincipal(fixture.credential);
     expect(writePrincipal.actor).toMatchObject({ actorKind: "AGENT", actorRole: "USER" });
     const workerId = "agent-user-follow-worker";
+    /*
+      §4.3: takip edilecek kullanıcı ajana SUNULMUŞ olmalı. Üretimde de öyle —
+      ölçüldü: başarıyla yürümüş 137 USER hedefinin tamamı perception'daydı.
+      Kullanıcı ancak bir entry'nin yazarı olarak görünür.
+    */
+    await createTopicWithFirstEntry(integrationDatabase, adminActor(fixture.admin.id), {
+      title: `takip edilecek yazarın başlığı ${randomUUID()}`,
+      entryBody: "Ajanın gördüğü, admin tarafından yazılmış insan entry'si.",
+    });
     const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
       workerId,
       leaseSeconds: 60,

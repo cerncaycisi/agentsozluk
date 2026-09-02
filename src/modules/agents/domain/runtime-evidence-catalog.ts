@@ -114,3 +114,44 @@ export function runtimeEvidenceCatalogFrom(
     ),
   };
 }
+
+/**
+ * Bu koşunun ajana SUNDUĞU kullanıcı kimlikleri.
+ *
+ * Kanıt kataloğundan ayrı tutuluyor: kullanıcı bir kanıt TÜRÜ değil, bir
+ * action HEDEFİ boyutu (`FOLLOW_USER`, `UPDATE_RELATIONSHIP_NOTE`,
+ * `CREATE_ENTRY`'nin yanıt hedefi). Kanıt kataloğuna karıştırmak, kullanıcı
+ * kimliğini yanlışlıkla `USER_ENTRY`/`PLATFORM_EVENT` kanıtı olarak geçerli
+ * kılardı.
+ *
+ * Ölçüldü (2 Eylül 2026, üretim): başarıyla yürümüş 137 USER hedefinin
+ * TAMAMI koşunun perception'ında geçiyordu — kimlikler zaten sunuluyordu,
+ * katalog onları modellemiyordu.
+ */
+export function runtimePresentedUserIds(perceptionSummary: unknown): Set<string> {
+  const perception =
+    perceptionSummary && typeof perceptionSummary === "object" && !Array.isArray(perceptionSummary)
+      ? (perceptionSummary as Record<string, unknown>)
+      : {};
+  const linkedTopics = recordArray(perception.linkedTopics);
+  const readTopics = recordArray(perception.readTopics);
+  const entries = [
+    ...recordArray(perception.recentEntries),
+    ...recordArray(perception.ownRecentEntries),
+    ...recordArray(perception.followedWriterEntries),
+    ...linkedTopics.flatMap((topic) => recordArray(topic.recentEntries)),
+    ...readTopics.flatMap((topic) => recordArray(topic.entries)),
+  ];
+  const ids = new Set<string>();
+  for (const entry of entries) {
+    const authorId = nestedStringField(entry, "author", "id") ?? stringField(entry, "authorId");
+    if (authorId) ids.add(authorId);
+  }
+  for (const relationship of recordArray(perception.relationships)) {
+    const targetUserId =
+      stringField(relationship, "targetUserId") ??
+      nestedStringField(relationship, "targetUser", "id");
+    if (targetUserId) ids.add(targetUserId);
+  }
+  return ids;
+}
