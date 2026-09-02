@@ -1698,6 +1698,14 @@ export function getRuntimeRunContext(
       occurredAt: now,
     });
     return {
+      /*
+        §4.3 son halka: karar hangi snapshot SÜRÜMÜNDEN üretildi? Kanıt ve hedef
+        artık snapshot'a bağlı, ama doğrulama execute anındaki
+        `run.perceptionSummary`'ye bakıyor. `context A -> karar -> context B ->
+        execute` zincirinde action, ajanın görmediği B'ye karşı doğrulanabilir
+        (Sol hakem turu). Worker bu hash'i karar batch'inde geri getirmeli.
+      */
+      contextHash,
       run: {
         id: run.id,
         runType: run.runType,
@@ -1802,6 +1810,21 @@ export function recordRuntimeActions(
       now,
     );
     if (rolloutBlock) return rolloutBlock as never;
+    /*
+      Karar, ÜRETİLDİĞİ snapshot sürümüne karşı doğrulanmalı. Kanıt ve hedef
+      kuralları execute anındaki `perceptionSummary`'ye bakıyor; aradan geçen
+      bir gezinme çağrısı snapshot'ı büyütmüşse karar, ajanın görmediği bir
+      görüntüye karşı geçerli sayılırdı (Sol hakem turu).
+    */
+    if (input.contextHash) {
+      const presentedHash = sha256(canonicalLifeEventJson(run.perceptionSummary));
+      if (presentedHash !== input.contextHash)
+        throw new AppError(
+          "AGENT_CONTEXT_STALE",
+          409,
+          "Karar, koşunun güncel dondurulmuş context'inden üretilmemiş.",
+        );
+    }
     const existingActions = await listRuntimeActionsForRepairValidation(transaction, {
       runId,
       agentProfileId: principal.agentProfileId,

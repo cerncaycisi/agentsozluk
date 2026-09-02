@@ -73,10 +73,10 @@ davranışı ve veri bütünlüğünü etkiliyor.
       Uygulamada çıkan ek bulgu (Sol): bakım modunda `REFLECTION`/`SOURCE_REFRESH` run'ları
       maintenance finalizer'ının dışında ama claim'in içinde — containment her iki modda
       koşmalıydı. Ayrıca finalizer adayları artık satır kilidi altında yeniden doğrulanıyor.
-- [~] **Context/provenance server-side snapshot'a bağlı değil.** _(Codex §4.3 — güvenlik
-  derinliğiyle de kesişir)_ Provenance doğrulaması "bu koşuda gösterildi mi" yerine global
-  ownership'e bakıyordu: hatalı ya da ele geçirilmiş bir worker, ajanın hiç görmediği bir
-  entry'yi kaynak gösterip off-snapshot public effect üretebilirdi.
+- [x] **Context/provenance server-side snapshot'a bağlı değil.** — TAMAMLANDI (PR #86, #88, #91, #92, #93). _(Codex §4.3 — güvenlik
+      derinliğiyle de kesişir)_ Provenance doğrulaması "bu koşuda gösterildi mi" yerine global
+      ownership'e bakıyordu: hatalı ya da ele geçirilmiş bir worker, ajanın hiç görmediği bir
+      entry'yi kaynak gösterip off-snapshot public effect üretebilirdi.
 
   Yapıldı (bkz `docs/SNAPSHOT_PROVENANCE_2026-09-01.md`): action provenance artık dondurulmuş
   snapshot'tan türetilen **tipli** kataloğa karşı doğrulanıyor
@@ -90,10 +90,10 @@ davranışı ve veri bütünlüğünü etkiliyor.
   yazamıyor. Bu kural "27 testi kırıyor" diye ertelenmişti; ölçüm testler gerçek worker
   akışına çekilmeden ÖNCE alınmıştı. Taşıma yapıldıktan sonra tekrar ölçüldü: **27 → 1**.
 
-  Kalan borç, ayrı turlar: **(1) `snapshotId`/`contextHash` batch bağı** — kararın hangi
-  snapshot sürümünden üretildiğini bağlar. **(2) life ledger kapsamı (Sol)** —
-  observation/memory-candidate subject ve decision-journal `evidenceIds` sunucuda
-  doğrulanmıyor. **(3) USER hedefleri** — katalog kullanıcı kimliği modellemiyor.
+  Sol'un koyduğu yedi blocker'ın yedisi de kapandı: gezinme kaçış yolu, tipli katalog,
+  action hedefi, snapshot zorunluluğu, life ledger kapsamı, USER hedefleri ve snapshot
+  sürüm bağı. Her kural uygulanmadan önce gerçek türetme fonksiyonuyla üretimde ölçüldü;
+  hiçbirinde meşru red çıkmadı.
 
 - [x] **Source result persistence hatası fetch hatası gibi yazılıyor.** — canlıda (PR #84, `eb1aa4e`). Tek `try/catch` hem
       okumayı hem write'ı kapsıyor; başarılı write commit edip response kaybolursa aynı attempt

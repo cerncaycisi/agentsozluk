@@ -4037,6 +4037,56 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
   });
 
+  it("rejects a decision produced from a stale context version", async () => {
+    /*
+      §4.3 son halka (Sol hakem turu): kanıt ve hedef snapshot'a bağlandı ama
+      doğrulama EXECUTE anındaki perception'a bakıyor. `context A -> karar ->
+      context B -> execute` zincirinde karar, ajanın hiç görmediği B'ye karşı
+      doğrulanabilirdi. Gezinme fazı tam olarak context'i yeniden çekiyor.
+    */
+    const fixture = await createFixture();
+    const workerId = "stale-context-worker";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const context = await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    expect(context.contextHash).toMatch(/^[a-f0-9]{64}$/u);
+    // Snapshot karar verildikten SONRA değişiyor (gezinme fazının yaptığı şey).
+    await integrationDatabase.agentRun.update({
+      where: { id: runId },
+      data: {
+        perceptionSummary: {
+          ...(context.perception as Record<string, unknown>),
+          readTopics: [{ id: randomUUID(), title: "sonradan eklenen", entries: [] }],
+        },
+      },
+    });
+    await expect(
+      recordRuntimeActions(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        runtimeActionsSchema.parse({
+          workerId,
+          contextHash: context.contextHash,
+          actions: [
+            {
+              sequence: 1,
+              actionType: "NO_ACTION",
+              safeReason: "Bayat context sürümüyle karar denemesi.",
+              input: {},
+            },
+          ],
+        }),
+      ),
+    ).rejects.toThrow(/güncel dondurulmuş context/u);
+  });
+
   it("rejects following a user the run never saw", async () => {
     /*
       §4.3 son kapsam: katalog kullanıcı kimliğini kanıt TÜRÜ olarak

@@ -14,6 +14,15 @@ const leaseResponseSchema = z.object({
 });
 
 const contextResponseSchema = z.object({
+  /*
+    Kararın üretildiği snapshot sürümü; karar batch'inde geri gönderilir.
+    İsteğe bağlı okunuyor: sunucu bu alanı henüz döndürmüyorken worker'ın
+    bütün koşularını düşürmemeli.
+  */
+  contextHash: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/u)
+    .optional(),
   run: z.object({
     id: z.string().uuid(),
     runType: z.string(),
@@ -213,6 +222,7 @@ export interface RuntimeControlPlane {
     actions: unknown[],
     payload: RuntimeLifeEventsBatch,
     options?: RuntimeRequestOptions,
+    contextHash?: string,
   ): Promise<void>;
   recordLifeEvents(
     credential: string,
@@ -562,6 +572,7 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
     actions: unknown[],
     payload: RuntimeLifeEventsBatch,
     options?: RuntimeRequestOptions,
+    contextHash?: string,
   ): Promise<void> {
     const actionSequences = actions
       .map((action) =>
@@ -578,7 +589,7 @@ export class RuntimeControlPlaneHttpClient implements RuntimeControlPlane {
       credential,
       "POST",
       `/api/v1/internal/agent-runtime/runs/${runId}/actions`,
-      { workerId, leaseToken, actions, payload },
+      { workerId, leaseToken, actions, payload, ...(contextHash ? { contextHash } : {}) },
       undefined,
       undefined,
       { ...options, idempotencyKey, retryTransportFailureOnce: true },
