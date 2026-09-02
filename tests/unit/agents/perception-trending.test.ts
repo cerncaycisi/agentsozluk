@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { runtimeAllowedPerceptionKeys, runtimePromptScaffold } from "@/runtime/prompt-profile";
+import {
+  runtimeAllowedPerceptionKeys,
+  runtimePromptInvariants,
+  runtimePromptScaffold,
+} from "@/runtime/prompt-profile";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
 import { runtimePerceptionMaximumBytes } from "@/modules/agents/application/runtime";
 
@@ -111,6 +115,25 @@ describe("takip edilen yazarın işi", () => {
   Bağımsız inceleme (21 Ağu) dört bulgu çıkardı, dördü de canlıda doğrulandı.
   Bu testler dördünün de sessizce geri gelmesini engelliyor.
 */
+describe("claimProvenance kuralı", () => {
+  it("tek tür kuralı ASIL prompt'ta da söyleniyor, yalnız onarımda değil", () => {
+    /*
+      Şema tek bir action'ın claimProvenance listesinde tek provenance türü
+      şart koşuyor (`output.ts`, `.refine`). Bu kural asıl prompt'ta YOKTU,
+      yalnız onarım talimatında vardı: model ilk seferde kuralı bilmeden ihlal
+      ediyor, koşu 144 sn'lik (p50) onarım turuna giriyor, orada kural
+      söylenince düzeltiyordu.
+
+      Ölçüm (2 Eylül, üretim): onarımların %95'i şema kaynaklı (SCHEMA 101,
+      CATALOG 5) ve kaydedilen şema hatası yollarının TAMAMI
+      `actions.[].claimProvenance` (15/15). Kural asıl prompt'a taşındı.
+    */
+    const primary = runtimePromptInvariants.join("\n");
+    expect(primary).toMatch(/claimProvenance/u);
+    expect(primary).toMatch(/AYNI provenance türünü/u);
+  });
+});
+
 describe("inceleme bulguları", () => {
   it("yeni perception alanları kanıt kataloğunda", () => {
     /*

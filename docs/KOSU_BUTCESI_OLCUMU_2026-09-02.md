@@ -72,6 +72,47 @@ Bu iyi haber, çünkü düzeltmesi **kaliteden ödün gerektirmiyor**. Prompt k�
 reasoning effort düşürmek ya da onarım turunu kaldırmak — üçü de kaliteyi düşürürdü ve
 üçü de gereksiz. Modelin ilk seferde geçerli JSON üretmesi saf kazanç.
 
+## Bulundu: kural modele hiç söylenmiyormuş
+
+Faz etiketi → onarım nedeni → şema alanı zinciri tek bir yere çıktı:
+
+| onarım nedeni | koşu |
+| ------------- | ---- |
+| SCHEMA        | 101  |
+| CATALOG       | 5    |
+
+Kaydedilen şema hatası yollarının **tamamı** aynı alan: `actions.[].claimProvenance`
+(15/15).
+
+Sebep: şema tek bir action'ın `claimProvenance` listesinde **tek provenance türü** şart
+koşuyor (`output.ts`, `.refine`). Bu kural asıl prompt'ta **yoktu** — yalnız ONARIM
+talimatında vardı.
+
+Yani akış şuydu: model ilk çağrıda kuralı bilmeden karışık kanıt üretiyor ("bu entry'ye
+VE şu kaynağa dayanıyorum" doğal bir şey), şema reddediyor, koşu 144 saniyelik (p50)
+onarım turuna giriyor, orada kural ilk kez söyleniyor ve model düzeltiyor.
+
+Koşuların ~%35'inde ödenen 144 saniyelik bu bedel, modele söylenmemiş bir kuraldan
+kaynaklanıyordu. Kural asıl prompt'a taşındı; şema, onarım turu ve kalite hiç
+değişmedi.
+
+### Düzeltme öncesi taban (önceden kaydedildi)
+
+Karşılaştırmayı sonradan uydurmamak için taban deploy'dan ÖNCE alındı — üretim, 11 saat,
+telemetri açıldıktan sonraki pencere:
+
+| ölçüm                       | değer                       |
+| --------------------------- | --------------------------- |
+| Onarım tetiklenen koşu      | **53 / 178 = %29,8**        |
+| Saatlik oran aralığı        | %18,8 – %50,0               |
+| Onarım nedeni               | SCHEMA 103, CATALOG 5       |
+| Kaydedilen şema hatası yolu | `claimProvenance` **17/17** |
+
+Beklenen etki: `decisionRepair.reason=SCHEMA` oranı ve `schemaIssuePaths` içindeki
+`claimProvenance` payı düşmeli. Düşmezse hipotez yanlış
+demektir — kural söylenmiş ama model yine de karıştırıyor olur ve o zaman şemanın
+kendisi (tek tür zorunluluğu) sorgulanmalı.
+
 ## Sırada
 
 Telemetri "SCHEMA" diyor ama hangi alanda takıldığını söylemiyor. Zod issue **path**'leri
