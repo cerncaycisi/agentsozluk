@@ -94,11 +94,29 @@ Zincirin halkaları (Sol'un uzlaşı planı, canlı ölçümle güncellendi):
 1. **Enjeksiyon yüzeyi** — güvenilmeyen içerik prompt'a giriyor. Kapatılamaz (ürünün
    kendisi bu), ama `<UNTRUSTED_CONTENT>` sınırının rol-değiştirmeye karşı
    güçlendirilmesi denenebilir. Tek başına yeterli sayılmaz.
-2. **`--ro-bind / /` → allowlist.** Host geneli okumayı (`/etc`, `/home`, diğer
-   sırlar) kapatır. `auth.json`'ı kapatmaz (o ayrı `--bind`), ama Sol'un "risk
-   yalnız auth.json değil" bulgusunu giderir. **Canlıda test gerekli** — yanlış
-   allowlist Codex'i hiç çalıştırmaz (glibc/node/codex bağımlılık yolları). macOS'ta
-   bwrap yok, yerelde test edilemez.
+2. **`--ro-bind / /` → allowlist.** ✅ **YAPILDI (2 Eylül 2026).** Host geneli
+   okuma kapatıldı; `auth.json`'ı kapatmaz (o ayrı `--bind`) ama Sol'un "risk yalnız
+   auth.json değil" bulgusunu giderir.
+
+   Liste tahminle değil, **üretim host'unda gerçek bwrap ve gerçek Codex çağrısıyla**
+   ölçülerek kuruldu:
+
+   | yol                                      | gerekli   | kanıt                                            |
+   | ---------------------------------------- | --------- | ------------------------------------------------ |
+   | codex binary                             | evet      | statik derli ELF                                 |
+   | `/etc/ssl`                               | evet      | çıkarınca `error sending request` (TLS)          |
+   | `/etc/resolv.conf`, `/etc/hosts`         | evet      | çıkarınca `failed to lookup address information` |
+   | `/lib`, `/lib64`, `/bin`, `/usr/bin`     | **hayır** | statik binary; onlarsız çağrı çalışıyor          |
+   | `/etc/passwd`, `/home`, host geri kalanı | **hayır** | —                                                |
+
+   Dördüyle birlikte çağrı `api.openai.com`'a ulaşıp `401 Unauthorized` dönüyor —
+   yani ağ, TLS ve DNS tam çalışıyor, yalnız auth yok (test geçici `CODEX_HOME` ile
+   koşuldu). Kontrollerin ikisi de kırılıyor, yani ölçüm duyarlı.
+
+   Regresyon koruması: `tests/unit/agents/codex-provider.test.ts` artık
+   `--ro-bind / /` kalıbının GERİ GELMEDİĞİNİ ve üç allowlist yolunun bulunduğunu
+   pinliyor; kalıp geri konunca test düşüyor (ölçüldü).
+
 3. **`auth.json` izolasyonu — asıl açık, en zor.** Codex auth'u her zaman
    `CODEX_HOME`'dan okuyor (`--config` bile "auth still uses CODEX_HOME" diyor) ve
    model-tool ile Codex core aynı bwrap namespace'inde. Tek namespace'te dosyayı

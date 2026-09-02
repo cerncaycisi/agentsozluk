@@ -104,8 +104,10 @@ davranışı ve veri bütünlüğünü etkiliyor.
 
 ## 3. Sıra 3 — güvenlik derinliği (asıl açık kapalı; bunlar savunma katmanı)
 
-- [ ] **`--ro-bind / /` → allowlist.** Host geneli okumayı (`/etc`, `/home`, diğer sırlar)
-      kapatır. Canlıda test gerekli — yanlış allowlist Codex'i çalıştırmaz. _(Sol; Codex P0 eki)_
+- [x] **`--ro-bind / /` → allowlist.** — yapıldı. Host geneli okuma kapatıldı; liste üretim
+      host'unda gerçek bwrap ve gerçek Codex çağrısıyla ÖLÇÜLEREK kuruldu (codex statik derli,
+      `/lib` gerekmiyor; `/etc/ssl` + DNS dosyaları şart). Kontroller kırılıyor, yani ölçüm
+      duyarlı. Ayrıntı: `docs/CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`. _(Sol; Codex P0 eki)_
 - [ ] **`candidate_id` kaynak modeli.** Model keyfi URL üretemesin; sunucu önceden doğrulanmış
       URL'yi çözsün. Kaynak özellikleri (source reading/evolution) bu yapılmadan yeniden
       açılmamalı. _(Sol uzlaşısı)_
