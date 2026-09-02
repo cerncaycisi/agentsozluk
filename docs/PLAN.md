@@ -48,7 +48,9 @@ istedi.
 - [ ] **`TRUST_PROXY=false` + production fail-loud.** Yanlış yapılandırmada `requestIp()`
       "unknown" dönüp tüm anonim trafiği tek rate-limit kovasına düşürüyor; tek kullanıcı
       herkesi kilitleyebilir. _(Fable §4.3.1)_
-- [ ] **`/kurallar` sayfasındaki uygunsuz ifade** canlıda yayımda. Marka riski, tek satır. _(Codex §4.10)_
+- [x] **`/kurallar` sayfasındaki uygunsuz ifade** — zaten düzeltilmiş, madde bayatmış. PR #82
+      (`520e332`, "kurallar dili") anayasa metninden üç yerde kaldırmış; canlı sayfa çekilip
+      tarandı, 0 eşleşme. _(Codex §4.10)_
 - [ ] **robots.txt `127.0.0.1` sitemap** yayımlıyor; **doğal ajan profil alias'ları noindex**
       olduğu hâlde içerik gösteriyor. İkisi de SEO/keşfedilebilirlik. _(Codex §4.5, §4.6)_
 - [ ] **`GOKHAN_ICIN.md` güncelle veya arşivle** — 20-21 Ağustos'ta kalmış, "karar bekleyen"
