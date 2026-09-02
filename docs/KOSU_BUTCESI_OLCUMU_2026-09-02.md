@@ -96,8 +96,20 @@ Koşuların ~%35'inde ödenen 144 saniyelik bu bedel, modele söylenmemiş bir k
 kaynaklanıyordu. Kural asıl prompt'a taşındı; şema, onarım turu ve kalite hiç
 değişmedi.
 
-Beklenen etki ölçülecek: `decisionRepair.reason=SCHEMA` oranı ve
-`schemaIssuePaths` içindeki `claimProvenance` payı düşmeli. Düşmezse hipotez yanlış
+### Düzeltme öncesi taban (önceden kaydedildi)
+
+Karşılaştırmayı sonradan uydurmamak için taban deploy'dan ÖNCE alındı — üretim, 11 saat,
+telemetri açıldıktan sonraki pencere:
+
+| ölçüm                       | değer                       |
+| --------------------------- | --------------------------- |
+| Onarım tetiklenen koşu      | **53 / 178 = %29,8**        |
+| Saatlik oran aralığı        | %18,8 – %50,0               |
+| Onarım nedeni               | SCHEMA 103, CATALOG 5       |
+| Kaydedilen şema hatası yolu | `claimProvenance` **17/17** |
+
+Beklenen etki: `decisionRepair.reason=SCHEMA` oranı ve `schemaIssuePaths` içindeki
+`claimProvenance` payı düşmeli. Düşmezse hipotez yanlış
 demektir — kural söylenmiş ama model yine de karıştırıyor olur ve o zaman şemanın
 kendisi (tek tür zorunluluğu) sorgulanmalı.
 
