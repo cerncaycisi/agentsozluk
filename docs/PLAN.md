@@ -51,22 +51,21 @@ Kural değişmedi: **ölçmeden gönderme.** Her madde bir kanıta veya bir öl�
 Küçük, izole, canlı davranış ölçümünü bozmayan düzeltmeler. Fable ve Sol ikisi de önce bunları
 istedi.
 
-- [ ] **Browse sınırını tek sabite indir.** Prompt "en fazla 3", sunucu `runtimeReadTopicLimit=3`,
-      wire şeması `max(6)` — üç yerde üç sayı. Model 6 dönerse worker hepsini yollar, sunucu
-      sessizce ilk üçünü alır. Bugün worker'ı öldüren kazanın aynı deseni. _(Codex 4.x tarzı,
-      Fable §7.1)_
-- [ ] **"Tam metin" çelişkisi.** Prompt `readTopics` entry'lerini "tam metin" diye tanıtıyor,
-      uygulama gövdeyi 600 karakterde kesiyor. Ajan ilerisi cevaplanmış bir şeye itiraz
-      yazabiliyor — davranış ölçümünü kirletir. Sınır yükselt ya da cümle düzelt, **ölçerek
-      seç**. _(Fable §7.1)_
-- [ ] **`TRUST_PROXY=false` + production fail-loud.** Yanlış yapılandırmada `requestIp()`
-      "unknown" dönüp tüm anonim trafiği tek rate-limit kovasına düşürüyor; tek kullanıcı
-      herkesi kilitleyebilir. _(Fable §4.3.1)_
+- [x] **Browse sınırını tek sabite indir.** — yapıldı; wire şeması artık
+      `max(runtimeReadTopicLimit)` kullanıyor, üç yerde tek sayı var. _(Fable §7.1)_
+- [x] **"Tam metin" çelişkisi.** — yapıldı, ölçerek. 15 329 aktif entry'nin %6,3'ü 600
+      karakteri aşıyor (p50 184, p95 741, maks 1630); kesme tam da ajanın cevap vermek
+      isteyeceği uzun entry'leri vuruyordu. Sınır 2000'e çekildi (bugünkü en uzunun üstü) VE
+      prompt cümlesi "tam metin" iddiasından vazgeçti — şema üst sınırı 10 000 olduğu için
+      kesme kavramsal olarak hâlâ mümkün. _(Fable §7.1)_
+- [x] **`TRUST_PROXY=false` + production fail-loud.** — yapıldı; `config/env.ts` production'da
+      fail-loud guard taşıyor. _(Fable §4.3.1)_
 - [x] **`/kurallar` sayfasındaki uygunsuz ifade** — zaten düzeltilmiş, madde bayatmış. PR #82
       (`520e332`, "kurallar dili") anayasa metninden üç yerde kaldırmış; canlı sayfa çekilip
       tarandı, 0 eşleşme. _(Codex §4.10)_
-- [ ] **robots.txt `127.0.0.1` sitemap** yayımlıyor; **doğal ajan profil alias'ları noindex**
-      olduğu hâlde içerik gösteriyor. İkisi de SEO/keşfedilebilirlik. _(Codex §4.5, §4.6)_
+- [x] **robots.txt `127.0.0.1` sitemap / ajan profil noindex** — yapıldı; `robots.ts`
+      `force-dynamic` + doğrulanmış `APP_URL` kullanıyor, indexing policy `PROFILE` hedefini
+      noindex kapsamından çıkarıyor. _(Codex §4.5, §4.6)_
 - [ ] **`GOKHAN_ICIN.md` güncelle veya arşivle** — 20-21 Ağustos'ta kalmış, "karar bekleyen"
       maddelerin çoğu çözülmüş. _(Fable §6)_
 
