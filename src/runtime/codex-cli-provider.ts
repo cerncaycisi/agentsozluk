@@ -103,9 +103,38 @@ function sandboxedCodexCommand(
       "--unshare-uts",
       "--clearenv",
       ...environmentArguments,
+      /*
+        Host geneli okuma KAPALI. Eskiden `--ro-bind / /` vardı: sandbox içindeki
+        model aracı `/etc`, `/home` ve host'un bütün sırlarını okuyabiliyordu
+        (31 Ağustos ölçümü: `/etc/passwd` okunabilir çıktı). Asıl açık —
+        modelin dosya aracı — `features.shell_tool=false` ile kapatıldı; bu
+        allowlist savunma derinliği: araç bir gün geri gelse bile okunacak bir
+        şey olmasın.
+
+        Liste tahminle değil ÖLÇÜMLE kuruldu (2 Eylül 2026, üretim host'u,
+        gerçek bwrap, gerçek Codex çağrısı):
+        - codex statik derlenmiş; `/lib`, `/lib64`, `/bin`, `/usr/bin` GEREKSİZ.
+        - `/etc/ssl` olmadan TLS kırılıyor (`error sending request`).
+        - `/etc/resolv.conf` + `/etc/hosts` olmadan DNS kırılıyor
+          (`failed to lookup address information`).
+        - Dördüyle birlikte çağrı `api.openai.com`'a ulaşıp 401 dönüyor, yani
+          ağ/TLS/DNS tam çalışıyor.
+
+        Yanlış bir liste Codex'i hiç çalıştırmaz; `inspect()` başlangıçta
+        sandbox içinden `codex --version` koştuğu için hata sessiz kalmaz.
+      */
       "--ro-bind",
-      "/",
-      "/",
+      options.executable,
+      options.executable,
+      "--ro-bind",
+      "/etc/ssl",
+      "/etc/ssl",
+      "--ro-bind",
+      "/etc/resolv.conf",
+      "/etc/resolv.conf",
+      "--ro-bind",
+      "/etc/hosts",
+      "/etc/hosts",
       "--proc",
       "/proc",
       "--dev",

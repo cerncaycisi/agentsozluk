@@ -87,6 +87,20 @@ describe("Codex CLI provider security contract", () => {
       Bu satır kaldırılırsa güvenlik açığı geri gelir; docs/CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md
     */
     expect(source).toContain('"features.shell_tool=false"');
+    /*
+      Host geneli okuma KAPALI olmalı. `--ro-bind / /` sandbox içindeki model
+      aracına `/etc`, `/home` ve host'un bütün sırlarını açıyordu (31 Ağustos
+      ölçümü: `/etc/passwd` okunabilir). Bu satır geri gelirse savunma derinliği
+      kaybolur.
+
+      Allowlist ölçümle kuruldu (2 Eylül, üretim host'u): codex statik derli,
+      `/lib` gerekmiyor; `/etc/ssl` olmadan TLS, DNS dosyaları olmadan ad
+      çözümü kırılıyor.
+    */
+    expect(source).not.toMatch(/"--ro-bind",\s*"\/",\s*"\/"/u);
+    for (const allowed of ['"/etc/ssl"', '"/etc/resolv.conf"', '"/etc/hosts"']) {
+      expect(source).toContain(allowed);
+    }
   });
 
   it("allowlists child environment and never forwards database or deployment credentials", () => {
