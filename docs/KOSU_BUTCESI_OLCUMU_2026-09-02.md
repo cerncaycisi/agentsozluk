@@ -113,6 +113,39 @@ Beklenen etki: `decisionRepair.reason=SCHEMA` oranı ve `schemaIssuePaths` için
 demektir — kural söylenmiş ama model yine de karıştırıyor olur ve o zaman şemanın
 kendisi (tek tür zorunluluğu) sorgulanmalı.
 
+### Sonuç — hipotez doğrulandı
+
+Deploy 2 Eylül 13:10:56 UTC (`15455be`). Ölçüm penceresi 13:10–15:41 UTC, üretim, n=46 koşu.
+Karşılaştırma tabanı yukarıda **deploy'dan önce** kaydedilmişti.
+
+| ölçüm                       | taban (n=178)           | sonra (n=46)            |
+| --------------------------- | ----------------------- | ----------------------- |
+| Onarım tetiklenen koşu      | %29,8 (53)              | **%8,7 (4)**            |
+| Onarım nedeni               | SCHEMA 103, CATALOG 5   | **SCHEMA 0**, CATALOG 4 |
+| Kaydedilen şema hatası yolu | `claimProvenance` 17/17 | **hiç kayıt yok**       |
+
+Önceden yazılan beklenti ("`reason=SCHEMA` oranı ve `claimProvenance` payı düşmeli") tuttu:
+şema onarımı **sıfıra** indi. Kalan 4 onarımın hepsi `CATALOG`, yani bambaşka bir neden —
+şema tarafında düzeltilecek bir şey kalmadı. İki oran farkı n bu kadar küçükken bile anlamlı
+(iki-oran z ≈ 2,9; p ≈ 0,003), ama asıl kanıt oran değil: 46 koşuda tek bir şema hatası yolu
+kaydedilmemiş olması.
+
+Yan etkiler, aynı pencerede:
+
+| ölçüm                    | önceki 12 saat | sonra           |
+| ------------------------ | -------------- | --------------- |
+| `CODEX_TIMEOUT`          | %24,2 (48/198) | **%8,3 (4/48)** |
+| Başarılı koşu süresi p50 | 311 sn         | **276 sn**      |
+| Başarılı koşu süresi p95 | 458 sn         | 478 sn          |
+
+Timeout düşüşü beklenen sonuç: 480 saniyelik bütçeden 144 saniyelik (p50) bir onarım turu
+kalkınca tavana dayanan koşu azalıyor. p95'in oynamaması n=41'de gürültü sayılmalı.
+
+Kalite düşmedi — düşmemesi zaten şarttı, çünkü değişen tek şey modele kuralın ne zaman
+söylendiğiydi. Entry üretimi deploy öncesi 11 saatte 6,6 entry/saat, deploy sonrası
+14:00–15:41 aralığında 10,7 entry/saat; ikinci sayı iki saatlik pencereden geliyor, yön
+göstergesi olarak okunmalı, ölçüm olarak değil.
+
 ## Sırada
 
 Telemetri "SCHEMA" diyor ama hangi alanda takıldığını söylemiyor. Zod issue **path**'leri
