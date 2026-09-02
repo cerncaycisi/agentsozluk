@@ -109,8 +109,19 @@ davranışı ve veri bütünlüğünü etkiliyor.
       `/lib` gerekmiyor; `/etc/ssl` + DNS dosyaları şart). Kontroller kırılıyor, yani ölçüm
       duyarlı. Ayrıntı: `docs/CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`. _(Sol; Codex P0 eki)_
 - [ ] **`candidate_id` kaynak modeli.** Model keyfi URL üretemesin; sunucu önceden doğrulanmış
-      URL'yi çözsün. Kaynak özellikleri (source reading/evolution) bu yapılmadan yeniden
-      açılmamalı. _(Sol uzlaşısı)_
+      URL'yi çözsün. _(Sol uzlaşısı)_
+
+      **Önkoşul hiç uygulanmamıştı (2 Eylül ölçümü).** Plan "kaynak özellikleri bu yapılmadan
+      yeniden açılmamalı" diyordu ama üretimde `sourceEvolutionEnabled` global olarak ve 36
+      ajanın HEPSİNDE `true`; yani serbest-URL yolu açıktı. Bugüne dek 0 `PROPOSE_SOURCE`
+      üretilmiş olması bir kontrol değil, modelin o eylemi seçmemiş olması.
+
+      Bayrağı tümden kapatmak yanlış olurdu: aynı bayrak `DAILY_SOURCE_REFRESH` ve
+      reflection'daki kaynak güven güncellemelerini de kapatıyor, ikisi de değerli ve
+      serbest-URL riski taşımıyor. Bu yüzden riskli yol kendi anahtarına alındı
+      (`AGENT_SOURCE_PROPOSAL`, varsayılan KAPALI). Ölçülen maliyet sıfır. `candidate_id`
+      gelince bayrak kaldırılacak.
+
 - [x] **`db:reset` korumasız ve yıkıcı** — yapıldı. Mevcut koruma `TEST_DATABASE_URL` için
       yazılmıştı ama `prisma migrate reset` **`DATABASE_URL`** okuyor, yani bu komuta hiç
       uygulanmıyordu. Üç bağımsız katman eklendi: ad (`_test`/`_dev` ile bitmeli), host

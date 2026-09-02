@@ -10,6 +10,7 @@ import {
   runtimeEvidenceCatalogFrom,
   runtimePresentedUserIds,
 } from "@/modules/agents/domain/runtime-evidence-catalog";
+import { runtimeSourceProposalEnabled } from "@/modules/agents/domain/runtime-source-proposal";
 import { getRuntimeRunProducedTargetIds } from "@/modules/agents/repository/runtime";
 import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
@@ -957,6 +958,17 @@ export async function executeRuntimeAction(
         return rejectAction(transaction, principal, actionRecord, {
           code: "SOURCE_EVOLUTION_DISABLED",
           reason: "Source evolution bu agent veya global ayarlarda kapalıdır.",
+        });
+      /*
+        Serbest URL yolu ayrı anahtarda ve varsayılan KAPALI: güvenlik planı
+        bunun için `candidate_id` modelini şart koşuyordu ama önkoşul hiç
+        uygulanmamıştı (ölçüm: global + 36 ajanın hepsinde açık). Gerekçe
+        `domain/runtime-source-proposal.ts` yorumunda.
+      */
+      if (parsed.data.actionType === "PROPOSE_SOURCE" && !runtimeSourceProposalEnabled())
+        return rejectAction(transaction, principal, actionRecord, {
+          code: "SOURCE_PROPOSAL_DISABLED",
+          reason: "Serbest URL kaynak önerisi kapalı; candidate_id modeli gelene dek açılmayacak.",
         });
       if (contentActions.has(parsed.data.actionType) && parsed.data.input.body) {
         const issue = constitutionalEntryWritingIssue(parsed.data.input.body);

@@ -4137,6 +4137,64 @@ describe("internal agent runtime API with PostgreSQL", () => {
     });
   });
 
+  it("refuses a model-supplied source URL while the proposal gate is closed", async () => {
+    /*
+      Zincirin en riskli halkası: model SERBEST bir URL üretiyor, sunucu
+      kaydediyor ve sonraki koşuda o adrese gerçek GET atılıyor. Güvenlik planı
+      bunun için `candidate_id` modelini şart koşuyordu ama önkoşul hiç
+      uygulanmamıştı — ölçüm: `sourceEvolutionEnabled` global olarak ve 36
+      ajanın hepsinde açıktı, yani yol açıktı. 0 kullanım bir kontrol değil.
+    */
+    delete process.env.AGENT_SOURCE_PROPOSAL;
+    const fixture = await createFixture();
+    const workerId = "source-gate-worker";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const readPrincipal = await runtimePrincipal(fixture.credential, "runtime:read");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(integrationDatabase, readPrincipal, runId, workerId);
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "PROPOSE_SOURCE",
+            safeReason: "Serbest URL kaynak önerisi denemesi.",
+            input: {
+              url: "https://model-uydurdu.example/feed.xml",
+              sourceType: "RSS",
+              topics: ["teknoloji"],
+            },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Model bilgisine dayanan kaynak önerisi.",
+            },
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "SOURCE_PROPOSAL_DISABLED",
+    });
+    expect(
+      await integrationDatabase.agentSource.count({
+        where: { normalizedDomain: "model-uydurdu.example" },
+      }),
+    ).toBe(0);
+  });
+
   it("records a successful later-wake action on a resolved dictionary link", async () => {
     const fixture = await createFixture();
     const target = await createTopicWithFirstEntry(
@@ -7248,6 +7306,12 @@ describe("internal agent runtime API with PostgreSQL", () => {
   );
 
   it("persists source, belief and relationship evolution only with visible provenance", async () => {
+    /*
+      `PROPOSE_SOURCE` artık kendi anahtarında ve varsayılan kapalı (serbest URL
+      riski; `domain/runtime-source-proposal.ts`). Bu test kaynak önerisinin
+      provenance yolunu sınıyor, anahtarı değil — o yüzden açıkça açılıyor.
+    */
+    process.env.AGENT_SOURCE_PROPOSAL = "1";
     const fixture = await createFixture();
     const visible = await createTopicWithFirstEntry(
       integrationDatabase,
@@ -7334,6 +7398,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       sequence: 1,
     });
     expect(sourceAction).toMatchObject({ actionStatus: "SUCCEEDED" });
+    delete process.env.AGENT_SOURCE_PROPOSAL;
     await expect(
       executeRuntimeAction(integrationDatabase, writePrincipal, runId, {
         workerId: "evolution-worker",
