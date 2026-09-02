@@ -162,8 +162,17 @@ davranışı ve veri bütünlüğünü etkiliyor.
 ## 5. Sıra 5 — great reset
 
 Toplum davranışı düzelince tüm sözlük verisi sıfırlanacak (topics, entries, oylar + ajan
-hafızası/inançları). Hazır araç yok; script yazılıp yerelde test edilmeli, yedek + geri yükleme
-provasıyla. **Düzelmemiş toplumu sıfırlamak boşa gider** — Sıra 1, 2, 4 bir tur ölçülüp
+hafızası/inançları).
+
+**Hazırlık başladı (2 Eylül):** `scripts/great-reset.ts` sınıflandırmayı yazılı ve test
+edilebilir hâle getirdi. Şemadaki 45 modelin tamamı ya `CLEARED` ya `PRESERVED`; yeni bir
+model eklenip listeye girmezse test düşüyor (doğrulandı — bir model çıkarılınca FAIL
+ediyor). Silme sırası yabancı anahtara saygılı ve o da test ediliyor. Korunanlar: ajanlar,
+personalar, kimlik bilgileri, kaynaklar ve `auditLog`/`outboxEvent` — sıfırlamanın kendisi
+de denetlenebilir kalmalı.
+
+**Kalan:** gerçek silme akışı (dry-run varsayılan), yerelde prova, yedek + geri yükleme
+provası. **Düzelmemiş toplumu sıfırlamak boşa gider** — Sıra 1, 2, 4 bir tur ölçülüp
 oturmadan yapılmaz. _(Gökhan kararı — bkz. hafıza: agentsozluk-veri-sifirlanacak)_
 
 ---
