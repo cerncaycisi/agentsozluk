@@ -379,6 +379,28 @@ async function executeReconstructionActions(
     ).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
 }
 
+/*
+  §4.3: observation/memory-candidate kanıtı da bu koşunun dondurulmuş
+  context'inde SUNULMUŞ olmalı. Bu dosyanın konusu perception kurulumu değil
+  ledger; gerçek context endpoint'i ise buradaki iskelet fixture'ın kurmadığı
+  bir kullanıcı grafiğine ihtiyaç duyuyor. Bu yüzden dondurulmuş görüntü
+  doğrudan, yalnız testin gösterdiği kanıtla yazılıyor.
+*/
+async function presentedSubject(runId: string): Promise<string> {
+  const subjectId = randomUUID();
+  await presentEvidence(runId, subjectId);
+  return subjectId;
+}
+
+async function presentEvidence(runId: string, entryId: string) {
+  await integrationDatabase.agentRun.update({
+    where: { id: runId },
+    data: {
+      perceptionSummary: { recentEntries: [{ id: entryId, topic: { id: randomUUID() } }] },
+    },
+  });
+}
+
 function batchInput(subjectId: string) {
   return runtimeLifeEventBatchSchema.parse({
     workerId: "life-worker",
@@ -467,9 +489,32 @@ beforeEach(resetIntegrationDatabase);
 afterAll(closeIntegrationDatabase);
 
 describe("agent life ledger with PostgreSQL", () => {
+  it("rejects an observation whose evidence the run never saw", async () => {
+    /*
+      §4.3 kapsam genişletmesi: action provenance'ı snapshot'a bağlanmıştı ama
+      life ledger hâlâ worker'a güveniyordu — observation/memory-candidate
+      kanıtı hiçbir doğrulamadan kalıcı yazılıyordu. Public effect değil, ama
+      ajanın hafızası ve gözlemi de gördüğü şeye dayanmalı; aksi hâlde ele
+      geçirilmiş bir worker ajana görmediği şeyleri hatırlatabilir.
+    */
+    const fixture = await createFixture();
+    // Perception'da BAŞKA bir entry sunuluyor; kanıt olarak gösterilen o değil.
+    await presentEvidence(fixture.run.id, randomUUID());
+    await expect(
+      recordRuntimeLifeEventBatch(
+        integrationDatabase,
+        fixture.principal,
+        fixture.run.id,
+        batchInput(randomUUID()),
+      ),
+    ).rejects.toThrow(/dondurulmuş context/u);
+  });
+
   it("persists an idempotent ordered batch with action and causal links", async () => {
     const fixture = await createFixture();
-    const input = batchInput(randomUUID());
+    const subjectId = randomUUID();
+    await presentEvidence(fixture.run.id, subjectId);
+    const input = batchInput(subjectId);
     const first = await recordRuntimeLifeEventBatch(
       integrationDatabase,
       fixture.principal,
@@ -514,7 +559,7 @@ describe("agent life ledger with PostgreSQL", () => {
       integrationDatabase,
       fixture.principal,
       fixture.run.id,
-      batchInput(randomUUID()),
+      batchInput(await presentedSubject(fixture.run.id)),
     );
     const firstPage = await listAgentLifeEvents(
       integrationDatabase,
@@ -575,7 +620,7 @@ describe("agent life ledger with PostgreSQL", () => {
       integrationDatabase,
       fixture.principal,
       fixture.run.id,
-      batchInput(randomUUID()),
+      batchInput(await presentedSubject(fixture.run.id)),
     );
     await expect(
       integrationDatabase.agentRuntimeEvent.update({

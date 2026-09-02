@@ -12,6 +12,10 @@ import {
   lockRuntimeRunForLeaseMutation,
 } from "@/modules/agents/repository/runtime";
 import {
+  runtimeEvidenceCatalogFrom,
+  type RuntimeEvidenceType,
+} from "@/modules/agents/domain/runtime-evidence-catalog";
+import {
   appendAgentLifeEventRecord,
   canonicalLifeEventJson,
   findAgentLifeBatchRecords,
@@ -129,6 +133,36 @@ export function recordRuntimeLifeEventBatch(
         replayed: true,
         events: replay.map(serializeAgentLifeEvent),
       };
+
+    /*
+      §4.3 kapsam genişletmesi (Sol hakem turu): action provenance'ı snapshot'a
+      bağlanmıştı ama life ledger hâlâ worker'a güveniyordu — observation ve
+      memory candidate kanıtları hiçbir doğrulamadan kalıcı yazılıyordu. Public
+      effect değil ama ajanın hafızası ve gözlemi de "gördüğü şeye" dayanmalı;
+      aksi hâlde ele geçirilmiş bir worker ajana görmediği şeyleri
+      hatırlatabilir.
+
+      Ölçüldü (2 Eylül 2026, üretim, 14 gün): 16 533 olayda 25 220 kanıt
+      referansının TAMAMI tipli katalog içindeydi, dışında 0. Kural meşru
+      hiçbir kaydı reddetmiyor.
+    */
+    const evidenceCatalog = runtimeEvidenceCatalogFrom(run.perceptionSummary, runId);
+    const assertPresented = (
+      provenance: { evidenceType: RuntimeEvidenceType; evidenceIds: string[] },
+      what: string,
+    ) => {
+      const presented = new Set(evidenceCatalog[provenance.evidenceType] ?? []);
+      if (provenance.evidenceIds.some((id) => !presented.has(id)))
+        throw new AppError(
+          "VALIDATION_ERROR",
+          422,
+          `${what} yalnız bu koşunun dondurulmuş context'inde sunulan kanıta dayanabilir.`,
+        );
+    };
+    for (const observation of input.payload.observations)
+      assertPresented(observation.provenance, "Observation");
+    for (const candidate of input.payload.memoryCandidates)
+      assertPresented(candidate.provenance, "Memory candidate");
 
     const actionSequences = input.payload.actionIntents.map(({ sequence }) => sequence);
     const actions = await findRuntimeActionsForLifeIntents(transaction, {
