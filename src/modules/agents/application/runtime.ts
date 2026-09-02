@@ -1672,7 +1672,23 @@ export function getRuntimeRunContext(
               bu faz doğrudan yanıt yazdırmak için var.
             */
             mine: entry.authorId === run.agentProfile.user.id,
-            body: truncateUntrustedText(entry.body, 600),
+            /*
+              Prompt bu entry'leri "tam metin" diye tanıtıyordu ama gövde 600
+              karakterde kesiliyordu. Ajan yarısı görünmeyen bir hükme itiraz
+              yazabiliyor, ya da zaten söylenmiş bir şeyi tekrar edebiliyordu —
+              fazın tüm amacı okuduğuna cevap yazdırmak olduğu için bu, ölçümü
+              de kirletiyordu.
+
+              Ölçüldü (2 Eylül 2026, üretim): 15 329 aktif entry'nin %6,3'ü
+              600 karakteri aşıyor; p50 184, p95 741, maksimum 1630. Yani kesme
+              tam da ajanın cevap vermek isteyeceği uzun entry'leri vuruyordu.
+              Sınır bugünkü en uzun entry'nin üstüne çekildi.
+
+              Şema üst sınırı 10 000 karakter, yani kesme kavramsal olarak hâlâ
+              mümkün; bu yüzden prompt cümlesi de "tam metin" iddiasından
+              vazgeçip gerçeği söylüyor.
+            */
+            body: truncateUntrustedText(entry.body, 2000),
             createdAt: entry.createdAt.toISOString(),
           })),
         })),
