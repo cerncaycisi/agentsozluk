@@ -17,6 +17,7 @@ import {
 } from "@/modules/agents/domain/source-status";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
 import {
+  runtimeAgentSourceLimit,
   runtimeSourceCandidateLimit,
   runtimeSourceCandidateMinimumCitingAgents,
   runtimeSourceCandidateWindowDays,
@@ -1842,6 +1843,26 @@ export async function findRuntimeSourceCandidate(
   };
 }
 
+/**
+ * Ajanın CANLI kaynak sayısı — kota bu sayıya bakıyor.
+ *
+ * `REJECTED`/`BLOCKED` sayılmıyor: ikisi de artık çekilmiyor, yani maliyeti
+ * yok; onları saymak ajanı geçmişte engellenmiş bir kaynak yüzünden
+ * cezalandırırdı.
+ */
+export async function countRuntimeAgentSources(
+  transaction: Prisma.TransactionClient,
+  agentProfileId: string,
+): Promise<number> {
+  return transaction.agentSource.count({
+    where: {
+      agentProfileId,
+      adminBlocked: false,
+      status: { notIn: ["REJECTED", "BLOCKED"] },
+    },
+  });
+}
+
 export type RuntimeSourceCandidateRecord = {
   candidateId: string;
   normalizedDomain: string;
@@ -1872,6 +1893,15 @@ async function listRuntimeSourceCandidates(
   input: { agentProfileId: string; now: Date; limit: number },
 ): Promise<RuntimeSourceCandidateRecord[]> {
   if (input.limit <= 0) return [];
+  /*
+    Kotası dolmuş ajana aday göstermiyoruz: gösterirsek model bir karar
+    harcıyor, sunucu da onu reddediyor. Kapı yine de executor'da — burası
+    yalnız boşuna teklif etmemek için.
+  */
+  if (
+    (await countRuntimeAgentSources(transaction, input.agentProfileId)) >= runtimeAgentSourceLimit
+  )
+    return [];
   const since = new Date(
     input.now.getTime() - runtimeSourceCandidateWindowDays * 24 * 60 * 60 * 1000,
   );

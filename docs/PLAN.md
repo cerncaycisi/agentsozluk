@@ -164,6 +164,11 @@ davranışı ve veri bütünlüğünü etkiliyor.
   yayımlanmış işinde kaynak gösterdiğine bakıyor (eşik: en az 2 bağımsız ajan), tek bir ajanın
   hacmine değil. Sorgu üretimde ölçüldü: 165 ms, yalnız kaynaklı uyanışlarda koşuyor.
 
+  Edinmenin kotası da yoktu — `proposeRuntimeSource` hiçbir sayım yapmıyor, yani ajan her
+  uyanışta ekleyip sınırsız birikim yapabilirdi ve her canlı kaynak günlük yenilemede
+  çekiliyor. Ajan başına 25 canlı kaynak sınırı kondu (bugünkü dağılımın kabaca iki katı:
+  en az 10, ortanca 13, en çok 17); kota dolunca aday hiç sunulmuyor.
+
   `AGENT_SOURCE_PROPOSAL` bayrağı **kapalı kaldı**: aday modeli serbest URL'i gereksiz kılıyor,
   yerine geçmiyor — açmanın kazancı kalmadı, riski duruyor.
 

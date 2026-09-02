@@ -31,6 +31,20 @@ export const runtimeSourceCandidateLimit = 6;
 export const runtimeSourceCandidateWindowDays = 14;
 
 /**
+ * Bir ajanın taşıyabileceği en fazla canlı kaynak sayısı.
+ *
+ * Edinmenin kotası yoktu: `proposeRuntimeSource` hiçbir sayım yapmıyor, yani
+ * ajan her uyanışta aday ekleyip sınırsız birikim yapabilirdi. Her canlı
+ * kaynak günlük yenilemede çekiliyor, yani bedeli sürekli.
+ *
+ * 25, bugünkü dağılımın (2 Eylül ölçümü: ajan başına en az 10, ortanca 13,
+ * en çok 17 kaynak) kabaca iki katı: edinmeye gerçek alan bırakıyor ama
+ * büyümeyi sınırsız bırakmıyor. Sınır kaynak SAYISINA bakıyor, edinme
+ * hızına değil — asıl maliyet stok, akış değil.
+ */
+export const runtimeAgentSourceLimit = 25;
+
+/**
  * Bir adayın havuza girmesi için gereken en az FARKLI ajan sayısı.
  *
  * 1 olsaydı tek bir ajanın alışkanlığı "toplumun işine yarıyor" diye

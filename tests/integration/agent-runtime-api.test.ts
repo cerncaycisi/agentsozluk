@@ -54,6 +54,7 @@ import {
   updateGlobalSettings,
 } from "@/modules/agents";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
+import { runtimeAgentSourceLimit } from "@/modules/agents/domain/runtime-source-candidates";
 import { projectActiveAgentBehaviorLessons } from "@/modules/agents/domain/behavior-feedback";
 import { createEntry, getEntry, getTopicEntries } from "@/modules/entries";
 import { getDebe } from "@/modules/feeds";
@@ -4122,6 +4123,144 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(adopted?.url).toBe(sharedUrl);
     expect(adopted?.status).toBe("PROBATION");
     expect(adopted?.discoveredFrom).toBe(`AGENT_CANDIDATE:${sharedSource.id}`);
+  });
+
+  it("stops presenting source candidates once the agent's list is full", async () => {
+    /*
+      Edinmenin kotası yoktu: `proposeRuntimeSource` hiçbir sayım yapmıyor,
+      yani ajan her uyanışta aday ekleyip sınırsız birikim yapabilirdi. Her
+      canlı kaynak günlük yenilemede çekiliyor — bedeli sürekli.
+
+      Test önce adayın GERÇEKTEN sunulduğunu gösteriyor, sonra listeyi
+      dolduruyor ve adayın kaybolduğunu gösteriyor. İlk yarısı olmadan test
+      hiçbir şey sınamazdı: aday zaten yoksa "boş liste" bedava geçerdi.
+    */
+    const fixture = await createFixture(2);
+    const admin = await createAdmin();
+    const others = await Promise.all(
+      [4, 5].map(async (index) => {
+        const created = await createAgent(
+          integrationDatabase,
+          adminActor(admin.id),
+          createAgentSchema.parse({ persona: originalPersonaPack.personas[index] }),
+        );
+        return created.agent;
+      }),
+    );
+    const sharedUrl = `https://kota-kaynak-${randomUUID()}.example.org/feed.xml`;
+    const sharedSource = await integrationDatabase.agentSource.create({
+      data: {
+        agentProfileId: others[0]!.profile.id,
+        url: sharedUrl,
+        normalizedDomain: new URL(sharedUrl).hostname,
+        sourceType: "RSS",
+        status: "TRUSTED",
+        topics: ["gündem"],
+        trustScore: 0.5,
+        interestScore: 0.5,
+        noveltyScore: 0.5,
+        usefulnessScore: 0.5,
+        addedByOrigin: "INITIAL_PERSONA",
+      },
+    });
+    const sharedItem = await integrationDatabase.agentSourceItem.create({
+      data: {
+        sourceId: sharedSource.id,
+        canonicalUrl: `${sharedUrl}#1`,
+        title: "Kota dosyası",
+        fetchedAt: new Date(),
+        contentHash: randomUUID().replaceAll("-", ""),
+        safeText: "Ölçülebilir veriye dayanan bir dosya.",
+        topics: ["gündem"],
+      },
+    });
+    for (const other of others) {
+      const citingRun = await integrationDatabase.agentRun.create({
+        data: {
+          agentProfileId: other.profile.id,
+          runType: "NORMAL_WAKE",
+          queuePriority: "SCHEDULED_CONTENT",
+          trigger: "INTEGRATION_TEST",
+          requestedById: admin.id,
+          personaVersionId: other.personaVersion.id,
+          idempotencyKey: randomUUID(),
+          timeoutSeconds: 600,
+          desiredEntryMin: 1,
+          desiredEntryMax: 1,
+        },
+      });
+      await integrationDatabase.agentAction.create({
+        data: {
+          runId: citingRun.id,
+          agentProfileId: other.profile.id,
+          sequence: 1,
+          actionType: "CREATE_ENTRY",
+          actionStatus: "SUCCEEDED",
+          input: {},
+          provenance: {
+            evidenceType: "TRUSTED_SOURCE",
+            evidenceIds: [sharedItem.id],
+            shortRationale: "Kaynak öğesine dayanan entry.",
+          },
+        },
+      });
+    }
+
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const candidateIdsForRun = async (workerId: string) => {
+      const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+        workerId,
+        leaseSeconds: 60,
+      });
+      const runId = leased.run!.id;
+      const context = await getRuntimeRunContext(
+        integrationDatabase,
+        writePrincipal,
+        runId,
+        workerId,
+      );
+      /*
+        Aynı ajan aynı anda tek koşu tutabiliyor; ikinci ölçümün koşu
+        bulabilmesi için bu koşu kapatılıyor.
+      */
+      await integrationDatabase.agentRun.update({
+        where: { id: runId },
+        data: { runStatus: "CANCELLED", finishedAt: new Date() },
+      });
+      return (
+        (context.perception as { sourceCandidates?: Array<Record<string, unknown>> })
+          .sourceCandidates ?? []
+      ).map((row) => row.candidateId);
+    };
+
+    // Kota dolmadan önce: aday sunuluyor.
+    expect(await candidateIdsForRun("quota-before-worker")).toContain(sharedSource.id);
+
+    const existing = await integrationDatabase.agentSource.count({
+      where: { agentProfileId: fixture.created.agent.profile.id },
+    });
+    await integrationDatabase.agentSource.createMany({
+      data: Array.from({ length: Math.max(0, runtimeAgentSourceLimit - existing) }, () => {
+        const url = `https://dolgu-${randomUUID()}.example.org/feed.xml`;
+        return {
+          agentProfileId: fixture.created.agent.profile.id,
+          url,
+          normalizedDomain: new URL(url).hostname,
+          sourceType: "RSS",
+          status: "TRUSTED" as const,
+          topics: ["gündem"],
+          trustScore: 0.5,
+          interestScore: 0.5,
+          noveltyScore: 0.5,
+          usefulnessScore: 0.5,
+          addedByOrigin: "INITIAL_PERSONA",
+        };
+      }),
+    });
+
+    // Kota dolduktan sonra: aynı aday artık sunulmuyor.
+    expect(await candidateIdsForRun("quota-after-worker")).toHaveLength(0);
   });
 
   it("rejects a source candidate that was never presented in the snapshot", async () => {

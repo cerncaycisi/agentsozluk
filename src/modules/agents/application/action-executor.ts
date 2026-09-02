@@ -11,8 +11,12 @@ import {
   runtimePresentedUserIds,
 } from "@/modules/agents/domain/runtime-evidence-catalog";
 import { runtimeSourceProposalEnabled } from "@/modules/agents/domain/runtime-source-proposal";
-import { runtimePresentedSourceCandidateIds } from "@/modules/agents/domain/runtime-source-candidates";
 import {
+  runtimeAgentSourceLimit,
+  runtimePresentedSourceCandidateIds,
+} from "@/modules/agents/domain/runtime-source-candidates";
+import {
+  countRuntimeAgentSources,
   findRuntimeSourceCandidate,
   getRuntimeRunProducedTargetIds,
 } from "@/modules/agents/repository/runtime";
@@ -730,6 +734,17 @@ async function performAction(
       const sourceUrl = parseSafeSourceUrl(
         resolved ? resolved.url : requiredString(input.url, "url"),
       );
+      /*
+        Kota: her canlı kaynak günlük yenilemede çekiliyor, yani birikimin
+        bedeli sürekli. Kontrol burada, çünkü asıl kapı sunucu tarafı olmalı —
+        perception'da aday gizlemek yalnız boşuna teklif etmemek için.
+      */
+      if (
+        resolved &&
+        (await countRuntimeAgentSources(transaction, principal.agentProfileId)) >=
+          runtimeAgentSourceLimit
+      )
+        throw new AppError("VALIDATION_ERROR", 400, "Ajanın kaynak listesi dolu.");
       const source = await proposeRuntimeSource(transaction, {
         agentProfileId: principal.agentProfileId,
         url: sourceUrl.toString(),
