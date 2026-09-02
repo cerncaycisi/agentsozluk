@@ -1678,6 +1678,12 @@ export class AgentRuntimeWorker {
         decision.actions.map(actionForControlPlane),
         lifeEventsForDecision(decision),
         deadline.requestOptions(),
+        /*
+          Kararın üretildiği snapshot sürümü. Gezinme fazı context'i yeniden
+          çekmiş olabilir; sunucu bu hash ile kararın GÜNCEL görüntüden
+          üretildiğini doğruluyor.
+        */
+        context.contextHash,
       );
       currentFailure = runtimeWorkerFailures.actionExecution;
       await enterPhase("EXECUTING");

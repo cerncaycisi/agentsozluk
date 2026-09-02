@@ -52,8 +52,12 @@ function usageWithIntervals(
 
 const LEASE_TOKEN = "l".repeat(43);
 
+const FIXTURE_CONTEXT_HASH = "a".repeat(64);
+
 function fixtureContext(runId: string): RuntimeContext {
   return {
+    // §4.3: kararın üretildiği snapshot sürümü; batch'te geri gönderilir.
+    contextHash: FIXTURE_CONTEXT_HASH,
     run: {
       id: runId,
       runType: "NORMAL_WAKE",
@@ -402,6 +406,7 @@ describe("long-lived agent runtime worker", () => {
         ]),
       }),
       expect.any(Object),
+      FIXTURE_CONTEXT_HASH,
     );
   });
 
@@ -497,6 +502,7 @@ describe("long-lived agent runtime worker", () => {
       ],
       expect.any(Object),
       expect.any(Object),
+      FIXTURE_CONTEXT_HASH,
     );
     expect(plane.complete).toHaveBeenCalledWith(
       expect.any(String),
@@ -1216,6 +1222,7 @@ describe("long-lived agent runtime worker", () => {
         ],
       }),
       expect.objectContaining({ signal: expect.any(AbortSignal), timeoutMs: expect.any(Number) }),
+      FIXTURE_CONTEXT_HASH,
     );
     expect(vi.mocked(plane.recordActions).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(plane.executeActions).mock.invocationCallOrder[0]!,
@@ -2444,6 +2451,7 @@ describe("long-lived agent runtime worker", () => {
       [expect.objectContaining({ actionType: "NO_ACTION" })],
       expect.any(Object),
       expect.any(Object),
+      FIXTURE_CONTEXT_HASH,
     );
     expect(plane.complete).toHaveBeenCalledTimes(1);
     expect(plane.fail).not.toHaveBeenCalled();
@@ -2507,6 +2515,7 @@ describe("long-lived agent runtime worker", () => {
       [expect.objectContaining({ sequence: 1, actionType: "NO_ACTION" })],
       expect.any(Object),
       expect.any(Object),
+      FIXTURE_CONTEXT_HASH,
     );
     expect(plane.complete).toHaveBeenCalledTimes(1);
   });
@@ -2704,6 +2713,7 @@ describe("long-lived agent runtime worker", () => {
       ],
       expect.any(Object),
       expect.any(Object),
+      FIXTURE_CONTEXT_HASH,
     );
     expect(plane.recordMemories).toHaveBeenCalledWith(
       expect.any(String),
@@ -3057,6 +3067,7 @@ describe("long-lived agent runtime worker", () => {
       [expect.objectContaining({ actionType: "NO_ACTION" })],
       expect.any(Object),
       expect.any(Object),
+      FIXTURE_CONTEXT_HASH,
     );
     expect(plane.complete).toHaveBeenCalledTimes(1);
   });
@@ -3176,6 +3187,7 @@ describe("long-lived agent runtime worker", () => {
       ],
       expect.any(Object),
       expect.any(Object),
+      FIXTURE_CONTEXT_HASH,
     );
     expect(plane.recordMemories).not.toHaveBeenCalled();
     expect(plane.complete).toHaveBeenCalledWith(

@@ -209,6 +209,20 @@ export const runtimeActionsSchema = z
   .object({
     workerId: runtimeWorkerIdSchema,
     leaseToken: runtimeLeaseTokenSchema,
+    /*
+      Kararın üretildiği snapshot SÜRÜMÜ. Sunucu bunu execute anındaki
+      perception'ın hash'iyle karşılaştırır: aradan geçen bir gezinme çağrısı
+      snapshot'ı büyütmüşse karar, ajanın görmediği bir görüntüye karşı
+      doğrulanmış olurdu.
+
+      İSTEĞE BAĞLI: zorunlu yapmak, alanı henüz göndermeyen bir worker
+      sürümünün bütün batch'lerini 422'ye düşürürdü — 28 Ağustos'ta worker'ı
+      öldüren hata sınıfı tam buydu. Gönderildiğinde DOĞRULANIR.
+    */
+    contextHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/u)
+      .optional(),
     actions: z
       .array(runtimeRecordedActionSchema)
       .min(1)
