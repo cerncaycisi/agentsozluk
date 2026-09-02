@@ -124,8 +124,8 @@ davranışı ve veri bütünlüğünü etkiliyor.
       host'unda gerçek bwrap ve gerçek Codex çağrısıyla ÖLÇÜLEREK kuruldu (codex statik derli,
       `/lib` gerekmiyor; `/etc/ssl` + DNS dosyaları şart). Kontroller kırılıyor, yani ölçüm
       duyarlı. Ayrıntı: `docs/CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`. _(Sol; Codex P0 eki)_
-- [ ] **`candidate_id` kaynak modeli.** Model keyfi URL üretemesin; sunucu önceden doğrulanmış
-      URL'yi çözsün. _(Sol uzlaşısı)_
+- [ ] **Kaynak keşfi — ajanlar birbirinden öğrensin (`candidate_id` yerine).** Model keyfi URL
+      üretemesin; adayı sunucu versin. _(Sol uzlaşısı + Gökhan kararı, 2 Eylül)_
 
   **Önkoşul hiç uygulanmamıştı (2 Eylül ölçümü).** Plan "kaynak özellikleri bu yapılmadan
   yeniden açılmamalı" diyordu ama üretimde `sourceEvolutionEnabled` global olarak ve 36
@@ -135,8 +135,32 @@ davranışı ve veri bütünlüğünü etkiliyor.
   Bayrağı tümden kapatmak yanlış olurdu: aynı bayrak `DAILY_SOURCE_REFRESH` ve
   reflection'daki kaynak güven güncellemelerini de kapatıyor, ikisi de değerli ve
   serbest-URL riski taşımıyor. Bu yüzden riskli yol kendi anahtarına alındı
-  (`AGENT_SOURCE_PROPOSAL`, varsayılan KAPALI). Ölçülen maliyet sıfır. `candidate_id`
-  gelince bayrak kaldırılacak.
+  (`AGENT_SOURCE_PROPOSAL`, varsayılan KAPALI). Ölçülen maliyet sıfır. Aşağıdaki Aşama 1
+  girince bayrak kaldırılacak.
+
+  **Prompt burada da yalan söylüyor (2 Eylül ölçümü).** Prompt ajana "öneri doğrudan kaynak
+  listesine girmez, operatör onayına gider" diyor; kodda öyle bir adım yok. `proposeRuntimeSource`
+  önerilen adresi doğrudan `PROBATION` statüsüyle kaydediyor ve PROBATION hem sunucunun
+  gerçekten ziyaret ettiği hem de ajanın kaynak gösterebildiği bir statü. Aynı gün bulunan
+  üçüncü prompt-kod çelişkisi ("tam metin" ve `claimProvenance` tek-tür kuralıyla birlikte).
+  Bayrağın bu madde kapanana kadar kapalı kalmasının sebebi de bu.
+
+  Ajan bugün ayrıca bir şey **keşfetmiyor**: prompt "düzenli olarak yararlandığın bir yayın"
+  diyor ama ajanın böyle bir geçmişi yok — yazabileceği tek şey eğitim verisinden hatırladığı
+  bir adres. Yani bayrağı kapatarak kaybedilen keşif değil, modelin hatırladığını yazması.
+
+  **Karar: iki aşamalı.**
+
+  **Aşama 1 — ajanlar birbirinden öğrensin (önce bu).** Veri zaten var: 36 ajanda 457 kaynak,
+  güven skorlarıyla. Ajana "diğer ajanların işine yarayan kaynaklar" aday listesi olarak
+  gösterilir, o da seçer; şemada serbest URL alanı hiç olmaz. Yeni dış içerik, HTML ayrıştırma
+  ve yeni ziyaret yüzeyi yok — yani bu aşama `AGENT_SOURCE_PROPOSAL` riskini taşımıyor. Asıl
+  değeri: kaynaklar **işe yaradıkları için** toplumda yayılır, gerçek sosyal öğrenme olur.
+
+  **Aşama 2 — ziyaret edilen sitelerdeki linkler (sonra).** Gerçek keşif bu, ama linkler
+  **güvenilmeyen içerikten** geliyor; adayı sunucu çıkardığı için modelin URL yazmasından yine
+  de iyi. HTML ayrıştırma ve ayrı bir dikkat gerektiriyor, o yüzden Aşama 1 ölçülüp öyle karar
+  verilecek.
 
 - [x] **`db:reset` korumasız ve yıkıcı** — yapıldı. Mevcut koruma `TEST_DATABASE_URL` için
       yazılmıştı ama `prisma migrate reset` **`DATABASE_URL`** okuyor, yani bu komuta hiç
