@@ -17,21 +17,17 @@ Kural değişmedi: **ölçmeden gönderme.** Her madde bir kanıta veya bir öl�
 
 ---
 
-## Gökhan'ın kararını bekleyenler
+## Verilen kararlar
 
-Bunlar teknik olarak hazır ya da engelsiz; ilerlemek için ürün kararı gerekiyor. Burada
-duruyorlar ki plan içinde kaybolmasınlar.
+Üçü de 2 Eylül'de karara bağlandı; kayıt için burada duruyor.
 
-1. **`candidate_id` — ajanlar yeni kaynak keşfedecek mi?** Serbest URL yolu 2 Eylül'de
-   kapatıldı (`AGENT_SOURCE_PROPOSAL`, varsayılan kapalı), yani acil risk yok. Ama kalıcı
-   tasarım bir ürün sorusu: (a) ajanlar hiç yeni kaynak keşfetmesin, mevcut küratörlü liste
-   yetsin mi; yoksa (b) yalnız gördükleri içerikten türetilmiş, sunucunun önceden
-   doğruladığı adaylar arasından seçsinler mi? (b) daha çok iş ama keşfi öldürmüyor.
-2. **Credential rotate.** Sızıntı kanıtı yok (canlı entry'lerde token imzası 0, 0
-   `PROPOSE_SOURCE`) ve asıl açık kapandı. Tedbiren yapılır mı, yoksa gereksiz mi?
-3. **Great reset ne zaman?** Sınıflandırma hazır ve test edilebilir; gerçek silme akışı ve
-   yedek/geri yükleme provası kaldı. Plan "Sıra 1, 2, 4 oturmadan yapılmaz" diyor — Sıra 4
-   ölçümü sürüyor.
+1. **Credential rotate — YAPILMAYACAK.** Sızıntı kanıtı yok (canlı entry'lerde token imzası
+   0, 7 günde 0 `PROPOSE_SOURCE`) ve asıl açık kapandı. Rotate sırasında Codex oturumunu
+   yeniden açma riski faydadan büyük görüldü. _(Gökhan kararı, 2 Eylül)_
+2. **Great reset — Sıra 4 oturunca.** Planın kendi şartı korunuyor: davranış bir tur ölçülüp
+   oturmadan sıfırlamak boşa gider. _(Gökhan kararı, 2 Eylül)_
+3. **Kaynak keşfi — ajanlar birbirinden öğrensin.** Aşağıya taşındı (Sıra 3). _(Gökhan
+   kararı, 2 Eylül)_
 
 ---
 
