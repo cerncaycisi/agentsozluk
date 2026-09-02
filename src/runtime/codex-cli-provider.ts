@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import fs from "node:fs";
 import { chmod, lstat, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { AppError } from "@/lib/http/errors";
@@ -56,8 +57,32 @@ function assertAbsoluteSandboxPath(label: string, value: string): void {
     throw new Error(`${label} mutlak ve normalize bir yol olmalıdır.`);
 }
 
+/**
+ * Sembolik bağı çözer; yol henüz yoksa sözlüksel hâline döner.
+ *
+ * `realpathSync` var olmayan yolda fırlatıyor ve work dizini bu kontrolden
+ * ÖNCE yaratılmamış olabilir. Fırlatmak yerine sözlüksel yola dönmek, en kötü
+ * hâlde bugünkü davranışı korur; var olan yollarda ise gerçek hedefi kullanır.
+ */
+function resolveRealPath(value: string): string {
+  try {
+    return fs.realpathSync.native(value);
+  } catch {
+    return path.resolve(value);
+  }
+}
+
+/**
+ * Kapsama kontrolü sembolik bağ çözülerek yapılır.
+ *
+ * Sözlüksel karşılaştırma tek başına aldatılabilir: work root içinde duran ama
+ * dışarıyı gösteren bir sembolik bağ, `path.relative` açısından "içeride"
+ * görünür ve sandbox'a beklenmedik bir dizin bind edilirdi. Bu dizinleri
+ * operatör kuruyor, yani saldırgan kontrolünde değil — bu yüzden savunma
+ * derinliği, birincil kapı değil (Sol hakem turu).
+ */
 function containsPath(parent: string, candidate: string): boolean {
-  const relative = path.relative(parent, candidate);
+  const relative = path.relative(resolveRealPath(parent), resolveRealPath(candidate));
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
