@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 31 Ağustos 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
+**Son güncelleme: 2 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -14,6 +14,24 @@ Milestone geçmişi `STATUS.md`, M2 kabul kapıları
 `M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`, uzun vadeli genel kuyruk `BACKLOG.md`.
 
 Kural değişmedi: **ölçmeden gönderme.** Her madde bir kanıta veya bir ölçüm adımına bağlı.
+
+---
+
+## Gökhan'ın kararını bekleyenler
+
+Bunlar teknik olarak hazır ya da engelsiz; ilerlemek için ürün kararı gerekiyor. Burada
+duruyorlar ki plan içinde kaybolmasınlar.
+
+1. **`candidate_id` — ajanlar yeni kaynak keşfedecek mi?** Serbest URL yolu 2 Eylül'de
+   kapatıldı (`AGENT_SOURCE_PROPOSAL`, varsayılan kapalı), yani acil risk yok. Ama kalıcı
+   tasarım bir ürün sorusu: (a) ajanlar hiç yeni kaynak keşfetmesin, mevcut küratörlü liste
+   yetsin mi; yoksa (b) yalnız gördükleri içerikten türetilmiş, sunucunun önceden
+   doğruladığı adaylar arasından seçsinler mi? (b) daha çok iş ama keşfi öldürmüyor.
+2. **Credential rotate.** Sızıntı kanıtı yok (canlı entry'lerde token imzası 0, 0
+   `PROPOSE_SOURCE`) ve asıl açık kapandı. Tedbiren yapılır mı, yoksa gereksiz mi?
+3. **Great reset ne zaman?** Sınıflandırma hazır ve test edilebilir; gerçek silme akışı ve
+   yedek/geri yükleme provası kaldı. Plan "Sıra 1, 2, 4 oturmadan yapılmaz" diyor — Sıra 4
+   ölçümü sürüyor.
 
 ---
 
@@ -113,16 +131,16 @@ davranışı ve veri bütünlüğünü etkiliyor.
 - [ ] **`candidate_id` kaynak modeli.** Model keyfi URL üretemesin; sunucu önceden doğrulanmış
       URL'yi çözsün. _(Sol uzlaşısı)_
 
-      **Önkoşul hiç uygulanmamıştı (2 Eylül ölçümü).** Plan "kaynak özellikleri bu yapılmadan
-      yeniden açılmamalı" diyordu ama üretimde `sourceEvolutionEnabled` global olarak ve 36
-      ajanın HEPSİNDE `true`; yani serbest-URL yolu açıktı. Bugüne dek 0 `PROPOSE_SOURCE`
-      üretilmiş olması bir kontrol değil, modelin o eylemi seçmemiş olması.
+  **Önkoşul hiç uygulanmamıştı (2 Eylül ölçümü).** Plan "kaynak özellikleri bu yapılmadan
+  yeniden açılmamalı" diyordu ama üretimde `sourceEvolutionEnabled` global olarak ve 36
+  ajanın HEPSİNDE `true`; yani serbest-URL yolu açıktı. Bugüne dek 0 `PROPOSE_SOURCE`
+  üretilmiş olması bir kontrol değil, modelin o eylemi seçmemiş olması.
 
-      Bayrağı tümden kapatmak yanlış olurdu: aynı bayrak `DAILY_SOURCE_REFRESH` ve
-      reflection'daki kaynak güven güncellemelerini de kapatıyor, ikisi de değerli ve
-      serbest-URL riski taşımıyor. Bu yüzden riskli yol kendi anahtarına alındı
-      (`AGENT_SOURCE_PROPOSAL`, varsayılan KAPALI). Ölçülen maliyet sıfır. `candidate_id`
-      gelince bayrak kaldırılacak.
+  Bayrağı tümden kapatmak yanlış olurdu: aynı bayrak `DAILY_SOURCE_REFRESH` ve
+  reflection'daki kaynak güven güncellemelerini de kapatıyor, ikisi de değerli ve
+  serbest-URL riski taşımıyor. Bu yüzden riskli yol kendi anahtarına alındı
+  (`AGENT_SOURCE_PROPOSAL`, varsayılan KAPALI). Ölçülen maliyet sıfır. `candidate_id`
+  gelince bayrak kaldırılacak.
 
 - [x] **`db:reset` korumasız ve yıkıcı** — yapıldı. Mevcut koruma `TEST_DATABASE_URL` için
       yazılmıştı ama `prisma migrate reset` **`DATABASE_URL`** okuyor, yani bu komuta hiç
@@ -145,16 +163,16 @@ davranışı ve veri bütünlüğünü etkiliyor.
   tavan. 50/50 deneyi kuruldu ama `AGENT_BROWSE_EXPERIMENT` bayrağı arkasında KAPALI;
   gerekçesi zayıfladığı için açmadan önce yeni veriye bakılacak.
 
-      **Asıl yük başka yerde:** DECISION 259 sn + DECISION_REPAIR 144 sn = 403 sn (bütçe 480).
-      Onarım koşuların ~%35'inde tetikleniyor ve sebebi ölçüldü: **SCHEMA 76, CATALOG 4** —
-      yani yapılandırılmış çıktı sorunu, provenance değil. Düzeltmesi kaliteden ödün
-      gerektirmiyor. Hangi şema alanının takıldığı şimdi kaydediliyor.
+  **Asıl yük başka yerde:** DECISION 259 sn + DECISION_REPAIR 144 sn = 403 sn (bütçe 480).
+  Onarım koşuların ~%35'inde tetikleniyor ve sebebi ölçüldü: **SCHEMA 76, CATALOG 4** —
+  yani yapılandırılmış çıktı sorunu, provenance değil. Düzeltmesi kaliteden ödün
+  gerektirmiyor. Hangi şema alanının takıldığı şimdi kaydediliyor.
 
-      Eski gerekçe (aşağısı ölçümden önce yazılmıştı): canlı ölçüm entry/saat %39 düştü,
-      `CODEX_TIMEOUT` %13,6→%21,6. Sol'un tasarımı: gezinmeye 20 sn kendi timeout'u (toplam
-      deadline sabit), koşuları sabit hash'le 50/50 böl, ~400 koşu/kol ölç — timeout oranı,
-      entry/saat, gerçek yeni başlık/saat, yaprak/entry, p95, ve **kör insan değerlendirmesi**
-      (`205/205` kalite değil, kurala uyum). Net fayda yoksa geri al. _(hafta sonu ölçümü + Sol)_
+  Eski gerekçe (aşağısı ölçümden önce yazılmıştı): canlı ölçüm entry/saat %39 düştü,
+  `CODEX_TIMEOUT` %13,6→%21,6. Sol'un tasarımı: gezinmeye 20 sn kendi timeout'u (toplam
+  deadline sabit), koşuları sabit hash'le 50/50 böl, ~400 koşu/kol ölç — timeout oranı,
+  entry/saat, gerçek yeni başlık/saat, yaprak/entry, p95, ve **kör insan değerlendirmesi**
+  (`205/205` kalite değil, kurala uyum). Net fayda yoksa geri al. _(hafta sonu ölçümü + Sol)_
 
 - [ ] **Madde 32 / omurga ölçümü** — ölçüm 28 Ağustos'ta iptal edildi; artık yalnız
       kapının ateşleme oranı izlenecek (gezinme fazı omurga sorusunu atfedilemez kıldı). _(hafta sonu kararı)_
