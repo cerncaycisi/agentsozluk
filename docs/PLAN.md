@@ -111,8 +111,13 @@ davranışı ve veri bütünlüğünü etkiliyor.
 - [ ] **`candidate_id` kaynak modeli.** Model keyfi URL üretemesin; sunucu önceden doğrulanmış
       URL'yi çözsün. Kaynak özellikleri (source reading/evolution) bu yapılmadan yeniden
       açılmamalı. _(Sol uzlaşısı)_
-- [ ] **`db:reset` korumasız ve yıkıcı** — tek katman regex koruması var, derinlik yok. _(Codex §4.9)_
-- [ ] **`containsPath` realpath/symlink** — ikincil, düşük öncelik; o dizinleri operatör kuruyor. _(Sol)_
+- [x] **`db:reset` korumasız ve yıkıcı** — yapıldı. Mevcut koruma `TEST_DATABASE_URL` için
+      yazılmıştı ama `prisma migrate reset` **`DATABASE_URL`** okuyor, yani bu komuta hiç
+      uygulanmıyordu. Üç bağımsız katman eklendi: ad (`_test`/`_dev` ile bitmeli), host
+      (yalnız loopback), ve açık onay (`AGENT_DB_RESET_CONFIRM=<ad>`). Her katman ayrı
+      test ediliyor. _(Codex §4.9)_
+- [x] **`containsPath` realpath/symlink** — yapıldı. Kapsama kontrolü artık sembolik bağı
+      çözüyor; yol henüz yoksa sözlüksel hâline dönüyor (fırlatmıyor). _(Sol)_
 - [ ] **Credential rotate** — opsiyonel/tedbiren. Sızıntı kanıtı yok (7 günde 0 `PROPOSE_SOURCE`,
       entry'lerde token imzası 0) ve açık kapandı. Sertleştirme bitince yapılabilir. _(Sol)_
 
