@@ -106,15 +106,35 @@ yapılmalı** — yakınıyla değil.
 - **Provenance reddi artarsa.** `PROVENANCE_INVALID` oranı yükseliyorsa katalog, prompt'un
   kullandırdığı bir alanı kapsamıyordur (21 Ağustos'ta tam bu sebeple üç koşu düşmüştü).
 
-## Bilerek yapılmayanlar
+## Aynı gün kapanan üç borç
 
-1. **`snapshotId`/`contextHash` batch bağı.** Kararın hangi snapshot **sürümünden**
-   üretildiğini bağlar. Sol: gereksiz değil.
-2. **Life ledger kapsamı.** Observation/memory-candidate subject ve decision-journal
-   `evidenceIds` sunucuda snapshot'a karşı doğrulanmadan kalıcı yazılıyor. Public effect
-   değil, ama tam kapanış için gerekli.
-3. **USER hedefleri.** Katalog kullanıcı kimliği modellemiyor; `FOLLOW_USER` ve
-   `UPDATE_RELATIONSHIP_NOTE` hedefleri denetim dışında.
+İlk turda üç madde bilerek ertelenmişti. Üçü de 2 Eylül'de kapandı; üçünde de kural
+uygulanmadan ÖNCE gerçek türetme fonksiyonuyla ölçüldü.
+
+**Life ledger kapsamı.** Observation ve memory-candidate kanıtları hiçbir doğrulamadan
+kalıcı yazılıyordu. Public effect değil ama ajanın hafızası: ele geçirilmiş bir worker
+ajana görmediği şeyleri hatırlatabilir ve o hafıza sonraki koşuların kararını besler.
+Ölçüm: 14 günde 16 533 olay, **25 220 kanıt referansı, katalog dışı 0**.
+
+**USER hedefleri.** Katalog kullanıcı kimliğini modellemiyordu; `FOLLOW_USER` ve
+`UPDATE_RELATIONSHIP_NOTE` denetim dışındaydı. Ölçüm: başarıyla yürümüş **137 USER
+hedefinin 137'si** perception'da sunulmuştu — kimlikler zaten oradaydı
+(`recentEntries[].author.id`, `relationships[].targetUserId`), katalog onları görmüyordu.
+
+Kullanıcı boyutu kanıt kataloğuna **karıştırılmadı** (`runtimePresentedUserIds` ayrı):
+karıştırmak kullanıcı kimliğini yanlışlıkla `USER_ENTRY`/`PLATFORM_EVENT` **kanıtı**
+sayardı — "fazla geniş allowlist" hatasının tekrarı olurdu.
+
+**Snapshot sürüm bağı.** En incesi: kanıt ve hedef snapshot'a bağlıydı ama doğrulama
+EXECUTE anındaki görüntüye bakıyordu. `context A -> karar -> context B -> execute`
+zincirinde karar, ajanın hiç görmediği B'ye karşı geçerli sayılabiliyordu — ve gezinme
+fazı tam olarak context'i yeniden çeken şey, yani bu teorik değil normal akış. Context
+endpoint'i artık `contextHash` döndürüyor, batch onu taşıyor, sunucu transaction içinde
+karşılaştırıyor.
+
+Alan **isteğe bağlı**: zorunlu yapmak, alanı henüz göndermeyen bir worker sürümünün
+bütün batch'lerini 422'ye düşürürdü — 28 Ağustos'ta worker'ı öldüren hata sınıfı buydu
+ve bugün üç ayrı yeni alanda aynı tuzaktan kaçınıldı.
 
 ## Sonradan kapanan: snapshot zorunluluğu
 
@@ -143,3 +163,12 @@ yine geçiyordu. Hedefsiz bir aksiyona (`UPDATE_BELIEF`) çevrilince gerçekten 
 - `tests/unit/agents/perception-trending.test.ts` — eskiden `worker.ts` kaynak metnini
   tarıyordu; katalog ortak modüle taşınınca davranış testine çevrildi ve artık sunucu
   tarafını da kapsıyor.
+- `tests/integration/agent-life-ledger.test.ts` — perception'da başka bir entry
+  sunulmuşken gösterilmeyen bir kimliği kanıt göstermek reddediliyor.
+- `tests/integration/agent-runtime-api.test.ts` — perception donduktan SONRA yazan bir
+  kullanıcıyı takip denemesi, ve bayat `contextHash` taşıyan bir karar batch'i
+  reddediliyor.
+
+**Bu belgedeki her kural için "düzeltmeyi geri al, test düşüyor mu" adımı koşuldu.** Üç
+kez test yanlış şeyi sınıyordu ve ancak bu adım sayesinde fark edildi; bir kez de geri
+alma script'inin kendisi assert'süz olduğu için sahte yeşil verdi.
