@@ -423,6 +423,13 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
       interestScore: source.interestScore,
       topics: source.topics,
     })),
+    /*
+      Başka ajanların işine yaramış, bu ajanda olmayan kaynaklar. Adres
+      bilerek yok: ajan yalnız `candidateId` seçebiliyor, adresi sunucu
+      çözüyor. `citingAgents` sıralamanın gerekçesi olduğu için gösteriliyor —
+      ajan "kaç kişinin işine yaramış" bilgisine bakarak seçsin.
+    */
+    sourceCandidates: records.sourceCandidates,
   };
   /*
     Kırpma yalnız güvenlik ağı. Canlı ölçüm (21 Ağu, son 6 saat, 117 run): perception
@@ -438,6 +445,12 @@ function boundedPerceptionSnapshot(run: OwnedRun, records: PerceptionRecords, no
   while (Buffer.byteLength(JSON.stringify(snapshot), "utf8") > runtimePerceptionMaximumBytes) {
     if (snapshot.writerOpenedTopics.length > 8) snapshot.writerOpenedTopics.pop();
     else if (snapshot.sourceItems.length > 4) snapshot.sourceItems.pop();
+    /*
+      Aday listesi fazlalık kırpmalarından hemen sonra gidiyor: kaybı en ucuz
+      alan bu (ajan bu uyanışta kaynak edinmez, o kadar), ama fazlalık
+      sayılabilecek writerOpenedTopics/sourceItems kuyruğundan önce atmak da
+      yanlış olurdu — onlar zaten fazlalık, bu ise tümden kayboluyor.
+    */ else if (snapshot.sourceCandidates.length > 0) snapshot.sourceCandidates.pop();
     else if (snapshot.writerOpenedTopics.length > 0) snapshot.writerOpenedTopics.pop();
     else if (snapshot.sourceItems.length > 0) snapshot.sourceItems.pop();
     else if (snapshot.linkedTopics.length > 0) snapshot.linkedTopics.pop();

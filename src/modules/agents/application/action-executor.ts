@@ -11,7 +11,11 @@ import {
   runtimePresentedUserIds,
 } from "@/modules/agents/domain/runtime-evidence-catalog";
 import { runtimeSourceProposalEnabled } from "@/modules/agents/domain/runtime-source-proposal";
-import { getRuntimeRunProducedTargetIds } from "@/modules/agents/repository/runtime";
+import { runtimePresentedSourceCandidateIds } from "@/modules/agents/domain/runtime-source-candidates";
+import {
+  findRuntimeSourceCandidate,
+  getRuntimeRunProducedTargetIds,
+} from "@/modules/agents/repository/runtime";
 import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
 import { appendRuntimeEvent, lockAgentSettings } from "@/modules/agents/repository/control-plane";
@@ -703,17 +707,38 @@ async function performAction(
       return { result: { entryId, bookmarked: false } };
     }
     case "PROPOSE_SOURCE": {
-      const sourceUrl = parseSafeSourceUrl(requiredString(input.url, "url"));
+      /*
+        İki yol var ve ikisi de adresi SUNUCUDAN alıyor:
+
+        - `candidateId`: başka ajanların işine yaramış, bu koşuda ajana
+          sunulmuş bir aday. Adres veritabanından çözülüyor, model onu hiç
+          görmüyor ve yazamıyor.
+        - `url`: eski serbest yol. Model artık bunu üretemiyor (wire
+          şemasından kaldırıldı) ve `SOURCE_PROPOSAL_DISABLED` kapısının
+          arkasında; kod yalnız bayrak açılırsa buraya ulaşır.
+
+        `parseSafeSourceUrl` iki yolda da çalışıyor: aday veritabanından
+        gelse bile aynı güvenlik kontrolünden geçmeli (kayıt eskiyse ya da
+        politika sertleştiyse orada yakalanır).
+      */
+      const resolved =
+        input.candidateId === undefined
+          ? null
+          : await findRuntimeSourceCandidate(transaction, input.candidateId);
+      if (input.candidateId !== undefined && !resolved)
+        throw new AppError("VALIDATION_ERROR", 400, "Kaynak adayı artık geçerli değil.");
+      const sourceUrl = parseSafeSourceUrl(
+        resolved ? resolved.url : requiredString(input.url, "url"),
+      );
       const source = await proposeRuntimeSource(transaction, {
         agentProfileId: principal.agentProfileId,
         url: sourceUrl.toString(),
         normalizedDomain: sourceUrl.hostname.toLowerCase(),
-        sourceType: input.sourceType ?? "HTML",
-        topics: input.topics ?? ["genel"],
-        discoveredFrom: requiredString(
-          action.provenance?.shortRationale,
-          "provenance.shortRationale",
-        ),
+        sourceType: resolved ? resolved.sourceType : (input.sourceType ?? "HTML"),
+        topics: resolved ? resolved.topics : (input.topics ?? ["genel"]),
+        discoveredFrom: resolved
+          ? `AGENT_CANDIDATE:${resolved.id}`
+          : requiredString(action.provenance?.shortRationale, "provenance.shortRationale"),
       });
       return {
         result: { sourceId: source.id, status: source.status },
@@ -960,15 +985,35 @@ export async function executeRuntimeAction(
           reason: "Source evolution bu agent veya global ayarlarda kapalıdır.",
         });
       /*
-        Serbest URL yolu ayrı anahtarda ve varsayılan KAPALI: güvenlik planı
-        bunun için `candidate_id` modelini şart koşuyordu ama önkoşul hiç
-        uygulanmamıştı (ölçüm: global + 36 ajanın hepsinde açık). Gerekçe
-        `domain/runtime-source-proposal.ts` yorumunda.
+        Serbest URL yolu ayrı anahtarda ve varsayılan KAPALI. `candidate_id`
+        modeli geldi, ama bu kapı KAPALI KALIYOR: serbest URL'in kendisi
+        artık gereksiz, çünkü ajanın kaynak edinmesi için meşru bir yol var.
+        Gerekçe `domain/runtime-source-proposal.ts` yorumunda.
       */
-      if (parsed.data.actionType === "PROPOSE_SOURCE" && !runtimeSourceProposalEnabled())
+      if (
+        parsed.data.actionType === "PROPOSE_SOURCE" &&
+        parsed.data.input.candidateId === undefined &&
+        !runtimeSourceProposalEnabled()
+      )
         return rejectAction(transaction, principal, actionRecord, {
           code: "SOURCE_PROPOSAL_DISABLED",
-          reason: "Serbest URL kaynak önerisi kapalı; candidate_id modeli gelene dek açılmayacak.",
+          reason: "Serbest URL kaynak önerisi kapalı; kaynak yalnız sunulan adaydan edinilir.",
+        });
+      /*
+        Aday snapshot'a bağlı. Bu kontrol olmadan hatalı ya da ele geçirilmiş
+        bir worker, ajana hiç gösterilmemiş bir kaynağı edindirebilirdi —
+        action hedefi ve provenance için kapatılan kaçış yolunun aynısı.
+      */
+      if (
+        parsed.data.actionType === "PROPOSE_SOURCE" &&
+        parsed.data.input.candidateId !== undefined &&
+        !runtimePresentedSourceCandidateIds(actionRecord.run.perceptionSummary).has(
+          parsed.data.input.candidateId,
+        )
+      )
+        return rejectAction(transaction, principal, actionRecord, {
+          code: "SOURCE_CANDIDATE_OFF_SNAPSHOT",
+          reason: "Kaynak adayı bu koşunun perception snapshot'ında sunulmadı.",
         });
       if (contentActions.has(parsed.data.actionType) && parsed.data.input.body) {
         const issue = constitutionalEntryWritingIssue(parsed.data.input.body);

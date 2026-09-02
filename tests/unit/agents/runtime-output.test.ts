@@ -108,6 +108,68 @@ describe("runtime structured output wire contract", () => {
     memoryCandidates: [],
   };
 
+  it("kaynak önerisinde adres alanı yok, yalnız aday kimliği var", () => {
+    /*
+      Serbest URL alanı kapatılmadı, KALDIRILDI: model eğitim verisinden
+      hatırladığı bir adresi yazabiliyordu ve sunucu onu doğrudan PROBATION
+      statüsüyle kaydediyordu — yani ziyaret edilebilir ve kaynak
+      gösterilebilir hâle geliyordu. Şema `.strict()` olduğu için `url`
+      göndermek artık ayrışma hatası veriyor.
+    */
+    const proposeAction = {
+      type: "PROPOSE_SOURCE" as const,
+      desire: 0.6,
+      expectedOutcome: "Kaynak kendi listeme eklenecek.",
+      selectedOptionSeq: 3,
+      safeReason: "Aday başka ajanların işinde kaynak gösterilmiş.",
+      claimProvenance: [
+        {
+          provenance: "PLATFORM_EVENT" as const,
+          evidenceIds: [evidenceId],
+          shortRationale: "Aday bu koşuda sunuldu.",
+        },
+      ],
+    };
+    expect(
+      runtimeNormalDecisionWireSchema.safeParse({
+        ...canonical,
+        actions: [{ ...proposeAction, candidateId: topicId }],
+      }).success,
+    ).toBe(true);
+    expect(
+      runtimeNormalDecisionWireSchema.safeParse({
+        ...canonical,
+        actions: [
+          {
+            ...proposeAction,
+            url: "https://example.com/feed.xml",
+            sourceType: "RSS",
+            topics: ["gündem"],
+          },
+        ],
+      }).success,
+    ).toBe(false);
+    // Türetilen sourceProposals yolu da aynı kuralda.
+    expect(
+      runtimeNormalDecisionWireSchema.safeParse({
+        ...canonical,
+        sourceProposals: [
+          {
+            url: "https://example.com/feed.xml",
+            sourceType: "RSS",
+            topics: ["gündem"],
+            provenance: "PLATFORM_EVENT" as const,
+            evidenceIds: [evidenceId],
+            desire: 0.6,
+            expectedOutcome: "Kaynak eklenecek.",
+            selectedOptionSeq: 3,
+          },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(JSON.stringify(runtimeNormalDecisionWireJsonSchema)).not.toContain('"url"');
+  });
+
   it("advertises the exact canonical top-level fields with strict Zod/JSON-schema parity", () => {
     const properties = runtimeNormalDecisionWireJsonSchema.properties as Record<string, unknown>;
     expect(Object.keys(properties)).toEqual(runtimeNormalWireFieldNames);

@@ -3980,6 +3980,224 @@ describe("internal agent runtime API with PostgreSQL", () => {
     expect(await integrationDatabase.entry.count({ where: { topicId: unseen.topic.id } })).toBe(1);
   });
 
+  it("adopts a source candidate the server presented, using the stored address", async () => {
+    /*
+      Ajanlar birbirinden kaynak öğreniyor. Kritik olan şu: model adresi
+      GÖRMÜYOR ve YAZMIYOR — yalnız sunucunun sunduğu adayın kimliğini
+      seçiyor, adresi sunucu veritabanından çözüyor.
+
+      Aday havuzunun ölçüsü `trustScore` değil ATIF: kaynağın öğesini kaç
+      FARKLI ajanın başarıyla yürümüş action'ında kanıt gösterdiği. Üretimde
+      `trustScore`/`usefulnessScore` fiilen hiç kıpırdamıyor (2 Eylül ölçümü),
+      o yüzden onlara göre sıralamak rastgele sıralamak olurdu. Fixture bu
+      yüzden İKİ ayrı atıf ajanı kuruyor — eşik iki bağımsız ajan.
+    */
+    const fixture = await createFixture();
+    const admin = await createAdmin();
+    const others = await Promise.all(
+      [1, 2].map(async (index) => {
+        const created = await createAgent(
+          integrationDatabase,
+          adminActor(admin.id),
+          createAgentSchema.parse({ persona: originalPersonaPack.personas[index] }),
+        );
+        await integrationDatabase.agentProfile.update({
+          where: { id: created.agent.profile.id },
+          data: { lifecycleStatus: "ACTIVE" },
+        });
+        return created.agent;
+      }),
+    );
+    const sharedUrl = `https://ornek-kaynak-${randomUUID()}.example.org/feed.xml`;
+    const sharedSource = await integrationDatabase.agentSource.create({
+      data: {
+        agentProfileId: others[0]!.profile.id,
+        url: sharedUrl,
+        normalizedDomain: new URL(sharedUrl).hostname,
+        sourceType: "RSS",
+        status: "TRUSTED",
+        topics: ["kent", "mimarlık"],
+        trustScore: 0.5,
+        interestScore: 0.5,
+        noveltyScore: 0.5,
+        usefulnessScore: 0.5,
+        addedByOrigin: "INITIAL_PERSONA",
+      },
+    });
+    const sharedItem = await integrationDatabase.agentSourceItem.create({
+      data: {
+        sourceId: sharedSource.id,
+        canonicalUrl: `${sharedUrl}#1`,
+        title: "Kentsel dönüşüm dosyası",
+        fetchedAt: new Date(),
+        contentHash: randomUUID().replaceAll("-", ""),
+        safeText: "Ölçülebilir veriye dayanan bir dosya.",
+        topics: ["kent"],
+      },
+    });
+    for (const other of others) {
+      const citingRun = await integrationDatabase.agentRun.create({
+        data: {
+          agentProfileId: other.profile.id,
+          runType: "NORMAL_WAKE",
+          queuePriority: "SCHEDULED_CONTENT",
+          trigger: "INTEGRATION_TEST",
+          requestedById: admin.id,
+          personaVersionId: other.personaVersion.id,
+          idempotencyKey: randomUUID(),
+          timeoutSeconds: 600,
+          desiredEntryMin: 1,
+          desiredEntryMax: 1,
+        },
+      });
+      await integrationDatabase.agentAction.create({
+        data: {
+          runId: citingRun.id,
+          agentProfileId: other.profile.id,
+          sequence: 1,
+          actionType: "CREATE_ENTRY",
+          actionStatus: "SUCCEEDED",
+          input: {},
+          provenance: {
+            evidenceType: "TRUSTED_SOURCE",
+            evidenceIds: [sharedItem.id],
+            shortRationale: "Kaynak öğesine dayanan entry.",
+          },
+        },
+      });
+    }
+
+    const workerId = "source-adoption-worker";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    const context = await getRuntimeRunContext(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      workerId,
+    );
+    const candidates = (context.perception as { sourceCandidates?: Array<Record<string, unknown>> })
+      .sourceCandidates;
+    const candidate = candidates?.find((row) => row.candidateId === sharedSource.id);
+    expect(candidate).toBeDefined();
+    // Adres ajana HİÇ gösterilmiyor; gördüğü şey alan adı ve kaç ajanın işine yaradığı.
+    expect(candidate).not.toHaveProperty("url");
+    expect(candidate?.citingAgents).toBe(2);
+
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "PROPOSE_SOURCE",
+            safeReason: "Sunulan kaynak adayı kendi listeme ekleniyor.",
+            input: { candidateId: sharedSource.id },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Aday bu koşuda sunuldu.",
+            },
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({ actionStatus: "SUCCEEDED" });
+
+    const adopted = await integrationDatabase.agentSource.findFirst({
+      where: { agentProfileId: fixture.created.agent.profile.id, url: sharedUrl },
+    });
+    expect(adopted).not.toBeNull();
+    // Adres veritabanından geldi, modelden değil.
+    expect(adopted?.url).toBe(sharedUrl);
+    expect(adopted?.status).toBe("PROBATION");
+    expect(adopted?.discoveredFrom).toBe(`AGENT_CANDIDATE:${sharedSource.id}`);
+  });
+
+  it("rejects a source candidate that was never presented in the snapshot", async () => {
+    /*
+      Snapshot bağı olmadan hatalı ya da ele geçirilmiş bir worker, ajana hiç
+      gösterilmemiş bir kaynağı edindirebilirdi — action hedefi ve provenance
+      için kapatılan kaçış yolunun aynısı. Aday GERÇEK bir kaynak satırı:
+      test "böyle bir kayıt yok" yolunu değil, snapshot kuralını sınamalı.
+    */
+    const fixture = await createFixture();
+    const admin = await createAdmin();
+    const created = await createAgent(
+      integrationDatabase,
+      adminActor(admin.id),
+      createAgentSchema.parse({ persona: originalPersonaPack.personas[3] }),
+    );
+    const unseenUrl = `https://gorulmemis-${randomUUID()}.example.org/feed.xml`;
+    const unseenSource = await integrationDatabase.agentSource.create({
+      data: {
+        agentProfileId: created.agent.profile.id,
+        url: unseenUrl,
+        normalizedDomain: new URL(unseenUrl).hostname,
+        sourceType: "RSS",
+        status: "TRUSTED",
+        topics: ["gündem"],
+        trustScore: 0.5,
+        interestScore: 0.5,
+        noveltyScore: 0.5,
+        usefulnessScore: 0.5,
+        addedByOrigin: "INITIAL_PERSONA",
+      },
+    });
+
+    const workerId = "off-snapshot-candidate-worker";
+    const leasePrincipal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    const writePrincipal = await runtimePrincipal(fixture.credential);
+    const leased = await leaseRuntimeRun(integrationDatabase, leasePrincipal, {
+      workerId,
+      leaseSeconds: 60,
+    });
+    const runId = leased.run!.id;
+    await getRuntimeRunContext(integrationDatabase, writePrincipal, runId, workerId);
+    await recordRuntimeActions(
+      integrationDatabase,
+      writePrincipal,
+      runId,
+      runtimeActionsSchema.parse({
+        workerId,
+        actions: [
+          {
+            sequence: 1,
+            actionType: "PROPOSE_SOURCE",
+            safeReason: "Sunulmamış aday denemesi.",
+            input: { candidateId: unseenSource.id },
+            provenance: {
+              evidenceType: "PLATFORM_EVENT",
+              evidenceIds: [runId],
+              shortRationale: "Sunulmamış aday denemesi.",
+            },
+          },
+        ],
+      }),
+    );
+    await expect(
+      executeRuntimeAction(integrationDatabase, writePrincipal, runId, { workerId, sequence: 1 }),
+    ).resolves.toMatchObject({
+      actionStatus: "REJECTED",
+      rejectionCode: "SOURCE_CANDIDATE_OFF_SNAPSHOT",
+    });
+    expect(
+      await integrationDatabase.agentSource.count({
+        where: { agentProfileId: fixture.created.agent.profile.id, url: unseenUrl },
+      }),
+    ).toBe(0);
+  });
+
   it("rejects any action from a run that never had context presented", async () => {
     /*
       §4.3 son halka: tipli katalog snapshot'sız koşuda yalnız `runId` içeriyor,

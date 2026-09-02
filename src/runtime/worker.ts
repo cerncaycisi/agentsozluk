@@ -942,12 +942,8 @@ function normalizedDecision(
       desire: proposal.desire,
       expectedOutcome: proposal.expectedOutcome,
       selectedOptionSeq: proposal.selectedOptionSeq,
-      safeReason: "Gözlenen source adayı kontrollü değerlendirme için öneriliyor.",
-      input: {
-        url: proposal.url,
-        sourceType: proposal.sourceType,
-        topics: proposal.topics,
-      },
+      safeReason: "Sunulan kaynak adayı ajanın kendi listesine ekleniyor.",
+      input: { candidateId: proposal.candidateId },
       provenance: proposal.provenance,
     })),
   ];

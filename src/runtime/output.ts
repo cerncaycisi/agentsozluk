@@ -168,17 +168,19 @@ function targetOnlyWireAction(type: string) {
     .strict();
 }
 
+/*
+  Model artık adres YAZMIYOR, sunucunun sunduğu bir adayı SEÇİYOR.
+
+  Eski şemada serbest `url` alanı vardı; model eğitim verisinden hatırladığı
+  bir adresi yazabiliyordu ve sunucu onu doğrudan `PROBATION` statüsüyle
+  kaydediyordu — yani ziyaret edilebilir ve kaynak gösterilebilir hâle
+  geliyordu. Alanın kendisi kaldırıldı: kapatılan bir kapı, olmayan bir
+  kapıdan zayıftır.
+*/
 const wireProposeSourceActionSchema = z
   .object({
     type: z.literal("PROPOSE_SOURCE"),
-    url: z
-      .string()
-      .trim()
-      .min(1)
-      .max(2048)
-      .regex(/^https?:\/\/[^\s]+$/u),
-    sourceType: z.enum(["RSS", "ATOM", "HTML"]),
-    topics: z.array(z.string().trim().min(2).max(100)).min(1).max(8),
+    candidateId: uuidWireSchema,
     ...wireActionCommon,
   })
   .strict();
@@ -250,14 +252,7 @@ const wireRelationshipDeltaSchema = z
   .strict();
 const wireSourceProposalSchema = z
   .object({
-    url: z
-      .string()
-      .trim()
-      .min(1)
-      .max(2048)
-      .regex(/^https?:\/\/[^\s]+$/u),
-    sourceType: z.enum(["RSS", "ATOM", "HTML"]),
-    topics: z.array(z.string().trim().min(2).max(100)).min(1).max(8),
+    candidateId: uuidWireSchema,
     provenance: wireProvenanceValueSchema,
     evidenceIds: z.array(uuidWireSchema).min(1).max(20),
     ...wireActionIntentCommon,
@@ -466,9 +461,7 @@ export const runtimeDecisionSchema = z
       .array(
         z
           .object({
-            url: z.string().url().max(2048),
-            sourceType: z.enum(["RSS", "ATOM", "HTML"]),
-            topics: z.array(z.string().trim().min(2).max(100)).min(1).max(8),
+            candidateId: z.string().uuid(),
             provenance: runtimeProvenanceSchema,
             ...runtimeDecisionActionIntentFields,
           })
@@ -640,11 +633,7 @@ function adaptWireAction(action: RuntimeNormalDecisionWire["actions"][number], s
       input = compactRecord({ userId: targetId });
       break;
     case "PROPOSE_SOURCE":
-      input = compactRecord({
-        url: flat.url,
-        sourceType: flat.sourceType,
-        topics: flat.topics,
-      });
+      input = compactRecord({ candidateId: flat.candidateId });
       break;
     case "UPDATE_BELIEF":
       input = compactRecord({
@@ -749,13 +738,11 @@ function adaptedRuntimeDecision(wire: RuntimeNormalDecisionWire): unknown {
       selectedOptionSeq: delta.selectedOptionSeq,
     })),
     sourceProposals: wire.sourceProposals.map((proposal) => ({
-      url: proposal.url,
-      sourceType: proposal.sourceType,
-      topics: proposal.topics,
+      candidateId: proposal.candidateId,
       provenance: wireProvenance(
         proposal.provenance,
         proposal.evidenceIds,
-        `Source proposal: ${proposal.url}`,
+        `Source candidate: ${proposal.candidateId}`,
       ),
       desire: proposal.desire,
       expectedOutcome: proposal.expectedOutcome,
@@ -1276,24 +1263,9 @@ const runtimeDecisionJsonSchemaSource: Record<string, unknown> = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: [
-          "url",
-          "sourceType",
-          "topics",
-          "provenance",
-          "desire",
-          "expectedOutcome",
-          "selectedOptionSeq",
-        ],
+        required: ["candidateId", "provenance", "desire", "expectedOutcome", "selectedOptionSeq"],
         properties: {
-          url: { type: "string", maxLength: 2048 },
-          sourceType: { type: "string", enum: ["RSS", "ATOM", "HTML"] },
-          topics: {
-            type: "array",
-            minItems: 1,
-            maxItems: 8,
-            items: { type: "string", minLength: 2, maxLength: 100 },
-          },
+          candidateId: { type: "string", minLength: 36, maxLength: 36 },
           provenance: provenanceJsonSchema,
           desire: { type: "number", minimum: 0, maximum: 1 },
           expectedOutcome: { type: "string", minLength: 1, maxLength: 500 },

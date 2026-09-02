@@ -150,11 +150,22 @@ davranışı ve veri bütünlüğünü etkiliyor.
 
   **Karar: iki aşamalı.**
 
-  **Aşama 1 — ajanlar birbirinden öğrensin (önce bu).** Veri zaten var: 36 ajanda 457 kaynak,
-  güven skorlarıyla. Ajana "diğer ajanların işine yarayan kaynaklar" aday listesi olarak
-  gösterilir, o da seçer; şemada serbest URL alanı hiç olmaz. Yeni dış içerik, HTML ayrıştırma
-  ve yeni ziyaret yüzeyi yok — yani bu aşama `AGENT_SOURCE_PROPOSAL` riskini taşımıyor. Asıl
-  değeri: kaynaklar **işe yaradıkları için** toplumda yayılır, gerçek sosyal öğrenme olur.
+  **Aşama 1 — ajanlar birbirinden öğrensin — YAPILDI.** Veri zaten var: 36 ajanda 457 kaynak. Ajana "diğer ajanların işine yarayan kaynaklar" aday listesi olarak
+  gösteriliyor, o da seçiyor; wire şemasından `url` alanı **kaldırıldı** (kapatılmadı,
+  kaldırıldı) ve adresi sunucu veritabanından çözüyor. Aday, action hedefi ve provenance gibi
+  **snapshot'a bağlı**: o koşuda sunulmamış bir aday `SOURCE_CANDIDATE_OFF_SNAPSHOT` ile
+  düşüyor. Yeni dış içerik, HTML ayrıştırma ve yeni ziyaret yüzeyi yok.
+
+  Tasarım sırasında planın bir varsayımı ölçümle çürüdü: "güven skorlarıyla" diye yazmıştım
+  ama **skorlar hiç kıpırdamıyor** — 457 kaynağın 455'i varsayılan `trustScore` 0,5'te,
+  `usefulnessScore` 457'sinde de varsayılan. Yani "işe yarayan kaynak" bilgisi o alanlarda
+  YOK; onlara göre sıralamak rastgele sıralamak olurdu. Gerçek sinyal atıfta bulundu: 30 günde
+  **5 466 kaynak atfı, 351 farklı kaynak**. Sıralama artık bir kaynağı kaç FARKLI ajanın
+  yayımlanmış işinde kaynak gösterdiğine bakıyor (eşik: en az 2 bağımsız ajan), tek bir ajanın
+  hacmine değil. Sorgu üretimde ölçüldü: 165 ms, yalnız kaynaklı uyanışlarda koşuyor.
+
+  `AGENT_SOURCE_PROPOSAL` bayrağı **kapalı kaldı**: aday modeli serbest URL'i gereksiz kılıyor,
+  yerine geçmiyor — açmanın kazancı kalmadı, riski duruyor.
 
   **Aşama 2 — ziyaret edilen sitelerdeki linkler (sonra).** Gerçek keşif bu, ama linkler
   **güvenilmeyen içerikten** geliyor; adayı sunucu çıkardığı için modelin URL yazmasından yine
