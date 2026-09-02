@@ -3517,9 +3517,15 @@ describe("long-lived agent runtime worker", () => {
 
     await expect(worker.runOnce()).resolves.toBe(1);
     const usage = vi.mocked(plane.complete).mock.calls[0]?.[4]?.usageMetadata as
-      | { decisionRepair?: { reason?: string } }
+      | { decisionRepair?: { reason?: string; schemaIssuePaths?: string[] } }
       | undefined;
     expect(usage?.decisionRepair?.reason).toBe("SCHEMA");
+    /*
+      "SCHEMA" tek başına hedef göstermiyor: hangi alanın takıldığı da lazım.
+      Yalnız alan ADLARI kaydediliyor, modelin ürettiği değerler değil.
+    */
+    expect(usage?.decisionRepair?.schemaIssuePaths?.length ?? 0).toBeGreaterThan(0);
+    expect(JSON.stringify(usage?.decisionRepair?.schemaIssuePaths)).not.toContain("bozuk");
   });
 
   it("skips browsing when the decision reserve would be eaten", async () => {

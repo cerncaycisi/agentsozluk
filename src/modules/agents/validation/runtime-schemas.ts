@@ -402,6 +402,12 @@ export const usageMetadataSchema = z
       .object({
         reason: z.enum(["SCHEMA", "CATALOG"]),
         missedEvidenceTypes: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+        /*
+          Şemanın HANGİ alanında takıldığı. Yalnız kendi şemamızın alan adları;
+          zod `message`'ı ve alınan değer alınmıyor, onlar modelin ürettiği
+          içeriği kaydın içine taşırdı.
+        */
+        schemaIssuePaths: z.array(z.string().trim().min(1).max(60)).max(20).optional(),
       })
       .strict()
       .optional(),

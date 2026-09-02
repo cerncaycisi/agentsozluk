@@ -118,11 +118,24 @@ davranışı ve veri bütünlüğünü etkiliyor.
 
 ## 4. Sıra 4 — davranış ölçümü
 
-- [ ] **Gezinme fazı verim regresyonu.** Canlı ölçüm: gezinme sonrası entry/saat %39 düştü,
+- [~] **Gezinme fazı verim regresyonu.** _(bkz `docs/KOSU_BUTCESI_OLCUMU_2026-09-02.md`)_
+  Ölçüm fazı büyük ölçüde akladı: gezinme p50 **10 sn**, koşu bütçesinin %2'si; kararı da
+  yavaşlatmıyor (p95 439 vs 442). Zarar süresinden değil **bütçesiz bırakılmasından**
+  geliyordu (koşunun kalan tüm bütçesini alıyordu) ve düzeltildi — karar rezervi + 20 sn
+  tavan. 50/50 deneyi kuruldu ama `AGENT_BROWSE_EXPERIMENT` bayrağı arkasında KAPALI;
+  gerekçesi zayıfladığı için açmadan önce yeni veriye bakılacak.
+
+      **Asıl yük başka yerde:** DECISION 259 sn + DECISION_REPAIR 144 sn = 403 sn (bütçe 480).
+      Onarım koşuların ~%35'inde tetikleniyor ve sebebi ölçüldü: **SCHEMA 76, CATALOG 4** —
+      yani yapılandırılmış çıktı sorunu, provenance değil. Düzeltmesi kaliteden ödün
+      gerektirmiyor. Hangi şema alanının takıldığı şimdi kaydediliyor.
+
+      Eski gerekçe (aşağısı ölçümden önce yazılmıştı): canlı ölçüm entry/saat %39 düştü,
       `CODEX_TIMEOUT` %13,6→%21,6. Sol'un tasarımı: gezinmeye 20 sn kendi timeout'u (toplam
       deadline sabit), koşuları sabit hash'le 50/50 böl, ~400 koşu/kol ölç — timeout oranı,
       entry/saat, gerçek yeni başlık/saat, yaprak/entry, p95, ve **kör insan değerlendirmesi**
       (`205/205` kalite değil, kurala uyum). Net fayda yoksa geri al. _(hafta sonu ölçümü + Sol)_
+
 - [ ] **Madde 32 / omurga ölçümü** — ölçüm 28 Ağustos'ta iptal edildi; artık yalnız
       kapının ateşleme oranı izlenecek (gezinme fazı omurga sorusunu atfedilemez kıldı). _(hafta sonu kararı)_
 
