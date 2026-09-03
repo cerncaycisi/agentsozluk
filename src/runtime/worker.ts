@@ -1,7 +1,10 @@
 import {
   RuntimeProviderCancelledError,
+  RuntimeProviderExecutionError,
   RuntimeProviderTimeoutError,
   type RuntimeProvider,
+  type RuntimeProviderAttemptDiagnostics,
+  type RuntimeProviderHostMetrics,
   type RuntimeProviderResult,
 } from "@/runtime/provider";
 import type {
@@ -1184,8 +1187,14 @@ export class AgentRuntimeWorker {
       finishedAt: string;
       durationMs: number;
       phase: RuntimeCodexPhase;
+      censored?: boolean;
+      setupMs?: number;
+      inspectMs?: number;
+      modelMs?: number;
     }> = [];
     const codexInvocationErrors = new Set<unknown>();
+    /* Düşen çağrının host metriği; başarısızlık kaydına bu yazılır. */
+    let failedCallHostMetrics: RuntimeProviderHostMetrics | undefined;
     /*
       Faz etiketi telemetri için: `codexIntervals` hangi çağrının hangi faz
       olduğunu söylemiyordu, dolayısıyla 440 sn'lik karar süresinin nereye
@@ -1206,12 +1215,36 @@ export class AgentRuntimeWorker {
       if (codexIntervals.length >= runtimeCodexInvocationLimit)
         throw new Error("CODEX_INVOCATION_LIMIT_EXCEEDED");
       const startedAt = new Date();
+      /*
+        Kesilen çağrı da kaydedilir — kaydedilmezse timeout koşusunun nerede
+        öldüğü görünmez. Ama süresi ölçüm DEĞİLDİR: deadline çağrının ortasında
+        patladığında sayı "deadline'a kalan süre" olur. `censored` bunu
+        söylüyor; bayrak olmadan kesilmiş süre yavaşlama sanılıyordu.
+      */
+      let completed = false;
+      let censored = false;
+      let diagnostics: RuntimeProviderAttemptDiagnostics | undefined;
       try {
         const result = await provider.invoke(request);
+        completed = true;
+        diagnostics = result.diagnostics;
+        /*
+          Buradaki `throwIfStopped` çağrı TAMAMLANDIKTAN sonra patlayabilir;
+          o durumda süre gerçek bir ölçümdür ve `censored` işaretlenmez.
+        */
         deadline.throwIfStopped();
         return result;
       } catch (error) {
         codexInvocationErrors.add(error);
+        if (
+          error instanceof RuntimeProviderTimeoutError ||
+          error instanceof RuntimeProviderCancelledError
+        ) {
+          censored = !completed;
+          diagnostics = error.diagnostics ?? diagnostics;
+        } else if (error instanceof RuntimeProviderExecutionError)
+          diagnostics = error.diagnostics ?? diagnostics;
+        if (diagnostics?.hostMetrics) failedCallHostMetrics = diagnostics.hostMetrics;
         throw error;
       } finally {
         const finishedAt = new Date();
@@ -1220,6 +1253,14 @@ export class AgentRuntimeWorker {
           finishedAt: finishedAt.toISOString(),
           durationMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
           phase,
+          ...(censored ? { censored } : {}),
+          ...(diagnostics
+            ? {
+                setupMs: diagnostics.setupMs,
+                inspectMs: diagnostics.inspectMs,
+                modelMs: diagnostics.modelMs,
+              }
+            : {}),
         });
       }
     };
@@ -2001,7 +2042,14 @@ export class AgentRuntimeWorker {
               ...(codexIntervals.length > 0 ? { codexIntervals } : {}),
               ...(browseExperiment ? { browseExperiment } : {}),
               ...(decisionRepair ? { decisionRepair } : {}),
-              ...(providerResult?.hostMetrics ?? {}),
+              /*
+                Başarısızlık kaydına DÜŞEN çağrının host metriği yazılmalı.
+                Eskiden `providerResult?.hostMetrics` yazılıyordu — o bir
+                ÖNCEKİ başarılı fazın metriği. Sonuç: "timeout anında host
+                yüklü müydü" sorusu ölçülemiyordu, çünkü tam o andaki yük
+                hiçbir yere kaydedilmiyordu.
+              */
+              ...(failedCallHostMetrics ?? providerResult?.hostMetrics ?? {}),
             }
           : null;
       /*
