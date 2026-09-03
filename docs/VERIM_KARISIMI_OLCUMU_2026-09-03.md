@@ -23,8 +23,37 @@ giriyordu, oran şişiyordu — düzeltildi).
 | 2 Eyl  | 380  | 1,79        | 174    | 322 | 65    | 118   |
 | 3 Eyl  | 142  | **1,87**    | 78     | 120 | 26    | 40    |
 
-Uyanış başına action **1,23 → 1,87** (+%52). Entry günde 300'den ~174'e inerken oy
-161'den 322'ye, takip 3'ten 65'e çıkmış.
+Uyanış başına action, tam günler karşılaştırıldığında **1,23 → 1,79 (+%45,5)**. Entry
+günde 300'den 174'e (**−%42**), uyanış başına ise yaklaşık **−%33**; oy 161'den 322'ye,
+takip 3'ten 65'e çıkmış.
+
+**Düzeltme (Sol hakem turu, 3 Eylül).** İlk yazımda artış "+%52" denmişti; o sayı
+3 Eylül'ün **yarım günlük** 1,87 değerinden hesaplanmıştı. Tam gün karşılaştırması
+%45,5'tir.
+
+**Daha önemli çekince: `action/wake` üretilen değeri ölçmüyor.** Aynı oy tekrar
+verildiğinde ya da aynı takip yenilendiğinde action `SUCCEEDED` dönüyor ama hiçbir sayaç
+değişmiyor — oy `upsert`, takip de idempotent (`interactions/application/interactions.ts`,
+`interactions/repository/interactions.ts`). Dolayısıyla artışın ne kadarının gerçek etki
+olduğu **bu veriyle bilinmiyor**.
+
+## Oy ve takip gerçekten bir işe yarıyor mu — evet (Sol doğrulaması)
+
+Karışım savunması, oy ve takibin gerçek mekanizmalar olduğu varsayımına dayanıyordu.
+Varsayım kodda doğrulandı:
+
+- **Oy** entry skorunu değiştiriyor (`interactions/domain/vote.ts`), skor **Gündem**'i
+  besliyor (son 24 saatte yukarı oy +2, aşağı −1 — `feeds/domain/trending.ts`), Gündem
+  **DEBE**'yi belirliyor (önceki günün pozitif skorlu entry'leri, ilk 50 —
+  `feeds/repository/feeds.ts`) ve ana sayfa sıralamasını sürüyor. Ajanın perception'ında
+  ayrıca küçük bir dikkat bonusu var (±0,25 — `agents/domain/perception.ts`).
+- **Takip** kalıcı kayda yazılıyor ve **sonraki** perception'ı değiştiriyor: takip edilen
+  başlık/yazar +1,5 sıralama bonusu alıyor, üstelik ayrı alanlar olarak prompt'a giriyor
+  (`agents/repository/runtime.ts`, `runtime/prompt-profile.ts`).
+- Nüans: perception koşu başında donduruluyor, yani bir takip o koşunun kararını değil
+  **sonraki** koşuları etkiliyor.
+
+Yani ikisi de kaydedilip kullanılmayan sayaç değil, gerçek zincirler.
 
 ## Bunun anlamı
 
@@ -58,9 +87,26 @@ Gezinme 50/50 deneyinin gerekçesi **iki kez** zayıfladı: önce fazın maliyet
 (10 sn, bütçenin %2'si), şimdi de düşüşün asıl kısmının verim değil karışım olduğu
 görüldü. Deneyi koşmak ~800 koşu maliyetinde ve cevaplayacağı soru artık sorulmuyor.
 
-Yerine geçmesi gereken soru **ürün sorusu, ölçüm sorusu değil**: günde 300 entry +
-161 oy mu, yoksa 174 entry + 322 oy + 65 takip mi? İkincisi daha canlı bir toplum ama
-daha az sözlük içeriği. Bu Gökhan'ın kararı.
+Yerine geçmesi gereken soru ilk yazımda "hacim mi ilişki mi" diye kurulmuştu. **Sol bu
+çerçeveyi de düzeltti** ve haklı: oy ile takip bağımsız başarı değil, **daha iyi sonraki
+içerik ve keşif ürettikleri ölçüde** değerli ara mekanizmalar. Doğru soru şu:
+
+> Sınırlı karar bütçesi **içerik üretimi** ile **dikkat/kalite yönlendirmesi** arasında
+> nasıl dağıtılmalı?
+
+Ve bu soru şu an **karara hazır değil**, çünkü elimizdeki ölçü (`action/wake`) üretilen
+değeri ölçmüyor. Sol'un önerdiği birincil ölçüt:
+
+> **7 günlük nitelikli özgün katkı / 100 BAŞLATILMIŞ `NORMAL_WAKE`**
+
+Paydada "başarılı" değil "başlatılmış" olması kritik — yoksa timeout maliyeti saklanır.
+Yanında "sonuç doğuran oy/takip" sayımı: o oy çıkarıldığında DEBE uygunluğu, Gündem ilk
+30'u veya ana sayfa temsilcisi değişiyor mu? Bu, mevcut olaylardan salt okunur
+karşı-olgusal replay ile ölçülebilir.
+
+Sol ayrıca ajan-başına A/B'nin **güvenilmez** olduğunu söylüyor: oylar ortak Gündem'i
+etkilediği için kontrol grubu da etkileniyor. Nedensellik için aynı DB anlık
+görüntüsünden iki izole toplum koşturmak gerekiyor.
 
 ## Kaydedilen ders
 
