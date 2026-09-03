@@ -2071,6 +2071,102 @@ describe("long-lived agent runtime worker", () => {
     );
   });
 
+  it("marks a cut-off call as censored and records the failing call's host metrics", async () => {
+    /*
+      Kesilen çağrının süresi ÖLÇÜM DEĞİLDİR: deadline çağrının ortasında
+      patladığında sayı "çağrı ne kadar sürdü" değil, "deadline'a ne kadar
+      kalmıştı" olur. 3 Eylül 2026'daki teşhis turu tam bu yüzden yanlış yere
+      baktı — kesilmiş süreler yavaşlama sanıldı.
+
+      İki şey birlikte sınanıyor:
+      1. `censored` bayrağı, süreyi okuyan herkese bunun ölçüm olmadığını söyler.
+      2. Host metriği DÜŞEN çağrıdan gelir. Eskiden bir ÖNCEKİ başarılı fazın
+         metriği yazılıyordu, yani "timeout anında host yüklü müydü" sorusu
+         ölçülemiyordu.
+    */
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const failingHostMetrics = {
+      processPeakRssMb: 512,
+      systemPeakMemoryMb: 4096,
+      availableMemoryMb: 128,
+      swapInMb: 64,
+      swapOutMb: 32,
+      loadAverage1m: 7.5,
+    };
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockRejectedValue(
+        new RuntimeProviderTimeoutError({
+          setupMs: 900,
+          inspectMs: 700,
+          modelMs: 41_000,
+          hostMetrics: failingHostMetrics,
+        }),
+      ),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "censored-interval-worker",
+      credentials: [`agt_${"c".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    const failCall = vi.mocked(plane.fail).mock.calls[0];
+    const usage = failCall![4] as {
+      usageMetadata: {
+        codexIntervals: Array<Record<string, unknown>>;
+        loadAverage1m?: number;
+        availableMemoryMb?: number;
+      };
+    };
+    const interval = usage.usageMetadata.codexIntervals[0]!;
+    expect(interval.censored).toBe(true);
+    // Sürenin ayrışması: kurulum ve CLI denetimi modelin payı değil.
+    expect(interval.setupMs).toBe(900);
+    expect(interval.inspectMs).toBe(700);
+    expect(interval.modelMs).toBe(41_000);
+    // Düşen çağrının host metriği kaydedilmiş olmalı.
+    expect(usage.usageMetadata.loadAverage1m).toBe(7.5);
+    expect(usage.usageMetadata.availableMemoryMb).toBe(128);
+  });
+
+  it("does not mark a completed call as censored", async () => {
+    /*
+      Bayrak yalnız GERÇEKTEN kesilen çağrı için. Tamamlanmış bir çağrının
+      süresi ölçümdür; onu da sansürlü işaretlemek bayrağı anlamsızlaştırır.
+    */
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const worker = new AgentRuntimeWorker({
+      workerId: "uncensored-worker",
+      credentials: [`agt_${"u".repeat(43)}`],
+      controlPlane: plane,
+      provider: {
+        inspect: vi.fn().mockResolvedValue({ version: "test", supportsStructuredOutput: true }),
+        invoke: vi.fn().mockResolvedValue({
+          provider: "codex-cli",
+          version: "test",
+          durationMs: 5,
+          output: canonicalNormalOutput("Sansürsüz koşu."),
+          diagnostics: { setupMs: 120, inspectMs: 80, modelMs: 4_800 },
+        }),
+      },
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    const completeCall = vi.mocked(plane.complete).mock.calls[0];
+    const usage = completeCall![4] as {
+      usageMetadata: { codexIntervals: Array<Record<string, unknown>> };
+    };
+    for (const interval of usage.usageMetadata.codexIntervals)
+      expect(interval.censored).toBeUndefined();
+    expect(usage.usageMetadata.codexIntervals[0]!.modelMs).toBe(4_800);
+  });
+
   it("fails closed when provider output does not match the runtime schema", async () => {
     const runId = randomUUID();
     const plane = controlPlane(runId);

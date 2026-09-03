@@ -5,6 +5,8 @@ import path from "node:path";
 import { AppError } from "@/lib/http/errors";
 import type {
   RuntimeProvider,
+  RuntimeProviderAttemptDiagnostics,
+  RuntimeProviderHostMetrics,
   RuntimeProviderRequest,
   RuntimeProviderResult,
 } from "@/runtime/provider";
@@ -447,10 +449,26 @@ export class CodexCliProvider implements RuntimeProvider {
     if (!Number.isFinite(request.timeoutMs) || request.timeoutMs <= 0)
       throw new RuntimeProviderTimeoutError();
     const deadlineAtMs = startedAt + request.timeoutMs;
+    /*
+      Süre tek parça değil: kurulum (dizin + şema + üç CLI denetimi), modelin
+      kendi payı ve temizlik ayrı ayrı ölçülüyor. Ölçüm ayrıştırılmadan
+      "çağrı 352 sn sürdü" cümlesi modelin 352 sn düşündüğü anlamına
+      geliyormuş gibi okunuyordu; okunmamalı.
+    */
+    let inspectMs = 0;
+    let setupMs = 0;
+    let modelStartedAtMs = 0;
+    let hostMetrics: RuntimeProviderHostMetrics | undefined;
+    const diagnostics = (): RuntimeProviderAttemptDiagnostics => ({
+      setupMs,
+      inspectMs,
+      modelMs: modelStartedAtMs === 0 ? 0 : Math.max(0, Date.now() - modelStartedAtMs),
+      ...(hostMetrics ? { hostMetrics } : {}),
+    });
     const remainingMs = (): number => {
-      if (request.signal?.aborted) throw new RuntimeProviderCancelledError();
+      if (request.signal?.aborted) throw new RuntimeProviderCancelledError(diagnostics());
       const remaining = Math.ceil(deadlineAtMs - Date.now());
-      if (remaining <= 0) throw new RuntimeProviderTimeoutError();
+      if (remaining <= 0) throw new RuntimeProviderTimeoutError(diagnostics());
       return remaining;
     };
     const debugRetentionHours = validateDebugRetentionHours(request.debugRetentionHours ?? 0);
@@ -473,7 +491,9 @@ export class CodexCliProvider implements RuntimeProvider {
         flag: "wx",
       });
       await chmod(schemaPath, 0o600);
+      const inspectStartedAtMs = Date.now();
       const inspected = await this.#inspectWithin(remainingMs(), request.signal);
+      inspectMs = Date.now() - inspectStartedAtMs;
       if (!inspected.supportsStructuredOutput) {
         throw new AppError("INTERNAL_ERROR", 500, "Codex CLI structured output desteklemiyor.");
       }
@@ -517,6 +537,8 @@ export class CodexCliProvider implements RuntimeProvider {
         stdio: ["pipe", "pipe", "pipe"],
       });
       const monitor = monitorHostProcess(child.pid);
+      setupMs = Date.now() - startedAt;
+      modelStartedAtMs = Date.now();
       const result = await collect(
         child,
         request.prompt,
@@ -524,13 +546,21 @@ export class CodexCliProvider implements RuntimeProvider {
         request.signal,
         this.#options.spawnProcess === undefined,
       );
-      const hostMetrics = await monitor.stop();
-      if (result.cancelled) throw new RuntimeProviderCancelledError();
-      if (result.timedOut) throw new RuntimeProviderTimeoutError();
+      /*
+        Host metriği hata yolunda da taşınmalı. Eskiden burada toplanıyor ama
+        hemen ardından atılan exception'a iliştirilmiyordu; worker da
+        başarısızlık kaydına bir ÖNCEKİ başarılı fazın metriğini yazıyordu
+        (`worker.ts`, `providerResult?.hostMetrics`). Sonuç: "host çekişmesi
+        timeout'a yol açıyor mu" sorusu ölçülemez durumdaydı — tam da timeout
+        anındaki yük kaydedilmiyordu.
+      */
+      hostMetrics = await monitor.stop();
+      if (result.cancelled) throw new RuntimeProviderCancelledError(diagnostics());
+      if (result.timedOut) throw new RuntimeProviderTimeoutError(diagnostics());
       if (result.exitCode !== 0 || result.exitSignal !== null) {
         const safeCode = safeCodexFailure(result.stderr, result.exitSignal);
         retainedErrorCode = safeCode;
-        throw new RuntimeProviderExecutionError(safeCode);
+        throw new RuntimeProviderExecutionError(safeCode, diagnostics());
       }
       let output: unknown;
       try {
@@ -538,7 +568,7 @@ export class CodexCliProvider implements RuntimeProvider {
         retainedOutput = output;
       } catch {
         retainedErrorCode = "CODEX_OUTPUT_INVALID";
-        throw new RuntimeProviderExecutionError("CODEX_OUTPUT_INVALID");
+        throw new RuntimeProviderExecutionError("CODEX_OUTPUT_INVALID", diagnostics());
       }
       return {
         provider: "codex-cli",
@@ -548,6 +578,7 @@ export class CodexCliProvider implements RuntimeProvider {
         output,
         durationMs: Date.now() - startedAt,
         hostMetrics,
+        diagnostics: diagnostics(),
       };
     } finally {
       if (debugRetentionHours > 0)

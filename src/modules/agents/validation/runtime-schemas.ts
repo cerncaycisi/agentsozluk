@@ -391,6 +391,18 @@ const codexIntervalSchema = z
       saymak `/complete` ile `/fail`i 422'ye düşürürdü.
     */
     phase: z.enum(runtimeCodexPhases).optional(),
+    /*
+      `censored` bu sürenin ÖLÇÜM OLMADIĞINI söyler: deadline çağrının
+      ortasında patladığında süre "çağrı ne kadar sürdü" değil, "deadline'a ne
+      kadar kalmıştı" olur. 3 Eylül 2026'daki teşhis turu tam bu yüzden yanlış
+      yere baktı — kesilmiş süreler yavaşlama sanıldı. Bayrak olmadan bu hata
+      her analizde yeniden yapılabilir.
+    */
+    censored: z.boolean().optional(),
+    /* Sürenin ayrışması: kurulum + CLI denetimi modelin payı değildir. */
+    setupMs: z.number().int().min(0).max(86_400_000).optional(),
+    inspectMs: z.number().int().min(0).max(86_400_000).optional(),
+    modelMs: z.number().int().min(0).max(86_400_000).optional(),
   })
   .strict()
   .refine(
