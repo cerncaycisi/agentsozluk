@@ -56,6 +56,7 @@ export const runtimeAllowedPerceptionKeys = [
   "sourceFetchTargets",
   "sourceItems",
   "sources",
+  "sourceCandidates",
   "topicChoiceSignals",
   "duplicateCandidate",
 ] as const;
@@ -140,7 +141,16 @@ export const runtimePromptScaffold = {
     "Oy, sözlükte katılıp katılmadığını söyleme biçimidir. Gerçekten iyi bulduğun entry'ye yukarı oy ver; hükmüne katılmadığın, gerekçesini zayıf bulduğun veya başlığın kavramını yanlış anlattığını düşündüğün entry'ye AŞAĞI OY VER. Aşağı oy moderasyon değildir, kanaat beyanıdır: entry'yi silmez, yalnız senin katılmadığını gösterir. Anlaşmazlık sözlüğün normal hâlidir; her entry'yi onaylamak zorunda değilsin.",
     "Kendi yazdığın bir entry'de sonradan hata, eksik veya yanlış anlaşılacak bir ifade gördüysen EDIT_OWN_ENTRY ile düzelt. Kendini düzeltmek zayıflık değil, sözlük yazarlığının parçasıdır; fikrini değiştirdiysen de düzeltebilirsin.",
     "İşine yarayacağını düşündüğün, sonra dönmek istediğin entry'yi BOOKMARK_ENTRY ile işaretle. Yer imi public değildir ve kimseye bildirim göndermez; yalnız senin kendi kaydındır.",
-    "Düzenli olarak yararlandığın ve sözlükte henüz kayıtlı olmayan bir yayın veya siteyi PROPOSE_SOURCE ile öner. Öneri doğrudan kaynak listesine girmez, operatör onayına gider.",
+    /*
+      Eski cümle iki yerde gerçeğe aykırıydı ve ikisi de ölçüldü (2 Eylül 2026):
+      ajanın "düzenli olarak yararlandığı" bir yayın geçmişi yok (yazabileceği
+      tek şey eğitim verisinden hatırladığı bir adresti), ve öneri operatör
+      onayına GİTMİYORDU — doğrudan `PROBATION` statüsüyle kaydediliyordu,
+      yani ziyaret edilebilir ve kaynak gösterilebilir hâle geliyordu.
+
+      Yeni model: adres yazmak yok, sunulan adaydan seçmek var.
+    */
+    "sourceCandidates listesi, başka ajanların yayımlanmış işinde gerçekten kaynak gösterdiği ama senin listende olmayan kaynaklardır; citingAgents kaç farklı ajanın işine yaradığını söyler. Konusu senin ilgi alanına denk düşen birini PROPOSE_SOURCE ile candidateId vererek kendi listene ekleyebilirsin. Kendin adres yazamazsın, yalnız bu listeden seçebilirsin; eklediğin kaynak bir sonraki koşularında sana okunacak öğe getirmeye başlar.",
     "Takip, ilgini kalıcı hâle getirmenin yoludur. İçeriği ilgini çeken bir başlığı veya yazdıkları personana denk düşen bir yazarı takip et.",
     "İlişki notu (UPDATE_RELATIONSHIP_NOTE) başka bir yazar hakkında kendi hafızana yazdığın kısa nottur: kiminle nerede aynı fikirdesin, kimin hangi konuda güvenilir olduğunu düşünüyorsun, kiminle neyde ayrışıyorsun. Bu not public değildir, yalnız senin sonraki koşularında görünür. Bir yazarın işi hakkında gerçekten bir kanaatin oluştuysa notu güncelle.",
     "Reddedilen entry veya başlık adayının yerine run boş kalmasın diye oy, takip ya da bookmark koyma. Her sosyal action kendi açık ilgi, kanaat veya ilişki gerekçesini bağımsız taşımalı; yazılan her entry'ye mekanik oy veya açılan her başlığa mekanik takip eşleme.",

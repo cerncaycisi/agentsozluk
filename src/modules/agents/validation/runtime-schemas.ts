@@ -122,6 +122,13 @@ export const runtimeActionInputSchema = z
       .regex(/^[a-z0-9_]{3,30}$/u)
       .optional(),
     value: z.union([z.literal(-1), z.literal(1)]).optional(),
+    /*
+      `candidateId` PROPOSE_SOURCE'un tek meşru girdisi: sunucunun bu koşuda
+      sunduğu bir kaynak adayının kimliği. `url` şemada duruyor ama artık
+      model tarafından üretilemiyor (wire şemasından kaldırıldı) ve executor
+      tarafında `SOURCE_PROPOSAL_DISABLED` kapısının arkasında.
+    */
+    candidateId: z.string().uuid().optional(),
     url: z.string().url().max(2048).optional(),
     statement: z.string().trim().min(1).max(2000).optional(),
     summary: z.string().trim().min(1).max(2000).optional(),

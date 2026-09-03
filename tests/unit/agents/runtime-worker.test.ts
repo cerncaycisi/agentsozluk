@@ -3142,9 +3142,7 @@ describe("long-lived agent runtime worker", () => {
           ],
           sourceProposals: [
             {
-              url: "https://example.com/feed.xml",
-              sourceType: "RSS",
-              topics: ["kanıt"],
+              candidateId: "5cd6b6a4-2f1b-4d0e-8f1a-0d7a3d5e9c11",
               provenance,
             },
           ],

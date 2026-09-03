@@ -22,6 +22,8 @@ function transactionMock() {
     agentSource: {
       findFirst: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue([]),
+      // Kaynak edinme kotası: aday sorgusu önce ajanın kaynak sayısına bakıyor.
+      count: vi.fn().mockResolvedValue(0),
     },
     agentRuntimeState: {
       findUniqueOrThrow: vi.fn().mockResolvedValue({

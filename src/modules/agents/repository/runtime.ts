@@ -16,6 +16,12 @@ import {
   isRuntimeProbationEntrySourceStatus,
 } from "@/modules/agents/domain/source-status";
 import { runtimeEvidenceCatalogFrom } from "@/modules/agents/domain/runtime-evidence-catalog";
+import {
+  runtimeAgentSourceLimit,
+  runtimeSourceCandidateLimit,
+  runtimeSourceCandidateMinimumCitingAgents,
+  runtimeSourceCandidateWindowDays,
+} from "@/modules/agents/domain/runtime-source-candidates";
 import { collectEntryReferenceCandidates } from "@/modules/entries/domain/renderer";
 import { topicFeedWindowStart } from "@/modules/feeds/domain/feed";
 import {
@@ -1798,6 +1804,160 @@ export async function storeRuntimeSourceResult(
   };
 }
 
+/**
+ * Bir kaynak adayını kimliğinden çözer.
+ *
+ * Adayın hâlâ meşru olduğu BURADA yeniden doğrulanıyor, snapshot'ta
+ * sunulmuş olması yetmiyor: snapshot donduktan sonra kaynak `BLOCKED`
+ * olmuş ya da admin tarafından engellenmiş olabilir. Snapshot bağı "ajana
+ * gösterildi mi", bu kontrol "şu an hâlâ uygun mu" sorusunu cevaplıyor;
+ * ikisi farklı sorular ve ikisi de gerekli.
+ */
+export async function findRuntimeSourceCandidate(
+  transaction: Prisma.TransactionClient,
+  candidateId: string,
+): Promise<{
+  id: string;
+  url: string;
+  sourceType: "RSS" | "ATOM" | "HTML";
+  topics: string[];
+} | null> {
+  const source = await transaction.agentSource.findFirst({
+    where: { id: candidateId, adminBlocked: false, status: { in: ["TRUSTED", "PROBATION"] } },
+    select: { id: true, url: true, sourceType: true, topics: true },
+  });
+  if (!source) return null;
+  return {
+    id: source.id,
+    url: source.url,
+    /*
+      Kolon serbest metin (VarChar), enum değil. Beklenmeyen bir değer
+      geldiğinde `HTML`'e düşüyoruz: en dar davranış, çünkü besleme
+      ayrıştırması yerine düz sayfa okuması yapılıyor.
+    */
+    sourceType:
+      source.sourceType === "RSS" || source.sourceType === "ATOM" ? source.sourceType : "HTML",
+    topics: Array.isArray(source.topics)
+      ? source.topics.filter((topic): topic is string => typeof topic === "string")
+      : [],
+  };
+}
+
+/**
+ * Ajanın CANLI kaynak sayısı — kota bu sayıya bakıyor.
+ *
+ * `REJECTED`/`BLOCKED` sayılmıyor: ikisi de artık çekilmiyor, yani maliyeti
+ * yok; onları saymak ajanı geçmişte engellenmiş bir kaynak yüzünden
+ * cezalandırırdı.
+ */
+export async function countRuntimeAgentSources(
+  transaction: Prisma.TransactionClient,
+  agentProfileId: string,
+): Promise<number> {
+  return transaction.agentSource.count({
+    where: {
+      agentProfileId,
+      adminBlocked: false,
+      status: { notIn: ["REJECTED", "BLOCKED"] },
+    },
+  });
+}
+
+export type RuntimeSourceCandidateRecord = {
+  candidateId: string;
+  normalizedDomain: string;
+  sourceType: string;
+  topics: string[];
+  citingAgents: number;
+  citations: number;
+};
+
+/**
+ * Bu ajanda olmayan ama BAŞKA ajanların yayımlanmış işinde gerçekten işe
+ * yaramış kaynaklar.
+ *
+ * "İşe yaramış"ın ölçüsü kasıtlı olarak `trustScore`/`usefulnessScore` değil:
+ * üretimde ikisi de fiilen hiç kıpırdamıyor (2 Eylül 2026 ölçümü), o yüzden
+ * onlara göre sıralamak rastgele sıralamak olurdu. Ölçü, kaynağın öğesini
+ * kaç FARKLI ajanın başarıyla yürümüş bir action'ında kanıt olarak
+ * gösterdiği — ajanların kendi ürettiği, taklit edilmesi zor bir sinyal.
+ *
+ * Sıralama tek bir ajanın hacmine değil ajan SAYISINA öncelik veriyor; yoksa
+ * çok yazan tek bir ajan havuzu kendi alışkanlığıyla doldururdu.
+ *
+ * `url` bilerek dönmüyor: adres modele hiç gösterilmiyor, sunucu adayı
+ * kimliğinden çözüyor. Ajanın gördüğü şey alan adı, tür ve konular.
+ */
+async function listRuntimeSourceCandidates(
+  transaction: Prisma.TransactionClient,
+  input: { agentProfileId: string; now: Date; limit: number },
+): Promise<RuntimeSourceCandidateRecord[]> {
+  if (input.limit <= 0) return [];
+  /*
+    Kotası dolmuş ajana aday göstermiyoruz: gösterirsek model bir karar
+    harcıyor, sunucu da onu reddediyor. Kapı yine de executor'da — burası
+    yalnız boşuna teklif etmemek için.
+  */
+  if (
+    (await countRuntimeAgentSources(transaction, input.agentProfileId)) >= runtimeAgentSourceLimit
+  )
+    return [];
+  const since = new Date(
+    input.now.getTime() - runtimeSourceCandidateWindowDays * 24 * 60 * 60 * 1000,
+  );
+  const rows = await transaction.$queryRaw<
+    Array<{
+      candidateId: string;
+      normalizedDomain: string;
+      sourceType: string;
+      topics: unknown;
+      citingAgents: bigint;
+      citations: bigint;
+    }>
+  >(Prisma.sql`
+    WITH cited AS (
+      SELECT item."sourceId" AS "sourceId", action."agentProfileId" AS "agentProfileId"
+      FROM "agent_actions" AS action
+      CROSS JOIN LATERAL jsonb_array_elements_text(
+        COALESCE(action."provenance"->'evidenceIds', '[]'::jsonb)
+      ) AS evidence
+      JOIN "agent_source_items" AS item ON item."id" = evidence::uuid
+      WHERE action."createdAt" > ${since}
+        AND action."actionStatus" = 'SUCCEEDED'
+        AND action."agentProfileId" <> ${input.agentProfileId}::uuid
+    )
+    SELECT (array_agg(source."id"::text ORDER BY source."id"))[1] AS "candidateId",
+           source."normalizedDomain" AS "normalizedDomain",
+           (array_agg(source."sourceType" ORDER BY source."id"))[1] AS "sourceType",
+           (array_agg(source."topics" ORDER BY source."id"))[1] AS "topics",
+           count(DISTINCT cited."agentProfileId") AS "citingAgents",
+           count(*) AS "citations"
+    FROM cited
+    JOIN "agent_sources" AS source ON source."id" = cited."sourceId"
+    WHERE source."status" IN ('TRUSTED', 'PROBATION')
+      AND source."adminBlocked" = false
+      AND NOT EXISTS (
+        SELECT 1 FROM "agent_sources" AS mine
+        WHERE mine."agentProfileId" = ${input.agentProfileId}::uuid
+          AND mine."url" = source."url"
+      )
+    GROUP BY source."url", source."normalizedDomain"
+    HAVING count(DISTINCT cited."agentProfileId") >= ${runtimeSourceCandidateMinimumCitingAgents}
+    ORDER BY count(DISTINCT cited."agentProfileId") DESC, count(*) DESC, source."url" ASC
+    LIMIT ${input.limit}
+  `);
+  return rows.map((row) => ({
+    candidateId: row.candidateId,
+    normalizedDomain: row.normalizedDomain,
+    sourceType: row.sourceType,
+    topics: Array.isArray(row.topics)
+      ? row.topics.filter((t): t is string => typeof t === "string")
+      : [],
+    citingAgents: Number(row.citingAgents),
+    citations: Number(row.citations),
+  }));
+}
+
 const perceptionSourceSelect = (now: Date) =>
   ({
     id: true,
@@ -2501,6 +2661,7 @@ export async function getRuntimePerceptionRecords(
     relationships,
     behaviorFeedbackEvents,
     sources,
+    sourceCandidates,
     state,
     recentTopicCounts,
   ] = await Promise.all([
@@ -2741,6 +2902,19 @@ export async function getRuntimePerceptionRecords(
           preferredSourceIds,
         })
       : Promise.resolve([]),
+    /*
+      Aday havuzu yalnız kaynakların gösterildiği uyanışlarda hesaplanıyor;
+      sorgu 14 günlük atıf penceresini tarıyor ve üretimde ~165 ms sürüyor
+      (2 Eylül ölçümü, gerçek plan). 480 sn'lik koşu bütçesinde ihmal
+      edilebilir, ama bedava da değil — kaynaksız uyanışlarda hiç koşmuyor.
+    */
+    input.includeSources
+      ? listRuntimeSourceCandidates(transaction, {
+          agentProfileId: input.agentProfileId,
+          now: input.now,
+          limit: runtimeSourceCandidateLimit,
+        })
+      : Promise.resolve([]),
     transaction.agentRuntimeState.findUniqueOrThrow({
       where: { agentProfileId: input.agentProfileId },
       select: {
@@ -2876,6 +3050,7 @@ export async function getRuntimePerceptionRecords(
     relationships,
     behaviorFeedbackEvents,
     sources,
+    sourceCandidates,
     state,
     recentTopicCounts,
     linkedTopics: dictionaryReferences.linkedTopics,

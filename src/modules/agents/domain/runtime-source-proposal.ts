@@ -18,7 +18,13 @@
  * taşımıyor. Bu yüzden riskli yol kendi anahtarına alındı.
  *
  * Varsayılan KAPALI. Ölçülen maliyet sıfır: bugüne dek hiç kullanılmamış.
- * `candidate_id` modeli gelince bu bayrak kaldırılır.
+ *
+ * GÜNCELLEME (2 Eylül 2026): `candidate_id` modeli geldi ama bu bayrak
+ * KALDIRILMADI, kapalı bırakıldı. Sebep: aday modeli serbest URL'i gereksiz
+ * kılıyor, yerine geçmiyor. Ajanın kaynak edinmesi için meşru bir yol artık
+ * var (`sourceCandidates` → `PROPOSE_SOURCE` + `candidateId`), o yüzden
+ * serbest URL'i açmanın hiçbir kazancı kalmadı — yalnız riski var. Bayrak,
+ * ileride gerçekten gerekirse diye duruyor.
  */
 export function runtimeSourceProposalEnabled(): boolean {
   return process.env.AGENT_SOURCE_PROPOSAL === "1";
