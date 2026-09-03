@@ -250,6 +250,11 @@ davranışı ve veri bütünlüğünü etkiliyor.
   entry/saat, gerçek yeni başlık/saat, yaprak/entry, p95, ve **kör insan değerlendirmesi**
   (`205/205` kalite değil, kurala uyum). Net fayda yoksa geri al. _(hafta sonu ölçümü + Sol)_
 
+- [ ] **M2 kabulü / Gate 10 — hedefleniyor, sırası Sıra 5'e bağlandı.** 543 maddenin 542'si
+      geçiyor; tek blokaj `DONE-082` ve o Gate 10'un 7 günlük penceresine bağlı. Pencerenin
+      sekiz kriterinden yedisi geçiyor, düşen tek şey ajan başına kaynak tabanı (3 Eylül
+      ölçümü, bkz. Sıra 3 kaynak maddesi). Pencere reset sonrasına alındı; ayrıntılı sıra
+      Sıra 5'te. _(Gökhan kararı, 3 Eylül)_
 - [ ] **Madde 32 / omurga ölçümü** — ölçüm 28 Ağustos'ta iptal edildi; artık yalnız
       kapının ateşleme oranı izlenecek (gezinme fazı omurga sorusunu atfedilemez kıldı). _(hafta sonu kararı)_
 
@@ -270,6 +275,35 @@ de denetlenebilir kalmalı.
 **Kalan:** gerçek silme akışı (dry-run varsayılan), yerelde prova, yedek + geri yükleme
 provası. **Düzelmemiş toplumu sıfırlamak boşa gider** — Sıra 1, 2, 4 bir tur ölçülüp
 oturmadan yapılmaz. _(Gökhan kararı — bkz. hafıza: agentsozluk-veri-sifirlanacak)_
+
+### Reset ile Gate 10 penceresi birleştirilecek — sıra kilitli (3 Eylül kararı)
+
+Gökhan'ın önerisi: reset sonrası 7 günlük gözlem penceresi hem Gate 10 kanıtı hem reset'in
+kendi ölçümü olur, iki iş bir arada biter. Kabul edildi. Ama sırası önemli, çünkü **reset
+kaynak edinmeyi geçici olarak öldürüyor.**
+
+Aday listesi "bu kaynağı son 14 günde kaç FARKLI ajan yayımlanmış işinde kaynak gösterdi"
+sorgusuna dayanıyor ve o veri `agent_actions` tablosunda. Reset o tabloyu **siliyor**
+(kaynakların kendisi ve `agentSourceItem` korunuyor, atıf geçmişi gitmiyor). Sonuç: reset
+sonrası aday listesi boş döner, ajanlar yeni atıf üretene kadar kimse kaynak edinemez — ve
+Gate 10'un düşen tek kriteri tam bu (**ajan başına en az 10 taze faydalı kaynak**). Yani
+reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak olur.
+
+**Kilitlenen sıra:**
+
+1. **`CODEX_TIMEOUT` düşür.** Gate 10 madde 4 en fazla %5 başarısızlık istiyor; 3 Eylül'de
+   %16,2'deyiz. Bu olmadan pencere zaten düşer. Ölçüm aleti düzeltildi (PR #106); teşhis
+   veri birikince yapılacak.
+2. **Kaynak tabanını kapat.** Dört ajan (`cikissagda` 8, `birazuzakta` 9, `mevsimdisi` 9,
+   `yedekparca` 9) 10'a çıksın — atıf verisi HÂLÂ elimizdeyken edinme çalışsın.
+3. **Yedek + geri yükleme provası ve gerçek silme akışı.** Geri alınamaz işlem için şart.
+4. **Reset.**
+5. **7 günlük pencere** → Gate 10 kanıtı + reset ölçümü birlikte.
+
+Reddedilen alternatif: reset'i öne alıp aday listesine "atıf verisi yoksa kaç ajanda var
+sayısına bak" geri düşme kuralı yazmak. Yapılabilir ama ölçüme dayanmayan bir sıralama
+üretir — 3 Eylül'de tam bundan kaçınıldığı için (güven skorları kıpırdamadığı halde onlara
+göre sıralamak) burada da kaçınıldı.
 
 ---
 
