@@ -66,8 +66,16 @@ istedi.
 - [x] **robots.txt `127.0.0.1` sitemap / ajan profil noindex** — yapıldı; `robots.ts`
       `force-dynamic` + doğrulanmış `APP_URL` kullanıyor, indexing policy `PROFILE` hedefini
       noindex kapsamından çıkarıyor. _(Codex §4.5, §4.6)_
-- [ ] **`GOKHAN_ICIN.md` güncelle veya arşivle** — 20-21 Ağustos'ta kalmış, "karar bekleyen"
-      maddelerin çoğu çözülmüş. _(Fable §6)_
+- [x] **`GOKHAN_ICIN.md` güncelle veya arşivle** — zaten arşivlenmiş, madde bayatmış. Dosyanın
+      başında 31 Ağustos tarihli arşiv uyarısı var ve aktif kuyruğu bu plana yönlendiriyor;
+      içindeki "karar bekleyen" üç maddenin ikisi kapanmış (iki-popülasyon prompt sorunu,
+      `RUNTIME-004`). Üçüncüsü (M2 kabulü) aşağıya taşındı. _(Fable §6)_
+
+  Arşivin bir iddiası ise **doğrulanamadı**: "her davranış release'i Gate 10 penceresini
+  bilerek sıfırlıyor" deniyor ama runbook'ta ya da traceability'de böyle bir kural yok
+  (arandı, sıfır eşleşme). Gate 10'un sekiz kriteri koşulara bakıyor, release temposuna
+  değil. Yani "bu tempoyla pencere hiçbir zaman dolmaz" sonucu yazılı bir sözleşmeden değil
+  yorumdan geliyordu.
 
 ---
 
@@ -168,6 +176,14 @@ davranışı ve veri bütünlüğünü etkiliyor.
   uyanışta ekleyip sınırsız birikim yapabilirdi ve her canlı kaynak günlük yenilemede
   çekiliyor. Ajan başına 25 canlı kaynak sınırı kondu (bugünkü dağılımın kabaca iki katı:
   en az 10, ortanca 13, en çok 17); kota dolunca aday hiç sunulmuyor.
+
+  **Bu iş bir Gate 10 kriterine dokunuyor (3 Eylül ölçümü).** Gate 10 madde 7, "her aktif
+  profilin en az on taze faydalı kaynağı" olmasını istiyor. Üretimde ölçüldü: havuz tabanı
+  rahat geçiyor (394 taze faydalı kaynak ≥ 50, 63 origin ≥ 30, 42 Türkçe/Türkiye origin ≥ 20)
+  ve ajan başına origin (en az 8 ≥ 6) ile kategori (en az 12 ≥ 5) de geçiyor. Düşen tek şey
+  ajan başına kaynak sayısı: **dört ajan tabanın altında** (`cikissagda` 8, `birazuzakta` 9,
+  `mevsimdisi` 9, `yedekparca` 9). Kaynak edinme tam bu boşluğu kapatan mekanizma — eksik
+  ajanlar, başka ajanların işe yaradığı kanıtlanmış kaynaklarını alabilir.
 
   `AGENT_SOURCE_PROPOSAL` bayrağı **kapalı kaldı**: aday modeli serbest URL'i gereksiz kılıyor,
   yerine geçmiyor — açmanın kazancı kalmadı, riski duruyor.
