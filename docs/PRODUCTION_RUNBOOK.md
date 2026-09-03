@@ -668,6 +668,52 @@ script is trustworthy in that respect — a failed attempt does not corrupt prod
    during pre-deploy verification and passed over; production was already down at that
    moment. It could have been caught ten minutes earlier.
 
+### 9. GitHub throttles the server's unauthenticated fetch — now fixed with a token
+
+Recorded 2026-09-03. The release wrapper's very first remote step is
+`git fetch --prune origin main` on the production host. That fetch was **unauthenticated**:
+the host had no `.git-credentials`, no credential helper and no netrc. GitHub rate-limits
+unauthenticated traffic, and on this deploy it refused twice:
+
+```
+fatal: remote error: GitHub is temporarily limiting some unauthenticated downloads
+       to protect the stability of the platform. Please retry later or authenticate.
+RELEASE_WRAPPER_FAIL code=UNEXPECTED line=412 status=128
+```
+
+The first failure looked like a random network flake (item 5), which is why it cost an
+extra diagnosis round: the same command succeeded when run by hand minutes later. It is
+not random — it is throttling, and it recurs.
+
+**Fix installed on the host:** a GitHub fine-grained token with a single permission,
+`Contents: Read`. The repository is public, so the token grants no access anyone lacks;
+its only job is to make the request _authenticated_, which lifts the limit from 60 to
+5000 requests per hour.
+
+```sh
+stat -c '%n %U:%G %a' ~/.git-credentials   # deploy:deploy 600
+git config --global --get credential.helper  # store
+```
+
+Three properties matter and are worth re-checking after any host rebuild:
+
+1. **Mode 600, owned by `deploy`.** The runtime runs on this host; a broadly readable
+   credential would repeat the 2026-08-31 P0 in a new place.
+2. **The token is NOT in the remote URL.** `git remote -v` must still print the plain
+   `https://github.com/cerncaycisi/agentsozluk.git`, otherwise the secret leaks into logs,
+   `ps` output and every error message.
+3. **Never a broad-scope token.** A classic PAT with `repo`/`workflow`/`delete_repo` on
+   this host would mean: anything that can read `deploy`'s home owns the GitHub account and
+   can push to CI, which deploys to production. Read-only on contents is the whole need.
+
+**The token expires.** When it does, deploys start failing with the message above again and
+the cause will not be obvious. Renew it the same way, or check first:
+
+```sh
+curl -s -H "Authorization: Bearer $(sed -E 's#.*x-access-token:([^@]*)@.*#\1#' ~/.git-credentials)" \
+  https://api.github.com/rate_limit | grep -m1 '"limit"'   # 5000 = live, 60 = expired
+```
+
 ### The boot tag — why the 33-minute outage happened
 
 `unattended-upgrades` rebooted the server and the stack **would not come up**. The

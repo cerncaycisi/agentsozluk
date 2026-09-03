@@ -405,7 +405,19 @@ ssh "${ssh_options[@]}" deploy@"$expected_ip" \
    test \"\$(hostname)\" = '$expected_host' || exit 91
    test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
    test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
-   git -C /opt/agent-sozluk/app fetch --prune origin main
+   # GitHub kimliksiz trafigi kisitliyor ve bu fetch deploy'un ilk uzak adimi.
+   # 3 Eylul 2026'da iki deploy bu yuzden dustu; host'a Contents:Read tokeni
+   # kuruldu ama gecici ag hatasi ve throttle hala mumkun. Sinirli yeniden
+   # deneme, tek seferlik bir hatanin butun deploy'u iptal etmesini onluyor.
+   # Guvenlik ozelligi zayiflamiyor: asil sart olan origin/main == aday SHA
+   # kontrolu asagida aynen duruyor.
+   fetch_attempt=1
+   while :; do
+     git -C /opt/agent-sozluk/app fetch --prune origin main && break
+     test \"\$fetch_attempt\" -lt 3 || exit 94
+     sleep \$((fetch_attempt * 15))
+     fetch_attempt=\$((fetch_attempt + 1))
+   done
    test \"\$(git -C /opt/agent-sozluk/app rev-parse origin/main)\" = '$candidate_sha'
    git -C /opt/agent-sozluk/app checkout --detach '$candidate_sha'
    test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
