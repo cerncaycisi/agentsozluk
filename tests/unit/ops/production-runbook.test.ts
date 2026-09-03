@@ -206,6 +206,21 @@ describe("Milestone 2 production operator runbook", () => {
     expect(prose).toContain("never invokes Docker system/volume prune");
   });
 
+  it("records the GitHub throttling failure mode and the read-only token that fixes it", () => {
+    /*
+      Bu hata bir kez "rastgele ag hatasi" diye tesihs edildi ve bir tur
+      zaman kaybettirdi. Token suresi dolunca ayni mesajla geri gelecek;
+      yazili olmazsa teshis turu bastan yapilir.
+    */
+    expect(runbook).toContain("GitHub throttles the server's unauthenticated fetch");
+    expect(prose).toContain("limiting some unauthenticated downloads");
+    expect(prose).toContain("Contents: Read");
+    expect(prose).toContain("deploy:deploy 600");
+    expect(prose).toContain("The token is NOT in the remote URL");
+    expect(prose).toContain("Never a broad-scope token");
+    expect(prose).toContain("The token expires");
+  });
+
   it("requires cold, warm and dual real-CLI capacity evidence and persists it", () => {
     expect(capacityGate).toContain("[`AGENT_CAPACITY.md`](AGENT_CAPACITY.md)");
     expect(capacityGate.match(/agent:capacity/gu)).toHaveLength(2);

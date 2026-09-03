@@ -15,6 +15,28 @@ describe("schema-neutral production release lane", () => {
     expect(() => execFileSync("bash", ["-n", remotePath])).not.toThrow();
   });
 
+  it("retries the host fetch without weakening the candidate-SHA assertion", () => {
+    /*
+      Deploy'un ilk uzak adimi host'ta `git fetch`. GitHub kimliksiz trafigi
+      kisitliyor ve 3 Eylul 2026'da iki deploy tam burada dustu; host'a
+      Contents:Read tokeni kuruldu ama gecici hata hala mumkun, o yuzden
+      fetch sinirli olarak yeniden deneniyor.
+
+      Kritik olan: yeniden deneme bir GUVENLIK gevsetmesi degil. Deploy'un
+      dogru SHA'yi gonderdigini garanti eden sey fetch'in kendisi degil,
+      asagidaki `origin/main == candidate_sha` esitligi. Bu test ikisini
+      birlikte tutuyor — biri kalirsa digeri de kalmali.
+    */
+    const fetchLine = "git -C /opt/agent-sozluk/app fetch --prune origin main";
+    expect(wrapper).toContain(fetchLine);
+    const loop = wrapper.slice(wrapper.indexOf("fetch_attempt=1"));
+    expect(loop).toContain(fetchLine + " && break");
+    expect(loop).toContain("-lt 3 || exit 94");
+    expect(wrapper).toContain(
+      "test \\\"\\$(git -C /opt/agent-sozluk/app rev-parse origin/main)\\\" = '$candidate_sha'",
+    );
+  });
+
   it("requires an exact approval receipt and all production identity pins", () => {
     expect(wrapper).toContain("AGENT_SOZLUK_PRODUCTION_APPROVED_SHA");
     expect(wrapper).toContain("EXACT_APPROVAL_RECEIPT_REQUIRED");
