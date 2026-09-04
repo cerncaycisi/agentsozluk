@@ -3235,19 +3235,28 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ).toMatchObject({ runStatus: "QUEUED" });
   });
 
-  it("breaks the deadlock: allows one probe run once the breaker cooldown elapses", async () => {
+  it("breaks the deadlock with a write-safe DRY_RUN probe, not the queued content run", async () => {
     /*
-      Kesicinin ölçüsü (`countConsecutiveCodexFailures`) son SONLANMIŞ koşulardan
-      hesaplanıyor. Kesici hiç koşuya izin vermezse o ölçü donuyor ve kesici asla
-      kapanamıyor — 3 Eylül 2026'da toplum tam bu yüzden 15 saat 48 dakika durdu,
-      oysa sağlayıcı arızası dakikalar içinde geçmişti.
+      3 Eylül olayında kilitlenen koşular `NORMAL_WAKE`'ti ve ilk düzeltmem tam
+      da bu yolu açmıyordu: kritik kesici `writeRunsPaused`'ı da açıyor, o da
+      claim sorgusunda `NORMAL_WAKE`'i dışlıyor. Kapı geçiliyor ama koşu
+      gelmiyordu.
 
-      Aktivasyon çapası bilerek 5 saat öncesine alındı: üretim koruma penceresi
-      (`PRODUCTION_CRITICAL_BREAKER_WINDOW_MS`, 4 saat) dışında kalsın ki test
-      otomatik duraklatmayı değil YARI-AÇIK DENEMEYİ sınasın.
+      İlk testim bunu göremedi çünkü yalnız `not.toBeNull()` diyordu ve
+      fixture'ın zamanlayıcısı bakım koşusu üretebiliyordu — test YANLIŞ türde
+      bir koşuyu kiralayıp yeşile dönüyordu, üstelik günün saatine bağlı olarak.
+      Bu yüzden burada zamanlayıcı KAPATILIYOR ve kiralanan koşunun tam
+      kimliği doğrulanıyor.
     */
     const activationStartedAt = new Date(Date.now() - 5 * 60 * 60 * 1000);
     const fixture = await createFixture(1, activationStartedAt);
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { schedulerEnabled: false },
+    });
+    const queued = fixture.runs[0]!;
+    expect(queued.runType).toBe("NORMAL_WAKE");
+
     const now = new Date();
     for (let index = 0; index < 5; index += 1)
       await integrationDatabase.agentRun.create({
@@ -3278,34 +3287,59 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ).resolves.toEqual({ run: null, reason: "ERROR_PAUSED" });
 
     /*
-      Soğumayı geçmiş saymak için saati ileri alıyoruz. Olayı geriye almak
-      mümkün değil: `agent_runtime_events` veritabanı seviyesinde append-only
-      ve denemesi "agent_runtime_events is append-only" ile reddediliyor.
+      Soğumayı geçmiş saymak için saati ileri alıyoruz; `agent_runtime_events`
+      veritabanı seviyesinde append-only olduğu için olayı geriye almak mümkün
+      değil ("agent_runtime_events is append-only").
     */
-    const afterCooldown = new Date(Date.now() + 20 * 60 * 1000);
     const probed = await leaseRuntimeRun(
       integrationDatabase,
       principal,
       { workerId: "half-open-probe-worker", leaseSeconds: 60 },
-      { now: afterCooldown },
+      { now: new Date(Date.now() + 20 * 60 * 1000) },
     );
-    // Kilit kırıldı: kesici hâlâ açık ama tek bir koşu geçebildi.
-    expect(probed.run).not.toBeNull();
-    // Denemenin denetim izi kalmalı; sessiz bir gevşetme olmamalı.
+    /*
+      Asıl iddia: kiralanan koşu AYRI bir `DRY_RUN` denemesi olmalı, kilitlenen
+      `NORMAL_WAKE` değil.
+
+      İlk tasarımım burada `NORMAL_WAKE`'i kiralıyordu ve Sol bunun fazla geniş
+      olduğunu gösterdi: o koşu kesici açıkken gerçekten entry yazabilir, oy
+      verebilir, takip edebilirdi — executor kesiciyi yeniden kontrol etmiyor.
+      `DRY_RUN`'da dış etkiler executor seviyesinde yasak, ama Codex yine
+      çağrılıyor; yani sağlayıcı sınanır, hiçbir şey yazılmaz.
+    */
+    expect(probed.run?.runType).toBe("DRY_RUN");
+    expect(probed.run?.id).not.toBe(queued.id);
+    // Kilitlenen koşu hâlâ kuyrukta ve dokunulmamış olmalı.
     expect(
-      await integrationDatabase.agentRuntimeEvent.count({
-        where: { eventType: "runtime.circuit_breaker.half_open_probe" },
-      }),
-    ).toBe(1);
+      await integrationDatabase.agentRun.findUniqueOrThrow({ where: { id: queued.id } }),
+    ).toMatchObject({ runStatus: "QUEUED" });
+    // Denetim izi claim'den SONRA ve deneme koşusuna bağlı yazılmalı.
+    const probeEvents = await integrationDatabase.agentRuntimeEvent.findMany({
+      where: { eventType: "runtime.circuit_breaker.half_open_probe" },
+    });
+    expect(probeEvents).toHaveLength(1);
+    expect(probeEvents[0]!.metadata).toMatchObject({
+      runId: probed.run!.id,
+      runType: "DRY_RUN",
+    });
   });
 
-  it("does not open a second probe while one is already running", async () => {
+  it("does not open a second probe inside the same cooldown window", async () => {
     /*
-      "Tek deneme" güvencesi: kesici açıkken ikinci bir koşu açmak arızayı besler.
-      Bu test olmadan yarı-açık davranış, kesiciyi fiilen kaldırmış olurdu.
+      Fırtına koruması. İlk tasarımımda olay claim'den ÖNCE yazılıyordu ve
+      soğuma ilk aktivasyona sabitti: kalıcı bir sağlayıcı arızasında her lease
+      çağrısı yeni bir kayıt üretirdi (Sol hakem turu, 4 Eylül).
+
+      Burada ilk deneme tamamlanıyor, sonra AYNI an için yeniden lease
+      isteniyor. Soğuma referansı artık son denemedir; ikinci deneme koşusu
+      açılmamalı ve ikinci olay yazılmamalı.
     */
     const activationStartedAt = new Date(Date.now() - 5 * 60 * 60 * 1000);
-    const fixture = await createFixture(2, activationStartedAt);
+    const fixture = await createFixture(1, activationStartedAt);
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { schedulerEnabled: false },
+    });
     const now = new Date();
     for (let index = 0; index < 5; index += 1)
       await integrationDatabase.agentRun.create({
@@ -3315,8 +3349,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
           runType: "NORMAL_WAKE",
           runStatus: "FAILED",
           queuePriority: "SCHEDULED_CONTENT",
-          trigger: "HALF_OPEN_SECOND",
-          idempotencyKey: `half-open-second:${index}`,
+          trigger: "HALF_OPEN_WINDOW",
+          idempotencyKey: `half-open-window:${index}`,
           timeoutSeconds: 600,
           desiredEntryMin: 2,
           desiredEntryMax: 3,
@@ -3327,25 +3361,51 @@ describe("internal agent runtime API with PostgreSQL", () => {
       });
     const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
     await leaseRuntimeRun(integrationDatabase, principal, {
-      workerId: "half-open-first",
+      workerId: "half-open-window-worker",
       leaseSeconds: 60,
     });
     const afterCooldown = new Date(Date.now() + 20 * 60 * 1000);
     const first = await leaseRuntimeRun(
       integrationDatabase,
       principal,
-      { workerId: "half-open-first", leaseSeconds: 60 },
+      { workerId: "half-open-window-worker", leaseSeconds: 60 },
       { now: afterCooldown },
     );
-    expect(first.run).not.toBeNull();
-    // İlk deneme koşarken ikincisi açılmamalı.
-    const second = await leaseRuntimeRun(
-      integrationDatabase,
-      principal,
-      { workerId: "half-open-second", leaseSeconds: 60 },
-      { now: afterCooldown },
-    );
-    expect(second).toEqual({ run: null, reason: "ERROR_PAUSED" });
+    expect(first.run?.runType).toBe("DRY_RUN");
+
+    // Deneme bitti; kesici hâlâ açık (Codex hatası serisi kırılmadı).
+    await integrationDatabase.agentRun.update({
+      where: { id: first.run!.id },
+      /*
+        `agent_runs_lease_check`: `leaseOwner` ve `leaseExpiresAt` ya ikisi
+        birden dolu ya ikisi birden boş olmalı. Terminal koşuda ikisini de
+        boşaltıyoruz.
+      */
+      data: {
+        runStatus: "FAILED",
+        errorCode: "CODEX_TIMEOUT",
+        finishedAt: afterCooldown,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        leaseToken: null,
+      },
+    });
+
+    // Aynı an için yeniden lease: soğuma son denemeden sayılır, yeni deneme YOK.
+    await expect(
+      leaseRuntimeRun(
+        integrationDatabase,
+        principal,
+        { workerId: "half-open-window-worker", leaseSeconds: 60 },
+        { now: afterCooldown },
+      ),
+    ).resolves.toEqual({ run: null, reason: "ERROR_PAUSED" });
+    expect(await integrationDatabase.agentRun.count({ where: { runType: "DRY_RUN" } })).toBe(1);
+    expect(
+      await integrationDatabase.agentRuntimeEvent.count({
+        where: { eventType: "runtime.circuit_breaker.half_open_probe" },
+      }),
+    ).toBe(1);
   });
 
   it("returns ERROR_PAUSED after five consecutive global Codex failures", async () => {

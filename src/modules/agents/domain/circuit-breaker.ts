@@ -200,6 +200,15 @@ export interface CircuitBreakerHalfOpenDecision {
 export function evaluateCircuitBreakerHalfOpenProbe(input: {
   runtimePaused: boolean;
   activatedAt: Date | null;
+  /**
+   * En son gerçekleşen denemenin zamanı.
+   *
+   * Bu olmadan soğuma ilk aktivasyona sabitleniyordu: kalıcı bir sağlayıcı
+   * arızasında her lease çağrısı yeni bir deneme açabilir ve arızayı besleyip
+   * olay fırtınası üretirdi (Sol hakem turu, 4 Eylül). Soğuma referansı, ikisinin
+   * SONRAKİSİ.
+   */
+  lastProbeAt?: Date | null;
   now: Date;
   activeLeaseCount: number;
   cooldownMs?: number;
@@ -214,7 +223,11 @@ export function evaluateCircuitBreakerHalfOpenProbe(input: {
   if (!input.activatedAt)
     return { allowProbe: false, reason: "ACTIVATION_UNKNOWN", probeEligibleAt: null };
   const cooldownMs = input.cooldownMs ?? CIRCUIT_BREAKER_HALF_OPEN_COOLDOWN_MS;
-  const probeEligibleAt = new Date(input.activatedAt.getTime() + cooldownMs);
+  const reference =
+    input.lastProbeAt && input.lastProbeAt > input.activatedAt
+      ? input.lastProbeAt
+      : input.activatedAt;
+  const probeEligibleAt = new Date(reference.getTime() + cooldownMs);
   if (input.now < probeEligibleAt)
     return { allowProbe: false, reason: "COOLING_DOWN", probeEligibleAt };
   /*

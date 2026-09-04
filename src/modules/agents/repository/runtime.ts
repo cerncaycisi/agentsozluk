@@ -155,6 +155,84 @@ export async function getRuntimeCriticalBreakerActivatedAt(
   return rows[0]?.occurredAt ?? null;
 }
 
+/**
+ * En son gerçekleşen yarı-açık denemenin zamanı.
+ *
+ * Deneme olayı yalnız claim BAŞARILI olduğunda yazılıyor, yani bu kayıt
+ * "gerçekten bir deneme koşusu açıldı" demektir. Soğuma bundan sayılıyor;
+ * aksi hâlde kalıcı arızada her lease çağrısı yeni deneme açardı.
+ */
+export async function getRuntimeLastHalfOpenProbeAt(
+  transaction: Prisma.TransactionClient,
+): Promise<Date | null> {
+  const record = await transaction.agentRuntimeEvent.findFirst({
+    where: { agentProfileId: null, eventType: "runtime.circuit_breaker.half_open_probe" },
+    orderBy: { id: "desc" },
+    select: { occurredAt: true },
+  });
+  return record?.occurredAt ?? null;
+}
+
+/**
+ * Kesici denemesi için ayrı bir `DRY_RUN` koşusu açar.
+ *
+ * Neden ayrı koşu, neden `DRY_RUN`: ilk denememde kritik kesici açıkken
+ * claim'in `writeRunsPaused` filtresini aşıyordum. Sol hakem turu (4 Eylül)
+ * bunun fazla geniş olduğunu gösterdi — o yolla geçen `NORMAL_WAKE` koşusu
+ * gerçekten entry yazabilir, oy verebilir, takip edebilirdi; executor kesiciyi
+ * yeniden kontrol etmiyor. Yani kesicinin koruduğu şeyi deliyordu.
+ *
+ * `DRY_RUN` iki özelliği birden taşıyor:
+ * - Executor bu run türünde dış etkili action'ları reddediyor
+ *   (`noPublicWriteRunTypes`), yani deneme hiçbir şey yazamaz.
+ * - Worker'da özel dalı yok, yani Codex'i normal şekilde çağırıyor — sağlayıcı
+ *   gerçekten sınanmış olur.
+ *
+ * Ayrıca `DRY_RUN` claim sorgusunun `writeRunsPaused` izin listesinde zaten
+ * var: filtreyi aşmaya gerek kalmıyor.
+ *
+ * `idempotencyKey` soğuma penceresine bağlı: aynı pencerede ikinci bir deneme
+ * koşusu açılamaz, iki worker yarışsa bile.
+ */
+export async function createRuntimeCircuitBreakerProbeRun(
+  transaction: Prisma.TransactionClient,
+  input: {
+    agentProfileId: string;
+    now: Date;
+    probeEligibleAt: Date;
+    timeoutSeconds: number;
+  },
+): Promise<string | null> {
+  const profile = await transaction.agentProfile.findUnique({
+    where: { id: input.agentProfileId },
+    select: { currentPersonaVersionId: true },
+  });
+  if (!profile?.currentPersonaVersionId) return null;
+  const idempotencyKey = `circuit-breaker-probe:${input.agentProfileId}:${input.probeEligibleAt.toISOString()}`;
+  if (await transaction.agentRun.findUnique({ where: { idempotencyKey } })) return null;
+  const run = await transaction.agentRun.create({
+    select: { id: true },
+    data: {
+      agentProfileId: input.agentProfileId,
+      runType: "DRY_RUN",
+      queuePriority: "MANUAL_SINGLE",
+      trigger: "CIRCUIT_BREAKER_PROBE",
+      personaVersionId: profile.currentPersonaVersionId,
+      idempotencyKey,
+      availableAt: input.now,
+      timeoutSeconds: input.timeoutSeconds,
+      desiredEntryMin: 0,
+      desiredEntryMax: 0,
+      allowTopicCreation: false,
+      allowVoting: false,
+      allowFollowing: false,
+      allowSourceReading: false,
+      createdAt: input.now,
+    },
+  });
+  return run.id;
+}
+
 export async function lockRuntimeRun(
   transaction: Prisma.TransactionClient,
   runId: string,

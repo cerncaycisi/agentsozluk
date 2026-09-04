@@ -327,8 +327,23 @@ Tam kayıt: `docs/OLAY_SESSIZ_DURMA_2026-09-03.md`.
       durduruyor; kesicinin ölçüsü (`countConsecutiveCodexFailures`) son sonlanmış
       koşulardan hesaplandığı için yeni koşu olmayınca **donuyor**. Sonuç: kesicinin
       kapanması için başarılı koşu gerekiyor ama kesici bütün koşuları engelliyor.
-      Gereken: **yarı-açık (half-open) deneme** — soğuma sonunda tek bir koşuya izin ver,
-      başarılıysa kesiciyi kapat, değilse yeniden kur.
+      Çözüldü (PR #109 + #110): soğuma sonunda **yazamayan ayrı bir `DRY_RUN` deneme
+      koşusu** açılıyor. Bu tür claim'in izin listesinde zaten var (filtre aşılmıyor),
+      executor bu türde dış etkili action'ları reddediyor, worker'da özel dalı olmadığı
+      için Codex normal çağrılıyor. Başarılıysa terminal koşu seriyi kırıyor ve kesici
+      kapanıyor; değilse açık kalıyor. `idempotencyKey` soğuma penceresine bağlı.
+
+      İki tur hakem incelemesi gerekti: ilk sürüm kilidi hiç açmıyordu (kesici
+      `writeRunsPaused`'ı da açıyor, claim `NORMAL_WAKE`'i dışlıyor), ikinci sürüm ise
+      filtreyi aşarak açıyordu ve kesicinin koruduğu şeyi deliyordu.
+
+- [ ] **Bilinen boşluk: deneme Codex'e ulaşmadan düşerse kesici yanlış kapanabilir.**
+      `countConsecutiveCodexFailures`, son terminal koşu `CODEX_*` olmayan herhangi bir
+      sonuçsa seriyi sıfırlıyor. Deneme koşusu context aşamasında
+      (`CONTROL_PLANE_CONTEXT_FAILED`) düşerse sağlayıcı hiç sınanmadan kesici kapanır.
+      Sonucu sınırlı: deneme hiçbir şey yazamıyor, normal koşular döner ve sağlayıcı hâlâ
+      bozuksa kesici yeniden atar. Doğru çözüm sonuç-temelli bir durum makinesi (denemenin
+      kendi sonucunu izlemek). _(Sol hakem turu, 4 Eylül)_
 - [ ] **Kalıcı canlılık alarmı** — sunucuda, oturumdan bağımsız. Şimdilik ertelendi
       _(Gökhan kararı, 4 Eylül)_; yerine oturum içi alarm var ama o yalnız çalışma
       oturumu açıkken koşuyor. Sunucuda uyarı altyapısı sıfır: iki timer ve `curl`.
