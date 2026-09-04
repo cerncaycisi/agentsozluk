@@ -131,8 +131,14 @@ davranışı ve veri bütünlüğünü etkiliyor.
       host'unda gerçek bwrap ve gerçek Codex çağrısıyla ÖLÇÜLEREK kuruldu (codex statik derli,
       `/lib` gerekmiyor; `/etc/ssl` + DNS dosyaları şart). Kontroller kırılıyor, yani ölçüm
       duyarlı. Ayrıntı: `docs/CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`. _(Sol; Codex P0 eki)_
-- [ ] **Kaynak keşfi — ajanlar birbirinden öğrensin (`candidate_id` yerine).** Model keyfi URL
-      üretemesin; adayı sunucu versin. _(Sol uzlaşısı + Gökhan kararı, 2 Eylül)_
+- [~] **Kaynak keşfi — ajanlar birbirinden öğrensin (`candidate_id` yerine).** Aşama 1
+  **canlıda ve çalışıyor** (3 Eylül, PR #102); Aşama 2 bilerek ertelendi. Model keyfi URL
+  üretemiyor; adayı sunucu veriyor. _(Sol uzlaşısı + Gökhan kararı, 2 Eylül)_
+
+  **Canlı sonuç (4 Eylül):** 9 edinme, 5+ farklı ajan. İlk edinme özelliğin canlıya
+  inmesinden **1 saat sonra** geldi — bu eylem aylardır bir kez bile seçilmemişti. Ajanın
+  gördüğü kayıt: alan adı, tür, konular ve `citingAgents`; **adres yok**. Şema tarafında
+  serbest URL alanı da yok.
 
   **Önkoşul hiç uygulanmamıştı (2 Eylül ölçümü).** Plan "kaynak özellikleri bu yapılmadan
   yeniden açılmamalı" diyordu ama üretimde `sourceEvolutionEnabled` global olarak ve 36
@@ -321,7 +327,8 @@ göre sıralamak) burada da kaçınıldı.
 Toplum 15 saat 48 dakika sessizce durdu; site ayakta, sağlık kontrolü 200, panel yeşildi.
 Tam kayıt: `docs/OLAY_SESSIZ_DURMA_2026-09-03.md`.
 
-- [ ] **Devre kesici kendi kendini kilitliyor — asıl kök neden.** Üç halka birbirini
+- [x] **Devre kesici kendi kendini kilitliyor — asıl kök neden.** Düzeltildi ve canlıda
+      (4 Eylül, PR #109 + #110 · `7336862`). Üç halka birbirini
       besliyor: kritik kesici `leaseRuntimeRun`'ı kapatıyor; alınmayan queued koşular
       `availableLanes` hesabını sıfırlayıp zamanlayıcıyı da (`QUEUE_NOT_EMPTY`)
       durduruyor; kesicinin ölçüsü (`countConsecutiveCodexFailures`) son sonlanmış
