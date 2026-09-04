@@ -36,6 +36,7 @@ import {
   getLatestRuntimeCircuitBreakerSnapshot,
   getRuntimeCriticalBreakerActivatedAt,
   getRuntimeLastHalfOpenProbeAt,
+  createRuntimeCircuitBreakerProbeRun,
   getRuntimePerceptionRecords,
   getRuntimeAgentLifecycle,
   getRuntimeGlobalSettings,
@@ -1504,6 +1505,18 @@ export async function leaseRuntimeRun(
         activeLeaseCount,
       });
       if (!halfOpenProbe.allowProbe) return { run: null, reason: "ERROR_PAUSED" };
+      /*
+        Deneme için AYRI bir `DRY_RUN` koşusu açılıyor; claim filtresi
+        aşılmıyor. `DRY_RUN` zaten `writeRunsPaused` izin listesinde ve
+        executor bu türde dış etkili action'ları reddediyor, yani deneme
+        sağlayıcıyı sınar ama hiçbir şey yazamaz.
+      */
+      await createRuntimeCircuitBreakerProbeRun(transaction, {
+        agentProfileId: principal.agentProfileId,
+        now,
+        probeEligibleAt: halfOpenProbe.probeEligibleAt ?? now,
+        timeoutSeconds: settings.reflectionTimeoutSeconds,
+      });
     }
     if (activeLeaseCount >= concurrency) return { run: null, reason: "CAPACITY_FULL" };
     if (settings.schedulerEnabled) {
@@ -1527,11 +1540,7 @@ export async function leaseRuntimeRun(
       workerId: input.workerId,
       leaseSeconds: input.leaseSeconds,
       maxRetryCount: settings.maxRetryCount,
-      /*
-        Deneme sırasında write-pause filtresi TEK BU CLAIM için kapatılıyor;
-        kesicinin kendisi açık kalmaya devam ediyor.
-      */
-      writeRunsPaused: breakers.writeRunsPaused && !halfOpenProbe?.allowProbe,
+      writeRunsPaused: breakers.writeRunsPaused,
       contentSlowdownMinutes: breakers.contentSlowdown ? breakerConfig.duplicateCooldownMinutes : 0,
       runtimeOperatingMode: settings.runtimeOperatingMode,
       now,
@@ -1545,6 +1554,7 @@ export async function leaseRuntimeRun(
     if (halfOpenProbe?.allowProbe)
       await appendRuntimeEvent(transaction, {
         eventType: "runtime.circuit_breaker.half_open_probe",
+        occurredAt: now,
         safeMessage: "Kritik kesici açıkken soğuma doldu; tek bir deneme koşusu açıldı.",
         metadata: {
           runId: run.id,
