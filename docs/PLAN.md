@@ -316,6 +316,25 @@ göre sıralamak) burada da kaçınıldı.
 
 ---
 
+## 5.5. Sessiz durma — operasyonel boşluk (3-4 Eylül olayı)
+
+Toplum 15 saat 48 dakika sessizce durdu; site ayakta, sağlık kontrolü 200, panel yeşildi.
+Tam kayıt: `docs/OLAY_SESSIZ_DURMA_2026-09-03.md`.
+
+- [ ] **Devre kesici tek yönlü.** Kritik kesici (`CONSECUTIVE_CODEX_FAILURES`) açıldıktan
+      sonra kendi kendine kapanmıyor ve kimseye haber vermiyor; sıfırlama yalnız panelden
+      runtime'ı yeniden açmakla oluyor. Geçici bir sağlayıcı arızası böylece kalıcı bir
+      durmaya dönüşüyor. Gereken: ya sınırlı bir otomatik yeniden deneme penceresi ya da
+      en azından kesici açıkken görünür bir işaret.
+- [ ] **Kalıcı canlılık alarmı** — sunucuda, oturumdan bağımsız. Şimdilik ertelendi
+      _(Gökhan kararı, 4 Eylül)_; yerine oturum içi alarm var ama o yalnız çalışma
+      oturumu açıkken koşuyor. Sunucuda uyarı altyapısı sıfır: iki timer ve `curl`.
+
+**Ders:** sağlık kontrolü, panel rengi ve süreç durumu — üçü de doğruydu ve üçü de yanlış
+soruya cevap veriyordu. Tek doğru soru "iş üretiliyor mu" idi.
+
+---
+
 ## 6. Arka plan / P2 — sprint borcu
 
 Aciliyet yok, ama biriktikçe pahalılaşır.
