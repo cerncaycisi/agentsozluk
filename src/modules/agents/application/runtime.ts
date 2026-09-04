@@ -35,6 +35,7 @@ import {
   getMeasuredRuntimeRunMetrics,
   getLatestRuntimeCircuitBreakerSnapshot,
   getRuntimeCriticalBreakerActivatedAt,
+  getRuntimeLastHalfOpenProbeAt,
   getRuntimePerceptionRecords,
   getRuntimeAgentLifecycle,
   getRuntimeGlobalSettings,
@@ -70,6 +71,7 @@ import {
   evaluateCircuitBreakerTransition,
   evaluateCircuitBreakers,
   evaluateCircuitBreakerHalfOpenProbe,
+  type CircuitBreakerHalfOpenDecision,
   evaluateProductionCriticalBreakerAutoPause,
 } from "@/modules/agents/domain/circuit-breaker";
 import {
@@ -1470,25 +1472,38 @@ export async function leaseRuntimeRun(
       aktivasyon zamanı okunamıyorsa yok. Başarısız olursa kesici zaten açık
       kalır ve bir sonraki soğumaya kadar yeni deneme olmaz.
     */
+    /*
+      Kritik kesici açıkken tek bir DENEME koşusuna izin veriyoruz.
+
+      Bu gevşetme değil, çıkış yolu: kesicinin ölçüsü son sonlanmış koşulardan
+      hesaplanıyor, dolayısıyla kesici hiç koşuya izin vermezse ölçü donuyor ve
+      kesici asla kapanamıyor. 3 Eylül 2026'da toplum tam bu yüzden 15 saat 48
+      dakika durdu (`docs/OLAY_SESSIZ_DURMA_2026-09-03.md`).
+
+      DENEMENİN write-pause FİLTRESİNİ AŞMASI ŞART. İlk denememde bu atlanmıştı
+      ve düzeltme olayın gerçekleştiği yolu hiç açmıyordu: kritik kesici
+      `writeRunsPaused`'ı da açıyor, o da claim sorgusunda `NORMAL_WAKE`'i
+      dışlıyor (`repository/runtime.ts`, claim filtresi). Kilitlenen koşular
+      `NORMAL_WAKE`'ti; yani kapı geçiliyor ama koşu gelmiyordu (Sol hakem
+      turu, 4 Eylül).
+
+      Deneme dar tutuldu: soğuma dolmadan yok, çalışan koşu varken yok,
+      aktivasyon zamanı okunamıyorsa yok, ve soğuma her denemeden SONRA
+      yeniden kuruluyor.
+    */
+    let halfOpenProbe: CircuitBreakerHalfOpenDecision | null = null;
     if (breakers.runtimePaused) {
-      const probe = evaluateCircuitBreakerHalfOpenProbe({
+      halfOpenProbe = evaluateCircuitBreakerHalfOpenProbe({
         runtimePaused: true,
         activatedAt: await getRuntimeCriticalBreakerActivatedAt(
           transaction,
           "CONSECUTIVE_CODEX_FAILURES",
         ),
+        lastProbeAt: await getRuntimeLastHalfOpenProbeAt(transaction),
         now,
         activeLeaseCount,
       });
-      if (!probe.allowProbe) return { run: null, reason: "ERROR_PAUSED" };
-      await appendRuntimeEvent(transaction, {
-        eventType: "runtime.circuit_breaker.half_open_probe",
-        safeMessage: "Kritik kesici açıkken soğuma doldu; tek bir deneme koşusuna izin verildi.",
-        metadata: {
-          probeEligibleAt: probe.probeEligibleAt?.toISOString() ?? null,
-          activeCriticalCodes: breakers.activeCriticalCodes,
-        },
-      });
+      if (!halfOpenProbe.allowProbe) return { run: null, reason: "ERROR_PAUSED" };
     }
     if (activeLeaseCount >= concurrency) return { run: null, reason: "CAPACITY_FULL" };
     if (settings.schedulerEnabled) {
@@ -1512,12 +1527,32 @@ export async function leaseRuntimeRun(
       workerId: input.workerId,
       leaseSeconds: input.leaseSeconds,
       maxRetryCount: settings.maxRetryCount,
-      writeRunsPaused: breakers.writeRunsPaused,
+      /*
+        Deneme sırasında write-pause filtresi TEK BU CLAIM için kapatılıyor;
+        kesicinin kendisi açık kalmaya devam ediyor.
+      */
+      writeRunsPaused: breakers.writeRunsPaused && !halfOpenProbe?.allowProbe,
       contentSlowdownMinutes: breakers.contentSlowdown ? breakerConfig.duplicateCooldownMinutes : 0,
       runtimeOperatingMode: settings.runtimeOperatingMode,
       now,
     });
     if (!run) return { run: null, reason: "QUEUE_EMPTY" };
+    /*
+      Deneme olayı ancak claim BAŞARILI olduğunda yazılıyor. Önce yazmak, koşu
+      bulunamayan her turda bir olay üretip kayıt fırtınası yaratıyordu ve
+      "son deneme" zamanını da yalanlıyordu.
+    */
+    if (halfOpenProbe?.allowProbe)
+      await appendRuntimeEvent(transaction, {
+        eventType: "runtime.circuit_breaker.half_open_probe",
+        safeMessage: "Kritik kesici açıkken soğuma doldu; tek bir deneme koşusu açıldı.",
+        metadata: {
+          runId: run.id,
+          runType: run.runType,
+          probeEligibleAt: halfOpenProbe.probeEligibleAt?.toISOString() ?? null,
+          activeCriticalCodes: breakers.activeCriticalCodes,
+        },
+      });
     await setRuntimeCurrentRun(transaction, principal.agentProfileId, run.id, now);
     await appendRuntimeRunEvents(transaction, {
       runId: run.id,

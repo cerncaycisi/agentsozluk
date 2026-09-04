@@ -314,6 +314,35 @@ describe("yarı-açık (half-open) deneme", () => {
     });
   });
 
+  it("her denemeden sonra soğumayı yeniden kurar", () => {
+    /*
+      Bu olmadan soğuma ilk aktivasyona sabitleniyordu: kalıcı bir sağlayıcı
+      arızasında her lease çağrısı yeni deneme açıp arızayı besler ve olay
+      fırtınası üretirdi (Sol hakem turu, 4 Eylül).
+    */
+    const lastProbeAt = new Date(activatedAt.getTime() + 30 * 60 * 1000);
+    // Aktivasyondan çok sonra ama son denemeden hemen sonra: yeni deneme YOK.
+    expect(probe({ lastProbeAt, now: new Date(lastProbeAt.getTime() + 60 * 1000) })).toMatchObject({
+      allowProbe: false,
+      reason: "COOLING_DOWN",
+    });
+    // Son denemeden bir soğuma sonra: yeniden izin var.
+    expect(
+      probe({
+        lastProbeAt,
+        now: new Date(lastProbeAt.getTime() + CIRCUIT_BREAKER_HALF_OPEN_COOLDOWN_MS),
+      }),
+    ).toMatchObject({ allowProbe: true, reason: "PROBE_ALLOWED" });
+  });
+
+  it("eski bir deneme kaydı soğumayı geri almaz", () => {
+    // Kesici yeniden açıldıysa referans aktivasyondur, ondan önceki deneme değil.
+    expect(probe({ lastProbeAt: new Date(activatedAt.getTime() - 60 * 60 * 1000) })).toMatchObject({
+      allowProbe: true,
+      reason: "PROBE_ALLOWED",
+    });
+  });
+
   it("soğuma, kesicinin ölçüm penceresinden bağımsız ve makul", () => {
     /*
       Çok kısa olursa her lease denemesi yeni bir koşu açıp arızayı besler;

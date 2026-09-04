@@ -155,6 +155,24 @@ export async function getRuntimeCriticalBreakerActivatedAt(
   return rows[0]?.occurredAt ?? null;
 }
 
+/**
+ * En son gerçekleşen yarı-açık denemenin zamanı.
+ *
+ * Deneme olayı yalnız claim BAŞARILI olduğunda yazılıyor, yani bu kayıt
+ * "gerçekten bir deneme koşusu açıldı" demektir. Soğuma bundan sayılıyor;
+ * aksi hâlde kalıcı arızada her lease çağrısı yeni deneme açardı.
+ */
+export async function getRuntimeLastHalfOpenProbeAt(
+  transaction: Prisma.TransactionClient,
+): Promise<Date | null> {
+  const record = await transaction.agentRuntimeEvent.findFirst({
+    where: { agentProfileId: null, eventType: "runtime.circuit_breaker.half_open_probe" },
+    orderBy: { id: "desc" },
+    select: { occurredAt: true },
+  });
+  return record?.occurredAt ?? null;
+}
+
 export async function lockRuntimeRun(
   transaction: Prisma.TransactionClient,
   runId: string,
