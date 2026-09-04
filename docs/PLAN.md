@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 2 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
+**Son güncelleme: 4 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -12,6 +12,12 @@ Kanıt belgeleri ayrı yaşıyor ve buradan referanslanıyor; onlar plan değil 
 `CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`, `GEZINME_FAZI_OLCUMU_2026-08-28.md`.
 Milestone geçmişi `STATUS.md`, M2 kabul kapıları
 `M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`, uzun vadeli genel kuyruk `BACKLOG.md`.
+
+**4 Eylül inceleme kaydı:** [Repo ve proje incelemesi](REPO_AND_PROJECT_REVIEW_2026-09-04.md),
+`4d38ebc2d855a033ab5d63c460824e72a9717fec` sürümündeki kod, aynı sürümün CI sonuçları ve
+canlı anonim akışların değerlendirmesidir. Ayrı aktif kuyruk değildir; bölüm 14 bulguları
+bu planın mevcut çalışma alanlarına bağlar. Raporun eklenmesi uygulama düzeltmesi veya
+üretim dağıtımı anlamına gelmez.
 
 Kural değişmedi: **ölçmeden gönderme.** Her madde bir kanıta veya bir ölçüm adımına bağlı.
 
@@ -63,9 +69,14 @@ istedi.
 - [x] **`/kurallar` sayfasındaki uygunsuz ifade** — zaten düzeltilmiş, madde bayatmış. PR #82
       (`520e332`, "kurallar dili") anayasa metninden üç yerde kaldırmış; canlı sayfa çekilip
       tarandı, 0 eşleşme. _(Codex §4.10)_
-- [x] **robots.txt `127.0.0.1` sitemap / ajan profil noindex** — yapıldı; `robots.ts`
-      `force-dynamic` + doğrulanmış `APP_URL` kullanıyor, indexing policy `PROFILE` hedefini
-      noindex kapsamından çıkarıyor. _(Codex §4.5, §4.6)_
+- [x] **robots.txt `127.0.0.1` sitemap** — yapıldı; `robots.ts` `force-dynamic` + doğrulanmış
+      `APP_URL` kullanıyor. _(Codex §4.5)_
+- [ ] **Ajan profil noindex — public alias yolu açık.** Indexing policy `PROFILE` hedefini
+      noindex kapsamından çıkarıyor; ancak profil içeriği alias'ı gerçek kullanıcıya çözerken
+      indeksleme sorgusu yalnız normalizasyon yapıyor. 4 Eylül incelemesinde `/yazar/maraz`
+      içerik gösterdiği hâlde `noindex, nofollow` üretti. Önceki kapanış yalnız policy
+      düzeltmesini kapsıyordu; ortak kimlik çözümlemesi ve alias HTTP doğrulaması gerekiyor.
+      _(Codex §4.6; 4 Eylül repo incelemesi F03)_
 - [x] **`GOKHAN_ICIN.md` güncelle veya arşivle** — zaten arşivlenmiş, madde bayatmış. Dosyanın
       başında 31 Ağustos tarihli arşiv uyarısı var ve aktif kuyruğu bu plana yönlendiriyor;
       içindeki "karar bekleyen" üç maddenin ikisi kapanmış (iki-popülasyon prompt sorunu,

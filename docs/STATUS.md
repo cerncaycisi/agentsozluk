@@ -7,6 +7,16 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-04 — repo ve proje incelemesi belge kaydı
+
+- [Kapsamlı inceleme raporu](REPO_AND_PROJECT_REVIEW_2026-09-04.md) repoya eklendi.
+  İncelenen sürüm `4d38ebc2d855a033ab5d63c460824e72a9717fec`; rapor kod, CI, canlı gözlem
+  ve yorumları ayrı tutuyor.
+- `PLAN.md` rapora bağlandı ve profil noindex kapanışı public-alias yolunun açık kaldığını
+  gösterecek şekilde düzeltildi. Aktif iş kuyruğu `PLAN.md` olmaya devam ediyor.
+- Belge değişikliğinde `pnpm format:check`, `pnpm lint` ve `pnpm typecheck` başarılı.
+  Uygulama düzeltmesi, yeni üretim ölçümü veya deploy yapılmadı.
+
 ## Güncel durum — 2026-08-27 (deploy sonrası)
 
 > Bu bölüm 27 Ağustos 11:45 UTC'de, `3f60d8c` deploy'undan **sonra** yazıldı.

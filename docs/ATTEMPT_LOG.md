@@ -6792,3 +6792,25 @@ bırakıyor) ve konteynerin kendi `node_modules`'ıyla koşuldu. APPLY ayrıca
 `AGENT_PROMPT_ROLLOUT_CONFIRMATION=ROLLOUT_PERSONA_PROMPTS` istiyor; bu değişken
 verilmeden APPLY sessizce hiçbir şey yazmıyor. Bu bir eksik: imaj, çalıştırması
 gereken operatör script'ini taşımıyor.
+
+## 2026-09-04 — kapsamlı inceleme raporunun repoya alınması
+
+- Başlangıç sürümü: `4d38ebc2d855a033ab5d63c460824e72a9717fec`; yayın hazırlığı öncesinde
+  `HEAD` ve fetch edilmiş `origin/main` aynı sürümde doğrulandı. Yerel ortam Node 24.19.0,
+  Corepack üzerinden pnpm 10.34.5; projenin desteklenen Node sürümü 22 olmaya devam ediyor.
+- Gökhan'ın isteğiyle 15 bölümlük rapor `REPO_AND_PROJECT_REVIEW_2026-09-04.md` olarak
+  eklendi. `PLAN.md` rapora bağlandı; F03 kanıtı nedeniyle profil noindex maddesindeki
+  policy düzeltmesi ile açık public-alias yolu ayrıldı. Uygulama kodu değiştirilmedi.
+- Doğrulama: `pnpm format:check`, `pnpm lint` ve `pnpm typecheck` başarılı. Yeni test
+  yazılmadı; bu yayın yalnız belgeleri değiştiriyor. Rapor önceki incelemenin yerel test
+  sınırlamalarını ve aynı sürümdeki CI kanıtını ayrı tutuyor.
+- Hata/kök neden: bu yayın hazırlığında kontrol hatası yok. Belgelerdeki eski kapanış,
+  yalnız indexing policy'yi kapsadığı hâlde alias sorgu yolunu da kapanmış gösteriyordu;
+  durum kaydı rapordaki doğrudan gözlem ve kod kanıtıyla uzlaştırıldı.
+- Tekrarlama: raporun tarihsel bulgularını uygulanmış düzeltme veya yeni üretim ölçümü
+  sayma; rapor eklemeyi deploy yetkisi olarak yorumlama. Üretime bu görevde bağlanılmadı.
+- Terminal push denemesi, yerel `710ac5ad2f9afbf6616722ff8ec8df2535d32f37` commit'inde
+  `could not read Username for 'https://github.com': terminal prompts disabled` ile
+  başarısız oldu. Neden terminalde yazma kimliği bulunmaması; kod veya kontrol regresyonu
+  değil. Gönderim için bağlı GitHub hesabının Git veri araçlarına geçildi. Tekrarlama:
+  kimliksiz terminalde aynı push'u yineleme veya kimlik bilgilerini komuta yerleştirme.
