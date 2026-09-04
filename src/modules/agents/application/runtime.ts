@@ -34,6 +34,7 @@ import {
   finishRuntimeRunRecord,
   getMeasuredRuntimeRunMetrics,
   getLatestRuntimeCircuitBreakerSnapshot,
+  getRuntimeCriticalBreakerActivatedAt,
   getRuntimePerceptionRecords,
   getRuntimeAgentLifecycle,
   getRuntimeGlobalSettings,
@@ -68,6 +69,7 @@ import {
   circuitBreakerConfigSchema,
   evaluateCircuitBreakerTransition,
   evaluateCircuitBreakers,
+  evaluateCircuitBreakerHalfOpenProbe,
   evaluateProductionCriticalBreakerAutoPause,
 } from "@/modules/agents/domain/circuit-breaker";
 import {
@@ -123,6 +125,13 @@ type RuntimeSourceState = Awaited<
 
 interface RuntimeLeaseDependencies {
   checkReadiness?: (executor: DatabaseExecutor) => Promise<void>;
+  /*
+    Saat enjeksiyonu yalnız test için. Kesicinin yarı-açık soğuması zamana
+    bağlı ve `agent_runtime_events` append-only olduğu için olay zamanını
+    geriye almak mümkün değil (veritabanı tetikleyicisi engelliyor, ki doğrusu
+    da bu). Üretimde parametre verilmiyor ve davranış değişmiyor.
+  */
+  now?: Date;
 }
 
 const GLOBAL_SETTINGS_AGGREGATE_ID = "00000000-0000-4000-8000-000000000001";
@@ -1357,7 +1366,7 @@ export async function leaseRuntimeRun(
     const settings = await getRuntimeGlobalSettings(transaction);
     if (!settings.runtimeEnabled) return { run: null, reason: "PAUSED" };
     const maintenanceMode = settings.runtimeOperatingMode === "MAINTENANCE";
-    const now = new Date();
+    const now = dependencies.now ?? new Date();
     const expiredCancellations = await listExpiredCancellationRunsForFinalization(
       transaction,
       principal.agentProfileId,
@@ -1447,8 +1456,40 @@ export async function leaseRuntimeRun(
     )
       return { run: null, reason: "ERROR_PAUSED" };
     await recordRuntimeCircuitBreakerTransition(transaction, principal, { now, breakers });
-    if (breakers.runtimePaused) return { run: null, reason: "ERROR_PAUSED" };
     const activeLeaseCount = await countActiveRuntimeLeases(transaction, now);
+    /*
+      Kritik kesici açıkken tek bir DENEME koşusuna izin veriyoruz.
+
+      Bu gevşetme değil, çıkış yolu: kesicinin ölçüsü son sonlanmış koşulardan
+      hesaplanıyor, dolayısıyla kesici hiç koşuya izin vermezse ölçü donuyor ve
+      kesici asla kapanamıyor. 3 Eylül 2026'da toplum tam bu yüzden 15 saat 48
+      dakika durdu — arıza dakikalar içinde geçmişti
+      (`docs/OLAY_SESSIZ_DURMA_2026-09-03.md`).
+
+      Deneme dar tutuldu: soğuma dolmadan yok, çalışan koşu varken yok,
+      aktivasyon zamanı okunamıyorsa yok. Başarısız olursa kesici zaten açık
+      kalır ve bir sonraki soğumaya kadar yeni deneme olmaz.
+    */
+    if (breakers.runtimePaused) {
+      const probe = evaluateCircuitBreakerHalfOpenProbe({
+        runtimePaused: true,
+        activatedAt: await getRuntimeCriticalBreakerActivatedAt(
+          transaction,
+          "CONSECUTIVE_CODEX_FAILURES",
+        ),
+        now,
+        activeLeaseCount,
+      });
+      if (!probe.allowProbe) return { run: null, reason: "ERROR_PAUSED" };
+      await appendRuntimeEvent(transaction, {
+        eventType: "runtime.circuit_breaker.half_open_probe",
+        safeMessage: "Kritik kesici açıkken soğuma doldu; tek bir deneme koşusuna izin verildi.",
+        metadata: {
+          probeEligibleAt: probe.probeEligibleAt?.toISOString() ?? null,
+          activeCriticalCodes: breakers.activeCriticalCodes,
+        },
+      });
+    }
     if (activeLeaseCount >= concurrency) return { run: null, reason: "CAPACITY_FULL" };
     if (settings.schedulerEnabled) {
       const queuedRuns: QueuedRunEventRecord[] = [];

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  CIRCUIT_BREAKER_HALF_OPEN_COOLDOWN_MS,
   circuitBreakerConfigSchema,
   countConsecutiveCodexFailures,
   DEFAULT_UTILIZATION_WINDOW_MINUTES,
+  evaluateCircuitBreakerHalfOpenProbe,
   evaluateCircuitBreakerTransition,
   evaluateCircuitBreakers,
   evaluateProductionCriticalBreakerAutoPause,
@@ -254,5 +256,69 @@ describe("agent runtime circuit breakers", () => {
         activeCriticalCodes: ["CONSECUTIVE_CODEX_FAILURES"],
       }),
     ).toMatchObject({ inProtectionWindow: false, shouldAutoPause: false });
+  });
+});
+
+describe("yarı-açık (half-open) deneme", () => {
+  /*
+    Kesici, ölçüsünü son sonlanmış koşulardan alıyor. Hiç koşuya izin vermezse
+    ölçü donuyor ve kesici ASLA kapanamıyor: 3 Eylül 2026'da toplum tam bu
+    yüzden 15 saat 48 dakika durdu, oysa arıza dakikalar içinde geçmişti.
+
+    Bu testler iki şeyi birden tutuyor: çıkış yolu gerçekten açılıyor VE
+    kapı gevşemiyor.
+  */
+  const activatedAt = new Date("2026-09-03T14:47:53.000Z");
+  const probe = (overrides: Partial<Parameters<typeof evaluateCircuitBreakerHalfOpenProbe>[0]>) =>
+    evaluateCircuitBreakerHalfOpenProbe({
+      runtimePaused: true,
+      activatedAt,
+      now: new Date(activatedAt.getTime() + CIRCUIT_BREAKER_HALF_OPEN_COOLDOWN_MS),
+      activeLeaseCount: 0,
+      ...overrides,
+    });
+
+  it("soğuma dolunca tek denemeye izin verir", () => {
+    expect(probe({})).toMatchObject({ allowProbe: true, reason: "PROBE_ALLOWED" });
+  });
+
+  it("soğuma dolmadan izin vermez", () => {
+    expect(
+      probe({ now: new Date(activatedAt.getTime() + CIRCUIT_BREAKER_HALF_OPEN_COOLDOWN_MS - 1) }),
+    ).toMatchObject({ allowProbe: false, reason: "COOLING_DOWN" });
+  });
+
+  it("çalışan koşu varken ikinci denemeyi açmaz", () => {
+    /*
+      "Tek deneme" güvencesi bu: zaten koşan bir run varsa o denemedir.
+      İkincisini açmak arızayı besler.
+    */
+    expect(probe({ activeLeaseCount: 1 })).toMatchObject({
+      allowProbe: false,
+      reason: "PROBE_IN_FLIGHT",
+    });
+  });
+
+  it("aktivasyon zamanı bilinmiyorsa deneme yapmaz", () => {
+    // Emin olunmayan yerde dar tarafa düşmek: bugünkü davranış korunur.
+    expect(probe({ activatedAt: null })).toMatchObject({
+      allowProbe: false,
+      reason: "ACTIVATION_UNKNOWN",
+    });
+  });
+
+  it("kesici kapalıyken deneme kavramı yoktur", () => {
+    expect(probe({ runtimePaused: false })).toMatchObject({
+      allowProbe: false,
+      reason: "BREAKER_CLOSED",
+    });
+  });
+
+  it("soğuma, kesicinin ölçüm penceresinden bağımsız ve makul", () => {
+    /*
+      Çok kısa olursa her lease denemesi yeni bir koşu açıp arızayı besler;
+      çok uzun olursa kesinti gereksiz uzar. 10 dakika ikisinin arasında.
+    */
+    expect(CIRCUIT_BREAKER_HALF_OPEN_COOLDOWN_MS).toBe(10 * 60 * 1000);
   });
 });

@@ -131,6 +131,30 @@ export async function getLatestRuntimeCircuitBreakerSnapshot(
   ].sort();
 }
 
+/**
+ * Kritik kesicinin EN SON ne zaman açıldığı.
+ *
+ * Geçiş olayları yalnız DEĞİŞİMDE yazılıyor, yani `triggeredCodes` içinde kodu
+ * taşıyan en yeni kayıt, kesicinin şu anki açılış anıdır. Yarı-açık deneme
+ * soğumasını buradan sayıyoruz; kayıt yoksa `null` döner ve çağıran taraf
+ * deneme yapmaz (dar taraf).
+ */
+export async function getRuntimeCriticalBreakerActivatedAt(
+  transaction: Prisma.TransactionClient,
+  code: string,
+): Promise<Date | null> {
+  const rows = await transaction.$queryRaw<Array<{ occurredAt: Date }>>(Prisma.sql`
+    SELECT event."occurredAt"
+    FROM "agent_runtime_events" AS event
+    WHERE event."agentProfileId" IS NULL
+      AND event."eventType" = 'runtime.circuit_breaker.snapshot'
+      AND event."metadata"->'triggeredCodes' @> to_jsonb(ARRAY[${code}]::text[])
+    ORDER BY event."id" DESC
+    LIMIT 1
+  `);
+  return rows[0]?.occurredAt ?? null;
+}
+
 export async function lockRuntimeRun(
   transaction: Prisma.TransactionClient,
   runId: string,
