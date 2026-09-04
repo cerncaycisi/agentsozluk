@@ -162,6 +162,70 @@ export function evaluateCircuitBreakerTransition(
   };
 }
 
+/**
+ * Kritik kesici açıkken tek bir DENEME koşusuna izin verilene kadar beklenecek süre.
+ *
+ * 10 dakika: sağlayıcı arızalarının çoğu bundan kısa sürüyor, ama her lease
+ * denemesinde yeni bir koşu açıp arızayı beslemeyecek kadar da uzun.
+ */
+export const CIRCUIT_BREAKER_HALF_OPEN_COOLDOWN_MS = 10 * 60 * 1000;
+
+export interface CircuitBreakerHalfOpenDecision {
+  allowProbe: boolean;
+  reason:
+    | "BREAKER_CLOSED"
+    | "ACTIVATION_UNKNOWN"
+    | "COOLING_DOWN"
+    | "PROBE_IN_FLIGHT"
+    | "PROBE_ALLOWED";
+  probeEligibleAt: Date | null;
+}
+
+/**
+ * Yarı-açık (half-open) deneme kararı.
+ *
+ * Bu olmadan kesici KENDİ ÇIKIŞ KOŞULUNU İMKÂNSIZ KILIYOR ve 3 Eylül 2026'da
+ * toplumu 15 saat 48 dakika durdurdu (`docs/OLAY_SESSIZ_DURMA_2026-09-03.md`).
+ * Zincir şuydu: kritik kesici lease'i kapatıyor → alınmayan queued koşular
+ * zamanlayıcıyı da kilitliyor (`QUEUE_NOT_EMPTY`) → kesicinin ölçüsü
+ * (`countConsecutiveCodexFailures`) son sonlanmış koşulardan hesaplandığı için
+ * yeni koşu olmayınca DONUYOR. Yani kesicinin kapanması için başarılı koşu
+ * gerekiyordu ama kesici bütün koşuları engelliyordu; tek çıkış operatörün
+ * runtime'ı kapatıp açmasıydı.
+ *
+ * Karar bilerek dar: soğuma dolmadan deneme yok, aynı anda birden fazla deneme
+ * yok, aktivasyon zamanı bilinmiyorsa deneme yok. Yani kesici KAPALI kalmaya
+ * devam ediyor — yalnız çıkabilir hâle geliyor.
+ */
+export function evaluateCircuitBreakerHalfOpenProbe(input: {
+  runtimePaused: boolean;
+  activatedAt: Date | null;
+  now: Date;
+  activeLeaseCount: number;
+  cooldownMs?: number;
+}): CircuitBreakerHalfOpenDecision {
+  if (!input.runtimePaused)
+    return { allowProbe: false, reason: "BREAKER_CLOSED", probeEligibleAt: null };
+  /*
+    Aktivasyon zamanı okunamıyorsa deneme YOK: bu durumda bugünkü davranış
+    (tümden kapalı) korunuyor. Emin olunmayan yerde geniş değil dar tarafa
+    düşmek, bir güvenlik mekanizmasında doğru varsayılan.
+  */
+  if (!input.activatedAt)
+    return { allowProbe: false, reason: "ACTIVATION_UNKNOWN", probeEligibleAt: null };
+  const cooldownMs = input.cooldownMs ?? CIRCUIT_BREAKER_HALF_OPEN_COOLDOWN_MS;
+  const probeEligibleAt = new Date(input.activatedAt.getTime() + cooldownMs);
+  if (input.now < probeEligibleAt)
+    return { allowProbe: false, reason: "COOLING_DOWN", probeEligibleAt };
+  /*
+    Zaten çalışan bir koşu varsa o koşu denemedir; ikinciyi açmak arızayı
+    besler ve "tek deneme" güvencesini bozar.
+  */
+  if (input.activeLeaseCount > 0)
+    return { allowProbe: false, reason: "PROBE_IN_FLIGHT", probeEligibleAt };
+  return { allowProbe: true, reason: "PROBE_ALLOWED", probeEligibleAt };
+}
+
 export function evaluateProductionCriticalBreakerAutoPause(input: {
   activationStartedAt: Date | null;
   now: Date;

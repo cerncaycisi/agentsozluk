@@ -3235,6 +3235,119 @@ describe("internal agent runtime API with PostgreSQL", () => {
     ).toMatchObject({ runStatus: "QUEUED" });
   });
 
+  it("breaks the deadlock: allows one probe run once the breaker cooldown elapses", async () => {
+    /*
+      Kesicinin ölçüsü (`countConsecutiveCodexFailures`) son SONLANMIŞ koşulardan
+      hesaplanıyor. Kesici hiç koşuya izin vermezse o ölçü donuyor ve kesici asla
+      kapanamıyor — 3 Eylül 2026'da toplum tam bu yüzden 15 saat 48 dakika durdu,
+      oysa sağlayıcı arızası dakikalar içinde geçmişti.
+
+      Aktivasyon çapası bilerek 5 saat öncesine alındı: üretim koruma penceresi
+      (`PRODUCTION_CRITICAL_BREAKER_WINDOW_MS`, 4 saat) dışında kalsın ki test
+      otomatik duraklatmayı değil YARI-AÇIK DENEMEYİ sınasın.
+    */
+    const activationStartedAt = new Date(Date.now() - 5 * 60 * 60 * 1000);
+    const fixture = await createFixture(1, activationStartedAt);
+    const now = new Date();
+    for (let index = 0; index < 5; index += 1)
+      await integrationDatabase.agentRun.create({
+        data: {
+          agentProfileId: fixture.created.agent.profile.id,
+          personaVersionId: fixture.created.agent.personaVersion.id,
+          runType: "NORMAL_WAKE",
+          runStatus: "FAILED",
+          queuePriority: "SCHEDULED_CONTENT",
+          trigger: "HALF_OPEN_INTEGRATION",
+          idempotencyKey: `half-open-terminal:${index}`,
+          timeoutSeconds: 600,
+          desiredEntryMin: 2,
+          desiredEntryMax: 3,
+          startedAt: new Date(now.getTime() - (index + 2) * 60_000),
+          finishedAt: new Date(now.getTime() - (index + 1) * 30_000),
+          errorCode: "CODEX_TIMEOUT",
+        },
+      });
+
+    const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    // Kesici yeni açıldı: soğuma dolmadığı için deneme YOK.
+    await expect(
+      leaseRuntimeRun(integrationDatabase, principal, {
+        workerId: "half-open-cooling-worker",
+        leaseSeconds: 60,
+      }),
+    ).resolves.toEqual({ run: null, reason: "ERROR_PAUSED" });
+
+    /*
+      Soğumayı geçmiş saymak için saati ileri alıyoruz. Olayı geriye almak
+      mümkün değil: `agent_runtime_events` veritabanı seviyesinde append-only
+      ve denemesi "agent_runtime_events is append-only" ile reddediliyor.
+    */
+    const afterCooldown = new Date(Date.now() + 20 * 60 * 1000);
+    const probed = await leaseRuntimeRun(
+      integrationDatabase,
+      principal,
+      { workerId: "half-open-probe-worker", leaseSeconds: 60 },
+      { now: afterCooldown },
+    );
+    // Kilit kırıldı: kesici hâlâ açık ama tek bir koşu geçebildi.
+    expect(probed.run).not.toBeNull();
+    // Denemenin denetim izi kalmalı; sessiz bir gevşetme olmamalı.
+    expect(
+      await integrationDatabase.agentRuntimeEvent.count({
+        where: { eventType: "runtime.circuit_breaker.half_open_probe" },
+      }),
+    ).toBe(1);
+  });
+
+  it("does not open a second probe while one is already running", async () => {
+    /*
+      "Tek deneme" güvencesi: kesici açıkken ikinci bir koşu açmak arızayı besler.
+      Bu test olmadan yarı-açık davranış, kesiciyi fiilen kaldırmış olurdu.
+    */
+    const activationStartedAt = new Date(Date.now() - 5 * 60 * 60 * 1000);
+    const fixture = await createFixture(2, activationStartedAt);
+    const now = new Date();
+    for (let index = 0; index < 5; index += 1)
+      await integrationDatabase.agentRun.create({
+        data: {
+          agentProfileId: fixture.created.agent.profile.id,
+          personaVersionId: fixture.created.agent.personaVersion.id,
+          runType: "NORMAL_WAKE",
+          runStatus: "FAILED",
+          queuePriority: "SCHEDULED_CONTENT",
+          trigger: "HALF_OPEN_SECOND",
+          idempotencyKey: `half-open-second:${index}`,
+          timeoutSeconds: 600,
+          desiredEntryMin: 2,
+          desiredEntryMax: 3,
+          startedAt: new Date(now.getTime() - (index + 2) * 60_000),
+          finishedAt: new Date(now.getTime() - (index + 1) * 30_000),
+          errorCode: "CODEX_TIMEOUT",
+        },
+      });
+    const principal = await runtimePrincipal(fixture.credential, "runtime:lease");
+    await leaseRuntimeRun(integrationDatabase, principal, {
+      workerId: "half-open-first",
+      leaseSeconds: 60,
+    });
+    const afterCooldown = new Date(Date.now() + 20 * 60 * 1000);
+    const first = await leaseRuntimeRun(
+      integrationDatabase,
+      principal,
+      { workerId: "half-open-first", leaseSeconds: 60 },
+      { now: afterCooldown },
+    );
+    expect(first.run).not.toBeNull();
+    // İlk deneme koşarken ikincisi açılmamalı.
+    const second = await leaseRuntimeRun(
+      integrationDatabase,
+      principal,
+      { workerId: "half-open-second", leaseSeconds: 60 },
+      { now: afterCooldown },
+    );
+    expect(second).toEqual({ run: null, reason: "ERROR_PAUSED" });
+  });
+
   it("returns ERROR_PAUSED after five consecutive global Codex failures", async () => {
     const fixture = await createFixture();
     const now = new Date();
