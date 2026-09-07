@@ -42,6 +42,16 @@ export function assertResettableDatabaseUrl(
     throw new Error("db:reset received an invalid DATABASE_URL database name.");
   }
 
+  /*
+    Yol tek parça olmalı — bkz `scripts/test-database-safety.ts`. Çok parçalı
+    adreste Prisma İLK parçaya bağlanıyor, koruma ise metnin sonuna bakıyor.
+    Buradaki `AGENT_DB_RESET_CONFIRM` eşleşmesi ikinci bir katman ama ad
+    çıkarımının kendisi yine de doğru olmalı.
+  */
+  if (databaseName.includes("/"))
+    throw new Error(
+      `db:reset refuses a multi-segment DATABASE_URL path ("${databaseName}"): the client would connect to the first segment.`,
+    );
   if (!safeDatabaseName.test(databaseName))
     throw new Error(
       `db:reset refuses to drop "${databaseName}": name must end with _test/-test or _dev/-dev.`,

@@ -26,3 +26,34 @@ describe("destructive test database guard", () => {
     }
   });
 });
+
+describe("çok parçalı yol", () => {
+  /*
+    7 Eylül 2026'da gerçekten oldu: `postgresql://host/agentsz_uiux_dev/agent_sozluk_m1_test`
+    korumadan GEÇTİ (metin `_test` ile bitiyor) ama Prisma İLK parçaya bağlandı ve
+    entegrasyon testleri `agentsz_uiux_dev` geliştirme veritabanını temizledi.
+
+    Aynı kalıp üretimi de hedefleyebilirdi: `.../agent_sozluk/x_test` korumadan geçip
+    üretim veritabanına bağlanırdı. `psql` bu adresi reddediyor, Prisma kabul ediyor —
+    koruma metne değil, istemcinin ÇÖZDÜĞÜ ada bakmalı.
+  */
+  it("ilk parçası gerçek veritabanı olan adresi reddeder", () => {
+    expect(() =>
+      requireTestDatabaseUrl(
+        "postgresql://u:p@localhost:5432/agentsz_uiux_dev/agent_sozluk_m1_test",
+        "Unit test",
+      ),
+    ).toThrow(/multi-segment/u);
+  });
+
+  it("üretim adını gizleyen aynı kalıbı da reddeder", () => {
+    expect(() =>
+      requireTestDatabaseUrl("postgresql://u:p@db/agent_sozluk/scratch_test", "Unit test"),
+    ).toThrow(/multi-segment/u);
+  });
+
+  it("tek parçalı geçerli adresi kabul eder", () => {
+    const url = "postgresql://u:p@localhost:5432/agent_sozluk_m1_test";
+    expect(requireTestDatabaseUrl(url, "Unit test")).toBe(url);
+  });
+});
