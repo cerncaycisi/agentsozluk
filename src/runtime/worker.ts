@@ -1285,6 +1285,12 @@ export class AgentRuntimeWorker {
       missedEvidenceTypes?: string[];
       schemaIssuePaths?: string[];
     } | null = null;
+    /* AW kapısının ne yaptığı — bkz `runtime-schemas.ts`, `actionWorthiness`. */
+    let actionWorthiness: {
+      verdict: "ACT" | "NO_ACTION";
+      candidateCount: number;
+      selectedCount: number;
+    } | null = null;
     let sourceItemsFetched = 0;
     let sourceReads = 0;
     let sourceTargetsAttempted = 0;
@@ -1693,13 +1699,16 @@ export class AgentRuntimeWorker {
         currentFailure = runtimeWorkerFailures.actionWorthinessOutput;
         await enterPhase("VALIDATING");
         try {
-          decision = applyRuntimeActionWorthinessVerdict(
-            decision,
-            parseRuntimeActionWorthinessVerdict(
-              actionWorthinessResult.output,
-              actionWorthinessCandidateSequences,
-            ),
+          const verdict = parseRuntimeActionWorthinessVerdict(
+            actionWorthinessResult.output,
+            actionWorthinessCandidateSequences,
           );
+          actionWorthiness = {
+            verdict: verdict.verdict,
+            candidateCount: actionWorthinessCandidateSequences.length,
+            selectedCount: verdict.verdict === "ACT" ? verdict.selectedSequences.length : 0,
+          };
+          decision = applyRuntimeActionWorthinessVerdict(decision, verdict);
         } catch (error) {
           this.#options.onSafeEvent?.({
             level: "error",
@@ -1972,6 +1981,7 @@ export class AgentRuntimeWorker {
             codexIntervals,
             ...(browseExperiment ? { browseExperiment } : {}),
             ...(decisionRepair ? { decisionRepair } : {}),
+            ...(actionWorthiness ? { actionWorthiness } : {}),
             ...providerResult.hostMetrics,
           },
           performanceMetrics: {
@@ -2051,6 +2061,7 @@ export class AgentRuntimeWorker {
               ...(codexIntervals.length > 0 ? { codexIntervals } : {}),
               ...(browseExperiment ? { browseExperiment } : {}),
               ...(decisionRepair ? { decisionRepair } : {}),
+              ...(actionWorthiness ? { actionWorthiness } : {}),
               /*
                 Başarısızlık kaydına DÜŞEN çağrının host metriği yazılmalı.
                 Eskiden `providerResult?.hostMetrics` yazılıyordu — o bir

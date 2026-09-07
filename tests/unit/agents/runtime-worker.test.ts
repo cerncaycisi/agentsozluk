@@ -2071,6 +2071,80 @@ describe("long-lived agent runtime worker", () => {
     );
   });
 
+  it("records what the action-worthiness gate actually did", async () => {
+    /*
+      7 Eylül 2026'da bu eksiklik bir karar tıkanıklığına yol açtı: AW'ye giden
+      perception daraltıldıktan sonra "kapı köreldi mi" sorusu soruldu ve
+      cevaplanamadı, çünkü kapının ne yaptığı hiçbir yere yazılmıyordu.
+
+      Elde yalnız dolaylı bir vekil vardı — `SKIPPED` action — ama o yalnız
+      AW'nin HER ŞEYİ reddettiği durumu gösteriyor; kısmi elemeyi hiç
+      göstermiyor, çünkü reddedilen adaylar veritabanına ayrı satır olarak
+      yazılmıyor (karar, action'lar kaydedilmeden önce dönüştürülüyor).
+    */
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockResolvedValue({
+        provider: "codex-cli",
+        version: "test",
+        durationMs: 5,
+        output: canonicalNormalOutput("Kapının ölçülmesi.", {
+          actions: [
+            {
+              type: "CREATE_ENTRY",
+              targetId: "00000000-0000-4000-8000-000000000001",
+              body: "Kapının gerçekten çalıştığını ölçmek için bir aday.",
+              desire: 0.6,
+              safeReason: "Aday üretildi ki kapı onu değerlendirsin.",
+              claimProvenance: [],
+            },
+          ],
+        }),
+      }),
+    };
+    const actionWorthinessProvider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockResolvedValue({
+        provider: "codex-cli",
+        version: "test",
+        durationMs: 3,
+        output: {
+          verdict: "NO_ACTION",
+          confidence: 0.8,
+          evaluations: [
+            { sequence: 1, decision: "REJECT", safeReason: "Bağımsız değer taşımıyor." },
+          ],
+          selectedSequences: [],
+          safeReason: "Bu turda değerli aday yok.",
+        },
+      }),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "aw-telemetry-worker",
+      credentials: [`agt_${"a".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+      actionWorthinessProvider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    const completeCall = vi.mocked(plane.complete).mock.calls[0];
+    const usage = completeCall![4] as {
+      usageMetadata: {
+        actionWorthiness?: { verdict: string; candidateCount: number; selectedCount: number };
+      };
+    };
+    // Kapının kararı, kaç adaya baktığı ve kaçını geçirdiği kayda geçmeli.
+    expect(usage.usageMetadata.actionWorthiness).toEqual({
+      verdict: "NO_ACTION",
+      candidateCount: 1,
+      selectedCount: 0,
+    });
+  });
+
   it("marks a cut-off call as censored and records the failing call's host metrics", async () => {
     /*
       Kesilen çağrının süresi ÖLÇÜM DEĞİLDİR: deadline çağrının ortasında
