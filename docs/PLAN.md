@@ -342,7 +342,36 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    çekişmesi (timeout'ta yük 0,26 vs başarılıda 1,67 — tersi) ve "yavaş DECISION sınıfı"
    (dağılım tek tepeli; 335 sn koşullama etkisiydi).
 
-   **İlk sonuç:** AW p50 55 → 35 sn, timeout 42 uyanışta 0. Kalıcılığı ölçülecek.
+   **Sonuç (7 Eylül, 260 koşuluk 12 saatlik pencere, üretim):** AW p50 55 → 35,7 sn,
+   p95 120 → 116,3 sn. DECISION p50 250 → 193,5, p90 372 → 294,6 sn (dokunmadık, bu
+   açıklanmamış bir karıştırıcı). Faz süreleri (censored hariç, sn):
+
+   | faz               |   n | p50   | p90   | p95   | maks  |
+   |-------------------|-----|-------|-------|-------|-------|
+   | DECISION          | 259 | 193,5 | 294,6 | 329,5 | 453,6 |
+   | ACTION_WORTHINESS | 249 |  35,7 |  91,6 | 116,3 | 159,1 |
+   | BROWSE            | 224 |   9,5 |  12,2 |  13,2 |  17,7 |
+   | DECISION_REPAIR   |   7 | 116,0 | 178,1 | 178,9 | 179,6 |
+   | CONTENT_REPAIR    |  48 |   2,3 |   3,0 |   3,3 |   3,7 |
+
+   **İki oran karıştırılmamalı.** Gate 10 madde 4 yalnız doğal `FAILED`+`TIMED_OUT`
+   sayıyor (`society-baseline-report.ts:857`), `PARTIAL` değil. Bu pencerede
+   operasyonel timeout payı 10/260 = %3,85, Gate'in saydığı alt metrik 1/260 = %0,38.
+   **Hiçbiri Gate PASS demek değil**: gate ayrıca yedi günlük doğal pencere ve diğer
+   maddeleri istiyor, ve 10/260'ın %95 Wilson aralığı %2,1–%6,9 — nokta tahmininden
+   kalıcı "%5 altı" sonucu çıkmaz. Üretim bütçesi 480 sn (şema varsayılanı 360 değil).
+
+   **Rezerv fikri kapandı — Astra hakem turu, 7 Eylül: NO-GO.** `DECISION.timeoutMs`'i
+   `remainingMs() − 110 sn` ile sınırlamak **sıfır** koşu kurtarır, "az kurtarır" bile
+   değil. Gerekçe: AW zaten kalan sürenin tamamını alıyor (`worker.ts:1687`), yani tavan
+   AW'ye hiçbir şey **eklemez**; DECISION tavana sığarsa yürütme aynen aynı kalır, sığmazsa
+   koşu DECISION'da ölür (`worker.ts:2011`). `timeoutMs` modele bildirilen bir hedef değil,
+   süreç sonlandırma sayacı (`codex-cli-provider.ts:280`) — kısaltmak hızlandırmaz, erken
+   öldürür. Timeout alan 10 koşunun 6'sında DECISION tek başına 415–460 sn yiyor.
+   Astra ayrıca (d) "süre azsa AW'yi atlayıp uygula" seçeneğini de reddetti: AW yalnız
+   güvenlik değil, yenilik/tekrar/başlık-gövde uyumunu bağımsız değerlendiren ürün kapısı.
+   **Sıradaki deney (c):** DECISION prompt'unu ölçerek ucuzlatmak — #112'nin AW'ye yaptığını
+   DECISION'a yapmak. Prompt küçülmesinin gecikmeyi düşüreceği henüz hipotez, ölçülecek.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış
@@ -350,6 +379,9 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          Reddedilen adaylar veritabanına ayrı satır olarak hiç yazılmıyor. Telemetri eklendi
          (PR #116, `9fb5c63`): `verdict`, `candidateCount`, `selectedCount`. Eleme oranı
          makul değilse projeksiyon geri alınır.
+         **İlk okuma (7 Eylül, 56 koşu): eleme %17,5** — 137 aday, 113 seçim, 0 tam-ret
+         verdict'i. Kapı körelmemiş; projeksiyon kalıyor. Daha geniş pencerede tekrar
+         bakılacak.
 
 2. **Kaynak tabanını kapat.** Dört ajan (`cikissagda` 8, `birazuzakta` 9, `mevsimdisi` 9,
    `yedekparca` 9) 10'a çıksın — atıf verisi HÂLÂ elimizdeyken edinme çalışsın.
