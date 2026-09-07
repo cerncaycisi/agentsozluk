@@ -346,13 +346,13 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    p95 120 → 116,3 sn. DECISION p50 250 → 193,5, p90 372 → 294,6 sn (dokunmadık, bu
    açıklanmamış bir karıştırıcı). Faz süreleri (censored hariç, sn):
 
-   | faz               |   n | p50   | p90   | p95   | maks  |
-   |-------------------|-----|-------|-------|-------|-------|
+   | faz               | n   | p50   | p90   | p95   | maks  |
+   | ----------------- | --- | ----- | ----- | ----- | ----- |
    | DECISION          | 259 | 193,5 | 294,6 | 329,5 | 453,6 |
-   | ACTION_WORTHINESS | 249 |  35,7 |  91,6 | 116,3 | 159,1 |
-   | BROWSE            | 224 |   9,5 |  12,2 |  13,2 |  17,7 |
-   | DECISION_REPAIR   |   7 | 116,0 | 178,1 | 178,9 | 179,6 |
-   | CONTENT_REPAIR    |  48 |   2,3 |   3,0 |   3,3 |   3,7 |
+   | ACTION_WORTHINESS | 249 | 35,7  | 91,6  | 116,3 | 159,1 |
+   | BROWSE            | 224 | 9,5   | 12,2  | 13,2  | 17,7  |
+   | DECISION_REPAIR   | 7   | 116,0 | 178,1 | 178,9 | 179,6 |
+   | CONTENT_REPAIR    | 48  | 2,3   | 3,0   | 3,3   | 3,7   |
 
    **İki oran karıştırılmamalı.** Gate 10 madde 4 yalnız doğal `FAILED`+`TIMED_OUT`
    sayıyor (`society-baseline-report.ts:857`), `PARTIAL` değil. Bu pencerede
@@ -372,15 +372,13 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    güvenlik değil, yenilik/tekrar/başlık-gövde uyumunu bağımsız değerlendiren ürün kapısı.
    **Sıradaki deney (c):** DECISION prompt'unu ölçerek ucuzlatmak — #112'nin AW'ye yaptığını
    DECISION'a yapmak. Prompt küçülmesinin gecikmeyi düşüreceği henüz hipotez, ölçülecek.
-   - [ ] **ÖNKOŞUL: prompt boyutu hiçbir yere yazılmıyor.** 7 Eylül'de üretimde bakıldı:
-         `usageMetadata` anahtarları `actionWorthiness, availableMemoryMb, browseExperiment,
-         codexIntervals, codexVersion, durationMs, loadAverage1m, model, processPeakRssMb,
-         promptProfileHash, provider, reasoningEffort, swap*, systemPeakMemoryMb`; faz
-         aralığında ise `censored, durationMs, finishedAt, inspectMs, modelMs, phase,
-         setupMs, startedAt`. **Token/karakter sayısı yok.** Yani "prompt'u küçülttük,
-         süre düştü" iddiası bugün ölçülemez — bağımsız değişken kayıtsız. AW'de #116 ile
-         yaşanan durumun aynısı: önce telemetri, sonra deney. Faz başına prompt
-         karakter/token sayısı `codexIntervals`'a eklenmeli.
+   - [ ] **ÖNKOŞUL: prompt boyutu hiçbir yere yazılmıyor.** 7 Eylül'de üretimde
+         anahtarlar tek tek sayıldı. Koşu düzeyinde ölçüm var (süre, bellek, yük, model,
+         profil hash'i, AW verdict'i); faz aralığında da var (`durationMs`, `setupMs`,
+         `inspectMs`, `modelMs`, `censored`). **Token ya da karakter sayısı hiçbirinde
+         yok.** Yani "prompt'u küçülttük, süre düştü" iddiası bugün ölçülemez — bağımsız
+         değişken kayıtsız. AW'de #116 ile yaşanan durumun aynısı: önce telemetri, sonra
+         deney. Faz başına prompt karakter/token sayısı `codexIntervals`'a eklenmeli.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış
