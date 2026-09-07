@@ -259,6 +259,84 @@ describe("agent runtime circuit breakers", () => {
   });
 });
 
+describe("sağlayıcıya ulaşmamış koşu kesiciyi açmamalı", () => {
+  /*
+    F01. Eski davranışta seriyi ilk "Codex hatası olmayan" koşu kırıyordu ve o
+    koşunun sağlayıcıya ulaşmış olması gerekmiyordu. Yani context aşamasında
+    düşen bir koşu — sağlayıcı hâlâ bozukken — kesiciyi "düzeldi" diye
+    açabiliyordu. Astra 4 Eylül 2026 incelemesinde fonksiyonu gerçek girdilerle
+    koşturup gösterdi.
+
+    Ayrım hata KODUNDAN değil telemetriden yapılıyor: `codexIntervals` boşsa hiç
+    çağrı gitmemiştir. Koddan tahmin etmek yanlış olurdu —
+    `CONTROL_PLANE_ACTION_EXECUTION_FAILED` karardan SONRA oluşuyor.
+  */
+  const codexFailure = {
+    runStatus: "TIMED_OUT",
+    errorCode: "CODEX_TIMEOUT",
+    reachedProvider: true,
+  };
+
+  it("Astra'nın senaryosu: context hatası seriyi sıfırlamaz", () => {
+    const contextFailure = {
+      runStatus: "FAILED",
+      errorCode: "CONTROL_PLANE_CONTEXT_FAILED",
+      reachedProvider: false,
+    };
+    expect(countConsecutiveCodexFailures([codexFailure, codexFailure, codexFailure])).toBe(3);
+    // Eski davranışta bu 0 dönüyordu; kesici sağlayıcı sınanmadan açılıyordu.
+    expect(
+      countConsecutiveCodexFailures([contextFailure, codexFailure, codexFailure, codexFailure]),
+    ).toBe(3);
+  });
+
+  it("sağlayıcıya ULAŞMIŞ başarılı koşu seriyi kırar", () => {
+    /*
+      Asıl kapanma yolu bu olmalı: sağlayıcı çağrıldı ve çalıştı. Yarı-açık
+      denemenin amacı tam olarak böyle bir koşu üretmek.
+    */
+    const success = { runStatus: "SUCCEEDED", errorCode: null, reachedProvider: true };
+    expect(countConsecutiveCodexFailures([success, codexFailure, codexFailure])).toBe(0);
+  });
+
+  it("sağlayıcıya ulaşmamış BAŞARILI koşu bile seriyi kırmaz", () => {
+    // "Başarılı" olması yetmez; sağlayıcı sınanmadıysa kanıt değildir.
+    const unreachedSuccess = { runStatus: "SUCCEEDED", errorCode: null, reachedProvider: false };
+    expect(countConsecutiveCodexFailures([unreachedSuccess, codexFailure, codexFailure])).toBe(2);
+  });
+
+  it("bilgi taşımayan koşular ARADA olsa da seri sürer", () => {
+    const skipped = {
+      runStatus: "FAILED",
+      errorCode: "CONTROL_PLANE_CONTEXT_FAILED",
+      reachedProvider: false,
+    };
+    expect(
+      countConsecutiveCodexFailures([codexFailure, skipped, codexFailure, skipped, codexFailure]),
+    ).toBe(3);
+  });
+
+  it("eski kayıtlarda (alan yok) davranış değişmez", () => {
+    /*
+      Geriye dönük uyum: `reachedProvider` bilinmiyorsa koşu bilgi taşıyor
+      sayılır ve eski mantık aynen işler. Aksi hâlde tek bir deploy, geçmiş
+      kayıtlar yüzünden kesiciyi kilitli bırakabilirdi.
+    */
+    expect(
+      countConsecutiveCodexFailures([
+        { runStatus: "SUCCEEDED", errorCode: null },
+        { runStatus: "TIMED_OUT", errorCode: "CODEX_TIMEOUT" },
+      ]),
+    ).toBe(0);
+    expect(
+      countConsecutiveCodexFailures([
+        { runStatus: "TIMED_OUT", errorCode: "CODEX_TIMEOUT" },
+        { runStatus: "TIMED_OUT", errorCode: "CODEX_TIMEOUT" },
+      ]),
+    ).toBe(2);
+  });
+});
+
 describe("yarı-açık (half-open) deneme", () => {
   /*
     Kesici, ölçüsünü son sonlanmış koşulardan alıyor. Hiç koşuya izin vermezse

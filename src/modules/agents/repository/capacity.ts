@@ -83,6 +83,21 @@ export function getLatestRuntimeCapability(transaction: Prisma.TransactionClient
   });
 }
 
+/**
+ * Koşu sağlayıcıya gerçekten çağrı yaptı mı?
+ *
+ * `codexIntervals` her çağrı için bir kayıt tutuyor — kesilen çağrı dahil
+ * (`worker.ts`, `finally` bloğu). Dizi boşsa hiç çağrı yapılmamıştır. Alan
+ * hiç yoksa `undefined` dönüyor: eski kayıtlarda eski davranış korunsun.
+ */
+function runReachedProvider(usageMetadata: unknown): boolean | undefined {
+  if (!usageMetadata || typeof usageMetadata !== "object" || Array.isArray(usageMetadata))
+    return undefined;
+  const intervals = (usageMetadata as Record<string, unknown>).codexIntervals;
+  if (!Array.isArray(intervals)) return undefined;
+  return intervals.length > 0;
+}
+
 export async function getLatestRuntimeFingerprintRecord(transaction: Prisma.TransactionClient) {
   const [run, measurement] = await Promise.all([
     transaction.agentRun.findFirst({
@@ -381,8 +396,15 @@ export async function getRuntimeOperationalMetrics(
         runStatus: { in: ["SUCCEEDED", "PARTIAL", "FAILED", "TIMED_OUT"] },
       },
       orderBy: [{ finishedAt: "desc" }, { id: "desc" }],
+      /*
+        Sağlayıcıya ulaşılıp ulaşılmadığını bilmek için `usageMetadata` da
+        okunuyor: `codexIntervals` boşsa o koşuda hiç Codex çağrısı yapılmamış
+        demektir ve koşu kesici için bilgi taşımaz. Ayrımı hata kodundan tahmin
+        etmek yanlış olurdu — `CONTROL_PLANE_ACTION_EXECUTION_FAILED` karardan
+        SONRA oluşuyor, yani sağlayıcıya ulaşılmıştır.
+      */
       take: input.config.consecutiveCodexFailures,
-      select: { runStatus: true, errorCode: true },
+      select: { runStatus: true, errorCode: true, usageMetadata: true },
     }),
     transaction.agentAction.findMany({
       where: {
@@ -516,7 +538,16 @@ export async function getRuntimeOperationalMetrics(
     failedRunsInErrorWindow: terminalRuns.filter(({ runStatus }) =>
       ["FAILED", "TIMED_OUT"].includes(runStatus),
     ).length,
-    consecutiveCodexFailures: countConsecutiveCodexFailures(latestTerminalRuns),
+    consecutiveCodexFailures: countConsecutiveCodexFailures(
+      latestTerminalRuns.map((run) => {
+        const reachedProvider = runReachedProvider(run.usageMetadata);
+        return {
+          runStatus: run.runStatus,
+          errorCode: run.errorCode,
+          ...(reachedProvider === undefined ? {} : { reachedProvider }),
+        };
+      }),
+    ),
     duplicateCandidateCount: recentCandidates.length,
     duplicateRejectionCount: recentCandidates.filter(
       ({ rejectionCode }) => rejectionCode === "DUPLICATE_SIMILARITY",

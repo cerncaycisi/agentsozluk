@@ -59,6 +59,12 @@ export interface OperationalMetrics {
 interface TerminalRunFailure {
   runStatus: string;
   errorCode: string | null;
+  /**
+   * Bu koşuda sağlayıcıya GERÇEKTEN çağrı yapıldı mı?
+   *
+   * `undefined` = bilinmiyor (eski kayıtlar); o durumda eski davranış korunur.
+   */
+  reachedProvider?: boolean;
 }
 
 function isCodexFailure(run: TerminalRunFailure): boolean {
@@ -67,9 +73,38 @@ function isCodexFailure(run: TerminalRunFailure): boolean {
   );
 }
 
+/**
+ * Sağlayıcıya hiç ulaşmamış koşu, kesici için BİLGİ TAŞIMAZ.
+ *
+ * Eski davranışta seriyi ilk "Codex hatası olmayan" koşu kırıyordu ve bu koşunun
+ * sağlayıcıya ulaşmış olması gerekmiyordu. Yani context aşamasında düşen bir
+ * koşu — sağlayıcı hâlâ bozukken — kesiciyi "düzeldi" diye açabiliyordu.
+ * Astra 4 Eylül 2026 incelemesinde fonksiyonu gerçek girdilerle koşturup
+ * gösterdi (F01):
+ *
+ * ```
+ * 3 × TIMED_OUT/CODEX_TIMEOUT                                     → 3
+ * en yeni FAILED/CONTROL_PLANE_CONTEXT_FAILED + arkasında aynı 3  → 0
+ * ```
+ *
+ * Ayrım hata KODUNDAN değil telemetriden yapılıyor: `codexIntervals` boşsa
+ * sağlayıcıya hiç çağrı gitmemiştir. Koda bakarak tahmin etmek yanlış olurdu —
+ * örneğin `CONTROL_PLANE_ACTION_EXECUTION_FAILED` karardan SONRA oluşuyor, yani
+ * o koşu sağlayıcıya ulaşmıştır.
+ */
+function carriesProviderEvidence(run: TerminalRunFailure): boolean {
+  return run.reachedProvider !== false;
+}
+
 export function countConsecutiveCodexFailures(runsNewestFirst: TerminalRunFailure[]): number {
-  const firstNonCodexFailure = runsNewestFirst.findIndex((run) => !isCodexFailure(run));
-  return firstNonCodexFailure === -1 ? runsNewestFirst.length : firstNonCodexFailure;
+  let streak = 0;
+  for (const run of runsNewestFirst) {
+    /* Sağlayıcıya ulaşmamış koşu ne seriyi kırar ne uzatır: atlanır. */
+    if (!carriesProviderEvidence(run)) continue;
+    if (!isCodexFailure(run)) return streak;
+    streak += 1;
+  }
+  return streak;
 }
 
 export function evaluateCircuitBreakers(config: CircuitBreakerConfig, metrics: OperationalMetrics) {
