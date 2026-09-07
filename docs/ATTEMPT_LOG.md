@@ -6814,3 +6814,35 @@ gereken operatör script'ini taşımıyor.
   başarısız oldu. Neden terminalde yazma kimliği bulunmaması; kod veya kontrol regresyonu
   değil. Gönderim için bağlı GitHub hesabının Git veri araçlarına geçildi. Tekrarlama:
   kimliksiz terminalde aynı push'u yineleme veya kimlik bilgilerini komuta yerleştirme.
+
+## 2026-09-07 — faz başına prompt boyutu, üretim öncesi doğrulama
+
+- Taban: `e408b3c840e00168b9d7e2e06109e2be1faad435`; #118, yedi yeşil CI
+  kontrolü ve tam head doğrulamasından sonra `a21a1113bdf00f771394e60e8cc6edd1b4463465`
+  olarak birleşti. Remote `main` aynı SHA; iki tabanın dosya içerikleri eşit.
+- Node `22.23.1`, önbellekten `npx --offline pnpm@10.34.5`. İlk gereksiz Node
+  indirmesi operatör tarafından durduruldu: **`npm error signal SIGTERM`**.
+  Ortam onarımı gerekmedi; mevcut Node 22 ile kontroller geçti. Tekrarlama:
+  mevcut desteklenen sürümü ölçmeden ikinci Node indirmesi başlatma.
+- `promptChars`/`promptBytes` beş fazın interval kaydına eklendi. Worker 72/72,
+  ajan birim 560/560, release/artifact 20/20, requirement 3/3 başarılı;
+  format/lint/typecheck ve `RELEASE_SMOKE PASS static=1` geçti.
+- İncelenen Git blob'ları: `worker.ts` = `4d75d6e3fceceb1d6f7ae28f5969e64b2dce1f5a`,
+  `runtime-schemas.ts` = `35cfd4426bcc9761dbf1ae8c81d41af6b459cb06`,
+  `runtime-worker.test.ts` = `2a13d499c5e13a6a8f973c7437372cc37ad56737`.
+- Astra ilk tur: eski app/yeni worker için NO-GO, eşleşen sürümlerde kod blocker'ı
+  yok. Eski `.strict()` şemasının alanları reddettiği yerel eski/yeni şema
+  çaprazlamasında yeniden üretildi:
+  `WIRE_COMPAT_PASS old_old=accept old_new=reject new_old=accept new_new=accept`.
+  Mevcut release yolu önce drain/worker stop, sonra app, sonra worker uygular;
+  yayın bu yolla sınırlıdır. Tekrarlama: worker-only yükseltme veya yeni worker
+  açıkken yalnız app rollback yapma.
+- İkinci Astra turu: **repo merge GO / release KOŞULLU GO**. Yarım cutover'da
+  runtime `current` ile sonradan güncellenen app boot etiketi ayrışabilir;
+  reboot değerlendirmesi runbook sözleşmesinden gelir, canlı prova yapılmadı.
+  Global pause hata/reboot boyunca korunmalı; app/runtime/boot etiketi eşleşmeden
+  toplum açılmamalı. Mevcut eski app pause sırasında lease vermez. Yalnız
+  drain/stop sırasını bütün kesintiler için yeterli sayma.
+- Üretime bağlanılmadı. Canlı pencere ve DECISION deneyi tamamlanmış sayılmadı;
+  birimler, kayıt kaybı sınırları ve ölçüm protokolü
+  `PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md` içinde. Aktif sıra `PLAN.md` içinde kaldı.

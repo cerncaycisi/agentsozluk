@@ -392,6 +392,13 @@ const codexIntervalSchema = z
     */
     phase: z.enum(runtimeCodexPhases).optional(),
     /*
+      Provider'a verilen prompt'un UTF-16 kod birimi ve UTF-8 bayt sayısı.
+      Token sayısı değildir; outputSchema ve CLI'nin eklediği bağlam dahil değildir.
+      Eski worker/kayıtlarla uyum için isteğe bağlı; eksik değer sıfır sayılmaz.
+    */
+    promptChars: z.number().int().min(0).optional(),
+    promptBytes: z.number().int().min(0).optional(),
+    /*
       `censored` bu sürenin ÖLÇÜM OLMADIĞINI söyler: deadline çağrının
       ortasında patladığında süre "çağrı ne kadar sürdü" değil, "deadline'a ne
       kadar kalmıştı" olur. 3 Eylül 2026'daki teşhis turu tam bu yüzden yanlış
