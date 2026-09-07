@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 4 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
+**Son güncelleme: 7 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -10,7 +10,8 @@ konsolidasyonu:
 - **Astra (Codex GPT-6) repo+ürün incelemesi** — 4 Eylül, `4d38ebc` sürümü, F01-F10.
 
 Kanıt belgeleri ayrı yaşıyor ve buradan referanslanıyor; onlar plan değil ölçüm kaydıdır:
-`CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`, `GEZINME_FAZI_OLCUMU_2026-08-28.md`.
+`CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`, `GEZINME_FAZI_OLCUMU_2026-08-28.md`,
+`AW_FAZI_OLCUMU_2026-09-04.md`, `OLAY_SESSIZ_DURMA_2026-09-03.md`.
 Milestone geçmişi `STATUS.md`, M2 kabul kapıları
 `M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md`, uzun vadeli genel kuyruk `BACKLOG.md`.
 
@@ -328,9 +329,28 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
 
 **Kilitlenen sıra:**
 
-1. **`CODEX_TIMEOUT` düşür.** Gate 10 madde 4 en fazla %5 başarısızlık istiyor; 3 Eylül'de
-   %16,2'deyiz. Bu olmadan pencere zaten düşer. Ölçüm aleti düzeltildi (PR #106); teşhis
-   veri birikince yapılacak.
+1. **`CODEX_TIMEOUT` düşür.** Gate 10 madde 4 en fazla %5 başarısızlık istiyor.
+   **Teşhis edildi ve düzeltildi (7 Eylül)** — ayrıntı `docs/AW_FAZI_OLCUMU_2026-09-04.md`.
+
+   Timeout'ların **%78'i** son fazda, `ACTION_WORTHINESS`'te kesiliyordu (117 kesilmenin
+   91'i). AW medyanda 55 sn / p95 120 sn istiyor; ona kalan bütçenin p10'u 94 sn. Rezerv
+   çözmezdi: AW'ye 150 sn ayırmak DECISION'ı ~300 sn'ye sıkıştırırdı, oysa p90'ı 372 sn —
+   arıza taşınırdı. Çözüm AW'yi ucuzlatmak oldu: perception **daraltıldı, silinmedi**
+   (PR #112, `92cac23`).
+
+   Elenen hipotezler: gezinme (10-11 sn, fark yok), kurulum maliyeti (39 ms + 34 ms), host
+   çekişmesi (timeout'ta yük 0,26 vs başarılıda 1,67 — tersi) ve "yavaş DECISION sınıfı"
+   (dağılım tek tepeli; 335 sn koşullama etkisiydi).
+
+   **İlk sonuç:** AW p50 55 → 35 sn, timeout 42 uyanışta 0. Kalıcılığı ölçülecek.
+   - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
+         kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
+         kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış
+         şeyi ölçüyordu — o, AW'nin elediğini değil modelin `NO_ACTION` seçtiğini gösteriyor.
+         Reddedilen adaylar veritabanına ayrı satır olarak hiç yazılmıyor. Telemetri eklendi
+         (PR #116, `9fb5c63`): `verdict`, `candidateCount`, `selectedCount`. Eleme oranı
+         makul değilse projeksiyon geri alınır.
+
 2. **Kaynak tabanını kapat.** Dört ajan (`cikissagda` 8, `birazuzakta` 9, `mevsimdisi` 9,
    `yedekparca` 9) 10'a çıksın — atıf verisi HÂLÂ elimizdeyken edinme çalışsın.
 3. **Yedek + geri yükleme provası ve gerçek silme akışı.** Geri alınamaz işlem için şart.
