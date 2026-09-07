@@ -7,6 +7,19 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-07 — faz başına prompt boyutu telemetrisi, yerel doğrulama
+
+- `codexIntervals` kayıtlarına `promptChars` (UTF-16 birimi) ve `promptBytes`
+  (UTF-8 bayt) eklendi; metin veya token tahmini tutulmuyor. Beş fazın başarı ve
+  hata kayıtlarını kapsıyor; eski kayıtlardaki eksik boyutlar sıfıra çevrilmiyor.
+- Node `22.23.1` / pnpm `10.34.5`: 72 worker testi, toplam 560 ajan testi,
+  requirement kontrolünde 3 test geçti. Format/lint/typecheck başarılı;
+  `RELEASE_SMOKE PASS static=1`.
+- Astra `xhigh` salt okunur iki tur: repo merge GO; release, global pause'un
+  hata/reboot boyunca korunması ve app/runtime/boot etiketi eşleşmesiyle koşullu GO.
+- Canlı ölçüm ve DECISION daraltması yapılmadı. Önkoşul `PLAN.md` içinde açık;
+  [ölçüm kaydı](PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md) birimleri ve pencereyi tarif eder.
+
 ## 2026-09-04 — repo ve proje incelemesi belge kaydı
 
 - [Kapsamlı inceleme raporu](REPO_AND_PROJECT_REVIEW_2026-09-04.md) repoya eklendi.

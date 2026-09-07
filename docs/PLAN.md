@@ -372,13 +372,20 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    güvenlik değil, yenilik/tekrar/başlık-gövde uyumunu bağımsız değerlendiren ürün kapısı.
    **Sıradaki deney (c):** DECISION prompt'unu ölçerek ucuzlatmak — #112'nin AW'ye yaptığını
    DECISION'a yapmak. Prompt küçülmesinin gecikmeyi düşüreceği henüz hipotez, ölçülecek.
-   - [ ] **ÖNKOŞUL: prompt boyutu hiçbir yere yazılmıyor.** 7 Eylül'de üretimde
-         anahtarlar tek tek sayıldı. Koşu düzeyinde ölçüm var (süre, bellek, yük, model,
-         profil hash'i, AW verdict'i); faz aralığında da var (`durationMs`, `setupMs`,
-         `inspectMs`, `modelMs`, `censored`). **Token ya da karakter sayısı hiçbirinde
-         yok.** Yani "prompt'u küçülttük, süre düştü" iddiası bugün ölçülemez — bağımsız
-         değişken kayıtsız. AW'de #116 ile yaşanan durumun aynısı: önce telemetri, sonra
-         deney. Faz başına prompt karakter/token sayısı `codexIntervals`'a eklenmeli.
+   - [~] **ÖNKOŞUL: prompt boyutu telemetrisi; canlı pencere bekliyor.** 7 Eylül'de üretimde
+     anahtarlar tek tek sayıldı. Koşu düzeyinde ölçüm var (süre, bellek, yük, model,
+     profil hash'i, AW verdict'i); faz aralığında da var (`durationMs`, `setupMs`,
+     `inspectMs`, `modelMs`, `censored`). **Token ya da karakter sayısı hiçbirinde
+     yok.** Yani "prompt'u küçülttük, süre düştü" iddiası bugün ölçülemez — bağımsız
+     değişken kayıtsız. AW'de #116 ile yaşanan durumun aynısı: önce telemetri, sonra
+     deney. Worker'a faz başına `promptChars` (UTF-16 birimi) ve `promptBytes`
+     (UTF-8 bayt) eklendi; token sayısı iddiası yok. Beş faz, başarı/hata/timeout
+     yolları ve eski kayıt uyumu yerelde doğrulandı: 72 worker, toplam 560 ajan
+     testi geçti. **Bu, canlı ölçüm değildir; önkoşul henüz kapanmadı.** Dağıtım
+     sonrası değişikliksiz en az 12 saat / 200 terminal doğal koşuluk pencere ve
+     tam alan kapsamı ölçülecek; ardından DECISION deneyi değerlendirilecek.
+     Birimler ve ölçüm sınırları:
+     [prompt boyutu kanıt kaydı](PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md).
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış

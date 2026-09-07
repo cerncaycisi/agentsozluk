@@ -5,7 +5,7 @@ import {
   type RuntimeContext,
   type RuntimeControlPlane,
 } from "@/runtime/control-plane-client";
-import type { RuntimeProvider } from "@/runtime/provider";
+import type { RuntimeProvider, RuntimeProviderRequest } from "@/runtime/provider";
 import {
   RuntimeProviderCancelledError,
   RuntimeProviderExecutionError,
@@ -31,6 +31,7 @@ import {
 import {
   runtimeCodexInvocationLimit,
   usageMetadataSchema,
+  type RuntimeCodexPhase,
 } from "@/modules/agents/validation/runtime-schemas";
 import {
   runtimeBrowseArmAssignment,
@@ -48,6 +49,28 @@ function usageWithIntervals(
     promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
     codexIntervals,
   };
+}
+
+function expectPromptTelemetry(
+  usage: unknown,
+  calls: Array<[RuntimeCodexPhase, RuntimeProviderRequest]>,
+) {
+  // Wire şeması alanları korumalı; /complete ve /fail yeni kayıtları kabul etmeli.
+  const parsed = usageMetadataSchema.parse(usage);
+  expect(
+    parsed.codexIntervals?.map(({ phase, promptChars, promptBytes }) => ({
+      phase,
+      promptChars,
+      promptBytes,
+    })),
+  ).toEqual(
+    calls.map(([phase, request]) => ({
+      phase,
+      promptChars: request.prompt.length,
+      promptBytes: Buffer.byteLength(request.prompt, "utf8"),
+    })),
+  );
+  for (const [, request] of calls) expect(JSON.stringify(parsed)).not.toContain(request.prompt);
 }
 
 const LEASE_TOKEN = "l".repeat(43);
@@ -1467,6 +1490,10 @@ describe("long-lived agent runtime worker", () => {
         usageMetadata: { codexIntervals: unknown[] };
       };
       expect(completion.usageMetadata.codexIntervals).toHaveLength(2);
+      expectPromptTelemetry(completion.usageMetadata, [
+        ["DECISION", vi.mocked(provider.invoke).mock.calls[0]![0]],
+        ["CONTENT_REPAIR", vi.mocked(provider.invoke).mock.calls[1]![0]],
+      ]);
       expect((provider.invoke as ReturnType<typeof vi.fn>).mock.calls[1]?.[0].outputSchema).toBe(
         runtimeContentRepairWireJsonSchema,
       );
@@ -2143,6 +2170,10 @@ describe("long-lived agent runtime worker", () => {
       candidateCount: 1,
       selectedCount: 0,
     });
+    expectPromptTelemetry(usage.usageMetadata, [
+      ["DECISION", vi.mocked(provider.invoke).mock.calls[0]![0]],
+      ["ACTION_WORTHINESS", vi.mocked(actionWorthinessProvider.invoke).mock.calls[0]![0]],
+    ]);
   });
 
   it("marks a cut-off call as censored and records the failing call's host metrics", async () => {
@@ -2197,6 +2228,9 @@ describe("long-lived agent runtime worker", () => {
       };
     };
     const interval = usage.usageMetadata.codexIntervals[0]!;
+    expectPromptTelemetry(usage.usageMetadata, [
+      ["DECISION", vi.mocked(provider.invoke).mock.calls[0]![0]],
+    ]);
     expect(interval.censored).toBe(true);
     // Sürenin ayrışması: kurulum ve CLI denetimi modelin payı değil.
     expect(interval.setupMs).toBe(900);
@@ -2239,6 +2273,67 @@ describe("long-lived agent runtime worker", () => {
     for (const interval of usage.usageMetadata.codexIntervals)
       expect(interval.censored).toBeUndefined();
     expect(usage.usageMetadata.codexIntervals[0]!.modelMs).toBe(4_800);
+  });
+
+  it("measures UTF-16 units and UTF-8 bytes without persisting prompt content", async () => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const context = fixtureContext(runId);
+    const baselinePrompt = buildRuntimePrompt(context);
+    // ğ: 1 UTF-16 birimi / 2 bayt; 🙂: 2 UTF-16 birimi / 4 bayt.
+    context.persona.renderedPrompt += "ğ🙂";
+    plane.context = vi.fn().mockResolvedValue(context);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockResolvedValue({
+        provider: "codex-cli",
+        version: "test",
+        durationMs: 5,
+        output: canonicalNormalOutput("Boyut ölçümü."),
+      }),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "prompt-size-worker",
+      credentials: [`agt_${"u".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    const usage = vi.mocked(plane.complete).mock.calls[0]![4].usageMetadata;
+    expectPromptTelemetry(usage, [["DECISION", vi.mocked(provider.invoke).mock.calls[0]![0]]]);
+    expect(usageMetadataSchema.parse(usage).codexIntervals![0]).toMatchObject({
+      promptChars: baselinePrompt.length + 3,
+      promptBytes: Buffer.byteLength(baselinePrompt, "utf8") + 6,
+    });
+    expect(JSON.stringify(usage)).not.toContain("ğ🙂");
+  });
+
+  it.each([
+    ["cancellation", new RuntimeProviderCancelledError()],
+    ["execution failure", new RuntimeProviderExecutionError("CODEX_EXEC_FAILED")],
+    ["untyped failure", new Error("SAFE_TEST_FAILURE")],
+  ])("keeps prompt sizes when the provider ends with %s", async (_label, error) => {
+    const runId = randomUUID();
+    const plane = controlPlane(runId);
+    const provider: RuntimeProvider = {
+      inspect: vi.fn(),
+      invoke: vi.fn().mockRejectedValue(error),
+    };
+    const worker = new AgentRuntimeWorker({
+      workerId: "failed-prompt-size-worker",
+      credentials: [`agt_${"u".repeat(43)}`],
+      controlPlane: plane,
+      provider,
+    });
+
+    await expect(worker.runOnce()).resolves.toBe(1);
+
+    expect(plane.complete).not.toHaveBeenCalled();
+    expectPromptTelemetry(vi.mocked(plane.fail).mock.calls[0]![4].usageMetadata, [
+      ["DECISION", vi.mocked(provider.invoke).mock.calls[0]![0]],
+    ]);
   });
 
   it("fails closed when provider output does not match the runtime schema", async () => {
@@ -3006,6 +3101,10 @@ describe("long-lived agent runtime worker", () => {
     );
     expect(plane.complete).toHaveBeenCalledTimes(1);
     expect(plane.fail).not.toHaveBeenCalled();
+    expectPromptTelemetry(vi.mocked(plane.complete).mock.calls[0]![4].usageMetadata, [
+      ["DECISION", vi.mocked(provider.invoke).mock.calls[0]![0]],
+      ["DECISION_REPAIR", vi.mocked(provider.invoke).mock.calls[1]![0]],
+    ]);
   });
 
   it("fails before recording when both primary and repaired memory lineage stay unsafe", async () => {
@@ -3480,6 +3579,10 @@ describe("long-lived agent runtime worker", () => {
     expect(browseRequest?.prompt).toContain("tahtakale");
     expect(plane.context).toHaveBeenCalledTimes(2);
     expect(vi.mocked(plane.context).mock.calls[1]?.[5]).toEqual([visibleTopic]);
+    expectPromptTelemetry(vi.mocked(plane.complete).mock.calls[0]![4].usageMetadata, [
+      ["BROWSE", browseRequest!],
+      ["DECISION", decisionRequest!],
+    ]);
   });
 
   it("does not refetch context when the agent asks to read nothing", async () => {
@@ -3885,6 +3988,30 @@ describe("long-lived agent runtime worker", () => {
     expect(() =>
       usageMetadataSchema.parse(usageWithIntervals([...intervals, intervals[0]!])),
     ).toThrow();
+  });
+
+  it("accepts legacy intervals and validates optional prompt sizes without coercion", () => {
+    const legacy = {
+      startedAt: "2026-09-07T14:00:00.000Z",
+      finishedAt: "2026-09-07T14:00:01.000Z",
+      durationMs: 1_000,
+    };
+    expect(usageMetadataSchema.parse(usageWithIntervals([legacy])).codexIntervals).toEqual([
+      legacy,
+    ]);
+    for (const field of ["promptChars", "promptBytes"]) {
+      for (const valid of [0, 100_000_000]) {
+        const interval = { ...legacy, [field]: valid };
+        expect(usageMetadataSchema.parse(usageWithIntervals([interval])).codexIntervals).toEqual([
+          interval,
+        ]);
+      }
+      for (const invalid of [-1, 1.5, "100", null, Infinity, NaN, Number.MAX_SAFE_INTEGER + 1])
+        expect(
+          usageMetadataSchema.safeParse(usageWithIntervals([{ ...legacy, [field]: invalid }]))
+            .success,
+        ).toBe(false);
+    }
   });
 
   it("survives a control plane that rejects the failure report", async () => {

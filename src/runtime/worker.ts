@@ -1196,6 +1196,8 @@ export class AgentRuntimeWorker {
       finishedAt: string;
       durationMs: number;
       phase: RuntimeCodexPhase;
+      promptChars: number;
+      promptBytes: number;
       censored?: boolean;
       setupMs?: number;
       inspectMs?: number;
@@ -1223,6 +1225,9 @@ export class AgentRuntimeWorker {
       */
       if (codexIntervals.length >= runtimeCodexInvocationLimit)
         throw new Error("CODEX_INVOCATION_LIMIT_EXCEEDED");
+      // Çağrıya verilen metnin boyutu; içerik ve token tahmini kaydedilmez.
+      const promptChars = request.prompt.length;
+      const promptBytes = Buffer.byteLength(request.prompt, "utf8");
       const startedAt = new Date();
       /*
         Kesilen çağrı da kaydedilir — kaydedilmezse timeout koşusunun nerede
@@ -1262,6 +1267,8 @@ export class AgentRuntimeWorker {
           finishedAt: finishedAt.toISOString(),
           durationMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
           phase,
+          promptChars,
+          promptBytes,
           ...(censored ? { censored } : {}),
           ...(diagnostics
             ? {
