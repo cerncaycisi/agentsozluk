@@ -6846,3 +6846,30 @@ gereken operatör script'ini taşımıyor.
 - Üretime bağlanılmadı. Canlı pencere ve DECISION deneyi tamamlanmış sayılmadı;
   birimler, kayıt kaybı sınırları ve ölçüm protokolü
   `PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md` içinde. Aktif sıra `PLAN.md` içinde kaldı.
+
+## 2026-09-07 — hakem modeli düzeltmesi; Opus 5 kimlik engeli
+
+- İncelenecek kod SHA'sı: `6a31614ee8c80c5e66cc83e0d0da1c8227de451b`.
+  Gökhan, önceki Astra tercihini Claude yürütücülü düzenden devraldığını açıkladı.
+  Astra yürütürken hakem artık Fable veya Opus 5; aynı modelin ayrı oturumu bu
+  şartı karşılamıyor. Kural `AGENTS.md` ve `PLAN.md` içine işlendi; geçmiş Astra
+  bulguları başka modele atfedilmedi.
+- Ortam: Claude Code `2.1.260`, seçilen model `claude-opus-5`, salt okunur araç
+  listesi `Read/Grep/Glob`; restricted/safe mode, MCP kapalı, session persistence kapalı.
+- Deneme exit 1: **`Failed to authenticate: OAuth session expired and could not be refreshed`**.
+  JSON sonuç `is_error=true`, `modelUsage={}`; gerçek model incelemesi yapılmadı.
+  Engel CLI'nin OAuth oturumudur; kod regresyonu değildir. Kimlik onarımı veya
+  credential değişikliği yapılmadı; doğrulanmış bir auth çözümü yok.
+- Tekrarlama: aynı kimlik hatasını model alias'ını değiştirerek yeniden deneme;
+  farklı modelden hakem yerine sessizce Astra kullanma veya başarısız turu GO sayma.
+  Fable/Opus 5 hakem turu üretim öncesi açık kaldı. Üretime bağlanılmadı.
+- Belge kontrolündeki ilk lint denemesi, önceki turun Git dışında tutulan
+  `tmp/prompt-size-telemetry/wire-proof.ts:11:1` dosyasında
+  `Unexpected console statement. Only these console methods are allowed: warn, error`
+  (`no-console`) ile düştü. Neden tek kullanımlık ölçüm betiğinin ESLint tarafından
+  taranmasıydı. Betik ve geçici eski şema `.ts.txt` olarak arşivlendi; uygulama
+  kodu ve lint kuralı değişmedi. Tekrarlama: geçici TypeScript ölçüm dosyalarını
+  doğrulama araçlarının taradığı biçimde bırakma.
+- Arşivleme sonrası lint ve typecheck başarılı; belge formatı ve `git diff --check`
+  geçti. `requirements:check` 3/3 geçti. Bu değişiklik yalnız proje kuralları ve
+  kanıt belgelerini güncelliyor; uygulama kodu değişmedi.

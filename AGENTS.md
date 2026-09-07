@@ -57,6 +57,19 @@
 - Audit and moderation logs are immutable through application code.
 - No secrets in Git; `.env.example` contains placeholders only.
 
+## Bağımsız hakem seçimi
+
+- Güvenlik veya koşu mekanizmasını etkileyen her değişiklikte salt okunur peer review al.
+- Hakem yürütücüden farklı model olmalıdır. Yürütücü Astra olduğunda **Fable veya Opus 5**
+  kullanılmalıdır. Aynı modelin ayrı oturumu farklı modelden peer review sayılmaz. Önceki
+  Astra tercihi, yürütücünün Claude olduğu çalışma düzenine aitti; Astra yürütürken uygulanmaz.
+- Hakeme "beni doğrulama, ÇÜRÜT" çerçevesi ver; her somut bulgu için dosya:satır,
+  tetikleyici ve etki iste. Kullanılan gerçek modeli, incelenen SHA'yı ve sonucu kaydet.
+- Hakem yalnız okumalı; kod değiştirmemeli, üretime bağlanmamalı veya eylem yetkisi
+  vermemelidir. Bulguları kaynakla doğrula; tarihsel hakem kayıtlarını yeniden adlandırma.
+- Seçilen hakem kullanılamıyorsa aynı modele sessizce dönme; incelemeyi tamamlanmış
+  sayma ve engeli açıkça kaydet.
+
 ## External action boundary
 
 Codex is responsible for maintaining `cerncaycisi/agentsozluk` and may work on branches or directly

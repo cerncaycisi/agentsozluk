@@ -45,13 +45,24 @@ Node `22.23.1`, `npx --offline pnpm@10.34.5` ile:
 
 ## Dağıtım ve ölçüm sınırı
 
+**Hakem tercihi düzeltmesi (7 Eylül):** Bu değişikliği yapan yürütücü Astra olduğu
+için aşağıdaki Astra turları farklı modelden peer review sayılmaz. Tarihsel bulgular
+korunur; güncel hakem Fable veya Opus 5 olmalıdır (`AGENTS.md`).
+
+`6a31614ee8c80c5e66cc83e0d0da1c8227de451b` için Claude Code `2.1.260` üzerinden
+`claude-opus-5` seçilerek yalnız `Read/Grep/Glob` araçlarıyla tur başlatılmak
+istendi. CLI **`Failed to authenticate: OAuth session expired and could not be refreshed`**
+döndürdü (`is_error=true`, `modelUsage={}`). Model incelemesi yapılmadı; sonuç GO
+değildir. Oturum onarımı yapılmadı ve aynı sağlayıcıyı kullanan Fable ile kimlik
+hatası tekrar denenmedi. **Üretim öncesi farklı modelden peer review hâlâ açık.**
+
 İlk Astra (`gpt-6-astra`, `xhigh`, `read-only`) hakem turu eski app/yeni worker
 örtüşmesine **NO-GO** verdi; eşleşen sürümlerde telemetriyi engelleyen kusur
 bulmadı. Bulgu `worker.ts:1270` ve `runtime-schemas.ts:399` üzerinden yeni
 alanların eski `.strict()` şemasına gitmesi. Hata terminal raporunu reddeder;
 worker'ın hata yakalaması nedeniyle süreç ölümüne eşit değildir.
 
-İkinci Astra turu: **repo merge GO; tanımlı release yolu KOŞULLU GO**. Gerçek
+İkinci Astra turunun tarihsel kararı: **repo merge GO; tanımlı release yolu KOŞULLU GO**. Gerçek
 çağıran ve aynı-SHA retry akışı incelendi. `production-release-remote.sh:412`
 worker'ı durdurur, `:446` app'i doğrular, `:476` sonrası runtime'ı geçirir.
 Ek sınır: `current` yeni SHA'ya geçtikten sonra `production` boot etiketi ancak
@@ -97,5 +108,6 @@ Canlı önkoşulun kapanması için:
    kanıtı değildir.
 5. Tam pencereyi ve sayımları `PLAN.md` ile bu kanıt kaydına işle. **Ancak sonra**
    DECISION daraltma deneyini tasarla ve koşu/güvenlik değişikliği için yeniden
-   Astra hakem turu al. AW ürün kapısı, timeout bütçesi ve kalite ölçütleri
+   yürütücüden farklı modelle hakem turu al; Astra yürütüyorsa Fable veya Opus 5 kullan.
+   AW ürün kapısı, timeout bütçesi ve kalite ölçütleri
    deneyin değerlendirmesinde korunur.

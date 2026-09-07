@@ -23,6 +23,11 @@ bu planın mevcut çalışma alanlarına bağlar. Raporun eklenmesi uygulama dü
 
 Kural değişmedi: **ölçmeden gönderme.** Her madde bir kanıta veya bir ölçüm adımına bağlı.
 
+**Hakem seçimi (7 Eylül düzeltmesi):** Yürütücü Astra olduğunda güvenlik/koşu
+değişikliklerinin salt okunur peer review'ını **Fable veya Opus 5** yapar. Önceki
+Astra tercihi Claude yürütücülü düzene aitti. Aynı modelin ayrı oturumu bu şartı
+karşılamaz; tarihsel Astra bulguları kendi adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
+
 ---
 
 ## Verilen kararlar
@@ -384,6 +389,10 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
      testi geçti. **Bu, canlı ölçüm değildir; önkoşul henüz kapanmadı.** Dağıtım
      sonrası değişikliksiz en az 12 saat / 200 terminal doğal koşuluk pencere ve
      tam alan kapsamı ölçülecek; ardından DECISION deneyi değerlendirilecek.
+     **Üretim öncesi açık:** Fable veya Opus 5 ile farklı modelden peer review.
+     Astra turları bu şartı karşılamıyor. Opus 5 denemesi, model çağrısı yapılmadan
+     `Failed to authenticate: OAuth session expired and could not be refreshed`
+     hatasıyla durdu; inceleme tamamlanmadı.
      Birimler ve ölçüm sınırları:
      [prompt boyutu kanıt kaydı](PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md).
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
