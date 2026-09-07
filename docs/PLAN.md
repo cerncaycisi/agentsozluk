@@ -372,6 +372,15 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    güvenlik değil, yenilik/tekrar/başlık-gövde uyumunu bağımsız değerlendiren ürün kapısı.
    **Sıradaki deney (c):** DECISION prompt'unu ölçerek ucuzlatmak — #112'nin AW'ye yaptığını
    DECISION'a yapmak. Prompt küçülmesinin gecikmeyi düşüreceği henüz hipotez, ölçülecek.
+   - [ ] **ÖNKOŞUL: prompt boyutu hiçbir yere yazılmıyor.** 7 Eylül'de üretimde bakıldı:
+         `usageMetadata` anahtarları `actionWorthiness, availableMemoryMb, browseExperiment,
+         codexIntervals, codexVersion, durationMs, loadAverage1m, model, processPeakRssMb,
+         promptProfileHash, provider, reasoningEffort, swap*, systemPeakMemoryMb`; faz
+         aralığında ise `censored, durationMs, finishedAt, inspectMs, modelMs, phase,
+         setupMs, startedAt`. **Token/karakter sayısı yok.** Yani "prompt'u küçülttük,
+         süre düştü" iddiası bugün ölçülemez — bağımsız değişken kayıtsız. AW'de #116 ile
+         yaşanan durumun aynısı: önce telemetri, sonra deney. Faz başına prompt
+         karakter/token sayısı `codexIntervals`'a eklenmeli.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış
