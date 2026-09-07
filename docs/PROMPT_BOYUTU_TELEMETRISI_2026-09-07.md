@@ -25,6 +25,10 @@ kapsar. Onarım ek metni dahil, o çağrıya gerçekten verilen prompt ölçül�
 aralıklar `/complete` ve `/fail` kullanım metadatasına taşınır. Boyut kaydı,
 modelin girdiyi işlediğini kanıtlamaz: provider kurulumda da düşebilir.
 
+`DECISION_REPAIR`, DECISION prompt'unun tamamını onarım talimatıyla birlikte yeniden
+gönderir (`worker.ts:1643`). Bu yüzden faz boyutlarını toplamak, yeniden gönderilen
+metni de içeren toplam gönderim hacmini verir; benzersiz içerik hacmini vermez.
+
 Prompt metni, giriş gövdesi veya kimlik eklenmez. Şemadaki alanlar eski worker
 ve kayıtları kabul etmek için isteğe bağlıdır. Eksik alan **bilinmiyor** demektir;
 sıfırla doldurulmaz. Veritabanı migration'ı gerekmez.
@@ -54,7 +58,36 @@ korunur; güncel hakem Fable veya Opus 5 olmalıdır (`AGENTS.md`).
 istendi. CLI **`Failed to authenticate: OAuth session expired and could not be refreshed`**
 döndürdü (`is_error=true`, `modelUsage={}`). Model incelemesi yapılmadı; sonuç GO
 değildir. Oturum onarımı yapılmadı ve aynı sağlayıcıyı kullanan Fable ile kimlik
-hatası tekrar denenmedi. **Üretim öncesi farklı modelden peer review hâlâ açık.**
+hatası tekrar denenmedi. Bu, ilk başarısız denemenin kaydıdır.
+
+**Gökhan'ın "tekrar dene" talimatıyla yapılan Opus 5 turu tamamlandı.** Kod hedefi
+`6a31614ee8c80c5e66cc83e0d0da1c8227de451b`; çalışma ağacındaki `1d6a637` bu koddan
+yalnız belge değişiklikleriyle ayrılıyor. CLI sonucu `subtype=success`,
+`is_error=false`, 26 tur ve 0 izin reddi; `modelUsage` içinde `claude-opus-5`
+doğrulandı. CLI ayrıca `claude-haiku-4-5-20251001` kullanımı bildirdi.
+
+Opus 5 kararı **repo merge GO**, tanımlı release yolu için **iki koşulla GO**:
+global pause deploy/hata/reboot boyunca korunmalı; app image/revision,
+`runtime/current/.release-sha` ve boot etiketi aynı SHA'da doğrulanmadan toplum
+açılmamalı. Kodda bloke edici bulgu yok. **Farklı modelden hakem önkoşulu kapandı;
+üretim onayı ve canlı ölçüm penceresi hâlâ bekliyor.**
+
+Kaynağa karşı uzlaştırılan ölçüm notları:
+
+- **B1:** Onarımın DECISION metnini yeniden gönderdiği doğrulandı; toplam boyutun
+  anlamı yukarıda açıklığa kavuşturuldu. Geçmiş yorumdaki onarım oranı yeni canlı
+  ölçüm olarak kullanılmadı.
+- **B2:** OOM/reboot veya terminal raporunun kaydedilememesi boyut örneklerini
+  kaybettirebilir (`worker.ts:1960`, `:2092`). Bu sınır ölçüm protokolüne eklendi.
+  Hakemin sayımın yalnız raporlayabilen koşuları görebileceği yorumu ise
+  bütünüyle geçerli değil: doğal koşu satırı çağrıdan önce oluşturuluyor
+  (`repository/stochastic-scheduler.ts:246`). Tüm `agent_runs` kohortu sayılabilir; kaybolan
+  prompt boyutları geri üretilemez. Kayıtsız koşu, sıfır boyut veya sıfır çağrı değildir.
+- **B3:** Boyut hesabının `try` önünde olduğu doğru; ancak burada hata olursa
+  `provider.invoke` satırına ulaşılmaz (`worker.ts:1229-1242`). Bu durum kayıtsız
+  yapılmış bir provider çağrısı kanıtı değildir; kod değişikliği gerektirmedi.
+
+Sonuç yalnız kaynak incelemesidir. Hakem test, üretim bağlantısı veya canlı ölçüm yapmadı.
 
 İlk Astra (`gpt-6-astra`, `xhigh`, `read-only`) hakem turu eski app/yeni worker
 örtüşmesine **NO-GO** verdi; eşleşen sürümlerde telemetriyi engelleyen kusur
@@ -97,10 +130,15 @@ Canlı önkoşulun kapanması için:
    doğal `NORMAL_WAKE` koşusu** biriktir. Bu, başlangıç dağılımını gözlemek için
    seçilen operasyonel pencere; istatistiksel güç veya Gate 10 kabulü değildir.
    Nadir onarım fazları için az örnek varsa bunu ayrıca bildir.
-3. Bitiş kesiminden önce başlayan koşuların bitmesini bekle; devam edenleri ve
-   hiç interval üretmeyenleri ayrıca say. Yalnız başarıları seçme. Faz bazında
-   toplam interval, iki boyutu da bulunan interval ve eksik alan sayısını ver.
-   Yeni sürümde başlayan, çağrı kaydı olan koşularda kapsama **%100** olmalı.
+3. Bitiş kesiminden önce başlayan tüm kohortu `agent_runs` üzerinden say; terminal
+   raporu veya `usageMetadata` bulunmasını sorguya giriş koşulu yapma. Devam eden
+   koşuların bitmesini bekle ve onları ayrıca say. Hiç interval kaydı bulunmayanları
+   "çağrı yapmadı" veya sıfır boyut diye sınıflandırma: erken durma ile OOM/reboot/
+   terminal rapor kaybı bu eksik değerden tek başına ayırt edilemez. Faz bazında
+   kaydedilmiş interval, iki boyutu da bulunan interval ve eksik alan sayısını ver.
+   **%100 alan kapsamı yalnız kaydedilmiş yeni interval'lar için** aranır; tüm
+   gerçekleşmiş çağrıların kaydedildiğinin kanıtı değildir. Eksik koşu sayısını ve
+   paydasını ayrıca raporla; boyut yüzdelikleri kaydı kalmış örnekleme koşulludur.
 4. Her faz için boyut p50/p90/p95/maks; süre p50/p90/p95 ve `censored` sayısını
    ayrı raporla. Kesilmiş sürenin gerçek tamamlanma süresi olmadığı sınırı korunur;
    boyutu ise bilinir. Hatalı ve başarılı provider sonuçlarını birleştirerek

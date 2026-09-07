@@ -19,9 +19,14 @@
   hata/reboot boyunca korunması ve app/runtime/boot etiketi eşleşmesiyle koşullu GO.
   Bu iki tur aynı modelle yapıldı; 7 Eylül hakem tercihi düzeltmesiyle farklı
   modelden peer review olarak kabul edilmiyor. Tarihsel bulgular korunuyor.
-- Opus 5 peer review denemesi, model çağrısı olmadan
+- İlk Opus 5 peer review denemesi, model çağrısı olmadan
   `Failed to authenticate: OAuth session expired and could not be refreshed`
-  hatasıyla durdu. Üretim öncesi Fable/Opus 5 incelemesi açık; kod testi başarısızlığı değil.
+  hatasıyla durdu. Gökhan'ın yeniden deneme talimatıyla sonraki tur tamamlandı:
+  `is_error=false`, `modelUsage` içinde `claude-opus-5`, 26 tur, 0 izin reddi.
+  Opus 5 kod için GO; release için global pause ve app/runtime/boot etiketi eşleşmesi
+  koşullarıyla GO verdi. Farklı modelden peer review şartı kapandı.
+- Hakemin onarım metninin yeniden gönderilmesi ve terminal rapor kaybı uyarıları
+  kaynakla doğrulanıp ölçüm belgesine işlendi. Uygulama kodu değiştirilmedi.
 - Canlı ölçüm ve DECISION daraltması yapılmadı. Önkoşul `PLAN.md` içinde açık;
   [ölçüm kaydı](PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md) birimleri ve pencereyi tarif eder.
 

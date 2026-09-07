@@ -389,10 +389,11 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
      testi geçti. **Bu, canlı ölçüm değildir; önkoşul henüz kapanmadı.** Dağıtım
      sonrası değişikliksiz en az 12 saat / 200 terminal doğal koşuluk pencere ve
      tam alan kapsamı ölçülecek; ardından DECISION deneyi değerlendirilecek.
-     **Üretim öncesi açık:** Fable veya Opus 5 ile farklı modelden peer review.
-     Astra turları bu şartı karşılamıyor. Opus 5 denemesi, model çağrısı yapılmadan
-     `Failed to authenticate: OAuth session expired and could not be refreshed`
-     hatasıyla durdu; inceleme tamamlanmadı.
+     **Farklı modelden peer review tamamlandı:** ilk OAuth hatasının ardından,
+     Gökhan'ın yeniden deneme talimatıyla Opus 5 turu başarılı oldu. Kod için GO;
+     release için global pause ve app/runtime/boot etiketi eşleşmesi koşullarıyla GO.
+     Onarımda tekrar gönderilen metnin toplam hacimdeki payı ve terminal rapor kaybının
+     örneklem sınırı belgeye işlendi. **Üretim onayı ve canlı pencere hâlâ bekliyor.**
      Birimler ve ölçüm sınırları:
      [prompt boyutu kanıt kaydı](PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md).
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp

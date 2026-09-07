@@ -6873,3 +6873,29 @@ gereken operatör script'ini taşımıyor.
 - Arşivleme sonrası lint ve typecheck başarılı; belge formatı ve `git diff --check`
   geçti. `requirements:check` 3/3 geçti. Bu değişiklik yalnız proje kuralları ve
   kanıt belgelerini güncelliyor; uygulama kodu değişmedi.
+
+## 2026-09-07 — açık talimatla Opus 5 hakem turu yeniden denendi, tamamlandı
+
+- Gökhan "tekrar dene" dedi. Aynı salt okunur CLI komutu, aynı kod SHA'sı
+  `6a31614ee8c80c5e66cc83e0d0da1c8227de451b` ve aynı diff ile tekrar çalıştırıldı.
+  HEAD `1d6a637972ca9a8d3695e444dcd388466c869560`; src/tests/scripts/prisma
+  içeriğinin hedef kodla aynı olduğu inceleme öncesi ve sonrasında doğrulandı.
+- Sonuç exit 0: `subtype=success`, `is_error=false`, 26 tur, 0 izin reddi.
+  `modelUsage` anahtarları `claude-opus-5` ve `claude-haiku-4-5-20251001`.
+  Önceki OAuth hatası bu çağrıda tekrarlanmadı; bu, model kullanımının gerçekleştiği
+  kanıttır. Hatanın kullanıcı tarafında nasıl giderildiğine dair ölçüm yok;
+  tarafımızdan kimlik onarımı yapılmadı.
+- Opus 5: **repo merge GO / tanımlı release iki koşulla GO**. Global pause bütün
+  deploy/hata/reboot boyunca korunmalı; app/runtime/boot etiketi aynı SHA'da
+  doğrulanmadan toplum açılmamalı. Üretime bağlanılmadı.
+- B1 ve B2'nin ölçüm sınırları kaynakla uzlaştırıldı: DECISION_REPAIR ana prompt'u
+  yeniden gönderir; kalıcı boyut örnekleri terminal raporuna bağlıdır. Bununla
+  birlikte tüm koşu satırları `agent_runs` üzerinden sayılabilir; kayıtsız boyut
+  geri üretilemez ve sıfır sayılmaz. B3'te boyut hesabı düşerse provider çağrısına
+  ulaşılmadığı doğrulandı; ek kod düzeltmesi gerekmedi.
+- Tekrarlama: başarılı model çağrısını yalnız CLI exit kodundan veya giriş
+  durumundan çıkarma; gerçek `modelUsage` ve sonuç hatasını kontrol et. Hakem
+  yorumlarını doğrulamadan ölçüm bulgusu sayma. Peer review önkoşulu kapandı;
+  üretim onayı ve canlı pencere `PLAN.md` içinde açık kaldı.
+- Belge doğrulaması: format/lint/typecheck ve `git diff --check` geçti;
+  `requirements:check` 3/3 başarılı. Bu tur yalnız dört kanıt/plan belgesini güncelledi.
