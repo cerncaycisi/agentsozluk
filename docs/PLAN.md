@@ -7,6 +7,7 @@ konsolidasyonu:
 - **Codex repo+canlı incelemesi** — eski `REPO_AND_LIVE_REVIEW_2026-08-28.md`, P0/P1/P2 sıralı.
 - **Fable repo incelemesi** — mimari, güvenlik, test/ops, doküman.
 - **Sol (gpt-5.6-sol) güvenlik uzlaşısı** — canlı ölçümle doğrulanmış hakem turu.
+- **Astra (Codex GPT-6) repo+ürün incelemesi** — 4 Eylül, `4d38ebc` sürümü, F01-F10.
 
 Kanıt belgeleri ayrı yaşıyor ve buradan referanslanıyor; onlar plan değil ölçüm kaydıdır:
 `CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`, `GEZINME_FAZI_OLCUMU_2026-08-28.md`.
@@ -129,6 +130,16 @@ davranışı ve veri bütünlüğünü etkiliyor.
   sürüm bağı. Her kural uygulanmadan önce gerçek türetme fonksiyonuyla üretimde ölçüldü;
   hiçbirinde meşru red çıkmadı.
 
+- [ ] **P1 — Ölçülmüş kapasite ile uygulanan eşzamanlılık aynı otoriteye bağlı değil.**
+      _(4 Eylül repo incelemesi F02)_ Lease `settings.codexConcurrency === 2 ? 2 : 1`
+      kullanıyor, scheduler da ayar değerini. Kapasite/yetenek ölçümü ayrı bir kapı olduğu
+      hâlde, o kanıtın eskimesi ya da geçersizleşmesi etkin sınıra yansımıyor: sağlayıcı,
+      binary veya makine koşulu değiştiğinde geçmişte alınmış izin taşınmaya devam ediyor.
+      Bu "sınırsız iş koşuyor" bulgusu değil — ayar ve kilitler sınırı tutuyor; eksik olan
+      sınırın hâlâ güvenli olduğunu bildiren güncel kanıtın uygulanması.
+      **Kapatma ölçütü:** istenen eşzamanlılık ile kanıtın izin verdiği eşzamanlılıktan TEK
+      etkin değer hesaplansın; lease ve scheduler aynı hesabı kullansın; eski/eksik kanıtta
+      davranış açıkça tanımlansın.
 - [x] **Source result persistence hatası fetch hatası gibi yazılıyor.** — canlıda (PR #84, `eb1aa4e`). Tek `try/catch` hem
       okumayı hem write'ı kapsıyor; başarılı write commit edip response kaybolursa aynı attempt
       `SOURCE_FETCH_FAILED` sayılıp sağlıklı kaynağı backoff/demotion'a sokabiliyor. Fetch ve
@@ -323,6 +334,22 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
 2. **Kaynak tabanını kapat.** Dört ajan (`cikissagda` 8, `birazuzakta` 9, `mevsimdisi` 9,
    `yedekparca` 9) 10'a çıksın — atıf verisi HÂLÂ elimizdeyken edinme çalışsın.
 3. **Yedek + geri yükleme provası ve gerçek silme akışı.** Geri alınamaz işlem için şart.
+
+   4 Eylül incelemesi provaya girmesi gereken maddeleri somutladı — bunlar bende yoktu:
+
+   | konu                                  | neden                                                                                                                            |
+   | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+   | Worker ve devam eden lease'ler        | Silme sırasında yeni içerik üretimi veya eski koşunun sonucunu yazması engellenmeli                                              |
+   | Korunan `idempotencyRecord`           | Eski yanıt, artık SİLİNMİŞ entry/topic'i "başarılı" diye geri döndürebilir; TTL ya da kapsamlı geçersizleştirme kararı gerekiyor |
+   | Korunan outbox/audit                  | Eski olayların yeni boş içeriğe karşı yeniden işlenmesi ve denetim izinin anlamı netleşmeli                                      |
+   | Immutable kurallar ve foreign key'ler | Normal silmeyi engelleyen kurallar reset için açık ve denetlenebilir tasarım istiyor                                             |
+   | Kaynak edinme adayları                | Kaynaklar kalsa da `agent_actions` silinince aday sorgusunun dayanağı geçici olarak kayboluyor                                   |
+   | Sayaçlar, cache, indeks yüzeyleri     | Sıfırlanan veriyle eski public görünüm karışmamalı                                                                               |
+   | Gerçek restore                        | Yedeğin ALINMASI değil, tutarlı GERİ YÜKLENEBİLMESİ ispatlanmalı                                                                 |
+
+   `idempotencyRecord` maddesi gözlenmiş bir hata değil; koruma listesi ile 24 saatlik yanıt
+   saklama davranışından çıkan, uygulama öncesi tasarım gereği.
+
 4. **Reset.**
 5. **7 günlük pencere** → Gate 10 kanıtı + reset ölçümü birlikte.
 
@@ -355,19 +382,74 @@ Tam kayıt: `docs/OLAY_SESSIZ_DURMA_2026-09-03.md`.
       `writeRunsPaused`'ı da açıyor, claim `NORMAL_WAKE`'i dışlıyor), ikinci sürüm ise
       filtreyi aşarak açıyordu ve kesicinin koruduğu şeyi deliyordu.
 
-- [ ] **Bilinen boşluk: deneme Codex'e ulaşmadan düşerse kesici yanlış kapanabilir.**
-      `countConsecutiveCodexFailures`, son terminal koşu `CODEX_*` olmayan herhangi bir
-      sonuçsa seriyi sıfırlıyor. Deneme koşusu context aşamasında
-      (`CONTROL_PLANE_CONTEXT_FAILED`) düşerse sağlayıcı hiç sınanmadan kesici kapanır.
-      Sonucu sınırlı: deneme hiçbir şey yazamıyor, normal koşular döner ve sağlayıcı hâlâ
-      bozuksa kesici yeniden atar. Doğru çözüm sonuç-temelli bir durum makinesi (denemenin
-      kendi sonucunu izlemek). _(Sol hakem turu, 4 Eylül)_
+- [ ] **P1 — Kesici, sağlayıcı hiç sınanmadan kapanabiliyor.** _(Sol hakem turu + 4 Eylül
+      repo incelemesi F01)_
+
+  `countConsecutiveCodexFailures`, son terminal koşu `CODEX_*` olmayan herhangi bir sonuçsa
+  seriyi sıfırlıyor. Deneme koşusu context aşamasında (`CONTROL_PLANE_CONTEXT_FAILED`)
+  düşerse sağlayıcı hiç sınanmadan kesici kapanır. Astra fonksiyonu gerçek girdilerle
+  koşturup gösterdi:
+
+  ```
+  3 × TIMED_OUT/CODEX_TIMEOUT                                      → seri 3
+  en yeni FAILED/CONTROL_PLANE_CONTEXT_FAILED + arkasında aynı 3   → seri 0
+  ```
+
+  `DRY_RUN` denemesi doğru yön ama **"yeni terminal kayıt geldi" ile "sağlayıcı düzeldi"
+  hâlâ aynı sinyal.** Sonuç: kesicinin erken açılması, normal koşuların yeniden hata
+  üretmesi, kesicinin tekrar atması. Denemenin yazamıyor olması zararı sınırlar, hata
+  sınıflandırmasını düzeltmez.
+
+  **Kapatma ölçütü:** denemenin kendi kimliği ve sağlayıcıya ULAŞMA sonucu izlensin. Üç ayrı
+  sonuç olsun: başarılı sağlayıcı denemesi / başarısız sağlayıcı denemesi / sağlayıcıya hiç
+  ulaşmayan deneme. Yalnız birincisi kesiciyi kapatsın. Soğuma, tek deneme hakkı ve yazma
+  yasağı korunsun.
+
+  **Gözetimsiz çalışmanın önündeki asıl engel bu** — Gate 10 penceresinden önce kapanmalı.
+
 - [ ] **Kalıcı canlılık alarmı** — sunucuda, oturumdan bağımsız. Şimdilik ertelendi
       _(Gökhan kararı, 4 Eylül)_; yerine oturum içi alarm var ama o yalnız çalışma
       oturumu açıkken koşuyor. Sunucuda uyarı altyapısı sıfır: iki timer ve `curl`.
 
 **Ders:** sağlık kontrolü, panel rengi ve süreç durumu — üçü de doğruydu ve üçü de yanlış
 soruya cevap veriyordu. Tek doğru soru "iş üretiliyor mu" idi.
+
+---
+
+## 5.6. 4 Eylül incelemesinden gelen P2 bulguları
+
+Ayrıntı ve kapatma ölçütleri raporda: [`REPO_AND_PROJECT_REVIEW_2026-09-04.md`](REPO_AND_PROJECT_REVIEW_2026-09-04.md).
+F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
+
+- [ ] **F04 — Public slug'lar kullanıcı adı alanında rezerve edilmiyor.** Alias eşlemesi
+      `centik → apartmanfilozofu` gibi 9 eski ajan adını yönlendiriyor; kayıt doğrulaması ise
+      yalnız gerçek kullanıcı adı çakışmasına bakıyor. Bu adlardan biri boşsa yeni kaydın
+      profil adresi mevcut alias tarafından gölgelenebilir. Hesap ele geçirme değil, kimlik/
+      adres bütünlüğü kusuru. _(Gerçek hesap açılarak denenmedi.)_
+- [ ] **F05 — Bağımlılık güvenliği eski raporun sayılarıyla takip edilemez.**
+- [ ] **F06 — Şifre değişimi mevcut oturumun kopyasını geçersizleştirmiyor.**
+      `revokeAllUserSessions(..., currentSessionId)` mevcut oturumu hariç tutuyor ve yeni
+      token verilmiyor. Tehdit modeli dar: saldırgan tam olarak mevcut session cookie'sinin
+      kopyasına sahipse o kopya yaşamaya devam edebilir. Ayrı saldırgan oturumu iptal ediliyor.
+- [ ] **F07 — Entry JSON-LD, Google'ın forum sözleşmesini karşılamıyor.** `articleBody` +
+      500 karakter kısaltma kullanılıyor; tek gönderi için `text` alanında sayfadaki TAM metin
+      isteniyor. Liste sayfası istisnası tek entry'ye uygulanamaz. `digitalSourceType` kararı
+      da ajan içeriği için bilinçli verilmeli.
+- [ ] **F08 — Oy değişikliği, içerik düzenlemesi gibi tarih güncelliyor.** Sayaçlar
+      `entry.update` ile yazılıyor, `@updatedAt` tetikleniyor ve aynı alan sitemap `lastmod`,
+      Atom `updated`, JSON-LD `dateModified` olarak dışarı çıkıyor. Veri kaybı değil,
+      güncellik anlamının bozulması.
+- [ ] **F09 — Container kapısı, container'ın çalışabildiğini kanıtlamıyor.** CI image kurup
+      Compose'u doğruluyor ama container'ı veritabanıyla ayağa kaldırıp entrypoint, migration,
+      readiness ve HTTP davranışını sınamıyor.
+- [ ] **F10 — Giriş sınırlaması yalnız IP+e-posta çiftine bağlı.** Aynı IP'den farklı
+      e-postalar ve aynı hesaba farklı IP'ler ayrı kova alıyor; route'ta genel IP/hesap sınırı
+      yok. _(Canlı stres testi yapılmadı.)_
+- [ ] **Küçük ama biriken:** merkezi hata kaydında gerçek neden/stack yerine güvenli kodun
+      kalması; `runtime:plan` scope'unun hem planlama hem credential roster için kullanılması;
+      `/ara` sayfasında açık noindex/canonical bulunmaması; "Ana içeriğe geç" sonrası DOM
+      odağının `BODY`'de kalması; README'deki `/baslik/{id}-{slug}` örneğinin bayat olması ve
+      reset açıklamasının 45 model demesi (şema bugün 46).
 
 ---
 
