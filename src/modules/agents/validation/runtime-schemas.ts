@@ -444,6 +444,27 @@ export const usageMetadataSchema = z
       })
       .strict()
       .optional(),
+    /*
+      ACTION_WORTHINESS kapısının NE YAPTIĞI hiçbir yere yazılmıyordu.
+
+      7 Eylül 2026'da bu bir karar tıkanıklığına yol açtı: AW'ye giden
+      perception daraltıldıktan sonra "kapı köreldi mi" sorusu soruldu ve
+      cevaplanamadı. Elde yalnız dolaylı bir vekil vardı — `SKIPPED` action —
+      ama o yalnız AW'nin HER ŞEYİ reddettiği (ya da modelin kendi `NO_ACTION`
+      seçtiği) durumu gösteriyor; kısmi elemeyi hiç göstermiyor. Reddedilen
+      adaylar veritabanına ayrı satır olarak yazılmıyor, çünkü karar action'lar
+      kaydedilmeden önce dönüştürülüyor.
+
+      Kimlik veya metin tutulmuyor; yalnız sayılar ve verdict.
+    */
+    actionWorthiness: z
+      .object({
+        verdict: z.enum(["ACT", "NO_ACTION"]),
+        candidateCount: z.number().int().min(0).max(100),
+        selectedCount: z.number().int().min(0).max(100),
+      })
+      .strict()
+      .optional(),
     processPeakRssMb: z.number().min(0).max(65_536).optional(),
     systemPeakMemoryMb: z.number().min(0).max(65_536).optional(),
     availableMemoryMb: z.number().min(0).max(65_536).optional(),
