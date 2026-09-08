@@ -7078,3 +7078,30 @@ cancel_requested=0 leases=0` oldu.
   sayma; üç hızlı/üç yavaş yerel çiftten canlı gecikme kazancı çıkarma.
   Kısa/tek personalı fixture'ı canlı algı ve toplum dağılımı sayma; CLI istek
   modelini JSON akışında ayrıca sunulmamış sunucu model kimliğiyle karıştırma.
+
+## 2026-09-08 — kaynak/özgünlük eşlenmiş tekrarı, karışık sonuçla aday park edildi
+
+- İncelenen aday `7a945248c373831cd87fb72acf8e729b0daa673d`, eski kurucu
+  `7134a04c5699b5ac59a585fff120b9ce93868eb1`; runtime kodu `c08052e` ile aynı.
+  Node 22.23.1, Codex CLI 0.153.2, istek `gpt-5.6-luna/max`; yerel read-only
+  ortam. Protokol ve manifest çağrılardan önce donduruldu; hash'ler ve kanıt
+  konumları `docs/DECISION_KAYNAK_TEKRARI_2026-09-08.md` içinde.
+- İki seed persona, üç tekrar, iki kol: 12:12–12:25 TSİ, 12/12 exit 0;
+  timeout/sağlayıcı hatası/araç olayı 0. Gerçek runtime şeması 12/12;
+  kanıt kimliği ve fixture hedef/sahiplik hatası 0. Her çağrıda bir entry.
+  En fazla iki süreç; otomatik tekrar/onarım/AW/server action yok.
+- Kör hakem `claude-opus-5/high`: exit 0, is_error=false, 3 tur, izin reddi 0;
+  CLI ayrıca Haiku 4.5 kullanımı bildirdi. Bu partide A/B eşlemesi sabit.
+  İki kolda da birer özgünlük FAIL etiketi; kaynak aktarımı kaynakla doğrulandı.
+  Her özeti katkısız sayma ve tek entry'yi değersizleştirme genellemeleri
+  benimsenmedi; kesinleşmeyen kapsam yargıları CONCERN olarak korundu.
+- Aday iki çiftte kısa, dört çiftte uzun; kalite farkının yönü persona ile
+  değişti. Daraltmanın nedensel etkisi ayrıştırılmadı. Önceden dondurulmuş
+  karışık sonuç kuralıyla canlıya NO-GO, aday park edildi; #120 taslak.
+  Aynı aday için kendiliğinden üçüncü tekrar partisi açılmayacak.
+- Format/lint/typecheck ve requirements 3/3 geçti. Runtime kodu değişmedi; bu tur
+  üretime bağlanılmadı. PLAN/STATUS ve iki kalite kanıtı uzlaştırıldı.
+- Tekrarlama: yalnız en uzun sözcük dizisinin kısalmasını kalite sorununun
+  kapanması sayma; aynı gövdedeki farklı örtüşmeleri de incele. Karma sonucu
+  adaya özgü regresyon/iyileşme veya daha fazla sonuç seçme gerekçesi sayma;
+  önceki FAIL'i yeni partiyle silme. Yapısal PASS, AW/yayın kabulü değildir.

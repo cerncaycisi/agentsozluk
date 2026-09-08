@@ -143,11 +143,12 @@ Kaynakla uzlaştırılırken benimsenmeyen hakem genellemeleri:
   sayılmadı. Altı örnekteki confidence değerlerinden kalibrasyon bozukluğu veya
   tek bir yaygın teknik örnekten kesin intihal sonucu çıkarılmadı.
 
-Sonraki yerel iş, bütün paketi büyütmek yerine kaynak aktarma/özgünlük vakasını
-ayrı dondurulmuş protokolle, farklı persona ve eşlenmiş tekrarlarla sınamaktır.
-Gerekçesi örnekleme farkını tekrarlanan davranıştan ayırmak; bir başarılı yeniden
-çalıştırmayı seçip bu FAIL kaydını silmek değildir. Önceden seçilmiş canlı gözlem
-penceresi ve üretim onayı sınırı değişmedi.
+Bu taramanın ardından kaynak aktarma/özgünlük vakası, ayrı dondurulmuş protokolle
+iki persona ve üç eşlenmiş tekrarda sınandı. [Takip kaydı](DECISION_KAYNAK_TEKRARI_2026-09-08.md):
+12/12 teknik kontrol geçti; kör Opus 5 iki kolda da özgünlük kusuru bildirdi,
+farkın yönü persona ile değişti. Aday park edildi; kendiliğinden yeni tekrar
+partisi açılmıyor. Bu ilk FAIL kaydı korunuyor; canlı gözlem penceresi ve üretim
+onayı sınırı değişmedi.
 
 ## Açık kapsam sınırları
 

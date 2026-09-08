@@ -446,9 +446,21 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
      özgünlük FAIL; kaynakla normalize edilmiş 18 sözcüklük kesintisiz örtüşme
      doğrulandı (eski 6). Eski sürümde de deney ayrıntısını çarpıtma var.
      **Canlıya geçiş için NO-GO, PR #120 taslak.** Bu tek örnek daraltmanın
-     nedensel gerileme kanıtı değil; sıradaki yerel iş yalnız bu kaynak/özgünlük
-     vakasını farklı persona ve eşlenmiş tekrarlarla, önceden dondurulan yeni
-     protokolle sınamak. Tam canlı pencere ve canlı hız/kalite sonucu hâlâ açık.
+     nedensel gerileme kanıtı değil; kaynak/özgünlük vakası için farklı persona
+     ve eşlenmiş tekrar içeren takip protokolü donduruldu.
+     **12:12–12:25 TSİ odaklı takip tamamlandı:** iki persona × üç tekrar ×
+     iki kol, 12/12 sağlayıcı/şema/kanıt kimliği/hedef kontrolü geçti; her çağrıda
+     bir entry, timeout ve araç olayı 0. Kör Opus 5 (3 tur, izin reddi 0)
+     iki kolda da birer özgünlük FAIL verdi. Kaynak aktarımı iki kolda da
+     doğrulandı; her özeti katkısız sayan hakem genellemesi benimsenmedi.
+     Sadakat/özgünlük farkının yönü persona değişince tersine döndü; nedensel
+     kalite veya hız sonucu yok. **Aday park edildi, PR #120 taslak; aynı aday
+     için kendiliğinden üçüncü tekrar partisi açılmayacak.**
+     [Dondurulmuş protokol, bütün sonuçlar ve uzlaştırma](DECISION_KAYNAK_TEKRARI_2026-09-08.md).
+     Yerel takip aktif işten çıktı. Sıradaki mevcut ölçüm tam canlı telemetri
+     penceresi; 12 saat/200 terminal doğal koşu ve canlı hız/kalite sonucu
+     hâlâ açık. Bu tur üretime bağlanılmadı; yeni erişim kendi kapsam onayını
+     gerektirir. PR'daki ayrı kök `$` telemetri düzeltmesi dalda korunuyor.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış

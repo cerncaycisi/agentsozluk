@@ -7,6 +7,24 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-08 — kaynak/özgünlük takibi tamamlandı, aday park edildi
+
+- Aday `7a945248c373831cd87fb72acf8e729b0daa673d`, eski kurucu `7134a04`;
+  önceden sabitlenmiş iki persona × üç tekrar × iki kol. 12:12–12:25 TSİ'de
+  12/12 çağrı ve gerçek runtime şeması geçti; kanıt kimliği/hedef/sahiplik
+  hatası, timeout ve araç olayı 0. Her çağrıda bir entry önerildi.
+- Kör `claude-opus-5/high`: 3 tur, `is_error=false`, izin reddi 0. İki kolda
+  da birer özgünlük FAIL etiketi; sadakat iki kolda da 4 PASS / 2 CONCERN.
+  Yoğun kaynak aktarımı iki kolda da doğrulandı. Her özeti katkısız sayma ve
+  tek entry'yi değersizleştirme genellemeleri benimsenmedi.
+- Aday iki çiftte kısa, dört çiftte uzun sürdü; kalite farkının yönü persona
+  değişince tersine döndü. Adayın nedensel etkisi veya kazancı gösterilmedi.
+  Önceden sabitlenmiş karışık sonuç kuralıyla aday park edildi; canlıya NO-GO,
+  #120 taslak. Kendiliğinden üçüncü tekrar partisi açılmıyor.
+- [Takip kanıtı ve uzlaştırma](DECISION_KAYNAK_TEKRARI_2026-09-08.md).
+  Runtime kodu ve üretim değişmedi; bu tur üretime bağlanılmadı. Tam canlı
+  telemetri penceresi açık; önceki başarısız örnek aşağıdaki kayıtta korunuyor.
+
 ## 2026-09-08 — DECISION yerel kalite çağrıları 12/12
 
 - Aday `f19c4ce` ve eski kurucu `7134a04`, altı sentetik bağlam, tek persona,
