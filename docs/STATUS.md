@@ -22,6 +22,8 @@
   AW 10/10 ve diğer koşu/mod birleşimleri 40/40 bayt özdeş.
 - Taslak PR #120 açık. Canlı erişim veya daraltma deploy'u yapılmadı;
   bu sonuç model kalitesi ya da süre kazancı değildir.
+- `c08052e` artımlı Opus 5 turu repo/taslak GO: `is_error=false`, 13 tur,
+  0 izin reddi. İlk kodun CI'ı 7/7 geçti; bu, son SHA'nın CI sonucu olarak kullanılmıyor.
 
 ## 2026-09-08 — pencere sürerken DECISION için yerel hazırlık
 

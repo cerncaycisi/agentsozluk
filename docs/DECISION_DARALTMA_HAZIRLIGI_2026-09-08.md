@@ -185,3 +185,17 @@ Betik ve sayısal çıktı yerel `tmp/decision-candidate-2026-09-08/` altında.
 
 Canlı persona eşleşmesi, eşlenmiş model kalite karşılaştırması ve gecikme sonucu
 açık; aday henüz üretime gönderilmeye hazır sayılmıyor.
+
+**Kod hakemi kapandı:** `c08052ecd74bb9d82edcab03da488b441024a468` için Opus 5
+artımlı turu repo/taslak PR **GO** verdi. `is_error=false`, 13 tur, 0 izin reddi;
+gerçek model anahtarları `claude-opus-5` ve `claude-haiku-4-5-20251001`.
+Hash, gerçek browse akışı testi ve benchmark yorumu koşulları kapandı; yeni
+somut hata bulunmadı. Kodun profil hash'i
+`f2c576c857e1316f007678f6351eadc77dce452db351dcc93fa23911b88de59f`.
+
+Hakemden kalan yayın sınırları: eski profile ait capability makbuzu yeni hash
+için kullanılamaz (`production-rollout-proof.ts:276`). Bu üretim kanıt kapısıdır;
+taslak PR'ın varlığı benchmark yapılmış anlamına gelmez. Persona renderer'ındaki
+sonraki bölüm başlığı ileride değişirse eşleşme no-op olur; 10 persona boyut/metin
+testi bu değişimi yakalar. Test kırılmasını golden beklentiyi körlemesine değiştirerek
+geçirme. Hakem GO'su model davranışı, canlı başarı veya deploy izni değildir.

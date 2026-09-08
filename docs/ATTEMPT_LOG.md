@@ -7023,3 +7023,10 @@ cancel_requested=0 leases=0` oldu.
   `.ts.txt` biçiminde arşivlendi; prompt içerikleri rapora yazılmadı.
 - Tekrarlama: uzun çok-personalı stres senaryosunu daraltma A/B kanıtı sayma;
   tarihli kapasite hash'ini bugünün veya profil 40'ın hash'i olarak yeniden etiketleme.
+- `c08052ecd74bb9d82edcab03da488b441024a468` için artımlı Opus 5 turu
+  tamamlandı: exit 0, `is_error=false`, 13 tur, 0 izin reddi; gerçek model
+  anahtarları `claude-opus-5` ve `claude-haiku-4-5-20251001`. Repo/taslak GO;
+  önceki üç koşul kapandı, yeni somut hata yok. Profil hash'i
+  `f2c576c857e1316f007678f6351eadc77dce452db351dcc93fa23911b88de59f`.
+  Eski profile ait capability makbuzunun yeni üretim kanıtı olmayacağı kaydedildi.
+  İlk `ef06e10` CI'ı 7/7 başarılı; başka SHA'nın CI sonucu sayılmadı.

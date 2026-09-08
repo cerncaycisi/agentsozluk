@@ -427,6 +427,7 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
      579 ajan testi geçti; Opus 5 repo/taslak için koşullu GO verdi. Hakem sonrası
      daraltma ayarları hash'e dahil edildi ve gerçek browse akışı testi eklendi;
      odaklı 101 test geçti. [Taslak PR #120](https://github.com/cerncaycisi/agentsozluk/pull/120).
+     `c08052e` için ikinci Opus 5 turu repo/taslak **GO** verdi; kod hakemi kapandı.
      Canlı eşleşme ve model kalite karşılaştırması açık; canlı daraltma başlamadı.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
