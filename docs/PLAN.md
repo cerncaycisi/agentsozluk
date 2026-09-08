@@ -101,14 +101,18 @@ Salt okunur `claude-opus-5/high` incelemesi tamamlandı; 20 tur, izin reddi 0.
 `next.config.ts` ortam eşleme koşulu kaynakla kapandı. PR #122 head `11062a2`
 ve main `f88d64d` CI'ları 7/7 geçti. Canlı efektif ortam/origin kapısı doğru;
 anonim ana sayfada GTM/Hotjar var, arama/giriş/DNT/GPC/synthetic opt-out'ta yok.
-**İkinci SEO/GEO paketi PR #123'te hazır:** F08 içerik tarihi mevcut
+**İkinci SEO/GEO paketi PR #123 ile main'e birleşti (`cf8f426`):** F08 içerik tarihi mevcut
 revizyonlardan okunuyor; oy/favori tarihi ilerletmiyor. Sitemap sırası oyla
 oynamıyor. Ana sayfa/Hakkında/WebSite/llms aynı marka tanımını taşıyor;
 sayfa açıklamaları ayrışıyor. İki örnek tartışma mevcut canonical çözümleyiciyle
 bağlandı, gizli hedef çıkarılıyor. Çekirdek `33d22fb` Opus 5'ten repo GO aldı;
 istenen test temizliği ve ek sayfalama testi yapıldı. 1.410 unit, PostgreSQL
-5/5, ilk Chromium 6/6 ve son ayrı mobil 3/3 geçti. Son PR CI/merge kaydı ve
-üretim dağıtımı henüz yok; canlıya alım ayrı operator adımıdır.
+5/5, ilk Chromium 6/6 ve son ayrı mobil 3/3 geçti. Opus 5 `55bb99f` için de
+repo GO verdi; ardından yalnız OpenGraph locale ve iki E2E assertion eklendi.
+Son head `77bfd0a`, CI `34241165340` **7/7 PASS**: 1.410 unit, 257 entegrasyon;
+tarayıcı **88 PASS + 1 retry PASS (flaky)**. Auth testindeki `/giris`
+`net::ERR_ABORTED` ilk deneme hatasının kök nedeni bu tur ayrıştırılmadı.
+Kod teslimi tamamlandı; üretim dağıtımı henüz yok. Canlıya alım ayrı operator adımıdır.
 **Sırada dizin dışlamalarının kalan URL örnekleri ve ikinci paketin canlı kabulü var.**
 Önceki noindex örneklerinin ilk 10'u filtreli başlıklar; 499 robots, iki 404 ve
 4.405 tarandı/2.030 keşfedildi-indekslenmedi için somut URL ayrımı açık. Yeni
@@ -662,10 +666,11 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
   da ajan içeriği için bilinçli verilmeli.
   `3416827` entry/başlık şemasına tam `text` ekledi; 500+ karakter ve güvenli
   serileştirme kontrolü geçti. Canlı doğrulama ve `digitalSourceType` kararı açık.
-- [ ] **F08 — Oy değişikliği, içerik düzenlemesi gibi tarih güncelliyor.** Sayaçlar
-      `entry.update` ile yazılıyor, `@updatedAt` tetikleniyor ve aynı alan sitemap `lastmod`,
-      Atom `updated`, JSON-LD `dateModified` olarak dışarı çıkıyor. Veri kaybı değil,
-      güncellik anlamının bozulması.
+- [~] **F08 — Repo düzeltmesi tamamlandı; canlı kabulü açık.** PR #123, main
+  `cf8f426`: SEO okuyucusu revizyon/oluşturulma zamanını kullanır; oy/favori
+  public içerik tarihini ilerletmez. Entry OG, JSON-LD, sitemap ve Atom/RSS
+  test edildi. CI 7/7; Opus 5 repo GO. Üretim dağıtımı ve canlı tarih
+  doğrulaması bekliyor. [Kanıt](SEO_GEO_IKINCI_PAKET_2026-09-08.md).
 - [ ] **F09 — Container kapısı, container'ın çalışabildiğini kanıtlamıyor.** CI image kurup
       Compose'u doğruluyor ama container'ı veritabanıyla ayağa kaldırıp entrypoint, migration,
       readiness ve HTTP davranışını sınamıyor.

@@ -7391,3 +7391,36 @@ cleanup=no-cleanup`. Image/runtime ABI, migration/settings/lifecycle koruma
   assertion eklendi. Yalnız metadata kopyası; yeni güvenlik/runtime değişikliği yok.
 - Tekrarlama: sayfa openGraph tanımladığında kök nesnenin diğer alanlarının
   devralındığını varsayma; nihai HTML'de kontrol et. Son CI ayrıca kaydedilecek.
+
+## 2026-09-08 18:09 TSİ — PR #123 merge ve disk erişimi
+
+- Son head `77bfd0afe8605568088bf8536dca6c802f0dbf5c`, CI `34241165340` 7/7 PASS;
+  1.410 unit, 257 entegrasyon, 88 doğrudan tarayıcı PASS + 1 retry PASS (flaky).
+  Auth-content.spec.ts:248 ilk denemede `/giris` için `page.goto: net::ERR_ABORTED`
+  verdi; retry geçti. Kök neden ayrıştırılmadı, yeni regresyon veya tamamen
+  kararlı 89 PASS iddiası yapılmadı. Locale/F08 hedefleri geçti.
+- Exact head, base, yedi check sonucu, review durumu ve CLEAN/MERGEABLE yeniden
+  okundu; `--match-head-commit` ile squash merge `cf8f426be84ac79dd3b9075fc194cef39187c218` oldu.
+  Geçici main fast-forward edildi; içerik ağacı PR head ile aynı.
+- Eski cwd komut başlatması `Failed to create unified exec process: No such file or directory (os error 2)` verdi. `/bin/zsh` ve sistem diski erişilebilir;
+  `/Volumes/GB` yok, `/Volumes` yalnız Macintosh HD içeriyor. Disk bağlanmadı,
+  servis başlatılmadı. Remote sürüm sistem geçici dizininde izole clone edildi.
+  İlk checkout yerel main'i eski tabanda bıraktığından eşitlik kontrolü durdu;
+  `git merge --ff-only origin/main` sonrası eşitlik doğrulandı.
+- Kalıcı yöntem/ölçüm özetleri Git'te. GB üzerindeki önceki `tmp/` ham makbuzları
+  disk dönene kadar erişilemez; yeni CI logları geçici checkout tmp'sinde.
+  Son T3 denemesi yine `Computer Use server error -10005: cgWindowNotFound` verdi.
+- Tekrarlama: olmayan çalışma dizininde komutları yineleme; remote kesin sürümü
+  doğrulayarak izole checkout kullan. Disk dönüşünde eski checkout'u ayrıca
+  hizala. CI job başarısını retry gerektirmeyen test sayısıyla karıştırma.
+  Merge üretim kabulü değildir; bu tur dağıtım/restart/migration yapılmadı.
+
+- Geçici checkout bağımlılık kurulumu önce `EACCES: permission denied, mkdir '/Volumes/GB'` verdi: pnpm store eski disk yolundaydı. Yalnız bu checkout için
+  `--store-dir tmp/seo-followup-final/pnpm-store` seçildi. Ardından
+  `ERR_PNPM_NO_OFFLINE_TARBALL` geldi: `npx --offline` alt komuta da taşınmıştı.
+  `pnpm install --offline=false --frozen-lockfile` ile yalnız bu kurulumda
+  indirmeye izin verildi; global store/offline ayarı değiştirilmedi.
+
+- İzole checkout kurulumu başarıyla tamamlandı; lockfile değişmedi. Prisma
+  client üretimi, format/lint/typecheck ve requirements 3/3 geçti. Yalnız
+  PLAN/STATUS/ölçüm/attempt belgeleri değişti; uygulama kaynakları merge ile aynı.

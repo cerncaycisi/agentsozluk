@@ -4,7 +4,10 @@ Bu belge uygulama ve deney kaydıdır; tek aktif sıra [PLAN.md](PLAN.md).
 Kullanıcı, [başlangıç görünürlük ölçümünün](SEO_GEO_GORUNURLUK_OLCUMU_2026-09-08.md)
 ardından F08, marka tanımı, içerik bağlantıları ve mobil performans adayını
 hazırlama talimatı verdi. Taban `121bf9b13aa48ba4b33d12a6096c9dcccf500d0e`,
-kod `33d22fbaf72795cc941abbe7f303055cb0bf72c4`, PR #123.
+çekirdek `33d22fbaf72795cc941abbe7f303055cb0bf72c4`, son head
+`77bfd0afe8605568088bf8536dca6c802f0dbf5c`, [PR #123](https://github.com/cerncaycisi/agentsozluk/pull/123).
+Main merge `cf8f426be84ac79dd3b9075fc194cef39187c218`; içerik ağacı son head ile aynı.
+Üretim dağıtımı yapılmadı.
 
 ## F08 — içerik tarihi
 
@@ -141,7 +144,7 @@ Bu head için CI `34239883018` **7/7 PASS**: 1.410 unit, 257 entegrasyon,
 
 Hakemin yakaladığı LOW `og:locale` eksikliği ana sayfa ve Hakkında OpenGraph
 nesnelerine `tr_TR` eklenerek düzeltildi; iki yüzey mevcut marka E2E testinde
-doğrulanır. Bu son metadata düzeltmesinin CI kaydı ayrıca beklenecek. Normalizasyon
+doğrulanır. Son metadata düzeltmesi `77bfd0a` CI 7/7 içinde geçti. Normalizasyon
 mutasyonunu ayırt eden test ve About description için ek unit beklentisi LOW
 takip notlarıdır; geçerli küçük harfli sabitler ve sayfa ayrımı E2E'de kapsanır.
 Snippet uzunluğu gelecekteki özel uygulama adlarına göre ayrıca değişebilir.
@@ -176,7 +179,22 @@ performans kazanımının kanıtı değildir.
   exit 0 verdi. Bu durum uygulama regresyonu olarak tanımlanmadı. Bir typecheck
   turu E2E'nin `.next/types` üretimiyle çakışıp `TS6053` verdi; testler bittikten
   sonraki kontrol esas alınır.
-- PR #123'ün son CI sonucu teslimden önce kaydedilecek.
+- Son head `77bfd0a`, [CI 34241165340](https://github.com/cerncaycisi/agentsozluk/actions/runs/34241165340)
+  **7/7 PASS**: quality, behavior, database, coverage, browser, container ve validate.
+  Unit **1.410**, entegrasyon **257** PASS. Tarayıcı **88 PASS + 1 retry PASS (flaky)**;
+  auth-content.spec.ts:248 ilk denemede `/giris` için `page.goto: net::ERR_ABORTED`
+  verdi, retry geçti. Kök neden bu tur ayrıştırılmadı; 89 doğrudan PASS denmez.
+  Locale ve F08 testleri geçti; auth testi/kapsam eşiği değiştirilmedi.
+  Coverage statement **%94,13**, branch **%84,81**, function **%94,98**, line **%94,13**;
+  bunlar test kapsam oranlarıdır, SEO veya LLM puanı değildir.
+- PR #123 `cf8f426` olarak birleşti; exact head, checks, review durumu ve
+  mergeability hemen önce yeniden okundu. Son head ile merge ağacı aynı.
+- `/Volumes/GB` 17:59 TSİ sonrasında bağlı değildi. Eski çalışma dizini
+  `Failed to create unified exec process: No such file or directory (os error 2)`
+  verdi; `/Volumes` altında yalnız Macintosh HD vardı. Disk/servis işlemi yapılmadı.
+  Kaydedilmiş remote head, sistem geçici dizinindeki `agentsz-seo-finalize-b6gs46co`
+  checkout'una alındı; merge ve belge makbuzu buradan tamamlandı. Eski disk
+  bağlanınca orijinal checkout ayrıca hizalanmalı; buradan eşit olduğu iddia edilmez.
 - Bu tur dağıtım/restart/migration veya üretim ayar yazımı yapılmadı. Runtime,
   agent kaynakları, Prisma ve analytics dosyaları tabana göre değişmedi.
 

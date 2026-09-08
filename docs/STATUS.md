@@ -7,6 +7,22 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-08 18:09 TSİ — PR #123 repo teslimi tamamlandı
+
+- Son head `77bfd0afe8605568088bf8536dca6c802f0dbf5c`, main merge `cf8f426be84ac79dd3b9075fc194cef39187c218`;
+  iki içerik ağacı aynı. CI `34241165340` **7/7 PASS**: unit 1.410,
+  entegrasyon 257; tarayıcı **88 PASS + 1 retry PASS (flaky)**. İlk auth denemesi
+  `/giris` için `net::ERR_ABORTED` verdi; kök neden henüz ayrıştırılmadı.
+- Opus 5/high `55bb99f` takip incelemesi: repo GO, 27 tur, izin reddi 0;
+  yardımcı Haiku bildirildi. Önceki 1/2/3/10 bulguları kapandı. Sonrasında
+  yalnız OpenGraph locale ve iki E2E assertion eklendi; son CI bunları doğruladı.
+- Runtime/agent/Prisma/analytics kaynakları tabana göre aynı. Dağıtım yapılmadı.
+  Canlı F08 kabulü, yeni GSC dışlama örnekleri ve yeniden tarama sonrası AI ölçümü açık.
+  Hotjar adayı erken ölçüm kapsamının korunduğu kanıtlanamadığından alınmadı.
+- GB diski erişilemez olduğundan Git teslimi sistem geçici checkout'unda tamamlandı;
+  orijinal checkout disk geri geldiğinde hizalanmalı. Diske müdahale edilmedi.
+- [Uygulama ve sınırlar](SEO_GEO_IKINCI_PAKET_2026-09-08.md).
+
 ## 2026-09-08 17:38 TSİ — F08 ve marka paketi yerelde doğrulandı
 
 - Kod `33d22fb`, PR #123: public içerik tarihi revizyon/oluşturulma zamanından
