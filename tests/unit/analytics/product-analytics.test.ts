@@ -4,6 +4,8 @@ import {
   shouldLoadProductAnalytics,
 } from "@/lib/analytics/product-analytics";
 
+const productionSite = { nodeEnv: "production", appUrl: "https://agentsozluk.com" };
+
 describe("product analytics traffic policy", () => {
   it("measures ordinary anonymous public traffic", () => {
     const surface = classifyProductAnalyticsSurface({
@@ -14,7 +16,9 @@ describe("product analytics traffic policy", () => {
     });
 
     expect(surface).toBe("PUBLIC");
-    expect(shouldLoadProductAnalytics({ authenticated: false, surface })).toBe(true);
+    expect(shouldLoadProductAnalytics({ ...productionSite, authenticated: false, surface })).toBe(
+      true,
+    );
   });
 
   it.each(["/giris", "/kayit", "/ara", "/ayarlar/guvenlik", "/moderasyon/agentlar", "/baslik/ac"])(
@@ -28,12 +32,16 @@ describe("product analytics traffic policy", () => {
       });
 
       expect(surface).toBe("SENSITIVE");
-      expect(shouldLoadProductAnalytics({ authenticated: false, surface })).toBe(false);
+      expect(shouldLoadProductAnalytics({ ...productionSite, authenticated: false, surface })).toBe(
+        false,
+      );
     },
   );
 
   it("never measures an authenticated session, including operator sessions", () => {
-    expect(shouldLoadProductAnalytics({ authenticated: true, surface: "PUBLIC" })).toBe(false);
+    expect(
+      shouldLoadProductAnalytics({ ...productionSite, authenticated: true, surface: "PUBLIC" }),
+    ).toBe(false);
   });
 
   it("keeps public entry revision history in the anonymous measurement surface", () => {
@@ -45,7 +53,9 @@ describe("product analytics traffic policy", () => {
     });
 
     expect(surface).toBe("PUBLIC");
-    expect(shouldLoadProductAnalytics({ authenticated: false, surface })).toBe(true);
+    expect(shouldLoadProductAnalytics({ ...productionSite, authenticated: false, surface })).toBe(
+      true,
+    );
   });
 
   it.each([
@@ -56,10 +66,57 @@ describe("product analytics traffic policy", () => {
     const surface = classifyProductAnalyticsSurface({ pathname: "/son", ...signals });
 
     expect(surface).toBe("PRIVACY_OPTOUT");
-    expect(shouldLoadProductAnalytics({ authenticated: false, surface })).toBe(false);
+    expect(shouldLoadProductAnalytics({ ...productionSite, authenticated: false, surface })).toBe(
+      false,
+    );
   });
 
   it("fails closed when middleware did not classify the request", () => {
-    expect(shouldLoadProductAnalytics({ authenticated: false, surface: null })).toBe(false);
+    expect(
+      shouldLoadProductAnalytics({ ...productionSite, authenticated: false, surface: null }),
+    ).toBe(false);
+  });
+
+  it.each(["development", "test", undefined])("does not measure the %s environment", (nodeEnv) => {
+    expect(
+      shouldLoadProductAnalytics({
+        ...productionSite,
+        nodeEnv,
+        authenticated: false,
+        surface: "PUBLIC",
+      }),
+    ).toBe(false);
+  });
+
+  it.each([
+    "http://127.0.0.1:3000",
+    "http://localhost:3188",
+    "http://[::1]:3000",
+    "https://staging.agentsozluk.com",
+    "https://agentsozluk.com.example.org",
+    "http://agentsozluk.com",
+    "https://agentsozluk.com:444",
+    "invalid",
+    undefined,
+  ])("does not measure production builds configured for %s", (appUrl) => {
+    expect(
+      shouldLoadProductAnalytics({
+        ...productionSite,
+        appUrl,
+        authenticated: false,
+        surface: "PUBLIC",
+      }),
+    ).toBe(false);
+  });
+
+  it("accepts the production origin with a trailing slash", () => {
+    expect(
+      shouldLoadProductAnalytics({
+        ...productionSite,
+        appUrl: "https://agentsozluk.com/",
+        authenticated: false,
+        surface: "PUBLIC",
+      }),
+    ).toBe(true);
   });
 });

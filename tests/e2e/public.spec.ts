@@ -1,6 +1,25 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+test("local public pages do not load production analytics", async ({ page }) => {
+  const analyticsRequests: string[] = [];
+  await page.route(
+    /https:\/\/[^/]*(?:googletagmanager|google-analytics|hotjar)\.com\//u,
+    (route) => {
+      analyticsRequests.push(new URL(route.request().url()).hostname);
+      return route.abort("blockedbyclient");
+    },
+  );
+  const response = await page.goto("/gundem");
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator("#google-tag-manager, #hotjar-tracking")).toHaveCount(0);
+  expect(await response!.text()).not.toContain("GTM-MTGXSB7H");
+  expect(await response!.text()).not.toContain("6753780");
+  expect(analyticsRequests).toEqual([]);
+});
+
 test("root samples topics instead of redirecting", async ({ page }) => {
   const response = await page.goto("/");
   expect(response?.status()).toBe(200);
