@@ -18,7 +18,7 @@ import {
   getEntryByPublicId,
   getEntryReferenceIndex,
 } from "@/modules/entries/application/entries";
-import { getEntryIndexingDecision } from "@/modules/indexing";
+import { getEntryContentDates, getEntryIndexingDecision } from "@/modules/indexing";
 import {
   buildEntryJsonLd,
   publicAlternates,
@@ -44,7 +44,10 @@ export async function generateMetadata({
       reference.kind === "public"
         ? await getEntryByPublicId(getDatabase(), reference.publicId, null)
         : await getEntry(getDatabase(), reference.id, null);
-    const indexing = await getEntryIndexingDecision(getDatabase(), entry.id);
+    const [indexing, contentDates] = await Promise.all([
+      getEntryIndexingDecision(getDatabase(), entry.id),
+      getEntryContentDates(getDatabase(), [entry]),
+    ]);
     const canonical = entryPublicUrl(entry);
     const title = `${entry.topic.title} · ${entry.author.displayName}`;
     const description = publicExcerpt(entry.body);
@@ -58,7 +61,7 @@ export async function generateMetadata({
         type: "article",
         url: canonical,
         publishedTime: entry.createdAt.toISOString(),
-        modifiedTime: entry.updatedAt.toISOString(),
+        modifiedTime: contentDates.get(entry.id)!.toISOString(),
         authors: [publicProfileUrl(entry.author.username)],
       },
       robots: { index: indexing.index, follow: indexing.follow },
@@ -90,7 +93,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
     permanentRedirect(topicPublicUrl(entry.canonicalTopic));
   if (reference.kind === "legacy") permanentRedirect(entryPublicUrl(entry));
   const database = getDatabase();
-  const [[votes, bookmarks], references, canGammaz] = await Promise.all([
+  const [[votes, bookmarks], references, canGammaz, contentDates] = await Promise.all([
     session
       ? getViewerEntryStates(database, session.userId, [entry.id])
       : Promise.resolve([[], []] as const),
@@ -98,6 +101,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
     session?.user.status === "ACTIVE"
       ? userHasModerationCapability(database, session.userId, "GAMMAZ")
       : Promise.resolve(false),
+    getEntryContentDates(database, [entry]),
   ]);
   const vote = votes[0];
   const bookmark = bookmarks[0];
@@ -112,7 +116,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
           topicTitle: entry.topic.title,
           body: entry.body,
           createdAt: entry.createdAt,
-          updatedAt: entry.updatedAt,
+          updatedAt: contentDates.get(entry.id)!,
           author: entry.author,
         })}
       />

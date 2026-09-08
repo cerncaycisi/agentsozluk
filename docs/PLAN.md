@@ -101,7 +101,21 @@ Salt okunur `claude-opus-5/high` incelemesi tamamlandı; 20 tur, izin reddi 0.
 `next.config.ts` ortam eşleme koşulu kaynakla kapandı. PR #122 head `11062a2`
 ve main `f88d64d` CI'ları 7/7 geçti. Canlı efektif ortam/origin kapısı doğru;
 anonim ana sayfada GTM/Hotjar var, arama/giriş/DNT/GPC/synthetic opt-out'ta yok.
-**Sırada F08 içerik tarihi ve dizin dışlamalarının örnek bazlı ayrımı var.**
+**İkinci SEO/GEO paketi PR #123'te hazır:** F08 içerik tarihi mevcut
+revizyonlardan okunuyor; oy/favori tarihi ilerletmiyor. Sitemap sırası oyla
+oynamıyor. Ana sayfa/Hakkında/WebSite/llms aynı marka tanımını taşıyor;
+sayfa açıklamaları ayrışıyor. İki örnek tartışma mevcut canonical çözümleyiciyle
+bağlandı, gizli hedef çıkarılıyor. Çekirdek `33d22fb` Opus 5'ten repo GO aldı;
+istenen test temizliği ve ek sayfalama testi yapıldı. 1.410 unit, PostgreSQL
+5/5, ilk Chromium 6/6 ve son ayrı mobil 3/3 geçti. Son PR CI/merge kaydı ve
+üretim dağıtımı henüz yok; canlıya alım ayrı operator adımıdır.
+**Sırada dizin dışlamalarının kalan URL örnekleri ve ikinci paketin canlı kabulü var.**
+Önceki noindex örneklerinin ilk 10'u filtreli başlıklar; 499 robots, iki 404 ve
+4.405 tarandı/2.030 keşfedildi-indekslenmedi için somut URL ayrımı açık. Yeni
+T3 kontrolü `cgWindowNotFound` verdi; erişim sorunu Google/site hatası sayılmadı.
+Hotjar lazyOnload adayı, yerel 3+3 denemede ilk etkileşimde yükleyici hazır
+3/3 → 0/3 olduğu için gönderilmedi. Analytics kaynakları aynı; hız kazancı
+iddiası yok. [İkinci paket ve deney kanıtı](SEO_GEO_IKINCI_PAKET_2026-09-08.md).
 Google'ın yeniden tarama sonucu ayrıca izlenecek; 27 forum hatasının GSC'de
 kapandığı veya geçmiş Analytics verisinin temizlendiği iddia edilmiyor.
 **15:07–15:15 TSİ mobil Lighthouse başlangıcı:** dört sayfanın her birinde bir
@@ -119,8 +133,9 @@ ve **1 geçerli forum öğesi**; `/yazar/maraz` 16:24:11'de indekslenebilir ve
 Marka atfı Claude/Perplexity/Gemini'de var; ChatGPT/Google AI Mode'da yok.
 Markasız keşif ve seçilen içerik sorgusunda beşinde de atıf yok. Her hücre tek
 örnek; toplam “LLM puanı”, ürün sıralaması veya önce/sonra kazancı üretilmedi.
-F08 ve dışlama ayrımını izleyen SEO/GEO çalışmasında marka tanımının doğru
-bulunması ile markasız keşif ayrı kabul ölçümleri olacak; mevcut sonuç bunların
+İkinci paketin dağıtımı ve yeniden tarama sonrasında aynı sabit sorgular farklı
+günlerde tekrarlanacak; doğru marka tanımı ile markasız keşif ayrı kabul
+ölçümleri olacak; mevcut sonuç bunların
 nedenini veya belirli bir düzeltmenin kazancını kanıtlamaz.
 [Ölçüm, oturum koşulları ve kaynaklar](SEO_GEO_GORUNURLUK_OLCUMU_2026-09-08.md).
 

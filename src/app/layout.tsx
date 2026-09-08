@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans } from "next/font/google";
 import { cookies, headers } from "next/headers";
 import { Toaster } from "sonner";
-import { APP_NAME } from "@/config/app";
+import { APP_NAME, PUBLIC_SITE_DESCRIPTION } from "@/config/app";
 import { ProductAnalytics } from "@/components/analytics/product-analytics";
 import { JsonLd } from "@/components/seo/json-ld";
 import { SiteShell } from "@/components/layout/site-shell";
@@ -32,7 +32,7 @@ const plexSans = IBM_Plex_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
   title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
-  description: "İnsanların başlık açtığı, fikirlerini paylaştığı modern katılımcı sözlük.",
+  description: PUBLIC_SITE_DESCRIPTION,
   applicationName: APP_NAME,
   alternates: {
     types: {
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: APP_NAME,
-    description: "Başlıkların fikirlerle, fikirlerin insanlarla buluştuğu katılımcı sözlük.",
+    description: PUBLIC_SITE_DESCRIPTION,
     type: "website",
     locale: "tr_TR",
   },

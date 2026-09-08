@@ -7333,3 +7333,61 @@ cleanup=no-cleanup`. Image/runtime ABI, migration/settings/lifecycle koruma
   yeni keşif ölçümüne katma; Google AI Mode, Gemini ve tarihsel GSC AI
   gösterimlerini birbirine eşitleme. Yeni sohbeti ve gerçek gönderimi
   doğrula; kaynak havuzu büyüklüğünü yanıt atfı sayısı olarak sunma.
+
+## 2026-09-08 — ikinci SEO/GEO paketi, yerel ölçüm ve hakem
+
+- Taban `121bf9b13aa48ba4b33d12a6096c9dcccf500d0e`, çekirdek
+  `33d22fbaf72795cc941abbe7f303055cb0bf72c4`, dal `codex/seo-discovery-followup`,
+  PR #123. F08 tarih okuyucusu, ortak marka tanımı ve canonical örnek bağlantıları.
+  Runtime/agent/Prisma/analytics kaynakları değiştirilmedi. Yerel PG16.14'te
+  yalnız yeni `agentsz_seo_followup_20260908_test` oluşturuldu ve migrate edildi;
+  mevcut geliştirme/test veritabanları temizlenmedi.
+- İlk test derlemesinde `TS2724` (olmayan setBookmark export'u) ve `TS2345`
+  (editEntry argüman sırası) vardı. Gerçek servis imzalarıyla düzeldi. Gizli
+  fixture'da `23514 entries_status_timestamps_consistent_check` eksik hiddenAt
+  yüzünden geldi; fixture tamamlandı, DB kısıtı gevşetilmedi.
+- Gerçek edit/vote/bookmark ve 50.000 UUID testi geçti; ek sayfalama testinde
+  oy sonrası page 0/1 kimlikleri aynı ve ayrık. PostgreSQL indexing 5/5.
+  İlk 53 unit ve Chromium 6/6 geçti. Tam CI unit turu 29 eski mock/asenkron
+  sayfa beklentisinde düştü: `[vitest] No "getEntryContentDates" export is defined`
+  ve beklenmeden render edilen AboutPage. Testler uyarlanıp tam 1.410/1.410 geçti.
+- İlk CI browser 88 PASS / 1 mobil FAIL: `Expected: /baslik/erisilebilir-tasarim--38`,
+  `element(s) not found`. Desktop projesi aynı DB'deki fixture'ı HIDDEN bırakmıştı;
+  upsert ve finally ACTIVE'e getirildi. Ayrı mobil 3/3, exit 0 geçti.
+- Yerel birleşik tur iki desktop PASS sonrası dört dakikadan uzun ilerlemedi;
+  yalnız doğrulanmış PID 55077'nin altı süreçlik ağacı SIGTERM ile durduruldu.
+  Sonraki ayrı mobil tur başarıyla bitti; framework/env değiştirilmedi. E2E
+  başlarken eşzamanlı typecheck `TS6053 .next/types/... not found` verdi;
+  typecheck, `.next` üretimi tamamlandıktan sonra yürütülmeli.
+- Hotjar lazyOnload adayı kurulu next/script ile altı izole Chrome koşusunda
+  karşılaştırıldı. Vendor cevapları yerel stub; dış analitik teslimi 0. İlk
+  etkileşimde yükleyici hazır baseline 3/3, aday 0/3; medyan stub çalışması
+  91,1 / 1.588,9 ms. Gerçek kayıt kaybı veya Lighthouse kazancı ölçülmedi;
+  kayıt kapsamının korunduğu kanıtlanamadığından aday kaynak paketine alınmadı. Geçici betiğin
+  no-console lint hatası stdout.write ile düzeldi; lint kuralı gevşetilmedi.
+- Opus 5/high, 33d22fb salt okunur inceleme: exit 0, is_error=false, 36 tur,
+  izin reddi 0; modelUsage Opus 5 ve yardımcı Haiku 4.5. Repo GO, fixture
+  temizliği koşuluyla. Bu koşul, sayfalama testi, sayfaya özgü description ve
+  normalize örnek anahtarı karşılandı. Düşük öncelikli sınırlar ölçüm belgesinde.
+- DNS/pinned ED25519 kapısı sonrası üç public GET 200; SSH/dağıtım yok.
+  Yeni GSC URL örnekleri için T3 Split ve T3 Code Alpha girişleri
+  `Computer Use server error -10005: cgWindowNotFound` verdi. İkisi envanterde
+  çalışıyor; kullanıcıya görünür pencere ihtiyacı bildirildi. Başka browser'a
+  geçilmedi, okunmayan örnekler sınıflandırılmış sayılmadı.
+- Tekrarlama: sayfa import eden eski mock'ları çağrı değişince tara. Aynı DB'yi
+  kullanan Playwright projeleri arasında fixture durumunu bırakma. `.next`
+  üreten E2E başlangıcıyla typecheck'i paralel çalıştırma. Yükleme sırası
+  deneyini gerçek vendor işlevi veya Lighthouse kazancı olarak raporlama.
+  Kanıt `SEO_GEO_IKINCI_PAKET_2026-09-08.md` ve `tmp/seo-followup-2026-09-08/`.
+
+## 2026-09-08 — SEO takip hakemi ve OpenGraph locale
+
+- `55bb99f382a94c9a83290034f4b594e782c4fec1`, CI `34239883018`: 7/7 PASS;
+  1.410 unit, 257 entegrasyon, 89 tarayıcı testi. Son Opus 5/high incelemesi
+  exit 0, is_error=false, 27 tur, izin reddi 0; yardımcı Haiku bildirildi,
+  repo GO. 1/2/3/10 bulguları kaynakla kapandı.
+- LOW `og:locale` bulgusu: sayfanın openGraph nesnesi kökteki locale değerini
+  devralmıyor. Ana sayfa/Hakkında nesnelerine `tr_TR`, mevcut E2E'ye iki
+  assertion eklendi. Yalnız metadata kopyası; yeni güvenlik/runtime değişikliği yok.
+- Tekrarlama: sayfa openGraph tanımladığında kök nesnenin diğer alanlarının
+  devralındığını varsayma; nihai HTML'de kontrol et. Son CI ayrıca kaydedilecek.

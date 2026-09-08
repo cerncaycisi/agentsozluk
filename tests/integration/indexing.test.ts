@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import {
+  getEntryContentDates,
   getEntryIndexingDecision,
   getIndexingDashboard,
   getProfileIndexingDecision,
@@ -12,6 +13,13 @@ import {
   getSyndicationEntries,
   getTopicIndexingDecision,
 } from "@/modules/indexing";
+import { editEntry } from "@/modules/entries/application/entries";
+import {
+  setVote,
+  putBookmark,
+  deleteBookmark,
+} from "@/modules/interactions/application/interactions";
+import { buildAtomFeed, siteSyndicationFeed } from "@/modules/indexing/domain/syndication";
 import { updateGlobalSettings } from "@/modules/agents";
 import { getPublicProfile } from "@/modules/users/application/profiles";
 import writerIdentities from "@/modules/agents/personas/writer-naturalization-w1.json";
@@ -56,6 +64,129 @@ beforeEach(resetIntegrationDatabase);
 afterAll(closeIntegrationDatabase);
 
 describe("indexing policy with PostgreSQL", () => {
+  it("uses real revision dates in public metadata and feeds while votes/bookmarks retain their own state", async () => {
+    const author = await createUser("HUMAN", "date_author");
+    const voter = await createUser("HUMAN", "date_voter");
+    const createdAt = new Date("2026-01-01T09:00:00Z");
+    const topic = await integrationDatabase.topic.create({
+      data: {
+        title: "İçerik tarihi",
+        normalizedTitle: "içerik tarihi",
+        slug: "icerik-tarihi",
+        createdById: author.id,
+        createdAt,
+      },
+    });
+    const entry = await integrationDatabase.entry.create({
+      data: {
+        topicId: topic.id,
+        authorId: author.id,
+        origin: "WEB",
+        createdAt,
+        body: "İlk metnin tarihi, oy sayaçlarından bağımsız kalır.",
+        normalizedBody: "ilk metin",
+      },
+    });
+    const readDates = async () => {
+      const now = new Date(Date.now() + 24 * 60 * 60_000);
+      const [dates, sitemap, feed] = await Promise.all([
+        getEntryContentDates(integrationDatabase, [entry]),
+        getSitemapEntries(integrationDatabase, { page: 0, pageSize: 10, now }),
+        getSyndicationEntries(integrationDatabase, { now }),
+      ]);
+      expect(sitemap.find((item) => item.id === entry.id)?.updatedAt).toEqual(dates.get(entry.id));
+      expect(feed.find((item) => item.publicId === entry.publicId)?.updatedAt).toEqual(
+        dates.get(entry.id),
+      );
+      const atom = buildAtomFeed("https://example.test", siteSyndicationFeed(feed, now));
+      expect(atom).toContain(`<updated>${dates.get(entry.id)!.toISOString()}</updated>`);
+      return dates.get(entry.id)!;
+    };
+    expect(await readDates()).toEqual(createdAt);
+    await setVote(integrationDatabase, actor(voter.id), entry.id, 1);
+    await putBookmark(integrationDatabase, actor(voter.id), entry.id);
+    expect(await readDates()).toEqual(createdAt);
+    await editEntry(
+      integrationDatabase,
+      actor(author.id),
+      {
+        body: "Düzenlenen metinde içerik tarihi revizyon zamanına ilerler.",
+      },
+      entry.id,
+    );
+    const editedAt = await readDates();
+    expect(editedAt.getTime()).toBeGreaterThan(createdAt.getTime());
+    const revision = await integrationDatabase.entryRevision.findFirstOrThrow({
+      where: { entryId: entry.id },
+    });
+    expect(editedAt).toEqual(revision.createdAt);
+    await setVote(integrationDatabase, actor(voter.id), entry.id, -1);
+    await deleteBookmark(integrationDatabase, actor(voter.id), entry.id);
+    expect(await readDates()).toEqual(editedAt);
+    const stored = await integrationDatabase.entry.findUniqueOrThrow({ where: { id: entry.id } });
+    expect(stored.score).toBe(-1);
+    expect(stored.updatedAt.getTime()).toBeGreaterThanOrEqual(editedAt.getTime());
+    expect(await getEntryContentDates(integrationDatabase, [])).toEqual(new Map());
+    // Bir sitemap parçasının 50.000 farklı kimliği tek dizi parametresiyle okunur.
+    const largePage = [
+      entry,
+      ...Array.from({ length: 49_999 }, () => ({ id: randomUUID(), createdAt })),
+    ];
+    const largeDates = await getEntryContentDates(integrationDatabase, largePage);
+    expect(largeDates.size).toBe(50_000);
+    expect(largeDates.get(entry.id)).toEqual(editedAt);
+    await integrationDatabase.entry.update({
+      where: { id: entry.id },
+      data: { status: "HIDDEN", hiddenAt: new Date() },
+    });
+    expect((await getEntryContentDates(integrationDatabase, [entry])).get(entry.id)).toEqual(
+      createdAt,
+    );
+    expect(
+      await getSyndicationEntries(integrationDatabase, { now: new Date(Date.now() + 86400000) }),
+    ).toEqual([]);
+  });
+
+  it("keeps sitemap pages ordered and disjoint after an older entry receives a vote", async () => {
+    const author = await createUser("HUMAN", "page_author");
+    const voter = await createUser("HUMAN", "page_voter");
+    const createdAt = new Date("2026-01-01T09:00:00Z");
+    const topic = await integrationDatabase.topic.create({
+      data: {
+        title: "Sitemap sırası",
+        normalizedTitle: "sitemap sırası",
+        slug: "sitemap-sirasi",
+        createdById: author.id,
+        createdAt,
+      },
+    });
+    const makeEntry = (body: string) =>
+      integrationDatabase.entry.create({
+        data: {
+          topicId: topic.id,
+          authorId: author.id,
+          origin: "WEB",
+          createdAt,
+          body,
+          normalizedBody: body,
+        },
+      });
+    const first = await makeEntry("İlk yazının kararlı sitemap kimliği.");
+    const second = await makeEntry("İkinci yazının kararlı sitemap kimliği.");
+    const pages = async () => {
+      const result = await Promise.all(
+        [0, 1].map((page) => getSitemapEntries(integrationDatabase, { page, pageSize: 1 })),
+      );
+      expect(result.map((entries) => entries.map((entry) => entry.publicId))).toEqual([
+        [first.publicId],
+        [second.publicId],
+      ]);
+    };
+    await pages();
+    await setVote(integrationDatabase, actor(voter.id), first.id, 1);
+    await pages();
+  });
+
   it("resolves every public alias like the profile page and preserves noindex policy/status gates", async () => {
     const admin = await createUser("HUMAN", "alias_admin");
     for (const { username, publicSlug } of writerIdentities.profiles) {
