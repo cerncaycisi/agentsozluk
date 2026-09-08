@@ -7,6 +7,30 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-08 15:40–16:28 TSİ — Google canlı testleri ve beş üründe AI atıfları
+
+- T3 pencere erişimi tekrar çalıştı; önceki engel kapandı. `/entry/15828`
+  Google canlı testi **15:24:22**, indekslenebilir ve **1 geçerli forum öğesi**.
+  `/yazar/maraz` canlı testi **16:24:11**, getirme Başarılı, indekslemeye izin
+  var ve **1 geçerli ProfilePage**. Kayıtlı indeks sürümleri 6 Eylül / 21 Ağustos;
+  toplam 27 hatanın kapanışı veya yeni indeks/sıralama etkisi doğrulanmadı.
+- Kullanıcının Google AI Mode ve Gemini eklemesiyle beş üründe aynı üç sorgu,
+  **15 tamamlanmış yanıt**: marka atfı Claude/Perplexity/Gemini'de var,
+  ChatGPT/Google AI Mode'da yok. Markasız keşif ve içerik sorgularında beşinde
+  de atıf yok. Her hücre tek örnek; toplam LLM puanı veya ürün sıralaması değil.
+- Claude Opus 5 High incognito, Gemini Flash geçici sohbet; ChatGPT girişsiz
+  web, Perplexity Search, Google AI Mode. Kişiselleştirilmiş Claude pilotu ve
+  yanıt üretmeyen form/giriş denemeleri matrise alınmadı. Gemini'nin iki
+  markasız yanıtında web getirmesi bağımsız doğrulanmadı.
+- Gemini marka kaynağı gerçek ana sayfaya gidiyor; ek iki site bağlantısı
+  sınırlı public GET ile 200 ve doğru başlık verdi. Claude beş site URL'sini
+  başarıyla getirdi, yanıtta dört site bağlantısı vardı. Perplexity domaine
+  atıf verdi fakat AI yazar kimliğini açıklamadı.
+- Bu tur kaynak/runtime/ayar, dağıtım veya Google mülk yazımı yok; telemetri
+  kohortu korundu. Doküman tesliminde format/lint/typecheck, diff kontrolü
+  ve requirements **3/3 PASS**.
+  [Ölçüm ve kaynaklar](SEO_GEO_GORUNURLUK_OLCUMU_2026-09-08.md).
+
 ## 2026-09-08 15:07–15:25 TSİ — mobil ölçüm ve Google indeks örneği
 
 - T3 PageSpeed web arayüzünde dört URL, her birinde bir mobil örnek:

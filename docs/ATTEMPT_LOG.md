@@ -7288,3 +7288,48 @@ cleanup=no-cleanup`. Image/runtime ABI, migration/settings/lifecycle koruma
   Browsing 3/3'ü indeksleme/atıf sonucu sayma. Canlı test başlatmayı başarılı
   sonuç diye yazma; erişilemeyen AI ürünü için sıfır atıf üretme. T3 odak veya
   pencere değişiminde eski indeksleri yeniden kullanma.
+
+## 2026-09-08 — T3 erişimi toparlandı; Google ve AI ölçümleri tamamlandı
+
+- Devam tabanı `3cf04efc84b67944a0b392cf62d8f3abc5658279`; önceki canlı
+  kaynak `f88d64db67789fe8e98626a7d2d73ff68de9bae5`. T3 `getApp` yeniden
+  çalıştı; önceki `cgWindowNotFound` engeli kapandı, kök neden belirlenmedi.
+  Ajan uygulama restart veya oturum sıfırlama yapmadı. Kullanıcı Claude'a
+  giriş yaptı; gerçek tüketici arayüzü kullanıldı, CLI ile ikame edilmedi.
+- Google entry canlı testi 15:24:22: indekslenebilir / 1 geçerli forum öğesi.
+  Profil canlı testi 16:24:11: indekslenebilir / 1 geçerli ProfilePage.
+  Eski indeks sürümlerinin ve 27 hatalık raporun kapanışı ayrı tutuldu;
+  indeksleme veya validation isteği gönderilmedi.
+- Beş üründe sabit protokolün 15 yanıtı tamamlandı; marka atfı
+  ChatGPT/Claude/Perplexity/Gemini/Google AI Mode için yok/var/var/var/yok.
+  Markasız keşif ve içerik sorgularında beşinde de yok. Sayılar yerel JSON
+  kayıtlarından deterministik hesaplandı; her hücre tek bağımsız örnek.
+- Claude normal sohbetindeki `Searched the web, read a memory` pilotu
+  dışlandı; özel bellek açılmadan yeni incognito sohbetlerine geçildi.
+  Perplexity `hardVisitorGate` yanıt üretmedi, dışlandı; arayüzde kişisel
+  profil görüldükten sonraki bir tekrar tamamlandı. Gemini iki markasız
+  yanıtında grounding ayrıntısı göstermedi; web getirmesi kanıtlanmış sayılmadı.
+- T3 odak/sekme başlıkları değişebildi. Eski AX indeksleri yerine yeni
+  agentsz pane ve gömülü HTML kapsamı kullanıldı. URL alanında `typeText`
+  bir public adresi yanlış yazdı; park sayfasında işlem yapılmadan `paste`
+  ve tam değer doğrulamasıyla düzeltildi. ChatGPT girişinde clipboard zaman
+  aşımı sonrası klavye yazımı yanlış alana gitti; gönderim doğrulanmadığı
+  için sorgu sayılmadı. Doğru HTML alanında `setValue` ve Send doğrulandı.
+  Perplexity Lexical alanında `setValue` kalıcı değildi; paste + gerçek
+  Submit düğmesi kullanıldı. Google AI Mode yeni sorgusunda Return metni
+  göndermedi; Gönder sonrası kullanıcı sorgusu ve tamamlanma etiketi okundu.
+- Gemini'nin iki site bağlantısını web getirme aracı
+  `is not safe to open (non-retryable error)` ile açamadı; o araç yolu
+  durduruldu. DNS `46.225.20.177` ve pinned fingerprint yeniden eşleşti;
+  yetkili sınırlı public GET iki URL'de 200 ve doğru başlık verdi. Araç
+  hatası site 404'ü sayılmadı; SSH, deploy veya runtime değişikliği yok.
+- Kalıcı ölçüm belgesi `SEO_GEO_GORUNURLUK_OLCUMU_2026-09-08.md`;
+  sayısal makbuzlar `tmp/seo-visibility-2026-09-08/`. PLAN'da eski yalnız
+  yerelde profil maddesi güncel canlı kanıtla kapatıldı.
+- Doküman tesliminde `npx --offline pnpm@10.34.5` ile format:check, lint,
+  typecheck ve requirements:check (3/3) geçti; `git diff --check` temiz.
+  Yalnız dört doküman değişti; uygulama dağıtımı gerektirmiyor.
+- Tekrarlama: erişim hatasını sıfır atıf sayma; bellekten etkilenmiş pilotu
+  yeni keşif ölçümüne katma; Google AI Mode, Gemini ve tarihsel GSC AI
+  gösterimlerini birbirine eşitleme. Yeni sohbeti ve gerçek gönderimi
+  doğrula; kaynak havuzu büyüklüğünü yanıt atfı sayısı olarak sunma.

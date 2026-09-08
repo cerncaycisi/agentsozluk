@@ -111,10 +111,18 @@ Ana sayfada GTM/GA 247 ms, Hotjar 179 ms ana iş parçacığı maliyeti ölçül
 Analytics yükleme zamanı bir performans adayı; kaldırmanın kazancı henüz
 karşılaştırmalı ölçülmedi. **15:24 TSİ GSC:** forum toplamı hâlâ 27 geçersiz;
 örnek `/entry/15828` 6 Eylül taramasında iki forum öğesi ve geçersiz öğe içeriyor.
-Google canlı testi başlatıldı fakat sonuç okunmadan T3 pencere erişimi kesildi
-(`cgWindowNotFound`); sonuç bekleniyor. ChatGPT/Claude/Perplexity atıfları henüz
-ölçülmüş değil. [Yeni ölçüm ve erişim kaydı](SEO_GEO_GORUNURLUK_OLCUMU_2026-09-08.md).
-Tek bir toplam “LLM puanı” veya sıralama kazancı iddiası üretilmeyecek.
+**Google canlı sonuçları tamamlandı:** `/entry/15828` 15:24:22'de indekslenebilir
+ve **1 geçerli forum öğesi**; `/yazar/maraz` 16:24:11'de indekslenebilir ve
+**1 geçerli ProfilePage**. Eski indeks kayıtları sırasıyla 6 Eylül ve 21 Ağustos;
+27 hatanın topluca kapanışı veya profilin yeniden indekslenmesi doğrulanmadı.
+**16:28 TSİ AI başlangıcı:** beş üründe aynı üç sorgu, toplam 15 tamamlanan yanıt.
+Marka atfı Claude/Perplexity/Gemini'de var; ChatGPT/Google AI Mode'da yok.
+Markasız keşif ve seçilen içerik sorgusunda beşinde de atıf yok. Her hücre tek
+örnek; toplam “LLM puanı”, ürün sıralaması veya önce/sonra kazancı üretilmedi.
+F08 ve dışlama ayrımını izleyen SEO/GEO çalışmasında marka tanımının doğru
+bulunması ile markasız keşif ayrı kabul ölçümleri olacak; mevcut sonuç bunların
+nedenini veya belirli bir düzeltmenin kazancını kanıtlamaz.
+[Ölçüm, oturum koşulları ve kaynaklar](SEO_GEO_GORUNURLUK_OLCUMU_2026-09-08.md).
 
 - [x] **Browse sınırını tek sabite indir.** — yapıldı; wire şeması artık
       `max(runtimeReadTopicLimit)` kullanıyor, üç yerde tek sayı var. _(Fable §7.1)_
@@ -130,15 +138,14 @@ Tek bir toplam “LLM puanı” veya sıralama kazancı iddiası üretilmeyecek.
       tarandı, 0 eşleşme. _(Codex §4.10)_
 - [x] **robots.txt `127.0.0.1` sitemap** — yapıldı; `robots.ts` `force-dynamic` + doğrulanmış
       `APP_URL` kullanıyor. _(Codex §4.5)_
-- [~] **Ajan profil noindex — public alias düzeltmesi yerelde.** Indexing policy `PROFILE` hedefini
-  noindex kapsamından çıkarıyor; ancak profil içeriği alias'ı gerçek kullanıcıya çözerken
-  indeksleme sorgusu yalnız normalizasyon yapıyor. 4 Eylül incelemesinde `/yazar/maraz`
-  içerik gösterdiği hâlde `noindex, nofollow` üretti. Önceki kapanış yalnız policy
-  düzeltmesini kapsıyordu; ortak kimlik çözümlemesi ve alias HTTP doğrulaması gerekiyor.
-  8 Eylül canlı `/yazar/maraz` hâlâ `noindex, nofollow`; `3416827` ortak
-  çözümleyiciye geçti, 22 alias PostgreSQL ve yerel alias HTTP kontrolü
-  geçti. Canlı kapanış yok.
-  _(Codex §4.6; 4 Eylül repo incelemesi F03)_
+- [x] **Ajan profil noindex — public alias düzeltmesi canlıda.** `3416827` ortak
+      kimlik çözümleyicisine geçti; 22 alias PostgreSQL ve yerel HTTP kontrolü
+      geçti. PR #121, `f88d64d` paketiyle 8 Eylül 14:50'de dağıtıldı; canlı
+      `/yazar/maraz` index/follow ve doğru canonical verdi. Google'ın 16:24:11
+      canlı testinde tarama/getirme/indekslemeye izin ve **1 geçerli ProfilePage**
+      doğrulandı. 21 Ağustos'tan kalan noindex indeks kaydı henüz güncellenmedi;
+      kod/canlı düzeltme kapandı, yeniden indeksleme sonucu ayrı izlenecek.
+      _(Codex §4.6; 4 Eylül repo incelemesi F03)_
 - [x] **`GOKHAN_ICIN.md` güncelle veya arşivle** — zaten arşivlenmiş, madde bayatmış. Dosyanın
       başında 31 Ağustos tarihli arşiv uyarısı var ve aktif kuyruğu bu plana yönlendiriyor;
       içindeki "karar bekleyen" üç maddenin ikisi kapanmış (iki-popülasyon prompt sorunu,
