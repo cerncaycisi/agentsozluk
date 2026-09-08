@@ -1,5 +1,8 @@
-import type { Prisma } from "@prisma/client";
-import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
+import { Prisma } from "@prisma/client";
+import {
+  publiclyVisibleEntrySql,
+  publiclyVisibleEntryWhere,
+} from "@/modules/entries/repository/public-visibility";
 import { resolvePublicProfileUsername } from "@/modules/users/domain/public-identity";
 
 export function getIndexingSettingsRecord(transaction: Prisma.TransactionClient) {
@@ -40,6 +43,28 @@ export function getProfileIndexingRecord(transaction: Prisma.TransactionClient, 
     where: { usernameNormalized: resolvePublicProfileUsername(username) },
     select: { status: true, kind: true },
   });
+}
+
+// Revizyon gövdesi okunmaz. Sayfa başına tek toplu tarih sorgusu; oy/sayaç
+// yazımlarının değiştirdiği Entry.updatedAt, içerik tarihi olarak kullanılmaz.
+export function listEntryContentRevisions(
+  transaction: Prisma.TransactionClient,
+  entryIds: readonly string[],
+) {
+  // Sitemap parçası 50.000 entry içerebilir. UUID dizisi tek parametredir;
+  // 50.000 ayrı IN parametresi PostgreSQL/Prisma bind sınırını aşabilir.
+  return transaction.$queryRaw<Array<{ entryId: string; createdAt: Date }>>`
+    SELECT revision."entryId", MAX(revision."createdAt") AS "createdAt"
+    FROM "entry_revisions" AS revision
+    JOIN "entries" AS entry ON entry.id = revision."entryId"
+    JOIN "topics" AS topic ON topic.id = entry."topicId"
+    WHERE revision."entryId" = ANY(${[...entryIds]}::uuid[])
+      AND entry.status = 'ACTIVE'
+      AND entry."deletedAt" IS NULL
+      AND topic.status = 'ACTIVE'
+      AND ${publiclyVisibleEntrySql(Prisma.sql`entry`)}
+    GROUP BY revision."entryId"
+  `;
 }
 
 function istanbulDayStart(now: Date): Date {
@@ -121,11 +146,11 @@ export function listIndexableEntries(
   input: { skip: number; take: number; now: Date },
 ) {
   if (settings.indexingMode === "NOINDEX_ALL_DYNAMIC")
-    return Promise.resolve([] as Array<{ id: string; publicId: number; updatedAt: Date }>);
+    return Promise.resolve([] as Array<{ id: string; publicId: number; createdAt: Date }>);
   return transaction.entry.findMany({
     where: entrySitemapWhere(settings, input.now),
-    select: { id: true, publicId: true, updatedAt: true },
-    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    select: { id: true, publicId: true, createdAt: true },
+    orderBy: { publicId: "asc" },
     skip: input.skip,
     take: input.take,
   });
@@ -144,6 +169,7 @@ export function listSyndicationEntries(
   if (settings.indexingMode === "NOINDEX_ALL_DYNAMIC")
     return Promise.resolve(
       [] as Array<{
+        id: string;
         publicId: number;
         body: string;
         createdAt: Date;
@@ -159,6 +185,7 @@ export function listSyndicationEntries(
       ...(input.authorId ? { authorId: input.authorId } : {}),
     },
     select: {
+      id: true,
       publicId: true,
       body: true,
       createdAt: true,

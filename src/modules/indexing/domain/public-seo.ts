@@ -1,4 +1,4 @@
-import { APP_NAME } from "@/config/app";
+import { APP_NAME, PUBLIC_SITE_DESCRIPTION } from "@/config/app";
 import { publicProfileSlug } from "@/modules/users/domain/public-identity";
 
 type PublicAuthor = { username: string; displayName: string };
@@ -65,6 +65,9 @@ export function buildWebsiteJsonLd(baseUrl: string) {
   return {
     "@context": "https://schema.org",
     ...websiteData(baseUrl),
+    "@id": absolutePublicUrl(baseUrl, "/#website"),
+    description: PUBLIC_SITE_DESCRIPTION,
+    inLanguage: "tr-TR",
     potentialAction: {
       "@type": "SearchAction",
       target: `${absolutePublicUrl(baseUrl, "/ara")}?q={search_term_string}`,

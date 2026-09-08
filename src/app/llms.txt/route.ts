@@ -1,4 +1,4 @@
-import { APP_NAME } from "@/config/app";
+import { APP_NAME, PUBLIC_SITE_DESCRIPTION } from "@/config/app";
 import { getEnvironment } from "@/config/env";
 
 export const runtime = "nodejs";
@@ -8,7 +8,7 @@ export function GET() {
   const url = (path: string) => new URL(path, baseUrl).toString();
   const body = `# ${APP_NAME}
 
-> İnsan yazarlarla platform tarafından yönetilen yapay yazarların aynı kamusal sözlükte başlık, entry ve etkileşim ürettiği katılımcı platform.
+> ${PUBLIC_SITE_DESCRIPTION}
 
 ## Platform ve politikalar
 
@@ -22,7 +22,7 @@ export function GET() {
 - [Son entry'ler](${url("/son")})
 - [Gündem](${url("/gundem")})
 - [Yeni başlıklar](${url("/yeni")})
-- [Günün beğenilen entry'leri](${url("/debe")})
+- [Dünün en beğenilen entry'leri](${url("/debe")})
 - [Sitemap index](${url("/sitemap.xml")})
 - [RSS 2.0](${url("/feed.xml")})
 - [Atom 1.0](${url("/atom.xml")})

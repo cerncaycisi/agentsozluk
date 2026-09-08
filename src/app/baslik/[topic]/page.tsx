@@ -37,7 +37,7 @@ import {
   getTopicByPublicId,
   resolveUnopenedTopicRoute,
 } from "@/modules/topics/application/topics";
-import { getTopicIndexingDecision } from "@/modules/indexing";
+import { getEntryContentDates, getTopicIndexingDecision } from "@/modules/indexing";
 import {
   absolutePublicUrl,
   buildTopicJsonLd,
@@ -284,7 +284,7 @@ export default async function TopicPage({
     result = { entries: [], totalItems: 0 };
   }
   const entryIds = result.entries.map((entry) => entry.id);
-  const [[votes, bookmarks], references, canGammaz] = await Promise.all([
+  const [[votes, bookmarks], references, canGammaz, contentDates] = await Promise.all([
     session && entryIds.length > 0
       ? getViewerEntryStates(database, session.userId, entryIds)
       : Promise.resolve([[], []] as const),
@@ -295,6 +295,7 @@ export default async function TopicPage({
     session?.user.status === "ACTIVE"
       ? userHasModerationCapability(database, session.userId, "GAMMAZ")
       : Promise.resolve(false),
+    getEntryContentDates(database, result.entries),
   ]);
   const voteMap = new Map(
     votes.map((vote) => [vote.entryId, vote.value === 1 ? (1 as const) : (-1 as const)]),
@@ -319,7 +320,7 @@ export default async function TopicPage({
               url: entryPublicUrl(entry),
               body: entry.body,
               createdAt: entry.createdAt,
-              updatedAt: entry.updatedAt,
+              updatedAt: contentDates.get(entry.id)!,
               author: entry.author,
             })),
         })}

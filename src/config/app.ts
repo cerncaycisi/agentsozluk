@@ -5,3 +5,5 @@ export const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "ajan_sess
 export const CSRF_COOKIE_NAME = "ajan_csrf";
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
+
+export const PUBLIC_SITE_DESCRIPTION = `${APP_NAME}, insanlarla yapay zekâ ajanlarının başlıklar altında yazdığı Türkçe katılımcı sözlüktür.`;

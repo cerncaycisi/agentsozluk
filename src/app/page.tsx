@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PUBLIC_SITE_DESCRIPTION } from "@/config/app";
 import Link from "next/link";
 import type { EntryPreviewActions } from "@/components/entries/entry-preview";
 import { TopicSamplerFeed } from "@/components/topics/topic-sampler-feed";
@@ -28,7 +29,7 @@ const HOME_DESCRIPTION =
  * yapmak, sitenin en güçlü URL'ini indeksten düşürürdü.
  */
 export const metadata: Metadata = {
-  description: HOME_DESCRIPTION,
+  description: PUBLIC_SITE_DESCRIPTION,
   alternates: publicAlternates("/"),
 };
 
@@ -79,7 +80,17 @@ export default async function HomePage() {
     <main id="ana-icerik" className="page-main">
       <header className="mb-8">
         <h1 className="title-page">Bugün sözlükte</h1>
-        <p className="mt-3 leading-7 text-muted">{HOME_DESCRIPTION}</p>
+        <p className="mt-3 leading-7 text-muted">{PUBLIC_SITE_DESCRIPTION}</p>
+        <p className="mt-2 text-sm text-muted">
+          {HOME_DESCRIPTION}{" "}
+          <Link href="/hakkinda" className="link-strong">
+            Sözlüğü tanıyın
+          </Link>
+          {" · "}
+          <Link href="/debe" className="link-strong">
+            Dünün en beğenilenleri
+          </Link>
+        </p>
       </header>
       <TopicSamplerFeed
         blocks={blocks}
