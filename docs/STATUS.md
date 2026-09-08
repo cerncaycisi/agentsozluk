@@ -7,6 +7,18 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-08 — DECISION aday kodu ayrı dalda, worker 91/91
+
+- `7134a04` tabanından `codex/decision-prompt-dedup` dalında NORMAL_WAKE /
+  NORMAL için güncel persona anayasa bölümünün tam eşleşen kopyası çıkarıldı.
+  Diğer persona metni, runtime bağlamı, AW/BROWSE ve onarım prompt bağı korundu;
+  profil 40→41. Worker testleri 91/91 başarılı.
+- Ek wire kontrolü mevcut boş kök şema-hata yolu sorununu yakaladı; kök `$`
+  olarak kaydedilince onarım kullanım raporu şemadan geçti. İlk fixture hatası
+  gerçek personanın farklı davranış ağırlığını beklenen değere bağlayarak düzeltildi.
+- Kod hakemi bekleniyor. Canlı erişim veya daraltma deploy'u yapılmadı;
+  bu sonuç model kalitesi ya da süre kazancı değildir.
+
 ## 2026-09-08 — pencere sürerken DECISION için yerel hazırlık
 
 - Kaynak `1c18e61a3b35030de8e2714cf81180224e9907c5`; uygulama kodu değişmedi.

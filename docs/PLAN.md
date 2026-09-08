@@ -377,6 +377,11 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    güvenlik değil, yenilik/tekrar/başlık-gövde uyumunu bağımsız değerlendiren ürün kapısı.
    **Sıradaki deney (c):** DECISION prompt'unu ölçerek ucuzlatmak — #112'nin AW'ye yaptığını
    DECISION'a yapmak. Prompt küçülmesinin gecikmeyi düşüreceği henüz hipotez, ölçülecek.
+   **8 Eylül hızlandırma kararı:** yerel aday kodu, testler ve bağımsız hakem
+   incelemesi canlı pencere sürerken yapılır. 12 saat / 200 koşu operasyonel
+   gözlem hedefidir; yerel geliştirme için bekleme şartı değildir. Canlı deneyi
+   erkene almak ayrı, gerekçeli ölçüm protokolü kararı gerektirir; bu turda
+   üretim değişikliği veya önkoşulun tamamlandığı iddiası yok.
    - [~] **ÖNKOŞUL: prompt boyutu telemetrisi canlıda; ölçüm penceresi başladı.** 7 Eylül'de üretimde
      anahtarlar tek tek sayıldı. Koşu düzeyinde ölçüm var (süre, bellek, yük, model,
      profil hash'i, AW verdict'i); faz aralığında da var (`durationMs`, `setupMs`,
@@ -415,6 +420,11 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
      Opus 5 yalnız hazırlık için koşullu GO verdi; canlı persona snapshot'larının
      tam eşleşme kapsamı ve gerçek adayın davranış etkisi ayrıca doğrulanacak.
      Bu hazırlık tam pencere önkoşulunu kapatmaz ve canlı deney başlatmaz.
+     **Yerel aday uygulandı:** `codex/decision-prompt-dedup` dalında yalnız
+     NORMAL_WAKE / NORMAL için tam eşleşen persona bölümü çıkarılıyor; profil
+     40→41. Worker testleri 91/91 geçti. Testte bulunan kök şema-hata yolu
+     telemetrisi boş string yerine `$` kullanılarak düzeltildi. Kod hakemi,
+     canlı eşleşme ve model kalite karşılaştırması açık; canlı daraltma başlamadı.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış

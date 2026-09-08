@@ -684,6 +684,30 @@ function safeContentRepairCandidate(
   return safe ? repaired : null;
 }
 
+function decisionPersonaPrompt(context: RuntimeContext): string {
+  const prompt = context.persona.renderedPrompt;
+  if (context.run.runType !== "NORMAL_WAKE" || context.run.runtimeOperatingMode !== "NORMAL")
+    return prompt;
+
+  // Snapshot'ı değiştirme: BROWSE/AW tam personayı kullanmaya devam eder.
+  // Yalnız güncel maddelerin tek, tam bölümünü çıkar; runtime kopyası aşağıda kalır.
+  const block =
+    [
+      runtimePromptScaffold.constitutionHeading,
+      ...runtimePromptScaffold.constitutionInstructions.map((instruction) => `- ${instruction}`),
+    ].join("\n") + "\n\n";
+  const start = prompt.indexOf(block);
+  if (
+    start < 0 ||
+    (start > 0 && prompt[start - 1] !== "\n") ||
+    prompt.indexOf(block, start + block.length) !== -1 ||
+    !prompt.slice(start + block.length).startsWith("# Humor and conflict\n")
+  )
+    return prompt;
+
+  return prompt.slice(0, start) + prompt.slice(start + block.length);
+}
+
 export function buildRuntimePrompt(context: RuntimeContext): string {
   const projectedPerception = projectRuntimePerception(context.perception);
   const safeContext = {
@@ -696,7 +720,7 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
     },
   };
   return [
-    context.persona.renderedPrompt,
+    decisionPersonaPrompt(context),
     "",
     runtimePromptScaffold.runtimeHeading,
     runtimePromptInvariants[0],
@@ -1604,11 +1628,12 @@ export class AgentRuntimeWorker {
         const schemaIssuePaths = !parsedDecision.success
           ? [
               ...new Set(
-                parsedDecision.error.issues.map(({ path }) =>
-                  path
-                    .map((segment) => (typeof segment === "number" ? "[]" : String(segment)))
-                    .join(".")
-                    .slice(0, 60),
+                parsedDecision.error.issues.map(
+                  ({ path }) =>
+                    path
+                      .map((segment) => (typeof segment === "number" ? "[]" : String(segment)))
+                      .join(".")
+                      .slice(0, 60) || "$",
                 ),
               ),
             ]

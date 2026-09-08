@@ -234,7 +234,7 @@ export const runtimePromptScaffold = {
 export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   .update(
     JSON.stringify({
-      profileVersion: 40,
+      profileVersion: 41,
       dynamicEvolutionSchemaVersion: 1,
       dynamicMemoryConsolidationSchemaVersion: runtimeMemoryConsolidationSchemaVersion,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,

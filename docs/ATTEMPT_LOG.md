@@ -6989,3 +6989,21 @@ cancel_requested=0 leases=0` oldu.
   snapshot eşleşmesi sayma; aynı maddelerin farklı biçimini bayt özdeşliği veya
   davranış eşdeğerliği sayma; küçük fixture oranını canlı süre kazanımı diye yazma.
   Üretime bağlanılmadı, baseline penceresi kısaltılmadı, yeni model deneyi yapılmadı.
+
+## 2026-09-08 — yerel DECISION adayının ilk testleri
+
+- Taban `7134a04c5699b5ac59a585fff120b9ce93868eb1`, dal
+  `codex/decision-prompt-dedup`; Node 22 / pnpm 10.34.5. Yerel geliştirme,
+  kullanıcının hızlandırma talimatıyla canlı pencere beklenmeden başladı.
+- İlk worker turu 89 PASS / 2 FAIL. Bir hata fixture kaynaklıydı:
+  `expected ... to contain 'topicCreationTendency=0.72'`; gerçek seed persona
+  farklı ağırlık taşıyor. Beklenti verilen context'in gerçek ağırlığına bağlandı.
+- Diğer hata uygulamanın mevcut onarım raporundaydı: Zod
+  `decisionRepair.schemaIssuePaths[0]`, `too_small`,
+  `Too small: expected string to have >=1 characters`. Worker kök hata yolunu
+  boş string'e çeviriyor, wire şeması bunu reddediyordu. Kök artık sabit `$`;
+  validator zayıflatılmadı. Malformed-output → repair → complete kullanım
+  raporunu şemadan geçiren test eklendi; model çıktısı telemetriye yazılmıyor.
+- Odaklı worker tekrarı **91/91 PASS**. Tekrarlama: mocked control-plane
+  kabulünü wire geçerliliği sanma; fixture farkını kod regresyonu sayma.
+  Kaynak/yerel test kanıtı canlı hata sıklığı veya performans kazanımı değildir.

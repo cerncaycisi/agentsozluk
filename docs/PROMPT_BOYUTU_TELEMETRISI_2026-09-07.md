@@ -192,8 +192,11 @@ Worker `active/running`, `NRestarts=0`; global ayar hash'i aynı ve sürüm 266.
    boyutu ise bilinir. Hatalı ve başarılı provider sonuçlarını birleştirerek
    tamamlanma gecikmesi sonucu çıkarma. Boyut-süre ilişkisi tek başına nedensellik
    kanıtı değildir.
-5. Tam pencereyi ve sayımları `PLAN.md` ile bu kanıt kaydına işle. **Ancak sonra**
-   DECISION daraltma deneyini tasarla ve koşu/güvenlik değişikliği için yeniden
-   yürütücüden farklı modelle hakem turu al; Astra yürütüyorsa Fable veya Opus 5 kullan.
+5. Tam pencereyi ve sayımları `PLAN.md` ile bu kanıt kaydına işle. **8 Eylül
+   hızlandırma kararı:** yerel aday geliştirme, test ve bağımsız hakem hazırlığı
+   bu pencereyle birlikte ilerleyebilir. Canlı deneye erken geçiş, ölçülen
+   kapsamı esas alan ayrı ve gerekçeli protokol kararı olmadan yapılmaz.
+   Koşu/güvenlik değişikliği için yürütücüden farklı modelle hakem turu al;
+   Astra yürütüyorsa Fable veya Opus 5 kullan.
    AW ürün kapısı, timeout bütçesi ve kalite ölçütleri
    deneyin değerlendirmesinde korunur.

@@ -2,8 +2,10 @@
 
 Bu belge [PLAN.md](PLAN.md), Sıra 5 / kilitlenen sıra 1'in hazırlık kanıtıdır;
 ayrı bir iş kuyruğu değildir. Canlıdaki değişikliksiz telemetri penceresi sürerken
-yerel metin ölçümü yapıldı. Uygulama kodu değişmedi, modelden aday içerik üretilmedi,
-üretime bağlanılmadı. **Daraltma deneyi başlamadı; süre veya kalite sonucu yok.**
+ilk yerel metin ölçümü yapıldı; aşağıdaki ilk inceleme o aşamanın kaydıdır.
+Sonraki hızlandırma talimatıyla aday kodu ayrı dalda uygulandı; son bölüm güncel
+yerel sonucu verir. Üretime bağlanılmadı. **Canlı daraltma deneyi başlamadı;
+model davranışı veya süre kazancı sonucu yok.**
 
 ## Ölçülen aday ve sınırı
 
@@ -94,8 +96,10 @@ Kritik güvenlik/kanıt/hedef gerilemesi varsa aday reddedilir. Diğer kalite fa
 
 ## Canlı deneye geçiş sınırı
 
-Önce değişikliksiz pencere kapanmalı: başlangıç `2026-09-08T06:59:21.513Z`,
-en erken **8 Eylül 21:59:21 TSİ** ve **en az 200 terminal doğal NORMAL_WAKE**.
+Mevcut canlı gözlem hedefi: başlangıç `2026-09-08T06:59:21.513Z`,
+**8 Eylül 21:59:21 TSİ** ve **en az 200 terminal doğal NORMAL_WAKE**.
+8 Eylül hızlandırma kararıyla bu saat yerel geliştirme/test/hakem işini bekletmez.
+Canlı deneyi erkene almak ise ölçülen kapsama dayalı ayrı protokol kararı ister.
 Faz boyutu kapsamı, eksik terminal raporları ve censored aralıklar birlikte
 sayılmalı. Önkoşul kapanınca bu hazırlık gerçek dağılıma göre yeniden değerlendirilecek.
 
@@ -133,3 +137,28 @@ Hakemin tarihsel belgelerden aktardığı persona sürümleri, onarım oranı ve
 üslup sonuçları bu turun canlı ölçümü olarak kullanılmadı. Güncel canlı eşleşme
 oranı bilinmiyor. Hakem test/model deneyi/üretim erişimi yapmadı; bu kayıt gerçek
 kod veya deploy GO'su değildir. Sonraki belge açıklamaları ikinci hakem turu görmedi.
+
+## Yerel aday kodu — hızlandırma talimatı sonrası
+
+Taban `7134a04c5699b5ac59a585fff120b9ce93868eb1`, dal
+`codex/decision-prompt-dedup`. `worker.ts` içindeki dönüşüm yalnız NORMAL_WAKE /
+NORMAL modunda çalışır. Güncel listelenmiş blok tek olmalı, satır başında başlamalı
+ve ardından beklenen persona bölümü gelmelidir; diğer durumlarda snapshot aynen kalır.
+DB persona kaydı, renderer, AW, BROWSE ve timeout bütçesi değiştirilmedi.
+Prompt profil sürümü **40→41**; gerçek aday ayrı hash alıyor.
+
+Worker testleri **91/91** geçti: 10 seed personada anayasa dışındaki bütün
+persona metni ve runtime devamı aynı; çıkarılan boyut her birinde 3.991 birim /
+4.391 bayt. Farklı koşu türleri, bakım modu, eksik/eski/çoklu/yanlış konumlu
+bloklar, UNTRUSTED_CONTENT kaçışı ve DECISION_REPAIR'ın seçilen prompt'u tekrar
+göndermesi kontrol edildi. Model talimatlara uyumu bu testlerin kapsamı değildir.
+
+Onarımın wire şemasıyla birlikte sınanması mevcut ayrı bir kusuru ortaya çıkardı:
+kök Zod hatasında `schemaIssuePaths` içine boş string yazılıyordu, fakat kayıt
+şeması en az bir karakter istiyor. Worker artık kök için sabit `$` yazar;
+şema gevşetilmedi, model çıktısı kayda eklenmedi. Gerçek malformed-output akışından
+çıkan kullanım raporu wire şemasını geçti. Bu hata canlıda araştırılmadı.
+
+Kod için bağımsız Opus 5 incelemesi bekleniyor. İlk hazırlık turunun koşullu GO'su
+bu kodu kapsamaz. Canlı persona eşleşmesi, eşlenmiş model kalite karşılaştırması
+ve gecikme sonucu açık; aday henüz üretime gönderilmeye hazır sayılmıyor.
