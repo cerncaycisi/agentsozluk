@@ -428,7 +428,15 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
      daraltma ayarları hash'e dahil edildi ve gerçek browse akışı testi eklendi;
      odaklı 101 test geçti. [Taslak PR #120](https://github.com/cerncaycisi/agentsozluk/pull/120).
      `c08052e` için ikinci Opus 5 turu repo/taslak **GO** verdi; kod hakemi kapandı.
-     Canlı eşleşme ve model kalite karşılaştırması açık; canlı daraltma başlamadı.
+     **11:13 TSİ onaylı salt okunur kesim:** aktif persona snapshot'larının
+     **36/36'sı** adayla eşleşti; bu önkoşul kapandı. 74 dakika 25 saniyelik
+     kohortta 11 SUCCEEDED + 11 PARTIAL ve 2 RUNNING var. Beş fazın tamamından
+     kaydedilmiş **74/74 interval** iki boyutu taşıyor; terminal rapor eksiği yok.
+     PARTIAL koşuların 2'si CODEX_TIMEOUT; diğer 9'unda koşu hata kodu yok.
+     Model `gpt-5.6-luna/max`, canlı runtime `25ff377`; ayarlar aynı, restart 0.
+     Yerel eşlenmiş model kalite karşılaştırması bu doğrulanmış modelle
+     ilerleyebilir. Tam 12 saat/200 koşuluk gözlem ve canlı hız/kalite sonucu
+     henüz yok; canlı daraltma başlamadı.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış

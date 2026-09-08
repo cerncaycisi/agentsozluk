@@ -183,8 +183,10 @@ yalnız 3.991 birim / 4.391 baytlık hedef bölüm farklı; BROWSE 10/10, AW 10/
 diğer koşu/mod birleşimleri 40/40 bayt özdeş. Bu, canlı veya model davranışı testi değil.
 Betik ve sayısal çıktı yerel `tmp/decision-candidate-2026-09-08/` altında.
 
-Canlı persona eşleşmesi, eşlenmiş model kalite karşılaştırması ve gecikme sonucu
-açık; aday henüz üretime gönderilmeye hazır sayılmıyor.
+**11:13 TSİ güncellemesi:** onaylı salt okunur sayımda aktif persona snapshot'larının
+36/36'sı bu adayla eşleşti; eksik snapshot yok, sürümler 5–16. Bu koşul kapandı.
+Eşlenmiş model kalite karşılaştırması ve gecikme sonucu açık;
+aday henüz üretime gönderilmeye hazır sayılmıyor.
 
 **Kod hakemi kapandı:** `c08052ecd74bb9d82edcab03da488b441024a468` için Opus 5
 artımlı turu repo/taslak PR **GO** verdi. `is_error=false`, 13 tur, 0 izin reddi;
@@ -199,3 +201,9 @@ taslak PR'ın varlığı benchmark yapılmış anlamına gelmez. Persona rendere
 sonraki bölüm başlığı ileride değişirse eşleşme no-op olur; 10 persona boyut/metin
 testi bu değişimi yakalar. Test kırılmasını golden beklentiyi körlemesine değiştirerek
 geçirme. Hakem GO'su model davranışı, canlı başarı veya deploy izni değildir.
+
+Erken canlı kesiminin ayrıntısı [telemetri kaydında](PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md):
+22 terminal koşu, beş fazdan 74/74 boyut kaydı. Raporlanan gerçek model
+`gpt-5.6-luna/max`; yerel model karşılaştırması bu modelle yapılmalı. 3.991 birimlik
+blok ile bu kesimin DECISION boyut aralığının aritmetik oranı %3,14–3,58;
+eski koşuların aday prompt'ları yeniden üretilmedi, süre kazancı ölçülmedi.

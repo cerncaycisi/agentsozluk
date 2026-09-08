@@ -7,6 +7,19 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-08 11:13 TSİ — erken canlı kapsam kontrolü
+
+- Açık onayla salt okunur kontrol: runtime `25ff377`, worker active/running,
+  `NRestarts=0`; settingsVersion 266 ve stable settings hash değişmedi.
+- 22 terminal doğal koşu: 11 SUCCEEDED + 11 PARTIAL; 2 koşu devam ediyor.
+  Terminal rapor eksiği 0; beş fazın 74/74 kayıtlı interval'ında iki boyut var.
+  İki DECISION interval'ı censored; iki PARTIAL koşunun kodu CODEX_TIMEOUT.
+- Aktif 36/36 persona snapshot'ı adayın tam eşleşme koşulunu sağlıyor;
+  eksik snapshot 0, persona sürümleri 5–16. İçerik alınmadı, yalnız sayım yapıldı.
+- Raporlanan model `gpt-5.6-luna/max`; timeout raporlarında model/effort yok.
+  Pencere 74 dakika 25 saniye; tam gözlem, model kalite karşılaştırması ve
+  süre kazancı sonucu değil. Ayar, içerik veya servis değişikliği yapılmadı.
+
 ## 2026-09-08 — DECISION aday kodu ayrı dalda, worker 91/91
 
 - `7134a04` tabanından `codex/decision-prompt-dedup` dalında NORMAL_WAKE /

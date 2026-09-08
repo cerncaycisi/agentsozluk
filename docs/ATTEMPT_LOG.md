@@ -7030,3 +7030,22 @@ cancel_requested=0 leases=0` oldu.
   `f2c576c857e1316f007678f6351eadc77dce452db351dcc93fa23911b88de59f`.
   Eski profile ait capability makbuzunun yeni üretim kanıtı olmayacağı kaydedildi.
   İlk `ef06e10` CI'ı 7/7 başarılı; başka SHA'nın CI sonucu sayılmadı.
+
+## 2026-09-08 11:13 TSİ — açık onaylı erken telemetri ve persona sayımı
+
+- Yerel HEAD `c28de1474402639b14252118f56781619b803dae`. Gökhan salt okunur
+  telemetri/persona eşleşme kontrolüne "evet" dedi. Her SSH'de DNS
+  `46.225.20.177`, ED25519 `SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI`,
+  deploy kullanıcısı ve host/repo/Compose kimliği doğrulandı; root kullanılmadı.
+- İlk snapshot `2026-09-08T08:13:46.067039Z`: 11 SUCCEEDED, 11 PARTIAL,
+  2 RUNNING; terminal rapor eksiği 0, beş fazda 74/74 boyut alanı, DECISION'da
+  2 censored. Aktif snapshot 36/36 eşleşiyor, eksik 0, sürümler 5–16.
+- Aynı terminal kesiminin neden/model ayrımı: PARTIAL 2 CODEX_TIMEOUT + 9 hata
+  kodu boş; raporlanan model `gpt-5.6-luna/max`, timeout'larda model alanı yok.
+  Runtime `25ff377`, worker active/running, restart 0; settingsVersion 266 ve
+  stable settings hash değişmedi. Prompt/metin alınmadı, yalnız sayılar ve güvenli
+  metadata okundu. Yerel çıktılar `early-readonly-proof.log` ve
+  `early-readonly-detail.log` olarak `tmp/decision-candidate-2026-09-08/` altında.
+- Tekrarlama: 74 kayıtlı interval'ın tam alan kapsamını tüm çağrıların kalıcılık
+  kanıtı sayma; PARTIAL'ı başarılı sayma; 74 dakikalık erken kesimi 12 saat/200
+  koşuluk tam gözlem veya daraltmanın hız/kalite başarısı olarak sunma.

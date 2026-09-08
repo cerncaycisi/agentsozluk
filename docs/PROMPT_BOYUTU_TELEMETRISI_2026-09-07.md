@@ -200,3 +200,39 @@ Worker `active/running`, `NRestarts=0`; global ayar hash'i aynı ve sürüm 266.
    Astra yürütüyorsa Fable veya Opus 5 kullan.
    AW ürün kapısı, timeout bütçesi ve kalite ölçütleri
    deneyin değerlendirmesinde korunur.
+
+## 8 Eylül 11:13 TSİ — onaylı erken kapsam kontrolü
+
+Kesim `2026-09-08T08:13:46.067039Z`; başlangıçtan 4.464,554 saniye
+(74 dakika 25 saniye). Gökhan'ın açık onayıyla, READ ONLY / REPEATABLE READ
+transaction ve 20 saniyelik statement timeout kullanıldı; yalnız sayım/metadata
+çıktısı alındı. Tam 12 saat / 200 terminal koşuluk gözlem değildir.
+
+- Kohort: **11 SUCCEEDED + 11 PARTIAL + 2 RUNNING**. Terminal koşuların hiçbirinde
+  interval raporu eksik değil; iki devam eden koşunun raporu henüz yok.
+- PARTIAL koşuların 2'sinde `CODEX_TIMEOUT`, diğer 9'unda koşu hata kodu yok.
+  PARTIAL, SUCCEEDED diye sayılmadı; hata kodunun boş olması kalite kabulü değildir.
+- Terminal 22 koşunun profil hash'i
+  `53c15fdc0d684c5d21aca95121925ba8e06eee34cf237b7b389540bef0874f45`.
+  Raporlanan model/effort `gpt-5.6-luna/max`; iki timeout kaydında bu alanlar yok.
+
+| Faz               | Kayıt / iki boyut mevcut | promptChars min–maks | Censored |
+| ----------------- | ------------------------ | -------------------- | -------- |
+| BROWSE            | 22 / 22                  | 11.427–12.243        | 0        |
+| DECISION          | 22 / 22                  | 111.576–127.040      | 2        |
+| DECISION_REPAIR   | 1 / 1                    | 113.127–113.127      | 0        |
+| ACTION_WORTHINESS | 20 / 20                  | 13.582–19.217        | 0        |
+| CONTENT_REPAIR    | 9 / 9                    | 1.442–2.400          | 0        |
+| Toplam            | **74 / 74**              | —                    | **2**    |
+
+Aktif **36/36** persona snapshot'ı adayın tek tam bölüm/satır/sonraki bölüm
+eşleşmesini sağlıyor; eksik snapshot 0, persona sürümleri 5–16. Prompt içeriği
+alınmadı; eşleşme sunucuda hesaplanıp yalnız sayıldı. Bu, o kesimin mevcut
+snapshot'larıdır; sonraki bir persona rollout'u için yeniden doğrulanmalıdır.
+
+Runtime SHA `25ff3771859da5904b22dac40b712286f852fe30`, worker active/running,
+`NRestarts=0`. SettingsVersion 266 ve stable settings hash
+`e28fff93314a405f31ca4c3708b95c2e` aynı. Kimlik kapıları her bağlantıda geçti.
+Deploy, ayar/servis değişikliği, prompt kaydı veya elle koşu başlatma yapılmadı.
+Model kalite karşılaştırmasına gerekli faz kapsamı ve persona eşleşmesi artık
+gözlenmiş durumda; bu veri canlı gecikme iyileşmesi veya tam kabul kanıtı değildir.
