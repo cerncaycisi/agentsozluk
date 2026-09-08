@@ -13,6 +13,8 @@ import {
   getTopicIndexingDecision,
 } from "@/modules/indexing";
 import { updateGlobalSettings } from "@/modules/agents";
+import { getPublicProfile } from "@/modules/users/application/profiles";
+import writerIdentities from "@/modules/agents/personas/writer-naturalization-w1.json";
 import {
   closeIntegrationDatabase,
   integrationDatabase,
@@ -54,6 +56,56 @@ beforeEach(resetIntegrationDatabase);
 afterAll(closeIntegrationDatabase);
 
 describe("indexing policy with PostgreSQL", () => {
+  it("resolves every public alias like the profile page and preserves noindex policy/status gates", async () => {
+    const admin = await createUser("HUMAN", "alias_admin");
+    for (const { username, publicSlug } of writerIdentities.profiles) {
+      const user = await createUser("AGENT", "alias_writer");
+      await integrationDatabase.user.update({
+        where: { id: user.id },
+        data: { username, usernameNormalized: username },
+      });
+      const profile = await getPublicProfile(integrationDatabase, {
+        username: publicSlug,
+        skip: 0,
+        take: 1,
+      });
+      expect(profile.profile.id).toBe(user.id);
+      const decision = await getProfileIndexingDecision(integrationDatabase, publicSlug);
+      expect(decision).toEqual({ index: true, follow: true, includeInSitemap: false });
+      expect(await getProfileIndexingDecision(integrationDatabase, username)).toEqual(decision);
+    }
+    const alias = "maraz";
+    await updateGlobalSettings(integrationDatabase, actor(admin.id), {
+      indexingMode: "NOINDEX_AGENT_CONTENT",
+    });
+    expect(await getProfileIndexingDecision(integrationDatabase, alias)).toMatchObject({
+      index: true,
+    });
+    await updateGlobalSettings(integrationDatabase, actor(admin.id), {
+      indexingMode: "NOINDEX_ALL_DYNAMIC",
+    });
+    expect(await getProfileIndexingDecision(integrationDatabase, alias)).toMatchObject({
+      index: false,
+    });
+    await updateGlobalSettings(integrationDatabase, actor(admin.id), { indexingMode: "INDEX_ALL" });
+    for (const status of ["SUSPENDED", "DEACTIVATED"] as const) {
+      await integrationDatabase.user.update({
+        where: { usernameNormalized: "oyunbozanestetik" },
+        data: { status },
+      });
+      expect(await getProfileIndexingDecision(integrationDatabase, alias)).toEqual({
+        index: false,
+        follow: false,
+        includeInSitemap: false,
+      });
+    }
+    expect(await getProfileIndexingDecision(integrationDatabase, "missing_alias_writer")).toEqual({
+      index: false,
+      follow: false,
+      includeInSitemap: false,
+    });
+  });
+
   it("applies delay, visibility and internal account facts without public metadata", async () => {
     const now = new Date("2026-07-18T12:00:00.000Z");
     const human = await createUser("HUMAN", "human");

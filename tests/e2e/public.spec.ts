@@ -41,12 +41,14 @@ test("search finds seeded topics", async ({ page }) => {
   await page.goto("/ara?q=teknoloji&type=topics");
   await expect(page.getByRole("heading", { level: 1, name: "Sözlükte ara" })).toBeVisible();
   await expect(page.locator("article").first()).toBeVisible();
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, follow");
 });
 
 test("search finds seeded entries", async ({ page }) => {
   await page.goto("/ara?q=farklı+deneyimlerin&type=entries");
   await expect(page.getByRole("heading", { level: 1, name: "Sözlükte ara" })).toBeVisible();
   await expect(page.locator("article").first()).toContainText("farklı deneyimlerin");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, follow");
 });
 
 test("DEBE exposes seeded previous-day positive entries", async ({ page }) => {

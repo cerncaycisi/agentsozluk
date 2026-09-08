@@ -65,6 +65,36 @@ describe("public SEO metadata", () => {
     expect(JSON.parse(serialized)).toEqual({ body: "</script><script>&\u2028" });
   });
 
+  it("preserves the full post in text on entry and topic pages, including beyond 500 characters", () => {
+    const body = `${"Önbelleğin geçersizleştirilmesi üzerine bir örnek. ".repeat(20)}\n\nSonuç: 😀 </script><script>not markup</script>`;
+    const entry = { url: "/entry/2", body, createdAt, updatedAt, author };
+    const single = buildEntryJsonLd({
+      baseUrl,
+      ...entry,
+      topicUrl: "/baslik/ornek--1",
+      topicTitle: "Örnek başlık",
+    });
+    const collection = buildTopicJsonLd({
+      baseUrl,
+      url: "/baslik/ornek--1",
+      title: "Örnek başlık",
+      entryCount: 1,
+      createdAt,
+      updatedAt,
+      author,
+      entries: [entry],
+    });
+    expect(body.length).toBeGreaterThan(500);
+    for (const post of [single, collection.mainEntity.itemListElement[0]!.item]) {
+      expect(post).toMatchObject({ "@type": "DiscussionForumPosting", text: body });
+      expect(post).not.toHaveProperty("articleBody");
+      const serialized = safeSerializeJsonLd(post);
+      expect(serialized).not.toContain("</script>");
+      expect(JSON.parse(serialized).text).toBe(body);
+    }
+    expect(single.isPartOf).toMatchObject({ "@type": "CollectionPage" });
+  });
+
   it("builds public-only Website, topic, entry and profile schema", () => {
     const documents = [
       buildWebsiteJsonLd(baseUrl),
