@@ -1,7 +1,7 @@
 # SEO/GEO crawler ve public discovery politikası
 
 Durum: SEO/GEO S2 uygulama spesifikasyonu. Bu belge aktif iş sırası değildir; tek kanonik sıra
-`M2_REALISM_AND_PRODUCTION_RECOVERY_PLAN.md` içindedir.
+`PLAN.md` içindedir.
 
 ## Amaç
 

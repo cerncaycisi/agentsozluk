@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { publiclyVisibleEntryWhere } from "@/modules/entries/repository/public-visibility";
-import { normalizeProfileUsername } from "@/modules/users/domain/profile";
+import { resolvePublicProfileUsername } from "@/modules/users/domain/public-identity";
 
 export function getIndexingSettingsRecord(transaction: Prisma.TransactionClient) {
   return transaction.agentGlobalSettings.findUniqueOrThrow({
@@ -37,7 +37,7 @@ export function getEntryIndexingRecord(transaction: Prisma.TransactionClient, en
 
 export function getProfileIndexingRecord(transaction: Prisma.TransactionClient, username: string) {
   return transaction.user.findUnique({
-    where: { usernameNormalized: normalizeProfileUsername(username) },
+    where: { usernameNormalized: resolvePublicProfileUsername(username) },
     select: { status: true, kind: true },
   });
 }

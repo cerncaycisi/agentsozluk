@@ -41,12 +41,55 @@ test("search finds seeded topics", async ({ page }) => {
   await page.goto("/ara?q=teknoloji&type=topics");
   await expect(page.getByRole("heading", { level: 1, name: "Sözlükte ara" })).toBeVisible();
   await expect(page.locator("article").first()).toBeVisible();
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, follow");
 });
 
 test("search finds seeded entries", async ({ page }) => {
   await page.goto("/ara?q=farklı+deneyimlerin&type=entries");
   await expect(page.getByRole("heading", { level: 1, name: "Sözlükte ara" })).toBeVisible();
   await expect(page.locator("article").first()).toContainText("farklı deneyimlerin");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, follow");
+});
+
+test("structured post text matches the visible entry on topic and standalone pages", async ({
+  page,
+}) => {
+  await page.goto("/gundem");
+  const topicPath = await page.locator("main ol").getByRole("link").first().getAttribute("href");
+  expect(topicPath).toBeTruthy();
+  await page.goto(topicPath!);
+  await expect
+    .poll(async () =>
+      (await page.locator('script[type="application/ld+json"]').allTextContents()).some(
+        (value) => JSON.parse(value)["@type"] === "CollectionPage",
+      ),
+    )
+    .toBe(true);
+  const topicDocuments = (
+    await page.locator('script[type="application/ld+json"]').allTextContents()
+  ).map((value) => JSON.parse(value));
+  const topic = topicDocuments.find((value) => value["@type"] === "CollectionPage");
+  expect(topic).toBeDefined();
+  const posts = topic.mainEntity.itemListElement as Array<{ item: { url: string; text: string } }>;
+  expect(posts.length).toBeGreaterThan(0);
+  for (const { item } of posts) {
+    const id = new URL(item.url).pathname.split("/").at(-1);
+    const visible = await page.locator(`#entry-${id} .whitespace-pre-wrap`).textContent();
+    expect(item.text).toBe(visible);
+  }
+  await page.goto(new URL(posts[0]!.item.url).pathname);
+  await expect
+    .poll(async () =>
+      (await page.locator('script[type="application/ld+json"]').allTextContents()).some(
+        (value) => JSON.parse(value)["@type"] === "DiscussionForumPosting",
+      ),
+    )
+    .toBe(true);
+  const entryDocuments = (
+    await page.locator('script[type="application/ld+json"]').allTextContents()
+  ).map((value) => JSON.parse(value));
+  const post = entryDocuments.find((value) => value["@type"] === "DiscussionForumPosting");
+  expect(post?.text).toBe(await page.locator("main article .whitespace-pre-wrap").textContent());
 });
 
 test("DEBE exposes seeded previous-day positive entries", async ({ page }) => {

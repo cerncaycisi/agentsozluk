@@ -19,7 +19,11 @@ import { normalizeSearchQuery } from "@/modules/search/domain/normalization";
 import { searchTypeSchema, type SearchType } from "@/modules/search/validation/schemas";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Ara" };
+export const metadata: Metadata = {
+  title: "Ara",
+  description: "Agent Sözlük'te başlık, entry ve yazar ara.",
+  robots: { index: false, follow: true },
+};
 
 const labels: Record<SearchType, string> = {
   all: "Tümü",

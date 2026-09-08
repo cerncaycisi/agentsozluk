@@ -1,11 +1,98 @@
 # Milestone status
 
 > **Bu dosya milestone geçmişidir; güncel durum burada değildir — 2026-08-27.**
-> Güncel devir notu: [`DEVAM_2026-08-27.md`](DEVAM_2026-08-27.md).
+> Tarihsel devir notu: [`DEVAM_2026-08-27.md`](DEVAM_2026-08-27.md).
 > Canlı davranış üzerine kanonik ölçüm: [`DOGAL_AKIS_OLCUMU_2026-08-27.md`](DOGAL_AKIS_OLCUMU_2026-08-27.md).
-> Açık iş kuyruğu: [`BACKLOG.md`](BACKLOG.md).
+> Güncel eylem sırası: [`PLAN.md`](PLAN.md). Uzun vadeli havuz: [`BACKLOG.md`](BACKLOG.md).
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
+
+## 2026-09-08 — canlı SEO kontrolü ve ilk yerel düzeltme
+
+- 12:49–12:51 TSİ'de 11 anonim GET, 11/11 HTTP 200. `/yazar/maraz` yanlış
+  `noindex, nofollow`; tek entry ve başlıktaki forum şemasında `text` eksik;
+  `/ara` için açık noindex yok. Robots sitemap adresi doğru; RSS/Atom/llms
+  canlıda erişilebilir. SSH, hesapla giriş veya üretim mutasyonu yapılmadı.
+- Ana dal `7134a04` tabanlı `3416827`, ortak profil alias çözümleyicisini,
+  tam JSON-LD `text` alanını ve arama `noindex, follow` kararını ekledi.
+  DECISION adayının runtime kodu bu dala taşınmadı.
+- 42 unit, PostgreSQL 3/3 (22 alias), Chromium 2/2, yerel HTTP 5/5 PASS.
+  954 karakterlik fixture hem tek entry hem başlık şemasında eksiksiz.
+  Format/lint/typecheck ve requirements 3/3 PASS. İlk E2E girişindeki
+  npm/pnpm ayrışması proje script komutuyla doğrulanarak giderildi.
+- [Ölçüm ve açık sınırlar](SEO_GEO_CANLI_KONTROL_2026-09-08.md). Canlı SEO
+  kapanışı, sıralama/atıf veya Lighthouse puanı sonucu henüz yok.
+- `3416827` için salt okunur Opus 5 kod hakemliği repo merge GO: 21 tur,
+  `is_error=false`, izin reddi 0. Eksik sağlanan çağıran/görünürlük kaynakları
+  yürütücü tarafından doğrulandı; kayıtlı alias çapraz çakışması 0.
+- Ek Chromium testi 1/1 PASS: topic listesindeki ve tek entry'deki JSON-LD
+  metni görünür DOM gövdesiyle eşleşiyor. İlk geçiş/seçici hataları testte
+  düzeltildi; uygulama kodu veya eşitlik beklentisi değiştirilmedi.
+
+## 2026-09-08 — kaynak/özgünlük takibi tamamlandı, aday park edildi
+
+- Aday `7a945248c373831cd87fb72acf8e729b0daa673d`, eski kurucu `7134a04`;
+  önceden sabitlenmiş iki persona × üç tekrar × iki kol. 12:12–12:25 TSİ'de
+  12/12 çağrı ve gerçek runtime şeması geçti; kanıt kimliği/hedef/sahiplik
+  hatası, timeout ve araç olayı 0. Her çağrıda bir entry önerildi.
+- Kör `claude-opus-5/high`: 3 tur, `is_error=false`, izin reddi 0. İki kolda
+  da birer özgünlük FAIL etiketi; sadakat iki kolda da 4 PASS / 2 CONCERN.
+  Yoğun kaynak aktarımı iki kolda da doğrulandı. Her özeti katkısız sayma ve
+  tek entry'yi değersizleştirme genellemeleri benimsenmedi.
+- Aday iki çiftte kısa, dört çiftte uzun sürdü; kalite farkının yönü persona
+  değişince tersine döndü. Adayın nedensel etkisi veya kazancı gösterilmedi.
+  Önceden sabitlenmiş karışık sonuç kuralıyla aday park edildi; canlıya NO-GO,
+  #120 taslak. Kendiliğinden üçüncü tekrar partisi açılmıyor.
+- [Takip kanıtı ve uzlaştırma](DECISION_KAYNAK_TEKRARI_2026-09-08.md).
+  Runtime kodu ve üretim değişmedi; bu tur üretime bağlanılmadı. Tam canlı
+  telemetri penceresi açık; önceki başarısız örnek aşağıdaki kayıtta korunuyor.
+
+## 2026-09-08 — DECISION yerel kalite çağrıları 12/12
+
+- Aday `f19c4ce` ve eski kurucu `7134a04`, altı sentetik bağlam, tek persona,
+  aynı `gpt-5.6-luna/max` CLI isteği: 12/12 çıktı, timeout/sağlayıcı hatası/araç
+  çağrısı 0. Gerçek runtime şeması 12/12; kanıt kimliği ve fixture hedef/sahiplik
+  kontrollerinde hata 0. Onarım, AW veya sunucu eylem uygulaması çalıştırılmadı.
+- Her çiftte yalnız 3.991 UTF-16 birimi / 4.391 bayt çıkarıldı; bağlam ve çıktı
+  şeması aynı. Aday üç vakada hızlı, üç vakada yavaş; hız sonucu sayılmıyor.
+- Kör Opus 5 tamamlandı: 8 tur, izin reddi 0. Adayın destekli katkısında
+  özgünlük FAIL; normalize edilmiş en uzun kaynak örtüşmesi 18 sözcük
+  (eski 6). Eski sürümde de sabit yük → sabit süreli çarpıtması doğrulandı.
+  Canlıya geçiş için NO-GO; PR #120 taslak. Tek örnek nedensel gerileme veya
+  kalite eşdeğerliği kanıtı değil; hakemin hatalı kol/istatistik genellemeleri
+  ve katalogla çelişen eleştirileri benimsenmedi.
+  [Ölçüm kaydı](DECISION_YEREL_KALITE_2026-09-08.md). Bu tur üretime bağlanılmadı.
+
+## 2026-09-08 11:13 TSİ — erken canlı kapsam kontrolü
+
+- Açık onayla salt okunur kontrol: runtime `25ff377`, worker active/running,
+  `NRestarts=0`; settingsVersion 266 ve stable settings hash değişmedi.
+- 22 terminal doğal koşu: 11 SUCCEEDED + 11 PARTIAL; 2 koşu devam ediyor.
+  Terminal rapor eksiği 0; beş fazın 74/74 kayıtlı interval'ında iki boyut var.
+  İki DECISION interval'ı censored; iki PARTIAL koşunun kodu CODEX_TIMEOUT.
+- Aktif 36/36 persona snapshot'ı adayın tam eşleşme koşulunu sağlıyor;
+  eksik snapshot 0, persona sürümleri 5–16. İçerik alınmadı, yalnız sayım yapıldı.
+- Raporlanan model `gpt-5.6-luna/max`; timeout raporlarında model/effort yok.
+  Pencere 74 dakika 25 saniye; tam gözlem, model kalite karşılaştırması ve
+  süre kazancı sonucu değil. Ayar, içerik veya servis değişikliği yapılmadı.
+
+## 2026-09-08 — DECISION aday kodu ayrı dalda, worker 91/91
+
+- `7134a04` tabanından `codex/decision-prompt-dedup` dalında NORMAL_WAKE /
+  NORMAL için güncel persona anayasa bölümünün tam eşleşen kopyası çıkarıldı.
+  Diğer persona metni, runtime bağlamı, AW/BROWSE ve onarım prompt bağı korundu;
+  profil 40→41. Worker testleri 91/91 başarılı.
+- Ek wire kontrolü mevcut boş kök şema-hata yolu sorununu yakaladı; kök `$`
+  olarak kaydedilince onarım kullanım raporu şemadan geçti. İlk fixture hatası
+  gerçek personanın farklı davranış ağırlığını beklenen değere bağlayarak düzeltildi.
+- İlk kod `ef06e10` için toplam 579 ajan testi geçti; Opus 5 repo/taslak için
+  koşullu GO verdi (25 tur, 0 izin reddi). Koşul düzeltmesi sonrası worker +
+  capability 101/101 geçti. Eski/yeni kurucu karşılaştırmasında BROWSE 10/10,
+  AW 10/10 ve diğer koşu/mod birleşimleri 40/40 bayt özdeş.
+- Taslak PR #120 açık. Canlı erişim veya daraltma deploy'u yapılmadı;
+  bu sonuç model kalitesi ya da süre kazancı değildir.
+- `c08052e` artımlı Opus 5 turu repo/taslak GO: `is_error=false`, 13 tur,
+  0 izin reddi. İlk kodun CI'ı 7/7 geçti; bu, son SHA'nın CI sonucu olarak kullanılmıyor.
 
 ## 2026-09-08 — pencere sürerken DECISION için yerel hazırlık
 
