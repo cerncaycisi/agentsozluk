@@ -6989,3 +6989,119 @@ cancel_requested=0 leases=0` oldu.
   snapshot eşleşmesi sayma; aynı maddelerin farklı biçimini bayt özdeşliği veya
   davranış eşdeğerliği sayma; küçük fixture oranını canlı süre kazanımı diye yazma.
   Üretime bağlanılmadı, baseline penceresi kısaltılmadı, yeni model deneyi yapılmadı.
+
+## 2026-09-08 — yerel DECISION adayının ilk testleri
+
+- Taban `7134a04c5699b5ac59a585fff120b9ce93868eb1`, dal
+  `codex/decision-prompt-dedup`; Node 22 / pnpm 10.34.5. Yerel geliştirme,
+  kullanıcının hızlandırma talimatıyla canlı pencere beklenmeden başladı.
+- İlk worker turu 89 PASS / 2 FAIL. Bir hata fixture kaynaklıydı:
+  `expected ... to contain 'topicCreationTendency=0.72'`; gerçek seed persona
+  farklı ağırlık taşıyor. Beklenti verilen context'in gerçek ağırlığına bağlandı.
+- Diğer hata uygulamanın mevcut onarım raporundaydı: Zod
+  `decisionRepair.schemaIssuePaths[0]`, `too_small`,
+  `Too small: expected string to have >=1 characters`. Worker kök hata yolunu
+  boş string'e çeviriyor, wire şeması bunu reddediyordu. Kök artık sabit `$`;
+  validator zayıflatılmadı. Malformed-output → repair → complete kullanım
+  raporunu şemadan geçiren test eklendi; model çıktısı telemetriye yazılmıyor.
+- Odaklı worker tekrarı **91/91 PASS**. Tekrarlama: mocked control-plane
+  kabulünü wire geçerliliği sanma; fixture farkını kod regresyonu sayma.
+  Kaynak/yerel test kanıtı canlı hata sıklığı veya performans kazanımı değildir.
+
+- Aynı ilk kod `ef06e10a36de6a87944538c8b563ca7680910691`: 76 dosyada 579
+  ajan testi, format/lint/typecheck ve requirements 3/3 geçti. Opus 5 salt okunur
+  kod incelemesi exit 0, `is_error=false`, 25 tur, 0 izin reddi; gerçek model
+  anahtarları Opus 5 ve Haiku 4.5. Repo/taslak için koşullu GO, canlı GO değil.
+- Hakem sonrası daraltma koşulları profil hash'inin doğrudan girdisine taşındı;
+  tek browse koşusunda iki fazın farklı persona kapsamı sınandı. Uzun capability
+  fixture'ının çoklu anayasa nedeniyle no-op kaldığı yorumla belirtildi;
+  `AGENT_CAPACITY.md` hash satırı 27 Ağustos'a ait olarak etiketlendi.
+  Worker + capability odaklı kontrol **101/101** geçti.
+- Taban/aday kurucuları 10 sentetik algıyla karşılaştırıldı: yalnız hedef persona
+  bölümü değişti (3.991 UTF-16 / 4.391 bayt); BROWSE 10/10, AW 10/10 ve diğer
+  koşu/mod birleşimleri 40/40 bayt özdeş. Geçici eski worker modülü işlem sonunda
+  `.ts.txt` biçiminde arşivlendi; prompt içerikleri rapora yazılmadı.
+- Tekrarlama: uzun çok-personalı stres senaryosunu daraltma A/B kanıtı sayma;
+  tarihli kapasite hash'ini bugünün veya profil 40'ın hash'i olarak yeniden etiketleme.
+- `c08052ecd74bb9d82edcab03da488b441024a468` için artımlı Opus 5 turu
+  tamamlandı: exit 0, `is_error=false`, 13 tur, 0 izin reddi; gerçek model
+  anahtarları `claude-opus-5` ve `claude-haiku-4-5-20251001`. Repo/taslak GO;
+  önceki üç koşul kapandı, yeni somut hata yok. Profil hash'i
+  `f2c576c857e1316f007678f6351eadc77dce452db351dcc93fa23911b88de59f`.
+  Eski profile ait capability makbuzunun yeni üretim kanıtı olmayacağı kaydedildi.
+  İlk `ef06e10` CI'ı 7/7 başarılı; başka SHA'nın CI sonucu sayılmadı.
+
+## 2026-09-08 11:13 TSİ — açık onaylı erken telemetri ve persona sayımı
+
+- Yerel HEAD `c28de1474402639b14252118f56781619b803dae`. Gökhan salt okunur
+  telemetri/persona eşleşme kontrolüne "evet" dedi. Her SSH'de DNS
+  `46.225.20.177`, ED25519 `SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI`,
+  deploy kullanıcısı ve host/repo/Compose kimliği doğrulandı; root kullanılmadı.
+- İlk snapshot `2026-09-08T08:13:46.067039Z`: 11 SUCCEEDED, 11 PARTIAL,
+  2 RUNNING; terminal rapor eksiği 0, beş fazda 74/74 boyut alanı, DECISION'da
+  2 censored. Aktif snapshot 36/36 eşleşiyor, eksik 0, sürümler 5–16.
+- Aynı terminal kesiminin neden/model ayrımı: PARTIAL 2 CODEX_TIMEOUT + 9 hata
+  kodu boş; raporlanan model `gpt-5.6-luna/max`, timeout'larda model alanı yok.
+  Runtime `25ff377`, worker active/running, restart 0; settingsVersion 266 ve
+  stable settings hash değişmedi. Prompt/metin alınmadı, yalnız sayılar ve güvenli
+  metadata okundu. Yerel çıktılar `early-readonly-proof.log` ve
+  `early-readonly-detail.log` olarak `tmp/decision-candidate-2026-09-08/` altında.
+- Tekrarlama: 74 kayıtlı interval'ın tam alan kapsamını tüm çağrıların kalıcılık
+  kanıtı sayma; PARTIAL'ı başarılı sayma; 74 dakikalık erken kesimi 12 saat/200
+  koşuluk tam gözlem veya daraltmanın hız/kalite başarısı olarak sunma.
+
+## 2026-09-08 — DECISION eşlenmiş yerel kalite taraması
+
+- İncelenen aday `f19c4ce9279fce4114b84e5322f5f25f682bb91a`; runtime kodu
+  `c08052e` ile aynı. Eski kurucu `7134a04`. Node `22.23.1`, Codex CLI `0.153.2`,
+  `npx --offline pnpm@10.34.5`; istek modeli `gpt-5.6-luna`, effort `max`.
+- Altı sabit sentetik bağlam, tek seed persona, iki kol, tek tekrar. Manifest
+  çağrılardan önce donduruldu; hash ve bütün ham dosya konumları
+  `docs/DECISION_YEREL_KALITE_2026-09-08.md` içinde. Her çiftte yalnız 3.991
+  UTF-16 birimi / 4.391 bayt çıkarıldı; bağlam ve JSON şeması aynı.
+- 11:31–11:47 TSİ: 12/12 çağrı exit 0, timeout/sağlayıcı hatası/araç olayı 0.
+  Gerçek runtime parse 12/12; kanıt kimliği ve fixture hedef/sahiplik
+  kontrollerinde hata 0. Olumlu iki fırsatta iki kol da entry önerdi.
+  Onarım, AW, server action veya üretim bağlantısı yapılmadı.
+- Kör hakem `claude-opus-5/high`: exit 0, is_error=false, 8 tur, izin reddi 0;
+  CLI ayrıca Haiku 4.5 kullanımı bildirdi. Adayın destekli katkısına özgünlük
+  FAIL verdi. Kaynakla normalize edilmiş kesintisiz örtüşme aday 18 sözcük,
+  eski 6; betik ile doğrulandı. Eski çıktıda deney türünün çarpıtılması da
+  doğrulandı. Hakemin farklı vakalardaki A/B etiketlerini aynı kol sayan
+  genellemeleri, istatistiği ve MODEL_KNOWLEDGE kimliği eleştirisi benimsenmedi.
+- Karar: bu kanıtla canlıya geçiş için NO-GO, #120 taslak. Tek örnek nedensel
+  bozulma kanıtı değil; farklı persona/eşlenmiş tekrar içeren odaklı yeni
+  protokol gerekiyor. Mevcut başarısız örnek korunacak; sonuç seçerek tekrar yok.
+- Depo kontrolleri format/lint/typecheck ve requirements 3/3 geçti; runtime
+  kodu değişmedi. Sonuç PLAN, STATUS ve ölçüm belgesine işlendi.
+- Tekrarlama: 12 yapısal PASS'ı bütün runtime veya kalite eşdeğerliği PASS'ı
+  sayma; üç hızlı/üç yavaş yerel çiftten canlı gecikme kazancı çıkarma.
+  Kısa/tek personalı fixture'ı canlı algı ve toplum dağılımı sayma; CLI istek
+  modelini JSON akışında ayrıca sunulmamış sunucu model kimliğiyle karıştırma.
+
+## 2026-09-08 — kaynak/özgünlük eşlenmiş tekrarı, karışık sonuçla aday park edildi
+
+- İncelenen aday `7a945248c373831cd87fb72acf8e729b0daa673d`, eski kurucu
+  `7134a04c5699b5ac59a585fff120b9ce93868eb1`; runtime kodu `c08052e` ile aynı.
+  Node 22.23.1, Codex CLI 0.153.2, istek `gpt-5.6-luna/max`; yerel read-only
+  ortam. Protokol ve manifest çağrılardan önce donduruldu; hash'ler ve kanıt
+  konumları `docs/DECISION_KAYNAK_TEKRARI_2026-09-08.md` içinde.
+- İki seed persona, üç tekrar, iki kol: 12:12–12:25 TSİ, 12/12 exit 0;
+  timeout/sağlayıcı hatası/araç olayı 0. Gerçek runtime şeması 12/12;
+  kanıt kimliği ve fixture hedef/sahiplik hatası 0. Her çağrıda bir entry.
+  En fazla iki süreç; otomatik tekrar/onarım/AW/server action yok.
+- Kör hakem `claude-opus-5/high`: exit 0, is_error=false, 3 tur, izin reddi 0;
+  CLI ayrıca Haiku 4.5 kullanımı bildirdi. Bu partide A/B eşlemesi sabit.
+  İki kolda da birer özgünlük FAIL etiketi; kaynak aktarımı kaynakla doğrulandı.
+  Her özeti katkısız sayma ve tek entry'yi değersizleştirme genellemeleri
+  benimsenmedi; kesinleşmeyen kapsam yargıları CONCERN olarak korundu.
+- Aday iki çiftte kısa, dört çiftte uzun; kalite farkının yönü persona ile
+  değişti. Daraltmanın nedensel etkisi ayrıştırılmadı. Önceden dondurulmuş
+  karışık sonuç kuralıyla canlıya NO-GO, aday park edildi; #120 taslak.
+  Aynı aday için kendiliğinden üçüncü tekrar partisi açılmayacak.
+- Format/lint/typecheck ve requirements 3/3 geçti. Runtime kodu değişmedi; bu tur
+  üretime bağlanılmadı. PLAN/STATUS ve iki kalite kanıtı uzlaştırıldı.
+- Tekrarlama: yalnız en uzun sözcük dizisinin kısalmasını kalite sorununun
+  kapanması sayma; aynı gövdedeki farklı örtüşmeleri de incele. Karma sonucu
+  adaya özgü regresyon/iyileşme veya daha fazla sonuç seçme gerekçesi sayma;
+  önceki FAIL'i yeni partiyle silme. Yapısal PASS, AW/yayın kabulü değildir.

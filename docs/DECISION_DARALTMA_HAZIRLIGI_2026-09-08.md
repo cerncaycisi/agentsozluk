@@ -2,8 +2,12 @@
 
 Bu belge [PLAN.md](PLAN.md), Sıra 5 / kilitlenen sıra 1'in hazırlık kanıtıdır;
 ayrı bir iş kuyruğu değildir. Canlıdaki değişikliksiz telemetri penceresi sürerken
-yerel metin ölçümü yapıldı. Uygulama kodu değişmedi, modelden aday içerik üretilmedi,
-üretime bağlanılmadı. **Daraltma deneyi başlamadı; süre veya kalite sonucu yok.**
+ilk yerel metin ölçümü yapıldı; aşağıdaki ilk inceleme o aşamanın kaydıdır.
+Sonraki hızlandırma talimatıyla aday kodu ayrı dalda uygulandı; son bölüm güncel
+yerel sonucu verir. İlk hazırlık ve aday kodu turlarında üretime bağlanılmadı.
+Sonraki onaylı salt okunur kapsam sayımı son bölümde, eşlenmiş model çıktıları
+[yerel kalite kaydında](DECISION_YEREL_KALITE_2026-09-08.md) bulunur.
+**Canlı daraltma deneyi başlamadı; canlı süre kazancı sonucu yok.**
 
 ## Ölçülen aday ve sınırı
 
@@ -94,8 +98,10 @@ Kritik güvenlik/kanıt/hedef gerilemesi varsa aday reddedilir. Diğer kalite fa
 
 ## Canlı deneye geçiş sınırı
 
-Önce değişikliksiz pencere kapanmalı: başlangıç `2026-09-08T06:59:21.513Z`,
-en erken **8 Eylül 21:59:21 TSİ** ve **en az 200 terminal doğal NORMAL_WAKE**.
+Mevcut canlı gözlem hedefi: başlangıç `2026-09-08T06:59:21.513Z`,
+**8 Eylül 21:59:21 TSİ** ve **en az 200 terminal doğal NORMAL_WAKE**.
+8 Eylül hızlandırma kararıyla bu saat yerel geliştirme/test/hakem işini bekletmez.
+Canlı deneyi erkene almak ise ölçülen kapsama dayalı ayrı protokol kararı ister.
 Faz boyutu kapsamı, eksik terminal raporları ve censored aralıklar birlikte
 sayılmalı. Önkoşul kapanınca bu hazırlık gerçek dağılıma göre yeniden değerlendirilecek.
 
@@ -133,3 +139,73 @@ Hakemin tarihsel belgelerden aktardığı persona sürümleri, onarım oranı ve
 üslup sonuçları bu turun canlı ölçümü olarak kullanılmadı. Güncel canlı eşleşme
 oranı bilinmiyor. Hakem test/model deneyi/üretim erişimi yapmadı; bu kayıt gerçek
 kod veya deploy GO'su değildir. Sonraki belge açıklamaları ikinci hakem turu görmedi.
+
+## Yerel aday kodu — hızlandırma talimatı sonrası
+
+Taban `7134a04c5699b5ac59a585fff120b9ce93868eb1`, dal
+`codex/decision-prompt-dedup`. `worker.ts` içindeki dönüşüm yalnız NORMAL_WAKE /
+NORMAL modunda çalışır. Güncel listelenmiş blok tek olmalı, satır başında başlamalı
+ve ardından beklenen persona bölümü gelmelidir; diğer durumlarda snapshot aynen kalır.
+DB persona kaydı, renderer, AW, BROWSE ve timeout bütçesi değiştirilmedi.
+Prompt profil sürümü **40→41**; gerçek aday ayrı hash alıyor.
+
+Worker testleri **91/91** geçti: 10 seed personada anayasa dışındaki bütün
+persona metni ve runtime devamı aynı; çıkarılan boyut her birinde 3.991 birim /
+4.391 bayt. Farklı koşu türleri, bakım modu, eksik/eski/çoklu/yanlış konumlu
+bloklar, UNTRUSTED_CONTENT kaçışı ve DECISION_REPAIR'ın seçilen prompt'u tekrar
+göndermesi kontrol edildi. Model talimatlara uyumu bu testlerin kapsamı değildir.
+
+Onarımın wire şemasıyla birlikte sınanması mevcut ayrı bir kusuru ortaya çıkardı:
+kök Zod hatasında `schemaIssuePaths` içine boş string yazılıyordu, fakat kayıt
+şeması en az bir karakter istiyor. Worker artık kök için sabit `$` yazar;
+şema gevşetilmedi, model çıktısı kayda eklenmedi. Gerçek malformed-output akışından
+çıkan kullanım raporu wire şemasını geçti. Bu hata canlıda araştırılmadı.
+
+İlk kod hakemi `ef06e10a36de6a87944538c8b563ca7680910691` için tamamlandı:
+`claude-opus-5`, high, salt okunur; exit 0, `is_error=false`, 25 tur, 0 izin reddi.
+CLI ayrıca Haiku 4.5 kullanımı bildirdi. **Repo / taslak PR için KOŞULLU GO**;
+hakem kodda doğruluk hatası bulmadı. Canlı model kalitesi ve eşleşme kapsamı GO'ya
+dahil değil. [Taslak PR #120](https://github.com/cerncaycisi/agentsozluk/pull/120).
+
+Hakemin koşulları kaynakla doğrulandı ve ayrı yerel değişiklikte kapatılıyor:
+
+- Koşu türü, çalışma modu ve sonraki bölüm çıpası `runtimeDecisionPersonaTrim`
+  içinde tanımlandı; hem worker hem profil hash'i aynı sabitleri kullanıyor.
+- Tek `runOnce` içinde BROWSE'un tam, DECISION'ın daraltılmış persona aldığı test
+  edildi. Fixture'daki açık `0.72` davranış beklentisi korundu.
+- Üç persona birleştiren uzun capability fixture'ı birden çok anayasa içerdiği
+  için daraltılmaz; senaryo yorumu bunun bir daraltma A/B ölçümü olmadığını belirtiyor.
+- Kapasite belgesindeki hash'in **27 Ağustos ölçümü** olduğu netleştirildi;
+  hakemin bunu profil 40 diye yorumlaması güncel kanıt olarak kabul edilmedi.
+
+İlk kod için 76 dosyada **579 ajan testi** geçti. Koşul düzeltmesinden sonra
+worker + capability odaklı testleri **101/101** geçti. Ayrıca taban kod ve aday
+aynı 10 seed persona / sentetik algıyla doğrudan karşılaştırıldı: DECISION'da
+yalnız 3.991 birim / 4.391 baytlık hedef bölüm farklı; BROWSE 10/10, AW 10/10,
+diğer koşu/mod birleşimleri 40/40 bayt özdeş. Bu, canlı veya model davranışı testi değil.
+Betik ve sayısal çıktı yerel `tmp/decision-candidate-2026-09-08/` altında.
+
+**11:13 TSİ güncellemesi:** onaylı salt okunur sayımda aktif persona snapshot'larının
+36/36'sı bu adayla eşleşti; eksik snapshot yok, sürümler 5–16. Bu koşul kapandı.
+Eşlenmiş model kalite karşılaştırması ve gecikme sonucu açık;
+aday henüz üretime gönderilmeye hazır sayılmıyor.
+
+**Kod hakemi kapandı:** `c08052ecd74bb9d82edcab03da488b441024a468` için Opus 5
+artımlı turu repo/taslak PR **GO** verdi. `is_error=false`, 13 tur, 0 izin reddi;
+gerçek model anahtarları `claude-opus-5` ve `claude-haiku-4-5-20251001`.
+Hash, gerçek browse akışı testi ve benchmark yorumu koşulları kapandı; yeni
+somut hata bulunmadı. Kodun profil hash'i
+`f2c576c857e1316f007678f6351eadc77dce452db351dcc93fa23911b88de59f`.
+
+Hakemden kalan yayın sınırları: eski profile ait capability makbuzu yeni hash
+için kullanılamaz (`production-rollout-proof.ts:276`). Bu üretim kanıt kapısıdır;
+taslak PR'ın varlığı benchmark yapılmış anlamına gelmez. Persona renderer'ındaki
+sonraki bölüm başlığı ileride değişirse eşleşme no-op olur; 10 persona boyut/metin
+testi bu değişimi yakalar. Test kırılmasını golden beklentiyi körlemesine değiştirerek
+geçirme. Hakem GO'su model davranışı, canlı başarı veya deploy izni değildir.
+
+Erken canlı kesiminin ayrıntısı [telemetri kaydında](PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md):
+22 terminal koşu, beş fazdan 74/74 boyut kaydı. Raporlanan gerçek model
+`gpt-5.6-luna/max`; yerel model karşılaştırması bu modelle yapılmalı. 3.991 birimlik
+blok ile bu kesimin DECISION boyut aralığının aritmetik oranı %3,14–3,58;
+eski koşuların aday prompt'ları yeniden üretilmedi, süre kazancı ölçülmedi.

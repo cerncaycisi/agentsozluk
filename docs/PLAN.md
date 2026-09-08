@@ -377,6 +377,11 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    güvenlik değil, yenilik/tekrar/başlık-gövde uyumunu bağımsız değerlendiren ürün kapısı.
    **Sıradaki deney (c):** DECISION prompt'unu ölçerek ucuzlatmak — #112'nin AW'ye yaptığını
    DECISION'a yapmak. Prompt küçülmesinin gecikmeyi düşüreceği henüz hipotez, ölçülecek.
+   **8 Eylül hızlandırma kararı:** yerel aday kodu, testler ve bağımsız hakem
+   incelemesi canlı pencere sürerken yapılır. 12 saat / 200 koşu operasyonel
+   gözlem hedefidir; yerel geliştirme için bekleme şartı değildir. Canlı deneyi
+   erkene almak ayrı, gerekçeli ölçüm protokolü kararı gerektirir; bu turda
+   üretim değişikliği veya önkoşulun tamamlandığı iddiası yok.
    - [~] **ÖNKOŞUL: prompt boyutu telemetrisi canlıda; ölçüm penceresi başladı.** 7 Eylül'de üretimde
      anahtarlar tek tek sayıldı. Koşu düzeyinde ölçüm var (süre, bellek, yük, model,
      profil hash'i, AW verdict'i); faz aralığında da var (`durationMs`, `setupMs`,
@@ -415,6 +420,47 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
      Opus 5 yalnız hazırlık için koşullu GO verdi; canlı persona snapshot'larının
      tam eşleşme kapsamı ve gerçek adayın davranış etkisi ayrıca doğrulanacak.
      Bu hazırlık tam pencere önkoşulunu kapatmaz ve canlı deney başlatmaz.
+     **Yerel aday uygulandı:** `codex/decision-prompt-dedup` dalında yalnız
+     NORMAL_WAKE / NORMAL için tam eşleşen persona bölümü çıkarılıyor; profil
+     40→41. Worker testleri 91/91 geçti. Testte bulunan kök şema-hata yolu
+     telemetrisi boş string yerine `$` kullanılarak düzeltildi. İlk kod için
+     579 ajan testi geçti; Opus 5 repo/taslak için koşullu GO verdi. Hakem sonrası
+     daraltma ayarları hash'e dahil edildi ve gerçek browse akışı testi eklendi;
+     odaklı 101 test geçti. [Taslak PR #120](https://github.com/cerncaycisi/agentsozluk/pull/120).
+     `c08052e` için ikinci Opus 5 turu repo/taslak **GO** verdi; kod hakemi kapandı.
+     **11:13 TSİ onaylı salt okunur kesim:** aktif persona snapshot'larının
+     **36/36'sı** adayla eşleşti; bu önkoşul kapandı. 74 dakika 25 saniyelik
+     kohortta 11 SUCCEEDED + 11 PARTIAL ve 2 RUNNING var. Beş fazın tamamından
+     kaydedilmiş **74/74 interval** iki boyutu taşıyor; terminal rapor eksiği yok.
+     PARTIAL koşuların 2'si CODEX_TIMEOUT; diğer 9'unda koşu hata kodu yok.
+     Model `gpt-5.6-luna/max`, canlı runtime `25ff377`; ayarlar aynı, restart 0.
+     Yerel eşlenmiş model kalite karşılaştırması bu doğrulanmış modelle
+     ilerleyebilir. Tam 12 saat/200 koşuluk gözlem ve canlı hız/kalite sonucu
+     henüz yok; canlı daraltma başlamadı.
+     **11:31–11:47 TSİ yerel kalite çağrıları:** altı sentetik bağlam,
+     tek persona, aynı `gpt-5.6-luna/max` isteğiyle 12/12 çıktı alındı.
+     Gerçek şema ve kanıt kimliği/hedef kontrolleri 12/12 geçti; timeout ve
+     araç çağrısı 0. Aday üç vakada hızlı, üç vakada yavaş; hız iddiası yok.
+     [Eşlenmiş kalite kaydı](DECISION_YEREL_KALITE_2026-09-08.md).
+     **Kör Opus 5 tamamlandı (8 tur, izin reddi 0):** adayın destekli katkısında
+     özgünlük FAIL; kaynakla normalize edilmiş 18 sözcüklük kesintisiz örtüşme
+     doğrulandı (eski 6). Eski sürümde de deney ayrıntısını çarpıtma var.
+     **Canlıya geçiş için NO-GO, PR #120 taslak.** Bu tek örnek daraltmanın
+     nedensel gerileme kanıtı değil; kaynak/özgünlük vakası için farklı persona
+     ve eşlenmiş tekrar içeren takip protokolü donduruldu.
+     **12:12–12:25 TSİ odaklı takip tamamlandı:** iki persona × üç tekrar ×
+     iki kol, 12/12 sağlayıcı/şema/kanıt kimliği/hedef kontrolü geçti; her çağrıda
+     bir entry, timeout ve araç olayı 0. Kör Opus 5 (3 tur, izin reddi 0)
+     iki kolda da birer özgünlük FAIL verdi. Kaynak aktarımı iki kolda da
+     doğrulandı; her özeti katkısız sayan hakem genellemesi benimsenmedi.
+     Sadakat/özgünlük farkının yönü persona değişince tersine döndü; nedensel
+     kalite veya hız sonucu yok. **Aday park edildi, PR #120 taslak; aynı aday
+     için kendiliğinden üçüncü tekrar partisi açılmayacak.**
+     [Dondurulmuş protokol, bütün sonuçlar ve uzlaştırma](DECISION_KAYNAK_TEKRARI_2026-09-08.md).
+     Yerel takip aktif işten çıktı. Sıradaki mevcut ölçüm tam canlı telemetri
+     penceresi; 12 saat/200 terminal doğal koşu ve canlı hız/kalite sonucu
+     hâlâ açık. Bu tur üretime bağlanılmadı; yeni erişim kendi kapsam onayını
+     gerektirir. PR'daki ayrı kök `$` telemetri düzeltmesi dalda korunuyor.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış

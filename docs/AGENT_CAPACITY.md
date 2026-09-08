@@ -185,7 +185,7 @@ tarafında kullanılıyor. **Fail-closed koruma zamanlayıcı yolunda yok.**
 | ölçü                                              | değer                        |
 | ------------------------------------------------- | ---------------------------- |
 | capability kaydındaki `promptProfileHash`         | `edffdba06d3bd21c…`          |
-| güncel `RUNTIME_PROMPT_PROFILE_HASH`              | `7c7b71daf140fbf3…`          |
+| 27 Ağustos'taki `RUNTIME_PROMPT_PROFILE_HASH`     | `7c7b71daf140fbf3…`          |
 | kurala göre olması gereken etkin concurrency      | **1** (PROMPT_PROFILE bayat) |
 | son 24 saatte gerçekleşen en fazla eşzamanlı koşu | **2**                        |
 | aynı pencerede ortalama eşzamanlılık              | 1,57                         |
