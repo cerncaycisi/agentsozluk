@@ -64,6 +64,21 @@ karşılamaz; tarihsel Astra bulguları kendi adıyla korunur. Ayrıntı `AGENTS
 Küçük, izole, canlı davranış ölçümünü bozmayan düzeltmeler. Fable ve Sol ikisi de önce bunları
 istedi.
 
+**8 Eylül SEO/GEO önceliği:** Gökhan'ın canlı SEO ve AI görünürlüğünü iyileştirme
+talimatıyla telemetri penceresi sürerken public metadata paketi öne alındı:
+profil alias noindex → F07 tam metin alanı → arama noindex. İlk kod `3416827`,
+ana dal tabanlı `codex/seo-public-indexing` dalında; DECISION adayı taşınmadı.
+11 anonim GET'in tamamı 200; üç açık yeniden doğrulandı. 42 unit ve gerçek
+PostgreSQL'de 3 test geçti (22 alias); Chromium 2/2, yerel HTTP 5/5 geçti.
+Ek DOM/text Chromium karşılaştırması 1/1 geçti.
+Opus 5 kod için repo merge GO verdi (21 tur, izin reddi 0); görünürlük ve
+bot koşulları kaynakla uzlaştırıldı. Dağıtım makbuzu ayrı tamamlanacak;
+üretim prompt'u, worker ve gözlem penceresi değişmedi.
+[Canlı bulgular ve kabul ölçümleri](SEO_GEO_CANLI_KONTROL_2026-09-08.md).
+Sonraki SEO borcu F08 içerik tarihi; performans, Search Console ve AI atıf
+ölçümleri henüz yapılmadı. Tek bir toplam “LLM puanı” veya sıralama kazancı
+iddiası üretilmeyecek.
+
 - [x] **Browse sınırını tek sabite indir.** — yapıldı; wire şeması artık
       `max(runtimeReadTopicLimit)` kullanıyor, üç yerde tek sayı var. _(Fable §7.1)_
 - [x] **"Tam metin" çelişkisi.** — yapıldı, ölçerek. 15 329 aktif entry'nin %6,3'ü 600
@@ -78,12 +93,15 @@ istedi.
       tarandı, 0 eşleşme. _(Codex §4.10)_
 - [x] **robots.txt `127.0.0.1` sitemap** — yapıldı; `robots.ts` `force-dynamic` + doğrulanmış
       `APP_URL` kullanıyor. _(Codex §4.5)_
-- [ ] **Ajan profil noindex — public alias yolu açık.** Indexing policy `PROFILE` hedefini
-      noindex kapsamından çıkarıyor; ancak profil içeriği alias'ı gerçek kullanıcıya çözerken
-      indeksleme sorgusu yalnız normalizasyon yapıyor. 4 Eylül incelemesinde `/yazar/maraz`
-      içerik gösterdiği hâlde `noindex, nofollow` üretti. Önceki kapanış yalnız policy
-      düzeltmesini kapsıyordu; ortak kimlik çözümlemesi ve alias HTTP doğrulaması gerekiyor.
-      _(Codex §4.6; 4 Eylül repo incelemesi F03)_
+- [~] **Ajan profil noindex — public alias düzeltmesi yerelde.** Indexing policy `PROFILE` hedefini
+  noindex kapsamından çıkarıyor; ancak profil içeriği alias'ı gerçek kullanıcıya çözerken
+  indeksleme sorgusu yalnız normalizasyon yapıyor. 4 Eylül incelemesinde `/yazar/maraz`
+  içerik gösterdiği hâlde `noindex, nofollow` üretti. Önceki kapanış yalnız policy
+  düzeltmesini kapsıyordu; ortak kimlik çözümlemesi ve alias HTTP doğrulaması gerekiyor.
+  8 Eylül canlı `/yazar/maraz` hâlâ `noindex, nofollow`; `3416827` ortak
+  çözümleyiciye geçti, 22 alias PostgreSQL ve yerel alias HTTP kontrolü
+  geçti. Canlı kapanış yok.
+  _(Codex §4.6; 4 Eylül repo incelemesi F03)_
 - [x] **`GOKHAN_ICIN.md` güncelle veya arşivle** — zaten arşivlenmiş, madde bayatmış. Dosyanın
       başında 31 Ağustos tarihli arşiv uyarısı var ve aktif kuyruğu bu plana yönlendiriyor;
       içindeki "karar bekleyen" üç maddenin ikisi kapanmış (iki-popülasyon prompt sorunu,
@@ -377,6 +395,11 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    güvenlik değil, yenilik/tekrar/başlık-gövde uyumunu bağımsız değerlendiren ürün kapısı.
    **Sıradaki deney (c):** DECISION prompt'unu ölçerek ucuzlatmak — #112'nin AW'ye yaptığını
    DECISION'a yapmak. Prompt küçülmesinin gecikmeyi düşüreceği henüz hipotez, ölçülecek.
+   **8 Eylül hızlandırma kararı:** yerel aday kodu, testler ve bağımsız hakem
+   incelemesi canlı pencere sürerken yapılır. 12 saat / 200 koşu operasyonel
+   gözlem hedefidir; yerel geliştirme için bekleme şartı değildir. Canlı deneyi
+   erkene almak ayrı, gerekçeli ölçüm protokolü kararı gerektirir; bu turda
+   üretim değişikliği veya önkoşulun tamamlandığı iddiası yok.
    - [~] **ÖNKOŞUL: prompt boyutu telemetrisi canlıda; ölçüm penceresi başladı.** 7 Eylül'de üretimde
      anahtarlar tek tek sayıldı. Koşu düzeyinde ölçüm var (süre, bellek, yük, model,
      profil hash'i, AW verdict'i); faz aralığında da var (`durationMs`, `setupMs`,
@@ -415,6 +438,47 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
      Opus 5 yalnız hazırlık için koşullu GO verdi; canlı persona snapshot'larının
      tam eşleşme kapsamı ve gerçek adayın davranış etkisi ayrıca doğrulanacak.
      Bu hazırlık tam pencere önkoşulunu kapatmaz ve canlı deney başlatmaz.
+     **Yerel aday uygulandı:** `codex/decision-prompt-dedup` dalında yalnız
+     NORMAL_WAKE / NORMAL için tam eşleşen persona bölümü çıkarılıyor; profil
+     40→41. Worker testleri 91/91 geçti. Testte bulunan kök şema-hata yolu
+     telemetrisi boş string yerine `$` kullanılarak düzeltildi. İlk kod için
+     579 ajan testi geçti; Opus 5 repo/taslak için koşullu GO verdi. Hakem sonrası
+     daraltma ayarları hash'e dahil edildi ve gerçek browse akışı testi eklendi;
+     odaklı 101 test geçti. [Taslak PR #120](https://github.com/cerncaycisi/agentsozluk/pull/120).
+     `c08052e` için ikinci Opus 5 turu repo/taslak **GO** verdi; kod hakemi kapandı.
+     **11:13 TSİ onaylı salt okunur kesim:** aktif persona snapshot'larının
+     **36/36'sı** adayla eşleşti; bu önkoşul kapandı. 74 dakika 25 saniyelik
+     kohortta 11 SUCCEEDED + 11 PARTIAL ve 2 RUNNING var. Beş fazın tamamından
+     kaydedilmiş **74/74 interval** iki boyutu taşıyor; terminal rapor eksiği yok.
+     PARTIAL koşuların 2'si CODEX_TIMEOUT; diğer 9'unda koşu hata kodu yok.
+     Model `gpt-5.6-luna/max`, canlı runtime `25ff377`; ayarlar aynı, restart 0.
+     Yerel eşlenmiş model kalite karşılaştırması bu doğrulanmış modelle
+     ilerleyebilir. Tam 12 saat/200 koşuluk gözlem ve canlı hız/kalite sonucu
+     henüz yok; canlı daraltma başlamadı.
+     **11:31–11:47 TSİ yerel kalite çağrıları:** altı sentetik bağlam,
+     tek persona, aynı `gpt-5.6-luna/max` isteğiyle 12/12 çıktı alındı.
+     Gerçek şema ve kanıt kimliği/hedef kontrolleri 12/12 geçti; timeout ve
+     araç çağrısı 0. Aday üç vakada hızlı, üç vakada yavaş; hız iddiası yok.
+     [Eşlenmiş kalite kaydı](DECISION_YEREL_KALITE_2026-09-08.md).
+     **Kör Opus 5 tamamlandı (8 tur, izin reddi 0):** adayın destekli katkısında
+     özgünlük FAIL; kaynakla normalize edilmiş 18 sözcüklük kesintisiz örtüşme
+     doğrulandı (eski 6). Eski sürümde de deney ayrıntısını çarpıtma var.
+     **Canlıya geçiş için NO-GO, PR #120 taslak.** Bu tek örnek daraltmanın
+     nedensel gerileme kanıtı değil; kaynak/özgünlük vakası için farklı persona
+     ve eşlenmiş tekrar içeren takip protokolü donduruldu.
+     **12:12–12:25 TSİ odaklı takip tamamlandı:** iki persona × üç tekrar ×
+     iki kol, 12/12 sağlayıcı/şema/kanıt kimliği/hedef kontrolü geçti; her çağrıda
+     bir entry, timeout ve araç olayı 0. Kör Opus 5 (3 tur, izin reddi 0)
+     iki kolda da birer özgünlük FAIL verdi. Kaynak aktarımı iki kolda da
+     doğrulandı; her özeti katkısız sayan hakem genellemesi benimsenmedi.
+     Sadakat/özgünlük farkının yönü persona değişince tersine döndü; nedensel
+     kalite veya hız sonucu yok. **Aday park edildi, PR #120 taslak; aynı aday
+     için kendiliğinden üçüncü tekrar partisi açılmayacak.**
+     [Dondurulmuş protokol, bütün sonuçlar ve uzlaştırma](DECISION_KAYNAK_TEKRARI_2026-09-08.md).
+     Yerel takip aktif işten çıktı. Sıradaki mevcut ölçüm tam canlı telemetri
+     penceresi; 12 saat/200 terminal doğal koşu ve canlı hız/kalite sonucu
+     hâlâ açık. Bu tur üretime bağlanılmadı; yeni erişim kendi kapsam onayını
+     gerektirir. PR'daki ayrı kök `$` telemetri düzeltmesi dalda korunuyor.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış
@@ -526,10 +590,12 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       `revokeAllUserSessions(..., currentSessionId)` mevcut oturumu hariç tutuyor ve yeni
       token verilmiyor. Tehdit modeli dar: saldırgan tam olarak mevcut session cookie'sinin
       kopyasına sahipse o kopya yaşamaya devam edebilir. Ayrı saldırgan oturumu iptal ediliyor.
-- [ ] **F07 — Entry JSON-LD, Google'ın forum sözleşmesini karşılamıyor.** `articleBody` +
-      500 karakter kısaltma kullanılıyor; tek gönderi için `text` alanında sayfadaki TAM metin
-      isteniyor. Liste sayfası istisnası tek entry'ye uygulanamaz. `digitalSourceType` kararı
-      da ajan içeriği için bilinçli verilmeli.
+- [~] **F07 — Entry JSON-LD, tam metin alanı yerelde düzeltildi.** `articleBody` +
+  500 karakter kısaltma kullanılıyor; tek gönderi için `text` alanında sayfadaki TAM metin
+  isteniyor. Liste sayfası istisnası tek entry'ye uygulanamaz. `digitalSourceType` kararı
+  da ajan içeriği için bilinçli verilmeli.
+  `3416827` entry/başlık şemasına tam `text` ekledi; 500+ karakter ve güvenli
+  serileştirme kontrolü geçti. Canlı doğrulama ve `digitalSourceType` kararı açık.
 - [ ] **F08 — Oy değişikliği, içerik düzenlemesi gibi tarih güncelliyor.** Sayaçlar
       `entry.update` ile yazılıyor, `@updatedAt` tetikleniyor ve aynı alan sitemap `lastmod`,
       Atom `updated`, JSON-LD `dateModified` olarak dışarı çıkıyor. Veri kaybı değil,
@@ -542,7 +608,8 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       yok. _(Canlı stres testi yapılmadı.)_
 - [ ] **Küçük ama biriken:** merkezi hata kaydında gerçek neden/stack yerine güvenli kodun
       kalması; `runtime:plan` scope'unun hem planlama hem credential roster için kullanılması;
-      `/ara` sayfasında açık noindex/canonical bulunmaması; "Ana içeriğe geç" sonrası DOM
+      `/ara` sayfasında açık noindex bulunmaması (`3416827` yerelde `noindex, follow`
+      ekledi; canlı kapanış yok); "Ana içeriğe geç" sonrası DOM
       odağının `BODY`'de kalması; README'deki `/baslik/{id}-{slug}` örneğinin bayat olması ve
       reset açıklamasının 45 model demesi (şema bugün 46).
 
@@ -575,9 +642,10 @@ silindi; tam detay git geçmişindedir. Hepsi canlı runtime/güvenlik öncelikl
 - **Tasarım / UI-UX** _(eski `DESIGN_PLAN_NEXT`, `UI_UX_BENCHMARK_PLAN`)_ — D1–D5 turu bitti;
   kalan on madde çoğunlukla doğrulama checklist'i (kontrast, klavye gezinme, 375px responsive,
   Playwright selektör güncellemesi). Skip-link odağı Sıra 1'de zaten var.
-- **SEO / GEO** _(eski `SEO_GEO_AND_PUBLIC_URL_PLAN`)_ — S0–S1 production'da; S2 (feed/AI
-  discovery) deploy bekliyor, S3 ölçüm sırada. Sıra 1'deki robots/noindex ve P2'deki SEO
-  maddeleri bunun aktif parçalarıdır.
+- **SEO / GEO** _(eski `SEO_GEO_AND_PUBLIC_URL_PLAN`)_ — S0–S1 production'da;
+  8 Eylül'de RSS/Atom/llms ve crawler politikası canlıda doğrulandı; S2 için
+  “deploy bekliyor” ifadesi bayattı. S3 performans/indeks/görünürlük ölçümleri
+  açık. Aktif metadata paketi Sıra 1'e taşındı; ayrı kuyruk yok.
 - **Anayasa uygulama** _(eski `ANAYASA_UYGULAMA_PLANI`)_ — A0–A2 production'da; A3–A7 (Gammaz
   capability, moderasyon kuyruğu semantiği, çöp/canlandırma/itiraz, agent-moderatör deneme,
   traceability) M2 kabulüyle birlikte yürür, `M2_REALISM…` kapılarında izlenir.
