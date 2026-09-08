@@ -7,6 +7,36 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-08 14:50–14:59 TSİ — SEO ve analytics düzeltmeleri canlıda
+
+- Gökhan'ın `olur` onayıyla tam `f88d64db67789fe8e98626a7d2d73ff68de9bae5`
+  dağıtıldı. Main CI `34218917808` 7/7 SUCCESS; bundle `34220942902`,
+  artifact `10053960206` / 228.541.656 bayt. Server-fetch digest/ABI geçti;
+  `RELEASE_COMPLETE PASS ... cleanup=no-cleanup`.
+- T3'ün mevcut yönetici oturumuyla pause `266→267`, doğal drain 0/0/0/0,
+  app/runtime/boot eşleşmesi ve health/ready/search `200/200/200` sonrası
+  resume `267→268`. Stable settings hash aynı; 36 ACTIVE, concurrency 2,
+  timeout 480 sn. Worker active/running, `NRestarts=0`; DB ve Caddy sağlıklı,
+  iki haftalık container'lar korundu. Migration, host build veya temizlik yok.
+- 13 anonim GET 200; 41 metadata/metin kontrolü + DNT/GPC/synthetic 3/3 PASS.
+  `/yazar/maraz` index/follow ve doğru canonical; arama noindex/follow.
+  Tek entry + başlıktaki 20 gönderinin tam JSON-LD text'i görünür gövdeyle aynı;
+  tek entry'nin parent türü CollectionPage. Ana sayfada GTM/Hotjar var;
+  arama/giriş ve üç privacy isteğinde yok. Efektif production/origin kapısı PASS.
+- Pause `11:48:45.127Z–11:51:35.911Z`, 170,784 sn. Ajan/runtime/Prisma
+  kaynakları eski canlı SHA ile aynı. Telemetri kohortu korunur, kesinti ayrı
+  raporlanır; aktif 12 saat için en erken 22:02:12.297 TSİ ve ayrıca 200
+  terminal doğal koşu gerekir. 14:54 kesiminde resume sonrası 2 RUNNING,
+  henüz terminal interval raporu yok; ilk başlangıç `11:52:19.238Z`.
+- 14:59:39 TSİ tekrarında resume sonrası 2 SUCCEEDED + 2 RUNNING; başarılı
+  ikisinde rapor eksiği 0, BROWSE/DECISION/ACTION_WORTHINESS toplam 6/6
+  interval'da iki boyut alanı mevcut. Worker ve ayar hash'i aynı.
+- Doküman teslimi format/lint/typecheck, diff kontrolü ve requirements 3/3 PASS.
+- GSC'deki 27 forum hatasının yeniden tarama sonucu ve görünürlük etkisi henüz
+  ölçülmedi. Geçmiş GA4 verisi veya Google ayarları değiştirilmedi.
+  [Canlı kanıt](SEO_GEO_CANLI_KONTROL_2026-09-08.md),
+  [pencere kaydı](PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md).
+
 ## 2026-09-08 — SEO paketi main'de, Search Console başlangıç ölçümü
 
 - Kişisel hesaptaki GA4 `546054872` mülkünde 11 Ağustos–7 Eylül:

@@ -7189,3 +7189,69 @@ Runtime.evaluate.` alındı. Yeniden tıklamadan desteklenen durum okuması
   `agentsz_analytics_20260908_test` test sonrası silindi, DB katalog sayımı 0.
   Eski DB'lere reset uygulanmadı. Hakem snapshot'ı yalnız bu kod SHA'sını
   ve gerekli kaynakları içerir; Opus 5 salt okunur çalıştırıldı.
+
+## 2026-09-08 14:26–14:59 TSİ — onaylı SEO/analytics dağıtımı
+
+- Aday ve üretime geçen tam SHA `f88d64db67789fe8e98626a7d2d73ff68de9bae5`;
+  eski canlı `25ff3771859da5904b22dac40b712286f852fe30`. Gökhan `olur` dedi;
+  kapsam paketleme, pause/doğal drain, app/runtime geçişi, worker restart,
+  smoke/doğrulama/resume. Temizlik ve host build yok. Main CI `34218917808`
+  7/7 SUCCESS; bundle `34220942902`, artifact `10053960206`, 228.541.656 bayt.
+- PR #122 hakemi `claude-opus-5/high`, kod `6ca7104`: 20 tur, is_error=false,
+  izin reddi 0; yardımcı Haiku bildirildi. Koşullu repo GO; next.config ortam
+  eşleme sorusu kaynakla kapandı. Head `11062a2` ve squash `f88d64d` src/tests
+  incelenen kodla eşit. Canlı efektif ortam ve gerçek etiket kontrolü de geçti.
+- Artifact envanterinde `the --slurp option is not supported with --jq or
+--template` hatası, önceki ledger uyarısına rağmen tekrarlandı. JSON ayrı Python
+  adımında ayrıştırıldı; önceden 251.823.306 bayt aktif artifact vardı. Hiçbiri
+  silinmeden yeni bundle üretildi ve bağımsız ZIP digest'i doğrulandı.
+- İlk SSH kontrolü bağlantıdan önce `Cannot stat /private/tmp/agent-sozluk-known_hosts:
+No such file or directory` verdi. DNS doğrulandı; keyscan sonucu user-pinned
+  ED25519 `SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI` ile karşılaştırılıp
+  yalnız eşleşen kayıt mode 0600 dosyasına yazıldı. StrictHostKeyChecking korunarak
+  deploy kullanıcısı/hostname/repo/Compose kapıları geçti; root SSH kullanılmadı.
+- Ek read-only sayımda `column "lifecycleState" does not exist`; Prisma ve mevcut
+  preflight kaynaklarıyla `lifecycleStatus` düzeltildi, 36 ACTIVE doğrulandı.
+  Veri mutasyonu yok. Dosya keşfinde `zsh:1: no matches found: src/lib/seo*` ve
+  `src/modules/seo: No such file or directory` yalnız yerel yol varsayımıydı;
+  `rg --files` / kaynak araması gerçek `modules/indexing/domain/public-seo.ts`
+  yolunu buldu. Ürün hatası sayılmadı.
+- Chrome admin oturumu kapalıydı; kullanıcı T3 browser'ını seçti. T3 yerleşik
+  browser'da mevcut admin oturumu doğrulandı; yeni giriş/credential işlemi yok.
+  UI odak değişiminde `The user changed '/Applications/T3 Split.app'` yüzünden
+  stale eylemler durdu. Güncel AX durumundan agentsz pane → sağ panel → Browser
+  seçildi; adres ve gerekçe native paste ile girildi. AX setValue tek başına
+  React gezinmesini başlatmadı; URL bar paste/Return ve sayfa sonucu doğrulandı.
+- Pause `11:48:45.127Z`, sürüm `266→267`; 2 çalışan koşu doğal bitti, drain
+  0/0/0/0. Repository-owned server-fetch lane exit 0; `SERVER_FETCH_PASS`,
+  `RELEASE_VERIFY PASS`, `RELEASE_BOOT_TAG PASS`, `RELEASE_COMPLETE PASS ...
+cleanup=no-cleanup`. Image/runtime ABI, migration/settings/lifecycle koruma
+  kontrolleri ve health/ready/search 200/200/200 geçti. Yeni image ID
+  `sha256:66d1a26f8958c5f4493a9a4d536f4fc2dd252790e644e993f60cf6ed380eaefb`.
+- Bağımsız app/current/boot/checkout doğrulaması geçti. Önceki image/runtime
+  korundu; DB/Caddy healthy ve iki haftalık container'lar. Root boş alanı
+  39.030.560 KiB → 37.109.376 KiB (%49 → %51 kullanım); cleanup yapılmadı.
+  T3 resume `11:51:35.911Z`, sürüm `267→268`; stable settings hash
+  `e28fff93314a405f31ca4c3708b95c2e`, concurrency 2 ve timeout 480 sn aynı.
+- 13 public GET 200; 41 metadata/metin ve üç privacy isteği PASS. İlk metadata
+  betiği topic listesindeki 20 öğeye tek-entry parent sözleşmesi uyguladı;
+  `parentType=null` tek başarısız koşuldu. Kaynakla doğrulanıp o koşul entry'ye
+  daraltıldı, aynı HTML üzerinde 41/41 geçti; ilk rapor arşivlendi. Tam metin,
+  author/datePublished/headline ve görünür gövde eşitliği korunarak doğrulandı.
+  PLAN yamasındaki ilk `Failed to find expected lines` satır eşlemesi düzeltildi;
+  başarısız yama belgeyi değiştirmedi.
+- `11:54:01.234058Z`: worker active/running, NRestarts 0, 268 ve settings hash
+  aynı; resume sonrası 2 doğal RUNNING, ilk başlangıç `11:52:19.238Z`; henüz
+  interval raporu yok. Runtime/agents/Prisma kaynakları `25ff377..f88d64d` için
+  aynı. 170,784 sn pause ayrı tutuldu; aktif 12 saat en erken 22:02:12.297 TSİ
+  ve ayrıca 200 terminal doğal koşu. Kanıt `tmp/seo-release-2026-09-08/` içinde.
+- `11:59:39.159383Z` ilk terminal kontrolü: 2 SUCCEEDED + 2 RUNNING;
+  başarılı iki koşuda rapor eksiği 0, BROWSE/DECISION/ACTION_WORTHINESS
+  toplam 6/6 boyut alanı mevcut. Worker/hash/268 aynı. Doküman tesliminde
+  format/lint/typecheck, diff kontrolü ve requirements 3/3 PASS.
+- Tekrarlama: T3'te hazır oturum varken Chrome girişini engel yapma; native UI
+  odak değişince eski indeksle devam etme. Read-only sayımda gerçek şema adını
+  kullan. Liste öğesine tek-entry parent koşulu yükleme. Artifact ZIP digest'ini
+  image ID ile karıştırma; kontrol aralığını yeni telemetri başlangıcı sayma.
+  HTML etiket PASS'ını Analytics olay teslimi, GSC hata kapanışı veya AI/sıralama
+  kazancı sayma. Google ayarı/validation isteği değiştirilmedi.

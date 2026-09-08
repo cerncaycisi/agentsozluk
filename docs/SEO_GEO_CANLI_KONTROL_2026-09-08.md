@@ -211,6 +211,56 @@ oluşturuldu; test sonrası silindi, pg_database sayımı 0. Üretim DB'si yok.
 Opus 5 incelemesi salt okunur snapshot'ta bu kesin kod SHA'sına bağlı;
 sonuç ve exact-head CI, repo teslim kaydıyla birlikte tutulur.
 
+## 14:50 TSİ — onaylı üretim dağıtımı ve aynı yüzeylerde doğrulama
+
+PR #122 head `11062a26d2afbcf040e6402357e76b10f0c894d9`, CI `34218250151`
+7/7 SUCCESS sonrası `f88d64db67789fe8e98626a7d2d73ff68de9bae5` olarak birleşti.
+Kaynak/test içeriği incelenen `6ca7104` ile aynı. Salt okunur hakem gerçek modeli
+`claude-opus-5/high`: 20 tur, `is_error=false`, izin reddi 0; yardımcı Haiku
+4.5 kullanımı bildirildi. Koşullu repo GO'daki `next.config.ts` APP_URL eşlemesi
+kontrol edildi: `env` eşlemesi yok, değişken NEXT_PUBLIC değil. Başlangıç HTML
+kontrolünün etkisiz olduğu yorumu arşivlenmiş gerçek etiketlerle çürütüldü;
+0 ağ isteği iddiası yalnız ölçülen birincil analytics host'larıyla sınırlandı.
+Canlı efektif ortam/etiket kontrolü koşulu aşağıda kapandı.
+
+GA4'te yalnız rapora exact `hostname=agentsozluk.com` filtresi uygulanınca
+**70 oturum, 30 etkileşimli oturum, %42,86 etkileşim, 42 sn ortalama ve 388 olay**
+görüldü; 42 Google/organic, 28 direct. Bu, tablo satırlarından türetilen yeni
+toplam değil, filtreli raporun kendi ölçümü. Mülk ayarı değişmedi.
+
+Gökhan'ın tam SHA için `olur` onayı; main CI `34218917808` 7/7 SUCCESS.
+Bundle `34220942902`, artifact `10053960206`, **228.541.656 bayt**, ZIP SHA-256
+`c3da33b0d60d8bc3d8dad092a5cb236eaa68c689070ce1f8a6486477e14fd680`.
+Pinned DNS/ED25519, deploy kullanıcısı ve host/repo/Compose kapıları geçti.
+T3 tarayıcısındaki mevcut admin oturumuyla pause/resume uygulandı. Server-fetch
+digest/ABI, app/runtime/boot eşleşmesi, ortak health/ready/search 200 ve
+`RELEASE_COMPLETE PASS ... cleanup=no-cleanup` doğrulandı. Runtime kodu,
+ajan kaynakları ve Prisma, eski canlı `25ff377` ile bayt özdeş; model/prompt
+ve bütçe değişmedi. Pause 170,784 sn; ayrıntısı telemetri kaydında.
+
+14:51–14:53 TSİ'de **13 anonim GET / 13 HTTP 200**, kaydedilen HTML üzerinden
+**41/41 metadata/metin kontrolü** ve **3/3 privacy header kontrolü** geçti:
+
+| Yüzey                                             | Canlı sonuç                                                                              |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `/yazar/maraz`, `/yazar/kirikcetvel`              | index/follow, kendi doğru canonical adresi                                               |
+| `/ara?q=depozito`                                 | noindex/follow; GTM/Hotjar yok                                                           |
+| `/entry/16383`                                    | Tam text görünür gövdeyle aynı; author/datePublished/headline var; parent CollectionPage |
+| `/baslik/erisilebilir-tasarim--4990`              | 20/20 forum gönderisinde text görünür gövdeyle aynı; gerekli üç alan eksikliği 0         |
+| `/`                                               | GTM ve Hotjar kimlikleri HTML'de mevcut; efektif NODE_ENV/APP_URL origin kontrolü PASS   |
+| `/giris`, ana sayfada DNT/GPC/synthetic istekleri | GTM/Hotjar kimlikleri HTML'de yok                                                        |
+| `/robots.txt`, `/sitemap.xml`, `/llms.txt`        | HTTP 200                                                                                 |
+
+HTTP istekleri script çalıştırmadı; bu, GA4'e uçtan uca olay teslimi ölçümü
+değildir. İlk kontrol betiği topic listesindeki gönderilere de tek entry'nin
+`isPartOf` şartını uyguladı (20 yanlış FAIL). Kaynaktaki iki sözleşme ayrıldı;
+aynı arşiv üzerinde yeniden kontrol 41/41 geçti. Metin eşitliği veya zorunlu
+alan koşulları gevşetilmedi; ilk sonuç korundu.
+
+Google yeniden tarama/validation isteği gönderilmedi; **27 GSC forum hatasının
+kapandığı, sıralama veya AI atıf kazancı olduğu henüz ölçülmedi**. F07'nin dijital
+kaynak türü ve F08 içerik tarihi kapsamı ayrı açık işler; aktif sıra PLAN'da.
+
 ## “İyi SEO/LLM skoru” için ölçüm sınırı
 
 Tek bir evrensel LLM görünürlük puanı yok. Teknik kontrol, indekslenme, gerçek
@@ -237,7 +287,8 @@ içerik, açık kaynaklar ve kullanışlı sayfalardır.
 Git dışındaki `tmp/seo-live-audit-2026-09-08/` dizini: `read-public.py`, her
 yüzey için `.body` + `.json` (UTC zaman, SHA-256, HTTP ve ayrıştırılmış metadata),
 yerel test log'ları, `review.py` ve bağımsız hakem çıktısı. Public entry gövdeleri
-ve prompt'lar attempt ledger'a kopyalanmaz. Bu kayıt canlı deploy makbuzu değildir.
+ve prompt'lar attempt ledger'a kopyalanmaz. Bu dizin dağıtım öncesi kontrolün
+kanıtıdır; canlı dağıtım makbuzu aşağıdaki ayrı dizindedir.
 Okunabilir hakem yanıtı `opus-review.md`, SHA-256:
 `785a1f3ef118b63a03c7a6b6796451862daf4690d0e4e6cf400276c2cbaa3b3f`.
 Merge/CI makbuzu `merge-receipt.json`; GSC'de okunan alanların kaydı
@@ -246,3 +297,9 @@ GA4 property/tarih/hostname/kaynak alanları `ga4-baseline.json` içinde;
 hesap e-postaları ve kimlik bilgileri kanıta kopyalanmadı.
 Analytics test log'u `analytics-e2e.log`; hakem çıktıları
 `analytics-opus-review.json` ve `analytics-opus-review.md`.
+
+Dağıtım kanıtı `tmp/seo-release-2026-09-08/`: `approval.json`, `ci.json`,
+`bundle-receipt.json`, `preflight.log`, `deploy.log`, `flow-paused.log`,
+`verify-before-resume.log`, `flow-resumed.log`, `natural-resume.log`, public
+`.body/.json` arşivi, `public-verification.json`, `public-verification-initial.json`
+ve `privacy-headers.json`. Google raporu ile dağıtım zamanı birbirine karıştırılmaz.

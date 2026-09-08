@@ -73,8 +73,11 @@ PostgreSQL'de 3 test geçti (22 alias); Chromium 2/2, yerel HTTP 5/5 geçti.
 Ek DOM/text Chromium karşılaştırması 1/1 geçti.
 Opus 5 kod için repo merge GO verdi (21 tur, izin reddi 0); görünürlük ve
 bot koşulları kaynakla uzlaştırıldı. PR #121, 7/7 CI sonrası 13:40 TSİ'de
-`e310b77` olarak main'e birleşti. Dağıtım makbuzu ayrı tamamlanacak;
-üretim prompt'u, worker ve gözlem penceresi değişmedi.
+`e310b77` olarak main'e birleşti. **14:50 TSİ: SEO ve analytics paketi `f88d64d`
+canlıya alındı.** App/runtime/boot eşleşmesi ve health/ready/search 200 geçti;
+13 anonim GET ve 41 metadata/metin + 3 privacy kontrolü geçti. Üretim prompt'u
+değişmedi; kontrollü worker restart'ı ve 170,784 saniyelik pause aşağıdaki
+telemetri kaydına işlendi.
 [Canlı bulgular ve kabul ölçümleri](SEO_GEO_CANLI_KONTROL_2026-09-08.md).
 **13:44 TSİ Search Console başlangıç ölçümü:** kişisel hesaptaki domain mülkü
 okundu. 3 ay filtresinde 70 tıklama, 7.262 gösterim, ortalama konum 24,2;
@@ -86,18 +89,21 @@ yeniden taramasıyla kapanış henüz doğrulanmadı. İlk noindex örnekleri fi
 başlıklar; tüm dışlamalar hata sayılmayacak.
 **GA4 ile yeni öncelik:** 11 Ağustos–7 Eylül raporunda 6.207 toplam oturumun
 6.136'sı `127.0.0.1` (%98,86); ayrıca localhost satırları var. Kaynak kodu
-anonim yerel public sayfalarda gerçek GTM/Hotjar kimliklerini yüklüyor.
-Önce analytics'i yalnız production + gerçek site origin'iyle sınırlandır;
-GA4 ölçümünü gerçek hostname üzerinden al. Geçmiş veri silinmeyecek veya
-Google mülk ayarı bu kod paketinde değiştirilmeyecek. Google organik satırı
+anonim yerel public sayfalarda gerçek GTM/Hotjar kimliklerini yüklüyordu.
+**Düzeltme canlıda:** analytics yalnız production + gerçek site origin'inde açık.
+GA4 ölçümü gerçek hostname üzerinden alınır; rapora uygulanan exact hostname
+filtresi 70 oturum verdi (42 Google, 28 direct). Geçmiş veri silinmedi veya
+Google mülk ayarı değiştirilmedi. Google organik satırı
 gerçek hostname'de 42 oturum; tam tabloda açık AI yönlendirmesi görünmüyor.
 `6ca7104` ortam/origin kapısını ekledi; 32 test ve Chromium 1/1 geçti,
 yerel HTML'de GTM/Hotjar yok, ölçülen analytics istek denemesi 0.
-Salt okunur Opus 5 incelemesi ve exact-head CI repo teslim kapılarıdır;
-yerel kabul, canlıya dağıtım veya geçmiş verinin temizlenmesi değildir.
-Sırada bu ölçüm düzeltmesi ile ilk SEO paketinin onaylı dağıtımı ve aynı
-yüzeylerde doğrulama, ardından F08 içerik tarihi ve dizin dışlamalarının
-örnek bazlı ayrımı var. Mobil
+Salt okunur `claude-opus-5/high` incelemesi tamamlandı; 20 tur, izin reddi 0.
+`next.config.ts` ortam eşleme koşulu kaynakla kapandı. PR #122 head `11062a2`
+ve main `f88d64d` CI'ları 7/7 geçti. Canlı efektif ortam/origin kapısı doğru;
+anonim ana sayfada GTM/Hotjar var, arama/giriş/DNT/GPC/synthetic opt-out'ta yok.
+**Sırada F08 içerik tarihi ve dizin dışlamalarının örnek bazlı ayrımı var.**
+Google'ın yeniden tarama sonucu ayrıca izlenecek; 27 forum hatasının GSC'de
+kapandığı veya geçmiş Analytics verisinin temizlendiği iddia edilmiyor. Mobil
 Lighthouse ile ChatGPT/Claude/Perplexity atıfları ölçülmedi; CrUX verisi yok.
 Tek bir toplam “LLM puanı” veya sıralama kazancı iddiası üretilmeyecek.
 
@@ -443,12 +449,19 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
      canlı smoke health/ready/search `200/200/200`. Pause `264→265`, resume `265→266`;
      diğer ayarların hash'i değişmedi, eşzamanlılık 2 ve timeout bütçesi 480 sn.
      Pencere başlangıcı `2026-09-08T06:59:21.513Z` (**09:59:21 TSİ**);
-     12 saat eşiği aynı gün **21:59:21 TSİ**, ayrıca 200 terminal doğal koşu gerekiyor.
+     İlk 12 saat eşiği aynı gün 21:59:21 TSİ idi. SEO/analytics dağıtımında
+     `11:48:45.127Z–11:51:35.911Z` arasında **170,784 sn** duraklatıldı;
+     bu süreyi dışlayan en erken aktif gözlem eşiği **22:02:12.297 TSİ**.
+     Ayrıca 200 terminal doğal koşu gerekiyor. Yeni app/runtime/boot `f88d64d`;
+     `25ff377..f88d64d` arasında `src/runtime`, `src/modules/agents` ve `prisma`
+     farkı yok. Model/prompt/bütçe/eşzamanlılık ve stable settings hash aynı;
+     settingsVersion `266→267→268`. Eski kohort korunur, dağıtım aralığı ayrıca
+     raporlanır; kesintisiz pencere veya hız kazancı sayılmaz.
      İlk `SUCCEEDED` doğal koşu `07:03:49.640Z`'de tamamlandı; kaydedilen BROWSE,
      DECISION ve ACTION_WORTHINESS interval'larının **3/3'ünde iki boyut alanı var**.
      `07:05:19Z` kesiminde kohort 1 başarılı / 1 devam eden koşu; ilk canlı
      kaydın doğrulanması tam pencere veya bütün çağrıların kaydedildiğinin kanıtı değil.
-     **DECISION daraltması başlamadı.**
+     **Canlı DECISION daraltma deneyi başlamadı.**
      Birimler ve ölçüm sınırları:
      [prompt boyutu kanıt kaydı](PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md).
      **8 Eylül yerel hazırlığı:** pencereyi değiştirmeden DECISION metni incelendi.

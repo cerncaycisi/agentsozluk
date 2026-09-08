@@ -236,3 +236,38 @@ Runtime SHA `25ff3771859da5904b22dac40b712286f852fe30`, worker active/running,
 Deploy, ayar/servis değişikliği, prompt kaydı veya elle koşu başlatma yapılmadı.
 Model kalite karşılaştırmasına gerekli faz kapsamı ve persona eşleşmesi artık
 gözlenmiş durumda; bu veri canlı gecikme iyileşmesi veya tam kabul kanıtı değildir.
+
+## 8 Eylül 14:48–14:54 TSİ — SEO dağıtım aralığı, aynı runtime koduyla devam
+
+Onaylı SEO/analytics sürümü `f88d64db67789fe8e98626a7d2d73ff68de9bae5` için T3
+admin oturumundan pause `2026-09-08T11:48:45.127Z`, settingsVersion `266→267`.
+İki aktif koşu iptal edilmeden tamamlandı; cutover öncesi kuyruk/çalışan/iptal
+talebi/aktif lease `0/0/0/0`. App, immutable runtime/current ve production boot
+etiketi aynı SHA; ortak smoke 200/200/200, worker active/running, NRestarts 0.
+
+Resume `2026-09-08T11:51:35.911Z`, settingsVersion `267→268`;
+stable settings hash `e28fff93314a405f31ca4c3708b95c2e` aynı. 36 ACTIVE,
+eşzamanlılık 2, timeout 480 sn. `git diff 25ff377..f88d64d -- src/runtime
+src/modules/agents prisma` boş: prompt/model/ajan/runtime kodu ve şema değişmedi.
+DECISION adayı dağıtılmadı. Worker kontrollü olarak yeniden başlatıldı.
+
+Pause–resume arası **170,784 saniye**. Sabah `06:59:21.513Z` başlangıç kohortu
+silinmez veya yeniden başlatılmış gibi etiketlenmez; dağıtım öncesi/sonrası ve
+bu operasyon aralığı ayrı gösterilir. Muhafazakâr olarak bütün pause süresi
+aktif gözlem süresinden çıkarılır: 12 saat için yeni en erken eşik
+`2026-09-08T19:02:12.297Z` (**22:02:12.297 TSİ**). Ayrıca en az **200 terminal
+doğal NORMAL_WAKE** ve kayıt/eksik kohort sayımı gerekir. Bu iki parça kesintisiz
+gözlem veya hız/kalite kazancı sayılmaz.
+
+`11:54:01.234058Z` post-release kesiminde resume sonrası **2 RUNNING**;
+ilk başlangıç `11:52:19.238Z`. İkisinin de terminal interval raporu henüz yok
+(kayıtlı interval 0). Bu olağan ara kesim tüm çağrıların kalıcılık kanıtı değildir;
+elle koşu başlatılmadı. Güvenli metadata kanıtı
+`tmp/seo-release-2026-09-08/natural-resume.log`; diğer dağıtım kanıtı SEO belgesinde.
+
+`11:59:39.159383Z` ilk terminal doğrulaması: resume sonrası **2 SUCCEEDED +
+2 RUNNING**. Başarılı koşularda terminal rapor eksiği 0; BROWSE, DECISION ve
+ACTION_WORTHINESS ikişer interval, toplam **6/6 iki boyut alanı mevcut**.
+Son başarılı bitiş `11:56:48.875Z`; devam eden iki koşunun raporu henüz yok.
+Worker active/running, NRestarts 0, settingsVersion 268 ve stable hash aynı.
+Kanıt `natural-terminal.log`; ölçüm sınırları ve tam pencere şartı değişmez.
