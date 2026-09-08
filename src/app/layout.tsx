@@ -111,6 +111,8 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const analyticsEnabled = shouldLoadProductAnalytics({
     authenticated: Boolean(session),
     surface: analyticsSurface,
+    nodeEnv: process.env.NODE_ENV,
+    appUrl: process.env.APP_URL,
   });
   const nonce = requestHeaders.get("x-nonce") ?? undefined;
 

@@ -35,7 +35,12 @@ indekslendiğini kanıtlamaz. Canlıdaki uzun entry kesmesini bu tur ayrıca
 
 ## İlk düzeltme paketi
 
-Kod sürümü `3416827` (`codex/seo-public-indexing`), taban
+PR #121, tam head `6d4a127712b4e7b9b40d14e567763a780c390de1` için CI
+`34215037418` 7/7 SUCCESS sonrası **13:40 TSİ**'de main'e birleşti:
+`e310b77f38074c1cf1ac9137d274deafdd305004`. Merge sonrası kaynak ve testler
+PR head'iyle aynı, uzak/yerel main eşit ve çalışma ağacı temiz. Dağıtım yok.
+
+İlk kod sürümü `3416827` (`codex/seo-public-indexing`), taban
 `7134a04c5699b5ac59a585fff120b9ce93868eb1`. Park edilmiş DECISION adayının
 runtime/test kodu alınmadı. Önceki çalışma dalındaki tarihli ölçüm belgeleri
 ve PLAN güncellemeleri, kanonik durum kaybolmasın diye belge olarak taşındı.
@@ -119,6 +124,93 @@ Yerel fixture betiği iş bittikten sonra `.mjs.txt` kanıt dosyası olarak
 arşivlendi. Geçici `.mjs` içindeki `console.log`, son lint turunda `no-console`
 vermişti; ürün kodu veya lint kuralı değiştirilmedi. Arşivleme sonrası lint geçti.
 
+## Search Console başlangıç ölçümü — 13:44 TSİ
+
+Gökhan'ın kişisel hesabındaki `sc-domain:agentsozluk.com` mülkü Chrome
+üzerinden salt okunur incelendi. Açık iş hesabında erişim yoktu; mevcut
+kişisel oturuma geçince mülk ve raporlar açıldı. Google ayarı değiştirilmedi;
+sitemap gönderimi, düzeltme doğrulaması veya indeksleme isteği yapılmadı.
+
+| Rapor                  | Görünen ölçüm                                          | Veri tarihi/kapsamı                     |
+| ---------------------- | ------------------------------------------------------ | --------------------------------------- |
+| Web performansı        | 70 tıklama, 7.262 gösterim, TO %1, ortalama konum 24,2 | 3 ay filtresi; grafik 16 Temmuz–6 Eylül |
+| Google üretken AI Beta | 195 gösterim; sayfa tablosu 157 satır                  | Aynı filtre ve grafik aralığı           |
+| Dizin                  | 18.498 dizinde, 9.869 dışında                          | Son güncelleme 4 Eylül                  |
+| Forum                  | 84 geçerli, 27 geçersiz öğe                            | Son güncelleme 7 Eylül                  |
+| Sitemap                | Başarılı, 21.303 keşfedilen sayfa                      | Son okuma 4 Eylül                       |
+| Core Web Vitals        | Mobil ve masaüstünde veri yok                          | Genel bakış raporu                      |
+
+Dizin dışlamaları: noindex **2.929**, robots engeli **499**, yönlendirme **4**,
+404 **2**, taranmış ama dizine alınmamış **4.405**, keşfedilmiş ama dizine
+alınmamış **2.030**; toplam **9.869**. Ayrıca robots engeline rağmen dizine
+alınmış **2** URL uyarısı var. Noindex listesinin ilk 10 örneği `sort`/`window`
+parametreli başlıklar; bu kontrollü örnek tüm dışlamaları sınıflandırmaz.
+9.869 URL'nin tamamına hata veya içerik kalitesi sorunu etiketi konulmadı.
+
+Forum raporunda `datePublished` ve `author` eksikliği **27'şer** öğede,
+`headline` eksikliği uyarısı yine **27** öğede görünüyor; bunlar 81 ayrı
+geçersiz öğe olarak toplanmaz. Tarih hatasının ilk tespiti 20 Ağustos.
+İlk örnek `/entry/15828`, öğe adı `kaldırım`, son tarama 6 Eylül; görünen ilk
+10 örneğin tamamı entry adresi. Daha önce arşivlenen canlı `/entry/16383`
+JSON-LD'sinde kök gönderinin author/datePublished/headline alanları var;
+bu üç alan **`$.isPartOf` içindeki ikinci DiscussionForumPosting'de yok**.
+PR #121 bu nesneyi CollectionPage olarak düzeltiyor. Bu, GSC hata örüntüsüyle
+uyumlu kaynak ve canlı HTML kanıtıdır; 27 örneğin tümünü tek tek denetlediğimiz
+veya Google hatayı kapattı anlamına gelmez. Kapanış için dağıtım ve yeniden
+tarama sonucu gerekir.
+
+Google AI raporundaki 195 gösterim ayrı bir gerçek başlangıç ölçümüdür;
+ChatGPT, Claude veya Perplexity görünürlüğü/atıf doğruluğu ölçümü değildir.
+Web gösterimleriyle toplanmadı. Performans raporlarının gösterdiği 3 ay
+filtresi, grafikteki daha kısa veri aralığıyla birlikte kaydedildi.
+
+## GA4 başlangıç ölçümü — yerel trafik kirliliği
+
+Kişisel hesapta `340080825` hesabının **Agent Sözlük / `546054872`** mülkü
+okundu. Trafik edinme raporu **11 Ağustos–7 Eylül 2026**, kaynak/aracı +
+ana bilgisayar adı kırılımı. UI toplamı 6.207 oturum, 934 etkileşimli oturum,
+görünen ortalama etkileşim süresi 0 saniye. Tam tablo 5 satır:
+
+| Kaynak/aracı     | Hostname        | Oturum         | Etkileşimli oturum | Ortalama etkileşim |
+| ---------------- | --------------- | -------------- | ------------------ | ------------------ |
+| direct / none    | 127.0.0.1       | 6.136 (%98,86) | 894                | 0 sn               |
+| google / organic | agentsozluk.com | 42             | 21                 | 20 sn              |
+| direct / none    | agentsozluk.com | 28             | 9                  | 1 dk 16 sn         |
+| direct / none    | localhost       | 16             | 10                 | 29 sn              |
+| not set          | localhost       | 1              | 0                  | 3 dk 12 sn         |
+
+Bu sayılar UI'daki oturum metrikleri olarak korunur; boyut satırları toplanıp
+yeni bir tekil toplam çıkarılmaz. Gerçek alan adıyla sınırlanmamış toplam
+kullanıcı/oturum büyümesi ürün başarısı sayılmaz. Tabloda açık ChatGPT,
+Claude veya Perplexity yönlendirmesi yok; referrer kaybolabildiği için bu,
+AI etkisinin kesin sıfır olduğunu göstermez. GSC ile GA4 zaman aralıkları ve
+metrikleri farklı; 70 tıklama ile 42 oturum doğrudan kıyaslanmadı.
+
+Kök neden için kod kanıtı: `src/components/analytics/product-analytics.tsx`
+gerçek GTM/Hotjar kimlikleri taşır; mevcut `shouldLoadProductAnalytics`
+yalnız oturum/public yüzey kontrolü yapıyordu. Layout ortam/origin kontrolü
+göndermiyordu. `playwright.config.ts` loopback uygulama açar; yalnız
+`agent-society.spec.ts` kendi analytics isteklerini keser, tüm testlerde
+ortak engel yoktur. **Yerel hostname'den veri gelişi doğrudan ölçüldü**;
+6.136 oturumun her birini belirli bir CI job'una bağlayan kayıt okunmadı.
+
+Düzeltme kapsamı: production çalışma modu **ve** `https://agentsozluk.com`
+origin'i birlikte gerekli; development/test, loopback, staging, eksik/bozuk
+ayar kapalı kalır. Mevcut oturum, hassas sayfa, DNT/GPC ve synthetic opt-out
+kapıları korunur. Üretim verisi silinmez; GA4/GTM ayarı veya hesap bağlantısı
+bu repo değişikliğiyle değiştirilmez. GA4'ün Search Console bağlantısı önerisi
+ayrıca görüldü; bağlantı kurulmadı.
+
+Kod SHA `6ca71049e438f3811065da638ff336c662212fb7`; 4 dosya: politika,
+layout, policy testi ve tarayıcı testi. **32 test PASS** (26 policy vakası,
+component/auth transition/CSP dahil). Gerçek Chromium **1/1 PASS**: yerel
+public HTML 200, GTM/Hotjar etiket/kimlikleri yok, gözlenen analytics istek
+denemesi **0**. Format/lint/typecheck PASS; requirements 3/3 PASS.
+Test için ayrı loopback PostgreSQL `agentsz_analytics_20260908_test`
+oluşturuldu; test sonrası silindi, pg_database sayımı 0. Üretim DB'si yok.
+Opus 5 incelemesi salt okunur snapshot'ta bu kesin kod SHA'sına bağlı;
+sonuç ve exact-head CI, repo teslim kaydıyla birlikte tutulur.
+
 ## “İyi SEO/LLM skoru” için ölçüm sınırı
 
 Tek bir evrensel LLM görünürlük puanı yok. Teknik kontrol, indekslenme, gerçek
@@ -128,8 +220,8 @@ arama görünürlüğü ve AI atıfları birbirinin yerine kullanılmayacak:
   yapılandırılmış veri, yanlış noindex 0; yayına çıkış sonrası aynı URL'lerle tekrar.
 - Performans: temsilî ana sayfa/başlık/entry/profil için mobil Lighthouse ve
   varsa CrUX/Core Web Vitals; bu tur sayısal puan üretilmedi.
-- Google görünürlüğü: Search Console indeks kapsamı, gösterim, tıklama ve sorgu
-  dağılımı; bu tur bu hesaba veya veriye erişilmedi.
+- Google görünürlüğü: yukarıdaki Search Console kapsamı, performans ve Google
+  AI başlangıç ölçümü alındı; ilk düzeltmenin etkisi henüz ölçülmedi.
 - AI görünürlüğü: önceden seçilmiş Türkçe sorgular, ürün/model/tarih kaydı,
   doğru sayfaya atıf ve doğruluk değerlendirmesi; sadece dosya/bot izni PASS'ı
   görünürlük veya atıf kazanımı olarak yazılmaz.
@@ -148,3 +240,9 @@ yerel test log'ları, `review.py` ve bağımsız hakem çıktısı. Public entry
 ve prompt'lar attempt ledger'a kopyalanmaz. Bu kayıt canlı deploy makbuzu değildir.
 Okunabilir hakem yanıtı `opus-review.md`, SHA-256:
 `785a1f3ef118b63a03c7a6b6796451862daf4690d0e4e6cf400276c2cbaa3b3f`.
+Merge/CI makbuzu `merge-receipt.json`; GSC'de okunan alanların kaydı
+`gsc-baseline.json`, hesap erişimi sonucu `gsc-access-receipt.json`.
+GA4 property/tarih/hostname/kaynak alanları `ga4-baseline.json` içinde;
+hesap e-postaları ve kimlik bilgileri kanıta kopyalanmadı.
+Analytics test log'u `analytics-e2e.log`; hakem çıktıları
+`analytics-opus-review.json` ve `analytics-opus-review.md`.

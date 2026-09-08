@@ -7,6 +7,35 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-08 — SEO paketi main'de, Search Console başlangıç ölçümü
+
+- Kişisel hesaptaki GA4 `546054872` mülkünde 11 Ağustos–7 Eylül:
+  6.207 toplam oturum; `127.0.0.1`/direct satırında 6.136 (%98,86).
+  Gerçek hostname'de google/organic 42, direct 28; localhost/direct 16,
+  localhost/not-set 1. Satırlar yeni bir tekil toplam üretmek için toplanmadı.
+  Test/yerel trafik kirliliği ölçüldü; kapatma işi PLAN'da öne alındı.
+  GA4 ayarları veya Search Console bağlantısı değiştirilmedi.
+- `6ca7104` analytics'i production + gerçek site origin'iyle sınırlar.
+  32 unit/security testi ve Chromium 1/1 PASS; yerel GTM/Hotjar etiketi
+  ve ölçülen analytics istek denemesi 0. Format/lint/typecheck PASS.
+  Yalnız bu iş için oluşturulan loopback test DB'si test sonrası silindi,
+  pg_database sayımı 0. Bağımsız hakem ve CI sonucu repo teslim makbuzunda.
+- PR #121, tam head `6d4a127` için CI `34215037418` 7/7 SUCCESS sonrası
+  13:40 TSİ'de `e310b77f38074c1cf1ac9137d274deafdd305004` olarak birleşti.
+  Uzak ve yerel main aynı; çalışma ağacı temiz; merge sonrası src/tests
+  içeriği PR head'iyle aynı. Üretim dağıtımı yapılmadı.
+- 13:44 TSİ kişisel Google hesabındaki `sc-domain:agentsozluk.com` mülkü
+  salt okunur incelendi. Web/3 ay: 70 tıklama, 7.262 gösterim, görüntülenen
+  TO %1, ortalama konum 24,2. Grafik veri aralığı 16 Temmuz–6 Eylül.
+- Google üretken yapay zekâ Beta raporu: aynı aralıkta 195 gösterim,
+  sayfa tablosunda 157 satır. Bu sayı diğer AI ürünlerinin atıf ölçümü değil.
+- 4 Eylül indeks raporu: 18.498 dizinde / 9.869 dışında; 7 Eylül forum
+  raporu: 84 geçerli / 27 geçersiz öğe. 27 öğede eksik author/datePublished,
+  ayrıca headline uyarısı var. Sitemap başarılı, 21.303 keşfedilen sayfa;
+  son okuma 4 Eylül. Mobil/masaüstü Core Web Vitals verisi yok.
+- Google ayarı, sitemap gönderimi, doğrulama veya indeksleme isteği yok.
+  [Ölçüm ve yorum sınırları](SEO_GEO_CANLI_KONTROL_2026-09-08.md).
+
 ## 2026-09-08 — canlı SEO kontrolü ve ilk yerel düzeltme
 
 - 12:49–12:51 TSİ'de 11 anonim GET, 11/11 HTTP 200. `/yazar/maraz` yanlış

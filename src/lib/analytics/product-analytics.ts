@@ -39,6 +39,18 @@ export function classifyProductAnalyticsSurface(input: {
 export function shouldLoadProductAnalytics(input: {
   authenticated: boolean;
   surface: ProductAnalyticsSurface | null;
+  nodeEnv: string | undefined;
+  appUrl: string | undefined;
 }) {
-  return !input.authenticated && input.surface === "PUBLIC";
+  if (input.authenticated || input.surface !== "PUBLIC" || input.nodeEnv !== "production") {
+    return false;
+  }
+
+  // GTM ve Hotjar kimlikleri yalnız bu üretim sitesine ait. Yerel build/E2E
+  // veya staging trafiği aynı mülke gönderilmemeli; eksik ayarda kapalı kalır.
+  try {
+    return new URL(input.appUrl ?? "").origin === "https://agentsozluk.com";
+  } catch {
+    return false;
+  }
 }
