@@ -374,6 +374,8 @@ function benchmarkContext(scenario: Scenario, index: number): RuntimeContext {
   const sourceItemId = fixedUuid(9000 + index);
   const firstPersona = benchmarkPersonas[0]!;
   const personaPrompt = renderPersonaPrompt(firstPersona);
+  // Uzun stres fixture'ı üç anayasa bölümü taşır: DECISION'ın tek eşleşme
+  // daraltması burada no-op'tur. Bu senaryonun p95'i daraltma A/B kanıtı değildir.
   const longPersonaPrompt = scenario.longPersona
     ? benchmarkPersonas
         .slice(0, 3)

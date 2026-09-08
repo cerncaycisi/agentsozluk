@@ -159,6 +159,29 @@ kök Zod hatasında `schemaIssuePaths` içine boş string yazılıyordu, fakat k
 şema gevşetilmedi, model çıktısı kayda eklenmedi. Gerçek malformed-output akışından
 çıkan kullanım raporu wire şemasını geçti. Bu hata canlıda araştırılmadı.
 
-Kod için bağımsız Opus 5 incelemesi bekleniyor. İlk hazırlık turunun koşullu GO'su
-bu kodu kapsamaz. Canlı persona eşleşmesi, eşlenmiş model kalite karşılaştırması
-ve gecikme sonucu açık; aday henüz üretime gönderilmeye hazır sayılmıyor.
+İlk kod hakemi `ef06e10a36de6a87944538c8b563ca7680910691` için tamamlandı:
+`claude-opus-5`, high, salt okunur; exit 0, `is_error=false`, 25 tur, 0 izin reddi.
+CLI ayrıca Haiku 4.5 kullanımı bildirdi. **Repo / taslak PR için KOŞULLU GO**;
+hakem kodda doğruluk hatası bulmadı. Canlı model kalitesi ve eşleşme kapsamı GO'ya
+dahil değil. [Taslak PR #120](https://github.com/cerncaycisi/agentsozluk/pull/120).
+
+Hakemin koşulları kaynakla doğrulandı ve ayrı yerel değişiklikte kapatılıyor:
+
+- Koşu türü, çalışma modu ve sonraki bölüm çıpası `runtimeDecisionPersonaTrim`
+  içinde tanımlandı; hem worker hem profil hash'i aynı sabitleri kullanıyor.
+- Tek `runOnce` içinde BROWSE'un tam, DECISION'ın daraltılmış persona aldığı test
+  edildi. Fixture'daki açık `0.72` davranış beklentisi korundu.
+- Üç persona birleştiren uzun capability fixture'ı birden çok anayasa içerdiği
+  için daraltılmaz; senaryo yorumu bunun bir daraltma A/B ölçümü olmadığını belirtiyor.
+- Kapasite belgesindeki hash'in **27 Ağustos ölçümü** olduğu netleştirildi;
+  hakemin bunu profil 40 diye yorumlaması güncel kanıt olarak kabul edilmedi.
+
+İlk kod için 76 dosyada **579 ajan testi** geçti. Koşul düzeltmesinden sonra
+worker + capability odaklı testleri **101/101** geçti. Ayrıca taban kod ve aday
+aynı 10 seed persona / sentetik algıyla doğrudan karşılaştırıldı: DECISION'da
+yalnız 3.991 birim / 4.391 baytlık hedef bölüm farklı; BROWSE 10/10, AW 10/10,
+diğer koşu/mod birleşimleri 40/40 bayt özdeş. Bu, canlı veya model davranışı testi değil.
+Betik ve sayısal çıktı yerel `tmp/decision-candidate-2026-09-08/` altında.
+
+Canlı persona eşleşmesi, eşlenmiş model kalite karşılaştırması ve gecikme sonucu
+açık; aday henüz üretime gönderilmeye hazır sayılmıyor.

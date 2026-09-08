@@ -16,7 +16,11 @@
 - Ek wire kontrolü mevcut boş kök şema-hata yolu sorununu yakaladı; kök `$`
   olarak kaydedilince onarım kullanım raporu şemadan geçti. İlk fixture hatası
   gerçek personanın farklı davranış ağırlığını beklenen değere bağlayarak düzeltildi.
-- Kod hakemi bekleniyor. Canlı erişim veya daraltma deploy'u yapılmadı;
+- İlk kod `ef06e10` için toplam 579 ajan testi geçti; Opus 5 repo/taslak için
+  koşullu GO verdi (25 tur, 0 izin reddi). Koşul düzeltmesi sonrası worker +
+  capability 101/101 geçti. Eski/yeni kurucu karşılaştırmasında BROWSE 10/10,
+  AW 10/10 ve diğer koşu/mod birleşimleri 40/40 bayt özdeş.
+- Taslak PR #120 açık. Canlı erişim veya daraltma deploy'u yapılmadı;
   bu sonuç model kalitesi ya da süre kazancı değildir.
 
 ## 2026-09-08 — pencere sürerken DECISION için yerel hazırlık

@@ -68,6 +68,7 @@ import {
   runtimeForbiddenContextMetadataKeys,
   runtimePromptInvariants,
   runtimePromptScaffold,
+  runtimeDecisionPersonaTrim,
   runtimeMemoryConsolidationRepairInstruction,
   runtimeStructuredRepairInstruction,
 } from "@/runtime/prompt-profile";
@@ -686,7 +687,10 @@ function safeContentRepairCandidate(
 
 function decisionPersonaPrompt(context: RuntimeContext): string {
   const prompt = context.persona.renderedPrompt;
-  if (context.run.runType !== "NORMAL_WAKE" || context.run.runtimeOperatingMode !== "NORMAL")
+  if (
+    context.run.runType !== runtimeDecisionPersonaTrim.runType ||
+    context.run.runtimeOperatingMode !== runtimeDecisionPersonaTrim.operatingMode
+  )
     return prompt;
 
   // Snapshot'ı değiştirme: BROWSE/AW tam personayı kullanmaya devam eder.
@@ -701,7 +705,7 @@ function decisionPersonaPrompt(context: RuntimeContext): string {
     start < 0 ||
     (start > 0 && prompt[start - 1] !== "\n") ||
     prompt.indexOf(block, start + block.length) !== -1 ||
-    !prompt.slice(start + block.length).startsWith("# Humor and conflict\n")
+    !prompt.slice(start + block.length).startsWith(runtimeDecisionPersonaTrim.nextSection)
   )
     return prompt;
 

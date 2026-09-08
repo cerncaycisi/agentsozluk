@@ -7007,3 +7007,19 @@ cancel_requested=0 leases=0` oldu.
 - Odaklı worker tekrarı **91/91 PASS**. Tekrarlama: mocked control-plane
   kabulünü wire geçerliliği sanma; fixture farkını kod regresyonu sayma.
   Kaynak/yerel test kanıtı canlı hata sıklığı veya performans kazanımı değildir.
+
+- Aynı ilk kod `ef06e10a36de6a87944538c8b563ca7680910691`: 76 dosyada 579
+  ajan testi, format/lint/typecheck ve requirements 3/3 geçti. Opus 5 salt okunur
+  kod incelemesi exit 0, `is_error=false`, 25 tur, 0 izin reddi; gerçek model
+  anahtarları Opus 5 ve Haiku 4.5. Repo/taslak için koşullu GO, canlı GO değil.
+- Hakem sonrası daraltma koşulları profil hash'inin doğrudan girdisine taşındı;
+  tek browse koşusunda iki fazın farklı persona kapsamı sınandı. Uzun capability
+  fixture'ının çoklu anayasa nedeniyle no-op kaldığı yorumla belirtildi;
+  `AGENT_CAPACITY.md` hash satırı 27 Ağustos'a ait olarak etiketlendi.
+  Worker + capability odaklı kontrol **101/101** geçti.
+- Taban/aday kurucuları 10 sentetik algıyla karşılaştırıldı: yalnız hedef persona
+  bölümü değişti (3.991 UTF-16 / 4.391 bayt); BROWSE 10/10, AW 10/10 ve diğer
+  koşu/mod birleşimleri 40/40 bayt özdeş. Geçici eski worker modülü işlem sonunda
+  `.ts.txt` biçiminde arşivlendi; prompt içerikleri rapora yazılmadı.
+- Tekrarlama: uzun çok-personalı stres senaryosunu daraltma A/B kanıtı sayma;
+  tarihli kapasite hash'ini bugünün veya profil 40'ın hash'i olarak yeniden etiketleme.

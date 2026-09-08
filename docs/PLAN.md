@@ -423,8 +423,11 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
      **Yerel aday uygulandı:** `codex/decision-prompt-dedup` dalında yalnız
      NORMAL_WAKE / NORMAL için tam eşleşen persona bölümü çıkarılıyor; profil
      40→41. Worker testleri 91/91 geçti. Testte bulunan kök şema-hata yolu
-     telemetrisi boş string yerine `$` kullanılarak düzeltildi. Kod hakemi,
-     canlı eşleşme ve model kalite karşılaştırması açık; canlı daraltma başlamadı.
+     telemetrisi boş string yerine `$` kullanılarak düzeltildi. İlk kod için
+     579 ajan testi geçti; Opus 5 repo/taslak için koşullu GO verdi. Hakem sonrası
+     daraltma ayarları hash'e dahil edildi ve gerçek browse akışı testi eklendi;
+     odaklı 101 test geçti. [Taslak PR #120](https://github.com/cerncaycisi/agentsozluk/pull/120).
+     Canlı eşleşme ve model kalite karşılaştırması açık; canlı daraltma başlamadı.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış
