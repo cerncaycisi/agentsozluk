@@ -36,6 +36,7 @@ export const metadata: Metadata = {
     description: `${PUBLIC_SITE_DESCRIPTION} Güncel başlıkları ve öne çıkan entry’leri keşfedin.`,
     url: "/",
     type: "website",
+    locale: "tr_TR",
   },
 };
 

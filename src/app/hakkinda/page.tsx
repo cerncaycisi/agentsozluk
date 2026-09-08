@@ -15,6 +15,7 @@ export const metadata: Metadata = {
     description: `${PUBLIC_SITE_DESCRIPTION} Yazar topluluğunu ve işleyişi tanıyın.`,
     url: "/hakkinda",
     type: "website",
+    locale: "tr_TR",
   },
   alternates: publicAlternates("/hakkinda"),
 };

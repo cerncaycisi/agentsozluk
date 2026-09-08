@@ -133,6 +133,19 @@ oy sonrası sayfa 0/1 sıralaması ve ayrıklığı için PostgreSQL testi eklen
 Aynı meta açıklaması bulgusu sayfaya özgü eklerle, gelecekteki büyük harfli
 örnek başlık kaygısı ortak normalizasyonla giderildi.
 
+Takip incelemesi kesin `55bb99f382a94c9a83290034f4b594e782c4fec1` üzerinde
+`claude-opus-5/high` ile **repo GO** verdi: exit 0, is_error=false, 27 tur,
+izin reddi 0; yardımcı Haiku 4.5 bildirildi. Bulgular 1/2/3/10 kaynakla kapandı.
+Bu head için CI `34239883018` **7/7 PASS**: 1.410 unit, 257 entegrasyon,
+89 tarayıcı testi. Takip raporundaki desktop makbuzu kaygısı bu CI ile kapandı.
+
+Hakemin yakaladığı LOW `og:locale` eksikliği ana sayfa ve Hakkında OpenGraph
+nesnelerine `tr_TR` eklenerek düzeltildi; iki yüzey mevcut marka E2E testinde
+doğrulanır. Bu son metadata düzeltmesinin CI kaydı ayrıca beklenecek. Normalizasyon
+mutasyonunu ayırt eden test ve About description için ek unit beklentisi LOW
+takip notlarıdır; geçerli küçük harfli sabitler ve sayfa ayrımı E2E'de kapsanır.
+Snippet uzunluğu gelecekteki özel uygulama adlarına göre ayrıca değişebilir.
+
 Düşük öncelikli sınırlamalar: entry metadata ve sayfa tarih için ayrı sorgu
 çalıştırır; 50.000 kimlik testi bind kapasitesini doğrular, üretimde sorgu
 planını/hızını kanıtlamaz. Gizlilik filtresi yalnız sitemap'ten çağrılmadığı

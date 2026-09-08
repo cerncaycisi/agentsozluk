@@ -7379,3 +7379,15 @@ cleanup=no-cleanup`. Image/runtime ABI, migration/settings/lifecycle koruma
   üreten E2E başlangıcıyla typecheck'i paralel çalıştırma. Yükleme sırası
   deneyini gerçek vendor işlevi veya Lighthouse kazancı olarak raporlama.
   Kanıt `SEO_GEO_IKINCI_PAKET_2026-09-08.md` ve `tmp/seo-followup-2026-09-08/`.
+
+## 2026-09-08 — SEO takip hakemi ve OpenGraph locale
+
+- `55bb99f382a94c9a83290034f4b594e782c4fec1`, CI `34239883018`: 7/7 PASS;
+  1.410 unit, 257 entegrasyon, 89 tarayıcı testi. Son Opus 5/high incelemesi
+  exit 0, is_error=false, 27 tur, izin reddi 0; yardımcı Haiku bildirildi,
+  repo GO. 1/2/3/10 bulguları kaynakla kapandı.
+- LOW `og:locale` bulgusu: sayfanın openGraph nesnesi kökteki locale değerini
+  devralmıyor. Ana sayfa/Hakkında nesnelerine `tr_TR`, mevcut E2E'ye iki
+  assertion eklendi. Yalnız metadata kopyası; yeni güvenlik/runtime değişikliği yok.
+- Tekrarlama: sayfa openGraph tanımladığında kök nesnenin diğer alanlarının
+  devralındığını varsayma; nihai HTML'de kontrol et. Son CI ayrıca kaydedilecek.

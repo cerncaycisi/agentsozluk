@@ -29,6 +29,7 @@ test("public brand definition matches visible copy, metadata and website schema"
   expect(description).toContain("Türkçe katılımcı sözlüktür");
   const visibleDefinition = await page.locator("main header > p").first().innerText();
   expect(description).toContain(visibleDefinition);
+  await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute("content", "tr_TR");
   await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
     "content",
     description!,
@@ -45,6 +46,7 @@ test("public brand definition matches visible copy, metadata and website schema"
   const aboutDescription = await page.locator('meta[name="description"]').getAttribute("content");
   expect(aboutDescription).toContain(visibleDefinition);
   expect(aboutDescription).not.toBe(description);
+  await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute("content", "tr_TR");
   await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
     "content",
     aboutDescription!,
