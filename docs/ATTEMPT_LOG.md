@@ -7255,3 +7255,36 @@ cleanup=no-cleanup`. Image/runtime ABI, migration/settings/lifecycle koruma
   image ID ile karıştırma; kontrol aralığını yeni telemetri başlangıcı sayma.
   HTML etiket PASS'ını Analytics olay teslimi, GSC hata kapanışı veya AI/sıralama
   kazancı sayma. Google ayarı/validation isteği değiştirilmedi.
+
+## 2026-09-08 — mobil Lighthouse ve Google indeks örneği
+
+- Kullanıcı mobil hız, Google hata/indeks durumu ve üç AI ürününün atıflarını
+  ölçmeyi istedi. Yerel main `92c4363876387687b529d075badc1b999aa13c20`,
+  önceki canlı makbuz `f88d64db67789fe8e98626a7d2d73ff68de9bae5`.
+  DNS/pinned ED25519 eşleşti; bu tur SSH, deploy, restart veya ayar yazımı yok.
+- İlk anonim PageSpeed API isteği HTTP 429:
+  `Quota exceeded for quota metric 'Queries' and limit 'Queries per day'`.
+  API tüketici kotası; puan yok. Yol tekrar edilmedi, T3 PageSpeed web
+  arayüzünde dört sıralı mobil URL ölçüldü. SEO/erişilebilirlik 100,
+  Best Practices 96; performans 89/97/83/94. Her URL bir örnek; CrUX yok.
+- Ana sayfa Hotjar WebSocket iki `net::ERR_NAME_NOT_RESOLVED` verdi. Yerel
+  `ws.hotjar.com` / `script.hotjar.com` DNS NOERROR; genel servis kesintisi
+  kanıtlanmadı. GTM/GA ve Hotjar maliyeti kaydedildi, etiketler değiştirilmedi.
+- T3 GSC oturumu giriş istiyordu; kullanıcı T3'te kişisel hesabını açtı ve
+  gerçek mülk verisi okundu. 27 geçersiz forum öğesi hâlâ görünür.
+  `/entry/15828` URL Denetimi 6 Eylül taraması, dizinde ve iki forum öğesinden
+  bazılarında hata gösterdi. Google canlı test ilerlemesi doğrulandı.
+- T3 odak değişiminde arama alanı kapanabildi; taze AX içinde agentsz pane
+  seçilip arama yeniden açıldı, URL değeri ve Google Dizini ilerlemesi
+  doğrulandı. İlk ChatGPT gönderiminden sonra yanıt/konuşma görünmedi;
+  başarılı AI sorgusu sayılmadı. AI için ikinci Browser yüzeyi açıldı.
+- Ardından `Computer Use server error -10005: cgWindowNotFound` oluştu.
+  Envanterde T3 çalışıyordu; yeni `getApp` aynı hatayı verdi. Pencere erişimi
+  hattı durduruldu, kullanıcıdan pencereyi görünür açması istendi. Google
+  canlı test sonucu ve üç ürünün atıfları henüz ölçülmüş sonuç değildir.
+- Ölçüm belgesi `SEO_GEO_GORUNURLUK_OLCUMU_2026-09-08.md`, sayısal makbuzlar
+  `tmp/seo-visibility-2026-09-08/`. Lint/typecheck ve requirements 3/3 geçti.
+- Tekrarlama: quota hatasını site puanı sayma; Lighthouse SEO 100 veya Agentic
+  Browsing 3/3'ü indeksleme/atıf sonucu sayma. Canlı test başlatmayı başarılı
+  sonuç diye yazma; erişilemeyen AI ürünü için sıfır atıf üretme. T3 odak veya
+  pencere değişiminde eski indeksleri yeniden kullanma.

@@ -7,6 +7,24 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-08 15:07–15:25 TSİ — mobil ölçüm ve Google indeks örneği
+
+- T3 PageSpeed web arayüzünde dört URL, her birinde bir mobil örnek:
+  SEO/erişilebilirlik **100**, Best Practices **96**. Ana sayfa/başlık/entry/profil
+  performansı **89/97/83/94**, TBT **381/162/553/227 ms**, CLS hepsinde 0.
+  Lighthouse 13.4.1, Moto G Power, Slow 4G; CrUX verisi yok.
+- Ana sayfada GTM/GA 284 KiB / 247 ms, Hotjar 63 KiB / 179 ms ölçüldü.
+  Hotjar WebSocket `ERR_NAME_NOT_RESOLVED` hatası PageSpeed koşusunda görüldü;
+  yerel DNS NOERROR. Genel kesinti veya script kaldırma kazancı iddiası yok.
+- T3 kişisel Google oturumuyla mülk erişimi doğrulandı. Genel bakışta forum
+  84 geçerli / 27 geçersiz, dizin 18.498 / 9.869. `/entry/15828` kayıtlı sürümü
+  6 Eylül 13:10:21 taramasına ait; dizinde, iki forum öğesi, bazıları geçersiz.
+- Google canlı URL testi başlatıldı; sonuç okunmadan T3 erişimi
+  `cgWindowNotFound` ile kesildi. ChatGPT'de yanıt doğrulanmadı; Claude ve
+  Perplexity henüz çalıştırılmadı. Canlı Google sonucu ve AI atıf oranı açık.
+- Uygulama/runtime/ayar veya Google mülk değişikliği yok. Önceki telemetri
+  kohortu korundu. [Ölçüm ve public raporlar](SEO_GEO_GORUNURLUK_OLCUMU_2026-09-08.md).
+
 ## 2026-09-08 14:50–14:59 TSİ — SEO ve analytics düzeltmeleri canlıda
 
 - Gökhan'ın `olur` onayıyla tam `f88d64db67789fe8e98626a7d2d73ff68de9bae5`

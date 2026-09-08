@@ -103,8 +103,17 @@ ve main `f88d64d` CI'ları 7/7 geçti. Canlı efektif ortam/origin kapısı doğ
 anonim ana sayfada GTM/Hotjar var, arama/giriş/DNT/GPC/synthetic opt-out'ta yok.
 **Sırada F08 içerik tarihi ve dizin dışlamalarının örnek bazlı ayrımı var.**
 Google'ın yeniden tarama sonucu ayrıca izlenecek; 27 forum hatasının GSC'de
-kapandığı veya geçmiş Analytics verisinin temizlendiği iddia edilmiyor. Mobil
-Lighthouse ile ChatGPT/Claude/Perplexity atıfları ölçülmedi; CrUX verisi yok.
+kapandığı veya geçmiş Analytics verisinin temizlendiği iddia edilmiyor.
+**15:07–15:15 TSİ mobil Lighthouse başlangıcı:** dört sayfanın her birinde bir
+örnek; SEO ve erişilebilirlik 100, Best Practices 96. Ana sayfa/başlık/entry/profil
+performansı **89/97/83/94**, TBT **381/162/553/227 ms**; CrUX verisi yok.
+Ana sayfada GTM/GA 247 ms, Hotjar 179 ms ana iş parçacığı maliyeti ölçüldü.
+Analytics yükleme zamanı bir performans adayı; kaldırmanın kazancı henüz
+karşılaştırmalı ölçülmedi. **15:24 TSİ GSC:** forum toplamı hâlâ 27 geçersiz;
+örnek `/entry/15828` 6 Eylül taramasında iki forum öğesi ve geçersiz öğe içeriyor.
+Google canlı testi başlatıldı fakat sonuç okunmadan T3 pencere erişimi kesildi
+(`cgWindowNotFound`); sonuç bekleniyor. ChatGPT/Claude/Perplexity atıfları henüz
+ölçülmüş değil. [Yeni ölçüm ve erişim kaydı](SEO_GEO_GORUNURLUK_OLCUMU_2026-09-08.md).
 Tek bir toplam “LLM puanı” veya sıralama kazancı iddiası üretilmeyecek.
 
 - [x] **Browse sınırını tek sabite indir.** — yapıldı; wire şeması artık
