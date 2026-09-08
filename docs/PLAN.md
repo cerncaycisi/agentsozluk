@@ -406,6 +406,15 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
      **DECISION daraltması başlamadı.**
      Birimler ve ölçüm sınırları:
      [prompt boyutu kanıt kaydı](PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md).
+     **8 Eylül yerel hazırlığı:** pencereyi değiştirmeden DECISION metni incelendi.
+     Persona/runtime anayasa tekrarında 10 seed fixture'ın her birinde 3.991
+     UTF-16 birimi / 4.391 bayt çıkarılabiliyor; bağlam yükü aynı kalıyor.
+     Canlı persona kapsamı, model davranışı ve süre kazancı ölçülmedi; aday
+     henüz seçilmedi. Kalite vakaları ve aday sınırları
+     [hazırlık kaydında](DECISION_DARALTMA_HAZIRLIGI_2026-09-08.md).
+     Opus 5 yalnız hazırlık için koşullu GO verdi; canlı persona snapshot'larının
+     tam eşleşme kapsamı ve gerçek adayın davranış etkisi ayrıca doğrulanacak.
+     Bu hazırlık tam pencere önkoşulunu kapatmaz ve canlı deney başlatmaz.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış

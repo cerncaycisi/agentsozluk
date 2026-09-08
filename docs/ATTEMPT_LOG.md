@@ -6961,3 +6961,31 @@ cancel_requested=0 leases=0` oldu.
   266 ve stable settings hash değişmedi. Elle örnek oluşturulmadı.
 - Yerel belge kapıları: format/lint/typecheck, `git diff --check` ve
   `requirements:check` 3/3 geçti. Uygulama kodu bu dağıtım kayıtlarında değişmedi.
+
+## 2026-09-08 — DECISION yerel hazırlığı, Opus 5 ile çürütme turu
+
+- Kaynak SHA `1c18e61a3b35030de8e2714cf81180224e9907c5`; Node `22.23.1`,
+  `npx --offline pnpm@10.34.5`. Canlı pencere sürerken yalnız yerel hazırlık yapıldı.
+- On seed persona / boş algıyla gerçek prompt kurucusu çalıştırıldı. Persona
+  içindeki güncel listelenmiş anayasa bloğunun çıkarılması her örnekte
+  3.991 UTF-16 birimi / 4.391 UTF-8 bayt azalttı. Canlı persona kapsamı ve
+  gecikme etkisi ölçülmedi; uygulama kodu değiştirilmedi.
+- `claude-opus-5`, `high`, plan/read-only araç kümesi `Read/Grep/Glob`:
+  exit 0, `subtype=success`, `is_error=false`, 22 tur, 0 izin reddi.
+  `modelUsage` anahtarları `claude-opus-5` ve `claude-haiku-4-5-20251001`.
+  İncelenen ilk taslak SHA-256
+  `20610134a305e8ee3fde312ecdd2f49284f5136981e0f7e68b91cbeb18d624a3`.
+- Karar yalnız hazırlık için koşullu GO. Snapshot'ın yeniden render edilmediği,
+  persona bloğunun BROWSE/AW'de de kullanıldığı ve worker dönüşümünün mevcut
+  profil hash'ine kendiliğinden girmediği kaynakla doğrulandı. Bu nedenle adayın
+  yeri DECISION kurucusu olarak sınırlandı; gerçek kod için snapshot kapsamı,
+  profil kimliği ve diğer koşu türlerinin değişmeme kontrolleri açık koşul oldu.
+- Hakem sonrası yerel metin betiğine tam aralık/boyut, kalan persona başlıkları
+  ve tekil payload sınırı kontrolleri eklendi. Odaklı tekrar 10/10 aynı boyut
+  sonucunu verdi. Bu, model kalitesi veya gerçek bir runtime değişikliği testi değil.
+  Yerel betik/çıktı/ilk taslak/hakem kaydı `tmp/decision-preparation-2026-09-08/`
+  altında; güvenli sayısal sonuçlar hazırlık belgesine aktarıldı.
+- Tekrarlama: HEAD'de yeniden render edilen seed persona eşleşmesini canlı DB
+  snapshot eşleşmesi sayma; aynı maddelerin farklı biçimini bayt özdeşliği veya
+  davranış eşdeğerliği sayma; küçük fixture oranını canlı süre kazanımı diye yazma.
+  Üretime bağlanılmadı, baseline penceresi kısaltılmadı, yeni model deneyi yapılmadı.

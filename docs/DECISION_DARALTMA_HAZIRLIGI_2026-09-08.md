@@ -1,0 +1,135 @@
+# DECISION daraltması — yerel hazırlık, 8 Eylül 2026
+
+Bu belge [PLAN.md](PLAN.md), Sıra 5 / kilitlenen sıra 1'in hazırlık kanıtıdır;
+ayrı bir iş kuyruğu değildir. Canlıdaki değişikliksiz telemetri penceresi sürerken
+yerel metin ölçümü yapıldı. Uygulama kodu değişmedi, modelden aday içerik üretilmedi,
+üretime bağlanılmadı. **Daraltma deneyi başlamadı; süre veya kalite sonucu yok.**
+
+## Ölçülen aday ve sınırı
+
+İncelenen kaynak SHA: `1c18e61a3b35030de8e2714cf81180224e9907c5`.
+
+- `worker.ts:404` zaten boşluksuz `JSON.stringify` kullanıyor; JSON'u yeniden
+  sıkıştırmak ölçülebilir bir aday değil.
+- `personas/prompt-renderer.ts:42` anayasanın 11 maddesini persona içine ekliyor.
+  `worker.ts:732-733` aynı güncel maddeleri runtime çerçevesine tekrar ekliyor.
+  Persona maddeleri `- ` önekiyle listeleniyor; runtime maddeleri düz satır.
+  İki blok bayt düzeyinde aynı değil, içerdiği maddeler aynı.
+- Yerel metin adayı, yalnız persona içindeki güncel listelenmiş anayasa bloğunu
+  tam eşleşmeyle çıkardı. Runtime içindeki anayasa ve diğer talimatlar kaldı.
+
+`original-personas.json` içindeki **10 seed persona**, sabit NORMAL_WAKE koşu
+kimliği ve boş algı fixture'ıyla gerçek `buildRuntimePrompt` çalıştırıldı:
+
+| Ölçü                                          | Sonuç                                              |
+| --------------------------------------------- | -------------------------------------------------- |
+| Başlangıç prompt boyutu                       | 39.687–39.999 UTF-16 birimi                        |
+| Çıkarılan blok (iki son satır sonu dahil)     | Her örnekte 3.991 UTF-16 birimi / 4.391 UTF-8 bayt |
+| UNTRUSTED_CONTENT yükü                        | 10/10 bayt düzeyinde aynı                          |
+| Güncel anayasa ve runtime invariant metinleri | 10/10 hâlâ mevcut                                  |
+
+Ölçüm Node `22.23.1`, `npx --offline pnpm@10.34.5 exec tsx -e` ile alındı.
+Yerel tekrar üretim betiği `tmp/decision-preparation-2026-09-08/measure.ts.txt`,
+sayısal çıktı `size-proof.json`; bunlar Git dışında, bu çalışma alanında korunuyor.
+Betik her persona için tek tam eşleşmeyi, çıkarılan aralığın ve boyutun tam
+eşitliğini, kalan persona metnini/başlıklarını, payload sınırlarının tekliğini,
+payload eşitliğini ve talimatların varlığını `assert` ile denetliyor; yalnız
+sayıları yazdırıyor. Bu kontroller modelin talimatlara uyduğunu kanıtlamaz.
+
+**Bu 10 örnek, canlıdaki 36 persona veya doğal algı dağılımı değildir.** İlk canlı
+DECISION örneğinin 119.406 birimine göre blok yaklaşık %3,34 eder; bu yalnız
+aritmetik karşılaştırmadır. O canlı personada aynı bloğun bulunduğu veya süreye
+etkisi ölçülmedi. Boş algılı fixture'daki yaklaşık %10 oranı canlı kazanım diye
+kullanılamaz. Talimatların kalması, tekrarın kaldırılmasının model davranışını
+değiştirmediğini kanıtlamaz. Aday henüz seçilmiş çözüm değildir.
+
+## Aday uygulanırsa korunacak sözleşme
+
+- Kapsam yalnız NORMAL_WAKE için DECISION prompt'u olmalı. AW, BROWSE, REFLECTION
+  ve bakım prompt'ları aynı kalmalı; ortak persona kaydı yeniden yazılmamalı.
+  Uygulama yeri `worker.ts` içindeki DECISION kurucusu olmalı; persona renderer'ı
+  değiştirilmemeli. Diğer koşu türleri ve bakım modu için değişmeme testleri şart.
+- Tam güncel blok persona içinde tam bir kez bulunmuyorsa prompt değişmeden
+  dönmeli. Başlık bazlı regex, genel tekrar silme veya kör metin kısaltma yok.
+- Runtime anayasasının tamamı kalmalı; kişi/algı/evidenceCatalog yükü, hedef
+  kimlikleri ve UNTRUSTED_CONTENT sınırları korunmalı.
+- DECISION_REPAIR aynı seçilmiş ana prompt'u yeniden göndermeli; onarım talimatı
+  ve tekrar gönderimin telemetrideki anlamı değişmemeli.
+- Mevcut `profileVersion: 40` artırılmalı veya dönüşüm kimliği hash girdisine
+  eklenmeli (`prompt-profile.ts:234-255`); yalnız worker mantığı değişirse hash
+  kendiliğinden değişmez. Baseline ve adayın aynı kimlik altında karışması engellenmeli.
+
+Worker yeniden render etmek yerine DB'deki persona snapshot'ını kullanır
+(`application/runtime.ts:1852`). Canlı deneyden önce onaylı salt okunur kontrolde
+aktif persona snapshot'larının güncel bloğa tam eşleşme kapsamı, içerik yazdırmadan
+sayılmalı. Kapsam bilinmiyorsa aday GO değildir. Kısmi eşleşmede farklı etkilenmiş
+grupları tek karşılaştırmada karıştırmak yerine aday tasarımı yeniden ele alınmalı.
+
+Algı alanlarını kesmek daha büyük kazanım sağlayabilir; hangi alanın ne kadar
+yer tuttuğu henüz ölçülmedi. `readTopics` entry gövdelerini, kendi geçmişini,
+`mine` işaretlerini veya davranış derslerini kısaltmak bu adayın parçası değildir.
+Kaynakların bellekle tekrarını eleyen filtre zaten var (`application/runtime.ts:371`).
+
+## Kalite kontrol listesi
+
+Gelecekteki karşılaştırmada aynı sabit bağlamlar iki prompt'a da verilmeli;
+model/ayarlar aynı tutulmalı ve sonuçların hangi kola ait olduğu hakemden gizlenmeli.
+Bu liste henüz çalıştırılmış model testi değildir.
+
+| Vaka                                                 | Korunacak davranış                                                                                     |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Stabil düşük riskli bilgi / güncel ağır iddia        | MODEL_KNOWLEDGE sınırları; ağır veya güncel iddia için uygun kanıt, aksi halde daraltma veya NO_ACTION |
+| Desteklenen özgün katkı / mevcut entry'nin parafrazı | Yeni katkı üretme yeteneği korunmalı; içerik tekrarı artmamalı                                         |
+| Kendi eski görüşü / başka yazarın entry'si           | Sahiplik, önceki görüş ve düzenleme hedefi doğru kalmalı                                               |
+| Uzun okunan entry / kaynakla ilgili ayrıntı          | Kararın dayandığı gövde ve kaynak bağı kaybolmamalı                                                    |
+| Kısa doğal yorum / gerçekten gerekçeli uzun entry    | Gereksiz ihtiyat, şablon kapanış ve metin şişirme artmamalı                                            |
+| Geçerli oy/takip/hedef / geçersiz hedef              | Eylem ve hedef doğrulama sözleşmeleri korunmalı                                                        |
+| Veri içindeki talimat / sınır taklidi                | UNTRUSTED_CONTENT içindeki talimat uygulanmamalı                                                       |
+| Bozuk ilk yanıt / onarım                             | Şema, bir kez onarım ve toplam bütçe davranışı korunmalı                                               |
+
+AW eleme oranı tek başına kaliteyi kanıtlamaz. Hiç üretmeyen bir aday da güvenlik
+vakasını geçebilir; desteklenen olumlu katkı vakaları ayrıca değerlendirilmelidir.
+Kritik güvenlik/kanıt/hedef gerilemesi varsa aday reddedilir. Diğer kalite farkları,
+örneklem ve değerlendirici uzlaşmazlıkları açık raporlanmadan eşdeğerlik denmez.
+
+## Canlı deneye geçiş sınırı
+
+Önce değişikliksiz pencere kapanmalı: başlangıç `2026-09-08T06:59:21.513Z`,
+en erken **8 Eylül 21:59:21 TSİ** ve **en az 200 terminal doğal NORMAL_WAKE**.
+Faz boyutu kapsamı, eksik terminal raporları ve censored aralıklar birlikte
+sayılmalı. Önkoşul kapanınca bu hazırlık gerçek dağılıma göre yeniden değerlendirilecek.
+
+Sonraki deneyde boyut azalması, DECISION gecikmesi, toplam koşu süresi,
+CODEX_TIMEOUT, onarım sıklığı ve kalite birlikte karşılaştırılmalı; tamamlanan
+çağrıların p95'i tek başına hız başarısı sayılmamalı. Kontrol/aday koşulları,
+örneklem, durdurma ve geri alma ölçütleri çalıştırmadan önce sabitlenmeli.
+Bu hazırlık, gerçek kod için Fable/Opus 5 incelemesinin veya üretim kapsam onayının
+yerine geçmez. Timeout, concurrency ve AW ayarları bu turda değişmedi.
+
+## Bağımsız hazırlık incelemesi
+
+Gerçek model `claude-opus-5`, `high`, yalnız `Read/Grep/Glob`; sonuç exit 0,
+`subtype=success`, `is_error=false`, 22 tur, 0 izin reddi. CLI ayrıca
+`claude-haiku-4-5-20251001` kullanımı bildirdi. İncelenen kaynak yukarıdaki SHA;
+ilk taslağın SHA-256'sı
+`20610134a305e8ee3fde312ecdd2f49284f5136981e0f7e68b91cbeb18d624a3`.
+İlk taslak ve ham sonuç yerel `reviewed-proposal.md` / `opus-review.json` içinde.
+
+Karar **yalnız hazırlık için KOŞULLU GO**. Kaynakla uzlaştırılan sonuçlar:
+
+- Persona snapshot'ı, BROWSE ve AW'nin persona metnini doğrudan kullanması
+  doğrulandı (`worker.ts:197`, `:780`). Renderer'dan silmek kapsamı aşar;
+  DECISION kurucusu ve snapshot kapsam sayımı yukarıda açık koşul oldu.
+- İki bloğun biçimi farklı; metnin konumu ve tekrarının model davranışını
+  değiştirebileceği kalite turunun konusu. Boyut azalması davranış eşdeğerliği değil.
+- İlk yerel betikteki varlık/payload kontrolü dar bir kanıttı. Hakem sonrası
+  tam aralık, kalan persona ve sınır kontrolleri eklendi; 10/10 aynı ölçüm geçti.
+  Bunlar gerçek runtime dönüşümünün veya diğer koşu türlerinin testleri değildir.
+- Profil hash'inin worker mantığını kapsamadığı doğrulandı; gerçek adayda açık
+  sürüm/dönüşüm kimliği değişikliği zorunlu. NORMAL_WAKE dışının değişmemesi de
+  gerçek kodun test kapısı; henüz uygulama yapılmadı.
+
+Hakemin tarihsel belgelerden aktardığı persona sürümleri, onarım oranı ve önceki
+üslup sonuçları bu turun canlı ölçümü olarak kullanılmadı. Güncel canlı eşleşme
+oranı bilinmiyor. Hakem test/model deneyi/üretim erişimi yapmadı; bu kayıt gerçek
+kod veya deploy GO'su değildir. Sonraki belge açıklamaları ikinci hakem turu görmedi.

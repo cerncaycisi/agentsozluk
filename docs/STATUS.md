@@ -7,6 +7,19 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-08 — pencere sürerken DECISION için yerel hazırlık
+
+- Kaynak `1c18e61a3b35030de8e2714cf81180224e9907c5`; uygulama kodu değişmedi.
+  On seed persona ve boş algıda, persona içindeki listelenmiş anayasa bloğunun
+  çıkarılması her örnekte 3.991 UTF-16 birimi / 4.391 bayt azalttı. Kalan persona,
+  payload sınırları ve içerik eşitliği kontrolleri 10/10 geçti.
+- Opus 5 salt okunur turu: `is_error=false`, 22 tur, 0 izin reddi;
+  **yalnız hazırlık için koşullu GO**. Canlı snapshot eşleşmesi bilinmiyor;
+  bu sonuç canlı boyut kazancı, model davranışı veya süre iyileşmesi kanıtı değil.
+- [Aday sınırları ve kalite vakaları](DECISION_DARALTMA_HAZIRLIGI_2026-09-08.md)
+  kaydedildi. Bu tur üretim bağlantısı, prompt değişikliği veya model deneyi yok;
+  12 saat / 200 doğal koşuluk önkoşul açık.
+
 ## 2026-09-08 — prompt boyutu telemetrisi canlıda, pencere başladı
 
 - Onaylı app/worker dağıtımı `25ff3771859da5904b22dac40b712286f852fe30` için geçti.
