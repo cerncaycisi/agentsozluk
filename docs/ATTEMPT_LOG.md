@@ -7049,3 +7049,32 @@ cancel_requested=0 leases=0` oldu.
 - Tekrarlama: 74 kayıtlı interval'ın tam alan kapsamını tüm çağrıların kalıcılık
   kanıtı sayma; PARTIAL'ı başarılı sayma; 74 dakikalık erken kesimi 12 saat/200
   koşuluk tam gözlem veya daraltmanın hız/kalite başarısı olarak sunma.
+
+## 2026-09-08 — DECISION eşlenmiş yerel kalite taraması
+
+- İncelenen aday `f19c4ce9279fce4114b84e5322f5f25f682bb91a`; runtime kodu
+  `c08052e` ile aynı. Eski kurucu `7134a04`. Node `22.23.1`, Codex CLI `0.153.2`,
+  `npx --offline pnpm@10.34.5`; istek modeli `gpt-5.6-luna`, effort `max`.
+- Altı sabit sentetik bağlam, tek seed persona, iki kol, tek tekrar. Manifest
+  çağrılardan önce donduruldu; hash ve bütün ham dosya konumları
+  `docs/DECISION_YEREL_KALITE_2026-09-08.md` içinde. Her çiftte yalnız 3.991
+  UTF-16 birimi / 4.391 bayt çıkarıldı; bağlam ve JSON şeması aynı.
+- 11:31–11:47 TSİ: 12/12 çağrı exit 0, timeout/sağlayıcı hatası/araç olayı 0.
+  Gerçek runtime parse 12/12; kanıt kimliği ve fixture hedef/sahiplik
+  kontrollerinde hata 0. Olumlu iki fırsatta iki kol da entry önerdi.
+  Onarım, AW, server action veya üretim bağlantısı yapılmadı.
+- Kör hakem `claude-opus-5/high`: exit 0, is_error=false, 8 tur, izin reddi 0;
+  CLI ayrıca Haiku 4.5 kullanımı bildirdi. Adayın destekli katkısına özgünlük
+  FAIL verdi. Kaynakla normalize edilmiş kesintisiz örtüşme aday 18 sözcük,
+  eski 6; betik ile doğrulandı. Eski çıktıda deney türünün çarpıtılması da
+  doğrulandı. Hakemin farklı vakalardaki A/B etiketlerini aynı kol sayan
+  genellemeleri, istatistiği ve MODEL_KNOWLEDGE kimliği eleştirisi benimsenmedi.
+- Karar: bu kanıtla canlıya geçiş için NO-GO, #120 taslak. Tek örnek nedensel
+  bozulma kanıtı değil; farklı persona/eşlenmiş tekrar içeren odaklı yeni
+  protokol gerekiyor. Mevcut başarısız örnek korunacak; sonuç seçerek tekrar yok.
+- Depo kontrolleri format/lint/typecheck ve requirements 3/3 geçti; runtime
+  kodu değişmedi. Sonuç PLAN, STATUS ve ölçüm belgesine işlendi.
+- Tekrarlama: 12 yapısal PASS'ı bütün runtime veya kalite eşdeğerliği PASS'ı
+  sayma; üç hızlı/üç yavaş yerel çiftten canlı gecikme kazancı çıkarma.
+  Kısa/tek personalı fixture'ı canlı algı ve toplum dağılımı sayma; CLI istek
+  modelini JSON akışında ayrıca sunulmamış sunucu model kimliğiyle karıştırma.

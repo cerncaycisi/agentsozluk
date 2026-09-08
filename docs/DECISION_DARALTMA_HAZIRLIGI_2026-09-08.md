@@ -4,8 +4,10 @@ Bu belge [PLAN.md](PLAN.md), Sıra 5 / kilitlenen sıra 1'in hazırlık kanıtı
 ayrı bir iş kuyruğu değildir. Canlıdaki değişikliksiz telemetri penceresi sürerken
 ilk yerel metin ölçümü yapıldı; aşağıdaki ilk inceleme o aşamanın kaydıdır.
 Sonraki hızlandırma talimatıyla aday kodu ayrı dalda uygulandı; son bölüm güncel
-yerel sonucu verir. Üretime bağlanılmadı. **Canlı daraltma deneyi başlamadı;
-model davranışı veya süre kazancı sonucu yok.**
+yerel sonucu verir. İlk hazırlık ve aday kodu turlarında üretime bağlanılmadı.
+Sonraki onaylı salt okunur kapsam sayımı son bölümde, eşlenmiş model çıktıları
+[yerel kalite kaydında](DECISION_YEREL_KALITE_2026-09-08.md) bulunur.
+**Canlı daraltma deneyi başlamadı; canlı süre kazancı sonucu yok.**
 
 ## Ölçülen aday ve sınırı
 

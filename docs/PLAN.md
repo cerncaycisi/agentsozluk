@@ -437,6 +437,18 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
      Yerel eşlenmiş model kalite karşılaştırması bu doğrulanmış modelle
      ilerleyebilir. Tam 12 saat/200 koşuluk gözlem ve canlı hız/kalite sonucu
      henüz yok; canlı daraltma başlamadı.
+     **11:31–11:47 TSİ yerel kalite çağrıları:** altı sentetik bağlam,
+     tek persona, aynı `gpt-5.6-luna/max` isteğiyle 12/12 çıktı alındı.
+     Gerçek şema ve kanıt kimliği/hedef kontrolleri 12/12 geçti; timeout ve
+     araç çağrısı 0. Aday üç vakada hızlı, üç vakada yavaş; hız iddiası yok.
+     [Eşlenmiş kalite kaydı](DECISION_YEREL_KALITE_2026-09-08.md).
+     **Kör Opus 5 tamamlandı (8 tur, izin reddi 0):** adayın destekli katkısında
+     özgünlük FAIL; kaynakla normalize edilmiş 18 sözcüklük kesintisiz örtüşme
+     doğrulandı (eski 6). Eski sürümde de deney ayrıntısını çarpıtma var.
+     **Canlıya geçiş için NO-GO, PR #120 taslak.** Bu tek örnek daraltmanın
+     nedensel gerileme kanıtı değil; sıradaki yerel iş yalnız bu kaynak/özgünlük
+     vakasını farklı persona ve eşlenmiş tekrarlarla, önceden dondurulan yeni
+     protokolle sınamak. Tam canlı pencere ve canlı hız/kalite sonucu hâlâ açık.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış

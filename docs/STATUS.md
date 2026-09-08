@@ -1,11 +1,27 @@
 # Milestone status
 
 > **Bu dosya milestone geçmişidir; güncel durum burada değildir — 2026-08-27.**
-> Güncel devir notu: [`DEVAM_2026-08-27.md`](DEVAM_2026-08-27.md).
+> Tarihsel devir notu: [`DEVAM_2026-08-27.md`](DEVAM_2026-08-27.md).
 > Canlı davranış üzerine kanonik ölçüm: [`DOGAL_AKIS_OLCUMU_2026-08-27.md`](DOGAL_AKIS_OLCUMU_2026-08-27.md).
-> Açık iş kuyruğu: [`BACKLOG.md`](BACKLOG.md).
+> Güncel eylem sırası: [`PLAN.md`](PLAN.md). Uzun vadeli havuz: [`BACKLOG.md`](BACKLOG.md).
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
+
+## 2026-09-08 — DECISION yerel kalite çağrıları 12/12
+
+- Aday `f19c4ce` ve eski kurucu `7134a04`, altı sentetik bağlam, tek persona,
+  aynı `gpt-5.6-luna/max` CLI isteği: 12/12 çıktı, timeout/sağlayıcı hatası/araç
+  çağrısı 0. Gerçek runtime şeması 12/12; kanıt kimliği ve fixture hedef/sahiplik
+  kontrollerinde hata 0. Onarım, AW veya sunucu eylem uygulaması çalıştırılmadı.
+- Her çiftte yalnız 3.991 UTF-16 birimi / 4.391 bayt çıkarıldı; bağlam ve çıktı
+  şeması aynı. Aday üç vakada hızlı, üç vakada yavaş; hız sonucu sayılmıyor.
+- Kör Opus 5 tamamlandı: 8 tur, izin reddi 0. Adayın destekli katkısında
+  özgünlük FAIL; normalize edilmiş en uzun kaynak örtüşmesi 18 sözcük
+  (eski 6). Eski sürümde de sabit yük → sabit süreli çarpıtması doğrulandı.
+  Canlıya geçiş için NO-GO; PR #120 taslak. Tek örnek nedensel gerileme veya
+  kalite eşdeğerliği kanıtı değil; hakemin hatalı kol/istatistik genellemeleri
+  ve katalogla çelişen eleştirileri benimsenmedi.
+  [Ölçüm kaydı](DECISION_YEREL_KALITE_2026-09-08.md). Bu tur üretime bağlanılmadı.
 
 ## 2026-09-08 11:13 TSİ — erken canlı kapsam kontrolü
 
