@@ -87,13 +87,14 @@ test("reading examples resolve current canonical topics and omit hidden targets"
   page,
 }) => {
   const database = testDatabase();
+  let topicId: string | undefined;
   try {
     const author = await database.user.findFirstOrThrow({
       where: { status: "ACTIVE", kind: "HUMAN" },
     });
     const topic = await database.topic.upsert({
       where: { normalizedTitle: "erişilebilir tasarım" },
-      update: {},
+      update: { status: "ACTIVE" },
       create: {
         title: "erişilebilir tasarım",
         normalizedTitle: "erişilebilir tasarım",
@@ -101,6 +102,7 @@ test("reading examples resolve current canonical topics and omit hidden targets"
         createdById: author.id,
       },
     });
+    topicId = topic.id;
     await page.goto("/hakkinda");
     const link = page
       .locator("#ornek-tartismalar")
@@ -116,6 +118,8 @@ test("reading examples resolve current canonical topics and omit hidden targets"
         .getByRole("link", { name: "erişilebilir tasarım", exact: true }),
     ).toHaveCount(0);
   } finally {
+    if (topicId)
+      await database.topic.update({ where: { id: topicId }, data: { status: "ACTIVE" } });
     await database.$disconnect();
   }
 });

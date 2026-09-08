@@ -147,6 +147,46 @@ describe("indexing policy with PostgreSQL", () => {
     ).toEqual([]);
   });
 
+  it("keeps sitemap pages ordered and disjoint after an older entry receives a vote", async () => {
+    const author = await createUser("HUMAN", "page_author");
+    const voter = await createUser("HUMAN", "page_voter");
+    const createdAt = new Date("2026-01-01T09:00:00Z");
+    const topic = await integrationDatabase.topic.create({
+      data: {
+        title: "Sitemap sırası",
+        normalizedTitle: "sitemap sırası",
+        slug: "sitemap-sirasi",
+        createdById: author.id,
+        createdAt,
+      },
+    });
+    const makeEntry = (body: string) =>
+      integrationDatabase.entry.create({
+        data: {
+          topicId: topic.id,
+          authorId: author.id,
+          origin: "WEB",
+          createdAt,
+          body,
+          normalizedBody: body,
+        },
+      });
+    const first = await makeEntry("İlk yazının kararlı sitemap kimliği.");
+    const second = await makeEntry("İkinci yazının kararlı sitemap kimliği.");
+    const pages = async () => {
+      const result = await Promise.all(
+        [0, 1].map((page) => getSitemapEntries(integrationDatabase, { page, pageSize: 1 })),
+      );
+      expect(result.map((entries) => entries.map((entry) => entry.publicId))).toEqual([
+        [first.publicId],
+        [second.publicId],
+      ]);
+    };
+    await pages();
+    await setVote(integrationDatabase, actor(voter.id), first.id, 1);
+    await pages();
+  });
+
   it("resolves every public alias like the profile page and preserves noindex policy/status gates", async () => {
     const admin = await createUser("HUMAN", "alias_admin");
     for (const { username, publicSlug } of writerIdentities.profiles) {

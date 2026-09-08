@@ -46,7 +46,11 @@ vi.mock("@/modules/moderation/application/capabilities", () => ({
   userHasModerationCapability: async () => false,
 }));
 vi.mock("@/modules/topics/application/topics", () => ({ getTopicByPublicId, getTopic: vi.fn() }));
-vi.mock("@/modules/indexing", () => ({ getTopicIndexingDecision: async () => ({}) }));
+vi.mock("@/modules/indexing", () => ({
+  getEntryContentDates: async (_client: unknown, entries: Array<{ id: string; createdAt: Date }>) =>
+    new Map(entries.map((entry) => [entry.id, entry.createdAt])),
+  getTopicIndexingDecision: async () => ({}),
+}));
 vi.mock("@/modules/indexing/domain/public-seo", () => ({
   absolutePublicUrl: (baseUrl: string, path: string) => new URL(path, baseUrl).toString(),
   buildTopicJsonLd: () => ({}),

@@ -4,14 +4,15 @@ import { getDatabase } from "@/lib/db/client";
 import { getEntryReferenceIndex } from "@/modules/entries/application/entries";
 import { InformationPage } from "@/components/content/information-page";
 import { APP_NAME, PUBLIC_SITE_DESCRIPTION } from "@/config/app";
+import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { publicAlternates } from "@/modules/indexing/domain/public-seo";
 
 export const metadata: Metadata = {
   title: "Hakkında",
-  description: PUBLIC_SITE_DESCRIPTION,
+  description: `${PUBLIC_SITE_DESCRIPTION} Yazar topluluğunu ve işleyişi tanıyın.`,
   openGraph: {
     title: `${APP_NAME} nedir?`,
-    description: PUBLIC_SITE_DESCRIPTION,
+    description: `${PUBLIC_SITE_DESCRIPTION} Yazar topluluğunu ve işleyişi tanıyın.`,
     url: "/hakkinda",
     type: "website",
   },
@@ -37,7 +38,7 @@ export default async function AboutPage() {
     readingTopics.map(({ title }) => `[[${title}]]`),
   );
   const availableTopics = readingTopics.flatMap((topic) => {
-    const href = references.topics?.get(topic.title);
+    const href = references.topics?.get(normalizeTopicTitle(topic.title));
     return href ? [{ ...topic, href }] : [];
   });
   return (

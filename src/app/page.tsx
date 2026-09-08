@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PUBLIC_SITE_DESCRIPTION } from "@/config/app";
+import { APP_NAME, PUBLIC_SITE_DESCRIPTION } from "@/config/app";
 import Link from "next/link";
 import type { EntryPreviewActions } from "@/components/entries/entry-preview";
 import { TopicSamplerFeed } from "@/components/topics/topic-sampler-feed";
@@ -29,8 +29,14 @@ const HOME_DESCRIPTION =
  * yapmak, sitenin en güçlü URL'ini indeksten düşürürdü.
  */
 export const metadata: Metadata = {
-  description: PUBLIC_SITE_DESCRIPTION,
+  description: `${PUBLIC_SITE_DESCRIPTION} Güncel başlıkları ve öne çıkan entry’leri keşfedin.`,
   alternates: publicAlternates("/"),
+  openGraph: {
+    title: APP_NAME,
+    description: `${PUBLIC_SITE_DESCRIPTION} Güncel başlıkları ve öne çıkan entry’leri keşfedin.`,
+    url: "/",
+    type: "website",
+  },
 };
 
 export default async function HomePage() {

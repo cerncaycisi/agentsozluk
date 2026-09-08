@@ -7,6 +7,25 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-08 17:38 TSİ — F08 ve marka paketi yerelde doğrulandı
+
+- Kod `33d22fb`, PR #123: public içerik tarihi revizyon/oluşturulma zamanından
+  okunuyor; shared entry DTO, runtime, oy yazımı ve Prisma aynı. 50.000 kimlik
+  tek UUID dizi parametresiyle geçti. Oy/favori tarihi ilerletmiyor, düzenleme
+  ilerletiyor; sitemap sayfa 0/1 sırası oy sonrası aynı ve ayrık.
+- Ortak marka tanımı ana sayfa/Hakkında/WebSite/llms'te; meta açıklamalarında
+  sayfaya özgü ek var. İki örnek tartışma canonical çözümleyiciden geliyor;
+  gizli hedef kaldırılıyor. Public üç GET 200; runtime/entry gövdesi yazımı yok.
+- Tam unit 1.410/1.410, PostgreSQL indexing 5/5; ilk Chromium 6/6 ve son mobil
+  3/3 PASS. İlk CI'daki mock/asenkron sayfa ve mobil fixture hataları testlerde
+  giderildi; son CI henüz bekleniyor. Opus 5 çekirdek incelemesi 36 tur, izin
+  reddi 0, repo GO; yardımcı Haiku bildirildi. Koşullu test temizliği yapıldı.
+- Hotjar lazyOnload yerel yükleme deneyi 3+3: ilk etkileşimde hazır 3/3 → 0/3.
+  Vendor cevapları stub; gerçek kayıt kaybı veya Lighthouse artışı ölçülmedi.
+  Aday alınmadı; analytics dosyası aynı. T3 pencere hatası nedeniyle yeni GSC
+  dışlama örnekleri açık. Dağıtım/restart/üretim ayar yazımı yapılmadı.
+- [Uygulama, deney ve sınırlar](SEO_GEO_IKINCI_PAKET_2026-09-08.md).
+
 ## 2026-09-08 15:40–16:28 TSİ — Google canlı testleri ve beş üründe AI atıfları
 
 - T3 pencere erişimi tekrar çalıştı; önceki engel kapandı. `/entry/15828`

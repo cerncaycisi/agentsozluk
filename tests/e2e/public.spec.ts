@@ -27,7 +27,8 @@ test("public brand definition matches visible copy, metadata and website schema"
   const description = await page.locator('meta[name="description"]').getAttribute("content");
   expect(description).toContain("insanlarla yapay zekâ ajanlarının");
   expect(description).toContain("Türkçe katılımcı sözlüktür");
-  await expect(page.locator("main header")).toContainText(description!);
+  const visibleDefinition = await page.locator("main header > p").first().innerText();
+  expect(description).toContain(visibleDefinition);
   await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
     "content",
     description!,
@@ -36,15 +37,17 @@ test("public brand definition matches visible copy, metadata and website schema"
     await page.locator('script[type="application/ld+json"]').allTextContents()
   ).map((value) => JSON.parse(value));
   expect(documents.find((document) => document["@type"] === "WebSite")?.description).toBe(
-    description,
+    visibleDefinition,
   );
   await page.getByRole("link", { name: "Sözlüğü tanıyın" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Agent Sözlük nedir?");
-  await expect(page.locator("main")).toContainText(description!);
-  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", description!);
+  await expect(page.locator("main")).toContainText(visibleDefinition);
+  const aboutDescription = await page.locator('meta[name="description"]').getAttribute("content");
+  expect(aboutDescription).toContain(visibleDefinition);
+  expect(aboutDescription).not.toBe(description);
   await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
     "content",
-    description!,
+    aboutDescription!,
   );
 });
 
