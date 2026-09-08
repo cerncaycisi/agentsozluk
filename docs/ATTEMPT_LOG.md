@@ -7144,3 +7144,48 @@ is non-interactive`. `npx pnpm exec` ortamındaki `npm_execpath`, npm-cli.js
   proje `test:e2e` script'ini kullan. Sayfa geçişinden önce alınan boş JSON-LD
   listesini ürünün şema hatası sayma. Public erişim/robots iznini indekslenme,
   sıralama/AI atıf veya toplam SEO puanı olarak sunma.
+
+## 2026-09-08 — SEO merge ve kişisel hesapta Search Console erişimi
+
+- PR #121 head `6d4a127`, CI `34215037418` 7/7 SUCCESS; taze mergeability
+  CLEAN/MERGEABLE ve temiz çalışma ağacı doğrulandı. Exact-head squash merge
+  `e310b77f38074c1cf1ac9137d274deafdd305004`; 13:40 TSİ. Uzak/yerel main
+  aynı; src/tests PR head'iyle eşit. Üretim dağıtımı veya SSH yok.
+- İlk tarayıcı seçimi `No browser is available` verdi. Desteklenen CUA
+  envanterinde Chrome bağlantısı sonradan bulundu; ayrı sekme açıldı.
+  İş hesabında `Oops, you don't have access to this property` ve hedef mülk
+  listede yoktu. Kullanıcının kişisel hesap açıklamasıyla mevcut kişisel
+  Google oturumuna geçildi; agentsozluk.com raporları gerçekten okundu.
+- Google AI raporuna tıklamada `Timed out after 3000ms waiting for CDP command
+Runtime.evaluate.` alındı. Yeniden tıklamadan desteklenen durum okuması
+  yapıldı; hedef raporun zaten açıldığı ve 195 gösterim bulunduğu doğrulandı.
+- 13:44 TSİ GSC başlangıç kaydı: Web 70 tıklama / 7.262 gösterim; indeks
+  18.498 / 9.869, forum 84 geçerli / 27 geçersiz. Tarih ve yorum sınırları
+  SEO kanıt belgesinde. Google ayarları veya doğrulama isteği değiştirilmedi.
+- Tekrarlama: kullanıcının bir Google hesabında erişimi olmasını açık iş
+  oturumunun erişimi sayma. Başarılı giriş yerine hedef mülk/raporu doğrula;
+  navigation timeout'unda eylemi tekrarlamadan mevcut sayfayı oku. Tarihi
+  GSC sayısını anlık üretim sayımı, Google AI gösterimini tüm LLM skoru sayma.
+
+## 2026-09-08 — GA4 yerel trafik kirliliği doğrulandı
+
+- Kullanıcı GA4'ün kişisel hesapta bulunduğunu belirtti; mevcut kişisel
+  oturumdan Agent Sözlük `546054872` mülkü salt okunur açıldı. Tarih aralığı
+  11 Ağustos–7 Eylül. Kaynak/aracıya hostname eklenerek tam 5 satır okundu.
+- Toplam 6.207 oturum; `127.0.0.1`/direct 6.136 (%98,86), gerçek alan adı
+  google/organic 42 ve direct 28; localhost/direct 16 ve not-set 1.
+  `src/lib/analytics/product-analytics.ts` ortam/origin kapısı taşımıyordu;
+  loopback public test sayfaları gerçek GTM/Hotjar loader'larını alabiliyordu.
+- Google ayarı, eski veri, GTM sürümü veya Search Console bağlantısı
+  değiştirilmedi. Kanıt `ga4-baseline.json`; ölçüm hatası PLAN'da öne alındı.
+- Tekrarlama: hostname kırılımını okumadan Direct veya ABD trafiğini insan
+  kullanımı/bot saldırısı sayma. Bütün yerel oturumları kanıtsız tek bir CI
+  çalışmasına bağlama; görüntülenen toplamla boyut satırlarının toplamını
+  aynı tekil oturum sayımı olarak kullanma.
+- Düzeltme kodu `6ca71049e438f3811065da638ff336c662212fb7`: production
+  ve gerçek origin birlikte zorunlu. 32 unit/security + Chromium 1/1 PASS;
+  gerçek yerel HTML'de tracking ID/script yok ve istek denemesi 0.
+  Format/lint/typecheck geçti; requirements 3/3. Ayrı loopback
+  `agentsz_analytics_20260908_test` test sonrası silindi, DB katalog sayımı 0.
+  Eski DB'lere reset uygulanmadı. Hakem snapshot'ı yalnız bu kod SHA'sını
+  ve gerekli kaynakları içerir; Opus 5 salt okunur çalıştırıldı.

@@ -72,12 +72,34 @@ ana dal tabanlı `codex/seo-public-indexing` dalında; DECISION adayı taşınma
 PostgreSQL'de 3 test geçti (22 alias); Chromium 2/2, yerel HTTP 5/5 geçti.
 Ek DOM/text Chromium karşılaştırması 1/1 geçti.
 Opus 5 kod için repo merge GO verdi (21 tur, izin reddi 0); görünürlük ve
-bot koşulları kaynakla uzlaştırıldı. Dağıtım makbuzu ayrı tamamlanacak;
+bot koşulları kaynakla uzlaştırıldı. PR #121, 7/7 CI sonrası 13:40 TSİ'de
+`e310b77` olarak main'e birleşti. Dağıtım makbuzu ayrı tamamlanacak;
 üretim prompt'u, worker ve gözlem penceresi değişmedi.
 [Canlı bulgular ve kabul ölçümleri](SEO_GEO_CANLI_KONTROL_2026-09-08.md).
-Sonraki SEO borcu F08 içerik tarihi; performans, Search Console ve AI atıf
-ölçümleri henüz yapılmadı. Tek bir toplam “LLM puanı” veya sıralama kazancı
-iddiası üretilmeyecek.
+**13:44 TSİ Search Console başlangıç ölçümü:** kişisel hesaptaki domain mülkü
+okundu. 3 ay filtresinde 70 tıklama, 7.262 gösterim, ortalama konum 24,2;
+Google üretken AI raporunda 195 gösterim. Grafik veri aralığı 16 Temmuz–6 Eylül.
+4 Eylül indeks raporunda 18.498 dizinde / 9.869 dışında; 7 Eylül forum
+raporunda 27 geçersiz öğe (`author` ve `datePublished` eksik). Bu hata örüntüsü
+PR #121'de düzeltilen eksik `isPartOf` forum nesnesiyle uyumlu; Google'ın
+yeniden taramasıyla kapanış henüz doğrulanmadı. İlk noindex örnekleri filtreli
+başlıklar; tüm dışlamalar hata sayılmayacak.
+**GA4 ile yeni öncelik:** 11 Ağustos–7 Eylül raporunda 6.207 toplam oturumun
+6.136'sı `127.0.0.1` (%98,86); ayrıca localhost satırları var. Kaynak kodu
+anonim yerel public sayfalarda gerçek GTM/Hotjar kimliklerini yüklüyor.
+Önce analytics'i yalnız production + gerçek site origin'iyle sınırlandır;
+GA4 ölçümünü gerçek hostname üzerinden al. Geçmiş veri silinmeyecek veya
+Google mülk ayarı bu kod paketinde değiştirilmeyecek. Google organik satırı
+gerçek hostname'de 42 oturum; tam tabloda açık AI yönlendirmesi görünmüyor.
+`6ca7104` ortam/origin kapısını ekledi; 32 test ve Chromium 1/1 geçti,
+yerel HTML'de GTM/Hotjar yok, ölçülen analytics istek denemesi 0.
+Salt okunur Opus 5 incelemesi ve exact-head CI repo teslim kapılarıdır;
+yerel kabul, canlıya dağıtım veya geçmiş verinin temizlenmesi değildir.
+Sırada bu ölçüm düzeltmesi ile ilk SEO paketinin onaylı dağıtımı ve aynı
+yüzeylerde doğrulama, ardından F08 içerik tarihi ve dizin dışlamalarının
+örnek bazlı ayrımı var. Mobil
+Lighthouse ile ChatGPT/Claude/Perplexity atıfları ölçülmedi; CrUX verisi yok.
+Tek bir toplam “LLM puanı” veya sıralama kazancı iddiası üretilmeyecek.
 
 - [x] **Browse sınırını tek sabite indir.** — yapıldı; wire şeması artık
       `max(runtimeReadTopicLimit)` kullanıyor, üç yerde tek sayı var. _(Fable §7.1)_
