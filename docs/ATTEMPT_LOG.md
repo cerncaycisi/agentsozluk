@@ -6899,3 +6899,65 @@ gereken operatör script'ini taşımıyor.
   üretim onayı ve canlı pencere `PLAN.md` içinde açık kaldı.
 - Belge doğrulaması: format/lint/typecheck ve `git diff --check` geçti;
   `requirements:check` 3/3 başarılı. Bu tur yalnız dört kanıt/plan belgesini güncelledi.
+
+## 2026-09-08 — prompt boyutu telemetrisi onaylı üretim dağıtımı
+
+- Hedef tam SHA `25ff3771859da5904b22dac40b712286f852fe30`; Opus 5'in incelediği
+  `6a31614` ile src/tests/scripts/prisma aynı. Yerel/remote main eşit ve ağaç temiz;
+  push CI `34137101359` yedi işte `success` olarak yeniden doğrulandı.
+- Paket hazırlığında `gh --paginate --slurp --jq` birleşimi
+  `the --slurp option is not supported with --jq or --template` ile reddedildi.
+  Aynı salt okunur JSON ayrı Node sürecinde işlendi. Bu, CLI kullanım hatasıydı;
+  kimlik veya araç ayarı değişmedi. Tekrarlama: bu gh sürümünde iki bayrağı birleştirme.
+- GitHub artifact envanteri 17 etkin kayıt / `477370285` bayttı. Eski bundle
+  `10008950051` (`92cac23`, `228420606` bayt) ve `10012759715`
+  (`9fb5c63`, `228393299` bayt) GB diskinde
+  `tmp/release-prep-2026-09-08/<id>.zip` olarak korundu; API boyutu/SHA-256 ve ZIP
+  CRC kontrolü geçti. Yalnız bu iki uzak artifact kopyası kaldırıldı; kaynaklar ve
+  workflow koşuları korundu. Sonra 15 etkin kayıt / `20556380` bayt doğrulandı.
+- Bundle workflow `34195750594` başarılı; artifact `10044025464`, `228482441` bayt,
+  API ZIP digest'i `sha256:9f3fefd25f14af8ea08d58033e688b6505c637be9a6cd77569db33400bb40770`.
+  CI image smoke `RELEASE_SMOKE PASS static=1`; payload `228481094` bayt.
+- Gökhan, tam SHA için kimlik kontrolü/global pause/doğal drain/app+worker dağıtımı/
+  sağlık ve sürüm doğrulaması/resume/ölçüm başlangıcı kapsamına "devam" onayı verdi.
+  Her SSH'de A kaydı `46.225.20.177`, kayıtlı ED25519
+  `SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI`, `deploy`, hostname/repo/Compose
+  kapıları geçti. İlk canlı SHA app/runtime/boot için `9fb5c63`; disk %46,
+  `40935508 KiB` boş; Docker 4 image / 3 aktif, `4.1GB`, cache `256.3MB`.
+- Kullanıcının tarayıcı tercihiyle T3 dahili preview kullanıldı; yönetim oturumu
+  burada açıktı. Native input setter + `input` olayı + `requestSubmit()` ile pause
+  ilk denemede uygulandı. DB: `runtimeEnabled=false`, `settingsVersion 264→265`.
+  İki mevcut koşu iptal edilmeden bitti; release drain `queued=0 running=0
+cancel_requested=0 leases=0` oldu.
+- Node `22.23.1` / `npx --offline pnpm@10.34.5`, `FORCE_COLOR=0`, tam SHA onay
+  değişkeni, `--artifact-run 34195750594 --execute`; cleanup ve host-build seçilmedi.
+  Sunucu indirme/boyut/digest/ABI kontrolü `SERVER_FETCH_PASS`, runtime ABI
+  `linux-x64-glibc-node-abi-127`. Image config digest'i
+  `sha256:5648acaa0fde4e3f5c946bd4318ae2298b96c0bd7bbe98468e3191b47801096b`;
+  Docker'ın yüklediği image ID
+  `sha256:f3d0f44e13b41178c33f7a9440f5495b9a60bb6ed06c036280108858b325df5f`.
+- `RELEASE_VERIFY PASS`, `RELEASE_BOOT_TAG PASS`,
+  `RELEASE_COMPLETE PASS sha=25ff3771859da5904b22dac40b712286f852fe30 cleanup=no-cleanup`.
+  Ortak canlı smoke health/ready/search `200/200/200`; worker `active/running`,
+  `NRestarts=0`. Sonraki bağımsız okumada app/runtime/boot SHA ve image ID eşleşti;
+  önceki `9fb5c63` image ve immutable runtime korundu. DB/Caddy iki haftadır çalışan
+  sağlıklı container'lardı. Disk %49 / `39039448 KiB` boş. Migration, volume/image/cache
+  temizliği, host build, reboot veya rollback yapılmadı.
+- Eşleşme kanıtından sonra panelden resume: `settingsVersion 265→266`,
+  `runtimeEnabled=true`, DB `updatedAt=2026-09-08T06:59:21.513Z`.
+  Resume öncesi ve sonrası, runtimeEnabled/settingsVersion/updatedAt/updatedById
+  hariç global ayar MD5'i `e28fff93314a405f31ca4c3708b95c2e`;
+  concurrency 2, doğal timeout 480 sn. Ölçüm başlangıcı 09:59:21 TSİ,
+  12 saat eşiği 21:59:21 TSİ; 200 terminal doğal koşu ayrıca aranacak.
+- Tekrarlama: pause'u DB'den kanıtlamadan deploy başlatma; app/runtime/boot eşitliğini
+  doğrulamadan resume yapma; ilk başarılı telemetri kaydını 12 saat/200 koşuluk
+  pencere veya süre iyileşmesi kanıtı sayma. Aktif pencere ve DECISION önkoşulu `PLAN.md` içinde.
+- `2026-09-08T07:05:19.858637Z` salt okunur kontrolü: resume sonrası doğal kohort
+  1 SUCCEEDED / 1 RUNNING. İlk başarılı koşu `07:00:26.201Z→07:03:49.640Z`;
+  BROWSE `11645/12570`, DECISION `119406/126679`, ACTION_WORTHINESS `14493/15606`
+  (sırasıyla UTF-16 birimi / UTF-8 bayt). Üç kayıtlı interval'ın 3/3'ünde iki alan
+  mevcut, censored yok. Devam eden koşunun raporu henüz yok; bu kesimde terminal hata
+  ve onarım örneği bulunmuyor. Worker `active/running`, `NRestarts=0`, settingsVersion
+  266 ve stable settings hash değişmedi. Elle örnek oluşturulmadı.
+- Yerel belge kapıları: format/lint/typecheck, `git diff --check` ve
+  `requirements:check` 3/3 geçti. Uygulama kodu bu dağıtım kayıtlarında değişmedi.

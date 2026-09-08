@@ -7,6 +7,23 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-08 — prompt boyutu telemetrisi canlıda, pencere başladı
+
+- Onaylı app/worker dağıtımı `25ff3771859da5904b22dac40b712286f852fe30` için geçti.
+  CI `34137101359` 7/7; release bundle `34195750594`, artifact `10044025464`.
+- Global pause `settingsVersion 264→265`; mevcut koşular doğal bitti ve drain
+  sıfıra indi. App/runtime/boot aynı SHA'da doğrulandı. Worker `active/running`,
+  `NRestarts=0`; canlı ortak smoke health/ready/search `200/200/200`.
+- Resume `265→266`; DB zamanı `2026-09-08T06:59:21.513Z` (**09:59:21 TSİ**).
+  Diğer global ayarların hash'i aynı; eşzamanlılık 2, timeout bütçesi 480 sn.
+- Ölçümün 12 saat eşiği **8 Eylül 21:59:21 TSİ**; ayrıca 200 terminal doğal koşu
+  şartı var. Tam pencere ölçülmedi; DECISION daraltması ve süre kazancı iddiası yok.
+- `07:05:19Z` kesiminde yeni doğal kohort 1 SUCCEEDED / 1 RUNNING. İlk başarılı
+  koşunun BROWSE/DECISION/ACTION_WORTHINESS kayıtlarında iki boyut **3/3** mevcut;
+  DECISION `119406` UTF-16 birimi / `126679` bayt. Bu, ilk örneğin doğrulamasıdır.
+- Önceki `9fb5c63` image/runtime korundu. Disk %46→%49; DB/Caddy sağlıklı.
+  Üretimde migration, host build veya temizlik yapılmadı.
+
 ## 2026-09-07 — faz başına prompt boyutu telemetrisi, yerel doğrulama
 
 - `codexIntervals` kayıtlarına `promptChars` (UTF-16 birimi) ve `promptBytes`

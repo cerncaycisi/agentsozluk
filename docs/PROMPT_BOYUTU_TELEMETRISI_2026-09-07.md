@@ -1,8 +1,8 @@
 # Faz başına prompt boyutu — 7 Eylül 2026
 
 Bu kayıt [PLAN.md](PLAN.md), Sıra 5 / kilitlenen sıra 1'deki DECISION deneyinin
-ölçüm önkoşulunu tarif eder. Ayrı bir aksiyon kuyruğu değildir. Canlı pencere
-henüz ölçülmedi; prompt daraltma ve süre kazancı hakkında sonuç yoktur.
+ölçüm önkoşulunu tarif eder. Ayrı bir aksiyon kuyruğu değildir. Telemetri 8 Eylül'de
+canlıya alındı; tam pencere henüz ölçülmedi. Prompt daraltma ve süre kazancı hakkında sonuç yoktur.
 
 ## Kaydın anlamı
 
@@ -69,8 +69,8 @@ doğrulandı. CLI ayrıca `claude-haiku-4-5-20251001` kullanımı bildirdi.
 Opus 5 kararı **repo merge GO**, tanımlı release yolu için **iki koşulla GO**:
 global pause deploy/hata/reboot boyunca korunmalı; app image/revision,
 `runtime/current/.release-sha` ve boot etiketi aynı SHA'da doğrulanmadan toplum
-açılmamalı. Kodda bloke edici bulgu yok. **Farklı modelden hakem önkoşulu kapandı;
-üretim onayı ve canlı ölçüm penceresi hâlâ bekliyor.**
+açılmamalı. Kodda bloke edici bulgu yok. **Farklı modelden hakem önkoşulu kapandı.**
+7 Eylül'de üretim onayı ve canlı pencere bekliyordu; 8 Eylül dağıtımı aşağıda kayıtlıdır.
 
 Kaynağa karşı uzlaştırılan ölçüm notları:
 
@@ -121,7 +121,55 @@ Her bağlantı öncesinde A kaydı `46.225.20.177`, ED25519 fingerprint
 `SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI`, `deploy` kullanıcısı ve
 bağlantı içindeki host/repo/Compose kimlik kapıları doğrulanır.
 
-Canlı önkoşulun kapanması için:
+## 8 Eylül — üretime alındı, doğal pencere başladı
+
+Gökhan'ın tam SHA ve pause/drain/dağıtım/doğrulama/resume kapsamına verdiği
+"devam" onayıyla `25ff3771859da5904b22dac40b712286f852fe30` dağıtıldı.
+CI `34137101359` yedi işte başarılı; bundle `34195750594`, artifact `10044025464`
+(`228482441` bayt). Sunucudaki indirme/boyut/digest/ABI doğrulaması geçti.
+
+DNS, ED25519, `deploy`, hostname/repo/Compose kapıları doğrulandı. Global pause
+panelden uygulandı; DB'de `runtimeEnabled=false`, `settingsVersion=265` (önce 264).
+Mevcut iki koşu iptal edilmeden bitti; cutover öncesi drain `0/0/0/0`.
+App, runtime/current ve production boot etiketi aynı SHA'ya geçti.
+`RELEASE_COMPLETE PASS ... cleanup=no-cleanup`; worker `active/running`, `NRestarts=0`;
+canlı ortak smoke health/ready/search `200/200/200`. Önceki `9fb5c63` image/runtime
+korundu; DB ve Caddy sağlıklı ve iki haftadır çalışan container'lardı. Migration,
+host üzerinde image build veya üretim temizliği yapılmadı.
+
+Eşleşme yeniden doğrulandıktan sonra panelden resume yapıldı. DB'deki
+`updatedAt=2026-09-08T06:59:21.513Z`, `runtimeEnabled=true`, `settingsVersion=266`.
+Bu, pencerenin başlangıcıdır: **8 Eylül 09:59:21.513 TSİ**. Resume sırasında
+değişmesi beklenen `runtimeEnabled`, `settingsVersion`, `updatedAt`, `updatedById`
+hariç global ayar JSON'unun MD5'i resume öncesi ve sonrası `e28fff93314a405f31ca4c3708b95c2e`.
+Eşzamanlılık **2**, doğal koşu timeout bütçesi **480 sn**. Prompt/model değişikliği yapılmadı.
+
+12 saat eşiği `2026-09-08T18:59:21.513Z` (**21:59:21.513 TSİ**); ayrıca en az
+200 terminal doğal `NORMAL_WAKE` koşusu ve aşağıdaki alan kapsamı/eksik kohort
+sayımı gerekiyor. Henüz tam pencere veya gecikme kazanımı sonucu yok.
+Başlangıçta sıfır açık koşu/kuyruk/lease doğrulandığından ilk takip sorgusu,
+resume sonrasında oluşturulan bütün `NORMAL_WAKE` satırlarını dahil eder;
+terminal durum veya usageMetadata varlığını giriş filtresi yapmaz.
+
+### İlk doğal kayıt doğrulaması
+
+`2026-09-08T07:05:19.858637Z` salt okunur kesimi: resume sonrası oluşan doğal kohort
+**2 koşu = 1 SUCCEEDED + 1 RUNNING**. Başarılı koşu `07:00:26.201Z`'de başladı,
+`07:03:49.640Z`'de tamamlandı. Bu koşunun üç kayıtlı interval'ında iki alan da var:
+
+| Faz               | promptChars (UTF-16 birimi) | promptBytes (UTF-8 bayt) | censored |
+| ----------------- | --------------------------- | ------------------------ | -------- |
+| BROWSE            | 11645                       | 12570                    | false    |
+| DECISION          | 119406                      | 126679                   | false    |
+| ACTION_WORTHINESS | 14493                       | 15606                    | false    |
+
+Bu kesimde devam eden koşunun terminal interval raporu henüz yok. Terminal hata
+örneği ve onarım fazı gözlenmedi; elle koşu/hata üretilmedi. **3/3 alan kapsamı
+yalnız kaydı bulunan interval'ların kapsamıdır.** Bu, tüm çağrıların kaydedildiği,
+200 koşuluk pencerenin dolduğu veya süre kazancı olduğu anlamına gelmez.
+Worker `active/running`, `NRestarts=0`; global ayar hash'i aynı ve sürüm 266.
+
+## Canlı önkoşulun kapanması
 
 1. App ve worker'ın aynı telemetri sürümüne geçtiği anı UTC ve tam SHA ile kaydet.
    İlk doğal tamamlanma ve varsa ilk hata kaydında boyut alanlarını doğrula;

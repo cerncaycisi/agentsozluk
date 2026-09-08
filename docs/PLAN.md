@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 7 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
+**Son güncelleme: 8 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -377,7 +377,7 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    güvenlik değil, yenilik/tekrar/başlık-gövde uyumunu bağımsız değerlendiren ürün kapısı.
    **Sıradaki deney (c):** DECISION prompt'unu ölçerek ucuzlatmak — #112'nin AW'ye yaptığını
    DECISION'a yapmak. Prompt küçülmesinin gecikmeyi düşüreceği henüz hipotez, ölçülecek.
-   - [~] **ÖNKOŞUL: prompt boyutu telemetrisi; canlı pencere bekliyor.** 7 Eylül'de üretimde
+   - [~] **ÖNKOŞUL: prompt boyutu telemetrisi canlıda; ölçüm penceresi başladı.** 7 Eylül'de üretimde
      anahtarlar tek tek sayıldı. Koşu düzeyinde ölçüm var (süre, bellek, yük, model,
      profil hash'i, AW verdict'i); faz aralığında da var (`durationMs`, `setupMs`,
      `inspectMs`, `modelMs`, `censored`). **Token ya da karakter sayısı hiçbirinde
@@ -386,14 +386,24 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
      deney. Worker'a faz başına `promptChars` (UTF-16 birimi) ve `promptBytes`
      (UTF-8 bayt) eklendi; token sayısı iddiası yok. Beş faz, başarı/hata/timeout
      yolları ve eski kayıt uyumu yerelde doğrulandı: 72 worker, toplam 560 ajan
-     testi geçti. **Bu, canlı ölçüm değildir; önkoşul henüz kapanmadı.** Dağıtım
+     testi geçti. **Tam canlı pencere henüz ölçülmedi; önkoşul kapanmadı.** Dağıtım
      sonrası değişikliksiz en az 12 saat / 200 terminal doğal koşuluk pencere ve
      tam alan kapsamı ölçülecek; ardından DECISION deneyi değerlendirilecek.
      **Farklı modelden peer review tamamlandı:** ilk OAuth hatasının ardından,
      Gökhan'ın yeniden deneme talimatıyla Opus 5 turu başarılı oldu. Kod için GO;
      release için global pause ve app/runtime/boot etiketi eşleşmesi koşullarıyla GO.
      Onarımda tekrar gönderilen metnin toplam hacimdeki payı ve terminal rapor kaybının
-     örneklem sınırı belgeye işlendi. **Üretim onayı ve canlı pencere hâlâ bekliyor.**
+     örneklem sınırı belgeye işlendi. **8 Eylül: onaylı dağıtım tamamlandı.**
+     `25ff3771859da5904b22dac40b712286f852fe30` app/runtime/boot etiketi eşleşti;
+     canlı smoke health/ready/search `200/200/200`. Pause `264→265`, resume `265→266`;
+     diğer ayarların hash'i değişmedi, eşzamanlılık 2 ve timeout bütçesi 480 sn.
+     Pencere başlangıcı `2026-09-08T06:59:21.513Z` (**09:59:21 TSİ**);
+     12 saat eşiği aynı gün **21:59:21 TSİ**, ayrıca 200 terminal doğal koşu gerekiyor.
+     İlk `SUCCEEDED` doğal koşu `07:03:49.640Z`'de tamamlandı; kaydedilen BROWSE,
+     DECISION ve ACTION_WORTHINESS interval'larının **3/3'ünde iki boyut alanı var**.
+     `07:05:19Z` kesiminde kohort 1 başarılı / 1 devam eden koşu; ilk canlı
+     kaydın doğrulanması tam pencere veya bütün çağrıların kaydedildiğinin kanıtı değil.
+     **DECISION daraltması başlamadı.**
      Birimler ve ölçüm sınırları:
      [prompt boyutu kanıt kaydı](PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md).
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
