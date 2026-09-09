@@ -209,4 +209,89 @@ describe("ACTION_WORTHINESS daraltılmış perception", () => {
     expect(result.relatedTopics).toEqual([topic]);
     expect(result).not.toHaveProperty("relatedEntries");
   });
+
+  it("kendi geçmişi ve readTopics içindeki aynı oy hedefini bir kez taşır", () => {
+    const entry = {
+      id: targetEntryId,
+      body: "önceki kendi hükmüm",
+      mine: true,
+      topic: { id: targetTopicId },
+    };
+    const result = projectActionWorthinessPerception(
+      {
+        ownRecentEntries: [entry],
+        readTopics: [{ id: targetTopicId, title: "başlık", entries: [entry] }],
+      },
+      [{ actionType: "EDIT_OWN_ENTRY", input: { entryId: targetEntryId }, evidenceIds: [] }],
+    );
+    expect(result.relatedEntries).toEqual([entry]);
+  });
+
+  it("tekilleştirme tam okunan gövdeyi önizlemeyle ezmez ve yazar bilgisini korur", () => {
+    const preview = {
+      id: targetEntryId,
+      body: "kısa önizleme",
+      author: { id: targetUserId, username: "yazar" },
+      topic: { id: targetTopicId, title: "başlık" },
+    };
+    const full = { id: targetEntryId, body: "tam okunan ve daha güncel gövde", mine: false };
+    const result = projectActionWorthinessPerception(
+      {
+        recentEntries: [preview],
+        linkedTopics: [{ topic: { id: targetTopicId }, recentEntries: [preview] }],
+        readTopics: [{ id: targetTopicId, title: "başlık", entries: [full] }],
+      },
+      [{ actionType: "VOTE_DOWN", input: { entryId: targetEntryId }, evidenceIds: [] }],
+    );
+    expect(result.relatedEntries).toEqual([{ ...preview, body: full.body, mine: false }]);
+    expect(preview.body).toBe("kısa önizleme");
+    expect(full).not.toHaveProperty("author");
+  });
+
+  it("daha kısa bir güncel okuma da eski uzun gövdenin önüne geçer", () => {
+    const result = projectActionWorthinessPerception(
+      {
+        recentEntries: [{ id: targetEntryId, body: "artık geçersiz uzun eski gövde" }],
+        readTopics: [{ id: targetTopicId, entries: [{ id: targetEntryId, body: "düzeltildi" }] }],
+      },
+      [{ actionType: "VOTE_UP", input: { entryId: targetEntryId }, evidenceIds: [] }],
+    );
+    expect(result.relatedEntries).toEqual([
+      { id: targetEntryId, body: "düzeltildi", topic: { id: targetTopicId, title: undefined } },
+    ]);
+  });
+
+  it("linked başlık hedeflendiğinde yalnız o başlığın sunulmuş entrylerini taşır", () => {
+    const entries = [
+      { id: targetEntryId, body: "birinci metin" },
+      { id: citedItemId, body: "ikinci metin" },
+    ];
+    const topic = { id: targetTopicId, title: "hedef bağlantı" };
+    const result = projectActionWorthinessPerception(
+      {
+        linkedTopics: [
+          { topic, recentEntries: entries },
+          {
+            topic: { id: unrelatedId },
+            recentEntries: [{ id: unrelatedId, body: "ilgisiz bağlantı" }],
+          },
+        ],
+      },
+      [{ actionType: "BOOKMARK_TOPIC", input: { topicId: targetTopicId }, evidenceIds: [] }],
+    );
+    expect(result.relatedEntries).toEqual(entries.map((entry) => ({ ...entry, topic })));
+    expect(JSON.stringify(result)).not.toContain("ilgisiz bağlantı");
+  });
+
+  it("kimliği olmayan iki ilgili kaydı tek kayıt saymaz", () => {
+    const entries = [
+      { body: "ilk", authorId: targetUserId },
+      { body: "ikinci", authorId: targetUserId },
+    ];
+    expect(
+      projectActionWorthinessPerception({ recentEntries: entries }, [
+        { actionType: "FOLLOW_USER", input: { userId: targetUserId }, evidenceIds: [] },
+      ]).relatedEntries,
+    ).toEqual(entries);
+  });
 });
