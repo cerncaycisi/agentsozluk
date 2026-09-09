@@ -7526,3 +7526,60 @@ cleanup=no-cleanup`. Image/runtime ABI, migration/settings/lifecycle koruma
 - Ana dal teslimi yalnız dört docs dosyasıdır; aday runtime/test değişiklikleri
   kapalı PR #124'ün dalında korunur. Doküman makbuzunda format/lint/typecheck
   ve requirements 3/3 geçti; uygulama/test/script/Prisma ağaçları tabanla aynı.
+
+## 2026-09-09 — DECISION efor elemesi ve AW hedef bağlamı
+
+- DECISION tabanı `e0e3ff0dc5cc283c64de1d71592f491f9c167e54`; aynı prompt/schema
+  ile Luna max/high, CLI 0.153.4, 14:30:27–15:00:08 UTC: sekiz çift/16 çağrı.
+  16/16 parser/katalog/hedef-sahiplik, timeout/araç/repair 0. High 8/8 daha
+  hızlı; eşlenmiş oran medyanı 0,2361. Kör Opus 5/high (28 tur, yardımcı
+  Haiku, izin reddi 0) title_match katkı kaybını bildirdi; gerçek kaynak ve
+  eylemle doğrulandı. Önceden sabit fayda kapısı geçilmedi: yerel NO-GO.
+  Tam ara puan tablosu dönüş JSON'unda yoktu; yalnız teslim alınan son
+  özet kaydedildi. Runtime efor/model/timeout ayarı değiştirilmedi.
+- İlk geniş yerel test seçimi tmp içindeki reddedilmiş tablo adayının
+  eski testini de topladı: 162 testin 161'i geçti, eski `.columns` assertion'ı
+  düştü. Aktif worker 72/72 idi. `--exclude 'tmp/**'` odaklı tekrarı
+  81/81 geçti (72 worker + 6 provider + 3 requirements). Ürün regresyonu
+  sayılmadı; test seçimi hatası ayrıştırıldı.
+- AW tabanında dört minimal nested-hedef/yazar/USER_ENTRY örneğinde metin
+  0/4, ilk projeksiyon `{}`. İlk düzeltme
+  `a2eb9fc531abae4d8d489a59978e3e43f201e742`, tekilleştirme
+  `dbac058233beca39382c9e0a1b41cbb59d33a56f`, N1 metadata koruması
+  `0835f28af8d228de75081751b8695384927b082a`: 4/4 metin taşınıyor.
+  İlk typecheck `TS2339: Property 'author' does not exist` verdi; birleşik
+  diziye açık Record türü eklenerek giderildi. İlk 569 ajan unit testi,
+  son davranış ve sıkı assertion sonrası 99/99 odaklı test geçti.
+- Opus 5/high üç salt okunur kod turu: a2eb9fc 26 tur (üst dizine bir
+  Glob reddi); dbac058 9 tur, izin reddi 0; 0835f28 8 tur, izin reddi 0.
+  Yardımcı Haiku bildirildi. F1 tekrar + tam gövde, F4 linked hedef kapsamı,
+  N1 undefined metadata kaybı düzeltildi. Son karar koşullu GO; bozuk parent
+  id/title uyuşmazlığı düşük erişilebilirlikli sınır olarak açık kabul
+  edildi. Testteki `title: undefined` beklentisi toStrictEqual ile düzeltildi;
+  runtime kaynakları son hakem SHA'sıyla aynı kaldı.
+- Hakemin ölçüm itirazında baseline açıklaması eksikti: ilk rapor bütün
+  PR'ı e0e3ff0 ile karşılaştırıyordu; arm alanı DECISION çıktısının max/high
+  koluydu. Exact git archive kopyalarıyla yeniden ölçüm:
+  e0e3ff0→0835f28 25/32 eşit (AW 9/16), dbac058→0835f28 **32/32 eşit**.
+  Faz/kaynak SHA/hash/karakter alanları açık kaydedildi. İlk rapor silinmedi.
+- AW dört gerçek model kontrolü dbac058 prompt'larıyla yapıldı; 4/4
+  beklenen verdict, provider hata/timeout/araç/tekrar 0. Son 0835f28
+  prompt'ları 4/4 byte eşit ve dondurulmuş hash'lerle aynı. N1 bozuk-parent
+  kapsamını bu model vakaları değil, beş sıkı unit örneği doğrular.
+- AW harness hazırlığında `Too small: expected array to have >=1 items`
+  boş journal nedeniyleydi; geçerli OPTION_SELECTED bağı kuruldu.
+  `Unterminated string literal` kuru çalıştırmada bulundu, yardımcı TS
+  ayrı dosyaya alındı. İki tamamlanan çağrıdan sonra metadata git sorgusu
+  `FileNotFoundError: .../model-screen/worktree` verdi. İki sonuç korunup
+  parser'dan geçirildi; yalnız başlamamış iki çağrı tamamlandı. Toplam dört
+  çağrı, provider retry 0; bu harness aksaması ürün/provider hatası değildir.
+- Runtime 0835f28 exact CI `34368286450` 7/7 SUCCESS; önceki iki kaynak
+  revizyonunun CI'ı da 7/7. Son test/doküman revizyonu ayrıca CI kapısından
+  geçecek. Üretim erişimi veya dağıtım yapılmadı.
+- Tekrarlama: hız kazanımını kalite kapısının yerine koyma; ilgili kaynağın
+  varlığını zorunlu atıf kotasına çevirme; kendi yanlış hükmünün düzeltmesini
+  otomatik kopya sayma. AW tekilleştirmesinde eski kısa önizlemeyi seçme;
+  en uzun gövdeyi en güncel sanma. Ölçümde iki kod SHA'sını ve çıktı kolunu
+  ayrı yaz; yardımcı betikleri sağlayıcı çağrısından önce kuru çalıştır.
+  Kalıcı raporlar `DECISION_EFOR_DENEYI_2026-09-09.md` ve
+  `AW_HEDEF_BAGLAMI_2026-09-09.md`; ham makbuzlar ilgili tmp dizinlerinde.

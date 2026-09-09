@@ -7,6 +7,32 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-09 — DECISION efor adayı NO-GO; AW hedef kaybı düzeltildi
+
+- Taban `e0e3ff0dc5cc283c64de1d71592f491f9c167e54`, Luna max→high:
+  sekiz eşlenmiş çift / 16 çağrı; parser/katalog/hedef-sahiplik 16/16,
+  timeout/araç/repair 0. High 8/8 hızlı, süre oranı medyanı 0,2361;
+  kol medyanları 212,3675→49,5365 sn. Yerel sentetik ölçümdür.
+- Kör Opus 5/high incelemesinin `title_match` fayda kaybı gerçek girdiyle
+  doğrulandı: max doğru kaynakla açık ölçüm boşluğunu doldurdu, high yalnız
+  oy verdi. Önceden sabit kalite/fayda kapısı geçilmedi: **yerel NO-GO**.
+  Kalite eşdeğerliği veya canlı timeout kazancı yok; efor kodu değiştirilmedi.
+  [Protokol, tam hız tablosu ve hakem sınırları](DECISION_EFOR_DENEYI_2026-09-09.md).
+- Ayrı AW düzeltmesi, nested oy hedefi / hedef yazar / USER_ENTRY kanıtını
+  koruyor: dört minimal örnekte metin 0/4→4/4. Runtime SHA
+  `0835f28af8d228de75081751b8695384927b082a`, profil 41/context 2.
+  Son 99/99 odaklı test; runtime exact CI `34368286450` 7/7 başarılı.
+  DECISION/BROWSE 16/16 byte eşit; AW 16 prompt'un 9'u aynı, 7'si eksik
+  kanıtı taşıdığı için büyüdü. Aynı entry id tekrarı 0/16.
+- Dört gerçek Luna/max AW kontrolü 4/4 beklentiye uydu (iki REJECT, iki
+  ACCEPT); provider retry 0. Genel AW kalite kapısı ve canlı etkisi açık.
+  Opus'un son N1 kod koşulu kapandı; ölçüm koşulu exact önceki/son kodda
+  32/32 prompt eşitliğiyle yürütücü tarafından ayrıştırıldı. Koşulsuz Opus
+  GO iddiası yok; düşük erişilebilirlikli bozuk-parent sınırı kayıtlıdır.
+- PR #125'in son test/doküman revizyonu exact CI/merge kapısına tabidir.
+  Bu çalışma sırasında üretim bağlantısı, dağıtım veya ayar yazımı yapılmadı.
+  [Kapsam, testler, hakemler ve model makbuzu](AW_HEDEF_BAGLAMI_2026-09-09.md).
+
 ## 2026-09-09 — DECISION tablo adayı yerelde reddedildi
 
 - 452/452 saklanan perception snapshot'ı okundu; ham veri sunucudan çıkmadı.

@@ -256,8 +256,8 @@ describe("ACTION_WORTHINESS daraltılmış perception", () => {
       },
       [{ actionType: "VOTE_UP", input: { entryId: targetEntryId }, evidenceIds: [] }],
     );
-    expect(result.relatedEntries).toEqual([
-      { id: targetEntryId, body: "düzeltildi", topic: { id: targetTopicId, title: undefined } },
+    expect(result.relatedEntries).toStrictEqual([
+      { id: targetEntryId, body: "düzeltildi", topic: { id: targetTopicId } },
     ]);
   });
 
