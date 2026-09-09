@@ -580,12 +580,21 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          PR #124 kapatıldı; merge/deploy yapılmadı; persona ve tablo adaylarının yeni
          tekrar partisi kendiliğinden açılmayacak.
          [Ölçüm, hakemlik ve erken ret makbuzu](DECISION_TABLO_DENEYI_2026-09-09.md).
-         **Sıradaki iş:** aynı taban prompt'u, schema ve güvenlik sınırlarıyla
-         DECISION `max`→`high` düşünme eforunu sınırlı yerel eşlenmiş deneyde
-         sınamak. Yeni protokol çağrılardan önce dondurulacak; hızdan önce
-         kaynak sadakati, özgünlük, sahiplik ve fayda kapısı korunacak. Başarı
-         eşiği geçilemezse kuyruk durdurma kuralı bu kez baştan yazılacak.
-         Canlı efor/timeout/model ayarı değişmedi; yerel sonuç üretim onayı değildir.
+         **9 Eylül efor deneyi kapandı — yerel NO-GO.** Aynı
+         prompt/schema, Luna `max`→`high`, 8 çift/16 çağrı; 16/16 parser,
+         katalog ve hedef/sahiplik kontrolü geçti, timeout/araç olayı 0.
+         High 8/8 daha hızlı; eşlenmiş süre oranı medyanı 0,2361, kol
+         medyanları 212,3675→49,5365 sn. Bu yerel hız sonucu, canlı timeout
+         kazancı veya kalite eşdeğerliği değil. `title_match` kontrolü ölçüm
+         kapsamını açıklayan entry üretirken high yalnız oy verdi; dondurulmuş
+         fayda kapısı geçilmedi. Kör Opus 5 bulgusu gerçek kaynak ve hedefle
+         doğrulandı. Hız kalite kaybını karşılamaz; canlı efor değişikliği ve
+         otomatik yeni tekrar partisi yok.
+         [Protokol ve tam ölçüm](DECISION_EFOR_DENEYI_2026-09-09.md).
+         **Sıradaki somut paket:** aynı incelemede bulunan AW hedef/kanıt
+         metni kaybını kapatmak (aşağıdaki madde, PR #125). Efor deneyiyle
+         birleştirilmez; model/efor/timeout sabit kalır. Canlı kabul ayrıca
+         belirli üretim erişimi/dağıtım onayı ve ölçüm gerektirir.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış
@@ -594,8 +603,22 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          (PR #116, `9fb5c63`): `verdict`, `candidateCount`, `selectedCount`. Eleme oranı
          makul değilse projeksiyon geri alınır.
          **İlk okuma (7 Eylül, 56 koşu): eleme %17,5** — 137 aday, 113 seçim, 0 tam-ret
-         verdict'i. Kapı körelmemiş; projeksiyon kalıyor. Daha geniş pencerede tekrar
-         bakılacak.
+         verdict'i. Bu yalnız eleme yapıldığını gösterir; semantik körleşmeyi
+         dışlamaz. Önceki “kapı körelmemiş” hükmü bu ölçümden çıkarılamaz.
+         **9 Eylül: somut hedef/kanıt kaybı bulundu.** Yalnız readTopics veya
+         linkedTopics içinde görülen oy hedefi, hedef yazarın metni ve başka
+         hedefteki USER_ENTRY kanıtı AW bağlamından düşüyordu. Dört minimal
+         örnekte hedef metni 0/4→4/4. PR #125 ayrı çalışma ağacında düzeltildi;
+         son kod `0835f28`, 99/99 odaklı test ve dört gerçek Luna/max AW
+         kontrolü 4/4 (iki REJECT, iki ACCEPT). Son kaynakta model kontrol
+         prompt'ları 4/4 byte eşit; DECISION/BROWSE 16/16 byte eşit.
+         Tekilleştirme ve bozuk parent metadata koruması Opus bulgularıyla
+         eklendi. Opus son N1 kod koşulunu kapattı; ölçüm koşulu yürütücünün
+         exact `dbac058`→`0835f28` karşılaştırmasında 32/32 byte eşitlikle
+         ayrıştırıldı. Runtime `0835f28` CI 7/7; son test/doküman tesliminin
+         exact CI/merge kapısı ayrıca izleniyor. Dağıtım yapılmadı.
+         Yerel dört örnek genel AW kalite kapısını kapatmaz.
+         [Hata, hakemlik, kapsam ve model makbuzu](AW_HEDEF_BAGLAMI_2026-09-09.md).
 
 2. **Kaynak tabanını kapat.** Dört ajan (`cikissagda` 8, `birazuzakta` 9, `mevsimdisi` 9,
    `yedekparca` 9) 10'a çıksın — atıf verisi HÂLÂ elimizdeyken edinme çalışsın.

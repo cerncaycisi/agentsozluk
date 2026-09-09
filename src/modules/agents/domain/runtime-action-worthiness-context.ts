@@ -24,6 +24,9 @@
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
+// Projeksiyon davranışı değiştiğinde prompt kohortlarını ayırır.
+export const runtimeActionWorthinessContextVersion = 2;
+
 /**
  * Aday sayısından bağımsız olarak HER ZAMAN taşınan alanlar.
  *
@@ -49,6 +52,12 @@ function recordArray(value: unknown): Array<Record<string, unknown>> {
 
 function stringField(value: Record<string, unknown>, key: string): string | null {
   return typeof value[key] === "string" ? (value[key] as string) : null;
+}
+
+function nestedRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 /** Bir adayın girdisinde geçen bütün kimlikler (hedef, yanıt hedefi, kullanıcı…). */
@@ -87,6 +96,11 @@ export function projectActionWorthinessPerception(
       : {};
   const targetIds = new Set(candidates.flatMap((candidate) => candidateIds(candidate)));
   const evidenceIds = new Set(candidates.flatMap((candidate) => candidateEvidenceIds(candidate)));
+  const entryEvidenceIds = new Set(
+    candidates
+      .filter((candidate) => candidate.evidenceType === "USER_ENTRY")
+      .flatMap((candidate) => candidateEvidenceIds(candidate)),
+  );
   const projected: Record<string, unknown> = {};
   for (const key of runtimeActionWorthinessAlwaysKeptKeys)
     if (source[key] !== undefined) projected[key] = source[key];
@@ -97,17 +111,71 @@ export function projectActionWorthinessPerception(
     değerlendiremez.
   */
   const entryPools = ["recentEntries", "ownRecentEntries", "followedWriterEntries"] as const;
-  const relatedEntries = entryPools
-    .flatMap((key) => recordArray(source[key]))
-    .filter((entry) => {
-      const id = stringField(entry, "id");
-      const topic = entry.topic;
-      const topicId =
-        topic && typeof topic === "object" && !Array.isArray(topic)
-          ? stringField(topic as Record<string, unknown>, "id")
-          : null;
-      return (id !== null && targetIds.has(id)) || (topicId !== null && targetIds.has(topicId));
+  // Gezinme ve sözlük bağlantıları katalogda meşru hedef/kanıttır. Yalnız
+  // üst düzey havuzları taramak, bu entry'lere verilen oyları metinsiz bırakır.
+  // Başlık bilgisi nested entry üzerinde yoksa sunulan parent'tan alınır.
+  const readTopicEntries: Array<Record<string, unknown>> = recordArray(source.readTopics)
+    // Hedef başlığın tüm gövdesi relatedTopics içinde zaten korunuyor.
+    .filter((topic) => !targetIds.has(stringField(topic, "id") ?? ""))
+    .flatMap((topic) => {
+      const parentTopic: Record<string, string> = {};
+      for (const key of ["id", "title"] as const) {
+        const value = stringField(topic, key);
+        if (value !== null && value.length > 0) parentTopic[key] = value;
+      }
+      return recordArray(topic.entries).map((entry) =>
+        nestedRecord(entry.topic) || Object.keys(parentTopic).length === 0
+          ? entry
+          : { ...entry, topic: parentTopic },
+      );
     });
+  const linkedTopicEntries: Array<Record<string, unknown>> = recordArray(
+    source.linkedTopics,
+  ).flatMap((linked) =>
+    recordArray(linked.recentEntries).map((entry) => ({
+      ...entry,
+      ...((nestedRecord(entry.topic) ?? nestedRecord(linked.topic))
+        ? { topic: nestedRecord(entry.topic) ?? nestedRecord(linked.topic) }
+        : {}),
+    })),
+  );
+  const matchingEntries = [
+    ...entryPools.flatMap((key) => recordArray(source[key])),
+    ...linkedTopicEntries,
+    ...readTopicEntries,
+  ].filter((entry) => {
+    const id = stringField(entry, "id");
+    const topic = nestedRecord(entry.topic);
+    const topicId = (topic && stringField(topic, "id")) ?? stringField(entry, "topicId");
+    const author = nestedRecord(entry.author);
+    const authorId = (author && stringField(author, "id")) ?? stringField(entry, "authorId");
+    return (
+      (id !== null && (targetIds.has(id) || entryEvidenceIds.has(id))) ||
+      (topicId !== null && targetIds.has(topicId)) ||
+      (authorId !== null && targetIds.has(authorId))
+    );
+  });
+  // Aynı entry akışta önizleme, gezinmede tam gövde olarak bulunabilir.
+  // Son okuma gövdesi kazanır; önceki yazar/başlık alanları kaybolmaz.
+  const relatedEntries: Array<Record<string, unknown>> = [];
+  const entryIndexes = new Map<string, number>();
+  for (const entry of matchingEntries) {
+    const id = stringField(entry, "id");
+    const index = id === null ? undefined : entryIndexes.get(id);
+    if (index === undefined) {
+      if (id !== null) entryIndexes.set(id, relatedEntries.length);
+      relatedEntries.push(entry);
+    } else {
+      const previous = relatedEntries[index]!;
+      relatedEntries[index] = { ...previous, ...entry };
+      for (const key of ["topic", "author"] as const) {
+        const previousNested = nestedRecord(previous[key]);
+        const currentNested = nestedRecord(entry[key]);
+        if (previousNested && currentNested)
+          relatedEntries[index]![key] = { ...previousNested, ...currentNested };
+      }
+    }
+  }
   if (relatedEntries.length > 0) projected.relatedEntries = relatedEntries;
 
   const topicPools = [
