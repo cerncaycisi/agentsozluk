@@ -7466,3 +7466,63 @@ cleanup=no-cleanup`. Image/runtime ABI, migration/settings/lifecycle koruma
 - İzole checkout kurulumu başarıyla tamamlandı; lockfile değişmedi. Prisma
   client üretimi, format/lint/typecheck ve requirements 3/3 geçti. Yalnız
   PLAN/STATUS/ölçüm/attempt belgeleri değişti; uygulama kaynakları merge ile aynı.
+
+## 2026-09-09 — DECISION tablo serileştirmesi, yerel NO-GO
+
+- Taban `8d61de32ce7e1d9a8194571f3b960eced131c0c8`; aday
+  `39c05777280a72d7dca76b1db3dbb580f6f7782e`, test takibi
+  `59835c1fe5c4bffea84b33ff69878f83f844bc74`. PR #124 taslak deneyi;
+  runtime kaynakları test takip commit'inde değişmedi.
+- Pinned DNS/IP/fingerprint + deploy kullanıcısı, 20 saniye timeout'lu
+  REPEATABLE READ READ ONLY sorgular: dondurulmuş 452/452 perception mevcut.
+  JSON satırları aynı sunucuda Node'a aktarıldı; ham bağlam dışarı çıkmadı.
+  Son işlevle geri dönüş 452/452, net medyan 9.633 UTF-16 / 9.602 byte azalma.
+  Dağıtım, runtime/DB/ayar yazımı yok.
+- İlk son-işlev ölçüm betiği `LOSSLESS_MEASUREMENT_FAILED`; yerel ayrıştırma
+  `ReferenceError: runtimeDecisionTableInstruction is not defined` gösterdi.
+  CommonJS export'u yerel değişken gibi kullanılmıştı. Yerel 8.448 net kazanç
+  doğrulandıktan sonra betik düzeltildi; aynı salt okunur ölçüm geçti.
+- İlk lint geçici `.cjs` analiz dosyalarında `@typescript-eslint/no-require-imports`
+  ve `no-console` verdi. Geçici kaynaklar `.cjs.txt` olarak saklandı;
+  lint kuralı gevşetilmedi. İlk geniş ajan testinde benchmark dizi varsayımı
+  `TypeError: Cannot convert undefined or null to object` verdi. Test decoder'ı
+  tabloyu geri açtı, içerik assertion'ları aynı kaldı: 572/572 ajan testi geçti.
+- Opus 5/high ilk hakem: 28 tur, izin reddi 0, yardımcı Haiku bildirildi;
+  F1 tarama sırası testi şartıyla yerel kod GO. Sonraki 77 worker testi geçti.
+  Ayrı kaynak kopyasında tarama dönüşüm sonrasına taşındı; yeni test
+  `expected [Function] to throw an error` ile mutantı yakaladı. Gerçek worker
+  hash'i aynı kaldı. Opus takip turu (4 tur, izin reddi 0) test kapanışını kabul
+  etmedi; koşulsuz son GO yazılmadı. Ayrıntılar ölçüm belgesinde korunuyor.
+- Luna/max + CLI 0.153.4, sentetik stres bağlamları: dört eşlenmiş çiftin
+  dördünde aday daha yavaş, eşlenmiş fark medyanı +37,9175 sn. Sabit 6/8 hız
+  eşiği üçüncü kayıpta geçilemez oldu; yalnız kuyruk sürecine SIGINT verildi,
+  çalışan dördüncü çift normal tamamlandı. 16 planlanan / 8 yapılan çağrı;
+  timeout/araç olayı 0, parser/katalog/hedef-sahiplik 8/8. Kuyruk exit 130
+  bilinçli erken ret, provider hatası değil. Başarı eşiği değiştirilmedi,
+  tamamlanan sonuç atılmadı. Erken durdurma ilk protokolde ayrıca yazılmadığı
+  için sapma kaydedildi; sonraki protokol bunu önceden tanımlamalı.
+- CI `34348770026`, SHA `39c0577`: quality/database/coverage/browser/container
+  SUCCESS; behavior ve toplayıcı validate FAILURE. Exact hata:
+  `tests/simulation/agent-day.test.ts:177`, `AssertionError: expected 2 to be 10`.
+  `tests/simulation/runtime-harness.ts:285` dizi bekleyen `.flatMap()` ifadesi
+  eski prompt'ta 24 ID döndürdü, adayda yerel olarak
+  `TypeError: (context.perception.recentEntries ?? []).flatMap is not a function`
+  verdi. Tam simülasyon yerelde yeniden koşulmadı; downstream ajan sayısının
+  bütün nedenselliği bu dar kontrolle kanıtlanmış sayılmadı. Reddedilen adayın
+  CI'si yeşile çevrilmiş veya M2 PASS sayılmış değildir.
+- Tekrarlama: daha az karakteri daha az token/süre veya eşdeğer kalite sayma.
+  Önceki başarısız persona adayını bu adayla birleştirme; aynı tablo adayına
+  sonuç olumlu çıkana kadar yeni tekrar partisi açma. Kalan ölçüm/CI/hakem
+  sınırlarını canlı deney onayı gibi kullanma. Kanıtlar:
+  `tmp/decision-context-2026-09-09/`, kalıcı kayıt:
+  `docs/DECISION_TABLO_DENEYI_2026-09-09.md`.
+
+- Kör içerik Opus 5/high: 22 tur, izin reddi 0, yardımcı Haiku; sekiz çıktıda
+  kritik güvenlik/yetki hatası yok, dört çiftte karışık CONCERN/PASS. Paket
+  tam run metadatasını ve kullanılmayan focus alanlarını da gösterdiği için
+  gerçek girdiyle uzlaştırıldı: sekiz prompt'ta kota alanları yok, recentEntries
+  24; arşiv gövdeleri 24 farklı string. Hakem görüşleri bu kanıtlarla ayrıldı,
+  ham notlar korunuyor. Kalite eşdeğerliği veya regresyon nedenselliği yok.
+- Ana dal teslimi yalnız dört docs dosyasıdır; aday runtime/test değişiklikleri
+  kapalı PR #124'ün dalında korunur. Doküman makbuzunda format/lint/typecheck
+  ve requirements 3/3 geçti; uygulama/test/script/Prisma ağaçları tabanla aynı.

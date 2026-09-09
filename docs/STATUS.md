@@ -7,6 +7,29 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-09 — DECISION tablo adayı yerelde reddedildi
+
+- 452/452 saklanan perception snapshot'ı okundu; ham veri sunucudan çıkmadı.
+  Son adayın kayıpsız geri dönüşü 452/452, net medyan boyut azalması 9.633
+  UTF-16 (%8,03). Bu serileştirme ölçümüdür, üretim hız kazancı değildir.
+- Yerel Luna/max, CLI 0.153.4: dört eşlenmiş çiftte aday 0/4 daha hızlı;
+  eşlenmiş fark medyanı +37,9175 sn. 6/8 hız eşiği geçilemez olunca yeni
+  çağrılar durduruldu, çalışan çift tamamlandı. Toplam 8 çağrı; timeout/araç
+  olayı 0, parser/katalog/hedef-sahiplik 8/8. Kör Opus 5 içerik incelemesi
+  bu sekiz örnekte kritik hata bulmadı; karışık semantik/fayda/tekrar
+  bulguları nedeniyle kalite eşdeğerliği gösterilmedi.
+- Aday SHA `39c05777280a72d7dca76b1db3dbb580f6f7782e`; test takip SHA
+  `59835c1fe5c4bffea84b33ff69878f83f844bc74`, runtime kaynakları aynı.
+  572 ajan unit testi ve takipte 77 worker testi geçti. BROWSE/AW 8'er,
+  diğer modlar 56 prompt'ta tabanla byte eşit. Ayrı mutantta yanlış metadata
+  tarama sırası yeni test tarafından yakalandı; gerçek worker değişmedi.
+- Opus 5/high ilk kod incelemesi test şartıyla GO; takip incelemesi test
+  kapanışını kabul etmedi. Son koşulsuz kod GO veya kalite eşdeğerliği yok.
+  PR #124 kapatıldı; merge/deploy yapılmadı; üretim ayarı veya runtime yazımı yapılmadı.
+  Doküman makbuzunda yalnız dört docs dosyası değişti; format/lint/typecheck
+  ve requirements 3/3 geçti. Uygulama/test/script/Prisma ağaçları tabanla aynı.
+  [Yöntem, sonuçlar ve sınırlar](DECISION_TABLO_DENEYI_2026-09-09.md).
+
 ## 2026-09-09 — ikinci SEO paketi canlıda, telemetri önkoşulu kapandı
 
 - Onaylı tam SHA `8280ed4765dff958605fb8fa4dc855f84c73bcae`; exact CI ve
