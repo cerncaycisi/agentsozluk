@@ -591,8 +591,8 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          doğrulandı. Hız kalite kaybını karşılamaz; canlı efor değişikliği ve
          otomatik yeni tekrar partisi yok.
          [Protokol ve tam ölçüm](DECISION_EFOR_DENEYI_2026-09-09.md).
-         **Sıradaki somut paket:** aynı incelemede bulunan AW hedef/kanıt
-         metni kaybını kapatmak (aşağıdaki madde, PR #125). Efor deneyiyle
+         **Sıradaki somut adım:** repo teslimi biten AW hedef/kanıt
+         düzeltmesinin canlı kabulü (aşağıdaki madde, PR #125). Efor deneyiyle
          birleştirilmez; model/efor/timeout sabit kalır. Canlı kabul ayrıca
          belirli üretim erişimi/dağıtım onayı ve ölçüm gerektirir.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
@@ -615,8 +615,11 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          Tekilleştirme ve bozuk parent metadata koruması Opus bulgularıyla
          eklendi. Opus son N1 kod koşulunu kapattı; ölçüm koşulu yürütücünün
          exact `dbac058`→`0835f28` karşılaştırmasında 32/32 byte eşitlikle
-         ayrıştırıldı. Runtime `0835f28` CI 7/7; son test/doküman tesliminin
-         exact CI/merge kapısı ayrıca izleniyor. Dağıtım yapılmadı.
+         ayrıştırıldı. **PR #125 repo teslimi tamamlandı:** son head `07d9f5f`,
+         exact CI `34370069884` 7/7; main merge `72fb819`, iki içerik ağacı
+         birebir aynı. Tam SHA'lar ölçüm makbuzunda. Yeni aktif adım exact
+         green main bundle'ı, belirli üretim onayı ve canlı kabul;
+         kod/yerel deney yeniden açılmayacak. Dağıtım yapılmadı.
          Yerel dört örnek genel AW kalite kapısını kapatmaz.
          [Hata, hakemlik, kapsam ve model makbuzu](AW_HEDEF_BAGLAMI_2026-09-09.md).
 

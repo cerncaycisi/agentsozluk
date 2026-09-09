@@ -29,8 +29,11 @@
   Opus'un son N1 kod koşulu kapandı; ölçüm koşulu exact önceki/son kodda
   32/32 prompt eşitliğiyle yürütücü tarafından ayrıştırıldı. Koşulsuz Opus
   GO iddiası yok; düşük erişilebilirlikli bozuk-parent sınırı kayıtlıdır.
-- PR #125'in son test/doküman revizyonu exact CI/merge kapısına tabidir.
-  Bu çalışma sırasında üretim bağlantısı, dağıtım veya ayar yazımı yapılmadı.
+- PR #125 birleştirildi: son head `07d9f5f62cb6b605e293737f747fe68f1ada0c66`,
+  exact CI `34370069884` 7/7; main `72fb81996f6d482c6d8ff6decffb15507b313173`.
+  İki içerik ağacı birebir aynı. Sonraki makbuz yalnız dokümandır;
+  uygulama/test/script/Prisma/bağımlılık ağacını değiştirmez.
+  Üretim bağlantısı, dağıtım veya ayar yazımı yapılmadı; canlı kabul açıktır.
   [Kapsam, testler, hakemler ve model makbuzu](AW_HEDEF_BAGLAMI_2026-09-09.md).
 
 ## 2026-09-09 — DECISION tablo adayı yerelde reddedildi

@@ -7583,3 +7583,24 @@ cleanup=no-cleanup`. Image/runtime ABI, migration/settings/lifecycle koruma
   ayrı yaz; yardımcı betikleri sağlayıcı çağrısından önce kuru çalıştır.
   Kalıcı raporlar `DECISION_EFOR_DENEYI_2026-09-09.md` ve
   `AW_HEDEF_BAGLAMI_2026-09-09.md`; ham makbuzlar ilgili tmp dizinlerinde.
+
+- PR #125 son head `07d9f5f62cb6b605e293737f747fe68f1ada0c66`:
+  format/lint/typecheck, requirements 3/3, odaklı 99/99 ve exact CI
+  `34370069884` 7/7 SUCCESS. Merge öncesi exact head/base, review,
+  mergeability ve kontrol sonuçları yeniden okundu. `15:31:27Z` merge
+  `72fb81996f6d482c6d8ff6decffb15507b313173`; tüm Git ağacı head ile aynı.
+  Son durum makbuzu yalnız PLAN/STATUS/AW raporu/attempt belgesidir;
+  üretim erişimi yok. Root'taki beş belge push edilmiş head ile 5/5 byte
+  eşit doğrulanıp geçici stash ile korundu; root temiz main'e getirildi.
+
+- Ana dal makbuzu lint'i, iç içe geçici çalışma ağacının
+  `next-env.d.ts` dosyasını da taradı: `@typescript-eslint/triple-slash-reference`
+  / `Do not use a triple slash reference for ./.next/types/routes.d.ts`.
+  Dosyanın tracked olduğu kontrolü, önerilen tek-dosya taşımasını
+  `AssertionError` ile durdurdu; hiçbir dosya değiştirilmedi. Çözüm,
+  temiz çalışma ağacını `git worktree move` ile ana repo dışındaki
+  `/Volumes/GB/ai-projects/.agentsz-worktrees/aw-target-evidence-2026-09-09`
+  yoluna taşımak oldu. HEAD aynı, ağaç temiz; standart lint geçti,
+  kaynak ve lint kuralı değişmedi.
+  Konum makbuzu eski tmp dizininde saklandı. Tekrarlama: izole checkout'u
+  ana linter'ın taradığı repo içine yerleştirme.

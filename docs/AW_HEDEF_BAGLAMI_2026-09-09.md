@@ -51,9 +51,8 @@ değildir. AW semantik kalite kapısı ve canlı boyut/süre etkisi ayrıca
 ölçülmelidir. Eksik metni taşıyan ilgili oy örneklerinde prompt büyümesi
 beklenir; bu maliyet başka fazı kısmak veya AW'yi atlamakla telafi edilmez.
 Üretim ayarı değiştirilmedi ve dağıtım yapılmadı.
-[PR #125](https://github.com/cerncaycisi/agentsozluk/pull/125) için runtime
-incelemesi ve testler tamamlandı; son test/doküman revizyonu da exact CI ve
-merge kapısından geçmelidir. Aşağıdaki makbuzlar ayrı kabul sınırlarını gösterir.
+[PR #125](https://github.com/cerncaycisi/agentsozluk/pull/125) repo teslimi
+tamamlandı. Canlı kabul ayrı kapıdır; aşağıdaki makbuzlar bunu ayırır.
 
 ## Hakem ve düzeltme makbuzu
 
@@ -156,3 +155,20 @@ Koşulların bu kapanışı yürütücünün kaynak/ölçüm uzlaştırmasıdır
 sonradan yeniden verdiği bir GO değildir. Runtime SHA `0835f28` exact CI
 `34368286450` **7/7 SUCCESS**. Ham kanıt, yeniden ölçüm betiği ve hash'ler
 `tmp/aw-target-context-2026-09-09/final-evidence/` altında saklandı.
+
+## Repo teslimi
+
+Son head `07d9f5f62cb6b605e293737f747fe68f1ada0c66`; runtime kaynakları
+hakemin incelediği `0835f28` ile aynı. Format/lint/typecheck, requirements
+3/3 ve son 99/99 odaklı test geçti. Exact PR CI
+[34370069884](https://github.com/cerncaycisi/agentsozluk/actions/runs/34370069884)
+**7/7 SUCCESS**: quality, behavior, database, coverage, browser, container,
+validate. Merge öncesi exact head, base, review durumu, bütün kontroller ve
+mergeability yeniden okundu; pending/kırmızı kontrol yoktu.
+
+PR #125 `2026-09-09T15:31:27Z` birleştirildi. Main merge
+`72fb81996f6d482c6d8ff6decffb15507b313173`; head ile bütün Git içerik
+ağacı aynı. Sonraki PLAN/STATUS/makbuz teslimi yalnız dokümandır.
+Exact main push CI ve release bundle, canlı geçişin ayrıca önkoşuludur.
+Bu tur üretim erişimi yapılmadı; son doğrulanmış canlı sürüm sabahki
+`8280ed4` olup yeni erişimde tekrar doğrulanmalıdır.
