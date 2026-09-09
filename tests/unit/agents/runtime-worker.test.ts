@@ -39,6 +39,7 @@ import {
   runtimeDecisionReserveMs,
 } from "@/modules/agents/domain/runtime-browse-experiment";
 import originalPersonaPack from "@/modules/agents/personas/original-personas.json";
+import { projectDecisionTables } from "@/runtime/decision-context";
 
 function usageWithIntervals(
   codexIntervals: { startedAt: string; finishedAt: string; durationMs: number }[],
@@ -4078,6 +4079,24 @@ describe("DECISION table integration", () => {
       context.perception[key] = [{ nested: { runtimeProvider: "forbidden" } }];
       expect(() => buildRuntimePrompt(context)).toThrow();
     }
+  });
+
+  it("rejects forbidden record keys before conversion can turn them into column values", () => {
+    const context = tableContext();
+    context.perception.recentEntries = (
+      context.perception.recentEntries as Record<string, unknown>[]
+    ).map((entry) => ({ ...entry, owner: "forbidden" }));
+    // Ters tarama sırası bu anahtarı yalnız bir columns string değerine gizler.
+    expect(projectDecisionTables(context.perception).hasTables).toBe(true);
+    expect(() => buildRuntimePrompt(context)).toThrow();
+  });
+
+  it("keeps sparse NORMAL_WAKE prompts in list form without a table instruction", () => {
+    const context = tableContext();
+    context.perception.recentEntries = (context.perception.recentEntries as unknown[]).slice(0, 3);
+    const prompt = buildRuntimePrompt(context);
+    expect(untrusted(prompt).perception.recentEntries).toEqual(context.perception.recentEntries);
+    expect(prompt).not.toContain("Perception içindeki {columns,rows}");
   });
 
   it("leaves non-normal run types and operating modes in their existing list format", () => {
