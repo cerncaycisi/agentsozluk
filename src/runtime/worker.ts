@@ -1,3 +1,4 @@
+import { projectDecisionTables, runtimeDecisionTableInstruction } from "@/runtime/decision-context";
 import { projectActionWorthinessPerception } from "@/modules/agents/domain/runtime-action-worthiness-context";
 import {
   RuntimeProviderCancelledError,
@@ -686,12 +687,16 @@ function safeContentRepairCandidate(
 
 export function buildRuntimePrompt(context: RuntimeContext): string {
   const projectedPerception = projectRuntimePerception(context.perception);
+  const decisionContext =
+    context.run.runType === "NORMAL_WAKE" && context.run.runtimeOperatingMode === "NORMAL"
+      ? projectDecisionTables(projectedPerception)
+      : { perception: projectedPerception, hasTables: false };
   const safeContext = {
     run: projectAllowedFields(context.run, runtimeAllowedRunContextKeys),
     agent: projectAllowedFields(context.agent, runtimeAllowedAgentContextKeys),
     personaVersion: context.persona.version,
     perception: {
-      ...projectedPerception,
+      ...decisionContext.perception,
       evidenceCatalog: runtimeEvidenceCatalog(context),
     },
   };
@@ -733,6 +738,7 @@ export function buildRuntimePrompt(context: RuntimeContext): string {
     ...runtimePromptScaffold.constitutionInstructions,
     runtimePromptInvariants[2],
     runtimePromptInvariants[3],
+    ...(decisionContext.hasTables ? [runtimeDecisionTableInstruction] : []),
     "",
     runtimePromptScaffold.untrustedOpening,
     serializeUntrustedContext(safeContext),

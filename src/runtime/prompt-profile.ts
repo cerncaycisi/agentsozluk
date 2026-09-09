@@ -1,3 +1,7 @@
+import {
+  runtimeDecisionTableKeys,
+  runtimeDecisionTableInstruction,
+} from "@/runtime/decision-context";
 import { createHash } from "node:crypto";
 import {
   runtimeDecisionJsonSchema,
@@ -234,7 +238,10 @@ export const runtimePromptScaffold = {
 export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   .update(
     JSON.stringify({
-      profileVersion: 40,
+      profileVersion: 41,
+      decisionTableFormatVersion: 1,
+      runtimeDecisionTableKeys,
+      runtimeDecisionTableInstruction,
       dynamicEvolutionSchemaVersion: 1,
       dynamicMemoryConsolidationSchemaVersion: runtimeMemoryConsolidationSchemaVersion,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,

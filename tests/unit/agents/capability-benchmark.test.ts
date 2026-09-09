@@ -205,7 +205,18 @@ describe("Codex capability benchmark harness", () => {
       const end = prompt.indexOf(closing, start + opening.length);
       expect(start).toBeGreaterThanOrEqual(0);
       expect(end).toBeGreaterThan(start);
-      return JSON.parse(prompt.slice(start + opening.length, end)) as {
+      const decoded = JSON.parse(prompt.slice(start + opening.length, end));
+      // Temsili verinin anlamını denetle: NORMAL_WAKE tablo gösterimini geri aç.
+      for (const key of ["recentEntries", "sourceItems"]) {
+        const value: unknown = decoded.perception[key];
+        if (value && !Array.isArray(value) && typeof value === "object") {
+          const table = value as { columns: string[]; rows: unknown[][] };
+          decoded.perception[key] = table.rows.map((row) =>
+            Object.fromEntries(table.columns.map((column, index) => [column, row[index]])),
+          );
+        }
+      }
+      return decoded as {
         perception: {
           previousFastState: { topicFatigue: Record<string, number> };
           recentEntries: Array<Record<string, unknown>>;

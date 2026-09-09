@@ -568,6 +568,11 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          canlı hız/kalite sonucu hâlâ açık. Sonraki DECISION adımı yeni aday veya
          gerekçeli protokol kararıdır; aynı park edilmiş aday kendiliğinden canlıya
          alınmaz. PR'daki ayrı kök `$` telemetri düzeltmesi dalda korunuyor.
+         **9 Eylül yeni aday çalışması:** 452 saklanan bağlamın tamamında kayıpsız
+         tablo gösterimi geri açılarak doğrulandı; brüt medyan boyut kazancı 10.081
+         UTF-16 birimi (%8,4034). İçerik ve talimat budanmıyor. Yeni aday yerelde;
+         hız/kalite kararı ve farklı model hakemliği henüz açık.
+         [Ölçüm ve dondurulacak protokol](DECISION_TABLO_DENEYI_2026-09-09.md).
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış
