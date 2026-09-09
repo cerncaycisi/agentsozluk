@@ -105,4 +105,108 @@ describe("ACTION_WORTHINESS daraltılmış perception", () => {
     for (const value of [null, undefined, "metin", 42, []])
       expect(() => projectActionWorthinessPerception(value, candidates)).not.toThrow();
   });
+
+  it.each(["readTopics", "linkedTopics"])(
+    "yalnız %s içinde bulunan oy hedefinin metnini ve başlığını taşır",
+    (pool) => {
+      const entry = {
+        id: targetEntryId,
+        body: "oyun değerlendirileceği gerçek metin",
+        mine: false,
+      };
+      const other = { id: unrelatedId, body: "alakasız entry metni" };
+      const topic = { id: targetTopicId, title: "okunan gerçek başlık" };
+      const context =
+        pool === "readTopics"
+          ? { readTopics: [{ ...topic, entries: [entry, other] }] }
+          : { linkedTopics: [{ topic, recentEntries: [entry, other] }] };
+      const result = projectActionWorthinessPerception(context, [
+        { actionType: "VOTE_DOWN", input: { entryId: targetEntryId }, evidenceIds: [] },
+      ]);
+      expect(result.relatedEntries).toEqual([{ ...entry, topic }]);
+      expect(JSON.stringify(result)).not.toContain("alakasız entry metni");
+    },
+  );
+
+  it("ayrı başlıktaki USER_ENTRY kanıtını da taşır, tüm havuzu açmaz", () => {
+    const entry = { id: targetEntryId, body: "kanıt entrysi", topic: { id: unrelatedId } };
+    const result = projectActionWorthinessPerception(
+      { recentEntries: [entry, { id: unrelatedId, body: "kanıt gösterilmeyen metin" }] },
+      [
+        {
+          actionType: "CREATE_ENTRY",
+          input: { topicId: targetTopicId },
+          evidenceType: "USER_ENTRY",
+          evidenceIds: [targetEntryId],
+        },
+      ],
+    );
+    expect(result.relatedEntries).toEqual([entry]);
+    expect(JSON.stringify(result)).not.toContain("kanıt gösterilmeyen metin");
+  });
+
+  it.each(["author", "authorId"])(
+    "takip hedefinin sunulmuş yazısını %s kimliğiyle bulur",
+    (shape) => {
+      const entry = {
+        id: targetEntryId,
+        body: "yazarı takip etme gerekçesinin kanıtı",
+        ...(shape === "author" ? { author: { id: targetUserId } } : { authorId: targetUserId }),
+      };
+      const result = projectActionWorthinessPerception(
+        {
+          followedWriterEntries: [
+            entry,
+            { id: unrelatedId, authorId: unrelatedId, body: "başka yazar" },
+          ],
+        },
+        [{ actionType: "FOLLOW_USER", input: { userId: targetUserId }, evidenceIds: [] }],
+      );
+      expect(result.relatedEntries).toEqual([entry]);
+      expect(JSON.stringify(result)).not.toContain("başka yazar");
+    },
+  );
+
+  it("followedWriterEntries üst düzey topicId alanıyla hedef başlığı eşler", () => {
+    const entry = { id: targetEntryId, topicId: targetTopicId, body: "başlıktaki son yazı" };
+    expect(
+      projectActionWorthinessPerception({ followedWriterEntries: [entry] }, [
+        { actionType: "CREATE_ENTRY", input: { topicId: targetTopicId }, evidenceIds: [] },
+      ]).relatedEntries,
+    ).toEqual([entry]);
+  });
+
+  it("başka kanıt türünün kimliğini USER_ENTRY kanıtı gibi yorumlamaz", () => {
+    expect(
+      projectActionWorthinessPerception(
+        { recentEntries: [{ id: targetEntryId, body: "yanlış türle seçilmemeli" }] },
+        [
+          {
+            actionType: "CREATE_ENTRY",
+            input: { topicId: targetTopicId },
+            evidenceType: "MODEL_KNOWLEDGE",
+            evidenceIds: [targetEntryId],
+          },
+        ],
+      ),
+    ).not.toHaveProperty("relatedEntries");
+  });
+
+  it("okunan hedef başlığın zaten taşınan metnini ikinci kez eklemez", () => {
+    const topic = {
+      id: targetTopicId,
+      title: "hedef başlık",
+      entries: [{ id: targetEntryId, body: "tam metin" }],
+    };
+    const result = projectActionWorthinessPerception({ readTopics: [topic] }, [
+      {
+        actionType: "CREATE_ENTRY",
+        input: { topicId: targetTopicId },
+        evidenceType: "USER_ENTRY",
+        evidenceIds: [targetEntryId],
+      },
+    ]);
+    expect(result.relatedTopics).toEqual([topic]);
+    expect(result).not.toHaveProperty("relatedEntries");
+  });
 });

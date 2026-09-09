@@ -339,6 +339,63 @@ describe("long-lived agent runtime worker", () => {
     expect(DEFAULT_RUNTIME_HEARTBEAT_INTERVAL_MS).toBeLessThanOrEqual(15_000);
   });
 
+  it.each(["VOTE_DOWN", "VOTE_UP"] as const)(
+    "gives action-worthiness the actual browse-only target for %s",
+    (type) => {
+      const context = fixtureContext(randomUUID());
+      const topicId = randomUUID();
+      const entryId = randomUUID();
+      const otherId = randomUUID();
+      context.perception = {
+        readTopics: [
+          {
+            id: topicId,
+            title: "okunan başlık",
+            entries: [
+              {
+                id: entryId,
+                username: "baska_yazar",
+                mine: false,
+                body: "Oy verilen gerçek browse metni.",
+              },
+              {
+                id: otherId,
+                username: "alakasiz_yazar",
+                mine: false,
+                body: "Adayla ilgisiz metin.",
+              },
+            ],
+          },
+        ],
+      };
+      const parsed = parseRuntimeDecisionOutput(
+        canonicalNormalOutput("Oy adayı.", {
+          actions: [
+            {
+              type,
+              targetId: entryId,
+              desire: 0.6,
+              safeReason: "Görünür yazı hakkında bağımsız kanaat.",
+              claimProvenance: [
+                {
+                  provenance: "USER_ENTRY",
+                  evidenceIds: [entryId],
+                  shortRationale: "Okunan yazının gerçek gövdesi.",
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      if (!parsed.success) throw parsed.error;
+      const prompt = buildActionWorthinessPrompt(context, parsed.data);
+      expect(prompt).toContain("Oy verilen gerçek browse metni.");
+      expect(prompt).toContain("okunan başlık");
+      expect(prompt).not.toContain("Adayla ilgisiz metin.");
+      expect(prompt).toContain(entryId);
+    },
+  );
+
   it("uses a second bounded provider stage that may reject every generated candidate", async () => {
     const runId = randomUUID();
     const plane = controlPlane(runId);
