@@ -568,11 +568,24 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          canlı hız/kalite sonucu hâlâ açık. Sonraki DECISION adımı yeni aday veya
          gerekçeli protokol kararıdır; aynı park edilmiş aday kendiliğinden canlıya
          alınmaz. PR'daki ayrı kök `$` telemetri düzeltmesi dalda korunuyor.
-         **9 Eylül yeni aday çalışması:** 452 saklanan bağlamın tamamında kayıpsız
-         tablo gösterimi geri açılarak doğrulandı; brüt medyan boyut kazancı 10.081
-         UTF-16 birimi (%8,4034). İçerik ve talimat budanmıyor. Yeni aday yerelde;
-         hız/kalite kararı ve farklı model hakemliği henüz açık.
-         [Ölçüm ve dondurulacak protokol](DECISION_TABLO_DENEYI_2026-09-09.md).
+         **9 Eylül tablo adayı kapandı — yerel NO-GO.** 452 saklanan bağlamın
+         tamamında kayıpsız geri dönüş doğrulandı; açıklama dahil net medyan
+         azalma 9.633 UTF-16 (%8,03). Buna rağmen dört eşlenmiş yerel çiftin
+         dördünde aday daha yavaş; eşlenmiş fark medyanı +37,9 sn. Sabit 6/8 hız
+         kapısı üçüncü olumsuz çiftten sonra geçilemez olduğu için yeni kuyruk
+         durdu, çalışan dördüncü çift tamamlandı: 8 çağrı, 0 timeout/araç olayı,
+         8/8 parser/katalog/hedef-sahiplik kontrolü. Kör Opus 5 incelemesi kritik
+         hata bulmadı; semantik/fayda/tekrar sonuçları karışık. Eşdeğerlik veya
+         canlı hız kazancı yok.
+         PR #124 kapatıldı; merge/deploy yapılmadı; persona ve tablo adaylarının yeni
+         tekrar partisi kendiliğinden açılmayacak.
+         [Ölçüm, hakemlik ve erken ret makbuzu](DECISION_TABLO_DENEYI_2026-09-09.md).
+         **Sıradaki iş:** aynı taban prompt'u, schema ve güvenlik sınırlarıyla
+         DECISION `max`→`high` düşünme eforunu sınırlı yerel eşlenmiş deneyde
+         sınamak. Yeni protokol çağrılardan önce dondurulacak; hızdan önce
+         kaynak sadakati, özgünlük, sahiplik ve fayda kapısı korunacak. Başarı
+         eşiği geçilemezse kuyruk durdurma kuralı bu kez baştan yazılacak.
+         Canlı efor/timeout/model ayarı değişmedi; yerel sonuç üretim onayı değildir.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış
