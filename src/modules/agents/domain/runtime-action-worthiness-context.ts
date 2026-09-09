@@ -117,12 +117,18 @@ export function projectActionWorthinessPerception(
   const readTopicEntries: Array<Record<string, unknown>> = recordArray(source.readTopics)
     // Hedef başlığın tüm gövdesi relatedTopics içinde zaten korunuyor.
     .filter((topic) => !targetIds.has(stringField(topic, "id") ?? ""))
-    .flatMap((topic) =>
-      recordArray(topic.entries).map((entry) => ({
-        ...entry,
-        topic: nestedRecord(entry.topic) ?? { id: topic.id, title: topic.title },
-      })),
-    );
+    .flatMap((topic) => {
+      const parentTopic: Record<string, string> = {};
+      for (const key of ["id", "title"] as const) {
+        const value = stringField(topic, key);
+        if (value !== null && value.length > 0) parentTopic[key] = value;
+      }
+      return recordArray(topic.entries).map((entry) =>
+        nestedRecord(entry.topic) || Object.keys(parentTopic).length === 0
+          ? entry
+          : { ...entry, topic: parentTopic },
+      );
+    });
   const linkedTopicEntries: Array<Record<string, unknown>> = recordArray(
     source.linkedTopics,
   ).flatMap((linked) =>

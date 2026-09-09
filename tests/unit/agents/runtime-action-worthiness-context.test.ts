@@ -261,6 +261,36 @@ describe("ACTION_WORTHINESS daraltılmış perception", () => {
     ]);
   });
 
+  it.each([{}, { id: undefined, title: undefined }, { id: 42, title: [] }, { id: "", title: "" }])(
+    "bozuk parent metadatası önceki gerçek başlık bilgisini ezmez: %j",
+    (parent) => {
+      const topic = { id: targetTopicId, title: "gerçek başlık" };
+      const result = projectActionWorthinessPerception(
+        {
+          recentEntries: [{ id: targetEntryId, body: "önizleme", topic }],
+          readTopics: [{ ...parent, entries: [{ id: targetEntryId, body: "tam gövde" }] }],
+        },
+        [{ actionType: "VOTE_UP", input: { entryId: targetEntryId }, evidenceIds: [] }],
+      );
+      expect(result.relatedEntries).toStrictEqual([
+        { id: targetEntryId, body: "tam gövde", topic },
+      ]);
+      expect(JSON.parse(JSON.stringify(result)).relatedEntries[0].topic).toStrictEqual(topic);
+    },
+  );
+
+  it("parent yalnız id taşıyorsa bilinen başlığın title alanını korur", () => {
+    const topic = { id: targetTopicId, title: "gerçek başlık" };
+    const result = projectActionWorthinessPerception(
+      {
+        recentEntries: [{ id: targetEntryId, body: "önizleme", topic }],
+        readTopics: [{ id: targetTopicId, entries: [{ id: targetEntryId, body: "tam gövde" }] }],
+      },
+      [{ actionType: "VOTE_UP", input: { entryId: targetEntryId }, evidenceIds: [] }],
+    );
+    expect(result.relatedEntries).toStrictEqual([{ id: targetEntryId, body: "tam gövde", topic }]);
+  });
+
   it("linked başlık hedeflendiğinde yalnız o başlığın sunulmuş entrylerini taşır", () => {
     const entries = [
       { id: targetEntryId, body: "birinci metin" },
