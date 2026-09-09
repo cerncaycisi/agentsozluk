@@ -7413,6 +7413,48 @@ cleanup=no-cleanup`. Image/runtime ABI, migration/settings/lifecycle koruma
 - Tekrarlama: olmayan çalışma dizininde komutları yineleme; remote kesin sürümü
   doğrulayarak izole checkout kullan. Disk dönüşünde eski checkout'u ayrıca
   hizala. CI job başarısını retry gerektirmeyen test sayısıyla karıştırma.
+
+## 2026-09-09 — T3 kendi tarayıcısı, SEO dağıtımı ve tam telemetri
+
+- GB yeniden erişilebilir; asıl checkout unrelated değişiklik olmadan main
+  `8280ed4765dff958605fb8fa4dc855f84c73bcae` ile hizalandı. Exact CI başarılı,
+  bundle `34321396970` / artifact `10092211930` / 228.431.182 bayt.
+- Gökhan'ın mevcut dağıtım onayı ve masaüstü computer use'u durdurma talimatı
+  ayrıldı: T3 `preview_*` admin oturumu çalışıyor. Native CUA kullanılmadı.
+  CSS type çalıştı; ilk click UI/DB durumunu değiştirmedi. Mevcut formun
+  `requestSubmit` yoluyla uygulamanın auth/CSRF/idempotency kontrolleri korunarak
+  pause/resume yapıldı. Başarı UI yanında DB settingsVersion ile doğrulandı.
+- İlk salt okunur preflight: `ERROR: column "mode" does not exist`.
+  Prisma'daki alan `runtimeOperatingMode`; yalnız sorgu düzeltildi ve geçti.
+  Transaction READ ONLY, veri yazımı yok; uygulama regresyonu değildi.
+- Pinned DNS/fingerprint ve deploy kullanıcısıyla repo wrapper'ı çalıştı.
+  `RELEASE_COMPLETE PASS ... cleanup=no-cleanup`; 0/0/0/0 doğal drain,
+  app/runtime/boot `8280ed4`, health/ready/search 200. Migration/host build
+  veya temizlik yok. DB/Caddy ve önceki rollback image/runtime korundu.
+- Pause `07:08:51.880Z`, resume `07:14:30.592Z`: 338,712 sn;
+  settingsVersion 268→269→270, stable hash ve 36 persona snapshot hash aynı.
+  Resume sonrası ilk doğal SUCCEEDED `07:17:27.721Z`, 3/3 faz boyutu;
+  worker active/running, systemd NRestarts 0.
+- 24 saat 6 dakika 39,583 sn aktif pencerede 452 terminal doğal koşu,
+  1.488/1.488 interval boyutu ve terminal rapor eksiği 0. Telemetri önkoşulu
+  kapandı; 16 censored sürelerden çıkarıldı. PR #120 parkta kaldı.
+- İlk geçici SEO betiğinde 107/112: kök canonical son `/` eşitliği ve
+  yalnız home/about kapsamındaki locale'in entry/topic'ten de beklenmesi
+  yanlış kontrol varsayımıydı. Kaynak/E2E kapsamıyla düzeltildi; 12 GET,
+  108/108 PASS. İlk makbuz saklandı; ürün kodu değiştirilmedi.
+- T3 kişisel GSC mülkü açıldı. 404 2/2, redirect 4/4, robots/crawled/discovered
+  ilk 10'ar örnek alındı. 500 satır seçme denemesi görünümü değiştirmedi;
+  bütün 499/4.405/2.030 kümesi okunmuş sayılmadı. Canlı 21 başlangıç GET'i
+  19 son yanıt 200 ve iki beklenen 404. Forum raporu hâlâ 7 Eylül, 84/27;
+  indeks 4 Eylül, 18.498/9.869. Google yazımı veya AI sorgusu yok.
+- Tekrarlama: tool click başarısını uygulama yazımı sayma; yanlış SQL/fixture
+  beklentisini ürün regresyonu sanma. Root canonical slash eşdeğerliğini
+  koru; locale'i yalnız doğrulanan yüzeyler için söyle. Kayıtlı interval
+  kapsamını tüm provider çağrıları, telemetriyi hız/kalite kazancı sayma.
+  [Kalıcı ölçüm](CANLI_DAGITIM_VE_TELEMETRI_2026-09-09.md);
+  makbuzlar `tmp/seo-release-2026-09-09/`.
+- Doküman teslimi: Node 22.23.1, npx/pnpm 10.34.5; format/lint/typecheck,
+  `git diff --check` ve requirements 3/3 PASS. Kod veya yeni runtime değişikliği yok.
   Merge üretim kabulü değildir; bu tur dağıtım/restart/migration yapılmadı.
 
 - Geçici checkout bağımlılık kurulumu önce `EACCES: permission denied, mkdir '/Volumes/GB'` verdi: pnpm store eski disk yolundaydı. Yalnız bu checkout için

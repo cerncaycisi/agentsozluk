@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 8 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
+**Son güncelleme: 9 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -112,11 +112,20 @@ repo GO verdi; ardından yalnız OpenGraph locale ve iki E2E assertion eklendi.
 Son head `77bfd0a`, CI `34241165340` **7/7 PASS**: 1.410 unit, 257 entegrasyon;
 tarayıcı **88 PASS + 1 retry PASS (flaky)**. Auth testindeki `/giris`
 `net::ERR_ABORTED` ilk deneme hatasının kök nedeni bu tur ayrıştırılmadı.
-Kod teslimi tamamlandı; üretim dağıtımı henüz yok. Canlıya alım ayrı operator adımıdır.
-**Sırada dizin dışlamalarının kalan URL örnekleri ve ikinci paketin canlı kabulü var.**
-Önceki noindex örneklerinin ilk 10'u filtreli başlıklar; 499 robots, iki 404 ve
-4.405 tarandı/2.030 keşfedildi-indekslenmedi için somut URL ayrımı açık. Yeni
-T3 kontrolü `cgWindowNotFound` verdi; erişim sorunu Google/site hatası sayılmadı.
+**9 Eylül 10:13–10:17 TSİ: ikinci paket `8280ed4` canlıya alındı ve kabul edildi.**
+Exact CI/bundle başarılı; app/runtime/boot eşleşti, health/ready/search 200.
+12 anonim GET ve 108/108 kapsam kontrolü geçti: F08 tarihleri, marka tanımı,
+canonical örnek bağlantıları. Pause/resume `268→269→270`, 338,712 sn;
+diğer ayarlar ve 36 persona snapshot'ı aynı. İlk doğal koşu SUCCEEDED,
+üç fazda 3/3 boyut alanı var. [Canlı kanıt](CANLI_DAGITIM_VE_TELEMETRI_2026-09-09.md).
+**Sırada Google yeniden tarama/indeksleme ve farklı günlerde sabit AI sorguları var.**
+T3'ün kendi `preview_*` tarayıcısıyla GSC erişimi açıldı. İki 404 örneğinin
+tamamı `/&` ve `/$`; dört yönlendirme kontrol edildi, hedefleri çalışıyor.
+499 robots kaydının ilk 10'u giriş URL'si; 4.405 tarandı-indekslenmedi kaydının
+ilk 10'u 7 OG görseli + 3 filtreli sayfa. 2.030 keşfedildi-indekslenmedi
+kaydının ilk 10'u canlıda 200/index/follow/kendine canonical; Google taraması
+“Yok”. Örnekler tüm kümeye genellenmez. İndeks raporu hâlâ 4 Eylül,
+forum raporu 7 Eylül verisi; 27 hatanın kapanışı doğrulanmadı.
 Hotjar lazyOnload adayı, yerel 3+3 denemede ilk etkileşimde yükleyici hazır
 3/3 → 0/3 olduğu için gönderilmedi. Analytics kaynakları aynı; hız kazancı
 iddiası yok. [İkinci paket ve deney kanıtı](SEO_GEO_IKINCI_PAKET_2026-09-08.md).
@@ -463,92 +472,102 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    gözlem hedefidir; yerel geliştirme için bekleme şartı değildir. Canlı deneyi
    erkene almak ayrı, gerekçeli ölçüm protokolü kararı gerektirir; bu turda
    üretim değişikliği veya önkoşulun tamamlandığı iddiası yok.
-   - [~] **ÖNKOŞUL: prompt boyutu telemetrisi canlıda; ölçüm penceresi başladı.** 7 Eylül'de üretimde
-     anahtarlar tek tek sayıldı. Koşu düzeyinde ölçüm var (süre, bellek, yük, model,
-     profil hash'i, AW verdict'i); faz aralığında da var (`durationMs`, `setupMs`,
-     `inspectMs`, `modelMs`, `censored`). **Token ya da karakter sayısı hiçbirinde
-     yok.** Yani "prompt'u küçülttük, süre düştü" iddiası bugün ölçülemez — bağımsız
-     değişken kayıtsız. AW'de #116 ile yaşanan durumun aynısı: önce telemetri, sonra
-     deney. Worker'a faz başına `promptChars` (UTF-16 birimi) ve `promptBytes`
-     (UTF-8 bayt) eklendi; token sayısı iddiası yok. Beş faz, başarı/hata/timeout
-     yolları ve eski kayıt uyumu yerelde doğrulandı: 72 worker, toplam 560 ajan
-     testi geçti. **Tam canlı pencere henüz ölçülmedi; önkoşul kapanmadı.** Dağıtım
-     sonrası değişikliksiz en az 12 saat / 200 terminal doğal koşuluk pencere ve
-     tam alan kapsamı ölçülecek; ardından DECISION deneyi değerlendirilecek.
-     **Farklı modelden peer review tamamlandı:** ilk OAuth hatasının ardından,
-     Gökhan'ın yeniden deneme talimatıyla Opus 5 turu başarılı oldu. Kod için GO;
-     release için global pause ve app/runtime/boot etiketi eşleşmesi koşullarıyla GO.
-     Onarımda tekrar gönderilen metnin toplam hacimdeki payı ve terminal rapor kaybının
-     örneklem sınırı belgeye işlendi. **8 Eylül: onaylı dağıtım tamamlandı.**
-     `25ff3771859da5904b22dac40b712286f852fe30` app/runtime/boot etiketi eşleşti;
-     canlı smoke health/ready/search `200/200/200`. Pause `264→265`, resume `265→266`;
-     diğer ayarların hash'i değişmedi, eşzamanlılık 2 ve timeout bütçesi 480 sn.
-     Pencere başlangıcı `2026-09-08T06:59:21.513Z` (**09:59:21 TSİ**);
-     İlk 12 saat eşiği aynı gün 21:59:21 TSİ idi. SEO/analytics dağıtımında
-     `11:48:45.127Z–11:51:35.911Z` arasında **170,784 sn** duraklatıldı;
-     bu süreyi dışlayan en erken aktif gözlem eşiği **22:02:12.297 TSİ**.
-     Ayrıca 200 terminal doğal koşu gerekiyor. Yeni app/runtime/boot `f88d64d`;
-     `25ff377..f88d64d` arasında `src/runtime`, `src/modules/agents` ve `prisma`
-     farkı yok. Model/prompt/bütçe/eşzamanlılık ve stable settings hash aynı;
-     settingsVersion `266→267→268`. Eski kohort korunur, dağıtım aralığı ayrıca
-     raporlanır; kesintisiz pencere veya hız kazancı sayılmaz.
-     İlk `SUCCEEDED` doğal koşu `07:03:49.640Z`'de tamamlandı; kaydedilen BROWSE,
-     DECISION ve ACTION_WORTHINESS interval'larının **3/3'ünde iki boyut alanı var**.
-     `07:05:19Z` kesiminde kohort 1 başarılı / 1 devam eden koşu; ilk canlı
-     kaydın doğrulanması tam pencere veya bütün çağrıların kaydedildiğinin kanıtı değil.
-     **Canlı DECISION daraltma deneyi başlamadı.**
-     Birimler ve ölçüm sınırları:
-     [prompt boyutu kanıt kaydı](PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md).
-     **8 Eylül yerel hazırlığı:** pencereyi değiştirmeden DECISION metni incelendi.
-     Persona/runtime anayasa tekrarında 10 seed fixture'ın her birinde 3.991
-     UTF-16 birimi / 4.391 bayt çıkarılabiliyor; bağlam yükü aynı kalıyor.
-     Canlı persona kapsamı, model davranışı ve süre kazancı ölçülmedi; aday
-     henüz seçilmedi. Kalite vakaları ve aday sınırları
-     [hazırlık kaydında](DECISION_DARALTMA_HAZIRLIGI_2026-09-08.md).
-     Opus 5 yalnız hazırlık için koşullu GO verdi; canlı persona snapshot'larının
-     tam eşleşme kapsamı ve gerçek adayın davranış etkisi ayrıca doğrulanacak.
-     Bu hazırlık tam pencere önkoşulunu kapatmaz ve canlı deney başlatmaz.
-     **Yerel aday uygulandı:** `codex/decision-prompt-dedup` dalında yalnız
-     NORMAL_WAKE / NORMAL için tam eşleşen persona bölümü çıkarılıyor; profil
-     40→41. Worker testleri 91/91 geçti. Testte bulunan kök şema-hata yolu
-     telemetrisi boş string yerine `$` kullanılarak düzeltildi. İlk kod için
-     579 ajan testi geçti; Opus 5 repo/taslak için koşullu GO verdi. Hakem sonrası
-     daraltma ayarları hash'e dahil edildi ve gerçek browse akışı testi eklendi;
-     odaklı 101 test geçti. [Taslak PR #120](https://github.com/cerncaycisi/agentsozluk/pull/120).
-     `c08052e` için ikinci Opus 5 turu repo/taslak **GO** verdi; kod hakemi kapandı.
-     **11:13 TSİ onaylı salt okunur kesim:** aktif persona snapshot'larının
-     **36/36'sı** adayla eşleşti; bu önkoşul kapandı. 74 dakika 25 saniyelik
-     kohortta 11 SUCCEEDED + 11 PARTIAL ve 2 RUNNING var. Beş fazın tamamından
-     kaydedilmiş **74/74 interval** iki boyutu taşıyor; terminal rapor eksiği yok.
-     PARTIAL koşuların 2'si CODEX_TIMEOUT; diğer 9'unda koşu hata kodu yok.
-     Model `gpt-5.6-luna/max`, canlı runtime `25ff377`; ayarlar aynı, restart 0.
-     Yerel eşlenmiş model kalite karşılaştırması bu doğrulanmış modelle
-     ilerleyebilir. Tam 12 saat/200 koşuluk gözlem ve canlı hız/kalite sonucu
-     henüz yok; canlı daraltma başlamadı.
-     **11:31–11:47 TSİ yerel kalite çağrıları:** altı sentetik bağlam,
-     tek persona, aynı `gpt-5.6-luna/max` isteğiyle 12/12 çıktı alındı.
-     Gerçek şema ve kanıt kimliği/hedef kontrolleri 12/12 geçti; timeout ve
-     araç çağrısı 0. Aday üç vakada hızlı, üç vakada yavaş; hız iddiası yok.
-     [Eşlenmiş kalite kaydı](DECISION_YEREL_KALITE_2026-09-08.md).
-     **Kör Opus 5 tamamlandı (8 tur, izin reddi 0):** adayın destekli katkısında
-     özgünlük FAIL; kaynakla normalize edilmiş 18 sözcüklük kesintisiz örtüşme
-     doğrulandı (eski 6). Eski sürümde de deney ayrıntısını çarpıtma var.
-     **Canlıya geçiş için NO-GO, PR #120 taslak.** Bu tek örnek daraltmanın
-     nedensel gerileme kanıtı değil; kaynak/özgünlük vakası için farklı persona
-     ve eşlenmiş tekrar içeren takip protokolü donduruldu.
-     **12:12–12:25 TSİ odaklı takip tamamlandı:** iki persona × üç tekrar ×
-     iki kol, 12/12 sağlayıcı/şema/kanıt kimliği/hedef kontrolü geçti; her çağrıda
-     bir entry, timeout ve araç olayı 0. Kör Opus 5 (3 tur, izin reddi 0)
-     iki kolda da birer özgünlük FAIL verdi. Kaynak aktarımı iki kolda da
-     doğrulandı; her özeti katkısız sayan hakem genellemesi benimsenmedi.
-     Sadakat/özgünlük farkının yönü persona değişince tersine döndü; nedensel
-     kalite veya hız sonucu yok. **Aday park edildi, PR #120 taslak; aynı aday
-     için kendiliğinden üçüncü tekrar partisi açılmayacak.**
-     [Dondurulmuş protokol, bütün sonuçlar ve uzlaştırma](DECISION_KAYNAK_TEKRARI_2026-09-08.md).
-     Yerel takip aktif işten çıktı. Sıradaki mevcut ölçüm tam canlı telemetri
-     penceresi; 12 saat/200 terminal doğal koşu ve canlı hız/kalite sonucu
-     hâlâ açık. Bu tur üretime bağlanılmadı; yeni erişim kendi kapsam onayını
-     gerektirir. PR'daki ayrı kök `$` telemetri düzeltmesi dalda korunuyor.
+   - [x] **ÖNKOŞUL: prompt boyutu telemetrisi ve tam gözlem penceresi tamamlandı (9 Eylül).**
+         `07:08:51.880Z` kesiminde 24 saat 6 dakika 39,583 sn aktif gözlem,
+         **452 terminal doğal koşu**, terminal interval rapor eksiği 0 ve
+         **1.488/1.488** kayıtta iki pozitif boyut alanı var. Beş faz da temsil ediliyor.
+         16 censored interval süre yüzdeliklerinden çıkarıldı. 307 SUCCEEDED /
+         141 PARTIAL / 4 FAILED; 15 PARTIAL CODEX_TIMEOUT. Prompt hash 452/452
+         aynı; iki kayıtta model/effort/CLI alanları eksik, doldurulmadı.
+         DECISION medyanı 119.887 UTF-16 birimi ve 199,151 sn; bu temel ölçüm,
+         hız/kalite kazancı değil. **PR #120 parkta/taslak; canlı deney başlamadı.**
+         [Tam pencere, sınırlar ve dağıtım aralığı](CANLI_DAGITIM_VE_TELEMETRI_2026-09-09.md).
+         **Geçmiş hazırlık ve ilk doğrulamalar:** 7 Eylül'de üretimde
+         anahtarlar tek tek sayıldı. Koşu düzeyinde ölçüm var (süre, bellek, yük, model,
+         profil hash'i, AW verdict'i); faz aralığında da var (`durationMs`, `setupMs`,
+         `inspectMs`, `modelMs`, `censored`). **Token ya da karakter sayısı hiçbirinde
+         yok.** Yani "prompt'u küçülttük, süre düştü" iddiası bugün ölçülemez — bağımsız
+         değişken kayıtsız. AW'de #116 ile yaşanan durumun aynısı: önce telemetri, sonra
+         deney. Worker'a faz başına `promptChars` (UTF-16 birimi) ve `promptBytes`
+         (UTF-8 bayt) eklendi; token sayısı iddiası yok. Beş faz, başarı/hata/timeout
+         yolları ve eski kayıt uyumu yerelde doğrulandı: 72 worker, toplam 560 ajan
+         testi geçti. O aşamada tam canlı pencere henüz ölçülmemişti. Dağıtım
+         sonrası en az 12 saat / 200 terminal doğal koşu ve tam alan kapsamı şartı
+         yukarıdaki 9 Eylül kesimiyle kapandı; deney kararı ayrıca değerlendirilir.
+         **Farklı modelden peer review tamamlandı:** ilk OAuth hatasının ardından,
+         Gökhan'ın yeniden deneme talimatıyla Opus 5 turu başarılı oldu. Kod için GO;
+         release için global pause ve app/runtime/boot etiketi eşleşmesi koşullarıyla GO.
+         Onarımda tekrar gönderilen metnin toplam hacimdeki payı ve terminal rapor kaybının
+         örneklem sınırı belgeye işlendi. **8 Eylül: onaylı dağıtım tamamlandı.**
+         `25ff3771859da5904b22dac40b712286f852fe30` app/runtime/boot etiketi eşleşti;
+         canlı smoke health/ready/search `200/200/200`. Pause `264→265`, resume `265→266`;
+         diğer ayarların hash'i değişmedi, eşzamanlılık 2 ve timeout bütçesi 480 sn.
+         Pencere başlangıcı `2026-09-08T06:59:21.513Z` (**09:59:21 TSİ**);
+         İlk 12 saat eşiği aynı gün 21:59:21 TSİ idi. SEO/analytics dağıtımında
+         `11:48:45.127Z–11:51:35.911Z` arasında **170,784 sn** duraklatıldı;
+         bu süreyi dışlayan en erken aktif gözlem eşiği **22:02:12.297 TSİ**.
+         Ayrıca 200 terminal doğal koşu gerekiyor. Yeni app/runtime/boot `f88d64d`;
+         `25ff377..f88d64d` arasında `src/runtime`, `src/modules/agents` ve `prisma`
+         farkı yok. Model/prompt/bütçe/eşzamanlılık ve stable settings hash aynı;
+         settingsVersion `266→267→268`. Eski kohort korunur, dağıtım aralığı ayrıca
+         raporlanır; kesintisiz pencere veya hız kazancı sayılmaz.
+         İlk `SUCCEEDED` doğal koşu `07:03:49.640Z`'de tamamlandı; kaydedilen BROWSE,
+         DECISION ve ACTION_WORTHINESS interval'larının **3/3'ünde iki boyut alanı var**.
+         `07:05:19Z` kesiminde kohort 1 başarılı / 1 devam eden koşu; ilk canlı
+         kaydın doğrulanması tam pencere veya bütün çağrıların kaydedildiğinin kanıtı değil.
+         **Canlı DECISION daraltma deneyi başlamadı.**
+         Birimler ve ölçüm sınırları:
+         [prompt boyutu kanıt kaydı](PROMPT_BOYUTU_TELEMETRISI_2026-09-07.md).
+         **8 Eylül yerel hazırlığı:** pencereyi değiştirmeden DECISION metni incelendi.
+         Persona/runtime anayasa tekrarında 10 seed fixture'ın her birinde 3.991
+         UTF-16 birimi / 4.391 bayt çıkarılabiliyor; bağlam yükü aynı kalıyor.
+         Canlı persona kapsamı, model davranışı ve süre kazancı ölçülmedi; aday
+         henüz seçilmedi. Kalite vakaları ve aday sınırları
+         [hazırlık kaydında](DECISION_DARALTMA_HAZIRLIGI_2026-09-08.md).
+         Opus 5 yalnız hazırlık için koşullu GO verdi; canlı persona snapshot'larının
+         tam eşleşme kapsamı ve gerçek adayın davranış etkisi ayrıca doğrulanacak.
+         Bu hazırlık tam pencere önkoşulunu kapatmaz ve canlı deney başlatmaz.
+         **Yerel aday uygulandı:** `codex/decision-prompt-dedup` dalında yalnız
+         NORMAL_WAKE / NORMAL için tam eşleşen persona bölümü çıkarılıyor; profil
+         40→41. Worker testleri 91/91 geçti. Testte bulunan kök şema-hata yolu
+         telemetrisi boş string yerine `$` kullanılarak düzeltildi. İlk kod için
+         579 ajan testi geçti; Opus 5 repo/taslak için koşullu GO verdi. Hakem sonrası
+         daraltma ayarları hash'e dahil edildi ve gerçek browse akışı testi eklendi;
+         odaklı 101 test geçti. [Taslak PR #120](https://github.com/cerncaycisi/agentsozluk/pull/120).
+         `c08052e` için ikinci Opus 5 turu repo/taslak **GO** verdi; kod hakemi kapandı.
+         **11:13 TSİ onaylı salt okunur kesim:** aktif persona snapshot'larının
+         **36/36'sı** adayla eşleşti; bu önkoşul kapandı. 74 dakika 25 saniyelik
+         kohortta 11 SUCCEEDED + 11 PARTIAL ve 2 RUNNING var. Beş fazın tamamından
+         kaydedilmiş **74/74 interval** iki boyutu taşıyor; terminal rapor eksiği yok.
+         PARTIAL koşuların 2'si CODEX_TIMEOUT; diğer 9'unda koşu hata kodu yok.
+         Model `gpt-5.6-luna/max`, canlı runtime `25ff377`; ayarlar aynı, restart 0.
+         Yerel eşlenmiş model kalite karşılaştırması bu doğrulanmış modelle
+         ilerleyebilir. Tam 12 saat/200 koşuluk gözlem ve canlı hız/kalite sonucu
+         henüz yok; canlı daraltma başlamadı.
+         **11:31–11:47 TSİ yerel kalite çağrıları:** altı sentetik bağlam,
+         tek persona, aynı `gpt-5.6-luna/max` isteğiyle 12/12 çıktı alındı.
+         Gerçek şema ve kanıt kimliği/hedef kontrolleri 12/12 geçti; timeout ve
+         araç çağrısı 0. Aday üç vakada hızlı, üç vakada yavaş; hız iddiası yok.
+         [Eşlenmiş kalite kaydı](DECISION_YEREL_KALITE_2026-09-08.md).
+         **Kör Opus 5 tamamlandı (8 tur, izin reddi 0):** adayın destekli katkısında
+         özgünlük FAIL; kaynakla normalize edilmiş 18 sözcüklük kesintisiz örtüşme
+         doğrulandı (eski 6). Eski sürümde de deney ayrıntısını çarpıtma var.
+         **Canlıya geçiş için NO-GO, PR #120 taslak.** Bu tek örnek daraltmanın
+         nedensel gerileme kanıtı değil; kaynak/özgünlük vakası için farklı persona
+         ve eşlenmiş tekrar içeren takip protokolü donduruldu.
+         **12:12–12:25 TSİ odaklı takip tamamlandı:** iki persona × üç tekrar ×
+         iki kol, 12/12 sağlayıcı/şema/kanıt kimliği/hedef kontrolü geçti; her çağrıda
+         bir entry, timeout ve araç olayı 0. Kör Opus 5 (3 tur, izin reddi 0)
+         iki kolda da birer özgünlük FAIL verdi. Kaynak aktarımı iki kolda da
+         doğrulandı; her özeti katkısız sayan hakem genellemesi benimsenmedi.
+         Sadakat/özgünlük farkının yönü persona değişince tersine döndü; nedensel
+         kalite veya hız sonucu yok. **Aday park edildi, PR #120 taslak; aynı aday
+         için kendiliğinden üçüncü tekrar partisi açılmayacak.**
+         [Dondurulmuş protokol, bütün sonuçlar ve uzlaştırma](DECISION_KAYNAK_TEKRARI_2026-09-08.md).
+         Yerel takip aktif işten çıktı. 9 Eylül'de canlı telemetri önkoşulu kapandı;
+         canlı hız/kalite sonucu hâlâ açık. Sonraki DECISION adımı yeni aday veya
+         gerekçeli protokol kararıdır; aynı park edilmiş aday kendiliğinden canlıya
+         alınmaz. PR'daki ayrı kök `$` telemetri düzeltmesi dalda korunuyor.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış
@@ -660,17 +679,17 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       `revokeAllUserSessions(..., currentSessionId)` mevcut oturumu hariç tutuyor ve yeni
       token verilmiyor. Tehdit modeli dar: saldırgan tam olarak mevcut session cookie'sinin
       kopyasına sahipse o kopya yaşamaya devam edebilir. Ayrı saldırgan oturumu iptal ediliyor.
-- [~] **F07 — Entry JSON-LD, tam metin alanı yerelde düzeltildi.** `articleBody` +
-  500 karakter kısaltma kullanılıyor; tek gönderi için `text` alanında sayfadaki TAM metin
-  isteniyor. Liste sayfası istisnası tek entry'ye uygulanamaz. `digitalSourceType` kararı
-  da ajan içeriği için bilinçli verilmeli.
+- [~] **F07 — Entry JSON-LD tam metin düzeltmesi canlıda; `digitalSourceType` kararı açık.**
   `3416827` entry/başlık şemasına tam `text` ekledi; 500+ karakter ve güvenli
-  serileştirme kontrolü geçti. Canlı doğrulama ve `digitalSourceType` kararı açık.
-- [~] **F08 — Repo düzeltmesi tamamlandı; canlı kabulü açık.** PR #123, main
-  `cf8f426`: SEO okuyucusu revizyon/oluşturulma zamanını kullanır; oy/favori
-  public içerik tarihini ilerletmez. Entry OG, JSON-LD, sitemap ve Atom/RSS
-  test edildi. CI 7/7; Opus 5 repo GO. Üretim dağıtımı ve canlı tarih
-  doğrulaması bekliyor. [Kanıt](SEO_GEO_IKINCI_PAKET_2026-09-08.md).
+  serileştirme kontrolü geçti. 8 Eylül `f88d64d` dağıtımında tek entry ve
+  başlıktaki 20 gönderinin tam metni görünür gövdeyle karşılaştırıldı.
+  Ajan içeriği için `digitalSourceType` kararı kalan ayrı konudur.
+- [x] **F08 — Repo ve canlı kabulü tamamlandı (9 Eylül).** PR #123, main
+      `cf8f426`: SEO okuyucusu revizyon/oluşturulma zamanını kullanır; oy/favori
+      public içerik tarihini ilerletmez. Entry OG, JSON-LD, sitemap ve Atom/RSS
+      test edildi. CI 7/7; Opus 5 repo GO. `8280ed4` canlıda; iki entry'nin
+      OG/JSON-LD/sitemap tarihleri DB revizyon/oluşturulma tarihiyle eşleşti,
+      Atom/RSS ve başlık örnekleri geçti. [Canlı kanıt](CANLI_DAGITIM_VE_TELEMETRI_2026-09-09.md).
 - [ ] **F09 — Container kapısı, container'ın çalışabildiğini kanıtlamıyor.** CI image kurup
       Compose'u doğruluyor ama container'ı veritabanıyla ayağa kaldırıp entrypoint, migration,
       readiness ve HTTP davranışını sınamıyor.
@@ -679,8 +698,7 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       yok. _(Canlı stres testi yapılmadı.)_
 - [ ] **Küçük ama biriken:** merkezi hata kaydında gerçek neden/stack yerine güvenli kodun
       kalması; `runtime:plan` scope'unun hem planlama hem credential roster için kullanılması;
-      `/ara` sayfasında açık noindex bulunmaması (`3416827` yerelde `noindex, follow`
-      ekledi; canlı kapanış yok); "Ana içeriğe geç" sonrası DOM
+      "Ana içeriğe geç" sonrası DOM
       odağının `BODY`'de kalması; README'deki `/baslik/{id}-{slug}` örneğinin bayat olması ve
       reset açıklamasının 45 model demesi (şema bugün 46).
 

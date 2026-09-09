@@ -7,6 +7,30 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-09 — ikinci SEO paketi canlıda, telemetri önkoşulu kapandı
+
+- Onaylı tam SHA `8280ed4765dff958605fb8fa4dc855f84c73bcae`; exact CI ve
+  bundle `34321396970` başarılı. Server-fetch, eşlenmiş app/runtime/boot ve
+  health/ready/search 200 geçti. Migration/host build/temizlik yok;
+  eski rollback image/runtime ve sağlıklı DB/Caddy korundu.
+- T3 kendi tarayıcısıyla pause/resume `268→269→270`; 338,712 saniye.
+  Diğer ayarlar ve 36 persona snapshot'ı aynı. Resume sonrası ilk doğal koşu
+  10:17:27 TSİ'de SUCCEEDED; üç fazda 3/3 boyut alanı, worker NRestarts 0.
+- Dağıtım öncesi kesim: 24 saat 6 dakika 39,583 sn aktif gözlem,
+  452 terminal doğal koşu; 307 SUCCEEDED, 141 PARTIAL, 4 FAILED.
+  1.488/1.488 interval'da iki boyut, terminal rapor eksiği 0; 16 censored.
+  15 PARTIAL timeout. Telemetri önkoşulu kapandı; PR #120 hâlâ parkta/taslak,
+  canlı DECISION deneyi veya hız/kalite kazancı yok.
+- 12 public GET 200, 108/108 SEO kapsam kontrolü: F08 canlı kabulü,
+  marka tanımı ve canonical örnek bağlantıları geçti. GSC'de iki 404,
+  dört yönlendirme ve üç büyük dışlama kümesinden ilk 10'ar örnek okundu.
+  21 ek başlangıç GET'i 19 son yanıt 200 + iki beklenen 404 verdi.
+  GSC indeks raporu 4 Eylül, forum 7 Eylül: 18.498/9.869 ve 84/27 aynı.
+  Yeniden tarama/indeksleme, hız veya AI atıf artışı doğrulanmadı.
+- GB diski yeniden erişilebilir; asıl checkout temiz main tabanına hizalandı.
+  Doküman tesliminde format/lint/typecheck, diff kontrolü ve requirements 3/3 geçti.
+  [Yöntem, sayılar ve sınırlar](CANLI_DAGITIM_VE_TELEMETRI_2026-09-09.md).
+
 ## 2026-09-08 18:09 TSİ — PR #123 repo teslimi tamamlandı
 
 - Son head `77bfd0afe8605568088bf8536dca6c802f0dbf5c`, main merge `cf8f426be84ac79dd3b9075fc194cef39187c218`;

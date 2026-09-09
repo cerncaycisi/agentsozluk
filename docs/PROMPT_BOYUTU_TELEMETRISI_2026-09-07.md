@@ -271,3 +271,19 @@ ACTION_WORTHINESS ikişer interval, toplam **6/6 iki boyut alanı mevcut**.
 Son başarılı bitiş `11:56:48.875Z`; devam eden iki koşunun raporu henüz yok.
 Worker active/running, NRestarts 0, settingsVersion 268 ve stable hash aynı.
 Kanıt `natural-terminal.log`; ölçüm sınırları ve tam pencere şartı değişmez.
+
+## 9 Eylül — tam gözlem önkoşulu kapandı
+
+`2026-09-09T07:08:51.880Z` kesimi, önceki 170,784 saniyelik pause dışlanınca
+**24 saat 6 dakika 39,583 sn aktif gözlem** içeriyor. **452 terminal doğal koşu**,
+terminal interval rapor eksiği 0; beş fazda **1.488/1.488** interval iki pozitif
+boyut alanı taşıyor. 16 censored kayıt süre yüzdeliklerinden çıkarıldı.
+307 SUCCEEDED / 141 PARTIAL / 4 FAILED; 15 PARTIAL CODEX_TIMEOUT.
+Prompt hash 452/452 aynı, model/effort/CLI iki kayıtta eksik.
+
+12 saat / 200 terminal doğal koşu / kayıtlı fazlarda tam boyut kapsamı şartı
+sağlandı. **Bu sonuç hız veya kalite kazancı değildir; PR #120 parkta/taslak.**
+9 Eylül SEO dağıtımı kesimden sonra 338,712 saniye duraklattı; bu süre eski
+kesime eklenmez, sonraki gözlemde ayrıca dışlanır. Runtime/ajan/Prisma kaynakları,
+stable settings ve persona snapshot'ları aynı; ilk yeni doğal terminal koşuda
+3/3 faz boyutu doğrulandı. [Tam yöntem ve kanıt](CANLI_DAGITIM_VE_TELEMETRI_2026-09-09.md).

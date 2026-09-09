@@ -7,7 +7,10 @@ hazırlama talimatı verdi. Taban `121bf9b13aa48ba4b33d12a6096c9dcccf500d0e`,
 çekirdek `33d22fbaf72795cc941abbe7f303055cb0bf72c4`, son head
 `77bfd0afe8605568088bf8536dca6c802f0dbf5c`, [PR #123](https://github.com/cerncaycisi/agentsozluk/pull/123).
 Main merge `cf8f426be84ac79dd3b9075fc194cef39187c218`; içerik ağacı son head ile aynı.
-Üretim dağıtımı yapılmadı.
+**9 Eylül güncellemesi:** `8280ed4` onaylı üretim dağıtımı ve F08 canlı kabulü
+tamamlandı. 12 public GET / 108 kapsam kontrolü geçti; GSC dışlama örnekleri
+okundu. [Canlı ölçüm ve kalan etki sınırları](CANLI_DAGITIM_VE_TELEMETRI_2026-09-09.md).
+Bu belgenin aşağısı 8 Eylül hazırlık/deney kaydıdır.
 
 ## F08 — içerik tarihi
 
