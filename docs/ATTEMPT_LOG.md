@@ -7642,3 +7642,71 @@ cleanup=no-cleanup`. Image/runtime ABI, migration/settings/lifecycle koruma
 - Dört dokümanlık makbuz: Node 22.23.1, npx/pnpm 10.34.5;
   format/lint/typecheck, requirements 3/3 ve diff kontrolü PASS.
   Uygulama/worker/test/Prisma/bağımlılık kaynakları değişmedi.
+
+## 2026-09-10 — kaynak tabanı ve yerel yedek/restore hazırlığı
+
+- Repo `4e1d97ccfe5c00c9d95c2adfa5fdc05d44f63f43`, canlı
+  `7ebb88753d82c7917a19671dd2d9d2fd3ab3477b`. Her SSH'de pinned
+  DNS/IP/fingerprint, deploy kullanıcısı, hostname ve kaynak SHA doğrulandı.
+  20 sn sınırında REPEATABLE READ / READ ONLY sorgular; üretim yazımı yok.
+- `09:28:54.957368Z` kesiminde 36 ACTIVE profilden 33'ü kaynak tabanını
+  geçti; aksamustu/cikissagda/mevsimdisi 9'ar. Üçünde kayıtlı kaynak 10,
+  manifold.press taze öğesi eksik. Yedi günlük üretim sonuçlarında domain
+  için 195 SOURCE_AUTH_REQUIRED / 8 errorCode'suz sonuç var. Yerel aynı
+  reader tek denemede 20 öğe okudu. Web aracı `Unsupported content-type:
+text/xml` verdi; parser kısıtı kaynak erişim arızası sayılmadı.
+- Yerel Docker kontrolü `Cannot connect to the Docker daemon at
+unix:///Users/gokhannihalgul/.colima/ayakizi/docker.sock. Is the docker daemon
+running?` verdi. Komşu Colima ortamı başlatılmadı. Mevcut loopback
+  PostgreSQL 16.14 ve pg_dump/pg_restore 16.14 doğrulandı.
+- İlk yerel prova seed'i Zod `invalid_type` / `Invalid input: expected string,
+received undefined`: APP_URL ve APP_SECRET eksikti. Prova sürecine yalnız
+  yerel URL ve geçici rastgele secret verildi; kalıcı env değiştirilmedi.
+  İkinci fixture `PrismaClientValidationError` verdi: unique olmayan
+  username ile findUniqueOrThrow kullanılmıştı. `usernameNormalized` seçildi,
+  geçici fixture TypeScript kontrolü geçti. İki denemede scratch DB'ler
+  temizlendi; mevcut DB adları kataloğu aynı kaldı.
+- Sonraki dump/restore **47 tablo / 369 satır / 3 sequence** eşitliğini geçti;
+  negatif kontrolde `NEGATIVE_DELETE_PROBE_UNEXPECTED` durdu. Beklenti SEED
+  korumasını 55000 sanıyordu; mevcut migration SQLSTATE **23514** kullanıyor.
+  Kaynak doğrulanıp yalnız beklenti düzeltildi. Aynı 269.162 baytlık dump
+  yeni scratch'a geri yüklendi; seed/dump tekrarlanmadı.
+- `09:38:44.373747Z–09:38:52.960922Z` son prova: 47 tablonun sıralı satır
+  hash/sayıları, 3 sequence ve 5/5 negatif DELETE sonucu geçti. Son
+  fingerprint aynı; scratch silindi ve DB adları kataloğu korundu.
+  Dump SHA-256 `757e29e1fa743867554e0deabf5d811b77271bd91621a182bfbef9921d972e79`.
+  Sentetik yerel fixture; üretim restore veya gerçek reset PASS sayılmadı.
+- Kaynak özetleyicinin ilk yerel import'u yanlış üst dizin nedeniyle
+  `MODULE_NOT_FOUND` verdi; `../../scripts/society-report-helpers` ile
+  düzeltildi. Canlı sorgu yeniden çalıştırılmadan kayıtlı snapshot özetlendi.
+  Mevcut reset/DB guard 12 farklı test geçti. Vitest hakem kopyasındaki
+  6 testi de topladı; 18 çalışma, 12 farklı test olarak ayrıldı.
+- AW ara gözlem `09:36:45.906902Z`: 24 terminal / 74 pozitif boyut kaydı,
+  1 timeout, yeni profil; sürüm/ayar değişmedi. 77 dakikalık veri kazanç veya
+  kalite kanıtı sayılmadı. Kalıcı kayıt:
+  [Reset öncesi hazırlık](RESET_ONCESI_HAZIRLIK_2026-09-10.md).
+- Tekrarlama: eski dört ajan listesini canlı gerçek sayma; fetch hata kodunu
+  doğrulanmış üyelik/IP engeli diye yorumlama; yerel restore'u üretim
+  kurtarma kabiliyeti sayma. Başarılı dump'ı koru, yalnız başarısız doğrulama
+  adımını aynı artifact üzerinde tekrarla; salt test beklentisi için ürün
+  korumasını değiştirme. Geçici test kopyalarını repo test kapsamına katma.
+- Dört dokümanlık makbuzda format/lint/typecheck, requirements 3/3 geçti;
+  uygulama/worker/Prisma kaynakları değişmedi. Yerel yardımcılar ve sentetik
+  dump ilgili tmp dizininde tutuluyor; Git'e veya üretime taşınmadı.
+- Opus 5/high, exact repo SHA `4e1d97c`: 22 tur / 661,163 sn; yardımcı
+  Haiku, üst dizine iki Glob reddi. Envanter/yerel restore koşullu;
+  üretim restore/reset kanıtlanmadı. Eksik input/status dosyaları ve SHA
+  alanları tamamlandı; JSONL→dizi dönüşümü eşit, kategori case-fold 36/36 aynı.
+  lastUsefulAt'ın da fetch ile güncellendiği kaynakla doğrulandı; kalite
+  kanıtı yapılmadı. Son koşulsuz model GO yazılmadı.
+- Geçici restore verifier'ı açık exception kontrolleri, bilinen yerel cluster,
+  owner/hostname/repo kökü, sabit dump SHA ve ayrı çıktı diziniyle daraltıldı;
+  stderr deadlock ve ilk cleanup hatasında fiş kaybı yolları giderildi.
+  `python3 -O` ile 47 tablo / 369 satır / 3 sequence ve 5/5 negatif kontrol
+  yeniden geçti; cleanupErrors boş, scratch kaldırıldı. Aynı dump kullanıldı.
+- Hakemin RESTRICT öz-referansında tek DELETE kesin düşer iddiası ayrı yerel
+  PostgreSQL 16.14 fixture'ında çürüdü: parent/child iki satır tek DELETE ile
+  2→0, exit 0; transaction rollback ve scratch cleanup geçti. Önceki 23503
+  testinin dış FK kayıtları bu nedenselliği ayırmıyordu. TRUNCATE önerisi
+  eylem izni sayılmadı. Tekrarlama: hakemin veritabanı davranışı iddiasını
+  çalışan karşı örnek olmadan reset tasarımına dönüştürme.

@@ -309,6 +309,15 @@ davranışı ve veri bütünlüğünü etkiliyor.
   `mevsimdisi` 9, `yedekparca` 9). Kaynak edinme tam bu boşluğu kapatan mekanizma — eksik
   ajanlar, başka ajanların işe yaradığı kanıtlanmış kaynaklarını alabilir.
 
+  **10 Eylül güncel envanteri:** son yedi günlük çekilmiş öğeler ve şu an ACTIVE
+  kohortunda **33/36** profil tabanı geçiyor. Eski dört ajan listesi güncel değil:
+  birazuzakta 11, yedekparca 10; **aksamustu/cikissagda/mevsimdisi 9'ar**.
+  Üçünde de kayıtlı 10 kaynak var; ortak eksik `manifold.press` tazeliği.
+  Üretim sonuçlarında `SOURCE_AUTH_REQUIRED`, aynı reader'ın yerel denemesinde
+  20 öğe var. Kalıcı kaynak ölümü veya IP engeli kesinleştirilmedi. Bu anlık
+  envanter Gate 10'un tam pencere kabulü değildir; güncel iş Sıra 5.2'de.
+  [Kaynak envanteri ve yerel prova](RESET_ONCESI_HAZIRLIK_2026-09-10.md).
+
   `AGENT_SOURCE_PROPOSAL` bayrağı **kapalı kaldı**: aday modeli serbest URL'i gereksiz kılıyor,
   yerine geçmiyor — açmanın kazancı kalmadı, riski duruyor.
 
@@ -595,6 +604,9 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          (aşağıdaki madde, PR #125). Sıradaki ölçüm yeni profilin 24 saatlik
          doğal koşu penceresi; model/efor/timeout sabit. Efor deneyi veya
          park edilmiş adaylar kendiliğinden yeniden açılmaz.
+         **24 saat diğer işler için bekleme şartı değil:** kaynak envanteri,
+         yerel reset/restore hazırlığı ve kod incelemesi aynı sırada ilerler.
+         Canlı davranışa müdahale eden değişiklikler ölçüme karıştırılmaz.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış
@@ -632,10 +644,28 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          semantik kalite kapısı açık. Kod/yerel deney yeniden açılmayacak.
          [Hata, hakemlik, kapsam ve model makbuzu](AW_HEDEF_BAGLAMI_2026-09-09.md).
          [Canlı dağıtım ve ayrı profil pencereleri](AW_CANLI_KABUL_2026-09-10.md).
+         **12:36 TSİ ara okuma:** 24 terminal (21 SUCCEEDED / 3 PARTIAL),
+         1 timeout; 74/74 pozitif boyut. AW 70 aday / 46 seçim. Henüz
+         77 dakika veri; kazanç, gerileme veya semantik kalite hükmü yok.
+         [Ara ölçüm ve sınırlar](RESET_ONCESI_HAZIRLIK_2026-09-10.md).
 
-2. **Kaynak tabanını kapat.** Dört ajan (`cikissagda` 8, `birazuzakta` 9, `mevsimdisi` 9,
-   `yedekparca` 9) 10'a çıksın — atıf verisi HÂLÂ elimizdeyken edinme çalışsın.
+2. **Kaynak tabanını kapat.** 10 Eylül kesiminde üç ajan (`aksamustu`,
+   `cikissagda`, `mevsimdisi`) 9'ar taze kaynakta; hedef en az 10. Ortak açık
+   `manifold.press` erişim/tazelik sorunu. Üçüne aday sunuluyor, kaynak evrimi
+   açık; doğal edinme sürüyor. Kaynak ekleme/URL değişimi bu tur yapılmadı.
+   Eski listeden birazuzakta (11) ve yedekparca (10) çıktı; mevcut ölçütle
+   33/36 geçiyor. Kaynak tarafındaki düzeltme ve ardından yeniden sayım açık;
+   atıf verisi silinmeden tamamlanmalı.
 3. **Yedek + geri yükleme provası ve gerçek silme akışı.** Geri alınamaz işlem için şart.
+
+   **10 Eylül yerel restore provası tamam:** PostgreSQL 16.14, sentetik seed
+   ve ajan fixture'ı; 47 tablo / 369 satır / 3 sequence eşit. Beş DELETE
+   koruması beklendiği gibi engelledi, son özet aynı; scratch DB'ler temizlendi.
+   Bu üretim yedeği veya çalışan reset değildir. **Sıradaki yerel uygulama:**
+   gerçek dry-run/execute akışının immutable kayıt, eski idempotency yanıtı
+   ve bekleyen outbox sınırlarını çözmek, ayrı hakem ve yerel prova ile doğrulamak.
+   Üretim yedeği/restore ve reset kapıları açık.
+   [Doğrudan prova kanıtı](RESET_ONCESI_HAZIRLIK_2026-09-10.md).
 
    4 Eylül incelemesi provaya girmesi gereken maddeleri somutladı — bunlar bende yoktu:
 

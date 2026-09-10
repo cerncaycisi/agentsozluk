@@ -7,6 +7,31 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-10 — kaynak envanteri güncellendi, yerel restore doğrulandı
+
+- `09:28:54.957368Z` kaynak kesimi: mevcut 36 ACTIVE profilin 33'ü
+  10 kaynak / 6 domain / 5 kategori tabanını geçiyor. Aksamustu, cikissagda,
+  mevsimdisi 9'ar; birazuzakta 11, yedekparca 10. Ortak eksik manifold.press
+  tazeliği. Gate 10'un tam pencere kabulü veya kaynak kalite hükmü verilmedi.
+- Üretimde bu domain için son yedi günde 195 SOURCE_AUTH_REQUIRED,
+  8 errorCode'suz sonuç; yerel aynı reader tek denemede 20 öğe okudu.
+  Kaynak evrimi açık, üç eksik profile aday sunuluyor. Kaynak/ayar yazımı yok.
+- Loopback PostgreSQL 16.14 üzerinde sentetik yedek/restore: **47 public tablo,
+  24 dolu tablo / 369 satır ve 3 sequence eşleşti**. Beş DELETE denemesi
+  SQLSTATE 55000/23514/23503 ile engellendi; son fingerprint aynı.
+  Scratch DB'ler kaldırıldı; katalog önce/sonra aynı. Üretim yedeği alınmadı.
+- AW `09:36:45.906902Z` ara kesimi: 24 terminal, 21 SUCCEEDED / 3 PARTIAL,
+  1 CODEX_TIMEOUT, FAILED 0; boyutlar 74/74. AW 23 rapor / 70 aday / 46 seçim;
+  1 censored. Yeni profil, Luna/max, concurrency 2 / 480 sn ve version 272
+  korundu. 77 dakika veriden nedensel performans veya kalite sonucu çıkarılmadı.
+- Mevcut reset/DB guard testleri 12/12 geçti; altı hakem kopyası ek test
+  kapsamı sayılmadı. Gerçek reset yürütücüsü ve üretim restore kabulü açık.
+- Opus 5/high koşullu incelemesinin ardından geçici verifier güçlendirildi;
+  `python3 -O` ile aynı dump, 47 tablo / 369 satır / 3 sequence ve 5/5
+  silme engeli yeniden doğrulandı. Koşulsuz model GO iddiası yok;
+  üretim restore/reset hâlâ kanıtlanmadı.
+  [Tam envanter, prova ve ölçüm](RESET_ONCESI_HAZIRLIK_2026-09-10.md).
+
 ## 2026-09-10 — AW hedef bağlamı üretimde, yeni ölçüm penceresi açıldı
 
 - Onaylı SHA `7ebb88753d82c7917a19671dd2d9d2fd3ab3477b`; exact main CI
