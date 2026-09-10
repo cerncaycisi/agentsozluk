@@ -6,6 +6,7 @@ import {
   greatResetClearedModels,
   greatResetPreservedModels,
   unclassifiedModels,
+  assertCompleteResetClassification,
 } from "../../../scripts/great-reset";
 
 /*
@@ -26,6 +27,16 @@ describe("great reset sınıflandırması", () => {
   it("şemadaki her modeli sınıflandırır", () => {
     // Yeni bir model eklenip listelere girmezse burada patlar.
     expect(unclassifiedModels(schemaModels())).toEqual([]);
+    expect(() => assertCompleteResetClassification(schemaModels())).not.toThrow();
+  });
+
+  it("şemadan çıkarılmış model, yeni model ve tekrarı reddeder", () => {
+    const models = schemaModels();
+    for (const wrong of [models.slice(1), [...models, "newModel"], [...models, models[0]!]]) {
+      expect(() => assertCompleteResetClassification(wrong)).toThrow(
+        "GREAT_RESET_CLASSIFICATION_MISMATCH",
+      );
+    }
   });
 
   it("hiçbir model iki listede birden değil", () => {
