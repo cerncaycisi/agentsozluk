@@ -653,6 +653,13 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          1 timeout; 74/74 pozitif boyut. AW 70 aday / 46 seçim. Henüz
          77 dakika veri; kazanç, gerileme veya semantik kalite hükmü yok.
          [Ara ölçüm ve sınırlar](RESET_ONCESI_HAZIRLIK_2026-09-10.md).
+         **15:21 TSİ güncellemesi:** 87 terminal (69 SUCCEEDED / 14 PARTIAL /
+         4 FAILED), 2 timeout; boyutlar 272/272. AW 203 aday / 158 seçim.
+         Dört hata: iki DECISION çağrısı, bir provenance doğrulaması, bir AW
+         çağrısı. Alt provider nedenleri ve nedensellik açık; worker çalışıyor,
+         ayarlar sabit. İki erken hatada model/efor/CLI metadata'sı eksik;
+         bunların dört interval'ı ayrı tutuldu. Henüz 4 saat veri; etki/kalite
+         kabulü verilmedi. [Son ara kontrol](CANLI_ARA_KONTROL_2026-09-10.md).
 
 2. **Kaynak tabanını kapat.** 10 Eylül kesiminde üç ajan (`aksamustu`,
    `cikissagda`, `mevsimdisi`) 9'ar taze kaynakta; hedef en az 10. Ortak açık
@@ -661,6 +668,8 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    Eski listeden birazuzakta (11) ve yedekparca (10) çıktı; mevcut ölçütle
    33/36 geçiyor. Kaynak tarafındaki düzeltme ve ardından yeniden sayım açık;
    atıf verisi silinmeden tamamlanmalı.
+   **15:21 TSİ yeniden sayım:** aynı üç açık ve 33/36; doğal edinme henüz
+   tabanı kapatmadı. Bu tur kaynak yazımı yapılmadı.
 3. **Yedek + geri yükleme provası ve gerçek silme akışı.** Geri alınamaz işlem için şart.
 
    **10 Eylül yerel restore provası tamam:** PostgreSQL 16.14, sentetik seed
@@ -675,6 +684,11 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    **Kalan:** üretimde bekleyen olaylar için kayıpsız tüketim/arşiv kararı,
    app/worker kapanışı ve cache/public görünümün yeniden açılış kabulü,
    gerçek üretim yedeği/restore. Yerel başarı üretim reset izni değildir.
+   **15:21 TSİ somut outbox engeli:** 191.768/191.768 satır işlenmemiş,
+   mevcut mimaride consumer yok. Kendiliğinden drain beklenmeyecek; eski
+   olayları ve işlenmemiş durumunu kayıpsız koruyan, reset öncesi kümeyi
+   gelecekteki tüketimden ayıran tasarım hazırlanmalı. OUTBOX_PENDING
+   koruması ve üretim kapısı açık; processedAt ile sahte tüketim yapılmaz.
    [Doğrudan prova kanıtı](RESET_ONCESI_HAZIRLIK_2026-09-10.md).
 
    4 Eylül incelemesi provaya girmesi gereken maddeleri somutladı — bunlar bende yoktu:

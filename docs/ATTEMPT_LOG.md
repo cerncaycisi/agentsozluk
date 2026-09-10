@@ -7775,3 +7775,31 @@ received undefined`: APP_URL ve APP_SECRET eksikti. Prova sürecine yalnız
   tekrar okundu ve `--match-head-commit` kullanıldı. Merge ağacı incelenen
   head ile birebir aynı. Main'e dört dokümanlık sonuç makbuzu ayrıca işlendi;
   production erişimi/deploy yok.
+
+### 2026-09-10 — 15:21 TSİ AW ara kontrolü ve üretim outbox engeli
+
+- Yerel main `0d42fd6daaa5894ca75ff8cfb565d7f7d69a966c`, üretim checkout
+  `7ebb88753d82c7917a19671dd2d9d2fd3ab3477b`. Her SSH öncesi DNS A,
+  ED25519 fingerprint ve bağlantıda hostname/origin/deploy doğrulandı.
+  İki salt okunur sorgu exit 0; üretim yazımı/deploy/restart yok.
+- Kesim `12:21:01.649691Z`: 88 oluşturulmuş / 87 terminal / 1 bitmemiş;
+  69 SUCCEEDED, 14 PARTIAL, 4 FAILED. İki CODEX_TIMEOUT, 272/272 boyut,
+  iki censored; AW 80 rapor / 203 aday / 158 seçim. Worker active/running,
+  NRestarts 0, settingsVersion 272 ve stable settings hash değişmedi.
+- Hatalar ayrıştırıldı: CODEX_DECISION_FAILED 2,
+  CODEX_DECISION_PROVENANCE_INVALID 1, CODEX_ACTION_WORTHINESS_FAILED 1.
+  Provider alt nedenleri kanıtlanmadı; generic aşama kodundan auth/upstream
+  veya prompt regresyonu sonucu çıkarılmadı. İki erken çağrı hatasının
+  model/efor/CLI alanları yok; dört interval ayrı tutuldu. AW raporu olmayan
+  tek SUCCEEDED satır NO_ACTION/SKIPPED; diğer altısı hata/timeout.
+- Yardımcı terminal sorgusuna TIMED_OUT eklendi. Eski sabit pencere tekrar
+  sayıldı: 496 değişmedi. İlk ara mesajdaki el hesabı 270 yanlıştı;
+  deterministik toplama 272, boyut kapsamı 272/272 olarak düzeltildi.
+- Kaynak tabanı 33/36 kaldı. Outbox 191.768/191.768 processedAt=NULL;
+  mimari ve writer taramasında consumer yok. Kayıpsız reset öncesi olay
+  ayrımı uygulanmadan yerel OUTBOX_PENDING üretim için kaldırılmayacak.
+- Tekrarlama: işlenmemiş journal'ı tüketilmiş göstermek için processedAt
+  yazma; consumer olmayan sistemde drain bekleyerek kapıyı kapatma;
+  censored olmayan her interval'ı başarılı model çağrısı sayma.
+- Makbuz: [canlı ara kontrol](CANLI_ARA_KONTROL_2026-09-10.md), ham içerik
+  içermeyen yerel kanıt `tmp/aw-monitor-20260910T122048Z/`.

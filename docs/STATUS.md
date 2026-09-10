@@ -7,6 +7,21 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-10 — 15:21 TSİ canlı ara kontrol
+
+- Pinned DNS/SSH/hostname/deploy/repo ve üretim checkout `7ebb887` doğrulandı;
+  salt okunur sorgular tamamlandı. Deploy/restart/pause/ayar veya kaynak yazımı yok.
+- 4 saat 1 dakika 39,250 saniye: **87 terminal**, 69 SUCCEEDED / 14 PARTIAL /
+  4 FAILED; **2 CODEX_TIMEOUT**. Boyutlar **272/272**, interval raporu eksiği 0.
+  AW 80 rapor / 203 aday / 158 seçim. Etki veya semantik kalite kabulü yok.
+- Dört FAILED yolu: 2 karar çağrısı, 1 kanıt doğrulaması, 1 AW çağrısı.
+  Provider alt nedenleri belirlenmedi. İki erken çağrı hatasının dört interval'ında
+  model/efor/CLI yok; ayrı tutuldu. Worker active/running, NRestarts 0, ayarlar aynı.
+- Kaynak tabanı hâlâ **33/36**. Outbox **191.768/191.768 işlenmemiş**;
+  mevcut uygulamada consumer yok. Üretim reseti için kayıpsız ayrım/arşiv
+  tasarımı açık; salt beklemek bu engeli kapatmaz.
+  [Kesimler, hatalar ve makbuz](CANLI_ARA_KONTROL_2026-09-10.md).
+
 ## 2026-09-10 — yerel sentetik reset yürütücüsü doğrulandı
 
 - Aday kod `00a2cd7a38441075ef7fcdf73f33674a0d483f5f`, PR #126 birleşti (`9b3fc6b`).
