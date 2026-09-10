@@ -7710,3 +7710,68 @@ received undefined`: APP_URL ve APP_SECRET eksikti. Prova sürecine yalnız
   testinin dış FK kayıtları bu nedenselliği ayırmıyordu. TRUNCATE önerisi
   eylem izni sayılmadı. Tekrarlama: hakemin veritabanı davranışı iddiasını
   çalışan karşı örnek olmadan reset tasarımına dönüştürme.
+
+## 2026-09-10 — yalnız yerel great reset yürütücüsü
+
+- Taban `81ce6e0`, aday kod `41a0a261e893ef8d575d54629d8b08194059599f`;
+  dal `feat/local-great-reset`, PR #126 taslak. Canlıya bağlantı/yazım yok.
+- Aynı sentetik dump tekrar kullanıldı. İlk yeni prova `FIXTURE_SQL_FAILED`
+  verdi: test fixture'ı leaseExpiresAt yazıp leaseOwner yazmıyordu. Kaynak
+  `agent_runs_lease_check` ikisini birlikte gerektiriyor. Ürün koruması
+  değiştirilmedi; fixture ikisini birlikte kuracak şekilde düzeltildi.
+  Başarısız denemenin iki scratch DB'si temizlendi, katalog aynı kaldı.
+- Son prova `11:15:14.306019Z`: Python -O / PostgreSQL 16.14 ile 17 senaryo
+  geçti. 29 tabloda 316 satır temizlendi, 17 korunan tabloda 28 eski satır
+  doğrulandı; bir idempotency expiresAt istisnası ve bir yeni audit açıkça
+  kontrol edildi. Public ID sequence'leri korunuyor, eski yanıtın replay
+  edilmediği mevcut uygulama işleviyle doğrulandı. Reset sonrası ayrı boş
+  DB'ye aynı dump geri yüklendi; 47 tablo / 369 satır başlangıca eşit.
+- Sıfırlama sonrası korunan kullanıcı verisini değiştiren test trigger'ı
+  postcondition hatası doğurdu; silme/expiry/audit dahil bütün transaction
+  geri alındı. Bu test trigger'ı yalnız scratch'taydı ve kaldırıldı.
+  Yeni korunan→temizlenen FK denemesinde RESTRICT hata verdi; veri değişmedi.
+- Son iki scratch kaldırıldı; DB adları kataloğu aynı, cleanupErrors boş.
+  Mevcut DB'lere içerik yazılmadı. Worker/model/public uç noktası kullanılmadı.
+- 1.451 unit / 221 dosya PASS, 27 odaklı test toplamın içinde;
+  format/lint/typecheck, requirements 3/3 PASS. Bağımsız Opus 5/high
+  incelemesi exact aday SHA'sında sürüyor; CI/hakem kabulü henüz sayılmadı.
+- Tekrarlama: lease için tek alanla geçersiz fixture yaratma; pending
+  outbox'a üretimde processedAt yazarak sahte tüketim yapma; yerel sentinel
+  veya SHA'yı sentetik veri içeriğinin kendiliğinden kanıtı sayma. Üretim
+  reset/restore ve kaynak/kalite kapıları bu araçla kapanmaz.
+- Makbuz: [yerel reset aracı](GREAT_RESET_YEREL_ARAC_2026-09-10.md),
+  yerel ayrıntılar `tmp/great-reset-executor-2026-09-10/`.
+
+- İlk hakem turu exact `41a0a26` üzerinde 282,505 sn / 17 tur sonunda
+  `error_max_turns`, `Reached maximum number of turns (16)` ile durdu;
+  hakem sonucu yok, GO sayılmadı. Gerçek kullanım Opus 5 + yardımcı Haiku;
+  permission denials 0. Aynı SHA kaynakları satır numaralı tek pakete alındı,
+  araçları tamamen kapalı Opus 5/high yeniden incelemesi başlatıldı.
+  Tekrarlama: dosya okuyan hakeme keyfî düşük araç-tur sınırı koyma;
+  dar incelemede kaynak paketini doğrudan vererek okuma dolaşımını kaldır.
+
+- Araçsız Opus 5/high: 436,539 sn, tek tur, başarılı; kritik/yüksek bulgu yok,
+  yerel kod koşullu GO. Doğrulanmış yanlış-pozitif test riski (sadece nonzero
+  psql exit) beklenen 55000/P0001 ile kapandı. Guard domain'e taşındı,
+  hash CLI'yi de kapsadı, tablo sırası açık C, bilinmeyen view/matview reddi eklendi.
+  Mevcut pg_class.relname collation'ı zaten C ölçüldü; önceki kodda canlı veya
+  yerel collation hatası varmış gibi raporlanmadı. Hakemin tüm DELETE guard'lı
+  cleared tabloları reddetme önerisi bilinçli reset kapsamıyla çeliştiği için alınmadı.
+- Son kod `00a2cd7a38441075ef7fcdf73f33674a0d483f5f`, PostgreSQL prova-04
+  `11:34:18.139932Z`: 18/18 senaryo PASS, aynı 316 silinen/28 korunan satır,
+  47 tablo/369 satır restore, cleanup/katalog PASS. Son 27/27 odaklı test,
+  format/lint/typecheck geçti. Başlangıçtaki 1.451 unit ve 7/7 CI `41a0a26`
+  içindi; son exact SHA CI'si `34472034328` ve dar Opus 5/medium kapanışı sürüyor.
+
+- Opus 5/medium dar kapanış exact `00a2cd7`: 135,413 sn / tek tur / başarılı,
+  yerel kod GO; kritik/yüksek bulgu yok. N1–N4 bloklayıcı değil: immutable
+  sondalar dolu fixture ister; idempotency korunumu reset transaction'ı içindir
+  (normal cleanup sonra silebilir); liste sırası testi yürütme sırası kanıtı
+  değildir; başka PostgreSQL şemaları kapsam dışı. Üretim GO sayılmadı.
+
+- Son exact `00a2cd7` CI `34472034328` **7/7 PASS**. PR #126 merge
+  `9b3fc6b371c3fcc83207f5971574614961dff23e`; birleştirmeden hemen önce head,
+  7 tamamlanmış yeşil check, review state (itiraz yok), MERGEABLE/CLEAN
+  tekrar okundu ve `--match-head-commit` kullanıldı. Merge ağacı incelenen
+  head ile birebir aynı. Main'e dört dokümanlık sonuç makbuzu ayrıca işlendi;
+  production erişimi/deploy yok.

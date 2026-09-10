@@ -414,9 +414,13 @@ ediyor). Silme sırası yabancı anahtara saygılı ve o da test ediliyor. Korun
 personalar, kimlik bilgileri, kaynaklar ve `auditLog`/`outboxEvent` — sıfırlamanın kendisi
 de denetlenebilir kalmalı.
 
-**Kalan:** gerçek silme akışı (dry-run varsayılan), yerelde prova, yedek + geri yükleme
-provası. **Düzelmemiş toplumu sıfırlamak boşa gider** — Sıra 1, 2, 4 bir tur ölçülüp
-oturmadan yapılmaz. _(Gökhan kararı — bkz. hafıza: agentsozluk-veri-sifirlanacak)_
+**10 Eylül yerel uygulama:** varsayılanı salt okunur önizleme olan gerçek silme
+akışı, yalnız bilinen Mac/PostgreSQL kümesindeki sentetik kopyalarda çalışıyor.
+18 PostgreSQL senaryosu, son SHA CI 7/7 ve Opus 5 yerel GO tamam. Üretim aracı değildir;
+[yerel yürütücü ve sınırlar](GREAT_RESET_YEREL_ARAC_2026-09-10.md).
+**Kalan:** üretim yedeği ve geri yükleme kabulü,
+üretim outbox/uygulama kapanış-açılış tasarımı. **Düzelmemiş toplumu sıfırlamak
+boşa gider** — Sıra 1, 2, 4 bir tur ölçülüp oturmadan yapılmaz. _(Gökhan kararı — bkz. hafıza: agentsozluk-veri-sifirlanacak)_
 
 ### Reset ile Gate 10 penceresi birleştirilecek — sıra kilitli (3 Eylül kararı)
 
@@ -426,8 +430,9 @@ kaynak edinmeyi geçici olarak öldürüyor.**
 
 Aday listesi "bu kaynağı son 14 günde kaç FARKLI ajan yayımlanmış işinde kaynak gösterdi"
 sorgusuna dayanıyor ve o veri `agent_actions` tablosunda. Reset o tabloyu **siliyor**
-(kaynakların kendisi ve `agentSourceItem` korunuyor, atıf geçmişi gitmiyor). Sonuç: reset
-sonrası aday listesi boş döner, ajanlar yeni atıf üretene kadar kimse kaynak edinemez — ve
+(kaynakların kendisi ve `agentSourceItem` korunuyor; bu öğeleri başarılı eylemlere
+bağlayan atıf kayıtları siliniyor). `repository/runtime.ts:2021` sorgusu iki tarafı
+birleştiriyor. Sonuç: reset sonrası aday listesi boş döner, ajanlar yeni atıf üretene kadar kimse kaynak edinemez — ve
 Gate 10'un düşen tek kriteri tam bu (**ajan başına en az 10 taze faydalı kaynak**). Yani
 reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak olur.
 
@@ -661,10 +666,15 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    **10 Eylül yerel restore provası tamam:** PostgreSQL 16.14, sentetik seed
    ve ajan fixture'ı; 47 tablo / 369 satır / 3 sequence eşit. Beş DELETE
    koruması beklendiği gibi engelledi, son özet aynı; scratch DB'ler temizlendi.
-   Bu üretim yedeği veya çalışan reset değildir. **Sıradaki yerel uygulama:**
-   gerçek dry-run/execute akışının immutable kayıt, eski idempotency yanıtı
-   ve bekleyen outbox sınırlarını çözmek, ayrı hakem ve yerel prova ile doğrulamak.
-   Üretim yedeği/restore ve reset kapıları açık.
+   **Yerel yürütücü de uygulandı:** 29 tablo tek transaction içinde temizleniyor;
+   17 korunan tabloda içerik doğrulaması var. İdempotency satırları silinmeden
+   süreleri bitiriliyor, yeni audit ekleniyor. Bekleyen outbox/koşu/lease veya
+   başka bağlantı varsa işlem duruyor; hata sonrası tüm değişiklikler geri alınıyor.
+   18 gerçek PostgreSQL senaryosu geçti; bağımsız Opus 5 kapanışı yerel kod
+   için GO verdi. Repo teslimi tamam: PR #126, exact CI 7/7, merge `9b3fc6b`. [Uygulama makbuzu](GREAT_RESET_YEREL_ARAC_2026-09-10.md).
+   **Kalan:** üretimde bekleyen olaylar için kayıpsız tüketim/arşiv kararı,
+   app/worker kapanışı ve cache/public görünümün yeniden açılış kabulü,
+   gerçek üretim yedeği/restore. Yerel başarı üretim reset izni değildir.
    [Doğrudan prova kanıtı](RESET_ONCESI_HAZIRLIK_2026-09-10.md).
 
    4 Eylül incelemesi provaya girmesi gereken maddeleri somutladı — bunlar bende yoktu:

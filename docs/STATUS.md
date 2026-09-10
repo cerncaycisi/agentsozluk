@@ -7,6 +7,25 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-10 — yerel sentetik reset yürütücüsü doğrulandı
+
+- Aday kod `00a2cd7a38441075ef7fcdf73f33674a0d483f5f`, PR #126 birleşti (`9b3fc6b`).
+  Üretime bağlanılmadı; canlı AW penceresine müdahale edilmedi.
+- PostgreSQL 16.14 / Python -O: **18/18 senaryo**. 29 tabloda 316 satır
+  temizlendi; 17 korunan tabloda 28 eski satır kontrol edildi. Tek idempotency
+  kaydının expiresAt alanı değişti ve bir audit eklendi. Hata enjeksiyonunda
+  bütün transaction geri alındı; normal immutable korumalar çalışmaya devam etti.
+- Gerçek reset sonrasında aynı sentetik dump ayrı boş DB'ye yüklendi:
+  **47 tablo / 369 satır** başlangıçla eşit. Scratch DB'ler kaldırıldı,
+  mevcut DB adları kataloğu aynı, cleanup hatası 0.
+- İlk `41a0a26` sürümünde **1.451/1.451 unit**, 221 dosya; son değişiklikte
+  27 odaklı reset/guard testi ve 18 PostgreSQL senaryosu yeniden geçti.
+  Format/lint/typecheck ve requirements 3/3 geçti. Son `00a2cd7` için Opus 5
+  yerel GO verdi; exact CI `34472034328` 7/7, PR #126 merge `9b3fc6b`.
+  Üretim hazır olma iddiası yok.
+- Üretim yedeği/restore, gerçek outbox tüketim/arşiv kararı ve uygulama
+  yeniden açılış kabulü açık. [Kod, ölçüm ve sınırlar](GREAT_RESET_YEREL_ARAC_2026-09-10.md).
+
 ## 2026-09-10 — kaynak envanteri güncellendi, yerel restore doğrulandı
 
 - `09:28:54.957368Z` kaynak kesimi: mevcut 36 ACTIVE profilin 33'ü
