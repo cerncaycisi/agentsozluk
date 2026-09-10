@@ -170,6 +170,13 @@ try:
             session.communicate('ROLLBACK;\n\\q\n', timeout=10)
         mark('table-lock-refused' if hold_lock else 'other-connection-refused')
 
+    psql(name, 'CREATE MATERIALIZED VIEW reset_fixture_view AS SELECT id FROM entries;')
+    before = fingerprint(name)
+    invoke(error='GREAT_RESET_DATABASE_SCHEMA_MISMATCH')
+    require(before == fingerprint(name), 'UNKNOWN_RELATION_REJECTION_CHANGED_DATA')
+    psql(name, 'DROP MATERIALIZED VIEW reset_fixture_view;')
+    mark('unclassified-materialized-view-refused')
+
     # Aynı model sayısı ama korunan tablodan içeriğe yeni FK: CASCADE yok, işlem geri alınır.
     psql(name, 'ALTER TABLE idempotency_records ADD COLUMN reset_fixture_entry uuid REFERENCES entries(id);')
     before = fingerprint(name)
@@ -204,17 +211,20 @@ try:
             'PUBLIC_IDS_REUSED')
     require(before['audit_logs']['rows'] + 1 == after['audit_logs']['rows'], 'AUDIT_NOT_APPENDED')
     require(before['idempotency_records']['rows'] == after['idempotency_records']['rows'], 'IDEMPOTENCY_ROWS_LOST')
-    for table in ['users','agent_profiles','agent_persona_versions','agent_credentials','agent_sources','agent_source_items', 'outbox_events']:
-        require(before[table] == after[table], f'PRESERVED_DATA_CHANGED:{table}')
+    for row in plan['preserved']:
+        table = row['table']
+        if table not in ['audit_logs', 'idempotency_records']:
+            require(before[table] == after[table], f'PRESERVED_DATA_CHANGED:{table}')
     mark('successful-reset-preserves-society-audit-and-public-id-sequences')
     execute(plan, 'GREAT_RESET_STALE_PLAN')
     mark('same-plan-cannot-execute-twice')
-    for table in ['agent_persona_versions', 'audit_logs']:
+    for table, expected in [('agent_persona_versions', '55000'), ('audit_logs', 'P0001')]:
         result = subprocess.run(['psql','-X','-h','127.0.0.1','-p','5432','-d',name,
-                                 '-At','-v','ON_ERROR_STOP=1','-f','-'],
+                                 '-At','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate','-f','-'],
                                 input=f'BEGIN; DELETE FROM {table}; ROLLBACK;',
                                 env=env,text=True,capture_output=True,timeout=10)
-        require(result.returncode != 0, 'IMMUTABLE_GUARD_LOST')
+        sqlstate = re.search(r'ERROR:\s+([0-9A-Z]{5})', result.stderr)
+        require(result.returncode != 0 and sqlstate and sqlstate.group(1) == expected, 'IMMUTABLE_GUARD_LOST')
     require(after == fingerprint(name), 'IMMUTABLE_PROBE_CHANGED_DATA')
     mark('immutable-guards-still-enforced')
     replay = subprocess.run(['node','node_modules/tsx/dist/cli.mjs',

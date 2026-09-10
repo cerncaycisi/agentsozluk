@@ -7,7 +7,7 @@ import {
   greatResetClearedModels,
   greatResetPreservedModels,
 } from "../domain/great-reset";
-import { localResetIdentity, localResetTarget } from "../../../../scripts/great-reset-local-guard";
+import { localResetIdentity, localResetTarget } from "../domain/great-reset-local-guard";
 
 type Request =
   | { mode: "DRY_RUN" }
@@ -28,6 +28,8 @@ function implementationDigest(): string {
   return digest([
     readFileSync(new URL(import.meta.url), "utf8"),
     readFileSync(new URL("../domain/great-reset.ts", import.meta.url), "utf8"),
+    readFileSync(new URL("../domain/great-reset-local-guard.ts", import.meta.url), "utf8"),
+    readFileSync(new URL("../../../../scripts/great-reset-local.ts", import.meta.url), "utf8"),
     readFileSync(
       new URL("../../../../scripts/great-reset-local-guard.ts", import.meta.url),
       "utf8",
@@ -129,7 +131,7 @@ async function inspectSchema(tx: Tx, list: Table[]) {
   const actual = await tx.$queryRaw<{ name: string; kind: string }[]>`
     SELECT c.relname AS name, c.relkind::text AS kind FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE n.nspname = 'public' AND c.relkind IN ('r','p','f') ORDER BY c.relname`;
+    WHERE n.nspname = 'public' AND c.relkind IN ('r','p','f','m','v') ORDER BY c.relname COLLATE "C"`;
   const expected = [...list.map(({ table }) => table), "_prisma_migrations"].sort();
   if (
     JSON.stringify(actual.map((row) => row.name)) !== JSON.stringify(expected) ||
@@ -263,10 +265,18 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
           blockedBy,
           cleared: list
             .filter((row) => row.cleared)
-            .map((row) => ({ model: row.model, rows: before.tables[row.table]!.rows })),
+            .map((row) => ({
+              model: row.model,
+              table: row.table,
+              rows: before.tables[row.table]!.rows,
+            })),
           preserved: list
             .filter((row) => !row.cleared)
-            .map((row) => ({ model: row.model, rows: before.tables[row.table]!.rows })),
+            .map((row) => ({
+              model: row.model,
+              table: row.table,
+              rows: before.tables[row.table]!.rows,
+            })),
           idempotencyPolicy: "EXPIRE_ALL_KEEP_ROWS",
           outboxPolicy: "REQUIRE_DRAIN_KEEP_ROWS",
         };
