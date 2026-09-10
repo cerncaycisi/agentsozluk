@@ -7604,3 +7604,41 @@ cleanup=no-cleanup`. Image/runtime ABI, migration/settings/lifecycle koruma
   kaynak ve lint kuralı değişmedi.
   Konum makbuzu eski tmp dizininde saklandı. Tekrarlama: izole checkout'u
   ana linter'ın taradığı repo içine yerleştirme.
+
+## 2026-09-10 — AW hedef bağlamı eşlenmiş canlı dağıtımı
+
+- Gökhan'ın doğru sunucu kimliği şartıyla verdiği canlıya alma onayı;
+  tam SHA `7ebb88753d82c7917a19671dd2d9d2fd3ab3477b`.
+  Exact CI `34371321067` 7/7, bundle `34372292826`, artifact `10112709082`
+  yeniden doğrulandı. Her SSH öncesi DNS `46.225.20.177`, ED25519
+  `SHA256:BVirvnH5qPzzK18ZGLhO90LObtFze38qicLybEwQ5fI`, deploy kullanıcısı,
+  `agent-sozluk-prod` ve repo origin kontrol edildi. Root SSH kullanılmadı.
+- T3 admin pause `08:10:42.491Z`, iki koşu iptal edilmeden drain 0/0/0/0.
+  Mevcut no-migration wrapper, server-fetch/digest/ABI/smoke başarılı;
+  `RELEASE_COMPLETE PASS ... cleanup=no-cleanup`, exit 0.
+  Bağımsız app/runtime/boot/source hash kontrolleri geçti. Worker active/running,
+  NRestarts 0. Önceki `8280ed4` image/runtime korundu; DB/Caddy healthy ve
+  başlangıç zamanları 20 Ağustos. Host build/migration/temizlik yok.
+- İlk resume tıklaması araçta başarılı görünse de DB hâlâ version 271 / runtime
+  false idi. Form geçerli/etkin ve panel paused olarak doğrulandı; ikinci
+  tıklamadan sonra UI ve DB resume'u doğruladı. İlk etkisiz tıklamanın kök
+  nedeni saptanmadı; uygulama hatası veya başarılı mutation diye yazılmadı.
+  Resume `08:19:22.400Z`, version 272; pause 519,909 sn. Diğer ayar ve
+  36 persona hash'i aynı. Model/efor/timeout değişikliği yapılmadı.
+- READ ONLY / REPEATABLE READ eski profil kesimi: 496 terminal,
+  1.603/1.603 pozitif boyut, 9 censored, 9 timeout; AW 486 rapor,
+  1.271 aday / 979 seçim. Yeni profil penceresi resume'da başladı;
+  eski/yeni hash'ler ayrıldı. İlk 67 ve 192 saniyelik kontrollerde iki
+  doğal koşu henüz terminal değildi; tamamlanmamış koşular rapor eksiği sayılmadı.
+- `08:24:31.043874Z` kesiminde ilk doğal koşu SUCCEEDED, bitiş
+  `08:23:20.108Z`; üç fazın 3/3 boyutu pozitif, eksik interval/AW raporu 0.
+  Yeni profile ait Luna/max / CLI 0.144.6; AW ACT / 1 aday / 1 seçim,
+  worker active/running / NRestarts 0. Teknik kabul PASS; 24 saatlik etki
+  ve genel semantik kalite açık. Yeni profil için sentetik koşu başlatılmadı.
+- Tekrarlama: UI tıklamasını DB kabulü sayma; farklı prompt profillerini tek
+  kohortta toplama; eski pencerenin timeout farkını yeni dağıtımın etkisi sayma.
+  Tam makbuz [AW canlı kabulü](AW_CANLI_KABUL_2026-09-10.md), yerel kayıtlar
+  `tmp/aw-release-2026-09-10/`. Yeni kod/hakem turu gerektiren runtime değişikliği yok.
+- Dört dokümanlık makbuz: Node 22.23.1, npx/pnpm 10.34.5;
+  format/lint/typecheck, requirements 3/3 ve diff kontrolü PASS.
+  Uygulama/worker/test/Prisma/bağımlılık kaynakları değişmedi.

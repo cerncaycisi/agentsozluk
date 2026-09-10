@@ -7,6 +7,32 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-10 — AW hedef bağlamı üretimde, yeni ölçüm penceresi açıldı
+
+- Onaylı SHA `7ebb88753d82c7917a19671dd2d9d2fd3ab3477b`; exact main CI
+  `34371321067` 7/7, bundle `34372292826` başarılı. DNS/IP/fingerprint,
+  hostname/repo ve deploy kullanıcısı doğrulandı. Server-fetch ve ABI geçti;
+  app/runtime/boot eşleşti, health/ready/search 200, wrapper exit 0.
+- T3 HUMAN ADMIN pause/resume `270→271→272`; iki koşu iptal edilmeden
+  drain 0/0/0/0. Pause 519,909 sn, resume `2026-09-10T08:19:22.400Z`.
+  Diğer ayar ve 36 persona hash'i aynı; concurrency 2 / timeout 480 sn.
+  Eski rollback image/runtime korundu; migration/build/temizlik yok.
+  DB/Caddy healthy, 20 Ağustos'taki başlangıç zamanları aynı.
+- Eski profil penceresi 24 saat 56 dakika 11,899 sn: 496 terminal
+  (381 SUCCEEDED, 115 PARTIAL, FAILED 0); boyut kapsamı 1.603/1.603,
+  interval raporu eksiği 0. Dokuz timeout (%1,81), AW 1.271 aday / 979 seçim,
+  %22,97 eleme. Bu sonuçlar değişiklik öncesidir; etki/kalite kanıtı değildir.
+- Yeni profil `327c35e662b0…`, worker active/running, NRestarts 0;
+  eski `53c15fdc0d68…` profilinden ayrılır. 24 saatlik pencere
+  **10 Eylül 11:19:22,400 → 11 Eylül 11:19:22,400 TSİ**.
+  Canlı etki ve semantik kalite kapısı açık; Luna max→high NO-GO korunuyor.
+- İlk doğal koşu `08:23:20.108Z`'de SUCCEEDED; `08:24:31Z` kesiminde
+  1 terminal / 2 oluşturulmuş koşu. Üç fazda 3/3 pozitif boyut,
+  terminal rapor eksiği 0, yeni profil ve Luna/max / CLI 0.144.6 doğrulandı.
+  AW ACT / 1 aday / 1 seçim. **Teknik canlı kabul PASS**; tek koşudan hız
+  veya kalite sonucu çıkarılmadı.
+  [Tam sürüm, kimlik ve ölçüm makbuzu](AW_CANLI_KABUL_2026-09-10.md).
+
 ## 2026-09-09 — DECISION efor adayı NO-GO; AW hedef kaybı düzeltildi
 
 - Taban `e0e3ff0dc5cc283c64de1d71592f491f9c167e54`, Luna max→high:

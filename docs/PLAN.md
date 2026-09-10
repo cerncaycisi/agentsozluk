@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 9 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
+**Son güncelleme: 10 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -591,10 +591,10 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          doğrulandı. Hız kalite kaybını karşılamaz; canlı efor değişikliği ve
          otomatik yeni tekrar partisi yok.
          [Protokol ve tam ölçüm](DECISION_EFOR_DENEYI_2026-09-09.md).
-         **Sıradaki somut adım:** repo teslimi biten AW hedef/kanıt
-         düzeltmesinin canlı kabulü (aşağıdaki madde, PR #125). Efor deneyiyle
-         birleştirilmez; model/efor/timeout sabit kalır. Canlı kabul ayrıca
-         belirli üretim erişimi/dağıtım onayı ve ölçüm gerektirir.
+         **10 Eylül: AW hedef/kanıt düzeltmesi onayla canlıya alındı**
+         (aşağıdaki madde, PR #125). Sıradaki ölçüm yeni profilin 24 saatlik
+         doğal koşu penceresi; model/efor/timeout sabit. Efor deneyi veya
+         park edilmiş adaylar kendiliğinden yeniden açılmaz.
    - [ ] **AÇIK: AW kapısı köreldi mi?** Daraltma kapıyı körleştirdiyse timeout'u çözüp
          kaliteyi kaybetmişiz demektir. Bu soru 7 Eylül'e kadar **cevaplanamıyordu**, çünkü
          kapının kararı hiçbir yere yazılmıyordu; elimizdeki vekil (`SKIPPED` action) yanlış
@@ -617,11 +617,21 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          exact `dbac058`→`0835f28` karşılaştırmasında 32/32 byte eşitlikle
          ayrıştırıldı. **PR #125 repo teslimi tamamlandı:** son head `07d9f5f`,
          exact CI `34370069884` 7/7; main merge `72fb819`, iki içerik ağacı
-         birebir aynı. Tam SHA'lar ölçüm makbuzunda. Yeni aktif adım exact
-         green main bundle'ı, belirli üretim onayı ve canlı kabul;
-         kod/yerel deney yeniden açılmayacak. Dağıtım yapılmadı.
-         Yerel dört örnek genel AW kalite kapısını kapatmaz.
+         birebir aynı. Tam SHA'lar ölçüm makbuzunda.
+         **10 Eylül 11:14 TSİ: `7ebb887` canlıya alındı.** Exact main CI 7/7,
+         bundle `34372292826`; pinned sunucu kimliği, app/runtime/boot,
+         health/ready/search 200 geçti. T3 pause/resume `270→271→272`,
+         519,909 sn; diğer ayarlar, 36 persona, Luna/max ve 480 sn korundu.
+         **11:23 TSİ ilk doğal koşu SUCCEEDED:** yeni profilde üç fazın
+         3/3 boyut kaydı, AW ACT / 1 aday / 1 seçim; teknik kabul tamamlandı.
+         **Yeni gözlem: 10 Eylül 11:19:22,400 → 11 Eylül 11:19:22,400 TSİ.**
+         Eski profilin 496 terminal koşusu ve 1.603/1.603 boyut kaydı ayrı
+         donduruldu: 9 timeout, AW 1.271 aday / 979 seçim (%22,97 eleme).
+         Bu eski sonuç yeni düzeltmenin etkisi değildir. Yeni profilde
+         boyut/süre/timeout ve AW kararları birlikte okunacak;
+         semantik kalite kapısı açık. Kod/yerel deney yeniden açılmayacak.
          [Hata, hakemlik, kapsam ve model makbuzu](AW_HEDEF_BAGLAMI_2026-09-09.md).
+         [Canlı dağıtım ve ayrı profil pencereleri](AW_CANLI_KABUL_2026-09-10.md).
 
 2. **Kaynak tabanını kapat.** Dört ajan (`cikissagda` 8, `birazuzakta` 9, `mevsimdisi` 9,
    `yedekparca` 9) 10'a çıksın — atıf verisi HÂLÂ elimizdeyken edinme çalışsın.
