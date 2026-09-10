@@ -8,14 +8,21 @@ import {
   greatResetPreservedModels,
 } from "../domain/great-reset";
 import { localResetIdentity, localResetTarget } from "../domain/great-reset-local-guard";
+import {
+  archivePendingOutboxEvents,
+  assertExpectedOutboxArchive,
+  outboxArchivesAreValid,
+  pendingOutboxSnapshot,
+} from "./outbox-reset-archive";
 
-type Request =
+type Request = (
   | { mode: "DRY_RUN" }
   | {
       mode: "EXECUTE";
       databaseName: string;
       planSha256: string;
-    };
+    }
+) & { archiveOutbox?: true };
 type Fingerprint = { rows: number; sha256: string };
 type Table = { model: string; table: string; cleared: boolean };
 type Tx = Prisma.TransactionClient;
@@ -27,6 +34,8 @@ function digest(value: unknown): string {
 function implementationDigest(): string {
   return digest([
     readFileSync(new URL(import.meta.url), "utf8"),
+    readFileSync(new URL("./outbox-reset-archive.ts", import.meta.url), "utf8"),
+    readFileSync(new URL("../../outbox/repository/pending.ts", import.meta.url), "utf8"),
     readFileSync(new URL("../domain/great-reset.ts", import.meta.url), "utf8"),
     readFileSync(new URL("../domain/great-reset-local-guard.ts", import.meta.url), "utf8"),
     readFileSync(new URL("../../../../scripts/great-reset-local.ts", import.meta.url), "utf8"),
@@ -57,14 +66,25 @@ function tableSql(table: string): Prisma.Sql {
   return Prisma.raw(`ONLY "public"."${table}"`);
 }
 
-async function fingerprint(tx: Tx, table: string, auditId?: string): Promise<Fingerprint> {
+async function fingerprint(
+  tx: Tx,
+  table: string,
+  auditId?: string,
+  archiveId?: string,
+): Promise<Fingerprint> {
   // Satırlar/credential içerikleri istemciye veya log'a taşınmaz; özet DB'de hesaplanır.
   const projection =
     table === "idempotency_records"
       ? Prisma.sql`to_jsonb(t) - 'expiresAt'`
       : Prisma.sql`to_jsonb(t)`;
   const filter =
-    table === "audit_logs" && auditId ? Prisma.sql`WHERE t.id <> ${auditId}::uuid` : Prisma.empty;
+    table === "audit_logs" && auditId
+      ? Prisma.sql`WHERE t.id <> ${auditId}::uuid`
+      : table === "outbox_reset_archives" && archiveId
+        ? Prisma.sql`WHERE t.id <> ${archiveId}::uuid`
+        : table === "outbox_reset_archive_events" && archiveId
+          ? Prisma.sql`WHERE t."archiveId" <> ${archiveId}::uuid`
+          : Prisma.empty;
   const [result] = await tx.$queryRaw<Fingerprint[]>(Prisma.sql`
     SELECT count(*)::int AS rows,
       encode(sha256(convert_to(coalesce(string_agg((${projection})::text,
@@ -75,9 +95,9 @@ async function fingerprint(tx: Tx, table: string, auditId?: string): Promise<Fin
   return result;
 }
 
-async function snapshot(tx: Tx, list: Table[], auditId?: string) {
+async function snapshot(tx: Tx, list: Table[], auditId?: string, archiveId?: string) {
   const result: Record<string, Fingerprint> = {};
-  for (const { table } of list) result[table] = await fingerprint(tx, table, auditId);
+  for (const { table } of list) result[table] = await fingerprint(tx, table, auditId, archiveId);
   // expiresAt ayrıca plan hash'ine girer; koruma karşılaştırmasında tek istisnadır.
   const expiry = await tx.$queryRaw<{ sha256: string }[]>`
     SELECT encode(sha256(convert_to(coalesce(string_agg(id::text || ':' ||
@@ -159,7 +179,7 @@ async function inspectSchema(tx: Tx, list: Table[]) {
   return digest({ structure, migration });
 }
 
-async function blockers(tx: Tx): Promise<string[]> {
+async function blockers(tx: Tx, archiveOutbox = false): Promise<string[]> {
   const result: string[] = [];
   const settings = await tx.agentGlobalSettings.findMany({
     select: {
@@ -208,7 +228,12 @@ async function blockers(tx: Tx): Promise<string[]> {
     })
   )
     result.push("RUNTIME_STATE_ACTIVE");
-  if (await tx.outboxEvent.count({ where: { processedAt: null } })) result.push("OUTBOX_PENDING");
+  if (
+    !archiveOutbox &&
+    (await tx.outboxEvent.count({ where: { processedAt: null, resetArchive: null } }))
+  )
+    result.push("OUTBOX_PENDING");
+  if (!(await outboxArchivesAreValid(tx))) result.push("OUTBOX_ARCHIVE_INVALID");
   const [connections] = await tx.$queryRaw<{ count: number }[]>`
     SELECT count(*)::int AS count FROM pg_stat_activity
     WHERE datname = current_database() AND pid <> pg_backend_pid() AND backend_type = 'client backend'`;
@@ -225,6 +250,8 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
   )
     throw new Error("GREAT_RESET_CONFIRMATION_MISMATCH");
   const list = tables();
+  const archiveOutbox = request.archiveOutbox === true;
+  const outboxPolicy = archiveOutbox ? "ARCHIVE_PENDING_KEEP_ROWS" : "REQUIRE_DRAIN_KEEP_ROWS";
   const implementationSha256 = implementationDigest();
   const database = new PrismaClient({ datasourceUrl: target.databaseUrl, log: [] });
   try {
@@ -246,9 +273,12 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         }
         const schemaSha256 = await inspectSchema(tx, list);
         const before = await snapshot(tx, list);
-        const blockedBy = await blockers(tx);
+        const pendingOutbox = await pendingOutboxSnapshot(tx);
+        const blockedBy = await blockers(tx, archiveOutbox);
         const planSha256 = digest({
-          version: 1,
+          version: 2,
+          outboxPolicy,
+          pendingOutbox,
           implementationSha256,
           actual,
           schemaSha256,
@@ -278,11 +308,17 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
               rows: before.tables[row.table]!.rows,
             })),
           idempotencyPolicy: "EXPIRE_ALL_KEEP_ROWS",
-          outboxPolicy: "REQUIRE_DRAIN_KEEP_ROWS",
+          outboxPolicy,
+          pendingOutbox,
         };
         if (request.mode === "DRY_RUN") return report;
         if (blockedBy.length) throw new Error("GREAT_RESET_PRECONDITIONS_FAILED");
         if (planSha256 !== request.planSha256) throw new Error("GREAT_RESET_STALE_PLAN");
+
+        const resetId = randomUUID();
+        const outboxArchiveId = archiveOutbox
+          ? await archivePendingOutboxEvents(tx, resetId, planSha256, pendingOutbox)
+          : null;
 
         // Ayrıcalıklı yerel operasyon: DELETE trigger'ları çalışmaz. Tanımları değişmez.
         // Tek komutta FK kapanışı zorunlu; bilinmeyen bağımlılık varsa RESTRICT reddeder.
@@ -292,7 +328,6 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
           )} CONTINUE IDENTITY RESTRICT`,
         );
         const expired = await tx.idempotencyRecord.updateMany({ data: { expiresAt: new Date(0) } });
-        const resetId = randomUUID();
         const audit = await tx.auditLog.create({
           data: {
             action: "GREAT_RESET_LOCAL_EXECUTED",
@@ -303,12 +338,17 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
               planSha256,
               cleared: report.cleared,
               expiredIdempotencyRows: expired.count,
+              outboxPolicy,
+              outboxArchiveId,
+              archivedOutboxRows: outboxArchiveId ? pendingOutbox.rows : 0,
               policy: "TRUNCATE_ONLY_CONTINUE_IDENTITY_RESTRICT",
               scope: "LOCAL_SYNTHETIC_ONLY",
             },
           },
         });
-        const after = await snapshot(tx, list, audit.id);
+        const after = await snapshot(tx, list, audit.id, outboxArchiveId ?? undefined);
+        if (outboxArchiveId)
+          await assertExpectedOutboxArchive(tx, outboxArchiveId, planSha256, pendingOutbox);
         for (const { table, cleared } of list) {
           if (
             cleared
@@ -325,7 +365,14 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
           (await blockers(tx)).length
         )
           throw new Error("GREAT_RESET_POSTCONDITION_FAILED");
-        return { ...report, resetId, expiredIdempotencyRows: expired.count, verified: true };
+        return {
+          ...report,
+          resetId,
+          outboxArchiveId,
+          archivedOutboxRows: outboxArchiveId ? pendingOutbox.rows : 0,
+          expiredIdempotencyRows: expired.count,
+          verified: true,
+        };
       },
       {
         // Execute tüm tablo kilitlerinden SONRA güncel veriyi okumalı.

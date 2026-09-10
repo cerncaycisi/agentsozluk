@@ -54,4 +54,36 @@ describe("yerel great reset sınırı", () => {
     ])
       expect(() => parseLocalResetArguments(args)).toThrow("GREAT_RESET_INVALID_ARGUMENTS");
   });
+
+  it("arşivleme yalnız açık seçimle ve aynı plan onayıyla etkinleşir", () => {
+    expect(parseLocalResetArguments(["--archive-outbox"])).toEqual({
+      mode: "DRY_RUN",
+      archiveOutbox: true,
+    });
+    expect(parseLocalResetArguments(["--dry-run", "--archive-outbox"])).toEqual({
+      mode: "DRY_RUN",
+      archiveOutbox: true,
+    });
+    expect(
+      parseLocalResetArguments([
+        "--execute",
+        "--database",
+        name,
+        "--plan-sha256",
+        "a".repeat(64),
+        "--archive-outbox",
+      ]),
+    ).toEqual({
+      mode: "EXECUTE",
+      databaseName: name,
+      planSha256: "a".repeat(64),
+      archiveOutbox: true,
+    });
+    for (const args of [
+      ["--archive-outbox", "--archive-outbox"],
+      ["--archive-outbox", "--execute"],
+      ["--execute", "--archive-outbox"],
+    ])
+      expect(() => parseLocalResetArguments(args)).toThrow("GREAT_RESET_INVALID_ARGUMENTS");
+  });
 });

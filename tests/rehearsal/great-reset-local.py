@@ -83,12 +83,13 @@ def invoke(args=(), error=None):
     return json.loads(result.stdout)
 
 
-def preview():
-    return invoke()
+def preview(archive=False):
+    return invoke(["--archive-outbox"] if archive else [])
 
 
-def execute(plan, error=None):
-    return invoke(['--execute', '--database', name, '--plan-sha256', plan['planSha256']], error)
+def execute(plan, error=None, archive=False):
+    args = ["--execute", "--database", name, "--plan-sha256", plan["planSha256"]]
+    return invoke(args + (["--archive-outbox"] if archive else []), error)
 
 
 def mark(label):
@@ -107,6 +108,34 @@ def blocked(label, mutation, undo, expected):
     mark(label)
 
 
+
+def migrate(db):
+    require(db in [name, restore_name], 'MIGRATION_TARGET_NOT_SCRATCH')
+    migration_env = {**env, 'DATABASE_URL': f'postgresql://gokhannihalgul@127.0.0.1:5432/{db}'}
+    with (output / f'{db}-migrate.log').open('w') as log:
+        result = subprocess.run(['node', 'node_modules/prisma/build/index.js', 'migrate', 'deploy'],
+                                cwd=root, env=migration_env, stdout=log, stderr=subprocess.STDOUT, timeout=90)
+    require(result.returncode == 0, 'SCRATCH_MIGRATION_FAILED')
+
+
+def sql_refused(sql, expected='55000'):
+    before = fingerprint(name)
+    result = subprocess.run(['psql', '-X', '-h', '127.0.0.1', '-p', '5432', '-d', name,
+                             '-At', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=sqlstate', '-f', '-'],
+                            input=sql, env=env, text=True, capture_output=True, timeout=30)
+    sqlstate = re.search(r'ERROR:\s+([0-9A-Z]{5})', result.stderr)
+    require(result.returncode != 0 and sqlstate and sqlstate.group(1) == expected,
+            'EXPECTED_ARCHIVE_SQLSTATE_MISSING')
+    require(before == fingerprint(name), 'REFUSED_ARCHIVE_MUTATION_CHANGED_DATA')
+
+
+def candidates():
+    result = subprocess.run(['node', 'node_modules/tsx/dist/cli.mjs',
+                             'tests/rehearsal/outbox-candidates.ts'], cwd=root, env=env,
+                            text=True, capture_output=True, timeout=30)
+    require(result.returncode == 0, 'OUTBOX_CANDIDATE_QUERY_FAILED')
+    return json.loads(result.stdout)
+
 created = []
 try:
     for db in [name]:
@@ -116,7 +145,11 @@ try:
             subprocess.run(['pg_restore', '-h', '127.0.0.1', '-p', '5432', '-d', db,
                             '--exit-on-error', '--single-transaction', '--no-owner', '--no-privileges', str(dump)],
                            env=env, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=60)
+    migrate(name)
     original = fingerprint(name)
+    backup = output / 'migrated-synthetic.dump'
+    subprocess.run(['pg_dump', '-h', '127.0.0.1', '-p', '5432', '-d', name, '-Fc', '-f', str(backup)], env=env, check=True, timeout=60)
+    backup_original = original
     (output / 'original.json').write_text(json.dumps(original, indent=2) + '\n')
     invoke(error='GREAT_RESET_DATABASE_IDENTITY_MISMATCH')
     require(original == fingerprint(name), 'MARKER_REJECTION_CHANGED_DATA')
@@ -196,11 +229,28 @@ try:
     psql(name, 'DROP TRIGGER reset_fixture_mutation ON topics; DROP FUNCTION reset_fixture_mutation();')
     mark('post-truncate-failure-rolls-back-everything')
 
+    # Açık arşiv seçimi de planın parçası: drain planı ile seçeneği değiştirmek yasak.
+    execute(preview(), 'GREAT_RESET_STALE_PLAN', archive=True)
+    mark('outbox-policy-switch-invalidates-plan')
+    psql(name, 'UPDATE outbox_events SET "processedAt"=NULL;')
+    require('OUTBOX_PENDING' in preview()['blockedBy'], 'DEFAULT_PENDING_GUARD_LOST')
+    require(preview(archive=True)['blockedBy'] == [], 'ARCHIVE_PLAN_NOT_READY')
+    for column in ['eventsSha256', 'planSha256']:
+        psql(name, f"""CREATE FUNCTION reset_fixture_manifest_mutation() RETURNS trigger LANGUAGE plpgsql AS $$
+          BEGIN NEW."{column}"=repeat('0',64); RETURN NEW; END; $$;
+          CREATE TRIGGER reset_fixture_manifest_mutation BEFORE INSERT ON outbox_reset_archives
+          FOR EACH ROW EXECUTE FUNCTION reset_fixture_manifest_mutation();""")
+        unchanged = fingerprint(name)
+        execute(preview(archive=True), 'GREAT_RESET_OUTBOX_ARCHIVE_MISMATCH', archive=True)
+        require(unchanged == fingerprint(name), 'INVALID_MANIFEST_ROLLBACK_FAILED')
+        psql(name, 'DROP TRIGGER reset_fixture_manifest_mutation ON outbox_reset_archives; DROP FUNCTION reset_fixture_manifest_mutation();')
+        mark('invalid-archive-' + column + '-rolls-back')
     before = fingerprint(name)
     sequences = psql(name, "SELECT sequencename,last_value FROM pg_sequences WHERE schemaname='public' ORDER BY sequencename;")
-    plan = preview()
+    plan = preview(archive=True)
     require(not plan['blockedBy'], 'FINAL_PLAN_BLOCKED')
-    done = execute(plan)
+    pending_count = int(psql(name, 'SELECT count(*) FROM outbox_events WHERE \"processedAt\" IS NULL;'))
+    done = execute(plan, archive=True)
     require(done['verified'] and done['expiredIdempotencyRows'] > 0, 'EXECUTION_NOT_VERIFIED')
     after = fingerprint(name)
     require(psql(name, 'SELECT count(*) FROM idempotency_records WHERE "expiresAt" <> to_timestamp(0);') == '0',
@@ -213,11 +263,28 @@ try:
     require(before['idempotency_records']['rows'] == after['idempotency_records']['rows'], 'IDEMPOTENCY_ROWS_LOST')
     for row in plan['preserved']:
         table = row['table']
-        if table not in ['audit_logs', 'idempotency_records']:
+        if table not in ['audit_logs', 'idempotency_records', 'outbox_reset_archives', 'outbox_reset_archive_events']:
             require(before[table] == after[table], f'PRESERVED_DATA_CHANGED:{table}')
     mark('successful-reset-preserves-society-audit-and-public-id-sequences')
-    execute(plan, 'GREAT_RESET_STALE_PLAN')
+    execute(plan, 'GREAT_RESET_STALE_PLAN', archive=True)
     mark('same-plan-cannot-execute-twice')
+    require(done['archivedOutboxRows'] == pending_count and pending_count > 0, 'ARCHIVE_ROW_COUNT_WRONG')
+    require(psql(name, 'SELECT count(*) FROM outbox_reset_archive_events;') == str(pending_count), 'ARCHIVE_MEMBERS_MISSING')
+    require(before['outbox_events'] == after['outbox_events'], 'OUTBOX_ORIGINAL_FIELDS_CHANGED')
+    require(candidates() == [], 'ARCHIVED_EVENTS_STILL_CANDIDATES')
+    require(preview()['blockedBy'] == [], 'VALID_ARCHIVE_STILL_BLOCKED')
+    mark('pending-events-preserved-and-excluded-from-consumer-candidates')
+    for label, sql in [
+        ('archived-event-processing-refused', 'UPDATE outbox_events SET "processedAt"=now();'),
+        ('archived-event-body-mutation-refused', "UPDATE outbox_events SET payload='{}';"),
+        ('archive-header-update-refused', 'UPDATE outbox_reset_archives SET "eventCount"=1;'),
+        ('archive-membership-delete-refused', 'DELETE FROM outbox_reset_archive_events;'),
+        ('archive-membership-update-refused', 'UPDATE outbox_reset_archive_events SET "archiveId"="archiveId";'),
+        ('archive-header-delete-refused', 'DELETE FROM outbox_reset_archives;'),
+        ('archive-truncate-refused', 'TRUNCATE outbox_reset_archives CASCADE;'),
+        ('archived-outbox-truncate-refused', 'TRUNCATE outbox_events CASCADE;')]:
+        sql_refused(sql)
+        mark(label)
     for table, expected in [('agent_persona_versions', '55000'), ('audit_logs', 'P0001')]:
         result = subprocess.run(['psql','-X','-h','127.0.0.1','-p','5432','-d',name,
                                  '-At','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate','-f','-'],
@@ -237,10 +304,64 @@ try:
     created.append(restore_name)
     with (output / 'post-reset-restore.log').open('w') as log:
         subprocess.run(['pg_restore','-h','127.0.0.1','-p','5432','-d',restore_name,
-                        '--exit-on-error','--single-transaction','--no-owner','--no-privileges',str(dump)],
+                        '--exit-on-error','--single-transaction','--no-owner','--no-privileges',str(backup)],
                        env=env,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=60)
-    require(original == fingerprint(restore_name), 'POST_RESET_RESTORE_MISMATCH')
+    restored_original = fingerprint(restore_name)
+    require(backup_original == restored_original, 'POST_RESET_RESTORE_MISMATCH')
     mark('original-dump-restores-complete-pre-reset-content')
+    # İkinci reset: eski arşiv aynı kalır, geriye tarihli yeni olay bile yeni kümededir.
+    psql(name, """INSERT INTO outbox_events (id,"eventType","eventVersion","aggregateType","aggregateId","requestId",payload,"createdAt")
+      VALUES ('00000000-0000-4000-8000-000000000001','entry.created',1,'Entry',gen_random_uuid(),'reset-fixture-new','{}','2020-01-01'),
+             ('00000000-0000-4000-8000-000000000002','entry.created',1,'Entry',gen_random_uuid(),'reset-fixture-new','{}',now());""")
+    require(set(candidates()) == {'00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002'}, 'NEW_OR_BACKDATED_EVENT_EXCLUDED')
+    mark('new-and-backdated-events-remain-consumer-candidates')
+    # Arşivsiz olayın normal tüketim işareti hâlâ çalışır.
+    psql(name, "UPDATE outbox_events SET \"processedAt\"=now() WHERE id='00000000-0000-4000-8000-000000000002';")
+    require(candidates() == ['00000000-0000-4000-8000-000000000001'], 'UNARCHIVED_PROCESSING_BROKEN')
+    mark('unarchived-event-can-still-be-processed')
+    first_archive = psql(name, "SELECT to_jsonb(a)::text FROM outbox_reset_archives a;")
+    first_members = psql(name, "SELECT md5(string_agg(to_jsonb(m)::text, ',' ORDER BY \"eventId\")) FROM outbox_reset_archive_events m;")
+    # Sadece sentetik yük; canlı 191.768 pending olayı aşan satır sayısı.
+    psql(name, """INSERT INTO outbox_events (id,"eventType","eventVersion","aggregateType","aggregateId","requestId",payload,"createdAt")
+      SELECT gen_random_uuid(),'entry.created',1,'Entry',gen_random_uuid(),'reset-fixture-load',
+        jsonb_build_object('synthetic',true,'ordinal',g,'padding',repeat('x',256)),now()
+      FROM generate_series(1,192000) g;""")
+    # Sonradan hata olursa arşiv üyelikleri de TRUNCATE ile birlikte geri dönmeli.
+    psql(name, """CREATE FUNCTION reset_fixture_mutation() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN UPDATE users SET "displayName"='unexpected archive mutation'; RETURN NULL; END; $$;
+      CREATE TRIGGER reset_fixture_mutation AFTER TRUNCATE ON topics
+      FOR EACH STATEMENT EXECUTE FUNCTION reset_fixture_mutation();""")
+    load_before = fingerprint(name)
+    execute(preview(archive=True), 'GREAT_RESET_POSTCONDITION_FAILED', archive=True)
+    require(load_before == fingerprint(name), 'ARCHIVE_FAILURE_ROLLBACK_LOST_DATA')
+    psql(name, 'DROP TRIGGER reset_fixture_mutation ON topics; DROP FUNCTION reset_fixture_mutation();')
+    mark('192001-pending-archive-and-reset-roll-back-together')
+    load_before = fingerprint(name)
+    load_started = datetime.datetime.now(datetime.timezone.utc)
+    load_done = execute(preview(archive=True), archive=True)
+    load_seconds = (datetime.datetime.now(datetime.timezone.utc)-load_started).total_seconds()
+    require(load_done['archivedOutboxRows'] == 192001 and candidates() == [], 'SECOND_ARCHIVE_INCOMPLETE')
+    require(load_before['outbox_events'] == fingerprint(name)['outbox_events'], 'SECOND_ARCHIVE_MUTATED_OUTBOX')
+    first_id = done['outboxArchiveId']
+    require(psql(name, f"SELECT to_jsonb(a)::text FROM outbox_reset_archives a WHERE id='{first_id}';") == first_archive, 'OLDER_ARCHIVE_CHANGED')
+    require(psql(name, f"SELECT md5(string_agg(to_jsonb(m)::text, ',' ORDER BY \"eventId\")) FROM outbox_reset_archive_events m WHERE \"archiveId\"='{first_id}';") == first_members, 'OLDER_MEMBERS_CHANGED')
+    mark('192001-pending-second-reset-preserves-both-archive-generations')
+    # Arşiv içeren dump da geri yüklenebilir; ilk restore scratch'ını yalnız kendi döngümüzde yeniden yarat.
+    subprocess.run(['dropdb','-h','127.0.0.1','-p','5432',restore_name],env=env,check=True,timeout=30)
+    created.remove(restore_name)
+    archive_dump = output / 'archived-synthetic.dump'
+    subprocess.run(['pg_dump','-h','127.0.0.1','-p','5432','-d',name,'-Fc','-f',str(archive_dump)],env=env,check=True,timeout=60)
+    archive_original = fingerprint(name)
+    subprocess.run(['createdb','-h','127.0.0.1','-p','5432',restore_name],env=env,check=True,timeout=30)
+    created.append(restore_name)
+    with (output / 'archive-restore.log').open('w') as log:
+        subprocess.run(['pg_restore','-h','127.0.0.1','-p','5432','-d',restore_name,
+                        '--exit-on-error','--single-transaction','--no-owner','--no-privileges',str(archive_dump)],
+                       env=env,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=120)
+    require(archive_original == fingerprint(restore_name), 'ARCHIVE_DUMP_RESTORE_MISMATCH')
+    mark('archive-and-membership-dump-restore-match-exactly')
+    (output / 'load.json').write_text(json.dumps({'pendingRows':192001,'previewAndExecuteSeconds':load_seconds,
+      'archiveGenerations':2,'receipt':load_done},indent=2)+'\n')
     (output / 'execution.json').write_text(json.dumps(done, indent=2) + '\n')
     (output / 'after.json').write_text(json.dumps(after, indent=2) + '\n')
 finally:

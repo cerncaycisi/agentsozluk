@@ -13,7 +13,8 @@
  * ONLY / CONTINUE IDENTITY / RESTRICT ile; CASCADE veya trigger değişimi yok.
  * Korunan satırlar sayıları ve içerikleriyle doğrulanır. İki açık istisna:
  * idempotency expiresAt epoch'a çekilir ve yeni audit kaydı eklenir.
- * Bekleyen outbox varsa yürütme reddedilir.
+ * Bekleyen outbox varsayılan olarak engeldir. Açık --archive-outbox seçimiyle
+ * aynı transaction'da kayıpsız küme üyeliği eklenir; olay satırları değişmez.
  */
 
 /** Sıfırlanacak tablolar — silme SIRASIYLA (yapraktan köke). */
@@ -76,6 +77,8 @@ export const greatResetPreservedModels = [
   "agentSourceItem",
   "auditLog",
   "outboxEvent",
+  "outboxResetArchive",
+  "outboxResetArchiveEvent",
   "rateLimitBucket",
   "idempotencyRecord",
 ] as const;

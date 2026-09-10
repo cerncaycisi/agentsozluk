@@ -7803,3 +7803,29 @@ received undefined`: APP_URL ve APP_SECRET eksikti. Prova sürecine yalnız
   censored olmayan her interval'ı başarılı model çağrısı sayma.
 - Makbuz: [canlı ara kontrol](CANLI_ARA_KONTROL_2026-09-10.md), ham içerik
   içermeyen yerel kanıt `tmp/aw-monitor-20260910T122048Z/`.
+
+### 2026-09-10 — outbox arşivi yerel uygulama ve büyük yük ayrıştırması
+
+- Başlangıç main `55a95edb891a567554d8189523020bf2ec96b342`; çalışma
+  `feat/reset-outbox-archive` dalında. Üretim bağlantısı/yazımı yok.
+- Yeni arşiv manifest/üyelik şeması, opt-in yerel reset politikası ve
+  arşiv dışı pending aday sorgusu eklendi. Ham outbox satırı/processedAt
+  değişmez. Değişiklik ve 26. migration yalnız yeni sentetik DB'de denendi.
+- İlk prova 32 senaryo geçti; 192.001 pending olayın ikinci resetinde
+  beklenen GREAT_RESET_POSTCONDITION_FAILED yerine
+  `UNEXPECTED_CLI_ERROR:GREAT_RESET_DATABASE_OPERATION_FAILED` geldi.
+  Büyük yük GO sayılmadı; geçici iki DB temizlendi, katalog değişmedi.
+- İlk geçici teşhis aracı sonuç üretmedi; boş stdout makbuz sayılmadı.
+  Araç async main ile düzeltildi, JSON sonuç zorunlu yapıldı. Sonraki
+  dar ilk-arşiv denemesi 192.001 olayda 35,814 sn execute ile geçti.
+  İkinci arşiv nesli ve enjekte edilmiş hata ayrıca ayrıştırılıyor;
+  ilk hatanın kök nedeni henüz kanıtlanmış değil.
+- 1.452/1.452 unit, 221 dosya; 11/11 gerçek PostgreSQL entegrasyonu geçti.
+  Eski tmp hakem kopyasındaki 6 test kapsama eklenmedi. Varsayılan pending
+  engeli, yanlış manifest hash/planı, immutable olay/üyelik ve yeni geriye
+  tarihli olayın adaylığı doğrudan denendi.
+- Tekrarlama: yalnız küçük fixture veya tek arşiv neslinin başarısını
+  ikinci reset/büyük yük kabulü sayma; genel CLI hata kodunu kök neden
+  diye yorumlama; başarısız prova sonrası temizlik makbuzunu atlama.
+- Kanıt dizini `tmp/reset-outbox-archive-2026-09-10/`; nihai hakem/CI ve
+  ikinci nesil büyük yük kabulü bu ilk kayıtta açık.

@@ -701,20 +701,44 @@ model AuditLog {
 }
 
 model OutboxEvent {
-  id            String    @id @default(uuid()) @db.Uuid
+  id            String                   @id @default(uuid()) @db.Uuid
   eventType     String
-  eventVersion  Int       @default(1)
+  eventVersion  Int                      @default(1)
   aggregateType String
-  aggregateId   String    @db.Uuid
-  actorId       String?   @db.Uuid
+  aggregateId   String                   @db.Uuid
+  actorId       String?                  @db.Uuid
   actorKind     UserKind?
   requestId     String
   payload       Json
-  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
-  processedAt   DateTime? @db.Timestamptz(3)
+  createdAt     DateTime                 @default(now()) @db.Timestamptz(3)
+  processedAt   DateTime?                @db.Timestamptz(3)
+  resetArchive  OutboxResetArchiveEvent?
 
   @@index([processedAt, createdAt])
   @@map("outbox_events")
+}
+
+// Olay satırını ve processedAt değerini değiştirmeyen reset öncesi küme.
+model OutboxResetArchive {
+  id            String                    @id @db.Uuid
+  createdAt     DateTime                  @default(now()) @db.Timestamptz(3)
+  formatVersion Int                       @default(1)
+  planSha256    String                    @db.VarChar(64)
+  eventCount    Int
+  eventsSha256  String                    @db.VarChar(64)
+  events        OutboxResetArchiveEvent[]
+
+  @@map("outbox_reset_archives")
+}
+
+model OutboxResetArchiveEvent {
+  eventId   String             @id @db.Uuid
+  archiveId String             @db.Uuid
+  event     OutboxEvent        @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  archive   OutboxResetArchive @relation(fields: [archiveId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([archiveId])
+  @@map("outbox_reset_archive_events")
 }
 
 model RateLimitBucket {
@@ -1059,7 +1083,7 @@ model AgentSource {
   addedByOrigin       String                 @db.VarChar(64)
   lastFetchedAt       DateTime?              @db.Timestamptz(3)
   lastUsefulAt        DateTime?              @db.Timestamptz(3)
-  probationStartedAt   DateTime?              @db.Timestamptz(3)
+  probationStartedAt  DateTime?              @db.Timestamptz(3)
   consecutiveFailures Int                    @default(0)
   createdAt           DateTime               @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime               @updatedAt @db.Timestamptz(3)
