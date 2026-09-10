@@ -24,7 +24,10 @@
   Mühür ve TRUNCATE koruması artık satır görünürlüğüne değil **açık niyet kapısına**
   (`SET LOCAL` GUC) bakıyor. **Sınır:** GUC'yi her oturum ayarlayabilir; koruma
   kazara/yarışan yazıcıya karşıdır, kararlı SQL operatörüne karşı değil.
-- `probe-07` **36/36 PASS**, eşzamanlılık provası 3/3 PASS, entegrasyon 12/12,
+- Teslim: commit `22701725546aa8e945e80f23dc4e965725bda476`, PR #127; bu tam head için
+  CI `34500131757` **7/7 SUCCESS**.
+- `probe-09` **36/36 PASS**, eşzamanlılık provası 3/3 PASS, entegrasyonun tamamı
+  22 dosya / 269 test PASS, entegrasyon dosyası 13/13,
   unit 1452/1452, format/lint/typecheck PASS. Maliyet: 192.001 olayda preview+execute
   tazeleme öncesi 13,4-15,4 sn (n=2), sonrası **19,2-34,6 sn (n=4)** — varyans yüksek,
   tek sayı maliyet sayılmaz.

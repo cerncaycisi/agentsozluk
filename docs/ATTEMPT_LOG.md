@@ -7918,3 +7918,6 @@ received undefined`: APP_URL ve APP_SECRET eksikti. Prova sürecine yalnız
   yedisi aynı artık başlığın kirletmesidir, sekiz bağımsız kusur değildir (Astra düzeltmesi).
 - Son ölçümler: probe-09 **36/36 PASS**, eşzamanlılık 3/3, **entegrasyonun tamamı
   22 dosya / 269 test**, unit 1452/1452, format/lint/typecheck PASS.
+- Teslim: `2270172` push edildi; bu **tam head** için CI `34500131757` 7/7 SUCCESS.
+  Önceki yeşil CI (`34485420687`, head `a068744`) bu düzeltmeleri kapsamıyordu;
+  eski koşuyu yeni ağacın kanıtı saymayın.

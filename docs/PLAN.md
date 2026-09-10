@@ -725,7 +725,9 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    [Doğrudan prova kanıtı](RESET_ONCESI_HAZIRLIK_2026-09-10.md).
 
    **10 Eylül — outbox arşivi, iki hakem turunda üç gerçek güvenlik açığı kapatıldı:**
-   PR #127 taslak; uzak head `a0687448bf63a168975b3cc6c20ce50c3382ad23`.
+   PR #127; uzak head `22701725546aa8e945e80f23dc4e965725bda476`, bu tam head için
+   CI `34500131757` **7/7 SUCCESS** (quality, browser, database, container, behavior,
+   coverage, validate). Önceki aday `a068744` ve CI `34485420687` tarihsel kayıttır.
    Hakem bu turda **Astra** (yürütücü Claude olduğu için — bkz. hakem seçimi).
    Beş tur: **NO-GO, NO-GO, KOŞULLU, KOŞULLU, GO** — son karar yalnız bu yerel paket için.
    İlk iki turun bulguları **aynı hata sınıfıydı**:
