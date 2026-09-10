@@ -7829,3 +7829,92 @@ received undefined`: APP_URL ve APP_SECRET eksikti. Prova sürecine yalnız
   diye yorumlama; başarısız prova sonrası temizlik makbuzunu atlama.
 - Kanıt dizini `tmp/reset-outbox-archive-2026-09-10/`; nihai hakem/CI ve
   ikinci nesil büyük yük kabulü bu ilk kayıtta açık.
+
+### 2026-09-10 — Opus NO-GO, kilit teşhisi ve son prova devri
+
+- PR #127 OPEN/DRAFT; exact head `a0687448bf63a168975b3cc6c20ce50c3382ad23`,
+  CI `34485420687` 7/7 SUCCESS. Yerel main `55a95ed`; üretime bağlanılmadı.
+- Yerel CLI gerçek model `claude-opus-5`, effort medium, araçsız/read-only,
+  374,822 sn, tek tur: **NO-GO**. Hash ölçeği, zaman dilimi, güvenli teşhis
+  ve makbuz açıklığı için düzeltme/kapanış istendi. Hakem üretime bağlanmadı.
+- `load-diagnostic-04`: iki nesilli yükte hata enjeksiyonu 23,983 sn sonra
+  beklenen GREAT_RESET_POSTCONDITION_FAILED verdi. Sonraki deneme 0,139 sn'de
+  Prisma P2010 / SQLSTATE 55P03 ile reddedildi; aynı kesimde autovacuum
+  VacuumTruncate gözlendi. Bu, yeniden üretilen NOWAIT hatasının kanıtıdır;
+  alt kodu saklanmamış ilk iki genel hatanın her biri için kesin neden değildir.
+- Yerelde satır başına SHA-256 birleştirmesi, epoch tabanlı arşiv hash'i,
+  arşiv sayıları ve sabit güvenli hata kodları eklendi. Üç outbox tablosunda
+  autovacuum yalnız yeni sentetik prova DB'lerinde kapatıldı. Üretim ayarı,
+  NOWAIT ve timeout eşikleri değiştirilmedi. Ham SQL hata metni yazılmadı.
+- `probe-03` 14:02:42.714339Z–14:07:01.127102Z: **FAIL**, 32/35 senaryo.
+  `TimeoutExpired / REHEARSAL_STEP_FAILED`, failedAt 33, line 42:
+  30 sn limitli psql subprocess yardımcısı. Makbuz çağıran sorguyu göstermiyor;
+  kök neden açık. Bu, önceki 55P03 ile aynı hata veya CLI timeout kanıtı değildir.
+  İki scratch DB temizlendi, cleanupErrors boş, databaseCatalogPreserved true.
+- Düzeltmelerde 28 odaklı unit ve typecheck PASS; 12 testlik güncel entegrasyon
+  dosyası henüz çalıştırılmadı. Son format/lint oturumları için terminal sonucu
+  alınamadı (`Unknown process id`); güncel ağaç için PASS sayılmadı.
+- Kullanıcı yeni sohbete geçiyor: düzeltmeler commit/push edilmeden korundu;
+  kapanış hakemliği yok. [Devir](DEVAM_RESET_OUTBOX_2026-09-10.md) dosya/kanıt
+  yollarını tutuyor; aktif sıra PLAN.md içinde güncellendi.
+- Tekrarlama: timeout'u sırf geçsin diye artırma; önce güvenli adım/sorgu sınıfı
+  teşhisi ekle. Eski CI veya 32 başarılı senaryoyu 35/35 kabulü sayma.
+  İki scratch harness'ı paralel başlatma: katalog korunumu ölçümünü kirletir.
+  Devirdeki yerel diff'i eski PR head'ine dönerek silme.
+
+### 2026-09-10 (ikinci oturum) — Astra hakemliği, üç snapshot açığı ve 36/36 prova
+
+- Hakem kuralı değişti: **yürütücü Claude olduğunda hakem Astra**
+  (`codex exec --model gpt-6-astra -c model_reasoning_effort="xhigh" --sandbox read-only`).
+  Gökhan kararı; `AGENTS.md` ve `PLAN.md` başındaki hakem bloğuna yazıldı. Bir tur
+  Fable denemesi oturum kapanınca yarım kaldı (0 baytlık çıktı) — bitmiş sayılmadı.
+- probe-03'ün zaman aşımı **kök nedeni kanıtlanmadı ve yeniden üretilemedi.** Ölçüm
+  eşiği yükseltilmedi: izole ölçümde 192.000 satır INSERT 9,5 sn, fingerprint 2,4 sn;
+  probe içinde 2794 psql çağrısının en yavaşı 2,776/4,097 sn (30 sn bütçe). Bunun
+  yerine teşhis eklendi: sorgu SINIFI, üst düzey senaryo satırı ve süreç öldürülmeden
+  ÖNCE alınan `pg_stat_activity` görüntüsü.
+- **Astra 1. tur NO-GO — dört bulgu, üçü gerçek.** Hepsi gerçek PostgreSQL'de yeniden
+  üretildi: (a) arşivden önce snapshot almış REPEATABLE READ yazıcısı arşivlenmiş olayın
+  `processedAt` alanını hatasız değiştirdi; (b) düz INSERT tamamlanmış arşive ikinci
+  üyeyi ekledi (beyan 1, gerçek 2); (c) teşhis kendi bütçesini 30 sn'den 45 sn'ye
+  çıkarıyordu — bu kusuru bu oturumda ben soktum ve "bütçe değişmedi" derken yanıldım.
+  (d) eski hash biçimi: 14 kalıcı DB'nin hiçbirinde arşiv tablosu yok, koşul kapandı.
+- (a) için `FOR UPDATE` kilidi **denendi ve yetmedi** — kilit yeni satır sürümü
+  doğurmadığı için yazıcı yine geçti. Çalışan mekanizma: üyelikten ÖNCE içeriği
+  değiştirmeyen yazmayla satır sürümünü tazelemek; yazıcı 40001 alıyor.
+- **Astra 2. tur NO-GO — aynı hata sınıfı TRUNCATE'te kalmış.** Deneyle üretildi:
+  eski snapshot'lı oturum `TRUNCATE outbox_reset_archive_events` çalıştırdı, hata almadı;
+  başlık kaldı (1), üyelikler silindi (0), olaylar yeniden tüketici adayı oldu.
+  Ayrıca teşhis dalı kapalı `stdin` yüzünden `communicate()` ValueError atıp görüntüyü
+  tam gerektiği anda kaybediyordu; `xmin` mührü savepoint'te meşru yolu kırıyordu.
+- **Kök sebep tek tek yamanmadı.** Mühür ve TRUNCATE koruması artık satır görünürlüğüne
+  değil açık niyet kapısına (`SET LOCAL` GUC) bakıyor: snapshot'tan ve savepoint'ten
+  bağımsız. "Tablolar boşsa TRUNCATE serbest" istisnası kaldırıldı; entegrasyon temizliği
+  niyeti açıkça belirtiyor. **Sınır kaydedildi:** GUC'yi herhangi bir oturum ayarlayabilir,
+  yani koruma kazara/yarışan yazıcıya karşıdır, kararlı SQL operatörüne karşı değil.
+- Yeni testler: `tests/rehearsal/archive-concurrency.py` (3/3) gerçek ürün yolunu çağırıyor;
+  provaya 36. senaryo olarak teşhis dalının kendisi eklendi (21,043 sn'lik sorgu, görüntü
+  gerçekten alındı). `vitest.config.ts`: gitignore'lu `tmp/` artık test olarak toplanmıyor —
+  `handoff/` kopyası suite'i düşürüyordu, 12 gerçek test geçerken.
+- Ölçümler: probe-04/05 35/35, probe-07 **36/36 PASS**; entegrasyon 12/12; unit 1452/1452;
+  format/lint/typecheck PASS. Maliyet 192.001 olayda preview+execute: tazeleme öncesi
+  13,4-15,4 sn (n=2), sonrası 19,2-34,6 sn (n=4). **Varyans yüksek; tek koşunun 34,6 sn'sini
+  maliyet diye yazmak yanlıştı** — yön net, büyüklük bu örneklemle kesinleşmedi.
+- Tekrarlama: guard'ı çağıranın snapshot'ına bağlama — arşivden önce snapshot almış
+  oturum için koruma sessizce açılır. Teşhis kodunu ölçtüğü bütçenin içine koyma.
+  İki başarılı koşuyu, açıklanmamış eski FAIL'lerin giderildiği kanıtı sayma.
+- Ayrı konu: canlı entry kalitesi gözlemi ve Astra'nın sınıflandırma düzeltmesi
+  `ENTRY_KALITE_GOZLEMI_2026-09-10.md` içinde; PLAN Sıra 4'e açık madde olarak girdi.
+- **Astra kapanışı: GO — yalnız yerel sentetik paket.** Beş tur (NO-GO, NO-GO, KOŞULLU,
+  KOŞULLU, GO). 4. turda entegrasyon temizliğinin arşiv BAŞLIKLARINI bıraktığını buldu:
+  `TRUNCATE outbox_events CASCADE` üyeliklere ulaşır ama ters yönde başlığa ulaşmaz.
+  12/12'nin yakalamama sebebi de doğru teşhis edildi — fixture arşivleri rollback ediyordu.
+  Düzeltme + commit edilmiş arşivle doğrulama testi eklendi; entegrasyon 12 -> 13.
+- **Astra iki testimi geçersiz buldu.** Biri snapshot'ı arşivden SONRA alıyordu (eski
+  hatalı guard da o testi geçerdi), diğeri temizliği hiç commit edilmiş arşivle sınamıyordu.
+  Bundan sonra her regresyon testi **negatif kontrolle** doğrulanıyor: düzeltme geri
+  alındığında testin düştüğü gösterilmeden test "var" sayılmıyor.
+  Negatif kontrolün doğru okunuşu: düşen sekiz testin belirleyicisi yeni testtir; diğer
+  yedisi aynı artık başlığın kirletmesidir, sekiz bağımsız kusur değildir (Astra düzeltmesi).
+- Son ölçümler: probe-09 **36/36 PASS**, eşzamanlılık 3/3, **entegrasyonun tamamı
+  22 dosya / 269 test**, unit 1452/1452, format/lint/typecheck PASS.

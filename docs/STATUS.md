@@ -7,6 +7,53 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-10 (ikinci oturum) — Astra hakemliği, üç snapshot açığı kapatıldı, prova 36/36
+
+- Hakem kuralı: **yürütücü Claude ise hakem Astra** (`gpt-6-astra`, xhigh, read-only).
+  Gökhan kararı; `AGENTS.md` ve `PLAN.md` hakem bloğunda yazılı.
+- Astra beş tur inceledi: **NO-GO, NO-GO, KOŞULLU, KOŞULLU, GO** (son karar yalnız bu
+  yerel sentetik paket için; üretim için GO yok). İlk turların bulguları **aynı hata
+  sınıfıydı**:
+  koruma çağıranın kendi snapshot'ına bağlıydı. Üçü de gerçek PostgreSQL'de
+  yeniden üretildi ve düzeltildi — (a) eski snapshot'lı `REPEATABLE READ` yazıcısı
+  arşivlenmiş olayın `processedAt`'ini hatasız değiştirdi; (b) düz `INSERT`
+  tamamlanmış arşive ikinci üyeyi ekledi; (c) eski snapshot'lı oturum arşiv
+  üyeliklerini `TRUNCATE` ile hatasız sildi.
+- `FOR UPDATE` denendi, **yetmedi** (kilit yeni satır sürümü doğurmuyor). Çözüm:
+  arşivleme üyelikten önce satır sürümünü tazeliyor → yazıcı 40001 alıyor.
+  Mühür ve TRUNCATE koruması artık satır görünürlüğüne değil **açık niyet kapısına**
+  (`SET LOCAL` GUC) bakıyor. **Sınır:** GUC'yi her oturum ayarlayabilir; koruma
+  kazara/yarışan yazıcıya karşıdır, kararlı SQL operatörüne karşı değil.
+- `probe-07` **36/36 PASS**, eşzamanlılık provası 3/3 PASS, entegrasyon 12/12,
+  unit 1452/1452, format/lint/typecheck PASS. Maliyet: 192.001 olayda preview+execute
+  tazeleme öncesi 13,4-15,4 sn (n=2), sonrası **19,2-34,6 sn (n=4)** — varyans yüksek,
+  tek sayı maliyet sayılmaz.
+- **Kapanmadı:** `probe-01/02/03` FAIL'lerinin kök nedeni kanıtlanmadı ve yeniden
+  üretilemedi. 30 sn prova bütçesi istemciyi öldürür, sunucudaki sorgunun bitişini
+  garanti etmez. Commit/push ve taze CI bu kayıtta henüz yok; üretime bağlanılmadı.
+- Ayrı konu: canlı entry kalitesi gözlemi ve Astra'nın sınıflandırma düzeltmesi
+  [ENTRY_KALITE_GOZLEMI_2026-09-10.md](ENTRY_KALITE_GOZLEMI_2026-09-10.md);
+  PLAN Sıra 4'e açık madde girdi. Hiçbir yaygınlık iddiası kanıtlanmadı.
+
+## 2026-09-10 — outbox arşivi taslak, son yerel prova başarısız
+
+- PR #127 OPEN/DRAFT, head `a0687448bf63a168975b3cc6c20ce50c3382ad23`;
+  CI `34485420687` 7/7 SUCCESS. Bu sürümde 1.452 unit / 11 PostgreSQL
+  entegrasyon testi ve format/lint/typecheck geçti. Opus 5 incelemesi **NO-GO**.
+- Sonraki hash/teşhis/prova düzeltmeleri çalışma ağacında, commit/push yok.
+  Bu düzeltmelerde 28 odaklı unit ve typecheck geçti; yeni 12. entegrasyon
+  testi henüz çalıştırılmadı. Son format/lint oturumlarının sonucu alınamadı;
+  güncel ağaç için PASS kaydı sayılmadı.
+- `probe-03`, 17:02:42–17:07:01 TSİ: **32/35 sonrası FAIL**;
+  Python psql yardımcısında `TimeoutExpired / REHEARSAL_STEP_FAILED`,
+  failedAt 33, line 42. Hangi sorgu olduğu açık; reset CLI timeout'u
+  olduğu kanıtlanmadı. Cleanup hatası 0, DB adları kataloğu korundu.
+- Ayrı önceki teşhis NOWAIT reddini P2010 / 55P03 olarak yeniden üretti;
+  autovacuum VacuumTruncate gözlendi. Bu kanıt son Python timeout'unun
+  kök nedenini açıklamaz. Üretim bağlantısı/migration/reset yapılmadı.
+  [Devir kaydı](DEVAM_RESET_OUTBOX_2026-09-10.md),
+  [uygulama ve hakem uzlaştırması](RESET_OUTBOX_ARSIVI_2026-09-10.md).
+
 ## 2026-09-10 — 15:21 TSİ canlı ara kontrol
 
 - Pinned DNS/SSH/hostname/deploy/repo ve üretim checkout `7ebb887` doğrulandı;

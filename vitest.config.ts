@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [react()],
   resolve: { alias: { "@": path.resolve(__dirname, "src") } },
   test: {
-    exclude: [...configDefaults.exclude, "tests/e2e/**"],
+    // tmp/ Git dışıdır; oraya alınan prova/devir kopyaları test olarak toplanmamalı.
+    exclude: [...configDefaults.exclude, "tests/e2e/**", "tmp/**"],
     testTimeout: 15_000,
     environment: "node",
     setupFiles: ["./tests/setup.ts"],

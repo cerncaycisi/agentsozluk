@@ -30,6 +30,29 @@ CREATE TRIGGER "outbox_reset_archive_events_immutable"
   BEFORE UPDATE OR DELETE ON "outbox_reset_archive_events"
   FOR EACH ROW EXECUTE FUNCTION reject_outbox_reset_archive_mutation();
 
+-- Manifest sayısı sabitken üyelik kümesi büyüyebiliyordu: normal INSERT yetkisiyle
+-- yeni bir olay tamamlanmış arşive bağlanıp aday sorgusundan sessizce düşüyordu.
+-- Üyelik yalnız arşiv başlığını yazan transaction içinde eklenebilir.
+-- Niyet kapısı GUC ile: satır görünürlüğüne bakan her kontrol, arşivden ÖNCE snapshot
+-- almış bir oturumda sessizce açılıyordu; GUC snapshot'a bağlı değildir.
+-- Kapı boolean değil HEDEF archiveId taşır ve yalnız üyelik INSERT'i boyunca açıktır:
+-- aynı transaction'da sonradan başka bir arşive yazmak da reddedilir.
+-- SINIRLAR: (1) GUC'yi herhangi bir oturum ayarlayabilir, yani bu kazara/yarışan yazıcıya
+-- karşıdır, kararlı SQL operatörüne karşı değil. (2) SET LOCAL savepoint'ten BAĞIMSIZ
+-- DEĞİLDİR; ayardan önceki bir savepoint'e rollback kapıyı geri alır (meşru yol düşer,
+-- açık kalmaz).
+CREATE FUNCTION protect_sealed_outbox_reset_archive() RETURNS trigger AS $$
+BEGIN
+  IF coalesce(current_setting('agentsozluk.archiving', true), '') <> NEW."archiveId"::text THEN
+    RAISE EXCEPTION USING ERRCODE = '55000', MESSAGE = 'OUTBOX_RESET_ARCHIVE_SEALED';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER "outbox_reset_archive_events_sealed"
+  BEFORE INSERT ON "outbox_reset_archive_events"
+  FOR EACH ROW EXECUTE FUNCTION protect_sealed_outbox_reset_archive();
+
 CREATE FUNCTION protect_archived_outbox_event() RETURNS trigger AS $$
 BEGIN
   IF EXISTS (SELECT 1 FROM public.outbox_reset_archive_events WHERE "eventId" = OLD.id) THEN
@@ -43,11 +66,12 @@ CREATE TRIGGER "outbox_archived_event_immutable"
   BEFORE UPDATE OR DELETE ON "outbox_events"
   FOR EACH ROW EXECUTE FUNCTION protect_archived_outbox_event();
 
--- Boş test şemasının normal temizliği serbest; dolu arşiv CASCADE ile de kaybolamaz.
+-- Eskiden "tablolar boşsa serbest" idi; eski snapshot'lı oturum dolu arşivi de boş görüp
+-- TRUNCATE edebiliyordu (başlık kalır, üyelikler silinir, olaylar yeniden aday olur).
+-- Artık açık niyet gerekir; test temizliği bunu bilerek ayarlar.
 CREATE FUNCTION protect_outbox_reset_archive_truncate() RETURNS trigger AS $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM public.outbox_reset_archives)
-     OR EXISTS (SELECT 1 FROM public.outbox_reset_archive_events) THEN
+  IF coalesce(current_setting('agentsozluk.allow_archive_truncate', true), '') <> 'on' THEN
     RAISE EXCEPTION USING ERRCODE = '55000', MESSAGE = 'OUTBOX_RESET_ARCHIVE_IMMUTABLE';
   END IF;
   RETURN NULL;

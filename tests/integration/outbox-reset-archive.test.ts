@@ -6,6 +6,7 @@ import {
   assertExpectedOutboxArchive,
   outboxArchivesAreValid,
   pendingOutboxSnapshot,
+  outboxArchiveSummary,
 } from "../../src/modules/maintenance/repository/outbox-reset-archive";
 import { findPendingOutboxEvents } from "../../src/modules/outbox/repository/pending";
 import {
@@ -63,9 +64,15 @@ describe("reset outbox arşivinin gerçek PostgreSQL sınırı", () => {
       expect(await archivePendingOutboxEvents(tx, id, planSha256, snapshot)).toBe(id);
       expect(await tx.outboxEvent.findMany({ orderBy: { id: "asc" } })).toEqual(before);
       expect(await tx.outboxResetArchiveEvent.count()).toBe(2);
+      expect(await outboxArchiveSummary(tx)).toEqual({
+        archiveGenerations: 1,
+        totalArchivedUndeliveredRows: 2,
+      });
       expect(await pendingOutboxSnapshot(tx)).toMatchObject({ rows: 0 });
       expect(await outboxArchivesAreValid(tx)).toBe(true);
       expect(await findPendingOutboxEvents(tx, 10)).toEqual([]);
+      // Eski processedAt-only okuma arşivi görür; consumer sözleşmesi bunu ayırır.
+      expect(await tx.outboxEvent.count({ where: { processedAt: null } })).toBe(2);
       const fresh = await event(tx);
       expect((await findPendingOutboxEvents(tx, 10)).map((row) => row.id)).toEqual([fresh.id]);
       await tx.outboxEvent.update({ where: { id: fresh.id }, data: { processedAt: new Date() } });
@@ -93,6 +100,38 @@ describe("reset outbox arşivinin gerçek PostgreSQL sınırı", () => {
         data: { id: randomUUID(), planSha256, eventCount: 1, eventsSha256: "0".repeat(64) },
       });
       expect(await outboxArchivesAreValid(tx)).toBe(false);
+    }));
+
+  // Fixture bütün arşivlerini rollback ediyor; temizlik hiç COMMIT edilmiş arşivle
+  // sınanmamıştı. Başlık tablosu TRUNCATE listesinde yoksa `eventCount > 0` başlıklar
+  // kalır ve sonraki testin başlangıç durumu bozulur.
+  it("temizlik commit edilmiş arşivi başlığıyla birlikte siler", async () => {
+    await integrationDatabase.$transaction(async (tx) => {
+      await event(tx);
+      const snapshot = await pendingOutboxSnapshot(tx);
+      await archivePendingOutboxEvents(tx, randomUUID(), planSha256, snapshot);
+    });
+    expect(await integrationDatabase.outboxResetArchive.count()).toBe(1);
+    expect(await integrationDatabase.outboxResetArchiveEvent.count()).toBe(1);
+
+    await resetIntegrationDatabase();
+
+    expect(await integrationDatabase.outboxEvent.count()).toBe(0);
+    expect(await integrationDatabase.outboxResetArchiveEvent.count()).toBe(0);
+    expect(await integrationDatabase.outboxResetArchive.count()).toBe(0);
+    expect(await outboxArchivesAreValid(integrationDatabase)).toBe(true);
+  });
+
+  it("arşiv özeti oturum saat dilimi değişince aynı kalır", async () =>
+    fixture(async (tx) => {
+      await event(tx);
+      await tx.$executeRaw`SET LOCAL timezone = 'UTC'`;
+      const utc = await pendingOutboxSnapshot(tx);
+      await tx.$executeRaw`SET LOCAL timezone = 'America/New_York'`;
+      expect(await pendingOutboxSnapshot(tx)).toEqual(utc);
+      await archivePendingOutboxEvents(tx, randomUUID(), planSha256, utc);
+      await tx.$executeRaw`SET LOCAL timezone = 'Europe/Istanbul'`;
+      expect(await outboxArchivesAreValid(tx)).toBe(true);
     }));
 
   it("başka planın veya eksik arşivin makbuzunu reddeder", async () =>

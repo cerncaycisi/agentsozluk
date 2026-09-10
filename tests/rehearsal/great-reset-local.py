@@ -13,6 +13,8 @@ import select
 import socket
 import subprocess
 import sys
+import time
+import traceback
 
 
 def require(condition, code):
@@ -37,13 +39,118 @@ env['PGOPTIONS'] = '-c timezone=UTC -c extra_float_digits=3'
 env['AGENT_GREAT_RESET_DATABASE_URL'] = f'postgresql://gokhannihalgul@127.0.0.1:5432/{name}'
 
 
+cases = []
+PSQL_TIMEOUT_SECONDS = 30
+PSQL_SNAPSHOT_SECONDS = 20
+psql_timings = []
+timeout_diagnosis = None
+
+
+def query_class(sql):
+    """Ham SQL/payload sızdırmadan sorguyu sınıflandırır; makbuza yalnız sınıf yazılır."""
+    text = ' '.join(sql.split()).lower()
+    if 'string_agg' in text and 'sha256' in text:
+        return 'FINGERPRINT'
+    if 'generate_series' in text and 'insert into outbox_events' in text:
+        return 'LOAD_INSERT'
+    if 'pg_database' in text:
+        return 'CATALOG'
+    if 'pg_control_system' in text or 'current_user' in text:
+        return 'IDENTITY'
+    if 'pg_tables' in text or 'pg_sequences' in text or 'pg_constraint' in text:
+        return 'SCHEMA'
+    if 'outbox_reset_archive' in text and text.startswith('select'):
+        return 'ARCHIVE_READ'
+    if text.startswith('select count(*)'):
+        return 'COUNT'
+    if 'create trigger' in text or 'create function' in text or 'drop trigger' in text \
+            or 'drop function' in text or 'alter table' in text or 'comment on database' in text:
+        return 'FIXTURE_DDL'
+    if text.startswith(('update ', 'delete ', 'truncate', 'insert ')):
+        return 'FIXTURE_MUTATION'
+    if text.startswith('select'):
+        return 'READ'
+    return 'OTHER'
+
+
+def call_site():
+    frames = [frame for frame in traceback.extract_stack() if frame.filename == __file__]
+    return {'stepLine': frames[0].lineno if frames else None,
+            'callerLine': frames[-3].lineno if len(frames) >= 3 else None}
+
+
+def activity_start(db):
+    """Güvenli bekleme/kilit görüntüsünü ASENKRON başlatır; sorgu metni okunmaz.
+
+    Teşhis, ölçülen sorgunun bütçesini uzatmamalı: bu yüzden beklenmeden başlatılır.
+    """
+    sql = """SELECT coalesce(json_agg(json_build_object('state',state,'waitType',wait_event_type,
+      'wait',wait_event,'querySeconds',round(extract(epoch FROM(clock_timestamp()-query_start))::numeric,1),
+      'txSeconds',round(extract(epoch FROM(clock_timestamp()-xact_start))::numeric,1),
+      'blockedBy',pg_blocking_pids(pid),'backendType',backend_type)),'[]'::json)
+      FROM pg_stat_activity WHERE datname=$SNAP$""" + db + """$SNAP$;"""
+    try:
+        # SQL argümanla verilir: kapatılmış bir stdin'i communicate() flush etmeye
+        # çalışıp ValueError atıyor ve teşhis tam gerektiği anda kayboluyordu.
+        return subprocess.Popen(['psql', '-X', '-h', '127.0.0.1', '-p', '5432', '-d', 'postgres',
+                                 '-At', '-v', 'ON_ERROR_STOP=1', '-c', sql],
+                                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                stderr=subprocess.DEVNULL, text=True, env=env)
+    except OSError:
+        return None
+
+
+def activity_read(process, seconds):
+    if process is None:
+        return None
+    try:
+        stdout, _ = process.communicate(timeout=max(seconds, 0.1))
+        return json.loads(stdout.strip()) if process.returncode == 0 else None
+    except (subprocess.SubprocessError, ValueError):
+        try:
+            process.kill()
+        except OSError:
+            pass
+        return None
+
+
 def psql(db, sql):
-    result = subprocess.run(['psql', '-X', '-h', '127.0.0.1', '-p', '5432', '-d', db,
-                             '-At', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=sqlstate', '-f', '-'],
-                            input=sql, text=True, capture_output=True, env=env, timeout=30)
-    sqlstate = re.search(r'ERROR:\s+([0-9A-Z]{5})', result.stderr)
-    require(result.returncode == 0, 'FIXTURE_SQL_FAILED:' + (sqlstate.group(1) if sqlstate else 'UNKNOWN'))
-    return result.stdout.strip()
+    """Bütçe aşılırsa, süreci öldürmeden önce hangi adımın neyi beklediği kaydedilir."""
+    global timeout_diagnosis
+    started = time.monotonic()
+    site = call_site()
+    process = subprocess.Popen(['psql', '-X', '-h', '127.0.0.1', '-p', '5432', '-d', db,
+                                '-At', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=sqlstate', '-f', '-'],
+                               stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               text=True, env=env)
+    snapshot = None
+    deadline = started + PSQL_TIMEOUT_SECONDS
+    try:
+        stdout, stderr = process.communicate(sql, timeout=PSQL_SNAPSHOT_SECONDS)
+    except subprocess.TimeoutExpired:
+        # Sorgu hâlâ canlıyken bak; öldürdükten sonra pg_stat_activity'de iz kalmaz.
+        # Teşhis beklenmeden başlatılır: 30 sn mutlak bütçeyi uzatmamalı.
+        watcher = activity_start(db)
+        try:
+            stdout, stderr = process.communicate(timeout=max(deadline - time.monotonic(), 0.1))
+            snapshot = activity_read(watcher, deadline - time.monotonic())
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.communicate()
+            snapshot = activity_read(watcher, 5)
+            if timeout_diagnosis is None:
+                timeout_diagnosis = {'queryClass': query_class(sql), **site,
+                                     'afterCase': len(cases), 'nextCase': len(cases) + 1,
+                                     'lastCasePassed': cases[-1] if cases else None,
+                                     'budgetSeconds': PSQL_TIMEOUT_SECONDS,
+                                     'snapshotAtSeconds': PSQL_SNAPSHOT_SECONDS, 'activity': snapshot}
+            raise
+    seconds = round(time.monotonic() - started, 3)
+    psql_timings.append({'queryClass': query_class(sql), **site, 'afterCase': len(cases),
+                         'seconds': seconds, **({'activity': snapshot} if snapshot else {})})
+    sqlstate = re.search(r'ERROR:\s+([0-9A-Z]{5})', stderr)
+    require(process.returncode == 0, 'FIXTURE_SQL_FAILED:' + (sqlstate.group(1) if sqlstate else 'UNKNOWN'))
+    return stdout.strip()
 
 
 def catalog():
@@ -69,7 +176,6 @@ def fingerprint(db):
 
 
 cli = ['node', 'node_modules/tsx/dist/cli.mjs', 'scripts/great-reset-local.ts']
-cases = []
 
 
 def invoke(args=(), error=None):
@@ -137,6 +243,10 @@ def candidates():
     return json.loads(result.stdout)
 
 created = []
+expected_case_count = 36
+completed = False
+failure = None
+started_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
 try:
     for db in [name]:
         subprocess.run(['createdb', '-h', '127.0.0.1', '-p', '5432', db], env=env, check=True, timeout=30)
@@ -146,6 +256,9 @@ try:
                             '--exit-on-error', '--single-transaction', '--no-owner', '--no-privileges', str(dump)],
                            env=env, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=60)
     migrate(name)
+    # Yalnız kendi sentetik DB'mizde: büyük rollback autovacuum'u tetikleyip NOWAIT
+    # kapısını rastgele çalıştırmasın. Üretim kilit/timeout kuralı değişmez.
+    psql(name, 'ALTER TABLE outbox_events SET (autovacuum_enabled=false); ALTER TABLE outbox_reset_archives SET (autovacuum_enabled=false); ALTER TABLE outbox_reset_archive_events SET (autovacuum_enabled=false);')
     original = fingerprint(name)
     backup = output / 'migrated-synthetic.dump'
     subprocess.run(['pg_dump', '-h', '127.0.0.1', '-p', '5432', '-d', name, '-Fc', '-f', str(backup)], env=env, check=True, timeout=60)
@@ -160,6 +273,14 @@ try:
             'INITIAL_PRECONDITIONS_MISSING')
     require(original == fingerprint(name), 'DRY_RUN_CHANGED_DATA')
     mark('default-dry-run-read-only')
+    # Teşhis dalı gerçekten koşmalı: 20 sn eşiğini aşan ama 30 sn bütçesinde biten sorgu.
+    # Bu dal daha önce kapalı stdin yüzünden sessizce None dönüyordu.
+    psql(name, 'SELECT pg_sleep(21);')
+    diagnostic = psql_timings[-1]
+    require(20 <= diagnostic['seconds'] < PSQL_TIMEOUT_SECONDS, 'DIAGNOSTIC_PROBE_OUT_OF_RANGE')
+    require(isinstance(diagnostic.get('activity'), list) and diagnostic['activity'],
+            'DIAGNOSTIC_SNAPSHOT_MISSING')
+    mark('slow-query-diagnostic-snapshot-captured')
     # Yalnız sentetik fixture: gerçek olay teslimi iddiası değildir.
     psql(name, '''UPDATE agent_global_settings SET "runtimeEnabled"=false,"schedulerEnabled"=false,
       "publicWriteEnabled"=false,"publishEnabled"=false;
@@ -197,7 +318,7 @@ try:
             require(select.select([session.stdout], [], [], 10)[0], 'HELD_CONNECTION_TIMEOUT')
             require(session.stdout.readline().strip() == 'READY', 'HELD_CONNECTION_FAILED')
             before = fingerprint(name)
-            execute(plan, 'GREAT_RESET_DATABASE_OPERATION_FAILED' if hold_lock else 'GREAT_RESET_PRECONDITIONS_FAILED')
+            execute(plan, 'GREAT_RESET_LOCK_NOT_AVAILABLE' if hold_lock else 'GREAT_RESET_PRECONDITIONS_FAILED')
             require(before == fingerprint(name), 'CONNECTION_REJECTION_CHANGED_DATA')
         finally:
             session.communicate('ROLLBACK;\n\\q\n', timeout=10)
@@ -265,7 +386,6 @@ try:
         table = row['table']
         if table not in ['audit_logs', 'idempotency_records', 'outbox_reset_archives', 'outbox_reset_archive_events']:
             require(before[table] == after[table], f'PRESERVED_DATA_CHANGED:{table}')
-    mark('successful-reset-preserves-society-audit-and-public-id-sequences')
     execute(plan, 'GREAT_RESET_STALE_PLAN', archive=True)
     mark('same-plan-cannot-execute-twice')
     require(done['archivedOutboxRows'] == pending_count and pending_count > 0, 'ARCHIVE_ROW_COUNT_WRONG')
@@ -273,6 +393,8 @@ try:
     require(before['outbox_events'] == after['outbox_events'], 'OUTBOX_ORIGINAL_FIELDS_CHANGED')
     require(candidates() == [], 'ARCHIVED_EVENTS_STILL_CANDIDATES')
     require(preview()['blockedBy'] == [], 'VALID_ARCHIVE_STILL_BLOCKED')
+    require(done['archiveGenerations'] == 1 and done['totalArchivedUndeliveredRows'] == pending_count, 'ARCHIVE_SUMMARY_WRONG')
+    mark('successful-reset-preserves-society-audit-and-public-id-sequences')
     mark('pending-events-preserved-and-excluded-from-consumer-candidates')
     for label, sql in [
         ('archived-event-processing-refused', 'UPDATE outbox_events SET "processedAt"=now();'),
@@ -340,7 +462,7 @@ try:
     load_started = datetime.datetime.now(datetime.timezone.utc)
     load_done = execute(preview(archive=True), archive=True)
     load_seconds = (datetime.datetime.now(datetime.timezone.utc)-load_started).total_seconds()
-    require(load_done['archivedOutboxRows'] == 192001 and candidates() == [], 'SECOND_ARCHIVE_INCOMPLETE')
+    require(load_done['archivedOutboxRows'] == 192001 and candidates() == [] and load_done['archiveGenerations'] == 2 and load_done['totalArchivedUndeliveredRows'] == pending_count + 192001, 'SECOND_ARCHIVE_INCOMPLETE')
     require(load_before['outbox_events'] == fingerprint(name)['outbox_events'], 'SECOND_ARCHIVE_MUTATED_OUTBOX')
     first_id = done['outboxArchiveId']
     require(psql(name, f"SELECT to_jsonb(a)::text FROM outbox_reset_archives a WHERE id='{first_id}';") == first_archive, 'OLDER_ARCHIVE_CHANGED')
@@ -364,14 +486,37 @@ try:
       'archiveGenerations':2,'receipt':load_done},indent=2)+'\n')
     (output / 'execution.json').write_text(json.dumps(done, indent=2) + '\n')
     (output / 'after.json').write_text(json.dumps(after, indent=2) + '\n')
+    require(len(cases) == expected_case_count and len(set(cases)) == expected_case_count, 'CASE_SET_INCOMPLETE')
+    completed = True
+except BaseException as error:
+    message = str(error)
+    own_frames = [frame for frame in traceback.extract_tb(error.__traceback__) if frame.filename == __file__]
+    failure = {'type': type(error).__name__,
+               'code': message if re.fullmatch('[A-Z0-9_:.-]{1,180}', message) else 'REHEARSAL_STEP_FAILED',
+               'failedAt': len(cases) + 1, 'line': own_frames[-1].lineno if own_frames else None,
+               'stepLine': own_frames[0].lineno if own_frames else None,
+               'lastCasePassed': cases[-1] if cases else None,
+               'psqlTimeout': timeout_diagnosis}
+    raise
 finally:
     errors = []
     for db in reversed(created):
         result = subprocess.run(['dropdb','-h','127.0.0.1','-p','5432',db],env=env,capture_output=True)
         if result.returncode:
             errors.append(db)
-    receipt = {'casesPassed': cases, 'dumpSha256': expected_sha, 'scratchDatabases': created,
-               'cleanupErrors': errors, 'databaseCatalogPreserved': catalog() == before_catalog,
+    catalog_preserved = catalog() == before_catalog
+    receipt = {'result': 'PASS' if completed and not errors and catalog_preserved else 'FAIL',
+               'startedAt': started_at, 'expectedCaseCount': expected_case_count, 'completedCaseCount': len(cases),
+               'failure': failure, 'syntheticAutovacuumDisabled': True, 'casesPassed': cases, 'dumpSha256': expected_sha, 'scratchDatabases': created,
+               'cleanupErrors': errors, 'databaseCatalogPreserved': catalog_preserved,
                'finishedAt': datetime.datetime.now(datetime.timezone.utc).isoformat()}
     (output / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
+    slowest = sorted(psql_timings, key=lambda row: -row['seconds'])[:15]
+    (output / 'psql-timings.json').write_text(json.dumps(
+        {'budgetSeconds': PSQL_TIMEOUT_SECONDS,
+         'scope': 'yalnız psql() yardımcısı; sql_refused/invoke/candidates/migrate '
+                  'doğrudan subprocess çağrıları ve zaman aşımına uğrayan çağrı dahil değildir',
+         'callCount': len(psql_timings),
+         'totalSeconds': round(sum(row['seconds'] for row in psql_timings), 3),
+         'slowestCalls': slowest, 'calls': psql_timings}, indent=2) + '\n')
     require(not errors and receipt['databaseCatalogPreserved'], 'SCRATCH_CLEANUP_FAILED')

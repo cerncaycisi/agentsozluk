@@ -13,6 +13,7 @@ import {
   assertExpectedOutboxArchive,
   outboxArchivesAreValid,
   pendingOutboxSnapshot,
+  outboxArchiveSummary,
 } from "./outbox-reset-archive";
 
 type Request = (
@@ -86,10 +87,14 @@ async function fingerprint(
           ? Prisma.sql`WHERE t."archiveId" <> ${archiveId}::uuid`
           : Prisma.empty;
   const [result] = await tx.$queryRaw<Fingerprint[]>(Prisma.sql`
+    WITH row_hashes AS MATERIALIZED (
+      SELECT encode(sha256(convert_to((${projection})::text, 'UTF8')), 'hex') AS row_hash
+      FROM ${tableSql(table)} t ${filter}
+    )
     SELECT count(*)::int AS rows,
-      encode(sha256(convert_to(coalesce(string_agg((${projection})::text,
-        E'\n' ORDER BY (${projection})::text COLLATE "C"), ''), 'UTF8')), 'hex') AS sha256
-    FROM ${tableSql(table)} t ${filter}
+      encode(sha256(convert_to(coalesce(string_agg(row_hash,
+        E'\n' ORDER BY row_hash COLLATE "C"), ''), 'UTF8')), 'hex') AS sha256
+    FROM row_hashes
   `);
   if (!result) throw new Error("GREAT_RESET_FINGERPRINT_FAILED");
   return result;
@@ -251,7 +256,9 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
     throw new Error("GREAT_RESET_CONFIRMATION_MISMATCH");
   const list = tables();
   const archiveOutbox = request.archiveOutbox === true;
-  const outboxPolicy = archiveOutbox ? "ARCHIVE_PENDING_KEEP_ROWS" : "REQUIRE_DRAIN_KEEP_ROWS";
+  const outboxPolicy = archiveOutbox
+    ? "ARCHIVE_PENDING_KEEP_ROWS"
+    : "REQUIRE_NO_UNARCHIVED_PENDING_KEEP_ROWS";
   const implementationSha256 = implementationDigest();
   const database = new PrismaClient({ datasourceUrl: target.databaseUrl, log: [] });
   try {
@@ -274,11 +281,13 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         const schemaSha256 = await inspectSchema(tx, list);
         const before = await snapshot(tx, list);
         const pendingOutbox = await pendingOutboxSnapshot(tx);
+        const archivesBefore = await outboxArchiveSummary(tx);
         const blockedBy = await blockers(tx, archiveOutbox);
         const planSha256 = digest({
           version: 2,
           outboxPolicy,
           pendingOutbox,
+          ...archivesBefore,
           implementationSha256,
           actual,
           schemaSha256,
@@ -310,6 +319,7 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
           idempotencyPolicy: "EXPIRE_ALL_KEEP_ROWS",
           outboxPolicy,
           pendingOutbox,
+          ...archivesBefore,
         };
         if (request.mode === "DRY_RUN") return report;
         if (blockedBy.length) throw new Error("GREAT_RESET_PRECONDITIONS_FAILED");
@@ -341,6 +351,7 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
               outboxPolicy,
               outboxArchiveId,
               archivedOutboxRows: outboxArchiveId ? pendingOutbox.rows : 0,
+              archivesBefore,
               policy: "TRUNCATE_ONLY_CONTINUE_IDENTITY_RESTRICT",
               scope: "LOCAL_SYNTHETIC_ONLY",
             },
@@ -370,6 +381,7 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
           resetId,
           outboxArchiveId,
           archivedOutboxRows: outboxArchiveId ? pendingOutbox.rows : 0,
+          ...(await outboxArchiveSummary(tx)),
           expiredIdempotencyRows: expired.count,
           verified: true,
         };
@@ -382,6 +394,16 @@ export async function runLocalGreatReset(value: string | undefined, request: Req
         maxWait: 5_000,
       },
     );
+  } catch (error) {
+    // Yalnız sabit güvenli neden kodları; SQL, hata mesajı veya satır içeriği çıkmaz.
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2010" && error.meta?.code === "55P03")
+        throw new Error("GREAT_RESET_LOCK_NOT_AVAILABLE");
+      if (error.code === "P2010" && error.meta?.code === "57014")
+        throw new Error("GREAT_RESET_QUERY_CANCELLED");
+      if (error.code === "P2028") throw new Error("GREAT_RESET_TRANSACTION_FAILED");
+    }
+    throw error;
   } finally {
     await database.$disconnect();
   }

@@ -6,7 +6,11 @@ const databaseUrl = requireTestDatabaseUrl(process.env.TEST_DATABASE_URL, "Integ
 export const integrationDatabase = new PrismaClient({ datasourceUrl: databaseUrl });
 
 export async function resetIntegrationDatabase(): Promise<void> {
-  await integrationDatabase.$executeRaw`
+  // Arşiv tabloları açıkça listelenir: `outbox_events` CASCADE'i üyeliklere ulaşır ama
+  // BAŞLIK tablosuna ulaşmaz, testler arası arşiv artığı kalırdı. Koruma açık niyet ister.
+  await integrationDatabase.$transaction([
+    integrationDatabase.$queryRaw`SELECT set_config('agentsozluk.allow_archive_truncate', 'on', true)`,
+    integrationDatabase.$executeRaw`
     TRUNCATE TABLE
       "agent_runtime_events",
       "agent_runtime_credential_sync",
@@ -15,6 +19,8 @@ export async function resetIntegrationDatabase(): Promise<void> {
       "agent_global_settings",
       "idempotency_records",
       "rate_limit_buckets",
+      "outbox_reset_archive_events",
+      "outbox_reset_archives",
       "outbox_events",
       "audit_logs",
       "entry_appeal_decisions",
@@ -36,7 +42,8 @@ export async function resetIntegrationDatabase(): Promise<void> {
       "sessions",
       "users"
     RESTART IDENTITY CASCADE
-  `;
+  `,
+  ]);
   await integrationDatabase.agentGlobalSettings.upsert({
     where: { id: "global" },
     update: {},

@@ -60,9 +60,13 @@
 ## Bağımsız hakem seçimi
 
 - Güvenlik veya koşu mekanizmasını etkileyen her değişiklikte salt okunur peer review al.
-- Hakem yürütücüden farklı model olmalıdır. Yürütücü Astra olduğunda **Fable veya Opus 5**
-  kullanılmalıdır. Aynı modelin ayrı oturumu farklı modelden peer review sayılmaz. Önceki
-  Astra tercihi, yürütücünün Claude olduğu çalışma düzenine aitti; Astra yürütürken uygulanmaz.
+- Hakem yürütücüden farklı model olmalıdır. Aynı modelin ayrı oturumu farklı modelden
+  peer review sayılmaz.
+  - Yürütücü **Astra** olduğunda hakem **Fable veya Opus 5**'tir.
+  - Yürütücü **Claude (Opus 5)** olduğunda hakem **Astra**'dır:
+    `codex exec --model gpt-6-astra -c model_reasoning_effort="xhigh" --sandbox read-only`.
+    _(Gökhan kararı, 10 Eylül 2026.)_
+  - Her iki yön de aynı kuralın uygulanmasıdır; hangi tarafın yürüttüğüne bakılır.
 - Hakeme "beni doğrulama, ÇÜRÜT" çerçevesi ver; her somut bulgu için dosya:satır,
   tetikleyici ve etki iste. Kullanılan gerçek modeli, incelenen SHA'yı ve sonucu kaydet.
 - Hakem yalnız okumalı; kod değiştirmemeli, üretime bağlanmamalı veya eylem yetkisi
