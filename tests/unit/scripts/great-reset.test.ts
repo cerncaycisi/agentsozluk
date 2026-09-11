@@ -64,6 +64,8 @@ describe("great reset sınıflandırması", () => {
     // Silinen şeyin denetim izi silinirse sıfırlama denetlenemez hâle gelir.
     expect(greatResetPreservedModels).toContain("auditLog");
     expect(greatResetPreservedModels).toContain("outboxEvent");
+    expect(greatResetPreservedModels).toContain("outboxResetArchive");
+    expect(greatResetPreservedModels).toContain("outboxResetArchiveEvent");
   });
 
   it("sözlüğü ve ajanın iç durumunu temizler", () => {

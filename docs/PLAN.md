@@ -23,10 +23,12 @@ bu planın mevcut çalışma alanlarına bağlar. Raporun eklenmesi uygulama dü
 
 Kural değişmedi: **ölçmeden gönderme.** Her madde bir kanıta veya bir ölçüm adımına bağlı.
 
-**Hakem seçimi (7 Eylül düzeltmesi):** Yürütücü Astra olduğunda güvenlik/koşu
-değişikliklerinin salt okunur peer review'ını **Fable veya Opus 5** yapar. Önceki
-Astra tercihi Claude yürütücülü düzene aitti. Aynı modelin ayrı oturumu bu şartı
-karşılamaz; tarihsel Astra bulguları kendi adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
+**Hakem seçimi (10 Eylül düzeltmesi):** Güvenlik/koşu değişikliklerinin salt okunur
+peer review'ını **her zaman yürütücüden farklı bir model** yapar. Yürütücü Astra ise
+hakem **Fable veya Opus 5**; yürütücü **Claude (Opus 5) ise hakem Astra**
+(`gpt-6-astra`, xhigh, read-only) — _Gökhan kararı, 10 Eylül 2026_. Aynı modelin ayrı
+oturumu bu şartı karşılamaz; tarihsel hakem bulguları kendi adıyla korunur.
+Ayrıntı `AGENTS.md` içindedir.
 
 ---
 
@@ -339,6 +341,37 @@ davranışı ve veri bütünlüğünü etkiliyor.
 ---
 
 ## 4. Sıra 4 — davranış ölçümü
+
+- [ ] **Entry kalitesi: çekince/pipeline sızıntısı ve ansiklopedi tonu — ÖLÇÜLMEDİ.**
+      _(10 Eylül, Gökhan canlıdan bildirdi; kanıt [ENTRY_KALITE_GOZLEMI_2026-09-10.md](ENTRY_KALITE_GOZLEMI_2026-09-10.md))_
+
+  `entry/17002`'de kesin olan: "sağlanan özet ... açıklamıyor" ifadesinin metinde
+  **karşılığı yok** — okur, kendi içinde açıklanmayan bir bilgi sınırıyla baş başa kalıyor.
+  Bunun ajanın kendi girdisinin sızması olduğu **hipotez**; doğrulamak için gerçek girdi
+  gerekir.
+
+  **Astra hakem turu ilk sınıflandırmamı çürüttü.** "Öznel = kaliteli, nötr = kalitesiz"
+  varsayımı düştü: 16995 görüş içermediği için kusurlu değil, 17000'in metaforu otomatik
+  onay almıyor. Eksenler ayrı puanlanmalı: **başlığa katkı, kendi başına anlaşılabilirlik,
+  dayanak yeterliliği, özgüllük.** Çekincenin kendisi de kusur değil — ayrım, konunun kanıt
+  sınırını açıklamak ile yazarın malzeme eksikliğini anlatmak arasında.
+
+  **Hiçbir şey kanıtlanmadı.** 5 gözlem "çok var"ı taşımaz, üstelik beşi de aynı 55 dakikalık
+  pencereden. 0 puanlar kanıt değil (oy hacmi/gösterim bilinmiyor). AW perception daralması
+  (PR #112) hipotezinde eksik olan yalnız örnek sayısı değil, **nedensel zincirin kendisi**;
+  daralmanın yazımı değil **aday seçimini** bozmuş olması, ya da timeout azalınca zaten var
+  olan kusurun görünür hâle gelmesi en az onun kadar olası. "Etki/semantik kalite GO yok"
+  kaydı kalite onayının yokluğunu gösterir, **gerilemeyi göstermez.**
+
+  Kurulması gereken: (a) son 14 günden gün/saate dağıtılmış **300 rastgele tam entry**,
+  **iki bağımsız değerlendirici**, anlaşmazlıklar raporlanır — ifade aramasıyla toplanan
+  kusur koleksiyonu yaygınlık hesabına katılmaz; (b) **eşleştirilmiş çevrimdışı eski/yeni
+  karşılaştırması**: yalnız AW bağlamı değişir, seçim etkisi ayrı ölçülür, metinler koşulu
+  bilmeyen değerlendiricilere okutulur. Birlikte ölçülür: aday başına yararlı/sorunlu yayın,
+  yayımlananlarda kusur oranı, yararlı adayların yanlış reddi, timeout oranı — **yalnız
+  yayımlananların ortalamasına bakmak sistemin susarak "iyileşmesini" ödüllendirir.**
+  Kapı düzeyinde **"daha öznel yaz" kuralı konulmayacak**; sızıntı ifadeleri yasaklı kelime
+  değil **inceleme tetikleyicisi** olacak. Entry'ler **elle temizlenmeyecek**.
 
 - [~] **Gezinme fazı verim regresyonu — atıf yanlıştı, deney gereksiz.**
   _(bkz `docs/KOSU_BUTCESI_OLCUMU_2026-09-02.md` ve `docs/VERIM_KARISIMI_OLCUMU_2026-09-03.md`)_
@@ -690,6 +723,53 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    gelecekteki tüketimden ayıran tasarım hazırlanmalı. OUTBOX_PENDING
    koruması ve üretim kapısı açık; processedAt ile sahte tüketim yapılmaz.
    [Doğrudan prova kanıtı](RESET_ONCESI_HAZIRLIK_2026-09-10.md).
+
+   **10 Eylül — outbox arşivi, iki hakem turunda üç gerçek güvenlik açığı kapatıldı:**
+   PR #127; uzak head `22701725546aa8e945e80f23dc4e965725bda476`, bu tam head için
+   CI `34500131757` **7/7 SUCCESS** (quality, browser, database, container, behavior,
+   coverage, validate). Önceki aday `a068744` ve CI `34485420687` tarihsel kayıttır.
+   Hakem bu turda **Astra** (yürütücü Claude olduğu için — bkz. hakem seçimi).
+   Beş tur: **NO-GO, NO-GO, KOŞULLU, KOŞULLU, GO** — son karar yalnız bu yerel paket için.
+   İlk iki turun bulguları **aynı hata sınıfıydı**:
+   koruma, çağıranın kendi snapshot'ında arşivin görünmesine bağlıydı. Üçü de
+   gerçek PostgreSQL deneyiyle **yeniden üretildi**, sonra düzeltildi:
+   1. Arşivden önce snapshot almış `REPEATABLE READ` yazıcısı arşivlenmiş olayın
+      `processedAt` alanını **hatasız değiştirdi**. `FOR UPDATE` kilidi çözmedi
+      (yeni satır sürümü doğurmuyor). Çözüm: arşivleme, üyelikten önce içeriği
+      değiştirmeyen bir yazmayla satır sürümünü tazeliyor; yazıcı artık 40001 alıyor.
+   2. Düz `INSERT`, `eventCount=1` diyen arşive ikinci üyeyi ekledi (manifest tutarsız).
+   3. Aynı snapshot açığı `TRUNCATE`'te kalmıştı: eski snapshot'lı oturum üyelikleri
+      **hatasız sildi** — başlık kalır, olaylar yeniden tüketici adayı olur.
+
+   (2) ve (3) için koruma artık satır görünürlüğüne değil **açık niyet kapısına**
+   (`SET LOCAL` GUC) bakıyor; kapı boolean değil **hedef `archiveId`** taşır ve yalnız
+   üyelik INSERT'i boyunca açıktır. Eski "tablolar boşsa TRUNCATE serbest" istisnası
+   kaldırıldı. **Sınırlar:** GUC'yi herhangi bir oturum ayarlayabilir — bu koruma
+   kazara/yarışan yazıcıya karşıdır, kararlı SQL operatörüne karşı değil; paketin ilan
+   ettiği tehdit modeli zaten budur. Ayrıca `SET LOCAL` **savepoint'ten bağımsız
+   değildir**: ayardan önceki bir savepoint'e rollback kapıyı geri alır — meşru yol
+   düşer, kapı açık kalmaz.
+
+   Ayrıca prova teşhisi düzeltildi (kapalı `stdin` yüzünden görüntü tam gerektiği anda
+   kayboluyordu) ve teşhis dalı artık **kendi senaryosuyla sınanıyor**. Eski snapshot
+   TRUNCATE senaryosu ilk yazımda arşivden SONRA snapshot alıyordu, yani kaçağı hiç
+   sınamıyordu (Astra bulgusu); düzeltildi ve **negatif kontrolle ayırt ediciliği
+   kanıtlandı** — eski guard'da üyelikler siliniyor, yenisinde 55000 ile reddediliyor.
+   Maliyet: 192.001 olayda **preview + execute toplamı** (yalnız execute değil)
+   tazeleme öncesi **13,4-15,4 sn (n=2)**, sonrası **19,2-34,6 sn (n=4)** —
+   **varyans yüksek, tek sayı maliyet diye sunulamaz**; yön net, büyüklük kesin değil.
+   CLI bütçesi 90 sn; ayrıca transaction 60 sn ve her SQL 20 sn sınırları geçerli.
+
+   Güncel ölçümler: `probe-09` **36/36 PASS** (probe-07/08 de 36/36), eşzamanlılık
+   provası **3/3 PASS**, entegrasyon paketinin tamamı **22 dosya / 269 test PASS**,
+   unit 1452/1452, format/lint/typecheck PASS. İki regresyon testi de **negatif
+   kontrolle** ayırt edici bulundu: düzeltme geri alınınca düşüyorlar.
+   **Açık kalan:** probe-01/02/03 FAIL'lerinin kök nedeni **kanıtlanmadı ve yeniden
+   üretilemedi**; GO gerekçesi sayılmıyor. 30 sn prova bütçesi istemciyi öldürür ama
+   sunucudaki sorgunun bitişini garanti etmez (`statement_timeout` konmuş değil).
+   Önceki yeşil CI bu düzeltmeleri kapsamıyor. Üretime bağlanılmadı; migration/reset
+   yapılmadı. AW penceresi ve kaynak kapıları aynı sırada açık.
+   [Uygulama ve hakem uzlaştırması](RESET_OUTBOX_ARSIVI_2026-09-10.md).
 
    4 Eylül incelemesi provaya girmesi gereken maddeleri somutladı — bunlar bende yoktu:
 

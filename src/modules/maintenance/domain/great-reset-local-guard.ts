@@ -34,8 +34,10 @@ export function localResetTarget(value: string | undefined, hostname: string) {
 }
 
 export function parseLocalResetArguments(args: readonly string[]) {
+  const archiveOutbox = args.at(-1) === "--archive-outbox";
+  if (archiveOutbox) args = args.slice(0, -1);
   if (!args.length || (args.length === 1 && args[0] === "--dry-run")) {
-    return { mode: "DRY_RUN" as const };
+    return { mode: "DRY_RUN" as const, ...(archiveOutbox ? { archiveOutbox: true as const } : {}) };
   }
   if (
     args.length === 5 &&
@@ -44,7 +46,12 @@ export function parseLocalResetArguments(args: readonly string[]) {
     args[3] === "--plan-sha256" &&
     /^[a-f0-9]{64}$/u.test(args[4] ?? "")
   ) {
-    return { mode: "EXECUTE" as const, databaseName: args[2]!, planSha256: args[4]! };
+    return {
+      mode: "EXECUTE" as const,
+      databaseName: args[2]!,
+      planSha256: args[4]!,
+      ...(archiveOutbox ? { archiveOutbox: true as const } : {}),
+    };
   }
   throw new Error("GREAT_RESET_INVALID_ARGUMENTS");
 }
