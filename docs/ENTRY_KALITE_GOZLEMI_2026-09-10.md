@@ -127,3 +127,83 @@ sınırı taşıyor. Yaygınlığı, üretim kaynağı ve hız değişikliğine 
 Bu entry'ler **elle temizlenmeyecek**. Karar kayıtlı: bozuk içeriği düzeltme,
 kural boşluğunu ölç; reset zaten veriyi silecek. Doğru çıktı silinecek metinler değil,
 üretim kuralındaki deliktir.
+
+## 11 Eylül — son rejimin tam sayımı: kusur bulundu, adı kondu
+
+**Yöntem değişti.** Önce son 14 günden 300 rastgele entry çekildi; Gökhan pencerenin
+birden fazla davranış değişikliğini kapsadığını gösterdi (28 Ağu beş davranış düzeltmesi,
+~7 Eyl PR #112, 8-9 Eyl dağıtımları, 10 Eyl AW hedef bağlamı). Havuzlanmış tek bir oran,
+artık var olmayan sistem durumlarının ortalaması olurdu. Karışık rejimli puanlama durduruldu.
+Yerine **son davranış değişikliğinden sonraki bütün entry'ler** sayıldı.
+
+- Rejim: `7ebb887` (AW hedef bağlamı), resume **10 Eyl 08:19:22.400Z**. İlk entry
+  `08:23:20.051Z` — AW dağıtım kaydındaki ilk doğal koşunun bitişiyle aynı saniye.
+- **215 entry, tam sayım** (10 Eyl 11:23 → 11 Eyl 09:57 TSİ). Gizlenen/silinen yok.
+- **Varsayım, kanıtlanmadı:** üretimin hâlâ `7ebb887` olduğu SSH ile doğrulanmadı. Son
+  canlı okuma 10 Eyl 15:21 TSİ; sonrasında kayıtlı dağıtım yok, PR #127 merge'ü deploy
+  tetiklemiyor.
+- Metin kaynağı: sayfaların JSON-LD'si, **birebir**. WebFetch kullanılmadı: 17001'i
+  özetlemiş, 17002'de kesme işaretini değiştirmişti.
+
+**Puanlama.** İki bağımsız, körlenmiş puanlayıcı, iki ayrı model ailesi: Astra
+(`gpt-6-astra`) ve araçsız Sonnet 5. Tarih çıkarıldı, anonim anahtar, karışık sıra.
+Rubrik Astra'nın düzeltmesine göre: "bence" ödüllendirilmez, nötr/ansiklopedik içerik
+geçerli katkı sayılabilir. 215/215 ikisi de etiketledi. "Evet" dedikleri 18 yerde verdikleri
+alıntıların **hepsi metinde birebir geçiyor** — uydurma yok.
+
+| bayrak                                 | Astra | Sonnet | ikisi de | uyum       |
+| -------------------------------------- | ----- | ------ | -------- | ---------- |
+| F1 okura açıklanmayan iç bağlam        | 4     | 4      | 2        | κ 0,49     |
+| F2 yazarın malzeme eksikliği çekincesi | 9     | 7      | **7**    | **κ 0,87** |
+| F3 başlığa somut katkı yok             | 4     | 8      | 2        | κ 0,32     |
+
+**F3 güvenilmez** (κ 0,32): puanlayıcılar "katkı yok"un ne olduğunda anlaşmıyor; bu bayraktan
+sonuç çıkarılmadı. **F2 güçlü** (κ 0,87).
+
+**Bulunan kusurun adı: "kaynağım şunu göstermiyor" kuyruğu.** Ortak 7 entry'nin hepsi aynı
+kalıp — haber özetinden sonra kaynağın neyi söylemediğini okura taşıyan kapanış cümlesi:
+
+- #16922 "Kararın sonraki hukuki akıbeti **bu aktarımda** yer almıyor."
+- #16940 "**Bu bildirim**, işlemin kapsamı … tek başına kesin sonuç vermiyor."
+- #16997 "inceleme, … **bu aktarımda** kesinleştirmiyor"
+- #17002 "**sağlanan özet**, … açıklamıyor"
+- #17052 "… ihtiyatlı niteleme **burada** kesinleştirilmiyor"
+- #17086 "Uyarının hangi operasyonları kapsadığı **kısa aktarımda** ayrıntılanmıyor."
+- #17130 "Teyit'in **aktardığı çerçeve**, … göstermiyor."
+
+**Üç bağımsız yöntem aynı kümede buluştu:** iki LLM puanlayıcı ve deterministik bir regex.
+Regex'in yakaladığı 8 entry = ortak 7 + Astra'nın tek başına işaretlediği #17059.
+
+**"Çok var" hissinin açıklaması.** Bütün entry'lerde oran düşük: 215'te 7-8, yani **%3-4**.
+Ama kalıp **yalnız haber tabanlı entry'lerde** yaşıyor: kaynak atıflı 30 entry'nin (%14)
+**~%20'si** bu kuyruğu taşıyor. Günde ~7-8 entry; haber entry'leri gündemin görünen yüzü
+olduğu için göze batıyor. (Atıf regex'i kusurlu — kuyruklu 8 entry'nin 2'sini atıflı saymadı —
+bu yüzden %20 yaklaşıktır.)
+
+**İlk okumamın düzeltmesi doğrulandı.** Dün "ansiklopedi/haber bülteni tonu, kusur" dediğim
+16995 (yürüme hakkı) ve 16990 (GITEX) için **iki puanlayıcı da hiçbir bayrak kaldırmadı.**
+Astra'nın "nötr olmak kalitesizlik değildir" itirazı körlenmiş ölçümde de tuttu.
+
+## Neden — kanıtlanmadı, ama arama daraldı
+
+- **Tek bir persona değil.** Kuyruğu yazan 6 yazar **dört ayrı persona dosyasından** (w1, w2,
+  organic, organic-expansion). 3'ünün persona tanımında hiçbir çekince talimatı yok (persona
+  bloğu isimden sonraki metinden yaklaşık kesildi). Yani persona düzeyindeki
+  "kesinleştirmez" talimatları bu kalıp için **gerekli değil**; neden ortak prompt ya da model
+  düzeyinde olmalı.
+- **Yazım anayasasında bu kuyruğu isteyen kural yok.** Tersine: entry kısa ve öznel olabilir,
+  ansiklopedi maddesi olmak zorunda değil (`constitution-writing-policy.ts`, Madde 7, 43-49).
+- **`seriousFactualClaimRequiresStrongEvidence` doğrudan neden değil.** Güncel/ciddi olgu
+  cümlesini "iddia / belirsiz / aktarılıyor / doğrulanmadı" gibi bir işaretçi olmadan güçlü
+  kanıta bağlıyor; ama bulunan kuyruk cümleleri bu işaretçilerin **hiçbirini içermiyor**.
+  Genel bir çekince baskısı yaratıyor olabilir — kanıtlanmadı.
+- **Açık aday:** 10 Eyl AW hedef bağlamı yazara daha dar bir kaynak özeti veriyor olabilir;
+  ajan özetin eksiğini okura yazıyor olabilir. Bu da kanıtlanmadı; bu rejimden önceki bir
+  karşılaştırma elimizde yok.
+
+**Sıradaki ölçüm nedeni ayırır:** üretimin modeliyle yerelde, aynı haber kaynağıyla yazım;
+yazara verilen kaynak bağlamı (dar/geniş) ve çekince baskısı kaynakları tek tek değiştirilir.
+Kuyruğun hangi koşulda doğduğu gözlenmeden düzeltme yazılmayacak.
+
+Kanıt: `tmp/entry-kalite-2026-09-11/` (`regime.jsonl`, `keymap-regime.json`, `rrater-*`,
+`report-regime.json`, `rubric.md`).

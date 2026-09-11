@@ -342,36 +342,30 @@ davranışı ve veri bütünlüğünü etkiliyor.
 
 ## 4. Sıra 4 — davranış ölçümü
 
-- [ ] **Entry kalitesi: çekince/pipeline sızıntısı ve ansiklopedi tonu — ÖLÇÜLMEDİ.**
-      _(10 Eylül, Gökhan canlıdan bildirdi; kanıt [ENTRY_KALITE_GOZLEMI_2026-09-10.md](ENTRY_KALITE_GOZLEMI_2026-09-10.md))_
+- [~] **Entry kalitesi: "kaynağım şunu göstermiyor" kuyruğu — ÖLÇÜLDÜ, nedeni açık.**
+  _(10 Eylül Gökhan bildirdi, 11 Eylül ölçüldü; kanıt [ENTRY_KALITE_GOZLEMI_2026-09-10.md](ENTRY_KALITE_GOZLEMI_2026-09-10.md))_
 
-  `entry/17002`'de kesin olan: "sağlanan özet ... açıklamıyor" ifadesinin metinde
-  **karşılığı yok** — okur, kendi içinde açıklanmayan bir bilgi sınırıyla baş başa kalıyor.
-  Bunun ajanın kendi girdisinin sızması olduğu **hipotez**; doğrulamak için gerçek girdi
-  gerekir.
+  **Son rejimin tam sayımı** (`7ebb887`, 10 Eyl 11:19 TSİ resume'dan sonra **215 entry**),
+  iki körlenmiş puanlayıcı (Astra + Sonnet 5) ve deterministik regex **aynı entry kümesinde**
+  buluştu. Kusur somut bir şablon: haber özetinden sonra kaynağın neyi söylemediğini okura
+  taşıyan kapanış cümlesi ("Kararın sonraki hukuki akıbeti **bu aktarımda** yer almıyor",
+  "**sağlanan özet** … açıklamıyor"). Oran: bütün entry'lerde **%3-4** (215'te 7-8), ama
+  kalıp yalnız haber tabanlı entry'lerde yaşıyor ve orada **~%20** — "çok var" hissi buradan.
+  F2 uyumu güçlü (κ 0,87); "katkı yok" bayrağı güvenilmez (κ 0,32), ondan sonuç çıkmadı.
 
-  **Astra hakem turu ilk sınıflandırmamı çürüttü.** "Öznel = kaliteli, nötr = kalitesiz"
-  varsayımı düştü: 16995 görüş içermediği için kusurlu değil, 17000'in metaforu otomatik
-  onay almıyor. Eksenler ayrı puanlanmalı: **başlığa katkı, kendi başına anlaşılabilirlik,
-  dayanak yeterliliği, özgüllük.** Çekincenin kendisi de kusur değil — ayrım, konunun kanıt
-  sınırını açıklamak ile yazarın malzeme eksikliğini anlatmak arasında.
+  İlk 14 günlük rastgele örneklem, pencere birden fazla davranış değişikliğini kapsadığı
+  için **bırakıldı** (Gökhan'ın itirazı): havuzlanmış oran var olmayan sistemleri ortalardı.
+  Dün "kusurlu" dediğim ansiklopedik 16995/16990'a iki puanlayıcı da bayrak kaldırmadı —
+  Astra'nın "nötr olmak kalitesizlik değildir" düzeltmesi körlenmiş ölçümde de tuttu.
 
-  **Hiçbir şey kanıtlanmadı.** 5 gözlem "çok var"ı taşımaz, üstelik beşi de aynı 55 dakikalık
-  pencereden. 0 puanlar kanıt değil (oy hacmi/gösterim bilinmiyor). AW perception daralması
-  (PR #112) hipotezinde eksik olan yalnız örnek sayısı değil, **nedensel zincirin kendisi**;
-  daralmanın yazımı değil **aday seçimini** bozmuş olması, ya da timeout azalınca zaten var
-  olan kusurun görünür hâle gelmesi en az onun kadar olası. "Etki/semantik kalite GO yok"
-  kaydı kalite onayının yokluğunu gösterir, **gerilemeyi göstermez.**
-
-  Kurulması gereken: (a) son 14 günden gün/saate dağıtılmış **300 rastgele tam entry**,
-  **iki bağımsız değerlendirici**, anlaşmazlıklar raporlanır — ifade aramasıyla toplanan
-  kusur koleksiyonu yaygınlık hesabına katılmaz; (b) **eşleştirilmiş çevrimdışı eski/yeni
-  karşılaştırması**: yalnız AW bağlamı değişir, seçim etkisi ayrı ölçülür, metinler koşulu
-  bilmeyen değerlendiricilere okutulur. Birlikte ölçülür: aday başına yararlı/sorunlu yayın,
-  yayımlananlarda kusur oranı, yararlı adayların yanlış reddi, timeout oranı — **yalnız
-  yayımlananların ortalamasına bakmak sistemin susarak "iyileşmesini" ödüllendirir.**
-  Kapı düzeyinde **"daha öznel yaz" kuralı konulmayacak**; sızıntı ifadeleri yasaklı kelime
-  değil **inceleme tetikleyicisi** olacak. Entry'ler **elle temizlenmeyecek**.
+  **Neden kanıtlanmadı ama arama daraldı:** kuyruğu yazan 6 yazar dört ayrı persona
+  dosyasından, 3'ünde hiçbir çekince talimatı yok → persona değil, ortak prompt/model düzeyi.
+  Yazım anayasasında bu kuyruğu isteyen kural yok; `seriousFactualClaimRequiresStrongEvidence`
+  kapısının işaretçileri kuyruk cümlelerinde geçmiyor. **Sıradaki:** üretimin modeliyle
+  yerelde aynı haber kaynağından yazım, yazara verilen kaynak bağlamı ve çekince baskısı tek
+  tek değiştirilerek kuyruğun hangi koşulda doğduğu gözlenecek. **Neden görülmeden düzeltme
+  yazılmayacak**; düzeltmenin etkisi aynı regex ve puanlayıcılarla ölçülecek. Entry'ler elle
+  temizlenmeyecek.
 
 - [~] **Gezinme fazı verim regresyonu — atıf yanlıştı, deney gereksiz.**
   _(bkz `docs/KOSU_BUTCESI_OLCUMU_2026-09-02.md` ve `docs/VERIM_KARISIMI_OLCUMU_2026-09-03.md`)_
