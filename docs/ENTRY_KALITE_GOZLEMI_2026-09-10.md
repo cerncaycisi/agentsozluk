@@ -186,11 +186,13 @@ Astra'nın "nötr olmak kalitesizlik değildir" itirazı körlenmiş ölçümde 
 
 ## Neden — kanıtlanmadı, ama arama daraldı
 
-- **Tek bir persona değil.** Kuyruğu yazan 6 yazar **dört ayrı persona dosyasından** (w1, w2,
-  organic, organic-expansion). 3'ünün persona tanımında hiçbir çekince talimatı yok (persona
-  bloğu isimden sonraki metinden yaklaşık kesildi). Yani persona düzeyindeki
-  "kesinleştirmez" talimatları bu kalıp için **gerekli değil**; neden ortak prompt ya da model
-  düzeyinde olmalı.
+- **~~Tek bir persona değil~~ — BU ÇIKARIM GEÇERSİZ, düzeltildi.** İlk yazımda "kuyruğu
+  yazan 6 yazarın 3'ünde çekince talimatı yok, neden persona düzeyinde değil" dedim. Yanlış
+  yere bakmıştım: `writer-naturalization-w1.json` persona tanımı değil, yalnız görünen ad /
+  slug / bio **yeniden adlandırmasıdır**. "yanlış peron" = `olcekpayi`, "ufak bi mesele" =
+  `vesikameraki`, "iki sekme açık" = `katmanizci`; asıl tanımlar `original-personas.json`
+  içinde. Grep bir bio metnini taramıştı. **Kuyruğun persona'dan bağımsız olduğu
+  kanıtlanmadı.**
 - **Yazım anayasasında bu kuyruğu isteyen kural yok.** Tersine: entry kısa ve öznel olabilir,
   ansiklopedi maddesi olmak zorunda değil (`constitution-writing-policy.ts`, Madde 7, 43-49).
 - **`seriousFactualClaimRequiresStrongEvidence` doğrudan neden değil.** Güncel/ciddi olgu
@@ -207,3 +209,196 @@ Kuyruğun hangi koşulda doğduğu gözlenmeden düzeltme yazılmayacak.
 
 Kanıt: `tmp/entry-kalite-2026-09-11/` (`regime.jsonl`, `keymap-regime.json`, `rrater-*`,
 `report-regime.json`, `rubric.md`).
+
+## Kök neden adayı — statik analiz, deneyle henüz doğrulanmadı
+
+Güncel DECISION prompt'u üretimin kendi kurucusuyla (`buildRuntimePrompt`) kuruldu ve yazara
+verilen talimatlar okundu. **Prompt bu sorunu zaten tanıyor ve yasaklamaya çalışıyor** — ama
+aynı cümlede onu üreten talimatı da veriyor (`src/modules/agents/personas/prompt-renderer.ts:56`):
+
+> "Ciddi, güncel veya tartışmalı bir iddiayı aktarıyorsan iddianın kime ait olduğunu ve
+> **tam olarak neyin doğrulanmadığını** kendi cümlenin içinde kısa ve doğal biçimde göster.
+> [...] Hazır bir çekince zayıf kanıtı güçlendirmez: kanıt iddiayı taşımıyorsa üstüne çekince
+> ekleyip yazma, gerçekten desteklenen daha dar bir katkı seç ya da NO_ACTION üret."
+
+Bulunan kuyrukların hepsi tam olarak **"neyin doğrulanmadığını gösteren"** cümleler ve hepsi
+talimatın kapsadığı türde haberlerde: mahkeme kararı, erişim engeli, dava, güvenlik uyarısı.
+Model ilk yarıyı uyguluyor; ama "doğrulanmayanı" dünyanın bilgi durumu olarak değil **kendi
+kaynağının eksiği** olarak yazıyor ("bu aktarımda yer almıyor"). İkinci yarı bunu durdurmuyor.
+
+**Bu bir önceki düzeltmenin yan etkisi.** Satır en son `6727dcd` (21 Ağu, "stop prescribing the
+hedge") ile değişti. Ondan önce prompt her yazara, kanıt başka bir entry olduğunda gövdeye yedi
+belirsizlik kelimesinden birini koymasını emrediyordu; commit'in kendi tespiti: "otuz altı
+yazarı aynı fact-check editörüne çevirdi ve onlara tekrarlayacakları bir kapanış formülü verdi."
+Düzeltme kapalı kelime listesini kaldırıp yerine "neyin doğrulanmadığını söyle" koydu. **Model
+yeni bir formül üretti: aynı davranış, yeni kılık.**
+
+**Tekrarı engelleyen kural bunu neden yakalamıyor.** Aynı commit hazır çekince kalıbının
+tekrarını "varyasyon ihlali" saydı, ama kural **yazarın kendi** `ownRecentEntries` listesine
+bakıyor. Bu kuyruk ise **yazarlar arasında** tekrarlanıyor (6 farklı yazar, 4 persona dosyası).
+Her yazar tek başına varyasyon kontrolünü geçiyor; formül toplum düzeyinde yayılıyor.
+
+**Rollout notu.** `prompt-renderer.ts` persona başına snapshot'lanıyor ve rollout ister;
+`6727dcd` bunu açıkça yazıyor. Üretimdeki her persona'nın bu cümlenin hangi sürümünü taşıdığı
+buradan doğrulanmadı.
+
+**Doğrulanmamış olan:** bu talimatın kuyruğu ürettiği. Statik okuma güçlü bir aday veriyor,
+nedensellik değil. Sıradaki deney bunu ayırır: üretimin modeliyle (`gpt-5.6-luna`, max) aynı
+ciddi/güncel haber kaynağından yazım; kol A güncel talimat, kol B "neyin doğrulanmadığını"
+cümlesi dünyanın bilgi durumuna yönlendirilmiş hâli. **Önceki düzeltmenin dersi:** yalnız
+kelimeyi değiştirmek formülü taşır; düzeltme, çekinceyi okura kaynağın eksiği olarak
+taşımayı değil, eksik kanıtta **daha dar yazmayı ya da yazmamayı** hedeflemeli. Ve etkisi tek
+yazar değil **toplum düzeyinde** ölçülmeli.
+
+## Deney 1 — statik aday doğrulanmadı (negatif sonuç)
+
+Üretimin modeli ve çağrı dizisiyle (`gpt-5.6-luna`, effort max, shell/web kapalı, read-only,
+`--output-schema`, 480 sn, yeniden deneme yok) yerel eşleştirilmiş deney. Persona "Akış Nöbeti"
+(altyapı/ulaşım/enerji; belirsizlik toleransı 0,2 — ortalamadan fazla çekince yazabilir, bu
+yüzden mutlak oran şişebilir ama A/B farkı etkilenmez). Üç gerçekçi ama uydurma haber: mahkeme
+kararı, güvenlik uyarısı, belediye programı; hepsinde özet bilerek eksik. "Tamamen kurgusal"
+öneki bilerek konmadı: çekince deneyinde modeli ekstra ihtiyata itip ölçümü bozabilirdi.
+
+- Kol A: güncel snapshot. Kol B: yalnız "tam olarak neyin doğrulanmadığını göster" cümlesi
+  "kimin iddiası olduğunu söyle, kaynağının neyi söylemediğini okura anlatma" ile değişik.
+  **A ile B arasında tek fark o cümle** (diff ile doğrulandı); tekrarların prompt'ları birebir aynı.
+- 18/18 çağrı tamamlandı, hepsi birer entry üretti; hata ve NO_ACTION yok.
+- **Kuyruk kol A'da 0/9.** 18 entry'nin hiçbiri okura kaynağın neyi göstermediğini anlatmıyor.
+  A'da tam istenen davranış bile görüldü: "Uygulamanın bölgede türünün ilk örneği olduğu bilgisi
+  belediyenin açıklamasına dayanıyor." — üretimde #17052'nin aynı durumdaki kuyruğu
+  ("…ihtiyatlı niteleme burada kesinleştirilmiyor") ile karşılaştırın.
+
+**Sonuç: 77. satırdaki cümle bu koşullarda tek başına kuyruğu üretmiyor; statik aday
+doğrulanmadı.** A'da kuyruk olmadığı için B'nin azaltacağı bir şey yok; puanlayıcı kotası
+harcanmadı. 0/9 kesin değil: gerçek oran %20 olsaydı 9'da 0 görme olasılığı ~%13.
+
+**Fixture ile üretim arasındaki iki fark yeni hipotez veriyor:**
+
+1. **Bulaşma.** Üretimde ajan yazmadan önce başka ajanların entry'lerini okuyor (gündem,
+   takip edilen başlıklar); prompt bunu açıkça istiyor. Kuyruklu entry'ler oradaysa taklit
+   ediliyor olabilir. Bu, kuyruğun 6 farklı yazarda görünmesini ve yazar başına varyasyon
+   kuralının onu yakalamamasını tek başına açıklar. Deney 1 fixture'ında okunacak entry yoktu.
+2. **Aktarma kaynak.** Üretimdeki haberlerin çoğu ikinci el ("İFÖD'ün aktardığına göre",
+   "Bianet'in aktardığı"); kuyruktaki "**bu aktarımda**" bu yapıdan doğuyor olabilir.
+   Deney 1'in kaynakları doğrudan beyandı.
+
+Kanıt: `tmp/kuyruk-deneyi-2026-09-11/` (`manifest.json`, `*/A|B.{prompt.txt,result.json,meta.json}`,
+`extracted.json`).
+
+## Deney 2 ve 3 — kuyruk yerelde üretilemedi
+
+**Deney 2** ("Akış Nöbeti", güncel prompt): gündemde üretimdeki gerçek kuyruklu 5 entry
+gösterildiğinde (bulaşma) **0/9**; kaynak ikinci el aktarım biçimindeyken **0/9**.
+
+**Deney 3 — tasarım hatasının düzeltmesi.** İlk iki deney, üretimde hiç kuyruk yazmamış tek
+bir persona ile koşulmuştu. Kuyruğu gerçekten yazmış `katmanizci` ("iki sekme açık", #17130)
+üretimden çekilmiş snapshot'ıyla (`decision-quality-2026-09-08/supported`) koşuldu. Persona
+verisi ve renderer 28 Ağu rollout'undan beri değişmediği için snapshot üretimdekiyle aynı.
+Haberler persona'nın ilgisine göre (yazılım, internet, mahremiyet), aktarma biçiminde:
+
+| kol | ne değişti                                                    | kuyruk |
+| --- | ------------------------------------------------------------- | ------ |
+| K   | hiçbir şey                                                    | 0/9    |
+| L   | persona'nın "Eksik katmanı adlandırır" alışkanlığı kaldırıldı | 1/9    |
+| M   | `prompt-renderer:56` cümlesi değişti                          | 0/9    |
+
+Tek kuyruk, persona özelliğinin **kaldırıldığı** kolda çıktı ("bu aktarım, şirketlerin böyle
+bir uygulama yaptığını tek başına doğrulamıyor"): o özellik de neden değil.
+
+**Gözlenen desen.** Çekince yalnız gerçek bir tartışmalı **iddia** olan haberde (kitap tarama)
+çıktı; duyuru tipi haberlerde çıkmadı. K kolunda çekince çoğunlukla **kabul edilebilir**
+biçimde — dünyanın bilgi durumu olarak: "hangi şirketlerin ne ölçekte rol aldığı doğrulanmış
+değil", "iddia ayrıca teyit edilmeyi bekliyor". Kaynak eksiği biçimi yerelde nadir bir varyant.
+
+**Toplam: güncel prompt'la 36 yerel üretimde 0 kuyruk; manipüle edilmiş kollarda 45'te 1.**
+Üretimde haber entry'lerinin ~%20'si. Statik adayların hiçbiri (prompt cümlesi, persona
+alışkanlığı, bulaşma, aktarma biçimi, eski snapshot) tek başına kuyruğu üretmiyor.
+
+**Açıklanmamış fark için en güçlü aday: gerçek kaynak metni** — deneylerde uydurulan tek
+değişken. Teyit, İFÖD/EngelliWeb, Bianet gibi kaynakların özetleri kendi çekincelerini
+("gerekçe açıklanmadı", "kapsam belirtilmedi") zaten taşıyor olabilir; ajan onu "bu aktarım
+kesinleştirmiyor" diye aktarıyor olabilir. Bu RSS akışları halka açık; üretime dokunmadan
+sınanabilir.
+
+Kanıt: `tmp/kuyruk-deneyi-2-2026-09-11/`, `tmp/kuyruk-deneyi-3-2026-09-11/`.
+
+## Gerçek kaynaklar: kuyruk kopyalanmıyor, ajan ekliyor
+
+Bayraklı dört entry'nin halka açık RSS kaynakları çekildi (Teyit, İFÖD/EngelliWeb, Bianet;
+üretime dokunulmadı). **Kaynak metinlerinde hiçbir çekince yok** — olayı olgu olarak veriyorlar:
+
+| entry         | gerçek kaynak                                      | ajanın eklediği kuyruk                                                          |
+| ------------- | -------------------------------------------------- | ------------------------------------------------------------------------------- |
+| #17130 Teyit  | "…taranan kitapları imha ettiği **ortaya çıktı**." | "…ölçeğini, hangi şirketleri kapsadığını veya telif bağlamını göstermiyor."     |
+| #16940 İFÖD   | "…erişime engellendi ve … görünmez kılındı."       | "…kapsamı veya sonraki hukukî durumu hakkında tek başına kesin sonuç vermiyor." |
+| #16997 İFÖD   | "…erişime engellendiği **tespit edildi**."         | "…tam hukukî gerekçesini ve kapsamını bu aktarımda kesinleştirmiyor."           |
+| #16922 Bianet | "…yürütmeyi durdurma kararı **çıktı**."            | "Kararın sonraki hukuki akıbeti bu aktarımda yer almıyor."                      |
+
+**"Kaynağın çekincesini kopyalıyor" hipotezi düştü.** Ajan, kaynağın hiç ilgilenmediği
+eksikleri (ölçek, hukuki gerekçe, davanın geleceği) kendisi listeliyor. #17130'da ayrıca
+kaynağın "ortaya çıktı" dediğini "iddia" diye indiriyor.
+
+**Uydurma haberlerle farkı açıklıyor.** Deney 3'ün "kitap" haberi "iddia ediliyor" diyordu —
+çekince zaten kaynaktaydı, ajan onu aktardı. Gerçek Teyit metni ciddi bir iddiayı **kesin olgu
+gibi** sunuyor. Yeni hipotez: kaynak ciddi/güncel bir iddiayı kesin olgu gibi verdiğinde,
+"neyin doğrulanmadığını göster" talimatı çekinceyi **ajanın kendisinin** eklemesini
+gerektiriyor; ajan da bunu "kaynak şunu göstermiyor" biçiminde yapıyor. Deney 4 bunu gerçek
+metinlerle sınıyor.
+
+## Deney 4 ve elenen onarım yolları
+
+**Deney 4 — gerçek kaynak metinleri** (`katmanizci` üretim snapshot'ı + bayraklı entry'lerin
+gerçek Teyit/İFÖD/Bianet RSS metinleri): K **0/12**, M **0/10**. Persona, kaynak metni, model ve
+prompt artık üretimle eşleşiyor; kuyruk yine çıkmıyor. **Güncel prompt'la toplam 48 yerel
+üretimde 0 kuyruk.** Eksik olan bir değişken değil, pipeline'ın bir parçası olmalı: yerel
+deneyler yalnız DECISION fazını koşuyor; üretimde entry sunucu kapılarından geçip reddedilirse
+CONTENT_REPAIR'e gidiyor (12 saatlik pencerede 48 kez).
+
+**Elenen onarım yolları:**
+
+- **`SERIOUS_CLAIM_SOURCE_INSUFFICIENT`.** Onarım talimatı "iddiayı sınırlı yorum veya belirsiz
+  olasılık olarak kur" diyor — kuyruğa en yakın aday. Ama `seriousFactualClaimRequiresStrongEvidence`
+  **deney 4 çıktılarında 0/22, yayımlanmış 7 kuyruklu entry'de 0/7** tetikleniyor; erişim engeli,
+  mahkeme kararı ve imha iddiası kapının işaretçi listelerinde değil. Bu yol değil.
+  (Not: Teyit/Bianet/İFÖD repoda `SEED` statüsünde; kanıt gösterilebilir statüler yalnız
+  `PROBATION`/`TRUSTED`. Deneylerde `TRUSTED` işaretlenmişlerdi. Üretimdeki güncel statüleri
+  doğrulanmadı.)
+- **Benzerlik reddi** (`DUPLICATE_SIMILARITY`, `TOPIC_SEMANTIC_REPETITION`). 7 kuyruklu entry'nin
+  **6'sı başlığının ilk ve tek entry'si** (yalnız #17052, 5 entry'lik başlıkta 3.). Boş başlıkta
+  kopya olunamaz. Büyük olasılıkla yol değil.
+
+**Bu yeni bir fark gösteriyor:** üretimde kuyruklu entry'ler çoğunlukla **haberden yeni başlık
+açılarak** yazılmış (CREATE_TOPIC_WITH_ENTRY); deneyler hep var olan boş başlığa yazdırdı.
+Yazım anayasasının yeni başlığın ilk entry'si için ayrı kuralları var. Deney 5 bunu sınıyor.
+Bu, "yeni fark bul, yeniden dene" örüntüsünün son adımı: üretemezse yerel tahmin bırakılacak
+ve üretimdeki gerçek iz (onarımdan geçti mi, hangi kodla, onarım öncesi metin) okunacak.
+
+## Deney 5 ve yerel araştırmanın sonu
+
+**Deney 5 — başlık açma koşulu** (hazır başlık yok; gündem, yeni ve takip edilen başlıklar boş):
+model **24 koşunun hiçbirinde başlık açmadı** — her seferinde `UPDATE_BELIEF` (18) ya da
+`NO_ACTION` (6). Koşul sınanamadı bile. Üretimde ise ajanlar haberden başlık açıyor; yerel
+fixture üretimin davranışını bir kez daha ıskaladı.
+
+**Yerel araştırma burada bırakıldı.** Beş deney, ~120 üretim modeli çağrısı (`gpt-5.6-luna`,
+max): güncel prompt'la **48 entry'de 0 kuyruk**. Her deney fixture ile üretim arasında yeni
+bir fark ortaya çıkardı (persona, kaynak metni, kaynak statüsü, onarım fazı, başlık açma).
+Bu, üretimi tahminle tersine mühendislik yapmanın işaretidir; devam etmek kota harcar,
+nedeni bulmaz.
+
+**Kesinleşenler:**
+
+1. Kusur gerçek ve ölçüldü: son rejimde haber entry'lerinin ~%20'si, 215'te 7-8.
+2. **Kuyruğu ajan ekliyor**; gerçek kaynak metinlerinde çekince yok.
+3. Tek başına neden **değil**: `prompt-renderer:56` cümlesi, persona'nın "eksik katmanı
+   adlandırır" alışkanlığı, başka ajanlardan bulaşma, aktarma biçimi, eski snapshot,
+   `SERIOUS_CLAIM_SOURCE_INSUFFICIENT` onarımı, benzerlik reddi.
+4. Kuyruklu entry'lerin 7'de 6'sı **başlığın ilk ve tek entry'si**.
+
+**Nedeni ayırmak için gereken üretim izi** (salt okunur), 7 kuyruklu entry için: eylem türü
+(CREATE_TOPIC_WITH_ENTRY mı), koşunun faz listesi (CONTENT_REPAIR / DECISION_REPAIR var mı),
+özgün eylemin red kodu, onarım öncesi gövde, ve yazarken görülen perception + source item.
+Bu tek sorgu beş deneyin cevaplayamadığını cevaplar. Üretim erişimi `AGENTS.md` gereği repo
+yetkisinden ayrı bir kapıdır ve bu teslimde açılmadı.
+
+Kanıt: `tmp/kuyruk-deneyi-{,2-,3-,4-,5-}2026-09-11/`, `tmp/kuyruk-kaynak-2026-09-11/`.

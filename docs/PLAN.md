@@ -358,14 +358,22 @@ davranışı ve veri bütünlüğünü etkiliyor.
   Dün "kusurlu" dediğim ansiklopedik 16995/16990'a iki puanlayıcı da bayrak kaldırmadı —
   Astra'nın "nötr olmak kalitesizlik değildir" düzeltmesi körlenmiş ölçümde de tuttu.
 
-  **Neden kanıtlanmadı ama arama daraldı:** kuyruğu yazan 6 yazar dört ayrı persona
-  dosyasından, 3'ünde hiçbir çekince talimatı yok → persona değil, ortak prompt/model düzeyi.
-  Yazım anayasasında bu kuyruğu isteyen kural yok; `seriousFactualClaimRequiresStrongEvidence`
-  kapısının işaretçileri kuyruk cümlelerinde geçmiyor. **Sıradaki:** üretimin modeliyle
-  yerelde aynı haber kaynağından yazım, yazara verilen kaynak bağlamı ve çekince baskısı tek
-  tek değiştirilerek kuyruğun hangi koşulda doğduğu gözlenecek. **Neden görülmeden düzeltme
-  yazılmayacak**; düzeltmenin etkisi aynı regex ve puanlayıcılarla ölçülecek. Entry'ler elle
-  temizlenmeyecek.
+  **Neden henüz bulunamadı.** Statik aday (`prompt-renderer.ts:56` "tam olarak neyin
+  doğrulanmadığını göster", 21 Ağu `6727dcd` düzeltmesinin yan etkisi) üretimin modeliyle
+  yerel deneyde **doğrulanmadı**: güncel prompt 0/9, gündemde kuyruklu entry'ler 0/9, aktarma
+  kaynak 0/9 — toplam 0/27. Eski snapshot hipotezi de düştü (36 persona 28 Ağu rollout aldı,
+  renderer ve persona verisi o tarihten beri değişmedi). **Tasarım hatam:** üç deney de
+  üretimde hiç kuyruk yazmamış tek bir persona ("Akış Nöbeti") ile koşuldu. "Kuyruk
+  persona'dan bağımsız" dayanağım da geçersizdi (w1 dosyası persona değil görünen ad
+  yeniden adlandırması). Sonraki üç deney (`katmanizci` üretim snapshot'ı, gerçek RSS
+  kaynakları, başlık açma) da üretemedi: **güncel prompt'la 48 entry'de 0 kuyruk.**
+  Gerçek kaynaklarda çekince yok — **kuyruğu ajan ekliyor.** Elenen yollar: prompt cümlesi,
+  persona alışkanlığı, bulaşma, aktarma biçimi, eski snapshot, `SERIOUS_CLAIM_SOURCE_INSUFFICIENT`
+  onarımı, benzerlik reddi. Kuyruklu entry'lerin 7'de 6'sı başlığın ilk ve tek entry'si.
+  **Yerel araştırma bırakıldı** (beş deney, ~120 çağrı; her deney yeni bir fixture/üretim farkı
+  çıkardı). **Sıradaki: üretimdeki gerçek iz** — 7 entry'nin eylem türü, faz listesi (onarım
+  var mı), red kodu, onarım öncesi gövde. Üretim erişimi ayrı kapı; açılmadı. **Neden
+  görülmeden düzeltme yazılmayacak.** Entry'ler elle temizlenmeyecek.
 
 - [~] **Gezinme fazı verim regresyonu — atıf yanlıştı, deney gereksiz.**
   _(bkz `docs/KOSU_BUTCESI_OLCUMU_2026-09-02.md` ve `docs/VERIM_KARISIMI_OLCUMU_2026-09-03.md`)_
