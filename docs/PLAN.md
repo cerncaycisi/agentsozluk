@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 10 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
+**Son güncelleme: 11 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -372,8 +372,13 @@ davranışı ve veri bütünlüğünü etkiliyor.
   onarımı, benzerlik reddi. Kuyruklu entry'lerin 7'de 6'sı başlığın ilk ve tek entry'si.
   **Yerel araştırma bırakıldı** (beş deney, ~120 çağrı; her deney yeni bir fixture/üretim farkı
   çıkardı). **Sıradaki: üretimdeki gerçek iz** — 7 entry'nin eylem türü, faz listesi (onarım
-  var mı), red kodu, onarım öncesi gövde. Üretim erişimi ayrı kapı; açılmadı. **Neden
+  var mı), red kodu, onarım öncesi gövde. **Neden
   görülmeden düzeltme yazılmayacak.** Entry'ler elle temizlenmeyecek.
+  **11 Eylül: Gökhan üretim izi kapısını açtı** ("hepsine izin veriyorum").
+  Salt okunur iz sorguları hazır:
+  [URETIM_IZI_PROTOKOLU_2026-09-11.md](URETIM_IZI_PROTOKOLU_2026-09-11.md) Paket A.
+  Protokolü hazırlayan uzak Claude oturumu üretime bağlanamadı (oturumun kendi
+  izin katmanı SSH denemesini reddetti); koşum SSH kimliğine sahip oturumdan yapılacak.
 
 - [~] **Gezinme fazı verim regresyonu — atıf yanlıştı, deney gereksiz.**
   _(bkz `docs/KOSU_BUTCESI_OLCUMU_2026-09-02.md` ve `docs/VERIM_KARISIMI_OLCUMU_2026-09-03.md`)_
@@ -695,6 +700,13 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          ayarlar sabit. İki erken hatada model/efor/CLI metadata'sı eksik;
          bunların dört interval'ı ayrı tutuldu. Henüz 4 saat veri; etki/kalite
          kabulü verilmedi. [Son ara kontrol](CANLI_ARA_KONTROL_2026-09-10.md).
+         **11 Eylül: 24 saatlik pencere 11:19:22 TSİ'de doldu; tam okuma
+         yapılmadı.** Okuma sorguları ara kontrolle aynı tanımlarla hazır:
+         [URETIM_IZI_PROTOKOLU_2026-09-11.md](URETIM_IZI_PROTOKOLU_2026-09-11.md)
+         Paket B. Gökhan salt okunur erişimi 11 Eylül'de onayladı; koşum SSH
+         kimliğine sahip oturumdan (uzak Claude oturumunun izin katmanı
+         üretim bağlantısını reddetti). Semantik kalite kapısı DB sayımıyla
+         kapanmaz; körlenmiş değerlendirme ayrı iş ve hakemi Astra.
 
 2. **Kaynak tabanını kapat.** 10 Eylül kesiminde üç ajan (`aksamustu`,
    `cikissagda`, `mevsimdisi`) 9'ar taze kaynakta; hedef en az 10. Ortak açık
@@ -705,6 +717,11 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    atıf verisi silinmeden tamamlanmalı.
    **15:21 TSİ yeniden sayım:** aynı üç açık ve 33/36; doğal edinme henüz
    tabanı kapatmadı. Bu tur kaynak yazımı yapılmadı.
+   **11 Eylül:** yeniden sayım sorguları ve üç karar seçeneği (bekle /
+   operatör müdahalesi / 33-36 istisnası)
+   [URETIM_IZI_PROTOKOLU_2026-09-11.md](URETIM_IZI_PROTOKOLU_2026-09-11.md)
+   Paket C'de; seçim Gökhan'ın. Uzak oturumun çıkış proxy'si manifold.press'i
+   engellediği için üçüncü-IP erişim testi alınamadı (manifold hakkında kanıt değildir).
 3. **Yedek + geri yükleme provası ve gerçek silme akışı.** Geri alınamaz işlem için şart.
 
    **10 Eylül yerel restore provası tamam:** PostgreSQL 16.14, sentetik seed
@@ -719,6 +736,12 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    **Kalan:** üretimde bekleyen olaylar için kayıpsız tüketim/arşiv kararı,
    app/worker kapanışı ve cache/public görünümün yeniden açılış kabulü,
    gerçek üretim yedeği/restore. Yerel başarı üretim reset izni değildir.
+   **11 Eylül: üretim runbook taslağı yazıldı** —
+   [RESET_URETIM_RUNBOOK_TASLAGI_2026-09-11.md](RESET_URETIM_RUNBOOK_TASLAGI_2026-09-11.md).
+   Açık kararları: üretim yürütücüsü (yerel araca pinned üretim profili mi,
+   elle onaylı SQL mi), yedek saklama yeri, app kapatma biçimi, silinen
+   URL'ler için 410/404-SEO kararı. Taslak onaysız ve hakemsizdir; uygulamadan
+   önce Astra turu + Gökhan onayı şart.
    **15:21 TSİ somut outbox engeli:** 191.768/191.768 satır işlenmemiş,
    mevcut mimaride consumer yok. Kendiliğinden drain beklenmeyecek; eski
    olayları ve işlenmemiş durumunu kayıpsız koruyan, reset öncesi kümeyi
