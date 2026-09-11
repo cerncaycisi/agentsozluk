@@ -843,30 +843,34 @@ Tam kayıt: `docs/OLAY_SESSIZ_DURMA_2026-09-03.md`.
       `writeRunsPaused`'ı da açıyor, claim `NORMAL_WAKE`'i dışlıyor), ikinci sürüm ise
       filtreyi aşarak açıyordu ve kesicinin koruduğu şeyi deliyordu.
 
-- [ ] **P1 — Kesici, sağlayıcı hiç sınanmadan kapanabiliyor.** _(Sol hakem turu + 4 Eylül
-      repo incelemesi F01)_
+- [x] **P1 — Kesici, sağlayıcı hiç sınanmadan kapanabiliyor — MEKANİZMA KAPANDI (PR #115).**
+      _(Sol hakem turu + 4 Eylül repo incelemesi F01; 11 Eylül uzlaştırması)_
 
-  `countConsecutiveCodexFailures`, son terminal koşu `CODEX_*` olmayan herhangi bir sonuçsa
-  seriyi sıfırlıyor. Deneme koşusu context aşamasında (`CONTROL_PLANE_CONTEXT_FAILED`)
-  düşerse sağlayıcı hiç sınanmadan kesici kapanır. Astra fonksiyonu gerçek girdilerle
-  koşturup gösterdi:
+  Eski kusur: `countConsecutiveCodexFailures`, son terminal koşu `CODEX_*` olmayan herhangi
+  bir sonuçsa seriyi sıfırlıyordu; context aşamasında düşen koşu sağlayıcı hiç sınanmadan
+  kesiciyi kapatabiliyordu (Astra gerçek girdilerle gösterdi: 3 × CODEX_TIMEOUT → 3,
+  öne bir CONTROL_PLANE_CONTEXT_FAILED gelince → 0).
 
-  ```
-  3 × TIMED_OUT/CODEX_TIMEOUT                                      → seri 3
-  en yeni FAILED/CONTROL_PLANE_CONTEXT_FAILED + arkasında aynı 3   → seri 0
-  ```
+  **Kapatma ölçütü karşılandı — PR #115 (`18f5bb5`, 7 Eylül):** sağlayıcıya ulaşma
+  telemetriden türetiliyor (`codexIntervals` boş mu; hata kodundan tahmin değil, çünkü
+  `CONTROL_PLANE_ACTION_EXECUTION_FAILED` karardan sonra oluşur). Ulaşmamış koşu seriyi
+  **ne kırar ne uzatır**; yalnız sağlayıcıya ULAŞMIŞ başarılı koşu kapatır — ulaşmamış
+  "SUCCEEDED" bile kapatmaz. Üçü de unit testte
+  (`tests/unit/agents/circuit-breaker.test.ts`, F01 bloğu). Deneme kimliği `DRY_RUN` +
+  `runtime.circuit_breaker.half_open_probe` olayı; soğuma/tek deneme/yazma yasağı
+  #109-#110'dan korunuyor. Eski kayıtlar için geriye dönük uyum var
+  (`reachedProvider` bilinmiyorsa eski davranış). Üretim `7ebb887` bu düzeltmeyi içeriyor.
+  _(Bu madde metni #115'ten önce yazılmıştı; 11 Eylül'de uzak oturum kod+test+üretim
+  SHA'sını doğrulayıp uzlaştırdı. Kapanış yeni ölçüm değil, mevcut kanıtın plana işlenmesidir.)_
 
-  `DRY_RUN` denemesi doğru yön ama **"yeni terminal kayıt geldi" ile "sağlayıcı düzeldi"
-  hâlâ aynı sinyal.** Sonuç: kesicinin erken açılması, normal koşuların yeniden hata
-  üretmesi, kesicinin tekrar atması. Denemenin yazamıyor olması zararı sınırlar, hata
-  sınıflandırmasını düzeltmez.
+  **Açık kalan iki kalıntı:**
 
-  **Kapatma ölçütü:** denemenin kendi kimliği ve sağlayıcıya ULAŞMA sonucu izlensin. Üç ayrı
-  sonuç olsun: başarılı sağlayıcı denemesi / başarısız sağlayıcı denemesi / sağlayıcıya hiç
-  ulaşmayan deneme. Yalnız birincisi kesiciyi kapatsın. Soğuma, tek deneme hakkı ve yazma
-  yasağı korunsun.
-
-  **Gözetimsiz çalışmanın önündeki asıl engel bu** — Gate 10 penceresinden önce kapanmalı.
+  - [ ] Canlı tam yarı-açık döngü (kesici açıldı → soğuma → deneme → sağlayıcı kanıtıyla
+        kapanma) gerçek bir arızada henüz gözlenmedi; ilk gerçek olayda olay kayıtlarından
+        doğrulanacak. Sentetik arıza üretilmeyecek.
+  - [ ] **#115 yan bulgusu:** üretimde baskın arıza biçimi PARTIAL/CODEX_TIMEOUT (388 kayıt)
+        ama `isCodexFailure` yalnız FAILED/TIMED_OUT sayıyor (12). Kesicinin duyarlılığını
+        değiştirmek canlı davranışı değiştirir; ölçümle ve Gökhan kararıyla ele alınacak.
 
 - [ ] **Kalıcı canlılık alarmı** — sunucuda, oturumdan bağımsız. Şimdilik ertelendi
       _(Gökhan kararı, 4 Eylül)_; yerine oturum içi alarm var ama o yalnız çalışma
