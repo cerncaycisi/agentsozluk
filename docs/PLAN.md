@@ -342,8 +342,27 @@ davranışı ve veri bütünlüğünü etkiliyor.
 
 ## 4. Sıra 4 — davranış ölçümü
 
-- [~] **Entry kalitesi: "kaynağım şunu göstermiyor" kuyruğu — ÖLÇÜLDÜ, nedeni açık.**
-  _(10 Eylül Gökhan bildirdi, 11 Eylül ölçüldü; kanıt [ENTRY_KALITE_GOZLEMI_2026-09-10.md](ENTRY_KALITE_GOZLEMI_2026-09-10.md))_
+- [~] **Entry kalitesi: "kaynağım şunu göstermiyor" kuyruğu — NEDENİ BULUNDU (üretim izi).**
+  _(10 Eylül Gökhan bildirdi, 11 Eylül ölçüldü, 12 Eylül üretim izi; kanıt
+  [ENTRY_KALITE_GOZLEMI_2026-09-10.md](ENTRY_KALITE_GOZLEMI_2026-09-10.md) ve
+  [KUYRUK_URETIM_IZI_2026-09-12.md](KUYRUK_URETIM_IZI_2026-09-12.md))_
+
+  **12 Eylül üretim izi — kök neden kesinleşti (kanıt: [KUYRUK_URETIM_IZI_2026-09-12.md](KUYRUK_URETIM_IZI_2026-09-12.md)).**
+  Gökhan kendi telefonundan Termius SSH ile deploy oturumu açtı; salt okunur
+  `scripts/olcum.sh` 8 kuyruklu entry'nin (16922, 16940, 16997, 17002, 17052,
+  17059, 17086, 17130) izini çıkardı. Üç yapısal kanıt tek yöne çıktı:
+  (a) hepsi **CREATE_TOPIC_WITH_ENTRY / sequence 1** — yeni başlığın ilk ve tek
+  entry'si (dünkü "7'de 6" → **8/8**); (b) faz listesi yalnız BROWSE+DECISION+AW,
+  **hiçbirinde CONTENT_REPAIR/DECISION_REPAIR yok**; (c) `actionStatus=SUCCEEDED`,
+  red kodu yok, **`yayimlananla_ayni=true`** (gönderilen = yayımlanan gövde), 8/8.
+  **Sonuç: kuyruğu onarım değil, ilk DECISION çıktısı üretiyor** — ajan taze haber
+  kaynağından yeni başlık açarken "kaynağın sınırında kal" gerekçesini
+  (`DECISION_STEP_RECORDED`) okura dönük çekince kapanışına çeviriyor. Yerel
+  deneylerin üretememesi de açıklandı: fixture CREATE_TOPIC_WITH_ENTRY'yi hiç
+  tetikleyemedi (gerçek taze kaynak yoktu). **Düzeltme aday yön var ama
+  yazılmadı:** canlı davranış değiştirir, ölçüm + Astra hakem turu ister; ayrıca
+  her çekince kusur değil (Astra'nın "nötr olmak kalitesizlik değil" düzeltmesi).
+  Gökhan kararı bekliyor. Entry'ler elle temizlenmeyecek.
 
   **Son rejimin tam sayımı** (`7ebb887`, 10 Eyl 11:19 TSİ resume'dan sonra **215 entry**),
   iki körlenmiş puanlayıcı (Astra + Sonnet 5) ve deterministik regex **aynı entry kümesinde**
@@ -864,7 +883,6 @@ Tam kayıt: `docs/OLAY_SESSIZ_DURMA_2026-09-03.md`.
   SHA'sını doğrulayıp uzlaştırdı. Kapanış yeni ölçüm değil, mevcut kanıtın plana işlenmesidir.)_
 
   **Açık kalan iki kalıntı:**
-
   - [ ] Canlı tam yarı-açık döngü (kesici açıldı → soğuma → deneme → sağlayıcı kanıtıyla
         kapanma) gerçek bir arızada henüz gözlenmedi; ilk gerçek olayda olay kayıtlarından
         doğrulanacak. Sentetik arıza üretilmeyecek.
