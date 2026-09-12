@@ -228,16 +228,27 @@ davranışı ve veri bütünlüğünü etkiliyor.
   sürüm bağı. Her kural uygulanmadan önce gerçek türetme fonksiyonuyla üretimde ölçüldü;
   hiçbirinde meşru red çıkmadı.
 
-- [ ] **P1 — Ölçülmüş kapasite ile uygulanan eşzamanlılık aynı otoriteye bağlı değil.**
-      _(4 Eylül repo incelemesi F02)_ Lease `settings.codexConcurrency === 2 ? 2 : 1`
-      kullanıyor, scheduler da ayar değerini. Kapasite/yetenek ölçümü ayrı bir kapı olduğu
-      hâlde, o kanıtın eskimesi ya da geçersizleşmesi etkin sınıra yansımıyor: sağlayıcı,
-      binary veya makine koşulu değiştiğinde geçmişte alınmış izin taşınmaya devam ediyor.
-      Bu "sınırsız iş koşuyor" bulgusu değil — ayar ve kilitler sınırı tutuyor; eksik olan
-      sınırın hâlâ güvenli olduğunu bildiren güncel kanıtın uygulanması.
-      **Kapatma ölçütü:** istenen eşzamanlılık ile kanıtın izin verdiği eşzamanlılıktan TEK
-      etkin değer hesaplansın; lease ve scheduler aynı hesabı kullansın; eski/eksik kanıtta
-      davranış açıkça tanımlansın.
+- [~] **P1 — Ölçülmüş kapasite ile uygulanan eşzamanlılık — KOD YAZILDI, dağıtım hakem+onay bekliyor.**
+  _(4 Eylül repo incelemesi F02; 12 Eylül uygulandı)_ Lease `settings.codexConcurrency === 2 ? 2 : 1`
+  kullanıyordu, scheduler da ayar değerini. Kapasite/yetenek ölçümü ayrı bir kapı olduğu
+  hâlde, o kanıtın eskimesi ya da geçersizleşmesi etkin sınıra yansımıyordu: sağlayıcı,
+  binary veya makine koşulu değiştiğinde geçmişte alınmış izin taşınmaya devam ediyordu.
+
+      **Uygulama (dalda, `claude/nerde-kalmisiz-ugoh1y`):** yeni tek otorite
+      `resolveEffectiveRuntimeConcurrency` (`application/runtime-concurrency.ts`); lease
+      (`runtime.ts`) ve scheduler (`stochastic-scheduler.ts`) artık onu kullanıyor —
+      kontrol düzlemi set-kapısıyla (`assertDualConcurrencySupported`) aynı
+      `supportsDualConcurrency` predicate'i. **Tanımlı davranış:** kapasite kaydı HİÇ yoksa
+      ayar korunur (set-kapısı kanıtsız 2 yazılmasını zaten engelliyor, üretimde oluşamaz);
+      kayıt VAR ama **eskimiş/geçersiz** (staleAt geçmiş, major codex sürümü ya da prompt
+      profili hash'i eşleşmiyor) ise etkin sınır **1'e düşer** — F02'nin asıl açığı bu.
+      7 birim testi + 587 ajan birim testi + typecheck + lint geçti; mevcut two-lane
+      entegrasyon testi kapasite kaydı olmadığı için 2'de korunuyor (kırılmıyor).
+      **Dağıtım engeli:** koşu mekanizması değişikliği → Astra hakem turu (yürütücü Claude);
+      dağıtımda etkin sınır ancak üretim kapasite kaydı gerçekten eskiyse düşer, yoksa aynı
+      kalır. Entegrasyon CI'ı ayrıca doğrulanmalı (bu oturum yerel entegrasyon DB'sine
+      yazamadı). **Merge/deploy yapılmadı.**
+
 - [x] **Source result persistence hatası fetch hatası gibi yazılıyor.** — canlıda (PR #84, `eb1aa4e`). Tek `try/catch` hem
       okumayı hem write'ı kapsıyor; başarılı write commit edip response kaybolursa aynı attempt
       `SOURCE_FETCH_FAILED` sayılıp sağlıklı kaynağı backoff/demotion'a sokabiliyor. Fetch ve

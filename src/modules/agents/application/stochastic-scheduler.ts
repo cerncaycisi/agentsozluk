@@ -3,6 +3,7 @@ import type { DatabaseExecutor } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
 import { guardProductionRolloutRuntimeMutation } from "@/modules/agents/application/rollout-guard";
+import { resolveEffectiveRuntimeConcurrency } from "@/modules/agents/application/runtime-concurrency";
 import {
   selectStochasticWakeCandidates,
   stochasticDispatchProbability,
@@ -104,7 +105,10 @@ export function runRuntimeStochasticTick(
         });
     }
 
-    const concurrency = snapshot.settings.codexConcurrency === 2 ? 2 : 1;
+    const concurrency = await resolveEffectiveRuntimeConcurrency(transaction, {
+      configuredConcurrency: snapshot.settings.codexConcurrency,
+      now,
+    });
     const availableLanes = concurrency - snapshot.runningCount - snapshot.queuedCount;
     if (availableLanes <= 0)
       return finish(snapshot.queuedCount > 0 ? "QUEUE_NOT_EMPTY" : "CAPACITY_FULL");
