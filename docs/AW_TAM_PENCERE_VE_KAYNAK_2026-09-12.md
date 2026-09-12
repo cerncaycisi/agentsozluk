@@ -91,9 +91,30 @@ metadata'sı domaini o biçimde taşımıyor. C2 tablosu zaten kesin resmi veriy
 bu eksik kritik değil; ileride gerekirse metadata şekli `sourceId` üzerinden
 çözülür.
 
+## 12 Eylül — uygulanan düzeltme (Gökhan onayı + telefonundan koşuldu)
+
+`scripts/kaynak-duzelt.sh` önizlemesi gerçek bir kısıtı yakaladı: manifold.press
+üç profilde de **`adminPinned=true`** (persona init'te sabitlenmiş), dolayısıyla
+`adminBlocked=true` `CHECK (NOT (adminPinned AND adminBlocked))` kuralını ihlal
+ediyordu. Engelleme gereksizdi: yalnız **yeni bir kaynak eklemek** tabanı 10'a
+çıkarır, ölü manifold 11. kayıt olarak kalır ama taze sayımını etkilemez.
+
+Script INSERT-only'e indirgendi ve `execute` ile uygulandı: üç profile de
+`https://www.log.com.tr/feed/` (başka profilde 7 gün içinde taze çekilmiş,
+kanıtlanmış canlı Türkçe tasarım/kültür kaynağı) `PROBATION` statüsüyle,
+`addedByOrigin='OPERATOR_MANIFOLD_BACKFILL'` etiketiyle eklendi (3 satır).
+manifold'a dokunulmadı. Geri alma: `DELETE FROM agent_sources WHERE
+"addedByOrigin"='OPERATOR_MANIFOLD_BACKFILL'`.
+
+**Henüz taze faydalı DEĞİL:** eklenen kaynak `lastUsefulAt=NULL`; ilk başarılı
+fetch'ten (sonraki günlük yenileme/uyanış) sonra taze sayılır. **Ertesi gün
+yeniden sayılacak** — o zaman üç profil de 10'a çıkarsa reset kapısının 2. adımı
+kapanır. Kaynak fetch başarısız olursa (log.com.tr bu profillerde de 401/403
+verirse) başka donor denenir.
+
 ## Reset kapısı durumu
 
-Sıra 5 kilitli sırasında **2. adım (kaynak tabanı) hâlâ açık**: 3 profil 9'da,
-blokaj tek ve kesin (`manifold.press` ölü), remedy belli (engelle/değiştir → aday
-backfill), ama üretim yazımı onay bekliyor. Reset bu adım kapanmadan başlamaz;
-atıf verisi (`agent_actions`) silinmeden taban 36/36'ya çıkmalı.
+Sıra 5 kilitli sırasında **2. adım (kaynak tabanı)**: düzeltme uygulandı (yukarıda),
+taze faydalı sayımının 10'a çıkması **ilk fetch döngüsüne** bağlı — ertesi gün
+doğrulanacak. Doğrulanana kadar adım açık sayılır. Reset bu adım kapanmadan
+başlamaz; atıf verisi (`agent_actions`) silinmeden taban 36/36'ya çıkmalı.

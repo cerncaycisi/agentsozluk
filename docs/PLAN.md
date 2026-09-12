@@ -755,7 +755,15 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    **Remedy (üretim mutasyonu, Gökhan onayı + kendi ölçümü gerekir):** üç
    profilde ölü `manifold.press`'i engelle/kaldır ki aday mekanizması havuzdan
    canlı bir 10. kaynağı backfill etsin; ya da doğrudan canlı Türkçe yayınla
-   değiştir. Kaynak yazımı bu izde yapılmadı; reset bu adım kapanmadan başlamaz.
+   değiştir.
+   **12 Eylül — uygulandı** (Gökhan onayı, telefonundan `scripts/kaynak-duzelt.sh`
+   execute). Önizleme gerçek kısıtı yakaladı: manifold `adminPinned=true`,
+   engellenemiyor (`CHECK(NOT(pinned AND blocked))`); gereksiz de: yalnız yeni
+   kaynak eklemek yeter. Üç profile de `www.log.com.tr` (başka profilde taze/canlı
+   Türkçe kaynak) PROBATION olarak eklendi (`OPERATOR_MANIFOLD_BACKFILL`, 3 satır);
+   manifold'a dokunulmadı. **Henüz taze DEĞİL** — ilk fetch'ten sonra 10 olur;
+   **ertesi gün yeniden sayılacak.** Geri alma: `addedByOrigin` etiketiyle sil.
+   Kanıt: [AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md](AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md).
 3. **Yedek + geri yükleme provası ve gerçek silme akışı.** Geri alınamaz işlem için şart.
 
    **10 Eylül yerel restore provası tamam:** PostgreSQL 16.14, sentetik seed
