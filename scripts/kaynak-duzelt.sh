@@ -117,13 +117,12 @@ SELECT gen_random_uuid(), d.tpid, d.url, d."normalizedDomain", d."sourceType",
    NULL, NULL, now(), 0, now(), now()
 FROM donors d WHERE d.rn=1;
 
--- 2) Uc profilde olu manifold'u engelle
-UPDATE agent_sources SET "adminBlocked"=true, "updatedAt"=now()
-WHERE "normalizedDomain"='manifold.press'
-  AND "agentProfileId" IN (SELECT p.id FROM agent_profiles p JOIN users u ON u.id=p."userId"
-      WHERE u."usernameNormalized" IN ('aksamustu','cikissagda','mevsimdisi'));
+-- Not: olu manifold'a DOKUNULMUYOR. adminPinned=true oldugu icin
+-- adminBlocked=true veritabani kuralini (NOT(pinned AND blocked)) ihlal eder.
+-- Zaten gerek yok: yeni kaynak eklenince taze faydali 10'a cikar, olu manifold
+-- 11. kayit olarak kalir ama taze sayimini etkilemez. Unpin ayri, editoryal karar.
 
-\echo '--- SONRA: kayitli ve (fetch sonrasi ulasilacak) hedef ---'
+\echo '--- SONRA: kayitli (manifold dahil 11) + yeni bekleyen kaynak ---'
 SELECT u.username,
   count(*) FILTER (WHERE NOT s."adminBlocked") AS kayitli,
   count(*) FILTER (WHERE NOT s."adminBlocked"
@@ -146,15 +145,10 @@ if [ "$mode" = preview ]; then
   echo "Bu ONIZLEME idi; hicbir sey degismedi (ROLLBACK)."
   echo "Uygulamak icin: ... | bash -s execute"
 else
-  echo "Degisiklik uygulandi. 'yeni_bekleyen' kaynak ilk basarili"
-  echo "fetch'ten (sonraki gunluk yenileme/uyanis) sonra 'taze_faydali'"
-  echo "olur; taban 10'a o zaman cikar. Bir sonraki gun yeniden say."
+  echo "Eklenen kaynak ilk basarili fetch'ten (sonraki gunluk yenileme/uyanis)"
+  echo "sonra 'taze_faydali' olur; taban 10'a o zaman cikar. Ertesi gun yeniden say."
   echo
-  echo "GERI ALMA (gerekirse, execute ile ayni yol):"
-  echo "  manifold'u geri ac + eklenen satiri sil:"
-  echo "  UPDATE agent_sources SET \"adminBlocked\"=false WHERE \"normalizedDomain\"='manifold.press'"
-  echo "    AND \"agentProfileId\" IN (SELECT p.id FROM agent_profiles p JOIN users u ON u.id=p.\"userId\""
-  echo "        WHERE u.\"usernameNormalized\" IN ('aksamustu','cikissagda','mevsimdisi'));"
+  echo "GERI ALMA (gerekirse): eklenen satirlari sil:"
   echo "  DELETE FROM agent_sources WHERE \"addedByOrigin\"='OPERATOR_MANIFOLD_BACKFILL';"
 fi
 echo "=============================================="
