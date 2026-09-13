@@ -746,7 +746,10 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          **AW düzeltmesi (#112+#125) tam pencerede sağlıklı; teknik kabul
          tamam, semantik kalite ve 7 günlük pencere açık.**
 
-2. **Kaynak tabanını kapat.** 10 Eylül kesiminde üç ajan (`aksamustu`,
+2. **Kaynak tabanını kapat — KAPANDI (13 Eylül).** Üç ajan da artık **10 taze
+   faydalı** kaynakta; taban **36/36**. Detay ve tarihçe aşağıda; bu adım
+   reset kilitli sırasında tamamlandı.
+   **10 Eylül kesiminde** üç ajan (`aksamustu`,
    `cikissagda`, `mevsimdisi`) 9'ar taze kaynakta; hedef en az 10. Ortak açık
    `manifold.press` erişim/tazelik sorunu. Üçüne aday sunuluyor, kaynak evrimi
    açık; doğal edinme sürüyor. Kaynak ekleme/URL değişimi bu tur yapılmadı.
@@ -772,8 +775,12 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    engellenemiyor (`CHECK(NOT(pinned AND blocked))`); gereksiz de: yalnız yeni
    kaynak eklemek yeter. Üç profile de `www.log.com.tr` (başka profilde taze/canlı
    Türkçe kaynak) PROBATION olarak eklendi (`OPERATOR_MANIFOLD_BACKFILL`, 3 satır);
-   manifold'a dokunulmadı. **Henüz taze DEĞİL** — ilk fetch'ten sonra 10 olur;
-   **ertesi gün yeniden sayılacak.** Geri alma: `addedByOrigin` etiketiyle sil.
+   manifold'a dokunulmadı. Geri alma: `addedByOrigin` etiketiyle sil.
+   **13 Eylül 08:59 TSİ yeniden sayım — KAPANDI:** üç profil de **taze faydalı 10**
+   (kayıtlı 11). Eklenen `log.com.tr` gece çekildi (lastUsefulAt 13 Eyl
+   01:49–02:24 UTC), `PROBATION`→`TRUSTED` yükseldi, ardışık hata 0. Taban 36/36;
+   reset kilitli sırasının 2. adımı tamam. Ölü manifold hâlâ kayıtlı (pinned) ama
+   taze sayımını etkilemiyor; ayrı unpin editoryal karar olarak açık kalabilir.
    Kanıt: [AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md](AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md).
 3. **Yedek + geri yükleme provası ve gerçek silme akışı.** Geri alınamaz işlem için şart.
 

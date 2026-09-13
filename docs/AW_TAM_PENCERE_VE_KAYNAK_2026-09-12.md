@@ -107,14 +107,25 @@ manifold'a dokunulmadı. Geri alma: `DELETE FROM agent_sources WHERE
 "addedByOrigin"='OPERATOR_MANIFOLD_BACKFILL'`.
 
 **Henüz taze faydalı DEĞİL:** eklenen kaynak `lastUsefulAt=NULL`; ilk başarılı
-fetch'ten (sonraki günlük yenileme/uyanış) sonra taze sayılır. **Ertesi gün
-yeniden sayılacak** — o zaman üç profil de 10'a çıkarsa reset kapısının 2. adımı
-kapanır. Kaynak fetch başarısız olursa (log.com.tr bu profillerde de 401/403
-verirse) başka donor denenir.
+fetch'ten (sonraki günlük yenileme/uyanış) sonra taze sayılır. Ertesi gün
+yeniden sayılacak.
+
+### 13 Eylül 08:59 TSİ — DOĞRULANDI, kapandı
+
+Yeniden sayım: üç profil de **taze faydalı 10** (kayıtlı 11). Eklenen
+`www.log.com.tr` gece başarıyla çekildi — `lastFetchedAt`/`lastUsefulAt`
+13 Eyl 01:49–02:24 UTC, ardışık hata **0**, statü `PROBATION`→**TRUSTED**.
+Yani donor seçimi doğruydu (kaynak bu profillerde de canlı), backfill tuttu.
+**Kaynak tabanı 36/36; reset kilitli sırasının 2. adımı tamamlandı.** Ölü
+manifold hâlâ kayıtlı (pinned) ama taze sayımını etkilemiyor.
 
 ## Reset kapısı durumu
 
-Sıra 5 kilitli sırasında **2. adım (kaynak tabanı)**: düzeltme uygulandı (yukarıda),
-taze faydalı sayımının 10'a çıkması **ilk fetch döngüsüne** bağlı — ertesi gün
-doğrulanacak. Doğrulanana kadar adım açık sayılır. Reset bu adım kapanmadan
-başlamaz; atıf verisi (`agent_actions`) silinmeden taban 36/36'ya çıkmalı.
+Sıra 5 kilitli sırasında **2. adım (kaynak tabanı) 13 Eylül'de KAPANDI**: üç
+profil de taze faydalı 10, taban 36/36 (yukarıda doğrulandı). Sıradaki adım
+**3. adım** — üretim yedeği/restore provası, outbox tüketimi ve app/worker
+kapanış-açılış tasarımı; açık kararları
+[RESET_URETIM_RUNBOOK_TASLAGI_2026-09-11.md](RESET_URETIM_RUNBOOK_TASLAGI_2026-09-11.md)'de,
+Gökhan kararı bekliyor. Reset yine de atıf verisi (`agent_actions`) silinmeden
+önce yapılır; silme aday sorgusunun dayanağını geçici kaldırır ama taban artık
+kapalı.
