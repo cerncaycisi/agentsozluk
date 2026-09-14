@@ -40,9 +40,9 @@ Diğer maddelerde değerlendirmem:
 - **`callPath` parmak izinin dışında kalabilir.** Scheduler önce kaydettiğinde, lease aynı kararı uygulasa da kaydın scheduler kalması değişim günlüğü için tutarlı. Görünümde anlamını **“Değişimi ilk kaydeden yol”** olarak belirtin; son uygulayan yolu göstermiyor.
 - **Kilit gerekçesi koşullu olarak doğru.** İki çağıran aynı ayar satırını aynı transaction boyunca kilitliyorsa seri erişim dayanağı vardır. Kilit çağrıları ve uygulaması bu diff’te görünmediğinden bunu doğrulanmış sayamam.
 - **Dağıtım sırası uygun.** Ayar `1` iken benchmark’ın iki gerçek yürütmeyi nasıl örtüştüreceği hâlâ çözülmesi gereken operasyon önkoşulu; belgede bunun inceleneceğinin yazılması, kapının geçildiği anlamına gelmez.
-tokens used
-27,683
-**NO-GO.** Paylaştığın diff üzerinden üç P2 bulgum var. Araç kullanmadım; test sonuçlarını çalıştırarak doğrulamadım.
+  tokens used
+  27,683
+  **NO-GO.** Paylaştığın diff üzerinden üç P2 bulgum var. Araç kullanmadım; test sonuçlarını çalıştırarak doğrulamadım.
 
 1. **P2 — “Son uygulanan karar” yanlış seçilebilir.**  
    `src/modules/agents/repository/control-plane.ts:709`, `src/modules/agents/application/runtime-concurrency.ts:239`
