@@ -238,13 +238,21 @@ davranışı ve veri bütünlüğünü etkiliyor.
       **Kapatma ölçütü:** istenen eşzamanlılık ile kanıtın izin verdiği eşzamanlılıktan TEK
       etkin değer hesaplansın; lease ve scheduler aynı hesabı kullansın; eski/eksik kanıtta
       davranış açıkça tanımlansın.
-      **12 Eylül'de bir aday yazıldı, 14 Eylül'de Astra NO-GO verdi** — kod bu dalda geri
-      alındı, `claude/nerde-kalmisiz-ugoh1y` dalında duruyor.
-      [İnceleme](ASTRA_F02_INCELEMESI_2026-09-14.md). Asıl kusur: aday, kapasite kaydı
-      **yokken** ayarı koruyor; yani `concurrency=2` kanıtsız uygulanabiliyor ve değişikliğin
-      kendi iddiasını karşılamıyor. Ayrıca düşüş operatöre görünmüyor ve sürüm kimliği
-      `model` alanına düşebiliyor (`gpt-5` → major 5). Kuyruk düzeltmesi prompt profili
-      hash'ini değiştirdiği için bu madde ile dağıtım sırası **birlikte** planlanmalı.
+      **Kod hazır, dağıtım bekliyor — PR #130** (dal `fix/f02-concurrency-evidence`).
+      Astra dört tur inceledi: **NO-GO, NO-GO, NO-GO, GO**. Son GO yalnız dördüncü turda
+      incelenen delta içindir; üretim dağıtımı için GO değildir.
+      İncelemeler: [1](ASTRA_F02_INCELEMESI_2026-09-14.md),
+      [3](ASTRA_F02_INCELEMESI_3_2026-09-14.md), [4](ASTRA_F02_INCELEMESI_4_2026-09-14.md).
+      Turlar sırasıyla şunları yakaladı: ilk aday kapasite kaydı **yokken** ayarı koruyordu
+      (kanıtsız 2); düşüşün tüketicisi yoktu ve taze-ama-güvensiz ölçüm `EVIDENCE_STALE`
+      diye yanlış etiketleniyordu; son uygulanan karar `occurredAt` ile seçildiği için ters
+      zaman sırasında yanlış kayıt okunabiliyordu ve uçuş testi ayırt edici değildi.
+      Kapsam bilerek dar: "mevcut kapasite politikasını lease ve scheduler'a uygular";
+      sürüm okumasının `model` alanına düşmesi devralınan bir zayıflık olarak **açıkça**
+      kapsam dışı ve bir testle kayıt altında.
+      **Dağıtım sırası ve üretimdeki eskimiş kanıt:** [F02_DAGITIM_2026-09-14.md](F02_DAGITIM_2026-09-14.md).
+      Üretim iki haftadır eskimiş kanıtla çift şerit koşuyor; F02 dağıtıldığı anda etkin
+      sınır 1'e düşer. Ayar da 1'e çekilmeli, F02 kuyruk düzeltmesinden **ayrı** dağıtılmalı.
 - [x] **Source result persistence hatası fetch hatası gibi yazılıyor.** — canlıda (PR #84, `eb1aa4e`). Tek `try/catch` hem
       okumayı hem write'ı kapsıyor; başarılı write commit edip response kaybolursa aynı attempt
       `SOURCE_FETCH_FAILED` sayılıp sağlıklı kaynağı backoff/demotion'a sokabiliyor. Fetch ve

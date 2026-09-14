@@ -18,6 +18,7 @@ import {
   integrationDatabase,
   resetIntegrationDatabase,
 } from "./database";
+import { measureDualLanes } from "./fixtures/runtime-capability";
 
 function adminActor(actorId: string): ActorContext {
   return {
@@ -236,6 +237,15 @@ describe("stochastic society scheduler with PostgreSQL", () => {
     await integrationDatabase.agentGlobalSettings.update({
       where: { id: "global" },
       data: { codexConcurrency: 2 },
+    });
+    /*
+      Bu test önce yalnız ayarı 2 yapıyordu; adı "measured" dese de ortada ölçüm
+      yoktu ve yine iki şerit alıyordu. F02 tam bu yolu kapattığı için test 1
+      döndürerek kırıldı — değişikliğin üretimdeki etkisinin canlı kanıtı.
+    */
+    await measureDualLanes({
+      measuredAt: new Date("2026-07-20T08:00:00.000Z"),
+      staleAt: new Date("2026-08-03T08:00:00.000Z"),
     });
 
     const credential = await integrationDatabase.agentCredential.findFirstOrThrow({
