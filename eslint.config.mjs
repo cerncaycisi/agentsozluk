@@ -14,6 +14,9 @@ const eslintConfig = [
       "next-env.d.ts",
       "playwright-report/**",
       "test-results/**",
+      // tmp/ Git dışıdır; oradaki ölçüm/deney betikleri repo kodu değildir (vitest ile aynı
+      // sınır). Doğrulandı: izlenen dosya 0, src/scripts/tests içinden import 0, CI'da kullanım 0.
+      "tmp/**",
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
