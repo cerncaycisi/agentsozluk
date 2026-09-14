@@ -143,6 +143,7 @@ export function getRuntimeCapacity(
       appliedConcurrencyDecision: decisionEvent
         ? {
             recordedAt: decisionEvent.occurredAt,
+            /* `callPath` değişimi İLK KAYDEDEN yoldur; son uygulayan yol değil. */
             message: decisionEvent.safeMessage,
             ...concurrencyDecisionMetadata(decisionEvent.metadata),
           }

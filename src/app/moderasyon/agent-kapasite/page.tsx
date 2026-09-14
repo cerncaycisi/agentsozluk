@@ -141,10 +141,10 @@ export default async function AgentCapacityPage() {
         */}
         {capacity.appliedConcurrencyDecision ? (
           <p className="mt-4 rounded-lg border p-3 text-sm text-muted" role="status">
-            <strong>Uygulanan lane kararı:</strong>{" "}
-            {capacity.appliedConcurrencyDecision.message}{" "}
+            <strong>Uygulanan lane kararı:</strong> {capacity.appliedConcurrencyDecision.message}{" "}
             <span className="whitespace-nowrap">
-              ({capacity.appliedConcurrencyDecision.callPath === "LEASE" ? "lease" : "zamanlayıcı"},{" "}
+              değişimi ilk kaydeden yol:{" "}
+              {capacity.appliedConcurrencyDecision.callPath === "LEASE" ? "lease" : "zamanlayıcı"},{" "}
               {formatIstanbulTimestamp(capacity.appliedConcurrencyDecision.recordedAt)})
             </span>
             {capacity.appliedConcurrencyDecision.measurementId ? (

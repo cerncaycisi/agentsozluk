@@ -3,11 +3,13 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import {
   changeAgentLifecycle,
+  completeRuntimeRun,
   createAgent,
   createAgentSchema,
   lifecycleChangeSchema,
   leaseRuntimeRun,
   runRuntimeStochasticTick,
+  runtimeCompleteSchema,
   runtimeLeaseSchema,
 } from "@/modules/agents";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
@@ -21,7 +23,7 @@ import {
   integrationDatabase,
   resetIntegrationDatabase,
 } from "./database";
-import { measureDualLanes } from "./fixtures/runtime-capability";
+import { measureDualLanesAround } from "./fixtures/runtime-capability";
 
 /*
   F02: lease ve scheduler artık istenen eşzamanlılığı değil, KANITLANMIŞ
@@ -30,7 +32,13 @@ import { measureDualLanes } from "./fixtures/runtime-capability";
   doğrulanıyor (Astra hakem turu, 14 Eylül).
 */
 
-const NOW = new Date("2026-07-21T08:00:00.000Z");
+/*
+  Sabit bir geçmiş tarih kullanılamıyor: `completeRuntimeRun` saat enjeksiyonu
+  kabul etmiyor, gerçek `new Date()` ile lease süresini denetliyor. Geçmişte
+  alınmış bir lease anında süresi geçmiş sayılır ve gerçek tamamlama yolu hiç
+  denenemezdi.
+*/
+const NOW = new Date();
 
 function adminActor(actorId: string): ActorContext {
   return {
@@ -141,29 +149,41 @@ function lease(principal: RuntimePrincipal, now: Date) {
   );
 }
 
-async function finishRun(runId: string, agentProfileId: string, now: Date) {
-  await integrationDatabase.$transaction([
-    integrationDatabase.agentRun.update({
-      where: { id: runId },
-      data: {
-        runStatus: "SUCCEEDED",
-        finishedAt: now,
-        leaseOwner: null,
-        leaseToken: null,
-        leaseExpiresAt: null,
+/**
+ * Koşuyu GERÇEK tamamlama yolundan bitirir.
+ *
+ * Doğrudan `agentRun.update` yazmak şeridi boşaltıyor gibi görünür ama üretimde
+ * şeridi boşaltan yolun çalıştığını kanıtlamaz (Astra, 14 Eylül).
+ */
+async function finishRun(runId: string, agentProfileId: string, leaseToken: string) {
+  await completeRuntimeRun(
+    integrationDatabase,
+    await principalFor(agentProfileId),
+    runId,
+    runtimeCompleteSchema.parse({
+      workerId: "evidence-worker",
+      leaseToken,
+      outcome: "SUCCEEDED",
+      state: { curiosity: 0.5, confidence: 0.6, topicFatigue: {} },
+      safeRunSummary: {
+        operationSummary: "Kanıt fixture'ı: koşu aksiyonsuz tamamlandı.",
+        observedItemIds: [],
+        proposedActionCount: 0,
+        completedActionCount: 0,
+        rejectedActionCount: 0,
+        shortRationale: "Yayınlanabilir aday bulunmadı.",
       },
+      usageMetadata: { durationMs: 1, provider: "codex-cli" },
+      performanceMetrics: {},
+      reflectionDelta: null,
     }),
-    integrationDatabase.agentRuntimeState.update({
-      where: { agentProfileId },
-      data: { currentRunId: null, runtimeStatus: "SUCCEEDED" },
-    }),
-  ]);
+  );
 }
 
 function decisionEvents() {
   return integrationDatabase.agentRuntimeEvent.findMany({
     where: { eventType: "runtime.concurrency.decision_changed" },
-    orderBy: [{ occurredAt: "asc" }, { id: "asc" }],
+    orderBy: { id: "asc" },
     select: { safeMessage: true, metadata: true, occurredAt: true },
   });
 }
@@ -172,36 +192,24 @@ beforeEach(resetIntegrationDatabase);
 afterAll(closeIntegrationDatabase);
 
 describe("proven runtime concurrency with PostgreSQL", () => {
-  it("drops to one lane mid-flight, lets the two active runs finish, then drains the queue", async () => {
+  it("drops to one lane mid-flight, still refuses a lease with one run left, then drains", async () => {
     const agents = await createActiveAgents(3);
     await integrationDatabase.agentGlobalSettings.update({
       where: { id: "global" },
       data: { codexConcurrency: 2 },
     });
-    await measureDualLanes({
-      measuredAt: new Date("2026-07-20T08:00:00.000Z"),
-      staleAt: new Date("2026-08-03T08:00:00.000Z"),
-    });
+    await measureDualLanesAround(NOW);
 
-    const tick = await runRuntimeStochasticTick(
-      integrationDatabase,
-      await principalFor(agents[0]!.agent.profile.id),
-      { workerId: "evidence-worker" },
-      NOW,
-    );
-    if (!("createdRuns" in tick)) throw new Error("Tick rollout guard tarafından durduruldu.");
-    expect(tick.createdRuns).toBe(2);
-
-    const queued = await integrationDatabase.agentRun.findMany({
-      where: { runStatus: "QUEUED" },
-      select: { id: true, agentProfileId: true },
-    });
-    expect(queued).toHaveLength(2);
-    const active: { runId: string; agentProfileId: string }[] = [];
-    for (const run of queued) {
-      const leased = await lease(await principalFor(run.agentProfileId), NOW);
-      expect(leased).toMatchObject({ run: { id: run.id } });
-      active.push({ runId: run.id, agentProfileId: run.agentProfileId });
+    const active: { runId: string; agentProfileId: string; leaseToken: string }[] = [];
+    for (const agent of agents.slice(0, 2)) {
+      const queued = await queueManualRun(agent.agent.profile.id);
+      const leased = await lease(await principalFor(agent.agent.profile.id), NOW);
+      expect(leased).toMatchObject({ run: { id: queued.id } });
+      active.push({
+        runId: queued.id,
+        agentProfileId: agent.agent.profile.id,
+        leaseToken: leased.run!.leaseToken,
+      });
     }
     expect(await integrationDatabase.agentRun.count({ where: { runStatus: "RUNNING" } })).toBe(2);
 
@@ -214,12 +222,11 @@ describe("proven runtime concurrency with PostgreSQL", () => {
 
     // Kanıt eskiyor: ölçüm hâlâ duruyor ama geçerliliği bitti.
     await integrationDatabase.agentRuntimeCapability.updateMany({
-      data: { staleAt: new Date("2026-07-21T07:00:00.000Z") },
+      data: { staleAt: new Date(NOW.getTime() - 60 * 60 * 1000) },
     });
 
     const blocked = await lease(await principalFor(waitingProfileId), NOW);
     expect(blocked).toMatchObject({ run: null, reason: "CAPACITY_FULL" });
-    expect(await integrationDatabase.agentRun.count({ where: { runStatus: "RUNNING" } })).toBe(2);
 
     const drop = await decisionEvents();
     expect(drop.at(-1)?.metadata).toMatchObject({
@@ -230,24 +237,26 @@ describe("proven runtime concurrency with PostgreSQL", () => {
       callPath: "LEASE",
     });
 
-    // Çalışan iki koşu etkilenmiyor: ikisi de normal biçimde sonlanabiliyor.
-    for (const run of active) await finishRun(run.runId, run.agentProfileId, NOW);
-    expect(await integrationDatabase.agentRun.count({ where: { runStatus: "SUCCEEDED" } })).toBe(2);
+    /*
+      AYIRT EDİCİ ADIM. İki koşu birden çalışırken hem 1 hem 2 sınırı lease'i
+      reddeder; yukarıdaki `CAPACITY_FULL` tek başına F02'yi kanıtlamaz. Tek koşu
+      kaldığında sınır 2 olsaydı bekleyen koşu KABUL EDİLİRDİ; hâlâ reddediliyor
+      olması etkin sınırın gerçekten 1 olduğunu gösterir (Astra, 14 Eylül).
+    */
+    await finishRun(active[0]!.runId, active[0]!.agentProfileId, active[0]!.leaseToken);
+    expect(await integrationDatabase.agentRun.count({ where: { runStatus: "RUNNING" } })).toBe(1);
+    expect(await lease(await principalFor(waitingProfileId), NOW)).toMatchObject({
+      run: null,
+      reason: "CAPACITY_FULL",
+    });
+
+    // Çalışan koşular etkilenmiyor: ikincisi de gerçek tamamlama yolundan bitiyor.
+    await finishRun(active[1]!.runId, active[1]!.agentProfileId, active[1]!.leaseToken);
+    expect(await integrationDatabase.agentRun.count({ where: { runStatus: "RUNNING" } })).toBe(0);
 
     // Kuyruk kilitlenmiyor: şerit boşalınca bekleyen koşu tüketiliyor.
     const drained = await lease(await principalFor(waitingProfileId), NOW);
     expect(drained.run?.id).toBe(waitingRun.id);
-    /*
-      Kuyruğun tamamı değil, BEKLEYEN koşu hedefleniyor: lease yolu kendi bakım
-      koşularını (REFLECTION / SOURCE_REFRESH) da kuyruğa ekliyor, o yüzden
-      "kuyruk boş" iddiası yanlış olurdu.
-    */
-    expect(
-      await integrationDatabase.agentRun.findUniqueOrThrow({
-        where: { id: waitingRun.id },
-        select: { runStatus: true },
-      }),
-    ).toEqual({ runStatus: "RUNNING" });
   });
 
   it("admits only one of two concurrent leases when the evidence proves a single lane", async () => {
@@ -324,5 +333,103 @@ describe("proven runtime concurrency with PostgreSQL", () => {
       }),
     ).rejects.toThrow("Bilinçli geri alma.");
     expect(await decisionEvents()).toHaveLength(0);
+  });
+  /*
+    Scheduler tarafı, eskimiş kanıtla. Sınır 2 olsaydı bir çalışan koşu varken
+    hâlâ bir şerit boş sayılır ve tick yeni koşu üretirdi (Astra, 14 Eylül).
+  */
+  it("creates no new run when one is already running and the evidence has expired", async () => {
+    const agents = await createActiveAgents(3);
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { codexConcurrency: 2 },
+    });
+    await measureDualLanesAround(NOW);
+    /*
+      Lease yolu scheduler açıkken kendi bakım koşularını da kuyruğa ekliyor.
+      Kuyrukta bir şey kalırsa tick zaten `QUEUE_NOT_EMPTY` der ve testin sınırla
+      hiçbir ilgisi kalmazdı; şeridi ölçen tek değişken çalışan koşu olmalı.
+    */
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { schedulerEnabled: false },
+    });
+    await queueManualRun(agents[0]!.agent.profile.id);
+    const leased = await lease(await principalFor(agents[0]!.agent.profile.id), NOW);
+    expect(leased.run).not.toBeNull();
+    expect(await integrationDatabase.agentRun.count({ where: { runStatus: "QUEUED" } })).toBe(0);
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { schedulerEnabled: true },
+    });
+    await integrationDatabase.agentRuntimeCapability.updateMany({
+      data: { staleAt: new Date(NOW.getTime() - 60 * 60 * 1000) },
+    });
+
+    const tick = await runRuntimeStochasticTick(
+      integrationDatabase,
+      await principalFor(agents[0]!.agent.profile.id),
+      { workerId: "evidence-worker" },
+      NOW,
+    );
+    if (!("createdRuns" in tick)) throw new Error("Tick rollout guard tarafından durduruldu.");
+    expect(tick).toMatchObject({ createdRuns: 0, skipReason: "CAPACITY_FULL" });
+    expect(
+      await integrationDatabase.agentRun.count({ where: { trigger: "STOCHASTIC_TICK" } }),
+    ).toBe(0);
+  });
+
+  /*
+    `occurredAt`, çağıranın istek başında aldığı zamandır ve kilide giriş sırasıyla
+    aynı olmak zorunda değildir. Kayıtlar zaman sırasına göre okunsaydı, geç yazılan
+    ama daha eski zaman taşıyan karar görünmez olur; operatör düşmüş sınırı 2
+    görürdü (Astra, 14 Eylül).
+  */
+  it("treats the last written decision as current even when its timestamp is older", async () => {
+    await createActiveAgents(1);
+    const older = new Date(NOW.getTime() - 60 * 60 * 1000);
+    await integrationDatabase.$transaction(async (transaction) =>
+      recordEffectiveConcurrencyDecision(
+        transaction,
+        {
+          concurrency: 2,
+          configuredConcurrency: 2,
+          reason: "EVIDENCE_FRESH",
+          measurementId: randomUUID(),
+          staleAt: new Date(NOW.getTime() + 60_000),
+          staleReasons: [],
+        },
+        { callPath: "STOCHASTIC_SCHEDULER", now: NOW },
+      ),
+    );
+    const applied = {
+      concurrency: 1 as const,
+      configuredConcurrency: 2 as const,
+      reason: "EVIDENCE_STALE" as const,
+      measurementId: randomUUID(),
+      staleAt: older,
+      staleReasons: ["AGE" as const],
+    };
+    await integrationDatabase.$transaction(async (transaction) =>
+      recordEffectiveConcurrencyDecision(transaction, applied, {
+        callPath: "LEASE",
+        now: older,
+      }),
+    );
+
+    const events = await decisionEvents();
+    expect(events).toHaveLength(2);
+    expect(events.at(-1)?.metadata).toMatchObject({ effectiveConcurrency: 1 });
+
+    // Uygulanan karar değişmediği için üçüncü bir kayıt yazılmamalı.
+    await integrationDatabase.$transaction(async (transaction) =>
+      expect(
+        await recordEffectiveConcurrencyDecision(transaction, applied, {
+          callPath: "LEASE",
+          now: new Date(NOW.getTime() + 120_000),
+        }),
+      ).toMatchObject({ recorded: false }),
+    );
+    expect(await decisionEvents()).toHaveLength(2);
   });
 });

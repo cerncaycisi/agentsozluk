@@ -700,13 +700,20 @@ export const RUNTIME_CONCURRENCY_DECISION_EVENT_TYPE = "runtime.concurrency.deci
 /**
  * Uygulanan son eşzamanlılık kararı.
  *
- * `[eventType, occurredAt, id]` indeksiyle eşleşsin diye `occurredAt` sırasına göre
- * okunuyor; bu sorgu her lease ve her scheduler tick'inde çalışacak.
+ * Sıralama `occurredAt` DEĞİL `id` üzerinden: `occurredAt`, çağıranın istek
+ * başında aldığı `now`'dur ve kilide giriş sırasıyla aynı olmak zorunda değildir.
+ * Geç tamamlanan bir transaction daha eski bir zaman yazabilir; `occurredAt DESC`
+ * o durumda uygulanmış kararın yerine bir öncekini seçerdi — operatör düşmüş
+ * sınırı 2 görürdü (Astra, 14 Eylül). `id` autoincrement ve bu kayıtlar ayar
+ * satırı kilidi altında yazıldığı için uygulama sırasını temsil eder.
+ *
+ * `[eventType, occurredAt, id]` indeksinin sırasından yararlanmıyoruz; karar
+ * yalnız DEĞİŞTİĞİNDE yazıldığı için bu tür çok küçük kalıyor.
  */
 export function getLatestRuntimeConcurrencyDecisionEvent(transaction: Prisma.TransactionClient) {
   return transaction.agentRuntimeEvent.findFirst({
     where: { eventType: RUNTIME_CONCURRENCY_DECISION_EVENT_TYPE },
-    orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
+    orderBy: { id: "desc" },
     select: { id: true, occurredAt: true, safeMessage: true, metadata: true },
   });
 }
