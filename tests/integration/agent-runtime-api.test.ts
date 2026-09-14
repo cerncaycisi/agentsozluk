@@ -76,6 +76,7 @@ import {
   integrationDatabase,
   resetIntegrationDatabase,
 } from "./database";
+import { measureDualLanesAround } from "./fixtures/runtime-capability";
 
 const leaseTokensByWorker = new Map<string, string>();
 const completedRuntimeFastState = {
@@ -263,12 +264,17 @@ async function createLeaseCapacityFixture(codexConcurrency: 1 | 2) {
   await updateGlobalSettings(integrationDatabase, adminActor(admin.id), {
     schedulerEnabled: false,
   });
-  // The concurrency=2 capability gate is covered by capacity integration tests.
-  // This fixture isolates the database claim semaphore itself.
   await integrationDatabase.agentGlobalSettings.update({
     where: { id: "global" },
     data: { codexConcurrency },
   });
+  /*
+    Ayarı yazmak artık yetmiyor: F02'den sonra lease de kanıt arıyor, dolayısıyla
+    ölçümsüz bir "concurrency 2" fixture'ı tek şerit uygular ve bu testin
+    doğrulamak istediği semaforu hiç sınamazdı. Kanıt gerçek kapasite kaydıyla
+    kuruluyor; kapının kendisi `agent-runtime-concurrency-evidence` testinde.
+  */
+  if (codexConcurrency === 2) await measureDualLanesAround(new Date());
   for (const created of agents) {
     await changeAgentLifecycle(
       integrationDatabase,
@@ -8987,6 +8993,8 @@ describe("internal agent runtime API with PostgreSQL", () => {
         codexConcurrency: 2,
       },
     });
+    // İki şerit ölçülmeden verilmiyor (F02); bu test iki agent'ın aynı anda çalışmasına dayanıyor.
+    await measureDualLanesAround(new Date());
     await changeAgentLifecycle(
       integrationDatabase,
       adminActor(secondAdmin.id),
@@ -9369,7 +9377,22 @@ describe("internal agent runtime API with PostgreSQL", () => {
       ...(cursor ? { afterId: BigInt(cursor) } : {}),
       take: 100,
     });
-    expect(events.map(({ eventType }) => eventType)).toEqual(["run.started", "run.step.changed"]);
+    /*
+      İlk lease, uygulanan eşzamanlılık kararını da yazıyor: bu fixture'da ayar 1,
+      yani sınır düşmüyor — ama karar yine de operatör akışında görünür olmalı,
+      çünkü asıl işi 2'den 1'e düşüşü açıklamak (F02 / Astra P2, 14 Eylül).
+    */
+    expect(events.map(({ eventType }) => eventType)).toEqual([
+      "runtime.concurrency.decision_changed",
+      "run.started",
+      "run.step.changed",
+    ]);
+    expect(events[0]?.metadata).toMatchObject({
+      callPath: "LEASE",
+      configuredConcurrency: 1,
+      effectiveConcurrency: 1,
+      reason: "CONFIGURED_SINGLE",
+    });
     const technicalEvents = await listRuntimeEvents(
       integrationDatabase,
       adminActor(fixture.admin.id),
@@ -9380,6 +9403,7 @@ describe("internal agent runtime API with PostgreSQL", () => {
       },
     );
     expect(technicalEvents.map(({ eventType }) => eventType)).toEqual([
+      "runtime.concurrency.decision_changed",
       "run.started",
       "agent.heartbeat",
       "run.step.changed",

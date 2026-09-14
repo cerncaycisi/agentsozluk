@@ -25,6 +25,7 @@ import {
 import {
   appendRuntimeEvent,
   getGlobalSettingsRecord,
+  getLatestRuntimeConcurrencyDecisionEvent,
   lockAgentSettings,
   updateGlobalSettingsRecord,
 } from "@/modules/agents/repository/control-plane";
@@ -52,6 +53,27 @@ function dualConcurrencySupported(input: RuntimeCapabilityMeasurementInput): boo
   );
 }
 
+/** Karar kaydının metadata'sı JSON; görünüme taşımadan önce daraltılıyor. */
+function concurrencyDecisionMetadata(metadata: unknown) {
+  const record =
+    metadata && typeof metadata === "object" && !Array.isArray(metadata)
+      ? (metadata as Record<string, unknown>)
+      : {};
+  const text = (key: string) => (typeof record[key] === "string" ? (record[key] as string) : null);
+  const count = (key: string) => (typeof record[key] === "number" ? (record[key] as number) : null);
+  return {
+    callPath: text("callPath"),
+    reason: text("reason"),
+    measurementId: text("measurementId"),
+    staleAt: text("staleAt"),
+    staleReasons: Array.isArray(record.staleReasons)
+      ? record.staleReasons.filter((value): value is string => typeof value === "string")
+      : [],
+    configuredConcurrency: count("configuredConcurrency"),
+    effectiveConcurrency: count("effectiveConcurrency"),
+  };
+}
+
 export function getRuntimeCapacity(
   client: DatabaseExecutor,
   actor: ActorContext,
@@ -60,10 +82,11 @@ export function getRuntimeCapacity(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     const localDate = istanbulLocalDate(now);
-    const [settings, capability, fingerprintRecord] = await Promise.all([
+    const [settings, capability, fingerprintRecord, decisionEvent] = await Promise.all([
       getGlobalSettingsRecord(transaction),
       getLatestRuntimeCapability(transaction),
       getLatestRuntimeFingerprintRecord(transaction),
+      getLatestRuntimeConcurrencyDecisionEvent(transaction),
     ]);
     const observedFingerprint = runtimeFingerprint(fingerprintRecord?.usageMetadata);
     const fingerprint = {
@@ -111,6 +134,19 @@ export function getRuntimeCapacity(
       runtimeOperatingMode: settings.runtimeOperatingMode,
       societyFlowEnabled: societyFlowEnabled(settings),
       dualConcurrencyAvailable: supportsDualConcurrency(capability, { now, ...fingerprint }),
+      /*
+        Bu görünüm ne OLMASI gerektiğini hesaplıyor; `appliedConcurrencyDecision` ise
+        lease ve scheduler'ın en son gerçekten UYGULADIĞI kararı gösteriyor. İkisi
+        ayrı: hesap değişse de karar yeni bir lease/tick'e kadar uygulanmaz, ve
+        düşüşün nedeni yalnız bu kayıtta durur (Astra P2, 14 Eylül).
+      */
+      appliedConcurrencyDecision: decisionEvent
+        ? {
+            recordedAt: decisionEvent.occurredAt,
+            message: decisionEvent.safeMessage,
+            ...concurrencyDecisionMetadata(decisionEvent.metadata),
+          }
+        : null,
       runtimeFingerprint: fingerprint,
       observedRuntimeFingerprint: observedFingerprint,
       queueLagMs,

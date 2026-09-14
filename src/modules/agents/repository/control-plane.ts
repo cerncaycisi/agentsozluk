@@ -695,6 +695,22 @@ export function getGlobalSettingsRecord(transaction: Prisma.TransactionClient) {
   return getStoredGlobalSettingsRecord(transaction);
 }
 
+export const RUNTIME_CONCURRENCY_DECISION_EVENT_TYPE = "runtime.concurrency.decision_changed";
+
+/**
+ * Uygulanan son eşzamanlılık kararı.
+ *
+ * `[eventType, occurredAt, id]` indeksiyle eşleşsin diye `occurredAt` sırasına göre
+ * okunuyor; bu sorgu her lease ve her scheduler tick'inde çalışacak.
+ */
+export function getLatestRuntimeConcurrencyDecisionEvent(transaction: Prisma.TransactionClient) {
+  return transaction.agentRuntimeEvent.findFirst({
+    where: { eventType: RUNTIME_CONCURRENCY_DECISION_EVENT_TYPE },
+    orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
+    select: { id: true, occurredAt: true, safeMessage: true, metadata: true },
+  });
+}
+
 export function getProductionActivationAnchor(transaction: Prisma.TransactionClient) {
   return transaction.agentRuntimeEvent.findFirst({
     where: { eventType: "runtime.production.activated" },

@@ -1,6 +1,9 @@
 import { inTransaction } from "@/lib/db/transaction";
 import type { DatabaseExecutor, TransactionClient } from "@/lib/db/types";
-import { resolveEffectiveRuntimeConcurrency } from "@/modules/agents/application/runtime-concurrency";
+import {
+  recordEffectiveConcurrencyDecision,
+  resolveEffectiveRuntimeConcurrency,
+} from "@/modules/agents/application/runtime-concurrency";
 import { checkDatabaseReadiness } from "@/lib/db/readiness";
 import { AppError } from "@/lib/http/errors";
 import { constantTimeEqual, sha256 } from "@/lib/security/crypto";
@@ -1448,6 +1451,7 @@ export async function leaseRuntimeRun(
       configuredConcurrency: settings.codexConcurrency,
       now,
     });
+    await recordEffectiveConcurrencyDecision(transaction, effective, { callPath: "LEASE", now });
     const concurrency = effective.concurrency;
     const breakerConfig = circuitBreakerConfigSchema.parse(settings.circuitBreakerConfig);
     const operational = await getRuntimeOperationalMetrics(transaction, {

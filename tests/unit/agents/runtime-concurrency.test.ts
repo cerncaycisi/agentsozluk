@@ -134,9 +134,43 @@ describe("effective runtime concurrency", () => {
     }
   });
 
-  it("refuses two lanes when the benchmark itself found dual concurrency unsafe", async () => {
-    const result = await resolve({ ...fresh, dualConcurrencySupported: false });
-    expect(result.concurrency).toBe(1);
-    expect(result.reason).toBe("EVIDENCE_STALE");
+  /*
+    Taze ama çift eşzamanlılığı güvensiz bulan ölçüm ESKİ DEĞİLDİR. İkisini aynı adla
+    raporlamak operatöre gereksiz bir benchmark turu yaptırır (Astra, 14 Eylül).
+  */
+  it("separates an unsafe benchmark from a stale one", async () => {
+    const unsafe = await resolve({ ...fresh, dualConcurrencySupported: false });
+    expect(unsafe.concurrency).toBe(1);
+    expect(unsafe.reason).toBe("DUAL_CONCURRENCY_UNSUPPORTED");
+    expect(unsafe.staleReasons).toEqual([]);
+
+    const stale = await resolve({ ...fresh, staleAt: new Date("2026-07-01T12:00:00.000Z") });
+    expect(stale.reason).toBe("EVIDENCE_STALE");
+    expect(stale.staleReasons).toContain("AGE");
+  });
+
+  it("agrees with the capacity view when the running version cannot be read", async () => {
+    const applied = await resolve(fresh, { usageMetadata: {}, finishedAt: now });
+    const shown = calculateRuntimeCapacity({
+      capability: fresh,
+      configuredConcurrency: 2,
+      degradedMode: false,
+      now,
+      promptProfileHash: RUNTIME_PROMPT_PROFILE_HASH,
+    });
+    expect(applied.concurrency).toBe(shown.effectiveConcurrency);
+    expect(applied.reason).toBe("CODEX_VERSION_UNKNOWN");
+  });
+
+  /*
+    Devralınan zayıflık, bilerek kayıt altında: `codexVersion` yokken `model` alanı
+    sürüm yerine geçiyor. F02 bunu DÜZELTMİYOR; kapsamı dışında bırakıyor.
+  */
+  it("still accepts the model field as a version, which F02 does not claim to fix", async () => {
+    const result = await resolve(fresh, {
+      usageMetadata: { model: "codex-cli 2.9.9" },
+      finishedAt: now,
+    });
+    expect(result.concurrency).toBe(2);
   });
 });

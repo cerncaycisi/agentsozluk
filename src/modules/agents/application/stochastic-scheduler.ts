@@ -1,5 +1,8 @@
 import { inTransaction } from "@/lib/db/transaction";
-import { resolveEffectiveRuntimeConcurrency } from "@/modules/agents/application/runtime-concurrency";
+import {
+  recordEffectiveConcurrencyDecision,
+  resolveEffectiveRuntimeConcurrency,
+} from "@/modules/agents/application/runtime-concurrency";
 import type { DatabaseExecutor } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
@@ -107,6 +110,10 @@ export function runRuntimeStochasticTick(
 
     const effective = await resolveEffectiveRuntimeConcurrency(transaction, {
       configuredConcurrency: snapshot.settings.codexConcurrency,
+      now,
+    });
+    await recordEffectiveConcurrencyDecision(transaction, effective, {
+      callPath: "STOCHASTIC_SCHEDULER",
       now,
     });
     const concurrency = effective.concurrency;

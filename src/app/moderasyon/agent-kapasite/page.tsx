@@ -134,6 +134,40 @@ export default async function AgentCapacityPage() {
           />
           <Row label="Kapasite rezervi" value={ratio(capacity.capacityReserve)} />
         </dl>
+        {/*
+          Etkin sınır ayarlının altına düştüğünde nedeni burada durur. Kayıt lease
+          ya da scheduler'ın uyguladığı SON karardır; yalnız karar değiştiğinde
+          yenilenir (Astra P2, 14 Eylül).
+        */}
+        {capacity.appliedConcurrencyDecision ? (
+          <p className="mt-4 rounded-lg border p-3 text-sm text-muted" role="status">
+            <strong>Uygulanan lane kararı:</strong>{" "}
+            {capacity.appliedConcurrencyDecision.message}{" "}
+            <span className="whitespace-nowrap">
+              ({capacity.appliedConcurrencyDecision.callPath === "LEASE" ? "lease" : "zamanlayıcı"},{" "}
+              {formatIstanbulTimestamp(capacity.appliedConcurrencyDecision.recordedAt)})
+            </span>
+            {capacity.appliedConcurrencyDecision.measurementId ? (
+              <>
+                {" "}
+                Dayandığı ölçüm: {capacity.appliedConcurrencyDecision.measurementId}
+                {capacity.appliedConcurrencyDecision.staleAt
+                  ? ` · geçerlilik ${capacity.appliedConcurrencyDecision.staleAt}`
+                  : ""}
+                {capacity.appliedConcurrencyDecision.staleReasons.length > 0
+                  ? ` · eskime: ${capacity.appliedConcurrencyDecision.staleReasons.join(", ")}`
+                  : ""}
+              </>
+            ) : (
+              " Dayandığı bir ölçüm yok."
+            )}
+          </p>
+        ) : (
+          <p className="mt-4 rounded-lg border p-3 text-sm text-muted" role="status">
+            Henüz uygulanmış bir lane kararı kaydedilmedi; ilk lease ya da zamanlayıcı tick’inde
+            yazılacak.
+          </p>
+        )}
         <RuntimeControlForm
           societyFlowEnabled={capacity.societyFlowEnabled}
           runtimeEnabled={capacity.runtimeEnabled}
