@@ -18,7 +18,6 @@ import {
 } from "@/modules/agents/repository/life-ledger";
 import { lockPersonaUniverse } from "@/modules/agents/repository/persona-lock";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
-import { resolveEffectiveRuntimeConcurrency } from "@/modules/agents/application/runtime-concurrency";
 import {
   duplicateRepairCandidateIsSafe,
   isRepairableContentRejectionCode,
@@ -1444,10 +1443,7 @@ export async function leaseRuntimeRun(
       "RECLAIM_BLOCKED_PERSISTED_BATCH",
       now,
     );
-    const concurrency = await resolveEffectiveRuntimeConcurrency(transaction, {
-      configuredConcurrency: settings.codexConcurrency,
-      now,
-    });
+    const concurrency = settings.codexConcurrency === 2 ? 2 : 1;
     const breakerConfig = circuitBreakerConfigSchema.parse(settings.circuitBreakerConfig);
     const operational = await getRuntimeOperationalMetrics(transaction, {
       now,
