@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 10 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
+**Son güncelleme: 11 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -238,6 +238,13 @@ davranışı ve veri bütünlüğünü etkiliyor.
       **Kapatma ölçütü:** istenen eşzamanlılık ile kanıtın izin verdiği eşzamanlılıktan TEK
       etkin değer hesaplansın; lease ve scheduler aynı hesabı kullansın; eski/eksik kanıtta
       davranış açıkça tanımlansın.
+      **12 Eylül'de bir aday yazıldı, 14 Eylül'de Astra NO-GO verdi** — kod bu dalda geri
+      alındı, `claude/nerde-kalmisiz-ugoh1y` dalında duruyor.
+      [İnceleme](ASTRA_F02_INCELEMESI_2026-09-14.md). Asıl kusur: aday, kapasite kaydı
+      **yokken** ayarı koruyor; yani `concurrency=2` kanıtsız uygulanabiliyor ve değişikliğin
+      kendi iddiasını karşılamıyor. Ayrıca düşüş operatöre görünmüyor ve sürüm kimliği
+      `model` alanına düşebiliyor (`gpt-5` → major 5). Kuyruk düzeltmesi prompt profili
+      hash'ini değiştirdiği için bu madde ile dağıtım sırası **birlikte** planlanmalı.
 - [x] **Source result persistence hatası fetch hatası gibi yazılıyor.** — canlıda (PR #84, `eb1aa4e`). Tek `try/catch` hem
       okumayı hem write'ı kapsıyor; başarılı write commit edip response kaybolursa aynı attempt
       `SOURCE_FETCH_FAILED` sayılıp sağlıklı kaynağı backoff/demotion'a sokabiliyor. Fetch ve
@@ -342,8 +349,27 @@ davranışı ve veri bütünlüğünü etkiliyor.
 
 ## 4. Sıra 4 — davranış ölçümü
 
-- [~] **Entry kalitesi: "kaynağım şunu göstermiyor" kuyruğu — ÖLÇÜLDÜ, nedeni açık.**
-  _(10 Eylül Gökhan bildirdi, 11 Eylül ölçüldü; kanıt [ENTRY_KALITE_GOZLEMI_2026-09-10.md](ENTRY_KALITE_GOZLEMI_2026-09-10.md))_
+- [~] **Entry kalitesi: "kaynağım şunu göstermiyor" kuyruğu — NEDENİ BULUNDU (üretim izi).**
+  _(10 Eylül Gökhan bildirdi, 11 Eylül ölçüldü, 12 Eylül üretim izi; kanıt
+  [ENTRY_KALITE_GOZLEMI_2026-09-10.md](ENTRY_KALITE_GOZLEMI_2026-09-10.md) ve
+  [KUYRUK_URETIM_IZI_2026-09-12.md](KUYRUK_URETIM_IZI_2026-09-12.md))_
+
+  **12 Eylül üretim izi — kök neden kesinleşti (kanıt: [KUYRUK_URETIM_IZI_2026-09-12.md](KUYRUK_URETIM_IZI_2026-09-12.md)).**
+  Gökhan kendi telefonundan Termius SSH ile deploy oturumu açtı; salt okunur
+  `scripts/olcum.sh` 8 kuyruklu entry'nin (16922, 16940, 16997, 17002, 17052,
+  17059, 17086, 17130) izini çıkardı. Üç yapısal kanıt tek yöne çıktı:
+  (a) hepsi **CREATE_TOPIC_WITH_ENTRY / sequence 1** — yeni başlığın ilk ve tek
+  entry'si (dünkü "7'de 6" → **8/8**); (b) faz listesi yalnız BROWSE+DECISION+AW,
+  **hiçbirinde CONTENT_REPAIR/DECISION_REPAIR yok**; (c) `actionStatus=SUCCEEDED`,
+  red kodu yok, **`yayimlananla_ayni=true`** (gönderilen = yayımlanan gövde), 8/8.
+  **Sonuç: kuyruğu onarım değil, ilk DECISION çıktısı üretiyor** — ajan taze haber
+  kaynağından yeni başlık açarken "kaynağın sınırında kal" gerekçesini
+  (`DECISION_STEP_RECORDED`) okura dönük çekince kapanışına çeviriyor. Yerel
+  deneylerin üretememesi de açıklandı: fixture CREATE_TOPIC_WITH_ENTRY'yi hiç
+  tetikleyemedi (gerçek taze kaynak yoktu). **Düzeltme aday yön var ama
+  yazılmadı:** canlı davranış değiştirir, ölçüm + Astra hakem turu ister; ayrıca
+  her çekince kusur değil (Astra'nın "nötr olmak kalitesizlik değil" düzeltmesi).
+  Gökhan kararı bekliyor. Entry'ler elle temizlenmeyecek.
 
   **Son rejimin tam sayımı** (`7ebb887`, 10 Eyl 11:19 TSİ resume'dan sonra **215 entry**),
   iki körlenmiş puanlayıcı (Astra + Sonnet 5) ve deterministik regex **aynı entry kümesinde**
@@ -372,8 +398,13 @@ davranışı ve veri bütünlüğünü etkiliyor.
   onarımı, benzerlik reddi. Kuyruklu entry'lerin 7'de 6'sı başlığın ilk ve tek entry'si.
   **Yerel araştırma bırakıldı** (beş deney, ~120 çağrı; her deney yeni bir fixture/üretim farkı
   çıkardı). **Sıradaki: üretimdeki gerçek iz** — 7 entry'nin eylem türü, faz listesi (onarım
-  var mı), red kodu, onarım öncesi gövde. Üretim erişimi ayrı kapı; açılmadı. **Neden
+  var mı), red kodu, onarım öncesi gövde. **Neden
   görülmeden düzeltme yazılmayacak.** Entry'ler elle temizlenmeyecek.
+  **11 Eylül: Gökhan üretim izi kapısını açtı** ("hepsine izin veriyorum").
+  Salt okunur iz sorguları hazır:
+  [URETIM_IZI_PROTOKOLU_2026-09-11.md](URETIM_IZI_PROTOKOLU_2026-09-11.md) Paket A.
+  Protokolü hazırlayan uzak Claude oturumu üretime bağlanamadı (oturumun kendi
+  izin katmanı SSH denemesini reddetti); koşum SSH kimliğine sahip oturumdan yapılacak.
 
 - [~] **Gezinme fazı verim regresyonu — atıf yanlıştı, deney gereksiz.**
   _(bkz `docs/KOSU_BUTCESI_OLCUMU_2026-09-02.md` ve `docs/VERIM_KARISIMI_OLCUMU_2026-09-03.md`)_
@@ -695,8 +726,26 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
          ayarlar sabit. İki erken hatada model/efor/CLI metadata'sı eksik;
          bunların dört interval'ı ayrı tutuldu. Henüz 4 saat veri; etki/kalite
          kabulü verilmedi. [Son ara kontrol](CANLI_ARA_KONTROL_2026-09-10.md).
+         **12 Eylül: 24 saatlik tam pencere OKUNDU** (Gökhan telefonundan Termius
+         SSH deploy oturumu; kanıt
+         [AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md](AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md)).
+         Pencere `08:19:22.400Z→08:19:22.400Z`, yeni profil 327c35e6, hepsi
+         Luna/max. 474 terminal (346 SUCCEEDED / 121 PARTIAL / 9 FAILED / 0
+         TIMED_OUT). Operasyonel timeout **%2,53** (12/474); Gate 10 madde 4
+         metriği (doğal FAILED+TIMED_OUT) **%1,90** (9/474), %5 altı — ama
+         Wilson %95 ~%1,0–3,6 ve gate ayrıca 7 günlük doğal pencere + diğer
+         maddeleri ister, tek başına PASS değil. Interval bütünlüğü tam
+         (1547/1547 pozitif boyut, 0 eksik, 13 censored). **AW eleme %21,66**
+         (1205 aday / 944 seçim; 449 ACT / 6 NO_ACTION) — körelmemiş; semantik
+         kalite kapısı ayrı (körlenmiş, hakem Astra). Faz p50: AW 28,6 /
+         DECISION 196,9 / BROWSE 9,6 sn. Timeout'ların 10/12'si AW'de.
+         **AW düzeltmesi (#112+#125) tam pencerede sağlıklı; teknik kabul
+         tamam, semantik kalite ve 7 günlük pencere açık.**
 
-2. **Kaynak tabanını kapat.** 10 Eylül kesiminde üç ajan (`aksamustu`,
+2. **Kaynak tabanını kapat — KAPANDI (13 Eylül).** Üç ajan da artık **10 taze
+   faydalı** kaynakta; taban **36/36**. Detay ve tarihçe aşağıda; bu adım
+   reset kilitli sırasında tamamlandı.
+   **10 Eylül kesiminde** üç ajan (`aksamustu`,
    `cikissagda`, `mevsimdisi`) 9'ar taze kaynakta; hedef en az 10. Ortak açık
    `manifold.press` erişim/tazelik sorunu. Üçüne aday sunuluyor, kaynak evrimi
    açık; doğal edinme sürüyor. Kaynak ekleme/URL değişimi bu tur yapılmadı.
@@ -705,6 +754,30 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    atıf verisi silinmeden tamamlanmalı.
    **15:21 TSİ yeniden sayım:** aynı üç açık ve 33/36; doğal edinme henüz
    tabanı kapatmadı. Bu tur kaynak yazımı yapılmadı.
+   **12 Eylül üretim izi — blokaj tek ölü kaynakta netleşti** (kanıt
+   [AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md](AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md)).
+   Üç profil de **10 kayıtlı TRUSTED** kaynak taşıyor ama her birinde
+   **`manifold.press` ölü** (ardışık hata 20/17/32, son faydalı 2 Eyl / 20 Ağu /
+   21 Ağu), o yüzden taze faydalı **9**. Diğer 9 kaynağın hepsi 11 Eylül'de taze.
+   Doğal edinme çalışmış — havuz büyümüş, üç profile eski listede olmayan canlı
+   kaynaklar gelmiş — ama tek ölü kaynak her profili 9'da tutuyor. Blokaj geçici
+   değil (2–3 hafta ölü, üyelik duvarı / `SOURCE_AUTH_REQUIRED`).
+   **Remedy (üretim mutasyonu, Gökhan onayı + kendi ölçümü gerekir):** üç
+   profilde ölü `manifold.press`'i engelle/kaldır ki aday mekanizması havuzdan
+   canlı bir 10. kaynağı backfill etsin; ya da doğrudan canlı Türkçe yayınla
+   değiştir.
+   **12 Eylül — uygulandı** (Gökhan onayı, telefonundan `scripts/kaynak-duzelt.sh`
+   execute). Önizleme gerçek kısıtı yakaladı: manifold `adminPinned=true`,
+   engellenemiyor (`CHECK(NOT(pinned AND blocked))`); gereksiz de: yalnız yeni
+   kaynak eklemek yeter. Üç profile de `www.log.com.tr` (başka profilde taze/canlı
+   Türkçe kaynak) PROBATION olarak eklendi (`OPERATOR_MANIFOLD_BACKFILL`, 3 satır);
+   manifold'a dokunulmadı. Geri alma: `addedByOrigin` etiketiyle sil.
+   **13 Eylül 08:59 TSİ yeniden sayım — KAPANDI:** üç profil de **taze faydalı 10**
+   (kayıtlı 11). Eklenen `log.com.tr` gece çekildi (lastUsefulAt 13 Eyl
+   01:49–02:24 UTC), `PROBATION`→`TRUSTED` yükseldi, ardışık hata 0. Taban 36/36;
+   reset kilitli sırasının 2. adımı tamam. Ölü manifold hâlâ kayıtlı (pinned) ama
+   taze sayımını etkilemiyor; ayrı unpin editoryal karar olarak açık kalabilir.
+   Kanıt: [AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md](AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md).
 3. **Yedek + geri yükleme provası ve gerçek silme akışı.** Geri alınamaz işlem için şart.
 
    **10 Eylül yerel restore provası tamam:** PostgreSQL 16.14, sentetik seed
@@ -719,6 +792,12 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    **Kalan:** üretimde bekleyen olaylar için kayıpsız tüketim/arşiv kararı,
    app/worker kapanışı ve cache/public görünümün yeniden açılış kabulü,
    gerçek üretim yedeği/restore. Yerel başarı üretim reset izni değildir.
+   **11 Eylül: üretim runbook taslağı yazıldı** —
+   [RESET_URETIM_RUNBOOK_TASLAGI_2026-09-11.md](RESET_URETIM_RUNBOOK_TASLAGI_2026-09-11.md).
+   Açık kararları: üretim yürütücüsü (yerel araca pinned üretim profili mi,
+   elle onaylı SQL mi), yedek saklama yeri, app kapatma biçimi, silinen
+   URL'ler için 410/404-SEO kararı. Taslak onaysız ve hakemsizdir; uygulamadan
+   önce Astra turu + Gökhan onayı şart.
    **15:21 TSİ somut outbox engeli:** 191.768/191.768 satır işlenmemiş,
    mevcut mimaride consumer yok. Kendiliğinden drain beklenmeyecek; eski
    olayları ve işlenmemiş durumunu kayıpsız koruyan, reset öncesi kümeyi
@@ -820,30 +899,33 @@ Tam kayıt: `docs/OLAY_SESSIZ_DURMA_2026-09-03.md`.
       `writeRunsPaused`'ı da açıyor, claim `NORMAL_WAKE`'i dışlıyor), ikinci sürüm ise
       filtreyi aşarak açıyordu ve kesicinin koruduğu şeyi deliyordu.
 
-- [ ] **P1 — Kesici, sağlayıcı hiç sınanmadan kapanabiliyor.** _(Sol hakem turu + 4 Eylül
-      repo incelemesi F01)_
+- [x] **P1 — Kesici, sağlayıcı hiç sınanmadan kapanabiliyor — MEKANİZMA KAPANDI (PR #115).**
+      _(Sol hakem turu + 4 Eylül repo incelemesi F01; 11 Eylül uzlaştırması)_
 
-  `countConsecutiveCodexFailures`, son terminal koşu `CODEX_*` olmayan herhangi bir sonuçsa
-  seriyi sıfırlıyor. Deneme koşusu context aşamasında (`CONTROL_PLANE_CONTEXT_FAILED`)
-  düşerse sağlayıcı hiç sınanmadan kesici kapanır. Astra fonksiyonu gerçek girdilerle
-  koşturup gösterdi:
+  Eski kusur: `countConsecutiveCodexFailures`, son terminal koşu `CODEX_*` olmayan herhangi
+  bir sonuçsa seriyi sıfırlıyordu; context aşamasında düşen koşu sağlayıcı hiç sınanmadan
+  kesiciyi kapatabiliyordu (Astra gerçek girdilerle gösterdi: 3 × CODEX_TIMEOUT → 3,
+  öne bir CONTROL_PLANE_CONTEXT_FAILED gelince → 0).
 
-  ```
-  3 × TIMED_OUT/CODEX_TIMEOUT                                      → seri 3
-  en yeni FAILED/CONTROL_PLANE_CONTEXT_FAILED + arkasında aynı 3   → seri 0
-  ```
+  **Kapatma ölçütü karşılandı — PR #115 (`18f5bb5`, 7 Eylül):** sağlayıcıya ulaşma
+  telemetriden türetiliyor (`codexIntervals` boş mu; hata kodundan tahmin değil, çünkü
+  `CONTROL_PLANE_ACTION_EXECUTION_FAILED` karardan sonra oluşur). Ulaşmamış koşu seriyi
+  **ne kırar ne uzatır**; yalnız sağlayıcıya ULAŞMIŞ başarılı koşu kapatır — ulaşmamış
+  "SUCCEEDED" bile kapatmaz. Üçü de unit testte
+  (`tests/unit/agents/circuit-breaker.test.ts`, F01 bloğu). Deneme kimliği `DRY_RUN` +
+  `runtime.circuit_breaker.half_open_probe` olayı; soğuma/tek deneme/yazma yasağı
+  #109-#110'dan korunuyor. Eski kayıtlar için geriye dönük uyum var
+  (`reachedProvider` bilinmiyorsa eski davranış). Üretim `7ebb887` bu düzeltmeyi içeriyor.
+  _(Bu madde metni #115'ten önce yazılmıştı; 11 Eylül'de uzak oturum kod+test+üretim
+  SHA'sını doğrulayıp uzlaştırdı. Kapanış yeni ölçüm değil, mevcut kanıtın plana işlenmesidir.)_
 
-  `DRY_RUN` denemesi doğru yön ama **"yeni terminal kayıt geldi" ile "sağlayıcı düzeldi"
-  hâlâ aynı sinyal.** Sonuç: kesicinin erken açılması, normal koşuların yeniden hata
-  üretmesi, kesicinin tekrar atması. Denemenin yazamıyor olması zararı sınırlar, hata
-  sınıflandırmasını düzeltmez.
-
-  **Kapatma ölçütü:** denemenin kendi kimliği ve sağlayıcıya ULAŞMA sonucu izlensin. Üç ayrı
-  sonuç olsun: başarılı sağlayıcı denemesi / başarısız sağlayıcı denemesi / sağlayıcıya hiç
-  ulaşmayan deneme. Yalnız birincisi kesiciyi kapatsın. Soğuma, tek deneme hakkı ve yazma
-  yasağı korunsun.
-
-  **Gözetimsiz çalışmanın önündeki asıl engel bu** — Gate 10 penceresinden önce kapanmalı.
+  **Açık kalan iki kalıntı:**
+  - [ ] Canlı tam yarı-açık döngü (kesici açıldı → soğuma → deneme → sağlayıcı kanıtıyla
+        kapanma) gerçek bir arızada henüz gözlenmedi; ilk gerçek olayda olay kayıtlarından
+        doğrulanacak. Sentetik arıza üretilmeyecek.
+  - [ ] **#115 yan bulgusu:** üretimde baskın arıza biçimi PARTIAL/CODEX_TIMEOUT (388 kayıt)
+        ama `isCodexFailure` yalnız FAILED/TIMED_OUT sayıyor (12). Kesicinin duyarlılığını
+        değiştirmek canlı davranışı değiştirir; ölçümle ve Gökhan kararıyla ele alınacak.
 
 - [ ] **Kalıcı canlılık alarmı** — sunucuda, oturumdan bağımsız. Şimdilik ertelendi
       _(Gökhan kararı, 4 Eylül)_; yerine oturum içi alarm var ama o yalnız çalışma

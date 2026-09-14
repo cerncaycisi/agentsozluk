@@ -7921,3 +7921,48 @@ received undefined`: APP_URL ve APP_SECRET eksikti. Prova sürecine yalnız
 - Teslim: `2270172` push edildi; bu **tam head** için CI `34500131757` 7/7 SUCCESS.
   Önceki yeşil CI (`34485420687`, head `a068744`) bu düzeltmeleri kapsamıyordu;
   eski koşuyu yeni ağacın kanıtı saymayın.
+
+## 2026-09-11..13 — telefon üzerinden üretim erişimi, salt okunur izler, kaynak backfill
+
+Ortam: Claude Code web oturumu (uzak); bu oturumun üretime SSH'ı kapalı.
+Ölçümler operatörün (Gökhan) kendi host oturumundan koşuldu. Üretim `7ebb887`;
+kesimler 2026-09-11 21:56Z ve 2026-09-13.
+
+Not: erişim kurulumunun operatör tarafı (anahtar/oturum hijyeni ve host
+temizliği) **repo dışında, özel olarak** takip edilir — public repoya operasyonel
+güvenlik durumu yazılmaz.
+
+### Salt okunur üretim izleri (mutasyon yok)
+
+- `scripts/olcum.sh` (READ ONLY / REPEATABLE READ / 20 sn timeout) üç paketi
+  çıkardı; ham gövde/algı host'ta kaldı, repoya yalnız yapısal bulgu.
+  - Kuyruk kök nedeni: 8 entry `CREATE_TOPIC_WITH_ENTRY`/seq 1, onarım fazı yok,
+    `yayimlananla_ayni=true` — onarım değil ilk üretim. `KUYRUK_URETIM_IZI_2026-09-12.md`.
+  - AW 24s pencere: 474 terminal, timeout %2,53, Gate10 metriği %1,90, AW eleme
+    %21,66, interval 1547/1547. `AW_TAM_PENCERE_VE_KAYNAK_2026-09-12.md`.
+- Transfer dersi: bu ortamın egress'i paste servislerini blokluyor (yalnız GitHub
+  vb. açık); sunucu paste'e çıkabiliyor ama ortak erişilen tek yer GitHub, deploy
+  ise salt okuma. Arındırılmış özet metni doğrudan sohbete yapıştırıldı.
+  **Do not repeat:** büyük üretim çıktısı için önceden yazma yetkili ortak kanal ayarla.
+
+### Üretim mutasyonu: kaynak backfill (Gökhan onayı)
+
+- Sorun: üç profil (aksamustu/cikissagda/mevsimdisi) taze faydalı 9; üçünde de
+  `manifold.press` ölü (üretim IP'sinden HTTP 403). manifold `adminPinned=true`
+  olduğu için `adminBlocked` `CHECK(NOT(pinned AND blocked))` ihlal ediyordu —
+  önizleme yakaladı, yazılmadı.
+- Çözüm (`scripts/kaynak-duzelt.sh`, INSERT-only, önizleme→execute): üç profile de
+  başka profilde taze/canlı `www.log.com.tr` klonlandı (`OPERATOR_MANIFOLD_BACKFILL`,
+  PROBATION); manifold'a dokunulmadı. Geri alma: `addedByOrigin` etiketiyle sil.
+- 13 Eyl doğrulama: üç profil taze faydalı **10** (kayıtlı 11); log.com.tr çekildi,
+  PROBATION→TRUSTED, hata 0. Taban 36/36; reset kilitli sırasının 2. adımı kapandı.
+- **Do not repeat:** üretim yazma script'lerinde daima önizleme (transaction +
+  ROLLBACK); pinned kaynağı engelleme, gerekiyorsa yeni ekle; script'i yerel şema
+  kopyasında kolon/enum doğrula.
+
+### Kod: F02 (dağıtım hakem+onay bekliyor)
+
+- `resolveEffectiveRuntimeConcurrency` ile lease+scheduler eşzamanlılığı kapasite
+  kanıtına bağlandı (`24409bb`). Kayıt yoksa ayar korunur; eskimiş/geçersizse etkin
+  sınır 1'e düşer. Birim + typecheck + lint + 587 ajan testi geçti; entegrasyon CI
+  bu oturumda koşulamadı. **Merge/deploy yok; koşu mekanizması → Astra hakem şart.**
