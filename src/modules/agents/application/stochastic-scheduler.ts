@@ -1,4 +1,5 @@
 import { inTransaction } from "@/lib/db/transaction";
+import { resolveEffectiveRuntimeConcurrency } from "@/modules/agents/application/runtime-concurrency";
 import type { DatabaseExecutor } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import type { RuntimePrincipal } from "@/modules/agents/application/runtime-auth";
@@ -104,7 +105,11 @@ export function runRuntimeStochasticTick(
         });
     }
 
-    const concurrency = snapshot.settings.codexConcurrency === 2 ? 2 : 1;
+    const effective = await resolveEffectiveRuntimeConcurrency(transaction, {
+      configuredConcurrency: snapshot.settings.codexConcurrency,
+      now,
+    });
+    const concurrency = effective.concurrency;
     const availableLanes = concurrency - snapshot.runningCount - snapshot.queuedCount;
     if (availableLanes <= 0)
       return finish(snapshot.queuedCount > 0 ? "QUEUE_NOT_EMPTY" : "CAPACITY_FULL");
