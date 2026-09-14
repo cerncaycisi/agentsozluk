@@ -707,8 +707,12 @@ export const RUNTIME_CONCURRENCY_DECISION_EVENT_TYPE = "runtime.concurrency.deci
  * sınırı 2 görürdü (Astra, 14 Eylül). `id` autoincrement ve bu kayıtlar ayar
  * satırı kilidi altında yazıldığı için uygulama sırasını temsil eder.
  *
- * `[eventType, occurredAt, id]` indeksinin sırasından yararlanmıyoruz; karar
- * yalnız DEĞİŞTİĞİNDE yazıldığı için bu tür çok küçük kalıyor.
+ * `[eventType, occurredAt, id]` indeksi `eventType` filtresinde kullanılabilir ama
+ * `id DESC` sıralamasını doğrudan karşılamıyor. Bu tür yalnız karar DEĞİŞİNCE
+ * büyüyor; ancak parmak izinde `measurementId` ve `staleAt` da olduğu için sınır
+ * hiç değişmese bile her yeni ölçüm bir kayıt üretebilir — yani "küçük kalır"
+ * bir güvence değil, beklenti. Birikim ölçülür hâle gelirse `[eventType, id]`
+ * indeksi eklenmeli (Astra, 14 Eylül).
  */
 export function getLatestRuntimeConcurrencyDecisionEvent(transaction: Prisma.TransactionClient) {
   return transaction.agentRuntimeEvent.findFirst({

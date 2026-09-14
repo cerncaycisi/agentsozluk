@@ -37,8 +37,12 @@ import { measureDualLanesAround } from "./fixtures/runtime-capability";
   kabul etmiyor, gerçek `new Date()` ile lease süresini denetliyor. Geçmişte
   alınmış bir lease anında süresi geçmiş sayılır ve gerçek tamamlama yolu hiç
   denenemezdi.
+
+  Zaman modül yüklenirken DEĞİL her testin başında alınıyor: sabitlenseydi
+  dosyadaki testlerin toplam süresi 300 saniyelik lease penceresini aşınca
+  sonraki testler süre aşımından kırılırdı — yanlış kırmızı (Astra, 14 Eylül).
 */
-const NOW = new Date();
+let NOW = new Date();
 
 function adminActor(actorId: string): ActorContext {
   return {
@@ -188,7 +192,10 @@ function decisionEvents() {
   });
 }
 
-beforeEach(resetIntegrationDatabase);
+beforeEach(async () => {
+  NOW = new Date();
+  await resetIntegrationDatabase();
+});
 afterAll(closeIntegrationDatabase);
 
 describe("proven runtime concurrency with PostgreSQL", () => {
