@@ -18,8 +18,14 @@ vardı, hangisinin hangisi olduğunu bilmiyordu). Ölçü Astra'nın kendi koydu
 
 **Fisher p < 0.00001.** Gün boyunca ölçülen her şeyin aksine bu sonuç kesindir.
 
-Üretimde entry'lerin **%72'si haberden** yazılıyor. Yani sistem ajanları neredeyse tamamen
-kötü olan yola sokuyor.
+**KAPSAM (Astra düzeltmesi, 15 Eylül):** 42 + 113 = 155, yani bu karşılaştırma yalnız
+REPLAY'de üretilen entry'leri kapsar; pakete gizli çapa olarak konan 24 üretim entry'si
+provenance verisi taşımadığı için dışındadır. Dolayısıyla "üretimde entry'lerin %72'si
+haberden" demek YANLIŞTIR: %73 (113/155) replay'de ölçülmüştür. Bağlamlar üretimden
+hash doğrulamalı çekildiği için iyi bir vekildir, ama üretimin gerçek oranı ölçülmedi.
+
+**SEÇİM ETKİSİ (Astra, 15 Eylül):** Kendi bilgisinden yazılan 42 entry, ajanın en emin
+olduğu fırsatlardan geliyor olabilir. O hattı büyütünce %95'in korunacağı varsayılamaz.
 
 ## Başarısız olan üç müdahale
 
