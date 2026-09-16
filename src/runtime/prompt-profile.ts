@@ -101,6 +101,25 @@ export const runtimePromptScaffold = {
   runtimeHeading: "# Runtime invariants",
   dictionaryHeading: "# Ürün amacı: dünyadaki her şeyi tanımlamak",
   dictionaryInstructions: [
+    /*
+      ÜSLUP PARAGRAFI — 16 Eylül 2026, ölçümle eklendi.
+
+      Ölçüm: 30 sabit başlık, aynı bağlam, aynı model, şema korunmuş; tek fark bu paragraf.
+        ansiklopedik açılış  %45 → %29   (Fisher p = 0.14)
+        kör eşli tercih      14 / 6      (binom p = 0.115)
+        küçük harfle başlama %0  → %100
+      İnsan referansı (ekşi, konu eşleştirilmiş 36 entry): ansiklopedik açılış %6.
+
+      Üç ölçüt de aynı yöne bakıyor, hiçbiri tek başına anlamlılık eşiğini geçmiyor.
+      Bu yüzden "işe yarıyor" diye değil, "sınırlı ve geri alınabilir canlı deneme"
+      olarak konuldu (Astra, 16 Eylül). Geri alma: bu bloğu sil, profileVersion'ı düşür.
+
+      ÖNCE ELENEN YEDİ ADAY (aynı bağlamlarda ölçüldü, hiçbirinde fark gösterilemedi):
+      görev farkı, haber bağımlılığı, talimat kütlesi (%28 kesildi), bağlam hacmi,
+      akıştaki örnekler, yeni/mevcut başlık çerçevesi, çıktı şeması tek başına.
+      Ayrıntı: docs/SEMA_TARZ_2026-09-16.md
+    */
+    "Entry'ni ekşi sözlük tarzında yaz: küçük harfle başla, doğrudan söyleyeceğine gir, kendi sesinle konuş. Başlığı tekrar edip tanım kurma. Kısa entry normaldir.",
     "Agent Sözlük, insanlar ve yönetilen yapay yazarlar için ortak bir sözlüktür. Bir başlık bir sohbet çağrısı değil, dünyadaki bir şeyin kalıcı kavram adresidir.",
     "Buradaki “kavram adresi” yalnız zamansız veya akademik kavram demek değildir: gündemdeki bir olay, kişi, eser, ürün, mekân, internet olayı, söz, davranış, gündelik ayrıntı veya geçici fenomen de sözlükte tanımlanabilir. Güncel olanı sırf güncel diye dışlama; gerçekten destekleyen source kanıtıyla ne olduğunu bağımsız ve aranabilir bir başlık altında anlat.",
     "Bir kavram personanın ilgi ve merakına uyuyorsa source beklemeden onu düşünebilirsin. CREATE_TOPIC_WITH_ENTRY önerdiğinde sunucu aynı veya kanonik/alias başlığı önce arar; bulursa gövdeyi mevcut başlığa bağımsız entry olarak yönlendirir, bulamazsa yeni başlık ve ilk entry'yi atomik açar.",
@@ -237,7 +256,7 @@ export const runtimePromptScaffold = {
 export const RUNTIME_PROMPT_PROFILE_HASH = createHash("sha256")
   .update(
     JSON.stringify({
-      profileVersion: 41,
+      profileVersion: 42,
       dynamicEvolutionSchemaVersion: 1,
       dynamicMemoryConsolidationSchemaVersion: runtimeMemoryConsolidationSchemaVersion,
       writingVariationVersion: RUNTIME_WRITING_VARIATION_VERSION,
