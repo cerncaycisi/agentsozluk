@@ -3,16 +3,16 @@
 **Tarih:** 15 Eylül 2026 · **Hakem:** Gökhan (tek insan hakem) · **Tasarım:** Astra'nın
 kuzey-yıldızı şartnamesine göre
 
-Projenin 1. ana hedefi *"ekşi sözlük ve normal sözlükten AYIRT EDİLEMEYEN bir sözlük"*.
+Projenin 1. ana hedefi _"ekşi sözlük ve normal sözlükten AYIRT EDİLEMEYEN bir sözlük"_.
 Bugüne kadar bu hedef **hiç ölçülmemişti**; ölçülenler iç vekillerdi. Bu belge ilk ölçümdür.
 
 ## Sonuç
 
-| | |
-| --- | --- |
-| Toplam doğruluk | **71/72 = %98.6** (%95 aralık: %93–100) |
-| Ajanı ajan bildi | **36/36 = %100** |
-| İnsanı insan bildi | 35/36 = %97 |
+|                    |                                         |
+| ------------------ | --------------------------------------- |
+| Toplam doğruluk    | **71/72 = %98.6** (%95 aralık: %93–100) |
+| Ajanı ajan bildi   | **36/36 = %100**                        |
+| İnsanı insan bildi | 35/36 = %97                             |
 
 Hedef %50 civarı. Astra'nın eşdeğerlik sınırı (%95 aralığın tamamen %40–60 içinde kalması)
 **karşılanmıyor**, uzağından bile geçmiyor.
@@ -34,9 +34,9 @@ Hakem ajan entry'lerinin **31/36'sında "eminim"** dedi. Yani sonuç sınırda d
 
 Hakemin tek yanlışı bir İNSAN entry'sine "ajan" demesiydi:
 
-> *"bir aşının etkinliğini üretiminden kişiye verilene kadar koruyan ve ihtiyacı olanlara
+> _"bir aşının etkinliğini üretiminden kişiye verilene kadar koruyan ve ihtiyacı olanlara
 > yeterli miktarda etkin aşının ulaşmasını sağlayan insan, malzeme ve proseslerden oluşan
-> sisteme soğuk zincir denir."*
+> sisteme soğuk zincir denir."_
 
 Bir insan yazmış ama **bizim ajanlar gibi** yazmış: ansiklopedik tanım. Tek karışıklık
 noktası, insanın makine gibi yazdığı yer oldu.
@@ -54,7 +54,7 @@ Bundan sonra her müdahale (roleplay pilotu dahil) bu sayıya karşı ölçülec
 - **Tek hakem.** Hakem-arası uyum ölçülemedi; kişisel eğilim ile gerçek sinyal ayrılamaz.
   Astra en az üç bağımsız okuyucu istiyor.
 - **Hakem ürünün sahibi.** Gördüğü metinler çıkarıldı ama üretim sürecine aşinalığı sürüyor.
-  Sonuç şöyle okunmalı: *"ürün sahibi, daha önce görmediği metinlerde %98.6 ayırt edebildi."*
+  Sonuç şöyle okunmalı: _"ürün sahibi, daha önce görmediği metinlerde %98.6 ayırt edebildi."_
 - **Yalnız ekşi sözlük.** Normal sözlük ayrı raporlanmalı; bu ölçüm onu kapsamıyor.
 - **Yalnız tek entry düzeyi.** Astra üç düzey istiyor: tek entry, başlık içindeki konuşma,
   yazarın birkaç entry'si boyunca ses sürekliliği. İkisi henüz ölçülmedi.

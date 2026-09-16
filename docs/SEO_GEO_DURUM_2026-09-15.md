@@ -6,14 +6,14 @@ Projenin 2. ana hedefi SEO/GEO. Bu belge ilk gerçek ölçümdür.
 
 ## Rakamlar
 
-| | |
-| --- | --- |
-| Dizine eklenen sayfa | **18.498** |
-| Dizine eklenmeyen | 9.869 |
-| Toplam gösterim (16 Tem – 13 Eyl) | 8.300 |
-| Toplam tıklama | **81** |
-| Ortalama TO | %1 |
-| Ortalama konum | **24,4** |
+|                                   |            |
+| --------------------------------- | ---------- |
+| Dizine eklenen sayfa              | **18.498** |
+| Dizine eklenmeyen                 | 9.869      |
+| Toplam gösterim (16 Tem – 13 Eyl) | 8.300      |
+| Toplam tıklama                    | **81**     |
+| Ortalama TO                       | %1         |
+| Ortalama konum                    | **24,4**   |
 
 **Teknik altyapı çalışıyor.** Sitemap canlı ve güncel (18.034 entry + 5.656 başlık,
 `lastmod` bugüne kadar). 18.498 sayfa dizinde. Yapılandırılmış veri geçerli
@@ -24,13 +24,13 @@ ama görünmüyor, o yüzden tıklanmıyor.
 
 ## Dizine eklenmeyenlerin dökümü
 
-| sebep | sayfa | kim karar verdi |
-| --- | --- | --- |
-| `noindex` etiketi | 2.929 | biz |
-| robots.txt | 499 | biz |
-| yönlendirme / 404 | 6 | — |
-| **Tarandı, şu anda dizine eklenmiş değil** | **4.405** | **Google** |
-| **Keşfedildi, şu anda dizine eklenmiş değil** | **2.030** | **Google** |
+| sebep                                         | sayfa     | kim karar verdi |
+| --------------------------------------------- | --------- | --------------- |
+| `noindex` etiketi                             | 2.929     | biz             |
+| robots.txt                                    | 499       | biz             |
+| yönlendirme / 404                             | 6         | —               |
+| **Tarandı, şu anda dizine eklenmiş değil**    | **4.405** | **Google**      |
+| **Keşfedildi, şu anda dizine eklenmiş değil** | **2.030** | **Google**      |
 
 **6.435 sayfayı Google kendi kararıyla almadı.** "Tarandı, dizine eklenmedi", Google'ın
 ince/düşük değerli içerik için klasik sinyalidir. Bu, 15 Eylül entry kalitesi ölçümüyle
@@ -40,18 +40,18 @@ ince/düşük değerli içerik için klasik sinyalidir. Bu, 15 Eylül entry kali
 
 En çok gösterim alan sorgular:
 
-| sorgu | gösterim | tıklama |
-| --- | --- | --- |
-| devir teslim ne demek | 223 | 0 |
-| kapiler etki nedir | 181 | 1 |
-| provenans ne demek | 74 | 1 |
+| sorgu                 | gösterim | tıklama |
+| --------------------- | -------- | ------- |
+| devir teslim ne demek | 223      | 0       |
+| kapiler etki nedir    | 181      | 1       |
+| provenans ne demek    | 74       | 1       |
 
 **Hepsi tanım sorgusu.** Ansiklopedik register'ımız bizi "X nedir / X ne demek"
 sorgularına sokuyor — yani **Wikipedia ve TDK ile aynı yarışa.** O yarışta 24. sıradayız
 ve kazanma ihtimalimiz yok.
 
 Ekşi tarzı içerik bambaşka sorgularda çıkar: deneyim, kanaat, uzun kuyruk
-(*"x kullanan var mı"*, *"x nasıl bir yer"*). Orada Wikipedia rakip değil.
+(_"x kullanan var mı"_, _"x nasıl bir yer"_). Orada Wikipedia rakip değil.
 
 **Sonuç: entry register'ını düzeltmek yalnız 1. hedefin işi değil.** Bizi kazanamayacağımız
 sorgulardan kazanabileceğimiz sorgulara taşıyor. İki hedef ayrı iş değil, aynı iş.

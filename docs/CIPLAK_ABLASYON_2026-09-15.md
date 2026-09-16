@@ -9,12 +9,12 @@
 Aynı model (`gpt-5.6-luna`, effort max), aynı başlıklar, ama bizim ~7.000 token'lık
 kural yığınımız olmadan. 8 başlık × 2 kol × 3 tekrar = 48 çıktı.
 
-| | n | tanımla açış | noktalı virgül | küçük harfle başlıyor | medyan kelime |
-| --- | --- | --- | --- | --- | --- |
-| çıplak: "sözlükte entry yaz" | 24 | %42 | %42 | %42 | 20 |
-| çıplak: "ekşi sözlük tarzında entry yaz" | 24 | **%4** | %33 | **%100** | 28 |
-| **bizim tam sistem** | 11 | %45 | %82 | **%0** | ~25 |
-| insan (ekşi sözlük) | 36 | %6 | %3 | %100 | 13 |
+|                                          | n   | tanımla açış | noktalı virgül | küçük harfle başlıyor | medyan kelime |
+| ---------------------------------------- | --- | ------------ | -------------- | --------------------- | ------------- |
+| çıplak: "sözlükte entry yaz"             | 24  | %42          | %42            | %42                   | 20            |
+| çıplak: "ekşi sözlük tarzında entry yaz" | 24  | **%4**       | %33            | **%100**              | 28            |
+| **bizim tam sistem**                     | 11  | %45          | %82            | **%0**                | ~25           |
+| insan (ekşi sözlük)                      | 36  | %6           | %3             | %100                  | 13            |
 
 **İki kelimelik bir tarz adı**, tanımla açışı %42'den %4'e indiriyor — insan seviyesi %6.
 Bizim 7.000 token'lık kural yığınımız aynı şeyi yapamıyor; üstelik küçük harf oranını
@@ -22,11 +22,11 @@ Bizim 7.000 token'lık kural yığınımız aynı şeyi yapamıyor; üstelik kü
 
 Çıplak modelin `aktarma` başlığına yazdıkları:
 
-> *"bir yere doğrudan gidemeyince hayatın önüne koyduğu küçük bürokratik engel. otobüsten
+> _"bir yere doğrudan gidemeyince hayatın önüne koyduğu küçük bürokratik engel. otobüsten
 > inip başka otobüse binmekten ibaret sanılır; oysa çoğu zaman sabır, yön duygusu ve biraz
-> da kader gerektirir."*
+> da kader gerektirir."_
 
-> *"toplu taşımada yapılanı makbuldür; ilişkilerde yapılanı genellikle can yakar."*
+> _"toplu taşımada yapılanı makbuldür; ilişkilerde yapılanı genellikle can yakar."_
 
 ## Bu neyi geçersiz kılıyor
 
@@ -64,8 +64,8 @@ Bugün kendi ölçümümde **üç** kusur buldum:
 
 `tmp/tarz-2026-09-15` — bizim TAM prompt'umuza kısa tarz talimatı eklendi:
 
-> *"Entry'lerini ekşi sözlük tarzında yaz: küçük harfle başla, doğrudan söyleyeceğine gir,
-> kendi sesinle konuş. Kısa entry normaldir."*
+> _"Entry'lerini ekşi sözlük tarzında yaz: küçük harfle başla, doğrudan söyleyeceğine gir,
+> kendi sesinle konuş. Kısa entry normaldir."_
 
 Üç kol, aynı 13 üretim bağlamı: `A` mevcut, `T` tam prompt + tarz, `TS` tarz + persona
 yazım şablonu sökülü.

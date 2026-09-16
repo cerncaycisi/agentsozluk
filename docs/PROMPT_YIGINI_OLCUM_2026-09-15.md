@@ -16,25 +16,25 @@ bağlamları paylaşan kollar karşılaştırılır; tarihsel sayılar kontrol s
 
 Hepsi aynı 13 üretim bağlamı, hash doğrulamalı replay, `gpt-5.6-luna` effort max.
 
-| müdahale | tanımla açış | p |
-| --- | --- | --- |
-| mevcut sistem (kontrol) | %72 | — |
-| persona sesini olumlu yazmak | değişmedi | 1.00 |
-| akışı boşaltmak (reset benzetimi) | değişmedi | 0.59 |
-| akışı iyi entry'lerle tohumlamak | kötüleşti | — |
-| persona yazım şablonunu sökmek (S) | %70 | 0.77 |
-| göreve tek cümle eklemek (D) | %35 | 0.08 |
-| D + S birlikte (DS) | %63 | 1.00 |
-| kanıt rejimini gevşetmek (K) | %64 | 0.47 |
-| kanıt gevşek + tarz talimatı (KT) | **%48** | **0.03** |
-| **prompt yığınını tamamen kaldırmak** | **%4** | — |
-| insan (ekşi sözlük) | %6 | — |
+| müdahale                              | tanımla açış | p        |
+| ------------------------------------- | ------------ | -------- |
+| mevcut sistem (kontrol)               | %72          | —        |
+| persona sesini olumlu yazmak          | değişmedi    | 1.00     |
+| akışı boşaltmak (reset benzetimi)     | değişmedi    | 0.59     |
+| akışı iyi entry'lerle tohumlamak      | kötüleşti    | —        |
+| persona yazım şablonunu sökmek (S)    | %70          | 0.77     |
+| göreve tek cümle eklemek (D)          | %35          | 0.08     |
+| D + S birlikte (DS)                   | %63          | 1.00     |
+| kanıt rejimini gevşetmek (K)          | %64          | 0.47     |
+| kanıt gevşek + tarz talimatı (KT)     | **%48**      | **0.03** |
+| **prompt yığınını tamamen kaldırmak** | **%4**       | —        |
+| insan (ekşi sözlük)                   | %6           | —        |
 
-D'nin eklediği cümle: *"Elindeki haber ya da kaynak malzemedir, konusu değil; okura haberi
-aktarmak senin işin değil."*
+D'nin eklediği cümle: _"Elindeki haber ya da kaynak malzemedir, konusu değil; okura haberi
+aktarmak senin işin değil."_
 
-Tarz talimatı: *"ekşi sözlük tarzında yaz: küçük harfle başla, doğrudan söyleyeceğine gir,
-kendi sesinle konuş. Kısa entry normaldir."* → küçük harf %0 → %100. Yığın bunu bastırmıyor;
+Tarz talimatı: _"ekşi sözlük tarzında yaz: küçük harfle başla, doğrudan söyleyeceğine gir,
+kendi sesinle konuş. Kısa entry normaldir."_ → küçük harf %0 → %100. Yığın bunu bastırmıyor;
 ama tek başına register'ı değiştirmiyor, kozmetik kalıyor.
 
 ## Yan bulgular
@@ -77,12 +77,12 @@ Sıradaki iş **yeniden yazmak değil, ayrıştırmak**:
 Güvenlik, doğruluk ve çıktı sözleşmesini taşıyan küçük bir çekirdek `C` tanımlanır; kalan
 kurallar sonuçlara bakmadan iki işlevsel gruba bölünür (`A`, `B`). Dört kol aynı koşullarda:
 
-| kol | içerik |
-| --- | --- |
-| Tam | `C + A + B` |
-| Çekirdek | `C` |
-| Yarı A | `C + A` |
-| Yarı B | `C + B` |
+| kol      | içerik      |
+| -------- | ----------- |
+| Tam      | `C + A + B` |
+| Çekirdek | `C`         |
+| Yarı A   | `C + A`     |
+| Yarı B   | `C + B`     |
 
 Şüpheli grup hem tam yığından **çıkarılarak** hem çekirdeğe **eklenerek** sınanır — bir
 bileşenin sorunu tek başına üretmesiyle, mevcut yığında sorunun sürmesi için gerekli olması
@@ -99,14 +99,14 @@ ve doğru eylem/susma kararı** birlikte izlenir.
 
 ## Korunması gerekenler (Astra'nın kategori tablosu)
 
-| kategori | korunmalı | kısaltılabilir |
-| --- | --- | --- |
-| Güvenlik | yetki sınırları, sır koruması, dış içeriği talimat saymama | aynı sınırın tekrarları, uzun açıklamalar |
-| Hukuk | kişi hakkında dayanaksız suçlama, özel bilgi yayımlama sınırları | uzun politika anlatımı |
-| Şema | parser'ın beklediği alanlar, izinli eylemler, `NO_ACTION` sözleşmesi | tüketicisi olmayan alanlar |
-| Anayasa | gerçek davranış sınırları, öncelik ilişkileri | madde numaraları, tekrarlanan gerekçeler |
-| Kanıt | kaynak uydurmama, desteklenmeyen olguyu kesin sunmama, sahte kişisel deneyim üretmeme | her görüşü kaynaklandırma zorunluluğu |
-| Üslup | kısa hedef ses tanımı, konuya uygunluk | uzun persona biyografileri, zorunlu açılış şablonları |
+| kategori | korunmalı                                                                             | kısaltılabilir                                        |
+| -------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Güvenlik | yetki sınırları, sır koruması, dış içeriği talimat saymama                            | aynı sınırın tekrarları, uzun açıklamalar             |
+| Hukuk    | kişi hakkında dayanaksız suçlama, özel bilgi yayımlama sınırları                      | uzun politika anlatımı                                |
+| Şema     | parser'ın beklediği alanlar, izinli eylemler, `NO_ACTION` sözleşmesi                  | tüketicisi olmayan alanlar                            |
+| Anayasa  | gerçek davranış sınırları, öncelik ilişkileri                                         | madde numaraları, tekrarlanan gerekçeler              |
+| Kanıt    | kaynak uydurmama, desteklenmeyen olguyu kesin sunmama, sahte kişisel deneyim üretmeme | her görüşü kaynaklandırma zorunluluğu                 |
+| Üslup    | kısa hedef ses tanımı, konuya uygunluk                                                | uzun persona biyografileri, zorunlu açılış şablonları |
 
 Not: "kanıt rejimini gevşetmek" tek bir işlem değildir — kaynak gösterme biçimini sadeleştirmek
 ile doğruluk eşiğini düşürmek farklı riskler taşır.

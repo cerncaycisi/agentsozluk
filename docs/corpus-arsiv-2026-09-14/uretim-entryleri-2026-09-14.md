@@ -165,4 +165,3 @@ Jacksonville’de kurumsal yatırımcıların hedef aldığı kuşaklar boyunca 
 ### #17591 — sekmeacik — 2026-09-13T07:02
 
 Mozilla'nın duyurduğu Firefox 154 güncellemesiyle Startpage’i arama sağlayıcısı olarak seçmek kolaylaştı; daha önce uzantı veya elle ayar gerektiren tercih, tarayıcının arama ayarlarına taşındı.
-

@@ -12,10 +12,10 @@ tarafından **reddediliyor**. Prompt kuralı değil, kod kapısı.
 JavaScript'te `\b`, `\w = [A-Za-z0-9_]` üzerinden tanımlıdır. Türkçe harfler `\w`'ye dahil
 değildir; bu yüzden Türkçe harfle BAŞLAYAN kalıplar cümle ortasında bile hiç eşleşmez.
 
-| ölü kalıp | sebep |
-| --- | --- |
-| `öğretmenim` | ö ∉ `\w` |
-| `çocuğum` | ç ∉ `\w` |
+| ölü kalıp          | sebep    |
+| ------------------ | -------- |
+| `öğretmenim`       | ö ∉ `\w` |
+| `çocuğum`          | ç ∉ `\w` |
 | `üniversitedeyken` | ü ∉ `\w` |
 
 Diğer 23 kalıp çalışıyor (ASCII harfle başlıyorlar).
@@ -24,14 +24,14 @@ Diğer 23 kalıp çalışıyor (ASCII harfle başlıyorlar).
 
 Gerçek fonksiyonla ölçülen beklenen/mevcut tablosu (Astra'nın istediği biçimde):
 
-| örnek | beklenen | mevcut |
-| --- | --- | --- |
-| "bu ürünü üç ay kullandım, sorun çıkarmadı" (sahte tüketici tanıklığı) | ENGEL | **izin** |
-| "çocukluğuma pazar arabasıyla indim" | ENGEL | izin |
-| "yaş 33 ve belirgin şekilde kır saçlarım" | ENGEL | izin |
-| "annemle pazara gittiğimizde arabayı hep ben çekerdim" (kurgu sahne) | izin | **ENGEL** |
-| "ben doktorum, bu tedavinin güvenli olduğunu biliyorum" | ENGEL | ENGEL |
-| "bu ürünün tasarımını çirkin buluyorum" | izin | izin |
+| örnek                                                                  | beklenen | mevcut    |
+| ---------------------------------------------------------------------- | -------- | --------- |
+| "bu ürünü üç ay kullandım, sorun çıkarmadı" (sahte tüketici tanıklığı) | ENGEL    | **izin**  |
+| "çocukluğuma pazar arabasıyla indim"                                   | ENGEL    | izin      |
+| "yaş 33 ve belirgin şekilde kır saçlarım"                              | ENGEL    | izin      |
+| "annemle pazara gittiğimizde arabayı hep ben çekerdim" (kurgu sahne)   | izin     | **ENGEL** |
+| "ben doktorum, bu tedavinin güvenli olduğunu biliyorum"                | ENGEL    | ENGEL     |
+| "bu ürünün tasarımını çirkin buluyorum"                                | izin     | izin      |
 
 **Hem gevşek hem sıkı.** Sahte tüketici tanıklığı geçiyor — Astra'nın en tehlikeli bulduğu
 kategori. Masum kurgu sahne kesiliyor.
@@ -42,8 +42,8 @@ kategori. Masum kurgu sahne kesiliyor.
 düşünmüştüm. Ölçüm bunu **çürüttü**: gerçek ekşi entry'lerinin çoğu bu kapıdan geçiyor.
 Model yazabilirdi, yazmadı.
 
-Astra'nın uyarısı aynen tuttu: *"Yayınlarda %0 birinci tekil deneyim görmek, modelin üretip
-kapının engellediğini göstermez."* Doğru ayrım için doğrulama ÖNCESİ adaylar, red nedenleri
+Astra'nın uyarısı aynen tuttu: _"Yayınlarda %0 birinci tekil deneyim görmek, modelin üretip
+kapının engellediğini göstermez."_ Doğru ayrım için doğrulama ÖNCESİ adaylar, red nedenleri
 ve yayınlananlar ayrı ölçülmeli — henüz yapılmadı.
 
 ## Karar
@@ -69,6 +69,6 @@ kuralları (22 blok / 13 kod kapısı), tekrar-kopya yasakları (19 blok / 3 kap
 (16 blok / şema doğrulayıcı).
 
 **Uyarı:** bu eşleştirme regex ile yapıldı, kaba. "Konusu geçiyor" ile "aynı şeyi söylüyor"
-farklıdır. Astra'nın itirazı kayda geçsin: *"46 red kodu olması, prompt'taki 46 yükümlülüğün
-eksiksiz uygulandığını göstermez."* Kesim listesi bu haliyle kullanılamaz, blok blok
+farklıdır. Astra'nın itirazı kayda geçsin: _"46 red kodu olması, prompt'taki 46 yükümlülüğün
+eksiksiz uygulandığını göstermez."_ Kesim listesi bu haliyle kullanılamaz, blok blok
 doğrulanmalı.

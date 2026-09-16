@@ -2,19 +2,19 @@
 
 **Tarih:** 14 Eylül 2026 · **Yürütücü:** Claude (Opus 5) · **Hakem:** `gpt-6-astra` (xhigh, read-only)
 
-Gökhan'ın şikâyeti: *"entry'ler ne ekşideki ne normalsözlükteki kalitede; bariz AI yazımı
-olduğu belli."* Bu belge o şikâyetin ölçülmüş cevabıdır.
+Gökhan'ın şikâyeti: _"entry'ler ne ekşideki ne normalsözlükteki kalitede; bariz AI yazımı
+olduğu belli."_ Bu belge o şikâyetin ölçülmüş cevabıdır.
 
 ## Tek kesin sayı
 
 Astra 180 entry'yi **körlemesine** puanladı (paketin içinde üretimdeki 24 gerçek entry de
 vardı, hangisinin hangisi olduğunu bilmiyordu). Ölçü Astra'nın kendi koyduğu ölçüydü:
-*"bu entry, haberin yeniden anlatımına ne ekliyor? metinden göster."*
+_"bu entry, haberin yeniden anlatımına ne ekliyor? metinden göster."_
 
-| entry'nin dayandığı kanıt | katkısı gösterilebilen |
-| --- | --- |
-| `MODEL_KNOWLEDGE` (ajanın kendi bilgisi) | **40/42 = %95** |
-| `TRUSTED_SOURCE` (haber) | **36/113 = %32** |
+| entry'nin dayandığı kanıt                | katkısı gösterilebilen |
+| ---------------------------------------- | ---------------------- |
+| `MODEL_KNOWLEDGE` (ajanın kendi bilgisi) | **40/42 = %95**        |
+| `TRUSTED_SOURCE` (haber)                 | **36/113 = %32**       |
 
 **Fisher p < 0.00001.** Gün boyunca ölçülen her şeyin aksine bu sonuç kesindir.
 
@@ -31,14 +31,14 @@ olduğu fırsatlardan geliyor olabilir. O hattı büyütünce %95'in korunacağ�
 
 Aynı üretim bağlamları (hash'i doğrulanmış replay) üzerinde 288 koşu, altı kol:
 
-| kol | katkısı gösterilebilen |
-| --- | --- |
-| ÜRETİM (canlıdaki gerçek entry'ler) | %50 |
-| mevcut prompt + mevcut akış | %43 |
-| persona sesi olumlu yazılmış | %55 |
-| akış boşaltılmış (reset benzetimi) | %59 |
-| ses + boş akış | %52 |
-| akış iyi entry'lerle tohumlanmış | %37 |
+| kol                                 | katkısı gösterilebilen |
+| ----------------------------------- | ---------------------- |
+| ÜRETİM (canlıdaki gerçek entry'ler) | %50                    |
+| mevcut prompt + mevcut akış         | %43                    |
+| persona sesi olumlu yazılmış        | %55                    |
+| akış boşaltılmış (reset benzetimi)  | %59                    |
+| ses + boş akış                      | %52                    |
+| akış iyi entry'lerle tohumlanmış    | %37                    |
 
 Ses etkisi p=1.00, en iyi kol vs üretim p=1.00. **Hiçbiri üretimden ayırt edilemiyor.**
 
@@ -49,10 +49,10 @@ faydaları gösterilemedi" demektir. Anlamlı fark bulunamaması eşdeğerlik ka
 
 Kalite, **kimin ne hakkında yazdığına** bağlı; nasıl yazdığına değil:
 
-| bağlam | katkısı gösterilebilen |
-| --- | --- |
-| nadas → `mevsimdisi` (yemek-tarım personası) | %94 |
-| Bodrum mimari yarışması ödülü → `gundeliknot` (gündelik hayat personası) | %6 |
+| bağlam                                                                   | katkısı gösterilebilen |
+| ------------------------------------------------------------------------ | ---------------------- |
+| nadas → `mevsimdisi` (yemek-tarım personası)                             | %94                    |
+| Bodrum mimari yarışması ödülü → `gundeliknot` (gündelik hayat personası) | %6                     |
 
 Bağlamlar arası yayılım **88 puan**, kollar arası yayılım **23 puan**. Astra'nın "belirgin
 daha kötü" dediği 28 entry'nin tamamı tek bağlamdan geliyor ve altı kola eşit dağılmış —

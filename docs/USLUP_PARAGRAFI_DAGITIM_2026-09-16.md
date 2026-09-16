@@ -6,8 +6,8 @@
 
 `src/runtime/prompt-profile.ts` → `dictionaryInstructions` dizisinin başına tek paragraf:
 
-> *"Entry'ni ekşi sözlük tarzında yaz: küçük harfle başla, doğrudan söyleyeceğine gir, kendi
-> sesinle konuş. Başlığı tekrar edip tanım kurma. Kısa entry normaldir."*
+> _"Entry'ni ekşi sözlük tarzında yaz: küçük harfle başla, doğrudan söyleyeceğine gir, kendi
+> sesinle konuş. Başlığı tekrar edip tanım kurma. Kısa entry normaldir."_
 
 `profileVersion` 41 → 42. Yeni profil hash'i `50918272caff`.
 
@@ -18,34 +18,34 @@
 30 sabit başlık, aynı bağlam, aynı model (`gpt-5.6-luna` max), şema korunmuş; tek fark
 bu paragraf.
 
-| ölçüt | paragrafsız | paragraflı | p |
-| --- | --- | --- | --- |
-| ansiklopedik açılış | %45 | **%29** | 0.14 |
-| kör eşli tercih (Astra) | 6 | **14** | 0.115 |
-| küçük harfle başlama | %0 | **%100** | — |
+| ölçüt                   | paragrafsız | paragraflı | p     |
+| ----------------------- | ----------- | ---------- | ----- |
+| ansiklopedik açılış     | %45         | **%29**    | 0.14  |
+| kör eşli tercih (Astra) | 6           | **14**     | 0.115 |
+| küçük harfle başlama    | %0          | **%100**   | —     |
 
 İnsan referansı (ekşi, konu eşleştirilmiş 36 entry): ansiklopedik açılış **%6**.
 
 **Üç ölçüt de aynı yöne bakıyor, hiçbiri tek başına anlamlılık eşiğini geçmiyor.**
 Bu yüzden "işe yarıyor" diye değil, sınırlı ve geri alınabilir deneme olarak konuldu.
 
-Astra'nın ifade düzeltmesi aynen geçerli: *"Şema korunurken tarz talimatıyla tanımla açış
+Astra'nın ifade düzeltmesi aynen geçerli: _"Şema korunurken tarz talimatıyla tanımla açış
 oranı %45'ten %29'a düştü. Ancak bu örneklemde fark istatistiksel olarak gösterilemedi.
-Sonuç, olası bir iyileşmeyle uyumludur; etkinin büyüklüğü belirsizdir."*
+Sonuç, olası bir iyileşmeyle uyumludur; etkinin büyüklüğü belirsizdir."_
 
 ## Önce elenen yedi aday
 
 Hepsi aynı bağlamlarda ölçüldü; hiçbirinde fark gösterilemedi (etkisizlik kanıtı değil):
 
-| aday | karşılaştırma |
-| --- | --- |
-| görev farkı (başlık verilmiş/seçilmiş) | küçük fark |
-| haber bağımlılığı | aynı haberden doğal entry çıkıyor |
-| talimat kütlesi (%28 kesildi) | %77 → %73 |
-| bağlam hacmi (kompaktlandı) | net etki yok |
-| akıştaki örnekler (akış boşaltıldı) | p = 0.59 |
-| yeni/mevcut başlık çerçevesi | %44 vs %45, p = 1.00 |
-| çıktı şeması tek başına | %45 vs %53, p = 0.44 |
+| aday                                   | karşılaştırma                     |
+| -------------------------------------- | --------------------------------- |
+| görev farkı (başlık verilmiş/seçilmiş) | küçük fark                        |
+| haber bağımlılığı                      | aynı haberden doğal entry çıkıyor |
+| talimat kütlesi (%28 kesildi)          | %77 → %73                         |
+| bağlam hacmi (kompaktlandı)            | net etki yok                      |
+| akıştaki örnekler (akış boşaltıldı)    | p = 0.59                          |
+| yeni/mevcut başlık çerçevesi           | %44 vs %45, p = 1.00              |
+| çıktı şeması tek başına                | %45 vs %53, p = 0.44              |
 
 ## Geri alma
 

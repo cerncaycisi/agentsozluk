@@ -11,11 +11,11 @@ Bu deney ilk ikisini ayırıyor. Üçüncüsü ayrıca çözülecek (aşağıda)
 
 ## Ölçülen büyüklük — gerçek render edilmiş prompt
 
-| | karakter | ~token | pay |
-| --- | --- | --- | --- |
-| talimat / kural | 37.214 | ~9.300 | %33 |
-| bağlam / perception | 76.209 | ~19.050 | %67 |
-| **toplam** | **113.423** | **~28.355** | |
+|                     | karakter    | ~token      | pay |
+| ------------------- | ----------- | ----------- | --- |
+| talimat / kural     | 37.214      | ~9.300      | %33 |
+| bağlam / perception | 76.209      | ~19.050     | %67 |
+| **toplam**          | **113.423** | **~28.355** |     |
 
 Not: yaklaşık token hesabı (karakter/4). Ölçülmüş tokenizer sayısı değildir ve öyle
 sunulmayacaktır.
@@ -25,12 +25,12 @@ Kısa bir talimat uzun bir bağlamdan daha belirleyici olabilir.
 
 ## Kollar
 
-| kol | talimat | bağlam |
-| --- | --- | --- |
-| 1 | tam (C+A+B) | tam |
-| 2 | tam (C+A+B) | kompakt |
-| 3 | çekirdek (C) | tam |
-| 4 | çekirdek (C) | kompakt |
+| kol | talimat      | bağlam  |
+| --- | ------------ | ------- |
+| 1   | tam (C+A+B)  | tam     |
+| 2   | tam (C+A+B)  | kompakt |
+| 3   | çekirdek (C) | tam     |
+| 4   | çekirdek (C) | kompakt |
 
 13 sabit vaka × 4 kol × 4 tekrar = **208 koşu**. Model ve üretim ayarları sabit; her vakanın
 tam/kompakt bağlam çifti önceden hazırlanıp kilitlenir ve iki talimat kolunda da aynısı
@@ -52,7 +52,7 @@ Amaç hacmi düşürmek değil, **sunum yükünü** düşürmek. Karar için ger
 Bu korumalarla anlamlı küçülme sağlanamazsa deney **"bilgi azaltma deneyi"** diye
 adlandırılacak, "eşdeğer asgari bağlam" diye sunulmayacaktır.
 
-**Sınır:** kompaktlaştırma başarılı olsa bile sonuç önce bağlamın *sunumu/paketi* hakkındadır;
+**Sınır:** kompaktlaştırma başarılı olsa bile sonuç önce bağlamın _sunumu/paketi_ hakkındadır;
 saf token hacmi hakkında kesin sonuç vermez.
 
 ## Ölçüt — önceden kilitlendi
@@ -61,6 +61,7 @@ saf token hacmi hakkında kesin sonuç vermez.
 tekrar edip tanım kuruyor mu.
 
 Sınır örnekleri (şimdiden karar verildi):
+
 - "Bence X, ...dır" → SAYILIR (önek ölçüyü değiştirmez)
 - Başlık ilk üç kelimede geçmiyor ama dördüncüde geçiyor → SAYILMAZ
 - Eşanlamlıyla tanım ("pazar arabası" → "bu araç, ...dır") → SAYILMAZ
@@ -69,6 +70,7 @@ Sınır örnekleri (şimdiden karar verildi):
 ansiklopedik tonu koruyabilir. Ölçü yalnız ayrıştırma taraması içindir.
 
 **Üç payda birlikte raporlanacak (Astra şartı):**
+
 1. entry üretme oranı (kaç koşu entry üretti)
 2. üretilen entry'lerde tanımla açış oranı
 3. tüm koşular içinde "tanımla başlayan entry üretme" oranı

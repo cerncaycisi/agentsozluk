@@ -9,13 +9,13 @@ Astra'nın uyarısı üzerine `CREATE_ENTRY` çıktılarının hedef başlıklar
 geri kurtarıldı (653 topicId→başlık eşlemesi). Kurtarılamayanlar **sıfır değil "ölçülemedi"**
 sayıldı.
 
-| kol | entry üreten koşu | ENTRY düzeyi tanım | KOŞU düzeyi (≥1 tanım) | ölçülemedi |
-| --- | --- | --- | --- | --- |
-| K1 tam talimat + tam bağlam | 29/52 = %56 | 23/30 = **%77** | 23/52 = %44 | 0 |
-| K2 tam talimat + kompakt | 34/52 = %65 | 16/26 = %62 | 16/52 = %31 | 8 |
-| K3 çekirdek + tam bağlam | 52/52 = **%100** | 41/56 = **%73** | 39/52 = %75 | 0 |
-| K4 çekirdek + kompakt | 47/52 = %90 | 31/37 = %84 | 29/52 = %56 | 12 |
-| insan (ekşi) | — | %6 | — | — |
+| kol                         | entry üreten koşu | ENTRY düzeyi tanım | KOŞU düzeyi (≥1 tanım) | ölçülemedi |
+| --------------------------- | ----------------- | ------------------ | ---------------------- | ---------- |
+| K1 tam talimat + tam bağlam | 29/52 = %56       | 23/30 = **%77**    | 23/52 = %44            | 0          |
+| K2 tam talimat + kompakt    | 34/52 = %65       | 16/26 = %62        | 16/52 = %31            | 8          |
+| K3 çekirdek + tam bağlam    | 52/52 = **%100**  | 41/56 = **%73**    | 39/52 = %75            | 0          |
+| K4 çekirdek + kompakt       | 47/52 = %90       | 31/37 = %84        | 29/52 = %56            | 12         |
+| insan (ekşi)                | —                 | %6                 | —                      | —          |
 
 ## Ana sonuç
 

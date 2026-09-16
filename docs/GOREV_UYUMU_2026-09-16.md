@@ -4,8 +4,8 @@
 
 ## İtiraz
 
-Astra: *"Çıplak model belirlenmiş başlığa yazarken normal ajan başlık/eylem seçiyorsa,
-%42→%4 farkı yalnız prompt yüküne bağlanamaz."*
+Astra: _"Çıplak model belirlenmiş başlığa yazarken normal ajan başlık/eylem seçiyorsa,
+%42→%4 farkı yalnız prompt yüküne bağlanamaz."_
 
 Haklıydı: çıplak ablasyonda modele başlık VERİLMİŞTİ, üretim ajanı ise başlığı ve eylemi
 kendi seçiyor. Bu deney o farkı kapatır.
@@ -15,21 +15,21 @@ kendi seçiyor. Bu deney o farkı kapatır.
 Üç kol, `gpt-5.6-luna` max, 8'er tekrar. Üretim ajanının gördüğü haber maddelerinin aynısı
 malzeme olarak verildi.
 
-| kol | görev | tarz talimatı |
-| --- | --- | --- |
-| G1 | başlık **verildi** (eski çıplak test) | var |
-| G2 | başlığı **kendi seçiyor** | var |
-| G3 | başlığı **kendi seçiyor** | **yok** |
+| kol | görev                                 | tarz talimatı |
+| --- | ------------------------------------- | ------------- |
+| G1  | başlık **verildi** (eski çıplak test) | var           |
+| G2  | başlığı **kendi seçiyor**             | var           |
+| G3  | başlığı **kendi seçiyor**             | **yok**       |
 
 ## Sonuç
 
 Başlıktan bağımsız ölçütle (ilk cümle bir kavramı tanımlıyor mu + büyük harfle açılış):
 
-| kol | tanım kuruyor | büyük harfle açılış |
-| --- | --- | --- |
-| G1 başlık verildi + tarz | %0 | %0 |
-| G2 kendi seçti + tarz | %12 | %12 |
-| G3 kendi seçti, tarz YOK | **%38** | **%88** |
+| kol                      | tanım kuruyor | büyük harfle açılış |
+| ------------------------ | ------------- | ------------------- |
+| G1 başlık verildi + tarz | %0            | %0                  |
+| G2 kendi seçti + tarz    | %12           | %12                 |
+| G3 kendi seçti, tarz YOK | **%38**       | **%88**             |
 
 **Görev farkı açıklamıyor.** G1→G2 farkı küçük; model kendi başlığını seçtiğinde de doğal
 yazıyor.
