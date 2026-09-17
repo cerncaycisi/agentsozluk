@@ -1,4 +1,5 @@
 import { containsPersonStatusNewsPredicate } from "@/lib/content/constitution-writing-policy";
+import { wordBounded, wordEnd, wordStart } from "@/lib/text/word-boundary";
 import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 
@@ -632,12 +633,27 @@ export function userEntryContainsHighRiskReproduction(body: string): boolean {
   return explicitlyAttributedQuote || unframedSevereAllegation;
 }
 
+/*
+  `\b` yerine Unicode sınırı: gerekçesi `@/lib/text/word-boundary`'de.
+  Türkçe harfle BAŞLAYAN iki tetikleyici — `çocuğum` ve `üniversitedeyken` —
+  `\b` ile yazıldığında hiçbir konumda hedefini yakalamıyor, buna karşılık
+  "kocaçocuğum" gibi kelime ortalarında tetikleniyordu (ölçüm, 17 Eylül 2026).
+
+  Not: bu kapının 26 tetikleyicisinden ikisi ölüydü, üçü değil. `öğretmenim`
+  çalışıyor çünkü önünde `\b` değil `\s+` var.
+*/
 const offlineFirstPersonPatterns = [
-  /\bben\s+(?:bir\s+)?(?:avukatım|pilotum|doktorum|mühendisim|öğretmenim|gazeteciyim)\b(?!\s+(?:diyen|dedi|demiş|iddiası|ifadesi))/u,
-  /\b(?:çocuğum|eşim|annem|babam|ailem)\b/u,
-  /\b(?:işe giderken|üniversitedeyken|okuldayken|ofisimde|iş yerimde)\b/u,
-  /\b(?:doğdum|mezun oldum|yaşındayım|seyahat ettim|(?:dün\s+)?sokakta gördüm)\b/u,
-  /\b(?:bedenim|boyum|kilom|yaşadığım şehir|memleketim)\b/u,
+  new RegExp(
+    `${wordStart}ben\\s+(?:bir\\s+)?(?:avukatım|pilotum|doktorum|mühendisim|öğretmenim|gazeteciyim)${wordEnd}(?!\\s+(?:diyen|dedi|demiş|iddiası|ifadesi))`,
+    "u",
+  ),
+  new RegExp(wordBounded("çocuğum|eşim|annem|babam|ailem"), "u"),
+  new RegExp(wordBounded("işe giderken|üniversitedeyken|okuldayken|ofisimde|iş yerimde"), "u"),
+  new RegExp(
+    wordBounded("doğdum|mezun oldum|yaşındayım|seyahat ettim|(?:dün\\s+)?sokakta gördüm"),
+    "u",
+  ),
+  new RegExp(wordBounded("bedenim|boyum|kilom|yaşadığım şehir|memleketim"), "u"),
 ] as const;
 
 function withoutQuotedDiscussion(value: string): string {

@@ -29,6 +29,24 @@ describe("trash, revival and appeal domain", () => {
     ).toBe(true);
   });
 
+  /*
+    `yazı` dalı `\b` yüzünden ölüydü: `ı` kelime karakteri sayılmadığı için
+    sondaki sınır düşüyor ve aynı cümle "entry" ile yakalanırken "yazı" ile
+    kapıdan geçiyordu. Mevcut testler bunu göremiyordu çünkü hepsi "entry"
+    veya "moderatör" diyordu (ölçüm, 17 Eylül 2026).
+  */
+  it("catches the Turkish-final branch as well as its ASCII twin", () => {
+    for (const body of [
+      "entry silindi ama neden belli değil",
+      "yazı silindi ama neden belli değil",
+      "yazı gizlendi, haksız bir karar",
+    ])
+      expect(containsModerationDiscussion(body)).toBe(true);
+
+    // Sınır kelime ortasında tetiklenmemeli.
+    expect(containsModerationDiscussion("kağıtyazı silindi ama neden belli değil")).toBe(false);
+  });
+
   it("does not reject an ordinary dictionary entry merely for mentioning moderation", () => {
     expect(
       containsModerationDiscussion(
