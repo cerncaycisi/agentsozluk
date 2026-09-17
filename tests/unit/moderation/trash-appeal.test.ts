@@ -30,10 +30,28 @@ describe("trash, revival and appeal domain", () => {
   });
 
   /*
+    Dört kalıbın her biri YALNIZ kendisini tetikleyen bir örnekle sınanır.
+    Yukarıdaki test bunu sağlamıyor: ilk cümlesi hem 1. hem 3. kalıpla
+    eşleştiği için, kalıplardan biri tamamen silinse bile bütün örnekler
+    geçmeye devam ediyordu (Astra, 17 Eylül 2026). Aşağıdaki örneklerin
+    hangi kalıbı tetiklediği ölçülerek seçildi.
+  */
+  it("exercises each moderation pattern with an example only that pattern matches", () => {
+    for (const [body, pattern] of [
+      ["moderatör haksız", 1],
+      ["yazı silindi ama neden belli değil", 2],
+      ["bu entry silinsin", 3],
+      ["bu entry gizlensin", 3],
+      ["bu entry geri açılsın", 3],
+      ["canlandırma kararı bekliyorum", 4],
+    ] as const)
+      expect(containsModerationDiscussion(body), `kalıp ${pattern}`).toBe(true);
+  });
+
+  /*
     `yazı` dalı `\b` yüzünden ölüydü: `ı` kelime karakteri sayılmadığı için
     sondaki sınır düşüyor ve aynı cümle "entry" ile yakalanırken "yazı" ile
-    kapıdan geçiyordu. Mevcut testler bunu göremiyordu çünkü hepsi "entry"
-    veya "moderatör" diyordu (ölçüm, 17 Eylül 2026).
+    kapıdan geçiyordu (ölçüm, 17 Eylül 2026).
   */
   it("catches the Turkish-final branch as well as its ASCII twin", () => {
     for (const body of [

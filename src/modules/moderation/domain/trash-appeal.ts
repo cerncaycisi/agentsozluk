@@ -1,4 +1,5 @@
 import { wordBounded, wordEnd, wordStart } from "@/lib/text/word-boundary";
+
 export const REVIVAL_CONSTITUTIONAL_ARTICLES = [37, 38, 41] as const;
 export const APPEAL_CONSTITUTIONAL_ARTICLES = [39, 40, 41, 42] as const;
 
@@ -8,6 +9,21 @@ export const APPEAL_CONSTITUTIONAL_ARTICLES = [39, 40, 41, 42] as const;
   sondaki `\b` düşüyor ve "yazı silindi ama neden belli değil" bu kapıdan
   geçiyordu; aynı cümle "entry" ile yazıldığında yakalanıyordu
   (ölçüm, 17 Eylül 2026).
+
+  BU DÜZELTMENİN KAPSAMINDA OLMAYAN, ÖNCEDEN VAR OLAN İKİ AÇIK
+  (Astra, 17 Eylül 2026 — ikisi de bu değişiklikten önce ve sonra aynı):
+
+  1. Girdi normalize edilmiyor. `"moderatör haksız".normalize("NFD")` eşleşmiyor,
+     çünkü ayrışık aksan ayrı bir işaret karakteri oluyor. `action-policy.ts`
+     `normalizedGroundingText` ile NFKC uyguluyor; burada karşılığı yok.
+  2. `iu` bayrağı Türkçe yerel harf katlaması yapmıyor: `"YAZI silindi ama neden
+     belli değil"` yakalanmıyor. Yani kapı yalnız büyük harfle yazılarak
+     aşılabiliyor.
+
+  İkisi de ayrı bir değişiklik ve ayrı bir ölçüm ister; buraya iliştirilmedi.
+  Çözüm yolu belli: `ontology-linter.ts` girdiyi NFKD + `tr-TR` küçük harf +
+  ASCII katlamasıyla normalize ediyor ve bu yüzden aynı hataların hiçbirine
+  sahip değil.
 */
 const moderationDiscussionPatterns = [
   new RegExp(
