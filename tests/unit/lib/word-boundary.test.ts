@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { unicodeWordRegExp, wordBounded, wordEnd, wordStart } from "@/lib/text/word-boundary";
+import {
+  lengthPreservingCaseVariants,
+  unicodeWordRegExp,
+  wordBounded,
+  wordEnd,
+  wordStart,
+} from "@/lib/text/word-boundary";
 import { hasUnrecordedOfflineFirstPersonClaim } from "@/modules/agents";
 import { containsModerationDiscussion } from "@/modules/moderation/domain/trash-appeal";
 
@@ -78,6 +84,13 @@ describe("Türkçe kelime sınırı sözleşmesi", () => {
 
   it("makes unicode mode mandatory at construction", () => {
     expect(unicodeWordRegExp(wordBounded("yazı")).flags).toBe("u");
+  });
+
+  it("case-folds both Turkish I families without changing code-point distance", () => {
+    const input = "Iİıiſ";
+    const variants = lengthPreservingCaseVariants(input);
+    expect(variants).toEqual(["iiıis", "ıiıis"]);
+    expect(variants.every((variant) => [...variant].length === [...input].length)).toBe(true);
   });
 
   /*

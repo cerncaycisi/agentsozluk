@@ -49,16 +49,12 @@ export function unicodeWordRegExp(source: string): RegExp {
 }
 
 function lengthPreservingLower(value: string, locale?: "tr-TR"): string {
-  return [...value]
-    .map((character) => {
-      if (character === "ſ") return "s";
-      // Varsayılan Unicode küçültmesi `İ`yi iki kod noktasına genişletir. Basit
-      // case-fold karşılığı olan `i`, regex mesafe bütçelerini değiştirmez.
-      if (locale === undefined && character === "İ") return "i";
-      const lower = locale ? character.toLocaleLowerCase(locale) : character.toLowerCase();
-      return [...lower].length === 1 ? lower : character;
-    })
-    .join("");
+  // Unicode varsayılan küçültmesinde bir kod noktasını genişleten tek karakter
+  // U+0130'dur; onu ve basit fold'daki uzun s'yi önce bire bir eşleriz. Türkçe
+  // katlama varsayılandan yalnız ASCII I için ayrılır. Böylece tüm-dize işlemi
+  // kod-noktası sayısını korur ve karakter başına ICU çağrısı gerektirmez.
+  const simple = value.replaceAll("ſ", "s").replaceAll("İ", "i");
+  return (locale === "tr-TR" ? simple.replaceAll("I", "ı") : simple).toLowerCase();
 }
 
 /**

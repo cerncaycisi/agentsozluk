@@ -168,6 +168,8 @@ describe("agent life ledger contracts", () => {
 
     expect(isSafeLifeLedgerText("eşdoğrulama kodu 481205")).toBe(true);
     expect(isSafeLifeLedgerText("中doğrulama kodu 481205")).toBe(true);
+    expect(isSafeLifeLedgerText("doğrulama kodu 481205ş")).toBe(true);
+    expect(isSafeLifeLedgerText("doğrulama kodu 481205x")).toBe(true);
     expect(isSafeLifeLedgerText("DOĞRULAMA KODU 481205")).toBe(false);
 
     expect(() =>
