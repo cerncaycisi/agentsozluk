@@ -29,6 +29,12 @@ describe("Türkçe kelime sınırı sözleşmesi", () => {
     expect(pattern.test("moderatöre sordum"), "ardında e").toBe(false);
   });
 
+  it("treats every Unicode letter category as the middle of a word", () => {
+    const pattern = bounded("haksız");
+    expect(pattern.test("中haksız"), "solda Lo kategorisinde harf").toBe(false);
+    expect(pattern.test("haksız中"), "sağda Lo kategorisinde harf").toBe(false);
+  });
+
   it("does not match a stem when a Turkish suffix continues the word", () => {
     const pattern = bounded("sildi");
     expect(pattern.test("moderatör sildi")).toBe(true);
@@ -84,6 +90,8 @@ describe("Türkçe kelime sınırı sözleşmesi", () => {
     expect(containsModerationDiscussion("başmoderatör haksız"), "kelime ortası").toBe(false);
     expect(containsModerationDiscussion("²moderatör haksız"), "solda ayırıcı sayı").toBe(true);
     expect(containsModerationDiscussion("7moderatör haksız"), "solda ASCII rakam").toBe(false);
+    expect(containsModerationDiscussion("中moderatör haksız"), "solda Unicode harf").toBe(false);
+    expect(containsModerationDiscussion("moderatör haksız中"), "sağda Unicode harf").toBe(false);
     expect(
       containsModerationDiscussion("Moderatör, sildiği metinleri arşivleyen görevlidir."),
       "sildi + ği, tanım cümlesi",
@@ -92,5 +100,8 @@ describe("Türkçe kelime sınırı sözleşmesi", () => {
     expect(hasUnrecordedOfflineFirstPersonClaim("benim çocuğum"), "offline kapısı").toBe(true);
     expect(hasUnrecordedOfflineFirstPersonClaim("kocaçocuğum"), "kelime ortası").toBe(false);
     expect(hasUnrecordedOfflineFirstPersonClaim("_ben doktorum"), "solda alt çizgi").toBe(false);
+    expect(hasUnrecordedOfflineFirstPersonClaim("中ben doktorum"), "solda Unicode harf").toBe(
+      false,
+    );
   });
 });

@@ -33,7 +33,10 @@ function importClauseHasRuntimeValue(clause: ts.ImportClause | undefined): boole
   if (clause.isTypeOnly) return false;
   if (clause.name !== undefined || clause.namedBindings === undefined) return true;
   if (ts.isNamespaceImport(clause.namedBindings)) return true;
-  return clause.namedBindings.elements.some((element) => !element.isTypeOnly);
+  return (
+    clause.namedBindings.elements.length === 0 ||
+    clause.namedBindings.elements.some((element) => !element.isTypeOnly)
+  );
 }
 
 function exportClauseHasRuntimeValue(node: ts.ExportDeclaration): boolean {
@@ -68,7 +71,11 @@ function runtimeImports(source: string, fileName: string): RuntimeImports {
   const visit = (node: ts.Node): void => {
     if (ts.isImportDeclaration(node) && importClauseHasRuntimeValue(node.importClause)) {
       record(node.moduleSpecifier, "import");
-    } else if (ts.isExportDeclaration(node) && exportClauseHasRuntimeValue(node)) {
+    } else if (
+      ts.isExportDeclaration(node) &&
+      node.moduleSpecifier !== undefined &&
+      exportClauseHasRuntimeValue(node)
+    ) {
       record(node.moduleSpecifier, "export");
     } else if (
       ts.isCallExpression(node) &&
@@ -188,7 +195,9 @@ describe("module boundaries", () => {
     ve tek tırnaklı belirteç. Ayrıca `'use client'` tek tırnakla da tanınır,
     yorum bloğundan sonra gelse de görülür; `index.tsx` ve `.js` ara modüller
     çözümlenir. `import type` KASTEN sayılmaz: çalışma zamanında silinir, onu
-    bağımlılık saymak testi haksız yere düşürürdü.
+    bağımlılık saymak testi haksız yere düşürürdü. Buna karşılık `import {}`
+    Next SWC tarafından yan etkili importa çevrildiği için çalışma zamanı
+    bağımlılığıdır. Kaynaksız `export { local }` ise bağımlılık değildir.
   */
   it("keeps lookbehind word-boundary helpers out of every client bundle", () => {
     const graphFiles = (function collect(directory: string): string[] {
@@ -271,6 +280,9 @@ describe("module boundaries", () => {
         import { type AlsoType } from "./also-types";
         import type { MixedType } from "./mixed-types"; import { runtime } from
           /* gap */ "./runtime";
+        import {} from "./empty-runtime";
+        const local = 1;
+        export { local };
         export * from "./barrel";
         const lazy = import(\`./lazy\`);
         const worker = new Worker(new URL("./worker.ts", import.meta.url));
@@ -279,7 +291,13 @@ describe("module boundaries", () => {
       "fixture.ts",
     );
 
-    expect(parsed.specifiers).toEqual(["./runtime", "./barrel", "./lazy", "./worker.ts"]);
+    expect(parsed.specifiers).toEqual([
+      "./runtime",
+      "./empty-runtime",
+      "./barrel",
+      "./lazy",
+      "./worker.ts",
+    ]);
     expect(parsed.unresolved).toEqual(["import(): variablePath"]);
     expect(parsed.isClient).toBe(false);
   });

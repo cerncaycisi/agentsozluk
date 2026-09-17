@@ -84,6 +84,18 @@ describe("trash, revival and appeal domain", () => {
     expect(containsModerationDiscussion("moderatör haksız".normalize("NFD"))).toBe(true);
   });
 
+  it("preserves the former Unicode case-insensitive matches", () => {
+    for (const body of [
+      "MODERATÖR SILDI",
+      "MODERASYON GIZLEDI",
+      "ITIRAZ TALEP EDIYORUM",
+      "BU ENTRY SILINSIN",
+      "moderatör ſildi",
+      "moderatör hakſız",
+    ])
+      expect(containsModerationDiscussion(body), body).toBe(true);
+  });
+
   it("keeps non-letter combining marks outside the word boundary", () => {
     expect(containsModerationDiscussion("moderatör haksız\u0345")).toBe(true);
     expect(containsModerationDiscussion("\u0345moderatör haksız")).toBe(true);

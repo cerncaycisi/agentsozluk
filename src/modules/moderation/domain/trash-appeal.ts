@@ -15,10 +15,14 @@ export const APPEAL_CONSTITUTIONAL_ARTICLES = [39, 40, 41, 42] as const;
   `\w` ile eşleşmiyor; `"moderatör haksız\u0345"` eski kapıda yakalanırken yeni
   kapıdan geçiyordu. Sınır bu nedenle yalnız `u` altında değerlendirilir.
 
-  Büyük/küçük harf davranışı regex bayrağına bırakılmaz. Girdi önce NFC ve
-  `tr-TR` küçük harfe çevrilir. Böylece daha önce kayıtlı iki açık da doğrudan
-  kapanır: ayrışık aksanlı `moderatör` ve büyük harfli `YAZI` artık aynı kapıya
-  girer. Uyumluluk katlaması (NFKC/NFKD) bilerek yapılmaz; üst simge gibi ayırıcı
+  Büyük/küçük harf davranışı regex bayrağına bırakılmaz. Girdi önce NFC'ye,
+  ardından hem varsayılan Unicode hem `tr-TR` küçük harf biçimine çevrilir.
+  İki biçimin birleşimi gereklidir: yalnız Türkçe küçültme eski `/iu` davranışını
+  `SILDI` gibi ASCII büyük-I girdilerinde kaybeder; yalnız varsayılan küçültme ise
+  `YAZI` gibi Türkçe büyük-I girdilerini kaçırır. JavaScript'in Unicode basit
+  katlamasında ASCII `s` ile eş olan uzun s (`ſ`) ayrıca korunur.
+
+  Uyumluluk normalizasyonu (NFKC/NFKD) bilerek yapılmaz; üst simge gibi ayırıcı
   karakterlerin ASCII rakama dönüşüp eski davranışı değiştirmesi engellenir.
 */
 const moderationDiscussionPatterns = [
@@ -37,6 +41,12 @@ const moderationDiscussionPatterns = [
 ] as const;
 
 export function containsModerationDiscussion(body: string): boolean {
-  const normalized = body.normalize("NFC").toLocaleLowerCase("tr-TR");
-  return moderationDiscussionPatterns.some((pattern) => pattern.test(normalized));
+  const canonical = body.normalize("NFC");
+  const normalizedVariants = new Set([
+    canonical.toLowerCase().replaceAll("ſ", "s"),
+    canonical.toLocaleLowerCase("tr-TR").replaceAll("ſ", "s"),
+  ]);
+  return [...normalizedVariants].some((normalized) =>
+    moderationDiscussionPatterns.some((pattern) => pattern.test(normalized)),
+  );
 }
