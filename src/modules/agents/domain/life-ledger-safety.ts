@@ -1,3 +1,10 @@
+import {
+  lengthPreservingCaseVariants,
+  unicodeWordRegExp,
+  wordBounded,
+  wordEnd,
+} from "@/lib/text/word-boundary";
+
 const sensitiveLifeKeyNames = new Set([
   "accesstoken",
   "apikey",
@@ -70,8 +77,9 @@ const urlValue = /(?:https?:\/\/|www\.)/iu;
 const controlCharacter = /[\u0000-\u001f\u007f]/u;
 const nonAsciiWhitespace = /[\u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]/u;
 const htmlElement = /<\/?[a-z][^>]*>/iu;
-const otpLikeValue =
-  /(?:^\s*\d{6}\s*$|\b(?:otp|one[- ]?time(?: password| code)?|verification(?: code)?|doğrulama(?: kodu)?|giriş kodu)\b\D{0,32}\d{6}\b)/iu;
+const otpLikeValue = unicodeWordRegExp(
+  `(?:^\\s*\\d{6}\\s*$|${wordBounded("otp|one[- ]?time(?: password| code)?|verification(?: code)?|doğrulama(?: kodu)?|giriş kodu")}\\D{0,32}\\d{6}${wordEnd})`,
+);
 const opaqueTokenCandidates = /[A-Za-z0-9_-]{24,}/gu;
 const embeddedDigest = /(?:^|[^a-f0-9])(?:[a-f0-9]{64}|[a-f0-9]{40})(?=$|[^a-f0-9])/iu;
 const canonicalUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -222,7 +230,7 @@ export function isSafeLifeLedgerText(value: string): boolean {
     !credentialLikeValue.test(value) &&
     !emailValue.test(value) &&
     !urlValue.test(value) &&
-    !otpLikeValue.test(value) &&
+    !lengthPreservingCaseVariants(value).some((variant) => otpLikeValue.test(variant)) &&
     !embeddedDigest.test(value) &&
     !highEntropyOpaqueValue
   );

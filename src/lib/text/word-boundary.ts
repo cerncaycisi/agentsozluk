@@ -27,6 +27,8 @@
   içindedir; sınırı onlara açmak, metnin sonuna böyle bir karakter koyarak
   kapıyı aşmayı mümkün kılıyordu. Amaç `\w`'yi genişletmek değil, yalnız HARF
   kümesini Unicode'a taşımaktı. Rakam ve alt çizgi `\w` ile birebir aynı kalır.
+  Bu sözleşme regex'e verilen metin içindir; çağıran önce NFKC uygularsa `²` gibi
+  bir karakter bilerek ASCII rakama dönüşebilir ve artık ASCII rakam sayılır.
 
   Bu parçaları kullanan regex `unicodeWordRegExp` ile kurulmalıdır. Kurucu `u`
   bayrağını merkezde zorunlu kılar; çağıranın unutması sınırı sessizce ASCII
@@ -44,4 +46,33 @@ export function wordBounded(alternatives: string): string {
 /** Unicode kelime sınırı parçalarını güvenli bayraklarla derler. */
 export function unicodeWordRegExp(source: string): RegExp {
   return new RegExp(source, "u");
+}
+
+function lengthPreservingLower(value: string, locale?: "tr-TR"): string {
+  return [...value]
+    .map((character) => {
+      if (character === "ſ") return "s";
+      // Varsayılan Unicode küçültmesi `İ`yi iki kod noktasına genişletir. Basit
+      // case-fold karşılığı olan `i`, regex mesafe bütçelerini değiştirmez.
+      if (locale === undefined && character === "İ") return "i";
+      const lower = locale ? character.toLocaleLowerCase(locale) : character.toLowerCase();
+      return [...lower].length === 1 ? lower : character;
+    })
+    .join("");
+}
+
+/**
+ * `i` bayrağı `\p{L}` sınırını U+0345 gibi işaretlere genişlettiği için içerik
+ * önce sabit uzunluklu basit/Türkçe case-fold varyantlarına çevrilir.
+ */
+export function lengthPreservingCaseVariants(value: string): string[] {
+  const sources = new Set([value, value.normalize("NFC")]);
+  return [
+    ...new Set(
+      [...sources].flatMap((source) => [
+        lengthPreservingLower(source),
+        lengthPreservingLower(source, "tr-TR"),
+      ]),
+    ),
+  ];
 }

@@ -1,4 +1,10 @@
-import { unicodeWordRegExp, wordBounded, wordEnd, wordStart } from "@/lib/text/word-boundary";
+import {
+  lengthPreservingCaseVariants,
+  unicodeWordRegExp,
+  wordBounded,
+  wordEnd,
+  wordStart,
+} from "@/lib/text/word-boundary";
 
 export const REVIVAL_CONSTITUTIONAL_ARTICLES = [37, 38, 41] as const;
 export const APPEAL_CONSTITUTIONAL_ARTICLES = [39, 40, 41, 42] as const;
@@ -43,25 +49,8 @@ const moderationDiscussionPatterns = [
   ),
 ] as const;
 
-function lengthPreservingLower(value: string, locale?: "tr-TR"): string {
-  return [...value]
-    .map((character) => {
-      if (character === "ſ") return "s";
-      const lower = locale ? character.toLocaleLowerCase(locale) : character.toLowerCase();
-      return [...lower].length === 1 ? lower : character;
-    })
-    .join("");
-}
-
 export function containsModerationDiscussion(body: string): boolean {
-  const sourceVariants = new Set([body, body.normalize("NFC")]);
-  const normalizedVariants = new Set(
-    [...sourceVariants].flatMap((source) => [
-      lengthPreservingLower(source),
-      lengthPreservingLower(source, "tr-TR"),
-    ]),
-  );
-  return [...normalizedVariants].some((normalized) =>
+  return lengthPreservingCaseVariants(body).some((normalized) =>
     moderationDiscussionPatterns.some((pattern) => pattern.test(normalized)),
   );
 }

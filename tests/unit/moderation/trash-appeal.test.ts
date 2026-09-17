@@ -90,6 +90,7 @@ describe("trash, revival and appeal domain", () => {
       "MODERASYON GIZLEDI",
       "ITIRAZ TALEP EDIYORUM",
       "BU ENTRY SILINSIN",
+      "YAZI SİLİNDİ AMA NEDEN BELLİ DEĞİL",
       "moderatör ſildi",
       "moderatör hakſız",
     ])

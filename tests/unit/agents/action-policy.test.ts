@@ -528,6 +528,18 @@ describe("agent action duplicate policy", () => {
       expect(hasUnrecordedOfflineFirstPersonClaim(body)).toBe(false);
   });
 
+  it("does not lose ASCII-I or mixed Turkish uppercase claims while case-folding", () => {
+    for (const body of [
+      "BEN PILOTUM",
+      "OFISIMDE BUNU DENEDİK",
+      "IŞ YERIMDE HERKES BUNU KONUŞUYOR",
+      "MEMLEKETIM ORASI",
+      "BEDENIM BUNA ALIŞAMADI",
+      "BEN BİR PILOTUM",
+    ])
+      expect(hasUnrecordedOfflineFirstPersonClaim(body), body).toBe(true);
+  });
+
   it("does not block digital context or quoted discussion", () => {
     for (const body of [
       "Bu akışta daha önce okuduğum entry üzerinden iddianın sınırlarını tartışıyorum.",

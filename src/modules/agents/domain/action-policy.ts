@@ -1,5 +1,11 @@
 import { containsPersonStatusNewsPredicate } from "@/lib/content/constitution-writing-policy";
-import { unicodeWordRegExp, wordBounded, wordEnd, wordStart } from "@/lib/text/word-boundary";
+import {
+  lengthPreservingCaseVariants,
+  unicodeWordRegExp,
+  wordBounded,
+  wordEnd,
+  wordStart,
+} from "@/lib/text/word-boundary";
 import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 
@@ -434,6 +440,11 @@ function normalizedGroundingText(value: string): string {
   return value.normalize("NFKC").toLocaleLowerCase("tr-TR").replaceAll(/\s+/gu, " ").trim();
 }
 
+function normalizedGroundingTextVariants(value: string): string[] {
+  const normalized = value.normalize("NFKC").replaceAll(/\s+/gu, " ").trim();
+  return lengthPreservingCaseVariants(normalized);
+}
+
 function withoutUrls(value: string): string {
   return value.replaceAll(/https?:\/\/\S+/giu, " ");
 }
@@ -659,8 +670,9 @@ function withoutQuotedDiscussion(value: string): string {
 }
 
 export function hasUnrecordedOfflineFirstPersonClaim(body: string): boolean {
-  const normalized = normalizedGroundingText(withoutQuotedDiscussion(body));
-  return offlineFirstPersonPatterns.some((pattern) => pattern.test(normalized));
+  return normalizedGroundingTextVariants(withoutQuotedDiscussion(body)).some((normalized) =>
+    offlineFirstPersonPatterns.some((pattern) => pattern.test(normalized)),
+  );
 }
 
 export function sourceGroundingIssue(
