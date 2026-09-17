@@ -1,5 +1,6 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
+import * as ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 const modulesRoot = path.join(process.cwd(), "src/modules");
@@ -12,6 +13,99 @@ function sourceFiles(directory: string): string[] {
     if (statSync(absolute).isDirectory()) return sourceFiles(absolute);
     return /\.(?:ts|tsx)$/u.test(entry) ? [absolute] : [];
   });
+}
+
+interface RuntimeImports {
+  specifiers: string[];
+  unresolved: string[];
+  isClient: boolean;
+}
+
+function stringSpecifier(node: ts.Node | undefined): string | null {
+  return node !== undefined &&
+    (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
+    ? node.text
+    : null;
+}
+
+function importClauseHasRuntimeValue(clause: ts.ImportClause | undefined): boolean {
+  if (clause === undefined) return true;
+  if (clause.isTypeOnly) return false;
+  if (clause.name !== undefined || clause.namedBindings === undefined) return true;
+  if (ts.isNamespaceImport(clause.namedBindings)) return true;
+  return clause.namedBindings.elements.some((element) => !element.isTypeOnly);
+}
+
+function exportClauseHasRuntimeValue(node: ts.ExportDeclaration): boolean {
+  if (node.isTypeOnly) return false;
+  if (node.exportClause === undefined || !ts.isNamedExports(node.exportClause)) return true;
+  return node.exportClause.elements.some((element) => !element.isTypeOnly);
+}
+
+function runtimeImports(source: string, fileName: string): RuntimeImports {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    fileName.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  const specifiers: string[] = [];
+  const unresolved: string[] = [];
+  let isClient = false;
+  for (const statement of sourceFile.statements) {
+    if (!ts.isExpressionStatement(statement) || !ts.isStringLiteral(statement.expression)) break;
+    if (statement.expression.text === "use client") isClient = true;
+  }
+
+  const record = (node: ts.Node | undefined, description: string): void => {
+    const specifier = stringSpecifier(node);
+    if (specifier === null)
+      unresolved.push(`${description}: ${node?.getText(sourceFile) ?? "eksik"}`);
+    else specifiers.push(specifier);
+  };
+
+  const visit = (node: ts.Node): void => {
+    if (ts.isImportDeclaration(node) && importClauseHasRuntimeValue(node.importClause)) {
+      record(node.moduleSpecifier, "import");
+    } else if (ts.isExportDeclaration(node) && exportClauseHasRuntimeValue(node)) {
+      record(node.moduleSpecifier, "export");
+    } else if (
+      ts.isCallExpression(node) &&
+      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) && node.expression.text === "require"))
+    ) {
+      record(
+        node.arguments[0],
+        node.expression.kind === ts.SyntaxKind.ImportKeyword ? "import()" : "require()",
+      );
+    } else if (
+      ts.isNewExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      ["Worker", "SharedWorker"].includes(node.expression.text)
+    ) {
+      const workerUrl = node.arguments?.[0];
+      if (
+        workerUrl !== undefined &&
+        ts.isNewExpression(workerUrl) &&
+        ts.isIdentifier(workerUrl.expression) &&
+        workerUrl.expression.text === "URL"
+      ) {
+        record(workerUrl.arguments?.[0], `new ${node.expression.text}(new URL())`);
+      } else {
+        unresolved.push(
+          `new ${node.expression.text}(): ${workerUrl?.getText(sourceFile) ?? "eksik"}`,
+        );
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return { specifiers, unresolved, isClient };
+}
+
+function isClientEntry(source: string, fileName: string): boolean {
+  return runtimeImports(source, fileName).isClient;
 }
 
 describe("module boundaries", () => {
@@ -104,7 +198,7 @@ describe("module boundaries", () => {
         return /\.(?:ts|tsx|js|jsx|mjs|cjs)$/u.test(entry) ? [absolute] : [];
       });
     })(sourceRoot);
-    const target = path.join(sourceRoot, "lib/text/word-boundary.ts");
+    const target = realpathSync(path.join(sourceRoot, "lib/text/word-boundary.ts"));
     const known = new Set(graphFiles);
 
     const resolveImport = (specifier: string, from: string): string | null => {
@@ -123,35 +217,19 @@ describe("module boundaries", () => {
       );
     };
 
-    /*
-      Statik `from`, yan etkili `import "x";`, dinamik `import("x")` ve
-      `require("x")` — dördü de, tek veya çift tırnakla.
-    */
-    const specifiers = (source: string): string[] => {
-      const withoutTypeOnly = source.replaceAll(
-        /^[ \t]*(?:import|export)[ \t]+type[ \t][^\n]*$/gmu,
-        "",
-      );
-      return [
-        ...withoutTypeOnly.matchAll(
-          /(?:\bfrom|^[ \t]*import|\bimport|\brequire)[ \t]*\(?[ \t]*["']([^"']+)["']/gmu,
-        ),
-      ].map((match) => match[1] as string);
-    };
-
+    const parsedImports = new Map(
+      graphFiles.map((file) => [file, runtimeImports(readFileSync(file, "utf8"), file)]),
+    );
     const importsOf = new Map(
       graphFiles.map((file) => [
         file,
-        specifiers(readFileSync(file, "utf8"))
+        (parsedImports.get(file)?.specifiers ?? [])
           .map((specifier) => resolveImport(specifier, file))
           .filter((resolved): resolved is string => resolved !== null),
       ]),
     );
 
-    // Yönerge dosyanın başındadır ama önünde yorum/boşluk olabilir.
-    const clientEntries = graphFiles.filter((file) =>
-      /^(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*["']use client["']/u.test(readFileSync(file, "utf8")),
-    );
+    const clientEntries = graphFiles.filter((file) => parsedImports.get(file)?.isClient === true);
     expect(
       clientEntries.length,
       "client bileşeni bulunamadı; tarama sessizce anlamsız olurdu",
@@ -159,11 +237,17 @@ describe("module boundaries", () => {
 
     const reached = new Set<string>();
     const trails: string[] = [];
+    const unresolvedTrails: string[] = [];
     const walk = (file: string, trail: readonly string[]): void => {
       if (reached.has(file)) return;
       reached.add(file);
+      for (const unresolved of parsedImports.get(file)?.unresolved ?? []) {
+        unresolvedTrails.push(
+          `${[...trail, file].map((f) => path.relative(sourceRoot, f)).join(" -> ")}: ${unresolved}`,
+        );
+      }
       for (const dependency of importsOf.get(file) ?? []) {
-        if (dependency === target) {
+        if (realpathSync(dependency) === target) {
           trails.push(
             [...trail, file, dependency].map((f) => path.relative(sourceRoot, f)).join(" -> "),
           );
@@ -174,6 +258,34 @@ describe("module boundaries", () => {
     };
     for (const entry of clientEntries) walk(entry, []);
 
+    expect(unresolvedTrails).toEqual([]);
     expect(trails).toEqual([]);
+  });
+
+  it("parses runtime dependency syntax without treating type-only imports as runtime", () => {
+    const parsed = runtimeImports(
+      `
+        import type {
+          TypeOnly
+        } from "./types";
+        import { type AlsoType } from "./also-types";
+        import type { MixedType } from "./mixed-types"; import { runtime } from
+          /* gap */ "./runtime";
+        export * from "./barrel";
+        const lazy = import(\`./lazy\`);
+        const worker = new Worker(new URL("./worker.ts", import.meta.url));
+        const unknown = import(variablePath);
+      `,
+      "fixture.ts",
+    );
+
+    expect(parsed.specifiers).toEqual(["./runtime", "./barrel", "./lazy", "./worker.ts"]);
+    expect(parsed.unresolved).toEqual(["import(): variablePath"]);
+    expect(parsed.isClient).toBe(false);
+  });
+
+  it("recognizes use client anywhere in the directive prologue", () => {
+    expect(isClientEntry(`"use strict";\n"use client";\nexport {};`, "client.tsx")).toBe(true);
+    expect(isClientEntry(`const value = 1;\n"use client";`, "server.ts")).toBe(false);
   });
 });

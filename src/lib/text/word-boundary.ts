@@ -28,7 +28,9 @@
   kapıyı aşmayı mümkün kılıyordu. Amaç `\w`'yi genişletmek değil, yalnız HARF
   kümesini Unicode'a taşımaktı. Rakam ve alt çizgi `\w` ile birebir aynı kalır.
 
-  Kullanan regex `u` bayrağını taşımalıdır.
+  Bu parçaları kullanan regex `unicodeWordRegExp` ile kurulmalıdır. Kurucu `u`
+  bayrağını merkezde zorunlu kılar; çağıranın unutması sınırı sessizce ASCII
+  davranışına döndüremez.
 */
 
 export const wordStart = String.raw`(?<![\p{L}0-9_])`;
@@ -37,4 +39,9 @@ export const wordEnd = String.raw`(?![\p{L}0-9_])`;
 /** `\b(?:a|b)\b` yerine kullanılır: sınırları Unicode harfine göre kurar. */
 export function wordBounded(alternatives: string): string {
   return `${wordStart}(?:${alternatives})${wordEnd}`;
+}
+
+/** Unicode kelime sınırı parçalarını güvenli bayraklarla derler. */
+export function unicodeWordRegExp(source: string): RegExp {
+  return new RegExp(source, "u");
 }

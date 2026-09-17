@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { wordBounded, wordEnd, wordStart } from "@/lib/text/word-boundary";
+import { unicodeWordRegExp, wordBounded, wordEnd, wordStart } from "@/lib/text/word-boundary";
 import { hasUnrecordedOfflineFirstPersonClaim } from "@/modules/agents";
 import { containsModerationDiscussion } from "@/modules/moderation/domain/trash-appeal";
 
@@ -18,7 +18,7 @@ import { containsModerationDiscussion } from "@/modules/moderation/domain/trash-
   3. Rakam tarafı `\w` ile birebir aynıdır (`haksız²` hâlâ eşleşir).
 */
 
-const bounded = (alternatives: string, flags = "u") => new RegExp(wordBounded(alternatives), flags);
+const bounded = (alternatives: string) => unicodeWordRegExp(wordBounded(alternatives));
 
 describe("Türkçe kelime sınırı sözleşmesi", () => {
   it("treats a Turkish letter on either side as the middle of a word", () => {
@@ -51,6 +51,10 @@ describe("Türkçe kelime sınırı sözleşmesi", () => {
   */
   it("keeps the digit side identical to \\w", () => {
     const pattern = bounded("haksız");
+    expect(pattern.test("²haksız"), "solda üst simge ²").toBe(true);
+    expect(pattern.test("١haksız"), "solda Arap-Hint ١").toBe(true);
+    expect(pattern.test("7haksız"), "solda ASCII rakam bitişik").toBe(false);
+    expect(pattern.test("_haksız"), "solda alt çizgi bitişik").toBe(false);
     expect(pattern.test("moderatör haksız²"), "üst simge ²").toBe(true);
     expect(pattern.test("moderatör haksız١"), "Arap-Hint ١").toBe(true);
     expect(pattern.test("moderatör haksız7"), "ASCII rakam bitişik").toBe(false);
@@ -58,12 +62,16 @@ describe("Türkçe kelime sınırı sözleşmesi", () => {
   });
 
   it("exposes the two halves independently for patterns that need them apart", () => {
-    const openOnly = new RegExp(`${wordStart}sil`, "u");
-    const closeOnly = new RegExp(`sil${wordEnd}`, "u");
+    const openOnly = unicodeWordRegExp(`${wordStart}sil`);
+    const closeOnly = unicodeWordRegExp(`sil${wordEnd}`);
     expect(openOnly.test("sildi"), "başı serbest, sonu bağlı değil").toBe(true);
     expect(openOnly.test("esildi"), "önünde harf var").toBe(false);
     expect(closeOnly.test("sil"), "sonu serbest").toBe(true);
     expect(closeOnly.test("sildi"), "ardında harf var").toBe(false);
+  });
+
+  it("makes unicode mode mandatory at construction", () => {
+    expect(unicodeWordRegExp(wordBounded("yazı")).flags).toBe("u");
   });
 
   /*
@@ -74,6 +82,8 @@ describe("Türkçe kelime sınırı sözleşmesi", () => {
   it("holds inside both gates that share the contract", () => {
     expect(containsModerationDiscussion("moderatör haksız"), "moderasyon kapısı").toBe(true);
     expect(containsModerationDiscussion("başmoderatör haksız"), "kelime ortası").toBe(false);
+    expect(containsModerationDiscussion("²moderatör haksız"), "solda ayırıcı sayı").toBe(true);
+    expect(containsModerationDiscussion("7moderatör haksız"), "solda ASCII rakam").toBe(false);
     expect(
       containsModerationDiscussion("Moderatör, sildiği metinleri arşivleyen görevlidir."),
       "sildi + ği, tanım cümlesi",
@@ -81,5 +91,6 @@ describe("Türkçe kelime sınırı sözleşmesi", () => {
 
     expect(hasUnrecordedOfflineFirstPersonClaim("benim çocuğum"), "offline kapısı").toBe(true);
     expect(hasUnrecordedOfflineFirstPersonClaim("kocaçocuğum"), "kelime ortası").toBe(false);
+    expect(hasUnrecordedOfflineFirstPersonClaim("_ben doktorum"), "solda alt çizgi").toBe(false);
   });
 });

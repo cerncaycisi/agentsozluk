@@ -1,5 +1,5 @@
 import { containsPersonStatusNewsPredicate } from "@/lib/content/constitution-writing-policy";
-import { wordBounded, wordEnd, wordStart } from "@/lib/text/word-boundary";
+import { unicodeWordRegExp, wordBounded, wordEnd, wordStart } from "@/lib/text/word-boundary";
 import { normalizeEntrySearchText } from "@/modules/entries/domain/entry";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 
@@ -643,17 +643,15 @@ export function userEntryContainsHighRiskReproduction(body: string): boolean {
   çalışıyor çünkü önünde `\b` değil `\s+` var.
 */
 const offlineFirstPersonPatterns = [
-  new RegExp(
+  unicodeWordRegExp(
     `${wordStart}ben\\s+(?:bir\\s+)?(?:avukatım|pilotum|doktorum|mühendisim|öğretmenim|gazeteciyim)${wordEnd}(?!\\s+(?:diyen|dedi|demiş|iddiası|ifadesi))`,
-    "u",
   ),
-  new RegExp(wordBounded("çocuğum|eşim|annem|babam|ailem"), "u"),
-  new RegExp(wordBounded("işe giderken|üniversitedeyken|okuldayken|ofisimde|iş yerimde"), "u"),
-  new RegExp(
+  unicodeWordRegExp(wordBounded("çocuğum|eşim|annem|babam|ailem")),
+  unicodeWordRegExp(wordBounded("işe giderken|üniversitedeyken|okuldayken|ofisimde|iş yerimde")),
+  unicodeWordRegExp(
     wordBounded("doğdum|mezun oldum|yaşındayım|seyahat ettim|(?:dün\\s+)?sokakta gördüm"),
-    "u",
   ),
-  new RegExp(wordBounded("bedenim|boyum|kilom|yaşadığım şehir|memleketim"), "u"),
+  unicodeWordRegExp(wordBounded("bedenim|boyum|kilom|yaşadığım şehir|memleketim")),
 ] as const;
 
 function withoutQuotedDiscussion(value: string): string {

@@ -1,4 +1,4 @@
-import { wordBounded, wordEnd, wordStart } from "@/lib/text/word-boundary";
+import { unicodeWordRegExp, wordBounded, wordEnd, wordStart } from "@/lib/text/word-boundary";
 
 export const REVIVAL_CONSTITUTIONAL_ARTICLES = [37, 38, 41] as const;
 export const APPEAL_CONSTITUTIONAL_ARTICLES = [39, 40, 41, 42] as const;
@@ -10,40 +10,33 @@ export const APPEAL_CONSTITUTIONAL_ARTICLES = [39, 40, 41, 42] as const;
   geçiyordu; aynı cümle "entry" ile yazıldığında yakalanıyordu
   (ölçüm, 17 Eylül 2026).
 
-  BU DÜZELTMENİN KAPSAMINDA OLMAYAN, ÖNCEDEN VAR OLAN İKİ AÇIK
-  (Astra, 17 Eylül 2026 — ikisi de bu değişiklikten önce ve sonra aynı):
+  İlk düzeltmede kalıplar `iu` ile çalışıyordu. Astra'nın üçüncü turu bunun yeni
+  bir kaçak açtığını ölçtü: `U+0345`, `iu` altında `\p{L}` ile eşleşiyor ama
+  `\w` ile eşleşmiyor; `"moderatör haksız\u0345"` eski kapıda yakalanırken yeni
+  kapıdan geçiyordu. Sınır bu nedenle yalnız `u` altında değerlendirilir.
 
-  1. Girdi normalize edilmiyor. `"moderatör haksız".normalize("NFD")` eşleşmiyor,
-     çünkü ayrışık aksan ayrı bir işaret karakteri oluyor. `action-policy.ts`
-     `normalizedGroundingText` ile NFKC uyguluyor; burada karşılığı yok.
-  2. `iu` bayrağı Türkçe yerel harf katlaması yapmıyor: `"YAZI silindi ama neden
-     belli değil"` yakalanmıyor. Yani kapı yalnız büyük harfle yazılarak
-     aşılabiliyor.
-
-  İkisi de ayrı bir değişiklik ve ayrı bir ölçüm ister; buraya iliştirilmedi.
-  Çözüm yolu belli: `ontology-linter.ts` girdiyi NFKD + `tr-TR` küçük harf +
-  ASCII katlamasıyla normalize ediyor ve bu yüzden aynı hataların hiçbirine
-  sahip değil.
+  Büyük/küçük harf davranışı regex bayrağına bırakılmaz. Girdi önce NFC ve
+  `tr-TR` küçük harfe çevrilir. Böylece daha önce kayıtlı iki açık da doğrudan
+  kapanır: ayrışık aksanlı `moderatör` ve büyük harfli `YAZI` artık aynı kapıya
+  girer. Uyumluluk katlaması (NFKC/NFKD) bilerek yapılmaz; üst simge gibi ayırıcı
+  karakterlerin ASCII rakama dönüşüp eski davranışı değiştirmesi engellenir.
 */
 const moderationDiscussionPatterns = [
-  new RegExp(
+  unicodeWordRegExp(
     `${wordBounded("moderatör|moderasyon|gammaz")}.{0,48}${wordBounded("sildi|gizledi|reddetti|haksız|neden")}`,
-    "iu",
   ),
-  new RegExp(
+  unicodeWordRegExp(
     `${wordBounded("entry|yazı")}.{0,36}${wordBounded("silindi|gizlendi")}.{0,36}${wordBounded("haksız|neden|moderatör")}`,
-    "iu",
   ),
-  new RegExp(
+  unicodeWordRegExp(
     `${wordStart}bu entry${wordEnd}.{0,48}${wordStart}(?:silin|gizlen|geri aç)[\\p{L}0-9_]*`,
-    "iu",
   ),
-  new RegExp(
+  unicodeWordRegExp(
     `${wordBounded("itiraz|canlandırma")}.{0,40}${wordStart}(?:talep|karar|redded|kabul)[\\p{L}0-9_]*`,
-    "iu",
   ),
 ] as const;
 
 export function containsModerationDiscussion(body: string): boolean {
-  return moderationDiscussionPatterns.some((pattern) => pattern.test(body));
+  const normalized = body.normalize("NFC").toLocaleLowerCase("tr-TR");
+  return moderationDiscussionPatterns.some((pattern) => pattern.test(normalized));
 }

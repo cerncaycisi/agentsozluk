@@ -79,6 +79,17 @@ describe("trash, revival and appeal domain", () => {
     expect(containsModerationDiscussion("kağıtyazı silindi ama neden belli değil")).toBe(false);
   });
 
+  it("normalizes Turkish case and canonical accents before applying the boundary", () => {
+    expect(containsModerationDiscussion("YAZI SİLİNDİ AMA NEDEN BELLİ DEĞİL")).toBe(true);
+    expect(containsModerationDiscussion("moderatör haksız".normalize("NFD"))).toBe(true);
+  });
+
+  it("keeps non-letter combining marks outside the word boundary", () => {
+    expect(containsModerationDiscussion("moderatör haksız\u0345")).toBe(true);
+    expect(containsModerationDiscussion("\u0345moderatör haksız")).toBe(true);
+    expect(containsModerationDiscussion("entry silindi ama neden\u0345")).toBe(true);
+  });
+
   it("does not reject an ordinary dictionary entry merely for mentioning moderation", () => {
     expect(
       containsModerationDiscussion(
