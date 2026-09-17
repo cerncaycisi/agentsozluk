@@ -30,22 +30,36 @@ describe("trash, revival and appeal domain", () => {
   });
 
   /*
-    Dört kalıbın her biri YALNIZ kendisini tetikleyen bir örnekle sınanır.
-    Yukarıdaki test bunu sağlamıyor: ilk cümlesi hem 1. hem 3. kalıpla
-    eşleştiği için, kalıplardan biri tamamen silinse bile bütün örnekler
-    geçmeye devam ediyordu (Astra, 17 Eylül 2026). Aşağıdaki örneklerin
-    hangi kalıbı tetiklediği ölçülerek seçildi.
+    Kapsam KALIP değil DAL düzeyinde.
+
+    İki tur sürdü. Önce dört kalıbın her birine yalnız kendisini tetikleyen bir
+    örnek verdim; bu, kalıbın tamamen silinmesini yakalıyor. Ama Astra
+    (17 Eylül 2026) `moderasyon`, `gammaz`, `reddetti`, `itiraz` ve `kabul`
+    alternatiflerini TEK TEK `(?!)` ile kapattı ve on yedi assertion'ın hepsi
+    geçmeye devam etti — kalıp saklanamıyordu ama dal saklanabiliyordu.
+
+    Aşağıda her grubun her alternatifi en az bir kez geçer. Bir alternatifi
+    kapatmak en az bir satırı düşürür.
   */
-  it("exercises each moderation pattern with an example only that pattern matches", () => {
-    for (const [body, pattern] of [
-      ["moderatör haksız", 1],
-      ["yazı silindi ama neden belli değil", 2],
-      ["bu entry silinsin", 3],
-      ["bu entry gizlensin", 3],
-      ["bu entry geri açılsın", 3],
-      ["canlandırma kararı bekliyorum", 4],
+  it("exercises every alternative of every moderation pattern", () => {
+    for (const [body, covers] of [
+      ["moderatör sildi", "1: moderatör × sildi"],
+      ["moderasyon gizledi", "1: moderasyon × gizledi"],
+      ["gammaz reddetti", "1: gammaz × reddetti"],
+      ["moderatör haksız", "1: haksız"],
+      ["gammaz neden", "1: neden"],
+      ["entry silindi ama neden belli değil", "2: entry × silindi × neden"],
+      ["yazı gizlendi, haksız bir karar", "2: yazı × gizlendi × haksız"],
+      ["yazı silindi, moderatör açıklamadı", "2: moderatör"],
+      ["bu entry silinsin", "3: silin"],
+      ["bu entry gizlensin", "3: gizlen"],
+      ["bu entry geri açılsın", "3: geri aç"],
+      ["itiraz talep ediyorum", "4: itiraz × talep"],
+      ["canlandırma kararı bekliyorum", "4: canlandırma × karar"],
+      ["itiraz reddedildi", "4: redded"],
+      ["canlandırma kabul edildi", "4: kabul"],
     ] as const)
-      expect(containsModerationDiscussion(body), `kalıp ${pattern}`).toBe(true);
+      expect(containsModerationDiscussion(body), covers).toBe(true);
   });
 
   /*

@@ -81,17 +81,31 @@ describe("module boundaries", () => {
     `word-boundary.ts` lookbehind kullanıyor. Lookbehind WebKit'e ancak Safari
     16.4'te geldi; 16.3 ve öncesinde bu kalıpları kuran `new RegExp` çağrısı
     MODÜL YÜKLENİRKEN hata verir, yani sayfayı komple düşürür. Şu an hiçbir
-    client bileşeninden erişilemiyor — ama bu ölçüm bir anlık görüntüdür,
-    garanti değil (Astra, 17 Eylül 2026). Garantiyi burada kuruyoruz.
+    client bileşeninden erişilemiyor — ama o bir anlık görüntüydü, garanti
+    değildi (Astra, 17 Eylül 2026). Garanti burada kuruluyor.
 
-    `server-only` paketi bu iş için kullanılamaz: koşul haritasında `default`
+    `server-only` paketi bu iş için KULLANILAMAZ: koşul haritasında `default`
     dalı hata fırlatan `index.js`'e gider ve yalnız `react-server` koşulunda
     boşa düşer. Runtime worker'ı düz Node'da (`tsx`) koştuğu için o paket
     worker'ı ve bu testleri kırardı.
+
+    Tarayıcının ilk hâli atlatılabiliyordu; Astra dört kaçış ölçtü ve hepsi
+    burada kapalı: dinamik `import()`, `require()`, yan etkili `import "x";`
+    ve tek tırnaklı belirteç. Ayrıca `'use client'` tek tırnakla da tanınır,
+    yorum bloğundan sonra gelse de görülür; `index.tsx` ve `.js` ara modüller
+    çözümlenir. `import type` KASTEN sayılmaz: çalışma zamanında silinir, onu
+    bağımlılık saymak testi haksız yere düşürürdü.
   */
   it("keeps lookbehind word-boundary helpers out of every client bundle", () => {
-    const files = sourceFiles(sourceRoot);
+    const graphFiles = (function collect(directory: string): string[] {
+      return readdirSync(directory).flatMap((entry) => {
+        const absolute = path.join(directory, entry);
+        if (statSync(absolute).isDirectory()) return collect(absolute);
+        return /\.(?:ts|tsx|js|jsx|mjs|cjs)$/u.test(entry) ? [absolute] : [];
+      });
+    })(sourceRoot);
     const target = path.join(sourceRoot, "lib/text/word-boundary.ts");
+    const known = new Set(graphFiles);
 
     const resolveImport = (specifier: string, from: string): string | null => {
       const base = specifier.startsWith("@/")
@@ -100,28 +114,47 @@ describe("module boundaries", () => {
           ? path.join(path.dirname(from), specifier)
           : null;
       if (base === null) return null;
+      const extensions = ["", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"];
       return (
-        [base, `${base}.ts`, `${base}.tsx`, path.join(base, "index.ts")].find(
-          (candidate) => /\.tsx?$/u.test(candidate) && files.includes(candidate),
-        ) ?? null
+        extensions
+          .map((extension) => `${base}${extension}`)
+          .concat(extensions.map((extension) => path.join(base, `index${extension}`)))
+          .find((candidate) => known.has(candidate)) ?? null
       );
     };
 
+    /*
+      Statik `from`, yan etkili `import "x";`, dinamik `import("x")` ve
+      `require("x")` — dördü de, tek veya çift tırnakla.
+    */
+    const specifiers = (source: string): string[] => {
+      const withoutTypeOnly = source.replaceAll(
+        /^[ \t]*(?:import|export)[ \t]+type[ \t][^\n]*$/gmu,
+        "",
+      );
+      return [
+        ...withoutTypeOnly.matchAll(
+          /(?:\bfrom|^[ \t]*import|\bimport|\brequire)[ \t]*\(?[ \t]*["']([^"']+)["']/gmu,
+        ),
+      ].map((match) => match[1] as string);
+    };
+
     const importsOf = new Map(
-      files.map((file) => [
+      graphFiles.map((file) => [
         file,
-        [...readFileSync(file, "utf8").matchAll(/from\s+"([^"]+)"/gu)]
-          .map((match) => resolveImport(match[1] as string, file))
+        specifiers(readFileSync(file, "utf8"))
+          .map((specifier) => resolveImport(specifier, file))
           .filter((resolved): resolved is string => resolved !== null),
       ]),
     );
 
-    const clientEntries = files.filter((file) =>
-      readFileSync(file, "utf8").slice(0, 400).includes('"use client"'),
+    // Yönerge dosyanın başındadır ama önünde yorum/boşluk olabilir.
+    const clientEntries = graphFiles.filter((file) =>
+      /^(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*["']use client["']/u.test(readFileSync(file, "utf8")),
     );
     expect(
       clientEntries.length,
-      "client bileşeni bulunamadı; tarama anlamsız olurdu",
+      "client bileşeni bulunamadı; tarama sessizce anlamsız olurdu",
     ).toBeGreaterThan(0);
 
     const reached = new Set<string>();

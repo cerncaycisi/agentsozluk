@@ -35,11 +35,11 @@ const moderationDiscussionPatterns = [
     "iu",
   ),
   new RegExp(
-    `${wordStart}bu entry${wordEnd}.{0,48}${wordStart}(?:silin|gizlen|geri aç)[\\p{L}\\p{N}_]*`,
+    `${wordStart}bu entry${wordEnd}.{0,48}${wordStart}(?:silin|gizlen|geri aç)[\\p{L}0-9_]*`,
     "iu",
   ),
   new RegExp(
-    `${wordBounded("itiraz|canlandırma")}.{0,40}${wordStart}(?:talep|karar|redded|kabul)[\\p{L}\\p{N}_]*`,
+    `${wordBounded("itiraz|canlandırma")}.{0,40}${wordStart}(?:talep|karar|redded|kabul)[\\p{L}0-9_]*`,
     "iu",
   ),
 ] as const;

@@ -17,12 +17,22 @@
   (`agents/domain/action-policy.ts`, `moderation/domain/trash-appeal.ts`).
   Üçüncü kez tekrarlanmasın diye sınır tek yerde tanımlıdır.
 
-  `\p{N}` ve `_`, eski `\w` niyetini korur; değişen yalnız harf kümesinin
-  Unicode'a genişlemesidir. Kullanan regex `u` bayrağını taşımalıdır.
+  Kümenin RAKAM tarafı bilerek `0-9` — `\p{N}` DEĞİL. İlk yazımda `\p{N}`
+  kullanmıştım ve bu ölçülmüş bir kaçak açıyordu (Astra, 17 Eylül 2026):
+
+    "moderatör haksız²"  eski true → `\p{N}` ile false
+    "ben doktorum١"      eski true → `\p{N}` ile false
+
+  Üst simge `²` ve Arap-Hint rakamı `١`, `\w`'nin içinde değil ama `\p{N}`'in
+  içindedir; sınırı onlara açmak, metnin sonuna böyle bir karakter koyarak
+  kapıyı aşmayı mümkün kılıyordu. Amaç `\w`'yi genişletmek değil, yalnız HARF
+  kümesini Unicode'a taşımaktı. Rakam ve alt çizgi `\w` ile birebir aynı kalır.
+
+  Kullanan regex `u` bayrağını taşımalıdır.
 */
 
-export const wordStart = String.raw`(?<![\p{L}\p{N}_])`;
-export const wordEnd = String.raw`(?![\p{L}\p{N}_])`;
+export const wordStart = String.raw`(?<![\p{L}0-9_])`;
+export const wordEnd = String.raw`(?![\p{L}0-9_])`;
 
 /** `\b(?:a|b)\b` yerine kullanılır: sınırları Unicode harfine göre kurar. */
 export function wordBounded(alternatives: string): string {
