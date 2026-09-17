@@ -7966,3 +7966,42 @@ güvenlik durumu yazılmaz.
   kanıtına bağlandı (`24409bb`). Kayıt yoksa ayar korunur; eskimiş/geçersizse etkin
   sınır 1'e düşer. Birim + typecheck + lint + 587 ajan testi geçti; entegrasyon CI
   bu oturumda koşulamadı. **Merge/deploy yok; koşu mekanizması → Astra hakem şart.**
+
+## 2026-09-17 — Türkçe kelime sınırı, istemci grafiği ve case-fold kapanışı
+
+- Başlangıç: `main`/merge-base `4ef453951c964762eaadfbef6a0857f98ec9f8ac`, dal
+  `fix/turkce-kelime-siniri`. T3 geçmişindeki yarım iş, yerel SQLite konuşma
+  kayıtlarından ayrıntılı okunup temiz dalda sürdürüldü. Üretim bağlantısı,
+  deploy, migration veya ayar yazımı yapılmadı.
+- Kök neden: JavaScript `\b`, kelime harfini ASCII ile sınırladığı için
+  `çocuğum`, `üniversitedeyken` ve `yazı` dalları gerçek hedefte ölü, başka
+  kelimenin ortasında ise canlıydı. Ortak sınır `(?<![\p{L}0-9_])` /
+  `(?![\p{L}0-9_])`; `u` bayrağı merkezi. Rakam/alt çizgi eski `\w` ile aynı.
+- Case-fold: moderasyon, offline first-person ve life-ledger OTP kapıları
+  özgün/NFC kaynak üzerinde uzunluğu koruyan basit ve `tr-TR` varyantlarını
+  paylaşıyor. `I`, `İ`, `ı`, `i`, `ſ`, NFD/NFC, U+0345 ve mesafe bütçeleri
+  test edildi. `BEN PILOTUM`, `BEN BİR PILOTUM`, `IŞ YERIMDE` artık yakalanıyor;
+  `eşdoğrulama kodu 481205` kelime-ortası yanlış pozitifi kapalı.
+- İstemci grafik koruması gerçek kaynak ağacını AST ile geziyor; dinamik ve
+  CommonJS yolları, Worker, Next uzantı sırası, query/fragment, symlink,
+  Server Action ve Webpack context çağrıları kapsanıyor. Gerçek Webpack sondası
+  `require.context` / `import.meta.webpackContext` ile eski kaçışı doğruladı;
+  yeni tarayıcı bunları fail-closed raporluyor.
+- Hakem yolu: Astra birçok gerçek açığı buldu ve düzeltmeler uygulandı; son tur
+  final karardan önce `You've hit your usage limit. Visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at Sep 23rd, 2026 5:44 PM.`
+  ile bitti, tamamlanmış sayılmadı. İlk geniş Opus 5 turu 15 dakikayı aşınca
+  sonuç vermeden kesildi. Daraltılmış Opus 5 mimari ve Unicode turları GO verdi.
+- Opus takip turu exact `2a877f4` için **NO-GO** verdi: karakter başına
+  `toLocaleLowerCase("tr-TR")`, 512 KB'de yaklaşık 1.025 ms CPU tüketiyordu.
+  Locale çağrısı kaldırılıp Türkçe özel `I→ı`, `İ→i` ve long-s eşlemeleri
+  tüm-dize `toLowerCase` öncesine alındı. Son exact `57258af2085d9b8c55d3b345b3146a5bdb1259a4`
+  yeniden ölçümde 500 B / 2.000 char / 64 KB / 512 KB için
+  0,007 / 0,020 / 0,622 / 4,582 ms; bağımsız karar **GO**.
+- Son kanıt: odaklı 5 dosya / 69 test PASS; bağımsız full unit 224 dosya /
+  1.489 test PASS; format/lint/typecheck PASS; dört kritik case-fold mutasyonu
+  4/4 öldürüldü; çalışma ağacı temiz. Aday henüz merge/push/CI/üretim kabulü
+  değildir.
+- Tekrarlama: `\b`yi Türkçe kalıplarda kullanma; `i` bayrağını `\p{L}` sınırına
+  uygulama; locale dönüşümünü sıcak yolda karakter başına çağırma; sentetik
+  fixture'ın gerçek invariant'a bağlandığını mutasyonla göstermeden kapsam
+  iddiası kurma; final yanıt vermeyen hakem oturumunu tamamlanmış sayma.

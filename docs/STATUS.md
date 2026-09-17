@@ -7,6 +7,44 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-17 — Türkçe/Unicode kelime sınırı yerel adayı GO
+
+- Dal `fix/turkce-kelime-siniri`, exact head
+  `57258af2085d9b8c55d3b345b3146a5bdb1259a4`; merge-base/main
+  `4ef453951c964762eaadfbef6a0857f98ec9f8ac`. Çalışma ağacı kapanışta temizdi.
+- JavaScript `\b` yüzünden gerçek Türkçe tetikleyiciyi kaçırıp kelime ortasında
+  ateşleyen üç dal ortak Unicode harf sınırına taşındı. Rakam ve alt çizgi
+  davranışı eski `\w` sözleşmesiyle aynı kaldı. Offline iddia, moderasyon ve
+  life-ledger OTP kapıları aynı sabit-uzunluklu basit/Türkçe case-fold
+  varyantlarını kullanıyor.
+- İstemci grafik testi `import`/`export`, type-only, side-effect, dinamik
+  `import()`, `require`, `require.resolve`, `module.require`, Worker,
+  query/fragment, Next uzantı sırası, symlink/realpath, file-level `use server`
+  ve Webpack context yollarını kapsıyor. `require.context()` ile
+  `import.meta.webpackContext()` eksiksiz genişletilemediğinde fail-closed.
+- Yerel odaklı son koşu 5 dosya / **69 test** PASS; format/lint/typecheck PASS.
+  Bağımsız Opus 5 (`claude-opus-5`, high, read-only) son kapısı exact head'de
+  full unit **224 dosya / 1.489 test**, lint ve typecheck PASS ölçtü; karar
+  **GO**. 500 B / 2.000 char / 64 KB / 512 KB case-fold ölçümleri sırasıyla
+  0,007 / 0,020 / 0,622 / 4,582 ms; önceki karakter-başına locale adayı
+  0,863 / 3,423 / 139,508 / 1.025,269 ms idi.
+- Astra'nın son turu teknik bulgular üretse de final cevap öncesi exact
+  `You've hit your usage limit` ile bitti; tamamlanmış hakem sayılmadı. Son
+  farklı-model kapısını Opus 5 kapattı. Bu aday henüz merge edilmedi ve
+  üretime dağıtılmadı; canlı davranış iddiası yok.
+
+## 2026-09-17 — F02 ve üslup paragrafı üretimde
+
+- Main `489cb8343da583fc66bf310e8816a58619ad781c` dağıtıldı; migration 26/26,
+  app/runtime/boot aynı imaj, worker active/running, public health/readiness
+  200 ve `RELEASE_COMPLETE PASS ... cleanup=no-cleanup` doğrulandı.
+- F02 eskimiş kapasite kanıtını `EVIDENCE_STALE` sayarak ayar 2 iken etkin
+  sınırı 1'e düşürdü; resume sonrası tek lease/tek şerit gözlendi. Üslup
+  etkisi henüz ölçülmedi; önkayıt penceresi en az 100 kabul edilmiş entry ve
+  48 saat aktif süre bekliyor. Ayrıntı
+  [canlı dağıtım](CANLI_DAGITIM_2026-09-17.md) ve
+  [ölçüm önkaydı](DAGITIM_SONRASI_ONKAYIT_2026-09-17.md).
+
 ## 2026-09-10 (ikinci oturum) — Astra hakemliği, üç snapshot açığı kapatıldı, prova 36/36
 
 - Hakem kuralı: **yürütücü Claude ise hakem Astra** (`gpt-6-astra`, xhigh, read-only).
