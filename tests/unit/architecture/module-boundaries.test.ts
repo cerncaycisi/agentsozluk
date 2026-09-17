@@ -80,15 +80,36 @@ function runtimeImports(source: string, fileName: string): RuntimeImports {
       exportClauseHasRuntimeValue(node)
     ) {
       record(node.moduleSpecifier, "export");
-    } else if (
-      ts.isCallExpression(node) &&
-      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
-        (ts.isIdentifier(node.expression) && node.expression.text === "require"))
-    ) {
-      record(
-        node.arguments[0],
-        node.expression.kind === ts.SyntaxKind.ImportKeyword ? "import()" : "require()",
-      );
+    } else if (ts.isCallExpression(node)) {
+      if (
+        node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) && node.expression.text === "require")
+      ) {
+        record(
+          node.arguments[0],
+          node.expression.kind === ts.SyntaxKind.ImportKeyword ? "import()" : "require()",
+        );
+      } else if (ts.isPropertyAccessExpression(node.expression)) {
+        const owner = node.expression.expression;
+        const method = node.expression.name.text;
+        if (ts.isIdentifier(owner) && owner.text === "require" && method === "resolve") {
+          record(node.arguments[0], "require.resolve()");
+        } else if (ts.isIdentifier(owner) && owner.text === "module" && method === "require") {
+          record(node.arguments[0], "module.require()");
+        } else if (
+          (ts.isIdentifier(owner) && owner.text === "require" && method === "context") ||
+          (ts.isMetaProperty(owner) &&
+            owner.keywordToken === ts.SyntaxKind.ImportKeyword &&
+            owner.name.text === "meta" &&
+            method === "webpackContext")
+        ) {
+          // Webpack bu çağrılarda tek dosya yerine bir dizini/deseni bundle'a alır.
+          // Bağlamı eksiksiz genişletmeden güvenli bir dosya grafiği kurulamaz.
+          unresolved.push(
+            `${node.expression.getText(sourceFile)}(): bağlam importu desteklenmiyor`,
+          );
+        }
+      }
     } else if (
       ts.isNewExpression(node) &&
       ts.isIdentifier(node.expression) &&
@@ -266,9 +287,11 @@ describe("module boundaries", () => {
     boşa düşer. Runtime worker'ı düz Node'da (`tsx`) koştuğu için o paket
     worker'ı ve bu testleri kırardı.
 
-    Tarayıcının ilk hâli atlatılabiliyordu; Astra dört kaçış ölçtü ve hepsi
+    Tarayıcının ilk hâli atlatılabiliyordu; Astra kaçışları ölçtü ve hepsi
     burada kapalı: dinamik `import()`, `require()`, yan etkili `import "x";`
-    ve tek tırnaklı belirteç. Ayrıca `'use client'` tek tırnakla da tanınır,
+    ve tek tırnaklı belirteç. Webpack'in `require.context()` ile
+    `import.meta.webpackContext()` bağlam importları eksiksiz genişletilmeden
+    güvenli sayılamayacağı için fail-closed davranır. Ayrıca `'use client'` tek tırnakla da tanınır,
     yorum bloğundan sonra gelse de görülür; `index.tsx` ve `.js` ara modüller
     çözümlenir. `import type` KASTEN sayılmaz: çalışma zamanında silinir, onu
     bağımlılık saymak testi haksız yere düşürürdü. Buna karşılık `import {}`
@@ -344,12 +367,21 @@ describe("module boundaries", () => {
         import type { MixedType } from "./mixed-types"; import { runtime } from
           /* gap */ "./runtime";
         import {} from "./empty-runtime";
+        import "./side-effect";
         const local = 1;
+        const cjs = require("./cjs");
+        const resolved = require.resolve("./resolved");
+        const moduleCjs = module.require("./module-cjs");
         export { local };
         export * from "./barrel";
         const lazy = import(\`./lazy\`);
         const worker = new Worker(new URL("./worker.ts", import.meta.url));
         const unknown = import(variablePath);
+        const context = require.context("./context", false, /module/u);
+        const webpackContext = import.meta.webpackContext("./webpack-context", {
+          recursive: false,
+          regExp: /module/u,
+        });
       `,
       "fixture.ts",
     );
@@ -357,11 +389,19 @@ describe("module boundaries", () => {
     expect(parsed.specifiers).toEqual([
       "./runtime",
       "./empty-runtime",
+      "./side-effect",
+      "./cjs",
+      "./resolved",
+      "./module-cjs",
       "./barrel",
       "./lazy",
       "./worker.ts",
     ]);
-    expect(parsed.unresolved).toEqual(["import(): variablePath"]);
+    expect(parsed.unresolved).toEqual([
+      "import(): variablePath",
+      "require.context(): bağlam importu desteklenmiyor",
+      "import.meta.webpackContext(): bağlam importu desteklenmiyor",
+    ]);
     expect(parsed.isClient).toBe(false);
     expect(parsed.isServer).toBe(false);
   });
@@ -386,7 +426,15 @@ describe("module boundaries", () => {
     const target = "word-boundary.ts";
     const parsed = new Map<string, RuntimeImports>([
       [client, { specifiers: [], unresolved: [], isClient: true, isServer: false }],
-      [bridge, { specifiers: [], unresolved: [], isClient: false, isServer: false }],
+      [
+        bridge,
+        {
+          specifiers: [],
+          unresolved: ["dinamik yerel import"],
+          isClient: false,
+          isServer: false,
+        },
+      ],
       [serverAction, { specifiers: [], unresolved: [], isClient: false, isServer: true }],
       [target, { specifiers: [], unresolved: [], isClient: false, isServer: false }],
     ]);
@@ -401,7 +449,7 @@ describe("module boundaries", () => {
       traceClientDependencies([client], parsed, imports, new Map(), target, (file) => file),
     ).toEqual({
       trails: [[client, bridge, target]],
-      unresolvedTrails: [],
+      unresolvedTrails: [{ trail: [client, bridge], issue: "dinamik yerel import" }],
     });
   });
 
