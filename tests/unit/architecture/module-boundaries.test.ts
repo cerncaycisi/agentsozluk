@@ -19,6 +19,7 @@ interface RuntimeImports {
   specifiers: string[];
   unresolved: string[];
   isClient: boolean;
+  isServer: boolean;
 }
 
 function stringSpecifier(node: ts.Node | undefined): string | null {
@@ -56,9 +57,11 @@ function runtimeImports(source: string, fileName: string): RuntimeImports {
   const specifiers: string[] = [];
   const unresolved: string[] = [];
   let isClient = false;
+  let isServer = false;
   for (const statement of sourceFile.statements) {
     if (!ts.isExpressionStatement(statement) || !ts.isStringLiteral(statement.expression)) break;
     if (statement.expression.text === "use client") isClient = true;
+    if (statement.expression.text === "use server") isServer = true;
   }
 
   const record = (node: ts.Node | undefined, description: string): void => {
@@ -108,11 +111,84 @@ function runtimeImports(source: string, fileName: string): RuntimeImports {
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);
-  return { specifiers, unresolved, isClient };
+  return { specifiers, unresolved, isClient, isServer };
 }
 
 function isClientEntry(source: string, fileName: string): boolean {
   return runtimeImports(source, fileName).isClient;
+}
+
+const nextSourceExtensionOrder = ["", ".js", ".mjs", ".tsx", ".ts", ".jsx"] as const;
+const codeExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
+
+function sourceSpecifier(specifier: string): string {
+  return specifier.replace(/[?#].*$/u, "");
+}
+
+function isLocalCodeSpecifier(specifier: string): boolean {
+  const resource = sourceSpecifier(specifier);
+  if (!resource.startsWith("@/") && !resource.startsWith(".")) return false;
+  const extension = path.extname(resource);
+  return extension === "" || codeExtensions.has(extension);
+}
+
+function resolveSourceImport(
+  specifier: string,
+  from: string,
+  knownFiles: ReadonlySet<string>,
+): string | null {
+  const resource = sourceSpecifier(specifier);
+  const base = resource.startsWith("@/")
+    ? path.join(sourceRoot, resource.slice(2))
+    : resource.startsWith(".")
+      ? path.join(path.dirname(from), resource)
+      : null;
+  if (base === null) return null;
+  return (
+    nextSourceExtensionOrder
+      .map((extension) => `${base}${extension}`)
+      .concat(nextSourceExtensionOrder.map((extension) => path.join(base, `index${extension}`)))
+      .find((candidate) => knownFiles.has(candidate)) ?? null
+  );
+}
+
+interface ClientGraphTrace {
+  trails: string[][];
+  unresolvedTrails: Array<{ trail: string[]; issue: string }>;
+}
+
+function traceClientDependencies(
+  clientEntries: readonly string[],
+  parsedImports: ReadonlyMap<string, RuntimeImports>,
+  importsOf: ReadonlyMap<string, readonly string[]>,
+  resolutionIssues: ReadonlyMap<string, readonly string[]>,
+  target: string,
+  canonicalize: (file: string) => string,
+): ClientGraphTrace {
+  const reached = new Set<string>();
+  const trails: string[][] = [];
+  const unresolvedTrails: Array<{ trail: string[]; issue: string }> = [];
+
+  const walk = (file: string, trail: readonly string[]): void => {
+    const parsed = parsedImports.get(file);
+    // Next, client'tan içe aktarılan dosya düzeyi Server Action modülünü
+    // `createServerReference` vekiline çevirir; onun sunucu importları bundle'a girmez.
+    if (trail.length > 0 && parsed?.isServer === true) return;
+    if (reached.has(file)) return;
+    reached.add(file);
+    for (const issue of [...(parsed?.unresolved ?? []), ...(resolutionIssues.get(file) ?? [])])
+      unresolvedTrails.push({ trail: [...trail, file], issue });
+    for (const dependency of importsOf.get(file) ?? []) {
+      if (canonicalize(dependency) === target) {
+        trails.push([...trail, file, dependency]);
+        continue;
+      }
+      walk(dependency, [...trail, file]);
+    }
+  };
+
+  for (const entry of clientEntries) walk(entry, []);
+  return { trails, unresolvedTrails };
 }
 
 describe("module boundaries", () => {
@@ -197,7 +273,10 @@ describe("module boundaries", () => {
     çözümlenir. `import type` KASTEN sayılmaz: çalışma zamanında silinir, onu
     bağımlılık saymak testi haksız yere düşürürdü. Buna karşılık `import {}`
     Next SWC tarafından yan etkili importa çevrildiği için çalışma zamanı
-    bağımlılığıdır. Kaynaksız `export { local }` ise bağımlılık değildir.
+    bağımlılığıdır. Kaynaksız `export { local }` ise bağımlılık değildir. Next'in
+    gerçek çözüm sırası (`.js`, `.mjs`, `.tsx`, `.ts`, `.jsx`) korunur; resource
+    query/fragment çözümlemeden önce ayrılır. Dosya düzeyi `"use server"` modülü
+    client'ta yalnız Server Action vekiline dönüştüğü için orada yürüyüş durur.
   */
   it("keeps lookbehind word-boundary helpers out of every client bundle", () => {
     const graphFiles = (function collect(directory: string): string[] {
@@ -210,33 +289,24 @@ describe("module boundaries", () => {
     const target = realpathSync(path.join(sourceRoot, "lib/text/word-boundary.ts"));
     const known = new Set(graphFiles);
 
-    const resolveImport = (specifier: string, from: string): string | null => {
-      const base = specifier.startsWith("@/")
-        ? path.join(sourceRoot, specifier.slice(2))
-        : specifier.startsWith(".")
-          ? path.join(path.dirname(from), specifier)
-          : null;
-      if (base === null) return null;
-      const extensions = ["", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"];
-      return (
-        extensions
-          .map((extension) => `${base}${extension}`)
-          .concat(extensions.map((extension) => path.join(base, `index${extension}`)))
-          .find((candidate) => known.has(candidate)) ?? null
-      );
-    };
-
     const parsedImports = new Map(
       graphFiles.map((file) => [file, runtimeImports(readFileSync(file, "utf8"), file)]),
     );
-    const importsOf = new Map(
-      graphFiles.map((file) => [
-        file,
-        (parsedImports.get(file)?.specifiers ?? [])
-          .map((specifier) => resolveImport(specifier, file))
-          .filter((resolved): resolved is string => resolved !== null),
-      ]),
-    );
+    const resolutionIssues = new Map<string, string[]>();
+    const importsOf = new Map<string, string[]>();
+    for (const file of graphFiles) {
+      const dependencies: string[] = [];
+      for (const specifier of parsedImports.get(file)?.specifiers ?? []) {
+        const resolved = resolveSourceImport(specifier, file, known);
+        if (resolved !== null) dependencies.push(resolved);
+        else if (isLocalCodeSpecifier(specifier)) {
+          const issues = resolutionIssues.get(file) ?? [];
+          issues.push(`çözümlenemeyen yerel import: ${specifier}`);
+          resolutionIssues.set(file, issues);
+        }
+      }
+      importsOf.set(file, dependencies);
+    }
 
     const clientEntries = graphFiles.filter((file) => parsedImports.get(file)?.isClient === true);
     expect(
@@ -244,28 +314,21 @@ describe("module boundaries", () => {
       "client bileşeni bulunamadı; tarama sessizce anlamsız olurdu",
     ).toBeGreaterThan(0);
 
-    const reached = new Set<string>();
-    const trails: string[] = [];
-    const unresolvedTrails: string[] = [];
-    const walk = (file: string, trail: readonly string[]): void => {
-      if (reached.has(file)) return;
-      reached.add(file);
-      for (const unresolved of parsedImports.get(file)?.unresolved ?? []) {
-        unresolvedTrails.push(
-          `${[...trail, file].map((f) => path.relative(sourceRoot, f)).join(" -> ")}: ${unresolved}`,
-        );
-      }
-      for (const dependency of importsOf.get(file) ?? []) {
-        if (realpathSync(dependency) === target) {
-          trails.push(
-            [...trail, file, dependency].map((f) => path.relative(sourceRoot, f)).join(" -> "),
-          );
-          continue;
-        }
-        walk(dependency, [...trail, file]);
-      }
-    };
-    for (const entry of clientEntries) walk(entry, []);
+    const trace = traceClientDependencies(
+      clientEntries,
+      parsedImports,
+      importsOf,
+      resolutionIssues,
+      target,
+      realpathSync,
+    );
+    const trails = trace.trails.map((trail) =>
+      trail.map((file) => path.relative(sourceRoot, file)).join(" -> "),
+    );
+    const unresolvedTrails = trace.unresolvedTrails.map(
+      ({ trail, issue }) =>
+        `${trail.map((file) => path.relative(sourceRoot, file)).join(" -> ")}: ${issue}`,
+    );
 
     expect(unresolvedTrails).toEqual([]);
     expect(trails).toEqual([]);
@@ -300,10 +363,53 @@ describe("module boundaries", () => {
     ]);
     expect(parsed.unresolved).toEqual(["import(): variablePath"]);
     expect(parsed.isClient).toBe(false);
+    expect(parsed.isServer).toBe(false);
   });
 
-  it("recognizes use client anywhere in the directive prologue", () => {
+  it("mirrors Next source resolution order and resource modifiers", () => {
+    const from = path.join(sourceRoot, "components/review-client.tsx");
+    const bridgeJs = path.join(sourceRoot, "lib/review-bridge.js");
+    const bridgeTs = path.join(sourceRoot, "lib/review-bridge.ts");
+    const target = path.join(sourceRoot, "lib/text/word-boundary.ts");
+    const known = new Set([bridgeJs, bridgeTs, target]);
+
+    expect(resolveSourceImport("@/lib/review-bridge", from, known)).toBe(bridgeJs);
+    expect(resolveSourceImport("@/lib/text/word-boundary?review", from, known)).toBe(target);
+    expect(resolveSourceImport("@/lib/text/word-boundary#review", from, known)).toBe(target);
+    expect(resolveSourceImport("@/lib/text/word-boundary.js", from, known)).toBeNull();
+  });
+
+  it("proves the client graph reaches a forbidden target but stops at a Server Action", () => {
+    const client = "client.tsx";
+    const bridge = "bridge.ts";
+    const serverAction = "server-action.ts";
+    const target = "word-boundary.ts";
+    const parsed = new Map<string, RuntimeImports>([
+      [client, { specifiers: [], unresolved: [], isClient: true, isServer: false }],
+      [bridge, { specifiers: [], unresolved: [], isClient: false, isServer: false }],
+      [serverAction, { specifiers: [], unresolved: [], isClient: false, isServer: true }],
+      [target, { specifiers: [], unresolved: [], isClient: false, isServer: false }],
+    ]);
+    const imports = new Map<string, string[]>([
+      [client, [bridge, serverAction]],
+      [bridge, [target]],
+      [serverAction, [target]],
+      [target, []],
+    ]);
+
+    expect(
+      traceClientDependencies([client], parsed, imports, new Map(), target, (file) => file),
+    ).toEqual({
+      trails: [[client, bridge, target]],
+      unresolvedTrails: [],
+    });
+  });
+
+  it("recognizes client and server boundaries anywhere in the directive prologue", () => {
     expect(isClientEntry(`"use strict";\n"use client";\nexport {};`, "client.tsx")).toBe(true);
     expect(isClientEntry(`const value = 1;\n"use client";`, "server.ts")).toBe(false);
+    expect(runtimeImports(`"use strict";\n"use server";\nexport {};`, "action.ts").isServer).toBe(
+      true,
+    );
   });
 });

@@ -96,6 +96,12 @@ describe("trash, revival and appeal domain", () => {
       expect(containsModerationDiscussion(body), body).toBe(true);
   });
 
+  it("does not let case folding change the distance between triggers", () => {
+    expect(
+      containsModerationDiscussion("MODERATÖR İÇİN YAZDIĞIM BU SON DERECE AÇIK METNİ HEMEN SILDI"),
+    ).toBe(true);
+  });
+
   it("keeps non-letter combining marks outside the word boundary", () => {
     expect(containsModerationDiscussion("moderatör haksız\u0345")).toBe(true);
     expect(containsModerationDiscussion("\u0345moderatör haksız")).toBe(true);

@@ -15,12 +15,15 @@ export const APPEAL_CONSTITUTIONAL_ARTICLES = [39, 40, 41, 42] as const;
   `\w` ile eşleşmiyor; `"moderatör haksız\u0345"` eski kapıda yakalanırken yeni
   kapıdan geçiyordu. Sınır bu nedenle yalnız `u` altında değerlendirilir.
 
-  Büyük/küçük harf davranışı regex bayrağına bırakılmaz. Girdi önce NFC'ye,
-  ardından hem varsayılan Unicode hem `tr-TR` küçük harf biçimine çevrilir.
-  İki biçimin birleşimi gereklidir: yalnız Türkçe küçültme eski `/iu` davranışını
-  `SILDI` gibi ASCII büyük-I girdilerinde kaybeder; yalnız varsayılan küçültme ise
-  `YAZI` gibi Türkçe büyük-I girdilerini kaçırır. JavaScript'in Unicode basit
-  katlamasında ASCII `s` ile eş olan uzun s (`ſ`) ayrıca korunur.
+  Büyük/küçük harf davranışı regex bayrağına bırakılmaz. Hem özgün hem NFC girdi,
+  varsayılan Unicode ve `tr-TR` küçük harf kurallarıyla katlanır. Her kod noktası
+  tek kod noktası olarak kalır: `İ` karakterini varsayılan `i\u0307` biçimine
+  genişletmek, kalıplardaki `{0,n}` mesafesini değiştirip eski eşleşmeleri
+  kaçırıyordu. İki dil biçiminin birleşimi yine gereklidir: yalnız Türkçe küçültme
+  eski `/iu` davranışını `SILDI` gibi ASCII büyük-I girdilerinde kaybeder; yalnız
+  varsayılan küçültme ise `YAZI` gibi Türkçe büyük-I girdilerini kaçırır.
+  JavaScript'in Unicode basit katlamasında ASCII `s` ile eş olan uzun s (`ſ`)
+  ayrıca korunur.
 
   Uyumluluk normalizasyonu (NFKC/NFKD) bilerek yapılmaz; üst simge gibi ayırıcı
   karakterlerin ASCII rakama dönüşüp eski davranışı değiştirmesi engellenir.
@@ -40,12 +43,24 @@ const moderationDiscussionPatterns = [
   ),
 ] as const;
 
+function lengthPreservingLower(value: string, locale?: "tr-TR"): string {
+  return [...value]
+    .map((character) => {
+      if (character === "ſ") return "s";
+      const lower = locale ? character.toLocaleLowerCase(locale) : character.toLowerCase();
+      return [...lower].length === 1 ? lower : character;
+    })
+    .join("");
+}
+
 export function containsModerationDiscussion(body: string): boolean {
-  const canonical = body.normalize("NFC");
-  const normalizedVariants = new Set([
-    canonical.toLowerCase().replaceAll("ſ", "s"),
-    canonical.toLocaleLowerCase("tr-TR").replaceAll("ſ", "s"),
-  ]);
+  const sourceVariants = new Set([body, body.normalize("NFC")]);
+  const normalizedVariants = new Set(
+    [...sourceVariants].flatMap((source) => [
+      lengthPreservingLower(source),
+      lengthPreservingLower(source, "tr-TR"),
+    ]),
+  );
   return [...normalizedVariants].some((normalized) =>
     moderationDiscussionPatterns.some((pattern) => pattern.test(normalized)),
   );
