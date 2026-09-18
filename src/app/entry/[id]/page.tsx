@@ -17,6 +17,7 @@ import {
   getEntry,
   getEntryByPublicId,
   getEntryReferenceIndex,
+  getEntryTopicPage,
 } from "@/modules/entries/application/entries";
 import { getEntryContentDates, getEntryIndexingDecision } from "@/modules/indexing";
 import {
@@ -24,6 +25,7 @@ import {
   publicAlternates,
   publicExcerpt,
   publicProfileUrl,
+  paginatedCanonical,
 } from "@/modules/indexing/domain/public-seo";
 import { getViewerEntryStates } from "@/modules/interactions/application/interactions";
 import { userHasModerationCapability } from "@/modules/moderation/application/capabilities";
@@ -48,7 +50,25 @@ export async function generateMetadata({
       getEntryIndexingDecision(getDatabase(), entry.id),
       getEntryContentDates(getDatabase(), [entry]),
     ]);
-    const canonical = entryPublicUrl(entry);
+    /*
+      KANONİK EV BAŞLIK SAYFASI — 18 Eylül 2026.
+
+      Bu sayfa başlık sayfasının kopyasıydı: canlı örneklemde başlıkların
+      %50'sinde tek entry var, yani iki adres birebir aynı metni taşıyor ve ikisi
+      de kendine canonical veriyordu. Google aynı metnin ikinci kopyasını dizine
+      almak için sebep görmüyor; "Tarandı, dizine eklenmedi" kovasında 4.405
+      sayfa var ve sitemap'in %76'sı (18.515 URL) bu kopyalara gidiyordu.
+
+      Entry artık kendi başlık sayfasına — doğru SAYFASINA — canonical veriyor.
+      Bu ancak başlık sayfalaması indekslenebilir olduğu için doğru
+      (`robotsForPaginatedView`); aksi hâlde 20'den sonraki entry'nin canonical'ı
+      metnini içermeyen bir sayfayı gösterirdi.
+
+      Sayfa erişilebilir kalıyor (dışarıdan verilmiş linkler kırılmasın), yalnız
+      sıralama sinyali başlıkta toplanıyor.
+    */
+    const topicPage = await getEntryTopicPage(getDatabase(), entry);
+    const canonical = paginatedCanonical(topicPublicUrl(entry.topic), topicPage);
     const title = `${entry.topic.title} · ${entry.author.displayName}`;
     const description = publicExcerpt(entry.body);
     return {
@@ -120,10 +140,15 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
           author: entry.author,
         })}
       />
-      <h1 className="title-page mb-8">Entry</h1>
-      <p className="mb-4 text-sm text-muted">
+      {/*
+        Başlığın adı `<h1>`. Eskiden sabit "Entry" yazıyordu: sayfanın neyle
+        ilgili olduğunu hiçbir yerde söylemeyen bir başlık, hem okur hem crawler
+        için ölü sinyal. Canlıda 18.515 sayfanın tamamı böyleydi.
+      */}
+      <h1 className="title-page mb-2">{entry.topic.title}</h1>
+      <p className="mb-8 text-sm text-muted">
         <Link href={topicAnchor} className="link-strong font-semibold">
-          {entry.topic.title} başlığında bu entry’ye git
+          Bu entry’yi başlık içinde oku
         </Link>
       </p>
       <EntryPreview

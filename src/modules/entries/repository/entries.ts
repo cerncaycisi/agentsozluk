@@ -154,6 +154,40 @@ export async function softDeleteEntryRecord(
   return result.count === 1 ? findEntryById(transaction, entryId) : null;
 }
 
+/*
+  Bir entry'nin BAŞLIK SAYFASINDAKİ yerini bulur — 18 Eylül 2026.
+
+  Neden: `/entry/N` sayfaları başlık sayfasının kopyasıydı. Canlı örneklemde
+  başlıkların %50'sinde tek entry var, yani iki sayfa birebir aynı metni
+  taşıyor; ikisi de `index, follow` ve ikisi de kendine canonical veriyordu.
+  Sitemap'in %76'sı (18.515 URL) bu kopyalara gidiyordu.
+
+  Entry artık kendi başlık sayfasına canonical veriyor. Doğru sayfayı bulmak
+  şart: 20'den sonraki entry'nin metni 1. sayfada YOK ve canonical'ı oraya
+  göstermek yanlış olur. Bu ancak başlık sayfalaması indekslenebilir olduğu için
+  mümkün (bkz. `robotsForPaginatedView`) — sıralama varsayılan görünümle
+  (`createdAt asc, id asc`) aynı olmalı, yoksa hesap tutmaz.
+*/
+export async function getEntryTopicPageNumber(
+  transaction: Prisma.TransactionClient,
+  entry: { id: string; topicId: string; createdAt: Date },
+  pageSize: number,
+): Promise<number> {
+  const before = await transaction.entry.count({
+    where: {
+      topicId: entry.topicId,
+      status: "ACTIVE",
+      deletedAt: null,
+      ...publiclyVisibleEntryWhere,
+      OR: [
+        { createdAt: { lt: entry.createdAt } },
+        { createdAt: entry.createdAt, id: { lt: entry.id } },
+      ],
+    },
+  });
+  return Math.floor(before / Math.max(1, pageSize)) + 1;
+}
+
 export function listTopicEntries(
   transaction: Prisma.TransactionClient,
   input: {

@@ -43,7 +43,7 @@ describe("robots.txt sitemap", () => {
 */
 describe("streaming metadata ile robots politikası", () => {
   it("robots.txt'te izin verilen her crawler bloklayıcı metadata alır", async () => {
-    const { SEARCH_AND_CITATION_CRAWLERS } = await import("@/app/robots");
+    const { SEARCH_AND_CITATION_CRAWLERS } = await import("@/config/crawlers");
     const { default: nextConfig } = await import("../../../next.config");
     const pattern = nextConfig.htmlLimitedBots;
 

@@ -1,3 +1,4 @@
+import { DEFAULT_PAGE_SIZE } from "@/config/app";
 import { inTransaction } from "@/lib/db/transaction";
 import type { DatabaseClient, DatabaseExecutor } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
@@ -12,6 +13,7 @@ import {
   withEntryCounters,
 } from "@/modules/entries/domain/entry";
 import {
+  getEntryTopicPageNumber,
   findVisibleEntryReferences,
   createEntryRecord,
   createEntryRevision,
@@ -282,6 +284,20 @@ async function getEntryRecord(
       canonicalTopic,
     };
   });
+}
+
+/**
+ * Entry'nin kanonik evi: kendi başlık sayfası (gerekiyorsa `?page=N`).
+ * Gerekçe `getEntryTopicPageNumber` başlığında.
+ */
+export function getEntryTopicPage(
+  client: DatabaseClient,
+  entry: { id: string; topicId: string; createdAt: Date },
+  pageSize = DEFAULT_PAGE_SIZE,
+) {
+  return inTransaction(client, (transaction) =>
+    getEntryTopicPageNumber(transaction, entry, pageSize),
+  );
 }
 
 export function getEntry(client: DatabaseClient, entryId: string, viewer: EntryViewer | null) {

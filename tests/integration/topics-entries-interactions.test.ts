@@ -61,6 +61,7 @@ import {
 } from "@/modules/topics/application/topics";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
 import { getTopicDirectoryPage, getTopicSnippetSource } from "@/modules/topics";
+import { getEntryTopicPage } from "@/modules/entries/application/entries";
 import { searchAll } from "@/modules/search/application/search";
 import { buildSearchQuery } from "@/modules/search/repository/search";
 import {
@@ -2664,6 +2665,61 @@ describe("search, feeds and profiles with PostgreSQL", () => {
     } finally {
       await restore();
     }
+  });
+
+  /*
+    ENTRY'NİN KANONİK EVİ — gerçek PostgreSQL ile.
+
+    `/entry/N` sayfaları başlık sayfasının kopyasıydı: canlı örneklemde
+    başlıkların %50'sinde tek entry var, ikisi de `index, follow`, ikisi de
+    kendine canonical. Sitemap'in %76'sı (18.515 URL) bu kopyalara gidiyordu.
+
+    Entry artık DOĞRU başlık sayfasına canonical veriyor. "Doğru" önemli: 20'den
+    sonraki entry'nin metni 1. sayfada yok, canonical'ı oraya göstermek yanlış
+    olurdu. Hesap varsayılan görünümün sırasıyla (`createdAt asc`) aynı olmalı.
+  */
+  it("maps an entry to the topic page that actually contains it", async () => {
+    const author = await createUser("entry_page_author");
+    const created = await createTopic(author.id, "Sayfa Eşleme Başlığı");
+
+    // İlk entry birinci sayfada.
+    expect(
+      await getEntryTopicPage(integrationDatabase, {
+        id: created.entry.id,
+        topicId: created.topic.id,
+        createdAt: created.entry.createdAt,
+      }),
+    ).toBe(1);
+
+    // 20'lik sayfada 21. entry ikinci sayfaya düşmeli.
+    const extra = [];
+    for (let index = 0; index < 22; index += 1)
+      extra.push(
+        await createEntry(integrationDatabase, actor(author.id), created.topic.id, {
+          body: `Sayfa eşleme gövdesi ${index}; yeterince uzun bir metin olmalı.`,
+        }),
+      );
+
+    // Başlığın ilk entry'si `created.entry`; `extra[0]` ikinci entry demek.
+    // Yani 20. entry `extra[18]`, 21. entry `extra[19]`.
+    const twentieth = extra[18]!;
+    const twentyFirst = extra[19]!;
+    expect(
+      await getEntryTopicPage(integrationDatabase, {
+        id: twentieth.id,
+        topicId: created.topic.id,
+        createdAt: twentieth.createdAt,
+      }),
+      "20. entry hâlâ birinci sayfada",
+    ).toBe(1);
+    expect(
+      await getEntryTopicPage(integrationDatabase, {
+        id: twentyFirst.id,
+        topicId: created.topic.id,
+        createdAt: twentyFirst.createdAt,
+      }),
+      "21. entry ikinci sayfada",
+    ).toBe(2);
   });
 
   it("searches topics, aliases, users and active entries with stable result contracts", async () => {

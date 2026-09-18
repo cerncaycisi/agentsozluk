@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 import { HTML_LIMITED_BOT_UA_RE } from "next/dist/shared/lib/router/utils/html-bots";
-import { SEARCH_AND_CITATION_CRAWLERS } from "./src/app/robots";
+import {
+  ADDITIONAL_HTML_LIMITED_CRAWLERS,
+  SEARCH_AND_CITATION_CRAWLERS,
+} from "./src/config/crawlers";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -43,7 +46,11 @@ const isProduction = process.env.NODE_ENV === "production";
   Büyüklüğü ÖLÇÜLMEDİ. Gerçek kullanıcılar listede değil.
 */
 const htmlLimitedBots = new RegExp(
-  `${HTML_LIMITED_BOT_UA_RE.source}|${SEARCH_AND_CITATION_CRAWLERS.join("|")}|ChatGPT-User`,
+  [
+    HTML_LIMITED_BOT_UA_RE.source,
+    ...SEARCH_AND_CITATION_CRAWLERS,
+    ...ADDITIONAL_HTML_LIMITED_CRAWLERS,
+  ].join("|"),
   "i",
 );
 
