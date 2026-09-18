@@ -127,9 +127,16 @@ test.describe("@desktop authenticated content journey", () => {
     await revisedPermalinkLink.click();
     await expect(page).toHaveURL(new RegExp(`${revisedPermalink}$`, "u"));
     await expect(page.locator(`#entry-${revisedEntryId}`)).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: `${topicTitle} başlığında bu entry’ye git` }),
-    ).toHaveAttribute("href", `${topicUrl}#entry-${revisedEntryId}`);
+    /*
+      18 Eylül 2026: entry sayfasının `<h1>`i artık başlığın adı (eskiden sabit
+      "Entry" yazıyordu) ve başlığa dönüş linkinin metni kısaldı — başlık adı
+      zaten `<h1>`de olduğu için link metninde tekrarlanmıyor.
+    */
+    await expect(page.getByRole("heading", { level: 1, name: topicTitle })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Bu entry’yi başlık içinde oku" })).toHaveAttribute(
+      "href",
+      `${topicUrl}#entry-${revisedEntryId}`,
+    );
 
     await page.goto(topicUrl);
     const revisedTopicArticle = page.locator("article").filter({ hasText: revisedEntry });
