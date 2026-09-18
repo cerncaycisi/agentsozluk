@@ -15,9 +15,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const currentPageSession = vi.hoisted(() => vi.fn());
 const getTopicByPublicId = vi.hoisted(() => vi.fn());
 const getTopicEntries = vi.hoisted(() => vi.fn());
-const robotsForCanonicalView = vi.hoisted(() =>
-  vi.fn((base: { index: boolean; follow: boolean }, hasViewParameters: boolean) => ({
-    index: base.index && !hasViewParameters,
+const robotsForPaginatedView = vi.hoisted(() =>
+  vi.fn((base: { index: boolean; follow: boolean }, hasFacetParameters: boolean) => ({
+    index: base.index && !hasFacetParameters,
     follow: true,
   })),
 );
@@ -67,7 +67,9 @@ vi.mock("@/modules/indexing/domain/public-seo", () => ({
   buildTopicJsonLd: () => ({}),
   publicAlternates: () => ({}),
   publicProfileUrl: () => "/",
-  robotsForCanonicalView,
+  paginatedCanonical: (baseUrl: string, page: number) =>
+    page > 1 ? `${baseUrl}?page=${page}` : baseUrl,
+  robotsForPaginatedView,
 }));
 vi.mock("@/modules/rate-limit/application/rate-limit", () => ({
   enforceRateLimit: async () => undefined,
@@ -137,7 +139,7 @@ beforeEach(() => {
   getTopicByPublicId.mockResolvedValue(topicFixture);
   currentPageSession.mockResolvedValue(null);
   getTopicEntries.mockResolvedValue({ entries: [], totalItems: 7 });
-  robotsForCanonicalView.mockClear();
+  robotsForPaginatedView.mockClear();
 });
 
 afterEach(() => {
@@ -313,6 +315,11 @@ describe("başlık sayfası zaman penceresi şeridi", () => {
   });
 });
 
+/*
+  18 Eylül 2026: `page` bu kovadan ÇIKARILDI. Facet'ler (`window`, `sort`, `q`,
+  `index`) aynı entry'leri farklı sırada gösterir ve noindex kalır; sayfalama
+  özgün entry taşır ve indekslenir. Aşağıdaki son iki iddia o ayrımı çiviler.
+*/
 describe("başlık sayfası zaman penceresi robots davranışı", () => {
   async function robotsFlagFor(searchParams: Query) {
     const { generateMetadata } = await import("@/app/baslik/[topic]/page");
@@ -320,7 +327,7 @@ describe("başlık sayfası zaman penceresi robots davranışı", () => {
       params: Promise.resolve({ topic: SEGMENT }),
       searchParams: Promise.resolve(searchParams),
     });
-    return robotsForCanonicalView.mock.calls.at(-1)?.[1];
+    return robotsForPaginatedView.mock.calls.at(-1)?.[1];
   }
 
   it("filtresiz görünümü görünüm parametresi saymaz", async () => {
@@ -336,5 +343,15 @@ describe("başlık sayfası zaman penceresi robots davranışı", () => {
 
   it("eski ?index= görünümünü de görünüm parametresi olarak bildirir", async () => {
     expect(await robotsFlagFor({ index: "recent" })).toBe(true);
+  });
+
+  it("sayfalamayı facet SAYMAZ; derin sayfalar indekslenebilir kalır", async () => {
+    expect(await robotsFlagFor({ page: "2" })).toBe(false);
+    expect(await robotsFlagFor({ page: "37" })).toBe(false);
+  });
+
+  it("facet ile birlikte gelen sayfalama yine facet sayılır", async () => {
+    expect(await robotsFlagFor({ page: "2", sort: "newest" })).toBe(true);
+    expect(await robotsFlagFor({ page: "2", window: "24h" })).toBe(true);
   });
 });

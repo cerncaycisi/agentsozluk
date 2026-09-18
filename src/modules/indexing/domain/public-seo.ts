@@ -40,6 +40,34 @@ export function robotsForCanonicalView(
   return { index: !hasViewParameters, follow: true };
 }
 
+/*
+  SAYFALAMA FACET DEĞİLDİR — 18 Eylül 2026.
+
+  Başlık sayfası `page`i `sort`, `window`, `q` ile aynı kovaya koyuyordu ve
+  hepsini noindex yapıp canonical'ı 1. sayfaya gösteriyordu. İkisi aynı şey değil:
+
+  - `sort`/`window`/`q` AYNI entry'leri farklı sırada gösterir; özgün içerik yok.
+    Bunlar noindex kalmalı, canonical temiz adresi göstermeli.
+  - `page` ÖZGÜN içerik taşır. 75 entry'li bir başlıkta 20'den sonraki 55 entry
+    yalnız orada; kanonik sayfa onları hiç içermiyor. Eski kurulumda o 55 entry'nin
+    metni hiçbir indekslenen başlık sayfasında yoktu (canlı ölçüm, 18 Eylül).
+
+  Ayrıca `canonical`ı başka bir adrese gösteren sayfaya `noindex` koymak Google'ın
+  açıkça uyardığı kalıp: noindex canonical hedefine taşınabilir ve hedef burada
+  BAŞLIĞIN KENDİSİ. Sayfalanan sayfa artık kendine canonical verir ve indekslenir.
+*/
+export function paginatedCanonical(baseUrl: string, page: number): string {
+  return page > 1 ? `${baseUrl}?page=${page}` : baseUrl;
+}
+
+export function robotsForPaginatedView(
+  base: { index: boolean; follow: boolean },
+  hasFacetParameters: boolean,
+): { index: boolean; follow: boolean } {
+  if (!base.index) return { index: false, follow: base.follow };
+  return { index: !hasFacetParameters, follow: true };
+}
+
 export function safeSerializeJsonLd(value: unknown): string {
   return JSON.stringify(value)
     .replaceAll("<", "\\u003c")

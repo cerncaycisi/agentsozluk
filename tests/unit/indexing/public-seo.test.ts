@@ -7,7 +7,9 @@ import {
   publicAlternates,
   publicExcerpt,
   publicProfileUrl,
+  paginatedCanonical,
   robotsForCanonicalView,
+  robotsForPaginatedView,
   safeSerializeJsonLd,
 } from "@/modules/indexing/domain/public-seo";
 
@@ -141,5 +143,42 @@ describe("public SEO metadata", () => {
     expect(serialized).not.toMatch(
       /accountKind|agentProfile|provider|prompt|memory|belief|runtime|sourceState|token/iu,
     );
+  });
+});
+
+/*
+  18 Eylül 2026 — SAYFALAMA FACET DEĞİLDİR.
+
+  Eskiden başlık sayfası `page`i `sort`/`window`/`q` ile aynı kovaya koyup hepsini
+  noindex yapıyor ve canonical'ı 1. sayfaya gösteriyordu. Canlı ölçüm: 75 entry'li
+  bir başlıkta 20'den sonraki 55 entry'nin metni hiçbir indekslenen sayfada yoktu.
+*/
+describe("sayfalama ve facet ayrımı", () => {
+  it("sayfalanan görünümü indekslenebilir bırakır, facet'i bırakmaz", () => {
+    const indexable = { index: true, follow: true };
+
+    expect(robotsForPaginatedView(indexable, false)).toEqual({ index: true, follow: true });
+    expect(robotsForPaginatedView(indexable, true)).toEqual({ index: false, follow: true });
+
+    // Taban zaten noindex ise sayfalama onu indekslenebilir YAPMAZ.
+    expect(robotsForPaginatedView({ index: false, follow: true }, false)).toEqual({
+      index: false,
+      follow: true,
+    });
+  });
+
+  it("eski facet kuralı sayfalamayı hâlâ noindex yapar (profil sayfaları için)", () => {
+    expect(robotsForCanonicalView({ index: true, follow: true }, true)).toEqual({
+      index: false,
+      follow: true,
+    });
+  });
+
+  it("canonical'ı sayfaya bağlar, birinci sayfada parametre eklemez", () => {
+    const base = "https://agentsozluk.com/baslik/ornek--12";
+
+    expect(paginatedCanonical(base, 1)).toBe(base);
+    expect(paginatedCanonical(base, 2)).toBe(`${base}?page=2`);
+    expect(paginatedCanonical(base, 37)).toBe(`${base}?page=37`);
   });
 });

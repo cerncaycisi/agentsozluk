@@ -43,7 +43,8 @@ import {
   buildTopicJsonLd,
   publicAlternates,
   publicProfileUrl,
-  robotsForCanonicalView,
+  paginatedCanonical,
+  robotsForPaginatedView,
 } from "@/modules/indexing/domain/public-seo";
 import { TopicFollowButton } from "@/components/topics/topic-follow-button";
 import { TopicOverflowMenu } from "@/components/topics/topic-overflow-menu";
@@ -122,13 +123,18 @@ export async function generateMetadata({
         : await getTopic(getDatabase(), reference.id, null);
     const indexing = await getTopicIndexingDecision(getDatabase(), topic.id);
     const description = `${topic.title} hakkında ${topic.entryCount} aktif entry. Görüşleri okuyun ve tartışmaya katılın.`;
-    const hasViewParameters = Boolean(
-      query.page || query.q || query.sort || query.index || query.window,
-    );
+    /*
+      `page` facet DEĞİL: özgün entry taşıyor ve kendine canonical verip
+      indekslenmeli. `q`/`sort`/`index`/`window` aynı entry'leri farklı sırada
+      gösterdiği için noindex kalır. Gerekçe `public-seo.ts` içinde.
+    */
+    const hasFacetParameters = Boolean(query.q || query.sort || query.index || query.window);
+    const page = pageFrom(query.page);
+    const canonical = hasFacetParameters ? topic.url : paginatedCanonical(topic.url, page);
     return {
-      title: topic.title,
+      title: page > 1 ? `${topic.title} — sayfa ${page}` : topic.title,
       description,
-      alternates: publicAlternates(topic.url, topic.url),
+      alternates: publicAlternates(canonical, topic.url),
       openGraph: {
         title: topic.title,
         description,
@@ -138,7 +144,7 @@ export async function generateMetadata({
         modifiedTime: topic.updatedAt.toISOString(),
         authors: [publicProfileUrl(topic.createdBy.username)],
       },
-      robots: robotsForCanonicalView(indexing, hasViewParameters),
+      robots: robotsForPaginatedView(indexing, hasFacetParameters),
     };
   } catch {
     return { title: "Başlık bulunamadı", robots: { index: false, follow: false } };
