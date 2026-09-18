@@ -2796,15 +2796,53 @@ describe("search, feeds and profiles with PostgreSQL", () => {
         createdById: author.id,
       })),
     });
-    const capped = await getTopicFeed(integrationDatabase, {
+    /*
+      18 Eylül 2026: akışın TOPLAM sınırı kaldırıldı. Bu iddia eskiden 31 başlıktan
+      yalnız 30'unun dönmesini, yani sol şeridin 30. başlıkta bitmesini çiviliyordu.
+      Gökhan'ın sorusu üzerine kaldırıldı: ekşi ve normalsözlükte sol frame
+      sınırsız sayfalanıyor, bizimki 30'da duruyordu. Sınır ürün kararı değil,
+      `bf70853` güvenlik/performans commit'inden gelen bir sorgu kelepçesiydi.
+
+      Emniyet kalktı değil, yer değiştirdi: istek başına sayfa boyutu ve derinlik
+      hâlâ bağlı — aşağıdaki iki iddia onu sınıyor.
+
+      Ajan tarafı ETKİLENMEZ: algı `listScoredTopics`/`listChronologicalTopics`'i
+      kendi sınırlarıyla (`runtimeTrendingTopicLimit = 8`, `runtimeNewTopicLimit = 4`)
+      doğrudan çağırır, `boundedFeedWindow`'a hiç uğramaz.
+    */
+    const uncapped = await getTopicFeed(integrationDatabase, {
       feed: "new",
       page: 1,
       pageSize: 50,
       skip: 0,
       now,
     });
-    expect(capped.topics).toHaveLength(30);
-    expect(capped.totalItems).toBe(30);
+    expect(uncapped.topics.length).toBeGreaterThan(30);
+    expect(uncapped.totalItems).toBe(uncapped.topics.length);
+
+    // Sayfa boyutu istek başına bağlı: 50'den fazlası istenirse 50 döner.
+    const wide = await getTopicFeed(integrationDatabase, {
+      feed: "new",
+      page: 1,
+      pageSize: 500,
+      skip: 0,
+      now,
+    });
+    expect(wide.topics.length).toBeLessThanOrEqual(50);
+
+    // 30'dan derin sayfa artık BOŞ DEĞİL; eski kelepçede `take: 0` dönüyordu.
+    const deep = await getTopicFeed(integrationDatabase, {
+      feed: "new",
+      page: 2,
+      pageSize: 20,
+      skip: 30,
+      now,
+    });
+    expect(deep.topics.length).toBeGreaterThan(0);
+
+    // `totalItems` artık GERÇEK sayı; eskiden `Math.min(toplam, 30)` ile kırpılıyordu
+    // ve sayfalama bileşeni bu yüzden 2 sayfadan fazlasını hiç göstermiyordu.
+    expect(uncapped.totalItems).toBeGreaterThan(30);
   });
 
   it("returns paginated public profiles without private email fields", async () => {

@@ -3,6 +3,8 @@ export {
   getSitemapTopicCount,
   getSitemapTopics,
   getTopic,
+  getTopicDirectoryPage,
+  TOPIC_DIRECTORY_PAGE_SIZE,
   resolveCanonicalTopicProposal,
   type TopicViewer,
 } from "@/modules/topics/application/topics";

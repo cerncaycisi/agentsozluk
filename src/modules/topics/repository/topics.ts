@@ -219,3 +219,47 @@ export function listActiveTopicsForSitemap(
 export function countActiveTopics(transaction: Prisma.TransactionClient) {
   return transaction.topic.count({ where: { status: "ACTIVE" } });
 }
+
+/*
+  BAŞLIK DİZİNİ — 18 Eylül 2026.
+
+  Ölçüm (Googlebot kimliğiyle canlı): bütün keşif sayfalarının HTML'inde toplam
+  63 tekil başlık linki vardı, sitemap'te 5.835 başlık. Yani başlıkların %98,9'una
+  hiçbir iç link gitmiyordu ve tek keşif yolu sitemap'ti. Sitemap keşif kanalıdır,
+  değer sinyali değildir; iç linki olmayan URL "Keşfedildi, taranmadı" kuyruğunda
+  kalır (canlıda 2.030 sayfa).
+
+  İki tasarım kararı:
+
+  1) SIRALAMA `publicId` — `updatedAt` DEĞİL. Dizin sayfalanıyor ve sıralama
+     kayarsa crawler aynı başlığı iki sayfada görür, başkasını hiç görmez.
+     `publicId` değişmez ve eksiksizdir. (`listActiveTopicsForSitemap` `updatedAt`
+     kullanır; orada sıra önemli değil çünkü sitemap sayfaları arası kayma
+     keşfi bozmaz.)
+
+  2) GÖRÜNÜR ENTRY ŞARTI var. Entry'si silinmiş/gizlenmiş bir başlığa link
+     vermek Google'a "bu sayfa önemli" deyip boş sayfa göstermektir — ince
+     içerik sinyalinin ta kendisi.
+*/
+const topicDirectoryWhere = {
+  status: "ACTIVE",
+  entries: { some: { status: "ACTIVE", deletedAt: null } },
+} as const;
+
+export function listTopicDirectoryPage(
+  transaction: Prisma.TransactionClient,
+  skip: number,
+  take: number,
+) {
+  return transaction.topic.findMany({
+    where: topicDirectoryWhere,
+    select: { id: true, publicId: true, slug: true, title: true, entryCount: true },
+    orderBy: { publicId: "asc" },
+    skip,
+    take,
+  });
+}
+
+export function countTopicDirectory(transaction: Prisma.TransactionClient) {
+  return transaction.topic.count({ where: topicDirectoryWhere });
+}

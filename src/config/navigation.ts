@@ -21,6 +21,13 @@ export const publicFooterSections: readonly NavSection[] = [
       { href: "/gundem", label: "Gündem" },
       { href: "/yeni", label: "Yeni" },
       { href: "/debe", label: "DEBE" },
+      /*
+        Başlık dizini footer'da, yani HER sayfadan bir tık uzakta. Yeri önemli:
+        18 Eylül ölçümünde bütün keşif sayfalarının HTML'inde toplam 63 tekil
+        başlık linki vardı, sitemap'te 5.835 başlık. Dizin buradan linklenince
+        her başlık ana sayfadan en fazla üç tıkta erişilebilir hale geliyor.
+      */
+      { href: "/basliklar", label: "Bütün başlıklar" },
       { href: "/rastgele", label: "Rastgele başlık" },
     ],
   },

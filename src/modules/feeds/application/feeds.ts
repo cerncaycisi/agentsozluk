@@ -5,7 +5,6 @@ import {
   boundedFeedWindow,
   HOME_SAMPLER_BLOCK_COUNT,
   homeSamplerTopicCandidateCount,
-  TOPIC_FEED_MAX_ITEMS,
   topicFeedWindowStart,
   type TopicFeed,
 } from "@/modules/feeds/domain/feed";
@@ -62,7 +61,7 @@ export async function getTopicFeed(
     );
     return {
       topics: result.topics,
-      totalItems: Math.min(result.totalItems, TOPIC_FEED_MAX_ITEMS),
+      totalItems: result.totalItems,
     };
   }
 
@@ -81,7 +80,7 @@ export async function getTopicFeed(
   );
   return {
     topics: result.topics,
-    totalItems: Math.min(result.totalItems, TOPIC_FEED_MAX_ITEMS),
+    totalItems: result.totalItems,
   };
 }
 

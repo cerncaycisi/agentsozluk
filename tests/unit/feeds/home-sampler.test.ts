@@ -2,7 +2,10 @@ import type { Prisma } from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 import type { DatabaseClient } from "@/lib/db/types";
 import type * as FeedsRepository from "@/modules/feeds/repository/feeds";
-import { homeSamplerTopicCandidateCount } from "@/modules/feeds/domain/feed";
+import {
+  homeSamplerTopicCandidateCount,
+  TOPIC_FEED_MAX_PAGE_SIZE,
+} from "@/modules/feeds/domain/feed";
 
 const mocks = vi.hoisted(() => ({
   listScoredTopics: vi.fn(),
@@ -126,10 +129,17 @@ describe("getHomeSampler", () => {
     ]);
   });
 
-  it("aday havuzu istenen blok sayısından geniş ama gündem üst sınırını aşmıyor", () => {
+  /*
+    Aday havuzu istenen blok sayısının üç katı; entry'si görünmeyen başlıklar
+    elendikten sonra `limit` tanesi kalsın diye. Üst sınır 18 Eylül 2026'da
+    akışın TOPLAM sınırından (30) istek başına sayfa boyutuna (50) taşındı —
+    gerçek kullanım `HOME_SAMPLER_BLOCK_COUNT = 10`, yani 30 aday; oradaki
+    davranış değişmedi. Değişen yalnız 16'dan büyük `limit` değerleri.
+  */
+  it("aday havuzu istenen blok sayısından geniş ama istek sınırını aşmıyor", () => {
     expect(homeSamplerTopicCandidateCount(10)).toBe(30);
     expect(homeSamplerTopicCandidateCount(2)).toBe(6);
-    expect(homeSamplerTopicCandidateCount(20)).toBe(30);
+    expect(homeSamplerTopicCandidateCount(20)).toBe(TOPIC_FEED_MAX_PAGE_SIZE);
   });
 });
 

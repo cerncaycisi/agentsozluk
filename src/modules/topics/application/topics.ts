@@ -13,6 +13,7 @@ import {
 } from "@/modules/topics/domain/normalization";
 import { topicCanonicalSearchCandidates } from "@/modules/topics/domain/canonicalization";
 import {
+  countTopicDirectory,
   createTopicWithFirstEntryRecord,
   findActiveTopicConflicts,
   findTopicById,
@@ -20,6 +21,7 @@ import {
   findTopicConflict,
   getPublicTopicEntrySummary,
   isFollowingTopic,
+  listTopicDirectoryPage,
   lockTopicTitles,
   type TopicSummaryRecord,
 } from "@/modules/topics/repository/topics";
@@ -47,6 +49,39 @@ export function getSitemapTopics(
   input: { page: number; pageSize: number },
 ) {
   return getIndexableSitemapTopics(client, input);
+}
+
+/** Sayfa başına başlık; 5.835 başlık ≈ 30 sayfa, her sayfa bir bakışta taranabilir. */
+export const TOPIC_DIRECTORY_PAGE_SIZE = 200;
+
+/**
+ * Başlık dizini sayfası. Gerekçe ve iki tasarım kararı (sabit `publicId`
+ * sıralaması, görünür entry şartı) repository katmanındaki yorumda.
+ */
+export async function getTopicDirectoryPage(
+  client: DatabaseClient,
+  input: { page: number },
+): Promise<{
+  topics: Array<{ id: string; publicId: number; slug: string; title: string; entryCount: number }>;
+  totalItems: number;
+  totalPages: number;
+}> {
+  const page = Math.max(1, Math.trunc(input.page) || 1);
+  const [topics, totalItems] = await inTransaction(client, (transaction) =>
+    Promise.all([
+      listTopicDirectoryPage(
+        transaction,
+        (page - 1) * TOPIC_DIRECTORY_PAGE_SIZE,
+        TOPIC_DIRECTORY_PAGE_SIZE,
+      ),
+      countTopicDirectory(transaction),
+    ]),
+  );
+  return {
+    topics,
+    totalItems,
+    totalPages: Math.max(1, Math.ceil(totalItems / TOPIC_DIRECTORY_PAGE_SIZE)),
+  };
 }
 
 function topicUrl(topic: Pick<TopicSummaryRecord, "publicId" | "slug">): string {
