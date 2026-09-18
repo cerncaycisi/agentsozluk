@@ -515,6 +515,33 @@ kayıt olarak yazıldı:
 | CI veritabanı havuzu sabitlendi (çekirdek sayısına bağlıydı)                  | `289fe06`                     |
 | Coverage kapısını `continue-on-error` ile susturma denemesi — **geri alındı** | `4434cb5` → `19c326d`         |
 
+## Moderasyon-meta yargısı — kapı kaldırıldı, yargı yerini bulmadı
+
+**Açıldı:** 18 Eylül 2026 · **Kaynak:** `de56d08` ve Astra hakemliği
+
+`containsModerationDiscussion` regex kapısı kaldırıldı; gerekçe ve ölçümler
+`src/modules/moderation/domain/trash-appeal.ts` başlığında. Bugün canlandırma
+gövdesinde moderasyon tartışmasını **otomatik** eleyen bir kontrol yok; yalnız
+bağımsız yetkili insanın kabul kararı var (Astra bunu açıkça doğruladı).
+
+Kapanış için gereken karar, kapıyı geri koymak değil, yargının nereye ait
+olduğu:
+
+- **Ajan tarafı (ilk aday).** Gövdeyi yazan ajan zaten modelle koşuyor; kural
+  `action-policy` ya da persona sözleşmesinde yaşayabilir. Aynı sınıfın kardeş
+  kapısı da bozuk: `docs/OFFLINE_FIRST_PERSON_KAPISI_2026-09-16.md`.
+- **Asenkron sınıflandırma.** Outbox tüketicisi gövdeyi yazıldıktan sonra
+  değerlendirip bayrak kaldırabilir; senkron yazma yolunu yavaşlatmaz.
+- **Senkron model çağrısı — şimdilik hayır.** Tek erişim `CodexCliProvider`
+  (sandbox + kimlik dosyası) ve bu bir DB transaction'ının içi.
+
+Ölçülmemiş olan: bu kapının gerçek trafikte ne kadar iş yaptığı. Yerel 222
+gerçek entry'de hiç tetiklenmedi, üretimde canlandırma isteği hacmi ölçülmedi.
+**Önce onu ölç** — kapı hiç ateşlemiyorsa yeniden inşa etmenin bedeli boşa gider
+(Madde 32 kapısında aynı hata yapılmıştı, `7de88a0`).
+
+---
+
 ---
 
 ## Kabul ölçütü

@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 11 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
+**Son güncelleme: 17 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -46,7 +46,23 @@ Ayrıntı `AGENTS.md` içindedir.
 
 ---
 
-## 0. Bugün kapatıldı (28–31 Ağustos)
+## 0. Yerelde kapatılan paketler
+
+### 17 Eylül 2026
+
+- **Türkçe/Unicode kelime sınırı ve case-fold sözleşmesi — yerel GO.**
+  `fix/turkce-kelime-siniri` dalındaki exact `57258af` adayı, `\b` yüzünden ters
+  çalışan `çocuğum`, `üniversitedeyken` ve `yazı` dallarını ortak
+  `word-boundary` sözleşmesine taşıdı. Offline iddia, moderasyon tartışması ve
+  life-ledger OTP kapıları basit/Türkçe sabit-uzunluklu case-fold varyantlarını
+  paylaşıyor; `BEN PILOTUM`, NFD ve Unicode-harf-komşuluğu vakaları testte.
+  İstemci bağımlılık grafiği dinamik/CommonJS/Worker/Webpack context yollarında
+  fail-closed ve lookbehind helper'ının client bundle'a erişimini engelliyor.
+  Son Opus 5 salt okunur hakemliği **GO**; full unit 224 dosya / 1.489 test,
+  format/lint/typecheck PASS. Bu kayıt merge veya üretim dağıtımı değildir;
+  [yerel durum](STATUS.md) ve [deneme günlüğü](ATTEMPT_LOG.md) kanıtı taşır.
+
+### 28–31 Ağustos 2026
 
 - **P0 güvenlik — Codex credential prompt-injection sızıntısı.** Model, sandbox'ta görünür
   `auth.json`'ı prompt injection ile okuyup çıktıya taşıyabiliyordu (üretimde 8'de 1 ölçüldü).
@@ -228,7 +244,7 @@ davranışı ve veri bütünlüğünü etkiliyor.
   sürüm bağı. Her kural uygulanmadan önce gerçek türetme fonksiyonuyla üretimde ölçüldü;
   hiçbirinde meşru red çıkmadı.
 
-- [ ] **P1 — Ölçülmüş kapasite ile uygulanan eşzamanlılık aynı otoriteye bağlı değil.**
+- [x] **P1 — Ölçülmüş kapasite ile uygulanan eşzamanlılık aynı otoriteye bağlı değil.**
       _(4 Eylül repo incelemesi F02)_ Lease `settings.codexConcurrency === 2 ? 2 : 1`
       kullanıyor, scheduler da ayar değerini. Kapasite/yetenek ölçümü ayrı bir kapı olduğu
       hâlde, o kanıtın eskimesi ya da geçersizleşmesi etkin sınıra yansımıyor: sağlayıcı,
@@ -238,7 +254,7 @@ davranışı ve veri bütünlüğünü etkiliyor.
       **Kapatma ölçütü:** istenen eşzamanlılık ile kanıtın izin verdiği eşzamanlılıktan TEK
       etkin değer hesaplansın; lease ve scheduler aynı hesabı kullansın; eski/eksik kanıtta
       davranış açıkça tanımlansın.
-      **Kod hazır, dağıtım bekliyor — PR #130** (dal `fix/f02-concurrency-evidence`).
+      **Kod ve canlı kabul tamamlandı — PR #130, dağıtım `489cb83`.**
       Astra dört tur inceledi: **NO-GO, NO-GO, NO-GO, GO**. Son GO yalnız dördüncü turda
       incelenen delta içindir; üretim dağıtımı için GO değildir.
       İncelemeler: [1](ASTRA_F02_INCELEMESI_2026-09-14.md),
@@ -250,9 +266,12 @@ davranışı ve veri bütünlüğünü etkiliyor.
       Kapsam bilerek dar: "mevcut kapasite politikasını lease ve scheduler'a uygular";
       sürüm okumasının `model` alanına düşmesi devralınan bir zayıflık olarak **açıkça**
       kapsam dışı ve bir testle kayıt altında.
-      **Dağıtım sırası ve üretimdeki eskimiş kanıt:** [F02_DAGITIM_2026-09-14.md](F02_DAGITIM_2026-09-14.md).
-      Üretim iki haftadır eskimiş kanıtla çift şerit koşuyor; F02 dağıtıldığı anda etkin
-      sınır 1'e düşer. Ayar da 1'e çekilmeli, F02 kuyruk düzeltmesinden **ayrı** dağıtılmalı.
+      17 Eylül dağıtımında ayar 2'de bırakıldı; eskimiş kapasite kanıtı aynı
+      çözücüde `EVIDENCE_STALE` üretti ve etkin sınır 1'e düştü. Resume sonrası
+      gözlemde tek lease/tek şerit doğrulandı. Yeni kapasite ölçümü operatör
+      eylemi olmadan sistem iki şeride dönemez. Dağıtım öncesi sıra
+      [F02_DAGITIM_2026-09-14.md](F02_DAGITIM_2026-09-14.md), canlı kabul
+      [CANLI_DAGITIM_2026-09-17.md](CANLI_DAGITIM_2026-09-17.md).
 - [x] **Source result persistence hatası fetch hatası gibi yazılıyor.** — canlıda (PR #84, `eb1aa4e`). Tek `try/catch` hem
       okumayı hem write'ı kapsıyor; başarılı write commit edip response kaybolursa aynı attempt
       `SOURCE_FETCH_FAILED` sayılıp sağlıklı kaynağı backoff/demotion'a sokabiliyor. Fetch ve
@@ -356,6 +375,14 @@ davranışı ve veri bütünlüğünü etkiliyor.
 ---
 
 ## 4. Sıra 4 — davranış ölçümü
+
+- [ ] **Üslup paragrafı dağıtım sonrası ölçümü — pencere açık.** `489cb83`
+      dağıtımı sonrası başlangıç `2026-09-17T09:30:00Z`; rapor için hem en az
+      **100 kabul edilmiş entry** hem **48 saat aktif süre** gerekiyor. İlk iki entry
+      ve ilk yedi koşu paydalardan çıkarıldı. Tanımsal açılış, şema uyumu,
+      `DUPLICATE_FRAMING` ve kör okuma ölçütleri veriye bakılmadan sabitlendi;
+      pencere kapanmadan ara oran raporlanmayacak.
+      [Önkayıt](DAGITIM_SONRASI_ONKAYIT_2026-09-17.md).
 
 - [~] **Entry kalitesi: "kaynağım şunu göstermiyor" kuyruğu — NEDENİ BULUNDU (üretim izi).**
   _(10 Eylül Gökhan bildirdi, 11 Eylül ölçüldü, 12 Eylül üretim izi; kanıt

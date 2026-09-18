@@ -470,14 +470,77 @@ describe("agent action duplicate policy", () => {
     ).toBeNull();
   });
 
-  it("rejects unrecorded offline first-person claims without blocking digital context or quoted discussion", () => {
+  /*
+    Her tetikleyici TEK BAŞINA sınanır. Eski hâlinde üç cümle vardı ve her biri
+    birden çok tetikleyici taşıyordu: "Üniversitedeyken dün sokakta gördüm"
+    aslında `sokakta gördüm` sayesinde geçiyordu, "Çocuğum okuldayken..." ise
+    `okuldayken` sayesinde. Böylece `üniversitedeyken` ve `çocuğum` kalıpları
+    hiçbir konumda eşleşmediği hâlde test yeşil kalıyordu (ölçüm, 17 Eylül 2026).
+  */
+  it("rejects every unrecorded offline first-person trigger on its own", () => {
     for (const body of [
-      "Ben pilotum ve işe giderken bu kararı her gün uyguluyorum.",
-      "Üniversitedeyken dün sokakta gördüm; bu yüzden kesin konuşuyorum.",
-      "Çocuğum okuldayken yaşadığım şehirde aynı olay tekrarlandı.",
+      "ben avukatım, bu konuda çok dosya gördüm.",
+      "ben bir pilotum ve bunu defalarca yaşadım.",
+      "ben doktorum, hastalarımda sık görüyorum.",
+      "ben mühendisim, sahada böyle olmuyor.",
+      "ben öğretmenim, sınıfta bunu her gün görüyorum.",
+      "ben gazeteciyim, haberi ben geçtim.",
+      "çocuğum bu oyunu çok seviyor.",
+      "eşim de aynı şeyi söylüyor.",
+      "annem bunu hep yapardı.",
+      "babam bana bunu öğretmişti.",
+      "ailem taşındığında ben küçüktüm.",
+      "işe giderken her sabah oradan geçiyorum.",
+      "üniversitedeyken bunu çok tartışmıştık.",
+      "okuldayken bize bunu anlatmışlardı.",
+      "ofisimde bunu denedik, olmadı.",
+      "iş yerimde herkes bundan şikayetçi.",
+      "ben 1990'da doğdum.",
+      "geçen sene mezun oldum.",
+      "otuz yaşındayım ve bunu ilk kez görüyorum.",
+      "oraya iki kez seyahat ettim.",
+      "dün sokakta gördüm onu.",
+      "bedenim buna alışamadı.",
+      "boyum kısa olduğu için hep sorun yaşadım.",
+      "kilom yüzünden doktora gittim.",
+      "yaşadığım şehir bu konuda çok geri.",
+      "memleketim orası, bilirim.",
+    ])
+      expect(hasUnrecordedOfflineFirstPersonClaim(body)).toBe(true);
+  });
+
+  /*
+    Türkçe harfle başlayan tetikleyiciler için konum ve sınır kontrolü. `\b` ile
+    yazıldığında bunlar tam TERS çalışıyordu: gerçek iddiayı kaçırıp kelime
+    ortasında tetikleniyorlardı.
+  */
+  it("matches Turkish-initial triggers in every position and not inside another word", () => {
+    for (const body of [
+      "çocuğum bu oyunu çok seviyor.",
+      "benim çocuğum bu oyunu çok seviyor.",
+      "bunu seven benim çocuğum.",
+      "üniversitedeyken bunu tartışmıştık.",
+      "ben üniversitedeyken bunu tartışmıştık.",
     ])
       expect(hasUnrecordedOfflineFirstPersonClaim(body)).toBe(true);
 
+    for (const body of ["kocaçocuğum diye bir şey yok.", "xüniversitedeyken"])
+      expect(hasUnrecordedOfflineFirstPersonClaim(body)).toBe(false);
+  });
+
+  it("does not lose ASCII-I or mixed Turkish uppercase claims while case-folding", () => {
+    for (const body of [
+      "BEN PILOTUM",
+      "OFISIMDE BUNU DENEDİK",
+      "IŞ YERIMDE HERKES BUNU KONUŞUYOR",
+      "MEMLEKETIM ORASI",
+      "BEDENIM BUNA ALIŞAMADI",
+      "BEN BİR PILOTUM",
+    ])
+      expect(hasUnrecordedOfflineFirstPersonClaim(body), body).toBe(true);
+  });
+
+  it("does not block digital context or quoted discussion", () => {
     for (const body of [
       "Bu akışta daha önce okuduğum entry üzerinden iddianın sınırlarını tartışıyorum.",
       "Bu başlıkta bir yazarın ‘ben pilotum’ iddiası var; doğrulanmış saymıyorum.",

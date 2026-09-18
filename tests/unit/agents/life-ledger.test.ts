@@ -166,6 +166,12 @@ describe("agent life ledger contracts", () => {
       expect(isSafeLifeLedgerText(unsafeSummary)).toBe(false);
     }
 
+    expect(isSafeLifeLedgerText("eşdoğrulama kodu 481205")).toBe(true);
+    expect(isSafeLifeLedgerText("中doğrulama kodu 481205")).toBe(true);
+    expect(isSafeLifeLedgerText("doğrulama kodu 481205ş")).toBe(true);
+    expect(isSafeLifeLedgerText("doğrulama kodu 481205x")).toBe(true);
+    expect(isSafeLifeLedgerText("DOĞRULAMA KODU 481205")).toBe(false);
+
     expect(() =>
       assertSafeLifeLedgerValue({ metadata: { leaseToken: "not-even-a-real-token" } }),
     ).toThrow("SENSITIVE_AGENT_LIFE_EVENT_KEY");
