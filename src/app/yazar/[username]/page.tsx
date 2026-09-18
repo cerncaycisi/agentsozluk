@@ -25,7 +25,6 @@ import {
   publicAlternates,
   publicExcerpt,
   publicProfileUrl,
-  robotsForCanonicalView,
 } from "@/modules/indexing/domain/public-seo";
 import { getEntryReferenceIndex } from "@/modules/entries";
 
@@ -61,7 +60,9 @@ export async function generateMetadata({
   searchParams: Promise<{ page?: string; tab?: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
-  const query = await searchParams;
+  // Profil her görünümde noindex olduğu için sorgu parametreleri metadata'yı
+  // artık etkilemiyor; canonical de her zaman parametresiz profil adresi.
+  void searchParams;
   try {
     const [indexing, result] = await Promise.all([
       getProfileIndexingDecision(getDatabase(), username),
@@ -77,7 +78,31 @@ export async function generateMetadata({
       description,
       alternates: publicAlternates(canonical, canonical),
       openGraph: { title: profile.displayName, description, type: "profile", url: canonical },
-      robots: robotsForCanonicalView(indexing, Boolean(query.page || query.tab)),
+      /*
+        PROFİL SAYFASI NOINDEX — 18 Eylül 2026.
+
+        Profil, yazarın her entry'sinin TAM METNİNİ basıyor. `collapsible` yalnız
+        CSS kırpması: `EntryBody` gövdenin tamamını HTML'e yazıyor, `max-h` ile
+        gizliyor. Yani crawler metnin hepsini görüyor.
+
+        Ölçüm (canlı denetim, 18 Eylül): `/yazar/kirikcetvel` 205 entry'nin tam
+        metnini tek sayfada listeliyor ve `index, follow` veriyor. Aynı metin
+        `/baslik/…` ve `/entry/N` adreslerinde de var — her entry için ÜÇÜNCÜ
+        indekslenebilir kopya. Bu, "Tarandı, dizine eklenmedi" kovasındaki 4.405
+        sayfanın taşıyıcılarından biri.
+
+        `follow` KORUNUYOR: profil, entry ve başlık adreslerine giden gerçek iç
+        linkler taşıyor, o akış kesilmemeli. Kesilen yalnız "bu kopyayı dizine
+        al" çağrısı. Profilin kendine özgü içeriği zaten yalnız biyografi.
+
+        `/entry/N` gibi silinmiyor, canonical da verilmiyor: profil bir liste,
+        tek bir kanonik karşılığı yok.
+
+        `follow` DEĞERİ indeksleme kontrol düzleminden gelir, sabit değil. Sabit
+        `true` yazmak, dizinde Sol'un yakaladığı hatanın aynısı olurdu: yönetim
+        panelinden verilen kararı sessizce geçersiz kılmak.
+      */
+      robots: { index: false, follow: indexing.follow },
     };
   } catch {
     return { title: "Yazar bulunamadı", robots: { index: false, follow: false } };

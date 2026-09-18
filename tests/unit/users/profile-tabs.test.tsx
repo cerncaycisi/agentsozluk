@@ -227,7 +227,20 @@ describe("yazar profili sekme metadata'sı", () => {
     expect(metadata.robots).toEqual({ index: false, follow: true });
   });
 
-  it("parametresiz profili indekslenebilir bırakır", async () => {
+  /*
+    18 Eylül 2026: PROFİL HER GÖRÜNÜMDE NOINDEX.
+
+    Eskiden parametresiz profil indekslenebilirdi. Ama profil, yazarın her
+    entry'sinin TAM METNİNİ basıyor: `collapsible` yalnız CSS kırpması,
+    `EntryBody` gövdenin tamamını HTML'e yazıyor. Canlı denetimde
+    `/yazar/kirikcetvel` 205 entry'nin tam metnini tek sayfada listeliyordu ve
+    `index, follow` veriyordu — aynı metin `/baslik/…` ve `/entry/N` adreslerinde
+    de var, yani her entry için ÜÇÜNCÜ indekslenebilir kopya.
+
+    `follow` korunuyor ve değeri indeksleme kontrol düzleminden geliyor; sabit
+    `true` yazmak yönetim kararını sessizce geçersiz kılmak olurdu.
+  */
+  it("profili her görünümde noindex bırakır ama follow kararını korur", async () => {
     const { generateMetadata } = await import("@/app/yazar/[username]/page");
     getPublicProfile.mockResolvedValue({
       profile,
@@ -241,6 +254,6 @@ describe("yazar profili sekme metadata'sı", () => {
       searchParams: Promise.resolve({}),
     });
     expect(metadata.alternates?.canonical).toBe(PROFILE_URL);
-    expect(metadata.robots).toEqual({ index: true, follow: true });
+    expect(metadata.robots).toEqual({ index: false, follow: true });
   });
 });
