@@ -27,3 +27,49 @@ describe("robots.txt sitemap", () => {
     expect(mod.dynamic).toBe("force-dynamic");
   });
 });
+
+/*
+  18 Eylül 2026 — robots.txt ile `htmlLimitedBots` AYRIŞMAMALI.
+
+  Canlı ölçüm: entry sayfalarında `<title>` ve `rel=canonical` `<head>`'in
+  DIŞINDAYDI (`</head>` 3.556. bayt, `<title>` ~34.800. bayt; 5/5 sayfa).
+  Sebep Next 15.2+ streaming metadata ve varsayılan `htmlLimitedBots` listesinin
+  Bingbot'u içerip Googlebot'u içermemesi.
+
+  Asıl tehlike alıntı crawler'ları: robots.txt'te OAI-SearchBot, Claude-SearchBot,
+  PerplexityBot'a kapıyı açıyoruz ama onlar JS ÇALIŞTIRMAZ. Listeye almazsak
+  kapıyı açıp metadata'yı saklamış oluruz. Bu test o iki listenin birbirinden
+  kopmasını yakalar.
+*/
+describe("streaming metadata ile robots politikası", () => {
+  it("robots.txt'te izin verilen her crawler bloklayıcı metadata alır", async () => {
+    const { SEARCH_AND_CITATION_CRAWLERS } = await import("@/app/robots");
+    const { default: nextConfig } = await import("../../../next.config");
+    const pattern = nextConfig.htmlLimitedBots;
+
+    expect(pattern, "htmlLimitedBots ayarlanmış olmalı").toBeInstanceOf(RegExp);
+    for (const crawler of SEARCH_AND_CITATION_CRAWLERS)
+      expect(pattern!.test(crawler), crawler).toBe(true);
+  });
+
+  it("Next'in varsayılan listesini geriletmez", async () => {
+    const { default: nextConfig } = await import("../../../next.config");
+    const pattern = nextConfig.htmlLimitedBots!;
+
+    // Varsayılanı ezdiğimiz için orada olanları kaybetmediğimizi de çiviliyoruz.
+    for (const bot of ["Twitterbot", "facebookexternalhit", "Slackbot", "applebot", "Discordbot"])
+      expect(pattern.test(bot), bot).toBe(true);
+  });
+
+  it("gerçek kullanıcı tarayıcısını listeye almaz", async () => {
+    const { default: nextConfig } = await import("../../../next.config");
+    const pattern = nextConfig.htmlLimitedBots!;
+
+    // Streaming'in asıl faydası gerçek kullanıcıda; onu kapatmak TTFB'yi bozar.
+    expect(
+      pattern.test(
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+      ),
+    ).toBe(false);
+  });
+});

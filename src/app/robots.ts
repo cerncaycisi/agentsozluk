@@ -28,6 +28,23 @@ const privatePaths = [
   ve canlıda robots.txt loopback sitemap yayımlar. force-dynamic + doğrulanmış
   getEnvironment().APP_URL bu asimetriyi kapatır (sitemap.xml zaten böyle).
 */
+/*
+  Arama ve ALINTI crawler'ları. Bu liste tek kaynak: `next.config.ts` içindeki
+  `htmlLimitedBots` buradan türetilir, çünkü buraya izin verip metadata'yı
+  onlardan saklamak kendi kendini bozan bir kurulumdur (ölçüm, 18 Eylül 2026 —
+  aşağıdaki dosyaya bak).
+*/
+export const SEARCH_AND_CITATION_CRAWLERS = [
+  "Googlebot",
+  "Bingbot",
+  "OAI-SearchBot",
+  "Claude-SearchBot",
+  "Claude-User",
+  "PerplexityBot",
+  "Perplexity-User",
+  "Google-Extended",
+] as const;
+
 export const dynamic = "force-dynamic";
 
 export default function robots(): MetadataRoute.Robots {
@@ -39,16 +56,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [...privatePaths],
       },
       {
-        userAgent: [
-          "Googlebot",
-          "Bingbot",
-          "OAI-SearchBot",
-          "Claude-SearchBot",
-          "Claude-User",
-          "PerplexityBot",
-          "Perplexity-User",
-          "Google-Extended",
-        ],
+        userAgent: [...SEARCH_AND_CITATION_CRAWLERS],
         allow: "/",
         disallow: [...privatePaths],
       },
