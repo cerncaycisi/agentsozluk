@@ -1,3 +1,6 @@
+import { MAX_PAGE_SIZE } from "@/config/app";
+import { MAX_SKIP } from "@/lib/http/pagination";
+
 export const TOPIC_FEEDS = ["trending", "recent", "new", "popular"] as const;
 export type TopicFeed = (typeof TOPIC_FEEDS)[number];
 
@@ -16,19 +19,20 @@ export type TopicFeed = (typeof TOPIC_FEEDS)[number];
   HTML'inde toplam 63 tekil başlık linki vardı, sitemap'te 5.835 başlık — yani
   başlıkların %98,9'una hiçbir iç link gitmiyordu.
 
-  Emniyet KALDIRILMADI, doğru yere taşındı: istek başına sayfa boyutu hâlâ sınırlı
-  (tek sorgunun büyüklüğünü bu belirler) ve derinlik `MAX_SKIP` ile bağlı — sınırsız
-  `OFFSET` taraması pahalıdır ve o derinlikte gerçek kullanıcı yoktur.
+  Emniyet KALDIRILMADI, zaten var olan GENEL sınırlara bağlandı: `MAX_PAGE_SIZE`
+  ve `MAX_SKIP`. İlk yazımda buraya ayrı bir 50/10.000 çifti koymuştum; Astra
+  (18 Eylül) bunun API sözleşmesini böldüğünü ölçtü — `?pageSize=100` isteğinde
+  genel ayrıştırıcı 100'ü kabul edip `skip`i ona göre hesaplıyor, repository ise
+  50'ye kırpıyordu, yani sayfalar birbirinin üstüne biniyordu. Tek sınır kümesi
+  bu ayrışmayı imkânsız kılar.
 */
-export const TOPIC_FEED_MAX_PAGE_SIZE = 50;
-export const TOPIC_FEED_MAX_SKIP = 10_000;
-
 export function boundedFeedWindow(skip: number, pageSize: number): { skip: number; take: number } {
-  const boundedSkip = Math.min(Math.max(0, skip), TOPIC_FEED_MAX_SKIP);
-  return {
-    skip: boundedSkip,
-    take: Math.min(Math.max(0, pageSize), TOPIC_FEED_MAX_PAGE_SIZE),
-  };
+  const boundedPageSize = Math.min(Math.max(0, pageSize), MAX_PAGE_SIZE);
+  // Sınır aşımı akışı BİTİRİR; aynı pencereye kelepçelemek son sayfayı tekrar
+  // tekrar gösterirdi (Astra 18 Eylül: 10.020 başlıkta sayfa 501, 502… aynı
+  // 10.000 OFFSET'ine düşüyordu).
+  if (skip > MAX_SKIP) return { skip: MAX_SKIP, take: 0 };
+  return { skip: Math.max(0, skip), take: boundedPageSize };
 }
 
 export function topicFeedWindowStart(feed: TopicFeed, now: Date): Date {
@@ -46,5 +50,5 @@ export const HOME_SAMPLER_BLOCK_COUNT = 10;
  * kendi üst sınırını aşmaz.
  */
 export function homeSamplerTopicCandidateCount(limit: number): number {
-  return Math.min(TOPIC_FEED_MAX_PAGE_SIZE, Math.max(limit, limit * 3));
+  return Math.min(MAX_PAGE_SIZE, Math.max(limit, limit * 3));
 }

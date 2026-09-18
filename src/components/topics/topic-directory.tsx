@@ -1,22 +1,26 @@
 import Link from "next/link";
-import { PaginationLinks } from "@/components/ui/pagination-links";
-import { canonicalTopicPath, getTopicDirectoryPage } from "@/modules/topics";
-import { getDatabase } from "@/lib/db/client";
+import { canonicalTopicPath } from "@/modules/topics";
+import type { TopicDirectoryPage } from "@/modules/topics/application/topics";
 
 /*
   BAŞLIK DİZİNİ — 18 Eylül 2026.
 
   Bu sayfanın tek işi her başlığa taranabilir bir `<a href>` vermek. Ölçüm
-  (Googlebot kimliğiyle canlı, 18 Eylül): keşif sayfalarının tamamında 63 tekil
-  başlık linki vardı, sitemap'te 5.835 başlık.
+  (Googlebot kimliğiyle canlı): keşif sayfalarının tamamında 63 tekil başlık
+  linki vardı, sitemap'te 5.835 başlık.
 
-  Sayfalama YOL tabanlı (`/basliklar/2`), sorgu tabanlı değil. Sebep ölçülmüş:
-  `robotsForCanonicalView` `?page` taşıyan her adresi noindex yapıyor
-  (`modules/indexing/domain/public-seo.ts`). `?page=2` ile yapsaydık dizinin
-  ikinci sayfasından sonrası indekslenmez, iş baştan boşa giderdi.
+  Sayfalama YOL tabanlı (`/basliklar/2`), sorgu tabanlı değil: `?page` taşıyan
+  adresler noindex alıyor (`robotsForCanonicalView`) ve dizinin amacı tam tersi.
+
+  BÜTÜN SAYFALAR TEK TEK BAĞLANIR, kısaltmalı pencere DEĞİL. Astra (18 Eylül)
+  "her başlık en fazla üç tık" iddiamı çürüttü: standart sayfalama bileşeni
+  30 sayfada yalnız 2, 3, 4 ve 30'u bağlıyor, en uzak başlık 15 tık uzakta
+  kalıyordu. Dizinin bütün amacı kısa yol olduğu için burada tam liste var;
+  30 bağlantı bir sayfaya rahat sığar ve derinlik gerçekten 3 tıka iner.
 */
-export async function TopicDirectory({ page }: { page: number }) {
-  const { topics, totalItems, totalPages } = await getTopicDirectoryPage(getDatabase(), { page });
+export function TopicDirectory({ page, data }: { page: number; data: TopicDirectoryPage }) {
+  const { topics, totalItems, totalPages } = data;
+  const hrefFor = (target: number) => (target === 1 ? "/basliklar" : `/basliklar/${target}`);
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8">
@@ -46,13 +50,31 @@ export async function TopicDirectory({ page }: { page: number }) {
         </nav>
       )}
 
-      <div className="mt-8">
-        <PaginationLinks
-          page={page}
-          totalPages={totalPages}
-          hrefFor={(target) => (target === 1 ? "/basliklar" : `/basliklar/${target}`)}
-        />
-      </div>
+      {totalPages > 1 ? (
+        <nav aria-label="Dizin sayfaları" className="mt-8 border-t pt-6">
+          <ul className="flex flex-wrap gap-2">
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map((target) => (
+              <li key={target}>
+                {target === page ? (
+                  <span
+                    aria-current="page"
+                    className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-lg border border-primary bg-primary px-2 text-sm font-semibold text-on-primary"
+                  >
+                    {target}
+                  </span>
+                ) : (
+                  <Link
+                    href={hrefFor(target)}
+                    className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-lg border bg-surface px-2 text-sm font-semibold text-ink transition hover:border-primary hover:text-primary"
+                  >
+                    {target}
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ) : null}
     </div>
   );
 }

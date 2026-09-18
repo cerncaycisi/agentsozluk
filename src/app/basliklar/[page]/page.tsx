@@ -9,11 +9,12 @@ export const dynamic = "force-dynamic";
 
 /*
   Yol tabanlı sayfalama: `/basliklar/2`. `?page=2` DEĞİL — `robotsForCanonicalView`
-  sorgu parametreli her adresi noindex yapıyor ve dizinin amacı tam tersi.
+  sorgu parametreli adresi noindex yapıyor ve dizinin amacı tam tersi.
 
   Sayfa 1 kanonik olarak `/basliklar`; `/basliklar/1` oraya 308 ile gider ki aynı
-  liste iki adreste durmasın. Var olmayan sayfa 404 döner — canlıda ölçülen
-  `/yeni?page=500` soft-404'ü (200 + boş gövde) burada tekrarlanmıyor.
+  liste iki adreste durmasın. Aralık dışı sayfa 404 döner ve liste sorgusu HİÇ
+  çalışmaz (Astra 18 Eylül: `/basliklar/999999` önce 199 milyonluk bir OFFSET
+  sorgusu tetikliyordu).
 */
 function parsePage(raw: string): number | null {
   if (!/^[1-9]\d{0,5}$/u.test(raw)) return null;
@@ -43,8 +44,8 @@ export default async function TopicDirectoryPagedPage({
   if (page === null) notFound();
   if (page === 1) permanentRedirect("/basliklar");
 
-  const { totalPages } = await getTopicDirectoryPage(getDatabase(), { page });
-  if (page > totalPages) notFound();
+  const data = await getTopicDirectoryPage(getDatabase(), { page });
+  if (data.outOfRange) notFound();
 
-  return <TopicDirectory page={page} />;
+  return <TopicDirectory page={page} data={data} />;
 }

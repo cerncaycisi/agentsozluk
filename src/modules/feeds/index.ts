@@ -12,8 +12,6 @@ export {
   boundedFeedWindow,
   HOME_SAMPLER_BLOCK_COUNT,
   homeSamplerTopicCandidateCount,
-  TOPIC_FEED_MAX_PAGE_SIZE,
-  TOPIC_FEED_MAX_SKIP,
   TOPIC_FEEDS,
   topicFeedWindowStart,
 } from "@/modules/feeds/domain/feed";

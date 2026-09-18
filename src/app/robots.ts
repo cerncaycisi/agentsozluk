@@ -23,6 +23,34 @@ const privatePaths = [
 ] as const;
 
 /*
+  FACET TARAMA İSRAFI — 18 Eylül 2026 ölçümü.
+
+  Başlık sayfaları sıralama ve zaman penceresi bağlantıları veriyor; bunlar aynı
+  entry'leri farklı sırada gösteriyor, yani SIFIR özgün içerik üretiyor. Doğru
+  işaretlenmişler (`noindex, follow` + temiz adrese canonical) ama taranmaları
+  engellenmemişti.
+
+  Canlıda ölçtüm (`/baslik/kamusal-oturma--4295`, Googlebot kimliği): temiz
+  sayfada 10 tekil facet adresi var, bunlardan yalnız 6'sını açınca 10 YENİ adres
+  daha çıkıyor (`?sort=newest&window=1w`, `?sort=oldest&window=3m&page=2`…).
+  Kombinasyon 3 sıralama × 5 pencere × N sayfa olarak büyüyor; hiçbiri `nofollow`
+  değil ve robots.txt'te karşılığı yoktu.
+
+  Etkisi tarama bütçesi: Google 24.358 gerçek URL yerine bunlara dağılıyor ve
+  "Keşfedildi, şu anda dizine eklenmiş değil" kuyruğunda 2.030 sayfa bekliyor.
+
+  `page=` BİLEREK BU LİSTEDE YOK: sayfalanan başlık sayfalarında gerçek içerik
+  var (bir başlığın 20'den sonraki entry'leri yalnız orada). Onun doğru çözümü
+  taramayı kesmek değil, sayfaları indekslenebilir yapmak — ayrı iş.
+
+  `Disallow` önek eşleşmesi olduğu için `*` şart: parametre adresin ortasında da
+  gelebiliyor (`?sort=oldest&window=3m`).
+*/
+const crawlWastePatterns = ["/*sort=", "/*window="] as const;
+
+const disallowedPaths = [...privatePaths, ...crawlWastePatterns];
+
+/*
   sitemap.xml gibi runtime'da değerlendirilmeli. Statik prerender edilirse,
   build anındaki APP_URL (Dockerfile'da http://127.0.0.1:3000) dosyaya gömülür
   ve canlıda robots.txt loopback sitemap yayımlar. force-dynamic + doğrulanmış
@@ -53,12 +81,12 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: [...privatePaths],
+        disallow: [...disallowedPaths],
       },
       {
         userAgent: [...SEARCH_AND_CITATION_CRAWLERS],
         allow: "/",
-        disallow: [...privatePaths],
+        disallow: [...disallowedPaths],
       },
       {
         userAgent: ["GPTBot", "ClaudeBot", "CCBot"],

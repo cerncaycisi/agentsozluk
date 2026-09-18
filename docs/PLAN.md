@@ -25,8 +25,9 @@ Kural değişmedi: **ölçmeden gönderme.** Her madde bir kanıta veya bir öl�
 
 **Hakem seçimi (10 Eylül düzeltmesi):** Güvenlik/koşu değişikliklerinin salt okunur
 peer review'ını **her zaman yürütücüden farklı bir model** yapar. Yürütücü Astra ise
-hakem **Fable veya Opus 5**; yürütücü **Claude (Opus 5) ise hakem Astra**
-(`gpt-6-astra`, xhigh, read-only) — _Gökhan kararı, 10 Eylül 2026_. Aynı modelin ayrı
+hakem **Fable veya Opus 5**; yürütücü **Claude (Opus 5) ise hakem Sol**
+(`gpt-5.6-sol`, xhigh, read-only) — _Gökhan kararı, 10 Eylül 2026; hakem modeli
+18 Eylül 2026'da Astra'dan Sol'a alındı_. Aynı modelin ayrı
 oturumu bu şartı karşılamaz; tarihsel hakem bulguları kendi adıyla korunur.
 Ayrıntı `AGENTS.md` içindedir.
 

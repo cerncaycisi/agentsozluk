@@ -241,23 +241,48 @@ export function countActiveTopics(transaction: Prisma.TransactionClient) {
      vermek Google'a "bu sayfa önemli" deyip boş sayfa göstermektir — ince
      içerik sinyalinin ta kendisi.
 */
+/*
+  Görünürlük filtresi `publiclyVisibleEntryWhere` ile ORTAK.
+
+  İlk yazımda yalnız `status: ACTIVE, deletedAt: null` vardı; Astra (18 Eylül)
+  bunun seed moderasyonunu atladığını ölçtü. Seed görünürlük katmanı entry'nin
+  `status` alanına dokunmuyor, ayrı bir overlay'de `suppressed: true` yazıyor.
+  Sonuç: yalnız bastırılmış entry'si olan başlık dizine giriyordu ve public özetin
+  1 saydığı başlığı dizin 2 gösteriyordu.
+
+  Sayaç da aynı filtreden geçmeli; `topic.entryCount` ham sayaçtır, görünürlüğe
+  göre süzülmez. Bu yüzden `_count` ile filtreli sayılıyor.
+*/
+const visibleEntryWhere = {
+  status: "ACTIVE",
+  deletedAt: null,
+  ...publiclyVisibleEntryWhere,
+} satisfies Prisma.EntryWhereInput;
+
 const topicDirectoryWhere = {
   status: "ACTIVE",
-  entries: { some: { status: "ACTIVE", deletedAt: null } },
-} as const;
+  entries: { some: visibleEntryWhere },
+} satisfies Prisma.TopicWhereInput;
 
-export function listTopicDirectoryPage(
+export async function listTopicDirectoryPage(
   transaction: Prisma.TransactionClient,
   skip: number,
   take: number,
 ) {
-  return transaction.topic.findMany({
+  const rows = await transaction.topic.findMany({
     where: topicDirectoryWhere,
-    select: { id: true, publicId: true, slug: true, title: true, entryCount: true },
+    select: {
+      id: true,
+      publicId: true,
+      slug: true,
+      title: true,
+      _count: { select: { entries: { where: visibleEntryWhere } } },
+    },
     orderBy: { publicId: "asc" },
     skip,
     take,
   });
+  return rows.map(({ _count, ...topic }) => ({ ...topic, entryCount: _count.entries }));
 }
 
 export function countTopicDirectory(transaction: Prisma.TransactionClient) {

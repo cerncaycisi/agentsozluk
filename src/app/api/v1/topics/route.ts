@@ -33,7 +33,9 @@ export function GET(request: NextRequest) {
     });
     return successList(result.topics, context, {
       page: pagination.page,
-      pageSize: Math.min(pagination.pageSize, 30),
+      // Eskiden burada 30'a kırpılıyordu; akışın toplam sınırı kalkınca o kırpma
+      // istemciye yanlış sayfa boyutu bildiren ölü bir kalıntı oldu (Astra, 18 Eylül).
+      pageSize: pagination.pageSize,
       totalItems: result.totalItems,
     });
   });

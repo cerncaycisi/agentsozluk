@@ -29,7 +29,7 @@ const client = {} as never;
 describe("başlık dizini sayfalama", () => {
   it("istenen sayfanın kaydırmasını sayfa boyutuyla hesaplar", async () => {
     mocks.listTopicDirectoryPage.mockResolvedValue([]);
-    mocks.countTopicDirectory.mockResolvedValue(0);
+    mocks.countTopicDirectory.mockResolvedValue(10_000);
 
     await getTopicDirectoryPage(client, { page: 3 });
 
@@ -42,7 +42,7 @@ describe("başlık dizini sayfalama", () => {
 
   it("geçersiz sayfa numarasını birinci sayfaya sabitler", async () => {
     mocks.listTopicDirectoryPage.mockResolvedValue([]);
-    mocks.countTopicDirectory.mockResolvedValue(0);
+    mocks.countTopicDirectory.mockResolvedValue(10_000);
 
     for (const page of [0, -4, Number.NaN]) {
       mocks.listTopicDirectoryPage.mockClear();
@@ -70,5 +70,36 @@ describe("başlık dizini sayfalama", () => {
       expect(result.totalPages, `${total} başlık`).toBe(expected);
       expect(result.totalItems).toBe(total);
     }
+  });
+
+  /*
+    Astra (18 Eylül): `/basliklar/999999` önce `skip: 199_999_600` ile liste
+    sorgusunu çalıştırıp SONRA 404 veriyordu; uydurma bir sayfa numarası tam
+    uygunluk taraması tetikleyebiliyordu. Aralık dışı sayfa artık okumadan
+    elenir ve rota tek çağrıyla karar verir.
+  */
+  it("aralık dışı sayfada liste sorgusunu hiç çalıştırmaz", async () => {
+    mocks.listTopicDirectoryPage.mockClear();
+    mocks.listTopicDirectoryPage.mockResolvedValue([]);
+    mocks.countTopicDirectory.mockResolvedValue(300);
+
+    const result = await getTopicDirectoryPage(client, { page: 999_999 });
+
+    expect(result.outOfRange).toBe(true);
+    expect(result.topics).toEqual([]);
+    expect(mocks.listTopicDirectoryPage).not.toHaveBeenCalled();
+  });
+
+  it("aralık içi sayfada listeyi yalnız BİR kez okur", async () => {
+    mocks.listTopicDirectoryPage.mockClear();
+    mocks.countTopicDirectory.mockClear();
+    mocks.listTopicDirectoryPage.mockResolvedValue([]);
+    mocks.countTopicDirectory.mockResolvedValue(1_000);
+
+    const result = await getTopicDirectoryPage(client, { page: 2 });
+
+    expect(result.outOfRange).toBe(false);
+    expect(mocks.listTopicDirectoryPage).toHaveBeenCalledTimes(1);
+    expect(mocks.countTopicDirectory).toHaveBeenCalledTimes(1);
   });
 });

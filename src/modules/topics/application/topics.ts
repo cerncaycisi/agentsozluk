@@ -54,34 +54,47 @@ export function getSitemapTopics(
 /** Sayfa başına başlık; 5.835 başlık ≈ 30 sayfa, her sayfa bir bakışta taranabilir. */
 export const TOPIC_DIRECTORY_PAGE_SIZE = 200;
 
-/**
- * Başlık dizini sayfası. Gerekçe ve iki tasarım kararı (sabit `publicId`
- * sıralaması, görünür entry şartı) repository katmanındaki yorumda.
- */
+export interface TopicDirectoryEntry {
+  id: string;
+  publicId: number;
+  slug: string;
+  title: string;
+  entryCount: number;
+}
+
+export interface TopicDirectoryPage {
+  topics: TopicDirectoryEntry[];
+  totalItems: number;
+  totalPages: number;
+  /** İstenen sayfa aralık dışıysa liste sorgusu HİÇ çalışmaz. */
+  outOfRange: boolean;
+}
+
+/*
+  ÖNCE SAY, SONRA OKU — Astra 18 Eylül.
+
+  İlk yazımda `/basliklar/999999` önce `skip: 199_999_600` ile liste sorgusunu
+  çalıştırıp sonra 404 veriyordu; uydurma bir sayfa numarası tam uygunluk
+  taraması tetikleyebiliyordu. Ayrıca rota `totalPages` için bir kez, bileşen
+  listeyi almak için bir kez çağırdığı için her geçerli sayfada DB işi İKİYE
+  katlanıyordu. Artık tek çağrı var ve aralık dışı sayfa okumadan eleniyor.
+*/
 export async function getTopicDirectoryPage(
   client: DatabaseClient,
   input: { page: number },
-): Promise<{
-  topics: Array<{ id: string; publicId: number; slug: string; title: string; entryCount: number }>;
-  totalItems: number;
-  totalPages: number;
-}> {
+): Promise<TopicDirectoryPage> {
   const page = Math.max(1, Math.trunc(input.page) || 1);
-  const [topics, totalItems] = await inTransaction(client, (transaction) =>
-    Promise.all([
-      listTopicDirectoryPage(
-        transaction,
-        (page - 1) * TOPIC_DIRECTORY_PAGE_SIZE,
-        TOPIC_DIRECTORY_PAGE_SIZE,
-      ),
-      countTopicDirectory(transaction),
-    ]),
-  );
-  return {
-    topics,
-    totalItems,
-    totalPages: Math.max(1, Math.ceil(totalItems / TOPIC_DIRECTORY_PAGE_SIZE)),
-  };
+  return inTransaction(client, async (transaction) => {
+    const totalItems = await countTopicDirectory(transaction);
+    const totalPages = Math.max(1, Math.ceil(totalItems / TOPIC_DIRECTORY_PAGE_SIZE));
+    if (page > totalPages) return { topics: [], totalItems, totalPages, outOfRange: true };
+    const topics = await listTopicDirectoryPage(
+      transaction,
+      (page - 1) * TOPIC_DIRECTORY_PAGE_SIZE,
+      TOPIC_DIRECTORY_PAGE_SIZE,
+    );
+    return { topics, totalItems, totalPages, outOfRange: false };
+  });
 }
 
 function topicUrl(topic: Pick<TopicSummaryRecord, "publicId" | "slug">): string {

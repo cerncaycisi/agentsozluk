@@ -73,3 +73,34 @@ describe("streaming metadata ile robots politikası", () => {
     ).toBe(false);
   });
 });
+
+/*
+  18 Eylül 2026 — facet adresleri taranmamalı, ama `page=` taranmalı.
+
+  Ölçüm: `/baslik/kamusal-oturma--4295` temiz sayfasında 10 tekil facet adresi
+  var; yalnız 6'sını açınca 10 yeni adres daha çıkıyor. Hepsi aynı entry'leri
+  farklı sırada gösteriyor, yani sıfır özgün içerik. `page=` ise gerçek içerik
+  taşıyor (20'den sonraki entry'ler yalnız orada) ve BİLEREK açık bırakıldı.
+*/
+describe("facet tarama israfı", () => {
+  it("sıralama ve zaman penceresi adreslerini kapatır, sayfalamayı kapatmaz", async () => {
+    const robots = (await import("@/app/robots")).default;
+    const rules = robots().rules;
+    const groups = Array.isArray(rules) ? rules : [rules];
+
+    // Hem yıldız grubu hem de izinli crawler grubu aynı kısıtı taşımalı;
+    // yalnız birine koymak diğerine kapıyı açık bırakır.
+    const allowingGroups = groups.filter((group) => group.allow === "/");
+    expect(allowingGroups.length).toBeGreaterThanOrEqual(2);
+
+    for (const group of allowingGroups) {
+      const disallow = [group.disallow ?? []].flat();
+      expect(disallow, String(group.userAgent)).toContain("/*sort=");
+      expect(disallow, String(group.userAgent)).toContain("/*window=");
+      expect(disallow.some((rule) => rule.includes("page="))).toBe(false);
+      // Özel alanlar kaybolmamalı.
+      expect(disallow).toContain("/moderasyon");
+      expect(disallow).toContain("/api");
+    }
+  });
+});

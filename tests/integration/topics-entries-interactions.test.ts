@@ -60,6 +60,7 @@ import {
   getTopicByPublicId,
 } from "@/modules/topics/application/topics";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
+import { getTopicDirectoryPage } from "@/modules/topics";
 import { searchAll } from "@/modules/search/application/search";
 import { buildSearchQuery } from "@/modules/search/repository/search";
 import {
@@ -2461,6 +2462,79 @@ describe("search, feeds and profiles with PostgreSQL", () => {
     );
     expect(references.entries?.has(hidden.entry.publicId)).toBe(false);
     expect(references.users).toEqual(new Set([mentioned.username, suspended.username]));
+  });
+
+  /*
+    BAŞLIK DİZİNİ GÖRÜNÜRLÜK SÖZLEŞMESİ — gerçek PostgreSQL ile.
+
+    İlk yazımda dizin yalnız `status: ACTIVE, deletedAt: null` bakıyordu ve seed
+    moderasyonunu atlıyordu: seed görünürlük katmanı entry'nin `status` alanına
+    dokunmuyor, ayrı bir satırda `suppressed: true` yazıyor. Astra (18 Eylül)
+    ölçtü — public özetin 1 saydığı başlığı dizin 2 gösteriyordu ve yalnız
+    bastırılmış entry'si olan başlık dizine giriyordu.
+
+    Bu testin işi o iki iddiayı gerçek veriyle çivilemek. Mock'la yazılamaz;
+    kusur tam olarak sorgu koşullarındaydı.
+  */
+  it("keeps seed-suppressed entries out of the topic directory and its counts", async () => {
+    const author = await createUser("directory_visibility_author");
+    const moderator = await createUser("directory_visibility_moderator");
+    // Trigger bastıranın aktif İNSAN ADMIN olmasını şart koşuyor.
+    await integrationDatabase.user.update({
+      where: { id: moderator.id },
+      data: { role: "ADMIN", kind: "HUMAN", status: "ACTIVE" },
+    });
+
+    const onlySuppressed = await createTopic(author.id, "Yalnız Bastırılmış Başlık");
+    const mixed = await createTopic(author.id, "Karışık Görünürlüklü Başlık");
+    const secondVisible = await createEntry(integrationDatabase, actor(author.id), mixed.topic.id, {
+      body: "Bu entry görünür kalacak ve dizinde sayılmalı; ikinci bir gövde.",
+    });
+
+    /*
+      Bastırma yalnız KANONİK SEED entry'sine uygulanabilir; veritabanı trigger'ı
+      (`20260729170000_add_seed_entry_visibility`) diğerlerini reddediyor. Bu
+      yüzden hedef entry'ler önce `origin = SEED` yapılıyor — gerçek seed
+      korpusunun durumu bu.
+    */
+    const suppress = async (entryId: string) => {
+      await integrationDatabase.entry.update({
+        where: { id: entryId },
+        data: { origin: "SEED" },
+      });
+      await integrationDatabase.seedEntryVisibility.create({
+        data: {
+          entryId,
+          suppressed: true,
+          suppressionReason: "dizin görünürlük sözleşmesi testi",
+          suppressedById: moderator.id,
+        },
+      });
+    };
+
+    // Tek entry'si bastırılan başlık dizinden TAMAMEN düşmeli.
+    await suppress(onlySuppressed.entry.id);
+    // Karışık başlıkta ilk entry bastırılıyor; başlık kalmalı ama sayacı 1 olmalı.
+    await suppress(mixed.entry.id);
+
+    const page = await getTopicDirectoryPage(integrationDatabase, { page: 1 });
+    const byId = new Map(page.topics.map((topic) => [topic.id, topic]));
+
+    expect(byId.has(onlySuppressed.topic.id), "yalnız bastırılmış entry'si olan başlık").toBe(
+      false,
+    );
+
+    const mixedRow = byId.get(mixed.topic.id);
+    expect(mixedRow, "görünür entry'si kalan başlık dizinde durmalı").toBeDefined();
+    expect(mixedRow?.entryCount, "sayaç görünürlükle süzülmeli").toBe(1);
+    expect(secondVisible.id).toBeTruthy();
+
+    // Ham `topic.entryCount` süzülmemiş sayaçtır; dizin ona GÜVENMEMELİ.
+    const raw = await integrationDatabase.topic.findUniqueOrThrow({
+      where: { id: mixed.topic.id },
+      select: { entryCount: true },
+    });
+    expect(raw.entryCount).toBe(2);
   });
 
   it("searches topics, aliases, users and active entries with stable result contracts", async () => {
