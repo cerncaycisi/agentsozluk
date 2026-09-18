@@ -8059,3 +8059,52 @@ Taban `f2611ad` (PR #134 başı), teslim `a0b7b36`. Üretime dokunulmadı, push/
     delinir. Tetikleyiciyi keskinleştir ya da kapıyı kaldır.
   - Hakem bulgusunu da doğrula: Astra'nın "tabanda true" dediği U+0345 vakası
     yalnız küçük harfli girdide doğruydu ve aynı kaçak zaten tüm kapıda vardı.
+
+## 2026-09-18 — D adayı düştü, SEO tesisatı düzeltildi
+
+Yürütücü Claude Opus 5. Hakem bu tarihten itibaren `gpt-5.6-sol` (Gökhan kararı:
+"astra 6 yerine bir süre 5.6 sol kullanalım"); günün ilk turu hâlâ `gpt-6-astra`.
+
+### Davranış — D adayı canlı taban üstünde etki göstermedi
+
+- 234 koşu, 13 gerçek üretim bağlamı, üretimin modeli ve çağrı dizisi. Kör puanlama Sol.
+- Tanımla açış: A %65, D %63 (p=1.000), DK %58 (p=0.534). İnsan %6, çıplak model %4.
+- **15 Eylül'ün %72 → %35 (p=0.08) sonucu TEKRARLANMADI.** O gün sekiz karşılaştırma
+  yapılmıştı ve Bonferroni eşiği ~0.006'ydı; tek düşük p doğrulama sayılmamalıydı.
+- Ajan susmadı: NO_ACTION %41 → %34/%33. DK kaynak davranışını değiştirdi
+  (MODEL_KNOWLEDGE %24 → %37) ama register değişmedi — bu ayrışma ÜÇÜNCÜ kez.
+- Ayrıntı `D_ADAYI_OLCUMU_2026-09-18.md`. Dokuz müdahale elendi; sınanmamış tek
+  açıklama ajana verilen ROL.
+
+### Moderasyon-meta kapısı kaldırıldı (PR #134 kapandı, merge edildi)
+
+- Devralınan WIP test edilmemişti ve kendi testini düşürüyordu.
+- Üç onarım denendi; Türkçe kişi ekleri ad yapan eklerden sözlüksüz ayrılamıyor.
+  Gökhan kararı: regex kapısı tamamen kaldırıldı. `BACKLOG.md`'de takip maddesi.
+
+### SEO/GEO
+
+- Googlebot kimliğiyle ölçüm: keşif sayfalarının tamamında **63 tekil başlık linki**,
+  sitemap'te 5.835 başlık → **%98,9 yetim**. Sebep `TOPIC_FEED_MAX_ITEMS = 30` (toplam
+  sınır, ürün kararı değil) ve sidebar'ın robots'ta kapalı API'yi istemciden çekmesi.
+- Entry sayfalarında `title`/`canonical` `<head>` DIŞINDA basılıyordu (5/5 sayfa).
+- **GEO ilk kez ölçüldü: 18 sorguda 1** — o da alan adını soruya yazdığım sorgu.
+  Engellenmiyoruz, bulunmuyoruz. `GEO_ALINTI_OLCUMU_2026-09-18.md`.
+- Yedi düzeltme; ayrıntı ve açık kuyruk `SEO_IC_BAGLANTI_2026-09-18.md`.
+
+### Tekrarlama — bugün beş geçersiz ölçüm yaptım, hepsini yakaladım
+
+- **Dev modu streaming metadata yapmıyor.** Düzeltmeyi dev'de doğrulamak geçersizdi;
+  üretim derlemesi gerekti.
+- **500 dönen hata sayfasını ölçtüm.** Durum kodunu kontrol etmeden HTML okuma.
+- **Mutasyon harness'inde kaçış hatası:** `r"\\d+ failed"` hiç eşleşmiyordu, dört
+  mutasyon yanlışlıkla "hayatta kaldı" göründü. Tespit mantığını da sına.
+- **String replace sessizce uygulanmadı** (tipografik kesme işareti). `assert old in s`
+  olmadan replace yapma.
+- **Perf ölçümünde fonksiyon erken dönüyordu**, ölçmek istediğim kalıba hiç ulaşmadım.
+
+- **VE KIRIK BUILD COMMIT ETTİM.** `next.config.ts`in `src/app/robots` import etmesi
+  uygulamayı hiç başlatmıyordu; `tsc` + `eslint` + 1.499 unit test geçti. Yalnız gerçek
+  `next build` yakaladı. **`next build` artık yerel doğrulama listesinde.**
+- Hakem bulgusunu da doğrula: Sol'un "tabanda true" dediği bir vaka yalnız küçük harfli
+  girdide doğruydu; Astra'nın bir P3'ü ise haklıydı ve benim ilk mutasyonum geçersizdi.

@@ -3,7 +3,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { TopicDirectory } from "@/components/topics/topic-directory";
 import { getDatabase } from "@/lib/db/client";
 import { publicAlternates } from "@/modules/indexing/domain/public-seo";
-import { getTopicDirectoryPage } from "@/modules/topics";
+import { getTopicDirectoryIndexingState, getTopicDirectoryPage } from "@/modules/topics";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +28,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const page = parsePage((await params).page);
   if (page === null) return {};
-  const { dynamicIndexingDisabled } = await getTopicDirectoryPage(getDatabase(), { page });
+  const { dynamicIndexingDisabled } = await getTopicDirectoryIndexingState(getDatabase());
   return {
     title: `Başlıklar — sayfa ${page}`,
     description: `Agent Sözlük başlık dizininin ${page}. sayfası.`,

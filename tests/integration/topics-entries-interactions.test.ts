@@ -2608,9 +2608,38 @@ describe("search, feeds and profiles with PostgreSQL", () => {
     const afterSuppression = await getTopicSnippetSource(integrationDatabase, created.topic.id);
     expect(afterSuppression?.body).toContain("ikinci sırada kalmalı");
 
-    // Aynı girdide iki kez sorulunca aynı cevabı vermeli.
-    const again = await getTopicSnippetSource(integrationDatabase, created.topic.id);
-    expect(again?.body).toBe(afterSuppression?.body);
+    /*
+      EŞİTLİKTE KARARLILIK — Sol (18 Eylül) haklı olarak "test eşitlik durumu
+      hiç kurmuyor, tie-break kaldırılsa yine geçer" dedi. Burada iki entry'ye
+      AYNI puan ve AYNI `createdAt` veriliyor; seçim `id` ile kırılmalı ve
+      tekrar tekrar aynı gelmeli.
+    */
+    const tieA = await createEntry(integrationDatabase, actor(author.id), created.topic.id, {
+      body: "Eşitlik vakası A; aynı puan ve aynı zaman damgası taşıyacak.",
+    });
+    const tieB = await createEntry(integrationDatabase, actor(author.id), created.topic.id, {
+      body: "Eşitlik vakası B; aynı puan ve aynı zaman damgası taşıyacak.",
+    });
+    const sameMoment = new Date("2026-09-18T00:00:00.000Z");
+    for (const id of [tieA.id, tieB.id])
+      await integrationDatabase.entry.update({
+        where: { id },
+        data: { score: 40, upvoteCount: 40, downvoteCount: 0, createdAt: sameMoment },
+      });
+
+    const first = await getTopicSnippetSource(integrationDatabase, created.topic.id);
+    const second = await getTopicSnippetSource(integrationDatabase, created.topic.id);
+    expect(first?.body).toBe(second?.body);
+    const expectedWinner = [tieA, tieB].sort((left, right) => (left.id < right.id ? -1 : 1))[0]!;
+    expect(first?.body).toBe(expectedWinner.body);
+
+    // Silinmiş entry en yüksek puanlı olsa bile snippet olamaz.
+    await integrationDatabase.entry.update({
+      where: { id: expectedWinner.id },
+      data: { status: "DELETED", deletedAt: new Date() },
+    });
+    const afterDelete = await getTopicSnippetSource(integrationDatabase, created.topic.id);
+    expect(afterDelete?.body).not.toBe(expectedWinner.body);
   });
 
   /*
@@ -2653,15 +2682,58 @@ describe("search, feeds and profiles with PostgreSQL", () => {
       const immediate = await getTopicDirectoryPage(integrationDatabase, { page: 1 });
       expect(immediate.topics.some((topic) => topic.id === fresh.topic.id)).toBe(true);
 
-      // 2) Dinamik indeksleme kapalıyken dizin boşalır ve kendisi de noindex olur.
+      /*
+        2) `NOINDEX_AGENT_CONTENT`: sitemap ajan başlıklarını dışarıda tutar,
+        dizin de tutmalı. Sol (18 Eylül) bu dalın hiç sınanmadığını söyledi.
+      */
+      const agentTopic = await integrationDatabase.topic.findUniqueOrThrow({
+        where: { id: fresh.topic.id },
+        select: { createdById: true },
+      });
+      // `users_agent_login_disabled_check`: AGENT kullanıcısının girişi kapalı olmalı.
+      await integrationDatabase.user.update({
+        where: { id: agentTopic.createdById },
+        data: { kind: "AGENT", loginDisabled: true },
+      });
       await integrationDatabase.agentGlobalSettings.update({
         where: { id: "global" },
-        data: { indexingMode: "NOINDEX_ALL_DYNAMIC" },
+        data: { indexingMode: "NOINDEX_AGENT_CONTENT" },
+      });
+      const agentMode = await getTopicDirectoryPage(integrationDatabase, { page: 1 });
+      expect(
+        agentMode.topics.some((topic) => topic.id === fresh.topic.id),
+        "ajan başlığı NOINDEX_AGENT_CONTENT altında dizine girmemeli",
+      ).toBe(false);
+
+      // 3) `agentTopicIndexingEnabled=false` de aynı sonucu vermeli.
+      await integrationDatabase.agentGlobalSettings.update({
+        where: { id: "global" },
+        data: { indexingMode: "INDEX_ALL", agentTopicIndexingEnabled: false },
+      });
+      const agentDisabled = await getTopicDirectoryPage(integrationDatabase, { page: 1 });
+      expect(
+        agentDisabled.topics.some((topic) => topic.id === fresh.topic.id),
+        "agentTopicIndexingEnabled=false altında da girmemeli",
+      ).toBe(false);
+
+      // 4) Dinamik indeksleme kapalıyken dizin boşalır ve kendisi de noindex olur.
+      await integrationDatabase.agentGlobalSettings.update({
+        where: { id: "global" },
+        data: { indexingMode: "NOINDEX_ALL_DYNAMIC", agentTopicIndexingEnabled: true },
       });
       const off = await getTopicDirectoryPage(integrationDatabase, { page: 1 });
       expect(off.topics).toEqual([]);
       expect(off.totalItems).toBe(0);
       expect(off.dynamicIndexingDisabled).toBe(true);
+
+      /*
+        Alan doğru olsa da SAYFA noindex üretmezse iş yarım kalır. Sol: "test
+        `dynamicIndexingDisabled` alanını kontrol ediyor fakat gerçek metadata'nın
+        noindex ürettiğini kontrol etmiyor; robots satırları silinse test geçer."
+      */
+      const { generateMetadata } = await import("@/app/basliklar/[page]/page");
+      const metadata = await generateMetadata({ params: Promise.resolve({ page: "2" }) });
+      expect(metadata.robots).toEqual({ index: false, follow: true });
     } finally {
       await restore();
     }

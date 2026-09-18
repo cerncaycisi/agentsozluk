@@ -83,6 +83,18 @@ export interface TopicDirectoryPage {
   listeyi almak için bir kez çağırdığı için her geçerli sayfada DB işi İKİYE
   katlanıyordu. Artık tek çağrı var ve aralık dışı sayfa okumadan eleniyor.
 */
+/*
+  `generateMetadata` yalnız "dizin noindex mi" bilgisine ihtiyaç duyar; tam
+  sayfayı çekmesi gereksiz. Sol (18 Eylül) ölçtü: numaralı dizin rotası
+  metadata + sayfa için AYNI çağrıyı iki kez yapıyordu, yani 4 transaction,
+  2 ayar okuması, 2 COUNT ve 2 liste sorgusu. "Tek okuma" iddiam yalnız
+  uygulama katmanı için doğruydu, rota için değil.
+*/
+export async function getTopicDirectoryIndexingState(client: DatabaseClient) {
+  const { dynamicIndexingDisabled } = await getIndexableTopicPolicy(client);
+  return { dynamicIndexingDisabled };
+}
+
 export async function getTopicDirectoryPage(
   client: DatabaseClient,
   input: { page: number },

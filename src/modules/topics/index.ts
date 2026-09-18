@@ -3,6 +3,7 @@ export {
   getSitemapTopicCount,
   getSitemapTopics,
   getTopic,
+  getTopicDirectoryIndexingState,
   getTopicDirectoryPage,
   getTopicSnippetSource,
   TOPIC_DIRECTORY_PAGE_SIZE,
