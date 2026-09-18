@@ -8005,3 +8005,57 @@ güvenlik durumu yazılmaz.
   uygulama; locale dönüşümünü sıcak yolda karakter başına çağırma; sentetik
   fixture'ın gerçek invariant'a bağlandığını mutasyonla göstermeden kapsam
   iddiası kurma; final yanıt vermeyen hakem oturumunu tamamlanmış sayma.
+
+## 2026-09-18 — moderasyon-meta kapısı: üç onarım denendi, kapı kaldırıldı
+
+Ortam: yerel (Claude Opus 5 yürüttü, hakem Astra `gpt-6-astra` xhigh salt okunur).
+Taban `f2611ad` (PR #134 başı), teslim `a0b7b36`. Üretime dokunulmadı, push/merge yok.
+
+- **Devir noktası.** `/tmp/agentsozluk-ci-fix.*` içindeki ayrı klonda test
+  EDİLMEMİŞ bir WIP vardı. İlk iş onu koşmak oldu: **kendi yazdığı testi
+  düşürüyordu**. `İtiraz, ... başvurudur. Kararınız haksız.` gövdesi, tanım
+  cümlesini aklayan allowlist tarafından da aklanıyordu. WIP o klonda
+  `git stash`'te duruyor.
+- **Kök neden.** PR #134'ün case-fold düzeltmesi `İ`yi doğru katladı; bu
+  `(itiraz|canlandırma) ... karar` kalıbını sıradan sözlük tanımlarına açtı.
+  Merge-base'de aynı gövde `İ` katlanmadığı için KAZAYLA geçiyordu. CI
+  `35244680519`: integration 1/276, coverage 1/1489 düştü.
+- **Üç onarım, üçü de yetmedi.** (1) `karar` soneklerini sabit listeye daraltmak
+  kapsamı düşürdü. (2) Tanım allowlist'i delindi (yukarıda). (3) 1./2. kişi
+  koşulu: 54 etiketli gövdede yanlış-pozitif 8→0 verdi ama Astra ~O(n²) maliyet
+  ölçtü — 10.000 karakterlik tek kelimede **6,3–9,0 sn** CPU, taban 0,34–0,73 ms.
+  Bunu bağımsız doğruladım; **kendi ilk ölçümüm yanlıştı** çünkü fonksiyon kişi
+  kalıbına ulaşmadan erken dönüyordu, ben de `"a".repeat(n)` ile 0,7 ms görüp
+  "sorun yok" sanmıştım. Kalıba ULAŞAN girdi (`itiraz kararı ` öneki) şart.
+- **Duvar morfolojik.** Türkçe kişi ekleri ad yapan eklerden sözlüksüz
+  ayrılamıyor. Ölçülen çarpışmalar: `-dım/-tim/-dik` → `eğitim`, `üretim`,
+  `manyetik`, `lojistik` (gerçek corpus 6/222); `-yım/-yim/-yum` → `kalsiyum`,
+  `uyum`, `giyim`, `deyim`, `sayım`; `-iniz` → `feminizm`, `determinizm`,
+  `leninizm`, `darwinizm`. Ek almayan 2. tekil emir zaten yakalanamıyor.
+- **Karar (Gökhan, 18 Eylül): regex kapısı kaldırıldı.** Yerine senkron model
+  kapısı konmadı — bu bir HTTP yazma yolu ve DB transaction'ının içi; tek model
+  erişimi `CodexCliProvider` (sandbox + kimlik dosyası). Takip maddesi
+  `BACKLOG.md`'de; **ilk şartı kapının gerçek trafikte ne kadar ateşlediğini
+  ölçmek**, yeniden inşa etmek değil.
+- **Hakem turları.** Tur 1 (`dcd07f8`) **NO-GO** — maliyet + `-izm` yanlış
+  pozitifi + hitap kaçakları; hepsi kaynaktan doğrulandı, hepsi gerçekti.
+  Tur 2 (`de56d08`) **KOŞULLU** — `openapi.yaml` açıklaması, var olmayan BACKLOG
+  maddesine yapılan atıf, ve sınır testindeki **atıl** life-ledger iddiası. Üçü
+  de doğrulanıp kapatıldı.
+- **Son ölçüm:** unit 224 dosya / 1.481 test, integration 23 dosya / 276 test
+  PASS (eski kırmızı test dahil); format/lint/typecheck, openapi:validate,
+  requirements:check, requirements:m2, smoke:release, security:scan-secrets PASS.
+  Ortak sınırı ASCII'ye çeviren mutasyon `word-boundary.test.ts`'te 4 test
+  düşürüyor — PR #134'ün asıl işi korumasız değil.
+- **Tekrarlama.**
+  - Bir kapının maliyetini ölçerken girdinin ölçmek istediğin kalıba GERÇEKTEN
+    ulaştığını doğrula; erken dönüş "hızlı" yanılsaması üretir.
+  - Mutasyonun uygulandığını dosyadan doğrulamadan "hayatta kaldı" deme. Bu
+    oturumda üç mutasyon sessizce hiç uygulanmadı, bir dördüncüsü aynı adı iki
+    kez tanımlayıp derleme hatasıyla "düştü" göründü.
+  - Türkçe morfolojide `\b` gibi `-m` ile biten kişi eklerine de güvenme; ad
+    yapan eklerle çakışır.
+  - Bir kaçağı ISTISNA ile kapatma; istisna, korumanın kendisinden daha kolay
+    delinir. Tetikleyiciyi keskinleştir ya da kapıyı kaldır.
+  - Hakem bulgusunu da doğrula: Astra'nın "tabanda true" dediği U+0345 vakası
+    yalnız küçük harfli girdide doğruydu ve aynı kaçak zaten tüm kapıda vardı.
