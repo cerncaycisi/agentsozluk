@@ -60,7 +60,11 @@ import {
   getTopicByPublicId,
 } from "@/modules/topics/application/topics";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
-import { getTopicDirectoryPage, getTopicSnippetSource } from "@/modules/topics";
+import {
+  getTopicDirectoryPage,
+  getTopicSnippetSource,
+  resolveCanonicalTopicProposal,
+} from "@/modules/topics";
 import { getEntryTopicPage } from "@/modules/entries/application/entries";
 import { searchAll } from "@/modules/search/application/search";
 import { buildSearchQuery } from "@/modules/search/repository/search";
@@ -2792,6 +2796,54 @@ describe("search, feeds and profiles with PostgreSQL", () => {
       }),
       "21. entry ikinci sayfada",
     ).toBe(2);
+  });
+
+  /*
+    SLUG ÇAKIŞMASI — gerçek PostgreSQL ile.
+
+    Benzersizlik `normalizedTitle` üzerinde, ADRES ise `slug` üzerinden kuruluyor
+    ve slug üretimi kayıplı. "j cut" ile "j-cut" farklı `normalizedTitle` taşır,
+    benzersizlik kontrolünü geçer, ama ikisi de `j-cut` slug'ını üretir ve okur
+    için ayırt edilemez. Canlıda 24 böyle grup ölçüldü; `j-cut--973` (14 entry)
+    ve `j-cut--1573` (2 entry) aynı tanımı veriyor.
+
+    Bu, tek kelime farkıyla ayrışan 588 başlıkla aynı sorun DEĞİL — orada
+    slug'lar da farklı ve ayrıştırmak kök bulma ister.
+  */
+  it("treats a slug collision as a canonical candidate instead of a new topic", async () => {
+    const author = await createUser("slug_collision_author");
+    const existing = await createTopic(author.id, "j-cut");
+
+    // Farklı normalizedTitle, AYNI slug.
+    const proposal = await resolveCanonicalTopicProposal(integrationDatabase, "j cut");
+    expect(proposal?.topic.id, "mevcut başlık kanonik aday olmalı").toBe(existing.topic.id);
+    expect(proposal?.reason).toBe("SLUG_COLLISION");
+
+    // Oluşturma yolu da aynı kararı vermeli, yoksa öneriden geçip kopya açılır.
+    await expect(
+      createTopicWithFirstEntry(integrationDatabase, actor(author.id), {
+        title: "j cut",
+        entryBody: "Slug çakışması testinde açılmaması gereken ikinci başlığın gövdesi.",
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+
+    // ADD_ENTRY stratejisinde kopya açmak yerine mevcut başlığa yazar.
+    const added = await createTopicWithFirstEntry(
+      integrationDatabase,
+      actor(author.id),
+      {
+        title: "j cut",
+        entryBody: "Slug çakışmasında mevcut başlığa eklenen gövde; yeni başlık açılmamalı.",
+      },
+      { canonicalConflictStrategy: "ADD_ENTRY" },
+    );
+    expect(added.resolution).toBe("EXISTING");
+    expect(added.topic.id).toBe(existing.topic.id);
+
+    const sameSlug = await integrationDatabase.topic.count({
+      where: { slug: "j-cut", status: "ACTIVE" },
+    });
+    expect(sameSlug, "aynı slug'lı ikinci başlık açılmamalı").toBe(1);
   });
 
   it("searches topics, aliases, users and active entries with stable result contracts", async () => {

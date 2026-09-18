@@ -4,7 +4,27 @@ export type TopicCanonicalSearchReason =
   | "EXACT_TITLE"
   | "ABOUT_SUFFIX"
   | "QUESTION_SUFFIX"
-  | "APOSTROPHE_CASE_SUFFIX";
+  | "APOSTROPHE_CASE_SUFFIX"
+  /*
+    SLUG ÇAKIŞMASI — 18 Eylül 2026.
+
+    Benzersizlik `normalizedTitle` üzerinde, ADRES ise `slug` üzerinden kurulu ve
+    slug üretimi kayıplı: boşluk tireye dönüyor, Türkçe harfler ASCII'ye iniyor.
+    Sonuç, benzersizlik kontrolünü geçen ama okur ve crawler için ayırt edilemez
+    olan başlık çiftleri.
+
+    Canlıda ölçüldü (18 Eylül, 5.811 slug): 24 grup. Doğrulanmış örnekler —
+      "j-cut" / "j cut"   → ikisi de slug `j-cut`
+      "l-cut" / "l cut"   → ikisi de slug `l-cut`
+      "siluet" / "silüet" → ikisi de slug `siluet`
+    `j-cut--973` 14 entry, `j-cut--1573` 2 entry taşıyor ve ilk entry'leri aynı
+    tanımı veriyor.
+
+    Bu, tek-kelime farkıyla ayrışan 588 başlıkla AYNI SORUN DEĞİL: orada slug'lar
+    da farklı ("vida-basi-siyirmak" / "vida-basini-siyirmak") ve ayrıştırmak kök
+    bulma ister. Burada sinyal kesin ve ucuz.
+  */
+  | "SLUG_COLLISION";
 
 export interface TopicCanonicalSearchCandidate {
   query: string;

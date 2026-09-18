@@ -56,6 +56,18 @@ export function findTopicConflict(transaction: Prisma.TransactionClient, normali
   });
 }
 
+/**
+ * Aynı slug'ı üreten aktif başlıklar. Gerekçe `SLUG_COLLISION` başlığında.
+ * Benzersizlik `normalizedTitle` üzerinde olduğu için bu sorgu ayrı gerekiyor.
+ */
+export function findActiveTopicsBySlug(transaction: Prisma.TransactionClient, slug: string) {
+  return transaction.topic.findMany({
+    where: { status: "ACTIVE", slug },
+    select: topicSummarySelect,
+    orderBy: { publicId: "asc" },
+  });
+}
+
 export function findActiveTopicConflicts(
   transaction: Prisma.TransactionClient,
   normalizedTitles: string[],

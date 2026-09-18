@@ -17,6 +17,7 @@ import {
   countTopicDirectory,
   createTopicWithFirstEntryRecord,
   findActiveTopicConflicts,
+  findActiveTopicsBySlug,
   findTopicById,
   findTopicByPublicId,
   findTopicConflict,
@@ -191,6 +192,21 @@ export async function resolveCanonicalTopicProposal(
     );
     const exact = await findTopicConflict(transaction, normalizedTitle);
     if (exact) return { topic: exact, reason: "EXACT_OR_ALIAS" as const };
+    /*
+      SLUG çakışması. Benzersizlik `normalizedTitle` üzerinde ama adres
+      `slug` üzerinden kuruluyor ve slug üretimi kayıplı. "j cut" başlığı
+      "j-cut" ile aynı slug'ı üretir, farklı `normalizedTitle` taşır ve bugüne
+      kadar sessizce ikinci bir başlık açıyordu. Canlıda 24 böyle grup var.
+
+      En düşük `publicId` seçilir: kanonik olan, kavramı ilk açan adrestir.
+    */
+    const slug = createTopicSlug(title);
+    if (slug) {
+      const slugMatches = await findActiveTopicsBySlug(transaction, slug);
+      const collision = slugMatches.find((match) => match.normalizedTitle !== normalizedTitle);
+      if (collision) return { topic: collision, reason: "SLUG_COLLISION" as const };
+    }
+
     const variantCandidates = canonicalCandidates.filter(
       (candidate) => candidate.normalizedQuery !== normalizedTitle,
     );
@@ -207,6 +223,7 @@ export async function resolveCanonicalTopicProposal(
       );
       if (topic) return { topic, reason: candidate.reason };
     }
+
     return null;
   });
 }
@@ -267,6 +284,34 @@ export async function createTopicWithFirstEntry(
               resolution: "EXISTING" as const,
             };
           }
+        }
+      }
+
+      /*
+        Slug çakışması: benzersizlik `normalizedTitle` üzerinde ama adres `slug`
+        üzerinden kuruluyor ve slug üretimi kayıplı. Gerekçe ve canlı ölçüm
+        `SLUG_COLLISION` başlığında. Öneri yolundaki mantığın aynısı; ikisi
+        ayrışırsa ajan öneriden geçip oluşturmada yeni kopya açardı.
+      */
+      const proposedSlug = createTopicSlug(title);
+      if (proposedSlug) {
+        const slugMatches = await findActiveTopicsBySlug(transaction, proposedSlug);
+        const collision = slugMatches.find((match) => match.normalizedTitle !== normalizedTitle);
+        if (collision) {
+          if (options.canonicalConflictStrategy !== "ADD_ENTRY")
+            throw topicCanonicalSuggestionError(collision, {
+              query: collision.title,
+              normalizedQuery: collision.normalizedTitle,
+              reason: "SLUG_COLLISION" as const,
+            });
+          const entry = await createEntry(transaction, actor, collision.id, {
+            body: input.entryBody,
+          });
+          return {
+            topic: { ...collision, url: topicUrl(collision) },
+            entry,
+            resolution: "EXISTING" as const,
+          };
         }
       }
     }
