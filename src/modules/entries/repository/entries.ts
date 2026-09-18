@@ -173,11 +173,22 @@ export async function getEntryTopicPageNumber(
   entry: { id: string; topicId: string; createdAt: Date },
   pageSize: number,
 ): Promise<number> {
+  /*
+    SAYIM, ANONİM GÖRÜNÜMÜN FİLTRESİYLE AYNI OLMALI.
+
+    İlk yazımda yalnız `status: ACTIVE` sayıyordum. Sol (18 Eylül) ölçtü:
+    varsayılan başlık listesi anonim kullanıcıya `ACTIVE` VE `DELETED`
+    mezar taşlarını birlikte sayfalıyor (`listTopicEntries`). Hedeften önce
+    19 aktif + 1 silinmiş entry varsa hedef gerçekte 21. satır, yani 2. sayfa;
+    benim hesabım 19 sayıp 1. sayfayı veriyordu. Sonuç: canonical, entry'yi
+    İÇERMEYEN sayfayı gösteriyordu — konsolidasyonun temel iddiası kırık.
+
+    `deletedAt: null` de bu yüzden kaldırıldı: silinmiş entry listede duruyor.
+  */
   const before = await transaction.entry.count({
     where: {
       topicId: entry.topicId,
-      status: "ACTIVE",
-      deletedAt: null,
+      status: { in: ["ACTIVE", "DELETED"] },
       ...publiclyVisibleEntryWhere,
       OR: [
         { createdAt: { lt: entry.createdAt } },

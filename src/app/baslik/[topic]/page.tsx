@@ -321,6 +321,20 @@ export default async function TopicPage({
   );
   const bookmarkSet = new Set(bookmarks.map((bookmark) => bookmark.entryId));
   const totalPages = Math.max(1, Math.ceil(result.totalItems / pageSize));
+
+  /*
+    ARALIK DIŞI SAYFA 404 — 18 Eylül 2026.
+
+    Sayfalamayı indekslenebilir yapmak (kendine canonical + index) tek başına bir
+    GERİLEME yaratıyordu: `?page=9999` artık `index, follow` ve kendine canonical
+    veren, sınırsız sayıda üretilebilen boş bir sayfaydı. Sol bunu blocker saydı
+    ve haklıydı — akış sayfalarındaki soft-404'ü kapatırken başlık sayfalarında
+    açık bırakmışım.
+
+    Birinci sayfa istisna: başlıkta hiç görünür entry yoksa o boş AMA geçerli bir
+    sayfadır.
+  */
+  if (page > 1 && page > totalPages) notFound();
   const appUrl = getEnvironment().APP_URL;
   return (
     <main id="ana-icerik" className="page-main">

@@ -69,11 +69,26 @@ test("entry revision date reaches OpenGraph, both JSON-LD surfaces, sitemap and 
       .map((value) => JSON.parse(value))
       .find((value) => value["@type"] === "CollectionPage");
     expect(collection.mainEntity.itemListElement[0].item.dateModified).toBe(editedAt.toISOString());
-    const sitemap = await request.get("/sitemaps/entries/0.xml");
-    expect(sitemap.status()).toBe(200);
-    expect(await sitemap.text()).toContain(
-      `<loc>${baseURL}${entryPath}</loc><lastmod>${editedAt.toISOString()}</lastmod>`,
-    );
+    /*
+      ENTRY SİTEMAP'İ KALDIRILDI — 18 Eylül 2026.
+
+      `/entry/N` artık kendi başlık sayfasına canonical veriyor; sitemap ise
+      KANONİK adresleri listeler. Rotayı yalnız sitemap indeksinden çıkarmak
+      yetmedi — Sol ölçtü ki adres hâlâ 200 dönüyor ve arama motoru önceden
+      bildiği için çekmeye devam ediyor. Rota tamamen kaldırıldı.
+
+      `lastmod`'un sayaç yazımlarından değil gerçek içerik revizyonundan türediği
+      güvencesi KAYBOLMADI: yukarıdaki JSON-LD `dateModified` iddiası aynı
+      hesabı (`getEntryContentDates`) sınıyor.
+    */
+    const removedSitemap = await request.get("/sitemaps/entries/0.xml");
+    expect(removedSitemap.status()).toBe(404);
+
+    const topicSitemap = await request.get("/sitemap.xml");
+    expect(topicSitemap.status()).toBe(200);
+    const sitemapBody = await topicSitemap.text();
+    expect(sitemapBody).not.toContain("sitemaps/entries");
+    expect(sitemapBody).toContain(`${baseURL}/sitemaps/topics/0.xml`);
     const atom = await request.get(`${topicPath}/atom.xml`);
     expect(atom.status()).toBe(200);
     expect(await atom.text()).toContain(`<updated>${editedAt.toISOString()}</updated>`);
