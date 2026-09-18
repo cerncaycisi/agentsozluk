@@ -8,7 +8,6 @@ import { hasMeaningfulEntryChange } from "@/modules/entries/domain/entry";
 import { createEntryRevision, lockEntryState } from "@/modules/entries/repository/entries";
 import {
   APPEAL_CONSTITUTIONAL_ARTICLES,
-  containsModerationDiscussion,
   REVIVAL_CONSTITUTIONAL_ARTICLES,
 } from "@/modules/moderation/domain/trash-appeal";
 import { requireModerationCapability } from "@/modules/moderation/domain/authorization";
@@ -179,13 +178,6 @@ export function requestEntryRevival(
         422,
         "Canlandırma istemeden önce entry’de somut bir düzeltme yapın.",
       );
-    if (containsModerationDiscussion(input.body))
-      throw new AppError(
-        "REVIVAL_MODERATION_META",
-        422,
-        "Moderasyon tartışmasını entry’ye eklemeyin; somut savunma itiraz alanına yazılmalıdır.",
-      );
-
     const previousRevision = await createEntryRevision(transaction, {
       entryId,
       body: trashCase.entry.body,
@@ -370,12 +362,6 @@ export function decideEntryRevival(
         409,
         "Canlandırma isteğinin exact entry sürümü değişmiş.",
       );
-    if (outcome === "ACCEPTED" && containsModerationDiscussion(request.submittedBody))
-      throw new AppError(
-        "REVIVAL_MODERATION_META",
-        422,
-        "Moderasyon tartışması içeren entry canlandırılamaz.",
-      );
 
     const decision = await createEntryRevivalDecision(transaction, {
       requestId,
@@ -438,12 +424,6 @@ export function decideEntryAppeal(
         "APPEAL_ENTRY_VERSION_MISMATCH",
         409,
         "İtirazın exact entry sürümü değişmiş.",
-      );
-    if (outcome === "ACCEPTED" && containsModerationDiscussion(appeal.bodySnapshot))
-      throw new AppError(
-        "REVIVAL_MODERATION_META",
-        422,
-        "Moderasyon tartışması içeren entry geri açılamaz.",
       );
 
     const decision = await createEntryAppealDecision(transaction, {

@@ -1,56 +1,37 @@
-import {
-  lengthPreservingCaseVariants,
-  unicodeWordRegExp,
-  wordBounded,
-  wordEnd,
-  wordStart,
-} from "@/lib/text/word-boundary";
-
 export const REVIVAL_CONSTITUTIONAL_ARTICLES = [37, 38, 41] as const;
 export const APPEAL_CONSTITUTIONAL_ARTICLES = [39, 40, 41, 42] as const;
 
 /*
-  `\b` yerine Unicode sınırı: gerekçesi `@/lib/text/word-boundary`'de.
-  Burada ölü olan dal `yazı` idi — `ı` kelime karakteri sayılmadığı için
-  sondaki `\b` düşüyor ve "yazı silindi ama neden belli değil" bu kapıdan
-  geçiyordu; aynı cümle "entry" ile yazıldığında yakalanıyordu
-  (ölçüm, 17 Eylül 2026).
+  `containsModerationDiscussion` KALDIRILDI (18 Eylül 2026, Gökhan kararı).
 
-  İlk düzeltmede kalıplar `iu` ile çalışıyordu. Astra'nın üçüncü turu bunun yeni
-  bir kaçak açtığını ölçtü: `U+0345`, `iu` altında `\p{L}` ile eşleşiyor ama
-  `\w` ile eşleşmiyor; `"moderatör haksız\u0345"` eski kapıda yakalanırken yeni
-  kapıdan geçiyordu. Sınır bu nedenle yalnız `u` altında değerlendirilir.
+  Kapı, canlandırma/itiraz gövdesinde "moderasyon tartışması" arayan bir regex
+  kümesiydi ve üç bağımsız tur boyunca kapanmadı:
 
-  Büyük/küçük harf davranışı regex bayrağına bırakılmaz. Hem özgün hem NFC girdi,
-  varsayılan Unicode ve `tr-TR` küçük harf kurallarıyla katlanır. Her kod noktası
-  tek kod noktası olarak kalır: `İ` karakterini varsayılan `i\u0307` biçimine
-  genişletmek, kalıplardaki `{0,n}` mesafesini değiştirip eski eşleşmeleri
-  kaçırıyordu. İki dil biçiminin birleşimi yine gereklidir: yalnız Türkçe küçültme
-  eski `/iu` davranışını `SILDI` gibi ASCII büyük-I girdilerinde kaybeder; yalnız
-  varsayılan küçültme ise `YAZI` gibi Türkçe büyük-I girdilerini kaçırır.
-  JavaScript'in Unicode basit katlamasında ASCII `s` ile eş olan uzun s (`ſ`)
-  ayrıca korunur.
+  - Case-fold düzeltmesi `İ`yi doğru katlayınca sıradan sözlük tanımlarını
+    (`İtiraz, bir kararın ... başvurudur.`) 422 ile reddetmeye başladı; PR #134'ün
+    integration işi bu yüzden kırmızıydı.
+  - İki ayrı onarım denendi. Sonek listesini daraltmak kapsamı düşürdü; gövdeyi
+    "tanım biçiminde mi" diye sınayan allowlist, tanım cümlesinin ardına eklenen
+    `... Kararınız haksız.` metnini akladı.
+  - Üçüncü onarım (1./2. kişi koşulu) Türkçe morfolojisinde duvara çarptı:
+    kişi ekleri ad yapan eklerden sözlüksüz ayrılamıyor. Ölçülen çarpışmalar —
+    `-dım/-tim/-dik` → `eğitim`, `üretim`, `manyetik`, `lojistik` (6/222 gerçek
+    entry); `-yım/-yim/-yum` → `kalsiyum`, `uyum`, `giyim`, `deyim`, `sayım`;
+    `-iniz` → `feminizm`, `determinizm`, `leninizm`, `darwinizm`. Ek almayan
+    2. tekil emir (`İtiraz kararını geri çek!`) zaten yakalanamıyordu.
+  - Astra hakemliği ayrıca ~O(n²) maliyet ölçtü: 10.000 karakterlik tek kelimede
+    6,3–9,0 sn CPU (taban 0,34–0,73 ms). 422 döndüren bir kapıda bu bir
+    erişilebilirlik açığıdır.
 
-  Uyumluluk normalizasyonu (NFKC/NFKD) bilerek yapılmaz; üst simge gibi ayırıcı
-  karakterlerin ASCII rakama dönüşüp eski davranışı değiştirmesi engellenir.
+  Yerine model tabanlı bir kapı KONMADI. Bu yol senkron bir HTTP yazma yolu ve
+  DB transaction'ı içinde; depodaki tek model erişimi `CodexCliProvider`
+  (sandbox + kimlik dosyası). Ölçülen ~352 sn'lik DECISION gecikmesi dar bir
+  sınıflandırıcının zorunlu maliyetini KANITLAMAZ — içinde CLI denetimi ve
+  süreç kurulumu da var (`runtime/provider.ts` başlığı, Astra düzeltmesi) —
+  ama mevcut CLI çağrısını bu transaction'a koymak için de gerekçe yok.
+  Yargının doğru yeri modelin zaten koştuğu ajan tarafıdır; takip maddesi
+  `docs/BACKLOG.md` "Moderasyon-meta yargısı" satırında.
+
+  Aynı kusur sınıfının kardeş kapıda da yazılı olduğunu unutma:
+  `docs/OFFLINE_FIRST_PERSON_KAPISI_2026-09-16.md`.
 */
-const moderationDiscussionPatterns = [
-  unicodeWordRegExp(
-    `${wordBounded("moderatör|moderasyon|gammaz")}.{0,48}${wordBounded("sildi|gizledi|reddetti|haksız|neden")}`,
-  ),
-  unicodeWordRegExp(
-    `${wordBounded("entry|yazı")}.{0,36}${wordBounded("silindi|gizlendi")}.{0,36}${wordBounded("haksız|neden|moderatör")}`,
-  ),
-  unicodeWordRegExp(
-    `${wordStart}bu entry${wordEnd}.{0,48}${wordStart}(?:silin|gizlen|geri aç)[\\p{L}0-9_]*`,
-  ),
-  unicodeWordRegExp(
-    `${wordBounded("itiraz|canlandırma")}.{0,40}${wordStart}(?:talep|karar|redded|kabul)[\\p{L}0-9_]*`,
-  ),
-] as const;
-
-export function containsModerationDiscussion(body: string): boolean {
-  return lengthPreservingCaseVariants(body).some((normalized) =>
-    moderationDiscussionPatterns.some((pattern) => pattern.test(normalized)),
-  );
-}

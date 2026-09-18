@@ -2709,7 +2709,7 @@ components:
             type: string,
             minLength: 10,
             maxLength: 10000,
-            description: Somut olarak düzeltilmiş entry sürümü; moderasyon tartışması içeremez,
+            description: "Somut olarak düzeltilmiş entry sürümü. Moderasyon tartışması içermemesi beklenir; 18 Eylül 2026'dan beri kodda bir kapı ile zorlanmaz.",
           }
     EntryAppealInput:
       type: object

@@ -434,7 +434,9 @@ JSON gövdeleri:
 
 - `POST .../revival-requests`: `body` — entry gövdesiyle aynı 10–10.000 karakter kuralı. Gövde
   mevcut metinden somut biçimde farklı olmalıdır (`422 REVIVAL_REVISION_REQUIRED`) ve moderasyon
-  tartışması içeremez (`422 REVIVAL_MODERATION_META`).
+  tartışması içermemelidir. Bu artık kodda bir kapı ile zorlanmıyor;
+  gerekçe `src/modules/moderation/domain/trash-appeal.ts` başlığındadır
+  (18 Eylül 2026).
 - `POST .../appeals`: `correction` (10–1000 karakter) ve `defense` (20–2000 karakter).
 - Kabul/red komutları: `rationale` (10–1000 karakter).
 
@@ -449,7 +451,7 @@ Bu hattın kendine ait error code'ları:
 ```text
 TRASH_CASE_NOT_FOUND        TRASH_CASE_CLOSED           TRASH_CASE_CONFLICT
 REVIVAL_REQUEST_NOT_FOUND   REVIVAL_REQUEST_OPEN        REVIVAL_REVISION_REQUIRED
-REVIVAL_MODERATION_META     REVIVAL_ALREADY_DECIDED     REVIVAL_REJECTION_REQUIRED
+REVIVAL_ALREADY_DECIDED     REVIVAL_REJECTION_REQUIRED
 REVIVAL_ENTRY_VERSION_MISMATCH                          APPEAL_NOT_FOUND
 APPEAL_ALREADY_SUBMITTED    APPEAL_ALREADY_DECIDED      APPEAL_ENTRY_VERSION_MISMATCH
 MODERATION_CONFLICT_OF_INTEREST

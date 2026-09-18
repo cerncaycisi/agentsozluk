@@ -7,7 +7,7 @@ import {
   wordStart,
 } from "@/lib/text/word-boundary";
 import { hasUnrecordedOfflineFirstPersonClaim } from "@/modules/agents";
-import { containsModerationDiscussion } from "@/modules/moderation/domain/trash-appeal";
+import { isSafeLifeLedgerText } from "@/modules/agents/domain/life-ledger-safety";
 
 /*
   Bu dosya SINIR SÖZLEŞMESİNİ çiviler.
@@ -94,27 +94,32 @@ describe("Türkçe kelime sınırı sözleşmesi", () => {
   });
 
   /*
-    Sözleşme iki gerçek kapıda da tutuyor mu. Bunlar yukarıdaki birim
+    Sözleşme gerçek kapılarda da tutuyor mu. Bunlar yukarıdaki birim
     testlerinin tekrarı değil: kapılar sınırı kendi kalıplarının içine
     gömüyor ve gömme sırasında bozulabilir.
-  */
-  it("holds inside both gates that share the contract", () => {
-    expect(containsModerationDiscussion("moderatör haksız"), "moderasyon kapısı").toBe(true);
-    expect(containsModerationDiscussion("başmoderatör haksız"), "kelime ortası").toBe(false);
-    expect(containsModerationDiscussion("²moderatör haksız"), "solda ayırıcı sayı").toBe(true);
-    expect(containsModerationDiscussion("7moderatör haksız"), "solda ASCII rakam").toBe(false);
-    expect(containsModerationDiscussion("中moderatör haksız"), "solda Unicode harf").toBe(false);
-    expect(containsModerationDiscussion("moderatör haksız中"), "sağda Unicode harf").toBe(false);
-    expect(
-      containsModerationDiscussion("Moderatör, sildiği metinleri arşivleyen görevlidir."),
-      "sildi + ği, tanım cümlesi",
-    ).toBe(false);
 
+    Moderasyon kapısı 18 Eylül 2026'da kaldırıldığı için sözleşme artık
+    offline iddia ve life-ledger kapılarında çivileniyor.
+  */
+  it("holds inside the gates that share the contract", () => {
     expect(hasUnrecordedOfflineFirstPersonClaim("benim çocuğum"), "offline kapısı").toBe(true);
     expect(hasUnrecordedOfflineFirstPersonClaim("kocaçocuğum"), "kelime ortası").toBe(false);
     expect(hasUnrecordedOfflineFirstPersonClaim("_ben doktorum"), "solda alt çizgi").toBe(false);
     expect(hasUnrecordedOfflineFirstPersonClaim("中ben doktorum"), "solda Unicode harf").toBe(
       false,
     );
+    expect(hasUnrecordedOfflineFirstPersonClaim("üniversitedeyken çalıştım"), "baştaki ü").toBe(
+      true,
+    );
+
+    /*
+      Life-ledger tarafı sınıra BAĞLI bir vakayla çivilenir; "temiz metin geçer"
+      demek yetmiyordu, çünkü sınır ASCII'ye döndürülünce de geçiyordu
+      (Astra P3, 18 Eylül 2026). `eşdoğrulama` kelimesinin ortasındaki `doğrulama`
+      ASCII `\b` ile eşleşir — `ş` kelime karakteri sayılmaz — ve OTP kapısı
+      sıradan metni yanlışlıkla gizli sayardı.
+    */
+    expect(isSafeLifeLedgerText("eşdoğrulama kodu 481205"), "kelime ortası, güvenli").toBe(true);
+    expect(isSafeLifeLedgerText("doğrulama kodu 481205"), "gerçek OTP, yakalanır").toBe(false);
   });
 });

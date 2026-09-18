@@ -4028,18 +4028,20 @@ describe("entry trash, revival and appeal with PostgreSQL", () => {
     ).toBe(2);
   });
 
-  it("requires an independent capable human, rejects entry-meta revisions and preserves a concrete appeal", async () => {
+  /*
+    Moderasyon-meta kapısı 18 Eylül 2026'da kaldırıldı (gerekçe:
+    `src/modules/moderation/domain/trash-appeal.ts` başlığı). Buradaki eski
+    iddia, moderasyon tartışması içeren bir gövdenin 422 aldığını sınıyordu;
+    artık gövde yazılıyor. Testin asıl konusu — bağımsız yetkili insan şartı
+    ve somut itirazın korunması — değişmedi.
+  */
+  it("requires an independent capable human and preserves a concrete appeal", async () => {
     const author = await createUser("trash_appeal_author");
     const decider = await createUser("trash_appeal_decider");
     const appealDecider = await createUser("trash_appeal_second_decider");
     const created = await createTopic(author.id, "İtiraz Edilecek Entry");
     await deleteEntry(integrationDatabase, actor(author.id), created.entry.id);
 
-    await expect(
-      requestEntryRevival(integrationDatabase, actor(author.id), created.entry.id, {
-        body: "Bu entry moderatör haksız yere sildiği için canlandırma talebiyle geri açılmalıdır.",
-      }),
-    ).rejects.toMatchObject({ code: "REVIVAL_MODERATION_META", status: 422 });
     expect(await integrationDatabase.entryRevision.count()).toBe(0);
     expect(await integrationDatabase.entryRevivalRequest.count()).toBe(0);
 
