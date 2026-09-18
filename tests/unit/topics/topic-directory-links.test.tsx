@@ -17,6 +17,7 @@ function data(totalPages: number) {
     totalItems: totalPages * 200,
     totalPages,
     outOfRange: false,
+    dynamicIndexingDisabled: false,
   };
 }
 

@@ -52,12 +52,43 @@ describe("streaming metadata ile robots politikası", () => {
       expect(pattern!.test(crawler), crawler).toBe(true);
   });
 
-  it("Next'in varsayılan listesini geriletmez", async () => {
+  /*
+    Sol (18 Eylül) ölçtü: elle kopyaladığım liste Next'in varsayılanından yedi
+    kimlik düşürüyordu (`AdsBot-Google`, `Storebot-Google`,
+    `Google-InspectionTool`, `Google-PageRenderer`, `Chrome-Lighthouse`, `Yeti`,
+    `googleweblight`) ve o gün geçerli olan test bunu yakalamıyordu — yalnız beş
+    örnek kontrol ediyordu. Artık Next'in KENDİ regex'i uzatılıyor ve bu test
+    örnek değil, KAPSAMA sınıyor.
+  */
+  it("Next'in varsayılan listesinin tamamını kapsar", async () => {
+    const { HTML_LIMITED_BOT_UA_RE } = await import("next/dist/shared/lib/router/utils/html-bots");
     const { default: nextConfig } = await import("../../../next.config");
     const pattern = nextConfig.htmlLimitedBots!;
 
-    // Varsayılanı ezdiğimiz için orada olanları kaybetmediğimizi de çiviliyoruz.
-    for (const bot of ["Twitterbot", "facebookexternalhit", "Slackbot", "applebot", "Discordbot"])
+    // Varsayılandaki her alternatif bizim kalıbımızda da eşleşmeli.
+    for (const token of HTML_LIMITED_BOT_UA_RE.source.split("|")) {
+      const probe = token
+        .replaceAll("[\\w-]+", "Ads")
+        .replaceAll("[\\w-]+", "Ads")
+        .replace(/\[\\w-\]\+/gu, "Ads");
+      expect(pattern.test(probe), token).toBe(true);
+    }
+
+    // Sol'un tek tek saydığı yedi kimlik, açıkça.
+    for (const bot of [
+      "AdsBot-Google",
+      "Storebot-Google",
+      "Google-InspectionTool",
+      "Google-PageRenderer",
+      "Chrome-Lighthouse",
+      "Yeti",
+      "googleweblight",
+      "Twitterbot",
+      "facebookexternalhit",
+      "Slackbot",
+      "applebot",
+      "Discordbot",
+    ])
       expect(pattern.test(bot), bot).toBe(true);
   });
 

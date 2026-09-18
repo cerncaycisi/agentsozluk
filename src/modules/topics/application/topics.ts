@@ -1,6 +1,7 @@
 import { inTransaction } from "@/lib/db/transaction";
 import type { DatabaseClient, DatabaseExecutor } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
+import { getIndexableTopicPolicy } from "@/modules/indexing";
 import { appendAuditLog } from "@/modules/audit";
 import { createEntry } from "@/modules/entries";
 import { requireApprovedWriter } from "@/modules/auth/application/guards";
@@ -20,6 +21,7 @@ import {
   findTopicByPublicId,
   findTopicConflict,
   getPublicTopicEntrySummary,
+  getTopicSnippetEntry,
   isFollowingTopic,
   listTopicDirectoryPage,
   lockTopicTitles,
@@ -68,6 +70,8 @@ export interface TopicDirectoryPage {
   totalPages: number;
   /** İstenen sayfa aralık dışıysa liste sorgusu HİÇ çalışmaz. */
   outOfRange: boolean;
+  /** `NOINDEX_ALL_DYNAMIC` kipinde dizin sayfası da noindex olmalı. */
+  dynamicIndexingDisabled: boolean;
 }
 
 /*
@@ -84,17 +88,53 @@ export async function getTopicDirectoryPage(
   input: { page: number },
 ): Promise<TopicDirectoryPage> {
   const page = Math.max(1, Math.trunc(input.page) || 1);
+  // Sitemap ile AYNI politika: gecikme penceresi ve indeksleme kipi burada da
+  // geçerli, yoksa sitemap'in dışarıda tuttuğu başlığa iç link vermiş oluruz.
+  const policy = await getIndexableTopicPolicy(client);
+  /*
+    `NOINDEX_ALL_DYNAMIC` koşulun İÇİNDE değil, çağıranda ele alınıyor —
+    sitemap de böyle yapıyor (`countIndexableTopics` erken 0 döner). Dizin de
+    aynı yerde kesilir; hem doğru hem ucuz, tek sorgu bile açılmaz.
+  */
+  if (policy.dynamicIndexingDisabled)
+    return {
+      topics: [],
+      totalItems: 0,
+      totalPages: 1,
+      outOfRange: page > 1,
+      dynamicIndexingDisabled: true,
+    };
+
   return inTransaction(client, async (transaction) => {
-    const totalItems = await countTopicDirectory(transaction);
+    const totalItems = await countTopicDirectory(transaction, policy.where);
     const totalPages = Math.max(1, Math.ceil(totalItems / TOPIC_DIRECTORY_PAGE_SIZE));
-    if (page > totalPages) return { topics: [], totalItems, totalPages, outOfRange: true };
+    if (page > totalPages)
+      return {
+        topics: [],
+        totalItems,
+        totalPages,
+        outOfRange: true,
+        dynamicIndexingDisabled: policy.dynamicIndexingDisabled,
+      };
     const topics = await listTopicDirectoryPage(
       transaction,
+      policy.where,
       (page - 1) * TOPIC_DIRECTORY_PAGE_SIZE,
       TOPIC_DIRECTORY_PAGE_SIZE,
     );
-    return { topics, totalItems, totalPages, outOfRange: false };
+    return {
+      topics,
+      totalItems,
+      totalPages,
+      outOfRange: false,
+      dynamicIndexingDisabled: policy.dynamicIndexingDisabled,
+    };
   });
+}
+
+/** Başlık sayfasının meta description'ı için en yüksek puanlı görünür entry. */
+export function getTopicSnippetSource(client: DatabaseClient, topicId: string) {
+  return inTransaction(client, (transaction) => getTopicSnippetEntry(transaction, topicId));
 }
 
 function topicUrl(topic: Pick<TopicSummaryRecord, "publicId" | "slug">): string {

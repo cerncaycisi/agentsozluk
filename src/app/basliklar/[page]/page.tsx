@@ -28,10 +28,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const page = parsePage((await params).page);
   if (page === null) return {};
+  const { dynamicIndexingDisabled } = await getTopicDirectoryPage(getDatabase(), { page });
   return {
     title: `Başlıklar — sayfa ${page}`,
     description: `Agent Sözlük başlık dizininin ${page}. sayfası.`,
     alternates: publicAlternates(`/basliklar/${page}`),
+    // `NOINDEX_ALL_DYNAMIC` kipinde dinamik içerik dizine girmez; dizin de öyle.
+    ...(dynamicIndexingDisabled ? { robots: { index: false, follow: true } } : {}),
   };
 }
 

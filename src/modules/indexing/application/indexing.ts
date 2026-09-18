@@ -6,6 +6,7 @@ import { decidePublicIndexing } from "@/modules/indexing/domain/policy";
 import {
   countIndexableEntries,
   countIndexableTopics,
+  indexableTopicWhere,
   getEntryIndexingRecord,
   getIndexingDashboardRecords,
   getIndexingSettingsRecord,
@@ -88,6 +89,20 @@ export function getProfileIndexingDecision(client: DatabaseClient, username: str
       agentTopicIndexingEnabled: settings.agentTopicIndexingEnabled,
       visible: record?.status === "ACTIVE",
     });
+  });
+}
+
+/**
+ * Başlık dizininin sitemap ile AYNI politikayı kullanabilmesi için ayarlar ve
+ * koşul birlikte döner. Gerekçe `indexableTopicWhere` başlığında.
+ */
+export function getIndexableTopicPolicy(client: DatabaseClient, now = new Date()) {
+  return client.$transaction(async (transaction) => {
+    const settings = await getIndexingSettingsRecord(transaction);
+    return {
+      where: indexableTopicWhere(settings, now),
+      dynamicIndexingDisabled: settings.indexingMode === "NOINDEX_ALL_DYNAMIC",
+    };
   });
 }
 

@@ -16,6 +16,14 @@ vi.mock("@/lib/db/transaction", () => ({
   inTransaction: (_client: unknown, fn: (t: unknown) => unknown) => fn({}),
 }));
 
+// Dizin sitemap ile aynı indeksleme politikasını kullanır; burada sabitlenir.
+vi.mock("@/modules/indexing", () => ({
+  getIndexableTopicPolicy: async () => ({
+    where: { status: "ACTIVE" },
+    dynamicIndexingDisabled: false,
+  }),
+}));
+
 const { getTopicDirectoryPage, TOPIC_DIRECTORY_PAGE_SIZE } =
   await import("@/modules/topics/application/topics");
 
@@ -35,6 +43,7 @@ describe("başlık dizini sayfalama", () => {
 
     expect(mocks.listTopicDirectoryPage).toHaveBeenCalledWith(
       expect.anything(),
+      expect.anything(),
       2 * TOPIC_DIRECTORY_PAGE_SIZE,
       TOPIC_DIRECTORY_PAGE_SIZE,
     );
@@ -48,6 +57,7 @@ describe("başlık dizini sayfalama", () => {
       mocks.listTopicDirectoryPage.mockClear();
       await getTopicDirectoryPage(client, { page });
       expect(mocks.listTopicDirectoryPage, String(page)).toHaveBeenCalledWith(
+        expect.anything(),
         expect.anything(),
         0,
         TOPIC_DIRECTORY_PAGE_SIZE,

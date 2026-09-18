@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 import path from "node:path";
+import { HTML_LIMITED_BOT_UA_RE } from "next/dist/shared/lib/router/utils/html-bots";
+import { SEARCH_AND_CITATION_CRAWLERS } from "./src/app/robots";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -13,42 +15,35 @@ const isProduction = process.env.NODE_ENV === "production";
   Ölçüm (canlı, Googlebot mobil kimliğiyle, 5 ayrı entry sayfası):
     </head> biter  : 3.556. bayt
     <title> başlar : ~34.800. bayt
-    canonical      : ~35.200. bayt
-  Beşinde de aynı. Başlık sayfalarında sorun yok (40/40 `<head>` içinde), sorun
-  entry sayfalarında — canlıda 18.515 URL.
+  Beşinde de aynı. Başlık sayfalarında sorun yok; sorun entry sayfalarında —
+  canlıda 18.515 URL. Yerel üretim derlemesinde düzeltme doğrulandı: bot
+  kimliklerinde title/canonical `<head>` içinde, gerçek tarayıcıda streaming
+  sürüyor.
 
-  Next'in varsayılan `htmlLimitedBots` listesi Bingbot'u İÇERİR, Googlebot'u
-  İÇERMEZ (gerekçesi Google'ın JS render etmesi). Ölçüm bunu doğruladı: aynı
-  sayfada Bingbot `<head>` içinde metadata görürken Googlebot görmüyordu.
+  Next'in varsayılan listesi Bingbot'u İÇERİR, Googlebot'u İÇERMEZ (`Googlebot`
+  ne `[\w-]+-Google` ne `Google-[\w-]+` kalıbına uyar). Ölçüm bunu doğruladı:
+  aynı sayfada Bingbot metadata'yı head içinde görürken Googlebot görmüyordu.
 
-  İki sebeple Googlebot'u ve alıntı crawler'larını listeye alıyoruz:
+  Listeyi ELLE KOPYALAMIYORUZ. İlk yazımda `config-shared.d.ts` içindeki ESKİ
+  yorum listesinden kopyalamıştım ve Sol (18 Eylül) yedi kimliğin düştüğünü
+  ölçtü: `AdsBot-Google`, `Storebot-Google`, `Google-InspectionTool`,
+  `Google-PageRenderer`, `Chrome-Lighthouse`, `Yeti`, `googleweblight`. Artık
+  Next'in kendi regex'i UZATILIYOR; sürüm yükseltmesi yeni bot eklerse
+  kendiliğinden geliyor, iç yol kaybolursa derleme yüksek sesle düşüyor.
 
-  1. Google'ın kendi şartı `rel=canonical` ve `meta robots`'un `<head>` içinde
-     olması; render öncesi verilen "tarandı, dizine eklenmedi" kararı bunları
-     hiç görmüyor. Canlıda o kovada 4.405 sayfa var.
-  2. `robots.ts`'te izin verdiğimiz ALINTI crawler'ları (OAI-SearchBot,
-     Claude-SearchBot, PerplexityBot…) JS ÇALIŞTIRMAZ. Onlara kapıyı açıp
-     metadata'yı saklamak kendi kendini bozan bir kurulum. Aynı gün ölçülen GEO
-     sonucu 18 sorguda 1 (`docs/GEO_ALINTI_OLCUMU_2026-09-18.md`).
+  Eklediklerimizin gerekçesi:
+  1. `rel=canonical` ve `meta robots`'un `<head>` içinde olması Google'ın kendi
+     şartı; render öncesi verilen "tarandı, dizine eklenmedi" kararı onları
+     görmüyor olabilir. Canlıda o kovada 4.405 sayfa var. (Bunun TEK sebep
+     olduğu kanıtlanmış değil — Sol'un haklı uyarısı; korelasyon.)
+  2. `robots.ts`'te izin verdiğimiz ALINTI crawler'ları JS ÇALIŞTIRMAZ. Kapıyı
+     açıp metadata'yı saklamak kendi kendini bozan bir kurulum.
 
-  Bedeli: bu kimliklere yanıt, metadata çözülene kadar bloklar — TTFB artar.
-  Kabul edilen bedel; bu botlar için doğruluk hızdan önce gelir. Gerçek
-  kullanıcılar listede değil, onlarda streaming sürüyor.
-
-  Liste `robots.ts` ile TEK KAYNAKTAN türetilir; ikisi ayrışırsa
-  `tests/unit/indexing/robots-sitemap.test.ts` düşer.
+  Bedeli: bu kimliklere yanıt metadata çözülene kadar bloklar, TTFB artar.
+  Büyüklüğü ÖLÇÜLMEDİ. Gerçek kullanıcılar listede değil.
 */
 const htmlLimitedBots = new RegExp(
-  [
-    // Next 15.5 varsayılanı — korunuyor, yoksa Bing/Twitter/Slack gerilerdi.
-    "Mediapartners-Google|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot",
-    "tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview",
-    "applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot",
-    "Discordbot|WhatsApp|SkypeUriPreview",
-    // Bizim eklediklerimiz: arama + alıntı crawler'ları.
-    "Googlebot|Google-Extended|OAI-SearchBot|ChatGPT-User|Claude-SearchBot",
-    "Claude-User|PerplexityBot|Perplexity-User",
-  ].join("|"),
+  `${HTML_LIMITED_BOT_UA_RE.source}|${SEARCH_AND_CITATION_CRAWLERS.join("|")}|ChatGPT-User`,
   "i",
 );
 

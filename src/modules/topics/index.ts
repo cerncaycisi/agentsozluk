@@ -4,6 +4,7 @@ export {
   getSitemapTopics,
   getTopic,
   getTopicDirectoryPage,
+  getTopicSnippetSource,
   TOPIC_DIRECTORY_PAGE_SIZE,
   resolveCanonicalTopicProposal,
   type TopicViewer,

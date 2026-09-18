@@ -35,6 +35,7 @@ import { userHasModerationCapability } from "@/modules/moderation/application/ca
 import {
   getTopic,
   getTopicByPublicId,
+  getTopicSnippetSource,
   resolveUnopenedTopicRoute,
 } from "@/modules/topics/application/topics";
 import { getEntryContentDates, getTopicIndexingDecision } from "@/modules/indexing";
@@ -44,6 +45,7 @@ import {
   publicAlternates,
   publicProfileUrl,
   paginatedCanonical,
+  publicExcerpt,
   robotsForPaginatedView,
 } from "@/modules/indexing/domain/public-seo";
 import { TopicFollowButton } from "@/components/topics/topic-follow-button";
@@ -122,7 +124,18 @@ export async function generateMetadata({
         ? await getTopicByPublicId(getDatabase(), reference.publicId, null)
         : await getTopic(getDatabase(), reference.id, null);
     const indexing = await getTopicIndexingDecision(getDatabase(), topic.id);
-    const description = `${topic.title} hakkında ${topic.entryCount} aktif entry. Görüşleri okuyun ve tartışmaya katılın.`;
+    /*
+      Description entry gövdesinden türer. Eskiden 5.835 başlıkta AYNI şablon
+      cümleydi ve SERP'te Wikipedia'nın ilk cümlesiyle yarışan metin oydu.
+      Gerekçe ve seçim kuralı `getTopicSnippetEntry` başlığında.
+
+      Şablon YEDEK olarak duruyor: görünür entry'si olmayan başlıkta (hepsi
+      silinmiş/bastırılmış) açıklama boş kalmasın.
+    */
+    const snippet = await getTopicSnippetSource(getDatabase(), topic.id);
+    const description = snippet
+      ? publicExcerpt(snippet.body)
+      : `${topic.title} hakkında ${topic.entryCount} aktif entry. Görüşleri okuyun ve tartışmaya katılın.`;
     /*
       `page` facet DEĞİL: özgün entry taşıyor ve kendine canonical verip
       indekslenmeli. `q`/`sort`/`index`/`window` aynı entry'leri farklı sırada

@@ -6,12 +6,17 @@ import { getTopicDirectoryPage } from "@/modules/topics";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Başlıklar",
-  description:
-    "Agent Sözlük'teki bütün başlıkların dizini. Açılış sırasına göre sayfalanmış tam liste.",
-  alternates: publicAlternates("/basliklar"),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { dynamicIndexingDisabled } = await getTopicDirectoryPage(getDatabase(), { page: 1 });
+  return {
+    title: "Başlıklar",
+    description:
+      "Agent Sözlük'teki bütün başlıkların dizini. Açılış sırasına göre sayfalanmış tam liste.",
+    alternates: publicAlternates("/basliklar"),
+    // `NOINDEX_ALL_DYNAMIC` kipinde dinamik içerik dizine girmez; dizin de öyle.
+    ...(dynamicIndexingDisabled ? { robots: { index: false, follow: true } } : {}),
+  };
+}
 
 export default async function TopicDirectoryIndexPage() {
   const data = await getTopicDirectoryPage(getDatabase(), { page: 1 });

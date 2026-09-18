@@ -60,7 +60,7 @@ import {
   getTopicByPublicId,
 } from "@/modules/topics/application/topics";
 import { normalizeTopicTitle } from "@/modules/topics/domain/normalization";
-import { getTopicDirectoryPage } from "@/modules/topics";
+import { getTopicDirectoryPage, getTopicSnippetSource } from "@/modules/topics";
 import { searchAll } from "@/modules/search/application/search";
 import { buildSearchQuery } from "@/modules/search/repository/search";
 import {
@@ -2477,6 +2477,20 @@ describe("search, feeds and profiles with PostgreSQL", () => {
     kusur tam olarak sorgu koşullarındaydı.
   */
   it("keeps seed-suppressed entries out of the topic directory and its counts", async () => {
+    /*
+      Dizin artık sitemap'in gecikme penceresine uyuyor (varsayılan 360 dakika),
+      yani taze açılan başlık hemen görünmez. Bu test görünürlük filtresini
+      ölçtüğü için pencereyi sıfırlıyor; gecikmenin kendisi ayrı testte.
+    */
+    const settingsBefore = await integrationDatabase.agentGlobalSettings.findUniqueOrThrow({
+      where: { id: "global" },
+      select: { sitemapDelayMinutes: true },
+    });
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: { sitemapDelayMinutes: 0 },
+    });
+
     const author = await createUser("directory_visibility_author");
     const moderator = await createUser("directory_visibility_moderator");
     // Trigger bastıranın aktif İNSAN ADMIN olmasını şart koşuyor.
@@ -2535,6 +2549,121 @@ describe("search, feeds and profiles with PostgreSQL", () => {
       select: { entryCount: true },
     });
     expect(raw.entryCount).toBe(2);
+
+    await integrationDatabase.agentGlobalSettings.update({
+      where: { id: "global" },
+      data: settingsBefore,
+    });
+  });
+
+  /*
+    SERP SNIPPET KAYNAĞI — gerçek PostgreSQL ile.
+
+    Başlık sayfalarının meta description'ı 5.835 başlıkta AYNI şablon cümleydi.
+    Artık en yüksek puanlı GÖRÜNÜR entry'den türüyor. Üç iddia: puan sırası,
+    bastırılmış entry'nin dışarıda kalması, ve eşitlikte kararlı seçim (snippet
+    istek başına değişirse Google'ın yeniden tarama kararı bozulur).
+  */
+  it("derives the topic snippet from the highest scored visible entry", async () => {
+    const author = await createUser("snippet_author");
+    const admin = await createUser("snippet_admin");
+    await integrationDatabase.user.update({
+      where: { id: admin.id },
+      data: { role: "ADMIN", kind: "HUMAN", status: "ACTIVE" },
+    });
+
+    const created = await createTopic(author.id, "Snippet Kaynağı Başlığı");
+    const middle = await createEntry(integrationDatabase, actor(author.id), created.topic.id, {
+      body: "Orta puanlı entry; snippet yarışında ikinci sırada kalmalı.",
+    });
+    const best = await createEntry(integrationDatabase, actor(author.id), created.topic.id, {
+      body: "En yüksek puanlı entry; description tam olarak bunu göstermeli.",
+    });
+
+    // `entries_score_consistency_check`: score = upvote - downvote. Sayaçlar da yazılır.
+    await integrationDatabase.entry.update({
+      where: { id: middle.id },
+      data: { score: 5, upvoteCount: 5, downvoteCount: 0 },
+    });
+    await integrationDatabase.entry.update({
+      where: { id: best.id },
+      data: { score: 9, upvoteCount: 9, downvoteCount: 0 },
+    });
+
+    const top = await getTopicSnippetSource(integrationDatabase, created.topic.id);
+    expect(top?.body).toContain("description tam olarak bunu göstermeli");
+
+    // Bastırılmış entry en yüksek puanlı olsa bile snippet olamaz.
+    await integrationDatabase.entry.update({ where: { id: best.id }, data: { origin: "SEED" } });
+    await integrationDatabase.seedEntryVisibility.create({
+      data: {
+        entryId: best.id,
+        suppressed: true,
+        suppressionReason: "snippet görünürlük testi",
+        suppressedById: admin.id,
+      },
+    });
+
+    const afterSuppression = await getTopicSnippetSource(integrationDatabase, created.topic.id);
+    expect(afterSuppression?.body).toContain("ikinci sırada kalmalı");
+
+    // Aynı girdide iki kez sorulunca aynı cevabı vermeli.
+    const again = await getTopicSnippetSource(integrationDatabase, created.topic.id);
+    expect(again?.body).toBe(afterSuppression?.body);
+  });
+
+  /*
+    DİZİN, SİTEMAP İLE AYNI POLİTİKAYA UYAR — gerçek PostgreSQL ile.
+
+    Sol (18 Eylül) blocker olarak işaretledi: dizin yalnız `status` + görünür
+    entry'ye bakıyordu ve indeksleme kontrol düzlemini atlıyordu. Sonuç,
+    `sitemapDelayMinutes` gecikmesinin fiilen kalkması ve `NOINDEX_AGENT_CONTENT`
+    altında ajan başlıklarının crawler'a iç linkle sunulmasıydı. Sitemap'in
+    bilerek dışarıda tuttuğu başlığa kanonik iç link vermek aynı politikanın
+    ihlalidir.
+  */
+  it("applies the sitemap indexing policy to the topic directory", async () => {
+    const author = await createUser("directory_policy_author");
+    const fresh = await createTopic(author.id, "Gecikme Penceresindeki Başlık");
+
+    const settings = () =>
+      integrationDatabase.agentGlobalSettings.findUniqueOrThrow({
+        where: { id: "global" },
+        select: { indexingMode: true, sitemapDelayMinutes: true, agentTopicIndexingEnabled: true },
+      });
+    const before = await settings();
+    const restore = () =>
+      integrationDatabase.agentGlobalSettings.update({ where: { id: "global" }, data: before });
+
+    try {
+      // 1) Gecikme penceresi: yeni açılan başlık dizine HENÜZ girmemeli.
+      await integrationDatabase.agentGlobalSettings.update({
+        where: { id: "global" },
+        data: { indexingMode: "INDEX_ALL", sitemapDelayMinutes: 360 },
+      });
+      const delayed = await getTopicDirectoryPage(integrationDatabase, { page: 1 });
+      expect(delayed.topics.some((topic) => topic.id === fresh.topic.id)).toBe(false);
+
+      // Gecikme sıfırlanınca aynı başlık görünür.
+      await integrationDatabase.agentGlobalSettings.update({
+        where: { id: "global" },
+        data: { sitemapDelayMinutes: 0 },
+      });
+      const immediate = await getTopicDirectoryPage(integrationDatabase, { page: 1 });
+      expect(immediate.topics.some((topic) => topic.id === fresh.topic.id)).toBe(true);
+
+      // 2) Dinamik indeksleme kapalıyken dizin boşalır ve kendisi de noindex olur.
+      await integrationDatabase.agentGlobalSettings.update({
+        where: { id: "global" },
+        data: { indexingMode: "NOINDEX_ALL_DYNAMIC" },
+      });
+      const off = await getTopicDirectoryPage(integrationDatabase, { page: 1 });
+      expect(off.topics).toEqual([]);
+      expect(off.totalItems).toBe(0);
+      expect(off.dynamicIndexingDisabled).toBe(true);
+    } finally {
+      await restore();
+    }
   });
 
   it("searches topics, aliases, users and active entries with stable result contracts", async () => {

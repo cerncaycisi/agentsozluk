@@ -150,6 +150,26 @@ export function isFollowingTopic(
   return transaction.topicFollow.findUnique({ where: { topicId_userId: { topicId, userId } } });
 }
 
+/*
+  SERP snippet kaynağı — 18 Eylül 2026.
+
+  Başlık sayfalarının meta description'ı 5.835 başlıkta AYNI şablon cümleydi:
+  "<başlık> hakkında N aktif entry. Görüşleri okuyun ve tartışmaya katılın."
+  Entry gövdesinden hiç türemiyordu. Tanım sorgularında ("X nedir") SERP'te
+  Wikipedia'nın ilk cümlesiyle yarışan metin bu; TO %1'de kalmasının bir sebebi.
+
+  En yüksek puanlı görünür entry seçiliyor: başlığın en iyi cevabı odur ve oy
+  zaten topluluk sinyali. Eşitlikte en eski, çünkü snippet'in istek başına
+  değişmemesi gerekir — kayan snippet Google'ın yeniden tarama kararını bozar.
+*/
+export function getTopicSnippetEntry(transaction: Prisma.TransactionClient, topicId: string) {
+  return transaction.entry.findFirst({
+    where: { topicId, status: "ACTIVE", deletedAt: null, ...publiclyVisibleEntryWhere },
+    select: { body: true },
+    orderBy: [{ score: "desc" }, { createdAt: "asc" }, { id: "asc" }],
+  });
+}
+
 export async function getPublicTopicEntrySummary(
   transaction: Prisma.TransactionClient,
   topicId: string,
@@ -259,18 +279,24 @@ const visibleEntryWhere = {
   ...publiclyVisibleEntryWhere,
 } satisfies Prisma.EntryWhereInput;
 
-const topicDirectoryWhere = {
-  status: "ACTIVE",
-  entries: { some: visibleEntryWhere },
-} satisfies Prisma.TopicWhereInput;
+/*
+  Politika koşulu DIŞARIDAN gelir ve sitemap ile aynıdır (`indexableTopicWhere`).
+  Sol (18 Eylül): dizin yalnız `status` + görünür entry'ye bakınca
+  `sitemapDelayMinutes` gecikmesi fiilen kalkıyor ve `NOINDEX_AGENT_CONTENT`
+  altındaki ajan başlıkları crawler'a iç linkle sunuluyordu.
+*/
+function topicDirectoryWhere(policy: Prisma.TopicWhereInput): Prisma.TopicWhereInput {
+  return { ...policy, entries: { some: visibleEntryWhere } };
+}
 
 export async function listTopicDirectoryPage(
   transaction: Prisma.TransactionClient,
+  policy: Prisma.TopicWhereInput,
   skip: number,
   take: number,
 ) {
   const rows = await transaction.topic.findMany({
-    where: topicDirectoryWhere,
+    where: topicDirectoryWhere(policy),
     select: {
       id: true,
       publicId: true,
@@ -285,6 +311,9 @@ export async function listTopicDirectoryPage(
   return rows.map(({ _count, ...topic }) => ({ ...topic, entryCount: _count.entries }));
 }
 
-export function countTopicDirectory(transaction: Prisma.TransactionClient) {
-  return transaction.topic.count({ where: topicDirectoryWhere });
+export function countTopicDirectory(
+  transaction: Prisma.TransactionClient,
+  policy: Prisma.TopicWhereInput,
+) {
+  return transaction.topic.count({ where: topicDirectoryWhere(policy) });
 }

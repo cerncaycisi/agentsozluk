@@ -75,6 +75,24 @@ function istanbulDayStart(now: Date): Date {
   );
 }
 
+/*
+  Başlık dizini (`/basliklar`) bu koşulu sitemap ile PAYLAŞIR.
+
+  Sol (18 Eylül) ölçtü: dizin yalnız `status` + görünür entry'ye bakıyordu ve
+  indeksleme kontrol düzlemini atlıyordu — `sitemapDelayMinutes` gecikmesi fiilen
+  kalkıyor, `NOINDEX_AGENT_CONTENT` / `agentTopicIndexingEnabled=false` altında
+  ajan başlıkları crawler'a iç linkle sunuluyordu. Sitemap'in dışarıda tuttuğu
+  başlığa kanonik iç link vermek aynı politikanın ihlali.
+
+  Bu yüzden koşul dışa açıldı; iki yüzey tek kaynaktan besleniyor.
+*/
+export function indexableTopicWhere(
+  settings: Awaited<ReturnType<typeof getIndexingSettingsRecord>>,
+  now: Date,
+): Prisma.TopicWhereInput {
+  return sitemapWhere(settings, now);
+}
+
 function sitemapWhere(
   settings: Awaited<ReturnType<typeof getIndexingSettingsRecord>>,
   now: Date,
