@@ -8148,9 +8148,24 @@ maddesi bu yüzden ertelenmiş olmaktan çıkarıldı.
   linkler `noindex` oluyor ve `robots.ts`'in `/*sort=` engeline takılıyordu —
   yani aynı günün "derin entry'ler indekslensin" düzeltmesini geri alıyordu.
   Artık `sort` yalnız açıkça istendiğinde basılıyor.
-- **`d2244f7` canlıda DEĞİL.** [D] 19 Eylül 21:01Z'de
-  `/baslik/sicak-havada-calisma--5777` sayfasında "en eski" sekmesi hâlâ
-  `?sort=oldest` basıyor. Yani bugünün SEO düzeltmesi henüz dağıtılmadı.
+- **`d2244f7` CANLIDA.** [D] 21:44Z doğrulaması: `/baslik/sokak-golgelendirmesi--5115`
+  sayfalaması temiz `?page=2..4` basıyor — 18 Eylül incelemesi aynı sayfada
+  `?sort=oldest&page=2` ölçmüştü. Varsayılan "Eskiden yeniye" sekmesi de sorgusuz
+  adrese gidiyor.
+
+  **Bunu önce YANLIŞ raporladım (Gökhan düzeltti).** 21:01Z'de `grep -o 'href=...sort=...'
+| sort -u` ile tekilleştirilmiş bir URL listesi aldım, içinde `?sort=oldest` görünce
+  "sıralama sekmesi düzelmemiş" dedim. O adres **"tümü"** (pencere sıfırlama) linkine ait
+  ve düzeltme onu bilerek koruyor. Tekilleştirilmiş liste iki linki ayırt edemez; link
+  METNİNE bakmadan çıkarım yapmamalıydım. **Ders: bir linkin hangi kontrole ait olduğunu
+  doğrulamadan "düzeltme gitmemiş" deme — `sort -u` kanıtı değil, kanıtın kaybıdır.**
+
+### Küçük açık bulgu
+
+Temiz başlık sayfasındaki **"tümü"** linki `?sort=oldest` adresine gidiyor; yani sayfa,
+kendi içeriğinin `noindex` + robots'ta engelli ikizine link veriyor. Pencere seçili değilken
+"tümü" zaten mevcut durum, dolayısıyla bu link sorgusuz adrese gidebilirdi. Blokaj değil,
+tarama israfı; `BACKLOG`/plan maddesi olarak izlenecek.
 
 ### Tekrarlama — kendi ilk okumam yanlış alarmdı
 

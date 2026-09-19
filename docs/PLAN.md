@@ -59,8 +59,10 @@ Ayrıntı `AGENTS.md` içindedir.
   hiç sıralama seçmemişken `sort=oldest`i URL'ye yazıyordu; `hasFacetParameters`
   her `sort=`i facet saydığı için bu linkler `noindex` oluyor ve `robots.ts`'in
   `/*sort=` engeline takılıyordu — aynı günün "derin entry'ler indekslensin"
-  düzeltmesini geri alıyordu. **19 Eylül 21:01Z itibarıyla canlıda değil**
-  (canlı sayfa hâlâ `?sort=oldest` basıyor), yani B2'nin kabul koşulu açık.
+  düzeltmesini geri alıyordu. **19 Eylül 21:44Z itibarıyla canlıda ve doğrulandı:**
+  sayfalı başlıkta linkler temiz `?page=2..4` (18 Eylül'de `?sort=oldest&page=2` idi),
+  varsayılan sıralama sekmesi sorgusuz adrese gidiyor. Kalan küçük iz: "tümü" linki
+  hâlâ `?sort=oldest` üretiyor, yani temiz sayfa kendi engelli ikizine link veriyor.
 
 ### 17 Eylül 2026
 
@@ -1071,8 +1073,13 @@ kabul edilen maddeler sırasıyla buraya işlendi. Raporun kendi şartı: **grea
 hem ilk temiz indeksleme dönemi olacak, oraya açık SEO regresyonu ve künyesiz siteyle
 girmek israf.
 
-- [x] **B2 — varsayılan sıralama facet üretiyordu.** `d2244f7` ile main'de; ayrıntı
-      bölüm 0. **Kabul koşulu açık: canlıda değil.**
+- [x] **B2 — varsayılan sıralama facet üretiyordu.** `d2244f7` ile main'de ve
+      **canlıda doğrulandı** (19 Eylül 21:44Z, sayfalama temiz `?page=N`); ayrıntı
+      bölüm 0. Kalan küçük iz aşağıda.
+- [ ] **B2 kalıntısı — "tümü" linki kendi engelli ikizine gidiyor.** Pencere seçili
+      değilken "tümü" mevcut durumdur ama linki `?sort=oldest` üretiyor; o adres
+      `noindex` ve robots'ta engelli. Temiz sayfadan engelli ikizine link = tarama
+      israfı. Tek satırlık düzeltme, ölçüm gerektirmez.
 - [ ] **B1 — kritik bağımlılık uyarıları.** `pnpm audit` (`5022a8b` lockfile'ı):
       2 critical, 21 high, 4 moderate. Üretim imajını ilgilendirenler `next` 15.5.21
       (yama ≥15.5.24, Image Optimization AVIF RCE) ve `sharp` 0.35.0 override

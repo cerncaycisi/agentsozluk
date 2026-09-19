@@ -22,8 +22,10 @@
 - **Durum (19 Eylül 21:01Z):** health/ready 200, başlık sitemap'inde en yeni
   `lastmod` 20:55:20Z — üretim yazıyor. Public akış `sitemapDelayMinutes=360`
   nedeniyle 6 saat geriden gelir; "son entry" sorusu akıştan cevaplanamaz.
-- **`d2244f7` (SEO B2 düzeltmesi) canlıda değil:** canlı başlık sayfası "en eski"
-  sekmesinde hâlâ `?sort=oldest` basıyor.
+- **`d2244f7` (SEO B2 düzeltmesi) canlıda:** 21:44Z'de sayfalı başlık temiz `?page=2..4`
+  basıyor (18 Eylül'de aynı sayfada `?sort=oldest&page=2` ölçülmüştü). İlk raporum
+  "canlıda değil" idi ve yanlıştı; tekilleştirilmiş URL listesindeki `?sort=oldest`
+  adresi, düzeltmenin bilerek koruduğu "tümü" linkine aitti.
 - Bu, 3-4 Eylül'den sonra **ikinci sessiz durma**. Sunucuda oturumdan bağımsız
   uyarı hâlâ yok; `PLAN.md` 5.5'teki kalıcı canlılık alarmı ertelenmiş olmaktan
   çıkarıldı.
