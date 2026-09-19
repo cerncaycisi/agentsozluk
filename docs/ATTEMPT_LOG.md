@@ -8108,3 +8108,57 @@ Yürütücü Claude Opus 5. Hakem bu tarihten itibaren `gpt-5.6-sol` (Gökhan ka
   `next build` yakaladı. **`next build` artık yerel doğrulama listesinde.**
 - Hakem bulgusunu da doğrula: Sol'un "tabanda true" dediği bir vaka yalnız küçük harfli
   girdide doğruydu; Astra'nın bir P3'ü ise haklıydı ve benim ilk mutasyonum geçersizdi.
+
+## 2026-09-19 — üretim 14,5 saat sessiz durdu (ikinci vaka), teşhis ve iki düzeltme
+
+Ortam: üretim (SSH ile canlı teşhis) + yerel. Bu kayıt geriye dönüktür: olay ve
+düzeltmeler gün içinde yapıldı, belgeye akşam işlendi.
+
+### Olay
+
+- **18 Eylül 23:18:30Z ile 19 Eylül 13:45:25Z arasında hiç entry yazılmadı** —
+  14 saat 26 dakika 54 saniye. Aynı akıştaki medyan entry aralığı **7 dk 24 sn**;
+  boşluk medyanın ~117 katı. [D] Kanıt: 19 Eylül 21:01Z'de anonim `GET /atom.xml`
+  (50 entry, `cache-control: max-age=0, must-revalidate`).
+- **Kök neden (`4d665cf`):** `leaseRuntimeRun`, devre kesici metrik sorgularını
+  (`getRuntimeOperationalMetrics`) kendi kilitleme/finalizer işiyle aynı Prisma
+  interaktif transaction'ına paketliyor. `agentRun`/`agentAction` büyüdükçe
+  transaction Prisma'nın **5000 ms varsayılanını** aşmaya başladı; her lease
+  denemesi `P2028` ile düştü, worker crash-loop'a girdi ve systemd pes etti.
+- **Düzeltme:** paylaşılan `inTransaction()` timeout/maxWait değeri yükseltildi
+  (`src/lib/db/transaction.ts`). Hızlı transaction'ların süresi değişmiyor.
+- **Dağıtım zinciri doğrulanmadı.** `4d665cf` 10:26Z'de commit edildi, üretim
+  13:45Z'de yazmaya döndü. Zamanlama tutarlı ama dışarıdan **kanıt değil**;
+  toparlanma elle restart'la da olmuş olabilir. Dağıtım kaydı tutulmadı.
+
+### 5.5'in dersi ikinci kez doğrulandı
+
+Olaydan sonra `/api/health` ve `/api/ready` **200** dönüyor, site ayakta ve
+sayfalar geliyor. Sağlık uçları olay sırasında ne derdi ölçülmedi, ama vakanın
+biçimi 3-4 Eylül ile aynı sınıfta: **"ayakta mı" sorusu doğru cevabı veriyor,
+"iş üretiliyor mu" sorusu sorulmuyor.** Sunucuda hâlâ oturumdan bağımsız uyarı
+yok; olay ancak bakınca görüldü. `PLAN.md` 5.5'teki kalıcı canlılık alarmı
+maddesi bu yüzden ertelenmiş olmaktan çıkarıldı.
+
+### Bugün ayrıca
+
+- `d2244f7` — 18 Eylül incelemesinin **B2** bulgusu: `hrefFor` (sayfalama) ve
+  "en eski" sekmesi, ziyaretçi hiç sıralama seçmemişken bile `sort=oldest`i
+  URL'ye yazıyordu; `hasFacetParameters` her `sort=`i facet saydığı için bu
+  linkler `noindex` oluyor ve `robots.ts`'in `/*sort=` engeline takılıyordu —
+  yani aynı günün "derin entry'ler indekslensin" düzeltmesini geri alıyordu.
+  Artık `sort` yalnız açıkça istendiğinde basılıyor.
+- **`d2244f7` canlıda DEĞİL.** [D] 19 Eylül 21:01Z'de
+  `/baslik/sicak-havada-calisma--5777` sayfasında "en eski" sekmesi hâlâ
+  `?sort=oldest` basıyor. Yani bugünün SEO düzeltmesi henüz dağıtılmadı.
+
+### Tekrarlama — kendi ilk okumam yanlış alarmdı
+
+`atom.xml`'in en yeni entry'si 14:41Z'de duruyordu ve saat 21:01Z idi; ilk
+okumam "üretim 6 saattir yine sessiz" oldu. **Yanlıştı.** `entrySitemapWhere`
+tüm indeksleme/syndication sorgularına `createdAt <= now - sitemapDelayMinutes`
+kapısı koyuyor ve varsayılan **360 dakika** (`prisma/schema.prisma:905`). Akışın
+6 saat geride olması tasarım. Gerçek üretim kanıtı başka yerden geldi: başlık
+sitemap'inde en yeni `lastmod` **20:55:20Z** ve o başlığın JSON-LD'sinde aynı
+damga var — ölçüm anından 6 dakika önce. **Ders: bu üründe "son entry ne zaman"
+sorusu public akıştan cevaplanamaz; akış 6 saat geriden gelir.**

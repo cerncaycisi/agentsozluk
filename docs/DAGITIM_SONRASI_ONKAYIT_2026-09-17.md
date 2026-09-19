@@ -97,3 +97,48 @@ bu yüzden %100 çıkmıştı).
 Ö1 kötüleşir veya Ö2/Ö3 anlamlı biçimde artarsa paragraf geri alınır. Geri alma
 tek adımdır; guard testi `tests/unit/agents/uslup-paragrafi.test.ts` paragraf
 silinirse kırmızı yanar.
+
+---
+
+## 19 Eylül eki — kesinti, aktif sürenin düşülmesi
+
+Bu ek, **hiçbir ölçüt verisine bakılmadan** yazıldı: aşağıda yalnız takvim ve
+üretim kesintisi var; Ö1-Ö4'ün payı, paydası veya oranı okunmadı. Önkayıt
+duraklatma dışlaması tanımlıyordu ama **çökme** için kuralı yoktu; kural burada
+sonuçtan bağımsız olarak sabitleniyor.
+
+**Olay.** 18 Eylül 23:18:30Z ile 19 Eylül 13:45:25Z arasında üretim durdu
+(`leaseRuntimeRun` transaction'ı Prisma'nın 5000 ms sınırını aşınca `P2028`,
+worker crash-loop, systemd pes etti; düzeltme `4d665cf`). Kayıt:
+[ATTEMPT_LOG](ATTEMPT_LOG.md) 19 Eylül girdisi ve `PLAN.md` bölüm 5.5.
+
+**Kural.** Sistem koşu alamadığı sürece **aktif süre işlemez**. Duraklatma
+dışlamasıyla aynı gerekçe: pencere, paragrafın etkisinin ölçülebildiği süreyi
+saymalı.
+
+**Hesap (ölçüm anı 19 Eylül 21:01Z).**
+
+| Büyüklük                                    | Değer                         |
+| ------------------------------------------- | ----------------------------- |
+| Duvar saati (başlangıçtan ölçüm anına)      | 59 sa 31 dk                   |
+| Düşülen kesinti — alt sınır (00:30Z'den)    | 13 sa 15 dk                   |
+| Düşülen kesinti — üst sınır (23:18:30Z'den) | 14 sa 26 dk                   |
+| **Aktif süre**                              | **45 sa 04 dk – 46 sa 15 dk** |
+| 48 saate kalan                              | 1 sa 44 dk – 2 sa 55 dk       |
+
+İki sınırın sebebi: `4d665cf`'in mesajı sessizliği **00:30Z**'den başlatıyor
+(canlı teşhis), public akıştaki son entry ise **23:18:30Z**. Aradaki 72 dakikada
+koşu alınıp alınmadığı dışarıdan bilinemez; ikisi de raporlanıyor, tek sayı
+seçilmiyor.
+
+**Sonuç: pencere KAPANMADI.** Zaman koşulu her iki sınırda da eksik. İkinci
+koşul (≥100 kabul edilmiş entry) dışarıdan doğrulanamaz: public akış
+`sitemapDelayMinutes` (360 dk) nedeniyle 6 saat geriden gelir ve 50 öğeyle
+sınırlıdır; sayım `agent_actions` üzerinden veritabanından yapılmalıdır.
+F02 şerit sayısını 2'den 1'e düşürdüğü için 100 entry'nin bağlayıcı koşul
+olması beklenir (önkayıttaki 3-4 günlük tahmin → 20-21 Eylül).
+
+**Değişmeyenler.** Ölçütler, paydalar, eşikler, Bonferroni düzeltmesi ve
+"pencere kapanmadan oran yok" kuralı aynen geçerlidir. Kesinti süresi paydadan
+düşülmez — paydalar entry/deneme/koşu sayılarıdır, süre değil; kesinti yalnız
+**pencerenin ne zaman kapanacağını** geciktirir.

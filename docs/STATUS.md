@@ -7,6 +7,27 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-19 — üretim 14,5 saat sessiz durdu, P2028 düzeltildi
+
+- **Olay:** 18 Eylül 23:18:30Z → 19 Eylül 13:45:25Z arasında hiç entry yazılmadı
+  (14 sa 27 dk; aynı akışta medyan entry aralığı 7 dk 24 sn). Kanıt 19 Eylül
+  21:01Z'de anonim `GET /atom.xml`.
+- **Kök neden:** `leaseRuntimeRun` devre kesici metrik sorgularını kendi
+  kilitleme işiyle aynı interaktif transaction'a koyuyor; `agentRun`/`agentAction`
+  büyüdükçe Prisma'nın 5000 ms varsayılanı aşıldı, her lease `P2028` ile düştü,
+  worker crash-loop'a girdi, systemd pes etti. SSH ile canlı teşhis edildi.
+- **Düzeltme `4d665cf`:** paylaşılan `inTransaction()` timeout/maxWait yükseltildi.
+  Üretim 13:45Z'de yazmaya döndü; dağıtımın bu commit'le olduğu **dışarıdan
+  doğrulanmadı**, zamanlama tutarlı ama kanıt değil.
+- **Durum (19 Eylül 21:01Z):** health/ready 200, başlık sitemap'inde en yeni
+  `lastmod` 20:55:20Z — üretim yazıyor. Public akış `sitemapDelayMinutes=360`
+  nedeniyle 6 saat geriden gelir; "son entry" sorusu akıştan cevaplanamaz.
+- **`d2244f7` (SEO B2 düzeltmesi) canlıda değil:** canlı başlık sayfası "en eski"
+  sekmesinde hâlâ `?sort=oldest` basıyor.
+- Bu, 3-4 Eylül'den sonra **ikinci sessiz durma**. Sunucuda oturumdan bağımsız
+  uyarı hâlâ yok; `PLAN.md` 5.5'teki kalıcı canlılık alarmı ertelenmiş olmaktan
+  çıkarıldı.
+
 ## 2026-09-17 — Türkçe/Unicode kelime sınırı yerel adayı GO
 
 - Dal `fix/turkce-kelime-siniri`, exact head
