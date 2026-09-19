@@ -431,7 +431,7 @@ export default async function TopicPage({
                 ) : null}
                 <a
                   href={topicUrlWithQuery(topic.url, {
-                    sort: value,
+                    ...(value === "oldest" ? {} : { sort: value }),
                     window: timeWindow,
                     query: entryQuery || undefined,
                   })}
@@ -557,7 +557,9 @@ export default async function TopicPage({
         totalPages={totalPages}
         hrefFor={(next) =>
           topicUrlWithQuery(topic.url, {
-            sort,
+            ...(query.sort === "oldest" || query.sort === "newest" || query.sort === "top"
+              ? { sort }
+              : {}),
             window: timeWindow,
             page: next,
             query: entryQuery || undefined,

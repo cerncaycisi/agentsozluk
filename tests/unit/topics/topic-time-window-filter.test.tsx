@@ -188,6 +188,17 @@ describe("başlık sayfası zaman penceresi şeridi", () => {
     expect(windowTrigger().textContent).toBe("Zaman penceresi: tüm zamanlar");
   });
 
+  it("sorgusuz durumda sayfalama ve varsayılan sıralama linki temiz adrese gider", async () => {
+    // 18 Eylül regresyonu: `?sort=oldest` sorguda hiç yokken bile pagination
+    // ve "Eskiden yeniye" linkine yazılıyordu; bu da facet sayılıp sayfayı
+    // noindex + robots-engelli yapıyordu (docs/REPO_VE_CANLI_SITE_INCELEMESI_2026-09-18.md, B2).
+    await renderTopicPage({});
+
+    expect(screen.getByTestId("sonraki-sayfa")).toHaveAttribute("href", `${TOPIC_URL}?page=2`);
+    const sortStrip = screen.getByRole("navigation", { name: "Entry sıralaması" });
+    expect(href("Eskiden yeniye", sortStrip)).toBe(TOPIC_URL);
+  });
+
   it.each([
     ["24h", 1, "son 24 saat"],
     ["1w", 7, "son 1 hafta"],
@@ -258,7 +269,7 @@ describe("başlık sayfası zaman penceresi şeridi", () => {
     expect(href("En yüksek puan", sortStrip)).toBe(`${TOPIC_URL}?sort=top&window=1w&q=deneme`);
     expect(screen.getByTestId("sonraki-sayfa")).toHaveAttribute(
       "href",
-      `${TOPIC_URL}?sort=oldest&window=1w&page=2&q=deneme`,
+      `${TOPIC_URL}?window=1w&page=2&q=deneme`,
     );
     expect(screen.getByRole("link", { name: "Aramayı temizle" })).toHaveAttribute(
       "href",
