@@ -8177,3 +8177,65 @@ kapısı koyuyor ve varsayılan **360 dakika** (`prisma/schema.prisma:905`). Ak�
 sitemap'inde en yeni `lastmod` **20:55:20Z** ve o başlığın JSON-LD'sinde aynı
 damga var — ölçüm anından 6 dakika önce. **Ders: bu üründe "son entry ne zaman"
 sorusu public akıştan cevaplanamaz; akış 6 saat geriden gelir.**
+
+## 2026-09-20 — B1 güvenlik paketi üretimde, dört hakem turu
+
+Yürütücü Claude Opus 5; hakem Sol (`gpt-5.6-sol`, xhigh, salt okunur), dört tur.
+Süreç kararları Astra ile (Gökhan'ın "Astra ile kararlaştırıp yönetin" talimatı).
+
+### Dağıtım
+
+- Aday `e2cbc15bd4f604c9a19625f13f033057aceb23d4`; main push CI `35507139288`
+  **7/7 PASS**, artifact run `35507437575` (239.260.562 bayt).
+  **Migration yok** — `prisma/migrations/` değişmedi, şema-nötr hat kullanıldı.
+- `RELEASE_COMPLETE PASS ... cleanup=no-cleanup`. Drain 5. denemede temizlendi
+  (lease 0). `RELEASE_VERIFY PASS worker=active/running health=200 ready=200`.
+- **Dağıtım sonrası kabul:** çalışan imaj `agent-sozluk:e2cbc15…` healthy,
+  worker `active` ve **NRestarts=0**; health/ready/gündem/başlıklar 200;
+  veritabanında dağıtımdan SONRA bir koşu SUCCEEDED, biri RUNNING ve son
+  12 dakikada 2 entry. **"Site ayakta" değil, "iş üretiliyor" doğrulandı** —
+  iki sessiz durmanın dersi buydu.
+- `/_next/image` canlıda **404**: kapatılan optimizer gerçekten kapalı.
+
+### Paketin içeriği
+
+`next` 15.5.21→15.5.25 ve `sharp` 0.35.4 iki kritik + bir yüksek uyarıyı kapattı.
+Beklenmedik bulgu: **kendi `postcss: 8.5.10` override'ımız üç açık taşıyordu** —
+bakımsız bir override koruma değil dondurma işlevi görüyor. Zincir yamalandı;
+`deepmerge-ts 8.0.0` tek majör override olarak kaldı (Prisma 7.1.5'e tam pin
+koyuyor, kaldırma koşulu yorumda yazılı). CI `quality` işine
+`pnpm audit --prod --audit-level=high` kapısı eklendi; koştuğu log'dan
+doğrulandı (`No known vulnerabilities found`).
+
+### Dört tur, kodda sıfır bulgu
+
+Sol dört turda da **koda dair tek bulgu üretmedi**. Blokerlerin tamamı benim
+yazdığım kayıtlardaydı:
+
+1. Tur 1 — CI kapısı yok; iki dosya olmayan kapıyı varmış gibi belgeliyor.
+2. Tur 2 — "hiçbir ölçüt verisine bakılmadı" iddiası yanlış (ret sayısı Ö3'ün
+   tavanıdır); kesinti hesabı `createdAt` kullanıyor, o worker'ı değil
+   zamanlayıcıyı kanıtlar; D3 ve içerik parmak izlenmemiş.
+3. Tur 3 — **kesinti hesabı çalışan bir koşuyu kesinti saymış** (00:27:30 →
+   00:30:48 arası worker ayaktaydı); "Ö2'nin payı aynı havuzdan" cümlesi yanlış
+   (`CODEX_*_OUTPUT_INVALID` action reddi değil, koşu hatası); PLAN bütünüyle
+   tutarsız.
+4. Tur 4 — KOŞULLU GO; `finish → next start` kesintinin **üst** sınırı, alt değil.
+
+**Tekrarlama:** dört turun ortak teşhisi tek cümle (Astra'nın formülü):
+_gözlemin taşıyabildiğinden daha güçlü sonuç yazmak._ Karşı ilaç, her önemli
+iddiayı **iddia → doğrudan kanıt → zaman/sürüm ve kapsam → belirsizlik** olarak
+yazmak; kanıt yoksa "doğrulanmadı" demek. Bu kayıt boyunca uygulandı.
+
+### Yol boyunca çıkan üç operasyonel ders
+
+- **Bu operatör VM'i 964 MB.** Deploy runbook'u zaten "1 GB VM'de Next build
+  veya tam test kurma, CI kanıtını kullan" diyor; yük 11'e çıkınca durdurdum.
+  Yerel `pnpm format:check` bu makinede bitmiyor — **lockfile biçim hatası bu
+  yüzden CI'da yakalandı**, yerelde değil.
+- **`pkill -f eslint` hakemi öldürdü**, çünkü Codex'in komut satırında
+  "eslint-config-next" geçiyordu. Desen komut satırının tamamını tarar.
+- **Çakışmalı PR'da GitHub workflow'u hiç başlatmaz.** PR #137'de CI hiç
+  koşmadı; sebebi dalın yanlış tabandan açılmış olmasıydı. Kontrol deneyi
+  (temiz daldan ikinci PR) sorunun dala özel olduğunu gösterdi; rebase çözdü.
+  **`gh pr view --json mergeable` çıktısı CI'ın yokluğunu açıklayan ilk yerdir.**

@@ -1041,7 +1041,9 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       yalnız gerçek kullanıcı adı çakışmasına bakıyor. Bu adlardan biri boşsa yeni kaydın
       profil adresi mevcut alias tarafından gölgelenebilir. Hesap ele geçirme değil, kimlik/
       adres bütünlüğü kusuru. _(Gerçek hesap açılarak denenmedi.)_
-- [ ] **F05 — Bağımlılık güvenliği eski raporun sayılarıyla takip edilemez.**
+- [x] **F05 — kapandı (20 Eylül).** Takip artık rapora değil kapıya bağlı:
+      CI `quality` işinde `pnpm audit --prod --audit-level=high` (fail-closed,
+      istisnasız) ve `dependabot.yml`. Ayrıntı B1, bölüm 5.7.
 - [ ] **F06 — Şifre değişimi mevcut oturumun kopyasını geçersizleştirmiyor.**
       `revokeAllUserSessions(..., currentSessionId)` mevcut oturumu hariç tutuyor ve yeni
       token verilmiyor. Tehdit modeli dar: saldırgan tam olarak mevcut session cookie'sinin
@@ -1087,9 +1089,9 @@ girmek israf.
       değilken "tümü" mevcut durumdur ama linki `?sort=oldest` üretiyor; o adres
       `noindex` ve robots'ta engelli. Temiz sayfadan engelli ikizine link = tarama
       israfı. Tek satırlık düzeltme, ölçüm gerektirmez.
-- [~] **B1 — kritik bağımlılık uyarıları: paket ve kapı PR #137'de, dağıtım bekliyor.**
-  `pnpm audit` (`5022a8b` lockfile'ı) 2 critical, 21 high, 4 moderate veriyordu;
-  iki kritik `next`'in Image Optimization API'sindeydi (AVIF RCE, yama ≥15.5.24).
+- [x] **B1 — kritik bağımlılık uyarıları kapandı, paket üretimde.**
+      `pnpm audit` (`5022a8b` lockfile'ı) 2 critical, 21 high, 4 moderate veriyordu;
+      iki kritik `next`'in Image Optimization API'sindeydi (AVIF RCE, yama ≥15.5.24).
 
       **20 Eylül'de yapılan:** `next`/`eslint-config-next` 15.5.25, `sharp` 0.35.4,
       `images: { unoptimized: true }`, `dependabot.yml`. Ayrıca beklenmedik bulgu:
@@ -1116,9 +1118,13 @@ girmek israf.
       belgesindeydi ve düzeltildi
       ([önkayıt ikinci eki](DAGITIM_SONRASI_ONKAYIT_2026-09-17.md)).
 
-      **Kapanış için kalan:** yeni SHA'nın hakem turu, main'e taşınması, aynı
-      main SHA'sında push CI'ı ve exact SHA için Gökhan'ın dağıtım onayı.
-      **Bu, F05'in kapatma ölçütüdür** ve F05 dağıtım olmadan kapanmaz.
+      **20 Eylül: ÜRETİMDE.** `e2cbc15bd4f604c9a19625f13f033057aceb23d4`,
+      main CI `35507139288` 7/7, artifact `35507437575`, migration yok.
+      `RELEASE_COMPLETE PASS ... cleanup=no-cleanup`. Dağıtım sonrası kabul
+      veritabanından alındı: worker `active`/NRestarts=0, dağıtımdan sonra bir
+      koşu SUCCEEDED + biri RUNNING, 12 dakikada 2 entry. `/_next/image`
+      canlıda 404. Kayıt [deneme günlüğü](ATTEMPT_LOG.md) 20 Eylül girdisi.
+      **Bu, F05'in kapatma ölçütüydü; F05 kapandı.**
 
 - [ ] **B4 — internal runtime API public origin'de.** `/api/v1/internal/agent-runtime/*`
       public uygulamanın parçası; koruma sağlam ama rate limit kimlik doğrulamadan
