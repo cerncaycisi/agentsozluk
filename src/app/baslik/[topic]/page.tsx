@@ -91,6 +91,20 @@ function topicUrlWithQuery(
   return query ? `${baseUrl}?${query}` : baseUrl;
 }
 
+/*
+  Sıralama yalnız ziyaretçi AÇIKÇA seçtiyse URL'ye yazılır. `hasFacetParameters`
+  her `sort=`i facet sayıyor ve `robots.ts` `/*sort=` adresini taramaya kapatıyor;
+  varsayılanı URL'ye basmak temiz bir başlık sayfasını kendi `noindex` ikizine
+  çevirir. 19 Eylül'de sayfalama ve "en eski" sekmesi için düzeltildi, 20 Eylül'de
+  zaman penceresi menüsü için.
+*/
+function acikSiralama(
+  istenen: string | undefined,
+  sort: "oldest" | "newest" | "top",
+): { sort?: "oldest" | "newest" | "top" } {
+  return istenen === "oldest" || istenen === "newest" || istenen === "top" ? { sort } : {};
+}
+
 export async function generateMetadata({
   params,
   searchParams,
@@ -500,7 +514,7 @@ export default async function TopicPage({
                   value,
                   label: topicTimeWindowLabel(value),
                   href: topicUrlWithQuery(topic.url, {
-                    sort,
+                    ...acikSiralama(query.sort, sort),
                     window: value,
                     query: entryQuery || undefined,
                   }),
@@ -557,9 +571,7 @@ export default async function TopicPage({
         totalPages={totalPages}
         hrefFor={(next) =>
           topicUrlWithQuery(topic.url, {
-            ...(query.sort === "oldest" || query.sort === "newest" || query.sort === "top"
-              ? { sort }
-              : {}),
+            ...acikSiralama(query.sort, sort),
             window: timeWindow,
             page: next,
             query: entryQuery || undefined,
