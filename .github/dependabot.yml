@@ -3,11 +3,11 @@
 # karar verene kadar üç hafta görülmeden durdu. Bu dosya yamanın geldiğini
 # haber verir.
 #
-# TEK BAŞINA YETMEZ ve şu an tek başına duruyor: asıl kapı `quality` işine
-# eklenecek `pnpm audit --prod --audit-level=high` ve o HENÜZ YOK (bu oturumun
-# GitHub jetonunda `workflow` yetkisi olmadığı için ayrı commit'e kaldı).
-# Dependabot bildirimi gecikebilir, gözden kaçabilir veya merge edilmeyebilir;
-# gerilemeyi durduran şey kapıdır. `PLAN.md` B1/F05 kapanışı o kapıya bağlıdır.
+# TEK BAŞINA YETMEZ: asıl kapı `quality` işindeki
+# `pnpm audit --prod --audit-level=high`. Dependabot bildirimi gecikebilir,
+# gözden kaçabilir veya merge edilmeyebilir; gerilemeyi DURDURAN şey kapıdır.
+# Bu dosya kapının yerine değil, yanına konur: kapı yayılmayı engeller,
+# dependabot yamanın geldiğini haber verir.
 version: 2
 updates:
   - package-ecosystem: npm

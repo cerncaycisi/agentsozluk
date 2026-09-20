@@ -71,6 +71,19 @@ jobs:
       - name: Repository and history secret scan
         run: pnpm security:scan-secrets
 
+      # Üretim imajına giren bağımlılıklarda kritik/yüksek uyarı kapısı.
+      # 18 Eylül incelemesi B1: `next`in iki kritik uyarısı (Image Optimization
+      # AVIF RCE) üç hafta boyunca kimse bakmaya karar etmediği için görülmedi.
+      # Kapsam bilerek `--prod`: üretim imajı `Dockerfile`da
+      # `pnpm install --prod --frozen-lockfile` ile kuruluyor, yani bu ağaç tam
+      # olarak canlıya gidendir. Geliştirme zinciri (vitest, eslint, playwright)
+      # imaja girmediği için kapıyı kırmızıya boğmaz.
+      # Kapı düşerse çözüm uyarıyı susturmak değil: ya bağımlılığı yükselt, ya
+      # `pnpm-workspace.yaml` override'ı ekle (oradaki her satırın gerekçesi
+      # yazılı), ya da gerekçesiyle birlikte bilinçli bir istisna kaydı aç.
+      - name: Production dependency audit
+        run: pnpm audit --prod --audit-level=high
+
       - name: Clean working tree
         run: pnpm repo:check-clean
 
