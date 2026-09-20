@@ -181,25 +181,46 @@ export function createRuntimeCapabilityRecord(
 
   Ve bu ucuz bir sorgu değil: `getRuntimeOperationalMetrics` üzerinden
   `leaseRuntimeRun`'ın transaction'ında, üç pencere için (15/60/120 dk) ÜÇ KEZ
-  koşuyor. 19 Eylül'deki 11 saatlik sessiz durmanın mekanizması buydu — lease
+  koşuyor. 19 Eylül'deki sessiz durmanın mekanizması buydu — worker 11 sa 00 dk
+  boyunca lease alamadı, entry akışındaki boşluk ise 14 sa 27 dk idi (ikisi ayrı
+  şeyi ölçer; `DAGITIM_SONRASI_ONKAYIT_2026-09-17.md` üçüncü eki) — lease
   transaction'ı Prisma'nın 5000 ms sınırını aştı, her lease `P2028` ile düştü,
   worker crash-loop'a girdi (`4d665cf` timeout'u yükselterek semptomu kapattı,
   sebebi değil).
 
-  Daraltma güvenli: bitmiş bir koşunun hiçbir Codex aralığı kendi `finishedAt`
-  değerinden sonra olamaz, dolayısıyla `finishedAt <= cutoff` olan koşu bu
-  pencereye katkı veremez. Henüz bitmemiş koşular (`finishedAt IS NULL`) dışarıda
-  bırakılmaz; onların aralıkları pencerenin içine uzanabilir.
+  Daraltma şu dayanağa oturuyor: aralık damgaları worker sürecinde `new Date()`
+  ile yazılıyor (`worker.ts`, çağrının `finally` bloğu), koşunun `finishedAt`'i
+  ise çağrılar bittikten sonra kaydediliyor. Yani normal işleyişte hiçbir aralık
+  koşunun `finishedAt`'inden sonra bitmez.
+
+  Ama bu bir İNVARYANT DEĞİL, sıralama gözlemi. Saat geriye adım atarsa (NTP
+  düzeltmesi) ya da ileride aralıkları `finishedAt`'ten sonra yazan bir yol
+  eklenirse ters durum mümkün olur ve keskin bir filtre o aralığı sessizce
+  düşürürdü. Bu yüzden filtre `cutoff`'a değil `cutoff - TOLERANS`'a bakıyor
+  (Sol'un 20 Eylül bulgusu). Tolerans doğruluğu kaybetmeden alıyor: iki aylık
+  tabloda satırların %99'undan fazlası yine elenir, çünkü en dar pencere
+  15 dakika ve tolerans 1 saat.
+
+  Henüz bitmemiş koşular (`finishedAt IS NULL`) hiç elenmez; onların aralıkları
+  pencerenin içine uzanabilir.
 
   `agent_runs.finishedAt` üzerinde indeks YOK, yani tarama hâlâ sıralı. Kazanç
   taramadan değil, satırların %99'unda TOAST okuma ve JSON açmanın hiç
   yapılmamasından geliyor. İndeks ayrı bir migration işidir.
 */
+/*
+  Saat geri adımına ve ileride eklenebilecek "sonradan yazan" yollara karşı pay.
+  Tek işi filtreyi keskin olmaktan çıkarmak; pencere hesabını değiştirmez, çünkü
+  asıl kırpma `clipped_intervals` aşamasında yapılıyor.
+*/
+const ARALIK_SAAT_TOLERANSI_MS = 60 * 60_000;
+
 async function busyDurationMs(
   transaction: Prisma.TransactionClient,
   now: Date,
   cutoff: Date,
 ): Promise<number> {
+  const filtreSiniri = new Date(cutoff.getTime() - ARALIK_SAAT_TOLERANSI_MS);
   // Merge overlap/adjacency within each run, then sum across runs. Parallel
   // runs consume separate concurrency lanes and must therefore remain additive
   // before division by (window * configured concurrency).
@@ -219,7 +240,7 @@ async function busyDurationMs(
       ) AS item
       -- Pencere filtresi LATERAL'den ONCE uygulanir; gerekcesi fonksiyonun
       -- ustundeki yorumda.
-      WHERE (run."finishedAt" IS NULL OR run."finishedAt" > ${cutoff})
+      WHERE (run."finishedAt" IS NULL OR run."finishedAt" > ${filtreSiniri})
         AND item ->> 'startedAt' ~ '^\\d{4}-\\d{2}-\\d{2}T'
         AND item ->> 'finishedAt' ~ '^\\d{4}-\\d{2}-\\d{2}T'
     ),
@@ -232,7 +253,7 @@ async function busyDurationMs(
         run."finishedAt" AS "finishedAt"
       FROM "agent_runs" AS run
       WHERE run."finishedAt" IS NOT NULL
-        AND run."finishedAt" > ${cutoff}
+        AND run."finishedAt" > ${filtreSiniri}
         AND jsonb_typeof(run."usageMetadata") = 'object'
         AND jsonb_typeof(run."usageMetadata" -> 'codexIntervals') IS NULL
         AND run."usageMetadata" ->> 'durationMs' ~ '^\\d+(?:\\.\\d+)?$'
