@@ -1,0 +1,14 @@
+[Unit]
+Description=Check every 15 minutes whether Agent Sozluk is still producing work
+Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=15min
+AccuracySec=1min
+# Persistent=true YOK: kaçırılan kontrolü sonradan koşturmanın anlamı yok,
+# alarm "şu an üretiliyor mu" sorusudur.
+Unit=agent-sozluk-alarm.service
+
+[Install]
+WantedBy=timers.target

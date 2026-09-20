@@ -1,0 +1,57 @@
+[Unit]
+Description=Agent Sozluk liveness alarm (is work being produced?)
+Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/agent-sozluk/app
+RuntimeDirectory=agent-sozluk-alarm
+RuntimeDirectoryMode=0700
+StateDirectory=agent-sozluk-alarm
+StateDirectoryMode=0700
+Environment=DOCKER_CONFIG=/run/agent-sozluk-alarm
+Environment=ALARM_DURUM_DOSYASI=/var/lib/agent-sozluk-alarm/durum
+EnvironmentFile=/etc/agent-sozluk-alarm.env
+# Betik BİLEREK `app` checkout'undan koşmuyor: dağıtım akışı orayı yayımlanan
+# sürümün SHA'sına sabitler, alarm ise sürümden bağımsız çalışmalı. Kurulan
+# kopya bu depodaki `deploy/alarm/canlilik-alarmi.sh` ile BİREBİR aynı olmalı;
+# değiştirirsen sunucudakini de güncelle.
+ExecStart=/opt/agent-sozluk/scripts/canlilik-alarmi.sh
+
+# Betik 2 ile çıkarsa bu bir ALARM'dır, birim hatası değil; systemd'nin
+# başarısız sayması gereksiz ikinci bir gürültü üretirdi.
+SuccessExitStatus=0 2
+
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RemoveIPC=yes
+# ntfy'ye ulaşmak için ağ gerekiyor; bakım biriminden farkı bu.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+ReadOnlyPaths=/opt/agent-sozluk/app /opt/agent-sozluk/runtime/compose.production.yaml /opt/agent-sozluk/scripts
+InaccessiblePaths=-/var/lib/agent-sozluk-runtime -/opt/agent-sozluk/runtime/codex-home -/opt/agent-sozluk/runtime/work
+
+TimeoutStartSec=2min
+Nice=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=agent-sozluk-alarm
