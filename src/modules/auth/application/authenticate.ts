@@ -6,8 +6,10 @@ import { appendAuditLog } from "@/modules/audit";
 import {
   getDummyPasswordHash,
   hashPassword,
+  hashPasswordInTransaction,
   passwordNeedsRehash,
   verifyPassword,
+  verifyPasswordInTransaction,
 } from "@/modules/auth/domain/password";
 import {
   issueSession,
@@ -131,7 +133,12 @@ export async function loginHuman(
     const user = await findAuthUserById(transaction, candidate.id);
     const currentCredential =
       user?.emailNormalized === input.email ? user.passwordHash : await getDummyPasswordHash();
-    const valid = await verifyPassword(currentCredential, input.password);
+    /*
+      Transaction İÇİNDE: kapıya girmeyen sürüm. Kuyrukta beklemek bu
+      transaction'ı ve onun bağlantısını tutardı (Sol, 20 Eylül). Maliyeti
+      route'taki oran kovaları sınırlar.
+    */
+    const valid = await verifyPasswordInTransaction(currentCredential, input.password);
     if (
       !user ||
       user.emailNormalized !== input.email ||
@@ -143,7 +150,11 @@ export async function loginHuman(
       throw new AppError("INVALID_CREDENTIALS", 401, "E-posta veya şifre hatalı.");
     }
     if (passwordNeedsRehash(user.passwordHash)) {
-      await updateUserPassword(transaction, user.id, await hashPassword(input.password));
+      await updateUserPassword(
+        transaction,
+        user.id,
+        await hashPasswordInTransaction(input.password),
+      );
     }
     const session = await issueSession(transaction, user.id, metadata);
     await appendAuditLog(transaction, {
