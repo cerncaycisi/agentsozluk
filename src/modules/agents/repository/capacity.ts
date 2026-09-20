@@ -181,12 +181,22 @@ export function createRuntimeCapabilityRecord(
 
   Ve bu ucuz bir sorgu değil: `getRuntimeOperationalMetrics` üzerinden
   `leaseRuntimeRun`'ın transaction'ında, üç pencere için (15/60/120 dk) ÜÇ KEZ
-  koşuyor. 19 Eylül'deki sessiz durmanın mekanizması buydu — worker 11 sa 00 dk
-  boyunca lease alamadı, entry akışındaki boşluk ise 14 sa 27 dk idi (ikisi ayrı
-  şeyi ölçer; `DAGITIM_SONRASI_ONKAYIT_2026-09-17.md` üçüncü eki) — lease
-  transaction'ı Prisma'nın 5000 ms sınırını aştı, her lease `P2028` ile düştü,
-  worker crash-loop'a girdi (`4d665cf` timeout'u yükselterek semptomu kapattı,
-  sebebi değil).
+  koşuyor.
+
+  19 EYLÜL OLAYIYLA İLİŞKİSİ — NE KANITLANDI, NE KANITLANMADI:
+  Kanıtlanan, bu sorgunun maliyetinin pencereyle değil tüm geçmişle büyüdüğü ve
+  lease transaction'ının içinde üç kez koştuğu. Kanıtlanmayan, olayın TEK
+  mekanizmasının bu olduğu — lease transaction'ında başka iş de var ve gerçek
+  süre ölçülmedi. Bu sorgu makul ve somut bir aday; tek sebep olduğu iddiası
+  bu koddan çıkarılamaz.
+
+  Olayın büyüklüğü de sınırlarıyla yazılmalı: worker'ın lease alamadığı süre
+  için elde **en fazla** 11 sa 00 dk 11 sn var (üst sınır; gerçek kesinti daha
+  kısa olabilir, ilk başarısız lease'in ne zaman olduğu bilinmiyor). Entry
+  akışındaki boşluk ise 14 sa 27 dk. İkisi ayrı şeyi ölçer;
+  `DAGITIM_SONRASI_ONKAYIT_2026-09-17.md` üçüncü eki.
+
+  `4d665cf` timeout'u yükselterek semptomu kapattı.
 
   Daraltma şu dayanağa oturuyor: aralık damgaları worker sürecinde `new Date()`
   ile yazılıyor (`worker.ts`, çağrının `finally` bloğu), koşunun `finishedAt`'i
