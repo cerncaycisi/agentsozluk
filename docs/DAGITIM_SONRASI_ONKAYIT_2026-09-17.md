@@ -142,3 +142,67 @@ olması beklenir (önkayıttaki 3-4 günlük tahmin → 20-21 Eylül).
 "pencere kapanmadan oran yok" kuralı aynen geçerlidir. Kesinti süresi paydadan
 düşülmez — paydalar entry/deneme/koşu sayılarıdır, süre değil; kesinti yalnız
 **pencerenin ne zaman kapanacağını** geciktirir.
+
+---
+
+## 20 Eylül eki — pencere KAPANDI, kesim anı ve örneklem donduruldu
+
+Bu ek de **hiçbir ölçüt verisine bakılmadan** yazıldı: aşağıda yalnız durma
+kuralının kendisi var; Ö1-Ö4'ün payı, paydası veya oranı okunmadı.
+
+**Astra'nın düzeltmesi (20 Eylül).** 19 Eylül ekinde "kesim zaten sabit" gibi
+davranmıştım; Astra bunun fazla güçlü olduğunu gösterdi. Önkayıt sabit bir UTC
+anı değil, **iki asgari eşik** tanımlıyor. Eşikler sağlandıktan sonra veri
+büyümeye devam ettiği için, kesim anı açıkça yazılmazsa "pencere" tanımı kayar
+ve örneklem raporu yazan kişinin kaprisine bağlı olur. Bu yüzden kesim burada,
+sonuçlara bakılmadan sabitleniyor.
+
+### Kesinti — belirsizlik kapatıldı
+
+19 Eylül eki iki sınır veriyordu (13 sa 15 dk / 14 sa 26 dk), çünkü elde yalnız
+public akış vardı. Üretim veritabanı artık doğrudan okundu ve sınırlar gereksiz:
+
+- **Son koşu açılışı: 19 Eylül 00:27:30Z**
+- **Sonraki ilk koşu: 19 Eylül 11:30:59Z**
+- **Kayıp aktif süre: 11 sa 03 dk 29 sn** (663 dakika)
+
+Aynı sorgu pencerenin tamamını 30 dakikadan uzun boşluk için taradı: **başka
+boşluk yok**, tek kayıt bu kesinti. Yani aktif süre hesabı eksiksizdir.
+
+### Kesim anı
+
+| Koşul                          | Sağlandığı an            |
+| ------------------------------ | ------------------------ |
+| ≥100 kabul edilmiş entry       | 2026-09-18T07:11:11.441Z |
+| ≥48 saat aktif süre            | 2026-09-19T20:33:29Z     |
+| **KESİM (ikisinin geç olanı)** | **2026-09-19T20:33:29Z** |
+
+Bağlayıcı koşul **süre** oldu, entry sayısı değil. 19 Eylül ekinde bunun tersini
+bekliyordum ("100 entry bağlayıcı olur, 20-21 Eylül"); yanlış çıktı — 100'üncü
+entry pencerenin ilk gününde birikmişti.
+
+### Dondurulan örneklem
+
+Kesim anına kadar, `agent_actions` üzerinden:
+
+| Payda                             | Değer                              |
+| --------------------------------- | ---------------------------------- |
+| D1 — kabul edilmiş entry          | **238**                            |
+| D2 — yazma denemesi (kabul + ret) | **299** (238 kabul + 61 ret)       |
+| D3 — terminal koşu                | **552**                            |
+| D1 kimlik kümesi MD5              | `3034bd07b5ce99272108269b0f3baf14` |
+| D2 kimlik kümesi MD5              | `f21f54ee891fc48325e4f9d3b5a5d8d1` |
+
+Parmak izleri, kimliklerin metin olarak sıralanıp virgülle birleştirilmesinin
+MD5'idir. Amaçları kriptografik değil: analiz sırasında örneklemin sessizce
+kaymadığını doğrulamak. Analiz aynı sorguyu tekrarlayıp aynı MD5'i almalıdır;
+almıyorsa analiz değil örneklem hatalıdır.
+
+**Kesimden sonraki veri bu rapora girmez.** Ölçüm anında toplam 267 kabul
+edilmiş entry vardı; 238'den sonraki 29'u pencere dışıdır. Aynı şekilde 19
+Eylül'de gördüğüm 246 da nihai örneklem değildi — o an kesim henüz
+yazılmamıştı.
+
+**Değişmeyen her şey:** ölçütler, paydalar, eşikler, Wilson aralıkları,
+Bonferroni düzeltmesi (α=0.0125), ilk 2 entry ve 7 koşunun dışlanması,
+"fark gösterilemedi" yazma kuralı ve geri alma koşulu aynen geçerlidir.
