@@ -1766,7 +1766,10 @@ describe("agent control plane with PostgreSQL", () => {
         queuePriority: "SCHEDULED_CONTENT",
         trigger: "LEGACY_LONG_RUN_FIXTURE",
         idempotencyKey: `legacy-long-run:${randomUUID()}`,
-        timeoutSeconds: 14_400,
+        // Şema `timeoutSeconds`'i 120-1200 arasına kilitliyor
+        // (`agent_runs_timeout_check`). Fixture'ın uzunluğu `durationMs`'ten
+        // geliyor, bu alandan değil.
+        timeoutSeconds: 1200,
         desiredEntryMin: 0,
         desiredEntryMax: 0,
         startedAt: new Date(bitis.getTime() - sure),
