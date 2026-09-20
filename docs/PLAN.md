@@ -1080,14 +1080,31 @@ girmek israf.
       değilken "tümü" mevcut durumdur ama linki `?sort=oldest` üretiyor; o adres
       `noindex` ve robots'ta engelli. Temiz sayfadan engelli ikizine link = tarama
       israfı. Tek satırlık düzeltme, ölçüm gerektirmez.
-- [ ] **B1 — kritik bağımlılık uyarıları.** `pnpm audit` (`5022a8b` lockfile'ı):
-      2 critical, 21 high, 4 moderate. Üretim imajını ilgilendirenler `next` 15.5.21
-      (yama ≥15.5.24, Image Optimization AVIF RCE) ve `sharp` 0.35.0 override
-      (yama ≥0.35.4). İstismar edilebilirlik doğrulanmadı; hafifletici, kaynakta
-      `next/image` hiç kullanılmıyor. Kapsam: `next` + `eslint-config-next` bump,
-      `images: { unoptimized: true }` (ya da Caddy'de `/_next/image*` 404),
-      CI `quality` job'ına `pnpm audit --prod --audit-level=high` kapısı ve
-      `dependabot.yml`. **Bu, F05'in kapatma ölçütüdür.**
+- [~] **B1 — kritik bağımlılık uyarıları: paket PR #137'de, KAPI EKSİK.**
+  `pnpm audit` (`5022a8b` lockfile'ı) 2 critical, 21 high, 4 moderate veriyordu;
+  iki kritik `next`'in Image Optimization API'sindeydi (AVIF RCE, yama ≥15.5.24).
+
+      **20 Eylül'de yapılan:** `next`/`eslint-config-next` 15.5.25, `sharp` 0.35.4,
+      `images: { unoptimized: true }`, `dependabot.yml`. Ayrıca beklenmedik bulgu:
+      **kendi `postcss: 8.5.10` override'ımız üç açık taşıyordu** — override'lar
+      bakımsız kalınca koruma değil dondurma işlevi görüyor. Zincir yamalandı
+      (postcss 8.5.28, nanoid, browserslist, baseline-browser-mapping) ve
+      `deepmerge-ts 8.0.0` eklendi. Yerelde `pnpm audit --prod` artık **temiz**.
+
+      **Sol hakem turu (20 Eylül, salt okunur): NO-GO.** Bağımlılık değişikliklerinde
+      çalışma zamanı kırılması bulunamadı — `deepmerge-ts`'in kırıcı farkları
+      Prisma'nın kullandığı yolda değil, `next/image` gerçekten kullanılmıyor,
+      Next'in iç bot regex'i iki sürümde bayt bayt aynı, postcss zinciri uyumlu.
+      Blokaj tek şey: **CI kapısı (`pnpm audit --prod --audit-level=high`) yok.**
+      `.github/workflows` altına yazmak `workflow` OAuth yetkisi istiyor ve
+      oturumun jetonunda o yok. Dependabot tek başına eşdeğer değil: bildirim
+      gecikebilir, gözden kaçabilir, merge edilmeyebilir; gerilemeyi durduran
+      şey kapıdır.
+
+      **Kapanış için kalan:** (a) `workflow` yetkisi + kapı commit'i, (b) Sol'un
+      ikinci turu, (c) dağıtım. **Bu, F05'in kapatma ölçütüdür** ve kapı olmadan
+      F05 kapanmaz — bugün ağaç temiz ama temiz olmaktan çıktığında uyaran yok.
+
 - [ ] **B4 — internal runtime API public origin'de.** `/api/v1/internal/agent-runtime/*`
       public uygulamanın parçası; koruma sağlam ama rate limit kimlik doğrulamadan
       SONRA uygulanıyor ve worker zaten `127.0.0.1:3000` üzerinden gidiyor. Kapsam:
