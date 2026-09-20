@@ -1741,6 +1741,58 @@ describe("agent control plane with PostgreSQL", () => {
     expect(operational.utilization1h).toBeCloseTo(15 / 60, 5);
   });
 
+  it("legacy uzun koşu: codexIntervals yokken durationMs'ten türetilen aralık kırpılır", async () => {
+    /*
+      `legacy_intervals` dalı eski koşular için: `codexIntervals` yok, süre
+      `usageMetadata.durationMs`'ten türetiliyor ve başlangıç
+      `finishedAt - durationMs` olarak hesaplanıyor. Ön filtre `finishedAt`
+      üzerinde çalıştığı için, pencereden HEMEN SONRA biten ama ÇOK UZUN süren
+      bir koşunun kaybolmaması gerekir — `startedAt` üzerinden filtrelenseydi
+      kaybolurdu (Sol şartı, 20 Eylül).
+    */
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const now = new Date("2026-07-18T12:00:00.000Z");
+    // Üç saat süren, 11:50'de biten koşu. 15 dk penceresine 10 dk girer.
+    const bitis = new Date(now.getTime() - 10 * 60_000);
+    const sure = 3 * 60 * 60_000;
+
+    await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: created.agent.profile.id,
+        personaVersionId: created.agent.personaVersion.id,
+        runType: "NORMAL_WAKE",
+        runStatus: "SUCCEEDED",
+        queuePriority: "SCHEDULED_CONTENT",
+        trigger: "LEGACY_LONG_RUN_FIXTURE",
+        idempotencyKey: `legacy-long-run:${randomUUID()}`,
+        timeoutSeconds: 14_400,
+        desiredEntryMin: 0,
+        desiredEntryMax: 0,
+        startedAt: new Date(bitis.getTime() - sure),
+        finishedAt: bitis,
+        // codexIntervals YOK: legacy dalı bu yüzden devreye girer.
+        usageMetadata: { provider: "codex-cli", durationMs: sure },
+      },
+    });
+
+    const operational = await inTransaction(integrationDatabase, async (transaction) => {
+      const settings = await transaction.agentGlobalSettings.findUniqueOrThrow({
+        where: { id: "global" },
+        select: { circuitBreakerConfig: true },
+      });
+      const config = circuitBreakerConfigSchema.parse(
+        settings.circuitBreakerConfig as Record<string, unknown>,
+      );
+      return getRuntimeOperationalMetrics(transaction, { now, concurrency: 1, config });
+    });
+
+    // 15 dk penceresi 11:45–12:00; koşu 08:50–11:50. Kesişim 5 dakika.
+    expect(operational.utilization15m).toBeCloseTo(5 / 15, 5);
+    // 1 saat penceresi 11:00–12:00; kesişim 50 dakika.
+    expect(operational.utilization1h).toBeCloseTo(50 / 60, 5);
+  });
+
   it("koşunun finishedAt'inden SONRA biten aralığı düşürmez", async () => {
     /*
       Daraltmanın dayanağı bir invaryant değil, sıralama gözlemi: aralıklar

@@ -975,10 +975,40 @@ döndü; dağıtımın bu commit'le olduğu dışarıdan doğrulanmadı. Kayıt:
 şey bir alarm değil, birinin bakması oldu. Aşağıdaki kalıcı canlılık alarmı bu yüzden
 ertelenmiş madde olmaktan çıktı.
 
-- [ ] **P1 — Lease transaction'ı hâlâ tek bir bütçede fazla iş taşıyor.** `4d665cf`
-      timeout'u yükselterek semptomu kapattı; devre kesici metriklerinin kilitleme
-      transaction'ının içinde olması tasarım borcu olarak duruyor ve tablolar büyümeye
-      devam edecek. Ölçüm: lease transaction süresinin bugünkü dağılımı.
+- [~] **P1 — Lease transaction'ında maliyeti geçmişle büyüyen sorgu bulundu.**
+  `busyDurationMs` (`capacity.ts`) pencere filtresini JSON açıldıktan SONRA
+  uyguluyordu: iki CTE `agent_runs`'ın tamamını okuyup `usageMetadata`'yı
+  TOAST'tan çıkarıyor ve `codexIntervals` dizisini açıyordu. Tablo 33.808
+  satır / 1.077 MB, %60'ı 30 günden eski ve hiç budanmıyor. Sorgu
+  `getRuntimeOperationalMetrics` üzerinden lease transaction'ında **üç kez**
+  koşuyor (15/60/120 dk). **Bulgu Astra'dan**, ben "tablolar büyüdü" diye
+  genel bir sebep yazmıştım.
+
+      Düzeltme PR #147: filtre LATERAL'den önceye alındı, saat geri adımına
+      karşı 1 saatlik tolerans eklendi. Üretimde `EXPLAIN` (ANALYZE değil):
+      LATERAL'e giden tahmini satır **14.094 → 5**, tahmini maliyet
+      **30.236 → 8.377**. Ham kayıt ve yeniden üretme adımları:
+      [ölçüm](LEASE_SORGUSU_OLCUMU_2026-09-20.md).
+
+      **İddia sınırı (Sol, 20 Eylül):** bunlar planlayıcı TAHMİNİDİR. Gerçek
+      gecikme kazancı ölçülmedi ve 19 Eylül olayının **tek** mekanizmasının bu
+      sorgu olduğu kanıtlanmadı — lease transaction'ında başka iş de var. Sorgu
+      somut ve makul bir aday; kesin kök neden değil.
+
+      **Olay büyüklüğünün sınırları:** worker'ın lease alamadığı süre için elde
+      **en fazla** 11 sa 00 dk 11 sn var (üst sınır; ilk başarısız lease'in
+      zamanı bilinmiyor, gerçek kesinti daha kısa olabilir). Entry akışındaki
+      boşluk 14 sa 27 dk. İkisi ayrı şeyi ölçer.
+
+- [ ] **`agent_runs.finishedAt` indeksi.** Ön filtre eklendi ama tarama hâlâ
+      sıralı; kalan maliyetin tamamı o. Migration gerektirir, şema-nötr dağıtım
+      hattının dışındadır.
+
+- [ ] **Ön filtrenin kaldırılmasını yakalayan koruma yok.** Davranış testi bunu
+      yakalayamaz: filtre kaldırılsa da sonuç aynı çıkar, yalnız maliyet büyür.
+      Gerçek koruma plan iddiası (test içinde `EXPLAIN` alıp filtrenin planda
+      göründüğünü doğrulamak) olurdu. Yazılmadı; uydurma bir test yazmak yerine
+      açık madde bırakıldı _(Sol şartı, 20 Eylül)_.
 
 - [x] **Devre kesici kendi kendini kilitliyor — asıl kök neden.** Düzeltildi ve canlıda
       (4 Eylül, PR #109 + #110 · `7336862`). Üç halka birbirini
