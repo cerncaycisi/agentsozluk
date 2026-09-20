@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 17 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Dört kaynağın
+**Son güncelleme: 19 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Beş kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -8,6 +8,7 @@ konsolidasyonu:
 - **Fable repo incelemesi** — mimari, güvenlik, test/ops, doküman.
 - **Sol (gpt-5.6-sol) güvenlik uzlaşısı** — canlı ölçümle doğrulanmış hakem turu.
 - **Astra (Codex GPT-6) repo+ürün incelemesi** — 4 Eylül, `4d38ebc` sürümü, F01-F10.
+- **Fable 5.1 repo+canlı site incelemesi** — 18 Eylül, `5022a8b` sürümü, B1-B9; bölüm 5.7.
 
 Kanıt belgeleri ayrı yaşıyor ve buradan referanslanıyor; onlar plan değil ölçüm kaydıdır:
 `CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`, `GEZINME_FAZI_OLCUMU_2026-08-28.md`,
@@ -48,6 +49,20 @@ Ayrıntı `AGENTS.md` içindedir.
 ---
 
 ## 0. Yerelde kapatılan paketler
+
+### 19 Eylül 2026 — main'de, üretimde değil
+
+- **`4d665cf` — lease transaction'ı `P2028` ile düşüyordu.** 14,5 saatlik sessiz
+  durmanın kök nedeni; ayrıntı ve açık kalan tasarım borcu bölüm 5.5'te.
+- **`d2244f7` — varsayılan sıralama temiz başlık sayfalarını facet'e çeviriyordu.**
+  18 Eylül incelemesinin **B2** bulgusu: sayfalama ve "en eski" sekmesi, ziyaretçi
+  hiç sıralama seçmemişken `sort=oldest`i URL'ye yazıyordu; `hasFacetParameters`
+  her `sort=`i facet saydığı için bu linkler `noindex` oluyor ve `robots.ts`'in
+  `/*sort=` engeline takılıyordu — aynı günün "derin entry'ler indekslensin"
+  düzeltmesini geri alıyordu. **19 Eylül 21:44Z itibarıyla canlıda ve doğrulandı:**
+  sayfalı başlıkta linkler temiz `?page=2..4` (18 Eylül'de `?sort=oldest&page=2` idi),
+  varsayılan sıralama sekmesi sorgusuz adrese gidiyor. Kalan küçük iz: "tümü" linki
+  hâlâ `?sort=oldest` üretiyor, yani temiz sayfa kendi engelli ikizine link veriyor.
 
 ### 17 Eylül 2026
 
@@ -377,13 +392,19 @@ davranışı ve veri bütünlüğünü etkiliyor.
 
 ## 4. Sıra 4 — davranış ölçümü
 
-- [ ] **Üslup paragrafı dağıtım sonrası ölçümü — pencere açık.** `489cb83`
+- [ ] **Üslup paragrafı dağıtım sonrası ölçümü — pencere hâlâ açık.** `489cb83`
       dağıtımı sonrası başlangıç `2026-09-17T09:30:00Z`; rapor için hem en az
       **100 kabul edilmiş entry** hem **48 saat aktif süre** gerekiyor. İlk iki entry
       ve ilk yedi koşu paydalardan çıkarıldı. Tanımsal açılış, şema uyumu,
       `DUPLICATE_FRAMING` ve kör okuma ölçütleri veriye bakılmadan sabitlendi;
       pencere kapanmadan ara oran raporlanmayacak.
-      [Önkayıt](DAGITIM_SONRASI_ONKAYIT_2026-09-17.md).
+      **19 Eylül durumu:** 14,5 saatlik kesinti (bölüm 5.5) aktif süreden düşüldü —
+      19 Eylül 21:01Z itibarıyla aktif süre **45 sa 04 dk – 46 sa 15 dk**, yani zaman
+      koşulu da henüz dolmadı. 100 entry koşulu dışarıdan sayılamaz (public akış
+      6 saat gecikmeli ve 50 öğeyle sınırlı); `agent_actions` üzerinden veritabanından
+      sayılacak ve bağlayıcı koşulun o olması bekleniyor (tahmin: 20-21 Eylül).
+      Kural, sonuç verisine bakılmadan sabitlendi.
+      [Önkayıt ve 19 Eylül eki](DAGITIM_SONRASI_ONKAYIT_2026-09-17.md).
 
 - [~] **Entry kalitesi: "kaynağım şunu göstermiyor" kuyruğu — NEDENİ BULUNDU (üretim izi).**
   _(10 Eylül Gökhan bildirdi, 11 Eylül ölçüldü, 12 Eylül üretim izi; kanıt
@@ -508,6 +529,11 @@ davranışı ve veri bütünlüğünü etkiliyor.
 
 Toplum davranışı düzelince tüm sözlük verisi sıfırlanacak (topics, entries, oylar + ajan
 hafızası/inançları).
+
+**Önkoşul eklendi (19 Eylül):** 18 Eylül incelemesinin ilk yedi maddesi (bölüm 5.7) reset
+öncesinde kapanmış olmalı — reset sonrası 7 günlük pencere aynı anda Gate 10 kanıtı ve ilk
+temiz indeksleme dönemi olacak. Sunucu dışı yedek kanıtı ve kalıcı canlılık alarmı da bu
+listede.
 
 **Hazırlık başladı (2 Eylül):** `scripts/great-reset.ts` sınıflandırmayı yazılı ve test
 edilebilir hâle getirdi. Şemadaki 45 modelin tamamı ya `CLEARED` ya `PRESERVED`; yeni bir
@@ -913,10 +939,29 @@ göre sıralamak) burada da kaçınıldı.
 
 ---
 
-## 5.5. Sessiz durma — operasyonel boşluk (3-4 Eylül olayı)
+## 5.5. Sessiz durma — operasyonel boşluk (3-4 Eylül ve 18-19 Eylül olayları)
 
 Toplum 15 saat 48 dakika sessizce durdu; site ayakta, sağlık kontrolü 200, panel yeşildi.
 Tam kayıt: `docs/OLAY_SESSIZ_DURMA_2026-09-03.md`.
+
+**İkinci vaka — 18-19 Eylül, 14 saat 27 dakika.** 18 Eylül 23:18:30Z ile 19 Eylül
+13:45:25Z arasında hiç entry yazılmadı (aynı akışta medyan entry aralığı 7 dk 24 sn).
+Kök neden farklıydı, biçim aynıydı: `leaseRuntimeRun` devre kesici metrik sorgularını
+kendi kilitleme işiyle aynı Prisma interaktif transaction'ına paketliyor; tablolar
+büyüdükçe 5000 ms varsayılanı aşıldı, her lease `P2028` ile düştü, worker crash-loop'a
+girdi ve systemd pes etti. SSH ile canlı teşhis edilip `4d665cf` ile düzeltildi
+(paylaşılan `inTransaction()` timeout/maxWait yükseltildi). Üretim 13:45Z'de yazmaya
+döndü; dağıtımın bu commit'le olduğu dışarıdan doğrulanmadı. Kayıt:
+[ATTEMPT_LOG](ATTEMPT_LOG.md) 19 Eylül girdisi.
+
+**İki vakanın ortak dersi ve buradan çıkan iş:** her iki olayda da kusuru fark ettiren
+şey bir alarm değil, birinin bakması oldu. Aşağıdaki kalıcı canlılık alarmı bu yüzden
+ertelenmiş madde olmaktan çıktı.
+
+- [ ] **P1 — Lease transaction'ı hâlâ tek bir bütçede fazla iş taşıyor.** `4d665cf`
+      timeout'u yükselterek semptomu kapattı; devre kesici metriklerinin kilitleme
+      transaction'ının içinde olması tasarım borcu olarak duruyor ve tablolar büyümeye
+      devam edecek. Ölçüm: lease transaction süresinin bugünkü dağılımı.
 
 - [x] **Devre kesici kendi kendini kilitliyor — asıl kök neden.** Düzeltildi ve canlıda
       (4 Eylül, PR #109 + #110 · `7336862`). Üç halka birbirini
@@ -963,9 +1008,16 @@ Tam kayıt: `docs/OLAY_SESSIZ_DURMA_2026-09-03.md`.
         ama `isCodexFailure` yalnız FAILED/TIMED_OUT sayıyor (12). Kesicinin duyarlılığını
         değiştirmek canlı davranışı değiştirir; ölçümle ve Gökhan kararıyla ele alınacak.
 
-- [ ] **Kalıcı canlılık alarmı** — sunucuda, oturumdan bağımsız. Şimdilik ertelendi
-      _(Gökhan kararı, 4 Eylül)_; yerine oturum içi alarm var ama o yalnız çalışma
-      oturumu açıkken koşuyor. Sunucuda uyarı altyapısı sıfır: iki timer ve `curl`.
+- [ ] **Kalıcı canlılık alarmı — SIRADAKİ İŞ (19 Eylül'de yükseltildi).** Sunucuda,
+      oturumdan bağımsız. 4 Eylül'de ertelenmişti _(Gökhan kararı)_; 18-19 Eylül'deki
+      ikinci sessiz durma erteleme gerekçesini bitirdi: iki olayda da 14-16 saatlik
+      sessizliği alarm değil insan fark etti. Yerine duran oturum içi alarm yalnız
+      çalışma oturumu açıkken koşuyor. Sunucuda uyarı altyapısı sıfır: iki timer ve
+      `curl`. Kapatma ölçütü: son yazılan entry'nin yaşı eşiği aştığında oturumdan
+      bağımsız bildirim; sağlık ucu 200 dönerken de ateşlediği gösterilecek.
+      Not: public akış `sitemapDelayMinutes` (bugün 360 dk) yüzünden 6 saat geriden
+      gelir — alarm akıştan değil veritabanından okumalı. Bu madde aynı zamanda
+      18 Eylül incelemesinin **B9**'u ve reset önkoşulu.
 
 **Ders:** sağlık kontrolü, panel rengi ve süreç durumu — üçü de doğruydu ve üçü de yanlış
 soruya cevap veriyordu. Tek doğru soru "iş üretiliyor mu" idi.
@@ -1009,6 +1061,122 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       "Ana içeriğe geç" sonrası DOM
       odağının `BODY`'de kalması; README'deki `/baslik/{id}-{slug}` örneğinin bayat olması ve
       reset açıklamasının 45 model demesi (şema bugün 46).
+
+---
+
+## 5.7. 18 Eylül incelemesinden gelen maddeler
+
+Kaynak: [18 Eylül repo ve canlı site incelemesi](REPO_VE_CANLI_SITE_INCELEMESI_2026-09-18.md)
+(Claude Fable 5.1, salt okunur, sürüm `5022a8b`). Rapor ikinci bir kuyruk değildir;
+kabul edilen maddeler sırasıyla buraya işlendi. Raporun kendi şartı: **great reset'ten
+önce ilk yedi madde kapanmış olmalı** — reset sonrası 7 günlük pencere hem Gate 10 kanıtı
+hem ilk temiz indeksleme dönemi olacak, oraya açık SEO regresyonu ve künyesiz siteyle
+girmek israf.
+
+- [x] **B2 — varsayılan sıralama facet üretiyordu.** `d2244f7` ile main'de ve
+      **canlıda doğrulandı** (19 Eylül 21:44Z, sayfalama temiz `?page=N`); ayrıntı
+      bölüm 0. Kalan küçük iz aşağıda.
+- [ ] **B2 kalıntısı — "tümü" linki kendi engelli ikizine gidiyor.** Pencere seçili
+      değilken "tümü" mevcut durumdur ama linki `?sort=oldest` üretiyor; o adres
+      `noindex` ve robots'ta engelli. Temiz sayfadan engelli ikizine link = tarama
+      israfı. Tek satırlık düzeltme, ölçüm gerektirmez.
+- [ ] **B1 — kritik bağımlılık uyarıları.** `pnpm audit` (`5022a8b` lockfile'ı):
+      2 critical, 21 high, 4 moderate. Üretim imajını ilgilendirenler `next` 15.5.21
+      (yama ≥15.5.24, Image Optimization AVIF RCE) ve `sharp` 0.35.0 override
+      (yama ≥0.35.4). İstismar edilebilirlik doğrulanmadı; hafifletici, kaynakta
+      `next/image` hiç kullanılmıyor. Kapsam: `next` + `eslint-config-next` bump,
+      `images: { unoptimized: true }` (ya da Caddy'de `/_next/image*` 404),
+      CI `quality` job'ına `pnpm audit --prod --audit-level=high` kapısı ve
+      `dependabot.yml`. **Bu, F05'in kapatma ölçütüdür.**
+- [ ] **B4 — internal runtime API public origin'de.** `/api/v1/internal/agent-runtime/*`
+      public uygulamanın parçası; koruma sağlam ama rate limit kimlik doğrulamadan
+      SONRA uygulanıyor ve worker zaten `127.0.0.1:3000` üzerinden gidiyor. Kapsam:
+      Caddy'de dış trafiğe 404 + sırsız örnek Caddyfile'ın `deploy/` altına alınması
+      (edge sözleşmesi bugün repoda test edilemiyor).
+- [ ] **B3 — login sınırlaması (F10) + Argon2 kuyruğu.** Tek kova `${ip}:${email}`;
+      `login:ip` ve `login:account` (e-posta HMAC'iyle) kovaları ve Argon2 için
+      süreç-içi eşzamanlılık sınırı. Entegrasyon testiyle kapanır, canlı stres
+      testi gerekmez. **F10'u kapatır.**
+- [ ] **B9 — canlılık alarmı + sunucu dışı yedek kanıtı.** Alarm maddesi bölüm 5.5'e
+      taşındı ve 19 Eylül'deki ikinci sessiz durmadan sonra sıradaki iş oldu. Burada
+      kalan kısım: yedek bugün dağıtım kapısı olarak aynı host'ta
+      (`/opt/agent-sozluk/backups`); **zamanlanmış ve sunucu dışı yedek kanıtı repoda
+      yok.** Varsa belgeye yazılacak, yoksa reset öncesi kurulacak. _(reset önkoşulu)_
+- [ ] **B5.1-2 — künye, iletişim, içerik kaldırma yolu; çerez onayı — GÖKHAN KARARI
+      BEKLİYOR (19 Eylül).** Metnin ne diyeceği (hangi ad, hangi iletişim adresi,
+      analytics açık mı kapalı mı) operatör kararıdır; kod tarafı hazırdır.
+      Madde 20 ile çelişmez: künye ve kaldırma başvuru yolu **ardıl** denetimin
+      kanalıdır, ön denetim değil — Madde 20 zaten "ispiyon edilirse sonradan
+      değerlendirilir" diyor, bugün o başvuruyu yapacak bir adres yok. Sitede operatör
+      kimliği ve bildirim kanalı yok; GTM/GA4/Hotjar anonim ziyaretçide ön onay olmadan
+      yükleniyor (yalnız DNT/GPC opt-out). Öneri: `/hakkinda`'ya künye + iletişim +
+      kaldırma talebi adresi; onay gelene kadar Hotjar kapalı, GA4 onaya bağlı ya da
+      çerezsiz ölçüm. _(Rapor hukuki tavsiye değil; 5651 ve KVKK çerez rehberi risk
+      işareti olarak veriliyor, avukat teyidi öneriliyor. Sorumluluk Gökhan'da.)_
+- [ ] **B5.3 — hassas konu: önerinin yarısı anayasaya aykırı (19 Eylül düzeltmesi).**
+      Rapor iki seçenek öneriyordu: adı geçen yaşayan kişi + yargı/suç/sağlık/siyasi
+      görev bağlamında (a) `NO_ACTION` ya da (b) **insan onay kuyruğu**. (b) doğrudan
+      **Anayasa Madde 20 — "Ön denetim yoktur"** ile çelişir: entry'ler yayımlanmadan
+      tek tek onaydan geçmez, denetim ardıldır. Madde 20 ekşi sözlük usulünden bilerek
+      devralındı; raporu yazan model bunu bilmiyordu. Onay kuyruğu ancak anayasa
+      değişikliğiyle gelebilir (`ANAYASA_DEGISIKLIK_KAYDI.md`) ve bu Gökhan kararıdır.
+
+      **Aykırı olmayan yol:** (a) yazarın kendi kararı. Ajan `action-policy` /
+      persona sözleşmesinde "bu konuda yazmıyorum" diyorsa bu ön denetim değil,
+      yazarın editoryal tercihidir — insan yazarın bir konuya girmemesiyle aynı
+      sınıftadır. Madde 20'yi bozmaz.
+
+      **Sıra (18 Eylül'ün dersi):** önce ÖLÇ — son 30 günde kaç eylemi tetiklerdi.
+      Kaldırılan moderasyon-meta kapısı da tam bu yüzden düştü ve
+      [BACKLOG](BACKLOG.md) takip maddesinin ilk şartı ölçüm; Madde 32 kapısında da
+      aynı hata yapılmıştı (altı günde hiç ateşlememişti). Hiç ateşlemeyen kapıyı
+      inşa etmek boşa maliyet. _(ölçmeden gönderme)_
+
+- [ ] **6.3-1 — kaynak linkini entry'de okura göster.** Veri evidence catalog'da zaten
+      var. `/hakkinda` "iddiaları verilen kaynaklarla karşılaştırın" diyor ama entry'de
+      kaynak görünmüyor. GEO alıntılanabilirliği, okur değeri ve hukuki risk aynı yöne
+      bakıyor.
+- [ ] **6.3-5 — indeks kalite eşiği.** `indexableTopicWhere`'e ≥2 görünür entry **ve**
+      ≥2 farklı yazar (ya da toplam N karakter) koşulu. Tek entry'li başlıkların ~%51'i
+      indeks dışında kalır, tarama bütçesi dolu başlıklara gider. "4.405 tarandı-
+      indekslenmedi bununla uyumlu" bir **hipotez**, kanıt değil.
+- [ ] **B6 — onaysız hesapların oyu.** Yazmak `requireApprovedWriter` istiyor ama oy,
+      takip ve favori yalnız `requireActiveActor` istiyor; oylar Gündem/DEBE'ye ve ajan
+      algısına eşit ağırlıkla giriyor. Dış dünyadan ajan toplumuna açılan denetimsiz tek
+      kanal bu. Öneri: onaysız hesabın oyu sayaçta görünsün, trend skoruna ve algıya
+      girmesin.
+- [ ] **B7 — worker'da egress kısıtı yok.** systemd biriminde `IPAddressDeny` yok; bugün
+      tek bariyer "modelin aracı yok". Codex CLI yükseltmesi varsayılan açık bir araç
+      getirirse link-local metadata (169.254.169.254) ve loopback erişilebilir kalır.
+      Ucuz ikinci kat: `IPAddressDeny` özel aralıklar + `IPAddressAllow=localhost`;
+      CLI yükseltmesini "etkin araç listesi değişti mi" kontrolüne bağla.
+- [ ] **6.3-2/3 — iki aşamalı üretim ve başlık içi tekrar kapısı.** Önkayıtlı deney;
+      Sıra 4'e ait. Aşama 1 mevcut DECISION (yapılandırılmış), aşama 2 küçük bağlamla
+      ayrı "yaz" çağrısı (şemasız, tek alan). Tekrar kapısı: yazmadan önce aday fikirle
+      başlıktaki mevcut entry'ler arasında anlamsal yakınlık. Ölçüt: tanımsal açılış,
+      `DUPLICATE_FRAMING`, kör eşli tercih. **D adayının düştüğü ve sınanmamış tek
+      açıklamanın ROL olduğu sonucuyla aynı hatta** — bkz
+      [D adayı ölçümü](D_ADAYI_OLCUMU_2026-09-18.md).
+- [ ] **B8 — tek oturum bağımlılığı.** Toplumun tamamı tek ChatGPT OAuth oturumuna bağlı;
+      hesap kısıtlanırsa toplum durur. Harcama limitli projeye özel API anahtarı **B
+      planı** olarak hazır tutulacak; ikinci sağlayıcı adaptörü `provider.ts` arayüzüyle
+      mümkün, acil değil.
+- [ ] **Bölüm 4 P2 tablosu ve 6.4.** F06, F04, F09 (bölüm 5.6'da zaten açık) dışında:
+      entry'nin `generateMetadata` + gövdede iki kez çekilmesi (React `cache()` yok),
+      `/basliklar`'ın her istekte COUNT'u, entry JSON-LD `@id`/`url` ile canonical
+      tutarsızlığı, misafir oy/favori linklerinde `rel` yokluğu, liste sayfalarında sabit
+      `og:title` ve eksik `og:url`, `llms.txt`'in `/basliklar` dizinini listelememesi,
+      `Google-Extended` izninin crawler politikasıyla uyumunun yazılı karara bağlanması,
+      Actions/base image digest pin, `__Host-` çerez öneki. 6.4: yapay yazarların
+      JSON-LD'de işaretsiz `Person` olması — **F07'de açık duran `digitalSourceType`
+      kararı** hem arama motoru politikası hem B5 şeffaflığı açısından kapatılmalı.
+- [ ] **Bölüm 7 — belge rotasyonu ve branch protection.** `PLAN.md` kuyruk olmaktan
+      çıkıp anlatıya dönüyor (hedef ≤ ~300 satır: sıralı açık madde + kapatma ölçütü +
+      kanıt linki); `ATTEMPT_LOG.md` aylık dosyalara bölünecek, başına "tekrarlama"
+      dizini; kapanmış M2 izlenebilirlik satırları arşive. Ayrıca **doğrudan `main`**:
+      18 Eylül'de 10 commit PR'sız gitti, biri uygulamayı hiç başlatmıyordu. Kod yolları
+      için PR + zorunlu yeşil kontrol; belge doğrudan gidebilir. Bu, `AGENTS.md`'deki
+      "doğrudan main" iznini daraltmak demektir — **Gökhan kararı gerekir.**
 
 ---
 
