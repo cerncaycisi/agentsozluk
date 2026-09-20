@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { hash, verify } from "@node-rs/argon2";
 
 export const ARGON2_OPTIONS = {
@@ -40,9 +41,20 @@ let dummyHash: Promise<string> | undefined;
   yalnız "hesap yok" dalındaki dummy hash sayılıyordu (Sol, 20 Eylül).
 
   Doğrusu: permit TRANSACTION AÇILMADAN ÖNCE alınır ve iş boyunca tutulur.
-  `withArgon2Permit` bunu yapar; içeride çağrılan `*HoldingPermit` sürümleri
-  "kapıyı atla" demez, "permit zaten bende" der. Bedeli permit'in veritabanı
-  süresi boyunca da tutulmasıdır; giriş seyrek olduğu için bilinçli kabul.
+  `withArgon2Permit` bunu yapar.
+
+  VE PERMIT YENİDEN GİRİLEBİLİR. İlk sürümde bunu ayrı isimli fonksiyonlarla
+  (`*HoldingPermit`) çözmüştüm; yani doğruluk isim disiplinine bağlıydı ve bir
+  yeri kaçırmak yetiyordu. Kaçırdım da: hesap kapatma transaction'ının içinde
+  kalan bir `hashPassword` çağrısı ikinci permit istedi, iki eşzamanlı istek
+  iki permit'i tutup üçüncüyü bekleyince KİLİTLENDİ — CI'da iki entegrasyon
+  testi 15 saniyede zaman aşımına uğradı (20 Eylül).
+
+  Artık `AsyncLocalStorage` ile "bu akışta permit zaten var mı" bakılıyor.
+  Varsa yeni permit istenmez, doğrudan koşulur. Böylece çağıranın hangi ismi
+  seçtiği önemsizleşir: iç içe çağrı kilitlenemez, sarmalanmamış çağrı da
+  sınırsız kalmaz. Bedeli permit'in veritabanı süresi boyunca da tutulmasıdır;
+  giriş seyrek olduğu için bilinçli kabul.
 */
 const ARGON2_ESZAMANLILIK = 2;
 let aktif = 0;
@@ -66,10 +78,14 @@ function permitBirak(): void {
   aktif -= 1;
 }
 
+const permitBaglami = new AsyncLocalStorage<true>();
+
 async function argon2Kapisi<T>(is: () => Promise<T>): Promise<T> {
+  // Yeniden giriş: permit bu akışta zaten alınmışsa ikincisini isteme.
+  if (permitBaglami.getStore()) return is();
   await permitAl();
   try {
-    return await is();
+    return await permitBaglami.run(true, is);
   } finally {
     permitBirak();
   }
@@ -85,26 +101,6 @@ export function hashPassword(password: string): Promise<string> {
 */
 export function withArgon2Permit<T>(is: () => Promise<T>): Promise<T> {
   return argon2Kapisi(is);
-}
-
-/*
-  Aşağıdaki iki sürüm kapıyı ATLAMAZ; çağıranın permit'i ZATEN TUTTUĞUNU
-  varsayar. `withArgon2Permit` dışında çağrılırlarsa sınır delinir — adları
-  bu yüzden böyle.
-*/
-export function hashPasswordHoldingPermit(password: string): Promise<string> {
-  return hash(password, ARGON2_OPTIONS);
-}
-
-export async function verifyPasswordHoldingPermit(
-  passwordHash: string,
-  password: string,
-): Promise<boolean> {
-  try {
-    return await verify(passwordHash, password, ARGON2_OPTIONS);
-  } catch {
-    return false;
-  }
 }
 
 export async function verifyPassword(passwordHash: string, password: string): Promise<boolean> {

@@ -158,22 +158,24 @@ describe("argon2 eşzamanlılık sınırı", () => {
     vi.resetModules();
   });
 
-  it("permit'i tutan sürüm ikinci permit istemez ve tepe 2'de kalır", async () => {
+  it("iç içe çağrı ikinci permit istemez ve tepe 2'de kalır", async () => {
     /*
-      Sözleşme burada sabitleniyor: `withArgon2Permit` işin tamamını sarar,
-      içerideki `*HoldingPermit` çağrıları YENİ permit almaz. İlk tasarımda bu
-      sürümler kapıyı ATLIYORDU ve mevcut hesabın doğrulaması hep transaction
-      içinde olduğu için hiç sınırlanmıyordu — koruma asıl yolda yoktu
-      (Sol, 20 Eylül). İçeride yeni permit isteseydi kendi kendini bekler,
-      kilitlenirdi; atlasaydı sınır delinirdi. İkisi de burada düşer.
+      Sözleşme: `withArgon2Permit` işin tamamını sarar ve İÇERİDEKİ argon2
+      çağrıları aynı permit'i yeniden kullanır. İlk tasarımda bunu ayrı isimli
+      fonksiyonlarla çözmüştüm; doğruluk isim disiplinine bağlıydı ve bir yeri
+      kaçırdım — hesap kapatma transaction'ının içinde kalan bir `hashPassword`
+      ikinci permit isteyince iki eşzamanlı istek KİLİTLENDİ (CI, 20 Eylül).
+
+      Bu test o kilitlenmeyi üretir: yeniden giriş olmasaydı üç istek de
+      birbirini bekler ve `Promise.all` hiç çözülmezdi.
     */
     const { modul, bekleyen, olc } = await kapiyiKur();
 
     const istekler = [1, 2, 3].map((n) =>
       modul.withArgon2Permit(async () => {
-        // Gerçek giriş zinciri: doğrulama + gerekirse yeniden hash, ikisi de
-        // aynı permit altında.
-        await modul.verifyPasswordHoldingPermit("hash", `sifre-${n}`);
+        await modul.verifyPassword("hash", `sifre-${n}`);
+        // İÇ İÇE: gerçek hesap kapatma yolunda olan da tam olarak bu.
+        await modul.hashPassword(`yeni-${n}`);
         return n;
       }),
     );

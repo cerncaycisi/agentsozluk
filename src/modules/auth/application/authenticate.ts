@@ -6,9 +6,8 @@ import { appendAuditLog } from "@/modules/audit";
 import {
   getDummyPasswordHash,
   hashPassword,
-  hashPasswordHoldingPermit,
   passwordNeedsRehash,
-  verifyPasswordHoldingPermit,
+  verifyPassword,
   withArgon2Permit,
 } from "@/modules/auth/domain/password";
 import {
@@ -132,7 +131,7 @@ export async function loginHuman(
       findAuthUserCandidateByEmail(transaction, input.email),
     );
     if (!candidate) {
-      await verifyPasswordHoldingPermit(await getDummyPasswordHash(), input.password);
+      await verifyPassword(await getDummyPasswordHash(), input.password);
       throw new AppError("INVALID_CREDENTIALS", 401, "E-posta veya şifre hatalı.");
     }
 
@@ -146,7 +145,7 @@ export async function loginHuman(
       transaction'ı ve onun bağlantısını tutardı (Sol, 20 Eylül). Maliyeti
       route'taki oran kovaları sınırlar.
     */
-      const valid = await verifyPasswordHoldingPermit(currentCredential, input.password);
+      const valid = await verifyPassword(currentCredential, input.password);
       if (
         !user ||
         user.emailNormalized !== input.email ||
@@ -158,11 +157,7 @@ export async function loginHuman(
         throw new AppError("INVALID_CREDENTIALS", 401, "E-posta veya şifre hatalı.");
       }
       if (passwordNeedsRehash(user.passwordHash)) {
-        await updateUserPassword(
-          transaction,
-          user.id,
-          await hashPasswordHoldingPermit(input.password),
-        );
+        await updateUserPassword(transaction, user.id, await hashPassword(input.password));
       }
       const session = await issueSession(transaction, user.id, metadata);
       await appendAuditLog(transaction, {

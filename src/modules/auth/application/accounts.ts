@@ -4,11 +4,7 @@ import type { DatabaseClient, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
 import { isLastActiveAdmin } from "@/modules/auth/domain/permissions";
-import {
-  hashPassword,
-  verifyPasswordHoldingPermit,
-  withArgon2Permit,
-} from "@/modules/auth/domain/password";
+import { hashPassword, verifyPassword, withArgon2Permit } from "@/modules/auth/domain/password";
 import { revokeAllUserSessions } from "@/modules/auth/repository/sessions";
 import {
   anonymizeUserRecord,
@@ -66,7 +62,7 @@ async function requireSensitiveOperationUser(
     kuyrukta beklemek o transaction'ın bağlantısını tutardı. Çağıranların hepsi
     `withArgon2Permit` ile sarmalar (Sol, 20 Eylül).
   */
-  if (!(await verifyPasswordHoldingPermit(user.passwordHash, currentPassword))) {
+  if (!(await verifyPassword(user.passwordHash, currentPassword))) {
     throw new AppError("INVALID_CREDENTIALS", 401, "Mevcut şifre hatalı.");
   }
   return user;
@@ -193,6 +189,13 @@ export async function deactivateAccount(
                 usernameConfirmation: ["Kullanıcı adınızı eksiksiz yazın."],
               });
             }
+            /*
+              Permit DIŞARIDA alındı (`withArgon2Permit`). Burada kapılı sürümü
+              çağırmak İKİNCİ bir permit ister ve kilitlenir: iki eşzamanlı
+              hesap kapatma iki permit'i tutarken ikisi de üçüncüyü bekler.
+              CI'da tam bu oldu — iki entegrasyon testi 15 sn'de zaman aşımına
+              uğradı (20 Eylül).
+            */
             const passwordHash = await hashPassword(randomBytes(48).toString("base64url"));
             if (user.role === "ADMIN") {
               await lockAdminGuard(transaction);
