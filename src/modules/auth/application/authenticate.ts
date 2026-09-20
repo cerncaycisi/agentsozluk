@@ -161,7 +161,7 @@ export async function loginHuman(
         await updateUserPassword(
           transaction,
           user.id,
-          await hashPasswordInTransaction(input.password),
+          await hashPasswordHoldingPermit(input.password),
         );
       }
       const session = await issueSession(transaction, user.id, metadata);
