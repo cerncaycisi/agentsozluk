@@ -167,11 +167,24 @@ describe("başlık sayfası zaman penceresi şeridi", () => {
       "3 ay",
       "tümü",
     ]);
-    expect(href("24 saat", strip)).toBe(`${TOPIC_URL}?sort=oldest&window=24h`);
-    expect(href("1 hafta", strip)).toBe(`${TOPIC_URL}?sort=oldest&window=1w`);
-    expect(href("1 ay", strip)).toBe(`${TOPIC_URL}?sort=oldest&window=1m`);
-    expect(href("3 ay", strip)).toBe(`${TOPIC_URL}?sort=oldest&window=3m`);
-    expect(href("tümü", strip)).toBe(`${TOPIC_URL}?sort=oldest`);
+    // 20 Eylül: sorguda sıralama YOKKEN pencere linkleri de `sort=` basmıyordu.
+    // Basması, temiz sayfayı kendi `noindex` + robots'ta engelli ikizine
+    // bağlamak demekti; en görünür hâli "tümü" linkiydi — pencere seçili
+    // değilken zaten mevcut durum olan seçenek, ayrı bir facet adresine
+    // gidiyordu.
+    expect(href("24 saat", strip)).toBe(`${TOPIC_URL}?window=24h`);
+    expect(href("1 hafta", strip)).toBe(`${TOPIC_URL}?window=1w`);
+    expect(href("1 ay", strip)).toBe(`${TOPIC_URL}?window=1m`);
+    expect(href("3 ay", strip)).toBe(`${TOPIC_URL}?window=3m`);
+    expect(href("tümü", strip)).toBe(TOPIC_URL);
+  });
+
+  it("ziyaretçi sıralamayı açıkça seçtiyse pencere linkleri onu korur", async () => {
+    await renderTopicPage({ sort: "newest" });
+    const strip = windowStrip();
+
+    expect(href("24 saat", strip)).toBe(`${TOPIC_URL}?sort=newest&window=24h`);
+    expect(href("tümü", strip)).toBe(`${TOPIC_URL}?sort=newest`);
   });
 
   it("varsayılan tümü kademesinde hiçbir pencere uygulamaz", async () => {
