@@ -1730,11 +1730,73 @@ describe("agent control plane with PostgreSQL", () => {
       return getRuntimeOperationalMetrics(transaction, { now, concurrency: 1, config });
     });
 
-    // 15 dk penceresinde yalnız kırpılmış 5 dakika sayılmalı: 5/15 = 0,3333…
+    // 15 dk penceresi (11:45–12:00): yaslanan koşudan yalnız kırpılmış 5 dakika.
     expect(operational.utilization15m).toBeCloseTo(5 / 15, 5);
-    // 1 saatlik pencerede yaslanan koşunun tamamı (15 dk) sayılır, geride kalan
-    // koşunun 60 dakikalık sınırın içine düşen kısmı da eklenir.
-    expect(operational.utilization1h).toBeGreaterThan(5 / 60);
+    // 1 saat penceresi (11:00–12:00): yaslanan koşunun tamamı 15 dk. Geride
+    // kalan koşu 10:15–10:45 arasında, yani BU pencereye de hiç girmiyor —
+    // ilk yazımda "kısmı eklenir" demiştim, yanlıştı (Sol, 20 Eylül). Tam
+    // değer yazılıyor; `toBeGreaterThan` gibi gevşek bir iddia filtre fazla
+    // agresif olsa bile geçerdi.
+    expect(operational.utilization1h).toBeCloseTo(15 / 60, 5);
+  });
+
+  it("koşunun finishedAt'inden SONRA biten aralığı düşürmez", async () => {
+    /*
+      Daraltmanın dayanağı bir invaryant değil, sıralama gözlemi: aralıklar
+      worker'da yazılıyor, `finishedAt` sonra kaydediliyor. Saat geri adım
+      atarsa (NTP) ya da ileride aralıkları sonradan yazan bir yol eklenirse
+      aralık koşunun `finishedAt`'inden sonra bitmiş görünebilir. Keskin bir
+      filtre onu sessizce düşürürdü; tolerans bu yüzden var (Sol, 20 Eylül).
+    */
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const now = new Date("2026-07-18T12:00:00.000Z");
+    const kosuBitisi = new Date(now.getTime() - 20 * 60_000); // 11:40, pencere dışı
+    const aralikBasi = new Date(now.getTime() - 10 * 60_000); // 11:50, pencere içi
+    const aralikSonu = new Date(now.getTime() - 5 * 60_000); // 11:55
+
+    await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: created.agent.profile.id,
+        personaVersionId: created.agent.personaVersion.id,
+        runType: "NORMAL_WAKE",
+        runStatus: "SUCCEEDED",
+        queuePriority: "SCHEDULED_CONTENT",
+        trigger: "CLOCK_ROLLBACK_FIXTURE",
+        idempotencyKey: `clock-rollback:${randomUUID()}`,
+        timeoutSeconds: 900,
+        desiredEntryMin: 0,
+        desiredEntryMax: 0,
+        startedAt: new Date(now.getTime() - 30 * 60_000),
+        finishedAt: kosuBitisi,
+        usageMetadata: {
+          provider: "codex-cli",
+          durationMs: 5 * 60_000,
+          codexIntervals: [
+            {
+              startedAt: aralikBasi.toISOString(),
+              finishedAt: aralikSonu.toISOString(),
+              durationMs: 5 * 60_000,
+            },
+          ],
+        },
+      },
+    });
+
+    const operational = await inTransaction(integrationDatabase, async (transaction) => {
+      const settings = await transaction.agentGlobalSettings.findUniqueOrThrow({
+        where: { id: "global" },
+        select: { circuitBreakerConfig: true },
+      });
+      const config = circuitBreakerConfigSchema.parse(
+        settings.circuitBreakerConfig as Record<string, unknown>,
+      );
+      return getRuntimeOperationalMetrics(transaction, { now, concurrency: 1, config });
+    });
+
+    // Koşu 11:40'ta bitmiş görünüyor ama aralığı 11:50–11:55. Tolerans olmasa
+    // filtre bu satırı eler ve beş dakika kaybolurdu.
+    expect(operational.utilization15m).toBeCloseTo(5 / 15, 5);
   });
 
   it("includes the current Codex phase but excludes non-Codex active run time", async () => {
