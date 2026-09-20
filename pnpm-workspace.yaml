@@ -9,6 +9,34 @@ onlyBuiltDependencies:
   - prisma
   - sharp
   - unrs-resolver
+# 19-20 Eylül 2026 — güvenlik pinleri.
+# `pnpm audit --prod` artık CI kapısı; buradaki her satır o kapıyı yeşil tutmak
+# için VAR OLAN bir uyarıya karşılık gelir, süsleme değildir.
+#   postcss  : yol aşımı + rastgele dosya okuma (GHSA; >=8.5.18, >=8.5.23)
+#              eski pin 8.5.10 kendisi açık taşıyordu.
+#   nanoid   : sonsuz döngü (>=3.3.18). postcss'in bağımlılığı; 3.x serisinde
+#              kalıyoruz, 4+ ESM-only ve postcss'i kırar.
+#   browserslist / baseline-browser-mapping : styled-jsx zinciri (>=4.28.7, >=2.11.0)
+#   deepmerge-ts : özyinelemeli nesne birleştirmede yığın tükenmesi (>=8.0.0).
+#              `@prisma/config` 7.1.5'e TAM pin koyuyor, yani bu override
+#              Prisma'nın sınamadığı bir majör sürüm. YERELDE koşan: `prisma
+#              generate` ve `prisma validate`. Birim testleri ve üretim
+#              derlemesi yerelde KOŞULMADI (bu VM 964 MB); onların kanıtı CI'dan
+#              gelir. Sol'un 20 Eylül salt okunur incelemesi çalışma zamanı
+#              kırılması bulmadı: `@prisma/config` yalnız `deepmerge` export'unu
+#              `c12`'ye geçiriyor ve depoda `prisma.config.*` yok, dolayısıyla
+#              çalışma zamanı etkisi gösterilemedi. DİKKAT (Sol 2. tur):
+#              `maxDepth` bir v8 özelliğidir; varsayılan `deepmerge` bir kez
+#              `deepmergeCustom()` ile kuruluyor ve sınır her `mergeUnknowns`
+#              yürüyüşünde kontrol ediliyor — yani "bu yolda hiç kullanılmıyor"
+#              demek fazla kesin olurdu. Kanıt "kırılma
+#              görülmedi" düzeyindedir, "kırılamaz" değil. Prisma yükseltmesi
+#              geldiğinde bu satır KALDIRILMALI.
+#   sharp    : libheif zafiyetleri (>=0.35.4)
 overrides:
-  postcss: 8.5.10
-  sharp: 0.35.0
+  postcss: 8.5.28
+  nanoid: 3.3.19
+  browserslist: 4.29.0
+  baseline-browser-mapping: 2.11.25
+  deepmerge-ts: 8.0.0
+  sharp: 0.35.4

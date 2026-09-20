@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 19 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Beş kaynağın
+**Son güncelleme: 20 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Beş kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -392,19 +392,26 @@ davranışı ve veri bütünlüğünü etkiliyor.
 
 ## 4. Sıra 4 — davranış ölçümü
 
-- [ ] **Üslup paragrafı dağıtım sonrası ölçümü — pencere hâlâ açık.** `489cb83`
-      dağıtımı sonrası başlangıç `2026-09-17T09:30:00Z`; rapor için hem en az
-      **100 kabul edilmiş entry** hem **48 saat aktif süre** gerekiyor. İlk iki entry
-      ve ilk yedi koşu paydalardan çıkarıldı. Tanımsal açılış, şema uyumu,
-      `DUPLICATE_FRAMING` ve kör okuma ölçütleri veriye bakılmadan sabitlendi;
-      pencere kapanmadan ara oran raporlanmayacak.
-      **19 Eylül durumu:** 14,5 saatlik kesinti (bölüm 5.5) aktif süreden düşüldü —
-      19 Eylül 21:01Z itibarıyla aktif süre **45 sa 04 dk – 46 sa 15 dk**, yani zaman
-      koşulu da henüz dolmadı. 100 entry koşulu dışarıdan sayılamaz (public akış
-      6 saat gecikmeli ve 50 öğeyle sınırlı); `agent_actions` üzerinden veritabanından
-      sayılacak ve bağlayıcı koşulun o olması bekleniyor (tahmin: 20-21 Eylül).
-      Kural, sonuç verisine bakılmadan sabitlendi.
-      [Önkayıt ve 19 Eylül eki](DAGITIM_SONRASI_ONKAYIT_2026-09-17.md).
+- [~] **Üslup paragrafı ölçümü — PENCERE KAPANDI, rapor yazılmadı.** `489cb83`
+  dağıtımı sonrası başlangıç `2026-09-17T09:30:00Z`; iki eşik de sağlandı.
+  **Kesim: `2026-09-19T20:30:11Z`** (bağlayıcı koşul süre oldu; 100. kabul
+  edilmiş entry pencerenin ilk gününde birikmişti). Donmuş örneklem
+  **D1 238, D2 299, D3 552**, beş MD5 parmak iziyle sabit — entry düzenlense
+  kimlik kümesi aynı kalacağı için gövde özetleri de parmak izlendi.
+
+      Aktif süreden düşülen kesinti **11 sa 00 dk 11 sn** (`finish → sonraki
+      start`). Bu kesintinin **üst** sınırıdır: worker son koşuyu bitirdikten
+      sonra bir süre ayakta kalmış olabilir, yani gerçek kesinti daha kısa
+      olabilir. Kesin başlangıç ilk başarısız lease kanıtını gerektirir ve
+      `deploy` kullanıcısı sistem günlüğünü okuyamıyor.
+
+      Ölçütler (tanımsal açılış, şema uyumu, `DUPLICATE_FRAMING`, kör okuma),
+      paydalar, Wilson aralıkları ve Bonferroni düzeltmesi veriye bakılmadan
+      sabitlendi. **Şu ana dek yalnız durma kuralı okundu**; ret kodları, gövde
+      metinleri ve Ö1-Ö4 payları ilk kez rapor yazılırken okunacak. Kesimden
+      sonraki veri rapora girmez. Üç hakem turu bu belgenin kendisinde iki
+      aritmetik ve iki aşırı iddia düzeltti.
+      [Önkayıt ve üç ek](DAGITIM_SONRASI_ONKAYIT_2026-09-17.md).
 
 - [~] **Entry kalitesi: "kaynağım şunu göstermiyor" kuyruğu — NEDENİ BULUNDU (üretim izi).**
   _(10 Eylül Gökhan bildirdi, 11 Eylül ölçüldü, 12 Eylül üretim izi; kanıt
@@ -1080,14 +1087,39 @@ girmek israf.
       değilken "tümü" mevcut durumdur ama linki `?sort=oldest` üretiyor; o adres
       `noindex` ve robots'ta engelli. Temiz sayfadan engelli ikizine link = tarama
       israfı. Tek satırlık düzeltme, ölçüm gerektirmez.
-- [ ] **B1 — kritik bağımlılık uyarıları.** `pnpm audit` (`5022a8b` lockfile'ı):
-      2 critical, 21 high, 4 moderate. Üretim imajını ilgilendirenler `next` 15.5.21
-      (yama ≥15.5.24, Image Optimization AVIF RCE) ve `sharp` 0.35.0 override
-      (yama ≥0.35.4). İstismar edilebilirlik doğrulanmadı; hafifletici, kaynakta
-      `next/image` hiç kullanılmıyor. Kapsam: `next` + `eslint-config-next` bump,
-      `images: { unoptimized: true }` (ya da Caddy'de `/_next/image*` 404),
-      CI `quality` job'ına `pnpm audit --prod --audit-level=high` kapısı ve
-      `dependabot.yml`. **Bu, F05'in kapatma ölçütüdür.**
+- [~] **B1 — kritik bağımlılık uyarıları: paket ve kapı PR #137'de, dağıtım bekliyor.**
+  `pnpm audit` (`5022a8b` lockfile'ı) 2 critical, 21 high, 4 moderate veriyordu;
+  iki kritik `next`'in Image Optimization API'sindeydi (AVIF RCE, yama ≥15.5.24).
+
+      **20 Eylül'de yapılan:** `next`/`eslint-config-next` 15.5.25, `sharp` 0.35.4,
+      `images: { unoptimized: true }`, `dependabot.yml`. Ayrıca beklenmedik bulgu:
+      **kendi `postcss: 8.5.10` override'ımız üç açık taşıyordu** — override'lar
+      bakımsız kalınca koruma değil dondurma işlevi görüyor. Zincir yamalandı
+      (postcss 8.5.28, nanoid, browserslist, baseline-browser-mapping) ve
+      `deepmerge-ts 8.0.0` eklendi. Yerelde `pnpm audit --prod` artık **temiz**.
+
+      **Sol birinci tur (20 Eylül): NO-GO** — bağımlılıklarda çalışma zamanı
+      kırılması bulunamadı (`deepmerge-ts`'in kırıcı farkları Prisma'nın
+      kullandığı yolda değil, `next/image` gerçekten kullanılmıyor, Next'in iç
+      bot regex'i iki sürümde bayt bayt aynı, postcss zinciri uyumlu), ama CI
+      kapısı yoktu.
+
+      **Kapı eklendi (`d26385b`).** Gökhan `workflow` yetkisini verdi.
+      CI `35503728757` head `9402a5d` üzerinde **7/7 PASS** ve `quality`
+      log'unda adım gerçekten koştu: `pnpm audit --prod --audit-level=high`
+      → `No known vulnerabilities found`.
+
+      **Sol ikinci tur (20 Eylül): kapının kendisi PASS.** Fail-closed olduğu
+      (registry hatasında da düşer), `continue-on-error`/`|| true`/
+      `ignoreGhsas` istisnası olmadığı ve `validate` işinin `quality` başarısını
+      zorunlu tuttuğu tek tek doğrulandı. Kalan bulgular kapıda değil, ölçüm
+      belgesindeydi ve düzeltildi
+      ([önkayıt ikinci eki](DAGITIM_SONRASI_ONKAYIT_2026-09-17.md)).
+
+      **Kapanış için kalan:** yeni SHA'nın hakem turu, main'e taşınması, aynı
+      main SHA'sında push CI'ı ve exact SHA için Gökhan'ın dağıtım onayı.
+      **Bu, F05'in kapatma ölçütüdür** ve F05 dağıtım olmadan kapanmaz.
+
 - [ ] **B4 — internal runtime API public origin'de.** `/api/v1/internal/agent-runtime/*`
       public uygulamanın parçası; koruma sağlam ama rate limit kimlik doğrulamadan
       SONRA uygulanıyor ve worker zaten `127.0.0.1:3000` üzerinden gidiyor. Kapsam:

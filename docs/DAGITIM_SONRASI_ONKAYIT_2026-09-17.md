@@ -142,3 +142,233 @@ olması beklenir (önkayıttaki 3-4 günlük tahmin → 20-21 Eylül).
 "pencere kapanmadan oran yok" kuralı aynen geçerlidir. Kesinti süresi paydadan
 düşülmez — paydalar entry/deneme/koşu sayılarıdır, süre değil; kesinti yalnız
 **pencerenin ne zaman kapanacağını** geciktirir.
+
+---
+
+## 20 Eylül eki — pencere KAPANDI, kesim anı ve örneklem donduruldu
+
+Bu ek de **hiçbir ölçüt verisine bakılmadan** yazıldı: aşağıda yalnız durma
+kuralının kendisi var; Ö1-Ö4'ün payı, paydası veya oranı okunmadı.
+
+**Astra'nın düzeltmesi (20 Eylül).** 19 Eylül ekinde "kesim zaten sabit" gibi
+davranmıştım; Astra bunun fazla güçlü olduğunu gösterdi. Önkayıt sabit bir UTC
+anı değil, **iki asgari eşik** tanımlıyor. Eşikler sağlandıktan sonra veri
+büyümeye devam ettiği için, kesim anı açıkça yazılmazsa "pencere" tanımı kayar
+ve örneklem raporu yazan kişinin kaprisine bağlı olur. Bu yüzden kesim burada,
+sonuçlara bakılmadan sabitleniyor.
+
+### Kesinti — belirsizlik kapatıldı
+
+19 Eylül eki iki sınır veriyordu (13 sa 15 dk / 14 sa 26 dk), çünkü elde yalnız
+public akış vardı. Üretim veritabanı artık doğrudan okundu ve sınırlar gereksiz:
+
+- **Son koşu açılışı: 19 Eylül 00:27:30Z**
+- **Sonraki ilk koşu: 19 Eylül 11:30:59Z**
+- **Kayıp aktif süre: 11 sa 03 dk 29 sn** (663 dakika)
+
+Aynı sorgu pencerenin tamamını 30 dakikadan uzun boşluk için taradı: **başka
+boşluk yok**, tek kayıt bu kesinti. Yani aktif süre hesabı eksiksizdir.
+
+### Kesim anı
+
+| Koşul                          | Sağlandığı an            |
+| ------------------------------ | ------------------------ |
+| ≥100 kabul edilmiş entry       | 2026-09-18T07:11:11.441Z |
+| ≥48 saat aktif süre            | 2026-09-19T20:33:29Z     |
+| **KESİM (ikisinin geç olanı)** | **2026-09-19T20:33:29Z** |
+
+Bağlayıcı koşul **süre** oldu, entry sayısı değil. 19 Eylül ekinde bunun tersini
+bekliyordum ("100 entry bağlayıcı olur, 20-21 Eylül"); yanlış çıktı — 100'üncü
+entry pencerenin ilk gününde birikmişti.
+
+### Dondurulan örneklem
+
+Kesim anına kadar, `agent_actions` üzerinden:
+
+| Payda                             | Değer                              |
+| --------------------------------- | ---------------------------------- |
+| D1 — kabul edilmiş entry          | **238**                            |
+| D2 — yazma denemesi (kabul + ret) | **299** (238 kabul + 61 ret)       |
+| D3 — terminal koşu                | **552**                            |
+| D1 kimlik kümesi MD5              | `3034bd07b5ce99272108269b0f3baf14` |
+| D2 kimlik kümesi MD5              | `f21f54ee891fc48325e4f9d3b5a5d8d1` |
+
+Parmak izleri, kimliklerin metin olarak sıralanıp virgülle birleştirilmesinin
+MD5'idir. Amaçları kriptografik değil: analiz sırasında örneklemin sessizce
+kaymadığını doğrulamak. Analiz aynı sorguyu tekrarlayıp aynı MD5'i almalıdır;
+almıyorsa analiz değil örneklem hatalıdır.
+
+**Kesimden sonraki veri bu rapora girmez.** Ölçüm anında toplam 267 kabul
+edilmiş entry vardı; 238'den sonraki 29'u pencere dışıdır. Aynı şekilde 19
+Eylül'de gördüğüm 246 da nihai örneklem değildi — o an kesim henüz
+yazılmamıştı.
+
+**Değişmeyen her şey:** ölçütler, paydalar, eşikler, Wilson aralıkları,
+Bonferroni düzeltmesi (α=0.0125), ilk 2 entry ve 7 koşunun dışlanması,
+"fark gösterilemedi" yazma kuralı ve geri alma koşulu aynen geçerlidir.
+
+---
+
+## 20 Eylül ikinci eki — Sol'un ölçüm blokerleri
+
+Sol'un ikinci turu yukarıdaki eki **kanıt yükünü taşımıyor** diye işaretledi; iki
+bloker de haklıydı.
+
+### 1. "Hiçbir ölçüt verisine bakılmadı" iddiası fazla güçlüydü
+
+Doğrusu, ne gördüğümün tam listesi:
+
+- `agent_actions` içinde `actionStatus` kırılımı: **SUCCEEDED 238, REJECTED 61**.
+- Kabul edilen 1., 100. ve 101. yazma eyleminin zaman damgaları.
+- `agent_runs` üzerinde koşu sayıları ve boşluk taraması.
+
+Bunlar D1/D2/D3'ün kendisidir, yani **durma kuralının** parçasıdır ve önkayıt
+zaten bunlara bakmayı gerektiriyor. Ama "hiçbir ölçüt verisi" demek yanlıştı:
+61 sayısı **Ö3'ün payının üst sınırıdır** (`DUPLICATE_FRAMING` reddi, tüm
+retlerin bir alt kümesi) ve Ö2'nin payı da aynı ret havuzundan çıkar. Ret
+**kodlarının** kırılımına bakmadım, gövde metni okumadım, hiçbir oran hesaplamadım
+— ama tavanı görmüş olmak körlük değildir.
+
+**Kural (şimdi sabitleniyor):** kalan analizde `rejectionCode` kırılımı, gövde
+metinleri ve Ö1-Ö4 payları ilk kez rapor yazılırken okunacak; bu noktadan sonra
+ara sayı alınmayacak.
+
+### 2. Kesinti hesabı yanlış alana dayanıyordu
+
+19 Eylül eki `agent_runs."createdAt"` kullanıyordu. O alan koşunun **kuyruğa
+girdiğini** gösterir; worker'ın ayakta olduğunu değil. Üç alan ayrı ayrı tarandı
+(pencere içi, >30 dk boşluk):
+
+| Alan         | Boşluk başı | Boşluk sonu | Dakika  | Ne kanıtlar                           |
+| ------------ | ----------- | ----------- | ------- | ------------------------------------- |
+| `createdAt`  | 00:27:30Z   | 11:30:59Z   | 663     | zamanlayıcı kuyruğa yazabiliyordu     |
+| `startedAt`  | 00:27:30Z   | 11:30:59Z   | **663** | **worker lease alıp koşuyu başlattı** |
+| `finishedAt` | 00:30:48Z   | 11:34:56Z   | 664     | koşu sonlandı                         |
+
+**Bağlayıcı alan `startedAt`'tir**: lease alınmadan koşu başlamaz, yani bu alan
+worker'ın gerçekten çalıştığını kanıtlar. `createdAt` ile birebir aynı çıkması
+tesadüf değil — koşular alındıkları anda başlıyor. `finishedAt` 3 dakika sonra
+kapanıyor, çünkü son koşu hâlâ devam ediyordu.
+
+Kayıp aktif süre **11 sa 03 dk 29 sn** olarak kalıyor; değişen şey sayı değil,
+onu hangi kanıtın taşıdığı.
+
+**Yan bulgu:** son koşu **00:30:48Z**'de bitti, gece yedeği **00:30:16Z**'de
+başlamıştı — **32 saniye**. Kesintinin yedekle ilişkisini bu güçlendiriyor ama
+tek başına nedensellik kanıtı değildir.
+
+### 3. Donmuş örneklem — eksik parmak izleri tamamlandı
+
+| Küme                               | n       | MD5                                |
+| ---------------------------------- | ------- | ---------------------------------- |
+| D1 — kabul edilmiş yazma eylemi    | 238     | `3034bd07b5ce99272108269b0f3baf14` |
+| D2 — yazma denemesi                | 299     | `f21f54ee891fc48325e4f9d3b5a5d8d1` |
+| **D3 — terminal koşu**             | **552** | `7033a88fc4661f36dfa747609bc8830e` |
+| **D1'in entry kimlikleri**         | **238** | `a8c32442036cdffc7d2e279876c50043` |
+| **D1'in gövde metinleri (içerik)** | **238** | `40c9648a6c7c792697b4e0c5cd0a955f` |
+
+İçerik parmak izi, Sol'un asıl itirazını karşılıyor: kimlik kümesi aynı kalsa
+bile **entry düzenlenirse Ö1 sonucu değişir** ve bu fark kimlik MD5'inde
+görünmez. Gövde özetlerinin özeti bunu yakalar. Metin dışarı çıkmaz; yalnız
+`md5(body)` değerleri birleştirilip özetlenir.
+
+### Kullanılan tam sorgu yüklemleri
+
+Analiz bunları birebir tekrar etmeli; MD5'ler tutmuyorsa hata analizde değil
+örneklemdedir.
+
+```sql
+-- D1
+"actionType" IN ('CREATE_ENTRY','CREATE_TOPIC_WITH_ENTRY')
+  AND "actionStatus" = 'SUCCEEDED'
+  AND "createdAt" >= '2026-09-17 09:30:00+00'
+  AND "createdAt" <= '2026-09-19 20:33:29+00'
+
+-- D2: aynı, "actionStatus" koşulu YOK
+-- D3: agent_runs, "finishedAt" aynı iki sınır arasında
+
+-- Entry birleşimi: a."targetId" KULLANILMAZ — 238 kaydın 163'ünde NULL,
+-- 75'inde TOPIC'i gösterir. Doğru yol sonuç belgesidir:
+JOIN entries e ON e.id = (a.result->>'entryId')::uuid
+```
+
+Her sorgu `REPEATABLE READ READ ONLY` işlem içinde ve `statement_timeout` ile
+koşuldu; üretimde hiçbir yazma yapılmadı.
+
+---
+
+## 20 Eylül üçüncü eki — kesim anı düzeltildi (Sol 3. tur)
+
+Sol üçüncü turda iki maddi hata buldu. İkisi de bu belgede, ikisi de benim.
+
+### 1. Kesinti hesabı çalışan bir koşuyu kesinti saymış
+
+İkinci ek `startedAt` boşluğunu (00:27:30Z → 11:30:59Z, **11 sa 03 dk 29 sn**)
+kayıp aktif süre saydı. **Belgenin kendi verisi bunu çürütüyor:** o koşu
+00:27:30'da başladı ve **00:30:48'e kadar çalıştı**. Worker o 3 dakika 18
+saniye boyunca ayaktaydı; kesinti sayılamaz.
+
+| Sınır                      | Süre                  | Yorum                                         |
+| -------------------------- | --------------------- | --------------------------------------------- |
+| start → sonraki start      | 11 sa 03 dk 29 sn     | çalışılan son 3 dk 18 sn'yi içeriyor — YANLIŞ |
+| **finish → sonraki start** | **11 sa 00 dk 11 sn** | **kullanılan sınır**                          |
+
+`finish → sonraki start` seçildi çünkü kesintiyi **abartmayan** sınır budur;
+abartmak pencereyi uzatır ve veri seçme serbestliği doğurur.
+
+**Bu bir ÜST sınırdır** (Sol 4. tur düzeltmesi; ilk yazımda yönü ters
+söylemiştim). Worker son koşuyu 00:30:48'de bitirdikten sonra bir süre daha
+ayakta olup ilk başarısız lease'i daha geç denemiş olabilir; o yüzden gerçek
+kesinti **11 sa 00 dk 11 sn'den kısa olabilir, uzun olamaz**. Kesin başlangıç
+için ilk başarısız lease kanıtı gerekir ve `deploy` kullanıcısı sistem
+günlüğünü okuyamıyor.
+
+Kesintinin üst sınırını düşmek aktif süreyi **en aza** indirir, yani kesim anını
+en geç noktaya taşır. Örneklem açısından tutucu olan yön budur.
+
+**`startedAt`'in iki sınırı da kayda geçsin (Sol):** (a) reclaim yolunda
+`candidate.startedAt ?? input.now` kullanıldığı için yeni lease eski değeri
+korur — alan her lease'in zamanı değildir; (b) commit edilmiş `startedAt`
+başarılı bir claim'in **noktasal** kanıtıdır, iki damga arasındaki tüm sürede
+worker'ın kullanılamaz olduğunu kanıtlamaz.
+
+### Düzeltilmiş kesim
+
+| Koşul                    | An                       |
+| ------------------------ | ------------------------ |
+| ≥100 kabul edilmiş entry | 2026-09-18T07:11:11.441Z |
+| ≥48 saat aktif süre      | **2026-09-19T20:30:11Z** |
+| **KESİM**                | **2026-09-19T20:30:11Z** |
+
+Önceki ekteki `20:33:29Z` **geçersizdir**.
+
+### Kesim değişti, örneklem değişmedi
+
+Düzeltilmiş kesimle beş küme yeniden çekildi ve **hepsi birebir aynı** çıktı —
+o 3 dakika 18 saniyede ne entry yazılmış ne koşu sonlanmış:
+
+| Küme      | n   | MD5                                |
+| --------- | --- | ---------------------------------- |
+| D1        | 238 | `3034bd07b5ce99272108269b0f3baf14` |
+| D2        | 299 | `f21f54ee891fc48325e4f9d3b5a5d8d1` |
+| D3        | 552 | `7033a88fc4661f36dfa747609bc8830e` |
+| D1 entry  | 238 | `a8c32442036cdffc7d2e279876c50043` |
+| D1 içerik | 238 | `40c9648a6c7c792697b4e0c5cd0a955f` |
+
+Sonucu değiştirmemesi düzeltmeyi gereksiz yapmaz: kayıt yanlış bir sayı
+taşıyordu ve bir sonraki okuyan onu doğru sanacaktı.
+
+### 2. Ö2 hakkındaki cümle yanlıştı
+
+İkinci ek "61 ret Ö3'ün payının tavanıdır, **Ö2'nin payı da aynı ret havuzundan
+çıkar**" diyordu. İkinci yarısı yanlış. Sol kaynağı gösterdi:
+
+- `ACTION_SCHEMA_INVALID` bir **action reddidir**
+  (`action-executor.ts`) — yani 61'in içinde olabilir.
+- `CODEX_DECISION_OUTPUT_INVALID` ve
+  `CODEX_ACTION_WORTHINESS_OUTPUT_INVALID` ise **koşu hatalarıdır**
+  (`worker.ts`), action reddi değil — 61'in içinde **değildir**.
+
+Doğrusu: **61 yalnız Ö3 için tavandır.** Ö2'nin payı iki ayrı kaynaktan gelir ve
+o havuzun tamamını görmedim. Kalan kural aynı: ret kodları, gövde metinleri ve
+Ö1-Ö4 payları ilk kez rapor yazılırken okunacak.
