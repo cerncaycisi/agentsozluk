@@ -294,3 +294,76 @@ JOIN entries e ON e.id = (a.result->>'entryId')::uuid
 
 Her sorgu `REPEATABLE READ READ ONLY` işlem içinde ve `statement_timeout` ile
 koşuldu; üretimde hiçbir yazma yapılmadı.
+
+---
+
+## 20 Eylül üçüncü eki — kesim anı düzeltildi (Sol 3. tur)
+
+Sol üçüncü turda iki maddi hata buldu. İkisi de bu belgede, ikisi de benim.
+
+### 1. Kesinti hesabı çalışan bir koşuyu kesinti saymış
+
+İkinci ek `startedAt` boşluğunu (00:27:30Z → 11:30:59Z, **11 sa 03 dk 29 sn**)
+kayıp aktif süre saydı. **Belgenin kendi verisi bunu çürütüyor:** o koşu
+00:27:30'da başladı ve **00:30:48'e kadar çalıştı**. Worker o 3 dakika 18
+saniye boyunca ayaktaydı; kesinti sayılamaz.
+
+| Sınır                      | Süre                  | Yorum                                         |
+| -------------------------- | --------------------- | --------------------------------------------- |
+| start → sonraki start      | 11 sa 03 dk 29 sn     | çalışılan son 3 dk 18 sn'yi içeriyor — YANLIŞ |
+| **finish → sonraki start** | **11 sa 00 dk 11 sn** | **kullanılan sınır**                          |
+
+`finish → sonraki start` seçildi çünkü kesintiyi **abartmayan** sınır budur;
+abartmak pencereyi uzatır ve veri seçme serbestliği doğurur.
+
+**Bu bir üst sınır değil, alt sınırdır.** Kesintinin gerçek başlangıcı için ilk
+başarısız lease denemesinin kanıtı gerekir; `deploy` kullanıcısı sistem
+günlüğünü okuyamadığı için o kanıt elde yok. Yani gerçek kesinti 11 sa 00 dk
+11 sn'den uzun olabilir, kısa olamaz.
+
+**`startedAt`'in iki sınırı da kayda geçsin (Sol):** (a) reclaim yolunda
+`candidate.startedAt ?? input.now` kullanıldığı için yeni lease eski değeri
+korur — alan her lease'in zamanı değildir; (b) commit edilmiş `startedAt`
+başarılı bir claim'in **noktasal** kanıtıdır, iki damga arasındaki tüm sürede
+worker'ın kullanılamaz olduğunu kanıtlamaz.
+
+### Düzeltilmiş kesim
+
+| Koşul                    | An                       |
+| ------------------------ | ------------------------ |
+| ≥100 kabul edilmiş entry | 2026-09-18T07:11:11.441Z |
+| ≥48 saat aktif süre      | **2026-09-19T20:30:11Z** |
+| **KESİM**                | **2026-09-19T20:30:11Z** |
+
+Önceki ekteki `20:33:29Z` **geçersizdir**.
+
+### Örneklem: sayı değişti, veri değişmedi
+
+Düzeltilmiş kesimle beş küme yeniden çekildi ve **hepsi birebir aynı** çıktı —
+o 3 dakika 18 saniyede ne entry yazılmış ne koşu sonlanmış:
+
+| Küme      | n   | MD5                                |
+| --------- | --- | ---------------------------------- |
+| D1        | 238 | `3034bd07b5ce99272108269b0f3baf14` |
+| D2        | 299 | `f21f54ee891fc48325e4f9d3b5a5d8d1` |
+| D3        | 552 | `7033a88fc4661f36dfa747609bc8830e` |
+| D1 entry  | 238 | `a8c32442036cdffc7d2e279876c50043` |
+| D1 içerik | 238 | `40c9648a6c7c792697b4e0c5cd0a955f` |
+
+Sonucu değiştirmemesi düzeltmeyi gereksiz yapmaz: kayıt yanlış bir sayı
+taşıyordu ve bir sonraki okuyan onu doğru sanacaktı.
+
+### 2. Ö2 hakkındaki cümle yanlıştı
+
+İkinci ek "61 ret Ö3'ün payının tavanıdır, **Ö2'nin payı da aynı ret havuzundan
+çıkar**" diyordu. İkinci yarısı yanlış. Sol kaynağı gösterdi:
+
+- `ACTION_SCHEMA_INVALID` bir **action reddidir**
+  (`action-executor.ts`) — yani 61'in içinde olabilir.
+- `CODEX_DECISION_OUTPUT_INVALID` ve
+  `CODEX_ACTION_WORTHINESS_OUTPUT_INVALID` ise **koşu hatalarıdır**
+  (`worker.ts`), action reddi değil — 61'in içinde **değildir**.
+
+Doğrusu: **61 yalnız Ö3 için tavandır.** Ö2'nin payı iki ayrı kaynaktan gelir ve
+o havuzun tamamını görmedim. Kalan kural aynı: ret kodları, gövde metinleri ve
+Ö1-Ö4 payları ilk kez rapor yazılırken okunacak.
