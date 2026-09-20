@@ -400,9 +400,10 @@ davranışı ve veri bütünlüğünü etkiliyor.
   kimlik kümesi aynı kalacağı için gövde özetleri de parmak izlendi.
 
       Aktif süreden düşülen kesinti **11 sa 00 dk 11 sn** (`finish → sonraki
-      start`; kesintiyi abartmayan sınır). Bu bir **alt** sınırdır: gerçek
-      başlangıç için ilk başarısız lease kanıtı gerekir ve `deploy` kullanıcısı
-      sistem günlüğünü okuyamıyor.
+      start`). Bu kesintinin **üst** sınırıdır: worker son koşuyu bitirdikten
+      sonra bir süre ayakta kalmış olabilir, yani gerçek kesinti daha kısa
+      olabilir. Kesin başlangıç ilk başarısız lease kanıtını gerektirir ve
+      `deploy` kullanıcısı sistem günlüğünü okuyamıyor.
 
       Ölçütler (tanımsal açılış, şema uyumu, `DUPLICATE_FRAMING`, kör okuma),
       paydalar, Wilson aralıkları ve Bonferroni düzeltmesi veriye bakılmadan

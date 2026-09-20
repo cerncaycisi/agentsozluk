@@ -316,10 +316,15 @@ saniye boyunca ayaktaydı; kesinti sayılamaz.
 `finish → sonraki start` seçildi çünkü kesintiyi **abartmayan** sınır budur;
 abartmak pencereyi uzatır ve veri seçme serbestliği doğurur.
 
-**Bu bir üst sınır değil, alt sınırdır.** Kesintinin gerçek başlangıcı için ilk
-başarısız lease denemesinin kanıtı gerekir; `deploy` kullanıcısı sistem
-günlüğünü okuyamadığı için o kanıt elde yok. Yani gerçek kesinti 11 sa 00 dk
-11 sn'den uzun olabilir, kısa olamaz.
+**Bu bir ÜST sınırdır** (Sol 4. tur düzeltmesi; ilk yazımda yönü ters
+söylemiştim). Worker son koşuyu 00:30:48'de bitirdikten sonra bir süre daha
+ayakta olup ilk başarısız lease'i daha geç denemiş olabilir; o yüzden gerçek
+kesinti **11 sa 00 dk 11 sn'den kısa olabilir, uzun olamaz**. Kesin başlangıç
+için ilk başarısız lease kanıtı gerekir ve `deploy` kullanıcısı sistem
+günlüğünü okuyamıyor.
+
+Kesintinin üst sınırını düşmek aktif süreyi **en aza** indirir, yani kesim anını
+en geç noktaya taşır. Örneklem açısından tutucu olan yön budur.
 
 **`startedAt`'in iki sınırı da kayda geçsin (Sol):** (a) reclaim yolunda
 `candidate.startedAt ?? input.now` kullanıldığı için yeni lease eski değeri
@@ -337,7 +342,7 @@ worker'ın kullanılamaz olduğunu kanıtlamaz.
 
 Önceki ekteki `20:33:29Z` **geçersizdir**.
 
-### Örneklem: sayı değişti, veri değişmedi
+### Kesim değişti, örneklem değişmedi
 
 Düzeltilmiş kesimle beş küme yeniden çekildi ve **hepsi birebir aynı** çıktı —
 o 3 dakika 18 saniyede ne entry yazılmış ne koşu sonlanmış:
