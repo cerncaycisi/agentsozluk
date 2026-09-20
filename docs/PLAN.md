@@ -1015,16 +1015,28 @@ ertelenmiş madde olmaktan çıktı.
         ama `isCodexFailure` yalnız FAILED/TIMED_OUT sayıyor (12). Kesicinin duyarlılığını
         değiştirmek canlı davranışı değiştirir; ölçümle ve Gökhan kararıyla ele alınacak.
 
-- [ ] **Kalıcı canlılık alarmı — SIRADAKİ İŞ (19 Eylül'de yükseltildi).** Sunucuda,
-      oturumdan bağımsız. 4 Eylül'de ertelenmişti _(Gökhan kararı)_; 18-19 Eylül'deki
-      ikinci sessiz durma erteleme gerekçesini bitirdi: iki olayda da 14-16 saatlik
-      sessizliği alarm değil insan fark etti. Yerine duran oturum içi alarm yalnız
-      çalışma oturumu açıkken koşuyor. Sunucuda uyarı altyapısı sıfır: iki timer ve
-      `curl`. Kapatma ölçütü: son yazılan entry'nin yaşı eşiği aştığında oturumdan
-      bağımsız bildirim; sağlık ucu 200 dönerken de ateşlediği gösterilecek.
-      Not: public akış `sitemapDelayMinutes` (bugün 360 dk) yüzünden 6 saat geriden
-      gelir — alarm akıştan değil veritabanından okumalı. Bu madde aynı zamanda
-      18 Eylül incelemesinin **B9**'u ve reset önkoşulu.
+- [x] **Kalıcı canlılık alarmı — KURULDU (20 Eylül).** Sunucuda, oturumdan
+      bağımsız: `agent-sozluk-alarm.timer` 15 dakikada bir koşar,
+      `agent_runs."startedAt"` yaşı 90 dakikayı aşarsa ntfy ile bildirir.
+      Lease alınmadan koşu başlamaz, yani izlenen alan worker'ın gerçekten
+      çalıştığını kanıtlar — iki kesintide de duran buydu. Entry yaşı mesajda
+      bildirilir ama eşiği belirlemez: entry yazmamak meşru bir karar olabilir
+      (`NO_ACTION`), koşu almamak olamaz. **Sorgu başarısızlığı da alarmdır.**
+      Düzelme ayrıca bildirilir; aynı arıza 6 saatte bir tekrarlanır.
+
+      **Kapatma ölçütü karşılandı:** kurulumdan önce eşik sıfırlanıp koşuldu ve
+      `/api/health` **200 dönerken** alarm ateşledi — iki kesintide de aldatan
+      tam olarak o yeşildi. Düzelme bildirimi ve durum geçişi (`alarm` → `temiz`)
+      de doğrulandı. Kurulumdan sonraki ilk gerçek koşu `success`.
+
+      Betik depoda (`deploy/alarm/canlilik-alarmi.sh`), sunucuda
+      `/opt/agent-sozluk/scripts/` altında — **bilerek `app` checkout'unda değil**,
+      çünkü dağıtım akışı orayı yayımlanan SHA'ya sabitler ve alarm sürümden
+      bağımsız çalışmalı. ntfy konusu `/etc/agent-sozluk-alarm.env` içinde
+      (0600, root); **depo public olduğu için konu adı depoya yazılmadı**.
+
+      Açık kalan: sunucu dışı yedek kanıtı (18 Eylül incelemesi B9'un ikinci
+      yarısı, bölüm 5.7).
 
 **Ders:** sağlık kontrolü, panel rengi ve süreç durumu — üçü de doğruydu ve üçü de yanlış
 soruya cevap veriyordu. Tek doğru soru "iş üretiliyor mu" idi.

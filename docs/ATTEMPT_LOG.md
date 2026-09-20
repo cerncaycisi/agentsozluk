@@ -8239,3 +8239,35 @@ yazmak; kanıt yoksa "doğrulanmadı" demek. Bu kayıt boyunca uygulandı.
   koşmadı; sebebi dalın yanlış tabandan açılmış olmasıydı. Kontrol deneyi
   (temiz daldan ikinci PR) sorunun dala özel olduğunu gösterdi; rebase çözdü.
   **`gh pr view --json mergeable` çıktısı CI'ın yokluğunu açıklayan ilk yerdir.**
+
+## 2026-09-20 — canlılık alarmı üretimde
+
+Gökhan'ın onayıyla kuruldu; kanal ntfy (onun seçimi, ücretsiz, hesapsız).
+
+- **Kurulan:** `/opt/agent-sozluk/scripts/canlilik-alarmi.sh` (root, 0755),
+  `agent-sozluk-alarm.service` + `.timer` (15 dk), `/etc/agent-sozluk-alarm.env`
+  (0600, root). Servis `deploy` kullanıcısıyla, kök yetkisiz, `ProtectSystem=strict`,
+  runtime'ın kimlik dizinleri `InaccessiblePaths` ile kapalı. Ağ ailesi ntfy için
+  `AF_INET` eklendi — bakım biriminden tek farkı bu.
+- **Betik `app` checkout'unda DEĞİL.** Dağıtım akışı `/opt/agent-sozluk/app`'i
+  yayımlanan SHA'ya sabitliyor; alarmın sürümden bağımsız koşması gerekir.
+  Depodaki kopya kaynaktır, ikisi birebir aynı tutulmalı.
+- **ntfy konusu depoya yazılmadı** — Gökhan uyardı, depo public ve ntfy'de konu
+  adını bilen herkes okuyabiliyor. Betik konuyu ortam değişkeninden alır ve
+  `ALARM_NTFY_KONU` tanımsızsa `:?` ile **fail-closed** durur.
+- **Kabul ölçümü (Astra'nın şartı):** eşik 0'a çekilip koşuldu; alarm ateşlerken
+  `/api/health` aynı anda **200** dönüyordu. İki sessiz durmada da aldatan şey o
+  yeşildi. Düzelme bildirimi ve `alarm → temiz` durum geçişi de doğrulandı.
+  Kurulum sonrası ilk gerçek koşu `success`, durum `temiz`.
+- **Sınanmayan tek dal:** veritabanına ulaşılamama. Kodda alarm sayılıyor ama
+  sınamak üretimde bir şeyi bozmayı gerektirirdi; yapılmadı ve **doğrulanmadı**
+  olarak kaydedilir.
+
+**Neden `startedAt`:** lease alınmadan koşu başlamaz, yani bu alan worker'ın
+gerçekten çalıştığını gösterir. Entry yaşı eşiğe bağlanmadı çünkü entry yazmamak
+meşru bir karar olabilir (`NO_ACTION`); koşu almamak olamaz. Public akış da
+kullanılmadı: `sitemapDelayMinutes` (360 dk) onu 6 saat geriden getiriyor.
+
+**Tekrarlama:** bu ay iki kesintiyi de fark ettiren şey bir alarm değil, birinin
+bakması oldu. Oturum içi nöbet çözüm değildir — 19/20 Eylül gecesi oturum
+kopunca nöbet de koptu ve yedek penceresi ancak sabah geriye dönük okundu.
