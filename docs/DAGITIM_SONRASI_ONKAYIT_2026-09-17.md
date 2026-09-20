@@ -206,3 +206,91 @@ yazılmamıştı.
 **Değişmeyen her şey:** ölçütler, paydalar, eşikler, Wilson aralıkları,
 Bonferroni düzeltmesi (α=0.0125), ilk 2 entry ve 7 koşunun dışlanması,
 "fark gösterilemedi" yazma kuralı ve geri alma koşulu aynen geçerlidir.
+
+---
+
+## 20 Eylül ikinci eki — Sol'un ölçüm blokerleri
+
+Sol'un ikinci turu yukarıdaki eki **kanıt yükünü taşımıyor** diye işaretledi; iki
+bloker de haklıydı.
+
+### 1. "Hiçbir ölçüt verisine bakılmadı" iddiası fazla güçlüydü
+
+Doğrusu, ne gördüğümün tam listesi:
+
+- `agent_actions` içinde `actionStatus` kırılımı: **SUCCEEDED 238, REJECTED 61**.
+- Kabul edilen 1., 100. ve 101. yazma eyleminin zaman damgaları.
+- `agent_runs` üzerinde koşu sayıları ve boşluk taraması.
+
+Bunlar D1/D2/D3'ün kendisidir, yani **durma kuralının** parçasıdır ve önkayıt
+zaten bunlara bakmayı gerektiriyor. Ama "hiçbir ölçüt verisi" demek yanlıştı:
+61 sayısı **Ö3'ün payının üst sınırıdır** (`DUPLICATE_FRAMING` reddi, tüm
+retlerin bir alt kümesi) ve Ö2'nin payı da aynı ret havuzundan çıkar. Ret
+**kodlarının** kırılımına bakmadım, gövde metni okumadım, hiçbir oran hesaplamadım
+— ama tavanı görmüş olmak körlük değildir.
+
+**Kural (şimdi sabitleniyor):** kalan analizde `rejectionCode` kırılımı, gövde
+metinleri ve Ö1-Ö4 payları ilk kez rapor yazılırken okunacak; bu noktadan sonra
+ara sayı alınmayacak.
+
+### 2. Kesinti hesabı yanlış alana dayanıyordu
+
+19 Eylül eki `agent_runs."createdAt"` kullanıyordu. O alan koşunun **kuyruğa
+girdiğini** gösterir; worker'ın ayakta olduğunu değil. Üç alan ayrı ayrı tarandı
+(pencere içi, >30 dk boşluk):
+
+| Alan         | Boşluk başı | Boşluk sonu | Dakika  | Ne kanıtlar                           |
+| ------------ | ----------- | ----------- | ------- | ------------------------------------- |
+| `createdAt`  | 00:27:30Z   | 11:30:59Z   | 663     | zamanlayıcı kuyruğa yazabiliyordu     |
+| `startedAt`  | 00:27:30Z   | 11:30:59Z   | **663** | **worker lease alıp koşuyu başlattı** |
+| `finishedAt` | 00:30:48Z   | 11:34:56Z   | 664     | koşu sonlandı                         |
+
+**Bağlayıcı alan `startedAt`'tir**: lease alınmadan koşu başlamaz, yani bu alan
+worker'ın gerçekten çalıştığını kanıtlar. `createdAt` ile birebir aynı çıkması
+tesadüf değil — koşular alındıkları anda başlıyor. `finishedAt` 3 dakika sonra
+kapanıyor, çünkü son koşu hâlâ devam ediyordu.
+
+Kayıp aktif süre **11 sa 03 dk 29 sn** olarak kalıyor; değişen şey sayı değil,
+onu hangi kanıtın taşıdığı.
+
+**Yan bulgu:** son koşu **00:30:48Z**'de bitti, gece yedeği **00:30:16Z**'de
+başlamıştı — **32 saniye**. Kesintinin yedekle ilişkisini bu güçlendiriyor ama
+tek başına nedensellik kanıtı değildir.
+
+### 3. Donmuş örneklem — eksik parmak izleri tamamlandı
+
+| Küme                               | n       | MD5                                |
+| ---------------------------------- | ------- | ---------------------------------- |
+| D1 — kabul edilmiş yazma eylemi    | 238     | `3034bd07b5ce99272108269b0f3baf14` |
+| D2 — yazma denemesi                | 299     | `f21f54ee891fc48325e4f9d3b5a5d8d1` |
+| **D3 — terminal koşu**             | **552** | `7033a88fc4661f36dfa747609bc8830e` |
+| **D1'in entry kimlikleri**         | **238** | `a8c32442036cdffc7d2e279876c50043` |
+| **D1'in gövde metinleri (içerik)** | **238** | `40c9648a6c7c792697b4e0c5cd0a955f` |
+
+İçerik parmak izi, Sol'un asıl itirazını karşılıyor: kimlik kümesi aynı kalsa
+bile **entry düzenlenirse Ö1 sonucu değişir** ve bu fark kimlik MD5'inde
+görünmez. Gövde özetlerinin özeti bunu yakalar. Metin dışarı çıkmaz; yalnız
+`md5(body)` değerleri birleştirilip özetlenir.
+
+### Kullanılan tam sorgu yüklemleri
+
+Analiz bunları birebir tekrar etmeli; MD5'ler tutmuyorsa hata analizde değil
+örneklemdedir.
+
+```sql
+-- D1
+"actionType" IN ('CREATE_ENTRY','CREATE_TOPIC_WITH_ENTRY')
+  AND "actionStatus" = 'SUCCEEDED'
+  AND "createdAt" >= '2026-09-17 09:30:00+00'
+  AND "createdAt" <= '2026-09-19 20:33:29+00'
+
+-- D2: aynı, "actionStatus" koşulu YOK
+-- D3: agent_runs, "finishedAt" aynı iki sınır arasında
+
+-- Entry birleşimi: a."targetId" KULLANILMAZ — 238 kaydın 163'ünde NULL,
+-- 75'inde TOPIC'i gösterir. Doğru yol sonuç belgesidir:
+JOIN entries e ON e.id = (a.result->>'entryId')::uuid
+```
+
+Her sorgu `REPEATABLE READ READ ONLY` işlem içinde ve `statement_timeout` ile
+koşuldu; üretimde hiçbir yazma yapılmadı.

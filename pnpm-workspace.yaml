@@ -24,10 +24,13 @@ onlyBuiltDependencies:
 #              derlemesi yerelde KOŞULMADI (bu VM 964 MB); onların kanıtı CI'dan
 #              gelir. Sol'un 20 Eylül salt okunur incelemesi çalışma zamanı
 #              kırılması bulmadı: `@prisma/config` yalnız `deepmerge` export'unu
-#              `c12`'ye geçiriyor, 8.0.0'ın kırıcı farkları (deepmergeInto alias
-#              mutasyonu, Map derin birleştirme, maxDepth) bu yolda kullanılmıyor
-#              ve depoda `prisma.config.*` yok. Prisma yükseltmesi geldiğinde bu
-#              satır KALDIRILMALI.
+#              `c12`'ye geçiriyor ve depoda `prisma.config.*` yok, dolayısıyla
+#              çalışma zamanı etkisi gösterilemedi. DİKKAT (Sol 2. tur):
+#              `maxDepth` bir v8 özelliğidir ve varsayılan sınır HER `deepmerge`
+#              çağrısında kurulup kontrol edilir — yani "bu yolda hiç
+#              kullanılmıyor" demek fazla kesin olurdu. Kanıt "kırılma
+#              görülmedi" düzeyindedir, "kırılamaz" değil. Prisma yükseltmesi
+#              geldiğinde bu satır KALDIRILMALI.
 #   sharp    : libheif zafiyetleri (>=0.35.4)
 overrides:
   postcss: 8.5.28

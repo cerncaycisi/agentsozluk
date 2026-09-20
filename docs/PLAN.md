@@ -1080,7 +1080,7 @@ girmek israf.
       değilken "tümü" mevcut durumdur ama linki `?sort=oldest` üretiyor; o adres
       `noindex` ve robots'ta engelli. Temiz sayfadan engelli ikizine link = tarama
       israfı. Tek satırlık düzeltme, ölçüm gerektirmez.
-- [~] **B1 — kritik bağımlılık uyarıları: paket PR #137'de, KAPI EKSİK.**
+- [~] **B1 — kritik bağımlılık uyarıları: paket ve kapı PR #137'de, dağıtım bekliyor.**
   `pnpm audit` (`5022a8b` lockfile'ı) 2 critical, 21 high, 4 moderate veriyordu;
   iki kritik `next`'in Image Optimization API'sindeydi (AVIF RCE, yama ≥15.5.24).
 
@@ -1091,19 +1091,27 @@ girmek israf.
       (postcss 8.5.28, nanoid, browserslist, baseline-browser-mapping) ve
       `deepmerge-ts 8.0.0` eklendi. Yerelde `pnpm audit --prod` artık **temiz**.
 
-      **Sol hakem turu (20 Eylül, salt okunur): NO-GO.** Bağımlılık değişikliklerinde
-      çalışma zamanı kırılması bulunamadı — `deepmerge-ts`'in kırıcı farkları
-      Prisma'nın kullandığı yolda değil, `next/image` gerçekten kullanılmıyor,
-      Next'in iç bot regex'i iki sürümde bayt bayt aynı, postcss zinciri uyumlu.
-      Blokaj tek şey: **CI kapısı (`pnpm audit --prod --audit-level=high`) yok.**
-      `.github/workflows` altına yazmak `workflow` OAuth yetkisi istiyor ve
-      oturumun jetonunda o yok. Dependabot tek başına eşdeğer değil: bildirim
-      gecikebilir, gözden kaçabilir, merge edilmeyebilir; gerilemeyi durduran
-      şey kapıdır.
+      **Sol birinci tur (20 Eylül): NO-GO** — bağımlılıklarda çalışma zamanı
+      kırılması bulunamadı (`deepmerge-ts`'in kırıcı farkları Prisma'nın
+      kullandığı yolda değil, `next/image` gerçekten kullanılmıyor, Next'in iç
+      bot regex'i iki sürümde bayt bayt aynı, postcss zinciri uyumlu), ama CI
+      kapısı yoktu.
 
-      **Kapanış için kalan:** (a) `workflow` yetkisi + kapı commit'i, (b) Sol'un
-      ikinci turu, (c) dağıtım. **Bu, F05'in kapatma ölçütüdür** ve kapı olmadan
-      F05 kapanmaz — bugün ağaç temiz ama temiz olmaktan çıktığında uyaran yok.
+      **Kapı eklendi (`d26385b`).** Gökhan `workflow` yetkisini verdi.
+      CI `35503728757` head `9402a5d` üzerinde **7/7 PASS** ve `quality`
+      log'unda adım gerçekten koştu: `pnpm audit --prod --audit-level=high`
+      → `No known vulnerabilities found`.
+
+      **Sol ikinci tur (20 Eylül): kapının kendisi PASS.** Fail-closed olduğu
+      (registry hatasında da düşer), `continue-on-error`/`|| true`/
+      `ignoreGhsas` istisnası olmadığı ve `validate` işinin `quality` başarısını
+      zorunlu tuttuğu tek tek doğrulandı. Kalan bulgular kapıda değil, ölçüm
+      belgesindeydi ve düzeltildi
+      ([önkayıt ikinci eki](DAGITIM_SONRASI_ONKAYIT_2026-09-17.md)).
+
+      **Kapanış için kalan:** yeni SHA'nın hakem turu, main'e taşınması, aynı
+      main SHA'sında push CI'ı ve exact SHA için Gökhan'ın dağıtım onayı.
+      **Bu, F05'in kapatma ölçütüdür** ve F05 dağıtım olmadan kapanmaz.
 
 - [ ] **B4 — internal runtime API public origin'de.** `/api/v1/internal/agent-runtime/*`
       public uygulamanın parçası; koruma sağlam ama rate limit kimlik doğrulamadan
