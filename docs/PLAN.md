@@ -392,26 +392,36 @@ davranışı ve veri bütünlüğünü etkiliyor.
 
 ## 4. Sıra 4 — davranış ölçümü
 
-- [~] **Üslup paragrafı ölçümü — PENCERE KAPANDI, rapor yazılmadı.** `489cb83`
-  dağıtımı sonrası başlangıç `2026-09-17T09:30:00Z`; iki eşik de sağlandı.
-  **Kesim: `2026-09-19T20:30:11Z`** (bağlayıcı koşul süre oldu; 100. kabul
-  edilmiş entry pencerenin ilk gününde birikmişti). Donmuş örneklem
-  **D1 238, D2 299, D3 552**, beş MD5 parmak iziyle sabit — entry düzenlense
-  kimlik kümesi aynı kalacağı için gövde özetleri de parmak izlendi.
+- [x] **Üslup paragrafı ölçümü — RAPOR YAZILDI, geri alma yok (20 Eylül).**
+      Kesim `2026-09-19T20:30:11Z`; D1 238, D2 299, D3 552, parmak izleriyle
+      donmuş örneklem. Sonuç:
+      [ölçüm raporu](USLUP_PARAGRAFI_OLCUM_SONUCU_2026-09-20.md).
 
-      Aktif süreden düşülen kesinti **11 sa 00 dk 11 sn** (`finish → sonraki
-      start`). Bu kesintinin **üst** sınırıdır: worker son koşuyu bitirdikten
-      sonra bir süre ayakta kalmış olabilir, yani gerçek kesinti daha kısa
-      olabilir. Kesin başlangıç ilk başarısız lease kanıtını gerektirir ve
-      `deploy` kullanıcısı sistem günlüğünü okuyamıyor.
+      **Ö1 tanımsal açılış %18,05 → %2,52** (p=1,1×10⁻⁹, Bonferroni eşiğini
+      geçer). **Ama bu bir manipülasyon kontrolüdür:** paragrafın kendisi
+      "Başlığı tekrar edip tanım kurma" diyor, yani ölçüt talimatın tutulduğunu
+      gösterir, yazının iyileştiğini değil. Düşüşün tamamına yakını başlık
+      tekrarından geliyor (k1 %77,6 → %24,8).
+      **Ö3** `DUPLICATE_FRAMING` %11,26 → %7,69, p=0,062 — **fark
+      gösterilemedi** (korkulan yön artıştı, artış yok).
+      **Ö2 ölçülemez çıktı:** payına bağlanan `ACTION_SCHEMA_INVALID` tüm
+      tarihte **0** kez, `CODEX_*_OUTPUT_INVALID` 4 kez gerçekleşmiş. Madde 32
+      kapısının tekrarı — önkayıt yazılırken taban sıklığına bakılmalıydı.
+      **Ö4 (kör okuma) KOŞULMADI:** insan korpusu bu oturumda erişilebilir
+      değildi; uydurma ikame yapılmadı, açık madde.
 
-      Ölçütler (tanımsal açılış, şema uyumu, `DUPLICATE_FRAMING`, kör okuma),
-      paydalar, Wilson aralıkları ve Bonferroni düzeltmesi veriye bakılmadan
-      sabitlendi. **Şu ana dek yalnız durma kuralı okundu**; ret kodları, gövde
-      metinleri ve Ö1-Ö4 payları ilk kez rapor yazılırken okunacak. Kesimden
-      sonraki veri rapora girmez. Üç hakem turu bu belgenin kendisinde iki
-      aritmetik ve iki aşırı iddia düzeltti.
-      [Önkayıt ve üç ek](DAGITIM_SONRASI_ONKAYIT_2026-09-17.md).
+      Geri alma koşulları (Ö1 kötüleşir / Ö2-Ö3 artar) gerçekleşmedi; paragraf
+      üretimde kalıyor.
+
+- [ ] **Ö4 kör okuma — koşulmadı.** Gerekli: konu-eşleştirilmiş gerçek
+      ekşi/normalsözlük entry kümesi (15 Eylül'de 36 entry kullanılmıştı, elde
+      yok). Eşleştirme ve karıştırma yürütücüde, karar hakemde; büyük/küçük harf
+      normalize edilir.
+
+- [ ] **`CODEX_TIMEOUT` iki katına çıktı — nedeni ölçülmedi.** D3 paydasında
+      %3,00 → %6,16 (p=1,3×10⁻⁴). Önkayıt bunu Ö2'den açıkça dışlamıştı, karara
+      girmedi. Üslup paragrafına atfedilemez: aynı dağıtımda şerit 2→1 indi.
+      Yük mü, başka bir şey mi — ayrıca ölçülecek.
 
 - [~] **Entry kalitesi: "kaynağım şunu göstermiyor" kuyruğu — NEDENİ BULUNDU (üretim izi).**
   _(10 Eylül Gökhan bildirdi, 11 Eylül ölçüldü, 12 Eylül üretim izi; kanıt
