@@ -1,7 +1,13 @@
 # Bağımlılık uyarılarının kendiliğinden görünmesi için — 19 Eylül 2026.
 # Gerekçe: 18 Eylül incelemesi B1. İki kritik `next` uyarısı, biri bakmaya
-# karar verene kadar üç hafta görülmeden durdu. CI'daki `pnpm audit --prod`
-# kapısı yayılmayı durdurur; bu dosya yamanın geldiğini haber verir.
+# karar verene kadar üç hafta görülmeden durdu. Bu dosya yamanın geldiğini
+# haber verir.
+#
+# TEK BAŞINA YETMEZ ve şu an tek başına duruyor: asıl kapı `quality` işine
+# eklenecek `pnpm audit --prod --audit-level=high` ve o HENÜZ YOK (bu oturumun
+# GitHub jetonunda `workflow` yetkisi olmadığı için ayrı commit'e kaldı).
+# Dependabot bildirimi gecikebilir, gözden kaçabilir veya merge edilmeyebilir;
+# gerilemeyi durduran şey kapıdır. `PLAN.md` B1/F05 kapanışı o kapıya bağlıdır.
 version: 2
 updates:
   - package-ecosystem: npm

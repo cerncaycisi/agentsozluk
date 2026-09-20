@@ -19,10 +19,15 @@ onlyBuiltDependencies:
 #   browserslist / baseline-browser-mapping : styled-jsx zinciri (>=4.28.7, >=2.11.0)
 #   deepmerge-ts : özyinelemeli nesne birleştirmede yığın tükenmesi (>=8.0.0).
 #              `@prisma/config` 7.1.5'e TAM pin koyuyor, yani bu override
-#              Prisma'nın sınamadığı bir majör sürüm. Yerelde `prisma generate`,
-#              `prisma validate`, birim testleri ve üretim derlemesi bu
-#              override ile koşuldu; kırılma görülmedi. Prisma yükseltmesi
-#              geldiğinde bu satır KALDIRILMALI.
+#              Prisma'nın sınamadığı bir majör sürüm. YERELDE koşan: `prisma
+#              generate` ve `prisma validate`. Birim testleri ve üretim
+#              derlemesi yerelde KOŞULMADI (bu VM 964 MB); onların kanıtı CI'dan
+#              gelir. Sol'un 20 Eylül salt okunur incelemesi çalışma zamanı
+#              kırılması bulmadı: `@prisma/config` yalnız `deepmerge` export'unu
+#              `c12`'ye geçiriyor, 8.0.0'ın kırıcı farkları (deepmergeInto alias
+#              mutasyonu, Map derin birleştirme, maxDepth) bu yolda kullanılmıyor
+#              ve depoda `prisma.config.*` yok. Prisma yükseltmesi geldiğinde bu
+#              satır KALDIRILMALI.
 #   sharp    : libheif zafiyetleri (>=0.35.4)
 overrides:
   postcss: 8.5.28
