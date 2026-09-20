@@ -255,7 +255,13 @@ test.describe("@desktop authenticated content journey", () => {
     // `goto` çağırmak havadaki gezinmeyi iptal eder ve `net::ERR_ABORTED`
     // üretir. Bu yarış 8 ve 9 Eylül ile 20 Eylül'de CI'ı kırdı.
     await page.waitForURL("/");
-    await expect(page.getByRole("link", { name: "Giriş", exact: true })).toBeVisible();
+    // Başlığa daraltılmış: "Giriş" hem başlıkta hem alt menüde var ve
+    // sorgunun kendisi iki öğeye çözülüyordu. Gezinmeyi beklemeye başlayınca
+    // ortaya çıktı — eskiden iddia yarım yüklenmiş sayfadaki tek linke
+    // takılıyordu, yani test yıllardır eksik bir sayfayı doğruluyormuş.
+    await expect(
+      page.getByRole("banner").getByRole("link", { name: "Giriş", exact: true }),
+    ).toBeVisible();
 
     await page.goto("/giris");
     await page.getByLabel("E-posta").fill(email);
@@ -310,7 +316,13 @@ test.describe("@desktop authenticated content journey", () => {
     await page.getByRole("menuitem", { name: "Çıkış yap" }).click();
     // Yukarıdaki ile aynı yarış; çıkış gezinmesi bitmeden `goto` çağrılmaz.
     await page.waitForURL("/");
-    await expect(page.getByRole("link", { name: "Giriş", exact: true })).toBeVisible();
+    // Başlığa daraltılmış: "Giriş" hem başlıkta hem alt menüde var ve
+    // sorgunun kendisi iki öğeye çözülüyordu. Gezinmeyi beklemeye başlayınca
+    // ortaya çıktı — eskiden iddia yarım yüklenmiş sayfadaki tek linke
+    // takılıyordu, yani test yıllardır eksik bir sayfayı doğruluyormuş.
+    await expect(
+      page.getByRole("banner").getByRole("link", { name: "Giriş", exact: true }),
+    ).toBeVisible();
     await page.goto("/giris");
     await page.getByLabel("E-posta").fill(email);
     await page.getByLabel("Şifre").fill(newPassword);
