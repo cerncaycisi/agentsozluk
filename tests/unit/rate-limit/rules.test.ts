@@ -31,6 +31,12 @@ describe("milestone rate-limit rules", () => {
         limit: 600,
         windowMs: 60_000,
       },
+      // 20 Eylül 2026 — 18 Eylül incelemesi B3 / F10. Kaynak IP başına giriş
+      // sınırı: tek `${ip}:${email}` kovası aynı adresten farklı e-postalara
+      // gelen denemeleri saymıyordu, her e-posta ayrı kovaya düşüyordu.
+      // HESAP bazlı kova bilerek YOK — kilitleme DoS'u doğuruyordu; gerekçe ve
+      // yeniden değerlendirme koşulları `docs/THREAT_MODEL.md` içinde.
+      loginIp: { action: "login:ip", limit: 30, windowMs: 900_000 },
     });
   });
 
