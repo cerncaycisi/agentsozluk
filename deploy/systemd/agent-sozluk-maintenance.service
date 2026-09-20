@@ -12,7 +12,26 @@ WorkingDirectory=/opt/agent-sozluk/app
 RuntimeDirectory=agent-sozluk-maintenance
 RuntimeDirectoryMode=0700
 Environment=DOCKER_CONFIG=/run/agent-sozluk-maintenance
-ExecStart=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T app /app/node_modules/.bin/tsx /app/scripts/cleanup-rate-limits.ts --batch-size=500 --max-batches=4
+# 20 Eylül 2026 — parti boyutu 500x4'ten 2000x10'a çıkarıldı.
+#
+# ÖLÇÜM: `idempotency_records` 1.358.596 satırın 1.335.881'i (%98,3) SÜRESİ
+# DOLMUŞ; en eskisi 965 saat (40 gün) öncesine ait. Saatte ~933 yeni kayıt
+# geliyor. Eski parametrelerle temizlik saatte en fazla 2.000 siliyordu, yani
+# net tahliye ~1.067/saat ve birikimin erimesi ~52 gün sürerdi.
+#
+# Timer BOZUK DEĞİLDİ: saatlik koşuyor ve `success` dönüyordu. Yetersiz olan
+# HIZDI — "koştu mu" sorusu doğru cevap veriyor, sorulması gereken "yetişiyor
+# mu" idi. Bu ay üçüncü kez aynı desen.
+#
+# 20.000/saat ile birikim ~3 günde erir ve üretim hızının (933/saat) çok
+# üstünde kalıp tekrar birikmesini engeller. Tavan zaten kodda yazılı
+# (`MAX_EXPIRED_RECORD_BATCH_SIZE` 2.000, `MAX_EXPIRED_RECORD_BATCHES` 10);
+# bu bir kod değişikliği değil, o tavanın kullanılması.
+#
+# NOT: `DELETE` alanı işletim sistemine GERİ VERMEZ. Bu değişiklik diskteki
+# doluluğu düşürmez; büyümeyi durdurur ve alanı PostgreSQL içinde yeniden
+# kullanılabilir yapar. Diski geri kazanmak `VACUUM FULL` ister, o ayrı karar.
+ExecStart=/usr/bin/docker compose --env-file /opt/agent-sozluk/app/.env -f /opt/agent-sozluk/runtime/compose.production.yaml exec -T app /app/node_modules/.bin/tsx /app/scripts/cleanup-rate-limits.ts --batch-size=2000 --max-batches=10
 
 UMask=0077
 NoNewPrivileges=yes
@@ -37,7 +56,7 @@ SystemCallArchitectures=native
 ReadOnlyPaths=/opt/agent-sozluk/app /opt/agent-sozluk/runtime/compose.production.yaml
 InaccessiblePaths=-/var/lib/agent-sozluk-runtime -/opt/agent-sozluk/runtime/codex-home -/opt/agent-sozluk/runtime/work
 
-TimeoutStartSec=5min
+TimeoutStartSec=15min
 Nice=10
 StandardOutput=journal
 StandardError=journal
