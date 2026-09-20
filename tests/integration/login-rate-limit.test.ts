@@ -79,8 +79,8 @@ describe("giriş oran sınırı — gerçek veritabanı", () => {
         usernameNormalized: "kurban",
         displayName: "Kurban",
         passwordHash: await hashPassword(sifre),
-        termsVersion: "1",
-        writerApproved: true,
+        termsVersion: "1.0",
+        termsAcceptedAt: new Date(),
       },
     });
 
@@ -117,8 +117,8 @@ describe("giriş oran sınırı — gerçek veritabanı", () => {
         usernameNormalized: "hedef",
         displayName: "Hedef",
         passwordHash: await hashPassword(sifre),
-        termsVersion: "1",
-        writerApproved: true,
+        termsVersion: "1.0",
+        termsAcceptedAt: new Date(),
       },
     });
 
