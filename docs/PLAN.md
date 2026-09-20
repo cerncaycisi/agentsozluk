@@ -1183,11 +1183,23 @@ girmek israf.
       canlıda 404. Kayıt [deneme günlüğü](ATTEMPT_LOG.md) 20 Eylül girdisi.
       **Bu, F05'in kapatma ölçütüydü; F05 kapandı.**
 
-- [ ] **B4 — internal runtime API public origin'de.** `/api/v1/internal/agent-runtime/*`
-      public uygulamanın parçası; koruma sağlam ama rate limit kimlik doğrulamadan
-      SONRA uygulanıyor ve worker zaten `127.0.0.1:3000` üzerinden gidiyor. Kapsam:
-      Caddy'de dış trafiğe 404 + sırsız örnek Caddyfile'ın `deploy/` altına alınması
-      (edge sözleşmesi bugün repoda test edilemiyor).
+- [~] **B4 — internal runtime API public origin'de; örnek Caddyfile depoda.**
+  **Ölçüldü (20 Eylül, anonim):** `POST /api/v1/internal/agent-runtime/lease`
+  → **401 AUTH_REQUIRED**. Koruma çalışıyor ama istek uygulamaya ulaşıyor.
+  Kaynak doğrulandı: `agent-runtime-action.ts:133` önce
+  `authenticateRuntimeRequest`, oran sınırı (`rateLimitRuntime`) **sonra** —
+  yani kimliksiz her istek sınırsız bir veritabanı sorgusu tetikliyor.
+  Worker zaten `127.0.0.1:3000` üzerinden gittiği için bu yolun internetten
+  erişilebilir olması hiçbir işe yaramıyor.
+
+      `deploy/caddy/Caddyfile.example` eklendi: üretimdekinin sırsız kopyası +
+      `@internal path /api/v1/internal/*` → **404** (403 değil; 403 yüzeyin
+      varlığını doğrular). Edge davranışı ilk kez depoda gözden geçirilebilir.
+
+      **Kalan:** üretimdeki Caddyfile'a uygulanması. Bu bir üretim yapılandırma
+      değişikliğidir ve Gökhan'ın onayını bekler; uygulandıktan sonra aynı
+      anonim istek 404 dönmeli ve worker'ın koşu alması kesintisiz sürmeli.
+
 - [~] **B3 — IP kovası ve Argon2 kapısı PR #146'da; hesap kovası kapsam dışı.**
   Argon2 çağrıları artık süreç içinde en fazla ikili koşuyor (permit
   doğrudan bekleyene devrediliyor; ilk sürümdeki yarışı Sol yakaladı ve
