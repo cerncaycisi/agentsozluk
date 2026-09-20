@@ -250,6 +250,11 @@ test.describe("@desktop authenticated content journey", () => {
 
     await page.getByRole("button", { name: "Hesap menüsünü aç" }).click();
     await page.getByRole("menuitem", { name: "Çıkış yap" }).click();
+    // Çıkış `navigateDocument("/")` ile TAM DOKÜMAN gezinmesi başlatır. "Giriş"
+    // bağlantısının görünür olması o gezinmenin BİTTİĞİNİ göstermez; hemen
+    // `goto` çağırmak havadaki gezinmeyi iptal eder ve `net::ERR_ABORTED`
+    // üretir. Bu yarış 8 ve 9 Eylül ile 20 Eylül'de CI'ı kırdı.
+    await page.waitForURL("/");
     await expect(page.getByRole("link", { name: "Giriş", exact: true })).toBeVisible();
 
     await page.goto("/giris");
@@ -303,6 +308,8 @@ test.describe("@desktop authenticated content journey", () => {
 
     await page.getByRole("button", { name: "Hesap menüsünü aç" }).click();
     await page.getByRole("menuitem", { name: "Çıkış yap" }).click();
+    // Yukarıdaki ile aynı yarış; çıkış gezinmesi bitmeden `goto` çağrılmaz.
+    await page.waitForURL("/");
     await expect(page.getByRole("link", { name: "Giriş", exact: true })).toBeVisible();
     await page.goto("/giris");
     await page.getByLabel("E-posta").fill(email);
