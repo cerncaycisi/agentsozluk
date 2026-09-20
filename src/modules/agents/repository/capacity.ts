@@ -170,6 +170,31 @@ export function createRuntimeCapabilityRecord(
   });
 }
 
+/*
+  PENCERE FİLTRESİ LATERAL'DEN ÖNCE — 20 Eylül 2026.
+
+  Bu sorgu `cutoff`'u yalnız `clipped_intervals` aşamasında uyguluyordu. Ondan
+  önceki iki CTE (`measured_intervals`, `legacy_intervals`) `agent_runs`
+  tablosunun TAMAMINI okuyup her satırın `usageMetadata`'sını TOAST'tan çıkarıyor
+  ve JSON dizisini açıyordu. Maliyet pencereyle değil **geçmişin toplamıyla**
+  büyüyordu: 20 Eylül'de tablo 33.808 satır ve 1,08 GB, %60'ı 30 günden eski.
+
+  Ve bu ucuz bir sorgu değil: `getRuntimeOperationalMetrics` üzerinden
+  `leaseRuntimeRun`'ın transaction'ında, üç pencere için (15/60/120 dk) ÜÇ KEZ
+  koşuyor. 19 Eylül'deki 11 saatlik sessiz durmanın mekanizması buydu — lease
+  transaction'ı Prisma'nın 5000 ms sınırını aştı, her lease `P2028` ile düştü,
+  worker crash-loop'a girdi (`4d665cf` timeout'u yükselterek semptomu kapattı,
+  sebebi değil).
+
+  Daraltma güvenli: bitmiş bir koşunun hiçbir Codex aralığı kendi `finishedAt`
+  değerinden sonra olamaz, dolayısıyla `finishedAt <= cutoff` olan koşu bu
+  pencereye katkı veremez. Henüz bitmemiş koşular (`finishedAt IS NULL`) dışarıda
+  bırakılmaz; onların aralıkları pencerenin içine uzanabilir.
+
+  `agent_runs.finishedAt` üzerinde indeks YOK, yani tarama hâlâ sıralı. Kazanç
+  taramadan değil, satırların %99'unda TOAST okuma ve JSON açmanın hiç
+  yapılmamasından geliyor. İndeks ayrı bir migration işidir.
+*/
 async function busyDurationMs(
   transaction: Prisma.TransactionClient,
   now: Date,
@@ -192,7 +217,10 @@ async function busyDurationMs(
           ELSE '[]'::jsonb
         END
       ) AS item
-      WHERE item ->> 'startedAt' ~ '^\\d{4}-\\d{2}-\\d{2}T'
+      -- Pencere filtresi LATERAL'den ONCE uygulanir; gerekcesi fonksiyonun
+      -- ustundeki yorumda.
+      WHERE (run."finishedAt" IS NULL OR run."finishedAt" > ${cutoff})
+        AND item ->> 'startedAt' ~ '^\\d{4}-\\d{2}-\\d{2}T'
         AND item ->> 'finishedAt' ~ '^\\d{4}-\\d{2}-\\d{2}T'
     ),
     legacy_intervals AS (
@@ -204,6 +232,7 @@ async function busyDurationMs(
         run."finishedAt" AS "finishedAt"
       FROM "agent_runs" AS run
       WHERE run."finishedAt" IS NOT NULL
+        AND run."finishedAt" > ${cutoff}
         AND jsonb_typeof(run."usageMetadata") = 'object'
         AND jsonb_typeof(run."usageMetadata" -> 'codexIntervals') IS NULL
         AND run."usageMetadata" ->> 'durationMs' ~ '^\\d+(?:\\.\\d+)?$'

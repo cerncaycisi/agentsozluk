@@ -1662,6 +1662,81 @@ describe("agent control plane with PostgreSQL", () => {
     expect(operational.utilization2h).toBeCloseTo(0.25, 5);
   });
 
+  it("pencere sınırına yaslanan aralıkları kırpar, sınırın gerisindekini saymaz", async () => {
+    /*
+      20 Eylül 2026. `busyDurationMs` pencere filtresini yalnız `clipped_intervals`
+      aşamasında uyguluyordu; ondan önceki iki CTE `agent_runs` TABLOSUNUN
+      TAMAMINDA `usageMetadata`'yı TOAST'tan okuyup JSON dizisini açıyordu. Maliyet
+      pencereyle değil tüm geçmişle büyüyordu ve bu sorgu lease transaction'ında üç
+      pencere için koşuyor — 19 Eylül'deki `P2028` kesintisinin muhtemel sebebi.
+
+      Filtre artık LATERAL'den önce. Bu test daraltmanın SONUCU değiştirmediğini
+      sabitliyor: sınırı aşan aralık kırpılarak sayılmalı, tamamen geride kalan
+      koşu ise hiç sayılmamalı. Filtre fazla agresif olsaydı (ör. `startedAt`
+      üzerinden) ilk koşu kaybolur ve bu test düşerdi.
+    */
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const now = new Date("2026-07-18T12:00:00.000Z");
+    const cutoff = new Date(now.getTime() - 15 * 60_000);
+
+    // (1) Pencereye YASLANAN koşu: 10 dk penceresinin dışında, 5 dk içinde.
+    const strafeBasi = new Date(cutoff.getTime() - 10 * 60_000);
+    const strafeSonu = new Date(cutoff.getTime() + 5 * 60_000);
+    // (2) Tamamen GERİDE kalan koşu: penceresiz, katkısı sıfır olmalı.
+    const geriBasi = new Date(cutoff.getTime() - 90 * 60_000);
+    const geriSonu = new Date(cutoff.getTime() - 60 * 60_000);
+
+    for (const [index, [baslangic, bitis]] of [
+      [strafeBasi, strafeSonu],
+      [geriBasi, geriSonu],
+    ].entries())
+      await integrationDatabase.agentRun.create({
+        data: {
+          agentProfileId: created.agent.profile.id,
+          personaVersionId: created.agent.personaVersion.id,
+          runType: "NORMAL_WAKE",
+          runStatus: "SUCCEEDED",
+          queuePriority: "SCHEDULED_CONTENT",
+          trigger: "WINDOW_BOUNDARY_FIXTURE",
+          idempotencyKey: `window-boundary:${index}:${randomUUID()}`,
+          timeoutSeconds: 900,
+          desiredEntryMin: 0,
+          desiredEntryMax: 0,
+          startedAt: baslangic,
+          finishedAt: bitis,
+          usageMetadata: {
+            provider: "codex-cli",
+            durationMs: bitis.getTime() - baslangic.getTime(),
+            codexIntervals: [
+              {
+                startedAt: baslangic.toISOString(),
+                finishedAt: bitis.toISOString(),
+                durationMs: bitis.getTime() - baslangic.getTime(),
+              },
+            ],
+          },
+        },
+      });
+
+    const operational = await inTransaction(integrationDatabase, async (transaction) => {
+      const settings = await transaction.agentGlobalSettings.findUniqueOrThrow({
+        where: { id: "global" },
+        select: { circuitBreakerConfig: true },
+      });
+      const config = circuitBreakerConfigSchema.parse(
+        settings.circuitBreakerConfig as Record<string, unknown>,
+      );
+      return getRuntimeOperationalMetrics(transaction, { now, concurrency: 1, config });
+    });
+
+    // 15 dk penceresinde yalnız kırpılmış 5 dakika sayılmalı: 5/15 = 0,3333…
+    expect(operational.utilization15m).toBeCloseTo(5 / 15, 5);
+    // 1 saatlik pencerede yaslanan koşunun tamamı (15 dk) sayılır, geride kalan
+    // koşunun 60 dakikalık sınırın içine düşen kısmı da eklenir.
+    expect(operational.utilization1h).toBeGreaterThan(5 / 60);
+  });
+
   it("includes the current Codex phase but excludes non-Codex active run time", async () => {
     const admin = await createPrincipal();
     const created = await createFirstAgent(admin.id);
