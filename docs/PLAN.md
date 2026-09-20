@@ -418,10 +418,24 @@ davranışı ve veri bütünlüğünü etkiliyor.
       yok). Eşleştirme ve karıştırma yürütücüde, karar hakemde; büyük/küçük harf
       normalize edilir.
 
-- [ ] **`CODEX_TIMEOUT` iki katına çıktı — nedeni ölçülmedi.** D3 paydasında
-      %3,00 → %6,16 (p=1,3×10⁻⁴). Önkayıt bunu Ö2'den açıkça dışlamıştı, karara
-      girmedi. Üslup paragrafına atfedilemez: aynı dağıtımda şerit 2→1 indi.
-      Yük mü, başka bir şey mi — ayrıca ölçülecek.
+- [~] **`CODEX_TIMEOUT` — oranın büyük kısmı aritmetik; artakalan ayrıştırılmadı.**
+  [Ölçüm](CODEX_TIMEOUT_OLCUMU_2026-09-20.md). Saat başına MUTLAK timeout
+  sayısı değişmedi (0,46-0,83 bandı); F02 şerit sayısını 2'den 1'e
+  indirdiği için koşu/saat 22'den 6,5-13,8'e düştü. Yani timeout'lar
+  sıklaşmadı, koşular seyreldi — oran bir kesir ve payda küçüldü. Bu,
+  önkayıtın `CODEX_TIMEOUT`'u Ö2'den dışlamasını destekler.
+
+      **Artakalan etki var:** gece ortalaması sabit (254→247 sn), gündüz
+      ortalaması yükseldi (271→309 sn) ve 480 sn'lik bütçe bağlayıcı olduğu
+      için bu kayma kuyruğu sınırın üstüne taşıyor. Üç aday ayrıştırılmadı:
+      sağlayıcı gecikmesinin saate bağlılığı, şerit azalması, **ve operatörün
+      kendi yükü** — 17-20 Eylül gündüzleri kutuya salt okunur sorgular,
+      1.596 entry'lik analiz ve 239 MB artifact indirme geldi; bu aday
+      elenemiyor.
+
+      **Sıradaki adım ucuz:** operatör kutuya birkaç gün hiç dokunmadan aynı
+      kırılım tekrar alınır. Gündüz ortalaması 271 sn'ye dönerse sebep
+      operatör yüküdür. Müdahale yok; üretim çalışıyor ve mutlak sayı sabit.
 
 - [~] **Entry kalitesi: "kaynağım şunu göstermiyor" kuyruğu — NEDENİ BULUNDU (üretim izi).**
   _(10 Eylül Gökhan bildirdi, 11 Eylül ölçüldü, 12 Eylül üretim izi; kanıt
