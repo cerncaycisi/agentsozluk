@@ -6,10 +6,10 @@ import { appendAuditLog } from "@/modules/audit";
 import {
   getDummyPasswordHash,
   hashPassword,
-  hashPasswordInTransaction,
+  hashPasswordHoldingPermit,
   passwordNeedsRehash,
-  verifyPassword,
-  verifyPasswordInTransaction,
+  verifyPasswordHoldingPermit,
+  withArgon2Permit,
 } from "@/modules/auth/domain/password";
 import {
   issueSession,
@@ -120,50 +120,59 @@ export async function loginHuman(
   metadata: SessionMetadata,
   requestId: string,
 ): Promise<AuthenticationResult> {
-  const candidate = await client.$transaction((transaction) =>
-    findAuthUserCandidateByEmail(transaction, input.email),
-  );
-  if (!candidate) {
-    await verifyPassword(await getDummyPasswordHash(), input.password);
-    throw new AppError("INVALID_CREDENTIALS", 401, "E-posta veya şifre hatalı.");
-  }
+  /*
+    Argon2 permit'i BURADA, transaction açılmadan alınır ve girişin tamamı
+    boyunca tutulur. Böylece hem mevcut hesabın doğrulaması hem "hesap yok"
+    dalındaki dummy hash aynı sınıra tabi olur; ilk sürümde yalnız ikincisi
+    sayılıyordu ve koruma asıl yolda yoktu (Sol, 20 Eylül). Permit'i transaction
+    içinde beklemek ise bağlantıyı tutup kilitlenme üretirdi — o yüzden sıra bu.
+  */
+  return withArgon2Permit(async () => {
+    const candidate = await client.$transaction((transaction) =>
+      findAuthUserCandidateByEmail(transaction, input.email),
+    );
+    if (!candidate) {
+      await verifyPasswordHoldingPermit(await getDummyPasswordHash(), input.password);
+      throw new AppError("INVALID_CREDENTIALS", 401, "E-posta veya şifre hatalı.");
+    }
 
-  return client.$transaction(async (transaction) => {
-    await lockUserStateForMutation(transaction, candidate.id);
-    const user = await findAuthUserById(transaction, candidate.id);
-    const currentCredential =
-      user?.emailNormalized === input.email ? user.passwordHash : await getDummyPasswordHash();
-    /*
+    return client.$transaction(async (transaction) => {
+      await lockUserStateForMutation(transaction, candidate.id);
+      const user = await findAuthUserById(transaction, candidate.id);
+      const currentCredential =
+        user?.emailNormalized === input.email ? user.passwordHash : await getDummyPasswordHash();
+      /*
       Transaction İÇİNDE: kapıya girmeyen sürüm. Kuyrukta beklemek bu
       transaction'ı ve onun bağlantısını tutardı (Sol, 20 Eylül). Maliyeti
       route'taki oran kovaları sınırlar.
     */
-    const valid = await verifyPasswordInTransaction(currentCredential, input.password);
-    if (
-      !user ||
-      user.emailNormalized !== input.email ||
-      !valid ||
-      user.status === "DEACTIVATED" ||
-      user.loginDisabled ||
-      user.kind !== "HUMAN"
-    ) {
-      throw new AppError("INVALID_CREDENTIALS", 401, "E-posta veya şifre hatalı.");
-    }
-    if (passwordNeedsRehash(user.passwordHash)) {
-      await updateUserPassword(
-        transaction,
-        user.id,
-        await hashPasswordInTransaction(input.password),
-      );
-    }
-    const session = await issueSession(transaction, user.id, metadata);
-    await appendAuditLog(transaction, {
-      actorId: user.id,
-      action: "session.created",
-      entityType: "Session",
-      entityId: session.id,
-      requestId,
+      const valid = await verifyPasswordHoldingPermit(currentCredential, input.password);
+      if (
+        !user ||
+        user.emailNormalized !== input.email ||
+        !valid ||
+        user.status === "DEACTIVATED" ||
+        user.loginDisabled ||
+        user.kind !== "HUMAN"
+      ) {
+        throw new AppError("INVALID_CREDENTIALS", 401, "E-posta veya şifre hatalı.");
+      }
+      if (passwordNeedsRehash(user.passwordHash)) {
+        await updateUserPassword(
+          transaction,
+          user.id,
+          await hashPasswordInTransaction(input.password),
+        );
+      }
+      const session = await issueSession(transaction, user.id, metadata);
+      await appendAuditLog(transaction, {
+        actorId: user.id,
+        action: "session.created",
+        entityType: "Session",
+        entityId: session.id,
+        requestId,
+      });
+      return { user: serializeSafeUser(user), session };
     });
-    return { user: serializeSafeUser(user), session };
   });
 }

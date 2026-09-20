@@ -480,6 +480,32 @@ oturumu bir trafik ölçümüdür, saldırı ölçümü değildir; azlık kanıt
 için tutulabilir; (b) ADMIN/moderatör için TOTP veya passkey şifreye bağımlılığı
 azaltır. İkisi de `PLAN.md`'de.
 
+### Giriş maliyeti: iki bilinen sınır (20 Eylül 2026)
+
+Argon2 eşzamanlılık kapısı ve `login:ip` kovası birlikte giriş maliyetini
+bağlıyor, ama iki yerde eksik kalıyorlar. Sol'un 20 Eylül bulguları; ikisi de
+**kabul edilen artık risk**, çünkü kapatmaları kod değil dağıtım değişikliği
+ister.
+
+**1. Sabit pencere, çift-burst.** `login:ip` sabit pencereli sayaç kullanıyor.
+Saldırgan pencerenin son saniyelerinde bütçeyi harcayıp yeni pencerenin ilk
+saniyelerinde tekrar harcarsa, kısa bir anda sınırın iki katını geçirebilir.
+Kayan pencere bunu kapatır ama mevcut `rate-limit` altyapısı sabit pencere
+üzerine kurulu; değiştirmek tüm kovaları etkiler.
+**Kabul gerekçesi:** eşzamanlılık kapısı bu bursttaki isteklerin aynı anda
+Argon2 koşmasını zaten engelliyor, yani maliyet yayılıyor. Etki gecikme, çökme
+değil.
+
+**2. Kapı süreç başınadır.** Sınır tek Node sürecinde geçerli. `N` kopya
+koşarsa toplam eşzamanlılık `2N` olur; oran kovaları paylaşılan veritabanında
+olduğu için onlar ölçeklenir, kapı ölçeklenmez. Ayrıca `UV_THREADPOOL_SIZE`
+repoda sabitlenmemiş, yani "havuzun yarısı" yalnız varsayılan ortamda doğrudur.
+**Kabul gerekçesi:** bugünkü container girişi tek `node server.js` süreci
+koşuyor (`scripts/docker-entrypoint.sh`), yani `N = 1`.
+**Yeniden değerlendirme koşulu:** uygulama birden fazla süreç veya kopyayla
+koşulmaya başlarsa bu kapı dağıtım seviyesinde yeniden tasarlanmalı — ya
+paylaşılan bir sayaç, ya da süreç başına sınırın toplam kapasiteye bölünmesi.
+
 ## Güvenlik değişiklik kapısı
 
 Şu değişiklikler threat model review gerektirir:

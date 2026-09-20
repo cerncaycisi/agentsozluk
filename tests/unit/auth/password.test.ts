@@ -158,22 +158,36 @@ describe("argon2 eşzamanlılık sınırı", () => {
     vi.resetModules();
   });
 
-  it("transaction içi sürüm kapıya hiç girmez", async () => {
-    const { modul, bekleyen } = await kapiyiKur();
-    const dolduranlar = [modul.verifyPassword("h", "bir"), modul.verifyPassword("h", "iki")];
-    await new Promise((resolve) => setTimeout(resolve, 0));
+  it("permit'i tutan sürüm ikinci permit istemez ve tepe 2'de kalır", async () => {
+    /*
+      Sözleşme burada sabitleniyor: `withArgon2Permit` işin tamamını sarar,
+      içerideki `*HoldingPermit` çağrıları YENİ permit almaz. İlk tasarımda bu
+      sürümler kapıyı ATLIYORDU ve mevcut hesabın doğrulaması hep transaction
+      içinde olduğu için hiç sınırlanmıyordu — koruma asıl yolda yoktu
+      (Sol, 20 Eylül). İçeride yeni permit isteseydi kendi kendini bekler,
+      kilitlenirdi; atlasaydı sınır delinirdi. İkisi de burada düşer.
+    */
+    const { modul, bekleyen, olc } = await kapiyiKur();
 
-    // Kapı doluyken transaction içi çağrı BEKLEMEMELİ: bekleseydi açık bir
-    // veritabanı transaction'ını ve bağlantısını tutardı.
-    const transactionIcinde = modul.verifyPasswordInTransaction("h", "üç");
+    const istekler = [1, 2, 3].map((n) =>
+      modul.withArgon2Permit(async () => {
+        // Gerçek giriş zinciri: doğrulama + gerekirse yeniden hash, ikisi de
+        // aynı permit altında.
+        await modul.verifyPasswordHoldingPermit("hash", `sifre-${n}`);
+        return n;
+      }),
+    );
+
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(bekleyen.length).toBe(3);
+    expect(olc()).toBeLessThanOrEqual(2);
 
     while (bekleyen.length > 0) {
       bekleyen.shift()?.();
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
-    await Promise.all([...dolduranlar, transactionIcinde]);
+    await expect(Promise.all(istekler)).resolves.toEqual([1, 2, 3]);
+    expect(olc()).toBeLessThanOrEqual(2);
+
     vi.doUnmock("@node-rs/argon2");
     vi.resetModules();
   });

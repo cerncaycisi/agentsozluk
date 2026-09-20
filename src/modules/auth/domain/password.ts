@@ -32,11 +32,17 @@ let dummyHash: Promise<string> | undefined;
   `UV_THREADPOOL_SIZE` repoda sabitlenmemiştir, yani "havuzun yarısı" yalnız
   varsayılan ortam için doğrudur.
 
-  KUYRUKTA BEKLEMEK BİR VERİTABANI TRANSACTION'I İÇİNDE OLMAMALI:
-  `verifyPassword` şu an `authenticate.ts` içinde transaction'ın içinden
-  çağrılıyor ve beklemek bağlantıyı tutar. `verifyPasswordOutsideTransaction`
-  bu yüzden ayrı durur ve çağıranın transaction dışında olduğunu adıyla beyan
-  eder; kapı yalnız orada kuyruğa alır.
+  KUYRUKTA BEKLEMEK BİR VERİTABANI TRANSACTION'I İÇİNDE OLMAMALI: beklemek
+  transaction'ı ve onun bağlantısını tutar, havuz doluyken kilitlenmeye döner.
+  İlk çözümüm bunu transaction içindeki çağrıları KAPIDAN MUAF TUTARAK
+  halletmişti ve **korumayı en çok gereken yolda yok ediyordu**: mevcut bir
+  hesabın doğrulaması hep transaction içinde olduğu için hiç sınırlanmıyor,
+  yalnız "hesap yok" dalındaki dummy hash sayılıyordu (Sol, 20 Eylül).
+
+  Doğrusu: permit TRANSACTION AÇILMADAN ÖNCE alınır ve iş boyunca tutulur.
+  `withArgon2Permit` bunu yapar; içeride çağrılan `*HoldingPermit` sürümleri
+  "kapıyı atla" demez, "permit zaten bende" der. Bedeli permit'in veritabanı
+  süresi boyunca da tutulmasıdır; giriş seyrek olduğu için bilinçli kabul.
 */
 const ARGON2_ESZAMANLILIK = 2;
 let aktif = 0;
@@ -74,16 +80,23 @@ export function hashPassword(password: string): Promise<string> {
 }
 
 /*
-  Kapıdan GEÇMEYEN sürüm. Çağıran açık bir veritabanı transaction'ı içindeyse
-  bunu kullanmalıdır: kuyrukta beklemek transaction'ı ve onun bağlantısını
-  tutar, havuz doluyken bu kilitlenmeye döner. Maliyet koruması o yolda
-  çağrı sayısını sınırlayan oran kovalarıdır.
+  Permit'i açıkça alır ve iş bitene kadar tutar. Veritabanı transaction'ı açacak
+  çağıranlar bunu transaction'dan ÖNCE sarmalayıcı olarak kullanır.
 */
-export function hashPasswordInTransaction(password: string): Promise<string> {
+export function withArgon2Permit<T>(is: () => Promise<T>): Promise<T> {
+  return argon2Kapisi(is);
+}
+
+/*
+  Aşağıdaki iki sürüm kapıyı ATLAMAZ; çağıranın permit'i ZATEN TUTTUĞUNU
+  varsayar. `withArgon2Permit` dışında çağrılırlarsa sınır delinir — adları
+  bu yüzden böyle.
+*/
+export function hashPasswordHoldingPermit(password: string): Promise<string> {
   return hash(password, ARGON2_OPTIONS);
 }
 
-export async function verifyPasswordInTransaction(
+export async function verifyPasswordHoldingPermit(
   passwordHash: string,
   password: string,
 ): Promise<boolean> {
