@@ -1,0 +1,22 @@
+# Bağımlılık uyarılarının kendiliğinden görünmesi için — 19 Eylül 2026.
+# Gerekçe: 18 Eylül incelemesi B1. İki kritik `next` uyarısı, biri bakmaya
+# karar verene kadar üç hafta görülmeden durdu. CI'daki `pnpm audit --prod`
+# kapısı yayılmayı durdurur; bu dosya yamanın geldiğini haber verir.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Tek tek PR yağmuru yerine sınıf başına tek PR.
+      production-dependencies:
+        dependency-type: production
+      development-dependencies:
+        dependency-type: development
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

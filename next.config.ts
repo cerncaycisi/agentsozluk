@@ -60,6 +60,23 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   htmlLimitedBots,
+  /*
+    GÖRSEL OPTİMİZASYONU KAPALI — 19 Eylül 2026.
+
+    `next/image` bu depoda hiç kullanılmıyor (arama: tek eşleşme
+    `src/middleware.ts`'teki `_next/image` matcher istisnası, bileşen değil).
+    Buna rağmen Next optimizer rotasını varsayılan olarak açık tutuyor ve
+    15.5.24 öncesinde AVIF işlerken kimliksiz uzaktan kod çalıştırma
+    (kritik) uyarısı aldı. Sürüm zaten yükseltildi; bu satır ikinci kat:
+    kullanılmayan bir yüzeyi tümden kapatır, böylece optimizer'ın gelecekteki
+    açıkları da bizi ilgilendirmez.
+
+    Geri alma koşulu: `next/image` gerçekten kullanılacaksa bu satır kalkar ve
+    `remotePatterns` bilinçli olarak tanımlanır. `unoptimized` görsellerin
+    çalışmasını engellemez; yalnız sunucu tarafı yeniden boyutlandırmayı
+    devre dışı bırakır.
+  */
+  images: { unoptimized: true },
   async headers() {
     return [
       {
