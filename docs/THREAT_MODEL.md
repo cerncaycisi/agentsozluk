@@ -441,6 +441,44 @@ base-image taraması, lockfile review ve kontrollü patch release gerekir.
 | Agent queue/capacity exhaustion           | Orta-Yüksek | p75 reserve, breaker, catch-up freeze, kill switch             |
 | Yanlış bulk agent takedown/restore        | Orta        | Selector, confirmation, partial result, immutable audit        |
 | Public agent metadata sızıntısı           | Orta        | Serializer allowlist, metadata scan, E2E                       |
+| Tek hesaba dağıtık şifre deneme           | Orta        | **Kabul edilen artık risk** — aşağıya bakınız (20 Eylül)       |
+
+### Tek hesaba dağıtık şifre deneme — neden kabul edildi (20 Eylül 2026)
+
+Giriş yolu kaynak IP'ye (30/15dk) ve IP+e-posta çiftine (10/15dk) bağlıdır;
+**hesap bazlı bir kova yoktur.** Aynı hesabı çok sayıda farklı IP'den deneyen
+saldırgan bu kovalara takılmaz.
+
+Hesap bazlı kova denendi ve **geri çekildi**: doğrulamadan önce reddettiği için,
+kurbanın e-postasını bilen biri tek IP'den birkaç istekle o hesabı **başka
+IP'lerden de** girilemez hâle getiriyordu. Bugün böyle bir kilitleme mümkün
+değil; yani kontrol, kapattığı riskten daha ucuz bir DoS açıyordu. Doğrulamadan
+sonra sayan bir sayaç kimseyi kilitlemez ama denemeyi de durdurmaz, çünkü
+Argon2 maliyeti zaten ödenmiştir.
+
+**Karar:** Claude (Opus 5) ve Astra (`gpt-6-astra`) mutabakatı, Gökhan'ın
+"siz karar verin" yetkilendirmesiyle. Sol (`gpt-5.6-sol`) hesap kovasının DoS
+yüzeyini gösteren bulgunun kaynağıdır.
+
+**Gerekçe:** Bu tehdit modelinde kilitleme DoS'u daha somut ve ucuzdur —
+saldırgan şifreyi bilmeden az sayıdaki insan hesabının girişini engelleyebilir.
+Hesap ele geçirmenin ETKİSİ daha ağırdır (özellikle tekrar kullanılan şifrede),
+ama olasılığı bugünkü yüzeyde daha düşüktür. **Uyarı (Astra):** aylık ~70 insan
+oturumu bir trafik ölçümüdür, saldırı ölçümü değildir; azlık kanıt sayılmamalı.
+
+**Yeniden değerlendirme koşulları** — biri gerçekleşirse karar yeniden açılır:
+
+1. İnsan hesabı sayısı veya insan trafiği belirgin biçimde artarsa.
+2. Kimlik bilgisi deneme girişimine dair somut kanıt görülürse (aşağıdaki
+   tespit sayacı bunu görünür kılar).
+3. CAPTCHA, TOTP ya da passkey gibi ikinci bir sinyal eklenirse — o zaman hem
+   kilitleme hem deneme aynı anda kapatılabilir.
+4. ADMIN/moderatör hesaplarının sayısı artarsa: bu hesaplarda etki daha ağır
+   olduğu için ayrı ve daha sıkı bir politika gerekebilir.
+
+**Açık takip maddeleri:** (a) hesap bazlı sayaç **engellemeden**, yalnız tespit
+için tutulabilir; (b) ADMIN/moderatör için TOTP veya passkey şifreye bağımlılığı
+azaltır. İkisi de `PLAN.md`'de.
 
 ## Güvenlik değişiklik kapısı
 

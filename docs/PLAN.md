@@ -1084,9 +1084,30 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
 - [ ] **F09 — Container kapısı, container'ın çalışabildiğini kanıtlamıyor.** CI image kurup
       Compose'u doğruluyor ama container'ı veritabanıyla ayağa kaldırıp entrypoint, migration,
       readiness ve HTTP davranışını sınamıyor.
-- [ ] **F10 — Giriş sınırlaması yalnız IP+e-posta çiftine bağlı.** Aynı IP'den farklı
-      e-postalar ve aynı hesaba farklı IP'ler ayrı kova alıyor; route'ta genel IP/hesap sınırı
-      yok. _(Canlı stres testi yapılmadı.)_
+- [~] **F10 — IP kovası eklendi; hesap bazlı kova KABUL EDİLEN ARTIK RİSK.**
+  PR #146: `login:ip` 30/15dk, pahalı Argon2 işinden önce. Aynı IP'den
+  farklı e-postalar artık tek kovada toplanıyor (önceden her e-posta ayrı
+  kovaya düşüp sınırsız kalıyordu).
+
+      Hesap bazlı kova denendi ve geri çekildi: doğrulamadan önce reddettiği
+      için kurbanın e-postasını bilen birinin o hesabı kilitlemesine izin
+      veriyordu — kapattığı riskten ucuz bir DoS. **Karar Claude + Astra
+      mutabakatı** (Gökhan'ın "siz karar verin" yetkilendirmesi, 20 Eylül);
+      gerekçe, yeniden değerlendirme koşulları ve Astra'nın "az trafik saldırı
+      ölçümü değildir" uyarısı
+      [tehdit modelinde](THREAT_MODEL.md#residual-risk-özeti).
+
+- [ ] **Hesap bazlı sayaç — engellemeden, yalnız TESPİT için.** Yukarıdaki
+      kararın görünürlük ayağı: hesap başına başarısız giriş sayılır, hiçbir
+      isteği reddetmez, eşiği aşınca kayıt/uyarı üretir. Kilitleme DoS'u
+      doğurmadan "deneme var mı" sorusunu cevaplar ve yeniden değerlendirme
+      koşulu 2'yi ölçülebilir kılar. _(Astra önerisi, 20 Eylül)_
+
+- [ ] **ADMIN/moderatör için TOTP veya passkey.** Şifreye bağımlılığı azaltır;
+      bu hesaplarda ele geçirmenin etkisi en ağır. Hesap kovası kararının
+      kalıcı çözümü budur — ikinci sinyal geldiğinde hem kilitleme hem deneme
+      aynı anda kapatılabilir. _(Astra önerisi, 20 Eylül)_
+
 - [ ] **Küçük ama biriken:** merkezi hata kaydında gerçek neden/stack yerine güvenli kodun
       kalması; `runtime:plan` scope'unun hem planlama hem credential roster için kullanılması;
       "Ana içeriğe geç" sonrası DOM
@@ -1153,10 +1174,13 @@ girmek israf.
       SONRA uygulanıyor ve worker zaten `127.0.0.1:3000` üzerinden gidiyor. Kapsam:
       Caddy'de dış trafiğe 404 + sırsız örnek Caddyfile'ın `deploy/` altına alınması
       (edge sözleşmesi bugün repoda test edilemiyor).
-- [ ] **B3 — login sınırlaması (F10) + Argon2 kuyruğu.** Tek kova `${ip}:${email}`;
-      `login:ip` ve `login:account` (e-posta HMAC'iyle) kovaları ve Argon2 için
-      süreç-içi eşzamanlılık sınırı. Entegrasyon testiyle kapanır, canlı stres
-      testi gerekmez. **F10'u kapatır.**
+- [~] **B3 — IP kovası ve Argon2 kapısı PR #146'da; hesap kovası kapsam dışı.**
+  Argon2 çağrıları artık süreç içinde en fazla ikili koşuyor (permit
+  doğrudan bekleyene devrediliyor; ilk sürümdeki yarışı Sol yakaladı ve
+  regresyon testi hatalı sürümde `offset=2`'de düşüyor). Transaction
+  içinden çağrılan sürüm kapıya girmez — beklemek bağlantıyı tutardı.
+  Hesap kovası kararı ve kalan iki takip maddesi için Sıra 5.6 / F10.
+
 - [ ] **B9 — canlılık alarmı + sunucu dışı yedek kanıtı.** Alarm maddesi bölüm 5.5'e
       taşındı ve 19 Eylül'deki ikinci sessiz durmadan sonra sıradaki iş oldu. Burada
       kalan kısım: yedek bugün dağıtım kapısı olarak aynı host'ta
