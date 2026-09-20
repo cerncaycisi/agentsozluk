@@ -544,6 +544,36 @@ gerçek entry'de hiç tetiklenmedi, üretimde canlandırma isteği hacmi ölçü
 
 ---
 
+## E2E yarışı — çıkış gezinmesi ile `/giris` çakışıyor
+
+**Açıldı:** 20 Eylül 2026 · **Kaynak:** PR #137 CI turu `35501868368`
+
+`tests/e2e/auth-content.spec.ts` hesap yaşam döngüsü testi, çıkış işleminin
+**tam-doküman gezinmesi hâlâ havadayken** `page.goto("/giris")` çağırıyor; yeni
+gezinme öncekini iptal ediyor ve tam olarak `page.goto: net::ERR_ABORTED at
+http://127.0.0.1:3000/giris` çıkıyor.
+
+Bu yeni değil ve kök neden zaten yazılı:
+
+- `ATTEMPT_LOG.md` (M1 dönemi) mekanizmayı birebir tarif ediyor ve düzeltmenin
+  "çıkış sınırını beklemek" olduğunu söylüyor.
+- 8 Eylül: main CI'ında **üç denemede de** düştü; o değişiklikte auth'a dokunan
+  hiçbir şey yoktu, yeniden koşuda yeşil oldu.
+- 9 Eylül (PR #123): ilk denemede düşüp retry'da geçti; `PLAN.md` "kök neden bu
+  tur ayrıştırılmadı" diye kaydetti.
+- 20 Eylül (PR #137): üç denemede de düştü, sonraki turda 7/7 yeşil.
+
+Yani **hata ayıklanmış ama düzeltilmemiş** bir yarış; her tekrarında bir tur CI
+ve birinin "bu benim değişikliğim mi?" diye araştırması gidiyor. PR #137'de bunu
+araştırmak yaklaşık yarım saat aldı.
+
+**Düzeltme:** `page.goto("/giris")` öncesinde çıkış gezinmesinin tamamlanmasını
+bekle (`waitForURL` ya da `waitForLoadState`); "Giriş bağlantısı görünür"
+iddiası bunu garanti etmiyor — bağlantı, gezinme bitmeden de görünür oluyor.
+Güvenlik paketiyle karıştırmamak için PR #137'ye katılmadı.
+
+---
+
 ## Kabul ölçütü
 
 > _"bu planın sonunda best sözlük arayüzünü istiyorum."_ — Gökhan, 2026-08-20
