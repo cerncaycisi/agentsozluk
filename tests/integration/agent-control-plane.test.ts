@@ -1687,10 +1687,11 @@ describe("agent control plane with PostgreSQL", () => {
     const geriBasi = new Date(cutoff.getTime() - 90 * 60_000);
     const geriSonu = new Date(cutoff.getTime() - 60 * 60_000);
 
-    for (const [index, [baslangic, bitis]] of [
-      [strafeBasi, strafeSonu],
-      [geriBasi, geriSonu],
-    ].entries())
+    const vakalar: Array<{ baslangic: Date; bitis: Date }> = [
+      { baslangic: strafeBasi, bitis: strafeSonu },
+      { baslangic: geriBasi, bitis: geriSonu },
+    ];
+    for (const [index, { baslangic, bitis }] of vakalar.entries())
       await integrationDatabase.agentRun.create({
         data: {
           agentProfileId: created.agent.profile.id,
