@@ -58,7 +58,7 @@ interface Secenek {
   leaseZamanAsimi?: number; // lease alt sürecinin süre sınırı (test varsayılanı 3 sn)
 }
 
-function ortam(secenek: Secenek) {
+function ortam(secenek: Secenek): NodeJS.ProcessEnv {
   return {
     NODE_ENV: "test",
     PATH: `${path.join(dizin, "bin")}:/usr/bin:/bin`,
@@ -607,7 +607,7 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
     writeFileSync(timerLog, zamanli(800, T - 100) + "\n");
     const timer = new Promise<number | null>((coz) => {
       const c = spawn("bash", [BETIK], {
-        env: { ...ortam({ simdi: T, kimlik: ESKI, logDosyasi: timerLog, logsGecikme: 2 }) },
+        env: ortam({ simdi: T, kimlik: ESKI, logDosyasi: timerLog, logsGecikme: 2 }),
         stdio: "ignore",
       });
       c.on("exit", (kod) => coz(kod));
