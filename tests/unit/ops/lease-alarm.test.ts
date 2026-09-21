@@ -214,13 +214,16 @@ describe("lease süresi alarmı", () => {
     expect(inis[0]).not.toContain("normale döndü");
   });
 
-  it("ayrıştırılamayan satırlar tek başına durumu değiştirmez", () => {
+  it("ayrıştırılamayan satır varken alarm temiz diye kapanmaz", () => {
     expect(calistir([kayit(4500)]).bildirimler).toHaveLength(1);
     const tam = kayit(4500);
     const kesik = tam.slice(0, tam.indexOf('"activeMs"'));
     expect(kesik).toContain('"label":"runtime.lease"');
     expect(kesik).not.toContain("activeMs");
     expect(calistir([kesik, kesik]).bildirimler).toEqual([]);
+    // Karışık pencere: iki yavaş + bir kesik. Kesik satır üçüncü yavaş kayıt
+    // olabilir; alarm kanıtsız kapanmamalı.
+    expect(calistir([kayit(2600), kayit(2700), kesik]).bildirimler).toEqual([]);
     expect(calistir([kayit(4500)]).bildirimler).toEqual([]);
   });
 

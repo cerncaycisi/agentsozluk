@@ -173,8 +173,10 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
 
     if (( p2028 > 0 || kritik > 0 )); then hal=kritik
     elif (( yavas >= LEASE_UYARI_ADET || baslamayan > 0 )); then hal=uyari
-    elif (( toplam == okunamayan )); then
-      # Hiçbir satır ayrıştırılamadı: "temiz" demek için kanıt yok.
+    elif (( okunamayan > 0 )); then
+      # Ayrıştırılamayan bir satır bile varsa "temiz" demek için kanıt yok:
+      # o satır yavaş, kritik ya da başlamamış olabilir (Sol, dördüncü tur).
+      # Kötü kararlar yukarıda görülen kanıtla verilir; iyi karar verilmez.
       return 0
     else hal=temiz
     fi
