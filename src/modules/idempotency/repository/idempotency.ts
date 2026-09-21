@@ -52,17 +52,20 @@ export function withIdempotencyLock<T>(
   const baslangic = performance.now();
   return (async () => {
     let sonuc: "committed" | "failed" = "failed";
-    let hataKodu: string | undefined;
+    let yakalananHata: unknown;
     try {
       const deger = await calistir();
       sonuc = "committed";
       return deger;
     } catch (error) {
-      hataKodu = safeErrorCode(error);
+      yakalananHata = error;
       throw error;
     } finally {
       const bitis = performance.now();
       try {
+        // Hata kodu da korumalı blokta okunur: tuhaf bir hata nesnesi (ör. iptal
+        // edilmiş Proxy) okunurken fırlatsa bile asıl hata aynen yukarı çıkar.
+        const hataKodu = sonuc === "failed" ? safeErrorCode(yakalananHata) : undefined;
         logger.info({
           event: "db.transaction.duration",
           label: telemetry.label,
