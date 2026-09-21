@@ -13,41 +13,56 @@ vi.mock("@/lib/logging/logger", async (importOriginal) => ({
   logger: { info: logMock.info },
 }));
 
+/*
+  Sahte saat: gerçek zamanlayıcı yok, süreler birebir doğrulanır (CI'da kırılgan
+  olmaz — Sol, ikinci tur). Her aşama saati kendi içinde ilerletir.
+*/
+const saat = vi.hoisted(() => ({ simdi: 0 }));
+vi.mock("node:perf_hooks", () => ({ performance: { now: () => saat.simdi } }));
+
 type Callback = (tx: unknown) => Promise<unknown>;
 
-function bekle(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 function sahteIstemci(davranis: {
-  kilitGecikmesiMs?: number;
-  isGecikmesiMs?: number;
-  commitGecikmesiMs?: number;
+  baglantiMs?: number;
+  advisoryKilitMs?: number;
+  commitMs?: number;
   callbackCalismaz?: boolean;
   hata?: unknown;
 }) {
-  const tx = { $executeRaw: vi.fn(async () => 1) };
+  const tx = {
+    $executeRaw: vi.fn(async () => {
+      saat.simdi += davranis.advisoryKilitMs ?? 0;
+      return 1;
+    }),
+  };
   return {
     $transaction: vi.fn(async (cb: Callback) => {
-      if (davranis.kilitGecikmesiMs) await bekle(davranis.kilitGecikmesiMs);
+      saat.simdi += davranis.baglantiMs ?? 0;
       if (davranis.callbackCalismaz) throw davranis.hata;
       const sonuc = await cb(tx);
-      if (davranis.isGecikmesiMs) await bekle(davranis.isGecikmesiMs);
-      if (davranis.commitGecikmesiMs) await bekle(davranis.commitGecikmesiMs);
+      saat.simdi += davranis.commitMs ?? 0;
       if (davranis.hata) throw davranis.hata;
       return sonuc;
     }),
   };
 }
 
+function isSuresi<T>(ms: number, deger: T) {
+  return async () => {
+    saat.simdi += ms;
+    return deger;
+  };
+}
+
 describe("transaction süresi telemetrisi", () => {
   beforeEach(() => {
     logMock.info.mockReset();
+    saat.simdi = 1_000;
   });
 
   it("commit beklemesini activeMs'e dahil eder", async () => {
     const { withIdempotencyLock } = await import("@/modules/idempotency/repository/idempotency");
-    const istemci = sahteIstemci({ commitGecikmesiMs: 60 });
+    const istemci = sahteIstemci({ commitMs: 60 });
     await withIdempotencyLock(istemci as never, "kapsam", async () => "tamam", {
       label: "runtime.lease",
     });
@@ -59,7 +74,7 @@ describe("transaction süresi telemetrisi", () => {
       timeoutMs: 5000,
     });
     // Callback anında bitti; 60 ms yalnız commit aşamasında. Ölçüm onu görmeli.
-    expect(kayit.activeMs).toBeGreaterThanOrEqual(55);
+    expect(kayit.activeMs).toBe(60);
   });
 
   it("başarısız transaction'ı güvenli hata koduyla kaydeder ve hatayı aynen fırlatır", async () => {
@@ -93,40 +108,35 @@ describe("transaction süresi telemetrisi", () => {
     await withIdempotencyLock(sahteIstemci({}) as never, "kapsam", async () => "x");
     expect(logMock.info).not.toHaveBeenCalled();
   });
-  it("acquireMs, activeMs ve totalMs'i birbirinden ayırır", async () => {
+
+  it("bağlantıyı acquire'a, advisory kilit + iş + commit'i active'e yazar", async () => {
     const { withIdempotencyLock } = await import("@/modules/idempotency/repository/idempotency");
-    const istemci = sahteIstemci({
-      kilitGecikmesiMs: 40,
-      isGecikmesiMs: 30,
-      commitGecikmesiMs: 50,
-    });
-    await withIdempotencyLock(istemci as never, "kapsam", async () => "tamam", {
+    const istemci = sahteIstemci({ baglantiMs: 40, advisoryKilitMs: 10, commitMs: 50 });
+    await withIdempotencyLock(istemci as never, "kapsam", isSuresi(30, "tamam"), {
       label: "runtime.lease",
     });
-    const kayit = logMock.info.mock.calls[0]?.[0];
-    // Callback'ten önceki 40 ms acquire'a, sonraki 80 ms (iş + commit) active'e düşer.
-    expect(kayit.acquireMs).toBeGreaterThanOrEqual(35);
-    expect(kayit.acquireMs).toBeLessThan(75);
-    expect(kayit.activeMs).toBeGreaterThanOrEqual(75);
-    expect(kayit.totalMs).toBeGreaterThanOrEqual(115);
-    expect(Math.abs(kayit.totalMs - (kayit.acquireMs + kayit.activeMs))).toBeLessThanOrEqual(2);
+    // Advisory kilit ve lease işi 5 sn'lik transaction'ın içinde geçer; active'te olmalı.
+    expect(logMock.info.mock.calls[0]?.[0]).toMatchObject({
+      acquireMs: 40,
+      activeMs: 10 + 30 + 50,
+      totalMs: 40 + 10 + 30 + 50,
+    });
   });
 
   it("callback hiç başlamadıysa acquireMs ve activeMs null olur", async () => {
     const { withIdempotencyLock } = await import("@/modules/idempotency/repository/idempotency");
     const hata = Object.assign(new Error("bağlantı yok"), { code: "P1001" });
-    const istemci = sahteIstemci({ kilitGecikmesiMs: 20, callbackCalismaz: true, hata });
+    const istemci = sahteIstemci({ baglantiMs: 20, callbackCalismaz: true, hata });
     await expect(
       withIdempotencyLock(istemci as never, "kapsam", async () => "x", { label: "runtime.lease" }),
     ).rejects.toBe(hata);
-    const kayit = logMock.info.mock.calls[0]?.[0];
-    expect(kayit).toMatchObject({
+    expect(logMock.info.mock.calls[0]?.[0]).toMatchObject({
       outcome: "failed",
       errorCode: "P1001",
       acquireMs: null,
       activeMs: null,
+      totalMs: 20,
     });
-    expect(kayit.totalMs).toBeGreaterThanOrEqual(15);
   });
 
   it("okunurken fırlatan hata nesnesini bile aynen yukarı taşır", async () => {
