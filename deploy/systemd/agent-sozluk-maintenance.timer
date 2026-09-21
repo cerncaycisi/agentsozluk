@@ -14,11 +14,19 @@ Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
 # indirmesinden; şerit geri açılırsa üretim yine ~3.500/saate çıkar. Kapasite
 # bugünkü hıza değil TEPE hıza göre ayarlanmalı.
 #
-# Parti boyutu BÜYÜTÜLMEDİ (Astra, 21 Eylül): iki tablonun tüm partileri tek
-# transaction içinde koşuyor (`expired-operational-records.ts`), yani 2000x10
-# tek bir 20.000 satırlık transaction demek — uzun kilit, canlı yazmalarla
-# çekişme, WAL sıçraması. Onun yerine küçük parti (500x4) daha SIK: nominal
-# saatte 24.000, tepe üretimin ~7 katı. Birikim ~58 saatte erir.
+# Parti boyutu BÜYÜTÜLMEDİ (Astra, 21 Eylül): iki tablonun tüm partileri TEK
+# transaction içinde koşuyor (`expired-operational-records.ts`). Yani parti
+# ayarı İKİ tabloya birden uygulanır: 2000x10 transaction başına azami 40.000
+# silme demek olurdu (ilk yazımda 20.000 demiştim, iki tabloyu unutmuştum —
+# Sol, 21 Eylül). Uzun kilit, canlı yazmalarla çekişme, WAL sıçraması. Mevcut
+# 500x4 ise azami 4.000. Küçük parti daha SIK koşunca: `idempotency_records`
+# için nominal saatte 24.000, tepe üretimin ~7 katı. Birikim ~58 saatte erir.
+#
+# DURDURMA EŞİĞİ: herhangi bir koşu 60 saniyeyi aşarsa, ya da API p95 gecikmesi
+# veya worker'ın lease transaction süresi değişiklikten sonra ölçülebilir
+# biçimde artarsa `OnCalendar=hourly`'ye geri dönülür. Her koşu
+# `idempotency_records` üzerinde önce/sonra `count(*)` yapıyor; beş dakikada bir
+# koşunca bu bedel on iki kat sık ödenir ve henüz ölçülmedi.
 OnCalendar=*:0/5
 RandomizedDelaySec=30s
 AccuracySec=10s

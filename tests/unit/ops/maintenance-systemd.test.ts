@@ -42,6 +42,12 @@ describe("bounded operational-record maintenance timer", () => {
     // koşmakla artırıldı. Gerekçe ve ölçüm timer dosyasının başında.
     expect(timer).toContain("OnCalendar=*:0/5");
     expect(timer).toContain("RandomizedDelaySec=30s");
+    // Runbook timer'la aynı şeyi söylemeli. İlk değişiklikte runbook "saatlik,
+    // 15 dakika" demeye devam etti ve bu test yalnız başlığa baktığı için
+    // yakalamadı (Sol, 21 Eylül).
+    expect(runbook).toContain("one run every five minutes");
+    expect(runbook).not.toContain("one run per hour with up to fifteen minutes");
+    expect(runbook).toContain("**Stop threshold.**");
     expect(timer).toContain("Persistent=true");
     expect(timer).toContain("Unit=agent-sozluk-maintenance.service");
     expect(runbook).toContain("## Bounded expired-record maintenance timer");
