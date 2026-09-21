@@ -1067,16 +1067,22 @@ ertelenmiş madde olmaktan çıktı.
       değil, transaction içinde. Lease HTTP p50/p95 dağıtım öncesiyle aynı
       (815/967 → 834/976 ms), 5xx 0.
 
-- [~] **Lease süresi alarmı — dalda (`ops/lease-alarmi`).** Telemetri var ama
-  kimse bakmıyor; 19 Eylül'ün dersi bu. Mevcut canlılık alarmına fonksiyon
-  olarak eklendi (yeni birim ya da `daemon-reload` yok, yalnız betik
+- [~] **Lease süresi alarmı — dalda (`ops/lease-alarmi`, PR #154).** Telemetri
+  var ama kimse bakmıyor; 19 Eylül'ün dersi bu. Mevcut canlılık alarm
+  betiğine eklendi (yeni birim ya da `daemon-reload` yok, yalnız betik
   dosyası değişir). Her 15 dk'lık koşuda son 15 dk'nın lease kayıtları:
   `activeMs ≥ 2500` üç kez → uyarı; `≥ 4000` ya da tek `P2028` → kritik;
-  normale dönüş bir kez bildirilir. Eşikler Astra'nın; "5 dk'da 3 kez"
-  timer aralığına uyarlanıp 15 dk oldu. Canlılık kontrolünden bağımsız,
-  kendisi hiçbir yolda betiği düşürmez. Betik sahte `docker`/`curl` ile
-  gerçekten çalıştırılarak test ediliyor; altı mutasyon denendi, hepsi
-  yakalandı. Ölçü üretimde birkaç gün birikince eşik yeniden bakılsın.
+  log okunamazsa ayrı bildirim; her hal değişimi bildirilir. Eşikler
+  Astra'nın; "5 dk'da 3 kez" timer aralığına uyarlanıp 15 dk oldu.
+
+      **Sol ilk tur BİRLEŞTİRME:** lease taraması takılır ya da durum dosyası
+      bozuksa asıl canlılık alarmı hiç koşmuyordu; başarısız ntfy gönderimi
+      "gönderildi" sayılıp 6 saat bastırılıyordu (bu kusur eski canlılık
+      kodunda da vardı). Yeniden yazıldı: önce canlılık, sonra lease ayrı alt
+      süreçte `timeout` altında; durum dosyası doğrulanarak okunuyor; `curl
+      --fail`, durum yalnız başarılı gönderimde yazılıyor. Betik sahte
+      `docker`/`curl` ile gerçekten çalıştırılarak test ediliyor (sahte docker
+      argümanları doğruluyor); 16 test, 11 mutasyon denendi, hepsi yakalandı.
 
 - [x] **Devre kesici kendi kendini kilitliyor — asıl kök neden.** Düzeltildi ve canlıda
       (4 Eylül, PR #109 + #110 · `7336862`). Üç halka birbirini

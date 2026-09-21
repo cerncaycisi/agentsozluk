@@ -1,17 +1,29 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 /*
-  Lease süresi alarmı (21 Eylül 2026). Betik gerçekten çalıştırılır; `docker`
-  ve `curl` PATH'teki sahtelerle değiştirilir. Sahte docker `logs` çağrısında
-  verilen uygulama logunu, `exec` (canlılık sorgusu) çağrısında sağlıklı bir
-  cevap döner; sahte curl her bildirimi bir dosyaya yazar.
+  Canlılık + lease süresi alarmı (21 Eylül 2026). Betik gerçekten çalıştırılır;
+  `docker` ve `curl` PATH'teki sahtelerle değiştirilir.
+
+  Sahte docker argümanlarını DOĞRULAR (Sol): `logs` yalnız doğru compose
+  dosyası, `--since 15m` ve `app` servisiyle; `exec` yalnız `db` ve `psql` ile
+  cevap verir. Sahte curl hedef URL'yi ve başlıkları kaydeder; istenirse
+  başarısız döner.
 */
 
 const BETIK = path.resolve("deploy/alarm/canlilik-alarmi.sh");
+const COMPOSE = "/opt/agent-sozluk/runtime/compose.production.yaml";
 
 let dizin: string;
 
@@ -29,44 +41,70 @@ function kayit(activeMs: number, outcome = "committed", errorCode?: string) {
   });
 }
 
-function calistir(logSatirlari: string[]) {
+interface Secenek {
+  canlilik?: string; // sahte psql çıktısı; "" = sorgu başarısız
+  logsHata?: boolean;
+  logsAsili?: boolean;
+  curlHata?: boolean;
+}
+
+function calistir(logSatirlari: string[], secenek: Secenek = {}) {
   writeFileSync(path.join(dizin, "app.log"), logSatirlari.join("\n") + "\n");
   const sonuc = spawnSync("bash", [BETIK], {
     encoding: "utf8",
+    timeout: 30_000,
     env: {
       NODE_ENV: "test",
       PATH: `${path.join(dizin, "bin")}:/usr/bin:/bin`,
       ALARM_NTFY_KONU: "test-konu",
+      ALARM_NTFY_SUNUCU: "https://ntfy.example",
       ALARM_DURUM_DOSYASI: path.join(dizin, "durum", "durum"),
+      ALARM_LEASE_ZAMAN_ASIMI: "3",
       SAHTE_DIZIN: dizin,
+      SAHTE_CANLILIK: secenek.canlilik ?? "60 120",
+      SAHTE_LOGS_HATA: secenek.logsHata ? "1" : "",
+      SAHTE_LOGS_ASILI: secenek.logsAsili ? "1" : "",
+      SAHTE_CURL_HATA: secenek.curlHata ? "1" : "",
     },
   });
-  const bildirimler = existsSync(path.join(dizin, "curl.log"))
-    ? readFileSync(path.join(dizin, "curl.log"), "utf8").split("\n---\n").filter(Boolean)
-    : [];
+  const oku = (ad: string) =>
+    existsSync(path.join(dizin, ad)) ? readFileSync(path.join(dizin, ad), "utf8") : "";
+  const bildirimler = oku("curl.log").split("\n---\n").filter(Boolean);
+  const dockerCagrilari = oku("docker.log").split("\n").filter(Boolean);
   rmSync(path.join(dizin, "curl.log"), { force: true });
-  return { status: sonuc.status, bildirimler };
+  rmSync(path.join(dizin, "docker.log"), { force: true });
+  return { status: sonuc.status, bildirimler, dockerCagrilari };
 }
 
 beforeEach(() => {
   dizin = mkdtempSync(path.join(tmpdir(), "lease-alarm-"));
   const bin = path.join(dizin, "bin");
-  spawnSync("mkdir", ["-p", bin]);
+  mkdirSync(bin);
   writeFileSync(
     path.join(bin, "docker"),
     `#!/usr/bin/env bash
-for a in "$@"; do
-  case "$a" in
-    logs) cat "$SAHTE_DIZIN/app.log"; exit 0 ;;
-    exec) echo "60 120"; exit 0 ;;
-  esac
-done
-exit 1
+echo "$*" >> "$SAHTE_DIZIN/docker.log"
+tum=" $* "
+[[ "$tum" == *" -f ${COMPOSE} "* ]] || exit 97
+if [[ "$tum" == *" logs "* ]]; then
+  [[ "$tum" == *" --since 15m "* && "$tum" == *" --no-log-prefix "* && "$*" == *" app" ]] || exit 98
+  [[ -n "$SAHTE_LOGS_ASILI" ]] && sleep 20
+  [[ -n "$SAHTE_LOGS_HATA" ]] && exit 1
+  cat "$SAHTE_DIZIN/app.log"; exit 0
+fi
+if [[ "$tum" == *" exec -T db psql "* ]]; then
+  sql="$(cat)"
+  [[ "$sql" == *"READ ONLY"* && "$sql" == *"agent_runs"* ]] || exit 99
+  [[ -n "$SAHTE_CANLILIK" ]] && echo "$SAHTE_CANLILIK"
+  exit 0
+fi
+exit 96
 `,
   );
   writeFileSync(
     path.join(bin, "curl"),
     `#!/usr/bin/env bash
+[[ -n "$SAHTE_CURL_HATA" ]] && exit 22
 { printf '%s\\n' "$@"; printf -- '---\\n'; } >> "$SAHTE_DIZIN/curl.log"
 `,
   );
@@ -77,22 +115,33 @@ exit 1
 afterEach(() => rmSync(dizin, { recursive: true, force: true }));
 
 describe("lease süresi alarmı", () => {
-  it("normal sürelerde ve canlılık sağlıklıyken hiç bildirim atmaz", () => {
-    const { status, bildirimler } = calistir([kayit(826), kayit(1164), "başka bir satır"]);
+  it("normal sürelerde hiç bildirim atmaz; docker doğru argümanlarla çağrılır", () => {
+    const { status, bildirimler, dockerCagrilari } = calistir([
+      kayit(826),
+      kayit(1164),
+      "başka bir satır",
+    ]);
     expect(status).toBe(0);
     expect(bildirimler).toEqual([]);
+    expect(dockerCagrilari).toHaveLength(2);
+    expect(dockerCagrilari[0]).toContain("exec -T db psql");
+    expect(dockerCagrilari[1]).toContain("logs --no-log-prefix --since 15m app");
   });
 
   it("eşiği iki kez aşmak uyarı değildir, üç kez aşmak uyarıdır", () => {
     expect(calistir([kayit(2600), kayit(2700), kayit(900)]).bildirimler).toEqual([]);
-    const { bildirimler } = calistir([kayit(2600), kayit(2700), kayit(3000)]);
+    const { status, bildirimler } = calistir([kayit(2600), kayit(2700), kayit(3000)]);
+    expect(status).toBe(0);
     expect(bildirimler).toHaveLength(1);
     expect(bildirimler[0]).toContain("Title: Agent Sözlük: lease yavaşlıyor");
     expect(bildirimler[0]).toContain("Priority: high");
+    expect(bildirimler[0]).toContain("https://ntfy.example/test-konu");
+    expect(bildirimler[0]).toContain("--fail");
   });
 
   it("tek bir 4000 ms kaydı kritik alarmdır", () => {
-    const { bildirimler } = calistir([kayit(900), kayit(4100)]);
+    const { status, bildirimler } = calistir([kayit(900), kayit(4100)]);
+    expect(status).toBe(0);
     expect(bildirimler).toHaveLength(1);
     expect(bildirimler[0]).toContain("Title: Agent Sözlük: lease 5 sn sınırına dayandı");
     expect(bildirimler[0]).toContain("Priority: urgent");
@@ -115,11 +164,18 @@ describe("lease süresi alarmı", () => {
     expect(calistir([kayit(800)]).bildirimler).toHaveLength(0);
   });
 
-  it("uyarıdan kritiğe geçişi bildirir", () => {
-    expect(calistir([kayit(2600), kayit(2600), kayit(2600)]).bildirimler).toHaveLength(1);
-    const { bildirimler } = calistir([kayit(4200)]);
-    expect(bildirimler).toHaveLength(1);
-    expect(bildirimler[0]).toContain("sınırına dayandı");
+  it("her hal değişimini bildirir: uyarı → kritik → uyarı", () => {
+    const uc = [kayit(2600), kayit(2600), kayit(2600)];
+    expect(calistir(uc).bildirimler).toHaveLength(1);
+    expect(calistir([kayit(4200)]).bildirimler[0]).toContain("sınırına dayandı");
+    const inis = calistir(uc).bildirimler;
+    expect(inis).toHaveLength(1);
+    expect(inis[0]).toContain("lease yavaşlıyor");
+  });
+
+  it("gönderilemeyen alarmı gönderilmiş saymaz; sonraki koşu yeniden dener", () => {
+    expect(calistir([kayit(4500)], { curlHata: true }).bildirimler).toEqual([]);
+    expect(calistir([kayit(4500)]).bildirimler).toHaveLength(1);
   });
 
   it("başka etiketli transaction kayıtlarını saymaz", () => {
@@ -127,9 +183,70 @@ describe("lease süresi alarmı", () => {
     expect(calistir([baska]).bildirimler).toEqual([]);
   });
 
-  it("log boşsa ya da okunamazsa lease kontrolü sessiz kalır, canlılık yine koşar", () => {
-    const { status, bildirimler } = calistir([]);
+  it("JSON'da boşluk olsa da süreyi okur; satır başına yalnız ilk activeMs sayılır", () => {
+    const bosluklu = kayit(4300).replaceAll(":", ": ");
+    expect(calistir([bosluklu]).bildirimler[0]).toContain("en uzun activeMs 4300 ms");
+    rmSync(path.join(dizin, "durum"), { recursive: true, force: true });
+    const cift = `${kayit(2600).slice(0, -1)},"ic":{"activeMs":2600}}`;
+    expect(calistir([cift, cift]).bildirimler).toEqual([]);
+  });
+
+  it("kayıt yoksa (worker boşta) karar vermez ve önceki durumu korur", () => {
+    expect(calistir([kayit(4500)]).bildirimler).toHaveLength(1);
+    expect(calistir([]).bildirimler).toEqual([]);
+    expect(calistir([kayit(4500)]).bildirimler).toEqual([]);
+  });
+
+  it("log okunamıyorsa bunu ayrıca bildirir; sessiz kalmaz", () => {
+    const { status, bildirimler } = calistir([kayit(800)], { logsHata: true });
     expect(status).toBe(0);
-    expect(bildirimler).toEqual([]);
+    expect(bildirimler).toHaveLength(1);
+    expect(bildirimler[0]).toContain("lease logu okunamıyor");
+  });
+});
+
+describe("lease kontrolü canlılık alarmını bozamaz (Sol, 21 Eylül)", () => {
+  it("canlılık alarmı lease kritikken de gider; çıkış kodu canlılığınkidir", () => {
+    const { status, bildirimler } = calistir([kayit(4500)], { canlilik: "9999 120" });
+    expect(status).toBe(2);
+    expect(bildirimler).toHaveLength(2);
+    expect(bildirimler[0]).toContain("koşu yok");
+    expect(bildirimler[1]).toContain("sınırına dayandı");
+  });
+
+  it("veritabanı sorgulanamıyorsa çıkış 1 ve alarm; lease yine koşar", () => {
+    const { status, bildirimler } = calistir([kayit(800)], { canlilik: "" });
+    expect(status).toBe(1);
+    expect(bildirimler).toHaveLength(1);
+    expect(bildirimler[0]).toContain("veritabanı sorgulanamıyor");
+  });
+
+  it("takılan log okuması zaman aşımıyla kesilir, canlılık sonucu korunur", () => {
+    const baslangic = Date.now();
+    const { status, bildirimler } = calistir([kayit(4500)], {
+      canlilik: "9999 120",
+      logsAsili: true,
+    });
+    expect(Date.now() - baslangic).toBeLessThan(15_000);
+    expect(status).toBe(2);
+    expect(bildirimler).toHaveLength(1);
+    expect(bildirimler[0]).toContain("koşu yok");
+  });
+
+  it("bozuk durum dosyaları betiği düşürmez", () => {
+    mkdirSync(path.join(dizin, "durum"), { recursive: true });
+    writeFileSync(path.join(dizin, "durum", "durum"), "alarm bozuk\n");
+    writeFileSync(path.join(dizin, "durum", "durum-lease"), "kritik bozuk\n");
+    const { status, bildirimler } = calistir([kayit(4500)], { canlilik: "9999 120" });
+    expect(status).toBe(2);
+    expect(bildirimler).toHaveLength(2);
+  });
+
+  it("gönderilemeyen düzelme bildirimi sonraki koşuda yeniden denenir", () => {
+    expect(calistir([], { canlilik: "9999 120" }).bildirimler).toHaveLength(1);
+    expect(calistir([], { curlHata: true }).bildirimler).toEqual([]);
+    const tekrar = calistir([]).bildirimler;
+    expect(tekrar).toHaveLength(1);
+    expect(tekrar[0]).toContain("tekrar üretiyor");
   });
 });
