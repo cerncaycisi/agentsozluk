@@ -215,7 +215,8 @@ lease_kontrol() {
 lease_kontrol_kilitli() {
   local ham rc kayitlar toplam yavas kritik maks baslamayan okunamayan pencerede p2028
   local simdi simdi_ms imlec imlec_kimlik imlec_gecerli=0 esik baslangic pencere_dk yeni_hal govde
-  local kimlik makbuz_kimlik makbuz_ms bosluk="" basari=0 gecmis yeni_yavas="" yavas_yaz=""
+  local kimlik makbuz_kimlik makbuz_ms bosluk="" basari=0 gecmis yeni_yavas="" yavas_yaz="" tohum=0
+  local olusma olusma_ms
   local hal an teslim en_kotu olcum baslik oncelik etiket durum_yazildi
   # ALARM_SIMDI (sn) yalnız testler içindir; üretimde tanımlı değildir.
   if [[ -n "${ALARM_SIMDI:-}" ]]; then simdi_ms=$(( ALARM_SIMDI * 1000 )); else simdi_ms="$(date +%s%3N)"; fi
@@ -255,8 +256,15 @@ lease_kontrol_kilitli() {
   # konteyner değişince eski log gider ama tarihçe kalmalı (Astra, 22 Eylül).
   # Son 15 dk'nın yavaş kayıt zamanları (ms, virgülle).
   gecmis=""
-  read -r gecmis 2>/dev/null <"$LEASE_YAVAS" || true
-  [[ "$gecmis" =~ ^[0-9,]*$ ]] || gecmis=""
+  if [[ -e "$LEASE_YAVAS" ]]; then
+    read -r gecmis 2>/dev/null <"$LEASE_YAVAS" || true
+    [[ "$gecmis" =~ ^[0-9,]*$ ]] || gecmis=""
+  else
+    # Tarihçe dosyası yok (ilk kurulum ya da silinmiş): son 15 dk'yı logdan
+    # TOHUMLA — eski sürümün işlediği yavaş kayıtlar pencereden düşmesin (Sol).
+    tohum=1
+    baslangic=$(( baslangic - 900 ))
+  fi
   pencere_dk=$(( (simdi_ms - esik + 59999) / 60000 ))
 
   ham="$(timeout 25 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
@@ -278,7 +286,7 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
     # `null` = callback hiç başlamadı. `pencerede`: YENİ bir yavaş kayıtla biten
     # herhangi bir 15 dk'lık pencerede en çok kaç yavaş kayıt var.
     read -r toplam yavas kritik maks baslamayan okunamayan pencerede p2028 yeni_yavas < <(awk \
-      -v u="$LEASE_UYARI_MS" -v k="$LEASE_KRITIK_MS" -v e="$esik" -v s="$simdi_ms" -v g="$gecmis" '
+      -v u="$LEASE_UYARI_MS" -v k="$LEASE_KRITIK_MS" -v e="$esik" -v s="$simdi_ms" -v g="$gecmis" -v tohum="$tohum" '
       function ep(z,  y,m,d,H,M,S,mp,ms) {
         y=substr(z,1,4)+0; m=substr(z,6,2)+0; d=substr(z,9,2)+0
         H=substr(z,12,2)+0; M=substr(z,15,2)+0; S=substr(z,18,2)+0
@@ -296,7 +304,15 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
       {
         if ($0 !~ /}[[:space:]]*$/ || !match($0, /"time": *"[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9](\.[0-9]+)?/)) { n++; b++; next }
         z = substr($0, RSTART, RLENGTH); sub(/^"time": *"/, "", z); t = ep(z)
-        if (t >= s || t < e) next
+        if (t >= s) next
+        if (t < e) {
+          # Yalnız tohumlamada: imleçten eski ama son 15 dakikadaki yavaş kayıt tarihçedir.
+          if (tohum && t >= s - 900000 && match($0, /"activeMs": *[0-9]+ *[,}]/)) {
+            v = substr($0, RSTART, RLENGTH); gsub(/[^0-9]/, "", v)
+            if (v + 0 >= u) { ny++; yt[ny] = t; yn[ny] = 0; yy = yy (yy == "" ? "" : ",") t }
+          }
+          next
+        }
         n++
         if ($0 ~ /"outcome": *"failed"/ && $0 ~ /"errorCode": *"P2028"/) p++
         if (match($0, /"activeMs": *[0-9]+ *[,}]/)) {
@@ -354,9 +370,16 @@ Ayrıştırılamayan: ${okunamayan}. Bak: docker compose logs app | grep db.tran
       makbuz_kimlik=""; makbuz_ms=""
       read -r makbuz_kimlik makbuz_ms 2>/dev/null <"$LEASE_MAKBUZ" || true
       # Makbuz: eski konteyner worker durduktan sonra `makbuz_ms`e kadar tamamen
-      # tarandı. Eski konteynerin son taraması (imleç) ondan eski değilse boşluk yok.
+      # tarandı. Geçerli olması için: eski konteynerin son taraması (imleç) ondan
+      # eski değil VE yeni konteyner makbuzdan sonra, en geç 10 dk içinde yaratıldı
+      # (dağıtım yeniden yaratmayı taramadan saniyeler sonra yapar). İptal edilmiş
+      # bir dağıtımın makbuzu sonraki bir değişimi örtemez (Sol, on dördüncü tur).
+      olusma_ms=""
+      olusma="$(timeout 5 docker inspect -f '{{.Created}}' "$kimlik" 2>/dev/null)"
+      [[ -n "$olusma" ]] && olusma_ms="$(date -u -d "$olusma" +%s%3N 2>/dev/null)"
       if [[ "$makbuz_kimlik" != "$imlec_kimlik" || ! "$makbuz_ms" =~ ^[1-9][0-9]{0,15}$ ]] \
-         || (( makbuz_ms > imlec )); then
+         || [[ ! "$olusma_ms" =~ ^[1-9][0-9]*$ ]] \
+         || (( makbuz_ms > imlec || olusma_ms < makbuz_ms || olusma_ms - makbuz_ms > 600000 )); then
         bosluk="app konteyneri son taramadan sonra değişmiş (${imlec_kimlik:0:12} → ${kimlik:0:12}) ve eski konteyner kesimden önce taranmamış; $(iso $(( esik / 1000 ))) sonrasındaki eski log kayboldu."
       fi
     fi
@@ -412,9 +435,12 @@ ${govde}"
   if atomik_yaz "$LEASE_DURUM" "$hal $an $teslim $en_kotu $olcum"; then
     # Kimlik bilinmiyorsa imleç ilerlemez: sonraki koşu konteyner değişimini
     # ancak kimlikli bir imleçle doğrulayabilir.
-    if (( rc == 0 )) && [[ -n "$kimlik" ]] && atomik_yaz "$LEASE_IMLEC" "$simdi_ms $kimlik"; then
+    # Sıra: durum → tarihçe → imleç. Tarihçe yazılamazsa imleç ilerlemez: yeni
+    # yavaş kayıtlar sonraki taramada yeniden okunur (Sol, on dördüncü tur).
+    if (( rc == 0 )) && [[ -n "$kimlik" ]] \
+       && atomik_yaz "$LEASE_YAVAS" "$yavas_yaz" \
+       && atomik_yaz "$LEASE_IMLEC" "$simdi_ms $kimlik"; then
       basari=1
-      atomik_yaz "$LEASE_YAVAS" "$yavas_yaz" || true
       # Yeni lease kaydı görüldüyse worker çalışıyor: eski kesim makbuzu artık
       # bir kesimi kanıtlamaz (Astra, 22 Eylül). Konteyner kontrolü bu koşuda
       # makbuzu zaten kullandı.

@@ -51,6 +51,7 @@ interface Secenek {
   curlIlkHata?: boolean; // koşudaki YALNIZ ilk gönderim başarısız
   simdi?: number; // ALARM_SIMDI (sn); imleç testleri için
   kimlik?: string; // app konteynerinin kimliği; "" = okunamaz
+  olusma?: number; // app konteynerinin yaratılma anı (sn); yoksa `inspect` başarısız
   kip?: string; // betiğe verilen argüman (ör. --kesim-oncesi)
   konuYok?: boolean; // ALARM_NTFY_KONU tanımsız
   logDosyasi?: string; // sahte docker'ın okuyacağı log (varsayılan app.log)
@@ -75,6 +76,7 @@ function ortam(secenek: Secenek): NodeJS.ProcessEnv {
     SAHTE_CURL_HATA: secenek.curlHata ? "1" : "",
     SAHTE_CURL_ILK_HATA: secenek.curlIlkHata ? "1" : "",
     SAHTE_KIMLIK: secenek.kimlik ?? "aaaaaaaaaaaa1111",
+    SAHTE_OLUSMA: secenek.olusma === undefined ? "" : new Date(secenek.olusma * 1000).toISOString(),
     SAHTE_LOG_DOSYASI: secenek.logDosyasi ?? path.join(dizin, "app.log"),
     SAHTE_LOGS_GECIKME: String(secenek.logsGecikme ?? 0),
     ...(secenek.simdi === undefined ? {} : { ALARM_SIMDI: String(secenek.simdi) }),
@@ -115,6 +117,10 @@ beforeEach(() => {
     `#!/usr/bin/env bash
 echo "$*" >> "$SAHTE_DIZIN/docker.log"
 tum=" $* "
+if [[ "$1" == "inspect" ]]; then
+  [[ "$2" == "-f" && "$3" == "{{.Created}}" && "$4" == "$SAHTE_KIMLIK" && -n "$SAHTE_OLUSMA" ]] || exit 1
+  echo "$SAHTE_OLUSMA"; exit 0
+fi
 
 [[ "$tum" == *" -f ${COMPOSE} "* ]] || exit 97
 if [[ "$tum" == *" logs "* ]]; then
@@ -395,14 +401,15 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
     expect(imlecOku()).toBe(T - 15 * 60);
   });
 
-  it("imleç 60 sn örtüşmeyle geri başlar; geriye sınır yoktur", () => {
+  it("imleç 60 sn örtüşmeyle (tarihçe yoksa +15 dk tohum) geri başlar; sınır yok", () => {
     imlecYaz(T - 10 * 60);
     calistir([], { simdi: T });
     imlecYaz(T - 10 * 3600);
     calistir([], { simdi: T });
     const since = readFileSync(path.join(dizin, "since.log"), "utf8").trim().split("\n");
     const beklenen = (sn: number) => new Date(sn * 1000).toISOString().replace(".000Z", "Z");
-    expect(since[0]).toBe(beklenen(T - 10 * 60 - 60));
+    // İlk koşuda tarihçe yok: tohum için 15 dk daha geri; ikincide tarihçe var.
+    expect(since[0]).toBe(beklenen(T - 10 * 60 - 60 - 900));
     expect(since[1]).toBe(beklenen(T - 10 * 3600 - 60));
   });
 
@@ -541,18 +548,20 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
     expect(kesim.status).toBe(0);
     expect(kesim.curlDenemeleri).toEqual([]);
     expect(makbuzOku()).toBe(`${ESKI} ${(T + 120) * 1000}`);
-    expect(calistir([zamanli(800, T + 800)], { simdi: T + 900, kimlik: YENI }).bildirimler).toEqual(
-      [],
-    );
+    expect(
+      calistir([zamanli(800, T + 800)], { simdi: T + 900, kimlik: YENI, olusma: T + 130 })
+        .bildirimler,
+    ).toEqual([]);
   });
 
   it("kesimle yenileme arasına düşen timer taraması makbuzu geçersiz kılmaz", () => {
     calistir([zamanli(800, T - 60)], { simdi: T, kimlik: ESKI });
     calistir([], { simdi: T + 120, kimlik: ESKI, kip: "--kesim-oncesi", konuYok: true });
     calistir([], { simdi: T + 130, kimlik: ESKI });
-    expect(calistir([zamanli(800, T + 800)], { simdi: T + 900, kimlik: YENI }).bildirimler).toEqual(
-      [],
-    );
+    expect(
+      calistir([zamanli(800, T + 800)], { simdi: T + 900, kimlik: YENI, olusma: T + 140 })
+        .bildirimler,
+    ).toEqual([]);
   });
 
   it("kesim öncesi kip bildirim göndermez; karar sonraki timer koşusunda gider", () => {
@@ -564,7 +573,7 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
     });
     expect(kesim.status).toBe(0);
     expect(kesim.curlDenemeleri).toEqual([]);
-    const sonra = calistir([], { simdi: T + 900, kimlik: YENI }).bildirimler;
+    const sonra = calistir([], { simdi: T + 900, kimlik: YENI, olusma: T + 10 }).bildirimler;
     expect(sonra).toHaveLength(1);
     expect(sonra[0]).toContain("sınırına dayandı");
   });
@@ -627,7 +636,11 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
     expect(calistir(once, { simdi: T, kimlik: ESKI }).bildirimler).toEqual([]);
     calistir(once, { simdi: T + 10, kimlik: ESKI, kip: "--kesim-oncesi", konuYok: true });
     // Yeni konteyner: eski kayıtlar logda YOK; tarihçe diskten gelmeli.
-    const sonra = calistir([zamanli(2600, T + 40)], { simdi: T + 60, kimlik: YENI });
+    const sonra = calistir([zamanli(2600, T + 40)], {
+      simdi: T + 60,
+      kimlik: YENI,
+      olusma: T + 20,
+    });
     expect(sonra.bildirimler).toHaveLength(1);
     expect(sonra.bildirimler[0]).toContain("lease yavaşlıyor");
   });
@@ -644,6 +657,37 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
       simdi: T,
     });
     expect(bildirimler).toEqual([]);
+  });
+
+  it.each([
+    ["makbuzdan 10 dk sonra yaratılan", 700],
+    ["makbuzdan önce yaratılan", -30],
+  ])("%s konteyner makbuzla örtülmez", (_ad, fark) => {
+    calistir([zamanli(800, T - 60)], { simdi: T, kimlik: ESKI });
+    calistir([], { simdi: T + 60, kimlik: ESKI, kip: "--kesim-oncesi", konuYok: true });
+    const sonra = calistir([zamanli(800, T + 1000)], {
+      simdi: T + 1100,
+      kimlik: YENI,
+      olusma: T + 60 + fark,
+    });
+    expect(sonra.bildirimler[0]).toContain("kesimden önce taranmamış");
+  });
+
+  it("tarihçe dosyası yoksa ilk koşu son 15 dk'yı logdan tohumlar", () => {
+    // Eski sürüm iki yavaşı işledi ve imleci ilerletti; tarihçe dosyası yok.
+    imlecYaz(T);
+    const loglar = [zamanli(2600, T - 100), zamanli(2600, T - 50), zamanli(2600, T + 40)];
+    const { bildirimler } = calistir(loglar, { simdi: T + 60, kimlik: ESKI });
+    expect(bildirimler).toHaveLength(1);
+    expect(bildirimler[0]).toContain("lease yavaşlıyor");
+  });
+
+  it("tarihçe yazılamazsa imleç ilerlemez", () => {
+    imlecYaz(T - 15 * 60);
+    mkdirSync(path.join(dizin, "durum", "durum-lease-yavas"), { recursive: true });
+    const { stderr } = calistir([zamanli(2600, T - 60)], { simdi: T, kimlik: ESKI });
+    expect(stderr).toContain("durum-lease-yavas yazılamadı");
+    expect(imlecOku()).toBe(T - 15 * 60);
   });
 
   it("normal kipte ntfy konusu yine zorunludur", () => {
