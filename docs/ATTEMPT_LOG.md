@@ -8339,3 +8339,86 @@ bekledi. 20 Eylül'de `pkill -f eslint`'in hakemi öldürmesiyle aynı sınıf h
 toplam ~16 dk, komut zaman aşımı 10 dk. Zaman aşımı dağıtımın ORTASINA denk
 gelse cutover yarıda kesilirdi. Dağıtım adımına ulaşmadan durdurup ikiye böldüm.
 **Uzun bekleme ile üretim değişikliği aynı zaman-aşımlı komutta olmaz.**
+
+## 2026-09-21 — bakım timer'ı 5 dakikaya; bozuk dosya kuruldu ve geri alındı
+
+- **Sebep (Astra itirazı + üretim günlüğü):** temizlik her koşuda tam 2.000
+  kayıt siliyor ve commit ediyor — çalışıyor. `idempotency_records`'taki 1,33 M
+  birikim kapasite yetersizliğinden: geçmişte üretim sık sık saatte 2.000'i aştı
+  (3 Eylül 82.741 kayıt ≈ 3.450/saat). Bugünkü ~933/saat F02'nin şerit
+  azaltmasından; şerit açılırsa tepe geri gelir.
+- **Tasarım (Astra):** parti büyütülmedi — iki tablonun tüm partileri tek
+  transaction'da, 2000×10 transaction başına 40.000 silme olurdu. 500×4
+  (azami 4.000) kaldı, timer saatlikten 5 dakikaya.
+- **Bozuk dosya kuruldu.** #148'in timer dosyasına açıklama bloğu eklerken
+  `[Timer]` başlığını sildim; `OnCalendar` `[Unit]`'e düştü. Kurulumda systemd
+  `bad unit file setting` ile timer'ı başlatmadı. **~1 dakika içinde yedeğe
+  geri alındı**; timer aktif kaldı, bakım koşusu kaçmadı.
+- **Neden geçti:** Sol GO, Astra DAĞIT, CI 7/7 — üçü de dosyanın METNİNE
+  baktı, YAPISINA değil. `systemd-analyze verify` hatayı kurulumdan ÖNCE
+  söyledi ama `;` ile koştuğu için komutu durdurmadı.
+- **Düzeltme #151:** `[Timer]` geri kondu; birim testi bölümleri ayrıştırıyor
+  (bozuk dosyaya karşı denendi, düşüyor). Kurulum artık verify çıktısı boş
+  değilse DURUYOR. İkinci kurulum temiz: timer aktif, `*:0/5`.
+
+**Tekrarlama:**
+
+- Doğrulama adımı kapı değilse süstür. `verify; install` değil,
+  `verify || exit; install`.
+- Birim testi bir yapılandırma dosyasının metnini değil yapısını doğrulamalı.
+- Bu oturumda üçüncü kez: hakem ve CI yeşilken üretimde bozulan bir şey. Hepsinde
+  kontrol doğru soruyu sormuyordu.
+
+**Ayrıca — 5 saatlik ikinci durma:** 07:40'ta #151'in CI'ı için bekleyici
+kurmadan "yeşil olunca devam" dedim; 13:01'de Gökhan "?" yazınca fark ettim.
+Bekleyicisiz bırakılan her "sonra devam ederim" bir durmadır.
+
+**Durdurma eşiği ölçüldü (21 Eylül 13:05–13:15 UTC):** yeni kadanstaki ilk üç
+bakım koşusu her biri ~1 saniye; eşik 60 saniye. Beş dakikalık kadans kalıyor.
+
+## 2026-09-21 — `4d665cf` lease yolunda hiç devreye girmemiş
+
+**Astra buldu, kaynaktan doğrulandı.** Lease HTTP yolu: route →
+`runAgentRuntimeAction` → `idempotentResponse` → `executeIdempotently` →
+`withIdempotencyLock` → `client.$transaction(...)` **seçeneksiz**. Yani Prisma'nın
+varsayılanı 5.000 ms geçerli. `leaseRuntimeRun` içindeki `inTransaction` zaten bir
+transaction istemcisi aldığı için callback'i doğrudan çalıştırıyor; `4d665cf`'in
+15 sn seçeneği bu yolda HİÇ uygulanmıyor.
+
+**Sonuç:** 19 Eylül'den 21 Eylül #147 dağıtımına kadar üretim, kesintiye yol açan
+aynı 5 sn sınırla koştu. 20 Eylül gecesi yedek penceresinin sessiz geçmesini
+"düzeltme tuttu" diye kaydetmiştim — yanlış premise; o gece maliyet sınırın
+altında kaldı. **Gerçek koruma #147:** sorgunun maliyetini düşürdü. Kalan pay lease
+telemetrisi olmadan görülemez.
+
+**Tekrarlama:** bir ayarın "devreye girdiğini" varsayma; değerin gerçekten
+kullanıldığı çağrı yolunu takip et. Burada ayar doğru yere yazılmıştı ama o yol
+lease tarafından hiç kullanılmıyordu.
+
+## 2026-09-21 — lease telemetrisi (#152) üretimde
+
+- Aday `545b676faa412043600f2110ed4681cd894f7043` (PR head `f76c3d2`, ağaç
+  `1de8df05…` birebir). Main CI `35618948316`, artifact `35619783577`,
+  migration yok, `RELEASE_COMPLETE PASS ... cleanup=no-cleanup`.
+- Sol dört tur (üç BİRLEŞTİRME, sonra BİRLEŞTİR); Astra DAĞIT, şartı INFO ve
+  log rotasyonunun doğrulanması. Üretimde salt okunur doğrulandı:
+  `LOG_LEVEL=info`, app konteyneri json-file 10 MB × 5.
+- Kabul: 40 dk'da 252 kayıt, hepsi `committed`; `activeMs` maks 1164 ms.
+  Dağıtımdan sonra 7 koşu başladı. Sayılar `STATUS.md` 21 Eylül girdisinde.
+- **Astra'nın log hacmi tahmini üst sınırdı:** 36 credential × 5 sn → 7,2
+  kayıt/sn öngördü; gerçekte ~6 kayıt/dk (koşu yokken worker bekliyor).
+  Ölçülmüş değer tahmini geçersiz kıldı; hesaplamayla yetinilmedi.
+
+**Tekrarlama:**
+
+- `codex exec` prompt argümanla verilse de stdin açıksa "Reading additional
+  input from stdin..." deyip bekliyor; ilk Sol turu 25 dk boşa gitti. Her
+  arka plan `codex exec` çağrısına `< /dev/null` ekle.
+- Vitest'te `beforeEach(() => mock.mockReset())` kısa ok fonksiyonu spy'ı
+  DÖNDÜRÜYOR; Vitest dönen fonksiyonu teardown sayıp test sonunda çağırıyor.
+  Mock fırlatacak şekilde ayarlıysa test sebepsiz düşer. Gövdeli yaz: `{ ...; }`.
+- Bu operatör sunucusu 1 GB RAM: repo genelinde `eslint`/`prettier --check`
+  OOM ile düşüyor (exit 134). Yerelde yalnız değişen dosyalar; repo geneli CI'da.
+- Oturum yeniden başlayınca arka plan bekleyicileri ölüyor (CI bekleyicisi ve
+  Sol turu "stopped"). Yeniden başlangıçta ilk iş açık işlerin durumunu
+  kontrol edip bekleyicileri yeniden kurmak.
