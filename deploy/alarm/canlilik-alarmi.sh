@@ -38,16 +38,15 @@ LEASE_UYARI_MS="${ALARM_LEASE_UYARI_MS:-2500}"
 LEASE_KRITIK_MS="${ALARM_LEASE_KRITIK_MS:-4000}"
 LEASE_UYARI_ADET="${ALARM_LEASE_UYARI_ADET:-3}"
 LEASE_PENCERE="${ALARM_LEASE_PENCERE:-15m}"        # timer aralığıyla aynı
-LEASE_ZAMAN_ASIMI="${ALARM_LEASE_ZAMAN_ASIMI:-45}" # sn; birimin 2 dk sınırının altında
+LEASE_ZAMAN_ASIMI="${ALARM_LEASE_ZAMAN_ASIMI:-45}"       # sn
+CANLILIK_ZAMAN_ASIMI="${ALARM_CANLILIK_ZAMAN_ASIMI:-30}" # sn; docker/exec takılırsa
+# En kötü duvar saati: canlılık 30 + curl 20 + lease 45+5 = 100 sn; birimin
+# TimeoutStartSec=2min sınırının altında.
 LEASE_DURUM="${DURUM}-lease"
 APP=/opt/agent-sozluk/app
 RUNTIME=/opt/agent-sozluk/runtime
 
 mkdir -p "$(dirname "$DURUM")" 2>/dev/null || true
-
-compose() {
-  docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" "$@"
-}
 
 # Başarısızsa sıfır dışı döner; çağıran durumu YALNIZ başarıda yazar, yoksa
 # gönderilemeyen bir alarm "gönderildi" sayılıp 6 saat bastırılırdı.
@@ -58,18 +57,25 @@ bildir() { # $1 baslik, $2 oncelik, $3 etiket, $4 govde
 }
 
 # Durum dosyasını okur; bozuk ya da tanınmayan içerik `temiz 0` sayılır.
-# $1 dosya, $2 izinli haller (| ile). Çıktı: "hal an".
+# Zaman damgası baştaki sıfırsız bir tamsayı olmalı ve gelecekte olmamalı:
+# `0009` Bash'te geçersiz sekizlik sayıdır, gelecekteki bir an ise tekrar
+# bildirimini süresiz bastırırdı (Sol, ikinci tur). $1 dosya, $2 izinli
+# haller (| ile), $3 şimdi. Çıktı: "hal an".
 durum_oku() {
   local hal an
   read -r hal an 2>/dev/null <"$1" || true
   [[ "${hal:-}" =~ ^($2)$ ]] || hal=temiz
-  [[ "${an:-}" =~ ^[0-9]{1,12}$ ]] || an=0
+  if [[ ! "${an:-}" =~ ^(0|[1-9][0-9]{0,11})$ ]] || (( an > $3 )); then
+    hal=temiz; an=0
+  fi
   echo "$hal $an"
 }
 
 # ---------------------------------------------------------------- canlılık
 canlilik_sorgu() {
-  compose exec -T db psql -X -tA -P pager=off -U agent_sozluk -d agent_sozluk 2>/dev/null <<'PSQL'
+  timeout --kill-after=5 "$CANLILIK_ZAMAN_ASIMI" \
+    docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
+    exec -T db psql -X -tA -P pager=off -U agent_sozluk -d agent_sozluk 2>/dev/null <<'PSQL'
 BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
 SET LOCAL statement_timeout='20s';
 SELECT round(extract(epoch from now()-max("startedAt")))::bigint
@@ -85,7 +91,7 @@ canlilik_kontrol() {
   local cikti kosu_yas entry_yas esik_sn simdi onceki_hal onceki_an
   cikti="$(canlilik_sorgu | grep -E '^[0-9]+ ' | head -1)"
   simdi="$(date +%s)"
-  read -r onceki_hal onceki_an <<<"$(durum_oku "$DURUM" 'temiz|alarm|sorgu-hatasi')"
+  read -r onceki_hal onceki_an <<<"$(durum_oku "$DURUM" 'temiz|alarm|sorgu-hatasi' "$simdi")"
 
   # Sorgu başarısızsa bu da bir arıza sinyalidir; sessiz kalmak en kötü seçenek.
   if [[ -z "$cikti" ]]; then
@@ -132,7 +138,7 @@ lease_kontrol() {
     logs --no-log-prefix --since "$LEASE_PENCERE" app 2>/dev/null)"
   rc=$?
   simdi="$(date +%s)"
-  read -r onceki_hal onceki_an <<<"$(durum_oku "$LEASE_DURUM" 'temiz|uyari|kritik|okunamiyor')"
+  read -r onceki_hal onceki_an <<<"$(durum_oku "$LEASE_DURUM" 'temiz|uyari|kritik|okunamiyor' "$simdi")"
 
   if (( rc != 0 )); then
     # Log okunamıyorsa lease kör kalır; bu canlılıktan ayrı bir arızadır.
@@ -142,8 +148,15 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
   else
     kayitlar="$(grep -E '"event": *"db\.transaction\.duration"' <<<"$ham" \
       | grep -E '"label": *"runtime\.lease"')"
-    # Kayıt yoksa (worker boşta) karar yok; önceki durum aynen kalır.
-    [[ -n "$kayitlar" ]] || return 0
+    # Kayıt yoksa (worker boşta) süre hakkında karar yok; önceki durum kalır.
+    # Tek istisna: log yeniden okunabiliyorsa `okunamiyor` kapanmalı.
+    if [[ -z "$kayitlar" ]]; then
+      [[ "$onceki_hal" == "okunamiyor" ]] || return 0
+      bildir "Agent Sözlük: lease logu yeniden okunuyor" default white_check_mark \
+        "Uygulama logu yeniden okunabiliyor; son ${LEASE_PENCERE} içinde lease kaydı yok." \
+        && echo "temiz $simdi" >"$LEASE_DURUM"
+      return 0
+    fi
 
     # Satır başına YALNIZ ilk activeMs; kesilmiş satır sayılmaz ama raporlanır.
     read -r toplam yavas kritik maks okunamayan < <(awk -v u="$LEASE_UYARI_MS" -v k="$LEASE_KRITIK_MS" '

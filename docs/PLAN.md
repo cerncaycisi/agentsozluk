@@ -1082,7 +1082,7 @@ ertelenmiş madde olmaktan çıktı.
       süreçte `timeout` altında; durum dosyası doğrulanarak okunuyor; `curl
       --fail`, durum yalnız başarılı gönderimde yazılıyor. Betik sahte
       `docker`/`curl` ile gerçekten çalıştırılarak test ediliyor (sahte docker
-      argümanları doğruluyor); 16 test, 11 mutasyon denendi, hepsi yakalandı.
+      argümanları doğruluyor); 22 test, 17 mutasyon denendi, hepsi yakalandı. İkinci tur: canlılık sorgusuna da `timeout`; sıfırlı ya da gelecekteki zaman damgası reddediliyor.
 
 - [x] **Devre kesici kendi kendini kilitliyor — asıl kök neden.** Düzeltildi ve canlıda
       (4 Eylül, PR #109 + #110 · `7336862`). Üç halka birbirini

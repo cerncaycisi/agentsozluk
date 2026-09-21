@@ -45,6 +45,7 @@ interface Secenek {
   canlilik?: string; // sahte psql çıktısı; "" = sorgu başarısız
   logsHata?: boolean;
   logsAsili?: boolean;
+  execAsili?: boolean;
   curlHata?: boolean;
 }
 
@@ -60,10 +61,12 @@ function calistir(logSatirlari: string[], secenek: Secenek = {}) {
       ALARM_NTFY_SUNUCU: "https://ntfy.example",
       ALARM_DURUM_DOSYASI: path.join(dizin, "durum", "durum"),
       ALARM_LEASE_ZAMAN_ASIMI: "3",
+      ALARM_CANLILIK_ZAMAN_ASIMI: "2",
       SAHTE_DIZIN: dizin,
       SAHTE_CANLILIK: secenek.canlilik ?? "60 120",
       SAHTE_LOGS_HATA: secenek.logsHata ? "1" : "",
       SAHTE_LOGS_ASILI: secenek.logsAsili ? "1" : "",
+      SAHTE_EXEC_ASILI: secenek.execAsili ? "1" : "",
       SAHTE_CURL_HATA: secenek.curlHata ? "1" : "",
     },
   });
@@ -93,6 +96,7 @@ if [[ "$tum" == *" logs "* ]]; then
   cat "$SAHTE_DIZIN/app.log"; exit 0
 fi
 if [[ "$tum" == *" exec -T db psql "* ]]; then
+  [[ -n "$SAHTE_EXEC_ASILI" ]] && sleep 20
   sql="$(cat)"
   [[ "$sql" == *"READ ONLY"* && "$sql" == *"agent_runs"* ]] || exit 99
   [[ -n "$SAHTE_CANLILIK" ]] && echo "$SAHTE_CANLILIK"
@@ -197,6 +201,14 @@ describe("lease süresi alarmı", () => {
     expect(calistir([kayit(4500)]).bildirimler).toEqual([]);
   });
 
+  it("log yeniden okunabilince, kayıt olmasa da okunamıyor durumu kapanır", () => {
+    expect(calistir([], { logsHata: true }).bildirimler).toHaveLength(1);
+    const donus = calistir([]).bildirimler;
+    expect(donus).toHaveLength(1);
+    expect(donus[0]).toContain("yeniden okunuyor");
+    expect(calistir([]).bildirimler).toEqual([]);
+  });
+
   it("log okunamıyorsa bunu ayrıca bildirir; sessiz kalmaz", () => {
     const { status, bildirimler } = calistir([kayit(800)], { logsHata: true });
     expect(status).toBe(0);
@@ -240,6 +252,37 @@ describe("lease kontrolü canlılık alarmını bozamaz (Sol, 21 Eylül)", () =>
     const { status, bildirimler } = calistir([kayit(4500)], { canlilik: "9999 120" });
     expect(status).toBe(2);
     expect(bildirimler).toHaveLength(2);
+  });
+
+  it("takılan canlılık sorgusu zaman aşımıyla kesilir ve sorgu hatası olarak bildirilir", () => {
+    const baslangic = Date.now();
+    const { status, bildirimler } = calistir([kayit(800)], { execAsili: true });
+    expect(Date.now() - baslangic).toBeLessThan(15_000);
+    expect(status).toBe(1);
+    expect(bildirimler).toHaveLength(1);
+    expect(bildirimler[0]).toContain("veritabanı sorgulanamıyor");
+  });
+
+  it.each([
+    ["baştaki sıfırlı", "0009"],
+    ["gelecekteki", "99999999999"],
+  ])("%s zaman damgası alarmı bastıramaz", (_ad, an) => {
+    mkdirSync(path.join(dizin, "durum"), { recursive: true });
+    writeFileSync(path.join(dizin, "durum", "durum"), `alarm ${an}\n`);
+    writeFileSync(path.join(dizin, "durum", "durum-lease"), `kritik ${an}\n`);
+    const { status, bildirimler } = calistir([kayit(4500)], { canlilik: "9999 120" });
+    expect(status).toBe(2);
+    expect(bildirimler).toHaveLength(2);
+  });
+
+  it.each([
+    ["koşu yok alarmı", "9999 120", "koşu yok"],
+    ["sorgu hatası alarmı", "", "sorgulanamıyor"],
+  ])("gönderilemeyen %s sonraki koşuda yeniden denenir", (_ad, canlilik, metin) => {
+    expect(calistir([], { canlilik, curlHata: true }).bildirimler).toEqual([]);
+    const tekrar = calistir([], { canlilik }).bildirimler;
+    expect(tekrar).toHaveLength(1);
+    expect(tekrar[0]).toContain(metin);
   });
 
   it("gönderilemeyen düzelme bildirimi sonraki koşuda yeniden denenir", () => {
