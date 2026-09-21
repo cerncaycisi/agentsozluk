@@ -158,6 +158,44 @@ describe("argon2 eşzamanlılık sınırı", () => {
     vi.resetModules();
   });
 
+  it("dış iş bittikten sonra ateşlenen torun kapıya yeniden girer", async () => {
+    /*
+      Sol (21 Eylül): bağlam `true` saklarken permit içinde kurulan bir
+      zamanlayıcı dış iş bittikten SONRA ateşlenince hâlâ permit varmış gibi
+      kapıyı atlıyordu. Burada iki slot başka işlerle doluyken geç torun
+      koşturuluyor; kapıyı atlasaydı tepe 3 olurdu.
+    */
+    const { modul, bekleyen, olc } = await kapiyiKur();
+    let gecTorun: Promise<unknown> | undefined;
+    let tetikle: () => void = () => undefined;
+    const tetik = new Promise<void>((resolve) => (tetikle = resolve));
+
+    const dis = modul.withArgon2Permit(async () => {
+      void tetik.then(() => {
+        gecTorun = modul.verifyPassword("hash", "gec");
+      });
+      return "dis";
+    });
+    await expect(dis).resolves.toBe("dis"); // permit bırakıldı
+
+    // İki slotu başka işlerle doldur.
+    const dolduranlar = [modul.verifyPassword("h", "a"), modul.verifyPassword("h", "b")];
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    tetikle(); // geç torun şimdi koşar
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(olc()).toBeLessThanOrEqual(2);
+
+    while (bekleyen.length > 0) {
+      bekleyen.shift()?.();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    await Promise.all([...dolduranlar, gecTorun]);
+    expect(olc()).toBeLessThanOrEqual(2);
+    vi.doUnmock("@node-rs/argon2");
+    vi.resetModules();
+  });
+
   it("iç içe çağrı ikinci permit istemez ve tepe 2'de kalır", async () => {
     /*
       Sözleşme: `withArgon2Permit` işin tamamını sarar ve İÇERİDEKİ argon2

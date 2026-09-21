@@ -78,15 +78,30 @@ function permitBirak(): void {
   aktif -= 1;
 }
 
-const permitBaglami = new AsyncLocalStorage<true>();
+/*
+  Bağlam "geçmişte permit vardı" değil, "ŞU AN geçerli bir permit var" tutar.
+  İlk sürüm `true` saklıyordu: permit içinde kurulan bir zamanlayıcı dış iş
+  bittikten SONRA ateşlenirse hâlâ `true` görüp kapıyı atlıyordu (Sol, 21 Eylül,
+  salt okunur Node probuyla gösterdi). Bugünkü çağrı grafiğinde bunu tetikleyen
+  yol yok — her iş await ediliyor — ama güvenlik ilkelinin sözleşmesi buna
+  dayanmamalı. Artık bir kira nesnesi tutuluyor; bırakıldığında `bitti` olur ve
+  geç ateşlenen torun kapıya yeniden girer.
+*/
+interface Argon2Kirasi {
+  bitti: boolean;
+}
+const permitBaglami = new AsyncLocalStorage<Argon2Kirasi>();
 
 async function argon2Kapisi<T>(is: () => Promise<T>): Promise<T> {
-  // Yeniden giriş: permit bu akışta zaten alınmışsa ikincisini isteme.
-  if (permitBaglami.getStore()) return is();
+  // Yeniden giriş: bu akışta HÂLÂ GEÇERLİ bir permit varsa ikincisini isteme.
+  const mevcut = permitBaglami.getStore();
+  if (mevcut && !mevcut.bitti) return is();
   await permitAl();
+  const kira: Argon2Kirasi = { bitti: false };
   try {
-    return await permitBaglami.run(true, is);
+    return await permitBaglami.run(kira, is);
   } finally {
+    kira.bitti = true;
     permitBirak();
   }
 }

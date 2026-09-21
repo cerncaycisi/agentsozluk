@@ -483,9 +483,9 @@ azaltır. İkisi de `PLAN.md`'de.
 ### Giriş maliyeti: iki bilinen sınır (20 Eylül 2026)
 
 Argon2 eşzamanlılık kapısı ve `login:ip` kovası birlikte giriş maliyetini
-bağlıyor, ama iki yerde eksik kalıyorlar. Sol'un 20 Eylül bulguları; ikisi de
-**kabul edilen artık risk**, çünkü kapatmaları kod değil dağıtım değişikliği
-ister.
+bağlıyor, ama iki yerde eksik kalıyorlar. Sol'un 20-21 Eylül bulguları; ikisi
+de **kabul edilen artık risk**. Birincisi kod/veri modeli değişikliği, ikincisi
+dağıtım değişikliği ister.
 
 **1. Sabit pencere, çift-burst.** `login:ip` sabit pencereli sayaç kullanıyor.
 Saldırgan pencerenin son saniyelerinde bütçeyi harcayıp yeni pencerenin ilk
@@ -493,8 +493,10 @@ saniyelerinde tekrar harcarsa, kısa bir anda sınırın iki katını geçirebil
 Kayan pencere bunu kapatır ama mevcut `rate-limit` altyapısı sabit pencere
 üzerine kurulu; değiştirmek tüm kovaları etkiler.
 **Kabul gerekçesi:** eşzamanlılık kapısı bu bursttaki isteklerin aynı anda
-Argon2 koşmasını zaten engelliyor, yani maliyet yayılıyor. Etki gecikme, çökme
-değil.
+Argon2 koşmasını engelliyor; **aktif Argon2 maliyeti sınırlı.** Ama bekleme
+kuyruğu sınırsız: çok sayıda kabul edilmiş istek sıraya girip bekleyen istek ve
+closure belleği biriktirebilir. Yani "çökme değil, yalnız gecikme" denemez —
+kuyruk/backlog ayrıca sınırlı değil (Sol, 21 Eylül).
 
 **2. Kapı süreç başınadır.** Sınır tek Node sürecinde geçerli. `N` kopya
 koşarsa toplam eşzamanlılık `2N` olur; oran kovaları paylaşılan veritabanında
