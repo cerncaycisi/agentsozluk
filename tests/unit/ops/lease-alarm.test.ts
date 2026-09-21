@@ -373,7 +373,7 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
     expect(imlecOku()).toBe(T - 15 * 60);
   });
 
-  it("imleç örtüşme ve 15 dk tarihçeyle geri başlar, en fazla 6 saat geriye gider", () => {
+  it("imleç örtüşme ve 15 dk tarihçeyle geri başlar; geriye sınır yoktur", () => {
     imlecYaz(T - 10 * 60);
     calistir([], { simdi: T });
     imlecYaz(T - 10 * 3600);
@@ -381,7 +381,7 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
     const since = readFileSync(path.join(dizin, "since.log"), "utf8").trim().split("\n");
     const beklenen = (sn: number) => new Date(sn * 1000).toISOString().replace(".000Z", "Z");
     expect(since[0]).toBe(beklenen(T - 10 * 60 - 60 - 900));
-    expect(since[1]).toBe(beklenen(T - 6 * 3600 - 60 - 900));
+    expect(since[1]).toBe(beklenen(T - 10 * 3600 - 60 - 900));
   });
 
   it("gelecekteki imleç düzeltilir; log okunamasa bile hemen yazılır", () => {
@@ -454,6 +454,45 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
     imlecYaz(T - 5 * 3600);
     const yakin = [T - 900, T - 500, T - 100].map((z) => zamanli(2600, z));
     expect(calistir(yakin, { simdi: T }).bildirimler[0]).toContain("lease yavaşlıyor");
+  });
+
+  it("6 saatten uzun log körlüğünde gerçekleşen kritik olay kaybolmaz", () => {
+    imlecYaz(T - 8 * 3600);
+    const { bildirimler } = calistir([zamanli(4500, T - 7 * 3600)], { simdi: T });
+    expect(bildirimler).toHaveLength(1);
+    expect(bildirimler[0]).toContain("sınırına dayandı");
+  });
+
+  it("durum yazılamazsa imleç ilerlemez; karar sonraki koşuda yeniden bulunur", () => {
+    imlecYaz(T - 15 * 60);
+    mkdirSync(path.join(dizin, "durum", "durum-lease"), { recursive: true });
+    const ilk = calistir([zamanli(4500, T - 60)], { simdi: T, curlHata: true });
+    expect(ilk.stderr).toContain("durum-lease yazılamadı");
+    expect(imlecOku()).toBe(T - 15 * 60);
+    rmSync(path.join(dizin, "durum", "durum-lease"), { recursive: true, force: true });
+    const sonra = calistir([zamanli(4500, T - 60)], { simdi: T + 900 }).bildirimler;
+    expect(sonra).toHaveLength(1);
+    expect(sonra[0]).toContain("sınırına dayandı");
+  });
+
+  it("log körlüğünden kayıtsız dönüş son ÖLÇÜLEN hali geri getirir; temiz varsaymaz", () => {
+    expect(calistir([zamanli(4500, T - 60)], { simdi: T }).bildirimler).toHaveLength(1);
+    expect(calistir([], { simdi: T + 900, logsHata: true }).bildirimler[0]).toContain("okunamıyor");
+    const donus = calistir([], { simdi: T + 1800 }).bildirimler;
+    expect(donus).toHaveLength(1);
+    expect(donus[0]).toContain("sınırına dayandı");
+    expect(donus[0]).toContain("Son ölçülen durum: kritik");
+    expect(donus[0]).not.toContain("normale döndü");
+  });
+
+  it("eşit ağırlıkta ama farklı gönderilemeyen karar da bildirimde söylenir", () => {
+    expect(calistir([], { simdi: T, logsHata: true, curlHata: true }).bildirimler).toEqual([]);
+    const tam = zamanli(800, T + 800);
+    const kesik = tam.slice(0, tam.indexOf('"activeMs"'));
+    const teslim = calistir([kesik], { simdi: T + 900 }).bildirimler;
+    expect(teslim).toHaveLength(1);
+    expect(teslim[0]).toContain("ayrıştırılamıyor");
+    expect(teslim[0]).toContain("Gönderilemeyen önceki bildirim: okunamiyor");
   });
 
   it("sayının ortasında kesilen kayıt sahte düzelme üretmez", () => {

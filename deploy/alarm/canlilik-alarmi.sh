@@ -39,7 +39,6 @@ LEASE_KRITIK_MS="${ALARM_LEASE_KRITIK_MS:-4000}"
 LEASE_UYARI_ADET="${ALARM_LEASE_UYARI_ADET:-3}"
 LEASE_ILK_PENCERE_SN=900     # imleç yokken (ilk koşu) geriye bakılan süre
 LEASE_ORTUSME_SN=60          # docker tarafında imleçten bu kadar geriden oku
-LEASE_AZAMI_GERI_SN=21600    # log uzun süre okunamazsa en fazla 6 sa geri
 LEASE_ZAMAN_ASIMI="${ALARM_LEASE_ZAMAN_ASIMI:-50}"       # sn; log 30 + gönderim 10
 CANLILIK_ZAMAN_ASIMI="${ALARM_CANLILIK_ZAMAN_ASIMI:-30}" # sn; docker/exec takılırsa
 # En kötü duvar saati: canlılık 30+5 + curl 20 + lease 50+5 = 110 sn; birimin
@@ -140,16 +139,20 @@ Bak: systemctl status agent-sozluk-runtime" \
 #    Tarama sırasında gelen kayıt bir sonrakine kalır; hiçbir kayıt iki kez
 #    sayılmaz. Docker'dan 60 sn örtüşme + 15 dk tarihçe okunur; imleçten eski
 #    kayıtlar YALNIZ kayan 15 dk'lık uyarı penceresinin tarihçesidir.
-#  - İMLEÇ her başarılı log okumasından sonra `şimdi`ye ilerler; okunamazsa
-#    ilerlemez; geçersiz ya da gelecekteyse hemen düzeltilip yazılır. En fazla
-#    6 sa geri bakılır (o kadar uzun okunamayan log zaten `okunamiyor`dur).
-#  - TESLİM kuyruksuz: durum tek satırdır — `hal an teslim en_kotu`. Karar
+#  - İMLEÇ her başarılı log okumasından VE durumun kalıcılaşmasından sonra
+#    `şimdi`ye ilerler; aksi hâlde ilerlemez. Geçersiz ya da gelecekteyse hemen
+#    düzeltilip yazılır. Geriye sınır yoktur: uzun log körlüğünden sonra imleçten
+#    itibaren ne varsa okunur (json-file rotasyonu 10 MB × 5; ondan eskisi zaten
+#    yoktur).
+#  - TESLİM kuyruksuz: durum tek satırdır — `hal an teslim en_kotu olcum`. Karar
 #    değişince `teslim=0` olur; her koşu teslim edilmemiş kararı EN FAZLA BİR
 #    kez (10 sn) dener. Gönderilemeden yeni karar gelirse arada görülen en ağır
 #    hal (`en_kotu`) saklanır ve sonraki bildirime eklenir: "arada kritik
 #    yaşandı, şimdi düzeldi". Hiçbir karar silinmez; sıra/sınır sorunu yoktur.
-#    HTTP kabul edilip durum yazılamadan süreç öldürülürse aynı bildirim bir
-#    kez daha gidebilir (kayıptansa tekrar).
+#    `olcum` son GERÇEK ölçümün halidir: log okunamayıp sonra kayıtsız düzelirse
+#    "temiz" varsayılmaz, son ölçülen hal geri gelir.
+#    Durum yazılamazsa imleç ilerlemez ve aynı bildirim her koşuda yeniden
+#    gidebilir (kayıptansa tekrar; journal'a hata düşer).
 
 hata_yaz() { echo "agent-sozluk-alarm: $*" >&2; }
 
@@ -172,24 +175,27 @@ atomik_yaz() { # $1 dosya, $2 içerik
 lease_kontrol() {
   local ham rc kayitlar toplam yavas kritik maks baslamayan okunamayan pencerede p2028
   local simdi simdi_ms imlec esik baslangic pencere_dk yeni_hal govde
-  local hal an teslim en_kotu baslik oncelik etiket gonderilen
+  local hal an teslim en_kotu olcum baslik oncelik etiket durum_yazildi
   # ALARM_SIMDI (sn) yalnız testler içindir; üretimde tanımlı değildir.
   if [[ -n "${ALARM_SIMDI:-}" ]]; then simdi_ms=$(( ALARM_SIMDI * 1000 )); else simdi_ms="$(date +%s%3N)"; fi
   simdi=$(( simdi_ms / 1000 ))
 
-  # Durum: hal an teslim en_kotu. Bozuk ya da tanınmayan içerik güvenli varsayılan.
-  read -r hal an teslim en_kotu 2>/dev/null <"$LEASE_DURUM" || true
+  # Durum: hal an teslim en_kotu olcum. Bozuk ya da tanınmayan içerik güvenli varsayılan.
+  read -r hal an teslim en_kotu olcum 2>/dev/null <"$LEASE_DURUM" || true
   [[ "${hal:-}" =~ ^(temiz|uyari|kritik|okunamiyor|belirsiz)$ ]] || hal=temiz
   [[ "${an:-}" =~ ^(0|[1-9][0-9]{0,11})$ ]] && (( an <= simdi )) || an=0
   [[ "${teslim:-}" =~ ^[01]$ ]] || teslim=1
   [[ "${en_kotu:-}" =~ ^(temiz|uyari|kritik|okunamiyor|belirsiz)$ ]] || en_kotu=temiz
+  if [[ ! "${olcum:-}" =~ ^(temiz|uyari|kritik|belirsiz)$ ]]; then
+    # Eski biçim ya da bozuk: son ölçüm bilinmiyor; mevcut hal ölçümse onu al.
+    if [[ "$hal" =~ ^(temiz|uyari|kritik|belirsiz)$ ]]; then olcum="$hal"; else olcum=temiz; fi
+  fi
 
   # İmleç (ms). Geçersiz/gelecekteyse düzeltilir ve HEMEN yazılır: log bu koşuda
   # okunamasa da sonraki koşu buradan başlar (Sol, sekizinci tur).
   read -r imlec 2>/dev/null <"$LEASE_IMLEC" || imlec=""
   if [[ "$imlec" =~ ^[1-9][0-9]{0,15}$ ]] && (( imlec <= simdi_ms )); then
     esik="$imlec"
-    (( esik < simdi_ms - LEASE_AZAMI_GERI_SN * 1000 )) && esik=$(( simdi_ms - LEASE_AZAMI_GERI_SN * 1000 ))
   else
     [[ -n "$imlec" ]] && hata_yaz "imleç geçersiz ya da gelecekte ($imlec); son 15 dk taranıyor"
     esik=$(( simdi_ms - LEASE_ILK_PENCERE_SN * 1000 ))
@@ -259,10 +265,11 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
 
     if (( toplam == 0 )); then
       # Yeni kayıt yok (worker boşta): süre hakkında YENİ karar yok; son hal sürer.
-      # Tek istisna: log yeniden okunabiliyor, `okunamiyor` kapanır.
+      # Tek istisna: log yeniden okunabiliyor, `okunamiyor` kapanır — ama "temiz"
+      # varsayılmaz, SON ÖLÇÜLEN hal geri gelir (Sol, dokuzuncu tur).
       if [[ "$hal" == "okunamiyor" ]]; then
-        yeni_hal=temiz
-        govde="Uygulama logu yeniden okunabiliyor; son ${pencere_dk} dk içinde lease kaydı yok."
+        yeni_hal="$olcum"
+        govde="Uygulama logu yeniden okunabiliyor; son ${pencere_dk} dk içinde yeni lease kaydı yok. Son ölçülen durum: ${olcum}."
       else
         yeni_hal="$hal"
         govde="Son ${pencere_dk} dk içinde yeni lease kaydı yok; son bilinen durum sürüyor: ${hal}."
@@ -273,6 +280,7 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
       elif (( okunamayan > 0 )); then yeni_hal=belirsiz  # "temiz" demek için kanıt yok
       else yeni_hal=temiz
       fi
+      olcum="$yeni_hal"
       govde="Son ${pencere_dk} dk: ${toplam} yeni lease kaydı, en uzun activeMs ${maks} ms (Prisma sınırı 5000).
 >= ${LEASE_UYARI_MS} ms: ${yavas} (15 dk içinde en çok ${pencerede}) · >= ${LEASE_KRITIK_MS} ms: ${kritik} · P2028: ${p2028} · başlamayan: ${baslamayan}
 Ayrıştırılamayan: ${okunamayan}. Bak: docker compose logs app | grep db.transaction.duration"
@@ -282,7 +290,12 @@ Ayrıştırılamayan: ${okunamayan}. Bak: docker compose logs app | grep db.tran
   # Karar: değişim ya da 6 saatlik hatırlatma bildirimi GEREKTİRİR (teslim=0).
   # Teslim edilmemiş eski karar varsa onun ağırlığı en_kotu'da korunur.
   if [[ "$yeni_hal" != "$hal" ]]; then
-    if (( teslim == 0 )) && (( $(agirlik "$hal") > $(agirlik "$en_kotu") )); then en_kotu="$hal"; fi
+    # Teslim edilmemiş eski karar kaybolmasın: saklanan halden ağırsa saklanır.
+    # (Teslim edilmeden üst üste gelen AYNI ağırlıkta iki ara karardan yalnız
+    # ilki anılır; ikisi de bilgi düzeyidir.)
+    if (( teslim == 0 )) && (( $(agirlik "$hal") > $(agirlik "$en_kotu") )); then
+      en_kotu="$hal"
+    fi
     hal="$yeni_hal"; teslim=0; an="$simdi"
   elif [[ "$hal" != temiz ]] && (( teslim == 1 )) && (( simdi - an > SESSIZLIK_SN )); then
     teslim=0
@@ -297,11 +310,15 @@ Ayrıştırılamayan: ${okunamayan}. Bak: docker compose logs app | grep db.tran
       temiz)      baslik="Agent Sözlük: lease süresi normale döndü";  oncelik=default; etiket=white_check_mark ;;
     esac
     [[ -n "$govde" ]] || govde="Durum: ${hal} (tespit $(date -u -d "@$an" '+%H:%M UTC'))."
-    if (( $(agirlik "$en_kotu") > $(agirlik "$hal") )); then
+    if [[ "$en_kotu" != temiz && "$en_kotu" != "$hal" ]] && (( $(agirlik "$en_kotu") > $(agirlik "$hal") )); then
       # Arada gönderilemeyen daha ağır bir hal vardı: kaybolmasın, öne çıksın.
       baslik="Agent Sözlük: arada lease ${en_kotu} yaşandı (şimdi: ${hal})"
       (( $(agirlik "$en_kotu") >= 3 )) && { oncelik=urgent; etiket=rotating_light; }
       (( $(agirlik "$en_kotu") == 2 )) && { oncelik=high; etiket=warning; }
+      govde="Gönderilemeyen önceki bildirim: ${en_kotu}.
+${govde}"
+    elif [[ "$en_kotu" != temiz && "$en_kotu" != "$hal" ]]; then
+      # Eşit ya da daha hafif ama FARKLI bir karar gönderilemedi: gövdede söylenir.
       govde="Gönderilemeyen önceki bildirim: ${en_kotu}.
 ${govde}"
     fi
@@ -309,8 +326,11 @@ ${govde}"
       teslim=1; en_kotu=temiz; an="$simdi"
     fi
   fi
-  atomik_yaz "$LEASE_DURUM" "$hal $an $teslim $en_kotu" || true
-  if (( rc == 0 )); then atomik_yaz "$LEASE_IMLEC" "$simdi_ms" || true; fi
+  # İmleç YALNIZ durum kalıcılaştıysa ilerler: yoksa bulunan karar hem durumda
+  # hem logda kaybolurdu (Sol, dokuzuncu tur).
+  if atomik_yaz "$LEASE_DURUM" "$hal $an $teslim $en_kotu $olcum"; then
+    if (( rc == 0 )); then atomik_yaz "$LEASE_IMLEC" "$simdi_ms" || true; fi
+  fi
   return 0
 }
 
