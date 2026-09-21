@@ -225,16 +225,19 @@ export function createRuntimeCapabilityRecord(
 */
 const ARALIK_SAAT_TOLERANSI_MS = 60 * 60_000;
 
-async function busyDurationMs(
-  transaction: Prisma.TransactionClient,
-  now: Date,
-  cutoff: Date,
-): Promise<number> {
+/*
+  Sorgu metni ayrı ve DIŞA AÇIK: entegrasyon testi bu sorgunun kendisini
+  `EXPLAIN` edip ön filtrenin planda durduğunu doğruluyor. Davranış testleri
+  bunu yakalayamaz — filtre kaldırılsa da sonuç aynı çıkar, yalnız maliyet
+  büyür (Sol, 21 Eylül). Testin sorgunun KOPYASINI değil kendisini görmesi için
+  metin burada tek yerde tutuluyor.
+*/
+export function busyDurationSorgusu(now: Date, cutoff: Date): Prisma.Sql {
   const filtreSiniri = new Date(cutoff.getTime() - ARALIK_SAAT_TOLERANSI_MS);
   // Merge overlap/adjacency within each run, then sum across runs. Parallel
   // runs consume separate concurrency lanes and must therefore remain additive
   // before division by (window * configured concurrency).
-  const rows = await transaction.$queryRaw<Array<{ busyMs: number }>>`
+  return Prisma.sql`
     WITH measured_intervals AS (
       SELECT
         run."id" AS "intervalKey",
@@ -358,6 +361,16 @@ async function busyDurationMs(
     )::double precision AS "busyMs"
     FROM merged_intervals
   `;
+}
+
+async function busyDurationMs(
+  transaction: Prisma.TransactionClient,
+  now: Date,
+  cutoff: Date,
+): Promise<number> {
+  const rows = await transaction.$queryRaw<Array<{ busyMs: number }>>(
+    busyDurationSorgusu(now, cutoff),
+  );
   return rows[0]?.busyMs ?? 0;
 }
 
