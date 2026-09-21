@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { loginHuman } from "@/modules/auth/application/authenticate";
@@ -40,6 +41,7 @@ import { redactCreationCredential } from "@/modules/agents/domain/credential";
 import { circuitBreakerConfigSchema } from "@/modules/agents/domain/circuit-breaker";
 import {
   createRuntimeCapabilityRecord,
+  busyDurationSorgusu,
   getRuntimeOperationalMetrics,
 } from "@/modules/agents/repository/capacity";
 import { executeIdempotently } from "@/modules/idempotency/application/idempotency";
@@ -1660,6 +1662,236 @@ describe("agent control plane with PostgreSQL", () => {
     expect(operational.utilization15m).toBeCloseTo(1, 5);
     expect(operational.utilization1h).toBeCloseTo(0.5, 5);
     expect(operational.utilization2h).toBeCloseTo(0.25, 5);
+  });
+
+  it("pencere sınırına yaslanan aralıkları kırpar, sınırın gerisindekini saymaz", async () => {
+    /*
+      20 Eylül 2026. `busyDurationMs` pencere filtresini yalnız `clipped_intervals`
+      aşamasında uyguluyordu; ondan önceki iki CTE `agent_runs` TABLOSUNUN
+      TAMAMINDA `usageMetadata`'yı TOAST'tan okuyup JSON dizisini açıyordu. Maliyet
+      pencereyle değil tüm geçmişle büyüyordu ve bu sorgu lease transaction'ında üç
+      pencere için koşuyor — 19 Eylül'deki `P2028` kesintisinin muhtemel sebebi.
+
+      Filtre artık LATERAL'den önce. Bu test daraltmanın SONUCU değiştirmediğini
+      sabitliyor: sınırı aşan aralık kırpılarak sayılmalı, tamamen geride kalan
+      koşu ise hiç sayılmamalı. Filtre fazla agresif olsaydı (ör. `startedAt`
+      üzerinden) ilk koşu kaybolur ve bu test düşerdi.
+    */
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const now = new Date("2026-07-18T12:00:00.000Z");
+    const cutoff = new Date(now.getTime() - 15 * 60_000);
+
+    // (1) Pencereye YASLANAN koşu: 10 dk penceresinin dışında, 5 dk içinde.
+    const strafeBasi = new Date(cutoff.getTime() - 10 * 60_000);
+    const strafeSonu = new Date(cutoff.getTime() + 5 * 60_000);
+    // (2) Tamamen GERİDE kalan koşu: penceresiz, katkısı sıfır olmalı.
+    const geriBasi = new Date(cutoff.getTime() - 90 * 60_000);
+    const geriSonu = new Date(cutoff.getTime() - 60 * 60_000);
+
+    const vakalar: Array<{ baslangic: Date; bitis: Date }> = [
+      { baslangic: strafeBasi, bitis: strafeSonu },
+      { baslangic: geriBasi, bitis: geriSonu },
+    ];
+    for (const [index, { baslangic, bitis }] of vakalar.entries())
+      await integrationDatabase.agentRun.create({
+        data: {
+          agentProfileId: created.agent.profile.id,
+          personaVersionId: created.agent.personaVersion.id,
+          runType: "NORMAL_WAKE",
+          runStatus: "SUCCEEDED",
+          queuePriority: "SCHEDULED_CONTENT",
+          trigger: "WINDOW_BOUNDARY_FIXTURE",
+          idempotencyKey: `window-boundary:${index}:${randomUUID()}`,
+          timeoutSeconds: 900,
+          desiredEntryMin: 0,
+          desiredEntryMax: 0,
+          startedAt: baslangic,
+          finishedAt: bitis,
+          usageMetadata: {
+            provider: "codex-cli",
+            durationMs: bitis.getTime() - baslangic.getTime(),
+            codexIntervals: [
+              {
+                startedAt: baslangic.toISOString(),
+                finishedAt: bitis.toISOString(),
+                durationMs: bitis.getTime() - baslangic.getTime(),
+              },
+            ],
+          },
+        },
+      });
+
+    const operational = await inTransaction(integrationDatabase, async (transaction) => {
+      const settings = await transaction.agentGlobalSettings.findUniqueOrThrow({
+        where: { id: "global" },
+        select: { circuitBreakerConfig: true },
+      });
+      const config = circuitBreakerConfigSchema.parse(
+        settings.circuitBreakerConfig as Record<string, unknown>,
+      );
+      return getRuntimeOperationalMetrics(transaction, { now, concurrency: 1, config });
+    });
+
+    // 15 dk penceresi (11:45–12:00): yaslanan koşudan yalnız kırpılmış 5 dakika.
+    expect(operational.utilization15m).toBeCloseTo(5 / 15, 5);
+    // 1 saat penceresi (11:00–12:00): yaslanan koşunun tamamı 15 dk. Geride
+    // kalan koşu 10:15–10:45 arasında, yani BU pencereye de hiç girmiyor —
+    // ilk yazımda "kısmı eklenir" demiştim, yanlıştı (Sol, 20 Eylül). Tam
+    // değer yazılıyor; `toBeGreaterThan` gibi gevşek bir iddia filtre fazla
+    // agresif olsa bile geçerdi.
+    expect(operational.utilization1h).toBeCloseTo(15 / 60, 5);
+  });
+
+  it("legacy uzun koşu: codexIntervals yokken durationMs'ten türetilen aralık kırpılır", async () => {
+    /*
+      `legacy_intervals` dalı eski koşular için: `codexIntervals` yok, süre
+      `usageMetadata.durationMs`'ten türetiliyor ve başlangıç
+      `finishedAt - durationMs` olarak hesaplanıyor. Ön filtre `finishedAt`
+      üzerinde çalıştığı için, pencereden HEMEN SONRA biten ama ÇOK UZUN süren
+      bir koşunun kaybolmaması gerekir — `startedAt` üzerinden filtrelenseydi
+      kaybolurdu (Sol şartı, 20 Eylül).
+    */
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const now = new Date("2026-07-18T12:00:00.000Z");
+    // Üç saat süren, 11:50'de biten koşu. 15 dk penceresine 10 dk girer.
+    const bitis = new Date(now.getTime() - 10 * 60_000);
+    const sure = 3 * 60 * 60_000;
+
+    await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: created.agent.profile.id,
+        personaVersionId: created.agent.personaVersion.id,
+        runType: "NORMAL_WAKE",
+        runStatus: "SUCCEEDED",
+        queuePriority: "SCHEDULED_CONTENT",
+        trigger: "LEGACY_LONG_RUN_FIXTURE",
+        idempotencyKey: `legacy-long-run:${randomUUID()}`,
+        // Şema `timeoutSeconds`'i 120-1200 arasına kilitliyor
+        // (`agent_runs_timeout_check`). Fixture'ın uzunluğu `durationMs`'ten
+        // geliyor, bu alandan değil.
+        timeoutSeconds: 1200,
+        desiredEntryMin: 0,
+        desiredEntryMax: 0,
+        startedAt: new Date(bitis.getTime() - sure),
+        finishedAt: bitis,
+        // codexIntervals YOK: legacy dalı bu yüzden devreye girer.
+        usageMetadata: { provider: "codex-cli", durationMs: sure },
+      },
+    });
+
+    const operational = await inTransaction(integrationDatabase, async (transaction) => {
+      const settings = await transaction.agentGlobalSettings.findUniqueOrThrow({
+        where: { id: "global" },
+        select: { circuitBreakerConfig: true },
+      });
+      const config = circuitBreakerConfigSchema.parse(
+        settings.circuitBreakerConfig as Record<string, unknown>,
+      );
+      return getRuntimeOperationalMetrics(transaction, { now, concurrency: 1, config });
+    });
+
+    // 15 dk penceresi 11:45–12:00; koşu 08:50–11:50. Kesişim 5 dakika.
+    expect(operational.utilization15m).toBeCloseTo(5 / 15, 5);
+    // 1 saat penceresi 11:00–12:00; kesişim 50 dakika.
+    expect(operational.utilization1h).toBeCloseTo(50 / 60, 5);
+  });
+
+  it("plan: agent_runs taraması ön filtreyi JSON açmadan önce uyguluyor", async () => {
+    /*
+      Performans regresyonuna karşı koruma. Davranış testleri bunu yakalayamaz:
+      ön filtre kaldırılsa da pencere hesabı aynı sonucu verir, yalnız sorgu
+      `agent_runs`'ın tamamında TOAST okuyup JSON açmaya geri döner — 19 Eylül
+      olayının aday mekanizması. Bu test SORGUNUN KENDİSİNİ (kopyasını değil)
+      `EXPLAIN` edip `agent_runs` üzerindeki her taramanın `finishedAt`
+      koşulunu taşıdığını doğruluyor (Sol şartı, 21 Eylül).
+    */
+    const now = new Date("2026-07-18T12:00:00.000Z");
+    const cutoff = new Date(now.getTime() - 15 * 60_000);
+    const rows = await integrationDatabase.$queryRaw<Array<{ "QUERY PLAN": unknown }>>(
+      Prisma.sql`EXPLAIN (FORMAT JSON) ${busyDurationSorgusu(now, cutoff)}`,
+    );
+
+    type PlanNode = {
+      "Relation Name"?: string;
+      Filter?: string;
+      "Index Cond"?: string;
+      Plans?: PlanNode[];
+    };
+    const plan = (rows[0]?.["QUERY PLAN"] as Array<{ Plan: PlanNode }>)[0]!.Plan;
+    const agentRunsTaramalari: PlanNode[] = [];
+    const gez = (node: PlanNode) => {
+      if (node["Relation Name"] === "agent_runs") agentRunsTaramalari.push(node);
+      node.Plans?.forEach(gez);
+    };
+    gez(plan);
+
+    // measured_intervals + legacy_intervals: en az iki tarama.
+    expect(agentRunsTaramalari.length).toBeGreaterThanOrEqual(2);
+    for (const tarama of agentRunsTaramalari) {
+      const kosul = `${tarama.Filter ?? ""} ${tarama["Index Cond"] ?? ""}`;
+      expect(kosul, "agent_runs taramasında finishedAt ön filtresi yok").toContain("finishedAt");
+    }
+  });
+
+  it("koşunun finishedAt'inden SONRA biten aralığı düşürmez", async () => {
+    /*
+      Daraltmanın dayanağı bir invaryant değil, sıralama gözlemi: aralıklar
+      worker'da yazılıyor, `finishedAt` sonra kaydediliyor. Saat geri adım
+      atarsa (NTP) ya da ileride aralıkları sonradan yazan bir yol eklenirse
+      aralık koşunun `finishedAt`'inden sonra bitmiş görünebilir. Keskin bir
+      filtre onu sessizce düşürürdü; tolerans bu yüzden var (Sol, 20 Eylül).
+    */
+    const admin = await createPrincipal();
+    const created = await createFirstAgent(admin.id);
+    const now = new Date("2026-07-18T12:00:00.000Z");
+    const kosuBitisi = new Date(now.getTime() - 20 * 60_000); // 11:40, pencere dışı
+    const aralikBasi = new Date(now.getTime() - 10 * 60_000); // 11:50, pencere içi
+    const aralikSonu = new Date(now.getTime() - 5 * 60_000); // 11:55
+
+    await integrationDatabase.agentRun.create({
+      data: {
+        agentProfileId: created.agent.profile.id,
+        personaVersionId: created.agent.personaVersion.id,
+        runType: "NORMAL_WAKE",
+        runStatus: "SUCCEEDED",
+        queuePriority: "SCHEDULED_CONTENT",
+        trigger: "CLOCK_ROLLBACK_FIXTURE",
+        idempotencyKey: `clock-rollback:${randomUUID()}`,
+        timeoutSeconds: 900,
+        desiredEntryMin: 0,
+        desiredEntryMax: 0,
+        startedAt: new Date(now.getTime() - 30 * 60_000),
+        finishedAt: kosuBitisi,
+        usageMetadata: {
+          provider: "codex-cli",
+          durationMs: 5 * 60_000,
+          codexIntervals: [
+            {
+              startedAt: aralikBasi.toISOString(),
+              finishedAt: aralikSonu.toISOString(),
+              durationMs: 5 * 60_000,
+            },
+          ],
+        },
+      },
+    });
+
+    const operational = await inTransaction(integrationDatabase, async (transaction) => {
+      const settings = await transaction.agentGlobalSettings.findUniqueOrThrow({
+        where: { id: "global" },
+        select: { circuitBreakerConfig: true },
+      });
+      const config = circuitBreakerConfigSchema.parse(
+        settings.circuitBreakerConfig as Record<string, unknown>,
+      );
+      return getRuntimeOperationalMetrics(transaction, { now, concurrency: 1, config });
+    });
+
+    // Koşu 11:40'ta bitmiş görünüyor ama aralığı 11:50–11:55. Tolerans olmasa
+    // filtre bu satırı eler ve beş dakika kaybolurdu.
+    expect(operational.utilization15m).toBeCloseTo(5 / 15, 5);
   });
 
   it("includes the current Codex phase but excludes non-Codex active run time", async () => {

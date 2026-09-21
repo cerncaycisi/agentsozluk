@@ -170,15 +170,74 @@ export function createRuntimeCapabilityRecord(
   });
 }
 
-async function busyDurationMs(
-  transaction: Prisma.TransactionClient,
-  now: Date,
-  cutoff: Date,
-): Promise<number> {
+/*
+  PENCERE FİLTRESİ LATERAL'DEN ÖNCE — 20 Eylül 2026.
+
+  Bu sorgu `cutoff`'u yalnız `clipped_intervals` aşamasında uyguluyordu. Ondan
+  önceki iki CTE (`measured_intervals`, `legacy_intervals`) `agent_runs`
+  tablosunun TAMAMINI okuyup her satırın `usageMetadata`'sını TOAST'tan çıkarıyor
+  ve JSON dizisini açıyordu. Maliyet pencereyle değil **geçmişin toplamıyla**
+  büyüyordu: 20 Eylül'de tablo 33.808 satır ve 1,08 GB, %60'ı 30 günden eski.
+
+  Ve bu ucuz bir sorgu değil: `getRuntimeOperationalMetrics` üzerinden
+  `leaseRuntimeRun`'ın transaction'ında, üç pencere için (15/60/120 dk) ÜÇ KEZ
+  koşuyor.
+
+  19 EYLÜL OLAYIYLA İLİŞKİSİ — NE KANITLANDI, NE KANITLANMADI:
+  Kanıtlanan, bu sorgunun maliyetinin pencereyle değil tüm geçmişle büyüdüğü ve
+  lease transaction'ının içinde üç kez koştuğu. Kanıtlanmayan, olayın TEK
+  mekanizmasının bu olduğu — lease transaction'ında başka iş de var ve gerçek
+  süre ölçülmedi. Bu sorgu makul ve somut bir aday; tek sebep olduğu iddiası
+  bu koddan çıkarılamaz.
+
+  Olayın büyüklüğü de sınırlarıyla yazılmalı: worker'ın lease alamadığı süre
+  için elde **en fazla** 11 sa 00 dk 11 sn var (üst sınır; gerçek kesinti daha
+  kısa olabilir, ilk başarısız lease'in ne zaman olduğu bilinmiyor). Entry
+  akışındaki boşluk ise 14 sa 27 dk. İkisi ayrı şeyi ölçer;
+  `DAGITIM_SONRASI_ONKAYIT_2026-09-17.md` üçüncü eki.
+
+  `4d665cf` timeout'u yükselterek semptomu kapattı.
+
+  Daraltma şu dayanağa oturuyor: aralık damgaları worker sürecinde `new Date()`
+  ile yazılıyor (`worker.ts`, çağrının `finally` bloğu), koşunun `finishedAt`'i
+  ise çağrılar bittikten sonra kaydediliyor. Yani normal işleyişte hiçbir aralık
+  koşunun `finishedAt`'inden sonra bitmez.
+
+  Ama bu bir İNVARYANT DEĞİL, sıralama gözlemi. Saat geriye adım atarsa (NTP
+  düzeltmesi) ya da ileride aralıkları `finishedAt`'ten sonra yazan bir yol
+  eklenirse ters durum mümkün olur ve keskin bir filtre o aralığı sessizce
+  düşürürdü. Bu yüzden filtre `cutoff`'a değil `cutoff - TOLERANS`'a bakıyor
+  (Sol'un 20 Eylül bulgusu). Tolerans doğruluğu kaybetmeden alıyor: iki aylık
+  tabloda satırların %99'undan fazlası yine elenir, çünkü en dar pencere
+  15 dakika ve tolerans 1 saat.
+
+  Henüz bitmemiş koşular (`finishedAt IS NULL`) hiç elenmez; onların aralıkları
+  pencerenin içine uzanabilir.
+
+  `agent_runs.finishedAt` üzerinde indeks YOK, yani tarama hâlâ sıralı. Kazanç
+  taramadan değil, satırların %99'unda TOAST okuma ve JSON açmanın hiç
+  yapılmamasından geliyor. İndeks ayrı bir migration işidir.
+*/
+/*
+  Saat geri adımına ve ileride eklenebilecek "sonradan yazan" yollara karşı pay.
+  Tek işi filtreyi keskin olmaktan çıkarmak; pencere hesabını değiştirmez, çünkü
+  asıl kırpma `clipped_intervals` aşamasında yapılıyor.
+*/
+const ARALIK_SAAT_TOLERANSI_MS = 60 * 60_000;
+
+/*
+  Sorgu metni ayrı ve DIŞA AÇIK: entegrasyon testi bu sorgunun kendisini
+  `EXPLAIN` edip ön filtrenin planda durduğunu doğruluyor. Davranış testleri
+  bunu yakalayamaz — filtre kaldırılsa da sonuç aynı çıkar, yalnız maliyet
+  büyür (Sol, 21 Eylül). Testin sorgunun KOPYASINI değil kendisini görmesi için
+  metin burada tek yerde tutuluyor.
+*/
+export function busyDurationSorgusu(now: Date, cutoff: Date): Prisma.Sql {
+  const filtreSiniri = new Date(cutoff.getTime() - ARALIK_SAAT_TOLERANSI_MS);
   // Merge overlap/adjacency within each run, then sum across runs. Parallel
   // runs consume separate concurrency lanes and must therefore remain additive
   // before division by (window * configured concurrency).
-  const rows = await transaction.$queryRaw<Array<{ busyMs: number }>>`
+  return Prisma.sql`
     WITH measured_intervals AS (
       SELECT
         run."id" AS "intervalKey",
@@ -192,7 +251,10 @@ async function busyDurationMs(
           ELSE '[]'::jsonb
         END
       ) AS item
-      WHERE item ->> 'startedAt' ~ '^\\d{4}-\\d{2}-\\d{2}T'
+      -- Pencere filtresi LATERAL'den ONCE uygulanir; gerekcesi fonksiyonun
+      -- ustundeki yorumda.
+      WHERE (run."finishedAt" IS NULL OR run."finishedAt" > ${filtreSiniri})
+        AND item ->> 'startedAt' ~ '^\\d{4}-\\d{2}-\\d{2}T'
         AND item ->> 'finishedAt' ~ '^\\d{4}-\\d{2}-\\d{2}T'
     ),
     legacy_intervals AS (
@@ -204,6 +266,7 @@ async function busyDurationMs(
         run."finishedAt" AS "finishedAt"
       FROM "agent_runs" AS run
       WHERE run."finishedAt" IS NOT NULL
+        AND run."finishedAt" > ${filtreSiniri}
         AND jsonb_typeof(run."usageMetadata") = 'object'
         AND jsonb_typeof(run."usageMetadata" -> 'codexIntervals') IS NULL
         AND run."usageMetadata" ->> 'durationMs' ~ '^\\d+(?:\\.\\d+)?$'
@@ -298,6 +361,16 @@ async function busyDurationMs(
     )::double precision AS "busyMs"
     FROM merged_intervals
   `;
+}
+
+async function busyDurationMs(
+  transaction: Prisma.TransactionClient,
+  now: Date,
+  cutoff: Date,
+): Promise<number> {
+  const rows = await transaction.$queryRaw<Array<{ busyMs: number }>>(
+    busyDurationSorgusu(now, cutoff),
+  );
   return rows[0]?.busyMs ?? 0;
 }
 
