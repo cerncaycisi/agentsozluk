@@ -49,6 +49,7 @@ LEASE_DURUM="${DURUM}-lease"
 LEASE_IMLEC="${DURUM}-lease-imlec"
 LEASE_MAKBUZ="${DURUM}-lease-kesim"
 LEASE_KILIT="${DURUM}-lease.kilit"
+LEASE_YAVAS="${DURUM}-lease-yavas"
 APP=/opt/agent-sozluk/app
 RUNTIME=/opt/agent-sozluk/runtime
 
@@ -202,6 +203,9 @@ lease_kontrol() {
     (( KESIM )) && return 1
     return 0
   fi
+  # Kesim taraması eski makbuzu önce siler: başarısız kesim eski makbuzu
+  # geçerli bırakmasın (Astra, 22 Eylül).
+  if (( KESIM )); then rm -f "$LEASE_MAKBUZ" 2>/dev/null; fi
   lease_kontrol_kilitli
   r=$?
   exec {kfd}>&-
@@ -211,7 +215,7 @@ lease_kontrol() {
 lease_kontrol_kilitli() {
   local ham rc kayitlar toplam yavas kritik maks baslamayan okunamayan pencerede p2028
   local simdi simdi_ms imlec imlec_kimlik imlec_gecerli=0 esik baslangic pencere_dk yeni_hal govde
-  local kimlik makbuz_kimlik makbuz_ms bosluk="" basari=0
+  local kimlik makbuz_kimlik makbuz_ms bosluk="" basari=0 gecmis yeni_yavas="" yavas_yaz=""
   local hal an teslim en_kotu olcum baslik oncelik etiket durum_yazildi
   # ALARM_SIMDI (sn) yalnız testler içindir; üretimde tanımlı değildir.
   if [[ -n "${ALARM_SIMDI:-}" ]]; then simdi_ms=$(( ALARM_SIMDI * 1000 )); else simdi_ms="$(date +%s%3N)"; fi
@@ -245,7 +249,14 @@ lease_kontrol_kilitli() {
   kimlik="$(timeout 5 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
     ps -q app 2>/dev/null | head -1)"
   [[ "$kimlik" =~ ^[0-9a-f]{12,64}$ ]] || kimlik=""
-  baslangic=$(( esik / 1000 - LEASE_ORTUSME_SN - 900 ))
+  baslangic=$(( esik / 1000 - LEASE_ORTUSME_SN ))
+
+  # Kayan 15 dk'lık uyarı penceresinin tarihçesi DİSKTEN gelir, logdan değil:
+  # konteyner değişince eski log gider ama tarihçe kalmalı (Astra, 22 Eylül).
+  # Son 15 dk'nın yavaş kayıt zamanları (ms, virgülle).
+  gecmis=""
+  read -r gecmis 2>/dev/null <"$LEASE_YAVAS" || true
+  [[ "$gecmis" =~ ^[0-9,]*$ ]] || gecmis=""
   pencere_dk=$(( (simdi_ms - esik + 59999) / 60000 ))
 
   ham="$(timeout 25 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
@@ -266,8 +277,8 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
     # kayan pencere tarihçesine girer. activeMs sayısı `,`/`}` ile kapanmalı;
     # `null` = callback hiç başlamadı. `pencerede`: YENİ bir yavaş kayıtla biten
     # herhangi bir 15 dk'lık pencerede en çok kaç yavaş kayıt var.
-    read -r toplam yavas kritik maks baslamayan okunamayan pencerede p2028 < <(awk \
-      -v u="$LEASE_UYARI_MS" -v k="$LEASE_KRITIK_MS" -v e="$esik" -v s="$simdi_ms" '
+    read -r toplam yavas kritik maks baslamayan okunamayan pencerede p2028 yeni_yavas < <(awk \
+      -v u="$LEASE_UYARI_MS" -v k="$LEASE_KRITIK_MS" -v e="$esik" -v s="$simdi_ms" -v g="$gecmis" '
       function ep(z,  y,m,d,H,M,S,mp,ms) {
         y=substr(z,1,4)+0; m=substr(z,6,2)+0; d=substr(z,9,2)+0
         H=substr(z,12,2)+0; M=substr(z,15,2)+0; S=substr(z,18,2)+0
@@ -275,23 +286,22 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
         if (substr(z,20,1) == ".") ms = substr(substr(z,21) "000", 1, 3) + 0
         if (m<=2) y--; mp=(m+9)%12
         return ((365*y+int(y/4)-int(y/100)+int(y/400)+int((153*mp+2)/5)+d-1-719468)*86400+H*3600+M*60+S)*1000+ms }
+      BEGIN {
+        # Diskteki tarihçe: yalnız imleçten önceki ve son 15 dk içindekiler.
+        ng = split(g, gg, ",")
+        for (i = 1; i <= ng; i++)
+          if (gg[i] ~ /^[0-9]+$/ && gg[i] + 0 < e && gg[i] + 0 >= s - 900000) { ny++; yt[ny] = gg[i] + 0; yn[ny] = 0 }
+      }
       NF == 0 { next }
       {
         if ($0 !~ /}[[:space:]]*$/ || !match($0, /"time": *"[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9](\.[0-9]+)?/)) { n++; b++; next }
         z = substr($0, RSTART, RLENGTH); sub(/^"time": *"/, "", z); t = ep(z)
-        if (t >= s) next
-        if (t < e) {
-          if (t >= e - 900000 && match($0, /"activeMs": *[0-9]+ *[,}]/)) {
-            v = substr($0, RSTART, RLENGTH); gsub(/[^0-9]/, "", v)
-            if (v + 0 >= u) { ny++; yt[ny] = t; yn[ny] = 0 }
-          }
-          next
-        }
+        if (t >= s || t < e) next
         n++
         if ($0 ~ /"outcome": *"failed"/ && $0 ~ /"errorCode": *"P2028"/) p++
         if (match($0, /"activeMs": *[0-9]+ *[,}]/)) {
           v = substr($0, RSTART, RLENGTH); gsub(/[^0-9]/, "", v); v += 0
-          if (v >= u) { y++; ny++; yt[ny] = t; yn[ny] = 1 }
+          if (v >= u) { y++; ny++; yt[ny] = t; yn[ny] = 1; yy = yy (yy == "" ? "" : ",") t }
           if (v >= k) c++; if (v > m) m = v
         } else if ($0 ~ /"activeMs": *null *[,}]/) nl++
         else b++
@@ -305,7 +315,12 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
         for (i = 1; i <= ny; i++) {
           while (yt[i] - yt[lo] > 900000) lo++
           if (yn[i] && i - lo + 1 > w) w = i - lo + 1 }
-        print n+0, y+0, c+0, m+0, nl+0, b+0, w+0, p+0 }' <<<"$kayitlar")
+        print n+0, y+0, c+0, m+0, nl+0, b+0, w+0, p+0, (yy == "" ? "-" : yy) }' <<<"$kayitlar")
+    [[ "$yeni_yavas" == "-" ]] && yeni_yavas=""
+    # Yazılacak tarihçe: eski + yeni yavaş kayıtlar, son 15 dk.
+    yavas_yaz="$(tr ',' '\n' <<<"${gecmis},${yeni_yavas}" | awk -v s="$simdi_ms" '
+      /^[0-9]+$/ && $1 + 0 >= s - 900000 && $1 + 0 < s && !gorulen[$1]++ { o = o (o == "" ? "" : ",") $1 }
+      END { print o }')"
 
     if (( toplam == 0 )); then
       # Yeni kayıt yok (worker boşta): süre hakkında YENİ karar yok; son hal sürer.
@@ -399,6 +414,11 @@ ${govde}"
     # ancak kimlikli bir imleçle doğrulayabilir.
     if (( rc == 0 )) && [[ -n "$kimlik" ]] && atomik_yaz "$LEASE_IMLEC" "$simdi_ms $kimlik"; then
       basari=1
+      atomik_yaz "$LEASE_YAVAS" "$yavas_yaz" || true
+      # Yeni lease kaydı görüldüyse worker çalışıyor: eski kesim makbuzu artık
+      # bir kesimi kanıtlamaz (Astra, 22 Eylül). Konteyner kontrolü bu koşuda
+      # makbuzu zaten kullandı.
+      if (( ! KESIM && ${toplam:-0} > 0 )); then rm -f "$LEASE_MAKBUZ" 2>/dev/null; fi
     fi
   fi
   # Makbuz: bu konteyner `simdi_ms`e kadar eksiksiz tarandı ve karar kalıcı.

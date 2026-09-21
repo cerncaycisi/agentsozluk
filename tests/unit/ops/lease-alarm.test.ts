@@ -270,9 +270,10 @@ describe("lease süresi alarmı", () => {
     expect(kesik).not.toContain("activeMs");
 
     expect(calistir([kayit(4500)]).bildirimler).toHaveLength(1);
-    // Karışık pencere: iki yavaş + bir kesik. Kesik satır üçüncü yavaş kayıt
-    // olabilir; "normale döndü" denmemeli, belirsizlik söylenmeli.
-    const belirsiz = calistir([kayit(2600), kayit(2700), kesik]).bildirimler;
+    // Karışık pencere: bir yavaş + bir kesik. Tarihçedeki 4500 ile yavaş sayısı
+    // 2'dir; kesik satır üçüncü yavaş kayıt olabilir: "normale döndü" denmemeli,
+    // belirsizlik söylenmeli.
+    const belirsiz = calistir([kayit(2600), kesik]).bildirimler;
     expect(belirsiz).toHaveLength(1);
     expect(belirsiz[0]).toContain("ayrıştırılamıyor");
     expect(belirsiz[0]).not.toContain("normale döndü");
@@ -394,15 +395,15 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
     expect(imlecOku()).toBe(T - 15 * 60);
   });
 
-  it("imleç örtüşme ve 15 dk tarihçeyle geri başlar; geriye sınır yoktur", () => {
+  it("imleç 60 sn örtüşmeyle geri başlar; geriye sınır yoktur", () => {
     imlecYaz(T - 10 * 60);
     calistir([], { simdi: T });
     imlecYaz(T - 10 * 3600);
     calistir([], { simdi: T });
     const since = readFileSync(path.join(dizin, "since.log"), "utf8").trim().split("\n");
     const beklenen = (sn: number) => new Date(sn * 1000).toISOString().replace(".000Z", "Z");
-    expect(since[0]).toBe(beklenen(T - 10 * 60 - 60 - 900));
-    expect(since[1]).toBe(beklenen(T - 10 * 3600 - 60 - 900));
+    expect(since[0]).toBe(beklenen(T - 10 * 60 - 60));
+    expect(since[1]).toBe(beklenen(T - 10 * 3600 - 60));
   });
 
   it("gelecekteki imleç düzeltilir; log okunamasa bile hemen yazılır", () => {
@@ -592,6 +593,57 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
   it("kimliksiz (eski biçim) imleçte konteyner karşılaştırması yapılmaz", () => {
     imlecYaz(T - 15 * 60);
     expect(calistir([zamanli(800, T - 60)], { simdi: T, kimlik: YENI }).bildirimler).toEqual([]);
+  });
+
+  it("dağıtım iptal edilip worker döndüyse eski makbuz sonraki değişimi örtmez", () => {
+    calistir([zamanli(800, T - 60)], { simdi: T, kimlik: ESKI });
+    calistir([], { simdi: T + 60, kimlik: ESKI, kip: "--kesim-oncesi", konuYok: true });
+    // Kesim iptal: konteyner aynı, worker yeniden çalışıyor (yeni kayıt).
+    expect(calistir([zamanli(800, T + 800)], { simdi: T + 900, kimlik: ESKI }).bildirimler).toEqual(
+      [],
+    );
+    // Sonraki değişim taramasız oldu: boşluk görülmeli.
+    const sonra = calistir([zamanli(800, T + 1700)], { simdi: T + 1800, kimlik: YENI });
+    expect(sonra.bildirimler[0]).toContain("kesimden önce taranmamış");
+  });
+
+  it("başarısız kesim taraması eski makbuzu geçerli bırakmaz", () => {
+    calistir([zamanli(800, T - 60)], { simdi: T, kimlik: ESKI });
+    calistir([], { simdi: T + 60, kimlik: ESKI, kip: "--kesim-oncesi", konuYok: true });
+    expect(existsSync(path.join(dizin, "durum", "durum-lease-kesim"))).toBe(true);
+    const hata = calistir([], {
+      simdi: T + 120,
+      kimlik: ESKI,
+      kip: "--kesim-oncesi",
+      konuYok: true,
+      logsHata: true,
+    });
+    expect(hata.status).not.toBe(0);
+    expect(existsSync(path.join(dizin, "durum", "durum-lease-kesim"))).toBe(false);
+  });
+
+  it("kesimin iki yanına düşen üç yavaş kayıt yine uyarıdır; tarihçe konteyneri aşar", () => {
+    const once = [zamanli(2600, T - 100), zamanli(2600, T - 50)];
+    expect(calistir(once, { simdi: T, kimlik: ESKI }).bildirimler).toEqual([]);
+    calistir(once, { simdi: T + 10, kimlik: ESKI, kip: "--kesim-oncesi", konuYok: true });
+    // Yeni konteyner: eski kayıtlar logda YOK; tarihçe diskten gelmeli.
+    const sonra = calistir([zamanli(2600, T + 40)], { simdi: T + 60, kimlik: YENI });
+    expect(sonra.bildirimler).toHaveLength(1);
+    expect(sonra.bildirimler[0]).toContain("lease yavaşlıyor");
+  });
+
+  it("imleç bozulunca tarihçe ile log aynı yavaş kaydı iki kez saymaz", () => {
+    mkdirSync(path.join(dizin, "durum"), { recursive: true });
+    writeFileSync(
+      path.join(dizin, "durum", "durum-lease-yavas"),
+      `${(T - 100) * 1000},${(T - 50) * 1000}\n`,
+    );
+    writeFileSync(path.join(dizin, "durum", "durum-lease-imlec"), "bozuk\n");
+    // Son 15 dk yeniden taranır: aynı iki kayıt logda da var. Toplam 2 yavaş, 4 değil.
+    const { bildirimler } = calistir([zamanli(2600, T - 100), zamanli(2600, T - 50)], {
+      simdi: T,
+    });
+    expect(bildirimler).toEqual([]);
   });
 
   it("normal kipte ntfy konusu yine zorunludur", () => {
