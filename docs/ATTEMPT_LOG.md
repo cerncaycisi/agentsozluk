@@ -8339,3 +8339,36 @@ bekledi. 20 Eylül'de `pkill -f eslint`'in hakemi öldürmesiyle aynı sınıf h
 toplam ~16 dk, komut zaman aşımı 10 dk. Zaman aşımı dağıtımın ORTASINA denk
 gelse cutover yarıda kesilirdi. Dağıtım adımına ulaşmadan durdurup ikiye böldüm.
 **Uzun bekleme ile üretim değişikliği aynı zaman-aşımlı komutta olmaz.**
+
+## 2026-09-21 — bakım timer'ı 5 dakikaya; bozuk dosya kuruldu ve geri alındı
+
+- **Sebep (Astra itirazı + üretim günlüğü):** temizlik her koşuda tam 2.000
+  kayıt siliyor ve commit ediyor — çalışıyor. `idempotency_records`'taki 1,33 M
+  birikim kapasite yetersizliğinden: geçmişte üretim sık sık saatte 2.000'i aştı
+  (3 Eylül 82.741 kayıt ≈ 3.450/saat). Bugünkü ~933/saat F02'nin şerit
+  azaltmasından; şerit açılırsa tepe geri gelir.
+- **Tasarım (Astra):** parti büyütülmedi — iki tablonun tüm partileri tek
+  transaction'da, 2000×10 transaction başına 40.000 silme olurdu. 500×4
+  (azami 4.000) kaldı, timer saatlikten 5 dakikaya.
+- **Bozuk dosya kuruldu.** #148'in timer dosyasına açıklama bloğu eklerken
+  `[Timer]` başlığını sildim; `OnCalendar` `[Unit]`'e düştü. Kurulumda systemd
+  `bad unit file setting` ile timer'ı başlatmadı. **~1 dakika içinde yedeğe
+  geri alındı**; timer aktif kaldı, bakım koşusu kaçmadı.
+- **Neden geçti:** Sol GO, Astra DAĞIT, CI 7/7 — üçü de dosyanın METNİNE
+  baktı, YAPISINA değil. `systemd-analyze verify` hatayı kurulumdan ÖNCE
+  söyledi ama `;` ile koştuğu için komutu durdurmadı.
+- **Düzeltme #151:** `[Timer]` geri kondu; birim testi bölümleri ayrıştırıyor
+  (bozuk dosyaya karşı denendi, düşüyor). Kurulum artık verify çıktısı boş
+  değilse DURUYOR. İkinci kurulum temiz: timer aktif, `*:0/5`.
+
+**Tekrarlama:**
+
+- Doğrulama adımı kapı değilse süstür. `verify; install` değil,
+  `verify || exit; install`.
+- Birim testi bir yapılandırma dosyasının metnini değil yapısını doğrulamalı.
+- Bu oturumda üçüncü kez: hakem ve CI yeşilken üretimde bozulan bir şey. Hepsinde
+  kontrol doğru soruyu sormuyordu.
+
+**Ayrıca — 5 saatlik ikinci durma:** 07:40'ta #151'in CI'ı için bekleyici
+kurmadan "yeşil olunca devam" dedim; 13:01'de Gökhan "?" yazınca fark ettim.
+Bekleyicisiz bırakılan her "sonra devam ederim" bir durmadır.
