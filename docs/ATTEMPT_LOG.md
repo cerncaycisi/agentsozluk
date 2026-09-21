@@ -8372,3 +8372,25 @@ gelse cutover yarıda kesilirdi. Dağıtım adımına ulaşmadan durdurup ikiye 
 **Ayrıca — 5 saatlik ikinci durma:** 07:40'ta #151'in CI'ı için bekleyici
 kurmadan "yeşil olunca devam" dedim; 13:01'de Gökhan "?" yazınca fark ettim.
 Bekleyicisiz bırakılan her "sonra devam ederim" bir durmadır.
+
+**Durdurma eşiği ölçüldü (21 Eylül 13:05–13:15 UTC):** yeni kadanstaki ilk üç
+bakım koşusu her biri ~1 saniye; eşik 60 saniye. Beş dakikalık kadans kalıyor.
+
+## 2026-09-21 — `4d665cf` lease yolunda hiç devreye girmemiş
+
+**Astra buldu, kaynaktan doğrulandı.** Lease HTTP yolu: route →
+`runAgentRuntimeAction` → `idempotentResponse` → `executeIdempotently` →
+`withIdempotencyLock` → `client.$transaction(...)` **seçeneksiz**. Yani Prisma'nın
+varsayılanı 5.000 ms geçerli. `leaseRuntimeRun` içindeki `inTransaction` zaten bir
+transaction istemcisi aldığı için callback'i doğrudan çalıştırıyor; `4d665cf`'in
+15 sn seçeneği bu yolda HİÇ uygulanmıyor.
+
+**Sonuç:** 19 Eylül'den 21 Eylül #147 dağıtımına kadar üretim, kesintiye yol açan
+aynı 5 sn sınırla koştu. 20 Eylül gecesi yedek penceresinin sessiz geçmesini
+"düzeltme tuttu" diye kaydetmiştim — yanlış premise; o gece maliyet sınırın
+altında kaldı. **Gerçek koruma #147:** sorgunun maliyetini düşürdü. Kalan pay lease
+telemetrisi olmadan görülemez.
+
+**Tekrarlama:** bir ayarın "devreye girdiğini" varsayma; değerin gerçekten
+kullanıldığı çağrı yolunu takip et. Burada ayar doğru yere yazılmıştı ama o yol
+lease tarafından hiç kullanılmıyordu.
