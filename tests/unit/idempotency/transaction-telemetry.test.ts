@@ -80,13 +80,25 @@ describe("transaction süresi telemetrisi", () => {
   it("başarısız transaction'ı güvenli hata koduyla kaydeder ve hatayı aynen fırlatır", async () => {
     const { withIdempotencyLock } = await import("@/modules/idempotency/repository/idempotency");
     const p2028 = Object.assign(new Error("Transaction already closed"), { code: "P2028" });
-    const istemci = sahteIstemci({ hata: p2028 });
+    // 19 Eylül'ün şekli: callback başladı, iş uzadı, commit sırasında P2028.
+    const istemci = sahteIstemci({
+      baglantiMs: 5,
+      advisoryKilitMs: 3,
+      commitMs: 4000,
+      hata: p2028,
+    });
     await expect(
-      withIdempotencyLock(istemci as never, "kapsam", async () => "x", { label: "runtime.lease" }),
+      withIdempotencyLock(istemci as never, "kapsam", isSuresi(1200, "x"), {
+        label: "runtime.lease",
+      }),
     ).rejects.toBe(p2028);
+    // Süreler de korunmalı: başarısız bir kayıt aktif süreyi göstermezse asıl teşhis kaybolur.
     expect(logMock.info.mock.calls[0]?.[0]).toMatchObject({
       outcome: "failed",
       errorCode: "P2028",
+      acquireMs: 5,
+      activeMs: 3 + 1200 + 4000,
+      totalMs: 5 + 3 + 1200 + 4000,
     });
   });
 
