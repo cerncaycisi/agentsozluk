@@ -10,6 +10,9 @@ export const runtime = "nodejs";
 
 export function POST(request: NextRequest) {
   return runAgentRuntimeAction(request, runtimeLeaseSchema, "runtime:lease", leaseRuntimeRun, {
+    // 19 Eylül kesintisi bu transaction'ın 5 sn sınırını aşmasıydı; süresi
+    // artık her denemede loglanıyor (`db.transaction.duration`).
+    transactionTelemetryLabel: "runtime.lease",
     storedBodyTransform: storeRuntimeLeaseIdempotencyTombstone,
     replayedBodyTransform: replayRuntimeLeaseIdempotencyTombstone,
   });

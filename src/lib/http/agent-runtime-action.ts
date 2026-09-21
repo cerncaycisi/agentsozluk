@@ -111,6 +111,8 @@ export async function replayRuntimeLeaseIdempotencyTombstone(
 }
 
 interface RuntimeActionIdempotencyOptions<T> {
+  /** Verilirse bu aksiyonun transaction süresi loglanır (bugün yalnız lease). */
+  transactionTelemetryLabel?: string;
   storedBodyTransform?: (body: JsonValue) => JsonValue;
   replayedBodyTransform?: (
     client: DatabaseExecutor,
@@ -142,7 +144,14 @@ export function runAgentRuntimeAction<T>(
     }
     return idempotentResponse(
       request,
-      { actorId: principal.actor.actorId, route: request.nextUrl.pathname, requestBody: input },
+      {
+        actorId: principal.actor.actorId,
+        route: request.nextUrl.pathname,
+        requestBody: input,
+        ...(options.transactionTelemetryLabel
+          ? { telemetryLabel: options.transactionTelemetryLabel }
+          : {}),
+      },
       async (client) => {
         const result = await action(client, principal, input);
         if (isProductionRolloutRuntimeMutationBlocked(result))
