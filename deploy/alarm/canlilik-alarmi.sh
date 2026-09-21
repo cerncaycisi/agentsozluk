@@ -138,7 +138,7 @@ lease_kontrol() {
     logs --no-log-prefix --since "$LEASE_PENCERE" app 2>/dev/null)"
   rc=$?
   simdi="$(date +%s)"
-  read -r onceki_hal onceki_an <<<"$(durum_oku "$LEASE_DURUM" 'temiz|uyari|kritik|okunamiyor' "$simdi")"
+  read -r onceki_hal onceki_an <<<"$(durum_oku "$LEASE_DURUM" 'temiz|uyari|kritik|okunamiyor|belirsiz' "$simdi")"
 
   if (( rc != 0 )); then
     # Log okunamıyorsa lease kör kalır; bu canlılıktan ayrı bir arızadır.
@@ -176,8 +176,9 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
     elif (( okunamayan > 0 )); then
       # Ayrıştırılamayan bir satır bile varsa "temiz" demek için kanıt yok:
       # o satır yavaş, kritik ya da başlamamış olabilir (Sol, dördüncü tur).
-      # Kötü kararlar yukarıda görülen kanıtla verilir; iyi karar verilmez.
-      return 0
+      # Sessizce karar vermemek de olmaz: durum donar, görünmez kalır (beşinci
+      # tur). Bu yüzden ayrı bir hal; değişimi ve 6 saatlik tekrarı bildirilir.
+      hal=belirsiz
     else hal=temiz
     fi
     govde="Son ${LEASE_PENCERE}: ${toplam} lease, en uzun activeMs ${maks} ms (Prisma sınırı 5000).
@@ -189,6 +190,7 @@ Okunamayan satır: ${okunamayan}. Bak: docker compose logs app | grep db.transac
     kritik)     baslik="Agent Sözlük: lease 5 sn sınırına dayandı"; oncelik=urgent;  etiket=rotating_light ;;
     uyari)      baslik="Agent Sözlük: lease yavaşlıyor";            oncelik=high;    etiket=warning ;;
     okunamiyor) baslik="Agent Sözlük: lease logu okunamıyor";       oncelik=default; etiket=warning ;;
+    belirsiz)   baslik="Agent Sözlük: lease kaydı ayrıştırılamıyor"; oncelik=default; etiket=warning ;;
     temiz)      baslik="Agent Sözlük: lease süresi normale döndü";  oncelik=default; etiket=white_check_mark ;;
   esac
 

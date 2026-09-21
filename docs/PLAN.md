@@ -1082,7 +1082,7 @@ ertelenmiş madde olmaktan çıktı.
       süreçte `timeout` altında; durum dosyası doğrulanarak okunuyor; `curl
       --fail`, durum yalnız başarılı gönderimde yazılıyor. Betik sahte
       `docker`/`curl` ile gerçekten çalıştırılarak test ediliyor (sahte docker
-      argümanları doğruluyor); 24 test, 19 mutasyon denendi, hepsi yakalandı. İkinci tur: canlılık sorgusuna da `timeout`; sıfırlı ya da gelecekteki zaman damgası reddediliyor. Üçüncü tur: `activeMs: null` (callback hiç başlamamış) uyarı sayılıyor; tek bir ayrıştırılamayan satır bile varken alarm "temiz" diye kapanmıyor (dördüncü tur).
+      argümanları doğruluyor); 25 test, 22 mutasyon denendi, hepsi yakalandı. İkinci tur: canlılık sorgusuna da `timeout`; sıfırlı ya da gelecekteki zaman damgası reddediliyor. Üçüncü tur: `activeMs: null` (callback hiç başlamamış) uyarı sayılıyor; tek bir ayrıştırılamayan satır bile varken alarm "temiz" diye kapanmıyor (dördüncü tur); bu durum ayrı bir hal (`belirsiz`) olarak bildiriliyor ve 6 saatte bir tekrarlanıyor, sessizce donmuyor (beşinci tur).
 
 - [x] **Devre kesici kendi kendini kilitliyor — asıl kök neden.** Düzeltildi ve canlıda
       (4 Eylül, PR #109 + #110 · `7336862`). Üç halka birbirini

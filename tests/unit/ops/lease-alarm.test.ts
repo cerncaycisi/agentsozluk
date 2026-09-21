@@ -214,17 +214,34 @@ describe("lease süresi alarmı", () => {
     expect(inis[0]).not.toContain("normale döndü");
   });
 
-  it("ayrıştırılamayan satır varken alarm temiz diye kapanmaz", () => {
-    expect(calistir([kayit(4500)]).bildirimler).toHaveLength(1);
+  it("ayrıştırılamayan satır varken alarm temiz diye kapanmaz; bunu ayrı bildirir", () => {
     const tam = kayit(4500);
     const kesik = tam.slice(0, tam.indexOf('"activeMs"'));
     expect(kesik).toContain('"label":"runtime.lease"');
     expect(kesik).not.toContain("activeMs");
-    expect(calistir([kesik, kesik]).bildirimler).toEqual([]);
+
+    expect(calistir([kayit(4500)]).bildirimler).toHaveLength(1);
     // Karışık pencere: iki yavaş + bir kesik. Kesik satır üçüncü yavaş kayıt
-    // olabilir; alarm kanıtsız kapanmamalı.
-    expect(calistir([kayit(2600), kayit(2700), kesik]).bildirimler).toEqual([]);
-    expect(calistir([kayit(4500)]).bildirimler).toEqual([]);
+    // olabilir; "normale döndü" denmemeli, belirsizlik söylenmeli.
+    const belirsiz = calistir([kayit(2600), kayit(2700), kesik]).bildirimler;
+    expect(belirsiz).toHaveLength(1);
+    expect(belirsiz[0]).toContain("ayrıştırılamıyor");
+    expect(belirsiz[0]).not.toContain("normale döndü");
+    // Aynı belirsizlik sürerse tekrar bildirilmez (6 saat dolmadan).
+    expect(calistir([kesik]).bildirimler).toEqual([]);
+    // Kanıt temizlenince dönüş bildirilir.
+    expect(calistir([kayit(800)]).bildirimler[0]).toContain("normale döndü");
+  });
+
+  it("süren belirsizlik 6 saatte bir yeniden bildirilir; donmaz", () => {
+    const tam = kayit(800);
+    const kesik = tam.slice(0, tam.indexOf('"activeMs"'));
+    mkdirSync(path.join(dizin, "durum"), { recursive: true });
+    const yediSaatOnce = Math.floor(Date.now() / 1000) - 7 * 3600;
+    writeFileSync(path.join(dizin, "durum", "durum-lease"), `belirsiz ${yediSaatOnce}\n`);
+    expect(calistir([kesik]).bildirimler).toHaveLength(1);
+    writeFileSync(path.join(dizin, "durum", "durum-lease"), `kritik ${yediSaatOnce}\n`);
+    expect(calistir([kayit(4500)]).bildirimler).toHaveLength(1);
   });
 
   it("kayıt yoksa (worker boşta) karar vermez ve önceki durumu korur", () => {
