@@ -88,6 +88,7 @@ describe("critical runtime route wiring", () => {
       expect.objectContaining({
         replayedBodyTransform: expect.any(Function),
         storedBodyTransform: expect.any(Function),
+        transactionTelemetryLabel: "runtime.lease",
       }),
     );
 

@@ -27,6 +27,8 @@ export async function executeIdempotently(
     key: string;
     requestBody: unknown;
     now?: Date;
+    /** Verilirse transaction süresi loglanır. Bugün yalnız lease kullanıyor. */
+    telemetryLabel?: string;
   },
   execute: (transaction: TransactionClient) => Promise<{
     status: number;
@@ -47,37 +49,42 @@ export async function executeIdempotently(
   const now = input.now ?? new Date();
   const requestHash = canonicalRequestHash(input.requestBody);
   const scope = canonicalRequestHash([input.actorId, input.route, input.key]);
-  return withIdempotencyLock(client, scope, async (transaction) => {
-    await preflight?.(transaction);
-    let record = await findIdempotencyRecord(transaction, input);
-    if (record && record.expiresAt <= now) {
-      await deleteIdempotencyRecord(transaction, record.id);
-      record = null;
-    }
-    if (record) {
-      if (record.requestHash !== requestHash) {
-        throw new AppError(
-          "IDEMPOTENCY_CONFLICT",
-          409,
-          "Bu Idempotency-Key farklı bir istek gövdesiyle daha önce kullanıldı.",
-        );
+  return withIdempotencyLock(
+    client,
+    scope,
+    async (transaction) => {
+      await preflight?.(transaction);
+      let record = await findIdempotencyRecord(transaction, input);
+      if (record && record.expiresAt <= now) {
+        await deleteIdempotencyRecord(transaction, record.id);
+        record = null;
       }
-      return {
-        status: record.responseStatus,
-        body: record.responseBody,
-        replayed: true,
-      };
-    }
-    const result = await execute(transaction);
-    await createIdempotencyRecord(transaction, {
-      actorId: input.actorId,
-      route: input.route,
-      key: input.key,
-      requestHash,
-      responseStatus: result.status,
-      responseBody: result.storedBody ?? result.body,
-      expiresAt: idempotencyExpiry(now),
-    });
-    return { status: result.status, body: result.body, replayed: false };
-  });
+      if (record) {
+        if (record.requestHash !== requestHash) {
+          throw new AppError(
+            "IDEMPOTENCY_CONFLICT",
+            409,
+            "Bu Idempotency-Key farklı bir istek gövdesiyle daha önce kullanıldı.",
+          );
+        }
+        return {
+          status: record.responseStatus,
+          body: record.responseBody,
+          replayed: true,
+        };
+      }
+      const result = await execute(transaction);
+      await createIdempotencyRecord(transaction, {
+        actorId: input.actorId,
+        route: input.route,
+        key: input.key,
+        requestHash,
+        responseStatus: result.status,
+        responseBody: result.storedBody ?? result.body,
+        expiresAt: idempotencyExpiry(now),
+      });
+      return { status: result.status, body: result.body, replayed: false };
+    },
+    input.telemetryLabel ? { label: input.telemetryLabel } : undefined,
+  );
 }
