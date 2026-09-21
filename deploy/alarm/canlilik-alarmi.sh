@@ -37,12 +37,15 @@ DURUM="${ALARM_DURUM_DOSYASI:-/var/lib/agent-sozluk-alarm/durum}"
 LEASE_UYARI_MS="${ALARM_LEASE_UYARI_MS:-2500}"
 LEASE_KRITIK_MS="${ALARM_LEASE_KRITIK_MS:-4000}"
 LEASE_UYARI_ADET="${ALARM_LEASE_UYARI_ADET:-3}"
-LEASE_PENCERE="${ALARM_LEASE_PENCERE:-15m}"        # timer aralığıyla aynı
+LEASE_ILK_PENCERE_SN=900     # imleç yokken (ilk koşu) geriye bakılan süre
+LEASE_ORTUSME_SN=60          # imleçten bu kadar geriden başla; sınır kaydı kaçmaz
+LEASE_AZAMI_GERI_SN=21600    # gönderim uzun süre başarısızsa en fazla 6 sa geri
 LEASE_ZAMAN_ASIMI="${ALARM_LEASE_ZAMAN_ASIMI:-45}"       # sn
 CANLILIK_ZAMAN_ASIMI="${ALARM_CANLILIK_ZAMAN_ASIMI:-30}" # sn; docker/exec takılırsa
 # En kötü duvar saati: canlılık 30+5 + curl 20 + lease 45+5 = 105 sn; birimin
 # TimeoutStartSec=2min sınırının altında.
 LEASE_DURUM="${DURUM}-lease"
+LEASE_IMLEC="${DURUM}-lease-imlec"
 APP=/opt/agent-sozluk/app
 RUNTIME=/opt/agent-sozluk/runtime
 
@@ -131,14 +134,38 @@ Bak: systemctl status agent-sozluk-runtime" \
 # ------------------------------------------------------------ lease süresi
 # Uygulama logundan okur; veritabanına dokunmaz. Yalnız `--yalniz-lease` ile,
 # `timeout` altındaki alt süreçte çağrılır.
+#
+# İMLEÇ (Astra, 21 Eylül): sabit "son 15 dk" penceresi iki tarama arasına
+# düşen olayı kaçırabiliyordu; bildirim gönderilemezse olay pencereden çıkıp
+# kayboluyordu. Tarama artık en son BAŞARIYLA işlenen andan (60 sn örtüşmeyle)
+# başlar; imleç yalnız karar gerektirmeyen ya da bildirimi gönderilen taramadan
+# sonra ilerler. Gönderilemeyen olay bir sonraki koşuda yeniden okunur.
 lease_kontrol() {
   local ham rc kayitlar toplam yavas kritik maks baslamayan okunamayan p2028 hal govde baslik oncelik etiket
-  local simdi onceki_hal onceki_an
-  ham="$(timeout 30 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
-    logs --no-log-prefix --since "$LEASE_PENCERE" app 2>/dev/null)"
-  rc=$?
-  simdi="$(date +%s)"
+  local simdi onceki_hal onceki_an imlec baslangic pencere_dk
+  # ALARM_SIMDI yalnız testler içindir; üretimde tanımlı değildir.
+  simdi="${ALARM_SIMDI:-$(date +%s)}"
   read -r onceki_hal onceki_an <<<"$(durum_oku "$LEASE_DURUM" 'temiz|uyari|kritik|okunamiyor|belirsiz' "$simdi")"
+  read -r imlec 2>/dev/null <"$LEASE_IMLEC" || imlec=""
+  if [[ "$imlec" =~ ^[1-9][0-9]{0,11}$ ]] && (( imlec <= simdi )); then
+    baslangic=$(( imlec - LEASE_ORTUSME_SN ))
+    (( baslangic < simdi - LEASE_AZAMI_GERI_SN )) && baslangic=$(( simdi - LEASE_AZAMI_GERI_SN ))
+  else
+    baslangic=$(( simdi - LEASE_ILK_PENCERE_SN ))
+  fi
+  pencere_dk=$(( (simdi - baslangic + 59) / 60 ))
+
+  ham="$(timeout 30 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
+    logs --no-log-prefix --since "$(date -u -d "@$baslangic" +%Y-%m-%dT%H:%M:%SZ)" app 2>/dev/null)"
+  rc=$?
+
+  # Tarama bitti: imleci bu taramanın başına taşır (bir sonraki `simdi`den
+  # örtüşmeyle geri başlar). Gönderim başarısızsa ÇAĞRILMAZ; imleç yoksa
+  # taramanın başı yazılır ki bir sonraki koşu aynı yerden başlasın.
+  imlec_ilerlet() { echo "$simdi" >"$LEASE_IMLEC"; }
+  imlec_koru() {
+    [[ "$imlec" =~ ^[1-9][0-9]{0,11}$ ]] || echo "$(( baslangic + LEASE_ORTUSME_SN ))" >"$LEASE_IMLEC"
+  }
 
   if (( rc != 0 )); then
     # Log okunamıyorsa lease kör kalır; bu canlılıktan ayrı bir arızadır.
@@ -155,29 +182,35 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
   elif [[ -z "$kayitlar" ]]; then
     # Kayıt yoksa (worker boşta) süre hakkında YENİ karar yok.
     case "$onceki_hal" in
-      temiz) return 0 ;;
+      temiz) imlec_ilerlet; return 0 ;;
       okunamiyor)
         # Log yeniden okunabiliyor: bu hal kapanmalı.
-        bildir "Agent Sözlük: lease logu yeniden okunuyor" default white_check_mark \
-          "Uygulama logu yeniden okunabiliyor; son ${LEASE_PENCERE} içinde lease kaydı yok." \
-          && echo "temiz $simdi" >"$LEASE_DURUM"
+        if bildir "Agent Sözlük: lease logu yeniden okunuyor" default white_check_mark \
+          "Uygulama logu yeniden okunabiliyor; son ${pencere_dk} dk içinde lease kaydı yok."; then
+          echo "temiz $simdi" >"$LEASE_DURUM"; imlec_ilerlet
+        else
+          imlec_koru
+        fi
         return 0 ;;
       *)
         # Son bilinen kötü hal SÜRER ve durum akışından geçer: değişim yok,
         # ama 6 saatlik hatırlatma kesilmez (Sol, altıncı tur).
         hal="$onceki_hal"
-        govde="Son ${LEASE_PENCERE} içinde lease kaydı yok; son bilinen durum sürüyor: ${onceki_hal}." ;;
+        govde="Son ${pencere_dk} dk içinde lease kaydı yok; son bilinen durum sürüyor: ${onceki_hal}." ;;
     esac
   else
     # Satır başına YALNIZ ilk activeMs. `activeMs: null` callback'in hiç
     # başlamadığı (bağlantı alınamayan) transaction'dır: kötü haber, ayrı
-    # sayılır (Sol, üçüncü tur). Kesilmiş satır ne iyi ne kötü sayılır.
+    # sayılır (Sol, üçüncü tur). Kayıt `}` ile bitmiyorsa ya da sayı `,`/`}`
+    # ile kapanmıyorsa kesiktir: `"activeMs":4` aslında 4500 olabilir (Astra).
+    # Kesik satır ne iyi ne kötü sayılır.
     read -r toplam yavas kritik maks baslamayan okunamayan < <(awk -v u="$LEASE_UYARI_MS" -v k="$LEASE_KRITIK_MS" '
       { n++
-        if (match($0, /"activeMs": *[0-9]+/)) {
-          v = substr($0, RSTART, RLENGTH); sub(/^[^0-9]*/, "", v); v += 0
+        if ($0 !~ /}[[:space:]]*$/) b++
+        else if (match($0, /"activeMs": *[0-9]+ *[,}]/)) {
+          v = substr($0, RSTART, RLENGTH); gsub(/[^0-9]/, "", v); v += 0
           if (v >= u) y++; if (v >= k) c++; if (v > m) m = v
-        } else if ($0 ~ /"activeMs": *null/) z++
+        } else if ($0 ~ /"activeMs": *null *[,}]/) z++
         else b++ }
       END { print n+0, y+0, c+0, m+0, z+0, b+0 }' <<<"$kayitlar")
     p2028="$(grep -E '"outcome": *"failed"' <<<"$kayitlar" | grep -cE '"errorCode": *"P2028"')"
@@ -192,7 +225,7 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
       hal=belirsiz
     else hal=temiz
     fi
-    govde="Son ${LEASE_PENCERE}: ${toplam} lease, en uzun activeMs ${maks} ms (Prisma sınırı 5000).
+    govde="Son ${pencere_dk} dk: ${toplam} lease, en uzun activeMs ${maks} ms (Prisma sınırı 5000).
 >= ${LEASE_UYARI_MS} ms: ${yavas} · >= ${LEASE_KRITIK_MS} ms: ${kritik} · P2028: ${p2028} · başlamayan: ${baslamayan}
 Okunamayan satır: ${okunamayan}. Bak: docker compose logs app | grep db.transaction.duration"
   fi
@@ -207,9 +240,19 @@ Okunamayan satır: ${okunamayan}. Bak: docker compose logs app | grep db.transac
 
   # Her hal DEĞİŞİMİ bildirilir (kritik→uyarı dahil); aynı arıza 6 saatte bir
   # tekrarlanır; temizken tekrar yok. Durum yalnız gönderim başarılıysa yazılır.
+  # İmleç: log okunamadıysa hiç ilerlemez (okunmayan olay kaybolmasın).
   if [[ "$hal" != "$onceki_hal" ]] \
      || { [[ "$hal" != temiz ]] && (( simdi - onceki_an > SESSIZLIK_SN )); }; then
-    bildir "$baslik" "$oncelik" "$etiket" "$govde" && echo "$hal $simdi" >"$LEASE_DURUM"
+    if bildir "$baslik" "$oncelik" "$etiket" "$govde"; then
+      echo "$hal $simdi" >"$LEASE_DURUM"
+      if (( rc == 0 )); then imlec_ilerlet; else imlec_koru; fi
+    else
+      imlec_koru
+    fi
+  elif (( rc == 0 )); then
+    imlec_ilerlet
+  else
+    imlec_koru
   fi
   return 0
 }

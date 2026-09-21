@@ -27,9 +27,10 @@ const COMPOSE = "/opt/agent-sozluk/runtime/compose.production.yaml";
 
 let dizin: string;
 
-function kayit(activeMs: number, outcome = "committed", errorCode?: string) {
+function kayit(activeMs: number, outcome = "committed", errorCode?: string, zamanSn?: number) {
   return JSON.stringify({
     level: "info",
+    ...(zamanSn === undefined ? {} : { time: new Date(zamanSn * 1000).toISOString() }),
     event: "db.transaction.duration",
     label: "runtime.lease",
     outcome,
@@ -47,6 +48,7 @@ interface Secenek {
   logsAsili?: boolean;
   execAsili?: boolean;
   curlHata?: boolean;
+  simdi?: number; // ALARM_SIMDI (sn); imleç testleri için
 }
 
 function calistir(logSatirlari: string[], secenek: Secenek = {}) {
@@ -68,6 +70,7 @@ function calistir(logSatirlari: string[], secenek: Secenek = {}) {
       SAHTE_LOGS_ASILI: secenek.logsAsili ? "1" : "",
       SAHTE_EXEC_ASILI: secenek.execAsili ? "1" : "",
       SAHTE_CURL_HATA: secenek.curlHata ? "1" : "",
+      ...(secenek.simdi === undefined ? {} : { ALARM_SIMDI: String(secenek.simdi) }),
     },
   });
   const oku = (ad: string) =>
@@ -90,10 +93,20 @@ echo "$*" >> "$SAHTE_DIZIN/docker.log"
 tum=" $* "
 [[ "$tum" == *" -f ${COMPOSE} "* ]] || exit 97
 if [[ "$tum" == *" logs "* ]]; then
-  [[ "$tum" == *" --since 15m "* && "$tum" == *" --no-log-prefix "* && "$*" == *" app" ]] || exit 98
+  [[ "$tum" == *" --no-log-prefix "* && "$*" == *" app" ]] || exit 98
+  since=""; onceki=""
+  for a in "$@"; do [[ "$onceki" == "--since" ]] && since="$a"; onceki="$a"; done
+  [[ "$since" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || exit 95
+  echo "$since" >> "$SAHTE_DIZIN/since.log"
   [[ -n "$SAHTE_LOGS_ASILI" ]] && sleep 20
   [[ -n "$SAHTE_LOGS_HATA" ]] && exit 1
-  cat "$SAHTE_DIZIN/app.log"; exit 0
+  se=$(date -u -d "$since" +%s)
+  # Gerçek docker gibi: --since'ten önceki satırlar gelmez. Zamansız satır hep gelir.
+  while IFS= read -r l; do
+    z=$(grep -oE '"time":"[^"]+"' <<<"$l" | cut -d'"' -f4)
+    if [[ -z "$z" ]] || (( $(date -u -d "$z" +%s) >= se )); then printf '%s\n' "$l"; fi
+  done < "$SAHTE_DIZIN/app.log"
+  exit 0
 fi
 if [[ "$tum" == *" exec -T db psql "* ]]; then
   [[ -n "$SAHTE_EXEC_ASILI" ]] && sleep 20
@@ -129,7 +142,7 @@ describe("lease süresi alarmı", () => {
     expect(bildirimler).toEqual([]);
     expect(dockerCagrilari).toHaveLength(2);
     expect(dockerCagrilari[0]).toContain("exec -T db psql");
-    expect(dockerCagrilari[1]).toContain("logs --no-log-prefix --since 15m app");
+    expect(dockerCagrilari[1]).toMatch(/logs --no-log-prefix --since \S+Z app$/);
   });
 
   it("eşiği iki kez aşmak uyarı değildir, üç kez aşmak uyarıdır", () => {
@@ -277,6 +290,71 @@ describe("lease süresi alarmı", () => {
     expect(status).toBe(0);
     expect(bildirimler).toHaveLength(1);
     expect(bildirimler[0]).toContain("lease logu okunamıyor");
+  });
+});
+
+describe("lease taraması imleçle ilerler (Astra, 21 Eylül)", () => {
+  const T = 1_790_000_000; // sabit "şimdi" (sn)
+  const imlecYaz = (sn: number) => {
+    mkdirSync(path.join(dizin, "durum"), { recursive: true });
+    writeFileSync(path.join(dizin, "durum", "durum-lease-imlec"), `${sn}\n`);
+  };
+  const imlecOku = () =>
+    readFileSync(path.join(dizin, "durum", "durum-lease-imlec"), "utf8").trim();
+
+  it("gecikmiş taramada iki pencere arasına düşen kritik olay kaçmaz", () => {
+    // Önceki tarama 17 dk önce; olay 16,5 dk önce. Sabit 15 dk'lık pencere görmezdi.
+    imlecYaz(T - 17 * 60);
+    const { bildirimler } = calistir([kayit(4500, "committed", undefined, T - 990)], {
+      simdi: T,
+    });
+    expect(bildirimler).toHaveLength(1);
+    expect(bildirimler[0]).toContain("sınırına dayandı");
+    expect(imlecOku()).toBe(String(T));
+  });
+
+  it("gönderilemeyen olay, pencere kaysa bile sonraki koşuda yeniden okunur", () => {
+    // Olay örtüşme payının (60 sn) dışında: imleç yanlışlıkla ilerlerse görünmez.
+    const olay = kayit(4500, "committed", undefined, T - 120);
+    expect(calistir([olay], { simdi: T, curlHata: true }).bildirimler).toEqual([]);
+    // 30 dk sonra: olay artık "son 15 dk" içinde değil, ama imleç ilerlemedi.
+    const tekrar = calistir([olay], { simdi: T + 30 * 60 }).bildirimler;
+    expect(tekrar).toHaveLength(1);
+    expect(tekrar[0]).toContain("sınırına dayandı");
+  });
+
+  it("log okunamazsa imleç ilerlemez — ilk bildirimde de, süren arızada da", () => {
+    imlecYaz(T - 15 * 60);
+    const ilk = calistir([kayit(800, "committed", undefined, T - 60)], {
+      simdi: T,
+      logsHata: true,
+    });
+    expect(ilk.bildirimler[0]).toContain("okunamıyor");
+    expect(imlecOku()).toBe(String(T - 15 * 60));
+    // Arıza sürüyor, 6 saat dolmadı: bildirim yok, imleç yine yerinde.
+    const suren = calistir([], { simdi: T + 15 * 60, logsHata: true });
+    expect(suren.bildirimler).toEqual([]);
+    expect(imlecOku()).toBe(String(T - 15 * 60));
+  });
+
+  it("imleç örtüşmeyle geri başlar ve en fazla 6 saat geriye gider", () => {
+    imlecYaz(T - 10 * 60);
+    calistir([], { simdi: T });
+    imlecYaz(T - 10 * 3600);
+    calistir([], { simdi: T });
+    const since = readFileSync(path.join(dizin, "since.log"), "utf8").trim().split("\n");
+    expect(since[0]).toBe(new Date((T - 11 * 60) * 1000).toISOString().replace(".000Z", "Z"));
+    expect(since[1]).toBe(new Date((T - 6 * 3600) * 1000).toISOString().replace(".000Z", "Z"));
+  });
+
+  it("sayının ortasında kesilen kayıt sahte düzelme üretmez", () => {
+    expect(calistir([kayit(4500)]).bildirimler).toHaveLength(1);
+    const tam = kayit(4500);
+    const kesik = tam.slice(0, tam.indexOf('"activeMs":') + '"activeMs":4'.length);
+    const sonuc = calistir([kesik]).bildirimler;
+    expect(sonuc).toHaveLength(1);
+    expect(sonuc[0]).toContain("ayrıştırılamıyor");
+    expect(sonuc[0]).not.toContain("normale döndü");
   });
 });
 

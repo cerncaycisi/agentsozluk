@@ -1082,7 +1082,9 @@ ertelenmiş madde olmaktan çıktı.
       süreçte `timeout` altında; durum dosyası doğrulanarak okunuyor; `curl
       --fail`, durum yalnız başarılı gönderimde yazılıyor. Betik sahte
       `docker`/`curl` ile gerçekten çalıştırılarak test ediliyor (sahte docker
-      argümanları doğruluyor); 28 test, 23 mutasyon denendi, hepsi yakalandı. İkinci tur: canlılık sorgusuna da `timeout`; sıfırlı ya da gelecekteki zaman damgası reddediliyor. Üçüncü tur: `activeMs: null` (callback hiç başlamamış) uyarı sayılıyor; tek bir ayrıştırılamayan satır bile varken alarm "temiz" diye kapanmıyor (dördüncü tur); bu durum ayrı bir hal (`belirsiz`) olarak bildiriliyor ve 6 saatte bir tekrarlanıyor, sessizce donmuyor (beşinci tur); kayıt gelmeyen pencerede de süren kötü hal 6 saatte bir hatırlatılıyor (altıncı tur).
+      argümanları doğruluyor); 33 test, 32 mutasyon denendi, hepsi yakalandı. İkinci tur: canlılık sorgusuna da `timeout`; sıfırlı ya da gelecekteki zaman damgası reddediliyor. Üçüncü tur: `activeMs: null` (callback hiç başlamamış) uyarı sayılıyor; tek bir ayrıştırılamayan satır bile varken alarm "temiz" diye kapanmıyor (dördüncü tur); bu durum ayrı bir hal (`belirsiz`) olarak bildiriliyor ve 6 saatte bir tekrarlanıyor, sessizce donmuyor (beşinci tur); kayıt gelmeyen pencerede de süren kötü hal 6 saatte bir hatırlatılıyor (altıncı tur).
+
+      **Astra kurulum turu KURMA:** sabit 15 dk'lık pencere iki tarama arasına düşen olayı kaçırabiliyordu; gönderilemeyen bildirim olay pencereden çıkınca kayboluyordu; `"activeMs":4` gibi sayı ortasında kesik satır sahte düzelme üretiyordu. Sabit pencere yerine imleç: tarama en son başarıyla işlenen andan 60 sn örtüşmeyle başlar (en fazla 6 sa geri), imleç yalnız bildirim gerekmeyen ya da gönderilen taramadan sonra ilerler, log okunamazsa ilerlemez. Kayıt `}` ile bitmiyorsa ya da sayı kapanmıyorsa kesik sayılır.
 
 - [x] **Devre kesici kendi kendini kilitliyor — asıl kök neden.** Düzeltildi ve canlıda
       (4 Eylül, PR #109 + #110 · `7336862`). Üç halka birbirini
