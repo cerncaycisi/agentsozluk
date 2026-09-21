@@ -682,12 +682,50 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
     expect(bildirimler[0]).toContain("lease yavaşlıyor");
   });
 
+  it("tohumlama gerçek 15 dk aralıkla da (imleçten eski yavaşlar) çalışır", () => {
+    // Eski sürüm T'de taradı; yeni sürümün ilk koşusu T+15 dk. Tohum sınırı
+    // imleçtir, şimdi değil: T-120 ve T-60 tarihçeye girmeli.
+    imlecYaz(T);
+    const loglar = [zamanli(2700, T - 120), zamanli(2700, T - 60), zamanli(2700, T + 60)];
+    const { bildirimler } = calistir(loglar, { simdi: T + 900, kimlik: ESKI });
+    expect(bildirimler[0]).toContain("lease yavaşlıyor");
+  });
+
   it("tarihçe yazılamazsa imleç ilerlemez", () => {
     imlecYaz(T - 15 * 60);
     mkdirSync(path.join(dizin, "durum", "durum-lease-yavas"), { recursive: true });
     const { stderr } = calistir([zamanli(2600, T - 60)], { simdi: T, kimlik: ESKI });
     expect(stderr).toContain("durum-lease-yavas yazılamadı");
     expect(imlecOku()).toBe(T - 15 * 60);
+  });
+
+  it("gerçek 15 dk timer aralığında iki taramaya bölünen üç yavaş kayıt uyarıdır", () => {
+    // Astra'nın karşı örneği: 11:58 ve 11:59 iki yavaş, 12:00 tarama, 12:01 üçüncü,
+    // 12:15 tarama. Üç dakikada üç yavaş kayıt.
+    const once = [zamanli(2700, T - 120), zamanli(2700, T - 60)];
+    expect(calistir(once, { simdi: T, kimlik: ESKI }).bildirimler).toEqual([]);
+    const sonra = calistir([...once, zamanli(2700, T + 60)], { simdi: T + 900, kimlik: ESKI });
+    expect(sonra.bildirimler).toHaveLength(1);
+    expect(sonra.bildirimler[0]).toContain("lease yavaşlıyor");
+  });
+
+  it("gecikmiş taramada da (30 dk) bölünen seri yakalanır", () => {
+    const once = [zamanli(2700, T - 120), zamanli(2700, T - 60)];
+    expect(calistir(once, { simdi: T, kimlik: ESKI }).bildirimler).toEqual([]);
+    const sonra = calistir([...once, zamanli(2700, T + 60)], { simdi: T + 1800, kimlik: ESKI });
+    expect(sonra.bildirimler[0]).toContain("lease yavaşlıyor");
+  });
+
+  it("geçerli kesim sonrası konteyner değişiminde 15 dk aralıkla bölünen seri yakalanır", () => {
+    const once = [zamanli(2700, T - 120), zamanli(2700, T - 60)];
+    expect(calistir(once, { simdi: T, kimlik: ESKI }).bildirimler).toEqual([]);
+    calistir([], { simdi: T + 10, kimlik: ESKI, kip: "--kesim-oncesi", konuYok: true });
+    const sonra = calistir([zamanli(2700, T + 60)], {
+      simdi: T + 900,
+      kimlik: YENI,
+      olusma: T + 20,
+    });
+    expect(sonra.bildirimler[0]).toContain("lease yavaşlıyor");
   });
 
   it("normal kipte ntfy konusu yine zorunludur", () => {

@@ -295,10 +295,14 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
         if (m<=2) y--; mp=(m+9)%12
         return ((365*y+int(y/4)-int(y/100)+int(y/400)+int((153*mp+2)/5)+d-1-719468)*86400+H*3600+M*60+S)*1000+ms }
       BEGIN {
-        # Diskteki tarihçe: yalnız imleçten önceki ve son 15 dk içindekiler.
+        # Diskteki tarihçe: imleçten önceki ve İMLEÇTEN 15 dakika geriye kadar
+        # olanlar. Sınır "şimdi" değil imleçtir: taranan en eski yeni kaydın
+        # penceresi imleçten 15 dakika geriye uzanır (Astra: 15 dakikalık timer
+        # aralığında şimdi eksi 15 dakika sınırı önceki taramanın yavaşlarını
+        # düşürüyordu).
         ng = split(g, gg, ",")
         for (i = 1; i <= ng; i++)
-          if (gg[i] ~ /^[0-9]+$/ && gg[i] + 0 < e && gg[i] + 0 >= s - 900000) { ny++; yt[ny] = gg[i] + 0; yn[ny] = 0 }
+          if (gg[i] ~ /^[0-9]+$/ && gg[i] + 0 < e && gg[i] + 0 >= e - 900000) { ny++; yt[ny] = gg[i] + 0; yn[ny] = 0 }
       }
       NF == 0 { next }
       {
@@ -307,7 +311,7 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
         if (t >= s) next
         if (t < e) {
           # Yalnız tohumlamada: imleçten eski ama son 15 dakikadaki yavaş kayıt tarihçedir.
-          if (tohum && t >= s - 900000 && match($0, /"activeMs": *[0-9]+ *[,}]/)) {
+          if (tohum && t >= e - 900000 && match($0, /"activeMs": *[0-9]+ *[,}]/)) {
             v = substr($0, RSTART, RLENGTH); gsub(/[^0-9]/, "", v)
             if (v + 0 >= u) { ny++; yt[ny] = t; yn[ny] = 0; yy = yy (yy == "" ? "" : ",") t }
           }
@@ -333,9 +337,10 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
           if (yn[i] && i - lo + 1 > w) w = i - lo + 1 }
         print n+0, y+0, c+0, m+0, nl+0, b+0, w+0, p+0, (yy == "" ? "-" : yy) }' <<<"$kayitlar")
     [[ "$yeni_yavas" == "-" ]] && yeni_yavas=""
-    # Yazılacak tarihçe: eski + yeni yavaş kayıtlar, son 15 dk.
-    yavas_yaz="$(tr ',' '\n' <<<"${gecmis},${yeni_yavas}" | awk -v s="$simdi_ms" '
-      /^[0-9]+$/ && $1 + 0 >= s - 900000 && $1 + 0 < s && !gorulen[$1]++ { o = o (o == "" ? "" : ",") $1 }
+    # Yazılacak tarihçe: eski + yeni yavaş kayıtlar; bu taramanın imlecinden
+    # 15 dk geriye kadar (imleç ilerlemezse sonraki tarama aynı eşikten başlar).
+    yavas_yaz="$(tr ',' '\n' <<<"${gecmis},${yeni_yavas}" | awk -v e="$esik" -v s="$simdi_ms" '
+      /^[0-9]+$/ && $1 + 0 >= e - 900000 && $1 + 0 < s && !gorulen[$1]++ { o = o (o == "" ? "" : ",") $1 }
       END { print o }')"
 
     if (( toplam == 0 )); then
