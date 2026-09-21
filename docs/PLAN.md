@@ -52,7 +52,7 @@ Ayrıntı `AGENTS.md` içindedir.
 
 ### 19 Eylül 2026 — main'de, üretimde değil
 
-- **`4d665cf` — lease transaction'ı `P2028` ile düşüyordu.** 14,5 saatlik sessiz
+- **`4d665cf` — lease transaction'ı `P2028` ile düşüyordu.** (21 Eylül düzeltmesi: bu commit lease yolunun etkin timeout'unu DEĞİŞTİRMEDİ; ayrıntı bölüm 5.5.) 14,5 saatlik sessiz
   durmanın kök nedeni; ayrıntı ve açık kalan tasarım borcu bölüm 5.5'te.
 - **`d2244f7` — varsayılan sıralama temiz başlık sayfalarını facet'e çeviriyordu.**
   18 Eylül incelemesinin **B2** bulgusu: sayfalama ve "en eski" sekmesi, ziyaretçi
@@ -980,23 +980,35 @@ Tam kayıt: `docs/OLAY_SESSIZ_DURMA_2026-09-03.md`.
 Kök neden farklıydı, biçim aynıydı: `leaseRuntimeRun` devre kesici metrik sorgularını
 kendi kilitleme işiyle aynı Prisma interaktif transaction'ına paketliyor; tablolar
 büyüdükçe 5000 ms varsayılanı aşıldı, her lease `P2028` ile düştü, worker crash-loop'a
-girdi ve systemd pes etti. SSH ile canlı teşhis edilip `4d665cf` ile düzeltildi
-(paylaşılan `inTransaction()` timeout/maxWait yükseltildi). Üretim 13:45Z'de yazmaya
-döndü; dağıtımın bu commit'le olduğu dışarıdan doğrulanmadı. Kayıt:
+girdi ve systemd pes etti. SSH ile canlı teşhis edildi ve `4d665cf` paylaşılan
+`inTransaction()` timeout'unu 15 sn'ye çıkardı. Üretim 11:30Z'de Gökhan'ın elle
+restart'ıyla yazmaya döndü.
+
+**DÜZELTME (21 Eylül, Astra'nın bulgusu, kaynaktan doğrulandı): `4d665cf` lease
+yolunda HİÇ DEVREYE GİRMEDİ.** Lease HTTP yolu transaction'ı `withIdempotencyLock`
+içinde **seçeneksiz** `client.$transaction(...)` ile açıyor
+(`src/modules/idempotency/repository/idempotency.ts`), yani Prisma'nın varsayılanı
+5.000 ms geçerli. `leaseRuntimeRun` içindeki `inTransaction` zaten bir transaction
+istemcisi aldığı için callback'i doğrudan çalıştırıyor ve 15 sn seçeneği uygulanmıyor.
+**19 Eylül'den 21 Eylül #147 dağıtımına kadar üretim aynı 5 sn sınırla koştu.** 20
+Eylül gecesi yedek penceresini "düzeltme tuttu" diye yorumlamıştım; yanlış premise
+dayanıyordu — o gece maliyet sınırın altında kaldı, o kadar. **Gerçek koruma #147:**
+sorgunun maliyetini düşürdü. Ne kadar pay kaldığı lease telemetrisi olmadan
+görülemez. Kayıt:
 [ATTEMPT_LOG](ATTEMPT_LOG.md) 19 Eylül girdisi.
 
 **İki vakanın ortak dersi ve buradan çıkan iş:** her iki olayda da kusuru fark ettiren
 şey bir alarm değil, birinin bakması oldu. Aşağıdaki kalıcı canlılık alarmı bu yüzden
 ertelenmiş madde olmaktan çıktı.
 
-- [~] **P1 — Lease transaction'ında maliyeti geçmişle büyüyen sorgu bulundu.**
-  `busyDurationMs` (`capacity.ts`) pencere filtresini JSON açıldıktan SONRA
-  uyguluyordu: iki CTE `agent_runs`'ın tamamını okuyup `usageMetadata`'yı
-  TOAST'tan çıkarıyor ve `codexIntervals` dizisini açıyordu. Tablo 33.808
-  satır / 1.077 MB, %60'ı 30 günden eski ve hiç budanmıyor. Sorgu
-  `getRuntimeOperationalMetrics` üzerinden lease transaction'ında **üç kez**
-  koşuyor (15/60/120 dk). **Bulgu Astra'dan**, ben "tablolar büyüdü" diye
-  genel bir sebep yazmıştım.
+- [x] **P1 — Lease transaction'ında maliyeti geçmişle büyüyen sorgu — ÜRETİMDE (21 Eylül, `caa1ba0f`).**
+      `busyDurationMs` (`capacity.ts`) pencere filtresini JSON açıldıktan SONRA
+      uyguluyordu: iki CTE `agent_runs`'ın tamamını okuyup `usageMetadata`'yı
+      TOAST'tan çıkarıyor ve `codexIntervals` dizisini açıyordu. Tablo 33.808
+      satır / 1.077 MB, %60'ı 30 günden eski ve hiç budanmıyor. Sorgu
+      `getRuntimeOperationalMetrics` üzerinden lease transaction'ında **üç kez**
+      koşuyor (15/60/120 dk). **Bulgu Astra'dan**, ben "tablolar büyüdü" diye
+      genel bir sebep yazmıştım.
 
       Düzeltme PR #147: filtre LATERAL'den önceye alındı, saat geri adımına
       karşı 1 saatlik tolerans eklendi. Üretimde `EXPLAIN` (ANALYZE değil):
@@ -1013,6 +1025,23 @@ ertelenmiş madde olmaktan çıktı.
       **en fazla** 11 sa 00 dk 11 sn var (üst sınır; ilk başarısız lease'in
       zamanı bilinmiyor, gerçek kesinti daha kısa olabilir). Entry akışındaki
       boşluk 14 sa 27 dk. İkisi ayrı şeyi ölçer.
+
+      **21 Eylül dağıtım ve kabul:** Sol GO (üç tur; son blokaj ön-filtre
+      korumasıydı), Astra DAĞIT (şartı: #146'dan ayrı, worker'ın yeni koşu
+      aldığını doğrula). Plan testinin gerçekten koruduğu kanıtlandı: filtre
+      kaldırılan geçici PR #149'da düşen TEK test oydu. Dağıtımdan 27 sn sonra
+      worker yeni koşu aldı; 6 saat boyunca transaction hatası 0.
+      **Aynı saat aralığıyla** (06:40–12:40 UTC, 20 vs 21 Eylül) koşu sonuçları
+      değişmedi (başarılı 42 / 42, ort. 335 / 325 sn) — bir şey bozulmadı.
+      **Gerçek kazanç ölçülmedi:** bu değişiklik lease transaction'ını
+      etkiliyor, koşu süresini değil, ve lease süresi `agent_runs`'ta
+      kayıtlı değil. Ölçmek için lease transaction telemetrisi gerekir.
+
+- [ ] **Lease transaction süresi telemetrisi.** #147'nin gerçek etkisini ve
+      bir sonraki `P2028` yaklaşmasını görmenin tek yolu. Bugün lease süresi
+      hiçbir yerde kaydedilmiyor; koşu süresi Codex çağrılarına bağlı olduğu için
+      vekil olamaz. Canlılık alarmına benzer biçimde eşik aşımında uyarı
+      verebilir — 19 Eylül kesintisi tam bu sürenin 5 sn'yi aşmasıydı.
 
 - [ ] **`agent_runs.finishedAt` indeksi.** Ön filtre eklendi ama tarama hâlâ
       sıralı; kalan maliyetin tamamı o. Migration gerektirir, şema-nötr dağıtım
@@ -1131,7 +1160,7 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
 - [ ] **F09 — Container kapısı, container'ın çalışabildiğini kanıtlamıyor.** CI image kurup
       Compose'u doğruluyor ama container'ı veritabanıyla ayağa kaldırıp entrypoint, migration,
       readiness ve HTTP davranışını sınamıyor.
-- [~] **F10 — IP kovası eklendi; hesap bazlı kova KABUL EDİLEN ARTIK RİSK.**
+- [~] **F10 — IP kovası üretimde (21 Eylül); hesap bazlı kova KABUL EDİLEN ARTIK RİSK.**
   PR #146: `login:ip` 30/15dk, pahalı Argon2 işinden önce. Aynı IP'den
   farklı e-postalar artık tek kovada toplanıyor (önceden her e-posta ayrı
   kovaya düşüp sınırsız kalıyordu).
@@ -1233,12 +1262,12 @@ girmek israf.
       değişikliğidir ve Gökhan'ın onayını bekler; uygulandıktan sonra aynı
       anonim istek 404 dönmeli ve worker'ın koşu alması kesintisiz sürmeli.
 
-- [~] **B3 — IP kovası ve Argon2 kapısı PR #146'da; hesap kovası kapsam dışı.**
-  Argon2 çağrıları artık süreç içinde en fazla ikili koşuyor (permit
-  doğrudan bekleyene devrediliyor; ilk sürümdeki yarışı Sol yakaladı ve
-  regresyon testi hatalı sürümde `offset=2`'de düşüyor). Transaction
-  içinden çağrılan sürüm kapıya girmez — beklemek bağlantıyı tutardı.
-  Hesap kovası kararı ve kalan iki takip maddesi için Sıra 5.6 / F10.
+- [x] **B3 — IP kovası ve Argon2 kapısı ÜRETİMDE (21 Eylül, `a0103283`); hesap kovası kapsam dışı.**
+      Argon2 çağrıları artık süreç içinde en fazla ikili koşuyor (permit
+      doğrudan bekleyene devrediliyor; ilk sürümdeki yarışı Sol yakaladı ve
+      regresyon testi hatalı sürümde `offset=2`'de düşüyor). Transaction
+      içinden çağrılan sürüm kapıya girmez — beklemek bağlantıyı tutardı.
+      Hesap kovası kararı ve kalan iki takip maddesi için Sıra 5.6 / F10.
 
 - [ ] **B9 — canlılık alarmı + sunucu dışı yedek kanıtı.** Alarm maddesi bölüm 5.5'e
       taşındı ve 19 Eylül'deki ikinci sessiz durmadan sonra sıradaki iş oldu. Burada
