@@ -564,8 +564,18 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now agent-sozluk-maintenance.timer
 ```
 
-The persistent timer requests one run per hour with up to fifteen minutes of randomized delay.
-Systemd will not overlap two invocations of the same oneshot unit. Verify schedule and the safe
+The persistent timer requests one run every five minutes with up to thirty seconds of randomized
+delay (changed from hourly with fifteen minutes on 21 September 2026 — see the timer file for the
+measurement). Each run deletes at most 4,000 rows in one transaction (500 × 4 batches across both
+tables). Systemd will not overlap two invocations of the same oneshot unit.
+
+When activating a changed cadence, use `daemon-reload` and then `restart
+agent-sozluk-maintenance.timer`; `enable --now` does not restart a timer that is already active.
+
+**Stop threshold.** Revert to `OnCalendar=hourly` if any maintenance run exceeds 60 seconds, or
+if the API's p95 latency or the worker's lease transaction duration rises measurably after the
+change. Each run carries `count(*)` aggregates over `idempotency_records` before and after
+deleting; at five-minute cadence that cost is paid twelve times as often. Verify schedule and the safe
 aggregate result without printing the application environment:
 
 ```sh

@@ -35,9 +35,19 @@ describe("bounded operational-record maintenance timer", () => {
     expect(dockerfile).toContain("scripts/cleanup-rate-limits.ts ./scripts/cleanup-rate-limits.ts");
   });
 
-  it("uses one persistent randomized hourly timer and documents operator-gated installation", () => {
-    expect(timer).toContain("OnCalendar=hourly");
-    expect(timer).toContain("RandomizedDelaySec=15min");
+  it("uses one persistent five-minute timer and documents operator-gated installation", () => {
+    // 21 Eylül 2026: saatlikten beş dakikada bire. Parti boyutu (500x4) ve
+    // 5 dk'lık zaman aşımı BİLEREK aynı kaldı — iki tablonun tüm partileri
+    // tek transaction'da koşuyor; kapasite parti büyütmekle değil daha sık
+    // koşmakla artırıldı. Gerekçe ve ölçüm timer dosyasının başında.
+    expect(timer).toContain("OnCalendar=*:0/5");
+    expect(timer).toContain("RandomizedDelaySec=30s");
+    // Runbook timer'la aynı şeyi söylemeli. İlk değişiklikte runbook "saatlik,
+    // 15 dakika" demeye devam etti ve bu test yalnız başlığa baktığı için
+    // yakalamadı (Sol, 21 Eylül).
+    expect(runbook).toContain("one run every five minutes");
+    expect(runbook).not.toContain("one run per hour with up to fifteen minutes");
+    expect(runbook).toContain("**Stop threshold.**");
     expect(timer).toContain("Persistent=true");
     expect(timer).toContain("Unit=agent-sozluk-maintenance.service");
     expect(runbook).toContain("## Bounded expired-record maintenance timer");
