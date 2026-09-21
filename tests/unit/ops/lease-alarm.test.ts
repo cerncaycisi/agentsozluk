@@ -79,10 +79,18 @@ function calistir(logSatirlari: string[], secenek: Secenek = {}) {
     existsSync(path.join(dizin, ad)) ? readFileSync(path.join(dizin, ad), "utf8") : "";
   const bildirimler = oku("curl.log").split("\n---\n").filter(Boolean);
   const dockerCagrilari = oku("docker.log").split("\n").filter(Boolean);
+  const curlDenemeleri = oku("curl-deneme.log").split("\n").filter(Boolean);
   rmSync(path.join(dizin, "curl.log"), { force: true });
   rmSync(path.join(dizin, "docker.log"), { force: true });
   rmSync(path.join(dizin, "curl-ilk"), { force: true });
-  return { status: sonuc.status, bildirimler, dockerCagrilari, stderr: sonuc.stderr };
+  rmSync(path.join(dizin, "curl-deneme.log"), { force: true });
+  return {
+    status: sonuc.status,
+    bildirimler,
+    dockerCagrilari,
+    curlDenemeleri,
+    stderr: sonuc.stderr,
+  };
 }
 
 beforeEach(() => {
@@ -124,6 +132,7 @@ exit 96
   writeFileSync(
     path.join(bin, "curl"),
     `#!/usr/bin/env bash
+printf 'deneme -m %s\n' "$4" >> "$SAHTE_DIZIN/curl-deneme.log"
 [[ -n "$SAHTE_CURL_HATA" ]] && exit 22
 if [[ -n "$SAHTE_CURL_ILK_HATA" && ! -e "$SAHTE_DIZIN/curl-ilk" ]]; then
   : > "$SAHTE_DIZIN/curl-ilk"; exit 22
@@ -291,7 +300,7 @@ describe("lease süresi alarmı", () => {
     expect(calistir([], { logsHata: true }).bildirimler).toHaveLength(1);
     const donus = calistir([]).bildirimler;
     expect(donus).toHaveLength(1);
-    expect(donus[0]).toContain("yeniden okunuyor");
+    expect(donus[0]).toContain("yeniden okunabiliyor");
     expect(calistir([]).bildirimler).toEqual([]);
   });
 
@@ -303,182 +312,148 @@ describe("lease süresi alarmı", () => {
   });
 });
 
-describe("lease taraması imleçle ilerler (Astra, 21 Eylül)", () => {
+describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
   const T = 1_790_000_000; // sabit "şimdi" (sn)
   const imlecYaz = (sn: number) => {
     mkdirSync(path.join(dizin, "durum"), { recursive: true });
-    writeFileSync(path.join(dizin, "durum", "durum-lease-imlec"), `${sn}\n`);
+    writeFileSync(path.join(dizin, "durum", "durum-lease-imlec"), `${sn * 1000}\n`);
   };
   const imlecOku = () =>
-    readFileSync(path.join(dizin, "durum", "durum-lease-imlec"), "utf8").trim();
+    Number(readFileSync(path.join(dizin, "durum", "durum-lease-imlec"), "utf8").trim()) / 1000;
+  const zamanli = (activeMs: number, sn: number) => kayit(activeMs, "committed", undefined, sn);
 
   it("gecikmiş taramada iki pencere arasına düşen kritik olay kaçmaz", () => {
     // Önceki tarama 17 dk önce; olay 16,5 dk önce. Sabit 15 dk'lık pencere görmezdi.
     imlecYaz(T - 17 * 60);
-    const { bildirimler } = calistir([kayit(4500, "committed", undefined, T - 990)], {
-      simdi: T,
-    });
+    const { bildirimler } = calistir([zamanli(4500, T - 990)], { simdi: T });
     expect(bildirimler).toHaveLength(1);
     expect(bildirimler[0]).toContain("sınırına dayandı");
-    expect(imlecOku()).toBe(String(T));
+    expect(imlecOku()).toBe(T);
   });
 
-  it("gönderilemeyen olay, pencere kaysa bile sonraki koşuda yeniden okunur", () => {
-    // Olay örtüşme payının (60 sn) dışında: imleç yanlışlıkla ilerlerse görünmez.
-    const olay = kayit(4500, "committed", undefined, T - 120);
+  it("gönderilemeyen karar, olay loglardan çıksa da (7 saat) sonraki koşuda gider", () => {
+    const olay = zamanli(4500, T - 120);
     expect(calistir([olay], { simdi: T, curlHata: true }).bildirimler).toEqual([]);
-    // 30 dk sonra: olay artık "son 15 dk" içinde değil, ama imleç ilerlemedi.
-    const tekrar = calistir([olay], { simdi: T + 30 * 60 }).bildirimler;
-    expect(tekrar).toHaveLength(1);
-    expect(tekrar[0]).toContain("sınırına dayandı");
+    const sonra = calistir([olay], { simdi: T + 7 * 3600 }).bildirimler;
+    expect(sonra).toHaveLength(1);
+    expect(sonra[0]).toContain("sınırına dayandı");
+    // Teslim edildi: bir sonraki koşu aynı bildirimi tekrar atmaz.
+    expect(calistir([], { simdi: T + 7 * 3600 + 900 }).bildirimler).toEqual([]);
+  });
+
+  it("arada gönderilemeyen kritik, düzelme bildiriminde kaybolmaz", () => {
+    expect(calistir([zamanli(4500, T - 60)], { simdi: T, curlHata: true }).bildirimler).toEqual([]);
+    expect(
+      calistir([zamanli(800, T + 800)], { simdi: T + 900, curlHata: true }).bildirimler,
+    ).toEqual([]);
+    const teslim = calistir([], { simdi: T + 1800 }).bildirimler;
+    expect(teslim).toHaveLength(1);
+    expect(teslim[0]).toContain("arada lease kritik yaşandı (şimdi: temiz)");
+    expect(teslim[0]).toContain("Priority: urgent");
+    expect(calistir([], { simdi: T + 2700 }).bildirimler).toEqual([]);
+  });
+
+  it("bir koşuda en fazla bir bildirim denenir; süre bütçesi aşılmaz", () => {
+    const { bildirimler, curlDenemeleri } = calistir([zamanli(4500, T - 60)], {
+      simdi: T,
+      curlHata: true,
+    });
+    expect(bildirimler).toEqual([]);
+    expect(curlDenemeleri).toHaveLength(1);
+    expect(curlDenemeleri[0]).toContain("-m 10");
   });
 
   it("log okunamazsa imleç ilerlemez — ilk bildirimde de, süren arızada da", () => {
     imlecYaz(T - 15 * 60);
-    const ilk = calistir([kayit(800, "committed", undefined, T - 60)], {
-      simdi: T,
-      logsHata: true,
-    });
+    const ilk = calistir([zamanli(800, T - 60)], { simdi: T, logsHata: true });
     expect(ilk.bildirimler[0]).toContain("okunamıyor");
-    expect(imlecOku()).toBe(String(T - 15 * 60));
-    // Arıza sürüyor, 6 saat dolmadı: bildirim yok, imleç yine yerinde.
+    expect(imlecOku()).toBe(T - 15 * 60);
     const suren = calistir([], { simdi: T + 15 * 60, logsHata: true });
     expect(suren.bildirimler).toEqual([]);
-    expect(imlecOku()).toBe(String(T - 15 * 60));
+    expect(imlecOku()).toBe(T - 15 * 60);
   });
 
-  it("imleç örtüşmeyle geri başlar ve en fazla 6 saat geriye gider", () => {
+  it("imleç örtüşme ve 15 dk tarihçeyle geri başlar, en fazla 6 saat geriye gider", () => {
     imlecYaz(T - 10 * 60);
     calistir([], { simdi: T });
     imlecYaz(T - 10 * 3600);
     calistir([], { simdi: T });
     const since = readFileSync(path.join(dizin, "since.log"), "utf8").trim().split("\n");
-    expect(since[0]).toBe(new Date((T - 26 * 60) * 1000).toISOString().replace(".000Z", "Z"));
-    expect(since[1]).toBe(
-      new Date((T - 6 * 3600 - 960) * 1000).toISOString().replace(".000Z", "Z"),
-    );
+    const beklenen = (sn: number) => new Date(sn * 1000).toISOString().replace(".000Z", "Z");
+    expect(since[0]).toBe(beklenen(T - 10 * 60 - 60 - 900));
+    expect(since[1]).toBe(beklenen(T - 6 * 3600 - 60 - 900));
   });
 
-  it("6 saatten uzun gönderilemeyen kritik alarm kuyrukta bekler, kaybolmaz", () => {
-    const olay = kayit(4500, "committed", undefined, T - 60);
-    expect(calistir([olay], { simdi: T, curlHata: true }).bildirimler).toEqual([]);
-    // 7 saat sonra olay 6 saatlik tarama sınırının dışında; ama karar kuyrukta.
-    const sonra = calistir([olay], { simdi: T + 7 * 3600 }).bildirimler;
-    expect(sonra.length).toBeGreaterThanOrEqual(1);
-    expect(sonra[0]).toContain("[gecikmeli");
-    expect(sonra[0]).toContain("sınırına dayandı");
-    // Kuyruk boşaldı: bir sonraki koşu aynı gecikmeli bildirimi tekrar atmaz.
-    expect(calistir([], { simdi: T + 7 * 3600 + 900 }).bildirimler).toEqual([]);
-  });
-
-  it("kuyruk sırası korunur: kritik ve ardından gelen düzelme sırayla gider", () => {
-    expect(
-      calistir([kayit(4500, "committed", undefined, T - 60)], { simdi: T, curlHata: true })
-        .bildirimler,
-    ).toEqual([]);
-    expect(
-      calistir([kayit(800, "committed", undefined, T + 800)], { simdi: T + 900, curlHata: true })
-        .bildirimler,
-    ).toEqual([]);
-    const teslim = calistir([], { simdi: T + 1800 }).bildirimler;
-    expect(teslim).toHaveLength(2);
-    expect(teslim[0]).toContain("sınırına dayandı");
-    expect(teslim[1]).toContain("normale döndü");
-  });
-
-  it("kuyruk boşaltılamazsa yeni karar da arkaya eklenir; sıra bozulmaz", () => {
-    expect(
-      calistir([kayit(4500, "committed", undefined, T - 60)], { simdi: T, curlHata: true })
-        .bildirimler,
-    ).toEqual([]);
-    // Kuyruktaki kritik gönderilemiyor (ilk deneme düşer), ama sonraki gönderim
-    // çalışıyor: yeni "düzeldi" kararı kritikten ÖNCE gitmemeli.
-    expect(
-      calistir([kayit(800, "committed", undefined, T + 800)], { simdi: T + 900, curlIlkHata: true })
-        .bildirimler,
-    ).toEqual([]);
-    const teslim = calistir([], { simdi: T + 1800 }).bildirimler;
-    expect(teslim).toHaveLength(2);
-    expect(teslim[0]).toContain("sınırına dayandı");
-    expect(teslim[1]).toContain("normale döndü");
-  });
-
-  it("örtüşmedeki kayıt iki kez sayılmaz", () => {
-    // İlk tarama: iki yavaş kayıt (eşik 3) → uyarı yok.
-    const eski = [
-      kayit(2600, "committed", undefined, T - 30),
-      kayit(2600, "committed", undefined, T - 20),
-    ];
-    expect(calistir(eski, { simdi: T }).bildirimler).toEqual([]);
-    // İkinci tarama 60 sn örtüşmeyle eskileri de OKUR ama saymaz; tek yeni kayıt
-    // ile toplam 3 olmaz.
-    const ikinci = calistir([...eski, kayit(2600, "committed", undefined, T + 890)], {
-      simdi: T + 900,
-    });
-    expect(ikinci.bildirimler).toEqual([]);
-  });
-
-  it("önceki taramada sayılan kritik kayıt, sonraki düzelmeyi engellemez", () => {
-    const kritikOlay = kayit(4500, "committed", undefined, T - 30);
-    expect(calistir([kritikOlay], { simdi: T }).bildirimler).toHaveLength(1);
-    // Eski kritik kayıt örtüşmede yeniden OKUNUR ama sayılmaz; yeni kanıt temiz.
-    const donus = calistir([kritikOlay, kayit(800, "committed", undefined, T + 800)], {
-      simdi: T + 900,
-    }).bildirimler;
-    expect(donus).toHaveLength(1);
-    expect(donus[0]).toContain("normale döndü");
-  });
-
-  it("iki taramaya bölünen 15 dk içindeki üç yavaş kayıt yine uyarıdır", () => {
-    const ilk = [
-      kayit(2600, "committed", undefined, T - 100),
-      kayit(2600, "committed", undefined, T - 50),
-    ];
-    expect(calistir(ilk, { simdi: T }).bildirimler).toEqual([]);
-    const ikinci = calistir([...ilk, kayit(2600, "committed", undefined, T + 500)], {
-      simdi: T + 600,
-    }).bildirimler;
-    expect(ikinci).toHaveLength(1);
-    expect(ikinci[0]).toContain("lease yavaşlıyor");
-  });
-
-  it("eski yavaş seri tek başına yeniden uyarı üretmez", () => {
-    const seri = [T - 300, T - 200, T - 100].map((z) => kayit(2600, "committed", undefined, z));
-    expect(calistir(seri, { simdi: T }).bildirimler[0]).toContain("lease yavaşlıyor");
-    // Sonraki tarama: aynı seri tarihçede, yeni kayıt temiz → uyarı yenilenmez, düzelir.
-    const sonraki = calistir([...seri, kayit(800, "committed", undefined, T + 100)], {
-      simdi: T + 200,
-    }).bildirimler;
-    expect(sonraki).toHaveLength(1);
-    expect(sonraki[0]).toContain("normale döndü");
-  });
-
-  it("uyarı eşiği gerçek 15 dakikalık pencerede aranır; uzun taramada birleşmez", () => {
-    imlecYaz(T - 5 * 3600);
-    const dagink = [T - 4 * 3600, T - 2 * 3600, T - 600].map((z) =>
-      kayit(2600, "committed", undefined, z),
-    );
-    expect(calistir(dagink, { simdi: T }).bildirimler).toEqual([]);
-    imlecYaz(T - 5 * 3600);
-    const yakin = [T - 900, T - 500, T - 100].map((z) => kayit(2600, "committed", undefined, z));
-    expect(calistir(yakin, { simdi: T }).bildirimler[0]).toContain("lease yavaşlıyor");
-  });
-
-  it("gelecekteki imleç (saat geri kayması) olay kaybettirmez ve düzeltilir", () => {
+  it("gelecekteki imleç düzeltilir; log okunamasa bile hemen yazılır", () => {
     imlecYaz(T + 3600);
-    const { bildirimler, stderr } = calistir([kayit(4500, "committed", undefined, T - 60)], {
-      simdi: T,
-    });
+    const { bildirimler, stderr } = calistir([zamanli(4500, T - 60)], { simdi: T });
     expect(bildirimler).toHaveLength(1);
     expect(stderr).toContain("imleç geçersiz ya da gelecekte");
-    expect(imlecOku()).toBe(String(T));
+    expect(imlecOku()).toBe(T);
+
+    imlecYaz(T + 3600);
+    calistir([], { simdi: T, logsHata: true });
+    expect(imlecOku()).toBe(T - 15 * 60);
   });
 
   it("imleç yazılamazsa sessiz kalmaz, journal'a yazar", () => {
     mkdirSync(path.join(dizin, "durum", "durum-lease-imlec"), { recursive: true });
     const { status, stderr } = calistir([kayit(800)], {});
     expect(status).toBe(0);
-    expect(stderr).toContain("imleç yazılamadı");
+    expect(stderr).toContain("durum-lease-imlec yazılamadı");
+  });
+
+  it("örtüşmedeki kayıt iki kez sayılmaz", () => {
+    const eski = [zamanli(2600, T - 30), zamanli(2600, T - 20)];
+    expect(calistir(eski, { simdi: T }).bildirimler).toEqual([]);
+    expect(calistir([...eski, zamanli(2600, T + 890)], { simdi: T + 900 }).bildirimler).toEqual([]);
+  });
+
+  it("şimdi'den sonraki (tarama sırasında gelen) kayıt bir sonraki taramaya kalır", () => {
+    const gec = kayit(4500, "committed", undefined, T + 0.5);
+    expect(calistir([gec], { simdi: T }).bildirimler).toEqual([]);
+    expect(calistir([gec], { simdi: T + 900 }).bildirimler[0]).toContain("sınırına dayandı");
+  });
+
+  it("milisaniyeli sınır kaydı iki taramada sayılmaz", () => {
+    const sinir = kayit(4500, "committed", undefined, T - 0.5);
+    expect(calistir([sinir], { simdi: T }).bildirimler[0]).toContain("sınırına dayandı");
+    const donus = calistir([sinir, zamanli(800, T + 800)], { simdi: T + 900 }).bildirimler;
+    expect(donus).toHaveLength(1);
+    expect(donus[0]).toContain("normale döndü");
+  });
+
+  it("önceki taramada sayılan kritik kayıt, sonraki düzelmeyi engellemez", () => {
+    const kritikOlay = zamanli(4500, T - 30);
+    expect(calistir([kritikOlay], { simdi: T }).bildirimler).toHaveLength(1);
+    const donus = calistir([kritikOlay, zamanli(800, T + 800)], { simdi: T + 900 }).bildirimler;
+    expect(donus).toHaveLength(1);
+    expect(donus[0]).toContain("normale döndü");
+  });
+
+  it("iki taramaya bölünen 15 dk içindeki üç yavaş kayıt yine uyarıdır", () => {
+    const ilk = [zamanli(2600, T - 100), zamanli(2600, T - 50)];
+    expect(calistir(ilk, { simdi: T }).bildirimler).toEqual([]);
+    const ikinci = calistir([...ilk, zamanli(2600, T + 500)], { simdi: T + 600 }).bildirimler;
+    expect(ikinci).toHaveLength(1);
+    expect(ikinci[0]).toContain("lease yavaşlıyor");
+  });
+
+  it("eski yavaş seri tek başına yeniden uyarı üretmez", () => {
+    const seri = [T - 300, T - 200, T - 100].map((z) => zamanli(2600, z));
+    expect(calistir(seri, { simdi: T }).bildirimler[0]).toContain("lease yavaşlıyor");
+    const sonraki = calistir([...seri, zamanli(800, T + 100)], { simdi: T + 200 }).bildirimler;
+    expect(sonraki).toHaveLength(1);
+    expect(sonraki[0]).toContain("normale döndü");
+  });
+
+  it("uyarı eşiği gerçek 15 dakikalık pencerede aranır; uzun taramada birleşmez", () => {
+    imlecYaz(T - 5 * 3600);
+    const dagink = [T - 4 * 3600, T - 2 * 3600, T - 600].map((z) => zamanli(2600, z));
+    expect(calistir(dagink, { simdi: T }).bildirimler).toEqual([]);
+    imlecYaz(T - 5 * 3600);
+    const yakin = [T - 900, T - 500, T - 100].map((z) => zamanli(2600, z));
+    expect(calistir(yakin, { simdi: T }).bildirimler[0]).toContain("lease yavaşlıyor");
   });
 
   it("sayının ortasında kesilen kayıt sahte düzelme üretmez", () => {
