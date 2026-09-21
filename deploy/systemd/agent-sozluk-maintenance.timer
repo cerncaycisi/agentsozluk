@@ -27,6 +27,7 @@ Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
 # biçimde artarsa `OnCalendar=hourly`'ye geri dönülür. Her koşu
 # `idempotency_records` üzerinde önce/sonra `count(*)` yapıyor; beş dakikada bir
 # koşunca bu bedel on iki kat sık ödenir ve henüz ölçülmedi.
+[Timer]
 OnCalendar=*:0/5
 RandomizedDelaySec=30s
 AccuracySec=10s

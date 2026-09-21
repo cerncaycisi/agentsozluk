@@ -40,6 +40,16 @@ describe("bounded operational-record maintenance timer", () => {
     // 5 dk'lık zaman aşımı BİLEREK aynı kaldı — iki tablonun tüm partileri
     // tek transaction'da koşuyor; kapasite parti büyütmekle değil daha sık
     // koşmakla artırıldı. Gerekçe ve ölçüm timer dosyasının başında.
+    // Zamanlama anahtarları [Timer] bölümünün İÇİNDE olmalı. 21 Eylül'de bir
+    // açıklama bloğu eklerken [Timer] başlığı silindi; OnCalendar [Unit]'e düştü
+    // ve timer üretimde "bad unit file setting" ile başlamadı. Bu test yalnız
+    // anahtarın metinde geçtiğine baktığı için yakalamadı.
+    const bolumler = timer.split(/^\[(\w+)\]$/mu);
+    const timerBolumu = bolumler[bolumler.indexOf("Timer") + 1] ?? "";
+    expect(bolumler).toContain("Timer");
+    expect(timerBolumu).toMatch(/^OnCalendar=\*:0\/5$/mu);
+    expect(timerBolumu).toMatch(/^RandomizedDelaySec=30s$/mu);
+    expect(timerBolumu).toMatch(/^Unit=agent-sozluk-maintenance\.service$/mu);
     expect(timer).toContain("OnCalendar=*:0/5");
     expect(timer).toContain("RandomizedDelaySec=30s");
     // Runbook timer'la aynı şeyi söylemeli. İlk değişiklikte runbook "saatlik,
