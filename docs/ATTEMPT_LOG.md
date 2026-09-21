@@ -8271,3 +8271,48 @@ kullanılmadı: `sitemapDelayMinutes` (360 dk) onu 6 saat geriden getiriyor.
 **Tekrarlama:** bu ay iki kesintiyi de fark ettiren şey bir alarm değil, birinin
 bakması oldu. Oturum içi nöbet çözüm değildir — 19/20 Eylül gecesi oturum
 kopunca nöbet de koptu ve yedek penceresi ancak sabah geriye dönük okundu.
+
+## 2026-09-21 — giriş sınırlaması (#146) üretimde; gece 7,5 saat kayıp
+
+### Dağıtım
+
+- Aday `a0103283ef135cee3300e7ebe92e8f069327a3d3` (PR #146 birleşme commit'i).
+  Main CI `35565187295` yeşil, artifact `35565609949`. **Migration yok.**
+- Onay (Gökhan'ın 22 Eylül 14:00 TSİ'ye kadarki kuralı: Claude + Astra + yeşil
+  CI): Sol **GO** (dört tur: NO-GO, NO-GO, KOŞULLU GO, GO), Astra **DAĞIT**.
+- **Dağıtılan ağaç Astra'nın onayladığıyla bayt bayt aynı:** birleşme commit'inin
+  `^{tree}` hash'i ile onaylanan `42fafa7`'nin hash'i eşit (`6be79b70…`).
+- `RELEASE_COMPLETE PASS ... cleanup=no-cleanup`; drain 8. denemede temizlendi.
+- **Kabul:** imaj `a0103283…` healthy, worker `active` / NRestarts=0, son koşu
+  19 sn önce; yanlış şifreyle `POST /api/v1/auth/login` → **401**
+  `INVALID_CREDENTIALS` (500 ya da 429 değil) — giriş sınırlaması üretimde girişi
+  bozmadan çalışıyor.
+
+### Gece kaybı — tekrarlanmaması gereken
+
+Sol ve Astra'nın incelemeleri 20 Eylül **21:43 UTC**'de bitti; ben **05:21**'de
+fark ettim. Bekleyicim `pgrep -f "codex exec"` ile koşuyordu ve kendi komut
+satırında o kelimeler geçtiği için **kendini buldu**: 7,5 saat kendi kendini
+bekledi. 20 Eylül'de `pkill -f eslint`'in hakemi öldürmesiyle aynı sınıf hata.
+
+**Tekrarlama:**
+
+- Bekleyici süreç adına (`pgrep -f`/`pkill -f`) BAKMAZ; desen kendi komut
+  satırında da geçer. Bunun yerine bir dosya işaretine (codex çıktısındaki
+  `tokens used`) ya da GitHub API'sindeki `status` alanına bakar.
+- Arka plan işi `nohup ... &` ile başlatılırsa harness bitişini bildirmez; bitişi
+  mutlaka `run_in_background` bir bekleyiciyle izlenmeli.
+- "Kurdum" demek yetmez: bekleyicinin canlı olduğu ve bir döngüde beklediği
+  doğrulanmalı.
+
+### İnceleme turlarının bulduğu ve düzeltilen
+
+- Argon2 kapısı ilk hâlinde mevcut hesap girişlerini **hiç sınırlamıyordu**
+  (transaction içindeki çağrılar muaftı; mevcut hesabın doğrulaması hep
+  transaction içinde).
+- İkinci hâli **kilitlendi**: hesap kapatma transaction'ında kalan bir
+  `hashPassword` ikinci permit istedi. Çözüm isim disiplini değil, yeniden
+  girilebilir permit (`AsyncLocalStorage`).
+- Üçüncü hâlinde bağlam "geçmişte permit vardı" tutuyordu; geç ateşlenen iş
+  kapıyı atlayabiliyordu. Artık canlı bir kira tutuluyor.
+- Her regresyon testi **eski hatalı sürüme karşı** denendi ve düştüğü görüldü.
