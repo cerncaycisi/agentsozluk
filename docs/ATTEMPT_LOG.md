@@ -8316,3 +8316,26 @@ bekledi. 20 Eylül'de `pkill -f eslint`'in hakemi öldürmesiyle aynı sınıf h
 - Üçüncü hâlinde bağlam "geçmişte permit vardı" tutuyordu; geç ateşlenen iş
   kapıyı atlayabiliyordu. Artık canlı bir kira tutuluyor.
 - Her regresyon testi **eski hatalı sürüme karşı** denendi ve düştüğü görüldü.
+
+## 2026-09-21 — lease kapasite sorgusu (#147) üretimde
+
+- Aday `caa1ba0f744cc6994b4baf66634634038e9a3ee2`; #146 üstüne rebase edildi,
+  değişiklik rebase öncesi ve sonrası birebir aynı (4 dosya, +417/−11). Main CI
+  yeşil, artifact `35568105159`. **Migration yok.**
+- Onay: Sol **GO** (üç tur; son blokaj ön-filtre regresyon korumasıydı), Astra
+  **DAĞIT** — şartı: #146'dan ayrı dağıt, worker'ın yeni koşu aldığını doğrula,
+  alamazsa #146'ya geri al. Dağıtılan ağaç onaylananla aynı (`6a4774ed…`).
+- **Plan testinin gerçekten koruduğu kanıtlandı:** filtre bilerek kaldırılan
+  geçici PR #149'da düşen TEK entegrasyon testi plan testi oldu.
+- `RELEASE_COMPLETE PASS ... cleanup=no-cleanup`.
+- **Kabul (Astra'nın şartı):** imaj `caa1ba0f…` 27 sn'dir ayakta, worker
+  `active` / NRestarts=0, ve **dağıtımdan sonra 06:40:24'te yeni bir koşu
+  başladı** (RUNNING). Yeni lease sorgusuyla worker koşu alabiliyor; geri alma
+  gerekmedi.
+- **Ölçülmeyen:** gerçek lease transaction süresindeki kazanç. Planlayıcı
+  tahmini 14.094 → 5 satır; gerçek etki saatler içinde gözlenecek.
+
+**Tekrarlama:** main CI + paket + dağıtımı tek arka plan komutuna zincirledim;
+toplam ~16 dk, komut zaman aşımı 10 dk. Zaman aşımı dağıtımın ORTASINA denk
+gelse cutover yarıda kesilirdi. Dağıtım adımına ulaşmadan durdurup ikiye böldüm.
+**Uzun bekleme ile üretim değişikliği aynı zaman-aşımlı komutta olmaz.**
