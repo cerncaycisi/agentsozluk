@@ -35,6 +35,19 @@ export const RATE_LIMIT_RULES = {
   searchVisitor: { action: "search.visitor", limit: 30, windowMs: MINUTE },
   moderationCommand: { action: "moderation.command", limit: 120, windowMs: 10 * MINUTE },
   agentRuntimeInternal: { action: "agent-runtime.internal", limit: 600, windowMs: MINUTE },
+  /*
+    Giriş iki kovadan geçer (18 Eylül incelemesi B3 / F10). Tek başına
+    `${ip}:${email}` çifti aynı IP'den farklı e-postalara gelen denemeleri
+    saymıyordu (hesap sayma / kullanıcı adı keşfi); her e-posta ayrı kovaya
+    düşüyordu. "Aynı hesaba farklı IP'lerden" yarısı için bkz. login route:
+    hesap bazlı kova kilitleme DoS'u doğurduğu için geri çekildi.
+
+    Sayılar kaba kuvveti durdurmak için değil, MALİYETİ sınırlamak için: her
+    giriş denemesi, e-posta hiç yoksa bile 64 MiB / t=3 Argon2 işi doğuruyor
+    (dummy hash doğrulaması bilinçli bir tasarım, zamanlama sızıntısını kapatır).
+    Gerçek kullanıcı 15 dakikada 30 kez giriş denemez.
+  */
+  loginIp: { action: "login:ip", limit: 30, windowMs: 15 * MINUTE },
 } as const satisfies Record<string, RateLimitRule>;
 
 export function userRateLimitIdentifier(userId: string): string {

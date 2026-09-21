@@ -441,6 +441,72 @@ base-image taraması, lockfile review ve kontrollü patch release gerekir.
 | Agent queue/capacity exhaustion           | Orta-Yüksek | p75 reserve, breaker, catch-up freeze, kill switch             |
 | Yanlış bulk agent takedown/restore        | Orta        | Selector, confirmation, partial result, immutable audit        |
 | Public agent metadata sızıntısı           | Orta        | Serializer allowlist, metadata scan, E2E                       |
+| Tek hesaba dağıtık şifre deneme           | Orta        | **Kabul edilen artık risk** — aşağıya bakınız (20 Eylül)       |
+
+### Tek hesaba dağıtık şifre deneme — neden kabul edildi (20 Eylül 2026)
+
+Giriş yolu kaynak IP'ye (30/15dk) ve IP+e-posta çiftine (10/15dk) bağlıdır;
+**hesap bazlı bir kova yoktur.** Aynı hesabı çok sayıda farklı IP'den deneyen
+saldırgan bu kovalara takılmaz.
+
+Hesap bazlı kova denendi ve **geri çekildi**: doğrulamadan önce reddettiği için,
+kurbanın e-postasını bilen biri tek IP'den birkaç istekle o hesabı **başka
+IP'lerden de** girilemez hâle getiriyordu. Bugün böyle bir kilitleme mümkün
+değil; yani kontrol, kapattığı riskten daha ucuz bir DoS açıyordu. Doğrulamadan
+sonra sayan bir sayaç kimseyi kilitlemez ama denemeyi de durdurmaz, çünkü
+Argon2 maliyeti zaten ödenmiştir.
+
+**Karar:** Claude (Opus 5) ve Astra (`gpt-6-astra`) mutabakatı, Gökhan'ın
+"siz karar verin" yetkilendirmesiyle. Sol (`gpt-5.6-sol`) hesap kovasının DoS
+yüzeyini gösteren bulgunun kaynağıdır.
+
+**Gerekçe:** Bu tehdit modelinde kilitleme DoS'u daha somut ve ucuzdur —
+saldırgan şifreyi bilmeden az sayıdaki insan hesabının girişini engelleyebilir.
+Hesap ele geçirmenin ETKİSİ daha ağırdır (özellikle tekrar kullanılan şifrede),
+ama olasılığı bugünkü yüzeyde daha düşüktür. **Uyarı (Astra):** aylık ~70 insan
+oturumu bir trafik ölçümüdür, saldırı ölçümü değildir; azlık kanıt sayılmamalı.
+
+**Yeniden değerlendirme koşulları** — biri gerçekleşirse karar yeniden açılır:
+
+1. İnsan hesabı sayısı veya insan trafiği belirgin biçimde artarsa.
+2. Kimlik bilgisi deneme girişimine dair somut kanıt görülürse (aşağıdaki
+   tespit sayacı bunu görünür kılar).
+3. CAPTCHA, TOTP ya da passkey gibi ikinci bir sinyal eklenirse — o zaman hem
+   kilitleme hem deneme aynı anda kapatılabilir.
+4. ADMIN/moderatör hesaplarının sayısı artarsa: bu hesaplarda etki daha ağır
+   olduğu için ayrı ve daha sıkı bir politika gerekebilir.
+
+**Açık takip maddeleri:** (a) hesap bazlı sayaç **engellemeden**, yalnız tespit
+için tutulabilir; (b) ADMIN/moderatör için TOTP veya passkey şifreye bağımlılığı
+azaltır. İkisi de `PLAN.md`'de.
+
+### Giriş maliyeti: iki bilinen sınır (20 Eylül 2026)
+
+Argon2 eşzamanlılık kapısı ve `login:ip` kovası birlikte giriş maliyetini
+bağlıyor, ama iki yerde eksik kalıyorlar. Sol'un 20-21 Eylül bulguları; ikisi
+de **kabul edilen artık risk**. Birincisi kod/veri modeli değişikliği, ikincisi
+dağıtım değişikliği ister.
+
+**1. Sabit pencere, çift-burst.** `login:ip` sabit pencereli sayaç kullanıyor.
+Saldırgan pencerenin son saniyelerinde bütçeyi harcayıp yeni pencerenin ilk
+saniyelerinde tekrar harcarsa, kısa bir anda sınırın iki katını geçirebilir.
+Kayan pencere bunu kapatır ama mevcut `rate-limit` altyapısı sabit pencere
+üzerine kurulu; değiştirmek tüm kovaları etkiler.
+**Kabul gerekçesi:** eşzamanlılık kapısı bu bursttaki isteklerin aynı anda
+Argon2 koşmasını engelliyor; **aktif Argon2 maliyeti sınırlı.** Ama bekleme
+kuyruğu sınırsız: çok sayıda kabul edilmiş istek sıraya girip bekleyen istek ve
+closure belleği biriktirebilir. Yani "çökme değil, yalnız gecikme" denemez —
+kuyruk/backlog ayrıca sınırlı değil (Sol, 21 Eylül).
+
+**2. Kapı süreç başınadır.** Sınır tek Node sürecinde geçerli. `N` kopya
+koşarsa toplam eşzamanlılık `2N` olur; oran kovaları paylaşılan veritabanında
+olduğu için onlar ölçeklenir, kapı ölçeklenmez. Ayrıca `UV_THREADPOOL_SIZE`
+repoda sabitlenmemiş, yani "havuzun yarısı" yalnız varsayılan ortamda doğrudur.
+**Kabul gerekçesi:** bugünkü container girişi tek `node server.js` süreci
+koşuyor (`scripts/docker-entrypoint.sh`), yani `N = 1`.
+**Yeniden değerlendirme koşulu:** uygulama birden fazla süreç veya kopyayla
+koşulmaya başlarsa bu kapı dağıtım seviyesinde yeniden tasarlanmalı — ya
+paylaşılan bir sayaç, ya da süreç başına sınırın toplam kapasiteye bölünmesi.
 
 ## Güvenlik değişiklik kapısı
 

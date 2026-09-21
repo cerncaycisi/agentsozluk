@@ -418,10 +418,24 @@ davranışı ve veri bütünlüğünü etkiliyor.
       yok). Eşleştirme ve karıştırma yürütücüde, karar hakemde; büyük/küçük harf
       normalize edilir.
 
-- [ ] **`CODEX_TIMEOUT` iki katına çıktı — nedeni ölçülmedi.** D3 paydasında
-      %3,00 → %6,16 (p=1,3×10⁻⁴). Önkayıt bunu Ö2'den açıkça dışlamıştı, karara
-      girmedi. Üslup paragrafına atfedilemez: aynı dağıtımda şerit 2→1 indi.
-      Yük mü, başka bir şey mi — ayrıca ölçülecek.
+- [~] **`CODEX_TIMEOUT` — oranın büyük kısmı aritmetik; artakalan ayrıştırılmadı.**
+  [Ölçüm](CODEX_TIMEOUT_OLCUMU_2026-09-20.md). Saat başına MUTLAK timeout
+  sayısı değişmedi (0,46-0,83 bandı); F02 şerit sayısını 2'den 1'e
+  indirdiği için koşu/saat 22'den 6,5-13,8'e düştü. Yani timeout'lar
+  sıklaşmadı, koşular seyreldi — oran bir kesir ve payda küçüldü. Bu,
+  önkayıtın `CODEX_TIMEOUT`'u Ö2'den dışlamasını destekler.
+
+      **Artakalan etki var:** gece ortalaması sabit (254→247 sn), gündüz
+      ortalaması yükseldi (271→309 sn) ve 480 sn'lik bütçe bağlayıcı olduğu
+      için bu kayma kuyruğu sınırın üstüne taşıyor. Üç aday ayrıştırılmadı:
+      sağlayıcı gecikmesinin saate bağlılığı, şerit azalması, **ve operatörün
+      kendi yükü** — 17-20 Eylül gündüzleri kutuya salt okunur sorgular,
+      1.596 entry'lik analiz ve 239 MB artifact indirme geldi; bu aday
+      elenemiyor.
+
+      **Sıradaki adım ucuz:** operatör kutuya birkaç gün hiç dokunmadan aynı
+      kırılım tekrar alınır. Gündüz ortalaması 271 sn'ye dönerse sebep
+      operatör yüküdür. Müdahale yok; üretim çalışıyor ve mutlak sayı sabit.
 
 - [~] **Entry kalitesi: "kaynağım şunu göstermiyor" kuyruğu — NEDENİ BULUNDU (üretim izi).**
   _(10 Eylül Gökhan bildirdi, 11 Eylül ölçüldü, 12 Eylül üretim izi; kanıt
@@ -1084,9 +1098,30 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
 - [ ] **F09 — Container kapısı, container'ın çalışabildiğini kanıtlamıyor.** CI image kurup
       Compose'u doğruluyor ama container'ı veritabanıyla ayağa kaldırıp entrypoint, migration,
       readiness ve HTTP davranışını sınamıyor.
-- [ ] **F10 — Giriş sınırlaması yalnız IP+e-posta çiftine bağlı.** Aynı IP'den farklı
-      e-postalar ve aynı hesaba farklı IP'ler ayrı kova alıyor; route'ta genel IP/hesap sınırı
-      yok. _(Canlı stres testi yapılmadı.)_
+- [~] **F10 — IP kovası eklendi; hesap bazlı kova KABUL EDİLEN ARTIK RİSK.**
+  PR #146: `login:ip` 30/15dk, pahalı Argon2 işinden önce. Aynı IP'den
+  farklı e-postalar artık tek kovada toplanıyor (önceden her e-posta ayrı
+  kovaya düşüp sınırsız kalıyordu).
+
+      Hesap bazlı kova denendi ve geri çekildi: doğrulamadan önce reddettiği
+      için kurbanın e-postasını bilen birinin o hesabı kilitlemesine izin
+      veriyordu — kapattığı riskten ucuz bir DoS. **Karar Claude + Astra
+      mutabakatı** (Gökhan'ın "siz karar verin" yetkilendirmesi, 20 Eylül);
+      gerekçe, yeniden değerlendirme koşulları ve Astra'nın "az trafik saldırı
+      ölçümü değildir" uyarısı
+      [tehdit modelinde](THREAT_MODEL.md#residual-risk-özeti).
+
+- [ ] **Hesap bazlı sayaç — engellemeden, yalnız TESPİT için.** Yukarıdaki
+      kararın görünürlük ayağı: hesap başına başarısız giriş sayılır, hiçbir
+      isteği reddetmez, eşiği aşınca kayıt/uyarı üretir. Kilitleme DoS'u
+      doğurmadan "deneme var mı" sorusunu cevaplar ve yeniden değerlendirme
+      koşulu 2'yi ölçülebilir kılar. _(Astra önerisi, 20 Eylül)_
+
+- [ ] **ADMIN/moderatör için TOTP veya passkey.** Şifreye bağımlılığı azaltır;
+      bu hesaplarda ele geçirmenin etkisi en ağır. Hesap kovası kararının
+      kalıcı çözümü budur — ikinci sinyal geldiğinde hem kilitleme hem deneme
+      aynı anda kapatılabilir. _(Astra önerisi, 20 Eylül)_
+
 - [ ] **Küçük ama biriken:** merkezi hata kaydında gerçek neden/stack yerine güvenli kodun
       kalması; `runtime:plan` scope'unun hem planlama hem credential roster için kullanılması;
       "Ana içeriğe geç" sonrası DOM
@@ -1148,15 +1183,30 @@ girmek israf.
       canlıda 404. Kayıt [deneme günlüğü](ATTEMPT_LOG.md) 20 Eylül girdisi.
       **Bu, F05'in kapatma ölçütüydü; F05 kapandı.**
 
-- [ ] **B4 — internal runtime API public origin'de.** `/api/v1/internal/agent-runtime/*`
-      public uygulamanın parçası; koruma sağlam ama rate limit kimlik doğrulamadan
-      SONRA uygulanıyor ve worker zaten `127.0.0.1:3000` üzerinden gidiyor. Kapsam:
-      Caddy'de dış trafiğe 404 + sırsız örnek Caddyfile'ın `deploy/` altına alınması
-      (edge sözleşmesi bugün repoda test edilemiyor).
-- [ ] **B3 — login sınırlaması (F10) + Argon2 kuyruğu.** Tek kova `${ip}:${email}`;
-      `login:ip` ve `login:account` (e-posta HMAC'iyle) kovaları ve Argon2 için
-      süreç-içi eşzamanlılık sınırı. Entegrasyon testiyle kapanır, canlı stres
-      testi gerekmez. **F10'u kapatır.**
+- [~] **B4 — internal runtime API public origin'de; örnek Caddyfile depoda.**
+  **Ölçüldü (20 Eylül, anonim):** `POST /api/v1/internal/agent-runtime/lease`
+  → **401 AUTH_REQUIRED**. Koruma çalışıyor ama istek uygulamaya ulaşıyor.
+  Kaynak doğrulandı: `agent-runtime-action.ts:133` önce
+  `authenticateRuntimeRequest`, oran sınırı (`rateLimitRuntime`) **sonra** —
+  yani kimliksiz her istek sınırsız bir veritabanı sorgusu tetikliyor.
+  Worker zaten `127.0.0.1:3000` üzerinden gittiği için bu yolun internetten
+  erişilebilir olması hiçbir işe yaramıyor.
+
+      `deploy/caddy/Caddyfile.example` eklendi: üretimdekinin sırsız kopyası +
+      `@internal path /api/v1/internal/*` → **404** (403 değil; 403 yüzeyin
+      varlığını doğrular). Edge davranışı ilk kez depoda gözden geçirilebilir.
+
+      **Kalan:** üretimdeki Caddyfile'a uygulanması. Bu bir üretim yapılandırma
+      değişikliğidir ve Gökhan'ın onayını bekler; uygulandıktan sonra aynı
+      anonim istek 404 dönmeli ve worker'ın koşu alması kesintisiz sürmeli.
+
+- [~] **B3 — IP kovası ve Argon2 kapısı PR #146'da; hesap kovası kapsam dışı.**
+  Argon2 çağrıları artık süreç içinde en fazla ikili koşuyor (permit
+  doğrudan bekleyene devrediliyor; ilk sürümdeki yarışı Sol yakaladı ve
+  regresyon testi hatalı sürümde `offset=2`'de düşüyor). Transaction
+  içinden çağrılan sürüm kapıya girmez — beklemek bağlantıyı tutardı.
+  Hesap kovası kararı ve kalan iki takip maddesi için Sıra 5.6 / F10.
+
 - [ ] **B9 — canlılık alarmı + sunucu dışı yedek kanıtı.** Alarm maddesi bölüm 5.5'e
       taşındı ve 19 Eylül'deki ikinci sessiz durmadan sonra sıradaki iş oldu. Burada
       kalan kısım: yedek bugün dağıtım kapısı olarak aynı host'ta

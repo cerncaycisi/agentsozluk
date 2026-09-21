@@ -4,7 +4,7 @@ import type { DatabaseClient, TransactionClient } from "@/lib/db/types";
 import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
 import { isLastActiveAdmin } from "@/modules/auth/domain/permissions";
-import { hashPassword, verifyPassword } from "@/modules/auth/domain/password";
+import { hashPassword, verifyPassword, withArgon2Permit } from "@/modules/auth/domain/password";
 import { revokeAllUserSessions } from "@/modules/auth/repository/sessions";
 import {
   anonymizeUserRecord,
@@ -57,6 +57,11 @@ async function requireSensitiveOperationUser(
   if (user.status === "DEACTIVATED") {
     throw new AppError("AUTH_REQUIRED", 401, "Bu işlem için giriş yapmalısınız.");
   }
+  /*
+    Permit ÇAĞIRANDA olmalı: bu fonksiyon hep bir transaction'ın içinde koşar ve
+    kuyrukta beklemek o transaction'ın bağlantısını tutardı. Çağıranların hepsi
+    `withArgon2Permit` ile sarmalar (Sol, 20 Eylül).
+  */
   if (!(await verifyPassword(user.passwordHash, currentPassword))) {
     throw new AppError("INVALID_CREDENTIALS", 401, "Mevcut şifre hatalı.");
   }
@@ -94,23 +99,33 @@ export async function changeEmail(
   requestId: string,
 ): Promise<SafeUser> {
   try {
-    return await client.$transaction(async (transaction) => {
-      const user = await requireSensitiveOperationUser(transaction, userId, input.currentPassword);
-      const conflicts = await findUserConflicts(transaction, input.email, user.usernameNormalized);
-      if (conflicts.some((item) => item.emailNormalized === input.email)) {
-        throw emailTaken();
-      }
-      const updated = await updateEmailRecord(transaction, userId, input.email);
-      await appendAuditLog(transaction, {
-        actorId: userId,
-        action: "user.email_changed",
-        entityType: "User",
-        entityId: userId,
-        requestId,
-        metadata: { changed: true },
-      });
-      return serializeSafeUser(updated);
-    });
+    return await withArgon2Permit(() =>
+      client.$transaction(async (transaction) => {
+        const user = await requireSensitiveOperationUser(
+          transaction,
+          userId,
+          input.currentPassword,
+        );
+        const conflicts = await findUserConflicts(
+          transaction,
+          input.email,
+          user.usernameNormalized,
+        );
+        if (conflicts.some((item) => item.emailNormalized === input.email)) {
+          throw emailTaken();
+        }
+        const updated = await updateEmailRecord(transaction, userId, input.email);
+        await appendAuditLog(transaction, {
+          actorId: userId,
+          action: "user.email_changed",
+          entityType: "User",
+          entityId: userId,
+          requestId,
+          metadata: { changed: true },
+        });
+        return serializeSafeUser(updated);
+      }),
+    );
   } catch (error) {
     if (!isDatabaseError(error, "P2002")) throw error;
     if (isEmailUniqueTarget(error)) throw emailTaken();
@@ -135,19 +150,21 @@ export async function changePassword(
   requestId: string,
 ): Promise<void> {
   const passwordHash = await hashPassword(input.newPassword);
-  await client.$transaction(async (transaction) => {
-    await requireSensitiveOperationUser(transaction, userId, input.currentPassword);
-    await updateUserPassword(transaction, userId, passwordHash);
-    await revokeAllUserSessions(transaction, userId, currentSessionId);
-    await appendAuditLog(transaction, {
-      actorId: userId,
-      action: "user.password_changed",
-      entityType: "User",
-      entityId: userId,
-      requestId,
-      metadata: { otherSessionsRevoked: true },
-    });
-  });
+  await withArgon2Permit(() =>
+    client.$transaction(async (transaction) => {
+      await requireSensitiveOperationUser(transaction, userId, input.currentPassword);
+      await updateUserPassword(transaction, userId, passwordHash);
+      await revokeAllUserSessions(transaction, userId, currentSessionId);
+      await appendAuditLog(transaction, {
+        actorId: userId,
+        action: "user.password_changed",
+        entityType: "User",
+        entityId: userId,
+        requestId,
+        metadata: { otherSessionsRevoked: true },
+      });
+    }),
+  );
 }
 
 export async function deactivateAccount(
@@ -159,55 +176,68 @@ export async function deactivateAccount(
   const anonymousSuffix = userId.replaceAll("-", "").slice(0, 12);
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      await client.$transaction(
-        async (transaction) => {
-          const user = await requireSensitiveOperationUser(
-            transaction,
-            userId,
-            input.currentPassword,
-          );
-          if (input.usernameConfirmation.trim().toLowerCase() !== user.username) {
-            throw new AppError("VALIDATION_ERROR", 422, "Kullanıcı adı doğrulaması eşleşmiyor.", {
-              usernameConfirmation: ["Kullanıcı adınızı eksiksiz yazın."],
-            });
-          }
-          const passwordHash = await hashPassword(randomBytes(48).toString("base64url"));
-          if (user.role === "ADMIN") {
-            await lockAdminGuard(transaction);
-            if (isLastActiveAdmin(user.role, await countActiveAdmins(transaction))) {
-              throw new AppError("LAST_ADMIN_GUARD", 409, "Son aktif yönetici hesabı kapatılamaz.");
+      await withArgon2Permit(() =>
+        client.$transaction(
+          async (transaction) => {
+            const user = await requireSensitiveOperationUser(
+              transaction,
+              userId,
+              input.currentPassword,
+            );
+            if (input.usernameConfirmation.trim().toLowerCase() !== user.username) {
+              throw new AppError("VALIDATION_ERROR", 422, "Kullanıcı adı doğrulaması eşleşmiyor.", {
+                usernameConfirmation: ["Kullanıcı adınızı eksiksiz yazın."],
+              });
             }
-          }
-          await revokeAllUserSessions(transaction, userId);
-          const affectedEntryIds = await findUserVoteEntryIds(transaction, userId);
-          await lockEntryVoteCounters(transaction, affectedEntryIds);
-          await removeUserVoteRecords(transaction, userId);
-          await recalculateEntryVoteCounters(transaction, affectedEntryIds);
-          await deletePrivateUserInteractionsExceptVotes(transaction, userId);
-          await anonymizeUserRecord(transaction, userId, {
-            email: `deleted+${user.id}@invalid.local`,
-            username: `deleted_${anonymousSuffix}`,
-            passwordHash,
-            deactivatedAt: new Date(),
-          });
-          await appendOutboxEvent(transaction, {
-            eventType: "user.deactivated",
-            aggregateType: "User",
-            aggregateId: userId,
-            actorId: userId,
-            actorKind: user.kind,
-            requestId,
-            payload: { status: "DEACTIVATED" },
-          });
-          await appendAuditLog(transaction, {
-            actorId: userId,
-            action: "user.deactivated",
-            entityType: "User",
-            entityId: userId,
-            requestId,
-          });
-        },
-        { isolationLevel: "Serializable" },
+            /*
+              Permit DIŞARIDA alındı (`withArgon2Permit`). Burada kapılı sürümü
+              çağırmak İKİNCİ bir permit ister ve kilitlenir: iki eşzamanlı
+              hesap kapatma iki permit'i tutarken ikisi de üçüncüyü bekler.
+              CI'da tam bu oldu — iki entegrasyon testi 15 sn'de zaman aşımına
+              uğradı (20 Eylül).
+            */
+            const passwordHash = await hashPassword(randomBytes(48).toString("base64url"));
+            if (user.role === "ADMIN") {
+              await lockAdminGuard(transaction);
+              if (isLastActiveAdmin(user.role, await countActiveAdmins(transaction))) {
+                throw new AppError(
+                  "LAST_ADMIN_GUARD",
+                  409,
+                  "Son aktif yönetici hesabı kapatılamaz.",
+                );
+              }
+            }
+            await revokeAllUserSessions(transaction, userId);
+            const affectedEntryIds = await findUserVoteEntryIds(transaction, userId);
+            await lockEntryVoteCounters(transaction, affectedEntryIds);
+            await removeUserVoteRecords(transaction, userId);
+            await recalculateEntryVoteCounters(transaction, affectedEntryIds);
+            await deletePrivateUserInteractionsExceptVotes(transaction, userId);
+            await anonymizeUserRecord(transaction, userId, {
+              email: `deleted+${user.id}@invalid.local`,
+              username: `deleted_${anonymousSuffix}`,
+              passwordHash,
+              deactivatedAt: new Date(),
+            });
+            await appendOutboxEvent(transaction, {
+              eventType: "user.deactivated",
+              aggregateType: "User",
+              aggregateId: userId,
+              actorId: userId,
+              actorKind: user.kind,
+              requestId,
+              payload: { status: "DEACTIVATED" },
+            });
+            await appendAuditLog(transaction, {
+              actorId: userId,
+              action: "user.deactivated",
+              entityType: "User",
+              entityId: userId,
+              requestId,
+            });
+          },
+          { isolationLevel: "Serializable" },
+        ),
       );
       return;
     } catch (error) {

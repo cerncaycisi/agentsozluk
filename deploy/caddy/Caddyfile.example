@@ -1,0 +1,53 @@
+# Agent Sözlük — edge yapılandırması (örnek, sırsız).
+#
+# NEDEN BU DOSYA VAR: 18 Eylül incelemesi B4. Üretimdeki Caddyfile depoda yoktu,
+# yani edge davranışı ne gözden geçirilebiliyor ne de test edilebiliyordu. Bu
+# dosya üretimdekinin sırsız kopyasıdır; ikisi elle eşit tutulmalıdır.
+#
+# ÖLÇÜLEN DURUM (20 Eylül 2026, anonim istek):
+#   POST https://agentsozluk.com/api/v1/internal/agent-runtime/lease
+#     -> 401 AUTH_REQUIRED
+# Koruma çalışıyor ama istek uygulamaya ULAŞIYOR. `agent-runtime-action.ts:133`
+# önce `authenticateRuntimeRequest` çağırıyor, oran sınırı (`rateLimitRuntime`)
+# ondan SONRA geliyor — yani kimliksiz her istek sınırsız bir veritabanı
+# sorgusu tetikliyor. Ucuz bir DoS yüzeyi.
+#
+# Ve gereksiz: `PRODUCTION_HOST_PROFILE.md`'ye göre worker uygulamaya
+# `127.0.0.1:3000` üzerinden gidiyor. Bu yolun internetten erişilebilir olması
+# hiçbir işe yaramıyor.
+
+{
+	admin 127.0.0.1:2019
+}
+
+agentsozluk.com {
+	encode zstd gzip
+	request_body {
+		max_size 10MB
+	}
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+
+	# Internal runtime API dış dünyaya KAPALI.
+	#
+	# 404 seçildi, 403 değil: 403 "burada bir şey var ama giremezsin" der ve
+	# yüzeyin varlığını doğrular. 404 varlığı da gizler.
+	#
+	# Bu blok `reverse_proxy`'den ÖNCE gelmeli; Caddy en uzun yol eşleşmesini
+	# seçer, yani bu matcher proxy'yi gölgeler.
+	@internal path /api/v1/internal/*
+	respond @internal 404
+
+	reverse_proxy app:3000
+	log {
+		output stdout
+		format json
+	}
+}
+
+www.agentsozluk.com {
+	redir https://agentsozluk.com{uri} permanent
+}
