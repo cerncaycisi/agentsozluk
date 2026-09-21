@@ -195,6 +195,35 @@ describe("lease süresi alarmı", () => {
     expect(calistir([cift, cift]).bildirimler).toEqual([]);
   });
 
+  it("hiç başlamamış transaction (activeMs null) uyarıdır ve alarmı temizlemez", () => {
+    const baslamayan = JSON.stringify({
+      event: "db.transaction.duration",
+      label: "runtime.lease",
+      outcome: "failed",
+      errorCode: "P1001",
+      totalMs: 20,
+      acquireMs: null,
+      activeMs: null,
+      timeoutMs: 5000,
+    });
+    expect(calistir([kayit(4500)]).bildirimler).toHaveLength(1);
+    const inis = calistir([baslamayan]).bildirimler;
+    expect(inis).toHaveLength(1);
+    expect(inis[0]).toContain("lease yavaşlıyor");
+    expect(inis[0]).toContain("başlamayan: 1");
+    expect(inis[0]).not.toContain("normale döndü");
+  });
+
+  it("ayrıştırılamayan satırlar tek başına durumu değiştirmez", () => {
+    expect(calistir([kayit(4500)]).bildirimler).toHaveLength(1);
+    const tam = kayit(4500);
+    const kesik = tam.slice(0, tam.indexOf('"activeMs"'));
+    expect(kesik).toContain('"label":"runtime.lease"');
+    expect(kesik).not.toContain("activeMs");
+    expect(calistir([kesik, kesik]).bildirimler).toEqual([]);
+    expect(calistir([kayit(4500)]).bildirimler).toEqual([]);
+  });
+
   it("kayıt yoksa (worker boşta) karar vermez ve önceki durumu korur", () => {
     expect(calistir([kayit(4500)]).bildirimler).toHaveLength(1);
     expect(calistir([]).bildirimler).toEqual([]);

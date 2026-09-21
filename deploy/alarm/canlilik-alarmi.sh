@@ -40,7 +40,7 @@ LEASE_UYARI_ADET="${ALARM_LEASE_UYARI_ADET:-3}"
 LEASE_PENCERE="${ALARM_LEASE_PENCERE:-15m}"        # timer aralığıyla aynı
 LEASE_ZAMAN_ASIMI="${ALARM_LEASE_ZAMAN_ASIMI:-45}"       # sn
 CANLILIK_ZAMAN_ASIMI="${ALARM_CANLILIK_ZAMAN_ASIMI:-30}" # sn; docker/exec takılırsa
-# En kötü duvar saati: canlılık 30 + curl 20 + lease 45+5 = 100 sn; birimin
+# En kötü duvar saati: canlılık 30+5 + curl 20 + lease 45+5 = 105 sn; birimin
 # TimeoutStartSec=2min sınırının altında.
 LEASE_DURUM="${DURUM}-lease"
 APP=/opt/agent-sozluk/app
@@ -65,7 +65,7 @@ durum_oku() {
   local hal an
   read -r hal an 2>/dev/null <"$1" || true
   [[ "${hal:-}" =~ ^($2)$ ]] || hal=temiz
-  if [[ ! "${an:-}" =~ ^(0|[1-9][0-9]{0,11})$ ]] || (( an > $3 )); then
+  if [[ ! "${an:-}" =~ ^(0|[1-9][0-9]{0,11})$ ]] || (( an > ${3:-0} )); then
     hal=temiz; an=0
   fi
   echo "$hal $an"
@@ -132,7 +132,7 @@ Bak: systemctl status agent-sozluk-runtime" \
 # Uygulama logundan okur; veritabanına dokunmaz. Yalnız `--yalniz-lease` ile,
 # `timeout` altındaki alt süreçte çağrılır.
 lease_kontrol() {
-  local ham rc kayitlar toplam yavas kritik maks okunamayan p2028 hal govde baslik oncelik etiket
+  local ham rc kayitlar toplam yavas kritik maks baslamayan okunamayan p2028 hal govde baslik oncelik etiket
   local simdi onceki_hal onceki_an
   ham="$(timeout 30 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
     logs --no-log-prefix --since "$LEASE_PENCERE" app 2>/dev/null)"
@@ -158,22 +158,28 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
       return 0
     fi
 
-    # Satır başına YALNIZ ilk activeMs; kesilmiş satır sayılmaz ama raporlanır.
-    read -r toplam yavas kritik maks okunamayan < <(awk -v u="$LEASE_UYARI_MS" -v k="$LEASE_KRITIK_MS" '
+    # Satır başına YALNIZ ilk activeMs. `activeMs: null` callback'in hiç
+    # başlamadığı (bağlantı alınamayan) transaction'dır: kötü haber, ayrı
+    # sayılır (Sol, üçüncü tur). Kesilmiş satır ne iyi ne kötü sayılır.
+    read -r toplam yavas kritik maks baslamayan okunamayan < <(awk -v u="$LEASE_UYARI_MS" -v k="$LEASE_KRITIK_MS" '
       { n++
         if (match($0, /"activeMs": *[0-9]+/)) {
           v = substr($0, RSTART, RLENGTH); sub(/^[^0-9]*/, "", v); v += 0
           if (v >= u) y++; if (v >= k) c++; if (v > m) m = v
-        } else b++ }
-      END { print n+0, y+0, c+0, m+0, b+0 }' <<<"$kayitlar")
+        } else if ($0 ~ /"activeMs": *null/) z++
+        else b++ }
+      END { print n+0, y+0, c+0, m+0, z+0, b+0 }' <<<"$kayitlar")
     p2028="$(grep -E '"outcome": *"failed"' <<<"$kayitlar" | grep -cE '"errorCode": *"P2028"')"
 
     if (( p2028 > 0 || kritik > 0 )); then hal=kritik
-    elif (( yavas >= LEASE_UYARI_ADET )); then hal=uyari
+    elif (( yavas >= LEASE_UYARI_ADET || baslamayan > 0 )); then hal=uyari
+    elif (( toplam == okunamayan )); then
+      # Hiçbir satır ayrıştırılamadı: "temiz" demek için kanıt yok.
+      return 0
     else hal=temiz
     fi
     govde="Son ${LEASE_PENCERE}: ${toplam} lease, en uzun activeMs ${maks} ms (Prisma sınırı 5000).
->= ${LEASE_UYARI_MS} ms: ${yavas} · >= ${LEASE_KRITIK_MS} ms: ${kritik} · P2028: ${p2028}
+>= ${LEASE_UYARI_MS} ms: ${yavas} · >= ${LEASE_KRITIK_MS} ms: ${kritik} · P2028: ${p2028} · başlamayan: ${baslamayan}
 Okunamayan satır: ${okunamayan}. Bak: docker compose logs app | grep db.transaction.duration"
   fi
 
