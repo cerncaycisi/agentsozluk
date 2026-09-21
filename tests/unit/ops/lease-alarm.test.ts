@@ -34,6 +34,7 @@ function calistir(logSatirlari: string[]) {
   const sonuc = spawnSync("bash", [BETIK], {
     encoding: "utf8",
     env: {
+      NODE_ENV: "test",
       PATH: `${path.join(dizin, "bin")}:/usr/bin:/bin`,
       ALARM_NTFY_KONU: "test-konu",
       ALARM_DURUM_DOSYASI: path.join(dizin, "durum", "durum"),
