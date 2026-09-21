@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { loginHuman } from "@/modules/auth/application/authenticate";
@@ -40,6 +41,7 @@ import { redactCreationCredential } from "@/modules/agents/domain/credential";
 import { circuitBreakerConfigSchema } from "@/modules/agents/domain/circuit-breaker";
 import {
   createRuntimeCapabilityRecord,
+  busyDurationSorgusu,
   getRuntimeOperationalMetrics,
 } from "@/modules/agents/repository/capacity";
 import { executeIdempotently } from "@/modules/idempotency/application/idempotency";
@@ -1794,6 +1796,43 @@ describe("agent control plane with PostgreSQL", () => {
     expect(operational.utilization15m).toBeCloseTo(5 / 15, 5);
     // 1 saat penceresi 11:00–12:00; kesişim 50 dakika.
     expect(operational.utilization1h).toBeCloseTo(50 / 60, 5);
+  });
+
+  it("plan: agent_runs taraması ön filtreyi JSON açmadan önce uyguluyor", async () => {
+    /*
+      Performans regresyonuna karşı koruma. Davranış testleri bunu yakalayamaz:
+      ön filtre kaldırılsa da pencere hesabı aynı sonucu verir, yalnız sorgu
+      `agent_runs`'ın tamamında TOAST okuyup JSON açmaya geri döner — 19 Eylül
+      olayının aday mekanizması. Bu test SORGUNUN KENDİSİNİ (kopyasını değil)
+      `EXPLAIN` edip `agent_runs` üzerindeki her taramanın `finishedAt`
+      koşulunu taşıdığını doğruluyor (Sol şartı, 21 Eylül).
+    */
+    const now = new Date("2026-07-18T12:00:00.000Z");
+    const cutoff = new Date(now.getTime() - 15 * 60_000);
+    const rows = await integrationDatabase.$queryRaw<Array<{ "QUERY PLAN": unknown }>>(
+      Prisma.sql`EXPLAIN (FORMAT JSON) ${busyDurationSorgusu(now, cutoff)}`,
+    );
+
+    type PlanNode = {
+      "Relation Name"?: string;
+      Filter?: string;
+      "Index Cond"?: string;
+      Plans?: PlanNode[];
+    };
+    const plan = (rows[0]?.["QUERY PLAN"] as Array<{ Plan: PlanNode }>)[0]!.Plan;
+    const agentRunsTaramalari: PlanNode[] = [];
+    const gez = (node: PlanNode) => {
+      if (node["Relation Name"] === "agent_runs") agentRunsTaramalari.push(node);
+      node.Plans?.forEach(gez);
+    };
+    gez(plan);
+
+    // measured_intervals + legacy_intervals: en az iki tarama.
+    expect(agentRunsTaramalari.length).toBeGreaterThanOrEqual(2);
+    for (const tarama of agentRunsTaramalari) {
+      const kosul = `${tarama.Filter ?? ""} ${tarama["Index Cond"] ?? ""}`;
+      expect(kosul, "agent_runs taramasında finishedAt ön filtresi yok").toContain("finishedAt");
+    }
   });
 
   it("koşunun finishedAt'inden SONRA biten aralığı düşürmez", async () => {

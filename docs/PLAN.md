@@ -1018,11 +1018,14 @@ ertelenmiş madde olmaktan çıktı.
       sıralı; kalan maliyetin tamamı o. Migration gerektirir, şema-nötr dağıtım
       hattının dışındadır.
 
-- [ ] **Ön filtrenin kaldırılmasını yakalayan koruma yok.** Davranış testi bunu
-      yakalayamaz: filtre kaldırılsa da sonuç aynı çıkar, yalnız maliyet büyür.
-      Gerçek koruma plan iddiası (test içinde `EXPLAIN` alıp filtrenin planda
-      göründüğünü doğrulamak) olurdu. Yazılmadı; uydurma bir test yazmak yerine
-      açık madde bırakıldı _(Sol şartı, 20 Eylül)_.
+- [x] **Ön filtrenin kaldırılmasını yakalayan koruma — yazıldı (21 Eylül).**
+      Davranış testi bunu yakalayamaz (filtre kalksa da sonuç aynı çıkar, yalnız
+      maliyet büyür), bu yüzden plan testi yazıldı: sorgu metni
+      `busyDurationSorgusu` olarak tek yerde tutuluyor, entegrasyon testi o
+      sorgunun KENDİSİNİ `EXPLAIN (FORMAT JSON)` ile alıp `agent_runs` üzerindeki
+      her taramanın `finishedAt` koşulunu taşıdığını doğruluyor. İlk yazımda
+      "yazılamaz, açık madde" demiştim; doğru çözümü bildiğim hâlde kolay yolu
+      seçmiştim. Sol'un üçüncü turu bunu tek blokaj olarak işaretledi..
 
 - [x] **Devre kesici kendi kendini kilitliyor — asıl kök neden.** Düzeltildi ve canlıda
       (4 Eylül, PR #109 + #110 · `7336862`). Üç halka birbirini
