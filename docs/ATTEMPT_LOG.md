@@ -8394,3 +8394,31 @@ telemetrisi olmadan görülemez.
 **Tekrarlama:** bir ayarın "devreye girdiğini" varsayma; değerin gerçekten
 kullanıldığı çağrı yolunu takip et. Burada ayar doğru yere yazılmıştı ama o yol
 lease tarafından hiç kullanılmıyordu.
+
+## 2026-09-21 — lease telemetrisi (#152) üretimde
+
+- Aday `545b676faa412043600f2110ed4681cd894f7043` (PR head `f76c3d2`, ağaç
+  `1de8df05…` birebir). Main CI `35618948316`, artifact `35619783577`,
+  migration yok, `RELEASE_COMPLETE PASS ... cleanup=no-cleanup`.
+- Sol dört tur (üç BİRLEŞTİRME, sonra BİRLEŞTİR); Astra DAĞIT, şartı INFO ve
+  log rotasyonunun doğrulanması. Üretimde salt okunur doğrulandı:
+  `LOG_LEVEL=info`, app konteyneri json-file 10 MB × 5.
+- Kabul: 40 dk'da 252 kayıt, hepsi `committed`; `activeMs` maks 1164 ms.
+  Dağıtımdan sonra 7 koşu başladı. Sayılar `STATUS.md` 21 Eylül girdisinde.
+- **Astra'nın log hacmi tahmini üst sınırdı:** 36 credential × 5 sn → 7,2
+  kayıt/sn öngördü; gerçekte ~6 kayıt/dk (koşu yokken worker bekliyor).
+  Ölçülmüş değer tahmini geçersiz kıldı; hesaplamayla yetinilmedi.
+
+**Tekrarlama:**
+
+- `codex exec` prompt argümanla verilse de stdin açıksa "Reading additional
+  input from stdin..." deyip bekliyor; ilk Sol turu 25 dk boşa gitti. Her
+  arka plan `codex exec` çağrısına `< /dev/null` ekle.
+- Vitest'te `beforeEach(() => mock.mockReset())` kısa ok fonksiyonu spy'ı
+  DÖNDÜRÜYOR; Vitest dönen fonksiyonu teardown sayıp test sonunda çağırıyor.
+  Mock fırlatacak şekilde ayarlıysa test sebepsiz düşer. Gövdeli yaz: `{ ...; }`.
+- Bu operatör sunucusu 1 GB RAM: repo genelinde `eslint`/`prettier --check`
+  OOM ile düşüyor (exit 134). Yerelde yalnız değişen dosyalar; repo geneli CI'da.
+- Oturum yeniden başlayınca arka plan bekleyicileri ölüyor (CI bekleyicisi ve
+  Sol turu "stopped"). Yeniden başlangıçta ilk iş açık işlerin durumunu
+  kontrol edip bekleyicileri yeniden kurmak.

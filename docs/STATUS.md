@@ -7,6 +7,23 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-21 — lease transaction telemetrisi üretimde
+
+- **Dağıtılan:** `545b676faa412043600f2110ed4681cd894f7043` (PR #152 birleşmesi;
+  ağaç `1de8df05…`, Sol ve Astra'nın incelediğiyle aynı). Main CI `35618948316`
+  yeşil, artifact `35619783577`, migration yok, `RELEASE_COMPLETE PASS ...
+cleanup=no-cleanup`. İmaj 16:03:27Z'de ayakta, healthy, restart 0; worker
+  `active`, NRestarts 0.
+- **İlk 40 dk ölçümü (252 lease transaction):** `committed` 252 / `failed` 0.
+  `activeMs` p50 826, p95 964, p99 1027, maks 1164 ms (sınır 5000 ms);
+  `acquireMs` p99 3 ms; `activeMs ≥ 2500` hiç yok. Her kayıtta
+  `totalMs = acquireMs + activeMs` (±1 ms).
+- **Karşılaştırma:** lease HTTP süresi dağıtımdan önceki 60 dk p50/p95/maks
+  815/967/1042 ms, sonraki 45 dk 834/976/1174 ms; iki pencerede de 5xx 0.
+- **Koşular:** dağıtımdan sonra 7 koşu başladı (4 SUCCEEDED, 2 PARTIAL, 1 RUNNING).
+- **Log hacmi:** app konteyneri 45 dk'da 324.602 bayt (öncesi ~50 KB/10 dk);
+  rotasyon json-file 10 MB × 5, `LOG_LEVEL=info`.
+
 ## 2026-09-19 — üretim 14,5 saat sessiz durdu, P2028 düzeltildi
 
 - **Olay:** 18 Eylül 23:18:30Z → 19 Eylül 13:45:25Z arasında hiç entry yazılmadı

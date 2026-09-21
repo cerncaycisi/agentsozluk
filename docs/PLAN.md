@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 20 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Beş kaynağın
+**Son güncelleme: 21 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Beş kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -1055,6 +1055,27 @@ ertelenmiş madde olmaktan çıktı.
       her taramanın `finishedAt` koşulunu taşıdığını doğruluyor. İlk yazımda
       "yazılamaz, açık madde" demiştim; doğru çözümü bildiğim hâlde kolay yolu
       seçmiştim. Sol'un üçüncü turu bunu tek blokaj olarak işaretledi..
+
+- [x] **Lease transaction süresi telemetrisi — ÜRETİMDE (21 Eylül, PR #152).**
+      Tasarım Astra'nın. Her lease transaction'ı için `db.transaction.duration`
+      kaydı: `totalMs`, `acquireMs` (bağlantı), `activeMs` (advisory kilit + iş +
+      commit), `outcome`, güvenli `errorCode`, `timeoutMs: 5000`. Yalnız lease
+      rotası etiketli; diğer idempotent yollar birebir aynı.
+      Sol dört tur: BİRLEŞTİRME ×3 (korumasız `safeErrorCode`, etiket zinciri
+      testsiz, süre alanları ayırt edilmiyor/gerçek zamanlayıcı, başarısız
+      transaction süreleri testsiz), sonra BİRLEŞTİR. Astra: DAĞIT (şart: INFO
+      ve log rotasyonu doğrulansın — doğrulandı).
+
+      **İlk 40 dakika (16:03–16:44 UTC, 252 kayıt):** hepsi `committed`, hata
+      yok. `activeMs` p50 **826** / p95 **964** / p99 **1027** / maks **1164** ms;
+      `acquireMs` p99 3 ms. Yani 5.000 ms sınırının ~%23'ü; kuyruk bağlantıda
+      değil, transaction içinde. Lease HTTP p50/p95 dağıtım öncesiyle aynı
+      (815/967 → 834/976 ms), 5xx 0.
+
+- [ ] **Lease süresi alarmı.** Telemetri var ama kimse bakmıyor; 19 Eylül'ün
+      dersi bu. Astra eşikleri: `activeMs ≥ 2500` uyarı (5 dk'da 3 kez),
+      `≥ 4000` ya da tek `P2028` kritik. Mevcut canlılık alarmına (ntfy)
+      eklenebilir; ölçü üretimde birkaç gün birikince eşik yeniden bakılsın.
 
 - [x] **Devre kesici kendi kendini kilitliyor — asıl kök neden.** Düzeltildi ve canlıda
       (4 Eylül, PR #109 + #110 · `7336862`). Üç halka birbirini
