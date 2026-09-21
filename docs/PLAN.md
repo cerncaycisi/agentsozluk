@@ -1035,13 +1035,8 @@ ertelenmiş madde olmaktan çıktı.
       değişmedi (başarılı 42 / 42, ort. 335 / 325 sn) — bir şey bozulmadı.
       **Gerçek kazanç ölçülmedi:** bu değişiklik lease transaction'ını
       etkiliyor, koşu süresini değil, ve lease süresi `agent_runs`'ta
-      kayıtlı değil. Ölçmek için lease transaction telemetrisi gerekir.
-
-- [ ] **Lease transaction süresi telemetrisi.** #147'nin gerçek etkisini ve
-      bir sonraki `P2028` yaklaşmasını görmenin tek yolu. Bugün lease süresi
-      hiçbir yerde kaydedilmiyor; koşu süresi Codex çağrılarına bağlı olduğu için
-      vekil olamaz. Canlılık alarmına benzer biçimde eşik aşımında uyarı
-      verebilir — 19 Eylül kesintisi tam bu sürenin 5 sn'yi aşmasıydı.
+      kayıtlı değil. Telemetri #147'den SONRA geldi (aşağıda); öncesi için
+      karşılaştırılacak transaction süresi yok, yalnız HTTP süresi var.
 
 - [ ] **`agent_runs.finishedAt` indeksi.** Ön filtre eklendi ama tarama hâlâ
       sıralı; kalan maliyetin tamamı o. Migration gerektirir, şema-nötr dağıtım
@@ -1072,10 +1067,16 @@ ertelenmiş madde olmaktan çıktı.
       değil, transaction içinde. Lease HTTP p50/p95 dağıtım öncesiyle aynı
       (815/967 → 834/976 ms), 5xx 0.
 
-- [ ] **Lease süresi alarmı.** Telemetri var ama kimse bakmıyor; 19 Eylül'ün
-      dersi bu. Astra eşikleri: `activeMs ≥ 2500` uyarı (5 dk'da 3 kez),
-      `≥ 4000` ya da tek `P2028` kritik. Mevcut canlılık alarmına (ntfy)
-      eklenebilir; ölçü üretimde birkaç gün birikince eşik yeniden bakılsın.
+- [~] **Lease süresi alarmı — dalda (`ops/lease-alarmi`).** Telemetri var ama
+  kimse bakmıyor; 19 Eylül'ün dersi bu. Mevcut canlılık alarmına fonksiyon
+  olarak eklendi (yeni birim ya da `daemon-reload` yok, yalnız betik
+  dosyası değişir). Her 15 dk'lık koşuda son 15 dk'nın lease kayıtları:
+  `activeMs ≥ 2500` üç kez → uyarı; `≥ 4000` ya da tek `P2028` → kritik;
+  normale dönüş bir kez bildirilir. Eşikler Astra'nın; "5 dk'da 3 kez"
+  timer aralığına uyarlanıp 15 dk oldu. Canlılık kontrolünden bağımsız,
+  kendisi hiçbir yolda betiği düşürmez. Betik sahte `docker`/`curl` ile
+  gerçekten çalıştırılarak test ediliyor; altı mutasyon denendi, hepsi
+  yakalandı. Ölçü üretimde birkaç gün birikince eşik yeniden bakılsın.
 
 - [x] **Devre kesici kendi kendini kilitliyor — asıl kök neden.** Düzeltildi ve canlıda
       (4 Eylül, PR #109 + #110 · `7336862`). Üç halka birbirini
