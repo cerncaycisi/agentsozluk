@@ -399,7 +399,8 @@ pre_cutover_lease_scan() {
   local candidate_alarm="$app_root/deploy/alarm/canlilik-alarmi.sh"
   local installed_alarm=/opt/agent-sozluk/scripts/canlilik-alarmi.sh
   systemctl cat agent-sozluk-alarm.service >/dev/null 2>&1 || return 0
-  if timeout 60 bash "$candidate_alarm" --kesim-oncesi </dev/null; then
+  # 120 sn: timer taraması sürüyorsa kilidi 55 sn'ye kadar bekler, sonra tarar.
+  if timeout 120 bash "$candidate_alarm" --kesim-oncesi </dev/null; then
     printf 'RELEASE_LEASE_SCAN_OK\n'
   else
     printf 'RELEASE_WARN lease alarm pre-cutover scan failed\n' >&2

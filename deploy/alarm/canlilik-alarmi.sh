@@ -48,6 +48,7 @@ CANLILIK_ZAMAN_ASIMI="${ALARM_CANLILIK_ZAMAN_ASIMI:-30}" # sn; docker/exec takı
 LEASE_DURUM="${DURUM}-lease"
 LEASE_IMLEC="${DURUM}-lease-imlec"
 LEASE_MAKBUZ="${DURUM}-lease-kesim"
+LEASE_KILIT="${DURUM}-lease.kilit"
 APP=/opt/agent-sozluk/app
 RUNTIME=/opt/agent-sozluk/runtime
 
@@ -183,7 +184,31 @@ atomik_yaz() { # $1 dosya, $2 içerik
   return 1
 }
 
+# Timer ile dağıtımın kesim öncesi taraması aynı durumu okuyup yazar: bütün
+# `oku → tara → yaz` bölümü tek kilit altında seri çalışır (Sol, on ikinci tur).
+# Timer en fazla 5 sn bekler, alamazsa turu atlar (imleç ilerlemediği için bir
+# şey kaybolmaz); kesim taraması 55 sn'ye kadar bekler.
 lease_kontrol() {
+  local kfd bekle r
+  if (( KESIM )); then bekle=55; else bekle=5; fi
+  if ! exec {kfd}>>"$LEASE_KILIT"; then
+    hata_yaz "lease kilit dosyası açılamadı"
+    (( KESIM )) && return 1
+    return 0
+  fi
+  if ! flock -w "$bekle" "$kfd"; then
+    hata_yaz "lease kilidi ${bekle} sn içinde alınamadı; bu tur atlandı"
+    exec {kfd}>&-
+    (( KESIM )) && return 1
+    return 0
+  fi
+  lease_kontrol_kilitli
+  r=$?
+  exec {kfd}>&-
+  return "$r"
+}
+
+lease_kontrol_kilitli() {
   local ham rc kayitlar toplam yavas kritik maks baslamayan okunamayan pencerede p2028
   local simdi simdi_ms imlec imlec_kimlik imlec_gecerli=0 esik baslangic pencere_dk yeni_hal govde
   local kimlik makbuz_kimlik makbuz_ms bosluk="" basari=0

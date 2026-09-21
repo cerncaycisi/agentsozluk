@@ -119,7 +119,7 @@ describe("schema-neutral production release lane", () => {
     // Aday sürümün betiği, yalnız lease kipiyle, sınırlı sürede ve sonucu görünür.
     expect(remote).toContain('local candidate_alarm="$app_root/deploy/alarm/canlilik-alarmi.sh"');
     expect(remote).toContain(
-      'if timeout 60 bash "$candidate_alarm" --kesim-oncesi </dev/null; then',
+      'if timeout 120 bash "$candidate_alarm" --kesim-oncesi </dev/null; then',
     );
     expect(remote).toContain("RELEASE_LEASE_SCAN_OK");
     expect(remote).toContain("RELEASE_WARN lease alarm pre-cutover scan failed");

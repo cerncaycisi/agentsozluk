@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
   chmodSync,
   existsSync,
@@ -53,6 +53,32 @@ interface Secenek {
   kimlik?: string; // app konteynerinin kimliği; "" = okunamaz
   kip?: string; // betiğe verilen argüman (ör. --kesim-oncesi)
   konuYok?: boolean; // ALARM_NTFY_KONU tanımsız
+  logDosyasi?: string; // sahte docker'ın okuyacağı log (varsayılan app.log)
+  logsGecikme?: number; // sahte `docker logs` bu kadar sn sürer
+  leaseZamanAsimi?: number; // lease alt sürecinin süre sınırı (test varsayılanı 3 sn)
+}
+
+function ortam(secenek: Secenek) {
+  return {
+    NODE_ENV: "test",
+    PATH: `${path.join(dizin, "bin")}:/usr/bin:/bin`,
+    ...(secenek.konuYok ? {} : { ALARM_NTFY_KONU: "test-konu" }),
+    ALARM_NTFY_SUNUCU: "https://ntfy.example",
+    ALARM_DURUM_DOSYASI: path.join(dizin, "durum", "durum"),
+    ALARM_LEASE_ZAMAN_ASIMI: String(secenek.leaseZamanAsimi ?? 3),
+    ALARM_CANLILIK_ZAMAN_ASIMI: "2",
+    SAHTE_DIZIN: dizin,
+    SAHTE_CANLILIK: secenek.canlilik ?? "60 120",
+    SAHTE_LOGS_HATA: secenek.logsHata ? "1" : "",
+    SAHTE_LOGS_ASILI: secenek.logsAsili ? "1" : "",
+    SAHTE_EXEC_ASILI: secenek.execAsili ? "1" : "",
+    SAHTE_CURL_HATA: secenek.curlHata ? "1" : "",
+    SAHTE_CURL_ILK_HATA: secenek.curlIlkHata ? "1" : "",
+    SAHTE_KIMLIK: secenek.kimlik ?? "aaaaaaaaaaaa1111",
+    SAHTE_LOG_DOSYASI: secenek.logDosyasi ?? path.join(dizin, "app.log"),
+    SAHTE_LOGS_GECIKME: String(secenek.logsGecikme ?? 0),
+    ...(secenek.simdi === undefined ? {} : { ALARM_SIMDI: String(secenek.simdi) }),
+  };
 }
 
 function calistir(logSatirlari: string[], secenek: Secenek = {}) {
@@ -60,24 +86,7 @@ function calistir(logSatirlari: string[], secenek: Secenek = {}) {
   const sonuc = spawnSync("bash", secenek.kip ? [BETIK, secenek.kip] : [BETIK], {
     encoding: "utf8",
     timeout: 30_000,
-    env: {
-      NODE_ENV: "test",
-      PATH: `${path.join(dizin, "bin")}:/usr/bin:/bin`,
-      ...(secenek.konuYok ? {} : { ALARM_NTFY_KONU: "test-konu" }),
-      ALARM_NTFY_SUNUCU: "https://ntfy.example",
-      ALARM_DURUM_DOSYASI: path.join(dizin, "durum", "durum"),
-      ALARM_LEASE_ZAMAN_ASIMI: "3",
-      ALARM_CANLILIK_ZAMAN_ASIMI: "2",
-      SAHTE_DIZIN: dizin,
-      SAHTE_CANLILIK: secenek.canlilik ?? "60 120",
-      SAHTE_LOGS_HATA: secenek.logsHata ? "1" : "",
-      SAHTE_LOGS_ASILI: secenek.logsAsili ? "1" : "",
-      SAHTE_EXEC_ASILI: secenek.execAsili ? "1" : "",
-      SAHTE_CURL_HATA: secenek.curlHata ? "1" : "",
-      SAHTE_CURL_ILK_HATA: secenek.curlIlkHata ? "1" : "",
-      SAHTE_KIMLIK: secenek.kimlik ?? "aaaaaaaaaaaa1111",
-      ...(secenek.simdi === undefined ? {} : { ALARM_SIMDI: String(secenek.simdi) }),
-    },
+    env: ortam(secenek),
   });
   const oku = (ad: string) =>
     existsSync(path.join(dizin, ad)) ? readFileSync(path.join(dizin, ad), "utf8") : "";
@@ -116,12 +125,13 @@ if [[ "$tum" == *" logs "* ]]; then
   echo "$since" >> "$SAHTE_DIZIN/since.log"
   [[ -n "$SAHTE_LOGS_ASILI" ]] && sleep 20
   [[ -n "$SAHTE_LOGS_HATA" ]] && exit 1
+  sleep "$SAHTE_LOGS_GECIKME"
   se=$(date -u -d "$since" +%s)
   # Gerçek docker gibi: --since'ten önceki satırlar gelmez. Zamansız satır hep gelir.
   while IFS= read -r l; do
     z=$(grep -oE '"time":"[^"]+"' <<<"$l" | cut -d'"' -f4)
     if [[ -z "$z" ]] || (( $(date -u -d "$z" +%s) >= se )); then printf '%s\n' "$l"; fi
-  done < "$SAHTE_DIZIN/app.log"
+  done < "$SAHTE_LOG_DOSYASI"
   exit 0
 fi
 if [[ "$tum" == *" ps -q app "* ]]; then [[ -n "$SAHTE_KIMLIK" ]] && echo "$SAHTE_KIMLIK"; exit 0; fi
@@ -588,6 +598,54 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
     const { status, stderr } = calistir([], { konuYok: true });
     expect(status).not.toBe(0);
     expect(stderr).toContain("ALARM_NTFY_KONU gerekli");
+  });
+
+  it("eşzamanlı timer taraması, kesim taramasının bulduğu kritik kararı ezemez", async () => {
+    // Timer eski logu görür (kritik yok) ve log okuması 2 sn sürer; bu sırada
+    // dağıtımın kesim taraması başlar ve yeni logda kritik kaydı bulur.
+    const timerLog = path.join(dizin, "timer.log");
+    writeFileSync(timerLog, zamanli(800, T - 100) + "\n");
+    const timer = new Promise<number | null>((coz) => {
+      const c = spawn("bash", [BETIK], {
+        env: { ...ortam({ simdi: T, kimlik: ESKI, logDosyasi: timerLog, logsGecikme: 2 }) },
+        stdio: "ignore",
+      });
+      c.on("exit", (kod) => coz(kod));
+    });
+    // Timer kilidi aldı ve log okumasına girdi (sahte docker since.log yazar).
+    const sinceLog = path.join(dizin, "since.log");
+    for (let i = 0; i < 100 && !existsSync(sinceLog); i++) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    expect(existsSync(sinceLog)).toBe(true);
+    const kesim = calistir([zamanli(800, T - 100), zamanli(4500, T + 30)], {
+      simdi: T + 60,
+      kimlik: ESKI,
+      kip: "--kesim-oncesi",
+      konuYok: true,
+    });
+    expect(kesim.status).toBe(0);
+    await timer;
+    const durum = readFileSync(path.join(dizin, "durum", "durum-lease"), "utf8").trim();
+    expect(durum.split(" ")[0]).toBe("kritik");
+    expect(durum.split(" ")[2]).toBe("0"); // teslim bekliyor; sonraki timer gönderir
+  });
+
+  it("kilit tutuluyorsa timer turu atlar ve hiçbir şey yazmaz", () => {
+    mkdirSync(path.join(dizin, "durum"), { recursive: true });
+    const kilit = spawn("flock", [path.join(dizin, "durum", "durum-lease.kilit"), "sleep", "10"]);
+    try {
+      spawnSync("sleep", ["0.3"]);
+      const { stderr, bildirimler } = calistir([zamanli(4500, T - 60)], {
+        simdi: T,
+        leaseZamanAsimi: 10,
+      });
+      expect(stderr).toContain("lease kilidi");
+      expect(bildirimler).toEqual([]);
+      expect(existsSync(path.join(dizin, "durum", "durum-lease-imlec"))).toBe(false);
+    } finally {
+      kilit.kill();
+    }
   });
 
   it("sayının ortasında kesilen kayıt sahte düzelme üretmez", () => {
