@@ -253,7 +253,7 @@ export function busyDurationSorgusu(now: Date, cutoff: Date): Prisma.Sql {
       ) AS item
       -- Pencere filtresi LATERAL'den ONCE uygulanir; gerekcesi fonksiyonun
       -- ustundeki yorumda.
-      WHERE (run."finishedAt" IS NULL OR run."finishedAt" > ${filtreSiniri})
+      WHERE TRUE
         AND item ->> 'startedAt' ~ '^\\d{4}-\\d{2}-\\d{2}T'
         AND item ->> 'finishedAt' ~ '^\\d{4}-\\d{2}-\\d{2}T'
     ),
@@ -266,7 +266,6 @@ export function busyDurationSorgusu(now: Date, cutoff: Date): Prisma.Sql {
         run."finishedAt" AS "finishedAt"
       FROM "agent_runs" AS run
       WHERE run."finishedAt" IS NOT NULL
-        AND run."finishedAt" > ${filtreSiniri}
         AND jsonb_typeof(run."usageMetadata") = 'object'
         AND jsonb_typeof(run."usageMetadata" -> 'codexIntervals') IS NULL
         AND run."usageMetadata" ->> 'durationMs' ~ '^\\d+(?:\\.\\d+)?$'
