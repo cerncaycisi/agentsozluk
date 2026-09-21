@@ -1,11 +1,27 @@
 [Unit]
-Description=Run Agent Sozluk bounded expired-record cleanup hourly
+Description=Run Agent Sozluk bounded expired-record cleanup every five minutes
 Documentation=file:/opt/agent-sozluk/app/docs/PRODUCTION_RUNBOOK.md
 
-[Timer]
-OnCalendar=hourly
-RandomizedDelaySec=15min
-AccuracySec=1min
+# 21 Eylül 2026 — saatlikten beş dakikada bire.
+#
+# ÖLÇÜM (üretim günlüğü, salt okunur): her koşu `idempotency_records`'tan tam
+# 2.000 kayıt siliyor (500x4) ve siliş commit ediliyor — timer çalışıyor. Ama
+# tabloda 1,33 milyon süresi dolmuş kayıt birikmiş, en eskisi ~40 gün önce.
+#
+# Birikimin sebebi temizliğin BOZUKLUĞU değil, KAPASİTESİ: geçmişte günlük
+# üretim sık sık saatte 2.000'i aştı (3 Eylül 82.741 kayıt = ~3.450/saat;
+# 21 Ağustos ~2.715/saat). Bugün ~933/saat görülmesi F02'nin şeridi 2'den 1'e
+# indirmesinden; şerit geri açılırsa üretim yine ~3.500/saate çıkar. Kapasite
+# bugünkü hıza değil TEPE hıza göre ayarlanmalı.
+#
+# Parti boyutu BÜYÜTÜLMEDİ (Astra, 21 Eylül): iki tablonun tüm partileri tek
+# transaction içinde koşuyor (`expired-operational-records.ts`), yani 2000x10
+# tek bir 20.000 satırlık transaction demek — uzun kilit, canlı yazmalarla
+# çekişme, WAL sıçraması. Onun yerine küçük parti (500x4) daha SIK: nominal
+# saatte 24.000, tepe üretimin ~7 katı. Birikim ~58 saatte erir.
+OnCalendar=*:0/5
+RandomizedDelaySec=30s
+AccuracySec=10s
 Persistent=true
 Unit=agent-sozluk-maintenance.service
 
