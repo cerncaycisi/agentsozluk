@@ -108,6 +108,19 @@ describe("schema-neutral production release lane", () => {
     expect(flow.indexOf("publish_boot_tag")).toBeLessThan(flow.indexOf("RELEASE_COMPLETE"));
   });
 
+  it("scans lease logs after the worker stops and before the app container is recreated", () => {
+    const kesim = remote.slice(remote.indexOf("\ncutover() {"));
+    const durdur = kesim.indexOf("sudo systemctl stop agent-sozluk-runtime.service");
+    const tara = kesim.indexOf("sudo systemctl start agent-sozluk-alarm.service");
+    const yenile = kesim.indexOf("--force-recreate app");
+    expect(durdur).toBeGreaterThan(0);
+    expect(tara).toBeGreaterThan(durdur);
+    expect(yenile).toBeGreaterThan(tara);
+    // Alarm taraması dağıtımı durduramaz.
+    expect(kesim).toContain("RELEASE_WARN lease alarm pre-cutover scan failed");
+    expect(kesim).toContain("if systemctl cat agent-sozluk-alarm.service >/dev/null 2>&1; then");
+  });
+
   it("atomically installs and verifies the versioned direct-Node runtime unit", () => {
     expect(remote).toContain("install_runtime_unit");
     expect(remote).toContain("assert_runtime_unit");

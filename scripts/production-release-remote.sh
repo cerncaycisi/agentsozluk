@@ -418,6 +418,14 @@ cutover() {
     test "$running" = 0
     test "$cancel_requested" = 0
     test "$leases" = 0
+    # Lease süresi alarmı app konteynerinin logunu okur; --force-recreate eski
+    # konteyneri (ve logunu) siler. Worker artık durduğu için yeni lease kaydı
+    # oluşmaz: son kayıtları kesimden ÖNCE tara. Alarm yoksa ya da başarısızsa
+    # dağıtım durmaz; alarm konteyner değişimini ayrıca `belirsiz` olarak görür.
+    if systemctl cat agent-sozluk-alarm.service >/dev/null 2>&1; then
+      sudo systemctl start agent-sozluk-alarm.service </dev/null ||
+        printf 'RELEASE_WARN lease alarm pre-cutover scan failed\n' >&2
+    fi
     write_no_migration_override
     candidate_compose=(
       docker compose

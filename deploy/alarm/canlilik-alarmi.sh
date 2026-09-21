@@ -39,7 +39,8 @@ LEASE_KRITIK_MS="${ALARM_LEASE_KRITIK_MS:-4000}"
 LEASE_UYARI_ADET="${ALARM_LEASE_UYARI_ADET:-3}"
 LEASE_ILK_PENCERE_SN=900     # imleç yokken (ilk koşu) geriye bakılan süre
 LEASE_ORTUSME_SN=60          # docker tarafında imleçten bu kadar geriden oku
-LEASE_ZAMAN_ASIMI="${ALARM_LEASE_ZAMAN_ASIMI:-50}"       # sn; log 30 + gönderim 10
+LEASE_KESIM_PAYI_SN=300      # kesim öncesi taramadan konteyner yenilenmesine izin
+LEASE_ZAMAN_ASIMI="${ALARM_LEASE_ZAMAN_ASIMI:-50}"       # sn; log 25 + kimlik 5+5 + gönderim 10
 CANLILIK_ZAMAN_ASIMI="${ALARM_CANLILIK_ZAMAN_ASIMI:-30}" # sn; docker/exec takılırsa
 # En kötü duvar saati: canlılık 30+5 + curl 20 + lease 50+5 = 110 sn; birimin
 # TimeoutStartSec=2min sınırının altında.
@@ -151,6 +152,11 @@ Bak: systemctl status agent-sozluk-runtime" \
 #    yaşandı, şimdi düzeldi". Hiçbir karar silinmez; sıra/sınır sorunu yoktur.
 #    `olcum` son GERÇEK ölçümün halidir: log okunamayıp sonra kayıtsız düzelirse
 #    "temiz" varsayılmaz, son ölçülen hal geri gelir.
+#  - KONTEYNER DEĞİŞİMİ (Sol, onuncu tur): dağıtım `--force-recreate app` ile
+#    eski konteyneri ve logunu siler. Dağıtım betiği worker'ı durdurduktan sonra
+#    kesimden ÖNCE bu servisi bir kez koşturur; yine de app konteyneri imleçten
+#    sonra (5 dk paydan fazla) yaratıldıysa taranmamış bir boşluk vardır ve
+#    sonuç en az `belirsiz` olur — olay sessizce kaybolmaz.
 #    Durum yazılamazsa imleç ilerlemez ve aynı bildirim her koşuda yeniden
 #    gidebilir (kayıptansa tekrar; journal'a hata düşer).
 
@@ -174,7 +180,7 @@ atomik_yaz() { # $1 dosya, $2 içerik
 
 lease_kontrol() {
   local ham rc kayitlar toplam yavas kritik maks baslamayan okunamayan pencerede p2028
-  local simdi simdi_ms imlec esik baslangic pencere_dk yeni_hal govde
+  local simdi simdi_ms imlec imlec_gecerli=0 esik baslangic pencere_dk yeni_hal govde kimlik olusma olusma_ms bosluk=""
   local hal an teslim en_kotu olcum baslik oncelik etiket durum_yazildi
   # ALARM_SIMDI (sn) yalnız testler içindir; üretimde tanımlı değildir.
   if [[ -n "${ALARM_SIMDI:-}" ]]; then simdi_ms=$(( ALARM_SIMDI * 1000 )); else simdi_ms="$(date +%s%3N)"; fi
@@ -195,7 +201,7 @@ lease_kontrol() {
   # okunamasa da sonraki koşu buradan başlar (Sol, sekizinci tur).
   read -r imlec 2>/dev/null <"$LEASE_IMLEC" || imlec=""
   if [[ "$imlec" =~ ^[1-9][0-9]{0,15}$ ]] && (( imlec <= simdi_ms )); then
-    esik="$imlec"
+    esik="$imlec"; imlec_gecerli=1
   else
     [[ -n "$imlec" ]] && hata_yaz "imleç geçersiz ya da gelecekte ($imlec); son 15 dk taranıyor"
     esik=$(( simdi_ms - LEASE_ILK_PENCERE_SN * 1000 ))
@@ -204,7 +210,7 @@ lease_kontrol() {
   baslangic=$(( esik / 1000 - LEASE_ORTUSME_SN - 900 ))
   pencere_dk=$(( (simdi_ms - esik + 59999) / 60000 ))
 
-  ham="$(timeout 30 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
+  ham="$(timeout 25 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
     logs --no-log-prefix --since "$(iso "$baslangic")" app 2>/dev/null)"
   rc=$?
   govde=""
@@ -284,6 +290,29 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
       govde="Son ${pencere_dk} dk: ${toplam} yeni lease kaydı, en uzun activeMs ${maks} ms (Prisma sınırı 5000).
 >= ${LEASE_UYARI_MS} ms: ${yavas} (15 dk içinde en çok ${pencerede}) · >= ${LEASE_KRITIK_MS} ms: ${kritik} · P2028: ${p2028} · başlamayan: ${baslamayan}
 Ayrıştırılamayan: ${okunamayan}. Bak: docker compose logs app | grep db.transaction.duration"
+    fi
+
+    # Konteyner imleçten sonra yaratıldıysa eski konteynerin logu (ve belki bir
+    # olay) gitmiştir. İlk koşuda (imleç yok) bu soru anlamsızdır.
+    if (( imlec_gecerli )); then
+      kimlik="$(timeout 5 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
+        ps -q app 2>/dev/null | head -1)"
+      olusma_ms=""
+      if [[ -n "$kimlik" ]]; then
+        olusma="$(timeout 5 docker inspect -f '{{.Created}}' "$kimlik" 2>/dev/null)"
+        # `date -d ""` bugünün gece yarısını verir; boş değer asla zaman sayılmaz.
+        [[ -n "$olusma" ]] && olusma_ms="$(date -u -d "$olusma" +%s%3N 2>/dev/null)"
+      fi
+      if [[ ! "$olusma_ms" =~ ^[1-9][0-9]*$ ]]; then
+        bosluk="app konteynerinin oluşturulma zamanı okunamadı; taramanın bütünlüğü doğrulanamadı."
+      elif (( olusma_ms > esik + LEASE_KESIM_PAYI_SN * 1000 )); then
+        bosluk="app konteyneri $(iso $(( olusma_ms / 1000 ))) tarihinde yeniden yaratılmış; $(iso $(( esik / 1000 ))) sonrasındaki eski konteyner logu taranamadı."
+      fi
+      if [[ -n "$bosluk" ]]; then
+        (( $(agirlik "$yeni_hal") >= 1 )) || yeni_hal=belirsiz
+        govde="${bosluk}
+${govde}"
+      fi
     fi
   fi
 

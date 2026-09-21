@@ -50,6 +50,7 @@ interface Secenek {
   curlHata?: boolean;
   curlIlkHata?: boolean; // koşudaki YALNIZ ilk gönderim başarısız
   simdi?: number; // ALARM_SIMDI (sn); imleç testleri için
+  olusma?: string; // app konteynerinin Created değeri; "" = okunamaz
 }
 
 function calistir(logSatirlari: string[], secenek: Secenek = {}) {
@@ -72,6 +73,7 @@ function calistir(logSatirlari: string[], secenek: Secenek = {}) {
       SAHTE_EXEC_ASILI: secenek.execAsili ? "1" : "",
       SAHTE_CURL_HATA: secenek.curlHata ? "1" : "",
       SAHTE_CURL_ILK_HATA: secenek.curlIlkHata ? "1" : "",
+      SAHTE_OLUSMA: secenek.olusma ?? "2000-01-01T00:00:00.000000000Z",
       ...(secenek.simdi === undefined ? {} : { ALARM_SIMDI: String(secenek.simdi) }),
     },
   });
@@ -102,6 +104,10 @@ beforeEach(() => {
     `#!/usr/bin/env bash
 echo "$*" >> "$SAHTE_DIZIN/docker.log"
 tum=" $* "
+if [[ "$1" == "inspect" ]]; then
+  [[ "$*" == "inspect -f {{.Created}} sahte-app" && -n "$SAHTE_OLUSMA" ]] || exit 1
+  echo "$SAHTE_OLUSMA"; exit 0
+fi
 [[ "$tum" == *" -f ${COMPOSE} "* ]] || exit 97
 if [[ "$tum" == *" logs "* ]]; then
   [[ "$tum" == *" --no-log-prefix "* && "$*" == *" app" ]] || exit 98
@@ -119,6 +125,7 @@ if [[ "$tum" == *" logs "* ]]; then
   done < "$SAHTE_DIZIN/app.log"
   exit 0
 fi
+if [[ "$tum" == *" ps -q app "* ]]; then echo sahte-app; exit 0; fi
 if [[ "$tum" == *" exec -T db psql "* ]]; then
   [[ -n "$SAHTE_EXEC_ASILI" ]] && sleep 20
   sql="$(cat)"
@@ -493,6 +500,48 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
     expect(teslim).toHaveLength(1);
     expect(teslim[0]).toContain("ayrıştırılamıyor");
     expect(teslim[0]).toContain("Gönderilemeyen önceki bildirim: okunamiyor");
+  });
+
+  const iso = (sn: number) => new Date(sn * 1000).toISOString();
+
+  it("konteyner imleçten sonra yeniden yaratıldıysa temiz değil belirsiz der", () => {
+    imlecYaz(T - 15 * 60);
+    const { bildirimler } = calistir([zamanli(800, T - 60)], {
+      simdi: T,
+      olusma: iso(T - 5 * 60),
+    });
+    expect(bildirimler).toHaveLength(1);
+    expect(bildirimler[0]).toContain("ayrıştırılamıyor");
+    expect(bildirimler[0]).toContain("yeniden yaratılmış");
+  });
+
+  it("kesim öncesi taramadan hemen sonraki yenileme (5 dk pay) boşluk sayılmaz", () => {
+    imlecYaz(T - 15 * 60);
+    expect(
+      calistir([zamanli(800, T - 60)], { simdi: T, olusma: iso(T - 15 * 60 + 100) }).bildirimler,
+    ).toEqual([]);
+  });
+
+  it("boşluk varken kritik bulunduysa kritik kalır, boşluk da söylenir", () => {
+    imlecYaz(T - 15 * 60);
+    const { bildirimler } = calistir([zamanli(4500, T - 60)], {
+      simdi: T,
+      olusma: iso(T - 5 * 60),
+    });
+    expect(bildirimler[0]).toContain("sınırına dayandı");
+    expect(bildirimler[0]).toContain("yeniden yaratılmış");
+  });
+
+  it("oluşturulma zamanı okunamazsa temiz denmez", () => {
+    imlecYaz(T - 15 * 60);
+    const { bildirimler } = calistir([zamanli(800, T - 60)], { simdi: T, olusma: "" });
+    expect(bildirimler[0]).toContain("oluşturulma zamanı okunamadı");
+  });
+
+  it("ilk koşuda (imleç yok) yeni konteyner boşluk sayılmaz", () => {
+    expect(calistir([zamanli(800, T - 60)], { simdi: T, olusma: iso(T - 60) }).bildirimler).toEqual(
+      [],
+    );
   });
 
   it("sayının ortasında kesilen kayıt sahte düzelme üretmez", () => {
