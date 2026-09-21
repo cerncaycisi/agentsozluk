@@ -244,6 +244,20 @@ describe("lease süresi alarmı", () => {
     expect(calistir([kayit(4500)]).bildirimler).toHaveLength(1);
   });
 
+  it.each(["belirsiz", "kritik", "uyari"])(
+    "kayıt gelmeyen pencerede de süren %s hali 6 saatte bir hatırlatılır",
+    (hal) => {
+      mkdirSync(path.join(dizin, "durum"), { recursive: true });
+      const yediSaatOnce = Math.floor(Date.now() / 1000) - 7 * 3600;
+      writeFileSync(path.join(dizin, "durum", "durum-lease"), `${hal} ${yediSaatOnce}\n`);
+      const hatirlatma = calistir([]).bildirimler;
+      expect(hatirlatma).toHaveLength(1);
+      expect(hatirlatma[0]).toContain(`son bilinen durum sürüyor: ${hal}`);
+      // Hatırlatmadan sonra saat sıfırlanır; hemen ardından tekrar gelmez.
+      expect(calistir([]).bildirimler).toEqual([]);
+    },
+  );
+
   it("kayıt yoksa (worker boşta) karar vermez ve önceki durumu korur", () => {
     expect(calistir([kayit(4500)]).bildirimler).toHaveLength(1);
     expect(calistir([]).bildirimler).toEqual([]);

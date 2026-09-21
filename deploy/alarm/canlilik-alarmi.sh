@@ -148,16 +148,27 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
   else
     kayitlar="$(grep -E '"event": *"db\.transaction\.duration"' <<<"$ham" \
       | grep -E '"label": *"runtime\.lease"')"
-    # Kayıt yoksa (worker boşta) süre hakkında karar yok; önceki durum kalır.
-    # Tek istisna: log yeniden okunabiliyorsa `okunamiyor` kapanmalı.
-    if [[ -z "$kayitlar" ]]; then
-      [[ "$onceki_hal" == "okunamiyor" ]] || return 0
-      bildir "Agent Sözlük: lease logu yeniden okunuyor" default white_check_mark \
-        "Uygulama logu yeniden okunabiliyor; son ${LEASE_PENCERE} içinde lease kaydı yok." \
-        && echo "temiz $simdi" >"$LEASE_DURUM"
-      return 0
-    fi
+  fi
 
+  if (( rc != 0 )); then
+    :
+  elif [[ -z "$kayitlar" ]]; then
+    # Kayıt yoksa (worker boşta) süre hakkında YENİ karar yok.
+    case "$onceki_hal" in
+      temiz) return 0 ;;
+      okunamiyor)
+        # Log yeniden okunabiliyor: bu hal kapanmalı.
+        bildir "Agent Sözlük: lease logu yeniden okunuyor" default white_check_mark \
+          "Uygulama logu yeniden okunabiliyor; son ${LEASE_PENCERE} içinde lease kaydı yok." \
+          && echo "temiz $simdi" >"$LEASE_DURUM"
+        return 0 ;;
+      *)
+        # Son bilinen kötü hal SÜRER ve durum akışından geçer: değişim yok,
+        # ama 6 saatlik hatırlatma kesilmez (Sol, altıncı tur).
+        hal="$onceki_hal"
+        govde="Son ${LEASE_PENCERE} içinde lease kaydı yok; son bilinen durum sürüyor: ${onceki_hal}." ;;
+    esac
+  else
     # Satır başına YALNIZ ilk activeMs. `activeMs: null` callback'in hiç
     # başlamadığı (bağlantı alınamayan) transaction'dır: kötü haber, ayrı
     # sayılır (Sol, üçüncü tur). Kesilmiş satır ne iyi ne kötü sayılır.
