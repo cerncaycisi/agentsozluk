@@ -31,7 +31,9 @@ set -uo pipefail
 
 ESIK_DK="${ALARM_ESIK_DK:-90}"           # bu kadar dakika koşu alınmazsa alarm
 SESSIZLIK_SN="${ALARM_TEKRAR_SN:-21600}" # aynı arıza için tekrar bildirim arası (6 sa)
-KONU="${ALARM_NTFY_KONU:?ALARM_NTFY_KONU gerekli}"
+# `--kesim-oncesi` bildirim göndermez; ntfy konusu yalnız diğer kiplerde zorunlu.
+if [[ "${1:-}" == "--kesim-oncesi" ]]; then KONU="${ALARM_NTFY_KONU:-}"; KESIM=1
+else KONU="${ALARM_NTFY_KONU:?ALARM_NTFY_KONU gerekli}"; KESIM=0; fi
 SUNUCU="${ALARM_NTFY_SUNUCU:-https://ntfy.sh}"
 DURUM="${ALARM_DURUM_DOSYASI:-/var/lib/agent-sozluk-alarm/durum}"
 LEASE_UYARI_MS="${ALARM_LEASE_UYARI_MS:-2500}"
@@ -39,13 +41,13 @@ LEASE_KRITIK_MS="${ALARM_LEASE_KRITIK_MS:-4000}"
 LEASE_UYARI_ADET="${ALARM_LEASE_UYARI_ADET:-3}"
 LEASE_ILK_PENCERE_SN=900     # imleç yokken (ilk koşu) geriye bakılan süre
 LEASE_ORTUSME_SN=60          # docker tarafında imleçten bu kadar geriden oku
-LEASE_KESIM_PAYI_SN=300      # kesim öncesi taramadan konteyner yenilenmesine izin
 LEASE_ZAMAN_ASIMI="${ALARM_LEASE_ZAMAN_ASIMI:-50}"       # sn; log 25 + kimlik 5+5 + gönderim 10
 CANLILIK_ZAMAN_ASIMI="${ALARM_CANLILIK_ZAMAN_ASIMI:-30}" # sn; docker/exec takılırsa
 # En kötü duvar saati: canlılık 30+5 + curl 20 + lease 50+5 = 110 sn; birimin
 # TimeoutStartSec=2min sınırının altında.
 LEASE_DURUM="${DURUM}-lease"
 LEASE_IMLEC="${DURUM}-lease-imlec"
+LEASE_MAKBUZ="${DURUM}-lease-kesim"
 APP=/opt/agent-sozluk/app
 RUNTIME=/opt/agent-sozluk/runtime
 
@@ -152,11 +154,14 @@ Bak: systemctl status agent-sozluk-runtime" \
 #    yaşandı, şimdi düzeldi". Hiçbir karar silinmez; sıra/sınır sorunu yoktur.
 #    `olcum` son GERÇEK ölçümün halidir: log okunamayıp sonra kayıtsız düzelirse
 #    "temiz" varsayılmaz, son ölçülen hal geri gelir.
-#  - KONTEYNER DEĞİŞİMİ (Sol, onuncu tur): dağıtım `--force-recreate app` ile
-#    eski konteyneri ve logunu siler. Dağıtım betiği worker'ı durdurduktan sonra
-#    kesimden ÖNCE bu servisi bir kez koşturur; yine de app konteyneri imleçten
-#    sonra (5 dk paydan fazla) yaratıldıysa taranmamış bir boşluk vardır ve
-#    sonuç en az `belirsiz` olur — olay sessizce kaybolmaz.
+#  - KONTEYNER DEĞİŞİMİ (Sol, onuncu ve on birinci tur): dağıtım
+#    `--force-recreate app` ile eski konteyneri ve logunu siler. İmleç, taranan
+#    konteynerin KİMLİĞİNİ de tutar. Dağıtım, worker'ı durdurduktan sonra aday
+#    sürümün bu betiğini `--kesim-oncesi` ile koşturur: yalnız lease taranır,
+#    bildirim gönderilmez (karar teslim bekler, sonraki timer koşusu gönderir),
+#    başarıda "bu konteyner şu ana kadar tamamen tarandı" MAKBUZU yazılır ve
+#    çıkış kodu sonucu söyler. Konteyner değişmişse ve eski konteyner için
+#    imleçle birebir eşleşen makbuz yoksa sonuç en az `belirsiz` olur.
 #    Durum yazılamazsa imleç ilerlemez ve aynı bildirim her koşuda yeniden
 #    gidebilir (kayıptansa tekrar; journal'a hata düşer).
 
@@ -180,7 +185,8 @@ atomik_yaz() { # $1 dosya, $2 içerik
 
 lease_kontrol() {
   local ham rc kayitlar toplam yavas kritik maks baslamayan okunamayan pencerede p2028
-  local simdi simdi_ms imlec imlec_gecerli=0 esik baslangic pencere_dk yeni_hal govde kimlik olusma olusma_ms bosluk=""
+  local simdi simdi_ms imlec imlec_kimlik imlec_gecerli=0 esik baslangic pencere_dk yeni_hal govde
+  local kimlik makbuz_kimlik makbuz_ms bosluk="" basari=0
   local hal an teslim en_kotu olcum baslik oncelik etiket durum_yazildi
   # ALARM_SIMDI (sn) yalnız testler içindir; üretimde tanımlı değildir.
   if [[ -n "${ALARM_SIMDI:-}" ]]; then simdi_ms=$(( ALARM_SIMDI * 1000 )); else simdi_ms="$(date +%s%3N)"; fi
@@ -199,7 +205,9 @@ lease_kontrol() {
 
   # İmleç (ms). Geçersiz/gelecekteyse düzeltilir ve HEMEN yazılır: log bu koşuda
   # okunamasa da sonraki koşu buradan başlar (Sol, sekizinci tur).
-  read -r imlec 2>/dev/null <"$LEASE_IMLEC" || imlec=""
+  imlec=""; imlec_kimlik=""
+  read -r imlec imlec_kimlik 2>/dev/null <"$LEASE_IMLEC" || true
+  [[ "$imlec_kimlik" =~ ^[0-9a-f]{12,64}$ ]] || imlec_kimlik=""
   if [[ "$imlec" =~ ^[1-9][0-9]{0,15}$ ]] && (( imlec <= simdi_ms )); then
     esik="$imlec"; imlec_gecerli=1
   else
@@ -207,6 +215,11 @@ lease_kontrol() {
     esik=$(( simdi_ms - LEASE_ILK_PENCERE_SN * 1000 ))
     atomik_yaz "$LEASE_IMLEC" "$esik" || true
   fi
+
+  # Taranacak konteynerin kimliği: imleçle birlikte saklanır.
+  kimlik="$(timeout 5 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
+    ps -q app 2>/dev/null | head -1)"
+  [[ "$kimlik" =~ ^[0-9a-f]{12,64}$ ]] || kimlik=""
   baslangic=$(( esik / 1000 - LEASE_ORTUSME_SN - 900 ))
   pencere_dk=$(( (simdi_ms - esik + 59999) / 60000 ))
 
@@ -292,27 +305,25 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
 Ayrıştırılamayan: ${okunamayan}. Bak: docker compose logs app | grep db.transaction.duration"
     fi
 
-    # Konteyner imleçten sonra yaratıldıysa eski konteynerin logu (ve belki bir
-    # olay) gitmiştir. İlk koşuda (imleç yok) bu soru anlamsızdır.
-    if (( imlec_gecerli )); then
-      kimlik="$(timeout 5 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
-        ps -q app 2>/dev/null | head -1)"
-      olusma_ms=""
-      if [[ -n "$kimlik" ]]; then
-        olusma="$(timeout 5 docker inspect -f '{{.Created}}' "$kimlik" 2>/dev/null)"
-        # `date -d ""` bugünün gece yarısını verir; boş değer asla zaman sayılmaz.
-        [[ -n "$olusma" ]] && olusma_ms="$(date -u -d "$olusma" +%s%3N 2>/dev/null)"
+    # Konteyner son taramadan beri değiştiyse eski konteynerin logu (ve belki
+    # bir olay) gitmiştir — o konteyner için imleçle eşleşen kesim makbuzu yoksa.
+    # İmleçte kimlik yoksa (ilk koşu ya da eski biçim) karşılaştırma yapılamaz.
+    if [[ -z "$kimlik" ]]; then
+      bosluk="app konteynerinin kimliği okunamadı; taramanın bütünlüğü doğrulanamadı."
+    elif (( imlec_gecerli )) && [[ -n "$imlec_kimlik" && "$kimlik" != "$imlec_kimlik" ]]; then
+      makbuz_kimlik=""; makbuz_ms=""
+      read -r makbuz_kimlik makbuz_ms 2>/dev/null <"$LEASE_MAKBUZ" || true
+      # Makbuz: eski konteyner worker durduktan sonra `makbuz_ms`e kadar tamamen
+      # tarandı. Eski konteynerin son taraması (imleç) ondan eski değilse boşluk yok.
+      if [[ "$makbuz_kimlik" != "$imlec_kimlik" || ! "$makbuz_ms" =~ ^[1-9][0-9]{0,15}$ ]] \
+         || (( makbuz_ms > imlec )); then
+        bosluk="app konteyneri son taramadan sonra değişmiş (${imlec_kimlik:0:12} → ${kimlik:0:12}) ve eski konteyner kesimden önce taranmamış; $(iso $(( esik / 1000 ))) sonrasındaki eski log kayboldu."
       fi
-      if [[ ! "$olusma_ms" =~ ^[1-9][0-9]*$ ]]; then
-        bosluk="app konteynerinin oluşturulma zamanı okunamadı; taramanın bütünlüğü doğrulanamadı."
-      elif (( olusma_ms > esik + LEASE_KESIM_PAYI_SN * 1000 )); then
-        bosluk="app konteyneri $(iso $(( olusma_ms / 1000 ))) tarihinde yeniden yaratılmış; $(iso $(( esik / 1000 ))) sonrasındaki eski konteyner logu taranamadı."
-      fi
-      if [[ -n "$bosluk" ]]; then
-        (( $(agirlik "$yeni_hal") >= 1 )) || yeni_hal=belirsiz
-        govde="${bosluk}
+    fi
+    if [[ -n "$bosluk" ]]; then
+      (( $(agirlik "$yeni_hal") >= 1 )) || yeni_hal=belirsiz
+      govde="${bosluk}
 ${govde}"
-      fi
     fi
   fi
 
@@ -330,7 +341,8 @@ ${govde}"
     teslim=0
   fi
 
-  if (( teslim == 0 )); then
+  # Kesim öncesi kip bildirim göndermez: karar teslim bekler, timer gönderir.
+  if (( teslim == 0 && ! KESIM )); then
     case "$hal" in
       kritik)     baslik="Agent Sözlük: lease 5 sn sınırına dayandı"; oncelik=urgent;  etiket=rotating_light ;;
       uyari)      baslik="Agent Sözlük: lease yavaşlıyor";            oncelik=high;    etiket=warning ;;
@@ -358,7 +370,16 @@ ${govde}"
   # İmleç YALNIZ durum kalıcılaştıysa ilerler: yoksa bulunan karar hem durumda
   # hem logda kaybolurdu (Sol, dokuzuncu tur).
   if atomik_yaz "$LEASE_DURUM" "$hal $an $teslim $en_kotu $olcum"; then
-    if (( rc == 0 )); then atomik_yaz "$LEASE_IMLEC" "$simdi_ms" || true; fi
+    # Kimlik bilinmiyorsa imleç ilerlemez: sonraki koşu konteyner değişimini
+    # ancak kimlikli bir imleçle doğrulayabilir.
+    if (( rc == 0 )) && [[ -n "$kimlik" ]] && atomik_yaz "$LEASE_IMLEC" "$simdi_ms $kimlik"; then
+      basari=1
+    fi
+  fi
+  # Makbuz: bu konteyner `simdi_ms`e kadar eksiksiz tarandı ve karar kalıcı.
+  if (( KESIM )); then
+    (( basari )) && atomik_yaz "$LEASE_MAKBUZ" "$kimlik $simdi_ms" && return 0
+    return 1
   fi
   return 0
 }
@@ -366,6 +387,11 @@ ${govde}"
 if [[ "${1:-}" == "--yalniz-lease" ]]; then
   lease_kontrol
   exit 0
+fi
+if (( KESIM )); then
+  # Dağıtım betiği çağırır; sonucu çıkış koduyla söyler (0 = makbuz yazıldı).
+  lease_kontrol
+  exit $?
 fi
 
 canlilik_kontrol

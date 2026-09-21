@@ -111,14 +111,20 @@ describe("schema-neutral production release lane", () => {
   it("scans lease logs after the worker stops and before the app container is recreated", () => {
     const kesim = remote.slice(remote.indexOf("\ncutover() {"));
     const durdur = kesim.indexOf("sudo systemctl stop agent-sozluk-runtime.service");
-    const tara = kesim.indexOf("sudo systemctl start agent-sozluk-alarm.service");
+    const tara = kesim.indexOf("pre_cutover_lease_scan");
     const yenile = kesim.indexOf("--force-recreate app");
     expect(durdur).toBeGreaterThan(0);
     expect(tara).toBeGreaterThan(durdur);
     expect(yenile).toBeGreaterThan(tara);
-    // Alarm taraması dağıtımı durduramaz.
-    expect(kesim).toContain("RELEASE_WARN lease alarm pre-cutover scan failed");
-    expect(kesim).toContain("if systemctl cat agent-sozluk-alarm.service >/dev/null 2>&1; then");
+    // Aday sürümün betiği, yalnız lease kipiyle, sınırlı sürede ve sonucu görünür.
+    expect(remote).toContain('local candidate_alarm="$app_root/deploy/alarm/canlilik-alarmi.sh"');
+    expect(remote).toContain(
+      'if timeout 60 bash "$candidate_alarm" --kesim-oncesi </dev/null; then',
+    );
+    expect(remote).toContain("RELEASE_LEASE_SCAN_OK");
+    expect(remote).toContain("RELEASE_WARN lease alarm pre-cutover scan failed");
+    // Kurulu kopya adaydan farklıysa uyarır.
+    expect(remote).toContain("RELEASE_WARN installed alarm script differs from candidate");
   });
 
   it("atomically installs and verifies the versioned direct-Node runtime unit", () => {

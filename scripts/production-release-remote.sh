@@ -390,6 +390,29 @@ write_no_migration_override() {
   chmod 0600 "$override"
 }
 
+# Lease süresi alarmı app konteynerinin logunu okur; --force-recreate eski
+# konteyneri (ve logunu) siler. Worker durduktan sonra yeni lease kaydı oluşmaz:
+# aday sürümün alarm betiği son kayıtları kesimden ÖNCE tarar ve başarıda bir
+# makbuz yazar (bildirim göndermez). Başarısızlık dağıtımı DURDURMAZ ama
+# görünür olur; alarm da konteyner değişimini makbuzsuz görürse `belirsiz` der.
+pre_cutover_lease_scan() {
+  local candidate_alarm="$app_root/deploy/alarm/canlilik-alarmi.sh"
+  local installed_alarm=/opt/agent-sozluk/scripts/canlilik-alarmi.sh
+  systemctl cat agent-sozluk-alarm.service >/dev/null 2>&1 || return 0
+  if timeout 60 bash "$candidate_alarm" --kesim-oncesi </dev/null; then
+    printf 'RELEASE_LEASE_SCAN_OK\n'
+  else
+    printf 'RELEASE_WARN lease alarm pre-cutover scan failed\n' >&2
+  fi
+  # ERR tuzağı komut ikamesinde de çalışır: yalnız okunabilen dosyanın özeti alınır.
+  local installed_hash=missing candidate_hash=missing
+  if test -r "$installed_alarm"; then installed_hash="$(sha256sum <"$installed_alarm")"; fi
+  if test -r "$candidate_alarm"; then candidate_hash="$(sha256sum <"$candidate_alarm")"; fi
+  if test "$installed_hash" != "$candidate_hash"; then
+    printf 'RELEASE_WARN installed alarm script differs from candidate\n' >&2
+  fi
+}
+
 cutover() {
   local image_id app_container current_sha counts queued running cancel_requested leases
   local candidate_compose runtime_next entrypoint_json worker_state app_health
@@ -418,14 +441,7 @@ cutover() {
     test "$running" = 0
     test "$cancel_requested" = 0
     test "$leases" = 0
-    # Lease süresi alarmı app konteynerinin logunu okur; --force-recreate eski
-    # konteyneri (ve logunu) siler. Worker artık durduğu için yeni lease kaydı
-    # oluşmaz: son kayıtları kesimden ÖNCE tara. Alarm yoksa ya da başarısızsa
-    # dağıtım durmaz; alarm konteyner değişimini ayrıca `belirsiz` olarak görür.
-    if systemctl cat agent-sozluk-alarm.service >/dev/null 2>&1; then
-      sudo systemctl start agent-sozluk-alarm.service </dev/null ||
-        printf 'RELEASE_WARN lease alarm pre-cutover scan failed\n' >&2
-    fi
+    pre_cutover_lease_scan
     write_no_migration_override
     candidate_compose=(
       docker compose
