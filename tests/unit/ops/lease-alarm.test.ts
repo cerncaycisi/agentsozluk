@@ -57,6 +57,7 @@ interface Secenek {
   logDosyasi?: string; // sahte docker'ın okuyacağı log (varsayılan app.log)
   logsGecikme?: number; // sahte `docker logs` bu kadar sn sürer
   leaseZamanAsimi?: number; // lease alt sürecinin süre sınırı (test varsayılanı 3 sn)
+  awkHata?: "ana" | "tarihce"; // sahte awk yalnız bu çağrıda hata verir
 }
 
 function ortam(secenek: Secenek): NodeJS.ProcessEnv {
@@ -79,6 +80,7 @@ function ortam(secenek: Secenek): NodeJS.ProcessEnv {
     SAHTE_OLUSMA: secenek.olusma === undefined ? "" : new Date(secenek.olusma * 1000).toISOString(),
     SAHTE_LOG_DOSYASI: secenek.logDosyasi ?? path.join(dizin, "app.log"),
     SAHTE_LOGS_GECIKME: String(secenek.logsGecikme ?? 0),
+    SAHTE_AWK_HATA: secenek.awkHata ?? "",
     ...(secenek.simdi === undefined ? {} : { ALARM_SIMDI: String(secenek.simdi) }),
   };
 }
@@ -162,6 +164,16 @@ fi
 { printf '%s\\n' "$@"; printf -- '---\\n'; } >> "$SAHTE_DIZIN/curl.log"
 `,
   );
+  writeFileSync(
+    path.join(bin, "awk"),
+    `#!/usr/bin/env bash
+# ana: kayıtları ayrıştıran çağrı; tarihce: yazılacak tarihçeyi süzen çağrı.
+[[ "$SAHTE_AWK_HATA" == ana && "$*" == *"gdosya="* ]] && exit 2
+[[ "$SAHTE_AWK_HATA" == tarihce && "$*" == *"gorulen"* ]] && exit 2
+exec /usr/bin/awk "$@"
+`,
+  );
+  chmodSync(path.join(bin, "awk"), 0o755);
   chmodSync(path.join(bin, "docker"), 0o755);
   chmodSync(path.join(bin, "curl"), 0o755);
 });
@@ -690,6 +702,41 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
     const { bildirimler } = calistir(loglar, { simdi: T + 900, kimlik: ESKI });
     expect(bildirimler[0]).toContain("lease yavaşlıyor");
   });
+
+  it("çok büyük tarihçe dosyası ayrıştırmayı bozmaz ve yazılan tarihçe sınırlı kalır", () => {
+    imlecYaz(T);
+    // 20.000 eski zaman damgası (~280 KB, tek argüman sınırının çok üstünde)
+    // + pencere içinde iki yavaş kayıt.
+    const eski = Array.from({ length: 20_000 }, (_, i) => (T - 86_400 + i) * 1000);
+    const icerde = [(T - 120) * 1000, (T - 60) * 1000];
+    writeFileSync(
+      path.join(dizin, "durum", "durum-lease-yavas"),
+      [...eski, ...icerde].join(",") + "\n",
+    );
+    const { bildirimler, stderr } = calistir([zamanli(2700, T + 60)], {
+      simdi: T + 900,
+      kimlik: ESKI,
+    });
+    expect(stderr).not.toContain("işlenemedi");
+    expect(bildirimler[0]).toContain("lease yavaşlıyor");
+    const yazilan = readFileSync(path.join(dizin, "durum", "durum-lease-yavas"), "utf8").trim();
+    expect(yazilan.split(",").length).toBeLessThanOrEqual(3);
+  });
+
+  it.each(["ana", "tarihce"] as const)(
+    "ayrıştırma hatası (%s) 'kayıt yok' sayılmaz; bildirilir ve imleç ilerlemez",
+    (hangisi) => {
+      imlecYaz(T - 15 * 60);
+      const { bildirimler, stderr } = calistir([zamanli(4500, T - 60)], {
+        simdi: T,
+        kimlik: ESKI,
+        awkHata: hangisi,
+      });
+      expect(stderr).toContain("işlenemedi");
+      expect(bildirimler[0]).toContain("okunamıyor");
+      expect(imlecOku()).toBe(T - 15 * 60);
+    },
+  );
 
   it("tarihçe yazılamazsa imleç ilerlemez", () => {
     imlecYaz(T - 15 * 60);

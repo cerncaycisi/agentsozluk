@@ -216,6 +216,7 @@ lease_kontrol_kilitli() {
   local ham rc kayitlar toplam yavas kritik maks baslamayan okunamayan pencerede p2028
   local simdi simdi_ms imlec imlec_kimlik imlec_gecerli=0 esik baslangic pencere_dk yeni_hal govde
   local kimlik makbuz_kimlik makbuz_ms bosluk="" basari=0 gecmis yeni_yavas="" yavas_yaz="" tohum=0
+  local islenemedi=0 gdosya=""
   local olusma olusma_ms
   local hal an teslim en_kotu olcum baslik oncelik etiket durum_yazildi
   # ALARM_SIMDI (sn) yalnız testler içindir; üretimde tanımlı değildir.
@@ -259,6 +260,8 @@ lease_kontrol_kilitli() {
   if [[ -e "$LEASE_YAVAS" ]]; then
     read -r gecmis 2>/dev/null <"$LEASE_YAVAS" || true
     [[ "$gecmis" =~ ^[0-9,]*$ ]] || gecmis=""
+    # awk tarihçeyi DOSYADAN okur: argüman boyu sınırına takılmaz (Sol).
+    gdosya="$LEASE_YAVAS"
   else
     # Tarihçe dosyası yok (ilk kurulum ya da silinmiş): son 15 dk'yı logdan
     # TOHUMLA — eski sürümün işlediği yavaş kayıtlar pencereden düşmesin (Sol).
@@ -286,7 +289,7 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
     # `null` = callback hiç başlamadı. `pencerede`: YENİ bir yavaş kayıtla biten
     # herhangi bir 15 dk'lık pencerede en çok kaç yavaş kayıt var.
     read -r toplam yavas kritik maks baslamayan okunamayan pencerede p2028 yeni_yavas < <(awk \
-      -v u="$LEASE_UYARI_MS" -v k="$LEASE_KRITIK_MS" -v e="$esik" -v s="$simdi_ms" -v g="$gecmis" -v tohum="$tohum" '
+      -v u="$LEASE_UYARI_MS" -v k="$LEASE_KRITIK_MS" -v e="$esik" -v s="$simdi_ms" -v gdosya="$gdosya" -v tohum="$tohum" '
       function ep(z,  y,m,d,H,M,S,mp,ms) {
         y=substr(z,1,4)+0; m=substr(z,6,2)+0; d=substr(z,9,2)+0
         H=substr(z,12,2)+0; M=substr(z,15,2)+0; S=substr(z,18,2)+0
@@ -300,9 +303,14 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
         # penceresi imleçten 15 dakika geriye uzanır (Astra: 15 dakikalık timer
         # aralığında şimdi eksi 15 dakika sınırı önceki taramanın yavaşlarını
         # düşürüyordu).
-        ng = split(g, gg, ",")
-        for (i = 1; i <= ng; i++)
-          if (gg[i] ~ /^[0-9]+$/ && gg[i] + 0 < e && gg[i] + 0 >= e - 900000) { ny++; yt[ny] = gg[i] + 0; yn[ny] = 0 }
+        if (gdosya != "") {
+          while ((getline satir < gdosya) > 0) {
+            ng = split(satir, gg, ",")
+            for (i = 1; i <= ng; i++)
+              if (gg[i] ~ /^[0-9]+$/ && gg[i] + 0 < e && gg[i] + 0 >= e - 900000) { ny++; yt[ny] = gg[i] + 0; yn[ny] = 0 }
+          }
+          close(gdosya)
+        }
       }
       NF == 0 { next }
       {
@@ -336,14 +344,24 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
           while (yt[i] - yt[lo] > 900000) lo++
           if (yn[i] && i - lo + 1 > w) w = i - lo + 1 }
         print n+0, y+0, c+0, m+0, nl+0, b+0, w+0, p+0, (yy == "" ? "-" : yy) }' <<<"$kayitlar")
+    # Ayrıştırma çıktısı sayısal değilse (awk hatası) sonuç "kayıt yok" SAYILMAZ:
+    # işlenemedi → okunamıyor gibi; imleç ilerlemez (Sol, on yedinci tur).
+    [[ "${toplam:-}" =~ ^[0-9]+$ && "${pencerede:-}" =~ ^[0-9]+$ && "${p2028:-}" =~ ^[0-9]+$ ]] || islenemedi=1
     [[ "$yeni_yavas" == "-" ]] && yeni_yavas=""
-    # Yazılacak tarihçe: eski + yeni yavaş kayıtlar; bu taramanın imlecinden
-    # 15 dk geriye kadar (imleç ilerlemezse sonraki tarama aynı eşikten başlar).
+    # Yazılacak tarihçe SINIRLI iki aralıktır: [imleç−15 dk, imleç) — imleç
+    # ilerlemezse sonraki tarama bunu ister — ve [şimdi−15 dk, şimdi) — ilerlerse.
+    # Boyut gecikmeden bağımsızdır (Sol: sınırsız liste argüman boyunu aşıyordu).
     yavas_yaz="$(tr ',' '\n' <<<"${gecmis},${yeni_yavas}" | awk -v e="$esik" -v s="$simdi_ms" '
-      /^[0-9]+$/ && $1 + 0 >= e - 900000 && $1 + 0 < s && !gorulen[$1]++ { o = o (o == "" ? "" : ",") $1 }
-      END { print o }')"
+      /^[0-9]+$/ && (($1 + 0 >= e - 900000 && $1 + 0 < e) || ($1 + 0 >= s - 900000 && $1 + 0 < s)) && !gorulen[$1]++ { o = o (o == "" ? "" : ",") $1 }
+      END { print o }')" || islenemedi=1
 
-    if (( toplam == 0 )); then
+    if (( islenemedi )); then
+      hata_yaz "lease kayıtları işlenemedi (ayrıştırma hatası)"
+      rc=98
+      yeni_hal=okunamiyor
+      govde="Lease kayıtları okundu ama işlenemedi (ayrıştırma hatası); lease süresi izlenemiyor.
+Canlılık kontrolü bundan bağımsız çalışıyor."
+    elif (( toplam == 0 )); then
       # Yeni kayıt yok (worker boşta): süre hakkında YENİ karar yok; son hal sürer.
       # Tek istisna: log yeniden okunabiliyor, `okunamiyor` kapanır — ama "temiz"
       # varsayılmaz, SON ÖLÇÜLEN hal geri gelir (Sol, dokuzuncu tur).
