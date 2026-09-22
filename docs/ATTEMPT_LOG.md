@@ -8475,3 +8475,19 @@ lease tarafından hiç kullanılmıyordu.
   yan etkisini kontrol et.
 - Giriş oran sınırı testi 15 dk pencere sınırında iki kez düştü (00:00 ve 07:30 UTC); PR #157
   ile sınırdan uzak duruyor.
+
+## 2026-09-22 — Hotjar'ı yanlışlıkla kaldırdım; onaya bağlı geri geldi
+
+- `37c6618`'de Hotjar tamamen kaldırıldı. Bu benim önerimdi; Gökhan önerime cevap vermeden
+  başka konulara geçmişti, ben sessizliği onay saydım ve kayıtlara "Gökhan kararı" yazdım.
+  Gökhan Hotjar'ı istiyordu.
+- Düzeltme `c21a798`: Hotjar GA4 ile aynı onay kapısında. Astra ilk adayı (`9854a3b`)
+  durdurdu: yalnız GA4'ten bahseden şeritte verilmiş eski `kabul` Hotjar'ı sormadan açardı →
+  onay kapsamı sürümlendi (`kabul-v2`). Smoke 6/6.
+
+**Tekrarlama:**
+
+- Kullanıcının cevap vermediği bir öneriyi onay sayma; ürün davranışını değiştiren her
+  öneride açık "evet" al. Kayıtta "X kararı" yalnız X açıkça karar verdiyse yazılır.
+- Onay metninin kapsamı genişlerse (yeni sağlayıcı) eski onay yeni kapsamı kapsamaz; onay
+  değerini sürümle.
