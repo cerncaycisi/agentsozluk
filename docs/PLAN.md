@@ -1472,10 +1472,13 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       olan buydu). Öneri: `StartLimitIntervalSec=0` + artan `RestartSec`. **Kapatma
       ölçütü:** izole ortamda zorlanmış crash-loop'tan 5 dakika içinde kendiliğinden
       toparlanma; alarmın aynı olayı yine bildirdiği kanıtı. _(bölüm 5.5)_
-- [ ] **A4 — iletişim taleplerinin saklama süresi kararı.** PR #164 kayıtları süresiz
-      saklıyor ve otomatik silme sözü vermiyor. Karar Gökhan'ın: süresiz mi, ele
-      alındıktan N ay sonra silinsin mi? Süre seçilirse bakım işine eklenir ve
-      `/gizlilik` metni ona göre güncellenir. _(Gökhan kararı)_
+- [x] **A4 — iletişim taleplerinin saklama süresi: SÜRESİZ. KARAR VERİLDİ.**
+      _(Gökhan kararı, 22 Eylül 2026: "Suresiz kalsın")_ Talep kayıtları otomatik
+      silinmez; otomatik temizlik işi açılmayacak. Kayıt sahibi silinmesini aynı
+      formdan isteyebilir, silme elle yapılır. `/gizlilik` ve `/iletisim` metinleri
+      zaten otomatik silme sözü vermiyor, değişiklik gerekmedi. Kabul edilen sonuç:
+      dağıtık spam'de tablo sınırsız büyüyebilir (Sol bulgusu); sınırlama IP başına
+      saatte 5 gönderimle kalıyor.
 
 **Var olan maddelere bağlananlar** — yeni madde açılmadı:
 
