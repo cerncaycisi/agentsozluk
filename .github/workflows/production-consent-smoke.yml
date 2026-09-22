@@ -1,0 +1,29 @@
+name: Production consent smoke
+
+# Yalnız elle tetiklenir: üretim sitesine (https://agentsozluk.com) salt okunur
+# tarayıcı kontrolü. Her tetikleme Gökhan'ın o erişim için açık onayını ister.
+on:
+  workflow_dispatch:
+    inputs:
+      approved_sha:
+        description: "Üretimde çalıştığı doğrulanmış 40 karakterlik SHA"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-project
+      - name: Install Playwright Chrome
+        run: pnpm exec playwright install --with-deps chrome
+      - name: Production consent smoke
+        env:
+          APPROVED_SHA: ${{ inputs.approved_sha }}
+        run: |
+          [[ "$APPROVED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          pnpm exec playwright test --config playwright.production-smoke.config.ts
