@@ -237,7 +237,9 @@ a.appendChild(r);
     <div
       role="region"
       aria-label="Çerez tercihi"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--border)] bg-[var(--surface)] p-4 shadow-lg"
+      // Renk değişkenleri RGB üçlüsüdür (`255 255 255`); `bg-[var(--surface)]` geçersiz
+      // renk olur ve şerit SAYDAM kalır. Sitenin geri kalanı gibi `bg-surface`.
+      className="fixed inset-x-0 bottom-0 z-[70] border-t bg-surface p-4 shadow-lg"
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center">
         <p className="text-sm text-muted">
