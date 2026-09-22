@@ -344,6 +344,7 @@ Entry gövdesi 10–10.000 karakter düz metindir; Markdown/HTML çalıştırıl
 | GET    | `/api/v1/feeds/debe`            | Public        | Önceki İstanbul gününün pozitif entry'leri |
 | GET    | `/api/v1/feeds/random`          | Public        | Random ACTIVE topic verisi ve URL          |
 | POST   | `/api/v1/reports`               | GAMMAZ + CSRF | ENTRY gammazı veya TOPIC canonical talebi  |
+| POST   | `/api/v1/iletisim`              | Public        | İletişim ve içerik kaldırma formu          |
 
 `/api/v1/search/suggest` diğer endpoint'lerin aksine ortak envelope değil düz öneri gövdesi döner;
 `X-Request-Id` header'ı yine gönderilir. İki karakterden kısa sorgu database'e gitmez ve kotayı
@@ -358,6 +359,14 @@ kategorisi; başlık talebi için önerilen canonical başlık gerekir. İlgisiz
 Eski generic reason kayıtları yalnız tarihsel okuma için korunur. Aynı actor/target için ikinci
 OPEN gammaz `409 REPORT_ALREADY_OPEN` döner.
 
+`POST /api/v1/iletisim` giriş istemez: bir içeriğin kaldırılmasını isteyen kişinin çoğu zaman
+hesabı yoktur. Gövde `kind` (`CONTENT_REMOVAL` | `OTHER`), 10–4000 karakter `message`, isteğe
+bağlı `subjectPath` ve isteğe bağlı `replyEmail` alır. `subjectPath` yalnız bu sitenin bir yolu
+olabilir; `//host` ve `/\host` gibi protokole göreli değerler reddedilir. Köken doğrulanır ve
+IP başına saatte 5 gönderim uygulanır (`429 RATE_LIMITED`). Ham IP saklanmaz, yalnız HMAC özeti
+tutulur. Gönderen kimliği **yalnız** geçerli oturum ve CSRF anahtarı varken kaydedilir; aksi
+hâlde ileti anonim yazılır ve istek yine `201` döner.
+
 ### Moderation
 
 | Method | Path                                                                       | Auth             | Açıklama                                       |
@@ -367,6 +376,7 @@ OPEN gammaz `409 REPORT_ALREADY_OPEN` döner.
 | GET    | `/api/v1/moderation/reports/{reportId}`                                    | FORMAT/LEGAL     | Karar, madde ve işlem geçmişi                  |
 | POST   | `/api/v1/moderation/reports/{reportId}/resolve`                            | Exact cap + CSRF | Gerekçeyi `ACCEPTED` olarak karara bağla       |
 | POST   | `/api/v1/moderation/reports/{reportId}/reject`                             | Exact cap + CSRF | Gerekçeyi `REJECTED` olarak karara bağla       |
+| POST   | `/api/v1/moderation/contact-messages/{messageId}/handle`                   | MOD/ADMIN + CSRF | İletişim iletisini "ele alındı" işaretle       |
 | POST   | `/api/v1/moderation/entries/{entryId}/hide`                                | FORMAT + CSRF    | Entry gizle; accepted Gammaz bağlanabilir      |
 | POST   | `/api/v1/moderation/entries/{entryId}/restore`                             | FORMAT + CSRF    | Entry geri yükle                               |
 | POST   | `/api/v1/moderation/entries/{entryId}/move`                                | FORMAT + CSRF    | Entry ID'yi koruyarak ACTIVE topic'e taşı      |

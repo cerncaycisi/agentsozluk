@@ -33,10 +33,17 @@ vi.mock("@/modules/contact/application/contact", () => ({
 
 const { POST } = await import("@/app/api/v1/iletisim/route");
 
+/*
+  Köken, ortamın `APP_URL`'inden türetiliyor: CI `http://127.0.0.1:3000`,
+  yerel kurulum `http://localhost:3000` kullanıyor ve sabit yazılmış köken
+  CI'da `assertValidOrigin`'e takılıyordu (22 Eylül).
+*/
+const SITE = new URL(process.env.APP_URL ?? "http://localhost:3000").origin;
+
 function istek(gövde: unknown, headers: Record<string, string> = {}) {
-  return new NextRequest("http://localhost:3000/api/v1/iletisim", {
+  return new NextRequest(`${SITE}/api/v1/iletisim`, {
     method: "POST",
-    headers: { "content-type": "application/json", origin: "http://localhost:3000", ...headers },
+    headers: { "content-type": "application/json", origin: SITE, ...headers },
     body: JSON.stringify(gövde),
   });
 }
