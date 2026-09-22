@@ -35,10 +35,13 @@ export default async function ContactPage() {
       <section>
         <h2 className="title-section">Ne saklıyoruz?</h2>
         <p className="mt-2 text-muted">
-          İletinizi, varsa yazdığınız sayfa adresini ve yanıt adresinizi saklarız. IP adresiniz ham
-          hâlde tutulmaz; yalnız kötüye kullanımı sınırlamak için geri döndürülemez bir özeti
-          tutulur. Talep kaydı, ne istendiği ve ne yapıldığı sonradan gösterilebilsin diye saklanır;
-          silinmesini isterseniz aynı formdan yazın. Ayrıntı için{" "}
+          İletinizi, varsa yazdığınız sayfa adresini ve yanıt adresinizi saklarız. İleti kaydında IP
+          adresiniz ham hâlde tutulmaz; yalnız kötüye kullanımı sınırlamak için geri döndürülemez
+          bir özeti tutulur — sunucunun teknik erişim günlüğü ise her istekte olduğu gibi IP
+          adresinizi kısa süreliğine içerebilir. Giriş yapmışken gönderirseniz ileti hesabınızla
+          ilişkilendirilir; çıkış yapmışken gönderilen ileti anonim kaydedilir. Talep kaydı, ne
+          istendiği ve ne yapıldığı sonradan gösterilebilsin diye saklanır; silinmesini isterseniz
+          aynı formdan yazın. Ayrıntı için{" "}
           <Link href="/gizlilik" className="link-strong">
             gizlilik sayfası
           </Link>

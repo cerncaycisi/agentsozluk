@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { NextRequest } from "next/server";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { POST as iletisimPost } from "@/app/api/v1/iletisim/route";
 import type { ActorContext } from "@/modules/auth/domain/actor";
 import {
   contactIpKeyHash,
@@ -168,7 +170,9 @@ describe("iletişim iletileri (PostgreSQL)", () => {
     });
     expect(kayit.handledAt).not.toBeNull();
     await expect(
-      resolveContactMessage(integrationDatabase, actor(moderator.id), id, {}),
+      resolveContactMessage(integrationDatabase, actor(moderator.id), id, {
+        note: "Zaten kapatılmıştı.",
+      }),
     ).rejects.toMatchObject({ code: "CONTACT_MESSAGE_NOT_OPEN" });
     const [, acikToplam] = await getContactMessages(integrationDatabase, actor(moderator.id), {
       status: "OPEN",
@@ -176,5 +180,36 @@ describe("iletişim iletileri (PostgreSQL)", () => {
       take: 20,
     });
     expect(acikToplam).toBe(0);
+  });
+});
+
+describe("iletişim formu oran sınırı (gerçek route + PostgreSQL)", () => {
+  /*
+    Route testi limiter'ı mock'luyor, entegrasyon testi de route'u çağırmıyordu:
+    gerçek sayacın altıncı isteği reddettiğini hiçbir test görmüyordu
+    (Sol, 22 Eylül). Burada gerçek uç, gerçek kova ve gerçek tablo var.
+  */
+  const site = new URL(process.env.APP_URL ?? "http://localhost:3000").origin;
+
+  function istek(mesaj: string) {
+    return new NextRequest(`${site}/api/v1/iletisim`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: site,
+        "x-forwarded-for": "203.0.113.50",
+      },
+      body: JSON.stringify({ kind: "OTHER", message: mesaj }),
+    });
+  }
+
+  it("aynı IP'den saatte beş gönderim kabul eder, altıncıyı reddeder", async () => {
+    const durumlar: number[] = [];
+    for (let sira = 1; sira <= 6; sira += 1) {
+      const response = await iletisimPost(istek(`Oran sınırı denemesi ${sira} numaralı ileti.`));
+      durumlar.push(response.status);
+    }
+    expect(durumlar).toEqual([201, 201, 201, 201, 201, 429]);
+    expect(await integrationDatabase.contactMessage.count()).toBe(5);
   });
 });

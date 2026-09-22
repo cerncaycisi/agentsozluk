@@ -80,7 +80,7 @@ export async function resolveContactMessage(
     const updated = await markContactMessageHandled(transaction, {
       id: messageId,
       handledById: actor.actorId,
-      note: input.note ?? null,
+      note: input.note,
       now,
     });
     if (updated.count === 0)
@@ -95,7 +95,7 @@ export async function resolveContactMessage(
       entityType: "ContactMessage",
       entityId: messageId,
       requestId: actor.requestId,
-      metadata: { hasNote: input.note !== undefined },
+      metadata: { noteLength: input.note.length },
     });
     return { id: messageId, status: "HANDLED" as const, handledAt: now };
   });

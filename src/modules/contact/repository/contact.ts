@@ -49,7 +49,7 @@ export function countContactMessages(database: DatabaseExecutor, status: "OPEN" 
 
 export function markContactMessageHandled(
   database: DatabaseExecutor,
-  input: { id: string; handledById: string; note: string | null; now: Date },
+  input: { id: string; handledById: string; note: string; now: Date },
 ) {
   return database.contactMessage.updateMany({
     where: { id: input.id, status: "OPEN" },

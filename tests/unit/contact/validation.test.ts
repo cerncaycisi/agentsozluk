@@ -63,8 +63,12 @@ describe("iletişim formu doğrulaması", () => {
       contactMessageCreateSchema.safeParse({ ...gecerli, message: "a".repeat(4001) }).success,
     ).toBe(false);
     expect(contactMessageHandleSchema.safeParse({ note: "a".repeat(1001) }).success).toBe(false);
-    expect(contactMessageHandleSchema.parse({ note: "   " }).note).toBeUndefined();
-    expect(contactMessageHandleSchema.parse({}).note).toBeUndefined();
+    // Kapatma notu zorunlu: arayüz de en az 10 karakter istiyor.
+    expect(contactMessageHandleSchema.safeParse({ note: "   " }).success).toBe(false);
+    expect(contactMessageHandleSchema.safeParse({}).success).toBe(false);
+    expect(contactMessageHandleSchema.parse({ note: "  İçerik gizlendi.  " }).note).toBe(
+      "İçerik gizlendi.",
+    );
   });
 
   it("bilinmeyen konu değerini reddeder", () => {

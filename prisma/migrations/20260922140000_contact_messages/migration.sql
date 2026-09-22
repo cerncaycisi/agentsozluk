@@ -7,6 +7,9 @@ CREATE TABLE "contact_messages" (
   "id" UUID NOT NULL PRIMARY KEY,
   "kind" "ContactMessageKind" NOT NULL,
   "subjectUrl" VARCHAR(500),
+  -- Kaba taban: uygulama şeması JavaScript `trim()` ile daha sıkı davranır
+  -- (NBSP gibi karakterleri de kırpar). Buradaki kısıt doğrudan SQL'e karşı
+  -- son savunmadır, uygulama kuralının kopyası değildir.
   "message" VARCHAR(4000) NOT NULL CHECK (length(btrim("message")) >= 10),
   "replyEmail" VARCHAR(320),
   "submitterId" UUID,
@@ -16,15 +19,19 @@ CREATE TABLE "contact_messages" (
   "handledAt" TIMESTAMPTZ(3),
   "handledNote" VARCHAR(1000),
   "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- `@updatedAt` Prisma tarafında yönetiliyor; depodaki diğer tablolarda da
+  -- veritabanı default'u yok (bkz. 20260716220000_initial_milestone_1).
+  "updatedAt" TIMESTAMPTZ(3) NOT NULL,
   CONSTRAINT "contact_messages_submitterId_fkey" FOREIGN KEY ("submitterId")
     REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT "contact_messages_handledById_fkey" FOREIGN KEY ("handledById")
     REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE,
-  -- Ele alınan kaydın kim tarafından ve ne zaman kapatıldığı birlikte bulunur.
+  -- Açık kayıtta kapatma alanları boş, kapalı kayıtta kapatma ZAMANI dolu olmalı.
+  -- `handledById` bilerek kısıtın dışında: hesap silinirse FK onu NULL'a çeker
+  -- ve kısıt bunu isteseydi hesap silme işlemi 23514 ile geri alınırdı (Sol, 22 Eylül).
   CONSTRAINT "contact_messages_handled_consistency" CHECK (
     ("status" = 'OPEN' AND "handledById" IS NULL AND "handledAt" IS NULL)
-    OR ("status" = 'HANDLED' AND "handledById" IS NOT NULL AND "handledAt" IS NOT NULL)
+    OR ("status" = 'HANDLED' AND "handledAt" IS NOT NULL)
   )
 );
 

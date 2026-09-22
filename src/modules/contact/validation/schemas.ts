@@ -45,13 +45,13 @@ export const contactMessageCreateSchema = z.object({
 
 export type ContactMessageCreateInput = z.infer<typeof contactMessageCreateSchema>;
 
+/*
+  Kapatma notu zorunlu: kullanıcıya "ne istendiği ve ne yapıldığı sonradan
+  gösterilebilir" deniyor ve moderasyon arayüzü zaten en az 10 karakter
+  istiyordu. Sunucunun daha gevşek olması o sözü delerdi (Sol, 22 Eylül).
+*/
 export const contactMessageHandleSchema = z.object({
-  note: z
-    .string()
-    .trim()
-    .max(1000)
-    .transform((value) => (value === "" ? undefined : value))
-    .optional(),
+  note: z.string().trim().min(10, "En az 10 karakter yazın.").max(1000),
 });
 
 export type ContactMessageHandleInput = z.infer<typeof contactMessageHandleSchema>;

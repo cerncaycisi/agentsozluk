@@ -3,6 +3,7 @@ import { csrfSession } from "@/lib/auth/request-session";
 import { getDatabase } from "@/lib/db/client";
 import { parseJson, runApi, success } from "@/lib/http/api";
 import { AppError } from "@/lib/http/errors";
+import { clearRequestActorId } from "@/lib/logging/request-context";
 import { assertValidOrigin } from "@/lib/security/origin";
 import { submitContactMessage } from "@/modules/contact/application/contact";
 import { contactMessageCreateSchema } from "@/modules/contact/validation/schemas";
@@ -31,8 +32,11 @@ export function POST(request: NextRequest) {
       windowMs: 60 * 60 * 1000,
     });
     const session = await csrfSession(request).catch((error: unknown) => {
-      if (error instanceof AppError) return null;
-      throw error;
+      if (!(error instanceof AppError)) throw error;
+      // Oturum çözülmüş ama CSRF düşmüş olabilir; ileti anonim yazıldığı için
+      // istek logu da anonim kalmalı.
+      clearRequestActorId();
+      return null;
     });
     const result = await submitContactMessage(database, input, {
       ip,

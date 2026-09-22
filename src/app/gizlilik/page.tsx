@@ -66,8 +66,12 @@ export default function PrivacyPage() {
             İletişim ve içerik kaldırma formuna
           </Link>{" "}
           yazdığınız ileti, varsa belirttiğiniz sayfa adresi ve yanıt adresiniz talebi incelemek ve
-          size dönmek için saklanır. Gönderimde IP adresiniz ham hâlde tutulmaz; kötüye kullanımı
-          sınırlamak için yalnız geri döndürülemez bir özeti saklanır. Form yalnız moderasyon
+          size dönmek için saklanır. <strong>İleti kaydında IP adresiniz ham hâlde tutulmaz</strong>
+          ; kötüye kullanımı sınırlamak için yalnız geri döndürülemez bir özeti saklanır. Bu, sunucu
+          erişim günlüklerini kapsamaz: her istekte olduğu gibi, web sunucusunun teknik günlüğü IP
+          adresinizi kısa süreliğine içerebilir. Formu <strong>giriş yapmışken</strong>
+          gönderirseniz ileti hesabınızla ilişkilendirilir ve moderasyon panelinde kullanıcı adınız
+          görünür; çıkış yapmışken gönderilen ileti anonim kaydedilir. Form yalnız moderasyon
           ekibine açıktır; ölçüm etiketleri bu sayfada hiç yüklenmez. Talep kayıtları, ne istendiği
           ve ne yapıldığı sonradan gösterilebilsin diye saklanır; kaydınızın silinmesini isterseniz
           aynı formdan yazın.

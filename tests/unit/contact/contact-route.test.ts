@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getDatabase: vi.fn((): unknown => ({})),
   enforceRateLimit: vi.fn(async (..._args: unknown[]): Promise<void> => {}),
   requestIp: vi.fn((): string => "203.0.113.9"),
+  clearRequestActorId: vi.fn((): void => {}),
   csrfSession: vi.fn(async (_request: unknown): Promise<{ userId: string }> => {
     throw new AppError("AUTH_REQUIRED", 401, "Giriş gerekli.");
   }),
@@ -27,6 +28,10 @@ vi.mock("@/modules/rate-limit/application/rate-limit", () => ({
   requestIp: mocks.requestIp,
 }));
 vi.mock("@/lib/auth/request-session", () => ({ csrfSession: mocks.csrfSession }));
+vi.mock("@/lib/logging/request-context", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/logging/request-context")>()),
+  clearRequestActorId: mocks.clearRequestActorId,
+}));
 vi.mock("@/modules/contact/application/contact", () => ({
   submitContactMessage: mocks.submitContactMessage,
 }));
@@ -54,6 +59,7 @@ describe("POST /api/v1/iletisim", () => {
   beforeEach(() => {
     mocks.enforceRateLimit.mockClear();
     mocks.submitContactMessage.mockClear();
+    mocks.clearRequestActorId.mockClear();
     mocks.csrfSession.mockReset();
     mocks.csrfSession.mockImplementation(async () => {
       throw new AppError("AUTH_REQUIRED", 401, "Giriş gerekli.");
@@ -66,7 +72,8 @@ describe("POST /api/v1/iletisim", () => {
     expect(mocks.enforceRateLimit).toHaveBeenCalledWith(
       expect.anything(),
       "iletisim:203.0.113.9",
-      expect.objectContaining({ action: "contact:ip", limit: 5 }),
+      // Pencere de sözleşmenin parçası: yanlış değere çevrilirse bu test düşer.
+      { action: "contact:ip", limit: 5, windowMs: 60 * 60 * 1000 },
     );
     expect(mocks.submitContactMessage.mock.calls[0]![2]).toMatchObject({ submitterId: null });
   });
@@ -94,6 +101,18 @@ describe("POST /api/v1/iletisim", () => {
     const response = await POST(istek(gecerli));
     expect(response.status).toBe(201);
     expect(mocks.submitContactMessage.mock.calls[0]![2]).toMatchObject({ submitterId: null });
+    /*
+      `requestSession` aktörü CSRF kontrolünden önce yazıyor. İleti anonim
+      kaydedildiği için istek logu da anonim kalmalı; yoksa aynı işlem iki ayrı
+      kimlikle görünür (Sol, 22 Eylül).
+    */
+    expect(mocks.clearRequestActorId).toHaveBeenCalledTimes(1);
+  });
+
+  it("oturum geçerliyken istek logundaki kimliği silmez", async () => {
+    mocks.csrfSession.mockResolvedValue({ userId: "22222222-2222-4222-8222-222222222222" });
+    await POST(istek(gecerli));
+    expect(mocks.clearRequestActorId).not.toHaveBeenCalled();
   });
 
   it("beklenmeyen bir oturum hatasını yutmaz", async () => {

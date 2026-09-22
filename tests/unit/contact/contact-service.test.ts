@@ -156,9 +156,9 @@ describe("moderasyon tarafı", () => {
     const { istemci, ham, auditCreate } = sahteIstemci();
     ham.user.findUnique.mockResolvedValue(aktifModerator());
     ham.contactMessage.updateMany.mockResolvedValue({ count: 0 });
-    const hata = await resolveContactMessage(istemci, moderator(), MESSAGE_ID, {}).catch(
-      (error: unknown) => error,
-    );
+    const hata = await resolveContactMessage(istemci, moderator(), MESSAGE_ID, {
+      note: "Zaten kapatılmıştı.",
+    }).catch((error: unknown) => error);
     expect(hata).toBeInstanceOf(AppError);
     expect(hata).toMatchObject({ code: "CONTACT_MESSAGE_NOT_OPEN", status: 409 });
     expect(auditCreate).not.toHaveBeenCalled();
@@ -167,9 +167,9 @@ describe("moderasyon tarafı", () => {
   it("moderatör olmayan aktör işaretleme de yapamaz", async () => {
     const { istemci, ham } = sahteIstemci();
     ham.user.findUnique.mockResolvedValue({ ...aktifModerator(), status: "SUSPENDED" });
-    await expect(resolveContactMessage(istemci, moderator(), MESSAGE_ID, {})).rejects.toMatchObject(
-      { code: "FORBIDDEN" },
-    );
+    await expect(
+      resolveContactMessage(istemci, moderator(), MESSAGE_ID, { note: "Deneme notu." }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(ham.contactMessage.updateMany).not.toHaveBeenCalled();
   });
 });
