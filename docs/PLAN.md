@@ -1351,7 +1351,7 @@ girmek israf.
     sayfası ve `POST /api/v1/iletisim` (giriş gerekmez, köken kontrolü, IP başına saatte 5,
     ham IP yerine HMAC), `/moderasyon/iletisim` kuyruğu ve "ele alındı" işareti,
     `contact_messages` tablosu + migration. `ContactMessage` great reset'te korunan listede
-    (Astra bulgusu). 27 birim + 6 PostgreSQL entegrasyon testi vakası; mutasyon denemelerinin
+    (Astra bulgusu). `tests/unit/contact` altında 27 birim testi (22 Eylül ölçümü) + 6 PostgreSQL entegrasyon testi vakası; mutasyon denemelerinin
     hepsi en az bir testi düşürdü. Saklama süresi kararı **verildi** (süresiz; bkz. A4).
     **Dağıtım engeli:** sürüm migration içeriyor, mevcut `production-release-remote.sh`
     ise yeni migration görünce `MIGRATION_SET_CHANGED` ile duruyor ve app entrypoint'ini
@@ -1479,13 +1479,28 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       Bugün yalnız `deploy-production-no-migration.sh` var; yeni migration'lı bir sürüm
       dağıtılamıyor (`MIGRATION_SET_CHANGED`) ve runbook Gate 7/8'in istediği uygulama
       genelinde yazma dondurması kodda yok (`MAINTENANCE` yalnız ajanları durduruyor).
-      Yazılacak mod: yedek (`pg_dump -Fc` + boyut/özet kaydı), uygulanmış migration
-      listesi, **yalnız ek yapan** migration kontrolü (DROP/ALTER/TRUNCATE/DELETE içeren
-      aday reddedilir), imajın kendi entrypoint'iyle `prisma migrate deploy`, sonrasında
-      applied == candidate ve tablo envanteri karşılaştırması. Yalnız ek yapan migration
-      kuralı geri dönüşü de güvenli kılar: eski imaj fazladan tabloyla çalışır.
-      **Kapatma ölçütü:** birim testleriyle korunan mod, Sol + Astra incelemesi, ve ilk
-      kullanımı olarak iletişim formunun canlıya alınması. _(Sıra 2 / bölüm 5.5)_
+      Yazılacak mod: yedek (`pg_dump -Fc` + boyut/özet kaydı) **ve o yedeğin izole bir
+      veritabanına `pg_restore --exit-on-error` ile geri yüklenip tablo sayıları +
+      parmak iziyle karşılaştırılması** (runbook Gate 7; yalnız dosyanın var olması yedek
+      kanıtı sayılmaz), uygulanmış migration listesi, **yalnız ek yapan** migration
+      kontrolü, imajın kendi entrypoint'iyle `prisma migrate deploy`, sonrasında
+      applied == candidate ve tablo envanteri karşılaştırması.
+      "Yalnız ek yapan" bir **izin listesidir**, yasak sözcük listesi değil (Sol, 22 Eylül:
+      `CREATE TRIGGER`, `CREATE OR REPLACE FUNCTION`, `UPDATE` veya `DO` bloğu hiçbir yasak
+      sözcüğe takılmadan eski imajın davranışını ya da mevcut veriyi değiştirebilir).
+      Aday migration'daki her ifade yalnız şunlardan biri olabilir:
+      `CREATE TYPE … AS ENUM`, yeni bir tabloyu açan `CREATE TABLE` (sütun, FK ve CHECK
+      tanımları dahil), aynı
+      migration'da açılan tablo üzerinde `CREATE [UNIQUE] INDEX`. Geri kalan her şey
+      (mevcut nesneye dokunan `ALTER`, `DROP`, `TRUNCATE`, DML, fonksiyon, trigger, `DO`,
+      yorum dışı bilinmeyen ifade) adayı reddeder; ayrıştırılamayan ifade de reddedilir.
+      Geri dönüş güvencesi bu kuraldan **ve** kanıttan gelir: önceki imajın yeni şemalı
+      veritabanına karşı açılıp sağlık kontrolünden geçtiği izole bir prova.
+      **Kapatma ölçütü:** birim testleriyle korunan mod (izin listesinin her reddedilen
+      ifade türü için ayrı vaka), izole restore + parmak izi kanıtı, eski imaj uyumluluk
+      provası, Sol + Astra incelemesi, ve ilk kullanımı olarak iletişim formunun canlıya
+      alınması. Kapatılana kadar runbook'un elle yürütülen Gate 7'si zorunlu kalır.
+      _(Sıra 2 / bölüm 5.5)_
 - [x] **A4 — iletişim taleplerinin saklama süresi: SÜRESİZ. KARAR VERİLDİ.**
       _(Gökhan kararı, 22 Eylül 2026: "Suresiz kalsın")_ Talep kayıtları otomatik
       silinmez; otomatik temizlik işi açılmayacak. Kayıt sahibi silinmesini aynı

@@ -14,6 +14,18 @@ export const contactMessageKindSchema = z.enum(CONTACT_MESSAGE_KINDS);
 
 const emailCheck = z.string().email();
 
+/*
+  Alt sınır karakter (Unicode kod noktası) sayar, UTF-16 birimi değil. Zod'un
+  `.min()` birim sayar: "👍👍👍👍👍" 10 birimdir ama PostgreSQL `length()` 5
+  karakter der; o fark uygulamada geçip veritabanı CHECK'inde düşen, yani 500
+  dönen bir yazma üretiyordu (Sol, 22 Eylül). Üst sınırlar birimle kalabilir:
+  birim sayısı karakter sayısından hiç küçük olmaz, yani `VARCHAR` tavanından
+  daha sıkıdır.
+*/
+function atLeastCharacters(minimum: number) {
+  return (value: string) => Array.from(value).length >= minimum;
+}
+
 const subjectPathSchema = z
   .string()
   .trim()
@@ -39,7 +51,7 @@ const replyEmailSchema = z
 export const contactMessageCreateSchema = z.object({
   kind: contactMessageKindSchema,
   subjectPath: subjectPathSchema,
-  message: z.string().trim().min(10, "En az 10 karakter yazın.").max(4000),
+  message: z.string().trim().max(4000).refine(atLeastCharacters(10), "En az 10 karakter yazın."),
   replyEmail: replyEmailSchema,
 });
 
@@ -51,7 +63,7 @@ export type ContactMessageCreateInput = z.infer<typeof contactMessageCreateSchem
   istiyordu. Sunucunun daha gevşek olması o sözü delerdi (Sol, 22 Eylül).
 */
 export const contactMessageHandleSchema = z.object({
-  note: z.string().trim().min(10, "En az 10 karakter yazın.").max(1000),
+  note: z.string().trim().max(1000).refine(atLeastCharacters(10), "En az 10 karakter yazın."),
 });
 
 export type ContactMessageHandleInput = z.infer<typeof contactMessageHandleSchema>;

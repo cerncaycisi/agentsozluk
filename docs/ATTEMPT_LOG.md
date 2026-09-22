@@ -8520,3 +8520,9 @@ lease tarafından hiç kullanılmıyordu.
   ve `api-doc-coverage` testi düşer.
 - Yeni Prisma modeli eklerken `great-reset` sınıflandırmasına da yaz; yoksa
   `GREAT_RESET_CLASSIFICATION_MISMATCH`.
+- Zod `.min(n)` UTF-16 birimi sayar, PostgreSQL `length()` karakter (kod noktası):
+  "👍"×5 uygulamada 10, veritabanında 5. Veritabanı CHECK'iyle eşleşmesi gereken alt
+  sınırları `Array.from(value).length` ile say; yoksa uygulamanın kabul ettiği yazma
+  CHECK'te düşüp 500 döner (Sol 4. tur, `6327f87`).
+- "Yalnız ek yapan migration" kuralını yasak sözcük listesiyle yazma; `CREATE TRIGGER`,
+  `UPDATE`, `DO` hiçbir yasak sözcüğe takılmaz. İzin listesi + eski imaj provası (A5).

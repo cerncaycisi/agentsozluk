@@ -73,6 +73,18 @@ describe("iletişim formu doğrulaması", () => {
     );
   });
 
+  it("alt sınırı veritabanı gibi karakterle sayar, UTF-16 birimiyle değil", () => {
+    // 5 emoji = 10 UTF-16 birimi ama PostgreSQL için 5 karakter; `.min(10)` bunu
+    // geçirip CHECK'te 500'e düşürüyordu.
+    const bes = "👍".repeat(5);
+    const on = "👍".repeat(10);
+    expect(contactMessageCreateSchema.safeParse({ ...gecerli, message: bes }).success).toBe(false);
+    expect(contactMessageCreateSchema.safeParse({ ...gecerli, message: on }).success).toBe(true);
+    expect(contactMessageHandleSchema.safeParse({ note: bes }).success).toBe(false);
+    expect(contactMessageHandleSchema.safeParse({ note: on }).success).toBe(true);
+    expect(contactMessageHandleSchema.safeParse({ note: "1234567890" }).success).toBe(true);
+  });
+
   it("bilinmeyen konu değerini reddeder", () => {
     expect(contactMessageCreateSchema.safeParse({ ...gecerli, kind: "SPAM" }).success).toBe(false);
   });

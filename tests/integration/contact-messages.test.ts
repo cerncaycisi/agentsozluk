@@ -140,8 +140,9 @@ describe("iletişim iletileri (PostgreSQL)", () => {
         data: { ...temel, status: "HANDLED", handledNote: "İçerik gizlendi." },
       }),
     ).rejects.toThrow();
-    // Notu boş ya da yalnız boşluk.
-    for (const bosNot of ["", "   ", "kısa"]) {
+    // Notu boş, yalnız boşluk ya da kısa. Beş emoji UTF-16'da 10 birim ama burada
+    // 5 karakter: uygulama şeması bu yüzden kod noktası sayıyor.
+    for (const bosNot of ["", "   ", "kısa", "👍".repeat(5)]) {
       await expect(
         integrationDatabase.contactMessage.create({ data: { ...kapatan, handledNote: bosNot } }),
       ).rejects.toThrow();
@@ -161,6 +162,15 @@ describe("iletişim iletileri (PostgreSQL)", () => {
     await expect(integrationDatabase.contactMessage.create({ data: temel })).resolves.toMatchObject(
       { status: "OPEN" },
     );
+    // Uygulamanın kabul ettiği en kısa emoji metni veritabanında da geçer.
+    await expect(
+      integrationDatabase.contactMessage.create({
+        data: { ...kapatan, message: "👍".repeat(10), handledNote: "👍".repeat(10) },
+      }),
+    ).resolves.toMatchObject({ status: "HANDLED" });
+    await expect(
+      integrationDatabase.contactMessage.create({ data: { ...temel, message: "👍".repeat(5) } }),
+    ).rejects.toThrow();
   });
 
   it("listeyi yalnız moderatöre verir ve yeni iletiyi başa koyar", async () => {
