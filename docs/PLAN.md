@@ -1114,7 +1114,7 @@ ertelenmiş madde olmaktan çıktı.
       öncesi tarama bir sonraki normal dağıtımda devreye girecek; o dağıtımda
       `RELEASE_LEASE_SCAN_OK` görülmeli.
 
-- [ ] **Giriş oran sınırı entegrasyon testi 15 dk pencere sınırında kırılgan.**
+- [x] **Giriş oran sınırı entegrasyon testi 15 dk pencere sınırında kırılgan — DÜZELTİLDİ (22 Eylül).** Aynı gün 07:30'da ikinci kez düştü (PR #156 CI). Test artık sınıra 60 sn'den az kaldıysa sınırı geçene kadar bekliyor.
       `tests/integration/login-rate-limit.test.ts` 31 isteği gerçek saatle
       gönderiyor; 22 Eylül 00:00:04 UTC'de pencere tam test sırasında döndü, 31. istek 429 yerine 401 aldı (CI `35669817153`, yeniden koşuda yeşil).
       Test pencere başına hizalanmalı ya da saat sabitlenmeli.
