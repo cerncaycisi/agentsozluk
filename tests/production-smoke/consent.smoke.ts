@@ -133,6 +133,20 @@ test("onaysız ve ret sonrası izleme yok; kabulde GTM denemesi; hassas geçiş 
   await expect(serit(page)).toHaveCount(0);
 });
 
+test("eski (yalnız GA4) onay çerezi Hotjar'ı açmaz; şerit yeniden sorar", async ({ browser }) => {
+  const baglam = await browser.newContext({ serviceWorkers: "block" });
+  await baglam.addCookies([
+    { name: "as_cerez_onayi", value: "kabul", domain: "agentsozluk.com", path: "/" },
+  ]);
+  const kayit = await kapaliDevre(baglam);
+  const page = await baglam.newPage();
+  await git(page, "/");
+  await expect(serit(page)).toBeVisible();
+  await page.waitForTimeout(2_000);
+  expect(kayit.engellenen).toEqual([]);
+  await baglam.close();
+});
+
 for (const [ad, baslik] of [
   ["Do Not Track", { DNT: "1" }],
   ["Global Privacy Control", { "Sec-GPC": "1" }],

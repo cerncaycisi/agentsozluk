@@ -29,9 +29,11 @@ yüzeyde şerit çıkmaz, onay alınmaz.
 
 ## Onay
 
-Onaydan sonra GTM ve Hotjar yükleyicileri aynı anda, nonce ile yüklenir. Tercih, `as_cerez_onayi` adlı birinci taraf çerezde (`kabul`/`red`, 180 gün, `Path=/`,
+Onaydan sonra GTM ve Hotjar yükleyicileri aynı anda, nonce ile yüklenir. Tercih, `as_cerez_onayi` adlı birinci taraf çerezde (`kabul-v2`/`red`, 180 gün, `Path=/`,
 `SameSite=Lax`, https'te `Secure`) tutulur. Onay yoksa GTM hiç yüklenmez; JavaScript olmadan onay
-alınamayacağı için GTM `<noscript>` iframe'i de yoktur.
+alınamayacağı için GTM `<noscript>` iframe'i de yoktur. Onay kapsamı sürümlüdür: yalnız GA4'ü
+kapsayan eski `kabul` değeri Hotjar'ı açmaz, şerit yeniden sorar; ret sürümden bağımsız
+geçerlidir (Astra, 22 Eylül).
 
 GTM bir kez yüklendikten sonra belgeden sökülemez (`next/script` kaldırmaz). Hedef, GTM'in
 **hassas bir belgeye asla taşınmamasıdır**. Bu yüzden GTM yüklü bir belgede:

@@ -93,7 +93,7 @@ describe("ProductAnalytics — çerez onayı", () => {
     act(() => {
       fireEvent.click(screen.getByRole("button", { name: "Kabul et" }));
     });
-    expect(document.cookie).toContain(`${ADI}=kabul`);
+    expect(document.cookie).toContain(`${ADI}=kabul-v2`);
     const script = container.querySelector("script#google-tag-manager");
     expect(script?.textContent).toContain("GTM-MTGXSB7H");
     expect(script?.getAttribute("nonce")).toBe("n");
@@ -110,6 +110,22 @@ describe("ProductAnalytics — çerez onayı", () => {
       fireEvent.click(screen.getByRole("button", { name: "Reddet" }));
     });
     expect(document.cookie).toContain(`${ADI}=red`);
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("eski sürüm (yalnız GA4'ü kapsayan) kabul yeni kapsama onay sayılmaz; şerit yeniden sorar", async () => {
+    const { ProductAnalytics } = await bilesen();
+    document.cookie = `${ADI}=kabul; Path=/`;
+    const { container } = render(<ProductAnalytics enabled nonce="n" />);
+    expect(screen.getByRole("region", { name: "Çerez tercihi" })).toBeVisible();
+    expect(container.querySelector("script")).toBeNull();
+    expect(container.querySelector("#hotjar-tracking")).toBeNull();
+  });
+
+  it("eski sürümdeki ret korunur", async () => {
+    const { ProductAnalytics } = await bilesen();
+    document.cookie = `${ADI}=red; Path=/`;
+    const { container } = render(<ProductAnalytics enabled nonce="n" />);
     expect(container.innerHTML).toBe("");
   });
 
@@ -137,7 +153,7 @@ describe("ProductAnalytics — çerez onayı", () => {
 
   it("GTM yüklü belgede hassas bağlantı tıklaması tam yüklemeye döner; Next'e ulaşmaz", async () => {
     const { ProductAnalytics } = await bilesen();
-    document.cookie = `${ADI}=kabul; Path=/`;
+    document.cookie = `${ADI}=kabul-v2; Path=/`;
     render(<ProductAnalytics enabled nonce="n" />);
     const nextLink = vi.fn();
     const gtmBelge = vi.fn();
@@ -178,7 +194,7 @@ describe("ProductAnalytics — çerez onayı", () => {
 
   it("geri/ileri hassas girdiye dönerse GTM'in geçmiş dinleyicisi susturulur ve yeniden yüklenir", async () => {
     const { ProductAnalytics } = await bilesen();
-    document.cookie = `${ADI}=kabul; Path=/`;
+    document.cookie = `${ADI}=kabul-v2; Path=/`;
     render(<ProductAnalytics enabled nonce="n" />);
     const gtmGecmis = vi.fn(); // GTM sonradan kaydolur
     window.addEventListener("popstate", gtmGecmis);
@@ -208,7 +224,7 @@ describe("ProductAnalytics — çerez onayı", () => {
 
   it("History API sarmalanmaz; GTM'in kendi sarmalayıcısıyla döngü kurulamaz", async () => {
     const { ProductAnalytics } = await bilesen();
-    document.cookie = `${ADI}=kabul; Path=/`;
+    document.cookie = `${ADI}=kabul-v2; Path=/`;
     const once = window.history.pushState;
     render(<ProductAnalytics enabled nonce="n" />);
     expect(window.history.pushState).toBe(once);
@@ -225,7 +241,7 @@ describe("ProductAnalytics — çerez onayı", () => {
 
   it("onay başka sekmede geri çekildiyse sekmeye dönüşte sayfa yeniden yüklenir", async () => {
     const { ProductAnalytics } = await bilesen();
-    document.cookie = `${ADI}=kabul; Path=/`;
+    document.cookie = `${ADI}=kabul-v2; Path=/`;
     render(<ProductAnalytics enabled nonce="n" />);
     act(() => {
       window.dispatchEvent(new Event("focus"));
@@ -240,7 +256,7 @@ describe("ProductAnalytics — çerez onayı", () => {
 
   it("onay geri çekildiyse sonraki herkese açık sayfa değişiminde de yeniden yüklenir", async () => {
     const { ProductAnalytics } = await bilesen();
-    document.cookie = `${ADI}=kabul; Path=/`;
+    document.cookie = `${ADI}=kabul-v2; Path=/`;
     const { rerender } = render(<ProductAnalytics enabled nonce="n" />);
     cerezleriTemizle();
     yol.ad = "/entry/2";
@@ -250,7 +266,7 @@ describe("ProductAnalytics — çerez onayı", () => {
 
   it("GTM yüklüyken adres hassas yüzeye döndüyse sayfa yeniden yüklenir", async () => {
     const { ProductAnalytics } = await bilesen();
-    document.cookie = `${ADI}=kabul; Path=/`;
+    document.cookie = `${ADI}=kabul-v2; Path=/`;
     const { rerender } = render(<ProductAnalytics enabled nonce="n" />);
     yol.ad = "/ayarlar";
     rerender(<ProductAnalytics enabled nonce="n" />);
@@ -259,7 +275,7 @@ describe("ProductAnalytics — çerez onayı", () => {
 
   it("geri tuşu önbelleğinden dönüşte onay silinmişse sayfa yeniden yüklenir", async () => {
     const { ProductAnalytics } = await bilesen();
-    document.cookie = `${ADI}=kabul; Path=/`;
+    document.cookie = `${ADI}=kabul-v2; Path=/`;
     render(<ProductAnalytics enabled nonce="n" />);
     cerezleriTemizle();
     const olay = new Event("pageshow") as PageTransitionEvent;
@@ -270,7 +286,7 @@ describe("ProductAnalytics — çerez onayı", () => {
 
   it("sıfırlama tercih, GA ve Hotjar çerezlerini siler, sayfayı yeniden yükler", async () => {
     const { cerezTercihiniSifirla } = await bilesen();
-    document.cookie = `${ADI}=kabul; Path=/`;
+    document.cookie = `${ADI}=kabul-v2; Path=/`;
     document.cookie = "_ga=GA1.1.1; Path=/";
     document.cookie = "_ga_ABC=GS1.1; Path=/";
     document.cookie = "_hjSessionUser_6753780=x; Path=/";
@@ -284,7 +300,7 @@ describe("ProductAnalytics — çerez onayı", () => {
   it("gizlilik sayfasındaki düğme sıfırlamayı çağırır", async () => {
     vi.resetModules();
     const { CerezTercihiSifirla } = await import("@/components/analytics/cerez-tercihi-sifirla");
-    document.cookie = `${ADI}=kabul; Path=/`;
+    document.cookie = `${ADI}=kabul-v2; Path=/`;
     render(<CerezTercihiSifirla />);
     act(() => {
       fireEvent.click(screen.getByRole("button", { name: "Çerez tercihimi sıfırla" }));
