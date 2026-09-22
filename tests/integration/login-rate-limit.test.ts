@@ -35,9 +35,24 @@ function loginRequest(email: string) {
   });
 }
 
+/*
+  Oran sınırı 15 dk'lık SABİT pencere kullanır (fixedWindow, çağa hizalı). Bu
+  testler kovayı birkaç saniyede doldurur; pencere tam o sırada dönerse sayaç
+  sıfırlanır ve 31. istek 429 yerine 401 alır. 22 Eylül'de iki kez oldu (00:00
+  ve 07:30 UTC). Sınıra 60 sn'den az kaldıysa sınırı geçene kadar beklenir.
+*/
+const LOGIN_PENCERESI_MS = 15 * 60 * 1000;
+const PENCERE_PAYI_MS = 60 * 1000;
+
+async function pencereSinirindanUzaklas() {
+  const kalan = LOGIN_PENCERESI_MS - (Date.now() % LOGIN_PENCERESI_MS);
+  if (kalan < PENCERE_PAYI_MS) await new Promise((coz) => setTimeout(coz, kalan + 1000));
+}
+
 beforeEach(async () => {
   await resetIntegrationDatabase();
-});
+  await pencereSinirindanUzaklas();
+}, PENCERE_PAYI_MS + 30_000);
 
 afterAll(async () => {
   await closeIntegrationDatabase();
