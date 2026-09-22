@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { isSensitiveAnalyticsPath } from "@/lib/analytics/product-analytics";
 import { unopenedTopicUrl } from "@/lib/routing/public-urls";
 
 /**
@@ -186,7 +187,13 @@ export function SearchAutocomplete({
       if (!activeOption) return;
       event.preventDefault();
       close();
-      router.push(activeOption.url);
+      // Hassas yüzeye (ör. /baslik/ac) istemci içi gezinme yapılmaz: yüklü bir
+      // ölçüm etiketi o sayfaya taşınmasın diye tam sayfa yüklemesi.
+      if (isSensitiveAnalyticsPath(new URL(activeOption.url, window.location.href).pathname)) {
+        window.location.assign(activeOption.url);
+      } else {
+        router.push(activeOption.url);
+      }
     }
   };
 

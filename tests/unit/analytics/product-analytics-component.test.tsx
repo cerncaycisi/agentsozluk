@@ -131,40 +131,86 @@ describe("ProductAnalytics — çerez onayı", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("GTM yüklü belgede hassas adrese pushState tam yüklemeye döner; iç zincire ulaşmaz", async () => {
+  it("GTM yüklü belgede hassas bağlantı tıklaması tam yüklemeye döner; Next'e ulaşmaz", async () => {
     const { ProductAnalytics } = await bilesen();
-    const ic = vi.fn();
-    window.history.pushState = ic;
     document.cookie = `${ADI}=kabul; Path=/`;
     render(<ProductAnalytics enabled nonce="n" />);
+    const nextLink = vi.fn();
+    const govde = document.createElement("div");
+    govde.innerHTML = '<a href="/ara?q=gizli"><span>ara</span></a><a href="/entry/1">entry</a>';
+    govde.addEventListener("click", nextLink); // Next Link/React kök dinleyicisi gibi
+    document.body.append(govde);
+    try {
+      fireEvent.click(govde.querySelector("span")!);
+      expect(assign).toHaveBeenCalledWith(expect.stringMatching(/\/ara\?q=gizli$/u));
+      expect(nextLink).not.toHaveBeenCalled();
 
-    window.history.pushState({}, "", "/ara?q=gizli");
-    expect(assign).toHaveBeenCalledWith("/ara?q=gizli");
-    expect(ic).not.toHaveBeenCalled();
+      fireEvent.click(govde.querySelectorAll("a")[1]!);
+      expect(assign).toHaveBeenCalledTimes(1);
+      expect(nextLink).toHaveBeenCalledTimes(1);
 
-    window.history.pushState({}, "", "/entry/1");
-    expect(ic).toHaveBeenCalledTimes(1);
+      // Yeni sekme / değiştirici tuşlar tarayıcıya bırakılır.
+      fireEvent.click(govde.querySelector("a")!, { ctrlKey: true });
+      expect(assign).toHaveBeenCalledTimes(1);
+    } finally {
+      govde.remove();
+    }
   });
 
-  it("GTM sonradan kendi sarmalayıcısını eklese de koruma en dışa geri döner", async () => {
-    vi.useFakeTimers();
+  it("onay yokken tıklamalara dokunulmaz", async () => {
+    const { ProductAnalytics } = await bilesen();
+    render(<ProductAnalytics enabled nonce="n" />);
+    const baglanti = document.createElement("a");
+    baglanti.href = "/giris";
+    document.body.append(baglanti);
     try {
-      const { ProductAnalytics } = await bilesen();
-      document.cookie = `${ADI}=kabul; Path=/`;
-      render(<ProductAnalytics enabled nonce="n" />);
-      const bizim = window.history.pushState;
-      const gtmIci = vi.fn();
-      window.history.pushState = gtmIci; // GTM'in sarmalayıcısı gibi
-      act(() => {
-        vi.advanceTimersByTime(300);
-      });
-      expect(window.history.pushState).toBe(bizim);
-      window.history.pushState({}, "", "/moderasyon");
-      expect(assign).toHaveBeenCalledWith("/moderasyon");
-      expect(gtmIci).not.toHaveBeenCalled();
+      fireEvent.click(baglanti);
+      expect(assign).not.toHaveBeenCalled();
     } finally {
-      vi.useRealTimers();
+      baglanti.remove();
     }
+  });
+
+  it("History API sarmalanmaz; GTM'in kendi sarmalayıcısıyla döngü kurulamaz", async () => {
+    const { ProductAnalytics } = await bilesen();
+    document.cookie = `${ADI}=kabul; Path=/`;
+    const once = window.history.pushState;
+    render(<ProductAnalytics enabled nonce="n" />);
+    expect(window.history.pushState).toBe(once);
+  });
+
+  it("herkese açıktan hassasa geçerken şerit AYNI render'da kaybolur", async () => {
+    const { ProductAnalytics } = await bilesen();
+    const { container, rerender } = render(<ProductAnalytics enabled nonce="n" />);
+    expect(screen.getByRole("region", { name: "Çerez tercihi" })).toBeVisible();
+    yol.ad = "/giris";
+    rerender(<ProductAnalytics enabled nonce="n" />);
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("onay başka sekmede geri çekildiyse sekmeye dönüşte sayfa yeniden yüklenir", async () => {
+    const { ProductAnalytics } = await bilesen();
+    document.cookie = `${ADI}=kabul; Path=/`;
+    render(<ProductAnalytics enabled nonce="n" />);
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(reload).not.toHaveBeenCalled();
+    cerezleriTemizle();
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(reload).toHaveBeenCalled();
+  });
+
+  it("onay geri çekildiyse sonraki herkese açık sayfa değişiminde de yeniden yüklenir", async () => {
+    const { ProductAnalytics } = await bilesen();
+    document.cookie = `${ADI}=kabul; Path=/`;
+    const { rerender } = render(<ProductAnalytics enabled nonce="n" />);
+    cerezleriTemizle();
+    yol.ad = "/entry/2";
+    rerender(<ProductAnalytics enabled nonce="n" />);
+    expect(reload).toHaveBeenCalled();
   });
 
   it("GTM yüklüyken adres hassas yüzeye döndüyse sayfa yeniden yüklenir", async () => {

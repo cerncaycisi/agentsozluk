@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isSensitiveAnalyticsPath } from "@/lib/analytics/product-analytics";
 
 const GOOGLE_TAG_MANAGER_ID = "GTM-MTGXSB7H";
@@ -20,10 +20,14 @@ const GOOGLE_TAG_MANAGER_ID = "GTM-MTGXSB7H";
    - İstemci: her adres değişiminde yüzey ve tarayıcının DNT/GPC sinyali yeniden
      değerlendirilir; hassas bir yüzeyde şerit çıkmaz, onay alınmaz.
   GTM bir kez yüklendikten sonra belgeden sökülemez (next/script kaldırmaz).
-  Bu yüzden GTM yüklü bir belgede hassas bir adrese geçiş TAM sayfa yüklemesine
-  çevrilir — sunucu o sayfada ölçümü kapatır — ve geçiş GTM'e görünmez.
-  Tercih sıfırlanınca ya da geri tuşu önbelleğinden dönülünce onay geçersizse
-  sayfa yeniden yüklenir.
+  Bu yüzden GTM yüklü bir belgede:
+   - hassas bir adrese giden bağlantı tıklaması belge düzeyinde, yakalama
+     aşamasında karşılanır ve Next yönlendiricisine ulaşmadan TAM sayfa
+     yüklemesine çevrilir; sunucu o sayfada ölçümü kapatır. (History API'si
+     sarmalanmaz: GTM de onu sarmaladığı için zincir kırılgandı — Sol.)
+   - adres yine de hassaslaşırsa, onay başka bir sekmede geri çekilirse ya da
+     sekmeye/geri tuşu önbelleğinden dönülürken onay geçersizse sayfa yeniden
+     yüklenir.
 */
 export const CEREZ_ONAYI_ADI = "as_cerez_onayi";
 const CEREZ_ONAYI_OMRU_SN = 180 * 24 * 60 * 60;
@@ -69,58 +73,50 @@ export function cerezTercihiniSifirla() {
 
 // Bu belgede GTM yüklendi mi? Yüklendiyse sökülemez; korumalar buna bakar.
 let gtmYuklendi = false;
-let korumaKuruldu = false;
 
-function hassasAdres(url: string | URL | null | undefined): boolean {
-  if (url == null) return false;
+function hassasBaglanti(olay: MouseEvent): string | null {
+  if (olay.defaultPrevented || olay.button !== 0) return null;
+  if (olay.metaKey || olay.ctrlKey || olay.shiftKey || olay.altKey) return null;
+  const hedef = olay.target instanceof Element ? olay.target.closest("a[href]") : null;
+  if (!(hedef instanceof HTMLAnchorElement)) return null;
+  if (hedef.target && hedef.target !== "_self") return null;
+  if (hedef.hasAttribute("download")) return null;
+  let url: URL;
   try {
-    return isSensitiveAnalyticsPath(new URL(String(url), window.location.href).pathname);
+    url = new URL(hedef.href, window.location.href);
   } catch {
-    return false;
+    return null;
   }
+  if (url.origin !== window.location.origin) return null;
+  return isSensitiveAnalyticsPath(url.pathname) ? url.href : null;
 }
 
-/*
-  history.pushState/replaceState'i EN DIŞTAN sarar: hassas bir adrese geçiş
-  iç sarmalayıcılara (GTM'in geçmiş dinleyicisi dahil) hiç ulaşmaz, tam sayfa
-  yüklemesine döner. GTM kendi sarmalayıcısını sonradan eklediği için bir süre
-  en dışta kalındığı yeniden doğrulanır.
-*/
-function hassasGecisleriKoru() {
-  if (korumaKuruldu) return;
-  korumaKuruldu = true;
-  const sar = (ad: "pushState" | "replaceState") => {
-    let ic = window.history[ad];
-    const sarmalayici = function (
-      this: History,
-      data: unknown,
-      unused: string,
-      url?: string | URL | null,
-    ) {
-      if (hassasAdres(url)) {
-        window.location.assign(String(url));
-        return;
-      }
-      return ic.call(this, data, unused, url);
-    };
-    const enDistaTut = () => {
-      if (window.history[ad] !== sarmalayici) {
-        ic = window.history[ad];
-        window.history[ad] = sarmalayici;
-      }
-    };
-    enDistaTut();
-    let deneme = 0;
-    const zamanlayici = window.setInterval(() => {
-      enDistaTut();
-      if (++deneme >= 60) window.clearInterval(zamanlayici);
-    }, 250);
+/**
+ * GTM yüklü belgede hassas bağlantıları tam sayfa yüklemesine çevirir (yakalama
+ * aşaması). Söküm işlevi döner; yalnız bileşen kaldırılırken çağrılır.
+ */
+function hassasGecisleriKoru(): () => void {
+  const tiklama = (olay: MouseEvent) => {
+    const adres = hassasBaglanti(olay);
+    if (!adres) return;
+    olay.preventDefault();
+    olay.stopPropagation();
+    window.location.assign(adres);
   };
-  sar("pushState");
-  sar("replaceState");
-  window.addEventListener("popstate", () => {
+  const geriIleri = () => {
     if (isSensitiveAnalyticsPath(window.location.pathname)) window.location.reload();
-  });
+  };
+  document.addEventListener("click", tiklama, true);
+  window.addEventListener("popstate", geriIleri);
+  return () => {
+    document.removeEventListener("click", tiklama, true);
+    window.removeEventListener("popstate", geriIleri);
+  };
+}
+
+/** Onay artık geçerli değilse (başka sekmede geri çekilmiş, DNT/GPC açılmış) yeniden yükle. */
+function onayHalaGecerliMi(): boolean {
+  return onayiOku() === "kabul" && !tarayiciIzlemeyiReddediyor();
 }
 
 export function ProductAnalytics({
@@ -133,34 +129,60 @@ export function ProductAnalytics({
   const pathname = usePathname();
   // Sunucuda ve ilk çizimde karar bilinmez: hiçbir şey çizilmez (hidrasyon uyumu).
   const [onay, setOnay] = useState<Onay | null | undefined>(undefined);
-  const [istemciUygun, setIstemciUygun] = useState(false);
+  const [izlemeReddi, setIzlemeReddi] = useState(true);
+  // Yüzey render sırasında adresten türetilir: hassas sayfada şerit bir kare bile kalmaz.
+  const istemciUygun = enabled && !isSensitiveAnalyticsPath(pathname) && !izlemeReddi;
 
   useEffect(() => {
-    const uygun = enabled && !isSensitiveAnalyticsPath(pathname) && !tarayiciIzlemeyiReddediyor();
-    setIstemciUygun(uygun);
-    // GTM yüklü belgede hassas yüzeye bir şekilde gelinmişse: tam yükleme.
-    if (gtmYuklendi && !uygun) window.location.reload();
+    const ret = tarayiciIzlemeyiReddediyor();
+    setIzlemeReddi(ret);
+    // GTM yüklü belgede hassas yüzeye gelinmişse ya da onay geri çekilmişse: tam yükleme.
+    if (gtmYuklendi && (isSensitiveAnalyticsPath(pathname) || !onayHalaGecerliMi())) {
+      window.location.reload();
+      return;
+    }
     if (enabled) setOnay(onayiOku());
   }, [enabled, pathname]);
 
   useEffect(() => {
+    const denetle = () => {
+      if (gtmYuklendi && !onayHalaGecerliMi()) window.location.reload();
+    };
     const geriDonus = (olay: PageTransitionEvent) => {
-      if (!olay.persisted || !gtmYuklendi) return;
-      if (onayiOku() !== "kabul" || tarayiciIzlemeyiReddediyor()) window.location.reload();
+      if (olay.persisted) denetle();
+    };
+    const gorunurluk = () => {
+      if (document.visibilityState === "visible") denetle();
     };
     window.addEventListener("pageshow", geriDonus);
-    return () => window.removeEventListener("pageshow", geriDonus);
+    window.addEventListener("focus", denetle);
+    document.addEventListener("visibilitychange", gorunurluk);
+    return () => {
+      window.removeEventListener("pageshow", geriDonus);
+      window.removeEventListener("focus", denetle);
+      document.removeEventListener("visibilitychange", gorunurluk);
+    };
   }, []);
 
-  const yukle = enabled && istemciUygun && onay === "kabul";
+  const yukle = istemciUygun && onay === "kabul";
+  // Koruma GTM ilk yüklendiğinde kurulur ve GTM belgede kaldıkça durur; yalnız
+  // bileşen kaldırılırken sökülür (kök layout'ta pratikte hiç).
+  const korumaSokumu = useRef<(() => void) | null>(null);
   useEffect(() => {
-    if (yukle) {
-      hassasGecisleriKoru();
+    if (yukle && !korumaSokumu.current) {
+      korumaSokumu.current = hassasGecisleriKoru();
       gtmYuklendi = true;
     }
   }, [yukle]);
+  useEffect(
+    () => () => {
+      korumaSokumu.current?.();
+      korumaSokumu.current = null;
+    },
+    [],
+  );
 
-  if (!enabled || !istemciUygun || onay === undefined || onay === "red") return null;
+  if (!istemciUygun || onay === undefined || onay === "red") return null;
 
   if (onay === "kabul") {
     return (
