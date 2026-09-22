@@ -38,7 +38,11 @@ CREATE TABLE "contact_messages" (
       AND "handledAt" IS NULL
       AND "handledNote" IS NULL
     )
-    OR ("status" = 'HANDLED' AND "handledAt" IS NOT NULL AND "handledNote" IS NOT NULL)
+    OR (
+      "status" = 'HANDLED'
+      AND "handledAt" IS NOT NULL
+      AND length(btrim("handledNote")) >= 10
+    )
   )
 );
 

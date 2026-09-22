@@ -1351,10 +1351,13 @@ girmek israf.
     sayfası ve `POST /api/v1/iletisim` (giriş gerekmez, köken kontrolü, IP başına saatte 5,
     ham IP yerine HMAC), `/moderasyon/iletisim` kuyruğu ve "ele alındı" işareti,
     `contact_messages` tablosu + migration. `ContactMessage` great reset'te korunan listede
-    (Astra bulgusu). 22 birim + 5 PostgreSQL entegrasyon testi; altı mutasyon denemesinin
-    hepsi en az bir testi düşürdü. **Dağıtımı migration içerdiği için ayrı kapsam onayı ve
-    runbook'un yedek/geri yükleme/migration kapılarını ister.** Açık karar: talep kayıtlarının
-    saklama süresi — bugün otomatik silme yok, metinler de otomatik silme sözü vermiyor.
+    (Astra bulgusu). 27 birim + 6 PostgreSQL entegrasyon testi vakası; mutasyon denemelerinin
+    hepsi en az bir testi düşürdü. Saklama süresi kararı **verildi** (süresiz; bkz. A4).
+    **Dağıtım engeli:** sürüm migration içeriyor, mevcut `production-release-remote.sh`
+    ise yeni migration görünce `MIGRATION_SET_CHANGED` ile duruyor ve app entrypoint'ini
+    `prisma migrate deploy` çalıştırmayacak şekilde eziyor; runbook Gate 7/8 ise kodda
+    bulunmayan uygulama genelinde yazma dondurması istiyor. Bu yüzden önce migration'lı
+    dağıtım yolu yazılacak (A5), iletişim formu onun ilk müşterisi olacak.
     Gökhan'dan isteğe bağlı: GA4 "Form
     etkileşimleri"ni kapatmak. Karar kaydı: Gökhan: künyede takma ad; iletişim ve içerik kaldırma için sitede bir
     form (anonim mesaj saklamak yeni tablo, yani migration ister — ayrı PR ve ayrı onay);
@@ -1472,6 +1475,17 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       olan buydu). Öneri: `StartLimitIntervalSec=0` + artan `RestartSec`. **Kapatma
       ölçütü:** izole ortamda zorlanmış crash-loop'tan 5 dakika içinde kendiliğinden
       toparlanma; alarmın aynı olayı yine bildirdiği kanıtı. _(bölüm 5.5)_
+- [ ] **A5 — migration'lı üretim dağıtım yolu (Gökhan onayladı, 22 Eylül: "A").**
+      Bugün yalnız `deploy-production-no-migration.sh` var; yeni migration'lı bir sürüm
+      dağıtılamıyor (`MIGRATION_SET_CHANGED`) ve runbook Gate 7/8'in istediği uygulama
+      genelinde yazma dondurması kodda yok (`MAINTENANCE` yalnız ajanları durduruyor).
+      Yazılacak mod: yedek (`pg_dump -Fc` + boyut/özet kaydı), uygulanmış migration
+      listesi, **yalnız ek yapan** migration kontrolü (DROP/ALTER/TRUNCATE/DELETE içeren
+      aday reddedilir), imajın kendi entrypoint'iyle `prisma migrate deploy`, sonrasında
+      applied == candidate ve tablo envanteri karşılaştırması. Yalnız ek yapan migration
+      kuralı geri dönüşü de güvenli kılar: eski imaj fazladan tabloyla çalışır.
+      **Kapatma ölçütü:** birim testleriyle korunan mod, Sol + Astra incelemesi, ve ilk
+      kullanımı olarak iletişim formunun canlıya alınması. _(Sıra 2 / bölüm 5.5)_
 - [x] **A4 — iletişim taleplerinin saklama süresi: SÜRESİZ. KARAR VERİLDİ.**
       _(Gökhan kararı, 22 Eylül 2026: "Suresiz kalsın")_ Talep kayıtları otomatik
       silinmez; otomatik temizlik işi açılmayacak. Kayıt sahibi silinmesini aynı

@@ -121,6 +121,43 @@ describe("iletişim iletileri (PostgreSQL)", () => {
     await expect(
       integrationDatabase.contactMessage.create({ data: { ...temel, status: "HANDLED" } }),
     ).rejects.toThrow();
+    /*
+      Kapatma kısıtının HER kolu ayrı ayrı sınanıyor: yalnız "HANDLED + iki alan
+      da boş" denenirse, not koşulu sessizce kaldırılsa bile test yeşil kalırdı
+      (Sol, 22 Eylül).
+    */
+    const kapatan = {
+      ...temel,
+      status: "HANDLED" as const,
+      handledAt: new Date(),
+      handledById: null,
+    };
+    // Zamanı var, notu yok.
+    await expect(integrationDatabase.contactMessage.create({ data: kapatan })).rejects.toThrow();
+    // Notu var, zamanı yok.
+    await expect(
+      integrationDatabase.contactMessage.create({
+        data: { ...temel, status: "HANDLED", handledNote: "İçerik gizlendi." },
+      }),
+    ).rejects.toThrow();
+    // Notu boş ya da yalnız boşluk.
+    for (const bosNot of ["", "   ", "kısa"]) {
+      await expect(
+        integrationDatabase.contactMessage.create({ data: { ...kapatan, handledNote: bosNot } }),
+      ).rejects.toThrow();
+    }
+    // Açık kayıtta kapatma notu bulunamaz.
+    await expect(
+      integrationDatabase.contactMessage.create({
+        data: { ...temel, handledNote: "İçerik gizlendi." },
+      }),
+    ).rejects.toThrow();
+    // Doğru kapatma kabul edilir.
+    await expect(
+      integrationDatabase.contactMessage.create({
+        data: { ...kapatan, handledNote: "İçerik gizlendi." },
+      }),
+    ).resolves.toMatchObject({ status: "HANDLED" });
     await expect(integrationDatabase.contactMessage.create({ data: temel })).resolves.toMatchObject(
       { status: "OPEN" },
     );
