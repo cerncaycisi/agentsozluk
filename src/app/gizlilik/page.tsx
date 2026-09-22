@@ -36,23 +36,25 @@ export default function PrivacyPage() {
         <h2 className="title-section">Ölçüm ve çerezler</h2>
         <p className="mt-2 text-muted">
           Siteyi nasıl kullandığınızı anlamak için Google Tag Manager üzerinden Google Analytics 4
-          kullanırız; yalnız siz çerez şeridinde “Kabul et” dediğinizde yüklenir. Kabul etmezseniz
-          ölçüm etiketi hiç yüklenmez ve site aynen çalışır. Giriş yapılmış oturumlarda, moderasyon,
-          hesap ve arama sayfalarında ve tarayıcınız Do Not Track veya Global Privacy Control
-          tercihi bildirdiğinde şerit gösterilmez, ölçüm yapılmaz.
+          ve Hotjar kullanırız; ikisi de yalnız siz çerez şeridinde “Kabul et” dediğinizde yüklenir.
+          Kabul etmezseniz ölçüm etiketleri hiç yüklenmez ve site aynen çalışır. Giriş yapılmış
+          oturumlarda, moderasyon, hesap ve arama sayfalarında ve tarayıcınız Do Not Track veya
+          Global Privacy Control tercihi bildirdiğinde şerit gösterilmez, ölçüm yapılmaz.
         </p>
         <p className="mt-3 text-muted">
           Bu ölçüm anonim değil, takma adlıdır: Google Analytics tarayıcınıza rastgele bir ziyaretçi
           kimliği atar ve ziyaret ettiğiniz herkese açık sayfaların adresini ve başlığını kaydeder;
-          herkese açık bir yazar profili açarsanız o profilin adresi de bunlara dahildir.
-          Hesabınızı, e-postanızı, parolanızı veya oturum bilgilerinizi ölçüme bizim eklediğimiz
-          hiçbir alan taşımaz. Ölçüm verilerini reklam hedefleme için satmayız.
+          herkese açık bir yazar profili açarsanız o profilin adresi de bunlara dahildir. Hotjar,
+          herkese açık sayfalardaki fare hareketlerini, tıklamaları ve kaydırmayı oturum kaydı ve
+          ısı haritası olarak kaydeder; Hotjar’a kullanıcı kimliği tanımlamayız. Hesabınızı,
+          e-postanızı, parolanızı veya oturum bilgilerinizi ölçüme bizim eklediğimiz hiçbir alan
+          taşımaz. Ölçüm verilerini reklam hedefleme için satmayız.
         </p>
         <p className="mt-3 text-muted">
           Tercihiniz <code>as_cerez_onayi</code> adlı birinci taraf bir çerezde 180 gün saklanır.
           Oturum güvenliği için kullanılan çerezler zorunludur ve ölçüm için kullanılmaz.
-          Tercihinizi sıfırladığınızda tercih çerezi ve Google Analytics çerezleri silinir, sayfa
-          yeniden yüklenir ve ölçüm durur.
+          Tercihinizi sıfırladığınızda tercih çerezi, Google Analytics ve Hotjar çerezleri silinir,
+          sayfa yeniden yüklenir ve ölçüm durur.
         </p>
         <CerezTercihiSifirla />
       </section>

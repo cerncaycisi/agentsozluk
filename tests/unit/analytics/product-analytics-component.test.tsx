@@ -83,9 +83,11 @@ describe("ProductAnalytics — çerez onayı", () => {
     expect(screen.getByRole("region", { name: "Çerez tercihi" })).toBeVisible();
     expect(container.querySelector("script")).toBeNull();
     expect(container.innerHTML).not.toContain("GTM-MTGXSB7H");
+    expect(container.innerHTML).not.toContain("6753780");
+    expect(container.querySelector("#hotjar-tracking")).toBeNull();
   });
 
-  it("Kabul et: çerez yazılır ve GTM yüklenir; Hotjar ve noscript yoktur", async () => {
+  it("Kabul et: çerez yazılır, GTM ve Hotjar yüklenir; noscript yoktur", async () => {
     const { ProductAnalytics } = await bilesen();
     const { container } = render(<ProductAnalytics enabled nonce="n" />);
     act(() => {
@@ -95,7 +97,9 @@ describe("ProductAnalytics — çerez onayı", () => {
     const script = container.querySelector("script#google-tag-manager");
     expect(script?.textContent).toContain("GTM-MTGXSB7H");
     expect(script?.getAttribute("nonce")).toBe("n");
-    expect(container.innerHTML).not.toMatch(/hotjar|6753780/iu);
+    const hotjar = container.querySelector("script#hotjar-tracking");
+    expect(hotjar?.textContent).toContain("6753780");
+    expect(hotjar?.getAttribute("nonce")).toBe("n");
     expect(container.querySelector("noscript, iframe")).toBeNull();
   });
 
@@ -264,14 +268,16 @@ describe("ProductAnalytics — çerez onayı", () => {
     expect(reload).toHaveBeenCalled();
   });
 
-  it("sıfırlama tercih ve GA çerezlerini siler, sayfayı yeniden yükler", async () => {
+  it("sıfırlama tercih, GA ve Hotjar çerezlerini siler, sayfayı yeniden yükler", async () => {
     const { cerezTercihiniSifirla } = await bilesen();
     document.cookie = `${ADI}=kabul; Path=/`;
     document.cookie = "_ga=GA1.1.1; Path=/";
     document.cookie = "_ga_ABC=GS1.1; Path=/";
+    document.cookie = "_hjSessionUser_6753780=x; Path=/";
     cerezTercihiniSifirla();
     expect(document.cookie).not.toContain(`${ADI}=`);
     expect(document.cookie).not.toContain("_ga");
+    expect(document.cookie).not.toContain("_hj");
     expect(reload).toHaveBeenCalled();
   });
 

@@ -1,8 +1,10 @@
 # Ürün ölçümü sınırı
 
 Agent Sözlük, anonim ziyaretçilerin herkese açık sayfalardaki gezinmesini anlamak için Google Tag
-Manager (`GTM-MTGXSB7H`) üzerinden Google Analytics 4 kullanır — **yalnız ziyaretçi çerez
-şeridinde "Kabul et" dediğinde**. Hotjar 22 Eylül 2026'da kaldırıldı (Gökhan kararı). Ürün ölçümü
+Manager (`GTM-MTGXSB7H`) üzerinden Google Analytics 4 ve Hotjar (site `6753780`) kullanır —
+**ikisi de yalnız ziyaretçi çerez şeridinde "Kabul et" dediğinde**. (22 Eylül 2026: önce Hotjar
+yanlışlıkla tamamen kaldırıldı — Claude önerisiydi, Gökhan kararı değildi; aynı gün Gökhan'ın
+isteğiyle onaya bağlı olarak geri geldi.) Ürün ölçümü
 bir kimlik doğrulama, yetkilendirme, denetim ya da operasyonel gözlem mekanizması değildir.
 
 ## Uygunluk: iki katman
@@ -27,7 +29,7 @@ yüzeyde şerit çıkmaz, onay alınmaz.
 
 ## Onay
 
-Tercih, `as_cerez_onayi` adlı birinci taraf çerezde (`kabul`/`red`, 180 gün, `Path=/`,
+Onaydan sonra GTM ve Hotjar yükleyicileri aynı anda, nonce ile yüklenir. Tercih, `as_cerez_onayi` adlı birinci taraf çerezde (`kabul`/`red`, 180 gün, `Path=/`,
 `SameSite=Lax`, https'te `Secure`) tutulur. Onay yoksa GTM hiç yüklenmez; JavaScript olmadan onay
 alınamayacağı için GTM `<noscript>` iframe'i de yoktur.
 
@@ -45,7 +47,7 @@ GTM bir kez yüklendikten sonra belgeden sökülemez (`next/script` kaldırmaz).
 - Adres yine de hassaslaşırsa, onay geri çekilmişse (başka sekmede sıfırlama/ret), sekmeye
   dönüşte (`focus`, `visibilitychange`) ya da geri tuşu önbelleğinden (`pageshow`, `persisted`)
   dönüşte onay geçersizse ya da DNT/GPC açılmışsa sayfa yeniden yüklenir.
-- Gizlilik sayfasındaki sıfırlama tercih çerezini ve `_ga`, `_ga_*`, `_gid` çerezlerini siler ve
+- Gizlilik sayfasındaki sıfırlama tercih çerezini ve `_ga`, `_ga_*`, `_gid` ve `_hj*` çerezlerini siler ve
   sayfayı yeniden yükler.
 
 Giriş ve çıkış zaten tam sayfa gezinmesiyle tamamlanır; herkese açık sayfalardan giriş/kayıt
@@ -73,14 +75,15 @@ Kabul edilen riskler (Sol ve Astra incelemeleri, 22 Eylül):
 - Başka bir sekmede oturum açılırsa, açık kalan herkese açık sayfadaki yüklü GTM sayfa yenilenene
   kadar çalışır. Gezinme öncesi o belgede uygulama kimliği yoktur; ama o belgede herkese açık
   bir sayfaya istemci içi gezinme yapılırsa yeni içerik oturumu görebilir (Sol, 22 Eylül).
-- Bu sürümden önce açılmış ve hâlâ açık sekmelerde eski yükleyiciler (GTM, Hotjar) sayfa
-  yenilenene kadar yaşar. Hotjar sitesi sağlayıcı tarafında devre dışı bırakılmalıdır.
+- Bu sürümden önce açılmış ve hâlâ açık sekmelerde eski (onaysız) yükleyiciler sayfa
+  yenilenene kadar yaşar.
+- Hotjar Identify API çağrılmaz; uygulama Hotjar'a kullanıcı kimliği eklemez.
 
 ## CSP
 
 Middleware tek CSP üreticisidir. Politika istek başına nonce ve `strict-dynamic` kullanır;
-`script-src` içinde `unsafe-inline` yoktur. GTM/GA4 kökenleri korunur; Hotjar kökenleri
-kaldırılmıştır. `frame-src` GTM'in oluşturabileceği çerçeveler için yalnız GTM kökenini tutar.
+`script-src` içinde `unsafe-inline` yoktur. GTM/GA4 ve Hotjar'ın betik, görsel, font ve bağlantı kökenleri izinlidir; yükleyiciler
+onay olmadan çizilmez. `frame-src` GTM'in oluşturabileceği çerçeveler için yalnız GTM kökenini tutar.
 
 ## Doğrulama
 
@@ -102,7 +105,7 @@ Açıkça onaylanmış üretim tarayıcı smoke'u şunları göstermelidir:
 4. GTM yüklüyken herkese açık bir sayfadan `/ara` veya `/giris`e geçiş tam sayfa yüklemesidir ve
    o sayfada GTM yoktur;
 5. oturum açılmış moderasyon sayfasında ne şerit ne yükleyici vardır;
-6. hiçbir yerde Hotjar isteği yoktur.
+6. Hotjar isteği yalnız "Kabul et"ten sonra vardır.
 
 Çerez, CSRF değeri ya da ölçüm yükü gövdesini kanıta yapıştırmayın. Yalnız release SHA'sını,
 sayfa sınıfını, etiket/istek sayılarını ve CSP sonucunu kaydedin.

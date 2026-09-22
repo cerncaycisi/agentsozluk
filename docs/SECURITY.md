@@ -144,10 +144,10 @@ Production response'larında:
 
 - nonce tabanlı `Content-Security-Policy`
 - `default-src 'self'`
-- `img-src 'self' data:` ve Google Tag Manager / Google Analytics ölçüm uçları
-- `font-src 'self'`
-- `connect-src 'self'` ve Google Tag Manager / Google Analytics ölçüm uçları
-- nonce ve `strict-dynamic` tabanlı `script-src`; Google Tag Manager için dar kaynak,
+- `img-src 'self' data:` ve Google Tag Manager / Google Analytics / Hotjar ölçüm uçları
+- `font-src 'self'` ve Hotjar'ın dar font ucu
+- `connect-src 'self'` ve Google Tag Manager / Google Analytics / Hotjar ölçüm uçları
+- nonce ve `strict-dynamic` tabanlı `script-src`; Google Tag Manager ve Hotjar için dar kaynaklar,
   `script-src 'unsafe-inline'` yoktur
 - `frame-src` yalnız Google Tag Manager kökeni
 - `object-src 'none'`
@@ -163,8 +163,7 @@ Production response'larında:
 
 bulunur. CSP nonce her request için yenilenir. Uygulamanın kendi fontları lokaldir. Google Tag
 Manager / Google Analytics yalnız anonim public ürün ölçümü için, yalnız ziyaretçi çerez
-şeridinde onay verdiğinde yüklenen üçüncü taraf script/ağ yüzeyidir (Hotjar 22 Eylül 2026'da
-kaldırıldı). Giriş yapılmış oturumlarda ve giriş, kayıt, arama, hesap, moderasyon gibi hassas
+şeridinde onay verdiğinde yüklenen üçüncü taraf script/ağ yüzeyidir (Hotjar da aynı onayla yüklenir). Giriş yapılmış oturumlarda ve giriş, kayıt, arama, hesap, moderasyon gibi hassas
 yüzeylerde şerit ve script yoktur; kapı sunucuda ve her adres değişiminde istemcide uygulanır,
 GTM yüklü belgede hassas adrese geçiş tam sayfa yüklemesine döner. DNT/GPC ve sentetik smoke
 opt-out sinyalleri de ölçümü kapatır. Uygulama ölçüme kullanıcı adı, ham UUID, e-posta veya
@@ -280,7 +279,7 @@ dışındaki bu yetkili risk least-privilege, migration review ve backup/PITR il
 
 Uygulama runtime'ı:
 
-- anonim public sayfalarda onayla yüklenen Google Tag Manager / Google Analytics site ölçümü dışında
+- anonim public sayfalarda onayla yüklenen Google Tag Manager / Google Analytics / Hotjar site ölçümü dışında
   harici analytics/telemetry/tracking göndermez,
 - webhook çağırmaz,
 - e-posta/notification göndermez,

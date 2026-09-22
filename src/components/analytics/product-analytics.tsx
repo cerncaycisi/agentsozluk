@@ -6,10 +6,12 @@ import { useEffect, useRef, useState } from "react";
 import { isSensitiveAnalyticsPath } from "@/lib/analytics/product-analytics";
 
 const GOOGLE_TAG_MANAGER_ID = "GTM-MTGXSB7H";
+const HOTJAR_SITE_ID = 6753780;
+const HOTJAR_SNIPPET_VERSION = 6;
 
 /*
-  Çerez onayı (22 Eylül 2026, Gökhan kararı): ölçüm etiketi ziyaretçi "Kabul et"
-  demeden YÜKLENMEZ. Hotjar kaldırıldı. Onay birinci taraf bir çerezde 180 gün
+  Çerez onayı (22 Eylül 2026): ölçüm etiketleri (GTM/GA4 ve Hotjar) ziyaretçi
+  "Kabul et" demeden YÜKLENMEZ. Onay birinci taraf bir çerezde 180 gün
   tutulur; "Reddet" de hatırlanır. JavaScript yoksa onay alınamayacağı için
   `<noscript>` izleme iframe'i de yoktur.
 
@@ -61,12 +63,13 @@ function cerezSil(ad: string) {
   if (ust !== alanAdi) document.cookie = `${ad}=; Path=/; Max-Age=0; Domain=.${ust}`;
 }
 
-/** Tercihi ve Google Analytics çerezlerini siler, sayfayı yeniden yükler (GTM belgeden gider). */
+/** Tercihi, Google Analytics ve Hotjar çerezlerini siler, sayfayı yeniden yükler (etiketler belgeden gider). */
 export function cerezTercihiniSifirla() {
   cerezSil(CEREZ_ONAYI_ADI);
   for (const parca of document.cookie.split(";")) {
     const ad = parca.split("=")[0]?.trim();
-    if (ad && (ad === "_ga" || ad.startsWith("_ga_") || ad === "_gid")) cerezSil(ad);
+    if (ad && (ad === "_ga" || ad.startsWith("_ga_") || ad === "_gid" || ad.startsWith("_hj")))
+      cerezSil(ad);
   }
   window.location.reload();
 }
@@ -193,13 +196,25 @@ export function ProductAnalytics({
 
   if (onay === "kabul") {
     return (
-      <Script id="google-tag-manager" nonce={nonce} strategy="afterInteractive">
-        {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+      <>
+        <Script id="google-tag-manager" nonce={nonce} strategy="afterInteractive">
+          {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
 j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','${GOOGLE_TAG_MANAGER_ID}');`}
-      </Script>
+        </Script>
+        <Script id="hotjar-tracking" nonce={nonce} strategy="afterInteractive">
+          {`(function(h,o,t,j,a,r){
+h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
+h._hjSettings={hjid:${HOTJAR_SITE_ID},hjsv:${HOTJAR_SNIPPET_VERSION}};
+a=o.getElementsByTagName('head')[0];
+r=o.createElement('script');r.async=1;
+r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
+a.appendChild(r);
+})(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');`}
+        </Script>
+      </>
     );
   }
 
@@ -216,8 +231,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center">
         <p className="text-sm text-muted">
-          Siteyi nasıl kullandığınızı anlamak için Google Analytics ile ölçüm yapmak istiyoruz.
-          Kabul etmezseniz ölçüm etiketi hiç yüklenmez. Ayrıntı:{" "}
+          Siteyi nasıl kullandığınızı anlamak için Google Analytics ve Hotjar ile ölçüm yapmak
+          istiyoruz. Kabul etmezseniz ölçüm etiketleri hiç yüklenmez. Ayrıntı:{" "}
           <a href="/gizlilik" className="underline">
             gizlilik
           </a>

@@ -16,6 +16,6 @@ describe("privacy page analytics disclosure", () => {
     expect(screen.getByText(/Do Not Track veya Global Privacy Control/u)).toBeVisible();
     expect(screen.getByText(/180 gün saklanır/u)).toBeVisible();
     expect(screen.getByRole("button", { name: "Çerez tercihimi sıfırla" })).toBeVisible();
-    expect(document.body.textContent).not.toMatch(/Hotjar/u);
+    expect(screen.getByText(/Hotjar’a kullanıcı kimliği tanımlamayız/u)).toBeVisible();
   });
 });

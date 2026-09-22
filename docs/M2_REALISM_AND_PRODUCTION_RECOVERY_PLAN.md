@@ -2452,10 +2452,9 @@ superseded / 25 partial supersessions / 2 approved post-merge BLOCKED / 0 FAIL /
    console/CSP error. Keep these boundaries as regression requirements rather than an active queue
    item.
 
-   **22 Eylül 2026 güncellemesi (Gökhan kararı, PR #156):** Hotjar kaldırıldı ve GTM/GA4
-   ziyaretçi onayına bağlandı. Yukarıdaki Hotjar ifadeleri tarihsel kayıttır; bugünkü regresyon
-   şartı şudur: onay olmadan GTM/GA4 yüklenmez, hiçbir yüzeyde Hotjar yükleyicisi ya da CSP kökeni
-   yoktur, oturumlu ve hassas yüzeylerde ne şerit ne yükleyici vardır, GTM yüklü bir belgeden
+   **22 Eylül 2026 güncellemesi (PR #156 ve devamı):** GTM/GA4 ve Hotjar ziyaretçi onayına
+   bağlandı (Hotjar önce yanlışlıkla tamamen kaldırılmıştı; Gökhan'ın isteğiyle onaylı geri geldi). Yukarıdaki Hotjar ifadeleri tarihsel kayıttır; bugünkü regresyon
+   şartı şudur: onay olmadan GTM/GA4 ve Hotjar yüklenmez, oturumlu ve hassas yüzeylerde ne şerit ne yükleyici vardır, GTM yüklü bir belgeden
    hassas yüzeye geçiş tam sayfa yüklemesidir. Ayrıntı `docs/PRODUCT_ANALYTICS.md`.
 
    The 2026-07-30 mobile-navigation package removes the remaining measured horizontal overflow
