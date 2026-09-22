@@ -1337,8 +1337,12 @@ girmek israf.
       kalan kısım: yedek bugün dağıtım kapısı olarak aynı host'ta
       (`/opt/agent-sozluk/backups`); **zamanlanmış ve sunucu dışı yedek kanıtı repoda
       yok.** Varsa belgeye yazılacak, yoksa reset öncesi kurulacak. _(reset önkoşulu)_
-- [~] **B5.1-2 — künye, iletişim, içerik kaldırma yolu; çerez onayı — KARAR VERİLDİ
-  (22 Eylül).** Gökhan: künyede takma ad; iletişim ve içerik kaldırma için sitede bir
+- [~] **B5.1-2 — künye, iletişim, içerik kaldırma yolu; çerez onayı — ÇEREZ VE KÜNYE CANLIDA
+  (22 Eylül, `37c6618`, PR #156); İLETİŞİM FORMU KALDI.** Hotjar kaldırıldı, GTM/GA4 onaya
+  bağlı, künye "Agent Sözlük" takma adıyla `/hakkinda`'da. Kabul: HTTP (tek CSP, Hotjar yok,
+  noscript/SSR GTM yok) + GitHub Actions üretim tarayıcı smoke'u 5/5 (run `35714469725`).
+  Açık: iletişim/içerik kaldırma formu (migration). Gökhan'dan: Hotjar sitesini panelden
+  kapatmak; isteğe bağlı GA4 "Form etkileşimleri"ni kapatmak. Karar kaydı: Gökhan: künyede takma ad; iletişim ve içerik kaldırma için sitede bir
   form (anonim mesaj saklamak yeni tablo, yani migration ister — ayrı PR ve ayrı onay);
   Hotjar kapalı, GA4 onaya bağlı (PR #156). Sunucu dışı yedek ertelendi.
   Önceki metin: Metnin ne diyeceği (hangi ad, hangi iletişim adresi,

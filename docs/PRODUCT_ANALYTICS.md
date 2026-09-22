@@ -71,7 +71,8 @@ Kabul edilen riskler (Sol ve Astra incelemeleri, 22 Eylül):
   herkese açık olduğu için ölçülür ve ifade adreste görünür (bu PR'dan önce de böyleydi).
 
 - Başka bir sekmede oturum açılırsa, açık kalan herkese açık sayfadaki yüklü GTM sayfa yenilenene
-  kadar çalışır; o belgede uygulama kimliği yoktur.
+  kadar çalışır. Gezinme öncesi o belgede uygulama kimliği yoktur; ama o belgede herkese açık
+  bir sayfaya istemci içi gezinme yapılırsa yeni içerik oturumu görebilir (Sol, 22 Eylül).
 - Bu sürümden önce açılmış ve hâlâ açık sekmelerde eski yükleyiciler (GTM, Hotjar) sayfa
   yenilenene kadar yaşar. Hotjar sitesi sağlayıcı tarafında devre dışı bırakılmalıdır.
 

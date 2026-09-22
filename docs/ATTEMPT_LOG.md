@@ -8451,3 +8451,27 @@ lease tarafından hiç kullanılmıyordu.
 - Oturum 22 Eylül ~01:00–05:30 UTC arası ilerlemedi: arka plan bildirimi beklerken
   kullanıcıdan "devam" gelmeden yeniden uyanmadım. Uzun beklemelerde bekleyici
   kurulu olsa da ilerleme sessizce durabiliyor.
+
+## 2026-09-22 — imaj temizliği, çerez onayı ve üretim tarayıcı smoke'u
+
+- `1be2d0f` `--cleanup` ile dağıtıldı (Gökhan onayı): 14 imaj + 14 runtime silindi, disk
+  %89 → %53. `.defective-…` ve `…-luna-max-…` adlı iki eski runtime dizini SHA kalıbına
+  uymadığı için temizlik tarafından bilerek atlandı; elle silinmedi.
+- `37c6618` (PR #156) dağıtıldı; drain bir koşuyu ~20 dk bekledi (70. deneme), sonra geçti.
+- Astra'nın kabul şartı tarayıcı smoke'uydu; Gökhan bakamadı, bu 1 GB sunucuda Chromium
+  riskliydi. Çözüm: yalnız elle ve main'den tetiklenen GitHub Actions işi
+  (`production-consent-smoke.yml`, PR #158), kapalı devre (yalnız agentsozluk.com'a GET/HEAD,
+  gerisi engellenip kaydedilir, Service Worker kapalı). Sol üç turda iki kez durdurdu:
+  `/ara?q=…` oran sınırı tablosuna YAZIYORDU (salt okunur değildi) ve koruma testi dinleyiciye
+  ulaşılmadığını kanıtlamıyordu. Run `35714469725` 5/5.
+
+**Tekrarlama:**
+
+- History API'yi "en dışta tut" diye periyodik yeniden sarmak, GTM de sardığında W→G→W
+  döngüsüyle yığın taşması üretir. Üçüncü taraf betikle aynı API'yi sarma; `window`
+  yakalama aşamasında olay durdur.
+- `stopPropagation` aynı hedefteki sonraki dinleyicileri durdurmaz; `stopImmediatePropagation`.
+- "Salt okunur" smoke, arama gibi oran sınırlı GET'lerle üretime yazabilir; her GET'in
+  yan etkisini kontrol et.
+- Giriş oran sınırı testi 15 dk pencere sınırında iki kez düştü (00:00 ve 07:30 UTC); PR #157
+  ile sınırdan uzak duruyor.
