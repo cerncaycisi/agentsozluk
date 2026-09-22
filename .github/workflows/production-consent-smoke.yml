@@ -1,0 +1,44 @@
+name: Production consent smoke
+
+# Yalnız elle ve yalnız main'den tetiklenir: üretim sitesine
+# (https://agentsozluk.com) salt okunur, kapalı devre tarayıcı kontrolü.
+# Her tetikleme Gökhan'ın o erişim için sohbette verdiği açık onayı ister;
+# tetikleyen, üretimde çalışan sürümün girilen SHA olduğunu SSH ile önceden
+# doğrular (site sürümünü dışarıya bildirmez). İş, girilen SHA'nın çalıştırılan
+# kodla aynı olmasını ve main'den tetiklenmesini zorunlu kılar.
+on:
+  workflow_dispatch:
+    inputs:
+      approved_sha:
+        description: "Üretimde çalıştığı doğrulanmış 40 karakterlik SHA (main HEAD)"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-consent-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Require main and matching SHA
+        env:
+          APPROVED_SHA: ${{ inputs.approved_sha }}
+          REF: ${{ github.ref }}
+          RUN_SHA: ${{ github.sha }}
+        run: |
+          [[ "$REF" == refs/heads/main ]] || { echo "yalnız main'den"; exit 1; }
+          [[ "$APPROVED_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "SHA biçimi"; exit 1; }
+          [[ "$APPROVED_SHA" == "$RUN_SHA" ]] || { echo "SHA main HEAD ile aynı değil"; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-project
+      - name: Install Playwright Chrome
+        run: pnpm exec playwright install --with-deps chrome
+      - name: Production consent smoke
+        run: pnpm exec playwright test --config playwright.production-smoke.config.ts
