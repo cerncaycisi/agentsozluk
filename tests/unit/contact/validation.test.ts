@@ -103,6 +103,39 @@ describe("iletişim formu doğrulaması", () => {
     expect(hata.error?.issues.map((issue) => issue.path)).toEqual([["message"]]);
   });
 
+  it("eşi olmayan UTF-16 vekilini reddeder, geçerli emojiyi değil", () => {
+    // JSON'daki `"\ud800"` kaçışı böyle bir dize üretir; Prisma onu yazamaz.
+    const vekilli = "123456789\ud800";
+    expect(contactMessageCreateSchema.safeParse({ ...gecerli, message: vekilli }).success).toBe(
+      false,
+    );
+    expect(contactMessageHandleSchema.safeParse({ note: vekilli }).success).toBe(false);
+    expect(contactMessageHandleSchema.safeParse({ note: "123456789\udc00" }).success).toBe(false);
+    expect(
+      contactMessageCreateSchema.safeParse({ ...gecerli, subjectPath: "/entry/\ud800" }).success,
+    ).toBe(false);
+    expect(
+      contactMessageCreateSchema.safeParse({ ...gecerli, replyEmail: "a\ud800@site.com" }).success,
+    ).toBe(false);
+    expect(contactMessageHandleSchema.safeParse({ note: "Tamamdır 👍 kaldırıldı" }).success).toBe(
+      true,
+    );
+  });
+
+  it("yanıt adresi tavanını normalleştirmeden sonra da uygular", () => {
+    // 111 UTF-16 birimi; NFKC "ﬃ"yi "ffi"ye açınca 323 karakter olur (VARCHAR(320)).
+    const uzayan = "ﬃ".repeat(106) + "@a.co";
+    expect(uzayan.length).toBeLessThanOrEqual(254);
+    expect(contactMessageCreateSchema.safeParse({ ...gecerli, replyEmail: uzayan }).success).toBe(
+      false,
+    );
+    const sinirda = "a".repeat(248) + "@a.com";
+    expect(sinirda).toHaveLength(254);
+    expect(contactMessageCreateSchema.safeParse({ ...gecerli, replyEmail: sinirda }).success).toBe(
+      true,
+    );
+  });
+
   it("bilinmeyen konu değerini reddeder", () => {
     expect(contactMessageCreateSchema.safeParse({ ...gecerli, kind: "SPAM" }).success).toBe(false);
   });

@@ -27,21 +27,26 @@ function atLeastCharacters(minimum: number) {
 }
 
 /*
-  PostgreSQL metin sütunu U+0000 saklayamaz; NUL içeren bir değer uygulamadan
-  geçerse yazma veritabanında düşer ve 500 döner (Sol, 22 Eylül). Yanıt
-  e-postası buna gerek duymaz: e-posta doğrulaması NUL'u zaten reddediyor.
+  Kalıcılık yolunun saklayamadığı iki şey şemada reddedilir; yoksa uygulama
+  kabul eder, yazma 500 döner (Sol, 22 Eylül):
+  - U+0000: PostgreSQL metin sütunu saklayamaz.
+  - Eşi olmayan UTF-16 vekili (JSON'da `"\ud800"` geçerli bir kaçış): geçerli
+    Unicode değildir, Prisma sorgu motoru onu veritabanına iletemez.
+  `isWellFormed` yerine `u` bayraklı kalıp: şema tarayıcıda da koşuyor.
+  Yanıt e-postası buna gerek duymaz: e-posta doğrulaması ikisini de reddediyor.
 */
-const NUL_MESSAGE = "Metin geçersiz bir karakter içeriyor.";
+const UNSTORABLE_MESSAGE = "Metin geçersiz bir karakter içeriyor.";
+const UNSTORABLE_CHARACTER = /[\u0000\p{Cs}]/u;
 
-function hasNoNul(value: string) {
-  return !value.includes("\u0000");
+function isStorableText(value: string) {
+  return !UNSTORABLE_CHARACTER.test(value);
 }
 
 const subjectPathSchema = z
   .string()
   .trim()
   .max(500)
-  .refine(hasNoNul, NUL_MESSAGE)
+  .refine(isStorableText, UNSTORABLE_MESSAGE)
   .refine(
     (value) => value === "" || isSameSitePath(value),
     "Bu sitedeki bir adres olmalı (örnek: /baslik/agent-sozluk).",
@@ -49,10 +54,16 @@ const subjectPathSchema = z
   .transform((value) => (value === "" ? undefined : value))
   .optional();
 
+/*
+  Tavan normalleştirmeden SONRA da uygulanır: NFKC metni uzatabilir ("ﬃ" üç
+  harfe açılır); ham 254 tavanı tek başına `VARCHAR(320)`'yi korumaz
+  (Sol, 22 Eylül). Ham tavan yalnız normalleştirmeye giden işi sınırlar.
+*/
 const replyEmailSchema = z
   .string()
   .max(254)
   .transform(normalizeEmail)
+  .refine((value) => value.length <= 254, "E-posta adresi çok uzun.")
   .refine(
     (value) => value === "" || emailCheck.safeParse(value).success,
     "Geçerli bir e-posta adresi girin.",
@@ -68,7 +79,7 @@ export const contactMessageCreateSchema = z.object({
     .trim()
     .max(4000)
     .refine(atLeastCharacters(10), "En az 10 karakter yazın.")
-    .refine(hasNoNul, NUL_MESSAGE),
+    .refine(isStorableText, UNSTORABLE_MESSAGE),
   replyEmail: replyEmailSchema,
 });
 
@@ -85,7 +96,7 @@ export const contactMessageHandleSchema = z.object({
     .trim()
     .max(1000)
     .refine(atLeastCharacters(10), "En az 10 karakter yazın.")
-    .refine(hasNoNul, NUL_MESSAGE),
+    .refine(isStorableText, UNSTORABLE_MESSAGE),
 });
 
 export type ContactMessageHandleInput = z.infer<typeof contactMessageHandleSchema>;

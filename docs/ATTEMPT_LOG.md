@@ -8535,3 +8535,10 @@ lease tarafından hiç kullanılmıyordu.
 - "Yalnız ek yapan" migration'da yeni tablodan mevcut tabloya varsayılan `NO ACTION` FK,
   geri dönüşten sonra eski imajın üst satır silmesini kırar; açılış + sağlık provası bunu
   göremez.
+- JSON `"\ud800"` kaçışı eşi olmayan vekil üretir; NUL ve uzunluk kuralları onu geçirir,
+  Prisma yazamaz → 500. Serbest metinde `/[\u0000\p{Cs}]/u` ile reddet (Sol 6. tur,
+  `dc46e35`). Uzunluk tavanını dönüşümden (NFKC) SONRA da uygula: "ﬃ"×106 e-postası
+  111 birimden 323 karaktere açılıp `VARCHAR(320)`'yi aşıyordu.
+- Migration izin listesi yalnız ifade kabuğuna bakarsa `CHECK (setval(...))` gibi yan
+  etki içeriden geçer; ifade içerikleri de izin listesinde olmalı. Restore kanıtı
+  sequence'leri de karşılaştırmalı.

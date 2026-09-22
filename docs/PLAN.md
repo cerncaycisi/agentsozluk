@@ -1489,8 +1489,13 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
         eklenenler, `_prisma_migrations`); liste sabit yazılmaz, katalogdan okunur. Her tablo
         için satır sayısı ve içerik parmak izi. Runbook'taki mevcut Gate 7 yalnız 16 V1
         tablosunu sınıyor, `user_follows` ve `agent_*` tablolarını açıkça dışlıyor
-        (`PRODUCTION_RUNBOOK.md`), bu yüzden onun yerine geçmez. Yalnız dosyanın var olması
-        yedek kanıtı sayılmaz.
+        (`PRODUCTION_RUNBOOK.md`), bu yüzden onun yerine geçmez. Tablolar yetmez: `public`
+        şemadaki bütün sequence'ler de katalogdan okunup karşılaştırılır (`last_value`,
+        `is_called`, sahip sütun ve `DEFAULT` bağı) ve her sequence'in sonraki değerinin sahip
+        sütundaki en büyük değerden büyük olduğu doğrulanır. İçeriği birebir aynı tablolar
+        sıfırlanmış bir `topics_public_id_seq` ile de eşit görünür, ilk yeni başlık ise
+        `publicId` çakışmasıyla düşer (Sol, 22 Eylül; 10 Eylül provası 3 sequence ölçmüştü).
+        Yalnız dosyanın var olması yedek kanıtı sayılmaz.
 
       - Uygulanmış migration listesi, **yalnız ek yapan** migration kontrolü, imajın kendi
         entrypoint'iyle `prisma migrate deploy`, sonrasında applied == candidate ve tablo
@@ -1504,7 +1509,18 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
         - yeni bir tabloyu açan düz `CREATE TABLE "ad" (…)`: sütunlar, sütun/tablo CHECK'leri,
           birincil anahtar ve aşağıdaki kurala uyan FK'ler. `AS`, `PARTITION OF`, `INHERITS`,
           `LIKE`, `OF`, `IF NOT EXISTS`, `TEMP`/`UNLOGGED` biçimleri reddedilir;
-        - aynı migration'da açılan tablo üzerinde `CREATE [UNIQUE] INDEX`.
+        - aynı migration'da açılan tablo üzerinde, düz sütun listesiyle
+          `CREATE [UNIQUE] INDEX` (ifade indeksi ve `WHERE` yok).
+
+        İzin listesi ifadelerin **içine** de uygulanır, yoksa izinli bir kabuk yan etki
+        taşır: `CHECK (setval('topics_public_id_seq', 1, false) > 0)` yeni tabloya ilk satır
+        yazılınca mevcut sequence'i sıfırlar (Sol, 22 Eylül). Sütun türü yalnız yerleşik
+        skaler tür veya aynı migration'da açılan enum; `SERIAL`/`BIGSERIAL`, `GENERATED` ve
+        kimlik sütunu reddedilir. `DEFAULT` yalnız sabit, enum değeri veya
+        `CURRENT_TIMESTAMP`. `CHECK` yalnız sütun başvurusu, sabit, karşılaştırma,
+        `IS [NOT] NULL`, `AND`/`OR`/`NOT`, `~` ve adıyla listelenmiş değişmez (IMMUTABLE)
+        yerleşik fonksiyonlar (`length`, `btrim`). Başka herhangi bir fonksiyon çağrısı,
+        alt sorgu, tür dönüşümü ya da mevcut bir sequence/nesneye başvuru adayı reddeder.
 
         Geri kalan her şey (mevcut nesneye dokunan `ALTER`, `DROP`, `TRUNCATE`, DML,
         fonksiyon, trigger, `DO`, yorum dışı bilinmeyen ifade) adayı reddeder;
@@ -1523,8 +1539,9 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
         Yalnız açılış ve sağlık kontrolü FK etkisini yakalamaz.
 
       **Kapatma ölçütü:** birim testleriyle korunan mod; izin listesinin her reddedilen ifade
-      türü için ayrı vaka ve iletişim migration'ının kendisi olumlu vaka; bütün tabloları
-      kapsayan izole restore + parmak izi kanıtı; FK'li eski imaj uyumluluk provası;
+      türü ve her reddedilen ifade içeriği (`setval`, `nextval`, alt sorgu, `SERIAL`,
+      ifade indeksi) için ayrı vaka, iletişim migration'ının kendisi olumlu vaka; bütün
+      tabloları ve sequence'leri kapsayan izole restore + parmak izi kanıtı; FK'li eski imaj uyumluluk provası;
       Sol + Astra incelemesi; ve ilk kullanımı olarak iletişim formunun canlıya alınması.
       A5 kapanmadan migration'lı dağıtım yapılmaz; runbook'un elle yürütülen Gate 7'si
       yalnız V1 tablolarını sınadığı için bunun yerine geçmez.
