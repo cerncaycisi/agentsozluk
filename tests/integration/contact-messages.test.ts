@@ -79,17 +79,29 @@ describe("iletişim iletileri (PostgreSQL)", () => {
     expect(JSON.stringify(denetim.metadata)).not.toContain("entry'de adım geçiyor");
   });
 
-  it("gönderen hesabı silinse bile iletiyi korur ve bağı düşürür", async () => {
+  /*
+    Hesap silme bu uygulamada desteklenen bir işlem değil: `users` satırını
+    silmek denetim kaydına dokunduğu için `audit_logs is append-only`
+    tetikleyicisine takılıyor (CI, 22 Eylül). Bu yüzden burada ölçülen şey
+    gönderenin doğru kaydedilmesi; FK'deki `ON DELETE SET NULL` savunma amaçlı.
+  */
+  it("oturumlu gönderimde göndereni kaydeder ve listede gösterir", async () => {
     const yazar = await createUser("iletisim_yazar", "USER");
+    const moderator = await createUser("iletisim_okuyan", "MODERATOR");
     const { id } = await submitContactMessage(
       integrationDatabase,
       { kind: "OTHER", message: "Hesabımla ilgili bir sorum var." },
       { ip: "203.0.113.8", submitterId: yazar.id, requestId: randomUUID() },
     );
-    await integrationDatabase.user.delete({ where: { id: yazar.id } });
     await expect(
       integrationDatabase.contactMessage.findUniqueOrThrow({ where: { id } }),
-    ).resolves.toMatchObject({ submitterId: null });
+    ).resolves.toMatchObject({ submitterId: yazar.id });
+    const [iletiler] = await getContactMessages(integrationDatabase, actor(moderator.id), {
+      status: "OPEN",
+      skip: 0,
+      take: 20,
+    });
+    expect(iletiler[0]?.submitter?.username).toBe("iletisim_yazar");
   });
 
   it("veritabanı kısıtları kısa iletiyi, bozuk IP özetini ve tutarsız durumu reddeder", async () => {

@@ -2,17 +2,23 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "@/lib/http/errors";
 
+/*
+  Sahte modüllerin imzaları açıkça yazılı: `vi.fn(async () => …)` argümansız bir
+  imza çıkarıyor ve `mock.calls[0]![2]` tip hatası veriyor (CI typecheck, 22 Eylül).
+*/
 const mocks = vi.hoisted(() => ({
-  getDatabase: vi.fn(() => ({}) as never),
-  enforceRateLimit: vi.fn(async () => {}),
-  requestIp: vi.fn(() => "203.0.113.9"),
-  csrfSession: vi.fn(async () => {
+  getDatabase: vi.fn((): unknown => ({})),
+  enforceRateLimit: vi.fn(async (..._args: unknown[]): Promise<void> => {}),
+  requestIp: vi.fn((): string => "203.0.113.9"),
+  csrfSession: vi.fn(async (_request: unknown): Promise<{ userId: string }> => {
     throw new AppError("AUTH_REQUIRED", 401, "Giriş gerekli.");
   }),
-  submitContactMessage: vi.fn(async () => ({
-    id: "33333333-3333-4333-8333-333333333333",
-    createdAt: new Date("2026-09-22T10:00:00.000Z"),
-  })),
+  submitContactMessage: vi.fn(
+    async (..._args: unknown[]): Promise<{ id: string; createdAt: Date }> => ({
+      id: "33333333-3333-4333-8333-333333333333",
+      createdAt: new Date("2026-09-22T10:00:00.000Z"),
+    }),
+  ),
 }));
 
 vi.mock("@/lib/db/client", () => ({ getDatabase: mocks.getDatabase }));
