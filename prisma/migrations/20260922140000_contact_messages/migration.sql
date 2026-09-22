@@ -38,9 +38,13 @@ CREATE TABLE "contact_messages" (
       AND "handledAt" IS NULL
       AND "handledNote" IS NULL
     )
+    -- `handledNote IS NOT NULL` şart: SQL'de bir CHECK yalnız FALSE olduğunda
+    -- reddeder. `length(btrim(NULL)) >= 10` NULL döner, NULL de "geçti" sayılır;
+    -- bu yüzden notsuz kapatma bu kısıttan sızıyordu (CI, 22 Eylül).
     OR (
       "status" = 'HANDLED'
       AND "handledAt" IS NOT NULL
+      AND "handledNote" IS NOT NULL
       AND length(btrim("handledNote")) >= 10
     )
   )
