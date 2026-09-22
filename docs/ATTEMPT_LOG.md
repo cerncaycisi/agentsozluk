@@ -8422,3 +8422,32 @@ lease tarafından hiç kullanılmıyordu.
 - Oturum yeniden başlayınca arka plan bekleyicileri ölüyor (CI bekleyicisi ve
   Sol turu "stopped"). Yeniden başlangıçta ilk iş açık işlerin durumunu
   kontrol edip bekleyicileri yeniden kurmak.
+
+## 2026-09-22 — lease süresi alarmı (#154) üretimde
+
+- Main `4763a3b02b4ff0ce6139078bb8abdc56a554c6e9`, ağaç Sol'un BİRLEŞTİR ve Astra'nın
+  KUR dediği `ac6f699` ile aynı. Betik root:root 0755, `mv -fT` ile atomik; önceki
+  sürüm `/opt/agent-sozluk/scripts/canlilik-alarmi.sh.onceki`. Geri alma:
+  `sudo mv -fT …onceki …canlilik-alarmi.sh`.
+- İlk koşu ve dört adımlı kabul geçti (ayrıntı `STATUS.md` 22 Eylül). Kabul geçici
+  konuyla yapıldı; Gökhan'a gece test bildirimi gitmedi.
+- 25 hakem turu: Sol 19, Astra 6. Astra'nın kurulum turları, Sol'un kaçırdığı
+  gerçek hataları buldu (sabit pencere, eski makbuz, tarihçe sınırı "şimdi" yerine
+  imleç, aynı milisaniye tekilleştirmesi).
+
+**Tekrarlama:**
+
+- awk programı tek tırnak içindeyse yorumda kesme (`dk'da`) kullanma; tırnağı
+  kapatıyor. İki kez oldu; `bash -n` yakaladı.
+- `date -d ""` hata vermez, bugünün gece yarısını döndürür; boş değeri önce reddet.
+- `mv -f kaynak hedef`, hedef dizinse dosyayı İÇİNE taşıyıp başarı döner; tek dosya
+  değiştirirken `mv -fT`.
+- mawk'ta `getline < dosya` okuma hatasında −1 döner; `> 0` döngüsü bunu dosya sonu
+  sanır.
+- Zaman pencereli testleri gerçek aralıkla yaz: 900 sn'lik timer'ı 600 sn ile
+  sınamak tarihçe hatasını gizledi.
+- 1 GB makinede tam typecheck bitmiyor; tek dosyayı içeren geçici bir
+  `tsconfig` (`extends` + dar `include`) CI'daki tip hatalarını birebir yakalıyor.
+- Oturum 22 Eylül ~01:00–05:30 UTC arası ilerlemedi: arka plan bildirimi beklerken
+  kullanıcıdan "devam" gelmeden yeniden uyanmadım. Uzun beklemelerde bekleyici
+  kurulu olsa da ilerleme sessizce durabiliyor.
