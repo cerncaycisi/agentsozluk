@@ -1067,13 +1067,13 @@ ertelenmiş madde olmaktan çıktı.
       değil, transaction içinde. Lease HTTP p50/p95 dağıtım öncesiyle aynı
       (815/967 → 834/976 ms), 5xx 0.
 
-- [~] **Lease süresi alarmı — dalda (`ops/lease-alarmi`, PR #154).** Telemetri
-  var ama kimse bakmıyor; 19 Eylül'ün dersi bu. Mevcut canlılık alarm
-  betiğine eklendi (yeni birim ya da `daemon-reload` yok, yalnız betik
-  dosyası değişir). Her 15 dk'lık koşuda son 15 dk'nın lease kayıtları:
-  `activeMs ≥ 2500` üç kez → uyarı; `≥ 4000` ya da tek `P2028` → kritik;
-  log okunamazsa ayrı bildirim; her hal değişimi bildirilir. Eşikler
-  Astra'nın; "5 dk'da 3 kez" timer aralığına uyarlanıp 15 dk oldu.
+- [x] **Lease süresi alarmı — ÜRETİMDE (22 Eylül, PR #154, `4763a3b`).** Telemetri
+      var ama kimse bakmıyor; 19 Eylül'ün dersi bu. Mevcut canlılık alarm
+      betiğine eklendi (yeni birim ya da `daemon-reload` yok, yalnız betik
+      dosyası değişir). Her 15 dk'lık koşuda son 15 dk'nın lease kayıtları:
+      `activeMs ≥ 2500` üç kez → uyarı; `≥ 4000` ya da tek `P2028` → kritik;
+      log okunamazsa ayrı bildirim; her hal değişimi bildirilir. Eşikler
+      Astra'nın; "5 dk'da 3 kez" timer aralığına uyarlanıp 15 dk oldu.
 
       **Sol ilk tur BİRLEŞTİRME:** lease taraması takılır ya da durum dosyası
       bozuksa asıl canlılık alarmı hiç koşmuyordu; başarısız ntfy gönderimi
@@ -1085,6 +1085,39 @@ ertelenmiş madde olmaktan çıktı.
       argümanları doğruluyor); ayrıntı aşağıda, hepsi yakalandı. İkinci tur: canlılık sorgusuna da `timeout`; sıfırlı ya da gelecekteki zaman damgası reddediliyor. Üçüncü tur: `activeMs: null` (callback hiç başlamamış) uyarı sayılıyor; tek bir ayrıştırılamayan satır bile varken alarm "temiz" diye kapanmıyor (dördüncü tur); bu durum ayrı bir hal (`belirsiz`) olarak bildiriliyor ve 6 saatte bir tekrarlanıyor, sessizce donmuyor (beşinci tur); kayıt gelmeyen pencerede de süren kötü hal 6 saatte bir hatırlatılıyor (altıncı tur).
 
       **Astra kurulum turu KURMA, ardından Sol (iki tur):** sabit 15 dk'lık pencere olay kaçırıyordu, gönderilemeyen bildirim kayboluyordu, sayı ortasında kesik satır sahte düzelme üretiyordu; ardından denenen imleç + disk kuyruğu da yeni kusurlar açtı (50 sınırı alarm siliyordu, kuyruk boşaltma süre bütçesini yiyordu, yarım yazılan kuyruk dosyası, saniye kesmesiyle çift sayım). **Son tasarım sade:** kuyruk yok; durum tek satır (`hal an teslim en_kotu`), atomik yazılır. Karar değişince teslim bekler; her koşu en fazla bir kez (10 sn) dener; arada gönderilemeyen en ağır hal sonraki bildirime eklenir ("arada kritik yaşandı, şimdi düzeldi"). Tarama `[imleç, şimdi)` yarı açık aralık, milisaniye; imleç her başarılı okumadan sonra ilerler, geçersizse hemen düzeltilip yazılır. "3 yavaş" gerçek 15 dk'lık kayan pencerede, yeni bir kayıtla biten pencerede. Testlerin yakaladığı ek gerçek hata: hedef dizinse `mv -f` içine taşıyıp başarılı dönüyordu → `mv -fT`. Sol dokuzuncu tur: imleç artık yalnız durum kalıcılaştıysa ilerliyor; durum satırına son ölçülen hal (`olcum`) eklendi, log körlüğünden kayıtsız dönüş "temiz" varsaymıyor; 6 saatlik geri bakma sınırı kaldırıldı (json-file rotasyonu zaten sınırlı); eşit ağırlıkta farklı gönderilemeyen karar gövdede anılıyor. Sol onuncu ve on birinci tur: dağıtımın `--force-recreate app` adımı eski konteynerin logunu siliyordu. Çözüm: imleç taranan konteynerin kimliğini de tutar; dağıtım worker'ı durdurduktan sonra aday sürümün alarm betiğini `--kesim-oncesi` ile doğrudan koşturur (yalnız lease; bildirim yok, karar teslim bekler; başarıda "bu konteyner şu ana kadar tarandı" makbuzu; çıkış kodu görünür, başarısızlık `RELEASE_WARN` ile dağıtımı durdurmaz) ve kurulu alarm betiği adaydan farklıysa uyarır. Konteyner değişmiş ve eski konteyner için makbuz yoksa sonuç en az `belirsiz`; kimlik okunamazsa imleç ilerlemez. Zamana dayalı pay kaldırıldı. Testlerin yakaladığı ek hata: `date -d ""` gece yarısını veriyordu. Sol on ikinci tur: timer ile kesim taraması aynı durumu kilitsiz güncelliyordu → bütün `oku → tara → yaz` bölümü `flock` altında (timer 5 sn bekler, alamazsa turu atlar; kesim 55 sn bekler, dağıtım süre sınırı 120 sn). Yarış gerçek eşzamanlı iki süreçle test ediliyor; kilit kaldırılınca test düşüyor. 58 alarm testi + dağıtım sıra testi. **Astra ikinci kurulum turu KURMA:** eski makbuz sonraki taramasız değişimi örtebiliyordu → kesim taraması başlarken eski makbuzu siler, yeni lease kaydı gören timer makbuzu geçersiz kılar; kayan pencere tarihçesi konteyner değişiminde kayboluyordu → son 15 dk'nın yavaş kayıt zamanları diskte tutulur, logdan tarihçe okunmaz (çift sayım da yok). Sol on dördüncü tur: makbuz ayrıca yeni konteyner makbuzdan sonra ve en geç 10 dk içinde yaratıldıysa geçerli (iptal edilmiş dağıtımın makbuzu sonraki değişimi örtemez; kalan risk: iptalden sonraki 10 dk içinde elle, taramasız yeniden yaratma — çift arıza, kabul edildi); tarihçe dosyası yoksa ilk koşu son 15 dk'yı logdan tohumlar; yazma sırası durum → tarihçe → imleç, tarihçe yazılamazsa imleç ilerlemez. **Astra üçüncü kurulum turu KURMA:** tarihçe "şimdi − 15 dk" ile eleniyordu; gerçek 15 dk timer aralığında önceki taramanın yavaşları düşüyor, üç dakikada üç yavaş kayıt uyarısız kalıyordu. Sınır imleç − 15 dk yapıldı (okuma, tohum, yazma); 900 sn ve gecikmeli tarama regresyonları eklendi (testim 600 sn beklediği için kaçırmıştı). Sol on yedinci tur: uzun gecikmeden sonra tarihçe tek `awk -v` argümanının boy sınırını aşıp ayrıştırmayı sessizce boşaltabiliyordu → tarihçe dosyadan okunuyor, yazılan tarihçe iki sınırlı aralık (boyut gecikmeden bağımsız), ayrıştırma çıktısı sayısal değilse "işlenemedi" olarak bildirilip imleç ilerlemiyor. Okunamayan tarihçe (izin/okuma hatası) de iki katmanda "işlenemedi": kabuk ön kontrolü ve awk `getline` −1 (mawk bunu dosya sonu gibi döndürüyordu). **Astra dördüncü kurulum turu KURMA:** tarihçe zaman damgasıyla tekilleştiriliyordu; worker paralel lease çağırabildiği için aynı milisaniyedeki iki yavaş kayıt teke iniyor, üç-yavaş uyarısı kaçıyordu → tekilleştirme kaldırıldı; eski tarihçeden yalnız imleçten öncesi, yeni kayıtlardan hepsi alınır (iki kaynak ayrık, çift sayım yok). 75 alarm testi.
+
+      **Kurulum ve kabul (22 Eylül 06:08–06:12 UTC):** betik özeti `9353d0fe…`
+      main ile aynı; önceki sürüm `.onceki` olarak duruyor. İlk gerçek koşu
+      `success 0`; `durum-lease` beş alan, imleçteki kimlik gerçek app
+      konteyneriyle aynı. Kabul, birimin kullanıcı/ortam/sandbox koşullarıyla
+      (`systemd-run`, `ReadWritePaths`, `SuccessExitStatus=0 2`) ama geçici
+      durum ve geçici ntfy konusuyla: (a) kritik eşiği 1 ms → urgent bildirim;
+      (b) yeni gerçek kayıtlarla "normale döndü" (kayıtsız turda durum kritik
+      kaldı); (c) `--kesim-oncesi` çıkış 0, makbuz = imleç, bildirim yok;
+      (d) canlılık eşiği 0 → çıkış 2 ve "koşu yok", normal eşik → çıkış 0 ve
+      "tekrar üretiyor". Gerçek konuya kabul boyunca 0 mesaj gitti.
+      "Üç yavaş" dalı üretimde tetiklenemez (gerçek süreler ~1 sn); kapısı
+      yerel regresyon testleri.
+
+      **Kabul edilen riskler (Sol + Astra):** (1) iptal edilmiş kesimden sonra
+      worker döner ve timer görmeden 10 dk içinde konteyner elle, taramasız
+      yeniden yaratılırsa eski makbuz boşluğu örtebilir (çift arıza, elle
+      müdahale); (2) tarihçe süzme hattında yalnız ilk `tr|sed` alt sürecinin
+      asimetrik arızası eski tarihçeyi düşürebilir; (3) tarihçe yazılıp imleç
+      yazılamazsa ve eşzamanlı log kaybı olursa bölünen seri kaçabilir;
+      (4) tarihçe yolu elle FIFO/aygıta çevrilirse okuma dış süre sınırına
+      kadar bekler.
+
+      **Süreç notu:** 25 hakem turu (Sol 19, Astra 6). Her turda gerçek bir kör
+      nokta bulundu; son iki turda açık bir durdurma kuralıyla (yalnız gerçekçi
+      tek-arıza tetikleyicileri engel) kapandı. Dağıtım betiğine eklenen kesim
+      öncesi tarama bir sonraki normal dağıtımda devreye girecek; o dağıtımda
+      `RELEASE_LEASE_SCAN_OK` görülmeli.
+
+- [ ] **Giriş oran sınırı entegrasyon testi 15 dk pencere sınırında kırılgan.**
+      `tests/integration/login-rate-limit.test.ts` 31 isteği gerçek saatle
+      gönderiyor; 22 Eylül 00:00:04 UTC'de pencere tam test sırasında döndü, 31. istek 429 yerine 401 aldı (CI `35669817153`, yeniden koşuda yeşil).
+      Test pencere başına hizalanmalı ya da saat sabitlenmeli.
 
 - [x] **Devre kesici kendi kendini kilitliyor — asıl kök neden.** Düzeltildi ve canlıda
       (4 Eylül, PR #109 + #110 · `7336862`). Üç halka birbirini

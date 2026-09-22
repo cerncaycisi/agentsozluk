@@ -7,6 +7,21 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-22 — lease süresi alarmı üretimde
+
+- **Kurulan:** `/opt/agent-sozluk/scripts/canlilik-alarmi.sh`, main `4763a3b02b4ff0ce6139078bb8abdc56a554c6e9`
+  (PR #154), sha256 `9353d0fe…`; birim ve uygulama değişmedi, dağıtım yok. Main CI
+  `35692683301` yeşil (Docker image işi `next/font` indirme hatasıyla bir kez düştü,
+  yeniden koşuda geçti).
+- **İlk gerçek koşu (06:08 UTC):** `Result=success`, `ExecMainStatus=0`; `durum-lease`
+  = `temiz 0 1 temiz temiz`; imleç kimliği = app konteyneri `1af099bf…`.
+- **Kabul (geçici durum + geçici ntfy konusu, birimin sandbox koşulları):** kritik
+  bildirimi urgent; yeni 22 kayıtla "normale döndü"; kesim öncesi kip çıkış 0 ve
+  makbuz = imleç; canlılık eşiği 0'da çıkış 2 + "koşu yok", normalde çıkış 0 +
+  "tekrar üretiyor". Gerçek konuya kabul boyunca 0 mesaj.
+- **Gözlem:** son 60 dk'da 806 lease kaydı, kümeler hâlinde; aynı kümede 1 ms arayla
+  iki kayıt görüldü (paralel lease gerçek).
+
 ## 2026-09-21 — lease transaction telemetrisi üretimde
 
 - **Dağıtılan:** `545b676faa412043600f2110ed4681cd894f7043` (PR #152 birleşmesi;
