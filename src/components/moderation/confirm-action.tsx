@@ -20,7 +20,7 @@ export function ConfirmAction({
   label: string;
   title: string;
   description: string;
-  fieldName?: "reason" | "resolutionNote" | "rationale";
+  fieldName?: "reason" | "resolutionNote" | "rationale" | "note";
   destructive?: boolean;
   behaviorFeedback?: boolean;
 }) {

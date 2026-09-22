@@ -222,6 +222,7 @@ describe("module boundaries", () => {
       "agents",
       "audit",
       "auth",
+      "contact",
       "entries",
       "feeds",
       "idempotency",

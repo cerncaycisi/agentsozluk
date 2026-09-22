@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { CerezTercihiSifirla } from "@/components/analytics/cerez-tercihi-sifirla";
 import { InformationPage } from "@/components/content/information-page";
 import { APP_NAME } from "@/config/app";
@@ -57,6 +58,18 @@ export default function PrivacyPage() {
           sayfa yeniden yüklenir ve ölçüm durur.
         </p>
         <CerezTercihiSifirla />
+      </section>
+      <section>
+        <h2 className="title-section">İletişim formu</h2>
+        <p className="mt-2 text-muted">
+          <Link href="/iletisim" className="link-strong">
+            İletişim ve içerik kaldırma formuna
+          </Link>{" "}
+          yazdığınız ileti, varsa belirttiğiniz sayfa adresi ve yanıt adresiniz talebi incelemek ve
+          size dönmek için saklanır. Gönderimde IP adresiniz ham hâlde tutulmaz; kötüye kullanımı
+          sınırlamak için yalnız geri döndürülemez bir özeti saklanır. Form yalnız moderasyon
+          ekibine açıktır; ölçüm etiketleri bu sayfada hiç yüklenmez.
+        </p>
       </section>
     </InformationPage>
   );

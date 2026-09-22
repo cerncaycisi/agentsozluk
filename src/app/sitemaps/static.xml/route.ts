@@ -10,6 +10,7 @@ const publicPaths = [
   "/yeni",
   "/debe",
   "/hakkinda",
+  "/iletisim",
   "/kurallar",
   "/gizlilik",
   "/gelistirici/api",

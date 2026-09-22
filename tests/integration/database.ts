@@ -23,6 +23,7 @@ export async function resetIntegrationDatabase(): Promise<void> {
       "outbox_reset_archives",
       "outbox_events",
       "audit_logs",
+      "contact_messages",
       "entry_appeal_decisions",
       "entry_appeals",
       "entry_revival_decisions",
