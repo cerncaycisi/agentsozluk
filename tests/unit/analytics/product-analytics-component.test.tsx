@@ -80,7 +80,11 @@ describe("ProductAnalytics — çerez onayı", () => {
   it("onay yokken yalnız şerit çizer; ölçüm etiketi YÜKLENMEZ", async () => {
     const { ProductAnalytics } = await bilesen();
     const { container } = render(<ProductAnalytics enabled nonce="n" />);
-    expect(screen.getByRole("region", { name: "Çerez tercihi" })).toBeVisible();
+    const serit = screen.getByRole("region", { name: "Çerez tercihi" });
+    expect(serit).toBeVisible();
+    // Opak arka plan: sitenin RGB üçlüsü değişkenleriyle çalışan sınıf (saydam kalmasın).
+    expect(serit.className).toContain("bg-surface");
+    expect(serit.className).not.toMatch(/bg-\[var\(/u);
     expect(container.querySelector("script")).toBeNull();
     expect(container.innerHTML).not.toContain("GTM-MTGXSB7H");
     expect(container.innerHTML).not.toContain("6753780");
