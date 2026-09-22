@@ -136,24 +136,55 @@ describe("ProductAnalytics — çerez onayı", () => {
     document.cookie = `${ADI}=kabul; Path=/`;
     render(<ProductAnalytics enabled nonce="n" />);
     const nextLink = vi.fn();
+    const gtmBelge = vi.fn();
+    const gtmBelgeYakalama = vi.fn();
     const govde = document.createElement("div");
     govde.innerHTML = '<a href="/ara?q=gizli"><span>ara</span></a><a href="/entry/1">entry</a>';
     govde.addEventListener("click", nextLink); // Next Link/React kök dinleyicisi gibi
+    // GTM'in aynı `document` üzerindeki dinleyicileri (hem kabarcık hem yakalama).
+    document.addEventListener("click", gtmBelge);
+    document.addEventListener("click", gtmBelgeYakalama, true);
+    // GTM bizden SONRA `window` yakalama aşamasına da kaydolabilir.
+    const gtmPencere = vi.fn();
+    window.addEventListener("click", gtmPencere, true);
     document.body.append(govde);
     try {
       fireEvent.click(govde.querySelector("span")!);
       expect(assign).toHaveBeenCalledWith(expect.stringMatching(/\/ara\?q=gizli$/u));
       expect(nextLink).not.toHaveBeenCalled();
+      expect(gtmBelge).not.toHaveBeenCalled();
+      expect(gtmBelgeYakalama).not.toHaveBeenCalled();
+      expect(gtmPencere).not.toHaveBeenCalled();
 
       fireEvent.click(govde.querySelectorAll("a")[1]!);
       expect(assign).toHaveBeenCalledTimes(1);
       expect(nextLink).toHaveBeenCalledTimes(1);
+      expect(gtmBelge).toHaveBeenCalledTimes(1);
 
       // Yeni sekme / değiştirici tuşlar tarayıcıya bırakılır.
       fireEvent.click(govde.querySelector("a")!, { ctrlKey: true });
       expect(assign).toHaveBeenCalledTimes(1);
     } finally {
       govde.remove();
+      document.removeEventListener("click", gtmBelge);
+      document.removeEventListener("click", gtmBelgeYakalama, true);
+      window.removeEventListener("click", gtmPencere, true);
+    }
+  });
+
+  it("geri/ileri hassas girdiye dönerse GTM'in geçmiş dinleyicisi susturulur ve yeniden yüklenir", async () => {
+    const { ProductAnalytics } = await bilesen();
+    document.cookie = `${ADI}=kabul; Path=/`;
+    render(<ProductAnalytics enabled nonce="n" />);
+    const gtmGecmis = vi.fn(); // GTM sonradan kaydolur
+    window.addEventListener("popstate", gtmGecmis);
+    try {
+      vi.stubGlobal("location", { ...window.location, pathname: "/giris", reload, assign });
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      expect(reload).toHaveBeenCalled();
+      expect(gtmGecmis).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener("popstate", gtmGecmis);
     }
   });
 

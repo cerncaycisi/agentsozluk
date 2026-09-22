@@ -31,16 +31,20 @@ Tercih, `as_cerez_onayi` adlı birinci taraf çerezde (`kabul`/`red`, 180 gün, 
 `SameSite=Lax`, https'te `Secure`) tutulur. Onay yoksa GTM hiç yüklenmez; JavaScript olmadan onay
 alınamayacağı için GTM `<noscript>` iframe'i de yoktur.
 
-GTM bir kez yüklendikten sonra belgeden sökülemez (`next/script` kaldırmaz). Bu yüzden:
+GTM bir kez yüklendikten sonra belgeden sökülemez (`next/script` kaldırmaz). Hedef, GTM'in
+**hassas bir belgeye asla taşınmamasıdır**. Bu yüzden GTM yüklü bir belgede:
 
-- GTM yüklü belgede `history.pushState/replaceState` en dıştan sarılır; hassas bir adrese geçiş
-  iç zincire (GTM'in geçmiş dinleyicisi dahil) ulaşmadan tam sayfa yüklemesine döner, sunucu o
-  sayfada ölçümü kapatır. GTM kendi sarmalayıcısını sonradan eklediği için bir süre en dışta
-  kalındığı yeniden doğrulanır.
-- Adres bir şekilde hassas yüzeye geçmişse ya da `popstate` hassas bir adrese dönerse sayfa
-  yeniden yüklenir.
-- Geri tuşu önbelleğinden (`pageshow`, `persisted`) dönüşte onay silinmişse ya da DNT/GPC
-  açılmışsa sayfa yeniden yüklenir.
+- `window` üzerinde, yakalama aşamasında bir click dinleyicisi aynı kökenli ve hassas yola
+  giden bağlantı tıklamalarını (sol tık, değiştirici tuş yok, `target` `_self`, `download`
+  yok) `preventDefault` + `stopImmediatePropagation` ile durdurup tam sayfa yüklemesine çevirir;
+  olay `document` üzerindeki dinleyicilere (Next yönlendiricisi, GTM) inmez. History API
+  **sarmalanmaz** (GTM de sarmaladığı için zincir kırılgan ve yığın taşmasına açıktı).
+- Geri/ileri (`popstate`) hassas bir girdiye dönerse, `window` yakalama aşamasındaki dinleyici
+  sonraki dinleyicileri susturur ve belgeyi yeniden yükler.
+- Arama önerisi hassas bir hedefe `router.push` yerine tam sayfa yüklemesiyle gider.
+- Adres yine de hassaslaşırsa, onay geri çekilmişse (başka sekmede sıfırlama/ret), sekmeye
+  dönüşte (`focus`, `visibilitychange`) ya da geri tuşu önbelleğinden (`pageshow`, `persisted`)
+  dönüşte onay geçersizse ya da DNT/GPC açılmışsa sayfa yeniden yüklenir.
 - Gizlilik sayfasındaki sıfırlama tercih çerezini ve `_ga`, `_ga_*`, `_gid` çerezlerini siler ve
   sayfayı yeniden yükler.
 
@@ -55,7 +59,16 @@ adını içerir. Uygulama ölçüme hesap kimliği, e-posta, parola veya oturum 
 EKLEMEZ; GTM konteyneri depo dışında yönetildiği için konteynerin ek veri toplamadığı ayrıca
 sağlayıcı tarafında denetlenmelidir.
 
-Kabul edilen riskler:
+Kabul edilen riskler (Sol ve Astra incelemeleri, 22 Eylül):
+
+- Sayfada üçüncü taraf betik çalıştığı sürece o belgedeki DOM'u, bağlantı adreslerini ve form
+  alanlarını okuyabilir; "GTM hassas adresi hiç göremez" garantisi verilemez. Garanti,
+  GTM'in hassas bir BELGEYE taşınmamasıdır.
+- Başlık kutusundaki arama formu olağan GET formudur; `/ara` belgesi GTM'siz açılır, ama kaynak
+  sayfadaki GTM form olayını görebilir. GA4 "gelişmiş ölçüm" form ayarı sağlayıcı tarafında
+  kapatılmalıdır.
+- Eşleşmeyen arama ifadesinin önerisi herkese açık `/baslik/<ifade>` adresidir; o sayfa
+  herkese açık olduğu için ölçülür ve ifade adreste görünür (bu PR'dan önce de böyleydi).
 
 - Başka bir sekmede oturum açılırsa, açık kalan herkese açık sayfadaki yüklü GTM sayfa yenilenene
   kadar çalışır; o belgede uygulama kimliği yoktur.

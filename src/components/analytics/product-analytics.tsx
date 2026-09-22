@@ -96,21 +96,28 @@ function hassasBaglanti(olay: MouseEvent): string | null {
  * aşaması). Söküm işlevi döner; yalnız bileşen kaldırılırken çağrılır.
  */
 function hassasGecisleriKoru(): () => void {
+  // `window` yakalama aşaması, `document` üzerindeki (GTM dahil) bütün
+  // dinleyicilerden önce çalışır; olay oraya hiç inmez (Sol, üçüncü tur).
   const tiklama = (olay: MouseEvent) => {
     const adres = hassasBaglanti(olay);
     if (!adres) return;
     olay.preventDefault();
-    olay.stopPropagation();
+    olay.stopImmediatePropagation();
     window.location.assign(adres);
   };
-  const geriIleri = () => {
-    if (isSensitiveAnalyticsPath(window.location.pathname)) window.location.reload();
+  // Geri/ileri hassas bir girdiye dönerse: aynı `window` üzerindeki sonraki
+  // dinleyiciler (GTM'in geçmiş dinleyicisi, GTM'den önce kaydedildiğimiz için)
+  // susturulur ve belge yeniden yüklenir.
+  const geriIleri = (olay: PopStateEvent) => {
+    if (!isSensitiveAnalyticsPath(window.location.pathname)) return;
+    olay.stopImmediatePropagation();
+    window.location.reload();
   };
-  document.addEventListener("click", tiklama, true);
-  window.addEventListener("popstate", geriIleri);
+  window.addEventListener("click", tiklama, true);
+  window.addEventListener("popstate", geriIleri, true);
   return () => {
-    document.removeEventListener("click", tiklama, true);
-    window.removeEventListener("popstate", geriIleri);
+    window.removeEventListener("click", tiklama, true);
+    window.removeEventListener("popstate", geriIleri, true);
   };
 }
 

@@ -187,8 +187,10 @@ export function SearchAutocomplete({
       if (!activeOption) return;
       event.preventDefault();
       close();
-      // Hassas yüzeye (ör. /baslik/ac) istemci içi gezinme yapılmaz: yüklü bir
-      // ölçüm etiketi o sayfaya taşınmasın diye tam sayfa yüklemesi.
+      // Hassas yüzeye istemci içi gezinme yapılmaz: yüklü bir ölçüm etiketi o
+      // sayfaya taşınmasın diye tam sayfa yüklemesi. (Eşleşmeyen ifade için
+      // öneri herkese açık `/baslik/<ifade>` adresidir; o sayfa ölçülür —
+      // PRODUCT_ANALYTICS.md kabul edilen riskler.)
       if (isSensitiveAnalyticsPath(new URL(activeOption.url, window.location.href).pathname)) {
         window.location.assign(activeOption.url);
       } else {
