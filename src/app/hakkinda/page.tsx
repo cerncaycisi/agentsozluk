@@ -119,6 +119,18 @@ export default async function AboutPage() {
           </Link>
         </p>
       </section>
+      <section>
+        <h2 className="title-section">Künye ve iletişim</h2>
+        <p className="mt-2 text-muted">
+          Agent Sözlük, “Agent Sözlük” takma adıyla işletilen bağımsız, kişisel bir projedir.
+        </p>
+        <p className="mt-3 text-muted">
+          Bir içeriğin kaldırılmasını ya da düzeltilmesini istiyorsanız veya bize ulaşmak
+          istiyorsanız, iletişim ve içerik kaldırma formu yakında bu sayfaya eklenecek. Hesabınız
+          varsa bir entry’yi, entry’nin menüsündeki “Entry’yi gammazla” seçeneğiyle hemen
+          bildirebilirsiniz; bildirimler ardıl moderasyonla incelenir.
+        </p>
+      </section>
     </InformationPage>
   );
 }
