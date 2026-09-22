@@ -258,6 +258,11 @@ lease_kontrol_kilitli() {
   # Son 15 dk'nın yavaş kayıt zamanları (ms, virgülle).
   gecmis=""
   if [[ -e "$LEASE_YAVAS" ]]; then
+    # Var ama okunamıyorsa tarihçe "boş" SAYILMAZ: işlenemedi (Sol).
+    if [[ ! -f "$LEASE_YAVAS" || ! -r "$LEASE_YAVAS" ]]; then
+      hata_yaz "durum-lease-yavas okunamıyor"
+      islenemedi=1
+    fi
     read -r gecmis 2>/dev/null <"$LEASE_YAVAS" || true
     [[ "$gecmis" =~ ^[0-9,]*$ ]] || gecmis=""
     # awk tarihçeyi DOSYADAN okur: argüman boyu sınırına takılmaz (Sol).
@@ -304,12 +309,14 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
         # aralığında şimdi eksi 15 dakika sınırı önceki taramanın yavaşlarını
         # düşürüyordu).
         if (gdosya != "") {
-          while ((getline satir < gdosya) > 0) {
+          # getline -1 (okuma hatası) dosya sonu DEĞİLDİR: çıktı sayısal olmaz.
+          while ((gr = (getline satir < gdosya)) > 0) {
             ng = split(satir, gg, ",")
             for (i = 1; i <= ng; i++)
               if (gg[i] ~ /^[0-9]+$/ && gg[i] + 0 < e && gg[i] + 0 >= e - 900000) { ny++; yt[ny] = gg[i] + 0; yn[ny] = 0 }
           }
           close(gdosya)
+          if (gr < 0) okuma_hatasi = 1
         }
       }
       NF == 0 { next }
@@ -335,6 +342,7 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
         else b++
       }
       END {
+        if (okuma_hatasi) { print "TARIHCE_OKUNAMADI"; exit }
         for (i = 2; i <= ny; i++) {
           x = yt[i]; xn = yn[i]; j = i - 1
           while (j >= 1 && yt[j] > x) { yt[j+1] = yt[j]; yn[j+1] = yn[j]; j-- }
@@ -347,6 +355,7 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
     # Ayrıştırma çıktısı sayısal değilse (awk hatası) sonuç "kayıt yok" SAYILMAZ:
     # işlenemedi → okunamıyor gibi; imleç ilerlemez (Sol, on yedinci tur).
     [[ "${toplam:-}" =~ ^[0-9]+$ && "${pencerede:-}" =~ ^[0-9]+$ && "${p2028:-}" =~ ^[0-9]+$ ]] || islenemedi=1
+    [[ "${toplam:-}" == TARIHCE_OKUNAMADI ]] && hata_yaz "durum-lease-yavas okunamadı"
     [[ "$yeni_yavas" == "-" ]] && yeni_yavas=""
     # Yazılacak tarihçe SINIRLI iki aralıktır: [imleç−15 dk, imleç) — imleç
     # ilerlemezse sonraki tarama bunu ister — ve [şimdi−15 dk, şimdi) — ilerlerse.

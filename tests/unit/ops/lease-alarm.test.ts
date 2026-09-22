@@ -738,11 +738,32 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
     },
   );
 
-  it("tarihçe yazılamazsa imleç ilerlemez", () => {
+  // root için chmod 000 okumayı engellemez; o ortamda sınanamaz.
+  it.skipIf(process.getuid?.() === 0)(
+    "okunamayan tarihçe dosyası 'boş' sayılmaz; bildirilir ve imleç ilerlemez",
+    () => {
+      imlecYaz(T - 15 * 60);
+      const yavas = path.join(dizin, "durum", "durum-lease-yavas");
+      writeFileSync(yavas, `${(T - 1000) * 1000}\n`);
+      chmodSync(yavas, 0o000);
+      const { bildirimler, stderr } = calistir([zamanli(800, T - 60)], {
+        simdi: T,
+        kimlik: ESKI,
+      });
+      chmodSync(yavas, 0o600);
+      expect(stderr).toContain("durum-lease-yavas okunam");
+      expect(bildirimler[0]).toContain("okunamıyor");
+      expect(imlecOku()).toBe(T - 15 * 60);
+    },
+  );
+
+  it("tarihçe yolu dosya değilse (ne okunur ne yazılır) imleç ilerlemez", () => {
+    // Saf yazma hatası dizin izinleri bozulmadan kurulamaz; dizin olan yol hem
+    // okumayı hem yazmayı düşürür. Sıra (durum → tarihçe → imleç) kodda && zinciri.
     imlecYaz(T - 15 * 60);
     mkdirSync(path.join(dizin, "durum", "durum-lease-yavas"), { recursive: true });
     const { stderr } = calistir([zamanli(2600, T - 60)], { simdi: T, kimlik: ESKI });
-    expect(stderr).toContain("durum-lease-yavas yazılamadı");
+    expect(stderr).toContain("durum-lease-yavas");
     expect(imlecOku()).toBe(T - 15 * 60);
   });
 
