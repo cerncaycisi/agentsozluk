@@ -6,9 +6,9 @@ import { expect, test, type BrowserContext, type Page } from "@playwright/test";
   istek — üçüncü taraf ya da aynı kökene GET/HEAD dışı — engellenir ve kaydedilir.
   Service Worker kapalı. Hesap açmaz, giriş yapmaz, form göndermez.
 
-  Kapsam sınırı: GTM betiği engellendiği için uzak GTM konteynerinin içeriği
-  (ör. konteynere eklenmiş bir Hotjar etiketi) burada sınanamaz; bu test yalnız
-  UYGULAMANIN Hotjar yüklemediğini ve CSP'de Hotjar olmadığını kanıtlar.
+  Kapsam sınırı: GTM ve Hotjar betikleri engellendiği için uzak GTM konteynerinin
+  içeriği burada sınanamaz; bu test uygulamanın iki etiketi de YALNIZ onaydan
+  sonra istediğini kanıtlar.
 */
 
 const SITE = "https://agentsozluk.com";
@@ -52,11 +52,11 @@ test("onaysız ve ret sonrası izleme yok; kabulde GTM denemesi; hassas geçiş 
 }) => {
   const kayit = await kapaliDevre(context);
 
-  // 1) CSP: tek başlık, GTM var, Hotjar yok.
+  // 1) CSP: tek başlık, GTM ve Hotjar kökenleri var.
   const yanit = await git(page, "/");
   const csp = (await yanit?.allHeaders())?.["content-security-policy"] ?? "";
   expect(csp).toContain("https://www.googletagmanager.com");
-  expect(csp).not.toMatch(/hotjar/iu);
+  expect(csp).toContain("https://static.hotjar.com");
 
   // 2) Karar öncesi: şerit var, hiçbir dış istek yok, noscript iframe yok.
   await expect(serit(page)).toBeVisible();
@@ -83,13 +83,18 @@ test("onaysız ve ret sonrası izleme yok; kabulde GTM denemesi; hassas geçiş 
   await expect(serit(page)).toBeVisible();
   expect(kayit.engellenen).toEqual([]);
 
-  // 5) Kabul et: doğru GTM konteyneri istenir (engellenir); uygulama Hotjar istemez.
+  // 5) Kabul et: doğru GTM konteyneri ve Hotjar sitesi istenir (engellenir).
   await git(page, "/");
   await serit(page).getByRole("button", { name: "Kabul et" }).click();
   await expect
     .poll(() => kayit.engellenen.filter((u) => u.includes(`gtm.js?id=${GTM_KIMLIGI}`)).length)
     .toBeGreaterThan(0);
-  expect(kayit.engellenen.some((u) => /hotjar/iu.test(u))).toBe(false);
+  await expect
+    .poll(
+      () =>
+        kayit.engellenen.filter((u) => /static\.hotjar\.com\/c\/hotjar-6753780/u.test(u)).length,
+    )
+    .toBeGreaterThan(0);
   expect(kayit.engellenen.every((u) => u.startsWith("GET "))).toBe(true);
 
   // 6) Koruma gerçekten çalışıyor mu? Next Link gibi davranan, belge düzeyinde

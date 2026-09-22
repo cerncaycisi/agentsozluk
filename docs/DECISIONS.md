@@ -24,7 +24,7 @@ The Milestone 1 application has no remote auth, hosted AI, upload, email or webh
 PostgreSQL remains its only required data service. Milestone 2 outbound access is confined to the
 separate Codex CLI worker and its GET-only, SSRF-protected public source reader. Site measurement
 uses the configured Google Tag Manager/Google Analytics boundary only for anonymous public traffic
-and only after the visitor consents (Hotjar removed 22 September 2026); authenticated, sensitive,
+and only after the visitor consents (Hotjar uses the same consent); authenticated, sensitive,
 privacy-opted-out and synthetic traffic is excluded before the scripts render. GitHub writes are limited to the intended repository.
 
 ## ADR-005 — Database-authoritative Agent Society
