@@ -8,9 +8,9 @@ moderasyon, audit, transactional outbox, persona/memory/source state, PostgreSQL
 runtime credential, installed Codex CLI adapter ve public source reader kapsam içindedir.
 
 E-posta gönderimi, upload, ödeme, webhook, üçüncü taraf auth ve hosted AI API key entegrasyonu
-yoktur. Site measurement anonim public trafikte Google Tag Manager/Google Analytics ve Hotjar
-boundary'sinde kalır; authenticated ve hassas sayfalarda script render edilmez, hiçbir uygulama
-kimliği Hotjar Identify API'ına gönderilmez. Agent worker'ın production systemd artifact'i
+yoktur. Site measurement anonim public trafikte, yalnız ziyaretçi onayıyla Google Tag
+Manager/Google Analytics boundary'sinde kalır (Hotjar 22 Eylül 2026'da kaldırıldı);
+authenticated ve hassas sayfalarda script render edilmez, uygulama ölçüme kimlik eklemez. Agent worker'ın production systemd artifact'i
 repository'de versioned olsa da production host'ta kurulu/aktif olduğu bu tehdit modelinin
 varsayımı değildir; rollout kanıtı ayrı operator kapısıdır.
 

@@ -37,15 +37,22 @@ export default function PrivacyPage() {
         <p className="mt-2 text-muted">
           Siteyi nasıl kullandığınızı anlamak için Google Tag Manager üzerinden Google Analytics 4
           kullanırız; yalnız siz çerez şeridinde “Kabul et” dediğinizde yüklenir. Kabul etmezseniz
-          ölçüm etiketi hiç yüklenmez ve site aynen çalışır. Giriş yapılmış oturumlarda, moderasyon
-          ve hesap yüzeylerinde, aramada ve tarayıcınız Do Not Track veya Global Privacy Control
+          ölçüm etiketi hiç yüklenmez ve site aynen çalışır. Giriş yapılmış oturumlarda, moderasyon,
+          hesap ve arama sayfalarında ve tarayıcınız Do Not Track veya Global Privacy Control
           tercihi bildirdiğinde şerit gösterilmez, ölçüm yapılmaz.
         </p>
         <p className="mt-3 text-muted">
+          Bu ölçüm anonim değil, takma adlıdır: Google Analytics tarayıcınıza rastgele bir ziyaretçi
+          kimliği atar ve ziyaret ettiğiniz herkese açık sayfaların adresini ve başlığını kaydeder;
+          herkese açık bir yazar profili açarsanız o profilin adresi de bunlara dahildir.
+          Hesabınızı, e-postanızı, parolanızı veya oturum bilgilerinizi ölçüme bizim eklediğimiz
+          hiçbir alan taşımaz. Ölçüm verilerini reklam hedefleme için satmayız.
+        </p>
+        <p className="mt-3 text-muted">
           Tercihiniz <code>as_cerez_onayi</code> adlı birinci taraf bir çerezde 180 gün saklanır.
-          Oturum güvenliği için kullanılan çerezler zorunludur ve ölçüm için kullanılmaz. Ölçüme
-          kullanıcı adı, hesap kimliği, e-posta, parola, oturum bilgisi veya yönetim ekranı içeriği
-          gönderilmez; ölçüm verilerini reklam hedefleme için satmayız.
+          Oturum güvenliği için kullanılan çerezler zorunludur ve ölçüm için kullanılmaz.
+          Tercihinizi sıfırladığınızda tercih çerezi ve Google Analytics çerezleri silinir, sayfa
+          yeniden yüklenir ve ölçüm durur.
         </p>
         <CerezTercihiSifirla />
       </section>
