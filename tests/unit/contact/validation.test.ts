@@ -65,6 +65,8 @@ describe("iletişim formu doğrulaması", () => {
     expect(contactMessageHandleSchema.safeParse({ note: "a".repeat(1001) }).success).toBe(false);
     // Kapatma notu zorunlu: arayüz de en az 10 karakter istiyor.
     expect(contactMessageHandleSchema.safeParse({ note: "   " }).success).toBe(false);
+    // Boş olmayan ama kısa not da reddedilmeli; yoksa `.min(10)` → `.min(1)` sessiz geçer.
+    expect(contactMessageHandleSchema.safeParse({ note: "gizledim" }).success).toBe(false);
     expect(contactMessageHandleSchema.safeParse({}).success).toBe(false);
     expect(contactMessageHandleSchema.parse({ note: "  İçerik gizlendi.  " }).note).toBe(
       "İçerik gizlendi.",

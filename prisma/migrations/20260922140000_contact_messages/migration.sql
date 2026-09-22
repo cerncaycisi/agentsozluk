@@ -26,12 +26,19 @@ CREATE TABLE "contact_messages" (
     REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT "contact_messages_handledById_fkey" FOREIGN KEY ("handledById")
     REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE,
-  -- Açık kayıtta kapatma alanları boş, kapalı kayıtta kapatma ZAMANI dolu olmalı.
-  -- `handledById` bilerek kısıtın dışında: hesap silinirse FK onu NULL'a çeker
-  -- ve kısıt bunu isteseydi hesap silme işlemi 23514 ile geri alınırdı (Sol, 22 Eylül).
+  -- Açık kayıtta kapatma alanları boş; kapalı kayıtta kapatma ZAMANI ve NOTU dolu.
+  -- Not koşulu uygulamanın "her kapatmada açıklama bulunur" sözünü veritabanında
+  -- da tutar (Sol, 22 Eylül). `handledById` bilerek kısıtın dışında: hesap
+  -- silinirse FK onu NULL'a çeker ve kısıt bunu isteseydi hesap silme işlemi
+  -- 23514 ile geri alınırdı.
   CONSTRAINT "contact_messages_handled_consistency" CHECK (
-    ("status" = 'OPEN' AND "handledById" IS NULL AND "handledAt" IS NULL)
-    OR ("status" = 'HANDLED' AND "handledAt" IS NOT NULL)
+    (
+      "status" = 'OPEN'
+      AND "handledById" IS NULL
+      AND "handledAt" IS NULL
+      AND "handledNote" IS NULL
+    )
+    OR ("status" = 'HANDLED' AND "handledAt" IS NOT NULL AND "handledNote" IS NOT NULL)
   )
 );
 

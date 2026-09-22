@@ -2819,8 +2819,9 @@ components:
     ContactMessageHandleInput:
       type: object
       additionalProperties: false
+      required: [note]
       properties:
-        note: { type: string, maxLength: 1000 }
+        note: { type: string, minLength: 10, maxLength: 1000 }
     ModerationReasonInput:
       type: object
       required: [reason]

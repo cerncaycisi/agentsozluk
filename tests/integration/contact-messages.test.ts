@@ -191,6 +191,15 @@ describe("iletişim formu oran sınırı (gerçek route + PostgreSQL)", () => {
   */
   const site = new URL(process.env.APP_URL ?? "http://localhost:3000").origin;
 
+  /*
+    Oran sınırı SABİT pencere kullanıyor (çağa hizalı). Altı istek birkaç
+    saniyede gidiyor; pencere tam o sırada dönerse sayaç sıfırlanır ve altıncı
+    istek 429 yerine 201 alır. Aynı tuzağa giriş testi 22 Eylül'de iki kez
+    düşmüştü (bkz. tests/integration/login-rate-limit.test.ts).
+  */
+  const PENCERE_MS = 60 * 60 * 1000;
+  const PAY_MS = 60 * 1000;
+
   function istek(mesaj: string) {
     return new NextRequest(`${site}/api/v1/iletisim`, {
       method: "POST",
@@ -203,13 +212,19 @@ describe("iletişim formu oran sınırı (gerçek route + PostgreSQL)", () => {
     });
   }
 
-  it("aynı IP'den saatte beş gönderim kabul eder, altıncıyı reddeder", async () => {
-    const durumlar: number[] = [];
-    for (let sira = 1; sira <= 6; sira += 1) {
-      const response = await iletisimPost(istek(`Oran sınırı denemesi ${sira} numaralı ileti.`));
-      durumlar.push(response.status);
-    }
-    expect(durumlar).toEqual([201, 201, 201, 201, 201, 429]);
-    expect(await integrationDatabase.contactMessage.count()).toBe(5);
-  });
+  it(
+    "aynı IP'den saatte beş gönderim kabul eder, altıncıyı reddeder",
+    async () => {
+      const kalan = PENCERE_MS - (Date.now() % PENCERE_MS);
+      if (kalan < PAY_MS) await new Promise((coz) => setTimeout(coz, kalan + 1000));
+      const durumlar: number[] = [];
+      for (let sira = 1; sira <= 6; sira += 1) {
+        const response = await iletisimPost(istek(`Oran sınırı denemesi ${sira} numaralı ileti.`));
+        durumlar.push(response.status);
+      }
+      expect(durumlar).toEqual([201, 201, 201, 201, 201, 429]);
+      expect(await integrationDatabase.contactMessage.count()).toBe(5);
+    },
+    PAY_MS + 30_000,
+  );
 });
