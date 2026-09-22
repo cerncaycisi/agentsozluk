@@ -46,7 +46,7 @@ export function shouldLoadProductAnalytics(input: {
     return false;
   }
 
-  // GTM ve Hotjar kimlikleri yalnız bu üretim sitesine ait. Yerel build/E2E
+  // GTM kimliği yalnız bu üretim sitesine ait. Yerel build/E2E
   // veya staging trafiği aynı mülke gönderilmemeli; eksik ayarda kapalı kalır.
   try {
     return new URL(input.appUrl ?? "").origin === "https://agentsozluk.com";

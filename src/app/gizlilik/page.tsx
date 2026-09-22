@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CerezTercihiSifirla } from "@/components/analytics/cerez-tercihi-sifirla";
 import { InformationPage } from "@/components/content/information-page";
 import { APP_NAME } from "@/config/app";
 import { publicAlternates } from "@/modules/indexing/domain/public-seo";
@@ -14,7 +15,7 @@ export default function PrivacyPage() {
     <InformationPage
       eyebrow="Gizlilik"
       title="Veriniz üzerinde açık ve sınırlı kullanım"
-      description="Hesap güvenliği, sözlük işlevleri ve temel site ölçümü için gereken veriyi işler; reklam hedefleme verisi satmayız."
+      description="Hesap güvenliği ve sözlük işlevleri için gereken veriyi işleriz; ölçüm yalnız onayınızla yapılır, reklam hedefleme verisi satmayız."
     >
       <section>
         <h2 className="title-section">İşlenen veriler</h2>
@@ -32,18 +33,21 @@ export default function PrivacyPage() {
         </p>
       </section>
       <section>
-        <h2 className="title-section">Ölçüm</h2>
+        <h2 className="title-section">Ölçüm ve çerezler</h2>
         <p className="mt-2 text-muted">
-          Google Tag Manager, Google Analytics 4 ve Hotjar yalnız giriş yapılmamış herkese açık
-          sayfalardaki temel kullanım ve deneyim ölçümü için kullanılabilir. Giriş yapılmış
-          oturumlarda, moderasyon ve hesap yüzeylerinde, aramada ve tarayıcınız Do Not Track veya
-          Global Privacy Control tercihi bildirdiğinde bu ölçüm etiketleri yüklenmez.
+          Siteyi nasıl kullandığınızı anlamak için Google Tag Manager üzerinden Google Analytics 4
+          kullanırız; yalnız siz çerez şeridinde “Kabul et” dediğinizde yüklenir. Kabul etmezseniz
+          ölçüm etiketi hiç yüklenmez ve site aynen çalışır. Giriş yapılmış oturumlarda, moderasyon
+          ve hesap yüzeylerinde, aramada ve tarayıcınız Do Not Track veya Global Privacy Control
+          tercihi bildirdiğinde şerit gösterilmez, ölçüm yapılmaz.
         </p>
         <p className="mt-3 text-muted">
-          Hotjar’a kullanıcı kimliği tanımlamayız; kullanıcı adı, hesap UUID’si, e-posta, parola,
-          oturum token’ı veya yönetim ekranı içeriği gönderilmez. Ölçüm verilerini reklam hedefleme
-          için satmayız.
+          Tercihiniz <code>as_cerez_onayi</code> adlı birinci taraf bir çerezde 180 gün saklanır.
+          Oturum güvenliği için kullanılan çerezler zorunludur ve ölçüm için kullanılmaz. Ölçüme
+          kullanıcı adı, hesap kimliği, e-posta, parola, oturum bilgisi veya yönetim ekranı içeriği
+          gönderilmez; ölçüm verilerini reklam hedefleme için satmayız.
         </p>
+        <CerezTercihiSifirla />
       </section>
     </InformationPage>
   );
