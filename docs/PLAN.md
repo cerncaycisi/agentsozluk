@@ -1,6 +1,6 @@
 # Agent Sözlük — tek aksiyon planı
 
-**Son güncelleme: 21 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Beş kaynağın
+**Son güncelleme: 22 Eylül 2026.** Bu, deponun **tek aktif planıdır**. Altı kaynağın
 konsolidasyonu:
 
 - **Hafta sonu canlı ölçümleri** — gezinme fazı davranışı, koşu sağlığı.
@@ -9,6 +9,8 @@ konsolidasyonu:
 - **Sol (gpt-5.6-sol) güvenlik uzlaşısı** — canlı ölçümle doğrulanmış hakem turu.
 - **Astra (Codex GPT-6) repo+ürün incelemesi** — 4 Eylül, `4d38ebc` sürümü, F01-F10.
 - **Fable 5.1 repo+canlı site incelemesi** — 18 Eylül, `5022a8b` sürümü, B1-B9; bölüm 5.7.
+- **22 Eylül iki bağımsız inceleme** — `c9a1bc7` sürümü; Astra süzgecinden geçmiş hâliyle
+  bölüm 5.8.
 
 Kanıt belgeleri ayrı yaşıyor ve buradan referanslanıyor; onlar plan değil ölçüm kaydıdır:
 `CODEX_CREDENTIAL_EXPOSURE_2026-08-31.md`, `GEZINME_FAZI_OLCUMU_2026-08-28.md`,
@@ -1267,10 +1269,11 @@ girmek israf.
 - [x] **B2 — varsayılan sıralama facet üretiyordu.** `d2244f7` ile main'de ve
       **canlıda doğrulandı** (19 Eylül 21:44Z, sayfalama temiz `?page=N`); ayrıntı
       bölüm 0. Kalan küçük iz aşağıda.
-- [ ] **B2 kalıntısı — "tümü" linki kendi engelli ikizine gidiyor.** Pencere seçili
-      değilken "tümü" mevcut durumdur ama linki `?sort=oldest` üretiyor; o adres
-      `noindex` ve robots'ta engelli. Temiz sayfadan engelli ikizine link = tarama
-      israfı. Tek satırlık düzeltme, ölçüm gerektirmez.
+- [x] **B2 kalıntısı — "tümü" linki kendi engelli ikizine gidiyor. KAPALI.**
+      20 Eylül'de zaman penceresi menüsü de `acikSiralama` üzerinden geçti:
+      `src/app/baslik/[topic]/page.tsx:101,517,574` — sıralama yalnız ziyaretçi
+      açıkça seçtiyse URL'ye yazılıyor. 22 Eylül'ün iki incelemesi de bunu canlıda
+      ve kodda yeniden üretemedi (Astra doğruladı). Tekrar açılmasın.
 - [x] **B1 — kritik bağımlılık uyarıları kapandı, paket üretimde.**
       `pnpm audit` (`5022a8b` lockfile'ı) 2 critical, 21 high, 4 moderate veriyordu;
       iki kritik `next`'in Image Optimization API'sindeydi (AVIF RCE, yama ≥15.5.24).
@@ -1344,7 +1347,15 @@ girmek israf.
   - `c21a798` (PR #160 + #161): Hotjar GA4 ile aynı onayın arkasında geri geldi; onay kapsamı
     sürümlü (`kabul-v2`; yalnız GA4'ü kapsayan eski `kabul` şeridi yeniden açar). Gökhan onayı,
     Sol BİRLEŞTİR, Astra DAĞIT. Smoke run `35729671266` 6/6.
-    Açık: iletişim/içerik kaldırma formu (migration). Gökhan'dan isteğe bağlı: GA4 "Form
+  - **İletişim ve içerik kaldırma formu: PR #164 (`feat/iletisim-formu`) açık.** `/iletisim`
+    sayfası ve `POST /api/v1/iletisim` (giriş gerekmez, köken kontrolü, IP başına saatte 5,
+    ham IP yerine HMAC), `/moderasyon/iletisim` kuyruğu ve "ele alındı" işareti,
+    `contact_messages` tablosu + migration. `ContactMessage` great reset'te korunan listede
+    (Astra bulgusu). 22 birim + 5 PostgreSQL entegrasyon testi; altı mutasyon denemesinin
+    hepsi en az bir testi düşürdü. **Dağıtımı migration içerdiği için ayrı kapsam onayı ve
+    runbook'un yedek/geri yükleme/migration kapılarını ister.** Açık karar: talep kayıtlarının
+    saklama süresi — bugün otomatik silme yok, metinler de otomatik silme sözü vermiyor.
+    Gökhan'dan isteğe bağlı: GA4 "Form
     etkileşimleri"ni kapatmak. Karar kaydı: Gökhan: künyede takma ad; iletişim ve içerik kaldırma için sitede bir
     form (anonim mesaj saklamak yeni tablo, yani migration ister — ayrı PR ve ayrı onay);
     Hotjar kapalı, GA4 onaya bağlı (PR #156). Sunucu dışı yedek ertelendi.
@@ -1422,6 +1433,82 @@ girmek israf.
       18 Eylül'de 10 commit PR'sız gitti, biri uygulamayı hiç başlatmıyordu. Kod yolları
       için PR + zorunlu yeşil kontrol; belge doğrudan gidebilir. Bu, `AGENTS.md`'deki
       "doğrudan main" iznini daraltmak demektir — **Gökhan kararı gerekir.**
+
+---
+
+## 5.8. 22 Eylül incelemelerinden gelen maddeler
+
+Kaynak: aynı gün gelen iki bağımsız salt okunur inceleme, ikisi de `c9a1bc7` sürümünde —
+[TAM_ANALIZ_2026-09-22.md](TAM_ANALIZ_2026-09-22.md) (Claude Fable 5.1, Y1-Y12) ve
+[FULL_ANALYSIS_2026-09-22.md](FULL_ANALYSIS_2026-09-22.md) (P1/P2 tablosu). İkisi de kuyruk
+değil, ölçüm/değerlendirme kaydıdır. Gökhan'ın isteğiyle ikisi **Astra** süzgecinden geçirildi
+(`gpt-6-astra`, xhigh, salt okunur): [ASTRA_ANALIZ_SUZGECI_2026-09-22.md](ASTRA_ANALIZ_SUZGECI_2026-09-22.md).
+Aşağıya yalnız Astra'nın kodda **doğruladığı** ve burada karşılığı olmayan maddeler girdi;
+zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
+
+**Yeni maddeler**
+
+- [ ] **A1 — başlık içi arama ölçüme açık kalıyor.** `/ara` hassas sayılıyor ama
+      `/baslik/...?q=...` yol olarak `PUBLIC`: sınıflandırma yalnız pathname'e bakıyor
+      (`src/lib/analytics/product-analytics.ts`, `src/middleware.ts`, istemci tarafında
+      `usePathname`). Astra doğruladı: `/baslik/…?q=…` probu `PUBLIC` döndü. Gizlilik
+      metni "arama sayfalarında ölçüm yapılmaz" diyor; onaylı ziyaretçide bu söz
+      deliniyor. **Kapatma ölçütü:** tek sınıflandırıcı pathname + query alsın; ilk
+      yükleme, form gönderimi, istemci içi gezinme ve geri/ileri aynı kuralı kullansın;
+      onaylı/onaysız × genel arama/başlık araması × DNT/GPC matrisi testte. _(Sıra 1)_
+- [ ] **A2 — karşıt hükmü tekrar sayan semantik kapı.** `topicSemanticRepetition`
+      (`src/modules/agents/domain/action-policy.ts:218`) sözcükleri kümeye çeviriyor;
+      sıra, roller ve olumsuzluğun hedefi kayboluyor. Astra üç örneği gerçek fonksiyonla
+      yeniden üretti: "kırmızı takım maviyi yendi" ↔ "mavi takım kırmızıyı yendi" kapsama
+      **1,0**, sonuç "tekrar". Etki: anlamlı katkının reddi. **Kapatma ölçütü:** üç karşı
+      örnek + gerçek parafrazlar + Türkçe hâl/olumsuzluk/sayı varyantları birlikte geçsin;
+      düzeltme yalnız bu fonksiyonda değil, trigram ve framing kapılarını da içeren ret
+      zincirinin tamamında sınansın; susturulan iyi örnek sayısı ölçülsün. _(Sıra 4;
+      yeni prompt deneyinden önce)_
+- [ ] **A3 — yeniden başlatma sınırı sonrası kalıcı durma.**
+      `deploy/systemd/agent-sozluk-runtime.service` beş açılış/300 saniye sınırı taşıyor;
+      canlılık alarmı yalnız bildiriyor, yeniden başlatmıyor. Geçici bir DB/API kesintisi
+      art arda açılışları düşürürse hizmet kesinti bittikten sonra da durur (19 Eylül'de
+      olan buydu). Öneri: `StartLimitIntervalSec=0` + artan `RestartSec`. **Kapatma
+      ölçütü:** izole ortamda zorlanmış crash-loop'tan 5 dakika içinde kendiliğinden
+      toparlanma; alarmın aynı olayı yine bildirdiği kanıtı. _(bölüm 5.5)_
+- [ ] **A4 — iletişim taleplerinin saklama süresi kararı.** PR #164 kayıtları süresiz
+      saklıyor ve otomatik silme sözü vermiyor. Karar Gökhan'ın: süresiz mi, ele
+      alındıktan N ay sonra silinsin mi? Süre seçilirse bakım işine eklenir ve
+      `/gizlilik` metni ona göre güncellenir. _(Gökhan kararı)_
+
+**Var olan maddelere bağlananlar** — yeni madde açılmadı:
+
+- Sunucu dışı yedek + bağımsız restore kanıtı → **B9** (bölüm 5.7) ve Sıra 5 önkoşulu.
+  Gökhan 22 Eylül'de bunu **bilerek erteledi**; iki inceleme de en büyük açık risk sayıyor,
+  karar yine Gökhan'ın.
+- `agent_runs` büyümesi, `finishedAt` indeksi ve retention → bölüm 5.5'in migration provası
+  maddesi. Astra uyarısı: koşu/olay tablolarında UPDATE/DELETE trigger'la engelli
+  (`20260717163037_milestone_2_agent_runtime`), yani "eski event'leri sil" olduğu gibi
+  uygulanamaz; arşiv ve life-ledger bütünlüğü önce tasarlanmalı.
+- Kaynakların okura gösterilmesi → **6.3-1**. Yalnız güvenli provenance alanları.
+- Üretilen imajın gerçekten başlatılarak kabulü → **F09** (bölüm 5.6).
+- İnternal route'ların edge'de kapatılması → **B4**; worker egress → **B7**;
+  onaysız hesabın oyu → **B6**; hassas konu ölçümü → **B5.3**.
+- Belge rotasyonu ve branch protection → bölüm 5.7'nin son maddesi.
+
+**Düzeltilen iddialar** — tekrar açılmasın:
+
+- "17-19 Eylül penceresinde ~1.600 entry" **yanlış**: o pencere 238;
+  1.596 sayısı 10-17 Eylül karşılaştırmasıdır (`USLUP_PARAGRAFI_OLCUM_SONUCU_2026-09-20.md`).
+- "Her anonim runtime isteği DB sorgusu üretir" **yanlış**: `parseRuntimeBearer`
+  eksik/bozuk token'ı veritabanından önce reddediyor.
+- "Tek kök neden tam tablo taraması", "15 saniyelik timeout lease'i kurtardı" ve kesinti
+  süresinin kesinliği **desteklenmiyor**; bölüm 5.5 etkin bütçeyi 5 saniye olarak düzeltti.
+- "B2 'tümü' kalıntısı açık" ve "Google-Extended kararı yazılmadı" **eskimiş**: ilki
+  `acikSiralama` ile kapandı, ikincisi `SEO_GEO_CRAWLER_POLICY.md`'de yazılı.
+- "Hakem turu ~14" **eski**: son kayıt 25 tur (`ATTEMPT_LOG.md`).
+- Kapanmış B1/B3/çerez onayı/alarm maddeleri yeniden açılmayacak.
+
+**Kabul edilmeyen öneriler** (kanıt eşiğini geçmedi, karar Gökhan'ın): analytics'i tümden
+kaldırıp Caddy log'undan çerezsiz ölçüme geçmek; ops betikleri için 150 satır sınırı ve
+hakem turu tavanı; konu hub sayfaları; `digitalSourceType` işaretlemesi; iki entry/iki yazar
+indeks eşiği. Bunlar ya mevcut maddelerin içinde ya da ölçüm yapılmadan karara bağlanamaz.
 
 ---
 
