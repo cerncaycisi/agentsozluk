@@ -7,7 +7,18 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
-## 2026-09-22 — çerez onayı, Hotjar kaldırma ve künye üretimde; imaj temizliği
+## 2026-09-22 — Hotjar onaya bağlı olarak geri geldi
+
+- **Dağıtılan:** `c21a798b329a957c804526c96815100e170ac813` (PR #160 + #161), Gökhan'ın exact
+  SHA onayıyla; main CI yeşil, artifact `35727918587`, `RELEASE_COMPLETE PASS`,
+  `RELEASE_LEASE_SCAN_OK`. Geri dönüş `37c6618`.
+- **HTTP:** CSP'de GTM ve Hotjar kökenleri; HTML'de GTM ya da Hotjar yükleyicisi yok (yalnız
+  onaydan sonra istemcide).
+- **Tarayıcı smoke'u** run `35729671266`: 6/6 — onaysız/ret sonrası dış istek 0; kabulde
+  doğru GTM konteyneri ve Hotjar sitesi `6753780` istenir; eski (yalnız GA4) `kabul` çerezi
+  şeridi yeniden açar ve izleme başlatmaz; hassas geçiş tam yükleme; DNT/GPC ayrı ayrı.
+
+## 2026-09-22 — çerez onayı ve künye üretimde (Hotjar bu sürümde yoktu); imaj temizliği
 
 - **İmaj temizliği (Gökhan onayı):** `1be2d0fcc5585346466870192c10ad1ad170b540` `--cleanup` ile
   dağıtıldı; 14 eski imaj + 14 eski runtime silindi, disk %89 → %53 (boş 8,6 → 36 GB); volume
