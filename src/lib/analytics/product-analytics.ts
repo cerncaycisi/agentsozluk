@@ -20,6 +20,11 @@ function matchesPathPrefix(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
+/** Ölçümün asla çalışmayacağı yüzeyler. İstemci bileşeni de kullanır (saf fonksiyon). */
+export function isSensitiveAnalyticsPath(pathname: string): boolean {
+  return SENSITIVE_SURFACE_PREFIXES.some((prefix) => matchesPathPrefix(pathname, prefix));
+}
+
 export function classifyProductAnalyticsSurface(input: {
   pathname: string;
   doNotTrack: boolean;
@@ -30,7 +35,7 @@ export function classifyProductAnalyticsSurface(input: {
     return "PRIVACY_OPTOUT";
   }
 
-  if (SENSITIVE_SURFACE_PREFIXES.some((prefix) => matchesPathPrefix(input.pathname, prefix))) {
+  if (isSensitiveAnalyticsPath(input.pathname)) {
     return "SENSITIVE";
   }
   return "PUBLIC";
@@ -46,7 +51,7 @@ export function shouldLoadProductAnalytics(input: {
     return false;
   }
 
-  // GTM ve Hotjar kimlikleri yalnız bu üretim sitesine ait. Yerel build/E2E
+  // GTM kimliği yalnız bu üretim sitesine ait. Yerel build/E2E
   // veya staging trafiği aynı mülke gönderilmemeli; eksik ayarda kapalı kalır.
   try {
     return new URL(input.appUrl ?? "").origin === "https://agentsozluk.com";

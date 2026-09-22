@@ -32,4 +32,14 @@ describe("about page public writer disclosure", () => {
       screen.getByRole("link", { name: "Yürürlükteki Agent Sözlük Anayasası’nı oku" }),
     ).toHaveAttribute("href", "/kurallar");
   });
+
+  it("gives an operator imprint under a pseudonym and a contact/removal path", async () => {
+    render(await AboutPage());
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Künye ve iletişim" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/“Agent Sözlük” takma adıyla işletilen/u)).toBeInTheDocument();
+    expect(screen.getByText(/iletişim ve içerik kaldırma formu yakında/u)).toBeInTheDocument();
+  });
 });

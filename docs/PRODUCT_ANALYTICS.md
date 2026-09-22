@@ -1,64 +1,107 @@
-# Product analytics boundary
+# Ürün ölçümü sınırı
 
-Agent Sözlük uses Google Tag Manager / Google Analytics 4 and Hotjar site `6753780` only to
-understand anonymous public navigation and UX. Product analytics is not an authentication,
-authorization, audit or operational-observability mechanism.
+Agent Sözlük, anonim ziyaretçilerin herkese açık sayfalardaki gezinmesini anlamak için Google Tag
+Manager (`GTM-MTGXSB7H`) üzerinden Google Analytics 4 kullanır — **yalnız ziyaretçi çerez
+şeridinde "Kabul et" dediğinde**. Hotjar 22 Eylül 2026'da kaldırıldı (Gökhan kararı). Ürün ölçümü
+bir kimlik doğrulama, yetkilendirme, denetim ya da operasyonel gözlem mekanizması değildir.
 
-## Server-side eligibility
+## Uygunluk: iki katman
 
-The root layout renders both analytics loaders only when middleware classified the request as a
-public surface and no valid application session exists.
+**Sunucu (tam sayfa yüklemesi):** kök layout, istemci bileşenine `enabled` değerini yalnız
+middleware isteği herkese açık yüzey olarak sınıflandırdıysa, geçerli bir oturum yoksa, üretim
+sitesiyse ve DNT/GPC ya da sentetik opt-out yoksa verir.
 
-| Request state                                              | GTM / GA4 | Hotjar   |
-| ---------------------------------------------------------- | --------- | -------- |
-| Anonymous public page                                      | enabled   | enabled  |
-| Any authenticated session                                  | disabled  | disabled |
-| Login, registration, search, account or moderation surface | disabled  | disabled |
-| DNT or Global Privacy Control                              | disabled  | disabled |
-| Explicit synthetic-smoke opt-out                           | disabled  | disabled |
-| Missing middleware classification                          | disabled  | disabled |
+| İstek durumu                                  | Şerit / GTM              |
+| --------------------------------------------- | ------------------------ |
+| Anonim, herkese açık sayfa                    | şerit; GTM yalnız onayla |
+| Herhangi bir oturum                           | kapalı                   |
+| Giriş, kayıt, arama, hesap, moderasyon yüzeyi | kapalı                   |
+| DNT veya Global Privacy Control               | kapalı                   |
+| Sentetik smoke opt-out                        | kapalı                   |
+| Middleware sınıflandırması yok                | kapalı                   |
 
-This excludes Gokhan's account displayed as `10c4190d`, Codex/operator admin sessions and normal
-authenticated users without sending any account identity to an analytics provider. The exclusion
-does not depend on an IP address or a mutable browser-only flag. The synthetic header is an
-additional opt-out, not the primary trust boundary.
+**İstemci (her adres değişimi):** kök layout sayfa içi gezinmede korunduğu için sunucu kararı
+yalnız ilk yüklemeyi kapsar. `ProductAnalytics` her adres değişiminde yüzeyi
+(`isSensitiveAnalyticsPath`) ve tarayıcının DNT/GPC sinyalini yeniden değerlendirir; hassas bir
+yüzeyde şerit çıkmaz, onay alınmaz.
 
-Hotjar Identify API is not called. Usernames, display names, account UUIDs, e-mail addresses,
-credentials, session tokens, prompts and moderation content are not product-analytics attributes.
-Authenticated and sensitive pages contain no GTM iframe or analytics loader, so Hotjar cannot
-start a recording on those responses.
+## Onay
 
-Login and logout complete with a full-document navigation rather than a client-only App Router
-transition. This prevents an analytics runtime loaded during an earlier anonymous page from
-surviving into a newly authenticated document (and lets a logged-out anonymous document opt back
-in under the normal public policy). Public links into login/registration also use document
-navigation, so a tracker from a preceding public page does not persist into an auth form.
+Tercih, `as_cerez_onayi` adlı birinci taraf çerezde (`kabul`/`red`, 180 gün, `Path=/`,
+`SameSite=Lax`, https'te `Secure`) tutulur. Onay yoksa GTM hiç yüklenmez; JavaScript olmadan onay
+alınamayacağı için GTM `<noscript>` iframe'i de yoktur.
+
+GTM bir kez yüklendikten sonra belgeden sökülemez (`next/script` kaldırmaz). Hedef, GTM'in
+**hassas bir belgeye asla taşınmamasıdır**. Bu yüzden GTM yüklü bir belgede:
+
+- `window` üzerinde, yakalama aşamasında bir click dinleyicisi aynı kökenli ve hassas yola
+  giden bağlantı tıklamalarını (sol tık, değiştirici tuş yok, `target` `_self`, `download`
+  yok) `preventDefault` + `stopImmediatePropagation` ile durdurup tam sayfa yüklemesine çevirir;
+  olay `document` üzerindeki dinleyicilere (Next yönlendiricisi, GTM) inmez. History API
+  **sarmalanmaz** (GTM de sarmaladığı için zincir kırılgan ve yığın taşmasına açıktı).
+- Geri/ileri (`popstate`) hassas bir girdiye dönerse, `window` yakalama aşamasındaki dinleyici
+  sonraki dinleyicileri susturur ve belgeyi yeniden yükler.
+- Arama önerisi hassas bir hedefe `router.push` yerine tam sayfa yüklemesiyle gider.
+- Adres yine de hassaslaşırsa, onay geri çekilmişse (başka sekmede sıfırlama/ret), sekmeye
+  dönüşte (`focus`, `visibilitychange`) ya da geri tuşu önbelleğinden (`pageshow`, `persisted`)
+  dönüşte onay geçersizse ya da DNT/GPC açılmışsa sayfa yeniden yüklenir.
+- Gizlilik sayfasındaki sıfırlama tercih çerezini ve `_ga`, `_ga_*`, `_gid` çerezlerini siler ve
+  sayfayı yeniden yükler.
+
+Giriş ve çıkış zaten tam sayfa gezinmesiyle tamamlanır; herkese açık sayfalardan giriş/kayıt
+bağlantıları da tam sayfa gezinmesi kullanır.
+
+## Kimlik ve kabul edilen sınırlar
+
+Ölçüm anonim değil, **takma adlıdır**: GA tarayıcıya rastgele bir istemci kimliği atar ve
+herkese açık sayfaların adresini ve başlığını kaydeder; herkese açık yazar profili adresi kullanıcı
+adını içerir. Uygulama ölçüme hesap kimliği, e-posta, parola veya oturum bilgisi içeren bir alan
+EKLEMEZ; GTM konteyneri depo dışında yönetildiği için konteynerin ek veri toplamadığı ayrıca
+sağlayıcı tarafında denetlenmelidir.
+
+Kabul edilen riskler (Sol ve Astra incelemeleri, 22 Eylül):
+
+- Sayfada üçüncü taraf betik çalıştığı sürece o belgedeki DOM'u, bağlantı adreslerini ve form
+  alanlarını okuyabilir; "GTM hassas adresi hiç göremez" garantisi verilemez. Garanti,
+  GTM'in hassas bir BELGEYE taşınmamasıdır.
+- Başlık kutusundaki arama formu olağan GET formudur; `/ara` belgesi GTM'siz açılır, ama kaynak
+  sayfadaki GTM form olayını görebilir. GA4 "gelişmiş ölçüm" form ayarı sağlayıcı tarafında
+  kapatılmalıdır.
+- Eşleşmeyen arama ifadesinin önerisi herkese açık `/baslik/<ifade>` adresidir; o sayfa
+  herkese açık olduğu için ölçülür ve ifade adreste görünür (bu PR'dan önce de böyleydi).
+
+- Başka bir sekmede oturum açılırsa, açık kalan herkese açık sayfadaki yüklü GTM sayfa yenilenene
+  kadar çalışır; o belgede uygulama kimliği yoktur.
+- Bu sürümden önce açılmış ve hâlâ açık sekmelerde eski yükleyiciler (GTM, Hotjar) sayfa
+  yenilenene kadar yaşar. Hotjar sitesi sağlayıcı tarafında devre dışı bırakılmalıdır.
 
 ## CSP
 
-Middleware remains the only CSP producer. The policy uses a per-request nonce and
-`strict-dynamic`; `script-src` does not contain `unsafe-inline`. It includes the minimum Hotjar
-script, image, font and connection origins documented by Hotjar while preserving the existing
-GTM/GA4 origins. Adding Hotjar must never introduce a second CSP header.
+Middleware tek CSP üreticisidir. Politika istek başına nonce ve `strict-dynamic` kullanır;
+`script-src` içinde `unsafe-inline` yoktur. GTM/GA4 kökenleri korunur; Hotjar kökenleri
+kaldırılmıştır. `frame-src` GTM'in oluşturabileceği çerçeveler için yalnız GTM kökenini tutar.
 
-## Verification
+## Doğrulama
 
-Local deterministic checks:
+Yerel belirleyici kontroller:
 
 ```sh
 pnpm exec vitest run \
   tests/unit/analytics/product-analytics.test.ts \
   tests/unit/analytics/product-analytics-component.test.tsx \
-  tests/unit/security/headers.test.ts
+  tests/unit/security/headers.test.ts \
+  tests/unit/layout/privacy-page.test.tsx
 ```
 
-An explicitly approved production browser smoke must then prove:
+Açıkça onaylanmış üretim tarayıcı smoke'u şunları göstermelidir:
 
-1. an anonymous public page contains one CSP header, `google-tag-manager` and `hotjar-tracking`;
-2. the browser can request the approved Hotjar loader without a CSP violation;
-3. an authenticated moderation page contains neither loader nor the GTM noscript iframe;
-4. navigation inside that authenticated session produces zero GA4/Hotjar network requests;
-5. no Hotjar Identify call or application identity attribute is present.
+1. anonim herkese açık sayfada tek CSP başlığı ve çerez şeridi vardır, `google-tag-manager` yoktur;
+2. "Reddet" sonrası sayfada ve sonraki sayfalarda GTM/GA4 ağ isteği yoktur;
+3. "Kabul et" sonrası GTM yüklenir; CSP ihlali yoktur;
+4. GTM yüklüyken herkese açık bir sayfadan `/ara` veya `/giris`e geçiş tam sayfa yüklemesidir ve
+   o sayfada GTM yoktur;
+5. oturum açılmış moderasyon sayfasında ne şerit ne yükleyici vardır;
+6. hiçbir yerde Hotjar isteği yoktur.
 
-Do not paste cookies, CSRF values or analytics payload bodies into evidence. Record only the exact
-release SHA, page class, tag/request counts, CSP pass/fail and provider-side receipt timestamp.
+Çerez, CSRF değeri ya da ölçüm yükü gövdesini kanıta yapıştırmayın. Yalnız release SHA'sını,
+sayfa sınıfını, etiket/istek sayılarını ve CSP sonucunu kaydedin.

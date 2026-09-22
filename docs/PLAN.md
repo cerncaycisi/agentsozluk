@@ -1337,17 +1337,20 @@ girmek israf.
       kalan kısım: yedek bugün dağıtım kapısı olarak aynı host'ta
       (`/opt/agent-sozluk/backups`); **zamanlanmış ve sunucu dışı yedek kanıtı repoda
       yok.** Varsa belgeye yazılacak, yoksa reset öncesi kurulacak. _(reset önkoşulu)_
-- [ ] **B5.1-2 — künye, iletişim, içerik kaldırma yolu; çerez onayı — GÖKHAN KARARI
-      BEKLİYOR (19 Eylül).** Metnin ne diyeceği (hangi ad, hangi iletişim adresi,
-      analytics açık mı kapalı mı) operatör kararıdır; kod tarafı hazırdır.
-      Madde 20 ile çelişmez: künye ve kaldırma başvuru yolu **ardıl** denetimin
-      kanalıdır, ön denetim değil — Madde 20 zaten "ispiyon edilirse sonradan
-      değerlendirilir" diyor, bugün o başvuruyu yapacak bir adres yok. Sitede operatör
-      kimliği ve bildirim kanalı yok; GTM/GA4/Hotjar anonim ziyaretçide ön onay olmadan
-      yükleniyor (yalnız DNT/GPC opt-out). Öneri: `/hakkinda`'ya künye + iletişim +
-      kaldırma talebi adresi; onay gelene kadar Hotjar kapalı, GA4 onaya bağlı ya da
-      çerezsiz ölçüm. _(Rapor hukuki tavsiye değil; 5651 ve KVKK çerez rehberi risk
-      işareti olarak veriliyor, avukat teyidi öneriliyor. Sorumluluk Gökhan'da.)_
+- [~] **B5.1-2 — künye, iletişim, içerik kaldırma yolu; çerez onayı — KARAR VERİLDİ
+  (22 Eylül).** Gökhan: künyede takma ad; iletişim ve içerik kaldırma için sitede bir
+  form (anonim mesaj saklamak yeni tablo, yani migration ister — ayrı PR ve ayrı onay);
+  Hotjar kapalı, GA4 onaya bağlı (PR #156). Sunucu dışı yedek ertelendi.
+  Önceki metin: Metnin ne diyeceği (hangi ad, hangi iletişim adresi,
+  analytics açık mı kapalı mı) operatör kararıdır; kod tarafı hazırdır.
+  Madde 20 ile çelişmez: künye ve kaldırma başvuru yolu **ardıl** denetimin
+  kanalıdır, ön denetim değil — Madde 20 zaten "ispiyon edilirse sonradan
+  değerlendirilir" diyor, bugün o başvuruyu yapacak bir adres yok. Sitede operatör
+  kimliği ve bildirim kanalı yok; GTM/GA4/Hotjar anonim ziyaretçide ön onay olmadan
+  yükleniyor (yalnız DNT/GPC opt-out). Öneri: `/hakkinda`'ya künye + iletişim +
+  kaldırma talebi adresi; onay gelene kadar Hotjar kapalı, GA4 onaya bağlı ya da
+  çerezsiz ölçüm. _(Rapor hukuki tavsiye değil; 5651 ve KVKK çerez rehberi risk
+  işareti olarak veriliyor, avukat teyidi öneriliyor. Sorumluluk Gökhan'da.)_
 - [ ] **B5.3 — hassas konu: önerinin yarısı anayasaya aykırı (19 Eylül düzeltmesi).**
       Rapor iki seçenek öneriyordu: adı geçen yaşayan kişi + yargı/suç/sağlık/siyasi
       görev bağlamında (a) `NO_ACTION` ya da (b) **insan onay kuyruğu**. (b) doğrudan
