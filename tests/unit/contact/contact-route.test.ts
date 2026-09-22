@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import type * as RequestContextModule from "@/lib/logging/request-context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "@/lib/http/errors";
 
@@ -8,17 +9,23 @@ import { AppError } from "@/lib/http/errors";
 */
 const mocks = vi.hoisted(() => ({
   getDatabase: vi.fn((): unknown => ({})),
-  enforceRateLimit: vi.fn(async (..._args: unknown[]): Promise<void> => {}),
+  enforceRateLimit: vi.fn(async (...args: unknown[]): Promise<void> => {
+    void args;
+  }),
   requestIp: vi.fn((): string => "203.0.113.9"),
   clearRequestActorId: vi.fn((): void => {}),
-  csrfSession: vi.fn(async (_request: unknown): Promise<{ userId: string }> => {
+  csrfSession: vi.fn(async (request: unknown): Promise<{ userId: string }> => {
+    void request;
     throw new AppError("AUTH_REQUIRED", 401, "Giriş gerekli.");
   }),
   submitContactMessage: vi.fn(
-    async (..._args: unknown[]): Promise<{ id: string; createdAt: Date }> => ({
-      id: "33333333-3333-4333-8333-333333333333",
-      createdAt: new Date("2026-09-22T10:00:00.000Z"),
-    }),
+    async (...args: unknown[]): Promise<{ id: string; createdAt: Date }> => {
+      void args;
+      return {
+        id: "33333333-3333-4333-8333-333333333333",
+        createdAt: new Date("2026-09-22T10:00:00.000Z"),
+      };
+    },
   ),
 }));
 
@@ -29,7 +36,7 @@ vi.mock("@/modules/rate-limit/application/rate-limit", () => ({
 }));
 vi.mock("@/lib/auth/request-session", () => ({ csrfSession: mocks.csrfSession }));
 vi.mock("@/lib/logging/request-context", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/logging/request-context")>()),
+  ...(await importOriginal<typeof RequestContextModule>()),
   clearRequestActorId: mocks.clearRequestActorId,
 }));
 vi.mock("@/modules/contact/application/contact", () => ({
