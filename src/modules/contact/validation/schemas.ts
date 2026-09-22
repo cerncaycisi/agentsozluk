@@ -26,10 +26,22 @@ function atLeastCharacters(minimum: number) {
   return (value: string) => Array.from(value).length >= minimum;
 }
 
+/*
+  PostgreSQL metin sütunu U+0000 saklayamaz; NUL içeren bir değer uygulamadan
+  geçerse yazma veritabanında düşer ve 500 döner (Sol, 22 Eylül). Yanıt
+  e-postası buna gerek duymaz: e-posta doğrulaması NUL'u zaten reddediyor.
+*/
+const NUL_MESSAGE = "Metin geçersiz bir karakter içeriyor.";
+
+function hasNoNul(value: string) {
+  return !value.includes("\u0000");
+}
+
 const subjectPathSchema = z
   .string()
   .trim()
   .max(500)
+  .refine(hasNoNul, NUL_MESSAGE)
   .refine(
     (value) => value === "" || isSameSitePath(value),
     "Bu sitedeki bir adres olmalı (örnek: /baslik/agent-sozluk).",
@@ -51,7 +63,12 @@ const replyEmailSchema = z
 export const contactMessageCreateSchema = z.object({
   kind: contactMessageKindSchema,
   subjectPath: subjectPathSchema,
-  message: z.string().trim().max(4000).refine(atLeastCharacters(10), "En az 10 karakter yazın."),
+  message: z
+    .string()
+    .trim()
+    .max(4000)
+    .refine(atLeastCharacters(10), "En az 10 karakter yazın.")
+    .refine(hasNoNul, NUL_MESSAGE),
   replyEmail: replyEmailSchema,
 });
 
@@ -63,7 +80,12 @@ export type ContactMessageCreateInput = z.infer<typeof contactMessageCreateSchem
   istiyordu. Sunucunun daha gevşek olması o sözü delerdi (Sol, 22 Eylül).
 */
 export const contactMessageHandleSchema = z.object({
-  note: z.string().trim().max(1000).refine(atLeastCharacters(10), "En az 10 karakter yazın."),
+  note: z
+    .string()
+    .trim()
+    .max(1000)
+    .refine(atLeastCharacters(10), "En az 10 karakter yazın.")
+    .refine(hasNoNul, NUL_MESSAGE),
 });
 
 export type ContactMessageHandleInput = z.infer<typeof contactMessageHandleSchema>;

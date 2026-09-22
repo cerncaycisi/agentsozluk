@@ -1479,28 +1479,57 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       Bugün yalnız `deploy-production-no-migration.sh` var; yeni migration'lı bir sürüm
       dağıtılamıyor (`MIGRATION_SET_CHANGED`) ve runbook Gate 7/8'in istediği uygulama
       genelinde yazma dondurması kodda yok (`MAINTENANCE` yalnız ajanları durduruyor).
-      Yazılacak mod: yedek (`pg_dump -Fc` + boyut/özet kaydı) **ve o yedeğin izole bir
-      veritabanına `pg_restore --exit-on-error` ile geri yüklenip tablo sayıları +
-      parmak iziyle karşılaştırılması** (runbook Gate 7; yalnız dosyanın var olması yedek
-      kanıtı sayılmaz), uygulanmış migration listesi, **yalnız ek yapan** migration
-      kontrolü, imajın kendi entrypoint'iyle `prisma migrate deploy`, sonrasında
-      applied == candidate ve tablo envanteri karşılaştırması.
-      "Yalnız ek yapan" bir **izin listesidir**, yasak sözcük listesi değil (Sol, 22 Eylül:
-      `CREATE TRIGGER`, `CREATE OR REPLACE FUNCTION`, `UPDATE` veya `DO` bloğu hiçbir yasak
-      sözcüğe takılmadan eski imajın davranışını ya da mevcut veriyi değiştirebilir).
-      Aday migration'daki her ifade yalnız şunlardan biri olabilir:
-      `CREATE TYPE … AS ENUM`, yeni bir tabloyu açan `CREATE TABLE` (sütun, FK ve CHECK
-      tanımları dahil), aynı
-      migration'da açılan tablo üzerinde `CREATE [UNIQUE] INDEX`. Geri kalan her şey
-      (mevcut nesneye dokunan `ALTER`, `DROP`, `TRUNCATE`, DML, fonksiyon, trigger, `DO`,
-      yorum dışı bilinmeyen ifade) adayı reddeder; ayrıştırılamayan ifade de reddedilir.
-      Geri dönüş güvencesi bu kuraldan **ve** kanıttan gelir: önceki imajın yeni şemalı
-      veritabanına karşı açılıp sağlık kontrolünden geçtiği izole bir prova.
-      **Kapatma ölçütü:** birim testleriyle korunan mod (izin listesinin her reddedilen
-      ifade türü için ayrı vaka), izole restore + parmak izi kanıtı, eski imaj uyumluluk
-      provası, Sol + Astra incelemesi, ve ilk kullanımı olarak iletişim formunun canlıya
-      alınması. Kapatılana kadar runbook'un elle yürütülen Gate 7'si zorunlu kalır.
+      Yazılacak mod:
+
+      - **Ön kontrol:** `SHOW server_encoding` = `UTF8`. Uygulamanın uzunluk kuralı
+        kod noktası sayar ve PostgreSQL `length()` ile ancak UTF8'de örtüşür (Sol, 22 Eylül).
+      - **Yedek ve restore kanıtı:** `pg_dump -Fc` + boyut/özet kaydı, ardından yedeğin izole
+        bir veritabanına `pg_restore --exit-on-error` ile geri yüklenmesi. Karşılaştırma
+        **`public` şemadaki bütün tabloları** kapsar (V1, `user_follows`, `agent_*` ve sonra
+        eklenenler, `_prisma_migrations`); liste sabit yazılmaz, katalogdan okunur. Her tablo
+        için satır sayısı ve içerik parmak izi. Runbook'taki mevcut Gate 7 yalnız 16 V1
+        tablosunu sınıyor, `user_follows` ve `agent_*` tablolarını açıkça dışlıyor
+        (`PRODUCTION_RUNBOOK.md`), bu yüzden onun yerine geçmez. Yalnız dosyanın var olması
+        yedek kanıtı sayılmaz.
+
+      - Uygulanmış migration listesi, **yalnız ek yapan** migration kontrolü, imajın kendi
+        entrypoint'iyle `prisma migrate deploy`, sonrasında applied == candidate ve tablo
+        envanteri karşılaştırması.
+      - **"Yalnız ek yapan" bir izin listesidir**, yasak sözcük listesi değil (Sol, 22 Eylül:
+        `CREATE TRIGGER`, `CREATE OR REPLACE FUNCTION`, `UPDATE` veya `DO` bloğu hiçbir yasak
+        sözcüğe takılmadan eski imajın davranışını ya da mevcut veriyi değiştirebilir). Aday
+        migration'daki her ifade yalnız şunlardan biri olabilir:
+
+        - `CREATE TYPE … AS ENUM`;
+        - yeni bir tabloyu açan düz `CREATE TABLE "ad" (…)`: sütunlar, sütun/tablo CHECK'leri,
+          birincil anahtar ve aşağıdaki kurala uyan FK'ler. `AS`, `PARTITION OF`, `INHERITS`,
+          `LIKE`, `OF`, `IF NOT EXISTS`, `TEMP`/`UNLOGGED` biçimleri reddedilir;
+        - aynı migration'da açılan tablo üzerinde `CREATE [UNIQUE] INDEX`.
+
+        Geri kalan her şey (mevcut nesneye dokunan `ALTER`, `DROP`, `TRUNCATE`, DML,
+        fonksiyon, trigger, `DO`, yorum dışı bilinmeyen ifade) adayı reddeder;
+        ayrıştırılamayan ifade de reddedilir.
+      - **Mevcut tabloya yönelen FK:** yeni tablo "fazladan" olsa da mevcut tabloya FK
+        eklemek eski imajın davranışını değiştirir: varsayılan `NO ACTION` veya `RESTRICT`
+        ile geri dönüşten sonra eski imajın kullanıcı silmesi, yeni tablodaki çocuk satır
+        yüzünden düşer (Sol, 22 Eylül). Bu yüzden böyle bir FK yalnız açık
+        `ON DELETE SET NULL` (sütun NULL'lanabilir ve hiçbir CHECK onu zorunlu kılmıyor;
+        yoksa silme `23514` ile düşer) ya da açık `ON DELETE CASCADE` ile kabul edilir;
+        ikisinde de `ON UPDATE CASCADE`. İletişim migration'ı buna uyuyor: iki FK de
+        `SET NULL`, iki sütun da NULL'lanabilir, `handledById` bilerek CHECK dışında.
+      - **Geri dönüş güvencesi** bu kurallardan **ve** kanıttan gelir: önceki imajın yeni
+        şemalı veritabanına karşı açıldığı, sağlık kontrolünden geçtiği **ve** yeni tablodan
+        referans alan bir üst satırı (ör. kullanıcı) silip güncelleyebildiği izole bir prova.
+        Yalnız açılış ve sağlık kontrolü FK etkisini yakalamaz.
+
+      **Kapatma ölçütü:** birim testleriyle korunan mod; izin listesinin her reddedilen ifade
+      türü için ayrı vaka ve iletişim migration'ının kendisi olumlu vaka; bütün tabloları
+      kapsayan izole restore + parmak izi kanıtı; FK'li eski imaj uyumluluk provası;
+      Sol + Astra incelemesi; ve ilk kullanımı olarak iletişim formunun canlıya alınması.
+      A5 kapanmadan migration'lı dağıtım yapılmaz; runbook'un elle yürütülen Gate 7'si
+      yalnız V1 tablolarını sınadığı için bunun yerine geçmez.
       _(Sıra 2 / bölüm 5.5)_
+
 - [x] **A4 — iletişim taleplerinin saklama süresi: SÜRESİZ. KARAR VERİLDİ.**
       _(Gökhan kararı, 22 Eylül 2026: "Suresiz kalsın")_ Talep kayıtları otomatik
       silinmez; otomatik temizlik işi açılmayacak. Kayıt sahibi silinmesini aynı

@@ -8526,3 +8526,12 @@ lease tarafından hiç kullanılmıyordu.
   CHECK'te düşüp 500 döner (Sol 4. tur, `6327f87`).
 - "Yalnız ek yapan migration" kuralını yasak sözcük listesiyle yazma; `CREATE TRIGGER`,
   `UPDATE`, `DO` hiçbir yasak sözcüğe takılmaz. İzin listesi + eski imaj provası (A5).
+- PostgreSQL metin sütunu U+0000 saklayamaz; `trim()` ve uzunluk kuralı NUL'u geçirir.
+  Veritabanına yazılan her serbest metin alanında NUL'u şemada reddet (Sol 5. tur,
+  `fa2b78b`; yol alanının `[^\s?#]*` kalıbı da NUL'u geçiriyordu).
+- Sunucu kuralını değiştirince paylaşılan istemci bileşenini de kontrol et:
+  `ConfirmAction` UTF-16 sayarken sunucu kod noktası sayınca düğme açılıp gönderim genel
+  hatayla düşüyordu.
+- "Yalnız ek yapan" migration'da yeni tablodan mevcut tabloya varsayılan `NO ACTION` FK,
+  geri dönüşten sonra eski imajın üst satır silmesini kırar; açılış + sağlık provası bunu
+  göremez.

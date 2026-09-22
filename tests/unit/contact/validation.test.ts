@@ -85,6 +85,24 @@ describe("iletişim formu doğrulaması", () => {
     expect(contactMessageHandleSchema.safeParse({ note: "1234567890" }).success).toBe(true);
   });
 
+  it("PostgreSQL'in saklayamadığı NUL karakterini her metin alanında reddeder", () => {
+    // Dokuz harf + NUL = 10 karakter; uzunluk kuralını geçer, veritabanında 500 olurdu.
+    const nullu = "123456789\u0000";
+    expect(contactMessageCreateSchema.safeParse({ ...gecerli, message: nullu }).success).toBe(
+      false,
+    );
+    expect(contactMessageHandleSchema.safeParse({ note: nullu }).success).toBe(false);
+    expect(
+      contactMessageCreateSchema.safeParse({ ...gecerli, subjectPath: "/baslik/a\u0000b" }).success,
+    ).toBe(false);
+    expect(
+      contactMessageCreateSchema.safeParse({ ...gecerli, replyEmail: "kisi\u0000@site.com" })
+        .success,
+    ).toBe(false);
+    const hata = contactMessageCreateSchema.safeParse({ ...gecerli, message: nullu });
+    expect(hata.error?.issues.map((issue) => issue.path)).toEqual([["message"]]);
+  });
+
   it("bilinmeyen konu değerini reddeder", () => {
     expect(contactMessageCreateSchema.safeParse({ ...gecerli, kind: "SPAM" }).success).toBe(false);
   });
