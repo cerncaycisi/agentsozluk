@@ -32,6 +32,13 @@ const HOTJAR_SNIPPET_VERSION = 6;
      yüklenir.
 */
 export const CEREZ_ONAYI_ADI = "as_cerez_onayi";
+/*
+  Onay KAPSAMI sürümlüdür (Astra, 22 Eylül): v1 şeridi yalnız Google
+  Analytics'ten bahsediyordu; Hotjar eklenince eski "kabul" yeni kapsama onay
+  sayılmaz, şerit yeniden sorar. Kapsam yine değişirse sürüm artırılır. Ret
+  (daha az izin) sürümden bağımsız geçerlidir.
+*/
+export const CEREZ_KABUL_DEGERI = "kabul-v2";
 const CEREZ_ONAYI_OMRU_SN = 180 * 24 * 60 * 60;
 
 type Onay = "kabul" | "red";
@@ -42,12 +49,15 @@ function onayiOku(): Onay | null {
     .map((parca) => parca.trim())
     .find((parca) => parca.startsWith(`${CEREZ_ONAYI_ADI}=`))
     ?.slice(CEREZ_ONAYI_ADI.length + 1);
-  return deger === "kabul" || deger === "red" ? deger : null;
+  if (deger === CEREZ_KABUL_DEGERI) return "kabul";
+  if (deger === "red") return "red";
+  return null;
 }
 
 function onayiYaz(onay: Onay) {
   const guvenli = window.location.protocol === "https:" ? "; Secure" : "";
-  document.cookie = `${CEREZ_ONAYI_ADI}=${onay}; Path=/; Max-Age=${CEREZ_ONAYI_OMRU_SN}; SameSite=Lax${guvenli}`;
+  const deger = onay === "kabul" ? CEREZ_KABUL_DEGERI : "red";
+  document.cookie = `${CEREZ_ONAYI_ADI}=${deger}; Path=/; Max-Age=${CEREZ_ONAYI_OMRU_SN}; SameSite=Lax${guvenli}`;
 }
 
 function tarayiciIzlemeyiReddediyor(): boolean {
