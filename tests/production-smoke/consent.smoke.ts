@@ -96,11 +96,12 @@ test("onaysız ve ret sonrası izleme yok; kabulde GTM denemesi; hassas geçiş 
   //    istemci içi gezinme yapan bir bağlantı: GTM yüklü belgede hassas hedefe
   //    tıklanınca istemci dinleyicisine ULAŞMAMALI ve tam sayfa yüklemesi olmalı.
   await page.evaluate(() => {
-    const w = window as unknown as { __ayniBelge?: boolean; __istemciGezinme?: number };
+    const w = window as unknown as { __ayniBelge?: boolean };
     w.__ayniBelge = true;
-    w.__istemciGezinme = 0;
+    sessionStorage.removeItem("smoke-istemci-dinleyici");
     const a = document.createElement("a");
-    a.href = "/ara?q=smoke";
+    // Sorgusuz /ara: arama sorgusu oran sınırı tablosuna yazardı (Sol) — salt okunur kalır.
+    a.href = "/ara";
     a.textContent = "smoke-hassas";
     a.id = "smoke-hassas";
     document.body.append(a);
@@ -108,17 +109,20 @@ test("onaysız ve ret sonrası izleme yok; kabulde GTM denemesi; hassas geçiş 
       const hedef = (olay.target as Element).closest("#smoke-hassas");
       if (!hedef) return;
       olay.preventDefault();
-      w.__istemciGezinme = (w.__istemciGezinme ?? 0) + 1;
-      history.pushState({}, "", "/ara?q=smoke");
+      // Tam yüklemede korunan işaret: dinleyiciye ulaşıldıysa yeni belgede görünür.
+      sessionStorage.setItem("smoke-istemci-dinleyici", "ulasti");
+      history.pushState({}, "", "/ara");
     });
   });
   const oncekiSayi = kayit.engellenen.length;
   await Promise.all([page.waitForEvent("load"), page.locator("#smoke-hassas").click()]);
-  expect(page.url()).toContain("/ara?q=smoke");
+  expect(new URL(page.url()).pathname).toBe("/ara");
   const ayniBelge = await page.evaluate(
     () => (window as unknown as { __ayniBelge?: boolean }).__ayniBelge === true,
   );
   expect(ayniBelge, "hassas geçiş tam sayfa yüklemesi olmalı").toBe(false);
+  const dinleyici = await page.evaluate(() => sessionStorage.getItem("smoke-istemci-dinleyici"));
+  expect(dinleyici, "istemci içi gezinme dinleyicisine ulaşılmamalı").toBeNull();
   await page.waitForTimeout(1_500);
   expect(kayit.engellenen.length, "hassas sayfada dış istek olmamalı").toBe(oncekiSayi);
   await expect(serit(page)).toHaveCount(0);
