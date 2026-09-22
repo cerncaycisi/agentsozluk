@@ -8491,3 +8491,32 @@ lease tarafından hiç kullanılmıyordu.
   öneride açık "evet" al. Kayıtta "X kararı" yalnız X açıkça karar verdiyse yazılır.
 - Onay metninin kapsamı genişlerse (yeni sağlayıcı) eski onay yeni kapsamı kapsamaz; onay
   değerini sürümle.
+
+## 2026-09-22 — iletişim formu paketi ve migration'lı dağıtımın engeli
+
+- İletişim ve içerik kaldırma formu (PR #164, `feat/iletisim-formu`): yeni `contact_messages`
+  tablosu, `/iletisim`, `POST /api/v1/iletisim`, `/moderasyon/iletisim`. Sol dört tur
+  inceledi; ilk üç turda BİRLEŞTİRME dedi ve her turda gerçek kusur buldu.
+- **Dağıtım engeli (A5):** `scripts/production-release-remote.sh` yeni migration görünce
+  `MIGRATION_SET_CHANGED` ile duruyor ve app entrypoint'ini `prisma migrate deploy`
+  çalıştırmayacak şekilde eziyor. Runbook Gate 7/8 ise uygulama genelinde yazma dondurması
+  istiyor; kodda öyle bir mekanizma YOK (`MAINTENANCE` yalnız ajanları durduruyor).
+  Gökhan migration'lı dağıtım yolunun yazılmasını onayladı (22 Eylül).
+
+**Tekrarlama:**
+
+- Elle yazılan migration'da CHECK kısıtı üç değerli mantıkla sızar: `length(btrim(NULL)) >= 10`
+  NULL döner ve SQL'de CHECK yalnız FALSE'ta reddeder. Her NULL'lanabilir sütun için açık
+  `IS NOT NULL` koşulu yaz ve kısıtın HER kolunu ayrı ayrı test et.
+- `@updatedAt` sütununa veritabanı default'u ekleme; Prisma'nın ürettiği DDL'de yok.
+- FK `ON DELETE SET NULL` ile aynı sütunu zorunlu kılan CHECK bir arada olmaz: silme
+  işlemi `23514` ile geri alınır.
+- Route birim testinde köken sabit yazılmaz; CI `APP_URL=http://127.0.0.1:3000` kullanıyor,
+  sabit `localhost` kökeni `assertValidOrigin`'e takılıp bütün testleri 403'e düşürür.
+- `vi.fn(async () => …)` argümansız imza çıkarır; `mock.calls[0]![2]` ve `mockResolvedValue`
+  CI typecheck'inde patlar. Sahte modülün imzasını açık yaz.
+- Yeni uç eklerken `docs/API.md` + `docs/openapi.yaml` + `scripts/validate-openapi.ts`
+  listeleri (public/request-body/idempotency) birlikte güncellenir; yoksa `openapi:validate`
+  ve `api-doc-coverage` testi düşer.
+- Yeni Prisma modeli eklerken `great-reset` sınıflandırmasına da yaz; yoksa
+  `GREAT_RESET_CLASSIFICATION_MISMATCH`.
