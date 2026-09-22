@@ -360,8 +360,16 @@ Canlılık kontrolü bundan bağımsız çalışıyor."
     # Yazılacak tarihçe SINIRLI iki aralıktır: [imleç−15 dk, imleç) — imleç
     # ilerlemezse sonraki tarama bunu ister — ve [şimdi−15 dk, şimdi) — ilerlerse.
     # Boyut gecikmeden bağımsızdır (Sol: sınırsız liste argüman boyunu aşıyordu).
-    yavas_yaz="$(tr ',' '\n' <<<"${gecmis},${yeni_yavas}" | awk -v e="$esik" -v s="$simdi_ms" '
-      /^[0-9]+$/ && (($1 + 0 >= e - 900000 && $1 + 0 < e) || ($1 + 0 >= s - 900000 && $1 + 0 < s)) && !gorulen[$1]++ { o = o (o == "" ? "" : ",") $1 }
+    # TEKİLLEŞTİRME YOK: aynı milisaniyede iki ayrı yavaş transaction olabilir
+    # (worker paralel lease çağırır; Astra). Çakışma yalnız eski tarihçenin
+    # imleçten yeni kısmıyla (logdan yeniden okunan) olur; o kısım alınmaz,
+    # böylece iki kaynak ayrıktır.
+    yavas_yaz="$( { tr ',' '\n' <<<"$gecmis" | sed 's/^/G /'; tr ',' '\n' <<<"$yeni_yavas" | sed 's/^/Y /'; } \
+      | awk -v e="$esik" -v s="$simdi_ms" '
+      $2 !~ /^[0-9]+$/ { next }
+      { t = $2 + 0 }
+      # Eski tarihçeden yalnız imleçten öncesi (G), yeni kayıtlardan hepsi (Y).
+      ($1 == "Y" || t < e) && ((t >= e - 900000 && t < e) || (t >= s - 900000 && t < s)) { o = o (o == "" ? "" : ",") t }
       END { print o }')" || islenemedi=1
 
     if (( islenemedi )); then

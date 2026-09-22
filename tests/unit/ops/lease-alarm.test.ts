@@ -169,7 +169,7 @@ fi
     `#!/usr/bin/env bash
 # ana: kayıtları ayrıştıran çağrı; tarihce: yazılacak tarihçeyi süzen çağrı.
 [[ "$SAHTE_AWK_HATA" == ana && "$*" == *"gdosya="* ]] && exit 2
-[[ "$SAHTE_AWK_HATA" == tarihce && "$*" == *"gorulen"* ]] && exit 2
+[[ "$SAHTE_AWK_HATA" == tarihce && "$*" == *'$1 == "Y" || t < e'* ]] && exit 2
 exec /usr/bin/awk "$@"
 `,
   );
@@ -669,6 +669,9 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
       simdi: T,
     });
     expect(bildirimler).toEqual([]);
+    // Yazılan tarihçe de çoğaltmamalı: her kayıt bir kez (sonraki tarama 4 saymasın).
+    const yazilan = readFileSync(path.join(dizin, "durum", "durum-lease-yavas"), "utf8").trim();
+    expect(yazilan).toBe(`${(T - 100) * 1000},${(T - 50) * 1000}`);
   });
 
   it.each([
@@ -756,6 +759,16 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
       expect(imlecOku()).toBe(T - 15 * 60);
     },
   );
+
+  it("aynı milisaniyedeki iki ayrı yavaş kayıt tarihçede iki kez sayılır", () => {
+    // Astra'nın karşı örneği: worker paralel lease çağırabilir.
+    const ayniAn = [zamanli(2600, T - 60), zamanli(2700, T - 60)];
+    expect(calistir(ayniAn, { simdi: T, kimlik: ESKI }).bildirimler).toEqual([]);
+    const yazilan = readFileSync(path.join(dizin, "durum", "durum-lease-yavas"), "utf8").trim();
+    expect(yazilan).toBe(`${(T - 60) * 1000},${(T - 60) * 1000}`);
+    const sonra = calistir([...ayniAn, zamanli(2800, T + 60)], { simdi: T + 900, kimlik: ESKI });
+    expect(sonra.bildirimler[0]).toContain("lease yavaşlıyor");
+  });
 
   it("tarihçe yolu dosya değilse (ne okunur ne yazılır) imleç ilerlemez", () => {
     // Saf yazma hatası dizin izinleri bozulmadan kurulamaz; dizin olan yol hem
