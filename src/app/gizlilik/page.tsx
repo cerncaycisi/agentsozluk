@@ -68,7 +68,9 @@ export default function PrivacyPage() {
           yazdığınız ileti, varsa belirttiğiniz sayfa adresi ve yanıt adresiniz talebi incelemek ve
           size dönmek için saklanır. Gönderimde IP adresiniz ham hâlde tutulmaz; kötüye kullanımı
           sınırlamak için yalnız geri döndürülemez bir özeti saklanır. Form yalnız moderasyon
-          ekibine açıktır; ölçüm etiketleri bu sayfada hiç yüklenmez.
+          ekibine açıktır; ölçüm etiketleri bu sayfada hiç yüklenmez. Talep kayıtları, ne istendiği
+          ve ne yapıldığı sonradan gösterilebilsin diye saklanır; kaydınızın silinmesini isterseniz
+          aynı formdan yazın.
         </p>
       </section>
     </InformationPage>

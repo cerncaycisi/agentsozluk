@@ -37,7 +37,8 @@ export default async function ContactPage() {
         <p className="mt-2 text-muted">
           İletinizi, varsa yazdığınız sayfa adresini ve yanıt adresinizi saklarız. IP adresiniz ham
           hâlde tutulmaz; yalnız kötüye kullanımı sınırlamak için geri döndürülemez bir özeti
-          tutulur. Ayrıntı için{" "}
+          tutulur. Talep kaydı, ne istendiği ve ne yapıldığı sonradan gösterilebilsin diye saklanır;
+          silinmesini isterseniz aynı formdan yazın. Ayrıntı için{" "}
           <Link href="/gizlilik" className="link-strong">
             gizlilik sayfası
           </Link>
