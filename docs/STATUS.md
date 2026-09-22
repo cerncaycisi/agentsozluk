@@ -7,6 +7,20 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-22 — çerez onayı, Hotjar kaldırma ve künye üretimde; imaj temizliği
+
+- **İmaj temizliği (Gökhan onayı):** `1be2d0fcc5585346466870192c10ad1ad170b540` `--cleanup` ile
+  dağıtıldı; 14 eski imaj + 14 eski runtime silindi, disk %89 → %53 (boş 8,6 → 36 GB); volume
+  ve konteyner özetleri korundu. Kesim öncesi lease taraması ilk gerçek dağıtımında
+  `RELEASE_LEASE_SCAN_OK`; yeni konteynerde ilk alarm turu temiz, imleç yeni konteynere geçti.
+- **Çerez/künye:** `37c66188669b987ecf4c71efa23e320a28a2f60d` (PR #156) üretimde; main CI
+  `35710318354`, artifact `35711057179`, `RELEASE_COMPLETE PASS`, `RELEASE_LEASE_SCAN_OK`.
+  HTTP: tek CSP, `script-src` yalnız nonce + GTM, Hotjar yok, HTML'de GTM/noscript yok;
+  `/hakkinda` künye, `/gizlilik` yeni metin. Tarayıcı smoke'u (GitHub Actions, kapalı devre,
+  salt okunur) run `35714469725`: 5/5 — onaysız ve ret sonrası dış istek 0, kabulde doğru
+  GTM konteyneri istenir, Hotjar isteği yok, GTM yüklü belgeden hassas geçiş tam yükleme ve
+  istemci dinleyicisine ulaşmıyor, DNT ve GPC sunucu/istemci ayrı ayrı kapatıyor.
+
 ## 2026-09-22 — lease süresi alarmı üretimde
 
 - **Kurulan:** `/opt/agent-sozluk/scripts/canlilik-alarmi.sh`, main `4763a3b02b4ff0ce6139078bb8abdc56a554c6e9`
