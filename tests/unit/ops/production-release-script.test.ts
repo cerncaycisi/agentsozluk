@@ -270,7 +270,7 @@ describe("schema-neutral production release lane", () => {
       );
       const smoke = kesim.indexOf("scripts/release-smoke.ts");
       const caddy = kesim.indexOf('"${compose[@]}" start caddy');
-      const disSaglik = kesim.indexOf("assert_public_health");
+      const disSaglik = kesim.indexOf("wait_public_health");
       const etiket = kesim.indexOf("publish_boot_tag");
       const hold = kesim.indexOf("-name .migration-hold -type f -delete");
       const worker = kesim.indexOf("sudo systemctl start agent-sozluk-runtime.service");
@@ -306,6 +306,9 @@ describe("schema-neutral production release lane", () => {
       const dondurma = phase.slice(phase.indexOf("assert_frozen() {"));
       expect(dondurma.slice(0, dondurma.indexOf("\n}\n"))).toContain("admin_psql agent_sozluk");
       expect(phase).not.toContain("pg_terminate_backend");
+      // Caddy yeni başlamışken ilk dış istek düşebilir: tek deneme yerine sınırlı bekleme.
+      expect(phase).toContain("wait_public_health || return 1");
+      expect(remote).toContain("wait_public_health() {");
       // Yeni birim dondurmada, worker durmuşken kurulur ve hold ondan sonra oluşur.
       const dondur = phase.slice(phase.indexOf("freeze_writes() {"));
       expect(dondur.indexOf("install_runtime_unit")).toBeLessThan(

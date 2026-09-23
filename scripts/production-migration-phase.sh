@@ -350,7 +350,7 @@ reopen_previous_release() {
   done
   assert_internal_health || return 1
   "${compose[@]}" start caddy </dev/null || return 1
-  assert_public_health || return 1
+  wait_public_health || return 1
   printf 'RELEASE_MIGRATION_REOPENED previous release serving; worker stays stopped\n' >&2
 }
 
@@ -507,6 +507,29 @@ backup_and_fingerprint() {
   stat -c %s "$backup" >"$migration_dir/backup-bytes"
   printf 'RELEASE_MIGRATION_BACKUP bytes=%s sha256=%s\n' \
     "$(cat "$migration_dir/backup-bytes")" "$(cat "$migration_dir/backup-sha256")"
+
+  # Yedeğin şema kanıtı: arşivdeki şema betiği canlı şema dökümüyle birebir.
+  # Geri yüklenmiş bir kopyanın yeniden dökümü bunun yerine geçmez: PostgreSQL
+  # CHECK ve indeks ifadelerini geri yüklemede yazımca farklı (iç içe AND'ler
+  # düzleşir, dizi dönüşümleri yeniden yazılır) ama anlamca aynı üretir. İlk
+  # üretim koşusu tam bu yüzden RESTORE_SCHEMA_MISMATCH ile durdu (23 Eylül).
+  local archive_schema
+  archive_schema="$(archive_schema_hash "$backup")"
+  test "$archive_schema" = "$(cat "$migration_dir/pre-schema")" ||
+    migration_fail BACKUP_SCHEMA_MISMATCH
+}
+
+archive_schema_hash() {
+  local archive="$1" script hash deadline
+  script="$(mktemp "$migration_dir/archive-schema.XXXXXX")"
+  deadline_prefix
+  "${deadline[@]}" "${compose[@]}" exec -T db pg_restore --schema-only --no-owner --no-privileges \
+    -f - <"$archive" >"$script" || migration_fail ARCHIVE_SCHEMA_FAILED
+  grep -q 'CREATE TABLE' "$script" || migration_fail ARCHIVE_SCHEMA_EMPTY
+  hash="$(grep -v -E '^\\(un)?restrict ' "$script" | sha256sum | cut -d ' ' -f 1)"
+  rm -f "$script"
+  [[ "$hash" =~ ^[0-9a-f]{64}$ ]] || migration_fail SCHEMA_HASH_INVALID
+  printf '%s\n' "$hash"
 }
 
 # --- 7. İzole restore ---------------------------------------------------------
@@ -558,10 +581,9 @@ SQL
   cmp -s "$migration_dir/pre-fingerprint" "$migration_dir/restore-fingerprint" ||
     migration_fail RESTORE_FINGERPRINT_MISMATCH
   sequence_safety "$scratch_database"
-  local restored_schema
-  restored_schema="$(schema_hash "$scratch_database")"
-  test "$restored_schema" = "$(cat "$migration_dir/pre-schema")" ||
-    migration_fail RESTORE_SCHEMA_MISMATCH
+  # Şema: arşiv canlıyla birebir (yukarıda) ve restore --exit-on-error ile
+  # bitti. Scratch'in kendi tablo şemaları migration provasının kıyas tabanıdır.
+  table_schema_hashes "$scratch_database" "$migration_dir/scratch-pre-table-schemas"
   set_phase backup-verified
 }
 
@@ -749,8 +771,10 @@ assert_catalog_expectation() {
 # Migration sonrası: `_prisma_migrations` HARİÇ önceden var olan her tablo
 # içerik ve şema olarak birebir; migration geçmişinde eski satırlar birebir,
 # yeni satırlar tam olarak onaylı adlar; yeni tablolar boş.
+# `schema_baseline`: aynı veritabanının migration öncesi tablo şema özetleri
+# (prod için prod'unki, scratch için restore sonrası scratch'inki).
 post_verify() {
-  local database="$1" label="$2" name
+  local database="$1" label="$2" schema_baseline="$3" name
   db_fingerprint "$database" "$migration_dir/post-$label-fingerprint"
   grep '^table:' "$migration_dir/pre-fingerprint" |
     grep -v '^table:_prisma_migrations|' >"$migration_dir/pre-tables"
@@ -763,10 +787,11 @@ post_verify() {
     <(grep -E '^(seq|seqdef|owned):' "$migration_dir/post-$label-fingerprint") ||
     migration_fail POST_SEQUENCE_CHANGED
   table_schema_hashes "$database" "$migration_dir/post-$label-table-schemas"
+  test -s "$schema_baseline" || migration_fail SCHEMA_BASELINE_MISSING
   awk -F '|' 'NR == FNR {want[$1] = 1; next} ($1 in want)' \
-    "$migration_dir/pre-table-schemas" "$migration_dir/post-$label-table-schemas" \
+    "$schema_baseline" "$migration_dir/post-$label-table-schemas" \
     >"$migration_dir/post-$label-preexisting-schemas"
-  cmp -s "$migration_dir/pre-table-schemas" "$migration_dir/post-$label-preexisting-schemas" ||
+  cmp -s "$schema_baseline" "$migration_dir/post-$label-preexisting-schemas" ||
     migration_fail POST_TABLE_SCHEMA_CHANGED
 
   prisma_history "$database" >"$migration_dir/post-$label-prisma-history"
@@ -853,7 +878,7 @@ rehearse_on_scratch() {
   prisma_history agent_sozluk >"$migration_dir/prod-history-before-rehearsal"
   run_migration "$scratch_database"
   ((migration_status == 0)) || migration_fail SCRATCH_MIGRATION_FAILED
-  post_verify "$scratch_database" scratch
+  post_verify "$scratch_database" scratch "$migration_dir/scratch-pre-table-schemas"
   rehearse_previous_image
   # Prova üretime dokunmadı: prod geçmişi aynı, yeni tablolar prod'da yok.
   cmp -s "$migration_dir/prod-history-before-rehearsal" <(prisma_history agent_sozluk) ||
@@ -874,7 +899,7 @@ migrate_production() {
 }
 
 verify_production_after_migration() {
-  post_verify agent_sozluk production
+  post_verify agent_sozluk production "$migration_dir/pre-table-schemas"
   cmp -s "$migration_dir/definitions-scratch" "$migration_dir/definitions-production" ||
     migration_fail DEFINITIONS_DIFFER_FROM_REHEARSAL
   set_phase post-verified

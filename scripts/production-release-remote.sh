@@ -267,6 +267,18 @@ assert_public_health() {
   done
 }
 
+# Caddy yeni başlatıldığında ilk dış istek düşebilir: 23 Eylül'deki ilk A5
+# koşusunda site gerçekte açıldığı hâlde tek denemelik kontrol "geri açılamadı"
+# dedi. Sınırlı sayıda (60 sn) yeniden dener.
+wait_public_health() {
+  local attempt
+  for attempt in $(seq 1 30); do
+    if assert_public_health; then return 0; fi
+    sleep 2
+  done
+  return 1
+}
+
 assert_health() {
   assert_internal_health || return 1
   assert_public_health || return 1
@@ -585,7 +597,7 @@ NODE
     "${compose[@]}" start caddy </dev/null
     test -n "$("${compose[@]}" ps --status running -q caddy)"
     set_phase traffic-open
-    assert_public_health
+    wait_public_health
     # Hold kalkmadan önce boot yolu da aynı sürümü göstermeli: etiket, çalışan
     # app ve runtime/current üçü aday (Astra, 23 Eylül).
     publish_boot_tag
