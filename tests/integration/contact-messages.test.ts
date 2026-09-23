@@ -173,6 +173,59 @@ describe("iletişim iletileri (PostgreSQL)", () => {
     ).rejects.toThrow();
   });
 
+  /*
+    A5 geri dönüş güvencesi: yeni tablo mevcut `users`'a iki FK ile bağlı. Eski
+    imaja dönüldüğünde üst satırın silinmesi ya da kimliğinin değişmesi bu
+    tablodaki çocuk satırlar yüzünden düşmemeli (Astra, 23 Eylül). Uygulama
+    hesap silmiyor; bu yüzden ölçüm SQL düzeyinde, audit kaydı olmayan yalın
+    kullanıcılarla yapılıyor.
+  */
+  it("users satırının güncellenmesi ve silinmesi açık ve kapalı iletileri kırmaz", async () => {
+    const gonderen = await createUser("fk_gonderen", "USER");
+    const kapatan = await createUser("fk_kapatan", "MODERATOR");
+    const acik = await integrationDatabase.contactMessage.create({
+      data: {
+        kind: "OTHER",
+        message: "Açık kalan bir ileti gövdesi.",
+        ipKeyHash: GECERLI_HASH,
+        submitterId: gonderen.id,
+      },
+    });
+    const kapali = await integrationDatabase.contactMessage.create({
+      data: {
+        kind: "CONTENT_REMOVAL",
+        message: "Kapatılmış bir ileti gövdesi.",
+        ipKeyHash: GECERLI_HASH,
+        submitterId: gonderen.id,
+        status: "HANDLED",
+        handledById: kapatan.id,
+        handledAt: new Date(),
+        handledNote: "İçerik gizlendi.",
+      },
+    });
+
+    const yeniKimlik = randomUUID();
+    await integrationDatabase.$executeRaw`
+      UPDATE "users" SET "id" = ${yeniKimlik}::uuid WHERE "id" = ${gonderen.id}::uuid`;
+    for (const { id } of [acik, kapali]) {
+      await expect(
+        integrationDatabase.contactMessage.findUniqueOrThrow({ where: { id } }),
+      ).resolves.toMatchObject({ submitterId: yeniKimlik });
+    }
+
+    await integrationDatabase.$executeRaw`DELETE FROM "users" WHERE "id" = ${kapatan.id}::uuid`;
+    await expect(
+      integrationDatabase.contactMessage.findUniqueOrThrow({ where: { id: kapali.id } }),
+    ).resolves.toMatchObject({ status: "HANDLED", handledById: null });
+
+    await integrationDatabase.$executeRaw`DELETE FROM "users" WHERE "id" = ${yeniKimlik}::uuid`;
+    for (const { id } of [acik, kapali]) {
+      await expect(
+        integrationDatabase.contactMessage.findUniqueOrThrow({ where: { id } }),
+      ).resolves.toMatchObject({ submitterId: null });
+    }
+  });
+
   it("listeyi yalnız moderatöre verir ve yeni iletiyi başa koyar", async () => {
     const okur = await createUser("iletisim_okur", "USER");
     const moderator = await createUser("iletisim_moderator", "MODERATOR");

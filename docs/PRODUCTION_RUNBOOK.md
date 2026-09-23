@@ -1232,7 +1232,8 @@ for an unattended broad prune.
 
 Use the versioned release lane only for an exact green `main` SHA whose migration directory is
 byte-for-byte equal to the successfully applied production migration set. It is not a replacement
-for Gate 7/8 when a release adds a migration. The versioned entrypoints are:
+for Gate 7/8 when a release adds a migration — except the additive-only migration mode described in
+"Migration'lı sürüm (A5)" below. The versioned entrypoints are:
 
 - `scripts/deploy-production-no-migration.sh`: local SSH identity/DNS/fingerprint guard, exact
   approval receipt, clean local checkout, green-CI/artifact verification, guarded transport and
@@ -1342,6 +1343,121 @@ prunes only unused build cache older than 24 hours, and removes only full-SHA ru
 other than the resolved current and immediately previous release. It compares volume and
 post-cutover container-image hashes plus disk before/after evidence. It never invokes Docker
 system/volume prune and never removes database data or the current/previous runtime releases.
+
+### Migration'lı sürüm (A5, yalnız ek yapan)
+
+Bu mod, aynı sarmalayıcıyla ve yalnız **yalnız ek yapan** migration'lar için kullanılır. Kısa
+kesintilidir (Gökhan kararı, 23 Eylül 2026): site dondurma boyunca kapalıdır. Tasarım Astra ile
+yedi turda uzlaştırıldı; kararlar ve bulgular `docs/ATTEMPT_LOG.md` ve `docs/PLAN.md` A5
+maddesinde. Mevcut tabloya dokunan, veri değiştiren ya da denetçiden geçmeyen her migration bu
+modla dağıtılamaz; onlar için Gate 7/8 geçerlidir.
+
+**Onay.** SHA onayına ek olarak uygulanacak migration adları birebir onaylanır; ikisi ayrı
+değişkendir ve kalıcı yazılmaz:
+
+```bash
+AGENT_SOZLUK_PRODUCTION_APPROVED_SHA='<onaylı-40-karakter-sha>' \
+AGENT_SOZLUK_PRODUCTION_APPROVED_MIGRATIONS='<ad1,ad2>' \
+  bash scripts/deploy-production-no-migration.sh \
+  --sha '<onaylı-40-karakter-sha>' --artifact-run '<run-id>' --execute \
+  --apply-migrations '<ad1,ad2>'
+```
+
+Liste bekleyen migration kümesine birebir eşit olmalıdır (`MIGRATION_SET_UNAPPROVED`). Bayraksız
+onay değişkeni ya da değişkensiz bayrak reddedilir. `--build-on-host` bu modda yoktur.
+
+**Kilit.** Sarmalayıcının ilk uzak adımı `/opt/agent-sozluk/runtime/.release-lock` dizinini alır
+(`owner` = `<sha>:<op-id>`); sonraki her uzak adım sahipliği sınar. Kilit yalnız uzak betik
+`RELEASE_COMPLETE PASS` ile 0 döndüğünde kalkar; başka her çıkışta kalır (`RELEASE_LOCKED`).
+Her uzak adım, kilidi alan dahil, hiçbir şeyi değiştirmeden önce kendi cgroup'unun logind'e kayıtlı
+bir `deploy` oturum scope'u (`session-<N>.scope`) olduğunu kanıtlar; kanıtlanamazsa
+`SESSION_SCOPE_UNVERIFIED` ile başlamadan durur. Böylece `sudo` ile root'a geçen torunlar dahil
+her süreç kayıtlı bir scope'ta kalır.
+
+**Sıra ve aşamalar** (`/opt/agent-sozluk/runtime/.migration-operation/phase`; yalnız ileri gider):
+
+1. `planned` — başarısız `_prisma_migrations` kaydı yok; uygulanmışlar adayda var ve checksum'ları
+   dosyalarla eşit; bekleyenler onaylı listeye eşit ve sıralı; `check-additive-migration.mjs`
+   bekleyenlerin birleşik SQL'ini kabul ediyor (en az bir yeni tablo şart) ve beklenti JSON'unu
+   üretiyor.
+2. `image-verified` — aday imaj ve runtime release (mevcut adımlar) hazır; imajdaki migration
+   dosyaları checkout'la aynı; `run-migration.mjs` imajda.
+3. Ön kontrol — `UTF8`; rol veritabanının sahibi ve `CREATEDB`/süper kullanıcı; veritabanı ya da
+   rol düzeyinde `lock_timeout`/`statement_timeout` ayarı YOK (`DB_TIMEOUT_SETTING_PRESENT`); FK
+   hedeflerinin `id`'si tek sütunlu uuid birincil anahtar; disk (yedek ve PG hacmi aynı dosya
+   sistemindeyse `3 × DB + 1 GiB`). Disk bütçesi dump'tan ve restore'dan hemen önce yeniden
+   ölçülür (yeniden girişte önceki dump yerinde kalır).
+4. `frozen` — kesinti üst sınırı 45 dakika (`max_downtime_seconds=2700`): dondurmadan itibaren
+   dump, restore, parmak izi ve migration kalan süreyle `timeout` altında koşar; süre dolarsa
+   `DOWNTIME_BUDGET_EXCEEDED` ve aşamaya göre hata kuralı. Worker drene edilip durdurulur,
+   yeni worker birimi kurulur,
+   `/opt/agent-sozluk/runtime/.migration-hold` oluşturulur, `caddy` ve `app` durur. **Kesinti
+   başlar.** Kanıt: veritabanında bizden başka istemci oturumu ve hazırlanmış işlem yok.
+5. `backup-verified` — `pg_dump -Fc` → `/opt/agent-sozluk/backups/agent-sozluk-<ts>-pre-<sha12>.dump`
+   (boyut + sha256 kaydı); ayrı `agent_sozluk_a5_<ts>_<op>` veritabanına restore; tablo içerikleri,
+   sequence durumları/tanımları/sahiplikleri ve şema birebir; sahipli sequence'lerin sonraki
+   değeri sütun maksimumundan büyük.
+6. `rehearsed` — migration önce scratch'e uygulanır ve aynı post-verify orada koşar; önceki imaj
+   scratch'e karşı migration'sız açılıp health/ready + release smoke geçer; prod geçmişinin
+   değişmediği doğrulanır; scratch düşürülür.
+7. `migrating` → `migrated` — prod'a `lock_timeout=5s`, `statement_timeout=300s` konur, aday
+   imajla tek seferlik `a5-<op>-migrate` konteyneri migration'ı uygular, ayarlar kaldırılır.
+8. `post-verified` → `writers-may-run` — `_prisma_migrations` dışındaki her eski tablo içerik ve
+   şema olarak aynı; eski geçmiş satırları aynı, yeni satırlar tam onaylı adlar; yeni tablolar boş;
+   katalog denetçi beklentisine ve scratch tanımlarına eşit.
+9. `traffic-open` — yeni app iç health/ready + smoke → `runtime/current` → `caddy` başlar →
+   dış health. **Kesinti biter.**
+10. `worker-allowed` — `agent-sozluk:production` etiketi aday imaja taşınır; etiket, çalışan app ve
+    `runtime/current` aynı sürüm olduğu doğrulanınca hold kalkar, worker başlar, nihai doğrulama.
+11. `cutover-done` — işaret kaldırılır, kanıt `.release-op-<sha>/migration/` altında kalır.
+
+**Hata durumları.**
+
+- `frozen`, `backup-verified`, `rehearsed` sırasında hata: prod şeması değişmemiştir. Betik
+  eski app'i ve Caddy'yi geri açar, iç/dış sağlığı doğrular; worker kapalı ve hold yerinde kalır.
+  Operatör kararıyla hold elle kaldırılıp worker başlatılabilir.
+- `migrating` sonrası hata (`MIGRATION_STATE_AMBIGUOUS`, çıkış 98) ya da `migrated`/`post-verified`
+  sırasında hata: site KAPALI kalır; `migrate` tekrarlanmaz, `prisma migrate resolve` yapılmaz.
+  `.release-op-<sha>/migration/ambiguous-prisma-history` okunur, karar Gökhan'ındır. Yalnız ek
+  yapan migration eski imajla uyumlu olduğundan, gerekirse eski imajla elle geri açma (aşağıdaki
+  geri dönüş sırası) veri bozmaz; başarısız kayıt varsa eski imajın kendi entrypoint'i P3009 ile
+  açılmaz — bu yüzden elle açmada migration'sız override kullanılır.
+- `writers-may-run` sonrası hata: yeni sürüm yazmaya başlamış olabilir; dondurma karşılaştırmaları
+  bir daha koşmaz. Aynı SHA ve liste ile yeniden koşu kaldığı aşamadan devam eder; ya da elle geri
+  dönüş.
+- Reboot (`MIGRATION_OPERATION_REBOOTED`): otomatik devam yoktur. Hold varken worker açılamaz.
+  Etiket/app/runtime üçlüsünü uzlaştır; `agent_sozluk` üzerinde `lock_timeout` ya da
+  `statement_timeout` ayarı kalmışsa `ALTER DATABASE … RESET` ile kaldır; ancak sonra hold'u kaldır.
+
+**Elle kilit temizliği.** Kilit ancak aşağıdakilerin HEPSİ doğrulanınca kaldırılır; biri
+doğrulanamazsa kilit kalır:
+
+1. `/etc/pam.d/sudo` ve `@include` ettiği dosyalarda `pam_systemd` yok (sudo çocukları çağıranın
+   oturum scope'unda kalır). Her uzak adımın kayıtlı scope'ta başladığı zaten sarmalayıcıda
+   kanıtlandı (`SESSION_SCOPE_UNVERIFIED`).
+2. `loginctl list-sessions --no-legend` içinde `deploy` kullanıcısının tek oturumu temizliği yapan
+   oturumdur (`$XDG_SESSION_ID`); `closing` durumunda başka `deploy` oturumu yoktur.
+3. `ps -e -o pid=,user=,unit=,args=` çıktısında, birimi başka bir `deploy` oturum scope'u olan
+   hiçbir süreç yoktur (root torunları da aynı scope'u gösterir).
+4. `docker ps -a --filter name=^a5-` boş; `pg_stat_activity`'de `application_name` `a5-` ile başlayan
+   backend yok.
+5. Kilit sahibi (`owner`) ve varsa `.migration-operation/identity` kayda geçirilir. İşaret
+   KALDIRILMAZ: yarım kalmış bir migration operasyonu varken kilidi temizlemek, yalnız aynı SHA ve
+   aynı listeyle yeniden koşuya (kaldığı aşamadan devam) izin verir; migration'sız mod ya da başka
+   bir SHA/liste `MIGRATION_OPERATION_INCOMPLETE` ile durur. Aşaması `cutover-done` olan işaret
+   tamamlanmış bir operasyondur; sonraki koşu (migration'sız dahil) onu kendisi kaldırır.
+
+Her koşu yeni bir operasyon kimliği üretir; bu yüzden hata sonrası yeniden koşu, ancak yukarıdaki
+elle temizlikten sonra mümkündür. Prod şeması değişmeden önceki bir hatada betik eski sürümü açıp
+aşamayı `image-verified`'e geri aldığından yeniden koşu dondurmayı baştan kurar.
+
+**Elle geri dönüş (imaj).** Veritabanı restore edilmez; yeni tablolar kalır. Sıra: `compose stop
+caddy` → worker drene + stop → `agent-sozluk:production` = önceki imaj kimliği
+(`.release-op-<sha>/previous-image-id`) → `runtime/current` = önceki release
+(`previous-runtime`) → önceki imajla migration'sız override'lı `up -d --force-recreate app` → iç
+health/ready + imaj/revision kimliği → `compose start caddy` → dış health → etiket, çalışan app
+ve `runtime/current` önceki sürümde eşleşince `/opt/agent-sozluk/runtime/.migration-hold`
+kaldırılır (yoksa worker açılamaz) → worker start ve birim doğrulaması. Yedek dosyası yalnız felaket içindir; yedekten sonraki yazmalar restore'da kaybolur.
 
 ### Gate 8: deploy, additive migration and V1 preservation
 

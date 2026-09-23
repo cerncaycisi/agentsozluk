@@ -8545,3 +8545,30 @@ lease tarafından hiç kullanılmıyordu.
 - Migration izin listesi yalnız ifade kabuğuna bakarsa `CHECK (setval(...))` gibi yan
   etki içeriden geçer; ifade içerikleri de izin listesinde olmalı. Restore kanıtı
   sequence'leri de karşılaştırmalı.
+
+## 2026-09-23 — A5: migration'lı dağıtım yolunun tasarımı ve kodu
+
+- İletişim formu (PR #164) Gökhan onayıyla `a0f2878` olarak main'e birleşti (Sol 7. tur
+  BİRLEŞTİR, PR CI `35794074338` 7/7); kayıt PR'ı #166 `e133443`. Üretimde değil.
+- Gökhan A5 için 24 saatlik onay verdi, şartı "Astra ile hemfikir olman"; sonra kısa kesintili
+  yolu seçti. Tasarım Astra (`gpt-6-astra`, xhigh, salt okunur) ile sekiz turda uzlaştı:
+  v1 12 bulgu (yeniden denemede kapı atlama, migration'ın imaj doğrulamasından önce koşması,
+  sequence yarışı, eski imaj provası eksik, çalışmayan rollback…), sonraki turlarda FK zinciri,
+  smoke yazması, reboot penceresi, kilit ve elle temizlik kanıtı. 8. tur `3729072`: TASARIM UYGUN.
+- Kod PR #167 (`feat/a5-migrationli-dagitim`). CI'da gerçek `prisma migrate deploy` ile
+  `lock_timeout` (≈4 s) ve `statement_timeout` (≈2 s) kanıtlandı; `users` güncelleme/silmesinin
+  iletişim satırlarını kırmadığı entegrasyon testinde.
+
+**Tekrarlama:**
+
+- Bir migration tasarımını hakeme götürmeden koda geçme; A5'te ilk tasarımın yarısı değişti.
+- "Yalnız ek yapan" kuralı ifade kabuğuyla sınırlı kalamaz: `CHECK (setval(…))`, FK zinciri
+  (`SET NULL` üst FK'nin güncellemesi ikinci tabloya CASCADE ile NULL taşır → `23502`) ve
+  NULL sınamasını ters çeviren CHECK (`("c" IS NULL) = FALSE`) hepsi kabuktan geçiyordu.
+- `ps`/`lsof`/`pgrep` bir sürecin bittiğini kanıtlamaz: `sudo find -exec chmod` zincirinde root
+  torun ebeveynsiz yaşar. Kanıt cgroup'tur ve ancak her uzak adımın kayıtlı logind scope'unda
+  başladığı ayrıca doğrulanırsa geçerlidir (`pam_systemd` isteğe bağlıyken kayıt sessizce düşebilir).
+- Worker'ın başlangıç kapısını dosya testiyle yazarken `+` (root) kullan: dizini okuyamayan
+  kullanıcı için `test ! -e` "yok" der.
+- Bu 1 GB sunucuda `lease-alarm` ve `module-boundaries` birim testleri yük altında zaman
+  aşımına düşüyor (aynı test bir koşuda 2 s, diğerinde 9 s); değişiklikle ilgisiz, CI kanıttır.

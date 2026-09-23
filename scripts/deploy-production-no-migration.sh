@@ -16,6 +16,7 @@ artifact_run=''
 build_on_host=0
 keep_artifact=0
 artifact_transport=server-fetch
+approved_migrations=''
 
 usage() {
   printf '%s\n' \
@@ -23,6 +24,9 @@ usage() {
     '  AGENT_SOZLUK_PRODUCTION_APPROVED_SHA=<40-char-sha> \' \
     '    pnpm release:production:no-migration \' \
     '      --sha <40-char-sha> --artifact-run <run-id> --execute [--cleanup]' \
+    '' \
+    'A release that adds migrations (additive only, A5) additionally needs the exact approved list:' \
+    '  AGENT_SOZLUK_PRODUCTION_APPROVED_MIGRATIONS=<name1,name2> ... --apply-migrations <name1,name2>' \
     '' \
     'The default artifact path passes a short-lived GitHub redirect to the pinned server; the' \
     'artifact never transits the operator Mac. Use --operator-transfer only as an explicit fallback.' \
@@ -60,6 +64,10 @@ while (($# > 0)); do
       build_on_host=1
       shift
       ;;
+    --apply-migrations)
+      approved_migrations="${2:-}"
+      shift 2
+      ;;
     --keep-artifact)
       keep_artifact=1
       shift
@@ -96,6 +104,26 @@ test "${AGENT_SOZLUK_PRODUCTION_APPROVED_SHA:-}" = "$candidate_sha" || {
   printf 'RELEASE_WRAPPER_FAIL code=EXACT_APPROVAL_RECEIPT_REQUIRED\n' >&2
   exit 90
 }
+# Migration listesi SHA onayından ayrı, birebir onaylanır (A5).
+migration_mode=no-migration
+if test -n "$approved_migrations"; then
+  [[ "$approved_migrations" =~ ^[0-9]{14}_[a-z0-9_]+(,[0-9]{14}_[a-z0-9_]+)*$ ]] || {
+    printf 'RELEASE_WRAPPER_FAIL code=INVALID_MIGRATION_LIST\n' >&2
+    exit 90
+  }
+  test "${AGENT_SOZLUK_PRODUCTION_APPROVED_MIGRATIONS:-}" = "$approved_migrations" || {
+    printf 'RELEASE_WRAPPER_FAIL code=EXACT_MIGRATION_APPROVAL_REQUIRED\n' >&2
+    exit 90
+  }
+  test "$build_on_host" = 0 || {
+    printf 'RELEASE_WRAPPER_FAIL code=MIGRATION_WITH_HOST_BUILD\n' >&2
+    exit 90
+  }
+  migration_mode="apply:$approved_migrations"
+elif test -n "${AGENT_SOZLUK_PRODUCTION_APPROVED_MIGRATIONS:-}"; then
+  printf 'RELEASE_WRAPPER_FAIL code=MIGRATION_APPROVAL_WITHOUT_FLAG\n' >&2
+  exit 90
+fi
 if test "$build_on_host" = 1; then
   test -z "$artifact_run" || {
     printf 'RELEASE_WRAPPER_FAIL code=AMBIGUOUS_RELEASE_SOURCE\n' >&2
@@ -124,6 +152,10 @@ test -z "$(git -C "$root" status --porcelain=v1 --untracked-files=all)"
 bash -n "$root/scripts/production-release-remote.sh"
 bash -n "$root/scripts/install-release-artifact-remote.sh"
 bash -n "$root/scripts/install-release-artifact-from-github-remote.sh"
+bash -n "$root/scripts/production-migration-phase.sh"
+op_id="$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')"
+[[ "$op_id" =~ ^[0-9a-f]{16}$ ]]
+lock_owner="$candidate_sha:$op_id"
 
 artifact_dir=''
 artifact_receipt=''
@@ -370,9 +402,42 @@ ssh_options=(
   -o StrictHostKeyChecking=yes
 )
 
+# Kilit İLK uzak mutasyondan önce alınır ve yalnız tam başarıda bırakılır;
+# başka her çıkışta kalır (elle temizlik ölçütü runbook'ta).
+lock_dir=/opt/agent-sozluk/runtime/.release-lock
+lock_check="test \"\$(cat $lock_dir/owner 2>/dev/null)\" = '$lock_owner' || exit 97"
+# Her uzak adım, hiçbir şeyi değiştirmeden önce, kendi cgroup'unun logind'e
+# kayıtlı bir `deploy` oturum scope'u olduğunu kanıtlar. Böylece `sudo` ile root'a
+# geçen torunlar dahil her süreç o scope'ta kalır ve elle kilit temizliği onu
+# görebilir; kayıtsız (ör. `pam_systemd` sessizce başarısız) oturum hiç başlamaz
+# (Astra, 23 Eylül).
+# shellcheck disable=SC2016
+scope_check='scope_path=$(sed -n "s/^0:://p" /proc/self/cgroup)
+   case "$scope_path" in
+     "/user.slice/user-$(id -u).slice/session-"*.scope) ;;
+     *) printf "RELEASE_WRAPPER_FAIL code=SESSION_SCOPE_UNVERIFIED\n" >&2; exit 98 ;;
+   esac
+   session_id=${scope_path##*/session-}
+   session_id=${session_id%.scope}
+   test "$(loginctl show-session "$session_id" -p Scope --value)" = "session-$session_id.scope" || exit 98
+   test "$(loginctl show-session "$session_id" -p Name --value)" = deploy || exit 98'
 ssh "${ssh_options[@]}" deploy@"$expected_ip" \
   "set -euo pipefail
    test \"\$(hostname)\" = '$expected_host' || exit 91
+   $scope_check
+   test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
+   if ! mkdir -m 0700 '$lock_dir' 2>/dev/null; then
+     printf 'RELEASE_WRAPPER_FAIL code=RELEASE_LOCKED owner=%s\\n' \"\$(cat '$lock_dir/owner' 2>/dev/null)\" >&2
+     exit 96
+   fi
+   printf '%s\\n' '$lock_owner' >'$lock_dir/owner'
+   chmod 0600 '$lock_dir/owner'"
+
+ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+  "set -euo pipefail
+   test \"\$(hostname)\" = '$expected_host' || exit 91
+   $scope_check
+   $lock_check
    test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
    test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
    install -m 0700 /dev/stdin '$remote_script'
@@ -383,6 +448,8 @@ if test "$build_on_host" = 0; then
   ssh "${ssh_options[@]}" deploy@"$expected_ip" \
     "set -euo pipefail
      test \"\$(hostname)\" = '$expected_host' || exit 91
+     $scope_check
+     $lock_check
      test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
      test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
      install -m 0700 /dev/stdin '$remote_artifact_installer'
@@ -392,6 +459,8 @@ if test "$build_on_host" = 0; then
     ssh "${ssh_options[@]}" deploy@"$expected_ip" \
       "set -euo pipefail
        test \"\$(hostname)\" = '$expected_host' || exit 91
+       $scope_check
+       $lock_check
        test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
        test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
        install -m 0700 /dev/stdin '$remote_github_fetcher'
@@ -403,6 +472,8 @@ fi
 ssh "${ssh_options[@]}" deploy@"$expected_ip" \
   "set -euo pipefail
    test \"\$(hostname)\" = '$expected_host' || exit 91
+   $scope_check
+   $lock_check
    test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
    test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
    # GitHub kimliksiz trafigi kisitliyor ve bu fetch deploy'un ilk uzak adimi.
@@ -426,6 +497,8 @@ ssh "${ssh_options[@]}" deploy@"$expected_ip" \
 if test "$build_on_host" = 0; then
   remote_artifact_command="set -euo pipefail
    test \"\$(hostname)\" = '$expected_host' || exit 91
+   $scope_check
+   $lock_check
    test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
    test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
    test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93"
@@ -506,14 +579,18 @@ trap - EXIT INT TERM HUP
 ssh -tt "${ssh_options[@]}" deploy@"$expected_ip" \
   "set -euo pipefail
    test \"\$(hostname)\" = '$expected_host' || exit 91
+   $scope_check
+   $lock_check
    test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
    test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
-   exec '$remote_script' '$candidate_sha' '$cleanup'"
+   exec '$remote_script' '$candidate_sha' '$cleanup' '$migration_mode' '$op_id'"
 
 if test "$build_on_host" = 0 && test "$artifact_transport" = server-fetch; then
   ssh "${ssh_options[@]}" deploy@"$expected_ip" \
     "set -euo pipefail
      test \"\$(hostname)\" = '$expected_host' || exit 91
+     $scope_check
+     $lock_check
      test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
      test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
      test -f '$remote_github_fetcher'
@@ -529,3 +606,12 @@ if test "$build_on_host" = 0 &&
   test ! -L "$artifact_dir"
   find "$artifact_dir" -xdev -depth -delete
 fi
+
+# Yalnız uzak betik `RELEASE_COMPLETE PASS` ile 0 döndüyse buraya gelinir
+# (`set -e`); kilit yalnız bu yolda ve sahibi bizsek bırakılır.
+ssh "${ssh_options[@]}" deploy@"$expected_ip" \
+  "set -euo pipefail
+   test \"\$(hostname)\" = '$expected_host' || exit 91
+   $scope_check
+   $lock_check
+   find '$lock_dir' -xdev -depth -delete"

@@ -1490,6 +1490,27 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       Bugün yalnız `deploy-production-no-migration.sh` var; yeni migration'lı bir sürüm
       dağıtılamıyor (`MIGRATION_SET_CHANGED`) ve runbook Gate 7/8'in istediği uygulama
       genelinde yazma dondurması kodda yok (`MAINTENANCE` yalnız ajanları durduruyor).
+
+      **23 Eylül durumu — TASARIM UZLAŞILDI, KOD PR #167'DE, ÜRETİMDE KULLANILMADI.**
+      Gökhan kısa kesintili yolu seçti (23 Eylül; dondurma = worker drenaj + Caddy ve app
+      durdurma, site bu sürede kapalı). Tasarım Astra ile sekiz turda uzlaştırıldı ("TASARIM
+      UYGUN", `3729072`); ayrıntı ve bütün aşamalar runbook "Migration'lı sürüm (A5)"
+      bölümünde, deneme kaydı `ATTEMPT_LOG.md`'de. Aşağıdaki gereksinim listesi korunuyor;
+      uygulamada iki fark: migration imajın kendi entrypoint'iyle değil, aday imajdan tek
+      seferlik bir konteynerde `scripts/run-migration.mjs` ile (hedef `current_database()` ile
+      doğrulanır) uygulanır; FK kuralı daha dar (yalnız mevcut tablonun uuid `id`'sine, sütun
+      başına bir FK, yeni tablolar arası FK yok; migration en az bir tablo açar — yalnız enum ekleyen
+      migration dondurmadan önce reddedilir). Aşağıdaki "geri dönüş güvencesi" iki parçaya
+      bölündü (Astra v2'de kabul etti): önceki imaj gerçek üretim kopyası (scratch) üzerinde,
+      migration uygulanmışken migration'sız açılır ve health/ready + release smoke geçer; üst satır
+      güncelleme/silme etkisi ise denetçinin statik kuralıyla (FK sütunu CHECK'te yalnız NULL
+      sınamasıyla, `SET NULL` için monotonluk) ve CI entegrasyon testiyle (gerçek PostgreSQL,
+      `users` kimlik değişimi ve silme) kanıtlanır. Uygulama kullanıcı silmediği ve kimlik
+      değiştirmediği için (audit tetikleyicisi kullanıcı silmeyi engeller) eski imaj bu yolu
+      zaten çalıştırmaz. Kalan kapatma adımları: Astra kod incelemesi (Sol dört turda inceledi,
+      son kararı BİRLEŞTİR; 23 Eylül'den beri hakem yalnız Astra), birleştirme ve
+      ilk kullanım (iletişim formu; ayrı exact onay).
+
       Yazılacak mod:
 
       - **Ön kontrol:** `SHOW server_encoding` = `UTF8`. Uygulamanın uzunluk kuralı
@@ -1508,8 +1529,8 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
         `publicId` çakışmasıyla düşer (Sol, 22 Eylül; 10 Eylül provası 3 sequence ölçmüştü).
         Yalnız dosyanın var olması yedek kanıtı sayılmaz.
 
-      - Uygulanmış migration listesi, **yalnız ek yapan** migration kontrolü, imajın kendi
-        entrypoint'iyle `prisma migrate deploy`, sonrasında applied == candidate ve tablo
+      - Uygulanmış migration listesi, **yalnız ek yapan** migration kontrolü, aday imajla tek
+        seferlik konteynerde `prisma migrate deploy`, sonrasında applied == candidate ve tablo
         envanteri karşılaştırması.
       - **"Yalnız ek yapan" bir izin listesidir**, yasak sözcük listesi değil (Sol, 22 Eylül:
         `CREATE TRIGGER`, `CREATE OR REPLACE FUNCTION`, `UPDATE` veya `DO` bloğu hiçbir yasak
@@ -1543,17 +1564,21 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
         `ON DELETE SET NULL` (sütun NULL'lanabilir ve hiçbir CHECK onu zorunlu kılmıyor;
         yoksa silme `23514` ile düşer) ya da açık `ON DELETE CASCADE` ile kabul edilir;
         ikisinde de `ON UPDATE CASCADE`. İletişim migration'ı buna uyuyor: iki FK de
-        `SET NULL`, iki sütun da NULL'lanabilir, `handledById` bilerek CHECK dışında.
+        `SET NULL`, iki sütun da NULL'lanabilir; `handledById` CHECK'te yalnız olumlu
+        `IS NULL` olarak geçiyor (NULL'a çekmek CHECK'i düşüremez; 23 Eylül düzeltmesi —
+        önceki "CHECK dışında" ifadesi yanlıştı).
       - **Geri dönüş güvencesi** bu kurallardan **ve** kanıttan gelir: önceki imajın yeni
-        şemalı veritabanına karşı açıldığı, sağlık kontrolünden geçtiği **ve** yeni tablodan
-        referans alan bir üst satırı (ör. kullanıcı) silip güncelleyebildiği izole bir prova.
-        Yalnız açılış ve sağlık kontrolü FK etkisini yakalamaz.
+        şemalı üretim kopyasına (scratch) karşı açıldığı ve health/ready + release smoke'tan
+        geçtiği izole bir prova; üst satır (ör. kullanıcı) güncelleme/silme etkisi ise
+        denetçinin statik FK/CHECK kuralı ve gerçek PostgreSQL'de koşan CI entegrasyon
+        testiyle (23 Eylül uzlaştırması; yukarıdaki durum notu).
 
       **Kapatma ölçütü:** birim testleriyle korunan mod; izin listesinin her reddedilen ifade
       türü ve her reddedilen ifade içeriği (`setval`, `nextval`, alt sorgu, `SERIAL`,
       ifade indeksi) için ayrı vaka, iletişim migration'ının kendisi olumlu vaka; bütün
-      tabloları ve sequence'leri kapsayan izole restore + parmak izi kanıtı; FK'li eski imaj uyumluluk provası;
-      Sol + Astra incelemesi; ve ilk kullanımı olarak iletişim formunun canlıya alınması.
+      tabloları ve sequence'leri kapsayan izole restore + parmak izi kanıtı; önceki imajın
+      scratch'te açılış provası + FK davranışının CI entegrasyon testi;
+      Astra incelemesi; ve ilk kullanımı olarak iletişim formunun canlıya alınması.
       A5 kapanmadan migration'lı dağıtım yapılmaz; runbook'un elle yürütülen Gate 7'si
       yalnız V1 tablolarını sınadığı için bunun yerine geçmez.
       _(Sıra 2 / bölüm 5.5)_

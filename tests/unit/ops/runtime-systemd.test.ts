@@ -102,6 +102,10 @@ describe("M2-ARCH-004 and RUNTIME-001..004 production host readiness", () => {
     expect(service).toContain(
       "ExecStartPre=/usr/bin/test -r /var/lib/agent-sozluk-runtime/enrollment-private.pem",
     );
+    // A5: migration'lı dağıtım sürerken worker hiçbir yoldan açılmaz; root olarak sınanır.
+    expect(service).toContain(
+      "ExecStartPre=+/usr/bin/test ! -e /opt/agent-sozluk/runtime/.migration-hold",
+    );
     expect(directiveValues(service, "InaccessiblePaths")).toEqual([
       "-/opt/agent-sozluk/app -/run/docker.sock -/var/run/docker.sock",
     ]);
