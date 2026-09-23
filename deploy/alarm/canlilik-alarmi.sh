@@ -251,9 +251,20 @@ lease_kontrol_kilitli() {
   # konteyner de sayılır; logu `docker compose logs` ile okunabilir. Migration'lı
   # dağıtımda app dondurmadan kesime kadar durur ve kesim taraması tam o
   # konteyneri tarar (ilk A5 kullanımında `ps -q` boş döndü ve tarama başarısız
-  # oldu; 23 Eylül).
-  kimlik="$(timeout 5 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
-    ps -a -q app 2>/dev/null | head -1)"
+  # oldu; 23 Eylül). `-a`, `compose run` ile açılan tek seferlik konteynerleri
+  # (A5 provası `a5-<op>-previous`, migrate) de listeler: onlar etiketle elenir;
+  # birden fazla asıl app konteyneri kalırsa kimlik belirsizdir (boş).
+  local adaylar aday
+  kimlik=""
+  adaylar="$(timeout 5 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
+    ps -a -q app 2>/dev/null)"
+  for aday in $adaylar; do
+    [[ "$aday" =~ ^[0-9a-f]{12,64}$ ]] || { kimlik=""; break; }
+    [[ "$(timeout 5 docker inspect -f '{{index .Config.Labels "com.docker.compose.oneoff"}}' \
+      "$aday" 2>/dev/null)" == False ]] || continue
+    if [[ -n "$kimlik" ]]; then kimlik=""; break; fi
+    kimlik="$aday"
+  done
   [[ "$kimlik" =~ ^[0-9a-f]{12,64}$ ]] || kimlik=""
   baslangic=$(( esik / 1000 - LEASE_ORTUSME_SN ))
 
