@@ -1488,6 +1488,15 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       `failed`'da kaldı ve kesinti bitince de dönmedi; yeni politika 40 sn'lik kesinti bittikten
       35 sn sonra toparlandı (sınır 300 sn). Alarm "koşu yok"u birim durumundan bağımsız, son
       koşunun yaşından bildirir; yeniden deneyen worker koşu üretmedikçe aynı olay bildirilir.
+      Astra 1. tur (PR #175) üç bulgu verdi, üçü de kapandı: (1) hold kapısı `ExecStartPre`
+      iken hold varken yapılan bir başlatma süresiz yeniden deneme kuruyor ve hold kalkınca
+      worker kendiliğinden açılıyordu (yerelde karşı örnekle doğrulandı: `restarts=1`,
+      `active/running`); kapı artık `ExecCondition`. (2) Prob birimleri alt kabukta kaydettiği
+      için temizlemiyordu; kayıt ana kabukta, temizlik doğrulanıyor. (3) Prob politikayı ilk
+      eşleşmeyle metinden okuyordu; artık gerçek birim dosyası systemd'ye yüklenip etkin
+      özellikler (`systemctl show`, `ExecConditionEx flags=privileged` dahil) okunuyor. Probun
+      üçüncü aşaması hold'un atlandığını, kalkınca açılmadığını, açık `start` ile açıldığını
+      ölçüyor.
       Önceki metin:
       `deploy/systemd/agent-sozluk-runtime.service` beş açılış/300 saniye sınırı taşıyor;
       canlılık alarmı yalnız bildiriyor, yeniden başlatmıyor. Geçici bir DB/API kesintisi

@@ -34,7 +34,10 @@ ExecStartPre=/usr/bin/test -r /var/lib/agent-sozluk-runtime/enrollment-private.p
 # runtime/current aynı sürümü gösterene kadar) worker hiçbir yoldan açılmaz;
 # reboot ve elle `systemctl start` dahil. `+` root olarak sınar: kapı, dizini
 # okuyamayan bir kullanıcı için yanlışlıkla "dosya yok" demesin.
-ExecStartPre=+/usr/bin/test ! -e /opt/agent-sozluk/runtime/.migration-hold
+# ExecStartPre değil ExecCondition (A3, Astra 23 Eylül): koşul tutmazsa birim
+# başarısız sayılmadan atlanır ve Restart=on-failure yeniden deneme KURMAZ; hold
+# kalkınca worker kendiliğinden açılmaz, dağıtım betiği açıkça başlatır.
+ExecCondition=+/usr/bin/test ! -e /opt/agent-sozluk/runtime/.migration-hold
 ExecStart=/usr/bin/node --require /opt/agent-sozluk/runtime/current/node_modules/tsx/dist/preflight.cjs --import file:///opt/agent-sozluk/runtime/current/node_modules/tsx/dist/loader.mjs scripts/agent-runtime-worker.ts
 
 Restart=on-failure

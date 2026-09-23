@@ -1421,7 +1421,9 @@ her süreç kayıtlı bir scope'ta kalır.
 
 - `frozen`, `backup-verified`, `rehearsed` sırasında hata: prod şeması değişmemiştir. Betik
   eski app'i ve Caddy'yi geri açar, iç/dış sağlığı doğrular; worker kapalı ve hold yerinde kalır.
-  Operatör kararıyla hold elle kaldırılıp worker başlatılabilir.
+  Operatör kararıyla hold elle kaldırılıp worker başlatılabilir. Hold kapısı birimde
+  `ExecCondition`'dır: hold varken başlatma (reboot dahil) birimi başarısız saymadan atlar ve
+  yeniden deneme kurmaz; hold kalkınca worker kendiliğinden açılmaz, açık `systemctl start` gerekir.
 - `migrating` sonrası hata (`MIGRATION_STATE_AMBIGUOUS`, çıkış 98) ya da `migrated`/`post-verified`
   sırasında hata: site KAPALI kalır; `migrate` tekrarlanmaz, `prisma migrate resolve` yapılmaz.
   `.release-op-<sha>/migration/ambiguous-prisma-history` okunur, karar Gökhan'ındır. Yalnız ek
