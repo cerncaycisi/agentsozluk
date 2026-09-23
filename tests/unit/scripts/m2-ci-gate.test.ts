@@ -98,6 +98,29 @@ describe("Milestone 2 pull request CI gate", () => {
     expect(steps.some((step) => step["continue-on-error"] === true)).toBe(false);
   });
 
+  it("boots the built image against PostgreSQL after building it (F09)", () => {
+    const containerSteps = (jobs.container?.steps ?? []).map(({ run }) => run ?? "");
+    const build = containerSteps.indexOf("docker buildx build --load --tag agent-sozluk:ci .");
+    const boot = containerSteps.indexOf("bash scripts/container-boot-probe.sh agent-sozluk:ci");
+    expect(build).toBeGreaterThanOrEqual(0);
+    expect(boot).toBeGreaterThan(build);
+    const probe = readFileSync(path.join(process.cwd(), "scripts/container-boot-probe.sh"), "utf8");
+    for (const evidence of [
+      "export NODE_ENV=production",
+      "export SEED_DEMO=false",
+      "--no-build --pull missing app",
+      'test "$applied" = "$expected"',
+      "scripts/release-smoke.ts",
+      "stop -t 20 app",
+      'test "$exit_code" = 0',
+      'test "$(migration_rows)" = "$before_rows"',
+      "Bugün sözlükte",
+      "F09_PROBE_CLEANUP_FAILED",
+      "down -v --remove-orphans",
+    ])
+      expect(probe, evidence).toContain(evidence);
+  });
+
   it("provides a migrated PostgreSQL service to the database-backed simulation lane", () => {
     expect(jobs.behavior?.services).toHaveProperty("postgres");
     const behaviorCommands = (jobs.behavior?.steps ?? []).flatMap(({ run }) => (run ? [run] : []));

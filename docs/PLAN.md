@@ -1246,9 +1246,14 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       test edildi. CI 7/7; Opus 5 repo GO. `8280ed4` canlıda; iki entry'nin
       OG/JSON-LD/sitemap tarihleri DB revizyon/oluşturulma tarihiyle eşleşti,
       Atom/RSS ve başlık örnekleri geçti. [Canlı kanıt](CANLI_DAGITIM_VE_TELEMETRI_2026-09-09.md).
-- [ ] **F09 — Container kapısı, container'ın çalışabildiğini kanıtlamıyor.** CI image kurup
-      Compose'u doğruluyor ama container'ı veritabanıyla ayağa kaldırıp entrypoint, migration,
-      readiness ve HTTP davranışını sınamıyor.
+- [ ] **F09 — Container kapısı, container'ın çalışabildiğini kanıtlamıyor — kod hazır, CI ve
+      inceleme bekliyor (23 Eylül).** CI image kurup Compose'u doğruluyordu ama container'ı
+      veritabanıyla ayağa kaldırıp entrypoint, migration, readiness ve HTTP davranışını
+      sınamıyordu. `scripts/container-boot-probe.sh` (CI `container` işi, "Container boot
+      probe"): derlenen imaj Compose ile boş PostgreSQL'e karşı üretim kipinde açılır; entrypoint
+      migration'ları uygular (`_prisma_migrations` = migration dizini sayısı), container
+      sağlıklı olur, `/api/health`, `/api/ready`, ana sayfa 200, üretimin release smoke'u
+      container içinden geçer, yeniden açılışta migration tekrar uygulanmaz.
 - [~] **F10 — IP kovası üretimde (21 Eylül); hesap bazlı kova KABUL EDİLEN ARTIK RİSK.**
   PR #146: `login:ip` 30/15dk, pahalı Argon2 işinden önce. Aynı IP'den
   farklı e-postalar artık tek kovada toplanıyor (önceden her e-posta ayrı
