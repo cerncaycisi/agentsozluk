@@ -1436,7 +1436,14 @@ doğrulanamazsa kilit kalır:
    hiçbir süreç yoktur (root torunları da aynı scope'u gösterir).
 4. `docker ps -a --filter name=^a5-` boş; `pg_stat_activity`'de `application_name` `a5-` ile başlayan
    backend yok.
-5. `.migration-operation` yok ya da aşaması `cutover-done`.
+5. Kilit sahibi (`owner`) ve varsa `.migration-operation/identity` kayda geçirilir. İşaret
+   KALDIRILMAZ: yarım kalmış bir migration operasyonu varken kilidi temizlemek, yalnız aynı SHA ve
+   aynı listeyle yeniden koşuya (kaldığı aşamadan devam) izin verir; migration'sız mod ya da başka
+   bir SHA/liste `MIGRATION_OPERATION_INCOMPLETE` ile durur.
+
+Her koşu yeni bir operasyon kimliği üretir; bu yüzden hata sonrası yeniden koşu, ancak yukarıdaki
+elle temizlikten sonra mümkündür. Prod şeması değişmeden önceki bir hatada betik eski sürümü açıp
+aşamayı `image-verified`'e geri aldığından yeniden koşu dondurmayı baştan kurar.
 
 **Elle geri dönüş (imaj).** Veritabanı restore edilmez; yeni tablolar kalır. Sıra: `compose stop
 caddy` → worker drene + stop → `agent-sozluk:production` = önceki imaj kimliği

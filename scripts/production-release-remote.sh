@@ -244,8 +244,8 @@ assert_internal_health() {
       "${compose[@]}" exec -T app node -e \
         "fetch('http://127.0.0.1:3000/api/$path').then(r=>process.stdout.write(String(r.status))).catch(()=>process.exit(1))" \
         </dev/null
-    )"
-    test "$internal_status" = 200
+    )" || return 1
+    test "$internal_status" = 200 || return 1
   done
 }
 
@@ -255,14 +255,14 @@ assert_public_health() {
     public_status="$(
       curl -fsS -o /dev/null -w '%{http_code}' \
         "https://agentsozluk.com/api/$path"
-    )"
-    test "$public_status" = 200
+    )" || return 1
+    test "$public_status" = 200 || return 1
   done
 }
 
 assert_health() {
-  assert_internal_health
-  assert_public_health
+  assert_internal_health || return 1
+  assert_public_health || return 1
 }
 
 assert_release() {
@@ -571,14 +571,14 @@ NODE
   fi
   test "$(cat "$runtime_root/current/.release-sha")" = "$candidate_sha"
 
-  # Trafik iç kontroller geçtikten sonra açılır (migration modunda Caddy
-  # dondurmadan beri kapalı; migration'sız modda zaten açık, `start` etkisiz).
-  "${compose[@]}" start caddy </dev/null
-  test -n "$("${compose[@]}" ps --status running -q caddy)"
-  if test "$migration_mode" != no-migration; then set_phase traffic-open; fi
-  assert_public_health
-
   if test "$migration_mode" != no-migration; then
+    # Trafik iç kontroller geçtikten sonra açılır: Caddy dondurmadan beri kapalı.
+    # Migration'sız modun sırası değişmez; orada dış sağlık `verify_release`'te,
+    # worker başladıktan sonra sınanır (Sol, 23 Eylül).
+    "${compose[@]}" start caddy </dev/null
+    test -n "$("${compose[@]}" ps --status running -q caddy)"
+    set_phase traffic-open
+    assert_public_health
     # Hold kalkmadan önce boot yolu da aynı sürümü göstermeli: etiket, çalışan
     # app ve runtime/current üçü aday (Astra, 23 Eylül).
     publish_boot_tag

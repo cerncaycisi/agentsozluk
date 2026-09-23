@@ -1500,8 +1500,15 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       uygulamada iki fark: migration imajın kendi entrypoint'iyle değil, aday imajdan tek
       seferlik bir konteynerde `scripts/run-migration.mjs` ile (hedef `current_database()` ile
       doğrulanır) uygulanır; FK kuralı daha dar (yalnız mevcut tablonun uuid `id`'sine, sütun
-      başına bir FK, yeni tablolar arası FK yok). Kalan kapatma adımları: Sol + Astra kod
-      incelemesi, birleştirme ve ilk kullanım (iletişim formu; ayrı exact onay).
+      başına bir FK, yeni tablolar arası FK yok). Aşağıdaki "geri dönüş güvencesi" iki parçaya
+      bölündü (Astra v2'de kabul etti): önceki imaj gerçek üretim kopyası (scratch) üzerinde,
+      migration uygulanmışken migration'sız açılır ve health/ready + release smoke geçer; üst satır
+      güncelleme/silme etkisi ise denetçinin statik kuralıyla (FK sütunu CHECK'te yalnız NULL
+      sınamasıyla, `SET NULL` için monotonluk) ve CI entegrasyon testiyle (gerçek PostgreSQL,
+      `users` kimlik değişimi ve silme) kanıtlanır. Uygulama kullanıcı silmediği ve kimlik
+      değiştirmediği için (audit tetikleyicisi kullanıcı silmeyi engeller) eski imaj bu yolu
+      zaten çalıştırmaz. Kalan kapatma adımları: Sol + Astra kod incelemesi, birleştirme ve
+      ilk kullanım (iletişim formu; ayrı exact onay).
 
       Yazılacak mod:
 

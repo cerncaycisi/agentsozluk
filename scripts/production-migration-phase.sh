@@ -15,6 +15,10 @@
 #
 # Aşamalar `$migration_marker/phase` dosyasında atomik yazılır. Yeniden girişte
 # yalnız güvenli noktadan devam edilir; `migrate` asla kör tekrarlanmaz.
+#
+# Bash, `f || x` biçiminde çağrılan bir fonksiyonun GÖVDESİNİN TAMAMINDA `set -e`'yi
+# kapatır (Sol, 23 Eylül). Bu yüzden güvenlik kontrolü yapan fonksiyonlar ya `||`
+# olmadan çağrılır ya da her adımını açıkça sınar (`|| return 1`, `|| migration_fail`).
 
 migration_marker="$runtime_root/.migration-operation"
 migration_hold="$runtime_root/.migration-hold"
@@ -23,6 +27,8 @@ backups_dir=/opt/agent-sozluk/backups
 scratch_database=''
 scratch_owned=0
 production_timeouts_set=0
+freeze_started=0
+migration_status=0
 
 migration_fail() {
   printf 'RELEASE_FAIL code=%s\n' "$1" >&2
@@ -229,6 +235,8 @@ freeze_writes() {
   install_runtime_unit
   : >"$migration_hold"
   cat /proc/sys/kernel/random/boot_id >"$migration_marker/boot-id"
+  # Buradan sonra bir hata, aşama henüz `frozen` olmasa da siteyi geri açmalı.
+  freeze_started=1
   "${compose[@]}" stop caddy </dev/null
   "${compose[@]}" stop app </dev/null
   assert_frozen
@@ -351,23 +359,36 @@ SQL
   ! grep -q '|bad$' <<<"$output" || migration_fail SEQUENCE_NEXT_VALUE_UNSAFE
 }
 
+# Çıktı boş ya da pg_dump hatalıysa özet ÜRETİLMEZ: boş dökümün özeti iki
+# tarafta da aynı çıkıp kanıtsız eşitlik sayılırdı (Sol, 23 Eylül).
 schema_hash() {
-  local database="$1"
+  local database="$1" dump hash
   shift
+  dump="$(mktemp "$migration_dir/schema.XXXXXX")"
   "${compose[@]}" exec -T db pg_dump --schema-only --no-owner --no-privileges \
-    -U agent_sozluk -d "$database" "$@" </dev/null |
-    grep -v -E '^\\(un)?restrict ' | sha256sum | cut -d ' ' -f 1
+    -U agent_sozluk -d "$database" "$@" </dev/null >"$dump" || migration_fail SCHEMA_DUMP_FAILED
+  grep -q 'CREATE TABLE' "$dump" || migration_fail SCHEMA_DUMP_EMPTY
+  hash="$(grep -v -E '^\\(un)?restrict ' "$dump" | sha256sum | cut -d ' ' -f 1)"
+  rm -f "$dump"
+  [[ "$hash" =~ ^[0-9a-f]{64}$ ]] || migration_fail SCHEMA_HASH_INVALID
+  printf '%s\n' "$hash"
 }
 
 # Önceden var olan her tablonun ayrı şema özeti (migration sonrası birebir kalmalı).
 table_schema_hashes() {
-  local database="$1" output="$2" table
+  local database="$1" output="$2" table hash tables
+  tables="$migration_dir/tables-$database"
+  db_psql "$database" -c \
+    "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') ORDER BY 1;" </dev/null \
+    >"$tables" || migration_fail TABLE_LIST_FAILED
+  test -s "$tables" || migration_fail TABLE_LIST_EMPTY
   : >"$output"
   while IFS= read -r table; do
-    printf '%s|%s\n' "$table" "$(schema_hash "$database" -t "public.\"$table\"")" >>"$output"
-  done < <(db_psql "$database" -c \
-    "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-     WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') ORDER BY 1;" </dev/null)
+    hash="$(schema_hash "$database" -t "public.\"$table\"")" || migration_fail SCHEMA_DUMP_FAILED
+    printf '%s|%s\n' "$table" "$hash" >>"$output"
+  done <"$tables"
+  test "$(wc -l <"$output")" = "$(wc -l <"$tables")" || migration_fail TABLE_SCHEMA_COUNT
 }
 
 prisma_history() {
@@ -382,7 +403,9 @@ backup_and_fingerprint() {
   local stamp backup partial
   db_fingerprint agent_sozluk "$migration_dir/pre-fingerprint"
   sequence_safety agent_sozluk
-  schema_hash agent_sozluk >"$migration_dir/pre-schema"
+  local pre_schema
+  pre_schema="$(schema_hash agent_sozluk)"
+  printf '%s\n' "$pre_schema" >"$migration_dir/pre-schema"
   table_schema_hashes agent_sozluk "$migration_dir/pre-table-schemas"
   prisma_history agent_sozluk >"$migration_dir/pre-prisma-history"
 
@@ -440,7 +463,9 @@ SQL
   cmp -s "$migration_dir/pre-fingerprint" "$migration_dir/restore-fingerprint" ||
     migration_fail RESTORE_FINGERPRINT_MISMATCH
   sequence_safety "$scratch_database"
-  test "$(schema_hash "$scratch_database")" = "$(cat "$migration_dir/pre-schema")" ||
+  local restored_schema
+  restored_schema="$(schema_hash "$scratch_database")"
+  test "$restored_schema" = "$(cat "$migration_dir/pre-schema")" ||
     migration_fail RESTORE_SCHEMA_MISMATCH
   set_phase backup-verified
 }
@@ -449,14 +474,23 @@ SQL
 
 set_database_timeouts() {
   if test "$1" = agent_sozluk; then production_timeouts_set=1; fi
-  db_psql agent_sozluk -v "target=$1" <<'SQL' >/dev/null
+  db_psql agent_sozluk -v "target=$1" <<'SQL' >/dev/null || migration_fail DB_TIMEOUT_SET_FAILED
 SELECT format('ALTER DATABASE %I SET lock_timeout = %L', :'target', '5s') \gexec
 SELECT format('ALTER DATABASE %I SET statement_timeout = %L', :'target', '300s') \gexec
 SQL
+  test "$(db_psql agent_sozluk -v "target=$1" <<'SQL'
+SELECT count(*) FROM pg_db_role_setting s
+JOIN pg_database d ON d.oid = s.setdatabase
+CROSS JOIN LATERAL unnest(s.setconfig) AS c(setting)
+WHERE d.datname = :'target' AND s.setrole = 0
+  AND c.setting IN ('lock_timeout=5s', 'statement_timeout=300s');
+SQL
+)" = 2 || migration_fail DB_TIMEOUT_SET_FAILED
 }
 
+# Başarısızlıkta `exit` etmez, 1 döner: EXIT tuzağından da güvenle çağrılır.
 reset_database_timeouts() {
-  db_psql agent_sozluk -v "target=$1" <<'SQL' >/dev/null
+  db_psql agent_sozluk -v "target=$1" <<'SQL' >/dev/null || return 1
 SELECT format('ALTER DATABASE %I RESET lock_timeout', :'target') \gexec
 SELECT format('ALTER DATABASE %I RESET statement_timeout', :'target') \gexec
 SQL
@@ -467,17 +501,21 @@ CROSS JOIN LATERAL unnest(s.setconfig) AS c(setting)
 WHERE d.datname = :'target' AND s.setrole = 0
   AND (c.setting LIKE 'lock_timeout=%' OR c.setting LIKE 'statement_timeout=%');
 SQL
-)" = 0 || migration_fail DB_TIMEOUT_RESET_FAILED
+)" = 0 || return 1
   if test "$1" = agent_sozluk; then production_timeouts_set=0; fi
 }
 
 # Hedef konteyner içinde seçilir ve gerçek bağlantıyla doğrulanır
 # (scripts/run-migration.mjs). Bittikten sonra konteyner ve backend'in gerçekten
 # gittiği kanıtlanmadan sonuç sınıflandırılmaz.
+#
+# `||` bağlamında ÇAĞRILMAZ; sonuç `migration_status` değişkenindedir.
 run_migration() {
   local target="$1" image_id status=0
-  image_id="$(cat "$state_dir/candidate-image-id")"
-  test "$(docker image inspect --format '{{.Id}}' "$candidate_image")" = "$image_id"
+  migration_status=1
+  image_id="$(cat "$state_dir/candidate-image-id")" || migration_fail CANDIDATE_IMAGE_ID_MISSING
+  test "$(docker image inspect --format '{{.Id}}' "$candidate_image")" = "$image_id" ||
+    migration_fail CANDIDATE_IMAGE_TAG_MOVED
   set_database_timeouts "$target"
   env -u DATABASE_URL -u COMPOSE_PROJECT_NAME -u COMPOSE_FILE -u COMPOSE_PROFILES \
     APP_IMAGE="$candidate_image" timeout 900 "${compose[@]}" run --rm --no-deps --pull never \
@@ -497,8 +535,8 @@ SELECT count(*) FROM pg_stat_activity
 WHERE datname = :'target' AND backend_type = 'client backend' AND pid <> pg_backend_pid();
 SQL
 )" = 0 || migration_fail MIGRATION_BACKEND_STILL_PRESENT
-  reset_database_timeouts "$target"
-  return "$status"
+  reset_database_timeouts "$target" || migration_fail DB_TIMEOUT_RESET_FAILED
+  migration_status="$status"
 }
 
 new_object_definitions() {
@@ -688,7 +726,8 @@ rehearse_previous_image() {
 
 rehearse_on_scratch() {
   prisma_history agent_sozluk >"$migration_dir/prod-history-before-rehearsal"
-  run_migration "$scratch_database" || migration_fail SCRATCH_MIGRATION_FAILED
+  run_migration "$scratch_database"
+  ((migration_status == 0)) || migration_fail SCRATCH_MIGRATION_FAILED
   post_verify "$scratch_database" scratch
   rehearse_previous_image
   # Prova üretime dokunmadı: prod geçmişi aynı, yeni tablolar prod'da yok.
@@ -701,10 +740,9 @@ rehearse_on_scratch() {
 # --- 9-10. Üretim ---------------------------------------------------------------
 
 migrate_production() {
-  local status=0
   set_phase migrating
-  run_migration agent_sozluk || status=$?
-  if ((status != 0)); then
+  run_migration agent_sozluk
+  if ((migration_status != 0)); then
     prisma_history agent_sozluk >"$migration_dir/ambiguous-prisma-history" || true
     migration_fail MIGRATION_STATE_AMBIGUOUS 98
   fi
@@ -737,10 +775,19 @@ migration_exit_trap() {
       drop_scratch || printf 'RELEASE_WARN scratch database left: %s\n' "$scratch_database" >&2
     fi
     case "$(current_phase)" in
-      frozen | backup-verified | rehearsed)
-        # Prod şeması değişmedi: eski sürüm geri açılır.
-        reopen_previous_release ||
-          printf 'RELEASE_WARN previous release could not be reopened\n' >&2
+      image-verified | frozen | backup-verified | rehearsed)
+        # Prod şeması değişmedi: dondurma başladıysa eski sürüm geri açılır ve
+        # aşama `image-verified`'e geri alınır; aynı SHA/listeyle yeniden koşu
+        # dondurmayı baştan kurar (Sol, 23 Eylül).
+        if ((freeze_started == 1)) || test "$(current_phase)" != image-verified; then
+          if reopen_previous_release; then
+            printf 'image-verified\n' >"$migration_marker/phase.next" &&
+              mv -Tf "$migration_marker/phase.next" "$migration_marker/phase" &&
+              printf 'RELEASE_MIGRATION_PHASE image-verified (rewound after reopen)\n' >&2
+          else
+            printf 'RELEASE_WARN previous release could not be reopened\n' >&2
+          fi
+        fi
         ;;
       migrating | migrated | post-verified)
         printf 'RELEASE_MIGRATION_MANUAL phase=%s site stays down; see runbook\n' \
