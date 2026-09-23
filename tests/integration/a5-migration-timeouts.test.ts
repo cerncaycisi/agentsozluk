@@ -68,16 +68,17 @@ const projects: string[] = [];
 beforeAll(async () => {
   await integrationDatabase.$executeRaw`DROP DATABASE IF EXISTS "agent_sozluk_a5_lock_test" WITH (FORCE)`;
   await integrationDatabase.$executeRaw`DROP DATABASE IF EXISTS "agent_sozluk_a5_stmt_test" WITH (FORCE)`;
-  await integrationDatabase.$executeRaw`CREATE DATABASE "agent_sozluk_a5_lock_test"`;
-  await integrationDatabase.$executeRaw`CREATE DATABASE "agent_sozluk_a5_stmt_test"`;
-});
+  await integrationDatabase.$executeRaw`CREATE DATABASE "agent_sozluk_a5_lock_test" TEMPLATE template0`;
+  await integrationDatabase.$executeRaw`CREATE DATABASE "agent_sozluk_a5_stmt_test" TEMPLATE template0`;
+  // Yük altındaki CI'da veritabanı açma/kapatma 10 sn'lik varsayılan kanca sınırını aştı.
+}, 60_000);
 
 afterAll(async () => {
   for (const project of projects) rmSync(project, { recursive: true, force: true });
   await integrationDatabase.$executeRaw`DROP DATABASE IF EXISTS "agent_sozluk_a5_lock_test" WITH (FORCE)`;
   await integrationDatabase.$executeRaw`DROP DATABASE IF EXISTS "agent_sozluk_a5_stmt_test" WITH (FORCE)`;
   await integrationDatabase.$disconnect();
-});
+}, 60_000);
 
 describe("A5 migration zaman aşımları gerçek Prisma bağlantısında", () => {
   it("başka bağlantı kilidi tutarken FK'li migration lock_timeout ile düşer", async () => {
