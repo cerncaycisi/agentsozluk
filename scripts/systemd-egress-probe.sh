@@ -13,14 +13,17 @@
 # 2. Aday: aynı değerlerle geçici birim — localhost'taki dinleyiciye bağlanır;
 #    bulut metadata adresine (169.254.169.254) ve özel aralığa (10.0.0.1, 172.17.0.1)
 #    bağlantı çekirdekte "Operation not permitted" ile reddedilir; herkese açık bir
-#    adrese (1.1.1.1:443) bağlanabilir.
+#    adrese (1.1.1.1:443) bağlanabilir. Engelli hedefler UDP `sendto` ile sınanır:
+#    süzgeç TCP SYN'i sessizce düşürür (connect yalnız zaman aşımına uğrar), UDP'de
+#    ise çekirdek hemen EPERM döner.
 #
 # 3. Docker yolu: worker'ın API'si Docker'ın 127.0.0.1'e yayımladığı porttan geçer.
 #    Gerçek bir konteyner aynı biçimde yayımlanır ve aday politika altından ona
 #    bağlanılır: `userland-proxy=false` (DNAT ile 172.x'e taşıma) olsaydı düşerdi.
 # 4. DNS: aday birimden /etc/resolv.conf'taki çözücüye gerçek UDP sorgusu (Ubuntu'da
 #    127.0.0.53, izinli); NSS/`getent` değil, paket yolunun kendisi.
-# 5. IPv4-mapped metadata (::ffff:169.254.169.254) da reddedilir.
+# 5. IPv4-mapped metadata (::ffff:169.254.169.254) da reddedilir. Yerel IPv6 aralıkları
+#    birimde engelli ama runner'da IPv6 rotası olmadığı için davranışla ölçülmez.
 #
 # Her hedef için tam bir sonuç zorunludur; eksik satır ya da çalıştırma hatası
 # başarısızlıktır. Denetim biriminde engellenecek hedeflerin hiçbiri "izin yok"
@@ -108,11 +111,31 @@ answers = struct.unpack(">H", reply[6:8])[0]
 sys.exit(0 if reply[:2] == query[:2] and answers > 0 else 1)
 DNS
 
+cat >"$work/udp-send.py" <<'UDP'
+# Engelli hedef sınaması: cgroup süzgeci TCP SYN'i sessizce düşürür (connect zaman
+# aşımına uğrar, CI'da ölçüldü); UDP `sendto` ise süzgeçte hemen EPERM döner. Süzgeç
+# yoksa gönderim başarılıdır (hedefin erişilebilir olması gerekmez).
+import errno, socket, sys
+host, port = sys.argv[1].rsplit(":", 1)
+family = socket.AF_INET6 if ":" in host else socket.AF_INET
+sock = socket.socket(family, socket.SOCK_DGRAM)
+try:
+    sock.sendto(b"b7", (host, int(port)))
+    print("sent")
+except OSError as error:
+    print("denied" if error.errno == errno.EPERM else "error")
+UDP
+
 cat >"$work/connect.sh" <<'CONNECT'
 #!/usr/bin/env bash
 # Hata metni İngilizce sabit: "not permitted" sınıflandırması yerele bağlı kalmasın.
 export LC_ALL=C
 for target in "$@"; do
+  if [[ "$target" == udp:* ]]; then
+    result="$(timeout 5 python3 "$(dirname "$0")/udp-send.py" "${target#udp:}" 2>/dev/null)"
+    printf '%s\t%s\n' "$target" "${result:-error}"
+    continue
+  fi
   if [[ "$target" == dns:* ]]; then
     if timeout 6 python3 "$(dirname "$0")/dns-query.py" "${target#dns:}" 2>/dev/null; then
       result=resolved
@@ -146,7 +169,9 @@ for _ in $(seq 1 50); do
   sleep 0.2
 done
 
-blocked=(169.254.169.254:80 10.0.0.1:80 172.17.0.1:80 "::ffff:169.254.169.254:80")
+# Yerel IPv6 hedefleri (ULA/link-local) ölçülmez: rota yoksa gönderim süzgeçten önce
+# ENETUNREACH ile düşer ve politika hakkında bilgi vermez (runner'da IPv6 rotası yok).
+blocked=(udp:169.254.169.254:53 udp:10.0.0.1:53 udp:172.17.0.1:53 "udp:::ffff:169.254.169.254:53")
 open=("127.0.0.1:$port" "127.0.0.1:$docker_port" 1.1.1.1:443 dns:one.one.one.one)
 targets=("${open[@]}" "${blocked[@]}")
 probe() {
@@ -171,10 +196,10 @@ result() { awk -F '\t' -v t="$2" '$1 == t {print $2}' "$work/$1.out"; }
 probe "b7-control-$$"
 test "$(result "b7-control-$$" "127.0.0.1:$port")" = connected
 test "$(result "b7-control-$$" "127.0.0.1:$docker_port")" = connected
-# Kısıtsız birimde engellenecek hedeflerin hiçbiri çekirdekte "izin yok" almaz
-# (bağlanır, zaman aşımı ya da ret): adaydaki "denied" politikanın sonucudur.
+# Kısıtsız birimde engellenecek hedeflere UDP gönderimi başarılıdır; adaydaki
+# "denied" politikanın sonucudur.
 for target in "${blocked[@]}"; do
-  test "$(result "b7-control-$$" "$target")" != denied
+  test "$(result "b7-control-$$" "$target")" = sent
 done
 
 # --- 2. Aday: gerçek birimin etkin değerleri ---------------------------------
