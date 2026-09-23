@@ -115,18 +115,19 @@ echo "F09_PROBE_SMOKE ok"
 before_rows="$(migration_rows)"
 test -n "$before_rows"
 
-# Düzgün kapanma: SIGTERM, süre sınırı içinde; SIGKILL'e (137) düşmez.
+# Düzgün kapanma: Next 15 standalone `server.js` SIGTERM'de sunucuyu ve bekleyen
+# istekleri kapatıp `process.exit(0)` çağırır; `init: true` bu sonucu taşır. Yalnız 0
+# kabul: 143 işleyicinin atlandığını, 137 SIGKILL'i gösterir (Astra, #179 2. tur).
 container="$("${compose[@]}" ps -q app)"
-stop_started="$(date +%s)"
+stop_started_ms="$(date +%s%3N)"
 "${compose[@]}" stop -t 20 app </dev/null
-stop_seconds=$(($(date +%s) - stop_started))
+stop_ms=$(($(date +%s%3N) - stop_started_ms))
 exit_code="$(docker inspect --format '{{.State.ExitCode}}' "$container")"
 oom="$(docker inspect --format '{{.State.OOMKilled}}' "$container")"
-printf 'F09_PROBE_STOP exit=%s seconds=%s oom=%s\n' "$exit_code" "$stop_seconds" "$oom"
+printf 'F09_PROBE_STOP exit=%s ms=%s oom=%s\n' "$exit_code" "$stop_ms" "$oom"
 test "$oom" = false
-test "$exit_code" != 137
-case "$exit_code" in 0 | 143) ;; *) exit 1 ;; esac
-test "$stop_seconds" -lt 20
+test "$exit_code" = 0
+test "$stop_ms" -lt 20000
 
 # İkinci açılış: entrypoint yine `migrate deploy` çalıştırır; hiçbir şey uygulanmamalı.
 "${compose[@]}" start app </dev/null

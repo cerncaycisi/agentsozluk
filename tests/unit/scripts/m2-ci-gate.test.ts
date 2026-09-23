@@ -112,7 +112,7 @@ describe("Milestone 2 pull request CI gate", () => {
       'test "$applied" = "$expected"',
       "scripts/release-smoke.ts",
       "stop -t 20 app",
-      'test "$exit_code" != 137',
+      'test "$exit_code" = 0',
       'test "$(migration_rows)" = "$before_rows"',
       "Bugün sözlükte",
       "F09_PROBE_CLEANUP_FAILED",
