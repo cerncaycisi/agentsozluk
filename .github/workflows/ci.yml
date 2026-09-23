@@ -36,7 +36,7 @@ jobs:
       TRUST_PROXY_HOPS: "0"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -124,7 +124,7 @@ jobs:
       TRUST_PROXY: "true"
       TRUST_PROXY_HOPS: "0"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-project
 
@@ -166,7 +166,7 @@ jobs:
       TRUST_PROXY: "true"
       TRUST_PROXY_HOPS: "0"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-project
 
@@ -208,7 +208,7 @@ jobs:
       TRUST_PROXY: "true"
       TRUST_PROXY_HOPS: "0"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-project
 
@@ -256,7 +256,7 @@ jobs:
       TRUST_PROXY: "true"
       TRUST_PROXY_HOPS: "0"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-project
 
@@ -300,7 +300,7 @@ jobs:
       TRUST_PROXY: "true"
       TRUST_PROXY_HOPS: "0"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: docker/setup-buildx-action@v3
 
