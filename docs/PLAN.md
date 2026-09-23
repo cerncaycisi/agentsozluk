@@ -1467,7 +1467,8 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       çıkış ayrı onayla).** Tek sınıflandırıcı `isSensitiveAnalyticsLocation`, yolu ve sorguyu
       birlikte alır: `q` parametreli her adres hassas. Middleware, istemci
       (`useSearchParams`), bağlantı koruması, geri/ileri ve arama önerisi aynı kuralı
-      kullanıyor; matris testte.
+      kullanıyor; hassas belgede referrer politikası `origin` (sorgu sonraki belgeye
+      taşınmaz); onay × konum × DNT/GPC matrisi (18 vaka) ve middleware sınıflaması testte.
       Önceki metin: `/ara` hassas sayılıyor ama
       `/baslik/...?q=...` yol olarak `PUBLIC`: sınıflandırma yalnız pathname'e bakıyor
       (`src/lib/analytics/product-analytics.ts`, `src/middleware.ts`, istemci tarafında

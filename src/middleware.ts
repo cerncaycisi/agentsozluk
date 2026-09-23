@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
   PRODUCT_ANALYTICS_SURFACE_HEADER,
+  SENSITIVE_LOCATION_HEADER,
   SYNTHETIC_ANALYTICS_OPTOUT_HEADER,
   classifyProductAnalyticsSurface,
+  isSensitiveAnalyticsLocation,
 } from "@/lib/analytics/product-analytics";
 import { createContentSecurityPolicy } from "@/lib/security/content-security-policy";
 
@@ -22,6 +24,10 @@ export function middleware(request: NextRequest) {
   });
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set(PRODUCT_ANALYTICS_SURFACE_HEADER, analyticsSurface);
+  requestHeaders.set(
+    SENSITIVE_LOCATION_HEADER,
+    isSensitiveAnalyticsLocation(request.nextUrl.pathname, request.nextUrl.search) ? "1" : "0",
+  );
   requestHeaders.set("Content-Security-Policy", contentSecurityPolicy);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("Content-Security-Policy", contentSecurityPolicy);

@@ -1,8 +1,27 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
+import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 import {
+  PRODUCT_ANALYTICS_SURFACE_HEADER,
+  SENSITIVE_LOCATION_HEADER,
   classifyProductAnalyticsSurface,
   shouldLoadProductAnalytics,
 } from "@/lib/analytics/product-analytics";
+import { middleware } from "@/middleware";
+
+function istekBasligi(url: string, ad: string): string | null {
+  // Middleware'in yönlendirdiği istek başlıkları yanıtta `x-middleware-request-*` olarak durur.
+  return middleware(new NextRequest(url)).headers.get(`x-middleware-request-${ad}`);
+}
+
+function kaynakDosyalari(kok: string): string[] {
+  return readdirSync(kok).flatMap((ad) => {
+    const tam = path.join(kok, ad);
+    if (statSync(tam).isDirectory()) return kaynakDosyalari(tam);
+    return /\.(ts|tsx)$/u.test(ad) ? [tam] : [];
+  });
+}
 
 const productionSite = { nodeEnv: "production", appUrl: "https://agentsozluk.com" };
 
@@ -177,5 +196,39 @@ describe("product analytics traffic policy", () => {
         surface: "PUBLIC",
       }),
     ).toBe(true);
+  });
+
+  describe("A1 — sunucu ve kaynak koruması", () => {
+    it("tam GET yüklemesinde (form gönderimi) middleware başlık içi aramayı hassas sınıflar", () => {
+      const arama = "https://agentsozluk.com/baslik/gitar--42?q=akor";
+      expect(istekBasligi(arama, PRODUCT_ANALYTICS_SURFACE_HEADER)).toBe("SENSITIVE");
+      expect(istekBasligi(arama, SENSITIVE_LOCATION_HEADER)).toBe("1");
+      const sayfa = "https://agentsozluk.com/baslik/gitar--42?page=2";
+      expect(istekBasligi(sayfa, PRODUCT_ANALYTICS_SURFACE_HEADER)).toBe("PUBLIC");
+      expect(istekBasligi(sayfa, SENSITIVE_LOCATION_HEADER)).toBe("0");
+    });
+
+    it("kaynakta sorgulu programatik gezinme ve History API kullanımı yok", () => {
+      /*
+        GTM'in geçmiş dinleyicisi `router.push`/`history.pushState` ile yapılan
+        sorgu değişimini istemci yeniden yüklemeden ÖNCE görebilir (Astra, A1).
+        Başlık içi arama düz GET formu, sayfalama bağlantıları tıklama korumasından
+        geçer; programatik yol hiç yazılmamalı.
+      */
+      const ihlaller: string[] = [];
+      for (const dosya of kaynakDosyalari(path.join(process.cwd(), "src"))) {
+        const kaynak = readFileSync(dosya, "utf8");
+        if (/history\.(push|replace)State\s*\(/u.test(kaynak))
+          ihlaller.push(`${dosya}: History API`);
+        for (const eslesme of kaynak.matchAll(/router\.(push|replace)\(([^)]*)\)/gu)) {
+          if (/[?&]q=|["'`]q["'`]/u.test(eslesme[2] ?? ""))
+            ihlaller.push(`${dosya}: ${eslesme[0]}`);
+        }
+        if (/\.set\(\s*["'`]q["'`]/u.test(kaynak) && /useRouter/u.test(kaynak)) {
+          ihlaller.push(`${dosya}: searchParams.set("q") + useRouter`);
+        }
+      }
+      expect(ihlaller).toEqual([]);
+    });
   });
 });

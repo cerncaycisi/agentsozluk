@@ -134,6 +134,27 @@ function hassasGecisleriKoru(): () => void {
   };
 }
 
+/*
+  Hassas konumdan (arama, giriş…) çıkan gezinme, adresi ve sorgusu bir sonraki
+  belgenin `document.referrer`'ına taşımasın: o belge herkese açık ve ölçülüyor
+  olabilir (Astra, A1). Belgenin referrer politikası `<meta name="referrer">`
+  ile adres değiştikçe güncellenir; içerik değişikliği tarayıcıca yeniden
+  uygulanır.
+*/
+export const HASSAS_REFERRER_POLITIKASI = "origin";
+export const VARSAYILAN_REFERRER_POLITIKASI = "strict-origin-when-cross-origin";
+
+function referrerPolitikasiniUygula(hassas: boolean) {
+  let etiket = document.head.querySelector<HTMLMetaElement>('meta[name="referrer"]');
+  if (!etiket) {
+    if (!hassas) return;
+    etiket = document.createElement("meta");
+    etiket.name = "referrer";
+    document.head.append(etiket);
+  }
+  etiket.content = hassas ? HASSAS_REFERRER_POLITIKASI : VARSAYILAN_REFERRER_POLITIKASI;
+}
+
 /** Onay artık geçerli değilse (başka sekmede geri çekilmiş, DNT/GPC açılmış) yeniden yükle. */
 function onayHalaGecerliMi(): boolean {
   return onayiOku() === "kabul" && !tarayiciIzlemeyiReddediyor();
@@ -156,6 +177,10 @@ export function ProductAnalytics({
   const [izlemeReddi, setIzlemeReddi] = useState(true);
   // Yüzey render sırasında adresten türetilir: hassas sayfada şerit bir kare bile kalmaz.
   const istemciUygun = enabled && !hassas && !izlemeReddi;
+
+  useEffect(() => {
+    referrerPolitikasiniUygula(hassas);
+  }, [hassas]);
 
   useEffect(() => {
     const ret = tarayiciIzlemeyiReddediyor();

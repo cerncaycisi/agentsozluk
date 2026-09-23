@@ -29,6 +29,13 @@ yüzey hassastır. Middleware, istemci bileşeni, bağlantı tıklama koruması,
 önerisi aynı fonksiyonu kullanır. Başlık içi arama (`/baslik/…?q=…`) böylece "arama
 sayfalarında ölçüm yapılmaz" sözünün kapsamında.
 
+**Referrer (A1, Astra):** hassas konumdan çıkan tam yükleme (ör. "Aramayı temizle") sorguyu bir
+sonraki — ölçülen — belgenin `document.referrer`'ına taşımasın diye hassas belgede referrer
+politikası `origin`'dir: ilk yüklemede kök layout `<meta name="referrer" content="origin">`
+basar (middleware'in `x-agent-sozluk-sensitive-location` başlığı), istemci bileşeni sayfa içi
+gezinmede aynı etiketi günceller. Sorgulu programatik gezinme (`router.push`/History API)
+kaynakta yasak; statik test bunu sınar.
+
 **İstemci (her adres değişimi):** kök layout sayfa içi gezinmede korunduğu için sunucu kararı
 yalnız ilk yüklemeyi kapsar. `ProductAnalytics` her adres değişiminde — yalnız sorgusu değişse
 bile (`useSearchParams`) — yüzeyi ve tarayıcının DNT/GPC sinyalini yeniden değerlendirir;

@@ -1,5 +1,12 @@
 export const PRODUCT_ANALYTICS_SURFACE_HEADER = "x-agent-sozluk-analytics-surface";
 export const SYNTHETIC_ANALYTICS_OPTOUT_HEADER = "x-agent-sozluk-synthetic-smoke";
+/**
+ * Konum hassas mı (DNT/GPC'den bağımsız). Kök layout bununla ilk yüklemede
+ * `<meta name="referrer" content="origin">` basar: arama sayfasından çıkan
+ * gezinme, sorguyu bir sonraki (ölçülen) belgenin `document.referrer`'ına
+ * taşımasın (Astra, A1 incelemesi).
+ */
+export const SENSITIVE_LOCATION_HEADER = "x-agent-sozluk-sensitive-location";
 
 export type ProductAnalyticsSurface = "PUBLIC" | "SENSITIVE" | "PRIVACY_OPTOUT";
 

@@ -318,6 +318,71 @@ describe("ProductAnalytics — çerez onayı", () => {
     expect(reload).toHaveBeenCalled();
   });
 
+  describe("A1 — çapraz matris: onay × konum × gizlilik sinyali", () => {
+    const konumlar = [
+      { ad: "genel arama", yol: "/ara", sorgu: "q=gitar", hassas: true },
+      { ad: "başlık içi arama", yol: "/baslik/gitar--42", sorgu: "q=akor", hassas: true },
+      { ad: "başlık sayfası", yol: "/baslik/gitar--42", sorgu: "", hassas: false },
+    ];
+    const onaylar = [
+      { ad: "onaysız", cerez: null },
+      { ad: "onaylı", cerez: "kabul-v2" },
+    ];
+    const sinyaller = [
+      { ad: "sinyal yok", dnt: null, gpc: undefined },
+      { ad: "DNT", dnt: "1", gpc: undefined },
+      { ad: "GPC", dnt: null, gpc: true },
+    ];
+    const vakalar = konumlar.flatMap((konum) =>
+      onaylar.flatMap((onay) => sinyaller.map((sinyal) => ({ konum, onay, sinyal }))),
+    );
+
+    it.each(vakalar)("$konum.ad × $onay.ad × $sinyal.ad", async ({ konum, onay, sinyal }) => {
+      const { ProductAnalytics } = await bilesen();
+      if (onay.cerez) document.cookie = `${ADI}=${onay.cerez}; Path=/`;
+      Object.defineProperty(navigator, "doNotTrack", { value: sinyal.dnt, configurable: true });
+      Object.defineProperty(navigator, "globalPrivacyControl", {
+        value: sinyal.gpc,
+        configurable: true,
+      });
+      yol.ad = konum.yol;
+      yol.sorgu = konum.sorgu;
+      try {
+        const { container } = render(<ProductAnalytics enabled nonce="n" />);
+        const acik = !konum.hassas && sinyal.dnt === null && sinyal.gpc === undefined;
+        const gtm = container.querySelector("script#google-tag-manager") !== null;
+        const serit = container.querySelector('[role="region"]') !== null;
+        expect(gtm).toBe(acik && onay.cerez === "kabul-v2");
+        expect(serit).toBe(acik && onay.cerez === null);
+      } finally {
+        Object.defineProperty(navigator, "globalPrivacyControl", {
+          value: undefined,
+          configurable: true,
+        });
+      }
+    });
+  });
+
+  describe("A1 — hassas konumdan çıkış sorguyu referrer ile taşımaz", () => {
+    it("hassas konumda belge referrer politikası origin, herkese açıkta varsayılan", async () => {
+      const { ProductAnalytics } = await bilesen();
+      yol.ad = "/baslik/gitar--42";
+      yol.sorgu = "q=akor";
+      const { rerender } = render(<ProductAnalytics enabled nonce="n" />);
+      const etiket = () =>
+        document.head.querySelector<HTMLMetaElement>('meta[name="referrer"]')?.content;
+      expect(etiket()).toBe("origin");
+      yol.sorgu = "";
+      rerender(<ProductAnalytics enabled nonce="n" />);
+      expect(etiket()).toBe("strict-origin-when-cross-origin");
+      yol.ad = "/giris";
+      rerender(<ProductAnalytics enabled={false} nonce="n" />);
+      // Ölçüm kapalı olsa bile (oturum, DNT) politika uygulanır.
+      expect(etiket()).toBe("origin");
+      document.head.querySelector('meta[name="referrer"]')?.remove();
+    });
+  });
+
   describe("A1 — başlık içi arama ölçülmez", () => {
     it.each([
       ["onaysız", null],
