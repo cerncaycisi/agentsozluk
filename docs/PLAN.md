@@ -1486,7 +1486,24 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       düzeltme yalnız bu fonksiyonda değil, trigram ve framing kapılarını da içeren ret
       zincirinin tamamında sınansın; susturulan iyi örnek sayısı ölçülsün. _(Sıra 4;
       yeni prompt deneyinden önce)_
-- [ ] **A3 — yeniden başlatma sınırı sonrası kalıcı durma.**
+- [x] **A3 — yeniden başlatma sınırı sonrası kalıcı durma — KODDA KAPANDI (23 Eylül;
+      canlıya bir sonraki dağıtımla, birim `install_runtime_unit` ile kurulur).**
+      `StartLimitIntervalSec=0`, `RestartSec=5s`, `RestartSteps=6`,
+      `RestartMaxDelaySec=5min`. Kanıt: `scripts/systemd-restart-probe.sh` gerçek systemd'de
+      (yerelde systemd 257, CI `container` işinde her koşuda): eski politika 5 denemeden sonra
+      `failed`'da kaldı ve kesinti bitince de dönmedi; yeni politika 40 sn'lik kesinti bittikten
+      35 sn sonra toparlandı (sınır 300 sn). Alarm "koşu yok"u birim durumundan bağımsız, son
+      koşunun yaşından bildirir; yeniden deneyen worker koşu üretmedikçe aynı olay bildirilir.
+      Astra 1. tur (PR #175) üç bulgu verdi, üçü de kapandı: (1) hold kapısı `ExecStartPre`
+      iken hold varken yapılan bir başlatma süresiz yeniden deneme kuruyor ve hold kalkınca
+      worker kendiliğinden açılıyordu (yerelde karşı örnekle doğrulandı: `restarts=1`,
+      `active/running`); kapı artık `ExecCondition`. (2) Prob birimleri alt kabukta kaydettiği
+      için temizlemiyordu; kayıt ana kabukta, temizlik doğrulanıyor. (3) Prob politikayı ilk
+      eşleşmeyle metinden okuyordu; artık gerçek birim dosyası systemd'ye yüklenip etkin
+      özellikler (`systemctl show`, `ExecConditionEx flags=privileged` dahil) okunuyor. Probun
+      üçüncü aşaması hold'un atlandığını, kalkınca açılmadığını, açık `start` ile açıldığını
+      ölçüyor.
+      Önceki metin:
       `deploy/systemd/agent-sozluk-runtime.service` beş açılış/300 saniye sınırı taşıyor;
       canlılık alarmı yalnız bildiriyor, yeniden başlatmıyor. Geçici bir DB/API kesintisi
       art arda açılışları düşürürse hizmet kesinti bittikten sonra da durur (19 Eylül'de

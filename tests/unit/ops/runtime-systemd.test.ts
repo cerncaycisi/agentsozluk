@@ -103,9 +103,11 @@ describe("M2-ARCH-004 and RUNTIME-001..004 production host readiness", () => {
       "ExecStartPre=/usr/bin/test -r /var/lib/agent-sozluk-runtime/enrollment-private.pem",
     );
     // A5: migration'lı dağıtım sürerken worker hiçbir yoldan açılmaz; root olarak sınanır.
-    expect(service).toContain(
-      "ExecStartPre=+/usr/bin/test ! -e /opt/agent-sozluk/runtime/.migration-hold",
-    );
+    // ExecCondition: tutmazsa atlanır, yeniden deneme kurulmaz (A3; CI'da gerçek systemd).
+    expect(directiveValues(service, "ExecCondition")).toEqual([
+      "+/usr/bin/test ! -e /opt/agent-sozluk/runtime/.migration-hold",
+    ]);
+    expect(service).not.toMatch(/^ExecStartPre=.*migration-hold/mu);
     expect(directiveValues(service, "InaccessiblePaths")).toEqual([
       "-/opt/agent-sozluk/app -/run/docker.sock -/var/run/docker.sock",
     ]);
@@ -120,6 +122,10 @@ describe("M2-ARCH-004 and RUNTIME-001..004 production host readiness", () => {
     for (const directive of [
       "Restart=on-failure",
       "RestartSec=5s",
+      // A3: başlatma sınırı yok, denemeler üstel seyrelir; CI'da gerçek systemd provası.
+      "StartLimitIntervalSec=0",
+      "RestartSteps=6",
+      "RestartMaxDelaySec=5min",
       "KillSignal=SIGTERM",
       "KillMode=mixed",
       "TimeoutStopSec=21min",
@@ -138,6 +144,7 @@ describe("M2-ARCH-004 and RUNTIME-001..004 production host readiness", () => {
     ]) {
       expect(service, directive).toContain(directive);
     }
+    expect(service).not.toContain("StartLimitBurst=");
     expect(service).toContain("A manual run may legally consume 1200 seconds.");
     expect(service).toContain("finish");
     expect(service).toContain("in-flight runOnce");
