@@ -15,7 +15,6 @@ import {
   Trash2,
   UserX,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useRef, useState, type ReactNode } from "react";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
@@ -29,6 +28,7 @@ import {
   useShareCopy,
 } from "@/components/share/share-menu";
 import { entryPublicUrl } from "@/lib/routing/public-urls";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 /**
  * Aksiyon şeridinin basılı OLMAYAN kontrolü: çıplak `.icon-button`, kutu yok.
@@ -351,7 +351,7 @@ function SignedInEntryActions({
   initialAuthorBlocked,
   initialBookmarkCount = 0,
 }: SignedInEntryActionsProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [score, setScore] = useState(initialScore);
   const [vote, setVote] = useState(initialVote);
   const [bookmarked, setBookmarked] = useState(initialBookmarked);

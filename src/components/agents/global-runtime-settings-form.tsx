@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import type { CircuitBreakerConfig } from "@/modules/agents/domain/circuit-breaker";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 interface GlobalRuntimeSettings {
   settingsVersion: number;
@@ -19,7 +19,7 @@ function errorMessage(error: unknown): string {
 }
 
 export function GlobalRuntimeSettingsForm({ initial }: { initial: GlobalRuntimeSettings }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [settings, setSettings] = useState(initial);
   const [changeReason, setChangeReason] = useState("");
   const [pending, setPending] = useState(false);

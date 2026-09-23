@@ -1,12 +1,11 @@
 "use client";
 
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { FormField } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
-import { navigateWithinApp } from "@/lib/navigation/app-navigation";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 interface EmailValues {
   email: string;
@@ -31,7 +30,7 @@ function Notice({ message }: { message?: string | undefined }) {
 }
 
 export function SecurityForms() {
-  const router = useRouter();
+  const router = useAppRouter();
   const [emailNotice, setEmailNotice] = useState<string>();
   const [passwordNotice, setPasswordNotice] = useState<string>();
   const [deactivationNotice, setDeactivationNotice] = useState<string>();
@@ -71,7 +70,7 @@ export function SecurityForms() {
     setDeactivationNotice(undefined);
     try {
       await apiRequest("/api/v1/me/deactivate", { method: "POST", body: input, csrf: true });
-      navigateWithinApp(router, "/", "replace");
+      router.replace("/");
       router.refresh();
     } catch (error) {
       setDeactivationNotice(

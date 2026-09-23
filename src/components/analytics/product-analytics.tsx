@@ -3,6 +3,7 @@
 import Script from "next/script";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { gtmYuklendiMi, gtmYuklendiOlarakIsaretle } from "@/lib/analytics/gtm-state";
 import { isSensitiveAnalyticsLocation } from "@/lib/analytics/product-analytics";
 
 const GOOGLE_TAG_MANAGER_ID = "GTM-MTGXSB7H";
@@ -83,9 +84,6 @@ export function cerezTercihiniSifirla() {
   }
   window.location.reload();
 }
-
-// Bu belgede GTM yüklendi mi? Yüklendiyse sökülemez; korumalar buna bakar.
-let gtmYuklendi = false;
 
 function hassasBaglanti(olay: MouseEvent): string | null {
   if (olay.defaultPrevented || olay.button !== 0) return null;
@@ -186,7 +184,7 @@ export function ProductAnalytics({
     const ret = tarayiciIzlemeyiReddediyor();
     setIzlemeReddi(ret);
     // GTM yüklü belgede hassas yüzeye gelinmişse ya da onay geri çekilmişse: tam yükleme.
-    if (gtmYuklendi && (hassas || !onayHalaGecerliMi())) {
+    if (gtmYuklendiMi() && (hassas || !onayHalaGecerliMi())) {
       window.location.reload();
       return;
     }
@@ -197,7 +195,7 @@ export function ProductAnalytics({
 
   useEffect(() => {
     const denetle = () => {
-      if (gtmYuklendi && !onayHalaGecerliMi()) window.location.reload();
+      if (gtmYuklendiMi() && !onayHalaGecerliMi()) window.location.reload();
     };
     const geriDonus = (olay: PageTransitionEvent) => {
       if (olay.persisted) denetle();
@@ -222,7 +220,7 @@ export function ProductAnalytics({
   useEffect(() => {
     if (yukle && !korumaSokumu.current) {
       korumaSokumu.current = hassasGecisleriKoru();
-      gtmYuklendi = true;
+      gtmYuklendiOlarakIsaretle();
     }
   }, [yukle]);
   useEffect(

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -9,7 +8,7 @@ import { FormField } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { TopicWritingGuidance } from "@/components/constitution/writing-guidance";
 import { TopicCanonicalSuggestions } from "@/components/topics/topic-canonical-suggestions";
-import { navigateWithinApp } from "@/lib/navigation/app-navigation";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 interface Values {
   title: string;
@@ -37,7 +36,7 @@ function canonicalTopicFrom(error: ClientApiError): CanonicalTopic | undefined {
  * taşınır, böylece gönderim gövdesi ve yinelenen-başlık akışları aynı kalır.
  */
 export function CreateTopicForm({ fixedTitle }: { fixedTitle?: string } = {}) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [notice, setNotice] = useState<string>();
   const [duplicate, setDuplicate] = useState<
     | {
@@ -69,7 +68,7 @@ export function CreateTopicForm({ fixedTitle }: { fixedTitle?: string } = {}) {
         csrf: true,
         idempotency: true,
       });
-      navigateWithinApp(router, result.topic.url);
+      router.push(result.topic.url);
       router.refresh();
     } catch (error) {
       if (error instanceof ClientApiError) {
@@ -108,7 +107,7 @@ export function CreateTopicForm({ fixedTitle }: { fixedTitle?: string } = {}) {
         csrf: true,
         idempotency: true,
       });
-      navigateWithinApp(router, result.topic.url);
+      router.push(result.topic.url);
       router.refresh();
     } catch (error) {
       setNotice(error instanceof ClientApiError ? error.message : "Başlık oluşturulamadı.");
@@ -130,7 +129,7 @@ export function CreateTopicForm({ fixedTitle }: { fixedTitle?: string } = {}) {
           idempotency: true,
         },
       );
-      navigateWithinApp(router, `${duplicate.topic.url}#entry-${entry.publicId}`);
+      router.push(`${duplicate.topic.url}#entry-${entry.publicId}`);
       router.refresh();
     } catch (error) {
       setNotice(error instanceof ClientApiError ? error.message : "Entry gönderilemedi.");

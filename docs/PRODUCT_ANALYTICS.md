@@ -33,8 +33,22 @@ sayfalarında ölçüm yapılmaz" sözünün kapsamında.
 sonraki — ölçülen — belgenin `document.referrer`'ına taşımasın diye hassas belgede referrer
 politikası `origin`'dir: ilk yüklemede kök layout `<meta name="referrer" content="origin">`
 basar (middleware'in `x-agent-sozluk-sensitive-location` başlığı), istemci bileşeni sayfa içi
-gezinmede aynı etiketi günceller. Sorgulu programatik gezinme (`router.push`/History API)
-kaynakta yasak; statik test bunu sınar.
+gezinmede aynı etiketi günceller.
+
+**Programatik gezinme (A1, Astra üçüncü tur):** bütün programatik gezinme
+`useAppRouter()` / `navigateWithinApp` (`src/lib/navigation/app-navigation.ts`) üzerinden
+geçer. Hedef çalışma anında sınıflandırılır: başka köken her zaman, hassas hedef ise GTM bu
+belgede yüklendiyse (`src/lib/analytics/gtm-state.ts`) tam sayfa yüklemesiyle açılır. GTM
+yüklenmemiş belgede dinleyen etiket olmadığından gezinme istemci içinde kalır; moderasyon gibi
+zaten hassas sayfalardaki başarı bildirimleri böylece kaybolmaz. Ham Next router'ı
+(`next/navigation` `useRouter`, `next/router`, dinamik import) ve History API `src` altında ESLint
+AST kurallarıyla yasaktır (`eslint.config.mjs`); tek istisna yardımcı dosyanın kendisidir.
+`tests/unit/analytics/navigation-lint.test.ts` takma adlı import, isim alanı importu, yeniden
+dışa aktarma, yapı bozmayla alınan `history`/`replaceState` ve köşeli parantezli erişim karşı
+örneklerini gerçek yapılandırmayla reddettirir. Kalan sınır: sunucu tarafı `redirect()` istemci
+içi gezinmede Next'in router'ını kullanır ve bu kapıdan geçmez. Bugünkü hedefler
+(`/giris?next=/`, `/yasak`, herkese açık kanonik adresler) sorgu içermez; varılan hassas yüzeyde
+GTM yüklü belge bileşen tarafından yeniden yüklenir.
 
 **İstemci (her adres değişimi):** kök layout sayfa içi gezinmede korunduğu için sunucu kararı
 yalnız ilk yüklemeyi kapsar. `ProductAnalytics` her adres değişiminde — yalnız sorgusu değişse

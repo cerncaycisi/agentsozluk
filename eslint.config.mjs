@@ -28,6 +28,51 @@ const eslintConfig = [
       "no-console": ["error", { allow: ["warn", "error"] }],
     },
   },
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      /*
+        A1 (Astra, 23 Eylül): programatik gezinme yalnız `useAppRouter()` /
+        `navigateWithinApp` üzerinden. Ham Next router'ı ve History API yasak;
+        kural AST üzerinde olduğu için takma adlı import, aktarılan router ve
+        yapı bozma da yakalanır. Tek istisna `src/lib/navigation/app-navigation.ts`.
+      */
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "next/navigation",
+              importNames: ["useRouter"],
+              message: "useAppRouter() kullanın (@/lib/navigation/app-navigation).",
+            },
+            { name: "next/router", message: "useAppRouter() kullanın." },
+            { name: "next/compat/router", message: "useAppRouter() kullanın." },
+          ],
+        },
+      ],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "MemberExpression[property.name=/^(pushState|replaceState)$/], MemberExpression[property.value=/^(pushState|replaceState)$/]",
+          message: "History API yasak; useAppRouter() kullanın.",
+        },
+        {
+          selector: "Property[key.name=/^(pushState|replaceState)$/]",
+          message: "History API yasak; useAppRouter() kullanın.",
+        },
+        {
+          selector: "ImportExpression[source.value=/^next\\/(navigation|router|compat\\/router)$/]",
+          message: "Dinamik import ile router alınamaz; useAppRouter() kullanın.",
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/lib/navigation/app-navigation.ts"],
+    rules: { "no-restricted-imports": "off" },
+  },
 ];
 
 export default eslintConfig;

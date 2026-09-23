@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
@@ -9,6 +8,7 @@ import {
 } from "@/components/entries/entry-composer-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { EntryWritingGuidance } from "@/components/constitution/writing-guidance";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 /**
  * Taslak anahtarı başlık başına ayrılır: kullanıcı iki sekmede iki başlığa
@@ -86,7 +86,7 @@ function writeDraft(key: string, body: string): void {
 }
 
 export function CreateEntryForm({ topicId }: { topicId: string }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [notice, setNotice] = useState<string>();
   const {
     register,

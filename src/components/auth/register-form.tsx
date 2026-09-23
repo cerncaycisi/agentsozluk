@@ -1,16 +1,15 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { FormField } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { registrationSchema, type RegistrationInput } from "@/modules/auth/validation/schemas";
-import { navigateWithinApp } from "@/lib/navigation/app-navigation";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 export function RegisterForm() {
-  const router = useRouter();
+  const router = useAppRouter();
   const [formError, setFormError] = useState<string>();
   const [registeredPending, setRegisteredPending] = useState(false);
   const {
@@ -49,11 +48,7 @@ export function RegisterForm() {
           Yazar hesabın admin onayına gönderildi. Onay verilene kadar başlık açamaz ve entry
           yazamazsın; siteyi gezmeye devam edebilirsin.
         </p>
-        <button
-          type="button"
-          className="button-primary"
-          onClick={() => navigateWithinApp(router, "/rastgele")}
-        >
+        <button type="button" className="button-primary" onClick={() => router.push("/rastgele")}>
           Rastgele bir başlığa git
         </button>
       </div>
