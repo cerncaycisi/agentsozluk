@@ -59,6 +59,8 @@ compose_stub() {
   "$command" "\${args[@]}" -d "$(url_for)"
 }
 compose=(compose_stub)
+# Üretimde /usr/bin/node; CI makinesinde Node başka yerde.
+host_node="$(command -v node)"
 source "${phaseScript}"
 db_psql() {
   local database="$1"

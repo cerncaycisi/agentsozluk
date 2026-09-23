@@ -28,6 +28,8 @@ scratch_database=''
 scratch_owned=0
 production_timeouts_set=0
 freeze_started=0
+# Üretimde worker birimiyle aynı Node; testler kendi Node'unu verebilir.
+host_node="${host_node:-/usr/bin/node}"
 migration_status=0
 
 migration_fail() {
@@ -128,7 +130,7 @@ plan_migrations() {
   # dosyada açılan tablo diğerinde "mevcut" sayılmasın.
   while IFS= read -r name; do cat "$(migration_file "$name")"; printf '\n'; done \
     <"$pending" >"$migration_dir/pending.sql"
-  /usr/bin/node "$app_root/scripts/check-additive-migration.mjs" "$migration_dir/pending.sql" \
+  "$host_node" "$app_root/scripts/check-additive-migration.mjs" "$migration_dir/pending.sql" \
     >"$migration_dir/expectation.json" || migration_fail MIGRATION_NOT_ADDITIVE
 
   install -d -m 0700 "$migration_marker"
@@ -179,7 +181,7 @@ preflight_migration() {
     </dev/null)" = 0 || migration_fail DB_TIMEOUT_SETTING_PRESENT
 
   # FK hedefi mevcut tablonun `id`'si tek sütunlu uuid birincil anahtar olmalı.
-  /usr/bin/node -e '
+  "$host_node" -e '
     const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
     const targets = new Set();
     for (const table of Object.values(value.tables))
@@ -313,7 +315,7 @@ ORDER BY c.relname \gexec
 SELECT 'seqdef:' || sequencename || '|' || data_type || '|' || start_value || '|' || min_value
   || '|' || max_value || '|' || increment_by || '|' || cycle
 FROM pg_sequences WHERE schemaname = 'public' ORDER BY sequencename;
-SELECT 'owned:' || s.relname || '|' || d.deptype || '|' || t.relname || '|' || a.attname
+SELECT 'owned:' || s.relname || '|' || d.deptype::text || '|' || t.relname || '|' || a.attname
 FROM pg_depend d
 JOIN pg_class s ON s.oid = d.objid AND s.relkind = 'S'
 JOIN pg_class t ON t.oid = d.refobjid
@@ -545,11 +547,23 @@ SQL
   migration_status="$status"
 }
 
-new_object_definitions() {
-  db_psql "$1" -v "tables=$(node -e '
+# Beklenti JSON'undan yeni tablo/tür adları, virgülle. Boş ya da okunamazsa durur:
+# argüman içinde üretilip boş kalsaydı scratch ve prod tanımları "boş = boş" diye
+# eşit sayılırdı.
+expectation_keys() {
+  local keys
+  keys="$("$host_node" -e '
     const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
-    process.stdout.write(Object.keys(value.tables).join(","));
-  ' "$migration_dir/expectation.json")" <<'SQL'
+    process.stdout.write(Object.keys(value[process.argv[2]]).join(","));
+  ' "$migration_dir/expectation.json" "$1")" || migration_fail EXPECTATION_UNREADABLE
+  if test "$1" = tables; then test -n "$keys" || migration_fail EXPECTATION_WITHOUT_TABLES; fi
+  printf '%s\n' "$keys"
+}
+
+new_object_definitions() {
+  local tables
+  tables="$(expectation_keys tables)"
+  db_psql "$1" -v "tables=$tables" <<'SQL'
 SELECT 'column:' || c.relname || '|' || a.attname || '|' || format_type(a.atttypid, a.atttypmod)
   || '|' || a.attnotnull || '|' || coalesce(pg_get_expr(ad.adbin, ad.adrelid), '-')
 FROM pg_attribute a
@@ -580,13 +594,10 @@ SQL
 # Denetçinin beklentisi (adlar, enum sırası, FK aksiyonları, indeks sütunları)
 # katalogla birebir; tam tanımlar ise scratch ile prod arasında birebir.
 catalog_expectation() {
-  db_psql "$1" -v "tables=$(node -e '
-    const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
-    process.stdout.write(Object.keys(value.tables).join(","));
-  ' "$migration_dir/expectation.json")" -v "types=$(node -e '
-    const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
-    process.stdout.write(Object.keys(value.types).join(","));
-  ' "$migration_dir/expectation.json")" <<'SQL'
+  local tables types
+  tables="$(expectation_keys tables)"
+  types="$(expectation_keys types)"
+  db_psql "$1" -v "tables=$tables" -v "types=$types" <<'SQL'
 SELECT json_build_object(
   'types', coalesce((SELECT json_object_agg(t.typname, (
       SELECT json_agg(e.enumlabel ORDER BY e.enumsortorder) FROM pg_enum e WHERE e.enumtypid = t.oid))
@@ -626,7 +637,7 @@ SQL
 
 assert_catalog_expectation() {
   catalog_expectation "$1" >"$migration_dir/catalog-$2.json"
-  /usr/bin/node -e '
+  "$host_node" -e '
     const fs = require("node:fs");
     const canonical = (value) =>
       Array.isArray(value) ? value.map(canonical)
@@ -684,13 +695,18 @@ post_verify() {
     "SELECT count(*) FROM \"_prisma_migrations\" WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL;" \
     </dev/null)" = 0 || migration_fail POST_FAILED_HISTORY_ROW
 
+  # Liste önce dosyaya, açık kontrolle: `done < <(…)` içindeki hata yutulur ve
+  # döngü hiç dönmeden "boş" kontrolü atlanırdı.
+  "$host_node" -e '
+    const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+    process.stdout.write(Object.keys(value.tables).join("\n") + "\n");
+  ' "$migration_dir/expectation.json" >"$migration_dir/new-tables" ||
+    migration_fail EXPECTATION_UNREADABLE
+  test -s "$migration_dir/new-tables" || migration_fail EXPECTATION_WITHOUT_TABLES
   while IFS= read -r name; do
     test "$(grep -c "^table:$name|0|0|0$" "$migration_dir/post-$label-fingerprint")" = 1 ||
       migration_fail POST_NEW_TABLE_NOT_EMPTY
-  done < <(node -e '
-    const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
-    process.stdout.write(Object.keys(value.tables).join("\n"));
-  ' "$migration_dir/expectation.json")
+  done <"$migration_dir/new-tables"
   assert_catalog_expectation "$database" "$label"
   new_object_definitions "$database" >"$migration_dir/definitions-$label"
 }
