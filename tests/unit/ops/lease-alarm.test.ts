@@ -142,7 +142,8 @@ if [[ "$tum" == *" logs "* ]]; then
   done < "$SAHTE_LOG_DOSYASI"
   exit 0
 fi
-if [[ "$tum" == *" ps -q app "* ]]; then [[ -n "$SAHTE_KIMLIK" ]] && echo "$SAHTE_KIMLIK"; exit 0; fi
+# Yalnız "ps -a -q app": durmuş konteyner de listelenmeli (A5 kesimi, 23 Eylül).
+if [[ "$tum" == *" ps -a -q app "* ]]; then [[ -n "$SAHTE_KIMLIK" ]] && echo "$SAHTE_KIMLIK"; exit 0; fi
 if [[ "$tum" == *" exec -T db psql "* ]]; then
   [[ -n "$SAHTE_EXEC_ASILI" ]] && sleep 20
   sql="$(cat)"
@@ -191,7 +192,7 @@ describe("lease süresi alarmı", () => {
     expect(bildirimler).toEqual([]);
     expect(dockerCagrilari).toHaveLength(3);
     expect(dockerCagrilari[0]).toContain("exec -T db psql");
-    expect(dockerCagrilari[1]).toMatch(/ ps -q app$/);
+    expect(dockerCagrilari[1]).toMatch(/ ps -a -q app$/);
     expect(dockerCagrilari[2]).toMatch(/logs --no-log-prefix --since \S+Z app$/);
   });
 

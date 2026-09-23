@@ -247,9 +247,13 @@ lease_kontrol_kilitli() {
     atomik_yaz "$LEASE_IMLEC" "$esik" || true
   fi
 
-  # Taranacak konteynerin kimliği: imleçle birlikte saklanır.
+  # Taranacak konteynerin kimliği: imleçle birlikte saklanır. `-a`: durmuş
+  # konteyner de sayılır; logu `docker compose logs` ile okunabilir. Migration'lı
+  # dağıtımda app dondurmadan kesime kadar durur ve kesim taraması tam o
+  # konteyneri tarar (ilk A5 kullanımında `ps -q` boş döndü ve tarama başarısız
+  # oldu; 23 Eylül).
   kimlik="$(timeout 5 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
-    ps -q app 2>/dev/null | head -1)"
+    ps -a -q app 2>/dev/null | head -1)"
   [[ "$kimlik" =~ ^[0-9a-f]{12,64}$ ]] || kimlik=""
   baslangic=$(( esik / 1000 - LEASE_ORTUSME_SN ))
 
