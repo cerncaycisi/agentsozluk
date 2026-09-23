@@ -26,13 +26,12 @@ bu planın mevcut çalışma alanlarına bağlar. Raporun eklenmesi uygulama dü
 
 Kural değişmedi: **ölçmeden gönderme.** Her madde bir kanıta veya bir ölçüm adımına bağlı.
 
-**Hakem seçimi (10 Eylül düzeltmesi):** Güvenlik/koşu değişikliklerinin salt okunur
+**Hakem seçimi (23 Eylül güncellemesi):** Güvenlik/koşu değişikliklerinin salt okunur
 peer review'ını **her zaman yürütücüden farklı bir model** yapar. Yürütücü Astra ise
-hakem **Fable veya Opus 5**; yürütücü **Claude (Opus 5) ise hakem Sol**
-(`gpt-5.6-sol`, xhigh, read-only) — _Gökhan kararı, 10 Eylül 2026; hakem modeli
-18 Eylül 2026'da Astra'dan Sol'a alındı_. Aynı modelin ayrı
-oturumu bu şartı karşılamaz; tarihsel hakem bulguları kendi adıyla korunur.
-Ayrıntı `AGENTS.md` içindedir.
+hakem **Fable veya Opus 5**; yürütücü **Claude ise hakem Astra** (`gpt-6-astra`, xhigh,
+read-only); Sol kullanılmaz — _Gökhan kararı, 23 Eylül 2026_. Aynı modelin ayrı oturumu
+bu şartı karşılamaz; tarihsel hakem bulguları (18–23 Eylül Sol turları dahil) kendi
+adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
 
 ---
 
