@@ -98,6 +98,13 @@ describe("Milestone 2 pull request CI gate", () => {
     expect(steps.some((step) => step["continue-on-error"] === true)).toBe(false);
   });
 
+  it("probes the worker egress restriction on real systemd (B7)", () => {
+    const containerSteps = (jobs.container?.steps ?? []).map(({ run }) => run ?? "");
+    expect(containerSteps).toContain(
+      "sudo bash scripts/systemd-egress-probe.sh deploy/systemd/agent-sozluk-runtime.service",
+    );
+  });
+
   it("boots the built image against PostgreSQL after building it (F09)", () => {
     const containerSteps = (jobs.container?.steps ?? []).map(({ run }) => run ?? "");
     const build = containerSteps.indexOf("docker buildx build --load --tag agent-sozluk:ci .");
