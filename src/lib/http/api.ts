@@ -45,7 +45,7 @@ export async function runApi(
       try {
         const response = await handler({ requestId });
         response.headers.set("X-Request-Id", requestId);
-        applyAuthenticationCookieRenewal(response);
+        await applyAuthenticationCookieRenewal(response);
         logRequest({
           requestId,
           method: request.method,
@@ -76,7 +76,7 @@ export async function runApi(
         );
         for (const [key, value] of Object.entries(known.headers ?? {}))
           response.headers.set(key, value);
-        applyAuthenticationCookieRenewal(response);
+        await applyAuthenticationCookieRenewal(response);
         logRequest({
           requestId,
           method: request.method,

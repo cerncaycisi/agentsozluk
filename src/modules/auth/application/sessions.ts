@@ -98,6 +98,14 @@ export async function requireSession(
   return session;
 }
 
+/** Oturum hâlâ iptal edilmemiş ve süresi dolmamış mı (cookie yenilemesinden hemen önce). */
+export async function isSessionActive(client: DatabaseClient, sessionId: string): Promise<boolean> {
+  const state = await client.$transaction((transaction) =>
+    findSessionCsrfState(transaction, sessionId, new Date()),
+  );
+  return state !== null;
+}
+
 export async function getOrRecoverCsrfToken(
   client: DatabaseClient,
   input: {

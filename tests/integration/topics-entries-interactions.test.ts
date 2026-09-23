@@ -911,7 +911,7 @@ describe("authentication and accounts with PostgreSQL", () => {
     });
   });
 
-  it("changes profile, email and password while revoking only other sessions", async () => {
+  it("changes profile, email and password; password change rotates the current session", async () => {
     const input = registration("account_writer");
     const registered = await registerHuman(
       integrationDatabase,
@@ -1037,9 +1037,10 @@ describe("authentication and accounts with PostgreSQL", () => {
       randomUUID(),
       { userAgent: "password-change", ip: null },
     ).then(
-      () => ({ status: "fulfilled" as const }),
+      (issued) => ({ status: "fulfilled" as const, issued }),
       (reason: unknown) => ({ status: "rejected" as const, reason }),
     );
+    let rotatedToken = "";
 
     try {
       await waitForBlockedAdvisoryLocks(1);
@@ -1055,7 +1056,9 @@ describe("authentication and accounts with PostgreSQL", () => {
       await waitForBlockedAdvisoryLocks(2);
       await heldUserState.release();
 
-      expect(await passwordOutcome).toEqual({ status: "fulfilled" });
+      const password = await passwordOutcome;
+      expect(password.status).toBe("fulfilled");
+      if (password.status === "fulfilled") rotatedToken = password.issued.token;
       expect(await emailOutcome).toMatchObject({
         status: "rejected",
         reason: { code: "INVALID_CREDENTIALS", status: 401 },
@@ -1067,7 +1070,11 @@ describe("authentication and accounts with PostgreSQL", () => {
     expect(
       await integrationDatabase.user.findUniqueOrThrow({ where: { id: registered.user.id } }),
     ).toMatchObject({ email: input.email, emailNormalized: input.email });
-    expect(await authenticateSession(integrationDatabase, registered.session.token)).not.toBeNull();
+    // F06: mevcut oturum da yenilendi; eski token geçersiz, yenisi geçerli.
+    expect(await authenticateSession(integrationDatabase, registered.session.token)).toBeNull();
+    expect(await authenticateSession(integrationDatabase, rotatedToken)).toMatchObject({
+      userId: registered.user.id,
+    });
     expect(await authenticateSession(integrationDatabase, otherSession.session.token)).toBeNull();
     await expect(
       loginHuman(

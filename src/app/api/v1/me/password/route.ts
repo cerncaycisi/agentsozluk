@@ -11,7 +11,10 @@ export const runtime = "nodejs";
 
 export function POST(request: NextRequest) {
   return runApi(request, async (context) => {
-    const session = await csrfSession(request);
+    // Süre uzatılmaz: bu istek yenileme kaydetseydi, eşzamanlı ikinci bir şifre
+    // isteğinin hata yanıtı iptal edilmiş eski token'ı yeni cookie'nin üstüne
+    // yazabilirdi (Astra, F06).
+    const session = await csrfSession(request, { extendExpiration: false });
     const input = await parseJson(request, passwordChangeSchema);
     // Mevcut oturum da yenilenir (F06): yanıt yeni oturum ve CSRF cookie'lerini taşır.
     const issued = await changePassword(

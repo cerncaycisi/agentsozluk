@@ -7,6 +7,7 @@ import { setRequestActorId } from "@/lib/logging/request-context";
 import { assertValidCsrf, isValidCsrfToken } from "@/lib/security/csrf";
 import {
   authenticateSession,
+  isSessionActive,
   requireSession,
   type AuthenticatedSession,
 } from "@/modules/auth/application/sessions";
@@ -32,6 +33,7 @@ function registerCookieRenewal(
       ? { csrfToken }
       : {}),
     expiresAt: session.expiresAt,
+    stillValid: () => isSessionActive(getDatabase(), session.id),
   });
 }
 
@@ -47,16 +49,27 @@ export async function optionalRequestSession(
   return session;
 }
 
-export async function requestSession(request: NextRequest): Promise<AuthenticatedSession> {
+export interface RequestSessionOptions {
+  /** false: bu istek oturum süresini uzatmaz, cookie yenilemesi kaydedilmez. */
+  extendExpiration?: boolean;
+}
+
+export async function requestSession(
+  request: NextRequest,
+  options: RequestSessionOptions = {},
+): Promise<AuthenticatedSession> {
   const rawSessionToken = sessionToken(request);
-  const session = await requireSession(getDatabase(), rawSessionToken);
+  const session = await requireSession(getDatabase(), rawSessionToken, options);
   setRequestActorId(session.userId);
   registerCookieRenewal(request, rawSessionToken, session);
   return session;
 }
 
-export async function csrfSession(request: NextRequest): Promise<AuthenticatedSession> {
-  const session = await requestSession(request);
+export async function csrfSession(
+  request: NextRequest,
+  options: RequestSessionOptions = {},
+): Promise<AuthenticatedSession> {
+  const session = await requestSession(request, options);
   assertValidCsrf(
     request,
     session.csrfTokenHash,
