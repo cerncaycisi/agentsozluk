@@ -51,6 +51,13 @@ adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
 
 ## 0. Yerelde kapatılan paketler
 
+### 23 Eylül 2026 (gece) — canlıda `f2f57f3`
+
+- A1 (#173), lease taraması (#174), A3 (#175), `agent_runs.finishedAt` indeksi (#176), F04
+  (#178). A5 yoluyla, kesinti ≈9 dk. Kanıt `STATUS.md` ve `ATTEMPT_LOG.md`.
+- Açık küçük iş: kurulu alarm betiği (`/opt/agent-sozluk/scripts/canlilik-alarmi.sh`) adaydan
+  farklı; #174'ün timer tarafı kurulum adımıyla tamamlanır.
+
 ### 23 Eylül 2026 — main'de, üretimde değil
 
 - **`a0f2878` — iletişim ve içerik kaldırma formu (PR #164).** Ayrıntı ve kanıt B5.1-2
@@ -1045,7 +1052,9 @@ ertelenmiş madde olmaktan çıktı.
       kayıtlı değil. Telemetri #147'den SONRA geldi (aşağıda); öncesi için
       karşılaştırılacak transaction süresi yok, yalnız HTTP süresi var.
 
-- [ ] **`agent_runs.finishedAt` indeksi — kod hazır, inceleme ve dağıtım bekliyor (23 Eylül).**
+- [x] **`agent_runs.finishedAt` indeksi — CANLIDA (23 Eylül, `f2f57f3`, A5 yolu).** Üretimde
+      EXPLAIN: `finishedAt IS NULL OR finishedAt > …` deseni `Bitmap Index Scan on
+    "agent_runs_finishedAt_idx"` (cost 16,54; 34.719 satır). Önceki metin:
       Ön filtre eklendi ama tarama hâlâ sıralıydı. Migration
       `20260923180000_agent_runs_finished_at_index` (`CREATE INDEX "agent_runs_finishedAt_idx"`).
       A5 hattı mevcut tabloya benzersiz olmayan düz indeksi kabul edecek şekilde genişletildi:
@@ -1210,8 +1219,8 @@ soruya cevap veriyordu. Tek doğru soru "iş üretiliyor mu" idi.
 Ayrıntı ve kapatma ölçütleri raporda: [`REPO_AND_PROJECT_REVIEW_2026-09-04.md`](REPO_AND_PROJECT_REVIEW_2026-09-04.md).
 F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
 
-- [ ] **F04 — Public slug'lar kullanıcı adı alanında rezerve edilmiyor — kod hazır, inceleme
-      bekliyor (23 Eylül).** Sunucu tarafı kural: `isReservedPublicProfileSlug`
+- [x] **F04 — Public slug'lar kullanıcı adı alanında rezerve edilmiyor — KAPANDI (23 Eylül,
+      PR #178, canlıda `f2f57f3`; üretim envanteri: 22 alias'ın hiçbirini taşıyan hesap yok).** Sunucu tarafı kural: `isReservedPublicProfileSlug`
       (`src/modules/users/domain/public-identity.ts`) başka yazara çözülen her alias'ı rezerve
       sayar; insan kaydı (`registerHuman`) ve ajan oluşturma `USERNAME_TAKEN` döner. Kalan:
       canlıda bu adlardan birini zaten taşıyan insan hesabı var mı, dağıtımda salt okunur
@@ -1474,8 +1483,8 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
 
 **Yeni maddeler**
 
-- [x] **A1 — başlık içi arama ölçüme açık kalıyor — KODDA KAPANDI (23 Eylül; canlıya
-      çıkış ayrı onayla).** Tek sınıflandırıcı `isSensitiveAnalyticsLocation`, yolu ve sorguyu
+- [x] **A1 — başlık içi arama ölçüme açık kalıyor — CANLIDA (23 Eylül, `f2f57f3`; üretim
+      onay smoke'u `35929529128` başarılı). Astra altı turda BİRLEŞTİR.** Tek sınıflandırıcı `isSensitiveAnalyticsLocation`, yolu ve sorguyu
       birlikte alır: `q` parametreli her adres hassas. Middleware, istemci
       (`useSearchParams`), bağlantı koruması, geri/ileri ve arama önerisi aynı kuralı
       kullanıyor; hassas belgede referrer politikası `origin` (sorgu sonraki belgeye
@@ -1497,8 +1506,8 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       düzeltme yalnız bu fonksiyonda değil, trigram ve framing kapılarını da içeren ret
       zincirinin tamamında sınansın; susturulan iyi örnek sayısı ölçülsün. _(Sıra 4;
       yeni prompt deneyinden önce)_
-- [x] **A3 — yeniden başlatma sınırı sonrası kalıcı durma — KODDA KAPANDI (23 Eylül;
-      canlıya bir sonraki dağıtımla, birim `install_runtime_unit` ile kurulur).**
+- [x] **A3 — yeniden başlatma sınırı sonrası kalıcı durma — CANLIDA (23 Eylül, `f2f57f3`;
+      yeni birim dondurmada kuruldu, worker `active/running`, NRestarts 0).**
       `StartLimitIntervalSec=0`, `RestartSec=5s`, `RestartSteps=6`,
       `RestartMaxDelaySec=5min`. Kanıt: `scripts/systemd-restart-probe.sh` gerçek systemd'de
       (yerelde systemd 257, CI `container` işinde her koşuda): eski politika 5 denemeden sonra
@@ -1523,8 +1532,8 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       toparlanma; alarmın aynı olayı yine bildirdiği kanıtı. _(bölüm 5.5)_
 - [x] **A5 — migration'lı üretim dağıtım yolu — KAPANDI (23 Eylül, ilk kullanım
       `c0dbe73`: iletişim formu canlıda).** _(Gökhan onayladı, 22 Eylül: "A".)_
-      Lease taraması uyarısı (`RELEASE_WARN lease alarm pre-cutover scan failed`) kodda kapandı
-      (PR #174). Kök neden: alarm app konteynerini `ps -q app` ile arıyordu; migration modunda
+      Lease taraması uyarısı (`RELEASE_WARN lease alarm pre-cutover scan failed`) kapandı
+      (PR #174; `f2f57f3` dağıtımında `RELEASE_LEASE_SCAN_OK`). Kök neden: alarm app konteynerini `ps -q app` ile arıyordu; migration modunda
       app dondurmadan kesime kadar durduğu için kimlik boş dönüyordu. Artık `ps -a -q app`:
       durmuş konteyner de taranır, kesim taraması iki modda da konteyner yeniden yaratılmadan
       hemen önce koşar ve makbuz tazedir. İlk denenen yol (taramayı dondurmaya alıp makbuza
