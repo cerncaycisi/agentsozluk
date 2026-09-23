@@ -7,6 +7,22 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-23 — iletişim formu canlıda; A5'in ilk kullanımı
+
+- **Dağıtılan:** `c0dbe7393ad97a535f490ae061924e02ec250028`, Gökhan'ın exact SHA + migration listesi
+  onayıyla; main CI `35880304244`, Release Candidate `35881819705`, migration
+  `20260922140000_contact_messages`. `RELEASE_COMPLETE PASS … migrations=apply:…`, `DEPLOY_EXIT=0`.
+- **Aşamalar:** planned → image-verified → frozen (15:58:24 UTC) → yedek 1.148.592.843 bayt, sha256
+  `9aeadb3a…8b5e8d` → backup-verified → rehearsed (scratch'te migration + önceki imaj açılışı +
+  smoke) → migrating → migrated → post-verified → writers-may-run → traffic-open (≈16:07:45) →
+  worker-allowed → cutover-done. **Kesinti ≈9,5 dk.**
+- **Sonrası:** dış health/ready/ana sayfa/`/iletisim` 200; boot etiketi `4898740f…` = çalışan app;
+  `runtime/current` `c0dbe73`; worker `active/running`, NRestarts 0; kilit, işaret ve hold yok;
+  27 migration; disk %69 (23 GB boş).
+- **Uyarı:** `RELEASE_WARN lease alarm pre-cutover scan failed` (migration modunda app kapalıyken).
+- **Önceki deneme `e12bdd0`:** `RESTORE_SCHEMA_MISMATCH` ile migration'dan önce durdu, kesinti
+  ≈7,5 dk, üretim şeması değişmedi (ayrıntı `ATTEMPT_LOG.md`).
+
 ## 2026-09-23 — A5 migration'lı dağıtım yolu main'de, üretimde kullanılmadı
 
 - **Birleşen:** PR #167, merge `9c275cf7118f8d43c1113090709c24a3fa2e0dc8`; incelenen head
