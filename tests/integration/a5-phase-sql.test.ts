@@ -69,7 +69,12 @@ compose_stub() {
       *) args+=("$1"); shift ;;
     esac
   done
-  "$command" "\${args[@]}" -d "$(url_for "$database")"
+  # -d yalnız asıl çağrıda varsa eşlenir: pg_restore -f - veritabanına bağlanmaz.
+  if test -n "$database"; then
+    "$command" "\${args[@]}" -d "$(url_for "$database")"
+  else
+    "$command" "\${args[@]}"
+  fi
 }
 compose=(compose_stub)
 # Üretimde /usr/bin/node; CI makinesinde Node başka yerde.

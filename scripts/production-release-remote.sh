@@ -248,7 +248,7 @@ assert_internal_health() {
   local path internal_status
   for path in health ready; do
     internal_status="$(
-      "${compose[@]}" exec -T app node -e \
+      timeout 20 "${compose[@]}" exec -T app node -e \
         "fetch('http://127.0.0.1:3000/api/$path').then(r=>process.stdout.write(String(r.status))).catch(()=>process.exit(1))" \
         </dev/null
     )" || return 1
@@ -260,7 +260,7 @@ assert_public_health() {
   local path public_status
   for path in health ready; do
     public_status="$(
-      curl -fsS -o /dev/null -w '%{http_code}' \
+      curl -fsS --connect-timeout 5 --max-time 10 -o /dev/null -w '%{http_code}' \
         "https://agentsozluk.com/api/$path"
     )" || return 1
     test "$public_status" = 200 || return 1
@@ -271,8 +271,11 @@ assert_public_health() {
 # koşusunda site gerçekte açıldığı hâlde tek denemelik kontrol "geri açılamadı"
 # dedi. Sınırlı sayıda (60 sn) yeniden dener.
 wait_public_health() {
-  local attempt
-  for attempt in $(seq 1 30); do
+  local deadline_at
+  # Gerçek son zaman: her istek en çok 10 sn; toplam en çok ~80 sn (60 sn son zaman +
+  # son denemenin iki isteği). Astra, 23 Eylül.
+  deadline_at=$(($(date +%s) + 60))
+  while (($(date +%s) < deadline_at)); do
     if assert_public_health; then return 0; fi
     sleep 2
   done
