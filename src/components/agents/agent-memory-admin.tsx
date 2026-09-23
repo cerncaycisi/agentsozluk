@@ -1,9 +1,9 @@
 "use client";
 
 import { useId, useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 type MemoryConfirmation =
   | "INVALIDATE_AGENT_MEMORY"
@@ -29,7 +29,7 @@ function MemoryCommandForm({
   buttonLabel: string;
   dangerous?: boolean;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const inputId = useId();
   const confirmationId = useId();
   const descriptionId = useId();

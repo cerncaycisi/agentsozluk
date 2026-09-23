@@ -1,9 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 type GlobalRunCommand = "cancel-pending" | "graceful-stop";
 
@@ -26,7 +26,7 @@ function errorMessage(error: unknown): string {
 }
 
 export function GlobalRunControlForm() {
-  const router = useRouter();
+  const router = useAppRouter();
   const [reason, setReason] = useState("");
   const [pending, setPending] = useState<GlobalRunCommand>();
   const [message, setMessage] = useState<string>();

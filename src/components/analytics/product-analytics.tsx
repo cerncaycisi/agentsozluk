@@ -1,9 +1,9 @@
 "use client";
 
-import Script from "next/script";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { isSensitiveAnalyticsPath } from "@/lib/analytics/product-analytics";
+import { gtmYuklendiMi, gtmYuklendiOlarakIsaretle } from "@/lib/analytics/gtm-state";
+import { isSensitiveAnalyticsLocation } from "@/lib/analytics/product-analytics";
 
 const GOOGLE_TAG_MANAGER_ID = "GTM-MTGXSB7H";
 const HOTJAR_SITE_ID = 6753780;
@@ -84,9 +84,6 @@ export function cerezTercihiniSifirla() {
   window.location.reload();
 }
 
-// Bu belgede GTM yüklendi mi? Yüklendiyse sökülemez; korumalar buna bakar.
-let gtmYuklendi = false;
-
 function hassasBaglanti(olay: MouseEvent): string | null {
   if (olay.defaultPrevented || olay.button !== 0) return null;
   if (olay.metaKey || olay.ctrlKey || olay.shiftKey || olay.altKey) return null;
@@ -101,7 +98,7 @@ function hassasBaglanti(olay: MouseEvent): string | null {
     return null;
   }
   if (url.origin !== window.location.origin) return null;
-  return isSensitiveAnalyticsPath(url.pathname) ? url.href : null;
+  return isSensitiveAnalyticsLocation(url.pathname, url.search) ? url.href : null;
 }
 
 /**
@@ -122,7 +119,7 @@ function hassasGecisleriKoru(): () => void {
   // dinleyiciler (GTM'in geçmiş dinleyicisi, GTM'den önce kaydedildiğimiz için)
   // susturulur ve belge yeniden yüklenir.
   const geriIleri = (olay: PopStateEvent) => {
-    if (!isSensitiveAnalyticsPath(window.location.pathname)) return;
+    if (!isSensitiveAnalyticsLocation(window.location.pathname, window.location.search)) return;
     olay.stopImmediatePropagation();
     window.location.reload();
   };
@@ -134,9 +131,60 @@ function hassasGecisleriKoru(): () => void {
   };
 }
 
+/*
+  Hassas konumdan (arama, giriş…) çıkan gezinme, adresi ve sorgusu bir sonraki
+  belgenin `document.referrer`'ına taşımasın: o belge herkese açık ve ölçülüyor
+  olabilir (Astra, A1). Belgenin referrer politikası `<meta name="referrer">`
+  ile adres değiştikçe güncellenir; içerik değişikliği tarayıcıca yeniden
+  uygulanır.
+*/
+export const HASSAS_REFERRER_POLITIKASI = "origin";
+export const VARSAYILAN_REFERRER_POLITIKASI = "strict-origin-when-cross-origin";
+
+function referrerPolitikasiniUygula(hassas: boolean) {
+  let etiket = document.head.querySelector<HTMLMetaElement>('meta[name="referrer"]');
+  if (!etiket) {
+    if (!hassas) return;
+    etiket = document.createElement("meta");
+    etiket.name = "referrer";
+    document.head.append(etiket);
+  }
+  etiket.content = hassas ? HASSAS_REFERRER_POLITIKASI : VARSAYILAN_REFERRER_POLITIKASI;
+}
+
 /** Onay artık geçerli değilse (başka sekmede geri çekilmiş, DNT/GPC açılmış) yeniden yükle. */
 function onayHalaGecerliMi(): boolean {
   return onayiOku() === "kabul" && !tarayiciIzlemeyiReddediyor();
+}
+
+const GTM_KODU = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','${GOOGLE_TAG_MANAGER_ID}');`;
+
+const HOTJAR_KODU = `(function(h,o,t,j,a,r){
+h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
+h._hjSettings={hjid:${HOTJAR_SITE_ID},hjsv:${HOTJAR_SNIPPET_VERSION}};
+a=o.getElementsByTagName('head')[0];
+r=o.createElement('script');r.async=1;
+r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
+a.appendChild(r);
+})(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');`;
+
+/** GTM ve Hotjar satır içi etiketlerini CSP nonce'uyla `<head>`'e ekler (bir kez). */
+function olcumEtiketleriniEkle(nonce: string | undefined) {
+  for (const [id, kod] of [
+    ["google-tag-manager", GTM_KODU],
+    ["hotjar-tracking", HOTJAR_KODU],
+  ] as const) {
+    if (document.getElementById(id)) continue;
+    const etiket = document.createElement("script");
+    etiket.id = id;
+    if (nonce) etiket.nonce = nonce;
+    etiket.textContent = kod;
+    document.head.appendChild(etiket);
+  }
 }
 
 export function ProductAnalytics({
@@ -147,26 +195,36 @@ export function ProductAnalytics({
   nonce?: string | undefined;
 }) {
   const pathname = usePathname();
+  // Yalnız sorgusu değişen istemci içi gezinme (ör. başlık içi aramanın sayfaları)
+  // yolu değiştirmez; yüzey sorguyla birlikte değerlendirilir (A1).
+  const search = useSearchParams()?.toString() ?? "";
+  const hassas = isSensitiveAnalyticsLocation(pathname, search);
   // Sunucuda ve ilk çizimde karar bilinmez: hiçbir şey çizilmez (hidrasyon uyumu).
   const [onay, setOnay] = useState<Onay | null | undefined>(undefined);
   const [izlemeReddi, setIzlemeReddi] = useState(true);
   // Yüzey render sırasında adresten türetilir: hassas sayfada şerit bir kare bile kalmaz.
-  const istemciUygun = enabled && !isSensitiveAnalyticsPath(pathname) && !izlemeReddi;
+  const istemciUygun = enabled && !hassas && !izlemeReddi;
+
+  useEffect(() => {
+    referrerPolitikasiniUygula(hassas);
+  }, [hassas]);
 
   useEffect(() => {
     const ret = tarayiciIzlemeyiReddediyor();
     setIzlemeReddi(ret);
     // GTM yüklü belgede hassas yüzeye gelinmişse ya da onay geri çekilmişse: tam yükleme.
-    if (gtmYuklendi && (isSensitiveAnalyticsPath(pathname) || !onayHalaGecerliMi())) {
+    if (gtmYuklendiMi() && (hassas || !onayHalaGecerliMi())) {
       window.location.reload();
       return;
     }
     if (enabled) setOnay(onayiOku());
-  }, [enabled, pathname]);
+    // Her adres değişiminde (yol YA DA sorgu) yeniden değerlendirilir; yalnız
+    // `hassas` değişince koşsaydı onayı geri çekilmiş herkese açık gezinme kaçardı.
+  }, [enabled, hassas, pathname, search]);
 
   useEffect(() => {
     const denetle = () => {
-      if (gtmYuklendi && !onayHalaGecerliMi()) window.location.reload();
+      if (gtmYuklendiMi() && !onayHalaGecerliMi()) window.location.reload();
     };
     const geriDonus = (olay: PageTransitionEvent) => {
       if (olay.persisted) denetle();
@@ -189,11 +247,19 @@ export function ProductAnalytics({
   // bileşen kaldırılırken sökülür (kök layout'ta pratikte hiç).
   const korumaSokumu = useRef<(() => void) | null>(null);
   useEffect(() => {
-    if (yukle && !korumaSokumu.current) {
-      korumaSokumu.current = hassasGecisleriKoru();
-      gtmYuklendi = true;
-    }
-  }, [yukle]);
+    if (!yukle || korumaSokumu.current) return;
+    /*
+      Karar ve enjeksiyon AYNI görevde (A1, Astra 5. tur): `yukle` önceki render'ın
+      adresinden türedi; render ile bu effect arasında tarayıcı hassas bir adrese
+      dönmüş olabilir. Gerçek adres burada yeniden denetlenir ve etiketler hemen
+      eklenir; `next/script`'in kendi effect'ini beklemek araya yeni bir pencere
+      açardı. Adres hassassa hiçbir şey yüklenmez; sonraki render `yukle`'yi düşürür.
+    */
+    if (isSensitiveAnalyticsLocation(window.location.pathname, window.location.search)) return;
+    korumaSokumu.current = hassasGecisleriKoru();
+    gtmYuklendiOlarakIsaretle();
+    olcumEtiketleriniEkle(nonce);
+  }, [yukle, nonce]);
   useEffect(
     () => () => {
       korumaSokumu.current?.();
@@ -204,29 +270,8 @@ export function ProductAnalytics({
 
   if (!istemciUygun || onay === undefined || onay === "red") return null;
 
-  if (onay === "kabul") {
-    return (
-      <>
-        <Script id="google-tag-manager" nonce={nonce} strategy="afterInteractive">
-          {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','${GOOGLE_TAG_MANAGER_ID}');`}
-        </Script>
-        <Script id="hotjar-tracking" nonce={nonce} strategy="afterInteractive">
-          {`(function(h,o,t,j,a,r){
-h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
-h._hjSettings={hjid:${HOTJAR_SITE_ID},hjsv:${HOTJAR_SNIPPET_VERSION}};
-a=o.getElementsByTagName('head')[0];
-r=o.createElement('script');r.async=1;
-r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
-a.appendChild(r);
-})(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');`}
-        </Script>
-      </>
-    );
-  }
+  // Etiketler effect'te eklenir (yukarıda); kabul edilmiş onayda çizilecek şerit yok.
+  if (onay === "kabul") return null;
 
   const sec = (secim: Onay) => {
     onayiYaz(secim);

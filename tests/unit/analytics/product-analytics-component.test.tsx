@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { PropsWithChildren, ScriptHTMLAttributes } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /*
@@ -11,18 +10,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
   önbelleği sayfayı yeniden yükler.
 */
 
-const yol = vi.hoisted(() => ({ ad: "/" }));
-vi.mock("next/navigation", () => ({ usePathname: () => yol.ad }));
-
-vi.mock("next/script", () => ({
-  default: (
-    props: PropsWithChildren<ScriptHTMLAttributes<HTMLScriptElement> & { strategy?: string }>,
-  ) => {
-    const scriptProps = { ...props };
-    delete scriptProps.strategy;
-    delete scriptProps.children;
-    return <script {...scriptProps}>{props.children}</script>;
-  },
+const yol = vi.hoisted(() => ({ ad: "/", sorgu: "" }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => yol.ad,
+  useSearchParams: () => new URLSearchParams(yol.sorgu),
 }));
 
 const ADI = "as_cerez_onayi";
@@ -46,6 +37,7 @@ async function bilesen() {
 beforeEach(() => {
   cerezleriTemizle();
   yol.ad = "/";
+  yol.sorgu = "";
   reload.mockReset();
   assign.mockReset();
   vi.stubGlobal("location", {
@@ -54,6 +46,7 @@ beforeEach(() => {
     hostname: "agentsozluk.com",
     protocol: "http:", // jsdom http://localhost: Secure çerez yazılamaz
     pathname: "/",
+    search: "",
     reload,
     assign,
   });
@@ -64,6 +57,9 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  // Etiketler effect'te `<head>`'e eklenir; testler arasında sökülür.
+  document.getElementById("google-tag-manager")?.remove();
+  document.getElementById("hotjar-tracking")?.remove();
   cerezleriTemizle();
   vi.unstubAllGlobals();
   window.history.pushState = asilPushState;
@@ -85,10 +81,10 @@ describe("ProductAnalytics — çerez onayı", () => {
     // Opak arka plan: sitenin RGB üçlüsü değişkenleriyle çalışan sınıf (saydam kalmasın).
     expect(serit.className).toContain("bg-surface");
     expect(serit.className).not.toMatch(/bg-\[var\(/u);
-    expect(container.querySelector("script")).toBeNull();
+    expect(document.querySelector("script#google-tag-manager, script#hotjar-tracking")).toBeNull();
     expect(container.innerHTML).not.toContain("GTM-MTGXSB7H");
     expect(container.innerHTML).not.toContain("6753780");
-    expect(container.querySelector("#hotjar-tracking")).toBeNull();
+    expect(document.getElementById("hotjar-tracking")).toBeNull();
   });
 
   it("Kabul et: çerez yazılır, GTM ve Hotjar yüklenir; noscript yoktur", async () => {
@@ -98,10 +94,10 @@ describe("ProductAnalytics — çerez onayı", () => {
       fireEvent.click(screen.getByRole("button", { name: "Kabul et" }));
     });
     expect(document.cookie).toContain(`${ADI}=kabul-v2`);
-    const script = container.querySelector("script#google-tag-manager");
+    const script = document.getElementById("google-tag-manager");
     expect(script?.textContent).toContain("GTM-MTGXSB7H");
     expect(script?.getAttribute("nonce")).toBe("n");
-    const hotjar = container.querySelector("script#hotjar-tracking");
+    const hotjar = document.getElementById("hotjar-tracking");
     expect(hotjar?.textContent).toContain("6753780");
     expect(hotjar?.getAttribute("nonce")).toBe("n");
     expect(container.querySelector("noscript, iframe")).toBeNull();
@@ -120,10 +116,10 @@ describe("ProductAnalytics — çerez onayı", () => {
   it("eski sürüm (yalnız GA4'ü kapsayan) kabul yeni kapsama onay sayılmaz; şerit yeniden sorar", async () => {
     const { ProductAnalytics } = await bilesen();
     document.cookie = `${ADI}=kabul; Path=/`;
-    const { container } = render(<ProductAnalytics enabled nonce="n" />);
+    render(<ProductAnalytics enabled nonce="n" />);
     expect(screen.getByRole("region", { name: "Çerez tercihi" })).toBeVisible();
-    expect(container.querySelector("script")).toBeNull();
-    expect(container.querySelector("#hotjar-tracking")).toBeNull();
+    expect(document.querySelector("script#google-tag-manager, script#hotjar-tracking")).toBeNull();
+    expect(document.getElementById("hotjar-tracking")).toBeNull();
   });
 
   it("eski sürümdeki ret korunur", async () => {
@@ -136,8 +132,8 @@ describe("ProductAnalytics — çerez onayı", () => {
   it("tanınmayan çerez değeri onay sayılmaz", async () => {
     const { ProductAnalytics } = await bilesen();
     document.cookie = `${ADI}=evet; Path=/`;
-    const { container } = render(<ProductAnalytics enabled nonce="n" />);
-    expect(container.querySelector("script")).toBeNull();
+    render(<ProductAnalytics enabled nonce="n" />);
+    expect(document.querySelector("script#google-tag-manager, script#hotjar-tracking")).toBeNull();
     expect(screen.getByRole("region", { name: "Çerez tercihi" })).toBeVisible();
   });
 
@@ -311,5 +307,159 @@ describe("ProductAnalytics — çerez onayı", () => {
     });
     expect(document.cookie).not.toContain(`${ADI}=`);
     expect(reload).toHaveBeenCalled();
+  });
+
+  describe("A1 — çapraz matris: onay × konum × gizlilik sinyali", () => {
+    const konumlar = [
+      { ad: "genel arama", yol: "/ara", sorgu: "q=gitar", hassas: true },
+      { ad: "başlık içi arama", yol: "/baslik/gitar--42", sorgu: "q=akor", hassas: true },
+      { ad: "başlık sayfası", yol: "/baslik/gitar--42", sorgu: "", hassas: false },
+    ];
+    const onaylar = [
+      { ad: "onaysız", cerez: null },
+      { ad: "onaylı", cerez: "kabul-v2" },
+    ];
+    const sinyaller = [
+      { ad: "sinyal yok", dnt: null, gpc: undefined },
+      { ad: "DNT", dnt: "1", gpc: undefined },
+      { ad: "GPC", dnt: null, gpc: true },
+    ];
+    const vakalar = konumlar.flatMap((konum) =>
+      onaylar.flatMap((onay) => sinyaller.map((sinyal) => ({ konum, onay, sinyal }))),
+    );
+
+    it.each(vakalar)("$konum.ad × $onay.ad × $sinyal.ad", async ({ konum, onay, sinyal }) => {
+      const { ProductAnalytics } = await bilesen();
+      if (onay.cerez) document.cookie = `${ADI}=${onay.cerez}; Path=/`;
+      Object.defineProperty(navigator, "doNotTrack", { value: sinyal.dnt, configurable: true });
+      Object.defineProperty(navigator, "globalPrivacyControl", {
+        value: sinyal.gpc,
+        configurable: true,
+      });
+      yol.ad = konum.yol;
+      yol.sorgu = konum.sorgu;
+      try {
+        const { container } = render(<ProductAnalytics enabled nonce="n" />);
+        const acik = !konum.hassas && sinyal.dnt === null && sinyal.gpc === undefined;
+        const gtm = document.getElementById("google-tag-manager") !== null;
+        const serit = container.querySelector('[role="region"]') !== null;
+        expect(gtm).toBe(acik && onay.cerez === "kabul-v2");
+        expect(serit).toBe(acik && onay.cerez === null);
+      } finally {
+        Object.defineProperty(navigator, "globalPrivacyControl", {
+          value: undefined,
+          configurable: true,
+        });
+      }
+    });
+  });
+
+  describe("A1 — hassas konumdan çıkış sorguyu referrer ile taşımaz", () => {
+    it("hassas konumda belge referrer politikası origin, herkese açıkta varsayılan", async () => {
+      const { ProductAnalytics } = await bilesen();
+      yol.ad = "/baslik/gitar--42";
+      yol.sorgu = "q=akor";
+      const { rerender } = render(<ProductAnalytics enabled nonce="n" />);
+      const etiket = () =>
+        document.head.querySelector<HTMLMetaElement>('meta[name="referrer"]')?.content;
+      expect(etiket()).toBe("origin");
+      yol.sorgu = "";
+      rerender(<ProductAnalytics enabled nonce="n" />);
+      expect(etiket()).toBe("strict-origin-when-cross-origin");
+      yol.ad = "/giris";
+      rerender(<ProductAnalytics enabled={false} nonce="n" />);
+      // Ölçüm kapalı olsa bile (oturum, DNT) politika uygulanır.
+      expect(etiket()).toBe("origin");
+      document.head.querySelector('meta[name="referrer"]')?.remove();
+    });
+  });
+
+  describe("A1 — başlık içi arama ölçülmez", () => {
+    it.each([
+      ["onaysız", null],
+      ["onaylı", "kabul-v2"],
+    ])("%s ziyaretçide başlık içi aramada şerit de etiket de yok", async (_ad, onay) => {
+      const { ProductAnalytics } = await bilesen();
+      if (onay) document.cookie = `${ADI}=${onay}; Path=/`;
+      yol.ad = "/baslik/gitar--42";
+      yol.sorgu = "q=akor";
+      const { container } = render(<ProductAnalytics enabled nonce="n" />);
+      expect(container.innerHTML).toBe("");
+    });
+
+    it("render herkese açık ama effect anında adres hassassa etiket yüklenmez (Astra, 5. tur)", async () => {
+      const { ProductAnalytics } = await bilesen();
+      const { gtmYuklendiMi } = await import("@/lib/analytics/gtm-state");
+      document.cookie = `${ADI}=kabul-v2; Path=/`;
+      // Render'ın gördüğü adres herkese açık; tarayıcı araya giren geri dönüşle hassasta.
+      yol.ad = "/son";
+      vi.stubGlobal("location", { ...window.location, pathname: "/iletisim", search: "", reload });
+      render(<ProductAnalytics enabled nonce="n" />);
+      expect(document.getElementById("google-tag-manager")).toBeNull();
+      expect(document.getElementById("hotjar-tracking")).toBeNull();
+      expect(gtmYuklendiMi()).toBe(false);
+    });
+
+    it("yalnız sorgusu değişen istemci içi gezinmede GTM yüklü belge yeniden yüklenir", async () => {
+      const { ProductAnalytics } = await bilesen();
+      document.cookie = `${ADI}=kabul-v2; Path=/`;
+      yol.ad = "/baslik/gitar--42";
+      const { rerender } = render(<ProductAnalytics enabled nonce="n" />);
+      expect(document.getElementById("google-tag-manager")).not.toBeNull();
+      expect(reload).not.toHaveBeenCalled();
+      yol.sorgu = "q=akor&page=2";
+      rerender(<ProductAnalytics enabled nonce="n" />);
+      // Yüklenmiş etiket sökülemez; belge yeniden yüklenir.
+      expect(reload).toHaveBeenCalled();
+    });
+
+    it("GTM yüklü belgede başlık içi arama bağlantısı tam yüklemeye döner", async () => {
+      const { ProductAnalytics } = await bilesen();
+      document.cookie = `${ADI}=kabul-v2; Path=/`;
+      yol.ad = "/baslik/gitar--42";
+      render(<ProductAnalytics enabled nonce="n" />);
+      const baglanti = document.createElement("a");
+      baglanti.href = "/baslik/gitar--42?q=akor&page=2";
+      document.body.append(baglanti);
+      try {
+        fireEvent.click(baglanti);
+        expect(assign).toHaveBeenCalledWith(
+          expect.stringMatching(/\/baslik\/gitar--42\?q=akor&page=2$/u),
+        );
+      } finally {
+        baglanti.remove();
+      }
+    });
+
+    it("geri/ileri başlık içi arama girdisine dönerse yeniden yüklenir", async () => {
+      const { ProductAnalytics } = await bilesen();
+      document.cookie = `${ADI}=kabul-v2; Path=/`;
+      yol.ad = "/baslik/gitar--42";
+      render(<ProductAnalytics enabled nonce="n" />);
+      vi.stubGlobal("location", {
+        ...window.location,
+        pathname: "/baslik/gitar--42",
+        search: "?q=akor",
+        reload,
+        assign,
+      });
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      expect(reload).toHaveBeenCalled();
+    });
+
+    it("tarayıcı GPC bildiriyorsa başlık sayfasında da şerit çıkmaz", async () => {
+      const { ProductAnalytics } = await bilesen();
+      Object.defineProperty(navigator, "globalPrivacyControl", { value: true, configurable: true });
+      try {
+        yol.ad = "/baslik/gitar--42";
+        const { container } = render(<ProductAnalytics enabled nonce="n" />);
+        expect(container.innerHTML).toBe("");
+      } finally {
+        Object.defineProperty(navigator, "globalPrivacyControl", {
+          value: undefined,
+          configurable: true,
+        });
+      }
+    });
   });
 });

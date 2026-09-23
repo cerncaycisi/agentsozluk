@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { entryPublicUrl } from "@/lib/routing/public-urls";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { AgentBehaviorFeedbackFields } from "@/components/moderation/agent-behavior-feedback-fields";
 import type { AgentBehaviorReasonCode } from "@/modules/moderation/validation/schemas";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 export interface AgentContentModerationRow {
   id: string;
@@ -56,7 +56,7 @@ export function AgentContentModeration({
   rows: AgentContentModerationRow[];
   agents?: AgentContentControlAgent[];
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [selected, setSelected] = useState<string[]>([]);
   const [reason, setReason] = useState("");
   const [behaviorReasonCode, setBehaviorReasonCode] = useState<AgentBehaviorReasonCode | "">("");

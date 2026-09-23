@@ -1,11 +1,11 @@
 "use client";
 
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { AgentBehaviorFeedbackFields } from "@/components/moderation/agent-behavior-feedback-fields";
 import type { AgentBehaviorReasonCode } from "@/modules/moderation/validation/schemas";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 export function ConfirmAction({
   endpoint,
@@ -24,7 +24,7 @@ export function ConfirmAction({
   destructive?: boolean;
   behaviorFeedback?: boolean;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [behaviorReasonCode, setBehaviorReasonCode] = useState<AgentBehaviorReasonCode | "">("");

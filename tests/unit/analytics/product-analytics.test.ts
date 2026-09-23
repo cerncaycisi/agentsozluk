@@ -1,8 +1,17 @@
+import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 import {
+  PRODUCT_ANALYTICS_SURFACE_HEADER,
+  SENSITIVE_LOCATION_HEADER,
   classifyProductAnalyticsSurface,
   shouldLoadProductAnalytics,
 } from "@/lib/analytics/product-analytics";
+import { middleware } from "@/middleware";
+
+function istekBasligi(url: string, ad: string): string | null {
+  // Middleware'in yönlendirdiği istek başlıkları yanıtta `x-middleware-request-*` olarak durur.
+  return middleware(new NextRequest(url)).headers.get(`x-middleware-request-${ad}`);
+}
 
 const productionSite = { nodeEnv: "production", appUrl: "https://agentsozluk.com" };
 
@@ -10,6 +19,7 @@ describe("product analytics traffic policy", () => {
   it("measures ordinary anonymous public traffic", () => {
     const surface = classifyProductAnalyticsSurface({
       pathname: "/baslik/gitar--42",
+      search: "",
       doNotTrack: false,
       globalPrivacyControl: false,
       syntheticSmoke: false,
@@ -26,6 +36,7 @@ describe("product analytics traffic policy", () => {
     (pathname) => {
       const surface = classifyProductAnalyticsSurface({
         pathname,
+        search: "",
         doNotTrack: false,
         globalPrivacyControl: false,
         syntheticSmoke: false,
@@ -38,6 +49,62 @@ describe("product analytics traffic policy", () => {
     },
   );
 
+  /*
+    A1 (22 Eylül): başlık içi arama herkese açık bir yolda koşar. Sınıflandırıcı yol
+    ile sorguyu birlikte alır; "arama sayfalarında ölçüm yapılmaz" sözü onu da kapsar.
+  */
+  it.each([
+    ["/ara", "?q=gitar"],
+    ["/ara", ""],
+    ["/baslik/gitar--42", "?q=akor"],
+    ["/baslik/gitar--42", "?page=2&q=akor"],
+    ["/baslik/gitar--42", "?q="],
+    ["/entry/42", "?q=x"],
+  ])("never measures a search location %s%s", (pathname, search) => {
+    const surface = classifyProductAnalyticsSurface({
+      pathname,
+      search,
+      doNotTrack: false,
+      globalPrivacyControl: false,
+      syntheticSmoke: false,
+    });
+    expect(surface).toBe("SENSITIVE");
+    expect(shouldLoadProductAnalytics({ ...productionSite, authenticated: false, surface })).toBe(
+      false,
+    );
+  });
+
+  it("keeps a topic page without a search query measurable", () => {
+    for (const search of ["", "?page=2", "?sort=newest"]) {
+      expect(
+        classifyProductAnalyticsSurface({
+          pathname: "/baslik/gitar--42",
+          search,
+          doNotTrack: false,
+          globalPrivacyControl: false,
+          syntheticSmoke: false,
+        }),
+        search,
+      ).toBe("PUBLIC");
+    }
+  });
+
+  it("lets DNT/GPC win over a search location as well", () => {
+    for (const signals of [
+      { doNotTrack: true, globalPrivacyControl: false },
+      { doNotTrack: false, globalPrivacyControl: true },
+    ]) {
+      expect(
+        classifyProductAnalyticsSurface({
+          pathname: "/baslik/gitar--42",
+          search: "?q=akor",
+          syntheticSmoke: false,
+          ...signals,
+        }),
+      ).toBe("PRIVACY_OPTOUT");
+    }
+  });
+
   it("never measures an authenticated session, including operator sessions", () => {
     expect(
       shouldLoadProductAnalytics({ ...productionSite, authenticated: true, surface: "PUBLIC" }),
@@ -47,6 +114,7 @@ describe("product analytics traffic policy", () => {
   it("keeps public entry revision history in the anonymous measurement surface", () => {
     const surface = classifyProductAnalyticsSurface({
       pathname: "/entry/42/revizyonlar",
+      search: "",
       doNotTrack: false,
       globalPrivacyControl: false,
       syntheticSmoke: false,
@@ -63,7 +131,7 @@ describe("product analytics traffic policy", () => {
     { doNotTrack: false, globalPrivacyControl: true, syntheticSmoke: false },
     { doNotTrack: false, globalPrivacyControl: false, syntheticSmoke: true },
   ])("honors privacy and synthetic opt-out signals", (signals) => {
-    const surface = classifyProductAnalyticsSurface({ pathname: "/son", ...signals });
+    const surface = classifyProductAnalyticsSurface({ pathname: "/son", search: "", ...signals });
 
     expect(surface).toBe("PRIVACY_OPTOUT");
     expect(shouldLoadProductAnalytics({ ...productionSite, authenticated: false, surface })).toBe(
@@ -118,5 +186,16 @@ describe("product analytics traffic policy", () => {
         surface: "PUBLIC",
       }),
     ).toBe(true);
+  });
+
+  describe("A1 — sunucu ve kaynak koruması", () => {
+    it("tam GET yüklemesinde (form gönderimi) middleware başlık içi aramayı hassas sınıflar", () => {
+      const arama = "https://agentsozluk.com/baslik/gitar--42?q=akor";
+      expect(istekBasligi(arama, PRODUCT_ANALYTICS_SURFACE_HEADER)).toBe("SENSITIVE");
+      expect(istekBasligi(arama, SENSITIVE_LOCATION_HEADER)).toBe("1");
+      const sayfa = "https://agentsozluk.com/baslik/gitar--42?page=2";
+      expect(istekBasligi(sayfa, PRODUCT_ANALYTICS_SURFACE_HEADER)).toBe("PUBLIC");
+      expect(istekBasligi(sayfa, SENSITIVE_LOCATION_HEADER)).toBe("0");
+    });
   });
 });

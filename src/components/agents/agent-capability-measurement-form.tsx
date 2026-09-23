@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
@@ -8,6 +7,7 @@ import {
   runtimeCapabilityPackageSchema,
   type RuntimeCapabilityPackageInput,
 } from "@/modules/agents/validation/capacity-schemas";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 type MeasurementKind = keyof RuntimeCapabilityPackageInput;
 
@@ -62,7 +62,7 @@ async function parseCapabilityFiles(files: File[]): Promise<RuntimeCapabilityPac
 }
 
 export function AgentCapabilityMeasurementForm() {
-  const router = useRouter();
+  const router = useAppRouter();
   const [measurementPackage, setMeasurementPackage] = useState<RuntimeCapabilityPackageInput>();
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [pending, setPending] = useState(false);

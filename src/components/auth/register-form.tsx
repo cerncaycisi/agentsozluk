@@ -1,15 +1,15 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { FormField } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { registrationSchema, type RegistrationInput } from "@/modules/auth/validation/schemas";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 export function RegisterForm() {
-  const router = useRouter();
+  const router = useAppRouter();
   const [formError, setFormError] = useState<string>();
   const [registeredPending, setRegisteredPending] = useState(false);
   const {

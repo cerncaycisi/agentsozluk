@@ -2,12 +2,12 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AgentProfileEditor } from "@/components/agents/agent-profile-editor";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { seedPersonaSchema, type SeedPersona } from "@/modules/agents/personas/schema";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 type Lifecycle = "DRAFT" | "PAUSED" | "ACTIVE" | "SUSPENDED" | "RETIRED";
 
@@ -36,7 +36,7 @@ function successMessage(message: string): string {
 }
 
 export function AgentLifecycleForm({ agentId, current }: { agentId: string; current: Lifecycle }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [status, setStatus] = useState<Lifecycle>(transitions[current][0] ?? current);
   const [reason, setReason] = useState("");
   const [pending, setPending] = useState(false);
@@ -112,7 +112,7 @@ export function AgentLifecycleQuickAction({
   current: "ACTIVE" | "PAUSED";
   onChanged?: (status: "ACTIVE" | "PAUSED") => void;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [pending, setPending] = useState(false);
@@ -475,7 +475,7 @@ const quickRunTypes = [
 ] as const;
 
 export function AgentQuickRunActions({ agentId, username }: { agentId: string; username: string }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [open, setOpen] = useState(false);
   const [config, setConfig] = useState<RunConfig>(initialRunConfig);
   const [preview, setPreview] = useState<RunPreview>();
@@ -579,7 +579,7 @@ export function AgentQuickRunActions({ agentId, username }: { agentId: string; u
 }
 
 export function ManualAgentRunForm({ agentId }: { agentId: string }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [config, setConfig] = useState<RunConfig>(initialRunConfig);
   const [preview, setPreview] = useState<RunPreview>();
   const [pending, setPending] = useState(false);
@@ -644,7 +644,7 @@ export function BulkAgentRunForm({
 }: {
   agents: Array<{ id: string; user: { username: string; displayName: string } }>;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [allActive, setAllActive] = useState(true);
   const [selected, setSelected] = useState<string[]>([]);
   const [config, setConfig] = useState<RunConfig>(initialRunConfig);
@@ -754,7 +754,7 @@ export function BulkAgentRunForm({
 }
 
 export function AgentRunCommands({ runId, status }: { runId: string; status: string }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [reason, setReason] = useState("");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string>();
@@ -836,7 +836,7 @@ export function RuntimeControlForm({
   publicWriteEnabled,
   runtimeOperatingMode,
 }: RuntimeControlFormProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [reason, setReason] = useState("");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string>();
@@ -1487,7 +1487,7 @@ export function AgentPersonaEditForm({
     manualTimeoutSeconds: number;
   };
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const initialPersona = seedPersonaSchema.parse(rawPersona);
   const [persona, setPersona] = useState<SeedPersona>(initialPersona);
   const [document, setDocument] = useState(serializePersona(initialPersona, "JSON"));
@@ -1619,7 +1619,7 @@ export function PersonaRollbackForm({
   agentId: string;
   versions: number[];
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [version, setVersion] = useState(versions[0] ?? 1);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string>();
@@ -1683,7 +1683,7 @@ export function GlobalAgentSettingsForm({
   settings: Record<string, unknown>;
   dualConcurrencyAvailable: boolean;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const configuredCodexConcurrency: 1 | 2 = settings.codexConcurrency === 2 ? 2 : 1;
   const [codexConcurrency, setCodexConcurrency] = useState<1 | 2>(configuredCodexConcurrency);
   const [document, setDocument] = useState(

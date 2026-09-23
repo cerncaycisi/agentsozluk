@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -9,6 +8,7 @@ import { FormField } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { TopicWritingGuidance } from "@/components/constitution/writing-guidance";
 import { TopicCanonicalSuggestions } from "@/components/topics/topic-canonical-suggestions";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 interface Values {
   title: string;
@@ -36,7 +36,7 @@ function canonicalTopicFrom(error: ClientApiError): CanonicalTopic | undefined {
  * taşınır, böylece gönderim gövdesi ve yinelenen-başlık akışları aynı kalır.
  */
 export function CreateTopicForm({ fixedTitle }: { fixedTitle?: string } = {}) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [notice, setNotice] = useState<string>();
   const [duplicate, setDuplicate] = useState<
     | {

@@ -1,11 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import type { ConstitutionalContentAction } from "@/modules/moderation/domain/constitutional-moderation";
 import { AgentBehaviorFeedbackFields } from "@/components/moderation/agent-behavior-feedback-fields";
 import type { AgentBehaviorReasonCode } from "@/modules/moderation/validation/schemas";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 const ACTION_LABELS: Record<ConstitutionalContentAction, string> = {
   ENTRY_HIDDEN: "Entry’yi çöp alanına gönder",
@@ -38,7 +38,7 @@ export function ConstitutionalContentAction({
   targetId: string;
   actions: readonly ConstitutionalContentAction[];
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [action, setAction] = useState<ConstitutionalContentAction>(actions[0]!);
   const [reason, setReason] = useState("");
   const [behaviorReasonCode, setBehaviorReasonCode] = useState<AgentBehaviorReasonCode | "">("");

@@ -18,14 +18,52 @@ sitesiyse ve DNT/GPC ya da sentetik opt-out yoksa verir.
 | Anonim, herkese açık sayfa                    | şerit; GTM yalnız onayla |
 | Herhangi bir oturum                           | kapalı                   |
 | Giriş, kayıt, arama, hesap, moderasyon yüzeyi | kapalı                   |
+| `q` parametreli her adres (başlık içi arama)  | kapalı                   |
 | DNT veya Global Privacy Control               | kapalı                   |
 | Sentetik smoke opt-out                        | kapalı                   |
 | Middleware sınıflandırması yok                | kapalı                   |
 
+**Tek sınıflandırıcı (A1, 23 Eylül):** `isSensitiveAnalyticsLocation(pathname, search)` yolu
+ve sorguyu birlikte alır; hassas yol ya da `q` parametresi (boş değerli olsa bile) varsa
+yüzey hassastır. Middleware, istemci bileşeni, bağlantı tıklama koruması, geri/ileri ve arama
+önerisi aynı fonksiyonu kullanır. Başlık içi arama (`/baslik/…?q=…`) böylece "arama
+sayfalarında ölçüm yapılmaz" sözünün kapsamında.
+
+**Referrer (A1, Astra):** hassas konumdan çıkan tam yükleme (ör. "Aramayı temizle") sorguyu bir
+sonraki — ölçülen — belgenin `document.referrer`'ına taşımasın diye hassas belgede referrer
+politikası `origin`'dir: ilk yüklemede kök layout `<meta name="referrer" content="origin">`
+basar (middleware'in `x-agent-sozluk-sensitive-location` başlığı), istemci bileşeni sayfa içi
+gezinmede aynı etiketi günceller.
+
+**Programatik gezinme (A1, Astra üçüncü tur):** bütün programatik gezinme
+`useAppRouter()` / `navigateWithinApp` (`src/lib/navigation/app-navigation.ts`) üzerinden
+geçer. Hedef çalışma anında sınıflandırılır: başka köken ve hassas hedef tam sayfa yüklemesiyle
+açılır. Tek istisna, belge zaten hassas bir konumdayken ve GTM hiç yüklenmemişken
+(`src/lib/analytics/gtm-state.ts`) hassas hedefe gidilmesidir: hassas konumda GTM yüklenmez ve
+onay şeridi çıkmaz, bekleyen gezinme sırasında GTM açılamaz. Moderasyon içi başarı bildirimleri
+böylece kaybolmaz. Ham Next router'ı (`next/navigation` `useRouter`, `next/router`, Next iç
+modülleri, `next/*` dinamik import) ve History API (tanımlayıcı, string ya da şablon olarak
+`pushState`/`replaceState`) `src` altında ESLint AST kurallarıyla yasaktır (`eslint.config.mjs`);
+tek istisna yardımcı dosyanın kendisidir. `tests/unit/analytics/navigation-lint.test.ts` Astra'nın
+karşı örneklerini (takma ad, isim alanı, yeniden dışa aktarma, iç modül, yapı bozma, string ve
+hesaplanmış anahtar, `Reflect.get`, değişkende ad, dinamik import) gerçek yapılandırmayla
+reddettirir; ters tırnaklı ``import(`next/...`)`` de dahil. Yalnız History API'yi anan açıklama
+metni engellenmez (şablonda tam eşleşme). Sınır kaza eseri regresyona karşıdır: çalışma anında
+parçalardan kurulan yöntem adı kasıtlı gizlemedir ve kapsam dışıdır.
+
+**Etiket yükleme (A1, Astra beşinci tur):** GTM ve Hotjar satır içi etiketleri `next/script` ile
+çizilmez; bileşenin effect'i gerçek `window.location`'ı yeniden denetler ve adres herkese açıksa
+etiketleri CSP nonce'uyla aynı görevde `<head>`'e ekler. Böylece render ile effect arasına giren
+bir geri dönüş (tarayıcı hassas adrese dönmüşken önceki herkese açık render'ın effect'inin
+koşması) hassas konumda yükleme başlatamaz. Kalan sınır: sunucu tarafı `redirect()` istemci
+içi gezinmede Next'in router'ını kullanır ve bu kapıdan geçmez. Bugünkü hedefler
+(`/giris?next=/`, `/yasak`, herkese açık kanonik adresler) sorgu içermez; varılan hassas yüzeyde
+GTM yüklü belge bileşen tarafından yeniden yüklenir.
+
 **İstemci (her adres değişimi):** kök layout sayfa içi gezinmede korunduğu için sunucu kararı
-yalnız ilk yüklemeyi kapsar. `ProductAnalytics` her adres değişiminde yüzeyi
-(`isSensitiveAnalyticsPath`) ve tarayıcının DNT/GPC sinyalini yeniden değerlendirir; hassas bir
-yüzeyde şerit çıkmaz, onay alınmaz.
+yalnız ilk yüklemeyi kapsar. `ProductAnalytics` her adres değişiminde — yalnız sorgusu değişse
+bile (`useSearchParams`) — yüzeyi ve tarayıcının DNT/GPC sinyalini yeniden değerlendirir;
+hassas bir yüzeyde şerit çıkmaz, onay alınmaz; GTM yüklü belge yeniden yüklenir.
 
 ## Onay
 

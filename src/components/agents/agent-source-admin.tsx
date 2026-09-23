@@ -1,9 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 type SourceStatus =
   | "SEED"
@@ -94,7 +94,7 @@ export function AgentSourceAdmin({ rows }: { rows: AgentSourceAdminRow[] }) {
 }
 
 function SourceCard({ source }: { source: AgentSourceAdminRow }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [status, setStatus] = useState(source.status);
   const [localeFocus, setLocaleFocus] = useState(source.localeFocus);
   const [adminPinned, setAdminPinned] = useState(source.adminPinned);

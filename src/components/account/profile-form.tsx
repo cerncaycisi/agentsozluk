@@ -1,11 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { FormField, FormTextarea } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import type { SafeUser } from "@/modules/users/domain/serialization";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 interface ProfileValues {
   displayName: string;
@@ -13,7 +13,7 @@ interface ProfileValues {
 }
 
 export function ProfileForm() {
-  const router = useRouter();
+  const router = useAppRouter();
   const [notice, setNotice] = useState<string>();
   const [profileReady, setProfileReady] = useState(false);
   const [username, setUsername] = useState("");

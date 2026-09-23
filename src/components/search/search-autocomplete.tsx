@@ -2,10 +2,9 @@
 
 import { Search } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { isSensitiveAnalyticsPath } from "@/lib/analytics/product-analytics";
 import { unopenedTopicUrl } from "@/lib/routing/public-urls";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 /**
  * `/api/v1/search/suggest` sözleşmesi (görev 26'da sabitlendi). Modül tipleri
@@ -48,7 +47,7 @@ export function SearchAutocomplete({
   className: string;
   inputRef?: React.Ref<HTMLInputElement>;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   // Combobox anlambilimi yalnız hidrasyondan sonra açılır: JavaScript çalışmayan
   // sayfada input, hiç açılmayacak bir listeyi işaret eden combobox olarak değil
   // sıradan bir arama alanı olarak duyurulur.
@@ -187,15 +186,11 @@ export function SearchAutocomplete({
       if (!activeOption) return;
       event.preventDefault();
       close();
-      // Hassas yüzeye istemci içi gezinme yapılmaz: yüklü bir ölçüm etiketi o
-      // sayfaya taşınmasın diye tam sayfa yüklemesi. (Eşleşmeyen ifade için
-      // öneri herkese açık `/baslik/<ifade>` adresidir; o sayfa ölçülür —
-      // PRODUCT_ANALYTICS.md kabul edilen riskler.)
-      if (isSensitiveAnalyticsPath(new URL(activeOption.url, window.location.href).pathname)) {
-        window.location.assign(activeOption.url);
-      } else {
-        router.push(activeOption.url);
-      }
+      // Hassas yüzeye istemci içi gezinme yapılmaz: yardımcı hedefi sınıflandırıp
+      // gerekirse tam sayfa yüklemesi yapar. (Eşleşmeyen ifade için öneri herkese
+      // açık `/baslik/<ifade>` adresidir; o sayfa ölçülür — PRODUCT_ANALYTICS.md
+      // kabul edilen riskler.)
+      router.push(activeOption.url);
     }
   };
 

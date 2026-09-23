@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
+import { useAppRouter } from "@/lib/navigation/app-navigation";
 
 export function TrashCaseActions({
   entryId,
@@ -17,7 +17,7 @@ export function TrashCaseActions({
   latestRevivalRejected: boolean;
   hasAppeal: boolean;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [body, setBody] = useState(currentBody);
   const [correction, setCorrection] = useState("");
   const [defense, setDefense] = useState("");
