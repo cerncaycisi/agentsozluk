@@ -208,24 +208,35 @@ describe("product analytics traffic policy", () => {
       expect(istekBasligi(sayfa, SENSITIVE_LOCATION_HEADER)).toBe("0");
     });
 
-    it("kaynakta sorgulu programatik gezinme ve History API kullanımı yok", () => {
+    it("kaynakta doğrudan programatik gezinme yok; hepsi navigateWithinApp'ten geçer", () => {
       /*
         GTM'in geçmiş dinleyicisi `router.push`/`history.pushState` ile yapılan
-        sorgu değişimini istemci yeniden yüklemeden ÖNCE görebilir (Astra, A1).
-        Başlık içi arama düz GET formu, sayfalama bağlantıları tıklama korumasından
-        geçer; programatik yol hiç yazılmamalı.
+        gezinmeyi istemci yeniden yüklemeden ÖNCE görebilir (Astra, A1). Hedefin
+        nasıl kurulduğundan bağımsız koruma için bütün programatik gezinmeler
+        hedefi çalışma anında sınıflandıran `navigateWithinApp`'ten geçer. Bu test,
+        `useRouter()`'dan alınan HER adla (takma ad, yapı bozma, zincir) doğrudan
+        push/replace'i ve History API'yi yasaklar.
       */
+      const yardimci = path.join("src", "lib", "navigation", "app-navigation.ts");
       const ihlaller: string[] = [];
       for (const dosya of kaynakDosyalari(path.join(process.cwd(), "src"))) {
+        if (dosya.endsWith(yardimci)) continue;
         const kaynak = readFileSync(dosya, "utf8");
-        if (/history\.(push|replace)State\s*\(/u.test(kaynak))
+        if (/history\s*\.\s*(push|replace)State\s*\(/u.test(kaynak)) {
           ihlaller.push(`${dosya}: History API`);
-        for (const eslesme of kaynak.matchAll(/router\.(push|replace)\(([^)]*)\)/gu)) {
-          if (/[?&]q=|["'`]q["'`]/u.test(eslesme[2] ?? ""))
-            ihlaller.push(`${dosya}: ${eslesme[0]}`);
         }
-        if (/\.set\(\s*["'`]q["'`]/u.test(kaynak) && /useRouter/u.test(kaynak)) {
-          ihlaller.push(`${dosya}: searchParams.set("q") + useRouter`);
+        if (/useRouter\(\)\s*\.\s*(push|replace)\b/u.test(kaynak)) {
+          ihlaller.push(`${dosya}: useRouter().push/replace`);
+        }
+        if (/\{[^}]*\b(push|replace)\b[^}]*\}\s*=\s*useRouter\s*\(/u.test(kaynak)) {
+          ihlaller.push(`${dosya}: useRouter yapı bozma ile push/replace`);
+        }
+        for (const [, ad] of kaynak.matchAll(
+          /\b(?:const|let|var)\s+(\w+)\s*=\s*useRouter\s*\(/gu,
+        )) {
+          if (new RegExp(`\\b${ad}\\s*\\.\\s*(push|replace)\\s*\\(`, "u").test(kaynak)) {
+            ihlaller.push(`${dosya}: ${ad}.push/replace`);
+          }
         }
       }
       expect(ihlaller).toEqual([]);

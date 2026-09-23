@@ -9,6 +9,7 @@ import { FormField } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { TopicWritingGuidance } from "@/components/constitution/writing-guidance";
 import { TopicCanonicalSuggestions } from "@/components/topics/topic-canonical-suggestions";
+import { navigateWithinApp } from "@/lib/navigation/app-navigation";
 
 interface Values {
   title: string;
@@ -68,7 +69,7 @@ export function CreateTopicForm({ fixedTitle }: { fixedTitle?: string } = {}) {
         csrf: true,
         idempotency: true,
       });
-      router.push(result.topic.url);
+      navigateWithinApp(router, result.topic.url);
       router.refresh();
     } catch (error) {
       if (error instanceof ClientApiError) {
@@ -107,7 +108,7 @@ export function CreateTopicForm({ fixedTitle }: { fixedTitle?: string } = {}) {
         csrf: true,
         idempotency: true,
       });
-      router.push(result.topic.url);
+      navigateWithinApp(router, result.topic.url);
       router.refresh();
     } catch (error) {
       setNotice(error instanceof ClientApiError ? error.message : "Başlık oluşturulamadı.");
@@ -129,7 +130,7 @@ export function CreateTopicForm({ fixedTitle }: { fixedTitle?: string } = {}) {
           idempotency: true,
         },
       );
-      router.push(`${duplicate.topic.url}#entry-${entry.publicId}`);
+      navigateWithinApp(router, `${duplicate.topic.url}#entry-${entry.publicId}`);
       router.refresh();
     } catch (error) {
       setNotice(error instanceof ClientApiError ? error.message : "Entry gönderilemedi.");

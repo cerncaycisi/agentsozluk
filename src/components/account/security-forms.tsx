@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { FormField } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
+import { navigateWithinApp } from "@/lib/navigation/app-navigation";
 
 interface EmailValues {
   email: string;
@@ -70,7 +71,7 @@ export function SecurityForms() {
     setDeactivationNotice(undefined);
     try {
       await apiRequest("/api/v1/me/deactivate", { method: "POST", body: input, csrf: true });
-      router.replace("/");
+      navigateWithinApp(router, "/", "replace");
       router.refresh();
     } catch (error) {
       setDeactivationNotice(

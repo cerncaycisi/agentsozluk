@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { AgentProfileEditor } from "@/components/agents/agent-profile-editor";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { seedPersonaSchema, type SeedPersona } from "@/modules/agents/personas/schema";
+import { navigateWithinApp } from "@/lib/navigation/app-navigation";
 
 type Lifecycle = "DRAFT" | "PAUSED" | "ACTIVE" | "SUSPENDED" | "RETIRED";
 
@@ -1543,7 +1544,7 @@ export function AgentPersonaEditForm({
               ? "Yeni persona sürümü oluşturuldu."
               : "Agent profil ayarları kaydedildi.",
           );
-          router.push(`/moderasyon/agentlar/${agentId}`);
+          navigateWithinApp(router, `/moderasyon/agentlar/${agentId}`);
           router.refresh();
         } catch (submitError) {
           setError(errorMessage(submitError));

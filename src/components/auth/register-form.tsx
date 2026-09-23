@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { FormField } from "@/components/ui/form-field";
 import { apiRequest, ClientApiError } from "@/lib/http/client";
 import { registrationSchema, type RegistrationInput } from "@/modules/auth/validation/schemas";
+import { navigateWithinApp } from "@/lib/navigation/app-navigation";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -48,7 +49,11 @@ export function RegisterForm() {
           Yazar hesabın admin onayına gönderildi. Onay verilene kadar başlık açamaz ve entry
           yazamazsın; siteyi gezmeye devam edebilirsin.
         </p>
-        <button type="button" className="button-primary" onClick={() => router.push("/rastgele")}>
+        <button
+          type="button"
+          className="button-primary"
+          onClick={() => navigateWithinApp(router, "/rastgele")}
+        >
           Rastgele bir başlığa git
         </button>
       </div>
