@@ -63,12 +63,11 @@
 - Hakem yürütücüden farklı model olmalıdır. Aynı modelin ayrı oturumu farklı modelden
   peer review sayılmaz.
   - Yürütücü **Astra** olduğunda hakem **Fable veya Opus 5**'tir.
-  - Yürütücü **Claude (Opus 5)** olduğunda hakem **Sol**'dur:
-    `codex exec --model gpt-5.6-sol -c model_reasoning_effort="xhigh" --sandbox read-only`.
-    _(Gökhan kararı, 10 Eylül 2026; hakem modeli 18 Eylül 2026'da Astra'dan Sol'a
-    alındı — "astra 6 yerine bir süre 5.6 sol kullanalım". Kural aynı: hakem
-    yürütücüden farklı model olmalı. Geçici; Gökhan söylemeden Astra'ya dönülmez.
-    18 Eylül öncesi turlar kaydında Astra olarak kalır.)_
+  - Yürütücü **Claude** olduğunda hakem **Astra**'dır; Sol kullanılmaz:
+    `codex exec --model gpt-6-astra -c model_reasoning_effort="xhigh" --sandbox read-only`.
+    _(Gökhan kararı, 23 Eylül 2026: "astra senin peer'ın", Sol kuralı kaldırıldı. Kural
+    aynı: hakem yürütücüden farklı model olmalı. 18–23 Eylül arası Sol turları kaydında
+    Sol olarak, 18 Eylül öncesi turlar Astra olarak kalır.)_
   - Her iki yön de aynı kuralın uygulanmasıdır; hangi tarafın yürüttüğüne bakılır.
 - Hakeme "beni doğrulama, ÇÜRÜT" çerçevesi ver; her somut bulgu için dosya:satır,
   tetikleyici ve etki iste. Kullanılan gerçek modeli, incelenen SHA'yı ve sonucu kaydet.
