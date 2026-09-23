@@ -1345,15 +1345,16 @@ girmek israf.
       kalan kısım: yedek bugün dağıtım kapısı olarak aynı host'ta
       (`/opt/agent-sozluk/backups`); **zamanlanmış ve sunucu dışı yedek kanıtı repoda
       yok.** Varsa belgeye yazılacak, yoksa reset öncesi kurulacak. _(reset önkoşulu)_
-- [~] **B5.1-2 — künye, iletişim, içerik kaldırma yolu; çerez onayı — ÇEREZ ONAYI VE KÜNYE
-  CANLIDA; İLETİŞİM FORMU KALDI.** İki ayrı sürüm, ayrı kanıt:
+- [x] **B5.1-2 — künye, iletişim, içerik kaldırma yolu; çerez onayı — HEPSİ CANLIDA (23
+  Eylül).** Üç ayrı sürüm, ayrı kanıt:
   - `37c6618` (PR #156): onay şeridi, künye; Hotjar bu sürümde yoktu (Claude'un önerisiyle
     kaldırılmıştı — Gökhan kararı değildi). Smoke run `35714469725` 5/5.
   - `c21a798` (PR #160 + #161): Hotjar GA4 ile aynı onayın arkasında geri geldi; onay kapsamı
     sürümlü (`kabul-v2`; yalnız GA4'ü kapsayan eski `kabul` şeridi yeniden açar). Gökhan onayı,
     Sol BİRLEŞTİR, Astra DAĞIT. Smoke run `35729671266` 6/6.
-  - **İletişim ve içerik kaldırma formu: PR #164 main'e birleşti (`a0f2878`, 23 Eylül;
-    incelenen head `9b4ac1c`, PR CI `35794074338` 7/7). ÜRETİMDE DEĞİL; A5 bekliyor.**
+  - **İletişim ve içerik kaldırma formu: CANLIDA — `c0dbe73`, 23 Eylül 16:07 UTC, A5
+    migration'lı yolun ilk kullanımı (Gökhan exact onayı; kesinti ≈9,5 dk; `/iletisim` 200).**
+    PR #164 `a0f2878` (incelenen head `9b4ac1c`, PR CI `35794074338` 7/7).
     Sol yedi tur inceledi: ilk altısında BİRLEŞTİRME ve her turda gerçek kusur (NULL not,
     UTF-16/kod noktası uzunluğu, NUL, eşi olmayan vekil, NFKC sonrası e-posta tavanı,
     moderasyon penceresinin sayımı, A5 metni); 7. turda BİRLEŞTİR, şartı exact head CI.
@@ -1486,12 +1487,18 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       olan buydu). Öneri: `StartLimitIntervalSec=0` + artan `RestartSec`. **Kapatma
       ölçütü:** izole ortamda zorlanmış crash-loop'tan 5 dakika içinde kendiliğinden
       toparlanma; alarmın aynı olayı yine bildirdiği kanıtı. _(bölüm 5.5)_
-- [ ] **A5 — migration'lı üretim dağıtım yolu (Gökhan onayladı, 22 Eylül: "A").**
+- [x] **A5 — migration'lı üretim dağıtım yolu — KAPANDI (23 Eylül, ilk kullanım
+      `c0dbe73`: iletişim formu canlıda).** _(Gökhan onayladı, 22 Eylül: "A".)_
+      Açık kalan küçük iş: migration modunda kesim öncesi lease taraması app kapalıyken
+      koştuğu için `RELEASE_WARN lease alarm pre-cutover scan failed` veriyor (engellemiyor);
+      tarama dondurmadan önceye alınmalı.
       Bugün yalnız `deploy-production-no-migration.sh` var; yeni migration'lı bir sürüm
       dağıtılamıyor (`MIGRATION_SET_CHANGED`) ve runbook Gate 7/8'in istediği uygulama
       genelinde yazma dondurması kodda yok (`MAINTENANCE` yalnız ajanları durduruyor).
 
-      **23 Eylül durumu — KOD MAIN'DE (`9c275cf`, PR #167), ÜRETİMDE HENÜZ KULLANILMADI.**
+      **23 Eylül durumu — KOD MAIN'DE (`9c275cf` PR #167, sonra #170 yönetici rolü, #171
+      şema kanıtı); İLK KULLANIM `c0dbe73` İLE TAMAMLANDI (ilk deneme `e12bdd0` migration'dan
+      önce durdu; ayrıntı `ATTEMPT_LOG.md`).**
       Gökhan kısa kesintili yolu seçti (23 Eylül; dondurma = worker drenaj + Caddy ve app
       durdurma, site bu sürede kapalı). Tasarım Astra ile sekiz turda uzlaştırıldı ("TASARIM
       UYGUN", `3729072`); ayrıntı ve bütün aşamalar runbook "Migration'lı sürüm (A5)"

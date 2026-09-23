@@ -8619,3 +8619,22 @@ lease tarafından hiç kullanılmıyordu.
 - Yeni başlatılan bir proxy'nin ardından dış sağlık kontrolünü tek denemeyle yapma.
 - Dağıtım yolunun tamamını gerçek PostgreSQL'de uçtan uca (döküm + restore + karşılaştırma)
   koşan bir test olmadan üretime çıkma; tasarım ve kod turları bu davranışı göremedi.
+
+## 2026-09-23 — A5 ikinci koşu: iletişim formu canlıda
+
+- Düzeltmeli `c0dbe73` (PR #170 yönetici rolü, #171 arşiv şeması kanıtı), Gökhan'ın yeni exact
+  onayı. Önce eski operasyonun kilidi ve işareti doğrulamalı temizlendi (migration uygulanmamış,
+  `contact_messages` yok, scratch/`a5-` konteyner/backend yok, sudo yok, tek `deploy` oturumu).
+- Dağıtım `RELEASE_COMPLETE PASS`, kesinti ≈9,5 dk (15:58:24 → ≈16:07:45 UTC). Scratch provası,
+  önceki imajın scratch'te açılışı, post-verify, boot etiketi → hold → worker sırası ilk kez gerçek
+  üretimde çalıştı ve geçti. Tek uyarı: kesim öncesi lease taraması (app kapalı) başarısız.
+
+**Tekrarlama:**
+
+- Ad hoc uzak betikte koşulları `test A && test B && …` diye zincirleme: `set -e` zincirde son
+  komut dışındaki başarısızlıkta DURMAZ. Temizlik bu yüzden `deploy_processes_other_sessions=3`
+  iken sürdü. Sonradan bakıldı: üçü `systemd --user`, `(sd-pam)` ve oturumun kendi `sshd:` süreciydi
+  (ayrı SID, aynı scope) — kalıntı yoktu. Her koşulu ayrı satırda `|| exit` ile yaz.
+- "Başka süreç yok" ölçütünü SID'e göre değil oturum scope'una (`ps -o unit`) göre say: sshd'nin
+  oturum süreci ve kullanıcı yöneticisi farklı SID taşır.
+- Migration modunda `pre_cutover_lease_scan` app kapalıyken koşuyor; taramayı dondurmadan önceye al.
