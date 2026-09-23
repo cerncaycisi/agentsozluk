@@ -254,15 +254,18 @@ lease_kontrol_kilitli() {
   # oldu; 23 Eylül). `-a`, `compose run` ile açılan tek seferlik konteynerleri
   # (A5 provası `a5-<op>-previous`, migrate) de listeler: onlar etiketle elenir;
   # birden fazla asıl app konteyneri kalırsa kimlik belirsizdir (boş).
-  local adaylar aday
+  # Yalnız okunmuş `True` atlanır; okuma hatası ya da tanınmayan değer seçimi
+  # reddeder: sorgulanamayan aday ikinci bir asıl konteyner olabilir (Astra).
+  local adaylar aday etiket
   kimlik=""
   adaylar="$(timeout 5 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
     ps -a -q app 2>/dev/null)"
   for aday in $adaylar; do
     [[ "$aday" =~ ^[0-9a-f]{12,64}$ ]] || { kimlik=""; break; }
-    [[ "$(timeout 5 docker inspect -f '{{index .Config.Labels "com.docker.compose.oneoff"}}' \
-      "$aday" 2>/dev/null)" == False ]] || continue
-    if [[ -n "$kimlik" ]]; then kimlik=""; break; fi
+    etiket="$(timeout 5 docker inspect -f '{{index .Config.Labels "com.docker.compose.oneoff"}}' \
+      "$aday" 2>/dev/null)" || { kimlik=""; break; }
+    [[ "$etiket" == True ]] && continue
+    [[ "$etiket" == False && -z "$kimlik" ]] || { kimlik=""; break; }
     kimlik="$aday"
   done
   [[ "$kimlik" =~ ^[0-9a-f]{12,64}$ ]] || kimlik=""

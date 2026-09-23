@@ -124,7 +124,8 @@ tum=" $* "
 if [[ "$1" == "inspect" && "$3" == '{{index .Config.Labels "com.docker.compose.oneoff"}}' ]]; then
   [[ "$4" == "$SAHTE_KIMLIK" ]] && { echo False; exit 0; }
   for ek in $SAHTE_EK_KONTEYNERLER; do
-    [[ "\${ek%%:*}" == "$4" ]] && { echo "\${ek#*:}"; exit 0; }
+    # "kimlik:" = inspect hatası; "kimlik:Deger" = etiket değeri.
+    if [[ "\${ek%%:*}" == "$4" ]]; then [[ -n "\${ek#*:}" ]] || exit 1; echo "\${ek#*:}"; exit 0; fi
   done
   exit 1
 fi
@@ -606,6 +607,21 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
     });
     expect(kesim.status).not.toBe(0);
     expect(existsSync(path.join(dizin, "durum", "durum-lease-kesim"))).toBe(false);
+  });
+
+  it("etiketi okunamayan aday, geçerli bir asıl konteyner yanında da seçimi reddeder", () => {
+    // Sorgulanamayan aday ikinci bir asıl konteyner olabilir (Astra, #174 4. tur).
+    for (const ek of ["ffffffffffff6666:", "ffffffffffff6666:bilinmez"]) {
+      const kesim = calistir([zamanli(800, T - 60)], {
+        simdi: T,
+        kimlik: ESKI,
+        ekKonteynerler: ek,
+        kip: "--kesim-oncesi",
+        konuYok: true,
+      });
+      expect(kesim.status, ek).not.toBe(0);
+      expect(existsSync(path.join(dizin, "durum", "durum-lease-kesim")), ek).toBe(false);
+    }
   });
 
   it("etiketi okunamayan konteyner asıl sayılmaz", () => {
