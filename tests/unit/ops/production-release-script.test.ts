@@ -302,6 +302,10 @@ describe("schema-neutral production release lane", () => {
       expect(phase).toContain("dropdb -U postgres --force");
       expect(phase).not.toContain("createdb -U agent_sozluk");
       expect(phase).toContain("DATABASE_ADMIN_ROLE_UNAVAILABLE");
+      // Oturum görünürlüğü gereken kanıtlar yönetici rolüyle; düşürme doğrudan --force.
+      const dondurma = phase.slice(phase.indexOf("assert_frozen() {"));
+      expect(dondurma.slice(0, dondurma.indexOf("\n}\n"))).toContain("admin_psql agent_sozluk");
+      expect(phase).not.toContain("pg_terminate_backend");
       // Yeni birim dondurmada, worker durmuşken kurulur ve hold ondan sonra oluşur.
       const dondur = phase.slice(phase.indexOf("freeze_writes() {"));
       expect(dondur.indexOf("install_runtime_unit")).toBeLessThan(

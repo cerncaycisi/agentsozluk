@@ -225,9 +225,9 @@ printf 'faz=%s\\n' "$(cat "$migration_marker/phase")"
 `);
     expect(result.stderr).not.toContain("code=DOWNTIME_BUDGET_EXCEEDED");
     expect(result.stdout).toContain("faz=image-verified");
-    const calls = readFileSync(path.join(result.root, "calls.log"), "utf8");
-    expect(calls).toContain("psql");
-    expect(calls).toContain("reopen");
+    // Düşürme denendi, başarısız oldu ama tuzağı kesmedi; geri açma sürdü.
+    expect(result.stderr).toContain("RELEASE_WARN scratch database left");
+    expect(readFileSync(path.join(result.root, "calls.log"), "utf8")).toContain("reopen");
   });
 
   it("prova, süre dolunca önceki imajın sağlık ve smoke adımına girmeden durur", () => {
