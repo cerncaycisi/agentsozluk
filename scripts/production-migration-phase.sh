@@ -30,6 +30,10 @@ production_timeouts_set=0
 freeze_started=0
 # Üretimde worker birimiyle aynı Node; testler kendi Node'unu verebilir.
 host_node="${host_node:-/usr/bin/node}"
+# Dondurmadan itibaren toplam kesinti üst sınırı (saniye). Aşılırsa uzun komutlar
+# `timeout` ile kesilir ve aşamaya göre geri açma kuralı uygulanır (Astra, 23 Eylül).
+max_downtime_seconds="${max_downtime_seconds:-2700}"
+frozen_deadline=0
 migration_status=0
 
 migration_fail() {
@@ -77,12 +81,31 @@ migration_identity() {
   printf '%s|%s\n' "$candidate_sha" "$(printf '%s\n' "$approved_migrations" | sha256sum | cut -d ' ' -f 1)"
 }
 
+# Kesinti süresi dolmuşsa durur; dolmamışsa kalan saniyeyi basar. Dondurma
+# öncesinde sınır yoktur (0).
+downtime_remaining() {
+  local remaining
+  if ((frozen_deadline == 0)); then printf '0\n'; return 0; fi
+  remaining=$((frozen_deadline - $(date +%s)))
+  ((remaining > 0)) || migration_fail DOWNTIME_BUDGET_EXCEEDED
+  printf '%s\n' "$remaining"
+}
+
+# Dondurma sürerken uzun harici komutlar kalan süreyle sınırlanır.
+deadline_prefix() {
+  local remaining
+  deadline=()
+  remaining="$(downtime_remaining)" || migration_fail DOWNTIME_BUDGET_EXCEEDED
+  if ((remaining > 0)); then deadline=(timeout -k 30 "$remaining"); fi
+}
+
 # psql: her oturum `application_name=a5-<op-id>` taşır; elle kilit temizliği
 # ölçütü (runbook) bu adla kalan backend arar.
 db_psql() {
-  local database="$1"
+  local database="$1" deadline
   shift
-  "${compose[@]}" exec -T -e "PGAPPNAME=a5-$op_id" db \
+  deadline_prefix
+  "${deadline[@]}" "${compose[@]}" exec -T -e "PGAPPNAME=a5-$op_id" db \
     psql -XAtq -v ON_ERROR_STOP=1 -U agent_sozluk -d "$database" "$@"
 }
 
@@ -161,7 +184,6 @@ verify_migration_image() {
 # --- 3. Ön kontrol ------------------------------------------------------------
 
 preflight_migration() {
-  local target db_bytes free_backup free_data backup_device data_device needed
   test "$(db_psql agent_sozluk -c 'SHOW server_encoding;' </dev/null)" = UTF8 ||
     migration_fail DATABASE_ENCODING_NOT_UTF8
   test "$(db_psql agent_sozluk -c \
@@ -180,16 +202,27 @@ preflight_migration() {
        AND (c.setting LIKE 'lock_timeout=%' OR c.setting LIKE 'statement_timeout=%');" \
     </dev/null)" = 0 || migration_fail DB_TIMEOUT_SETTING_PRESENT
 
-  # FK hedefi mevcut tablonun `id`'si tek sütunlu uuid birincil anahtar olmalı.
+  assert_fk_targets
+  assert_disk_budget full
+}
+
+# FK hedefi mevcut tablonun `id`'si tek sütunlu uuid birincil anahtar olmalı.
+# Liste satır sonuyla biter ve işlenen hedef sayısı listeye eşit olmalı: son
+# satır sonu olmadan `while read` son hedefi atlıyordu (Astra, 23 Eylül).
+assert_fk_targets() {
+  local target checked=0 expected
   "$host_node" -e '
     const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
     const targets = new Set();
     for (const table of Object.values(value.tables))
       for (const fk of table.foreignKeys) targets.add(fk.referencedTable);
-    process.stdout.write([...targets].sort().join("\n"));
-  ' "$migration_dir/expectation.json" >"$migration_dir/fk-targets"
+    for (const target of [...targets].sort()) process.stdout.write(target + "\n");
+  ' "$migration_dir/expectation.json" >"$migration_dir/fk-targets" ||
+    migration_fail EXPECTATION_UNREADABLE
+  # `grep -c .` satır sonu olmayan son satırı da sayar (`wc -l` saymaz).
+  expected="$(grep -c . "$migration_dir/fk-targets" || true)"
   while IFS= read -r target; do
-    test -n "$target" || continue
+    test -n "$target" || migration_fail FOREIGN_KEY_TARGET_EMPTY
     test "$(db_psql agent_sozluk -v "target=$target" <<'SQL'
 SELECT count(*) FROM pg_constraint con
 JOIN pg_class c ON c.oid = con.conrelid
@@ -199,10 +232,16 @@ WHERE n.nspname = 'public' AND c.relname = :'target' AND con.contype = 'p'
   AND array_length(con.conkey, 1) = 1 AND a.attname = 'id' AND a.atttypid = 'uuid'::regtype;
 SQL
 )" = 1 || migration_fail FOREIGN_KEY_TARGET_UNSUPPORTED
+    checked=$((checked + 1))
   done <"$migration_dir/fk-targets"
+  test "$checked" = "$expected" || migration_fail FOREIGN_KEY_TARGET_COUNT
+}
 
-  # Disk: yedek dizini ile PostgreSQL hacmi aynı dosya sistemindeyse bütçe
-  # birleşik (dump + restore kopyası + WAL/geçici alan).
+# Disk bütçesi: `full` (dump + restore kopyası) ya da `restore` (yalnız restore
+# kopyası). Ön kontrolde, dump'tan önce ve restore'dan önce yeniden ölçülür:
+# yeniden girişte önceki dump yerinde kalır ve alanı küçültür (Astra, 23 Eylül).
+assert_disk_budget() {
+  local stage="$1" db_bytes free_backup free_data backup_device data_device
   install -d -m 0700 "$backups_dir"
   db_bytes="$(db_psql agent_sozluk -c 'SELECT pg_database_size(current_database());' </dev/null)"
   [[ "$db_bytes" =~ ^[0-9]+$ ]]
@@ -213,12 +252,17 @@ SQL
   data_device="$(docker volume inspect --format '{{.Mountpoint}}' \
     "$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Name}}{{end}}{{end}}' \
       "$("${compose[@]}" ps -q db)")" | xargs -r sudo df -P | awk 'NR == 2 {print $1}')"
-  if test "$backup_device" = "$data_device"; then
-    needed=$((3 * db_bytes + 1073741824))
-    ((free_backup >= needed)) || migration_fail DISK_HEADROOM_COMBINED
-  else
+  # Cihazlardan biri okunamazsa "farklı dosya sistemi" sayılıp gevşek bütçeye
+  # düşülmesin.
+  test -n "$backup_device" && test -n "$data_device" || migration_fail DISK_DEVICE_UNKNOWN
+  # Aynı dosya sisteminde bütçe birleşik (dump + restore kopyası + WAL/geçici alan).
+  if test "$stage" = full && test "$backup_device" = "$data_device"; then
+    ((free_backup >= 3 * db_bytes + 1073741824)) || migration_fail DISK_HEADROOM_COMBINED
+  elif test "$stage" = full; then
     ((free_backup >= db_bytes + 1073741824)) || migration_fail DISK_HEADROOM_BACKUP
     ((free_data >= 2 * db_bytes + 1073741824)) || migration_fail DISK_HEADROOM_DATA
+  else
+    ((free_data >= 2 * db_bytes + 1073741824)) || migration_fail DISK_HEADROOM_RESTORE
   fi
   printf '%s\n' "$db_bytes" >"$migration_dir/db-bytes"
 }
@@ -239,6 +283,8 @@ freeze_writes() {
   cat /proc/sys/kernel/random/boot_id >"$migration_marker/boot-id"
   # Buradan sonra bir hata, aşama henüz `frozen` olmasa da siteyi geri açmalı.
   freeze_started=1
+  frozen_deadline=$(($(date +%s) + max_downtime_seconds))
+  printf '%s\n' "$frozen_deadline" >"$migration_marker/frozen-deadline"
   "${compose[@]}" stop caddy </dev/null
   "${compose[@]}" stop app </dev/null
   assert_frozen
@@ -369,7 +415,9 @@ schema_hash() {
   local database="$1" dump hash
   shift
   dump="$(mktemp "$migration_dir/schema.XXXXXX")"
-  "${compose[@]}" exec -T db pg_dump --schema-only --no-owner --no-privileges \
+  local deadline
+  deadline_prefix
+  "${deadline[@]}" "${compose[@]}" exec -T db pg_dump --schema-only --no-owner --no-privileges \
     -U agent_sozluk -d "$database" "$@" </dev/null >"$dump" || migration_fail SCHEMA_DUMP_FAILED
   grep -q 'CREATE TABLE' "$dump" || migration_fail SCHEMA_DUMP_EMPTY
   hash="$(grep -v -E '^\\(un)?restrict ' "$dump" | sha256sum | cut -d ' ' -f 1)"
@@ -413,14 +461,19 @@ backup_and_fingerprint() {
   table_schema_hashes agent_sozluk "$migration_dir/pre-table-schemas"
   prisma_history agent_sozluk >"$migration_dir/pre-prisma-history"
 
+  assert_disk_budget full
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"
   backup="$backups_dir/agent-sozluk-$stamp-pre-${candidate_sha:0:12}.dump"
   partial="$backup.partial"
   test ! -e "$backup" && test ! -e "$partial"
-  (umask 077 && "${compose[@]}" exec -T db pg_dump -Fc --no-owner --no-privileges \
-    -U agent_sozluk -d agent_sozluk </dev/null >"$partial")
+  local deadline
+  deadline_prefix
+  (umask 077 && "${deadline[@]}" "${compose[@]}" exec -T db pg_dump -Fc --no-owner --no-privileges \
+    -U agent_sozluk -d agent_sozluk </dev/null >"$partial") || migration_fail BACKUP_DUMP_FAILED
   test -s "$partial"
-  "${compose[@]}" exec -T db pg_restore --list <"$partial" >/dev/null
+  deadline_prefix
+  "${deadline[@]}" "${compose[@]}" exec -T db pg_restore --list <"$partial" >/dev/null ||
+    migration_fail BACKUP_LIST_FAILED
   mv -T "$partial" "$backup"
   printf '%s\n' "$backup" >"$migration_dir/backup-path"
   sha256sum "$backup" | cut -d ' ' -f 1 >"$migration_dir/backup-sha256"
@@ -454,14 +507,18 @@ restore_and_verify() {
 SELECT count(*) FROM pg_database WHERE datname = :'scratch';
 SQL
 )" = 0 || migration_fail SCRATCH_ALREADY_EXISTS
+  assert_disk_budget restore
   collate="$(db_psql agent_sozluk -c 'SELECT datcollate FROM pg_database WHERE datname = current_database();' </dev/null)"
   ctype="$(db_psql agent_sozluk -c 'SELECT datctype FROM pg_database WHERE datname = current_database();' </dev/null)"
   "${compose[@]}" exec -T db createdb -U agent_sozluk -T template0 -E UTF8 \
     --lc-collate="$collate" --lc-ctype="$ctype" "$scratch_database" </dev/null
   scratch_owned=1
   printf '%s\n' "$scratch_database" >"$migration_dir/scratch-database"
-  "${compose[@]}" exec -T db pg_restore --exit-on-error --no-owner --no-privileges \
-    -U agent_sozluk -d "$scratch_database" <"$(cat "$migration_dir/backup-path")"
+  local deadline
+  deadline_prefix
+  "${deadline[@]}" "${compose[@]}" exec -T db pg_restore --exit-on-error --no-owner --no-privileges \
+    -U agent_sozluk -d "$scratch_database" <"$(cat "$migration_dir/backup-path")" ||
+    migration_fail RESTORE_FAILED
 
   db_fingerprint "$scratch_database" "$migration_dir/restore-fingerprint"
   cmp -s "$migration_dir/pre-fingerprint" "$migration_dir/restore-fingerprint" ||
@@ -525,8 +582,11 @@ run_migration() {
   # önce `migrating` olur; öncesindeki bir hata prod şemasını değiştirmemiştir ve
   # tuzak siteyi geri açar (Sol, 23 Eylül).
   if test "$target" = agent_sozluk; then set_phase migrating; fi
+  local limit=900 remaining
+  remaining="$(downtime_remaining)" || migration_fail DOWNTIME_BUDGET_EXCEEDED
+  if ((remaining > 0 && remaining < limit)); then limit="$remaining"; fi
   env -u DATABASE_URL -u COMPOSE_PROJECT_NAME -u COMPOSE_FILE -u COMPOSE_PROFILES \
-    APP_IMAGE="$candidate_image" timeout 900 "${compose[@]}" run --rm --no-deps --pull never \
+    APP_IMAGE="$candidate_image" timeout "$limit" "${compose[@]}" run --rm --no-deps --pull never \
     --name "a5-$op_id-migrate" -e "A5_TARGET_DATABASE=$target" -e "A5_APPLICATION_NAME=a5-$op_id" \
     --entrypoint /bin/sh app -c \
     './node_modules/.bin/tsx scripts/validate-environment.ts && exec node scripts/run-migration.mjs' \
@@ -692,8 +752,10 @@ post_verify() {
       migration_fail POST_NEW_CHECKSUM_MISMATCH
   done <"$migration_dir/post-$label-new-rows"
   test "$(db_psql "$database" -c \
-    "SELECT count(*) FROM \"_prisma_migrations\" WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL;" \
+    "SELECT count(*) FROM \"_prisma_migrations\" WHERE finished_at IS NULL AND rolled_back_at IS NULL;" \
     </dev/null)" = 0 || migration_fail POST_FAILED_HISTORY_ROW
+  # Önceden geri alınmış (rolled_back_at dolu) eski kayıtlar tarihçe eşitliğinde
+  # korunur; yalnız çözülmemiş başarısız kayıt reddedilir (Astra, 23 Eylül).
 
   # Liste önce dosyaya, açık kontrolle: `done < <(…)` içindeki hata yutulur ve
   # döngü hiç dönmeden "boş" kontrolü atlanırdı.
@@ -740,7 +802,7 @@ rehearse_previous_image() {
     sleep 2
   done
   if ((status == 0)); then
-    docker exec "$container" ./node_modules/.bin/tsx scripts/release-smoke.ts \
+    timeout 300 docker exec "$container" ./node_modules/.bin/tsx scripts/release-smoke.ts \
       --base-url http://127.0.0.1:3000 </dev/null || status=1
   fi
   docker rm -f "$container" >/dev/null 2>&1 || true
@@ -780,6 +842,7 @@ verify_production_after_migration() {
   # Bu noktadan sonra yeni app ve maintenance timer'ı yazabilir; dondurma
   # karşılaştırmaları bir daha koşmaz (Astra, 23 Eylül).
   set_phase writers-may-run
+  frozen_deadline=0
 }
 
 # --- Giriş ve hata tuzağı -----------------------------------------------------
@@ -832,6 +895,12 @@ migration_phase() {
       test "$recorded_boot" = "$(cat /proc/sys/kernel/random/boot_id)" ||
         migration_fail MIGRATION_OPERATION_REBOOTED
     fi
+  fi
+  if test -f "$migration_marker/frozen-deadline" && phase_reached frozen &&
+     ! phase_reached writers-may-run; then
+    frozen_deadline="$(cat "$migration_marker/frozen-deadline")"
+    [[ "$frozen_deadline" =~ ^[0-9]+$ ]] || migration_fail DOWNTIME_DEADLINE_INVALID
+    freeze_started=1
   fi
   trap migration_exit_trap EXIT
   case "$(current_phase)" in

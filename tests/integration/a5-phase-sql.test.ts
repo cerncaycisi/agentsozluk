@@ -145,6 +145,26 @@ describe("A5 faz SQL'i gerçek PostgreSQL'de", () => {
     expect(definitions.stdout).toMatch(/^enum:ContactMessageStatus\|OPEN,HANDLED$/mu);
   });
 
+  it("FK hedefi katalogda uuid birincil anahtar mı: users geçer, _prisma_migrations geçmez", () => {
+    writeFileSync(
+      path.join(root, "state/migration/expectation.json"),
+      execFileSync(process.execPath, [checker, contactMigration], { encoding: "utf8" }),
+    );
+    const ok = phase(`assert_fk_targets; echo HEDEF_TAMAM`);
+    expect(ok.status, ok.stderr).toBe(0);
+    expect(ok.stdout).toContain("HEDEF_TAMAM");
+
+    writeFileSync(
+      path.join(root, "state/migration/expectation.json"),
+      JSON.stringify({
+        tables: { yeni: { foreignKeys: [{ referencedTable: "_prisma_migrations" }] } },
+      }),
+    );
+    const bad = phase(`assert_fk_targets`);
+    expect(bad.status).toBe(97);
+    expect(bad.stderr).toContain("code=FOREIGN_KEY_TARGET_UNSUPPORTED");
+  });
+
   it("tablo şema özetleri her tablo için üretilir; migration geçmişi okunur", () => {
     const result = phase(
       `table_schema_hashes ${databaseName} "${root}/schemas"; prisma_history ${databaseName} | wc -l`,

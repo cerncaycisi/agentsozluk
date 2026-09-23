@@ -173,6 +173,41 @@ printf 'faz=%s\\n' "$(cat "$migration_marker/phase")"
     expect(readFileSync(path.join(result.root, "calls.log"), "utf8")).not.toContain("reopen");
   });
 
+  it("FK hedef listesinin son (ve tek) hedefini de sınar (Astra, kod turu)", () => {
+    const result = harness(`
+printf '%s' '{"types":{},"tables":{"yeni":{"columns":["id","userId"],"primaryKey":["id"],"checkConstraints":0,"uniqueConstraints":0,"foreignKeys":[{"column":"userId","referencedTable":"users","referencedColumn":"id","onDelete":"SET NULL","onUpdate":"CASCADE"}]}},"indexes":{}}' >"$state_dir/migration/expectation.json"
+host_node="$(command -v node)"
+db_psql() { printf 'psql %s\\n' "$*" >>"$log"; printf '1\\n'; }
+assert_fk_targets
+grep -c 'target=users' "$log"
+`);
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout.trim()).toBe("1");
+  });
+
+  it("uygun olmayan tek FK hedefini reddeder", () => {
+    const result = harness(`
+printf '%s' '{"types":{},"tables":{"yeni":{"foreignKeys":[{"referencedTable":"users"}]}},"indexes":{}}' >"$state_dir/migration/expectation.json"
+host_node="$(command -v node)"
+db_psql() { printf '0\\n'; }
+assert_fk_targets
+`);
+    expect(result.status).toBe(97);
+    expect(result.stderr).toContain("code=FOREIGN_KEY_TARGET_UNSUPPORTED");
+  });
+
+  it("kesinti süresi dolunca veritabanı komutu çalıştırmadan durur", () => {
+    const result = harness(`
+frozen_deadline=$(( $(date +%s) - 1 ))
+db_psql agent_sozluk -c 'SELECT 1'
+echo ULASILMAMALI
+`);
+    expect(result.status).toBe(97);
+    expect(result.stderr).toContain("code=DOWNTIME_BUDGET_EXCEEDED");
+    expect(result.stdout).not.toContain("ULASILMAMALI");
+    expect(readFileSync(path.join(result.root, "calls.log"), "utf8")).not.toContain("compose");
+  });
+
   it("aşama yalnız ileri gider", () => {
     const result = harness(`
 install -d "$migration_marker"

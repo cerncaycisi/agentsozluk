@@ -1385,8 +1385,12 @@ her süreç kayıtlı bir scope'ta kalır.
 3. Ön kontrol — `UTF8`; rol veritabanının sahibi ve `CREATEDB`/süper kullanıcı; veritabanı ya da
    rol düzeyinde `lock_timeout`/`statement_timeout` ayarı YOK (`DB_TIMEOUT_SETTING_PRESENT`); FK
    hedeflerinin `id`'si tek sütunlu uuid birincil anahtar; disk (yedek ve PG hacmi aynı dosya
-   sistemindeyse `3 × DB + 1 GiB`).
-4. `frozen` — worker drene edilip durdurulur, yeni worker birimi kurulur,
+   sistemindeyse `3 × DB + 1 GiB`). Disk bütçesi dump'tan ve restore'dan hemen önce yeniden
+   ölçülür (yeniden girişte önceki dump yerinde kalır).
+4. `frozen` — kesinti üst sınırı 45 dakika (`max_downtime_seconds=2700`): dondurmadan itibaren
+   dump, restore, parmak izi ve migration kalan süreyle `timeout` altında koşar; süre dolarsa
+   `DOWNTIME_BUDGET_EXCEEDED` ve aşamaya göre hata kuralı. Worker drene edilip durdurulur,
+   yeni worker birimi kurulur,
    `/opt/agent-sozluk/runtime/.migration-hold` oluşturulur, `caddy` ve `app` durur. **Kesinti
    başlar.** Kanıt: veritabanında bizden başka istemci oturumu ve hazırlanmış işlem yok.
 5. `backup-verified` — `pg_dump -Fc` → `/opt/agent-sozluk/backups/agent-sozluk-<ts>-pre-<sha12>.dump`
@@ -1451,8 +1455,9 @@ aşamayı `image-verified`'e geri aldığından yeniden koşu dondurmayı başta
 caddy` → worker drene + stop → `agent-sozluk:production` = önceki imaj kimliği
 (`.release-op-<sha>/previous-image-id`) → `runtime/current` = önceki release
 (`previous-runtime`) → önceki imajla migration'sız override'lı `up -d --force-recreate app` → iç
-health/ready + imaj/revision kimliği → `compose start caddy` → dış health → worker start ve birim
-doğrulaması. Yedek dosyası yalnız felaket içindir; yedekten sonraki yazmalar restore'da kaybolur.
+health/ready + imaj/revision kimliği → `compose start caddy` → dış health → etiket, çalışan app
+ve `runtime/current` önceki sürümde eşleşince `/opt/agent-sozluk/runtime/.migration-hold`
+kaldırılır (yoksa worker açılamaz) → worker start ve birim doğrulaması. Yedek dosyası yalnız felaket içindir; yedekten sonraki yazmalar restore'da kaybolur.
 
 ### Gate 8: deploy, additive migration and V1 preservation
 
