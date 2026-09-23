@@ -34,6 +34,10 @@ host_node="${host_node:-/usr/bin/node}"
 # `timeout` ile kesilir ve aşamaya göre geri açma kuralı uygulanır (Astra, 23 Eylül).
 max_downtime_seconds="${max_downtime_seconds:-2700}"
 frozen_deadline=0
+# Hata tuzağında kurtarma ayrı, sınırlı bir bütçeyle koşar ve süre kontrolü
+# asla `exit` etmez; yoksa dolmuş bütçe eski sitenin geri açılmasını keserdi
+# (Astra, 23 Eylül).
+recovering=0
 migration_status=0
 
 migration_fail() {
@@ -87,7 +91,11 @@ downtime_remaining() {
   local remaining
   if ((frozen_deadline == 0)); then printf '0\n'; return 0; fi
   remaining=$((frozen_deadline - $(date +%s)))
-  ((remaining > 0)) || migration_fail DOWNTIME_BUDGET_EXCEEDED
+  if ((remaining <= 0)); then
+    # Kurtarmada durma yok: komut 1 sn içinde başarısız döner, tuzak sürer.
+    if ((recovering == 1)); then printf '1\n'; return 0; fi
+    migration_fail DOWNTIME_BUDGET_EXCEEDED
+  fi
   printf '%s\n' "$remaining"
 }
 
@@ -495,7 +503,10 @@ drop_scratch() {
   db_psql agent_sozluk -v "scratch=$scratch_database" <<'SQL' >/dev/null || return 1
 SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :'scratch';
 SQL
-  "${compose[@]}" exec -T db dropdb -U agent_sozluk "$scratch_database" </dev/null || return 1
+  local deadline
+  deadline_prefix
+  "${deadline[@]}" "${compose[@]}" exec -T db dropdb -U agent_sozluk "$scratch_database" \
+    </dev/null || return 1
   scratch_owned=0
 }
 
@@ -510,8 +521,11 @@ SQL
   assert_disk_budget restore
   collate="$(db_psql agent_sozluk -c 'SELECT datcollate FROM pg_database WHERE datname = current_database();' </dev/null)"
   ctype="$(db_psql agent_sozluk -c 'SELECT datctype FROM pg_database WHERE datname = current_database();' </dev/null)"
-  "${compose[@]}" exec -T db createdb -U agent_sozluk -T template0 -E UTF8 \
-    --lc-collate="$collate" --lc-ctype="$ctype" "$scratch_database" </dev/null
+  local deadline
+  deadline_prefix
+  "${deadline[@]}" "${compose[@]}" exec -T db createdb -U agent_sozluk -T template0 -E UTF8 \
+    --lc-collate="$collate" --lc-ctype="$ctype" "$scratch_database" </dev/null ||
+    migration_fail SCRATCH_CREATE_FAILED
   scratch_owned=1
   printf '%s\n' "$scratch_database" >"$migration_dir/scratch-database"
   local deadline
@@ -792,8 +806,11 @@ rehearse_previous_image() {
     'export DATABASE_URL="$(node -e "const u = new URL(process.env.DATABASE_URL); u.pathname = \"/\" + process.env.A5_TARGET_DATABASE; process.stdout.write(u.href)")" && exec node server.js' \
     </dev/null >/dev/null
   status=1
+  local deadline
   for _ in $(seq 1 60); do
-    if docker exec "$container" node -e \
+    # Her deneme kalan kesinti süresiyle sınırlı; süre dolarsa durulur.
+    deadline_prefix
+    if "${deadline[@]}" docker exec "$container" node -e \
       "Promise.all(['health','ready'].map(p=>fetch('http://127.0.0.1:3000/api/'+p).then(r=>{if(!r.ok)throw new Error(p)}))).catch(()=>process.exit(1))" \
       </dev/null >/dev/null 2>&1; then
       status=0
@@ -802,7 +819,8 @@ rehearse_previous_image() {
     sleep 2
   done
   if ((status == 0)); then
-    timeout 300 docker exec "$container" ./node_modules/.bin/tsx scripts/release-smoke.ts \
+    deadline_prefix
+    "${deadline[@]}" docker exec "$container" ./node_modules/.bin/tsx scripts/release-smoke.ts \
       --base-url http://127.0.0.1:3000 </dev/null || status=1
   fi
   docker rm -f "$container" >/dev/null 2>&1 || true
@@ -852,7 +870,11 @@ migration_exit_trap() {
   trap - EXIT
   set +e
   if ((status != 0)); then
+    # Kurtarma kendi 5 dakikalık bütçesiyle koşar; süre kontrolü burada exit etmez.
+    recovering=1
+    if ((frozen_deadline != 0)); then frozen_deadline=$(($(date +%s) + 300)); fi
     docker rm -f "a5-$op_id-previous" >/dev/null 2>&1 || true
+    docker image rm "agent-sozluk:a5-previous-$op_id" >/dev/null 2>&1 || true
     if ((production_timeouts_set == 1)); then
       reset_database_timeouts agent_sozluk ||
         printf 'RELEASE_WARN database timeouts left on agent_sozluk; see runbook\n' >&2

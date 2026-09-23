@@ -208,6 +208,44 @@ echo ULASILMAMALI
     expect(readFileSync(path.join(result.root, "calls.log"), "utf8")).not.toContain("compose");
   });
 
+  it("kesinti süresi dolmuşken de tuzak scratch'i denemeye çalışır ve eski siteyi geri açar (Astra, 2. kod turu)", () => {
+    const result = harness(`
+install -d "$migration_marker"
+printf 'backup-verified\\n' >"$migration_marker/phase"
+db_psql() { printf 'psql\\n' >>"$log"; }
+reopen_previous_release() { printf 'reopen\\n' >>"$log"; }
+(
+  trap migration_exit_trap EXIT
+  frozen_deadline=$(( $(date +%s) - 10 ))
+  scratch_database=agent_sozluk_a5_20260923_120000_012345
+  scratch_owned=1
+  migration_fail RESTORE_FINGERPRINT_MISMATCH
+) || true
+printf 'faz=%s\\n' "$(cat "$migration_marker/phase")"
+`);
+    expect(result.stderr).not.toContain("code=DOWNTIME_BUDGET_EXCEEDED");
+    expect(result.stdout).toContain("faz=image-verified");
+    const calls = readFileSync(path.join(result.root, "calls.log"), "utf8");
+    expect(calls).toContain("psql");
+    expect(calls).toContain("reopen");
+  });
+
+  it("prova, süre dolunca önceki imajın sağlık ve smoke adımına girmeden durur", () => {
+    const result = harness(`
+printf 'sha256:onceki\\n' >"$state_dir/previous-image-id"
+# \`env … compose run\` kabuk fonksiyonu çalıştıramaz; üretimdeki gibi gerçek komut.
+compose=(true)
+scratch_database=agent_sozluk_a5_20260923_120000_012345
+frozen_deadline=$(( $(date +%s) - 1 ))
+rehearse_previous_image
+echo ULASILMAMALI
+`);
+    expect(result.status).toBe(97);
+    expect(result.stderr).toContain("code=DOWNTIME_BUDGET_EXCEEDED");
+    expect(result.stdout).not.toContain("ULASILMAMALI");
+    expect(readFileSync(path.join(result.root, "calls.log"), "utf8")).not.toContain("docker exec");
+  });
+
   it("aşama yalnız ileri gider", () => {
     const result = harness(`
 install -d "$migration_marker"
