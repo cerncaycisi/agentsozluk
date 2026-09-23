@@ -1396,9 +1396,13 @@ her süreç kayıtlı bir scope'ta kalır.
    `/opt/agent-sozluk/runtime/.migration-hold` oluşturulur, `caddy` ve `app` durur. **Kesinti
    başlar.** Kanıt: veritabanında bizden başka istemci oturumu ve hazırlanmış işlem yok.
 5. `backup-verified` — `pg_dump -Fc` → `/opt/agent-sozluk/backups/agent-sozluk-<ts>-pre-<sha12>.dump`
-   (boyut + sha256 kaydı); ayrı `agent_sozluk_a5_<ts>_<op>` veritabanına restore; tablo içerikleri,
-   sequence durumları/tanımları/sahiplikleri ve şema birebir; sahipli sequence'lerin sonraki
-   değeri sütun maksimumundan büyük.
+   (boyut + sha256 kaydı); arşivdeki şema betiği (`pg_restore --schema-only -f -`) canlı şema
+   dökümüyle birebir; ayrı `agent_sozluk_a5_<ts>_<op>` veritabanına `--exit-on-error` restore;
+   tablo içerikleri, sequence durumları/tanımları/sahiplikleri ve default'lar birebir; sahipli
+   sequence'lerin sonraki değeri sütun maksimumundan büyük. Geri yüklenmiş kopyanın şema metni
+   canlıyla karşılaştırılmaz: PostgreSQL CHECK/indeks ifadelerini geri yüklemede yazımca farklı
+   ama anlamca aynı üretir (ilk üretim koşusu bu yüzden durdu). Scratch'in migration öncesi tablo
+   şemaları provanın kıyas tabanıdır.
 6. `rehearsed` — migration önce scratch'e uygulanır ve aynı post-verify orada koşar; önceki imaj
    scratch'e karşı migration'sız açılıp health/ready + release smoke geçer; prod geçmişinin
    değişmediği doğrulanır; scratch düşürülür.

@@ -8594,3 +8594,28 @@ lease tarafından hiç kullanılmıyordu.
   rol yetkileri, sahiplikler, ilişki türleri. Tasarım turları üretimdeki rol modelini göremez.
 - SSH ile uzak komut gönderirken `$$` dolar tırnağını tek tırnaklı dize içinde kullanma; uzak
   kabuk onu süreç numarasına çevirir. SQL'i heredoc ile stdin'den ver.
+
+## 2026-09-23 — A5 ilk üretim koşusu: `RESTORE_SCHEMA_MISMATCH`, migration'dan önce durdu
+
+- Onaylı `e12bdd0` + `20260922140000_contact_messages`, Release Candidate `35870279105`.
+  `SERVER_FETCH_PASS` → `planned` → `image-verified` → drenaj (17 deneme, koşu iptalsiz bitti) →
+  yeni worker birimi → `frozen` (~14:14 UTC) → yedek 1.154.128.913 bayt, sha256 `c148c46f…` →
+  restore → **`RESTORE_SCHEMA_MISMATCH`** (çıkış 97). Üretim şeması değişmedi, migration koşmadı.
+- Tuzak eski app + Caddy'yi açtı (app 14:21:26'dan beri 200), ama tek denemelik dış sağlık
+  kontrolü Caddy yeni başlarken düştü → "previous release could not be reopened" yanlış alarmı;
+  aşama `frozen`'da kaldı. Dış health/ready/ana sayfa 14:22'de 200. Kesinti ≈7,5 dk. Gökhan
+  onayıyla etiket/app/runtime `c9a1bc7`'de eşleştiği doğrulandı, hold kaldırıldı, worker
+  `active/running`, NRestarts 0. Kilit ve işaret düzeltmeli yeniden deneme için yerinde.
+- Kök neden (CI'da gerçek PostgreSQL'de yeniden üretildi, PR #171): canlı şema = arşivdeki şema
+  (üretimde salt okunur diff 0). Fark geri yüklenmiş kopyanın yeniden dökümünde: PostgreSQL
+  CHECK/indeks ifadelerini geri yüklemede yazımca farklı üretir (`((a AND b) AND c)` →
+  `(a AND b AND c)`, `ARRAY['x'::varchar]::text[]` → `ARRAY[('x'::varchar)::text]`). Aynı kusur
+  scratch provasında da (scratch tablo şemaları prod'la kıyaslanıyordu) durdururdu.
+
+**Tekrarlama:**
+
+- Döküm → geri yükleme → yeniden döküm metin olarak eşdeğer DEĞİLDİR. Yedeğin şema kanıtı
+  arşivdeki şema betiği ile canlı dökümün eşitliğidir; kopyada kıyas tabanı kopyanın kendisidir.
+- Yeni başlatılan bir proxy'nin ardından dış sağlık kontrolünü tek denemeyle yapma.
+- Dağıtım yolunun tamamını gerçek PostgreSQL'de uçtan uca (döküm + restore + karşılaştırma)
+  koşan bir test olmadan üretime çıkma; tasarım ve kod turları bu davranışı göremedi.

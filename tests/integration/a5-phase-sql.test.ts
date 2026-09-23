@@ -28,6 +28,13 @@ function libpqUrl(): string {
 }
 
 const databaseName = new URL(libpqUrl()).pathname.slice(1);
+const probeDatabase = "agent_sozluk_a5_probe_test";
+
+function libpqUrlFor(name: string): string {
+  const url = new URL(libpqUrl());
+  url.pathname = `/${name}`;
+  return url.toString();
+}
 let root = "";
 
 function phase(body: string): { status: number; stdout: string; stderr: string } {
@@ -41,7 +48,14 @@ candidate_image=agent-sozluk:${"a".repeat(40)}
 op_id=0123456789abcdef
 approved_migrations=20260922140000_contact_messages
 mkdir -p "$runtime_root" "$state_dir/migration"
-url_for() { printf '%s' "${libpqUrl()}"; }
+url_for() {
+  case "$1" in
+    # Betik üretim adını sabit kullanır (agent_sozluk); testte o da test veritabanı.
+    ${databaseName} | agent_sozluk) printf '%s' "${libpqUrl()}" ;;
+    ${probeDatabase}) printf '%s' "${libpqUrlFor(probeDatabase)}" ;;
+    *) return 1 ;;
+  esac
+}
 compose_stub() {
   [[ "$1 $2 $3" == "exec -T db" ]] || return 99
   shift 3
@@ -55,8 +69,12 @@ compose_stub() {
       *) args+=("$1"); shift ;;
     esac
   done
-  test "$database" = "${databaseName}"
-  "$command" "\${args[@]}" -d "$(url_for)"
+  # -d yalnız asıl çağrıda varsa eşlenir: pg_restore -f - veritabanına bağlanmaz.
+  if test -n "$database"; then
+    "$command" "\${args[@]}" -d "$(url_for "$database")"
+  else
+    "$command" "\${args[@]}"
+  fi
 }
 compose=(compose_stub)
 # Üretimde /usr/bin/node; CI makinesinde Node başka yerde.
@@ -65,8 +83,7 @@ source "${phaseScript}"
 db_psql() {
   local database="$1"
   shift
-  test "$database" = "${databaseName}"
-  psql -XAtq -v ON_ERROR_STOP=1 -d "$(url_for)" "$@"
+  psql -XAtq -v ON_ERROR_STOP=1 -d "$(url_for "$database")" "$@"
 }
 ${body}
 `;
@@ -85,6 +102,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   rmSync(root, { recursive: true, force: true });
+  await integrationDatabase.$executeRaw`DROP DATABASE IF EXISTS "agent_sozluk_a5_probe_test" WITH (FORCE)`;
   await integrationDatabase.$executeRaw`DROP TABLE IF EXISTS "a5_seq_probe"`;
   await integrationDatabase.$disconnect();
 });
@@ -164,6 +182,51 @@ describe("A5 faz SQL'i gerçek PostgreSQL'de", () => {
     expect(bad.status).toBe(97);
     expect(bad.stderr).toContain("code=FOREIGN_KEY_TARGET_UNSUPPORTED");
   });
+
+  it("yedek izole kopyaya geri yüklenince parmak izi ve şema özeti kaynakla aynı çıkar", async () => {
+    // Üretimde ilk A5 koşusu (23 Eylül) burada RESTORE_SCHEMA_MISMATCH ile durdu;
+    // canlı şema ile yedek arşivindeki şema birebir aynıydı. Aynı akış burada
+    // gerçek pg_dump/pg_restore ile yeniden üretilir; fark varsa mesajda görünür.
+    const dump = path.join(root, "probe.dump");
+    execFileSync("pg_dump", ["-Fc", "--no-owner", "--no-privileges", "-f", dump, "-d", libpqUrl()]);
+    await integrationDatabase.$executeRaw`DROP DATABASE IF EXISTS "agent_sozluk_a5_probe_test" WITH (FORCE)`;
+    await integrationDatabase.$executeRaw`CREATE DATABASE "agent_sozluk_a5_probe_test" TEMPLATE template0`;
+    execFileSync("pg_restore", [
+      "--exit-on-error",
+      "--no-owner",
+      "--no-privileges",
+      "-d",
+      libpqUrlFor(probeDatabase),
+      dump,
+    ]);
+
+    const fingerprints = phase(
+      `db_fingerprint ${databaseName} "${root}/src.fp"; db_fingerprint ${probeDatabase} "${root}/dst.fp"`,
+    );
+    expect(fingerprints.status, fingerprints.stderr).toBe(0);
+    expect(readFileSync(path.join(root, "dst.fp"), "utf8")).toBe(
+      readFileSync(path.join(root, "src.fp"), "utf8"),
+    );
+
+    // Şema kanıtı arşivin kendisidir: arşivdeki şema betiği canlı dökümle birebir.
+    // Geri yüklenmiş kopyanın yeniden dökümü karşılaştırılmaz; PostgreSQL CHECK ve
+    // indeks ifadelerini geri yüklemede yazımca farklı üretir (iç içe AND düzleşir,
+    // dizi dönüşümü yeniden yazılır) — ilk üretim koşusu bu yüzden durdu.
+    const hashes = phase(`schema_hash ${databaseName}; archive_schema_hash "${dump}"`);
+    expect(hashes.status, hashes.stderr).toBe(0);
+    const [live, archive] = hashes.stdout.trim().split("\n");
+    expect(archive).toMatch(/^[0-9a-f]{64}$/u);
+    expect(archive).toBe(live);
+
+    // Scratch'in kendi tablo şema özetleri üretilebiliyor (prova kıyas tabanı).
+    const scratch = phase(`table_schema_hashes ${probeDatabase} "${root}/probe-schemas"`);
+    expect(scratch.status, scratch.stderr).toBe(0);
+    expect(readFileSync(path.join(root, "probe-schemas"), "utf8").trim().split("\n").length).toBe(
+      readFileSync(path.join(root, "src.fp"), "utf8")
+        .split("\n")
+        .filter((line) => line.startsWith("table:")).length,
+    );
+  }, 120_000);
 
   it("tablo şema özetleri her tablo için üretilir; migration geçmişi okunur", () => {
     const result = phase(
