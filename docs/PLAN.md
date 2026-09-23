@@ -1230,7 +1230,14 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       iptal edilir ve yeni oturum verilir; mevcut oturum bu arada kapatıldıysa şifre değişmez
       (`AUTH_REQUIRED`). Yan bulgu da kapandı: kayan süre yenilemesi, işleyicinin yazdığı yeni
       oturum cookie'sini iptal edilmiş eski token'la eziyordu; yenileme artık işleyici oturum
-      cookie'si yazdığında hiç uygulanmıyor.
+      cookie'si yazdığında hiç uygulanmıyor, yazmadan önce oturumun etkin olduğunu doğruluyor ve
+      şifre rotası süreyi hiç uzatmıyor. **Kabul edilen artık risk (Astra 2. tur):** başka bir
+      rotanın süre uzatan yanıtı, `stillValid` kontrolünden sonra ve şifre değişimi yanıtından
+      SONRA tarayıcıya ulaşırsa yeni cookie'yi eski (iptal edilmiş) token'la ezer; kullanıcı
+      yeniden giriş yapar. Güvenlik etkisi yok (iptal edilmiş token sunucuda geçersiz). Süre
+      yalnız 30 günlük oturumun son 7 gününde, oturum başına ~23 günde bir tek istekte uzar;
+      tetik için tam o isteğin şifre değişimiyle eşzamanlı olması ve yanıtların ters sırada
+      ulaşması gerekir. Cookie teslim sırası sunucudan denetlenemez.
 - [~] **F07 — Entry JSON-LD tam metin düzeltmesi canlıda; `digitalSourceType` kararı açık.**
   `3416827` entry/başlık şemasına tam `text` ekledi; 500+ karakter ve güvenli
   serileştirme kontrolü geçti. 8 Eylül `f88d64d` dağıtımında tek entry ve
