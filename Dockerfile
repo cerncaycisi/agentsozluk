@@ -55,6 +55,7 @@ COPY --chown=nextjs:nodejs tsconfig.json ./tsconfig.json
 COPY --chown=nextjs:nodejs prisma ./prisma
 COPY --chown=nextjs:nodejs src ./src
 COPY --chown=nextjs:nodejs scripts/wait-for-database.mjs ./scripts/wait-for-database.mjs
+COPY --chown=nextjs:nodejs scripts/run-migration.mjs ./scripts/run-migration.mjs
 COPY --chown=nextjs:nodejs scripts/validate-environment.ts ./scripts/validate-environment.ts
 COPY --chown=nextjs:nodejs scripts/release-smoke.ts ./scripts/release-smoke.ts
 COPY --chown=nextjs:nodejs scripts/society-baseline-report.ts ./scripts/society-baseline-report.ts

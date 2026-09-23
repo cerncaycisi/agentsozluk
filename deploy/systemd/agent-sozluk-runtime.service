@@ -26,6 +26,11 @@ ExecStartPre=/usr/bin/test -x /usr/bin/bwrap
 ExecStartPre=/usr/bin/bwrap --version
 ExecStartPre=/usr/bin/test -r /var/lib/agent-sozluk-runtime/credentials.json
 ExecStartPre=/usr/bin/test -r /var/lib/agent-sozluk-runtime/enrollment-private.pem
+# A5: migration'lı dağıtım sürerken (dondurmadan, boot etiketi + app +
+# runtime/current aynı sürümü gösterene kadar) worker hiçbir yoldan açılmaz;
+# reboot ve elle `systemctl start` dahil. `+` root olarak sınar: kapı, dizini
+# okuyamayan bir kullanıcı için yanlışlıkla "dosya yok" demesin.
+ExecStartPre=+/usr/bin/test ! -e /opt/agent-sozluk/runtime/.migration-hold
 ExecStart=/usr/bin/node --require /opt/agent-sozluk/runtime/current/node_modules/tsx/dist/preflight.cjs --import file:///opt/agent-sozluk/runtime/current/node_modules/tsx/dist/loader.mjs scripts/agent-runtime-worker.ts
 
 Restart=on-failure

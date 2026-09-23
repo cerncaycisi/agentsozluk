@@ -11,6 +11,10 @@ trap report_unexpected_error ERR
 
 candidate_sha="${1:-}"
 cleanup_requested="${2:-no-cleanup}"
+# `no-migration` ya da `apply:<ad1,ad2>` (A5; Gökhan'ın exact onay listesi).
+migration_mode="${3:-}"
+# Sarmalayıcının kilit sahipliği için ürettiği operasyon kimliği.
+op_id="${4:-}"
 app_root=/opt/agent-sozluk/app
 runtime_root=/opt/agent-sozluk/runtime
 compose_file="$runtime_root/compose.production.yaml"
@@ -30,6 +34,18 @@ runtime_unit_target=/etc/systemd/system/agent-sozluk-runtime.service
   printf 'RELEASE_FAIL code=INVALID_CLEANUP_MODE\n' >&2
   exit 90
 }
+approved_migrations=''
+if test "$migration_mode" != no-migration; then
+  [[ "$migration_mode" =~ ^apply:([0-9]{14}_[a-z0-9_]+)(,[0-9]{14}_[a-z0-9_]+)*$ ]] || {
+    printf 'RELEASE_FAIL code=INVALID_MIGRATION_MODE\n' >&2
+    exit 90
+  }
+  approved_migrations="${migration_mode#apply:}"
+fi
+[[ "$op_id" =~ ^[0-9a-f]{16}$ ]] || {
+  printf 'RELEASE_FAIL code=INVALID_OPERATION_ID\n' >&2
+  exit 90
+}
 test "$(hostname)" = agent-sozluk-prod || exit 91
 test "$(git -C "$app_root" remote get-url origin)" = \
   https://github.com/cerncaycisi/agentsozluk.git || exit 92
@@ -37,6 +53,16 @@ test -f "$compose_file" || exit 93
 test -f "$env_file" || exit 94
 test "$(git -C "$app_root" rev-parse HEAD)" = "$candidate_sha"
 test -z "$(git -C "$app_root" status --porcelain=v1 --untracked-files=all)"
+# Kilit sarmalayıcının ilk uzak adımında alındı; bu koşu onun sahibi olmalı.
+test "$(cat "$runtime_root/.release-lock/owner" 2>/dev/null)" = "$candidate_sha:$op_id" || {
+  printf 'RELEASE_FAIL code=RELEASE_LOCK_NOT_OWNED\n' >&2
+  exit 97
+}
+# Tamamlanmamış bir migration operasyonu varken migration'sız dağıtım olmaz.
+if test -e "$runtime_root/.migration-operation" && test "$migration_mode" = no-migration; then
+  printf 'RELEASE_FAIL code=MIGRATION_OPERATION_INCOMPLETE\n' >&2
+  exit 97
+fi
 install -d -m 0700 "$state_dir"
 
 compose=(
@@ -201,30 +227,42 @@ assert_state_fingerprints() {
   test "$(lifecycle_fingerprint)" = "$(cat "$state_dir/lifecycle-hash")"
 }
 
+# Başlangıç kaydı (`baseline-*`) değişmez; her kontrol kendi dosyasına yazar.
 assert_no_migration() {
-  migration_snapshot >"$state_dir/applied-migrations"
-  candidate_migration_snapshot >"$state_dir/candidate-migrations"
-  cmp -s "$state_dir/applied-migrations" "$state_dir/candidate-migrations" || {
+  migration_snapshot >"$state_dir/check-applied-migrations"
+  candidate_migration_snapshot >"$state_dir/check-candidate-migrations"
+  cmp -s "$state_dir/check-applied-migrations" "$state_dir/check-candidate-migrations" || {
     printf 'RELEASE_FAIL code=MIGRATION_SET_CHANGED\n' >&2
     exit 95
   }
 }
 
-assert_health() {
-  local path internal_status public_status
+assert_internal_health() {
+  local path internal_status
   for path in health ready; do
     internal_status="$(
       "${compose[@]}" exec -T app node -e \
         "fetch('http://127.0.0.1:3000/api/$path').then(r=>process.stdout.write(String(r.status))).catch(()=>process.exit(1))" \
         </dev/null
     )"
+    test "$internal_status" = 200
+  done
+}
+
+assert_public_health() {
+  local path public_status
+  for path in health ready; do
     public_status="$(
       curl -fsS -o /dev/null -w '%{http_code}' \
         "https://agentsozluk.com/api/$path"
     )"
-    test "$internal_status" = 200
     test "$public_status" = 200
   done
+}
+
+assert_health() {
+  assert_internal_health
+  assert_public_health
 }
 
 assert_release() {
@@ -251,12 +289,8 @@ capture_initial_state() {
   docker inspect --format '{{.Image}}' "$app_container" >"$state_dir/previous-image-id"
   settings_fingerprint >"$state_dir/settings-hash"
   lifecycle_fingerprint >"$state_dir/lifecycle-hash"
-  migration_snapshot >"$state_dir/applied-migrations"
-  candidate_migration_snapshot >"$state_dir/candidate-migrations"
-  cmp -s "$state_dir/applied-migrations" "$state_dir/candidate-migrations" || {
-    printf 'RELEASE_FAIL code=MIGRATION_SET_CHANGED\n' >&2
-    exit 95
-  }
+  migration_snapshot >"$state_dir/baseline-applied-migrations"
+  candidate_migration_snapshot >"$state_dir/baseline-candidate-migrations"
   docker volume ls -q |
     LC_ALL=C sort |
     hash_stream >"$state_dir/volume-hash"
@@ -264,6 +298,19 @@ capture_initial_state() {
     xargs -r docker inspect --format '{{.Image}}' |
     LC_ALL=C sort -u |
     hash_stream >"$state_dir/container-image-hash"
+  # Bütün temel dosyalar yazıldıktan sonra, atomik olarak. Devam kararı bu
+  # işarete bakar; yarıda kesilen bir koşu eksik temel bırakamaz (17 Eylül dersi).
+  : >"$state_dir/baseline-complete.next"
+  mv -Tf "$state_dir/baseline-complete.next" "$state_dir/baseline-complete"
+}
+
+assert_migration_mode() {
+  if test "$migration_mode" = no-migration; then
+    cmp -s "$state_dir/baseline-applied-migrations" "$state_dir/baseline-candidate-migrations" || {
+      printf 'RELEASE_FAIL code=MIGRATION_SET_CHANGED\n' >&2
+      exit 95
+    }
+  fi
 }
 
 build_candidate_image() {
@@ -524,6 +571,28 @@ NODE
   fi
   test "$(cat "$runtime_root/current/.release-sha")" = "$candidate_sha"
 
+  # Trafik iç kontroller geçtikten sonra açılır (migration modunda Caddy
+  # dondurmadan beri kapalı; migration'sız modda zaten açık, `start` etkisiz).
+  "${compose[@]}" start caddy </dev/null
+  test -n "$("${compose[@]}" ps --status running -q caddy)"
+  if test "$migration_mode" != no-migration; then set_phase traffic-open; fi
+  assert_public_health
+
+  if test "$migration_mode" != no-migration; then
+    # Hold kalkmadan önce boot yolu da aynı sürümü göstermeli: etiket, çalışan
+    # app ve runtime/current üçü aday (Astra, 23 Eylül).
+    publish_boot_tag
+    test "$(docker image inspect --format '{{.Id}}' agent-sozluk:production)" = "$image_id"
+    test "$(docker inspect --format '{{.Image}}' "$("${compose[@]}" ps --status running -q app)")" = "$image_id"
+    test "$(docker image inspect \
+      --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' \
+      agent-sozluk:production)" = "$candidate_sha"
+    test "$(cat "$runtime_root/current/.release-sha")" = "$candidate_sha"
+    find "$runtime_root" -maxdepth 1 -name .migration-hold -type f -delete
+    test ! -e "$runtime_root/.migration-hold"
+    set_phase worker-allowed
+  fi
+
   install_runtime_unit
   sudo systemctl start agent-sozluk-runtime.service
   for _ in $(seq 1 30); do
@@ -698,16 +767,27 @@ cleanup_images() {
     "$container_hash_after"
 }
 
-if test ! -f "$state_dir/settings-hash"; then
+if test ! -f "$state_dir/baseline-complete"; then
   capture_initial_state
 else
   assert_state_fingerprints
 fi
+assert_migration_mode
 build_candidate_image
 build_runtime_release
+if test "$migration_mode" != no-migration; then
+  bash -n "$app_root/scripts/production-migration-phase.sh"
+  # shellcheck source=scripts/production-migration-phase.sh
+  source "$app_root/scripts/production-migration-phase.sh"
+  migration_phase
+fi
 cutover
 verify_release
 publish_boot_tag
+if test "$migration_mode" != no-migration; then
+  set_phase cutover-done
+  find "$runtime_root/.migration-operation" -xdev -depth -delete
+fi
 if test "$cleanup_requested" = cleanup; then cleanup_images; fi
-printf 'RELEASE_COMPLETE PASS sha=%s cleanup=%s\n' \
-  "$candidate_sha" "$cleanup_requested"
+printf 'RELEASE_COMPLETE PASS sha=%s cleanup=%s migrations=%s\n' \
+  "$candidate_sha" "$cleanup_requested" "$migration_mode"

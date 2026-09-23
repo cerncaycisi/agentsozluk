@@ -1,0 +1,792 @@
+# shellcheck shell=bash
+#
+# A5 — migration'lı üretim dağıtımının migration fazı (docs/PLAN.md A5,
+# docs/PRODUCTION_RUNBOOK.md "Migration'lı sürüm").
+#
+# Bu dosya tek başına çalışmaz: `production-release-remote.sh` onu yalnız
+# `apply:<liste>` modunda, aynı SHA'nın checkout'undan `source` eder ve şu
+# değişkenleri hazır verir: compose, state_dir, app_root, runtime_root,
+# candidate_sha, candidate_image, op_id, approved_migrations.
+#
+# Sıra (kısa kesintili; Gökhan kararı, 23 Eylül): plan → imaj doğrulaması →
+# ön kontrol → drenaj + dondurma (Caddy ve app durur) → yedek → izole restore
+# kanıtı → scratch'te prova (migration + önceki imajın açılışı) → üretimde
+# migration → post-verify → `writers-may-run`. Sonrası mevcut kesim akışıdır.
+#
+# Aşamalar `$migration_marker/phase` dosyasında atomik yazılır. Yeniden girişte
+# yalnız güvenli noktadan devam edilir; `migrate` asla kör tekrarlanmaz.
+
+migration_marker="$runtime_root/.migration-operation"
+migration_hold="$runtime_root/.migration-hold"
+migration_dir="$state_dir/migration"
+backups_dir=/opt/agent-sozluk/backups
+scratch_database=''
+scratch_owned=0
+production_timeouts_set=0
+
+migration_fail() {
+  printf 'RELEASE_FAIL code=%s\n' "$1" >&2
+  exit "${2:-97}"
+}
+
+phase_rank() {
+  case "$1" in
+    planned) echo 1 ;;
+    image-verified) echo 2 ;;
+    frozen) echo 3 ;;
+    backup-verified) echo 4 ;;
+    rehearsed) echo 5 ;;
+    migrating) echo 6 ;;
+    migrated) echo 7 ;;
+    post-verified) echo 8 ;;
+    writers-may-run) echo 9 ;;
+    traffic-open) echo 10 ;;
+    worker-allowed) echo 11 ;;
+    cutover-done) echo 12 ;;
+    *) echo 0 ;;
+  esac
+}
+
+current_phase() {
+  if test -f "$migration_marker/phase"; then cat "$migration_marker/phase"; else echo none; fi
+}
+
+phase_reached() {
+  (($(phase_rank "$(current_phase)") >= $(phase_rank "$1")))
+}
+
+# Aşama yalnız ileri gider; yeniden girişte daha önceki bir aşamayı yazmak
+# (ör. kesim tekrarında `traffic-open`) kaydı geriye almaz.
+set_phase() {
+  local next="$1"
+  if (($(phase_rank "$next") <= $(phase_rank "$(current_phase)"))); then return 0; fi
+  printf '%s\n' "$next" >"$migration_marker/phase.next"
+  mv -Tf "$migration_marker/phase.next" "$migration_marker/phase"
+  printf 'RELEASE_MIGRATION_PHASE %s\n' "$next"
+}
+
+migration_identity() {
+  printf '%s|%s\n' "$candidate_sha" "$(printf '%s\n' "$approved_migrations" | sha256sum | cut -d ' ' -f 1)"
+}
+
+# psql: her oturum `application_name=a5-<op-id>` taşır; elle kilit temizliği
+# ölçütü (runbook) bu adla kalan backend arar.
+db_psql() {
+  local database="$1"
+  shift
+  "${compose[@]}" exec -T -e "PGAPPNAME=a5-$op_id" db \
+    psql -XAtq -v ON_ERROR_STOP=1 -U agent_sozluk -d "$database" "$@"
+}
+
+migration_file() {
+  printf '%s/prisma/migrations/%s/migration.sql\n' "$app_root" "$1"
+}
+
+# --- 1. Plan -----------------------------------------------------------------
+
+plan_migrations() {
+  local applied candidate pending last_applied name failed
+  install -d -m 0700 "$migration_dir"
+  applied="$migration_dir/applied-before"
+  candidate="$migration_dir/candidate"
+  pending="$migration_dir/pending"
+  failed="$(db_psql agent_sozluk -c \
+    'SELECT count(*) FROM "_prisma_migrations" WHERE finished_at IS NULL AND rolled_back_at IS NULL;' \
+    </dev/null)"
+  test "$failed" = 0 || migration_fail MIGRATION_FAILED_RECORD_PRESENT
+  cp "$state_dir/baseline-applied-migrations" "$applied"
+  cp "$state_dir/baseline-candidate-migrations" "$candidate"
+  comm -23 "$applied" "$candidate" >"$migration_dir/applied-missing"
+  test ! -s "$migration_dir/applied-missing" || migration_fail APPLIED_MIGRATION_MISSING_IN_CANDIDATE
+  comm -13 "$applied" "$candidate" >"$pending"
+  test -s "$pending" || migration_fail NO_PENDING_MIGRATION
+  printf '%s\n' "$approved_migrations" | tr ',' '\n' | LC_ALL=C sort >"$migration_dir/approved"
+  cmp -s "$pending" "$migration_dir/approved" || migration_fail MIGRATION_SET_UNAPPROVED
+  last_applied="$(tail -n 1 "$applied")"
+  while IFS= read -r name; do
+    [[ "$name" > "$last_applied" ]] || migration_fail MIGRATION_OUT_OF_ORDER
+  done <"$pending"
+
+  # Uygulanmış her migration'ın Prisma checksum'ı checkout'taki dosyayla eşit:
+  # aynı adla içeriği değiştirilmiş eski migration ad kümesinde görünmez.
+  db_psql agent_sozluk -F ' ' -c \
+    'SELECT migration_name, checksum FROM "_prisma_migrations"
+     WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL ORDER BY migration_name;' \
+    </dev/null >"$migration_dir/applied-checksums"
+  while read -r name checksum; do
+    test "$(sha256sum <"$(migration_file "$name")" | cut -d ' ' -f 1)" = "$checksum" ||
+      migration_fail APPLIED_MIGRATION_CHECKSUM_MISMATCH
+  done <"$migration_dir/applied-checksums"
+
+  # Bekleyen migration'lar birlikte, uygulanacakları sırayla denetlenir; bir
+  # dosyada açılan tablo diğerinde "mevcut" sayılmasın.
+  while IFS= read -r name; do cat "$(migration_file "$name")"; printf '\n'; done \
+    <"$pending" >"$migration_dir/pending.sql"
+  /usr/bin/node "$app_root/scripts/check-additive-migration.mjs" "$migration_dir/pending.sql" \
+    >"$migration_dir/expectation.json" || migration_fail MIGRATION_NOT_ADDITIVE
+
+  install -d -m 0700 "$migration_marker"
+  migration_identity >"$migration_marker/identity"
+  printf '%s\n' "$state_dir" >"$migration_marker/state-dir"
+  set_phase planned
+}
+
+# --- 2. İmaj --------------------------------------------------------------------
+
+verify_migration_image() {
+  local image_id name inside
+  image_id="$(cat "$state_dir/candidate-image-id")"
+  test "$(docker image inspect --format '{{.Id}}' "$candidate_image")" = "$image_id"
+  while IFS= read -r name; do
+    inside="$(
+      docker run --rm --pull never --network none --entrypoint sha256sum "$image_id" \
+        "/app/prisma/migrations/$name/migration.sql" </dev/null | cut -d ' ' -f 1
+    )"
+    test "$inside" = "$(sha256sum <"$(migration_file "$name")" | cut -d ' ' -f 1)" ||
+      migration_fail IMAGE_MIGRATION_MISMATCH
+  done <"$migration_dir/pending"
+  docker run --rm --pull never --network none --entrypoint test "$image_id" \
+    -f /app/scripts/run-migration.mjs </dev/null || migration_fail IMAGE_MIGRATION_RUNNER_MISSING
+  set_phase image-verified
+}
+
+# --- 3. Ön kontrol ------------------------------------------------------------
+
+preflight_migration() {
+  local target db_bytes free_backup free_data backup_device data_device needed
+  test "$(db_psql agent_sozluk -c 'SHOW server_encoding;' </dev/null)" = UTF8 ||
+    migration_fail DATABASE_ENCODING_NOT_UTF8
+  test "$(db_psql agent_sozluk -c \
+    "SELECT (r.rolsuper OR r.rolcreatedb) AND d.datdba = r.oid
+     FROM pg_roles r, pg_database d
+     WHERE r.rolname = current_user AND d.datname = current_database();" </dev/null)" = t ||
+    migration_fail DATABASE_ROLE_INSUFFICIENT
+
+  # Önceden bir zaman aşımı ayarı varsa dur: `RESET` onu geri getiremez.
+  test "$(db_psql agent_sozluk -c \
+    "SELECT count(*) FROM pg_db_role_setting s
+     LEFT JOIN pg_database d ON d.oid = s.setdatabase
+     CROSS JOIN LATERAL unnest(s.setconfig) AS c(setting)
+     WHERE (s.setdatabase = 0 OR d.datname = current_database())
+       AND (s.setrole = 0 OR s.setrole = (SELECT oid FROM pg_roles WHERE rolname = current_user))
+       AND (c.setting LIKE 'lock_timeout=%' OR c.setting LIKE 'statement_timeout=%');" \
+    </dev/null)" = 0 || migration_fail DB_TIMEOUT_SETTING_PRESENT
+
+  # FK hedefi mevcut tablonun `id`'si tek sütunlu uuid birincil anahtar olmalı.
+  /usr/bin/node -e '
+    const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+    const targets = new Set();
+    for (const table of Object.values(value.tables))
+      for (const fk of table.foreignKeys) targets.add(fk.referencedTable);
+    process.stdout.write([...targets].sort().join("\n"));
+  ' "$migration_dir/expectation.json" >"$migration_dir/fk-targets"
+  while IFS= read -r target; do
+    test -n "$target" || continue
+    test "$(db_psql agent_sozluk -v "target=$target" <<'SQL'
+SELECT count(*) FROM pg_constraint con
+JOIN pg_class c ON c.oid = con.conrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = con.conkey[1]
+WHERE n.nspname = 'public' AND c.relname = :'target' AND con.contype = 'p'
+  AND array_length(con.conkey, 1) = 1 AND a.attname = 'id' AND a.atttypid = 'uuid'::regtype;
+SQL
+)" = 1 || migration_fail FOREIGN_KEY_TARGET_UNSUPPORTED
+  done <"$migration_dir/fk-targets"
+
+  # Disk: yedek dizini ile PostgreSQL hacmi aynı dosya sistemindeyse bütçe
+  # birleşik (dump + restore kopyası + WAL/geçici alan).
+  install -d -m 0700 "$backups_dir"
+  db_bytes="$(db_psql agent_sozluk -c 'SELECT pg_database_size(current_database());' </dev/null)"
+  [[ "$db_bytes" =~ ^[0-9]+$ ]]
+  free_backup=$(($(df -Pk "$backups_dir" | awk 'NR == 2 {print $4}') * 1024))
+  free_data=$(($("${compose[@]}" exec -T db sh -ec \
+    "df -Pk /var/lib/postgresql/data | awk 'NR == 2 { print \$4 }'" </dev/null) * 1024))
+  backup_device="$(df -P "$backups_dir" | awk 'NR == 2 {print $1}')"
+  data_device="$(docker volume inspect --format '{{.Mountpoint}}' \
+    "$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Name}}{{end}}{{end}}' \
+      "$("${compose[@]}" ps -q db)")" | xargs -r sudo df -P | awk 'NR == 2 {print $1}')"
+  if test "$backup_device" = "$data_device"; then
+    needed=$((3 * db_bytes + 1073741824))
+    ((free_backup >= needed)) || migration_fail DISK_HEADROOM_COMBINED
+  else
+    ((free_backup >= db_bytes + 1073741824)) || migration_fail DISK_HEADROOM_BACKUP
+    ((free_data >= 2 * db_bytes + 1073741824)) || migration_fail DISK_HEADROOM_DATA
+  fi
+  printf '%s\n' "$db_bytes" >"$migration_dir/db-bytes"
+}
+
+# --- 4. Drenaj ve dondurma ----------------------------------------------------
+
+freeze_writes() {
+  local others
+  if test "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" = active; then
+    wait_for_no_active_work
+    sudo systemctl stop agent-sozluk-runtime.service
+  fi
+  test "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" = inactive
+  # Yeni birim başlangıç öncesi kapıyı (`.migration-hold`) taşır; worker durmuşken
+  # kurulur ki bu dağıtımın kendisi de kapının arkasında kalsın.
+  install_runtime_unit
+  : >"$migration_hold"
+  cat /proc/sys/kernel/random/boot_id >"$migration_marker/boot-id"
+  "${compose[@]}" stop caddy </dev/null
+  "${compose[@]}" stop app </dev/null
+  assert_frozen
+  set_phase frozen
+}
+
+# Dondurma kanıtı; her yeniden girişte de tekrarlanır.
+assert_frozen() {
+  test -z "$("${compose[@]}" ps --status running -q caddy)" || migration_fail FREEZE_CADDY_RUNNING
+  test -z "$("${compose[@]}" ps --status running -q app)" || migration_fail FREEZE_APP_RUNNING
+  test "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" = inactive ||
+    migration_fail FREEZE_WORKER_RUNNING
+  test -e "$migration_hold" || migration_fail FREEZE_HOLD_MISSING
+  test "$(db_psql agent_sozluk -c \
+    "SELECT count(*) FROM pg_stat_activity
+     WHERE datname = current_database() AND backend_type = 'client backend'
+       AND pid <> pg_backend_pid();" </dev/null)" = 0 || migration_fail FREEZE_OTHER_SESSIONS
+  test "$(db_psql agent_sozluk -c 'SELECT count(*) FROM pg_prepared_xacts;' </dev/null)" = 0 ||
+    migration_fail FREEZE_PREPARED_TRANSACTIONS
+}
+
+# Prod şeması değişmeden önceki bir hatada eski sürümü geri açar: app → iç
+# sağlık → Caddy → dış sağlık. Worker kapalı ve `.migration-hold` yerinde kalır.
+reopen_previous_release() {
+  local app_container
+  "${compose[@]}" start app </dev/null || return 1
+  for _ in $(seq 1 60); do
+    app_container="$("${compose[@]}" ps --status running -q app)"
+    if test -n "$app_container" && test "$(
+      docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \
+        "$app_container"
+    )" = healthy; then
+      break
+    fi
+    sleep 2
+  done
+  assert_internal_health || return 1
+  "${compose[@]}" start caddy </dev/null || return 1
+  assert_public_health || return 1
+  printf 'RELEASE_MIGRATION_REOPENED previous release serving; worker stays stopped\n' >&2
+}
+
+# --- 5-6. Parmak izi ve yedek -------------------------------------------------
+
+fingerprint_settings="SET TimeZone = 'UTC'; SET DateStyle = 'ISO, YMD';
+SET IntervalStyle = 'postgres'; SET extra_float_digits = 1; SET bytea_output = 'hex';"
+
+# Tablo içerikleri + sequence durumu ve tanımları, katalogdan. Satır içeriği
+# hiçbir yere yazılmaz; yalnız sayılar ve toplamlar.
+db_fingerprint() {
+  local database="$1" output="$2"
+  db_psql "$database" >"$output" <<SQL
+$fingerprint_settings
+SELECT count(*) = 0 AS supported FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relkind IN ('f', 'm') \gset
+\if :supported
+\else
+\echo UNSUPPORTED_RELATION_KIND
+\quit
+\endif
+SELECT format(
+  'SELECT %L || count(*) || ''|'' || coalesce(sum((''x'' || substr(md5(t::text), 1, 15))::bit(60)::bigint), 0)
+     || ''|'' || coalesce(sum((''x'' || substr(md5(t::text), 16, 15))::bit(60)::bigint), 0)
+   FROM %I.%I AS t',
+  'table:' || c.relname || '|', n.nspname, c.relname)
+FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+ORDER BY c.relname \gexec
+SELECT format('SELECT %L || last_value || ''|'' || is_called FROM %I.%I',
+  'seq:' || c.relname || '|', n.nspname, c.relname)
+FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relkind = 'S'
+ORDER BY c.relname \gexec
+SELECT 'seqdef:' || sequencename || '|' || data_type || '|' || start_value || '|' || min_value
+  || '|' || max_value || '|' || increment_by || '|' || cycle
+FROM pg_sequences WHERE schemaname = 'public' ORDER BY sequencename;
+SELECT 'owned:' || s.relname || '|' || d.deptype || '|' || t.relname || '|' || a.attname
+FROM pg_depend d
+JOIN pg_class s ON s.oid = d.objid AND s.relkind = 'S'
+JOIN pg_class t ON t.oid = d.refobjid
+JOIN pg_attribute a ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
+WHERE d.classid = 'pg_class'::regclass AND d.refclassid = 'pg_class'::regclass
+  AND d.deptype IN ('a', 'i')
+ORDER BY 1;
+SELECT 'default:' || c.relname || '|' || a.attname || '|' || pg_get_expr(ad.adbin, ad.adrelid)
+FROM pg_attrdef ad
+JOIN pg_class c ON c.oid = ad.adrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_attribute a ON a.attrelid = ad.adrelid AND a.attnum = ad.adnum
+WHERE n.nspname = 'public'
+ORDER BY 1;
+SQL
+  ! grep -qx UNSUPPORTED_RELATION_KIND "$output" || migration_fail UNSUPPORTED_RELATION_KIND
+  test -s "$output"
+}
+
+# Sahipli, artan, çevrimsiz sequence'in sonraki değeri sahip sütunun
+# maksimumundan büyük olmalı. `nextval` çağrılmaz.
+sequence_safety() {
+  local database="$1" output
+  output="$(db_psql "$database" <<'SQL'
+SELECT format(
+  'SELECT %L || CASE WHEN %s AND (CASE WHEN s.is_called THEN s.last_value::numeric + %s ELSE s.last_value::numeric END)
+     > coalesce((SELECT max(%I)::numeric FROM %I.%I), %s::numeric - 1) THEN ''ok'' ELSE ''bad'' END
+   FROM %I.%I AS s',
+  'seqsafe:' || s.relname || '|', (q.increment_by > 0 AND NOT q.cycle), q.increment_by,
+  a.attname, tn.nspname, t.relname, q.min_value, sn.nspname, s.relname)
+FROM pg_depend d
+JOIN pg_class s ON s.oid = d.objid AND s.relkind = 'S'
+JOIN pg_namespace sn ON sn.oid = s.relnamespace
+JOIN pg_sequences q ON q.schemaname = sn.nspname AND q.sequencename = s.relname
+JOIN pg_class t ON t.oid = d.refobjid
+JOIN pg_namespace tn ON tn.oid = t.relnamespace
+JOIN pg_attribute a ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
+WHERE d.classid = 'pg_class'::regclass AND d.refclassid = 'pg_class'::regclass
+  AND d.deptype IN ('a', 'i') AND sn.nspname = 'public'
+ORDER BY s.relname \gexec
+SQL
+)"
+  ! grep -q '|bad$' <<<"$output" || migration_fail SEQUENCE_NEXT_VALUE_UNSAFE
+}
+
+schema_hash() {
+  local database="$1"
+  shift
+  "${compose[@]}" exec -T db pg_dump --schema-only --no-owner --no-privileges \
+    -U agent_sozluk -d "$database" "$@" </dev/null |
+    grep -v -E '^\\(un)?restrict ' | sha256sum | cut -d ' ' -f 1
+}
+
+# Önceden var olan her tablonun ayrı şema özeti (migration sonrası birebir kalmalı).
+table_schema_hashes() {
+  local database="$1" output="$2" table
+  : >"$output"
+  while IFS= read -r table; do
+    printf '%s|%s\n' "$table" "$(schema_hash "$database" -t "public.\"$table\"")" >>"$output"
+  done < <(db_psql "$database" -c \
+    "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') ORDER BY 1;" </dev/null)
+}
+
+prisma_history() {
+  db_psql "$1" -c \
+    "SELECT id || '|' || migration_name || '|' || checksum || '|' || coalesce(started_at::text, '-')
+       || '|' || coalesce(finished_at::text, '-') || '|' || coalesce(rolled_back_at::text, '-')
+       || '|' || applied_steps_count || '|' || md5(coalesce(logs, ''))
+     FROM \"_prisma_migrations\" ORDER BY migration_name, id;" </dev/null
+}
+
+backup_and_fingerprint() {
+  local stamp backup partial
+  db_fingerprint agent_sozluk "$migration_dir/pre-fingerprint"
+  sequence_safety agent_sozluk
+  schema_hash agent_sozluk >"$migration_dir/pre-schema"
+  table_schema_hashes agent_sozluk "$migration_dir/pre-table-schemas"
+  prisma_history agent_sozluk >"$migration_dir/pre-prisma-history"
+
+  stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+  backup="$backups_dir/agent-sozluk-$stamp-pre-${candidate_sha:0:12}.dump"
+  partial="$backup.partial"
+  test ! -e "$backup" && test ! -e "$partial"
+  (umask 077 && "${compose[@]}" exec -T db pg_dump -Fc --no-owner --no-privileges \
+    -U agent_sozluk -d agent_sozluk </dev/null >"$partial")
+  test -s "$partial"
+  "${compose[@]}" exec -T db pg_restore --list <"$partial" >/dev/null
+  mv -T "$partial" "$backup"
+  printf '%s\n' "$backup" >"$migration_dir/backup-path"
+  sha256sum "$backup" | cut -d ' ' -f 1 >"$migration_dir/backup-sha256"
+  stat -c %s "$backup" >"$migration_dir/backup-bytes"
+  printf 'RELEASE_MIGRATION_BACKUP bytes=%s sha256=%s\n' \
+    "$(cat "$migration_dir/backup-bytes")" "$(cat "$migration_dir/backup-sha256")"
+}
+
+# --- 7. İzole restore ---------------------------------------------------------
+
+assert_scratch_name() {
+  [[ "$scratch_database" =~ ^agent_sozluk_a5_[0-9]{8}_[0-9]{6}_[0-9a-f]{6}$ ]] || return 1
+  case "$scratch_database" in agent_sozluk | postgres | template0 | template1) return 1 ;; esac
+}
+
+drop_scratch() {
+  ((scratch_owned == 1)) || return 0
+  assert_scratch_name || return 1
+  db_psql agent_sozluk -v "scratch=$scratch_database" <<'SQL' >/dev/null || return 1
+SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :'scratch';
+SQL
+  "${compose[@]}" exec -T db dropdb -U agent_sozluk "$scratch_database" </dev/null || return 1
+  scratch_owned=0
+}
+
+restore_and_verify() {
+  local collate ctype
+  scratch_database="agent_sozluk_a5_$(date -u +%Y%m%d_%H%M%S)_${op_id:0:6}"
+  assert_scratch_name || migration_fail SCRATCH_NAME_INVALID
+  test "$(db_psql agent_sozluk -v "scratch=$scratch_database" <<'SQL'
+SELECT count(*) FROM pg_database WHERE datname = :'scratch';
+SQL
+)" = 0 || migration_fail SCRATCH_ALREADY_EXISTS
+  collate="$(db_psql agent_sozluk -c 'SELECT datcollate FROM pg_database WHERE datname = current_database();' </dev/null)"
+  ctype="$(db_psql agent_sozluk -c 'SELECT datctype FROM pg_database WHERE datname = current_database();' </dev/null)"
+  "${compose[@]}" exec -T db createdb -U agent_sozluk -T template0 -E UTF8 \
+    --lc-collate="$collate" --lc-ctype="$ctype" "$scratch_database" </dev/null
+  scratch_owned=1
+  printf '%s\n' "$scratch_database" >"$migration_dir/scratch-database"
+  "${compose[@]}" exec -T db pg_restore --exit-on-error --no-owner --no-privileges \
+    -U agent_sozluk -d "$scratch_database" <"$(cat "$migration_dir/backup-path")"
+
+  db_fingerprint "$scratch_database" "$migration_dir/restore-fingerprint"
+  cmp -s "$migration_dir/pre-fingerprint" "$migration_dir/restore-fingerprint" ||
+    migration_fail RESTORE_FINGERPRINT_MISMATCH
+  sequence_safety "$scratch_database"
+  test "$(schema_hash "$scratch_database")" = "$(cat "$migration_dir/pre-schema")" ||
+    migration_fail RESTORE_SCHEMA_MISMATCH
+  set_phase backup-verified
+}
+
+# --- 8-9. Migration yürütme ---------------------------------------------------
+
+set_database_timeouts() {
+  if test "$1" = agent_sozluk; then production_timeouts_set=1; fi
+  db_psql agent_sozluk -v "target=$1" <<'SQL' >/dev/null
+SELECT format('ALTER DATABASE %I SET lock_timeout = %L', :'target', '5s') \gexec
+SELECT format('ALTER DATABASE %I SET statement_timeout = %L', :'target', '300s') \gexec
+SQL
+}
+
+reset_database_timeouts() {
+  db_psql agent_sozluk -v "target=$1" <<'SQL' >/dev/null
+SELECT format('ALTER DATABASE %I RESET lock_timeout', :'target') \gexec
+SELECT format('ALTER DATABASE %I RESET statement_timeout', :'target') \gexec
+SQL
+  test "$(db_psql agent_sozluk -v "target=$1" <<'SQL'
+SELECT count(*) FROM pg_db_role_setting s
+JOIN pg_database d ON d.oid = s.setdatabase
+CROSS JOIN LATERAL unnest(s.setconfig) AS c(setting)
+WHERE d.datname = :'target' AND s.setrole = 0
+  AND (c.setting LIKE 'lock_timeout=%' OR c.setting LIKE 'statement_timeout=%');
+SQL
+)" = 0 || migration_fail DB_TIMEOUT_RESET_FAILED
+  if test "$1" = agent_sozluk; then production_timeouts_set=0; fi
+}
+
+# Hedef konteyner içinde seçilir ve gerçek bağlantıyla doğrulanır
+# (scripts/run-migration.mjs). Bittikten sonra konteyner ve backend'in gerçekten
+# gittiği kanıtlanmadan sonuç sınıflandırılmaz.
+run_migration() {
+  local target="$1" image_id status=0
+  image_id="$(cat "$state_dir/candidate-image-id")"
+  test "$(docker image inspect --format '{{.Id}}' "$candidate_image")" = "$image_id"
+  set_database_timeouts "$target"
+  env -u DATABASE_URL -u COMPOSE_PROJECT_NAME -u COMPOSE_FILE -u COMPOSE_PROFILES \
+    APP_IMAGE="$candidate_image" timeout 900 "${compose[@]}" run --rm --no-deps --pull never \
+    --name "a5-$op_id-migrate" -e "A5_TARGET_DATABASE=$target" -e "A5_APPLICATION_NAME=a5-$op_id" \
+    --entrypoint /bin/sh app -c \
+    './node_modules/.bin/tsx scripts/validate-environment.ts && exec node scripts/run-migration.mjs' \
+    </dev/null || status=$?
+  for _ in $(seq 1 30); do
+    test -z "$(docker ps -aq --filter "name=^a5-$op_id-migrate$")" && break
+    docker rm -f "a5-$op_id-migrate" >/dev/null 2>&1 || true
+    sleep 2
+  done
+  test -z "$(docker ps -aq --filter "name=^a5-$op_id-migrate$")" ||
+    migration_fail MIGRATION_CONTAINER_STILL_PRESENT
+  test "$(db_psql agent_sozluk -v "target=$target" <<'SQL'
+SELECT count(*) FROM pg_stat_activity
+WHERE datname = :'target' AND backend_type = 'client backend' AND pid <> pg_backend_pid();
+SQL
+)" = 0 || migration_fail MIGRATION_BACKEND_STILL_PRESENT
+  reset_database_timeouts "$target"
+  return "$status"
+}
+
+new_object_definitions() {
+  db_psql "$1" -v "tables=$(node -e '
+    const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+    process.stdout.write(Object.keys(value.tables).join(","));
+  ' "$migration_dir/expectation.json")" <<'SQL'
+SELECT 'column:' || c.relname || '|' || a.attname || '|' || format_type(a.atttypid, a.atttypmod)
+  || '|' || a.attnotnull || '|' || coalesce(pg_get_expr(ad.adbin, ad.adrelid), '-')
+FROM pg_attribute a
+JOIN pg_class c ON c.oid = a.attrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_attrdef ad ON ad.adrelid = a.attrelid AND ad.adnum = a.attnum
+WHERE n.nspname = 'public' AND c.relname = ANY (string_to_array(:'tables', ','))
+  AND a.attnum > 0 AND NOT a.attisdropped
+ORDER BY 1;
+SELECT 'constraint:' || c.relname || '|' || con.conname || '|' || pg_get_constraintdef(con.oid)
+FROM pg_constraint con JOIN pg_class c ON c.oid = con.conrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relname = ANY (string_to_array(:'tables', ','))
+ORDER BY 1;
+SELECT 'index:' || pg_get_indexdef(i.indexrelid)
+FROM pg_index i JOIN pg_class c ON c.oid = i.indrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relname = ANY (string_to_array(:'tables', ','))
+ORDER BY 1;
+SELECT 'enum:' || t.typname || '|' || string_agg(e.enumlabel, ',' ORDER BY e.enumsortorder)
+FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid
+JOIN pg_namespace n ON n.oid = t.typnamespace
+WHERE n.nspname = 'public'
+GROUP BY t.typname ORDER BY 1;
+SQL
+}
+
+# Denetçinin beklentisi (adlar, enum sırası, FK aksiyonları, indeks sütunları)
+# katalogla birebir; tam tanımlar ise scratch ile prod arasında birebir.
+catalog_expectation() {
+  db_psql "$1" -v "tables=$(node -e '
+    const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+    process.stdout.write(Object.keys(value.tables).join(","));
+  ' "$migration_dir/expectation.json")" -v "types=$(node -e '
+    const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+    process.stdout.write(Object.keys(value.types).join(","));
+  ' "$migration_dir/expectation.json")" <<'SQL'
+SELECT json_build_object(
+  'types', coalesce((SELECT json_object_agg(t.typname, (
+      SELECT json_agg(e.enumlabel ORDER BY e.enumsortorder) FROM pg_enum e WHERE e.enumtypid = t.oid))
+    FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE n.nspname = 'public' AND t.typname = ANY (string_to_array(:'types', ','))), '{}'::json),
+  'tables', coalesce((SELECT json_object_agg(c.relname, json_build_object(
+      'columns', (SELECT json_agg(a.attname ORDER BY a.attname) FROM pg_attribute a
+                  WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped),
+      'primaryKey', coalesce((SELECT json_agg(a.attname ORDER BY a.attname) FROM pg_constraint con
+                  JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = ANY (con.conkey)
+                  WHERE con.conrelid = c.oid AND con.contype = 'p'), '[]'::json),
+      'checkConstraints', (SELECT count(*) FROM pg_constraint con WHERE con.conrelid = c.oid AND con.contype = 'c'),
+      'uniqueConstraints', (SELECT count(*) FROM pg_constraint con WHERE con.conrelid = c.oid AND con.contype = 'u'),
+      'foreignKeys', coalesce((SELECT json_agg(json_build_object(
+          'column', a.attname, 'referencedTable', rc.relname, 'referencedColumn', ra.attname,
+          'onDelete', CASE con.confdeltype WHEN 'n' THEN 'SET NULL' WHEN 'c' THEN 'CASCADE' ELSE con.confdeltype::text END,
+          'onUpdate', CASE con.confupdtype WHEN 'c' THEN 'CASCADE' ELSE con.confupdtype::text END)
+          ORDER BY a.attname)
+        FROM pg_constraint con
+        JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = con.conkey[1]
+        JOIN pg_class rc ON rc.oid = con.confrelid
+        JOIN pg_attribute ra ON ra.attrelid = con.confrelid AND ra.attnum = con.confkey[1]
+        WHERE con.conrelid = c.oid AND con.contype = 'f'), '[]'::json)))
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = ANY (string_to_array(:'tables', ','))), '{}'::json),
+  'indexes', coalesce((SELECT json_object_agg(ic.relname, json_build_object(
+      'table', c.relname, 'unique', i.indisunique,
+      'columns', (SELECT json_agg(a.attname ORDER BY k.ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+                  JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum)))
+    FROM pg_index i JOIN pg_class ic ON ic.oid = i.indexrelid JOIN pg_class c ON c.oid = i.indrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = ANY (string_to_array(:'tables', ','))
+      AND NOT EXISTS (SELECT 1 FROM pg_constraint con WHERE con.conindid = i.indexrelid)), '{}'::json)
+);
+SQL
+}
+
+assert_catalog_expectation() {
+  catalog_expectation "$1" >"$migration_dir/catalog-$2.json"
+  /usr/bin/node -e '
+    const fs = require("node:fs");
+    const canonical = (value) =>
+      Array.isArray(value) ? value.map(canonical)
+      : value && typeof value === "object"
+        ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]))
+        : value;
+    const expected = JSON.stringify(canonical(JSON.parse(fs.readFileSync(process.argv[1], "utf8"))));
+    const actual = JSON.stringify(canonical(JSON.parse(fs.readFileSync(process.argv[2], "utf8"))));
+    process.exit(expected === actual ? 0 : 1);
+  ' "$migration_dir/expectation.json" "$migration_dir/catalog-$2.json" ||
+    migration_fail CATALOG_EXPECTATION_MISMATCH
+}
+
+# Migration sonrası: `_prisma_migrations` HARİÇ önceden var olan her tablo
+# içerik ve şema olarak birebir; migration geçmişinde eski satırlar birebir,
+# yeni satırlar tam olarak onaylı adlar; yeni tablolar boş.
+post_verify() {
+  local database="$1" label="$2" name
+  db_fingerprint "$database" "$migration_dir/post-$label-fingerprint"
+  grep '^table:' "$migration_dir/pre-fingerprint" |
+    grep -v '^table:_prisma_migrations|' >"$migration_dir/pre-tables"
+  awk -F '|' 'NR == FNR {want[$1] = 1; next} ($1 in want)' \
+    "$migration_dir/pre-tables" "$migration_dir/post-$label-fingerprint" \
+    >"$migration_dir/post-$label-tables"
+  cmp -s "$migration_dir/pre-tables" "$migration_dir/post-$label-tables" ||
+    migration_fail POST_TABLE_CONTENT_CHANGED
+  cmp -s <(grep -E '^(seq|seqdef|owned):' "$migration_dir/pre-fingerprint") \
+    <(grep -E '^(seq|seqdef|owned):' "$migration_dir/post-$label-fingerprint") ||
+    migration_fail POST_SEQUENCE_CHANGED
+  table_schema_hashes "$database" "$migration_dir/post-$label-table-schemas"
+  awk -F '|' 'NR == FNR {want[$1] = 1; next} ($1 in want)' \
+    "$migration_dir/pre-table-schemas" "$migration_dir/post-$label-table-schemas" \
+    >"$migration_dir/post-$label-preexisting-schemas"
+  cmp -s "$migration_dir/pre-table-schemas" "$migration_dir/post-$label-preexisting-schemas" ||
+    migration_fail POST_TABLE_SCHEMA_CHANGED
+
+  prisma_history "$database" >"$migration_dir/post-$label-prisma-history"
+  awk -F '|' 'NR == FNR {want[$1] = 1; next} ($1 in want)' \
+    "$migration_dir/pre-prisma-history" "$migration_dir/post-$label-prisma-history" \
+    >"$migration_dir/post-$label-prisma-old"
+  cmp -s "$migration_dir/pre-prisma-history" "$migration_dir/post-$label-prisma-old" ||
+    migration_fail POST_PRISMA_HISTORY_CHANGED
+  db_psql "$database" -F ' ' -c \
+    "SELECT migration_name, checksum FROM \"_prisma_migrations\"
+     WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL AND applied_steps_count > 0
+       AND migration_name > '$(tail -n 1 "$migration_dir/applied-before")'
+     ORDER BY migration_name;" </dev/null >"$migration_dir/post-$label-new-rows"
+  test "$(cut -d ' ' -f 1 "$migration_dir/post-$label-new-rows")" = "$(cat "$migration_dir/pending")" ||
+    migration_fail POST_NEW_HISTORY_MISMATCH
+  while read -r name checksum; do
+    test "$(sha256sum <"$(migration_file "$name")" | cut -d ' ' -f 1)" = "$checksum" ||
+      migration_fail POST_NEW_CHECKSUM_MISMATCH
+  done <"$migration_dir/post-$label-new-rows"
+  test "$(db_psql "$database" -c \
+    "SELECT count(*) FROM \"_prisma_migrations\" WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL;" \
+    </dev/null)" = 0 || migration_fail POST_FAILED_HISTORY_ROW
+
+  while IFS= read -r name; do
+    test "$(grep -c "^table:$name|0|0|0$" "$migration_dir/post-$label-fingerprint")" = 1 ||
+      migration_fail POST_NEW_TABLE_NOT_EMPTY
+  done < <(node -e '
+    const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+    process.stdout.write(Object.keys(value.tables).join("\n"));
+  ' "$migration_dir/expectation.json")
+  assert_catalog_expectation "$database" "$label"
+  new_object_definitions "$database" >"$migration_dir/definitions-$label"
+}
+
+# --- 8. Prova -----------------------------------------------------------------
+
+# Önceki imaj (dondurmadan önce çalışan app'in imajı) migration uygulanmış
+# scratch'e karşı migration'sız açılır; iç sağlık + release smoke geçmeli.
+rehearse_previous_image() {
+  local previous_id previous_tag container status
+  previous_id="$(cat "$state_dir/previous-image-id")"
+  previous_tag="agent-sozluk:a5-previous-$op_id"
+  docker tag "$previous_id" "$previous_tag"
+  container="a5-$op_id-previous"
+  env -u DATABASE_URL -u COMPOSE_PROJECT_NAME -u COMPOSE_FILE -u COMPOSE_PROFILES \
+    APP_IMAGE="$previous_tag" "${compose[@]}" run -d --no-deps --pull never \
+    --name "$container" -e "A5_TARGET_DATABASE=$scratch_database" \
+    --entrypoint /bin/sh app -c \
+    'export DATABASE_URL="$(node -e "const u = new URL(process.env.DATABASE_URL); u.pathname = \"/\" + process.env.A5_TARGET_DATABASE; process.stdout.write(u.href)")" && exec node server.js' \
+    </dev/null >/dev/null
+  status=1
+  for _ in $(seq 1 60); do
+    if docker exec "$container" node -e \
+      "Promise.all(['health','ready'].map(p=>fetch('http://127.0.0.1:3000/api/'+p).then(r=>{if(!r.ok)throw new Error(p)}))).catch(()=>process.exit(1))" \
+      </dev/null >/dev/null 2>&1; then
+      status=0
+      break
+    fi
+    sleep 2
+  done
+  if ((status == 0)); then
+    docker exec "$container" ./node_modules/.bin/tsx scripts/release-smoke.ts \
+      --base-url http://127.0.0.1:3000 </dev/null || status=1
+  fi
+  docker rm -f "$container" >/dev/null 2>&1 || true
+  docker image rm "$previous_tag" >/dev/null
+  ((status == 0)) || migration_fail PREVIOUS_IMAGE_REHEARSAL_FAILED
+}
+
+rehearse_on_scratch() {
+  prisma_history agent_sozluk >"$migration_dir/prod-history-before-rehearsal"
+  run_migration "$scratch_database" || migration_fail SCRATCH_MIGRATION_FAILED
+  post_verify "$scratch_database" scratch
+  rehearse_previous_image
+  # Prova üretime dokunmadı: prod geçmişi aynı, yeni tablolar prod'da yok.
+  cmp -s "$migration_dir/prod-history-before-rehearsal" <(prisma_history agent_sozluk) ||
+    migration_fail REHEARSAL_TOUCHED_PRODUCTION
+  drop_scratch || migration_fail SCRATCH_DROP_FAILED
+  set_phase rehearsed
+}
+
+# --- 9-10. Üretim ---------------------------------------------------------------
+
+migrate_production() {
+  local status=0
+  set_phase migrating
+  run_migration agent_sozluk || status=$?
+  if ((status != 0)); then
+    prisma_history agent_sozluk >"$migration_dir/ambiguous-prisma-history" || true
+    migration_fail MIGRATION_STATE_AMBIGUOUS 98
+  fi
+  set_phase migrated
+}
+
+verify_production_after_migration() {
+  post_verify agent_sozluk production
+  cmp -s "$migration_dir/definitions-scratch" "$migration_dir/definitions-production" ||
+    migration_fail DEFINITIONS_DIFFER_FROM_REHEARSAL
+  set_phase post-verified
+  # Bu noktadan sonra yeni app ve maintenance timer'ı yazabilir; dondurma
+  # karşılaştırmaları bir daha koşmaz (Astra, 23 Eylül).
+  set_phase writers-may-run
+}
+
+# --- Giriş ve hata tuzağı -----------------------------------------------------
+
+migration_exit_trap() {
+  local status=$?
+  trap - EXIT
+  set +e
+  if ((status != 0)); then
+    docker rm -f "a5-$op_id-previous" >/dev/null 2>&1 || true
+    if ((production_timeouts_set == 1)); then
+      reset_database_timeouts agent_sozluk ||
+        printf 'RELEASE_WARN database timeouts left on agent_sozluk; see runbook\n' >&2
+    fi
+    if test -n "$scratch_database" && ((scratch_owned == 1)); then
+      drop_scratch || printf 'RELEASE_WARN scratch database left: %s\n' "$scratch_database" >&2
+    fi
+    case "$(current_phase)" in
+      frozen | backup-verified | rehearsed)
+        # Prod şeması değişmedi: eski sürüm geri açılır.
+        reopen_previous_release ||
+          printf 'RELEASE_WARN previous release could not be reopened\n' >&2
+        ;;
+      migrating | migrated | post-verified)
+        printf 'RELEASE_MIGRATION_MANUAL phase=%s site stays down; see runbook\n' \
+          "$(current_phase)" >&2
+        ;;
+    esac
+  fi
+  exit "$status"
+}
+
+migration_phase() {
+  local recorded_boot
+  if test -d "$migration_marker"; then
+    test "$(cat "$migration_marker/identity")" = "$(migration_identity)" ||
+      migration_fail MIGRATION_OPERATION_INCOMPLETE
+    if test -f "$migration_marker/boot-id" &&
+       phase_reached frozen && ! phase_reached cutover-done; then
+      recorded_boot="$(cat "$migration_marker/boot-id")"
+      test "$recorded_boot" = "$(cat /proc/sys/kernel/random/boot_id)" ||
+        migration_fail MIGRATION_OPERATION_REBOOTED
+    fi
+  fi
+  trap migration_exit_trap EXIT
+  case "$(current_phase)" in
+    none) plan_migrations ;&
+    planned) verify_migration_image ;&
+    image-verified)
+      preflight_migration
+      freeze_writes
+      ;&
+    frozen | backup-verified)
+      # Scratch yalnız aynı koşuda sahiplenilebilir; yeniden girişte yedek ve
+      # restore baştan yapılır (dondurma sürüyorsa).
+      assert_frozen
+      backup_and_fingerprint
+      restore_and_verify
+      rehearse_on_scratch
+      ;&
+    rehearsed)
+      assert_frozen
+      migrate_production
+      ;&
+    migrated | post-verified) verify_production_after_migration ;;
+    migrating) migration_fail MIGRATION_STATE_AMBIGUOUS 98 ;;
+    writers-may-run | traffic-open | worker-allowed) : ;;
+    *) migration_fail MIGRATION_PHASE_UNKNOWN ;;
+  esac
+  trap - EXIT
+}

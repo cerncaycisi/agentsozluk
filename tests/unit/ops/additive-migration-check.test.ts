@@ -38,10 +38,27 @@ describe("yalnız ek yapan migration denetçisi (A5)", () => {
     );
     const result = check(sql);
     expect(result.status, result.stderr).toBe(0);
-    expect(JSON.parse(result.stdout)).toEqual({
-      types: ["ContactMessageKind", "ContactMessageStatus"],
-      tables: ["contact_messages"],
-      indexes: ["contact_messages_status_createdAt_idx"],
+    const beklenti = JSON.parse(result.stdout);
+    expect(beklenti.types).toEqual({
+      ContactMessageKind: ["CONTENT_REMOVAL", "OTHER"],
+      ContactMessageStatus: ["OPEN", "HANDLED"],
+    });
+    expect(beklenti.tables.contact_messages).toMatchObject({
+      primaryKey: ["id"],
+      checkConstraints: 3,
+      uniqueConstraints: 0,
+      foreignKeys: [
+        { column: "handledById", referencedTable: "users", onDelete: "SET NULL" },
+        { column: "submitterId", referencedTable: "users", onDelete: "SET NULL" },
+      ],
+    });
+    expect(beklenti.tables.contact_messages.columns).toHaveLength(13);
+    expect(beklenti.indexes).toEqual({
+      contact_messages_status_createdAt_idx: {
+        table: "contact_messages",
+        unique: false,
+        columns: ["status", "createdAt"],
+      },
     });
   });
 
@@ -164,6 +181,59 @@ describe("yalnız ek yapan migration denetçisi (A5)", () => {
         "ON_DELETE_NOT_ALLOWED",
       );
       expect(rejectionReason(fk("", "ON DELETE CASCADE"))).toBe("EXPECTED_ON");
+    });
+
+    it("NULL sınamasını tersine çeviren ya da ayrıştırılamayan CHECK'i reddeder (Astra, 23 Eylül)", () => {
+      const setNull = "ON DELETE SET NULL ON UPDATE CASCADE";
+      for (const guard of [
+        'CHECK (("userId" IS NULL) = FALSE)',
+        'CHECK (("userId" IS NULL) IS FALSE)',
+        'CHECK (("userId" IS NULL) IS NOT TRUE)',
+      ]) {
+        expect(check(fk("", setNull, `\n  ${guard},`)).status, guard).toBe(3);
+      }
+      expect(rejectionReason(table('  "n" INTEGER CHECK ("n" 1)'))).toBe(
+        "CHECK_PREDICATE_INCOMPLETE",
+      );
+      // Tek sayıda NOT altındaki IS NOT NULL, NULL'a çekilince TRUE'ya döner: güvenli.
+      const result = check(
+        fk("", setNull, '\n  CHECK (NOT ("userId" IS NOT NULL) OR "id" IS NOT NULL),'),
+      );
+      expect(result.status, result.stderr).toBe(0);
+    });
+
+    it("FK'yi ilk kullanım sözleşmesine daraltır: UUID sütun, id hedefi, sütun başına bir FK", () => {
+      expect(
+        rejectionReason(
+          table(
+            '  "ad" VARCHAR(3),\n  CONSTRAINT "f" FOREIGN KEY ("ad") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE',
+          ),
+        ),
+      ).toBe("FOREIGN_KEY_COLUMN_NOT_UUID");
+      expect(
+        rejectionReason(
+          table(
+            '  "ad" UUID,\n  CONSTRAINT "f" FOREIGN KEY ("ad") REFERENCES "users"("usernameNormalized") ON DELETE CASCADE ON UPDATE CASCADE',
+          ),
+        ),
+      ).toBe("FOREIGN_KEY_TARGET_NOT_ID");
+      expect(
+        rejectionReason(
+          table(
+            '  "u" UUID,\n  CONSTRAINT "f1" FOREIGN KEY ("u") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE,\n  CONSTRAINT "f2" FOREIGN KEY ("u") REFERENCES "topics"("id") ON DELETE CASCADE ON UPDATE CASCADE',
+          ),
+        ),
+      ).toBe("MULTIPLE_FOREIGN_KEYS_ON_COLUMN");
+      // Astra'nın FK zinciri karşı örneği: yeni tablodan yeni tabloya FK yok.
+      expect(
+        rejectionReason(
+          [
+            'CREATE TABLE "a5_links" ("id" UUID NOT NULL PRIMARY KEY);',
+            'CREATE TABLE "a5_children" ("id" UUID NOT NULL PRIMARY KEY, "linkId" UUID NOT NULL,',
+            '  CONSTRAINT "f" FOREIGN KEY ("linkId") REFERENCES "a5_links"("id") ON DELETE CASCADE ON UPDATE CASCADE);',
+          ].join("\n"),
+        ),
+      ).toBe("FOREIGN_KEY_TO_NEW_TABLE");
     });
 
     it("SET NULL sütunu NOT NULL ise reddeder", () => {
