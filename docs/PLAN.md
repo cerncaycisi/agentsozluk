@@ -1508,7 +1508,8 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       sınamasıyla, `SET NULL` için monotonluk) ve CI entegrasyon testiyle (gerçek PostgreSQL,
       `users` kimlik değişimi ve silme) kanıtlanır. Uygulama kullanıcı silmediği ve kimlik
       değiştirmediği için (audit tetikleyicisi kullanıcı silmeyi engeller) eski imaj bu yolu
-      zaten çalıştırmaz. Kalan kapatma adımları: Sol + Astra kod incelemesi, birleştirme ve
+      zaten çalıştırmaz. Kalan kapatma adımları: Astra kod incelemesi (Sol dört turda inceledi,
+      son kararı BİRLEŞTİR; 23 Eylül'den beri hakem yalnız Astra), birleştirme ve
       ilk kullanım (iletişim formu; ayrı exact onay).
 
       Yazılacak mod:
@@ -1578,7 +1579,7 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       ifade indeksi) için ayrı vaka, iletişim migration'ının kendisi olumlu vaka; bütün
       tabloları ve sequence'leri kapsayan izole restore + parmak izi kanıtı; önceki imajın
       scratch'te açılış provası + FK davranışının CI entegrasyon testi;
-      Sol + Astra incelemesi; ve ilk kullanımı olarak iletişim formunun canlıya alınması.
+      Astra incelemesi; ve ilk kullanımı olarak iletişim formunun canlıya alınması.
       A5 kapanmadan migration'lı dağıtım yapılmaz; runbook'un elle yürütülen Gate 7'si
       yalnız V1 tablolarını sınadığı için bunun yerine geçmez.
       _(Sıra 2 / bölüm 5.5)_
