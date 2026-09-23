@@ -1346,7 +1346,7 @@ girmek israf.
       (`/opt/agent-sozluk/backups`); **zamanlanmış ve sunucu dışı yedek kanıtı repoda
       yok.** Varsa belgeye yazılacak, yoksa reset öncesi kurulacak. _(reset önkoşulu)_
 - [x] **B5.1-2 — künye, iletişim, içerik kaldırma yolu; çerez onayı — HEPSİ CANLIDA (23
-  Eylül).** Üç ayrı sürüm, ayrı kanıt:
+      Eylül).** Üç ayrı sürüm, ayrı kanıt:
   - `37c6618` (PR #156): onay şeridi, künye; Hotjar bu sürümde yoktu (Claude'un önerisiyle
     kaldırılmıştı — Gökhan kararı değildi). Smoke run `35714469725` 5/5.
   - `c21a798` (PR #160 + #161): Hotjar GA4 ile aynı onayın arkasında geri geldi; onay kapsamı
