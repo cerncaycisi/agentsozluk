@@ -1,4 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -244,6 +245,37 @@ describe("A5 faz SQL'i gerçek PostgreSQL'de", () => {
       "agent_runs_finishedAt_idx\n",
     );
     try {
+      // Değişken uzunluklu sütunda benzersiz olmayan B-tree de uzun değerde yazmayı
+      // reddeder (Astra, 23 Eylül): metin sütunu ön kontrolde reddedilir.
+      writeFileSync(
+        path.join(root, "state/migration/expectation.json"),
+        JSON.stringify({
+          existingTableIndexes: {
+            contact_messages_message_idx: {
+              table: "contact_messages",
+              unique: false,
+              columns: ["message"],
+            },
+          },
+        }),
+      );
+      const text = phase(`assert_existing_index_targets`);
+      expect(text.status).toBe(97);
+      expect(text.stderr).toContain("code=EXISTING_INDEX_TARGET_UNSUPPORTED");
+      // Sıkıştırılamaz 4000 karakter: B-tree girdi sınırı (~2700 bayt) aşılır.
+      const longMessage = randomBytes(3000).toString("base64");
+      await integrationDatabase.$executeRaw`CREATE INDEX "a5_uzun_idx" ON "contact_messages"("message")`;
+      await expect(
+        integrationDatabase.$executeRaw`
+          INSERT INTO "contact_messages" ("id", "kind", "message", "ipKeyHash", "updatedAt")
+          VALUES (gen_random_uuid(), 'OTHER', ${longMessage}, ${"a".repeat(64)}, now())`,
+      ).rejects.toThrow(/index row/u);
+      await integrationDatabase.$executeRaw`DROP INDEX "a5_uzun_idx"`;
+      writeFileSync(
+        path.join(root, "state/migration/expectation.json"),
+        execFileSync(process.execPath, [checker, finishedAtMigration], { encoding: "utf8" }),
+      );
+
       const used = phase(`assert_existing_index_targets`);
       expect(used.status).toBe(97);
       expect(used.stderr).toContain("code=EXISTING_INDEX_TARGET_UNSUPPORTED");
@@ -283,6 +315,7 @@ describe("A5 faz SQL'i gerçek PostgreSQL'de", () => {
       );
     } finally {
       await integrationDatabase.$executeRaw`DROP INDEX IF EXISTS "a5_baska_idx"`;
+      await integrationDatabase.$executeRaw`DROP INDEX IF EXISTS "a5_uzun_idx"`;
       await integrationDatabase.$executeRaw`DROP INDEX IF EXISTS "agent_runs_finishedAt_idx"`;
       // Migration'ın kendi dosyası, gerçek psql ile.
       execFileSync("psql", [

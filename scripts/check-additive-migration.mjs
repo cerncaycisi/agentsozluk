@@ -677,13 +677,21 @@ function parseCreateIndex(cursor, state) {
   if (state.existingTableIndexes.has(name)) cursor.fail("DUPLICATE_INDEX");
   if (!table) {
     /*
-      Mevcut tabloya indeks: yalnız benzersiz olmayan, düz sütunlu biçim. Dondurma
-      altında yazan yoktur ve fazladan bir indeks eski imajın davranışını
-      değiştirmez; UNIQUE ise mevcut veride düşebilir ve eski imajın yazmalarını
-      reddedebilir. Tablonun ve sütunların varlığı uzak betikte katalogdan
-      doğrulanır; şema özetinde yalnız bu indeksin satırı hariç tutulur.
+      Mevcut tabloya indeks: yalnız benzersiz olmayan, düz sütunlu biçim. UNIQUE
+      mevcut veride düşebilir ve eski imajın yazmalarını reddedebilir. Değişken
+      uzunluklu sütunda benzersiz olmayan B-tree de uzun değerde yazmayı reddeder
+      (Astra, 23 Eylül); tablonun, sütunların varlığı ve SABİT uzunluklu türleri
+      uzak betikte katalogdan doğrulanır. Şema özetinde yalnız bu indeksin TOC
+      girdisi hariç tutulur.
     */
     if (unique) cursor.fail("UNIQUE_INDEX_ON_EXISTING_TABLE");
+    // Adlar uzak betikte satır/virgül/`|` ile taşınır ve şema özetinde TOC
+    // başlığıyla eşlenir; boşluklu ya da özel karakterli ad bu eşlemeyi bozar.
+    for (const identifier of [name, tableName, ...columns]) {
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/u.test(identifier)) {
+        cursor.fail("EXISTING_TABLE_INDEX_IDENTIFIER");
+      }
+    }
     state.existingTableIndexes.set(name, { table: tableName, unique, columns });
     return;
   }

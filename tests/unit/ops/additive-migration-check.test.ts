@@ -111,6 +111,16 @@ describe("yalnız ek yapan migration denetçisi (A5)", () => {
       "UNIQUE_INDEX_ON_EXISTING_TABLE",
     ],
     [
+      "mevcut tabloya boşluklu adlı indeks (TOC eşlemesini bozar)",
+      'CREATE INDEX "x old_idx" ON "users"("id");',
+      "EXISTING_TABLE_INDEX_IDENTIFIER",
+    ],
+    [
+      "mevcut tabloya özel karakterli sütunla indeks",
+      'CREATE INDEX "i" ON "users"("a,b");',
+      "EXISTING_TABLE_INDEX_IDENTIFIER",
+    ],
+    [
       "mevcut tabloya ifade indeksi",
       'CREATE INDEX "i" ON "users"(lower("email"));',
       "EXPECTED_QUOTED_IDENTIFIER",

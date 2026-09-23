@@ -241,7 +241,10 @@ preflight_migration() {
 }
 
 # Mevcut tabloya eklenecek her indeks için: tablo `public`'te düz tablo, sütunlar
-# var, indeks adı henüz kullanılmıyor.
+# var ve hepsi SABİT uzunluklu türde (`typlen > 0`: timestamptz, int, uuid, enum…),
+# indeks adı henüz kullanılmıyor. Değişken uzunluklu sütunda (metin, jsonb) B-tree
+# girdisi boyut sınırını aşıp eski imajın geçerli yazmasını reddedebilir; UNIQUE
+# olmaması bunu önlemez (Astra, 23 Eylül).
 assert_existing_index_targets() {
   local name table columns
   "$host_node" -e '
@@ -261,8 +264,9 @@ SELECT (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relname
         WHERE NOT EXISTS (
           SELECT 1 FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
           JOIN pg_namespace n ON n.oid = c.relnamespace
+          JOIN pg_type t ON t.oid = a.atttypid
           WHERE n.nspname = 'public' AND c.relname = :'table' AND a.attname = wanted.col
-            AND a.attnum > 0 AND NOT a.attisdropped)) = 0;
+            AND a.attnum > 0 AND NOT a.attisdropped AND t.typlen > 0)) = 0;
 SQL
 )" = t || migration_fail EXISTING_INDEX_TARGET_UNSUPPORTED
   done <"$migration_dir/existing-index-targets"

@@ -1351,10 +1351,13 @@ kesintilidir (Gökhan kararı, 23 Eylül 2026): site dondurma boyunca kapalıdı
 yedi turda uzlaştırıldı; kararlar ve bulgular `docs/ATTEMPT_LOG.md` ve `docs/PLAN.md` A5
 maddesinde. Mevcut tabloya dokunan, veri değiştiren ya da denetçiden geçmeyen her migration bu
 modla dağıtılamaz; onlar için Gate 7/8 geçerlidir. Tek istisna mevcut tabloya **benzersiz olmayan,
-düz sütunlu** `CREATE INDEX`'tir (23 Eylül 2026; ilk kullanım `agent_runs_finishedAt_idx`):
-dondurma altında yazan yoktur ve fazladan indeks eski imajın davranışını değiştirmez. `UNIQUE`
-indeks mevcut veride düşebileceği ve eski imajın yazmalarını reddedebileceği için reddedilir
-(`UNIQUE_INDEX_ON_EXISTING_TABLE`).
+düz, sabit uzunluklu sütunlu** `CREATE INDEX`'tir (23 Eylül 2026; ilk kullanım
+`agent_runs_finishedAt_idx`). `UNIQUE` indeks mevcut veride düşebileceği ve eski imajın
+yazmalarını reddedebileceği için reddedilir (`UNIQUE_INDEX_ON_EXISTING_TABLE`). Değişken
+uzunluklu sütunda (metin, jsonb) benzersiz olmayan B-tree de uzun değerde yazmayı reddeder; ön
+kontrol her sütunun türünün sabit uzunlukta (`pg_type.typlen > 0`: timestamptz, int, uuid, enum…)
+olduğunu katalogdan doğrular. İndeks, tablo ve sütun adları `[A-Za-z_][A-Za-z0-9_]*` olmalıdır
+(`EXISTING_TABLE_INDEX_IDENTIFIER`).
 
 **Onay.** SHA onayına ek olarak uygulanacak migration adları birebir onaylanır; ikisi ayrı
 değişkendir ve kalıcı yazılmaz:
@@ -1392,7 +1395,7 @@ her süreç kayıtlı bir scope'ta kalır.
    ne süper kullanıcı ne `CREATEDB` yetkili; scratch `-O agent_sozluk` ile açılır); veritabanı ya da
    rol düzeyinde `lock_timeout`/`statement_timeout` ayarı YOK (`DB_TIMEOUT_SETTING_PRESENT`); FK
    hedeflerinin `id`'si tek sütunlu uuid birincil anahtar; mevcut tabloya eklenecek her indeks için
-   tablo `public`'te düz tablo, sütunlar var ve indeks adı henüz kullanılmıyor
+   tablo `public`'te düz tablo, sütunlar var ve sabit uzunluklu, indeks adı henüz kullanılmıyor
    (`EXISTING_INDEX_TARGET_UNSUPPORTED`); disk (yedek ve PG hacmi aynı dosya
    sistemindeyse `3 × DB + 1 GiB`). Disk bütçesi dump'tan ve restore'dan hemen önce yeniden
    ölçülür (yeniden girişte önceki dump yerinde kalır).
