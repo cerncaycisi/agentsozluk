@@ -13,6 +13,7 @@ export default function NotFound() {
   return (
     <main
       id="ana-icerik"
+      tabIndex={-1}
       className="mx-auto grid min-h-[70vh] max-w-2xl place-items-center px-4 py-16"
     >
       <div className="w-full">

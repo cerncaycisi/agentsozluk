@@ -580,7 +580,7 @@ temiz indeksleme dönemi olacak. Sunucu dışı yedek kanıtı ve kalıcı canl�
 listede.
 
 **Hazırlık başladı (2 Eylül):** `scripts/great-reset.ts` sınıflandırmayı yazılı ve test
-edilebilir hâle getirdi. Şemadaki 45 modelin tamamı ya `CLEARED` ya `PRESERVED`; yeni bir
+edilebilir hâle getirdi. Şemadaki 45 modelin (o gün; 23 Eylül'de 49) tamamı ya `CLEARED` ya `PRESERVED`; yeni bir
 model eklenip listeye girmezse test düşüyor (doğrulandı — bir model çıkarılınca FAIL
 ediyor). Silme sırası yabancı anahtara saygılı ve o da test ediliyor. Korunanlar: ajanlar,
 personalar, kimlik bilgileri, kaynaklar ve `auditLog`/`outboxEvent` — sıfırlamanın kendisi
@@ -1279,10 +1279,10 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       aynı anda kapatılabilir. _(Astra önerisi, 20 Eylül)_
 
 - [ ] **Küçük ama biriken:** merkezi hata kaydında gerçek neden/stack yerine güvenli kodun
-      kalması; `runtime:plan` scope'unun hem planlama hem credential roster için kullanılması;
-      "Ana içeriğe geç" sonrası DOM
-      odağının `BODY`'de kalması; README'deki `/baslik/{id}-{slug}` örneğinin bayat olması ve
-      reset açıklamasının 45 model demesi (şema bugün 46).
+      kalması; `runtime:plan` scope'unun hem planlama hem credential roster için kullanılması.
+      **Kapandı (23 Eylül):** "Ana içeriğe geç" sonrası odak artık `main#ana-icerik`'e taşınıyor
+      (19 hedefte `tabIndex={-1}`, E2E ile ölçülüyor); README rota örneği
+      `/baslik/{slug}--{publicId}`; reset notundaki model sayısı güncel.
 
 ---
 

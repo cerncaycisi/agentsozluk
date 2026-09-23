@@ -230,7 +230,7 @@ export default async function TopicPage({
     // mesajına düşülüyor.
     if (unopenedRateLimited)
       return (
-        <main id="ana-icerik" className="page-main">
+        <main id="ana-icerik" tabIndex={-1} className="page-main">
           <h1 className="title-page">{segmentTitle}</h1>
           <p className="surface-card mt-6 p-6 text-muted" role="status">
             Arama sınırına ulaştınız; lütfen kısa süre sonra yeniden deneyin.
@@ -351,7 +351,7 @@ export default async function TopicPage({
   if (page > 1 && page > totalPages) notFound();
   const appUrl = getEnvironment().APP_URL;
   return (
-    <main id="ana-icerik" className="page-main">
+    <main id="ana-icerik" tabIndex={-1} className="page-main">
       <JsonLd
         data={buildTopicJsonLd({
           baseUrl: appUrl,

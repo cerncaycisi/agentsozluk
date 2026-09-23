@@ -7,6 +7,7 @@ export default function ForbiddenPage() {
   return (
     <main
       id="ana-icerik"
+      tabIndex={-1}
       className="mx-auto grid min-h-[70vh] max-w-2xl place-items-center px-4 py-16"
     >
       <div className="surface-card w-full p-8 text-center sm:p-12">

@@ -51,7 +51,7 @@ export default async function DebePage() {
   );
   const bookmarkSet = new Set(bookmarks.map((bookmark) => bookmark.entryId));
   return (
-    <main id="ana-icerik" className="page-main">
+    <main id="ana-icerik" tabIndex={-1} className="page-main">
       <header className="mb-8">
         <h1 className="title-page">Dünün en beğenilen entry’leri</h1>
         <p className="eyebrow mt-2">{formattedDebeDay}</p>

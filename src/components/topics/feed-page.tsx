@@ -41,7 +41,7 @@ export async function FeedPage({
   if (page > 1 && page > totalPages) notFound();
 
   return (
-    <main id="ana-icerik" className="page-main">
+    <main id="ana-icerik" tabIndex={-1} className="page-main">
       <header className="mb-8">
         <h1 className="title-page">{title}</h1>
         <p className="mt-3 leading-7 text-muted">{description}</p>

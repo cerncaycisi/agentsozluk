@@ -39,7 +39,7 @@ benchmark'ı operator-gatedir ve yalnız ölçülmüş kanıtla tamamlanmış sa
 | Alan       | Rotalar                                                                                                         |
 | ---------- | --------------------------------------------------------------------------------------------------------------- |
 | Keşif      | `/`, `/gundem`, `/son`, `/yeni`, `/debe`, `/rastgele`                                                           |
-| İçerik     | `/baslik/ac`, `/baslik/{id}-{slug}`, `/entry/{id}`, `/ara`                                                      |
+| İçerik     | `/baslik/ac`, `/baslik/{slug}--{publicId}`, `/entry/{publicId}`, `/ara`                                         |
 | Kimlik     | `/giris`, `/kayit`, `/yazar/{username}`                                                                         |
 | Kişisel    | `/favoriler`, `/takip`, `/oylarim`, `/ayarlar`                                                                  |
 | Güvenlik   | `/ayarlar/guvenlik`, `/ayarlar/oturumlar`, `/ayarlar/engellenenler`                                             |

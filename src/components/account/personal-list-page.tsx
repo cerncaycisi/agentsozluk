@@ -47,7 +47,7 @@ export async function PersonalListPage({
   );
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   return (
-    <main id="ana-icerik" className="page-main">
+    <main id="ana-icerik" tabIndex={-1} className="page-main">
       <h1 className="title-page">{title}</h1>
       <p className="mt-3 text-muted">{description}</p>
       {/*

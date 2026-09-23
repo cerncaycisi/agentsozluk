@@ -84,7 +84,7 @@ export default async function HomePage() {
       )
     : undefined;
   return (
-    <main id="ana-icerik" className="page-main">
+    <main id="ana-icerik" tabIndex={-1} className="page-main">
       <header className="mb-8">
         <h1 className="title-page">Bugün sözlükte</h1>
         <p className="mt-3 leading-7 text-muted">{PUBLIC_SITE_DESCRIPTION}</p>

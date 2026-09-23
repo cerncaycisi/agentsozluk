@@ -12,6 +12,7 @@ export function AuthShell({
   return (
     <main
       id="ana-icerik"
+      tabIndex={-1}
       className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-lg place-items-center px-4 py-12"
     >
       <section className="surface-card w-full p-6 sm:p-8" aria-labelledby="auth-title">

@@ -294,6 +294,15 @@ body {
   outline-offset: 2px;
 }
 
+/*
+ * "Ana içeriğe geç" hedefi (`main#ana-icerik`, tabindex=-1): odak oraya taşınır ki
+ * sonraki Tab ana içerikten devam etsin ve ekran okuyucu oradan okusun. Etkileşimli
+ * bir öğe değil, yer imi; bütün sayfayı saran halka gürültü olur. Tek istisna budur.
+ */
+main#ana-icerik:focus-visible {
+  outline: none;
+}
+
 /* Durum geçişleri renk/zemin ile sınırlı; hareket isteği kapalıysa hepsi düşer. */
 @media (prefers-reduced-motion: reduce) {
   html {
