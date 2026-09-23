@@ -7,6 +7,19 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-23 — A5 migration'lı dağıtım yolu main'de, üretimde kullanılmadı
+
+- **Birleşen:** PR #167, merge `9c275cf7118f8d43c1113090709c24a3fa2e0dc8`; incelenen head
+  `0b48f322a08c54c5eedf4ed41534cb31afe1bad5`, PR CI 7/7. Kural PR'ı #168 (`1a439bb`): Claude'un
+  hakemi Astra.
+- **Hakem:** tasarım Astra ile 8 turda ("TASARIM UYGUN"); kod Sol 4 tur (son BİRLEŞTİR), Astra
+  3 tur (son BİRLEŞTİR).
+- **CI kanıtı:** gerçek `prisma migrate deploy` ile `lock_timeout` ve `statement_timeout`; faz
+  betiğinin SQL'i gerçek PostgreSQL'de gerçek psql/pg_dump ile (ilk koşusu iki gerçek kusur
+  yakaladı); faz betiği sahte docker/psql/compose ile davranış testleri.
+- **Üretimde ölçülmedi:** scratch provası, önceki imajın açılışı, oturum scope kontrolünün
+  olumlu yolu, gerçek kesinti süresi. İlk kullanım iletişim formu olacak (ayrı exact onay).
+
 ## 2026-09-23 — iletişim formu main'de, üretimde değil
 
 - **Birleşen:** PR #164, merge `a0f2878116a95339cfda1e51e1523a8a17b3b7a6`; ikinci ebeveyn
