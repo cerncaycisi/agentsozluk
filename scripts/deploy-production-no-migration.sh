@@ -406,9 +406,25 @@ ssh_options=(
 # başka her çıkışta kalır (elle temizlik ölçütü runbook'ta).
 lock_dir=/opt/agent-sozluk/runtime/.release-lock
 lock_check="test \"\$(cat $lock_dir/owner 2>/dev/null)\" = '$lock_owner' || exit 97"
+# Her uzak adım, hiçbir şeyi değiştirmeden önce, kendi cgroup'unun logind'e
+# kayıtlı bir `deploy` oturum scope'u olduğunu kanıtlar. Böylece `sudo` ile root'a
+# geçen torunlar dahil her süreç o scope'ta kalır ve elle kilit temizliği onu
+# görebilir; kayıtsız (ör. `pam_systemd` sessizce başarısız) oturum hiç başlamaz
+# (Astra, 23 Eylül).
+# shellcheck disable=SC2016
+scope_check='scope_path=$(sed -n "s/^0:://p" /proc/self/cgroup)
+   case "$scope_path" in
+     "/user.slice/user-$(id -u).slice/session-"*.scope) ;;
+     *) printf "RELEASE_WRAPPER_FAIL code=SESSION_SCOPE_UNVERIFIED\n" >&2; exit 98 ;;
+   esac
+   session_id=${scope_path##*/session-}
+   session_id=${session_id%.scope}
+   test "$(loginctl show-session "$session_id" -p Scope --value)" = "session-$session_id.scope" || exit 98
+   test "$(loginctl show-session "$session_id" -p Name --value)" = deploy || exit 98'
 ssh "${ssh_options[@]}" deploy@"$expected_ip" \
   "set -euo pipefail
    test \"\$(hostname)\" = '$expected_host' || exit 91
+   $scope_check
    test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
    if ! mkdir -m 0700 '$lock_dir' 2>/dev/null; then
      printf 'RELEASE_WRAPPER_FAIL code=RELEASE_LOCKED owner=%s\\n' \"\$(cat '$lock_dir/owner' 2>/dev/null)\" >&2
@@ -420,6 +436,7 @@ ssh "${ssh_options[@]}" deploy@"$expected_ip" \
 ssh "${ssh_options[@]}" deploy@"$expected_ip" \
   "set -euo pipefail
    test \"\$(hostname)\" = '$expected_host' || exit 91
+   $scope_check
    $lock_check
    test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
    test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
@@ -431,6 +448,7 @@ if test "$build_on_host" = 0; then
   ssh "${ssh_options[@]}" deploy@"$expected_ip" \
     "set -euo pipefail
      test \"\$(hostname)\" = '$expected_host' || exit 91
+     $scope_check
      $lock_check
      test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
      test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
@@ -441,6 +459,7 @@ if test "$build_on_host" = 0; then
     ssh "${ssh_options[@]}" deploy@"$expected_ip" \
       "set -euo pipefail
        test \"\$(hostname)\" = '$expected_host' || exit 91
+       $scope_check
        $lock_check
        test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
        test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
@@ -453,6 +472,7 @@ fi
 ssh "${ssh_options[@]}" deploy@"$expected_ip" \
   "set -euo pipefail
    test \"\$(hostname)\" = '$expected_host' || exit 91
+   $scope_check
    $lock_check
    test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
    test -f /opt/agent-sozluk/runtime/compose.production.yaml || exit 93
@@ -477,6 +497,7 @@ ssh "${ssh_options[@]}" deploy@"$expected_ip" \
 if test "$build_on_host" = 0; then
   remote_artifact_command="set -euo pipefail
    test \"\$(hostname)\" = '$expected_host' || exit 91
+   $scope_check
    $lock_check
    test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
    test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
@@ -558,6 +579,7 @@ trap - EXIT INT TERM HUP
 ssh -tt "${ssh_options[@]}" deploy@"$expected_ip" \
   "set -euo pipefail
    test \"\$(hostname)\" = '$expected_host' || exit 91
+   $scope_check
    $lock_check
    test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
    test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
@@ -567,6 +589,7 @@ if test "$build_on_host" = 0 && test "$artifact_transport" = server-fetch; then
   ssh "${ssh_options[@]}" deploy@"$expected_ip" \
     "set -euo pipefail
      test \"\$(hostname)\" = '$expected_host' || exit 91
+     $scope_check
      $lock_check
      test \"\$(git -C /opt/agent-sozluk/app remote get-url origin)\" = '$expected_origin' || exit 92
      test \"\$(git -C /opt/agent-sozluk/app rev-parse HEAD)\" = '$candidate_sha'
@@ -589,5 +612,6 @@ fi
 ssh "${ssh_options[@]}" deploy@"$expected_ip" \
   "set -euo pipefail
    test \"\$(hostname)\" = '$expected_host' || exit 91
+   $scope_check
    $lock_check
    find '$lock_dir' -xdev -depth -delete"

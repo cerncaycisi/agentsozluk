@@ -20,8 +20,14 @@ function run(
   try {
     execFileSync("bash", [script, ...args], {
       encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      env: { PATH: process.env.PATH ?? "", ...env },
+      stdio: "pipe",
+      // Ortamdan sızabilecek onay değişkenleri boşaltılır; boş değer "yok" sayılır.
+      env: {
+        ...process.env,
+        AGENT_SOZLUK_PRODUCTION_APPROVED_SHA: "",
+        AGENT_SOZLUK_PRODUCTION_APPROVED_MIGRATIONS: "",
+        ...env,
+      },
     });
     return { status: 0, stderr: "" };
   } catch (error) {
@@ -218,6 +224,10 @@ describe("schema-neutral production release lane", () => {
       // Kilidi alan komut dışındaki her uzak komut sahipliği sınar.
       const uzakKomutlar = wrapper.split('"set -euo pipefail').length - 1;
       expect(wrapper.split("$lock_check").length - 1).toBe(uzakKomutlar - 1);
+      // Kilidi alan dahil her uzak komut önce kayıtlı logind oturum scope'unu kanıtlar.
+      expect(wrapper.split("   $scope_check").length - 1).toBe(uzakKomutlar);
+      expect(wrapper.indexOf("$scope_check", wrapper.indexOf("lock_dir=/opt"))).toBeLessThan(kilit);
+      expect(wrapper).toContain("code=SESSION_SCOPE_UNVERIFIED");
       // Bırakma yalnız dosyanın sonunda, uzak betik başarıyla döndükten sonra.
       const birak = wrapper.indexOf("find '$lock_dir' -xdev -depth -delete");
       expect(birak).toBeGreaterThan(wrapper.indexOf("exec '$remote_script'"));
