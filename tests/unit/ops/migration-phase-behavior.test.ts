@@ -80,6 +80,35 @@ migrate_production
     expect(readFileSync(path.join(result.root, "calls.log"), "utf8")).not.toContain("compose");
   });
 
+  it("üretimde ön koşul düşerse aşama migrating olmaz; tuzak siteyi geri açar (Sol, 2. tur)", () => {
+    const result = harness(`
+install -d "$migration_marker"
+printf 'rehearsed\\n' >"$migration_marker/phase"
+printf 'sha256:beklenen\\n' >"$state_dir/candidate-image-id"
+docker() { if test "$1 $2" = "image inspect"; then printf 'sha256:baska\\n'; fi; }
+db_psql() { printf '2\\n'; }
+reopen_previous_release() { printf 'reopen\\n' >>"$log"; }
+( trap migration_exit_trap EXIT; migrate_production ) || true
+printf 'faz=%s\\n' "$(cat "$migration_marker/phase")"
+`);
+    expect(result.stderr).toContain("code=CANDIDATE_IMAGE_TAG_MOVED");
+    expect(result.stderr).not.toContain("RELEASE_MIGRATION_MANUAL");
+    expect(result.stdout).toContain("faz=image-verified");
+    expect(readFileSync(path.join(result.root, "calls.log"), "utf8")).toContain("reopen");
+  });
+
+  it("cutover-done aşamasından yeniden giriş hata vermez", () => {
+    const result = harness(`
+install -d "$migration_marker"
+migration_identity >"$migration_marker/identity"
+printf 'cutover-done\\n' >"$migration_marker/phase"
+migration_phase
+echo GECTI
+`);
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("GECTI");
+  });
+
   it("zaman aşımları konamazsa migration başlamaz", () => {
     const result = harness(`
 printf 'sha256:beklenen\\n' >"$state_dir/candidate-image-id"

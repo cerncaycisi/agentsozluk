@@ -1439,7 +1439,8 @@ doğrulanamazsa kilit kalır:
 5. Kilit sahibi (`owner`) ve varsa `.migration-operation/identity` kayda geçirilir. İşaret
    KALDIRILMAZ: yarım kalmış bir migration operasyonu varken kilidi temizlemek, yalnız aynı SHA ve
    aynı listeyle yeniden koşuya (kaldığı aşamadan devam) izin verir; migration'sız mod ya da başka
-   bir SHA/liste `MIGRATION_OPERATION_INCOMPLETE` ile durur.
+   bir SHA/liste `MIGRATION_OPERATION_INCOMPLETE` ile durur. Aşaması `cutover-done` olan işaret
+   tamamlanmış bir operasyondur; sonraki koşu (migration'sız dahil) onu kendisi kaldırır.
 
 Her koşu yeni bir operasyon kimliği üretir; bu yüzden hata sonrası yeniden koşu, ancak yukarıdaki
 elle temizlikten sonra mümkündür. Prod şeması değişmeden önceki bir hatada betik eski sürümü açıp

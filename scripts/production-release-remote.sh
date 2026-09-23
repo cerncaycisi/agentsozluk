@@ -59,9 +59,16 @@ test "$(cat "$runtime_root/.release-lock/owner" 2>/dev/null)" = "$candidate_sha:
   exit 97
 }
 # Tamamlanmamış bir migration operasyonu varken migration'sız dağıtım olmaz.
+# `cutover-done` yazılıp işaret silinemeden kesilen bir koşu tamamlanmıştır:
+# işaret kaldırılır (Sol, 23 Eylül).
 if test -e "$runtime_root/.migration-operation" && test "$migration_mode" = no-migration; then
-  printf 'RELEASE_FAIL code=MIGRATION_OPERATION_INCOMPLETE\n' >&2
-  exit 97
+  if test "$(cat "$runtime_root/.migration-operation/phase" 2>/dev/null)" = cutover-done; then
+    find "$runtime_root/.migration-operation" -xdev -depth -delete
+    printf 'RELEASE_MIGRATION_MARKER_CLEARED phase=cutover-done\n'
+  else
+    printf 'RELEASE_FAIL code=MIGRATION_OPERATION_INCOMPLETE\n' >&2
+    exit 97
+  fi
 fi
 install -d -m 0700 "$state_dir"
 

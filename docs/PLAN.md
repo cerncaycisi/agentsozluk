@@ -1567,14 +1567,16 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
         `IS NULL` olarak geçiyor (NULL'a çekmek CHECK'i düşüremez; 23 Eylül düzeltmesi —
         önceki "CHECK dışında" ifadesi yanlıştı).
       - **Geri dönüş güvencesi** bu kurallardan **ve** kanıttan gelir: önceki imajın yeni
-        şemalı veritabanına karşı açıldığı, sağlık kontrolünden geçtiği **ve** yeni tablodan
-        referans alan bir üst satırı (ör. kullanıcı) silip güncelleyebildiği izole bir prova.
-        Yalnız açılış ve sağlık kontrolü FK etkisini yakalamaz.
+        şemalı üretim kopyasına (scratch) karşı açıldığı ve health/ready + release smoke'tan
+        geçtiği izole bir prova; üst satır (ör. kullanıcı) güncelleme/silme etkisi ise
+        denetçinin statik FK/CHECK kuralı ve gerçek PostgreSQL'de koşan CI entegrasyon
+        testiyle (23 Eylül uzlaştırması; yukarıdaki durum notu).
 
       **Kapatma ölçütü:** birim testleriyle korunan mod; izin listesinin her reddedilen ifade
       türü ve her reddedilen ifade içeriği (`setval`, `nextval`, alt sorgu, `SERIAL`,
       ifade indeksi) için ayrı vaka, iletişim migration'ının kendisi olumlu vaka; bütün
-      tabloları ve sequence'leri kapsayan izole restore + parmak izi kanıtı; FK'li eski imaj uyumluluk provası;
+      tabloları ve sequence'leri kapsayan izole restore + parmak izi kanıtı; önceki imajın
+      scratch'te açılış provası + FK davranışının CI entegrasyon testi;
       Sol + Astra incelemesi; ve ilk kullanımı olarak iletişim formunun canlıya alınması.
       A5 kapanmadan migration'lı dağıtım yapılmaz; runbook'un elle yürütülen Gate 7'si
       yalnız V1 tablolarını sınadığı için bunun yerine geçmez.

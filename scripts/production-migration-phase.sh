@@ -342,7 +342,9 @@ SELECT format(
   'SELECT %L || CASE WHEN %s AND (CASE WHEN s.is_called THEN s.last_value::numeric + %s ELSE s.last_value::numeric END)
      > coalesce((SELECT max(%I)::numeric FROM %I.%I), %s::numeric - 1) THEN ''ok'' ELSE ''bad'' END
    FROM %I.%I AS s',
-  'seqsafe:' || s.relname || '|', (q.increment_by > 0 AND NOT q.cycle), q.increment_by,
+  'seqsafe:' || s.relname || '|',
+  -- `%s`'e boolean verilirse `t`/`f` basılır ve sütun adı sanılır (Sol, 23 Eylül).
+  CASE WHEN q.increment_by > 0 AND NOT q.cycle THEN 'TRUE' ELSE 'FALSE' END, q.increment_by,
   a.attname, tn.nspname, t.relname, q.min_value, sn.nspname, s.relname)
 FROM pg_depend d
 JOIN pg_class s ON s.oid = d.objid AND s.relkind = 'S'
@@ -517,6 +519,10 @@ run_migration() {
   test "$(docker image inspect --format '{{.Id}}' "$candidate_image")" = "$image_id" ||
     migration_fail CANDIDATE_IMAGE_TAG_MOVED
   set_database_timeouts "$target"
+  # Aşama ancak bütün ön koşullar geçtikten sonra, konteyner başlamadan hemen
+  # önce `migrating` olur; öncesindeki bir hata prod şemasını değiştirmemiştir ve
+  # tuzak siteyi geri açar (Sol, 23 Eylül).
+  if test "$target" = agent_sozluk; then set_phase migrating; fi
   env -u DATABASE_URL -u COMPOSE_PROJECT_NAME -u COMPOSE_FILE -u COMPOSE_PROFILES \
     APP_IMAGE="$candidate_image" timeout 900 "${compose[@]}" run --rm --no-deps --pull never \
     --name "a5-$op_id-migrate" -e "A5_TARGET_DATABASE=$target" -e "A5_APPLICATION_NAME=a5-$op_id" \
@@ -740,7 +746,6 @@ rehearse_on_scratch() {
 # --- 9-10. Üretim ---------------------------------------------------------------
 
 migrate_production() {
-  set_phase migrating
   run_migration agent_sozluk
   if ((migration_status != 0)); then
     prisma_history agent_sozluk >"$migration_dir/ambiguous-prisma-history" || true
@@ -832,7 +837,7 @@ migration_phase() {
       ;&
     migrated | post-verified) verify_production_after_migration ;;
     migrating) migration_fail MIGRATION_STATE_AMBIGUOUS 98 ;;
-    writers-may-run | traffic-open | worker-allowed) : ;;
+    writers-may-run | traffic-open | worker-allowed | cutover-done) : ;;
     *) migration_fail MIGRATION_PHASE_UNKNOWN ;;
   esac
   trap - EXIT
