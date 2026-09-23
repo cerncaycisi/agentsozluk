@@ -18,7 +18,8 @@
 # 3. Docker yolu: worker'ın API'si Docker'ın 127.0.0.1'e yayımladığı porttan geçer.
 #    Gerçek bir konteyner aynı biçimde yayımlanır ve aday politika altından ona
 #    bağlanılır: `userland-proxy=false` (DNAT ile 172.x'e taşıma) olsaydı düşerdi.
-# 4. DNS: aday birimde bir ad çözülür (Ubuntu'da 127.0.0.53, izinli).
+# 4. DNS: aday birimden /etc/resolv.conf'taki çözücüye gerçek UDP sorgusu (Ubuntu'da
+#    127.0.0.53, izinli); NSS/`getent` değil, paket yolunun kendisi.
 # 5. IPv4-mapped metadata (::ffff:169.254.169.254) da reddedilir.
 #
 # Her hedef için tam bir sonuç zorunludur; eksik satır ya da çalıştırma hatası
@@ -87,13 +88,38 @@ for _ in $(seq 1 30); do
 done
 
 # Her hedef için: bağlandı / izin yok / başka hata (zaman aşımı, ret).
+cat >"$work/dns-query.py" <<'DNS'
+# /etc/resolv.conf'taki ilk çözücüye gerçek bir UDP DNS sorgusu (NSS değil): worker ve
+# bwrap alt süreçleri aynı dosyayı kullanır; paket yolu cgroup süzgecinden geçer.
+import random, socket, struct, sys
+name = sys.argv[1]
+server = next(line.split()[1] for line in open("/etc/resolv.conf")
+              if line.startswith("nameserver"))
+qid = random.randrange(65536)
+query = struct.pack(">HHHHHH", qid, 0x0100, 1, 0, 0, 0)
+query += b"".join(bytes([len(p)]) + p.encode() for p in name.split(".")) + b"\0"
+query += struct.pack(">HH", 1, 1)
+family = socket.AF_INET6 if ":" in server else socket.AF_INET
+sock = socket.socket(family, socket.SOCK_DGRAM)
+sock.settimeout(4)
+sock.sendto(query, (server, 53))
+reply = sock.recv(512)
+answers = struct.unpack(">H", reply[6:8])[0]
+sys.exit(0 if reply[:2] == query[:2] and answers > 0 else 1)
+DNS
+
 cat >"$work/connect.sh" <<'CONNECT'
 #!/usr/bin/env bash
+# Hata metni İngilizce sabit: "not permitted" sınıflandırması yerele bağlı kalmasın.
+export LC_ALL=C
 for target in "$@"; do
   if [[ "$target" == dns:* ]]; then
-    if timeout 5 getent ahosts "${target#dns:}" >/dev/null 2>&1; then result=resolved
-    else result=error; fi
-    printf '%s=%s\n' "$target" "$result"
+    if timeout 6 python3 "$(dirname "$0")/dns-query.py" "${target#dns:}" 2>/dev/null; then
+      result=resolved
+    else
+      result=error
+    fi
+    printf '%s\t%s\n' "$target" "$result"
     continue
   fi
   host="${target%:*}"
@@ -105,7 +131,7 @@ for target in "$@"; do
   elif ((rc == 124)); then result=timeout
   else result=error
   fi
-  printf '%s=%s\n' "$target" "$result"
+  printf '%s\t%s\n' "$target" "$result"
 done
 CONNECT
 chmod 0755 "$work/connect.sh"
@@ -131,14 +157,15 @@ probe() {
     "$work/connect.sh" "${targets[@]}" >"$work/$name.out" 2>&1 ||
     { printf 'B7_PROBE_FAIL %s çalıştırılamadı\n' "$name" >&2; cat "$work/$name.out" >&2; exit 1; }
   sed "s/^/$name /" "$work/$name.out"
-  # Her hedef için tam olarak bir sonuç.
+  # Her hedef için tam olarak bir sonuç; hedef alanı TAM eşitlikle karşılaştırılır
+  # (169.254.169.254:80, ::ffff:169.254.169.254:80'in alt dizgisidir).
   local target
   for target in "${targets[@]}"; do
-    test "$(grep -cF -- "$target=" "$work/$name.out")" = 1 ||
-      { printf 'B7_PROBE_FAIL %s sonucu eksik: %s\n' "$name" "$target" >&2; exit 1; }
+    test "$(awk -F '\t' -v t="$target" '$1 == t' "$work/$name.out" | wc -l)" = 1 ||
+      { printf 'B7_PROBE_FAIL %s sonucu eksik ya da çift: %s\n' "$name" "$target" >&2; exit 1; }
   done
 }
-result() { grep -F -- "$2=" "$work/$1.out" | head -1 | cut -d= -f2; }
+result() { awk -F '\t' -v t="$2" '$1 == t {print $2}' "$work/$1.out"; }
 
 # --- 1. Denetim: kısıtsız ----------------------------------------------------
 probe "b7-control-$$"
