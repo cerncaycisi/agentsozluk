@@ -53,11 +53,25 @@ describe("yalnız ek yapan migration denetçisi (A5)", () => {
       ],
     });
     expect(beklenti.tables.contact_messages.columns).toHaveLength(13);
+    expect(beklenti.existingTableIndexes).toEqual({});
     expect(beklenti.indexes).toEqual({
       contact_messages_status_createdAt_idx: {
         table: "contact_messages",
         unique: false,
         columns: ["status", "createdAt"],
+      },
+    });
+  });
+
+  it("mevcut tabloya benzersiz olmayan düz indeksi kabul eder ve ayrıca bildirir", () => {
+    const result = check('CREATE INDEX "agent_runs_finishedAt_idx" ON "agent_runs"("finishedAt");');
+    expect(result.status, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({
+      types: {},
+      tables: {},
+      indexes: {},
+      existingTableIndexes: {
+        agent_runs_finishedAt_idx: { table: "agent_runs", unique: false, columns: ["finishedAt"] },
       },
     });
   });
@@ -91,7 +105,26 @@ describe("yalnız ek yapan migration denetçisi (A5)", () => {
       'CREATE TRIGGER "t" BEFORE DELETE ON "users" FOR EACH ROW EXECUTE FUNCTION f();',
       "STATEMENT_NOT_ALLOWED",
     ],
-    ["mevcut tabloya indeks", 'CREATE INDEX "i" ON "users"("id");', "INDEX_ON_EXISTING_TABLE"],
+    [
+      "mevcut tabloya UNIQUE indeks",
+      'CREATE UNIQUE INDEX "i" ON "users"("id");',
+      "UNIQUE_INDEX_ON_EXISTING_TABLE",
+    ],
+    [
+      "mevcut tabloya ifade indeksi",
+      'CREATE INDEX "i" ON "users"(lower("email"));',
+      "EXPECTED_QUOTED_IDENTIFIER",
+    ],
+    [
+      "mevcut tabloya kısmi indeks",
+      'CREATE INDEX "i" ON "users"("id") WHERE "id" IS NOT NULL;',
+      "TRAILING_TOKENS",
+    ],
+    [
+      "tür + mevcut tabloya indeks, yeni tablo yok",
+      'CREATE TYPE "t" AS ENUM (\'a\');\nCREATE INDEX "i" ON "users"("id");',
+      "TYPES_WITHOUT_TABLE",
+    ],
     ["CREATE TABLE AS", 'CREATE TABLE "k" AS SELECT 1;', "UNEXPECTED_TOKEN"],
     ["TEMP tablo", 'CREATE TEMP TABLE "k" ("id" UUID);', "STATEMENT_NOT_ALLOWED"],
     ["IF NOT EXISTS", 'CREATE TABLE IF NOT EXISTS "k" ("id" UUID);', "EXPECTED_QUOTED_IDENTIFIER"],

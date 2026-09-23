@@ -672,12 +672,24 @@ function parseCreateIndex(cursor, state) {
   cursor.word("ON");
   const tableName = cursor.quoted();
   const table = state.tables.get(tableName);
-  if (!table) cursor.fail("INDEX_ON_EXISTING_TABLE");
   const columns = cursor.quotedList();
+  cursor.done();
+  if (state.existingTableIndexes.has(name)) cursor.fail("DUPLICATE_INDEX");
+  if (!table) {
+    /*
+      Mevcut tabloya indeks: yalnız benzersiz olmayan, düz sütunlu biçim. Dondurma
+      altında yazan yoktur ve fazladan bir indeks eski imajın davranışını
+      değiştirmez; UNIQUE ise mevcut veride düşebilir ve eski imajın yazmalarını
+      reddedebilir. Tablonun ve sütunların varlığı uzak betikte katalogdan
+      doğrulanır; şema özetinde yalnız bu indeksin satırı hariç tutulur.
+    */
+    if (unique) cursor.fail("UNIQUE_INDEX_ON_EXISTING_TABLE");
+    state.existingTableIndexes.set(name, { table: tableName, unique, columns });
+    return;
+  }
   for (const column of columns) {
     if (!table.columns.has(column)) cursor.fail("INDEX_COLUMN_UNKNOWN");
   }
-  cursor.done();
   state.indexes.set(name, { table: tableName, unique, columns });
 }
 
@@ -696,7 +708,12 @@ function parseAlterTableForeignKey(cursor, state) {
 }
 
 export function checkAdditiveMigration(sql) {
-  const state = { types: new Map(), tables: new Map(), indexes: new Map() };
+  const state = {
+    types: new Map(),
+    tables: new Map(),
+    indexes: new Map(),
+    existingTableIndexes: new Map(),
+  };
   const statements = splitStatements(tokenize(sql));
   if (statements.length === 0) throw new Rejection("EMPTY_MIGRATION", 1);
   for (const statement of statements) {
@@ -719,7 +736,13 @@ export function checkAdditiveMigration(sql) {
     bir migration dağıtım yolunun "yeni tablo" doğrulamalarına uymaz; dondurmadan
     SONRA değil, burada reddedilir (Sol, 23 Eylül).
   */
-  if (state.tables.size === 0) throw new Rejection("MIGRATION_WITHOUT_TABLE", 0);
+  if (state.tables.size === 0 && state.existingTableIndexes.size === 0) {
+    throw new Rejection("MIGRATION_WITHOUT_TABLE", 0);
+  }
+  // Yalnız enum: kullanılmayan tür ekler, yeni tablo ya da indeks yoksa anlamsız.
+  if (state.tables.size === 0 && state.types.size > 0) {
+    throw new Rejection("TYPES_WITHOUT_TABLE", 0);
+  }
   for (const [, table] of state.tables) {
     for (const check of table.checks) {
       for (const column of checkColumns(check)) {
@@ -776,6 +799,7 @@ function expectation(state) {
       ]),
     ),
     indexes: sortedObject(state.indexes),
+    existingTableIndexes: sortedObject(state.existingTableIndexes),
   };
 }
 

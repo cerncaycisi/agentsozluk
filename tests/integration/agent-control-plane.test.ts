@@ -1817,6 +1817,7 @@ describe("agent control plane with PostgreSQL", () => {
       "Relation Name"?: string;
       Filter?: string;
       "Index Cond"?: string;
+      "Recheck Cond"?: string;
       Plans?: PlanNode[];
     };
     const plan = (rows[0]?.["QUERY PLAN"] as Array<{ Plan: PlanNode }>)[0]!.Plan;
@@ -1830,7 +1831,9 @@ describe("agent control plane with PostgreSQL", () => {
     // measured_intervals + legacy_intervals: en az iki tarama.
     expect(agentRunsTaramalari.length).toBeGreaterThanOrEqual(2);
     for (const tarama of agentRunsTaramalari) {
-      const kosul = `${tarama.Filter ?? ""} ${tarama["Index Cond"] ?? ""}`;
+      // `agent_runs_finishedAt_idx` ile plan Bitmap Heap Scan'e dönebilir; koşul
+      // o zaman `Recheck Cond`'da görünür (23 Eylül).
+      const kosul = `${tarama.Filter ?? ""} ${tarama["Index Cond"] ?? ""} ${tarama["Recheck Cond"] ?? ""}`;
       expect(kosul, "agent_runs taramasında finishedAt ön filtresi yok").toContain("finishedAt");
     }
   });

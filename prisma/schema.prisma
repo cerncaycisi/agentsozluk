@@ -1053,6 +1053,7 @@ model AgentRun {
   @@index([runStatus, queuePriority, availableAt, createdAt])
   @@index([agentProfileId, runStatus, createdAt])
   @@index([leaseExpiresAt])
+  @@index([finishedAt])
   @@map("agent_runs")
 }
 
