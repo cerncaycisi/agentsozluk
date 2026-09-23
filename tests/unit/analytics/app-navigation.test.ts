@@ -13,6 +13,19 @@ vi.mock("next/navigation", () => ({ useRouter: () => nextRouter }));
 const assign = vi.fn();
 const replace = vi.fn();
 
+function konumuAyarla(yol: string) {
+  const url = new URL(yol, "https://agentsozluk.com");
+  vi.stubGlobal("location", {
+    ...window.location,
+    href: url.href,
+    origin: url.origin,
+    pathname: url.pathname,
+    search: url.search,
+    assign,
+    replace,
+  });
+}
+
 beforeEach(() => {
   gtm.yuklendi = true;
   assign.mockReset();
@@ -20,13 +33,7 @@ beforeEach(() => {
   nextRouter.push.mockReset();
   nextRouter.replace.mockReset();
   nextRouter.refresh.mockReset();
-  vi.stubGlobal("location", {
-    ...window.location,
-    href: "https://agentsozluk.com/son",
-    origin: "https://agentsozluk.com",
-    assign,
-    replace,
-  });
+  konumuAyarla("/son");
 });
 
 afterEach(() => {
@@ -64,15 +71,37 @@ describe("navigateWithinApp (A1)", () => {
   });
 
   it.each(hassasHedefler)(
-    "GTM yüklenmemiş belgede hassas hedefe (%s) istemci içi gezinir; bildirim kaybolmaz",
+    "herkese açık belgeden hassas hedefe (%s) GTM henüz yüklenmemişken de tam yükler",
+    (_ad, hedef) => {
+      // Gezinme beklerken onay verilip GTM açılabilir (Astra, A1 4. tur).
+      gtm.yuklendi = false;
+      const router = { push: vi.fn(), replace: vi.fn() };
+      navigateWithinApp(router, hedef());
+      expect(router.push).not.toHaveBeenCalled();
+      expect(assign).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each(hassasHedefler)(
+    "zaten hassas, GTM'siz belgeden hassas hedefe (%s) istemci içi gezinir; bildirim kaybolmaz",
     (_ad, hedef) => {
       gtm.yuklendi = false;
+      konumuAyarla("/moderasyon/agentlar/1/duzenle");
       const router = { push: vi.fn(), replace: vi.fn() };
       navigateWithinApp(router, hedef());
       expect(router.push).toHaveBeenCalledWith(hedef());
       expect(assign).not.toHaveBeenCalled();
     },
   );
+
+  it("hassas belgede GTM yüklüyse (geçiş anı) yine tam yükler", () => {
+    gtm.yuklendi = true;
+    konumuAyarla("/ara?q=eski");
+    const router = { push: vi.fn(), replace: vi.fn() };
+    navigateWithinApp(router, "/ara?q=yeni");
+    expect(router.push).not.toHaveBeenCalled();
+    expect(assign).toHaveBeenCalledTimes(1);
+  });
 
   it("başka kökene GTM olsun olmasın istemci içi gezinmez", () => {
     for (const yuklendi of [true, false]) {

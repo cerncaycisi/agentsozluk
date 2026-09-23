@@ -7,11 +7,14 @@ import { isSensitiveAnalyticsLocation } from "@/lib/analytics/product-analytics"
   Uygulamadaki BÜTÜN programatik gezinmeler buradan geçer (A1, Astra 23 Eylül).
   GTM yüklü bir belgede istemci içi gezinme (`router.push`) History API'yi
   kullanır ve GTM'in geçmiş dinleyicisi yeni adresi istemci yeniden yüklemeden
-  ÖNCE görür. Bu yüzden hedef çalışma anında sınıflandırılır: GTM yüklü belgede
-  hassas hedef (arama, giriş, moderasyon…) tam sayfa yüklemesiyle açılır; sunucu
-  orada ölçümü kapatır. GTM yüklenmemiş belgede (ör. zaten hassas olan moderasyon
-  sayfası) dinleyen etiket yoktur; gezinme istemci içinde kalır, bildirimler
-  kaybolmaz. Hedefin nasıl kurulduğu (değişken, URLSearchParams) önemli değildir.
+  ÖNCE görür. Bu yüzden hedef çalışma anında sınıflandırılır: hassas hedef (arama,
+  giriş, moderasyon…) tam sayfa yüklemesiyle açılır; sunucu orada ölçümü kapatır.
+  Tek istisna: belge ZATEN hassas bir konumda ve GTM hiç yüklenmemiş. Hassas
+  konumda ölçüm bileşeni GTM'i yüklemez, onay şeridi de çıkmaz; gezinme beklerken
+  GTM'in açılabileceği bir yol yoktur (Astra, A1 4. tur: herkese açık sayfada
+  bekleyen gezinme sırasında onay verilirse GTM gezinmeden önce açılabiliyordu).
+  Böylece moderasyon içi gezinme SPA'da kalır, başarı bildirimleri kaybolmaz.
+  Hedefin nasıl kurulduğu (değişken, URLSearchParams) önemli değildir.
 
   Next'in ham router'ı yalnız bu dosyada alınır: `next/navigation`'dan
   `useRouter` importu ve History API ESLint ile yasaktır (`eslint.config.mjs`).
@@ -33,9 +36,12 @@ export function navigateWithinApp(
   mode: "push" | "replace" = "push",
 ): void {
   const target = new URL(href, window.location.href);
+  const buradaGtmAcilamaz =
+    !gtmYuklendiMi() &&
+    isSensitiveAnalyticsLocation(window.location.pathname, window.location.search);
   if (
     target.origin !== window.location.origin ||
-    (gtmYuklendiMi() && isSensitiveAnalyticsLocation(target.pathname, target.search))
+    (isSensitiveAnalyticsLocation(target.pathname, target.search) && !buradaGtmAcilamaz)
   ) {
     if (mode === "replace") window.location.replace(target.href);
     else window.location.assign(target.href);

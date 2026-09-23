@@ -49,22 +49,30 @@ const eslintConfig = [
             { name: "next/router", message: "useAppRouter() kullanın." },
             { name: "next/compat/router", message: "useAppRouter() kullanın." },
           ],
+          patterns: [
+            {
+              // İç yollar ve uzantılı adlar: `next/dist/client/components/navigation` vb.
+              group: ["next/dist/**", "next/*.js", "next/compat/**"],
+              message: "Next iç modülleri yasak; useAppRouter() kullanın.",
+            },
+          ],
         },
       ],
       "no-restricted-syntax": [
         "error",
         {
+          // Tanımlayıcı, string ve şablon düzeyinde: üye erişimi, yapı bozma
+          // (`{ "pushState": p }`), `Reflect.get(history, "pushState")` ve
+          // değişkende tutulan ad da yakalanır (Astra, A1 4. tur). Çalışma anında
+          // parçalardan kurulan ad (ör. birleştirme) kasıtlı gizlemedir; bu sınır
+          // kaza eseri regresyona karşıdır.
           selector:
-            "MemberExpression[property.name=/^(pushState|replaceState)$/], MemberExpression[property.value=/^(pushState|replaceState)$/]",
+            "Identifier[name=/^(pushState|replaceState)$/], Literal[value=/^(pushState|replaceState)$/], TemplateElement[value.raw=/(pushState|replaceState)/]",
           message: "History API yasak; useAppRouter() kullanın.",
         },
         {
-          selector: "Property[key.name=/^(pushState|replaceState)$/]",
-          message: "History API yasak; useAppRouter() kullanın.",
-        },
-        {
-          selector: "ImportExpression[source.value=/^next\\/(navigation|router|compat\\/router)$/]",
-          message: "Dinamik import ile router alınamaz; useAppRouter() kullanın.",
+          selector: "ImportExpression[source.value=/^next\\//]",
+          message: "Next modülü dinamik import ile alınamaz; useAppRouter() kullanın.",
         },
       ],
     },

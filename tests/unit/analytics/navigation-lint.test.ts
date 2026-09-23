@@ -71,6 +71,52 @@ export function git(hedef: string) {
 `,
     ],
     [
+      "string anahtarla yapı bozma",
+      `"use client";
+export function git(hedef: string) {
+  const { "pushState": push } = window.history;
+  push.call(window.history, {}, "", hedef);
+}
+`,
+    ],
+    [
+      "hesaplanmış anahtarla yapı bozma",
+      `"use client";
+export function git(hedef: string) {
+  const { ["replaceState"]: replace } = window.history;
+  replace.call(window.history, {}, "", hedef);
+}
+`,
+    ],
+    [
+      "Reflect.get",
+      `"use client";
+export function git(hedef: string) {
+  Reflect.get(window.history, "pushState").call(window.history, {}, "", hedef);
+}
+`,
+    ],
+    [
+      "değişkende tutulan yöntem adı",
+      `"use client";
+export function git(hedef: string) {
+  const method = "pushState";
+  window.history[method]({}, "", hedef);
+}
+`,
+    ],
+    [
+      "şablon dizgide yöntem adı",
+      '"use client";\nexport function git(hedef: string) {\n  const m = `pushState`;\n  (window.history as unknown as Record<string, (a: object, b: string, c: string) => void>)[m]({}, "", hedef);\n}\n',
+    ],
+    [
+      "Next iç modülü",
+      `"use client";
+import { useRouter } from "next/dist/client/components/navigation";
+export const r = useRouter;
+`,
+    ],
+    [
       "dinamik import",
       `"use client";
 export async function git(hedef: string) {

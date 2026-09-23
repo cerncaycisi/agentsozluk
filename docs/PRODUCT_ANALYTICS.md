@@ -37,15 +37,18 @@ gezinmede aynı etiketi günceller.
 
 **Programatik gezinme (A1, Astra üçüncü tur):** bütün programatik gezinme
 `useAppRouter()` / `navigateWithinApp` (`src/lib/navigation/app-navigation.ts`) üzerinden
-geçer. Hedef çalışma anında sınıflandırılır: başka köken her zaman, hassas hedef ise GTM bu
-belgede yüklendiyse (`src/lib/analytics/gtm-state.ts`) tam sayfa yüklemesiyle açılır. GTM
-yüklenmemiş belgede dinleyen etiket olmadığından gezinme istemci içinde kalır; moderasyon gibi
-zaten hassas sayfalardaki başarı bildirimleri böylece kaybolmaz. Ham Next router'ı
-(`next/navigation` `useRouter`, `next/router`, dinamik import) ve History API `src` altında ESLint
-AST kurallarıyla yasaktır (`eslint.config.mjs`); tek istisna yardımcı dosyanın kendisidir.
-`tests/unit/analytics/navigation-lint.test.ts` takma adlı import, isim alanı importu, yeniden
-dışa aktarma, yapı bozmayla alınan `history`/`replaceState` ve köşeli parantezli erişim karşı
-örneklerini gerçek yapılandırmayla reddettirir. Kalan sınır: sunucu tarafı `redirect()` istemci
+geçer. Hedef çalışma anında sınıflandırılır: başka köken ve hassas hedef tam sayfa yüklemesiyle
+açılır. Tek istisna, belge zaten hassas bir konumdayken ve GTM hiç yüklenmemişken
+(`src/lib/analytics/gtm-state.ts`) hassas hedefe gidilmesidir: hassas konumda GTM yüklenmez ve
+onay şeridi çıkmaz, bekleyen gezinme sırasında GTM açılamaz. Moderasyon içi başarı bildirimleri
+böylece kaybolmaz. Ham Next router'ı (`next/navigation` `useRouter`, `next/router`, Next iç
+modülleri, `next/*` dinamik import) ve History API (tanımlayıcı, string ya da şablon olarak
+`pushState`/`replaceState`) `src` altında ESLint AST kurallarıyla yasaktır (`eslint.config.mjs`);
+tek istisna yardımcı dosyanın kendisidir. `tests/unit/analytics/navigation-lint.test.ts` Astra'nın
+karşı örneklerini (takma ad, isim alanı, yeniden dışa aktarma, iç modül, yapı bozma, string ve
+hesaplanmış anahtar, `Reflect.get`, değişkende ad, dinamik import) gerçek yapılandırmayla
+reddettirir. Sınır kaza eseri regresyona karşıdır: çalışma anında parçalardan kurulan yöntem adı
+kasıtlı gizlemedir ve kapsam dışıdır. Kalan sınır: sunucu tarafı `redirect()` istemci
 içi gezinmede Next'in router'ını kullanır ve bu kapıdan geçmez. Bugünkü hedefler
 (`/giris?next=/`, `/yasak`, herkese açık kanonik adresler) sorgu içermez; varılan hassas yüzeyde
 GTM yüklü belge bileşen tarafından yeniden yüklenir.
