@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans } from "next/font/google";
 import { cookies, headers } from "next/headers";
+import { Suspense } from "react";
 import { Toaster } from "sonner";
 import { APP_NAME, PUBLIC_SITE_DESCRIPTION } from "@/config/app";
 import { ProductAnalytics } from "@/components/analytics/product-analytics";
@@ -127,7 +128,12 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <JsonLd data={buildWebsiteJsonLd(process.env.APP_URL ?? "http://localhost:3000")} />
       </head>
       <body>
-        <ProductAnalytics enabled={analyticsEnabled} nonce={nonce} />
+        {/* `useSearchParams` kullanan istemci bileşeni: Suspense sınırı olmadan statik
+            sayfaların derlemesi düşer; yedek hiçbir şey çizmez (bileşen de ilk
+            çizimde hiçbir şey çizmez). */}
+        <Suspense fallback={null}>
+          <ProductAnalytics enabled={analyticsEnabled} nonce={nonce} />
+        </Suspense>
         <a
           href="#ana-icerik"
           className="fixed left-4 top-4 z-[100] -translate-y-24 rounded-lg bg-primary px-4 py-2 font-semibold text-on-primary focus:translate-y-0"

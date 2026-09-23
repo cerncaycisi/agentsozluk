@@ -21,13 +21,23 @@ function matchesPathPrefix(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
-/** Ölçümün asla çalışmayacağı yüzeyler. İstemci bileşeni de kullanır (saf fonksiyon). */
-export function isSensitiveAnalyticsPath(pathname: string): boolean {
-  return SENSITIVE_SURFACE_PREFIXES.some((prefix) => matchesPathPrefix(pathname, prefix));
+/**
+ * Ölçümün asla çalışmayacağı yüzeyler; sunucu (middleware) ve istemci aynı kuralı
+ * kullanır (saf fonksiyon). Yalnız yol yetmez: başlık içi arama `/baslik/…?q=…`
+ * herkese açık bir yolda koşar ve "arama sayfalarında ölçüm yapılmaz" sözü onu da
+ * kapsar (A1, Astra 22 Eylül). Bu yüzden `q` parametresi taşıyan her adres —
+ * boş değerli olsa bile — hassastır.
+ */
+export function isSensitiveAnalyticsLocation(pathname: string, search = ""): boolean {
+  if (SENSITIVE_SURFACE_PREFIXES.some((prefix) => matchesPathPrefix(pathname, prefix))) {
+    return true;
+  }
+  return new URLSearchParams(search).has("q");
 }
 
 export function classifyProductAnalyticsSurface(input: {
   pathname: string;
+  search: string;
   doNotTrack: boolean;
   globalPrivacyControl: boolean;
   syntheticSmoke: boolean;
@@ -36,7 +46,7 @@ export function classifyProductAnalyticsSurface(input: {
     return "PRIVACY_OPTOUT";
   }
 
-  if (isSensitiveAnalyticsPath(input.pathname)) {
+  if (isSensitiveAnalyticsLocation(input.pathname, input.search)) {
     return "SENSITIVE";
   }
   return "PUBLIC";

@@ -1,9 +1,9 @@
 "use client";
 
 import Script from "next/script";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { isSensitiveAnalyticsPath } from "@/lib/analytics/product-analytics";
+import { isSensitiveAnalyticsLocation } from "@/lib/analytics/product-analytics";
 
 const GOOGLE_TAG_MANAGER_ID = "GTM-MTGXSB7H";
 const HOTJAR_SITE_ID = 6753780;
@@ -101,7 +101,7 @@ function hassasBaglanti(olay: MouseEvent): string | null {
     return null;
   }
   if (url.origin !== window.location.origin) return null;
-  return isSensitiveAnalyticsPath(url.pathname) ? url.href : null;
+  return isSensitiveAnalyticsLocation(url.pathname, url.search) ? url.href : null;
 }
 
 /**
@@ -122,7 +122,7 @@ function hassasGecisleriKoru(): () => void {
   // dinleyiciler (GTM'in geçmiş dinleyicisi, GTM'den önce kaydedildiğimiz için)
   // susturulur ve belge yeniden yüklenir.
   const geriIleri = (olay: PopStateEvent) => {
-    if (!isSensitiveAnalyticsPath(window.location.pathname)) return;
+    if (!isSensitiveAnalyticsLocation(window.location.pathname, window.location.search)) return;
     olay.stopImmediatePropagation();
     window.location.reload();
   };
@@ -147,22 +147,28 @@ export function ProductAnalytics({
   nonce?: string | undefined;
 }) {
   const pathname = usePathname();
+  // Yalnız sorgusu değişen istemci içi gezinme (ör. başlık içi aramanın sayfaları)
+  // yolu değiştirmez; yüzey sorguyla birlikte değerlendirilir (A1).
+  const search = useSearchParams()?.toString() ?? "";
+  const hassas = isSensitiveAnalyticsLocation(pathname, search);
   // Sunucuda ve ilk çizimde karar bilinmez: hiçbir şey çizilmez (hidrasyon uyumu).
   const [onay, setOnay] = useState<Onay | null | undefined>(undefined);
   const [izlemeReddi, setIzlemeReddi] = useState(true);
   // Yüzey render sırasında adresten türetilir: hassas sayfada şerit bir kare bile kalmaz.
-  const istemciUygun = enabled && !isSensitiveAnalyticsPath(pathname) && !izlemeReddi;
+  const istemciUygun = enabled && !hassas && !izlemeReddi;
 
   useEffect(() => {
     const ret = tarayiciIzlemeyiReddediyor();
     setIzlemeReddi(ret);
     // GTM yüklü belgede hassas yüzeye gelinmişse ya da onay geri çekilmişse: tam yükleme.
-    if (gtmYuklendi && (isSensitiveAnalyticsPath(pathname) || !onayHalaGecerliMi())) {
+    if (gtmYuklendi && (hassas || !onayHalaGecerliMi())) {
       window.location.reload();
       return;
     }
     if (enabled) setOnay(onayiOku());
-  }, [enabled, pathname]);
+    // Her adres değişiminde (yol YA DA sorgu) yeniden değerlendirilir; yalnız
+    // `hassas` değişince koşsaydı onayı geri çekilmiş herkese açık gezinme kaçardı.
+  }, [enabled, hassas, pathname, search]);
 
   useEffect(() => {
     const denetle = () => {

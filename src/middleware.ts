@@ -15,6 +15,7 @@ export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   const analyticsSurface = classifyProductAnalyticsSurface({
     pathname: request.nextUrl.pathname,
+    search: request.nextUrl.search,
     doNotTrack: request.headers.get("dnt") === "1",
     globalPrivacyControl: request.headers.get("sec-gpc") === "1",
     syntheticSmoke: request.headers.get(SYNTHETIC_ANALYTICS_OPTOUT_HEADER) === "1",

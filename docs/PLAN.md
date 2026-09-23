@@ -1463,7 +1463,12 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
 
 **Yeni maddeler**
 
-- [ ] **A1 — başlık içi arama ölçüme açık kalıyor.** `/ara` hassas sayılıyor ama
+- [x] **A1 — başlık içi arama ölçüme açık kalıyor — KODDA KAPANDI (23 Eylül; canlıya
+      çıkış ayrı onayla).** Tek sınıflandırıcı `isSensitiveAnalyticsLocation`, yolu ve sorguyu
+      birlikte alır: `q` parametreli her adres hassas. Middleware, istemci
+      (`useSearchParams`), bağlantı koruması, geri/ileri ve arama önerisi aynı kuralı
+      kullanıyor; matris testte.
+      Önceki metin: `/ara` hassas sayılıyor ama
       `/baslik/...?q=...` yol olarak `PUBLIC`: sınıflandırma yalnız pathname'e bakıyor
       (`src/lib/analytics/product-analytics.ts`, `src/middleware.ts`, istemci tarafında
       `usePathname`). Astra doğruladı: `/baslik/…?q=…` probu `PUBLIC` döndü. Gizlilik

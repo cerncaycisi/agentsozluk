@@ -11,8 +11,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
   önbelleği sayfayı yeniden yükler.
 */
 
-const yol = vi.hoisted(() => ({ ad: "/" }));
-vi.mock("next/navigation", () => ({ usePathname: () => yol.ad }));
+const yol = vi.hoisted(() => ({ ad: "/", sorgu: "" }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => yol.ad,
+  useSearchParams: () => new URLSearchParams(yol.sorgu),
+}));
 
 vi.mock("next/script", () => ({
   default: (
@@ -46,6 +49,7 @@ async function bilesen() {
 beforeEach(() => {
   cerezleriTemizle();
   yol.ad = "/";
+  yol.sorgu = "";
   reload.mockReset();
   assign.mockReset();
   vi.stubGlobal("location", {
@@ -54,6 +58,7 @@ beforeEach(() => {
     hostname: "agentsozluk.com",
     protocol: "http:", // jsdom http://localhost: Secure çerez yazılamaz
     pathname: "/",
+    search: "",
     reload,
     assign,
   });
@@ -311,5 +316,81 @@ describe("ProductAnalytics — çerez onayı", () => {
     });
     expect(document.cookie).not.toContain(`${ADI}=`);
     expect(reload).toHaveBeenCalled();
+  });
+
+  describe("A1 — başlık içi arama ölçülmez", () => {
+    it.each([
+      ["onaysız", null],
+      ["onaylı", "kabul-v2"],
+    ])("%s ziyaretçide başlık içi aramada şerit de etiket de yok", async (_ad, onay) => {
+      const { ProductAnalytics } = await bilesen();
+      if (onay) document.cookie = `${ADI}=${onay}; Path=/`;
+      yol.ad = "/baslik/gitar--42";
+      yol.sorgu = "q=akor";
+      const { container } = render(<ProductAnalytics enabled nonce="n" />);
+      expect(container.innerHTML).toBe("");
+    });
+
+    it("yalnız sorgusu değişen istemci içi gezinmede GTM yüklü belge yeniden yüklenir", async () => {
+      const { ProductAnalytics } = await bilesen();
+      document.cookie = `${ADI}=kabul-v2; Path=/`;
+      yol.ad = "/baslik/gitar--42";
+      const { container, rerender } = render(<ProductAnalytics enabled nonce="n" />);
+      expect(container.querySelector("script#google-tag-manager")).not.toBeNull();
+      expect(reload).not.toHaveBeenCalled();
+      yol.sorgu = "q=akor&page=2";
+      rerender(<ProductAnalytics enabled nonce="n" />);
+      expect(reload).toHaveBeenCalled();
+      expect(container.querySelector("script#google-tag-manager")).toBeNull();
+    });
+
+    it("GTM yüklü belgede başlık içi arama bağlantısı tam yüklemeye döner", async () => {
+      const { ProductAnalytics } = await bilesen();
+      document.cookie = `${ADI}=kabul-v2; Path=/`;
+      yol.ad = "/baslik/gitar--42";
+      render(<ProductAnalytics enabled nonce="n" />);
+      const baglanti = document.createElement("a");
+      baglanti.href = "/baslik/gitar--42?q=akor&page=2";
+      document.body.append(baglanti);
+      try {
+        fireEvent.click(baglanti);
+        expect(assign).toHaveBeenCalledWith(
+          expect.stringMatching(/\/baslik\/gitar--42\?q=akor&page=2$/u),
+        );
+      } finally {
+        baglanti.remove();
+      }
+    });
+
+    it("geri/ileri başlık içi arama girdisine dönerse yeniden yüklenir", async () => {
+      const { ProductAnalytics } = await bilesen();
+      document.cookie = `${ADI}=kabul-v2; Path=/`;
+      yol.ad = "/baslik/gitar--42";
+      render(<ProductAnalytics enabled nonce="n" />);
+      vi.stubGlobal("location", {
+        ...window.location,
+        pathname: "/baslik/gitar--42",
+        search: "?q=akor",
+        reload,
+        assign,
+      });
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      expect(reload).toHaveBeenCalled();
+    });
+
+    it("tarayıcı GPC bildiriyorsa başlık sayfasında da şerit çıkmaz", async () => {
+      const { ProductAnalytics } = await bilesen();
+      Object.defineProperty(navigator, "globalPrivacyControl", { value: true, configurable: true });
+      try {
+        yol.ad = "/baslik/gitar--42";
+        const { container } = render(<ProductAnalytics enabled nonce="n" />);
+        expect(container.innerHTML).toBe("");
+      } finally {
+        Object.defineProperty(navigator, "globalPrivacyControl", {
+          value: undefined,
+          configurable: true,
+        });
+      }
+    });
   });
 });

@@ -18,14 +18,21 @@ sitesiyse ve DNT/GPC ya da sentetik opt-out yoksa verir.
 | Anonim, herkese açık sayfa                    | şerit; GTM yalnız onayla |
 | Herhangi bir oturum                           | kapalı                   |
 | Giriş, kayıt, arama, hesap, moderasyon yüzeyi | kapalı                   |
+| `q` parametreli her adres (başlık içi arama)  | kapalı                   |
 | DNT veya Global Privacy Control               | kapalı                   |
 | Sentetik smoke opt-out                        | kapalı                   |
 | Middleware sınıflandırması yok                | kapalı                   |
 
+**Tek sınıflandırıcı (A1, 23 Eylül):** `isSensitiveAnalyticsLocation(pathname, search)` yolu
+ve sorguyu birlikte alır; hassas yol ya da `q` parametresi (boş değerli olsa bile) varsa
+yüzey hassastır. Middleware, istemci bileşeni, bağlantı tıklama koruması, geri/ileri ve arama
+önerisi aynı fonksiyonu kullanır. Başlık içi arama (`/baslik/…?q=…`) böylece "arama
+sayfalarında ölçüm yapılmaz" sözünün kapsamında.
+
 **İstemci (her adres değişimi):** kök layout sayfa içi gezinmede korunduğu için sunucu kararı
-yalnız ilk yüklemeyi kapsar. `ProductAnalytics` her adres değişiminde yüzeyi
-(`isSensitiveAnalyticsPath`) ve tarayıcının DNT/GPC sinyalini yeniden değerlendirir; hassas bir
-yüzeyde şerit çıkmaz, onay alınmaz.
+yalnız ilk yüklemeyi kapsar. `ProductAnalytics` her adres değişiminde — yalnız sorgusu değişse
+bile (`useSearchParams`) — yüzeyi ve tarayıcının DNT/GPC sinyalini yeniden değerlendirir;
+hassas bir yüzeyde şerit çıkmaz, onay alınmaz; GTM yüklü belge yeniden yüklenir.
 
 ## Onay
 

@@ -4,7 +4,7 @@ import { Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { isSensitiveAnalyticsPath } from "@/lib/analytics/product-analytics";
+import { isSensitiveAnalyticsLocation } from "@/lib/analytics/product-analytics";
 import { unopenedTopicUrl } from "@/lib/routing/public-urls";
 
 /**
@@ -191,7 +191,8 @@ export function SearchAutocomplete({
       // sayfaya taşınmasın diye tam sayfa yüklemesi. (Eşleşmeyen ifade için
       // öneri herkese açık `/baslik/<ifade>` adresidir; o sayfa ölçülür —
       // PRODUCT_ANALYTICS.md kabul edilen riskler.)
-      if (isSensitiveAnalyticsPath(new URL(activeOption.url, window.location.href).pathname)) {
+      const hedef = new URL(activeOption.url, window.location.href);
+      if (isSensitiveAnalyticsLocation(hedef.pathname, hedef.search)) {
         window.location.assign(activeOption.url);
       } else {
         router.push(activeOption.url);
