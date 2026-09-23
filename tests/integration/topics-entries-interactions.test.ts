@@ -820,6 +820,7 @@ describe("authentication and accounts with PostgreSQL", () => {
         newPasswordConfirmation: newPassword,
       },
       randomUUID(),
+      { userAgent: "password-change", ip: null },
     ).then(
       () => ({ status: "fulfilled" as const }),
       (reason: unknown) => ({ status: "rejected" as const, reason }),
@@ -942,7 +943,7 @@ describe("authentication and accounts with PostgreSQL", () => {
       ),
     ).toMatchObject({ email: changedEmail });
     const newPassword = "ChangedIntegrationPassword456!";
-    await changePassword(
+    const rotated = await changePassword(
       integrationDatabase,
       registered.user.id,
       registered.session.id,
@@ -952,10 +953,17 @@ describe("authentication and accounts with PostgreSQL", () => {
         newPasswordConfirmation: newPassword,
       },
       randomUUID(),
+      { userAgent: "password-change", ip: null },
     );
-    expect(await authenticateSession(integrationDatabase, registered.session.token)).not.toBeNull();
+    // F06: mevcut oturumun token'ı da geçersiz; yerine yeni oturum verildi.
+    expect(await authenticateSession(integrationDatabase, registered.session.token)).toBeNull();
     expect(await authenticateSession(integrationDatabase, second.session.token)).toBeNull();
-    await endOtherSessions(integrationDatabase, registered.user.id, registered.session.id);
+    expect(rotated.id).not.toBe(registered.session.id);
+    expect(await authenticateSession(integrationDatabase, rotated.token)).toMatchObject({
+      id: rotated.id,
+      userId: registered.user.id,
+    });
+    await endOtherSessions(integrationDatabase, registered.user.id, rotated.id);
     expect(
       await loginHuman(
         integrationDatabase,
@@ -964,6 +972,41 @@ describe("authentication and accounts with PostgreSQL", () => {
         randomUUID(),
       ),
     ).toMatchObject({ user: { id: registered.user.id } });
+  });
+
+  it("does not change the password or issue a session when the current session was already revoked", async () => {
+    // F06: şifre değişimi mevcut oturumu yenilediği için, o oturum bu arada başka
+    // yerden kapatıldıysa yeni oturum verilmemeli ve şifre değişmemeli.
+    const input = registration("password_revoked_session");
+    const registered = await registerHuman(
+      integrationDatabase,
+      input,
+      { userAgent: "current-session", ip: null },
+      randomUUID(),
+    );
+    await endOwnedSession(integrationDatabase, registered.user.id, registered.session.id);
+    const newPassword = "RevokedSessionPassword456!";
+    await expect(
+      changePassword(
+        integrationDatabase,
+        registered.user.id,
+        registered.session.id,
+        { currentPassword: input.password, newPassword, newPasswordConfirmation: newPassword },
+        randomUUID(),
+        { userAgent: "password-change", ip: null },
+      ),
+    ).rejects.toMatchObject({ code: "AUTH_REQUIRED" });
+    expect(
+      await activeSessions(integrationDatabase, registered.user.id, registered.session.id),
+    ).toEqual([]);
+    await expect(
+      loginHuman(
+        integrationDatabase,
+        { email: input.email, password: input.password },
+        { userAgent: null, ip: null },
+        randomUUID(),
+      ),
+    ).resolves.toMatchObject({ user: { id: registered.user.id } });
   });
 
   it("serializes password and email changes so a stale current password is rejected", async () => {
@@ -992,6 +1035,7 @@ describe("authentication and accounts with PostgreSQL", () => {
         newPasswordConfirmation: newPassword,
       },
       randomUUID(),
+      { userAgent: "password-change", ip: null },
     ).then(
       () => ({ status: "fulfilled" as const }),
       (reason: unknown) => ({ status: "rejected" as const, reason }),
@@ -1255,7 +1299,7 @@ describe("authentication and accounts with PostgreSQL", () => {
     ).resolves.toMatchObject({ email: changedEmail, status: "SUSPENDED" });
 
     const newPassword = "SuspendedSettingsPassword456!";
-    await changePassword(
+    const rotated = await changePassword(
       integrationDatabase,
       registered.user.id,
       loggedIn.session.id,
@@ -1265,14 +1309,15 @@ describe("authentication and accounts with PostgreSQL", () => {
         newPasswordConfirmation: newPassword,
       },
       randomUUID(),
+      { userAgent: "password-change", ip: null },
     );
     const sessionsAfterPassword = await activeSessions(
       integrationDatabase,
       registered.user.id,
-      loggedIn.session.id,
+      rotated.id,
     );
     expect(sessionsAfterPassword).toEqual([
-      expect.objectContaining({ id: loggedIn.session.id, current: true }),
+      expect.objectContaining({ id: rotated.id, current: true }),
     ]);
 
     const relogged = await loginHuman(

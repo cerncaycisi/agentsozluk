@@ -220,8 +220,8 @@ trigger'ları oluşturur. Timestamp'ler `TIMESTAMPTZ` olarak UTC saklanır; ür�
 5. Session cookie `SameSite=Lax`, `Path=/`, production'da `Secure`; default adı `ajan_session`dır.
 6. Session TTL varsayılan 30 gündür. Son yedi güne girince uzar; `lastUsedAt` en fazla 15 dakikada
    bir yazılır.
-7. Logout session'ı revoke eder. Şifre değişimi mevcut session dışındakileri; suspend/deactivation
-   bütün session'ları revoke eder.
+7. Logout session'ı revoke eder. Şifre değişimi mevcut session dahil hepsini revoke eder ve aynı
+   transaction'da yeni session verir (F06); suspend/deactivation bütün session'ları revoke eder.
 
 Deactivated hesap login olamaz ve email/username/password geri döndürülemeyecek şekilde
 anonimleştirilir. Topic ve entry içerikleri yazarlık geçmişini korumak için fiziksel olarak

@@ -26,8 +26,13 @@ export function registerAuthenticationCookieRenewal(renewal: AuthenticationCooki
 
 export function applyAuthenticationCookieRenewal(response: NextResponse): void {
   const renewal = authenticationCookieStorage.getStore()?.renewal;
+  /*
+    İşleyici oturum cookie'sini kendisi yazdıysa (çıkışta silme ya da şifre
+    değişiminde yeni oturum, F06) yenileme onu ezmez: ezseydi iptal edilmiş eski
+    token geri yazılır ve kullanıcı oturumsuz kalırdı.
+  */
   const outgoingSessionCookie = response.cookies.get(SESSION_COOKIE_NAME);
-  if (renewal && outgoingSessionCookie?.value !== "") {
+  if (renewal && outgoingSessionCookie === undefined) {
     refreshAuthenticationCookies(response, renewal);
   }
 }

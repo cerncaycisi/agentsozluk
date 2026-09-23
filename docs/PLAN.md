@@ -1223,10 +1223,14 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
 - [x] **F05 — kapandı (20 Eylül).** Takip artık rapora değil kapıya bağlı:
       CI `quality` işinde `pnpm audit --prod --audit-level=high` (fail-closed,
       istisnasız) ve `dependabot.yml`. Ayrıntı B1, bölüm 5.7.
-- [ ] **F06 — Şifre değişimi mevcut oturumun kopyasını geçersizleştirmiyor.**
-      `revokeAllUserSessions(..., currentSessionId)` mevcut oturumu hariç tutuyor ve yeni
-      token verilmiyor. Tehdit modeli dar: saldırgan tam olarak mevcut session cookie'sinin
-      kopyasına sahipse o kopya yaşamaya devam edebilir. Ayrı saldırgan oturumu iptal ediliyor.
+- [ ] **F06 — Şifre değişimi mevcut oturumun kopyasını geçersizleştirmiyor — kod hazır,
+      inceleme bekliyor (23 Eylül).** Eskiden `revokeAllUserSessions(..., currentSessionId)`
+      mevcut oturumu hariç tutuyordu ve yeni token verilmiyordu; mevcut session cookie'sinin
+      kopyası yaşamaya devam ediyordu. Artık aynı transaction'da mevcut oturum dahil hepsi
+      iptal edilir ve yeni oturum verilir; mevcut oturum bu arada kapatıldıysa şifre değişmez
+      (`AUTH_REQUIRED`). Yan bulgu da kapandı: kayan süre yenilemesi, işleyicinin yazdığı yeni
+      oturum cookie'sini iptal edilmiş eski token'la eziyordu; yenileme artık işleyici oturum
+      cookie'si yazdığında hiç uygulanmıyor.
 - [~] **F07 — Entry JSON-LD tam metin düzeltmesi canlıda; `digitalSourceType` kararı açık.**
   `3416827` entry/başlık şemasına tam `text` ekledi; 500+ karakter ve güvenli
   serileştirme kontrolü geçti. 8 Eylül `f88d64d` dağıtımında tek entry ve
