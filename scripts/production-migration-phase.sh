@@ -175,6 +175,13 @@ plan_migrations() {
     <"$pending" >"$migration_dir/pending.sql"
   "$host_node" "$app_root/scripts/check-additive-migration.mjs" "$migration_dir/pending.sql" \
     >"$migration_dir/expectation.json" || migration_fail MIGRATION_NOT_ADDITIVE
+  # Mevcut tabloya eklenen indekslerin adları: şema özetinde yalnız bunların
+  # `CREATE INDEX` satırı hariç tutulur (başka her şey birebir kalmalı).
+  "$host_node" -e '
+    const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+    for (const name of Object.keys(value.existingTableIndexes ?? {})) process.stdout.write(name + "\n");
+  ' "$migration_dir/expectation.json" >"$migration_dir/existing-index-names" ||
+    migration_fail EXPECTATION_UNREADABLE
 
   install -d -m 0700 "$migration_marker"
   migration_identity >"$migration_marker/identity"
@@ -229,7 +236,40 @@ preflight_migration() {
     </dev/null)" = 0 || migration_fail DB_TIMEOUT_SETTING_PRESENT
 
   assert_fk_targets
+  assert_existing_index_targets
   assert_disk_budget full
+}
+
+# Mevcut tabloya eklenecek her indeks için: tablo `public`'te düz tablo, sütunlar
+# var ve hepsi SABİT uzunluklu türde (`typlen > 0`: timestamptz, int, uuid, enum…),
+# indeks adı henüz kullanılmıyor. Değişken uzunluklu sütunda (metin, jsonb) B-tree
+# girdisi boyut sınırını aşıp eski imajın geçerli yazmasını reddedebilir; UNIQUE
+# olmaması bunu önlemez (Astra, 23 Eylül).
+assert_existing_index_targets() {
+  local name table columns
+  "$host_node" -e '
+    const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+    for (const [name, index] of Object.entries(value.existingTableIndexes ?? {}))
+      process.stdout.write([name, index.table, index.columns.join(",")].join("|") + "\n");
+  ' "$migration_dir/expectation.json" >"$migration_dir/existing-index-targets" ||
+    migration_fail EXPECTATION_UNREADABLE
+  while IFS='|' read -r name table columns; do
+    test -n "$name" || migration_fail EXISTING_INDEX_ENTRY_EMPTY
+    test "$(db_psql agent_sozluk -v "name=$name" -v "table=$table" -v "columns=$columns" <<'SQL'
+SELECT (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = :'table' AND c.relkind = 'r') = 1
+   AND (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = :'name') = 0
+   AND (SELECT count(*) FROM unnest(string_to_array(:'columns', ',')) AS wanted(col)
+        WHERE NOT EXISTS (
+          SELECT 1 FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          JOIN pg_type t ON t.oid = a.atttypid
+          WHERE n.nspname = 'public' AND c.relname = :'table' AND a.attname = wanted.col
+            AND a.attnum > 0 AND NOT a.attisdropped AND t.typlen > 0)) = 0;
+SQL
+)" = t || migration_fail EXISTING_INDEX_TARGET_UNSUPPORTED
+  done <"$migration_dir/existing-index-targets"
 }
 
 # FK hedefi mevcut tablonun `id`'si tek sütunlu uuid birincil anahtar olmalı.
@@ -447,10 +487,47 @@ schema_hash() {
   "${deadline[@]}" "${compose[@]}" exec -T db pg_dump --schema-only --no-owner --no-privileges \
     -U agent_sozluk -d "$database" "$@" </dev/null >"$dump" || migration_fail SCHEMA_DUMP_FAILED
   grep -q 'CREATE TABLE' "$dump" || migration_fail SCHEMA_DUMP_EMPTY
-  hash="$(grep -v -E '^\\(un)?restrict ' "$dump" | sha256sum | cut -d ' ' -f 1)"
+  hash="$(schema_dump_filter <"$dump" | sha256sum | cut -d ' ' -f 1)"
   rm -f "$dump"
   [[ "$hash" =~ ^[0-9a-f]{64}$ ]] || migration_fail SCHEMA_HASH_INVALID
   printf '%s\n' "$hash"
+}
+
+# Döküm özetlenmeden önce: `\restrict` satırları (her dökümde rastgele) ve yalnız
+# bu migration'ın mevcut tabloya eklediği indekslerin TOC girdisinin TAMAMI
+# (`-- Name: <ad>; Type: INDEX` başlığı, `CREATE INDEX` satırı ve aradaki boş
+# satırlar) düşülür. Girdi beklenen biçimde değilse (tek boş olmayan satır o adın
+# `CREATE INDEX`'i değilse) düşülmez; özet uyuşmaz ve faz kapalı durur. Adlar -v
+# ile geçer: `NR == FNR` kalıbı ilk dosya boşken bütün girdiyi "ad" sayıp
+# çıktıyı boşaltır ve özet anlamsızlaşırdı.
+schema_dump_filter() {
+  local excluded="$migration_dir/existing-index-names"
+  test -f "$excluded" || : >"$excluded"
+  { grep -v -E '^\\(un)?restrict ' || test $? = 1; } |
+    awk -v names="$(tr '\n' ' ' <"$excluded")" '
+      BEGIN { n = split(names, list, " "); for (i = 1; i <= n; i++) skip[list[i]] = 1 }
+      { line[NR] = $0 }
+      END {
+        for (i = 2; i < NR; i++) {
+          if (line[i - 1] != "--" || line[i + 1] != "--") continue
+          if (line[i] !~ /^-- Name: [^;]+; Type: INDEX; Schema: public; Owner: /) continue
+          name = line[i]
+          sub(/^-- Name: /, "", name)
+          sub(/; Type: INDEX; .*$/, "", name)
+          if (!(name in skip)) continue
+          body = 0; ok = 0
+          for (j = i + 2; j <= NR && line[j] != "--"; j++) {
+            if (line[j] == "") continue
+            body++
+            split(line[j], word, " ")
+            ok = word[1] == "CREATE" && word[2] == "INDEX" &&
+              (word[3] == name || word[3] == "\"" name "\"") && line[j] ~ /;$/
+          }
+          if (body != 1 || !ok) continue
+          for (k = i - 1; k < j; k++) drop[k] = 1
+        }
+        for (i = 1; i <= NR; i++) if (!(i in drop)) print line[i]
+      }'
 }
 
 # Önceden var olan her tablonun ayrı şema özeti (migration sonrası birebir kalmalı).
@@ -526,7 +603,7 @@ archive_schema_hash() {
   "${deadline[@]}" "${compose[@]}" exec -T db pg_restore --schema-only --no-owner --no-privileges \
     -f - <"$archive" >"$script" || migration_fail ARCHIVE_SCHEMA_FAILED
   grep -q 'CREATE TABLE' "$script" || migration_fail ARCHIVE_SCHEMA_EMPTY
-  hash="$(grep -v -E '^\\(un)?restrict ' "$script" | sha256sum | cut -d ' ' -f 1)"
+  hash="$(schema_dump_filter <"$script" | sha256sum | cut -d ' ' -f 1)"
   rm -f "$script"
   [[ "$hash" =~ ^[0-9a-f]{64}$ ]] || migration_fail SCHEMA_HASH_INVALID
   printf '%s\n' "$hash"
@@ -671,16 +748,16 @@ expectation_keys() {
   local keys
   keys="$("$host_node" -e '
     const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
-    process.stdout.write(Object.keys(value[process.argv[2]]).join(","));
+    process.stdout.write(Object.keys(value[process.argv[2]] ?? {}).join(","));
   ' "$migration_dir/expectation.json" "$1")" || migration_fail EXPECTATION_UNREADABLE
-  if test "$1" = tables; then test -n "$keys" || migration_fail EXPECTATION_WITHOUT_TABLES; fi
   printf '%s\n' "$keys"
 }
 
 new_object_definitions() {
-  local tables
+  local tables existing_indexes
   tables="$(expectation_keys tables)"
-  db_psql "$1" -v "tables=$tables" <<'SQL'
+  existing_indexes="$(expectation_keys existingTableIndexes)"
+  db_psql "$1" -v "tables=$tables" -v "existing_indexes=$existing_indexes" <<'SQL'
 SELECT 'column:' || c.relname || '|' || a.attname || '|' || format_type(a.atttypid, a.atttypmod)
   || '|' || a.attnotnull || '|' || coalesce(pg_get_expr(ad.adbin, ad.adrelid), '-')
 FROM pg_attribute a
@@ -697,8 +774,11 @@ WHERE n.nspname = 'public' AND c.relname = ANY (string_to_array(:'tables', ','))
 ORDER BY 1;
 SELECT 'index:' || pg_get_indexdef(i.indexrelid)
 FROM pg_index i JOIN pg_class c ON c.oid = i.indrelid
+JOIN pg_class ic ON ic.oid = i.indexrelid
 JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public' AND c.relname = ANY (string_to_array(:'tables', ','))
+WHERE n.nspname = 'public'
+  AND (c.relname = ANY (string_to_array(:'tables', ','))
+       OR ic.relname = ANY (string_to_array(:'existing_indexes', ',')))
 ORDER BY 1;
 SELECT 'enum:' || t.typname || '|' || string_agg(e.enumlabel, ',' ORDER BY e.enumsortorder)
 FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid
@@ -711,10 +791,11 @@ SQL
 # Denetçinin beklentisi (adlar, enum sırası, FK aksiyonları, indeks sütunları)
 # katalogla birebir; tam tanımlar ise scratch ile prod arasında birebir.
 catalog_expectation() {
-  local tables types
+  local tables types existing_indexes
   tables="$(expectation_keys tables)"
   types="$(expectation_keys types)"
-  db_psql "$1" -v "tables=$tables" -v "types=$types" <<'SQL'
+  existing_indexes="$(expectation_keys existingTableIndexes)"
+  db_psql "$1" -v "tables=$tables" -v "types=$types" -v "existing_indexes=$existing_indexes" <<'SQL'
 SELECT json_build_object(
   'types', coalesce((SELECT json_object_agg(t.typname, (
       SELECT json_agg(e.enumlabel ORDER BY e.enumsortorder) FROM pg_enum e WHERE e.enumtypid = t.oid))
@@ -747,7 +828,15 @@ SELECT json_build_object(
     FROM pg_index i JOIN pg_class ic ON ic.oid = i.indexrelid JOIN pg_class c ON c.oid = i.indrelid
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND c.relname = ANY (string_to_array(:'tables', ','))
-      AND NOT EXISTS (SELECT 1 FROM pg_constraint con WHERE con.conindid = i.indexrelid)), '{}'::json)
+      AND NOT EXISTS (SELECT 1 FROM pg_constraint con WHERE con.conindid = i.indexrelid)), '{}'::json),
+  'existingTableIndexes', coalesce((SELECT json_object_agg(ic.relname, json_build_object(
+      'table', c.relname, 'unique', i.indisunique,
+      'columns', (SELECT json_agg(a.attname ORDER BY k.ord) FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+                  JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum)))
+    FROM pg_index i JOIN pg_class ic ON ic.oid = i.indexrelid JOIN pg_class c ON c.oid = i.indrelid
+    JOIN pg_namespace n ON n.oid = ic.relnamespace
+    WHERE n.nspname = 'public' AND ic.relname = ANY (string_to_array(:'existing_indexes', ','))),
+    '{}'::json)
 );
 SQL
 }
@@ -826,7 +915,8 @@ post_verify() {
   ' "$migration_dir/expectation.json" >"$migration_dir/new-tables" ||
     migration_fail EXPECTATION_UNREADABLE
   # Boş liste gerçekten boş dosyadır (tek satır sonu "boş değil" sayılmaz).
-  test -s "$migration_dir/new-tables" || migration_fail EXPECTATION_WITHOUT_TABLES
+  test -s "$migration_dir/new-tables" || test -s "$migration_dir/existing-index-names" ||
+    migration_fail EXPECTATION_WITHOUT_OBJECTS
   while IFS= read -r name; do
     test "$(grep -c "^table:$name|0|0|0$" "$migration_dir/post-$label-fingerprint")" = 1 ||
       migration_fail POST_NEW_TABLE_NOT_EMPTY

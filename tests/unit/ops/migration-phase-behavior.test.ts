@@ -246,6 +246,57 @@ echo ULASILMAMALI
     expect(readFileSync(path.join(result.root, "calls.log"), "utf8")).not.toContain("docker exec");
   });
 
+  it("şema özeti yalnız bu migration'ın mevcut tabloya eklediği indeksin TOC girdisini düşer", () => {
+    // pg_dump biçimi: her girdi `--` / `-- Name: …` / `--` başlığı, boş satır, tanım
+    // ve iki boş satır. Yalnız CREATE satırını düşmek başlığı bırakır ve migration
+    // sonrası tablo özeti öncekine hiç eşit çıkmazdı.
+    const entry = (name: string, type: string, body: string): string =>
+      `--\\n-- Name: ${name}; Type: ${type}; Schema: public; Owner: -\\n--\\n\\n${body}\\n\\n\\n`;
+    const head =
+      "\\\\restrict abc\\n\\n" +
+      entry("agent_runs", "TABLE", "CREATE TABLE public.agent_runs (\\n    id uuid\\n);");
+    const tail = entry(
+      "agent_runs_leaseExpiresAt_idx",
+      "INDEX",
+      'CREATE INDEX "agent_runs_leaseExpiresAt_idx" ON public.agent_runs USING btree ("leaseExpiresAt");',
+    );
+    const added = entry(
+      "agent_runs_finishedAt_idx",
+      "INDEX",
+      'CREATE INDEX "agent_runs_finishedAt_idx" ON public.agent_runs USING btree ("finishedAt");',
+    );
+    const other = entry(
+      "agent_runs_baska_idx",
+      "INDEX",
+      "CREATE INDEX agent_runs_baska_idx ON public.agent_runs USING btree (id);",
+    );
+    const unique = entry(
+      "agent_runs_finishedAt_idx",
+      "INDEX",
+      'CREATE UNIQUE INDEX "agent_runs_finishedAt_idx" ON public.agent_runs USING btree ("finishedAt");',
+    );
+    const result = harness(`
+printf 'agent_runs_finishedAt_idx\\n' >"$migration_dir/existing-index-names"
+ozet() { printf "$1" | schema_dump_filter | sha256sum | cut -d ' ' -f 1; }
+printf 'once=%s\\n' "$(ozet '${head}${tail}')"
+printf 'sonra=%s\\n' "$(ozet '${head}${added}${tail}')"
+printf 'baska=%s\\n' "$(ozet '${head}${other}${tail}')"
+printf 'tekil=%s\\n' "$(ozet '${head}${unique}${tail}')"
+printf 'restrict=%s\\n' "$(ozet '\\\\restrict xyz\\n\\n${entry("agent_runs", "TABLE", "CREATE TABLE public.agent_runs (\\n    id uuid\\n);")}${tail}')"
+: >"$migration_dir/existing-index-names"
+printf 'bosliste=%s\\n' "$(ozet '${head}${added}${tail}')"
+`);
+    expect(result.status, result.stderr).toBe(0);
+    const value = (key: string): string =>
+      new RegExp(`^${key}=([0-9a-f]{64})$`, "mu").exec(result.stdout)?.[1] ?? "";
+    expect(value("once")).not.toBe("");
+    expect(value("sonra")).toBe(value("once"));
+    expect(value("restrict")).toBe(value("once"));
+    expect(value("baska")).not.toBe(value("once"));
+    expect(value("tekil")).not.toBe(value("once"));
+    expect(value("bosliste")).not.toBe(value("once"));
+  });
+
   it("aşama yalnız ileri gider", () => {
     const result = harness(`
 install -d "$migration_marker"

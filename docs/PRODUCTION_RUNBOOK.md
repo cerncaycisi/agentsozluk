@@ -1350,7 +1350,14 @@ Bu mod, aynı sarmalayıcıyla ve yalnız **yalnız ek yapan** migration'lar iç
 kesintilidir (Gökhan kararı, 23 Eylül 2026): site dondurma boyunca kapalıdır. Tasarım Astra ile
 yedi turda uzlaştırıldı; kararlar ve bulgular `docs/ATTEMPT_LOG.md` ve `docs/PLAN.md` A5
 maddesinde. Mevcut tabloya dokunan, veri değiştiren ya da denetçiden geçmeyen her migration bu
-modla dağıtılamaz; onlar için Gate 7/8 geçerlidir.
+modla dağıtılamaz; onlar için Gate 7/8 geçerlidir. Tek istisna mevcut tabloya **benzersiz olmayan,
+düz, sabit uzunluklu sütunlu** `CREATE INDEX`'tir (23 Eylül 2026; ilk kullanım
+`agent_runs_finishedAt_idx`). `UNIQUE` indeks mevcut veride düşebileceği ve eski imajın
+yazmalarını reddedebileceği için reddedilir (`UNIQUE_INDEX_ON_EXISTING_TABLE`). Değişken
+uzunluklu sütunda (metin, jsonb) benzersiz olmayan B-tree de uzun değerde yazmayı reddeder; ön
+kontrol her sütunun türünün sabit uzunlukta (`pg_type.typlen > 0`: timestamptz, int, uuid, enum…)
+olduğunu katalogdan doğrular. İndeks, tablo ve sütun adları `[A-Za-z_][A-Za-z0-9_]*` olmalıdır
+(`EXISTING_TABLE_INDEX_IDENTIFIER`).
 
 **Onay.** SHA onayına ek olarak uygulanacak migration adları birebir onaylanır; ikisi ayrı
 değişkendir ve kalıcı yazılmaz:
@@ -1378,15 +1385,18 @@ her süreç kayıtlı bir scope'ta kalır.
 
 1. `planned` — başarısız `_prisma_migrations` kaydı yok; uygulanmışlar adayda var ve checksum'ları
    dosyalarla eşit; bekleyenler onaylı listeye eşit ve sıralı; `check-additive-migration.mjs`
-   bekleyenlerin birleşik SQL'ini kabul ediyor (en az bir yeni tablo şart) ve beklenti JSON'unu
-   üretiyor.
+   bekleyenlerin birleşik SQL'ini kabul ediyor (en az bir yeni tablo ya da mevcut tabloya indeks
+   şart; yeni tablosuz enum reddedilir) ve beklenti JSON'unu üretiyor. Mevcut tabloya eklenecek
+   indekslerin adları `existing-index-names` dosyasına yazılır.
 2. `image-verified` — aday imaj ve runtime release (mevcut adımlar) hazır; imajdaki migration
    dosyaları checkout'la aynı; `run-migration.mjs` imajda.
 3. Ön kontrol — `UTF8`; uygulama rolü (`agent_sozluk`) veritabanının sahibi; scratch'i açıp
    düşüren db konteynerindeki `postgres` yönetici rolüne erişilebiliyor (üretimde uygulama rolü
    ne süper kullanıcı ne `CREATEDB` yetkili; scratch `-O agent_sozluk` ile açılır); veritabanı ya da
    rol düzeyinde `lock_timeout`/`statement_timeout` ayarı YOK (`DB_TIMEOUT_SETTING_PRESENT`); FK
-   hedeflerinin `id`'si tek sütunlu uuid birincil anahtar; disk (yedek ve PG hacmi aynı dosya
+   hedeflerinin `id`'si tek sütunlu uuid birincil anahtar; mevcut tabloya eklenecek her indeks için
+   tablo `public`'te düz tablo, sütunlar var ve sabit uzunluklu, indeks adı henüz kullanılmıyor
+   (`EXISTING_INDEX_TARGET_UNSUPPORTED`); disk (yedek ve PG hacmi aynı dosya
    sistemindeyse `3 × DB + 1 GiB`). Disk bütçesi dump'tan ve restore'dan hemen önce yeniden
    ölçülür (yeniden girişte önceki dump yerinde kalır).
 4. `frozen` — kesinti üst sınırı 45 dakika (`max_downtime_seconds=2700`): dondurmadan itibaren
@@ -1410,7 +1420,10 @@ her süreç kayıtlı bir scope'ta kalır.
    imajla tek seferlik `a5-<op>-migrate` konteyneri migration'ı uygular, ayarlar kaldırılır.
 8. `post-verified` → `writers-may-run` — `_prisma_migrations` dışındaki her eski tablo içerik ve
    şema olarak aynı; eski geçmiş satırları aynı, yeni satırlar tam onaylı adlar; yeni tablolar boş;
-   katalog denetçi beklentisine ve scratch tanımlarına eşit.
+   katalog denetçi beklentisine ve scratch tanımlarına eşit. Şema özetinden yalnız bu migration'ın
+   mevcut tabloya eklediği indeksin pg_dump TOC girdisi (`-- Name: <ad>; Type: INDEX` başlığı ve
+   tek `CREATE INDEX` satırı) düşülür; girdi bu biçimde değilse düşülmez ve özet uyuşmaz. İndeksin
+   tanımı ayrıca katalogda denetçi beklentisine ve scratch'e eşitlenir.
 9. `traffic-open` — yeni app iç health/ready + smoke → `runtime/current` → `caddy` başlar →
    dış health. **Kesinti biter.**
 10. `worker-allowed` — `agent-sozluk:production` etiketi aday imaja taşınır; etiket, çalışan app ve

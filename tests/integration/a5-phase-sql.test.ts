@@ -1,4 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -18,6 +19,10 @@ const checker = path.join(process.cwd(), "scripts/check-additive-migration.mjs")
 const contactMigration = path.join(
   process.cwd(),
   "prisma/migrations/20260922140000_contact_messages/migration.sql",
+);
+const finishedAtMigration = path.join(
+  process.cwd(),
+  "prisma/migrations/20260923180000_agent_runs_finished_at_index/migration.sql",
 );
 
 // libpq, Prisma'ya özgü `schema`/`connection_limit` parametrelerini reddeder.
@@ -226,6 +231,105 @@ describe("A5 faz SQL'i gerçek PostgreSQL'de", () => {
         .split("\n")
         .filter((line) => line.startsWith("table:")).length,
     );
+  }, 120_000);
+
+  it("mevcut tabloya indeks: tablo şema özeti öncesi ve sonrası eşit, katalog beklentiye eşit", async () => {
+    // Test veritabanı bütün migration'larla kurulu; "önce" durumu indeks düşürülerek
+    // üretilir ve test sonunda migration'ın kendi SQL'iyle geri kurulur.
+    writeFileSync(
+      path.join(root, "state/migration/expectation.json"),
+      execFileSync(process.execPath, [checker, finishedAtMigration], { encoding: "utf8" }),
+    );
+    writeFileSync(
+      path.join(root, "state/migration/existing-index-names"),
+      "agent_runs_finishedAt_idx\n",
+    );
+    try {
+      // Değişken uzunluklu sütunda benzersiz olmayan B-tree de uzun değerde yazmayı
+      // reddeder (Astra, 23 Eylül): metin sütunu ön kontrolde reddedilir.
+      writeFileSync(
+        path.join(root, "state/migration/expectation.json"),
+        JSON.stringify({
+          existingTableIndexes: {
+            contact_messages_message_idx: {
+              table: "contact_messages",
+              unique: false,
+              columns: ["message"],
+            },
+          },
+        }),
+      );
+      const text = phase(`assert_existing_index_targets`);
+      expect(text.status).toBe(97);
+      expect(text.stderr).toContain("code=EXISTING_INDEX_TARGET_UNSUPPORTED");
+      // Sıkıştırılamaz 4000 karakter: B-tree girdi sınırı (~2700 bayt) aşılır.
+      const longMessage = randomBytes(3000).toString("base64");
+      await integrationDatabase.$executeRaw`CREATE INDEX "a5_uzun_idx" ON "contact_messages"("message")`;
+      await expect(
+        integrationDatabase.$executeRaw`
+          INSERT INTO "contact_messages" ("id", "kind", "message", "ipKeyHash", "updatedAt")
+          VALUES (gen_random_uuid(), 'OTHER', ${longMessage}, ${"a".repeat(64)}, now())`,
+      ).rejects.toThrow(/index row/u);
+      await integrationDatabase.$executeRaw`DROP INDEX "a5_uzun_idx"`;
+      writeFileSync(
+        path.join(root, "state/migration/expectation.json"),
+        execFileSync(process.execPath, [checker, finishedAtMigration], { encoding: "utf8" }),
+      );
+
+      const used = phase(`assert_existing_index_targets`);
+      expect(used.status).toBe(97);
+      expect(used.stderr).toContain("code=EXISTING_INDEX_TARGET_UNSUPPORTED");
+
+      const after = phase(
+        `table_schema_hashes ${databaseName} "${root}/idx-after"; schema_hash ${databaseName}`,
+      );
+      expect(after.status, after.stderr).toBe(0);
+      const catalog = phase(`assert_catalog_expectation ${databaseName} test; echo ESIT`);
+      expect(catalog.status, catalog.stderr).toBe(0);
+      expect(catalog.stdout).toContain("ESIT");
+      const definitions = phase(`new_object_definitions ${databaseName}`);
+      expect(definitions.status, definitions.stderr).toBe(0);
+      expect(definitions.stdout).toContain(
+        'index:CREATE INDEX "agent_runs_finishedAt_idx" ON public.agent_runs USING btree ("finishedAt")',
+      );
+
+      await integrationDatabase.$executeRaw`DROP INDEX "agent_runs_finishedAt_idx"`;
+      const free = phase(`assert_existing_index_targets; echo HEDEF_TAMAM`);
+      expect(free.status, free.stderr).toBe(0);
+      expect(free.stdout).toContain("HEDEF_TAMAM");
+      const before = phase(
+        `table_schema_hashes ${databaseName} "${root}/idx-before"; schema_hash ${databaseName}`,
+      );
+      expect(before.status, before.stderr).toBe(0);
+      expect(readFileSync(path.join(root, "idx-after"), "utf8")).toBe(
+        readFileSync(path.join(root, "idx-before"), "utf8"),
+      );
+      expect(after.stdout).toBe(before.stdout);
+
+      // Listede olmayan bir indeks özeti değiştirir.
+      await integrationDatabase.$executeRaw`CREATE INDEX "a5_baska_idx" ON "agent_runs"("finishedAt")`;
+      const other = phase(`table_schema_hashes ${databaseName} "${root}/idx-other"`);
+      expect(other.status, other.stderr).toBe(0);
+      expect(readFileSync(path.join(root, "idx-other"), "utf8")).not.toBe(
+        readFileSync(path.join(root, "idx-before"), "utf8"),
+      );
+    } finally {
+      await integrationDatabase.$executeRaw`DROP INDEX IF EXISTS "a5_baska_idx"`;
+      await integrationDatabase.$executeRaw`DROP INDEX IF EXISTS "a5_uzun_idx"`;
+      await integrationDatabase.$executeRaw`DROP INDEX IF EXISTS "agent_runs_finishedAt_idx"`;
+      // Migration'ın kendi dosyası, gerçek psql ile.
+      execFileSync("psql", [
+        "-X",
+        "-q",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-d",
+        libpqUrl(),
+        "-f",
+        finishedAtMigration,
+      ]);
+      rmSync(path.join(root, "state/migration/existing-index-names"), { force: true });
+    }
   }, 120_000);
 
   it("tablo şema özetleri her tablo için üretilir; migration geçmişi okunur", () => {

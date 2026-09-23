@@ -1045,9 +1045,15 @@ ertelenmiş madde olmaktan çıktı.
       kayıtlı değil. Telemetri #147'den SONRA geldi (aşağıda); öncesi için
       karşılaştırılacak transaction süresi yok, yalnız HTTP süresi var.
 
-- [ ] **`agent_runs.finishedAt` indeksi.** Ön filtre eklendi ama tarama hâlâ
-      sıralı; kalan maliyetin tamamı o. Migration gerektirir, şema-nötr dağıtım
-      hattının dışındadır.
+- [ ] **`agent_runs.finishedAt` indeksi — kod hazır, inceleme ve dağıtım bekliyor (23 Eylül).**
+      Ön filtre eklendi ama tarama hâlâ sıralıydı. Migration
+      `20260923180000_agent_runs_finished_at_index` (`CREATE INDEX "agent_runs_finishedAt_idx"`).
+      A5 hattı mevcut tabloya benzersiz olmayan düz indeksi kabul edecek şekilde genişletildi:
+      denetçi `existingTableIndexes`, ön kontrolde hedef tablo/sütun/ad kanıtı, şema özetinde
+      yalnız o indeksin TOC girdisi düşülür. Gerçek PostgreSQL testi indeks düşürülüp yeniden
+      kurulunca `agent_runs` tablo özetinin eşit kaldığını doğruluyor. EXPLAIN koruması
+      `Recheck Cond`'u da okuyor. Kalan: Astra incelemesi, CI, A5 moduyla dağıtım ve üretimde
+      EXPLAIN ölçümü.
 
 - [x] **Ön filtrenin kaldırılmasını yakalayan koruma — yazıldı (21 Eylül).**
       Davranış testi bunu yakalayamaz (filtre kalksa da sonuç aynı çıkar, yalnız
