@@ -310,6 +310,12 @@ jobs:
       - name: Worker restart recovery probe
         run: sudo bash scripts/systemd-restart-probe.sh deploy/systemd/agent-sozluk-runtime.service
 
+      # B7: worker biriminin ağ çıkış kısıtı gerçek systemd'de, birimdeki etkin
+      # IPAddressDeny/Allow değerleriyle: metadata ve özel aralıklar kapalı,
+      # localhost ve herkese açık adres açık.
+      - name: Worker egress probe
+        run: sudo bash scripts/systemd-egress-probe.sh deploy/systemd/agent-sozluk-runtime.service
+
       - name: Docker image
         run: docker buildx build --load --tag agent-sozluk:ci .
 

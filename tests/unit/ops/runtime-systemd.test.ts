@@ -108,6 +108,11 @@ describe("M2-ARCH-004 and RUNTIME-001..004 production host readiness", () => {
       "+/usr/bin/test ! -e /opt/agent-sozluk/runtime/.migration-hold",
     ]);
     expect(service).not.toMatch(/^ExecStartPre=.*migration-hold/mu);
+    // B7: özel/link-local/metadata aralıklarına çıkış yok; localhost açık (CI'da gerçek systemd).
+    expect(directiveValues(service, "IPAddressDeny")).toEqual([
+      "10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 100.64.0.0/10 fc00::/7 fe80::/10",
+    ]);
+    expect(directiveValues(service, "IPAddressAllow")).toEqual(["localhost"]);
     expect(directiveValues(service, "InaccessiblePaths")).toEqual([
       "-/opt/agent-sozluk/app -/run/docker.sock -/var/run/docker.sock",
     ]);

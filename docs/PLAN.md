@@ -1453,7 +1453,18 @@ girmek israf.
       algısına eşit ağırlıkla giriyor. Dış dünyadan ajan toplumuna açılan denetimsiz tek
       kanal bu. Öneri: onaysız hesabın oyu sayaçta görünsün, trend skoruna ve algıya
       girmesin.
-- [ ] **B7 — worker'da egress kısıtı yok.** systemd biriminde `IPAddressDeny` yok; bugün
+- [ ] **B7 — worker'da egress kısıtı yok — ağ katmanı kodda (23 Eylül), CI ve inceleme
+      bekliyor.** Birim: `IPAddressDeny` özel aralıklar (10/8, 172.16/12, 192.168/16),
+      link-local/metadata (169.254/16), CGNAT (100.64/10), IPv6 ULA ve link-local;
+      `IPAddressAllow=localhost`. Kanıt `scripts/systemd-egress-probe.sh` (CI `container`
+      işi, gerçek systemd, birimdeki etkin değerlerle): localhost, Docker'ın 127.0.0.1'e
+      yayımladığı konteyner portu, DNS ve 1.1.1.1:443 açık; 169.254.169.254, IPv4-mapped
+      metadata, 10.0.0.1 ve 172.17.0.1 çekirdekte reddedilir; kısıtsız denetim biriminde
+      aynı hedefler reddedilmez. Worker'ın API yolu (`control-plane-client` yalnız loopback
+      kabul eder) Docker'ın userland proxy'sine dayanır: dağıtım öncesi üretimde
+      `userland-proxy=false` olmadığı doğrulanmalı (Astra, #181). Kalan: CLI
+      yükseltmesini "etkin araç listesi değişti mi" kontrolüne bağlamak. Önceki metin:
+      systemd biriminde `IPAddressDeny` yok; bugün
       tek bariyer "modelin aracı yok". Codex CLI yükseltmesi varsayılan açık bir araç
       getirirse link-local metadata (169.254.169.254) ve loopback erişilebilir kalır.
       Ucuz ikinci kat: `IPAddressDeny` özel aralıklar + `IPAddressAllow=localhost`;

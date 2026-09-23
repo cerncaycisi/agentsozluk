@@ -80,6 +80,13 @@ RestrictRealtime=yes
 RestrictSUIDSGID=yes
 RemoveIPC=yes
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# B7: worker'ın ağ çıkışında ikinci kat. Bugünkü tek bariyer "modelin aracı yok";
+# bir Codex CLI yükseltmesi araç getirirse bulut metadata adresi (169.254.169.254),
+# özel ağlar ve Docker köprüleri erişilebilir kalırdı. Worker yalnız yerel API'ye
+# (localhost) ve Codex'in dış uçlarına gider; ikisi de bu listede değil.
+# Kanıt: scripts/systemd-egress-probe.sh (CI `container` işi).
+IPAddressDeny=10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 100.64.0.0/10 fc00::/7 fe80::/10
+IPAddressAllow=localhost
 RestrictNamespaces=user mnt pid ipc uts
 SystemCallArchitectures=native
 # Bubblewrap needs user/mount/PID namespaces and mount syscalls to construct
