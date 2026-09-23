@@ -1231,10 +1231,23 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
 - [x] **F05 — kapandı (20 Eylül).** Takip artık rapora değil kapıya bağlı:
       CI `quality` işinde `pnpm audit --prod --audit-level=high` (fail-closed,
       istisnasız) ve `dependabot.yml`. Ayrıntı B1, bölüm 5.7.
-- [ ] **F06 — Şifre değişimi mevcut oturumun kopyasını geçersizleştirmiyor.**
-      `revokeAllUserSessions(..., currentSessionId)` mevcut oturumu hariç tutuyor ve yeni
-      token verilmiyor. Tehdit modeli dar: saldırgan tam olarak mevcut session cookie'sinin
-      kopyasına sahipse o kopya yaşamaya devam edebilir. Ayrı saldırgan oturumu iptal ediliyor.
+- [ ] **F06 — Şifre değişimi mevcut oturumun kopyasını geçersizleştirmiyor — kod hazır,
+      inceleme bekliyor (23 Eylül).** Eskiden `revokeAllUserSessions(..., currentSessionId)`
+      mevcut oturumu hariç tutuyordu ve yeni token verilmiyordu; mevcut session cookie'sinin
+      kopyası yaşamaya devam ediyordu. Artık aynı transaction'da mevcut oturum dahil hepsi
+      iptal edilir ve yeni oturum verilir; mevcut oturum bu arada kapatıldıysa şifre değişmez
+      (`AUTH_REQUIRED`). Yan bulgu da kapandı: kayan süre yenilemesi, işleyicinin yazdığı yeni
+      oturum cookie'sini iptal edilmiş eski token'la eziyordu; yenileme artık işleyici oturum
+      cookie'si yazdığında hiç uygulanmıyor, yazmadan önce oturumun etkin olduğunu doğruluyor ve
+      şifre rotası süreyi hiç uzatmıyor. **Kabul edilen artık risk (Astra 2. turda saptayıp BİRLEŞTİRME dedi; 3. turda bu
+      kayıtla kabul etti):** başka bir rotanın süre uzatan yanıtı, `stillValid` kontrolünü
+      iptalden önce geçip şifre değişimi yanıtından SONRA tarayıcıya ulaşırsa yeni cookie'yi eski
+      (iptal edilmiş) token'la ezer; kullanıcı yeniden giriş yapar. F06 açığı yeniden açılmaz
+      (iptal edilmiş token sunucuda geçersiz); oturum sürekliliği etkilenir. Süre yalnız 30
+      günlük oturumun son 7 gününde uzar (oturum başına ~23 günde bir); eşzamanlı istekler o
+      anda birden fazla yenileme kaydedebilir. Tetik için o isteklerden birinin şifre
+      değişimiyle eşzamanlı olması ve yanıtların ters sırada ulaşması gerekir. Cookie teslim
+      sırası sunucudan denetlenemez.
 - [~] **F07 — Entry JSON-LD tam metin düzeltmesi canlıda; `digitalSourceType` kararı açık.**
   `3416827` entry/başlık şemasına tam `text` ekledi; 500+ karakter ve güvenli
   serileştirme kontrolü geçti. 8 Eylül `f88d64d` dağıtımında tek entry ve

@@ -5,7 +5,12 @@ import { AppError } from "@/lib/http/errors";
 import { appendAuditLog } from "@/modules/audit";
 import { isLastActiveAdmin } from "@/modules/auth/domain/permissions";
 import { hashPassword, verifyPassword, withArgon2Permit } from "@/modules/auth/domain/password";
-import { revokeAllUserSessions } from "@/modules/auth/repository/sessions";
+import {
+  issueSession,
+  type IssuedSession,
+  type SessionMetadata,
+} from "@/modules/auth/application/sessions";
+import { revokeAllUserSessions, revokeOwnedSession } from "@/modules/auth/repository/sessions";
 import {
   anonymizeUserRecord,
   countActiveAdmins,
@@ -142,27 +147,40 @@ export async function changeEmail(
   }
 }
 
+/*
+  F06 (4 Eylül incelemesi): şifre değişince mevcut oturum da iptal edilir ve
+  yerine yeni token verilir. Eskiden mevcut oturum hariç tutuluyordu; o
+  cookie'nin bir kopyası (ör. çalınmış) şifre değiştikten sonra da yaşıyordu.
+  Mevcut oturum bu arada başka yerden kapatıldıysa yeni oturum verilmez.
+*/
 export async function changePassword(
   client: DatabaseClient,
   userId: string,
   currentSessionId: string,
   input: PasswordChangeInput,
   requestId: string,
-): Promise<void> {
+  metadata: SessionMetadata,
+): Promise<IssuedSession> {
   const passwordHash = await hashPassword(input.newPassword);
-  await withArgon2Permit(() =>
+  return withArgon2Permit(() =>
     client.$transaction(async (transaction) => {
       await requireSensitiveOperationUser(transaction, userId, input.currentPassword);
+      const current = await revokeOwnedSession(transaction, userId, currentSessionId);
+      if (current.count !== 1) {
+        throw new AppError("AUTH_REQUIRED", 401, "Bu işlem için giriş yapmalısınız.");
+      }
       await updateUserPassword(transaction, userId, passwordHash);
-      await revokeAllUserSessions(transaction, userId, currentSessionId);
+      await revokeAllUserSessions(transaction, userId);
+      const session = await issueSession(transaction, userId, metadata);
       await appendAuditLog(transaction, {
         actorId: userId,
         action: "user.password_changed",
         entityType: "User",
         entityId: userId,
         requestId,
-        metadata: { otherSessionsRevoked: true },
+        metadata: { otherSessionsRevoked: true, currentSessionRotated: true },
       });
+      return session;
     }),
   );
 }

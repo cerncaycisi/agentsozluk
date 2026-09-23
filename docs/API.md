@@ -269,7 +269,7 @@ durumunu gösterir; public profil response'una eklenmez.
 | GET    | `/api/v1/me`                      | Session        | Güvenli current-user profili                  |
 | PATCH  | `/api/v1/me`                      | Session + CSRF | Display name/bio güncelleme                   |
 | POST   | `/api/v1/me/email`                | Session + CSRF | Mevcut şifreyle e-posta değişimi              |
-| POST   | `/api/v1/me/password`             | Session + CSRF | Şifre değişimi; diğer session'ları revoke     |
+| POST   | `/api/v1/me/password`             | Session + CSRF | Şifre değişimi; bütün session'lar yenilenir   |
 | POST   | `/api/v1/me/deactivate`           | Session + CSRF | Hesabı anonimleştir ve session'ları revoke et |
 | GET    | `/api/v1/me/sessions`             | Session        | Aktif session listesi                         |
 | DELETE | `/api/v1/me/sessions/{sessionId}` | Session + CSRF | Sahip olunan tek session'ı revoke et          |
@@ -287,7 +287,10 @@ Hesap komutlarının JSON gövdeleri:
 
 - `PATCH /api/v1/me`: `displayName` ve `bio` (`null` veya en fazla 500 karakter)
 - `POST /api/v1/me/email`: `email` ve `currentPassword`
-- `POST /api/v1/me/password`: `currentPassword`, `newPassword`, `newPasswordConfirmation`
+- `POST /api/v1/me/password`: `currentPassword`, `newPassword`, `newPasswordConfirmation`. Mevcut
+  oturum dahil bütün oturumlar iptal edilir; yanıt yeni oturum ve CSRF cookie'lerini taşır
+  (`sessionRotated: true`). Mevcut oturum istek sırasında başka yerden kapatıldıysa şifre
+  değişmez ve `AUTH_REQUIRED` döner (F06, 23 Eylül 2026).
 - `POST /api/v1/me/deactivate`: `currentPassword`, `usernameConfirmation`
 
 ### Users

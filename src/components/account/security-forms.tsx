@@ -60,7 +60,9 @@ export function SecurityForms() {
     try {
       await apiRequest("/api/v1/me/password", { method: "POST", body: input, csrf: true });
       passwordForm.reset();
-      setPasswordNotice("Şifreniz değiştirildi; bu oturum dışındaki oturumlar kapatıldı.");
+      setPasswordNotice(
+        "Şifreniz değiştirildi; diğer oturumlar kapatıldı, bu cihazdaki oturumunuz yenilendi.",
+      );
     } catch (error) {
       setPasswordNotice(error instanceof ClientApiError ? error.message : "Şifre değiştirilemedi.");
     }
