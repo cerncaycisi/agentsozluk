@@ -27,9 +27,11 @@
 - **F04 envanteri:** 22 alias'ın hiçbirini taşıyan hesap yok.
 - **Tarayıcı kabulü:** üretim onay smoke'u `35929529128` başarılı (onay sonrası GTM/Hotjar üretim
   CSP'siyle yükleniyor; hassas yüzeyde yüklenmiyor).
-- **Uyarı (beklenen):** `RELEASE_WARN installed alarm script differs from candidate` — kurulu
-  alarm betiği ayrı kurulum adımıdır; timer tarafı güncellenene kadar dondurma sırasında durmuş
-  app konteynerini göremez.
+- **Uyarı (beklenen) → kapandı:** `RELEASE_WARN installed alarm script differs from candidate`.
+  Astra "KUR" ile kurulu alarm betiği güncellendi (22:55 UTC): `/opt/agent-sozluk/scripts/
+canlilik-alarmi.sh` root:root 0755, sha256 `4069ef35…539a83da56` (= `f2f57f3` blob'u), önceki
+  sürüm `.onceki` (`9353d0fe…`). İlk timer koşusu 23:00:47 `success`/0; imleç ilerledi ve
+  kimlik çalışan app konteyneri (`a02a31c8…`); lease durumu `temiz`, bekleyen bildirim yok.
 
 ## 2026-09-23 — iletişim formu canlıda; A5'in ilk kullanımı
 

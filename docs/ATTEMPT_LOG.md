@@ -8652,6 +8652,10 @@ lease tarafından hiç kullanılmıyordu.
   doğrusu `/opt/agent-sozluk/runtime/compose.production.yaml` (konteyner etiketi
   `com.docker.compose.project.config_files`).
 
+- Kurulu alarm betiği güncellendi (Astra "KUR"): aday sha256 `4069ef35…` sunucuda doğrulandı,
+  `install` → `.onceki` yedeği → `mv -fT`. Geri alma: `sudo mv -fT …onceki …canlilik-alarmi.sh`.
+  İlk timer koşusu `success`, imleç yeni app kimliğiyle ilerledi, durum `temiz`.
+
 **Tekrarlama:**
 
 - Dağıtımdan hemen sonra "Up 53 seconds" görüp yeniden başlatma sanma: önce sunucu saatini ve

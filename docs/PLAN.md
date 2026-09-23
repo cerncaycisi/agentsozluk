@@ -55,8 +55,7 @@ adıyla korunur. Ayrıntı `AGENTS.md` içindedir.
 
 - A1 (#173), lease taraması (#174), A3 (#175), `agent_runs.finishedAt` indeksi (#176), F04
   (#178). A5 yoluyla, kesinti ≈9 dk. Kanıt `STATUS.md` ve `ATTEMPT_LOG.md`.
-- Açık küçük iş: kurulu alarm betiği (`/opt/agent-sozluk/scripts/canlilik-alarmi.sh`) adaydan
-  farklı; #174'ün timer tarafı kurulum adımıyla tamamlanır.
+- Kurulu alarm betiği de `f2f57f3` sürümüne güncellendi (Astra "KUR"; ilk timer koşusu temiz).
 
 ### 23 Eylül 2026 — main'de, üretimde değil
 
