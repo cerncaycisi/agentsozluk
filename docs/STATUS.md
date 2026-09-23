@@ -7,6 +7,16 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-23 — iletişim formu main'de, üretimde değil
+
+- **Birleşen:** PR #164, merge `a0f2878116a95339cfda1e51e1523a8a17b3b7a6`; ikinci ebeveyn
+  incelenen head `9b4ac1c4dad71c09ebff2dd838eb41538819f801`. PR CI `35794074338` 7/7 başarılı.
+- **Hakem:** Sol (`gpt-5.6-sol`, xhigh, salt okunur) yedi tur; 7. tur BİRLEŞTİR.
+- **Testler:** `tests/unit/contact` 30 birim testi yerelde geçti; `ConfirmAction` için 1 test;
+  6 PostgreSQL entegrasyon vakası CI `database` işinde geçti (yerelde PostgreSQL yok).
+- **Dağıtım:** yapılmadı. Sürüm `contact_messages` migration'ı içeriyor; mevcut hat
+  `MIGRATION_SET_CHANGED` ile durur. Önkoşul `PLAN.md` A5.
+
 ## 2026-09-22 — Hotjar onaya bağlı olarak geri geldi
 
 - **Dağıtılan:** `c21a798b329a957c804526c96815100e170ac813` (PR #160 + #161), Gökhan'ın exact
