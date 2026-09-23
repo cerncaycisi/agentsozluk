@@ -544,6 +544,25 @@ describe("authentication and accounts with PostgreSQL", () => {
     expect(await integrationDatabase.user.count()).toBe(1);
   });
 
+  it("rejects a public alias as a new username (F04)", async () => {
+    // `/yazar/centik` apartmanfilozofu'ya çözülür; bu adla açılan hesabın
+    // profil adresi gölgelenirdi.
+    await expect(
+      registerHuman(
+        integrationDatabase,
+        registrationSchema.parse({
+          ...registration("centik"),
+          email: "alias_owner@integration.test",
+        }),
+        { userAgent: null, ip: null },
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ code: "USERNAME_TAKEN", status: 409 });
+    expect(await integrationDatabase.user.count({ where: { usernameNormalized: "centik" } })).toBe(
+      0,
+    );
+  });
+
   it("requires exact admin approval before a newly registered human can publish", async () => {
     const registered = await registerHuman(
       integrationDatabase,

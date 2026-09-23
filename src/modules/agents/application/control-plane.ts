@@ -95,6 +95,7 @@ import {
 } from "@/modules/agents/application/rollout-guard";
 import { assertProductionRolloutCompletionEvidence } from "@/modules/agents/application/production-rollout-proof";
 import { ROSTER_HEARTBEAT_FRESH_MS } from "@/modules/agents/domain/stochastic-scheduler";
+import { isReservedPublicProfileSlug } from "@/modules/users/domain/public-identity";
 
 const GLOBAL_SETTINGS_AGGREGATE_ID = "00000000-0000-4000-8000-000000000001";
 const RETIRED_DAILY_PLANNING_FIELD_NAMES = [
@@ -494,7 +495,10 @@ export async function createAgent(
   return inTransaction(client, async (transaction) => {
     await requireAgentAdminInTransaction(transaction, actor);
     await lockAgentSettings(transaction);
-    if (await findAgentIdentityConflict(transaction, input.persona.username)) {
+    if (
+      isReservedPublicProfileSlug(input.persona.username) ||
+      (await findAgentIdentityConflict(transaction, input.persona.username))
+    ) {
       throw new AppError("USERNAME_TAKEN", 409, "Bu kullanıcı adı kullanılıyor.");
     }
     const sourceAgent =

@@ -26,3 +26,14 @@ export function resolvePublicProfileUsername(segment: string): string {
   const normalized = normalizeProfileUsername(segment);
   return usernameBySlug.get(normalized) ?? normalized;
 }
+
+/*
+  F04 (4 Eylül incelemesi): alias'lar kullanıcı adı alanında rezervedir.
+  `/yazar/<alias>` başka bir yazara çözüldüğü için bu adla açılan yeni hesabın
+  profil adresi gölgelenirdi. Kayıt ve ajan oluşturma bu kontrolle reddeder.
+*/
+export function isReservedPublicProfileSlug(username: string): boolean {
+  const normalized = normalizeProfileUsername(username);
+  const target = usernameBySlug.get(normalized);
+  return target !== undefined && target !== normalized;
+}
