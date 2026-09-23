@@ -1291,8 +1291,10 @@ F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
       kalıcı çözümü budur — ikinci sinyal geldiğinde hem kilitleme hem deneme
       aynı anda kapatılabilir. _(Astra önerisi, 20 Eylül)_
 
-- [ ] **Küçük ama biriken:** merkezi hata kaydında gerçek neden/stack yerine güvenli kodun
-      kalması; `runtime:plan` scope'unun hem planlama hem credential roster için kullanılması.
+- [ ] **Küçük ama biriken:** `runtime:plan` scope'unun hem planlama hem credential roster
+      için kullanılması. **Kod hazır (23 Eylül, inceleme bekliyor):** merkezi hata kaydı
+      beklenmeyen 500'lerde hata sınıfının adını ve en çok 10 stack çerçevesini
+      (`işlev yol:satır:sütun`) kaydeder; hata mesajı hiç kaydedilmez.
       **Kapandı (23 Eylül):** "Ana içeriğe geç" sonrası odak artık `main#ana-icerik`'e taşınıyor
       (19 hedefte `tabIndex={-1}`, E2E ile ölçülüyor); README rota örneği
       `/baslik/{slug}--{publicId}`; reset notundaki model sayısı güncel.

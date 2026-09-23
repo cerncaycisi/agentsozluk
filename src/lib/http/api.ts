@@ -7,7 +7,7 @@ import {
 import { AppError, validationError } from "@/lib/http/errors";
 import { readJsonBody } from "@/lib/http/json-body";
 import { requestIdFrom } from "@/lib/http/request";
-import { logRequest, safeErrorCode } from "@/lib/logging/logger";
+import { logRequest, safeErrorCode, safeErrorDiagnostics } from "@/lib/logging/logger";
 import { getRequestActorId, withRequestLogContext } from "@/lib/logging/request-context";
 
 export interface ApiContext {
@@ -85,6 +85,8 @@ export async function runApi(
           durationMs: Date.now() - startedAt,
           actorId: getRequestActorId(),
           errorCode: safeErrorCode(error),
+          // Yalnız beklenmeyen sunucu hatalarında: sınıf adı ve stack çerçeveleri.
+          diagnostics: known.status >= 500 ? safeErrorDiagnostics(error) : null,
         });
         return response;
       }

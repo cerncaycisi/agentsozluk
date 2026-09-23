@@ -90,6 +90,53 @@ export function safeErrorCode(error: unknown): string {
   return "INTERNAL_ERROR";
 }
 
+/*
+  Beklenmeyen hatanın tanısı (18 Eylül incelemesi, "küçük ama biriken"): merkezi
+  kayıtta yalnız `INTERNAL_ERROR` kalıyordu, gerçek neden bulunamıyordu. Kaydedilen
+  yalnız hata sınıfının adı ve stack ÇERÇEVELERİDİR. Hata mesajı hiç kaydedilmez:
+  sürücü ve kütüphane mesajları sorgu parametresi, e-posta ya da token taşıyabilir.
+  Çerçeve yalnız katı `at işlev (yol:satır:sütun)` biçimine uyuyorsa alınır; çok
+  satırlı bir mesajın "at …" diye başlayan satırı yol biçimine uymadıkça düşer. Yol
+  proje köküne göre kısaltılır, e-posta biçimi yine sansürlenir.
+*/
+const identifier = /^[A-Za-z][A-Za-z0-9_]{0,60}$/u;
+const stackFrame =
+  /^\s+at (?:([\w.$<>[\] ]{1,120}) \()?((?:file:\/\/|node:|\/)[^\s()]{1,400}):(\d{1,7}):(\d{1,7})\)?$/u;
+const maxFrames = 10;
+
+function shortFramePath(path: string): string {
+  if (path.startsWith("node:")) return path;
+  const withoutScheme = path.replace(/^file:\/\//u, "");
+  for (const marker of ["/node_modules/", "/src/", "/scripts/", "/.next/"]) {
+    const index = withoutScheme.lastIndexOf(marker);
+    if (index >= 0) return withoutScheme.slice(index + 1);
+  }
+  return withoutScheme.split("/").slice(-2).join("/");
+}
+
+export function safeErrorDiagnostics(
+  error: unknown,
+): { errorName: string; errorFrames: string[] } | null {
+  if (error instanceof AppError) return null;
+  if (!(error instanceof Error)) return { errorName: "NonError", errorFrames: [] };
+  const constructorName = error.constructor?.name ?? "";
+  const errorName = identifier.test(constructorName)
+    ? constructorName
+    : identifier.test(error.name)
+      ? error.name
+      : "Error";
+  const errorFrames: string[] = [];
+  for (const line of (error.stack ?? "").split("\n")) {
+    const match = stackFrame.exec(line);
+    if (!match) continue;
+    const [, fn, path, row, column] = match;
+    const frame = `${fn ? `${fn} ` : ""}${shortFramePath(path ?? "")}:${row}:${column}`;
+    errorFrames.push(frame.replace(emailValue, "[REDACTED]"));
+    if (errorFrames.length === maxFrames) break;
+  }
+  return { errorName, errorFrames };
+}
+
 export function logRequest(input: {
   requestId: string;
   method: string;
@@ -98,6 +145,7 @@ export function logRequest(input: {
   durationMs: number;
   actorId?: string | null;
   errorCode?: string | null;
+  diagnostics?: { errorName: string; errorFrames: string[] } | null;
 }): void {
   const fields = {
     requestId: input.requestId,
@@ -107,6 +155,7 @@ export function logRequest(input: {
     durationMs: input.durationMs,
     actorId: input.actorId ?? null,
     errorCode: input.errorCode ?? null,
+    ...(input.diagnostics ? input.diagnostics : {}),
   };
   if (input.status >= 500) logger.error(fields, "request completed");
   else if (input.status >= 400) logger.warn(fields, "request completed");

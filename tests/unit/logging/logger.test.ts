@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AppError } from "@/lib/http/errors";
-import { redactRequestPath, safeErrorCode } from "@/lib/logging/logger";
+import { redactRequestPath, safeErrorCode, safeErrorDiagnostics } from "@/lib/logging/logger";
 
 describe("structured logging safety", () => {
   it("redacts sensitive query parameters and preserves harmless filters", () => {
@@ -45,5 +45,46 @@ describe("structured logging safety", () => {
     expect(safeErrorCode(new AppError("FORBIDDEN", 403, "Hayır"))).toBe("FORBIDDEN");
     expect(safeErrorCode({ code: "P2037", message: "database details" })).toBe("P2037");
     expect(safeErrorCode(new Error("sensitive detail"))).toBe("INTERNAL_ERROR");
+  });
+
+  it("records the class name and stack frames of an unexpected error, never its message", () => {
+    // Mesaj sır taşıyabilir; çok satırlı mesajdaki "at …" satırı da çerçeve sayılmaz.
+    class DriverError extends Error {}
+    const error = new DriverError(
+      "insert failed for user@example.test token=abc123\n    at secret@example.test",
+    );
+    error.stack = [
+      "DriverError: insert failed for user@example.test token=abc123",
+      "    at secret@example.test",
+      "    at createUser (/app/src/modules/auth/repository/users.ts:42:11)",
+      "    at async runApi (file:///app/src/lib/http/api.ts:47:26)",
+      "    at node:internal/process/task_queues:105:5",
+      "    at /app/node_modules/.pnpm/pg@8/node_modules/pg/lib/client.js:545:17",
+    ].join("\n");
+    const diagnostics = safeErrorDiagnostics(error);
+    expect(diagnostics).toEqual({
+      errorName: "DriverError",
+      errorFrames: [
+        "createUser src/modules/auth/repository/users.ts:42:11",
+        "async runApi src/lib/http/api.ts:47:26",
+        "node:internal/process/task_queues:105:5",
+        "node_modules/pg/lib/client.js:545:17",
+      ],
+    });
+    const serialized = JSON.stringify(diagnostics);
+    for (const secret of ["user@example.test", "secret@example.test", "abc123", "insert failed"]) {
+      expect(serialized).not.toContain(secret);
+    }
+  });
+
+  it("adds no diagnostics for expected application errors and caps the frame count", () => {
+    expect(safeErrorDiagnostics(new AppError("FORBIDDEN", 403, "Yasak."))).toBeNull();
+    expect(safeErrorDiagnostics("düz metin")).toEqual({ errorName: "NonError", errorFrames: [] });
+    const deep = new Error("x");
+    deep.stack = [
+      "Error: x",
+      ...Array.from({ length: 30 }, (_, i) => `    at f${i} (/app/src/a.ts:${i + 1}:1)`),
+    ].join("\n");
+    expect(safeErrorDiagnostics(deep)?.errorFrames).toHaveLength(10);
   });
 });
