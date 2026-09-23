@@ -699,9 +699,11 @@ post_verify() {
   # döngü hiç dönmeden "boş" kontrolü atlanırdı.
   "$host_node" -e '
     const value = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
-    process.stdout.write(Object.keys(value.tables).join("\n") + "\n");
+    const names = Object.keys(value.tables);
+    if (names.length > 0) process.stdout.write(names.join("\n") + "\n");
   ' "$migration_dir/expectation.json" >"$migration_dir/new-tables" ||
     migration_fail EXPECTATION_UNREADABLE
+  # Boş liste gerçekten boş dosyadır (tek satır sonu "boş değil" sayılmaz).
   test -s "$migration_dir/new-tables" || migration_fail EXPECTATION_WITHOUT_TABLES
   while IFS= read -r name; do
     test "$(grep -c "^table:$name|0|0|0$" "$migration_dir/post-$label-fingerprint")" = 1 ||

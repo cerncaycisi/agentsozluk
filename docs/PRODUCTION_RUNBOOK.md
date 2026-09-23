@@ -1378,7 +1378,8 @@ her süreç kayıtlı bir scope'ta kalır.
 
 1. `planned` — başarısız `_prisma_migrations` kaydı yok; uygulanmışlar adayda var ve checksum'ları
    dosyalarla eşit; bekleyenler onaylı listeye eşit ve sıralı; `check-additive-migration.mjs`
-   bekleyenlerin birleşik SQL'ini kabul ediyor ve beklenti JSON'unu üretiyor.
+   bekleyenlerin birleşik SQL'ini kabul ediyor (en az bir yeni tablo şart) ve beklenti JSON'unu
+   üretiyor.
 2. `image-verified` — aday imaj ve runtime release (mevcut adımlar) hazır; imajdaki migration
    dosyaları checkout'la aynı; `run-migration.mjs` imajda.
 3. Ön kontrol — `UTF8`; rol veritabanının sahibi ve `CREATEDB`/süper kullanıcı; veritabanı ya da

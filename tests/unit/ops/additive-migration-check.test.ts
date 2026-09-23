@@ -151,6 +151,8 @@ describe("yalnız ek yapan migration denetçisi (A5)", () => {
     ["E önekli dize", table("  \"g\" TEXT DEFAULT E'\\\\x'"), "PREFIXED_LITERAL"],
     ["kapanmamış yorum", "/* açık kaldı\nCREATE TYPE \"x\" AS ENUM ('a');", "UNTERMINATED_COMMENT"],
     ["boş migration", "-- yalnız yorum\n", "EMPTY_MIGRATION"],
+    // İlk kullanım sözleşmesi: tablo açmayan migration dondurmadan önce reddedilir.
+    ["yalnız enum", "CREATE TYPE \"only_enum\" AS ENUM ('a', 'b');", "MIGRATION_WITHOUT_TABLE"],
   ])("%s → reddeder", (_label, sql, reason) => {
     expect(rejectionReason(sql)).toBe(reason);
   });
@@ -159,6 +161,7 @@ describe("yalnız ek yapan migration denetçisi (A5)", () => {
     const sql = [
       "/* dış /* iç */ DROP TABLE hâlâ yorum */",
       "CREATE TYPE \"x\" AS ENUM ('a; DROP TABLE users', 'b -- değil');",
+      table('  "d" "x"'),
     ].join("\n");
     expect(check(sql).status).toBe(0);
     expect(rejectionReason("/* dış /* iç */ kapanmadı\nCREATE TYPE \"x\" AS ENUM ('a');")).toBe(

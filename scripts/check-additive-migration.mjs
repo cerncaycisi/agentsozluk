@@ -714,6 +714,12 @@ export function checkAdditiveMigration(sql) {
       cursor.fail("STATEMENT_NOT_ALLOWED");
     }
   }
+  /*
+    İlk kullanım sözleşmesi: migration en az bir tablo açar. Yalnız enum ekleyen
+    bir migration dağıtım yolunun "yeni tablo" doğrulamalarına uymaz; dondurmadan
+    SONRA değil, burada reddedilir (Sol, 23 Eylül).
+  */
+  if (state.tables.size === 0) throw new Rejection("MIGRATION_WITHOUT_TABLE", 0);
   for (const [, table] of state.tables) {
     for (const check of table.checks) {
       for (const column of checkColumns(check)) {
