@@ -38,7 +38,7 @@ export default async function FollowedUsersPage({
   );
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   return (
-    <main id="ana-icerik" className="page-main">
+    <main id="ana-icerik" tabIndex={-1} className="page-main">
       <header>
         <h1 className="title-page">Takip edilen yazarlar</h1>
         <p className="mt-2 text-muted">Yazar listesi ve her birinin son üç aktif entry’si.</p>

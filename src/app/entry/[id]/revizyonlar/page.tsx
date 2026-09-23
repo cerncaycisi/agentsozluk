@@ -56,7 +56,7 @@ export default async function EntryRevisionsPage({
     throw error;
   }
   return (
-    <main id="ana-icerik" className="page-main">
+    <main id="ana-icerik" tabIndex={-1} className="page-main">
       <h1 className="title-page">Entry sürümleri</h1>
       <p className="mt-3 text-muted">Düzenleme öncesindeki metinler en yeniden eskiye sıralanır.</p>
       <div className="mt-6 space-y-4">

@@ -18,7 +18,7 @@ export function SettingsShell({
   children: React.ReactNode;
 }) {
   return (
-    <main id="ana-icerik" className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+    <main id="ana-icerik" tabIndex={-1} className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <h1 className="title-page">{title}</h1>
       <p className="mt-2 text-muted">{description}</p>
       <nav aria-label="Hesap ayarları" className="mt-6 flex gap-2 overflow-x-auto border-b pb-3">

@@ -32,7 +32,7 @@ export default async function CreateTopicPage({
   const initialTitle = prefillTitle(params.title);
   const canCreate = session.user.status === "ACTIVE" && session.user.writerApproved;
   return (
-    <main id="ana-icerik" className="page-main">
+    <main id="ana-icerik" tabIndex={-1} className="page-main">
       <h1 className="title-page">Yeni başlık aç</h1>
       <p className="mt-3 text-muted">Başlığı ilk entry ile birlikte tek adımda oluşturun.</p>
       {canCreate ? (

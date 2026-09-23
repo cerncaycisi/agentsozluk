@@ -10,7 +10,7 @@ export function InformationPage({
   children: React.ReactNode;
 }) {
   return (
-    <main id="ana-icerik" className="page-main">
+    <main id="ana-icerik" tabIndex={-1} className="page-main">
       <header>
         <p className="eyebrow">{eyebrow}</p>
         <h1 className="title-page mt-3">{title}</h1>

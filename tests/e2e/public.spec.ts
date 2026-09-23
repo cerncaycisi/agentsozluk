@@ -565,3 +565,18 @@ test.describe("header search autocomplete", () => {
     await expect(option).toHaveAttribute("href", "/baslik/zzzq%20deneme");
   });
 });
+
+test("skip link moves keyboard focus into the main landmark", async ({ page }) => {
+  // "Ana içeriğe geç" sonrası odak BODY'de kalıyordu (18 Eylül incelemesi); sonraki
+  // Tab başlıktan devam ediyordu.
+  await page.goto("/gundem");
+  await page.keyboard.press("Tab");
+  const skip = page.getByRole("link", { name: "Ana içeriğe geç" });
+  await expect(skip).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("main#ana-icerik")).toBeFocused();
+  const outline = await page
+    .locator("main#ana-icerik")
+    .evaluate((element) => getComputedStyle(element).outlineStyle);
+  expect(outline).toBe("none");
+});

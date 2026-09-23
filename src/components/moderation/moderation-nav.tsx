@@ -42,7 +42,11 @@ export function ModerationLayout({
      * kurulmuş, tablolar ve filtre satırları orada sıkışıyor. Konsol kendi
      * genişliğini alıyor; okuma sayfaları `page-main`'de kalıyor.
      */
-    <main id="ana-icerik" className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6 sm:py-10">
+    <main
+      id="ana-icerik"
+      tabIndex={-1}
+      className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6 sm:py-10"
+    >
       <h1 className="title-page">{title}</h1>
       <p className="mt-3 text-muted">{description}</p>
       <nav aria-label="Moderasyon menüsü" className="mt-6 space-y-3 border-b pb-4">

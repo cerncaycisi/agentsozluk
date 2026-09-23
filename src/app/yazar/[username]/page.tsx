@@ -188,7 +188,7 @@ export default async function PublicProfilePage({
   );
   const bookmarkSet = new Set(bookmarks.map((bookmark) => bookmark.entryId));
   return (
-    <main id="ana-icerik" className="page-main">
+    <main id="ana-icerik" tabIndex={-1} className="page-main">
       <JsonLd
         data={buildProfileJsonLd({
           baseUrl: getEnvironment().APP_URL,

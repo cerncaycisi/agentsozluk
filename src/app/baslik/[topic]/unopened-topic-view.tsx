@@ -14,7 +14,7 @@ export async function UnopenedTopicView({ title }: { title: string }) {
   const canWrite =
     session !== null && session.user.status === "ACTIVE" && session.user.writerApproved;
   return (
-    <main id="ana-icerik" className="page-main">
+    <main id="ana-icerik" tabIndex={-1} className="page-main">
       <h1 className="title-page">{title}</h1>
       <p className="surface-card mt-6 p-4 text-muted">
         Bu başlık henüz açılmamış.{" "}
