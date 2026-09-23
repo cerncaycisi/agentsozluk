@@ -1351,10 +1351,13 @@ girmek israf.
     sayfası ve `POST /api/v1/iletisim` (giriş gerekmez, köken kontrolü, IP başına saatte 5,
     ham IP yerine HMAC), `/moderasyon/iletisim` kuyruğu ve "ele alındı" işareti,
     `contact_messages` tablosu + migration. `ContactMessage` great reset'te korunan listede
-    (Astra bulgusu). 22 birim + 5 PostgreSQL entegrasyon testi; altı mutasyon denemesinin
-    hepsi en az bir testi düşürdü. **Dağıtımı migration içerdiği için ayrı kapsam onayı ve
-    runbook'un yedek/geri yükleme/migration kapılarını ister.** Açık karar: talep kayıtlarının
-    saklama süresi — bugün otomatik silme yok, metinler de otomatik silme sözü vermiyor.
+    (Astra bulgusu). `tests/unit/contact` altında 27 birim testi (22 Eylül ölçümü) + 6 PostgreSQL entegrasyon testi vakası; mutasyon denemelerinin
+    hepsi en az bir testi düşürdü. Saklama süresi kararı **verildi** (süresiz; bkz. A4).
+    **Dağıtım engeli:** sürüm migration içeriyor, mevcut `production-release-remote.sh`
+    ise yeni migration görünce `MIGRATION_SET_CHANGED` ile duruyor ve app entrypoint'ini
+    `prisma migrate deploy` çalıştırmayacak şekilde eziyor; runbook Gate 7/8 ise kodda
+    bulunmayan uygulama genelinde yazma dondurması istiyor. Bu yüzden önce migration'lı
+    dağıtım yolu yazılacak (A5), iletişim formu onun ilk müşterisi olacak.
     Gökhan'dan isteğe bağlı: GA4 "Form
     etkileşimleri"ni kapatmak. Karar kaydı: Gökhan: künyede takma ad; iletişim ve içerik kaldırma için sitede bir
     form (anonim mesaj saklamak yeni tablo, yani migration ister — ayrı PR ve ayrı onay);
@@ -1472,10 +1475,85 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       olan buydu). Öneri: `StartLimitIntervalSec=0` + artan `RestartSec`. **Kapatma
       ölçütü:** izole ortamda zorlanmış crash-loop'tan 5 dakika içinde kendiliğinden
       toparlanma; alarmın aynı olayı yine bildirdiği kanıtı. _(bölüm 5.5)_
-- [ ] **A4 — iletişim taleplerinin saklama süresi kararı.** PR #164 kayıtları süresiz
-      saklıyor ve otomatik silme sözü vermiyor. Karar Gökhan'ın: süresiz mi, ele
-      alındıktan N ay sonra silinsin mi? Süre seçilirse bakım işine eklenir ve
-      `/gizlilik` metni ona göre güncellenir. _(Gökhan kararı)_
+- [ ] **A5 — migration'lı üretim dağıtım yolu (Gökhan onayladı, 22 Eylül: "A").**
+      Bugün yalnız `deploy-production-no-migration.sh` var; yeni migration'lı bir sürüm
+      dağıtılamıyor (`MIGRATION_SET_CHANGED`) ve runbook Gate 7/8'in istediği uygulama
+      genelinde yazma dondurması kodda yok (`MAINTENANCE` yalnız ajanları durduruyor).
+      Yazılacak mod:
+
+      - **Ön kontrol:** `SHOW server_encoding` = `UTF8`. Uygulamanın uzunluk kuralı
+        kod noktası sayar ve PostgreSQL `length()` ile ancak UTF8'de örtüşür (Sol, 22 Eylül).
+      - **Yedek ve restore kanıtı:** `pg_dump -Fc` + boyut/özet kaydı, ardından yedeğin izole
+        bir veritabanına `pg_restore --exit-on-error` ile geri yüklenmesi. Karşılaştırma
+        **`public` şemadaki bütün tabloları** kapsar (V1, `user_follows`, `agent_*` ve sonra
+        eklenenler, `_prisma_migrations`); liste sabit yazılmaz, katalogdan okunur. Her tablo
+        için satır sayısı ve içerik parmak izi. Runbook'taki mevcut Gate 7 yalnız 16 V1
+        tablosunu sınıyor, `user_follows` ve `agent_*` tablolarını açıkça dışlıyor
+        (`PRODUCTION_RUNBOOK.md`), bu yüzden onun yerine geçmez. Tablolar yetmez: `public`
+        şemadaki bütün sequence'ler de katalogdan okunup karşılaştırılır (`last_value`,
+        `is_called`, sahip sütun ve `DEFAULT` bağı) ve her sequence'in sonraki değerinin sahip
+        sütundaki en büyük değerden büyük olduğu doğrulanır. İçeriği birebir aynı tablolar
+        sıfırlanmış bir `topics_public_id_seq` ile de eşit görünür, ilk yeni başlık ise
+        `publicId` çakışmasıyla düşer (Sol, 22 Eylül; 10 Eylül provası 3 sequence ölçmüştü).
+        Yalnız dosyanın var olması yedek kanıtı sayılmaz.
+
+      - Uygulanmış migration listesi, **yalnız ek yapan** migration kontrolü, imajın kendi
+        entrypoint'iyle `prisma migrate deploy`, sonrasında applied == candidate ve tablo
+        envanteri karşılaştırması.
+      - **"Yalnız ek yapan" bir izin listesidir**, yasak sözcük listesi değil (Sol, 22 Eylül:
+        `CREATE TRIGGER`, `CREATE OR REPLACE FUNCTION`, `UPDATE` veya `DO` bloğu hiçbir yasak
+        sözcüğe takılmadan eski imajın davranışını ya da mevcut veriyi değiştirebilir). Aday
+        migration'daki her ifade yalnız şunlardan biri olabilir:
+
+        - `CREATE TYPE … AS ENUM`;
+        - yeni bir tabloyu açan düz `CREATE TABLE "ad" (…)`: sütunlar, sütun/tablo CHECK'leri,
+          birincil anahtar ve aşağıdaki kurala uyan FK'ler. `AS`, `PARTITION OF`, `INHERITS`,
+          `LIKE`, `OF`, `IF NOT EXISTS`, `TEMP`/`UNLOGGED` biçimleri reddedilir;
+        - aynı migration'da açılan tablo üzerinde, düz sütun listesiyle
+          `CREATE [UNIQUE] INDEX` (ifade indeksi ve `WHERE` yok).
+
+        İzin listesi ifadelerin **içine** de uygulanır, yoksa izinli bir kabuk yan etki
+        taşır: `CHECK (setval('topics_public_id_seq', 1, false) > 0)` yeni tabloya ilk satır
+        yazılınca mevcut sequence'i sıfırlar (Sol, 22 Eylül). Sütun türü yalnız yerleşik
+        skaler tür veya aynı migration'da açılan enum; `SERIAL`/`BIGSERIAL`, `GENERATED` ve
+        kimlik sütunu reddedilir. `DEFAULT` yalnız sabit, enum değeri veya
+        `CURRENT_TIMESTAMP`. `CHECK` yalnız sütun başvurusu, sabit, karşılaştırma,
+        `IS [NOT] NULL`, `AND`/`OR`/`NOT`, `~` ve adıyla listelenmiş değişmez (IMMUTABLE)
+        yerleşik fonksiyonlar (`length`, `btrim`). Başka herhangi bir fonksiyon çağrısı,
+        alt sorgu, tür dönüşümü ya da mevcut bir sequence/nesneye başvuru adayı reddeder.
+
+        Geri kalan her şey (mevcut nesneye dokunan `ALTER`, `DROP`, `TRUNCATE`, DML,
+        fonksiyon, trigger, `DO`, yorum dışı bilinmeyen ifade) adayı reddeder;
+        ayrıştırılamayan ifade de reddedilir.
+      - **Mevcut tabloya yönelen FK:** yeni tablo "fazladan" olsa da mevcut tabloya FK
+        eklemek eski imajın davranışını değiştirir: varsayılan `NO ACTION` veya `RESTRICT`
+        ile geri dönüşten sonra eski imajın kullanıcı silmesi, yeni tablodaki çocuk satır
+        yüzünden düşer (Sol, 22 Eylül). Bu yüzden böyle bir FK yalnız açık
+        `ON DELETE SET NULL` (sütun NULL'lanabilir ve hiçbir CHECK onu zorunlu kılmıyor;
+        yoksa silme `23514` ile düşer) ya da açık `ON DELETE CASCADE` ile kabul edilir;
+        ikisinde de `ON UPDATE CASCADE`. İletişim migration'ı buna uyuyor: iki FK de
+        `SET NULL`, iki sütun da NULL'lanabilir, `handledById` bilerek CHECK dışında.
+      - **Geri dönüş güvencesi** bu kurallardan **ve** kanıttan gelir: önceki imajın yeni
+        şemalı veritabanına karşı açıldığı, sağlık kontrolünden geçtiği **ve** yeni tablodan
+        referans alan bir üst satırı (ör. kullanıcı) silip güncelleyebildiği izole bir prova.
+        Yalnız açılış ve sağlık kontrolü FK etkisini yakalamaz.
+
+      **Kapatma ölçütü:** birim testleriyle korunan mod; izin listesinin her reddedilen ifade
+      türü ve her reddedilen ifade içeriği (`setval`, `nextval`, alt sorgu, `SERIAL`,
+      ifade indeksi) için ayrı vaka, iletişim migration'ının kendisi olumlu vaka; bütün
+      tabloları ve sequence'leri kapsayan izole restore + parmak izi kanıtı; FK'li eski imaj uyumluluk provası;
+      Sol + Astra incelemesi; ve ilk kullanımı olarak iletişim formunun canlıya alınması.
+      A5 kapanmadan migration'lı dağıtım yapılmaz; runbook'un elle yürütülen Gate 7'si
+      yalnız V1 tablolarını sınadığı için bunun yerine geçmez.
+      _(Sıra 2 / bölüm 5.5)_
+
+- [x] **A4 — iletişim taleplerinin saklama süresi: SÜRESİZ. KARAR VERİLDİ.**
+      _(Gökhan kararı, 22 Eylül 2026: "Suresiz kalsın")_ Talep kayıtları otomatik
+      silinmez; otomatik temizlik işi açılmayacak. Kayıt sahibi silinmesini aynı
+      formdan isteyebilir, silme elle yapılır. `/gizlilik` ve `/iletisim` metinleri
+      zaten otomatik silme sözü vermiyor, değişiklik gerekmedi. Kabul edilen sonuç:
+      dağıtık spam'de tablo sınırsız büyüyebilir (Sol bulgusu); sınırlama IP başına
+      saatte 5 gönderimle kalıyor.
 
 **Var olan maddelere bağlananlar** — yeni madde açılmadı:
 

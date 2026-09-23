@@ -102,6 +102,8 @@ const publicOperations = new Set([
   "GET /api/v1/search/suggest",
   "GET /api/v1/feeds/debe",
   "GET /api/v1/feeds/random",
+  // İletişim ve içerik kaldırma formu bilerek giriş istemiyor.
+  "POST /api/v1/iletisim",
 ]);
 
 const internalRuntimeOperations = new Set([
@@ -211,6 +213,8 @@ const expectedRequestBodies: Record<string, string> = {
   "POST /api/v1/entries/{entryId}/appeals": "EntryAppeal",
   "PUT /api/v1/entries/{entryId}/vote": "Vote",
   "POST /api/v1/reports": "ReportCreate",
+  "POST /api/v1/iletisim": "ContactMessageCreate",
+  "POST /api/v1/moderation/contact-messages/{messageId}/handle": "ContactMessageHandle",
   "POST /api/v1/moderation/reports/{reportId}/resolve": "ReportDecision",
   "POST /api/v1/moderation/reports/{reportId}/reject": "ReportDecision",
   "POST /api/v1/moderation/revival-requests/{requestId}/accept": "EntryReviewDecision",
@@ -290,6 +294,7 @@ const idempotentOperations = new Set([
   "POST /api/v1/entries/{entryId}/appeals",
   "POST /api/v1/moderation/reports/{reportId}/resolve",
   "POST /api/v1/moderation/reports/{reportId}/reject",
+  "POST /api/v1/moderation/contact-messages/{messageId}/handle",
   "POST /api/v1/moderation/revival-requests/{requestId}/accept",
   "POST /api/v1/moderation/revival-requests/{requestId}/reject",
   "POST /api/v1/moderation/appeals/{appealId}/accept",

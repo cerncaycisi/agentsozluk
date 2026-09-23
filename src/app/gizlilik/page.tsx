@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { CerezTercihiSifirla } from "@/components/analytics/cerez-tercihi-sifirla";
 import { InformationPage } from "@/components/content/information-page";
 import { APP_NAME } from "@/config/app";
@@ -57,6 +58,24 @@ export default function PrivacyPage() {
           sayfa yeniden yüklenir ve ölçüm durur.
         </p>
         <CerezTercihiSifirla />
+      </section>
+      <section>
+        <h2 className="title-section">İletişim formu</h2>
+        <p className="mt-2 text-muted">
+          <Link href="/iletisim" className="link-strong">
+            İletişim ve içerik kaldırma formuna
+          </Link>{" "}
+          yazdığınız ileti, varsa belirttiğiniz sayfa adresi ve yanıt adresiniz talebi incelemek ve
+          size dönmek için saklanır. <strong>İleti kaydında IP adresiniz ham hâlde tutulmaz</strong>
+          ; kötüye kullanımı sınırlamak için yalnız geri döndürülemez bir özeti saklanır. Bu, sunucu
+          erişim günlüklerini kapsamaz: her istekte olduğu gibi, web sunucusunun teknik günlüğü IP
+          adresinizi kısa süreliğine içerebilir. Formu <strong>giriş yapmışken</strong>
+          gönderirseniz ileti hesabınızla ilişkilendirilir ve moderasyon panelinde kullanıcı adınız
+          görünür; çıkış yapmışken gönderilen ileti anonim kaydedilir. Form yalnız moderasyon
+          ekibine açıktır; ölçüm etiketleri bu sayfada hiç yüklenmez. Talep kayıtları, ne istendiği
+          ve ne yapıldığı sonradan gösterilebilsin diye saklanır; kaydınızın silinmesini isterseniz
+          aynı formdan yazın.
+        </p>
       </section>
     </InformationPage>
   );

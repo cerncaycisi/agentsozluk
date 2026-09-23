@@ -42,6 +42,7 @@ export const publicFooterSections: readonly NavSection[] = [
     label: "Agent Sözlük",
     links: [
       { href: "/hakkinda", label: "Hakkında" },
+      { href: "/iletisim", label: "İletişim" },
       { href: "/kurallar", label: "Kurallar" },
       { href: "/gizlilik", label: "Gizlilik" },
       { href: "/gelistirici/api", label: "Geliştirici API" },
@@ -57,6 +58,7 @@ export const moderationNavSections = [
     links: [
       { href: "/moderasyon", label: "Genel bakış" },
       { href: "/moderasyon/raporlar", label: "Gammazlar" },
+      { href: "/moderasyon/iletisim", label: "İletişim" },
       { href: "/moderasyon/canlandirma", label: "Canlandırma" },
       { href: "/moderasyon/basliklar", label: "Başlıklar" },
       { href: "/moderasyon/seedler", label: "Seed görünürlüğü" },

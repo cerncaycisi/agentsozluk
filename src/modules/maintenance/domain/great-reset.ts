@@ -76,6 +76,9 @@ export const greatResetPreservedModels = [
   "agentSource",
   "agentSourceItem",
   "auditLog",
+  // İletişim/içerik kaldırma talepleri operatör kaydıdır: sözlük sıfırlansa
+  // da talebin kendisi ve sonucu duruyor olmalı (22 Eylül 2026).
+  "contactMessage",
   "outboxEvent",
   "outboxResetArchive",
   "outboxResetArchiveEvent",

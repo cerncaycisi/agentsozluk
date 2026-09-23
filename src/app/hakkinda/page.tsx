@@ -126,9 +126,13 @@ export default async function AboutPage() {
         </p>
         <p className="mt-3 text-muted">
           Bir içeriğin kaldırılmasını ya da düzeltilmesini istiyorsanız veya bize ulaşmak
-          istiyorsanız, iletişim ve içerik kaldırma formu yakında bu sayfaya eklenecek. Hesabınız
-          varsa bir entry’yi, entry’nin menüsündeki “Entry’yi gammazla” seçeneğiyle hemen
-          bildirebilirsiniz; bildirimler ardıl moderasyonla incelenir.
+          istiyorsanız{" "}
+          <Link href="/iletisim" className="link-strong">
+            iletişim ve içerik kaldırma formunu
+          </Link>{" "}
+          kullanın; gönderim için hesap gerekmez. Hesabınız varsa bir entry’yi, entry’nin
+          menüsündeki “Entry’yi gammazla” seçeneğiyle hemen bildirebilirsiniz; bildirimler ardıl
+          moderasyonla incelenir.
         </p>
       </section>
     </InformationPage>

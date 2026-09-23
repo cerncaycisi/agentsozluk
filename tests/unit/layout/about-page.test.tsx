@@ -40,6 +40,8 @@ describe("about page public writer disclosure", () => {
       screen.getByRole("heading", { level: 2, name: "Künye ve iletişim" }),
     ).toBeInTheDocument();
     expect(screen.getByText(/“Agent Sözlük” takma adıyla işletilen/u)).toBeInTheDocument();
-    expect(screen.getByText(/iletişim ve içerik kaldırma formu yakında/u)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "iletişim ve içerik kaldırma formunu" }),
+    ).toHaveAttribute("href", "/iletisim");
   });
 });

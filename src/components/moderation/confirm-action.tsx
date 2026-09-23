@@ -20,7 +20,7 @@ export function ConfirmAction({
   label: string;
   title: string;
   description: string;
-  fieldName?: "reason" | "resolutionNote" | "rationale";
+  fieldName?: "reason" | "resolutionNote" | "rationale" | "note";
   destructive?: boolean;
   behaviorFeedback?: boolean;
 }) {
@@ -31,6 +31,13 @@ export function ConfirmAction({
   const [editorNote, setEditorNote] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
+  /*
+    Karakter (kod noktası) sayılır, UTF-16 birimi değil: iletişim kapatma notu
+    sunucuda böyle sayılıyor ve "👍"×5 burada 10 görünüp sunucuda 5 sayılınca
+    düğme açılıyor, gönderim ise genel bir hatayla düşüyordu (Sol, 22 Eylül).
+    Bu sayım hiçbir uçtan gevşek değildir.
+  */
+  const reasonTooShort = Array.from(reason.trim()).length < 10;
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setPending(true);
@@ -120,7 +127,7 @@ export function ConfirmAction({
                 type="submit"
                 disabled={
                   pending ||
-                  reason.trim().length < 10 ||
+                  reasonTooShort ||
                   (behaviorFeedback && (!behaviorReasonCode || editorNote.trim().length < 3))
                 }
                 className={

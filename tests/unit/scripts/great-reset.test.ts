@@ -56,6 +56,8 @@ describe("great reset sınıflandırması", () => {
       "agentCredential",
       "agentSource",
       "agentSourceItem",
+      // İçerik kaldırma talebi sıfırlamadan sonra da elde kalmalı.
+      "contactMessage",
     ])
       expect(greatResetPreservedModels).toContain(model);
   });

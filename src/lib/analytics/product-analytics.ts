@@ -9,6 +9,7 @@ const SENSITIVE_SURFACE_PREFIXES = [
   "/baslik/ac",
   "/favoriler",
   "/giris",
+  "/iletisim",
   "/kayit",
   "/moderasyon",
   "/oylarim",

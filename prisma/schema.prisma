@@ -321,6 +321,8 @@ model User {
   agentTopicLocks               AgentTopicWriteLock[]      @relation("AgentTopicLockCreator")
   seedEntriesSuppressed         SeedEntryVisibility[]      @relation("SeedVisibilitySuppressor")
   seedEntriesRestored           SeedEntryVisibility[]      @relation("SeedVisibilityRestorer")
+  contactMessagesSubmitted      ContactMessage[]           @relation("ContactMessageSubmitter")
+  contactMessagesHandled        ContactMessage[]           @relation("ContactMessageHandler")
 
   @@map("users")
 }
@@ -502,6 +504,39 @@ model UserBlock {
   @@id([blockerId, blockedId])
   @@index([blockedId])
   @@map("user_blocks")
+}
+
+/// İletişim ve içerik kaldırma formu (22 Eylül 2026): anonim ziyaretçi de
+/// gönderebilir. Ham IP yazılmaz; kötüye kullanım takibi için HMAC saklanır.
+enum ContactMessageKind {
+  CONTENT_REMOVAL
+  OTHER
+}
+
+enum ContactMessageStatus {
+  OPEN
+  HANDLED
+}
+
+model ContactMessage {
+  id          String               @id @default(uuid()) @db.Uuid
+  kind        ContactMessageKind
+  subjectUrl  String?              @db.VarChar(500)
+  message     String               @db.VarChar(4000)
+  replyEmail  String?              @db.VarChar(320)
+  submitterId String?              @db.Uuid
+  ipKeyHash   String               @db.VarChar(64)
+  status      ContactMessageStatus @default(OPEN)
+  handledById String?              @db.Uuid
+  handledAt   DateTime?            @db.Timestamptz(3)
+  handledNote String?              @db.VarChar(1000)
+  createdAt   DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime             @updatedAt @db.Timestamptz(3)
+  submitter   User?                @relation("ContactMessageSubmitter", fields: [submitterId], references: [id])
+  handledBy   User?                @relation("ContactMessageHandler", fields: [handledById], references: [id])
+
+  @@index([status, createdAt])
+  @@map("contact_messages")
 }
 
 model Report {
