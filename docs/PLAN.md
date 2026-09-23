@@ -1491,7 +1491,7 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       dağıtılamıyor (`MIGRATION_SET_CHANGED`) ve runbook Gate 7/8'in istediği uygulama
       genelinde yazma dondurması kodda yok (`MAINTENANCE` yalnız ajanları durduruyor).
 
-      **23 Eylül durumu — TASARIM UZLAŞILDI, KOD PR #167'DE, ÜRETİMDE KULLANILMADI.**
+      **23 Eylül durumu — KOD MAIN'DE (`9c275cf`, PR #167), ÜRETİMDE HENÜZ KULLANILMADI.**
       Gökhan kısa kesintili yolu seçti (23 Eylül; dondurma = worker drenaj + Caddy ve app
       durdurma, site bu sürede kapalı). Tasarım Astra ile sekiz turda uzlaştırıldı ("TASARIM
       UYGUN", `3729072`); ayrıntı ve bütün aşamalar runbook "Migration'lı sürüm (A5)"
@@ -1507,9 +1507,11 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       sınamasıyla, `SET NULL` için monotonluk) ve CI entegrasyon testiyle (gerçek PostgreSQL,
       `users` kimlik değişimi ve silme) kanıtlanır. Uygulama kullanıcı silmediği ve kimlik
       değiştirmediği için (audit tetikleyicisi kullanıcı silmeyi engeller) eski imaj bu yolu
-      zaten çalıştırmaz. Kalan kapatma adımları: Astra kod incelemesi (Sol dört turda inceledi,
-      son kararı BİRLEŞTİR; 23 Eylül'den beri hakem yalnız Astra), birleştirme ve
-      ilk kullanım (iletişim formu; ayrı exact onay).
+      zaten çalıştırmaz. Hakem turları: Sol dört kod turu (son BİRLEŞTİR); Gökhan'ın 23 Eylül
+      kararıyla hakem yalnız Astra — üç kod turu, son `0b48f32` BİRLEŞTİR; PR CI 7/7. Kalan tek
+      kapatma adımı ilk kullanım: iletişim formunun bu yolla canlıya alınması (ayrı exact onay;
+      scratch provası, önceki imaj açılışı ve oturum scope kontrolünün olumlu yolu ancak orada
+      ölçülür).
 
       Yazılacak mod:
 
