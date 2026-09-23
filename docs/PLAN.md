@@ -1491,6 +1491,18 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       Bugün yalnız `deploy-production-no-migration.sh` var; yeni migration'lı bir sürüm
       dağıtılamıyor (`MIGRATION_SET_CHANGED`) ve runbook Gate 7/8'in istediği uygulama
       genelinde yazma dondurması kodda yok (`MAINTENANCE` yalnız ajanları durduruyor).
+
+      **23 Eylül durumu — TASARIM UZLAŞILDI, KOD PR #167'DE, ÜRETİMDE KULLANILMADI.**
+      Gökhan kısa kesintili yolu seçti (23 Eylül; dondurma = worker drenaj + Caddy ve app
+      durdurma, site bu sürede kapalı). Tasarım Astra ile sekiz turda uzlaştırıldı ("TASARIM
+      UYGUN", `3729072`); ayrıntı ve bütün aşamalar runbook "Migration'lı sürüm (A5)"
+      bölümünde, deneme kaydı `ATTEMPT_LOG.md`'de. Aşağıdaki gereksinim listesi korunuyor;
+      uygulamada iki fark: migration imajın kendi entrypoint'iyle değil, aday imajdan tek
+      seferlik bir konteynerde `scripts/run-migration.mjs` ile (hedef `current_database()` ile
+      doğrulanır) uygulanır; FK kuralı daha dar (yalnız mevcut tablonun uuid `id`'sine, sütun
+      başına bir FK, yeni tablolar arası FK yok). Kalan kapatma adımları: Sol + Astra kod
+      incelemesi, birleştirme ve ilk kullanım (iletişim formu; ayrı exact onay).
+
       Yazılacak mod:
 
       - **Ön kontrol:** `SHOW server_encoding` = `UTF8`. Uygulamanın uzunluk kuralı
@@ -1509,8 +1521,8 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
         `publicId` çakışmasıyla düşer (Sol, 22 Eylül; 10 Eylül provası 3 sequence ölçmüştü).
         Yalnız dosyanın var olması yedek kanıtı sayılmaz.
 
-      - Uygulanmış migration listesi, **yalnız ek yapan** migration kontrolü, imajın kendi
-        entrypoint'iyle `prisma migrate deploy`, sonrasında applied == candidate ve tablo
+      - Uygulanmış migration listesi, **yalnız ek yapan** migration kontrolü, aday imajla tek
+        seferlik konteynerde `prisma migrate deploy`, sonrasında applied == candidate ve tablo
         envanteri karşılaştırması.
       - **"Yalnız ek yapan" bir izin listesidir**, yasak sözcük listesi değil (Sol, 22 Eylül:
         `CREATE TRIGGER`, `CREATE OR REPLACE FUNCTION`, `UPDATE` veya `DO` bloğu hiçbir yasak
@@ -1544,7 +1556,9 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
         `ON DELETE SET NULL` (sütun NULL'lanabilir ve hiçbir CHECK onu zorunlu kılmıyor;
         yoksa silme `23514` ile düşer) ya da açık `ON DELETE CASCADE` ile kabul edilir;
         ikisinde de `ON UPDATE CASCADE`. İletişim migration'ı buna uyuyor: iki FK de
-        `SET NULL`, iki sütun da NULL'lanabilir, `handledById` bilerek CHECK dışında.
+        `SET NULL`, iki sütun da NULL'lanabilir; `handledById` CHECK'te yalnız olumlu
+        `IS NULL` olarak geçiyor (NULL'a çekmek CHECK'i düşüremez; 23 Eylül düzeltmesi —
+        önceki "CHECK dışında" ifadesi yanlıştı).
       - **Geri dönüş güvencesi** bu kurallardan **ve** kanıttan gelir: önceki imajın yeni
         şemalı veritabanına karşı açıldığı, sağlık kontrolünden geçtiği **ve** yeni tablodan
         referans alan bir üst satırı (ör. kullanıcı) silip güncelleyebildiği izole bir prova.
