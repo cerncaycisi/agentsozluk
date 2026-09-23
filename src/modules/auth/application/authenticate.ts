@@ -25,6 +25,7 @@ import {
 } from "@/modules/auth/repository/users";
 import type { LoginInput, RegistrationInput } from "@/modules/auth/validation/schemas";
 import { serializeSafeUser, type SafeUser } from "@/modules/users/domain/serialization";
+import { isReservedPublicProfileSlug } from "@/modules/users/domain/public-identity";
 
 export interface AuthenticationResult {
   user: SafeUser;
@@ -86,7 +87,10 @@ export async function registerHuman(
       if (conflicts.some((item) => item.emailNormalized === input.email)) {
         throw new AppError("EMAIL_TAKEN", 409, "Bu e-posta adresi kullanılıyor.");
       }
-      if (conflicts.some((item) => item.usernameNormalized === input.username)) {
+      if (
+        conflicts.some((item) => item.usernameNormalized === input.username) ||
+        isReservedPublicProfileSlug(input.username)
+      ) {
         throw new AppError("USERNAME_TAKEN", 409, "Bu kullanıcı adı kullanılıyor.");
       }
       const user = await createHumanUser(transaction, {

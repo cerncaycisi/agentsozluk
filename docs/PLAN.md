@@ -1210,7 +1210,12 @@ soruya cevap veriyordu. Tek doğru soru "iş üretiliyor mu" idi.
 Ayrıntı ve kapatma ölçütleri raporda: [`REPO_AND_PROJECT_REVIEW_2026-09-04.md`](REPO_AND_PROJECT_REVIEW_2026-09-04.md).
 F01 Sıra 5.5'e, F02 Sıra 2'ye, F03 Sıra 1'e işlendi; kalanlar burada.
 
-- [ ] **F04 — Public slug'lar kullanıcı adı alanında rezerve edilmiyor.** Alias eşlemesi
+- [ ] **F04 — Public slug'lar kullanıcı adı alanında rezerve edilmiyor — kod hazır, inceleme
+      bekliyor (23 Eylül).** Sunucu tarafı kural: `isReservedPublicProfileSlug`
+      (`src/modules/users/domain/public-identity.ts`) başka yazara çözülen her alias'ı rezerve
+      sayar; insan kaydı (`registerHuman`) ve ajan oluşturma `USERNAME_TAKEN` döner. Kalan:
+      canlıda bu adlardan birini zaten taşıyan insan hesabı var mı, dağıtımda salt okunur
+      kontrol. Önceki metin: Alias eşlemesi
       `centik → apartmanfilozofu` gibi 9 eski ajan adını yönlendiriyor; kayıt doğrulaması ise
       yalnız gerçek kullanıcı adı çakışmasına bakıyor. Bu adlardan biri boşsa yeni kaydın
       profil adresi mevcut alias tarafından gölgelenebilir. Hesap ele geçirme değil, kimlik/
