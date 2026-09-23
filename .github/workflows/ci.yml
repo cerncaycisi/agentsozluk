@@ -316,6 +316,12 @@ jobs:
       - name: Docker Compose config
         run: docker compose config
 
+      # F09: imaj boş PostgreSQL'e karşı üretim kipinde gerçekten açılır; entrypoint
+      # migration'ları uygular, sağlık/ready/ana sayfa ve release smoke geçer,
+      # yeniden açılışta migration tekrar uygulanmaz.
+      - name: Container boot probe
+        run: bash scripts/container-boot-probe.sh agent-sozluk:ci
+
   validate:
     if: always()
     needs: [quality, behavior, database, coverage, browser, container]
