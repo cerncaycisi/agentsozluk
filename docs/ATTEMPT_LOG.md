@@ -8497,6 +8497,9 @@ lease tarafından hiç kullanılmıyordu.
 - İletişim ve içerik kaldırma formu (PR #164, `feat/iletisim-formu`): yeni `contact_messages`
   tablosu, `/iletisim`, `POST /api/v1/iletisim`, `/moderasyon/iletisim`. Sol dört tur
   inceledi; ilk üç turda BİRLEŞTİRME dedi ve her turda gerçek kusur buldu.
+  _23 Eylül ekleme:_ 4-6. turlar da BİRLEŞTİRME (aşağıdaki tekrarlama notları), 7. tur
+  `9b4ac1c` için BİRLEŞTİR; PR CI `35794074338` 7/7; Gökhan onayıyla `a0f2878` olarak
+  main'e birleşti. Üretimde değil.
 - **Dağıtım engeli (A5):** `scripts/production-release-remote.sh` yeni migration görünce
   `MIGRATION_SET_CHANGED` ile duruyor ve app entrypoint'ini `prisma migrate deploy`
   çalıştırmayacak şekilde eziyor. Runbook Gate 7/8 ise uygulama genelinde yazma dondurması

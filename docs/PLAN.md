@@ -52,6 +52,12 @@ Ayrıntı `AGENTS.md` içindedir.
 
 ## 0. Yerelde kapatılan paketler
 
+### 23 Eylül 2026 — main'de, üretimde değil
+
+- **`a0f2878` — iletişim ve içerik kaldırma formu (PR #164).** Ayrıntı ve kanıt B5.1-2
+  maddesinde. Migration içerdiği için A5 (migration'lı dağıtım yolu) kapanmadan canlıya
+  çıkmaz.
+
 ### 19 Eylül 2026 — main'de, üretimde değil
 
 - **`4d665cf` — lease transaction'ı `P2028` ile düşüyordu.** (21 Eylül düzeltmesi: bu commit lease yolunun etkin timeout'unu DEĞİŞTİRMEDİ; ayrıntı bölüm 5.5.) 14,5 saatlik sessiz
@@ -1347,11 +1353,17 @@ girmek israf.
   - `c21a798` (PR #160 + #161): Hotjar GA4 ile aynı onayın arkasında geri geldi; onay kapsamı
     sürümlü (`kabul-v2`; yalnız GA4'ü kapsayan eski `kabul` şeridi yeniden açar). Gökhan onayı,
     Sol BİRLEŞTİR, Astra DAĞIT. Smoke run `35729671266` 6/6.
-  - **İletişim ve içerik kaldırma formu: PR #164 (`feat/iletisim-formu`) açık.** `/iletisim`
+  - **İletişim ve içerik kaldırma formu: PR #164 main'e birleşti (`a0f2878`, 23 Eylül;
+    incelenen head `9b4ac1c`, PR CI `35794074338` 7/7). ÜRETİMDE DEĞİL; A5 bekliyor.**
+    Sol yedi tur inceledi: ilk altısında BİRLEŞTİRME ve her turda gerçek kusur (NULL not,
+    UTF-16/kod noktası uzunluğu, NUL, eşi olmayan vekil, NFKC sonrası e-posta tavanı,
+    moderasyon penceresinin sayımı, A5 metni); 7. turda BİRLEŞTİR, şartı exact head CI.
+    Birleştirme Gökhan'ın açık onayıyla (23 Eylül). `/iletisim`
     sayfası ve `POST /api/v1/iletisim` (giriş gerekmez, köken kontrolü, IP başına saatte 5,
     ham IP yerine HMAC), `/moderasyon/iletisim` kuyruğu ve "ele alındı" işareti,
     `contact_messages` tablosu + migration. `ContactMessage` great reset'te korunan listede
-    (Astra bulgusu). `tests/unit/contact` altında 27 birim testi (22 Eylül ölçümü) + 6 PostgreSQL entegrasyon testi vakası; mutasyon denemelerinin
+    (Astra bulgusu). `tests/unit/contact` altında 30 birim testi + `ConfirmAction` için 1 ve
+    6 PostgreSQL entegrasyon testi vakası (23 Eylül sayımı); mutasyon denemelerinin
     hepsi en az bir testi düşürdü. Saklama süresi kararı **verildi** (süresiz; bkz. A4).
     **Dağıtım engeli:** sürüm migration içeriyor, mevcut `production-release-remote.sh`
     ise yeni migration görünce `MIGRATION_SET_CHANGED` ile duruyor ve app entrypoint'ini
