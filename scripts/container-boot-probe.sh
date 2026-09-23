@@ -10,7 +10,11 @@
 #   3. ana sayfa 200 ve uygulama adını taşır;
 #   4. üretim dağıtımının kullandığı release smoke (health, ready, arama) container
 #      içinden geçer;
-#   5. yeniden başlatma: migration'lar ikinci açılışta tekrar uygulanmaz, satır sayısı sabit.
+#   5. düzgün kapanma: `compose stop` SIGTERM'le, SIGKILL'e (137) düşmeden ve süre
+#      sınırı içinde durur;
+#   6. yeniden açılış: `_prisma_migrations` kayıtları (id, ad, checksum, bitiş) birebir
+#      aynı kalır — migration tekrar uygulanmaz, veritabanı sıfırlanmaz;
+#   7. temizlik başarısızsa prob da başarısızdır.
 #
 #   bash scripts/container-boot-probe.sh agent-sozluk:ci
 set -Eeuo pipefail
@@ -38,7 +42,11 @@ cleanup() {
     echo "F09_PROBE_FAIL — app logu:" >&2
     "${compose[@]}" logs --no-color --tail 80 app >&2 || true
   fi
-  "${compose[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+  # Temizlik de kanıtın parçası: başarısızsa yeşil kalınmaz (Astra, #179).
+  if ! "${compose[@]}" down -v --remove-orphans >/dev/null 2>&1; then
+    echo "F09_PROBE_CLEANUP_FAILED" >&2
+    ((status != 0)) || status=1
+  fi
   exit "$status"
 }
 trap cleanup EXIT
@@ -59,20 +67,31 @@ wait_healthy() {
   return 1
 }
 
+db_query() {
+  "${compose[@]}" exec -T db psql -U postgres -d agent_sozluk -Atq -c "$1" </dev/null
+}
+
 applied_migrations() {
-  "${compose[@]}" exec -T db psql -U postgres -d agent_sozluk -Atq -c \
-    "SELECT count(*) FROM \"_prisma_migrations\"
-     WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL;" </dev/null
+  db_query "SELECT count(*) FROM \"_prisma_migrations\"
+    WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL;"
+}
+
+# Kayıtların kendisi: yeniden açılışta birebir aynı kalmalı (sayı eşitliği, sıfırlanıp
+# yeniden uygulanmış bir veritabanını ayırt edemez).
+migration_rows() {
+  db_query "SELECT id || '|' || migration_name || '|' || checksum || '|' || finished_at
+    FROM \"_prisma_migrations\" ORDER BY migration_name, id;"
 }
 
 expected="$(find "$root/prisma/migrations" -mindepth 2 -maxdepth 2 -name migration.sql | wc -l)"
 test "$expected" -gt 0
 
+# Derlenen imajın kimliği açılıştan ÖNCE alınır; çalışan konteyner ona eşit olmalı.
+image_id="$(docker image inspect --format '{{.Id}}' "$image")"
 # `--no-build --pull missing`: sınanan, CI'da az önce derlenen yerel imajın kendisi
 # (yerelde olduğu için çekilmez); yalnız PostgreSQL imajı gerekirse çekilir.
 "${compose[@]}" up -d --no-build --pull missing app </dev/null
-test "$(docker inspect --format '{{.Image}}' "$("${compose[@]}" ps -q app)")" = \
-  "$(docker image inspect --format '{{.Id}}' "$image")"
+test "$(docker inspect --format '{{.Image}}' "$("${compose[@]}" ps -q app)")" = "$image_id"
 wait_healthy
 
 applied="$(applied_migrations)"
@@ -84,15 +103,33 @@ for path in /api/health /api/ready; do
 done
 home="$(curl -sS --max-time 20 -w '\n%{http_code}' "http://127.0.0.1:$port/")"
 test "$(tail -n 1 <<<"$home")" = 200
-grep -q "Agent Sözlük" <<<"$home"
-echo "F09_PROBE_HTTP health=200 ready=200 home=200"
+# Ortak layout (marka) değil, ana sayfanın kendi içeriği ve boş veritabanı mesajı.
+grep -q "Bugün sözlükte" <<<"$home"
+grep -q "Henüz gösterilecek başlık yok." <<<"$home"
+echo "F09_PROBE_HTTP health=200 ready=200 home=200 (ana sayfa içeriği)"
 
 "${compose[@]}" exec -T app ./node_modules/.bin/tsx scripts/release-smoke.ts \
   --base-url http://127.0.0.1:3000 </dev/null
 echo "F09_PROBE_SMOKE ok"
 
+before_rows="$(migration_rows)"
+test -n "$before_rows"
+
+# Düzgün kapanma: SIGTERM, süre sınırı içinde; SIGKILL'e (137) düşmez.
+container="$("${compose[@]}" ps -q app)"
+stop_started="$(date +%s)"
+"${compose[@]}" stop -t 20 app </dev/null
+stop_seconds=$(($(date +%s) - stop_started))
+exit_code="$(docker inspect --format '{{.State.ExitCode}}' "$container")"
+oom="$(docker inspect --format '{{.State.OOMKilled}}' "$container")"
+printf 'F09_PROBE_STOP exit=%s seconds=%s oom=%s\n' "$exit_code" "$stop_seconds" "$oom"
+test "$oom" = false
+test "$exit_code" != 137
+case "$exit_code" in 0 | 143) ;; *) exit 1 ;; esac
+test "$stop_seconds" -lt 20
+
 # İkinci açılış: entrypoint yine `migrate deploy` çalıştırır; hiçbir şey uygulanmamalı.
-"${compose[@]}" restart app </dev/null
+"${compose[@]}" start app </dev/null
 wait_healthy
-test "$(applied_migrations)" = "$expected"
-echo "F09_PROBE_PASS (boş veritabanında açılış, migration, sağlık, smoke ve yeniden açılış)"
+test "$(migration_rows)" = "$before_rows"
+echo "F09_PROBE_PASS (boş veritabanında açılış, migration, sağlık, ana sayfa, smoke, düzgün kapanma, yeniden açılış)"

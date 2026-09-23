@@ -111,7 +111,11 @@ describe("Milestone 2 pull request CI gate", () => {
       "--no-build --pull missing app",
       'test "$applied" = "$expected"',
       "scripts/release-smoke.ts",
-      "restart app",
+      "stop -t 20 app",
+      'test "$exit_code" != 137',
+      'test "$(migration_rows)" = "$before_rows"',
+      "Bugün sözlükte",
+      "F09_PROBE_CLEANUP_FAILED",
       "down -v --remove-orphans",
     ])
       expect(probe, evidence).toContain(evidence);
