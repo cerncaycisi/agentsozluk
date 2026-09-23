@@ -296,6 +296,12 @@ describe("schema-neutral production release lane", () => {
       // Önceden zaman aşımı ayarı varsa dur; scratch adı dar kalıpta.
       expect(phase).toContain("DB_TIMEOUT_SETTING_PRESENT");
       expect(phase).toContain("^agent_sozluk_a5_[0-9]{8}_[0-9]{6}_[0-9a-f]{6}$");
+      // Üretimde uygulama rolü CREATEDB yetkili değil: scratch yönetici rolüyle açılıp
+      // düşürülür, sahibi uygulama rolüdür (ilk kullanım öncesi salt okunur kontrol).
+      expect(phase).toContain("createdb -U postgres -O agent_sozluk -T template0");
+      expect(phase).toContain("dropdb -U postgres --force");
+      expect(phase).not.toContain("createdb -U agent_sozluk");
+      expect(phase).toContain("DATABASE_ADMIN_ROLE_UNAVAILABLE");
       // Yeni birim dondurmada, worker durmuşken kurulur ve hold ondan sonra oluşur.
       const dondur = phase.slice(phase.indexOf("freeze_writes() {"));
       expect(dondur.indexOf("install_runtime_unit")).toBeLessThan(

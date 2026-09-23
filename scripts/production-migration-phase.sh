@@ -194,11 +194,17 @@ verify_migration_image() {
 preflight_migration() {
   test "$(db_psql agent_sozluk -c 'SHOW server_encoding;' </dev/null)" = UTF8 ||
     migration_fail DATABASE_ENCODING_NOT_UTF8
+  # Uygulama rolü veritabanının sahibi olmalı (ALTER DATABASE … SET, restore
+  # edilen kopyanın sahibi). Scratch'i açıp düşürmek ise db konteynerindeki
+  # yönetici rolünün işi: üretimde `agent_sozluk` ne süper kullanıcı ne de
+  # CREATEDB yetkili (ilk kullanım öncesi salt okunur kontrol, 23 Eylül).
   test "$(db_psql agent_sozluk -c \
-    "SELECT (r.rolsuper OR r.rolcreatedb) AND d.datdba = r.oid
-     FROM pg_roles r, pg_database d
+    "SELECT d.datdba = r.oid FROM pg_roles r, pg_database d
      WHERE r.rolname = current_user AND d.datname = current_database();" </dev/null)" = t ||
-    migration_fail DATABASE_ROLE_INSUFFICIENT
+    migration_fail DATABASE_OWNER_MISMATCH
+  test "$("${compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 -U postgres -d postgres \
+    -c 'SELECT rolsuper FROM pg_roles WHERE rolname = current_user;' </dev/null)" = t ||
+    migration_fail DATABASE_ADMIN_ROLE_UNAVAILABLE
 
   # Önceden bir zaman aşımı ayarı varsa dur: `RESET` onu geri getiremez.
   test "$(db_psql agent_sozluk -c \
@@ -505,7 +511,7 @@ SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :'scratch
 SQL
   local deadline
   deadline_prefix
-  "${deadline[@]}" "${compose[@]}" exec -T db dropdb -U agent_sozluk "$scratch_database" \
+  "${deadline[@]}" "${compose[@]}" exec -T db dropdb -U postgres --force "$scratch_database" \
     </dev/null || return 1
   scratch_owned=0
 }
@@ -523,7 +529,9 @@ SQL
   ctype="$(db_psql agent_sozluk -c 'SELECT datctype FROM pg_database WHERE datname = current_database();' </dev/null)"
   local deadline
   deadline_prefix
-  "${deadline[@]}" "${compose[@]}" exec -T db createdb -U agent_sozluk -T template0 -E UTF8 \
+  # Yönetici rolüyle açılır, sahibi uygulama rolüdür: restore ve ALTER DATABASE
+  # uygulama rolüyle yapılır.
+  "${deadline[@]}" "${compose[@]}" exec -T db createdb -U postgres -O agent_sozluk -T template0 -E UTF8 \
     --lc-collate="$collate" --lc-ctype="$ctype" "$scratch_database" </dev/null ||
     migration_fail SCRATCH_CREATE_FAILED
   scratch_owned=1
