@@ -1053,8 +1053,8 @@ ertelenmiş madde olmaktan çıktı.
       karşılaştırılacak transaction süresi yok, yalnız HTTP süresi var.
 
 - [x] **`agent_runs.finishedAt` indeksi — CANLIDA (23 Eylül, `f2f57f3`, A5 yolu).** Üretimde
-      EXPLAIN: `finishedAt IS NULL OR finishedAt > …` deseni `Bitmap Index Scan on
-    "agent_runs_finishedAt_idx"` (cost 16,54; 34.719 satır). Önceki metin:
+      EXPLAIN'e göre `finishedAt IS NULL OR finishedAt > …` deseni artık indeksten okunuyor
+      (Bitmap Index Scan, `agent_runs_finishedAt_idx`; cost 16,54; 34.719 satır). Önceki metin:
       Ön filtre eklendi ama tarama hâlâ sıralıydı. Migration
       `20260923180000_agent_runs_finished_at_index` (`CREATE INDEX "agent_runs_finishedAt_idx"`).
       A5 hattı mevcut tabloya benzersiz olmayan düz indeksi kabul edecek şekilde genişletildi:
