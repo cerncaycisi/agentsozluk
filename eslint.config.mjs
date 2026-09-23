@@ -67,11 +67,12 @@ const eslintConfig = [
           // parçalardan kurulan ad (ör. birleştirme) kasıtlı gizlemedir; bu sınır
           // kaza eseri regresyona karşıdır.
           selector:
-            "Identifier[name=/^(pushState|replaceState)$/], Literal[value=/^(pushState|replaceState)$/], TemplateElement[value.raw=/(pushState|replaceState)/]",
+            "Identifier[name=/^(pushState|replaceState)$/], Literal[value=/^(pushState|replaceState)$/], TemplateElement[value.raw=/^(pushState|replaceState)$/]",
           message: "History API yasak; useAppRouter() kullanın.",
         },
         {
-          selector: "ImportExpression[source.value=/^next\\//]",
+          selector:
+            "ImportExpression[source.value=/^next\\//], ImportExpression[source.quasis.0.value.raw=/^next\\//]",
           message: "Next modülü dinamik import ile alınamaz; useAppRouter() kullanın.",
         },
       ],

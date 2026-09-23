@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { PropsWithChildren, ScriptHTMLAttributes } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /*
@@ -15,17 +14,6 @@ const yol = vi.hoisted(() => ({ ad: "/", sorgu: "" }));
 vi.mock("next/navigation", () => ({
   usePathname: () => yol.ad,
   useSearchParams: () => new URLSearchParams(yol.sorgu),
-}));
-
-vi.mock("next/script", () => ({
-  default: (
-    props: PropsWithChildren<ScriptHTMLAttributes<HTMLScriptElement> & { strategy?: string }>,
-  ) => {
-    const scriptProps = { ...props };
-    delete scriptProps.strategy;
-    delete scriptProps.children;
-    return <script {...scriptProps}>{props.children}</script>;
-  },
 }));
 
 const ADI = "as_cerez_onayi";
@@ -69,6 +57,9 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  // Etiketler effect'te `<head>`'e eklenir; testler arasında sökülür.
+  document.getElementById("google-tag-manager")?.remove();
+  document.getElementById("hotjar-tracking")?.remove();
   cerezleriTemizle();
   vi.unstubAllGlobals();
   window.history.pushState = asilPushState;
@@ -90,10 +81,10 @@ describe("ProductAnalytics — çerez onayı", () => {
     // Opak arka plan: sitenin RGB üçlüsü değişkenleriyle çalışan sınıf (saydam kalmasın).
     expect(serit.className).toContain("bg-surface");
     expect(serit.className).not.toMatch(/bg-\[var\(/u);
-    expect(container.querySelector("script")).toBeNull();
+    expect(document.querySelector("script#google-tag-manager, script#hotjar-tracking")).toBeNull();
     expect(container.innerHTML).not.toContain("GTM-MTGXSB7H");
     expect(container.innerHTML).not.toContain("6753780");
-    expect(container.querySelector("#hotjar-tracking")).toBeNull();
+    expect(document.getElementById("hotjar-tracking")).toBeNull();
   });
 
   it("Kabul et: çerez yazılır, GTM ve Hotjar yüklenir; noscript yoktur", async () => {
@@ -103,10 +94,10 @@ describe("ProductAnalytics — çerez onayı", () => {
       fireEvent.click(screen.getByRole("button", { name: "Kabul et" }));
     });
     expect(document.cookie).toContain(`${ADI}=kabul-v2`);
-    const script = container.querySelector("script#google-tag-manager");
+    const script = document.getElementById("google-tag-manager");
     expect(script?.textContent).toContain("GTM-MTGXSB7H");
     expect(script?.getAttribute("nonce")).toBe("n");
-    const hotjar = container.querySelector("script#hotjar-tracking");
+    const hotjar = document.getElementById("hotjar-tracking");
     expect(hotjar?.textContent).toContain("6753780");
     expect(hotjar?.getAttribute("nonce")).toBe("n");
     expect(container.querySelector("noscript, iframe")).toBeNull();
@@ -125,10 +116,10 @@ describe("ProductAnalytics — çerez onayı", () => {
   it("eski sürüm (yalnız GA4'ü kapsayan) kabul yeni kapsama onay sayılmaz; şerit yeniden sorar", async () => {
     const { ProductAnalytics } = await bilesen();
     document.cookie = `${ADI}=kabul; Path=/`;
-    const { container } = render(<ProductAnalytics enabled nonce="n" />);
+    render(<ProductAnalytics enabled nonce="n" />);
     expect(screen.getByRole("region", { name: "Çerez tercihi" })).toBeVisible();
-    expect(container.querySelector("script")).toBeNull();
-    expect(container.querySelector("#hotjar-tracking")).toBeNull();
+    expect(document.querySelector("script#google-tag-manager, script#hotjar-tracking")).toBeNull();
+    expect(document.getElementById("hotjar-tracking")).toBeNull();
   });
 
   it("eski sürümdeki ret korunur", async () => {
@@ -141,8 +132,8 @@ describe("ProductAnalytics — çerez onayı", () => {
   it("tanınmayan çerez değeri onay sayılmaz", async () => {
     const { ProductAnalytics } = await bilesen();
     document.cookie = `${ADI}=evet; Path=/`;
-    const { container } = render(<ProductAnalytics enabled nonce="n" />);
-    expect(container.querySelector("script")).toBeNull();
+    render(<ProductAnalytics enabled nonce="n" />);
+    expect(document.querySelector("script#google-tag-manager, script#hotjar-tracking")).toBeNull();
     expect(screen.getByRole("region", { name: "Çerez tercihi" })).toBeVisible();
   });
 
@@ -350,7 +341,7 @@ describe("ProductAnalytics — çerez onayı", () => {
       try {
         const { container } = render(<ProductAnalytics enabled nonce="n" />);
         const acik = !konum.hassas && sinyal.dnt === null && sinyal.gpc === undefined;
-        const gtm = container.querySelector("script#google-tag-manager") !== null;
+        const gtm = document.getElementById("google-tag-manager") !== null;
         const serit = container.querySelector('[role="region"]') !== null;
         expect(gtm).toBe(acik && onay.cerez === "kabul-v2");
         expect(serit).toBe(acik && onay.cerez === null);
@@ -396,17 +387,30 @@ describe("ProductAnalytics — çerez onayı", () => {
       expect(container.innerHTML).toBe("");
     });
 
+    it("render herkese açık ama effect anında adres hassassa etiket yüklenmez (Astra, 5. tur)", async () => {
+      const { ProductAnalytics } = await bilesen();
+      const { gtmYuklendiMi } = await import("@/lib/analytics/gtm-state");
+      document.cookie = `${ADI}=kabul-v2; Path=/`;
+      // Render'ın gördüğü adres herkese açık; tarayıcı araya giren geri dönüşle hassasta.
+      yol.ad = "/son";
+      vi.stubGlobal("location", { ...window.location, pathname: "/iletisim", search: "", reload });
+      render(<ProductAnalytics enabled nonce="n" />);
+      expect(document.getElementById("google-tag-manager")).toBeNull();
+      expect(document.getElementById("hotjar-tracking")).toBeNull();
+      expect(gtmYuklendiMi()).toBe(false);
+    });
+
     it("yalnız sorgusu değişen istemci içi gezinmede GTM yüklü belge yeniden yüklenir", async () => {
       const { ProductAnalytics } = await bilesen();
       document.cookie = `${ADI}=kabul-v2; Path=/`;
       yol.ad = "/baslik/gitar--42";
-      const { container, rerender } = render(<ProductAnalytics enabled nonce="n" />);
-      expect(container.querySelector("script#google-tag-manager")).not.toBeNull();
+      const { rerender } = render(<ProductAnalytics enabled nonce="n" />);
+      expect(document.getElementById("google-tag-manager")).not.toBeNull();
       expect(reload).not.toHaveBeenCalled();
       yol.sorgu = "q=akor&page=2";
       rerender(<ProductAnalytics enabled nonce="n" />);
+      // Yüklenmiş etiket sökülemez; belge yeniden yüklenir.
       expect(reload).toHaveBeenCalled();
-      expect(container.querySelector("script#google-tag-manager")).toBeNull();
     });
 
     it("GTM yüklü belgede başlık içi arama bağlantısı tam yüklemeye döner", async () => {

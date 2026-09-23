@@ -47,8 +47,15 @@ modülleri, `next/*` dinamik import) ve History API (tanımlayıcı, string ya d
 tek istisna yardımcı dosyanın kendisidir. `tests/unit/analytics/navigation-lint.test.ts` Astra'nın
 karşı örneklerini (takma ad, isim alanı, yeniden dışa aktarma, iç modül, yapı bozma, string ve
 hesaplanmış anahtar, `Reflect.get`, değişkende ad, dinamik import) gerçek yapılandırmayla
-reddettirir. Sınır kaza eseri regresyona karşıdır: çalışma anında parçalardan kurulan yöntem adı
-kasıtlı gizlemedir ve kapsam dışıdır. Kalan sınır: sunucu tarafı `redirect()` istemci
+reddettirir; ters tırnaklı ``import(`next/...`)`` de dahil. Yalnız History API'yi anan açıklama
+metni engellenmez (şablonda tam eşleşme). Sınır kaza eseri regresyona karşıdır: çalışma anında
+parçalardan kurulan yöntem adı kasıtlı gizlemedir ve kapsam dışıdır.
+
+**Etiket yükleme (A1, Astra beşinci tur):** GTM ve Hotjar satır içi etiketleri `next/script` ile
+çizilmez; bileşenin effect'i gerçek `window.location`'ı yeniden denetler ve adres herkese açıksa
+etiketleri CSP nonce'uyla aynı görevde `<head>`'e ekler. Böylece render ile effect arasına giren
+bir geri dönüş (tarayıcı hassas adrese dönmüşken önceki herkese açık render'ın effect'inin
+koşması) hassas konumda yükleme başlatamaz. Kalan sınır: sunucu tarafı `redirect()` istemci
 içi gezinmede Next'in router'ını kullanır ve bu kapıdan geçmez. Bugünkü hedefler
 (`/giris?next=/`, `/yasak`, herkese açık kanonik adresler) sorgu içermez; varılan hassas yüzeyde
 GTM yüklü belge bileşen tarafından yeniden yüklenir.

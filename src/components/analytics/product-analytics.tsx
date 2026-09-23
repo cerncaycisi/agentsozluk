@@ -1,6 +1,5 @@
 "use client";
 
-import Script from "next/script";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { gtmYuklendiMi, gtmYuklendiOlarakIsaretle } from "@/lib/analytics/gtm-state";
@@ -158,6 +157,36 @@ function onayHalaGecerliMi(): boolean {
   return onayiOku() === "kabul" && !tarayiciIzlemeyiReddediyor();
 }
 
+const GTM_KODU = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','${GOOGLE_TAG_MANAGER_ID}');`;
+
+const HOTJAR_KODU = `(function(h,o,t,j,a,r){
+h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
+h._hjSettings={hjid:${HOTJAR_SITE_ID},hjsv:${HOTJAR_SNIPPET_VERSION}};
+a=o.getElementsByTagName('head')[0];
+r=o.createElement('script');r.async=1;
+r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
+a.appendChild(r);
+})(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');`;
+
+/** GTM ve Hotjar satır içi etiketlerini CSP nonce'uyla `<head>`'e ekler (bir kez). */
+function olcumEtiketleriniEkle(nonce: string | undefined) {
+  for (const [id, kod] of [
+    ["google-tag-manager", GTM_KODU],
+    ["hotjar-tracking", HOTJAR_KODU],
+  ] as const) {
+    if (document.getElementById(id)) continue;
+    const etiket = document.createElement("script");
+    etiket.id = id;
+    if (nonce) etiket.nonce = nonce;
+    etiket.textContent = kod;
+    document.head.appendChild(etiket);
+  }
+}
+
 export function ProductAnalytics({
   enabled,
   nonce,
@@ -218,11 +247,19 @@ export function ProductAnalytics({
   // bileşen kaldırılırken sökülür (kök layout'ta pratikte hiç).
   const korumaSokumu = useRef<(() => void) | null>(null);
   useEffect(() => {
-    if (yukle && !korumaSokumu.current) {
-      korumaSokumu.current = hassasGecisleriKoru();
-      gtmYuklendiOlarakIsaretle();
-    }
-  }, [yukle]);
+    if (!yukle || korumaSokumu.current) return;
+    /*
+      Karar ve enjeksiyon AYNI görevde (A1, Astra 5. tur): `yukle` önceki render'ın
+      adresinden türedi; render ile bu effect arasında tarayıcı hassas bir adrese
+      dönmüş olabilir. Gerçek adres burada yeniden denetlenir ve etiketler hemen
+      eklenir; `next/script`'in kendi effect'ini beklemek araya yeni bir pencere
+      açardı. Adres hassassa hiçbir şey yüklenmez; sonraki render `yukle`'yi düşürür.
+    */
+    if (isSensitiveAnalyticsLocation(window.location.pathname, window.location.search)) return;
+    korumaSokumu.current = hassasGecisleriKoru();
+    gtmYuklendiOlarakIsaretle();
+    olcumEtiketleriniEkle(nonce);
+  }, [yukle, nonce]);
   useEffect(
     () => () => {
       korumaSokumu.current?.();
@@ -233,29 +270,8 @@ export function ProductAnalytics({
 
   if (!istemciUygun || onay === undefined || onay === "red") return null;
 
-  if (onay === "kabul") {
-    return (
-      <>
-        <Script id="google-tag-manager" nonce={nonce} strategy="afterInteractive">
-          {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','${GOOGLE_TAG_MANAGER_ID}');`}
-        </Script>
-        <Script id="hotjar-tracking" nonce={nonce} strategy="afterInteractive">
-          {`(function(h,o,t,j,a,r){
-h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
-h._hjSettings={hjid:${HOTJAR_SITE_ID},hjsv:${HOTJAR_SNIPPET_VERSION}};
-a=o.getElementsByTagName('head')[0];
-r=o.createElement('script');r.async=1;
-r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
-a.appendChild(r);
-})(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');`}
-        </Script>
-      </>
-    );
-  }
+  // Etiketler effect'te eklenir (yukarıda); kabul edilmiş onayda çizilecek şerit yok.
+  if (onay === "kabul") return null;
 
   const sec = (secim: Onay) => {
     onayiYaz(secim);

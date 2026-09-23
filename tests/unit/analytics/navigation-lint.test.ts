@@ -110,6 +110,10 @@ export function git(hedef: string) {
       '"use client";\nexport function git(hedef: string) {\n  const m = `pushState`;\n  (window.history as unknown as Record<string, (a: object, b: string, c: string) => void>)[m]({}, "", hedef);\n}\n',
     ],
     [
+      "ters tırnaklı dinamik import",
+      'import { use } from "react";\nconst navigation = import(`next/navigation`);\nexport function useRawRouter() {\n  const { useRouter } = use(navigation);\n  return useRouter();\n}\n',
+    ],
+    [
       "Next iç modülü",
       `"use client";
 import { useRouter } from "next/dist/client/components/navigation";
@@ -155,6 +159,14 @@ export function Ara() {
 }
 `);
     expect(ihlaller).toEqual([]);
+  }, 120_000);
+
+  it("History API'yi yalnız anan açıklama metni engellenmez", async () => {
+    expect(
+      await kurallar(
+        'export const a = `Tarayıcı pushState işlevini destekliyor.`;\nexport const b = "replaceState belgesi";\n',
+      ),
+    ).toEqual([]);
   }, 120_000);
 
   it("ham router yalnız yardımcı dosyada alınabilir", async () => {
