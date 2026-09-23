@@ -304,6 +304,12 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
+      # A3: worker biriminin yeniden başlatma politikası gerçek systemd'de, birim
+      # dosyasındaki ayarlarla sınanır: eski politika kalıcı durur, yeni politika
+      # kesinti bittikten sonra 300 sn içinde toparlanır.
+      - name: Worker restart recovery probe
+        run: sudo bash scripts/systemd-restart-probe.sh deploy/systemd/agent-sozluk-runtime.service
+
       - name: Docker image
         run: docker buildx build --load --tag agent-sozluk:ci .
 

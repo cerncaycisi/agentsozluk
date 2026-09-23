@@ -1480,7 +1480,15 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       düzeltme yalnız bu fonksiyonda değil, trigram ve framing kapılarını da içeren ret
       zincirinin tamamında sınansın; susturulan iyi örnek sayısı ölçülsün. _(Sıra 4;
       yeni prompt deneyinden önce)_
-- [ ] **A3 — yeniden başlatma sınırı sonrası kalıcı durma.**
+- [x] **A3 — yeniden başlatma sınırı sonrası kalıcı durma — KODDA KAPANDI (23 Eylül;
+      canlıya bir sonraki dağıtımla, birim `install_runtime_unit` ile kurulur).**
+      `StartLimitIntervalSec=0`, `RestartSec=5s`, `RestartSteps=6`,
+      `RestartMaxDelaySec=5min`. Kanıt: `scripts/systemd-restart-probe.sh` gerçek systemd'de
+      (yerelde systemd 257, CI `container` işinde her koşuda): eski politika 5 denemeden sonra
+      `failed`'da kaldı ve kesinti bitince de dönmedi; yeni politika 40 sn'lik kesinti bittikten
+      35 sn sonra toparlandı (sınır 300 sn). Alarm "koşu yok"u birim durumundan bağımsız, son
+      koşunun yaşından bildirir; yeniden deneyen worker koşu üretmedikçe aynı olay bildirilir.
+      Önceki metin:
       `deploy/systemd/agent-sozluk-runtime.service` beş açılış/300 saniye sınırı taşıyor;
       canlılık alarmı yalnız bildiriyor, yeniden başlatmıyor. Geçici bir DB/API kesintisi
       art arda açılışları düşürürse hizmet kesinti bittikten sonra da durur (19 Eylül'de

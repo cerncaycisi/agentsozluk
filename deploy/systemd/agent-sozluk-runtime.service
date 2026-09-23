@@ -3,8 +3,12 @@ Description=Agent Sozluk PostgreSQL queue runtime orchestrator
 Documentation=file:/opt/agent-sozluk/runtime/current/docs/PRODUCTION_RUNBOOK.md
 Wants=network-online.target
 After=network-online.target
-StartLimitIntervalSec=300
-StartLimitBurst=5
+# A3: başlatma sınırı yok. Eski 5 açılış / 300 sn sınırı, geçici bir DB/API
+# kesintisinde birimi kalıcı olarak `failed` bırakıyordu; kesinti bittikten sonra
+# da kimse başlatmadı (19 Eylül). Artık denemeler üstel olarak seyrelir (aşağıda
+# RestartSteps/RestartMaxDelaySec) ama hiç durmaz; kesinti bitince en geç
+# ~5 dk içinde toparlanır. Canlılık alarmı "koşu yok"u ayrıca bildirmeye devam eder.
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
@@ -35,6 +39,8 @@ ExecStart=/usr/bin/node --require /opt/agent-sozluk/runtime/current/node_modules
 
 Restart=on-failure
 RestartSec=5s
+RestartSteps=6
+RestartMaxDelaySec=5min
 KillSignal=SIGTERM
 KillMode=mixed
 # A manual run may legally consume 1200 seconds. Let the main worker finish

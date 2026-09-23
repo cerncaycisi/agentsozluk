@@ -120,6 +120,10 @@ describe("M2-ARCH-004 and RUNTIME-001..004 production host readiness", () => {
     for (const directive of [
       "Restart=on-failure",
       "RestartSec=5s",
+      // A3: başlatma sınırı yok, denemeler üstel seyrelir; CI'da gerçek systemd provası.
+      "StartLimitIntervalSec=0",
+      "RestartSteps=6",
+      "RestartMaxDelaySec=5min",
       "KillSignal=SIGTERM",
       "KillMode=mixed",
       "TimeoutStopSec=21min",
@@ -138,6 +142,7 @@ describe("M2-ARCH-004 and RUNTIME-001..004 production host readiness", () => {
     ]) {
       expect(service, directive).toContain(directive);
     }
+    expect(service).not.toContain("StartLimitBurst=");
     expect(service).toContain("A manual run may legally consume 1200 seconds.");
     expect(service).toContain("finish");
     expect(service).toContain("in-flight runOnce");
