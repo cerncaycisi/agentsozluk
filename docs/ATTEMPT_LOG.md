@@ -8572,3 +8572,25 @@ lease tarafından hiç kullanılmıyordu.
   kullanıcı için `test ! -e` "yok" der.
 - Bu 1 GB sunucuda `lease-alarm` ve `module-boundaries` birim testleri yük altında zaman
   aşımına düşüyor (aynı test bir koşuda 2 s, diğerinde 9 s); değişiklikle ilgisiz, CI kanıttır.
+
+## 2026-09-23 — A5 ilk kullanım öncesi: uygulama rolü CREATEDB yetkili değil
+
+- Gökhan `9b8ba8c` + `20260922140000_contact_messages` dağıtımını onayladı; Release Candidate
+  `35859121105` tetiklendi. Dağıtımdan önce onaylı SSH kapsamında SALT OKUNUR kontrol:
+  disk %59 (30 GB boş), veritabanı 5.497 MB, `UTF8`, PostgreSQL 16.14, kilit/işaret/hold yok,
+  sudo PAM'da `pam_systemd` yok, **oturum scope kontrolünün olumlu yolu gerçek oturumda geçti**
+  (`session-2657.scope`).
+- Bulgu: `agent_sozluk` veritabanının sahibi ama ne süper kullanıcı ne `CREATEDB`; `postgres`
+  süper kullanıcısı db konteyneri içinden erişilebilir. A5 scratch'i `agent_sozluk` ile açmaya
+  çalışacaktı; ön kontrol (`DATABASE_ROLE_INSUFFICIENT`) dondurmadan önce durdururdu — kesinti
+  olmazdı ama dağıtım da olmazdı. Tablo/sequence/enum sahipliği `agent_sozluk`; sahibi başka
+  olan 71 fonksiyonun hepsi extension üyesi; ilişki türleri yalnız `S`, `i`, `r`.
+- Düzeltme: scratch `postgres` ile `-O agent_sozluk` açılıp `dropdb --force` ile düşürülür.
+  SHA değiştiği için dağıtım onayı yeniden alınacak.
+
+**Tekrarlama:**
+
+- Yeni bir operasyon yolunun ilk kullanımından önce, onaylı kapsamda salt okunur envanter al:
+  rol yetkileri, sahiplikler, ilişki türleri. Tasarım turları üretimdeki rol modelini göremez.
+- SSH ile uzak komut gönderirken `$$` dolar tırnağını tek tırnaklı dize içinde kullanma; uzak
+  kabuk onu süreç numarasına çevirir. SQL'i heredoc ile stdin'den ver.

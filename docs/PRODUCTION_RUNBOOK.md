@@ -1382,7 +1382,9 @@ her süreç kayıtlı bir scope'ta kalır.
    üretiyor.
 2. `image-verified` — aday imaj ve runtime release (mevcut adımlar) hazır; imajdaki migration
    dosyaları checkout'la aynı; `run-migration.mjs` imajda.
-3. Ön kontrol — `UTF8`; rol veritabanının sahibi ve `CREATEDB`/süper kullanıcı; veritabanı ya da
+3. Ön kontrol — `UTF8`; uygulama rolü (`agent_sozluk`) veritabanının sahibi; scratch'i açıp
+   düşüren db konteynerindeki `postgres` yönetici rolüne erişilebiliyor (üretimde uygulama rolü
+   ne süper kullanıcı ne `CREATEDB` yetkili; scratch `-O agent_sozluk` ile açılır); veritabanı ya da
    rol düzeyinde `lock_timeout`/`statement_timeout` ayarı YOK (`DB_TIMEOUT_SETTING_PRESENT`); FK
    hedeflerinin `id`'si tek sütunlu uuid birincil anahtar; disk (yedek ve PG hacmi aynı dosya
    sistemindeyse `3 × DB + 1 GiB`). Disk bütçesi dump'tan ve restore'dan hemen önce yeniden

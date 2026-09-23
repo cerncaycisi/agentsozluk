@@ -117,6 +117,18 @@ db_psql() {
     psql -XAtq -v ON_ERROR_STOP=1 -U agent_sozluk -d "$database" "$@"
 }
 
+# Yönetici rolü (db konteynerindeki `postgres`): oturum görünürlüğü gereken
+# kontroller bununla yapılır. Uygulama rolü `pg_read_all_stats` yetkili değilse
+# başka rolün oturumunda `backend_type` NULL görünür ve "başka oturum yok"
+# kanıtı yanıltıcı biçimde geçer (Astra, 23 Eylül).
+admin_psql() {
+  local database="$1" deadline
+  shift
+  deadline_prefix
+  "${deadline[@]}" "${compose[@]}" exec -T -e "PGAPPNAME=a5-$op_id" db \
+    psql -XAtq -v ON_ERROR_STOP=1 -U postgres -d "$database" "$@"
+}
+
 migration_file() {
   printf '%s/prisma/migrations/%s/migration.sql\n' "$app_root" "$1"
 }
@@ -194,11 +206,17 @@ verify_migration_image() {
 preflight_migration() {
   test "$(db_psql agent_sozluk -c 'SHOW server_encoding;' </dev/null)" = UTF8 ||
     migration_fail DATABASE_ENCODING_NOT_UTF8
+  # Uygulama rolü veritabanının sahibi olmalı (ALTER DATABASE … SET, restore
+  # edilen kopyanın sahibi). Scratch'i açıp düşürmek ise db konteynerindeki
+  # yönetici rolünün işi: üretimde `agent_sozluk` ne süper kullanıcı ne de
+  # CREATEDB yetkili (ilk kullanım öncesi salt okunur kontrol, 23 Eylül).
   test "$(db_psql agent_sozluk -c \
-    "SELECT (r.rolsuper OR r.rolcreatedb) AND d.datdba = r.oid
-     FROM pg_roles r, pg_database d
+    "SELECT d.datdba = r.oid FROM pg_roles r, pg_database d
      WHERE r.rolname = current_user AND d.datname = current_database();" </dev/null)" = t ||
-    migration_fail DATABASE_ROLE_INSUFFICIENT
+    migration_fail DATABASE_OWNER_MISMATCH
+  test "$("${compose[@]}" exec -T db psql -XAtq -v ON_ERROR_STOP=1 -U postgres -d postgres \
+    -c 'SELECT rolsuper FROM pg_roles WHERE rolname = current_user;' </dev/null)" = t ||
+    migration_fail DATABASE_ADMIN_ROLE_UNAVAILABLE
 
   # Önceden bir zaman aşımı ayarı varsa dur: `RESET` onu geri getiremez.
   test "$(db_psql agent_sozluk -c \
@@ -306,11 +324,12 @@ assert_frozen() {
   test "$(systemctl show agent-sozluk-runtime.service -p ActiveState --value)" = inactive ||
     migration_fail FREEZE_WORKER_RUNNING
   test -e "$migration_hold" || migration_fail FREEZE_HOLD_MISSING
-  test "$(db_psql agent_sozluk -c \
+  test "$(admin_psql agent_sozluk -c \
     "SELECT count(*) FROM pg_stat_activity
-     WHERE datname = current_database() AND backend_type = 'client backend'
-       AND pid <> pg_backend_pid();" </dev/null)" = 0 || migration_fail FREEZE_OTHER_SESSIONS
-  test "$(db_psql agent_sozluk -c 'SELECT count(*) FROM pg_prepared_xacts;' </dev/null)" = 0 ||
+     WHERE datname = current_database() AND pid <> pg_backend_pid()
+       AND (backend_type = 'client backend' OR backend_type IS NULL);" </dev/null)" = 0 ||
+    migration_fail FREEZE_OTHER_SESSIONS
+  test "$(admin_psql agent_sozluk -c 'SELECT count(*) FROM pg_prepared_xacts;' </dev/null)" = 0 ||
     migration_fail FREEZE_PREPARED_TRANSACTIONS
 }
 
@@ -500,12 +519,11 @@ assert_scratch_name() {
 drop_scratch() {
   ((scratch_owned == 1)) || return 0
   assert_scratch_name || return 1
-  db_psql agent_sozluk -v "scratch=$scratch_database" <<'SQL' >/dev/null || return 1
-SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :'scratch';
-SQL
+  # `dropdb --force` bağlı oturumları kendisi sonlandırır; uygulama rolüyle ön
+  # sonlandırma başka rolün oturumunda yetki hatası verip düşürmeyi atlatıyordu.
   local deadline
   deadline_prefix
-  "${deadline[@]}" "${compose[@]}" exec -T db dropdb -U agent_sozluk "$scratch_database" \
+  "${deadline[@]}" "${compose[@]}" exec -T db dropdb -U postgres --force "$scratch_database" \
     </dev/null || return 1
   scratch_owned=0
 }
@@ -523,7 +541,9 @@ SQL
   ctype="$(db_psql agent_sozluk -c 'SELECT datctype FROM pg_database WHERE datname = current_database();' </dev/null)"
   local deadline
   deadline_prefix
-  "${deadline[@]}" "${compose[@]}" exec -T db createdb -U agent_sozluk -T template0 -E UTF8 \
+  # Yönetici rolüyle açılır, sahibi uygulama rolüdür: restore ve ALTER DATABASE
+  # uygulama rolüyle yapılır.
+  "${deadline[@]}" "${compose[@]}" exec -T db createdb -U postgres -O agent_sozluk -T template0 -E UTF8 \
     --lc-collate="$collate" --lc-ctype="$ctype" "$scratch_database" </dev/null ||
     migration_fail SCRATCH_CREATE_FAILED
   scratch_owned=1
@@ -612,9 +632,10 @@ run_migration() {
   done
   test -z "$(docker ps -aq --filter "name=^a5-$op_id-migrate$")" ||
     migration_fail MIGRATION_CONTAINER_STILL_PRESENT
-  test "$(db_psql agent_sozluk -v "target=$target" <<'SQL'
+  test "$(admin_psql postgres -v "target=$target" <<'SQL'
 SELECT count(*) FROM pg_stat_activity
-WHERE datname = :'target' AND backend_type = 'client backend' AND pid <> pg_backend_pid();
+WHERE datname = :'target' AND pid <> pg_backend_pid()
+  AND (backend_type = 'client backend' OR backend_type IS NULL);
 SQL
 )" = 0 || migration_fail MIGRATION_BACKEND_STILL_PRESENT
   reset_database_timeouts "$target" || migration_fail DB_TIMEOUT_RESET_FAILED
