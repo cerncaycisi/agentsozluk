@@ -7,6 +7,33 @@
 > Aşağıdaki bölümler tarihlerine ait kayıtlardır ve **o günün** durumunu anlatır;
 > hiçbiri bugünün durumu olarak okunmamalıdır.
 
+## 2026-09-23 — `f2f57f3` canlıda: finishedAt indeksi, A1, A3, F04, lease taraması
+
+- **Dağıtılan:** `f2f57f3656396f4fc5aa247cb6bbdf5f260a2dea` (PR #173 A1, #174 lease taraması,
+  #175 A3, #176 finishedAt indeksi, #178 F04). Gökhan'ın 24 saatlik dağıtım onayı muafiyeti
+  (23 Eylül 19:18 UTC'den itibaren) ve Astra "DAĞIT" ile; main CI `35926572581`, Release
+  Candidate `35927497991`, migration `20260923180000_agent_runs_finished_at_index`.
+  `RELEASE_COMPLETE PASS … cleanup=no-cleanup migrations=apply:…`, çıkış 0 (22:25:20 → 22:37:48 UTC).
+- **Aşamalar:** planned → image-verified → drenaj (1 deneme) → frozen (≈22:28:40) → yedek
+  1.129.917.950 bayt, sha256 `a8a1f912…c844368a2` → backup-verified → rehearsed (scratch'te
+  migration + önceki imaj açılışı + smoke) → migrating → migrated → post-verified →
+  writers-may-run → `RELEASE_LEASE_SCAN_OK` → traffic-open (caddy 22:37:41) → worker-allowed →
+  cutover-done. **Kesinti ≈9 dk.** Mevcut tabloya indeks dalı (TOC filtresi, sabit uzunluk ön
+  kontrolü, katalog) üretimde ilk kez çalıştı ve geçti.
+- **Sonrası (salt okunur):** `agent_runs_finishedAt_idx` mevcut; `agent_runs` 34.719 satır;
+  `finishedAt IS NULL OR finishedAt > now() - 15 dk` deseni `Bitmap Index Scan on
+"agent_runs_finishedAt_idx"` ile çalışıyor (cost 16,54). Worker `active/running`, NRestarts 0;
+  kilit, işaret ve hold yok. Disk %72 (21 GB boş); imajlar 14,32 GB (11,78 GB geri kazanılabilir).
+- **F04 envanteri:** 22 alias'ın hiçbirini taşıyan hesap yok.
+- **Tarayıcı kabulü:** üretim onay smoke'u `35929529128` başarılı (onay sonrası GTM/Hotjar üretim
+  CSP'siyle yükleniyor; hassas yüzeyde yüklenmiyor).
+- **Uyarı (beklenen) → kapandı:** `RELEASE_WARN installed alarm script differs from candidate`.
+  Astra "KUR" ile kurulu alarm betiği güncellendi (22:55 UTC). Hedef
+  `/opt/agent-sozluk/scripts/canlilik-alarmi.sh`, root:root 0755, sha256 `4069ef35…539a83da56`
+  (= `f2f57f3` blob'u); önceki sürüm `.onceki` (`9353d0fe…`). İlk timer koşusu 23:00:47
+  `success`/0; imleç ilerledi ve kimlik çalışan app konteyneri (`a02a31c8…`); lease durumu
+  `temiz`, bekleyen bildirim yok.
+
 ## 2026-09-23 — iletişim formu canlıda; A5'in ilk kullanımı
 
 - **Dağıtılan:** `c0dbe7393ad97a535f490ae061924e02ec250028`, Gökhan'ın exact SHA + migration listesi

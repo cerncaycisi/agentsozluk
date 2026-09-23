@@ -8638,3 +8638,26 @@ lease tarafından hiç kullanılmıyordu.
 - "Başka süreç yok" ölçütünü SID'e göre değil oturum scope'una (`ps -o unit`) göre say: sshd'nin
   oturum süreci ve kullanıcı yöneticisi farklı SID taşır.
 - Migration modunda `pre_cutover_lease_scan` app kapalıyken koşuyor; taramayı dondurmadan önceye al.
+
+## 2026-09-23 — `f2f57f3`: A5'in ikinci başarılı kullanımı, mevcut tabloya ilk indeks
+
+- `f2f57f3656396f4fc5aa247cb6bbdf5f260a2dea`, migration `20260923180000_agent_runs_finished_at_index`,
+  Release Candidate `35927497991`. Gökhan'ın 24 saatlik onay muafiyeti + Astra "DAĞIT".
+  `RELEASE_COMPLETE PASS`, kesinti ≈9 dk (≈22:28:40 → 22:37:41 UTC).
+- Önceki koşunun uyarısı kapandı: `RELEASE_LEASE_SCAN_OK` (alarm artık `ps -a -q app` ile durmuş
+  konteyneri buluyor, tek seferlik konteynerleri etiketle eliyor).
+- Mevcut tabloya indeks: scratch ve üretimde tablo şema özetleri TOC filtresiyle eşit çıktı;
+  EXPLAIN indeksi kullanıyor.
+- İlk salt okunur kontrolde compose yolunu `runtime/current/compose.production.yaml` sandım;
+  doğrusu `/opt/agent-sozluk/runtime/compose.production.yaml` (konteyner etiketi
+  `com.docker.compose.project.config_files`).
+
+- Kurulu alarm betiği güncellendi (Astra "KUR"): aday sha256 `4069ef35…` sunucuda doğrulandı,
+  `install` → `.onceki` yedeği → `mv -fT`. Geri alma: `sudo mv -fT …onceki …canlilik-alarmi.sh`.
+  İlk timer koşusu `success`, imleç yeni app kimliğiyle ilerledi, durum `temiz`.
+
+**Tekrarlama:**
+
+- Dağıtımdan hemen sonra "Up 53 seconds" görüp yeniden başlatma sanma: önce sunucu saatini ve
+  `State.StartedAt`'i dağıtım bitişiyle karşılaştır.
+- Üretim compose yolunu tahmin etme; çalışan konteynerin compose etiketlerinden oku.
