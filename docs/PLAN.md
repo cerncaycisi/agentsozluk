@@ -1512,9 +1512,15 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       toparlanma; alarmın aynı olayı yine bildirdiği kanıtı. _(bölüm 5.5)_
 - [x] **A5 — migration'lı üretim dağıtım yolu — KAPANDI (23 Eylül, ilk kullanım
       `c0dbe73`: iletişim formu canlıda).** _(Gökhan onayladı, 22 Eylül: "A".)_
-      Açık kalan küçük iş: migration modunda kesim öncesi lease taraması app kapalıyken
-      koştuğu için `RELEASE_WARN lease alarm pre-cutover scan failed` veriyor (engellemiyor);
-      tarama dondurmadan önceye alınmalı.
+      Lease taraması uyarısı (`RELEASE_WARN lease alarm pre-cutover scan failed`) kodda kapandı
+      (PR #174). Kök neden: alarm app konteynerini `ps -q app` ile arıyordu; migration modunda
+      app dondurmadan kesime kadar durduğu için kimlik boş dönüyordu. Artık `ps -a -q app`:
+      durmuş konteyner de taranır, kesim taraması iki modda da konteyner yeniden yaratılmadan
+      hemen önce koşar ve makbuz tazedir. İlk denenen yol (taramayı dondurmaya alıp makbuza
+      45 dk'lık pencere vermek) Astra'nın iki turunda üç yeni kusur üretti (baştaki sıfırla
+      süre kontrolünü atlatma, gecikmiş resume'da süresi dolan makbuz, 2700 üstü bütçede
+      taramanın hiç koşmaması) ve bırakıldı. Timer'ın kurulu alarmı da dondurma boyunca durmuş
+      konteyneri bulur; kurulu betiğin güncellenmesi ayrı kurulum adımıdır.
       Bugün yalnız `deploy-production-no-migration.sh` var; yeni migration'lı bir sürüm
       dağıtılamıyor (`MIGRATION_SET_CHANGED`) ve runbook Gate 7/8'in istediği uygulama
       genelinde yazma dondurması kodda yok (`MAINTENANCE` yalnız ajanları durduruyor).

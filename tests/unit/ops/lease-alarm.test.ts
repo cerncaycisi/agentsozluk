@@ -51,6 +51,7 @@ interface Secenek {
   curlIlkHata?: boolean; // koşudaki YALNIZ ilk gönderim başarısız
   simdi?: number; // ALARM_SIMDI (sn); imleç testleri için
   kimlik?: string; // app konteynerinin kimliği; "" = okunamaz
+  ekKonteynerler?: string; // "kimlik:True kimlik2:False" — ps -a'daki diğer app konteynerleri
   olusma?: number; // app konteynerinin yaratılma anı (sn); yoksa `inspect` başarısız
   kip?: string; // betiğe verilen argüman (ör. --kesim-oncesi)
   konuYok?: boolean; // ALARM_NTFY_KONU tanımsız
@@ -77,6 +78,7 @@ function ortam(secenek: Secenek): NodeJS.ProcessEnv {
     SAHTE_CURL_HATA: secenek.curlHata ? "1" : "",
     SAHTE_CURL_ILK_HATA: secenek.curlIlkHata ? "1" : "",
     SAHTE_KIMLIK: secenek.kimlik ?? "aaaaaaaaaaaa1111",
+    SAHTE_EK_KONTEYNERLER: secenek.ekKonteynerler ?? "",
     SAHTE_OLUSMA: secenek.olusma === undefined ? "" : new Date(secenek.olusma * 1000).toISOString(),
     SAHTE_LOG_DOSYASI: secenek.logDosyasi ?? path.join(dizin, "app.log"),
     SAHTE_LOGS_GECIKME: String(secenek.logsGecikme ?? 0),
@@ -119,6 +121,14 @@ beforeEach(() => {
     `#!/usr/bin/env bash
 echo "$*" >> "$SAHTE_DIZIN/docker.log"
 tum=" $* "
+if [[ "$1" == "inspect" && "$3" == '{{index .Config.Labels "com.docker.compose.oneoff"}}' ]]; then
+  [[ "$4" == "$SAHTE_KIMLIK" ]] && { echo False; exit 0; }
+  for ek in $SAHTE_EK_KONTEYNERLER; do
+    # "kimlik:" = inspect hatası; "kimlik:Deger" = etiket değeri.
+    if [[ "\${ek%%:*}" == "$4" ]]; then [[ -n "\${ek#*:}" ]] || exit 1; echo "\${ek#*:}"; exit 0; fi
+  done
+  exit 1
+fi
 if [[ "$1" == "inspect" ]]; then
   [[ "$2" == "-f" && "$3" == "{{.Created}}" && "$4" == "$SAHTE_KIMLIK" && -n "$SAHTE_OLUSMA" ]] || exit 1
   echo "$SAHTE_OLUSMA"; exit 0
@@ -142,7 +152,13 @@ if [[ "$tum" == *" logs "* ]]; then
   done < "$SAHTE_LOG_DOSYASI"
   exit 0
 fi
-if [[ "$tum" == *" ps -q app "* ]]; then [[ -n "$SAHTE_KIMLIK" ]] && echo "$SAHTE_KIMLIK"; exit 0; fi
+# Yalnız "ps -a -q app": durmuş konteyner de listelenmeli (A5 kesimi, 23 Eylül).
+if [[ "$tum" == *" ps -a -q app "* ]]; then
+  # Tek seferlik (compose run) konteynerler asıl konteynerden önce de gelebilir.
+  for ek in $SAHTE_EK_KONTEYNERLER; do echo "\${ek%%:*}"; done
+  [[ -n "$SAHTE_KIMLIK" ]] && echo "$SAHTE_KIMLIK"
+  exit 0
+fi
 if [[ "$tum" == *" exec -T db psql "* ]]; then
   [[ -n "$SAHTE_EXEC_ASILI" ]] && sleep 20
   sql="$(cat)"
@@ -189,10 +205,11 @@ describe("lease süresi alarmı", () => {
     ]);
     expect(status).toBe(0);
     expect(bildirimler).toEqual([]);
-    expect(dockerCagrilari).toHaveLength(3);
+    expect(dockerCagrilari).toHaveLength(4);
     expect(dockerCagrilari[0]).toContain("exec -T db psql");
-    expect(dockerCagrilari[1]).toMatch(/ ps -q app$/);
-    expect(dockerCagrilari[2]).toMatch(/logs --no-log-prefix --since \S+Z app$/);
+    expect(dockerCagrilari[1]).toMatch(/ ps -a -q app$/);
+    expect(dockerCagrilari[2]).toContain("inspect -f");
+    expect(dockerCagrilari[3]).toMatch(/logs --no-log-prefix --since \S+Z app$/);
   });
 
   it("eşiği iki kez aşmak uyarı değildir, üç kez aşmak uyarıdır", () => {
@@ -564,6 +581,58 @@ describe("lease taraması ve teslimi (Sol ve Astra, 21 Eylül)", () => {
       calistir([zamanli(800, T + 800)], { simdi: T + 900, kimlik: YENI, olusma: T + 130 })
         .bildirimler,
     ).toEqual([]);
+  });
+
+  it("durmuş app konteyneri ps -a ile bulunur; tek seferlik konteynerler elenir", () => {
+    // A5: app dondurmadan kesime kadar durur; prova/migrate konteynerleri (compose run)
+    // aynı serviste listelenir. Kesim taraması asıl konteyneri seçip makbuz yazar.
+    const kesim = calistir([zamanli(800, T - 60)], {
+      simdi: T,
+      kimlik: ESKI,
+      ekKonteynerler: "cccccccccccc3333:True dddddddddddd4444:True",
+      kip: "--kesim-oncesi",
+      konuYok: true,
+    });
+    expect(kesim.status).toBe(0);
+    expect(makbuzOku()).toBe(`${ESKI} ${T * 1000}`);
+  });
+
+  it("birden fazla asıl app konteyneri varsa kimlik belirsizdir; kesim makbuz yazmaz", () => {
+    const kesim = calistir([zamanli(800, T - 60)], {
+      simdi: T,
+      kimlik: ESKI,
+      ekKonteynerler: "eeeeeeeeeeee5555:False",
+      kip: "--kesim-oncesi",
+      konuYok: true,
+    });
+    expect(kesim.status).not.toBe(0);
+    expect(existsSync(path.join(dizin, "durum", "durum-lease-kesim"))).toBe(false);
+  });
+
+  it("etiketi okunamayan aday, geçerli bir asıl konteyner yanında da seçimi reddeder", () => {
+    // Sorgulanamayan aday ikinci bir asıl konteyner olabilir (Astra, #174 4. tur).
+    for (const ek of ["ffffffffffff6666:", "ffffffffffff6666:bilinmez"]) {
+      const kesim = calistir([zamanli(800, T - 60)], {
+        simdi: T,
+        kimlik: ESKI,
+        ekKonteynerler: ek,
+        kip: "--kesim-oncesi",
+        konuYok: true,
+      });
+      expect(kesim.status, ek).not.toBe(0);
+      expect(existsSync(path.join(dizin, "durum", "durum-lease-kesim")), ek).toBe(false);
+    }
+  });
+
+  it("etiketi okunamayan konteyner asıl sayılmaz", () => {
+    const kesim = calistir([zamanli(800, T - 60)], {
+      simdi: T,
+      kimlik: "",
+      ekKonteynerler: "ffffffffffff6666:",
+      kip: "--kesim-oncesi",
+      konuYok: true,
+    });
+    expect(kesim.status).not.toBe(0);
   });
 
   it("kesimle yenileme arasına düşen timer taraması makbuzu geçersiz kılmaz", () => {

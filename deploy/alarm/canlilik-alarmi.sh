@@ -247,9 +247,27 @@ lease_kontrol_kilitli() {
     atomik_yaz "$LEASE_IMLEC" "$esik" || true
   fi
 
-  # Taranacak konteynerin kimliği: imleçle birlikte saklanır.
-  kimlik="$(timeout 5 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
-    ps -q app 2>/dev/null | head -1)"
+  # Taranacak konteynerin kimliği: imleçle birlikte saklanır. `-a`: durmuş
+  # konteyner de sayılır; logu `docker compose logs` ile okunabilir. Migration'lı
+  # dağıtımda app dondurmadan kesime kadar durur ve kesim taraması tam o
+  # konteyneri tarar (ilk A5 kullanımında `ps -q` boş döndü ve tarama başarısız
+  # oldu; 23 Eylül). `-a`, `compose run` ile açılan tek seferlik konteynerleri
+  # (A5 provası `a5-<op>-previous`, migrate) de listeler: onlar etiketle elenir;
+  # birden fazla asıl app konteyneri kalırsa kimlik belirsizdir (boş).
+  # Yalnız okunmuş `True` atlanır; okuma hatası ya da tanınmayan değer seçimi
+  # reddeder: sorgulanamayan aday ikinci bir asıl konteyner olabilir (Astra).
+  local adaylar aday etiket
+  kimlik=""
+  adaylar="$(timeout 5 docker compose --env-file "$APP/.env" -f "$RUNTIME/compose.production.yaml" \
+    ps -a -q app 2>/dev/null)"
+  for aday in $adaylar; do
+    [[ "$aday" =~ ^[0-9a-f]{12,64}$ ]] || { kimlik=""; break; }
+    etiket="$(timeout 5 docker inspect -f '{{index .Config.Labels "com.docker.compose.oneoff"}}' \
+      "$aday" 2>/dev/null)" || { kimlik=""; break; }
+    [[ "$etiket" == True ]] && continue
+    [[ "$etiket" == False && -z "$kimlik" ]] || { kimlik=""; break; }
+    kimlik="$aday"
+  done
   [[ "$kimlik" =~ ^[0-9a-f]{12,64}$ ]] || kimlik=""
   baslangic=$(( esik / 1000 - LEASE_ORTUSME_SN ))
 
