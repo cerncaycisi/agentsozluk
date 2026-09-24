@@ -34,7 +34,7 @@ jobs:
           [[ "$REF" == refs/heads/main ]] || { echo "yalnız main'den"; exit 1; }
           [[ "$APPROVED_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "SHA biçimi"; exit 1; }
           [[ "$APPROVED_SHA" == "$RUN_SHA" ]] || { echo "SHA main HEAD ile aynı değil"; exit 1; }
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-project

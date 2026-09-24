@@ -204,7 +204,9 @@ describe("build-once exact-SHA release artifacts", () => {
     );
     expect(runs).toContain("pnpm install --frozen-lockfile");
     expect(runs.some((run) => run.includes("scripts/build-release-bundle.sh"))).toBe(true);
-    const upload = steps.find((step) => step.uses === "actions/upload-artifact@v4");
+    const upload = steps.find(
+      (step) => step.uses === "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+    );
     expect(upload?.with).toMatchObject({
       "if-no-files-found": "error",
       "retention-days": 1,
