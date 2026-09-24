@@ -1386,11 +1386,21 @@ girmek israf.
       içinden çağrılan sürüm kapıya girmez — beklemek bağlantıyı tutardı.
       Hesap kovası kararı ve kalan iki takip maddesi için Sıra 5.6 / F10.
 
-- [ ] **B9 — canlılık alarmı + sunucu dışı yedek kanıtı.** Alarm maddesi bölüm 5.5'e
-      taşındı ve 19 Eylül'deki ikinci sessiz durmadan sonra sıradaki iş oldu. Burada
-      kalan kısım: yedek bugün dağıtım kapısı olarak aynı host'ta
-      (`/opt/agent-sozluk/backups`); **zamanlanmış ve sunucu dışı yedek kanıtı repoda
-      yok.** Varsa belgeye yazılacak, yoksa reset öncesi kurulacak. _(reset önkoşulu)_
+- [ ] **B9 — canlılık alarmı + sunucu dışı yedek kanıtı — TEK SEFERLİK YEDEK VE RESTORE
+      KANITI VAR (24 Eylül); ZAMANLANMIŞ YEDEK AÇIK.** Alarm maddesi bölüm 5.5'te.
+      **Yapılan (Gökhan onayı, 24 Eylül: "onaylıyorum"):** üretimden salt okunur, dışa
+      aktarılmış tek anlık görüntüden `pg_dump -Fc` doğrudan kişisel T3 sunucusuna
+      akıtıldı (üretime dosya yazılmadı). Yedek 1.139.690.537 bayt, sha256 `522e18ba3247…`,
+      bu sunucuda `~/agentsozluk-backups/` (0700/0600). Aynı anlık görüntüde 50 tablonun
+      satır sayısı ve içerik özeti alındı. Yerel, root gerektirmeyen PostgreSQL 16.14'te
+      `pg_restore --exit-on-error` 173 sn'de geçti. **50 tablonun 50'si sayı ve özet olarak
+      birebir aynı** (2.849.961 satır); 3 sequence tablo en büyük değerine eşit. Prova
+      veritabanı ve PostgreSQL kurulumu silindi.
+      **Sınırlar:** iki sunucu aynı sağlayıcıda olabilir (sağlayıcı çapında kayba karşı
+      koruma değil); yedek bu sunucudaki aynı kullanıcıyla çalışan ajanlarca okunabilir.
+      **Açık kalan:** zamanlanmış (ör. gecelik) yedek. Buradan üretime kalıcı bir bağlantı
+      demek; ayrı Gökhan kararı ister. Reset öncesi taze bir yedek aynı yöntemle yeniden
+      alınmalı. _(reset önkoşulu: tek seferlik kısım karşılandı)_
 - [x] **B5.1-2 — künye, iletişim, içerik kaldırma yolu; çerez onayı — HEPSİ CANLIDA (23
       Eylül).** Üç ayrı sürüm, ayrı kanıt:
   - `37c6618` (PR #156): onay şeridi, künye; Hotjar bu sürümde yoktu (Claude'un önerisiyle
@@ -1701,7 +1711,8 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
 
 **Var olan maddelere bağlananlar** — yeni madde açılmadı:
 
-- Sunucu dışı yedek + bağımsız restore kanıtı → **B9** (bölüm 5.7) ve Sıra 5 önkoşulu.
+- Sunucu dışı yedek + bağımsız restore kanıtı → **B9** (bölüm 5.7) ve Sıra 5 önkoşulu. 24 Eylül:
+  tek seferlik yedek ve restore provası geçti; zamanlanmış yedek açık.
   Gökhan 22 Eylül'de bunu **bilerek erteledi**; iki inceleme de en büyük açık risk sayıyor,
   karar yine Gökhan'ın.
 - `agent_runs` büyümesi, `finishedAt` indeksi ve retention → bölüm 5.5'in migration provası

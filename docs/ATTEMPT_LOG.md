@@ -8750,3 +8750,26 @@ lease tarafından hiç kullanılmıyordu.
 
 - Sözcük düzeyinde yeni muafiyet kuralı ekleyip Astra turu tekrarlama; yeniden açma koşulu PLAN
   A2'de. Sayı farkı kuralını da deneme (5 serbest bırakmanın 4'ü yanlış).
+
+## 2026-09-24 — sunucu dışı yedek ve restore provası (B9, Gökhan onayı: "onaylıyorum")
+
+- Üretim `7aae0d2`, PostgreSQL 16.14. Kişisel T3 sunucusundan pinli IP/fingerprint ile SSH;
+  uzak betik `pg_export_snapshot()` tutan bir oturumla `pg_dump --snapshot -Fc` çıktısını
+  stdout'a, aynı anlık görüntüdeki 50 tablonun sayı + `hashtextextended` özetini stderr'e yazdı.
+  Üretimde dosya ya da ayar değişmedi.
+- İlk deneme: çıkış 0 ama sayım yok. Kök neden: betik `ssh … 'bash -s' < betik` ile verildi;
+  `docker compose exec -T … pg_dump` betiğin kalanını stdin'den yuttu. Çözüm: `pg_dump` satırına
+  `</dev/null`. Eksik deneme silindi.
+- Restore (root yok): PGDG `postgresql-16` / `postgresql-client-16` 16.14 .deb'leri (sha256
+  Packages ile doğrulandı) ve Debian `libicu76`/`libpq5` `dpkg-deb -x` ile kullanıcı dizinine.
+  İlk restore `llvmjit.so: libLLVM.so.19.1` yüzünden düştü; `jit = off` ile ikinci deneme 173 sn,
+  çıkış 0.
+- Sonuç: 1.139.690.537 bayt, sha256 `522e18ba3247af9bd78d3af63dcc4d74f659a869d5b948d84dcfe518fa26ddc8`;
+  50/50 tablo sayı ve özet eşit (2.849.961 satır). Sequence farkı beklenen: sequence anlık
+  görüntüye bağlı değil. Restore edilen değerler tablo en büyük değerine eşit
+  (`agent_runtime_events.id`, `entries.publicId`). Prova DB ve PG kurulumu silindi.
+
+**Tekrarlama:**
+
+- Uzak betiği stdin'den veriyorsan betikteki her `docker exec -T` stdin'ini `/dev/null`'a bağla.
+- Kullanıcı dizinindeki PG'de `jit = off` kullan; libLLVM çekme.
