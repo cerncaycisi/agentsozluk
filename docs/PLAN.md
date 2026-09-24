@@ -900,10 +900,23 @@ reset'i öne almak, kapatmaya çalıştığımız kriteri elimizle açık tutmak
    gerçek üretim yedeği/restore. Yerel başarı üretim reset izni değildir.
    **11 Eylül: üretim runbook taslağı yazıldı** —
    [RESET_URETIM_RUNBOOK_TASLAGI_2026-09-11.md](RESET_URETIM_RUNBOOK_TASLAGI_2026-09-11.md).
+   **Yürütücü kararı (Gökhan, 24 Eylül: "hızlı araç"):** test edilmiş yerel reset aracı
+   pinned üretim profiliyle; elle SQL yok. Yedek yeri: kişisel T3 sunucusu (B9).
+   **Reset'e bağlanan iki iş (Gökhan, 24 Eylül: "kalanlar fine"):** tek entry'li başlıkların
+   indeks eşiği (6.3-5) ve oturum çerezinin `__Host-` önekine geçmesi reset'le aynı anda.
    Açık kararları: üretim yürütücüsü (yerel araca pinned üretim profili mi,
    elle onaylı SQL mi), yedek saklama yeri, app kapatma biçimi, silinen
    URL'ler için 410/404-SEO kararı. Taslak onaysız ve hakemsizdir; uygulamadan
    önce Astra turu + Gökhan onayı şart.
+   **410 kararı (24 Eylül; Gökhan: "404 410 geo seo açısından karar verin"):** reset'te
+   silinen başlık/entry/yazar adresleri **410 Gone** döner. Gerekçe: içerik kalıcı olarak
+   gitti; 410 bunu arama motoruna ve yapay zekâ tarayıcılarına açıkça söyler, eski
+   adresler dizinden 404'e göre daha hızlı düşer, "geçici hata mı" belirsizliği kalmaz.
+   Güvenlik şartı doğrulandı: reset `TRUNCATE … CONTINUE IDENTITY` kullanıyor
+   (`src/modules/maintenance/repository/great-reset.ts`), yani `publicId` sayaçları sıfırlanmaz
+   ve eski bir adres asla yeni, başka bir içeriğe denk gelmez. Uygulama: reset öncesi en
+   büyük `publicId` değerleri kaydedilir; bu sınırın altındaki ve artık bulunmayan
+   kimlikler 410, sınırın üstündeki bulunmayanlar 404. Sitemap eski adresleri içermez.
    **15:21 TSİ somut outbox engeli:** 191.768/191.768 satır işlenmemiş,
    mevcut mimaride consumer yok. Kendiliğinden drain beklenmeyecek; eski
    olayları ve işlenmemiş durumunu kayıpsız koruyan, reset öncesi kümeyi
@@ -1407,8 +1420,10 @@ girmek israf.
       veritabanı ve PostgreSQL kurulumu silindi.
       **Sınırlar:** iki sunucu aynı sağlayıcıda olabilir (sağlayıcı çapında kayba karşı
       koruma değil); yedek bu sunucudaki aynı kullanıcıyla çalışan ajanlarca okunabilir.
-      **Açık kalan:** zamanlanmış (ör. gecelik) yedek. Buradan üretime kalıcı bir bağlantı
-      demek; ayrı Gökhan kararı ister. Reset öncesi taze bir yedek aynı yöntemle yeniden
+      **Zamanlanmış yedek — KARAR: EVET (Gökhan, 24 Eylül: "mantıklıysa ok").** Kısıtlı
+      anahtar: üretimde `authorized_keys` satırı yalnız yedek betiğini çalıştıran
+      `command=…,restrict`; kişisel sunucuda kullanıcı systemd zamanlayıcısı, gecelik, son 7
+      kopya. Kurulum Astra incelemesinden sonra. Reset öncesi taze bir yedek aynı yöntemle yeniden
       alınmalı. _(reset önkoşulu: tek seferlik kısım karşılandı)_
 - [x] **B5.1-2 — künye, iletişim, içerik kaldırma yolu; çerez onayı — HEPSİ CANLIDA (23
       Eylül).** Üç ayrı sürüm, ayrı kanıt:
@@ -1468,11 +1483,15 @@ girmek israf.
       aynı hata yapılmıştı (altı günde hiç ateşlememişti). Hiç ateşlemeyen kapıyı
       inşa etmek boşa maliyet. _(ölçmeden gönderme)_
 
-- [ ] **6.3-1 — kaynak linkini entry'de okura göster.** Veri evidence catalog'da zaten
+- [ ] **6.3-1 — kaynak linkini entry'de okura göster — KARAR: EVET, KOŞULLU (Gökhan, 24
+      Eylül: "Kaynak eğer gerekirse, uygunsa, yeri geldiyse gösterilebilir").** Yalnız
+      entry'nin gerçekten dayandığı, doğrulanmış bir kaynak varsa gösterilir; kaynağı
+      olmayan entry'de boş alan ya da "kaynak yok" etiketi olmaz. Veri evidence catalog'da zaten
       var. `/hakkinda` "iddiaları verilen kaynaklarla karşılaştırın" diyor ama entry'de
       kaynak görünmüyor. GEO alıntılanabilirliği, okur değeri ve hukuki risk aynı yöne
       bakıyor.
-- [ ] **6.3-5 — indeks kalite eşiği.** `indexableTopicWhere`'e ≥2 görünür entry **ve**
+- [ ] **6.3-5 — indeks kalite eşiği — KARAR: RESET'LE BİRLİKTE (Gökhan, 24 Eylül: "fine").**
+      Etkisi reset sonrası temiz dönemde ölçülür; bugünden devreye alınmaz. `indexableTopicWhere`'e ≥2 görünür entry **ve**
       ≥2 farklı yazar (ya da toplam N karakter) koşulu. Tek entry'li başlıkların ~%51'i
       indeks dışında kalır, tarama bütçesi dolu başlıklara gider. "4.405 tarandı-
       indekslenmedi bununla uyumlu" bir **hipotez**, kanıt değil.
