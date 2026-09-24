@@ -1536,16 +1536,26 @@ zaten var olan maddeler çoğaltılmadı, ilgili bölüme bağlandı.
       deliniyor. **Kapatma ölçütü:** tek sınıflandırıcı pathname + query alsın; ilk
       yükleme, form gönderimi, istemci içi gezinme ve geri/ileri aynı kuralı kullansın;
       onaylı/onaysız × genel arama/başlık araması × DNT/GPC matrisi testte. _(Sıra 1)_
-- [ ] **A2 — karşıt hükmü tekrar sayan semantik kapı — SIRADAKİ İŞ (Gökhan, 24 Eylül:
-      üretim entry'lerinin salt okunur incelenmesine "evet").** `topicSemanticRepetition`
-      (`src/modules/agents/domain/action-policy.ts:218`) sözcükleri kümeye çeviriyor;
-      sıra, roller ve olumsuzluğun hedefi kayboluyor. Astra üç örneği gerçek fonksiyonla
-      yeniden üretti: "kırmızı takım maviyi yendi" ↔ "mavi takım kırmızıyı yendi" kapsama
-      **1,0**, sonuç "tekrar". Etki: anlamlı katkının reddi. **Kapatma ölçütü:** üç karşı
-      örnek + gerçek parafrazlar + Türkçe hâl/olumsuzluk/sayı varyantları birlikte geçsin;
-      düzeltme yalnız bu fonksiyonda değil, trigram ve framing kapılarını da içeren ret
-      zincirinin tamamında sınansın; susturulan iyi örnek sayısı ölçülsün. _(Sıra 4;
-      yeni prompt deneyinden önce)_
+- [ ] **A2 — karşıt hükmü tekrar sayan semantik kapı — ERTELENDİ (Gökhan, 24 Eylül: "rafa
+      kaldır").** `topicSemanticRepetition` (`src/modules/agents/domain/action-policy.ts`)
+      sözcükleri kümeye çeviriyor; sıra, roller ve olumsuzluğun hedefi kayboluyor. "Kırmızı
+      takım mavi takımı yendi" ↔ "mavi takım kırmızı takımı yendi" tekrar sayılıyor.
+      **Ölçüm (Gökhan'ın 24 Eylül "evet"iyle salt okunur üretim çıkarımı; metinler yalnız
+      yerelde, depoya girmedi):** 938 gerçek `TOPIC_SEMANTIC_REPETITION` reddi; aynı bağlamla
+      yeniden oynatınca 935'i yine ret. 60'lık rastgele örnek elle okundu: neredeyse tamamı
+      gerçek tekrar; kapının kesinliği yüksek. Denenen dar kurallar 935 retin hiçbirini
+      değiştirmedi: üretimde bu hatanın görünür bir izi ölçülmedi.
+      **Denenen (PR #192, kapatıldı; dal `fix/a2-iliski-tersine` başvuru için duruyor):**
+      `semanticRelationDiffers` — "X değil Y" takası ve aynı ad üzerinde yalın/belirtme hâli
+      rol takası tekrar muafiyeti. Astra üç turda da **BİRLEŞTİRME** dedi; her yamadan sonra
+      aynı hükmü yineleyen doğal Türkçe parafrazları "ters hüküm" sanıp serbest bırakan yeni
+      örnekler buldu: aynı kavramın iki rolde geçmesi, farklı yüklemler, araya giren zarf,
+      etken/edilgen dönüşüm, "… demek yanlış / sanılıyor" ile aktarılan önerme, "değil … da
+      sayılmaz" çift olumsuzluğu, satır sonu. Sözcük düzeyinde sezgisel kural bu sınıfı
+      güvenle ayıramıyor. Sayı farkı kuralı da denendi: 5 serbest bırakmanın 4'ü yanlıştı.
+      **Karar:** mevcut kapı kalır (ters hükmü de tekrar sayar, gerçek tekrarı kaçırmaz).
+      Yeniden açma koşulu: üretimde gerçek bir ters hükmün reddedildiğine dair kanıt ya da
+      cümle yapısını gerçekten çözümleyen bir yaklaşım.
 - [x] **A3 — yeniden başlatma sınırı sonrası kalıcı durma — CANLIDA (23 Eylül, `f2f57f3`;
       yeni birim dondurmada kuruldu, worker `active/running`, NRestarts 0).**
       `StartLimitIntervalSec=0`, `RestartSec=5s`, `RestartSteps=6`,
